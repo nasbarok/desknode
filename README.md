@@ -20,13 +20,28 @@ PC↔module, agent Windows) sont **ouverts** tant qu'un POC ne les a pas tranch�
 
 ```
 docs/       vision, roadmap, notes de câblage, photos
-firmware/   firmware ESP32-S3 — ESP-IDF v5.5.5 (tranché en P0/dn1-1)
-hardware/   inventaire des breakouts, brochages, schéma V1
-assets/     assets graphiques 480×640 (Living PCB, icônes, mockups)
+firmware/
+  hello-desknode/   P0 — TÉMOIN MINIMAL, figé. Log + rétroéclairage clignotant.
+                    Quand le bring-up de l'écran part en vrille, c'est lui qui
+                    prouve en 6 s que la chaîne build/flash/monitor n'est pas en
+                    cause. Ne pas l'enrichir.
+  desknode/         P1+ — le vrai firmware : écran RGB, mires, mesures, console.
+hardware/   ESP32-S3-Touch-LCD-2.8B-affichage.md  <- LA config d'affichage de
+            référence (brochage VÉRIFIÉ, timings, framebuffer, chiffres datés).
+            L'inventaire des breakouts et le câblage viennent en dn2-1.
+assets/     assets graphiques 480×640
+  mockups/living-pcb-v0.png   prévisualisation COMMITÉE de l'asset généré
 agent/      DeskNode PC Agent (Windows)
-tools/      outillage poste de dev (attachement USB WSL)
+tools/      wsl-attach.sh (attachement USB WSL)
+            gen_living_pcb.py (génération de l'asset 480×640)
 tests/      harnais et smokes
 ```
+
+> ⚠️ **Deux projets firmware, et c'est voulu** (décision D-F de dn1-2).
+> `hello-desknode` a une configuration minimale et **figée** ; `desknode` a une
+> configuration radicalement différente (PSRAM octale, 16 MB, partitions, ISR en
+> IRAM). Les garder séparés préserve un A/B propre et un témoin qui compile
+> toujours.
 
 ## Toolchain / build & flash
 
@@ -43,6 +58,27 @@ tests/      harnais et smokes
 | esptool **côté Windows** | **5.3.1** — sous-commandes en `write-flash` (tirets) | `pip install --user esptool` |
 | usbipd-win | **5.3.0** | `C:\Program Files\usbipd-win\usbipd.exe` |
 | Carte | ESP32-S3 rev **v0.2**, 8 MB PSRAM, MAC `a0:f2:62:e3:d7:f4` | USB natif `303a:1001` |
+
+**Composants managés de `firmware/desknode`** — versions **épinglées à l'exact** dans
+`main/idf_component.yml`, et ce que `dependencies.lock` a réellement résolu :
+
+| Composant | Épinglé | Résolu | Rôle |
+|---|---|---|---|
+| `espressif/esp_lcd_st7701` | `==2.0.2` | 2.0.2 | driver ST7701(S) « 3-wire SPI + RGB » |
+| `espressif/esp_lcd_panel_io_additions` | `==1.0.1` | 1.0.1 | bus 3-wire SPI bit-bangé, CS via IO expander |
+| `espressif/esp_io_expander_tca9554` | `==2.0.3` | 2.0.3 | driver TCA9554 (le nôtre est à `0x20`) |
+| `espressif/esp_io_expander` | *(transitif)* | 1.2.1 | socle commun des expanders |
+| `espressif/cmake_utilities` | *(transitif)* | 0.5.3 | outillage CMake des composants Espressif |
+
+> **Pourquoi `dependencies.lock` et `managed_components/` restent gitignorés** — la question
+> se reposait légitimement en dn1-2, puisqu'il y a désormais de vraies dépendances.
+> Réponse : `idf_component.yml` épingle des versions **exactes** (`==`), pas des plages.
+> Le lock ne fixerait donc rien de plus que ce que le manifeste fixe déjà, et il changerait
+> à chaque résolution — du bruit dans les diffs sans garantie supplémentaire. C'est le
+> **manifeste** qui fait foi ; le tableau ci-dessus enregistre ce qui a été résolu.
+>
+> ⛔ **Il n'existe AUCUN BSP `waveshare/esp32_s3_touch_lcd_2_8b`** sur le registre
+> (vérifié par appel API : `ComponentNotFoundError`). Ne pas le chercher.
 
 ⚠️ **Les deux esptool ne sont pas de la même majeure.** Ne jamais copier une commande de l'un vers
 l'autre : la 5.x a renommé toutes les sous-commandes.
@@ -87,17 +123,32 @@ Dans **chaque shell WSL neuf** :
 ```bash
 . $HOME/esp/esp-idf/export.sh                      # prépare l'environnement ESP-IDF
 cd ~/projects/desknode && ./tools/wsl-attach.sh    # rend la carte visible ; il IMPRIME le port
-cd firmware/hello-desknode
+cd firmware/desknode                               # ou firmware/hello-desknode (le témoin)
 idf.py -p /dev/ttyACM0 flash monitor               # quitter le moniteur : Ctrl+]
 ```
 
-**Ce qu'on doit constater** — les deux preuves de P0, volontairement de natures différentes :
+**Ce qu'on doit constater — et ça DÉPEND du projet flashé.**
+
+`firmware/desknode` (P1 et suite) :
+
+- au **log** : le bandeau `──── socle ────` avec `SPI Flash Size : 16MB` et
+  `PSRAM : 8388608 o détectés, mode OCTAL, 80 MHz`, puis `up N s` toutes les 10 s ;
+- à l'**œil** : l'**asset Living PCB** s'affiche plein écran, et le **rétroéclairage est ALLUMÉ
+  FIXE**. ⚠️ **Il ne clignote plus** — le clignotement était le signe de vie de P0 ;
+- la **console est interactive** : taper `aide` dans le moniteur liste les commandes
+  (`scene`, `fps`, `bw`, `mem`, `tear`, `flash`, `disp`, `bl`, `dma`…).
+  ⚠️ Le log de ce projet ne part **plus** sur le header UART GPIO43/44 : la console primaire est
+  passée sur l'USB pour pouvoir RECEVOIR des commandes. Pour retrouver le header, voir le
+  commentaire de `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG` dans son `sdkconfig.defaults`.
+
+`firmware/hello-desknode` (le témoin minimal de P0) :
 
 - au **log** : `I (12280) desknode: DeskNode P0 - up 12 s - retroeclairage ON`, avec un compteur de
   secondes qui progresse (le CPU exécute *notre* code, pas un tampon figé) ;
 - à l'**œil** : le **rétroéclairage de la dalle clignote** à 1 s (GPIO6, un GPIO direct). C'est le
   signe de vie *matériel* — un `printf` ne prouve pas que la carte agit sur quoi que ce soit.
   Le buzzer, lui, est sur `EXIO8`, derrière l'expander I²C TCA9554 : hors périmètre P0.
+- son log part sur **les deux chemins** (USB **et** header UART GPIO43/44).
 
 - **Baud du moniteur : 115200** · **baud du flash : 460800** (valeurs par défaut de l'IDF, mesurées
   comme fonctionnelles).
@@ -116,6 +167,7 @@ idf.py -p /dev/ttyACM0 flash monitor               # quitter le moniteur : Ctrl+
 | **Carte débranchée/rebranchée** | `./tools/wsl-attach.sh` | l'attachement tombe ; le `bind`, lui, survit |
 | **Après un `flash`** | **rien** | mesuré : le flash **ne ré-énumère pas** l'USB, l'attachement tient |
 | **Après un RESET de la puce** (bouton RESET, ou `--after watchdog-reset`) | `./tools/wsl-attach.sh` | mesuré : là, l'USB **se ré-énumère** et l'attachement **tombe** |
+| **Après un `reboot` tapé dans la console de `firmware/desknode`** | `./tools/wsl-attach.sh` | mesuré en dn1-2 : `esp_restart()` compte comme un reset de puce — le port revient en `root:root` et toute lecture sort `[Errno 13] Permission denied` |
 
 ⚠️ **Ce sont deux resets différents, et c'est le piège de cette carte.** Le reset *logiciel* que
 joue esptool en fin de flash (« Hard resetting via RTS pin ») **ne réinitialise pas** le périphérique
@@ -145,9 +197,16 @@ disparaît avec le périphérique — puis il **imprime le port** qu'il a trouv�
 
 ### La carte est muette ? (le port s'ouvre mais rien n'en sort)
 
-Symptôme : `/dev/ttyACM0` existe, s'ouvre sans erreur, et ne rend **0 octet** — aucun `DeskNode P0 -
-up N s`, **et le rétroéclairage ne clignote plus**. Ce n'est pas un problème de câble ni de baud :
-la carte est très probablement restée en **mode download**, où l'application ne tourne pas.
+Symptôme : `/dev/ttyACM0` existe, s'ouvre sans erreur, et ne rend **0 octet**. Ce n'est pas un
+problème de câble ni de baud : la carte est très probablement restée en **mode download**, où
+l'application ne tourne pas.
+
+> ⚠️ **Le second symptôme dépend du firmware flashé — corrigé en dn1-2.**
+> Avec `hello-desknode`, « le rétroéclairage ne clignote plus » était un signe fiable.
+> Avec `firmware/desknode`, le rétroéclairage est **allumé FIXE** en fonctionnement normal :
+> « il ne clignote pas » n'y veut plus rien dire. Les critères valides pour `desknode` sont :
+> **le port est muet** ET **l'écran n'affiche pas l'asset** (dalle noire ou figée).
+> Le critère qui marche dans les deux cas reste **0 octet sur le port**.
 
 ⚠️ **Ce bloc est côté WSL, donc esptool 4.12.0** : l'exécutable s'appelle `esptool.py` (il n'y a
 **pas** d'`esptool` tout court dans l'environnement de l'IDF) et ses options sont en **underscores**.
@@ -178,7 +237,7 @@ direction visée à terme (fonctionner sans WSL).
 
 ```bash
 . $HOME/esp/esp-idf/export.sh
-cd ~/projects/desknode/firmware/hello-desknode && idf.py build
+cd ~/projects/desknode/firmware/desknode && idf.py build   # ou hello-desknode
 ```
 
 **Étape 2 — dans WSL : rendre la carte à Windows.** Sans ce `detach`, `COM3` **n'existe pas** côté
@@ -198,10 +257,48 @@ powershell.exe -NoProfile -Command "& '$USBIPD' detach --busid $busid"
 **Étape 3 — dans PowerShell : flasher.** Le port est `COM3` sur cette machine ; la première commande
 le redonne s'il a changé.
 
+Pour **`firmware/desknode`** (P1 et suite) — **QUATRE fichiers, pas trois** :
+
 ```powershell
 [System.IO.Ports.SerialPort]::getportnames()
 
 $py = "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe"
+$B  = '\\wsl.localhost\Ubuntu\home\nasbarok\projects\desknode\firmware\desknode\build'
+& $py -m esptool --chip esp32s3 -p COM3 -b 460800 --before default-reset --after hard-reset `
+      write-flash --flash-mode dio --flash-size detect --flash-freq 80m `
+      0x0      "$B\bootloader\bootloader.bin" `
+      0x8000   "$B\partition_table\partition-table.bin" `
+      0x10000  "$B\desknode.bin" `
+      0x410000 "$B\living_pcb_v0.bin"
+```
+
+> ### ⚠️ Le 4ᵉ fichier n'est pas optionnel
+>
+> `living_pcb_v0.bin` est l'**asset** de la partition `assets`. Côté WSL,
+> `idf.py flash` l'écrit tout seul (via `esptool_py_flash_to_partition` dans le
+> `CMakeLists.txt`) : **il n'apparaît nulle part dans la commande**, et c'est
+> précisément pour ça qu'on l'oublie en passant à la voie A.
+>
+> Sans lui, la partition est vierge (0xFF partout). Le firmware **le détecte et
+> le dit** — au log (`partition « assets » VIERGE`) et **à l'écran** (panneau
+> « ASSET ABSENT » sur la mire de cadrage) plutôt que d'afficher un écran blanc
+> silencieux. Mais c'est une rustine : le bon geste est de flasher les 4.
+
+**Redonner les offsets réels** si la table de partitions change — ne jamais les
+retaper de mémoire :
+
+```bash
+cd ~/projects/desknode/firmware/desknode
+idf.py partition-table          # imprime la table complète, offsets compris
+```
+
+`idf.py build` imprime de toute façon, en dernière ligne, la commande de flash
+complète **avec tous les offsets** : c'est la source la plus fiable.
+
+Pour **`firmware/hello-desknode`** (le témoin minimal) — trois fichiers, pas
+d'asset, table de partitions par défaut :
+
+```powershell
 $B  = '\\wsl.localhost\Ubuntu\home\nasbarok\projects\desknode\firmware\hello-desknode\build'
 & $py -m esptool --chip esp32s3 -p COM3 -b 460800 --before default-reset --after hard-reset `
       write-flash --flash-mode dio --flash-size detect --flash-freq 80m `
@@ -296,17 +393,48 @@ Windows 11 ; la tour est en Windows 10 19045).
 - `/dev/ttyACM*` arrive en **`root:root crw-------`** et l'utilisateur n'est pas dans `dialout` :
   sans `chown`/`chmod`, esptool sort `[Errno 13] Permission denied`.
 
-### Écart connu, laissé à dn1-2
+### Écart 2 MB / 16 MB — **SOLDÉ en dn1-2**
 
-Le bootloader annonce `SPI Flash Size : 2MB` alors que la carte en porte **16 MB** : c'est la valeur
-par défaut de l'IDF, non ajustée. Sans effet en P0 (l'application occupe 195 Ko sur une partition de
-1 Mio, 81 % libre), mais à corriger quand la taille de l'image commencera à compter.
+Le bootloader annonçait `SPI Flash Size : 2MB` sur une carte qui en porte **16**. C'était la valeur
+par défaut de l'IDF, non ajustée, et elle est corrigée dans `firmware/desknode` :
+`CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y`. Relevé verbatim au bandeau de boot :
 
-⚠️ **Le jour où on le corrigera, attention au piège** : `sdkconfig.defaults` n'est lu que pour
-**produire** `sdkconfig`. Un `sdkconfig` déjà présent (il est gitignoré, donc invisible à
-`git status`) **l'emporte** : ajouter `CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y` aux defaults ne changera
-rien tant qu'on n'aura pas fait `rm sdkconfig` avant de rebâtir. Règle générale : **tout changement
-de `sdkconfig.defaults` se valide par un `rm sdkconfig && idf.py build`.**
+```
+I (25) boot.esp32s3: SPI Flash Size : 16MB
+```
+
+`firmware/hello-desknode` reste **délibérément** sur le défaut 2 MB : c'est le témoin minimal, sa
+configuration est figée.
+
+⚠️ **Le piège reste entier, et il vaut pour TOUTE modification de config** : `sdkconfig.defaults`
+n'est lu que pour **produire** `sdkconfig`. Un `sdkconfig` déjà présent (gitignoré, donc invisible à
+`git status`) **l'emporte** en silence. Règle du dépôt : **tout changement de `sdkconfig.defaults`
+se valide par `rm sdkconfig && idf.py build`, puis par la LECTURE du bandeau de boot** — jamais par
+la relecture du fichier source.
+
+### La configuration d'affichage — où elle vit
+
+Le brochage vérifié, les timings, la configuration framebuffer retenue et tous les chiffres datés
+sont dans **[`hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md`](hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md)**.
+C'est **ce fichier** qui fait autorité — plus jamais besoin d'aller chercher un brochage dans un
+wiki constructeur ou un dépôt communautaire.
+
+### L'asset Living PCB — ce qui est versionné, ce qui ne l'est pas
+
+Règle tranchée en dn1-2 :
+
+| Fichier | Versionné ? | Pourquoi |
+|---|---|---|
+| `tools/gen_living_pcb.py` | **oui** | c'est la SOURCE ; bibliothèque standard seulement, aucune dépendance à installer |
+| `assets/mockups/living-pcb-v0.png` | **oui** | prévisualisation, pour voir l'asset **sans carte** |
+| `build/living_pcb_v0.bin` | **non** | 614 400 o **générés** par le build, à graine égale identiques au bit près |
+
+Un clone neuf n'a rien à faire : `idf.py build` régénère le `.bin`, `idf.py flash` l'écrit dans la
+partition `assets`. Pour le regarder sans construire :
+
+```bash
+python3 tools/gen_living_pcb.py --out-png /tmp/apercu.png
+```
 
 ## Matériel
 
