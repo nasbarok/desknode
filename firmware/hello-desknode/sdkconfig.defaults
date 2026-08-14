@@ -3,5 +3,9 @@
 # C'est CE fichier qui est versionné ; `sdkconfig` est généré à partir de lui et
 # reste hors du dépôt. Un clone neuf n'a donc rien à configurer à la main :
 # `idf.py build` lit la cible ici et la pose tout seul.
+#
+# ⚠️ PIÈGE : ce fichier n'est lu que pour PRODUIRE `sdkconfig`. Si un `sdkconfig`
+# existe déjà (et il est gitignoré, donc invisible à `git status`), c'est LUI qui
+# gagne. Toute modification ici se valide par :  rm sdkconfig && idf.py build
 
 CONFIG_IDF_TARGET="esp32s3"

@@ -62,17 +62,19 @@ git clone -b v5.5.5 --recursive https://github.com/espressif/esp-idf.git
 cd ~/esp/esp-idf && ./install.sh esp32s3     # esp32s3 seul : inutile de tirer les autres toolchains
 ```
 
-Côté Windows, dans **PowerShell normal** (pas admin) :
+Côté Windows, dans **PowerShell normal** (pas admin) — version **épinglée**, parce qu'une majeure
+esptool renomme toutes les sous-commandes et invaliderait le bloc de flash de la voie A :
 
 ```powershell
-& "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe" -m pip install --user esptool
+& "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe" -m pip install --user esptool==5.3.1
+usbipd list                       # relever le BUSID de la ligne 303a:1001 — ici : 3-1
+                                  # (mesuré : 'list' n'exige AUCUNE élévation)
 ```
 
-Côté Windows, dans **PowerShell ÉLEVÉE** (uniquement pour la voie C) :
+Côté Windows, dans **PowerShell ÉLEVÉE** — uniquement ces deux commandes-là, une seule fois :
 
 ```powershell
-winget install --id dorssel.usbipd-win --exact
-usbipd list                       # relever le BUSID de la ligne 303a:1001 — ici : 3-1
+winget install --id dorssel.usbipd-win --exact --version 5.3.0
 usbipd bind --busid 3-1           # une fois pour toutes ; l'état passe à "Shared"
 ```
 
@@ -84,15 +86,24 @@ Dans **chaque shell WSL neuf** :
 
 ```bash
 . $HOME/esp/esp-idf/export.sh                      # prépare l'environnement ESP-IDF
-cd ~/projects/desknode && ./tools/wsl-attach.sh    # rend la carte visible : /dev/ttyACM0
+cd ~/projects/desknode && ./tools/wsl-attach.sh    # rend la carte visible ; il IMPRIME le port
 cd firmware/hello-desknode
 idf.py -p /dev/ttyACM0 flash monitor               # quitter le moniteur : Ctrl+]
 ```
 
+**Ce qu'on doit constater** — les deux preuves de P0, volontairement de natures différentes :
+
+- au **log** : `I (12280) desknode: DeskNode P0 - up 12 s - retroeclairage ON`, avec un compteur de
+  secondes qui progresse (le CPU exécute *notre* code, pas un tampon figé) ;
+- à l'**œil** : le **rétroéclairage de la dalle clignote** à 1 s (GPIO6, un GPIO direct). C'est le
+  signe de vie *matériel* — un `printf` ne prouve pas que la carte agit sur quoi que ce soit.
+  Le buzzer, lui, est sur `EXIO8`, derrière l'expander I²C TCA9554 : hors périmètre P0.
+
 - **Baud du moniteur : 115200** · **baud du flash : 460800** (valeurs par défaut de l'IDF, mesurées
   comme fonctionnelles).
-- Durées mesurées : build **à froid 36 s**, **à chaud 1 s**, reconstruction vierge **54 s**,
-  **flash 6 s**.
+- Durées mesurées : build **incrémental 1 s** (rien n'a changé) · build **après `rm -rf build`
+  36 s** · **reconstruction totale 54 s** (après `rm -rf build sdkconfig`, la cible est reposée
+  depuis `sdkconfig.defaults`) · **flash 6 s**.
 - Le projet vit sur **ext4** (`~/projects/desknode/`). ⛔ Ne jamais le déplacer sous `/mnt/c/…` :
   le 9p de WSL2 y divise les temps de build par un ordre de grandeur.
 
@@ -113,58 +124,95 @@ USB-Serial/JTAG : rien ne bouge côté hôte. Le reset *de la puce* (bouton, ou 
 `/dev/ttyACM0` devient un nœud mort (`[Errno 19] No such device`).
 
 **Parade si les resets sont fréquents** : `./tools/wsl-attach.sh --auto`. Mesuré : le périphérique
-revient **tout seul en ~6 s**. ⚠️ Mais `--auto-attach` ne restaure **que le périphérique** — les
-droits retombent à `root:root crw-------`, donc il faut rejouer le script (ou le `chmod`) pour
-pouvoir relire le port.
+revient **tout seul en ~6 s**. Deux réserves, toutes deux gérées par le script :
 
-⚠️ `sudo modprobe` et `sudo chmod` sont à rejouer **explicitement** : sur cette machine **systemd est
+- `--auto-attach` ne restaure **que le périphérique** — les droits retombent à `root:root
+  crw-------`, donc il faut **rejouer le script** pour pouvoir relire le port ;
+- il laisse un **processus Windows résident**. Le script en arrête les anciens avant d'en lancer un
+  nouveau (ils ne s'empilent donc pas), et `./tools/wsl-attach.sh --stop-auto` les arrête tous.
+  ⛔ **Ce `--stop-auto` est obligatoire avant de passer à la voie A** : un auto-attach vivant
+  reprend la carte aussitôt après le `detach`, et `COM3` ne revient jamais côté Windows.
+
+⚠️ `sudo modprobe` et `sudo chown` sont à rejouer **explicitement** : sur cette machine **systemd est
 offline**, donc `/etc/modules-load.d/` et les règles `udev` sont **inopérants** — une règle
 `/etc/udev/rules.d/*.rules` ne se déclencherait jamais. `tools/wsl-attach.sh` encapsule exactement
 ces gestes, c'est sa seule raison d'être.
 
+⚠️ **Ne pas coder `/dev/ttyACM0` en dur dans un outil.** L'index n'est pas garanti, et un nœud gardé
+ouvert par un moniteur **survit** à la mort du périphérique (il répond alors `[Errno 19] No such
+device`). Le script identifie le bon port par son identité en sysfs (`idVendor`/`idProduct`), qui
+disparaît avec le périphérique — puis il **imprime le port** qu'il a trouvé.
+
 ### La carte est muette ? (le port s'ouvre mais rien n'en sort)
 
-Symptôme : `/dev/ttyACM0` existe, s'ouvre sans erreur, et ne rend **0 octet** — aucun `DeskNode P0 —
-up N s`. Ce n'est pas un problème de câble ni de baud : la carte est très probablement restée en
-**mode download**, où l'application ne tourne pas.
+Symptôme : `/dev/ttyACM0` existe, s'ouvre sans erreur, et ne rend **0 octet** — aucun `DeskNode P0 -
+up N s`, **et le rétroéclairage ne clignote plus**. Ce n'est pas un problème de câble ni de baud :
+la carte est très probablement restée en **mode download**, où l'application ne tourne pas.
+
+⚠️ **Ce bloc est côté WSL, donc esptool 4.12.0** : l'exécutable s'appelle `esptool.py` (il n'y a
+**pas** d'`esptool` tout court dans l'environnement de l'IDF) et ses options sont en **underscores**.
+Ne pas y recopier la syntaxe en tirets de la voie A, qui est celle de la 5.3.1 côté Windows.
 
 ```bash
-# 1. Confirmer : si esptool dialogue SANS reset, la carte est dans le bootloader ROM.
-esptool --chip esp32s3 -p /dev/ttyACM0 --before no-reset --after no-reset flash-id
+. $HOME/esp/esp-idf/export.sh    # sans lui, esptool.py n'est pas dans le PATH
 
-# 2. La relancer. ⚠️ `--after hard-reset` NE SUFFIT PAS ici — il faut le watchdog.
-esptool --chip esp32s3 -p /dev/ttyACM0 --after watchdog-reset flash-id
+# 1. Confirmer : si esptool dialogue SANS reset, la carte est dans le bootloader ROM.
+esptool.py --chip esp32s3 -p /dev/ttyACM0 --before no_reset --after no_reset flash_id
+
+# 2. La relancer. ⚠️ `--after hard_reset` NE SUFFIT PAS ici — il faut le watchdog.
+esptool.py --chip esp32s3 -p /dev/ttyACM0 --after watchdog_reset flash_id
 
 # 3. Ce reset ré-énumère l'USB : l'attachement usbipd est tombé, il faut le refaire.
 cd ~/projects/desknode && ./tools/wsl-attach.sh
 ```
+
+Succès attendu : l'application redémarre, le rétroéclairage se remet à clignoter et le log reprend
+à `up 0 s`.
 
 ### Voie A — build WSL, flash depuis Windows (secours, et cap à terme)
 
 Elle n'installe **rien** sur le système et ne dépend ni de WSL-USB ni du réseau. C'est aussi la
 direction visée à terme (fonctionner sans WSL).
 
+**Étape 1 — dans WSL : construire seulement.**
+
 ```bash
-# 1. Dans WSL : construire seulement
 . $HOME/esp/esp-idf/export.sh
 cd ~/projects/desknode/firmware/hello-desknode && idf.py build
 ```
 
-```powershell
-# 2. Dans WSL, rendre la carte à Windows (sinon COM3 n'existe pas côté Windows)
-#    -> depuis WSL :  powershell.exe -c "& 'C:\Program Files\usbipd-win\usbipd.exe' detach --busid 3-1"
+**Étape 2 — dans WSL : rendre la carte à Windows.** Sans ce `detach`, `COM3` **n'existe pas** côté
+Windows (exclusivité stricte, mesurée). Le BUSID est relu, jamais figé — il change si la carte est
+branchée sur un autre port USB physique.
 
-# 3. Dans PowerShell : flasher. Le port est COM3 (le relever avec la commande ci-dessous).
+```bash
+# Si un ./tools/wsl-attach.sh --auto tourne encore, il reprendrait la carte aussitôt :
+./tools/wsl-attach.sh --stop-auto
+
+USBIPD='C:\Program Files\usbipd-win\usbipd.exe'
+busid=$(powershell.exe -NoProfile -Command "& '$USBIPD' list" | tr -d '\r' \
+        | awk '/303a:1001/ {print $1; exit}')
+powershell.exe -NoProfile -Command "& '$USBIPD' detach --busid $busid"
+```
+
+**Étape 3 — dans PowerShell : flasher.** Le port est `COM3` sur cette machine ; la première commande
+le redonne s'il a changé.
+
+```powershell
 [System.IO.Ports.SerialPort]::getportnames()
 
 $py = "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe"
 $B  = '\\wsl.localhost\Ubuntu\home\nasbarok\projects\desknode\firmware\hello-desknode\build'
 & $py -m esptool --chip esp32s3 -p COM3 -b 460800 --before default-reset --after hard-reset `
-      write-flash --flash-mode dio --flash-size 2MB --flash-freq 80m `
+      write-flash --flash-mode dio --flash-size detect --flash-freq 80m `
       0x0     "$B\bootloader\bootloader.bin" `
       0x8000  "$B\partition_table\partition-table.bin" `
       0x10000 "$B\hello-desknode.bin"
 ```
+
+⚠️ **`--flash-size detect` plutôt qu'une valeur en dur.** `--flash-size` réécrit l'en-tête du
+bootloader **au moment du flash** : figer `2MB` ici annulerait en silence le correctif attendu en
+dn1-2 (la carte porte 16 MB, voir « Écart connu » en fin de page). `detect` lit la puce et suit.
 
 Flash mesuré : **3,1 s**. Pour lire le log ensuite :
 
@@ -172,13 +220,19 @@ Flash mesuré : **3,1 s**. Pour lire le log ensuite :
 & $py -m serial.tools.miniterm COM3 115200      # quitter : Ctrl+]
 ```
 
-⚠️ **Deux pièges mesurés sur cette voie :**
+⚠️ **Trois pièges mesurés sur cette voie :**
 
-1. **`cmd.exe` refuse un répertoire courant UNC** (« CMD ne prend pas les chemins UNC comme
-   répertoires en cours ») — PowerShell, lui, l'accepte. D'où les **chemins UNC absolus** ci-dessus
-   plutôt qu'un `cd` dans `build/` suivi de `@flash_args`.
+1. **`@flash_args` est inutilisable ici, et pas pour la raison qu'on croit.** Le fichier
+   `build/flash_args` généré par l'IDF contient `--flash_mode / --flash_freq / --flash_size` en
+   **underscores** (syntaxe esptool 4.x) : l'esptool **5.3.1** de Windows les rejette. C'est *ça* qui
+   impose de réécrire les arguments à la main ci-dessus. *(Séparément : `cmd.exe` refuse un
+   répertoire courant UNC — « CMD ne prend pas les chemins UNC comme répertoires en cours » — mais
+   **PowerShell l'accepte**, donc ce n'est pas le blocage. D'où les chemins UNC absolus, par
+   commodité et non par contrainte.)*
 2. **Exclusivité stricte** : tant que la carte est attachée à WSL, `COM3` **n'existe pas** côté
    Windows — et inversement. Il faut `detach` avant, `./tools/wsl-attach.sh` pour revenir.
+3. **Un `--auto-attach` résident reprend la carte juste après le `detach`** : lancer
+   `./tools/wsl-attach.sh --stop-auto` d'abord, sinon `COM3` n'apparaît jamais.
 
 Ce que la voie A coûte au quotidien : la commande de flash est longue, le moniteur `miniterm` ne
 **décode pas les backtraces** (adresses hexadécimales brutes, là où `idf.py monitor` les symbolise
@@ -228,25 +282,31 @@ Windows 11 ; la tour est en Windows 10 19045).
 - **Sortir du mode download demande le BON reset.** Une fois la carte passée en mode download
   (BOOT maintenu + RESET), `--after hard-reset` **ne la fait PAS repartir** : elle reste dans la ROM,
   le port série est totalement muet (0 octet), et même un `idf.py flash` complet n'y change rien —
-  vérifié 3 fois. **`esptool --after watchdog-reset` la relance**, lui : l'application redémarre et
-  le log reprend à `up 0 s`.
+  vérifié 3 fois. **`esptool.py --after watchdog_reset` la relance**, lui : l'application redémarre
+  et le log reprend à `up 0 s`. Recette complète : § « La carte est muette ? ».
 - **Ne transposer aucune recette de reset DTR/RTS type CH343/CP2102** : le reset passe par le
   mécanisme propre au USB-Serial/JTAG. Le log de boot le confirme : `rst:0x15 (USB_UART_CHIP_RESET)`.
 - **Le mode download ne change PAS le VID:PID** : toujours `303A:1001` avec ses 3 interfaces, et
   `COM3` revient au même endroit. On ne peut donc **pas** détecter le mode download en regardant
-  l'identité USB. Ce qui le trahit : le port devient muet, et `esptool --before no-reset` réussit
+  l'identité USB. Ce qui le trahit : le port devient muet, et `esptool.py --before no_reset` réussit
   à dialoguer **sans reset préalable** (ce qui n'arrive que dans le bootloader ou le stub).
 - **Le log part sur DEUX chemins à la fois** : la console UART0 (`GPIO43`/`GPIO44`, le header) **et**
   l'USB-Serial/JTAG, via la console secondaire activée par défaut. Le header UART est donc une voie
   de secours réellement vivante si l'USB pose problème.
-- `/dev/ttyACM0` arrive en **`root:root crw-------`** et l'utilisateur n'est pas dans `dialout` :
-  sans `chmod`, esptool sort `[Errno 13] Permission denied`.
+- `/dev/ttyACM*` arrive en **`root:root crw-------`** et l'utilisateur n'est pas dans `dialout` :
+  sans `chown`/`chmod`, esptool sort `[Errno 13] Permission denied`.
 
 ### Écart connu, laissé à dn1-2
 
 Le bootloader annonce `SPI Flash Size : 2MB` alors que la carte en porte **16 MB** : c'est la valeur
 par défaut de l'IDF, non ajustée. Sans effet en P0 (l'application occupe 195 Ko sur une partition de
 1 Mio, 81 % libre), mais à corriger quand la taille de l'image commencera à compter.
+
+⚠️ **Le jour où on le corrigera, attention au piège** : `sdkconfig.defaults` n'est lu que pour
+**produire** `sdkconfig`. Un `sdkconfig` déjà présent (il est gitignoré, donc invisible à
+`git status`) **l'emporte** : ajouter `CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y` aux defaults ne changera
+rien tant qu'on n'aura pas fait `rm sdkconfig` avant de rebâtir. Règle générale : **tout changement
+de `sdkconfig.defaults` se valide par un `rm sdkconfig && idf.py build`.**
 
 ## Matériel
 
