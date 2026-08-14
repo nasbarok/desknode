@@ -1,0 +1,24 @@
+## DeskNode P1 — dépendances managées.
+##
+## Versions ÉPINGLÉES (règle héritée de dn1-1 : on ne prend pas « la dernière »,
+## on prend celle qu'on a vue marcher, et on note ce que le lock a résolu).
+## `dependencies.lock` reste gitignoré : c'est CE fichier qui fait foi, et il
+## épingle des versions exactes — le lock n'apporterait rien de plus.
+dependencies:
+  idf:
+    version: "~5.5.0"
+
+  ## Driver ST7701(S) « 3-wire SPI pour l'init + RGB parallèle pour les pixels ».
+  ## ⚠️ Sa séquence d'init intégrée est GÉNÉRIQUE et ne convient pas à cette
+  ##    dalle : on lui passe la séquence vendeur via init_cmds (voir
+  ##    dn_st7701_init.h). C'est le point où tout le monde se casse les dents.
+  espressif/esp_lcd_st7701: "==2.0.2"
+
+  ## Fournit esp_lcd_new_panel_io_3wire_spi() : le bus SPI bit-bangé de l'init,
+  ## capable de piloter CS À TRAVERS un IO expander — indispensable ici, LCD_CS
+  ## est derrière le TCA9554.
+  espressif/esp_lcd_panel_io_additions: "==1.0.1"
+
+  ## L'expander lui-même, à 0x20. LCD_RST et LCD_CS n'existent pas en GPIO direct
+  ## sur cette carte : sans lui, pas d'écran du tout.
+  espressif/esp_io_expander_tca9554: "==2.0.3"

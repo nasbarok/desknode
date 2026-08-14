@@ -1,0 +1,24 @@
+# DeskNode — table de partitions (story dn1-2, AC2).
+#
+# La carte porte 16 MB de flash. Le défaut ESP-IDF (2 MB, table « single app »)
+# a été laissé en place en P0 et explicitement légué à dn1-2 : c'est ici qu'il
+# se solde.
+#
+# Contraintes d'alignement : une partition `app` s'aligne sur 64 KiB (0x10000),
+# une partition `data` sur 4 KiB (0x1000). Tous les offsets ci-dessous les
+# respectent, et la table s'arrête à 0x610000 = 6,1 MiB — bien en deçà des 16 MB.
+#
+# Name,      Type, SubType,  Offset,   Size,     Flags
+nvs,         data, nvs,      0x9000,   0x6000,
+phy_init,    data, phy,      0xf000,   0x1000,
+# 4 MiB d'app : P0 tenait dans 195 KiB, mais dn1-3 (LVGL) et dn3 (widgets)
+# vont grossir. On dimensionne une fois, pas à chaque marche.
+factory,     app,  factory,  0x10000,  0x400000,
+# 1 MiB pour les assets bruts RGB565. Le Living PCB v0 pèse 614 400 o
+# (480 x 640 x 2) ; la marge accueille les 3 déclinaisons de dn3-3.
+# Sous-type 0x40 = données brutes maison, mmap-ables.
+assets,      data, 0x40,     0x410000, 0x100000,
+# 1 MiB de terrain de jeu pour le stimulus flash d'AC6 : on efface/écrit ICI,
+# jamais dans nvs (dont la corruption coûterait un reflash complet) et jamais
+# dans factory.
+stimulus,    data, 0x41,     0x510000, 0x100000,

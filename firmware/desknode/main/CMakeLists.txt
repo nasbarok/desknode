@@ -1,0 +1,22 @@
+idf_component_register(
+    SRCS
+        "desknode_main.c"
+        "dn_display.c"
+        "dn_patterns.c"
+        "dn_measure.c"
+        "dn_stimulus.c"
+        "dn_asset.c"
+        "dn_bootcfg.c"
+        "dn_console.c"
+    INCLUDE_DIRS "."
+    REQUIRES
+        driver
+        esp_lcd
+        esp_psram
+        esp_timer
+        nvs_flash
+        spi_flash
+        console
+        esp_driver_i2c
+        esp_driver_gpio
+)

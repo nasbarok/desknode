@@ -1,0 +1,113 @@
+# DeskNode — configuration de référence du pipeline d'affichage (story dn1-2).
+#
+# ⚠️ PIÈGE, le plus coûteux du projet : ce fichier n'est lu que pour PRODUIRE
+# `sdkconfig`. Si un `sdkconfig` existe déjà (il est gitignoré, donc INVISIBLE à
+# `git status`), c'est LUI qui gagne, en silence.
+#     Règle du dépôt : toute modification ici se valide par
+#         rm sdkconfig && idf.py build
+#     puis par la LECTURE du bandeau de boot, pas par la lecture de ce fichier.
+#
+# Une ligne = une raison. Rien ici n'est un défaut d'ESP-IDF : chaque symbole
+# ci-dessous corrige un défaut qui produirait un build « qui compile et qui rame ».
+
+# ── Cible ────────────────────────────────────────────────────────────────────
+# Figée en dn1-1 (décision D-B : ESP-IDF v5.5.5, esp32s3 seul).
+CONFIG_IDF_TARGET="esp32s3"
+
+# ── Flash ────────────────────────────────────────────────────────────────────
+# Défaut IDF = 2MB. La carte en porte 16 : sans cette ligne le bootloader
+# annonce 2MB et toute partition au-delà de 0x200000 est inaccessible.
+# (Solde l'écart légué par dn1-1.)
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+
+# Table de partitions maison : 4 MiB d'app + une partition d'assets + une
+# partition « stimulus » sacrifiable pour les écritures flash d'AC6.
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# ── PSRAM ────────────────────────────────────────────────────────────────────
+# Défaut IDF = n. Sans PSRAM, pas de framebuffer 614 400 o : l'ESP32-S3 n'a que
+# ~512 KiB de RAM interne, dont une partie déjà prise.
+CONFIG_SPIRAM=y
+
+# Défaut IDF = QUAD. Le module ESP32-S3R8 embarque de la PSRAM OCTALE : en quad
+# elle n'est pas détectée du tout (le bandeau de boot le dit).
+CONFIG_SPIRAM_MODE_OCT=y
+
+# Défaut IDF = 40M. À 40 MHz la bande passante ne suffit pas au refill DMA de
+# l'écran (23,0 Mo/s en continu rien que pour afficher) : l'image scintille.
+# ⛔ 120M est INTERDIT ici : le Kconfig d'Espressif prévient qu'un écart de ~20 °C
+#    après le boot fait planter les accès PSRAM aléatoirement. DeskNode vit H24
+#    sur la façade d'une tour de jeu — l'écart de température est le régime
+#    nominal, pas un cas limite. Ce n'est pas une optimisation, c'est une panne
+#    programmée. (source : components/esp_psram/esp32s3/Kconfig.spiram)
+CONFIG_SPIRAM_SPEED_80M=y
+
+# ── Écran RGB ────────────────────────────────────────────────────────────────
+# Défaut IDF = n. Sans ISR en IRAM, le compteur vsync s'ARRÊTE pendant toute
+# écriture flash (cache désactivé) — c'est-à-dire exactement pendant le stimulus
+# d'AC6. L'instrument serait aveugle au moment précis où il doit voir.
+# Contrainte induite : le callback vsync doit être IRAM_ATTR et ne toucher que
+# de la RAM interne.
+CONFIG_LCD_RGB_ISR_IRAM_SAFE=y
+
+# Défaut IDF = n. MESURÉ NÉCESSAIRE ICI, le 2026-08-14, sur cette carte.
+# SYMPTÔME sans cette ligne : l'image s'affiche avec les BONNES COULEURS mais
+# un cadrage décalé EN PERMANENCE — coupée en deux, la partie de droite
+# revenant sur la gauche, le carré rouge du coin haut-gauche de la mire se
+# retrouvant vers le milieu de la première ligne.
+# PREUVE que c'est bien ça : un appel manuel à `esp_lcd_rgb_panel_restart()`
+# (commande console `dma`) remet l'image en place d'un coup. Le décalage est
+# donc un décrochage de la DMA au démarrage, pas une erreur de timings ni de
+# brochage.
+# Ce que fait le symbole (Kconfig d'Espressif) : « Reset the GDMA channel every
+# VBlank to stop permanent desyncs from happening. Only need to enable it when
+# in your application, the DMA can't deliver data as fast as the LCD consumes
+# it. » — c'est exactement notre cas : 23,0 Mo/s en continu depuis la PSRAM.
+CONFIG_LCD_RGB_RESTART_IN_VSYNC=y
+
+# ── Mesure ───────────────────────────────────────────────────────────────────
+# Défaut IDF = 100 Hz, soit un tick de 10 ms — plus grossier que la période
+# d'une trame (26,7 ms) et que la cadence de bascule d'AC5. À 1000 Hz, un
+# vTaskDelay(1) vaut 1 ms et la cadence du stimulus est pilotable.
+CONFIG_FREERTOS_HZ=1000
+
+# ── XIP depuis la PSRAM ──────────────────────────────────────────────────────
+# Défaut IDF = n. MESURÉ NÉCESSAIRE ICI, le 2026-08-14.
+# SYMPTÔME sans cette ligne, sous stimulus d'écriture flash (effacement +
+# écriture de secteurs de 4 KiB en boucle, 184 686 o/s soutenus, 45 secteurs/s) :
+# « l'image défile vers la droite EN PERMANENCE ». Ce n'est pas le
+# « scintillement » annoncé par research-paysage.md §4 : c'est bien pire, un
+# décrochage DMA qui se reproduit à chaque secteur et dont le décalage
+# s'accumule.
+# MÉCANISME : sur ESP32-S3 la PSRAM octale et la flash partagent le contrôleur
+# SPI0. Toute opération flash suspend les accès PSRAM, donc le refill de la DMA
+# d'affichage. XIP déplace le code et les données constantes de la flash vers
+# la PSRAM, ce qui supprime la contention pendant l'exécution.
+# ⚠️ Le compteur vsync ne voit RIEN de ce défaut : le contrôleur LCD garde sa
+#    cadence même affamé, il sort des pixels périmés. Mesuré : 37,33 Hz avant le
+#    stimulus, 37,45 Hz pendant. C'est l'œil qui est l'instrument, pas le fps.
+# CONFIG_SPIRAM_XIP_FROM_PSRAM est laissé à n : voir le verdict ci-dessous.
+
+# ── Console INTERACTIVE sur l'USB ────────────────────────────────────────────
+# Défaut IDF = console primaire sur UART0 (header GPIO43/44), plus une console
+# SECONDAIRE sur l'USB-Serial/JTAG — mais celle-ci est en SORTIE SEULE. Or ce
+# firmware doit RECEVOIR des commandes (changer de mire, lancer un stimulus,
+# rejouer une mesure) sans être reflashé entre chaque observation : un seul
+# binaire pour toutes les configurations, sinon on ajoute une variable qu'on ne
+# contrôle pas à chaque A/B.
+#
+# ⚠️ CE QUE ÇA COÛTE, ET C'EST RÉEL : le log ne part plus sur le header UART
+#    TX=GPIO43/RX=GPIO44. dn1-1 avait mesuré ce second chemin et le comptait
+#    comme voie de secours si le bring-up de l'écran perturbait l'USB. Ici,
+#    l'USB devient le chemin UNIQUE.
+#    Pour récupérer le header : remplacer cette ligne par
+#    `CONFIG_ESP_CONSOLE_UART_DEFAULT=y`, `rm sdkconfig && idf.py build`.
+#    On perd alors la console interactive, pas le log.
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+
+# ── Confort de diagnostic ────────────────────────────────────────────────────
+# Le bring-up RGB panique (accès cache, DMA affamée). Un backtrace symbolisé
+# vaut une heure de tâtonnement ; `idf.py monitor` fait la symbolisation via
+# l'ELF, encore faut-il que le panic HANDLER s'affiche plutôt que de rebooter.
+CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT=y
