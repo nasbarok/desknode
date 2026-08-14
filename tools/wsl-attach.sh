@@ -13,9 +13,20 @@
 #   3. attendre /dev/ttyACM0        -> l'énumération n'est pas instantanée
 #   4. sudo chmod 666               -> udev ne tourne pas : aucune règle ne le fera
 #
-# Usage :  ./tools/wsl-attach.sh
+# Usage :  ./tools/wsl-attach.sh           attachement simple
+#          ./tools/wsl-attach.sh --auto    + ré-attachement automatique après un reset de la puce
+#
+# Quand faut-il --auto ? Mesuré en dn1-1, et ce n'est PAS ce qu'on croit :
+#   - un FLASH ne ré-énumère pas l'USB : l'attachement simple y survit, --auto est inutile ;
+#   - un vrai RESET DE LA PUCE (bouton RESET, ou `esptool --after watchdog-reset`) ré-énumère
+#     l'USB et FAIT TOMBER l'attachement simple. Là, --auto le rétablit tout seul en ~6 s.
+# ⚠️ Dans les deux cas, --auto ne restaure QUE le périphérique : les droits retombent à
+#    root:root crw------- et le chmod est à refaire. Le plus simple est de rejouer ce script.
 #
 set -euo pipefail
+
+AUTO=""
+if [ "${1:-}" = "--auto" ]; then AUTO="--auto-attach"; fi
 
 VID_PID="303a:1001"          # USB natif de l'ESP32-S3 (Serial/JTAG) — mesuré, pas déduit
 PORT="/dev/ttyACM0"
@@ -39,11 +50,20 @@ if [ -z "${busid:-}" ]; then
 fi
 echo "     BUSID = $busid"
 
-echo "3/4  Attachement à WSL…"
-# 'attach' est idempotent en pratique : s'il est déjà attaché, il le dit et sort
-# en erreur — ce n'est pas fatal si le port est déjà là.
-powershell.exe -NoProfile -Command "& '$USBIPD' attach --wsl --busid $busid" 2>&1 \
-    | tr -d '\r' | sed 's/^/     /' || true
+if [ -n "$AUTO" ]; then
+    echo "3/4  Attachement à WSL (mode --auto-attach, processus résident)…"
+    # --auto-attach ne rend jamais la main : on le détache dans un processus Windows
+    # caché, sinon il bloquerait ce script.
+    powershell.exe -NoProfile -Command \
+        "Start-Process -FilePath '$USBIPD' -ArgumentList 'attach','--wsl','--auto-attach','--busid','$busid' -WindowStyle Hidden" \
+        >/dev/null 2>&1
+else
+    echo "3/4  Attachement à WSL…"
+    # 'attach' est idempotent en pratique : s'il est déjà attaché, il le dit et sort
+    # en erreur — ce n'est pas fatal si le port est déjà là.
+    powershell.exe -NoProfile -Command "& '$USBIPD' attach --wsl --busid $busid" 2>&1 \
+        | tr -d '\r' | sed 's/^/     /' || true
+fi
 
 for _ in $(seq 1 20); do
     [ -e "$PORT" ] && break
@@ -63,4 +83,8 @@ sudo chmod 666 "$PORT"
 
 echo
 echo "Prêt : $(stat -c '%n  %U:%G  %A' "$PORT")"
+if [ -n "$AUTO" ]; then
+    echo "Mode --auto : le périphérique se ré-attachera seul après un reset de la puce,"
+    echo "              mais les droits, eux, retombent — rejouer ce script pour les rouvrir."
+fi
 echo "Boucle :  cd firmware/hello-desknode && idf.py -p $PORT flash monitor"

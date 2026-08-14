@@ -103,12 +103,41 @@ idf.py -p /dev/ttyACM0 flash monitor               # quitter le moniteur : Ctrl+
 | **Nouveau shell WSL** | `. $HOME/esp/esp-idf/export.sh` | l'environnement n'est pas persistant |
 | **`wsl --shutdown` / reboot Windows** | `./tools/wsl-attach.sh` (les 4 étapes) | les modules noyau et l'attachement tombent |
 | **Carte débranchée/rebranchée** | `./tools/wsl-attach.sh` | l'attachement tombe ; le `bind`, lui, survit |
-| **Après un flash ou un reset** | **rien** | mesuré : la carte ne se ré-énumère pas, l'attachement tient |
+| **Après un `flash`** | **rien** | mesuré : le flash **ne ré-énumère pas** l'USB, l'attachement tient |
+| **Après un RESET de la puce** (bouton RESET, ou `--after watchdog-reset`) | `./tools/wsl-attach.sh` | mesuré : là, l'USB **se ré-énumère** et l'attachement **tombe** |
+
+⚠️ **Ce sont deux resets différents, et c'est le piège de cette carte.** Le reset *logiciel* que
+joue esptool en fin de flash (« Hard resetting via RTS pin ») **ne réinitialise pas** le périphérique
+USB-Serial/JTAG : rien ne bouge côté hôte. Le reset *de la puce* (bouton, ou watchdog) coupe tout :
+`usbipd list` repasse de `Attached` à `Shared`, `dmesg` affiche `usb 1-1: USB disconnect`, et
+`/dev/ttyACM0` devient un nœud mort (`[Errno 19] No such device`).
+
+**Parade si les resets sont fréquents** : `./tools/wsl-attach.sh --auto`. Mesuré : le périphérique
+revient **tout seul en ~6 s**. ⚠️ Mais `--auto-attach` ne restaure **que le périphérique** — les
+droits retombent à `root:root crw-------`, donc il faut rejouer le script (ou le `chmod`) pour
+pouvoir relire le port.
 
 ⚠️ `sudo modprobe` et `sudo chmod` sont à rejouer **explicitement** : sur cette machine **systemd est
 offline**, donc `/etc/modules-load.d/` et les règles `udev` sont **inopérants** — une règle
 `/etc/udev/rules.d/*.rules` ne se déclencherait jamais. `tools/wsl-attach.sh` encapsule exactement
 ces gestes, c'est sa seule raison d'être.
+
+### La carte est muette ? (le port s'ouvre mais rien n'en sort)
+
+Symptôme : `/dev/ttyACM0` existe, s'ouvre sans erreur, et ne rend **0 octet** — aucun `DeskNode P0 —
+up N s`. Ce n'est pas un problème de câble ni de baud : la carte est très probablement restée en
+**mode download**, où l'application ne tourne pas.
+
+```bash
+# 1. Confirmer : si esptool dialogue SANS reset, la carte est dans le bootloader ROM.
+esptool --chip esp32s3 -p /dev/ttyACM0 --before no-reset --after no-reset flash-id
+
+# 2. La relancer. ⚠️ `--after hard-reset` NE SUFFIT PAS ici — il faut le watchdog.
+esptool --chip esp32s3 -p /dev/ttyACM0 --after watchdog-reset flash-id
+
+# 3. Ce reset ré-énumère l'USB : l'attachement usbipd est tombé, il faut le refaire.
+cd ~/projects/desknode && ./tools/wsl-attach.sh
+```
 
 ### Voie A — build WSL, flash depuis Windows (secours, et cap à terme)
 
@@ -188,12 +217,25 @@ Windows 11 ; la tour est en Windows 10 19045).
 - **La carte est en USB natif ESP32-S3 Serial/JTAG (`303a:1001`), pas en pont CH343P.** Aucun
   périphérique `1A86` n'est présent. Aucun pilote à installer, ni côté Windows (`usbser` natif) ni
   côté Linux (`cdc-acm`). Le JTAG est disponible gratuitement sur l'interface `MI_02`.
-- **La carte ne se ré-énumère PAS au reset ni pendant le flash.** Les 3 interfaces PnP restent `OK`
-  de bout en bout, et `usbipd attach` **sans** `--auto-attach` survit à un flash complet. Le drapeau
-  `--auto-attach` est donc **inutile ici**, contrairement à ce que la littérature laisse craindre
-  pour l'USB natif.
+- **Deux resets, deux comportements USB opposés — le fait le plus utile de cette page.**
+  - *Reset logiciel* (fin de flash, « Hard resetting via RTS pin ») : **aucune ré-énumération**.
+    Les 3 interfaces PnP restent `OK` de bout en bout et l'attachement `usbipd` **simple** survit à
+    un flash complet. `--auto-attach` est **inutile** pour flasher.
+  - *Reset de la puce* (**bouton RESET**, ou `esptool --after watchdog-reset`) : **ré-énumération
+    complète**, mesurée à **1,4 s** côté Windows (les interfaces tombent, `COM3` disparaît, puis
+    tout revient). Côté WSL, l'attachement `usbipd` **tombe**. C'est **là** que `--auto-attach`
+    sert, et nulle part ailleurs.
+- **Sortir du mode download demande le BON reset.** Une fois la carte passée en mode download
+  (BOOT maintenu + RESET), `--after hard-reset` **ne la fait PAS repartir** : elle reste dans la ROM,
+  le port série est totalement muet (0 octet), et même un `idf.py flash` complet n'y change rien —
+  vérifié 3 fois. **`esptool --after watchdog-reset` la relance**, lui : l'application redémarre et
+  le log reprend à `up 0 s`.
 - **Ne transposer aucune recette de reset DTR/RTS type CH343/CP2102** : le reset passe par le
   mécanisme propre au USB-Serial/JTAG. Le log de boot le confirme : `rst:0x15 (USB_UART_CHIP_RESET)`.
+- **Le mode download ne change PAS le VID:PID** : toujours `303A:1001` avec ses 3 interfaces, et
+  `COM3` revient au même endroit. On ne peut donc **pas** détecter le mode download en regardant
+  l'identité USB. Ce qui le trahit : le port devient muet, et `esptool --before no-reset` réussit
+  à dialoguer **sans reset préalable** (ce qui n'arrive que dans le bootloader ou le stub).
 - **Le log part sur DEUX chemins à la fois** : la console UART0 (`GPIO43`/`GPIO44`, le header) **et**
   l'USB-Serial/JTAG, via la console secondaire activée par défaut. Le header UART est donc une voie
   de secours réellement vivante si l'USB pose problème.
