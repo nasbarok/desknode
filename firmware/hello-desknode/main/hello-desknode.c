@@ -47,6 +47,14 @@ void app_main(void)
 
     bool allume = true;
 
+    /* Cadence ABSOLUE (vTaskDelayUntil), pas relative (vTaskDelay) : un délai
+     * relatif se rajoute au temps passé dans gpio_set_level + ESP_LOGI, si bien
+     * que la période dérive et que le compteur de secondes finit par SAUTER une
+     * valeur. Or ce compteur est justement le test de vivacité d'AC4 : il doit
+     * pouvoir se vérifier « sans trou » sur une longue fenêtre, pas seulement
+     * sur les vingt premières secondes. */
+    TickType_t derniere_bascule = xTaskGetTickCount();
+
     while (true) {
         gpio_set_level(GPIO_RETROECLAIRAGE, allume ? 1 : 0);
 
@@ -58,6 +66,6 @@ void app_main(void)
                  up_s, allume ? "ON" : "OFF");
 
         allume = !allume;
-        vTaskDelay(pdMS_TO_TICKS(DEMI_PERIODE_MS));
+        vTaskDelayUntil(&derniere_bascule, pdMS_TO_TICKS(DEMI_PERIODE_MS));
     }
 }
