@@ -29,7 +29,7 @@ C'est la seule chose à lire si on ne lit qu'une chose.
 | | | justifié par |
 |---|---|---|
 | `num_fbs` | **1** | le double tampon est **réparé** (§4 ter) mais n'apporte **rien de mesuré** : il ne corrige ni le déchirement (c'est la synchro qui le fait) ni l'artefact §10.5, et coûte 614 400 o + une branche Kconfig |
-| **`bounce_px`** | **4 800 px (10 lignes)** ⬅️ *change le 2026-08-16* | la DMA du panneau lit désormais un tampon en **RAM interne** au lieu d'aller chercher la PSRAM : c'est ce qui supprime **à la fois** le défilement sous I²C **et** l'artefact §10.5 (§11.4). Coût : 2 × 9 600 o de RAM interne, CPU 0,8 % → 2,7 %, fps **inchangé** |
+| **`bounce_px`** | **4 800 px (10 lignes)** ⬅️ *change le 2026-08-16* | la DMA du panneau lit désormais un tampon en **RAM interne** au lieu d'aller chercher la PSRAM : c'est ce qui supprime **à la fois** le défilement sous I²C **et** l'artefact §10.5 (§11.4). Coût : 2 × 9 600 o de RAM interne, **rien au repos** et +1,1 point de CPU en redessin, fps **inchangé** — le vrai prix est **+160 ms de latence** (§11.5) |
 | **`LCD_RGB_ISR_IRAM_SAFE`** | **`n`** ⬅️ *change le 2026-08-16* | **effet propre nul** sur le défilement (branche enfin jouée, §5.3) — mais avec `y` le bounce buffer **panique** au boot. Il est conservé à `n` comme *condition* du bounce, pas pour lui-même |
 | Rendu LVGL | **PARTIEL** | un plein écran demande 10 flushes et ~176 ms d'attente, soit ~5,5 Hz au mieux (§10.3) |
 | Draw buffer | **480 × 64 px (61 440 o), RAM interne DMA** | A/B à aire identique : la PSRAM est **1,70× plus lente** ; le régime produit tient en **un seul flush** à 64 lignes (§10.3) |
@@ -1213,9 +1213,10 @@ instrument depuis invalidé, et la configuration a changé (rendu partiel, plus 
 > plus bas — *« absent du chemin brut qui écrit 20× plus »* : un `memcpy` séquentiel
 > ne provoque pas les défauts de cache qu'un flush LVGL provoque.
 >
-> ⚠️ **Ce que ça coûte** : CPU 0,8 % → 2,7 %, RAM interne 2 × 9 600 o, et surtout
-> **+160 ms de latence de transition** (267,9 → 427,7 ms à 64 lignes) — voir §11.5,
-> où le budget < 300 ms du brief est confronté à ce prix.
+> ⚠️ **Ce que ça coûte** : RAM interne 2 × 9 600 o ; **rien de mesurable au repos**
+> (0,8 % de charge avant comme après) et **+1,1 point** en redessin (label 1 Hz :
+> 0,9 % → 2,0 %) ; et surtout **+160 ms de latence de transition** (267,9 →
+> 427,7 ms à 64 lignes) — voir §11.5, où le budget < 300 ms est confronté à ce prix.
 >
 > *Le texte d'origine est conservé ci-dessous : les sept éliminations restent
 > vraies, et une élimination sans son symptôme n'est pas une élimination.*
@@ -1517,3 +1518,32 @@ puce — et **rien d'autre**. « RÉSEAU » ou « AOÛT » y perdraient leur let
 accentuée **en silence**, LVGL ne dessinant pas le glyphe absent sans se plaindre.
 🔴 **Legs pour dn3-1** : du français accentué exigera une police générée
 (`lv_font_conv`), donc du binaire à budgéter. Le « °C » passe, lui.
+
+### 11.7 Les budgets avec tactile + navigation — la référence que dn3 dépensera
+
+Configuration : `num_fbs=1 · bounce_px=4800 · draw_lines=128 · draw_psram=0 ·
+lvgl_core=0`, lecture tactile `poll`, dashboard affiché, label masqué.
+
+| Mesure | dn1-3 (référence) | **dn1-4** | Écart |
+|---|---|---|---|
+| Charge CPU, socle nu | 0,0 % | — | — |
+| Charge CPU, **LVGL au repos** | 0,3 % | **0,8 %** | +0,5 pt, dont **+0,3 pt de polling I²C** |
+| Charge CPU, **label 1 Hz** | 0,9 % | **2,0 %** | +1,1 pt — le surcoût du bounce, qui n'apparaît **qu'en redessin** |
+| `fps` | 37,40 Hz | **37,40 Hz (+0,01 %)** | **inchangé** |
+| PSRAM libre | 7 770 588 o | **7 768 608 o** | −1 980 o |
+| RAM interne libre | 212 015 o | **118 379 o** | −93 636 o : draw buffer 128 lignes (+61 440) et bounce (2 × 9 600) |
+| Binaire | 740 400 o | **782 800 o** | +42 400 o (driver GT911 + tactile + navigation) ; **81 % de la partition libre** |
+
+> ⚠️ **CORRECTION D'ATTRIBUTION, faite en cours de mesure.** Un premier relevé
+> annonçait « CPU 0,8 % → 2,7 % » et mettait tout sur le dos du bounce buffer. Il
+> avait été pris **avec le label 1 Hz allumé** — deux variables à la fois. L'A/B
+> propre dit autre chose, et c'est plus intéressant : **au repos le bounce ne coûte
+> rien de mesurable** (0,8 % avant comme après), son surcoût n'existe **qu'en
+> redessin**. Son vrai prix n'est pas le CPU, c'est la **latence**.
+
+**Coût d'une transition** (`flush`, 128 lignes) : 5 flushes par cycle, un plein
+écran de 307 200 px. Le détail des 267 ms de plancher à 64 lignes est en §11.5.
+
+**Ce qu'il reste pour dn3** : 118 379 o de RAM interne, 7 768 608 o de PSRAM,
+42 Ko sur les 64 Ko du tas LVGL (33 % utilisés avec les deux écrans du modèle
+`screens`), et 81 % de la partition applicative.

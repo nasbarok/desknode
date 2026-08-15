@@ -108,12 +108,49 @@ static const char *TAG = "dn_cfg";
  * Pourquoi 4800 px (10 lignes) et pas plus : c'est la plus petite taille essayée,
  * elle suffit, et elle coûte 2 x 9 600 o de RAM interne. Les 19 200 px des
  * branches de dn1-2 n'ont pas été rejoués — inutile tant que 4800 tient.
- * Coût mesuré : CPU 0,8 % -> 2,7 % (le CPU recopie chaque ligne), fps INCHANGÉ
- * à 37,40 Hz (+0,01 %).
+ *
+ * COÛT MESURÉ — et l'attribution a dû être corrigée en cours de route :
+ *   - AU REPOS (aucun redessin) : RIEN de mesurable. 0,8 % de charge avant comme
+ *     après le bounce. Le remplissage ne passe pas par une tâche FreeRTOS, et il
+ *     ne creuse pas non plus les compteurs IDLE.
+ *   - EN REDESSIN (label 1 Hz, le régime de référence de dn1-3) : 0,9 % -> 2,0 %,
+ *     soit +1,1 point. C'est là que le surcoût se paie.
+ *   - fps INCHANGÉ : 37,40 Hz (+0,01 %).
+ *   - LATENCE de transition : +160 ms, le vrai prix (voir DN_DEFAULT_DRAW_LINES).
+ * ⚠️ Un relevé intermédiaire annonçait « 0,8 % -> 2,7 % » et attribuait tout au
+ *    bounce : il avait été pris avec le label 1 Hz ALLUMÉ, donc deux variables à
+ *    la fois. Corrigé par un A/B propre.
  */
 #define DN_DEFAULT_NUM_FBS 1
 #define DN_DEFAULT_BOUNCE_PX 4800
-#define DN_DEFAULT_DRAW_LINES 64
+/*
+ * ── draw_lines : 64 -> 128, décision owner du 2026-08-16 ─────────────────────
+ *
+ * Le commentaire ci-dessus reste vrai pour le régime qu'il décrivait : à 64
+ * lignes, une mise à jour du label tient en UN seul flush, et 128 ne gagnaient
+ * « que sur le plein écran — qui n'est pas le régime de ce produit ».
+ *
+ * Ce qui a changé : le régime de ce produit EST le plein écran. dn1-4 a introduit
+ * la navigation, et une transition dashboard <-> détail redessine tout l'écran.
+ * Le label 1 Hz était l'instrument de dn1-3 ; la transition est le geste de dn3.
+ *
+ * Et le bounce buffer (voir DN_DEFAULT_BOUNCE_PX) a rendu l'arbitrage pressant :
+ * il coûte +160 ms de latence de transition. MESURÉ, 20 allers-retours par ligne :
+ *
+ *   bounce 4800 · 64 lignes  -> 427,7 ms moy (480,6 max) · RAM interne libre 180,0 Ko
+ *   bounce 4800 · 128 lignes -> 307,1 ms moy (320,7 max) · RAM interne libre 118,9 Ko
+ *   bounce 4800 · 160 lignes -> 307,7 ms moy (320,8 max) · le levier SATURE
+ *
+ * 128 récupère 120 des 160 ms perdus, pour 61 440 o de RAM interne. 160 ne donne
+ * plus rien : au-delà de 5 flushes, le plancher n'est plus l'attente de synchro
+ * mais le RENDU lui-même. On s'arrête donc à 128 — payer 30 Ko de plus pour
+ * 0,6 ms serait acheter du bruit de mesure.
+ *
+ * ⚠️ Le budget < 300 ms du brief n'est toujours PAS tenu (307,1 ms). Il l'est de
+ *    7 ms au lieu de 128 : le dépassement devient un sujet de réglage fin pour
+ *    dn3-2/dn4-1, au lieu d'un mur. Options chiffrées en §11.5 de hardware/.
+ */
+#define DN_DEFAULT_DRAW_LINES 128
 #define DN_DEFAULT_DRAW_PSRAM 0
 /*
  *   lvgl_core = 0 : la tâche LVGL sur le CŒUR 0, avec le reste du pipeline

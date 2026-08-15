@@ -71,6 +71,8 @@ tests/      harnais et smokes
 | `espressif/cmake_utilities` | *(transitif)* | 0.5.3 | outillage CMake des composants Espressif |
 | `lvgl/lvgl` | `==9.5.0` | 9.5.0 | la couche UI (dn1-3). ⚠️ API **v9** : `lv_display_create` / `lv_display_set_buffers`. Tout tuto qui parle de `lv_disp_drv_t` est du LVGL 8 et ne compile pas ici |
 | `espressif/esp_lvgl_port` | `==2.9.0` | 2.9.0 | tick esp_timer, tâche LVGL, mutex, et `lvgl_port_add_disp_rgb()` qui prend les handles esp_lcd **déjà créés** par `dn_display` |
+| `espressif/esp_lcd_touch_gt911` | `==1.2.1` | 1.2.1 | driver du Goodix GT911 (dn1-4). 🔴 avec `rst_gpio_num = -1` — notre cas, TP_RST étant derrière l'expander — il **saute sa séquence de sélection d'adresse** ; `dn_touch` la joue lui-même AVANT le `new` |
+| `espressif/esp_lcd_touch` | `==1.2.1` | 1.2.1 | socle tactile commun. Épinglé **explicitement** bien que transitif : le GT911 déclare `^1.2.0`, donc sans cette ligne le résolveur prendrait « la dernière ». ⚠️ c'est lui qui applique `swap_xy`/`mirror_x`/`mirror_y` **en logiciel**, avec `x_max`/`y_max` comme axe de symétrie |
 
 > ⚠️ **Ce que le portage ne fait PAS, et qu'il faut savoir avant de le croire** (mesuré en dn1-3) :
 > en rendu **partiel**, son flush n'attend **rien** — il n'attend `trans_sem` que dans la branche
@@ -78,7 +80,8 @@ tests/      harnais et smokes
 > alimente donc un sémaphore que personne n'attend. Et cet enregistrement **écrase** celui de
 > `dn_measure` (`esp_lcd_rgb_panel_register_event_callbacks` ASSIGNE, ne fusionne pas). D'où
 > l'ordre d'appel et le témoin actif au boot — détail en §10.1 du fichier `hardware/`.
-> Le binaire passe de **377 664 o à 740 400 o** avec LVGL ; l'app fait 4 MiB, il reste **82 %**.
+> Le binaire passe de **377 664 o à 740 400 o** avec LVGL, puis à **782 800 o** avec le tactile et
+> la navigation de dn1-4 ; l'app fait 4 MiB, il reste **81 %**.
 
 > **Pourquoi `dependencies.lock` et `managed_components/` restent gitignorés** — la question
 > se reposait légitimement en dn1-2, puisqu'il y a désormais de vraies dépendances.
@@ -149,12 +152,14 @@ idf.py -p /dev/ttyACM0 flash monitor               # quitter le moniteur : Ctrl+
     ⚠️ Ne pas chercher `SPI Flash Size : 16MB` *dans* le bandeau `socle` : il n'y est pas, et les
     deux lignes ne prouvent pas la même chose (l'en-tête déclaré vs le silicium réel) ;
   - puis `up N s` toutes les 10 s ;
-- à l'**œil** : l'**asset Living PCB** s'affiche plein écran, et le **rétroéclairage est ALLUMÉ
-  FIXE**. ⚠️ **Il ne clignote plus** — le clignotement était le signe de vie de P0 ;
+- à l'**œil** : le **dashboard** (barre heure/date, grille 2 × 3, bandeau `MENU`) s'affiche sur
+  l'asset **Living PCB** voilé, et le **rétroéclairage est ALLUMÉ FIXE**. ⚠️ **Il ne clignote
+  plus** — le clignotement était le signe de vie de P0 ;
+- **au DOIGT** (dn1-4) : toucher une case ouvre sa page de détail, le `←` ramène au dashboard ;
 - la **console est interactive** : taper `aide` dans le moniteur liste les commandes. Jeu complet :
   `scene`, `fps`, `bw`, `mem`, `cpu`, `cfg`, `set`, `tear`, `flash`, `ui`, `flush`, `anim`,
-  `recal`, `bl`, `disp`, `dma`, `reboot`, `aide`. `cfg reset` rend les défauts au prochain boot.
-  **C'est `aide` qui fait foi**, pas cette liste. Les commandes ajoutées en dn1-3 :
+  `touch`, `nav`, `recal`, `bl`, `disp`, `dma`, `reboot`, `aide`. `cfg reset` rend les défauts au
+  prochain boot. **C'est `aide` qui fait foi**, pas cette liste. Les commandes de dn1-3 et dn1-4 :
 
   | Commande | Ce qu'elle sert |
   |---|---|
@@ -163,7 +168,16 @@ idf.py -p /dev/ttyACM0 flash monitor               # quitter le moniteur : Ctrl+
   | `anim on [ms]` · `anim off` | stimulus adverse LVGL : barre verticale balayant l'écran |
   | `recal <0..4>` | recalage DMA N vsyncs après une bascule (le double tampon, §4 ter) |
   | `bl <0..100>` · `bl ramp <pct> [ms]` · `bl freq <hz>` | rétroéclairage **gradable**. ⚠️ `bl 0` = dalle NOIRE ; `disp off` = dalle GRISE éclairée |
-  | `set lines <8..160>` · `set drawmem <0\|1>` · `set core <-1\|0\|1>` | variables de mesure du rendu, relues au boot (`reboot` pour appliquer) |
+  | `set lines <8..160>` · `set drawmem <0\|1>` · `set core <-1\|0\|1>` · `set bounce <px>` | variables de mesure du rendu, relues au boot (`reboot` pour appliquer) |
+  | **`touch`** (dn1-4) | état du GT911 : adresse **mesurée**, config lue, mode de lecture, compteurs (IRQ, lectures, appuis, erreurs I²C) et **latence tap → écran** |
+  | **`touch mode event\|poll`** | mode de lecture de l'indev, **à chaud** — l'A/B d'AC2 sans reflasher |
+  | **`touch trace [ms]`** | imprime chaque **APPUI** (avec ses coordonnées brutes) et chaque **TAP** avec sa zone. L'instrument des campagnes au doigt |
+  | **`touch int [ms]`** | témoin **physique** de TP_INT : échantillonne la broche sans passer par le driver ni l'ISR |
+  | **`touch addr`** | **preuve causale** de TP_INT : deux resets, INT haut puis bas, et l'adresse latchée suit (0x14 / 0x5D) |
+  | **`touch axes <swap> <mx> <my>`** | orientation à chaud. ⚠️ les miroirs se replient sur `x_max`/`y_max` : les quatre champs se règlent ensemble |
+  | **`nav`** · `nav open <0..5>` · `nav back` | navigation dashboard ↔ détail depuis la console. **Refusée si LVGL est en pause** : elle armerait le chronomètre de latence sur un cycle qui n'aura pas lieu |
+  | **`nav model rebuild\|screens`** | le **modèle** de navigation. `screens` est retenu (267,9 ms contre 307,7 ms), les deux restent jouables |
+  | **`nav ab <n>`** | N allers-retours scriptés : latences min/moy/max **et** preuve de non-fuite (RAM interne et PSRAM avant/après) |
   ⚠️ Le log de ce projet ne part **plus** sur le header UART GPIO43/44 : la console primaire est
   passée sur l'USB pour pouvoir RECEVOIR des commandes. Pour retrouver le header, voir le
   commentaire de `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG` dans son `sdkconfig.defaults` : on y récupère
@@ -334,14 +348,28 @@ $B  = '\\wsl.localhost\Ubuntu\home\nasbarok\projects\desknode\firmware\desknode\
 > `CMakeLists.txt`) : **il n'apparaît nulle part dans la commande**, et c'est
 > précisément pour ça qu'on l'oublie en passant à la voie A.
 
-> **Vérifié inchangé par dn1-3 (2026-08-15).** Ce bloc a été relu contre le
-> livrable de la story : la table de partitions n'a pas bougé (l'app fait
-> toujours 4 MiB à `0x10000`, `assets` toujours 1 MiB à `0x410000`), et l'asset
-> non plus (`tools/gen_living_pcb.py` n'a pas été touché). **Les quatre offsets
-> restent exacts.** LVGL fait passer `desknode.bin` de 377 664 à ~740 400 o, ce
+> **Vérifié inchangé par dn1-3 (2026-08-15), RE-VÉRIFIÉ par dn1-4 (2026-08-16).**
+> Ce bloc a été relu contre le livrable des deux stories : la table de partitions
+> n'a pas bougé (l'app fait toujours 4 MiB à `0x10000`, `assets` toujours 1 MiB à
+> `0x410000`), et l'asset non plus (`tools/gen_living_pcb.py` n'a pas été touché).
+> **Les quatre offsets restent exacts.** LVGL fait passer `desknode.bin` de
+> 377 664 à ~740 400 o, et le tactile + la navigation de dn1-4 à **782 800 o**, ce
 > qui tient largement — mais c'est bien le genre de croissance qui finirait par
 > obliger à revoir la table, et c'est pour ça qu'on le note ici plutôt que de
 > supposer que « ça n'a pas dû changer ».
+>
+> ⚠️ **dn1-4 a en revanche touché la NVS**, et il faut le savoir avant de dépanner :
+> une valeur de `set bounce` trop grande, ou incompatible avec le build, peut
+> mettre la carte en **boucle de panique avant le démarrage de la console** — plus
+> aucune commande pour l'annuler. La sortie est d'effacer la seule partition NVS,
+> sans toucher au reste :
+>
+> ```bash
+> python3 -m esptool --chip esp32s3 --port /dev/ttyACM0 >     --before default_reset --after watchdog_reset erase_region 0x9000 0x6000
+> ```
+>
+> Rejoué le 2026-08-16, il rend les défauts du firmware au boot suivant, et
+> l'asset survit (il vit à `0x410000`).
 >
 > Sans lui, la partition est vierge (0xFF partout). Le firmware **le détecte et
 > le dit** — au log (`partition « assets » VIERGE`) et **à l'écran** (panneau
