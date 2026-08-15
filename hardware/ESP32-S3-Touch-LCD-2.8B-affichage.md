@@ -1022,13 +1022,34 @@ adverse :
 | `off` | **« des déchirements en plus »** — l'instrument (l'œil) VOIT le déchirement |
 | `vsync` | **plus de déchirement** |
 
-⇒ Le témoin positif est établi, donc le verdict « pas de déchirement en `vsync` » est **recevable**.
-**`vsync` est retenu.** Le mode `off` est **conservé** dans le firmware : c'est la réfutation de
-`vsync`, et une élimination sans son témoin n'est pas une élimination.
+⇒ Le témoin positif est établi, donc le verdict « pas de déchirement en `vsync` » est **recevable**
+— **pour le régime produit**. `vsync` est retenu. Le mode `off` est **conservé** dans le firmware :
+c'est la réfutation de `vsync`, et une élimination sans son témoin n'est pas une élimination.
 
-Le stimulus adverse LVGL existe (`anim` : barre verticale de 24 px balayant l'écran, 442 flushes
-en 15 s ≈ 29,5/s, CPU 20,3 %) et reste disponible ; il n'a pas eu à être invoqué pour établir le
-témoin, le label ayant suffi.
+**Le verdict sous le STIMULUS ADVERSE, config nominale — MESURÉ le 2026-08-15 (revue de code).**
+La première rédaction de cette section l'avait écarté (« il n'a pas eu à être invoqué ») : c'était
+répondre à la puce 1 d'AC4 (le témoin) et pas à la 2 (le verdict adverse). La revue l'a relevé,
+l'owner a choisi de REJOUER plutôt que de déclarer un constat non fait. Protocole dans les règles :
+témoin d'abord, sous le stimulus lui-même, puis une variable à la fois. Barre `anim` 24 px pleine
+hauteur, période 2 000 ms, label visible, œil de l'owner :
+
+| Synchro | Constat owner, barre adverse |
+|---|---|
+| `off` | **se coupe** — le témoin positif tient AUSSI sous ce stimulus |
+| `vsync` | **« se coupe encore »** — le verdict adverse est NÉGATIF |
+| `fbdone` | **PIRE** : « ça scintille à fond, une ligne blanche complète + des morceaux artefactés de ligne blanche déchirée » |
+
+⇒ **`vsync` supprime le déchirement en régime produit, PAS sous la barre adverse** — et c'est
+cohérent avec la réserve écrite dès le départ dans `dn_ui.h` (« fenêtre de course réduite, PAS de
+garantie formelle ») : une zone sale PLEINE HAUTEUR croise forcément le faisceau pendant la copie,
+quel que soit le point de départ. Le mécanisme est désormais MESURÉ, plus seulement prédit. Les
+deux verdicts ne se confondent plus, exactement ce qu'AC4 exigeait — et c'est le régime PRODUIT
+(zones sales bornées en hauteur) qui définit la config de référence, pas l'adverse. Conséquence
+pour dn3 : un widget qui redessinerait une COLONNE pleine hauteur retombera dans le cas adverse.
+Le « confinement aux ~15 % du haut » de dn1-2 en `fbdone` ne se reproduit pas ici — sous ce
+stimulus, `fbdone` est le pire des trois modes.
+
+Chiffres du stimulus, pour mémoire : 442 flushes en 15 s ≈ 29,5/s, CPU 20,3 %.
 
 **Le « résiduel des ~15 % du haut » de dn1-2 n'est PAS reconduit.** Il avait été relevé avec un
 instrument depuis invalidé, et la configuration a changé (rendu partiel, plus de bascule). Il est
