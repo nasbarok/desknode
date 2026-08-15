@@ -44,6 +44,17 @@ static SemaphoreHandle_t s_vsync_sem;
  *    dn_measure.h, au-dessus de `dn_measure_arm_frame_done()`. */
 static SemaphoreHandle_t s_fbdone_sem;
 
+/*
+ * Les abonnements au vsync (dn1-3). Tableau de taille FIXE, alloué une fois pour
+ * toutes : l'ISR le parcourt cache désactivé, donc il doit vivre en RAM interne
+ * (.bss) et ne jamais être réalloué. Le compteur d'abonnés n'est écrit que depuis
+ * `dn_measure_vsync_subscribe()`, avant que le panneau ne tourne pour de bon —
+ * mais il est lu par l'ISR, d'où le `volatile`.
+ */
+static SemaphoreHandle_t s_vsync_subs[DN_VSYNC_SUBS_MAX];
+static volatile int s_vsync_subs_n;
+static const char *s_vsync_subs_nom[DN_VSYNC_SUBS_MAX];
+
 static size_t s_psram_avant;
 static size_t s_psram_apres;
 
@@ -58,6 +69,19 @@ static IRAM_ATTR bool on_vsync(esp_lcd_panel_handle_t panel,
     BaseType_t hp = pdFALSE;
     if (s_vsync_sem) {
         xSemaphoreGiveFromISR(s_vsync_sem, &hp);
+    }
+    /* Chaque abonné reçoit SON jeton. Pas de boucle non bornée, pas
+     * d'allocation, pas de log : on est sous ISR, cache potentiellement
+     * désactivé. `xSemaphoreGiveFromISR` est en IRAM par défaut dans ESP-IDF. */
+    int n = s_vsync_subs_n;
+    for (int i = 0; i < n; i++) {
+        if (s_vsync_subs[i]) {
+            BaseType_t hp_i = pdFALSE;
+            xSemaphoreGiveFromISR(s_vsync_subs[i], &hp_i);
+            if (hp_i == pdTRUE) {
+                hp = pdTRUE;
+            }
+        }
     }
     return hp == pdTRUE; /* true => réveiller une tâche de plus haute priorité */
 }
@@ -120,6 +144,48 @@ bool dn_measure_wait_vsync(uint32_t timeout_ms)
     return xSemaphoreTake(s_vsync_sem, pdMS_TO_TICKS(timeout_ms)) == pdTRUE;
 }
 
+dn_vsync_sub_t dn_measure_vsync_subscribe(const char *nom)
+{
+    if (s_vsync_subs_n >= DN_VSYNC_SUBS_MAX) {
+        ESP_LOGE(TAG,
+                 "abonnement vsync « %s » REFUSÉ : les %d slots sont pris. "
+                 "Aucun repli silencieux — un abonné qui partagerait le "
+                 "sémaphore d'un autre lui volerait ses événements.",
+                 nom ? nom : "?", DN_VSYNC_SUBS_MAX);
+        return -1;
+    }
+    SemaphoreHandle_t sem = xSemaphoreCreateBinary();
+    if (!sem) {
+        ESP_LOGE(TAG, "abonnement vsync « %s » : sémaphore non alloué",
+                 nom ? nom : "?");
+        return -1;
+    }
+    int slot = s_vsync_subs_n;
+    s_vsync_subs[slot] = sem;
+    s_vsync_subs_nom[slot] = nom;
+    /* Publié EN DERNIER : l'ISR lit `s_vsync_subs_n` pour borner sa boucle, donc
+     * le sémaphore doit déjà être en place quand le compteur l'inclut. */
+    s_vsync_subs_n = slot + 1;
+    ESP_LOGI(TAG, "abonnement vsync #%d : « %s »", slot, nom ? nom : "?");
+    return slot;
+}
+
+void dn_measure_vsync_flush(dn_vsync_sub_t sub)
+{
+    if (sub < 0 || sub >= s_vsync_subs_n || !s_vsync_subs[sub]) {
+        return;
+    }
+    xSemaphoreTake(s_vsync_subs[sub], 0);
+}
+
+bool dn_measure_vsync_wait(dn_vsync_sub_t sub, uint32_t timeout_ms)
+{
+    if (sub < 0 || sub >= s_vsync_subs_n || !s_vsync_subs[sub]) {
+        return false;
+    }
+    return xSemaphoreTake(s_vsync_subs[sub], pdMS_TO_TICKS(timeout_ms)) == pdTRUE;
+}
+
 esp_err_t dn_measure_attach(esp_lcd_panel_handle_t panel)
 {
     s_vsync_sem = xSemaphoreCreateBinary();
@@ -130,14 +196,62 @@ esp_err_t dn_measure_attach(esp_lcd_panel_handle_t panel)
         .on_vsync = on_vsync,
         .on_frame_buf_complete = on_frame_buf_complete,
     };
+    /*
+     * ⚠️ CE MODULE EST LE POINT D'ENREGISTREMENT UNIQUE — et « unique » est le
+     *    mot important. `esp_lcd_rgb_panel_register_event_callbacks()` ne fusionne
+     *    RIEN : il ASSIGNE les quatre pointeurs et `user_ctx`
+     *    (esp_lcd_panel_rgb.c:444-448). Le dernier appelant efface le précédent,
+     *    en silence, et rend ESP_OK.
+     *
+     *    Or `lvgl_port_add_disp_rgb()` enregistre lui aussi `on_vsync`
+     *    (esp_lvgl_port_disp.c:219, inconditionnel). Les deux sont donc en
+     *    collision directe. Le choix de dn1-3, écrit ici pour qu'on ne le
+     *    « corrige » pas plus tard :
+     *      -> dn_measure_attach() est appelé APRÈS lvgl_port_add_disp_rgb(),
+     *         et gagne. Le callback du portage n'alimente qu'un sémaphore que le
+     *         portage n'attend QUE dans ses modes direct/full — modes qu'on
+     *         n'utilise pas (rendu PARTIEL, num_fbs=1). Le perdre ne coûte rien.
+     *      -> la synchronisation du flush passe par un abonnement vsync de
+     *         dn_measure (dn_ui.c), pas par la mécanique interne du portage.
+     *
+     *    Si l'ordre s'inversait un jour, le symptôme serait MUET : `fps` et
+     *    l'abonnement vsync compteraient 0, la mesure de déchirement mesurerait
+     *    du vide — exactement le genre de défaut silencieux que dn1-2 a payé
+     *    cher. D'où le contrôle actif ci-dessous, au boot.
+     */
     ESP_RETURN_ON_ERROR(
         esp_lcd_rgb_panel_register_event_callbacks(panel, &cbs, NULL), TAG,
         "branchement du callback vsync refusé");
     ESP_LOGI(TAG, "compteur vsync branché (ISR en IRAM, compteur en RAM interne)");
+    ESP_LOGI(TAG,
+             "  ⚠️ enregistrement EXCLUSIF : il vient d'écraser tout callback "
+             "posé avant lui (esp_lcd rgb ASSIGNE, ne fusionne pas). C'est "
+             "voulu — voir le commentaire au-dessus.");
     return ESP_OK;
 }
 
 uint32_t dn_measure_vsync_count(void) { return s_vsync_count; }
+
+bool dn_measure_vsync_alive(uint32_t ms)
+{
+    uint32_t c0 = s_vsync_count;
+    vTaskDelay(pdMS_TO_TICKS(ms));
+    uint32_t vues = s_vsync_count - c0; /* non signé : l'enroulement se gère seul */
+    if (vues == 0) {
+        ESP_LOGE(TAG,
+                 "TÉMOIN VSYNC MORT : 0 trame comptée en %lu ms (~%.1f "
+                 "attendues). Le callback a été DÉBRANCHÉ par un "
+                 "enregistrement ultérieur, ou le panneau ne tourne pas.",
+                 (unsigned long)ms, (double)ms / 1000.0 * DN_FPS_THEORIQUE);
+        ESP_LOGE(TAG,
+                 "  => toute mesure faite maintenant (fps, déchirement, "
+                 "cadence) porterait une étiquette FAUSSE. Ne rien conclure.");
+        return false;
+    }
+    ESP_LOGI(TAG, "témoin vsync : %lu trames en %lu ms — le compteur est vivant",
+             (unsigned long)vues, (unsigned long)ms);
+    return true;
+}
 
 double dn_measure_fps(int seconds, uint32_t *out_frames, int64_t *out_elapsed_us)
 {

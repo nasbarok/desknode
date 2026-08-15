@@ -26,6 +26,21 @@ esp_err_t dn_measure_attach(esp_lcd_panel_handle_t panel);
 uint32_t dn_measure_vsync_count(void);
 
 /*
+ * TÉMOIN ACTIF : le compteur avance-t-il encore ?
+ *
+ * Il existe parce qu'un défaut RÉEL et SILENCIEUX le guette : le driver RGB
+ * ASSIGNE ses callbacks au lieu de les fusionner, donc n'importe quel appel
+ * ultérieur à `esp_lcd_rgb_panel_register_event_callbacks()` — celui
+ * d'esp_lvgl_port, par exemple — débranche ce compteur sans rien dire, en
+ * rendant ESP_OK. Tout ce qui se mesure ensuite (fps, déchirement, cadence)
+ * mesurerait alors du vide, à l'étiquette près.
+ *
+ * À appeler une fois au boot, APRÈS que toutes les couches se soient branchées.
+ * `ms` doit couvrir plusieurs trames (26,7 ms l'une) : 100 ms en couvrent ~3.
+ */
+bool dn_measure_vsync_alive(uint32_t ms);
+
+/*
  * Bloque jusqu'au prochain VSYNC, ou jusqu'au délai. Renvoie true si un VSYNC
  * est bien arrivé.
  *
@@ -35,6 +50,38 @@ uint32_t dn_measure_vsync_count(void);
  * faire pendant le retour vertical, quand la dalle n'affiche rien.
  */
 bool dn_measure_wait_vsync(uint32_t timeout_ms);
+
+/*
+ * ── ABONNEMENT AU VSYNC (dn1-3) ──────────────────────────────────────────────
+ *
+ * POURQUOI CE MÉCANISME EXISTE, et ce qu'il empêche. `dn_measure_wait_vsync()`
+ * ci-dessus s'appuie sur UN sémaphore binaire, donc sur UN consommateur. dn1-3
+ * en ajoute deux qui attendent le même événement pour des raisons différentes :
+ *   - le flush de LVGL, qui synchronise sa copie sur le retour vertical (AC4) ;
+ *   - la tâche de recalage du double tampon, qui compte les vsyncs après une
+ *     bascule (AC5).
+ * Les faire partager le sémaphore historique donnerait un VOL D'ÉVÉNEMENT : le
+ * premier réveillé consomme le jeton, l'autre repart pour une trame entière ou
+ * expire. Et ce défaut-là serait SILENCIEUX — il ne se verrait que comme « la
+ * synchro ne sert à rien », c'est-à-dire comme une conclusion de mesure fausse.
+ *
+ * Chaque abonné a donc son propre sémaphore, tous donnés par la même ISR.
+ * Le jeton est valide pour toute la vie du firmware : personne ne se désabonne.
+ */
+#define DN_VSYNC_SUBS_MAX 3
+typedef int dn_vsync_sub_t; /* < 0 = abonnement refusé (plus de slot) */
+
+dn_vsync_sub_t dn_measure_vsync_subscribe(const char *nom);
+
+/* Jette les événements déjà en attente. À appeler JUSTE AVANT d'attendre quand
+ * on veut « le PROCHAIN vsync » (et pas celui qui vient de passer). */
+void dn_measure_vsync_flush(dn_vsync_sub_t sub);
+
+/* Attend un vsync sur cet abonnement. Ne vide RIEN de lui-même : c'est
+ * l'appelant qui décide s'il veut le prochain (flush d'abord) ou simplement le
+ * suivant non consommé (compter N vsyncs). Les deux besoins existent ici, et
+ * c'est exactement l'erreur qu'avait faite `wait_frame_done` avant correction. */
+bool dn_measure_vsync_wait(dn_vsync_sub_t sub, uint32_t timeout_ms);
 
 /*
  * Rendez-vous avec `on_frame_buf_complete`, en DEUX temps qu'il faut appeler
