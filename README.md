@@ -234,8 +234,14 @@ esptool.py --chip esp32s3 -p /dev/ttyACM0 --after watchdog_reset flash_id
 cd ~/projects/desknode && ./tools/wsl-attach.sh
 ```
 
-Succès attendu : l'application redémarre, le rétroéclairage se remet à clignoter et le log reprend
-à `up 0 s`.
+Succès attendu — **et lui aussi dépend du firmware flashé**, comme le symptôme :
+
+- avec **`hello-desknode`** : le rétroéclairage se remet à **clignoter**, le log reprend à `up 0 s` ;
+- avec **`firmware/desknode`** : le rétroéclairage est **fixe** (il ne clignote pas, et ce n'est pas
+  un défaut), l'**asset Living PCB réapparaît** à l'écran, le log reprend à `up 0 s` et **`aide`
+  répond** dans le moniteur.
+
+Le critère commun aux deux, et le seul qui ne trompe jamais : **le port n'est plus muet**.
 
 ### Voie A — build WSL, flash depuis Windows (secours, et cap à terme)
 
