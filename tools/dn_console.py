@@ -42,6 +42,8 @@ USAGE
     python3 tools/dn_console.py "cfg" "mem"
     python3 tools/dn_console.py --timeout 40 "cpu 30"
     python3 tools/dn_console.py --listen 15            # écoute seule, rien envoyé
+    python3 tools/dn_console.py --reset                # reset RTS + bandeau de BOOT
+    python3 tools/dn_console.py --reset "cfg" "mem"    # reset, puis on enchaîne
     python3 tools/dn_console.py --json "fps 15"        # sortie machine
     python3 tools/dn_console.py --capture session.log "tear on"
 
@@ -178,6 +180,39 @@ def envoyer(ser, commande, timeout, attendre_invite=True):
             "invite_rendue": invite, "brut": brut}
 
 
+def reset_puce(ser, attente):
+    """Reset de la puce par impulsion RTS, EN GARDANT LE PORT OUVERT.
+
+    ⚠️ MESURÉ le 2026-08-15, et ça corrige une croyance du README : **ce
+    reset-là ne fait PAS tomber l'attachement usbipd.** Le bouton RESET et la
+    commande console `reboot` le font (`reboot` passe par `esp_restart()`, qui
+    réinitialise le périphérique USB, donc l'USB se ré-énumère) ; une impulsion
+    RTS, non. Le même descripteur continue de servir, et on capture donc le
+    bandeau de boot DEPUIS SA PREMIÈRE LIGNE.
+
+    À quoi ça sert, concrètement : `idf.py flash` puis une écoute rate le
+    bandeau à tous les coups — le temps de lancer l'écoute, `app_main` est déjà
+    passé. Or c'est dans ce bandeau que vivent `SPI Flash Size : 16MB` (la
+    preuve d'AC2), la table de partitions et l'init PSRAM. Sans ce geste, on ne
+    peut pas les relever sans reflasher.
+
+    ⛔ DTR est laissé BAS, délibérément : sur cette carte DTR pilote GPIO0. Le
+    lever pendant le reset ferait entrer la puce en MODE DOWNLOAD — c'est-à-dire
+    exactement la panne « carte muette » qu'on passe son temps à éviter.
+    """
+    ser.dtr = False
+    ser.rts = True
+    time.sleep(0.25)
+    ser.rts = False
+    fin = time.monotonic() + attente
+    buf = bytearray()
+    while time.monotonic() < fin:
+        d = ser.read(ser.in_waiting or 1)
+        if d:
+            buf.extend(d)
+    return buf.decode("utf-8", "replace")
+
+
 def reveiller(ser):
     """Un \\n à vide : confirme que la console répond AVANT de mesurer quoi que
     ce soit. Une carte en mode download accepte l'écriture et ne rend rien."""
@@ -204,6 +239,12 @@ def main():
                    help="attente de l'invite, par commande (défaut 20 s)")
     p.add_argument("--listen", type=float, metavar="N",
                    help="écoute passive N secondes, n'envoie RIEN")
+    p.add_argument("--reset", action="store_true",
+                   help="impulsion RTS = reset de puce SANS fermer le port "
+                        "(l'attachement usbipd survit — mesuré), puis capture "
+                        "du bandeau de boot depuis sa première ligne")
+    p.add_argument("--reset-wait", type=float, default=10.0, metavar="N",
+                   help="durée de capture après le reset (défaut 10 s)")
     p.add_argument("--no-wait", action="store_true",
                    help="ne pas attendre l'invite (commandes qui ne rendent pas "
                         "la main, ex. `tear on`)")
@@ -224,11 +265,16 @@ def main():
     resultats = []
     code = 0
     try:
+        if args.reset:
+            brut = reset_puce(ser, args.reset_wait)
+            resultats.append({"commande": "(reset RTS + bandeau de boot)",
+                              "sortie": brut.strip(), "invite_rendue": None,
+                              "brut": brut})
         if args.listen:
             brut, _ = lire_jusqu_invite(ser, args.listen)
             resultats.append({"commande": None, "sortie": brut.strip(),
                               "invite_rendue": None, "brut": brut})
-        else:
+        elif args.commandes:
             try:
                 reveiller(ser)
             except ConsoleErreur as e:

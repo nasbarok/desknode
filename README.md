@@ -177,6 +177,7 @@ idf.py -p /dev/ttyACM0 flash monitor               # quitter le moniteur : Ctrl+
 | **Après un `flash`** | **rien** | mesuré : le flash **ne ré-énumère pas** l'USB, l'attachement tient |
 | **Après un RESET de la puce** (bouton RESET, ou `--after watchdog-reset`) | `./tools/wsl-attach.sh` | mesuré : là, l'USB **se ré-énumère** et l'attachement **tombe** |
 | **Après un `reboot` tapé dans la console de `firmware/desknode`** | `./tools/wsl-attach.sh` | mesuré en dn1-2 : `esp_restart()` compte comme un reset de puce — le port revient en `root:root` et toute lecture sort `[Errno 13] Permission denied` |
+| **Après un reset par impulsion RTS** (`./tools/dn_console.py --reset`) | **rien** | ⚠️ mesuré le 2026-08-15 : **contre-exemple à la ligne du dessus.** Tous les resets de puce ne se valent pas — celui-ci donne bien `rst:0x15 (USB_UART_CHIP_RESET)`, mais l'USB **ne se ré-énumère pas** et l'attachement tient. C'est ce qui permet de capturer le bandeau de boot **depuis sa première ligne**, ce qu'un `flash` suivi d'une écoute rate toujours |
 
 ⚠️ **Ce sont deux resets différents, et c'est le piège de cette carte.** Le reset *logiciel* que
 joue esptool en fin de flash (« Hard resetting via RTS pin ») **ne réinitialise pas** le périphérique
