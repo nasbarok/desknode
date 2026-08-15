@@ -42,6 +42,20 @@
  *    de période d'affichage. Une UI réelle redessine des rectangles sales, pas
  *    la trame entière — le résiduel des 15 % est mesuré sous une charge que le
  *    produit ne verra pas.
+ *
+ * ⚠️⚠️ CE QUI EST À REJOUER, ET POURQUOI. Les VERDICTS ci-dessus sont des
+ *    observations directes de l'owner et restent ce qui a été VU. Les CHIFFRES
+ *    de cadence qui les accompagnent, eux, ont été relevés avec un instrument
+ *    qui portait deux défauts depuis corrigés :
+ *      - le générateur de trame était le goulot, pas le pipeline (remplissage
+ *        pixel par pixel + un modulo par pixel ; voir le bloc « Générateur de
+ *        trame » dans dn_stimulus.c). Le « ~30 ms par trame » ci-dessus mesure
+ *        donc cette boucle-là, pas la dalle ;
+ *      - l'attente de fin de trame jetait l'événement qu'elle attendait, d'où
+ *        une trame de latence en trop, non déterministe, sur les modes FBDONE
+ *        et BOTH (voir dn_measure.h).
+ *    ⇒ Les conditions de l'A/B ont changé : la campagne AC5 est à REJOUER sur
+ *      la carte avant de citer une cadence. Action owner ouverte.
  */
 typedef enum {
     DN_TEAR_SWEEP = 0,   /* barre verticale balayante, aucune synchronisation */
@@ -52,18 +66,62 @@ typedef enum {
     DN_TEAR_SYNC_BOTH,   /* les deux — mesuré PIRE que FBDONE seul */
 } dn_tear_mode_t;
 
+/* Refuse de démarrer tant qu'une tâche de tearing vit ENCORE — y compris
+ * pendant l'extinction d'une précédente : deux tâches dessinant le même
+ * framebuffer rendaient toute cadence mesurée absurde. */
 esp_err_t dn_stim_tear_start(dn_tear_mode_t mode);
-void dn_stim_tear_stop(void);
+
+/*
+ * Demande l'arrêt ET attend la sortie effective de la tâche.
+ * ⚠️ RENVOIE UN CODE, ET IL FAUT LE REGARDER : ESP_ERR_TIMEOUT signifie que la
+ *    tâche n'est PAS sortie dans le budget d'attente — donc qu'elle dessine
+ *    peut-être encore. Cette fonction rendait la main en journalisant
+ *    « arrêté » sans jamais tester l'attente ; un `scene x` qui suivait se
+ *    faisait alors écraser par une tâche censée morte.
+ */
+esp_err_t dn_stim_tear_stop(void);
+
+/* ⚠️ « en cours » = la TÂCHE VIT (y compris pendant l'extinction), pas « on a
+ *    demandé le démarrage ». C'est ce que doit tester quiconque veut dessiner
+ *    à l'écran. */
 bool dn_stim_tear_running(void);
 /* Cadence réellement atteinte (bascules par seconde) et durée moyenne d'une
  * trame complète, en microsecondes. */
 void dn_stim_tear_stats(double *out_hz, int64_t *out_frame_us);
 
+/*
+ * Rendez-vous MANQUÉS depuis le démarrage : attentes de VSYNC et de fin de
+ * trame qui ont expiré (100 ms).
+ *
+ * ⚠️ À AFFICHER AVEC LA CADENCE, jamais séparément. Un rendez-vous manqué fait
+ *    passer la trame SANS synchronisation : un `tear sync` qui en accumule se
+ *    comporte comme un `tear on`, et l'A/B compare alors « pas de sync » à
+ *    « pas de sync » avec deux étiquettes différentes. Ces trames-là étaient
+ *    jetées en silence — sans compteur, sans trace, sans effet sur la cadence
+ *    annoncée. Un compteur non nul DISQUALIFIE la comparaison.
+ */
+void dn_stim_tear_misses(uint32_t *out_vsync, uint32_t *out_fbdone);
+
 /* ── Stimulus d'écriture flash ───────────────────────────────────────────── */
 esp_err_t dn_stim_flash_start(void);
 void dn_stim_flash_stop(void);
+/* Même convention que côté tearing : « en cours » = la TÂCHE VIT. */
 bool dn_stim_flash_running(void);
 /* Volume écrit et nombre de secteurs effacés depuis le démarrage du stimulus —
  * sans eux, le résultat n'est pas rejouable. */
 void dn_stim_flash_stats(uint32_t *out_sectors, uint64_t *out_bytes,
                          double *out_bytes_per_s);
+
+/*
+ * Cause du DERNIER arrêt : ESP_OK si le stimulus s'est arrêté sur demande,
+ * sinon l'erreur qui l'a tué (effacement ou écriture refusés, partition
+ * absente).
+ *
+ * ⚠️ À AFFICHER DANS LA LIGNE D'ÉTAT : « arrêté » et « arrêté PARCE QUE la
+ *    flash a refusé » ne se valent pas. Le second veut dire que tout ce qui a
+ *    été observé depuis l'a été SANS écriture flash — c'est-à-dire sans le
+ *    stimulus d'AC6, en croyant l'avoir. Le piège méthodologique que la story a
+ *    déjà consigné une fois : conclure pendant qu'un stimulus supposé actif ne
+ *    tournait pas.
+ */
+esp_err_t dn_stim_flash_error(void);

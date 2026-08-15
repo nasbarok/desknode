@@ -32,10 +32,16 @@ static volatile uint32_t s_vsync_count;
  * désactivé pendant les écritures flash d'AC6. */
 static SemaphoreHandle_t s_vsync_sem;
 
-/* Rendez-vous avec « ce framebuffer-là n'est plus lu par la DMA ».
- * C'est un signal DIFFÉRENT du VSYNC, et c'est le bon pour le double
- * tampon : le VSYNC dit « une trame commence », pas « l'ancien tampon est
- * libéré ». Entre les deux il y a la préextraction de la GDMA. */
+/* Rendez-vous avec `on_frame_buf_complete`.
+ * ⚠️ Le nom du callback ment SUR CETTE PUCE, et ce commentaire mentait avec
+ *    lui : il annonçait « ce framebuffer-là n'est plus lu par la DMA ». Cette
+ *    garantie-là exige l'événement de bascule de lien GDMA, compilé sous le
+ *    seul `SOC_AXI_GDMA_SUPPORTED` — que l'ESP32-S3 ne définit pas
+ *    (soc_caps.h:33 : `SOC_AHB_GDMA_SUPPORTED` uniquement). Ici le callback
+ *    arrive du trans-EOF de la DMA. C'est donc un POINT DE PHASE différent du
+ *    VSYNC dans la trame, et rien de plus. Le gain mesuré tient, l'explication
+ *    d'origine non — le détail et les références exactes sont dans
+ *    dn_measure.h, au-dessus de `dn_measure_arm_frame_done()`. */
 static SemaphoreHandle_t s_fbdone_sem;
 
 static size_t s_psram_avant;
@@ -56,6 +62,10 @@ static IRAM_ATTR bool on_vsync(esp_lcd_panel_handle_t panel,
     return hp == pdTRUE; /* true => réveiller une tâche de plus haute priorité */
 }
 
+/* ⚠️ Nom trompeur sur l'ESP32-S3 : ce qui nous appelle ici, c'est
+ *    `lcd_rgb_panel_eof_handler()` sur le trans-EOF de la DMA — pas la bascule
+ *    de lien GDMA qui, elle, donnerait vraiment « le tampon est libéré ». Voir
+ *    le commentaire de `s_fbdone_sem` ci-dessus. */
 static IRAM_ATTR bool on_frame_buf_complete(esp_lcd_panel_handle_t panel,
                                             const esp_lcd_rgb_panel_event_data_t *edata,
                                             void *user_ctx)
@@ -70,12 +80,27 @@ static IRAM_ATTR bool on_frame_buf_complete(esp_lcd_panel_handle_t panel,
     return hp == pdTRUE;
 }
 
+void dn_measure_arm_frame_done(void)
+{
+    if (!s_fbdone_sem) {
+        return;
+    }
+    /* Vider AVANT la bascule, JAMAIS après : après, on jette l'événement que la
+     * bascule vient elle-même de provoquer, et l'attente qui suit part pour une
+     * trame de plus ou expire. Symptôme observé côté mesure : une latence
+     * supplémentaire non déterministe sur les modes synchronisés. */
+    xSemaphoreTake(s_fbdone_sem, 0);
+}
+
 bool dn_measure_wait_frame_done(uint32_t timeout_ms)
 {
     if (!s_fbdone_sem) {
         return false;
     }
-    xSemaphoreTake(s_fbdone_sem, 0);
+    /* AUCUN vidage ici, et c'est le correctif : c'est
+     * `dn_measure_arm_frame_done()`, appelé avant `dn_display_present()`, qui
+     * s'en charge. Ne pas « symétriser » avec `dn_measure_wait_vsync()`
+     * ci-dessous : les deux besoins sont opposés (voir dn_measure.h). */
     return xSemaphoreTake(s_fbdone_sem, pdMS_TO_TICKS(timeout_ms)) == pdTRUE;
 }
 
@@ -86,7 +111,11 @@ bool dn_measure_wait_vsync(uint32_t timeout_ms)
     }
     /* On vide d'abord le sémaphore : sinon on repartirait sur un VSYNC déjà
      * passé, et la bascule tomberait au milieu du balayage — exactement ce
-     * qu'on cherche à éviter. */
+     * qu'on cherche à éviter.
+     * ⚠️ Ce vidage-ci est CORRECT et doit rester où il est : on veut le
+     *    PROCHAIN retour vertical, et aucun appelant ne provoque le VSYNC. Ce
+     *    n'est pas le cas de `wait_frame_done`, dont l'appelant provoque
+     *    lui-même l'événement — d'où l'armement séparé, plus haut. */
     xSemaphoreTake(s_vsync_sem, 0);
     return xSemaphoreTake(s_vsync_sem, pdMS_TO_TICKS(timeout_ms)) == pdTRUE;
 }
