@@ -37,6 +37,52 @@ static esp_err_t open_nvs(nvs_open_mode_t mode, nvs_handle_t *out)
     return err;
 }
 
+/*
+ * Validation UNIQUE de bounce_px, partagée par l'écriture (`set bounce`) et par
+ * la relecture au boot. C'est le point important : tant que les deux chemins ne
+ * partageaient pas la même règle, une valeur pouvait être refusée à l'écriture
+ * et acceptée au boot — ou l'inverse — et le piège du plafond (cf.
+ * DN_BOUNCE_PX_MAX) survivait à sa propre correction, puisque dn_bootcfg_load()
+ * réacceptait à chaque démarrage la valeur qui halte le CPU.
+ *
+ * Renvoie NULL si la valeur est acceptable, sinon la RAISON du refus, en clair.
+ */
+static const char *bounce_px_refus(int32_t v)
+{
+    if (v < 0) {
+        return "valeur négative";
+    }
+    if (v > DN_BOUNCE_PX_MAX) {
+        /* Deux tampons de v*2 octets en RAM INTERNE + DMA : au-delà du plafond
+         * c'est ESP_ERR_NO_MEM au boot, donc panique, donc CPU halté par
+         * CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT=y, donc AUCUNE console pour
+         * revenir en arrière. */
+        return "au-dessus du plafond de RAM interne (carte non démarrable)";
+    }
+    if (v != 0 && ((size_t)DN_LCD_TOTAL_PX % (size_t)v) != 0) {
+        /* Le driver RGB exige que la taille du bounce buffer divise le nombre
+         * de pixels de la trame — sinon la DMA se décale d'un reliquat à chaque
+         * trame. On refuse ici plutôt que de laisser le driver échouer plus
+         * loin avec un message obscur. */
+        return "ne divise pas les pixels d'une trame";
+    }
+    return NULL;
+}
+
+/* Une clé peut être PRÉSENTE et illisible : mauvais type ou mauvaise longueur
+ * (ESP_ERR_NVS_TYPE_MISMATCH, ESP_ERR_NVS_INVALID_LENGTH). Ne traiter que
+ * ESP_OK faisait retomber sur le défaut EN SILENCE — exactement ce que
+ * dn_bootcfg.h promet de ne jamais faire. ESP_ERR_NVS_NOT_FOUND, lui, est le
+ * cas NORMAL d'un clone neuf : il ne mérite pas un avertissement. */
+static void log_lecture_refusee(const char *cle, esp_err_t err, int defaut)
+{
+    if (err == ESP_OK || err == ESP_ERR_NVS_NOT_FOUND) {
+        return;
+    }
+    ESP_LOGW(TAG, "lecture de « %s » refusée (%s) : défaut %d appliqué", cle,
+             esp_err_to_name(err), defaut);
+}
+
 esp_err_t dn_bootcfg_load(dn_bootcfg_t *out)
 {
     if (!out) {
@@ -52,26 +98,31 @@ esp_err_t dn_bootcfg_load(dn_bootcfg_t *out)
     }
 
     int32_t v;
-    if (nvs_get_i32(h, DN_KEY_NUM_FBS, &v) == ESP_OK) {
+    esp_err_t err = nvs_get_i32(h, DN_KEY_NUM_FBS, &v);
+    if (err == ESP_OK) {
         if (v >= 1 && v <= 3) {
             out->num_fbs = (int)v;
         } else {
             ESP_LOGW(TAG, "num_fbs=%ld hors de [1,3] : défaut %d appliqué", (long)v,
                      DN_DEFAULT_NUM_FBS);
         }
+    } else {
+        log_lecture_refusee(DN_KEY_NUM_FBS, err, DN_DEFAULT_NUM_FBS);
     }
-    if (nvs_get_i32(h, DN_KEY_BOUNCE, &v) == ESP_OK) {
-        /* Le driver RGB exige que la taille du bounce buffer divise le nombre
-         * de pixels de la trame — sinon la DMA se décale d'un reliquat à chaque
-         * trame. On refuse ici plutôt que de laisser le driver échouer plus
-         * loin avec un message obscur. */
-        if (v == 0 || (v > 0 && ((size_t)DN_LCD_TOTAL_PX % (size_t)v) == 0)) {
+
+    err = nvs_get_i32(h, DN_KEY_BOUNCE, &v);
+    if (err == ESP_OK) {
+        const char *refus = bounce_px_refus(v);
+        if (!refus) {
             out->bounce_px = (int)v;
         } else {
-            ESP_LOGW(TAG,
-                     "bounce_px=%ld ne divise pas %d pixels de trame : ignoré",
-                     (long)v, DN_LCD_TOTAL_PX);
+            ESP_LOGW(TAG, "bounce_px=%ld refusé (%s) : défaut %d appliqué",
+                     (long)v, refus, DN_DEFAULT_BOUNCE_PX);
+            ESP_LOGW(TAG, "  plafond = %d px, diviseur exact de %d px de trame",
+                     DN_BOUNCE_PX_MAX, DN_LCD_TOTAL_PX);
         }
+    } else {
+        log_lecture_refusee(DN_KEY_BOUNCE, err, DN_DEFAULT_BOUNCE_PX);
     }
     nvs_close(h);
     return ESP_OK;
@@ -102,10 +153,9 @@ esp_err_t dn_bootcfg_set_num_fbs(int num_fbs)
 
 esp_err_t dn_bootcfg_set_bounce_px(int bounce_px)
 {
-    if (bounce_px < 0) {
-        return ESP_ERR_INVALID_ARG;
-    }
-    if (bounce_px != 0 && ((size_t)DN_LCD_TOTAL_PX % (size_t)bounce_px) != 0) {
+    const char *refus = bounce_px_refus((int32_t)bounce_px);
+    if (refus) {
+        ESP_LOGW(TAG, "bounce_px=%d refusé : %s", bounce_px, refus);
         return ESP_ERR_INVALID_ARG;
     }
     return set_i32(DN_KEY_BOUNCE, bounce_px);
