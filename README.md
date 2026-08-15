@@ -131,15 +131,24 @@ idf.py -p /dev/ttyACM0 flash monitor               # quitter le moniteur : Ctrl+
 
 `firmware/desknode` (P1 et suite) :
 
-- au **log** : le bandeau `──── socle ────` avec `SPI Flash Size : 16MB` et
-  `PSRAM : 8388608 o détectés, mode OCTAL, 80 MHz`, puis `up N s` toutes les 10 s ;
+- au **log**, et ce sont **deux lignes distinctes, imprimées par deux acteurs différents** :
+  - `I (25) boot.esp32s3: SPI Flash Size : 16MB` — c'est le **bootloader**, *avant* `app_main` ;
+    elle atteste que l'en-tête flashé annonce bien 16 MB ;
+  - puis le bandeau `──── socle ────` de l'application, qui imprime `flash physique détectée : …`
+    et `PSRAM : 8388608 o détectés, mode OCTAL, 80 MHz` — celui-là interroge la **puce**.
+    ⚠️ Ne pas chercher `SPI Flash Size : 16MB` *dans* le bandeau `socle` : il n'y est pas, et les
+    deux lignes ne prouvent pas la même chose (l'en-tête déclaré vs le silicium réel) ;
+  - puis `up N s` toutes les 10 s ;
 - à l'**œil** : l'**asset Living PCB** s'affiche plein écran, et le **rétroéclairage est ALLUMÉ
   FIXE**. ⚠️ **Il ne clignote plus** — le clignotement était le signe de vie de P0 ;
-- la **console est interactive** : taper `aide` dans le moniteur liste les commandes
-  (`scene`, `fps`, `bw`, `mem`, `tear`, `flash`, `disp`, `bl`, `dma`…).
+- la **console est interactive** : taper `aide` dans le moniteur liste les commandes. Jeu complet :
+  `scene`, `fps`, `bw`, `mem`, `cpu`, `cfg`, `set`, `tear`, `flash`, `disp`, `bl`, `dma`, `reboot`,
+  `aide`. Une **forme de remise à zéro de la configuration** vers les défauts est en cours d'ajout
+  à la famille `set` — `aide` en donne la syntaxe exacte, qui fait foi sur cette liste.
   ⚠️ Le log de ce projet ne part **plus** sur le header UART GPIO43/44 : la console primaire est
   passée sur l'USB pour pouvoir RECEVOIR des commandes. Pour retrouver le header, voir le
-  commentaire de `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG` dans son `sdkconfig.defaults`.
+  commentaire de `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG` dans son `sdkconfig.defaults` : on y récupère
+  le log sur **les deux** chemins **et** la console interactive sur l'UART.
 
 `firmware/hello-desknode` (le témoin minimal de P0) :
 
@@ -299,6 +308,7 @@ Pour **`firmware/hello-desknode`** (le témoin minimal) — trois fichiers, pas
 d'asset, table de partitions par défaut :
 
 ```powershell
+$py = "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe"
 $B  = '\\wsl.localhost\Ubuntu\home\nasbarok\projects\desknode\firmware\hello-desknode\build'
 & $py -m esptool --chip esp32s3 -p COM3 -b 460800 --before default-reset --after hard-reset `
       write-flash --flash-mode dio --flash-size detect --flash-freq 80m `
@@ -308,8 +318,9 @@ $B  = '\\wsl.localhost\Ubuntu\home\nasbarok\projects\desknode\firmware\hello-des
 ```
 
 ⚠️ **`--flash-size detect` plutôt qu'une valeur en dur.** `--flash-size` réécrit l'en-tête du
-bootloader **au moment du flash** : figer `2MB` ici annulerait en silence le correctif attendu en
-dn1-2 (la carte porte 16 MB, voir « Écart connu » en fin de page). `detect` lit la puce et suit.
+bootloader **au moment du flash** : figer `2MB` ici annulerait en silence le correctif **apporté en
+dn1-2** (la carte porte 16 MB, voir « **Écart 2 MB / 16 MB — SOLDÉ en dn1-2** » en fin de page).
+`detect` lit la puce et suit.
 
 Flash mesuré : **3,1 s**. Pour lire le log ensuite :
 
