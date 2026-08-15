@@ -98,6 +98,49 @@ const char *dn_flush_sync_name(dn_flush_sync_t m);
 bool dn_flush_sync_from_name(const char *nom, dn_flush_sync_t *out);
 
 /*
+ * ── PAR OÙ LA ZONE SALE ENTRE DANS LE FRAMEBUFFER ────────────────────────────
+ *
+ * Ce commutateur existe parce que l'œil de l'owner a démenti la première
+ * version, le 2026-08-15 : en `BITMAP` + synchro `vsync`, chaque incrémentation
+ * du label faisait « clignoter l'image, comme un déplacement rapide » — un
+ * artefact PLEIN ÉCRAN, alors que la zone sale fait 5,17 % de la dalle.
+ *
+ * Ce que cette observation ÉLIMINE : ce n'est pas un problème de phase. La
+ * synchro fonctionne (attente moyenne mesurée à 12,7 ms, soit la moitié de la
+ * période de trame), et au moment de la copie le faisceau est vers la ligne 0
+ * alors que le label est vers la ligne 300. Il n'y a pas de course entre les
+ * deux. Le flush PERTURBE l'affichage par un autre chemin que le sien.
+ *
+ *   BITMAP : `esp_lcd_panel_draw_bitmap()`. Le driver recopie la zone puis
+ *            resynchronise le cache avec `bytes_to_flush = v_res * bytes_per_line`
+ *            depuis le DÉBUT du framebuffer — 614 400 octets de parcours de
+ *            cache à chaque appel, pour 42 240 octets réellement salis. C'est le
+ *            suspect : ce parcours martèle le bus PSRAM que la DMA de la dalle
+ *            lit déjà à 23,0 Mo/s en continu, et §5.3 a établi qu'il n'existe
+ *            AUCUNE parade logicielle à cette contention.
+ *   DIRECT : on écrit nous-mêmes les lignes sales dans le framebuffer (qui EST
+ *            le tampon visible à num_fbs=1) et on ne resynchronise QUE ces
+ *            lignes-là. Même travail utile, ~15x moins de parcours de cache.
+ *            ⚠️ N'a de sens qu'à num_fbs == 1 : au-delà, la bascule d'index
+ *               appartient au driver et le contourner casserait le double
+ *               tampon. dn_ui_set_path() refuse alors, plutôt que de dessiner
+ *               dans le mauvais tampon en silence.
+ *
+ * Les deux chemins sont GARDÉS après l'arbitrage : l'un est la réfutation de
+ * l'autre, et une élimination sans son témoin n'est pas une élimination.
+ */
+typedef enum {
+    DN_FLUSH_PATH_BITMAP = 0,
+    DN_FLUSH_PATH_DIRECT,
+    DN_FLUSH_PATH_COUNT,
+} dn_flush_path_t;
+
+const char *dn_flush_path_name(dn_flush_path_t p);
+bool dn_flush_path_from_name(const char *nom, dn_flush_path_t *out);
+dn_flush_path_t dn_ui_get_path(void);
+esp_err_t dn_ui_set_path(dn_flush_path_t p);
+
+/*
  * Compteurs du flush — TOUS EN 32 BITS, délibérément.
  *
  * Le résiduel connu de dn1-2 est qu'un compteur 64 bits partagé entre deux cœurs
@@ -190,6 +233,20 @@ void dn_ui_log_mem(void);
 void dn_ui_get_cout(size_t *interne_avant, size_t *interne_apres,
                     size_t *psram_avant, size_t *psram_apres);
 
-/* Taille et emplacement du draw buffer effectivement retenus. */
+/* Taille et emplacement du draw buffer effectivement retenus.
+ * ⚠️ Sans objet en mode DIRECT : les tampons de rendu sont alors les
+ *    framebuffers eux-mêmes, et draw_lines n'est pas lu. */
 int dn_ui_draw_lines(void);
 bool dn_ui_draw_in_psram(void);
+
+/*
+ * True quand LVGL rend en DIRECT sur les deux framebuffers du driver (num_fbs>=2)
+ * plutôt qu'en PARTIEL sur un draw buffer (num_fbs==1). Ce n'est pas un réglage
+ * : c'est déduit de num_fbs au boot, et c'est la parade MESURÉE au clignotement
+ * décrit en tête de dn_ui.c — à un framebuffer, le seul FAIT d'écrire dans le
+ * tampon que la DMA balaie décroche l'image pour une trame.
+ */
+bool dn_ui_direct_mode(void);
+
+/* Cœur sur lequel la tâche LVGL a été épinglée (-1 = pas d'affinité). */
+int dn_ui_affinity(void);

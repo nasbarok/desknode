@@ -1,0 +1,38 @@
+# DeskNode — BRANCHE D'ESSAI d'AC5 (story dn1-3). N'EST PAS la configuration livrée.
+#
+# ── POURQUOI CE FICHIER EXISTE ───────────────────────────────────────────────
+# `esp_lcd_rgb_panel_restart()` ne fait qu'UNE chose : poser le bit
+# `need_restart`. Ce bit n'est LU que dans la branche `#else` de
+# `lcd_rgb_panel_try_restart_transmission()` (esp_lcd_panel_rgb.c:1149-1165).
+# Sous CONFIG_LCD_RGB_RESTART_IN_VSYNC=y — la configuration livrée — la relance
+# est inconditionnelle à chaque VBlank et le bit n'est jamais consulté : le
+# recalage événementiel de `dn_recal` serait INERTE, et tout « le recalage n'a
+# rien changé » observé dans ce build serait une NON-MESURE.
+#
+# Mesurer AC5 impose donc de rebâtir avec le symbole à `n`. Ce fichier est cette
+# branche, et il vit dans le dépôt plutôt que dans une manipulation manuelle
+# pour que la mesure soit REJOUABLE — c'est la même raison qui a fait mettre
+# num_fbs en NVS plutôt qu'en #define.
+#
+# ── COMMENT LE JOUER ─────────────────────────────────────────────────────────
+#   cd firmware/desknode
+#   idf.py -B build-ac5 \
+#     -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.ac5-double-tampon" \
+#     -D SDKCONFIG=sdkconfig.ac5 build
+#   idf.py -B build-ac5 -p /dev/ttyACM0 flash
+#   puis sur la carte :  set fbs 2   ·  reboot  ·  ui off  ·  recal 1
+#   et alterner les scènes à l'œil, comme les 7 de la session dn1-2.
+# Le build nominal (`build/`, `sdkconfig`) n'est PAS touché : les deux
+# configurations coexistent, et revenir à la livrée est un `idf.py build`.
+#
+# ── CE QU'ON SAIT DÉJÀ DE CETTE BRANCHE, ET QU'IL FAUT ATTENDRE ──────────────
+# ⚠️ Avec ce symbole à `n`, dn1-2 a MESURÉ un « cadrage décalé EN PERMANENCE »
+#    dès le boot : l'image est coupée en deux, la partie droite revenant à
+#    gauche. Ce n'est PAS une panne, c'est le défaut que RESTART_IN_VSYNC=y
+#    corrigeait — et c'est précisément ce que le recalage événementiel doit
+#    rattraper. Un écran décalé au démarrage de cette branche est donc le
+#    comportement ATTENDU, pas un symptôme à diagnostiquer.
+
+# Défaut IDF = n. On y revient EXPLICITEMENT : sans ça, le bit posé par
+# esp_lcd_rgb_panel_restart() n'est jamais lu et dn_recal ne mesure rien.
+CONFIG_LCD_RGB_RESTART_IN_VSYNC=n

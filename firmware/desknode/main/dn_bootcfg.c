@@ -12,6 +12,7 @@ static const char *TAG = "dn_cfg";
 #define DN_KEY_BOUNCE "bounce_px"
 #define DN_KEY_DRAW_LINES "draw_lines"
 #define DN_KEY_DRAW_PSRAM "draw_psram"
+#define DN_KEY_LVGL_CORE "lvgl_core"
 
 /*
  * Défauts = LA CONFIGURATION DE RÉFÉRENCE retenue par la story dn1-2, pour
@@ -73,6 +74,15 @@ static const char *TAG = "dn_cfg";
 #define DN_DEFAULT_BOUNCE_PX 0
 #define DN_DEFAULT_DRAW_LINES 64
 #define DN_DEFAULT_DRAW_PSRAM 0
+/*
+ *   lvgl_core = 0 : la tâche LVGL sur le CŒUR 0, avec le reste du pipeline
+ *                   d'affichage. Le premier choix avait été le cœur 1, pour que
+ *                   `cpu` sépare le rendu des tâches console — raison honnête,
+ *                   conséquence non anticipée : les deux cœurs se sont mis à
+ *                   travailler simultanément sur la mémoire externe, ce que
+ *                   dn1-2 n'avait jamais eu. Variable de mesure, pas de confort.
+ */
+#define DN_DEFAULT_LVGL_CORE 0
 
 static esp_err_t open_nvs(nvs_open_mode_t mode, nvs_handle_t *out)
 {
@@ -122,7 +132,7 @@ static const char *bounce_px_refus(int32_t v)
 static const char *draw_lines_refus(int32_t v)
 {
     if (v < DN_DRAW_LINES_MIN) {
-        return "en dessous du plancher (le coût fixe par flush dominerait)";
+        return "en dessous du plancher (l'attente de synchro exploserait)";
     }
     if (v > DN_DRAW_LINES_MAX) {
         return "au-dessus du plafond de RAM interne (carte non démarrable)";
@@ -153,6 +163,7 @@ esp_err_t dn_bootcfg_load(dn_bootcfg_t *out)
     out->bounce_px = DN_DEFAULT_BOUNCE_PX;
     out->draw_lines = DN_DEFAULT_DRAW_LINES;
     out->draw_psram = DN_DEFAULT_DRAW_PSRAM;
+    out->lvgl_core = DN_DEFAULT_LVGL_CORE;
 
     nvs_handle_t h;
     if (open_nvs(NVS_READONLY, &h) != ESP_OK) {
@@ -215,6 +226,18 @@ esp_err_t dn_bootcfg_load(dn_bootcfg_t *out)
         log_lecture_refusee(DN_KEY_DRAW_PSRAM, err, DN_DEFAULT_DRAW_PSRAM);
     }
 
+    err = nvs_get_i32(h, DN_KEY_LVGL_CORE, &v);
+    if (err == ESP_OK) {
+        if (v >= -1 && v <= 1) {
+            out->lvgl_core = (int)v;
+        } else {
+            ESP_LOGW(TAG, "lvgl_core=%ld hors de [-1, 1] : défaut %d appliqué",
+                     (long)v, DN_DEFAULT_LVGL_CORE);
+        }
+    } else {
+        log_lecture_refusee(DN_KEY_LVGL_CORE, err, DN_DEFAULT_LVGL_CORE);
+    }
+
     nvs_close(h);
     return ESP_OK;
 }
@@ -270,6 +293,14 @@ esp_err_t dn_bootcfg_set_draw_psram(int psram)
     return set_i32(DN_KEY_DRAW_PSRAM, psram);
 }
 
+esp_err_t dn_bootcfg_set_lvgl_core(int core)
+{
+    if (core < -1 || core > 1) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    return set_i32(DN_KEY_LVGL_CORE, core);
+}
+
 esp_err_t dn_bootcfg_reset(void)
 {
     nvs_handle_t h;
@@ -293,4 +324,8 @@ void dn_bootcfg_log(const dn_bootcfg_t *cfg)
              "                draw_lines=%d (%d o) en %s", cfg->draw_lines,
              (int)(DN_LCD_H_RES * cfg->draw_lines * 2),
              cfg->draw_psram ? "PSRAM" : "RAM interne DMA");
+    ESP_LOGI(TAG, "                tâche LVGL sur %s",
+             cfg->lvgl_core < 0 ? "aucun cœur imposé" :
+             cfg->lvgl_core == 0 ? "le cœur 0 (avec le pipeline d'affichage)"
+                                 : "le cœur 1 (en face du pipeline)");
 }

@@ -9,6 +9,8 @@
 #include "dn_display.h"
 #include "dn_measure.h"
 #include "dn_pins.h"
+#include "dn_recal.h"
+#include "esp_cache.h"
 #include "esp_check.h"
 #include "esp_heap_caps.h"
 #include "esp_lcd_panel_ops.h"
@@ -57,6 +59,14 @@ static esp_err_t s_asset_err = ESP_OK;
 
 static dn_vsync_sub_t s_vsync_sub = -1;
 static volatile dn_flush_sync_t s_sync = DN_FLUSH_SYNC_VSYNC;
+static volatile dn_flush_path_t s_path = DN_FLUSH_PATH_BITMAP;
+/*
+ * Mode DIRECT : LVGL dessine dans les DEUX framebuffers du driver et on bascule.
+ * Décidé au boot par num_fbs, jamais à chaud — les framebuffers sont alloués une
+ * fois, et le mode de rendu de LVGL se fixe avec eux.
+ */
+static bool s_direct_mode;
+static int s_affinity = -1;
 static volatile bool s_first_frame;
 static volatile bool s_label_shown = true;
 static volatile bool s_anim_on;
@@ -99,6 +109,51 @@ bool dn_flush_sync_from_name(const char *nom, dn_flush_sync_t *out)
     return false;
 }
 
+const char *dn_flush_path_name(dn_flush_path_t p)
+{
+    switch (p) {
+    case DN_FLUSH_PATH_BITMAP:
+        return "bitmap";
+    case DN_FLUSH_PATH_DIRECT:
+        return "direct";
+    default:
+        return "?";
+    }
+}
+
+bool dn_flush_path_from_name(const char *nom, dn_flush_path_t *out)
+{
+    for (int i = 0; i < DN_FLUSH_PATH_COUNT; i++) {
+        if (strcasecmp(nom, dn_flush_path_name((dn_flush_path_t)i)) == 0) {
+            *out = (dn_flush_path_t)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+dn_flush_path_t dn_ui_get_path(void) { return s_path; }
+
+esp_err_t dn_ui_set_path(dn_flush_path_t p)
+{
+    if (p >= DN_FLUSH_PATH_COUNT) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (p == DN_FLUSH_PATH_DIRECT && dn_display_num_fbs() != 1) {
+        /* Refus explicite plutôt que dessin dans le mauvais tampon : à plusieurs
+         * framebuffers, le tampon de DESSIN n'est pas celui que la DMA lit, et
+         * écrire dedans sans passer par la bascule du driver n'afficherait
+         * simplement jamais rien. Un défaut silencieux de plus. */
+        ESP_LOGE(TAG,
+                 "chemin « direct » refusé : num_fbs=%d. Il n'a de sens qu'à UN "
+                 "framebuffer, où le tampon de dessin EST le tampon visible.",
+                 dn_display_num_fbs());
+        return ESP_ERR_INVALID_STATE;
+    }
+    s_path = p;
+    return ESP_OK;
+}
+
 /* ── Le flush ─────────────────────────────────────────────────────────────── */
 
 static void dn_ui_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
@@ -112,6 +167,25 @@ static void dn_ui_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px_m
      * partiel coûte 27 ms » se lirait comme un problème de bande passante alors
      * que ce serait la synchro qui attend sa trame. Deux chiffres, deux causes.
      */
+    if (s_direct_mode && !lv_display_flush_is_last(disp)) {
+        /*
+         * EN MODE DIRECT, `px_map` EST L'UN DES DEUX FRAMEBUFFERS : LVGL y a
+         * déjà écrit, il n'y a rien à recopier. Tant que ce n'est pas le dernier
+         * appel du cycle, la seule chose à faire est de compter et de rendre la
+         * main — la bascule ne se joue qu'une fois, quand tout est dessiné.
+         * Rendre la trame à chaque zone sale afficherait un écran à moitié
+         * rafraîchi, c'est-à-dire fabriquerait le déchirement qu'on vient
+         * d'éliminer.
+         */
+        s_n_flush++;
+        s_px += w * h;
+        if (w * h > s_max_px) {
+            s_max_px = w * h;
+        }
+        lv_display_flush_ready(disp);
+        return;
+    }
+
     int64_t t0 = esp_timer_get_time();
     switch (s_sync) {
     case DN_FLUSH_SYNC_VSYNC:
@@ -135,13 +209,57 @@ static void dn_ui_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px_m
     }
     int64_t t1 = esp_timer_get_time();
 
-    /* ⚠️ `esp_lcd_panel_draw_bitmap` prend des bornes de fin EXCLUSIVES, alors
-     * que `lv_area_t` a des bornes INCLUSIVES. Le +1 n'est pas une marge : sans
-     * lui, la dernière colonne et la dernière ligne de chaque zone sale ne
-     * seraient jamais recopiées, et le défaut se verrait comme un liseré rémanent
-     * d'un pixel — le genre d'artefact qu'on attribue à la dalle. */
-    esp_lcd_panel_draw_bitmap(s_panel, area->x1, area->y1, area->x2 + 1,
-                              area->y2 + 1, px_map);
+    if (s_direct_mode) {
+        /*
+         * LA BASCULE. `px_map` pointe dans l'un des framebuffers du driver, donc
+         * `draw_bitmap` prend la branche « le draw buffer FAIT PARTIE du frame
+         * buffer » : il ne recopie rien, il change `cur_fb_index` et réaccroche
+         * la queue des liens DMA. Zéro octet copié — c'est TOUT l'intérêt du
+         * double tampon, et c'est ce qui supprime l'écriture CPU dans le tampon
+         * que la DMA balaie (la cause mesurée du clignotement à 1 FB).
+         */
+        esp_lcd_panel_draw_bitmap(s_panel, 0, 0, DN_LCD_H_RES, DN_LCD_V_RES,
+                                  px_map);
+        /* ⚠️ On arme le recalage NOUS-MÊMES : ce chemin court-circuite
+         * `dn_display_present()`, qui est l'endroit où l'armement vit d'habitude.
+         * L'oublier ici rendrait le double tampon inutilisable sous LVGL alors
+         * qu'il vient d'être prouvé réparable — et le symptôme serait « ça
+         * marche en `scene`, pas en LVGL », le plus trompeur qui soit. */
+        dn_recal_arm();
+    } else if (s_path == DN_FLUSH_PATH_DIRECT) {
+        /*
+         * Écriture DIRECTE dans le framebuffer visible, puis resynchronisation
+         * des SEULES lignes salies. À num_fbs=1, `dn_display_draw_buffer()` rend
+         * le tampon que la DMA lit : il n'y a pas de bascule à faire, donc rien
+         * à demander au driver.
+         *
+         * Le gain visé n'est PAS la copie (elle est identique, mêmes octets)
+         * mais le parcours de cache : h x 960 octets au lieu des 614 400 que
+         * `draw_bitmap` resynchronise systématiquement.
+         */
+        uint16_t *fb = dn_display_draw_buffer();
+        const uint16_t *src = (const uint16_t *)px_map;
+        for (uint32_t y = 0; y < h; y++) {
+            memcpy(fb + (size_t)(area->y1 + (int)y) * DN_LCD_H_RES + area->x1,
+                   src + (size_t)y * w, (size_t)w * 2);
+        }
+        /* UNALIGNED : la première ligne sale ne tombe pas sur une frontière de
+         * ligne de cache, et l'exiger ferait refuser l'appel avec
+         * ESP_ERR_INVALID_ARG — le driver lui-même pose ce drapeau ici. */
+        esp_cache_msync(fb + (size_t)area->y1 * DN_LCD_H_RES,
+                        (size_t)h * DN_LCD_H_RES * 2,
+                        ESP_CACHE_MSYNC_FLAG_DIR_C2M |
+                            ESP_CACHE_MSYNC_FLAG_UNALIGNED);
+    } else {
+        /* ⚠️ `esp_lcd_panel_draw_bitmap` prend des bornes de fin EXCLUSIVES,
+         * alors que `lv_area_t` a des bornes INCLUSIVES. Le +1 n'est pas une
+         * marge : sans lui, la dernière colonne et la dernière ligne de chaque
+         * zone sale ne seraient jamais recopiées, et le défaut se verrait comme
+         * un liseré rémanent d'un pixel — le genre d'artefact qu'on attribue à
+         * la dalle. */
+        esp_lcd_panel_draw_bitmap(s_panel, area->x1, area->y1, area->x2 + 1,
+                                  area->y2 + 1, px_map);
+    }
     int64_t t2 = esp_timer_get_time();
 
     uint32_t px = w * h;
@@ -283,6 +401,31 @@ esp_err_t dn_ui_init(const dn_bootcfg_t *cfg, esp_err_t asset_err)
 
     s_draw_lines = cfg->draw_lines;
     s_draw_psram = cfg->draw_psram != 0;
+    /*
+     * ── LE MODE DE RENDU SE DÉDUIT DE num_fbs, ET C'EST UN RÉSULTAT DE MESURE ──
+     *
+     * À UN framebuffer, LVGL rend en PARTIEL et notre flush recopie la zone sale
+     * dans le tampon que la DMA est en train de balayer. MESURÉ le 2026-08-15 :
+     * cette écriture-là fait décrocher la DMA et l'image entière se déplace le
+     * temps d'une trame, à CHAQUE mise à jour du label. Trois hypothèses ont été
+     * éliminées à l'œil, chacune avec son témoin (lecture flash du fond,
+     * parcours de cache pleine plage de draw_bitmap, débit instantané de la
+     * copie) : aucune n'y change rien, et LVGL en pause l'écran est parfaitement
+     * stable. Ce n'est donc pas le VOLUME écrit, c'est le FAIT d'écrire.
+     *
+     * À DEUX framebuffers, LVGL rend en DIRECT : il dessine dans le tampon caché
+     * et le flush ne fait QUE basculer — zéro octet recopié, aucune écriture
+     * dans le tampon balayé. C'est la seule parade connue, et elle n'est
+     * devenue disponible qu'une fois AC5 prouvé sur la carte (les bascules vers
+     * fb[0] ET fb[1] atteignent la dalle sous recalage événementiel).
+     *
+     * ⚠️ CE MODE EXIGE LA BRANCHE RESTART_IN_VSYNC=n. Avec le symbole à `y`, le
+     *    double tampon est cassé (dn1-2, §4 bis) et le recalage est inerte : on
+     *    afficherait une bascule sur deux, en silence. dn_recal_log_etat() le
+     *    dit au boot ; ici on ne peut pas le refuser, parce que c'est bien la
+     *    configuration qu'on veut mesurer.
+     */
+    s_direct_mode = (cfg->num_fbs >= 2);
 
     s_int_avant = dn_measure_internal_free();
     s_psram_avant = dn_measure_psram_free();
@@ -296,13 +439,32 @@ esp_err_t dn_ui_init(const dn_bootcfg_t *cfg, esp_err_t asset_err)
                         "abonnement vsync du flush refusé");
 
     lvgl_port_cfg_t port_cfg = ESP_LVGL_PORT_INIT_CONFIG();
-    /* Défauts du portage conservés (prio 4, pile 7168, tick 5 ms), à UNE
-     * exception près : la tâche est épinglée au CŒUR 1. Raison : le REPL, la
-     * console USB et les tâches de mesure vivent sur le cœur 0 ; y ajouter le
-     * rendu ferait que `cpu` mesurerait la somme des deux sur un seul cœur et
-     * qu'une commande tapée pendant une mesure la décalerait. Séparer les deux
-     * rend la charge d'AC8 attribuable. */
-    port_cfg.task_affinity = 1;
+    /*
+     * ⚠️ L'AFFINITÉ DE LA TÂCHE LVGL EST UNE VARIABLE MESURÉE, pas un réglage de
+     *    confort — et sa première valeur a été une régression que j'ai
+     *    introduite.
+     *
+     * La tâche avait été épinglée au CŒUR 1, pour que `cpu` sépare le rendu des
+     * tâches console qui vivent sur le cœur 0 et rende la charge d'AC8
+     * attribuable. Raison honnête, conséquence non anticipée : le pipeline
+     * d'affichage entier (init du panneau, ISR vsync, et le chemin brut de
+     * dn1-2 qui ne montre AUCUN artefact) vit sur le cœur 0. Mettre le rendu en
+     * face, sur l'autre cœur, fait travailler les deux cœurs SIMULTANÉMENT sur
+     * la mémoire externe — là où dn1-2 n'avait jamais qu'un seul demandeur.
+     *
+     * Le témoin qui a rendu cette variable suspecte : le chemin brut écrit
+     * 614 400 octets dans le framebuffer visible, six fois de suite, SANS aucun
+     * artefact (constat owner) — alors qu'un flush LVGL de 31 784 octets, vingt
+     * fois plus petit, déplace l'image entière. Un défaut qui empire quand on
+     * écrit VINGT FOIS MOINS n'est pas un défaut de bande passante.
+     *
+     * L'affinité passe par NVS (`set core <-1|0|1>`) comme num_fbs et
+     * draw_lines, et pour la même raison : l'A/B se rejoue sans reflasher, donc
+     * sans ajouter le binaire comme deuxième variable. Elle ne peut pas changer
+     * à chaud — `lvgl_port_init()` crée la tâche une fois.
+     */
+    port_cfg.task_affinity = cfg->lvgl_core;
+    s_affinity = cfg->lvgl_core;
     ESP_RETURN_ON_ERROR(lvgl_port_init(&port_cfg), TAG, "lvgl_port_init");
 
     lvgl_port_display_cfg_t disp_cfg = {
@@ -312,7 +474,14 @@ esp_err_t dn_ui_init(const dn_bootcfg_t *cfg, esp_err_t asset_err)
         .io_handle = NULL,
         .panel_handle = s_panel,
         .control_handle = NULL,
-        .buffer_size = (uint32_t)(DN_LCD_H_RES * s_draw_lines),
+        /* En mode direct, le portage IGNORE cette valeur et la remplace par
+         * hres x vres — les tampons sont les framebuffers eux-mêmes. On la pose
+         * quand même à la bonne chose pour que le refus éventuel du portage
+         * (« direct mode must using full buffer ») ne soit pas déclenché par
+         * nous. */
+        .buffer_size = s_direct_mode
+                           ? (uint32_t)(DN_LCD_H_RES * DN_LCD_V_RES)
+                           : (uint32_t)(DN_LCD_H_RES * s_draw_lines),
         /* Pas de second draw buffer : notre flush est SYNCHRONE (il rend la main
          * une fois la copie faite), donc LVGL n'aurait rien à rendre en parallèle
          * pendant qu'on copie. Le second tampon coûterait autant que le premier
@@ -335,15 +504,18 @@ esp_err_t dn_ui_init(const dn_bootcfg_t *cfg, esp_err_t asset_err)
              * (SPI/I80) — le poser ici afficherait des couleurs permutées. */
             .swap_bytes = 0,
             .full_refresh = 0,
-            .direct_mode = 0,
+            .direct_mode = s_direct_mode ? 1 : 0,
         },
     };
     const lvgl_port_display_rgb_cfg_t rgb_cfg = {
         .flags = {
             .bb_mode = 0, /* le bounce buffer est DISQUALIFIÉ (watchdog) — dn1-2 */
-            /* 0 IMPOSÉ : le portage exige num_fbs>=2 pour cette option
-             * (esp_lvgl_port_disp.c:367) et la config arbitrée est num_fbs=1. */
-            .avoid_tearing = 0,
+            /* Le portage exige num_fbs>=2 pour cette option
+             * (esp_lvgl_port_disp.c:367) : elle ne s'allume donc qu'avec le
+             * double tampon. Ce qu'elle fait ici : donner à LVGL les DEUX
+             * framebuffers du driver comme tampons de rendu, au lieu d'allouer
+             * un draw buffer partiel. */
+            .avoid_tearing = s_direct_mode ? 1 : 0,
         },
     };
 
@@ -370,13 +542,26 @@ esp_err_t dn_ui_init(const dn_bootcfg_t *cfg, esp_err_t asset_err)
     s_int_apres = dn_measure_internal_free();
     s_psram_apres = dn_measure_psram_free();
 
-    ESP_LOGI(TAG,
-             "LVGL %d.%d.%d prêt : rendu PARTIEL, draw buffer %d x %d px "
-             "(%d o) en %s",
-             LVGL_VERSION_MAJOR, LVGL_VERSION_MINOR, LVGL_VERSION_PATCH,
-             DN_LCD_H_RES, s_draw_lines, DN_LCD_H_RES * s_draw_lines * 2,
-             s_draw_psram ? "PSRAM" : "RAM interne DMA");
-    ESP_LOGI(TAG, "  synchro du flush : %s", dn_flush_sync_name(s_sync));
+    if (s_direct_mode) {
+        ESP_LOGI(TAG,
+                 "LVGL %d.%d.%d prêt : rendu DIRECT sur les %d framebuffers du "
+                 "driver — le flush BASCULE, il ne recopie rien",
+                 LVGL_VERSION_MAJOR, LVGL_VERSION_MINOR, LVGL_VERSION_PATCH,
+                 dn_display_num_fbs());
+        ESP_LOGI(TAG,
+                 "  draw_lines=%d IGNORÉ dans ce mode : les tampons de rendu "
+                 "SONT les framebuffers.",
+                 s_draw_lines);
+    } else {
+        ESP_LOGI(TAG,
+                 "LVGL %d.%d.%d prêt : rendu PARTIEL, draw buffer %d x %d px "
+                 "(%d o) en %s",
+                 LVGL_VERSION_MAJOR, LVGL_VERSION_MINOR, LVGL_VERSION_PATCH,
+                 DN_LCD_H_RES, s_draw_lines, DN_LCD_H_RES * s_draw_lines * 2,
+                 s_draw_psram ? "PSRAM" : "RAM interne DMA");
+    }
+    ESP_LOGI(TAG, "  flush : synchro « %s », chemin « %s »",
+             dn_flush_sync_name(s_sync), dn_flush_path_name(s_path));
     ESP_LOGI(TAG,
              "  coût en tas : RAM interne %u -> %u o (%d), PSRAM %u -> %u o (%d)",
              (unsigned)s_int_avant, (unsigned)s_int_apres,
@@ -633,3 +818,5 @@ void dn_ui_get_cout(size_t *interne_avant, size_t *interne_apres,
 
 int dn_ui_draw_lines(void) { return s_draw_lines; }
 bool dn_ui_draw_in_psram(void) { return s_draw_psram; }
+bool dn_ui_direct_mode(void) { return s_direct_mode; }
+int dn_ui_affinity(void) { return s_affinity; }

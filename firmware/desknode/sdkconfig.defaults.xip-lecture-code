@@ -1,0 +1,45 @@
+# DeskNode — BRANCHE D'ESSAI « XIP pour les LECTURES de code » (story dn1-3).
+#
+# ── CE QU'ELLE ÉPROUVE ───────────────────────────────────────────────────────
+# Un défaut MESURÉ en dn1-3 : à chaque cycle de rafraîchissement LVGL, l'image
+# entière se déplace le temps d'une trame — « ça clignote, comme un déplacement
+# rapide » (constat owner, 2026-08-15). Cinq causes ont été éliminées à l'œil,
+# chacune avec son témoin :
+#   1. lecture du fond depuis la flash mmap-ée   -> `ui bg psram`   : IDENTIQUE
+#   2. parcours de cache pleine plage de
+#      draw_bitmap (614 400 o par flush)         -> `flush path direct` : IDENTIQUE
+#   3. débit instantané de la copie
+#      (5 rafales de 249 us au lieu d'une de
+#      1 113 us, mêmes octets)                   -> `set lines 8`   : IDENTIQUE
+#   4. écriture dans le tampon que la DMA balaie -> num_fbs=2 + rendu DIRECT
+#                                                   (le flush ne fait que
+#                                                   basculer) : IDENTIQUE
+#   5. témoin négatif : LVGL en pause, plus aucune écriture -> PARFAITEMENT STABLE
+#
+# Ce qui reste commun à tous les cas où ça clignote, et absent du témoin négatif,
+# c'est L'EXÉCUTION DU CODE LVGL. Le bandeau de boot le chiffre : le segment 3
+# fait 483 268 octets « map », c'est-à-dire exécutés depuis la FLASH à travers le
+# cache. Chaque cycle de rendu provoque donc des milliers de défauts de cache
+# vers la flash — sur SPI0, le contrôleur que la PSRAM partage, et que la DMA de
+# la dalle lit déjà à 23,0 Mo/s en continu (§5.3 du fichier hardware/).
+#
+# ── POURQUOI CE N'EST PAS UNE REDITE DE LA RÉFUTATION DE dn1-2 ───────────────
+# dn1-2 a RÉFUTÉ XIP, et sa réfutation reste valable TELLE QU'ELLE EST ÉCRITE :
+# elle portait sur un stimulus d'ÉCRITURE flash, et sdkconfig.defaults dit
+# lui-même pourquoi le mécanisme ne s'y appliquait pas — « XIP ne retire de la
+# flash que les LECTURES de code et de constantes ; notre stimulus fait des
+# ÉCRITURES flash explicites, qui bloquent SPI0 de toute façon ».
+# Le défaut de dn1-3 est fait de LECTURES. C'est le cas d'application que la
+# réfutation de dn1-2 excluait explicitement de son périmètre.
+#
+# ── COMMENT LE JOUER ─────────────────────────────────────────────────────────
+#   idf.py -B build-xip \
+#     -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.ac5-double-tampon;sdkconfig.defaults.xip-lecture-code" \
+#     -D SDKCONFIG=sdkconfig.xip build
+# ⚠️ COÛT ANNONCÉ, à re-mesurer et non à recopier : dn1-2 avait chiffré
+#    −342 876 o de PSRAM et +1,6 Ko de binaire. `mem` tranchera.
+
+# Défaut IDF = n. Déplace le code et les constantes de la flash vers la PSRAM :
+# les défauts de cache d'exécution ne passent plus par SPI0 côté flash.
+CONFIG_SPIRAM_FETCH_INSTRUCTIONS=y
+CONFIG_SPIRAM_RODATA=y

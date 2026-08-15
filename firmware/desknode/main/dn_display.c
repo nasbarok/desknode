@@ -47,6 +47,7 @@ static int s_num_fbs;
 static size_t s_bounce_px;
 static int s_draw_index; /* index du framebuffer où l'on dessine */
 static int s_backlight_pct = -1; /* -1 = LEDC pas encore monté */
+static int s_backlight_freq;
 static bool s_disp_on;
 
 /*
@@ -74,7 +75,32 @@ static bool s_disp_on;
 #define DN_BL_LEDC_TIMER LEDC_TIMER_0
 #define DN_BL_LEDC_CHANNEL LEDC_CHANNEL_0
 #define DN_BL_LEDC_RES LEDC_TIMER_10_BIT
-#define DN_BL_LEDC_FREQ_HZ 5000
+/*
+ * ⚠️ 24 kHz, ET C'EST UN RENVERSEMENT DU PATTERN DE RÉFÉRENCE.
+ *
+ * `esp_bsp_generic.c` d'Espressif pose 5 kHz, et notre première version l'a
+ * repris tel quel en écrivant « sifflement inaudible en pratique ». MESURÉ FAUX
+ * SUR CETTE CARTE le 2026-08-15 : à 3 % de duty, l'owner ENTEND distinctement
+ * un sifflement, oreille approchée. La phrase venait d'un BSP générique, pas de
+ * ce matériel — c'était une prédiction déguisée en acquis.
+ *
+ * A/B joué à luminosité STRICTEMENT constante (3 %), une seule variable, avec
+ * `ledc_set_freq` qui reprogramme le diviseur sans toucher au duty :
+ *      5 000 Hz -> sifflement AUDIBLE
+ *     24 000 Hz -> plus rien à l'oreille
+ * 24 kHz est au-dessus de la limite haute de l'audition adulte (~18 kHz) et
+ * laisse de la marge sous le plafond du couple (fréquence x 1 024 crans).
+ *
+ * ⚠️ CE QUE CE CHANGEMENT NE CORRIGE PAS, et qu'il ne faut pas lui attribuer :
+ *    le PAPILLOTEMENT vu à 3 % subsiste à 24 kHz. Témoin : LVGL mis en pause à
+ *    luminosité identique, l'image est parfaitement stable. Ce papillotement-là
+ *    n'est donc PAS un défaut du rétroéclairage — c'est l'artefact de redessin
+ *    LVGL documenté en tête de dn_ui.c, que la basse luminosité rend seulement
+ *    plus visible.
+ */
+#define DN_BL_LEDC_FREQ_HZ 24000
+#define DN_BL_FREQ_MIN 200   /* en dessous, l'œil voit le papillotement */
+#define DN_BL_FREQ_MAX 40000 /* 40 kHz x 1024 crans = 40,96 MHz, tenable sur APB 80 MHz */
 #define DN_BL_DUTY_MAX ((1u << 10) - 1u) /* 1023 */
 
 /* ────────────────────────────────────────────────────────────────────────── */
@@ -343,9 +369,12 @@ static esp_err_t backlight_bring_up(void)
                         "canal LEDC du rétroéclairage (GPIO%d) refusé",
                         DN_PIN_BACKLIGHT);
     s_backlight_pct = 0;
+    s_backlight_freq = DN_BL_LEDC_FREQ_HZ;
     ESP_LOGI(TAG,
-             "rétroéclairage en LEDC : GPIO%d, %d bits (%u crans) @ %d Hz, "
-             "duty 0 — il ne montera qu'après le remplissage du framebuffer",
+             "rétroéclairage en LEDC : GPIO%d, %d bits (%u crans) @ %d Hz "
+             "(24 kHz et non les 5 kHz du BSP : mesuré, à 5 kHz la carte "
+             "SIFFLE à duty bas), duty 0 — il ne montera qu'après le "
+             "remplissage du framebuffer",
              DN_PIN_BACKLIGHT, 10, (unsigned)(DN_BL_DUTY_MAX + 1),
              DN_BL_LEDC_FREQ_HZ);
     return ESP_OK;
@@ -414,6 +443,35 @@ esp_err_t dn_display_backlight_pct(int pct)
 }
 
 int dn_display_backlight_pct_state(void) { return s_backlight_pct; }
+
+esp_err_t dn_display_backlight_freq(int hz)
+{
+    if (s_backlight_pct < 0) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (hz < DN_BL_FREQ_MIN || hz > DN_BL_FREQ_MAX) {
+        ESP_LOGE(TAG, "fréquence %d Hz hors de [%d, %d] — rien touché", hz,
+                 DN_BL_FREQ_MIN, DN_BL_FREQ_MAX);
+        return ESP_ERR_INVALID_ARG;
+    }
+    /* `ledc_set_freq` reprogramme le diviseur du timer SANS toucher au duty du
+     * canal : la luminosité ne saute pas pendant l'essai, et l'oreille compare
+     * deux fréquences à luminosité CONSTANTE — une seule variable. */
+    esp_err_t err = ledc_set_freq(DN_BL_LEDC_MODE, DN_BL_LEDC_TIMER, (uint32_t)hz);
+    if (err == ESP_OK) {
+        s_backlight_freq = hz;
+    } else {
+        ESP_LOGE(TAG,
+                 "fréquence %d Hz refusée : %s — l'horloge de la source LEDC ne "
+                 "tient pas le produit (fréquence x %u crans). État inchangé "
+                 "(%d Hz).",
+                 hz, esp_err_to_name(err), (unsigned)(DN_BL_DUTY_MAX + 1),
+                 s_backlight_freq);
+    }
+    return err;
+}
+
+int dn_display_backlight_freq_state(void) { return s_backlight_freq; }
 
 esp_err_t dn_display_backlight_ramp(int pct_cible, int duree_ms)
 {

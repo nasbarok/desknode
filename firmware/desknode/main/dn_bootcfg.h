@@ -29,6 +29,13 @@ typedef struct {
      * (le binaire). */
     int draw_lines; /* hauteur du draw buffer LVGL, en lignes */
     int draw_psram; /* 0 = RAM interne DMA, 1 = PSRAM */
+    /* Cœur d'exécution de la tâche LVGL : -1 (pas d'affinité), 0 ou 1.
+     * ⚠️ Ce n'est PAS un réglage de confort. Le pipeline d'affichage entier
+     *    (init du panneau, ISR vsync, chemin brut de dn1-2) vit sur le cœur 0 ;
+     *    mettre le rendu en face fait travailler les deux cœurs simultanément
+     *    sur la mémoire externe, ce que dn1-2 n'a jamais eu. C'est une VARIABLE
+     *    DE MESURE, d'où la clé NVS. */
+    int lvgl_core;
 } dn_bootcfg_t;
 
 /*
@@ -84,6 +91,7 @@ esp_err_t dn_bootcfg_set_num_fbs(int num_fbs);
 esp_err_t dn_bootcfg_set_bounce_px(int bounce_px);
 esp_err_t dn_bootcfg_set_draw_lines(int lines);
 esp_err_t dn_bootcfg_set_draw_psram(int psram);
+esp_err_t dn_bootcfg_set_lvgl_core(int core);
 
 /* Efface la configuration : le prochain boot repart sur les défauts. */
 esp_err_t dn_bootcfg_reset(void);

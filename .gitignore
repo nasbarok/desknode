@@ -1,11 +1,19 @@
 # ESP-IDF / build
 build/
+# ⚠️ Les BRANCHES D'ESSAI construisent dans leur propre répertoire (`idf.py -B`)
+# pour ne pas écraser le build livré. Sans ce motif, `git add -A` happe ~470 Mo
+# d'objets — c'est arrivé une fois, en dn1-3.
+build-*/
 managed_components/
 dependencies.lock
 
 # sdkconfig est GÉNÉRÉ (par set-target puis menuconfig) : il ne va pas au dépôt.
 # Ce qui fait foi, c'est sdkconfig.defaults, qui lui est versionné.
+# ⚠️ Le motif couvre AUSSI les sdkconfig des branches d'essai (sdkconfig.ac5,
+#    sdkconfig.xip) — générés eux aussi. Ce qui est versionné, ce sont les
+#    fichiers `sdkconfig.defaults*`, qui eux décrivent une INTENTION.
 sdkconfig
+sdkconfig.[!d]*
 sdkconfig.old
 
 # Python

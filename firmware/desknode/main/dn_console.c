@@ -394,12 +394,14 @@ static int cmd_cfg(int argc, char **argv)
     dn_bootcfg_t cfg;
     dn_bootcfg_load(&cfg);
     printf("config de boot (NVS) : num_fbs=%d bounce_px=%d draw_lines=%d "
-           "draw_psram=%d\n",
-           cfg.num_fbs, cfg.bounce_px, cfg.draw_lines, cfg.draw_psram);
+           "draw_psram=%d lvgl_core=%d\n",
+           cfg.num_fbs, cfg.bounce_px, cfg.draw_lines, cfg.draw_psram,
+           cfg.lvgl_core);
     printf("config ACTIVE        : num_fbs=%d bounce_px=%u draw_lines=%d "
-           "draw_psram=%d\n",
+           "draw_psram=%d lvgl_core=%d\n",
            dn_display_num_fbs(), (unsigned)dn_display_bounce_px(),
-           dn_ui_draw_lines(), dn_ui_draw_in_psram() ? 1 : 0);
+           dn_ui_draw_lines(), dn_ui_draw_in_psram() ? 1 : 0,
+           dn_ui_affinity());
     printf("⚠️ un `set` ne prend effet qu'au `reboot` : les framebuffers sont\n");
     printf("   alloués une fois, au démarrage. C'est voulu — réallouer à chaud\n");
     printf("   laisserait une PSRAM fragmentée et fausserait la mesure suivante.\n");
@@ -411,7 +413,8 @@ static int cmd_set(int argc, char **argv)
 {
     if (argc < 3) {
         printf("usage : set fbs <1|2|3> | set bounce <px> | set lines <%d..%d> "
-               "| set drawmem <0|1>\n",
+               "| set drawmem <0|1> "
+               "| set core <-1|0|1>\n",
                DN_DRAW_LINES_MIN, DN_DRAW_LINES_MAX);
         return 1;
     }
@@ -419,12 +422,14 @@ static int cmd_set(int argc, char **argv)
     bool cle_bounce = (strcmp(argv[1], "bounce") == 0);
     bool cle_lines = (strcmp(argv[1], "lines") == 0);
     bool cle_drawmem = (strcmp(argv[1], "drawmem") == 0);
-    if (!cle_fbs && !cle_bounce && !cle_lines && !cle_drawmem) {
+    bool cle_core = (strcmp(argv[1], "core") == 0);
+    if (!cle_fbs && !cle_bounce && !cle_lines && !cle_drawmem && !cle_core) {
         /* La clé est vérifiée AVANT la valeur : sinon `set foo bar` reprocherait
          * « bar » à l'opérateur alors que la faute est sur « foo ». */
         printf("clé inconnue : %s\n", argv[1]);
         printf("usage : set fbs <1|2|3> | set bounce <px> | set lines <%d..%d> "
-               "| set drawmem <0|1>\n",
+               "| set drawmem <0|1> "
+               "| set core <-1|0|1>\n",
                DN_DRAW_LINES_MIN, DN_DRAW_LINES_MAX);
         return 1;
     }
@@ -462,6 +467,17 @@ static int cmd_set(int argc, char **argv)
         err = dn_bootcfg_set_draw_psram((int)valeur);
         if (err == ESP_ERR_INVALID_ARG) {
             printf("⚠️ attendu 0 (RAM interne DMA) ou 1 (PSRAM).\n");
+        }
+    } else if (cle_core) {
+        err = dn_bootcfg_set_lvgl_core((int)valeur);
+        if (err == ESP_ERR_INVALID_ARG) {
+            printf("⚠️ attendu -1 (aucune affinité), 0 ou 1.\n");
+        } else if (err == ESP_OK) {
+            printf("⚠️ Ce n'est PAS un réglage de confort : tout le pipeline\n");
+            printf("   d'affichage (init du panneau, ISR vsync, chemin brut de\n");
+            printf("   dn1-2) vit sur le cœur 0. Mettre le rendu EN FACE fait\n");
+            printf("   travailler les deux cœurs simultanément sur la mémoire\n");
+            printf("   externe — ce que dn1-2 n'a jamais eu.\n");
         }
     } else {
         int px = (int)valeur;
@@ -715,12 +731,15 @@ static void bl_usage(void)
     printf("        bl <0..100>         — luminosité en %%\n");
     printf("        bl on | off         — 100 %% / 0 %% (rétrocompat dn1-2)\n");
     printf("        bl ramp <0..100> [ms] — rampe douce (constat AC7)\n");
+    printf("        bl freq <200..40000>  — fréquence PWM (le sifflement)\n");
 }
 
 static int cmd_bl(int argc, char **argv)
 {
     if (argc < 2) {
-        printf("rétroéclairage : %d %% (%s)\n", dn_display_backlight_pct_state(),
+        printf("rétroéclairage : %d %% à %d Hz (%s)\n",
+               dn_display_backlight_pct_state(),
+               dn_display_backlight_freq_state(),
                dn_display_backlight_state() ? "allumé" : "ÉTEINT");
         printf("⚠️ `bl 0` éteint le RÉTROÉCLAIRAGE : dalle NOIRE.\n");
         printf("   `disp off` éteint la SORTIE de la dalle : dalle GRISE éclairée.\n");
@@ -766,6 +785,31 @@ static int cmd_bl(int argc, char **argv)
         printf("rampe terminée à %d %% : %s\n", dn_display_backlight_pct_state(),
                esp_err_to_name(err));
         return (err == ESP_OK) ? 0 : 1;
+    }
+
+    /* ── bl freq <hz> ── */
+    if (strcmp(argv[1], "freq") == 0) {
+        if (argc < 3) {
+            printf("fréquence PWM : %d Hz\n", dn_display_backlight_freq_state());
+            bl_usage();
+            return 1;
+        }
+        long hz = 0;
+        if (!parse_entier(argv[2], &hz)) {
+            printf("« %s » n'est pas un nombre.\n", argv[2]);
+            return 1;
+        }
+        esp_err_t err = dn_display_backlight_freq((int)hz);
+        if (err != ESP_OK) {
+            printf("refusé : %s\n", esp_err_to_name(err));
+            return 1;
+        }
+        printf("fréquence PWM : %ld Hz (luminosité inchangée à %d %%)\n", hz,
+               dn_display_backlight_pct_state());
+        printf("⚠️ 5 000 Hz était le défaut, repris d'un BSP générique avec la\n");
+        printf("   mention « inaudible en pratique ». MESURÉ FAUX sur cette\n");
+        printf("   carte : à 3 %% de duty, ça siffle ET ça papillote.\n");
+        return 0;
     }
 
     /* ── bl on | off (rétrocompatibilité dn1-2) ── */
@@ -818,6 +862,7 @@ static void flush_usage(void)
     printf("usage : flush                   — compteurs\n");
     printf("        flush reset             — remet les compteurs à zéro\n");
     printf("        flush sync off|vsync|fbdone — synchronisation du flush\n");
+    printf("        flush path bitmap|direct    — par où la zone sale entre\n");
     printf("        flush full              — invalide TOUT l'écran (preuve "
            "négative)\n");
 }
@@ -867,6 +912,35 @@ static int cmd_flush(int argc, char **argv)
             printf("   conclusion « pas de tearing » n'est recevable.\n");
         }
         return 0;
+    } else if (argc >= 2 && strcmp(argv[1], "path") == 0) {
+        if (argc < 3) {
+            flush_usage();
+            return 1;
+        }
+        dn_flush_path_t p;
+        if (!dn_flush_path_from_name(argv[2], &p)) {
+            printf("chemin inconnu : %s (bitmap | direct)\n", argv[2]);
+            return 1;
+        }
+        esp_err_t err = dn_ui_set_path(p);
+        if (err != ESP_OK) {
+            printf("refusé : %s\n", esp_err_to_name(err));
+            return 1;
+        }
+        dn_ui_reset_stats();
+        printf("chemin du flush : %s (compteurs remis à zéro)\n",
+               dn_flush_path_name(p));
+        if (p == DN_FLUSH_PATH_BITMAP) {
+            printf("`draw_bitmap` resynchronise 614 400 o de cache À CHAQUE\n");
+            printf("flush, quelle que soit la zone sale. C'est le chemin qui a\n");
+            printf("fait « clignoter l'image comme un déplacement rapide » à\n");
+            printf("chaque incrémentation du label, le 2026-08-15.\n");
+        } else {
+            printf("On écrit les lignes sales dans le framebuffer visible et on\n");
+            printf("ne resynchronise QUE ces lignes-là (~15x moins de parcours\n");
+            printf("de cache). Même travail utile, même nombre d'octets copiés.\n");
+        }
+        return 0;
     } else if (argc >= 2) {
         flush_usage();
         return 1;
@@ -874,10 +948,20 @@ static int cmd_flush(int argc, char **argv)
 
     dn_flush_stats_t st;
     dn_ui_get_stats(&st);
-    printf("synchro : %s · draw buffer : %d x %d px (%d o) en %s\n",
-           dn_flush_sync_name(dn_ui_get_sync()), DN_LCD_H_RES,
-           dn_ui_draw_lines(), DN_LCD_H_RES * dn_ui_draw_lines() * 2,
-           dn_ui_draw_in_psram() ? "PSRAM" : "RAM interne DMA");
+    if (dn_ui_direct_mode()) {
+        printf("rendu : DIRECT sur %d framebuffers — le flush BASCULE, il ne "
+               "recopie rien\n",
+               dn_display_num_fbs());
+        printf("synchro : %s · (chemin et draw buffer sans objet dans ce mode)\n",
+               dn_flush_sync_name(dn_ui_get_sync()));
+    } else {
+        printf("rendu : PARTIEL · synchro : %s · chemin : %s\n",
+               dn_flush_sync_name(dn_ui_get_sync()),
+               dn_flush_path_name(dn_ui_get_path()));
+        printf("draw buffer : %d x %d px (%d o) en %s\n", DN_LCD_H_RES,
+               dn_ui_draw_lines(), DN_LCD_H_RES * dn_ui_draw_lines() * 2,
+               dn_ui_draw_in_psram() ? "PSRAM" : "RAM interne DMA");
+    }
     printf("flushes            : %lu\n", (unsigned long)st.flushes);
     printf("cycles de redessin : %lu\n", (unsigned long)st.cycles);
     if (st.flushes == 0) {
@@ -1324,7 +1408,7 @@ static const esp_console_cmd_t k_cmds[] = {
     DN_CMD("bw", "bande passante mesurée des 3 chemins de copie", cmd_bw),
     DN_CMD("cfg", "cfg | cfg reset — config de boot (NVS), active, ou effacée",
            cmd_cfg),
-    DN_CMD("set", "set fbs <1|2|3> | bounce <px> | lines <8..160> | drawmem <0|1>",
+    DN_CMD("set", "set fbs | bounce | lines | drawmem | core <-1|0|1>",
            cmd_set),
     DN_CMD("reboot", "redémarre pour appliquer un `set`", cmd_reboot),
     DN_CMD("tear", "tear on|vsync|sync|both|flip|off — déchirement BRUT (dn1-2)",
@@ -1332,7 +1416,7 @@ static const esp_console_cmd_t k_cmds[] = {
     DN_CMD("flash", "flash on|off — stimulus d'écriture flash", cmd_flash),
     DN_CMD("ui", "ui [on|off] | ui label on|off | ui bg flash|psram — LVGL", cmd_ui),
     DN_CMD("flush",
-           "flush | reset | sync off|vsync|fbdone | full — le partiel en chiffres",
+           "flush | reset | sync off|vsync|fbdone | path bitmap|direct | full",
            cmd_flush),
     DN_CMD("anim", "anim on [ms] | off — stimulus adverse LVGL (témoin de tearing)",
            cmd_anim),

@@ -54,6 +54,24 @@ int dn_display_backlight_pct_state(void);
  */
 esp_err_t dn_display_backlight_ramp(int pct_cible, int duree_ms);
 
+/*
+ * Fréquence PWM du rétroéclairage, réglable À CHAUD.
+ *
+ * Elle existe parce que la valeur du pattern de référence d'Espressif — 5 kHz —
+ * a été DÉMENTIE par l'oreille de l'owner le 2026-08-15 : à 3 % de duty, la
+ * carte SIFFLE, et l'image papillote. Le commentaire d'origine annonçait
+ * « sifflement inaudible en pratique » ; c'était une prédiction reprise d'un
+ * BSP générique, pas une mesure sur CETTE carte.
+ *
+ * 5 kHz tombe en plein dans la bande où l'oreille est la plus sensible. Monter
+ * au-dessus de ~18 kHz sort du spectre audible pour un adulte. Le plafond est
+ * imposé par le produit (fréquence x 2^résolution) que l'horloge de la source
+ * LEDC peut tenir : à 10 bits et 80 MHz d'APB, la limite théorique est ~78 kHz.
+ * On borne bien en dessous, et le driver refuse de lui-même ce qu'il ne peut pas.
+ */
+esp_err_t dn_display_backlight_freq(int hz);
+int dn_display_backlight_freq_state(void);
+
 /* Façade booléenne héritée de dn1-2 : `false` -> 0 %, `true` -> 100 %.
  * Conservée parce que la discipline de boot et la commande `bl on|off` la
  * lisent — et parce qu'un appelant qui ne veut pas choisir un pourcentage ne

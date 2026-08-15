@@ -23,6 +23,10 @@ idf_component_register(
         esp_driver_gpio
         # dn1-3 : LEDC pilote le rétroéclairage (GPIO6) en PWM.
         esp_driver_ledc
+        # dn1-3 : esp_cache_msync() — le chemin de flush « direct » resynchronise
+        # LUI-MÊME les lignes salies, au lieu de laisser draw_bitmap parcourir
+        # les 614 400 o du framebuffer entier à chaque appel.
+        esp_mm
         # lvgl et esp_lvgl_port ne sont PAS listés ici : le gestionnaire de
         # composants ajoute tout seul à `main` les dépendances déclarées dans
         # main/idf_component.yml. Les répéter créerait deux sources de vérité,
