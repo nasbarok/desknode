@@ -216,7 +216,22 @@ l'application ne tourne pas.
 > Avec `firmware/desknode`, le rétroéclairage est **allumé FIXE** en fonctionnement normal :
 > « il ne clignote pas » n'y veut plus rien dire. Les critères valides pour `desknode` sont :
 > **le port est muet** ET **l'écran n'affiche pas l'asset** (dalle noire ou figée).
-> Le critère qui marche dans les deux cas reste **0 octet sur le port**.
+> Le critère qui marche dans les deux cas reste **0 octet sur le port** — mais ⚠️ **PAS À
+> N'IMPORTE QUELLE DURÉE**, et c'est le rejeu à froid du 2026-08-15 qui l'a trouvé.
+>
+> `firmware/desknode` n'imprime spontanément qu'une ligne de battement **toutes les 10 s**.
+> Écouter 6 s sur une carte parfaitement saine rend donc **0 octet** — et diagnostique une carte
+> muette qui va très bien. C'est un faux positif qui envoie dérouler une recette de déblocage
+> pour rien, sur une carte qu'on va inutilement remettre en mode download.
+>
+> **Le bon geste, celui qui SOLLICITE au lieu d'attendre :**
+>
+> ```bash
+> python3 tools/dn_console.py "cfg"      # envoie \n, attend l'invite, échoue en 3 s si muette
+> ```
+>
+> Il envoie une ligne vide, attend l'invite `desknode>` et diagnostique lui-même le mutisme. À
+> défaut, écouter **au moins 12 s** — jamais moins qu'une période de battement.
 
 ⚠️ **Ce bloc est côté WSL, donc esptool 4.12.0** : l'exécutable s'appelle `esptool.py` (il n'y a
 **pas** d'`esptool` tout court dans l'environnement de l'IDF) et ses options sont en **underscores**.
