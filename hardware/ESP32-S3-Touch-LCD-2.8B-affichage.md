@@ -13,13 +13,24 @@ Chaîne : ESP-IDF **v5.5.5** (commit `b774170f`).
 
 ---
 
-## 0. LA CONFIGURATION DE RÉFÉRENCE POUR dn1-4 → dn3 — arbitrée le 2026-08-15 (dn1-3, AC6)
+## 0. LA CONFIGURATION DE RÉFÉRENCE POUR dn3 — arbitrée le 2026-08-15 (dn1-3), **corrigée le 2026-08-16 (dn1-4)**
 
 C'est la seule chose à lire si on ne lit qu'une chose.
+
+> 🔴 **DEUX LIGNES ONT CHANGÉ LE 2026-08-16, ET ELLES SE TIENNENT.**
+> `bounce_px` passe de **0 à 4 800 px** et `CONFIG_LCD_RGB_ISR_IRAM_SAFE` de **`y`
+> à `n`** — la seconde étant la **condition** de la première, pas un choix
+> indépendant. Motif : **toute transaction I²C pendant que la dalle affiche fait
+> défiler l'image**, défaut que dn1-4 est la première story à pouvoir voir (avant
+> elle, aucune story ne parlait en I²C en fonctionnement). Le même changement
+> **solde l'artefact §10.5**, qui était le legs ouvert de dn1-3. Détail complet
+> en **§11**.
 
 | | | justifié par |
 |---|---|---|
 | `num_fbs` | **1** | le double tampon est **réparé** (§4 ter) mais n'apporte **rien de mesuré** : il ne corrige ni le déchirement (c'est la synchro qui le fait) ni l'artefact §10.5, et coûte 614 400 o + une branche Kconfig |
+| **`bounce_px`** | **4 800 px (10 lignes)** ⬅️ *change le 2026-08-16* | la DMA du panneau lit désormais un tampon en **RAM interne** au lieu d'aller chercher la PSRAM : c'est ce qui supprime **à la fois** le défilement sous I²C **et** l'artefact §10.5 (§11.4). Coût : 2 × 9 600 o de RAM interne, CPU 0,8 % → 2,7 %, fps **inchangé** |
+| **`LCD_RGB_ISR_IRAM_SAFE`** | **`n`** ⬅️ *change le 2026-08-16* | **effet propre nul** sur le défilement (branche enfin jouée, §5.3) — mais avec `y` le bounce buffer **panique** au boot. Il est conservé à `n` comme *condition* du bounce, pas pour lui-même |
 | Rendu LVGL | **PARTIEL** | un plein écran demande 10 flushes et ~176 ms d'attente, soit ~5,5 Hz au mieux (§10.3) |
 | Draw buffer | **480 × 64 px (61 440 o), RAM interne DMA** | A/B à aire identique : la PSRAM est **1,70× plus lente** ; le régime produit tient en **un seul flush** à 64 lignes (§10.3) |
 | Synchro du flush | **`vsync`** | témoin positif établi : en `off` l'œil **voit** le déchirement, en `vsync` il disparaît (§10.4) |
@@ -28,8 +39,16 @@ C'est la seule chose à lire si on ne lit qu'une chose.
 | Cœur de la tâche LVGL | **0** | sans effet mesuré sur l'artefact §10.5 ; retenu par cohérence avec le reste du pipeline |
 | Fond | **flash `mmap`** | la copie PSRAM coûte 614 400 o et ne change rien de mesuré (§10.5, ligne 2) |
 
-**Ce que cette configuration NE ferme PAS** : l'artefact de redessin de la §10.5, ouvert, avec
-sept hypothèses déjà éliminées. Il est le legs principal de dn1-3 à dn1-4.
+**Ce que cette configuration ferme, et qui était ouvert** : l'artefact de redessin de la §10.5.
+Il n'était pas un défaut de bande passante, de phase ni de contenu — les sept hypothèses de
+dn1-3 cherchaient toutes du mauvais côté. C'était **la DMA du panneau affamée sur le bus SPI0**,
+et le bounce buffer y met fin (§11.4). Constat owner du 2026-08-16, témoin = le label 1 Hz.
+
+**Ce que cette configuration NE ferme PAS** : la contention par **écritures flash** de la §5.3.
+Le bounce buffer a été mesuré contre un stimulus **I²C** ; rien ne dit qu'il protège aussi des
+écritures flash, qui coupent le cache au lieu de simplement occuper le bus. **D4 (pas
+d'écritures flash en fonctionnement) reste en vigueur**, et la branche
+« bounce 4 800, `ISR_IRAM_SAFE=n`, stimulus flash » n'a **pas** été jouée.
 
 ---
 
@@ -98,12 +117,54 @@ sorti par le périphérique LCD_CAM. Le framebuffer étant en RGB565
 | Signal | Broche | Note |
 |---|---|---|
 | HSYNC / VSYNC / DE / PCLK | GPIO **38 / 39 / 40 / 41** | vérifiés par l'affichage |
-| I²C (bus unique) | SDA = GPIO**15**, SCL = GPIO**7** | 400 kHz ; TCA9554 répond à **0x20** |
+| I²C (bus unique) | SDA = GPIO**15**, SCL = GPIO**7** | ⚠️ **la fréquence se pose PAR DEVICE**, pas par le bus (voir l'encart) ; TCA9554 répond à **0x20** |
 | 3-wire SPI (init ST7701S) | SDA = GPIO**1**, SCL = GPIO**2** | ⛔ **partagées avec le slot TF** — ne jamais initialiser la SD |
 | **LCD_RST** | expander **bit 0** (EXIO1) | derrière le TCA9554 |
 | **TP_RST** | expander **bit 1** (EXIO2) | *voir §1.3* |
 | **LCD_CS** | expander **bit 2** (EXIO3) | derrière le TCA9554 |
+| **TP_INT** | GPIO**16** | ✅ **ÉTABLI PAR LA MESURE le 2026-08-16** — voir l'encart ci-dessous |
 | Rétroéclairage | GPIO**6** | GPIO direct, ON/OFF (la gradation est dn1-3) |
+
+> ### ✅ TP_INT = GPIO16 — l'écart documentaire est SOLDÉ (dn1-4, AC1)
+>
+> Jusqu'ici GPIO16 figurait dans les stories dn1-1/dn1-2 et au wiki Waveshare,
+> mais **pas dans ce tableau**, qui fait autorité. Il y est désormais, et pas sur
+> la foi d'une source tierce : par une **preuve causale**.
+>
+> Le GT911 échantillonne le niveau de sa broche INT **au relâchement de son
+> reset**, et en déduit son adresse I²C. La commande `touch addr` joue donc deux
+> resets d'affilée, en tenant GPIO16 à un niveau différent :
+>
+> ```
+>   INT tenu HAUT au relachement -> repond a 0x14  (ESP_OK)
+>   INT tenu BAS  au relachement -> repond a 0x5D  (ESP_OK)
+> ```
+>
+> Faire varier GPIO16 fait varier l'adresse latchée. **Aucune autre broche du SoC
+> ne peut produire cet effet** : c'est donc bien celle que le GT911 échantillonne.
+> C'est plus fort qu'un front observé à l'oscilloscope ou qu'un compteur d'IRQ qui
+> monte — ceux-là n'auraient prouvé que l'existence d'un signal, pas son identité.
+>
+> ⚠️ **Le niveau de repos d'INT est HAUT** (relevé : `niveau instantane 1`), et il
+> ne bat **pas** spontanément : **0 IRQ en 30 s** sans toucher la dalle. Pendant un
+> contact, en revanche, il pulse abondamment — 999 IRQ pour 22 appuis, soit ~45
+> impulsions par appui.
+
+> ### ⚠️ « 400 kHz » n'est pas une propriété du BUS (correctif dn1-4)
+>
+> Ce tableau annonçait « 400 kHz » sur la ligne I²C, et le log de boot faisait de
+> même. C'était une **étiquette non tenue** : en API `i2c_master` (IDF 5.x),
+> `i2c_master_bus_config_t` n'a **aucun champ d'horloge**. La fréquence se pose
+> dans `i2c_master_dev_config_t.scl_speed_hz`, **device par device**, et deux
+> devices du même bus peuvent tourner à deux vitesses différentes.
+>
+> Ce que le bus porte réellement : les broches, la source d'horloge, le filtre de
+> glitch, les tirages internes. Qui pose quoi, ici :
+> - **TCA9554** → 400 kHz, posés par son propre driver
+>   (`esp_io_expander_tca9554.c:18`, lu dans le source, pas supposé) ;
+> - **GT911** → 400 kHz, posés par `dn_touch` (le gabarit du composant proposait
+>   100 kHz ; on prend 400 kHz parce que la lecture tactile est dans le chemin de
+>   la latence). **0 erreur I²C** mesurée sur 4 978 lectures.
 
 > ⚠️ **La numérotation Waveshare `EXIO1..EXIO8` est en base 1 ; l'index du driver
 > est en base 0.** `EXIO1` = bit **0**. Confirmé indépendamment par le YAML
@@ -111,13 +172,42 @@ sorti par le périphérique LCD_CAM. Le framebuffer étant en RGB565
 > pin 2 = display CS). Se tromper d'un rang, c'est réinitialiser le tactile en
 > croyant réinitialiser la dalle, sans aucun message d'erreur.
 
-### 1.3 État dans lequel P1 laisse le tactile — **à lire avant dn1-4**
+### 1.3 État du tactile — **CLOS par dn1-4 le 2026-08-16**
 
-Le bit 1 (**TP_RST**, le reset du GT911) est laissé **DÉLIBÉRÉMENT en ENTRÉE**,
-c'est-à-dire dans l'état de mise sous tension du TCA9554 (haute impédance).
-P1 ne le pilote pas : le mettre en sortie lui imposerait un niveau qu'on n'a pas
-mesuré, et le GT911 échantillonne son adresse I²C au relâchement de son reset.
-**dn1-4 part donc d'un TP_RST non piloté, pas d'un TP_RST haut.**
+**Ce que P1 laissait** : le bit 1 (**TP_RST**, le reset du GT911) **DÉLIBÉRÉMENT
+en ENTRÉE**, c'est-à-dire dans l'état de mise sous tension du TCA9554 (haute
+impédance). P1 ne le pilotait pas : le mettre en sortie lui aurait imposé un
+niveau non mesuré, et le GT911 échantillonne son adresse I²C au relâchement de
+son reset. *dn1-4 partait donc d'un TP_RST non piloté, pas d'un TP_RST haut.*
+
+**L'état stationnaire depuis dn1-4** : `dn_display_tp_reset()` met TP_RST en
+**SORTIE**, joue la séquence (150 ms bas / 50 ms de repos), et **l'y laisse à
+l'état HAUT**. C'est le nouvel état de référence.
+
+> 🔴 **UNE CROYANCE DE CE FICHIER EST RÉFUTÉE.** On tenait pour acquis qu'« un
+> scan I²C avant le reset tactile ne voit PAS le GT911 (il ne sort de reset
+> qu'après la séquence EXIO2) », et dn1-4 devait s'en servir comme **témoin
+> négatif**. **C'est faux sur cette carte** : au boot, avant toute intervention,
+> le probe répond **déjà**, et à **0x5D**.
+>
+> ```
+> I (1461) dn_touch: probe AVANT reset : il répond DÉJÀ à 0x5D
+> ```
+>
+> **Ce que ça établit** : TP_RST n'est **pas** maintenu bas quand l'expander le
+> laisse en entrée haute impédance — un tirage de la carte le tient haut, donc le
+> GT911 sort de reset tout seul à la mise sous tension et latche son adresse sur
+> le niveau d'INT de ce moment-là (haut au repos… et pourtant 0x5D : le GT911
+> tire lui-même INT bas pendant sa propre séquence de démarrage).
+>
+> **Ce que ça ne retire PAS à la séquence** : elle reste indispensable, mais pour
+> une autre raison que celle qu'on croyait. Elle n'« allume » pas le contrôleur —
+> elle rend son adresse **DÉTERMINISTE**. Sans elle, l'adresse dépend d'un niveau
+> qu'on ne contrôle pas.
+>
+> **Conséquence méthodologique** : ce probe-là n'est **pas** un témoin négatif sur
+> cette carte, et il ne faut pas s'en servir comme tel. Le témoin qui prouve
+> quelque chose est `touch addr` (§1.2).
 
 ### 1.4 Correction sur le bus 3-wire SPI
 
@@ -673,6 +763,37 @@ décrochage DMA qui se reproduit à chaque secteur et dont le décalage s'accumu
 > vsync en `IRAM_ATTR`, RAM interne seulement) est déjà respectée. Mais il est
 > **conservé par précaution**, pas parce qu'un A/B l'a démontré. Écrire autre
 > chose serait revendiquer une mesure qui n'a pas eu lieu.
+>
+> ---
+>
+> ### ✅ 2026-08-16 (dn1-4) — LA BRANCHE MANQUANTE A ÉTÉ JOUÉE
+>
+> Elle l'a été sous un **autre stimulus** que celui de cette section : non plus
+> des écritures flash, mais le **polling I²C du GT911** (30 transactions/s), qui
+> produit le même symptôme visuel — l'image défile.
+>
+> | Branche | Stimulus I²C | Verdict |
+> |---|---|---|
+> | bounce 0, `ISR_IRAM_SAFE=y` | **défile** | l'état livré par dn1-3 |
+> | **bounce 0, `ISR_IRAM_SAFE=n`** ⬅️ *la branche jamais jouée* | **défile pareil** | **effet propre = NUL** |
+> | bounce 4 800 px, `ISR_IRAM_SAFE=y` | **panique au boot** | `Guru Meditation Error: Core 0 panic'ed (Cache error). Cache disabled but cached memory region accessed` |
+> | **bounce 4 800 px, `ISR_IRAM_SAFE=n`** | **STABLE** | **RETENU** — plus aucun défilement, fps 37,40 Hz (+0,01 %) |
+>
+> **Ce que ça règle, et qui traînait depuis dn1-2** : l'effet propre de
+> `ISR_IRAM_SAFE` est **nul** sur ce défaut. Le symbole ne protégeait rien — mais
+> il **empêchait** le bounce buffer de fonctionner. Les deux options étaient
+> **nouées**, et c'est très probablement l'explication du « redémarrage watchdog »
+> qui avait disqualifié le bounce en dn1-2 : la seule branche bounce+`n` jamais
+> essayée portait 19 200 px, jamais 4 800.
+>
+> **Le bounce buffer est donc RÉHABILITÉ** — à 4 800 px, avec `ISR_IRAM_SAFE=n`.
+>
+> ⚠️ **CE QUE CETTE MESURE NE DIT PAS.** Le stimulus est de l'**I²C**, qui
+> *occupe* le bus SPI0 ; celui de cette section est de l'**écriture flash**, qui
+> *coupe le cache*. Ce sont deux régimes distincts, et la victoire sur l'un n'est
+> pas la victoire sur l'autre. La branche « bounce 4 800, `ISR_IRAM_SAFE=n`,
+> stimulus flash » **n'a pas été jouée** — elle reste une question ouverte, notée
+> au ledger. **D4 reste en vigueur.**
 
 > ⚠️ **Piège méthodologique rencontré, à ne pas refaire.** Une première lecture
 > a conclu « image stable avec bounce buffer ». Elle était **fausse** : la carte
@@ -1063,7 +1184,41 @@ Chiffres du stimulus, pour mémoire : 442 flushes en 15 s ≈ 29,5/s, CPU 20,3 %
 instrument depuis invalidé, et la configuration a changé (rendu partiel, plus de bascule). Il est
 **sans objet ici** — pas reporté, pas confirmé.
 
-### 10.5 🔴 L'ARTEFACT DE REDESSIN LVGL — ouvert, caractérisé, sept hypothèses tuées
+### 10.5 ✅ L'ARTEFACT DE REDESSIN LVGL — **RÉSOLU le 2026-08-16 (dn1-4)**
+
+> ## ✅ CAUSE TROUVÉE, ET CORRIGÉE — 2026-08-16
+>
+> **La cause n'était aucune des sept hypothèses ci-dessous. C'était la DMA du
+> panneau RGB affamée sur le bus SPI0**, que la flash et la PSRAM se partagent sur
+> ESP32-S3. Le correctif est le **bounce buffer** (`bounce_px = 4800`), qui fait
+> lire la DMA en RAM interne au lieu d'aller chercher le framebuffer en PSRAM.
+>
+> **Constat owner, avec le témoin exact de cette section** (label 1 Hz rallumé sur
+> le Living PCB) : *« plus aucun clignotement, l'image est stable et ça s'incrémente
+> bien »*.
+>
+> **Ce qui a mis sur la piste** — et qui n'aurait pas pu être vu avant dn1-4 : le
+> tactile a introduit le **premier trafic I²C en fonctionnement** de ce projet (le
+> TCA9554 ne sert qu'au boot). Or ce trafic produisait un symptôme de la même
+> famille, mais **permanent et bien plus violent** : l'image défilait à toute
+> vitesse. Le voir en continu, et pouvoir l'allumer et l'éteindre à volonté
+> (`touch mode poll|event`), a rendu la cause attaquable — là où un clignotement
+> d'une seule trame par seconde ne l'était pas. Détail complet en **§11.4**.
+>
+> **Pourquoi les sept hypothèses tombaient toutes à côté** : elles cherchaient dans
+> le CONTENU (fond flash/PSRAM), la PHASE (off/vsync/fbdone), le VOLUME écrit
+> (chemin direct, `set lines`), le TAMPON (num_fbs), les LECTURES (XIP) et
+> l'AFFINITÉ (cœur). Aucune ne testait **la disponibilité du bus pour la DMA**.
+> L'anomalie qui aurait dû mettre la puce à l'oreille est d'ailleurs consignée
+> plus bas — *« absent du chemin brut qui écrit 20× plus »* : un `memcpy` séquentiel
+> ne provoque pas les défauts de cache qu'un flush LVGL provoque.
+>
+> ⚠️ **Ce que ça coûte** : CPU 0,8 % → 2,7 %, RAM interne 2 × 9 600 o, et surtout
+> **+160 ms de latence de transition** (267,9 → 427,7 ms à 64 lignes) — voir §11.5,
+> où le budget < 300 ms du brief est confronté à ce prix.
+>
+> *Le texte d'origine est conservé ci-dessous : les sept éliminations restent
+> vraies, et une élimination sans son symptôme n'est pas une élimination.*
 
 **Symptôme, constat owner du 2026-08-15 :** à chaque cycle de rafraîchissement LVGL, **l'image
 entière « clignote, comme un déplacement rapide » le temps d'une trame**. Avec le label à 1 Hz,
@@ -1139,3 +1294,226 @@ fournie ici. Il n'est donc pas propre au générateur d'asset : c'est la dalle, 
 la conversion RGB565 — à trancher si un jour ça gêne.
 
 ---
+
+## 11. LE TACTILE — Goodix GT911, mesuré le 2026-08-16 (dn1-4, P3)
+
+### 11.1 Ce que le contrôleur a répondu
+
+```
+I (1461) dn_touch: probe AVANT reset : il répond DÉJÀ à 0x5D
+I (1812) dn_disp: reset tactile joué via l'expander bit1/EXIO2 (150 ms bas, 50 ms de repos)
+I (1813) dn_touch: probe APRÈS reset : ESP_OK — adresse RÉELLE 0x5D (visée 0x5D)
+I (1814) dn_touch: GT911 « 911 » fw 0x1060 · config v93 · résolution native 480x640 · 5 points · INT sur front DESCENDANT
+```
+
+| | Valeur mesurée | Ce que ça corrige |
+|---|---|---|
+| Adresse I²C | **0x5D** | conforme à l'attendu — mais c'est la séquence qui la garantit, pas la chance (§1.3) |
+| Identité | « 911 », fw **0x1060**, config **v93** | — |
+| Résolution **déclarée par le GT911** | **480 × 640** | ⚠️ la démo Waveshare passe `x_max=640, y_max=480` : **ses valeurs sont écartées**, le contrôleur lui-même dit le contraire |
+| Points simultanés | **5** | dn1-4 n'en exploite qu'un (le tap) |
+| Déclenchement de l'INT | **front DESCENDANT** (reg `0x804D` bits 1-0 = 1) | lu **avant** de créer le driver, pour armer l'ISR sur le bon front. Une ISR armée sur le front que la dalle ne produit jamais = tactile muet EN SILENCE |
+| Fréquence I²C du device | **400 kHz** | 0 erreur sur 4 978 lectures |
+
+⛔ **On LIT la config du GT911, on ne l'écrit jamais.** Sa NVM a un nombre
+d'écritures limité, et une config ratée transforme la dalle tactile en
+presse-papier.
+
+### 11.2 L'orientation — tranchée par les 4 coins + le centre
+
+Constat owner, `touch trace`, coordonnées **brutes** (avant toute transformation) :
+
+| Point visé | Rapporté | Attendu |
+|---|---|---|
+| coin haut-gauche | (24, 5) | (0, 0) |
+| coin haut-droit | (443, 34) | (479, 0) |
+| coin bas-gauche | (91, 628) | (0, 639) |
+| coin bas-droit | (456, 619) | (479, 639) |
+| **centre** | **(237, 322)** | (240, 320) |
+
+⇒ **Aucune transformation n'est nécessaire.** `swap_xy = 0`, `mirror_x = 0`,
+`mirror_y = 0`, `x_max = 480`, `y_max = 640` : le repère du GT911 **est** celui de
+la dalle. Deux sources indépendantes concordent — la résolution qu'il déclare
+(§11.1) et ce que le doigt produit.
+
+⚠️ `x_max`/`y_max` ne sont **pas** une mise à l'échelle : `esp_lcd_touch` s'en sert
+comme **axe de symétrie** des miroirs (`x = x_max - x`). Les quatre champs se
+règlent ensemble ou pas du tout.
+
+### 11.3 IRQ ou polling — et pourquoi la question a changé de nature
+
+L'arbitrage attendu portait sur le coût. Il a été mesuré, au repos sur le dashboard :
+
+| Mode | `taskLVGL` | Charge totale | Lectures I²C / 30 s | IRQ / 30 s |
+|---|---|---|---|---|
+| `poll` (`LV_INDEV_MODE_TIMER`, ~33 ms) | 0,5 % | **0,8 %** | 857 | 0 |
+| `event` (`LV_INDEV_MODE_EVENT`, sur INT) | 0,2 % | **0,5 %** | 0 | 0 |
+
+**L'INT ne bat pas spontanément** (0 IRQ en 30 s sans toucher), donc `event` ne
+coûte rien au repos. Pendant un contact il pulse fort : **999 IRQ pour 22 appuis**.
+
+> 🔴 **MAIS LE VRAI ARBITRE A ÉTÉ AILLEURS.** Avant le bounce buffer (§11.4), le
+> mode de lecture décidait de la **lisibilité de l'écran**, pas de 0,3 point de
+> CPU : en `poll`, l'image défilait en permanence ; en `event`, seulement pendant
+> le contact du doigt. C'est ce contraste — un défaut qu'on allume et qu'on éteint
+> avec une commande — qui a rendu la cause attaquable.
+>
+> **Depuis le bounce buffer, les deux modes sont visuellement propres.** Le choix
+> redevient un choix de coût, et le témoin actif reste obligatoire avant de
+> retenir `event` : `touch reset`, toucher, puis lire le compteur d'IRQ. Un
+> compteur à zéro après un vrai toucher condamne ce mode, quoi qu'affiche l'écran.
+
+### 11.4 🔴 LE DÉFAUT CENTRAL — l'I²C fait défiler l'image, et le bounce buffer y met fin
+
+**Symptôme, constat owner :** *« l'affichage est archibugué, ça clignote à fond,
+défilement ultra rapide, illisible »*.
+
+**Corrélation exacte avec l'activité I²C** — c'est ce qui désigne le coupable :
+
+| Régime | Trafic I²C | Écran |
+|---|---|---|
+| `poll` | ~30 transactions/s en continu | défile **en permanence** |
+| `event`, au repos | aucune | **stable** |
+| `event`, pendant le contact | rafale (~45 IRQ/appui) | défile **pendant le contact**, s'arrête au relâchement |
+
+**Ce que les instruments ont éliminé avant toute hypothèse :**
+
+- **`fps` = 37,40 Hz (−0,00 %)** → le pipeline garde sa cadence : ce n'est pas une
+  perte de trames.
+- **0 flush, 0 cycle en 10 s** et **`taskLVGL` à 0,5 %** → LVGL ne redessine rien.
+  Ce n'est donc **pas** un redessin en boucle. *(Deux instruments indépendants.)*
+- **`ui off` fige l'image ; `ui on` la fait redéfiler** → c'est bien lié à
+  l'activité de la tâche LVGL, pas à la dalle.
+- **GPIO15/GPIO7 ne sont dans aucune ligne RGB** (§1.1) → pas de partage de broche.
+- 🔑 **La bande du haut reste STABLE pendant que le bas défile** → **décrochage
+  global DISQUALIFIÉ**. La DMA repart bien juste à chaque VBlank
+  (`RESTART_IN_VSYNC=y`) ; elle prend du retard **en cours de trame**.
+
+**Mécanisme retenu :** sur ESP32-S3, **la flash et la PSRAM partagent le
+contrôleur SPI0**. La DMA du panneau lit le framebuffer PSRAM à 23,0 Mo/s en
+continu ; du code exécuté depuis la flash (le driver I²C) provoque des défauts de
+cache qui lui volent ce bus, et elle est **affamée**. Les lignes peintes après la
+perturbation sont décalées — d'où un « défilement » alors que rien n'a bougé dans
+le framebuffer.
+
+**La parade, et sa condition** (matrice complète en §5.3) :
+
+| `bounce_px` | `LCD_RGB_ISR_IRAM_SAFE` | Résultat sous I²C |
+|---|---|---|
+| 0 | `y` *(état livré par dn1-3)* | défile |
+| 0 | `n` *(la branche jamais jouée)* | **défile pareil — effet propre NUL** |
+| 4 800 | `y` | **panique au boot** : `Cache disabled but cached memory region accessed` |
+| **4 800** | **`n`** | ✅ **STABLE**, fps 37,40 Hz (+0,01 %) |
+
+⇒ **Le bounce buffer est RÉHABILITÉ** (il était « DISQUALIFIÉ (watchdog) » depuis
+dn1-2), et `ISR_IRAM_SAFE=n` n'est gardé **que** comme sa condition — son effet
+propre est nul. Les deux options étaient **nouées** ; c'est très probablement ce
+qui avait produit le watchdog de dn1-2, dont la seule branche bounce+`n` portait
+19 200 px et non 4 800.
+
+**Le même correctif solde l'artefact §10.5.** Les deux symptômes n'en faisaient
+qu'un.
+
+⚠️ **PORTÉE — ce défaut dépassait largement dn1-4.** **dn2-1** (BME680, BH1750,
+VL53L0X, INA219 sur ce même bus) aurait fait défiler l'écran en permanence, et
+aurait cherché la panne du côté des capteurs. Il est débloqué par ricochet.
+
+⚠️ **CE QUE CETTE MESURE NE COUVRE PAS** : le stimulus est de l'**I²C**, qui
+*occupe* le bus. Celui de la §5.3 est une **écriture flash**, qui *coupe le cache*.
+Rien ne dit que le bounce protège du second. **D4 reste en vigueur.**
+
+### 11.5 Latence tap → écran, et le budget < 300 ms du brief
+
+Instrument : du clic LVGL (émis au **relâchement**) à la fin du **dernier flush**
+du cycle. 20 allers-retours scriptés (`nav ab 20`), 40 transitions par ligne.
+
+| `bounce_px` | `draw_lines` | min | moy | max | Verdict vs 300 ms |
+|---|---|---|---|---|---|
+| 0 | 64 | 267,1 | **267,9** | 293,9 | tient — mais **écran inutilisable** |
+| 0 | 128 | 187,0 | 234,9 | 257,7 | tient — écran inutilisable |
+| 4 800 | 64 | 397,1 | **427,7** | 480,6 | **dépassé** |
+| **4 800** | **128** | 287,7 | **307,1** | 320,7 | **frôlé, non tenu** |
+| 4 800 | 160 | 293,8 | 307,7 | 320,8 | idem — **le levier sature** |
+
+**Au doigt** (14 transitions réelles, `bounce 4800`, `lines 64`) : min 391,8 ms ·
+moy **434,7 ms** · max 480,2 ms — cohérent avec les 427,7 ms de la console. Le
+doigt n'ajoute donc rien de mesurable au chronomètre : ce qu'on mesure est bien la
+transition, pas le geste.
+
+> ### Le verdict, écrit tel quel
+> **Le budget < 300 ms du brief n'est PAS tenu** dans la configuration qui rend
+> l'écran utilisable : **307,1 ms de moyenne** au mieux, avec un pire cas à
+> 320,7 ms. Le bounce buffer coûte **+160 ms** ; repasser le draw buffer à
+> 128 lignes en récupère **120**, et pousser à 160 lignes ne donne **plus rien** —
+> le plancher n'est alors plus la synchro mais le **rendu** lui-même.
+>
+> Rappel : le critère brief n°3 est **composite** et se solde en **dn4-1**. Ce qui
+> est mesuré ici l'est sur un détail **factice**, dont le rendu n'est pas celui du
+> produit.
+
+**Pourquoi 267 ms au plancher, à 64 lignes** — mesuré sur une transition isolée :
+
+```
+aire cumulée : 614400 px  => 307200 px et 10.0 flush(es) par CYCLE de redessin
+copie              : 2321 us/flush en moyenne  (23,2 ms par cycle)
+attente de synchro : 9661 us/flush en moyenne  (96,6 ms par cycle)
+```
+
+Un changement d'écran redessine tout : **10 flushes, chacun attendant sa trame**,
+soit 10 × 26,7 ms = **267 ms**. ⚠️ Cela **corrige** la prévision de §10.3
+(« ~176 ms d'attente ») : ce chiffre supposait un rendu négligeable. Avec sept
+conteneurs translucides sur une image de fond, il ne l'est pas — mais le total par
+cycle reste gouverné par le nombre de trames.
+
+**Options NOTÉES, non appliquées** (AC5 demande de les noter, pas de les traiter) :
+
+1. **Cases opaques** (`LV_OPA_COVER`) : supprimerait le re-blit du fond sous chaque
+   case. Gratuit en mémoire, coûteux en esthétique — le Living PCB ne
+   transparaîtrait plus dans les cases. **dn3-1 tranchera.**
+2. **Ne pas invalider le fond à la transition** : `lv_screen_load` invalide tout,
+   alors que le fond est identique d'un écran à l'autre. C'est la piste de fond
+   pour dn3-2.
+3. **Bounce plus grand** (9 600 / 19 200 px) : moins d'interruptions de
+   remplissage, donc peut-être moins de surcoût CPU. Non essayé.
+4. Baisser le PCLK : donnerait de la marge à la DMA, au prix du fps.
+
+### 11.6 Les zones tactiles — géométrie PROVISOIRE
+
+⚠️ **Aucune dimension n'est spécifiée par la planification** (seulement 480 × 640
+portrait). Tout ce qui suit est **dérivé** pour que dn1-4 ait des zones à
+éprouver. **dn3-2 fera foi.**
+
+| Élément | Géométrie | Tactile |
+|---|---|---|
+| Barre heure/date | 480 × 70, en (0, 0) | **non** — zone morte |
+| Grille 2 × 3 | cases **225 × 156**, marge 10, gouttière 10, à partir de y = 80 | **oui, la case ENTIÈRE** |
+| Bandeau MENU | 480 × 60, en (0, 580) | **oui** — no-op consigné |
+| Retour `←` (détail) | **120 × 60** en (10, 10) | **oui** — 24 fois l'aire du chevron |
+
+**Les deux drapeaux qui font que « toute la case » est vrai** :
+`LV_OBJ_FLAG_CLICKABLE` sur le **conteneur** (les labels enfants restent non
+cliquables, donc LVGL remonte au parent), et surtout **`LV_OBJ_FLAG_SCROLLABLE`
+RETIRÉ** — `lv_obj_create()` le pose par défaut, et un conteneur scrollable
+**avale le geste** dès que le doigt roule de quelques pixels. C'est exactement le
+défaut « ça marche au centre, pas au bord » que la preuve aux coins doit attraper.
+
+⚠️ **Aucun élément pleine hauteur**, conformément au verdict adverse de §10.4.
+
+**Lisibilité — constat owner du 2026-08-16** : *« le fond prend trop, il masque les
+détails (des cadres aussi) »*. Le Living PCB est une photo très contrastée. Deux
+correctifs, sans flou (LVGL n'en a pas de gratuit, et il faudrait le recalculer à
+chaque zone invalidée sur un budget déjà tendu) :
+- un **voile** noir à 50 % sur toute la surface, au-dessus de l'image ;
+- les conteneurs passés de **40 % à 70 %** d'opacité.
+
+Puis, le détail restant illisible : ses labels étaient posés **à même le fond**,
+contrairement aux cases du dashboard. Les quatre blocs du template ont reçu leur
+propre aplat. Verdict owner : *« oui c'est nickel comme ça »*.
+
+⚠️ **LES LIBELLÉS SONT SANS ACCENT, ET C'EST UNE CONTRAINTE D'OUTILLAGE.** Les
+polices Montserrat embarquées sont générées avec `-r 0x20-0x7F,0xB0,0x2022`
+(première ligne de `lv_font_montserrat_14.c`) : ASCII imprimable, signe **degré**,
+puce — et **rien d'autre**. « RÉSEAU » ou « AOÛT » y perdraient leur lettre
+accentuée **en silence**, LVGL ne dessinant pas le glyphe absent sans se plaindre.
+🔴 **Legs pour dn3-1** : du français accentué exigera une police générée
+(`lv_font_conv`), donc du binaire à budgéter. Le « °C » passe, lui.

@@ -534,6 +534,34 @@ static void fond_poser(lv_obj_t *scr)
         s_img = lv_image_create(scr);
         lv_image_set_src(s_img, &s_bg_dsc);
         lv_obj_set_pos(s_img, 0, 0);
+
+        /*
+         * ── LE VOILE, demandé par l'owner le 2026-08-16 ──────────────────────
+         * Constat : « le fond prend trop, il masque les détails (des cadres
+         * aussi) ». Le Living PCB est une photo très contrastée, et du texte
+         * blanc posé dessus se perd dans ses pistes claires.
+         *
+         * Un FLOU aurait été le réflexe, et il est écarté : LVGL n'en a pas qui
+         * soit gratuit, et il faudrait le recalculer à chaque zone invalidée —
+         * sur un budget de transition déjà à 267 ms. Un aplat noir translucide
+         * fait le même travail perceptif (baisser le contraste du fond pour que
+         * le premier plan ressorte) pour le prix d'un rectangle.
+         *
+         * ⚠️ NON CLIQUABLE : il couvre tout l'écran. Cliquable, il volerait
+         *    chaque tap destiné aux cases — et « toute la case est la zone
+         *    tactile » deviendrait faux à cause d'un élément décoratif.
+         * ⚠️ L'opacité reste PARTIELLE : le PCB est l'identité visuelle du
+         *    produit, on l'atténue, on ne l'efface pas. dn3-1 tranchera la valeur
+         *    définitive avec le reste de l'esthétique.
+         */
+        lv_obj_t *voile = lv_obj_create(scr);
+        lv_obj_remove_style_all(voile);
+        lv_obj_set_pos(voile, 0, 0);
+        lv_obj_set_size(voile, DN_LCD_H_RES, DN_LCD_V_RES);
+        lv_obj_clear_flag(voile, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_clear_flag(voile, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_set_style_bg_color(voile, lv_color_black(), 0);
+        lv_obj_set_style_bg_opa(voile, LV_OPA_50, 0);
     } else {
         /*
          * ── LE PANNEAU « ASSET ABSENT » SURVIT À L'INTÉGRATION (AC1) ─────────
@@ -627,7 +655,10 @@ static lv_obj_t *zone_creer(lv_obj_t *parent, int x, int y, int w, int h,
      * savoir où viser pour le constat « au coin »), assez peu pour que le Living
      * PCB reste le fond. Bordure fine, pas de radius : rien à défendre ici. */
     lv_obj_set_style_bg_color(z, lv_color_black(), 0);
-    lv_obj_set_style_bg_opa(z, LV_OPA_40, 0);
+    /* 70 % et non 40 % : à 40 % les pistes claires du Living PCB passaient au
+     * travers et mangeaient le texte blanc (constat owner). Le fond reste
+     * perceptible — c'est l'identité du produit — mais il ne concourt plus. */
+    lv_obj_set_style_bg_opa(z, LV_OPA_70, 0);
     lv_obj_set_style_border_color(z, lv_color_hex(0x50c0ff), 0);
     lv_obj_set_style_border_width(z, 1, 0);
     lv_obj_set_style_border_opa(z, LV_OPA_60, 0);
@@ -635,6 +666,32 @@ static lv_obj_t *zone_creer(lv_obj_t *parent, int x, int y, int w, int h,
         lv_obj_add_event_cb(z, cb, LV_EVENT_CLICKED, user);
     }
     return z;
+}
+
+/*
+ * Le même aplat que `zone_creer`, mais SANS la zone tactile — pour porter du
+ * texte, pas pour recevoir le doigt.
+ *
+ * Il existe parce que la première version du détail posait ses labels
+ * DIRECTEMENT sur le fond : constat owner du 2026-08-16, « les titres et textes
+ * en bas ne sont pas encore bien lisibles ». Les cases du dashboard, elles,
+ * avaient leur aplat depuis le début — d'où la différence de lisibilité entre
+ * les deux écrans, qui n'avait rien d'esthétique et tout de structurel.
+ */
+static lv_obj_t *panneau(lv_obj_t *parent, int x, int y, int w, int h)
+{
+    lv_obj_t *p = lv_obj_create(parent);
+    lv_obj_remove_style_all(p);
+    lv_obj_set_pos(p, x, y);
+    lv_obj_set_size(p, w, h);
+    lv_obj_clear_flag(p, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(p, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_style_bg_color(p, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(p, LV_OPA_70, 0);
+    lv_obj_set_style_border_color(p, lv_color_hex(0x50c0ff), 0);
+    lv_obj_set_style_border_width(p, 1, 0);
+    lv_obj_set_style_border_opa(p, LV_OPA_60, 0);
+    return p;
 }
 
 static lv_obj_t *texte(lv_obj_t *parent, const char *s, const lv_font_t *font,
@@ -739,7 +796,7 @@ static void build_dashboard(lv_obj_t *scr)
      * RIEN ouvrir. C'est l'une des deux zones mortes que le constat vérifie. */
     lv_obj_clear_flag(barre, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_set_style_bg_color(barre, lv_color_black(), 0);
-    lv_obj_set_style_bg_opa(barre, LV_OPA_40, 0);
+    lv_obj_set_style_bg_opa(barre, LV_OPA_70, 0);
     texte(barre, "21:46", &lv_font_montserrat_28, lv_color_white(), DN_UI_MARGE, 18);
     texte(barre, "VEN. 06 AOUT", &lv_font_montserrat_14,
           lv_color_hex(0xa0d8ff), 300, 28);
@@ -781,46 +838,54 @@ static void build_detail(lv_obj_t *scr, int idx)
     }
     fond_poser(scr);
 
-    /* Retour : zone GÉNÉREUSE (120x60), pas le glyphe seul — exigence d'AC4. */
-    lv_obj_t *retour = zone_creer(scr, DN_UI_MARGE, DN_UI_MARGE, DN_UI_RETOUR_W,
+    /*
+     * ── TOUT LE TEXTE VIT SUR UN APLAT ──────────────────────────────────────
+     * Correctif du constat owner du 2026-08-16. Les labels étaient posés à même
+     * le fond : le Living PCB est une photo très contrastée, et du texte blanc
+     * dessus se perd — surtout dans le bas de l'image. Quatre panneaux portent
+     * désormais les quatre blocs du template, exactement comme les cases du
+     * dashboard portaient déjà les leurs.
+     * La STRUCTURE du template ne change pas (addendum §1 : « on ne change que
+     * les données, jamais la structure ») — seul le support du texte change.
+     */
+
+    /* Bandeau d'en-tête : le retour ET le titre, sur le même aplat. */
+    lv_obj_t *entete = panneau(scr, 0, 0, DN_LCD_H_RES, 80);
+    /* Retour : zone GÉNÉREUSE (120x60), pas le glyphe seul — exigence d'AC4.
+     * Enfant du bandeau, donc cliquable par-dessus lui : le bandeau n'est pas
+     * cliquable, il ne peut pas lui voler le tap. */
+    lv_obj_t *retour = zone_creer(entete, DN_UI_MARGE, DN_UI_MARGE, DN_UI_RETOUR_W,
                                   DN_UI_RETOUR_H, on_retour_clic, NULL);
     texte(retour, LV_SYMBOL_LEFT, &lv_font_montserrat_28, lv_color_white(), 16, 14);
 
     /* Titre de la métrique — c'est LUI qui rend la zone touchée identifiable
      * sans ambiguïté (AC3) : six instances du même template, un seul titre. */
-    s_det_titre = texte(scr, k_metriques[idx].nom, &lv_font_montserrat_28,
+    s_det_titre = texte(entete, k_metriques[idx].nom, &lv_font_montserrat_28,
                         lv_color_hex(0xa0d8ff), DN_UI_MARGE + DN_UI_RETOUR_W + 20,
-                        DN_UI_MARGE + 14);
+                        24);
 
     /* Grande valeur. « Grande » = montserrat 28, la plus grosse police DÉJÀ
      * embarquée : en ajouter une coûterait du binaire pour un écran factice. */
-    s_det_valeur = texte(scr, k_metriques[idx].valeur, &lv_font_montserrat_28,
-                         lv_color_white(), DN_UI_MARGE + 10, 110);
+    lv_obj_t *bloc_valeur =
+        panneau(scr, DN_UI_MARGE, 95, DN_LCD_H_RES - 2 * DN_UI_MARGE, 62);
+    s_det_valeur = texte(bloc_valeur, k_metriques[idx].valeur,
+                         &lv_font_montserrat_28, lv_color_white(), 14, 14);
 
     /* Placeholder de courbe : un cadre étiqueté, PAS une courbe. Les vraies
      * séries arrivent avec l'historique RAM-session (dn2/dn4-1). */
-    lv_obj_t *cadre = lv_obj_create(scr);
-    lv_obj_remove_style_all(cadre);
-    lv_obj_set_pos(cadre, DN_UI_MARGE, 170);
-    lv_obj_set_size(cadre, DN_LCD_H_RES - 2 * DN_UI_MARGE, 200);
-    lv_obj_clear_flag(cadre, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_clear_flag(cadre, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_set_style_bg_color(cadre, lv_color_black(), 0);
-    lv_obj_set_style_bg_opa(cadre, LV_OPA_40, 0);
-    lv_obj_set_style_border_color(cadre, lv_color_hex(0x50c0ff), 0);
-    lv_obj_set_style_border_width(cadre, 1, 0);
-    lv_obj_set_style_border_opa(cadre, LV_OPA_60, 0);
+    lv_obj_t *cadre = panneau(scr, DN_UI_MARGE, 170, DN_LCD_H_RES - 2 * DN_UI_MARGE,
+                              200);
     texte(cadre, "COURBE (dn2 / dn4-1)", &lv_font_montserrat_14,
           lv_color_hex(0x80a0b0), 12, 88);
 
-    /* 2-3 données secondaires, factices. */
-    s_det_sec = texte(scr, "moy. 5 min : 38 %\ncharge : moderee\nsource : factice",
-                      &lv_font_montserrat_14, lv_color_hex(0xc0d8e8), DN_UI_MARGE + 10,
-                      390);
-
-    /* MIN/MAX, factices. */
-    s_det_minmax = texte(scr, "MIN 12 %   -   MAX 91 %", &lv_font_montserrat_28,
-                         lv_color_white(), DN_UI_MARGE + 10, 470);
+    /* Données secondaires et MIN/MAX, factices, sur un seul aplat de bas de
+     * page — c'est celui-là que l'owner a signalé comme illisible. */
+    lv_obj_t *bas = panneau(scr, DN_UI_MARGE, 385, DN_LCD_H_RES - 2 * DN_UI_MARGE,
+                            200);
+    s_det_sec = texte(bas, "moy. 5 min : 38 %\ncharge : moderee\nsource : factice",
+                      &lv_font_montserrat_14, lv_color_hex(0xc0d8e8), 14, 16);
+    s_det_minmax = texte(bas, "MIN 12 %   -   MAX 91 %", &lv_font_montserrat_28,
+                         lv_color_white(), 14, 130);
 
     label_poser(scr, &s_label_det);
 }

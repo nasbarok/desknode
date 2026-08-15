@@ -70,8 +70,49 @@ static const char *TAG = "dn_cfg";
  *                   à 0,8 % du memcpy PSRAM->PSRAM de §5.4 (36,8 ms). Deux
  *                   instruments indépendants, le même chiffre.
  */
+/*
+ * ── bounce_px : 0 -> 4800, ET C'EST LA CORRECTION CENTRALE DE dn1-4 ──────────
+ *
+ * Le bounce buffer était « DISQUALIFIÉ (watchdog) » depuis dn1-2. La mesure du
+ * 2026-08-16 le RÉHABILITE, et sur un symptôme que personne n'avait pu voir
+ * avant : dn1-4 est la première story à faire de l'I2C PENDANT que la dalle
+ * affiche (le TCA9554 ne sert qu'au boot).
+ *
+ * LE DÉFAUT, constaté par l'owner : dès qu'une transaction I2C a lieu, l'image
+ * DÉFILE à toute vitesse. Permanent en lecture tactile `poll` (30 transactions
+ * par seconde), présent seulement pendant le contact du doigt en `event`, absent
+ * au repos. La bande du haut restait stable pendant que le bas défilait — ce qui
+ * DISQUALIFIE le décrochage global : la DMA repart bien juste à chaque VBlank
+ * (RESTART_IN_VSYNC), puis prend du retard EN COURS DE TRAME.
+ *
+ * LE MÉCANISME : sur ESP32-S3, la flash et la PSRAM partagent le contrôleur
+ * SPI0. La DMA du panneau lit le framebuffer PSRAM à 23,0 Mo/s en continu ; du
+ * code exécuté depuis la flash (le driver I2C) provoque des défauts de cache qui
+ * lui volent ce bus, et elle est affamée. Le bounce buffer la découple : elle lit
+ * désormais 10 lignes en RAM INTERNE, que le CPU remplit.
+ *
+ * 🔴 CE QUE ÇA SOLDE EN PLUS : l'artefact §10.5 de dn1-3 — « l'image entière
+ *    clignote, comme un déplacement rapide, à chaque mise à jour du label » —
+ *    DISPARAÎT aussi (constat owner, témoin = le label 1 Hz rallumé). Les deux
+ *    symptômes n'en faisaient qu'un. Les SEPT hypothèses éliminées en dn1-3
+ *    cherchaient dans le contenu, la phase et le volume écrit ; la cause était
+ *    la contention du bus, qu'aucune ne testait.
+ *
+ * ⚠️ CONDITION NON NÉGOCIABLE : CONFIG_LCD_RGB_ISR_IRAM_SAFE=n. Avec =y, le
+ *    bounce PANIQUE au boot — « Cache disabled but cached memory region
+ *    accessed » — parce qu'une ISR IRAM-safe ne peut pas recopier depuis un
+ *    framebuffer PSRAM. C'est très probablement ce qui avait fait conclure au
+ *    « watchdog » de dn1-2 : les deux options étaient nouées, et changées
+ *    ensemble. Voir le bloc correspondant de sdkconfig.defaults.
+ *
+ * Pourquoi 4800 px (10 lignes) et pas plus : c'est la plus petite taille essayée,
+ * elle suffit, et elle coûte 2 x 9 600 o de RAM interne. Les 19 200 px des
+ * branches de dn1-2 n'ont pas été rejoués — inutile tant que 4800 tient.
+ * Coût mesuré : CPU 0,8 % -> 2,7 % (le CPU recopie chaque ligne), fps INCHANGÉ
+ * à 37,40 Hz (+0,01 %).
+ */
 #define DN_DEFAULT_NUM_FBS 1
-#define DN_DEFAULT_BOUNCE_PX 0
+#define DN_DEFAULT_BOUNCE_PX 4800
 #define DN_DEFAULT_DRAW_LINES 64
 #define DN_DEFAULT_DRAW_PSRAM 0
 /*

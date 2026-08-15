@@ -1393,30 +1393,57 @@ static int cmd_touch(int argc, char **argv)
          * de rendu bloquerait la tâche LVGL sur le lien USB, et l'instrument de
          * la preuve d'AC3 fausserait la latence qu'AC5 mesure au même instant.
          */
-        printf("trace des appuis pendant %ld ms — TOUCHER MAINTENANT.\n", ms);
-        printf("colonnes : #appui · point (x,y) apres axes · brut (x,y) · zone\n");
+        printf("trace pendant %ld ms — TOUCHER MAINTENANT.\n", ms);
+        printf("APPUI = contact detecte · TAP = zone activee (au RELACHEMENT)\n");
+        /*
+         * ⚠️ DEUX ÉVÉNEMENTS DISTINCTS, ET LES CONFONDRE FAIT MENTIR LA TRACE.
+         *
+         * Le contact est vu par l'indev à l'APPUI ; LVGL, lui, ne valide un
+         * CLICKED qu'au RELÂCHEMENT. Une première version imprimait une seule
+         * ligne par appui, en y accolant `dn_ui_dernier_tap()` — c'est-à-dire la
+         * DERNIÈRE zone touchée, pas celle de cet appui-là. Résultat mesuré le
+         * 2026-08-16 : un tap au CENTRE de l'écran (237, 322), qui tombe dans
+         * l'espace entre deux cases et n'active donc RIEN, s'est affiché
+         * « MENU (no-op) » — la zone du tap précédent. L'instrument censé prouver
+         * « toute la case est la zone tactile » attribuait des taps à des zones
+         * qu'ils n'avaient pas touchées.
+         *
+         * On imprime donc les deux événements SÉPARÉMENT, chacun quand il
+         * survient. Un appui sans TAP qui suit est un appui HORS ZONE, et ça se
+         * lit directement.
+         */
         dn_touch_stats_t st;
         dn_touch_get_stats(&st);
         uint32_t vus = st.appuis;
         uint32_t taps_vus = dn_ui_taps();
         int64_t fin = esp_timer_get_time() + (int64_t)ms * 1000;
-        int lignes = 0;
+        int n_appuis = 0, n_taps = 0;
         while (esp_timer_get_time() < fin) {
             dn_touch_get_stats(&st);
             uint32_t taps = dn_ui_taps();
-            if (st.appuis != vus || taps != taps_vus) {
+            if (st.appuis != vus) {
                 vus = st.appuis;
+                printf("  APPUI %3" PRIu32 " · (%3" PRIu32 ", %3" PRIu32
+                       ") · brut (%3" PRIu32 ", %3" PRIu32 ")\n",
+                       st.appuis, st.x, st.y, st.brut_x, st.brut_y);
+                n_appuis++;
+            }
+            if (taps != taps_vus) {
                 taps_vus = taps;
-                printf("  %3" PRIu32 " · (%3" PRIu32 ", %3" PRIu32 ") · brut (%3" PRIu32
-                       ", %3" PRIu32 ") · %s\n",
-                       st.appuis, st.x, st.y, st.brut_x, st.brut_y,
+                printf("        -> TAP sur %s\n",
                        dn_ui_zone_nom(dn_ui_dernier_tap()));
-                lignes++;
+                n_taps++;
             }
             vTaskDelay(pdMS_TO_TICKS(10));
         }
-        printf("fin de trace : %d appui(s) rapporte(s).\n", lignes);
-        if (lignes == 0) {
+        printf("fin de trace : %d appui(s), %d tap(s) sur zone.\n", n_appuis,
+               n_taps);
+        if (n_appuis > n_taps) {
+            printf("  (%d appui(s) HORS ZONE — barre heure/date, espace entre\n",
+                   n_appuis - n_taps);
+            printf("   cases, ou marge : c'est ce qu'AC3 attend de ces endroits.)\n");
+        }
+        if (n_appuis == 0) {
             printf("⚠️ AUCUN appui vu. Si l'ecran a bien ete touche, c'est le\n");
             printf("   TACTILE qui ne remonte rien : `touch` (compteur IRQ,\n");
             printf("   erreurs I2C) puis `touch int 3000` pour trancher.\n");

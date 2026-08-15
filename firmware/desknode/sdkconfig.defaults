@@ -60,7 +60,45 @@ CONFIG_SPIRAM_SPEED_80M=y
 # son effet propre est INCONNU — plutôt que de laisser une justification fausse.
 # Contrainte induite, elle bien réelle : le callback vsync doit être IRAM_ATTR
 # et ne toucher que de la RAM interne.
-CONFIG_LCD_RGB_ISR_IRAM_SAFE=y
+#
+# ── dn1-4, 2026-08-16 : LA BRANCHE JAMAIS JOUÉE EST JOUÉE ────────────────────
+# Symptôme NOUVEAU, qui rouvre l'arbitrage (§0 l'autorise à cette condition) :
+# dès qu'une transaction I2C a lieu PENDANT que la dalle affiche, l'image défile
+# à toute vitesse. Constat owner : permanent en lecture tactile `poll` (30
+# transactions/s), présent uniquement pendant le contact du doigt en `event`,
+# absent au repos. Avant dn1-4 aucune story ne faisait d'I2C en fonctionnement —
+# le TCA9554 ne sert qu'au boot — donc personne ne pouvait le voir.
+# ⚠️ Ce défaut BLOQUE AUSSI dn2-1 (BME680, BH1750, VL53L0X, INA219 sur ce bus).
+#
+# Mécanisme, CONFIRMÉ depuis : sur ESP32-S3, la flash et la PSRAM partagent le
+# contrôleur SPI0. La DMA du panneau RGB lit le framebuffer PSRAM à 23,0 Mo/s en
+# continu ; du code exécuté depuis la flash (le driver I2C) provoque des défauts
+# de cache qui lui volent ce bus, et elle est affamée EN COURS DE TRAME. Signature
+# qui l'établit : la bande du haut reste stable pendant que le bas défile — un
+# décrochage global les emporterait toutes les deux.
+#
+# ── LES DEUX MESURES DE dn1-4, DANS L'ORDRE OÙ ELLES ONT ÉTÉ FAITES ─────────
+#
+# 1. EFFET PROPRE DE CE SYMBOLE, enfin mesuré (le trou que ce bloc signalait) :
+#    branche « bounce 0, ISR_IRAM_SAFE=n », tactile en `poll`.
+#    => AUCUN EFFET sur le défilement. Il défile exactement pareil. Ce symbole
+#       n'est donc PAS une parade à la famine de la DMA, et ce point est
+#       désormais mesuré au lieu d'être inconnu.
+#
+# 2. CE QU'IL EMPÊCHAIT, en revanche : le BOUNCE BUFFER. Avec =y, activer le
+#    bounce fait paniquer la carte au boot — « Guru Meditation Error: Core 0
+#    panic'ed (Cache error). Cache disabled but cached memory region accessed » —
+#    parce qu'une ISR IRAM-safe ne peut pas recopier depuis un framebuffer PSRAM,
+#    qui est de la mémoire cachée. Avec =n, le bounce démarre et TIENT.
+#    C'est très probablement l'explication du « watchdog » qui avait disqualifié
+#    le bounce en dn1-2 : les deux options étaient nouées, et jamais démêlées.
+#
+# ⇒ On garde =n NON PAS pour son effet propre (nul), mais parce qu'il est la
+#   CONDITION du bounce buffer, qui est lui la parade mesurée (voir
+#   DN_DEFAULT_BOUNCE_PX dans dn_bootcfg.c).
+# ⚠️ Contrainte induite LEVÉE : le callback vsync n'est plus obligé d'être
+#    IRAM_ATTR. Il le reste — ça ne coûte rien et ça ne ment pas.
+CONFIG_LCD_RGB_ISR_IRAM_SAFE=n
 
 # Défaut IDF = n. MESURÉ NÉCESSAIRE ICI, le 2026-08-14, sur cette carte.
 # SYMPTÔME sans cette ligne : l'image s'affiche avec les BONNES COULEURS mais
