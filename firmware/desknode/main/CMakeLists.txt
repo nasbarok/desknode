@@ -10,6 +10,7 @@ idf_component_register(
         "dn_console.c"
         "dn_recal.c"
         "dn_ui.c"
+        "dn_touch.c"
     INCLUDE_DIRS "."
     REQUIRES
         driver

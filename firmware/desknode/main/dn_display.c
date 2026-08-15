@@ -118,8 +118,66 @@ static esp_err_t i2c_bring_up(void)
     ESP_RETURN_ON_ERROR(i2c_new_master_bus(&bus_cfg, &s_i2c), TAG,
                         "bus I2C (SDA=%d SCL=%d) refusé", DN_PIN_I2C_SDA,
                         DN_PIN_I2C_SCL);
-    ESP_LOGI(TAG, "bus I2C monté : SDA=GPIO%d SCL=GPIO%d @ %d Hz",
+    /*
+     * ⚠️ ÉTIQUETTE CORRIGÉE (dn1-4). Cette ligne annonçait « @ 400000 Hz »
+     *    comme si le BUS portait une fréquence. En API `i2c_master` d'IDF 5.x,
+     *    `i2c_master_bus_config_t` n'a AUCUN champ d'horloge : la fréquence se
+     *    pose PAR DEVICE, dans `i2c_master_dev_config_t.scl_speed_hz`, et deux
+     *    devices du même bus peuvent tourner à deux vitesses différentes.
+     *    L'ancienne ligne était donc une étiquette non tenue par ce qu'elle
+     *    décrit — exactement la classe de défaut que ce firmware traque.
+     *
+     *    Ce que le bus porte réellement : les broches, la source d'horloge, le
+     *    filtre de glitch et les tirages internes. Les 400 kHz sont posés par
+     *    chaque device : le TCA9554 le fait dans son propre driver
+     *    (esp_io_expander_tca9554.c:18, I2C_CLK_SPEED = 400000 — lu dans le
+     *    source, pas supposé) et dn_touch le fait pour le GT911 avec
+     *    DN_I2C_FREQ_HZ.
+     */
+    ESP_LOGI(TAG,
+             "bus I2C monté : SDA=GPIO%d SCL=GPIO%d, tirages internes ON — "
+             "l'horloge est posée PAR DEVICE (%d Hz visés), pas par le bus",
              DN_PIN_I2C_SDA, DN_PIN_I2C_SCL, DN_I2C_FREQ_HZ);
+    return ESP_OK;
+}
+
+i2c_master_bus_handle_t dn_display_i2c_bus(void) { return s_i2c; }
+esp_io_expander_handle_t dn_display_expander(void) { return s_expander; }
+
+esp_err_t dn_display_tp_reset(int bas_ms, int haut_ms)
+{
+    ESP_RETURN_ON_FALSE(s_expander, ESP_ERR_INVALID_STATE, TAG,
+                        "expander absent — dn_display_init() n'a pas tourné");
+    ESP_RETURN_ON_FALSE(bas_ms > 0 && bas_ms <= 2000 && haut_ms > 0 &&
+                            haut_ms <= 2000,
+                        ESP_ERR_INVALID_ARG, TAG,
+                        "délais hors bornes (1..2000 ms) : %d/%d", bas_ms,
+                        haut_ms);
+
+    /*
+     * TP_RST passe en SORTIE ICI, et c'est le changement d'état stationnaire que
+     * dn1-2 avait annoncé (« dn1-4 part d'un TP_RST non piloté, pas d'un TP_RST
+     * haut »). Avant cet appel il est en ENTRÉE haute impédance, tel que le
+     * TCA9554 le laisse à sa mise sous tension.
+     *
+     * ⚠️ `esp_io_expander_set_dir` sur le SEUL bit 1 : le masque ne contient pas
+     *    LCD_RST (bit 0). Un masque trop large remettrait la dalle en reset, et
+     *    le symptôme serait un écran gris sans le moindre message — la panne la
+     *    plus coûteuse de dn1-2.
+     */
+    ESP_RETURN_ON_ERROR(esp_io_expander_set_dir(s_expander, DN_EXIO_TP_RST,
+                                                IO_EXPANDER_OUTPUT),
+                        TAG, "TP_RST en sortie refusé");
+    ESP_RETURN_ON_ERROR(esp_io_expander_set_level(s_expander, DN_EXIO_TP_RST, 0),
+                        TAG, "TP_RST bas refusé");
+    vTaskDelay(pdMS_TO_TICKS(bas_ms));
+    ESP_RETURN_ON_ERROR(esp_io_expander_set_level(s_expander, DN_EXIO_TP_RST, 1),
+                        TAG, "TP_RST haut refusé");
+    vTaskDelay(pdMS_TO_TICKS(haut_ms));
+    ESP_LOGI(TAG,
+             "reset tactile joué via l'expander bit1/EXIO2 (%d ms bas, %d ms de "
+             "repos) — TP_RST reste désormais en SORTIE HAUTE",
+             bas_ms, haut_ms);
     return ESP_OK;
 }
 
@@ -147,14 +205,18 @@ static esp_err_t expander_bring_up(void)
     ESP_RETURN_ON_ERROR(esp_io_expander_set_level(s_expander, DN_EXIO_LCD_CS, 1),
                         TAG, "CS haut refusé");
 
-    /* ⚠️ TP_RST (bit 1) : on le laisse DÉLIBÉRÉMENT dans son état de mise sous
-     * tension du TCA9554, c'est-à-dire en ENTRÉE haute impédance. On ne le
-     * pilote pas — le GT911 est le sujet de dn1-4, et le mettre en sortie ici
-     * lui imposerait un niveau qu'on n'a pas mesuré. Cet état est un livrable
-     * de P1 : dn1-4 en dépend. */
+    /* ⚠️ TP_RST (bit 1) : ce module le laisse DÉLIBÉRÉMENT dans son état de mise
+     * sous tension du TCA9554, c'est-à-dire en ENTRÉE haute impédance. C'était un
+     * livrable de P1, et ça le reste : le niveau qui compte pour le GT911 est
+     * celui du RELÂCHEMENT du reset, en même temps qu'INT — donc la séquence
+     * appartient à celui qui tient INT.
+     * dn1-4 la joue via `dn_display_tp_reset()` (plus bas dans ce fichier), après
+     * le boot de l'affichage : à partir de là TP_RST est en SORTIE HAUTE, et
+     * c'est le nouvel état stationnaire. Ici, rien ne change. */
     ESP_LOGI(TAG,
              "TCA9554 prêt : LCD_RST=bit0 et LCD_CS=bit2 en SORTIE ; "
-             "TP_RST=bit1 laissé en ENTRÉE (état de reset de l'expander)");
+             "TP_RST=bit1 laissé en ENTRÉE (état de reset de l'expander) — "
+             "dn_touch le prendra en main");
     return ESP_OK;
 }
 

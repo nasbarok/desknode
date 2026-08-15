@@ -38,6 +38,7 @@
 #include "dn_patterns.h"
 #include "dn_pins.h"
 #include "dn_recal.h"
+#include "dn_touch.h"
 #include "dn_ui.h"
 #include "esp_err.h"
 #include "esp_flash.h"
@@ -192,12 +193,49 @@ void app_main(void)
     }
     dn_asset_log();
 
+    /*
+     * 3 bis. LE TACTILE, AVANT LVGL — et pas par élégance.
+     *
+     * Le bring-up du GT911 n'a besoin que du bus I²C et de l'expander, tous deux
+     * montés à l'étape 2. Le faire ICI, avant que LVGL n'existe, donne deux
+     * choses : le diagnostic du tactile ne dépend pas de la bonne santé de l'UI
+     * (une carte qui affiche mais ne répond pas au doigt se distingue d'une carte
+     * qui ne fait ni l'un ni l'autre), et l'indev n'a plus qu'à se brancher sur
+     * un contrôleur DÉJÀ prouvé vivant.
+     *
+     * ⚠️ NON FATAL, délibérément. Un GT911 muet ne doit pas empêcher l'écran de
+     *    s'allumer : c'est justement l'écran allumé qui permettra de le
+     *    diagnostiquer. La console dit alors pourquoi (`touch`).
+     * ⚠️ COÛT DE BOOT : ~350 ms de délais de reset (150+150+50), fidèles à la
+     *    démo Waveshare. Le rétroéclairage ne monte qu'après la première trame,
+     *    donc ce retard-là ne se voit pas — il s'ajoute au « prêt en N ms ».
+     */
+    esp_err_t touch_err = dn_touch_init();
+    if (touch_err != ESP_OK) {
+        ESP_LOGE(TAG,
+                 "tactile INDISPONIBLE (%s) — l'écran s'allume quand même, mais "
+                 "aucune zone ne répondra. `touch` dit où la séquence a échoué.",
+                 esp_err_to_name(touch_err));
+    }
+
     /* 4. LVGL par-dessus le socle. C'est lui qui dessine désormais : le
      *    dn_pattern_draw() + present() du boot de dn1-2 a disparu d'ici, parce
      *    que le premier cycle LVGL l'aurait recouvert de toute façon. Les mires
      *    restent accessibles par la console (`ui off` puis `scene …`), ce dont
      *    AC5 a besoin. */
     ESP_ERROR_CHECK(dn_ui_init(&cfg, asset_err));
+
+    /* 4 bis. L'indev tactile sur l'afficheur LVGL. Après dn_ui_init (il faut un
+     *    `lv_display_t`), et seulement si le contrôleur a répondu. */
+    if (touch_err == ESP_OK) {
+        esp_err_t indev_err = dn_touch_attach_lvgl(dn_ui_display());
+        if (indev_err != ESP_OK) {
+            ESP_LOGE(TAG,
+                     "indev tactile non branché (%s) — le GT911 vit, mais LVGL "
+                     "ne le lit pas : le doigt ne fera rien.",
+                     esp_err_to_name(indev_err));
+        }
+    }
 
     /* 5. Instrumentation — APRÈS LVGL (voir l'avertissement en tête de fichier). */
     ESP_ERROR_CHECK(dn_measure_attach(dn_display_panel()));

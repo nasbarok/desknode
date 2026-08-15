@@ -1,6 +1,7 @@
 #include "dn_console.h"
 
 #include <errno.h>
+#include <inttypes.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,6 +15,7 @@
 #include "dn_pins.h"
 #include "dn_recal.h"
 #include "dn_stimulus.h"
+#include "dn_touch.h"
 #include "dn_ui.h"
 #include "esp_console.h"
 #include "esp_log.h"
@@ -1217,6 +1219,451 @@ static int cmd_ui(int argc, char **argv)
     return 0;
 }
 
+/* ── Le tactile (dn1-4) ───────────────────────────────────────────────────── */
+
+static void touch_usage(void)
+{
+    printf("usage : touch                      etat, config lue, compteurs\n");
+    printf("        touch reset                remet les compteurs a zero\n");
+    printf("        touch mode event|poll      mode de lecture de l'indev\n");
+    printf("        touch axes <swap> <mx> <my>  0|1 chacun (orientation)\n");
+    printf("        touch trace [ms]           imprime chaque appui + sa zone\n");
+    printf("        touch int [ms]             temoin PHYSIQUE de TP_INT\n");
+    printf("        touch addr                 PREUVE CAUSALE : INT haut/bas\n");
+    printf("                                   -> adresse latchee 0x14/0x5D\n");
+}
+
+static void touch_etat(void)
+{
+    dn_touch_stats_t st;
+    dn_touch_cfg_t cfg;
+    dn_touch_get_stats(&st);
+    dn_touch_get_cfg(&cfg);
+    bool swap = false, mx = false, my = false;
+    dn_touch_get_axes(&swap, &mx, &my);
+    int bas = 0, haut = 0;
+    dn_touch_get_delais(&bas, &haut);
+
+    printf("GT911 : %s\n", dn_touch_ready() ? "PRET" : "ABSENT");
+    printf("  adresse REELLE 0x%02X (visee 0x%02X)%s\n", dn_touch_addr(),
+           dn_touch_addr_visee(),
+           dn_touch_addr() && dn_touch_addr() != dn_touch_addr_visee()
+               ? "  <- REPLI : INT n'etait pas bas au relachement"
+               : "");
+    if (dn_touch_addr_avant()) {
+        printf("  probe AVANT reset : REPOND DEJA a 0x%02X\n",
+               dn_touch_addr_avant());
+        printf("     => TP_RST n'est PAS maintenu bas quand l'expander le laisse\n");
+        printf("        en entree : le GT911 sort de reset seul a la mise sous\n");
+        printf("        tension. La story attendait l'inverse — MESURE le\n");
+        printf("        2026-08-16. La sequence reste utile : elle rend l'adresse\n");
+        printf("        DETERMINISTE. Le temoin de causalite est `touch addr`.\n");
+    } else {
+        printf("  probe AVANT reset : %s (muet — controleur encore en reset)\n",
+               esp_err_to_name(dn_touch_probe_avant()));
+    }
+    printf("  probe APRES reset : %s\n", esp_err_to_name(dn_touch_probe_apres()));
+    printf("  sequence : INT bas, TP_RST %d ms bas / %d ms de repos (expander bit1)\n",
+           bas, haut);
+    if (cfg.lue) {
+        printf("  identite : « %s » fw 0x%04X · config v%u · %u point(s) max\n",
+               cfg.product_id, cfg.fw_version, cfg.cfg_version, cfg.touch_max);
+        printf("  resolution CONFIGUREE dans le GT911 : %u x %u  (dalle %d x %d)\n",
+               cfg.x_res, cfg.y_res, DN_LCD_H_RES, DN_LCD_V_RES);
+        printf("  INT declenche sur : %s (registre 0x804D bits 1-0 = %u)\n",
+               cfg.trig_mode == 0   ? "front MONTANT"
+               : cfg.trig_mode == 1 ? "front DESCENDANT"
+               : cfg.trig_mode == 2 ? "niveau BAS"
+                                    : "niveau HAUT",
+               cfg.trig_mode);
+    } else {
+        printf("  identite/config : NON LUES\n");
+    }
+    printf("  mode de lecture : %s · axes swap=%d mirror_x=%d mirror_y=%d\n",
+           dn_touch_mode_name(dn_touch_get_mode()), swap, mx, my);
+    printf("  TP_INT = GPIO%d, niveau instantane %d\n", DN_PIN_TP_INT,
+           dn_touch_int_level());
+    printf("compteurs :\n");
+    printf("  IRQ %" PRIu32 " · lectures %" PRIu32 " · appuis %" PRIu32
+           " · relaches %" PRIu32 " · erreurs I2C %" PRIu32 "\n",
+           st.irq, st.lectures, st.appuis, st.relaches, dn_touch_err_i2c());
+    printf("  dernier point : (%" PRIu32 ", %" PRIu32 ")  brut (%" PRIu32
+           ", %" PRIu32 ")  etat %s\n",
+           st.x, st.y, st.brut_x, st.brut_y, st.appuye ? "APPUYE" : "relache");
+    if (st.irq == 0 && st.appuis > 0) {
+        printf("⚠️ des appuis SANS aucune IRQ : en mode `event` le tactile serait\n");
+        printf("   MUET. C'est le polling qui les a vus. Verifier TP_INT avec\n");
+        printf("   `touch int 3000` avant de retenir `event`.\n");
+    }
+
+    dn_touch_latence_t lat;
+    dn_touch_get_latence(&lat);
+    printf("latence tap -> ecran flushe (AC5) :\n");
+    if (lat.n == 0) {
+        printf("  aucune transition mesuree — toucher une case, ou `nav open 0`\n");
+    } else {
+        printf("  n=%" PRIu32 " · min %" PRIu32 " us · moy %" PRIu32
+               " us · max %" PRIu32 " us · dernier %" PRIu32 " us\n",
+               lat.n, lat.min_us, lat.total_us / lat.n, lat.max_us,
+               lat.dernier_us);
+        printf("  soit min %.1f ms · moy %.1f ms · max %.1f ms\n",
+               lat.min_us / 1000.0, (lat.total_us / lat.n) / 1000.0,
+               lat.max_us / 1000.0);
+        printf("  ⚠️ BORNES DE LA MESURE : du clic LVGL a la fin du dernier flush\n");
+        printf("     du cycle. N'INCLUT PAS le delai doigt -> lecture (jusqu'a\n");
+        printf("     33 ms en polling) ni le flush -> photon (jusqu'a 26,7 ms).\n");
+    }
+}
+
+static int cmd_touch(int argc, char **argv)
+{
+    if (argc < 2) {
+        touch_etat();
+        touch_usage();
+        return 0;
+    }
+
+    if (strcmp(argv[1], "reset") == 0) {
+        dn_touch_reset_stats();
+        dn_touch_reset_latence();
+        printf("compteurs tactiles et latences remis a zero.\n");
+        return 0;
+    }
+
+    if (strcmp(argv[1], "mode") == 0) {
+        dn_touch_mode_t m;
+        if (argc < 3 || !dn_touch_mode_from_name(argv[2], &m)) {
+            printf("usage : touch mode event|poll\n");
+            return 1;
+        }
+        esp_err_t err = dn_touch_set_mode(m);
+        if (err != ESP_OK) {
+            printf("refuse : %s%s\n", esp_err_to_name(err),
+                   err == ESP_ERR_INVALID_STATE
+                       ? " — pas d'indev (le tactile n'est pas branche a LVGL)"
+                       : "");
+            return 1;
+        }
+        printf("mode de lecture : %s\n", dn_touch_mode_name(m));
+        if (m == DN_TOUCH_MODE_EVENT) {
+            printf("⚠️ PROTOCOLE — le mode `event` est MUET EN SILENCE si l'INT ne\n");
+            printf("   bat pas : `touch reset`, toucher l'ecran, puis `touch` et\n");
+            printf("   REGARDER le compteur IRQ. Un compteur a zero apres un vrai\n");
+            printf("   toucher condamne ce mode, quoi qu'affiche l'ecran.\n");
+        }
+        return 0;
+    }
+
+    if (strcmp(argv[1], "axes") == 0) {
+        long s = 0, mx = 0, my = 0;
+        if (argc < 5 || !parse_entier(argv[2], &s) || !parse_entier(argv[3], &mx) ||
+            !parse_entier(argv[4], &my)) {
+            printf("usage : touch axes <swap> <mirror_x> <mirror_y>  (0 ou 1)\n");
+            return 1;
+        }
+        if (s < 0 || s > 1 || mx < 0 || mx > 1 || my < 0 || my > 1) {
+            printf("refuse : chaque drapeau vaut 0 ou 1.\n");
+            return 1;
+        }
+        esp_err_t err = dn_touch_set_axes(s != 0, mx != 0, my != 0);
+        if (err != ESP_OK) {
+            printf("refuse : %s\n", esp_err_to_name(err));
+            return 1;
+        }
+        printf("axes : swap=%ld mirror_x=%ld mirror_y=%ld\n", s, mx, my);
+        printf("⚠️ les miroirs se replient sur x_max=%d / y_max=%d : un miroir sans\n",
+               DN_LCD_H_RES, DN_LCD_V_RES);
+        printf("   son max donne des coordonnees repliees sur le mauvais bord.\n");
+        return 0;
+    }
+
+    if (strcmp(argv[1], "trace") == 0) {
+        long ms = 20000;
+        if (argc >= 3 && !parse_entier(argv[2], &ms)) {
+            printf("« %s » n'est pas un nombre.\n", argv[2]);
+            return 1;
+        }
+        if (ms < 1000 || ms > 120000) {
+            printf("refuse : entre 1000 et 120000 ms.\n");
+            return 1;
+        }
+        /*
+         * La trace est produite ICI, dans la tâche du REPL, en OBSERVANT les
+         * compteurs — jamais depuis un callback LVGL. Un printf dans le chemin
+         * de rendu bloquerait la tâche LVGL sur le lien USB, et l'instrument de
+         * la preuve d'AC3 fausserait la latence qu'AC5 mesure au même instant.
+         */
+        printf("trace des appuis pendant %ld ms — TOUCHER MAINTENANT.\n", ms);
+        printf("colonnes : #appui · point (x,y) apres axes · brut (x,y) · zone\n");
+        dn_touch_stats_t st;
+        dn_touch_get_stats(&st);
+        uint32_t vus = st.appuis;
+        uint32_t taps_vus = dn_ui_taps();
+        int64_t fin = esp_timer_get_time() + (int64_t)ms * 1000;
+        int lignes = 0;
+        while (esp_timer_get_time() < fin) {
+            dn_touch_get_stats(&st);
+            uint32_t taps = dn_ui_taps();
+            if (st.appuis != vus || taps != taps_vus) {
+                vus = st.appuis;
+                taps_vus = taps;
+                printf("  %3" PRIu32 " · (%3" PRIu32 ", %3" PRIu32 ") · brut (%3" PRIu32
+                       ", %3" PRIu32 ") · %s\n",
+                       st.appuis, st.x, st.y, st.brut_x, st.brut_y,
+                       dn_ui_zone_nom(dn_ui_dernier_tap()));
+                lignes++;
+            }
+            vTaskDelay(pdMS_TO_TICKS(10));
+        }
+        printf("fin de trace : %d appui(s) rapporte(s).\n", lignes);
+        if (lignes == 0) {
+            printf("⚠️ AUCUN appui vu. Si l'ecran a bien ete touche, c'est le\n");
+            printf("   TACTILE qui ne remonte rien : `touch` (compteur IRQ,\n");
+            printf("   erreurs I2C) puis `touch int 3000` pour trancher.\n");
+        }
+        return 0;
+    }
+
+    if (strcmp(argv[1], "int") == 0) {
+        long ms = 3000;
+        if (argc >= 3 && !parse_entier(argv[2], &ms)) {
+            printf("« %s » n'est pas un nombre.\n", argv[2]);
+            return 1;
+        }
+        printf("echantillonnage de GPIO%d pendant %ld ms — TOUCHER L'ECRAN "
+               "MAINTENANT.\n",
+               DN_PIN_TP_INT, ms);
+        int fin = 0;
+        uint32_t t = dn_touch_int_scan((int)ms, &fin);
+        printf("transitions vues : %" PRIu32 " · niveau final %d\n", t, fin);
+        if (t == 0) {
+            printf("=> la broche N'A PAS BOUGE. Soit rien n'a ete touche, soit\n");
+            printf("   GPIO%d n'est pas TP_INT. `touch addr` tranche : si changer\n",
+                   DN_PIN_TP_INT);
+            printf("   son niveau change l'adresse latchee, c'est bien elle.\n");
+        } else {
+            printf("=> la broche BAT. Si le compteur IRQ de `touch` reste a zero,\n");
+            printf("   le probleme est l'ARMEMENT de l'ISR (front attendu), pas le\n");
+            printf("   cablage.\n");
+        }
+        printf("⚠️ echantillonne a ~100 us avec une respiration d'1 tick toutes les\n");
+        printf("   20 ms : une impulsion plus courte que le trou peut etre manquee.\n");
+        return 0;
+    }
+
+    if (strcmp(argv[1], "addr") == 0) {
+        printf("PREUVE CAUSALE de TP_INT — deux resets, deux niveaux d'INT.\n");
+        printf("Le GT911 echantillonne INT au relachement de RST : bas => 0x5D,\n");
+        printf("haut => 0x14. Si GPIO%d commande ce choix, c'est LUI.\n",
+               DN_PIN_TP_INT);
+        uint8_t a_haut = 0, a_bas = 0;
+        esp_err_t e1 = dn_touch_essai_adresse(true, &a_haut);
+        printf("  INT tenu HAUT au relachement -> repond a 0x%02X  (%s)\n", a_haut,
+               esp_err_to_name(e1));
+        esp_err_t e2 = dn_touch_essai_adresse(false, &a_bas);
+        printf("  INT tenu BAS  au relachement -> repond a 0x%02X  (%s)\n", a_bas,
+               esp_err_to_name(e2));
+        if (a_haut == DN_GT911_ADDR_BACKUP && a_bas == DN_GT911_ADDR) {
+            printf("=> ETABLI : GPIO%d EST TP_INT. Aucune autre broche du SoC ne\n",
+                   DN_PIN_TP_INT);
+            printf("   peut changer l'adresse que le GT911 echantillonne.\n");
+        } else if (a_haut == a_bas && a_bas != 0) {
+            printf("=> INFIRME : l'adresse ne suit PAS GPIO%d. Soit la broche n'est\n",
+                   DN_PIN_TP_INT);
+            printf("   pas TP_INT, soit un tirage externe impose le niveau.\n");
+        } else {
+            printf("=> INCONCLUANT : le contrôleur n'a pas repondu a l'un des deux\n");
+            printf("   essais. Relancer, ou verifier `touch` d'abord.\n");
+        }
+        printf("l'etat NOMINAL (INT bas => 0x%02X) vient d'etre restaure : le\n",
+               DN_GT911_ADDR);
+        printf("driver parle a 0x%02X et doit y retrouver le contrôleur.\n",
+               dn_touch_addr());
+        if (a_bas != dn_touch_addr()) {
+            printf("⚠️ ce n'est PAS le cas ici : le tactile restera MUET jusqu'au\n");
+            printf("   prochain `reboot`.\n");
+        }
+        return 0;
+    }
+
+    touch_usage();
+    return 1;
+}
+
+/* ── La navigation (dn1-4) ────────────────────────────────────────────────── */
+
+/*
+ * Verrou des transitions contre la PAUSE de LVGL.
+ *
+ * Ce n'est pas de la politesse : la transition arme le chronomètre de latence
+ * (AC5) et compte sur le cycle de rafraîchissement suivant pour l'arrêter. LVGL
+ * en pause, ce cycle n'arrive JAMAIS — le chronomètre reste en vol, et c'est le
+ * premier flush d'après `ui on` qui l'arrêterait. La latence publiée serait alors
+ * la durée de la pause, c'est-à-dire un chiffre gouverné par l'opérateur et pas
+ * par la carte. On refuse, et on explique.
+ *
+ * Le chemin du DOIGT n'a pas besoin de cette garde : en pause, l'indev n'est pas
+ * lu, donc aucun clic n'est produit.
+ */
+static bool nav_bloque_par_pause(const char *commande)
+{
+    if (dn_ui_active()) {
+        return false;
+    }
+    printf("refusé : LVGL est en pause — `ui on` d'abord.\n");
+    printf("   `%s` armerait le chronomètre de latence sur un cycle de\n", commande);
+    printf("   rafraîchissement qui n'aura pas lieu : la mesure publierait la\n");
+    printf("   durée de la PAUSE au lieu de celle de la transition.\n");
+    return true;
+}
+
+static void nav_usage(void)
+{
+    printf("usage : nav                        vue courante et compteurs\n");
+    printf("        nav open <0..%d>            ouvre le detail d'une metrique\n",
+           DN_UI_METRIQUES - 1);
+    printf("        nav back                   retour au dashboard\n");
+    printf("        nav model rebuild|screens  MODELE de navigation (A/B d'AC4)\n");
+    printf("        nav ab <n>                 n allers-retours, chronometres\n");
+}
+
+static int cmd_nav(int argc, char **argv)
+{
+    if (argc < 2) {
+        printf("vue : %s", dn_ui_vue_name(dn_ui_vue()));
+        if (dn_ui_vue() == DN_VUE_DETAIL) {
+            printf(" « %s »", dn_ui_metrique_nom(dn_ui_metrique()));
+        }
+        printf(" · modele « %s » · %" PRIu32 " transitions depuis le boot\n",
+               dn_nav_model_name(dn_ui_get_nav_model()), dn_ui_nav_count());
+        printf("taps sur zone : %" PRIu32 " (dont %" PRIu32
+               " sur MENU) · derniere zone touchee : %s\n",
+               dn_ui_taps(), dn_ui_menu_taps(),
+               dn_ui_zone_nom(dn_ui_dernier_tap()));
+        printf("metriques : ");
+        for (int i = 0; i < DN_UI_METRIQUES; i++) {
+            printf("%d=%s ", i, dn_ui_metrique_nom(i));
+        }
+        printf("\n");
+        dn_ui_log_mem();
+        nav_usage();
+        return 0;
+    }
+
+    if (strcmp(argv[1], "open") == 0) {
+        long idx = 0;
+        if (argc < 3 || !parse_entier(argv[2], &idx)) {
+            printf("usage : nav open <0..%d>\n", DN_UI_METRIQUES - 1);
+            return 1;
+        }
+        if (nav_bloque_par_pause("nav open")) {
+            return 1;
+        }
+        esp_err_t err = dn_ui_nav_open((int)idx);
+        if (err != ESP_OK) {
+            printf("refuse : %s\n", esp_err_to_name(err));
+            return 1;
+        }
+        printf("detail « %s » ouvert.\n", dn_ui_metrique_nom((int)idx));
+        return 0;
+    }
+
+    if (strcmp(argv[1], "back") == 0) {
+        if (nav_bloque_par_pause("nav back")) {
+            return 1;
+        }
+        esp_err_t err = dn_ui_nav_back();
+        if (err != ESP_OK) {
+            printf("refuse : %s\n", esp_err_to_name(err));
+            return 1;
+        }
+        printf("retour au dashboard.\n");
+        return 0;
+    }
+
+    if (strcmp(argv[1], "model") == 0) {
+        dn_nav_model_t m;
+        if (argc < 3 || !dn_nav_model_from_name(argv[2], &m)) {
+            printf("usage : nav model rebuild|screens\n");
+            printf("  rebuild : lv_obj_clean + reconstruction (pattern historique)\n");
+            printf("  screens : deux racines permanentes + lv_screen_load\n");
+            return 1;
+        }
+        esp_err_t err = dn_ui_set_nav_model(m);
+        if (err != ESP_OK) {
+            printf("refuse : %s\n", esp_err_to_name(err));
+            return 1;
+        }
+        printf("modele « %s » — la vue est revenue au dashboard (les deux modeles\n",
+               dn_nav_model_name(m));
+        printf("ne tiennent pas leur etat au meme endroit).\n");
+        printf("⚠️ comparer proprement : `touch reset` puis `nav ab 20`.\n");
+        return 0;
+    }
+
+    if (strcmp(argv[1], "ab") == 0) {
+        long n = 10;
+        if (argc >= 3 && !parse_entier(argv[2], &n)) {
+            printf("« %s » n'est pas un nombre.\n", argv[2]);
+            return 1;
+        }
+        if (n < 1 || n > 200) {
+            printf("refuse : entre 1 et 200 allers-retours.\n");
+            return 1;
+        }
+        if (!dn_ui_active()) {
+            printf("refuse : LVGL est en pause (`ui on` d'abord).\n");
+            return 1;
+        }
+        /* Mémoire AVANT, mesurée sur le même instrument qu'après : c'est la
+         * preuve de non-fuite d'AC4, et elle n'a de sens que si les deux relevés
+         * encadrent EXACTEMENT la série. */
+        size_t interne_avant = dn_measure_internal_free();
+        size_t psram_avant = dn_measure_psram_free();
+        dn_touch_reset_latence();
+        printf("%ld allers-retours en modele « %s »…\n", n,
+               dn_nav_model_name(dn_ui_get_nav_model()));
+        for (long i = 0; i < n; i++) {
+            esp_err_t e1 = dn_ui_nav_open((int)(i % DN_UI_METRIQUES));
+            /* Laisser le cycle de rafraîchissement ABOUTIR avant de repartir :
+             * sans cette pause, la seconde transition arriverait pendant le
+             * redessin de la première et la latence mesurée serait celle d'un
+             * régime que le doigt ne produit jamais. 250 ms couvrent le pire
+             * plein écran mesuré (~176 ms d'attente + copie). */
+            vTaskDelay(pdMS_TO_TICKS(250));
+            esp_err_t e2 = dn_ui_nav_back();
+            vTaskDelay(pdMS_TO_TICKS(250));
+            if (e1 != ESP_OK || e2 != ESP_OK) {
+                printf("interrompu au tour %ld : %s / %s\n", i + 1,
+                       esp_err_to_name(e1), esp_err_to_name(e2));
+                break;
+            }
+        }
+        size_t interne_apres = dn_measure_internal_free();
+        size_t psram_apres = dn_measure_psram_free();
+        printf("--- non-fuite (AC4) ---------------------------------------\n");
+        printf("  RAM interne %u -> %u o   (delta %d o)\n",
+               (unsigned)interne_avant, (unsigned)interne_apres,
+               (int)((long)interne_avant - (long)interne_apres));
+        printf("  PSRAM       %u -> %u o   (delta %d o)\n", (unsigned)psram_avant,
+               (unsigned)psram_apres,
+               (int)((long)psram_avant - (long)psram_apres));
+        dn_ui_log_mem();
+        dn_touch_latence_t lat;
+        dn_touch_get_latence(&lat);
+        if (lat.n) {
+            printf("  latence : n=%" PRIu32 " min %" PRIu32 " us · moy %" PRIu32
+                   " us · max %" PRIu32 " us\n",
+                   lat.n, lat.min_us, lat.total_us / lat.n, lat.max_us);
+        }
+        printf("-----------------------------------------------------------\n");
+        return 0;
+    }
+
+    nav_usage();
+    return 1;
+}
+
 static int cmd_recal(int argc, char **argv)
 {
     if (argc < 2) {
@@ -1508,6 +1955,10 @@ static const esp_console_cmd_t k_cmds[] = {
            cmd_flush),
     DN_CMD("anim", "anim on [ms] | off — stimulus adverse LVGL (témoin de tearing)",
            cmd_anim),
+    DN_CMD("touch", "touch | reset | mode | axes | int | addr — GT911 (dn1-4)",
+           cmd_touch),
+    DN_CMD("nav", "nav | open <n> | back | model | ab <n> — navigation (dn1-4)",
+           cmd_nav),
     DN_CMD("recal", "recal <0..4> — recalage DMA N vsyncs après la bascule (AC5)",
            cmd_recal),
     DN_CMD("bl", "bl [0..100|on|off|ramp <pct> [ms]] — rétroéclairage gradable",
@@ -1546,7 +1997,7 @@ static int cmd_help(int argc, char **argv)
 void dn_console_banner(void)
 {
     printf("\n");
-    printf("── DeskNode P2 — console de mesure ──\n");
+    printf("── DeskNode P3 — console de mesure ──\n");
     for (size_t i = 0; i < sizeof(k_cmds) / sizeof(k_cmds[0]); i++) {
         printf("  %-7s %s\n", k_cmds[i].command, k_cmds[i].help);
     }
@@ -1559,6 +2010,18 @@ void dn_console_banner(void)
            DN_LCD_H_RES, dn_ui_draw_lines(),
            dn_ui_draw_in_psram() ? "PSRAM" : "RAM interne DMA",
            dn_flush_sync_name(dn_ui_get_sync()));
+    /* Le tactile est LU, pas récité : l'adresse imprimée ici est celle à laquelle
+     * le GT911 a répondu au boot. Un bandeau qui annoncerait 0x5D par principe
+     * enseignerait un fait qu'on n'a pas mesuré — la leçon du « 5 kHz » de dn1-3. */
+    if (dn_touch_ready()) {
+        printf("       tactile GT911 @ 0x%02X · lecture « %s » · vue « %s »\n",
+               dn_touch_addr(), dn_touch_mode_name(dn_touch_get_mode()),
+               dn_ui_vue_name(dn_ui_vue()));
+    } else {
+        printf("       tactile ABSENT — probe apres reset : %s ⚠️ aucune zone ne "
+               "repondra\n",
+               esp_err_to_name(dn_touch_probe_apres()));
+    }
     if (!dn_ui_active()) {
         printf("       scène brute « %s » (chemin dn1-2)\n", scene_courante());
     }

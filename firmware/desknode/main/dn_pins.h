@@ -31,6 +31,12 @@
 #define DN_PIN_I2C_SDA 15
 #define DN_PIN_I2C_SCL 7
 #define DN_I2C_PORT I2C_NUM_0
+/* ⚠️ FRÉQUENCE PAR DEVICE, pas par bus (correctif dn1-4). En API `i2c_master`
+ * d'IDF 5.x, `i2c_master_bus_config_t` n'a pas de champ d'horloge : celle-ci se
+ * pose dans `i2c_master_dev_config_t.scl_speed_hz`, device par device. Cette
+ * constante est donc la valeur que NOS devices demandent (le GT911 de dn_touch,
+ * et demain les capteurs de dn2-1) — le TCA9554, lui, pose ses propres 400 kHz
+ * dans son driver (esp_io_expander_tca9554.c:18). */
 #define DN_I2C_FREQ_HZ 400000
 
 /* ── Expander TCA9554 ────────────────────────────────────────────────────── */
@@ -43,8 +49,44 @@
  * Recoupé : le YAML ESPHome de cette carte déclare pin 0 = display reset,
  * pin 1 = touch reset, pin 2 = display CS. */
 #define DN_EXIO_LCD_RST IO_EXPANDER_PIN_NUM_0 /* EXIO1 */
-#define DN_EXIO_TP_RST IO_EXPANDER_PIN_NUM_1  /* EXIO2 — hors P1, mais on note l'état où on le laisse */
+#define DN_EXIO_TP_RST IO_EXPANDER_PIN_NUM_1  /* EXIO2 — piloté depuis dn1-4 (dn_display_tp_reset) */
 #define DN_EXIO_LCD_CS IO_EXPANDER_PIN_NUM_2  /* EXIO3 */
+
+/* ── Tactile : Goodix GT911 (dn1-4) ──────────────────────────────────────────
+ *
+ * TP_INT — ⚠️ STATUT ÉPISTÉMIQUE, comme le reste de ce fichier l'a été avant la
+ * mire de bits. GPIO16 vient de DEUX sources concordantes (le wiki Waveshare,
+ * qui parle d'une résistance à souder, et les stories dn1-1/dn1-2) mais était
+ * ABSENT de hardware/…-affichage.md §1.2, qui fait autorité. dn1-4 le tranche
+ * par un compteur d'interruptions confronté à un toucher réel — un GPIO qui ne
+ * bat jamais et un GPIO mal choisi se ressemblent trait pour trait.
+ * Le verdict de la mesure est écrit dans §1.2 avec le constat qui l'établit.
+ */
+#define DN_PIN_TP_INT 16
+
+/*
+ * ── LES DEUX ADRESSES DU GT911, ET CE QUI CHOISIT ENTRE ELLES ────────────────
+ *
+ * Le GT911 n'a pas d'adresse fixe : il ÉCHANTILLONNE le niveau de sa broche INT
+ * au moment où son reset est relâché.
+ *      INT tenu BAS   au relâchement  =>  0x5D
+ *      INT tenu HAUT  au relâchement  =>  0x14
+ * C'est pour ça que la séquence de reset appartient à celui qui tient INT, et
+ * pas au driver — qui, avec `rst_gpio_num = -1`, ne la joue même pas.
+ *
+ * ⚠️ Aucune des deux ne rentre en conflit sur ce bus : TCA9554 0x20, RTC
+ *    PCF85063 0x51, IMU QMI8658 0x6A/0x6B, et les 4 capteurs de dn2-1
+ *    (0x76/0x77, 0x23, 0x29, 0x40) sont tous ailleurs.
+ * ⚠️ UN PROBE AVANT LE RESET NE VOIT RIEN : tant que la séquence EXIO2 n'a pas
+ *    été jouée, le GT911 ne répond à AUCUNE des deux. « Absent » à ce moment-là
+ *    n'est pas une panne — c'est le témoin négatif attendu.
+ *
+ * Les noms viennent du header du composant (ESP_LCD_TOUCH_IO_I2C_GT911_ADDRESS
+ * et …_ADDRESS_BACKUP) ; on les redéclare ici parce que dn_pins.h est LA source
+ * unique du brochage et que le probe a lieu avant tout appel au driver.
+ */
+#define DN_GT911_ADDR 0x5D        /* visée : INT tenu bas au relâchement */
+#define DN_GT911_ADDR_BACKUP 0x14 /* repli : INT haut/flottant */
 
 /* ── 3-wire SPI d'initialisation du ST7701S ──────────────────────────────── */
 /* ⛔ GPIO1/GPIO2 sont PARTAGÉS avec le slot TF (SD_CMD / SD_SCK).

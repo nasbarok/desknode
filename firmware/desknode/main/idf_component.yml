@@ -1,4 +1,4 @@
-## DeskNode P1/P2 — dépendances managées.
+## DeskNode P1/P2/P3 — dépendances managées.
 ##
 ## Versions ÉPINGLÉES (règle héritée de dn1-1 : on ne prend pas « la dernière »,
 ## on prend celle qu'on a vue marcher, et on note ce que le lock a résolu).
@@ -39,3 +39,24 @@ dependencies:
   ##    ne s'affiche pas sur cette puce sous RESTART_IN_VSYNC=y). D'où le mode
   ##    partiel + flush synchronisé, voir dn_ui.c.
   espressif/esp_lvgl_port: "==2.9.0"
+
+  ## ── dn1-4 : le tactile ────────────────────────────────────────────────────
+  ## Driver du Goodix GT911. 1.2.1 = dernière au registre, RE-VÉRIFIÉE le
+  ## 2026-08-15 par appel direct à l'API du registre (19 versions listées, 1.2.1
+  ## en tête) — pas sur la foi d'un article.
+  ##
+  ## 🔴 CE QU'IL NE FERA PAS POUR NOUS, et c'est le piège n°4 de cette story :
+  ##    TP_RST est derrière le TCA9554, donc on lui passe `rst_gpio_num = -1`. Or
+  ##    avec -1 le driver SAUTE toute sa séquence de reset — c'est-à-dire aussi la
+  ##    SÉLECTION D'ADRESSE du GT911, qui latche 0x5D ou 0x14 selon le niveau
+  ##    d'INT au relâchement du reset. La séquence est donc jouée par dn_touch.c
+  ##    AVANT le `new` (cas documenté esp-bsp #130).
+  espressif/esp_lcd_touch_gt911: "==1.2.1"
+
+  ## La couche générique dont le GT911 dépend (il déclare `^1.2.0`, donc sans
+  ## cette ligne le résolveur prendrait « la dernière », ce que la règle du dépôt
+  ## interdit : le manifeste fait foi, le lock est gitignoré). 1.2.1 au registre.
+  ## ⚠️ C'est elle qui applique swap_xy/mirror_x/mirror_y EN LOGICIEL, avec
+  ##    x_max/y_max comme axe de symétrie : ces quatre champs se règlent ensemble
+  ##    ou pas du tout.
+  espressif/esp_lcd_touch: "==1.2.1"

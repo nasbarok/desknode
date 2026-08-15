@@ -10,6 +10,7 @@
 #include "dn_measure.h"
 #include "dn_pins.h"
 #include "dn_recal.h"
+#include "dn_touch.h"
 #include "esp_cache.h"
 #include "esp_check.h"
 #include "esp_heap_caps.h"
@@ -45,12 +46,128 @@ static const char *TAG = "dn_ui";
 #define DN_UI_ANIM_MS_MAX 10000
 #define DN_UI_ANIM_MS_DEFAUT 2000
 
+/* ── Géométrie des vues de dn1-4 — PROVISOIRE, ET ÉCRIT COMME TEL ─────────── */
+/*
+ * ⚠️ AUCUNE de ces valeurs n'est spécifiée nulle part. Le brief et son addendum
+ *    figent la STRUCTURE (barre heure/date en haut, grille 2x3, bandeau MENU en
+ *    bas) et la seule dimension connue est 480x640 portrait. Tout ce qui suit est
+ *    DÉRIVÉ pour que dn1-4 ait des zones tactiles à éprouver — dn3-2 dessine la
+ *    vraie grille et fera foi. Ne pas bâtir dessus.
+ *
+ * Ce qui n'est PAS arbitraire, en revanche : aucun élément ne fait la hauteur de
+ * l'écran. Le verdict adverse mesuré en dn1-3 (§10.4) est que la synchro `vsync`
+ * NE PROTÈGE PAS une zone sale pleine hauteur ; une case de 225x156 est très loin
+ * de ce cas. La barre du haut est pleine LARGEUR, ce qui est sans rapport : le
+ * balayage descend ligne par ligne.
+ *
+ *   0                                                              479
+ *   +--------------------------------------------------------------+   0
+ *   |  barre : heure (28 px) a gauche, date (14 px) a droite        |
+ *   +--------------------------------------------------------------+  70
+ *   |   +--------------------+    +--------------------+           |
+ *   |   |  CPU               |    |  GPU               |           |
+ *   |   +--------------------+    +--------------------+           |
+ *   |   |  RAM               |    |  RESEAU            |           |
+ *   |   +--------------------+    +--------------------+           |
+ *   |   |  TEMP.             |    |  HUMIDITE          |           |
+ *   |   +--------------------+    +--------------------+           |
+ *   +--------------------------------------------------------------+ 580
+ *   |  MENU (o)                                                    |
+ *   +--------------------------------------------------------------+ 640
+ */
+#define DN_UI_BARRE_H 70
+#define DN_UI_MENU_H 60
+#define DN_UI_MARGE 10
+#define DN_UI_GAP 10
+#define DN_UI_CASE_W ((DN_LCD_H_RES - 2 * DN_UI_MARGE - DN_UI_GAP) / 2) /* 225 */
+#define DN_UI_GRILLE_Y DN_UI_BARRE_H                                    /* 70 */
+#define DN_UI_GRILLE_H (DN_LCD_V_RES - DN_UI_BARRE_H - DN_UI_MENU_H)    /* 510 */
+#define DN_UI_CASE_H ((DN_UI_GRILLE_H - 2 * DN_UI_MARGE - 2 * DN_UI_GAP) / 3) /* 156 */
+
+/* Zone tactile du retour : généreuse par exigence d'AC4 (« pas juste le
+ * glyphe »). 120x60 dans le coin haut-gauche, soit 24 fois l'aire du chevron. */
+#define DN_UI_RETOUR_W 120
+#define DN_UI_RETOUR_H 60
+
+/*
+ * ── LES LIBELLÉS SONT SANS ACCENT, ET CE N'EST PAS UNE NÉGLIGENCE ────────────
+ *
+ * MESURÉ dans le source de la police, pas supposé : `lv_font_montserrat_14.c`
+ * et `_28.c` sont générés avec `-r 0x20-0x7F,0xB0,0x2022` (première ligne du
+ * fichier). La plage couvre l'ASCII imprimable, le SIGNE DEGRÉ (0xB0) et la
+ * puce — et RIEN d'autre. « RÉSEAU », « HUMIDITÉ » ou « AOÛT » y perdraient
+ * leur lettre accentuée, silencieusement : LVGL ne dessine pas le glyphe absent
+ * et ne se plaint pas.
+ *
+ * 🔴 LEGS POUR dn3-1 : afficher du français accentué sur cette dalle EXIGE une
+ *    police générée avec la plage latine étendue (lv_font_conv), donc du binaire
+ *    en plus. Ce n'est pas un choix esthétique reportable — c'est une contrainte
+ *    d'outillage, à budgéter quand le SystemMetricWidget naîtra.
+ * Le « °C » de la température, lui, passe : 0xB0 est dans la plage.
+ */
+static const struct {
+    const char *nom;
+    const char *valeur; /* FACTICE — dn2/dn4-1 apporteront les vraies */
+} k_metriques[DN_UI_METRIQUES] = {
+    {"CPU", "42 %"},      {"GPU", "37 %"},       {"RAM", "12,4 Go"},
+    {"RESEAU", "48 Mo/s"}, {"TEMP.", "21,4 " "\xC2\xB0" "C"}, {"HUMIDITE", "47 %"},
+};
+
+const char *dn_ui_metrique_nom(int idx)
+{
+    return (idx >= 0 && idx < DN_UI_METRIQUES) ? k_metriques[idx].nom : "?";
+}
+
+const char *dn_ui_vue_name(dn_ui_vue_t v)
+{
+    switch (v) {
+    case DN_VUE_DASHBOARD:
+        return "dashboard";
+    case DN_VUE_DETAIL:
+        return "detail";
+    default:
+        return "?";
+    }
+}
+
+const char *dn_nav_model_name(dn_nav_model_t m)
+{
+    switch (m) {
+    case DN_NAV_REBUILD:
+        return "rebuild";
+    case DN_NAV_SCREENS:
+        return "screens";
+    default:
+        return "?";
+    }
+}
+
+bool dn_nav_model_from_name(const char *nom, dn_nav_model_t *out)
+{
+    for (int i = 0; i < DN_NAV_COUNT; i++) {
+        if (strcasecmp(nom, dn_nav_model_name((dn_nav_model_t)i)) == 0) {
+            *out = (dn_nav_model_t)i;
+            return true;
+        }
+    }
+    return false;
+}
+
 /* ── État ─────────────────────────────────────────────────────────────────── */
 
 static lv_display_t *s_disp;
 static esp_lcd_panel_handle_t s_panel;
 static lv_obj_t *s_img;
-static lv_obj_t *s_label;
+/*
+ * DEUX slots pour le label vivant, un par vue — et ce n'est pas du zèle.
+ * En modèle SCREENS les deux écrans existent en même temps, donc le label aussi.
+ * Un pointeur unique finirait par désigner le label de l'écran NON affiché : le
+ * timer 1 Hz écrirait dans le vide, l'écran visible se figerait, et on
+ * chercherait la panne du côté du timer alors que c'est le pointeur qui aurait
+ * changé de propriétaire. `label_courant()` est la seule façon d'y accéder.
+ */
+static lv_obj_t *s_label_dash;
+static lv_obj_t *s_label_det;
 static lv_obj_t *s_bar;
 static lv_timer_t *s_timer;
 static lv_image_dsc_t s_bg_dsc;
@@ -68,7 +185,14 @@ static volatile dn_flush_path_t s_path = DN_FLUSH_PATH_BITMAP;
 static bool s_direct_mode;
 static int s_affinity = -1;
 static volatile bool s_first_frame;
-static volatile bool s_label_shown = true;
+/*
+ * MASQUÉ PAR DÉFAUT depuis dn1-4, et c'est un changement de comportement assumé :
+ * le label vivant est centré (géométrie gelée pour rester comparable à dn1-3) et
+ * recouvrirait les cases RAM/RESEAU du dashboard. `ui label on` le rallume pour
+ * rejouer le régime produit de dn1-3 à l'identique — c'est ce que fait AC6 pour
+ * ré-observer l'artefact §10.5, qui a besoin d'un redessin périodique.
+ */
+static volatile bool s_label_shown;
 static volatile bool s_anim_on;
 static volatile bool s_active = true;
 static int s_anim_ms = DN_UI_ANIM_MS_DEFAUT;
@@ -76,6 +200,50 @@ static int s_anim_ms = DN_UI_ANIM_MS_DEFAUT;
 static int s_draw_lines;
 static bool s_draw_psram;
 static size_t s_int_avant, s_int_apres, s_psram_avant, s_psram_apres;
+
+/* ── Navigation (dn1-4) ───────────────────────────────────────────────────── */
+static dn_ui_vue_t s_vue = DN_VUE_DASHBOARD;
+static int s_metrique;
+/*
+ * ── LE MODÈLE RETENU, ET LES CHIFFRES QUI L'ONT CHOISI (AC4, 2026-08-16) ─────
+ *
+ * 20 allers-retours scriptés (`nav ab 20`), latence clic -> dernier flush :
+ *
+ *   draw_lines   modèle    min      moy      max      tas LVGL utilisé
+ *   ---------------------------------------------------------------------
+ *      64        rebuild   293,9    307,7    320,7    12 016 o (20 %)
+ *      64        SCREENS   267,1    267,9    293,9    20 064 o (33 %)
+ *     128        rebuild   240,4    279,0    318,0    17 684 o (29 %)
+ *     128        SCREENS   187,0    234,9    257,7    —
+ *
+ * SCREENS gagne 40 ms (13 %) à la configuration de référence, et c'est LUI qui
+ * fait passer le budget : rebuild sort à 307,7 ms de moyenne, donc AU-DESSUS des
+ * 300 ms du brief, alors que screens tient à 267,9 ms avec un pire cas à
+ * 293,9 ms. Le prix est de +8 048 o dans le tas LVGL (les deux arbres vivent en
+ * permanence) sur 64 Ko dont 42 Ko restent libres.
+ *
+ * ⚠️ AUCUN des deux modèles ne fuit : 20 allers-retours laissent la RAM interne
+ *    ET la PSRAM à delta ZÉRO octet, dans les quatre configurations.
+ * ⚠️ CE QUE L'ARBITRAGE NE DIT PAS : le vrai plancher n'est pas le modèle. Une
+ *    transition redessine l'écran entier, soit 640/draw_lines flushes qui
+ *    attendent CHACUN une trame — 10 trames à 26,7 ms = 267 ms à 64 lignes. Le
+ *    modèle joue sur le temps de CONSTRUCTION ; le nombre de flushes
+ *    synchronisés joue sur le reste, et il pèse plus lourd (voir AC5).
+ */
+static dn_nav_model_t s_nav = DN_NAV_SCREENS;
+static volatile uint32_t s_nav_count;
+/* Modèle SCREENS : les deux racines vivent en permanence. NULL en REBUILD — et
+ * c'est ce qui distingue les deux modèles à l'oeil dans `ui`. */
+static lv_obj_t *s_scr_dash;
+static lv_obj_t *s_scr_detail;
+/* Les labels du détail que le modèle SCREENS RÉÉCRIT au lieu de reconstruire.
+ * En REBUILD ils sont recréés à chaque transition et ces pointeurs ne servent
+ * qu'à ne pas les chercher dans l'arbre. */
+static lv_obj_t *s_det_titre, *s_det_valeur, *s_det_minmax, *s_det_sec;
+/* Dernière zone touchée — la preuve d'AC3, lue par la console. */
+static volatile int s_dernier_tap = DN_UI_ZONE_AUCUNE;
+static volatile uint32_t s_taps;
+static volatile uint32_t s_menu_taps;
 
 /* Compteurs — 32 bits, écrits par la tâche LVGL, lus par le REPL. Voir dn_ui.h
  * pour ce que cette absence de verrou garantit et ce qu'elle ne garantit pas. */
@@ -282,6 +450,17 @@ static void dn_ui_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px_m
     if (lv_display_flush_is_last(disp)) {
         s_n_cycles++;
         s_first_frame = true;
+        /*
+         * FIN DU CHRONOMÈTRE D'AC5. C'est ici, et pas ailleurs : le dernier flush
+         * du cycle est le moment où la nouvelle vue est ENTIÈREMENT dans le
+         * framebuffer. Un no-op quand rien n'est armé (un test sur un booléen),
+         * pour ne rien coûter au chemin chaud des 37,40 trames par seconde.
+         *
+         * ⚠️ Ce que ce point d'arrêt N'INCLUT PAS : la trame qu'il reste à la DMA
+         *    pour peindre ce qu'on vient d'écrire (jusqu'à 26,7 ms). Déclaré,
+         *    jamais ajouté en douce à la mesure.
+         */
+        dn_touch_latence_stop();
     }
 
     lv_display_flush_ready(disp);
@@ -289,9 +468,16 @@ static void dn_ui_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px_m
 
 /* ── La scène ─────────────────────────────────────────────────────────────── */
 
+/* Le label de la vue AFFICHÉE — le seul qu'il soit juste de mettre à jour. */
+static lv_obj_t *label_courant(void)
+{
+    return s_vue == DN_VUE_DETAIL ? s_label_det : s_label_dash;
+}
+
 static void label_tick(lv_timer_t *t)
 {
     (void)t;
+    lv_obj_t *s_label = label_courant();
     if (!s_label) {
         return;
     }
@@ -314,30 +500,14 @@ static void bar_set_x(void *var, int32_t v)
     lv_obj_set_x((lv_obj_t *)var, v);
 }
 
-/* Détruit et reconstruit toute la scène. Idempotent, et appelé aussi bien à
- * l'init qu'au changement de source de fond : reconstruire coûte quelques
- * millisecondes une fois, là où permuter le pointeur d'une image déjà posée
- * obligerait à raisonner sur le cache d'images de LVGL. Un geste d'opérateur ne
- * mérite pas cette subtilité-là. */
-static void build_scene(void)
-{
-    lv_obj_t *scr = lv_screen_active();
-    lv_obj_clean(scr);
-    s_img = NULL;
-    s_label = NULL;
-    s_bar = NULL;
-    /* ⚠️ L'ombre suit la réalité (revue). `lv_obj_clean` vient de détruire la
-     * barre ET son animation : laisser `s_anim_on` à vrai ferait annoncer
-     * « stimulus EN COURS » par `ui`, `anim` et l'étiquette de `fps` — une
-     * étiquette de mesure FAUSSE, la classe de défaut que ce firmware traque.
-     * L'opérateur relance `anim on` s'il le veut ; on ne recrée pas la barre
-     * dans son dos. */
-    if (s_anim_on) {
-        s_anim_on = false;
-        ESP_LOGW(TAG, "reconstruction de scène : le stimulus `anim` est ARRÊTÉ "
-                      "(relancer `anim on` si besoin)");
-    }
+/* ── Le fond, commun aux deux vues ────────────────────────────────────────── */
 
+/* Pose le fond (Living PCB ou panneau d'alerte) sur `scr`. Extrait de l'ancien
+ * `build_scene()` sans changement de comportement : les deux vues de dn1-4 se
+ * dessinent PAR-DESSUS ce fond, qui reste l'image de dn1-2. L'esthétique des
+ * cases n'est pas un sujet de cette story (dn3-1 la portera). */
+static void fond_poser(lv_obj_t *scr)
+{
     lv_obj_set_style_bg_color(scr, lv_color_black(), 0);
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
     /* Pas de barre de défilement sur un écran qui ne défile pas : sinon LVGL en
@@ -386,8 +556,27 @@ static void build_scene(void)
         lv_obj_align(r, LV_ALIGN_CENTER, 0, 20);
     }
 
-    /* Le label vivant, PAR-DESSUS le fond. */
-    s_label = lv_label_create(scr);
+}
+
+/*
+ * ── LE LABEL VIVANT DE dn1-3 SURVIT, INCHANGÉ, ET C'EST VOLONTAIRE ───────────
+ *
+ * Même géométrie (260x44), même police (montserrat 28), même place (centre),
+ * même fond transparent. Ce n'est PAS un élément de la spec UI : c'est
+ * l'INSTRUMENT qui a produit le régime de référence de dn1-3 (15 892 px par mise
+ * à jour, 1,00 flush/cycle, 0,9 % de CPU). Le déplacer ou le redimensionner
+ * rendrait les budgets d'AC8 incomparables à ceux de la marche du dessous — et
+ * un budget qu'on ne peut pas comparer ne sert à rien.
+ *
+ * ⚠️ Il est donc MASQUÉ par défaut dès qu'une vue produit est affichée (il
+ *    recouvrirait les cases RAM/RESEAU), et `ui label on` le rallume pour
+ *    rejouer dn1-3 à l'identique. Le chevauchement assumé de ce moment-là est
+ *    celui d'un instrument de campagne, pas d'un écran de produit.
+ */
+static void label_poser(lv_obj_t *scr, lv_obj_t **slot)
+{
+    lv_obj_t *s_label = lv_label_create(scr);
+    *slot = s_label;
     lv_obj_set_style_text_font(s_label, &lv_font_montserrat_28, 0);
     lv_obj_set_style_text_color(s_label, lv_color_white(), 0);
     /* Fond du label TRANSPARENT, délibérément. Un aplat opaque derrière le texte
@@ -400,9 +589,482 @@ static void build_scene(void)
     lv_obj_set_size(s_label, DN_UI_LABEL_W, DN_UI_LABEL_H);
     lv_obj_align(s_label, LV_ALIGN_CENTER, 0, 0);
     lv_label_set_text(s_label, "0 s");
+    /* Le label ne capte AUCUN toucher : sinon il volerait le tap destiné aux
+     * cases qu'il recouvre quand on le rallume, et « toute la case est la zone
+     * tactile » deviendrait faux par accident. */
+    lv_obj_clear_flag(s_label, LV_OBJ_FLAG_CLICKABLE);
     if (!s_label_shown) {
         lv_obj_add_flag(s_label, LV_OBJ_FLAG_HIDDEN);
     }
+}
+
+/* ── Les zones tactiles ───────────────────────────────────────────────────── */
+
+/*
+ * Un conteneur cliquable, nu. C'est LA brique de dn1-4 : ni widget, ni style de
+ * produit — une géométrie qui reçoit le doigt.
+ *
+ * ⚠️ LES DEUX DRAPEAUX QUI DÉCIDENT SI « TOUTE LA CASE » EST VRAIE :
+ *    - CLICKABLE sur le CONTENEUR, et les labels enfants laissés NON cliquables :
+ *      LVGL remonte alors au premier ancêtre cliquable, donc un tap sur le texte
+ *      comme un tap dans un coin vide arrivent au même endroit.
+ *    - SCROLLABLE RETIRÉ. `lv_obj_create()` le pose par défaut, et un conteneur
+ *      scrollable AVALE le geste dès que le doigt bouge de quelques pixels : le
+ *      tap marcherait au centre, en appuyant bien droit, et raterait au bord ou
+ *      sur un doigt qui roule. C'est exactement le défaut que la preuve « aux
+ *      coins » d'AC3 est censée attraper — autant ne pas le fabriquer.
+ */
+static lv_obj_t *zone_creer(lv_obj_t *parent, int x, int y, int w, int h,
+                            lv_event_cb_t cb, void *user)
+{
+    lv_obj_t *z = lv_obj_create(parent);
+    lv_obj_remove_style_all(z);
+    lv_obj_set_pos(z, x, y);
+    lv_obj_set_size(z, w, h);
+    lv_obj_clear_flag(z, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(z, LV_OBJ_FLAG_CLICKABLE);
+    /* Un aplat sombre translucide : assez pour que la case se VOIE (l'owner doit
+     * savoir où viser pour le constat « au coin »), assez peu pour que le Living
+     * PCB reste le fond. Bordure fine, pas de radius : rien à défendre ici. */
+    lv_obj_set_style_bg_color(z, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(z, LV_OPA_40, 0);
+    lv_obj_set_style_border_color(z, lv_color_hex(0x50c0ff), 0);
+    lv_obj_set_style_border_width(z, 1, 0);
+    lv_obj_set_style_border_opa(z, LV_OPA_60, 0);
+    if (cb) {
+        lv_obj_add_event_cb(z, cb, LV_EVENT_CLICKED, user);
+    }
+    return z;
+}
+
+static lv_obj_t *texte(lv_obj_t *parent, const char *s, const lv_font_t *font,
+                       lv_color_t couleur, int x, int y)
+{
+    lv_obj_t *l = lv_label_create(parent);
+    lv_obj_set_style_text_font(l, font, 0);
+    lv_obj_set_style_text_color(l, couleur, 0);
+    lv_obj_set_style_bg_opa(l, LV_OPA_TRANSP, 0);
+    lv_label_set_text(l, s);
+    lv_obj_set_pos(l, x, y);
+    /* Les labels ne captent rien : c'est le conteneur qui est la zone. */
+    lv_obj_clear_flag(l, LV_OBJ_FLAG_CLICKABLE);
+    return l;
+}
+
+/* ── Navigation : les callbacks ───────────────────────────────────────────── */
+
+/*
+ * ⚠️ POURQUOI TOUTE TRANSITION PASSE PAR `lv_async_call()` ET JAMAIS DIRECTEMENT.
+ *
+ * Ces callbacks tournent DANS l'envoi d'événement LVGL, sur un objet qui
+ * appartient à l'arbre que la transition va DÉTRUIRE (`lv_obj_clean`, ou le
+ * chargement d'un autre écran). Supprimer l'objet qui est en train de recevoir
+ * son propre événement est un use-after-free — le même genre que celui trouvé en
+ * revue de dn1-3 sur `ui bg flash`. `lv_async_call()` diffère le travail au tour
+ * de boucle suivant, hors du contexte d'événement : c'est la parade prévue par
+ * LVGL, pas un contournement.
+ *
+ * Conséquence ASSUMÉE sur la mesure : le délai jusqu'au prochain tour de boucle
+ * (jusqu'à ~33 ms) est DANS la latence d'AC5, parce qu'il est dans le vécu de
+ * l'utilisateur.
+ */
+static void nav_appliquer(int cible, int64_t t_clic);
+
+static void nav_async(void *param)
+{
+    intptr_t p = (intptr_t)param;
+    /* Encodage : 0 = retour au dashboard, 1..6 = ouvrir la métrique p-1.
+     * L'instant du clic voyage à part, dans s_nav_t_clic : LVGL ne transporte
+     * qu'un pointeur, et fabriquer une allocation par tap pour un int64 serait
+     * une allocation dans le chemin chaud. */
+    nav_appliquer((int)p, 0);
+}
+
+static int64_t s_nav_t_clic;
+
+static void on_case_clic(lv_event_t *e)
+{
+    s_nav_t_clic = esp_timer_get_time();
+    intptr_t idx = (intptr_t)lv_event_get_user_data(e);
+    s_dernier_tap = (int)idx;
+    s_taps++;
+    lv_async_call(nav_async, (void *)(idx + 1));
+}
+
+static void on_retour_clic(lv_event_t *e)
+{
+    (void)e;
+    s_nav_t_clic = esp_timer_get_time();
+    s_dernier_tap = DN_UI_ZONE_RETOUR;
+    s_taps++;
+    lv_async_call(nav_async, (void *)0);
+}
+
+/*
+ * ── LE BANDEAU MENU : UN NO-OP CONSIGNÉ, PAS UN OUBLI ────────────────────────
+ * Aucune destination ne lui est spécifiée — ni dans le brief, ni dans son
+ * addendum, ni dans l'epic. dn1-4 le DESSINE (fidélité au layout, et c'est une
+ * 7e zone tactile à instrumenter) et son tap écrit une ligne de log. C'est une
+ * décision de story, renversable par l'owner, et elle est écrite plutôt que
+ * subie : un bouton muet SANS trace serait indiscernable d'une zone tactile qui
+ * ne marche pas.
+ */
+static void on_menu_clic(lv_event_t *e)
+{
+    (void)e;
+    /* ENREGISTRÉ, pas loggé — voir dn_ui.h : un printf ici bloquerait la tâche
+     * LVGL sur le lien USB. `touch trace` et `nav` le restituent, et c'est bien
+     * une trace VISIBLE, ce qu'exige AC3 pour distinguer un no-op d'une zone
+     * tactile morte. */
+    s_dernier_tap = DN_UI_ZONE_MENU;
+    s_taps++;
+    s_menu_taps++;
+}
+
+/* ── Les deux vues ────────────────────────────────────────────────────────── */
+
+static void build_dashboard(lv_obj_t *scr)
+{
+    fond_poser(scr);
+
+    /* Barre heure/date — statique et FACTICE : la RTC PCF85063 est sur le bus
+     * mais n'est pas initialisée ici (dn2). Pleine largeur, 70 px de haut : elle
+     * n'est PAS un cas adverse au sens de §10.4, qui parle de hauteur. */
+    lv_obj_t *barre = lv_obj_create(scr);
+    lv_obj_remove_style_all(barre);
+    lv_obj_set_pos(barre, 0, 0);
+    lv_obj_set_size(barre, DN_LCD_H_RES, DN_UI_BARRE_H);
+    lv_obj_clear_flag(barre, LV_OBJ_FLAG_SCROLLABLE);
+    /* NON cliquable, et c'est une exigence d'AC3 : un tap sur la barre ne doit
+     * RIEN ouvrir. C'est l'une des deux zones mortes que le constat vérifie. */
+    lv_obj_clear_flag(barre, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_style_bg_color(barre, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(barre, LV_OPA_40, 0);
+    texte(barre, "21:46", &lv_font_montserrat_28, lv_color_white(), DN_UI_MARGE, 18);
+    texte(barre, "VEN. 06 AOUT", &lv_font_montserrat_14,
+          lv_color_hex(0xa0d8ff), 300, 28);
+
+    /* La grille 2x3. `zone_creer` fait toute la zone tactile. */
+    for (int i = 0; i < DN_UI_METRIQUES; i++) {
+        int col = i % 2;
+        int ligne = i / 2;
+        int x = DN_UI_MARGE + col * (DN_UI_CASE_W + DN_UI_GAP);
+        int y = DN_UI_GRILLE_Y + DN_UI_MARGE + ligne * (DN_UI_CASE_H + DN_UI_GAP);
+        lv_obj_t *case_ = zone_creer(scr, x, y, DN_UI_CASE_W, DN_UI_CASE_H,
+                                     on_case_clic, (void *)(intptr_t)i);
+        texte(case_, k_metriques[i].nom, &lv_font_montserrat_14,
+              lv_color_hex(0xa0d8ff), 12, 10);
+        texte(case_, k_metriques[i].valeur, &lv_font_montserrat_28,
+              lv_color_white(), 12, 60);
+    }
+
+    /* Le bandeau MENU — 7e zone, cliquable, no-op consigné. */
+    lv_obj_t *menu = zone_creer(scr, 0, DN_LCD_V_RES - DN_UI_MENU_H, DN_LCD_H_RES,
+                                DN_UI_MENU_H, on_menu_clic, NULL);
+    texte(menu, "MENU  " LV_SYMBOL_LIST, &lv_font_montserrat_28, lv_color_white(),
+          DN_UI_MARGE + 6, 14);
+
+    label_poser(scr, &s_label_dash);
+}
+
+/*
+ * ── LE TEMPLATE DE DÉTAIL : UN SEUL SQUELETTE, PARAMÉTRÉ ─────────────────────
+ * « On ne change que les données, jamais la structure » (addendum §1). Les six
+ * métriques sont SIX APPELS de cette fonction, pas six écrans — et c'est
+ * précisément ce que le modèle SCREENS exploite en réécrivant les labels au lieu
+ * de reconstruire.
+ */
+static void build_detail(lv_obj_t *scr, int idx)
+{
+    if (idx < 0 || idx >= DN_UI_METRIQUES) {
+        idx = 0;
+    }
+    fond_poser(scr);
+
+    /* Retour : zone GÉNÉREUSE (120x60), pas le glyphe seul — exigence d'AC4. */
+    lv_obj_t *retour = zone_creer(scr, DN_UI_MARGE, DN_UI_MARGE, DN_UI_RETOUR_W,
+                                  DN_UI_RETOUR_H, on_retour_clic, NULL);
+    texte(retour, LV_SYMBOL_LEFT, &lv_font_montserrat_28, lv_color_white(), 16, 14);
+
+    /* Titre de la métrique — c'est LUI qui rend la zone touchée identifiable
+     * sans ambiguïté (AC3) : six instances du même template, un seul titre. */
+    s_det_titre = texte(scr, k_metriques[idx].nom, &lv_font_montserrat_28,
+                        lv_color_hex(0xa0d8ff), DN_UI_MARGE + DN_UI_RETOUR_W + 20,
+                        DN_UI_MARGE + 14);
+
+    /* Grande valeur. « Grande » = montserrat 28, la plus grosse police DÉJÀ
+     * embarquée : en ajouter une coûterait du binaire pour un écran factice. */
+    s_det_valeur = texte(scr, k_metriques[idx].valeur, &lv_font_montserrat_28,
+                         lv_color_white(), DN_UI_MARGE + 10, 110);
+
+    /* Placeholder de courbe : un cadre étiqueté, PAS une courbe. Les vraies
+     * séries arrivent avec l'historique RAM-session (dn2/dn4-1). */
+    lv_obj_t *cadre = lv_obj_create(scr);
+    lv_obj_remove_style_all(cadre);
+    lv_obj_set_pos(cadre, DN_UI_MARGE, 170);
+    lv_obj_set_size(cadre, DN_LCD_H_RES - 2 * DN_UI_MARGE, 200);
+    lv_obj_clear_flag(cadre, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_clear_flag(cadre, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_style_bg_color(cadre, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(cadre, LV_OPA_40, 0);
+    lv_obj_set_style_border_color(cadre, lv_color_hex(0x50c0ff), 0);
+    lv_obj_set_style_border_width(cadre, 1, 0);
+    lv_obj_set_style_border_opa(cadre, LV_OPA_60, 0);
+    texte(cadre, "COURBE (dn2 / dn4-1)", &lv_font_montserrat_14,
+          lv_color_hex(0x80a0b0), 12, 88);
+
+    /* 2-3 données secondaires, factices. */
+    s_det_sec = texte(scr, "moy. 5 min : 38 %\ncharge : moderee\nsource : factice",
+                      &lv_font_montserrat_14, lv_color_hex(0xc0d8e8), DN_UI_MARGE + 10,
+                      390);
+
+    /* MIN/MAX, factices. */
+    s_det_minmax = texte(scr, "MIN 12 %   -   MAX 91 %", &lv_font_montserrat_28,
+                         lv_color_white(), DN_UI_MARGE + 10, 470);
+
+    label_poser(scr, &s_label_det);
+}
+
+/* Réécrit les données du détail SANS reconstruire l'arbre — le raccourci du
+ * modèle SCREENS. Ne touche à aucune position : la structure ne change jamais. */
+static void detail_reparametrer(int idx)
+{
+    if (idx < 0 || idx >= DN_UI_METRIQUES) {
+        return;
+    }
+    if (s_det_titre) {
+        lv_label_set_text(s_det_titre, k_metriques[idx].nom);
+    }
+    if (s_det_valeur) {
+        lv_label_set_text(s_det_valeur, k_metriques[idx].valeur);
+    }
+}
+
+/* ── build_scene : reconstruit la VUE COURANTE ────────────────────────────── */
+
+/* Détruit et reconstruit toute la scène. Idempotent, et appelé aussi bien à
+ * l'init qu'au changement de source de fond : reconstruire coûte quelques
+ * millisecondes une fois, là où permuter le pointeur d'une image déjà posée
+ * obligerait à raisonner sur le cache d'images de LVGL. Un geste d'opérateur ne
+ * mérite pas cette subtilité-là. */
+static void build_scene(void)
+{
+    /* ⚠️ L'ombre suit la réalité (revue dn1-3). La reconstruction détruit la
+     * barre du stimulus ET son animation : laisser `s_anim_on` à vrai ferait
+     * annoncer « stimulus EN COURS » par `ui`, `anim` et l'étiquette de `fps` —
+     * une étiquette de mesure FAUSSE, la classe de défaut que ce firmware
+     * traque. L'opérateur relance `anim on` s'il le veut. */
+    if (s_anim_on) {
+        s_anim_on = false;
+        ESP_LOGW(TAG, "reconstruction de scène : le stimulus `anim` est ARRÊTÉ "
+                      "(relancer `anim on` si besoin)");
+    }
+    s_img = NULL;
+    s_label_dash = NULL;
+    s_label_det = NULL;
+    s_bar = NULL;
+    s_det_titre = NULL;
+    s_det_valeur = NULL;
+    s_det_minmax = NULL;
+    s_det_sec = NULL;
+
+    if (s_nav == DN_NAV_SCREENS) {
+        /* Les deux racines sont (re)construites ensemble : un `ui bg psram` qui
+         * ne referait qu'un seul des deux écrans laisserait l'autre blitter
+         * l'ancienne source — et l'A/B des fonds mesurerait deux choses à la
+         * fois. */
+        lv_obj_t *ancien_dash = s_scr_dash;
+        lv_obj_t *ancien_det = s_scr_detail;
+        s_scr_dash = lv_obj_create(NULL);
+        build_dashboard(s_scr_dash); /* remplit s_label_dash */
+        s_scr_detail = lv_obj_create(NULL);
+        build_detail(s_scr_detail, s_metrique); /* remplit s_label_det */
+        lv_screen_load(s_vue == DN_VUE_DETAIL ? s_scr_detail : s_scr_dash);
+        /* Supprimés APRÈS le chargement du nouvel écran : supprimer l'écran
+         * actif avant d'en charger un autre laisserait LVGL sans écran courant
+         * le temps d'une instruction. */
+        if (ancien_dash) {
+            lv_obj_delete(ancien_dash);
+        }
+        if (ancien_det) {
+            lv_obj_delete(ancien_det);
+        }
+        return;
+    }
+
+    /* REBUILD : un seul écran, celui de LVGL, vidé puis redessiné. */
+    lv_obj_t *scr = lv_screen_active();
+    lv_obj_clean(scr);
+    if (s_vue == DN_VUE_DETAIL) {
+        build_detail(scr, s_metrique);
+    } else {
+        build_dashboard(scr);
+    }
+}
+
+/* ── Navigation : le travail ──────────────────────────────────────────────── */
+
+/*
+ * `cible` : 0 = dashboard, 1..6 = détail de la métrique cible-1.
+ * `t_clic` : instant d'origine pour la latence (0 = celui du dernier clic).
+ * Appelée DANS la tâche LVGL, hors contexte d'événement (via lv_async_call) ou
+ * sous le verrou pris par l'appelant public. Ne prend pas le verrou elle-même.
+ */
+static void nav_appliquer(int cible, int64_t t_clic)
+{
+    dn_ui_vue_t vue = cible == 0 ? DN_VUE_DASHBOARD : DN_VUE_DETAIL;
+    int idx = cible == 0 ? s_metrique : cible - 1;
+
+    /* Rien à faire : on DÉSARME plutôt que de laisser un chronomètre en vol.
+     * Un double tap sur la même case empilerait deux transitions ; la seconde
+     * n'a rien à redessiner, et un chrono armé sans redessin serait arrêté par
+     * le premier flush venu — une latence inventée. */
+    if (vue == s_vue && (vue == DN_VUE_DASHBOARD || idx == s_metrique)) {
+        return;
+    }
+
+    if (t_clic == 0) {
+        t_clic = s_nav_t_clic;
+    }
+    s_vue = vue;
+    s_metrique = idx;
+
+    if (s_nav == DN_NAV_SCREENS && s_scr_dash && s_scr_detail) {
+        /*
+         * ⚠️ LE STIMULUS ADVERSE NE SURVIT PAS À UNE BASCULE D'ÉCRAN, et l'ombre
+         *    doit le dire. En modèle SCREENS, rien n'est détruit : la barre
+         *    d'`anim` reste accrochée à l'écran qu'on quitte, donc INVISIBLE,
+         *    pendant que `s_anim_on` continuerait d'annoncer « stimulus EN
+         *    COURS » à `ui`, `anim` et à l'étiquette de `fps`. Une mesure
+         *    étiquetée « sous stimulus » sans stimulus à l'écran est exactement
+         *    le défaut que la revue de dn1-3 a corrigé 21 fois.
+         *    On l'arrête donc pour de bon, comme le fait la reconstruction.
+         */
+        if (s_bar) {
+            lv_anim_delete(s_bar, bar_set_x);
+            lv_obj_delete(s_bar);
+            s_bar = NULL;
+        }
+        s_anim_on = false;
+        if (vue == DN_VUE_DETAIL) {
+            detail_reparametrer(idx);
+            lv_screen_load(s_scr_detail);
+        } else {
+            lv_screen_load(s_scr_dash);
+        }
+    } else {
+        lv_obj_t *scr = lv_screen_active();
+        lv_obj_clean(scr);
+        s_img = NULL;
+        s_label_dash = NULL;
+        s_label_det = NULL;
+        s_bar = NULL;
+        s_det_titre = NULL;
+        s_det_valeur = NULL;
+        s_det_minmax = NULL;
+        s_det_sec = NULL;
+        /* Même règle qu'en reconstruction complète : la barre du stimulus vient
+         * d'être détruite, l'ombre le dit. Sans le log ici (il tomberait à chaque
+         * transition), mais avec le même effet sur l'état annoncé. */
+        s_anim_on = false;
+        if (vue == DN_VUE_DETAIL) {
+            build_detail(scr, idx);
+        } else {
+            build_dashboard(scr);
+        }
+    }
+
+    s_nav_count++;
+    /* Le chronomètre est armé ICI, la nouvelle vue étant posée : le prochain
+     * cycle de rafraîchissement est CELUI de la transition. Voir dn_touch.h. */
+    dn_touch_latence_arm(t_clic);
+}
+
+dn_ui_vue_t dn_ui_vue(void) { return s_vue; }
+int dn_ui_metrique(void) { return s_metrique; }
+uint32_t dn_ui_nav_count(void) { return s_nav_count; }
+int dn_ui_dernier_tap(void) { return s_dernier_tap; }
+uint32_t dn_ui_taps(void) { return s_taps; }
+
+const char *dn_ui_zone_nom(int zone)
+{
+    if (zone == DN_UI_ZONE_MENU) {
+        return "MENU (no-op)";
+    }
+    if (zone == DN_UI_ZONE_RETOUR) {
+        return "RETOUR";
+    }
+    if (zone >= 0 && zone < DN_UI_METRIQUES) {
+        return k_metriques[zone].nom;
+    }
+    return "aucune";
+}
+
+uint32_t dn_ui_menu_taps(void) { return s_menu_taps; }
+dn_nav_model_t dn_ui_get_nav_model(void) { return s_nav; }
+
+esp_err_t dn_ui_nav_open(int idx)
+{
+    if (idx < 0 || idx >= DN_UI_METRIQUES) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (!lvgl_port_lock(1000)) {
+        return ESP_ERR_TIMEOUT;
+    }
+    nav_appliquer(idx + 1, esp_timer_get_time());
+    lvgl_port_unlock();
+    return ESP_OK;
+}
+
+esp_err_t dn_ui_nav_back(void)
+{
+    if (!lvgl_port_lock(1000)) {
+        return ESP_ERR_TIMEOUT;
+    }
+    nav_appliquer(0, esp_timer_get_time());
+    lvgl_port_unlock();
+    return ESP_OK;
+}
+
+esp_err_t dn_ui_set_nav_model(dn_nav_model_t m)
+{
+    if (m >= DN_NAV_COUNT) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (m == s_nav) {
+        return ESP_OK;
+    }
+    if (!lvgl_port_lock(2000)) {
+        return ESP_ERR_TIMEOUT;
+    }
+    /*
+     * On repart du DASHBOARD, toujours. Les deux modèles ne tiennent pas leur
+     * état au même endroit (un écran vidé/reconstruit d'un côté, deux racines
+     * permanentes de l'autre) : prétendre conserver la vue courante ferait mentir
+     * l'un des deux, et la première mesure d'après bascule serait à jeter.
+     */
+    s_vue = DN_VUE_DASHBOARD;
+
+    if (s_nav == DN_NAV_SCREENS) {
+        /* On QUITTE screens : l'écran actif redevient celui de LVGL, et les deux
+         * racines sont libérées. Ordre non négociable — charger d'abord, détruire
+         * ensuite (voir build_scene). */
+        lv_obj_t *neuf = lv_obj_create(NULL);
+        lv_screen_load(neuf);
+        if (s_scr_dash) {
+            lv_obj_delete(s_scr_dash);
+            s_scr_dash = NULL;
+        }
+        if (s_scr_detail) {
+            lv_obj_delete(s_scr_detail);
+            s_scr_detail = NULL;
+        }
+    }
+    s_nav = m;
+    build_scene();
+    lvgl_port_unlock();
+    ESP_LOGI(TAG, "modèle de navigation : « %s »", dn_nav_model_name(m));
+    return ESP_OK;
 }
 
 /* ── Init ─────────────────────────────────────────────────────────────────── */
@@ -594,6 +1256,8 @@ esp_err_t dn_ui_init(const dn_bootcfg_t *cfg, esp_err_t asset_err)
 
 /* ── Accès ────────────────────────────────────────────────────────────────── */
 
+lv_display_t *dn_ui_display(void) { return s_disp; }
+
 bool dn_ui_first_frame_done(void) { return s_first_frame; }
 
 bool dn_ui_wait_first_frame(uint32_t timeout_ms)
@@ -669,11 +1333,19 @@ void dn_ui_label_show(bool on)
         return;
     }
     s_label_shown = on;
-    if (s_label) {
+    /* LES DEUX labels, pas seulement celui de la vue affichée : en modèle
+     * SCREENS l'autre écran survit à la commande, et le retrouver visible à la
+     * bascule suivante ferait mentir `ui` — qui annonce un seul état pour un
+     * réglage qui en aurait eu deux. */
+    lv_obj_t *labels[2] = {s_label_dash, s_label_det};
+    for (int i = 0; i < 2; i++) {
+        if (!labels[i]) {
+            continue;
+        }
         if (on) {
-            lv_obj_clear_flag(s_label, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(labels[i], LV_OBJ_FLAG_HIDDEN);
         } else {
-            lv_obj_add_flag(s_label, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(labels[i], LV_OBJ_FLAG_HIDDEN);
         }
     }
     lvgl_port_unlock();
@@ -847,6 +1519,15 @@ esp_err_t dn_ui_resume(void)
     esp_err_t err = lvgl_port_resume();
     if (err == ESP_OK) {
         s_active = true;
+        /*
+         * L'ÉTAT TACTILE EST VIDÉ AVANT DE REPRENDRE. Comportement DÉFINI d'AC2 :
+         * un toucher pendant `ui off` est IGNORÉ (l'indev n'est pas lu, la tâche
+         * LVGL est gelée). Sans ce drainage, un doigt encore posé au moment du
+         * `ui on` produirait un appui puis un relâchement, donc un CLIC —
+         * c'est-à-dire l'ouverture d'un écran de détail que personne n'a demandé,
+         * au retour d'une mesure.
+         */
+        dn_touch_drain();
         /* Le framebuffer a pu être réécrit pendant la pause (c'est même le seul
          * intérêt de la pause). On redessine tout, sinon LVGL croirait l'écran
          * conforme à son arbre d'objets et ne réparerait jamais. */

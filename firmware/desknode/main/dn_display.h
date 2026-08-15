@@ -20,12 +20,49 @@
 #include <stdint.h>
 
 #include "dn_bootcfg.h"
+#include "driver/i2c_master.h"
 #include "esp_err.h"
+#include "esp_io_expander.h"
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_types.h"
 
 /* Monte tout le pipeline SAUF le rétroéclairage. */
 esp_err_t dn_display_init(const dn_bootcfg_t *cfg);
+
+/*
+ * ── LES DEUX ACCESSEURS DE dn1-4, ET POURQUOI ILS EXISTENT ───────────────────
+ *
+ * ⛔ IL N'Y A QU'UN SEUL BUS I²C SUR CETTE CARTE, et il appartient à ce module.
+ *    Le TCA9554 (0x20), le GT911 (0x5D/0x14), la RTC (0x51), l'IMU (0x6A/0x6B)
+ *    et le header externe des 4 capteurs de dn2-1 sont TOUS dessus. Un second
+ *    `i2c_new_master_bus()` sur I2C_NUM_0 échoue (ESP_ERR_INVALID_STATE) : le
+ *    port est déjà pris. Tout module qui veut parler à un composant du bus
+ *    demande le handle ICI.
+ *
+ * Rendent NULL tant que `dn_display_init()` n'a pas tourné — un appelant qui les
+ * lit trop tôt obtient un pointeur nul franc, pas un handle à moitié construit.
+ */
+i2c_master_bus_handle_t dn_display_i2c_bus(void);
+esp_io_expander_handle_t dn_display_expander(void);
+
+/*
+ * Séquence de reset du GT911, jouée SUR L'EXPANDER (TP_RST = bit 1).
+ *
+ * Elle vit ici et pas dans dn_touch parce que c'est ce module qui possède
+ * l'expander, et parce que le bit d'à côté (bit 0) est LCD_RST : se tromper d'un
+ * rang réinitialise la DALLE sans le moindre message d'erreur (piège n°2 du
+ * projet). Un seul endroit écrit sur ces bits.
+ *
+ * ⚠️ CE QU'ELLE NE FAIT PAS : elle ne touche pas à TP_INT. Le niveau d'INT au
+ *    RELÂCHEMENT de TP_RST est ce qui latche l'adresse I²C du GT911 (bas =>
+ *    0x5D, haut => 0x14) — c'est donc l'appelant (dn_touch) qui tient INT au
+ *    niveau voulu autour de cet appel. Découper autrement rendrait cette
+ *    dépendance invisible, et l'adresse « aléatoire ».
+ *
+ * `bas_ms` / `haut_ms` sont exposés pour que la campagne de mesure puisse jouer
+ * d'autres délais que ceux de la démo Waveshare (150/150) sans reflasher.
+ */
+esp_err_t dn_display_tp_reset(int bas_ms, int haut_ms);
 
 /*
  * Rétroéclairage — GRADABLE depuis dn1-3 (AC7).

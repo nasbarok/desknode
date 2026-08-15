@@ -69,6 +69,7 @@
 
 #include "dn_bootcfg.h"
 #include "esp_err.h"
+#include "lvgl.h"
 
 /*
  * Mode de synchronisation du flush. C'est l'interrupteur d'AC4 : sans un mode
@@ -176,6 +177,97 @@ typedef struct {
 } dn_flush_stats_t;
 
 /*
+ * ── LES DEUX VUES DE dn1-4, ET CE QU'ELLES NE SONT PAS ───────────────────────
+ *
+ * Elles sont FACTICES et JETABLES. Les cases sont des zones géométriques nues
+ * (conteneur + titre + valeur statique) : le `SystemMetricWidget` naît en dn3-1,
+ * la vraie grille en dn3-2, les vraies données en dn2/dn4-1. Ce que dn1-4 livre
+ * ici, c'est la GÉOMÉTRIE TACTILE et le MODÈLE DE NAVIGATION — pas un écran de
+ * produit.
+ *
+ * ⚠️ Aucune dimension n'est figée par la planification (seulement 480x640
+ *    portrait) : celles de dn_ui.c sont DÉRIVÉES et consignées comme
+ *    PROVISOIRES. dn3-2 fera foi.
+ */
+typedef enum {
+    DN_VUE_DASHBOARD = 0,
+    DN_VUE_DETAIL,
+    DN_VUE_COUNT,
+} dn_ui_vue_t;
+
+const char *dn_ui_vue_name(dn_ui_vue_t v);
+
+/* Les six métriques du brief. Ordre de la grille 2x3 :
+ *   CPU | GPU / RAM | RÉSEAU / TEMP. | HUMIDITÉ */
+#define DN_UI_METRIQUES 6
+const char *dn_ui_metrique_nom(int idx);
+
+/*
+ * ── LE MODÈLE DE NAVIGATION — C'EST LE LIVRABLE QUE dn3 HÉRITE ───────────────
+ *
+ * Les DEUX sont implémentés, et ils le restent après l'arbitrage : l'un est la
+ * réfutation de l'autre, et une élimination sans son témoin n'est pas une
+ * élimination (même discipline que `flush path bitmap|direct`).
+ *
+ *   REBUILD : le pattern historique de ce fichier — `lv_obj_clean()` sur l'écran
+ *             actif puis reconstruction complète. Un seul écran vit à la fois,
+ *             donc zéro mémoire dormante ; en échange, chaque transition
+ *             reconstruit tout l'arbre (et re-décode le fond).
+ *   SCREENS : deux racines `lv_obj_create(NULL)` créées UNE FOIS, permutées par
+ *             `lv_screen_load()`. Le détail n'est pas reconstruit : ses labels
+ *             sont réécrits. Transition plus courte, mémoire des deux arbres
+ *             tenue en permanence.
+ *
+ * Ce que la mesure d'AC4 doit départager : latence de transition, tas LVGL, et
+ * stabilité sur N allers-retours.
+ */
+typedef enum {
+    DN_NAV_REBUILD = 0,
+    DN_NAV_SCREENS,
+    DN_NAV_COUNT,
+} dn_nav_model_t;
+
+const char *dn_nav_model_name(dn_nav_model_t m);
+bool dn_nav_model_from_name(const char *nom, dn_nav_model_t *out);
+dn_nav_model_t dn_ui_get_nav_model(void);
+/* Bascule à chaud. Repose la vue courante à zéro (dashboard) : les deux modèles
+ * ne tiennent pas leur état au même endroit, et prétendre conserver la vue
+ * ferait mentir l'un des deux. */
+esp_err_t dn_ui_set_nav_model(dn_nav_model_t m);
+
+dn_ui_vue_t dn_ui_vue(void);
+int dn_ui_metrique(void);
+/* Nombre de transitions jouées depuis le boot (aller ET retour). */
+uint32_t dn_ui_nav_count(void);
+
+/*
+ * ── QUELLE ZONE A REÇU LE DERNIER TAP (preuve d'AC3) ─────────────────────────
+ *   0..5 = la case de la métrique · DN_UI_ZONE_MENU · DN_UI_ZONE_RETOUR
+ *   DN_UI_ZONE_AUCUNE = aucun tap n'a encore atteint une zone.
+ *
+ * ⚠️ C'est un ENREGISTREMENT, pas un log. Écrire sur la console depuis un
+ *    callback LVGL bloquerait la tâche de rendu sur le lien USB — c'est-à-dire
+ *    que l'instrument de la preuve fausserait la latence qu'AC5 mesure au même
+ *    moment. La console lit cette valeur quand ELLE le décide.
+ */
+#define DN_UI_ZONE_AUCUNE (-1)
+#define DN_UI_ZONE_MENU (-2)
+#define DN_UI_ZONE_RETOUR (-3)
+int dn_ui_dernier_tap(void);
+uint32_t dn_ui_taps(void);
+const char *dn_ui_zone_nom(int zone);
+/* Taps sur le bandeau MENU. Compté à part : c'est ce compteur qui prouve que le
+ * no-op est un CHOIX et pas une zone tactile qui ne marche pas. */
+uint32_t dn_ui_menu_taps(void);
+
+/* Navigation depuis la CONSOLE (prennent le verrou LVGL elles-mêmes).
+ * `idx` dans 0..DN_UI_METRIQUES-1. Le chemin du DOIGT passe par les mêmes
+ * fonctions internes : un tap et un `nav open 2` produisent la même transition,
+ * sinon la latence mesurée au clavier ne dirait rien de celle du doigt. */
+esp_err_t dn_ui_nav_open(int idx);
+esp_err_t dn_ui_nav_back(void);
+
+/*
  * Monte LVGL sur le socle. `asset_err` est le verdict de `dn_asset_init()` :
  * il est passé plutôt que redevine, pour que la scène « ASSET ABSENT » puisse
  * DIRE la raison exacte du refus au lieu d'un écran silencieux (AC1).
@@ -186,6 +278,12 @@ typedef struct {
  *    d'enregistrement retenu est dn_measure — voir son commentaire.
  */
 esp_err_t dn_ui_init(const dn_bootcfg_t *cfg, esp_err_t asset_err);
+
+/* L'afficheur LVGL, pour y brancher l'indev tactile. NULL avant dn_ui_init().
+ * Exposé plutôt que de laisser dn_ui appeler dn_touch lui-même : l'ordre de
+ * branchement des couches se lit alors dans app_main, là où le trap n°1 (« les
+ * callbacks s'ASSIGNENT ») se surveille déjà. */
+lv_display_t *dn_ui_display(void);
 
 /* True dès que le premier cycle de rafraîchissement LVGL a atteint la dalle.
  * C'est la condition de la montée du rétroéclairage (discipline
