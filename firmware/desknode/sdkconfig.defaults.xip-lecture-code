@@ -3,8 +3,10 @@
 # ── CE QU'ELLE ÉPROUVE ───────────────────────────────────────────────────────
 # Un défaut MESURÉ en dn1-3 : à chaque cycle de rafraîchissement LVGL, l'image
 # entière se déplace le temps d'une trame — « ça clignote, comme un déplacement
-# rapide » (constat owner, 2026-08-15). Cinq causes ont été éliminées à l'œil,
-# chacune avec son témoin :
+# rapide » (constat owner, 2026-08-15). Les cinq PREMIÈRES causes éliminées à
+# l'œil au moment où cette branche a été écrite (le bilan FINAL en compte SEPT —
+# la §10.5 du fichier hardware/ fait foi ; cette branche est elle-même la n°6,
+# et l'affinité de cœur la n°7) :
 #   1. lecture du fond depuis la flash mmap-ée   -> `ui bg psram`   : IDENTIQUE
 #   2. parcours de cache pleine plage de
 #      draw_bitmap (614 400 o par flush)         -> `flush path direct` : IDENTIQUE

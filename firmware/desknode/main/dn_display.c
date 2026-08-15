@@ -499,11 +499,17 @@ esp_err_t dn_display_backlight_ramp(int pct_cible, int duree_ms)
      * console annonce. C'est la règle de méthode héritée de dn1-1/dn1-2 (« la
      * cadence est absolue »), et elle vaut aussi pour un geste de démonstration.
      */
-    TickType_t periode = pdMS_TO_TICKS(duree_ms / pas);
-    if (periode == 0) {
-        periode = 1; /* le tick est à 1 ms (CONFIG_FREERTOS_HZ=1000) */
-    }
+    /*
+     * Le pas de temps est recalculé à CHAQUE étape sur la cible absolue
+     * (duree_ms * i / pas), et non figé une fois par division entière (revue) :
+     * `bl ramp 100 199` depuis 0 % donnait periode = 199/100 = 1 ms, soit une
+     * rampe réelle de ~100 ms pour 199 annoncées — jusqu'à 2x plus courte, et
+     * le constat AC7 encore dû se serait fait sous une étiquette de durée
+     * fausse. Ici le reliquat est distribué : la somme des pas vaut duree_ms
+     * à ±1 tick près.
+     */
     TickType_t reveil = xTaskGetTickCount();
+    TickType_t ecoule = 0;
     for (int i = 1; i <= pas; i++) {
         int pct = depart + (delta > 0 ? i : -i);
         esp_err_t err = dn_display_backlight_pct(pct);
@@ -515,6 +521,9 @@ esp_err_t dn_display_backlight_ramp(int pct_cible, int duree_ms)
                      esp_err_to_name(err));
             return err;
         }
+        TickType_t cible = pdMS_TO_TICKS(((int64_t)duree_ms * i) / pas);
+        TickType_t periode = cible > ecoule ? cible - ecoule : 1;
+        ecoule += periode;
         vTaskDelayUntil(&reveil, periode);
     }
     return ESP_OK;

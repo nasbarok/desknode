@@ -949,6 +949,14 @@ flush synchronisé `vsync`, fond lu en flash `mmap`.
 | Flushes | — | **0** (rien ne redessine) | **1,00 par cycle** |
 | `fps` | 37,40 Hz | — | **37,40 Hz** (théorique 37,40 — écart **+0,00 %**) |
 
+> ⚠️ **Portée honnête du « fps inchangé » (revue de code).** AC8 dit « 37,40 Hz
+> inchangés dans toutes les configs mesurées » ; le chiffre n'a été CONSIGNÉ que
+> pour la config nominale (et le rejeu final, +0,01 %). Les variantes PSRAM,
+> 8/32/128 lignes, 2 FB/direct et le régime `anim` ont tourné sans qu'un `fps`
+> y soit relevé. Aucun signe contraire (le compteur vsync est resté cohérent
+> partout), mais « pas relevé » n'est pas « mesuré inchangé » — la distinction
+> est la règle du dépôt.
+
 | Mémoire | |
 |---|---|
 | RAM interne, avant → après init LVGL | 281 415 → **212 015 o** (−69 400) |

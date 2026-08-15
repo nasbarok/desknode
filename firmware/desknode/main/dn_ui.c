@@ -81,6 +81,10 @@ static size_t s_int_avant, s_int_apres, s_psram_avant, s_psram_apres;
  * pour ce que cette absence de verrou garantit et ce qu'elle ne garantit pas. */
 static volatile uint32_t s_n_flush, s_n_cycles, s_px, s_copie_us, s_attente_us;
 static volatile uint32_t s_max_px, s_max_copie_us, s_timeouts;
+/* Flushes NO-OP du mode direct (early return : aire comptée, aucun µs). Compté
+ * À PART (revue) : les inclure au dénominateur diluait les moyennes copie/attente
+ * dans le mode même qui a servi à tester l'hypothèse 5 de §10.5. */
+static volatile uint32_t s_n_noop;
 
 /* ── Noms des modes ───────────────────────────────────────────────────────── */
 
@@ -178,6 +182,7 @@ static void dn_ui_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px_m
          * d'éliminer.
          */
         s_n_flush++;
+        s_n_noop++;
         s_px += w * h;
         if (w * h > s_max_px) {
             s_max_px = w * h;
@@ -321,6 +326,17 @@ static void build_scene(void)
     s_img = NULL;
     s_label = NULL;
     s_bar = NULL;
+    /* ⚠️ L'ombre suit la réalité (revue). `lv_obj_clean` vient de détruire la
+     * barre ET son animation : laisser `s_anim_on` à vrai ferait annoncer
+     * « stimulus EN COURS » par `ui`, `anim` et l'étiquette de `fps` — une
+     * étiquette de mesure FAUSSE, la classe de défaut que ce firmware traque.
+     * L'opérateur relance `anim on` s'il le veut ; on ne recrée pas la barre
+     * dans son dos. */
+    if (s_anim_on) {
+        s_anim_on = false;
+        ESP_LOGW(TAG, "reconstruction de scène : le stimulus `anim` est ARRÊTÉ "
+                      "(relancer `anim on` si besoin)");
+    }
 
     lv_obj_set_style_bg_color(scr, lv_color_black(), 0);
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
@@ -611,10 +627,12 @@ void dn_ui_get_stats(dn_flush_stats_t *out)
     out->max_px = s_max_px;
     out->max_copie_us = s_max_copie_us;
     out->timeouts = s_timeouts;
+    out->noops = s_n_noop;
 }
 
 void dn_ui_reset_stats(void)
 {
+    s_n_noop = 0;
     s_n_flush = 0;
     s_n_cycles = 0;
     s_px = 0;
@@ -628,14 +646,20 @@ void dn_ui_reset_stats(void)
 dn_flush_sync_t dn_ui_get_sync(void) { return s_sync; }
 void dn_ui_set_sync(dn_flush_sync_t mode) { s_sync = mode; }
 
-void dn_ui_force_full_redraw(void)
+bool dn_ui_force_full_redraw(void)
 {
+    /* bool et non void (revue) : sur timeout du verrou, la première version ne
+     * faisait RIEN en silence — et `flush full` publiait ensuite des compteurs
+     * sous la bannière « redessin PLEIN ÉCRAN forcé » pour un redessin jamais
+     * demandé. L'instrument de preuve négative d'AC3 mesurait autre chose sans
+     * le dire. */
     if (!lvgl_port_lock(1000)) {
-        ESP_LOGE(TAG, "verrou LVGL non pris");
-        return;
+        ESP_LOGE(TAG, "verrou LVGL non pris — AUCUN redessin demandé");
+        return false;
     }
     lv_obj_invalidate(lv_screen_active());
     lvgl_port_unlock();
+    return true;
 }
 
 void dn_ui_label_show(bool on)
@@ -710,6 +734,7 @@ bool dn_ui_anim_running(void) { return s_anim_on; }
 
 esp_err_t dn_ui_bg_psram(bool on)
 {
+    uint16_t *buf = NULL; /* portée fonction : le chemin d'échec du verrou le libère */
     if (on == (s_bg_psram != NULL)) {
         return ESP_OK;
     }
@@ -719,7 +744,7 @@ esp_err_t dn_ui_bg_psram(bool on)
             ESP_LOGE(TAG, "pas d'asset à copier — la source reste inchangée");
             return ESP_ERR_NOT_FOUND;
         }
-        uint16_t *buf = heap_caps_malloc(DN_FB_BYTES, MALLOC_CAP_SPIRAM);
+        buf = heap_caps_malloc(DN_FB_BYTES, MALLOC_CAP_SPIRAM);
         if (!buf) {
             ESP_LOGE(TAG, "PSRAM insuffisante pour %u o", (unsigned)DN_FB_BYTES);
             return ESP_ERR_NO_MEM;
@@ -730,23 +755,44 @@ esp_err_t dn_ui_bg_psram(bool on)
         ESP_LOGI(TAG, "fond copié flash -> PSRAM : %u o en %lld us (%.2f Mo/s)",
                  (unsigned)DN_FB_BYTES, (long long)dt,
                  dt > 0 ? (double)DN_FB_BYTES / (double)dt : 0.0);
-        s_bg_psram = buf;
+        /* PAS de `s_bg_psram = buf` ici : la publication n'a lieu qu'après la
+         * reconstruction réussie, sous verrou, plus bas. */
     } else {
+        /*
+         * ⚠️ ORDRE NON NÉGOCIABLE (correctif de revue — c'était un use-after-free) :
+         * la scène est reconstruite AVANT la libération, et la libération n'a
+         * lieu QUE si la reconstruction a eu lieu. La première version libérait
+         * `old` même quand le verrou expirait : `build_scene()` n'avait pas
+         * tourné, `s_bg_dsc.data` pointait toujours sur le bloc rendu, et la
+         * tâche LVGL re-blittait de la PSRAM LIBÉRÉE à chaque invalidation —
+         * en rendant ESP_OK par-dessus. Déclencheur réaliste : un plein écran
+         * à `lines 8` tient le verrou ~2,1 s > le timeout de 1 s.
+         */
+        if (!lvgl_port_lock(1000)) {
+            ESP_LOGE(TAG, "verrou LVGL non pris — la source du fond reste PSRAM, "
+                          "rien n'est libéré. Réessayer.");
+            return ESP_ERR_TIMEOUT;
+        }
         uint16_t *old = s_bg_psram;
         s_bg_psram = NULL;
-        /* La scène est reconstruite AVANT la libération, sinon LVGL garderait un
-         * instant un descripteur pointant sur de la mémoire rendue. */
-        if (lvgl_port_lock(1000)) {
-            build_scene();
-            lvgl_port_unlock();
-        }
+        build_scene();
+        lvgl_port_unlock();
         heap_caps_free(old);
         return ESP_OK;
     }
 
+    /* Même règle au chemin ALLER (revue) : `s_bg_psram` n'est publié qu'APRÈS
+     * la reconstruction réussie. La première version l'assignait avant le
+     * verrou : sur timeout, l'état disait « PSRAM » pendant que la scène
+     * blittait la flash, et tout retry court-circuitait en no-op ESP_OK —
+     * l'A/B de T3 coincé sous une étiquette fausse jusqu'au reboot. */
     if (!lvgl_port_lock(1000)) {
+        ESP_LOGE(TAG, "verrou LVGL non pris — copie PSRAM libérée, la source "
+                      "reste la flash. Réessayer.");
+        heap_caps_free(buf);
         return ESP_ERR_TIMEOUT;
     }
+    s_bg_psram = buf;
     build_scene();
     lvgl_port_unlock();
     return ESP_OK;
@@ -756,15 +802,48 @@ bool dn_ui_bg_is_psram(void) { return s_bg_psram != NULL; }
 
 esp_err_t dn_ui_pause(void)
 {
+    /* Idempotent (revue) : un second `ui off` est un no-op, pas une panne.
+     * Sans ce garde, lvgl_port_stop() sur un tick déjà arrêté rend
+     * ESP_ERR_INVALID_STATE et la console imprime « refusé » pour rien —
+     * l'opérateur part chercher une panne LVGL qui n'existe pas. */
+    if (!s_active) {
+        return ESP_OK;
+    }
     esp_err_t err = lvgl_port_stop();
     if (err == ESP_OK) {
         s_active = false;
+        /*
+         * ⚠️ DRAINER LE CYCLE EN VOL (correctif de revue). `lvgl_port_stop()` ne
+         * fait que geler le tick : il ne joint pas la tâche, qui peut être AU
+         * MILIEU de `lv_timer_handler()` — jusqu'à ~176 ms de flushes restants
+         * en plein écran `vsync`. Rendre la main tout de suite laissait `scene`
+         * écrire le framebuffer pendant que le dernier cycle le flushait encore
+         * — la contamination exacte que la pause doit exclure, atteignable en
+         * usage scripté (dn_console.py enchaîne les commandes).
+         * La tâche du portage tient `lvgl_port_lock` pendant tout son cycle
+         * (esp_lvgl_port.c, boucle de tâche) : prendre puis rendre le verrou
+         * garantit que le cycle en vol est FINI. 2 000 ms couvrent le pire
+         * plein écran à `lines 8` (~80 flushes x ~27 ms).
+         */
+        if (lvgl_port_lock(2000)) {
+            lvgl_port_unlock();
+        } else {
+            ESP_LOGW(TAG, "pause : le cycle en vol n'a pas rendu la main en "
+                          "2 s — un flush LVGL peut encore toucher le "
+                          "framebuffer, attendre avant `scene`/`tear`.");
+        }
     }
     return err;
 }
 
 esp_err_t dn_ui_resume(void)
 {
+    /* Idempotent (revue) — même raison que dn_ui_pause. Évite aussi le demi-état
+     * du portage : lvgl_port_resume() fait lv_timer_enable(true) AVANT de
+     * démarrer l'esp_timer, donc un échec le laissait à moitié appliqué. */
+    if (s_active) {
+        return ESP_OK;
+    }
     esp_err_t err = lvgl_port_resume();
     if (err == ESP_OK) {
         s_active = true;

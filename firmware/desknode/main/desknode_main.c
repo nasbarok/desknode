@@ -214,23 +214,38 @@ void app_main(void)
     }
 
     /* 6. La première trame LVGL doit avoir ATTEINT la dalle avant qu'on allume.
-     *    1 000 ms est très large (un cycle LVGL est à 33 ms, un plein écran fait
-     *    640/draw_lines flushes). Si le délai expire, on le DIT et on allume
-     *    quand même : un écran noir muet serait pire qu'un écran qui montre le
-     *    problème. */
-    if (!dn_ui_wait_first_frame(1000)) {
+     *    Le délai est PROPORTIONNÉ à la config (revue) : un plein écran fait
+     *    640/draw_lines flushes, et chaque flush synchronisé attend jusqu'à une
+     *    trame (~27 ms). Le 1 000 ms fixe de la première version était « très
+     *    large » à 64 lignes… et FAUX à `lines 8` (80 flushes ≈ 1,1-2,2 s) :
+     *    le boot loggeait « aucun flush LVGL » et allumait en plein dessin,
+     *    pour une config NVS parfaitement légale. Plancher 1 000 ms conservé.
+     *    Si le délai expire, on le DIT et on allume quand même : un écran noir
+     *    muet serait pire qu'un écran qui montre le problème. */
+    uint32_t ff_timeout_ms = 500 + (640u / (uint32_t)cfg.draw_lines) * 30u;
+    if (ff_timeout_ms < 1000) {
+        ff_timeout_ms = 1000;
+    }
+    if (!dn_ui_wait_first_frame(ff_timeout_ms)) {
         ESP_LOGE(TAG,
-                 "aucun flush LVGL en 1 000 ms — ce qui va s'allumer n'est PAS "
-                 "la scène attendue. Chercher du côté du flush, pas de la dalle.");
+                 "aucun flush LVGL en %" PRIu32 " ms — ce qui va s'allumer "
+                 "n'est PAS la scène attendue. Chercher du côté du flush, pas "
+                 "de la dalle.",
+                 ff_timeout_ms);
     }
 
-    /* 7. ET SEULEMENT MAINTENANT le rétroéclairage. */
+    /* 7. ET SEULEMENT MAINTENANT le rétroéclairage.
+     * La fréquence est LUE, pas récitée (revue) : la première version disait
+     * « 5 kHz » en dur alors que le défaut compilé était passé à 24 kHz — le
+     * bandeau contredisait LE résultat-titre d'AC7. Un bandeau qui enseigne un
+     * fait réfuté est pire qu'un bandeau muet : il se relit à chaque boot. */
     ESP_ERROR_CHECK(dn_display_backlight_pct(100));
     ESP_LOGI(TAG,
-             "rétroéclairage à %d %% (GPIO%d en LEDC 10 bits @ 5 kHz). "
+             "rétroéclairage à %d %% (GPIO%d en LEDC 10 bits @ %d Hz). "
              "⚠️ il ne clignote pas : le clignotement était le signe de vie de "
              "P0, ce n'est plus un symptôme valide depuis P1.",
-             dn_display_backlight_pct_state(), DN_PIN_BACKLIGHT);
+             dn_display_backlight_pct_state(), DN_PIN_BACKLIGHT,
+             dn_display_backlight_freq_state());
 
     ESP_LOGI(TAG, "prêt en %lld ms depuis app_main",
              (long long)((esp_timer_get_time() - t_boot) / 1000));

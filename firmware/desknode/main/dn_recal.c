@@ -64,7 +64,10 @@ static void recal_task(void *arg)
             }
         }
 
-        if (ok) {
+        /* Revue : `recal 0` tapé PENDANT le décompte doit annuler — la tâche
+         * avait copié `n` localement et le restart partait (et se comptait)
+         * après la désactivation, polluant la jambe « désactivé » d'un A/B. */
+        if (ok && s_vsyncs > 0) {
             esp_err_t err = esp_lcd_rgb_panel_restart(s_panel);
             s_last_err = (uint32_t)err;
             s_count++;
@@ -102,11 +105,20 @@ esp_err_t dn_recal_init(esp_lcd_panel_handle_t panel)
     return ESP_OK;
 }
 
+/* Le test-puis-écriture de `s_en_cours` doit être ATOMIQUE (revue) : ses deux
+ * appelants — dn_display_present() côté console et dn_ui_flush() côté tâche
+ * LVGL — peuvent vivre sur deux cœurs. Sans section critique, les deux passaient
+ * le test, le second Give sur le sémaphore binaire était avalé, et l'armement
+ * perdu n'incrémentait PAS `s_rate` — le compteur dont le but déclaré est de
+ * rendre ces pertes visibles. */
+static portMUX_TYPE s_arm_mux = portMUX_INITIALIZER_UNLOCKED;
+
 void dn_recal_arm(void)
 {
     if (!s_arm_sem || s_vsyncs <= 0) {
         return;
     }
+    taskENTER_CRITICAL(&s_arm_mux);
     if (s_en_cours) {
         /* Une bascule est arrivée pendant qu'on attendait les vsyncs de la
          * PRÉCÉDENTE. On ne réarme pas — on COMPTE l'armement perdu. Un
@@ -114,9 +126,11 @@ void dn_recal_arm(void)
          * beaucoup de perdus, c'est que la cadence de bascule dépasse la
          * fenêtre de recalage, et cette information change la conclusion d'AC5. */
         s_rate++;
+        taskEXIT_CRITICAL(&s_arm_mux);
         return;
     }
     s_en_cours = true;
+    taskEXIT_CRITICAL(&s_arm_mux);
     xSemaphoreGive(s_arm_sem);
 }
 

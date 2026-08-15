@@ -293,6 +293,14 @@ static int cmd_bw(int argc, char **argv)
     if (tearing_bloque("bw")) {
         return 1;
     }
+    /* Correctif de revue : `bw` fait cinq memset de 614 400 o sur le framebuffer
+     * et un present() à 2 FB — la garde `ui_bloque` posée sur `scene` et `tear`
+     * l'avait OUBLIÉ, alors que c'est la commande de routine héritée de dn1-2
+     * qu'on tape le plus naturellement avec l'UI active. LVGL n'aurait jamais
+     * réparé l'écran (rien d'invalidé de son point de vue). */
+    if (ui_bloque("bw")) {
+        return 1;
+    }
     uint16_t *fb = dn_display_draw_buffer();
     const int passes = 5;
 
@@ -879,15 +887,52 @@ static int cmd_flush(int argc, char **argv)
             printf("refusé : LVGL est en pause (`ui on` d'abord).\n");
             return 1;
         }
+        /* Revue : `anim` polluerait la mesure — ses cycles tomberaient dans la
+         * fenêtre d'attente et seraient publiés comme « coût du plein écran ». */
+        if (dn_ui_anim_running()) {
+            printf("refusé : le stimulus `anim` tourne — `anim off` d'abord.\n");
+            printf("   Ses cycles se mélangeraient aux compteurs du redessin\n");
+            printf("   plein écran, et le chiffre publié mesurerait les deux.\n");
+            return 1;
+        }
         dn_ui_reset_stats();
-        dn_ui_force_full_redraw();
-        /* On laisse le cycle se terminer avant de lire : sans cette attente, on
-         * imprimerait les compteurs d'un redessin encore en cours et le chiffre
-         * publié serait un instantané au milieu du travail. Un plein écran fait
-         * 640/draw_lines flushes ; à 1 vsync l'un en mode `vsync`, c'est au pire
-         * ~10 x 27 ms. 2 000 ms couvrent largement. */
-        vTaskDelay(pdMS_TO_TICKS(2000));
-        printf("redessin PLEIN ÉCRAN forcé — compteurs ci-dessous :\n");
+        if (!dn_ui_force_full_redraw()) {
+            /* Revue : la première version publiait les compteurs même quand le
+             * redessin n'avait PAS été demandé (verrou non pris) — la preuve
+             * négative d'AC3 mesurait autre chose sans le dire. */
+            printf("refusé : verrou LVGL non pris, AUCUN redessin demandé.\n");
+            return 1;
+        }
+        /*
+         * On attend la QUIESCENCE au lieu d'un délai fixe (revue) : 2 000 ms
+         * figées étaient trop courtes à `lines 8` (~80 flushes x ~27 ms ≈ 2,1 s)
+         * et publiaient un instantané au milieu du travail. Fini = au moins un
+         * cycle complet ET plus aucun flush pendant 200 ms. Plafond 6 s.
+         * ⚠️ Le label 1 Hz peut ajouter SES cycles pendant l'attente : ils
+         * étaient déjà inclus avant, et le message le dit désormais.
+         */
+        dn_flush_stats_t q;
+        uint32_t stable = 0;
+        int64_t fin = esp_timer_get_time() + 6000000;
+        dn_ui_get_stats(&q);
+        uint32_t prev = q.flushes;
+        while (esp_timer_get_time() < fin) {
+            vTaskDelay(pdMS_TO_TICKS(200));
+            dn_ui_get_stats(&q);
+            if (q.cycles >= 1 && q.flushes == prev) {
+                stable++;
+                if (stable >= 1) {
+                    break;
+                }
+            } else {
+                stable = 0;
+            }
+            prev = q.flushes;
+        }
+        printf("redessin PLEIN ÉCRAN forcé — compteurs ci-dessous%s :\n",
+               dn_ui_label_shown()
+                   ? " (label 1 Hz visible : ses cycles éventuels sont inclus)"
+                   : "");
         /* et on continue vers l'affichage */
     } else if (argc >= 2 && strcmp(argv[1], "sync") == 0) {
         if (argc < 3) {
@@ -903,6 +948,11 @@ static int cmd_flush(int argc, char **argv)
         dn_ui_reset_stats();
         printf("synchro du flush : %s (compteurs remis à zéro)\n",
                dn_flush_sync_name(m));
+        if (!dn_ui_active()) {
+            /* Revue : accepté mais différé — le dire, sinon le réglage semble agir. */
+            printf("⚠️ LVGL est en PAUSE : ce réglage ne prendra effet qu'au "
+                   "`ui on`.\n");
+        }
         if (m == DN_FLUSH_SYNC_OFF) {
             printf("⚠️ mode TÉMOIN : la copie part à n'importe quel moment du\n");
             printf("   balayage. C'est LUI qui doit produire un déchirement\n");
@@ -930,6 +980,14 @@ static int cmd_flush(int argc, char **argv)
         dn_ui_reset_stats();
         printf("chemin du flush : %s (compteurs remis à zéro)\n",
                dn_flush_path_name(p));
+        if (dn_ui_direct_mode()) {
+            /* Revue : en mode direct le chemin n'est JAMAIS lu — l'explication
+             * qui suivait laissait croire qu'il s'appliquait. */
+            printf("⚠️ SANS OBJET en rendu DIRECT (num_fbs=%d) : le flush ne fait\n",
+                   dn_display_num_fbs());
+            printf("   que basculer, aucun chemin de copie n'est emprunté.\n");
+            return 0;
+        }
         if (p == DN_FLUSH_PATH_BITMAP) {
             printf("`draw_bitmap` resynchronise 614 400 o de cache À CHAQUE\n");
             printf("flush, quelle que soit la zone sale. C'est le chemin qui a\n");
@@ -980,14 +1038,25 @@ static int cmd_flush(int argc, char **argv)
         printf("      jour du label coûte réellement, flushes multiples inclus.)\n");
     }
     printf("plus grande aire   : %lu px\n", (unsigned long)st.max_px);
+    /* Revue : les flushes NO-OP du mode direct (aire comptée, zéro µs) sortent
+     * du dénominateur des moyennes temporelles — les inclure les diluait. */
+    uint32_t reels = st.flushes - st.noops;
+    if (st.noops) {
+        printf("dont no-op (direct): %lu — exclus des moyennes de temps\n",
+               (unsigned long)st.noops);
+    }
+    if (reels == 0) {
+        printf("copie / attente    : aucun flush effectif (que des no-op).\n");
+        return 0;
+    }
     printf("copie              : %lu us cumulés, %lu us/flush en moyenne, "
            "%lu us au pire\n",
            (unsigned long)st.copie_us,
-           (unsigned long)(st.copie_us / st.flushes),
+           (unsigned long)(st.copie_us / reels),
            (unsigned long)st.max_copie_us);
     printf("attente de synchro : %lu us cumulés, %lu us/flush en moyenne\n",
            (unsigned long)st.attente_us,
-           (unsigned long)(st.attente_us / st.flushes));
+           (unsigned long)(st.attente_us / reels));
     printf("   (comptée À PART de la copie : sinon « le flush coûte 27 ms » se\n");
     printf("    lirait comme un problème de bande passante alors que c'est la\n");
     printf("    synchro qui attend sa trame — 26,7 ms de période.)\n");
@@ -1032,8 +1101,16 @@ static int cmd_anim(int argc, char **argv)
         return 1;
     }
     esp_err_t err = dn_ui_anim(on, (int)ms);
+    if (err == ESP_ERR_INVALID_ARG) {
+        printf("refusé : %s — période attendue entre 200 et 10000 ms.\n",
+               esp_err_to_name(err));
+        return 1;
+    }
     if (err != ESP_OK) {
-        printf("refusé : %s (période attendue entre 200 et 10000 ms)\n",
+        /* Revue : un timeout de verrou était annoncé comme une erreur de bornes
+         * — l'opérateur corrigeait un argument qui n'avait rien. */
+        printf("refusé : %s — le verrou LVGL n'a pas été pris, la période "
+               "n'y est pour rien. Réessayer.\n",
                esp_err_to_name(err));
         return 1;
     }
@@ -1113,6 +1190,17 @@ static int cmd_ui(int argc, char **argv)
     bool on = false;
     if (!parse_on_off(argv[1], &on)) {
         printf("usage : ui on|off | ui label on|off | ui bg flash|psram\n");
+        return 1;
+    }
+    /* Correctif de revue : le verrou était UNIDIRECTIONNEL. `tear` est refusé
+     * quand l'UI est active, mais `ui on` était accepté pendant que la tâche de
+     * tearing tournait — deux écrivains à pleine cadence sur le même
+     * framebuffer, avec le RMW non protégé de `s_draw_index` depuis deux cœurs. */
+    if (on && dn_stim_tear_running()) {
+        printf("refusé : le stimulus de tearing tourne — `tear off` d'abord.\n");
+        printf("   `ui on` relancerait LVGL PENDANT que la tâche de tearing\n");
+        printf("   redessine des trames entières : deux écrivains, deux cœurs,\n");
+        printf("   écran inattribuable.\n");
         return 1;
     }
     esp_err_t err = on ? dn_ui_resume() : dn_ui_pause();

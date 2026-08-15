@@ -51,7 +51,11 @@ static SemaphoreHandle_t s_fbdone_sem;
  * `dn_measure_vsync_subscribe()`, avant que le panneau ne tourne pour de bon —
  * mais il est lu par l'ISR, d'où le `volatile`.
  */
-static SemaphoreHandle_t s_vsync_subs[DN_VSYNC_SUBS_MAX];
+/* `volatile` sur le TABLEAU aussi (revue) : le commentaire ci-dessus promettait
+ * « publié en dernier », mais un store ordinaire suivi d'un store volatile n'a
+ * AUCUNE garantie d'ordre en C — l'invariant était fourni par chance. Avec les
+ * deux volatiles, le compilateur ne peut pas réordonner les deux écritures. */
+static SemaphoreHandle_t volatile s_vsync_subs[DN_VSYNC_SUBS_MAX];
 static volatile int s_vsync_subs_n;
 static const char *s_vsync_subs_nom[DN_VSYNC_SUBS_MAX];
 

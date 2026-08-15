@@ -170,6 +170,9 @@ typedef struct {
     uint32_t max_px;      /* plus grande aire vue en un flush */
     uint32_t max_copie_us;/* plus longue copie vue */
     uint32_t timeouts;    /* synchros expirées (instrument suspect si non nul) */
+    uint32_t noops;       /* flushes NO-OP du mode direct : aire comptée, zéro µs
+                           * de copie/attente. À SOUSTRAIRE du dénominateur des
+                           * moyennes temporelles (revue : les inclure les diluait). */
 } dn_flush_stats_t;
 
 /*
@@ -197,8 +200,10 @@ dn_flush_sync_t dn_ui_get_sync(void);
 void dn_ui_set_sync(dn_flush_sync_t mode);
 
 /* Invalide l'écran entier : le prochain cycle redessine tout. C'est la PREUVE
- * NÉGATIVE d'AC3 — ce que coûterait un mode plein écran. */
-void dn_ui_force_full_redraw(void);
+ * NÉGATIVE d'AC3 — ce que coûterait un mode plein écran.
+ * Renvoie false si le verrou LVGL n'a pas pu être pris : AUCUN redessin n'a
+ * alors été demandé, et l'appelant ne doit pas publier de compteurs. */
+bool dn_ui_force_full_redraw(void);
 
 /* Le label vivant. Visible par défaut ; on peut l'éteindre pour isoler le coût
  * du stimulus adverse. */

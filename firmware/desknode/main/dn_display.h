@@ -31,8 +31,9 @@ esp_err_t dn_display_init(const dn_bootcfg_t *cfg);
  * Rétroéclairage — GRADABLE depuis dn1-3 (AC7).
  *
  * GPIO6 est piloté par LEDC (canal 0, timer 0, LEDC_LOW_SPEED_MODE, 10 bits à
- * 5 kHz — le pattern de référence d'Espressif, esp_bsp_generic.c). Ce n'est plus
- * un gpio_set_level : `bl 40` a un sens.
+ * 24 kHz — PAS les 5 kHz du pattern d'Espressif : mesuré, à 5 kHz la carte
+ * SIFFLE à duty bas, voir le bloc DN_BL_LEDC_FREQ_HZ dans dn_display.c). Ce
+ * n'est plus un gpio_set_level : `bl 40` a un sens.
  *
  * ⚠️ CE QUI RESTE INCHANGÉ, ET QUI N'EST PAS NÉGOCIABLE : le duty vaut 0 dès
  *    l'init (la carte ne doit pas hériter de la luminosité du firmware
