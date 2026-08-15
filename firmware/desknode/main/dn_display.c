@@ -4,9 +4,11 @@
 
 #include "dn_measure.h"
 #include "dn_pins.h"
+#include "dn_recal.h"
 #include "dn_st7701_init.h"
 #include "driver/gpio.h"
 #include "driver/i2c_master.h"
+#include "driver/ledc.h"
 #include "esp_check.h"
 #include "esp_io_expander_tca9554.h"
 #include "esp_lcd_panel_io_additions.h"
@@ -44,8 +46,36 @@ static uint16_t *s_fbs[3];
 static int s_num_fbs;
 static size_t s_bounce_px;
 static int s_draw_index; /* index du framebuffer où l'on dessine */
-static bool s_backlight_on;
+static int s_backlight_pct = -1; /* -1 = LEDC pas encore monté */
 static bool s_disp_on;
+
+/*
+ * ── Rétroéclairage LEDC (dn1-3, AC7) ─────────────────────────────────────────
+ *
+ * Les quatre valeurs ci-dessous viennent du pattern de référence d'Espressif
+ * (`esp_bsp_generic.c`), et chacune a une raison qu'on ne veut pas redécouvrir :
+ *
+ *   LOW_SPEED_MODE : sur ESP32-S3 il n'y a QUE le mode basse vitesse (pas de
+ *       high-speed comme sur l'ESP32 d'origine). Écrire HIGH_SPEED_MODE ne
+ *       compilerait même pas ici.
+ *   10 bits        : 1 024 crans. Assez fin pour que la rampe d'AC7 n'ait pas de
+ *       palier visible, et assez grossier pour tenir à 5 kHz — le produit
+ *       (2^bits x freq) est plafonné par l'horloge de la source LEDC.
+ *   5 kHz          : au-dessus de ~200 Hz l'œil ne voit plus le papillotement ;
+ *       5 kHz est le standard de facto et met le sifflement éventuel de la
+ *       bobine du boost au-dessus de la plage la plus sensible de l'oreille.
+ *       ⚠️ « Inaudible » est une PRÉDICTION, pas une mesure : AC7 demande
+ *          explicitement de tendre l'oreille à duty bas.
+ *   AUTO_CLK       : laisse le driver choisir une source qui atteint le couple
+ *       (fréquence, résolution) demandé ; un choix figé échouerait si l'horloge
+ *       change (DFS, sommeil léger).
+ */
+#define DN_BL_LEDC_MODE LEDC_LOW_SPEED_MODE
+#define DN_BL_LEDC_TIMER LEDC_TIMER_0
+#define DN_BL_LEDC_CHANNEL LEDC_CHANNEL_0
+#define DN_BL_LEDC_RES LEDC_TIMER_10_BIT
+#define DN_BL_LEDC_FREQ_HZ 5000
+#define DN_BL_DUTY_MAX ((1u << 10) - 1u) /* 1023 */
 
 /* ────────────────────────────────────────────────────────────────────────── */
 
@@ -276,18 +306,57 @@ static esp_err_t panel_bring_up(const dn_bootcfg_t *cfg)
     return ESP_OK;
 }
 
+static esp_err_t backlight_bring_up(void)
+{
+    /*
+     * ⚠️ ORDRE IMPOSÉ, et il n'est pas cosmétique : le timer AVANT le canal.
+     *    `ledc_channel_config()` accroche le canal à un timer qui doit déjà
+     *    exister ; l'inverse rend ESP_ERR_INVALID_ARG, et on chercherait un
+     *    problème de brochage alors que c'est un ordre d'appel.
+     *
+     * ⚠️ Et surtout : `.duty = 0` DANS la config du canal, pas un
+     *    `ledc_set_duty()` juste après. Entre les deux, la broche serait pilotée
+     *    à une valeur non choisie pendant quelques microsecondes — assez pour un
+     *    flash à l'allumage, et impossible à attribuer ensuite.
+     */
+    ledc_timer_config_t timer = {
+        .speed_mode = DN_BL_LEDC_MODE,
+        .timer_num = DN_BL_LEDC_TIMER,
+        .duty_resolution = DN_BL_LEDC_RES,
+        .freq_hz = DN_BL_LEDC_FREQ_HZ,
+        .clk_cfg = LEDC_AUTO_CLK,
+    };
+    ESP_RETURN_ON_ERROR(ledc_timer_config(&timer), TAG,
+                        "timer LEDC du rétroéclairage refusé (%d bits @ %d Hz)",
+                        (int)DN_BL_LEDC_RES, DN_BL_LEDC_FREQ_HZ);
+
+    ledc_channel_config_t chan = {
+        .gpio_num = DN_PIN_BACKLIGHT,
+        .speed_mode = DN_BL_LEDC_MODE,
+        .channel = DN_BL_LEDC_CHANNEL,
+        .intr_type = LEDC_INTR_DISABLE,
+        .timer_sel = DN_BL_LEDC_TIMER,
+        .duty = 0, /* ÉTEINT dès la première impulsion d'horloge */
+        .hpoint = 0,
+    };
+    ESP_RETURN_ON_ERROR(ledc_channel_config(&chan), TAG,
+                        "canal LEDC du rétroéclairage (GPIO%d) refusé",
+                        DN_PIN_BACKLIGHT);
+    s_backlight_pct = 0;
+    ESP_LOGI(TAG,
+             "rétroéclairage en LEDC : GPIO%d, %d bits (%u crans) @ %d Hz, "
+             "duty 0 — il ne montera qu'après le remplissage du framebuffer",
+             DN_PIN_BACKLIGHT, 10, (unsigned)(DN_BL_DUTY_MAX + 1),
+             DN_BL_LEDC_FREQ_HZ);
+    return ESP_OK;
+}
+
 esp_err_t dn_display_init(const dn_bootcfg_t *cfg)
 {
     /* Rétroéclairage : configuré ÉTEINT tout de suite, pour ne pas hériter de
      * l'état laissé par le firmware précédent. Il ne s'allumera qu'une fois le
      * framebuffer rempli. */
-    gpio_config_t bl = {
-        .pin_bit_mask = 1ULL << DN_PIN_BACKLIGHT,
-        .mode = GPIO_MODE_OUTPUT,
-    };
-    ESP_RETURN_ON_ERROR(gpio_config(&bl), TAG, "GPIO rétroéclairage refusé");
-    gpio_set_level(DN_PIN_BACKLIGHT, 0);
-    s_backlight_on = false;
+    ESP_RETURN_ON_ERROR(backlight_bring_up(), TAG, "étape 0/5");
 
     ESP_RETURN_ON_ERROR(i2c_bring_up(), TAG, "étape 1/5");
     ESP_RETURN_ON_ERROR(expander_bring_up(), TAG, "étape 2/5");
@@ -297,27 +366,108 @@ esp_err_t dn_display_init(const dn_bootcfg_t *cfg)
     return ESP_OK;
 }
 
-esp_err_t dn_display_backlight(bool on)
+esp_err_t dn_display_backlight_pct(int pct)
 {
-    /* ⚠️ L'ÉTAT FANTÔME. La version précédente posait `s_backlight_on = on`
-     * AVANT l'appel matériel. Si gpio_set_level refusait (broche jamais
-     * configurée, numéro invalide), la commande `bl` et le bandeau de boot
-     * annonçaient tous les deux un état que le matériel n'avait PAS pris — et
-     * on serait allé chercher un écran noir du côté de la dalle alors que le
-     * rétroéclairage n'avait tout simplement jamais bougé. L'ombre logicielle
-     * ne suit donc le matériel qu'APRÈS confirmation, exactement comme
-     * dn_display_disp_on() le fait déjà pour DISPON. */
-    esp_err_t err = gpio_set_level(DN_PIN_BACKLIGHT, on ? 1 : 0);
+    if (s_backlight_pct < 0) {
+        /* Appelé avant dn_display_init() : LEDC n'existe pas encore. On refuse
+         * plutôt que de laisser le driver rendre une erreur obscure — et surtout
+         * plutôt que de « réussir » sans rien piloter. */
+        ESP_LOGE(TAG, "rétroéclairage : LEDC pas encore monté (dn_display_init "
+                      "n'a pas été appelé)");
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (pct < 0 || pct > 100) {
+        /* Leçon dn1-2 (`bl 1` éteignait, `set bounce 153600` briquait) : les
+         * bornes se posent AVANT de toucher le matériel, et le refus se dit. */
+        ESP_LOGE(TAG, "rétroéclairage : %d %% hors de [0, 100] — rien touché", pct);
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    /*
+     * Arrondi au cran le plus proche, pas troncature : sans le +50, `bl 1`
+     * donnerait duty = 10 (1 x 1023 / 100 = 10,23 tronqué) et `bl 100` donnerait
+     * bien 1023, mais les valeurs intermédiaires perdraient systématiquement un
+     * demi-cran. Sur 1 024 crans c'est invisible ; sur le PLANCHER que cherche
+     * AC7 (« le duty minimal où la dalle reste lisible »), un cran compte.
+     */
+    uint32_t duty = ((uint32_t)pct * DN_BL_DUTY_MAX + 50u) / 100u;
+
+    esp_err_t err = ledc_set_duty(DN_BL_LEDC_MODE, DN_BL_LEDC_CHANNEL, duty);
     if (err == ESP_OK) {
-        s_backlight_on = on;
+        err = ledc_update_duty(DN_BL_LEDC_MODE, DN_BL_LEDC_CHANNEL);
+    }
+
+    /* ⚠️ L'ÉTAT FANTÔME (leçon dn1-2, conservée telle quelle). L'ombre logicielle
+     * ne suit le matériel qu'APRÈS confirmation. Une version qui posait l'état
+     * AVANT l'appel annonçait une luminosité que la dalle n'avait pas prise, et
+     * on allait chercher un écran noir du côté de la dalle. */
+    if (err == ESP_OK) {
+        s_backlight_pct = pct;
     } else {
-        ESP_LOGE(TAG, "rétroéclairage (GPIO%d -> %d) refusé : %s — état inchangé",
-                 DN_PIN_BACKLIGHT, on ? 1 : 0, esp_err_to_name(err));
+        ESP_LOGE(TAG,
+                 "rétroéclairage (GPIO%d -> %d %%, duty %u) refusé : %s — état "
+                 "inchangé (%d %%)",
+                 DN_PIN_BACKLIGHT, pct, (unsigned)duty, esp_err_to_name(err),
+                 s_backlight_pct);
     }
     return err;
 }
 
-bool dn_display_backlight_state(void) { return s_backlight_on; }
+int dn_display_backlight_pct_state(void) { return s_backlight_pct; }
+
+esp_err_t dn_display_backlight_ramp(int pct_cible, int duree_ms)
+{
+    if (s_backlight_pct < 0) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (pct_cible < 0 || pct_cible > 100) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (duree_ms < 0) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    int depart = s_backlight_pct;
+    int delta = pct_cible - depart;
+    if (delta == 0) {
+        return ESP_OK;
+    }
+    int pas = delta > 0 ? delta : -delta; /* un cran de POURCENT par étape */
+
+    /*
+     * Cadence en TEMPS ABSOLU (`vTaskDelayUntil`), jamais en délai relatif : un
+     * `vTaskDelay(x)` dans une boucle dérive de tout le temps passé à calculer,
+     * et la rampe qu'on montre à l'œil durerait plus longtemps que ce que la
+     * console annonce. C'est la règle de méthode héritée de dn1-1/dn1-2 (« la
+     * cadence est absolue »), et elle vaut aussi pour un geste de démonstration.
+     */
+    TickType_t periode = pdMS_TO_TICKS(duree_ms / pas);
+    if (periode == 0) {
+        periode = 1; /* le tick est à 1 ms (CONFIG_FREERTOS_HZ=1000) */
+    }
+    TickType_t reveil = xTaskGetTickCount();
+    for (int i = 1; i <= pas; i++) {
+        int pct = depart + (delta > 0 ? i : -i);
+        esp_err_t err = dn_display_backlight_pct(pct);
+        if (err != ESP_OK) {
+            /* On s'arrête où on en est, et on le dit : une rampe interrompue à
+             * mi-chemin qui rendrait ESP_OK laisserait croire à un défaut de la
+             * dalle plutôt qu'à un refus du driver. */
+            ESP_LOGE(TAG, "rampe interrompue à %d %% : %s", s_backlight_pct,
+                     esp_err_to_name(err));
+            return err;
+        }
+        vTaskDelayUntil(&reveil, periode);
+    }
+    return ESP_OK;
+}
+
+esp_err_t dn_display_backlight(bool on)
+{
+    return dn_display_backlight_pct(on ? 100 : 0);
+}
+
+bool dn_display_backlight_state(void) { return s_backlight_pct > 0; }
 
 esp_err_t dn_display_disp_on(bool on)
 {
@@ -372,6 +522,12 @@ int64_t dn_display_present(void)
 
     if (s_num_fbs > 1) {
         s_draw_index = (s_draw_index + 1) % s_num_fbs;
+        /* La bascule a RÉUSSI : c'est l'événement — et le seul — sur lequel
+         * AC5 veut accrocher le recalage de la DMA. Non bloquant : on réveille
+         * une tâche, qui comptera les vsyncs et relancera. Jamais ici : ce
+         * chemin-ci est appelé depuis la console ET depuis le boot, et il ne
+         * doit pas attendre une trame. */
+        dn_recal_arm();
     }
     return dt;
 }

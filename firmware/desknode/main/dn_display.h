@@ -27,7 +27,37 @@
 /* Monte tout le pipeline SAUF le rétroéclairage. */
 esp_err_t dn_display_init(const dn_bootcfg_t *cfg);
 
-/* Rétroéclairage : GPIO direct, tout ou rien. La gradation est dn1-3. */
+/*
+ * Rétroéclairage — GRADABLE depuis dn1-3 (AC7).
+ *
+ * GPIO6 est piloté par LEDC (canal 0, timer 0, LEDC_LOW_SPEED_MODE, 10 bits à
+ * 5 kHz — le pattern de référence d'Espressif, esp_bsp_generic.c). Ce n'est plus
+ * un gpio_set_level : `bl 40` a un sens.
+ *
+ * ⚠️ CE QUI RESTE INCHANGÉ, ET QUI N'EST PAS NÉGOCIABLE : le duty vaut 0 dès
+ *    l'init (la carte ne doit pas hériter de la luminosité du firmware
+ *    précédent), et il ne monte qu'APRÈS que le framebuffer porte une image.
+ *    L'inverse donne un flash blanc au boot — voir l'en-tête de ce fichier.
+ *
+ * ⚠️ L'ombre logicielle (`dn_display_backlight_pct_state`) ne suit le matériel
+ *    qu'APRÈS confirmation. Un échec LEDC laisse l'état ANCIEN, pas l'état
+ *    demandé : sinon la console annoncerait une luminosité que la dalle n'a
+ *    jamais prise, et on irait chercher la panne du côté de la dalle.
+ */
+esp_err_t dn_display_backlight_pct(int pct); /* 0..100, bornes VALIDÉES */
+int dn_display_backlight_pct_state(void);
+
+/*
+ * Rampe douce entre le niveau courant et `pct_cible`, en `duree_ms`.
+ * Bloquante (elle appelle vTaskDelay) : c'est un GESTE D'OPÉRATEUR, joué depuis
+ * la console pour le constat à l'œil d'AC7, pas un effet de fond.
+ */
+esp_err_t dn_display_backlight_ramp(int pct_cible, int duree_ms);
+
+/* Façade booléenne héritée de dn1-2 : `false` -> 0 %, `true` -> 100 %.
+ * Conservée parce que la discipline de boot et la commande `bl on|off` la
+ * lisent — et parce qu'un appelant qui ne veut pas choisir un pourcentage ne
+ * doit pas être forcé d'en inventer un. */
 esp_err_t dn_display_backlight(bool on);
 bool dn_display_backlight_state(void);
 
