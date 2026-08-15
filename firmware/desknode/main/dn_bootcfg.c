@@ -15,9 +15,25 @@ static const char *TAG = "dn_cfg";
  * Défauts = LA CONFIGURATION DE RÉFÉRENCE retenue par la story dn1-2, pour
  * qu'un clone neuf démarre dessus sans rien régler.
  *
- *   num_fbs = 2   : le double tampon ne supprime pas le déchirement à lui seul
- *                   (mesuré), mais il est le socle de la seule configuration
- *                   qui l'atténue — bascule attendue sur on_frame_buf_complete.
+ *   num_fbs = 1   : ARBITRÉ le 2026-08-15, après mesure — et c'est un
+ *                   RENVERSEMENT du défaut d'origine, qui valait 2.
+ *                   Le double tampon est IMPOSSIBLE sur cette puce tant que
+ *                   CONFIG_LCD_RGB_RESTART_IN_VSYNC est activé — et il l'est,
+ *                   parce que sans lui l'image reste décalée en permanence.
+ *                   Mécanisme : RGB_LCD_NEEDS_SEPARATE_RESTART_LINK vaut 1 sur
+ *                   S3, `dma_restart_link` est soudé à `dma_fb_links[0]` une
+ *                   seule fois à l'init (esp_lcd_panel_rgb.c:1135) et jamais
+ *                   re-pointé, alors que la relance par VBlank repart toujours
+ *                   de là. Conséquence MESURÉE : la dalle n'affichait jamais
+ *                   fb[0], une présentation sur deux était perdue EN SILENCE
+ *                   (draw_bitmap rendait ESP_OK), et les 614 400 o du second
+ *                   framebuffer étaient payés pour rien.
+ *                   ⇒ Repasser à 1 récupère 614 312 o de PSRAM (mesuré) et
+ *                   rend TOUTES les présentations visibles. Vérifié à l'œil.
+ *                   ⚠️ Ce n'est PAS un renoncement définitif au double tampon :
+ *                   la piste d'un recalage déclenché sur l'événement de bascule
+ *                   effective reste ouverte, et dn1-3 en a besoin. Détail et
+ *                   les 6 parades déjà éliminées : §4 bis du fichier hardware/.
  *   bounce  = 0   : le bounce buffer a été ÉLIMINÉ, avec deux symptômes.
  *                   Avec CONFIG_LCD_RGB_ISR_IRAM_SAFE=y il provoque un
  *                   redémarrage watchdog (`rst:0x8 TG1WDT_SYS_RST`) dès la
@@ -25,7 +41,7 @@ static const char *TAG = "dn_cfg";
  *                   défile ET garde un décalage VERTICAL permanent que
  *                   esp_lcd_rgb_panel_restart() ne rattrape pas.
  */
-#define DN_DEFAULT_NUM_FBS 2
+#define DN_DEFAULT_NUM_FBS 1
 #define DN_DEFAULT_BOUNCE_PX 0
 
 static esp_err_t open_nvs(nvs_open_mode_t mode, nvs_handle_t *out)

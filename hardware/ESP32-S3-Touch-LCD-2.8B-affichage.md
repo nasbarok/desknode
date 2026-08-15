@@ -191,11 +191,11 @@ I (571) desknode: PSRAM : 8388608 o détectés, mode OCTAL, 80 MHz
 
 | Réglage | Valeur retenue | Pourquoi — **mesuré** |
 |---|---|---|
-| `num_fbs` | **2** | le double tampon ne supprime pas le déchirement à lui seul (§5.2), mais il est le socle de la seule configuration qui l'atténue |
+| `num_fbs` | **1** | ⚠️ **ARBITRÉ le 2026-08-15, et c'est un renversement** (valait 2). Le double tampon est **impossible** tant que `RESTART_IN_VSYNC` est activé — et il doit l'être. Repasser à 1 récupère **614 312 o de PSRAM** et rend **toutes** les présentations visibles. Voir §4 bis |
 | `fb_in_psram` | **1** | 614 400 o ne tiennent pas en RAM interne |
 | `bounce_buffer_size_px` | **0** | **éliminé, deux symptômes distincts** (§5.3) |
 | XIP (`SPIRAM_XIP_FROM_PSRAM`) | **désactivé** | **RÉFUTÉ** : défilement identique avec et sans, et coûterait 342 876 o de PSRAM (§5.3) |
-| Bascule d'image | **attendre `on_frame_buf_complete`** | seule variante qui réduit le déchirement (§5.2) — ⚠️ **implémentée dans le STIMULUS SEUL, pas dans le produit**, voir l'encadré ci-dessous |
+| Bascule d'image | ⛔ **SANS OBJET en `num_fbs=1`** | il n'y a plus qu'un tampon, donc plus de bascule. Le verdict *« attendre `on_frame_buf_complete` »* était mesuré dans une configuration où le double tampon ne fonctionnait pas (§4 bis) : il est **retiré**, pas reporté. La question se reposera en dn1-3, dans les bons termes |
 | Emplacement de l'asset | **partition de données `mmap`ée** | `EMBED_FILES` mettrait 600 Ko en `.rodata`, recopiés en PSRAM si XIP était activé |
 
 Ces valeurs sont les **défauts d'un clone neuf** (`dn_bootcfg.c`) : NVS vierge ⇒
@@ -326,15 +326,28 @@ que sur un délai fixe. Non mesuré.
 
 ### Statut
 
-**Non résolu — ce n'est pas un correctif de ligne, c'est un choix de conception.** Les options,
-dont aucune n'est mesurée hormis ce qui précède : `num_fbs = 1` assumé (et 614 400 o de PSRAM
-rendus, ce qui est **la seule option qui marche aujourd'hui sans rien inventer**) · `num_fbs = 3` ·
-recalage déclenché sur événement (ci-dessus) · bounce buffer (mais il a fait redémarrer la carte
-sur watchdog, §5.3).
+**ARBITRÉ le 2026-08-15 : `num_fbs = 1`, `RESTART_IN_VSYNC=y` conservé.** Décision owner, prise
+**après mesure** et non sur le papier.
 
-⇒ Porté au ledger. Il faut un **arbitrage owner** avant dn1-3, qui hérite directement de ce choix.
-⚠️ **La configuration livrée reste `RESTART_IN_VSYNC=y` + `num_fbs=2`** : elle affiche correctement
-une image statique, ce qui suffit à P1 — mais elle paie un second framebuffer qu'elle n'utilise pas.
+Ce que l'option retenue donne, vérifié de bout en bout sur la carte :
+
+| | |
+|---|---|
+| PSRAM libre | **7 769 784 o** contre 7 155 472 avant ⇒ **614 312 o récupérés** |
+| Présentations | **toutes** atteignent la dalle — il n'y a plus de bascule, donc plus rien à perdre |
+| Cadrage | correct au boot **et** après chaque changement de scène, sans aucune intervention |
+| AC3 | l'asset s'affiche plein écran et bien cadré, sous cette configuration |
+| AC4 | **37,40 Hz** mesurés contre 37,40 théoriques, 561 trames en 14 999 762 µs |
+| `cfg reset` | l'issue de secours fonctionne : NVS effacée, le défaut `num_fbs=1` s'applique seul |
+
+**Ce n'est pas un renoncement définitif au double tampon.** C'est le constat qu'il n'apporte
+aujourd'hui **rien** — puisqu'il ne fonctionnait pas — et qu'il coûte 614 400 o. La piste du
+recalage déclenché sur l'événement de bascule effective (ligne 6 du tableau ci-dessus) reste
+ouverte, non mesurée, et **c'est dn1-3 qui en aura réellement besoin** : LVGL redessine, là où P1
+affiche une image fixe.
+
+⇒ Reste au ledger pour dn1-3. Les autres options non mesurées : `num_fbs = 3` · bounce buffer
+(mais il a fait redémarrer la carte sur watchdog, §5.3).
 
 ## 5. Les chiffres, datés du 2026-08-14
 
