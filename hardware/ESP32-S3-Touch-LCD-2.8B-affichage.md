@@ -1281,9 +1281,9 @@ LVGL. `bl 0..100`, `bl on|off` (rétrocompat), `bl ramp <pct> [ms]`, `bl freq <h
 | Constat AC7 | Résultat |
 |---|---|
 | Sifflement à duty bas | **supprimé à 24 kHz** (audible à 5 kHz) |
-| Papillotement à 3 % | **présent — mais PAS imputable au rétroéclairage.** Témoin : LVGL mis en pause à luminosité identique, l'image est **parfaitement stable**. C'est l'artefact §10.5, que la basse luminosité rend plus visible |
+| Papillotement à 3 % | **présent en dn1-3 — mais PAS imputable au rétroéclairage.** Témoin : LVGL mis en pause à luminosité identique, l'image était **parfaitement stable**. C'était l'artefact §10.5, que la basse luminosité rendait plus visible. ✅ **Cet artefact est CORRIGÉ depuis le 2026-08-16** (bounce buffer, §11.4) ; le papillotement à basse luminosité n'a pas été re-cherché spécifiquement, mais l'image est stable à 10 % (constat owner pendant les rampes) |
 | Plancher lisible | **3 % = limite** — le Living PCB et le label s'y distinguent encore, tout juste. C'est le plancher du futur mode Ambient |
-| Rampe 100→10→100 | ⚠️ **CONSTAT NON FAIT** — l'owner n'était pas devant la dalle, deux tentatives. Ce n'est pas « pas de palier », c'est **pas observé**. À rejouer en dn1-4 |
+| Rampe 100→10→100 | ✅ **OBSERVÉE le 2026-08-16 (dn1-4)** — constat owner : **« c'est progressif, aucun palier »**. Rampes de 10 s dans les deux sens, sortie console vérifiée avant le constat. ⚠️ Il a fallu d'abord prouver la gradation par un état STATIQUE (`bl 10` laissé en place : *« oui c'est bien plus sombre »*) pour séparer « je n'ai pas vu » de « ça ne bouge pas », puis intercaler un `fps 10` avant la rampe pour donner le temps de se placer |
 | `bl 0` vs `disp off` | distincts et documentés dans l'aide : noir contre gris éclairé |
 
 ### 10.7 L'observation « textes fins violets » — REPRODUITE
