@@ -1,17 +1,31 @@
 /*
- * DeskNode — P1 « Living PCB statique plein écran » (story dn1-2).
+ * DeskNode — P2 « label vivant + backlight piloté » (story dn1-3), sur le socle
+ * P1 « Living PCB statique plein écran » (dn1-2).
  *
  * Ce que ce firmware fait, dans cet ordre EXACT :
- *   1. lit la configuration de boot (num_fbs, bounce) en NVS ;
- *   2. monte le pipeline d'affichage, rétroéclairage ÉTEINT ;
- *   3. branche le compteur vsync ;
- *   4. mappe l'asset Living PCB et le copie dans le framebuffer ;
- *   5. ALLUME le rétroéclairage — et seulement là ;
- *   6. ouvre la console de mesure.
+ *   1. lit la configuration de boot (num_fbs, bounce, draw buffer) en NVS ;
+ *   2. monte le pipeline d'affichage, rétroéclairage à DUTY 0 ;
+ *   3. mappe l'asset Living PCB (vérifié par CRC) ;
+ *   4. monte LVGL dessus et construit la scène (fond + label) ;
+ *   5. branche le compteur vsync — APRÈS LVGL, et c'est un piège documenté ;
+ *   6. attend la PREMIÈRE trame LVGL réellement flushée ;
+ *   7. ALLUME le rétroéclairage — et seulement là ;
+ *   8. ouvre la console de mesure.
  *
- * L'étape 5 après l'étape 4 n'est pas un détail de style : l'inverse donne un
- * flash blanc ou un champ de bruit au démarrage, et on passe une heure à
- * douter du driver alors que c'est l'ordre des opérations.
+ * ⚠️ L'ÉTAPE 7 APRÈS L'ÉTAPE 6 n'est pas un détail de style, et dn1-3 ne fait
+ *    que la TRANSPOSER : en dn1-2 la condition était « le framebuffer est
+ *    rempli », elle est maintenant « LVGL a fini son premier cycle ». L'inverse
+ *    donne un flash blanc ou un champ de bruit au démarrage, et on passe une
+ *    heure à douter du driver alors que c'est l'ordre des opérations.
+ *
+ * ⚠️ L'ÉTAPE 5 APRÈS L'ÉTAPE 4 est le PIÈGE N°1 de cette story.
+ *    `esp_lcd_rgb_panel_register_event_callbacks()` ASSIGNE les callbacks, il ne
+ *    les fusionne pas (esp_lcd_panel_rgb.c:444-448) : le dernier appelant efface
+ *    le précédent, en silence, en rendant ESP_OK. Or `lvgl_port_add_disp_rgb()`
+ *    enregistre son propre `on_vsync`. Si dn_measure_attach() passait AVANT, le
+ *    compteur vsync serait débranché et `fps`, la synchro du flush et toute la
+ *    mesure de déchirement mesureraient du VIDE, sans un mot dans le log.
+ *    D'où l'ordre, et d'où le témoin actif juste après.
  */
 
 #include <inttypes.h>
@@ -23,6 +37,8 @@
 #include "dn_measure.h"
 #include "dn_patterns.h"
 #include "dn_pins.h"
+#include "dn_recal.h"
+#include "dn_ui.h"
 #include "esp_err.h"
 #include "esp_flash.h"
 #include "esp_log.h"
@@ -161,69 +177,92 @@ void app_main(void)
     ESP_ERROR_CHECK(dn_bootcfg_load(&cfg));
     dn_bootcfg_log(&cfg);
 
-    /* 2. Pipeline d'affichage, rétroéclairage encore éteint. */
+    /* 2. Pipeline d'affichage, rétroéclairage encore éteint (duty LEDC = 0). */
     ESP_ERROR_CHECK(dn_display_init(&cfg));
 
-    /* 3. Instrumentation, avant tout dessin : on veut compter dès la première
-     *    trame, y compris celles qui précèdent l'image. */
-    ESP_ERROR_CHECK(dn_measure_attach(dn_display_panel()));
-
-    /* 4. L'asset. Un échec ici n'est PAS fatal : la mire de cadrage reste
-     *    affichable, et c'est elle qui prouve le pipeline. On le dit fort. */
-    if (dn_asset_init() != ESP_OK) {
+    /* 3. L'asset. Un échec ici n'est PAS fatal : LVGL affichera le panneau
+     *    « ASSET ABSENT » avec la raison exacte du refus, jamais un écran noir
+     *    silencieux. On garde le verdict pour le lui passer. */
+    esp_err_t asset_err = dn_asset_init();
+    if (asset_err != ESP_OK) {
         ESP_LOGW(TAG,
-                 "asset indisponible — la scène « asset » affichera un panneau "
-                 "d'alerte plutôt qu'un écran noir trompeur");
-    }
-    uint16_t *fb = dn_display_draw_buffer();
-    /* ⚠️ Ce dessin-ci ne passe PAS par le show_scene() de la console — c'est
-     * voulu, la console n'existe pas encore. Mais c'est aussi ce qui laissait
-     * la trace d'AC4 mentir : jusqu'à la première commande `scene`, le bandeau
-     * annonçait « scène « - » » et la première ligne `fps` sortait étiquetée
-     * `scene=-`, alors qu'une image était affichée depuis le boot. C'est
-     * désormais dn_pattern_draw() lui-même qui enregistre la scène, et
-     * dn_pattern_last_scene() la restitue à qui affiche l'état. */
-    dn_pattern_draw(fb, DN_SCENE_ASSET);
-    int64_t present_us = dn_display_present();
-    if (present_us < 0) {
-        /* La bascule a échoué : la dalle affiche donc encore le contenu
-         * d'origine du framebuffer. Allumer le rétroéclairage juste après
-         * montrerait n'importe quoi — on le DIT, plutôt que de laisser
-         * conclure à une panne de dalle. */
-        ESP_LOGE(TAG,
-                 "la première présentation a ÉCHOUÉ — ce qui va s'allumer "
-                 "n'est PAS la scène « %s ». Voir le refus de draw_bitmap "
-                 "juste au-dessus.",
-                 dn_scene_name(DN_SCENE_ASSET));
-    } else {
-        ESP_LOGI(TAG, "scène « %s » présentée au boot (%lld us)",
-                 dn_scene_name(dn_pattern_last_scene()), (long long)present_us);
+                 "asset indisponible (%s) — la scène affichera un panneau "
+                 "d'alerte plutôt qu'un écran noir trompeur",
+                 esp_err_to_name(asset_err));
     }
     dn_asset_log();
 
-    /* 5. ET SEULEMENT MAINTENANT le rétroéclairage. */
-    ESP_ERROR_CHECK(dn_display_backlight(true));
+    /* 4. LVGL par-dessus le socle. C'est lui qui dessine désormais : le
+     *    dn_pattern_draw() + present() du boot de dn1-2 a disparu d'ici, parce
+     *    que le premier cycle LVGL l'aurait recouvert de toute façon. Les mires
+     *    restent accessibles par la console (`ui off` puis `scene …`), ce dont
+     *    AC5 a besoin. */
+    ESP_ERROR_CHECK(dn_ui_init(&cfg, asset_err));
+
+    /* 5. Instrumentation — APRÈS LVGL (voir l'avertissement en tête de fichier). */
+    ESP_ERROR_CHECK(dn_measure_attach(dn_display_panel()));
+    ESP_ERROR_CHECK(dn_recal_init(dn_display_panel()));
+    dn_recal_log_etat();
+
+    /* ⚠️ TÉMOIN ACTIF, et il n'est pas décoratif : c'est la seule chose qui
+     *    puisse démentir l'ordre d'enregistrement ci-dessus. Un compteur mort
+     *    ici veut dire que quelque chose s'est branché après nous. */
+    if (!dn_measure_vsync_alive(100)) {
+        ESP_LOGE(TAG,
+                 "=> le firmware continue, mais AUCUNE mesure de cette session "
+                 "n'est recevable tant que ce témoin est rouge.");
+    }
+
+    /* 6. La première trame LVGL doit avoir ATTEINT la dalle avant qu'on allume.
+     *    1 000 ms est très large (un cycle LVGL est à 33 ms, un plein écran fait
+     *    640/draw_lines flushes). Si le délai expire, on le DIT et on allume
+     *    quand même : un écran noir muet serait pire qu'un écran qui montre le
+     *    problème. */
+    if (!dn_ui_wait_first_frame(1000)) {
+        ESP_LOGE(TAG,
+                 "aucun flush LVGL en 1 000 ms — ce qui va s'allumer n'est PAS "
+                 "la scène attendue. Chercher du côté du flush, pas de la dalle.");
+    }
+
+    /* 7. ET SEULEMENT MAINTENANT le rétroéclairage. */
+    ESP_ERROR_CHECK(dn_display_backlight_pct(100));
     ESP_LOGI(TAG,
-             "rétroéclairage ON FIXE (GPIO%d). ⚠️ il ne clignote plus : le "
-             "clignotement était le signe de vie de P0, ce n'est plus un "
-             "symptôme valide en P1.",
-             DN_PIN_BACKLIGHT);
+             "rétroéclairage à %d %% (GPIO%d en LEDC 10 bits @ 5 kHz). "
+             "⚠️ il ne clignote pas : le clignotement était le signe de vie de "
+             "P0, ce n'est plus un symptôme valide depuis P1.",
+             dn_display_backlight_pct_state(), DN_PIN_BACKLIGHT);
 
     ESP_LOGI(TAG, "prêt en %lld ms depuis app_main",
              (long long)((esp_timer_get_time() - t_boot) / 1000));
 
-    /* 6. La console. */
+    /* 8. La console. */
     ESP_ERROR_CHECK(dn_console_start());
     dn_console_banner();
 
     /* Battement de cœur : il prouve que l'application vit encore, même quand
      * l'écran est figé sur une mire statique. Sans lui, un firmware planté et
      * un firmware qui affiche correctement se ressemblent trait pour trait. */
+    /*
+     * ⚠️ CADENCE DE 10 s CONSERVÉE À L'IDENTIQUE, et ce n'est pas de la timidité :
+     *    la recette « carte muette » du README a une durée d'écoute calibrée
+     *    dessus (< 12 s d'écoute = faux positif). Changer ce chiffre ici sans
+     *    changer le README rendrait la recette de survie fausse — le genre de
+     *    régression qu'on ne découvre que le jour où on en a besoin.
+     *
+     * La ligne, elle, s'enrichit : le compteur de flushes permet de confronter
+     * la cadence du label (AC2) à une source INDÉPENDANTE de LVGL. Deux horloges
+     * qui disent la même chose valent mieux qu'une qui se cite elle-même.
+     */
     uint32_t s = 0;
     while (1) {
         vTaskDelay(pdMS_TO_TICKS(10000));
         s += 10;
-        ESP_LOGI(TAG, "up %" PRIu32 " s — vsync=%" PRIu32 " — PSRAM libre %u o",
-                 s, dn_measure_vsync_count(), (unsigned)dn_measure_psram_free());
+        dn_flush_stats_t st;
+        dn_ui_get_stats(&st);
+        ESP_LOGI(TAG,
+                 "up %" PRIu32 " s — vsync=%" PRIu32 " — flush=%" PRIu32
+                 " cycles=%" PRIu32 " — PSRAM libre %u o",
+                 s, dn_measure_vsync_count(), st.flushes, st.cycles,
+                 (unsigned)dn_measure_psram_free());
     }
 }

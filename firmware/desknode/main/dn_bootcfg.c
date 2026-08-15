@@ -10,6 +10,8 @@ static const char *TAG = "dn_cfg";
 #define DN_NVS_NAMESPACE "desknode"
 #define DN_KEY_NUM_FBS "num_fbs"
 #define DN_KEY_BOUNCE "bounce_px"
+#define DN_KEY_DRAW_LINES "draw_lines"
+#define DN_KEY_DRAW_PSRAM "draw_psram"
 
 /*
  * Défauts = LA CONFIGURATION DE RÉFÉRENCE retenue par la story dn1-2, pour
@@ -40,9 +42,37 @@ static const char *TAG = "dn_cfg";
  *                   première seconde d'écriture flash ; sans lui, l'image
  *                   défile ET garde un décalage VERTICAL permanent que
  *                   esp_lcd_rgb_panel_restart() ne rattrape pas.
+ *   draw_lines = 64 : hauteur du draw buffer LVGL. 480 x 64 x 2 = 61 440 o.
+ *                   C'est EXACTEMENT la recommandation d'esp_lvgl_port (« au
+ *                   moins 1/10 d'écran » : 307 200 / 10 = 30 720 px = 64 lignes).
+ *                   ⚠️ C'était un POINT DE DÉPART ; l'A/B a été JOUÉ le
+ *                   2026-08-15 (32 / 64 / 128 lignes, même redessin de
+ *                   323 092 px). Ce qui l'arbitre n'est pas la copie — constante
+ *                   à ±9 % pour un nombre de flushes qui varie d'un facteur
+ *                   3,7 — mais deux choses :
+ *                     · le régime PRODUIT (label 1 Hz) tient en UN SEUL flush à
+ *                       64 lignes : 15 892 px, soit 5,17 % de l'écran ;
+ *                     · l'attente de synchro d'un plein écran vaut 640/lignes
+ *                       trames : 433 ms à 32 lignes, 176 ms à 64, 67 ms à 128.
+ *                   128 lignes ne gagneraient que sur le plein écran — qui n'est
+ *                   pas le régime de ce produit — pour le DOUBLE de RAM interne.
+ *                   La clé NVS reste : elle permet de rejouer l'A/B sans
+ *                   reflasher, donc sans ajouter le binaire comme variable.
+ *   draw_psram = 0 : draw buffer en RAM INTERNE, capable DMA. L'hypothèse était
+ *                   que la PSRAM, déjà saturée à ~23,0 Mo/s en continu par le
+ *                   seul refill de la dalle (§5.4), ferait passer chaque flush
+ *                   deux fois par le même goulot. MESURÉ le 2026-08-15, à aire
+ *                   strictement identique (323 092 px) :
+ *                     RAM interne -> 2 180 us par flush de 61 440 o
+ *                     PSRAM       -> 3 709 us pour le même flush  (1,70x)
+ *                   Recoupement : le plein écran depuis la PSRAM donne 37,1 ms,
+ *                   à 0,8 % du memcpy PSRAM->PSRAM de §5.4 (36,8 ms). Deux
+ *                   instruments indépendants, le même chiffre.
  */
 #define DN_DEFAULT_NUM_FBS 1
 #define DN_DEFAULT_BOUNCE_PX 0
+#define DN_DEFAULT_DRAW_LINES 64
+#define DN_DEFAULT_DRAW_PSRAM 0
 
 static esp_err_t open_nvs(nvs_open_mode_t mode, nvs_handle_t *out)
 {
@@ -85,6 +115,21 @@ static const char *bounce_px_refus(int32_t v)
     return NULL;
 }
 
+/* Même règle partagée écriture/relecture que pour `bounce_px`, et pour la même
+ * raison : tant que les deux chemins ne valident pas identiquement, une valeur
+ * refusée à l'écriture peut être acceptée au boot (ou l'inverse), et la borne
+ * qui protège la RAM interne cesse de protéger quoi que ce soit. */
+static const char *draw_lines_refus(int32_t v)
+{
+    if (v < DN_DRAW_LINES_MIN) {
+        return "en dessous du plancher (le coût fixe par flush dominerait)";
+    }
+    if (v > DN_DRAW_LINES_MAX) {
+        return "au-dessus du plafond de RAM interne (carte non démarrable)";
+    }
+    return NULL;
+}
+
 /* Une clé peut être PRÉSENTE et illisible : mauvais type ou mauvaise longueur
  * (ESP_ERR_NVS_TYPE_MISMATCH, ESP_ERR_NVS_INVALID_LENGTH). Ne traiter que
  * ESP_OK faisait retomber sur le défaut EN SILENCE — exactement ce que
@@ -106,6 +151,8 @@ esp_err_t dn_bootcfg_load(dn_bootcfg_t *out)
     }
     out->num_fbs = DN_DEFAULT_NUM_FBS;
     out->bounce_px = DN_DEFAULT_BOUNCE_PX;
+    out->draw_lines = DN_DEFAULT_DRAW_LINES;
+    out->draw_psram = DN_DEFAULT_DRAW_PSRAM;
 
     nvs_handle_t h;
     if (open_nvs(NVS_READONLY, &h) != ESP_OK) {
@@ -140,6 +187,34 @@ esp_err_t dn_bootcfg_load(dn_bootcfg_t *out)
     } else {
         log_lecture_refusee(DN_KEY_BOUNCE, err, DN_DEFAULT_BOUNCE_PX);
     }
+
+    err = nvs_get_i32(h, DN_KEY_DRAW_LINES, &v);
+    if (err == ESP_OK) {
+        const char *refus = draw_lines_refus(v);
+        if (!refus) {
+            out->draw_lines = (int)v;
+        } else {
+            ESP_LOGW(TAG, "draw_lines=%ld refusé (%s) : défaut %d appliqué",
+                     (long)v, refus, DN_DEFAULT_DRAW_LINES);
+            ESP_LOGW(TAG, "  bornes = [%d, %d] lignes", DN_DRAW_LINES_MIN,
+                     DN_DRAW_LINES_MAX);
+        }
+    } else {
+        log_lecture_refusee(DN_KEY_DRAW_LINES, err, DN_DEFAULT_DRAW_LINES);
+    }
+
+    err = nvs_get_i32(h, DN_KEY_DRAW_PSRAM, &v);
+    if (err == ESP_OK) {
+        if (v == 0 || v == 1) {
+            out->draw_psram = (int)v;
+        } else {
+            ESP_LOGW(TAG, "draw_psram=%ld hors de {0,1} : défaut %d appliqué",
+                     (long)v, DN_DEFAULT_DRAW_PSRAM);
+        }
+    } else {
+        log_lecture_refusee(DN_KEY_DRAW_PSRAM, err, DN_DEFAULT_DRAW_PSRAM);
+    }
+
     nvs_close(h);
     return ESP_OK;
 }
@@ -177,6 +252,24 @@ esp_err_t dn_bootcfg_set_bounce_px(int bounce_px)
     return set_i32(DN_KEY_BOUNCE, bounce_px);
 }
 
+esp_err_t dn_bootcfg_set_draw_lines(int lines)
+{
+    const char *refus = draw_lines_refus((int32_t)lines);
+    if (refus) {
+        ESP_LOGW(TAG, "draw_lines=%d refusé : %s", lines, refus);
+        return ESP_ERR_INVALID_ARG;
+    }
+    return set_i32(DN_KEY_DRAW_LINES, lines);
+}
+
+esp_err_t dn_bootcfg_set_draw_psram(int psram)
+{
+    if (psram != 0 && psram != 1) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    return set_i32(DN_KEY_DRAW_PSRAM, psram);
+}
+
 esp_err_t dn_bootcfg_reset(void)
 {
     nvs_handle_t h;
@@ -196,4 +289,8 @@ void dn_bootcfg_log(const dn_bootcfg_t *cfg)
 {
     ESP_LOGI(TAG, "config de boot : num_fbs=%d  bounce_px=%d", cfg->num_fbs,
              cfg->bounce_px);
+    ESP_LOGI(TAG,
+             "                draw_lines=%d (%d o) en %s", cfg->draw_lines,
+             (int)(DN_LCD_H_RES * cfg->draw_lines * 2),
+             cfg->draw_psram ? "PSRAM" : "RAM interne DMA");
 }

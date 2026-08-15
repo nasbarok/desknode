@@ -23,6 +23,12 @@
 typedef struct {
     int num_fbs;   /* 1, 2 ou 3 — `num_fbs` du panneau RGB */
     int bounce_px; /* 0 = pas de bounce buffer ; sinon taille en pixels */
+    /* dn1-3 : le draw buffer de LVGL, en LIGNES d'écran (480 px de large).
+     * Deux variables, donc deux clés — AC3 demande un A/B « une seule variable à
+     * la fois », et un A/B qui exige un reflash en ajoute une troisième
+     * (le binaire). */
+    int draw_lines; /* hauteur du draw buffer LVGL, en lignes */
+    int draw_psram; /* 0 = RAM interne DMA, 1 = PSRAM */
 } dn_bootcfg_t;
 
 /*
@@ -45,6 +51,30 @@ typedef struct {
  */
 #define DN_BOUNCE_PX_MAX (DN_LCD_TOTAL_PX / 8) /* 38 400 px = 76 800 o/tampon */
 
+/*
+ * BORNES du draw buffer LVGL — mêmes raisons que le bounce buffer, mêmes dégâts
+ * si on les oublie : la RAM interne est la ressource rare, et un échec
+ * d'allocation au boot passe par ESP_ERROR_CHECK, donc par la panique, donc par
+ * un CPU HALTÉ sans console pour revenir en arrière.
+ *
+ *   plancher 8 lignes  : ce qui coûte, en dessous, n'est PAS la copie — mesuré :
+ *                        elle est proportionnelle à l'aire et le coût fixe par
+ *                        flush est indétectable (§ dn_ui.h, contrainte 3). C'est
+ *                        l'ATTENTE DE SYNCHRO : chaque flush attend son retour
+ *                        vertical, donc un plein écran coûte 640/lignes trames.
+ *                        À 32 lignes c'est déjà 433 ms (mesuré) ; à 8 lignes ce
+ *                        serait 80 trames, soit ~2,1 s pour redessiner l'écran.
+ *   plafond 160 lignes : 480 x 160 x 2 = 153 600 o. Il restait 212 015 o de RAM
+ *                        interne libre juste après l'init LVGL (mesuré) : 160
+ *                        lignes tiennent, mais sans marge confortable. Au-delà,
+ *                        viser la PSRAM (`set drawmem 1`) — qui n'a pas cette
+ *                        contrainte mais copie 1,70x plus lentement (mesuré).
+ * La recommandation d'esp_lvgl_port est « au moins 1/10 d'écran », soit 64
+ * lignes ici : c'est le défaut, et il est DANS les bornes, pas à leur bord.
+ */
+#define DN_DRAW_LINES_MIN 8
+#define DN_DRAW_LINES_MAX 160
+
 /* Charge la configuration depuis NVS. Toute valeur absente ou aberrante
  * retombe sur le défaut, et le fait est journalisé — un défaut silencieux
  * fausserait une mesure sans qu'on le sache. */
@@ -52,6 +82,8 @@ esp_err_t dn_bootcfg_load(dn_bootcfg_t *out);
 
 esp_err_t dn_bootcfg_set_num_fbs(int num_fbs);
 esp_err_t dn_bootcfg_set_bounce_px(int bounce_px);
+esp_err_t dn_bootcfg_set_draw_lines(int lines);
+esp_err_t dn_bootcfg_set_draw_psram(int psram);
 
 /* Efface la configuration : le prochain boot repart sur les défauts. */
 esp_err_t dn_bootcfg_reset(void);
