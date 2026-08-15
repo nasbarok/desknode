@@ -12,7 +12,9 @@
 #include "dn_measure.h"
 #include "dn_patterns.h"
 #include "dn_pins.h"
+#include "dn_recal.h"
 #include "dn_stimulus.h"
+#include "dn_ui.h"
 #include "esp_console.h"
 #include "esp_log.h"
 #include "esp_partition.h"
@@ -119,6 +121,35 @@ static bool tearing_bloque(const char *commande)
     return true;
 }
 
+/*
+ * Verrou des commandes qui écrivent DIRECTEMENT dans le framebuffer, face à
+ * LVGL (dn1-3).
+ *
+ * `scene` et `tear` viennent de dn1-2 : elles dessinent une trame entière à la
+ * main puis appellent `dn_display_present()`. LVGL, lui, croit que le
+ * framebuffer reflète son arbre d'objets et ne redessine que ce qu'il a
+ * invalidé. Les laisser tourner ensemble donne deux écrivains sur le même
+ * tampon, et surtout un écran dont on ne peut plus dire QUI a produit ce qu'on
+ * voit — c'est-à-dire une observation à l'œil inutilisable.
+ *
+ * AC5 a précisément besoin du chemin BRUT (les scènes alternées de dn1-2) : la
+ * sortie est `ui off`, pas une fusion des deux.
+ *
+ * Renvoie true (et explique) si la commande doit être refusée.
+ */
+static bool ui_bloque(const char *commande)
+{
+    if (!dn_ui_active()) {
+        return false;
+    }
+    printf("refusé : LVGL tient l'écran — `ui off` d'abord.\n");
+    printf("   `%s` dessine une trame ENTIÈRE à la main, LVGL ne redessine que\n",
+           commande);
+    printf("   ses zones invalidées : les deux ensemble donnent un écran dont on\n");
+    printf("   ne peut plus attribuer ce qu'on voit. `ui on` pour revenir.\n");
+    return true;
+}
+
 /* ────────────────────────────────────────────────────────────────────────── */
 
 static void show_scene(dn_scene_t scene)
@@ -149,6 +180,9 @@ static void show_scene(dn_scene_t scene)
 
 static int cmd_scene(int argc, char **argv)
 {
+    if (argc >= 2 && ui_bloque("scene")) {
+        return 1;
+    }
     if (argc < 2) {
         printf("scènes : ");
         for (int i = 0; i < DN_SCENE_COUNT; i++) {
@@ -196,10 +230,27 @@ static int cmd_fps(int argc, char **argv)
             seconds = DN_FPS_MAX_S;
         }
     }
-    char etiquette[64];
-    snprintf(etiquette, sizeof(etiquette), "num_fbs=%d bounce=%u scene=%s",
-             dn_display_num_fbs(), (unsigned)dn_display_bounce_px(),
-             scene_courante());
+    /*
+     * ⚠️ L'ÉTIQUETTE DOIT DIRE QUI DESSINE — c'est une correction de dn1-2 qu'il
+     *    ne faut pas perdre. À l'époque, la trace annonçait « scene=- » alors
+     *    qu'une image était bel et bien affichée, parce que le dessin du boot ne
+     *    passait pas par show_scene(). Depuis dn1-3, c'est LVGL qui dessine et
+     *    plus aucune scène brute n'est tracée au boot : sans cette distinction,
+     *    la première ligne `fps` repartirait exactement dans le même mensonge,
+     *    sous une autre forme.
+     */
+    char etiquette[80];
+    if (dn_ui_active()) {
+        snprintf(etiquette, sizeof(etiquette),
+                 "num_fbs=%d bounce=%u LVGL(%s, label %s)",
+                 dn_display_num_fbs(), (unsigned)dn_display_bounce_px(),
+                 dn_ui_anim_running() ? "stimulus" : "repos",
+                 dn_ui_label_shown() ? "on" : "off");
+    } else {
+        snprintf(etiquette, sizeof(etiquette), "num_fbs=%d bounce=%u scene=%s",
+                 dn_display_num_fbs(), (unsigned)dn_display_bounce_px(),
+                 scene_courante());
+    }
     dn_measure_report_fps(etiquette, (int)seconds);
     return 0;
 }
@@ -342,10 +393,13 @@ static int cmd_cfg(int argc, char **argv)
     }
     dn_bootcfg_t cfg;
     dn_bootcfg_load(&cfg);
-    printf("config de boot (NVS) : num_fbs=%d bounce_px=%d\n", cfg.num_fbs,
-           cfg.bounce_px);
-    printf("config ACTIVE        : num_fbs=%d bounce_px=%u\n",
-           dn_display_num_fbs(), (unsigned)dn_display_bounce_px());
+    printf("config de boot (NVS) : num_fbs=%d bounce_px=%d draw_lines=%d "
+           "draw_psram=%d\n",
+           cfg.num_fbs, cfg.bounce_px, cfg.draw_lines, cfg.draw_psram);
+    printf("config ACTIVE        : num_fbs=%d bounce_px=%u draw_lines=%d "
+           "draw_psram=%d\n",
+           dn_display_num_fbs(), (unsigned)dn_display_bounce_px(),
+           dn_ui_draw_lines(), dn_ui_draw_in_psram() ? 1 : 0);
     printf("⚠️ un `set` ne prend effet qu'au `reboot` : les framebuffers sont\n");
     printf("   alloués une fois, au démarrage. C'est voulu — réallouer à chaud\n");
     printf("   laisserait une PSRAM fragmentée et fausserait la mesure suivante.\n");
@@ -356,16 +410,22 @@ static int cmd_cfg(int argc, char **argv)
 static int cmd_set(int argc, char **argv)
 {
     if (argc < 3) {
-        printf("usage : set fbs <1|2|3> | set bounce <px>\n");
+        printf("usage : set fbs <1|2|3> | set bounce <px> | set lines <%d..%d> "
+               "| set drawmem <0|1>\n",
+               DN_DRAW_LINES_MIN, DN_DRAW_LINES_MAX);
         return 1;
     }
     bool cle_fbs = (strcmp(argv[1], "fbs") == 0);
     bool cle_bounce = (strcmp(argv[1], "bounce") == 0);
-    if (!cle_fbs && !cle_bounce) {
+    bool cle_lines = (strcmp(argv[1], "lines") == 0);
+    bool cle_drawmem = (strcmp(argv[1], "drawmem") == 0);
+    if (!cle_fbs && !cle_bounce && !cle_lines && !cle_drawmem) {
         /* La clé est vérifiée AVANT la valeur : sinon `set foo bar` reprocherait
          * « bar » à l'opérateur alors que la faute est sur « foo ». */
         printf("clé inconnue : %s\n", argv[1]);
-        printf("usage : set fbs <1|2|3> | set bounce <px>\n");
+        printf("usage : set fbs <1|2|3> | set bounce <px> | set lines <%d..%d> "
+               "| set drawmem <0|1>\n",
+               DN_DRAW_LINES_MIN, DN_DRAW_LINES_MAX);
         return 1;
     }
     /* Toute valeur passe par parse_entier : `atoi` rendait 0 sur une saisie non
@@ -385,6 +445,24 @@ static int cmd_set(int argc, char **argv)
     esp_err_t err;
     if (cle_fbs) {
         err = dn_bootcfg_set_num_fbs((int)valeur);
+    } else if (cle_lines) {
+        err = dn_bootcfg_set_draw_lines((int)valeur);
+        if (err == ESP_ERR_INVALID_ARG) {
+            printf("⚠️ %ld hors de [%d, %d] lignes.\n", valeur, DN_DRAW_LINES_MIN,
+                   DN_DRAW_LINES_MAX);
+            printf("   Sous le plancher, ce n'est PAS la copie qui coûte (elle\n");
+            printf("   suit l'aire, mesuré) mais l'ATTENTE DE SYNCHRO : un plein\n");
+            printf("   écran demande 640/lignes retours verticaux — 433 ms à 32\n");
+            printf("   lignes, ~2,1 s à 8. Au-dessus du plafond, %ld lignes font\n",
+                   valeur);
+            printf("   %ld o de RAM interne — la carte ne démarrerait pas.\n",
+                   (long)DN_LCD_H_RES * valeur * 2);
+        }
+    } else if (cle_drawmem) {
+        err = dn_bootcfg_set_draw_psram((int)valeur);
+        if (err == ESP_ERR_INVALID_ARG) {
+            printf("⚠️ attendu 0 (RAM interne DMA) ou 1 (PSRAM).\n");
+        }
     } else {
         int px = (int)valeur;
         err = dn_bootcfg_set_bounce_px(px);
@@ -488,6 +566,9 @@ static int cmd_tear(int argc, char **argv)
         }
     }
     if (mi >= 0) {
+        if (ui_bloque("tear")) {
+            return 1;
+        }
         bool flip = (modes[mi].mode == DN_TEAR_FLIP);
         bool sync = (modes[mi].mode != DN_TEAR_SWEEP && !flip);
         printf("mode « %s » : %s\n", modes[mi].nom, modes[mi].attendu);
@@ -624,23 +705,386 @@ static int cmd_flash(int argc, char **argv)
     return 0;
 }
 
+#define DN_BL_RAMPE_MS_MIN 100
+#define DN_BL_RAMPE_MS_MAX 10000
+#define DN_BL_RAMPE_MS_DEFAUT 1500
+
+static void bl_usage(void)
+{
+    printf("usage : bl                  — état\n");
+    printf("        bl <0..100>         — luminosité en %%\n");
+    printf("        bl on | off         — 100 %% / 0 %% (rétrocompat dn1-2)\n");
+    printf("        bl ramp <0..100> [ms] — rampe douce (constat AC7)\n");
+}
+
 static int cmd_bl(int argc, char **argv)
 {
     if (argc < 2) {
-        printf("rétroéclairage : %s\n", dn_display_backlight_state() ? "ON" : "OFF");
+        printf("rétroéclairage : %d %% (%s)\n", dn_display_backlight_pct_state(),
+               dn_display_backlight_state() ? "allumé" : "ÉTEINT");
+        printf("⚠️ `bl 0` éteint le RÉTROÉCLAIRAGE : dalle NOIRE.\n");
+        printf("   `disp off` éteint la SORTIE de la dalle : dalle GRISE éclairée.\n");
+        printf("   Les deux donnent « plus d'image », par deux mécanismes "
+               "différents.\n");
+        return 0;
+    }
+
+    /* ── bl ramp <pct> [ms] ── */
+    if (strcmp(argv[1], "ramp") == 0) {
+        if (argc < 3) {
+            bl_usage();
+            return 1;
+        }
+        long cible = 0;
+        if (!parse_entier(argv[2], &cible)) {
+            printf("« %s » n'est pas un nombre.\n", argv[2]);
+            return 1;
+        }
+        long ms = DN_BL_RAMPE_MS_DEFAUT;
+        if (argc >= 4 && !parse_entier(argv[3], &ms)) {
+            printf("« %s » n'est pas un nombre.\n", argv[3]);
+            return 1;
+        }
+        if (cible < 0 || cible > 100) {
+            printf("⚠️ %ld %% hors de [0, 100] — rien touché.\n", cible);
+            return 1;
+        }
+        if (ms < DN_BL_RAMPE_MS_MIN || ms > DN_BL_RAMPE_MS_MAX) {
+            /* Bornée comme `fps` et `cpu`, et pour la même raison : la rampe est
+             * BLOQUANTE (elle tient la tâche du REPL). Une durée non bornée
+             * rendrait la console injoignable sans aucun moyen d'annuler. */
+            printf("⚠️ durée hors de [%d, %d] ms — la rampe bloque la console\n",
+                   DN_BL_RAMPE_MS_MIN, DN_BL_RAMPE_MS_MAX);
+            printf("   pendant tout ce temps, sans commande pour l'interrompre.\n");
+            return 1;
+        }
+        int depart = dn_display_backlight_pct_state();
+        printf("rampe %d %% -> %ld %% en %ld ms (la console ne répond pas "
+               "pendant ce temps)…\n",
+               depart, cible, ms);
+        esp_err_t err = dn_display_backlight_ramp((int)cible, (int)ms);
+        printf("rampe terminée à %d %% : %s\n", dn_display_backlight_pct_state(),
+               esp_err_to_name(err));
+        return (err == ESP_OK) ? 0 : 1;
+    }
+
+    /* ── bl on | off (rétrocompatibilité dn1-2) ── */
+    bool on = false;
+    if (parse_on_off(argv[1], &on)) {
+        esp_err_t err = dn_display_backlight(on);
+        printf("rétroéclairage %s (%d %%) : %s\n", on ? "ON" : "OFF",
+               dn_display_backlight_pct_state(), esp_err_to_name(err));
+        return (err == ESP_OK) ? 0 : 1;
+    }
+
+    /* ── bl <0..100> ── */
+    long pct = 0;
+    if (!parse_entier(argv[1], &pct)) {
+        /* Ni « on », ni « off », ni un nombre : on ne touche à RIEN. Leçon
+         * dn1-2 — l'ancien code prenait tout ce qui n'était pas « on » pour un
+         * « off » et éteignait l'écran sur une faute de frappe. */
+        printf("« %s » n'est ni on, ni off, ni un nombre — rien n'a été touché.\n",
+               argv[1]);
+        bl_usage();
+        return 1;
+    }
+    if (pct < 0 || pct > 100) {
+        printf("⚠️ %ld %% hors de [0, 100] — rien n'a été touché.\n", pct);
+        return 1;
+    }
+    esp_err_t err = dn_display_backlight_pct((int)pct);
+    printf("rétroéclairage %ld %% : %s\n", pct, esp_err_to_name(err));
+    if (err == ESP_OK && pct > 0 && pct <= 5) {
+        printf("   (duty bas : c'est ICI qu'on cherche le plancher lisible "
+               "d'AC7, le flicker à l'œil et le sifflement à l'oreille.)\n");
+    }
+    return (err == ESP_OK) ? 0 : 1;
+}
+
+/*
+ * `flush` — L'INSTRUMENT D'AC3, celui qui transforme « le rafraîchissement est
+ * partiel » d'une croyance en un chiffre.
+ *
+ * Il répond à deux questions que le mot « partiel » confond :
+ *   - COMBIEN de pixels sont recopiés par mise à jour ? (l'aire, à comparer aux
+ *     307 200 px de l'écran) ;
+ *   - COMBIEN DE TEMPS ça prend ? — et la réponse n'est PAS proportionnelle à
+ *     l'aire, parce que le driver RGB resynchronise 614 400 o de cache à chaque
+ *     appel, quelle que soit la zone (voir dn_ui.h, contrainte 3).
+ * Les deux colonnes sont donc lues ensemble, jamais l'une pour l'autre.
+ */
+static void flush_usage(void)
+{
+    printf("usage : flush                   — compteurs\n");
+    printf("        flush reset             — remet les compteurs à zéro\n");
+    printf("        flush sync off|vsync|fbdone — synchronisation du flush\n");
+    printf("        flush full              — invalide TOUT l'écran (preuve "
+           "négative)\n");
+}
+
+static int cmd_flush(int argc, char **argv)
+{
+    if (argc >= 2 && strcmp(argv[1], "reset") == 0) {
+        dn_ui_reset_stats();
+        printf("compteurs de flush remis à zéro.\n");
+        return 0;
+    }
+    if (argc >= 2 && strcmp(argv[1], "full") == 0) {
+        if (!dn_ui_active()) {
+            printf("refusé : LVGL est en pause (`ui on` d'abord).\n");
+            return 1;
+        }
+        dn_ui_reset_stats();
+        dn_ui_force_full_redraw();
+        /* On laisse le cycle se terminer avant de lire : sans cette attente, on
+         * imprimerait les compteurs d'un redessin encore en cours et le chiffre
+         * publié serait un instantané au milieu du travail. Un plein écran fait
+         * 640/draw_lines flushes ; à 1 vsync l'un en mode `vsync`, c'est au pire
+         * ~10 x 27 ms. 2 000 ms couvrent largement. */
+        vTaskDelay(pdMS_TO_TICKS(2000));
+        printf("redessin PLEIN ÉCRAN forcé — compteurs ci-dessous :\n");
+        /* et on continue vers l'affichage */
+    } else if (argc >= 2 && strcmp(argv[1], "sync") == 0) {
+        if (argc < 3) {
+            flush_usage();
+            return 1;
+        }
+        dn_flush_sync_t m;
+        if (!dn_flush_sync_from_name(argv[2], &m)) {
+            printf("mode inconnu : %s (off | vsync | fbdone)\n", argv[2]);
+            return 1;
+        }
+        dn_ui_set_sync(m);
+        dn_ui_reset_stats();
+        printf("synchro du flush : %s (compteurs remis à zéro)\n",
+               dn_flush_sync_name(m));
+        if (m == DN_FLUSH_SYNC_OFF) {
+            printf("⚠️ mode TÉMOIN : la copie part à n'importe quel moment du\n");
+            printf("   balayage. C'est LUI qui doit produire un déchirement\n");
+            printf("   VISIBLE sous `anim on`. S'il n'en produit pas, ce n'est\n");
+            printf("   pas que le système est propre — c'est que l'instrument\n");
+            printf("   (l'œil + le stimulus) ne sait pas voir, et aucune\n");
+            printf("   conclusion « pas de tearing » n'est recevable.\n");
+        }
+        return 0;
+    } else if (argc >= 2) {
+        flush_usage();
+        return 1;
+    }
+
+    dn_flush_stats_t st;
+    dn_ui_get_stats(&st);
+    printf("synchro : %s · draw buffer : %d x %d px (%d o) en %s\n",
+           dn_flush_sync_name(dn_ui_get_sync()), DN_LCD_H_RES,
+           dn_ui_draw_lines(), DN_LCD_H_RES * dn_ui_draw_lines() * 2,
+           dn_ui_draw_in_psram() ? "PSRAM" : "RAM interne DMA");
+    printf("flushes            : %lu\n", (unsigned long)st.flushes);
+    printf("cycles de redessin : %lu\n", (unsigned long)st.cycles);
+    if (st.flushes == 0) {
+        printf("aucun flush depuis le reset — rien à conclure.\n");
+        return 0;
+    }
+    printf("aire cumulée       : %lu px\n", (unsigned long)st.px);
+    printf("  => %lu px par flush en moyenne (écran plein = %d px, soit %.2f %%)\n",
+           (unsigned long)(st.px / st.flushes), DN_LCD_TOTAL_PX,
+           (double)(st.px / st.flushes) * 100.0 / (double)DN_LCD_TOTAL_PX);
+    if (st.cycles > 0) {
+        printf("  => %lu px et %.1f flush(es) par CYCLE de redessin\n",
+               (unsigned long)(st.px / st.cycles),
+               (double)st.flushes / (double)st.cycles);
+        printf("     (le CYCLE est l'unité qui compte : c'est ce qu'une mise à\n");
+        printf("      jour du label coûte réellement, flushes multiples inclus.)\n");
+    }
+    printf("plus grande aire   : %lu px\n", (unsigned long)st.max_px);
+    printf("copie              : %lu us cumulés, %lu us/flush en moyenne, "
+           "%lu us au pire\n",
+           (unsigned long)st.copie_us,
+           (unsigned long)(st.copie_us / st.flushes),
+           (unsigned long)st.max_copie_us);
+    printf("attente de synchro : %lu us cumulés, %lu us/flush en moyenne\n",
+           (unsigned long)st.attente_us,
+           (unsigned long)(st.attente_us / st.flushes));
+    printf("   (comptée À PART de la copie : sinon « le flush coûte 27 ms » se\n");
+    printf("    lirait comme un problème de bande passante alors que c'est la\n");
+    printf("    synchro qui attend sa trame — 26,7 ms de période.)\n");
+    if (st.timeouts) {
+        printf("⚠️ %lu synchro(s) EXPIRÉE(S) : pour ces flushes-là, le mode\n",
+               (unsigned long)st.timeouts);
+        printf("   annoncé n'a PAS été appliqué. Toute comparaison A/B qui les\n");
+        printf("   inclut compare partiellement « rien » à « rien ».\n");
+    }
+    printf("rappel : redessiner l'écran ENTIER coûte 36,8 ms de memcpy PSRAM "
+           "(§5.4),\n");
+    printf("   pour 26,7 ms de période de trame — 1,4x TROP LENT. Les zones\n");
+    printf("   sales ne sont pas une élégance, c'est la seule voie qui tient.\n");
+    return 0;
+}
+
+static int cmd_anim(int argc, char **argv)
+{
+    if (argc < 2) {
+        printf("stimulus adverse LVGL : %s\n",
+               dn_ui_anim_running() ? "EN COURS" : "arrêté");
+        printf("usage : anim on [periode_ms] | anim off\n");
+        printf("Une barre verticale de %d px balaie l'écran de gauche à droite.\n",
+               24);
+        printf("Le sens est choisi EXPRÈS : la dalle balaie du HAUT vers le BAS,\n");
+        printf("donc un déchirement coupe la barre HORIZONTALEMENT et décale les\n");
+        printf("deux moitiés — un artefact que l'œil lit sans ambiguïté.\n");
         return 0;
     }
     bool on = false;
     if (!parse_on_off(argv[1], &on)) {
-        printf("usage : bl [on|off] — « %s » n'est ni l'un ni l'autre.\n", argv[1]);
-        printf("   (rien n'a été touché : l'ancien code aurait éteint l'écran.)\n");
+        printf("usage : anim on [periode_ms] | anim off\n");
         return 1;
     }
-    /* Le retour de dn_display_backlight() était JETÉ : un échec de GPIO se
-     * serait annoncé « rétroéclairage ON » avec un écran resté noir. */
-    esp_err_t err = dn_display_backlight(on);
-    printf("rétroéclairage %s : %s\n", on ? "ON" : "OFF", esp_err_to_name(err));
-    return (err == ESP_OK) ? 0 : 1;
+    long ms = 2000;
+    if (on && argc >= 3 && !parse_entier(argv[2], &ms)) {
+        printf("« %s » n'est pas un nombre.\n", argv[2]);
+        return 1;
+    }
+    if (!dn_ui_active()) {
+        printf("refusé : LVGL est en pause (`ui on` d'abord).\n");
+        return 1;
+    }
+    esp_err_t err = dn_ui_anim(on, (int)ms);
+    if (err != ESP_OK) {
+        printf("refusé : %s (période attendue entre 200 et 10000 ms)\n",
+               esp_err_to_name(err));
+        return 1;
+    }
+    printf("stimulus adverse %s%s\n", on ? "LANCÉ" : "arrêté", on ? " :" : ".");
+    if (on) {
+        printf("  période %ld ms, synchro du flush : %s\n", ms,
+               dn_flush_sync_name(dn_ui_get_sync()));
+        printf("  PROTOCOLE AC4 — le témoin positif D'ABORD :\n");
+        printf("   1. `flush sync off` puis regarder : la barre DOIT se couper.\n");
+        printf("      Si elle ne se coupe pas, l'instrument ne sait pas voir et\n");
+        printf("      rien ne peut être conclu ensuite.\n");
+        printf("   2. `flush sync vsync`, puis `fbdone` : verdicts SÉPARÉS.\n");
+        printf("   3. `anim off` + label seul : le régime PRODUIT, noté à part.\n");
+    }
+    return 0;
+}
+
+static int cmd_ui(int argc, char **argv)
+{
+    if (argc < 2) {
+        printf("LVGL : %s · label %s · stimulus %s · fond depuis %s\n",
+               dn_ui_active() ? "ACTIF" : "EN PAUSE",
+               dn_ui_label_shown() ? "visible" : "masqué",
+               dn_ui_anim_running() ? "EN COURS" : "arrêté",
+               dn_ui_bg_is_psram() ? "PSRAM (copie)" : "flash (mmap)");
+        size_t ia = 0, ip = 0, pa = 0, pp = 0;
+        dn_ui_get_cout(&ia, &ip, &pa, &pp);
+        printf("coût en tas de l'init LVGL :\n");
+        printf("  RAM interne %u -> %u o  (%d o)\n", (unsigned)ia, (unsigned)ip,
+               (int)((long)ia - (long)ip));
+        printf("  PSRAM       %u -> %u o  (%d o)\n", (unsigned)pa, (unsigned)pp,
+               (int)((long)pa - (long)pp));
+        dn_ui_log_mem();
+        printf("usage : ui on|off | ui label on|off | ui bg flash|psram\n");
+        return 0;
+    }
+
+    if (strcmp(argv[1], "label") == 0) {
+        bool on = false;
+        if (argc < 3 || !parse_on_off(argv[2], &on)) {
+            printf("usage : ui label on|off\n");
+            return 1;
+        }
+        dn_ui_label_show(on);
+        printf("label %s.\n", on ? "visible" : "masqué");
+        return 0;
+    }
+
+    if (strcmp(argv[1], "bg") == 0) {
+        if (argc < 3) {
+            printf("usage : ui bg flash|psram\n");
+            return 1;
+        }
+        bool psram;
+        if (strcmp(argv[2], "psram") == 0) {
+            psram = true;
+        } else if (strcmp(argv[2], "flash") == 0) {
+            psram = false;
+        } else {
+            printf("usage : ui bg flash|psram\n");
+            return 1;
+        }
+        esp_err_t err = dn_ui_bg_psram(psram);
+        if (err != ESP_OK) {
+            printf("refusé : %s\n", esp_err_to_name(err));
+            return 1;
+        }
+        printf("fond lu depuis %s.\n",
+               psram ? "une COPIE PSRAM (+614 400 o)" : "la flash mmap-ée (0 o)");
+        printf("⚠️ la source ne change RIEN au coût du flush lui-même : elle\n");
+        printf("   change le coût du RE-BLIT du fond sous la zone sale, que LVGL\n");
+        printf("   refait à chaque mise à jour du label. `flush reset` puis\n");
+        printf("   attendre 60 s pour comparer proprement.\n");
+        return 0;
+    }
+
+    bool on = false;
+    if (!parse_on_off(argv[1], &on)) {
+        printf("usage : ui on|off | ui label on|off | ui bg flash|psram\n");
+        return 1;
+    }
+    esp_err_t err = on ? dn_ui_resume() : dn_ui_pause();
+    if (err != ESP_OK) {
+        printf("refusé : %s\n", esp_err_to_name(err));
+        return 1;
+    }
+    printf("LVGL %s.\n", on ? "repris (redessin complet demandé)" : "mis en PAUSE");
+    if (!on) {
+        printf("L'écran garde ce que LVGL y avait laissé, et `scene`/`tear`\n");
+        printf("peuvent désormais écrire dans le framebuffer (chemin de dn1-2,\n");
+        printf("celui dont AC5 a besoin pour les scènes alternées).\n");
+    }
+    return 0;
+}
+
+static int cmd_recal(int argc, char **argv)
+{
+    if (argc < 2) {
+        printf("recalage DMA sur événement de bascule : %d vsync(s) après la "
+               "bascule%s\n",
+               dn_recal_get_vsyncs(),
+               dn_recal_get_vsyncs() == 0 ? " (DÉSACTIVÉ)" : "");
+        printf("  recalages joués : %lu · armements perdus : %lu · dernier "
+               "retour : %s\n",
+               (unsigned long)dn_recal_count(), (unsigned long)dn_recal_rate(),
+               esp_err_to_name((esp_err_t)dn_recal_last_err()));
+        printf("  num_fbs actif : %d%s\n", dn_display_num_fbs(),
+               dn_display_num_fbs() > 1
+                   ? ""
+                   : " — à UN framebuffer il n'y a pas de bascule, donc jamais "
+                     "d'armement");
+#if CONFIG_LCD_RGB_RESTART_IN_VSYNC
+        printf("⚠️ INERTE dans ce build : CONFIG_LCD_RGB_RESTART_IN_VSYNC=y, le\n");
+        printf("   bit posé par esp_lcd_rgb_panel_restart() n'est JAMAIS lu\n");
+        printf("   (esp_lcd_panel_rgb.c:1149-1165). Mesurer AC5 impose de\n");
+        printf("   rebâtir avec ce symbole à `n`.\n");
+#endif
+        printf("usage : recal <0..%d>  (0 = désactivé)\n", DN_RECAL_VSYNCS_MAX);
+        return 0;
+    }
+    long n = 0;
+    if (!parse_entier(argv[1], &n)) {
+        printf("usage : recal <0..%d>\n", DN_RECAL_VSYNCS_MAX);
+        return 1;
+    }
+    esp_err_t err = dn_recal_set_vsyncs((int)n);
+    if (err != ESP_OK) {
+        printf("refusé : %s — bornes [0, %d]. AC5 borne l'investigation à la\n",
+               esp_err_to_name(err), DN_RECAL_VSYNCS_MAX);
+        printf("   piste identifiée plus une variante de timing, pas à une\n");
+        printf("   spirale d'essais.\n");
+        return 1;
+    }
+    printf("recalage : %ld vsync(s) après chaque bascule.\n", n);
+    return 0;
 }
 
 static int cmd_disp(int argc, char **argv)
@@ -880,11 +1324,22 @@ static const esp_console_cmd_t k_cmds[] = {
     DN_CMD("bw", "bande passante mesurée des 3 chemins de copie", cmd_bw),
     DN_CMD("cfg", "cfg | cfg reset — config de boot (NVS), active, ou effacée",
            cmd_cfg),
-    DN_CMD("set", "set fbs <1|2|3> | set bounce <px>", cmd_set),
+    DN_CMD("set", "set fbs <1|2|3> | bounce <px> | lines <8..160> | drawmem <0|1>",
+           cmd_set),
     DN_CMD("reboot", "redémarre pour appliquer un `set`", cmd_reboot),
-    DN_CMD("tear", "tear on|vsync|sync|both|flip|off — déchirement (AC5)", cmd_tear),
-    DN_CMD("flash", "flash on|off — stimulus d'écriture flash (AC6)", cmd_flash),
-    DN_CMD("bl", "bl on|off — rétroéclairage", cmd_bl),
+    DN_CMD("tear", "tear on|vsync|sync|both|flip|off — déchirement BRUT (dn1-2)",
+           cmd_tear),
+    DN_CMD("flash", "flash on|off — stimulus d'écriture flash", cmd_flash),
+    DN_CMD("ui", "ui [on|off] | ui label on|off | ui bg flash|psram — LVGL", cmd_ui),
+    DN_CMD("flush",
+           "flush | reset | sync off|vsync|fbdone | full — le partiel en chiffres",
+           cmd_flush),
+    DN_CMD("anim", "anim on [ms] | off — stimulus adverse LVGL (témoin de tearing)",
+           cmd_anim),
+    DN_CMD("recal", "recal <0..4> — recalage DMA N vsyncs après la bascule (AC5)",
+           cmd_recal),
+    DN_CMD("bl", "bl [0..100|on|off|ramp <pct> [ms]] — rétroéclairage gradable",
+           cmd_bl),
     DN_CMD("disp", "disp on|off — sortie d'affichage de la dalle (0x29/0x28)",
            cmd_disp),
     DN_CMD("dma", "relance la DMA du panneau (décalage permanent)", cmd_restart_dma),
@@ -919,14 +1374,22 @@ static int cmd_help(int argc, char **argv)
 void dn_console_banner(void)
 {
     printf("\n");
-    printf("── DeskNode P1 — console de mesure ──\n");
+    printf("── DeskNode P2 — console de mesure ──\n");
     for (size_t i = 0; i < sizeof(k_cmds) / sizeof(k_cmds[0]); i++) {
         printf("  %-7s %s\n", k_cmds[i].command, k_cmds[i].help);
     }
     printf("\n");
-    printf("état : num_fbs=%d bounce=%u px, rétroéclairage %s, scène « %s »\n",
+    printf("état : num_fbs=%d bounce=%u px · rétroéclairage %d %% · LVGL %s\n",
            dn_display_num_fbs(), (unsigned)dn_display_bounce_px(),
-           dn_display_backlight_state() ? "ON" : "OFF", scene_courante());
+           dn_display_backlight_pct_state(),
+           dn_ui_active() ? "ACTIF" : "en pause");
+    printf("       draw buffer %d x %d px en %s · synchro flush « %s »\n",
+           DN_LCD_H_RES, dn_ui_draw_lines(),
+           dn_ui_draw_in_psram() ? "PSRAM" : "RAM interne DMA",
+           dn_flush_sync_name(dn_ui_get_sync()));
+    if (!dn_ui_active()) {
+        printf("       scène brute « %s » (chemin dn1-2)\n", scene_courante());
+    }
     printf("\n");
 }
 
