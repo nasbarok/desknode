@@ -1,6 +1,6 @@
 #include "dn_display.h"
 
-#include <string.h>
+#include "sdkconfig.h" /* CONFIG_LCD_RGB_RESTART_IN_VSYNC, lu par dn_display_restart() */
 
 #include "dn_measure.h"
 #include "dn_pins.h"
@@ -299,8 +299,22 @@ esp_err_t dn_display_init(const dn_bootcfg_t *cfg)
 
 esp_err_t dn_display_backlight(bool on)
 {
-    s_backlight_on = on;
-    return gpio_set_level(DN_PIN_BACKLIGHT, on ? 1 : 0);
+    /* ⚠️ L'ÉTAT FANTÔME. La version précédente posait `s_backlight_on = on`
+     * AVANT l'appel matériel. Si gpio_set_level refusait (broche jamais
+     * configurée, numéro invalide), la commande `bl` et le bandeau de boot
+     * annonçaient tous les deux un état que le matériel n'avait PAS pris — et
+     * on serait allé chercher un écran noir du côté de la dalle alors que le
+     * rétroéclairage n'avait tout simplement jamais bougé. L'ombre logicielle
+     * ne suit donc le matériel qu'APRÈS confirmation, exactement comme
+     * dn_display_disp_on() le fait déjà pour DISPON. */
+    esp_err_t err = gpio_set_level(DN_PIN_BACKLIGHT, on ? 1 : 0);
+    if (err == ESP_OK) {
+        s_backlight_on = on;
+    } else {
+        ESP_LOGE(TAG, "rétroéclairage (GPIO%d -> %d) refusé : %s — état inchangé",
+                 DN_PIN_BACKLIGHT, on ? 1 : 0, esp_err_to_name(err));
+    }
+    return err;
 }
 
 bool dn_display_backlight_state(void) { return s_backlight_on; }
@@ -330,21 +344,87 @@ int64_t dn_display_present(void)
     uint16_t *buf = s_fbs[s_draw_index];
     /* Le buffer EST l'un des framebuffers du driver : `draw_bitmap` bascule
      * l'index sans recopier, et synchronise le cache vers la PSRAM. */
-    esp_lcd_panel_draw_bitmap(s_panel, 0, 0, DN_LCD_H_RES, DN_LCD_V_RES, buf);
+    esp_err_t err =
+        esp_lcd_panel_draw_bitmap(s_panel, 0, 0, DN_LCD_H_RES, DN_LCD_V_RES, buf);
+    int64_t dt = esp_timer_get_time() - t0;
+
+    if (err != ESP_OK) {
+        /* ⚠️ NE JAMAIS AVANCER L'INDEX SUR UN ÉCHEC — le défaut que ce test
+         * ferme. Le retour de draw_bitmap était jeté et l'index avançait quand
+         * même. Conséquence, en silence : la dalle continuait d'afficher la
+         * trame PRÉCÉDENTE pendant que le code croyait les buffers permutés,
+         * donc tous les dessins suivants visaient le framebuffer VISIBLE.
+         * Autrement dit, une configuration num_fbs=2 se transformait toute
+         * seule en la configuration num_fbs=1 — celle qui sert précisément de
+         * TÉMOIN POSITIF de déchirement (AC5). L'instrument serait devenu le
+         * défaut, et le fps mesuré ensuite aurait porté une étiquette fausse.
+         *
+         * -1 plutôt que la durée : les appelants impriment ce retour comme une
+         * MESURE (« présentation : %lld us »). Une durée négative est
+         * impossible, donc reconnaissable au premier coup d'œil dans un log. */
+        ESP_LOGE(TAG,
+                 "draw_bitmap refusé : %s — index de dessin NON avancé, fb[%d] "
+                 "reste le buffer de dessin et la dalle garde la trame "
+                 "précédente",
+                 esp_err_to_name(err), s_draw_index);
+        return -1;
+    }
+
     if (s_num_fbs > 1) {
         s_draw_index = (s_draw_index + 1) % s_num_fbs;
     }
-    return esp_timer_get_time() - t0;
-}
-
-int64_t dn_display_blit(const uint16_t *src)
-{
-    uint16_t *dst = s_fbs[s_draw_index];
-    int64_t t0 = esp_timer_get_time();
-    memcpy(dst, src, DN_FB_BYTES);
-    int64_t dt = esp_timer_get_time() - t0;
-    dn_display_present();
     return dt;
 }
 
-esp_err_t dn_display_restart(void) { return esp_lcd_rgb_panel_restart(s_panel); }
+/*
+ * ⚠️ CETTE FONCTION EST INERTE SOUS LA CONFIGURATION RETENUE — et elle le dit.
+ *
+ * `esp_lcd_rgb_panel_restart()` (esp_lcd_panel_rgb.c:464-475) ne fait qu'UNE
+ * chose : poser `panel->flags.need_restart = true`. Ce bit n'est lu qu'à un
+ * seul endroit, `lcd_rgb_panel_try_restart_transmission()`
+ * (esp_lcd_panel_rgb.c:1149-1165), et il n'y est lu que dans la branche
+ * `#else` :
+ *
+ *     #if CONFIG_LCD_RGB_RESTART_IN_VSYNC
+ *         do_restart = true;            <- inconditionnel, need_restart IGNORÉ
+ *     #else
+ *         if (panel->flags.need_restart) { ... }
+ *     #endif
+ *
+ * Or le sdkconfig retenu pose CONFIG_LCD_RGB_RESTART_IN_VSYNC=y : la DMA est
+ * déjà relancée à CHAQUE VBlank, et le seul bit que la commande `dma` sait
+ * poser n'est jamais consulté. L'appel ne ferait donc rien, et renverrait
+ * ESP_OK — le pire des retours, celui qui a l'air d'une réussite.
+ *
+ * POURQUOI ÇA COMPTE POUR LA TRAÇABILITÉ : la preuve d'origine (« un restart
+ * manuel rattrape l'image décalée ») a été faite avec RESTART_IN_VSYNC=n, et
+ * elle RESTE VALIDE dans ce contexte-là. Mais sous la configuration livrée,
+ * toute observation du type « la commande `dma` a corrigé le décalage » est
+ * MAL ATTRIBUÉE : ce qui a corrigé, c'est le restart automatique par VBlank,
+ * qui aurait eu lieu de toute façon.
+ *
+ * On refuse donc l'appel plutôt que de le jouer pour rien, et on renvoie
+ * ESP_ERR_NOT_SUPPORTED — que l'appelant imprime déjà via esp_err_to_name(),
+ * ce qui rend la sortie console honnête sans avoir à toucher dn_console.c.
+ */
+esp_err_t dn_display_restart(void)
+{
+#if CONFIG_LCD_RGB_RESTART_IN_VSYNC
+    ESP_LOGW(TAG,
+             "relance DMA SANS EFFET : CONFIG_LCD_RGB_RESTART_IN_VSYNC=y, la "
+             "DMA est déjà relancée à chaque VBlank et le bit `need_restart` "
+             "posé par esp_lcd_rgb_panel_restart() n'est jamais lu "
+             "(esp_lcd_panel_rgb.c:1149-1165).");
+    ESP_LOGW(TAG,
+             "  => si une image décalée se recale « après un `dma` », ce n'est "
+             "PAS la commande : c'est le restart automatique du VBlank. Pour "
+             "éprouver la relance MANUELLE, il faut rebâtir avec "
+             "CONFIG_LCD_RGB_RESTART_IN_VSYNC=n.");
+    return ESP_ERR_NOT_SUPPORTED;
+#else
+    ESP_LOGI(TAG,
+             "relance DMA manuelle demandée (RESTART_IN_VSYNC=n : le bit "
+             "`need_restart` est bien consulté au prochain VSYNC_END)");
+    return esp_lcd_rgb_panel_restart(s_panel);
+#endif
+}

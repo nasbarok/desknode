@@ -16,9 +16,13 @@
 /* ── Résolution ──────────────────────────────────────────────────────────── */
 #define DN_LCD_H_RES 480
 #define DN_LCD_V_RES 640
-#define DN_LCD_BPP 16
 #define DN_LCD_TOTAL_PX (DN_LCD_H_RES * DN_LCD_V_RES)          /* 307 200 px */
 #define DN_FB_BYTES ((size_t)DN_LCD_H_RES * DN_LCD_V_RES * 2)  /* 614 400 o */
+/* Pas de DN_LCD_BPP : il a existé, personne ne l'a jamais lu, et les 16 bits
+ * par pixel sont posés là où ils comptent vraiment — `bits_per_pixel` du
+ * rgb_panel_config ET du panel_dev_config, dans dn_display.c. Une constante
+ * de géométrie que personne n'utilise finit par diverger de celle qui compte,
+ * et c'est celle-là qu'on relit en diagnostiquant. */
 
 /* ── Bus I²C (UNIQUE sur cette carte) ────────────────────────────────────── */
 /* Le TCA9554, le GT911, l'IMU, la RTC et le header externe des 4 capteurs sont

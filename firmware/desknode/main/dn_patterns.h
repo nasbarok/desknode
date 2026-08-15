@@ -37,8 +37,22 @@ const char *dn_scene_name(dn_scene_t scene);
 dn_scene_t dn_scene_from_name(const char *name);
 
 /* Dessine la mire dans `buf` (307 200 pixels). Ne présente pas : c'est
- * l'appelant qui décide quand. */
+ * l'appelant qui décide quand. Enregistre au passage la scène demandée, que
+ * dn_pattern_last_scene() restitue. */
 void dn_pattern_draw(uint16_t *buf, dn_scene_t scene);
+
+/*
+ * Dernière scène passée à dn_pattern_draw(), ou DN_SCENE_COUNT si aucune.
+ *
+ * POURQUOI CET ACCESSEUR EXISTE (AC4) : app_main dessine DN_SCENE_ASSET au
+ * boot en appelant dn_pattern_draw + dn_display_present directement, sans
+ * passer par la console. Un état « scène courante » tenu dans dn_console.c est
+ * donc structurellement en retard : il annonce « aucune scène » alors qu'une
+ * image est affichée depuis le démarrage, et la PREMIÈRE ligne `fps` sort
+ * étiquetée `scene=-`. La source de vérité est ce module, qui sait ce qu'il a
+ * dessiné ; les afficheurs d'état l'interrogent au lieu de tenir un double.
+ */
+dn_scene_t dn_pattern_last_scene(void);
 
 /* Remplit `buf` d'une couleur unie. */
 void dn_pattern_fill(uint16_t *buf, uint16_t color);

@@ -17,10 +17,26 @@ static inline uint16_t rgb565(uint8_t r, uint8_t g, uint8_t b)
     return (uint16_t)(((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3));
 }
 
-/* ── Fonte 5x7, la même table que tools/gen_living_pcb.py ────────────────── */
+/* ── Fonte 5x7 ───────────────────────────────────────────────────────────── */
 /* Elle sert à ÉTIQUETER les mires. Une mire non étiquetée produit des
  * impressions ; une mire étiquetée produit une phrase qu'on peut écrire dans
- * un document (« la bande 4, marquée B4/GPIO21, est le bleu le plus vif »). */
+ * un document (« la bande 4, marquée B4/GPIO21, est le bleu le plus vif »).
+ *
+ * ⚠️ RELATION AVEC tools/gen_living_pcb.py — ce commentaire annonçait « la même
+ * table », ce qui était FAUX et coûtait déjà un défaut visible : la table C
+ * n'avait ni F, ni J, ni K, ni Q, ni W, ni Y, ni Z, là où le dictionnaire FONT
+ * du script Python porte l'alphabet complet plus « . : + _ ». Le K manquant
+ * faisait imprimer « DES NODE P1 » à la mire de cadrage — c'est-à-dire à
+ * l'instrument d'AC3 lui-même — et personne ne le voyait, parce que le glyphe
+ * de repli était l'ESPACE.
+ *
+ * Les deux tables sont maintenant ALIGNÉES POUR DE BON : mêmes caractères,
+ * mêmes bitmaps, même encodage (5 bits utiles par ligne, bit de poids fort à
+ * GAUCHE, 7 lignes de haut en bas). La différence qui reste est de FORME, pas
+ * de contenu : ici les chiffres vivent dans FONT[] indexé, le reste dans
+ * LETTERS[] parcouru linéairement ; là-bas tout tient dans un dict.
+ * ⛔ Toute lettre ajoutée d'un côté doit l'être de l'autre — sans quoi l'asset
+ *    généré et les mires du firmware ne savent plus écrire la même phrase. */
 #define GLYPH_W 5
 #define GLYPH_H 7
 
@@ -38,7 +54,7 @@ static const uint8_t FONT[][GLYPH_H] = {
     {0x0E, 0x11, 0x11, 0x0F, 0x01, 0x02, 0x0C},              /* 9 */
 };
 
-/* Les quelques lettres dont les mires ont besoin. */
+/* L'alphabet complet + les signes, à l'identique de tools/gen_living_pcb.py. */
 typedef struct {
     char c;
     uint8_t rows[GLYPH_H];
@@ -50,22 +66,58 @@ static const dn_glyph_t LETTERS[] = {
     {'C', {0x0E, 0x11, 0x10, 0x10, 0x10, 0x11, 0x0E}},
     {'D', {0x1E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x1E}},
     {'E', {0x1F, 0x10, 0x10, 0x1E, 0x10, 0x10, 0x1F}},
+    {'F', {0x1F, 0x10, 0x10, 0x1E, 0x10, 0x10, 0x10}},
     {'G', {0x0E, 0x11, 0x10, 0x17, 0x11, 0x11, 0x0F}},
     {'H', {0x11, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11}},
     {'I', {0x1F, 0x04, 0x04, 0x04, 0x04, 0x04, 0x1F}},
+    {'J', {0x07, 0x02, 0x02, 0x02, 0x02, 0x12, 0x0C}},
+    /* ⚠️ LE K QUI MANQUAIT — celui qui faisait afficher « DES NODE P1 » à la
+     * mire de cadrage, l'instrument d'AC3. */
+    {'K', {0x11, 0x12, 0x14, 0x18, 0x14, 0x12, 0x11}},
     {'L', {0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x1F}},
     {'M', {0x11, 0x1B, 0x15, 0x15, 0x11, 0x11, 0x11}},
     {'N', {0x11, 0x19, 0x15, 0x13, 0x11, 0x11, 0x11}},
     {'O', {0x0E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E}},
     {'P', {0x1E, 0x11, 0x11, 0x1E, 0x10, 0x10, 0x10}},
+    {'Q', {0x0E, 0x11, 0x11, 0x11, 0x15, 0x12, 0x0D}},
     {'R', {0x1E, 0x11, 0x11, 0x1E, 0x14, 0x12, 0x11}},
     {'S', {0x0F, 0x10, 0x10, 0x0E, 0x01, 0x01, 0x1E}},
     {'T', {0x1F, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04}},
     {'U', {0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E}},
     {'V', {0x11, 0x11, 0x11, 0x11, 0x11, 0x0A, 0x04}},
+    {'W', {0x11, 0x11, 0x11, 0x15, 0x15, 0x1B, 0x11}},
     {'X', {0x11, 0x11, 0x0A, 0x04, 0x0A, 0x11, 0x11}},
+    {'Y', {0x11, 0x11, 0x0A, 0x04, 0x04, 0x04, 0x04}},
+    {'Z', {0x1F, 0x01, 0x02, 0x04, 0x08, 0x10, 0x1F}},
     {'-', {0x00, 0x00, 0x00, 0x1F, 0x00, 0x00, 0x00}},
+    {'.', {0x00, 0x00, 0x00, 0x00, 0x00, 0x0C, 0x0C}},
     {'/', {0x01, 0x02, 0x02, 0x04, 0x08, 0x08, 0x10}},
+    {':', {0x00, 0x0C, 0x0C, 0x00, 0x0C, 0x0C, 0x00}},
+    {'+', {0x00, 0x04, 0x04, 0x1F, 0x04, 0x04, 0x00}},
+    {'_', {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1F}},
+};
+
+/*
+ * GLYPHE DE REPLI — un cadre plein rempli d'un damier, et surtout PAS un
+ * espace.
+ *
+ * Le repli précédent renvoyait FONT[0], c'est-à-dire le blanc. Un caractère
+ * absent de la table disparaissait donc SANS TRACE : « DESKNODE » s'affichait
+ * « DES NODE » et rien, nulle part, ne le signalait — l'œil lisait un mot
+ * espacé, pas un défaut. Un instrument qui échoue en silence enseigne une
+ * fausseté à chaque lecture.
+ * Désormais un caractère inconnu produit un pavé impossible à confondre avec
+ * une lettre, ET une ligne de log qui le nomme. La prochaine lettre manquante
+ * s'annoncera elle-même.
+ */
+static const uint8_t GLYPH_INCONNU[GLYPH_H] = {
+    0x1F, /* ##### */
+    0x15, /* # # # */
+    0x1B, /* ## ## */
+    0x15, /* # # # */
+    0x1B, /* ## ## */
+    0x15, /* # # # */
+    0x1F, /* ##### */
 };
 
 static const uint8_t *glyph_for(char c)
@@ -81,7 +133,11 @@ static const uint8_t *glyph_for(char c)
             return LETTERS[i].rows;
         }
     }
-    return FONT[0];
+    ESP_LOGW(TAG,
+             "caractère « %c » (0x%02X) absent de la fonte 5x7 : rendu en pavé "
+             "de repli. L'ajouter ICI **et** dans tools/gen_living_pcb.py.",
+             (c >= 0x20 && c < 0x7F) ? c : '?', (unsigned)(unsigned char)c);
+    return GLYPH_INCONNU;
 }
 
 static void put_px(uint16_t *buf, int x, int y, uint16_t c)
@@ -107,6 +163,18 @@ static void fill_rect(uint16_t *buf, int x, int y, int w, int h, uint16_t c)
     if (y + h > H) {
         h = H - y;
     }
+    /* ⚠️ GARDE OBLIGATOIRE, et pas une ceinture de sécurité décorative : quand
+     * x >= W, le clamp ci-dessus rend `w` NÉGATIF. La boucle externe tournait
+     * quand même et évaluait `buf + yy * W + x` à chaque ligne — de
+     * l'arithmétique de pointeur HORS du tableau, donc un comportement
+     * indéfini, AVANT même que la boucle interne ne refuse de tourner. Le bug
+     * ne se voit pas : rien n'est écrit, et le compilateur est libre de tout
+     * faire. Aucun appel actuel n'y arrive (le pire cas est une étiquette de
+     * 150 px dans une zone de 156), mais une primitive de dessin qui ne tient
+     * que par la discipline de ses appelants n'est pas une primitive sûre. */
+    if (x >= W || y >= H || w <= 0 || h <= 0) {
+        return;
+    }
     for (int yy = y; yy < y + h; yy++) {
         uint16_t *row = buf + (size_t)yy * W + x;
         for (int xx = 0; xx < w; xx++) {
@@ -120,6 +188,15 @@ static void draw_text(uint16_t *buf, int x, int y, const char *s, uint16_t color
 {
     int cx = x;
     for (const char *p = s; *p; p++) {
+        /* ⚠️ GARDE : `cx` avançait de (GLYPH_W + 1) * scale par caractère sans
+         * AUCUNE borne. fill_rect sait clamper, mais il n'y a rien à gagner à
+         * parcourir les 35 pixels d'un glyphe entièrement hors écran — et
+         * surtout, laisser la seule protection à l'appelant, c'est le même
+         * pari que celui que fill_rect vient de refuser. On s'arrête au bord.
+         * Une étiquette tronquée est visible ; un dépassement, non. */
+        if (cx >= W) {
+            break;
+        }
         char c = *p;
         if (c >= 'a' && c <= 'z') {
             c = (char)(c - 'a' + 'A');
@@ -161,8 +238,18 @@ void dn_pattern_fill(uint16_t *buf, uint16_t color)
  *
  * Version retenue : 16 bandes HORIZONTALES de 40 px (16 x 40 = 640, sans
  * reste), pleine largeur, avec une zone d'étiquette noire de 156 px à gauche
- * et du texte à l'échelle 3. Chaque bande fait 324 x 40 px de couleur utile,
- * soit 14 fois la surface de la version précédente.
+ * et du texte à l'échelle 3. Chaque bande fait 324 x 40 px de couleur utile.
+ *
+ * ⚠️ CE N'EST PAS LA SURFACE QUI A GAGNÉ, et ce commentaire l'a affirmé à tort.
+ * Il annonçait « 14 fois la surface de la version précédente » ; deux
+ * multiplications le réfutent : les bandes verticales faisaient 30 x 640 =
+ * 19 200 px, celles-ci font 324 x 40 = 12 960 px. C'est 0,67 fois, pas 14.
+ * Ce qui a réellement changé, et ce qui rend la mire lisible :
+ *   - la LARGEUR de couleur utile : 324 px au lieu de 30 ;
+ *   - la TAILLE DES GLYPHES : échelle 3 (15 x 21 px) au lieu de 2 (10 x 14).
+ * L'argument de lisibilité tient donc entièrement — c'est le chiffre qui était
+ * faux. Un chiffre faux dans la justification d'un instrument finit par coûter
+ * la confiance qu'on accorde à ses mesures.
  *
  * Comment la lire, DE HAUT EN BAS :
  *   - bandes B0..B4  : BLEUES, de plus en plus vives ;
@@ -350,8 +437,35 @@ static void draw_solid_labeled(uint16_t *buf, uint16_t color, const char *label,
     draw_text(buf, 8, 8, label, label_color, 3);
 }
 
+/*
+ * LA DERNIÈRE SCÈNE DESSINÉE — le trou de traçabilité qu'AC4 ne pardonnait pas.
+ *
+ * SYMPTÔME : de la mise sous tension jusqu'à la première commande `scene`, le
+ * bandeau annonçait « scène « - » » et la PREMIÈRE ligne `fps` — celle qui, à
+ * froid, vaut le plus — sortait étiquetée `scene=-`. Pourtant une scène ÉTAIT
+ * affichée : app_main dessine DN_SCENE_ASSET au boot en appelant directement
+ * dn_pattern_draw + dn_display_present, sans passer par le show_scene() de la
+ * console, qui était le seul endroit à noter la scène courante. Une mesure
+ * dont l'étiquette dit « aucune scène » ne se relit pas six mois plus tard.
+ *
+ * PARADE, et pourquoi ICI : c'est ce module qui SAIT ce qu'il a dessiné. La
+ * console n'a plus à tenir un état parallèle qu'un appelant direct peut
+ * contredire ; elle interroge dn_pattern_last_scene(). Il n'y a plus qu'une
+ * source, et elle est du côté de celui qui fait le travail.
+ */
+static dn_scene_t s_last_scene = DN_SCENE_COUNT;
+
+dn_scene_t dn_pattern_last_scene(void) { return s_last_scene; }
+
 void dn_pattern_draw(uint16_t *buf, dn_scene_t scene)
 {
+    /* Noté pour TOUTE valeur, y compris hors bornes : ce qu'on veut tracer,
+     * c'est ce qui a été DEMANDÉ au buffer, pas ce que le switch a su en
+     * faire. Une valeur hors bornes tombe dans le `default` (noir plein) et
+     * reste hors bornes ici — indiscernable, donc, de « rien n'a encore été
+     * dessiné », ce qui est le seul cas ambigu et il est sans appelant. */
+    s_last_scene = scene;
+
     switch (scene) {
     case DN_SCENE_BITS:
         draw_bits(buf);
