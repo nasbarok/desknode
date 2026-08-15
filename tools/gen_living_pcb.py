@@ -9,11 +9,35 @@ assets préfabriqués. Ce script existe pour que l'asset soit REPRODUCTIBLE par
 une seule commande depuis une source versionnée, pas pour être beau.
 
 Deux sorties :
-  --out-bin  RGB565 brut, sans en-tête, dans l'ordre d'octets demandé.
-             C'est ce qui est flashé dans la partition `assets` et copié tel
-             quel dans le framebuffer. 480 * 640 * 2 = 614 400 octets exactement.
+  --out-bin  RGB565 brut dans l'ordre d'octets demandé, SUIVI d'une
+             bande-annonce de 16 octets (voir plus bas). Les 614 400 premiers
+             octets — 480 * 640 * 2 — sont copiés tels quels dans le
+             framebuffer ; la bande-annonce, elle, ne va jamais à l'écran.
   --out-png  Prévisualisation PNG, pour voir l'asset sans carte. C'est le seul
              des deux qui est COMMITÉ (le .bin est régénéré par le build).
+
+⚠️ LA BANDE-ANNONCE, ET LE DÉFAUT QU'ELLE FERME.
+   Le .bin était un bloc brut sans magie, sans longueur, sans somme de
+   contrôle. Le firmware ne pouvait donc rien vérifier : dn_asset.c testait la
+   taille de la PARTITION (1 MiB), jamais celle de la charge FLASHÉE, et ne
+   goûtait que les 4 096 premiers pixels pour repérer une flash vierge — soit
+   1,3 % de la charge. Un binaire tronqué (flash de la voie A interrompue,
+   disque plein pendant la génération) passait donc TOUS les contrôles, et
+   `dn_asset_copy_to` recopiait ensuite les 614 400 octets entiers, queue
+   comprise, c'est-à-dire de la flash vierge : du BLANC. Exactement l'« écran
+   blanc silencieux » que ce module se donne tant de mal à refuser.
+
+   Format, 16 octets collés APRÈS la charge utile :
+       +0   8 o   magie ASCII « DNASSET1 »
+       +8   4 o   longueur de la charge utile, uint32 little-endian
+       +12  4 o   CRC32 de la charge utile, uint32 little-endian
+   Le CRC32 est celui de zlib (IEEE 802.3, réfléchi, polynôme 0xEDB88320) —
+   le même que `esp_rom_crc32_le(0, buf, len)` côté ESP32-S3, qui inverse
+   l'entrée et la sortie en interne (esp_rom/linux/esp_rom_crc.c:166-173).
+   La génération étant déterministe à graine égale, ce CRC est stable : deux
+   exécutions produisent le même octet et donc la même somme.
+   Le miroir de lecture est dans firmware/desknode/main/dn_asset.c — toute
+   évolution du format se fait des DEUX côtés, sinon l'asset est refusé.
 
 Dépendances : bibliothèque standard seulement (zlib suffit pour écrire un PNG).
 Pas de Pillow, donc pas de venv à installer, donc rien qui puisse entrer en
@@ -26,15 +50,29 @@ conflit avec le venv d'ESP-IDF.
 """
 
 import argparse
-import math
+import errno
 import os
 import random
 import struct
 import sys
+import tempfile
 import zlib
 
 WIDTH = 480
 HEIGHT = 640
+
+# ── Ce que le FIRMWARE attend, écrit en dur ─────────────────────────────────
+# dn_pins.h fixe DN_LCD_H_RES=480 et DN_LCD_V_RES=640, donc DN_FB_BYTES vaut
+# 614 400. Ce chiffre est recopié ICI, à la main, et PAS calculé depuis WIDTH
+# et HEIGHT : le contrôle de sortie doit confronter la donnée produite à la
+# géométrie du panneau, pas aux deux constantes qui viennent de la produire.
+# Un `assert len(data) == WIDTH * HEIGHT * 2` compare une valeur à elle-même —
+# il ne peut pas se déclencher, et il se présentait pourtant comme un garde-fou.
+DN_FB_BYTES_FIRMWARE = 614400
+
+# ── Bande-annonce d'intégrité (voir le docstring du module) ─────────────────
+ASSET_MAGIC = b'DNASSET1'
+ASSET_TRAILER_LEN = 16  # 8 (magie) + 4 (longueur LE) + 4 (CRC32 LE)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Palette « Living PCB » — vert sombre de masque de soudure, cuivre, sérigraphie
@@ -407,6 +445,101 @@ def build(seed=20260814):
     return c
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Les sorties sur disque
+# ─────────────────────────────────────────────────────────────────────────────
+
+class SortieRefusee(Exception):
+    """Échec d'écriture DIAGNOSTIQUÉ, à afficher sans trace d'appels."""
+
+
+def build_trailer(payload):
+    """Bande-annonce d'intégrité de 16 octets, à coller après la charge utile.
+
+    Elle donne au firmware les trois choses qu'il n'avait pas : de quoi
+    reconnaître le format (magie), de quoi savoir si le fichier est COMPLET
+    (longueur), et de quoi savoir s'il est INTACT (CRC32). Sans elle, un .bin
+    tronqué s'affiche en blanc, en silence, et passe pour une panne d'écran.
+    """
+    trailer = (ASSET_MAGIC
+               + struct.pack('<I', len(payload))
+               + struct.pack('<I', zlib.crc32(payload) & 0xFFFFFFFF))
+    # Le firmware lit la bande-annonce à un offset FIXE (DN_ASSET_TRAILER_LEN
+    # dans dn_asset.c). Si elle changeait de taille ici sans changer là-bas,
+    # tous les assets seraient refusés « magie absente » et on chercherait la
+    # panne du côté de la flash. On s'arrête tout de suite, du bon côté.
+    if len(trailer) != ASSET_TRAILER_LEN:
+        raise SortieRefusee(
+            "bande-annonce de %d octets au lieu de %d — le format a divergé "
+            "de celui que dn_asset.c sait lire"
+            % (len(trailer), ASSET_TRAILER_LEN))
+    return trailer
+
+
+def write_atomic(path, data, quoi):
+    """Écrit `data` dans `path` par fichier temporaire puis os.replace().
+
+    ⚠️ POURQUOI CE DÉTOUR — le défaut qu'il ferme, qui était PERMANENT.
+    Ce script écrivait directement dans le fichier final. Un ^C, un disque
+    plein ou un EACCES en cours d'écriture laissait donc un fichier PARTIEL,
+    dont la date de modification est plus RÉCENTE que celle de ce script. Or
+    la règle `add_custom_command(OUTPUT ...)` de firmware/desknode/CMakeLists.txt
+    ne compare que ces deux dates : elle jugeait l'asset à jour et ne le
+    régénérait PLUS JAMAIS. Tous les `idf.py build` et `idf.py flash` suivants
+    embarquaient en silence l'asset tronqué — jusqu'à ce que quelqu'un pense à
+    effacer le fichier à la main, ce que rien n'aurait suggéré.
+    `os.replace()` est atomique sur un même système de fichiers : à la fin, ou
+    bien l'ancien fichier est intact, ou bien le nouveau est complet. Il n'y a
+    pas de troisième état, donc plus de mtime menteuse. Le fichier temporaire
+    est créé dans le MÊME dossier, sans quoi le remplacement cesserait d'être
+    atomique (renommage entre systèmes de fichiers).
+    """
+    d = os.path.dirname(os.path.abspath(path))
+    try:
+        if d:
+            os.makedirs(d, exist_ok=True)
+    except OSError as e:
+        raise SortieRefusee(
+            "%s : impossible de créer le dossier « %s » (%s). "
+            "Vérifier les droits, ou qu'un FICHIER ne porte pas déjà ce nom."
+            % (quoi, d, e.strerror or e))
+
+    tmp = None
+    try:
+        fd, tmp = tempfile.mkstemp(prefix=os.path.basename(path) + '.',
+                                   suffix='.part', dir=d)
+        with os.fdopen(fd, 'wb') as f:
+            f.write(data)
+            # fsync avant le renommage : le contenu doit être sur le disque
+            # AVANT que le nom final ne le désigne, faute de quoi une coupure
+            # de courant recrée exactement le fichier tronqué qu'on évite.
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+        tmp = None
+    except OSError as e:
+        if e.errno == errno.EISDIR:
+            detail = "« %s » est un DOSSIER, pas un fichier" % path
+        elif e.errno in (errno.EACCES, errno.EPERM, errno.EROFS):
+            detail = ("écriture refusée dans « %s » (%s)"
+                      % (d or '.', e.strerror or e))
+        elif e.errno == errno.ENOSPC:
+            detail = ("plus de place sur le système de fichiers de « %s » — "
+                      "rien n'a été remplacé, l'ancien fichier est intact"
+                      % (d or '.'))
+        else:
+            detail = "%s (errno %s)" % (e.strerror or e, e.errno)
+        raise SortieRefusee("%s : %s" % (quoi, detail))
+    finally:
+        # Le temporaire ne doit jamais survivre à un échec : il porte un
+        # suffixe `.part` et ne serait donc jamais ramassé par le build.
+        if tmp is not None and os.path.exists(tmp):
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -427,22 +560,31 @@ def main(argv=None):
 
     if args.out_bin:
         data = canvas.to_rgb565(args.byte_order)
-        assert len(data) == WIDTH * HEIGHT * 2, len(data)
-        d = os.path.dirname(os.path.abspath(args.out_bin))
-        if d:
-            os.makedirs(d, exist_ok=True)
-        with open(args.out_bin, 'wb') as f:
-            f.write(data)
-        sys.stderr.write("asset RGB565 (%s) : %s — %d octets\n"
-                         % (args.byte_order, args.out_bin, len(data)))
+        # Contrôle RÉEL : la sortie est confrontée à la géométrie que le
+        # firmware attend (DN_FB_BYTES), pas aux constantes qui l'ont produite.
+        # Si un jour WIDTH/HEIGHT changent sans que dn_pins.h suive, c'est ici
+        # que ça s'arrête — et pas à l'écran, sous forme d'image en escalier.
+        if len(data) != DN_FB_BYTES_FIRMWARE:
+            raise SortieRefusee(
+                "charge utile de %d octets alors que le firmware en attend "
+                "%d (dn_pins.h : DN_LCD_H_RES x DN_LCD_V_RES x 2). "
+                "La géométrie du script et celle du panneau ont divergé."
+                % (len(data), DN_FB_BYTES_FIRMWARE))
+        trailer = build_trailer(data)
+        write_atomic(args.out_bin, data + trailer, "asset RGB565")
+        sys.stderr.write(
+            "asset RGB565 (%s) : %s — %d octets utiles + %d de bande-annonce "
+            "(magie %s, CRC32 0x%08X)\n"
+            % (args.byte_order, args.out_bin, len(data), len(trailer),
+               ASSET_MAGIC.decode('ascii'), zlib.crc32(data) & 0xFFFFFFFF))
 
     if args.out_png:
+        # ⚠️ La prévisualisation ne reçoit PAS de bande-annonce : c'est un PNG,
+        # il a déjà ses propres CRC par chunk, et surtout il est COMMITÉ —
+        # assets/mockups/living-pcb-v0.png doit rester identique octet pour
+        # octet, sinon chaque génération salit le diff pour rien.
         png = canvas.to_png()
-        d = os.path.dirname(os.path.abspath(args.out_png))
-        if d:
-            os.makedirs(d, exist_ok=True)
-        with open(args.out_png, 'wb') as f:
-            f.write(png)
+        write_atomic(args.out_png, png, "prévisualisation PNG")
         sys.stderr.write("prévisualisation PNG : %s — %d octets\n"
                          % (args.out_png, len(png)))
 
@@ -450,4 +592,15 @@ def main(argv=None):
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except SortieRefusee as exc:
+        # Une trace d'appels Python ne dit rien à qui lance `idf.py build` :
+        # elle fait croire à un bug du script alors que c'est le disque, les
+        # droits ou le chemin. On sort proprement, avec la phrase qui aide.
+        sys.stderr.write("gen_living_pcb: %s\n" % exc)
+        sys.exit(2)
+    except KeyboardInterrupt:
+        # ^C : grâce à write_atomic, aucun fichier final n'est à moitié écrit.
+        sys.stderr.write("gen_living_pcb: interrompu — aucune sortie modifiée\n")
+        sys.exit(130)
