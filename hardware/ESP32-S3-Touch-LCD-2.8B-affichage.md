@@ -230,6 +230,111 @@ Ces valeurs sont les **défauts d'un clone neuf** (`dn_bootcfg.c`) : NVS vierge 
 
 ---
 
+## 4 bis. 🔴 LA CONFIGURATION RETENUE EST CONTRADICTOIRE — mesuré le 2026-08-15
+
+> **`num_fbs = 2` et `CONFIG_LCD_RGB_RESTART_IN_VSYNC=y` sont INCOMPATIBLES sur cette puce.**
+> Tant que les deux sont posés, la dalle **n'affiche jamais `fb[0]`** après le boot : elle reste
+> collée sur `fb[1]`, et **une présentation sur deux n'atteint pas l'écran**. Le second
+> framebuffer est payé 614 400 o de PSRAM et ne sert à rien.
+
+### Ce qui a été observé
+
+Sept commandes de scène consécutives, l'œil de l'owner à chaque fois. Le tampon visé se déduit du
+tour de rôle de `s_draw_index` :
+
+| Commande | Tampon dessiné | Vu à l'écran |
+|---|---|---|
+| `scene asset` | fb[1] | asset |
+| `scene frame` | fb[0] | ❌ l'asset reste |
+| `scene white` | fb[1] | ✅ blanc |
+| `scene frame` | fb[0] | ❌ le blanc reste |
+| `scene frame` | fb[1] | ✅ mire |
+| `scene red` | fb[0] | ❌ la mire reste |
+| `scene frame` | fb[1] | ✅ mire |
+
+**Toutes** les bascules vers fb[0] échouent, **toutes** celles vers fb[1] passent. `draw_bitmap`
+rend `ESP_OK` à chaque fois, et `dn_display_present()` rend une durée plausible (680-750 µs) :
+**rien, côté logiciel, ne signale la perte.**
+
+### Le mécanisme, vérifié dans le source d'ESP-IDF v5.5.5
+
+`components/esp_lcd/rgb/esp_lcd_panel_rgb.c` :
+
+- `:61` — `#define RGB_LCD_NEEDS_SEPARATE_RESTART_LINK 1`, actif sur ESP32-S3 (contournement matériel) ;
+- `:1135` — à la création du panneau, **une seule fois** :
+  `gdma_link_concat(rgb_panel->dma_restart_link, 0, rgb_panel->dma_fb_links[0], 1);`
+  Le lien de relance est **soudé à `dma_fb_links[0]`** et n'est jamais re-pointé ensuite ;
+- `:1187` — sous `RESTART_IN_VSYNC`, **chaque VBlank** fait
+  `gdma_start(chan, gdma_link_get_head_addr(panel->dma_restart_link))` ;
+- `:713` — la bascule de `draw_bitmap`, elle, ne réaccroche que la **queue** des liens de
+  framebuffer (`gdma_link_concat(dma_fb_links[i], -1, dma_fb_links[cur_fb_index], 0)`).
+
+La relance périodique repart donc d'un chemin figé que la bascule ne met pas à jour.
+
+### L'A/B qui le prouve — et le dilemme qu'il révèle
+
+| Configuration | Bascule vers fb[0] | Cadrage au boot |
+|---|---|---|
+| `RESTART_IN_VSYNC=y` (**retenue en dn1-2**) | ❌ jamais | ✅ correct |
+| `RESTART_IN_VSYNC=n` | ✅ passe (`scene green` dans fb[0] s'affiche) | ❌ **décalé en permanence**, reproduit |
+
+Les deux défauts sont **les deux faces du même arbitrage**, pas deux bugs indépendants. Le verdict
+de dn1-2 sur `RESTART_IN_VSYNC` reste donc juste — il corrige un défaut réel, re-constaté le
+2026-08-15 — mais **son coût n'avait pas été vu**.
+
+### Ce que ça invalide, et une anomalie que ça explique
+
+- ⛔ **Tout le A/B d'AC5 `num_fbs=1` vs `num_fbs=2` est SANS OBJET** : les deux branches
+  comparaient, de fait, du simple tampon à du simple tampon.
+- 🔎 **Rétrodiction.** §5.2 consignait, comme réfutation de `research-paysage.md` §4 :
+  *« le double tampon seul ne change RIEN au déchirement »*. C'est exact, et la cause est
+  maintenant connue : **il n'y avait pas de double tampon.** Le défaut explique une anomalie déjà
+  écrite, que personne n'avait su interpréter.
+- ⚠️ Le verdict *« attendre `on_frame_buf_complete` »* a été mesuré dans les mêmes conditions :
+  il est à reprendre, pas à recopier.
+- ⚠️ La tâche de stimulus passe par le **même** `dn_display_present()` : les cadences de §5.2
+  portent aussi cette perte d'une trame sur deux.
+
+### Ce que ça NE remet pas en cause
+
+Le brochage, les timings, les 37,40 Hz d'AC4, les budgets PSRAM, les trois débits de bande
+passante, la réfutation de XIP et l'élimination du bounce buffer : tous mesurés hors de ce chemin,
+ou insensibles à lui.
+
+### Les parades essayées le 2026-08-15 — avec leur symptôme (AC8)
+
+Toutes sur la variante `RESTART_IN_VSYNC=n`, qui est la seule où fb[0] redevient affichable.
+
+| # | Parade | Résultat observé |
+|---|---|---|
+| 1 | Un `dma` **manuel** après le boot | ✅ **recale d'un coup** — l'image redevient correcte |
+| 2 | …puis une bascule de scène | ❌ **re-décale** : chaque changement de tampon re-provoque le décrochage |
+| 3 | Un `dma` **manuel** après la bascule | ✅ **recale ET garde le bon tampon** — vérifié dans les **deux sens**, fb[1] *et* fb[0] |
+| 4 | `esp_lcd_rgb_panel_restart()` **immédiatement** en fin de `dn_display_present()` | ❌ **ne recale pas** — ni au boot, ni après bascule |
+| 5 | Idem, mais **30 ms après** la bascule (une trame à 37,40 Hz) | ❌ **ne recale toujours pas** au boot |
+
+**Ce que ça apprend, et c'est la piste à reprendre.** La parade *fonctionne* (ligne 3) : recaler
+après une bascule rend le bon tampon **avec** le bon cadrage. Ce qui manque, c'est **le moment**.
+Un recalage immédiat combat une bascule encore en vol — la DMA ne change de lien qu'en atteignant
+la queue du lien courant — et 30 ms ne suffisent pas non plus. Les `dma` manuels qui ont marché
+étaient envoyés **plusieurs secondes** après.
+
+⇒ La piste sérieuse est donc de **déclencher le recalage sur l'événement qui dit que la bascule a
+réellement eu lieu** (`on_frame_buf_complete`, ou un compteur de VSYNC après la bascule), plutôt
+que sur un délai fixe. Non mesuré.
+
+### Statut
+
+**Non résolu — ce n'est pas un correctif de ligne, c'est un choix de conception.** Les options,
+dont aucune n'est mesurée hormis ce qui précède : `num_fbs = 1` assumé (et 614 400 o de PSRAM
+rendus, ce qui est **la seule option qui marche aujourd'hui sans rien inventer**) · `num_fbs = 3` ·
+recalage déclenché sur événement (ci-dessus) · bounce buffer (mais il a fait redémarrer la carte
+sur watchdog, §5.3).
+
+⇒ Porté au ledger. Il faut un **arbitrage owner** avant dn1-3, qui hérite directement de ce choix.
+⚠️ **La configuration livrée reste `RESTART_IN_VSYNC=y` + `num_fbs=2`** : elle affiche correctement
+une image statique, ce qui suffit à P1 — mais elle paie un second framebuffer qu'elle n'utilise pas.
+
 ## 5. Les chiffres, datés du 2026-08-14
 
 > **Revue du 2026-08-15.** Certains chiffres de cette section portent désormais un
@@ -295,6 +400,13 @@ L'instrument voit ce qu'il prétend voir.
 
 Stimulus : barre verticale blanche de 64 px balayant sur fond noir, trame
 entière redessinée à chaque pas.
+
+> ⛔ **CE TABLEAU EST SANS OBJET — voir §4 bis (2026-08-15).** Les deux branches `num_fbs=1` et
+> `num_fbs=2` comparaient en réalité du simple tampon à du simple tampon : sous
+> `RESTART_IN_VSYNC=y`, la dalle n'affiche jamais `fb[0]`. C'est d'ailleurs ce qui explique le
+> « **INCHANGÉ** » de la deuxième ligne, consigné à l'époque comme une réfutation de
+> `research-paysage.md` §4. À rejouer **après** l'arbitrage owner sur la configuration de
+> framebuffer, pas avant — et les cadences portent en plus le générateur lent corrigé au CR.
 
 | Branche | Cadence — ⚠️ **à re-mesurer** | Ce qui est VU |
 |---|---:|---|
@@ -472,7 +584,7 @@ décrochage DMA qui se reproduit à chaque secteur et dont le décalage s'accumu
 | RAM interne libre (config retenue) | ⚠️ **à re-mesurer** (`mem`) — deux valeurs incompatibles au dossier : **348 615 o** et **348 323 o** |
 | Temps de boot (`app_main` → prêt) | ⚠️ **à re-mesurer** — trois valeurs au dossier pour la même mesure : **864 / 858 / 854 ms** |
 | Taille du binaire | ⚠️ **à re-mesurer** (`idf.py build`) — relevé du 2026-08-14 : `0x57b20` = **359 200 o** (350,8 KiB) ; dernière reconstruction de l'arbre courant : `0x59480` = **365 696 o** (357,1 KiB), soit **~91 % libres** sur la partition de 4 MiB |
-| **Charge CPU** au repos, config retenue | ⚠️ **à mesurer** — commande console `cpu` (`vTaskGetRunTimeStats()`), armée par `CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS` |
+| **Charge CPU** au repos, config retenue | **0,0 %** — réserve `IDLE0`+`IDLE1` = **100,0 %**. Mesuré le **2026-08-15**, fenêtre de 30 s (`cpu 30`), asset affiché, aucun stimulus. ⇒ **tenir l'image ne coûte RIEN au processeur** : la DMA est matérielle. C'est le budget que dn3-2 peut dépenser en entier. |
 
 > ### ⚠️ Les quatre chiffres ci-dessus se contredisaient — état exact, *au 2026-08-15*
 >
