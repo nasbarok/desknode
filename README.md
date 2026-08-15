@@ -69,6 +69,16 @@ tests/      harnais et smokes
 | `espressif/esp_io_expander_tca9554` | `==2.0.3` | 2.0.3 | driver TCA9554 (le nôtre est à `0x20`) |
 | `espressif/esp_io_expander` | *(transitif)* | 1.2.1 | socle commun des expanders |
 | `espressif/cmake_utilities` | *(transitif)* | 0.5.3 | outillage CMake des composants Espressif |
+| `lvgl/lvgl` | `==9.5.0` | 9.5.0 | la couche UI (dn1-3). ⚠️ API **v9** : `lv_display_create` / `lv_display_set_buffers`. Tout tuto qui parle de `lv_disp_drv_t` est du LVGL 8 et ne compile pas ici |
+| `espressif/esp_lvgl_port` | `==2.9.0` | 2.9.0 | tick esp_timer, tâche LVGL, mutex, et `lvgl_port_add_disp_rgb()` qui prend les handles esp_lcd **déjà créés** par `dn_display` |
+
+> ⚠️ **Ce que le portage ne fait PAS, et qu'il faut savoir avant de le croire** (mesuré en dn1-3) :
+> en rendu **partiel**, son flush n'attend **rien** — il n'attend `trans_sem` que dans la branche
+> `direct_mode || full_refresh` (`esp_lvgl_port_disp.c:748-756`). Le `on_vsync` qu'il enregistre
+> alimente donc un sémaphore que personne n'attend. Et cet enregistrement **écrase** celui de
+> `dn_measure` (`esp_lcd_rgb_panel_register_event_callbacks` ASSIGNE, ne fusionne pas). D'où
+> l'ordre d'appel et le témoin actif au boot — détail en §10.1 du fichier `hardware/`.
+> Le binaire passe de **377 664 o à 740 400 o** avec LVGL ; l'app fait 4 MiB, il reste **82 %**.
 
 > **Pourquoi `dependencies.lock` et `managed_components/` restent gitignorés** — la question
 > se reposait légitimement en dn1-2, puisqu'il y a désormais de vraies dépendances.
@@ -142,9 +152,18 @@ idf.py -p /dev/ttyACM0 flash monitor               # quitter le moniteur : Ctrl+
 - à l'**œil** : l'**asset Living PCB** s'affiche plein écran, et le **rétroéclairage est ALLUMÉ
   FIXE**. ⚠️ **Il ne clignote plus** — le clignotement était le signe de vie de P0 ;
 - la **console est interactive** : taper `aide` dans le moniteur liste les commandes. Jeu complet :
-  `scene`, `fps`, `bw`, `mem`, `cpu`, `cfg`, `set`, `tear`, `flash`, `disp`, `bl`, `dma`, `reboot`,
-  `aide`. Une **forme de remise à zéro de la configuration** vers les défauts est en cours d'ajout
-  à la famille `set` — `aide` en donne la syntaxe exacte, qui fait foi sur cette liste.
+  `scene`, `fps`, `bw`, `mem`, `cpu`, `cfg`, `set`, `tear`, `flash`, `ui`, `flush`, `anim`,
+  `recal`, `bl`, `disp`, `dma`, `reboot`, `aide`. `cfg reset` rend les défauts au prochain boot.
+  **C'est `aide` qui fait foi**, pas cette liste. Les commandes ajoutées en dn1-3 :
+
+  | Commande | Ce qu'elle sert |
+  |---|---|
+  | `ui [on\|off]` · `ui label on\|off` · `ui bg flash\|psram` | pilote LVGL. ⚠️ `ui off` est **obligatoire** avant `scene` ou `tear` : ces deux-là dessinent une trame entière à la main pendant que LVGL ne redessine que ses zones sales, et l'écran devient inattribuable |
+  | `flush` · `flush reset` · `flush sync off\|vsync\|fbdone` · `flush path bitmap\|direct` · `flush full` | le rafraîchissement partiel **en chiffres** : aire, copie, attente de synchro. `sync off` est le **témoin** qui doit produire du déchirement — s'il n'en produit pas, aucune conclusion « pas de tearing » n'est recevable |
+  | `anim on [ms]` · `anim off` | stimulus adverse LVGL : barre verticale balayant l'écran |
+  | `recal <0..4>` | recalage DMA N vsyncs après une bascule (le double tampon, §4 ter) |
+  | `bl <0..100>` · `bl ramp <pct> [ms]` · `bl freq <hz>` | rétroéclairage **gradable**. ⚠️ `bl 0` = dalle NOIRE ; `disp off` = dalle GRISE éclairée |
+  | `set lines <8..160>` · `set drawmem <0\|1>` · `set core <-1\|0\|1>` | variables de mesure du rendu, relues au boot (`reboot` pour appliquer) |
   ⚠️ Le log de ce projet ne part **plus** sur le header UART GPIO43/44 : la console primaire est
   passée sur l'USB pour pouvoir RECEVOIR des commandes. Pour retrouver le header, voir le
   commentaire de `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG` dans son `sdkconfig.defaults` : on y récupère
@@ -220,6 +239,11 @@ l'application ne tourne pas.
 > N'IMPORTE QUELLE DURÉE**, et c'est le rejeu à froid du 2026-08-15 qui l'a trouvé.
 >
 > `firmware/desknode` n'imprime spontanément qu'une ligne de battement **toutes les 10 s**.
+> **Cadence RE-VÉRIFIÉE INCHANGÉE par dn1-3** (2026-08-15) : la ligne s'est enrichie des
+> compteurs de flush, mais le `vTaskDelay(10000)` n'a pas bougé — la durée d'écoute
+> ci-dessous reste donc valable telle quelle. C'est vérifié parce que changer cette
+> cadence sans changer la recette rendrait la recette de survie fausse le jour où on
+> en a besoin.
 > Écouter 6 s sur une carte parfaitement saine rend donc **0 octet** — et diagnostique une carte
 > muette qui va très bien. C'est un faux positif qui envoie dérouler une recette de déblocage
 > pour rien, sur une carte qu'on va inutilement remettre en mode download.
@@ -309,6 +333,15 @@ $B  = '\\wsl.localhost\Ubuntu\home\nasbarok\projects\desknode\firmware\desknode\
 > `idf.py flash` l'écrit tout seul (via `esptool_py_flash_to_partition` dans le
 > `CMakeLists.txt`) : **il n'apparaît nulle part dans la commande**, et c'est
 > précisément pour ça qu'on l'oublie en passant à la voie A.
+
+> **Vérifié inchangé par dn1-3 (2026-08-15).** Ce bloc a été relu contre le
+> livrable de la story : la table de partitions n'a pas bougé (l'app fait
+> toujours 4 MiB à `0x10000`, `assets` toujours 1 MiB à `0x410000`), et l'asset
+> non plus (`tools/gen_living_pcb.py` n'a pas été touché). **Les quatre offsets
+> restent exacts.** LVGL fait passer `desknode.bin` de 377 664 à ~740 400 o, ce
+> qui tient largement — mais c'est bien le genre de croissance qui finirait par
+> obliger à revoir la table, et c'est pour ça qu'on le note ici plutôt que de
+> supposer que « ça n'a pas dû changer ».
 >
 > Sans lui, la partition est vierge (0xFF partout). Le firmware **le détecte et
 > le dit** — au log (`partition « assets » VIERGE`) et **à l'écran** (panneau
@@ -450,7 +483,17 @@ la relecture du fichier source.
 Le brochage vérifié, les timings, la configuration framebuffer retenue et tous les chiffres datés
 sont dans **[`hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md`](hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md)**.
 C'est **ce fichier** qui fait autorité — plus jamais besoin d'aller chercher un brochage dans un
-wiki constructeur ou un dépôt communautaire.
+wiki constructeur ou un dépôt communautaire. Sa **§0** donne la configuration de référence en un
+tableau : c'est la seule chose à lire si on ne lit qu'une chose.
+
+**Deux branches d'essai vivent à côté du `sdkconfig.defaults` livré**, chacune avec son mode
+d'emploi en tête de fichier — elles sont versionnées pour que les mesures soient **rejouables**,
+pas pour être activées par défaut :
+
+| Fichier | Ce qu'il éprouve | Verdict |
+|---|---|---|
+| `sdkconfig.defaults.ac5-double-tampon` | `RESTART_IN_VSYNC=n`, sans quoi le recalage DMA est **inerte** et toute conclusion serait une non-mesure | ✅ le double tampon **fonctionne** (§4 ter) — mais n'apporte rien de mesuré aujourd'hui |
+| `sdkconfig.defaults.xip-lecture-code` | XIP pour les **lectures** de code, le cas que la réfutation de dn1-2 excluait de son périmètre | ❌ réfuté ici aussi (§10.5, ligne 6) |
 
 ### L'asset Living PCB — ce qui est versionné, ce qui ne l'est pas
 

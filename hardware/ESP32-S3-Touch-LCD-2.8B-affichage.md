@@ -13,6 +13,26 @@ Chaîne : ESP-IDF **v5.5.5** (commit `b774170f`).
 
 ---
 
+## 0. LA CONFIGURATION DE RÉFÉRENCE POUR dn1-4 → dn3 — arbitrée le 2026-08-15 (dn1-3, AC6)
+
+C'est la seule chose à lire si on ne lit qu'une chose.
+
+| | | justifié par |
+|---|---|---|
+| `num_fbs` | **1** | le double tampon est **réparé** (§4 ter) mais n'apporte **rien de mesuré** : il ne corrige ni le déchirement (c'est la synchro qui le fait) ni l'artefact §10.5, et coûte 614 400 o + une branche Kconfig |
+| Rendu LVGL | **PARTIEL** | un plein écran demande 10 flushes et ~176 ms d'attente, soit ~5,5 Hz au mieux (§10.3) |
+| Draw buffer | **480 × 64 px (61 440 o), RAM interne DMA** | A/B à aire identique : la PSRAM est **1,70× plus lente** ; le régime produit tient en **un seul flush** à 64 lignes (§10.3) |
+| Synchro du flush | **`vsync`** | témoin positif établi : en `off` l'œil **voit** le déchirement, en `vsync` il disparaît (§10.4) |
+| `RESTART_IN_VSYNC` | **`y`** (livré) | `n` n'est requis que par la branche d'essai du double tampon (§4 ter) |
+| Rétroéclairage | **LEDC 10 bits @ 24 kHz** | 5 kHz **siffle** à duty bas, mesuré à l'oreille (§10.6) |
+| Cœur de la tâche LVGL | **0** | sans effet mesuré sur l'artefact §10.5 ; retenu par cohérence avec le reste du pipeline |
+| Fond | **flash `mmap`** | la copie PSRAM coûte 614 400 o et ne change rien de mesuré (§10.5, ligne 2) |
+
+**Ce que cette configuration NE ferme PAS** : l'artefact de redessin de la §10.5, ouvert, avec
+sept hypothèses déjà éliminées. Il est le legs principal de dn1-3 à dn1-4.
+
+---
+
 ## 1. Brochage vérifié
 
 ### 1.1 Les 16 lignes de données RGB
@@ -199,7 +219,15 @@ I (571) desknode: PSRAM : 8388608 o détectés, mode OCTAL, 80 MHz
 | Emplacement de l'asset | **partition de données `mmap`ée** | `EMBED_FILES` mettrait 600 Ko en `.rodata`, recopiés en PSRAM si XIP était activé |
 
 Ces valeurs sont les **défauts d'un clone neuf** (`dn_bootcfg.c`) : NVS vierge ⇒
-`num_fbs=2, bounce_px=0`. Vérifié en effaçant la région NVS puis en rebootant.
+`num_fbs=1, bounce_px=0, draw_lines=64, draw_psram=0, lvgl_core=0`. Vérifié en
+effaçant la région NVS puis en rebootant.
+
+> **Corrigé le 2026-08-15 (dn1-3).** Ces deux lignes annonçaient encore
+> `num_fbs=2` alors que `dn_bootcfg.c:44` posait `DN_DEFAULT_NUM_FBS 1` depuis
+> l'arbitrage du §4 bis. Le fichier d'autorité contredisait le code sur la valeur
+> la plus structurante du pipeline ; c'est le genre d'écart qu'on relit en
+> diagnostiquant, et qui coûte une heure. Les trois clés de dn1-3
+> (`draw_lines`, `draw_psram`, `lvgl_core`) sont ajoutées à la même liste.
 
 > ### 🔴 LE POINT À NE PAS RATER EN ARRIVANT EN dn1-3 — la discipline de bascule n'est PAS dans le produit
 >
@@ -348,6 +376,70 @@ affiche une image fixe.
 
 ⇒ Reste au ledger pour dn1-3. Les autres options non mesurées : `num_fbs = 3` · bounce buffer
 (mais il a fait redémarrer la carte sur watchdog, §5.3).
+
+---
+
+## 4 ter. ✅ LE DOUBLE TAMPON EST RÉPARÉ — mesuré le 2026-08-15 (dn1-3, AC5)
+
+**L'entrée 🔴 du §4 bis est SOLDÉE.** La piste identifiée mais jamais mesurée — recaler la DMA
+sur l'**événement de bascule** plutôt qu'après un délai fixe — a été jouée sur la carte, et elle
+passe.
+
+### Le montage
+
+`firmware/desknode/main/dn_recal.c` : une tâche dédiée (priorité 5), réveillée par sémaphore
+depuis l'ISR `on_vsync`, laisse passer **N retours verticaux après une bascule réussie**, puis
+appelle `esp_lcd_rgb_panel_restart()`. Jamais de `restart()` ni de log dans l'ISR — le cache y est
+potentiellement désactivé. L'armement se fait dans `dn_display_present()`, sur le chemin où la
+bascule vient d'aboutir, et **uniquement quand `num_fbs > 1`**.
+
+⚠️ **Ce montage exige une branche Kconfig**, et c'est le point qui rend la mesure possible :
+`esp_lcd_rgb_panel_restart()` ne fait que poser `need_restart`, un bit que le driver **ne lit
+jamais** sous `CONFIG_LCD_RGB_RESTART_IN_VSYNC=y` (`esp_lcd_panel_rgb.c:1149-1165`). La branche
+vit dans le dépôt : `firmware/desknode/sdkconfig.defaults.ac5-double-tampon`, avec son mode
+d'emploi. Sans elle, tout « le recalage n'a rien changé » serait une **non-mesure**.
+
+### Le protocole et le verdict
+
+Protocole de dn1-2 rejoué à l'identique : `num_fbs=2`, LVGL en pause (`ui off`), huit scènes
+alternées au chemin brut — `red green blue white red green blue white` —, deux secondes entre
+chacune, œil de l'owner.
+
+Le mécanisme rend le test non ambigu : à deux tampons, les scènes visent alternativement `fb[1]`
+et `fb[0]`. Le défaut de dn1-2 était que **toutes** les bascules vers `fb[0]` échouaient en
+silence, ce qui aurait donné *rouge, rouge, bleu, bleu…*
+
+| | |
+|---|---|
+| Vu par l'owner | **les 8 couleurs, dans l'ordre** |
+| Compteurs `recal` | **9 recalages joués, 0 armement perdu, dernier retour `ESP_OK`** |
+| Cadrage | correct — le défaut que `RESTART_IN_VSYNC=y` corrigeait n'est pas revenu |
+| Variante de timing | **1 vsync** suffit ; la variante à 2 n'a pas eu à être jouée |
+
+⇒ **Les bascules vers `fb[0]` ET `fb[1]` atteignent la dalle.** Le double tampon fonctionne sur
+cette puce, sous recalage événementiel.
+
+### Le coût, et ce qui reste imparfait
+
+**Constat owner, consigné parce qu'une réparation sans sa réserve est une publicité** : sur la
+scène `white`, qui porte du texte, « le texte s'est affiché sur plusieurs clignotements en se
+décalant ». C'est le coût du mécanisme — avec `RESTART_IN_VSYNC=n` il n'y a plus de relance
+automatique par VBlank, donc l'image reste décalée depuis la bascule jusqu'au recalage, soit une
+à deux trames.
+
+### Pourquoi ce n'est PAS la configuration de référence pour autant
+
+Parce qu'AC6 se tranche sur ce que le double tampon **apporte**, et la mesure dit : rien
+aujourd'hui.
+
+1. Il ne corrige **pas** l'artefact de redessin LVGL (§10.3) — vérifié, il est identique en
+   `num_fbs=2` + rendu direct et en `num_fbs=1` + rendu partiel.
+2. Il ne corrige pas le déchirement : c'est `flush sync vsync` qui le supprime, à un tampon
+   comme à deux.
+3. Il coûte **614 400 o de PSRAM** et impose une branche Kconfig hors du build livré.
+
+⇒ **Acquis technique, pas acquis produit.** Il est là, prouvé, rejouable, et il attend un besoin
+— dn1-4 (tactile, donc redessins fréquents) ou dn3-2 (six widgets vivants) le trouveront peut-être.
 
 ## 5. Les chiffres, datés du 2026-08-14
 
@@ -729,12 +821,12 @@ pas un défaut du pipeline. À revoir en dn1-3, où LVGL rendra du texte antiali
 
 ## 8. Ce que P1 ne ferme pas
 
-- **Le déchirement résiduel des ~15 % du haut** en redessin plein écran. Piste
-  non explorée : `refresh_on_demand`, et surtout le redessin par rectangles sales
-  que LVGL fait nativement (dn1-3).
-  ⚠️ **Ce verdict est à re-mesurer avant d'être utilisé** : il a été relevé sous
-  un générateur de stimulus qui plafonnait lui-même la cadence (§5.2). La hauteur
-  du résiduel — voire sa présence — peut bouger une fois le générateur corrigé.
+- ~~**Le déchirement résiduel des ~15 % du haut** en redessin plein écran.~~
+  ✅ **SANS OBJET depuis le 2026-08-15.** dn1-3 a re-mesuré le déchirement là où
+  ça redessine, avec un instrument re-validé par témoin positif (§10.4) : sous
+  rendu partiel il n'y a plus de redessin plein écran ni de bascule, et le
+  déchirement est supprimé par `flush sync vsync`. Le chiffre des 15 % venait
+  d'un générateur invalidé ; il n'est **ni reconduit ni confirmé**, il est retiré.
 - **La discipline de bascule d'image n'est pas dans le chemin produit.**
   `dn_display_present()` bascule **sans attendre** ; l'attente n'existe que dans
   le stimulus. Décision owner : c'est **à dn1-3 de l'implémenter** s'il redessine
@@ -763,7 +855,9 @@ pas un défaut du pipeline. À revoir en dn1-3, où LVGL rendra du texte antiali
   > il faudra le réécrire en le conditionnant explicitement à ce symbole.
 - **L'identité visuelle** du Living PCB : l'asset de P1 est un brouillon assumé
   (dn3-3).
-- **La gradation** du rétroéclairage (dn1-3) : ici GPIO6 est en tout-ou-rien.
+- ~~**La gradation** du rétroéclairage (dn1-3) : ici GPIO6 est en tout-ou-rien.~~
+  ✅ **FERMÉ le 2026-08-15** : GPIO6 est en LEDC 10 bits, et la fréquence du
+  pattern de référence d'Espressif a été **démentie à l'oreille** — voir §10.6.
 - L'inventaire physique des breakouts et le câblage photographié (dn2-1, dn4-1) —
   **ce fichier ne couvre que l'affichage**.
 
@@ -810,3 +904,209 @@ dma                 esp_lcd_rgb_panel_restart()  ⚠️ NO-OP ici, voir ci-desso
 > `root:root` et toute lecture échoue avec `[Errno 13] Permission denied`.
 > Rejouer `./tools/wsl-attach.sh` après chaque `reboot`. C'est le même fait que
 > dn1-1 avait mesuré pour le bouton RESET et `--after watchdog_reset`.
+
+---
+
+## 10. La couche UI — LVGL 9.5.0, mesuré le 2026-08-15 (dn1-3)
+
+### 10.1 Ce qui est intégré, et ce que le portage ne fait PAS
+
+`lvgl/lvgl==9.5.0` + `espressif/esp_lvgl_port==2.9.0`, épinglés à l'exact, vérifiés au registre.
+`dn_ui.c` monte LVGL **sur** le socle : `dn_display` garde tout le bring-up, LVGL reçoit les
+handles esp_lcd déjà créés et n'alloue ni framebuffer ni panneau.
+
+Deux découvertes qui contredisent ce que la story tenait pour acquis :
+
+1. **`avoid_tearing` du portage exige `num_fbs >= 2`** — il appelle
+   `esp_lcd_rgb_panel_get_frame_buffer(panel, 2, …)` (`esp_lvgl_port_disp.c:367`). Inutilisable
+   dans la configuration de référence.
+2. **EN RENDU PARTIEL, LE PORTAGE NE SYNCHRONISE RIEN.** La story annonçait « flush synchronisé
+   sur `on_vsync` (le port l'enregistre lui-même) ». C'est **faux** : son
+   `lvgl_port_flush_callback()` n'attend `trans_sem` que dans la branche
+   `direct_mode || full_refresh` (`esp_lvgl_port_disp.c:748-756`) ; en partiel il tombe dans le
+   `else` et rend la main **sans aucune attente** (`:758`). Le `on_vsync` qu'il enregistre
+   alimente donc un sémaphore que **personne n'attend** dans notre configuration.
+   ⇒ `dn_ui_flush()` **remplace** le flush du portage et porte lui-même la synchronisation, son
+   instrument et son interrupteur.
+
+⚠️ **PIÈGE N°1 DU PROJET, VÉRIFIÉ À LA SOURCE.**
+`esp_lcd_rgb_panel_register_event_callbacks()` **ASSIGNE** les quatre pointeurs et `user_ctx`
+(`esp_lcd_panel_rgb.c:444-448`) — il ne fusionne rien. Or `lvgl_port_add_disp_rgb()` enregistre
+son propre `on_vsync` sans condition (`esp_lvgl_port_disp.c:219`). **Le dernier qui parle efface
+l'autre, en silence, en rendant `ESP_OK`.** Ordre retenu : `dn_measure_attach()` **après** le
+portage, plus un **témoin actif** au boot (`dn_measure_vsync_alive()`, « 4 trames en 100 ms »).
+Sans ce témoin, `fps`, la synchro du flush et toute mesure de déchirement mesureraient du vide,
+à l'étiquette près.
+
+### 10.2 Les budgets — la référence que dn3-2 dépensera
+
+Configuration : `num_fbs=1`, rendu partiel, draw buffer 480×64 (61 440 o) en RAM interne DMA,
+flush synchronisé `vsync`, fond lu en flash `mmap`.
+
+| Mesure | Socle nu (dn1-2) | LVGL au repos | LVGL, label 1 Hz |
+|---|---|---|---|
+| Charge CPU (`cpu`) | **0,0 %** | **0,3 %** (esp_timer, le tick 5 ms) | **0,9 %** (taskLVGL 0,5 + esp_timer 0,3) |
+| Flushes | — | **0** (rien ne redessine) | **1,00 par cycle** |
+| `fps` | 37,40 Hz | — | **37,40 Hz** (théorique 37,40 — écart **+0,00 %**) |
+
+| Mémoire | |
+|---|---|
+| RAM interne, avant → après init LVGL | 281 415 → **212 015 o** (−69 400) |
+| PSRAM, avant → après init LVGL | 7 770 588 → **7 770 588 o** (−0) |
+| Tas LVGL réellement utilisé | **6 588 o sur 63 736** (11 %), fragmentation 1 % |
+| Binaire, avant → après LVGL | 377 664 → **740 400 o**, app 4 MiB **82 % libre** |
+
+⚠️ **Les 64 Ko de `LV_MEM_SIZE_KILOBYTES` sont STATIQUES** (`.bss`, prélevés au link) : ils
+**n'apparaissent pas** dans l'avant/après de `mem`. Le seul instrument qui les voie est la
+commande `ui`, qui imprime `lv_mem_monitor()`. Une mesure de tas qui les ignore sous-estime LVGL
+de 64 Ko.
+
+### 10.3 Le rafraîchissement partiel — en chiffres (AC3)
+
+Régime produit, label 1 Hz, mesuré sur 60 s :
+
+| | |
+|---|---|
+| Cycles | **61 en 60 s** — 1,00/s, aucune dérive (confronté au battement `up N s` de 90 s à 140 s) |
+| Flushes par cycle | **1,00** — la zone du label tient dans une bande de 64 lignes |
+| Aire par mise à jour | **15 892 px = 5,17 %** des 307 200 px de l'écran |
+| Copie | **1 169 µs** en moyenne, 1 219 µs au pire |
+| Attente de synchro | **12 669 µs** — soit la moitié de la période de trame (26,7 ms), ce qu'on attend d'une attente uniforme du prochain vsync : **contrôle de cohérence de l'instrument** |
+
+**Preuve négative** — redessin plein écran forcé, même configuration : **10 flushes de 30 720 px,
+307 200 px, ~21,8 ms de copie et ~176 ms d'attente**, soit ~5,5 Hz au mieux. Le mode plein écran
+ne pourrait jamais tenir 37,40 Hz.
+
+**A/B de l'EMPLACEMENT du draw buffer** — aire strictement identique (323 092 px), une seule
+variable :
+
+| | copie/flush | plein écran |
+|---|---|---|
+| RAM interne DMA | **2 180 µs** | ~21,8 ms |
+| PSRAM | **3 709 µs** | ~37,1 ms |
+
+La PSRAM est **1,70× plus lente**, et ses 37,1 ms recoupent le memcpy PSRAM→PSRAM du §5.4
+(36,8 ms) **à 0,8 % près** — deux instruments indépendants, le même chiffre. ⇒ **RAM interne**.
+
+**A/B de la TAILLE** — même aire (323 092 px), RAM interne :
+
+| lignes | flushes | copie totale | copie/flush | attente de synchro |
+|---|---|---|---|---|
+| 32 | 22 | 22 794 µs | 1 036 µs | 433 272 µs |
+| 64 | 11 | **23 989 µs** (rejeu : 23 950, **+0,16 %**) | 2 180 µs | 176 044 µs |
+| 128 | 6 | 24 892 µs | 4 148 µs | 67 325 µs |
+
+> 🔴 **UNE LECTURE DU SOURCE RÉFUTÉE PAR LA CARTE.** On avait conclu du source
+> (`bytes_to_flush = v_res * bytes_per_line` puis `esp_cache_msync()` depuis le début du
+> framebuffer, branche `draw_buf_copy_to_fb`) qu'un **coût fixe de 614 400 o par flush**
+> dominerait tout. Le tableau le dit non : le nombre de flushes varie d'un facteur **3,7** et le
+> temps total ne bouge que de **9 %**, dans le mauvais sens. Un coût fixe ajusté sur ces points
+> sort **négatif** — il est donc **sous le seuil de détection (< ~0,1 ms)**. Un `esp_cache_msync`
+> en écriture parcourt des **lignes de cache**, il ne transfère pas 614 400 octets : la lecture
+> du source avait confondu une plage d'adresses avec un volume. Débit observé : **~27-29 Mo/s**,
+> RAM interne → framebuffer PSRAM.
+> Confirmation directe : un chemin de flush qui n'écrit QUE les lignes salies et ne resynchronise
+> QUE celles-là (`flush path direct`) ne gagne que **4,4 %** (1 113 contre 1 164 µs).
+
+⇒ **64 lignes retenu** : le régime produit tient en **un seul flush**, et l'attente de synchro
+d'un plein écran (176 ms) reste raisonnable. 128 lignes ne gagneraient que sur le plein écran —
+qui n'est pas le régime de ce produit — pour le double de RAM interne.
+
+### 10.4 Le déchirement, re-mesuré là où ça redessine (AC4)
+
+**Le témoin positif d'abord**, comme exigé — et il est venu du régime **produit**, pas du stimulus
+adverse :
+
+| Synchro du flush | Constat owner, label 1 Hz sur le Living PCB |
+|---|---|
+| `off` | **« des déchirements en plus »** — l'instrument (l'œil) VOIT le déchirement |
+| `vsync` | **plus de déchirement** |
+
+⇒ Le témoin positif est établi, donc le verdict « pas de déchirement en `vsync` » est **recevable**.
+**`vsync` est retenu.** Le mode `off` est **conservé** dans le firmware : c'est la réfutation de
+`vsync`, et une élimination sans son témoin n'est pas une élimination.
+
+Le stimulus adverse LVGL existe (`anim` : barre verticale de 24 px balayant l'écran, 442 flushes
+en 15 s ≈ 29,5/s, CPU 20,3 %) et reste disponible ; il n'a pas eu à être invoqué pour établir le
+témoin, le label ayant suffi.
+
+**Le « résiduel des ~15 % du haut » de dn1-2 n'est PAS reconduit.** Il avait été relevé avec un
+instrument depuis invalidé, et la configuration a changé (rendu partiel, plus de bascule). Il est
+**sans objet ici** — pas reporté, pas confirmé.
+
+### 10.5 🔴 L'ARTEFACT DE REDESSIN LVGL — ouvert, caractérisé, sept hypothèses tuées
+
+**Symptôme, constat owner du 2026-08-15 :** à chaque cycle de rafraîchissement LVGL, **l'image
+entière « clignote, comme un déplacement rapide » le temps d'une trame**. Avec le label à 1 Hz,
+cela se produit une fois par seconde. **AC2 (« la mise à jour du label ne fait ni clignoter ni
+frémir le fond ») n'est donc PAS satisfait.**
+
+**Ce qui est ÉTABLI :**
+
+- **Témoin négatif propre** : LVGL en pause, l'image est **parfaitement stable**. L'artefact est
+  bien lié à l'acte de redessiner.
+- **Indépendant du CONTENU** : LVGL redessinant six fois l'écran entier avec un contenu
+  strictement identique, label masqué, produit le **même artefact**.
+- **Le chemin brut de dn1-2 en est EXEMPT** : `dn_pattern_draw` + `dn_display_present()`
+  redessinant six fois la même image — **614 400 octets, vingt fois plus** que le flush du label
+  — ne produit **rien du tout**.
+
+⇒ **Un défaut qui empire quand on écrit vingt fois moins n'est pas un défaut de bande passante.**
+La contention mémoire, qui était l'explication de départ, est réfutée par son propre témoin.
+
+**Les sept hypothèses éliminées, chacune avec son témoin (AC9) :**
+
+| # | Hypothèse | Témoin joué | Verdict |
+|---|---|---|---|
+| 1 | Phase de la copie dans le balayage | `flush sync off` / `vsync` / `fbdone` | ❌ présent dans tous les modes (avec du déchirement **en plus** en `off`) |
+| 2 | Lecture du fond depuis la flash `mmap` (contention SPI0, §5.3) | `ui bg psram` — copie PSRAM du fond, 614 400 o | ❌ **identique** |
+| 3 | Parcours de cache pleine plage de `draw_bitmap` (614 400 o/flush) | `flush path direct` — 42 240 o resynchronisés | ❌ **identique** |
+| 4 | Débit instantané de la copie | `set lines 8` — 5 rafales de 249 µs au lieu d'une de 1 113 µs, mêmes octets | ❌ **identique** |
+| 5 | Écriture dans le tampon que la DMA balaie | `num_fbs=2` + rendu **direct** — le flush ne fait que basculer, zéro octet copié | ❌ **identique** |
+| 6 | Lectures de code/constantes en flash (483 268 o « map » au bandeau de boot) | branche XIP (`SPIRAM_FETCH_INSTRUCTIONS` + `SPIRAM_RODATA`), fichier `sdkconfig.defaults.xip-lecture-code` | ❌ **identique** — et la réfutation de dn1-2 (§5.3) portait sur les ÉCRITURES ; celle-ci porte sur les LECTURES, et échoue aussi |
+| 7 | Affinité de la tâche LVGL au cœur 1, en face du pipeline d'affichage | `set core 0` — le rendu sur le même cœur que le reste, comme le chemin brut | ❌ **identique** |
+
+**Ce qui reste à explorer, non mesuré :** ce que la tâche LVGL fait et que le chemin brut ne fait
+pas — le tick `esp_timer` à 5 ms, la mécanique de réveil du portage, le motif d'accès du blit de
+LVGL (par lignes avec pas) contre le `memcpy` séquentiel du chemin brut. **Aucune de ces pistes
+n'a été jouée** : l'investigation a été bornée ici, par la consigne de périmètre de la story.
+
+⚠️ **Ce défaut n'est PAS un argument pour le double tampon** : il est identique dans les deux
+configurations (ligne 5 du tableau). Il ne doit donc pas être invoqué pour arbitrer §4 ter.
+
+⇒ **Porté au ledger pour dn1-4**, avec ce tableau. Le terrain est déblayé : sept explications
+plausibles sont mortes, et la prochaine tentative n'aura pas à les rejouer.
+
+### 10.6 Le rétroéclairage gradable (AC7)
+
+GPIO6 passe de `gpio_set_level` à **LEDC** : `LEDC_LOW_SPEED_MODE`, timer 0, canal 0,
+**10 bits (1 024 crans)**, `LEDC_AUTO_CLK`, duty 0 dès l'init, montée après la première trame
+LVGL. `bl 0..100`, `bl on|off` (rétrocompat), `bl ramp <pct> [ms]`, `bl freq <hz>`.
+
+> 🔴 **LE PATTERN DE RÉFÉRENCE D'ESPRESSIF EST DÉMENTI PAR L'OREILLE.**
+> `esp_bsp_generic.c` pose **5 kHz**, et notre première version l'a repris tel quel en écrivant
+> « sifflement inaudible en pratique ». **Mesuré faux sur cette carte** : à 3 % de duty, l'owner
+> **entend** distinctement un sifflement. La phrase venait d'un BSP générique — c'était une
+> prédiction déguisée en acquis.
+> A/B joué à luminosité **strictement constante** (3 %), une seule variable, via `ledc_set_freq`
+> qui reprogramme le diviseur sans toucher au duty :
+> **5 000 Hz → sifflement AUDIBLE · 24 000 Hz → plus rien à l'oreille.**
+> ⇒ **24 kHz retenu comme défaut** (au-dessus de la limite haute de l'audition adulte, ~18 kHz).
+
+| Constat AC7 | Résultat |
+|---|---|
+| Sifflement à duty bas | **supprimé à 24 kHz** (audible à 5 kHz) |
+| Papillotement à 3 % | **présent — mais PAS imputable au rétroéclairage.** Témoin : LVGL mis en pause à luminosité identique, l'image est **parfaitement stable**. C'est l'artefact §10.5, que la basse luminosité rend plus visible |
+| Plancher lisible | **3 % = limite** — le Living PCB et le label s'y distinguent encore, tout juste. C'est le plancher du futur mode Ambient |
+| Rampe 100→10→100 | ⚠️ **CONSTAT NON FAIT** — l'owner n'était pas devant la dalle, deux tentatives. Ce n'est pas « pas de palier », c'est **pas observé**. À rejouer en dn1-4 |
+| `bl 0` vs `disp off` | distincts et documentés dans l'aide : noir contre gris éclairé |
+
+### 10.7 L'observation « textes fins violets » — REPRODUITE
+
+Héritée de dn1-2 sur l'asset v0, elle était à rejouer sur du texte antialiasé LVGL.
+**Constat owner : « oui le texte est violet ».** Le phénomène **se reproduit** sur les jambages
+fins du label (Montserrat 28, blanc sur fond sombre). Explication non exigée par la story, non
+fournie ici. Il n'est donc pas propre au générateur d'asset : c'est la dalle, le sous-pixel, ou
+la conversion RGB565 — à trancher si un jour ça gêne.
+
+---
