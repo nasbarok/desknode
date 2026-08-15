@@ -1,4 +1,4 @@
-## DeskNode P1 — dépendances managées.
+## DeskNode P1/P2 — dépendances managées.
 ##
 ## Versions ÉPINGLÉES (règle héritée de dn1-1 : on ne prend pas « la dernière »,
 ## on prend celle qu'on a vue marcher, et on note ce que le lock a résolu).
@@ -22,3 +22,20 @@ dependencies:
   ## L'expander lui-même, à 0x20. LCD_RST et LCD_CS n'existent pas en GPIO direct
   ## sur cette carte : sans lui, pas d'écran du tout.
   espressif/esp_io_expander_tca9554: "==2.0.3"
+
+  ## ── dn1-3 : la couche UI ──────────────────────────────────────────────────
+  ## LVGL 9.5.0 — dernière stable au 2026-08-15 (sortie le 2026-02-18), vérifiée
+  ## AU REGISTRE, pas dans un article. ⚠️ API v9 : `lv_display_create` /
+  ## `lv_display_set_buffers`. Tout tuto qui parle de `lv_disp_drv_t` ou de
+  ## `lv_disp_draw_buf_init` est du LVGL 8 et ne compilera pas ici.
+  lvgl/lvgl: "==9.5.0"
+
+  ## Le portage Espressif : tick esp_timer, tâche LVGL, mutex, et surtout
+  ## `lvgl_port_add_disp_rgb()` qui prend les handles esp_lcd DÉJÀ créés par
+  ## dn_display — on ne lui laisse pas refaire le bring-up.
+  ## ⚠️ Son option `avoid_tearing` est INUTILISABLE dans notre configuration :
+  ##    elle appelle esp_lcd_rgb_panel_get_frame_buffer(panel, 2, ...) et exige
+  ##    donc num_fbs >= 2, alors que dn1-2 a ARBITRÉ num_fbs=1 (le double tampon
+  ##    ne s'affiche pas sur cette puce sous RESTART_IN_VSYNC=y). D'où le mode
+  ##    partiel + flush synchronisé, voir dn_ui.c.
+  espressif/esp_lvgl_port: "==2.9.0"

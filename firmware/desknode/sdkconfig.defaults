@@ -159,6 +159,47 @@ CONFIG_FREERTOS_RUN_TIME_STATS_USING_ESP_TIMER=y
 #    USB-série sur TX=GPIO43/RX=GPIO44 (115200) pour taper quoi que ce soit.
 CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
 
+# ── LVGL (story dn1-3) ───────────────────────────────────────────────────────
+# Les symboles CONFIG_LV_… viennent du Kconfig de lvgl/lvgl 9.5.0, tiré par
+# main/idf_component.yml. Les trois lignes ci-dessous sont écrites MÊME quand
+# elles reprennent le défaut de LVGL : ce sont celles dont un changement casserait
+# une propriété MESURÉE du socle, et un défaut amont peut bouger d'une version à
+# l'autre sans prévenir.
+
+# C'est DÉJÀ le défaut de LVGL, et on l'écrit quand même : le framebuffer RGB du
+# panneau est en RGB565 (dn_display.c : bits_per_pixel = 16) et l'asset Living PCB
+# est du RGB565 natif non compressé. Tant que LVGL rend dans le même format, le
+# flush est une COPIE ; en 24 ou 32 bits ce serait une CONVERSION par pixel, à
+# chaque rafraîchissement partiel. Le budget de la story (§5.4 : 26,7 ms de trame)
+# ne le supporterait pas.
+CONFIG_LV_COLOR_DEPTH_16=y
+
+# ⚠️ PAS de « swap bytes » : c'est un réglage de bus SPI/I80 (octets envoyés en
+# série). Ici les pixels sont lus par la DMA depuis la PSRAM en 16 bits d'un coup,
+# dans l'ordre natif little-endian. Le flag `swap_bytes` d'esp_lvgl_port reste
+# donc à 0 dans dn_ui.c. Cette ligne n'existe pas : elle est écrite pour qu'on ne
+# l'ajoute pas « par symétrie avec les exemples SPI ».
+
+# Défaut LVGL = 14, illisible sur 480x640 à ~50 cm. 28 est la taille du label
+# vivant d'AC2 ; elle porte aussi l'observation « textes fins clairs violets »
+# héritée de dn1-2, qui demande des jambages FINS et ANTIALIASÉS pour se rejouer.
+CONFIG_LV_FONT_MONTSERRAT_28=y
+
+# ⚠️ CONFIG_LV_USE_PERF_MONITOR est DÉLIBÉRÉMENT ABSENT (défaut n, gardé à n).
+# Il dessine un encart fps/CPU EN PERMANENCE dans un coin de l'écran : il
+# INVALIDERAIT une zone à chaque cycle de rafraîchissement, donc il fabriquerait
+# lui-même le trafic de flush qu'AC3 est censé mesurer. L'instrument serait le
+# stimulus. La mesure passe par les compteurs de `dn_ui.c` (commande `flush`),
+# qui n'affichent rien à l'écran.
+
+# ⚠️ Le tas de LVGL (`lv_malloc`) reste sur l'implémentation intégrée
+# (CONFIG_LV_USE_BUILTIN_MALLOC=y, défaut) : 64 Ko RÉSERVÉS EN STATIQUE dans le
+# .bss de la RAM interne. Conséquence à ne pas se cacher pour AC8 : ce coût-là est
+# INVISIBLE à un avant/après `heap_caps_get_free_size()`, puisqu'il est déjà
+# prélevé au link. C'est pour ça que la commande `ui` imprime `lv_mem_monitor()` :
+# c'est le seul instrument qui dise ce que LVGL consomme RÉELLEMENT dans ces
+# 64 Ko. Ne pas remplacer par LV_USE_CLIB_MALLOC sans re-mesurer les deux.
+
 # ── Confort de diagnostic ────────────────────────────────────────────────────
 # Le bring-up RGB panique (accès cache, DMA affamée). Un backtrace symbolisé
 # vaut une heure de tâtonnement ; `idf.py monitor` fait la symbolisation via
