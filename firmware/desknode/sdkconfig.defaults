@@ -44,11 +44,22 @@ CONFIG_SPIRAM_MODE_OCT=y
 CONFIG_SPIRAM_SPEED_80M=y
 
 # ── Écran RGB ────────────────────────────────────────────────────────────────
-# Défaut IDF = n. Sans ISR en IRAM, le compteur vsync s'ARRÊTE pendant toute
-# écriture flash (cache désactivé) — c'est-à-dire exactement pendant le stimulus
-# d'AC6. L'instrument serait aveugle au moment précis où il doit voir.
-# Contrainte induite : le callback vsync doit être IRAM_ATTR et ne toucher que
-# de la RAM interne.
+# Défaut IDF = n. Retenu, mais ⚠️ EFFET PROPRE NON MESURÉ : conservé PAR
+# PRÉCAUTION, parce que son coût est nul — pas parce qu'un A/B l'a démontré.
+# La raison d'origine est RÉFUTÉE : il avait été activé pour que le compteur
+# vsync continue de tourner pendant les écritures flash d'AC6. Or le compteur
+# est AVEUGLE à ce défaut de toute façon — 37,33 Hz avant le stimulus,
+# 37,45 Hz pendant. Il n'y avait rien à y voir.
+# La raison de remplacement — « sans lui, le décalage devient partiellement
+# irrattrapable » — n'est PAS démontrée non plus : les seules branches mesurées
+# avec `ISR_IRAM_SAFE=n` portaient AUSSI un bounce buffer de 19 200 px, donc
+# DEUX variables changées à la fois, ce qu'AC6 interdit explicitement (« une
+# seule variable à la fois »). La branche « bounce 0, ISR_IRAM_SAFE=n » n'a
+# jamais été jouée, ni ici ni ailleurs dans le dépôt.
+# Décision owner : on ne re-mesure pas, on garde le symbole, et on écrit ici que
+# son effet propre est INCONNU — plutôt que de laisser une justification fausse.
+# Contrainte induite, elle bien réelle : le callback vsync doit être IRAM_ATTR
+# et ne toucher que de la RAM interne.
 CONFIG_LCD_RGB_ISR_IRAM_SAFE=y
 
 # Défaut IDF = n. MESURÉ NÉCESSAIRE ICI, le 2026-08-14, sur cette carte.
@@ -56,14 +67,23 @@ CONFIG_LCD_RGB_ISR_IRAM_SAFE=y
 # un cadrage décalé EN PERMANENCE — coupée en deux, la partie de droite
 # revenant sur la gauche, le carré rouge du coin haut-gauche de la mire se
 # retrouvant vers le milieu de la première ligne.
-# PREUVE que c'est bien ça : un appel manuel à `esp_lcd_rgb_panel_restart()`
-# (commande console `dma`) remet l'image en place d'un coup. Le décalage est
-# donc un décrochage de la DMA au démarrage, pas une erreur de timings ni de
-# brochage.
+# PREUVE que c'est bien ça : SANS ce symbole, un appel manuel à
+# `esp_lcd_rgb_panel_restart()` (commande console `dma`) remet l'image en place
+# d'un coup. Le décalage est donc un décrochage de la DMA au démarrage, pas une
+# erreur de timings ni de brochage.
 # Ce que fait le symbole (Kconfig d'Espressif) : « Reset the GDMA channel every
 # VBlank to stop permanent desyncs from happening. Only need to enable it when
 # in your application, the DMA can't deliver data as fast as the LCD consumes
 # it. » — c'est exactement notre cas : 23,0 Mo/s en continu depuis la PSRAM.
+# ⚠️ CONSÉQUENCE, à ne jamais oublier en lisant une observation : ce symbole
+#    ACTIVÉ rend la commande `dma` INOPÉRANTE. Dans
+#    components/esp_lcd/rgb/esp_lcd_panel_rgb.c:1149-1165,
+#    `lcd_rgb_panel_try_restart_transmission()` pose `do_restart = true` sans
+#    condition sous `#if CONFIG_LCD_RGB_RESTART_IN_VSYNC`, et ne LIT JAMAIS
+#    `panel->flags.need_restart` — le seul bit que `esp_lcd_rgb_panel_restart()`
+#    (ligne 464/472) sait poser. Le redémarrage a déjà lieu à chaque VBlank tout
+#    seul. Tout « le `dma` a remis l'image » relevé SOUS cette configuration
+#    crédite la commande d'un travail qu'elle n'a pas fait.
 CONFIG_LCD_RGB_RESTART_IN_VSYNC=y
 
 # ── Mesure ───────────────────────────────────────────────────────────────────
@@ -72,22 +92,50 @@ CONFIG_LCD_RGB_RESTART_IN_VSYNC=y
 # vTaskDelay(1) vaut 1 ms et la cadence du stimulus est pilotable.
 CONFIG_FREERTOS_HZ=1000
 
-# ── XIP depuis la PSRAM ──────────────────────────────────────────────────────
-# Défaut IDF = n. MESURÉ NÉCESSAIRE ICI, le 2026-08-14.
-# SYMPTÔME sans cette ligne, sous stimulus d'écriture flash (effacement +
-# écriture de secteurs de 4 KiB en boucle, 184 686 o/s soutenus, 45 secteurs/s) :
-# « l'image défile vers la droite EN PERMANENCE ». Ce n'est pas le
-# « scintillement » annoncé par research-paysage.md §4 : c'est bien pire, un
-# décrochage DMA qui se reproduit à chaque secteur et dont le décalage
-# s'accumule.
-# MÉCANISME : sur ESP32-S3 la PSRAM octale et la flash partagent le contrôleur
-# SPI0. Toute opération flash suspend les accès PSRAM, donc le refill de la DMA
-# d'affichage. XIP déplace le code et les données constantes de la flash vers
-# la PSRAM, ce qui supprime la contention pendant l'exécution.
+# Défaut IDF = n. AC6 demande de chiffrer le coût de la configuration retenue en
+# « PSRAM consommée, temps de boot, CHARGE CPU ». Les deux premiers sont mesurés
+# (§5.4 du fichier `hardware/`), la charge CPU ne l'était NULLE PART dans le
+# dépôt. Ce symbole arme `vTaskGetRunTimeStats()`, qu'imprime la commande
+# console `cpu`. Il sélectionne tout seul FREERTOS_USE_TRACE_FACILITY et
+# FREERTOS_USE_STATS_FORMATTING_FUNCTIONS : rien à ajouter pour eux.
+CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS=y
+
+# C'est DÉJÀ le défaut du choice, et on l'écrit quand même : l'autre branche
+# (CONFIG_FREERTOS_RUN_TIME_STATS_USING_CPU_CLK) compterait des CYCLES et non du
+# temps — sa fréquence bouge avec le DFS — et son compteur 32 bits DÉBORDE en
+# ~17 s, moins que la fenêtre d'une observation. L'esp_timer tourne à 1 MHz quoi
+# qu'il arrive et déborde en ~4 290 s.
+# (source : components/freertos/Kconfig, choice FREERTOS_RUN_TIME_STATS_CLK)
+CONFIG_FREERTOS_RUN_TIME_STATS_USING_ESP_TIMER=y
+
+# ── XIP depuis la PSRAM — RÉFUTÉ, donc ABSENT ────────────────────────────────
+# ⚠️ Ce bloc ne justifie AUCUNE ligne : `CONFIG_SPIRAM_XIP_FROM_PSRAM` est
+# DÉLIBÉRÉMENT absent de ce fichier (défaut IDF = n, on le garde à n). Il est
+# écrit ici pour qu'on ne le rajoute pas « au cas où » à la prochaine relecture.
+#
+# SYMPTÔME visé, sous stimulus d'écriture flash (effacement + écriture de
+# secteurs de 4 KiB en boucle, ~184 686 o/s soutenus, ~45 secteurs/s) :
+# « l'image défile vers la droite EN PERMANENCE ». Ce n'est PAS le
+# « scintillement » annoncé par research-paysage.md §4 : c'est un décrochage DMA
+# qui se reproduit à chaque secteur et dont le décalage S'ACCUMULE — un défaut
+# PERMANENT, pas un papillotement. La description mérite d'être gardée telle
+# quelle : c'est elle qui a corrigé la prédiction de la recherche.
+#
+# VERDICT, mesuré le 2026-08-14 sur cette carte : sous stimulus IDENTIQUE,
+# l'image défile EXACTEMENT PAREIL avec XIP et sans XIP. XIP est RÉFUTÉ pour ce
+# défaut.
+# POURQUOI le mécanisme ne s'applique pas — et la nuance est tout le sujet : la
+# PSRAM octale et la flash partagent bien le contrôleur SPI0, mais XIP ne retire
+# de la flash que les LECTURES de code et de constantes. Notre stimulus fait des
+# ÉCRITURES flash explicites, qui bloquent SPI0 de toute façon, XIP ou pas.
+# CE QU'IL AURAIT COÛTÉ pour rien : −342 876 o de PSRAM et +1,6 Ko de binaire.
 # ⚠️ Le compteur vsync ne voit RIEN de ce défaut : le contrôleur LCD garde sa
 #    cadence même affamé, il sort des pixels périmés. Mesuré : 37,33 Hz avant le
 #    stimulus, 37,45 Hz pendant. C'est l'œil qui est l'instrument, pas le fps.
-# CONFIG_SPIRAM_XIP_FROM_PSRAM est laissé à n : voir le verdict ci-dessous.
+# Il n'existe à ce jour AUCUNE parade logicielle à cette contention : la
+# mitigation est architecturale — ne pas écrire en flash pendant l'affichage
+# (décision owner D4, pas d'OTA en V1). Détail : §5.3 de
+# `hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md`.
 
 # ── Console INTERACTIVE sur l'USB ────────────────────────────────────────────
 # Défaut IDF = console primaire sur UART0 (header GPIO43/44), plus une console
@@ -102,8 +150,13 @@ CONFIG_FREERTOS_HZ=1000
 #    comme voie de secours si le bring-up de l'écran perturbait l'USB. Ici,
 #    l'USB devient le chemin UNIQUE.
 #    Pour récupérer le header : remplacer cette ligne par
-#    `CONFIG_ESP_CONSOLE_UART_DEFAULT=y`, `rm sdkconfig && idf.py build`.
-#    On perd alors la console interactive, pas le log.
+#    `CONFIG_ESP_CONSOLE_UART_DEFAULT=y`, puis `rm sdkconfig && idf.py build`.
+#    Ce qu'on récupère : le log repart sur les DEUX chemins (header UART ET USB,
+#    via la console secondaire en sortie seule, exactement comme hello-desknode),
+#    et la console INTERACTIVE se retrouve sur le header — `dn_console.c` monte
+#    un REPL UART par compilation conditionnelle dans cette configuration.
+#    Ce qu'on perd : l'USB ne REÇOIT plus les commandes. Il faut un adaptateur
+#    USB-série sur TX=GPIO43/RX=GPIO44 (115200) pour taper quoi que ce soit.
 CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
 
 # ── Confort de diagnostic ────────────────────────────────────────────────────
