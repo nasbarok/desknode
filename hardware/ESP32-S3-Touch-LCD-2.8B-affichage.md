@@ -1755,3 +1755,33 @@ connectée + serveur WS ; `ESP_ERR_NO_MEM` en variante SPIRAM).
 > revue qui l'a relevé.
 Y sont aussi : le protocole de trame v1, les budgets liaison + donnée live
 (RAM interne **113 247 o**, CPU 0,8 %, fps 37,40 inchangé), et le legs dn2-1.
+
+---
+
+## 13. Les capteurs sur le bus I²C externe — voir le fichier frère (dn2-1, 2026-08-16)
+
+**`ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md`** consigne le branchement du premier
+composant EXTERNE sur ce bus. ⚠️ **Séance en cours : le BME680 n'a pas encore
+répondu** ; le fichier tient l'arbre de diagnostic, quatre hypothèses éliminées
+et le geste qui tranche les deux restantes (souder la barrette du breakout).
+
+🔴 **DEUX CHOSES Y CORRIGENT CE QU'ON CROYAIT, ET ELLES REMONTENT ICI :**
+
+1. **Le brochage du connecteur I²C externe est `GND · 3V3 · SDA · SCL`** — le miroir
+   Spotpear du wiki Waveshare annonçait `GND · 3V3 · **SCL · SDA**`, soit **les deux
+   dernières broches permutées**, sur un « header 2,54 mm » qui est en réalité une
+   **embase JST**. Deuxième fois qu'une source externe se fait corriger sur cette
+   carte, après l'ordre des bits RGB de la §1.1. ⚠️ Une **seconde embase JST
+   identique et adjacente** porte l'UART (`GND · 3V3 · TXD · RXD`) : se tromper
+   d'embase alimente correctement le composant et le laisse muet.
+2. **Deux occupants du bus passent de « déclarés » à MESURÉS** — la **RTC PCF85063
+   répond à `0x51`** (première confirmation qu'elle est vivante, utile à dn3-2 pour
+   la barre heure/date sans réseau) et **l'IMU QMI8658 est à `0x6B`**, pas `0x6A`
+   comme `dn_pins.h` le laissait ouvert. La §1.2 reste exacte, elle gagne deux
+   certitudes.
+
+⚠️ **Ce que la §13 N'AUTORISE PAS à conclure** : la commande `i2c` qu'elle livre
+dure ~26 ms, ce qui est **trop bref pour être un test de la §11.4**. La stabilité
+de l'image sous trafic I²C se mesure en **régime de lecture**, à l'œil, et cette
+mesure-là n'a pas encore eu lieu. **La §0 est INCHANGÉE par dn2-1 à ce stade** —
+et cette phrase-là a été vérifiée ligne à ligne, pas au jugé.

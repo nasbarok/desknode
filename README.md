@@ -28,9 +28,12 @@ firmware/
   desknode/         P1+ — le vrai firmware : écran RGB, mires, mesures, console.
 hardware/   ESP32-S3-Touch-LCD-2.8B-affichage.md  <- LA config d'affichage de
             référence (brochage VÉRIFIÉ, timings, framebuffer, chiffres datés).
-            L'inventaire des breakouts et le câblage viennent en dn2-1.
             ESP32-S3-Touch-LCD-2.8B-liaison-pc.md <- §12, la FOURCHE TRANSPORT
             (dn2-2) : verdict USB série, protocole de trame, budgets liaison.
+            ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md <- §13, LE BUS I²C EXTERNE
+            (dn2-1) : brochage du connecteur MESURÉ (le wiki avait SDA/SCL
+            inversés), les 4 occupants réels du bus, la commande `i2c` et son
+            défaut de faux positifs, l'arbre de diagnostic du BME680.
 assets/     assets graphiques 480×640
   mockups/living-pcb-v0.png   prévisualisation COMMITÉE de l'asset généré
 agent/      dn_agent.py — l'agent PC (Windows), % CPU à 1 Hz (voir § L'agent PC)
@@ -160,7 +163,7 @@ idf.py -p /dev/ttyACM0 flash monitor               # quitter le moniteur : Ctrl+
 - **au DOIGT** (dn1-4) : toucher une case ouvre sa page de détail, le `←` ramène au dashboard ;
 - la **console est interactive** : taper `aide` dans le moniteur liste les commandes. Jeu complet :
   `scene`, `fps`, `bw`, `mem`, `cpu`, `cfg`, `set`, `tear`, `flash`, `ui`, `flush`, `anim`,
-  `touch`, `nav`, `recal`, `bl`, `disp`, `dma`, `pc`, `wifi`, `reboot`, `aide`. `cfg reset` rend
+  `touch`, `nav`, `recal`, `bl`, `disp`, `dma`, `i2c`, `pc`, `wifi`, `reboot`, `aide`. `cfg reset` rend
   les défauts au prochain boot. **C'est `aide` qui fait foi**, pas cette liste. Les commandes de
   dn1-3 et dn1-4 :
 
@@ -182,6 +185,7 @@ idf.py -p /dev/ttyACM0 flash monitor               # quitter le moniteur : Ctrl+
   | **`nav`** · `nav open <0..5>` · `nav back` | navigation dashboard ↔ détail depuis la console. **Refusée si LVGL est en pause** : elle armerait le chronomètre de latence sur un cycle qui n'aura pas lieu |
   | **`nav model rebuild\|screens`** | le **modèle** de navigation, les deux restent jouables. ✅ **`screens` retenu**, re-mesuré le 2026-08-16 dans la config livrée après correction de la fuite : **307,0 ms** de moyenne contre **346,9 ms** pour `rebuild`, soit 39,9 ms (11,5 %) pour +3 032 o de tas LVGL. *(Les anciens 267,9 / 307,7 avaient été relevés à `bounce_px = 0` sur un A/B qui fuyait ; ils surestimaient le prix de `screens` de 2,7×.)* |
   | **`nav ab <n>`** | N allers-retours scriptés : latences min/moy/max **et** preuve de non-fuite (RAM interne et PSRAM avant/après) |
+  | **`i2c`** (dn2-1) | le **bus vu de ses adresses** : `i2c` scanne 0x08..0x77, `i2c lire <addr> <reg> [n]` lit un registre (hexa). 🔴 **Chaque adresse trouvée est RE-SONDÉE 5 fois et le résultat publié `n/5`** — un scan à une passe fabrique des faux positifs, et il en a sorti un **à `0x76`, l'adresse du BME680, alors qu'aucun capteur n'était branché** (`hardware/…-capteurs-i2c.md` §13.2). Témoin positif intégré : la commande conclut elle-même sur `0x20`+`0x5D`, et un scan qui ne les voit pas est un instrument cassé. ⚠️ bloque le REPL — donc le transport PC — pendant sa durée (~26 ms) |
   | **`pc`** (dn2-2) | la **liaison PC** : état (VIVANTE / MORTE / jamais reçue), dernière valeur + son âge, compteurs (trames valides, doublons, pertes de seq, **resynchros**, reprises, rejets **par cause** — ⚠️ « tronquée » = la fin de ligne est PERDUE, **« trop longue »** = la ligne est COMPLÈTE mais dépasse 63 o, deux diagnostics opposés), latence acceptation→label. `pc reset` remet les compteurs **et oublie le seq** (sans ça, une campagne relancée avec la trame d'exemple retombait en doublon et mesurait du vide). **`pc $DN,…`** ingère UNE trame — c'est le dialecte de l'agent en branche A, et l'injecteur des campagnes de bruit |
   | **`wifi`** (dn2-2) | la maquette **branche B**, ÉCARTÉE par la fourche (verrou RAM, `hardware/…-liaison-pc.md` §12.2). **Non compilée par défaut** : la commande répond « maquette B non compilee » avec la recette de re-mesure |
   ⚠️ Le log de ce projet ne part **plus** sur le header UART GPIO43/44 : la console primaire est
@@ -677,7 +681,17 @@ et `rst:0x15 (USB_UART_CHIP_RESET)` ; **sans**, 38 o et aucun reboot. Témoin n�
 | Module | Rôle | I²C |
 |---|---|---|
 | ESP32-S3-Touch-LCD-2.8B | carte + écran + tactile (16 MB flash / 8 MB PSRAM, IMU QMI8658, RTC PCF85063, buzzer) | ext. : SCL=GPIO7, SDA=GPIO15 |
-| BME680 | température, humidité, pression, VOC | 0x76/0x77 |
-| BH1750 | luminosité ambiante | 0x23 |
-| VL53L0X | proximité / présence | 0x29 |
-| INA219 | tension / courant / puissance | 0x40 |
+| BME680 | température, humidité, pression, VOC | 0x76/0x77 — ⚠️ **pas encore vu sur le bus**, voir `hardware/…-capteurs-i2c.md` §13.5 |
+| BH1750 | luminosité ambiante | 0x23 — non branché (dn4-1) |
+| VL53L0X | proximité / présence | 0x29 — non branché (dn4-1) |
+| INA219 | tension / courant / puissance | 0x40 — non branché (dn4-1) |
+
+**Occupants du bus MESURÉS le 2026-08-16** (scan stable `5/5`, ~20 passes) : `0x20` TCA9554 ·
+**`0x51` PCF85063 — la RTC est vivante, première confirmation** · `0x5D` GT911 ·
+**`0x6B` QMI8658 — et c'est `0x6B`, pas `0x6A`**.
+
+🔴 **Le connecteur I²C externe est une EMBASE JST, sérigraphiée `GND · 3V3 · SDA · SCL`.** Le
+miroir Spotpear du wiki Waveshare annonçait `GND · 3V3 · SCL · SDA` sur un « header 2,54 mm » :
+**deux erreurs dans la même ligne**. ⚠️ Une **seconde embase JST identique** juste à côté porte
+l'UART (`GND · 3V3 · TXD · RXD`) — se tromper d'embase alimente correctement le composant et le
+laisse muet. Détail et symptômes : `hardware/…-capteurs-i2c.md` §13.1.
