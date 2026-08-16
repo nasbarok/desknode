@@ -28,14 +28,26 @@ bout** (35/35 trames, image stable à l'œil) — c'est la RAM qui la tue, pas l
 
 ### Le déroulé mesuré de la RAM interne (config WiFi par défaut)
 
-| Étape | RAM interne libre | Delta |
-|---|---:|---:|
-| dn1-4, baseline (firmware sans réseau) | 118 575 o | — |
-| Binaire dn2-2 avec pile LIÉE, avant tout init | 65 095 o | **−53 480 o (au LINK, en `.bss`)** |
-| `esp_wifi_init()` + `esp_wifi_start()` | 25 259 o | −39 800 o |
-| CONNECTÉE (tampons RX vivants) | 14 463 o | −10 800 o |
-| + serveur WebSocket (`httpd_start`) | **6 407 o** | −7 928 o |
-| Sous churn de reconnexion (client mort) | **3 795 o** | — |
+| Étape | RAM interne libre | Delta annoncé par l'instrument | Delta de la colonne |
+|---|---:|---:|---:|
+| dn1-4, baseline (firmware sans réseau) | 118 575 o | — | — |
+| Binaire dn2-2 avec pile LIÉE, avant tout init | 65 095 o | **−53 480 o (au LINK, en `.bss`)** | −53 480 |
+| `esp_wifi_init()` + `esp_wifi_start()` | 25 259 o | −39 800 o | −39 836 |
+| CONNECTÉE (tampons RX vivants) | 14 463 o | −10 800 o | −10 796 |
+| + serveur WebSocket (`httpd_start`) | **6 407 o** | −7 928 o | −8 056 |
+| Sous churn de reconnexion (client mort) | **3 795 o** | — | — |
+
+> ⚠️ **LES DEUX COLONNES DE DELTA NE SE RÉCONCILIENT PAS, ET C'EST NORMAL — mais ça
+> n'était pas écrit** (correctif de la revue de code du 2026-08-16, qui l'a relevé au
+> centime : écarts de 36, 4 et **128** octets). Ce sont **deux instruments distincts**,
+> lus à des instants distincts : la colonne « RAM interne libre » vient de la commande
+> `mem` de la console, la colonne « Delta annoncé » des `printf` de `imprimer_mem()`
+> dans `dn_wifi.c` (`:151-153`, `:267-270`), pris **à l'intérieur** de `dn_wifi_on()` /
+> `dn_wifi_ws_on()` — donc avant que les allocations transitoires de la séquence soient
+> retombées. Présentées côte à côte sans cette phrase, elles se lisaient comme une chaîne
+> d'étapes qui ne peut pas être vraie : une étiquette qui ment au sens du §13.
+> **Le verdict, lui, ne dépend d'aucun des deux deltas** : il tient au chiffre ABSOLU de
+> 6 407 o (3 795 sous churn) face à la réserve DMA de 32 768 o.
 
 ⇒ La réserve DMA de 32 768 o est **violée de fait** dès la connexion. À 6 407 o
 libres, le premier `malloc` interne un peu gourmand (un `set bounce`, une trace,
@@ -53,8 +65,19 @@ dn3 et dn4-1.**
 
 - **Verrou 2 (l'image)** : STABLE à l'œil de l'owner sous trafic WebSocket réel
   (témoin positif : 35 messages comptés + case CPU vivante à l'écran pendant le
-  constat). Le bounce buffer tient donc aussi contre le trafic WiFi — mais ce
-  constat ne sauve pas la branche.
+  constat). ⚠️ **ET C'EST TOUT CE QUE ÇA DIT** (correctif de la revue de code du
+  2026-08-16). La phrase d'origine — « *le bounce buffer tient donc aussi contre le
+  trafic WiFi* » — était une **généralisation que le stimulus ne porte pas** : 35
+  messages de ~30 octets à 1 Hz, c'est **~30 o/s**, quand le BONUS §5.3 de cette
+  MÊME story établit que le régime qui fait défiler l'image est **165 343 o/s
+  soutenus**, soit ~5 500× plus. Le témoin positif prouve que **les trames
+  arrivent**, pas que **le bus est sollicité** : c'est exactement le piège que le
+  §13 nomme (« cet instrument PEUT-IL voir le défaut qu'il prétend exclure ? »).
+  ⇒ **Ce qui est établi** : sous CE régime, rien vu à l'œil. **Ce qui ne l'est
+  pas** : la tenue du bounce sous un trafic WiFi soutenu — non joué. La branche
+  étant écartée sur la RAM, la question reste **ouverte** et ne coûte rien
+  aujourd'hui ; elle redevient un prérequis si B revient. Même prudence pour la
+  phrase jumelle d'AC3 sur le trafic USB 1 Hz (§12.3).
 - **Verrou 3 (écriture flash)** : CONSTATÉ au premier `esp_wifi_start()`, dalle
   allumée : `W phy_init: failed to load RF calibration data (0x1102), falling back
   to full calibration` puis `I phy_init: Saving new calibration data due to checksum
@@ -90,6 +113,28 @@ Régime 1 Hz mesuré sur 45 s : **49,3 o/s, 1,09 lignes/s** ajoutés au flux con
 (écho de la commande + invite ; le battement 10 s compte pour ~0,1 ligne/s).
 Reproductible : 42,3-49,3 o/s sur 5 sessions. Le log reste lisible — une trame
 acceptée n'imprime RIEN (silence = succès, doctrine du REPL).
+
+⚠️ **Ce chiffre est un PLAFOND, pas la contribution propre du régime 1 Hz** (précision
+de la revue du 2026-08-16) : le drain de l'agent est aveugle et ramasse aussi le
+battement 10 s **et tout `ESP_LOGx` émis par n'importe quel module**.
+
+> 🔴 **LE TROISIÈME COÛT DE LA COHABITATION 1, QUI N'AVAIT PAS ÉTÉ CHIFFRÉ : l'HISTORIQUE
+> de la console est noyé en 32 secondes.** Trouvé par la revue de code du 2026-08-16.
+> `dn_console.c` démarre le REPL avec `ESP_CONSOLE_REPL_CONFIG_DEFAULT()`, qui pose
+> `.max_history_len = 32` (`esp-idf/components/console/esp_console.h:67`), et la boucle
+> du REPL appelle `linenoiseHistoryAdd(line)` **pour chaque ligne reçue**
+> (`esp_console_common.c:246`). La déduplication de linenoise ne compare qu'à l'entrée
+> précédente : le `seq` changeant à chaque trame, **elle ne mord jamais**.
+> ⇒ **Deux effets mesurables, tous deux à demeure** : (1) à 1 Hz, les 32 entrées
+> d'historique sont **intégralement remplacées par des `pc $DN,…` en 32 s** — la flèche
+> haut ne rend plus aucune commande humaine tant qu'un agent tourne, sur une console
+> dont c'est le seul confort d'usage ; (2) **un `malloc(~40 o)` + un `free` par seconde,
+> en continu**, sur les 113 247 o de RAM interne — le régime H24 que dn4-1 vise.
+> ⇒ **Décision owner (2026-08-16) : on l'ÉCRIT, on ne corrige pas.** La boucle qui
+> appelle `linenoiseHistoryAdd` est **interne à l'IDF** (on ne la contrôle pas sans
+> réécrire le REPL), et `max_history_len = 0` supprimerait aussi l'historique de
+> l'opérateur humain — le remède serait pire. **C'est un coût assumé de « le transport
+> EST le REPL », légué à dn4-1** (quand l'agent devient permanent, il tourne H24).
 
 ### Cohabitation 2 — avec `dn_console.py` : l'exclusion marche, et elle est VOULUE
 
@@ -169,7 +214,7 @@ CMakeLists + `CONFIG_HTTPD_WS_SUPPORT=y` (et `CONFIG_ESP_PHY_CALIBRATION_AND_DAT
 ## 12.5 Le protocole de trame (v1) — l'autorité est l'en-tête de `dn_link.h`
 
 ```
-$DN,<ver>,<seq>,<t_ms>,cpu,<dixiemes>*<CK>      ex. $DN,1,42,123456,cpu,153*29
+$DN,<ver>,<seq>,<t_ms>,cpu,<dixiemes>*<CK>      ex. $DN,1,42,123456,cpu,153*47
 ```
 
 XOR NMEA entre `$` et `*`, hex MAJUSCULES. Entiers seuls (doctrine `parse_entier`,
@@ -185,15 +230,31 @@ l'owner : arrêt propre ET kill brutal ⇒ « -- » ; relance ⇒ la case revit 
 reboot** en ≤ 2 s (1 s de fenêtre d'échantillonnage agent + ≤ 250 ms de poussée +
 premier envoi). 4 reprises comptées en session de clôture.
 
+> ⚠️ **CE QUE LE SECOND TÉMOIN D'AC7 PEUT ÊTRE SUR CE TRANSPORT — et ce qu'il ne peut
+> PAS être** (précision de la revue du 2026-08-16). AC7 demande deux témoins : « agent
+> arrêté proprement, **et** câble/WiFi coupé brutalement ». Sur la branche retenue, les
+> deux ont été joués sous la forme **arrêt propre** (`--duree`) et **kill brutal du
+> processus** (l'agent tué net, le port reste ouvert côté carte). 🔴 **Le témoin
+> « câble débranché » est, lui, PHYSIQUEMENT INATTEIGNABLE en branche A : le même câble
+> USB alimente la carte.** Le débrancher n'éteint pas la liaison, il éteint DeskNode —
+> il n'y a plus d'écran pour afficher quoi que ce soit d'honnête. Ce n'est pas un trou de
+> preuve, c'est une **propriété de la fourche retenue**, et elle doit être écrite là où
+> le verdict l'est. ⇒ **Ce qui reste ouvert pour dn4-1** : l'alimentation « PC éteint »
+> (port USB toujours alimenté par réglage BIOS/carte-mère, ou alim séparée) est la
+> question qui rend ce témoin jouable — et elle est déjà léguée en §12.4.
+> ⚠️ Le compteur `reprises` qui publie « 4 » ci-dessus a par ailleurs été corrigé en
+> revue (il sur-comptait quand le verrou LVGL était occupé) : **le chiffre est à
+> re-relever** à la prochaine session carte.
+
 ## 12.6 Les budgets avec liaison + donnée live (firmware final, 2026-08-16)
 
 | Mesure | dn1-4 | dn2-2 final | Delta |
 |---|---:|---:|---|
 | RAM interne libre | 118 575 o | **113 247 o** | −5 328 o (tâche dn_link 4096 + TCB + tampons) |
 | PSRAM libre | 7 768 608 o | 7 768 536 o | −72 o |
-| Tas LVGL (`lv_mem_monitor`) | 15 216 o (25 %) | **15 228 o (25 %)**, frag 1 % | +12 o (label case CPU) |
+| Tas LVGL (`lv_mem_monitor`) | 15 216 o (25 %) | **15 228 o (25 %)**, frag 1 % | +12 o — ⚠️ **PAS un label ajouté** : dn2-2 n'en crée aucun, le label de valeur de la case existait en dn1-4. C'est son **tampon de texte** qui change de taille (« 42 % » → « 100,0 % » / « -- »). Étiquette corrigée en revue |
 | Binaire | 790 736 o | **795 504 o** | +4 768 o (dn_link + pc + stubs) |
-| CPU repos, trafic 1 Hz | 0,9 % (sans trafic) | **0,8 %** | le trafic 1 Hz est invisible au 0,1 pt près |
+| CPU repos, trafic 1 Hz | 0,9 % (sans trafic) | **0,8 %** | le trafic 1 Hz est invisible au 0,1 pt près (la valeur est même SOUS la baseline : c'est du bruit de mesure, pas un gain). ⚠️ **Régime de la mesure, à écrire** : `cpu 30` exige la console, et agent ⇄ campagne **alternent** sur le port (§12.3) — le trafic pendant cette mesure venait donc de `dn_console.py`, pas de l'agent Windows. Côté **firmware** le chemin est identique (même `pc $DN,…`, même `dn_link`, même `dn_ui`), donc le chiffre vaut ; ce qu'il ne mesure pas, c'est le PC |
 | `fps` | 37,40 Hz | **37,40 Hz (+0,01 %)** | — ⚠️ le fps reste AVEUGLE au défaut §11.4, le constat est l'œil |
 | Flush en régime 1 Hz | (label dn1-3 : 15 892 px, 5,17 %, 1 169 µs) | **4 611 px/cycle (1,50 %), 1,0 flush/cycle, 245 µs** | écart EXPLIQUÉ : le label de la case CPU est ~3,4× plus petit que le label central de dn1-3 |
 | Latence acceptation→label | — | **n=107 : min 1 / moy 159 / max 250 ms** | dominée par la période de poussée (250 ms) |

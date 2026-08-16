@@ -1740,7 +1740,18 @@ code), sauf les lignes marquées comme antérieures.
 **`ESP32-S3-Touch-LCD-2.8B-liaison-pc.md`** consigne la fourche transport et son
 verdict : **USB série (branche A), par la console REPL** — la branche B (WiFi
 WebSocket) est éliminée par BLOCAGE MESURÉ du verrou RAM interne (6 407 o restants
-connectée + serveur WS ; `ESP_ERR_NO_MEM` en variante SPIRAM). La §0 ci-dessus est
-INCHANGÉE par dn2-2 : la branche retenue ne touche ni l'affichage ni son sdkconfig.
+connectée + serveur WS ; `ESP_ERR_NO_MEM` en variante SPIRAM).
+
+> 🔴 **CE QUE dn2-2 A CHANGÉ DANS LA §0, ET IL FAUT LE DIRE ICI** (correctif de la revue
+> de code du 2026-08-16). Cette ligne affirmait « *La §0 ci-dessus est INCHANGÉE par
+> dn2-2* » — **c'était faux**, et le Debug Log T5 de la story répétait l'affirmation
+> pendant que son BONUS disait le contraire. dn2-2 a bel et bien ajouté à la §0 l'encart
+> « **JOUÉE LE 2026-08-16, ET LA RÉPONSE EST NON** » : le bounce buffer **ne protège pas**
+> des écritures flash. Ce qui est **inchangé**, c'est la **configuration** de référence
+> elle-même (paramètres d'affichage et `sdkconfig` : la branche transport retenue n'y
+> touche pas) — pas le texte de la §0, dont la conclusion ouverte a été **fermée par la
+> mesure**. ⚠️ C'est la **troisième** story de suite qui produit un écart à cet endroit
+> précis ; l'AC9 le nomme (« vérifier ligne à ligne, pas au jugé »), et c'est encore la
+> revue qui l'a relevé.
 Y sont aussi : le protocole de trame v1, les budgets liaison + donnée live
 (RAM interne **113 247 o**, CPU 0,8 %, fps 37,40 inchangé), et le legs dn2-1.

@@ -346,8 +346,17 @@ bool dn_ui_label_shown(void);
  * false si le verrou n'a pas pu être pris — RIEN n'a alors été modifié et
  * l'appelant doit retenter. Sûre quel que soit l'écran chargé : en SCREENS le
  * label du dashboard est mis à jour même sous la vue détail ; en REBUILD le
- * texte est conservé et posé à la prochaine construction. */
-bool dn_ui_cpu_maj(int dixiemes, bool valide);
+ * texte est conservé et posé à la prochaine construction.
+ *
+ * `label_pose` (optionnel, peut être NULL) rend true UNIQUEMENT si le texte a
+ * atteint un label VIVANT sur une UI qui tourne. ⚠️ Il est distinct de la valeur
+ * de retour, et c'est un correctif de revue (2026-08-16) : la valeur de retour
+ * pilote le RETRY de l'appelant (false = verrou occupé, réessayer), `label_pose`
+ * pilote la MESURE (n'a-t-on chronométré qu'un geste réellement accompli ?).
+ * Les confondre donnait soit une latence mesurée sur des poussées sans label
+ * (REBUILD vue détail ⇒ pointeur NULL, ou LVGL arrêté par `ui off`/`scene`/`tear`),
+ * soit une boucle qui retente sans fin et sur-compte les reprises. */
+bool dn_ui_cpu_maj(int dixiemes, bool valide, bool *label_pose);
 
 /* Stimulus adverse d'AC4 : une barre verticale qui balaie l'écran. */
 esp_err_t dn_ui_anim(bool on, int periode_ms);

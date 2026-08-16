@@ -295,8 +295,22 @@ void app_main(void)
      * mentir dès le boot, les 5 autres restent factices jusqu'à dn3/dn4-1.
      * ⚠️ Le WiFi (branche B) ne démarre PAS ici : `wifi on` à la console — la
      * calibration PHY écrit en NVS (verrou 3), ce geste reste un choix, pas un
-     * effet de bord du boot. */
-    ESP_ERROR_CHECK(dn_link_init());
+     * effet de bord du boot.
+     *
+     * 🔴 NON FATAL, ET C'EST DÉLIBÉRÉ (correctif de revue 2026-08-16). C'était un
+     * ESP_ERROR_CHECK, AVANT le démarrage de la console. Or le seul mode d'échec
+     * réaliste de dn_link_init est l'échec de xTaskCreate, c'est-à-dire la pénurie
+     * de RAM interne — le sujet même de cette story. Avec
+     * CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT=y, l'abort produisait EXACTEMENT le
+     * « troisième état » que cette story vient d'ajouter au README : ni console,
+     * ni flash, RESET physique obligatoire. Un module optionnel (une case du
+     * dashboard) ne doit pas pouvoir briquer le seul outil de diagnostic. */
+    esp_err_t err_link = dn_link_init();
+    if (err_link != ESP_OK) {
+        ESP_LOGE(TAG, "⛔ liaison PC ABSENTE (%s) — la case CPU restera « -- ». "
+                      "Le reste du firmware et la console démarrent normalement.",
+                 esp_err_to_name(err_link));
+    }
 
     /* 9. La console. */
     ESP_ERROR_CHECK(dn_console_start());

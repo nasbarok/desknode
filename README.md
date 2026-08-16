@@ -182,7 +182,7 @@ idf.py -p /dev/ttyACM0 flash monitor               # quitter le moniteur : Ctrl+
   | **`nav`** · `nav open <0..5>` · `nav back` | navigation dashboard ↔ détail depuis la console. **Refusée si LVGL est en pause** : elle armerait le chronomètre de latence sur un cycle qui n'aura pas lieu |
   | **`nav model rebuild\|screens`** | le **modèle** de navigation, les deux restent jouables. ✅ **`screens` retenu**, re-mesuré le 2026-08-16 dans la config livrée après correction de la fuite : **307,0 ms** de moyenne contre **346,9 ms** pour `rebuild`, soit 39,9 ms (11,5 %) pour +3 032 o de tas LVGL. *(Les anciens 267,9 / 307,7 avaient été relevés à `bounce_px = 0` sur un A/B qui fuyait ; ils surestimaient le prix de `screens` de 2,7×.)* |
   | **`nav ab <n>`** | N allers-retours scriptés : latences min/moy/max **et** preuve de non-fuite (RAM interne et PSRAM avant/après) |
-  | **`pc`** (dn2-2) | la **liaison PC** : état (VIVANTE / MORTE / jamais reçue), dernière valeur + son âge, compteurs (trames valides, doublons, pertes de seq, reprises, rejets **par cause**), latence acceptation→label. `pc reset` remet les compteurs. **`pc $DN,…`** ingère UNE trame — c'est le dialecte de l'agent en branche A, et l'injecteur des campagnes de bruit |
+  | **`pc`** (dn2-2) | la **liaison PC** : état (VIVANTE / MORTE / jamais reçue), dernière valeur + son âge, compteurs (trames valides, doublons, pertes de seq, **resynchros**, reprises, rejets **par cause** — ⚠️ « tronquée » = la fin de ligne est PERDUE, **« trop longue »** = la ligne est COMPLÈTE mais dépasse 63 o, deux diagnostics opposés), latence acceptation→label. `pc reset` remet les compteurs **et oublie le seq** (sans ça, une campagne relancée avec la trame d'exemple retombait en doublon et mesurait du vide). **`pc $DN,…`** ingère UNE trame — c'est le dialecte de l'agent en branche A, et l'injecteur des campagnes de bruit |
   | **`wifi`** (dn2-2) | la maquette **branche B**, ÉCARTÉE par la fourche (verrou RAM, `hardware/…-liaison-pc.md` §12.2). **Non compilée par défaut** : la commande répond « maquette B non compilee » avec la recette de re-mesure |
   ⚠️ Le log de ce projet ne part **plus** sur le header UART GPIO43/44 : la console primaire est
   passée sur l'USB pour pouvoir RECEVOIR des commandes. Pour retrouver le header, voir le
@@ -267,6 +267,14 @@ l'application ne tourne pas.
 > de survie fausse le jour où on en a besoin. ⚠️ L'AC9 de dn1-4 demandait cette
 > re-vérification ; elle avait été faite pour le bloc « voie A » et **pas tracée
 > ici** — c'est la revue qui l'a relevé.
+> 🔴 **RE-VÉRIFIÉE INCHANGÉE par dn2-2** (2026-08-16, revue de code) : le
+> `vTaskDelay(10000)` du battement de `desknode_main.c` n'a **pas** bougé, et dn2-2
+> n'ajoute **aucune impression spontanée** — une trame acceptée est silencieuse
+> (doctrine du REPL), seuls l'écho et l'invite passent sur le fil. La durée d'écoute
+> ci-dessous reste donc valable telle quelle. ⚠️ Et l'histoire s'est répétée : dn2-2
+> avait coché sa tâche AC9 sans poser cette trace — **deux stories de suite**, relevé
+> par la revue les deux fois. C'est le mémo trois lignes plus haut qui aurait dû
+> l'éviter.
 > Écouter 6 s sur une carte parfaitement saine rend donc **0 octet** — et diagnostique une carte
 > muette qui va très bien. C'est un faux positif qui envoie dérouler une recette de déblocage
 > pour rien, sur une carte qu'on va inutilement remettre en mode download.
@@ -364,16 +372,18 @@ $B  = '\\wsl.localhost\Ubuntu\home\nasbarok\projects\desknode\firmware\desknode\
 > `CMakeLists.txt`) : **il n'apparaît nulle part dans la commande**, et c'est
 > précisément pour ça qu'on l'oublie en passant à la voie A.
 
-> **Vérifié inchangé par dn1-3 (2026-08-15), RE-VÉRIFIÉ par dn1-4 (2026-08-16).**
-> Ce bloc a été relu contre le livrable des deux stories : la table de partitions
+> **Vérifié inchangé par dn1-3 (2026-08-15), RE-VÉRIFIÉ par dn1-4 (2026-08-16), puis
+> par dn2-2 (2026-08-16, revue de code).**
+> Ce bloc a été relu contre le livrable des trois stories : la table de partitions
 > n'a pas bougé (l'app fait toujours 4 MiB à `0x10000`, `assets` toujours 1 MiB à
 > `0x410000`), et l'asset non plus (`tools/gen_living_pcb.py` n'a pas été touché).
 > **Les quatre offsets restent exacts.** LVGL fait passer `desknode.bin` de
-> 377 664 à ~740 400 o, et le tactile + la navigation de dn1-4 à **790 736 o** (dont +7 936 o de
-> correctifs de revue), ce
-> qui tient largement — mais c'est bien le genre de croissance qui finirait par
-> obliger à revoir la table, et c'est pour ça qu'on le note ici plutôt que de
-> supposer que « ça n'a pas dû changer ».
+> 377 664 à ~740 400 o, le tactile + la navigation de dn1-4 à **790 736 o** (dont
+> +7 936 o de correctifs de revue), et la liaison PC de dn2-2 à **796 240 o**
+> (`dn_link` + `pc` + stubs `dn_wifi` + les correctifs de revue) — soit **81 % de la
+> partition encore libre**. Ça tient largement — mais c'est bien le genre de croissance
+> qui finirait par obliger à revoir la table, et c'est pour ça qu'on le note ici plutôt
+> que de supposer que « ça n'a pas dû changer ».
 >
 > ⚠️ **dn1-4 a en revanche touché la NVS**, et il faut le savoir avant de dépanner :
 > une valeur de `set bounce` trop grande, ou incompatible avec le build, peut
@@ -599,10 +609,25 @@ tour, **sans élévation, sans driver, sans .NET** (le Ring0/température est dn
 ```powershell
 $py = "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe"
 & $py \\wsl.localhost\Ubuntu\home\nasbarok\projects\desknode\agent\dn_agent.py --serie COM3
-#  --temoin     imprime son propre coût CPU toutes les 10 s (mesuré : 0,23 % d'un cœur)
+#  --temoin     imprime son propre coût CPU toutes les 10 s
 #  --duree 60   s'arrête proprement après 60 s (le témoin « arrêt propre » d'AC7)
 #  --stdout     trames à l'écran, sans carte (débogage)
+#  --ws URL     branche B (WiFi WebSocket) — ÉCARTÉE par la fourche, gardée pour une
+#               re-mesure ; sans firmware branche B en face, elle ne sert à rien
 ```
+
+- **Coût propre de l'agent : 0,35 % d'un cœur** (0,022 % machine) — 0,141 s CPU pour
+  40 s de temps mural, 16 cœurs logiques. ⚠️ **La méthode fait partie du chiffre** : c'est
+  le **cumul** `psutil.Process().cpu_times()` rapporté au temps mural, **pas** une fenêtre
+  glissante `cpu_percent()` — une fenêtre de 10 s a une résolution de ~0,16 pt (ticks de
+  15,6 ms) et ne PEUT PAS voir un coût de cet ordre. Le cumul, lui, affine avec la durée
+  (le démarrage domine, la tendance est décroissante). Critère brief « < 1 % » :
+  largement dedans, **première mesure**, soldée en dn4-1. *(Ce README et le tracker
+  annonçaient 0,23 % sans méthode ni source — corrigé par la revue du 2026-08-16 :
+  c'est le chiffre dont la méthode est écrite qui fait foi.)*
+- **Le bilan de fin sort dans TOUS les cas, Ctrl+C compris** : trames émises, erreurs
+  d'envoi, **recalages de cadence**, bruit d'écho console, et les **refus signalés par le
+  firmware** — « n trames émises » ne prouve que n écritures, pas n acceptations.
 
 - **Protocole** : `$DN,1,<seq>,<t_ms>,cpu,<dixiemes>*<CK>`, envoyé en `pc $DN,…` au
   REPL — l'agent parle le dialecte de la console. Autorité : `dn_link.h` et
@@ -616,18 +641,26 @@ $py = "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe"
 L'agent (Windows, COM3) et la boucle WSL (flash + `dn_console.py`) ne coexistent
 JAMAIS — exclusivité usbipd + TIOCEXCL, mesurée. L'alternance :
 
-```bash
-# 1) WSL → Windows (rendre COM3 à l'agent) — 0,3 s :
-powershell.exe -Command "& 'C:\Program Files\usbipd-win\usbipd.exe' detach --busid 3-1"
-# 2) Windows → WSL (reflasher / mesurer) — ~3,1 s :
-cd ~/projects/desknode && ./tools/wsl-attach.sh
-```
-
-🔴 **Tuer les veilleurs `--auto-attach` AVANT le detach** — sinon ils re-attachent la
-carte à WSL en quelques secondes et l'agent trouve un COM3 fantôme :
+🔴 **ÉTAPE 0 — TUER LES VEILLEURS `--auto-attach`, AVANT TOUT LE RESTE.** Sinon ils
+re-attachent la carte à WSL en quelques secondes après le detach, et l'agent trouve un
+COM3 fantôme (`FileNotFoundError`) pendant que l'état usbipd se bloque en « Attached »
+orphelin. *(Ce piège a coûté une heure en session dn2-2 ; l'avertissement était écrit
+APRÈS le bloc de commandes, soit dans l'ordre inverse de l'exécution — corrigé par la
+revue du 2026-08-16.)*
 `ps aux | grep usbip-auto-attach` (WSL) et, côté Windows,
 `Get-CimInstance Win32_Process -Filter "Name='usbipd.exe'"` → `Stop-Process` sur
 ceux dont la ligne de commande contient `auto-attach`.
+
+```bash
+# 1) WSL → Windows (rendre COM3 à l'agent) — 0,3 s :
+powershell.exe -Command "& 'C:\Program Files\usbipd-win\usbipd.exe' detach --busid 3-1"
+# 2) VÉRIFIER que le detach a TENU (les veilleurs ressuscitent en ~2 s) :
+powershell.exe -Command "& 'C:\Program Files\usbipd-win\usbipd.exe' list"
+#    → la ligne 3-1 doit afficher STATE = « Shared », PAS « Attached ».
+#      Si elle est « Attached », un veilleur a survécu : retour à l'étape 0.
+# 3) Windows → WSL (reflasher / mesurer) — ~3,1 s :
+cd ~/projects/desknode && ./tools/wsl-attach.sh
+```
 
 🔴 **DTR/RTS sous Windows** : pyserial les pose à l'ouverture et cette séquence
 **RESET la carte** (croyance « l'USB natif ne reset pas » : vraie depuis Linux

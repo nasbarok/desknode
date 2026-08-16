@@ -1579,8 +1579,11 @@ void dn_ui_label_show(bool on)
     lvgl_port_unlock();
 }
 
-bool dn_ui_cpu_maj(int dixiemes, bool valide)
+bool dn_ui_cpu_maj(int dixiemes, bool valide, bool *label_pose)
 {
+    if (label_pose) {
+        *label_pose = false;
+    }
     if (!lvgl_port_lock(1000)) {
         /* Pas de log ici : l'appelant (tâche dn_link) retente 250 ms plus tard,
          * un LOGE par tentative sous charge noierait la console — le refus se
@@ -1610,6 +1613,14 @@ bool dn_ui_cpu_maj(int dixiemes, bool valide)
                                     s_cpu_valide ? lv_color_white()
                                                  : lv_color_hex(0x9a9a9a),
                                     0);
+        /* ⚠️ `s_active` compte AUSSI (correctif de revue 2026-08-16). Quand LVGL
+         * est arrêté (`ui off`, `scene <mire>`, `tear`), le mutex reste LIBRE et le
+         * texte se pose sans erreur — mais rien n'atteint la dalle. Chronométrer
+         * cette poussée, c'était mesurer un geste qui n'a pas eu lieu : le Trap n°2
+         * de la story appliqué à sa propre instrumentation. */
+        if (label_pose) {
+            *label_pose = s_active;
+        }
     }
     lvgl_port_unlock();
     return true;

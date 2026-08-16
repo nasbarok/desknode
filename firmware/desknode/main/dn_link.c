@@ -36,6 +36,11 @@ static dn_link_compteurs_t s_cnt;
 static int s_valeur = -1;      /* dixièmes de %, -1 = jamais reçu */
 static int64_t s_recu_us = -1; /* esp_timer_get_time() à l'acceptation */
 static uint32_t s_seq;
+/* ⚠️ DISTINCT de `s_recu_us < 0` (correctif de revue 2026-08-16). Le suivi du seq
+ * et l'existence d'une valeur sont deux choses : `pc reset` OUBLIE le seq sans
+ * tuer la liaison en cours, pour qu'une campagne relancée avec la trame d'exemple
+ * du dépôt ne tombe pas en doublon et ne mesure pas du vide. */
+static bool s_seq_connu;
 static uint32_t s_t_ms;
 
 /* Latence acceptation→label posé, alimentée par la tâche, lue par `pc`. */
@@ -83,7 +88,11 @@ bool dn_link_ingest_ligne(const char *ligne)
 {
     size_t len = strlen(ligne);
     if (len > DN_LINK_LIGNE_MAX) {
-        s_cnt.rejets_tronquee++;
+        /* COMPLÈTE mais trop longue — PAS « tronquée ». Diagnostic opposé : ici
+         * l'émetteur envoie plus large (v2, métrique en plus), là le transport a
+         * perdu la fin. Le REPL laisse passer 128 caractères, la plage 64..128
+         * est donc atteignable (correctif de revue 2026-08-16). */
+        s_cnt.rejets_trop_longue++;
         return false;
     }
     if (strncmp(ligne, "$DN,", 4) != 0) {
@@ -174,15 +183,34 @@ bool dn_link_ingest_ligne(const char *ligne)
     }
 
     portENTER_CRITICAL(&s_mux);
-    bool premiere = (s_recu_us < 0);
+    bool premiere = !s_seq_connu;
     if (!premiere && seq == s_seq) {
         portEXIT_CRITICAL(&s_mux);
         s_cnt.doublons++; /* valeur IGNORÉE : rejouer un seq n'est pas une donnée */
         return false;
     }
-    if (!premiere && seq > s_seq + 1) {
-        s_cnt.pertes_seq += seq - s_seq - 1; /* diagnostic — la cadence ne fait pas foi */
+    /* Le trou de seq, en arithmétique NON SIGNÉE et BORNÉE (correctif de revue
+     * 2026-08-16). L'ancien test `seq > s_seq + 1` avait deux défauts atteignables
+     * en UNE commande depuis l'injecteur `pc` : (1) `s_seq + 1` déborde quand
+     * s_seq vaut UINT32_MAX, et toute trame suivante était alors comptée en trou,
+     * pour toujours ; (2) une seule trame à seq géant faisait bondir pertes_seq de
+     * ~4 milliards, rendant illisible le compteur d'une campagne AC2.
+     *
+     * ⚠️ ET CE QU'IL NE FAUT SURTOUT PAS FAIRE : REJETER la trame. Un agent qui
+     * redémarre repart à seq=1, donc en saut ARRIÈRE — la refuser condamnerait la
+     * reprise sans reboot d'AC7, que cette même story vient de prouver. Une trame
+     * dont le checksum, la version et les bornes sont bons EST une donnée : on
+     * l'applique, on ne lui invente pas 4 milliards de pertes, et on compte
+     * l'événement pour qu'il soit lisible.
+     * Non signé ⇒ un saut arrière donne une valeur énorme, donc > SAUT_MAX : les
+     * deux cas (redémarrage, seq fabriqué) tombent au même endroit, et c'est juste. */
+    uint32_t saut = premiere ? 1u : seq - s_seq;
+    if (saut > DN_LINK_SAUT_MAX) {
+        s_cnt.resynchros++; /* nouvelle session d'émetteur — PAS des pertes */
+    } else if (saut > 1u) {
+        s_cnt.pertes_seq += saut - 1u; /* diagnostic — la cadence ne fait pas foi */
     }
+    s_seq_connu = true;
     s_valeur = (int)dixiemes;
     s_seq = seq;
     s_t_ms = t_ms;
@@ -271,14 +299,39 @@ void dn_link_compteurs(dn_link_compteurs_t *out)
                    * deux instants — assumé, comme les autres compteurs du dépôt */
 }
 
+void dn_link_compter_rejet(dn_link_rejet_t cause)
+{
+    /* Les chemins d'AVANT dn_link : le REPL a déjà découpé ou mutilé la ligne.
+     * Sans ces incréments, « chaque cas est COMPTÉ » était faux par omission
+     * (correctif de revue 2026-08-16). */
+    portENTER_CRITICAL(&s_mux);
+    if (cause == DN_LINK_REJET_TRONQUEE) {
+        s_cnt.rejets_tronquee++;
+    } else {
+        s_cnt.rejets_format++;
+    }
+    portEXIT_CRITICAL(&s_mux);
+}
+
 void dn_link_reset_compteurs(void)
 {
-    memset(&s_cnt, 0, sizeof(s_cnt));
+    /* ⚠️ TOUT sous le verrou (correctif de revue 2026-08-16). Le memset était fait
+     * DEHORS : pendant ces 40 octets, la tâche dn_link (s_cnt.reprises++) et la
+     * tâche du transport (s_cnt.rejets_*++) pouvaient être en lecture-modification-
+     * écriture sur le même champ, depuis l'autre cœur. Résultat possible : un
+     * compteur qui repart à 1 au lieu de 0, ou une valeur d'avant-reset ressuscitée
+     * — une campagne AC2 faussée d'un cran, sans aucun signe. */
     portENTER_CRITICAL(&s_mux);
+    memset(&s_cnt, 0, sizeof(s_cnt));
     s_lat_n = 0;
     s_lat_min = 0;
     s_lat_max = 0;
     s_lat_somme = 0;
+    /* ⚠️ Et on OUBLIE le seq : une campagne relancée juste après avec la trame
+     * d'exemple du dépôt (`$DN,1,42,…`) tombait en doublon si s_seq valait déjà 42,
+     * et la campagne mesurait DU VIDE. La valeur et son horodatage, eux, survivent :
+     * `pc reset` remet les compteurs à zéro, il ne tue pas la liaison en cours. */
+    s_seq_connu = false;
     portEXIT_CRITICAL(&s_mux);
 }
 
@@ -336,16 +389,32 @@ static void tache_lien(void *arg)
         if ((int)etat == etat_pousse && !fraiche) {
             continue;
         }
-        if (etat_pousse == (int)DN_LINK_MORTE && etat == DN_LINK_VIVANTE) {
-            s_cnt.reprises++; /* AC7 : la reprise est un événement compté */
-        }
 
-        if (!dn_ui_cpu_maj(valeur, etat == DN_LINK_VIVANTE)) {
+        /* ⚠️ L'INCRÉMENT DE `reprises` EST APRÈS LA POUSSÉE, PAS AVANT — correctif
+         * de revue (2026-08-16). Il était avant, et `etat_pousse` n'était mis à jour
+         * qu'après le `continue` du verrou occupé : si le verrou LVGL était tenu
+         * > 1 000 ms (cas documenté du dépôt : un plein écran à `lines 8` le tient
+         * ~2,1 s), le tour suivant re-détectait MORTE→VIVANTE et re-comptait. UNE
+         * reprise réelle pouvait être publiée 4 à 9 fois — dans le compteur qui sert
+         * précisément de PREUVE à AC7. */
+        bool etait_morte = (etat_pousse == (int)DN_LINK_MORTE);
+
+        bool label_pose = false;
+        if (!dn_ui_cpu_maj(valeur, etat == DN_LINK_VIVANTE, &label_pose)) {
             continue; /* verrou LVGL non pris : on retentera dans 250 ms */
         }
         etat_pousse = (int)etat;
+        if (etait_morte && etat == DN_LINK_VIVANTE) {
+            s_cnt.reprises++; /* AC7 : la reprise est un événement compté, UNE fois */
+        }
         if (fraiche) {
             seq_poussee = seq;
+        }
+        /* ⚠️ La latence ne se compte QUE si le texte a atteint un label vivant.
+         * Sans `label_pose`, on chronométrait aussi les poussées où le pointeur
+         * était NULL (modèle REBUILD, vue détail ouverte) ou l'UI arrêtée : un
+         * instrument qui ne pouvait pas voir ce qu'il prétendait mesurer. */
+        if (fraiche && label_pose) {
             int64_t lat = esp_timer_get_time() - recu_us;
             portENTER_CRITICAL(&s_mux);
             if (s_lat_n == 0 || lat < s_lat_min) {

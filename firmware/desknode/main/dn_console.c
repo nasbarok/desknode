@@ -2292,7 +2292,13 @@ static int cmd_pc(int argc, char **argv)
     if (argc >= 2 && strncmp(argv[1], "$DN,", 4) == 0) {
         if (argc != 2) {
             /* Une trame contenant un espace a DÉJÀ été coupée par le REPL :
-             * la juger « valide » morceau par morceau serait un mensonge. */
+             * la juger « valide » morceau par morceau serait un mensonge.
+             * ⚠️ ET IL FAUT LA COMPTER (correctif de revue 2026-08-16) : ce
+             * chemin rendait la main sans incrémenter quoi que ce soit, alors que
+             * dn_link.h affirme « chaque cas est COMPTÉ ». Un seul octet corrompu
+             * en 0x20 sur le fil suffisait à faire disparaître des trames pendant
+             * que `pc` affichait 0 valide / 0 rejet. */
+            dn_link_compter_rejet(DN_LINK_REJET_FORMAT);
             printf("trame en %d morceaux — un espace l'a coupee, rejetee\n",
                    argc - 1);
             return 1;
@@ -2302,6 +2308,15 @@ static int cmd_pc(int argc, char **argv)
             return 1;
         }
         return 0;
+    }
+    /* Un « $DN » MUTILÉ avant sa virgule (première moitié d'une trame coupée en
+     * deux, ou octet perdu) : ce n'est plus une trame pour le test ci-dessus, mais
+     * ce n'en est pas moins du bruit de liaison — il tombait dans le message
+     * d'usage, sans compteur (correctif de revue 2026-08-16). */
+    if (argc >= 2 && argv[1][0] == '$') {
+        dn_link_compter_rejet(DN_LINK_REJET_TRONQUEE);
+        printf("debut de trame mutile (« %s ») — tronquee, rejetee\n", argv[1]);
+        return 1;
     }
     if (argc == 2 && strcmp(argv[1], "reset") == 0) {
         dn_link_reset_compteurs();
@@ -2329,14 +2344,20 @@ static int cmd_pc(int argc, char **argv)
 
     dn_link_compteurs_t c;
     dn_link_compteurs(&c);
-    printf("trames     : %u valides · %u doublons · %u pertes seq · %u reprises\n",
+    printf("trames     : %u valides · %u doublons · %u pertes seq · %u resynchros"
+           " · %u reprises\n",
            (unsigned)c.recues, (unsigned)c.doublons, (unsigned)c.pertes_seq,
-           (unsigned)c.reprises);
-    printf("rejets     : tronquee %u · checksum %u · version %u · format %u · "
-           "bornes %u\n",
-           (unsigned)c.rejets_tronquee, (unsigned)c.rejets_checksum,
-           (unsigned)c.rejets_version, (unsigned)c.rejets_format,
-           (unsigned)c.rejets_bornes);
+           (unsigned)c.resynchros, (unsigned)c.reprises);
+    printf("rejets     : tronquee %u · trop longue %u · checksum %u · version %u · "
+           "format %u · bornes %u\n",
+           (unsigned)c.rejets_tronquee, (unsigned)c.rejets_trop_longue,
+           (unsigned)c.rejets_checksum, (unsigned)c.rejets_version,
+           (unsigned)c.rejets_format, (unsigned)c.rejets_bornes);
+    printf("             tronquee = la fin de ligne est PERDUE · trop longue = la\n");
+    printf("             ligne est COMPLETE mais depasse %d o (emetteur elargi)\n",
+           DN_LINK_LIGNE_MAX);
+    printf("             resynchros = saut de seq non credible (agent redemarre,\n");
+    printf("             seq fabrique) : trame APPLIQUEE, pas comptee en pertes\n");
 
     uint32_t n;
     int64_t lmin, lmoy, lmax;
