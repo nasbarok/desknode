@@ -177,10 +177,58 @@ l'ouverture et les relâche à la fermeture — et cette séquence RESET la cart
 session série, « liaison jamais recue ». Parade DANS L'AGENT : `dtr = False`,
 `rts = False` posés AVANT `open()`, plus jamais touchés.
 
+> 🔴 **ET LA PARADE EST WINDOWS-ONLY : SOUS LINUX ELLE PROVOQUE LE RESET QU'ELLE PRÉTEND
+> EMPÊCHER.** Mesuré en session de validation le **2026-08-16**, A/B à **une seule
+> variable** sur `/dev/ttyACM0` :
+>
+> | Branche | Octets reçus à l'ouverture | Reboot ? |
+> |---|---:|---|
+> | **avec** `dtr=False; rts=False` avant `open()` | **6 664 o** | 🔴 **OUI** — `rst:0x15 (USB_UART_CHIP_RESET)` |
+> | **sans** y toucher (comme `dn_console.py`) | **38 o** | non |
+>
+> Témoin négatif béton : `dn_console.py`, qui ne touche **jamais** ces lignes, n'a pas
+> reset la carte de **toute une session de vingt invocations** — les compteurs ont survécu.
+>
+> **Comment ça s'est vu, et ce que ça innocente** : le bruit d'écho d'AC3 remontait à
+> **227-247 o/s** au lieu des 42-49 o/s publiés. L'écart n'était pas du bruit de régime :
+> c'était **le bandeau de boot (~10 Ko) injecté dans la mesure à chaque ouverture**. Parade
+> désactivée sous Linux, trois sessions donnent **47,9 · 48,0 · 49,5 o/s** et **1,09-1,10
+> lignes/s** — soit **exactement la fourchette publiée par dn2-2**. ✅ **Le chiffre d'AC3 est
+> INNOCENTÉ** ; c'est la parade qui le contaminait, pas la mesure qui était fausse.
+>
+> **Correctif** : `dn_agent.py` ne pose DTR/RTS que sous `if sys.platform == "win32"`.
+> ⚠️ **Le côté Windows n'a PAS été re-vérifié** — impossible depuis WSL, `COM3` n'existe pas
+> quand la carte est attachée. La parade y reste posée, là où dn2-2 l'a mesurée nécessaire.
+> **Pour trancher côté Windows** : rejouer le même A/B sur `COM3`, carte détachée de WSL.
+> ⇒ Leçon de méthode : une parade dont on n'a mesuré QUE la disparition du symptôme, sur UNE
+> plateforme, n'est pas une parade établie — c'est une corrélation. Celle-ci était nuisible
+> sur l'autre plateforme depuis le premier jour.
+
 ### Le constat à l'œil
 
 Image **STABLE** sous trafic USB 1 Hz (30 s, 60 s, 45 s de sessions constatées par
 l'owner), case CPU vivante à ~1 Hz, navigation au doigt intacte pendant la réception.
+
+> ✅ **RE-CONSTATÉ SUR LE FIRMWARE REVU — session de validation du 2026-08-16, `058589b`.**
+> L'agent réel (`dn_agent.py --serie`) a poussé **60 trames en 60 s**, valeurs cyclant sur
+> 11,1 → 99,9 % pour que l'œil puisse suivre. Constats owner, dans l'ordre :
+> 1. **État de départ, liaison jamais reçue** : dashboard affiché, case CPU sur **« -- »**,
+>    les 5 autres cases sur leur factice, rétroéclairage fixe, image stable.
+> 2. **Sous trafic** : « je vois bien le cycle » — la valeur suit à ~1 Hz, sans saut ni gel.
+> 3. **À l'arrêt de l'agent** : « -- affiché » — la case retombe, AC7 tenu.
+> 4. **Image STABLE pendant tout le régime**, et **les 5 autres cases n'ont pas bougé**.
+>
+> ⚠️ Le `fps` relevé dans la foulée (**37,34 Hz**) ne participe PAS à ce constat : il est
+> aveugle au défaut §11.4 (37,33 avant / 37,45 pendant que l'image défilait, mesuré en
+> dn1-4). Les quatre points ci-dessus sont des observations de l'owner, pas des déductions.
+>
+> 🔎 **Sur la teinte du « -- »** : l'owner le décrit **vert clair**, là où le code pose un gris
+> neutre `0x9a9a9a`. Ce n'est pas un défaut et il n'y a rien à corriger : les cases sont du
+> noir à `LV_OPA_70` posé sur l'asset **Living PCB**, une image de circuit imprimé donc verte
+> — 30 % du fond transparaît, et un gris peu saturé en traits fins antialiasés en prend la
+> teinte. Le blanc des valeurs valides, plus lumineux, y résiste. AC7 laisse d'ailleurs le
+> rendu libre (« tiret, grisé, mention »). **Écrit ici pour que personne ne re-diagnostique
+> ça** : la doc dit « grisé », la dalle montre vert clair, et les deux sont d'accord.
 
 ## 12.4 Le verdict
 
@@ -250,14 +298,42 @@ premier envoi). 4 reprises comptées en session de clôture.
 
 | Mesure | dn1-4 | dn2-2 final | Delta |
 |---|---:|---:|---|
-| RAM interne libre | 118 575 o | **113 247 o** | −5 328 o (tâche dn_link 4096 + TCB + tampons) |
+| RAM interne libre | 118 575 o | **114 123 o** *(re-relevé après revue, firmware `058589b` ; 113 247 o sur `502f77c`)* | −4 452 o (tâche dn_link 4096 + TCB + tampons) |
 | PSRAM libre | 7 768 608 o | 7 768 536 o | −72 o |
 | Tas LVGL (`lv_mem_monitor`) | 15 216 o (25 %) | **15 228 o (25 %)**, frag 1 % | +12 o — ⚠️ **PAS un label ajouté** : dn2-2 n'en crée aucun, le label de valeur de la case existait en dn1-4. C'est son **tampon de texte** qui change de taille (« 42 % » → « 100,0 % » / « -- »). Étiquette corrigée en revue |
 | Binaire | 790 736 o | **795 504 o** | +4 768 o (dn_link + pc + stubs) |
-| CPU repos, trafic 1 Hz | 0,9 % (sans trafic) | **0,8 %** | le trafic 1 Hz est invisible au 0,1 pt près (la valeur est même SOUS la baseline : c'est du bruit de mesure, pas un gain). ⚠️ **Régime de la mesure, à écrire** : `cpu 30` exige la console, et agent ⇄ campagne **alternent** sur le port (§12.3) — le trafic pendant cette mesure venait donc de `dn_console.py`, pas de l'agent Windows. Côté **firmware** le chemin est identique (même `pc $DN,…`, même `dn_link`, même `dn_ui`), donc le chiffre vaut ; ce qu'il ne mesure pas, c'est le PC |
-| `fps` | 37,40 Hz | **37,40 Hz (+0,01 %)** | — ⚠️ le fps reste AVEUGLE au défaut §11.4, le constat est l'œil |
+| CPU sous trafic 1 Hz | 0,9 % (repos, dn1-4) | 🔴 **1,60 %** (0,89 % au repos, même instrument) | **+0,71 pt — le trafic DOUBLE quasiment la charge.** ⚠️ Le « 0,8 % » publié par le dev était FAUX, et la cause est structurelle : voir l'encart ci-dessous |
+| `fps` | 37,40 Hz | **37,34 Hz (−0,16 %)** *(`058589b`, 448 trames en 12,0 s)* | dans la bande de bruit déjà constatée du dépôt (37,33-37,45 Hz). ⚠️ **Et ça ne prouve RIEN** : le fps est AVEUGLE au défaut §11.4 — mesuré 37,33 avant / 37,45 pendant que l'image défilait. Le seul constat qui compte est l'œil de l'owner |
 | Flush en régime 1 Hz | (label dn1-3 : 15 892 px, 5,17 %, 1 169 µs) | **4 611 px/cycle (1,50 %), 1,0 flush/cycle, 245 µs** | écart EXPLIQUÉ : le label de la case CPU est ~3,4× plus petit que le label central de dn1-3 |
-| Latence acceptation→label | — | **n=107 : min 1 / moy 159 / max 250 ms** | dominée par la période de poussée (250 ms) |
+| Latence acceptation→label | — | **n=45 : min 10 / moy 42 / max 248 ms** *(instrument CORRIGÉ, `058589b`)* | bornée par la période de poussée (250 ms), et le max le retrouve. ⚠️ Le « n=107 : 1/159/250 » du dev vient de l'instrument AVANT correctif, qui comptait aussi des poussées n'ayant posé **aucun** label — enveloppe identique, moyenne non comparable (la phase agent/tâche dérive lentement, 1000 ms et 250 ms étant commensurables) |
+
+> 🔴 **`cpu N` NE PEUT PAS VOIR LE TRAFIC — L'INSTRUMENT EST AVEUGLE À CE QU'IL MESURE.**
+> Trouvé en session de validation le 2026-08-16. `cmd_cpu` prend un instantané, **dort** la
+> fenêtre, puis re-mesure : il **bloque la tâche du REPL**. Or, sur la branche retenue, **le
+> REPL EST LE TRANSPORT**. Pendant `cpu 30`, les trames de l'agent restent donc dans le
+> tampon USB, `dn_link_ingest_ligne()` n'est jamais appelée, aucune poussée n'a lieu, aucun
+> redessin ne se produit. **La mesure décrit le dashboard AU REPOS, quel que soit le trafic
+> envoyé.** C'est ce qui explique l'anomalie que le dev avait notée sans l'expliquer : 0,8 %
+> « sous trafic » **inférieur** aux 0,9 % au repos.
+>
+> **L'instrument qui, lui, peut voir** : les compteurs **CUMULÉS** (`cpu brut`), lus de part
+> et d'autre d'une vraie session d'agent — la mesure ne s'exécute plus *pendant* le trafic.
+> Il se **calibre tout seul** : au repos il retrouve **0,89 %**, soit les 0,9 % de dn1-4.
+>
+> | Régime (45 s, compteurs cumulés) | Charge globale | `taskLVGL` (cœur 0) | `console_repl` | `dn_link` |
+> |---|---:|---:|---:|---:|
+> | Silence, aucune trame | **0,89 %** | 1,06 % | 0,03 % | 0,011 % |
+> | Trafic 1 Hz réel (45 trames) | **1,60 %** | 2,12 % | 0,42 % | 0,098 % |
+> | **Delta** | **+0,71 pt** | +1,06 pt | +0,39 pt | +0,09 pt |
+>
+> ⇒ **Le coût dominant est le REDESSIN LVGL (+0,53 pt de charge globale), pas la liaison.**
+> `dn_link` lui-même est négligeable (+0,04 pt) : ce qui coûte, c'est de repeindre la case à
+> chaque seconde. **Ce que ça change pour dn3** : six cases vivantes au lieu d'une ne
+> coûteront pas 6 × 0,04 pt mais ~6 × 0,53 pt de redessin — c'est le chiffre à budgéter en
+> dn3-2, et il n'était pas sur la table.
+> ⚠️ Cette mesure a été prise depuis WSL, l'agent parlant à `/dev/ttyACM0`. Le régime
+> **firmware** est identique à celui de l'agent Windows (même `pc $DN,…`, même `dn_link`,
+> même `dn_ui`) ; ce que ce chiffre ne mesure pas, c'est le coût **côté PC**.
 
 **Latence bout en bout, composantes DÉCLARÉES** : t(mesure PC) → t(affiché) =
 fenêtre d'échantillonnage agent (≤ 1 000 ms, non instrumentée) + transport série

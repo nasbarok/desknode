@@ -174,8 +174,21 @@ class SortieSerie:
         # n'arrête plus rien, --temoin ne sort plus, et erreurs_envoi reste à 0.
         # Correctif de revue 2026-08-16.
         con.write_timeout = 2
-        con.dtr = False
-        con.rts = False
+        # 🔴 LA PARADE EST **WINDOWS-ONLY**, ET C'EST MESURÉ (session de validation
+        # du 2026-08-16, A/B à une variable sur /dev/ttyACM0) :
+        #   · AVEC `dtr=False; rts=False` avant open()  -> 6 664 o reçus,
+        #     `rst:0x15 (USB_UART_CHIP_RESET)` dans le flux : LA CARTE REDÉMARRE.
+        #   · SANS y toucher                            -> 38 o, aucun reboot.
+        # Autrement dit, sous Linux la parade PROVOQUE exactement le reset qu'elle
+        # prétend empêcher — et `dn_console.py`, qui ne touche jamais ces lignes,
+        # n'a jamais reset la carte de toute une session de vingt invocations.
+        # Elle reste posée sous Windows, où dn2-2 l'a mesurée nécessaire (pyserial
+        # y pose DTR/RTS à l'ouverture et la séquence reset la puce : trois sessions
+        # perdues avant le diagnostic). ⚠️ Le côté Windows n'a PAS été re-vérifié
+        # depuis WSL — impossible, COM3 n'existe pas quand la carte est attachée.
+        if sys.platform == "win32":
+            con.dtr = False
+            con.rts = False
         con.open()
         self._con = con
 

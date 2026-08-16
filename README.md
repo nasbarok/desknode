@@ -662,10 +662,15 @@ powershell.exe -Command "& 'C:\Program Files\usbipd-win\usbipd.exe' list"
 cd ~/projects/desknode && ./tools/wsl-attach.sh
 ```
 
-🔴 **DTR/RTS sous Windows** : pyserial les pose à l'ouverture et cette séquence
-**RESET la carte** (croyance « l'USB natif ne reset pas » : vraie depuis Linux
-seulement). `dn_agent.py` force `dtr=False, rts=False` AVANT `open()` — tout futur
-outil série côté tour doit faire pareil.
+🔴 **DTR/RTS : la parade est WINDOWS-ONLY, et sous Linux elle NUIT.** Sous Windows,
+pyserial pose DTR/RTS à l'ouverture et la séquence **RESET la carte** (dn2-2, trois
+sessions perdues avant le diagnostic) ⇒ `dn_agent.py` force `dtr=False, rts=False`
+AVANT `open()` — **mais uniquement si `sys.platform == "win32"`**.
+⚠️ **Sous Linux, poser ces lignes PROVOQUE le reset qu'elles prétendent empêcher** :
+A/B à une variable sur `/dev/ttyACM0` (2026-08-16) — **avec** la parade, 6 664 o reçus
+et `rst:0x15 (USB_UART_CHIP_RESET)` ; **sans**, 38 o et aucun reboot. Témoin négatif :
+`dn_console.py` n'y touche jamais et n'a pas reset la carte de vingt invocations.
+⇒ **Tout outil série côté WSL ne doit PAS toucher DTR/RTS.** Côté tour, si.
 
 ## Matériel
 
