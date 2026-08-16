@@ -17,22 +17,32 @@ Chaîne : ESP-IDF **v5.5.5** (commit `b774170f`).
 
 C'est la seule chose à lire si on ne lit qu'une chose.
 
-> 🔴 **DEUX LIGNES ONT CHANGÉ LE 2026-08-16, ET ELLES SE TIENNENT.**
-> `bounce_px` passe de **0 à 4 800 px** et `CONFIG_LCD_RGB_ISR_IRAM_SAFE` de **`y`
-> à `n`** — la seconde étant la **condition** de la première, pas un choix
-> indépendant. Motif : **toute transaction I²C pendant que la dalle affiche fait
-> défiler l'image**, défaut que dn1-4 est la première story à pouvoir voir (avant
-> elle, aucune story ne parlait en I²C en fonctionnement). Le même changement
-> **solde l'artefact §10.5**, qui était le legs ouvert de dn1-3. Détail complet
-> en **§11**.
+> 🔴 **QUATRE LIGNES ONT CHANGÉ LE 2026-08-16.** Les trois premières se tiennent :
+> `bounce_px` passe de **0 à 4 800 px**, `CONFIG_LCD_RGB_ISR_IRAM_SAFE` de **`y` à
+> `n`** — la seconde étant la **condition** de la première, pas un choix
+> indépendant — et `draw_lines` de **64 à 128** pour récupérer une partie de la
+> latence que le bounce coûte. La quatrième est le **mode de lecture tactile**,
+> nouveau dans cette table : **`poll`**.
+>
+> Motif des trois premières : **toute transaction I²C pendant que la dalle affiche
+> fait défiler l'image**, défaut que dn1-4 est la première story à pouvoir voir
+> (avant elle, aucune story ne parlait en I²C en fonctionnement). Le même
+> changement **solde l'artefact §10.5**, qui était le legs ouvert de dn1-3. Détail
+> complet en **§11**.
+>
+> ⚠️ **Cet encart a annoncé « DEUX LIGNES » pendant que trois avaient changé**, et
+> la ligne du draw buffer ci-dessous est restée à 64 lignes alors que le code
+> livrait 128. C'est le défaut que la §4 avait DÉJÀ produit en dn1-3, au même
+> endroit et sur la même table — corrigé par la revue de code dn1-4.
 
 | | | justifié par |
 |---|---|---|
 | `num_fbs` | **1** | le double tampon est **réparé** (§4 ter) mais n'apporte **rien de mesuré** : il ne corrige ni le déchirement (c'est la synchro qui le fait) ni l'artefact §10.5, et coûte 614 400 o + une branche Kconfig |
 | **`bounce_px`** | **4 800 px (10 lignes)** ⬅️ *change le 2026-08-16* | la DMA du panneau lit désormais un tampon en **RAM interne** au lieu d'aller chercher la PSRAM : c'est ce qui supprime **à la fois** le défilement sous I²C **et** l'artefact §10.5 (§11.4). Coût : 2 × 9 600 o de RAM interne, **rien au repos** et +1,1 point de CPU en redessin, fps **inchangé** — le vrai prix est **+160 ms de latence** (§11.5) |
 | **`LCD_RGB_ISR_IRAM_SAFE`** | **`n`** ⬅️ *change le 2026-08-16* | **effet propre nul** sur le défilement (branche enfin jouée, §5.3) — mais avec `y` le bounce buffer **panique** au boot. Il est conservé à `n` comme *condition* du bounce, pas pour lui-même |
-| Rendu LVGL | **PARTIEL** | un plein écran demande 10 flushes et ~176 ms d'attente, soit ~5,5 Hz au mieux (§10.3) |
-| Draw buffer | **480 × 64 px (61 440 o), RAM interne DMA** | A/B à aire identique : la PSRAM est **1,70× plus lente** ; le régime produit tient en **un seul flush** à 64 lignes (§10.3) |
+| Rendu LVGL | **PARTIEL** | à 128 lignes, un plein écran demande **5 flushes** (§11.7). ⚠️ Le « 10 flushes et ~176 ms » de §10.3 valait à 64 lignes, et son attente a été **corrigée à 267 ms** par la mesure de §11.5 : elle supposait un rendu négligeable, ce que le dashboard n'est pas |
+| **Draw buffer** | **480 × 128 px (122 880 o), RAM interne DMA** ⬅️ *change le 2026-08-16* | décision owner pendant le dev : 128 lignes récupèrent **120 des 160 ms** que le bounce coûte, contre +61 440 o de RAM interne. Le levier **sature** à 128 — 160 lignes ne donnent plus rien (§11.5). A/B à aire identique : la PSRAM reste **1,70× plus lente** (§10.3) |
+| **Mode de lecture tactile** | **`poll`** ⬅️ *nouveau le 2026-08-16* | verdict AC2 (§11.3). `event` est pourtant **moins cher** (0,5 % contre 0,8 %) : il est écarté sur un symptôme de ROBUSTESSE, pas de coût — `ui off` ne coupe pas le tactile en `event`, l'INT ne bat pas au repos, et l'appui « collé » n'a pas de garde native. Le +0,3 point de CPU est le prix assumé |
 | Synchro du flush | **`vsync`** | témoin positif établi : en `off` l'œil **voit** le déchirement, en `vsync` il disparaît (§10.4) |
 | `RESTART_IN_VSYNC` | **`y`** (livré) | `n` n'est requis que par la branche d'essai du double tampon (§4 ter) |
 | Rétroéclairage | **LEDC 10 bits @ 24 kHz** | 5 kHz **siffle** à duty bas, mesuré à l'oreille (§10.6) |
@@ -303,14 +313,31 @@ I (571) desknode: PSRAM : 8388608 o détectés, mode OCTAL, 80 MHz
 |---|---|---|
 | `num_fbs` | **1** | ⚠️ **ARBITRÉ le 2026-08-15, et c'est un renversement** (valait 2). Le double tampon est **impossible** tant que `RESTART_IN_VSYNC` est activé — et il doit l'être. Repasser à 1 récupère **614 312 o de PSRAM** et rend **toutes** les présentations visibles. Voir §4 bis |
 | `fb_in_psram` | **1** | 614 400 o ne tiennent pas en RAM interne |
-| `bounce_buffer_size_px` | **0** | **éliminé, deux symptômes distincts** (§5.3) |
+| `bounce_buffer_size_px` | **4 800 px** ⬅️ *change le 2026-08-16* | 🔴 **RÉHABILITÉ par dn1-4.** Il avait été « éliminé, deux symptômes distincts » (§5.3) sur un essai où `ISR_IRAM_SAFE=y` le faisait paniquer : les deux options étaient **nouées**, ce qui explique le « watchdog » qui l'avait disqualifié. Il est ce qui supprime la famine DMA sous I²C **et** l'artefact §10.5 (§11.4) |
 | XIP (`SPIRAM_XIP_FROM_PSRAM`) | **désactivé** | **RÉFUTÉ** : défilement identique avec et sans, et coûterait 342 876 o de PSRAM (§5.3) |
 | Bascule d'image | ⛔ **SANS OBJET en `num_fbs=1`** | il n'y a plus qu'un tampon, donc plus de bascule. Le verdict *« attendre `on_frame_buf_complete` »* était mesuré dans une configuration où le double tampon ne fonctionnait pas (§4 bis) : il est **retiré**, pas reporté. La question se reposera en dn1-3, dans les bons termes |
 | Emplacement de l'asset | **partition de données `mmap`ée** | `EMBED_FILES` mettrait 600 Ko en `.rodata`, recopiés en PSRAM si XIP était activé |
 
 Ces valeurs sont les **défauts d'un clone neuf** (`dn_bootcfg.c`) : NVS vierge ⇒
-`num_fbs=1, bounce_px=0, draw_lines=64, draw_psram=0, lvgl_core=0`. Vérifié en
+`num_fbs=1, bounce_px=4800, draw_lines=128, draw_psram=0, lvgl_core=0`. Vérifié en
 effaçant la région NVS puis en rebootant.
+
+> **Corrigé le 2026-08-16 par la revue de code de dn1-4 — LE MÊME DÉFAUT, AU MÊME
+> ENDROIT, POUR LA DEUXIÈME FOIS.** La ligne `bounce_buffer_size_px` annonçait
+> encore **0** et la liste des défauts `bounce_px=0, draw_lines=64`, alors que
+> `dn_bootcfg.c` posait `4800` et `128` depuis le commit `4eb834c` — c'est-à-dire
+> depuis la story qui a écrit cette section. L'encart ci-dessous, rédigé en dn1-3
+> pour le même écart sur `num_fbs`, disait déjà pourquoi c'est grave : *« le
+> fichier d'autorité contredisait le code sur la valeur la plus structurante du
+> pipeline »*. Un encart qui décrit un défaut n'empêche pas de le refaire ; seule
+> une relecture systématique code↔doc le fait.
+>
+> ⚠️ **Garde-fou ajouté au passage** : `bounce_px` et `draw_lines` mangent la même
+> RAM interne, et leurs bornes ne se parlaient pas. `set bounce 38400` — que
+> l'aide de la commande présentait comme « le plafond, un diviseur utile » — ne
+> démarrait plus depuis le passage à 128 lignes : panique au boot, CPU halté, plus
+> de console pour annuler. `set` vérifie désormais le **budget combiné** contre la
+> RAM interne réellement libre.
 
 > **Corrigé le 2026-08-15 (dn1-3).** Ces deux lignes annonçaient encore
 > `num_fbs=2` alors que `dn_bootcfg.c:44` posait `DN_DEFAULT_NUM_FBS 1` depuis
@@ -1364,6 +1391,42 @@ coûte rien au repos. Pendant un contact il pulse fort : **999 IRQ pour 22 appui
 > retenir `event` : `touch reset`, toucher, puis lire le compteur d'IRQ. Un
 > compteur à zéro après un vrai toucher condamne ce mode, quoi qu'affiche l'écran.
 
+#### ✅ VERDICT — `poll` est la configuration de référence (arrêté le 2026-08-16)
+
+Cette section s'est longtemps arrêtée sur « le choix redevient un choix de coût »,
+c'est-à-dire **sans verdict** — alors que l'AC2 exige que le mode écarté le soit
+avec son **symptôme exact**. Le symptôme manquait à la campagne. Il est venu de la
+**revue de code**, et il ne porte pas sur le coût mais sur la robustesse. Trois
+défauts, tous propres au mode `event` :
+
+1. **`ui off` NE COUPE PAS le tactile en `event`.** `lvgl_port_stop()` ne fait que
+   `lv_timer_enable(false)` + arrêter le tick : la tâche LVGL continue de tourner
+   et lit l'indev sur la branche **événementielle**, avant et indépendamment de
+   `lv_timer_handler()`. Conséquence directe et mesurable : des transactions I²C
+   ont lieu **pendant** `ui off` — le stimulus exact de la famine DMA de §11.4 —
+   au milieu d'une mesure `scene`/`tear` que la pause existe pour isoler. Et un
+   tap y produit un vrai `LV_EVENT_CLICKED`.
+2. **L'appui « collé ».** En `event` l'indev n'est relu que sur front : un front de
+   relâchement manqué (après `touch addr`, qui retire l'ISR) laissait LVGL
+   `PRESSED` indéfiniment, et le tap suivant partait sur la case d'origine. Le
+   mode `poll` n'a pas ce trou. *(Corrigé depuis — `lv_indev_reset()` dans le
+   drain — mais c'est une garde qu'il a fallu ajouter, pas une propriété du
+   mode.)*
+3. **Une fenêtre au boot** entre `lvgl_port_add_touch()` et le remplacement du
+   `read_cb`, où toucher la dalle partait en `abort()`. *(Corrigée : le verrou
+   LVGL est désormais pris avant la création de l'indev.)*
+
+Le point 1 est **structurel au portage** : on ne peut pas le corriger sans
+réécrire `esp_lvgl_port`. C'est lui qui tranche.
+
+⇒ **`poll` est retenu**, à +0,3 point de CPU assumé et écrit. `touch mode event`
+reste disponible pour l'A/B à chaud. La ligne « mode de lecture tactile » entre
+dans la configuration de référence §0, où elle manquait.
+
+⚠️ **Ce verdict est une décision de revue, pas une mesure nouvelle** : les chiffres
+de coût ci-dessus n'ont pas bougé, et ils donnent `event` gagnant. C'est
+l'arbitrage qui change de critère, et le dire est la moitié du travail.
+
 ### 11.4 🔴 LE DÉFAUT CENTRAL — l'I²C fait défiler l'image, et le bounce buffer y met fin
 
 **Symptôme, constat owner :** *« l'affichage est archibugué, ça clignote à fond,
@@ -1498,7 +1561,29 @@ RETIRÉ** — `lv_obj_create()` le pose par défaut, et un conteneur scrollable
 **avale le geste** dès que le doigt roule de quelques pixels. C'est exactement le
 défaut « ça marche au centre, pas au bord » que la preuve aux coins doit attraper.
 
-⚠️ **Aucun élément pleine hauteur**, conformément au verdict adverse de §10.4.
+> 🔴 **CETTE SECTION A AFFIRMÉ « AUCUN ÉLÉMENT PLEINE HAUTEUR » — C'EST FAUX, ET
+> LA GARDE §10.4 N'A JAMAIS ÉTÉ CONFRONTÉE.** Corrigé par la revue de code dn1-4.
+>
+> Deux faits que la phrase masquait :
+>
+> - le **voile** décrit juste en dessous fait `480 × 640` (`dn_ui.c`,
+>   `lv_obj_set_size(voile, DN_LCD_H_RES, DN_LCD_V_RES)`) : il est plein écran,
+>   donc pleine hauteur. Il est statique, donc jamais *invalidé* seul — ce qui
+>   atténue le cas, mais ne rend pas la phrase vraie ;
+> - surtout, **chaque transition dashboard↔détail salit l'écran ENTIER** :
+>   « aire cumulée : 614400 px » (§11.5). C'est littéralement la *zone sale pleine
+>   hauteur* que §10.4 déclare **non protégée** par `vsync`. La précaution prise
+>   sur la géométrie des cases (2×3, ~½ largeur × ~⅓ hauteur) est donc contournée
+>   par le régime de navigation lui-même.
+>
+> ⚠️ **Et aucun constat owner de déchirement pendant une transition n'existe** —
+> ni dans la story, ni ici. Les campagnes au doigt ont vérifié *où* le tap ouvre,
+> pas *comment* l'écran se recompose. C'est un **trou de preuve identifié**, pas
+> un verdict : décision owner du 2026-08-16 de le combler par un rejeu en session
+> carte (regarder une transition à l'œil) plutôt que de le laisser en angle mort.
+> dn3-2, qui construira la vraie grille, doit partir du constat, pas de cette
+> phrase.
+
 
 **Lisibilité — constat owner du 2026-08-16** : *« le fond prend trop, il masque les
 détails (des cadres aussi) »*. Le Living PCB est une photo très contrastée. Deux
@@ -1532,7 +1617,7 @@ lvgl_core=0`, lecture tactile `poll`, dashboard affiché, label masqué.
 | `fps` | 37,40 Hz | **37,40 Hz (+0,01 %)** | **inchangé** |
 | PSRAM libre | 7 770 588 o | **7 768 608 o** | −1 980 o |
 | RAM interne libre | 212 015 o | **118 379 o** | −93 636 o : draw buffer 128 lignes (+61 440) et bounce (2 × 9 600) |
-| Binaire | 740 400 o | **782 800 o** | +42 400 o (driver GT911 + tactile + navigation) ; **81 % de la partition libre** |
+| Binaire | 740 400 o | **790 736 o** | +50 336 o (driver GT911 + tactile + navigation + les correctifs de revue) ; **81 % de la partition libre**. ⚠️ 782 800 o était la taille AVANT la revue de code du 2026-08-16 ; les 34 correctifs coûtent +7 936 o |
 
 > ⚠️ **CORRECTION D'ATTRIBUTION, faite en cours de mesure.** Un premier relevé
 > annonçait « CPU 0,8 % → 2,7 % » et mettait tout sur le dos du bounce buffer. Il
@@ -1547,3 +1632,28 @@ lvgl_core=0`, lecture tactile `poll`, dashboard affiché, label masqué.
 **Ce qu'il reste pour dn3** : 118 379 o de RAM interne, 7 768 608 o de PSRAM,
 42 Ko sur les 64 Ko du tas LVGL (33 % utilisés avec les deux écrans du modèle
 `screens`), et 81 % de la partition applicative.
+
+> 🔴 **LE CHIFFRE DU TAS LVGL EST À REJOUER — revue de code du 2026-08-16.**
+> Deux raisons, et elles se cumulent :
+>
+> 1. **L'A/B fuyait.** L'arbitrage du modèle de navigation (`screens` 267,9 ms
+>    contre `rebuild` 307,7 ms) se fait en basculant `nav model`, et ce geste
+>    abandonnait un **arbre d'écran complet** à chaque retour vers `screens` :
+>    `lv_screen_load()` ne détruit pas l'écran sortant, et l'écran créé pour
+>    héberger le mode `rebuild` n'était mémorisé nulle part. Les relevés de tas
+>    (12 016 / 20 064 / 17 684 o) sont donc suspects — et l'écart de 5 668 o entre
+>    deux configurations `rebuild`, qui ne tiennent pourtant qu'UN seul arbre, est
+>    de l'ordre de grandeur d'un écran orphelin. Corrigé dans `build_scene()`.
+> 2. **L'instrument de non-fuite était aveugle.** `nav ab` encadrait la série par
+>    la RAM interne et la PSRAM, alors que le tas LVGL est un pool **statique en
+>    `.bss`** (`LV_MEM_ADR=0`) : aucun `lv_obj_create` n'y passe par
+>    `heap_caps_malloc`. Le « delta exactement 0 octet » publié comme preuve
+>    d'AC4 se serait affiché à l'identique avec une fuite d'un écran par
+>    transition — ce qui était exactement le cas. `nav ab` encadre désormais la
+>    série par `lv_mem_monitor()`, comme l'AC4 le demandait nommément.
+>
+> ⚠️ Et l'arbitrage lui-même a été relevé à **`bounce_px = 0`**, configuration que
+> §11.5 qualifie d'« écran inutilisable ». Décision owner du 2026-08-16 :
+> **re-mesurer dans la configuration livrée** après les correctifs, puis remplacer
+> ces chiffres — pas les compléter. `screens` reste retenu en attendant, comme
+> choix *provisoire* et non comme décision fermée.

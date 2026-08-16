@@ -142,8 +142,6 @@ static esp_err_t i2c_bring_up(void)
 }
 
 i2c_master_bus_handle_t dn_display_i2c_bus(void) { return s_i2c; }
-esp_io_expander_handle_t dn_display_expander(void) { return s_expander; }
-
 esp_err_t dn_display_tp_reset(int bas_ms, int haut_ms)
 {
     ESP_RETURN_ON_FALSE(s_expander, ESP_ERR_INVALID_STATE, TAG,

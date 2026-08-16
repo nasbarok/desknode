@@ -96,4 +96,31 @@ esp_err_t dn_bootcfg_set_lvgl_core(int core);
 /* Efface la configuration : le prochain boot repart sur les défauts. */
 esp_err_t dn_bootcfg_reset(void);
 
+/*
+ * ── LE BUDGET COMBINÉ, ET POURQUOI IL A FALLU L'AJOUTER (revue dn1-4) ────────
+ *
+ * `bounce_px` et `draw_lines` mangent la MÊME RAM interne, et leurs deux bornes
+ * (DN_BOUNCE_PX_MAX, DN_DRAW_LINES_MAX) étaient indépendantes, calibrées à deux
+ * époques différentes. DN_BOUNCE_PX_MAX = 38 400 px a été justifié en dn1-2 par
+ * « il reste ~348 Ko de RAM interne libre » — c'est-à-dire AVANT LVGL. dn1-4 a
+ * ensuite fait passer draw_lines de 64 à 128, soit +61 440 o, et mesuré 118 379 o
+ * libres. Le « plafond » que l'aide de `set bounce` présentait comme un diviseur
+ * UTILE réclame 2 × 76 800 o : il ne démarre plus.
+ *
+ * Et c'est le pire des refus manqués : ESP_ERR_NO_MEM au boot => ESP_ERROR_CHECK
+ * => panique => CPU HALTÉ par CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT. Plus de
+ * console, donc plus de `cfg reset`, à chaque boot, jusqu'au reflash. Exactement
+ * le brick que ces bornes existaient pour empêcher.
+ *
+ * On ne remplace pas un chiffre gravé par un autre chiffre gravé : le budget est
+ * évalué CONTRE LA RAM RÉELLEMENT LIBRE au moment de l'écriture, à laquelle on
+ * rajoute ce que les buffers actuels rendront au reboot. Auto-calibré, donc
+ * juste après n'importe quelle évolution du binaire.
+ */
+size_t dn_bootcfg_cout_interne(int bounce_px, int draw_lines);
+/* NULL si le couple tient, sinon la RAISON en clair. `demande` et `dispo`
+ * (optionnels) rendent les deux chiffres pour que le refus soit chiffré. */
+const char *dn_bootcfg_budget_refus(int bounce_px, int draw_lines, size_t *demande,
+                                    size_t *dispo);
+
 void dn_bootcfg_log(const dn_bootcfg_t *cfg);

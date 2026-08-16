@@ -157,7 +157,6 @@ bool dn_nav_model_from_name(const char *nom, dn_nav_model_t *out)
 
 static lv_display_t *s_disp;
 static esp_lcd_panel_handle_t s_panel;
-static lv_obj_t *s_img;
 /*
  * DEUX slots pour le label vivant, un par vue — et ce n'est pas du zèle.
  * En modèle SCREENS les deux écrans existent en même temps, donc le label aussi.
@@ -216,14 +215,31 @@ static int s_metrique;
  *     128        rebuild   240,4    279,0    318,0    17 684 o (29 %)
  *     128        SCREENS   187,0    234,9    257,7    —
  *
- * SCREENS gagne 40 ms (13 %) à la configuration de référence, et c'est LUI qui
- * fait passer le budget : rebuild sort à 307,7 ms de moyenne, donc AU-DESSUS des
- * 300 ms du brief, alors que screens tient à 267,9 ms avec un pire cas à
- * 293,9 ms. Le prix est de +8 048 o dans le tas LVGL (les deux arbres vivent en
- * permanence) sur 64 Ko dont 42 Ko restent libres.
+ * SCREENS gagne 40 ms (13 %) sur rebuild, pour +8 048 o dans le tas LVGL (les
+ * deux arbres vivent en permanence) sur 64 Ko dont 42 Ko restent libres.
  *
- * ⚠️ AUCUN des deux modèles ne fuit : 20 allers-retours laissent la RAM interne
- *    ET la PSRAM à delta ZÉRO octet, dans les quatre configurations.
+ * 🔴 CES CHIFFRES SONT À REJOUER — DEUX RÉSERVES ÉCRITES PAR LA REVUE dn1-4 :
+ *
+ *  a) Ils ont été relevés à `bounce_px = 0`, c'est-à-dire dans la configuration
+ *     que §11.5 qualifie elle-même d'« écran inutilisable ». La carte ne tourne
+ *     plus comme ça (bounce 4800, draw_lines 128).
+ *  b) L'A/B se fait en BASCULANT `nav model`, et ce geste FUYAIT un arbre
+ *     d'écran complet à chaque retour vers SCREENS (corrigé dans build_scene).
+ *     Les relevés de tas LVGL ci-dessus sont donc suspects — l'écart de 5 668 o
+ *     entre deux configurations `rebuild`, qui ne tiennent pourtant qu'UN seul
+ *     arbre, est de l'ordre de grandeur d'un écran orphelin.
+ *
+ * ⛔ NE PAS écrire ici que « SCREENS fait passer le budget » : le budget
+ *    < 300 ms du brief N'EST PAS TENU dans la configuration livrée (307,1 ms —
+ *    voir DN_DEFAULT_DRAW_LINES dans dn_bootcfg.c, qui fait foi). SCREENS est
+ *    retenu parce qu'il est le moins cher des deux, pas parce qu'il tient une
+ *    promesse.
+ *
+ * ⚠️ « AUCUN des deux modèles ne fuit » était prouvé par un instrument AVEUGLE :
+ *    `nav ab` mesurait la RAM interne et la PSRAM, alors que le tas LVGL est un
+ *    pool STATIQUE en .bss (LV_MEM_ADR=0) où aucun lv_obj_create ne passe par
+ *    heap_caps_malloc. Un « delta 0 o » s'y affichait à l'identique avec ou sans
+ *    fuite. `nav ab` encadre désormais la série par lv_mem_monitor().
  * ⚠️ CE QUE L'ARBITRAGE NE DIT PAS : le vrai plancher n'est pas le modèle. Une
  *    transition redessine l'écran entier, soit 640/draw_lines flushes qui
  *    attendent CHACUN une trame — 10 trames à 26,7 ms = 267 ms à 64 lignes. Le
@@ -531,9 +547,14 @@ static void fond_poser(lv_obj_t *scr)
         s_bg_dsc.data_size = DN_FB_BYTES;
         s_bg_dsc.data = (const uint8_t *)px;
 
-        s_img = lv_image_create(scr);
-        lv_image_set_src(s_img, &s_bg_dsc);
-        lv_obj_set_pos(s_img, 0, 0);
+        /* LOCAL, et pas un statique (revue dn1-4) : l'image appartient à son
+         * écran, qui la détruit avec lui. Le `s_img` global qu'on gardait était
+         * écrit six fois et lu ZÉRO — en modèle SCREENS, `fond_poser()` étant
+         * appelé pour les deux écrans, il finissait de toute façon par désigner
+         * l'image de l'écran qu'on ne regarde pas. */
+        lv_obj_t *img = lv_image_create(scr);
+        lv_image_set_src(img, &s_bg_dsc);
+        lv_obj_set_pos(img, 0, 0);
 
         /*
          * ── LE VOILE, demandé par l'owner le 2026-08-16 ──────────────────────
@@ -725,36 +746,77 @@ static lv_obj_t *texte(lv_obj_t *parent, const char *s, const lv_font_t *font,
  * (jusqu'à ~33 ms) est DANS la latence d'AC5, parce qu'il est dans le vécu de
  * l'utilisateur.
  */
-static void nav_appliquer(int cible, int64_t t_clic);
+static bool nav_appliquer(int cible, int64_t t_clic);
+
+/*
+ * ── L'INSTANT DU CLIC VOYAGE AVEC SON CLIC (correctif de revue dn1-4) ────────
+ *
+ * Il tenait avant dans UN SEUL global, que tout tap suivant écrasait avant que
+ * l'async du précédent ne s'exécute. Deux taps sur deux cases séparés de moins
+ * d'un tour de boucle (~33 ms, la fenêtre même que lv_async_call assume) et la
+ * PREMIÈRE transition était chronométrée depuis le SECOND clic : latence
+ * sous-estimée, ou `dt < 0` et l'échantillon abandonné en silence. La moyenne
+ * publiée par AC5 était donc calculée sur un échantillon biaisé vers le bas,
+ * sans que rien dans la sortie ne permette de s'en apercevoir.
+ *
+ * LVGL ne transporte qu'un pointeur, et allouer un int64 par tap mettrait une
+ * allocation dans le chemin chaud. On encode donc un NUMÉRO DE SLOT dans les
+ * bits hauts du paramètre, et l'horodatage vit dans un petit anneau. Quatre
+ * slots : lv_async_call n'exécute jamais plus d'un tour de retard, quatre taps
+ * en vol simultanés n'arrivent pas au doigt.
+ */
+#define DN_NAV_PENDING 4
+static volatile int64_t s_clic_ts[DN_NAV_PENDING];
+static uint32_t s_clic_seq;
+/* Asyncs refusées par LVGL (file pleine, tas saturé) : un tap qui n'ouvrira
+ * jamais rien ne doit PAS être compté comme un tap — sinon `touch trace` valide
+ * une zone tactile morte, et c'est la preuve d'AC3 qui ment. */
+static volatile uint32_t s_async_refus;
+
+/* Paramètre d'async : ((slot+1) << 8) | cible. Jamais NULL, ce qui garde
+ * l'encodage lisible dans un log et distinguable d'un paramètre oublié. */
+static void *nav_param(int cible, int64_t t_clic)
+{
+    uint32_t slot = s_clic_seq++ % DN_NAV_PENDING;
+    s_clic_ts[slot] = t_clic;
+    return (void *)(intptr_t)(((slot + 1) << 8) | (uint32_t)(cible & 0xFF));
+}
 
 static void nav_async(void *param)
 {
-    intptr_t p = (intptr_t)param;
-    /* Encodage : 0 = retour au dashboard, 1..6 = ouvrir la métrique p-1.
-     * L'instant du clic voyage à part, dans s_nav_t_clic : LVGL ne transporte
-     * qu'un pointeur, et fabriquer une allocation par tap pour un int64 serait
-     * une allocation dans le chemin chaud. */
-    nav_appliquer((int)p, 0);
+    uintptr_t p = (uintptr_t)param;
+    /* Encodage de la cible : 0 = retour au dashboard, 1..6 = métrique p-1. */
+    int cible = (int)(p & 0xFF);
+    int slot = (int)((p >> 8) & 0xFF) - 1;
+    int64_t t_clic = (slot >= 0 && slot < DN_NAV_PENDING) ? s_clic_ts[slot]
+                                                          : esp_timer_get_time();
+    nav_appliquer(cible, t_clic);
 }
-
-static int64_t s_nav_t_clic;
 
 static void on_case_clic(lv_event_t *e)
 {
-    s_nav_t_clic = esp_timer_get_time();
+    int64_t t_clic = esp_timer_get_time();
     intptr_t idx = (intptr_t)lv_event_get_user_data(e);
+    /* Le retour de lv_async_call était JETÉ : sur file pleine, le compteur de
+     * taps montait quand même et la zone passait pour vivante. */
+    if (lv_async_call(nav_async, nav_param((int)idx + 1, t_clic)) != LV_RESULT_OK) {
+        s_async_refus++;
+        return;
+    }
     s_dernier_tap = (int)idx;
     s_taps++;
-    lv_async_call(nav_async, (void *)(idx + 1));
 }
 
 static void on_retour_clic(lv_event_t *e)
 {
     (void)e;
-    s_nav_t_clic = esp_timer_get_time();
+    int64_t t_clic = esp_timer_get_time();
+    if (lv_async_call(nav_async, nav_param(0, t_clic)) != LV_RESULT_OK) {
+        s_async_refus++;
+        return;
+    }
     s_dernier_tap = DN_UI_ZONE_RETOUR;
     s_taps++;
-    lv_async_call(nav_async, (void *)0);
 }
 
 /*
@@ -924,7 +986,6 @@ static void build_scene(void)
         ESP_LOGW(TAG, "reconstruction de scène : le stimulus `anim` est ARRÊTÉ "
                       "(relancer `anim on` si besoin)");
     }
-    s_img = NULL;
     s_label_dash = NULL;
     s_label_det = NULL;
     s_bar = NULL;
@@ -940,6 +1001,23 @@ static void build_scene(void)
          * fois. */
         lv_obj_t *ancien_dash = s_scr_dash;
         lv_obj_t *ancien_det = s_scr_detail;
+        /*
+         * ⚠️ L'ÉCRAN SORTANT N'EST PAS TOUJOURS L'UNE DES DEUX RACINES, et c'est
+         *    la FUITE trouvée par la revue de dn1-4. Deux cas où il est un
+         *    troisième objet que personne ne détruisait :
+         *      - au boot, c'est l'écran par défaut créé par lv_display_create ;
+         *      - en revenant de REBUILD, c'est celui que dn_ui_set_nav_model a
+         *        créé pour héberger l'arbre reconstruit.
+         *    `lv_screen_load()` est un `lv_screen_load_anim(..., auto_del=false)`
+         *    : il ne détruit RIEN. Un aller-retour `screens -> rebuild ->
+         *    screens` — exactement l'A/B que la console invite à faire pour
+         *    arbitrer AC4 — abandonnait donc un arbre dashboard COMPLET (image,
+         *    voile, barre, 6 cases, 14 labels, MENU, label vivant) dans les 64 Ko
+         *    du tas LVGL. Et la « preuve de non-fuite » de `nav ab` ne pouvait
+         *    pas le voir : elle mesure la RAM interne et la PSRAM, alors que ce
+         *    tas est un pool STATIQUE en .bss (LV_MEM_ADR=0).
+         */
+        lv_obj_t *sortant = lv_screen_active();
         s_scr_dash = lv_obj_create(NULL);
         build_dashboard(s_scr_dash); /* remplit s_label_dash */
         s_scr_detail = lv_obj_create(NULL);
@@ -953,6 +1031,10 @@ static void build_scene(void)
         }
         if (ancien_det) {
             lv_obj_delete(ancien_det);
+        }
+        if (sortant && sortant != ancien_dash && sortant != ancien_det &&
+            sortant != s_scr_dash && sortant != s_scr_detail) {
+            lv_obj_delete(sortant);
         }
         return;
     }
@@ -975,7 +1057,7 @@ static void build_scene(void)
  * Appelée DANS la tâche LVGL, hors contexte d'événement (via lv_async_call) ou
  * sous le verrou pris par l'appelant public. Ne prend pas le verrou elle-même.
  */
-static void nav_appliquer(int cible, int64_t t_clic)
+static bool nav_appliquer(int cible, int64_t t_clic)
 {
     dn_ui_vue_t vue = cible == 0 ? DN_VUE_DASHBOARD : DN_VUE_DETAIL;
     int idx = cible == 0 ? s_metrique : cible - 1;
@@ -983,14 +1065,16 @@ static void nav_appliquer(int cible, int64_t t_clic)
     /* Rien à faire : on DÉSARME plutôt que de laisser un chronomètre en vol.
      * Un double tap sur la même case empilerait deux transitions ; la seconde
      * n'a rien à redessiner, et un chrono armé sans redessin serait arrêté par
-     * le premier flush venu — une latence inventée. */
+     * le premier flush venu — une latence inventée.
+     * ⚠️ On rend FALSE (revue dn1-4) : l'appelant annonçait « détail ouvert » /
+     * « retour au dashboard » pour une transition qui n'avait pas eu lieu, et
+     * `nav ab` perdait silencieusement un échantillon quand la série démarrait
+     * depuis un détail déjà affiché — `lat.n` valait 39 au lieu de 40, et
+     * servait de dénominateur à la moyenne publiée par AC5. */
     if (vue == s_vue && (vue == DN_VUE_DASHBOARD || idx == s_metrique)) {
-        return;
+        return false;
     }
 
-    if (t_clic == 0) {
-        t_clic = s_nav_t_clic;
-    }
     s_vue = vue;
     s_metrique = idx;
 
@@ -1020,7 +1104,6 @@ static void nav_appliquer(int cible, int64_t t_clic)
     } else {
         lv_obj_t *scr = lv_screen_active();
         lv_obj_clean(scr);
-        s_img = NULL;
         s_label_dash = NULL;
         s_label_det = NULL;
         s_bar = NULL;
@@ -1043,6 +1126,7 @@ static void nav_appliquer(int cible, int64_t t_clic)
     /* Le chronomètre est armé ICI, la nouvelle vue étant posée : le prochain
      * cycle de rafraîchissement est CELUI de la transition. Voir dn_touch.h. */
     dn_touch_latence_arm(t_clic);
+    return true;
 }
 
 dn_ui_vue_t dn_ui_vue(void) { return s_vue; }
@@ -1066,8 +1150,34 @@ const char *dn_ui_zone_nom(int zone)
 }
 
 uint32_t dn_ui_menu_taps(void) { return s_menu_taps; }
+uint32_t dn_ui_async_refus(void) { return s_async_refus; }
 dn_nav_model_t dn_ui_get_nav_model(void) { return s_nav; }
 
+/*
+ * Les compteurs de la couche UI n'avaient AUCUN reset (revue dn1-4), alors que
+ * la console imprime elle-même « comparer proprement : `touch reset` puis
+ * `nav ab 20` » au moment de basculer de modèle. `touch reset` ne remettait à
+ * zéro que ceux de dn_touch : après une bascule, `nav` continuait d'afficher les
+ * taps et le nombre de transitions du modèle PRÉCÉDENT, sous une bannière qui
+ * annonçait le nouveau. Le compteur d'un modèle était publié comme celui de
+ * l'autre.
+ */
+void dn_ui_reset_compteurs(void)
+{
+    s_taps = 0;
+    s_menu_taps = 0;
+    s_nav_count = 0;
+    s_async_refus = 0;
+    s_dernier_tap = DN_UI_ZONE_AUCUNE;
+}
+
+/*
+ * ⚠️ ESP_ERR_INVALID_STATE = « la vue demandée était DÉJÀ l'active, rien n'a
+ *    bougé ». Ce n'est pas une panne, c'est un no-op — mais l'appelant DOIT
+ *    pouvoir le distinguer d'une transition réelle : la console annonçait
+ *    « détail ouvert » et `nav ab` comptait une itération pour un écran qui
+ *    n'avait pas changé, ce qui décalait le dénominateur de la latence d'AC5.
+ */
 esp_err_t dn_ui_nav_open(int idx)
 {
     if (idx < 0 || idx >= DN_UI_METRIQUES) {
@@ -1076,9 +1186,9 @@ esp_err_t dn_ui_nav_open(int idx)
     if (!lvgl_port_lock(1000)) {
         return ESP_ERR_TIMEOUT;
     }
-    nav_appliquer(idx + 1, esp_timer_get_time());
+    bool fait = nav_appliquer(idx + 1, esp_timer_get_time());
     lvgl_port_unlock();
-    return ESP_OK;
+    return fait ? ESP_OK : ESP_ERR_INVALID_STATE;
 }
 
 esp_err_t dn_ui_nav_back(void)
@@ -1086,9 +1196,9 @@ esp_err_t dn_ui_nav_back(void)
     if (!lvgl_port_lock(1000)) {
         return ESP_ERR_TIMEOUT;
     }
-    nav_appliquer(0, esp_timer_get_time());
+    bool fait = nav_appliquer(0, esp_timer_get_time());
     lvgl_port_unlock();
-    return ESP_OK;
+    return fait ? ESP_OK : ESP_ERR_INVALID_STATE;
 }
 
 esp_err_t dn_ui_set_nav_model(dn_nav_model_t m)
@@ -1252,7 +1362,27 @@ esp_err_t dn_ui_init(const dn_bootcfg_t *cfg, esp_err_t asset_err)
     };
     const lvgl_port_display_rgb_cfg_t rgb_cfg = {
         .flags = {
-            .bb_mode = 0, /* le bounce buffer est DISQUALIFIÉ (watchdog) — dn1-2 */
+            /*
+             * ⚠️ L'ÉTIQUETTE MENTAIT : elle disait « le bounce buffer est
+             *    DISQUALIFIÉ (watchdog) — dn1-2 » alors que dn1-4 l'a
+             *    RÉHABILITÉ et en fait le défaut de la carte
+             *    (DN_DEFAULT_BOUNCE_PX = 4800). Au-delà de la phrase, `bb_mode`
+             *    n'est pas décoratif : il décide quel callback le portage
+             *    enregistre (on_bounce_frame_finish au lieu de on_vsync,
+             *    esp_lvgl_port_disp.c) — un piège armé pour la première mesure
+             *    en num_fbs=2.
+             *
+             * ⛔ ON NE LE MET PAS À 1 « PARCE QUE C'EST PLUS JUSTE » : le
+             *    portage n'arme cette mécanique qu'avec avoid_tearing, donc
+             *    num_fbs>=2, et basculer le callback du panneau sans témoin
+             *    serait un changement de comportement non mesuré — exactement ce
+             *    que l'arbitrage dn1-3 (AC6) interdit. On le fait donc SUIVRE la
+             *    réalité, couplé à avoid_tearing : la valeur reste 0 aujourd'hui
+             *    (num_fbs=1 => s_direct_mode faux), et elle sera juste d'office
+             *    le jour où num_fbs=2 sera rejoué. Ce jour-là : témoin vsync
+             *    obligatoire (dn_measure_vsync_alive), le callback change.
+             */
+            .bb_mode = (s_direct_mode && dn_display_bounce_px() > 0) ? 1 : 0,
             /* Le portage exige num_fbs>=2 pour cette option
              * (esp_lvgl_port_disp.c:367) : elle ne s'allume donc qu'avec le
              * double tampon. Ce qu'elle fait ici : donner à LVGL les DEUX
@@ -1550,6 +1680,16 @@ esp_err_t dn_ui_pause(void)
     if (err == ESP_OK) {
         s_active = false;
         /*
+         * ⚠️ LE CHRONOMÈTRE DE LATENCE EST DÉSARMÉ (correctif de revue dn1-4).
+         *    `nav open 3` puis `ui off` dans les ~300 ms qui suivent laissait un
+         *    chrono en vol ; `dn_ui_resume()` fait un redessin complet dont le
+         *    dernier flush appelait `dn_touch_latence_stop()` — la DURÉE DE LA
+         *    PAUSE entrait alors dans le min/moy/max publié par AC5. Un
+         *    échantillon gouverné par l'opérateur, dans la mesure même que
+         *    `nav_bloque_par_pause` existe pour protéger.
+         */
+        dn_touch_latence_desarm();
+        /*
          * ⚠️ DRAINER LE CYCLE EN VOL (correctif de revue). `lvgl_port_stop()` ne
          * fait que geler le tick : il ne joint pas la tâche, qui peut être AU
          * MILIEU de `lv_timer_handler()` — jusqu'à ~176 ms de flushes restants
@@ -1581,18 +1721,32 @@ esp_err_t dn_ui_resume(void)
     if (s_active) {
         return ESP_OK;
     }
+    /*
+     * ── L'ÉTAT TACTILE EST VIDÉ *AVANT* DE REPRENDRE ─────────────────────────
+     * Trois correctifs de la revue dn1-4, sur un drainage qui n'empêchait pas ce
+     * qu'il annonçait :
+     *
+     * 1. ORDRE. Il était fait APRÈS `lvgl_port_resume()`, donc après que le
+     *    timer et la tâche LVGL (priorité 4) sont réarmés : la tâche pouvait
+     *    préempter le REPL et lire l'indev pendant que le drain faisait encore
+     *    sa transaction I²C bloquante. La première lecture pouvait donc précéder
+     *    le drainage. On draine d'abord, on reprend ensuite.
+     * 2. VERROU. `esp_lcd_touch_read_data()` n'a aucun verrou interne et le
+     *    drain tournait depuis la tâche REPL, concurremment à `dn_touch_read()`
+     *    dans la tâche LVGL, sur un `s_appuye` volatile mais non atomique.
+     * 3. CE QUI PRODUIT LE CLIC. Le clic ne naît pas de `s_appuye` mais de la
+     *    machine d'état de l'INDEV LVGL (`pointer.act_obj` + transition
+     *    PRESSED->RELEASED). Jeter une lecture ne la touchait pas : un doigt
+     *    relâché pendant `ui off` laissait `act_obj` armé, et la première
+     *    lecture après reprise rendait RELEASED — donc un CLICKED, donc
+     *    l'ouverture d'un détail que personne n'a demandé, exactement ce que le
+     *    commentaire promettait d'exclure. `dn_touch_drain()` fait désormais le
+     *    `lv_indev_reset()` qui manquait.
+     */
+    dn_touch_drain(); /* prend le verrou lui-même — règle du dépôt */
     esp_err_t err = lvgl_port_resume();
     if (err == ESP_OK) {
         s_active = true;
-        /*
-         * L'ÉTAT TACTILE EST VIDÉ AVANT DE REPRENDRE. Comportement DÉFINI d'AC2 :
-         * un toucher pendant `ui off` est IGNORÉ (l'indev n'est pas lu, la tâche
-         * LVGL est gelée). Sans ce drainage, un doigt encore posé au moment du
-         * `ui on` produirait un appui puis un relâchement, donc un CLIC —
-         * c'est-à-dire l'ouverture d'un écran de détail que personne n'a demandé,
-         * au retour d'une mesure.
-         */
-        dn_touch_drain();
         /* Le framebuffer a pu être réécrit pendant la pause (c'est même le seul
          * intérêt de la pause). On redessine tout, sinon LVGL croirait l'écran
          * conforme à son arbre d'objets et ne réparerait jamais. */
@@ -1602,6 +1756,26 @@ esp_err_t dn_ui_resume(void)
 }
 
 bool dn_ui_active(void) { return s_active; }
+
+/*
+ * Octets UTILISÉS du tas LVGL. C'est le SEUL instrument capable de voir une
+ * fuite d'objets LVGL : le tas est un pool statique en .bss (LV_MEM_ADR=0), donc
+ * aucun lv_obj_create ne passe par heap_caps_malloc et la RAM interne / la PSRAM
+ * n'en disent RIEN. La « preuve de non-fuite » d'AC4 mesurait exactement ces
+ * deux tas-là, et affichait « delta 0 o » avec ou sans fuite (revue dn1-4).
+ * Rend 0 si le verrou n'a pas été pris — l'appelant doit le dire plutôt que de
+ * publier un zéro qui ressemble à une bonne nouvelle.
+ */
+size_t dn_ui_lvgl_used(void)
+{
+    lv_mem_monitor_t mon;
+    if (!lvgl_port_lock(1000)) {
+        return 0;
+    }
+    lv_mem_monitor(&mon);
+    lvgl_port_unlock();
+    return (size_t)(mon.total_size - mon.free_size);
+}
 
 void dn_ui_log_mem(void)
 {

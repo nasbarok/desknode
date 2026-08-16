@@ -19,9 +19,20 @@
  *    INT au relâchement de RST : bas => 0x5D, haut => 0x14. `dn_touch_addr()`
  *    rend celle à laquelle il a RÉPONDU, pas celle qu'on espérait.
  *
- * 3. UN PROBE AVANT LE RESET NE VOIT RIEN, et ce n'est pas une panne — c'est le
- *    témoin négatif. Les deux probes (avant/après) sont conservés et publiés par
- *    la console : une élimination sans son témoin n'est pas une élimination.
+ * 3. 🔴 LE PROBE AVANT LE RESET RÉPOND DÉJÀ — MESURÉ LE 2026-08-16 SUR CETTE
+ *    CARTE. Cet en-tête enseignait l'inverse (« un probe avant le reset ne voit
+ *    rien, c'est le témoin négatif attendu »), repris de la story, et le
+ *    livrable de dn1-4 l'a RÉFUTÉ dans le même commit : le GT911 répond à 0x5D
+ *    avant toute intervention. TP_RST n'est donc pas maintenu bas quand
+ *    l'expander le laisse en entrée haute impédance — le contrôleur sort de
+ *    reset seul à la mise sous tension. Le « témoin négatif » annoncé n'en est
+ *    pas un, et un probe qui répond avant la séquence n'est PAS une anomalie.
+ *    La séquence reste indispensable, mais pour rendre l'adresse
+ *    DÉTERMINISTE — pas pour réveiller le contrôleur. Les deux probes
+ *    (avant/après) sont conservés et publiés par la console : c'est leur ÉCART
+ *    qui informe, pas l'échec du premier. (Cette correction est un patch de la
+ *    revue dn1-4 : l'ancienne phrase survivait dans les deux fichiers que ce
+ *    module dit de lire en premier.)
  *
  * 4. LE MODE EVENT EST MUET EN SILENCE quand l'INT ne bat pas. C'est la classe de
  *    défaut que ce dépôt traque : rien ne plante, rien ne se loggue, le tactile
@@ -112,11 +123,11 @@ esp_err_t dn_touch_init(void);
 esp_err_t dn_touch_attach_lvgl(lv_display_t *disp);
 
 bool dn_touch_ready(void);
-esp_lcd_touch_handle_t dn_touch_handle(void);
 
 /* Adresse à laquelle le GT911 a RÉPONDU (0 s'il n'a jamais répondu). */
 uint8_t dn_touch_addr(void);
-/* Les deux témoins du probe, tels quels : avant reset (échec ATTENDU) / après. */
+/* Les deux témoins du probe, tels quels. ⚠️ L'échec du premier n'est PAS attendu
+ * sur cette carte — voir le point 3 de l'en-tête. */
 esp_err_t dn_touch_probe_avant(void);
 esp_err_t dn_touch_probe_apres(void);
 /* Adresse visée par la séquence, pour confronter l'intention au résultat. */
@@ -136,9 +147,18 @@ uint32_t dn_touch_err_i2c(void);
 
 /* Délais de la séquence de reset, pour rejouer autre chose que les 150/50 ms de
  * la démo Waveshare sans reflasher. Ne survivent pas au reboot (pas de NVS) :
- * c'est un réglage de campagne, pas une config. */
+ * c'est un réglage de campagne, pas une config.
+ * Console : `touch delais <bas> <haut>`, puis `touch addr` pour REJOUER la
+ * séquence avec les nouvelles valeurs — les poser ne les applique pas.
+ * ⚠️ Cette fonction n'a longtemps eu AUCUN appelant : trois commentaires
+ * annonçaient `touch reset <bas> <haut>`, qui remettait en fait les compteurs à
+ * zéro en ignorant ses arguments. Branchée par la revue dn1-4. */
 esp_err_t dn_touch_set_delais(int bas_ms, int haut_ms);
 void dn_touch_get_delais(int *bas_ms, int *haut_ms);
+
+/* Nom lisible du mode de déclenchement de l'INT (registre 0x804D bits 1-0).
+ * SOURCE UNIQUE : la console réécrivait cette table à la main. */
+const char *dn_touch_trig_name(uint8_t m);
 
 /*
  * ── LA PREUVE CAUSALE QUE GPIO16 EST BIEN TP_INT (AC1) ───────────────────────
@@ -221,12 +241,20 @@ void dn_touch_drain(void);
  */
 void dn_touch_latence_arm(int64_t t0_us);
 void dn_touch_latence_stop(void);
+/* Désarme sans produire d'échantillon (appelée par `dn_ui_pause`) : sinon la
+ * durée de la pause entrait dans le min/moy/max publié par AC5. */
+void dn_touch_latence_desarm(void);
 typedef struct {
     uint32_t n;
     uint32_t min_us;
     uint32_t max_us;
     uint32_t total_us; /* pour la moyenne ; reboucle à ~4295 s cumulées */
     uint32_t dernier_us;
+    /* Échantillons ABANDONNÉS parce que l'instant d'armement était postérieur au
+     * flush (dt < 0). Ils étaient jetés EN SILENCE : `n` divergeait du nombre
+     * réel de transitions et la moyenne se calculait sur un échantillon biaisé
+     * vers le bas, sans que rien ne le dise. Non nul ⇒ campagne invalide. */
+    uint32_t rejets;
 } dn_touch_latence_t;
 void dn_touch_get_latence(dn_touch_latence_t *out);
 void dn_touch_reset_latence(void);

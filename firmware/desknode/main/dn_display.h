@@ -30,7 +30,7 @@
 esp_err_t dn_display_init(const dn_bootcfg_t *cfg);
 
 /*
- * ── LES DEUX ACCESSEURS DE dn1-4, ET POURQUOI ILS EXISTENT ───────────────────
+ * ── L'ACCESSEUR DE BUS DE dn1-4, ET POURQUOI IL EXISTE ───────────────────────
  *
  * ⛔ IL N'Y A QU'UN SEUL BUS I²C SUR CETTE CARTE, et il appartient à ce module.
  *    Le TCA9554 (0x20), le GT911 (0x5D/0x14), la RTC (0x51), l'IMU (0x6A/0x6B)
@@ -39,11 +39,20 @@ esp_err_t dn_display_init(const dn_bootcfg_t *cfg);
  *    port est déjà pris. Tout module qui veut parler à un composant du bus
  *    demande le handle ICI.
  *
- * Rendent NULL tant que `dn_display_init()` n'a pas tourné — un appelant qui les
- * lit trop tôt obtient un pointeur nul franc, pas un handle à moitié construit.
+ * Rend NULL tant que `dn_display_init()` n'a pas tourné — un appelant qui le lit
+ * trop tôt obtient un pointeur nul franc, pas un handle à moitié construit.
+ *
+ * ⚠️ `dn_display_expander()` a été RETIRÉ par la revue dn1-4 : il portait
+ *    quatorze lignes de commentaire justifiant son existence, et zéro appelant.
+ *    L'expander ne s'expose pas parce qu'il ne DOIT pas s'exposer — le piège
+ *    n°2 du projet (base 1 Waveshare contre base 0 du driver : bit 0 = LCD_RST,
+ *    bit 1 = TP_RST, bit 2 = LCD_CS) veut que chaque broche ait sa fonction
+ *    nommée, pas un handle que l'appelant pilote au numéro de bit. `dn1-4` a
+ *    d'ailleurs fait exactement ça, avec `dn_display_tp_reset()`. Le jour où
+ *    dn2-1 aura besoin d'une autre broche, elle aura sa fonction, pas cet
+ *    accesseur.
  */
 i2c_master_bus_handle_t dn_display_i2c_bus(void);
-esp_io_expander_handle_t dn_display_expander(void);
 
 /*
  * Séquence de reset du GT911, jouée SUR L'EXPANDER (TP_RST = bit 1).

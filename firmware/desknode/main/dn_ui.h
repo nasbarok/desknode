@@ -259,11 +259,34 @@ const char *dn_ui_zone_nom(int zone);
 /* Taps sur le bandeau MENU. Compté à part : c'est ce compteur qui prouve que le
  * no-op est un CHOIX et pas une zone tactile qui ne marche pas. */
 uint32_t dn_ui_menu_taps(void);
+/* Taps REFUSÉS par LVGL (lv_async_call sur file pleine ou tas saturé). Un tap
+ * refusé n'est pas compté dans dn_ui_taps() : sans ce tri, `touch trace`
+ * affichait « TAP sur CPU » pour un tap qui n'avait ouvert aucun écran, et la
+ * preuve d'AC3 validait une zone tactile morte. Un compteur non nul ici est un
+ * SYMPTÔME, pas une statistique. */
+uint32_t dn_ui_async_refus(void);
+
+/* Remet à zéro taps / menu_taps / nav_count / refus / dernière zone.
+ * Appelée par `touch reset`, qui ne remettait à zéro que les compteurs de
+ * dn_touch : après une bascule de modèle, `nav` publiait les compteurs du
+ * modèle précédent sous la bannière du nouveau. */
+void dn_ui_reset_compteurs(void);
+
+/* Octets UTILISÉS du tas LVGL — le SEUL instrument qui voit une fuite d'objets
+ * LVGL. La RAM interne et la PSRAM n'en disent rien : ce tas est un pool
+ * STATIQUE en .bss (LV_MEM_ADR=0). 0 = verrou non pris, pas « rien d'utilisé ». */
+size_t dn_ui_lvgl_used(void);
 
 /* Navigation depuis la CONSOLE (prennent le verrou LVGL elles-mêmes).
  * `idx` dans 0..DN_UI_METRIQUES-1. Le chemin du DOIGT passe par les mêmes
  * fonctions internes : un tap et un `nav open 2` produisent la même transition,
- * sinon la latence mesurée au clavier ne dirait rien de celle du doigt. */
+ * sinon la latence mesurée au clavier ne dirait rien de celle du doigt.
+ *
+ * ⚠️ ESP_ERR_INVALID_STATE = la vue demandée était DÉJÀ l'active : rien n'a
+ *    changé, aucun chronomètre n'a été armé. Ce n'est pas une panne, mais
+ *    l'appelant NE DOIT PAS l'annoncer comme une transition — `nav ab` comptait
+ *    une itération de plus que la réalité quand la série démarrait depuis un
+ *    détail, et ce nombre sert de dénominateur à la moyenne publiée par AC5. */
 esp_err_t dn_ui_nav_open(int idx);
 esp_err_t dn_ui_nav_back(void);
 
@@ -303,8 +326,14 @@ void dn_ui_set_sync(dn_flush_sync_t mode);
  * alors été demandé, et l'appelant ne doit pas publier de compteurs. */
 bool dn_ui_force_full_redraw(void);
 
-/* Le label vivant. Visible par défaut ; on peut l'éteindre pour isoler le coût
- * du stimulus adverse. */
+/* Le label vivant. ⚠️ MASQUÉ par défaut DEPUIS dn1-4 (l'en-tête annonçait encore
+ * « visible par défaut », que le .c dément : le drapeau a perdu son
+ * initialiseur `= true` dans le même commit). Il est centré, géométrie gelée
+ * pour rester comparable à dn1-3, et recouvrirait les cases RAM/RÉSEAU du
+ * dashboard. `ui label on` le rallume pour rejouer le régime produit de dn1-3 à
+ * l'identique — c'est ce que fait AC6 pour ré-observer l'artefact §10.5, qui a
+ * besoin d'un redessin périodique. Un `dn_ui_label_shown() == false` au
+ * démarrage est donc NORMAL, pas une panne. */
 void dn_ui_label_show(bool on);
 bool dn_ui_label_shown(void);
 

@@ -455,6 +455,48 @@ static int cmd_set(int argc, char **argv)
                argv[2]);
         return 1;
     }
+    /*
+     * ── LE GARDE-FOU COMBINÉ, AVANT TOUTE ÉCRITURE (revue dn1-4) ────────────
+     *
+     * `bounce_px` et `draw_lines` mangent la MÊME RAM interne, et leurs bornes
+     * respectives ne se sont jamais parlé. `set bounce 38400` — la valeur que
+     * l'aide de cette commande présentait comme « le plafond, un diviseur
+     * utile » — passait les DEUX contrôles et rendait la carte non démarrable
+     * depuis que dn1-4 a fait passer draw_lines à 128. Panique au boot, CPU
+     * halté, plus de console, donc plus de `cfg reset` : le brick que ces bornes
+     * existaient pour empêcher. `set lines 160` + `set bounce 19200` faisait
+     * pareil.
+     *
+     * On confronte donc le COUPLE prospectif (la valeur qu'on écrit + celle qui
+     * est déjà en NVS pour l'autre clé) à la RAM interne réellement disponible.
+     */
+    if (cle_bounce || cle_lines) {
+        dn_bootcfg_t cfg_nvs;
+        if (dn_bootcfg_load(&cfg_nvs) == ESP_OK) {
+            int b = cle_lines ? cfg_nvs.bounce_px : (int)valeur;
+            int l = cle_lines ? (int)valeur : cfg_nvs.draw_lines;
+            size_t demande = 0, dispo = 0;
+            const char *refus = dn_bootcfg_budget_refus(b, l, &demande, &dispo);
+            if (refus) {
+                printf("refusé : %s\n", refus);
+                printf("  couple demandé : bounce_px=%d + draw_lines=%d\n", b, l);
+                printf("  soit %u o de RAM interne, pour %u o disponibles au\n",
+                       (unsigned)demande, (unsigned)dispo);
+                printf("  prochain boot (libre maintenant + ce que les tampons\n");
+                printf("  actuels rendront), marge de sécurité déduite.\n");
+                printf("⚠️ Ce refus REMPLACE un brick : au-delà, c'est\n");
+                printf("   ESP_ERR_NO_MEM au boot, donc panique, donc CPU HALTÉ\n");
+                printf("   par CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT — et plus\n");
+                printf("   AUCUNE console pour annuler la valeur, à chaque boot,\n");
+                printf("   jusqu'au reflash.\n");
+                printf("   Baisser l'autre clé d'abord (`cfg` montre les deux).\n");
+                return 1;
+            }
+        } else {
+            printf("⚠️ config NVS illisible : le budget RAM combiné n'a PAS pu\n");
+            printf("   être vérifié. `cfg` avant de continuer.\n");
+        }
+    }
     /* Pas de contrôle de plage i32 supplémentaire : `long` fait 32 bits sur
      * xtensa, donc le ERANGE de strtol couvre exactement ce que NVS stocke. */
     esp_err_t err;
@@ -507,8 +549,12 @@ static int cmd_set(int argc, char **argv)
             printf("⚠️ %d ne divise pas les %d pixels d'une trame : la DMA se\n",
                    px, DN_LCD_TOTAL_PX);
             printf("   décalerait d'un reliquat à chaque trame. Diviseurs utiles :\n");
-            printf("   480 (1 ligne), 4800 (10 lignes), 9600 (20), 19200 (40),\n");
-            printf("   38400 (80 lignes, le plafond).\n");
+            printf("   480 (1 ligne), 4800 (10 lignes — le DÉFAUT), 9600 (20).\n");
+            printf("⚠️ 19200 et 38400 divisent bien la trame, mais ne tiennent\n");
+            printf("   PLUS en RAM interne avec draw_lines=128 : le budget\n");
+            printf("   combiné les refusera. Ce ne sont plus des « diviseurs\n");
+            printf("   utiles », c'est le plafond d'une époque où LVGL n'était\n");
+            printf("   pas encore dans le binaire.\n");
         }
     }
     if (err != ESP_OK) {
@@ -697,6 +743,39 @@ static int cmd_flash(int argc, char **argv)
          * arrêter. */
         if (tearing_bloque("flash on")) {
             return 1;
+        }
+        /*
+         * ── AVERTISSEMENT « BOUNCE + FLASH », UNE COMBINAISON JAMAIS JOUÉE ───
+         *
+         * §5.3 et §11.4 du fichier d'autorité l'écrivent noir sur blanc : « la
+         * branche bounce 4 800, ISR_IRAM_SAFE=n, stimulus flash n'a PAS été
+         * jouée — elle reste une question ouverte », et « D4 reste en vigueur ».
+         * Avant dn1-4 la combinaison était INATTEIGNABLE (bounce_px valait 0) ;
+         * dn1-4 la rend atteignable PAR DÉFAUT, et `flash on` restait joignable
+         * sans un mot, là où le dépôt met un garde-fou partout ailleurs.
+         *
+         * Le mécanisme est concret : avec un bounce buffer, c'est une ISR du
+         * panneau qui recopie la PSRAM vers la RAM interne ; avec
+         * CONFIG_LCD_RGB_ISR_IRAM_SAFE=n, cette interruption est MASQUÉE pendant
+         * l'effacement d'un secteur (le raisonnement que dn_touch.c applique
+         * déjà à l'ISR GPIO). Bounce non réalimenté ⇒ image corrompue, qu'on
+         * attribuerait à la dalle.
+         *
+         * On n'INTERDIT pas : c'est justement la mesure qui manque, et
+         * l'interdire empêcherait de la faire. On prévient, et on nomme le
+         * symptôme à surveiller — sans quoi il serait pris pour une découverte.
+         */
+        if (dn_display_bounce_px() > 0) {
+            printf("⚠️ COMBINAISON JAMAIS MESURÉE : bounce_px=%u + stimulus "
+                   "flash.\n",
+                   (unsigned)dn_display_bounce_px());
+            printf("   L'ISR qui réalimente le bounce buffer est MASQUÉE pendant\n");
+            printf("   l'effacement de secteur (ISR_IRAM_SAFE=n). Si l'image se\n");
+            printf("   corrompt, c'est CE couplage — pas la dalle, et pas la\n");
+            printf("   famine DMA de §11.4, qui est un autre régime.\n");
+            printf("   §5.3 : question OUVERTE, D4 en vigueur. Consigner le\n");
+            printf("   constat, quel qu'il soit. `set bounce 0` + `reboot` pour\n");
+            printf("   retrouver le régime de dn1-3.\n");
         }
         /*
          * On cherche la partition ICI, avant d'annoncer quoi que ce soit.
@@ -1231,6 +1310,9 @@ static void touch_usage(void)
     printf("        touch int [ms]             temoin PHYSIQUE de TP_INT\n");
     printf("        touch addr                 PREUVE CAUSALE : INT haut/bas\n");
     printf("                                   -> adresse latchee 0x14/0x5D\n");
+    printf("        touch delais <bas> <haut>  delais de la sequence de reset\n");
+    printf("                                   (1..2000 ms) ; `touch addr` pour\n");
+    printf("                                   les APPLIQUER en rejouant\n");
 }
 
 static void touch_etat(void)
@@ -1270,12 +1352,12 @@ static void touch_etat(void)
                cfg.product_id, cfg.fw_version, cfg.cfg_version, cfg.touch_max);
         printf("  resolution CONFIGUREE dans le GT911 : %u x %u  (dalle %d x %d)\n",
                cfg.x_res, cfg.y_res, DN_LCD_H_RES, DN_LCD_V_RES);
+        /* Table décodée par dn_touch, SOURCE UNIQUE : elle était réécrite ici à
+         * la main. Deux décodages du seul registre qui décide du front
+         * d'armement de l'ISR, c'est un bandeau de boot et un `touch` qui
+         * peuvent se contredire sur la cause d'un mode `event` muet. */
         printf("  INT declenche sur : %s (registre 0x804D bits 1-0 = %u)\n",
-               cfg.trig_mode == 0   ? "front MONTANT"
-               : cfg.trig_mode == 1 ? "front DESCENDANT"
-               : cfg.trig_mode == 2 ? "niveau BAS"
-                                    : "niveau HAUT",
-               cfg.trig_mode);
+               dn_touch_trig_name(cfg.trig_mode), cfg.trig_mode);
     } else {
         printf("  identite/config : NON LUES\n");
     }
@@ -1313,6 +1395,21 @@ static void touch_etat(void)
         printf("     du cycle. N'INCLUT PAS le delai doigt -> lecture (jusqu'a\n");
         printf("     33 ms en polling) ni le flush -> photon (jusqu'a 26,7 ms).\n");
     }
+    /* Les échantillons ABANDONNÉS (armement postérieur au flush) étaient jetés
+     * sans laisser de trace : `n` divergeait du nombre réel de transitions et
+     * la moyenne se calculait sur un échantillon biaisé vers le bas. */
+    if (lat.rejets) {
+        printf("🔴 %" PRIu32 " echantillon(s) ABANDONNE(s) (dt < 0) : la campagne\n",
+               lat.rejets);
+        printf("   ci-dessus est INVALIDE — `touch reset` puis rejouer.\n");
+    }
+    uint32_t refus = dn_ui_async_refus();
+    if (refus) {
+        printf("🔴 %" PRIu32 " tap(s) REFUSE(s) par LVGL (file d'async pleine ou\n",
+               refus);
+        printf("   tas sature) : ils n'ont ouvert aucun ecran et ne sont PAS\n");
+        printf("   comptes dans les taps. Regarder `mem` et le tas LVGL.\n");
+    }
 }
 
 static int cmd_touch(int argc, char **argv)
@@ -1324,9 +1421,52 @@ static int cmd_touch(int argc, char **argv)
     }
 
     if (strcmp(argv[1], "reset") == 0) {
+        /*
+         * ⚠️ `reset` ne prend AUCUN argument, et il faut le dire (revue dn1-4).
+         *    Trois commentaires du firmware annonçaient `touch reset <bas>
+         *    <haut>` pour régler les délais de la séquence ; la commande les
+         *    ignorait SILENCIEUSEMENT et effaçait les compteurs. L'opérateur
+         *    croyait avoir changé la séquence de reset, et venait d'effacer les
+         *    chiffres qu'il s'apprêtait à lire. Les délais ont désormais leur
+         *    propre sous-commande, `touch delais`.
+         */
+        if (argc > 2) {
+            printf("`touch reset` ne prend pas d'argument — il remet les\n");
+            printf("compteurs a zero. Pour les delais de la sequence de reset :\n");
+            printf("   touch delais <bas_ms> <haut_ms>\n");
+            printf("(rien n'a ete modifie)\n");
+            return 1;
+        }
         dn_touch_reset_stats();
         dn_touch_reset_latence();
-        printf("compteurs tactiles et latences remis a zero.\n");
+        /* Les compteurs de la couche UI n'avaient aucun reset : après une
+         * bascule de modèle, `nav` publiait ceux du modèle précédent sous la
+         * bannière du nouveau — et c'est cette console qui imprime le protocole
+         * « `touch reset` puis `nav ab 20` ». */
+        dn_ui_reset_compteurs();
+        printf("compteurs tactiles, latences et compteurs UI remis a zero.\n");
+        return 0;
+    }
+
+    if (strcmp(argv[1], "delais") == 0) {
+        long bas = 0, haut = 0;
+        if (argc < 4 || !parse_entier(argv[2], &bas) ||
+            !parse_entier(argv[3], &haut)) {
+            printf("usage : touch delais <bas_ms> <haut_ms>   (1..2000 chacun)\n");
+            printf("Les valeurs par defaut (150/50) viennent de la demo\n");
+            printf("Waveshare et sont VUES MARCHER sur cette dalle.\n");
+            return 1;
+        }
+        esp_err_t err = dn_touch_set_delais((int)bas, (int)haut);
+        if (err != ESP_OK) {
+            printf("refuse : %s — chaque delai doit tenir dans 1..2000 ms.\n",
+                   esp_err_to_name(err));
+            return 1;
+        }
+        printf("delais poses : %ld ms bas / %ld ms de repos.\n", bas, haut);
+        printf("⚠️ PAS ENCORE APPLIQUES : ils ne servent qu'a la PROCHAINE\n");
+        printf("   sequence. `touch addr` la rejoue. Ils ne survivent pas au\n");
+        printf("   reboot (pas de NVS) : c'est un reglage de campagne.\n");
         return 0;
     }
 
@@ -1374,6 +1514,13 @@ static int cmd_touch(int argc, char **argv)
         printf("⚠️ les miroirs se replient sur x_max=%d / y_max=%d : un miroir sans\n",
                DN_LCD_H_RES, DN_LCD_V_RES);
         printf("   son max donne des coordonnees repliees sur le mauvais bord.\n");
+        printf("⚠️ swap=1 est REFUSE sur cette carte : x_max/y_max sont figes a\n");
+        printf("   %d/%d et un echange d'axes projetterait un intervalle de %d\n",
+               DN_LCD_H_RES, DN_LCD_V_RES, DN_LCD_V_RES);
+        printf("   sur un axe large de %d — les %d dernieres lignes (bandeau\n",
+               DN_LCD_H_RES, DN_LCD_V_RES - DN_LCD_H_RES);
+        printf("   MENU compris) deviendraient injoignables. AC2 a mesure que\n");
+        printf("   cette dalle ne demande AUCUNE transformation.\n");
         return 0;
     }
 
@@ -1417,31 +1564,79 @@ static int cmd_touch(int argc, char **argv)
         uint32_t vus = st.appuis;
         uint32_t taps_vus = dn_ui_taps();
         int64_t fin = esp_timer_get_time() + (int64_t)ms * 1000;
-        int n_appuis = 0, n_taps = 0;
+        /*
+         * ⚠️ ON COMPTE LE DELTA, PAS « UN PAR TOUR » (revue dn1-4). Les deux
+         *    compteurs s'incrémentaient de 1 quel que soit l'écart : deux appuis
+         *    tombés dans la même fenêtre de 10 ms n'en comptaient qu'un, et le
+         *    bilan « appui(s) HORS ZONE » — qui se calcule par SOUSTRACTION —
+         *    fabriquait un hors-zone à chaque fois. C'est la mauvaise
+         *    attribution que le commentaire ci-dessus dit avoir corrigée,
+         *    remontée d'un cran : corrigée entre événements, elle survivait dans
+         *    le total.
+         */
+        uint32_t n_appuis = 0, n_taps = 0, n_groupes = 0;
         while (esp_timer_get_time() < fin) {
             dn_touch_get_stats(&st);
             uint32_t taps = dn_ui_taps();
             if (st.appuis != vus) {
+                uint32_t d = st.appuis - vus;
                 vus = st.appuis;
                 printf("  APPUI %3" PRIu32 " · (%3" PRIu32 ", %3" PRIu32
-                       ") · brut (%3" PRIu32 ", %3" PRIu32 ")\n",
-                       st.appuis, st.x, st.y, st.brut_x, st.brut_y);
-                n_appuis++;
+                       ") · brut (%3" PRIu32 ", %3" PRIu32 ")%s\n",
+                       st.appuis, st.x, st.y, st.brut_x, st.brut_y,
+                       d > 1 ? "  <- plusieurs appuis dans la meme fenetre de "
+                               "10 ms, seul le DERNIER point est affiche"
+                             : "");
+                n_appuis += d;
+                n_groupes++;
             }
             if (taps != taps_vus) {
+                uint32_t d = taps - taps_vus;
                 taps_vus = taps;
-                printf("        -> TAP sur %s\n",
-                       dn_ui_zone_nom(dn_ui_dernier_tap()));
-                n_taps++;
+                printf("        -> TAP sur %s%s\n",
+                       dn_ui_zone_nom(dn_ui_dernier_tap()),
+                       d > 1 ? "  <- plusieurs taps groupes, seule la DERNIERE "
+                               "zone est affichee"
+                             : "");
+                n_taps += d;
             }
             vTaskDelay(pdMS_TO_TICKS(10));
         }
-        printf("fin de trace : %d appui(s), %d tap(s) sur zone.\n", n_appuis,
-               n_taps);
+        /*
+         * ⚠️ SURSIS DE 400 ms. Le TAP est émis par LVGL au RELÂCHEMENT, et une
+         *    transition d'écran occupe la tâche LVGL ~300 ms : un appui posé
+         *    dans les dernières centaines de millisecondes voyait son tap tomber
+         *    HORS de la fenêtre, et le bilan le déclarait « HORS ZONE » alors
+         *    qu'il avait parfaitement ouvert son détail.
+         */
+        int64_t sursis = esp_timer_get_time() + 400000;
+        while (esp_timer_get_time() < sursis) {
+            uint32_t taps = dn_ui_taps();
+            if (taps != taps_vus) {
+                uint32_t d = taps - taps_vus;
+                taps_vus = taps;
+                printf("        -> TAP sur %s  (pendant le sursis de fin)\n",
+                       dn_ui_zone_nom(dn_ui_dernier_tap()));
+                n_taps += d;
+            }
+            vTaskDelay(pdMS_TO_TICKS(10));
+        }
+        printf("fin de trace : %" PRIu32 " appui(s), %" PRIu32 " tap(s) sur zone.\n",
+               n_appuis, n_taps);
+        if (n_appuis != n_groupes) {
+            printf("⚠️ %" PRIu32 " appui(s) ont ete GROUPES par l'echantillonnage\n",
+                   n_appuis - n_groupes);
+            printf("   a 10 ms : leurs coordonnees individuelles sont perdues.\n");
+        }
         if (n_appuis > n_taps) {
-            printf("  (%d appui(s) HORS ZONE — barre heure/date, espace entre\n",
+            printf("  (%" PRIu32 " appui(s) HORS ZONE — barre heure/date, espace\n",
                    n_appuis - n_taps);
-            printf("   cases, ou marge : c'est ce qu'AC3 attend de ces endroits.)\n");
+            printf("   entre cases, ou marge : c'est ce qu'AC3 attend de ces\n");
+            printf("   endroits.)\n");
+        }
+        if (n_taps > n_appuis) {
+            printf("⚠️ PLUS de taps que d'appuis : des taps de la trace\n");
+            printf("   PRECEDENTE sont arrives pendant celle-ci. Rejouer.\n");
         }
         if (n_appuis == 0) {
             printf("⚠️ AUCUN appui vu. Si l'ecran a bien ete touche, c'est le\n");
@@ -1455,6 +1650,27 @@ static int cmd_touch(int argc, char **argv)
         long ms = 3000;
         if (argc >= 3 && !parse_entier(argv[2], &ms)) {
             printf("« %s » n'est pas un nombre.\n", argv[2]);
+            return 1;
+        }
+        /*
+         * ⚠️ BORNÉ ICI, AVEC UN REFUS EXPLIQUÉ (revue dn1-4) — comme `touch
+         *    trace` dix lignes plus haut, qui le faisait déjà. La commande
+         *    acceptait n'importe quel entier, ANNONÇAIT la valeur brute, puis
+         *    `dn_touch_int_scan()` écrêtait en silence à [1, 5000].
+         *    `touch int 30000` imprimait donc « echantillonnage pendant 30000 ms
+         *    — TOUCHER L'ECRAN MAINTENANT », rendait la main au bout de 5 s, et
+         *    si l'operateur touchait à t = 8 s le verdict imprimé était « la
+         *    broche N'A PAS BOUGE […] GPIO16 n'est pas TP_INT ». Une conclusion
+         *    FAUSSE sur le témoin physique qui sert à établir l'identité de la
+         *    broche, fabriquée par l'écart entre ce qu'on annonce et ce qu'on
+         *    fait. `touch int -5` annonçait « -5 ms » et scannait 1 ms.
+         */
+        if (ms < 1 || ms > 5000) {
+            printf("refuse : entre 1 et 5000 ms.\n");
+            printf("Au-dela, le scan monopoliserait le coeur : il echantillonne\n");
+            printf("toutes les ~100 us et ne respire qu'un tick toutes les 20 ms.\n");
+            printf("Pour observer plus longtemps, c'est `touch trace` qu'il faut\n");
+            printf("(jusqu'a 120000 ms), ou plusieurs `touch int` de suite.\n");
             return 1;
         }
         printf("echantillonnage de GPIO%d pendant %ld ms — TOUCHER L'ECRAN "
@@ -1529,8 +1745,20 @@ static int cmd_touch(int argc, char **argv)
  * la durée de la pause, c'est-à-dire un chiffre gouverné par l'opérateur et pas
  * par la carte. On refuse, et on explique.
  *
- * Le chemin du DOIGT n'a pas besoin de cette garde : en pause, l'indev n'est pas
- * lu, donc aucun clic n'est produit.
+ * ⚠️ CETTE GARDE NE COUVRE PAS LE DOIGT, ET LA RAISON QU'ON EN DONNAIT ÉTAIT
+ *    FAUSSE (revue dn1-4). On écrivait ici « le chemin du DOIGT n'a pas besoin de
+ *    cette garde : en pause, l'indev n'est pas lu, donc aucun clic n'est
+ *    produit ». C'est vrai en mode `poll` (l'indev est en LV_INDEV_MODE_TIMER, et
+ *    `lvgl_port_stop()` coupe le timer) — et FAUX en mode `event` :
+ *    `lvgl_port_stop()` ne fait que `lv_timer_enable(false)`, la tâche LVGL
+ *    continue de tourner et lit l'indev sur la branche ÉVÉNEMENTIELLE, avant et
+ *    indépendamment de `lv_timer_handler()`. Un tap pendant `ui off` en mode
+ *    `event` produit donc bien un CLICKED, et des transactions I²C au beau
+ *    milieu de la mesure que la pause existe pour isoler.
+ *    C'est l'un des trois symptômes qui font retenir `poll` comme mode de
+ *    référence (verdict AC2, voir DN_TOUCH_MODE_DEFAUT dans dn_touch.c).
+ *    Le chronomètre, lui, est désormais désarmé par `dn_ui_pause()` : même si un
+ *    clic passe, il ne publiera pas la durée de la pause.
  */
 static bool nav_bloque_par_pause(const char *commande)
 {
@@ -1587,6 +1815,16 @@ static int cmd_nav(int argc, char **argv)
             return 1;
         }
         esp_err_t err = dn_ui_nav_open((int)idx);
+        /* ⚠️ On ANNONÇAIT « detail ouvert » pour une transition qui n'avait pas
+         * eu lieu : dn_ui_nav_open rendait ESP_OK même quand la vue demandée
+         * était déjà l'active. Aucun écran n'avait changé, aucun chronomètre
+         * n'était armé — et la ligne imprimée disait le contraire. */
+        if (err == ESP_ERR_INVALID_STATE) {
+            printf("rien a faire : le detail « %s » est DEJA affiche.\n",
+                   dn_ui_metrique_nom((int)idx));
+            printf("(aucune transition, aucun chronometre arme)\n");
+            return 0;
+        }
         if (err != ESP_OK) {
             printf("refuse : %s\n", esp_err_to_name(err));
             return 1;
@@ -1600,6 +1838,11 @@ static int cmd_nav(int argc, char **argv)
             return 1;
         }
         esp_err_t err = dn_ui_nav_back();
+        if (err == ESP_ERR_INVALID_STATE) {
+            printf("rien a faire : le dashboard est DEJA affiche.\n");
+            printf("(aucune transition, aucun chronometre arme)\n");
+            return 0;
+        }
         if (err != ESP_OK) {
             printf("refuse : %s\n", esp_err_to_name(err));
             return 1;
@@ -1624,7 +1867,12 @@ static int cmd_nav(int argc, char **argv)
         printf("modele « %s » — la vue est revenue au dashboard (les deux modeles\n",
                dn_nav_model_name(m));
         printf("ne tiennent pas leur etat au meme endroit).\n");
-        printf("⚠️ comparer proprement : `touch reset` puis `nav ab 20`.\n");
+        printf("⚠️ comparer proprement : `touch reset` puis `nav ab 20`, sans\n");
+        printf("   toucher la dalle pendant la serie.\n");
+        printf("⚠️ l'arbitrage d'AC4 publie dans la doc (screens 267,9 ms contre\n");
+        printf("   rebuild 307,7) a ete releve a bounce_px=0, config declaree\n");
+        printf("   INUTILISABLE depuis — et l'A/B lui-meme fuyait un ecran par\n");
+        printf("   bascule (corrige). Ces chiffres sont A REJOUER.\n");
         return 0;
     }
 
@@ -1642,25 +1890,66 @@ static int cmd_nav(int argc, char **argv)
             printf("refuse : LVGL est en pause (`ui on` d'abord).\n");
             return 1;
         }
-        /* Mémoire AVANT, mesurée sur le même instrument qu'après : c'est la
-         * preuve de non-fuite d'AC4, et elle n'a de sens que si les deux relevés
-         * encadrent EXACTEMENT la série. */
+        /*
+         * ── LA PREUVE DE NON-FUITE ÉTAIT AVEUGLE (correctif de revue dn1-4) ──
+         *
+         * Elle n'encadrait la série que par `dn_measure_internal_free()` et
+         * `dn_measure_psram_free()`. Or LVGL n'alloue dans NI L'UN NI L'AUTRE :
+         * `CONFIG_LV_MEM_ADR=0` + `LV_MEM_SIZE_KILOBYTES=64` lui donnent un pool
+         * STATIQUE en .bss, et aucun `lv_obj_create` ne passe par
+         * heap_caps_malloc. Le firmware le disait lui-même dans `dn_ui_log_mem`
+         * (« ces octets-là sont réservés au LINK : ils n'apparaissent PAS dans
+         * l'avant/après de `mem` ») — et publiait quand même « delta ZÉRO
+         * octet » comme preuve d'AC4. Ce zéro se serait affiché à l'identique
+         * avec une fuite d'un écran complet par transition, ce qui était
+         * précisément le cas (voir build_scene).
+         *
+         * `lv_mem_monitor` est le seul instrument qui voit ce tas-là, et l'AC4
+         * le demandait nommément : « lv_mem_monitor + RAM interne stables
+         * (chiffres avant/après consignés) ». Il n'était appelé qu'APRÈS.
+         */
         size_t interne_avant = dn_measure_internal_free();
         size_t psram_avant = dn_measure_psram_free();
+        size_t lvgl_avant = dn_ui_lvgl_used();
+        /* Témoin du DOIGT : rien n'empêche un tap de s'intercaler pendant les
+         * ~100 s que peut durer la série, avec son propre chronomètre. Les
+         * échantillons du doigt et du script se mélangeraient alors dans le
+         * min/moy/max qui sert d'arbitrage à AC4. On ne peut pas l'interdire
+         * sans mentir sur ce qu'est la carte — on le DÉTECTE et on le dit. */
+        uint32_t taps_avant = dn_ui_taps();
         dn_touch_reset_latence();
         printf("%ld allers-retours en modele « %s »…\n", n,
                dn_nav_model_name(dn_ui_get_nav_model()));
+        printf("⚠️ NE PAS TOUCHER LA DALLE pendant la serie.\n");
+        uint32_t transitions = 0;
         for (long i = 0; i < n; i++) {
             esp_err_t e1 = dn_ui_nav_open((int)(i % DN_UI_METRIQUES));
             /* Laisser le cycle de rafraîchissement ABOUTIR avant de repartir :
              * sans cette pause, la seconde transition arriverait pendant le
              * redessin de la première et la latence mesurée serait celle d'un
-             * régime que le doigt ne produit jamais. 250 ms couvrent le pire
-             * plein écran mesuré (~176 ms d'attente + copie). */
+             * régime que le doigt ne produit jamais.
+             * ⚠️ 250 ms NE COUVRENT PAS le pire cas : la story a mesuré des
+             * transitions à 307 ms (et jusqu'à 480 ms au doigt) — le « ~176 ms »
+             * qui justifiait cette valeur a été corrigé en 267 ms par la mesure
+             * du même commit. Le délai reste néanmoins suffisant parce que
+             * `dn_ui_nav_back()` BLOQUE sur `lvgl_port_lock` jusqu'à la fin du
+             * cycle en cours : c'est le mutex qui sérialise, pas ce delay. La
+             * valeur est donc une marge de confort, et elle est dite comme
+             * telle (revue dn1-4). */
             vTaskDelay(pdMS_TO_TICKS(250));
             esp_err_t e2 = dn_ui_nav_back();
             vTaskDelay(pdMS_TO_TICKS(250));
-            if (e1 != ESP_OK || e2 != ESP_OK) {
+            /* ESP_ERR_INVALID_STATE = la vue était déjà la bonne : AUCUNE
+             * transition n'a eu lieu. On ne le comptait pas, et `lat.n` sortait
+             * alors plus petit que 2*n sans que rien ne l'explique. */
+            if (e1 == ESP_OK) {
+                transitions++;
+            }
+            if (e2 == ESP_OK) {
+                transitions++;
+            }
+            if ((e1 != ESP_OK && e1 != ESP_ERR_INVALID_STATE) ||
+                (e2 != ESP_OK && e2 != ESP_ERR_INVALID_STATE)) {
                 printf("interrompu au tour %ld : %s / %s\n", i + 1,
                        esp_err_to_name(e1), esp_err_to_name(e2));
                 break;
@@ -1668,20 +1957,46 @@ static int cmd_nav(int argc, char **argv)
         }
         size_t interne_apres = dn_measure_internal_free();
         size_t psram_apres = dn_measure_psram_free();
+        size_t lvgl_apres = dn_ui_lvgl_used();
+        uint32_t taps_pendant = dn_ui_taps() - taps_avant;
         printf("--- non-fuite (AC4) ---------------------------------------\n");
+        printf("  tas LVGL    %u -> %u o   (delta %d o)  <- LE tas des ecrans\n",
+               (unsigned)lvgl_avant, (unsigned)lvgl_apres,
+               (int)((long)lvgl_apres - (long)lvgl_avant));
         printf("  RAM interne %u -> %u o   (delta %d o)\n",
                (unsigned)interne_avant, (unsigned)interne_apres,
                (int)((long)interne_avant - (long)interne_apres));
         printf("  PSRAM       %u -> %u o   (delta %d o)\n", (unsigned)psram_avant,
                (unsigned)psram_apres,
                (int)((long)psram_avant - (long)psram_apres));
+        printf("  ⚠️ SEUL le delta du tas LVGL prouve quoi que ce soit ici : les\n");
+        printf("     objets LVGL vivent dans un pool STATIQUE en .bss, invisible\n");
+        printf("     pour la RAM interne et la PSRAM.\n");
+        if (lvgl_avant == 0 || lvgl_apres == 0) {
+            printf("🔴 relevé du tas LVGL INDISPONIBLE (verrou non pris) : ce\n");
+            printf("   n'est pas « zero utilise », c'est « pas mesure ».\n");
+        }
         dn_ui_log_mem();
         dn_touch_latence_t lat;
         dn_touch_get_latence(&lat);
+        printf("  transitions REELLES : %" PRIu32 " (demandees : %ld)\n",
+               transitions, n * 2);
         if (lat.n) {
             printf("  latence : n=%" PRIu32 " min %" PRIu32 " us · moy %" PRIu32
                    " us · max %" PRIu32 " us\n",
                    lat.n, lat.min_us, lat.total_us / lat.n, lat.max_us);
+        }
+        if (lat.n != transitions) {
+            printf("🔴 n=%" PRIu32 " pour %" PRIu32 " transitions : l'echantillon\n",
+                   lat.n, transitions);
+            printf("   est INCOMPLET. rejets (dt<0) : %" PRIu32 ".\n", lat.rejets);
+        }
+        if (taps_pendant) {
+            printf("🔴 %" PRIu32 " tap(s) au DOIGT pendant la serie : leurs\n",
+                   taps_pendant);
+            printf("   chronometres se sont melanges a ceux du script. Les\n");
+            printf("   chiffres ci-dessus ne valent RIEN pour un arbitrage —\n");
+            printf("   `touch reset` et rejouer sans toucher la dalle.\n");
         }
         printf("-----------------------------------------------------------\n");
         return 0;
@@ -1982,7 +2297,14 @@ static const esp_console_cmd_t k_cmds[] = {
            cmd_flush),
     DN_CMD("anim", "anim on [ms] | off — stimulus adverse LVGL (témoin de tearing)",
            cmd_anim),
-    DN_CMD("touch", "touch | reset | mode | axes | int | addr — GT911 (dn1-4)",
+    /* ⚠️ `trace` et `delais` MANQUAIENT ici (revue dn1-4). Le README pose la
+     * règle « c'est `aide` qui fait foi, pas cette liste » — et `touch trace`
+     * est l'instrument de la preuve d'AC3, documenté au README mais introuvable
+     * depuis la carte : il n'apparaissait que dans `touch_usage()`, imprimé
+     * seulement par `touch` nu ou par une sous-commande invalide. */
+    DN_CMD("touch",
+           "touch | reset | mode | axes | trace | int | addr | delais — GT911 "
+           "(dn1-4)",
            cmd_touch),
     DN_CMD("nav", "nav | open <n> | back | model | ab <n> — navigation (dn1-4)",
            cmd_nav),

@@ -1,6 +1,9 @@
 #include "dn_bootcfg.h"
 
+#include "dn_display.h"
 #include "dn_pins.h"
+#include "dn_ui.h"
+#include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "nvs.h"
 #include "nvs_flash.h"
@@ -406,4 +409,60 @@ void dn_bootcfg_log(const dn_bootcfg_t *cfg)
              cfg->lvgl_core < 0 ? "aucun cœur imposé" :
              cfg->lvgl_core == 0 ? "le cœur 0 (avec le pipeline d'affichage)"
                                  : "le cœur 1 (en face du pipeline)");
+}
+
+/* ── Le budget combiné RAM interne (revue dn1-4) ───────────────────────────── */
+
+/*
+ * Marge laissée libre au-dessus de la demande. Elle n'est pas décorative : le
+ * driver RGB alloue ses tampons en blocs CONTIGUS et DMA-capables, et le tas
+ * interne est fragmenté par tout ce qui a démarré avant (pilotes, tâches, pile
+ * réseau absente ici mais NVS et console présentes). Une demande qui tient tout
+ * juste dans le total libre peut échouer faute d'un bloc d'un seul tenant — et
+ * cet échec-là, au boot, halte le CPU.
+ *
+ * 48 Ko : de l'ordre du plus gros bloc que le boot alloue après ces tampons,
+ * doublé. Ce n'est pas une mesure, c'est une marge déclarée — et elle sera
+ * révisée par la mesure le jour où un refus paraîtra trop sévère.
+ */
+#define DN_BUDGET_MARGE_O (48 * 1024)
+
+size_t dn_bootcfg_cout_interne(int bounce_px, int draw_lines)
+{
+    /* Le driver RGB alloue DEUX bounce buffers de bounce_px pixels 16 bits. */
+    size_t bounce = (size_t)(bounce_px > 0 ? bounce_px : 0) * 2u * 2u;
+    /* Le draw buffer de LVGL : une bande de la largeur de la dalle.
+     * ⚠️ Compté ici même si `draw_psram` est à 1 (il vivrait alors en PSRAM) :
+     *    ce budget est le PIRE cas, et se tromper du côté sévère coûte un refus,
+     *    tandis que se tromper de l'autre côté coûte une carte qui ne démarre
+     *    plus sans console pour la récupérer. */
+    size_t draw = (size_t)DN_LCD_H_RES * (size_t)(draw_lines > 0 ? draw_lines : 0) * 2u;
+    return bounce + draw;
+}
+
+const char *dn_bootcfg_budget_refus(int bounce_px, int draw_lines, size_t *demande,
+                                    size_t *dispo)
+{
+    size_t veut = dn_bootcfg_cout_interne(bounce_px, draw_lines);
+    /*
+     * Ce qui sera disponible AU PROCHAIN BOOT pour ces deux tampons : ce qui est
+     * libre maintenant, PLUS ce que les tampons actuels rendront. On mesure donc
+     * contre la carte telle qu'elle est, pas contre un chiffre gravé en dn1-2
+     * quand LVGL n'existait pas encore dans ce binaire.
+     */
+    size_t libre = heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
+    size_t rendu = dn_bootcfg_cout_interne(dn_display_bounce_px(), dn_ui_draw_lines());
+    size_t peut = libre + rendu;
+
+    if (demande) {
+        *demande = veut;
+    }
+    if (dispo) {
+        *dispo = peut;
+    }
+    if (veut + DN_BUDGET_MARGE_O > peut) {
+        return "le couple bounce_px + draw_lines ne tient pas en RAM interne "
+               "(la carte ne redémarrerait pas)";
+    }
+    return NULL;
 }

@@ -80,7 +80,7 @@ tests/      harnais et smokes
 > alimente donc un sémaphore que personne n'attend. Et cet enregistrement **écrase** celui de
 > `dn_measure` (`esp_lcd_rgb_panel_register_event_callbacks` ASSIGNE, ne fusionne pas). D'où
 > l'ordre d'appel et le témoin actif au boot — détail en §10.1 du fichier `hardware/`.
-> Le binaire passe de **377 664 o à 740 400 o** avec LVGL, puis à **782 800 o** avec le tactile et
+> Le binaire passe de **377 664 o à 740 400 o** avec LVGL, puis à **790 736 o** avec le tactile et
 > la navigation de dn1-4 ; l'app fait 4 MiB, il reste **81 %**.
 
 > **Pourquoi `dependencies.lock` et `managed_components/` restent gitignorés** — la question
@@ -174,9 +174,10 @@ idf.py -p /dev/ttyACM0 flash monitor               # quitter le moniteur : Ctrl+
   | **`touch trace [ms]`** | imprime chaque **APPUI** (avec ses coordonnées brutes) et chaque **TAP** avec sa zone. L'instrument des campagnes au doigt |
   | **`touch int [ms]`** | témoin **physique** de TP_INT : échantillonne la broche sans passer par le driver ni l'ISR |
   | **`touch addr`** | **preuve causale** de TP_INT : deux resets, INT haut puis bas, et l'adresse latchée suit (0x14 / 0x5D) |
-  | **`touch axes <swap> <mx> <my>`** | orientation à chaud. ⚠️ les miroirs se replient sur `x_max`/`y_max` : les quatre champs se règlent ensemble |
+  | **`touch axes <swap> <mx> <my>`** | orientation à chaud. ⚠️ les miroirs se replient sur `x_max`/`y_max` : les quatre champs se règlent ensemble. ⛔ **`swap=1` est REFUSÉ** : `x_max`/`y_max` sont figés à 480/640 et un échange d'axes rendrait injoignables les **160 dernières lignes**, bandeau MENU compris (AC2 a mesuré qu'aucune transformation n'est nécessaire) |
+  | **`touch delais <bas> <haut>`** | délais de la séquence de reset (1..2000 ms chacun), sans reflasher — puis `touch addr` pour les **appliquer** en rejouant. ⚠️ ce n'est PAS `touch reset`, qui remet les compteurs à zéro : trois commentaires du firmware annonçaient la mauvaise commande |
   | **`nav`** · `nav open <0..5>` · `nav back` | navigation dashboard ↔ détail depuis la console. **Refusée si LVGL est en pause** : elle armerait le chronomètre de latence sur un cycle qui n'aura pas lieu |
-  | **`nav model rebuild\|screens`** | le **modèle** de navigation. `screens` est retenu (267,9 ms contre 307,7 ms), les deux restent jouables |
+  | **`nav model rebuild\|screens`** | le **modèle** de navigation. `screens` est retenu **à titre provisoire**, les deux restent jouables. ⚠️ les 267,9 ms contre 307,7 ms qui l'ont choisi ont été relevés à **`bounce_px = 0`**, configuration que §11.5 qualifie d'« écran inutilisable » — et l'A/B lui-même fuyait un arbre d'écran par bascule (corrigé). **À rejouer** dans la config livrée avant que dn3 n'en hérite |
   | **`nav ab <n>`** | N allers-retours scriptés : latences min/moy/max **et** preuve de non-fuite (RAM interne et PSRAM avant/après) |
   ⚠️ Le log de ce projet ne part **plus** sur le header UART GPIO43/44 : la console primaire est
   passée sur l'USB pour pouvoir RECEVOIR des commandes. Pour retrouver le header, voir le
@@ -253,11 +254,14 @@ l'application ne tourne pas.
 > N'IMPORTE QUELLE DURÉE**, et c'est le rejeu à froid du 2026-08-15 qui l'a trouvé.
 >
 > `firmware/desknode` n'imprime spontanément qu'une ligne de battement **toutes les 10 s**.
-> **Cadence RE-VÉRIFIÉE INCHANGÉE par dn1-3** (2026-08-15) : la ligne s'est enrichie des
-> compteurs de flush, mais le `vTaskDelay(10000)` n'a pas bougé — la durée d'écoute
-> ci-dessous reste donc valable telle quelle. C'est vérifié parce que changer cette
-> cadence sans changer la recette rendrait la recette de survie fausse le jour où on
-> en a besoin.
+> **Cadence RE-VÉRIFIÉE INCHANGÉE par dn1-3** (2026-08-15) puis **par dn1-4**
+> (2026-08-16, revue de code) : la ligne s'est enrichie des compteurs de flush, puis
+> du tactile, mais le `vTaskDelay(10000)` de `desknode_main.c` n'a pas bougé — la
+> durée d'écoute ci-dessous reste donc valable telle quelle. C'est vérifié à chaque
+> story parce que changer cette cadence sans changer la recette rendrait la recette
+> de survie fausse le jour où on en a besoin. ⚠️ L'AC9 de dn1-4 demandait cette
+> re-vérification ; elle avait été faite pour le bloc « voie A » et **pas tracée
+> ici** — c'est la revue qui l'a relevé.
 > Écouter 6 s sur une carte parfaitement saine rend donc **0 octet** — et diagnostique une carte
 > muette qui va très bien. C'est un faux positif qui envoie dérouler une recette de déblocage
 > pour rien, sur une carte qu'on va inutilement remettre en mode download.
@@ -353,7 +357,8 @@ $B  = '\\wsl.localhost\Ubuntu\home\nasbarok\projects\desknode\firmware\desknode\
 > n'a pas bougé (l'app fait toujours 4 MiB à `0x10000`, `assets` toujours 1 MiB à
 > `0x410000`), et l'asset non plus (`tools/gen_living_pcb.py` n'a pas été touché).
 > **Les quatre offsets restent exacts.** LVGL fait passer `desknode.bin` de
-> 377 664 à ~740 400 o, et le tactile + la navigation de dn1-4 à **782 800 o**, ce
+> 377 664 à ~740 400 o, et le tactile + la navigation de dn1-4 à **790 736 o** (dont +7 936 o de
+> correctifs de revue), ce
 > qui tient largement — mais c'est bien le genre de croissance qui finirait par
 > obliger à revoir la table, et c'est pour ça qu'on le note ici plutôt que de
 > supposer que « ça n'a pas dû changer ».
@@ -365,11 +370,39 @@ $B  = '\\wsl.localhost\Ubuntu\home\nasbarok\projects\desknode\firmware\desknode\
 > sans toucher au reste :
 >
 > ```bash
-> python3 -m esptool --chip esp32s3 --port /dev/ttyACM0 >     --before default_reset --after watchdog_reset erase_region 0x9000 0x6000
+> python3 -m esptool --chip esp32s3 --port /dev/ttyACM0 \
+>     --before default_reset --after watchdog_reset erase_region 0x9000 0x6000
 > ```
 >
-> Rejoué le 2026-08-16, il rend les défauts du firmware au boot suivant, et
-> l'asset survit (il vit à `0x410000`).
+> 🔴 **CETTE COMMANDE ÉTAIT CASSÉE** (corrigée le 2026-08-16 par la revue de code
+> dn1-4) : un `>` avait remplacé le `\` de continuation de ligne. Telle
+> qu'écrite, bash **redirigeait la sortie vers un fichier nommé `--before`** et
+> retirait l'argument de la ligne de commande — la NVS n'était pas effacée. Dans
+> un bloc dont le seul objet est de sortir d'une boucle de panique, c'est le pire
+> endroit possible pour une coquille.
+>
+> Elle rend les défauts du firmware au boot suivant, et l'asset survit (il vit à
+> `0x410000`).
+>
+> ⚠️ **ELLE NE COUVRE QU'UN DES DEUX CHEMINS DE BRICK.** Effacer la NVS remet
+> `bounce_px = 4800` et `draw_lines = 128`, qui sont désormais les **défauts du
+> firmware** — ce qui est bon si la panique venait d'une valeur `set` fautive.
+> Mais si elle vient d'un **`sdkconfig` périmé**, ça ne change rien : `sdkconfig`
+> est gitignoré et ESP-IDF n'applique `sdkconfig.defaults` qu'aux symboles
+> **absents**, donc un arbre d'avant dn1-4 garde `CONFIG_LCD_RGB_ISR_IRAM_SAFE=y`,
+> que `bounce_px = 4800` transforme en *« Guru Meditation Error: Cache disabled
+> but cached memory region accessed »* au boot. La sortie est alors :
+>
+> ```bash
+> cd ~/projects/desknode/firmware/desknode
+> rm sdkconfig && idf.py build && idf.py -p /dev/ttyACM0 flash
+> ```
+>
+> ⚠️ **Le garde-fou qui manquait.** `set bounce 38400` — que l'aide de la commande
+> présentait elle-même comme « le plafond, un diviseur utile » — ne démarrait plus
+> depuis que `draw_lines` est passé à 128 : les deux clés mangent la même RAM
+> interne et leurs bornes ne se parlaient pas. `set` vérifie désormais le **budget
+> combiné** contre la RAM interne réellement libre, et refuse avant d'écrire.
 >
 > Sans lui, la partition est vierge (0xFF partout). Le firmware **le détecte et
 > le dit** — au log (`partition « assets » VIERGE`) et **à l'écran** (panneau

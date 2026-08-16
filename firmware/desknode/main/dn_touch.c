@@ -31,7 +31,17 @@ static const char *TAG = "dn_touch";
  *
  * ⚠️ Ils coûtent 350 ms de boot. C'est assumé : ils ne sont joués qu'une fois, et
  *    les raccourcir serait la première chose à soupçonner si l'adresse latchée
- *    devenait instable. Réglables sans reflasher par `touch reset <bas> <haut>`.
+ *    devenait instable. Réglables sans reflasher par `touch delais <bas> <haut>`,
+ *    puis `touch addr` pour rejouer la séquence avec les nouvelles valeurs.
+ *
+ * ⚠️ CETTE PHRASE A ÉTÉ FAUSSE (revue dn1-4). Elle annonçait `touch reset <bas>
+ *    <haut>` — une commande qui n'a jamais existé : `touch reset` remet les
+ *    COMPTEURS à zéro et ignorait silencieusement ses deux arguments, tandis que
+ *    `dn_touch_set_delais()` n'avait aucun appelant. L'opérateur qui suivait le
+ *    commentaire croyait avoir allongé la séquence de reset et venait en réalité
+ *    d'effacer les compteurs qu'il s'apprêtait à lire. La sous-commande est
+ *    désormais branchée, et sous un nom qui ne peut plus être confondu avec une
+ *    remise à zéro.
  */
 #define DN_TP_INT_LOW_MS 150
 #define DN_TP_RST_LOW_MS 150
@@ -47,8 +57,34 @@ static const char *TAG = "dn_touch";
  * On démarre donc sur le mode qui ne peut PAS être muet, et `touch mode event`
  * fait l'A/B à chaud, avec le compteur d'IRQ comme témoin.
  *
- * ⚠️ Cette valeur est le point de départ de la campagne AC2. Si la mesure retient
- *    EVENT, c'est ICI qu'on l'écrit — et le commentaire dit alors pourquoi.
+ * ── ✅ VERDICT AC2, ARRÊTÉ LE 2026-08-16 : POLL EST RETENU ───────────────────
+ *
+ * La campagne a mesuré `event` MOINS cher : 0,5 % de charge totale contre 0,8 %
+ * pour `poll` au repos sur le dashboard (§11.3), l'INT ne battant pas
+ * spontanément — 0 IRQ en 30 s sans toucher la dalle. Le polling paie donc
+ * +0,3 point de CPU pour une information que personne ne demande.
+ *
+ * Il est retenu quand même, et le SYMPTÔME qui écarte `event` — celui que l'AC2
+ * exigeait et que la campagne n'avait pas su produire — est venu de la revue de
+ * code. Trois défauts, tous propres au mode EVENT :
+ *
+ *   1. `ui off` NE COUPE PAS le tactile en EVENT. `lvgl_port_stop()` ne fait que
+ *      `lv_timer_enable(false)` : la tâche LVGL continue et lit l'indev sur la
+ *      branche événementielle. Des transactions I²C ont donc lieu pendant la
+ *      pause — le stimulus exact qui affame la DMA du panneau (§11.4) — au beau
+ *      milieu de la mesure que la pause existe pour isoler.
+ *   2. L'APPUI COLLÉ. En EVENT l'indev n'est relu que sur front : un front de
+ *      relâchement manqué (après `touch addr`, qui retire l'ISR) laissait LVGL
+ *      PRESSED indéfiniment, et le tap suivant partait sur la case d'origine.
+ *      Le mode POLL n'a pas ce trou.
+ *   3. LA FENÊTRE DE BOOT entre la création de l'indev et le remplacement du
+ *      read_cb, où toucher la dalle partait en abort.
+ *
+ * Les points 2 et 3 sont corrigés (lv_indev_reset dans le drain, verrou pris
+ * avant lvgl_port_add_touch) ; le point 1 est structurel au portage. `poll` est
+ * donc le mode de la CONFIGURATION DE RÉFÉRENCE (§0), et `touch mode event`
+ * reste disponible pour l'A/B à chaud, avec le compteur d'IRQ comme témoin.
+ * Le prix, +0,3 point de CPU, est assumé et écrit.
  */
 #define DN_TOUCH_MODE_DEFAUT DN_TOUCH_MODE_POLL
 
@@ -84,6 +120,10 @@ static volatile bool s_lat_armee;
 static int64_t s_lat_t0;
 static volatile uint32_t s_lat_n, s_lat_min_us = UINT32_MAX, s_lat_max_us;
 static volatile uint32_t s_lat_total_us, s_lat_dernier_us;
+/* Échantillons ABANDONNÉS (dt < 0). Non nul = la campagne est à jeter. */
+static volatile uint32_t s_lat_rejets;
+/* L'ISR est-elle RÉELLEMENT enregistrée ? Pas « le handle existe-t-il ». */
+static bool s_isr_posee;
 
 /* ── Noms ─────────────────────────────────────────────────────────────────── */
 
@@ -172,7 +212,14 @@ uint32_t dn_touch_int_scan(int duree_ms, int *niveau_final)
  *    `esp_lcd_touch_register_interrupt_callback()` ASSIGNE — le dernier inscrit
  *    gagne, en silence (le trap n°1 de ce dépôt, déjà payé sur les callbacks
  *    vsync). On s'inscrit donc APRÈS, et on REPRODUIT son effet exact : réveiller
- *    la tâche LVGL avec l'indev en paramètre. Le seul ajout est le compteur.
+ *    la tâche LVGL. Le seul ajout est le compteur.
+ *
+ * ⚠️ On passe `s_indev` à `lvgl_port_task_wake()` par SYMÉTRIE avec le portage,
+ *    pas par nécessité : ce paramètre est IGNORÉ (esp_lvgl_port.c, la fonction ne
+ *    lit que le type d'événement). Le commentaire disait « avec l'indev en
+ *    paramètre » comme si l'effet en dépendait — il n'en dépend pas, et une
+ *    étiquette qui prête un effet à un argument mort est le genre de piste qu'on
+ *    remonte pour rien un soir de panne (revue dn1-4).
  */
 static void dn_touch_isr(esp_lcd_touch_handle_t tp)
 {
@@ -327,8 +374,18 @@ static void gt911_lire_config(void)
     s_cfg.lue = true;
 }
 
-/* Nom lisible du mode de déclenchement de l'INT (0x804D bits 1-0). */
-static const char *trig_name(uint8_t m)
+/*
+ * Nom lisible du mode de déclenchement de l'INT (0x804D bits 1-0).
+ *
+ * ⚠️ EXPOSÉE (revue dn1-4) : `dn_console.c` réécrivait cette table à la main,
+ *    en toutes lettres, dans sa sortie `touch`. Deux sources pour le SEUL
+ *    registre qui décide du front sur lequel l'ISR s'arme — et une ISR armée sur
+ *    un front que la dalle ne produit jamais, c'est le tactile muet EN SILENCE
+ *    que ce module passe son temps à écarter. Corriger le décodage d'un côté
+ *    sans l'autre aurait donné un bandeau de boot et une commande `touch` qui se
+ *    contredisent sur l'information la plus difficile à diagnostiquer.
+ */
+const char *dn_touch_trig_name(uint8_t m)
 {
     switch (m & 0x03) {
     case 0:
@@ -420,19 +477,9 @@ esp_err_t dn_touch_init(void)
         .intr_type = GPIO_INTR_DISABLE,
         .pin_bit_mask = BIT64(DN_PIN_TP_INT),
     };
-    ESP_RETURN_ON_ERROR(gpio_config(&int_out), TAG, "TP_INT en sortie refusé");
-    ESP_RETURN_ON_ERROR(gpio_set_level(DN_PIN_TP_INT, 0), TAG, "TP_INT bas refusé");
-    vTaskDelay(pdMS_TO_TICKS(DN_TP_INT_LOW_MS));
-
-    esp_err_t err = dn_display_tp_reset(s_rst_bas_ms, s_rst_haut_ms);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "séquence de reset refusée : %s", esp_err_to_name(err));
-        return err;
-    }
-
     /* INT relâché en ENTRÉE : l'adresse est latchée, la broche redevient une
-     * sortie du GT911. La laisser en sortie ici mettrait deux drivers face à
-     * face sur le même fil. */
+     * sortie du GT911. La laisser en sortie mettrait deux drivers face à face
+     * sur le même fil. */
     gpio_config_t int_in = {
         .mode = GPIO_MODE_INPUT,
         .intr_type = GPIO_INTR_DISABLE,
@@ -440,6 +487,35 @@ esp_err_t dn_touch_init(void)
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .pin_bit_mask = BIT64(DN_PIN_TP_INT),
     };
+
+    ESP_RETURN_ON_ERROR(gpio_config(&int_out), TAG, "TP_INT en sortie refusé");
+    /*
+     * ⚠️ À PARTIR D'ICI, TOUT CHEMIN DE SORTIE REMET LA BROCHE EN ENTRÉE
+     *    (correctif de revue dn1-4). Le code sortait par `return err` en laissant
+     *    GPIO16 en SORTIE poussée à 0, jusqu'au reboot, face à la sortie INT d'un
+     *    GT911 qui n'est PAS en reset — dn1-4 a justement mesuré qu'il répond
+     *    déjà avant toute intervention. Deux conséquences : un conflit de
+     *    drivers permanent sur le seul fil INT, et surtout un DIAGNOSTIC
+     *    FABRIQUÉ — l'opérateur tape ensuite `touch int` et lit « la broche N'A
+     *    PAS BOUGÉ. […] GPIO16 n'est pas TP_INT », alors que c'est le firmware
+     *    qui la tient. `dn_touch_essai_adresse()` restaurait déjà la broche
+     *    inconditionnellement : l'asymétrie était un oubli, pas un choix.
+     */
+    esp_err_t err = gpio_set_level(DN_PIN_TP_INT, 0);
+    if (err == ESP_OK) {
+        vTaskDelay(pdMS_TO_TICKS(DN_TP_INT_LOW_MS));
+        err = dn_display_tp_reset(s_rst_bas_ms, s_rst_haut_ms);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "séquence de reset refusée : %s", esp_err_to_name(err));
+        }
+    } else {
+        ESP_LOGE(TAG, "TP_INT bas refusé : %s", esp_err_to_name(err));
+    }
+    if (err != ESP_OK) {
+        gpio_config(&int_in); /* la broche est RENDUE avant de partir */
+        return err;
+    }
+
     ESP_RETURN_ON_ERROR(gpio_config(&int_in), TAG, "TP_INT en entrée refusé");
 
     uint8_t trouve = 0;
@@ -484,7 +560,7 @@ esp_err_t dn_touch_init(void)
                  "%ux%u · %u points · INT sur %s",
                  s_cfg.product_id, s_cfg.fw_version, s_cfg.cfg_version,
                  s_cfg.x_res, s_cfg.y_res, s_cfg.touch_max,
-                 trig_name(s_cfg.trig_mode));
+                 dn_touch_trig_name(s_cfg.trig_mode));
         if (s_cfg.x_res != DN_LCD_H_RES || s_cfg.y_res != DN_LCD_V_RES) {
             ESP_LOGW(TAG,
                      "⚠️ la résolution CONFIGURÉE dans le GT911 (%ux%u) diffère "
@@ -546,6 +622,17 @@ esp_err_t dn_touch_init(void)
     err = esp_lcd_touch_new_i2c_gt911(s_io, &tp_cfg, &s_tp);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "création du GT911 refusée : %s", esp_err_to_name(err));
+        /*
+         * ⚠️ LE DEVICE I²C EST RENDU (correctif de revue dn1-4). Il restait
+         *    alloué et ENREGISTRÉ sur I2C_NUM_0 à 0x5D alors que
+         *    `dn_touch_ready()` rendait false et que la bannière annonçait
+         *    « tactile ABSENT » : un device fantôme, invisible, sur le bus
+         *    UNIQUE de la carte. dn2-1 va y ajouter quatre capteurs — une
+         *    adresse occupée par un contrôleur déclaré absent est exactement le
+         *    genre de trace qu'on passerait une soirée à ne pas comprendre.
+         */
+        esp_lcd_panel_io_del(s_io);
+        s_io = NULL;
         return err;
     }
     ESP_LOGI(TAG, "GT911 prêt à 0x%02X — TP_INT=GPIO%d, TP_RST=expander bit1",
@@ -566,22 +653,58 @@ esp_err_t dn_touch_attach_lvgl(lv_display_t *disp)
          * tactile et la dalle d'affichage ont la même géométrie. */
         .scale = {.x = 0, .y = 0},
     };
+    /*
+     * ── LE VERROU EST PRIS *AVANT* lvgl_port_add_touch (correctif de revue) ──
+     *
+     * Il était pris APRÈS, et l'ordre était un piège à trois détentes. Comme
+     * `.int_gpio_num` est défini, `lvgl_port_add_touch()` rend un indev DÉJÀ
+     * VIVANT, en LV_INDEV_MODE_EVENT, branché sur le read_cb du portage — celui
+     * qui fait `ESP_ERROR_CHECK(esp_lcd_touch_read_data(...))`
+     * (esp_lvgl_port_touch.c). Sur timeout du verrou, on rendait ESP_ERR_TIMEOUT
+     * en laissant cet indev en place :
+     *
+     *   1. le premier NACK I²C du bus (cinq composants) ABORTAIT le firmware
+     *      depuis la tâche LVGL — la panne exacte que dn_touch_read() dit avoir
+     *      supprimée ;
+     *   2. `app_main` loggait « LVGL ne le lit pas : le doigt ne fera rien »,
+     *      ce qui était faux — il le lisait, mal ;
+     *   3. `dn_touch_set_mode()` n'ayant jamais tourné, `s_mode` gardait son
+     *      initialiseur POLL pendant que l'indev était en EVENT : `touch` et la
+     *      bannière annonçaient un mode de lecture qui n'était pas le vrai.
+     *
+     * Le déclencheur est documenté dans ce fichier même : un cycle plein écran à
+     * `lines 8` tient le verrou ~2,1 s, donc au-delà de l'ancienne seconde. Il
+     * existait en prime une fenêtre au BOOT entre la création de l'indev et le
+     * remplacement du read_cb, où toucher la dalle suffisait à partir en abort.
+     *
+     * Le mutex du portage est RÉCURSIF (xSemaphoreCreateRecursiveMutex) et
+     * `lvgl_port_add_touch` prend le verrou lui-même : l'imbriquer est sûr. Tenir
+     * le verrou sur toute la séquence ferme la fenêtre, et un échec laisse le
+     * système SANS indev plutôt qu'avec un indev qui abort.
+     */
+    if (!lvgl_port_lock(3000)) {
+        ESP_LOGE(TAG, "verrou LVGL non pris en 3 s — indev NON créé (le tactile "
+                      "restera muet, mais rien ne peut abort)");
+        return ESP_ERR_TIMEOUT;
+    }
     s_indev = lvgl_port_add_touch(&cfg);
-    ESP_RETURN_ON_FALSE(s_indev, ESP_FAIL, TAG, "lvgl_port_add_touch");
-
+    if (!s_indev) {
+        lvgl_port_unlock();
+        ESP_LOGE(TAG, "lvgl_port_add_touch a échoué");
+        return ESP_FAIL;
+    }
     /* Notre lecture remplace la sienne — les deux raisons sont en tête de
      * dn_touch_read(). Tout le reste de l'indev (type, display, mode) est celui
      * du portage. */
-    if (!lvgl_port_lock(1000)) {
-        ESP_LOGE(TAG, "verrou LVGL non pris — l'indev garde la lecture du portage "
-                      "(celle qui ABORT sur erreur I2C)");
-        return ESP_ERR_TIMEOUT;
-    }
     lv_indev_set_read_cb(s_indev, dn_touch_read);
     lvgl_port_unlock();
 
     /* Notre ISR remplace la sienne — voir dn_touch_isr. Après, jamais avant. */
     esp_err_t err = esp_lcd_touch_register_interrupt_callback(s_tp, dn_touch_isr);
+    /* L'ÉTAT RÉEL de l'ISR, et pas « le handle existe ». `dn_touch_essai_adresse`
+     * déduisait l'un de l'autre et pouvait ARMER une ISR qui ne l'était pas —
+     * voir le commentaire là-bas. */
+    s_isr_posee = (err == ESP_OK);
     if (err != ESP_OK) {
         ESP_LOGW(TAG,
                  "⚠️ ISR tactile non enregistrée (%s) : le compteur d'IRQ restera "
@@ -589,17 +712,34 @@ esp_err_t dn_touch_attach_lvgl(lv_display_t *disp)
                  esp_err_to_name(err));
     }
 
+    /*
+     * ⚠️ L'ÉTIQUETTE DOIT SUIVRE LA RÉALITÉ, MÊME EN ÉCHEC (revue dn1-4).
+     *    Le portage a laissé l'indev en LV_INDEV_MODE_EVENT ; `s_mode` vaut POLL
+     *    par initialiseur. Si la bascule échoue, les deux DIVERGENT — et `touch`
+     *    et la bannière publieraient « poll » pour un indev piloté par l'INT.
+     *    On rend alors s_mode conforme à ce que l'indev fait vraiment, et on le
+     *    dit fort : une étiquette de mode fausse, c'est un tactile qu'on
+     *    diagnostiquera dans la mauvaise direction.
+     */
     esp_err_t m = dn_touch_set_mode(DN_TOUCH_MODE_DEFAUT);
-    ESP_LOGI(TAG, "indev LVGL branché — mode « %s »%s",
-             dn_touch_mode_name(s_mode),
-             m == ESP_OK ? "" : " (bascule refusée)");
+    if (m != ESP_OK) {
+        s_mode = DN_TOUCH_MODE_EVENT; /* ce que le portage a réellement posé */
+        ESP_LOGE(TAG,
+                 "⚠️ bascule de mode refusée (%s) : l'indev RESTE en EVENT, posé "
+                 "par le portage. `touch mode poll` pour reprendre la main.",
+                 esp_err_to_name(m));
+    }
+    ESP_LOGI(TAG, "indev LVGL branché — mode « %s »", dn_touch_mode_name(s_mode));
+    /* ESP_OK même si la bascule a échoué : l'indev EST branché et lit avec NOTRE
+     * read_cb. Rendre une erreur ici ferait dire à app_main « le doigt ne fera
+     * rien », ce qui serait faux — et ce message doit rester vrai, il est
+     * désormais réservé au cas où l'indev n'existe pas. */
     return ESP_OK;
 }
 
 /* ── Accès ────────────────────────────────────────────────────────────────── */
 
 bool dn_touch_ready(void) { return s_tp != NULL; }
-esp_lcd_touch_handle_t dn_touch_handle(void) { return s_tp; }
 uint8_t dn_touch_addr(void) { return s_addr; }
 uint8_t dn_touch_addr_visee(void) { return s_addr_visee; }
 uint8_t dn_touch_addr_avant(void) { return s_addr_avant; }
@@ -613,15 +753,35 @@ void dn_touch_get_cfg(dn_touch_cfg_t *out)
     }
 }
 
+/*
+ * ── POURQUOI DES BASES PLUTÔT QU'UNE REMISE À ZÉRO (correctif de revue dn1-4) ─
+ *
+ * `s_irq++` est un read-modify-write exécuté PAR L'ISR ; `volatile` garantit la
+ * relecture, pas l'atomicité. Écrire 0 depuis la tâche REPL pendant que l'ISR
+ * est en vol perdait l'écriture : l'ISR relisait l'ancienne valeur et
+ * réécrivait ancien+1. Et ce n'est pas théorique — la campagne AC2 a mesuré
+ * 999 IRQ pour 22 appuis, soit ~45 impulsions par contact : un `touch reset`
+ * tapé au doigt posé (ce que le protocole imprimé par la console demande
+ * justement de faire) pouvait repartir de ~999 au lieu de 0, et le verdict
+ * « l'INT bat » se lisait alors sur un chiffre hérité.
+ *
+ * Les compteurs restent donc MONOTONES — l'ISR et la tâche LVGL n'y font
+ * qu'incrémenter, jamais écrire — et `touch reset` ne fait que déplacer une
+ * BASE, écrite par le seul REPL. Plus de course possible, et zéro coût dans
+ * l'ISR (pas de spinlock dans le chemin chaud).
+ */
+static uint32_t s_base_irq, s_base_lectures, s_base_appuis, s_base_relaches,
+    s_base_err_i2c;
+
 void dn_touch_get_stats(dn_touch_stats_t *out)
 {
     if (!out) {
         return;
     }
-    out->irq = s_irq;
-    out->lectures = s_lectures;
-    out->appuis = s_appuis;
-    out->relaches = s_relaches;
+    out->irq = s_irq - s_base_irq;
+    out->lectures = s_lectures - s_base_lectures;
+    out->appuis = s_appuis - s_base_appuis;
+    out->relaches = s_relaches - s_base_relaches;
     out->x = s_x;
     out->y = s_y;
     out->brut_x = s_brut_x;
@@ -629,15 +789,15 @@ void dn_touch_get_stats(dn_touch_stats_t *out)
     out->appuye = s_appuye;
 }
 
-uint32_t dn_touch_err_i2c(void) { return s_err_i2c; }
+uint32_t dn_touch_err_i2c(void) { return s_err_i2c - s_base_err_i2c; }
 
 void dn_touch_reset_stats(void)
 {
-    s_irq = 0;
-    s_lectures = 0;
-    s_appuis = 0;
-    s_relaches = 0;
-    s_err_i2c = 0;
+    s_base_irq = s_irq;
+    s_base_lectures = s_lectures;
+    s_base_appuis = s_appuis;
+    s_base_relaches = s_relaches;
+    s_base_err_i2c = s_err_i2c;
 }
 
 dn_touch_mode_t dn_touch_get_mode(void) { return s_mode; }
@@ -671,6 +831,36 @@ esp_err_t dn_touch_set_mode(dn_touch_mode_t m)
 esp_err_t dn_touch_set_axes(bool swap_xy, bool mirror_x, bool mirror_y)
 {
     ESP_RETURN_ON_FALSE(s_tp, ESP_ERR_INVALID_STATE, TAG, "pas de GT911");
+    /*
+     * ── POURQUOI `swap_xy` EST REFUSÉ SUR CETTE CARTE (revue dn1-4) ──────────
+     *
+     * Il était ACCEPTÉ, et il rendait 160 lignes de l'écran injoignables — dont
+     * TOUT le bandeau MENU (y = 580..639) et la 3ᵉ rangée de cases.
+     *
+     * La mécanique : `x_max`/`y_max` sont figés à la création du driver (480 et
+     * 640, la résolution native que le GT911 déclare lui-même) et il n'existe
+     * aucun setter. `esp_lcd_touch` applique les miroirs PUIS le swap. Après
+     * swap, X porte donc le y brut (0..639) que LVGL écrête à 479, et Y porte le
+     * x brut, qui ne dépasse jamais 479 sur une dalle haute de 640. Un swap
+     * projette un intervalle de 640 sur un axe large de 480 : il est
+     * géométriquement PERDANT sur une dalle non carrée dont le tactile a déjà la
+     * même orientation que l'affichage.
+     *
+     * Et il n'a aucune raison d'exister ici : AC2 a mesuré les 4 coins + le
+     * centre, et deux sources concordantes (le doigt, et la résolution que le
+     * contrôleur déclare) donnent le repère de la dalle TEL QUEL — swap 0,
+     * miroirs 0. La démo Waveshare, qui inverse x_max/y_max, est écartée pour
+     * cette raison. Refuser vaut mieux qu'accepter en mutilant le tiers bas de
+     * l'écran sans un mot : l'avertissement imprimé par la console ne parlait
+     * que des MIROIRS.
+     */
+    if (swap_xy) {
+        ESP_LOGE(TAG, "swap_xy refusé : x_max/y_max sont figés à 480/640 et le "
+                      "swap d'axes rendrait injoignables les 160 dernières "
+                      "lignes (bandeau MENU compris). Orientation mesurée en "
+                      "AC2 : aucune transformation.");
+        return ESP_ERR_NOT_SUPPORTED;
+    }
     ESP_RETURN_ON_ERROR(esp_lcd_touch_set_swap_xy(s_tp, swap_xy), TAG, "swap_xy");
     ESP_RETURN_ON_ERROR(esp_lcd_touch_set_mirror_x(s_tp, mirror_x), TAG, "mirror_x");
     ESP_RETURN_ON_ERROR(esp_lcd_touch_set_mirror_y(s_tp, mirror_y), TAG, "mirror_y");
@@ -696,17 +886,57 @@ void dn_touch_get_axes(bool *swap_xy, bool *mirror_x, bool *mirror_y)
     }
 }
 
+/*
+ * ── CE QUI PRODUIT UN CLIC, ET CE QUE LE DRAIN NE FAISAIT PAS ────────────────
+ *
+ * Trois correctifs de la revue dn1-4 sur une fonction qui n'empêchait pas ce
+ * qu'elle annonçait :
+ *
+ * 1. LE CLIC NE NAÎT PAS DE `s_appuye`. Il naît de la machine d'état de l'INDEV
+ *    LVGL : `indev->pointer.act_obj` armé à l'appui, puis la transition
+ *    PRESSED -> RELEASED qui émet LV_EVENT_CLICKED. Jeter une lecture du GT911
+ *    n'y touchait pas. Un doigt relâché pendant `ui off` laissait donc `act_obj`
+ *    armé, et la première lecture après reprise rendait RELEASED — donc un
+ *    CLICKED, donc l'ouverture d'un écran de détail que personne n'a demandé.
+ *    C'est très exactement ce que l'ancien commentaire promettait d'exclure.
+ *    `lv_indev_reset()` est ce qui manquait.
+ * 2. LE VERROU. La fonction tournait depuis la tâche REPL, sans verrou, pendant
+ *    que `dn_touch_read()` pouvait lire dans la tâche LVGL :
+ *    `esp_lcd_touch_read_data()` n'a AUCUN verrou interne, et `s_appuye` est
+ *    volatile mais pas atomique. Perte d'écriture => un appui en cours vu comme
+ *    relâché puis ré-appuyé => un CLICKED fabriqué. Elle prend donc le verrou
+ *    elle-même, comme le veut la règle du dépôt (les fonctions publiques le
+ *    prennent, l'appelant jamais). Le mutex du portage étant récursif, un
+ *    appelant qui le tient déjà ne se bloque pas.
+ * 3. L'ORDRE, côté appelant : dn_ui_resume() draine désormais AVANT
+ *    lvgl_port_resume(), sinon la tâche LVGL (priorité 4) pouvait préempter le
+ *    REPL et lire l'indev pendant que le drain faisait sa transaction I²C.
+ *
+ * ⚠️ Le trou existe aussi APRÈS `touch addr`, qui retire l'ISR et perd le front
+ *    de relâchement : en LV_INDEV_MODE_EVENT l'indev n'est relu que sur front,
+ *    donc LVGL resterait PRESSED indéfiniment et le tap suivant partirait sur la
+ *    case d'origine. Le lv_indev_reset() ferme ce cas-là aussi.
+ */
 void dn_touch_drain(void)
 {
     if (!s_tp) {
         return;
     }
+    if (!lvgl_port_lock(1000)) {
+        ESP_LOGW(TAG, "drain : verrou LVGL non pris en 1 s — l'état de l'indev "
+                      "n'a PAS été remis à plat, un clic fantôme reste possible");
+        return;
+    }
     /* Une lecture jetée : elle vide le registre de points du GT911 (le driver
      * réécrit 0 dans 0x814E après chaque lecture) et remet notre état d'appui à
-     * plat. Sans ça, un doigt posé pendant `ui off` produirait un
-     * appui->relâchement au retour, donc un CLIC que personne n'a voulu. */
+     * plat. */
     esp_lcd_touch_read_data(s_tp);
     s_appuye = false;
+    /* ET la machine d'état de l'indev, qui est celle qui décide du clic. */
+    if (s_indev) {
+        lv_indev_reset(s_indev, NULL);
+    }
+    lvgl_port_unlock();
 }
 
 /* ── Latence ──────────────────────────────────────────────────────────────── */
@@ -717,6 +947,18 @@ void dn_touch_latence_arm(int64_t t0_us)
     s_lat_armee = true;
 }
 
+/*
+ * Désarme SANS produire d'échantillon. Appelée par `dn_ui_pause()` : un
+ * chronomètre laissé en vol pendant `ui off` était arrêté par le redessin
+ * complet de la reprise, et publiait la DURÉE DE LA PAUSE dans le min/moy/max
+ * d'AC5 (revue dn1-4). Un échantillon gouverné par l'opérateur n'est pas une
+ * mesure.
+ */
+void dn_touch_latence_desarm(void)
+{
+    s_lat_armee = false;
+}
+
 void dn_touch_latence_stop(void)
 {
     if (!s_lat_armee) {
@@ -725,6 +967,14 @@ void dn_touch_latence_stop(void)
     s_lat_armee = false;
     int64_t dt = esp_timer_get_time() - s_lat_t0;
     if (dt < 0) {
+        /* ⚠️ COMPTÉ, pas jeté en silence (revue dn1-4). Un dt négatif veut dire
+         * que l'instant d'armement est POSTÉRIEUR au flush — un désordre réel,
+         * pas un aléa. L'abandonner sans trace faisait diverger `lat.n` du
+         * nombre de transitions sans que rien ne le signale, et la moyenne
+         * publiée par AC5 se calculait sur un échantillon silencieusement
+         * biaisé. `touch` et `nav ab` affichent ce compteur : non nul, il
+         * invalide la campagne. */
+        s_lat_rejets++;
         return;
     }
     uint32_t us = (uint32_t)dt;
@@ -749,6 +999,7 @@ void dn_touch_get_latence(dn_touch_latence_t *out)
     out->max_us = s_lat_max_us;
     out->total_us = s_lat_total_us;
     out->dernier_us = s_lat_dernier_us;
+    out->rejets = s_lat_rejets;
 }
 
 void dn_touch_reset_latence(void)
@@ -758,6 +1009,7 @@ void dn_touch_reset_latence(void)
     s_lat_max_us = 0;
     s_lat_total_us = 0;
     s_lat_dernier_us = 0;
+    s_lat_rejets = 0;
     s_lat_armee = false;
 }
 
@@ -778,9 +1030,27 @@ esp_err_t dn_touch_essai_adresse(bool int_haut, uint8_t *trouvee)
      * après l'essai, et on conclurait « l'INT ne bat pas » sur un instrument
      * qu'on a soi-même débranché.
      */
-    bool avait_isr = (s_tp != NULL);
+    /*
+     * ⚠️ `s_isr_posee`, PAS `(s_tp != NULL)` (correctif de revue dn1-4).
+     *    L'ancien test déduisait l'enregistrement de l'ISR de la présence du
+     *    handle. Si `dn_touch_attach_lvgl` avait échoué à poser l'ISR (son
+     *    ESP_LOGW existe pour ça), `s_tp` était quand même non NULL : le premier
+     *    appel partait en ESP_ERR_INVALID_STATE (erreur JETÉE), et le second
+     *    INSTALLAIT l'ISR. Un `touch addr` changeait donc l'état de l'instrument
+     *    dans le dos de l'opérateur — le compteur d'IRQ qui lisait 0 se mettait à
+     *    monter, ce qui INVERSE le verdict d'AC1 sans qu'une ligne le signale.
+     *    Les deux retours sont désormais testés et dits.
+     */
+    bool avait_isr = s_isr_posee;
     if (avait_isr) {
-        esp_lcd_touch_register_interrupt_callback(s_tp, NULL);
+        esp_err_t e = esp_lcd_touch_register_interrupt_callback(s_tp, NULL);
+        if (e != ESP_OK) {
+            ESP_LOGW(TAG, "retrait de l'ISR refusé (%s) — le compteur d'IRQ de "
+                          "cet essai n'est pas un instrument fiable",
+                     esp_err_to_name(e));
+        } else {
+            s_isr_posee = false;
+        }
     }
 
     gpio_config_t out = {
@@ -822,7 +1092,18 @@ esp_err_t dn_touch_essai_adresse(bool int_haut, uint8_t *trouvee)
             .pin_bit_mask = BIT64(DN_PIN_TP_INT),
         };
         gpio_config(&re);
-        esp_lcd_touch_register_interrupt_callback(s_tp, dn_touch_isr);
+        esp_err_t e = esp_lcd_touch_register_interrupt_callback(s_tp, dn_touch_isr);
+        s_isr_posee = (e == ESP_OK);
+        if (e != ESP_OK) {
+            /* Symétrique du cas ci-dessus, et au moins aussi grave : sans ce
+             * message, le compteur d'IRQ reste à ZÉRO pour toujours et le
+             * prochain verdict d'AC2 se lit sur un instrument débranché. */
+            ESP_LOGE(TAG,
+                     "⚠️ ISR NON réarmée après l'essai (%s) : le compteur d'IRQ "
+                     "restera à ZÉRO — rebrancher par `touch mode` avant toute "
+                     "conclusion sur l'INT",
+                     esp_err_to_name(e));
+        }
     }
     /* Le contrôleur sort de reset avec ses registres à plat : on jette une
      * lecture pour que l'état d'appui local ne reste pas collé. */

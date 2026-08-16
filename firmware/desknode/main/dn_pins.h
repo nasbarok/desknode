@@ -77,9 +77,18 @@
  * ⚠️ Aucune des deux ne rentre en conflit sur ce bus : TCA9554 0x20, RTC
  *    PCF85063 0x51, IMU QMI8658 0x6A/0x6B, et les 4 capteurs de dn2-1
  *    (0x76/0x77, 0x23, 0x29, 0x40) sont tous ailleurs.
- * ⚠️ UN PROBE AVANT LE RESET NE VOIT RIEN : tant que la séquence EXIO2 n'a pas
- *    été jouée, le GT911 ne répond à AUCUNE des deux. « Absent » à ce moment-là
- *    n'est pas une panne — c'est le témoin négatif attendu.
+ * 🔴 LE PROBE AVANT LE RESET RÉPOND DÉJÀ — MESURÉ LE 2026-08-16 SUR CETTE CARTE.
+ *    Ce fichier enseignait le contraire (« tant que la séquence EXIO2 n'a pas été
+ *    jouée, le GT911 ne répond à AUCUNE des deux : c'est le témoin négatif
+ *    attendu »), et le livrable de dn1-4 l'a RÉFUTÉ dans le même commit :
+ *    `probe AVANT reset : il répond DÉJÀ à 0x5D`. TP_RST n'est donc pas maintenu
+ *    bas quand l'expander le laisse en entrée haute impédance — le contrôleur
+ *    sort de reset seul à la mise sous tension. La séquence reste indispensable,
+ *    mais pour rendre l'adresse DÉTERMINISTE, pas pour réveiller le contrôleur ;
+ *    et un probe qui répond avant elle n'est pas une anomalie à diagnostiquer.
+ *    (Correction de la revue dn1-4 : la phrase réfutée survivait ici, dans LA
+ *    source unique du brochage, et dans l'en-tête de dn_touch.h — les deux
+ *    fichiers qu'on ouvre en premier.)
  *
  * Les noms viennent du header du composant (ESP_LCD_TOUCH_IO_I2C_GT911_ADDRESS
  * et …_ADDRESS_BACKUP) ; on les redéclare ici parce que dn_pins.h est LA source
