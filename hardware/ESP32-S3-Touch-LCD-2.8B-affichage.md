@@ -60,6 +60,14 @@ Le bounce buffer a été mesuré contre un stimulus **I²C** ; rien ne dit qu'il
 d'écritures flash en fonctionnement) reste en vigueur**, et la branche
 « bounce 4 800, `ISR_IRAM_SAFE=n`, stimulus flash » n'a **pas** été jouée.
 
+> 🔴 **JOUÉE LE 2026-08-16 (dn2-2), ET LA RÉPONSE EST NON.** `flash on` dans la config de
+> référence, témoin positif au compteur (2 514 secteurs, 10 297 344 o, **165 343 o/s
+> soutenus**), constat owner à l'œil : **« l'image défile »**. Le bounce buffer NE protège
+> PAS des écritures flash — son ISR de réalimentation est masquée pendant l'effacement de
+> secteur (`ISR_IRAM_SAFE=n`, condition du bounce lui-même). À l'arrêt du stimulus, l'image
+> s'est recalée seule. **Les deux régimes de §11.4 sont désormais séparés PAR LA MESURE :
+> le bounce gagne contre l'I²C, il perd contre la flash. D4 est définitivement motivé.**
+
 ---
 
 ## 1. Brochage vérifié
@@ -1724,3 +1732,15 @@ code), sauf les lignes marquées comme antérieures.
 > donc été **surestimé de 2,7×** par la fuite. Détail complet et preuve de
 > non-fuite (5 bascules enchaînées) en **§11.5**. `screens` n'est plus provisoire :
 > il est confirmé, et il gagne 39,9 ms (11,5 %).
+
+---
+
+## 12. La liaison PC — voir le fichier frère (dn2-2, 2026-08-16)
+
+**`ESP32-S3-Touch-LCD-2.8B-liaison-pc.md`** consigne la fourche transport et son
+verdict : **USB série (branche A), par la console REPL** — la branche B (WiFi
+WebSocket) est éliminée par BLOCAGE MESURÉ du verrou RAM interne (6 407 o restants
+connectée + serveur WS ; `ESP_ERR_NO_MEM` en variante SPIRAM). La §0 ci-dessus est
+INCHANGÉE par dn2-2 : la branche retenue ne touche ni l'affichage ni son sdkconfig.
+Y sont aussi : le protocole de trame v1, les budgets liaison + donnée live
+(RAM interne **113 247 o**, CPU 0,8 %, fps 37,40 inchangé), et le legs dn2-1.

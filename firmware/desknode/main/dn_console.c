@@ -10,6 +10,7 @@
 #include "dn_asset.h"
 #include "dn_bootcfg.h"
 #include "dn_display.h"
+#include "dn_link.h"
 #include "dn_measure.h"
 #include "dn_patterns.h"
 #include "dn_pins.h"
@@ -17,6 +18,7 @@
 #include "dn_stimulus.h"
 #include "dn_touch.h"
 #include "dn_ui.h"
+#include "dn_wifi.h"
 #include "esp_console.h"
 #include "esp_log.h"
 #include "esp_partition.h"
@@ -2271,6 +2273,139 @@ static int cmd_cpu(int argc, char **argv)
 
 static int cmd_help(int argc, char **argv);
 
+/*
+ * ── `pc` : la liaison PC (dn2-2) ─────────────────────────────────────────────
+ *
+ * TROIS visages, et le deuxième est le cœur de la branche A :
+ *   `pc`            l'état : liaison, valeur + âge, compteurs, latence.
+ *   `pc $DN,…`      UNE TRAME. C'est le dialecte de l'agent en USB série — il
+ *                   parle au REPL comme un humain, la trame est l'argument.
+ *                   Aucun octet n'est imprimé quand la trame est acceptée : le
+ *                   bruit ajouté au flux console se limite à l'écho de la ligne
+ *                   et au re-rendu de l'invite (chiffré en AC3). C'est AUSSI
+ *                   l'injecteur de la campagne de bruit d'AC2, depuis
+ *                   dn_console.py, sans agent.
+ *   `pc reset`      compteurs et latence à zéro (les campagnes s'encadrent).
+ */
+static int cmd_pc(int argc, char **argv)
+{
+    if (argc >= 2 && strncmp(argv[1], "$DN,", 4) == 0) {
+        if (argc != 2) {
+            /* Une trame contenant un espace a DÉJÀ été coupée par le REPL :
+             * la juger « valide » morceau par morceau serait un mensonge. */
+            printf("trame en %d morceaux — un espace l'a coupee, rejetee\n",
+                   argc - 1);
+            return 1;
+        }
+        if (!dn_link_ingest_ligne(argv[1])) {
+            printf("trame rejetee (le compteur dit pourquoi : `pc`)\n");
+            return 1;
+        }
+        return 0;
+    }
+    if (argc == 2 && strcmp(argv[1], "reset") == 0) {
+        dn_link_reset_compteurs();
+        printf("compteurs de liaison remis a zero\n");
+        return 0;
+    }
+    if (argc != 1) {
+        printf("usage : pc | pc reset | pc $DN,<ver>,<seq>,<t_ms>,cpu,<dixiemes>*<CK>\n");
+        return 1;
+    }
+
+    dn_link_etat_t etat = dn_link_etat();
+    printf("liaison PC : %s", dn_link_etat_nom(etat));
+    if (etat != DN_LINK_JAMAIS) {
+        int v = dn_link_valeur_dixiemes();
+        int64_t age = dn_link_age_us();
+        printf(" — derniere valeur %d,%d %% · age %lld ms · seq %u · t_ms agent %u",
+               v / 10, v % 10, (long long)(age / 1000),
+               (unsigned)dn_link_derniere_seq(), (unsigned)dn_link_dernier_t_ms());
+    }
+    printf("\n");
+    printf("peremption : %lld ms, en temps absolu de RECEPTION — la cadence de\n",
+           (long long)(DN_LINK_PEREMPTION_US / 1000));
+    printf("             l'agent ne fait jamais foi (AC7)\n");
+
+    dn_link_compteurs_t c;
+    dn_link_compteurs(&c);
+    printf("trames     : %u valides · %u doublons · %u pertes seq · %u reprises\n",
+           (unsigned)c.recues, (unsigned)c.doublons, (unsigned)c.pertes_seq,
+           (unsigned)c.reprises);
+    printf("rejets     : tronquee %u · checksum %u · version %u · format %u · "
+           "bornes %u\n",
+           (unsigned)c.rejets_tronquee, (unsigned)c.rejets_checksum,
+           (unsigned)c.rejets_version, (unsigned)c.rejets_format,
+           (unsigned)c.rejets_bornes);
+
+    uint32_t n;
+    int64_t lmin, lmoy, lmax;
+    dn_link_latence(&n, &lmin, &lmoy, &lmax);
+    if (n > 0) {
+        printf("latence acceptation->label : n=%u · min %lld ms · moy %lld ms · "
+               "max %lld ms\n",
+               (unsigned)n, (long long)(lmin / 1000), (long long)(lmoy / 1000),
+               (long long)(lmax / 1000));
+    } else {
+        printf("latence acceptation->label : aucune poussee encore\n");
+    }
+    printf("  (NON instrumente ici : echantillonnage cote PC, vol dans le\n");
+    printf("   transport, et le flush LVGL suivant — <= 1 cycle, ~27 ms)\n");
+    printf("transport  : wifi %s", dn_wifi_etat_nom(dn_wifi_etat()));
+    if (dn_wifi_etat() == DN_WIFI_CONNECTEE) {
+        printf(" ip %s rssi %d dBm", dn_wifi_ip(), dn_wifi_rssi());
+    }
+    printf(" · ws %s (%u messages, %u connexions)\n",
+           dn_wifi_ws_actif() ? "ACTIF" : "off", (unsigned)dn_wifi_ws_messages(),
+           (unsigned)dn_wifi_ws_connexions());
+    printf("             branche A = cette console : l'agent envoie `pc $DN,...`\n");
+    return 0;
+}
+
+/*
+ * ── `wifi` : la maquette branche B (dn2-2) ──────────────────────────────────
+ * Le SSID ne peut pas contenir d'espace ici : le REPL coupe sur les espaces,
+ * et un guillemet mentirait (esp_console ne les fusionne pas). Refusé, pas
+ * deviné — le SSID de la maison n'en a pas.
+ */
+static int cmd_wifi(int argc, char **argv)
+{
+    if (argc >= 2 && strcmp(argv[1], "on") == 0) {
+        if (argc != 4) {
+            printf("usage : wifi on <ssid> <mdp>  (ssid/mdp SANS espace — le REPL "
+                   "coupe dessus)\n");
+            return 1;
+        }
+        return dn_wifi_on(argv[2], argv[3]) == ESP_OK ? 0 : 1;
+    }
+    if (argc == 2 && strcmp(argv[1], "off") == 0) {
+        return dn_wifi_off() == ESP_OK ? 0 : 1;
+    }
+    if (argc == 3 && strcmp(argv[1], "ws") == 0) {
+        bool on;
+        if (!parse_on_off(argv[2], &on)) {
+            printf("usage : wifi ws on|off\n");
+            return 1;
+        }
+        return (on ? dn_wifi_ws_on() : dn_wifi_ws_off()) == ESP_OK ? 0 : 1;
+    }
+    if (argc == 1 || (argc == 2 && strcmp(argv[1], "info") == 0)) {
+        printf("wifi : %s", dn_wifi_etat_nom(dn_wifi_etat()));
+        if (dn_wifi_etat() == DN_WIFI_CONNECTEE) {
+            printf(" · ip %s · rssi %d dBm", dn_wifi_ip(), dn_wifi_rssi());
+        }
+        printf(" · %u reconnexions (retente IMMEDIATEMENT, sans backoff — "
+               "dn4-1)\n",
+               (unsigned)dn_wifi_reconnexions());
+        printf("ws   : %s · %u messages · %u connexions\n",
+               dn_wifi_ws_actif() ? "ACTIF ws://…:80/dn" : "off",
+               (unsigned)dn_wifi_ws_messages(), (unsigned)dn_wifi_ws_connexions());
+        return 0;
+    }
+    printf("usage : wifi [info] | on <ssid> <mdp> | off | ws on|off\n");
+    return 1;
+}
+
 #define DN_CMD(name, helptext, fn) \
     {.command = (name), .help = (helptext), .hint = NULL, .func = (fn)}
 
@@ -2315,6 +2450,13 @@ static const esp_console_cmd_t k_cmds[] = {
     DN_CMD("disp", "disp on|off — sortie d'affichage de la dalle (0x29/0x28)",
            cmd_disp),
     DN_CMD("dma", "relance la DMA du panneau (décalage permanent)", cmd_restart_dma),
+    DN_CMD("pc",
+           "pc | reset | $DN,<trame> — liaison PC : état, compteurs, injection "
+           "(dn2-2)",
+           cmd_pc),
+    DN_CMD("wifi", "wifi [info] | on <ssid> <mdp> | off | ws on|off — branche B "
+                   "(dn2-2)",
+           cmd_wifi),
     DN_CMD("aide", "cette aide", cmd_help),
 };
 
@@ -2346,7 +2488,7 @@ static int cmd_help(int argc, char **argv)
 void dn_console_banner(void)
 {
     printf("\n");
-    printf("── DeskNode P3 — console de mesure ──\n");
+    printf("── DeskNode P5 — console de mesure ──\n");
     for (size_t i = 0; i < sizeof(k_cmds) / sizeof(k_cmds[0]); i++) {
         printf("  %-7s %s\n", k_cmds[i].command, k_cmds[i].help);
     }

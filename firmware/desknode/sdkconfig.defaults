@@ -243,3 +243,31 @@ CONFIG_LV_FONT_MONTSERRAT_28=y
 # vaut une heure de tâtonnement ; `idf.py monitor` fait la symbolisation via
 # l'ELF, encore faut-il que le panic HANDLER s'affiche plutôt que de rebooter.
 CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT=y
+
+# ── Liaison PC (story dn2-2) — LA FOURCHE EST TRANCHÉE : USB SÉRIE (branche A)
+# Le transport est le REPL console lui-même : l'agent Windows envoie
+# `pc $DN,…` sur COM3, dn_console route vers dn_link. AUCUNE ligne de config
+# n'est nécessaire ici pour la branche retenue — et c'est un argument du verdict.
+#
+# 🔴 LIGNES RÉFUTÉES, gardées avec leur réfutation (convention du dépôt) :
+#
+# CONFIG_HTTPD_WS_SUPPORT=y — la maquette B (ESP serveur WebSocket). ÉCARTÉE
+#   par le verrou 1 (2026-08-16) : pile connectée + serveur WS = 6 407 o de RAM
+#   interne restants (3 795 sous churn de reconnexion), réserve DMA 32 768 o
+#   violée de fait ; et le simple LINK coûtait 53 480 o de .bss interne +
+#   583 664 o de flash. L'image, elle, TENAIT (verrou 2 passé à l'œil) — c'est
+#   la RAM qui tue, pas le bus. Re-mesure : cette ligne + les REQUIRES du
+#   CMakeLists, puis `rm sdkconfig && idf.py build`.
+#
+# CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y — « l'option qui sauve la RAM
+#   interne ». RÉFUTÉE PAR PIRE : avec elle, `esp_wifi_init` échoue en
+#   ESP_ERR_NO_MEM (« Expected to init 16 rx buffer, actual is 4 » —
+#   2026-08-16) : les tampons RX statiques exigent de la RAM interne DMA que
+#   son chemin d'allocation ne fournit plus. La pile ne DÉMARRE pas.
+#
+# CONFIG_ESP_PHY_CALIBRATION_AND_DATA_STORAGE=n — la parade au verrou 3 (le
+#   WiFi écrit sa calibration PHY en NVS pendant que la dalle affiche :
+#   « Saving new calibration data », constaté au caractère près le 2026-08-16,
+#   D4 violé). Elle reste ICI EN RÉSERVE : inutile tant que la branche B n'est
+#   pas compilée, OBLIGATOIRE si elle revient — une re-mesure B sans cette
+#   ligne re-viole D4 à chaque premier boot.
