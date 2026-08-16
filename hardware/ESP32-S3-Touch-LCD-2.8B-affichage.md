@@ -1529,6 +1529,51 @@ soit 10 × 26,7 ms = **267 ms**. ⚠️ Cela **corrige** la prévision de §10.3
 conteneurs translucides sur une image de fond, il ne l'est pas — mais le total par
 cycle reste gouverné par le nombre de trames.
 
+#### ✅ L'ARBITRAGE DU MODÈLE, REFAIT DANS LA CONFIG LIVRÉE — session carte du 2026-08-16
+
+Les chiffres qui avaient choisi `screens` (267,9 ms contre 307,7) étaient invalides
+deux fois : relevés à `bounce_px = 0` (« écran inutilisable »), et sur un A/B dont
+la bascule **fuyait un arbre d'écran complet**. Rejoué sur le firmware `0e7fe61`,
+dans la configuration de référence (`num_fbs=1 · bounce_px=4800 · draw_lines=128 ·
+draw_psram=0 · lvgl_core=0`, lecture tactile `poll`), `touch reset` avant chaque
+série, dalle non touchée (la console le vérifie et le dirait) :
+
+| Modèle | min | moy | max | n | tas LVGL utilisé | delta tas |
+|---|---|---|---|---|---|---|
+| **`screens`** | 285,0 ms | **307,0 ms** | 320,8 ms | 40/40 | **15 216 o** | −12 o |
+| `rebuild` | 300,8 ms | **346,9 ms** | 374,2 ms | 40/40 | 12 184 o | 0 o |
+
+⇒ **`screens` est CONFIRMÉ**, et il l'est mieux qu'avant : il gagne **39,9 ms
+(11,5 %)** pour **+3 032 o** de tas LVGL.
+
+Trois choses que ce rejeu apprend, et qu'on ne pouvait pas savoir avant :
+
+1. **Le prix de `screens` avait été SURESTIMÉ de 2,7×.** L'ancien relevé donnait
+   +8 048 o (20 064 contre 12 016) ; la mesure propre donne **+3 032 o**. L'écart
+   est exactement ce qu'on attend d'un tas pollué par les écrans orphelins que la
+   bascule abandonnait.
+2. **L'écart entre les deux modèles est STABLE**, lui : 39,8 ms à `bounce 0 /
+   lines 64`, 39,9 ms à `bounce 4800 / lines 128`. Le coût du modèle ne dépend
+   donc pas de la configuration du pipeline — c'est un coût de **construction
+   d'arbre**, pas de flush. Le reste (les ~40 ms de décalage absolu entre les deux
+   campagnes) appartient au bounce et au draw buffer.
+3. **`n = 40` pour 40 transitions réelles, zéro rejet**, dans les deux séries. Le
+   dénominateur de la moyenne est enfin prouvé, pas supposé.
+
+**La fuite est morte, et c'est mesuré séparément** — 5 bascules `screens` ⇄
+`rebuild` enchaînées, tas relevé à chaque étape :
+
+| Bascule | 1 `screens` | 2 `rebuild` | 3 `screens` | 4 `rebuild` | 5 `screens` |
+|---|---|---|---|---|---|
+| Tas utilisé | 15 204 o | 12 168 o | 15 180 o | 12 180 o | **15 208 o** |
+
+Plat à ±28 o de bruit près. Avant le correctif, les trois retours vers `screens`
+auraient abandonné ~36 Ko sur un pool qui n'a que 47 Ko de libres — `lv_malloc`
+aurait échoué pendant la campagne. ⚠️ La **fragmentation** monte en revanche de
+1 % à 15-19 % et le plus gros bloc libre descend de 47 060 à ~40 600 o : c'est du
+churn create/destroy, pas une fuite (le total utilisé ne bouge pas), mais dn3-2 en
+tiendra compte s'il alloue de gros blocs après des bascules.
+
 **Options NOTÉES, non appliquées** (AC5 demande de les noter, pas de les traiter) :
 
 1. **Cases opaques** (`LV_OPA_COVER`) : supprimerait le re-blit du fond sous chaque
@@ -1561,28 +1606,62 @@ RETIRÉ** — `lv_obj_create()` le pose par défaut, et un conteneur scrollable
 **avale le geste** dès que le doigt roule de quelques pixels. C'est exactement le
 défaut « ça marche au centre, pas au bord » que la preuve aux coins doit attraper.
 
-> 🔴 **CETTE SECTION A AFFIRMÉ « AUCUN ÉLÉMENT PLEINE HAUTEUR » — C'EST FAUX, ET
-> LA GARDE §10.4 N'A JAMAIS ÉTÉ CONFRONTÉE.** Corrigé par la revue de code dn1-4.
+> ## 🔴 §10.4 SOUS NAVIGATION — LE CONSTAT MANQUANT, FAIT LE 2026-08-16
 >
-> Deux faits que la phrase masquait :
+> **La phrase « ⚠️ Aucun élément pleine hauteur, conformément au verdict adverse de
+> §10.4 » était fausse, et elle masquait un trou de preuve.** Deux faits :
 >
-> - le **voile** décrit juste en dessous fait `480 × 640` (`dn_ui.c`,
->   `lv_obj_set_size(voile, DN_LCD_H_RES, DN_LCD_V_RES)`) : il est plein écran,
->   donc pleine hauteur. Il est statique, donc jamais *invalidé* seul — ce qui
->   atténue le cas, mais ne rend pas la phrase vraie ;
-> - surtout, **chaque transition dashboard↔détail salit l'écran ENTIER** :
->   « aire cumulée : 614400 px » (§11.5). C'est littéralement la *zone sale pleine
->   hauteur* que §10.4 déclare **non protégée** par `vsync`. La précaution prise
->   sur la géométrie des cases (2×3, ~½ largeur × ~⅓ hauteur) est donc contournée
->   par le régime de navigation lui-même.
+> - le **voile** décrit plus bas fait `480 × 640` (`dn_ui.c`, `fond_poser()`) : il
+>   est plein écran. Statique, donc jamais invalidé seul — ce qui atténue le cas,
+>   mais ne rend pas la phrase vraie ;
+> - surtout, **chaque transition dashboard↔détail salit l'écran ENTIER**. C'est
+>   littéralement la *zone sale pleine hauteur* que §10.4 déclare **non protégée**
+>   par `vsync`. La précaution prise sur la géométrie des cases (2×3, ~½ largeur ×
+>   ~⅓ hauteur) est donc contournée par le régime de navigation lui-même.
 >
-> ⚠️ **Et aucun constat owner de déchirement pendant une transition n'existe** —
-> ni dans la story, ni ici. Les campagnes au doigt ont vérifié *où* le tap ouvre,
-> pas *comment* l'écran se recompose. C'est un **trou de preuve identifié**, pas
-> un verdict : décision owner du 2026-08-16 de le combler par un rejeu en session
-> carte (regarder une transition à l'œil) plutôt que de le laisser en angle mort.
-> dn3-2, qui construira la vraie grille, doit partir du constat, pas de cette
-> phrase.
+> ### Ce que l'œil a vu — constat owner, 40 transitions consécutives (`nav ab 20`)
+>
+> > *« oui mais léger »* (déchirement) — *« à chaque transition le détail
+> > s'affiche par morceau, mais rapide, en 1 s »* — *« sinon tout paraît ok »*.
+>
+> ⇒ **Le verdict adverse de §10.4 s'applique bien en régime de navigation**, mais
+> sa manifestation N'EST PAS le déchirement classique : c'est un **repeint bande
+> par bande**, visible à chaque transition, sans exception.
+>
+> ### Le mécanisme, mesuré sur une transition isolée (`flush`)
+>
+> ```
+> flushes            : 5
+> cycles de redessin : 1
+> aire cumulée       : 307200 px
+>   => 61440 px par flush en moyenne        (480 x 128 = UNE bande)
+>   => 307200 px et 5.0 flush(es) par CYCLE de redessin
+> copie              : 26181 us cumulés, 5236 us/flush
+> attente de synchro : 49997 us cumulés, 9999 us/flush
+> ```
+>
+> **640 ÷ 128 = 5 bandes**, chacune attendant sa propre trame. `vsync` synchronise
+> chaque bande *individuellement* — rien ne synchronise le **cycle entier**. C'est
+> la définition exacte du cas adverse, et l'œil de l'owner et le compteur disent la
+> même chose.
+>
+> ⚠️ **Copie 26,2 ms + synchro 50,0 ms = 76 ms, pour une transition mesurée à
+> 307 ms.** Les ~230 ms restants sont le **rendu LVGL** lui-même. Le plancher de la
+> transition n'est donc PAS la copie ni l'attente de trame : c'est le dessin. Cela
+> corrige une lecture répandue dans ce fichier depuis §10.3.
+>
+> ### Ce que dn3-2 doit en faire
+>
+> Le nombre de bandes visibles vaut `640 / draw_lines` : **5 aujourd'hui**, 10 si
+> quelqu'un repasse à 64 lignes « pour économiser la RAM ». Et six widgets VIVANTS
+> allongeront le rendu, donc le temps pendant lequel les bandes sont
+> discernables — le défaut empire avec le contenu, pas avec la mémoire. Les
+> parades sont notées en §11.5 (cases opaques, ne pas invalider le fond) ; aucune
+> n'est appliquée ici, et l'owner a jugé le rendu acceptable en l'état.
+>
+> ✅ **Le legs §10.4 est SOLDÉ sous le régime réel** : il n'est plus une garde
+> théorique sur la géométrie des widgets, c'est un comportement observé, chiffré,
+> et dont le levier est connu.
 
 
 **Lisibilité — constat owner du 2026-08-16** : *« le fond prend trop, il masque les
@@ -1608,16 +1687,18 @@ accentuée **en silence**, LVGL ne dessinant pas le glyphe absent sans se plaind
 
 Configuration : `num_fbs=1 · bounce_px=4800 · draw_lines=128 · draw_psram=0 ·
 lvgl_core=0`, lecture tactile `poll`, dashboard affiché, label masqué.
+**Colonne dn1-4 re-mesurée le 2026-08-16 sur le firmware `0e7fe61`** (post-revue de
+code), sauf les lignes marquées comme antérieures.
 
 | Mesure | dn1-3 (référence) | **dn1-4** | Écart |
 |---|---|---|---|
 | Charge CPU, socle nu | 0,0 % | — | — |
-| Charge CPU, **LVGL au repos** | 0,3 % | **0,8 %** | +0,5 pt, dont **+0,3 pt de polling I²C** |
+| Charge CPU, **LVGL au repos** | 0,3 % | **0,9 %** | +0,6 pt, dont **+0,3 pt de polling I²C**. ⚠️ 0,8 % avant la revue de code, 0,9 % après (`0e7fe61`) : +0,1 pt, dans le bruit de la mesure |
 | Charge CPU, **label 1 Hz** | 0,9 % | **2,0 %** | +1,1 pt — le surcoût du bounce, qui n'apparaît **qu'en redessin** |
-| `fps` | 37,40 Hz | **37,40 Hz (+0,01 %)** | **inchangé** |
+| `fps` | 37,40 Hz | **37,40 Hz (−0,00 %)** | **inchangé** — re-vérifié sur `0e7fe61` : 561 trames en 14 999 789 µs |
 | PSRAM libre | 7 770 588 o | **7 768 608 o** | −1 980 o |
-| RAM interne libre | 212 015 o | **118 379 o** | −93 636 o : draw buffer 128 lignes (+61 440) et bounce (2 × 9 600) |
-| Binaire | 740 400 o | **790 736 o** | +50 336 o (driver GT911 + tactile + navigation + les correctifs de revue) ; **81 % de la partition libre**. ⚠️ 782 800 o était la taille AVANT la revue de code du 2026-08-16 ; les 34 correctifs coûtent +7 936 o |
+| RAM interne libre | 212 015 o | **117 995 o** | −94 020 o : draw buffer 128 lignes (+61 440) et bounce (2 × 9 600). 118 379 o avant la revue de code, 117 995 o après — les correctifs coûtent 384 o |
+| Binaire | 740 400 o | **790 736 o** | +50 336 o (driver GT911 + tactile + navigation + les correctifs de revue) ; **81 % de la partition libre**. ⚠️ 782 800 o était la taille AVANT la revue de code du 2026-08-16 ; les 34 correctifs coûtent +7 936 o. **C'est ce binaire-là (`0e7fe61`) qui porte TOUTES les mesures de cette section.** Le commit suivant, qui ne fait qu'inscrire les résultats de la session dans les commentaires et un message de console, retombe à 790 720 o — non re-mesuré, et sans raison de l'être |
 
 > ⚠️ **CORRECTION D'ATTRIBUTION, faite en cours de mesure.** Un premier relevé
 > annonçait « CPU 0,8 % → 2,7 % » et mettait tout sur le dos du bounce buffer. Il
@@ -1633,27 +1714,13 @@ lvgl_core=0`, lecture tactile `poll`, dashboard affiché, label masqué.
 42 Ko sur les 64 Ko du tas LVGL (33 % utilisés avec les deux écrans du modèle
 `screens`), et 81 % de la partition applicative.
 
-> 🔴 **LE CHIFFRE DU TAS LVGL EST À REJOUER — revue de code du 2026-08-16.**
-> Deux raisons, et elles se cumulent :
->
-> 1. **L'A/B fuyait.** L'arbitrage du modèle de navigation (`screens` 267,9 ms
->    contre `rebuild` 307,7 ms) se fait en basculant `nav model`, et ce geste
->    abandonnait un **arbre d'écran complet** à chaque retour vers `screens` :
->    `lv_screen_load()` ne détruit pas l'écran sortant, et l'écran créé pour
->    héberger le mode `rebuild` n'était mémorisé nulle part. Les relevés de tas
->    (12 016 / 20 064 / 17 684 o) sont donc suspects — et l'écart de 5 668 o entre
->    deux configurations `rebuild`, qui ne tiennent pourtant qu'UN seul arbre, est
->    de l'ordre de grandeur d'un écran orphelin. Corrigé dans `build_scene()`.
-> 2. **L'instrument de non-fuite était aveugle.** `nav ab` encadrait la série par
->    la RAM interne et la PSRAM, alors que le tas LVGL est un pool **statique en
->    `.bss`** (`LV_MEM_ADR=0`) : aucun `lv_obj_create` n'y passe par
->    `heap_caps_malloc`. Le « delta exactement 0 octet » publié comme preuve
->    d'AC4 se serait affiché à l'identique avec une fuite d'un écran par
->    transition — ce qui était exactement le cas. `nav ab` encadre désormais la
->    série par `lv_mem_monitor()`, comme l'AC4 le demandait nommément.
->
-> ⚠️ Et l'arbitrage lui-même a été relevé à **`bounce_px = 0`**, configuration que
-> §11.5 qualifie d'« écran inutilisable ». Décision owner du 2026-08-16 :
-> **re-mesurer dans la configuration livrée** après les correctifs, puis remplacer
-> ces chiffres — pas les compléter. `screens` reste retenu en attendant, comme
-> choix *provisoire* et non comme décision fermée.
+> ✅ **LE TAS LVGL A ÉTÉ REJOUÉ — session carte du 2026-08-16, firmware `0e7fe61`.**
+> Le chiffre ci-dessus (33 % / 20 064 o) venait d'une campagne doublement viciée :
+> l'A/B **fuyait un arbre d'écran par bascule**, et l'instrument de non-fuite était
+> **aveugle** (il mesurait la RAM interne et la PSRAM, alors que le tas LVGL est un
+> pool statique en `.bss`, `LV_MEM_ADR=0`). Les deux sont corrigés, et la mesure
+> propre donne **15 216 o (25 %) en `screens`** contre 12 184 o en `rebuild` — soit
+> **+3 032 o** pour le modèle retenu, et non +8 048 o. Le prix de `screens` avait
+> donc été **surestimé de 2,7×** par la fuite. Détail complet et preuve de
+> non-fuite (5 bascules enchaînées) en **§11.5**. `screens` n'est plus provisoire :
+> il est confirmé, et il gagne 39,9 ms (11,5 %).

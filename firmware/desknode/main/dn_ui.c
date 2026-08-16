@@ -218,28 +218,37 @@ static int s_metrique;
  * SCREENS gagne 40 ms (13 %) sur rebuild, pour +8 048 o dans le tas LVGL (les
  * deux arbres vivent en permanence) sur 64 Ko dont 42 Ko restent libres.
  *
- * 🔴 CES CHIFFRES SONT À REJOUER — DEUX RÉSERVES ÉCRITES PAR LA REVUE dn1-4 :
+ * ⚠️ CE TABLEAU EST CELUI DE LA PREMIÈRE CAMPAGNE, ET IL EST FAUX SUR LE PRIX.
+ *    Il a été relevé à `bounce_px = 0` (config déclarée « écran inutilisable »
+ *    depuis) et surtout sur un A/B dont la bascule FUYAIT un arbre d'écran
+ *    complet — corrigé dans build_scene(). Le tas y était donc gonflé.
  *
- *  a) Ils ont été relevés à `bounce_px = 0`, c'est-à-dire dans la configuration
- *     que §11.5 qualifie elle-même d'« écran inutilisable ». La carte ne tourne
- *     plus comme ça (bounce 4800, draw_lines 128).
- *  b) L'A/B se fait en BASCULANT `nav model`, et ce geste FUYAIT un arbre
- *     d'écran complet à chaque retour vers SCREENS (corrigé dans build_scene).
- *     Les relevés de tas LVGL ci-dessus sont donc suspects — l'écart de 5 668 o
- *     entre deux configurations `rebuild`, qui ne tiennent pourtant qu'UN seul
- *     arbre, est de l'ordre de grandeur d'un écran orphelin.
+ * ── ✅ LA MESURE QUI FAIT FOI (session carte du 2026-08-16, firmware 0e7fe61) ──
+ *
+ *   Config de référence : num_fbs=1 · bounce_px=4800 · draw_lines=128 · poll
+ *
+ *   modèle     min      moy      max      n       tas LVGL utilisé
+ *   ---------------------------------------------------------------
+ *   SCREENS    285,0    307,0    320,8    40/40   15 216 o   (delta -12 o)
+ *   rebuild    300,8    346,9    374,2    40/40   12 184 o   (delta   0 o)
+ *
+ * SCREENS gagne 39,9 ms (11,5 %) pour +3 032 o de tas — et NON +8 048 o : la
+ * fuite surestimait son prix de 2,7x. L'écart entre modèles est remarquablement
+ * STABLE (39,8 ms à bounce 0/lines 64, 39,9 ms ici) : le coût du modèle est un
+ * coût de CONSTRUCTION D'ARBRE, indépendant du pipeline d'affichage.
  *
  * ⛔ NE PAS écrire ici que « SCREENS fait passer le budget » : le budget
- *    < 300 ms du brief N'EST PAS TENU dans la configuration livrée (307,1 ms —
- *    voir DN_DEFAULT_DRAW_LINES dans dn_bootcfg.c, qui fait foi). SCREENS est
- *    retenu parce qu'il est le moins cher des deux, pas parce qu'il tient une
- *    promesse.
+ *    < 300 ms du brief N'EST PAS TENU (307,0 ms mesurés, 320,8 au pire — voir
+ *    DN_DEFAULT_DRAW_LINES dans dn_bootcfg.c, qui fait foi). SCREENS est retenu
+ *    parce qu'il est le moins cher des deux, pas parce qu'il tient une promesse.
  *
  * ⚠️ « AUCUN des deux modèles ne fuit » était prouvé par un instrument AVEUGLE :
  *    `nav ab` mesurait la RAM interne et la PSRAM, alors que le tas LVGL est un
  *    pool STATIQUE en .bss (LV_MEM_ADR=0) où aucun lv_obj_create ne passe par
  *    heap_caps_malloc. Un « delta 0 o » s'y affichait à l'identique avec ou sans
- *    fuite. `nav ab` encadre désormais la série par lv_mem_monitor().
+ *    fuite. `nav ab` encadre désormais la série par lv_mem_monitor(), et la
+ *    non-fuite est prouvée : 5 bascules screens<->rebuild enchaînées laissent le
+ *    tas plat (15 204 / 12 168 / 15 180 / 12 180 / 15 208 o).
  * ⚠️ CE QUE L'ARBITRAGE NE DIT PAS : le vrai plancher n'est pas le modèle. Une
  *    transition redessine l'écran entier, soit 640/draw_lines flushes qui
  *    attendent CHACUN une trame — 10 trames à 26,7 ms = 267 ms à 64 lignes. Le

@@ -1869,10 +1869,10 @@ static int cmd_nav(int argc, char **argv)
         printf("ne tiennent pas leur etat au meme endroit).\n");
         printf("⚠️ comparer proprement : `touch reset` puis `nav ab 20`, sans\n");
         printf("   toucher la dalle pendant la serie.\n");
-        printf("⚠️ l'arbitrage d'AC4 publie dans la doc (screens 267,9 ms contre\n");
-        printf("   rebuild 307,7) a ete releve a bounce_px=0, config declaree\n");
-        printf("   INUTILISABLE depuis — et l'A/B lui-meme fuyait un ecran par\n");
-        printf("   bascule (corrige). Ces chiffres sont A REJOUER.\n");
+        printf("arbitrage AC4, re-mesure le 2026-08-16 dans CETTE config :\n");
+        printf("   screens 307,0 ms moy (285,0/320,8) · tas 15 216 o\n");
+        printf("   rebuild 346,9 ms moy (300,8/374,2) · tas 12 184 o\n");
+        printf("   => screens gagne 39,9 ms (11,5 %%) pour +3 032 o de tas.\n");
         return 0;
     }
 
