@@ -60,3 +60,18 @@ dependencies:
   ##    x_max/y_max comme axe de symétrie : ces quatre champs se règlent ensemble
   ##    ou pas du tout.
   espressif/esp_lcd_touch: "==1.2.1"
+
+  ## ── dn2-1 : le BME680 ──────────────────────────────────────────────────────
+  ## SEUL candidat du registre compatible avec CE bus : bme680_init() prend un
+  ## `i2c_master_bus_handle_t` DÉJÀ CRÉÉ et fait lui-même l'add_device.
+  ## ⛔ Les trois autres candidats sont éliminatoires pour la même raison — ils
+  ##    CRÉENT leur propre bus, alors que dn_display possède l'unique bus de la
+  ##    carte : esp-idf-lib/bme680 (via esp-idf-lib/i2cdev, driver i2c LEGACY,
+  ##    conflit frontal avec i2c_new_master_bus), francisduvivier/bme68x_…
+  ##    et espressif/bme690 (via espressif/i2c_bus). ⛔ Et il n'existe AUCUN
+  ##    espressif/bme680 — vérifié par appel direct à l'API du registre.
+  ## ⚠️ Premier composant du manifeste qui ne vient PAS d'Espressif, et son
+  ##    CMakeLists est exotique (include de version.cmake + un bloc de
+  ##    régénération par dotnet-gitversion, gardé par des templates absents chez
+  ##    nous, donc inerte). À surveiller à chaque mise à jour d'IDF.
+  k0i05/esp_bme680: "==1.2.7"

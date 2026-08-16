@@ -219,6 +219,78 @@ touchée, aucun composant ajouté au manifeste.
 
 ---
 
+## 13.6 bis Le capteur est FONCTIONNEL, pas seulement présent
+
+Un composant peut acquitter son adresse sans rien faire d'utile. Preuve qu'il n'en est rien —
+ses **coefficients d'étalonnage d'usine**, gravés en NVM à la fabrication, lus le 2026-08-17 :
+
+```
+0x77 reg 0x89 (16 o) : 40 43 68 03 00 18 8A 92 D7 58 00 C7 1E 5C FF 1F
+0x77 reg 0xE1 (16 o) : 42 4E 1E 00 2D 14 78 9C CD 66 9D D3 E6 12 E6 00
+```
+
+Données **variées et individualisées** — ni tout à `00`, ni tout à `FF`. Un composant fantôme ou
+mort rendrait du vide. Et ce sont **deux transactions de 16 octets** qui passent sans faute : la
+liaison porte des échanges multi-octets, pas seulement un bit d'acquittement.
+
+**Non-régression du bus (début d'AC4)** : avec le 5ᵉ composant en place, `touch` relève
+**0 erreur I²C sur 17 438 lectures** du GT911. ⚠️ Ce chiffre réfute au passage un
+« TEMOIN POSITIF EN ECHEC » apparu sur une passe de scan (le tactile tombé sous 5/5) : c'était le
+bruit de sondage documenté en §13.2, pas un décrochage réel. **Deux instruments indépendants, et
+c'est le plus fiable qui tranche.**
+
+⚠️ **Ce que ça ne prouve PAS** : la stabilité de l'image sous lecture en régime (§11.4), qui
+demande l'œil de l'owner et une cadence réelle, pas des lectures ponctuelles.
+
+## 13.6 ter L'arbitrage du driver (AC5) — critères écrits AVANT la mesure
+
+**Les critères, posés avant d'ouvrir le moindre candidat :**
+
+1. **Compatibilité avec le bus EXISTANT** — *éliminatoire*. `dn_display` possède l'unique bus de
+   la carte ; un composant qui appelle `i2c_new_master_bus()` échoue (`ESP_ERR_INVALID_STATE`),
+   et un composant sur le driver i2c **legacy** entre en conflit frontal.
+2. Coût en **RAM interne** (114 123 o libres — le chiffre qui gouverne) et en **binaire**.
+3. **Dépendances transitives** ajoutées au manifeste.
+4. **Traçabilité de la compensation Bosch** (T/H) — formules non triviales, transcription
+   risquée à la main.
+5. **Blocage** : compatible avec la contrainte §6 (le REPL est le transport PC) ?
+6. **Lisibilité** — combien de code étranger on adopte sans le relire.
+7. **Ce que ça engage pour dn4-1** (3 capteurs de plus).
+
+**Le critère 1 tranche à lui seul, et il élimine trois candidats sur quatre :**
+
+| Candidat | Verdict | Fait éliminatoire |
+|---|---|---|
+| `espressif/bme680` | ⛔ **n'existe pas** | vérifié par appel direct à l'API du registre |
+| `esp-idf-lib/bme680` 1.0.7 | ⛔ éliminé | dépend de `esp-idf-lib/i2cdev`, qui **installe le driver i2c LEGACY** sur le port |
+| `francisduvivier/bme68x_sensorapi_espidf` 0.0.6 | ⛔ éliminé *en tant que composant* | dépend de `espressif/i2c_bus`, qui **crée le bus**. *(Le SensorAPI Bosch nu, lui, est transport-agnostique — c'est la porte de sortie si le retenu déçoit.)* |
+| `espressif/bme690` 1.0.3~1 | ⛔ éliminé | autre puce **et** `espressif/i2c_bus` |
+| ✅ **`k0i05/esp_bme680` 1.2.7** | **RETENU** | `bme680_init(i2c_master_bus_handle_t, …)` prend un bus **déjà créé** et fait lui-même le `i2c_master_bus_add_device` |
+
+**Ce que la mesure a ajouté** (build du 2026-08-17, composant au manifeste, non encore appelé) :
+
+- ✅ **Il compile proprement.** Le `CMakeLists.txt` exotique (`include` de `version.cmake` + bloc
+  `dotnet-gitversion`) est bien **inerte** chez nous — le doute est levé par un build, pas par une
+  lecture.
+- Résolus : `k0i05/esp_bme680 1.2.7` + `k0i05/esp_type_utils 1.2.7` (une seule dépendance
+  transitive, sans dépendance propre au-delà de l'IDF).
+- Code compilé : `libk0i05__esp_bme680.a` **261 984 o**, `libk0i05__esp_type_utils.a` **48 268 o**
+  — c'est un **plafond**, pas un coût.
+- 🔴 **BINAIRE INCHANGÉ : 800 640 o avant, 800 640 o après.** Et il ne faut **PAS** publier « le
+  composant coûte 0 o » : le linker élague simplement tout ce que personne n'appelle. **Le coût
+  réel n'existera qu'une fois `dn_capteurs` écrit** — mesurer le poids d'un composant que rien
+  n'appelle, c'est le Trap n°2 sous une troisième forme. Le chiffre est donc **à relever après
+  T5**, et ce fichier le dira alors.
+
+⚠️ **Ce que ce choix N'ENGAGE PAS** : les 3 capteurs de dn4-1. `k0i05` publie aussi `esp_bh1750`,
+mais BH1750/VL53L0X/INA219 se ré-arbitrent chacun sur le même critère 1. **Rien n'oblige à rester
+dans la même famille.**
+
+**Ce qui renverserait la décision** : une compensation T/H fausse ou invérifiable (⇒ repli sur le
+SensorAPI Bosch nu, transport-agnostique), un coût binaire disproportionné une fois lié, ou une
+contrainte de blocage incompatible avec §6 (`bme680_get_data()` boucle jusqu'à **1 500 ms** — donc
+**tâche dédiée obligatoire**, ⛔ jamais depuis le REPL ni depuis LVGL).
+
 ## 13.7 Ce que la séance laisse — et ce qu'elle a fermé
 
 **Fermé, par la mesure :**
@@ -230,12 +302,16 @@ touchée, aucun composant ajouté au manifeste.
 - **Le brochage du connecteur**, les 4 occupants internes du bus, l'instrument `i2c` et son
   défaut de faux positifs corrigé.
 
+- **Le driver** : `k0i05/esp_bme680 == 1.2.7` épinglé au manifeste, il compile (§13.6 ter).
+
 **Restant, dans l'ordre :**
 
-1. **SOUDER la barrette** (6 broches, ou les 4 utiles) — préalable à toute campagne. Le contact de
-   cette séance était tenu à la main.
-2. Après soudure : re-scan de confirmation (`0x77` attendu à 5/5 **sans** les mains), puis
-   l'arbitrage du **driver** (AC5), le module `dn_capteurs` (AC6/AC7), les cases du dashboard
-   (AC8), l'A/B chauffage (AC9) et les budgets (AC10).
+1. **SOUDER la barrette** (6 broches, ou les 4 utiles) — préalable à toute campagne. Le contact
+   tenait sans les mains en fin de séance (`0x77` à 5/5 sur 6 passes), mais c'est un **état**, pas
+   une propriété du montage.
+2. Après soudure : re-scan de confirmation (`0x77` attendu à 5/5 **sans** les mains), puis le
+   module `dn_capteurs` (AC6/AC7), les cases du dashboard (AC8), l'A/B chauffage (AC9) et les
+   budgets (AC10) — **dont le coût binaire réel du composant**, qui n'existe pas tant que rien ne
+   l'appelle.
 3. Les 3 autres breakouts (BH1750, VL53L0X, INA219) ne sont **ni inventoriés ni branchés** — une
    variable à la fois (décision owner **D2-1a**), ils sont à dn4-1.
