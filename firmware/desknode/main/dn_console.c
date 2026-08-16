@@ -19,6 +19,7 @@
 #include "dn_touch.h"
 #include "dn_ui.h"
 #include "dn_wifi.h"
+#include "driver/i2c_master.h"
 #include "esp_console.h"
 #include "esp_log.h"
 #include "esp_partition.h"
@@ -93,6 +94,35 @@ static bool parse_entier(const char *texte, long *out)
         return false;
     }
     *out = v;
+    return true;
+}
+
+/*
+ * Adresse I²C 7 bits, écrite comme on la lit dans une datasheet : `0x76`, `76`,
+ * `0X76`. Même discipline que `parse_entier` (⛔ jamais `atoi` : il ne distingue
+ * pas 0 d'une erreur), mais en base 16 — parce qu'une adresse I²C ne s'écrit
+ * jamais en décimal et que forcer « 118 » pour dire 0x76 fabriquerait des fautes
+ * de frappe indétectables.
+ *
+ * ⚠️ Les bornes ne sont pas cosmétiques : 0x00-0x07 et 0x78-0x7F sont RÉSERVÉES
+ *    par la spécification I²C (appel général, adressage 10 bits…). Les sonder
+ *    n'apprend rien et peut déclencher des comportements de mode spécial sur des
+ *    composants tiers. La commande les refuse au lieu de les écrêter en silence
+ *    — leçon `touch int` (revue dn1-4), qui écrêtait sans le dire puis imprimait
+ *    un verdict FAUX.
+ */
+static bool parse_adresse_i2c(const char *texte, uint8_t *out)
+{
+    char *fin = NULL;
+    errno = 0;
+    long v = strtol(texte, &fin, 16);
+    if (fin == texte || *fin != '\0' || errno == ERANGE) {
+        return false;
+    }
+    if (v < 0x08 || v > 0x77) {
+        return false;
+    }
+    *out = (uint8_t)v;
     return true;
 }
 
@@ -2427,6 +2457,310 @@ static int cmd_wifi(int argc, char **argv)
     return 1;
 }
 
+/*
+ * ── `i2c` : le bus VU DE SES ADRESSES (dn2-1) ────────────────────────────────
+ *
+ * L'INSTRUMENT AVANT LE DRIVER. dn2-1 pose le premier composant EXTERNE sur un
+ * bus qui porte déjà la dalle (TCA9554) et le tactile (GT911). Avant de se
+ * demander si un driver de capteur marche, il faut savoir si le capteur RÉPOND :
+ * un scan sépare deux questions qu'un driver seul confond, et il répond à la
+ * seconde sans qu'une ligne de driver existe.
+ *
+ * ✅ TÉMOIN POSITIF INTÉGRÉ, et il n'est pas décoratif : le scan CONCLUT lui-même
+ *    sur la présence de 0x20 et 0x5D. Un scan qui ne voit pas les deux occupants
+ *    connus est un instrument CASSÉ, et aucune conclusion sur un composant neuf
+ *    n'est alors recevable. Le verdict est imprimé plutôt que laissé à la
+ *    sagacité du lecteur — c'est la doctrine du dépôt : l'instrument dit s'il est
+ *    crédible.
+ *
+ * ✅ TÉMOIN NÉGATIF, côté opérateur : débrancher le composant (carte hors
+ *    tension) et rescanner. Son adresse doit DISPARAÎTRE. Sans ça, « l'adresse
+ *    est là » ne prouve pas qu'elle vient de lui.
+ *
+ * 🔴 UN SCAN À UNE SEULE PASSE FABRIQUE DES FAUX POSITIFS — MESURÉ LE 2026-08-16,
+ *    SUR CETTE CARTE, AVANT QU'AUCUN CAPTEUR NE SOIT BRANCHÉ. Quatre passes
+ *    consécutives, bus strictement inchangé, ont donné :
+ *      passe 0 : 0x20 0x51 0x5D 0x6B + 0x6F   (+ 1 timeout)
+ *      passe 1 : 0x20 0x51 0x5D 0x6B
+ *      passe 2 : 0x20 0x51 0x5D 0x6B
+ *      passe 3 : 0x20 0x51 0x5D 0x6B + 0x58
+ *    Quatre adresses stables, et une CINQUIÈME QUI CHANGE DE VALEUR — 0x6F, puis
+ *    rien, rien, 0x58. Ce ne sont pas des composants : c'est le sondage qui
+ *    acquitte à tort, très probablement en concurrence avec le polling du GT911
+ *    (~30 transactions/s) sur le même bus.
+ *
+ *    ⇒ CHAQUE ADRESSE TROUVÉE EST RE-SONDÉE, et le résultat est publié « n/N ».
+ *    Sans ça, un capteur intermittent et un faux positif produisent exactement
+ *    la même trace, et rien dans la sortie ne permet de les distinguer. C'est le
+ *    Trap n°2 de la story appliqué à cet outil : *cet instrument peut-il voir ce
+ *    qu'il prétend exclure ?* — la réponse était NON, et le premier scan de la
+ *    session l'a démontré.
+ *
+ *    ⚠️ EFFET DE BORD UTILE, ET C'EST LUI QU'ON EXPLOITE EN dn2-1 : le compteur
+ *    n/N est aussi un MESUREUR DE QUALITÉ DE CONTACT. Un breakout dont la
+ *    barrette n'est pas soudée sortira « 3/5 » là où un composant soudé sort
+ *    « 5/5 ». Ce qui départage définitivement un faux positif d'un vrai
+ *    composant mal connecté : `i2c lire <addr> D0` — un faux positif n'a aucun
+ *    registre à rendre.
+ *
+ * ⚠️ CE SCAN EST UNE RAFALE I²C, donc du même régime que le stimulus de §11.4 —
+ *    mais il dure ~25 ms, et une perturbation de 25 ms n'est PAS observable à
+ *    l'œil. **Ce n'est donc pas un test de §11.4**, et il ne faut pas le publier
+ *    comme tel. Le vrai test est la cadence de lecture EN RÉGIME.
+ *
+ * ⚠️ IL BLOQUE LE REPL PENDANT SA DURÉE, et sur la branche A retenue en dn2-2
+ *    **le REPL EST le transport PC** : les trames de l'agent restent dans le
+ *    tampon USB tant que le scan tourne. Même piège que `cpu N`, trouvé en
+ *    session de validation dn2-2. D'où la plage bornée (112 adresses).
+ *
+ * ⚠️ `i2c_master_probe()` NE SPAMME PAS le log sur NACK — vérifié dans le source
+ *    d'ESP-IDF v5.5.5 (`i2c_master.c:1374`, `bus_handle->bypass_nack_log = true`),
+ *    pas supposé. C'est ce qui rend un scan de 112 adresses lisible.
+ */
+/* Sondages par adresse retenue. 5 est un compromis : assez pour qu'un faux
+ * positif isolé tombe (aucun des trois observés ne s'est répété), assez peu pour
+ * que le scan reste sous la centaine de millisecondes. */
+#define DN_I2C_SCAN_CONFIRMATIONS 5
+/* ⚠️ 50 ms et non 20 : `i2c_master_probe` prend le VERROU DE BUS, que le polling
+ * du GT911 tient ~30 fois par seconde. À 20 ms (= 2 ticks à 100 Hz), la première
+ * passe de la session a produit un `probe device timeout` — une adresse jamais
+ * sondée, comptée nulle part, dans une liste qui se lisait comme exhaustive. */
+#define DN_I2C_SCAN_TIMEOUT_MS 50
+/* Un bus sain en porte 4 ; 16 laisse la place aux 4 capteurs de dn4-1 et à leurs
+ * surprises. Au-delà, ce n'est plus un bus chargé, c'est un bus qui acquitte
+ * n'importe quoi — et la commande le DIT au lieu de tronquer en silence. */
+#define DN_I2C_SCAN_MAX_TROUVES 16
+static const char *i2c_nom_connu(uint8_t addr)
+{
+    switch (addr) {
+    case DN_TCA9554_ADDR:
+        return "TCA9554 — expander (LCD_RST/TP_RST/LCD_CS)  [temoin]";
+    case DN_GT911_ADDR:
+        return "GT911 — tactile                             [temoin]";
+    case DN_GT911_ADDR_BACKUP:
+        return "GT911 — adresse de REPLI (INT haut au reset)";
+    case 0x51:
+        return "PCF85063 — RTC (pas encore pilotee, dn3-2)";
+    case 0x6A:
+    case 0x6B:
+        return "QMI8658 — IMU (hors V1)";
+    case 0x76:
+    case 0x77:
+        return "BME680/BME688 — temperature/humidite (dn2-1)";
+    case 0x23:
+        return "BH1750 — luminosite (dn4-1)";
+    case 0x29:
+        return "VL53L0X — distance (dn4-1)";
+    case 0x40:
+        return "INA219 — tension/courant (dn4-1)";
+    default:
+        return "INCONNU — a identifier avant d'en tirer quoi que ce soit";
+    }
+}
+
+/* Lecture registre : ajoute un device TEMPORAIRE, lit, le retire.
+ * ⚠️ PREMIER `i2c_master_bus_add_device()` DU DÉPÔT — le TCA9554 et le GT911
+ *    passent tous deux par leur composant, qui le fait en interne. Le device est
+ *    retiré sur TOUS les chemins de sortie : en laisser fuir un à chaque appel
+ *    épuiserait la table du bus, et l'échec arriverait bien plus tard, ailleurs,
+ *    sans rapport visible avec cette commande. */
+static int i2c_lire_registre(uint8_t addr, uint8_t reg, int n)
+{
+    i2c_master_bus_handle_t bus = dn_display_i2c_bus();
+    if (!bus) {
+        printf("bus I2C absent — dn_display_init() n'a pas tourne\n");
+        return 1;
+    }
+    /* ⚠️ Le type est `i2c_device_config_t`, PAS `i2c_master_dev_config_t` — le
+     * second n'existe pas, et le compilateur ne le dit qu'en aval, sur un
+     * « passing argument 2 … from incompatible pointer type (int *) » qui envoie
+     * chercher au mauvais endroit. Struct lue dans
+     * components/esp_driver_i2c/include/driver/i2c_master.h:47-55. */
+    i2c_device_config_t cfg = {
+        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
+        .device_address = addr,
+        /* La frequence se pose PAR DEVICE (dn_pins.h) : on demande celle de nos
+         * autres devices, pas un defaut de composant tiers. */
+        .scl_speed_hz = DN_I2C_FREQ_HZ,
+    };
+    i2c_master_dev_handle_t dev = NULL;
+    esp_err_t err = i2c_master_bus_add_device(bus, &cfg, &dev);
+    if (err != ESP_OK) {
+        printf("ajout du device 0x%02X refuse : %s\n", addr, esp_err_to_name(err));
+        return 1;
+    }
+    uint8_t rx[16] = {0};
+    err = i2c_master_transmit_receive(dev, &reg, 1, rx, (size_t)n, 200);
+    i2c_master_bus_rm_device(dev);
+    if (err != ESP_OK) {
+        printf("lecture 0x%02X reg 0x%02X : ECHEC (%s)\n", addr, reg,
+               esp_err_to_name(err));
+        printf("  un NACK ici veut dire que le composant ne repond PLUS, meme si\n");
+        printf("  le scan l'a vu — contact intermittent, ou adresse partagee.\n");
+        return 1;
+    }
+    printf("0x%02X reg 0x%02X :", addr, reg);
+    for (int i = 0; i < n; i++) {
+        printf(" %02X", rx[i]);
+    }
+    printf("\n");
+    /* Les deux registres d'identite que dn2-1 doit lire, interpretes ICI : les
+     * relire de tete a chaque session est exactement la ou naissent les erreurs
+     * de transcription. */
+    if (reg == 0xD0 && n >= 1) {
+        const char *quoi = rx[0] == 0x61   ? "BME680 ou BME688 (0xF0 tranche)"
+                           : rx[0] == 0x60 ? "BME280 — PAS de gaz"
+                           : rx[0] == 0x58 ? "BMP280 — NI gaz NI humidite"
+                                           : "INCONNU — ce n'est pas un BME/BMP";
+        printf("  => chip id 0x%02X = %s\n", rx[0], quoi);
+    }
+    if (reg == 0xF0 && n >= 1) {
+        printf("  => variant 0x%02X = %s\n", rx[0],
+               rx[0] == 0x00   ? "BME680"
+               : rx[0] == 0x01 ? "BME688"
+                               : "INCONNU");
+    }
+    return 0;
+}
+
+static int cmd_i2c(int argc, char **argv)
+{
+    if (argc >= 2 && strcmp(argv[1], "lire") == 0) {
+        if (argc != 4 && argc != 5) {
+            printf("usage : i2c lire <addr hex> <registre hex> [n=1..16]\n");
+            printf("        ex. : i2c lire 76 D0   (chip id)\n");
+            printf("              i2c lire 76 F0   (variant BME680/BME688)\n");
+            return 1;
+        }
+        uint8_t addr, reg;
+        if (!parse_adresse_i2c(argv[2], &addr)) {
+            printf("adresse « %s » refusee : hexa, entre 08 et 77 (0x00-0x07 et\n",
+                   argv[2]);
+            printf("0x78-0x7F sont RESERVEES par la specification I2C)\n");
+            return 1;
+        }
+        char *fin = NULL;
+        errno = 0;
+        long r = strtol(argv[3], &fin, 16);
+        if (fin == argv[3] || *fin != '\0' || errno == ERANGE || r < 0 || r > 0xFF) {
+            printf("registre « %s » refuse : hexa, entre 00 et FF\n", argv[3]);
+            return 1;
+        }
+        reg = (uint8_t)r;
+        long n = 1;
+        if (argc == 5 && (!parse_entier(argv[4], &n) || n < 1 || n > 16)) {
+            printf("nombre d'octets « %s » refuse : entre 1 et 16\n", argv[4]);
+            return 1;
+        }
+        return i2c_lire_registre(addr, reg, (int)n);
+    }
+    if (argc != 1) {
+        printf("usage : i2c | i2c lire <addr> <registre> [n]\n");
+        return 1;
+    }
+
+    i2c_master_bus_handle_t bus = dn_display_i2c_bus();
+    if (!bus) {
+        printf("bus I2C absent — dn_display_init() n'a pas tourne\n");
+        return 1;
+    }
+
+    printf("scan du bus I2C UNIQUE (SDA=GPIO%d, SCL=GPIO%d), adresses 0x08..0x77\n",
+           DN_PIN_I2C_SDA, DN_PIN_I2C_SCL);
+    printf("chaque adresse trouvee est RE-SONDEE %d fois — voir l'en-tete du\n",
+           DN_I2C_SCAN_CONFIRMATIONS);
+    printf("code : un scan a une seule passe fabrique des FAUX POSITIFS.\n");
+    printf("⚠️ le REPL est bloque pendant le scan : sur la branche A, c'est le\n");
+    printf("   transport PC qui attend.\n");
+
+    int64_t t0 = esp_timer_get_time();
+    uint8_t candidats[DN_I2C_SCAN_MAX_TROUVES];
+    int n_cand = 0;
+    int timeouts = 0, deborde = 0;
+
+    for (uint8_t a = 0x08; a <= 0x77; a++) {
+        esp_err_t e = i2c_master_probe(bus, a, DN_I2C_SCAN_TIMEOUT_MS);
+        if (e == ESP_ERR_TIMEOUT) {
+            /* ⚠️ UNE ADRESSE NON SONDEE N'EST PAS UNE ADRESSE ABSENTE. Sans ce
+             * compteur, la liste se lit comme exhaustive alors qu'elle a des
+             * trous — l'instrument mentirait par omission. */
+            timeouts++;
+            continue;
+        }
+        if (e != ESP_OK) {
+            continue;
+        }
+        if (n_cand >= DN_I2C_SCAN_MAX_TROUVES) {
+            deborde++;
+            continue;
+        }
+        candidats[n_cand++] = a;
+    }
+
+    bool vu_expander = false, vu_gt911 = false;
+    int stables = 0, instables = 0;
+    for (int i = 0; i < n_cand; i++) {
+        uint8_t a = candidats[i];
+        int oks = 1; /* la detection initiale compte pour une */
+        for (int k = 1; k < DN_I2C_SCAN_CONFIRMATIONS; k++) {
+            if (i2c_master_probe(bus, a, DN_I2C_SCAN_TIMEOUT_MS) == ESP_OK) {
+                oks++;
+            }
+        }
+        bool stable = (oks == DN_I2C_SCAN_CONFIRMATIONS);
+        if (stable) {
+            stables++;
+            if (a == DN_TCA9554_ADDR) {
+                vu_expander = true;
+            }
+            if (a == DN_GT911_ADDR || a == DN_GT911_ADDR_BACKUP) {
+                vu_gt911 = true;
+            }
+        } else {
+            instables++;
+        }
+        printf("  0x%02X  %d/%d  %s%s\n", a, oks, DN_I2C_SCAN_CONFIRMATIONS,
+               stable ? "" : "⚠️ INSTABLE — ", i2c_nom_connu(a));
+    }
+    int64_t duree_ms = (esp_timer_get_time() - t0) / 1000;
+    printf("%d stable(s), %d instable(s) en %lld ms\n", stables, instables,
+           (long long)duree_ms);
+
+    if (timeouts > 0) {
+        printf("🔴 %d adresse(s) N'ONT PAS PU ETRE SONDEES (timeout du verrou de\n",
+               timeouts);
+        printf("   bus, %d ms). La liste ci-dessus a des TROUS : une adresse\n",
+               DN_I2C_SCAN_TIMEOUT_MS);
+        printf("   absente ne prouve rien tant que ce compteur n'est pas a 0.\n");
+    }
+    if (deborde > 0) {
+        printf("🔴 %d adresse(s) au-dela de %d IGNOREES — table pleine. Ce n'est\n",
+               deborde, DN_I2C_SCAN_MAX_TROUVES);
+        printf("   pas un bus charge, c'est un bus qui acquitte n'importe quoi.\n");
+    }
+    if (instables > 0) {
+        printf("⚠️ une adresse INSTABLE est soit un FAUX POSITIF du sondage, soit\n");
+        printf("   un composant au CONTACT INTERMITTENT (fil mal enfonce, broche\n");
+        printf("   non soudee). Les deux se ressemblent ICI ; ce qui les separe,\n");
+        printf("   c'est `i2c lire <addr> D0` : un faux positif n'a aucun registre.\n");
+    }
+
+    /* LE VERDICT SUR L'INSTRUMENT LUI-MEME. Sans lui, une liste vide se lit
+     * « aucun capteur » alors qu'elle peut dire « le bus est mort ». */
+    if (vu_expander && vu_gt911) {
+        printf("✅ temoin positif OK : l'expander ET le tactile repondent de\n");
+        printf("   maniere STABLE — le scan est credible, ce qu'il montre compte.\n");
+    } else {
+        printf("🔴 TEMOIN POSITIF EN ECHEC : expander %s · tactile %s.\n",
+               vu_expander ? "stable" : "ABSENT ou INSTABLE",
+               vu_gt911 ? "stable" : "ABSENT ou INSTABLE");
+        printf("   Le BUS est en cause, pas un capteur. AUCUNE conclusion sur un\n");
+        printf("   composant neuf n'est recevable. Debrancher ce qui vient d'etre\n");
+        printf("   ajoute, puis `reboot`.\n");
+    }
+    return 0;
+}
+
 #define DN_CMD(name, helptext, fn) \
     {.command = (name), .help = (helptext), .hint = NULL, .func = (fn)}
 
@@ -2471,6 +2805,10 @@ static const esp_console_cmd_t k_cmds[] = {
     DN_CMD("disp", "disp on|off — sortie d'affichage de la dalle (0x29/0x28)",
            cmd_disp),
     DN_CMD("dma", "relance la DMA du panneau (décalage permanent)", cmd_restart_dma),
+    DN_CMD("i2c",
+           "i2c | lire <addr> <registre> [n] — scan du bus et lecture registre "
+           "(dn2-1)",
+           cmd_i2c),
     DN_CMD("pc",
            "pc | reset | $DN,<trame> — liaison PC : état, compteurs, injection "
            "(dn2-2)",

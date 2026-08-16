@@ -97,6 +97,28 @@
 #define DN_GT911_ADDR 0x5D        /* visée : INT tenu bas au relâchement */
 #define DN_GT911_ADDR_BACKUP 0x14 /* repli : INT haut/flottant */
 
+/*
+ * ── Capteurs externes sur l'embase JST (dn2-1) ───────────────────────────────
+ *
+ * ✅ BME680 : ADRESSE MESURÉE le 2026-08-17 — 0x77, PAS 0x76.
+ *    Ce qui choisit entre les deux : le niveau de SDO (bas => 0x76, haut =>
+ *    0x77), et LE BREAKOUT TIRE SDO À VCC (3,3 V relevés au multimètre, broche
+ *    laissée en l'air). Constat d'identité, cité au caractère près :
+ *        0x77 reg 0xD0 : 61   (chip id — 0x61 = BME680/BME688)
+ *        0x77 reg 0xF0 : 00   (variant — 0x00 = BME680, 0x01 aurait dit BME688)
+ *    Scan stable 5/5 sur 8 passes (commande console `i2c`).
+ *    ⚠️ Relevé barrette NON SOUDÉE, contact tenu à la main — la soudure est le
+ *    préalable de toute campagne. Détail : hardware/…-capteurs-i2c.md §13.
+ *
+ * ⚠️ L'embase JST I²C est sérigraphiée GND·3V3·SDA·SCL — le miroir Spotpear
+ *    donnait SCL·SDA (inversés) sur un « header 2,54 mm » qui n'existe pas sous
+ *    cette forme : c'est une embase JST, et sa JUMELLE adjacente est l'UART.
+ *
+ * Les 3 autres capteurs (BH1750 0x23, VL53L0X 0x29, INA219 0x40) sont à dn4-1 :
+ * ni inventoriés, ni branchés (décision owner D2-1a — une variable à la fois).
+ */
+#define DN_BME680_ADDR 0x77
+
 /* ── 3-wire SPI d'initialisation du ST7701S ──────────────────────────────── */
 /* ⛔ GPIO1/GPIO2 sont PARTAGÉS avec le slot TF (SD_CMD / SD_SCK).
  *    Ne jamais initialiser la SD dans ce firmware. */
