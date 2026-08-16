@@ -29,9 +29,11 @@ firmware/
 hardware/   ESP32-S3-Touch-LCD-2.8B-affichage.md  <- LA config d'affichage de
             référence (brochage VÉRIFIÉ, timings, framebuffer, chiffres datés).
             L'inventaire des breakouts et le câblage viennent en dn2-1.
+            ESP32-S3-Touch-LCD-2.8B-liaison-pc.md <- §12, la FOURCHE TRANSPORT
+            (dn2-2) : verdict USB série, protocole de trame, budgets liaison.
 assets/     assets graphiques 480×640
   mockups/living-pcb-v0.png   prévisualisation COMMITÉE de l'asset généré
-agent/      DeskNode PC Agent (Windows)
+agent/      dn_agent.py — l'agent PC (Windows), % CPU à 1 Hz (voir § L'agent PC)
 tools/      wsl-attach.sh (attachement USB WSL)
             gen_living_pcb.py (génération de l'asset 480×640)
 tests/      harnais et smokes
@@ -158,8 +160,9 @@ idf.py -p /dev/ttyACM0 flash monitor               # quitter le moniteur : Ctrl+
 - **au DOIGT** (dn1-4) : toucher une case ouvre sa page de détail, le `←` ramène au dashboard ;
 - la **console est interactive** : taper `aide` dans le moniteur liste les commandes. Jeu complet :
   `scene`, `fps`, `bw`, `mem`, `cpu`, `cfg`, `set`, `tear`, `flash`, `ui`, `flush`, `anim`,
-  `touch`, `nav`, `recal`, `bl`, `disp`, `dma`, `reboot`, `aide`. `cfg reset` rend les défauts au
-  prochain boot. **C'est `aide` qui fait foi**, pas cette liste. Les commandes de dn1-3 et dn1-4 :
+  `touch`, `nav`, `recal`, `bl`, `disp`, `dma`, `pc`, `wifi`, `reboot`, `aide`. `cfg reset` rend
+  les défauts au prochain boot. **C'est `aide` qui fait foi**, pas cette liste. Les commandes de
+  dn1-3 et dn1-4 :
 
   | Commande | Ce qu'elle sert |
   |---|---|
@@ -179,6 +182,8 @@ idf.py -p /dev/ttyACM0 flash monitor               # quitter le moniteur : Ctrl+
   | **`nav`** · `nav open <0..5>` · `nav back` | navigation dashboard ↔ détail depuis la console. **Refusée si LVGL est en pause** : elle armerait le chronomètre de latence sur un cycle qui n'aura pas lieu |
   | **`nav model rebuild\|screens`** | le **modèle** de navigation, les deux restent jouables. ✅ **`screens` retenu**, re-mesuré le 2026-08-16 dans la config livrée après correction de la fuite : **307,0 ms** de moyenne contre **346,9 ms** pour `rebuild`, soit 39,9 ms (11,5 %) pour +3 032 o de tas LVGL. *(Les anciens 267,9 / 307,7 avaient été relevés à `bounce_px = 0` sur un A/B qui fuyait ; ils surestimaient le prix de `screens` de 2,7×.)* |
   | **`nav ab <n>`** | N allers-retours scriptés : latences min/moy/max **et** preuve de non-fuite (RAM interne et PSRAM avant/après) |
+  | **`pc`** (dn2-2) | la **liaison PC** : état (VIVANTE / MORTE / jamais reçue), dernière valeur + son âge, compteurs (trames valides, doublons, pertes de seq, reprises, rejets **par cause**), latence acceptation→label. `pc reset` remet les compteurs. **`pc $DN,…`** ingère UNE trame — c'est le dialecte de l'agent en branche A, et l'injecteur des campagnes de bruit |
+  | **`wifi`** (dn2-2) | la maquette **branche B**, ÉCARTÉE par la fourche (verrou RAM, `hardware/…-liaison-pc.md` §12.2). **Non compilée par défaut** : la commande répond « maquette B non compilee » avec la recette de re-mesure |
   ⚠️ Le log de ce projet ne part **plus** sur le header UART GPIO43/44 : la console primaire est
   passée sur l'USB pour pouvoir RECEVOIR des commandes. Pour retrouver le header, voir le
   commentaire de `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG` dans son `sdkconfig.defaults` : on y récupère
@@ -291,6 +296,13 @@ esptool.py --chip esp32s3 -p /dev/ttyACM0 --after watchdog_reset flash_id
 # 3. Ce reset ré-énumère l'USB : l'attachement usbipd est tombé, il faut le refaire.
 cd ~/projects/desknode && ./tools/wsl-attach.sh
 ```
+
+> ⚠️ **Troisième état, rencontré en dn2-2 : la PANIQUE HALTÉE** (une `assert` avec
+> `CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT=y`). Le symptôme est PIRE que la carte muette :
+> même l'étape 1 échoue en **`A serial exception error occurred: Write timeout`** —
+> le CPU est halté, l'USB n'est plus servi, aucun octet ne part. La recette :
+> `dn_console.py --reset` (impulsion RTS) peut suffire ; sinon **bouton RESET
+> physique**, puis rejouer `./tools/wsl-attach.sh`. Vérifié le 2026-08-16.
 
 Succès attendu — **et lui aussi dépend du firmware flashé**, comme le symptôme :
 
@@ -572,6 +584,55 @@ partition `assets`. Pour le regarder sans construire :
 ```bash
 python3 tools/gen_living_pcb.py --out-png /tmp/apercu.png
 ```
+
+## L'agent PC (dn2-2) — le % CPU de la tour, à ~1 Hz, par l'USB série
+
+Un seul fichier : `agent/dn_agent.py`. Il tourne sur le **Python Windows 3.13** de la
+tour, **sans élévation, sans driver, sans .NET** (le Ring0/température est dn4-1).
+
+- **Source du % CPU : `psutil`** (`pip install --user psutil` — la SEULE dépendance
+  posée par dn2-2 ; `pyserial` et `websockets` étaient déjà là). Ce sont les mêmes
+  compteurs noyau que le Gestionnaire des tâches. Raisons chiffrées de l'élimination
+  de `Get-Counter` (noms localisés FR) et de WMI (spawn 4,2 s) : en-tête de l'agent.
+- **Lancement** (PowerShell, la carte étant **détachée** de WSL — voir plus bas) :
+
+```powershell
+$py = "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe"
+& $py \\wsl.localhost\Ubuntu\home\nasbarok\projects\desknode\agent\dn_agent.py --serie COM3
+#  --temoin     imprime son propre coût CPU toutes les 10 s (mesuré : 0,23 % d'un cœur)
+#  --duree 60   s'arrête proprement après 60 s (le témoin « arrêt propre » d'AC7)
+#  --stdout     trames à l'écran, sans carte (débogage)
+```
+
+- **Protocole** : `$DN,1,<seq>,<t_ms>,cpu,<dixiemes>*<CK>`, envoyé en `pc $DN,…` au
+  REPL — l'agent parle le dialecte de la console. Autorité : `dn_link.h` et
+  `hardware/ESP32-S3-Touch-LCD-2.8B-liaison-pc.md` §12.5.
+- **Case CPU du dashboard** : vivante quand la liaison l'est ; **« -- » grisé** dès
+  3 s sans trame valide (une valeur figée serait un mensonge d'interface) ; reprise
+  sans reboot en ≤ 2 s quand l'agent revient.
+
+### ⚠️ Le port est EXCLUSIF : agent ⇄ boucle de flash, le geste (branche A)
+
+L'agent (Windows, COM3) et la boucle WSL (flash + `dn_console.py`) ne coexistent
+JAMAIS — exclusivité usbipd + TIOCEXCL, mesurée. L'alternance :
+
+```bash
+# 1) WSL → Windows (rendre COM3 à l'agent) — 0,3 s :
+powershell.exe -Command "& 'C:\Program Files\usbipd-win\usbipd.exe' detach --busid 3-1"
+# 2) Windows → WSL (reflasher / mesurer) — ~3,1 s :
+cd ~/projects/desknode && ./tools/wsl-attach.sh
+```
+
+🔴 **Tuer les veilleurs `--auto-attach` AVANT le detach** — sinon ils re-attachent la
+carte à WSL en quelques secondes et l'agent trouve un COM3 fantôme :
+`ps aux | grep usbip-auto-attach` (WSL) et, côté Windows,
+`Get-CimInstance Win32_Process -Filter "Name='usbipd.exe'"` → `Stop-Process` sur
+ceux dont la ligne de commande contient `auto-attach`.
+
+🔴 **DTR/RTS sous Windows** : pyserial les pose à l'ouverture et cette séquence
+**RESET la carte** (croyance « l'USB natif ne reset pas » : vraie depuis Linux
+seulement). `dn_agent.py` force `dtr=False, rts=False` AVANT `open()` — tout futur
+outil série côté tour doit faire pareil.
 
 ## Matériel
 
