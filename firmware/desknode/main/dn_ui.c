@@ -265,6 +265,18 @@ static lv_obj_t *s_scr_detail;
  * En REBUILD ils sont recréés à chaque transition et ces pointeurs ne servent
  * qu'à ne pas les chercher dans l'arbre. */
 static lv_obj_t *s_det_titre, *s_det_valeur, *s_det_minmax, *s_det_sec;
+/* ── La case CPU vit (dn2-2) ──────────────────────────────────────────────────
+ * Le label de VALEUR de la case haut-gauche, seul de la grille à recevoir une
+ * vraie donnée ici (les 5 autres gardent leur factice — dn3-1 fera le modèle).
+ * NULL quand le dashboard n'existe pas (REBUILD en vue détail) — et remis à
+ * NULL partout où les autres pointeurs de labels le sont déjà. */
+static lv_obj_t *s_case_cpu_valeur;
+/* Le texte et la validité COURANTS de la case CPU, conservés pour que toute
+ * (re)construction du dashboard repose l'état RÉEL de la liaison au lieu du
+ * « 42 % » factice de dn1-4. Écrits sous le verrou LVGL (dn_ui_cpu_maj), lus
+ * sous le même verrou (build_dashboard). */
+static char s_cpu_texte[16] = "--";
+static bool s_cpu_valide;
 /* Dernière zone touchée — la preuve d'AC3, lue par la console. */
 static volatile int s_dernier_tap = DN_UI_ZONE_AUCUNE;
 static volatile uint32_t s_taps;
@@ -882,8 +894,18 @@ static void build_dashboard(lv_obj_t *scr)
                                      on_case_clic, (void *)(intptr_t)i);
         texte(case_, k_metriques[i].nom, &lv_font_montserrat_14,
               lv_color_hex(0xa0d8ff), 12, 10);
-        texte(case_, k_metriques[i].valeur, &lv_font_montserrat_28,
-              lv_color_white(), 12, 60);
+        /* La case CPU (i == 0) affiche l'état RÉEL de la liaison PC (dn2-2) :
+         * sa valeur courante si la liaison vit, « -- » grisé sinon. Les cinq
+         * autres gardent leur factice de dn1-4 jusqu'à dn3-1/dn4-1. */
+        lv_obj_t *val =
+            texte(case_, (i == 0) ? s_cpu_texte : k_metriques[i].valeur,
+                  &lv_font_montserrat_28,
+                  (i == 0 && !s_cpu_valide) ? lv_color_hex(0x9a9a9a)
+                                            : lv_color_white(),
+                  12, 60);
+        if (i == 0) {
+            s_case_cpu_valeur = val;
+        }
     }
 
     /* Le bandeau MENU — 7e zone, cliquable, no-op consigné. */
@@ -1002,6 +1024,7 @@ static void build_scene(void)
     s_det_valeur = NULL;
     s_det_minmax = NULL;
     s_det_sec = NULL;
+    s_case_cpu_valeur = NULL;
 
     if (s_nav == DN_NAV_SCREENS) {
         /* Les deux racines sont (re)construites ensemble : un `ui bg psram` qui
@@ -1120,6 +1143,7 @@ static bool nav_appliquer(int cible, int64_t t_clic)
         s_det_valeur = NULL;
         s_det_minmax = NULL;
         s_det_sec = NULL;
+        s_case_cpu_valeur = NULL;
         /* Même règle qu'en reconstruction complète : la barre du stimulus vient
          * d'être détruite, l'ombre le dit. Sans le log ici (il tomberait à chaque
          * transition), mais avec le même effet sur l'état annoncé. */
@@ -1553,6 +1577,42 @@ void dn_ui_label_show(bool on)
         }
     }
     lvgl_port_unlock();
+}
+
+bool dn_ui_cpu_maj(int dixiemes, bool valide)
+{
+    if (!lvgl_port_lock(1000)) {
+        /* Pas de log ici : l'appelant (tâche dn_link) retente 250 ms plus tard,
+         * un LOGE par tentative sous charge noierait la console — le refus se
+         * lit dans le retour, comme dn_ui_force_full_redraw. */
+        return false;
+    }
+    s_cpu_valide = valide && dixiemes >= 0 && dixiemes <= 1000;
+    if (s_cpu_valide) {
+        /* Virgule française, comme les factices (« 12,4 Go »). Pas d'accent :
+         * la police montserrat n'a que la plage de base (legs dn3-1). */
+        snprintf(s_cpu_texte, sizeof(s_cpu_texte), "%d,%d %%", dixiemes / 10,
+                 dixiemes % 10);
+    } else {
+        /* Liaison morte ou jamais vue : la case le DIT au lieu de figer un
+         * chiffre qui n'a plus cours (AC7 — le différenciateur du brief en
+         * miniature). Le rendu exact est libre, le principe ne l'est pas. */
+        snprintf(s_cpu_texte, sizeof(s_cpu_texte), "--");
+    }
+    /* En modèle SCREENS le dashboard survit en arrière-plan et son label est
+     * mis à jour même quand le détail est affiché — LVGL l'accepte, c'est le
+     * cas « écran non chargé » qu'AC6 exige de ne pas planter. En REBUILD vue
+     * détail, le pointeur est NULL et le texte conservé sera posé à la
+     * prochaine (re)construction : rien n'est perdu, rien n'est touché. */
+    if (s_case_cpu_valeur) {
+        lv_label_set_text(s_case_cpu_valeur, s_cpu_texte);
+        lv_obj_set_style_text_color(s_case_cpu_valeur,
+                                    s_cpu_valide ? lv_color_white()
+                                                 : lv_color_hex(0x9a9a9a),
+                                    0);
+    }
+    lvgl_port_unlock();
+    return true;
 }
 
 bool dn_ui_label_shown(void) { return s_label_shown; }

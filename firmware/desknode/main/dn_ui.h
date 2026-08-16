@@ -337,6 +337,18 @@ bool dn_ui_force_full_redraw(void);
 void dn_ui_label_show(bool on);
 bool dn_ui_label_shown(void);
 
+/* ── La case CPU vit (dn2-2) ──────────────────────────────────────────────────
+ * Pose la valeur de la case CPU du dashboard (haut-gauche de la grille 2x3).
+ * `dixiemes` : 0..1000 = dixièmes de % (« 153 » -> « 15,3 % »).
+ * `valide == false` (liaison morte ou jamais vue) : la case affiche « -- »
+ * grisé — un chiffre périmé qui reste affiché est un mensonge d'interface (AC7).
+ * Prend le verrou LVGL ELLE-MÊME (règle du dépôt : l'appelant JAMAIS) ; renvoie
+ * false si le verrou n'a pas pu être pris — RIEN n'a alors été modifié et
+ * l'appelant doit retenter. Sûre quel que soit l'écran chargé : en SCREENS le
+ * label du dashboard est mis à jour même sous la vue détail ; en REBUILD le
+ * texte est conservé et posé à la prochaine construction. */
+bool dn_ui_cpu_maj(int dixiemes, bool valide);
+
 /* Stimulus adverse d'AC4 : une barre verticale qui balaie l'écran. */
 esp_err_t dn_ui_anim(bool on, int periode_ms);
 bool dn_ui_anim_running(void);

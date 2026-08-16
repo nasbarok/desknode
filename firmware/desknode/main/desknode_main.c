@@ -34,6 +34,7 @@
 #include "dn_bootcfg.h"
 #include "dn_console.h"
 #include "dn_display.h"
+#include "dn_link.h"
 #include "dn_measure.h"
 #include "dn_patterns.h"
 #include "dn_pins.h"
@@ -288,7 +289,16 @@ void app_main(void)
     ESP_LOGI(TAG, "prêt en %lld ms depuis app_main",
              (long long)((esp_timer_get_time() - t_boot) / 1000));
 
-    /* 8. La console. */
+    /* 8. La liaison PC (dn2-2). APRÈS dn_ui_init : sa tâche pousse l'état vers
+     * la case CPU par dn_ui_cpu_maj(), qui prend le verrou LVGL elle-même. Le
+     * premier tour affiche « -- » (liaison jamais vue) — la case CPU cesse de
+     * mentir dès le boot, les 5 autres restent factices jusqu'à dn3/dn4-1.
+     * ⚠️ Le WiFi (branche B) ne démarre PAS ici : `wifi on` à la console — la
+     * calibration PHY écrit en NVS (verrou 3), ce geste reste un choix, pas un
+     * effet de bord du boot. */
+    ESP_ERROR_CHECK(dn_link_init());
+
+    /* 9. La console. */
     ESP_ERROR_CHECK(dn_console_start());
     dn_console_banner();
 
