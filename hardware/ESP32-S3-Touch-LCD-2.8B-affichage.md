@@ -1817,3 +1817,88 @@ lvgl_core=0` relus au bandeau après le flash final.
 code du 2026-08-17 a modifié 5 fichiers du firmware (binaire 827 632 → **832 720 o**
 au build de revue). Les chiffres de RAM, de CPU et de flush attendent la séance
 carte de validation des correctifs.
+
+---
+
+## 14. Les sources externes — ce qu'elles valent, et les QUATRE contradictions mesurées
+
+**Relevé le 2026-08-17**, après que la revue de code de dn2-1 eut demandé d'où venaient les
+brochages. Cette section existe pour une raison précise : **le dépôt a corrigé des sources
+tierces trois fois, et on croyait que le fautif était un revendeur négligent. C'est faux — la
+doc DU FABRICANT porte la même erreur.**
+
+### 14.1 Les trois sources, et leur statut
+
+| Source | Statut | Ce qu'on en a tiré |
+|---|---|---|
+| `waveshare.com/wiki/ESP32-S3-Touch-LCD-2.8B` | **officielle** — ⚠️ **répond HTTP 403** à toute récupération automatisée | rien : illisible autrement qu'à la main |
+| `docs.waveshare.com/ESP32-S3-Touch-LCD-2.8B` | **officielle**, lisible | la §14.2 et la §14.3 ci-dessous |
+| `spotpear.com/wiki/ESP32-S3R8-2.8-inch-…` | **miroir tiers** (revendeur) | c'est elle qui avait servi en dn2-1 |
+
+⚠️ **Ces pages ont été lues par un résumé automatique, pas dans leur HTML brut.** Tout ce qui
+suit est donc **HYPOTHÈSE**, au même statut que Spotpear l'était — et la §14.2 montre pourquoi
+ce statut est mérité même pour une source officielle.
+
+### 14.2 🔴 LES QUATRE CONTRADICTIONS — et la première disculpe Spotpear
+
+**1. L'ordre `SDA`/`SCL` : la doc OFFICIELLE se contredit ELLE-MÊME, sur la même page.**
+
+| Table de `docs.waveshare.com` | Ordre annoncé |
+|---|---|
+| Header 12×2 **gauche** | `GND · 3V3 · **SDA (GPIO15)** · **SCL (GPIO7)**` |
+| Section « **I2C Interface** » | `GND · 3V3 · **SCL** · **SDA**` |
+
+⇒ **Spotpear n'a rien inventé : il a recopié fidèlement celle des deux qui se trompe.**
+✅ **C'est la table du header 12×2 qui concorde avec la MESURE** (sérigraphie de la carte, plus
+la photo `docs/cablage/2026-08-16_2228-…`). La §13.1 tient, et son verdict s'élargit : *la
+divergence n'est pas entre un miroir et le fabricant, elle est DANS le fabricant.*
+
+**2. « Header 2,54 mm » contre « embase JST » — les deux ont raison, et c'est la clé.**
+La doc décrit les broches I²C **du header 2×12**, qui les porte effectivement (`SCL SDA 3V3 G`,
+visible sur la photo). L'**embase JST 4 points** est un SECOND accès au même bus, que la doc ne
+mentionne pas. ⇒ **Deux accès physiques, un seul bus.** Spotpear avait fusionné les deux en un
+« header 2,54 mm » qui n'existe pas sous cette forme.
+
+**3. `CH343P` — réfuté par la mesure de dn1-1.** Spotpear annonce une puce USB-UART ; dn1-1 a
+mesuré l'**USB natif `303a:1001`**, aucun périphérique `1A86`. La doc officielle, elle, dit
+seulement « USB Type-C » sans nommer de puce. ⇒ **Spotpear mélange les variantes 2.8 et 2.8B.**
+
+**4. `GPIO16` annoncé libre — réfuté par dn1-4.** La doc le liste parmi les broches sorties du
+header gauche. dn1-4 a établi **PAR CAUSALITÉ** que c'est `TP_INT` du GT911 (INT haut ⇒ 0x14,
+bas ⇒ 0x5D). Entrée ⚪ déjà ouverte au ledger sur ce conflit.
+
+> 🔴 **CE QUE ÇA CHANGE À LA RÈGLE DU DÉPÔT.** *« On ne va plus chercher un brochage ailleurs »*
+> ne visait qu'un revendeur. Elle vaut désormais **contre la documentation du constructeur** :
+> sur quatre points vérifiables, elle s'est trompée ou contredite **quatre fois**. La sérigraphie
+> et la mesure font foi, sans exception et sans exception à venir.
+
+### 14.3 Ce que ces pages apprennent QUAND MÊME — et qui n'est mesuré nulle part
+
+⚠️ **Tout ce tableau est HYPOTHÈSE.** Rien n'entre dans `dn_pins.h` avant d'être mesuré.
+
+| Fait annoncé | Pourquoi ça compte | Statut |
+|---|---|---|
+| 🔴 **`GPIO37, 36, 35, 34, 33` sortis sur le header 2×12 DROIT mais « déconseillés — PSRAM interne »** | **Piège pour dn4-1** : y câbler un capteur casse la PSRAM, donc **le framebuffer**. Un header qui expose des broches inutilisables est exactement le genre de chose qui coûte une soirée | ⚠️ à vérifier avant tout câblage |
+| **`GPIO4` = lecture de la tension batterie**, « isolable en dessoudant la résistance » | seule broche analogique documentée ; ⚠️ **aucun rapport de pont diviseur donné** ⇒ à mesurer, jamais à supposer | ⚠️ hypothèse |
+| **Connecteur `MX1.25 2PIN` pour LiPo 3,7 V** + chargeur **`MP1605GTF-Z` (2 A max)** | voir la décision **D5** ci-dessous | ⚠️ hypothèse |
+| **L'interrupteur ON/OFF est un « Battery Power Control Switch »** | 🔴 **Il n'avait jamais été identifié**, alors qu'il est visible sur `docs/cablage/2026-08-16_2228-…`. Sa portée sur l'alimentation USB **n'est pas documentée** ⇒ une carte qui ne démarre pas après qu'on l'a bougé est un diagnostic à connaître AVANT de dérouler la recette « carte muette » | ⚠️ **à établir par la mesure**, et c'est le plus actionnable des cinq |
+| **`TCA9554PWR` : « toutes les broches utilisées, non sorties »** | confirme §1.2 : l'expander est entièrement consommé, rien à en tirer pour dn4-1 | ✅ cohérent avec la mesure |
+
+**Absent des deux pages officielles**, et que ce dépôt possède **par la mesure** : les timings RGB
+(pclk, porches), le contrôleur d'écran, la broche du rétroéclairage, les broches TF, **toutes les
+adresses I²C**, et la moindre consommation. ⇒ *Sur cette carte, `hardware/` en sait davantage que
+son constructeur.*
+
+### 14.4 🔴 D5 — DÉCISION OWNER DU 2026-08-17 : PAS DE BATTERIE DANS CE PROJET
+
+La carte **peut** recevoir un LiPo 3,7 V (connecteur et chargeur présents, §14.3). **L'owner a
+décidé de ne pas en mettre.**
+
+⇒ **Ce que ça ferme** : la piste batterie comme réponse au différenciateur du brief (*« PC éteint,
+la partie environnementale continue de fonctionner »*).
+⇒ **Ce que ça laisse OUVERT pour dn4-1**, et qui reste donc la question entière : le module devra
+tenir sur un **port USB alimenté en permanence** (réglage BIOS de la tour) ou sur une **alimentation
+séparée**. C'est la formulation d'origine de la story, et elle est confirmée — pas élargie.
+⚠️ **`GPIO4` et le chargeur perdent leur intérêt fonctionnel**, mais **PAS leur intérêt de
+diagnostic** : l'interrupteur « Battery Power Control » reste sur la carte et peut couper quelque
+chose, batterie ou non. **Le mesurer reste utile.**
