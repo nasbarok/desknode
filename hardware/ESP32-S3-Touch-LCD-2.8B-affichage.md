@@ -2064,7 +2064,10 @@ pour trois déclinaisons de 614 400 o : 3 × 614 400 > 1 MiB.**
 (`widget pousser`) · mock et capteur isolés · aire, flushes, `copie_us` et `attente_us` publiés
 **séparément**.
 
-> 🔴 **RÉSERVE POSÉE PAR LA REVUE DE CODE DU 2026-08-18 — LE CAS (a′) EST À REJOUER.**
+> ✅ **RÉSERVE LEVÉE LE 2026-08-18 — LA PASSE A EU LIEU, LES CHIFFRES CI-DESSOUS SONT LES REJOUÉS.**
+> Ce qui suit est le diagnostic qui l'avait motivée ; il est **confirmé par la mesure**.
+>
+> 🔴 **CE QUE LA REVUE DE CODE DU 2026-08-18 AVAIT TROUVÉ.**
 > `indicateur = true` n'existe que sur **`VENTILOS`** (`dn_ui.c:187-193`) : le cas **(a′) « widget
 > MONO avec jauge » EST donc la case 4**, celle que le mock possède. Or « mock isolé » veut dire
 > `widget mock off` — et c'est **exactement** ce réglage qui arme un **second écrivain** : après
@@ -2078,45 +2081,99 @@ pour trois déclinaisons de 614 400 o : 3 × 614 400 > 1 MiB.**
 > **Non touchés** : (c) case nue (aucune source) et (a) `CPU` (`pc` jamais reçue).
 > **(b) `AMBIANCE` est à instruire** : `dn_capteurs` y écrit toutes les 5 s et « capteur isolé »
 > n'est défini nulle part.
-> **Verdict owner (2026-08-17) : neutraliser le tick, rejouer (a′), instruire (b).**
-> ⛔ **dn3-2 ne doit pas dépenser (a′) avant cette passe.**
+> **Verdict owner : neutraliser le tick, rejouer (a′), instruire (b).** ✅ **FAIT** — correctif
+> firmware (drapeau `s_vent_poussee`, `dn_ui.c`), campagne intégralement rejouée sur `9699adb`.
+> 🔬 **LE CORRECTIF EST PROUVÉ PAR L'INSTRUMENT LUI-MÊME** : 25 poussées sur VENTILOS produisent
+> désormais **exactement 25 cycles**. Avant, la story comptait **24 cycles là où 4 se justifiaient**.
 >
 > 🔴 **ET DEUX DES SEPT GRANDEURS EXIGÉES PAR AC8 MANQUENT ICI : `timeouts` ET `noops`.**
 > `dn_ui.h:174` documente `timeouts` comme *« instrument **suspect** si non nul »*, et
 > `dn_ui.h:175-177` documente `noops` comme *« **à SOUSTRAIRE du dénominateur** des moyennes
-> temporelles »* — c'est-à-dire des colonnes **ms/cycle** ci-dessous. Sans eux, **le dénominateur du
-> legs chiffré n'est pas vérifiable**. `flush reset` puis `flush` les rend déjà : aucun code neuf
-> n'est nécessaire. **Verdict owner : les relever et compléter ce tableau**, dans la même passe.
+> temporelles »* — c'est-à-dire des colonnes **ms/cycle** ci-dessous.
+> ✅ **RELEVÉS : `timeouts` = 0 et `noops` = 0 sur LES DIX relevés.** Le dénominateur des moyennes
+> est donc `flushes` entier, et il est propre.
+> 🔴 **ET LA PRÉMISSE DE LA DÉCISION ÉTAIT JUSTE POUR UNE AUTRE RAISON QUE CELLE ÉCRITE.** Ces deux
+> lignes ne sont imprimées **QUE si le compteur est non nul** (`dn_console.c:1157-1182`) — le même
+> patron que `dn_ui_async_refus()`, que la story documente déjà. **Leur absence EST le zéro**, elles
+> n'avaient donc jamais « manqué » à l'instrument ; ce qui manquait, c'est de l'**écrire**.
+> ⚠️ `noops` est en outre **structurellement nul ici** : il ne compte que les flushes no-op du
+> **mode direct**, et ce build est sur le chemin `bitmap`.
 
 ⚠️ **L'injecteur pousse UNE fois par appel, et c'est structurel** : une boucle de *N* poussées dans
 la commande aurait fait tomber les *N* invalidations dans le **même cycle LVGL de 33 ms**. LVGL les
 aurait fusionnées, on aurait mesuré **1 flush pour N mises à jour**, et conclu que grouper est
 gratuit. Séparer les poussées dans le **temps** est la seule façon que chacune ait son cycle.
 
+**RELEVÉS REJOUÉS le 2026-08-18, firmware `9699adb`** — 25 poussées par relevé, espacées de 120 ms
+(> 2 cycles LVGL), mock **coupé**, `flush reset` avant chacun, `timeouts` = `noops` = **0** partout.
+
 | cas | branche A — N zones fines | branche B — 1 zone englobante |
 |---|---|---|
-| **(a)** widget MONO **sans** jauge (CPU) | 2,08 flush/cyc · 10 591 px/cyc | 1,04 · **36 504 px** |
-| **(a′)** widget MONO **avec** jauge (VENTILOS, régime réel, par soustraction) | 2,95 flush/cyc · 16 573 px/cyc | 1,00 · 35 991 px |
-| **(b)** widget **BI-grandeurs** (AMBIANCE) | 2,04 flush/cyc · 17 387 px/cyc | 1,00 · **35 100 px** = 225 × 156 |
-| **(c)** case **NUE** — témoin négatif (GPU) | 1,00 flush/cyc · 3 758 px/cyc | **1,00 · 3 758 px** |
+| **(a)** widget MONO **sans** jauge (CPU) | **2,00** flush/cyc · **10 749 px**/cyc | 1,00 · **35 100 px** |
+| **(a′)** widget MONO **avec** jauge (VENTILOS) | **3,12** flush/cyc · **16 577 px**/cyc | 1,00 · 35 100 px |
+| **(b)** widget **BI-grandeurs** (AMBIANCE) | **2,12** flush/cyc · **17 536 px**/cyc | 1,00 · **35 100 px** = 225 × 156 |
+| **(c)** case **NUE** — témoin négatif (GPU) | **1,00** flush/cyc · **3 321 px**/cyc | **1,00 · 3 356 px** |
 
 | cas | copie A | attente A | copie B | attente B | **ms/cycle A → B** |
 |---|---:|---:|---:|---:|---|
-| (a) | 268 µs/f | 15 522 µs/f | 2 990 µs/f | 16 180 µs/f | **32,8 → 20,0 (−39 %)** |
-| (a′) | 279 µs/f | 16 274 µs/f | 3 583 µs/f | 14 054 µs/f | **48,8 → 17,6 (−64 %)** |
-| (b) | 406 µs/f | 16 635 µs/f | 2 956 µs/f | 17 068 µs/f | **34,8 → 20,0 (−42 %)** |
-| (c) | 236 µs/f | 14 078 µs/f | 340 µs/f | 13 159 µs/f | 14,3 → 13,5 (**inchangé**) |
+| (a) | 276 µs/f | 14 748 µs/f | 2 935 µs/f | 13 163 µs/f | **30,0 → 16,1 (−46 %)** |
+| (a′) | 266 µs/f | 17 507 µs/f | 2 934 µs/f | 12 899 µs/f | **55,5 → 15,8 (−71 %)** |
+| (a′) *passe 2* | 271 µs/f | 17 124 µs/f | 2 933 µs/f | 14 279 µs/f | **53,6 → 17,2 (−68 %)** |
+| (b) | 397 µs/f | 14 243 µs/f | 2 924 µs/f | 14 665 µs/f | **31,0 → 17,6 (−43 %)** |
+| (c) | 214 µs/f | 15 792 µs/f | 322 µs/f | 12 597 µs/f | 16,0 → 12,9 (**témoin, voir ci-dessous**) |
+
+🔴 **CE QUE LE REJEU CHANGE, ET C'EST DANS LE SENS QUI DÉRANGE LE PLUS.** Le chiffre-titre n'était pas
+trop optimiste, il était **trop timide** : (a′) gagne **−68 à −71 %** sur deux passes, contre les
+**−64 %** publiés. La branche FINE coûtait **plus cher** que mesuré (**55,5 / 53,6 ms** contre 48,8),
+parce que les repeints `ABSENTE` parasites **gonflaient le dénominateur** — ils ajoutaient des cycles
+bon marché qui diluaient `flush/cyc` de **3,12 à 2,95**.
+⚠️ **Et l'AIRE, elle, était JUSTE** : 16 577 px/cyc rejoués contre 16 573 publiés — **0,02 % d'écart**.
+Le défaut d'instrument touchait le **compte de flushes et de cycles**, jamais la surface. C'est
+précisément ce qu'un relevé qui publie ses grandeurs **séparément** permet de dire.
+
+✅ **LE TÉMOIN NÉGATIF TIENT, ET IL A FALLU SOUSTRAIRE LE PARASITE POUR LE VOIR.** Brut, la case nue
+semble passer de 3 321 à 4 577 px/cyc — ce qui aurait fait croire que le groupage la touche. Elle
+n'a reçu qu'**un cycle parasite** : 26 cycles pour 25 poussées, et ce cycle-là est une écriture
+`AMBIANCE` du capteur, à 35 100 px puisqu'on est en branche groupée.
+`(118 995 − 35 100) / 25 = 3 356 px` contre **3 321 px** en fine, soit **1,0 % d'écart** et
+**1,00 flush/cyc des deux côtés** : la case nue ne traverse pas le modèle, et le groupage ne
+l'atteint pas. **Le reste de l'écart en ms est du bruit d'attente de synchro** (12,6 à 17,5 ms selon
+le relevé), pas un effet.
+
+🔬 **(b) INSTRUIT — « CAPTEUR ISOLÉ » N'A PAS DE SENS POUR AMBIANCE, ET N'EN A PAS BESOIN.** C'était
+la question laissée ouverte. Réponse : pour les cases (a), (a′) et (c), l'écriture du capteur est un
+parasite **étranger**, identifiable et soustrayable (`cycles − poussées`, à 35 100 px l'unité en
+groupé). Pour **(b), la case du capteur EST la case mesurée** : un cycle venu du capteur et un cycle
+venu d'une poussée produisent **le même travail sur la même case**. La mesure est donc **homogène**,
+et `cycles` les compte tous les deux correctement — il n'y a rien à museler. Silencer le capteur
+aurait au contraire injecté un artefact : la bascule vers `ABSENTE` à la péremption est **elle-même**
+un redessin.
+🔬 **Contribution parasite mesurée**, fenêtre de 20 s sans aucune poussée : **4 cycles** — le capteur
+seul à 5 s, exactement ce qui se justifie. (La story avait mesuré **24** avant son correctif
+`63344fc` ; le drapeau `s_vent_poussee` ferme le dernier chemin qui restait.)
 
 🔴 **LA PRÉDICTION EST CONFIRMÉE DANS SON SENS, DÉMENTIE DANS SON AMPLEUR.** La story annonçait que
-l'attente domine la copie *« d'un facteur ~50 »*. **Mesuré : ~5** (copie groupée **2,9-3,6 ms**
-contre attente **14-17 ms**). Le groupage gagne quand même — parce qu'il **supprime un flush entier**
-(~16 ms) pour **2,7 ms** de copie en plus, soit un retour de **~6 pour 1**. Une prédiction démentie
-est plus instructive qu'une prédiction tenue, et ce dépôt a déjà vu un facteur 10 d'écart (T9).
+l'attente domine la copie *« d'un facteur ~50 »*. **Mesuré au rejeu : ~4,4 à 5,0** (copie groupée
+**2 924-2 935 µs** contre attente **12 899-14 665 µs**). Le groupage gagne quand même — parce qu'il
+**supprime un flush entier** (~15 ms) pour **~2,7 ms** de copie en plus, soit un retour de
+**~5,5 pour 1**. Une prédiction démentie est plus instructive qu'une prédiction tenue, et ce dépôt a
+déjà vu un facteur 10 d'écart (T9).
 
 ⚠️ **CE QUE LE GROUPAGE NE FAIT PAS** : il n'économise **aucun** pixel, il en **multiplie** le nombre
-par **3,4** (10 591 → 36 504). Ce n'est pas une optimisation d'aire, c'est un **échange** :
-beaucoup de pixels contre une attente de trame. Le jour où la copie deviendra le goulot, l'arbitrage
-devra être **rejoué** — la branche fine reste vivante et rejouable sans reflasher (`widget groupe`).
+par **2,0 à 3,3 selon la case** (BI 17 536 → 35 100, soit ×2,0 ; MONO sans jauge 10 749 → 35 100,
+soit ×3,3). Ce n'est pas une optimisation d'aire, c'est un **échange** : beaucoup de pixels contre
+une attente de trame. Le jour où la copie deviendra le goulot, l'arbitrage devra être **rejoué** — la
+branche fine reste vivante et rejouable sans reflasher (`widget groupe`).
+⚠️ **Le facteur d'aire dépend de la RICHESSE de la case, et il joue à l'ENVERS de l'intuition** :
+plus une case a d'enfants qui changent, plus sa branche fine est déjà large, donc **moins** le
+groupage lui coûte en pixels — et **plus** il lui rapporte en flushes. C'est pour ça que (a′), la
+case la plus riche (3,12 zones fines), est celle qui gagne le plus (**−68 à −71 %**).
+
+⚠️ **UNE MISE EN GARDE SUR L'ATTENTE DE SYNCHRO, POUR QUI RELIRA CE TABLEAU.** Elle varie de
+**12,6 à 17,5 ms** d'un relevé à l'autre, sans rapport avec la branche : c'est le régime
+d'échantillonnage, pas un effet mesuré (déjà relevé en T0 de dn3-1, 17,7 ms contre les 12,7 ms de
+§11.6). ⇒ **Ne jamais comparer deux `attente_us` issus de fenêtres différentes**, et ne conclure que
+sur `flush/cyc`, qui est stable à ±0,04 entre les deux passes de (a′).
 
 ✅ **LE TÉMOIN NÉGATIF EST INTACT** : la case nue mesure **exactement pareil** dans les deux branches
 (elle ne traverse pas le modèle). C'est ce qui prouve que la différence vient du **groupage** et non
@@ -2127,9 +2184,14 @@ d'un effet de bord de la campagne.
   écran** — le contre-argument que la story demandait d'instruire. ⚠️ **Mais il ne se réalise que si
   les six se mettent à jour dans le MÊME cycle**, ce qui suppose des sources synchronisées. Elles ne
   le sont pas (liaison PC ~1 s, capteur 5 s, mock 1 s).
-- En cadences **décalées**, le coût est de **~19 ms par mise à jour**, quelle que soit la case ⇒
-  **six sources à 1 Hz coûteraient ~114 ms/s (11 % de duty)** en groupé contre **~220 ms/s (22 %)**
-  en fin.
+- En cadences **décalées**, le coût groupé est de **15,8 à 17,6 ms par mise à jour** — et c'est
+  l'observation la plus utile du rejeu : **il ne dépend PLUS de la case**. En fine, il allait de
+  16,0 à 55,5 ms selon la richesse ; groupé, les quatre cas tiennent dans **12,9-17,6 ms**. Le
+  groupage ne fait pas que réduire le coût, il le rend **PRÉVISIBLE** — un budget par mise à jour,
+  indépendant du contenu de la case. C'est ce qui rend un budget à six cases calculable du tout.
+  ⇒ **six sources à 1 Hz coûteraient ~100 ms/s (10 % de duty)** en groupé, contre **~180-330 ms/s
+  (18-33 %, selon les cases retenues)** en fine — et cette fourchette-là est justement ce que le
+  groupage supprime.
 - ⚠️ **Ce que l'extrapolation NE prouve PAS** : elle est linéaire, et rien ne dit que le rendu LVGL
   l'est. Le plancher d'une transition est le **rendu** (~230 ms sur 307), pas la copie. **dn3-2 doit
   re-mesurer à six, pas déduire.** *« Ça ne viendra pas tout seul. »*
@@ -2239,7 +2301,10 @@ LVGL tient l'écran, ce qui est le comportement voulu).
 
 **Pas de fuite de tas LVGL** : 5 bascules `screens ⇄ rebuild` enchaînées laissent le tas **plat**
 (17 768 o au boot → 17 756 o après, **−12 o**).
-⚠️ **La fragmentation monte à 22 %** après bascules répétées, contre **15-19 %** au ledger. Elle
+⚠️ **La fragmentation monte à 28 %** après bascules répétées (relevé du 2026-08-18 sur `9699adb`),
+contre **22 %** publié par dn3-1 et **15-19 %** au ledger — elle **s'aggrave à chaque marche**, et
+c'est maintenant une tendance à trois points, plus un accident. Le tas reste **PLAT** sur les mêmes
+5 bascules (14 724 → 14 744 o, **+20 o**) : ce n'est **pas** une fuite. Elle
 retombe à **1 %** au boot. Résiduel **connu, aggravé**, à porter au ledger : les objets de dn3-1
 sont plus gros, donc les trous laissés le sont aussi.
 
