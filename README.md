@@ -80,7 +80,7 @@ tests/      harnais et smokes
 | `espressif/esp_lvgl_port` | `==2.9.0` | 2.9.0 | tick esp_timer, tâche LVGL, mutex, et `lvgl_port_add_disp_rgb()` qui prend les handles esp_lcd **déjà créés** par `dn_display` |
 | `espressif/esp_lcd_touch_gt911` | `==1.2.1` | 1.2.1 | driver du Goodix GT911 (dn1-4). 🔴 avec `rst_gpio_num = -1` — notre cas, TP_RST étant derrière l'expander — il **saute sa séquence de sélection d'adresse** ; `dn_touch` la joue lui-même AVANT le `new` |
 | `k0i05/esp_bme680` | `==1.2.7` | 1.2.7 | driver BME680 (dn2-1). 🔴 **Seul candidat du registre compatible avec CE bus** : `bme680_init()` prend un `i2c_master_bus_handle_t` **déjà créé**. Les trois autres (`esp-idf-lib/bme680` via `i2cdev` legacy, `francisduvivier/bme68x_…` et `espressif/bme690` via `espressif/i2c_bus`) **créent leur propre bus** — éliminatoire ici. ⛔ Il n'existe **aucun** `espressif/bme680`. ⚠️ Premier composant non-Espressif du manifeste ; son `CMakeLists` exotique est **inerte, vérifié par un build**. ⚠️ `bme680_get_data()` boucle jusqu'à **1 500 ms** ⇒ tâche dédiée obligatoire, jamais depuis le REPL |
-| `k0i05/esp_type_utils` | `==1.2.7` | 1.2.7 | *(transitif de `esp_bme680`)*, sans dépendance propre au-delà de l'IDF |
+| `k0i05/esp_type_utils` | `==1.2.7` | 1.2.7 | transitif de `esp_bme680`, sans dépendance propre au-delà de l'IDF. 🔴 **Épinglé EXPLICITEMENT depuis la revue du 2026-08-17** : cette colonne l'annonçait déjà `==1.2.7` alors que **rien ne l'épinglait** — `esp_bme680` le déclare en `>=0.0.1`, et `dependencies.lock` (gitignoré) le résolvait comme tel. Le manifeste étant la seule autorité versionnée, la doc affirmait le contraire du dépôt. Même précédent assumé que `esp_lcd_touch` |
 | `espressif/esp_lcd_touch` | `==1.2.1` | 1.2.1 | socle tactile commun. Épinglé **explicitement** bien que transitif : le GT911 déclare `^1.2.0`, donc sans cette ligne le résolveur prendrait « la dernière ». ⚠️ c'est lui qui applique `swap_xy`/`mirror_x`/`mirror_y` **en logiciel**, avec `x_max`/`y_max` comme axe de symétrie |
 
 > ⚠️ **Ce que le portage ne fait PAS, et qu'il faut savoir avant de le croire** (mesuré en dn1-3) :
@@ -167,7 +167,7 @@ idf.py -p /dev/ttyACM0 flash monitor               # quitter le moniteur : Ctrl+
 - **au DOIGT** (dn1-4) : toucher une case ouvre sa page de détail, le `←` ramène au dashboard ;
 - la **console est interactive** : taper `aide` dans le moniteur liste les commandes. Jeu complet :
   `scene`, `fps`, `bw`, `mem`, `cpu`, `cfg`, `set`, `tear`, `flash`, `ui`, `flush`, `anim`,
-  `touch`, `nav`, `recal`, `bl`, `disp`, `dma`, `i2c`, `pc`, `wifi`, `reboot`, `aide`. `cfg reset` rend
+  `touch`, `nav`, `recal`, `bl`, `disp`, `dma`, `i2c`, `capteurs`, `pc`, `wifi`, `reboot`, `aide`. `cfg reset` rend
   les défauts au prochain boot. **C'est `aide` qui fait foi**, pas cette liste. Les commandes de
   dn1-3 et dn1-4 :
 
@@ -687,9 +687,9 @@ et `rst:0x15 (USB_UART_CHIP_RESET)` ; **sans**, 38 o et aucun reboot. Témoin n�
 |---|---|---|
 | ESP32-S3-Touch-LCD-2.8B | carte + écran + tactile (16 MB flash / 8 MB PSRAM, IMU QMI8658, RTC PCF85063, buzzer) | ext. : SCL=GPIO7, SDA=GPIO15 |
 | BME680 | température, humidité (pression et VOC non affichés — brief : 6 widgets) | ✅ **`0x77` MESURÉ** · chip id `0x61`, variant `0x00` |
-| BH1750 | luminosité ambiante | 0x23 — non branché (dn4-1) |
-| VL53L0X | proximité / présence | 0x29 — non branché (dn4-1) |
-| INA219 | tension / courant / puissance | 0x40 — non branché (dn4-1) |
+| BH1750 | luminosité ambiante | 0x23 — ⚠️ adresse ATTENDUE ; **ni inventorié ni branché** (dn4-1) |
+| VL53L0X | proximité / présence | 0x29 — ⚠️ adresse ATTENDUE ; **ni inventorié ni branché** (dn4-1) |
+| INA219 | tension / courant / puissance | 0x40 — ⚠️ adresse ATTENDUE ; **ni inventorié ni branché** (dn4-1) |
 
 **Occupants du bus MESURÉS le 2026-08-16** (scan stable `5/5`, ~20 passes) : `0x20` TCA9554 ·
 **`0x51` PCF85063 — la RTC est vivante, première confirmation** · `0x5D` GT911 ·
@@ -700,3 +700,35 @@ miroir Spotpear du wiki Waveshare annonçait `GND · 3V3 · SCL · SDA` sur un �
 **deux erreurs dans la même ligne**. ⚠️ Une **seconde embase JST identique** juste à côté porte
 l'UART (`GND · 3V3 · TXD · RXD`) — se tromper d'embase alimente correctement le composant et le
 laisse muet. Détail et symptômes : `hardware/…-capteurs-i2c.md` §13.1.
+
+### Procédure de câblage du BME680 — et les photos qui en font foi
+
+Les photos vivent dans **`docs/cablage/`**, nommées par leur **horodatage EXIF**. Elles sont
+décrites une par une en **`hardware/…-capteurs-i2c.md` §13.0**, avec ce qu'elles prouvent **et ce
+qu'elles ne prouvent pas** — c'est le critère n°5 du brief (« câblage photographié »).
+
+Le montage, dans l'ordre où il a été fait :
+
+1. 🔴 **Carte DÉBRANCHÉE de l'USB.** Aucun fil ne se pose sur un bus vivant.
+2. **Identifier la BONNE embase** des deux jumelles : la sérigraphie fait foi (`SDA · SCL` et non
+   `TXD · RXD`), et `docs/cablage/2026-08-16_2228-…` la photographie.
+   ⚠️ **Le wiki ne fait PAS foi** — il a été réfuté sur cette ligne même.
+3. **Souder la barrette 6 broches** sur le breakout : elle est **fournie NON montée**, et les
+   broches simplement posées dans leurs trous **ne conduisent pas** — c'est ce qui a coûté la
+   moitié de la séance du 2026-08-16 (§13.5, hypothèse 6). ⛔ Rien à souder côté carte.
+4. **Poser les 4 fils un par un** : `GND↔GND`, `3V3↔VCC`, `SCL(GPIO7)↔SCL`, `SDA(GPIO15)↔SDA`.
+   ⚠️ **L'ordre du câble JST et celui du breakout sont EN MIROIR sur les deux premières broches** :
+   suivre « l'ordre » inverse l'alimentation ET croise les signaux.
+5. **Contrôle de continuité au multimètre** (mode bip), fil par fil — c'est ce qui attrape un
+   Dupont mal enfoncé, qu'aucun coup d'œil ne voit.
+6. **Placer le breakout ÉCARTÉ de la carte**, sur ses fils : collé à la dalle, il mesure la carte
+   et non la pièce (§10.2 de la story).
+7. **Rebrancher l'USB**, relire le bandeau de boot en entier, puis `i2c` : `0x77` doit sortir
+   **`5/5`**, et `i2c lire 77 D0` rendre `61`. ⚠️ **C'est la lecture de registre qui QUALIFIE**, pas
+   le scan — il produit des faux positifs ET des faux négatifs (§13.6 bis).
+
+⚠️ **Un front descendant sur `CSB` bascule la puce en SPI jusqu'à la coupure d'alimentation
+suivante.** Manipuler les fils sous tension ré-arme donc la panne qu'on vient de purger : la
+séquence *bouger → scanner* **ne peut pas converger**, seule *bouger → couper l'alim → rescanner*
+le peut. ⛔ Et `reboot` en console **ne coupe PAS le capteur** : `esp_restart()` laisse le rail
+3V3 debout. 🔴 Débrancher `VCC` non plus — voir l'alimentation fantôme par les diodes ESD, §13.10.
