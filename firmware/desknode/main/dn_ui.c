@@ -295,7 +295,25 @@ static lv_obj_t *s_det_titre, *s_det_valeur, *s_det_minmax, *s_det_sec;
 #define DN_UI_CASE_HUM 5
 
 static lv_obj_t *s_vive_label[DN_UI_METRIQUES];
-static char s_vive_texte[DN_UI_METRIQUES][24];
+/*
+ * 🔴 L'INITIALISEUR « -- » N'EST PAS DÉCORATIF — CR du 2026-08-17.
+ *
+ * dn2-2 écrivait `static char s_cpu_texte[16] = "--";`. La généralisation de
+ * dn2-1 a perdu cet initialiseur : un tableau statique vaut `""`, et
+ * `build_dashboard` le pose TEL QUEL. Or `dn_ui_init()` construit la scène AVANT
+ * `dn_link_init()` (étape 8) et `dn_capteurs_init()` (étape 8 bis) ⇒ la première
+ * image montrait TROIS cases grisées et VIDES, ~5 s pour TEMP./HUMIDITE — et
+ * DÉFINITIVEMENT si le capteur ne répondait pas au boot, pendant que le firmware
+ * journalisait « les cases resteront « -- » ».
+ * ⇒ Une case vivante dit « -- » dès la toute première trame, avant que qui que ce
+ *   soit ne l'ait alimentée. C'est l'exigence AC8, et la garantie de dn2-2
+ *   (« la case CPU cesse de mentir dès le boot ») rendue à toutes les cases.
+ */
+static char s_vive_texte[DN_UI_METRIQUES][24] = {
+    [DN_UI_CASE_CPU] = "--",
+    [DN_UI_CASE_TEMP] = "--",
+    [DN_UI_CASE_HUM] = "--",
+};
 static bool s_vive_valide[DN_UI_METRIQUES];
 /* Quelles cases sont alimentées par une source réelle. Posé une fois, à l'init :
  * une case vivante affiche « -- » AVANT sa première valeur, jamais le factice —
@@ -1685,21 +1703,33 @@ bool dn_ui_ambiance_maj(int temp_dixiemes, int hum_dixiemes, bool valide,
         return false;
     }
     char txt[24];
-    /* ⚠️ Bornes DIFFÉRENTES des bornes physiques de dn_capteurs : celles-ci
-     * gardent l'AFFICHAGE (une valeur qui déborderait le gabarit du label), pas
-     * la plausibilité de la mesure. Les deux existent, et elles ne protègent pas
-     * la même chose. La température peut être NÉGATIVE — la case doit savoir
-     * l'écrire, et « -400 <= x » n'est pas « 0 <= x ». */
+    /* ⚠️ CE SONT LES BORNES PHYSIQUES DU BME680, LES MÊMES QUE dn_capteurs —
+     * corrigé le 2026-08-17. Le commentaire qui vivait ici affirmait qu'elles
+     * étaient « DIFFÉRENTES » et gardaient « l'affichage, pas la plausibilité » :
+     * c'était faux, les quatre chiffres sont identiques à ceux de dn_capteurs.c.
+     * Un commentaire qui affirme un invariant que le code ne tient pas est pire
+     * que pas de commentaire — quelqu'un aurait élargi les bornes physiques en
+     * croyant l'UI indépendante. Ici, elles sont un GARDE-FOU REDONDANT : la
+     * valeur est déjà bornée en amont, cette couche protège seulement contre un
+     * appelant futur qui ne le ferait pas.
+     * ⚠️ La température peut être NÉGATIVE — « -400 <= x » n'est pas « 0 <= x ». */
     bool ok_t = valide && temp_dixiemes >= -400 && temp_dixiemes <= 850;
     if (ok_t) {
         /* Le « ° » (0xB0) EST dans la plage générée de la police
          * (-r 0x20-0x7F,0xB0,0x2022) — vérifié dans le source du .c, pas
-         * supposé. C'est la seule lettre non-ASCII qu'on peut se permettre. */
-        int e = temp_dixiemes / 10, d = temp_dixiemes % 10;
-        if (d < 0) {
-            d = -d; /* -12 dixièmes => « -1,2 », pas « -1,-2 » */
-        }
-        snprintf(txt, sizeof(txt), "%d,%d \xC2\xB0" "C", e, d);
+         * supposé. C'est la seule lettre non-ASCII qu'on peut se permettre.
+         *
+         * 🔴 LE SIGNE NE VIT PAS DANS LES DIXIÈMES — CR du 2026-08-17.
+         * L'ancien code faisait `e = temp/10` puis redressait le seul chiffre
+         * des dixièmes. Or la division entière TRONQUE VERS ZÉRO : pour −5
+         * dixièmes, `e` vaut **0**, pas « -0 » — et la case affichait
+         * « 0,5 °C » pour −0,5 °C. Le correctif d'origine ne traitait que le
+         * cas |x| >= 10 (« -1,-2 »), pas la bande −0,1..−0,9 où le signe
+         * disparaît entièrement. On sépare donc le signe de la magnitude au
+         * lieu de le déduire d'un quotient. */
+        int mag = temp_dixiemes < 0 ? -temp_dixiemes : temp_dixiemes;
+        snprintf(txt, sizeof(txt), "%s%d,%d \xC2\xB0" "C",
+                 temp_dixiemes < 0 ? "-" : "", mag / 10, mag % 10);
     } else {
         snprintf(txt, sizeof(txt), "--");
     }

@@ -365,8 +365,11 @@ bool dn_ui_cpu_maj(int dixiemes, bool valide, bool *label_pose);
  *    d'une trame ;
  *  · `valide == false` grise les DEUX ensemble : un capteur muet l'est pour ses
  *    deux grandeurs, il n'y a pas de demi-silence ;
- *  · la température accepte le NÉGATIF (borne d'affichage -40,0 à +85,0 °C, la
- *    plage du BME680) — « 0 <= x » aurait mangé les valeurs sous zéro.
+ *  · la température accepte le NÉGATIF (bornes -40,0 à +85,0 °C, la plage du
+ *    BME680 — les MÊMES qu'en amont, garde-fou redondant assumé) : « 0 <= x »
+ *    aurait mangé les valeurs sous zéro. ⚠️ Et le signe se pose explicitement,
+ *    il ne se déduit PAS du quotient : la division entière tronque vers zéro,
+ *    donc -5 dixièmes donnait « 0,5 °C » (CR 2026-08-17).
  * Le « ° » est écrit en UTF-8 (0xC2 0xB0) : ce glyphe EST dans la plage générée
  * de montserrat, contrairement aux lettres accentuées (legs dn3-1). */
 bool dn_ui_ambiance_maj(int temp_dixiemes, int hum_dixiemes, bool valide,

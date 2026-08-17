@@ -1,10 +1,16 @@
 /*
  * dn_capteurs — lecture du BME680 sur le bus I²C partagé (dn2-1, P4).
  * Le POURQUOI de chaque choix est dans dn_capteurs.h ; ici, le COMMENT.
+ *
+ * ⚠️ Ce fichier porte 12 correctifs de la revue de code adversariale du
+ *    2026-08-17 (3 couches). Chacun est signalé « CR 2026-08-17 » à l'endroit
+ *    où il agit, avec le symptôme qui l'a fait trouver — la règle du dépôt étant
+ *    que les erreurs réfutées restent écrites avec leur réfutation.
  */
 #include "dn_capteurs.h"
 
 #include <math.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "bme680.h"
@@ -20,7 +26,13 @@ static const char *TAG = "dn_capt";
 
 /* ⚠️ portMUX et non un mutex : ces champs sont lus par la console (cœur 0) et
  * écrits par la tâche de lecture. Les int64 sont DÉCHIRABLES sur Xtensa (deux
- * stockages 32 bits) — `volatile` n'y change rien. Leçon du ledger dn1-2. */
+ * stockages 32 bits) — `volatile` n'y change rien. Leçon du ledger dn1-2.
+ * 🔴 CR 2026-08-17 : l'injecteur de fautes et la demande de gaz ÉCHAPPAIENT à ce
+ * verrou — les trois seuls champs partagés du fichier à le faire, dans un fichier
+ * qui s'ouvre sur un commentaire expliquant pourquoi il ne faut pas. `xTaskCreate`
+ * ne pose aucune affinité de cœur : les deux tâches peuvent tourner en parallèle,
+ * et `--s_faute_restants` est une lecture-modification-écriture. Ils y sont
+ * rentrés. */
 static portMUX_TYPE s_mux = portMUX_INITIALIZER_UNLOCKED;
 
 static bme680_handle_t s_dev;
@@ -29,9 +41,10 @@ static uint8_t s_variant;
 static bool s_gaz = DN_CAPT_GAZ_DEFAUT;
 static bool s_gaz_demande = DN_CAPT_GAZ_DEFAUT;
 
-static int s_temp_dx = -1; /* dixièmes de °C */
-static int s_hum_dx = -1;  /* dixièmes de %RH */
+static int s_temp_dx = DN_CAPT_DX_ABSENT; /* dixièmes de °C */
+static int s_hum_dx = DN_CAPT_DX_ABSENT;  /* dixièmes de %RH */
 static int64_t s_lu_us = -1;
+static int64_t s_cadence_us = -1; /* écart mesuré entre les deux dernières */
 static int64_t s_cycle_us = -1;
 static dn_capt_compteurs_t s_cnt;
 static bool s_a_deja_lu; /* au moins une valeur valide publiée depuis le boot */
@@ -41,6 +54,8 @@ static bool s_degrade;   /* on ne publie plus de valeur valide */
 static uint8_t s_reg_hum, s_reg_meas, s_reg_cfg;
 static uint8_t s_att_hum, s_att_meas, s_att_cfg;
 static bool s_conforme;
+/* 🔴 CR 2026-08-17 — « NON CONFORME » ≠ « pas de verdict ». Voir dn_capteurs.h. */
+static bool s_conf_dispo;
 static i2c_master_dev_handle_t s_brut; /* accès registre nu, hors driver */
 /*
  * 🔴 LE SUIVI DE REPRISE NE DOIT PAS DÉPENDRE DE L'HORODATAGE — correctif du
@@ -59,6 +74,61 @@ static dn_capt_faute_t s_faute;
 static int s_faute_restants;
 
 /*
+ * 🔴 CR 2026-08-17 — LA BOUCLE DE RÉPARATION ÉTAIT SANS BORNE, ET ELLE FUYAIT.
+ *
+ * `bme680_init()` du composant retenu alloue ses coefficients d'étalonnage
+ * (`calloc`, bme680.c:969) puis, sur QUATRE chemins d'échec ultérieurs, libère
+ * le handle **sans libérer ces coefficients** (bme680.c:1007-1011). La fuite est
+ * en amont — mais c'est NOTRE boucle qui la transformait en fuite continue :
+ * `config_verifier_et_reparer()` rappelait `bme680_init()` toutes les 5 s, sans
+ * compteur d'échecs, sans espacement, sans arrêt. Un capteur bloqué en état
+ * fantôme une nuit entière = des milliers d'allocations perdues contre 109 Ko de
+ * RAM interne libre, et la panne serait sortie ailleurs, sans rapport visible.
+ * ⇒ Trois échecs consécutifs suffisent à conclure : on cesse d'insister et on
+ *   repasse sur la cadence lente de re-tentative. Entrée au ledger pour le
+ *   signalement amont (k0i05/esp_bme680 1.2.7).
+ */
+#define DN_CAPT_RECONF_ECHECS_MAX 3
+static int s_reconf_echecs;
+
+/*
+ * 🔴 CR 2026-08-17 — UNE INIT RATÉE ÉTAIT DÉFINITIVE, ET C'EST LE CAS NORMAL.
+ *
+ * `bme680_init()` n'était appelée qu'une fois, depuis `dn_capteurs_init()`. Si la
+ * carte démarrait pendant que le contact était momentanément ouvert — le cas que
+ * §13.5/§13.6 bis documentent comme NORMAL sur ce montage, et qui a coûté la
+ * moitié de la séance — le module restait à `JAMAIS` **pour toujours**, quel que
+ * soit le nombre de re-branchements : la garde de config, la reconfiguration et
+ * `reprises` sont tous en aval d'un handle que seul un boot réussi créait.
+ * ⇒ La tâche retente, à cadence lente (un capteur absent ne doit pas sonder le
+ *   bus partagé toutes les 5 s : chaque tentative est un `i2c_master_probe` de
+ *   500 ms de timeout sur le bus que le GT911 pole 30 fois par seconde).
+ */
+#define DN_CAPT_REINIT_CYCLES 12 /* 12 × 5 s = une tentative par minute */
+static int s_cycles_avant_reinit;
+
+/*
+ * 🔴 CR 2026-08-17 — DISCRIMINER LE TIMEOUT DE DONNÉE DU TIMEOUT DE TRANSPORT.
+ *
+ * `bme680_get_data()` rend `ESP_ERR_TIMEOUT` depuis DEUX endroits opposés :
+ *   · sa boucle d'attente « data ready », qui court 1 500 ms
+ *     (`BME680_DATA_POLL_TIMEOUT_MS`, bme680.c:1060-1061) — atteinte APRÈS que
+ *     les lectures I²C du registre de statut ont RÉUSSI : le capteur répond très
+ *     bien, c'est sa conversion qui n'arrive pas. C'est `err_donnee` ;
+ *   · un timeout de verrou de bus dans une transaction — le capteur, lui, n'a
+ *     rien pu dire. C'est `err_i2c`.
+ * L'ancien code rangeait les deux dans `err_i2c`, sous la légende « le capteur ne
+ * repond plus (fil, soudure) » — donc **`err_donnee` ne pouvait jamais quitter 0**
+ * et la console envoyait l'opérateur vérifier un câblage parfaitement sain. C'est
+ * la leçon de dn2-2 (« tronquée » vs « trop longue ») refaite à l'identique, dans
+ * le code écrit pour ne pas la refaire.
+ * ⇒ Le discriminant est la DURÉE, qu'on mesure déjà : seule la boucle data-ready
+ *   peut consommer la fenêtre entière. Seuil sous les 1 500 ms nominales pour
+ *   absorber la granularité du tick.
+ */
+#define DN_CAPT_SEUIL_POLL_US 1400000
+
+/*
  * Bornes de PLAUSIBILITÉ PHYSIQUE, pas de confort.
  *
  * Le BME680 est spécifié −40..+85 °C et 0..100 %RH. Une valeur hors de là n'est
@@ -66,6 +136,11 @@ static int s_faute_restants;
  * n'a pas fini sa conversion, ou un octet perdu sur le bus. On la REJETTE avec
  * son compteur plutôt que de l'afficher — une case qui montre −273 °C envoie
  * chercher la panne dans l'UI alors qu'elle est sur le fil.
+ * ⚠️ CR 2026-08-17 : `dn_ui_ambiance_maj` porte les MÊMES chiffres, et son
+ *    commentaire affirmait qu'ils étaient « DIFFÉRENTS ». Ils ne le sont pas, et
+ *    un commentaire qui affirme un invariant que le code ne tient pas est pire
+ *    que pas de commentaire. Corrigé des deux côtés : ce sont les bornes
+ *    PHYSIQUES, l'UI les reprend telles quelles et le dit.
  */
 #define DN_CAPT_TEMP_MIN_DX (-400)
 #define DN_CAPT_TEMP_MAX_DX 850
@@ -96,7 +171,10 @@ static int64_t lu_us(void)
 
 dn_capt_etat_t dn_capt_etat(void)
 {
-    int64_t lu = lu_us();
+    portENTER_CRITICAL(&s_mux);
+    int64_t lu = s_lu_us;
+    bool deja = s_a_deja_lu;
+    portEXIT_CRITICAL(&s_mux);
     if (lu < 0) {
         /* ⚠️ « jamais lu » et « on lisait, on ne lit plus » sont DEUX diagnostics
          * opposés — l'un envoie chercher un cablage, l'autre une panne apparue en
@@ -104,7 +182,7 @@ dn_capt_etat_t dn_capt_etat(void)
          * qui fait passer les cases a « -- »), donc `lu < 0` ne suffit PLUS a
          * conclure « jamais ». Constat du 2026-08-17 : la console annonçait
          * « jamais lu » apres 157 lectures reussies. `s_a_deja_lu` tranche. */
-        return s_a_deja_lu ? DN_CAPT_MUET : DN_CAPT_JAMAIS;
+        return deja ? DN_CAPT_MUET : DN_CAPT_JAMAIS;
     }
     return (esp_timer_get_time() - lu) < DN_CAPT_PEREMPTION_US ? DN_CAPT_VIVANT
                                                                : DN_CAPT_MUET;
@@ -140,6 +218,14 @@ int64_t dn_capt_duree_cycle_us(void)
     return v;
 }
 
+int64_t dn_capt_cadence_reelle_us(void)
+{
+    portENTER_CRITICAL(&s_mux);
+    int64_t v = s_cadence_us;
+    portEXIT_CRITICAL(&s_mux);
+    return v;
+}
+
 void dn_capt_compteurs(dn_capt_compteurs_t *out)
 {
     portENTER_CRITICAL(&s_mux);
@@ -171,21 +257,36 @@ const char *dn_capt_faute_nom(dn_capt_faute_t f)
     }
 }
 
-dn_capt_faute_t dn_capt_faute_active(void) { return s_faute; }
-int dn_capt_faute_restants(void) { return s_faute_restants; }
+dn_capt_faute_t dn_capt_faute_active(void)
+{
+    portENTER_CRITICAL(&s_mux);
+    dn_capt_faute_t f = s_faute;
+    portEXIT_CRITICAL(&s_mux);
+    return f;
+}
+
+int dn_capt_faute_restants(void)
+{
+    portENTER_CRITICAL(&s_mux);
+    int n = s_faute_restants;
+    portEXIT_CRITICAL(&s_mux);
+    return n;
+}
 
 esp_err_t dn_capt_simuler(dn_capt_faute_t f, int cycles)
 {
     if (cycles < 0 || cycles > 600) {
         return ESP_ERR_INVALID_ARG;
     }
+    portENTER_CRITICAL(&s_mux);
     if (f == DN_CAPT_FAUTE_AUCUNE || cycles == 0) {
         s_faute_restants = 0;
         s_faute = DN_CAPT_FAUTE_AUCUNE;
-        return ESP_OK;
+    } else {
+        s_faute = f;
+        s_faute_restants = cycles;
     }
-    s_faute = f;
-    s_faute_restants = cycles;
+    portEXIT_CRITICAL(&s_mux);
     return ESP_OK;
 }
 
@@ -193,23 +294,39 @@ uint8_t dn_capt_reg_ctrl_hum(void) { return s_reg_hum; }
 uint8_t dn_capt_reg_ctrl_meas(void) { return s_reg_meas; }
 uint8_t dn_capt_reg_config(void) { return s_reg_cfg; }
 bool dn_capt_config_conforme(void) { return s_conforme; }
+bool dn_capt_config_verdict_dispo(void) { return s_conf_dispo; }
 
 uint8_t dn_capt_chip_id(void) { return s_chip_id; }
 uint8_t dn_capt_variant(void) { return s_variant; }
-bool dn_capt_gaz_actif(void) { return s_gaz; }
+
+bool dn_capt_gaz_actif(void)
+{
+    portENTER_CRITICAL(&s_mux);
+    bool g = s_gaz;
+    portEXIT_CRITICAL(&s_mux);
+    return g;
+}
 
 esp_err_t dn_capt_set_gaz(bool actif)
 {
     if (!s_dev) {
         return ESP_ERR_INVALID_STATE;
     }
+    portENTER_CRITICAL(&s_mux);
     s_gaz_demande = actif;
+    portEXIT_CRITICAL(&s_mux);
     return ESP_OK;
 }
 
 /*
  * La configuration, ligne par ligne — même discipline qu'une ligne de
  * sdkconfig.defaults : une ligne, une raison.
+ *
+ * ⚠️ CR 2026-08-17 : ces valeurs sont AUSSI ce que la console imprime sur sa ligne
+ *    « demande ». Elle portait un littéral codé en dur juste à côté de la ligne
+ *    « config LUE » — c'est-à-dire l'ombre logicielle que §13.10 venait d'exclure,
+ *    remise une ligne plus bas. Les libellés vivent maintenant dans le .h, à côté
+ *    des constantes qu'ils décrivent, et les deux se changent ensemble.
  */
 static bme680_config_t config_voulue(bool gaz)
 {
@@ -298,16 +415,6 @@ static void journaliser_identite(void)
     }
 }
 
-/* Applique la valeur aux cases 4 (TEMP.) et 5 (HUMIDITE) du dashboard.
- * ⚠️ dn_ui prend le verrou LVGL LUI-MÊME ; on ne le prend jamais ici. */
-static void pousser_ui(void)
-{
-    dn_capt_etat_t e = dn_capt_etat();
-    bool valide = (e == DN_CAPT_VIVANT);
-    dn_ui_ambiance_maj(dn_capt_temperature_dixiemes(), dn_capt_humidite_dixiemes(),
-                       valide, NULL);
-}
-
 /* Lit un registre par le bus NU. Le driver n'expose pas de lecture générique et
  * ses getters décodent en champs de bits — or ici on veut l'OCTET BRUT, celui
  * qu'on peut comparer et imprimer sans interprétation. */
@@ -317,6 +424,112 @@ static bool lire_reg(uint8_t reg, uint8_t *out)
         return false;
     }
     return i2c_master_transmit_receive(s_brut, &reg, 1, out, 1, 200) == ESP_OK;
+}
+
+/*
+ * La configuration ATTENDUE, relue dans le capteur JUSTE APRÈS que le driver l'a
+ * posée : on n'invente pas la valeur de référence, on la CONSTATE.
+ *
+ * 🔴 CR 2026-08-17 — LES TROIS LECTURES SONT DÉSORMAIS TESTÉES, ET C'EST UN
+ * DÉFAUT MAJEUR QUI TOMBE. Leurs valeurs de retour étaient IGNORÉES et
+ * `s_conforme = true` posé quand même. Une seule lecture perdue au boot laissait
+ * son octet de référence à `0x00` (statique jamais écrit) ⇒ la garde trouvait un
+ * écart À CHAQUE CYCLE, rappelait `bme680_init()` toutes les 5 s, invalidait la
+ * valeur à chaque fois : cases figées à « -- », `reconfigs` sans fin, et le
+ * diagnostic accusait un capteur en parfait état.
+ * ⚠️ Et ce n'est pas théorique sur CE bus : la story a MESURÉ que le sondage
+ *    produit des faux négatifs et que trois composants soudés ont raté une
+ *    confirmation dans la même séance (§13.6 bis). Une transaction qui se perd
+ *    ici est un événement attendu, pas une hypothèse d'école.
+ * ⇒ Si l'une des trois échoue, il n'y a PAS de référence, donc PAS de verdict —
+ *   et la garde le dit au lieu de fabriquer un diagnostic.
+ */
+static bool lire_reference_config(void)
+{
+    uint8_t h = 0, m = 0, c = 0;
+    if (!lire_reg(0x72, &h) || !lire_reg(0x74, &m) || !lire_reg(0x75, &c)) {
+        s_conf_dispo = false;
+        s_conforme = false;
+        ESP_LOGW(TAG, "reference de configuration NON LUE — la garde de "
+                      "reconfiguration reste INERTE, et `capteurs` le dira "
+                      "(« verdict indisponible », pas « NON CONFORME »)");
+        return false;
+    }
+    s_att_hum = h;
+    s_att_meas = m;
+    s_att_cfg = c;
+    s_reg_hum = h;
+    s_reg_meas = m;
+    s_reg_cfg = c;
+    s_conforme = true;
+    s_conf_dispo = true;
+    ESP_LOGI(TAG, "config relue dans le capteur : 0x72=%02X 0x74=%02X 0x75=%02X", h,
+             m, c);
+    return true;
+}
+
+/* Ouvre le driver et relève sa référence de configuration. Rendue réutilisable
+ * par le correctif de re-tentative : le boot et la reprise passent par le MÊME
+ * chemin, sinon la reprise finirait par diverger du boot sans que rien ne le
+ * dise. */
+static bool ouvrir_driver(i2c_master_bus_handle_t bus)
+{
+    portENTER_CRITICAL(&s_mux);
+    bool gaz = s_gaz;
+    portEXIT_CRITICAL(&s_mux);
+
+    bme680_config_t cfg = config_voulue(gaz);
+    bme680_handle_t neuf = NULL;
+    esp_err_t err = bme680_init(bus, &cfg, &neuf);
+    if (err != ESP_OK || !neuf) {
+        ESP_LOGE(TAG, "bme680_init a echoue (%s)", esp_err_to_name(err));
+        return false;
+    }
+    if (s_dev) {
+        bme680_delete(s_dev); /* ⚠️ sinon on fuit un device sur le bus a chaque reset */
+    }
+    s_dev = neuf;
+    lire_reference_config();
+    return true;
+}
+
+/* Applique la valeur aux cases 4 (TEMP.) et 5 (HUMIDITE) du dashboard.
+ * ⚠️ dn_ui prend le verrou LVGL LUI-MÊME ; on ne le prend jamais ici.
+ *
+ * 🔴 CR 2026-08-17 — LE RETOUR EST ENFIN LU, ET UNE POUSSÉE PERDUE EST COMPTÉE.
+ * `dn_ui_ambiance_maj()` rend `false` **sans rien avoir modifié** quand le verrou
+ * LVGL n'a pas pu être pris en 1 000 ms — cas réel du dépôt, un plein écran à
+ * `lines 8` le tient ~2,1 s. L'ancien appel jetait ce retour et passait `NULL` en
+ * `label_pose` : la valeur était perdue en silence, l'écran restait périmé 5 s de
+ * plus, et AUCUN compteur ne le disait. Le patron de référence, lui, retente
+ * (`dn_link.c` : « verrou LVGL non pris : on retentera dans 250 ms »).
+ * ⚠️ AC8 exige de reproduire la DISTINCTION valeur de retour / `label_pose`, pas
+ *    seulement la signature.
+ */
+static void pousser_ui(void)
+{
+    dn_capt_etat_t e = dn_capt_etat();
+    bool valide = (e == DN_CAPT_VIVANT);
+    int t = dn_capt_temperature_dixiemes();
+    int h = dn_capt_humidite_dixiemes();
+    bool pose = false;
+
+    if (dn_ui_ambiance_maj(t, h, valide, &pose)) {
+        return;
+    }
+    /* Une seule re-tentative, courte : la période est de 5 s, on a le temps, mais
+     * boucler sans fin sous un verrou tenu par un plein écran ferait de cette
+     * tâche un second demandeur permanent sur le même mutex. */
+    vTaskDelay(pdMS_TO_TICKS(250));
+    if (dn_ui_ambiance_maj(t, h, valide, &pose)) {
+        return;
+    }
+    portENTER_CRITICAL(&s_mux);
+    s_cnt.pousses_ratees++;
+    portEXIT_CRITICAL(&s_mux);
+    ESP_LOGW(TAG, "verrou LVGL indisponible 2 fois — poussee perdue, l'ecran garde "
+                  "l'affichage du cycle precedent pendant %d ms",
+             DN_CAPT_PERIODE_MS);
 }
 
 /*
@@ -340,10 +553,21 @@ static bool lire_reg(uint8_t reg, uint8_t *out)
  * ⇒ On RELIT la config à chaque cycle et on la RÉ-APPLIQUE si elle a disparu.
  *   Le cycle de la reconfiguration est déclaré INVALIDE : la première conversion
  *   qui suit part d'un capteur qu'on vient de reprogrammer.
+ *
+ * ⚠️ CR 2026-08-17 : la faute injectée est passée en PARAMÈTRE et n'est plus relue
+ *    dans la globale. L'ancienne version lisait `s_faute`, que le bloc d'injection
+ *    venait de remettre à `AUCUNE` sur son dernier cycle : `capteurs simuler
+ *    config 1` n'injectait RIEN, et `config n` n'injectait que n−1 fois — pendant
+ *    que `muet` et `bornes`, qui capturaient la cause en local, en faisaient n.
+ *    Les trois injecteurs n'étaient donc pas comparables, ce qui défaisait
+ *    exactement la fonction de non-régression qu'on leur demande.
  */
-static bool config_verifier_et_reparer(void)
+static bool config_verifier_et_reparer(dn_capt_faute_t faute_du_cycle)
 {
     uint8_t h = 0, m = 0, c = 0;
+    if (!s_conf_dispo) {
+        return true; /* pas de référence, pas de verdict — et `capteurs` le dit */
+    }
     if (!lire_reg(0x72, &h) || !lire_reg(0x74, &m) || !lire_reg(0x75, &c)) {
         return true; /* le bus a échoué : c'est err_i2c qui parlera, pas ici */
     }
@@ -356,43 +580,64 @@ static bool config_verifier_et_reparer(void)
     s_conforme = ((h & 0x07) == (s_att_hum & 0x07)) &&
                  ((m & 0xFC) == (s_att_meas & 0xFC)) &&
                  ((c & 0x1C) == (s_att_cfg & 0x1C));
-    if (s_faute == DN_CAPT_FAUTE_CONFIG && s_faute_restants > 0) {
+    if (faute_du_cycle == DN_CAPT_FAUTE_CONFIG) {
         /* On ment sur le VERDICT, pas sur la lecture : les octets imprimés par
          * `capteurs` restent les vrais. Sinon l'injecteur fabriquerait aussi le
          * diagnostic, et on ne testerait plus rien. */
         s_conforme = false;
     }
     if (s_conforme) {
+        s_reconf_echecs = 0;
         return true;
     }
 
     ESP_LOGE(TAG,
              "🔴 LE CAPTEUR A PERDU SA CONFIGURATION (0x72=%02X 0x74=%02X 0x75=%02X, "
              "attendu %02X/%02X/%02X) — il a redemarre. Ses valeurs etaient FAUSSES "
-             "et PLAUSIBLES. Reconfiguration.",
+             "et PLAUSIBLES.",
              h, m, c, s_att_hum, s_att_meas, s_att_cfg);
 
-    bme680_config_t cfg = config_voulue(s_gaz);
-    bme680_handle_t neuf = NULL;
-    if (bme680_init(dn_display_i2c_bus(), &cfg, &neuf) != ESP_OK || !neuf) {
-        s_degrade = true;
-        ESP_LOGE(TAG, "reconfiguration ECHOUEE — les cases vont passer a « -- »");
-        return false;
-    }
-    if (s_dev) {
-        bme680_delete(s_dev); /* ⚠️ sinon on fuit un device sur le bus a chaque reset */
-    }
-    s_dev = neuf;
-    s_degrade = true;
+    /*
+     * 🔴 CR 2026-08-17 — ON INVALIDE **AVANT** DE TENTER LA RÉPARATION, ET SUR
+     * TOUS LES CHEMINS.
+     *
+     * L'ancienne version n'invalidait que dans la branche de SUCCÈS. Quand la
+     * reconfiguration échouait — le cas que §13.10 a mesuré, en boucle tant que
+     * le vrai 3,3 V n'était pas revenu — `s_lu_us` gardait un horodatage récent,
+     * `dn_capt_etat()` rendait VIVANT, et `pousser_ui()` re-poussait **en BLANC,
+     * comme valides**, les 32,8 °C / 100 %RH que le firmware venait de prouver
+     * faux. Pendant les trois cycles de la péremption. Et l'`ESP_LOGE` de la même
+     * ligne affirmait « les cases vont passer a « -- » ».
+     * ⇒ La valeur est fausse dès l'instant où la config a disparu. Elle tombe ici,
+     *   avant toute tentative, quelle que soit la suite.
+     */
     portENTER_CRITICAL(&s_mux);
     s_cnt.reconfigs++;
-    /* 🔴 ON INVALIDE LA VALEUR COURANTE. Elle a été produite par un capteur non
-     * configuré : la garder affichée le temps d'un cycle de plus serait exactement
-     * le mensonge d'interface que l'AC7 interdit. Les cases passent a « -- ». */
-    s_temp_dx = -1;
-    s_hum_dx = -1;
+    s_temp_dx = DN_CAPT_DX_ABSENT;
+    s_hum_dx = DN_CAPT_DX_ABSENT;
     s_lu_us = -1;
     portEXIT_CRITICAL(&s_mux);
+    s_degrade = true;
+
+    if (s_reconf_echecs >= DN_CAPT_RECONF_ECHECS_MAX) {
+        /* Voir DN_CAPT_RECONF_ECHECS_MAX : insister coûte une fuite par tentative
+         * dans le composant tiers, et n'a rien produit trois fois de suite. */
+        return false;
+    }
+    if (!ouvrir_driver(dn_display_i2c_bus())) {
+        if (++s_reconf_echecs >= DN_CAPT_RECONF_ECHECS_MAX) {
+            ESP_LOGE(TAG,
+                     "reconfiguration ECHOUEE %d fois de suite — on CESSE d'insister "
+                     "(chaque tentative fuit ~40 o dans le composant). Les cases "
+                     "restent a « -- ». Reprise a la prochaine lecture valide, ou "
+                     "`reboot`.",
+                     s_reconf_echecs);
+        }
+        return false;
+    }
+    s_reconf_echecs = 0;
+    ESP_LOGW(TAG, "capteur RECONFIGURE — le cycle courant est declare invalide, la "
+                  "premiere conversion part d'une puce qu'on vient de reprogrammer");
     return false;
 }
 
@@ -409,7 +654,11 @@ static void tache_capteurs(void *arg)
 
         /* Bascule du gaz demandée à chaud (A/B de T9) : appliquée ICI, entre
          * deux cycles, jamais au milieu d'une conversion. */
-        if (s_gaz_demande != s_gaz && s_dev) {
+        portENTER_CRITICAL(&s_mux);
+        bool gaz_demande = s_gaz_demande;
+        bool gaz_courant = s_gaz;
+        portEXIT_CRITICAL(&s_mux);
+        if (gaz_demande != gaz_courant && s_dev) {
             /*
              * ⚠️ LE GAZ TIENT DANS DEUX REGISTRES, PAS UN — et les deux comptent :
              *   · gas0 (0x70) porte `heater_disabled` — la plaque chauffante ;
@@ -429,58 +678,94 @@ static void tache_capteurs(void *arg)
             esp_err_t e0 = bme680_get_control_gas0_register(s_dev, &g0);
             esp_err_t e1 = bme680_get_control_gas1_register(s_dev, &g1);
             if (e0 == ESP_OK && e1 == ESP_OK) {
-                g0.bits.heater_disabled = !s_gaz_demande;
-                g1.bits.gas_conversion_enabled = s_gaz_demande;
+                g0.bits.heater_disabled = !gaz_demande;
+                g1.bits.gas_conversion_enabled = gaz_demande;
                 e0 = bme680_set_control_gas0_register(s_dev, g0);
                 e1 = bme680_set_control_gas1_register(s_dev, g1);
             }
             if (e0 == ESP_OK && e1 == ESP_OK) {
-                s_gaz = s_gaz_demande;
+                portENTER_CRITICAL(&s_mux);
+                s_gaz = gaz_demande;
+                portEXIT_CRITICAL(&s_mux);
                 ESP_LOGW(TAG,
                          "chauffage gaz %s — ⚠️ la temperature met du temps a se "
                          "stabiliser : ne pas lire le delta sur le cycle suivant",
-                         s_gaz ? "ACTIVE (le die chauffe)" : "coupe");
+                         gaz_demande ? "ACTIVE (le die chauffe)" : "coupe");
             } else {
+                portENTER_CRITICAL(&s_mux);
                 s_gaz_demande = s_gaz; /* échec : on ne ment pas sur l'état */
+                portEXIT_CRITICAL(&s_mux);
                 ESP_LOGE(TAG, "bascule du chauffage gaz REFUSEE par le capteur "
                               "(gas0 %s, gas1 %s)",
                          esp_err_to_name(e0), esp_err_to_name(e1));
             }
         }
 
+        /*
+         * 🔴 CR 2026-08-17 — DEUX DÉFAUTS TOMBENT ICI, ET ILS SE COMPOSAIENT.
+         *
+         * (a) L'ancien `if (!s_dev) { continue; }` sautait AVANT tout
+         *     `pousser_ui()`. Combiné au fait que `s_vive_texte[]` de dn_ui avait
+         *     perdu son initialiseur `"--"`, les cases TEMP./HUMIDITE restaient
+         *     **VIDES POUR TOUJOURS** quand le capteur était absent — pendant que
+         *     `desknode_main.c` ET ce fichier journalisaient « les cases resteront
+         *     « -- » ». Le firmware promettait l'inverse de ce qu'il faisait, sur
+         *     le scénario même dont la story parle.
+         * (b) L'init n'était tentée qu'une fois : un contact ouvert au boot
+         *     condamnait le module jusqu'au reboot. Voir DN_CAPT_REINIT_CYCLES.
+         */
         if (!s_dev) {
+            pousser_ui(); /* les cases DISENT « -- » — c'est la promesse tenue */
+            if (--s_cycles_avant_reinit <= 0) {
+                s_cycles_avant_reinit = DN_CAPT_REINIT_CYCLES;
+                i2c_master_bus_handle_t bus = dn_display_i2c_bus();
+                if (bus && ouvrir_driver(bus)) {
+                    relever_identite(bus);
+                    journaliser_identite();
+                    ESP_LOGW(TAG, "capteur REAPPARU — il ne repondait pas au boot. "
+                                  "La lecture reprend au cycle suivant.");
+                }
+            }
             continue;
         }
 
         /* Faute injectée : elle emprunte EXACTEMENT les chemins d'erreur réels,
-         * compteurs compris. Décrémentée ici, une fois par cycle. */
+         * compteurs compris. Décrémentée ici, une fois par cycle.
+         * ⚠️ La cause est capturée en LOCAL et transmise à qui en a besoin — voir
+         *    l'en-tête de config_verifier_et_reparer(). */
+        dn_capt_faute_t faute = DN_CAPT_FAUTE_AUCUNE;
+        portENTER_CRITICAL(&s_mux);
         if (s_faute_restants > 0) {
-            dn_capt_faute_t f = s_faute;
+            faute = s_faute;
             if (--s_faute_restants == 0) {
-                ESP_LOGW(TAG, "faute simulee « %s » TERMINEE", dn_capt_faute_nom(f));
                 s_faute = DN_CAPT_FAUTE_AUCUNE;
             }
-            if (f == DN_CAPT_FAUTE_MUET) {
-                s_degrade = true;
-                portENTER_CRITICAL(&s_mux);
-                s_cnt.err_i2c++;
-                portEXIT_CRITICAL(&s_mux);
-                pousser_ui();
-                continue;
-            }
-            if (f == DN_CAPT_FAUTE_BORNES) {
-                s_degrade = true;
-                portENTER_CRITICAL(&s_mux);
-                s_cnt.err_bornes++;
-                portEXIT_CRITICAL(&s_mux);
-                pousser_ui();
-                continue;
-            }
+        }
+        int restants = s_faute_restants;
+        portEXIT_CRITICAL(&s_mux);
+        if (faute != DN_CAPT_FAUTE_AUCUNE && restants == 0) {
+            ESP_LOGW(TAG, "faute simulee « %s » TERMINEE", dn_capt_faute_nom(faute));
+        }
+        if (faute == DN_CAPT_FAUTE_MUET) {
+            s_degrade = true;
+            portENTER_CRITICAL(&s_mux);
+            s_cnt.err_i2c++;
+            portEXIT_CRITICAL(&s_mux);
+            pousser_ui();
+            continue;
+        }
+        if (faute == DN_CAPT_FAUTE_BORNES) {
+            s_degrade = true;
+            portENTER_CRITICAL(&s_mux);
+            s_cnt.err_bornes++;
+            portEXIT_CRITICAL(&s_mux);
+            pousser_ui();
+            continue;
         }
 
         /* AVANT de croire la moindre valeur : le capteur est-il toujours celui
          * qu'on a configuré ? (voir l'en-tête de config_verifier_et_reparer) */
-        if (!config_verifier_et_reparer()) {
+        if (!config_verifier_et_reparer(faute)) {
             pousser_ui(); /* les cases disent « -- » : on ne publie pas du faux */
             continue;
         }
@@ -492,19 +777,27 @@ static void tache_capteurs(void *arg)
 
         if (err != ESP_OK) {
             s_degrade = true;
-            /* ⚠️ DEUX SEAUX, PAS UN. Un échec de transport (NACK, timeout : le
+            /* ⚠️ DEUX SEAUX, PAS UN. Un échec de transport (NACK, bus occupé : le
              * capteur ne répond plus — fil, soudure) et un échec de donnée (il
-             * répond mais la conversion n'est pas prête) sont des diagnostics
+             * répond mais la conversion n'arrive jamais) sont des diagnostics
              * OPPOSÉS. dn2-2 a payé pour l'avoir appris sur « tronquée » vs
-             * « trop longue ». */
+             * « trop longue ». Le discriminant est la DURÉE — voir
+             * DN_CAPT_SEUIL_POLL_US, et le symptôme qui l'a imposé. */
+            bool poll_epuise =
+                (err == ESP_ERR_TIMEOUT) && (duree >= DN_CAPT_SEUIL_POLL_US);
             portENTER_CRITICAL(&s_mux);
-            if (err == ESP_ERR_TIMEOUT || err == ESP_ERR_INVALID_STATE ||
-                err == ESP_FAIL) {
-                s_cnt.err_i2c++;
-            } else {
+            if (poll_epuise) {
                 s_cnt.err_donnee++;
+            } else {
+                s_cnt.err_i2c++;
             }
             portEXIT_CRITICAL(&s_mux);
+            if (poll_epuise) {
+                ESP_LOGW(TAG,
+                         "conversion JAMAIS prete apres %lld ms — le capteur REPOND, "
+                         "le cablage n'est pas en cause (err_donnee)",
+                         (long long)(duree / 1000));
+            }
             pousser_ui(); /* la péremption peut être passée : les cases doivent le dire */
             continue;
         }
@@ -518,8 +811,13 @@ static void tache_capteurs(void *arg)
             portENTER_CRITICAL(&s_mux);
             s_cnt.err_bornes++;
             portEXIT_CRITICAL(&s_mux);
+            /* ⚠️ CR 2026-08-17 : `abs()` était appliqué au dixième de température
+             * mais PAS à celui d'humidité. Ce log ne se déclenche QUE sur une
+             * valeur hors bornes, donc un h_dx négatif est l'entrée attendue :
+             * il imprimait « -5,-5 % », la malformation même que dn_ui venait de
+             * corriger. Les deux signes se traitent maintenant pareil. */
             ESP_LOGW(TAG, "valeurs hors plage physique : %d,%d C / %d,%d %% — rejetees",
-                     t_dx / 10, abs(t_dx % 10), h_dx / 10, h_dx % 10);
+                     t_dx / 10, abs(t_dx % 10), h_dx / 10, abs(h_dx % 10));
             pousser_ui();
             continue;
         }
@@ -529,14 +827,20 @@ static void tache_capteurs(void *arg)
          * (silence, valeur hors bornes, ou perte de configuration). */
         bool reprise = s_degrade && s_a_deja_lu;
         s_degrade = false;
-        s_a_deja_lu = true;
+        s_reconf_echecs = 0;
 
+        int64_t maintenant = esp_timer_get_time();
         portENTER_CRITICAL(&s_mux);
+        /* Cadence EFFECTIVE, celle qu'AC7 demande : l'écart réellement observé
+         * entre deux lectures valides, pas la constante de compilation. Une tâche
+         * qui dérive ou qui saute des cycles doit pouvoir se voir. */
+        s_cadence_us = (s_lu_us >= 0) ? (maintenant - s_lu_us) : -1;
         s_temp_dx = t_dx;
         s_hum_dx = h_dx;
-        s_lu_us = esp_timer_get_time();
+        s_lu_us = maintenant;
         s_cycle_us = duree;
         s_cnt.lectures++;
+        s_a_deja_lu = true;
         if (reprise) {
             s_cnt.reprises++;
         }
@@ -557,31 +861,9 @@ esp_err_t dn_capteurs_init(void)
     relever_identite(bus);
     journaliser_identite();
 
-    bme680_config_t cfg = config_voulue(DN_CAPT_GAZ_DEFAUT);
-    esp_err_t err = bme680_init(bus, &cfg, &s_dev);
-    if (err != ESP_OK || !s_dev) {
-        /* ⚠️ NON FATAL, et la tâche démarre QUAND MÊME : elle publiera « jamais
-         * lu », et `capteurs` dira pourquoi. Un capteur muet ne doit pas priver
-         * l'opérateur de l'outil qui explique son silence. */
-        ESP_LOGE(TAG, "bme680_init a echoue (%s) — les cases resteront « -- »",
-                 esp_err_to_name(err));
-        s_dev = NULL;
-    } else {
-        ESP_LOGI(TAG,
-                 "BME680 pret @ 0x%02X — FORCED, T/H 8x, P 1x, IIR 3, gaz %s, "
-                 "cadence %d ms, peremption %lld ms",
-                 DN_BME680_ADDR, DN_CAPT_GAZ_DEFAUT ? "ACTIF" : "coupe",
-                 DN_CAPT_PERIODE_MS, (long long)(DN_CAPT_PEREMPTION_US / 1000));
-        if (!DN_CAPT_GAZ_DEFAUT) {
-            ESP_LOGI(TAG,
-                     "  (gaz coupe DELIBEREMENT : sa plaque a 300 C chaufferait le "
-                     "die qui porte le thermometre, pour une donnee hors des 6 "
-                     "widgets du brief. A/B jouable a chaud : `capteurs gaz on`)");
-        }
-    }
-
-    /* Handle NU, gardé ouvert : il sert à relire les registres de config sans
-     * passer par le driver, et il doit survivre à une reconstruction de s_dev. */
+    /* Handle NU, ouvert AVANT le driver : il sert à relire les registres de
+     * config sans passer par le driver, il doit survivre à une reconstruction de
+     * s_dev, et `ouvrir_driver()` en a besoin pour relever sa référence. */
     i2c_device_config_t brut = {
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,
         .device_address = DN_BME680_ADDR,
@@ -592,24 +874,58 @@ esp_err_t dn_capteurs_init(void)
                       "reconfiguration sera INERTE, et elle le dira");
         s_brut = NULL;
     }
-    /* La configuration ATTENDUE, relue dans le capteur JUSTE APRÈS que le driver
-     * l'a posée : on n'invente pas la valeur de référence, on la CONSTATE. C'est
-     * ce qui rend la comparaison de chaque cycle honnête. */
-    if (s_dev && s_brut) {
-        lire_reg(0x72, &s_att_hum);
-        lire_reg(0x74, &s_att_meas);
-        lire_reg(0x75, &s_att_cfg);
-        s_reg_hum = s_att_hum;
-        s_reg_meas = s_att_meas;
-        s_reg_cfg = s_att_cfg;
-        s_conforme = true;
-        ESP_LOGI(TAG, "config relue dans le capteur : 0x72=%02X 0x74=%02X 0x75=%02X",
-                 s_att_hum, s_att_meas, s_att_cfg);
+
+    if (!ouvrir_driver(bus)) {
+        /* ⚠️ NON FATAL, et la tâche démarre QUAND MÊME : elle publiera « -- »
+         * dans les cases, retentera l'ouverture toutes les minutes, et `capteurs`
+         * dira pourquoi. Un capteur muet ne doit pas priver l'opérateur de l'outil
+         * qui explique son silence. */
+        ESP_LOGE(TAG, "capteur INJOIGNABLE au boot — les cases afficheront « -- » et "
+                      "une nouvelle tentative aura lieu toutes les %d s",
+                 (DN_CAPT_REINIT_CYCLES * DN_CAPT_PERIODE_MS) / 1000);
+        s_dev = NULL;
+    } else {
+        portENTER_CRITICAL(&s_mux);
+        bool gaz = s_gaz;
+        portEXIT_CRITICAL(&s_mux);
+        ESP_LOGI(TAG,
+                 "BME680 pret @ 0x%02X — %s, T/H %s, P %s, IIR %s, gaz %s, "
+                 "cadence %d ms, peremption %lld ms",
+                 DN_BME680_ADDR, DN_CAPT_MODE_TXT, DN_CAPT_OSR_TH_TXT,
+                 DN_CAPT_OSR_P_TXT, DN_CAPT_IIR_TXT, gaz ? "ACTIF" : "coupe",
+                 DN_CAPT_PERIODE_MS, (long long)(DN_CAPT_PEREMPTION_US / 1000));
+        if (!DN_CAPT_GAZ_DEFAUT) {
+            ESP_LOGI(TAG,
+                     "  (gaz coupe DELIBEREMENT : sa plaque a 300 C chaufferait le "
+                     "die qui porte le thermometre, pour une donnee hors des 6 "
+                     "widgets du brief. A/B jouable a chaud : `capteurs gaz on`)");
+        }
     }
+    s_cycles_avant_reinit = DN_CAPT_REINIT_CYCLES;
 
     BaseType_t ok = xTaskCreate(tache_capteurs, "dn_capt", 4096, NULL, 3, NULL);
     if (ok != pdPASS) {
-        ESP_LOGE(TAG, "xTaskCreate a echoue — RAM interne insuffisante");
+        /*
+         * 🔴 CR 2026-08-17 — LE MÉNAGE EST FAIT, SINON LE MODULE MENT.
+         * L'ancien chemin rendait ESP_ERR_NO_MEM en laissant `s_dev` non-NULL :
+         * aucune tâche ne tournait, donc rien n'était jamais appliqué, mais
+         * `dn_capt_set_gaz()` — qui ne teste que `s_dev` — répondait ESP_OK et la
+         * console confirmait « chauffage gaz DEMANDE au prochain cycle », pour un
+         * cycle qui n'arriverait jamais.
+         */
+        ESP_LOGE(TAG, "xTaskCreate a echoue — RAM interne insuffisante. Le module "
+                      "se DESARME entierement : `capteurs` refusera au lieu "
+                      "d'acquitter dans le vide.");
+        if (s_dev) {
+            bme680_delete(s_dev);
+            s_dev = NULL;
+        }
+        if (s_brut) {
+            i2c_master_bus_rm_device(s_brut);
+            s_brut = NULL;
+        }
+        s_conf_dispo = false;
+        s_conforme = false;
         return ESP_ERR_NO_MEM;
     }
     return ESP_OK;

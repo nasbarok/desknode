@@ -91,6 +91,19 @@
  */
 #define DN_CAPT_GAZ_DEFAUT false
 
+/*
+ * Les libellés de la configuration DEMANDÉE, à côté des constantes qu'ils
+ * décrivent — c'est `capteurs` qui les imprime.
+ * ⚠️ Ils vivaient en littéral codé en dur DANS la console, une ligne sous
+ *    « config LUE », c'est-à-dire l'ombre logicielle que §13.10 venait
+ *    d'interdire, remise juste en dessous de son correctif (CR 2026-08-17).
+ *    Ici, changer `config_voulue()` sans changer le libellé se voit.
+ */
+#define DN_CAPT_MODE_TXT "FORCED"
+#define DN_CAPT_OSR_TH_TXT "8x"
+#define DN_CAPT_OSR_P_TXT "1x"
+#define DN_CAPT_IIR_TXT "3"
+
 typedef enum {
     DN_CAPT_JAMAIS, /* aucune lecture valide depuis le boot */
     DN_CAPT_VIVANT, /* dernière lecture plus récente que la péremption */
@@ -99,11 +112,18 @@ typedef enum {
 
 typedef struct {
     uint32_t lectures;      /* lectures VALIDES appliquées */
-    uint32_t err_i2c;       /* le transport a échoué (NACK, timeout) */
-    uint32_t err_donnee;    /* le driver a rendu une erreur ou des données non prêtes */
+    uint32_t err_i2c;       /* le transport a échoué (NACK, bus occupé) */
+    uint32_t err_donnee;    /* il répond, mais la conversion n'est jamais prête */
     uint32_t err_bornes;    /* valeur hors plage physique du capteur */
     uint32_t reprises;      /* transitions MUET -> VIVANT */
-    /* 🔴 Le capteur a PERDU SA CONFIGURATION et a fallu la lui reposer.
+    /* 🔴 Poussées vers l'UI PERDUES faute d'avoir pu prendre le verrou LVGL.
+     * Ajouté par la revue du 2026-08-17 : la valeur était jetée en silence, donc
+     * un écran périmé d'un cycle entier n'avait AUCUNE trace. Ce n'est pas une
+     * erreur de capteur — d'où son propre seau, hors des trois causes d'AC7. */
+    uint32_t pousses_ratees;
+    /* 🔴 Le capteur a PERDU SA CONFIGURATION — compte les DÉTECTIONS, pas les
+     * réparations réussies (la réparation peut échouer, et au-delà de trois
+     * échecs consécutifs on cesse d'insister : voir DN_CAPT_RECONF_ECHECS_MAX).
      * Compté séparément parce que ce n'est NI une erreur de transport (il
      * répond très bien) NI une valeur aberrante (elle est plausible) : c'est un
      * capteur qui a redémarré sous nos pieds. Mesuré le 2026-08-17 en coupant
@@ -155,8 +175,24 @@ typedef enum {
     DN_CAPT_FAUTE_CONFIG, /* config perdue — le cas « capteur fantôme » */
 } dn_capt_faute_t;
 
-/* Arme une faute pour les `cycles` prochains cycles (1..600 ; 0 = désarmer). */
+/*
+ * Arme une faute pour les `cycles` prochains cycles (1..600 ; 0 = désarmer).
+ *
+ * ⚠️ **`muet` et `bornes` ne font PASSER LES CASES À « -- » qu'au-delà de la
+ *    péremption**, c'est-à-dire après DN_CAPT_PEREMPTION_US / DN_CAPT_PERIODE_MS
+ *    = **3 cycles**. En dessous, l'injection incrémente bien son compteur mais
+ *    l'écran reste légitimement valide — et l'opérateur qui armait 1 cycle pour
+ *    « voir les cases passer à -- » concluait que la garde AC7 était cassée.
+ *    C'est un comportement CORRECT mal annoncé : `capteurs` le dit maintenant.
+ *    (Constat de la revue du 2026-08-17.)
+ * ⚠️ `config`, lui, agit **dès le premier cycle** : la perte de configuration
+ *    invalide la valeur immédiatement, elle n'attend pas la péremption.
+ */
 esp_err_t dn_capt_simuler(dn_capt_faute_t f, int cycles);
+/* Nombre de cycles au-delà duquel `muet`/`bornes` deviennent VISIBLES à l'écran.
+ * Exposé pour que la console l'annonce au lieu de le laisser deviner. */
+#define DN_CAPT_CYCLES_AVANT_PEREMPTION \
+    (int)(DN_CAPT_PEREMPTION_US / (1000LL * DN_CAPT_PERIODE_MS))
 dn_capt_faute_t dn_capt_faute_active(void);
 int dn_capt_faute_restants(void);
 const char *dn_capt_faute_nom(dn_capt_faute_t f);
@@ -164,9 +200,25 @@ const char *dn_capt_faute_nom(dn_capt_faute_t f);
 dn_capt_etat_t dn_capt_etat(void);
 const char *dn_capt_etat_nom(dn_capt_etat_t e);
 
+/*
+ * 🔴 SENTINELLE « PAS DE VALEUR » — et pourquoi ce n'est PLUS `-1`.
+ *
+ * `-1` dixième, c'est **−0,1 °C** : une température parfaitement légitime, dans
+ * les bornes physiques du capteur (−40 °C). Tant que la sentinelle vivait dans
+ * la plage utile, AUCUNE garde sur la valeur ne pouvait être correcte — et la
+ * console en a fait les frais deux fois : d'abord en imprimant « 0,1 C · 0,-1 % »
+ * (sentinelle formatée comme une mesure), puis, une fois « corrigée » par un test
+ * `t >= 0`, en refusant d'afficher **toute température négative** sous le libellé
+ * « aucune valeur courante », pendant que le dashboard, lui, l'affichait.
+ * ⇒ La sentinelle sort de la plage physique pour de bon. Constat de la revue de
+ *   code du 2026-08-17.
+ */
+#define DN_CAPT_DX_ABSENT INT32_MIN
+
 /* Dernières valeurs VALIDES, en DIXIÈMES (233 = 23,3 °C · 471 = 47,1 %).
  * Entiers pour rester dans la doctrine du dépôt côté affichage ; le driver rend
- * des float, la conversion est faite ici, une fois. -1 si jamais lues. */
+ * des float, la conversion est faite ici, une fois.
+ * `DN_CAPT_DX_ABSENT` si aucune valeur valide n'est publiée. */
 int dn_capt_temperature_dixiemes(void);
 int dn_capt_humidite_dixiemes(void);
 
@@ -197,6 +249,22 @@ uint8_t dn_capt_reg_ctrl_meas(void); /* 0x74 — osrs_t, osrs_p, mode */
 uint8_t dn_capt_reg_config(void);    /* 0x75 — filtre IIR */
 /* true quand les registres relus correspondent à ce que l'init a posé. */
 bool dn_capt_config_conforme(void);
+/*
+ * 🔴 « NON CONFORME » et « je n'en sais rien » sont DEUX choses, et les confondre
+ * fabriquait un diagnostic faux. Quand l'accès registre nu n'a pas pu s'ouvrir,
+ * ou quand la lecture des octets de RÉFÉRENCE a échoué à l'init, il n'y a pas de
+ * verdict — il y a une absence de verdict. Sans ce drapeau, une carte démarrée
+ * capteur DÉBRANCHÉ affichait `0x72=00 0x74=00 0x75=00 🔴 NON CONFORME` puis
+ * « le capteur a REDEMARRE et perdu sa config », pour un capteur qui n'a jamais
+ * été là et n'a jamais rien publié. Constat de la revue du 2026-08-17 ; l'init
+ * promettait déjà que la garde « sera INERTE, ET ELLE LE DIRA » — elle ne le
+ * disait pas.
+ */
+bool dn_capt_config_verdict_dispo(void);
+/* Cadence réellement observée entre les deux dernières lectures valides, en µs.
+ * -1 tant qu'il n'y en a pas eu deux. AC7 demande la cadence EFFECTIVE, pas la
+ * constante de compilation — une tâche qui dérive doit pouvoir se voir. */
+int64_t dn_capt_cadence_reelle_us(void);
 
 /* Identité RELEVÉE à l'init (0 si l'init n'a pas pu lire). Exposée pour que
  * `capteurs` puisse dire CE QU'IL A VU, sans re-solliciter le bus. */

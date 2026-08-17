@@ -2510,14 +2510,18 @@ static int cmd_wifi(int argc, char **argv)
  *    registre à rendre. Dans les deux cas, l'arbitre est la lecture.
  *
  * ⚠️ CE SCAN EST UNE RAFALE I²C, donc du même régime que le stimulus de §11.4 —
- *    mais il dure ~25 ms, et une perturbation de 25 ms n'est PAS observable à
- *    l'œil. **Ce n'est donc pas un test de §11.4**, et il ne faut pas le publier
- *    comme tel. Le vrai test est la cadence de lecture EN RÉGIME.
+ *    mais il dure ~25 ms **quand tout acquitte**, et une perturbation de 25 ms
+ *    n'est PAS observable à l'œil. **Ce n'est donc pas un test de §11.4**, et il
+ *    ne faut pas le publier comme tel. Le vrai test est la cadence EN RÉGIME.
  *
  * ⚠️ IL BLOQUE LE REPL PENDANT SA DURÉE, et sur la branche A retenue en dn2-2
  *    **le REPL EST le transport PC** : les trames de l'agent restent dans le
  *    tampon USB tant que le scan tourne. Même piège que `cpu N`, trouvé en
- *    session de validation dn2-2. D'où la plage bornée (112 adresses).
+ *    session de validation dn2-2.
+ *    🔴 **Et « ~25 ms » est le cas SAIN, pas la borne** (CR 2026-08-17) : 112
+ *    sondages à 50 ms de timeout + les confirmations donnent un pire cas de
+ *    **~9 s**. La plage bornée n'y suffisait pas ⇒ voir DN_I2C_SCAN_BUDGET_MS,
+ *    et l'abandon **s'imprime** au lieu de tronquer en silence.
  *
  * ⚠️ `i2c_master_probe()` NE SPAMME PAS le log sur NACK — vérifié dans le source
  *    d'ESP-IDF v5.5.5 (`i2c_master.c:1374`, `bus_handle->bypass_nack_log = true`),
@@ -2536,6 +2540,20 @@ static int cmd_wifi(int argc, char **argv)
  * surprises. Au-delà, ce n'est plus un bus chargé, c'est un bus qui acquitte
  * n'importe quoi — et la commande le DIT au lieu de tronquer en silence. */
 #define DN_I2C_SCAN_MAX_TROUVES 16
+/*
+ * 🔴 CR 2026-08-17 — LE SCAN POUVAIT BLOQUER LE TRANSPORT PC ~9 SECONDES.
+ *
+ * L'en-tete ci-dessus annonce « ~25 ms » et le README « ~26 ms » : c'est le cas
+ * SAIN, celui ou tout acquitte tout de suite. Le pire cas reel, lui, se calcule :
+ * 112 sondages × 50 ms de timeout, plus 16 candidats × 4 confirmations — soit
+ * ~9 s pendant lesquelles le REPL, donc LE TRANSPORT PC (branche A), n'ingere
+ * plus rien. C'est exactement le defaut de `cpu N` trouve en validation dn2-2,
+ * a une echelle pire.
+ * ⇒ Un budget est pose, et son DEPASSEMENT S'IMPRIME. Un scan tronque qui se
+ *   tairait serait un instrument qui ment par omission — la faute meme que le
+ *   compteur de timeouts existe pour eviter.
+ */
+#define DN_I2C_SCAN_BUDGET_MS 2500
 static const char *i2c_nom_connu(uint8_t addr)
 {
     switch (addr) {
@@ -2550,9 +2568,18 @@ static const char *i2c_nom_connu(uint8_t addr)
     case 0x6A:
     case 0x6B:
         return "QMI8658 — IMU (hors V1)";
+    case DN_BME680_ADDR:
+        return "BME680 — temperature/humidite (dn2-1) — L'ADRESSE MESUREE";
+    /* 🔴 0x76 EST L'AUTRE ADRESSE POSSIBLE DU BME680, ET C'EST AUSSI CELLE DU
+     * FAUX POSITIF QUI A OUVERT CETTE STORY — §13.2 : il est sorti a vide,
+     * AUCUN capteur branche, et aurait envoye la seance chercher un driver
+     * pendant des heures. L'etiqueter « BME680 » comme si de rien n'etait
+     * rearmait le piege que cette commande existe pour desamorcer
+     * (CR 2026-08-17). Notre module ne repond PAS la : son SDO est tire haut. */
     case 0x76:
-    case 0x77:
-        return "BME680/BME688 — temperature/humidite (dn2-1)";
+        return "0x76 — ⚠️ PAS notre BME680 (il est a 0x77, SDO haut). C'est "
+               "l'adresse du FAUX POSITIF de §13.2 : verifier par `i2c lire 76 D0` "
+               "AVANT d'en conclure quoi que ce soit";
     case 0x23:
         return "BH1750 — luminosite (dn4-1)";
     case 0x29:
@@ -2683,8 +2710,13 @@ static int cmd_i2c(int argc, char **argv)
     uint8_t candidats[DN_I2C_SCAN_MAX_TROUVES];
     int n_cand = 0;
     int timeouts = 0, deborde = 0;
+    uint8_t abandon_a = 0; /* 0 = le balayage est alle au bout */
 
     for (uint8_t a = 0x08; a <= 0x77; a++) {
+        if ((esp_timer_get_time() - t0) / 1000 > DN_I2C_SCAN_BUDGET_MS) {
+            abandon_a = a; /* voir DN_I2C_SCAN_BUDGET_MS : on le DIT, plus bas */
+            break;
+        }
         esp_err_t e = i2c_master_probe(bus, a, DN_I2C_SCAN_TIMEOUT_MS);
         if (e == ESP_ERR_TIMEOUT) {
             /* ⚠️ UNE ADRESSE NON SONDEE N'EST PAS UNE ADRESSE ABSENTE. Sans ce
@@ -2709,8 +2741,21 @@ static int cmd_i2c(int argc, char **argv)
         uint8_t a = candidats[i];
         int oks = 1; /* la detection initiale compte pour une */
         for (int k = 1; k < DN_I2C_SCAN_CONFIRMATIONS; k++) {
-            if (i2c_master_probe(bus, a, DN_I2C_SCAN_TIMEOUT_MS) == ESP_OK) {
+            /* 🔴 CR 2026-08-17 — LES TIMEOUTS DE CETTE BOUCLE ETAIENT INVISIBLES.
+             * Seul `ESP_OK` etait compte ; un ESP_ERR_TIMEOUT etait fondu dans
+             * « non confirme » et n'atteignait JAMAIS le compteur `timeouts`, qui
+             * n'etait alimente que par la passe de decouverte. Scenario reel : la
+             * tache capteur tient le bus dans sa boucle de 1 500 ms, le scan sort
+             * 0x5D en « 2/5 INSTABLE », le verdict imprime « TEMOIN POSITIF EN
+             * ECHEC — le BUS est en cause »… et le bloc qui aurait explique
+             * pourquoi reste MUET, parce que `timeouts == 0` le conditionne. La
+             * phrase « une adresse absente ne prouve rien tant que ce compteur
+             * n'est pas a 0 » se lisait alors comme un feu vert. */
+            esp_err_t ec = i2c_master_probe(bus, a, DN_I2C_SCAN_TIMEOUT_MS);
+            if (ec == ESP_OK) {
                 oks++;
+            } else if (ec == ESP_ERR_TIMEOUT) {
+                timeouts++;
             }
         }
         bool stable = (oks == DN_I2C_SCAN_CONFIRMATIONS);
@@ -2733,11 +2778,22 @@ static int cmd_i2c(int argc, char **argv)
            (long long)duree_ms);
 
     if (timeouts > 0) {
-        printf("🔴 %d adresse(s) N'ONT PAS PU ETRE SONDEES (timeout du verrou de\n",
-               timeouts);
-        printf("   bus, %d ms). La liste ci-dessus a des TROUS : une adresse\n",
-               DN_I2C_SCAN_TIMEOUT_MS);
-        printf("   absente ne prouve rien tant que ce compteur n'est pas a 0.\n");
+        printf("🔴 %d sondage(s) N'ONT PAS ABOUTI (timeout du verrou de bus, %d ms),\n",
+               timeouts, DN_I2C_SCAN_TIMEOUT_MS);
+        printf("   decouverte ET confirmations confondues. La liste ci-dessus a des\n");
+        printf("   TROUS : une adresse absente ne prouve rien, et un « n/%d » bas\n",
+               DN_I2C_SCAN_CONFIRMATIONS);
+        printf("   peut n'etre qu'un bus occupe — pas un mauvais contact. Le bus est\n");
+        printf("   partage : le GT911 le prend ~30x/s et la tache capteur peut le\n");
+        printf("   tenir jusqu'a 1 500 ms. Reessayer, puis `i2c lire <addr> D0`.\n");
+    }
+    if (abandon_a != 0) {
+        printf("🔴 SCAN INTERROMPU a 0x%02X : budget de %d ms depasse. Les adresses\n",
+               abandon_a, DN_I2C_SCAN_BUDGET_MS);
+        printf("   0x%02X..0x77 N'ONT PAS ETE SONDEES — elles ne sont pas « absentes »,\n",
+               abandon_a);
+        printf("   elles n'ont pas ete regardees. Le REPL est le transport PC : le\n");
+        printf("   bloquer plus longtemps couperait la liaison (lecon `cpu N`).\n");
     }
     if (deborde > 0) {
         printf("🔴 %d adresse(s) au-dela de %d IGNOREES — table pleine. Ce n'est\n",
@@ -2839,6 +2895,20 @@ static int cmd_capteurs(int argc, char **argv)
         }
         printf("faute « %s » armee pour %ld cycle(s), soit ~%ld s\n",
                dn_capt_faute_nom(f), n, n * DN_CAPT_PERIODE_MS / 1000);
+        /* 🔴 CR 2026-08-17 : la duree MINIMALE UTILE etait laissee a deviner.
+         * `muet` et `bornes` ne font passer les cases a « -- » qu'au-dela de la
+         * peremption (3 cycles) : l'operateur qui armait 1 cycle voyait l'ecran
+         * rester valide et concluait que la garde AC7 etait cassee. Le
+         * comportement est CORRECT, c'est son annonce qui manquait. */
+        if (f != DN_CAPT_FAUTE_CONFIG && n < DN_CAPT_CYCLES_AVANT_PEREMPTION) {
+            printf("⚠️ %ld cycle(s) NE SUFFIT PAS a faire passer les cases a « -- » :\n",
+                   n);
+            printf("   la peremption est de %d cycles. Le compteur bougera, l'ecran\n",
+                   DN_CAPT_CYCLES_AVANT_PEREMPTION);
+            printf("   restera VALIDE — et c'est correct. Pour voir « -- », armer au\n");
+            printf("   moins %d cycles. (`config`, lui, agit des le 1er cycle.)\n",
+                   DN_CAPT_CYCLES_AVANT_PEREMPTION + 1);
+        }
         printf("⚠️ elle teste le CHEMIN DE CODE, pas le materiel — elle ne peut pas\n");
         printf("   decouvrir un mode de panne qu'on n'a pas imagine. Vaut pour la\n");
         printf("   NON-REGRESSION, apres la campagne physique du 2026-08-17.\n");
@@ -2853,16 +2923,27 @@ static int cmd_capteurs(int argc, char **argv)
     printf("BME680 @ 0x%02X : %s", DN_BME680_ADDR, dn_capt_etat_nom(e));
     /* ⚠️ LA GARDE PORTE SUR LA VALEUR, PAS SUR L'ÉTAT — correctif du 2026-08-17.
      * Elle testait `e != DN_CAPT_JAMAIS`. Le jour où l'état MUET a cessé d'être
-     * synonyme de « valeur presente » (une valeur fausse est INVALIDÉE, donc
-     * remise a -1, tout en laissant l'etat a MUET), cette garde a laissé passer
-     * la sentinelle : la console imprimait « 0,1 C · 0,-1 % · age 0 ms ».
-     * Une sentinelle formatée comme une mesure est une valeur inventée. */
+     * synonyme de « valeur presente » (une valeur fausse est INVALIDÉE tout en
+     * laissant l'etat a MUET), cette garde a laissé passer la sentinelle : la
+     * console imprimait « 0,1 C · 0,-1 % · age 0 ms ».
+     * Une sentinelle formatée comme une mesure est une valeur inventée.
+     *
+     * 🔴 PUIS LE CORRECTIF LUI-MÊME A ÉTÉ TROUVÉ FAUX — CR du 2026-08-17. Il
+     * testait `t >= 0`, ce qui REFUSAIT TOUTE TEMPERATURE NEGATIVE : a -5,0 C
+     * l'etat imprimait VIVANT, le dashboard affichait « -5,0 °C », et cette
+     * meme ligne disait « aucune valeur courante ». Deux sorties du meme module
+     * qui se contredisent. La cause etait plus profonde que la garde : la
+     * sentinelle `-1` valait AUSSI -0,1 C, donc aucun test sur la valeur ne
+     * pouvait etre correct. La sentinelle est sortie de la plage physique
+     * (DN_CAPT_DX_ABSENT) ; la garde la teste, elle, et plus un signe. */
     int t = dn_capt_temperature_dixiemes();
     int h = dn_capt_humidite_dixiemes();
     int64_t age = dn_capt_age_us();
-    if (t >= 0 && h >= 0 && age >= 0) {
-        printf(" — %d,%d C · %d,%d %% · age %lld ms", t / 10, t % 10, h / 10,
-               h % 10, (long long)(age / 1000));
+    if (t != DN_CAPT_DX_ABSENT && h != DN_CAPT_DX_ABSENT && age >= 0) {
+        int tm = t < 0 ? -t : t; /* le signe se pose, il ne se deduit pas d'une
+                                  * division entiere — elle tronque vers zero */
+        printf(" — %s%d,%d C · %d,%d %% · age %lld ms", t < 0 ? "-" : "", tm / 10,
+               tm % 10, h / 10, h % 10, (long long)(age / 1000));
     } else {
         printf(" — aucune valeur courante");
     }
@@ -2878,20 +2959,52 @@ static int cmd_capteurs(int argc, char **argv)
      * le capteur etait a 0x00 partout, remis a ses defauts par une coupure de son
      * 3V3. Une ombre logicielle qui ne suit pas le materiel est un defaut — la
      * regle existait deja a cote (dn_display_backlight_pct_state). */
-    printf("config LUE : 0x72=%02X · 0x74=%02X · 0x75=%02X %s\n",
-           dn_capt_reg_ctrl_hum(), dn_capt_reg_ctrl_meas(), dn_capt_reg_config(),
-           dn_capt_config_conforme() ? "(conforme)" : "🔴 NON CONFORME");
-    if (!dn_capt_config_conforme()) {
-        printf("             => le capteur a REDEMARRE et perdu sa config. Ses\n");
-        printf("                valeurs sont FAUSSES *et* plausibles — aucune borne\n");
-        printf("                physique ne peut les voir. Reconfiguration au cycle\n");
-        printf("                suivant ; les cases passent a « -- » entre-temps.\n");
+    /* 🔴 « NON CONFORME » et « pas de verdict » sont DEUX choses — CR 2026-08-17.
+     * Les confondre faisait imprimer `0x72=00 0x74=00 0x75=00 🔴 NON CONFORME`
+     * puis « le capteur a REDEMARRE et perdu sa config » sur une carte demarree
+     * capteur DEBRANCHE — pour une puce qui n'a jamais ete la et n'a jamais rien
+     * publie. L'init promettait pourtant que la garde « sera INERTE, ET ELLE LE
+     * DIRA » : elle ne le disait pas. */
+    if (!dn_capt_config_verdict_dispo()) {
+        printf("config LUE : indisponible — la reference n'a pas pu etre lue a\n");
+        printf("             l'init (capteur absent, ou transaction perdue). La\n");
+        printf("             garde de reconfiguration est INERTE : ce n'est PAS un\n");
+        printf("             verdict « non conforme », c'est une ABSENCE de verdict.\n");
+    } else {
+        printf("config LUE : 0x72=%02X · 0x74=%02X · 0x75=%02X %s\n",
+               dn_capt_reg_ctrl_hum(), dn_capt_reg_ctrl_meas(),
+               dn_capt_reg_config(),
+               dn_capt_config_conforme() ? "(conforme)" : "🔴 NON CONFORME");
+        if (!dn_capt_config_conforme()) {
+            printf("             => le capteur a REDEMARRE et perdu sa config. Ses\n");
+            printf("                valeurs sont FAUSSES *et* plausibles — aucune "
+                   "borne\n");
+            printf("                physique ne peut les voir. Reconfiguration au "
+                   "cycle\n");
+            printf("                suivant ; les cases passent a « -- » "
+                   "entre-temps.\n");
+        }
     }
-    printf("demande    : FORCED · T/H 8x · P 1x · IIR 3 · gaz %s\n",
+    /* ⚠️ Les libelles viennent de dn_capteurs (DN_CAPT_*_TXT), plus d'un litteral
+     * code en dur ici — CR 2026-08-17. Toute la correction de §13.10 consistait a
+     * interdire a une ombre logicielle de faire autorite ; la ligne « config LUE »
+     * avait ete corrigee, et ce litteral-la garde UNE LIGNE PLUS BAS. Changer un
+     * surechantillonnage dans config_voulue() faisait diverger les deux lignes
+     * sans raison visible. */
+    printf("demande    : %s · T/H %s · P %s · IIR %s · gaz %s\n", DN_CAPT_MODE_TXT,
+           DN_CAPT_OSR_TH_TXT, DN_CAPT_OSR_P_TXT, DN_CAPT_IIR_TXT,
            dn_capt_gaz_actif() ? "ACTIF (le die chauffe — biaise la temperature)"
                                : "coupe");
-    printf("cadence    : %d ms · peremption %lld ms, en temps absolu\n",
+    printf("cadence    : %d ms nominale · peremption %lld ms, en temps absolu\n",
            DN_CAPT_PERIODE_MS, (long long)(DN_CAPT_PEREMPTION_US / 1000));
+    /* AC7 demande la cadence EFFECTIVE, pas la constante de compilation : une
+     * tache qui derive ou qui saute des cycles doit pouvoir se voir. */
+    int64_t cad = dn_capt_cadence_reelle_us();
+    if (cad >= 0) {
+        printf("             %lld ms MESURES entre les deux dernieres lectures "
+               "valides\n",
+               (long long)(cad / 1000));
+    }
     int64_t cyc = dn_capt_duree_cycle_us();
     if (cyc >= 0) {
         printf("cycle      : %lld ms MESURES pour la derniere lecture reussie\n",
@@ -2914,8 +3027,19 @@ static int cmd_capteurs(int argc, char **argv)
     printf("erreurs    : i2c %u · donnee %u · bornes %u\n", (unsigned)c.err_i2c,
            (unsigned)c.err_donnee, (unsigned)c.err_bornes);
     printf("             i2c = le capteur ne repond plus (fil, soudure) · donnee =\n");
-    printf("             il repond mais la conversion n'est pas prete — DEUX\n");
-    printf("             diagnostics opposes, deux seaux (lecon dn2-2)\n");
+    printf("             il repond mais la conversion n'arrive JAMAIS — DEUX\n");
+    printf("             diagnostics opposes, deux seaux (lecon dn2-2). ⚠️ Le\n");
+    printf("             discriminant est la DUREE : seule la boucle « data ready »\n");
+    printf("             du composant peut consommer ses 1 500 ms (CR 2026-08-17 —\n");
+    printf("             les deux tombaient dans `i2c`, et `donnee` ne pouvait pas\n");
+    printf("             quitter 0).\n");
+    if (c.pousses_ratees > 0) {
+        printf("ecran      : 🔴 %u poussee(s) PERDUE(S) — verrou LVGL indisponible\n",
+               (unsigned)c.pousses_ratees);
+        printf("             (2 tentatives). La valeur etait BONNE, l'ecran est\n");
+        printf("             reste sur le cycle precedent. Ce n'est PAS une erreur\n");
+        printf("             de capteur : son propre seau, hors des 3 causes d'AC7.\n");
+    }
     return 0;
 }
 

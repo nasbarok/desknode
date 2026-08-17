@@ -35,8 +35,11 @@
  * d'IDF 5.x, `i2c_master_bus_config_t` n'a pas de champ d'horloge : celle-ci se
  * pose dans `i2c_master_dev_config_t.scl_speed_hz`, device par device. Cette
  * constante est donc la valeur que NOS devices demandent (le GT911 de dn_touch,
- * et demain les capteurs de dn2-1) — le TCA9554, lui, pose ses propres 400 kHz
- * dans son driver (esp_io_expander_tca9554.c:18). */
+ * et le BME680 de dn_capteurs depuis dn2-1) — le TCA9554, lui, pose ses propres
+ * 400 kHz dans son driver (esp_io_expander_tca9554.c:18).
+ * ⚠️ Le BME680 la demande EXPLICITEMENT contre le défaut 100 kHz de son composant :
+ *    une transaction 4× plus courte occupe 4× moins le bus que la DMA du panneau
+ *    se dispute (§11.4). */
 #define DN_I2C_FREQ_HZ 400000
 
 /* ── Expander TCA9554 ────────────────────────────────────────────────────── */
@@ -74,9 +77,11 @@
  * C'est pour ça que la séquence de reset appartient à celui qui tient INT, et
  * pas au driver — qui, avec `rst_gpio_num = -1`, ne la joue même pas.
  *
- * ⚠️ Aucune des deux ne rentre en conflit sur ce bus : TCA9554 0x20, RTC
- *    PCF85063 0x51, IMU QMI8658 0x6A/0x6B, et les 4 capteurs de dn2-1
- *    (0x76/0x77, 0x23, 0x29, 0x40) sont tous ailleurs.
+ * ⚠️ Aucune des deux ne rentre en conflit sur ce bus. Occupants MESURÉS par le
+ *    scan `i2c` du 2026-08-17 : TCA9554 **0x20**, RTC PCF85063 **0x51** (première
+ *    confirmation qu'elle vit), IMU QMI8658 **0x6B** (et NON 0x6A, que ce fichier
+ *    laissait ouvert), BME680 **0x77**. Les 3 capteurs restants (BH1750 0x23,
+ *    VL53L0X 0x29, INA219 0x40) sont à dn4-1 — adresses ATTENDUES, pas mesurées.
  * 🔴 LE PROBE AVANT LE RESET RÉPOND DÉJÀ — MESURÉ LE 2026-08-16 SUR CETTE CARTE.
  *    Ce fichier enseignait le contraire (« tant que la séquence EXIO2 n'a pas été
  *    jouée, le GT911 ne répond à AUCUNE des deux : c'est le témoin négatif
@@ -107,15 +112,20 @@
  *        0x77 reg 0xD0 : 61   (chip id — 0x61 = BME680/BME688)
  *        0x77 reg 0xF0 : 00   (variant — 0x00 = BME680, 0x01 aurait dit BME688)
  *    Scan stable 5/5 sur 8 passes (commande console `i2c`).
- *    ⚠️ Relevé barrette NON SOUDÉE, contact tenu à la main — la soudure est le
- *    préalable de toute campagne. Détail : hardware/…-capteurs-i2c.md §13.
+ *    ✅ **BARRETTE SOUDÉE le 2026-08-17** — le contact est une propriété du
+ *    montage, plus un geste, et toutes les campagnes (cadence, auto-échauffement,
+ *    budgets) ont été jouées APRÈS. Le premier relevé, lui, avait été pris
+ *    barrette non soudée, contact tenu à la main : les deux blocs d'étalonnage
+ *    d'usine relus après soudure sont IDENTIQUES OCTET POUR OCTET à ceux d'avant.
+ *    Détail : hardware/…-capteurs-i2c.md §13.
  *
  * ⚠️ L'embase JST I²C est sérigraphiée GND·3V3·SDA·SCL — le miroir Spotpear
  *    donnait SCL·SDA (inversés) sur un « header 2,54 mm » qui n'existe pas sous
  *    cette forme : c'est une embase JST, et sa JUMELLE adjacente est l'UART.
  *
  * Les 3 autres capteurs (BH1750 0x23, VL53L0X 0x29, INA219 0x40) sont à dn4-1 :
- * ni inventoriés, ni branchés (décision owner D2-1a — une variable à la fois).
+ * ni inventoriés, ni photographiés, ni branchés (décision owner D2-1a — une
+ * variable à la fois). ⚠️ Leurs adresses ci-dessus sont ATTENDUES, pas mesurées.
  */
 #define DN_BME680_ADDR 0x77
 
