@@ -6,11 +6,15 @@
 #include <strings.h>
 
 #include "dn_asset.h"
+#include "dn_capteurs.h"
 #include "dn_display.h"
+#include "dn_link.h"
 #include "dn_measure.h"
 #include "dn_pins.h"
 #include "dn_recal.h"
 #include "dn_touch.h"
+#include "dn_widget.h"
+#include "fonts/dn_font.h"
 #include "esp_cache.h"
 #include "esp_check.h"
 #include "esp_heap_caps.h"
@@ -90,32 +94,120 @@ static const char *TAG = "dn_ui";
 #define DN_UI_RETOUR_H 60
 
 /*
- * ── LES LIBELLÉS SONT SANS ACCENT, ET CE N'EST PAS UNE NÉGLIGENCE ────────────
+ * ── LES LIBELLÉS SONT ACCENTUÉS DEPUIS dn3-1, ET C'EST UNE POLICE GÉNÉRÉE ────
  *
- * MESURÉ dans le source de la police, pas supposé : `lv_font_montserrat_14.c`
- * et `_28.c` sont générés avec `-r 0x20-0x7F,0xB0,0x2022` (première ligne du
- * fichier). La plage couvre l'ASCII imprimable, le SIGNE DEGRÉ (0xB0) et la
- * puce — et RIEN d'autre. « RÉSEAU », « HUMIDITÉ » ou « AOÛT » y perdraient
- * leur lettre accentuée, silencieusement : LVGL ne dessine pas le glyphe absent
- * et ne se plaint pas.
+ * dn1-4 les écrivait SANS accent, et ce n'était pas une négligence : les
+ * built-ins `lv_font_montserrat_14/_28` sont générées avec
+ * `-r 0x20-0x7F,0xB0,0x2022` (relu dans l'en-tête de leur `.c`), donc ASCII + le
+ * signe degré + la puce, ET RIEN D'AUTRE. « RÉSEAU », « HUMIDITÉ », « AOÛT » y
+ * perdaient leur lettre EN SILENCE — LVGL ne dessine pas un glyphe absent et ne
+ * se plaint pas.
  *
- * 🔴 LEGS POUR dn3-1 : afficher du français accentué sur cette dalle EXIGE une
- *    police générée avec la plage latine étendue (lv_font_conv), donc du binaire
- *    en plus. Ce n'est pas un choix esthétique reportable — c'est une contrainte
- *    d'outillage, à budgéter quand le SystemMetricWidget naîtra.
- * Le « °C » de la température, lui, passe : 0xB0 est dans la plage.
+ * ✅ dn3-1 solde ce legs : `dn_font_14` / `dn_font_28` couvrent ASCII +
+ *    LATIN-1 COMPLET + la puce + les 61 LV_SYMBOL_* + 7 icônes FontAwesome.
+ *    Voir `fonts/dn_font.h` et `tools/gen_font_dn.py`.
+ *
+ * ── LA GRILLE, AMENDÉE PAR D6 (2026-08-17) ───────────────────────────────────
+ *
+ *   idx 0 CPU        idx 1 GPU
+ *   idx 2 RAM        idx 3 RÉSEAU
+ *   idx 4 VENTILOS   idx 5 AMBIANCE      <- la dernière ligne, close par dn3-1
+ *
+ * D6 fusionne TEMP.+HUMIDITÉ en une seule case « AMBIANCE » à DEUX grandeurs, et
+ * la place libérée reçoit la vitesse des ventilateurs. Le compte de six est
+ * préservé.
+ * ⚠️ CONSÉQUENCE ÉCRITE, PAS MASQUÉE : PC éteint, UNE SEULE case sur six reste
+ *    vivante (Ambiance) au lieu de deux. Le différenciateur du brief tient, il se
+ *    voit deux fois moins.
+ *
+ * 🔴 GPU / RAM / RÉSEAU RESTENT DES CASES NUES, ET CE N'EST PAS UNE PARESSE :
+ *    c'est LE TÉMOIN NÉGATIF d'AC8 — la seule façon de chiffrer une case-widget
+ *    contre une case nue sous le MÊME fps, le MÊME bounce, le MÊME draw buffer.
+ *    Mais « nue » porte sur la FORME, pas sur l'honnêteté : leurs factices
+ *    d'apparence réelle (« 37 % », « 12,4 Go », « 48 Mo/s ») sont SUPPRIMÉS.
+ *    Aucune source ne les alimente ⇒ elles disent « -- », comme toute case sans
+ *    source. Un chiffre plausible sans source est le mensonge d'interface que ce
+ *    dépôt traque depuis dn1-3.
  */
-static const struct {
-    const char *nom;
-    const char *valeur; /* FACTICE — dn2/dn4-1 apporteront les vraies */
-} k_metriques[DN_UI_METRIQUES] = {
-    {"CPU", "42 %"},      {"GPU", "37 %"},       {"RAM", "12,4 Go"},
-    {"RESEAU", "48 Mo/s"}, {"TEMP.", "21,4 " "\xC2\xB0" "C"}, {"HUMIDITE", "47 %"},
+/* Les index de case, DÉCLARÉS ICI parce que `k_widget[]` et `k_desc[]` s'en
+ * servent comme initialiseurs désignés. ⚠️ D6 les a DÉPLACÉS : 4 était TEMP. et
+ * 5 HUMIDITÉ jusqu'à dn2-1. */
+#define DN_UI_CASE_CPU 0
+#define DN_UI_CASE_VENT 4
+#define DN_UI_CASE_AMB 5
+
+static const char *const k_nom[DN_UI_METRIQUES] = {
+    "CPU", "GPU", "RAM", "RÉSEAU", "VENTILOS", "AMBIANCE",
 };
+
+/* Quelles cases reçoivent le MODÈLE de widget. Les autres restent nues. */
+static const bool k_widget[DN_UI_METRIQUES] = {
+    [DN_UI_CASE_CPU] = true,
+    [DN_UI_CASE_VENT] = true,
+    [DN_UI_CASE_AMB] = true,
+};
+
+/*
+ * ── LES DESCRIPTEURS — LE SEUL POINT D'AJOUT D'UNE MÉTRIQUE ──────────────────
+ *
+ * C'est la promesse du brief rendue structurelle : « ajouter une métrique future
+ * (SSD, ventilateurs, puissance, NAS, Bambu…) ne redessine pas l'UI ». Une ligne
+ * ici, zéro ligne de dessin. Falsifiable à la demande : `widget demo on`.
+ *
+ * Les couleurs sont celles de la palette du mode Actif (addendum §1) : CPU
+ * violet, VENTILOS cyan, AMBIANCE orange. ⚠️ dn3-1 les PORTE seulement — c'est
+ * dn3-3 qui bascule Ambient/Actif et qui fait foi sur la palette. Elles sont
+ * posées ici pour que le champ `couleur` ne soit pas un champ MORT que dn3-3
+ * découvrirait non branché (leçon T4 de dn2-1 : ce qui n'est jamais appelé ne
+ * prouve rien).
+ */
+static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
+    [DN_UI_CASE_CPU] = {
+        .icone = DN_ICONE_MICROCHIP,
+        .titre = "CPU",
+        .couleur = 0x9b6cff, /* violet */
+        .n_grandeurs = 1,
+        .indicateur = false,
+        .grandeurs = {{.unite = "%"}},
+    },
+    [DN_UI_CASE_VENT] = {
+        .icone = DN_ICONE_SYNC_ALT, /* `fan` (0xF863) est ABSENT du .woff */
+        .titre = "VENTILOS",
+        .couleur = 0x35d6e8, /* cyan */
+        .n_grandeurs = 1,
+        .indicateur = true,
+        .ind_min = 0,
+        .ind_max = 2000, /* tr/min — la plage ANNONCÉE du mock (AC3) */
+        .grandeurs = {{.unite = "tr/min"}},
+    },
+    [DN_UI_CASE_AMB] = {
+        .icone = DN_ICONE_THERMOMETER_HALF,
+        .titre = "AMBIANCE",
+        .couleur = 0xff9640, /* orange */
+        .n_grandeurs = 2,    /* D6 — DANS LE MODÈLE, pas rustiné après */
+        .indicateur = false,
+        .grandeurs = {{.unite = "\xC2\xB0" "C"},
+                      {.unite = "%", .icone = DN_ICONE_TINT}},
+    },
+};
+
+/* Les descripteurs des cases NUES ne sont pas construits : elles ne passent pas
+ * par le modèle. C'est ce qui en fait le témoin négatif d'AC8. */
 
 const char *dn_ui_metrique_nom(int idx)
 {
-    return (idx >= 0 && idx < DN_UI_METRIQUES) ? k_metriques[idx].nom : "?";
+    return (idx >= 0 && idx < DN_UI_METRIQUES) ? k_nom[idx] : "?";
+}
+
+const dn_widget_desc_t *dn_ui_desc(int idx)
+{
+    return (idx >= 0 && idx < DN_UI_METRIQUES && k_widget[idx]) ? &k_desc[idx]
+                                                                : NULL;
+}
+
+bool dn_ui_est_widget(int idx)
+{
+    return idx >= 0 && idx < DN_UI_METRIQUES && k_widget[idx];
 }
 
 const char *dn_ui_vue_name(dn_ui_vue_t v)
@@ -265,65 +357,70 @@ static lv_obj_t *s_scr_detail;
  * En REBUILD ils sont recréés à chaque transition et ces pointeurs ne servent
  * qu'à ne pas les chercher dans l'arbre. */
 static lv_obj_t *s_det_titre, *s_det_valeur, *s_det_minmax, *s_det_sec;
-/* ── La case CPU vit (dn2-2) ──────────────────────────────────────────────────
- * Le label de VALEUR de la case haut-gauche, seul de la grille à recevoir une
- * vraie donnée ici (les 5 autres gardent leur factice — dn3-1 fera le modèle).
- * NULL quand le dashboard n'existe pas (REBUILD en vue détail) — et remis à
- * NULL partout où les autres pointeurs de labels le sont déjà. */
 /*
- * ── LES CASES VIVANTES — généralisé en dn2-1 ─────────────────────────────────
+ * ── HISTORIQUE DE CETTE ZONE, CONSERVÉ PARCE QU'IL EXPLIQUE LA FORME ─────────
+ * dn2-2 n'avait qu'UNE case réelle (CPU) et la codait en `i == 0` dans
+ * build_scene. dn2-1 en a ajouté DEUX (TEMP./HUMIDITÉ) et a REFUSÉ d'empiler un
+ * second ternaire : elle a généralisé en tableaux indexés par NUMÉRO DE CASE,
+ * ce qui permet à `build_dashboard` de rester UNE SEULE boucle. dn3-1 hérite de
+ * cette forme et n'y touche pas — elle remplace seulement le triplet
+ * (texte, validité, pointeur) par le couple (état, pointeurs), voir ci-dessous.
+ */
+/*
+ * ── L'ÉTAT DES SIX CASES — SÉPARÉ DE LEURS POINTEURS, ET C'EST LA PARADE ─────
  *
- * dn2-2 n'avait qu'UNE case réelle (CPU) et le codait en `i == 0` dans
- * build_scene. dn2-1 en ajoute DEUX (TEMP. et HUMIDITE), et empiler un second
- * ternaire sur le premier aurait rendu la ligne illisible pour n'en gagner
- * aucune. Une case est « vivante » quand sa valeur vient d'une SOURCE RÉELLE ;
- * les autres gardent le factice de dn1-4 jusqu'à dn3-1/dn4-1.
+ * `s_wetat[]` SURVIT au démontage de la scène ; `s_wobj[]` NON, et il est remis
+ * à zéro aux TROIS sites de démontage. Un pointeur de label qui survit à son
+ * label + une tâche asynchrone = use-after-free ; la revue dn1-3 en a trouvé un
+ * exactement là.
  *
- * ⚠️ Les trois tableaux sont indexés par le numéro de case, pas par un compteur
- *    de sources : c'est ce qui permet à build_scene de rester une seule boucle.
- * ⚠️ Le pointeur est NULL quand le dashboard n'existe pas (REBUILD en vue
- *    détail) — et remis à NULL PARTOUT où les autres pointeurs de labels le
- *    sont. Un pointeur de label qui survit à son label, écrit par une tâche
- *    asynchrone, c'est un use-after-free ; la revue dn1-3 en a déjà trouvé un.
- * Le texte et la validité, eux, SURVIVENT : ils sont reposés à chaque
- * (re)construction, sinon une bascule d'écran rendrait les cases à leur
- * factice — régression silencieuse.
+ * 🔴 LE RÉGIME PAR DÉFAUT EST `DN_VAL_ABSENTE`, ET IL VAUT 0 — donc un tableau
+ *    statique naît ABSENT, pas RÉEL. C'est la forme TYPÉE de l'initialiseur
+ *    « -- » que dn2-1 avait perdu (CR du 2026-08-17) : un tableau statique vaut
+ *    `""`, `build_dashboard` le posait tel quel, et les cases restaient VIDES
+ *    ~5 s au boot — DÉFINITIVEMENT si la source ne répondait pas, pendant que
+ *    deux fichiers journalisaient « les cases resteront « -- » ».
+ *    Ici l'ancien défaut ne peut plus revenir : ce n'est plus une CHAÎNE qu'il
+ *    faut penser à initialiser, c'est un ÉNUMÉRÉ dont le zéro est l'aveu
+ *    d'ignorance, et `composer()` rend « -- » pour tout état absent SANS lire le
+ *    texte. Toute case dit « -- » dès la toute première trame.
+ *
+ * ⚠️ Les six cases ont un état, y compris les NUES (GPU/RAM/RÉSEAU) : elles
+ *    restent ABSENTES pour toujours, ce qui est exactement ce qu'AC3 leur
+ *    demande de dire. Ce qui les distingue des widgets est leur FORME, pas leur
+ *    honnêteté.
  * Écrits sous le verrou LVGL, lus sous le même verrou (build_dashboard).
  */
-#define DN_UI_CASE_CPU 0
-#define DN_UI_CASE_TEMP 4
-#define DN_UI_CASE_HUM 5
+static dn_widget_etat_t s_wetat[DN_UI_METRIQUES];
+static dn_widget_t s_wobj[DN_UI_METRIQUES];
 
-static lv_obj_t *s_vive_label[DN_UI_METRIQUES];
 /*
- * 🔴 L'INITIALISEUR « -- » N'EST PAS DÉCORATIF — CR du 2026-08-17.
- *
- * dn2-2 écrivait `static char s_cpu_texte[16] = "--";`. La généralisation de
- * dn2-1 a perdu cet initialiseur : un tableau statique vaut `""`, et
- * `build_dashboard` le pose TEL QUEL. Or `dn_ui_init()` construit la scène AVANT
- * `dn_link_init()` (étape 8) et `dn_capteurs_init()` (étape 8 bis) ⇒ la première
- * image montrait TROIS cases grisées et VIDES, ~5 s pour TEMP./HUMIDITE — et
- * DÉFINITIVEMENT si le capteur ne répondait pas au boot, pendant que le firmware
- * journalisait « les cases resteront « -- » ».
- * ⇒ Une case vivante dit « -- » dès la toute première trame, avant que qui que ce
- *   soit ne l'ait alimentée. C'est l'exigence AC8, et la garantie de dn2-2
- *   (« la case CPU cesse de mentir dès le boot ») rendue à toutes les cases.
+ * Le widget de DÉMO d'AC1 (la 7e métrique fictive). Il vit sur l'ÉCRAN ACTIF,
+ * pas dans la grille — donc il partage le sort du stimulus `anim` : une
+ * reconstruction de scène ou une bascule d'écran le détruit ou le laisse
+ * accroché à l'écran qu'on quitte.
+ * ⚠️ SON OMBRE DOIT SUIVRE LA RÉALITÉ. Un `s_demo_on` resté vrai ferait annoncer
+ *    « démo affichée » par la console pour un widget que personne ne voit —
+ *    « exactement le défaut que la revue de dn1-3 a corrigé 21 fois ».
  */
-static char s_vive_texte[DN_UI_METRIQUES][24] = {
-    [DN_UI_CASE_CPU] = "--",
-    [DN_UI_CASE_TEMP] = "--",
-    [DN_UI_CASE_HUM] = "--",
-};
-static bool s_vive_valide[DN_UI_METRIQUES];
-/* Quelles cases sont alimentées par une source réelle. Posé une fois, à l'init :
- * une case vivante affiche « -- » AVANT sa première valeur, jamais le factice —
- * un « 21,4 °C » affiché avant qu'aucun capteur n'ait parlé est le même mensonge
- * d'interface qu'un CPU figé, en plus discret. */
-static const bool k_vive[DN_UI_METRIQUES] = {
-    [DN_UI_CASE_CPU] = true,
-    [DN_UI_CASE_TEMP] = true,
-    [DN_UI_CASE_HUM] = true,
-};
+static dn_widget_t s_demo;
+static bool s_demo_on;
+
+/* Opacité du voile plein écran (AC9/W9). Valeur de départ : LV_OPA_50, l'état
+ * des lieux légué par dn1-4. Réglable à chaud pour que le verdict soit un
+ * constat owner ; la valeur retenue est écrite en fin de story. */
+static uint8_t s_voile_opa = LV_OPA_50;
+
+/* ── Le mock VENTILOS (AC3) — sa forme est ANNONCÉE, pas devinée ─────────────
+ * Rampe triangulaire 800 -> 1600 -> 800 tr/min, période 20 s, pas de 1 s (le
+ * tick du timer LVGL existant). ⚠️ La valeur DOIT varier : un mock figé serait
+ * indiscernable d'un affichage bloqué, et AC3 exige qu'un observateur puisse
+ * faire la différence. La cadence, la plage et la forme sont imprimées par
+ * `widget` — RELUES de ces constantes, jamais récitées ailleurs. */
+#define DN_MOCK_MIN 800
+#define DN_MOCK_MAX 1600
+#define DN_MOCK_PERIODE_S 20
+static bool s_mock_on = true;
 /* Dernière zone touchée — la preuve d'AC3, lue par la console. */
 static volatile int s_dernier_tap = DN_UI_ZONE_AUCUNE;
 static volatile uint32_t s_taps;
@@ -558,9 +655,29 @@ static lv_obj_t *label_courant(void)
     return s_vue == DN_VUE_DETAIL ? s_label_det : s_label_dash;
 }
 
+static void mock_tick_nolock(void);
+
 static void label_tick(lv_timer_t *t)
 {
     (void)t;
+    /*
+     * ── LE MOCK VENTILOS BAT ICI, ET C'EST UN CHOIX ÉCRIT (AC3) ──────────────
+     * Pas de tâche dédiée : le patron `dn_link`/`dn_capteurs` en réclame une
+     * quand le travail peut DORMIR (I²C, série). Produire un nombre ne dort pas.
+     * Une tâche coûterait une pile, un handle et un point de défaillance de plus
+     * au boot — pour rien.
+     * ⚠️ ON EST DÉJÀ SOUS LE VERROU LVGL ici : le portage le prend autour de
+     *    `lv_timer_handler()`. D'où l'appel à la variante `_nolock`, qui est le
+     *    contrat de `dn_widget`. (Le mutex du portage est RÉCURSIF —
+     *    `esp_lvgl_port.c:77` — donc un lock imbriqué serait sûr ; on ne s'appuie
+     *    pas dessus, on l'écrit pour que personne n'ait à le redécouvrir.)
+     * ⚠️ AVANT le retour anticipé ci-dessous : le label vivant est MASQUÉ par
+     *    défaut depuis dn1-4 et son pointeur est NULL en REBUILD vue détail.
+     *    Mettre le mock après aurait fait un mock qui s'arrête quand on ouvre un
+     *    détail — un « affichage figé » fabriqué par l'instrumentation.
+     */
+    mock_tick_nolock();
+
     lv_obj_t *s_label = label_courant();
     if (!s_label) {
         return;
@@ -640,8 +757,12 @@ static void fond_poser(lv_obj_t *scr)
          *    chaque tap destiné aux cases — et « toute la case est la zone
          *    tactile » deviendrait faux à cause d'un élément décoratif.
          * ⚠️ L'opacité reste PARTIELLE : le PCB est l'identité visuelle du
-         *    produit, on l'atténue, on ne l'efface pas. dn3-1 tranchera la valeur
-         *    définitive avec le reste de l'esthétique.
+         *    produit, on l'atténue, on ne l'efface pas.
+         * ✅ dn3-1 a TRANCHÉ la valeur définitive (W9) et l'a rendue RÉGLABLE
+         *    à chaud (`widget voile <0..255>`) pour que l'arbitrage soit un
+         *    constat owner sur la dalle et non un choix sur le papier. La
+         *    valeur retenue vit dans `s_voile_opa`, et la console la RELIT —
+         *    elle ne la récite pas depuis une constante.
          */
         lv_obj_t *voile = lv_obj_create(scr);
         lv_obj_remove_style_all(voile);
@@ -650,7 +771,7 @@ static void fond_poser(lv_obj_t *scr)
         lv_obj_clear_flag(voile, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_clear_flag(voile, LV_OBJ_FLAG_CLICKABLE);
         lv_obj_set_style_bg_color(voile, lv_color_black(), 0);
-        lv_obj_set_style_bg_opa(voile, LV_OPA_50, 0);
+        lv_obj_set_style_bg_opa(voile, s_voile_opa, 0);
     } else {
         /*
          * ── LE PANNEAU « ASSET ABSENT » SURVIT À L'INTÉGRATION (AC1) ─────────
@@ -662,7 +783,7 @@ static void fond_poser(lv_obj_t *scr)
          */
         lv_obj_set_style_bg_color(scr, lv_color_hex(0x7f0000), 0);
         lv_obj_t *t = lv_label_create(scr);
-        lv_obj_set_style_text_font(t, &lv_font_montserrat_28, 0);
+        lv_obj_set_style_text_font(t, &dn_font_28, 0);
         lv_obj_set_style_text_color(t, lv_color_white(), 0);
         lv_label_set_text(t, "ASSET ABSENT");
         lv_obj_align(t, LV_ALIGN_CENTER, 0, -30);
@@ -694,7 +815,7 @@ static void label_poser(lv_obj_t *scr, lv_obj_t **slot)
 {
     lv_obj_t *s_label = lv_label_create(scr);
     *slot = s_label;
-    lv_obj_set_style_text_font(s_label, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_font(s_label, &dn_font_28, 0);
     lv_obj_set_style_text_color(s_label, lv_color_white(), 0);
     /* Fond du label TRANSPARENT, délibérément. Un aplat opaque derrière le texte
      * supprimerait le re-blit du fond sous la zone invalidée — c'est-à-dire
@@ -734,27 +855,15 @@ static void label_poser(lv_obj_t *scr, lv_obj_t **slot)
 static lv_obj_t *zone_creer(lv_obj_t *parent, int x, int y, int w, int h,
                             lv_event_cb_t cb, void *user)
 {
-    lv_obj_t *z = lv_obj_create(parent);
-    lv_obj_remove_style_all(z);
-    lv_obj_set_pos(z, x, y);
-    lv_obj_set_size(z, w, h);
-    lv_obj_clear_flag(z, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_add_flag(z, LV_OBJ_FLAG_CLICKABLE);
-    /* Un aplat sombre translucide : assez pour que la case se VOIE (l'owner doit
-     * savoir où viser pour le constat « au coin »), assez peu pour que le Living
-     * PCB reste le fond. Bordure fine, pas de radius : rien à défendre ici. */
-    lv_obj_set_style_bg_color(z, lv_color_black(), 0);
-    /* 70 % et non 40 % : à 40 % les pistes claires du Living PCB passaient au
-     * travers et mangeaient le texte blanc (constat owner). Le fond reste
-     * perceptible — c'est l'identité du produit — mais il ne concourt plus. */
-    lv_obj_set_style_bg_opa(z, LV_OPA_70, 0);
-    lv_obj_set_style_border_color(z, lv_color_hex(0x50c0ff), 0);
-    lv_obj_set_style_border_width(z, 1, 0);
-    lv_obj_set_style_border_opa(z, LV_OPA_60, 0);
-    if (cb) {
-        lv_obj_add_event_cb(z, cb, LV_EVENT_CLICKED, user);
-    }
-    return z;
+    /* 🔴 LE CORPS A DÉMÉNAGÉ DANS `dn_widget` (dn3-1), ET C'EST LE POINT.
+     * Les deux drapeaux qui décident si « toute la case est la zone tactile »
+     * est vraie — prouvée à 4 px du bord en dn1-4 — étaient DUPLIQUÉS entre
+     * `zone_creer` et `panneau`. Le widget en aurait fait une troisième copie.
+     * Ils n'ont plus qu'UNE définition, et c'est elle que toutes les zones
+     * tactiles du firmware traversent : cases nues, MENU, retour.
+     * L'aplat translucide suit le même chemin, pour que l'A/B d'opacité d'AC9
+     * ne puisse pas oublier la moitié de l'écran. */
+    return dn_widget_zone_creer(parent, x, y, w, h, cb, user);
 }
 
 /*
@@ -769,32 +878,13 @@ static lv_obj_t *zone_creer(lv_obj_t *parent, int x, int y, int w, int h,
  */
 static lv_obj_t *panneau(lv_obj_t *parent, int x, int y, int w, int h)
 {
-    lv_obj_t *p = lv_obj_create(parent);
-    lv_obj_remove_style_all(p);
-    lv_obj_set_pos(p, x, y);
-    lv_obj_set_size(p, w, h);
-    lv_obj_clear_flag(p, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_clear_flag(p, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_set_style_bg_color(p, lv_color_black(), 0);
-    lv_obj_set_style_bg_opa(p, LV_OPA_70, 0);
-    lv_obj_set_style_border_color(p, lv_color_hex(0x50c0ff), 0);
-    lv_obj_set_style_border_width(p, 1, 0);
-    lv_obj_set_style_border_opa(p, LV_OPA_60, 0);
-    return p;
+    return dn_widget_panneau(parent, x, y, w, h);
 }
 
 static lv_obj_t *texte(lv_obj_t *parent, const char *s, const lv_font_t *font,
                        lv_color_t couleur, int x, int y)
 {
-    lv_obj_t *l = lv_label_create(parent);
-    lv_obj_set_style_text_font(l, font, 0);
-    lv_obj_set_style_text_color(l, couleur, 0);
-    lv_obj_set_style_bg_opa(l, LV_OPA_TRANSP, 0);
-    lv_label_set_text(l, s);
-    lv_obj_set_pos(l, x, y);
-    /* Les labels ne captent rien : c'est le conteneur qui est la zone. */
-    lv_obj_clear_flag(l, LV_OBJ_FLAG_CLICKABLE);
-    return l;
+    return dn_widget_texte(parent, s, font, couleur, x, y);
 }
 
 /* ── Navigation : les callbacks ───────────────────────────────────────────── */
@@ -927,38 +1017,56 @@ static void build_dashboard(lv_obj_t *scr)
     lv_obj_clear_flag(barre, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_set_style_bg_color(barre, lv_color_black(), 0);
     lv_obj_set_style_bg_opa(barre, LV_OPA_70, 0);
-    texte(barre, "21:46", &lv_font_montserrat_28, lv_color_white(), DN_UI_MARGE, 18);
-    texte(barre, "VEN. 06 AOUT", &lv_font_montserrat_14,
+    texte(barre, "21:46", &dn_font_28, lv_color_white(), DN_UI_MARGE, 18);
+    /* Accentué depuis dn3-1 : « AOÛT » a récupéré son Û. C'est le témoin le plus
+     * simple que la police générée est bien celle qui est liée. */
+    texte(barre, "VEN. 06 AOÛT", &dn_font_14,
           lv_color_hex(0xa0d8ff), 300, 28);
 
-    /* La grille 2x3. `zone_creer` fait toute la zone tactile. */
+    /*
+     * La grille 2x3, TOUJOURS UNE SEULE BOUCLE (dn2-1 a explicitement refusé
+     * d'empiler des ternaires ici, on ne le refait pas). Elle se ramifie sur la
+     * FORME de la case — widget ou nue — et sur rien d'autre : aucune métrique
+     * n'est nommée dans ce code. C'est ce qui rend vraie la promesse « ajouter
+     * une métrique ne redessine pas l'UI ».
+     */
     for (int i = 0; i < DN_UI_METRIQUES; i++) {
         int col = i % 2;
         int ligne = i / 2;
         int x = DN_UI_MARGE + col * (DN_UI_CASE_W + DN_UI_GAP);
         int y = DN_UI_GRILLE_Y + DN_UI_MARGE + ligne * (DN_UI_CASE_H + DN_UI_GAP);
+
+        if (k_widget[i]) {
+            dn_widget_creer(scr, x, y, DN_UI_CASE_W, DN_UI_CASE_H, &k_desc[i],
+                            &s_wetat[i], on_case_clic, (void *)(intptr_t)i,
+                            &s_wobj[i]);
+            continue;
+        }
+
+        /* ── LA CASE NUE : le témoin négatif d'AC8 ────────────────────────────
+         * Conteneur + titre + valeur, exactement la forme de dn1-4. Elle NE
+         * reçoit PAS le modèle — c'est ce qui permet de chiffrer une
+         * case-widget CONTRE une case nue sous le même fps, le même bounce et
+         * le même draw buffer, dans le MÊME firmware.
+         * ⚠️ Mais elle est HONNÊTE : son état est ABSENT (aucune source ne
+         *    l'alimente), donc « -- » grisé. Les factices d'apparence réelle de
+         *    dn1-4 (« 37 % », « 12,4 Go », « 48 Mo/s ») sont supprimés. */
         lv_obj_t *case_ = zone_creer(scr, x, y, DN_UI_CASE_W, DN_UI_CASE_H,
                                      on_case_clic, (void *)(intptr_t)i);
-        texte(case_, k_metriques[i].nom, &lv_font_montserrat_14,
-              lv_color_hex(0xa0d8ff), 12, 10);
-        /* Une case VIVANTE affiche l'état RÉEL de sa source : sa valeur si elle
-         * vit, « -- » grisé sinon. Les autres gardent le factice de dn1-4.
-         * CPU = liaison PC (dn2-2) ; TEMP./HUMIDITE = BME680 (dn2-1). */
-        lv_obj_t *val = texte(
-            case_, k_vive[i] ? s_vive_texte[i] : k_metriques[i].valeur,
-            &lv_font_montserrat_28,
-            (k_vive[i] && !s_vive_valide[i]) ? lv_color_hex(0x9a9a9a)
-                                             : lv_color_white(),
-            12, 60);
-        if (k_vive[i]) {
-            s_vive_label[i] = val;
-        }
+        texte(case_, k_nom[i], &dn_font_14, lv_color_hex(0xa0d8ff), 12, 10);
+        s_wobj[i].racine = case_;
+        s_wobj[i].valeur[0] =
+            texte(case_, s_wetat[i].txt[0][0] ? s_wetat[i].txt[0] : "--",
+                  &dn_font_28,
+                  s_wetat[i].regime == DN_VAL_REELLE ? lv_color_white()
+                                                     : lv_color_hex(0x9a9a9a),
+                  12, 60);
     }
 
     /* Le bandeau MENU — 7e zone, cliquable, no-op consigné. */
     lv_obj_t *menu = zone_creer(scr, 0, DN_LCD_V_RES - DN_UI_MENU_H, DN_LCD_H_RES,
                                 DN_UI_MENU_H, on_menu_clic, NULL);
-    texte(menu, "MENU  " LV_SYMBOL_LIST, &lv_font_montserrat_28, lv_color_white(),
+    texte(menu, "MENU  " LV_SYMBOL_LIST, &dn_font_28, lv_color_white(),
           DN_UI_MARGE + 6, 14);
 
     label_poser(scr, &s_label_dash);
@@ -971,6 +1079,8 @@ static void build_dashboard(lv_obj_t *scr)
  * précisément ce que le modèle SCREENS exploite en réécrivant les labels au lieu
  * de reconstruire.
  */
+static void detail_reparametrer(int idx);
+
 static void build_detail(lv_obj_t *scr, int idx)
 {
     if (idx < 0 || idx >= DN_UI_METRIQUES) {
@@ -996,52 +1106,154 @@ static void build_detail(lv_obj_t *scr, int idx)
      * cliquable, il ne peut pas lui voler le tap. */
     lv_obj_t *retour = zone_creer(entete, DN_UI_MARGE, DN_UI_MARGE, DN_UI_RETOUR_W,
                                   DN_UI_RETOUR_H, on_retour_clic, NULL);
-    texte(retour, LV_SYMBOL_LEFT, &lv_font_montserrat_28, lv_color_white(), 16, 14);
+    texte(retour, LV_SYMBOL_LEFT, &dn_font_28, lv_color_white(), 16, 14);
 
     /* Titre de la métrique — c'est LUI qui rend la zone touchée identifiable
      * sans ambiguïté (AC3) : six instances du même template, un seul titre. */
-    s_det_titre = texte(entete, k_metriques[idx].nom, &lv_font_montserrat_28,
+    s_det_titre = texte(entete, k_nom[idx], &dn_font_28,
                         lv_color_hex(0xa0d8ff), DN_UI_MARGE + DN_UI_RETOUR_W + 20,
                         24);
 
-    /* Grande valeur. « Grande » = montserrat 28, la plus grosse police DÉJÀ
-     * embarquée : en ajouter une coûterait du binaire pour un écran factice. */
+    /* Grande valeur. « Grande » = dn_font_28, la plus grosse police embarquée. */
     lv_obj_t *bloc_valeur =
         panneau(scr, DN_UI_MARGE, 95, DN_LCD_H_RES - 2 * DN_UI_MARGE, 62);
-    s_det_valeur = texte(bloc_valeur, k_metriques[idx].valeur,
-                         &lv_font_montserrat_28, lv_color_white(), 14, 14);
+    s_det_valeur = texte(bloc_valeur, "--", &dn_font_28, lv_color_white(), 14, 14);
 
     /* Placeholder de courbe : un cadre étiqueté, PAS une courbe. Les vraies
      * séries arrivent avec l'historique RAM-session (dn2/dn4-1). */
     lv_obj_t *cadre = panneau(scr, DN_UI_MARGE, 170, DN_LCD_H_RES - 2 * DN_UI_MARGE,
                               200);
-    texte(cadre, "COURBE (dn2 / dn4-1)", &lv_font_montserrat_14,
+    texte(cadre, "COURBE (dn2 / dn4-1)", &dn_font_14,
           lv_color_hex(0x80a0b0), 12, 88);
 
-    /* Données secondaires et MIN/MAX, factices, sur un seul aplat de bas de
-     * page — c'est celui-là que l'owner a signalé comme illisible. */
+    /* Données secondaires et MIN/MAX, sur un seul aplat de bas de page — c'est
+     * celui-là que l'owner a signalé comme illisible le 2026-08-16. */
     lv_obj_t *bas = panneau(scr, DN_UI_MARGE, 385, DN_LCD_H_RES - 2 * DN_UI_MARGE,
                             200);
-    s_det_sec = texte(bas, "moy. 5 min : 38 %\ncharge : moderee\nsource : factice",
-                      &lv_font_montserrat_14, lv_color_hex(0xc0d8e8), 14, 16);
-    s_det_minmax = texte(bas, "MIN 12 %   -   MAX 91 %", &lv_font_montserrat_28,
-                         lv_color_white(), 14, 130);
+    s_det_sec = texte(bas, "", &dn_font_14, lv_color_hex(0xc0d8e8), 14, 16);
+    s_det_minmax = texte(bas, "", &dn_font_28, lv_color_white(), 14, 130);
+
+    /* 🔴 LES QUATRE LABELS DE DONNÉES NAISSENT VIDES ET SONT REMPLIS ICI, PAR
+     *    LE MÊME CODE QUE LA RÉOUVERTURE. C'est le correctif d'AC5 : tant que
+     *    `build_detail` posait des constantes et que `detail_reparametrer` en
+     *    posait d'autres, il y avait DEUX sources de vérité pour un même écran,
+     *    et c'est la première qui mentait (« 21,4 °C » en dur, capteur débranché
+     *    compris, pendant que la tuile derrière disait honnêtement « -- »). */
+    detail_reparametrer(idx);
 
     label_poser(scr, &s_label_det);
 }
 
-/* Réécrit les données du détail SANS reconstruire l'arbre — le raccourci du
- * modèle SCREENS. Ne touche à aucune position : la structure ne change jamais. */
+/*
+ * ── LE DÉTAIL HÉRITE DE L'ÉTAT DE SA SOURCE (AC5, legs R1 du ledger) ─────────
+ *
+ * Réécrit les données du détail SANS reconstruire l'arbre — le raccourci du
+ * modèle SCREENS. Ne touche à aucune position : la structure ne change jamais,
+ * les 4 panneaux restent 4 panneaux (addendum §1).
+ *
+ * 🔴 CE QUE CETTE FONCTION CORRIGE. Elle posait `k_metriques[idx].valeur`, une
+ *    CONSTANTE. Un tap sur TEMP. ouvrait donc un écran affichant « 21,4 °C » en
+ *    dur — capteur débranché compris — PENDANT QUE la tuile derrière affichait
+ *    honnêtement « -- ». Le mensonge d'interface que dn2-2 avait chassé du
+ *    dashboard vivait un écran plus loin. Trois cases sur six étaient touchées.
+ *
+ * 🔴 ET LA CONTRAINTE VA PLUS LOIN QUE LA VALEUR : le détail hérite de l'ÉTAT
+ *    de la source (`dn_link_etat()`, `dn_capt_etat()`), pas seulement de son
+ *    chiffre — « sinon le même mensonge revient avec un vrai widget ». Un
+ *    écran qui affiche la dernière valeur connue SANS dire que la source est
+ *    morte ment exactement de la même façon, en plus poli.
+ *
+ * ⚠️ MIN/MAX : AUCUN historique n'existe (il arrive en dn3-2/dn4-1). On écrit
+ *    donc « MIN --   ·   MAX -- ». Y remettre « MIN 12 % - MAX 91 % » parce que
+ *    « le panneau a l'air vide » serait refaire le défaut qu'on solde.
+ */
+static const char *etat_source(int idx, bool *vivante)
+{
+    *vivante = false;
+    if (idx == DN_UI_CASE_CPU) {
+        dn_link_etat_t e = dn_link_etat();
+        *vivante = (e == DN_LINK_VIVANTE);
+        return dn_link_etat_nom(e);
+    }
+    if (idx == DN_UI_CASE_AMB) {
+        dn_capt_etat_t e = dn_capt_etat();
+        *vivante = (e == DN_CAPT_VIVANT);
+        return dn_capt_etat_nom(e);
+    }
+    if (idx == DN_UI_CASE_VENT) {
+        /* Le mock n'a pas d'état de source : il EN EST une, et son régime le
+         * dit déjà. Le nommer « VIVANT » l'habillerait en mesure. */
+        return s_mock_on ? "generateur interne" : "arrete";
+    }
+    return "aucune";
+}
+
+static const char *nom_source(int idx)
+{
+    switch (idx) {
+    case DN_UI_CASE_CPU:
+        return "liaison PC (dn_link)";
+    case DN_UI_CASE_AMB:
+        return "BME680 (dn_capteurs)";
+    case DN_UI_CASE_VENT:
+        return "MOCK dn3-1 (aucun capteur)";
+    default:
+        return "AUCUNE — pas encore branchee";
+    }
+}
+
 static void detail_reparametrer(int idx)
 {
     if (idx < 0 || idx >= DN_UI_METRIQUES) {
         return;
     }
     if (s_det_titre) {
-        lv_label_set_text(s_det_titre, k_metriques[idx].nom);
+        lv_label_set_text(s_det_titre, k_nom[idx]);
     }
+
+    const dn_widget_etat_t *e = &s_wetat[idx];
+    const dn_widget_desc_t *d = k_widget[idx] ? &k_desc[idx] : NULL;
+    char buf[96];
+
     if (s_det_valeur) {
-        lv_label_set_text(s_det_valeur, k_metriques[idx].valeur);
+        /* La MÊME règle que la tuile : régime ABSENT ⇒ « -- » grisé, jamais un
+         * chiffre. Et la couleur suit le régime, y compris l'ambre du simulé —
+         * sinon le détail d'une case simulée présenterait son chiffre comme
+         * réel, ce qu'AC5 interdit explicitement. */
+        if (e->regime == DN_VAL_ABSENTE || e->txt[0][0] == '\0') {
+            snprintf(buf, sizeof(buf), "--");
+        } else if (d && d->n_grandeurs >= 2 && e->txt[1][0]) {
+            /* Bi-grandeurs : les DEUX valeurs, sur la même ligne — le détail ne
+             * peut pas en cacher une, ce serait un demi-silence. */
+            snprintf(buf, sizeof(buf), "%s %s   ·   %s %s", e->txt[0],
+                     d->grandeurs[0].unite ? d->grandeurs[0].unite : "",
+                     e->txt[1],
+                     d->grandeurs[1].unite ? d->grandeurs[1].unite : "");
+        } else {
+            snprintf(buf, sizeof(buf), "%s %s", e->txt[0],
+                     (d && d->grandeurs[0].unite) ? d->grandeurs[0].unite : "");
+        }
+        lv_label_set_text(s_det_valeur, buf);
+        lv_obj_set_style_text_color(
+            s_det_valeur,
+            e->regime == DN_VAL_REELLE    ? lv_color_white()
+            : e->regime == DN_VAL_SIMULEE ? lv_color_hex(0xffb020)
+                                          : lv_color_hex(0x9a9a9a),
+            0);
+    }
+
+    if (s_det_sec) {
+        bool vivante = false;
+        const char *etat = etat_source(idx, &vivante);
+        /* TROIS lignes, toutes RELUES de l'état réel : la source, son état, le
+         * régime de la valeur. Aucune n'est une constante d'affichage. */
+        snprintf(buf, sizeof(buf), "source : %s\netat  : %s\nregime : %s",
+                 nom_source(idx), etat, dn_val_regime_nom(e->regime));
+        lv_label_set_text(s_det_sec, buf);
+    }
+
+    if (s_det_minmax) {
+        lv_label_set_text(s_det_minmax, "MIN --   ·   MAX --");
     }
 }
 
@@ -1064,6 +1276,15 @@ static void build_scene(void)
         ESP_LOGW(TAG, "reconstruction de scène : le stimulus `anim` est ARRÊTÉ "
                       "(relancer `anim on` si besoin)");
     }
+    /* Même règle pour la démo d'AC1 : elle est posée sur l'écran actif, la
+     * reconstruction l'emporte avec lui. L'ombre suit, sinon la console
+     * annoncerait une démo affichée qui n'existe plus. */
+    if (s_demo_on) {
+        s_demo_on = false;
+        ESP_LOGW(TAG, "reconstruction de scène : la démo `widget demo` est "
+                      "RETIRÉE (relancer `widget demo on` si besoin)");
+    }
+    dn_widget_oublier(&s_demo);
     s_label_dash = NULL;
     s_label_det = NULL;
     s_bar = NULL;
@@ -1074,7 +1295,7 @@ static void build_scene(void)
     /* ⚠️ TOUTES les cases vivantes, pas seulement CPU : un pointeur oublié ici
      * survivrait à son label et la tâche capteur écrirait dans du vide libéré. */
     for (int i = 0; i < DN_UI_METRIQUES; i++) {
-        s_vive_label[i] = NULL;
+        dn_widget_oublier(&s_wobj[i]);
     }
 
     if (s_nav == DN_NAV_SCREENS) {
@@ -1178,6 +1399,14 @@ static bool nav_appliquer(int cible, int64_t t_clic)
             s_bar = NULL;
         }
         s_anim_on = false;
+        /* Idem pour la démo d'AC1 : en SCREENS rien n'est détruit, elle
+         * resterait accrochée à l'écran qu'on quitte — donc INVISIBLE, pendant
+         * que l'ombre annoncerait « affichée ». On la retire pour de bon. */
+        if (s_demo.racine) {
+            lv_obj_delete(s_demo.racine);
+            dn_widget_oublier(&s_demo);
+        }
+        s_demo_on = false;
         if (vue == DN_VUE_DETAIL) {
             detail_reparametrer(idx);
             lv_screen_load(s_scr_detail);
@@ -1195,7 +1424,7 @@ static bool nav_appliquer(int cible, int64_t t_clic)
         s_det_minmax = NULL;
         s_det_sec = NULL;
         for (int i = 0; i < DN_UI_METRIQUES; i++) {
-            s_vive_label[i] = NULL;
+            dn_widget_oublier(&s_wobj[i]);
         }
         /* Même règle qu'en reconstruction complète : la barre du stimulus vient
          * d'être détruite, l'ombre le dit. Sans le log ici (il tomberait à chaque
@@ -1230,7 +1459,7 @@ const char *dn_ui_zone_nom(int zone)
         return "RETOUR";
     }
     if (zone >= 0 && zone < DN_UI_METRIQUES) {
-        return k_metriques[zone].nom;
+        return k_nom[zone];
     }
     return "aucune";
 }
@@ -1320,6 +1549,27 @@ esp_err_t dn_ui_set_nav_model(dn_nav_model_t m)
             lv_obj_delete(s_scr_detail);
             s_scr_detail = NULL;
         }
+        /*
+         * 🔴 TROISIÈME SITE DE DÉMONTAGE (AC1). Il ne remettait RIEN à NULL.
+         *    `lv_obj_delete(s_scr_dash)` détruit tout l'arbre du dashboard, donc
+         *    les six conteneurs et leurs labels — et `s_wobj[]` continuait de
+         *    les désigner. `build_scene()` juste en dessous les réécrit, mais
+         *    ENTRE les deux le verrou n'est pas relâché ; c'était donc une
+         *    fenêtre étroite plutôt qu'un défaut ouvert. On la ferme quand même :
+         *    l'invariant « un pointeur mort est mis à NULL AU MOMENT où son
+         *    objet meurt » ne doit pas dépendre de ce qui suit. La revue dn1-3 a
+         *    trouvé un use-after-free exactement sur ce raisonnement-là.
+         */
+        for (int i = 0; i < DN_UI_METRIQUES; i++) {
+            dn_widget_oublier(&s_wobj[i]);
+        }
+        s_det_titre = NULL;
+        s_det_valeur = NULL;
+        s_det_minmax = NULL;
+        s_det_sec = NULL;
+        s_label_dash = NULL;
+        s_label_det = NULL;
+        s_bar = NULL;
     }
     s_nav = m;
     build_scene();
@@ -1633,35 +1883,66 @@ void dn_ui_label_show(bool on)
 }
 
 /*
- * Pose le texte d'UNE case vivante. Le verrou est DÉJÀ pris par l'appelant
- * public — c'est le seul endroit du fichier où cette convention s'inverse, et
- * elle est locale à ce helper `static` : elle existe pour que
- * `dn_ui_ambiance_maj` puisse écrire DEUX cases sous UN SEUL verrou. Prendre le
- * verrou deux fois de suite laisserait le dashboard afficher une température
- * neuve à côté d'une humidité périmée pendant une trame.
+ * ── POSER L'ÉTAT D'UNE CASE ──────────────────────────────────────────────────
+ *
+ * Le verrou LVGL est DÉJÀ pris par l'appelant public. C'était déjà la
+ * convention de `case_vive_poser` (dn2-1) ; dn3-1 la promeut de « exception
+ * locale documentée » à CONTRAT DE MODULE, écrit dans `dn_widget.h` avec ses
+ * deux motifs. Voir cet en-tête : le second motif (le groupage d'invalidation
+ * d'AC8) est NEUF et rend le contrat non négociable.
+ *
+ * `pose` : ⚠️ `s_active` compte AUSSI (correctif de revue 2026-08-16). Quand
+ * LVGL est arrêté (`ui off`, `scene <mire>`, `tear`), le mutex reste LIBRE et le
+ * texte se pose sans erreur — mais rien n'atteint la dalle. Chronométrer cette
+ * poussée, c'était mesurer un geste qui n'a pas eu lieu.
  */
-static void case_vive_poser(int idx, const char *txt, bool valide, bool *pose)
+static void case_poser(int idx, dn_val_regime_t regime, const char *t0,
+                       const char *t1, int32_t brut0, const char *sec, bool *pose)
 {
-    s_vive_valide[idx] = valide;
-    snprintf(s_vive_texte[idx], sizeof(s_vive_texte[idx]), "%s", txt);
-    /* En modèle SCREENS le dashboard survit en arrière-plan et son label est
-     * mis à jour même quand le détail est affiché — LVGL l'accepte, c'est le
-     * cas « écran non chargé » qu'AC6 exige de ne pas planter. En REBUILD vue
-     * détail, le pointeur est NULL et le texte conservé sera posé à la
-     * prochaine (re)construction : rien n'est perdu, rien n'est touché. */
-    if (s_vive_label[idx]) {
-        lv_label_set_text(s_vive_label[idx], s_vive_texte[idx]);
-        lv_obj_set_style_text_color(
-            s_vive_label[idx],
-            valide ? lv_color_white() : lv_color_hex(0x9a9a9a), 0);
-        /* ⚠️ `s_active` compte AUSSI (correctif de revue 2026-08-16). Quand LVGL
-         * est arrêté (`ui off`, `scene <mire>`, `tear`), le mutex reste LIBRE et le
-         * texte se pose sans erreur — mais rien n'atteint la dalle. Chronométrer
-         * cette poussée, c'était mesurer un geste qui n'a pas eu lieu : le Trap n°2
-         * de la story appliqué à sa propre instrumentation. */
+    dn_widget_etat_t *e = &s_wetat[idx];
+    e->regime = regime;
+    snprintf(e->txt[0], sizeof(e->txt[0]), "%s", t0 ? t0 : "");
+    snprintf(e->txt[1], sizeof(e->txt[1]), "%s", t1 ? t1 : "");
+    e->brut[0] = brut0;
+    snprintf(e->secondaire, sizeof(e->secondaire), "%s", sec ? sec : "");
+
+    /* En modèle SCREENS le dashboard survit en arrière-plan et son label est mis
+     * à jour même quand le détail est affiché — LVGL l'accepte, c'est le cas
+     * « écran non chargé » qu'AC6 exige de ne pas planter. En REBUILD vue
+     * détail, `racine` est NULL, l'état conservé sera posé à la prochaine
+     * (re)construction : rien n'est perdu, rien n'est touché. */
+    if (s_wobj[idx].racine) {
+        if (k_widget[idx]) {
+            dn_widget_maj(&k_desc[idx], e, &s_wobj[idx]);
+        } else if (s_wobj[idx].valeur[0]) {
+            /* Case NUE : un seul label, pas de modèle. Elle n'est alimentée par
+             * personne aujourd'hui — ce chemin existe pour que « nue » reste une
+             * question de FORME et jamais d'honnêteté le jour où dn4-1 lui
+             * branchera une source. */
+            lv_label_set_text(s_wobj[idx].valeur[0], e->txt[0][0] ? e->txt[0]
+                                                                 : "--");
+            lv_obj_set_style_text_color(s_wobj[idx].valeur[0],
+                                        regime == DN_VAL_REELLE
+                                            ? lv_color_white()
+                                            : lv_color_hex(0x9a9a9a),
+                                        0);
+        }
         if (pose) {
             *pose = s_active;
         }
+    }
+
+    /*
+     * 🔴 LE DÉTAIL SUIT, ET C'EST LA MOITIÉ D'AC5 QUE L'ENTRÉE DE LEDGER NE
+     *    DEMANDAIT PAS. Corriger `build_detail` et `detail_reparametrer` rend le
+     *    détail honnête À SON OUVERTURE. Mais si la source meurt PENDANT que le
+     *    détail est affiché, l'écran garderait le dernier chiffre connu sans
+     *    dire que la source est morte — c'est-à-dire exactement le mensonge
+     *    qu'on solde, décalé dans le temps au lieu de l'être dans l'espace.
+     *    On rafraîchit donc le détail affiché, sous le MÊME verrou.
+     */
+    if (s_vue == DN_VUE_DETAIL && s_metrique == idx) {
+        detail_reparametrer(idx);
     }
 }
 
@@ -1676,23 +1957,44 @@ bool dn_ui_cpu_maj(int dixiemes, bool valide, bool *label_pose)
          * lit dans le retour, comme dn_ui_force_full_redraw. */
         return false;
     }
-    char txt[24];
+    char txt[DN_WIDGET_TXT_MAX];
     bool ok = valide && dixiemes >= 0 && dixiemes <= 1000;
     if (ok) {
-        /* Virgule française, comme les factices (« 12,4 Go »). Pas d'accent :
-         * la police montserrat n'a que la plage de base (legs dn3-1). */
-        snprintf(txt, sizeof(txt), "%d,%d %%", dixiemes / 10, dixiemes % 10);
+        /* Virgule française. ⚠️ L'unité n'est PLUS dans le texte : elle vit dans
+         * le descripteur (`grandeurs[0].unite`), et c'est le modèle qui la
+         * concatène. Un « % » écrit ici ET dans le descripteur en aurait affiché
+         * deux ; l'y laisser aurait aussi rendu impossible la règle « une valeur
+         * ABSENTE ne porte jamais son unité ». */
+        snprintf(txt, sizeof(txt), "%d,%d", dixiemes / 10, dixiemes % 10);
     } else {
         /* Liaison morte ou jamais vue : la case le DIT au lieu de figer un
-         * chiffre qui n'a plus cours (AC7 — le différenciateur du brief en
-         * miniature). Le rendu exact est libre, le principe ne l'est pas. */
-        snprintf(txt, sizeof(txt), "--");
+         * chiffre qui n'a plus cours (AC7 de dn2-2 — le différenciateur du brief
+         * en miniature). */
+        txt[0] = '\0';
     }
-    case_vive_poser(DN_UI_CASE_CPU, txt, ok, label_pose);
+    case_poser(DN_UI_CASE_CPU, ok ? DN_VAL_REELLE : DN_VAL_ABSENTE, txt, NULL, 0,
+               NULL, label_pose);
     lvgl_port_unlock();
     return true;
 }
 
+/*
+ * ── LA VARIANTE MULTI-GRANDEURS (D6) — UNE CASE, DEUX GRANDEURS ──────────────
+ *
+ * Jusqu'à dn2-1 c'étaient DEUX cases (TEMP. idx 4, HUMIDITÉ idx 5) écrites sous
+ * UN SEUL verrou. D6 les fusionne en UNE case « AMBIANCE » (idx 5) à deux
+ * grandeurs, et la place libérée (idx 4) reçoit VENTILOS.
+ *
+ * 🔴 L'EXIGENCE DU VERROU UNIQUE NE DISPARAÎT PAS, ELLE SE RENFORCE. Elle
+ *    portait sur deux cases voisines ; elle porte maintenant sur deux valeurs de
+ *    la MÊME case. Les poser sous deux verrous laisserait une trame afficher une
+ *    température neuve à côté d'une humidité périmée — dans un seul rectangle,
+ *    ce qui serait encore plus difficile à lire comme une incohérence.
+ * 🔴 `valide == false` GRISE LES DEUX ENSEMBLE : un capteur muet l'est pour ses
+ *    deux grandeurs, « il n'y a pas de demi-silence ». C'est structurel ici, et
+ *    non plus une discipline : le RÉGIME est porté par la case, pas par la
+ *    grandeur. On ne PEUT plus griser une moitié.
+ */
 bool dn_ui_ambiance_maj(int temp_dixiemes, int hum_dixiemes, bool valide,
                         bool *label_pose)
 {
@@ -1702,53 +2004,226 @@ bool dn_ui_ambiance_maj(int temp_dixiemes, int hum_dixiemes, bool valide,
     if (!lvgl_port_lock(1000)) {
         return false;
     }
-    char txt[24];
+    char t_txt[DN_WIDGET_TXT_MAX];
+    char h_txt[DN_WIDGET_TXT_MAX];
     /* ⚠️ CE SONT LES BORNES PHYSIQUES DU BME680, LES MÊMES QUE dn_capteurs —
      * corrigé le 2026-08-17. Le commentaire qui vivait ici affirmait qu'elles
      * étaient « DIFFÉRENTES » et gardaient « l'affichage, pas la plausibilité » :
      * c'était faux, les quatre chiffres sont identiques à ceux de dn_capteurs.c.
      * Un commentaire qui affirme un invariant que le code ne tient pas est pire
-     * que pas de commentaire — quelqu'un aurait élargi les bornes physiques en
-     * croyant l'UI indépendante. Ici, elles sont un GARDE-FOU REDONDANT : la
-     * valeur est déjà bornée en amont, cette couche protège seulement contre un
-     * appelant futur qui ne le ferait pas.
+     * que pas de commentaire. Ici, elles sont un GARDE-FOU REDONDANT : la valeur
+     * est déjà bornée en amont, cette couche protège contre un appelant futur.
      * ⚠️ La température peut être NÉGATIVE — « -400 <= x » n'est pas « 0 <= x ». */
     bool ok_t = valide && temp_dixiemes >= -400 && temp_dixiemes <= 850;
-    if (ok_t) {
-        /* Le « ° » (0xB0) EST dans la plage générée de la police
-         * (-r 0x20-0x7F,0xB0,0x2022) — vérifié dans le source du .c, pas
-         * supposé. C'est la seule lettre non-ASCII qu'on peut se permettre.
-         *
-         * 🔴 LE SIGNE NE VIT PAS DANS LES DIXIÈMES — CR du 2026-08-17.
-         * L'ancien code faisait `e = temp/10` puis redressait le seul chiffre
-         * des dixièmes. Or la division entière TRONQUE VERS ZÉRO : pour −5
-         * dixièmes, `e` vaut **0**, pas « -0 » — et la case affichait
-         * « 0,5 °C » pour −0,5 °C. Le correctif d'origine ne traitait que le
-         * cas |x| >= 10 (« -1,-2 »), pas la bande −0,1..−0,9 où le signe
-         * disparaît entièrement. On sépare donc le signe de la magnitude au
-         * lieu de le déduire d'un quotient. */
-        int mag = temp_dixiemes < 0 ? -temp_dixiemes : temp_dixiemes;
-        snprintf(txt, sizeof(txt), "%s%d,%d \xC2\xB0" "C",
-                 temp_dixiemes < 0 ? "-" : "", mag / 10, mag % 10);
-    } else {
-        snprintf(txt, sizeof(txt), "--");
-    }
-    case_vive_poser(DN_UI_CASE_TEMP, txt, ok_t, label_pose);
-
     bool ok_h = valide && hum_dixiemes >= 0 && hum_dixiemes <= 1000;
-    if (ok_h) {
-        snprintf(txt, sizeof(txt), "%d,%d %%", hum_dixiemes / 10,
+    /* UN SEUL régime pour la case : les deux grandeurs vivent ou se taisent
+     * ensemble. Si l'une des deux est hors bornes alors que `valide` est vrai,
+     * c'est la case entière qui devient ABSENTE — un capteur qui rend une
+     * grandeur aberrante n'est pas à moitié crédible. */
+    bool ok = ok_t && ok_h;
+    if (ok) {
+        /*
+         * 🔴 LE SIGNE NE VIT PAS DANS LES DIXIÈMES — CR du 2026-08-17.
+         * L'ancien code faisait `e = temp/10` puis redressait le seul chiffre des
+         * dixièmes. Or la division entière TRONQUE VERS ZÉRO : pour −5 dixièmes,
+         * `e` vaut 0, pas « -0 » — et la case affichait « 0,5 °C » pour −0,5 °C.
+         * Le correctif d'origine ne traitait que |x| >= 10, pas la bande
+         * −0,1..−0,9 où le signe disparaît ENTIÈREMENT. On sépare donc le signe
+         * de la magnitude au lieu de le déduire d'un quotient.
+         */
+        int mag = temp_dixiemes < 0 ? -temp_dixiemes : temp_dixiemes;
+        snprintf(t_txt, sizeof(t_txt), "%s%d,%d", temp_dixiemes < 0 ? "-" : "",
+                 mag / 10, mag % 10);
+        snprintf(h_txt, sizeof(h_txt), "%d,%d", hum_dixiemes / 10,
                  hum_dixiemes % 10);
     } else {
-        snprintf(txt, sizeof(txt), "--");
+        t_txt[0] = '\0';
+        h_txt[0] = '\0';
     }
-    /* label_pose n'est PAS repassé ici : il a déjà été renseigné par la case
-     * TEMP., et les deux cases sont posées sous le même verrou, dans le même
-     * état d'UI. Le repasser écraserait la même valeur par elle-même. */
-    case_vive_poser(DN_UI_CASE_HUM, txt, ok_h, NULL);
-
+    /* Un seul appel, donc un seul verrou, donc une seule trame : le motif de
+     * `case_vive_poser` est désormais tenu par la STRUCTURE et non par la
+     * discipline de l'appelant. */
+    case_poser(DN_UI_CASE_AMB, ok ? DN_VAL_REELLE : DN_VAL_ABSENTE, t_txt, h_txt,
+               0, NULL, label_pose);
     lvgl_port_unlock();
     return true;
+}
+
+/*
+ * ── LE MOCK VENTILOS (AC3) — ET IL NE PEUT PAS SE FAIRE PASSER POUR DU RÉEL ──
+ *
+ * Appelée depuis le tick 1 Hz de LVGL, où le verrou est DÉJÀ détenu par le
+ * portage. D'où le suffixe `_nolock` : c'est le contrat de `dn_widget`, et le
+ * nom le dit pour qu'aucun appelant futur ne se trompe.
+ *
+ * ⛔ PAS DE TÂCHE DÉDIÉE, PAS DE SOMMEIL. Le REPL EST le transport PC (dn2-2) :
+ *    une commande console qui dort couperait la liaison. Et un mock qui produit
+ *    un nombre n'a aucun travail long à faire — lui donner une tâche serait du
+ *    coût sans contrepartie.
+ *
+ * La FORME est annoncée et vérifiable : rampe triangulaire DN_MOCK_MIN ->
+ * DN_MOCK_MAX -> DN_MOCK_MIN, période DN_MOCK_PERIODE_S, dérivée du TEMPS
+ * ABSOLU (jamais d'un compteur incrémenté : un `++` dans un timer de 1 000 ms
+ * dérive de tout le retard que le timer prend, et il en prend).
+ */
+static void mock_tick_nolock(void)
+{
+    if (!s_mock_on) {
+        case_poser(DN_UI_CASE_VENT, DN_VAL_ABSENTE, NULL, NULL, 0, NULL, NULL);
+        return;
+    }
+    uint32_t s = (uint32_t)(esp_timer_get_time() / 1000000);
+    uint32_t phase = s % DN_MOCK_PERIODE_S;
+    uint32_t demi = DN_MOCK_PERIODE_S / 2;
+    /* Triangle : on monte sur la première moitié, on descend sur la seconde. */
+    uint32_t pos = phase < demi ? phase : (DN_MOCK_PERIODE_S - phase);
+    int32_t v = DN_MOCK_MIN + (int32_t)((DN_MOCK_MAX - DN_MOCK_MIN) * pos / demi);
+    char txt[DN_WIDGET_TXT_MAX];
+    snprintf(txt, sizeof(txt), "%d", (int)v);
+    /* La ligne secondaire DIT ce qu'est la valeur, en toutes lettres et sans
+     * qu'il faille lire le code — c'est l'exigence d'AC3. Le badge « SIMULÉ » et
+     * la couleur ambre le disent déjà à l'œil ; ceci le dit AU MOT, pour que le
+     * régime ne dépende pas d'une convention de couleur que dn3-3 pourrait
+     * réattribuer. */
+    case_poser(DN_UI_CASE_VENT, DN_VAL_SIMULEE, txt, NULL, v,
+               "valeur SIMULÉE — aucun capteur", NULL);
+}
+
+void dn_ui_mock_set(bool on)
+{
+    if (!lvgl_port_lock(1000)) {
+        return;
+    }
+    s_mock_on = on;
+    mock_tick_nolock();
+    lvgl_port_unlock();
+}
+
+bool dn_ui_mock_on(void) { return s_mock_on; }
+
+void dn_ui_mock_forme(int *min, int *max, int *periode_s)
+{
+    /* RELU des constantes qui pilotent réellement le mock — la console ne
+     * récite rien. « Une étiquette qui mentait est un défaut à part entière ». */
+    if (min) {
+        *min = DN_MOCK_MIN;
+    }
+    if (max) {
+        *max = DN_MOCK_MAX;
+    }
+    if (periode_s) {
+        *periode_s = DN_MOCK_PERIODE_S;
+    }
+}
+
+dn_val_regime_t dn_ui_regime(int idx)
+{
+    return (idx >= 0 && idx < DN_UI_METRIQUES) ? s_wetat[idx].regime
+                                               : DN_VAL_ABSENTE;
+}
+
+const char *dn_ui_valeur_txt(int idx, int grandeur)
+{
+    if (idx < 0 || idx >= DN_UI_METRIQUES || grandeur < 0 ||
+        grandeur >= DN_WIDGET_GRANDEURS_MAX) {
+        return "";
+    }
+    return s_wetat[idx].txt[grandeur];
+}
+
+/* ── AC9 : les deux opacités ──────────────────────────────────────────────────
+ * Elles ne s'appliquent qu'aux objets CRÉÉS ensuite : LVGL a déjà résolu le
+ * style des objets existants. On reconstruit donc la scène, et la console le
+ * DIT — un réglage qui « ne fait rien » sans l'annoncer est la classe de défaut
+ * que `dma` (inerte dans ce build) a values au dépôt. */
+esp_err_t dn_ui_set_voile_opa(uint8_t opa)
+{
+    if (!lvgl_port_lock(2000)) {
+        return ESP_ERR_TIMEOUT;
+    }
+    s_voile_opa = opa;
+    build_scene();
+    lvgl_port_unlock();
+    return ESP_OK;
+}
+
+uint8_t dn_ui_voile_opa(void) { return s_voile_opa; }
+
+esp_err_t dn_ui_set_case_opa(uint8_t opa)
+{
+    if (!lvgl_port_lock(2000)) {
+        return ESP_ERR_TIMEOUT;
+    }
+    dn_widget_set_opa(opa);
+    build_scene();
+    lvgl_port_unlock();
+    return ESP_OK;
+}
+
+/*
+ * ── AC1 : LA PREUVE D'UNICITÉ, ET ELLE EST FALSIFIABLE ───────────────────────
+ *
+ * Une 7e métrique FICTIVE, produite par le MÊME `dn_widget_creer` que les trois
+ * autres, à partir d'un descripteur et de rien d'autre. AUCUNE ligne de code de
+ * dessin n'a été ajoutée pour elle — c'est tout l'enjeu : le brief promet
+ * qu'« ajouter une métrique future (SSD, ventilateurs, puissance, NAS, Bambu…)
+ * ne redessine pas l'UI », et cette commande transforme la promesse en
+ * expérience qu'on peut rater.
+ *
+ * ⚠️ Elle se pose PAR-DESSUS le dashboard, au centre, et recouvre des cases.
+ *    C'est assumé : c'est un INSTRUMENT, comme `ui label on` l'est depuis dn1-4,
+ *    pas un élément de produit. `widget demo off` la retire.
+ * ⚠️ Le descripteur est BI-GRANDEURS et porte un indicateur : il exerce donc en
+ *    une fois les deux mécanismes qu'AC2 demande de prouver GÉNÉRIQUES, sur une
+ *    métrique qui n'est ni Ambiance ni Ventilos. Une variante multi-grandeurs
+ *    qui ne marcherait que pour « Ambiance » serait un cas spécial déguisé.
+ */
+static const dn_widget_desc_t k_demo_desc = {
+    .icone = DN_ICONE_NETWORK_WIRED,
+    .titre = "RÉSEAU (démo)",
+    .couleur = 0x35d6e8,
+    .n_grandeurs = 2, /* ↓ et ↑ — le candidat nommé par l'addendum §1 */
+    .indicateur = false,
+    .grandeurs = {{.unite = "Mo/s"}, {.unite = "Mo/s", .icone = DN_ICONE_DESKTOP}},
+};
+
+esp_err_t dn_ui_demo_set(bool on)
+{
+    if (!lvgl_port_lock(1000)) {
+        return ESP_ERR_TIMEOUT;
+    }
+    if (on) {
+        if (!s_demo.racine) {
+            /* Un état fabriqué, DÉCLARÉ SIMULÉ : la démo ne doit pas être le
+             * seul endroit du firmware où un chiffre inventé se présente sans
+             * badge. */
+            static dn_widget_etat_t etat;
+            etat.regime = DN_VAL_SIMULEE;
+            snprintf(etat.txt[0], sizeof(etat.txt[0]), "985");
+            snprintf(etat.txt[1], sizeof(etat.txt[1]), "48");
+            snprintf(etat.secondaire, sizeof(etat.secondaire), "7e metrique FICTIVE");
+            dn_widget_creer(lv_screen_active(), 120, 240, DN_UI_CASE_W,
+                            DN_UI_CASE_H, &k_demo_desc, &etat, NULL, NULL,
+                            &s_demo);
+        }
+    } else if (s_demo.racine) {
+        lv_obj_delete(s_demo.racine);
+        dn_widget_oublier(&s_demo);
+    }
+    s_demo_on = on;
+    lvgl_port_unlock();
+    return ESP_OK;
+}
+
+bool dn_ui_demo_on(void) { return s_demo_on && s_demo.racine != NULL; }
+
+bool dn_ui_case_dessinee(int idx)
+{
+    /* Le pointeur RACINE, pas une supposition sur le modèle de navigation : en
+     * REBUILD vue détail, le dashboard n'existe pas et la case n'est dessinée
+     * nulle part. La console doit pouvoir le DIRE plutôt que de laisser croire
+     * qu'un texte posé a atteint la dalle. */
+    return idx >= 0 && idx < DN_UI_METRIQUES && s_wobj[idx].racine != NULL;
 }
 
 bool dn_ui_label_shown(void) { return s_label_shown; }

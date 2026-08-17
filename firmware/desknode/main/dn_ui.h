@@ -68,6 +68,7 @@
 #include <stdint.h>
 
 #include "dn_bootcfg.h"
+#include "dn_widget.h"
 #include "esp_err.h"
 #include "lvgl.h"
 
@@ -358,22 +359,70 @@ bool dn_ui_label_shown(void);
  * soit une boucle qui retente sans fin et sur-compte les reprises. */
 bool dn_ui_cpu_maj(int dixiemes, bool valide, bool *label_pose);
 
-/* ── Les cases TEMP. et HUMIDITE vivent (dn2-1) ───────────────────────────────
+/* ── LA CASE « AMBIANCE » : DEUX GRANDEURS DANS UNE CASE (D6, dn3-1) ──────────
+ * Jusqu'à dn2-1 c'étaient DEUX cases (TEMP. idx 4, HUMIDITÉ idx 5). D6 les
+ * fusionne en UNE case bi-grandeurs (idx 5) et libère idx 4 pour VENTILOS.
  * Mêmes règles que dn_ui_cpu_maj, à trois différences près qui comptent :
- *  · elle pose les DEUX cases sous UN SEUL verrou — sinon le dashboard pourrait
+ *  · elle pose les DEUX grandeurs sous UN SEUL verrou — sinon la case pourrait
  *    afficher une température neuve à côté d'une humidité périmée le temps
- *    d'une trame ;
+ *    d'une trame. L'exigence n'a pas disparu avec la fusion : elle s'est
+ *    RENFORCÉE (les deux valeurs sont maintenant dans le même rectangle, où une
+ *    incohérence serait encore plus difficile à lire) ;
  *  · `valide == false` grise les DEUX ensemble : un capteur muet l'est pour ses
- *    deux grandeurs, il n'y a pas de demi-silence ;
+ *    deux grandeurs, il n'y a pas de demi-silence. ⚠️ C'est désormais
+ *    STRUCTUREL : le régime est porté par la CASE, pas par la grandeur — on ne
+ *    PEUT plus en griser une moitié, même par erreur ;
  *  · la température accepte le NÉGATIF (bornes -40,0 à +85,0 °C, la plage du
  *    BME680 — les MÊMES qu'en amont, garde-fou redondant assumé) : « 0 <= x »
  *    aurait mangé les valeurs sous zéro. ⚠️ Et le signe se pose explicitement,
  *    il ne se déduit PAS du quotient : la division entière tronque vers zéro,
  *    donc -5 dixièmes donnait « 0,5 °C » (CR 2026-08-17).
- * Le « ° » est écrit en UTF-8 (0xC2 0xB0) : ce glyphe EST dans la plage générée
- * de montserrat, contrairement aux lettres accentuées (legs dn3-1). */
+ * ⚠️ L'UNITÉ N'EST PLUS DANS LE TEXTE : elle vit dans le descripteur du widget
+ *    (`dn_widget_desc_t.grandeurs[].unite`) et c'est le modèle qui la
+ *    concatène — ce qui permet la règle « une valeur ABSENTE ne porte jamais son
+ *    unité » (« -- % » suggérerait qu'on sait de quoi on parle). */
 bool dn_ui_ambiance_maj(int temp_dixiemes, int hum_dixiemes, bool valide,
                         bool *label_pose);
+
+/* ── Le modèle de widget (dn3-1) ──────────────────────────────────────────────
+ * Descripteur d'une case, ou NULL si la case est NUE (GPU/RAM/RÉSEAU — le
+ * témoin négatif d'AC8). */
+const dn_widget_desc_t *dn_ui_desc(int idx);
+bool dn_ui_est_widget(int idx);
+
+/* Le RÉGIME de la valeur d'une case, RELU de l'état réel. C'est ce que la
+ * console imprime : jamais une constante, jamais une déduction. */
+dn_val_regime_t dn_ui_regime(int idx);
+const char *dn_ui_valeur_txt(int idx, int grandeur);
+/* La case est-elle DESSINÉE en ce moment ? (false en REBUILD vue détail : le
+ * dashboard n'existe pas, l'état est conservé mais rien n'atteint la dalle.) */
+bool dn_ui_case_dessinee(int idx);
+
+/* ── Le mock VENTILOS (AC3) ───────────────────────────────────────────────────
+ * Il bat sur le tick 1 Hz de LVGL (pas de tâche : produire un nombre ne dort
+ * pas). Sa FORME est annoncée et relue, pas récitée : rampe triangulaire
+ * min -> max -> min, période fixe, dérivée du TEMPS ABSOLU.
+ * `dn_ui_mock_set(false)` le coupe : la case redevient ABSENTE (« -- »), ce qui
+ * est le témoin que le mock EST la seule source de cette case. */
+void dn_ui_mock_set(bool on);
+bool dn_ui_mock_on(void);
+void dn_ui_mock_forme(int *min, int *max, int *periode_s);
+
+/* ── AC9 : l'opacité du voile plein écran ─────────────────────────────────────
+ * Reconstruit la scène (le voile est créé au dessin). 0..255. */
+esp_err_t dn_ui_set_voile_opa(uint8_t opa);
+uint8_t dn_ui_voile_opa(void);
+
+/* ── AC9 : l'opacité des CASES ────────────────────────────────────────────────
+ * Passe par dn_widget (une seule définition de l'aplat) et reconstruit la scène. */
+esp_err_t dn_ui_set_case_opa(uint8_t opa);
+
+/* ── AC1 : la preuve d'unicité, rendue falsifiable ────────────────────────────
+ * Construit une 7e métrique FICTIVE depuis un descripteur, SANS aucune ligne de
+ * code de dessin neuve, et la retire. C'est la promesse du brief (« ajouter une
+ * métrique future ne redessine pas l'UI ») transformée en expérience. */
+esp_err_t dn_ui_demo_set(bool on);
+bool dn_ui_demo_on(void);
 
 /* Stimulus adverse d'AC4 : une barre verticale qui balaie l'écran. */
 esp_err_t dn_ui_anim(bool on, int periode_ms);

@@ -2420,6 +2420,165 @@ static int cmd_pc(int argc, char **argv)
  * et un guillemet mentirait (esp_console ne les fusionne pas). Refusé, pas
  * deviné — le SSID de la maison n'en a pas.
  */
+/*
+ * ── `widget` — L'INSTRUMENT DU MODÈLE (dn3-1) ────────────────────────────────
+ *
+ * Il fait quatre choses, et AUCUNE n'est un travail long : la console EST le
+ * transport PC depuis dn2-2, une commande qui dort couperait la liaison qu'elle
+ * prétend observer (c'est le défaut mesuré de `cpu N`).
+ *
+ *   widget                  l'état des 6 cases : régime, valeurs, forme du mock
+ *   widget groupe on|off    A/B d'AC8 — N zones sales fines vs 1 englobante
+ *   widget opa <0..255>     A/B d'AC9 — opacité des CASES (reconstruit la scène)
+ *   widget voile <0..255>   AC9 — opacité du voile plein écran
+ *   widget mock on|off      coupe le mock : la case redevient « -- » (témoin)
+ *   widget demo on|off      AC1 — la 7e métrique FICTIVE, sans code de dessin
+ *
+ * 🔴 TOUT CE QU'IL IMPRIME EST RELU DE L'ÉTAT RÉEL. Le régime vient de
+ *    `dn_ui_regime()`, la forme du mock de `dn_ui_mock_forme()`, l'opacité de
+ *    `dn_widget_opa()`. Rien n'est récité depuis une constante d'affichage —
+ *    c'est la classe de défaut que ce dépôt traque depuis dn1-3 (« 5 kHz » pour
+ *    un PWM à 24 kHz, « FORCED T/H 8x » sur des registres à 0x00), et dn2-1 l'a
+ *    re-commise UNE LIGNE sous son propre correctif.
+ */
+static int cmd_widget(int argc, char **argv)
+{
+    if (argc == 3 && strcmp(argv[1], "groupe") == 0) {
+        bool on;
+        if (!parse_on_off(argv[2], &on)) {
+            printf("usage : widget groupe on|off\n");
+            return 1;
+        }
+        dn_widget_set_groupage(on);
+        printf("invalidation : %s\n",
+               on ? "GROUPEE — 1 zone sale par widget (le conteneur, 225x156 = "
+                    "35 100 px)"
+                  : "FINE — LVGL fait SES zones, une par enfant modifie");
+        printf("⚠️ `flush reset` MAINTENANT, puis attendre >= 3 cycles de source\n");
+        printf("   avant `flush` : sinon la mesure melange les deux branches.\n");
+        return 0;
+    }
+    if (argc == 3 && strcmp(argv[1], "mock") == 0) {
+        bool on;
+        if (!parse_on_off(argv[2], &on)) {
+            printf("usage : widget mock on|off\n");
+            return 1;
+        }
+        dn_ui_mock_set(on);
+        printf("mock VENTILOS %s — la case passe en %s\n", on ? "ARME" : "COUPE",
+               on ? "SIMULEE" : "ABSENTE (« -- » grise)");
+        return 0;
+    }
+    if (argc == 3 && strcmp(argv[1], "demo") == 0) {
+        bool on;
+        if (!parse_on_off(argv[2], &on)) {
+            printf("usage : widget demo on|off\n");
+            return 1;
+        }
+        if (dn_ui_demo_set(on) != ESP_OK) {
+            printf("verrou LVGL non pris — RIEN n'a change\n");
+            return 1;
+        }
+        printf("7e metrique FICTIVE %s.\n", on ? "AFFICHEE" : "retiree");
+        if (on) {
+            printf("  Elle est produite par le MEME `dn_widget_creer` que les\n");
+            printf("  trois autres, depuis un descripteur et RIEN D'AUTRE :\n");
+            printf("  aucune ligne de code de dessin n'existe pour elle.\n");
+            printf("  Elle est BI-GRANDEURS et n'est ni Ambiance ni Ventilos —\n");
+            printf("  donc la variante D6 n'est pas un cas special deguise.\n");
+            printf("⚠️ Elle recouvre des cases : c'est un INSTRUMENT, comme\n");
+            printf("   `ui label on`. `widget demo off` la retire.\n");
+            printf("⚠️ Une reconstruction de scene (`ui bg`, `nav model`, `widget\n");
+            printf("   opa`) la RETIRE et le dit : l'ombre suit la realite.\n");
+        }
+        return 0;
+    }
+    if (argc == 3 &&
+        (strcmp(argv[1], "opa") == 0 || strcmp(argv[1], "voile") == 0)) {
+        char *fin = NULL;
+        long v = strtol(argv[2], &fin, 0);
+        if (!fin || *fin != '\0' || v < 0 || v > 255) {
+            /* BORNER ET REFUSER, jamais ecreter en silence : la regle du depot
+             * (`touch int 30000` refuse au lieu d'annoncer 30 s et d'en scanner
+             * 5). Un reglage ecrete rend une mesure etiquetee faux. */
+            printf("usage : widget %s <0..255>  (refuse hors bornes, jamais "
+                   "ecrete)\n",
+                   argv[1]);
+            return 1;
+        }
+        esp_err_t e = (strcmp(argv[1], "opa") == 0)
+                          ? dn_ui_set_case_opa((uint8_t)v)
+                          : dn_ui_set_voile_opa((uint8_t)v);
+        if (e != ESP_OK) {
+            printf("verrou LVGL non pris — RIEN n'a change\n");
+            return 1;
+        }
+        printf("opacite %s = %ld/255 (%ld %%) — SCENE RECONSTRUITE\n",
+               strcmp(argv[1], "opa") == 0 ? "des CASES" : "du VOILE", v,
+               v * 100 / 255);
+        printf("⚠️ la reconstruction a RETIRE le stimulus `anim` et la demo,\n");
+        printf("   et elle remet la vue au dashboard. Re-armer si besoin.\n");
+        printf("⚠️ Reperes : 255 = LV_OPA_COVER (opaque, supprime le re-blit du\n");
+        printf("   fond) · 179 = LV_OPA_70 (l'etat des lieux) · 128 = LV_OPA_50.\n");
+        return 0;
+    }
+    if (argc != 1) {
+        printf("usage : widget | groupe on|off | opa <0..255> | voile <0..255>\n");
+        printf("        | mock on|off | demo on|off\n");
+        return 1;
+    }
+
+    printf("modele de widget (dn3-1) — 3 cases sur 6 le portent\n");
+    printf("invalidation : %s\n",
+           dn_widget_groupage() ? "GROUPEE (1 zone englobante par widget)"
+                                : "FINE (N zones, LVGL decide)");
+    printf("opacite      : cases %u/255 · voile %u/255\n", dn_widget_opa(),
+           dn_ui_voile_opa());
+    printf("demo 7e metrique : %s\n", dn_ui_demo_on() ? "AFFICHEE" : "retiree");
+
+    int mn = 0, mx = 0, per = 0;
+    dn_ui_mock_forme(&mn, &mx, &per);
+    printf("mock VENTILOS : %s · rampe TRIANGULAIRE %d -> %d tr/min · periode "
+           "%d s · pas 1 s\n",
+           dn_ui_mock_on() ? "ARME" : "COUPE", mn, mx, per);
+    printf("   (forme RELUE des constantes qui le pilotent. La valeur VARIE :\n");
+    printf("    un mock fige serait indiscernable d'un affichage bloque.)\n");
+
+    printf("\n  idx nom        forme   regime   dessinee  valeur(s)\n");
+    for (int i = 0; i < DN_UI_METRIQUES; i++) {
+        const dn_widget_desc_t *d = dn_ui_desc(i);
+        printf("  %2d  %-10s %-7s %-8s %-9s", i, dn_ui_metrique_nom(i),
+               d ? "WIDGET" : "nue", dn_val_regime_nom(dn_ui_regime(i)),
+               dn_ui_case_dessinee(i) ? "oui" : "NON");
+        int n = d ? d->n_grandeurs : 1;
+        for (int g = 0; g < n; g++) {
+            const char *t = dn_ui_valeur_txt(i, g);
+            const char *u = (d && d->grandeurs[g].unite) ? d->grandeurs[g].unite
+                                                         : "";
+            printf(" %s%s%s", (t && t[0]) ? t : "--", (t && t[0]) ? " " : "",
+                   (t && t[0]) ? u : "");
+        }
+        printf("\n");
+    }
+    printf("\nLES TROIS REGIMES, ET POURQUOI ILS SONT TROIS :\n");
+    printf("  REELLE  = mesuree par une source            -> valeur BLANCHE\n");
+    printf("  SIMULEE = fabriquee par un mock             -> AMBRE + badge "
+           "« SIMULÉ »\n");
+    printf("  ABSENTE = aucune source, ou source morte    -> « -- » GRISE\n");
+    printf("⚠️ Un `bool valide` seul ne sait pas dire « cette valeur est\n");
+    printf("   fabriquee » : un mock s'y presenterait exactement comme une\n");
+    printf("   mesure. C'est le meme mensonge d'interface qu'un CPU fige a\n");
+    printf("   47 %% pendant que la tour dort — en plus discret.\n");
+    printf("⚠️ « dessinee = NON » : la case n'est sur AUCUN ecran en ce moment\n");
+    printf("   (modele REBUILD en vue detail). L'etat est CONSERVE et sera pose\n");
+    printf("   a la prochaine construction — mais rien n'atteint la dalle.\n");
+    printf("\nGPU/RAM/RESEAU sont NUES : elles n'ont pas le modele, et c'est le\n");
+    printf("TEMOIN NEGATIF d'AC8 — la seule facon de chiffrer une case-widget\n");
+    printf("contre une case nue sous le meme fps/bounce/draw buffer. Leur\n");
+    printf("regime est ABSENTE : aucune source ne les alimente, elles le DISENT.\n");
+    return 0;
+}
+
 static int cmd_wifi(int argc, char **argv)
 {
     if (argc >= 2 && strcmp(argv[1], "on") == 0) {
@@ -3101,6 +3260,13 @@ static const esp_console_cmd_t k_cmds[] = {
     DN_CMD("wifi", "wifi [info] | on <ssid> <mdp> | off | ws on|off — branche B "
                    "(dn2-2)",
            cmd_wifi),
+    /* ⚠️ INSCRITE ICI **ET** DANS LE « Jeu complet » DU README dans le même
+     * geste : dn2-1 avait oublié `capteurs` dans le README, et une commande
+     * qu'on ne trouve que depuis la carte n'est pas documentée. */
+    DN_CMD("widget",
+           "widget | groupe on|off | opa <n> | voile <n> | mock on|off | demo "
+           "on|off — modèle de case (dn3-1)",
+           cmd_widget),
     DN_CMD("aide", "cette aide", cmd_help),
 };
 
@@ -3132,7 +3298,7 @@ static int cmd_help(int argc, char **argv)
 void dn_console_banner(void)
 {
     printf("\n");
-    printf("── DeskNode P5 — console de mesure ──\n");
+    printf("── DeskNode P6 — console de mesure ──\n");
     for (size_t i = 0; i < sizeof(k_cmds) / sizeof(k_cmds[0]); i++) {
         printf("  %-7s %s\n", k_cmds[i].command, k_cmds[i].help);
     }
@@ -3160,6 +3326,18 @@ void dn_console_banner(void)
     if (!dn_ui_active()) {
         printf("       scène brute « %s » (chemin dn1-2)\n", scene_courante());
     }
+    /* Le modèle de widget, RELU — pas récité. Le bandeau est l'endroit où le
+     * dépôt a déjà menti trois fois (« 5 kHz » pour 24 kHz, « FORCED T/H 8x »
+     * sur des registres à 0x00, un checksum d'exemple faux) : chaque chiffre
+     * ici vient de la fonction qui détient l'état. */
+    printf("       widgets : %d/%d cases · invalidation « %s » · opa cases %u, "
+           "voile %u\n",
+           (dn_ui_est_widget(0) ? 1 : 0) + (dn_ui_est_widget(1) ? 1 : 0) +
+               (dn_ui_est_widget(2) ? 1 : 0) + (dn_ui_est_widget(3) ? 1 : 0) +
+               (dn_ui_est_widget(4) ? 1 : 0) + (dn_ui_est_widget(5) ? 1 : 0),
+           DN_UI_METRIQUES,
+           dn_widget_groupage() ? "groupée" : "fine", dn_widget_opa(),
+           dn_ui_voile_opa());
     printf("\n");
 }
 
