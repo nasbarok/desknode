@@ -4,6 +4,17 @@
 > Même règle que lui : **tout ce qui est ici a été mesuré sur la carte**, et là où la mesure a
 > corrigé une source tierce, c'est écrit noir sur blanc avec la source fautive.
 >
+> ✅ **ÉTAT FINAL DE LA STORY : le BME680 est SOUDÉ, mesuré à `0x77`, et ses deux grandeurs
+> vivent à l'écran.** Les encarts ci-dessous racontent la séance **dans son ordre chronologique** —
+> plusieurs d'entre eux étaient vrais à leur heure et ont été dépassés depuis. Chacun porte sa date.
+>
+> 🔴 **ORDRE DE LECTURE — la numérotation de ce fichier N'EST PAS CROISSANTE** (constat de la revue
+> du 2026-08-17, laissée telle quelle pour ne pas casser les renvois déjà écrits ailleurs) :
+> `13.0 → 13.1 → 13.2 → 13.3 → 13.4 → 13.5 → 13.6 → 13.6 bis → 13.6 ter → 13.8 → 13.9 → 13.10 →
+> 13.11 → 13.7`. **§13.7 « Ce que la séance laisse » FERME le fichier** malgré son numéro, et
+> §13.8 porte les budgets. ⚠️ Citer « §13.6 » pour un coût binaire, c'est citer un chiffre d'étape
+> que §13.8 a déjà remplacé.
+>
 > ✅ **DÉNOUEMENT (2026-08-17, 00h45) — LE CAPTEUR EST VIVANT, ET C'EST UN VRAI BME680.**
 > Contact rétabli par repositionnement manuel de la barrette (owner : « là je vois bien toutes
 > les pins connectées »), maintenu à la main pendant la mesure :
@@ -17,11 +28,45 @@
 > **L'arbre de diagnostic de §13.5 est SOLDÉ : c'était l'hypothèse 6** (les broches signal ne
 > touchaient pas dans les trous non soudés). La 7 (puce morte) est morte avec, et le chemin
 > embase JST → bus est désormais **PROUVÉ** par un composant qui répond à travers lui.
-> ⚠️ **Le contact reste tenu à la main : la SOUDURE demeure obligatoire** avant toute campagne
-> (cadence, auto-échauffement, budgets) — un chiffre pris sur un contact précaire n'est pas
-> recevable.
+> ⚠️ **À cette heure-là, le contact était tenu à la main : la SOUDURE demeurait obligatoire** avant
+> toute campagne (cadence, auto-échauffement, budgets) — un chiffre pris sur un contact précaire
+> n'est pas recevable.
+> ✅ **ELLE A ÉTÉ FAITE le 2026-08-17** (voir §13.6 bis, « Après SOUDURE ») : toutes les campagnes
+> publiées dans ce fichier ont été jouées **après**. Cette phrase est conservée parce qu'elle datait
+> une contrainte réelle, pas parce qu'elle vaut encore.
 
 Séance du **2026-08-16** (`/desknode-board`), firmware `ce32c87` puis la commande `i2c` de dn2-1.
+
+---
+
+## 13.0 LES PHOTOS DE LA SÉANCE — la base probante, versée au dépôt le 2026-08-17
+
+Livrable du **critère n°5 du brief** (« câblage photographié, capteurs référencés ») et des AC1/AC2.
+Elles vivent dans **`docs/cablage/`** et sont **nommées par leur horodatage EXIF**, pas par ce qu'on
+croit y voir — c'est l'horodatage qui les situe dans la séance, et il a déjà corrigé une lecture.
+
+| Fichier (`docs/cablage/`) | EXIF | Ce qu'elle ÉTABLIT |
+|---|---|---|
+| `2026-08-16_2140-bme680-recto-barrette-non-soudee.jpg` | 21:40:12 | Le breakout **face composants** : sérigraphie `VCC GND SCL SDA SDO CS`, la puce, et la **barrette 6 broches fournie NON SOUDÉE posée à côté**. Plus le câble JST→Dupont 4 fils. C'est l'inventaire T1 (AC1) |
+| `2026-08-16_2228-carte-embases-jst-jumelles-i2c-uart.jpg` | 22:28:41 | 🔴 **Les DEUX embases JST jumelles avec leurs sérigraphies lisibles** : `GND 3V3 SDA SCL` et `GND 3V3 TXD RXD`. C'est **la preuve photographique de §13.1** (le miroir Spotpear annonçait `SCL·SDA`) **et du Trap n°7** (les deux embases sont identiques et adjacentes). On y lit aussi le header 2×12 soudé portant `SCL SDA 3V3 G` |
+| `2026-08-17_0012-cablage-4-fils-sous-tension.jpg` | 00:12:29 | Le **montage 4 fils en fonctionnement** : JST sur la BONNE embase, wattmètre en ligne (~0,5 W), et le breakout **posé à l'écart de la carte** — l'exigence AC2 « sur fils volants, écarté de la carte » constatée en image |
+| `2026-08-17_0012-breakout-ecarte-barrette-inseree.jpg` | 00:12:33 | Gros plan du breakout écarté, barrette **insérée dans ses trous** et bloc Dupont enfiché |
+
+> 🔴 **CE QUE CES PHOTOS NE MONTRENT PAS, ET IL FAUT LE LIRE AVANT DE LES CITER.**
+> Les quatre horodatages sont **antérieurs au dénouement de séance (~00h45) et à la soudure**
+> (2026-08-17, plus tard). ⇒ **Aucune ne documente l'état SOUDÉ**, ni le montage final.
+> La quatrième montre une barrette **insérée**, pas soudée — et c'est précisément l'état dans
+> lequel le capteur **NE répondait PAS** (hypothèse 6 de §13.5). Elle vaut donc comme témoin du
+> défaut, pas comme preuve du montage.
+> ⚠️ Manquent aussi : le **verso** du breakout (T1 demandait recto ET verso) et **les 3 autres
+> breakouts** (BH1750, VL53L0X, INA219), jamais photographiés — décision owner **D2-1a**.
+> ⇒ **AC1 est PARTIEL**, tenu pour le seul BME680 et sur une seule face. Le complément est porté
+> à la prochaine séance carte (décision owner du 2026-08-17, revue de code dn2-1).
+
+⚠️ **Correction d'une lecture faite trop vite, consignée parce qu'elle est du genre que ce dépôt
+traque** : la quatrième photo a d'abord été décrite comme « barrette **soudée** » sur la seule foi
+de l'image. L'EXIF l'a réfutée — 00:12:33, soit 33 minutes **avant** que le capteur ne réponde pour
+la première fois. **L'horodatage est l'instrument, l'œil sur une photo floue ne l'est pas.**
 
 ---
 
@@ -177,8 +222,11 @@ Le capteur n'a **jamais** répondu, ni à `0x76` ni à `0x77`, sur ~20 scans —
 
 > ✅ **VERDICT (2026-08-17)** : adresse **`0x77`** (conforme à la prédiction du tirage `SDO` haut),
 > chip id **0x61**, variant **0x00**. Le chemin embase JST → GPIO15/GPIO7 est prouvé au passage —
-> un composant répond à travers lui. **Il ne reste qu'un geste : SOUDER la barrette**, pour que le
+> un composant répond à travers lui. **Il ne restait qu'un geste : SOUDER la barrette**, pour que le
 > contact cesse d'être un geste d'owner et devienne une propriété du montage.
+> ✅ **FAIT le 2026-08-17** — voir §13.6 bis, « Après SOUDURE » : deux blocs d'étalonnage identiques
+> **octet pour octet** à ceux relevés avant, 10 lectures de registre sur 10. Le contact **est**
+> désormais une propriété du montage.
 
 ⚠️ **PIÈGE DE MÉTHODE RELEVÉ EN SÉANCE, ET IL VAUT POUR TOUTE REPRISE** : sur cette famille de
 capteurs, **un front descendant sur `CSB` bascule la puce en SPI jusqu'à la coupure d'alimentation
@@ -214,8 +262,12 @@ i2c lire <addr> <reg> [n=1..16]  lecture registre (adresse et registre en HEXA)
   compilateur ne le dit qu'en aval, sur un « incompatible pointer type (`int *`) » qui envoie
   chercher au mauvais endroit.
 
-**Coût** : binaire **796 240 → 800 640 o** (+4 400 o). Aucune ligne de `sdkconfig.defaults`
-touchée, aucun composant ajouté au manifeste.
+**Coût DE CETTE ÉTAPE** : binaire **796 240 → 800 640 o** (+4 400 o) — *la commande `i2c` seule*.
+Aucune ligne de `sdkconfig.defaults` touchée, et **à ce stade** aucun composant au manifeste.
+⚠️ **Ces deux affirmations ne valent QUE pour ce point de la séance** (CR 2026-08-17) : elles se
+lisaient comme un bilan de story, et contredisaient alors la §13.8 (**827 632 o**) et le manifeste,
+où `k0i05/esp_bme680 ==1.2.7` **a bien été ajouté** au commit suivant. **Le bilan fait foi, pas
+cette ligne d'étape.**
 
 ---
 
@@ -333,11 +385,25 @@ Base = le relevé **post-soudure de la même session**, même instrument.
 | **RAM interne libre** | 113 847 o | **109 295 o** | **−4 552 o** (tâche 4096 + TCB + état driver) — même ordre que `dn_link` (−4 452) |
 | PSRAM libre | 7 768 448 o | 7 768 412 o | −36 o, dans le bruit |
 | Tas LVGL | 15 228 o (25 %) | **15 244 o (25 %)**, frag 1 % | **+16 o** — les deux tampons de texte, PAS des labels neufs (ils existaient depuis dn1-4) |
-| **Binaire** | 800 640 o | **827 632 o** | 🔴 **+26 992 o** — *c'est LE coût réel du composant, celui que le §13.6 ter refusait de publier à 0* |
+| **Binaire** | 800 640 o | **827 632 o** | 🔴 **+26 992 o** — *le coût réel de TOUT ce que T5/T6 ont lié*, celui que §13.6 ter refusait de publier à 0 |
 | **CPU** (`cpu 30`) | 0,9 % | **1,2 %** | **+0,3 pt** pour DEUX cases à 5 s |
 | `fps 15` | 37,40 Hz | **37,34 Hz (−0,18 %)** | dans la bande de bruit du dépôt (37,33-37,45) |
 | Cycle de mesure | — | **26 ms** | mesuré, pas repris de la datasheet |
 | Fiabilité | — | **62 lectures, 0 erreur** (i2c/donnée/bornes) | ~5 min de régime |
+
+> 🔴 **CES CHIFFRES SONT PÉRIMÉS PAR LA REVUE DE CODE DU 2026-08-17 — À RE-RELEVER.**
+> Elle a modifié **5 fichiers du firmware** (29 correctifs). Au build de revue, le binaire passe
+> de 827 632 à **832 720 o (+5 088 o)** : re-tentative d'ouverture du driver, garde de verdict de
+> configuration, discrimination `err_donnee`/`err_i2c` par la durée, re-tentative de poussée UI et
+> son compteur, budget d'abandon du scan. **RAM, CPU et flush n'ont PAS été re-mesurés** — ils
+> demandent la carte. ⇒ **Ne pas citer la RAM ni le CPU de ce tableau tant que la séance carte de
+> validation des correctifs n'a pas eu lieu.** Le `+26 992 o` du coût de liaison, lui, reste
+> l'ordre de grandeur juste.
+>
+> ⚠️ **Et l'étiquette du binaire est trop large, quel que soit le chiffre** (constat de la même
+> revue) : ce delta contient `dn_capteurs.c/h`, les ~500 lignes de `cmd_capteurs`/`cmd_i2c` dans
+> `dn_console.c` et les changements de `dn_ui` — **pas seulement le composant tiers**. AC10
+> demandait le coût du driver **isolé** ; il ne l'est pas, et personne ne l'a mesuré séparément.
 
 > ✅ **`cpu N` EST VALIDE ICI, ET C'EST UNE DIFFÉRENCE DE NATURE AVEC dn2-2.** La §12.6 a dû
 > abandonner `cpu N` parce que le trafic passait par le REPL, que la commande bloque. **La tâche
@@ -566,4 +632,205 @@ Deux garanties de conception, parce qu'un injecteur qui ment est pire que pas d'
 
 ⚠️ **Ce que dn2-1 change pour dn4-1, en une ligne** : le bus porte désormais **5 occupants**, la
 commande `i2c` en fait l'inventaire en une seconde, `dn_capteurs` est le patron à étendre, et la
-RAM interne libre est passée de 113 847 à **109 295 o**.
+RAM interne libre est passée de 113 847 à **109 295 o** (⚠️ chiffre d'avant la revue — voir §13.8).
+
+---
+
+## 13.12 🔴 CE QUE LA SÉANCE N'A PAS MESURÉ — quatre trous nommés (revue de code, 2026-08-17)
+
+Quatre mesures **exigées par des AC** étaient cochées sans avoir été faites. Aucune ne se répare au
+clavier : elles demandent la carte. **Décision owner : elles se soldent à la séance de validation
+des correctifs de la revue** — celle qui re-flashe de toute façon.
+
+Elles sont écrites ici, dans le fichier de mesure, parce qu'un trou de mesure qui ne vit que dans
+une story se perd à la story suivante.
+
+| # | Ce qui manque | Exigé par | Pourquoi ça compte |
+|---:|---|---|---|
+| 1 | Les **compteurs d'erreurs I²C de `touch` relevés AVANT et APRÈS un scan** | **AC3** | Le fichier ne publie que des relevés **isolés** (0 erreur / 17 438, puis / 2 663). Sans le couple encadrant, **un scan qui induirait des erreurs sur le tactile serait invisible** — c'est l'AC qui le dit : *« sans ces deux relevés on ne le verrait pas »* |
+| 2 | Le **nombre de transactions I²C par cycle de lecture** | **AC6** | Seule la **durée** (26 ms) est publiée. L'AC demande le nombre **compté**, pas estimé : c'est ce qui dimensionne la charge que dn4-1 va multiplier par 4 |
+| 3 | Le **re-test du tactile juste après le débranchement à chaud**, et le **délai de reprise chiffré** | **AC7** | §13.10 décrit le geste et le mode fantôme, mais **ne mentionne pas le GT911** ; le tableau chiffre l'âge en MUET (35 → 60 s), pas la reprise. Or l'AC nomme le risque : perturber le bus peut fâcher le tactile |
+| 4 | Un **second point de comparaison thermique** (thermomètre, station météo, téléphone) | **AC9** | Ni cherché, ni déclaré absent. ⚠️ **L'AC prévoyait explicitement le cas « aucun »** — *« s'il n'y en a aucun, c'est écrit comme tel »*. Sans lui, l'A/B de §13.9 mesure un **delta** juste, mais rien ne dit que la **valeur absolue** l'est |
+
+⚠️ **Le point 4 est le plus important des quatre** : §13.9 établit très bien que le chauffage gaz
+coûte +0,3 °C — c'est un delta interne, chaque phase étant mesurée par le même capteur. **Il
+n'établit rien sur la justesse de la température affichée.** Un biais constant de 2 °C passerait
+entièrement à travers cette expérience, et c'est le livrable de la story.
+
+---
+
+## 13.13 ✅ SÉANCE DE VALIDATION DES CORRECTIFS (2026-08-17, firmware `b554a4e-dirty`)
+
+Séance `/desknode-board` qui valide les **29 correctifs** de la revue de code et solde **3 des 4
+trous** de la §13.12. Binaire **832 720 o** (`0xcb2d0`), arbre non committé au moment des mesures —
+**le bandeau de boot porte `App version: b554a4e-dirty`**, ce qui les rend rattachables au commit
+qui a suivi.
+
+### 13.13.1 Non-régression : le smoke passe 6/6
+
+Constats owner à l'œil, firmware corrigé : dashboard plein écran · rétroéclairage **fixe** ·
+cases `TEMP.`/`HUMIDITE` **vivantes avec le `°`** · 🔴 **IMAGE STABLE** · case CPU à `--` grisé
+(agent absent, état honnête) · aller-retour au doigt **OK**. Aucune ligne d'erreur nouvelle au
+bandeau ; la ligne `E gpio_install_isr_service already installed` reste **antérieure**.
+
+🔴 **Le correctif n°1 est confirmé PAR L'ŒIL** : après reboot, les cases affichent **« -- » grisé
+pendant ~5 s** avant la première valeur. Avant correctif elles étaient **VIDES** — l'initialiseur
+`= "--"` avait été perdu en généralisant `s_cpu_texte` en `s_vive_texte[]`, et le défaut devenait
+**permanent** si le capteur ne répondait pas au boot, pendant que deux fichiers journalisaient
+« les cases resteront « -- » ».
+
+### 13.13.2 ✅ AC3 SOLDÉ — le scan n'induit AUCUNE erreur sur le tactile
+
+Le couple de relevés qui manquait, joué **deux fois** (avant et après le flash des correctifs) :
+
+| Firmware | GT911 avant scan | GT911 après scan | erreurs I²C induites |
+|---|---:|---:|---|
+| `b554a4e` (avant correctifs) | 279 598 lectures, **0 err** | 279 604 lectures, **0 err** | **0** |
+| `b554a4e-dirty` (corrigé) | 13 979 lectures, **0 err** | 13 985 lectures, **0 err** | **0** |
+
+Scan mesuré à **28-32 ms**, témoin positif OK (`0x20` et `0x5D` à 5/5). La passe sur l'ancien
+firmware a sorti **deux faux positifs à 1/5** (`0x17`, `0x54`), jamais reproduits — signature
+exacte de §13.2 ; la passe sur le firmware corrigé n'en a sorti **aucun**.
+
+### 13.13.3 ✅ AC6 SOLDÉ — 7 transactions I²C par cycle, COMPTÉES et réconciliées
+
+Chaque transaction identifiée dans le source du composant, pas estimée :
+
+| # | Transaction | Origine | Délai qui suit |
+|---:|---|---|---:|
+| 1 | lecture `0x74` (ctrl_meas) | `bme680_set_power_mode` → `get_control_measurement_register` | 5 ms |
+| 2 | écriture `0x74` (FORCED) | `bme680_set_power_mode` → `set_control_measurement_register` | 5 ms |
+| 3 | lecture `0x1D` (status0) | boucle « data ready », **1 seule itération** | 5 + 1 ms |
+| 4 | lecture rafale `0x1F`, 13 o | `bme680_i2c_read_from(REG_PRESS)` | 5 ms |
+| — | | `bme680_get_data`, sortie | 5 ms |
+| 5-7 | lectures `0x72` · `0x74` · `0x75` | **notre** garde de configuration (§13.10) | — |
+
+**4 transactions du driver + 3 de la garde = 7 par cycle.**
+**Somme des délais du driver : 26 ms — contre 25-26 ms MESURÉS.** Le compte n'est donc pas une
+lecture de source qu'on croit sur parole : il se réconcilie avec la durée à **1 ms près**.
+⚠️ `CONFIG_FREERTOS_HZ=1000` : les `pdMS_TO_TICKS` du composant sont des délais réels, pas des
+arrondis à zéro. Le compte en dépend.
+
+> 🔴 **CE QUE LA RÉCONCILIATION RÉVÈLE, ET QUE PERSONNE N'AVAIT VU : L'AFFICHAGE A UN CYCLE DE
+> RETARD.** La boucle « data ready » sort à la **première** itération. Or la conversion 8×/8×/1×
+> demande **~41 ms** (datasheet). Si la boucle l'attendait, le cycle mesurerait ≥ 41 ms, pas 25.
+> ⇒ **la valeur lue à chaque cycle est celle de la conversion déclenchée au cycle PRÉCÉDENT**,
+> soit **5 secondes de retard** à la cadence actuelle.
+>
+> ✅ **TÉMOIN POSITIF, et il est décisif** : `capteurs gaz on` ajoute **300 ms** de chauffe à la
+> conversion. Le cycle est resté à **26 ms**, identique en gaz ON et OFF, sur 4 relevés — alors que
+> la température dérivait de **26,0 → 26,2 °C**, ce qui **prouve que le chauffeur tournait**. Un
+> témoin négatif dont le stimulus n'est pas prouvé ne vaut rien ; celui-ci a le sien.
+>
+> ⚠️ **Anodin pour une pièce à 5 s, PAS anodin pour dn4-1** qui touchera à la cadence : à 1 Hz, on
+> afficherait une mesure vieille d'une seconde tout en croyant lire l'instant. Et le vrai correctif,
+> si un jour il faut la fraîcheur, n'est pas d'attendre la conversion (ça bloquerait la tâche 41 ms)
+> mais de **déclencher au cycle N et lire au cycle N+1 en connaissance de cause**.
+
+### 13.13.4 ✅ AC7 (b) SOLDÉ — délai de reprise chiffré, sans toucher au connecteur
+
+Joué à l'injecteur (`capteurs simuler muet 5`), donc **sans user la connectique** — c'est
+exactement ce pour quoi il a été écrit :
+
+| t | état | `err_i2c` | `reprises` |
+|---:|---|---:|---:|
+| +3 → +12 s | VIVANT, âge croissant | 1 → 2 | 0 |
+| **+15,6 s** | 🔴 **MUET** (âge 16 363 ms) | 3 | 0 |
+| +25 s | MUET, fin d'injection | **5** | 0 |
+| **+31,2 s** | ✅ **VIVANT**, âge 1 942 ms | 5 | **1** |
+
+- **Péremption à 15 000 ms pile** — bascule entre âge 13 218 et 16 363 ms, soit les 3 cycles annoncés.
+- **5 cycles armés = 5 incréments de `err_i2c`** : l'injecteur ne dérive pas d'un cycle.
+- **Délai de reprise ≈ 4,3 s** — la première lecture valide qui suit la fin de la panne, donc
+  **borné par la cadence (≤ 5 s)**, et `reprises` passe bien à 1.
+
+### 13.13.5 🔴 AC9 SOLDÉ — et l'humidité CORROBORE la température par un chemin indépendant
+
+**Deux thermomètres de la pièce** (grand public, non étalonnés), relevés simultanément, ⚠️ **avec
+une climatisation mobile en marche — la pièce n'est donc pas homogène** :
+
+| Sonde | Position | Lecture |
+|---|---|---|
+| Réf. 1 | **50 cm** du capteur | **24,0 °C · 53 %** |
+| Réf. 2 | **1,5 m** du capteur | **25,0 °C** |
+| **BME680** | sur ses fils, écarté de la carte | **25,9 °C · 47,1 %** |
+
+- Écart carte − réf. 50 cm : **+1,9 °C** · carte − réf. 1,5 m : **+0,9 °C**
+- **Gradient propre de la pièce : 1,0 °C sur ~1 m** — c'est le plancher d'incertitude, pas du bruit.
+
+🔴 **Le test qui tranche, et il ne coûte rien** : la pression de vapeur de l'air, prise sur la
+référence (24,0 °C à 53 %), vaut **15,78 hPa** (Magnus). **Ce même air, à 25,9 °C, doit lire
+47,3 %RH.** Le BME680 lit **47,1 %** — **écart 0,22 point**.
+
+| Hypothèse | Ce qu'elle prédit pour l'humidité | Observé |
+|---|---|---|
+| **Biais d'étalonnage** (die à 24 °C, annonce 25,9) | l'élément baigne dans 53 % ⇒ il lirait **~53 %** | ❌ |
+| **Température locale RÉELLE** (die à 25,9 °C) | même air, plus chaud ⇒ **47,3 %** | ✅ **47,1 %** |
+
+⇒ **Le +1,9 °C n'est PAS une erreur du capteur : l'élément sensible est réellement dans de l'air
+plus chaud.** C'est l'auto-échauffement / la proximité de la carte du §10.2 — la question que la
+story léguait à dn4-1 **sans jamais la chiffrer**. Elle a maintenant un premier nombre, et une
+méthode pour la re-mesurer.
+
+⚠️ **CE QUE ÇA N'ÉTABLIT PAS, et qui doit rester écrit** : les deux sondes sont **non étalonnées**
+(±1 °C typique pour du grand public), leur propre écart est de 1,0 °C, et la clim rend la pièce
+**non stationnaire** — c'est un instantané simultané, pas une série temporelle. **La justesse
+absolue du BME680 n'est donc pas établie à mieux que ~±1 °C.** Ce qui EST établi : la **cohérence
+interne** de son couple T/RH (0,22 point) et le **sens et l'ordre de grandeur** de l'écart.
+
+### 13.13.6 ⏭️ AC7 (a) — le seul trou qui RESTE, et il est déclaré
+
+**Le tactile n'a PAS été re-testé après une perturbation ÉLECTRIQUE du bus** (débranchement à
+chaud du 3V3). **Motif, décision owner du 2026-08-17 : on ne touche plus aux Dupont** — un
+connecteur n'est donné que pour quelques dizaines d'insertions, et le dégrader pour tester sa
+robustesse est un mauvais échange. ⚠️ **L'injecteur ne peut PAS s'y substituer : il exerce le
+chemin de code, jamais le bus.** C'est un écart **écrit**, pas contourné.
+
+**Ce qui EST acquis sur la robustesse du bus, et qui est substantiel :**
+
+| Preuve | Résultat |
+|---|---|
+| ~2 h 45 de régime continu, 5ᵉ device sur le bus | **0 erreur I²C / 279 604 lectures** GT911 |
+| Encadrement d'un scan (les deux firmwares) | **0 erreur induite**, deux fois |
+| Aller-retour au doigt **pendant** la lecture capteur en régime | **OK** (constat owner) |
+
+**Ce qui manquerait encore** : le tactile actif **pendant** une perturbation. Une variante
+entièrement logicielle existe (saturer le bus de scans en rafale pendant des appuis) et **ne
+présente aucun risque électrique ni thermique** — un scan n'est que du trafic à 400 kHz, sans
+écriture de donnée, sur une plage bornée à `0x08..0x77` qui exclut les adresses réservées. Elle a
+été **écartée par l'owner**, l'information marginale étant faible au regard de ce qui précède.
+⇒ **À rejouer en dn4-1**, où les 4 capteurs sur le bus rendront la question réellement neuve.
+
+### 13.13.7 Budgets RE-RELEVÉS — ceux de §13.8 sont remplacés
+
+| Mesure | dn2-1 (périmé) | **Séance de validation** | Delta |
+|---|---:|---:|---|
+| Binaire | 827 632 o | **832 720 o** | **+5 088 o** (29 correctifs) |
+| RAM interne libre | 109 295 o | **109 287 o** | −8 o — **bruit** : les correctifs ne coûtent RIEN en RAM |
+| PSRAM libre | 7 768 412 o | 7 768 360 o | −52 o, bruit |
+| Tas LVGL | 15 244 o (25 %) | **15 228 o (25 %)**, frag **1 %** | −16 o, bruit d'allocation de texte |
+| CPU (`cpu 30`) | 1,2 % | **1,3 %** | +0,1 pt (repos de référence : 0,9 %) |
+| `fps 15` | 37,34 Hz (−0,18 %) | **37,40 Hz, écart +0,00 %** | ✅ **pile la théorie** |
+| `flush` en régime | 2,0 flush/cycle, 9 581 px | **2,0 flush/cycle, 9 049 px** | ✅ **le legs dn3-2 est CONFIRMÉ** |
+| Cadence effective | non mesurée | **4 999 ms** entre deux lectures valides | `vTaskDelayUntil` ne dérive pas |
+| Cycle de mesure | 25-26 ms | 25-26 ms | inchangé |
+
+- **12 flushes pour 6 cycles sur 30 s** : la cadence de 5 s se retrouve exactement, et le rapport
+  **2,0 flush par cycle** re-confirme que **LVGL ne fusionne pas** deux cases côte à côte.
+  ⇒ le legs chiffré pour dn3-2 tient : **le coût suit le nombre de CASES**, pas la géométrie.
+- ⚠️ `cpu N` reste **valide ici** (la tâche capteur ne passe pas par le REPL), mais le +0,1 pt est
+  **dans le bruit** de l'instrument — ne pas en conclure que les correctifs coûtent du CPU.
+
+### 13.13.8 Correctifs vérifiés à la console
+
+| Correctif | Preuve observée |
+|---|---|
+| Cases à `--` avant la 1ʳᵉ lecture | ✅ **constat owner** au reboot, ~5 s |
+| Cadence **effective** exposée (AC7) | `4999 ms MESURES entre les deux dernieres lectures valides` |
+| Libellés de config venus du `.h`, plus d'un littéral console | `demande : FORCED · T/H 8x · P 1x · IIR 3` |
+| Référence de config **testée** à l'init | `config relue dans le capteur : 0x72=04 0x74=84 0x75=08` |
+| Étiquette `0x77` corrigée | `0x77 5/5 BME680 — … — L'ADRESSE MESUREE` |
+| **`simuler config 1` n'est plus un no-op** | `reconfigurations` **0 → 1**, état MUET immédiat, puis `reprises` 1 → 2 |
+| Sentinelle hors plage physique (`DN_CAPT_DX_ABSENT`) | `MUET — aucune valeur courante` au lieu de `0,1 C · 0,-1 %` |
+| Durée minimale d'injection annoncée | `1 cycle(s) NE SUFFIT PAS … armer au moins 4 cycles` |
+| Boot non retardé par la re-tentative d'ouverture | `prêt en 2190 ms` — **inchangé** |

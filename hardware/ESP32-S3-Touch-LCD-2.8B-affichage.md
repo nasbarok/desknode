@@ -1758,12 +1758,25 @@ Y sont aussi : le protocole de trame v1, les budgets liaison + donnée live
 
 ---
 
-## 13. Les capteurs sur le bus I²C externe — voir le fichier frère (dn2-1, 2026-08-16)
+## 13. Les capteurs sur le bus I²C externe — voir le fichier frère (dn2-1, 2026-08-17)
 
 **`ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md`** consigne le branchement du premier
-composant EXTERNE sur ce bus. ⚠️ **Séance en cours : le BME680 n'a pas encore
-répondu** ; le fichier tient l'arbre de diagnostic, quatre hypothèses éliminées
-et le geste qui tranche les deux restantes (souder la barrette du breakout).
+composant EXTERNE sur ce bus.
+
+✅ **LE BME680 EST VIVANT, ET C'EST UN VRAI BME680** — barrette **soudée** le
+2026-08-17, adresse **`0x77` mesurée** (le breakout tire SDO haut), chip id
+`0xD0 = 0x61`, variant `0xF0 = 0x00` (BME680, pas BME688). **Température et
+humidité vivent dans les cases 4 et 5 du dashboard**, à 5 s, cadence arbitrée.
+
+> ⚠️ **CETTE SECTION A ÉTÉ PÉRIMÉE PENDANT UN COMMIT, ET C'EST CONSIGNÉ PARCE QUE
+> C'EST LE DÉFAUT LE PLUS CHER DE CE DÉPÔT.** Elle a été livrée par `b554a4e` en
+> annonçant encore « séance en cours : le BME680 n'a pas encore répondu » et « cette
+> mesure-là n'a pas encore eu lieu » — alors que le même commit livrait le capteur
+> vivant, la soudure faite et la §11.4 constatée à l'œil en régime. Le **fichier
+> d'autorité enseignait l'inverse de ce que la story avait mesuré** : la session
+> suivante aurait rejoué un arbre de diagnostic déjà soldé. Trouvé par la revue de
+> code du 2026-08-17, deux couches sur trois. ⇒ **Une section de renvoi se relit à
+> la clôture, pas à l'ouverture de la séance.**
 
 🔴 **DEUX CHOSES Y CORRIGENT CE QU'ON CROYAIT, ET ELLES REMONTENT ICI :**
 
@@ -1780,8 +1793,27 @@ et le geste qui tranche les deux restantes (souder la barrette du breakout).
    comme `dn_pins.h` le laissait ouvert. La §1.2 reste exacte, elle gagne deux
    certitudes.
 
-⚠️ **Ce que la §13 N'AUTORISE PAS à conclure** : la commande `i2c` qu'elle livre
-dure ~26 ms, ce qui est **trop bref pour être un test de la §11.4**. La stabilité
-de l'image sous trafic I²C se mesure en **régime de lecture**, à l'œil, et cette
-mesure-là n'a pas encore eu lieu. **La §0 est INCHANGÉE par dn2-1 à ce stade** —
-et cette phrase-là a été vérifiée ligne à ligne, pas au jugé.
+🔴 **LA §11.4 EST SOLDÉE SOUS TRAFIC CAPTEUR RÉEL — c'était le risque n°1 de dn2-1.**
+Chaque lecture du BME680 est une **rafale I²C**, exactement le stimulus qui faisait
+défiler l'image avant le bounce buffer de dn1-4. **Constat owner à l'œil, en régime
+de lecture : IMAGE STABLE**, plus 0 erreur I²C sur le GT911 et un aller-retour au
+doigt pendant que la tâche tourne. ⇒ **le bounce buffer encaisse des rafales
+périodiques réelles**, ce qui n'était prouvé jusque-là que contre le polling
+tactile. ⚠️ Constaté **à l'œil**, comme il se doit : le `fps` est aveugle à ce
+défaut (37,33 avant / 37,45 pendant que l'image défilait). ⛔ **`bounce_px = 0`
+reste interdit.**
+
+⚠️ **Ce que la §13 N'AUTORISE toujours PAS à conclure** : la commande `i2c` qu'elle
+livre dure ~26 ms **quand tout acquitte** — trop bref pour être un test de la
+§11.4, et ce n'est pas par elle que la stabilité a été établie. ⚠️ Son pire cas
+mesuré au calcul est de **~9 s** (112 sondages à 50 ms + confirmations) ; un budget
+d'abandon a été posé par la revue du 2026-08-17, et le scan **dit** quand il tronque.
+
+**La §0 est INCHANGÉE par dn2-1** — vérifié ligne à ligne, pas au jugé, et
+re-vérifié à la clôture : `num_fbs=1 bounce_px=4800 draw_lines=128 draw_psram=0
+lvgl_core=0` relus au bandeau après le flash final.
+
+⚠️ **Les budgets publiés en §13.8 du fichier frère sont à RE-RELEVER** : la revue de
+code du 2026-08-17 a modifié 5 fichiers du firmware (binaire 827 632 → **832 720 o**
+au build de revue). Les chiffres de RAM, de CPU et de flush attendent la séance
+carte de validation des correctifs.
