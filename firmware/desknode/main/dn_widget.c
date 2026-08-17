@@ -111,9 +111,9 @@ const char *dn_val_regime_nom(dn_val_regime_t r)
     case DN_VAL_ABSENTE:
         return "ABSENTE";
     case DN_VAL_REELLE:
-        return "REELLE";
+        return "RÉELLE";
     case DN_VAL_SIMULEE:
-        return "SIMULEE";
+        return "SIMULÉE";
     default:
         return "?";
     }
@@ -144,10 +144,26 @@ lv_obj_t *dn_widget_zone_creer(lv_obj_t *parent, int x, int y, int w, int h,
     lv_obj_set_size(z, w, h);
     /* LES DEUX DRAPEAUX D'AC4 — voir dn_widget.h. Ils ne vivent qu'ici. */
     lv_obj_clear_flag(z, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_add_flag(z, LV_OBJ_FLAG_CLICKABLE);
     aplat(z);
     if (cb) {
+        lv_obj_add_flag(z, LV_OBJ_FLAG_CLICKABLE);
         lv_obj_add_event_cb(z, cb, LV_EVENT_CLICKED, user);
+    } else {
+        /*
+         * 🔴 CLICKABLE EST CONDITIONNÉ AU CALLBACK (revue du 2026-08-18).
+         *    Il était posé INCONDITIONNELLEMENT, et une zone cliquable SANS
+         *    handler ni `EVENT_BUBBLE` devient `act_obj`, reçoit le CLICKED, et
+         *    l'AVALE : le tap ne remonte nulle part, `s_taps` ne bouge pas, et
+         *    rien ne le signale.
+         *    Vu sur la démo d'AC1 (`widget demo`, cb = NULL) : posée en
+         *    (120, 240) sur 225 x 156, elle recouvre une partie des cases RAM et
+         *    RÉSEAU — une campagne `touch trace` ou `nav ab` lancée démo armée
+         *    mesurait donc une propriété AC4 FAUSSE, sans un mot.
+         *    ⚠️ Ne PAS « corriger » en ajoutant EVENT_BUBBLE : un widget sans
+         *    callback n'a pas de destination, et le faire remonter au parent
+         *    ferait ouvrir le détail d'une case qu'il ne fait que recouvrir.
+         */
+        lv_obj_clear_flag(z, LV_OBJ_FLAG_CLICKABLE);
     }
     return z;
 }
@@ -177,7 +193,7 @@ lv_obj_t *dn_widget_texte(lv_obj_t *parent, const char *s, const lv_font_t *font
     return l;
 }
 
-static lv_color_t couleur_regime(dn_val_regime_t r)
+lv_color_t dn_val_regime_couleur(dn_val_regime_t r)
 {
     switch (r) {
     case DN_VAL_REELLE:
@@ -243,7 +259,7 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
         composer(desc, etat, i, buf, sizeof(buf));
         out->valeur[i] = dn_widget_texte(
             out->racine, buf, &dn_font_28,
-            couleur_regime(etat ? etat->regime : DN_VAL_ABSENTE), W_PAD,
+            dn_val_regime_couleur(etat ? etat->regime : DN_VAL_ABSENTE), W_PAD,
             W_VAL_Y + i * W_VAL_PAS);
     }
 
@@ -312,7 +328,7 @@ void dn_widget_maj(const dn_widget_desc_t *desc, const dn_widget_etat_t *etat,
     }
 
     dn_val_regime_t r = etat ? etat->regime : DN_VAL_ABSENTE;
-    lv_color_t c = couleur_regime(r);
+    lv_color_t c = dn_val_regime_couleur(r);
     char buf[DN_WIDGET_TXT_MAX + 24];
     for (int i = 0; i < DN_WIDGET_GRANDEURS_MAX; i++) {
         if (!w->valeur[i]) {

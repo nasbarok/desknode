@@ -404,7 +404,18 @@ bool dn_ui_case_dessinee(int idx);
  * min -> max -> min, période fixe, dérivée du TEMPS ABSOLU.
  * `dn_ui_mock_set(false)` le coupe : la case redevient ABSENTE (« -- »), ce qui
  * est le témoin que le mock EST la seule source de cette case. */
-void dn_ui_mock_set(bool on);
+/* A/B d'AC8 : bascule le groupage d'invalidation. C'est `dn_ui` qui prend le
+ * verrou, jamais l'appelant — `dn_widget_*` EXIGE qu'il soit déjà pris. */
+esp_err_t dn_ui_set_groupage(bool on);
+
+/* Dimensions d'une case du dashboard, en px. Une zone GROUPÉE vaut exactement
+ * `w * h` pixels sales. Relu, pas récité. */
+void dn_ui_case_dim(int *w, int *h);
+
+/* Rend `ESP_ERR_TIMEOUT` si le verrou LVGL n'a pas été pris — RIEN n'a alors
+ * changé, et l'appelant ne doit PAS annoncer la bascule (revue 2026-08-18 : la
+ * fonction rendait `void` et la console mentait sur son propre effet). */
+esp_err_t dn_ui_mock_set(bool on);
 bool dn_ui_mock_on(void);
 void dn_ui_mock_forme(int *min, int *max, int *periode_s);
 

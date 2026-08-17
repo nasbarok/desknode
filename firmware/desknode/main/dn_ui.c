@@ -104,7 +104,11 @@ static const char *TAG = "dn_ui";
  * se plaint pas.
  *
  * ✅ dn3-1 solde ce legs : `dn_font_14` / `dn_font_28` couvrent ASCII +
- *    LATIN-1 COMPLET + la puce + les 61 LV_SYMBOL_* + 7 icônes FontAwesome.
+ *    LATIN-1 COMPLET + la puce + les 60 LV_SYMBOL_* uniques + 10 icônes
+ *    FontAwesome (dont 2 déjà symboles ⇒ 8 codepoints neufs). ⚠️ Les comptes
+ *    font foi dans `fonts/dn_font.h`, qui les CALCULE à la génération : cette
+ *    ligne disait « 61 + 7 » et quatre autres endroits du dépôt disaient encore
+ *    autre chose (revue du 2026-08-18).
  *    Voir `fonts/dn_font.h` et `tools/gen_font_dn.py`.
  *
  * ── LA GRILLE, AMENDÉE PAR D6 (2026-08-17) ───────────────────────────────────
@@ -467,6 +471,11 @@ static uint8_t s_voile_opa = 90;
 #define DN_MOCK_MAX 1600
 #define DN_MOCK_PERIODE_S 20
 static bool s_mock_on = true;
+/* 🔴 D1 (revue 2026-08-18) : « cette case porte une POUSSÉE manuelle », donc le
+ * tick du mock coupé ne doit pas la révoquer. Sans ce drapeau, chaque
+ * `widget pousser 4` coûtait DEUX redessins au lieu d'un et polluait le cas (a′)
+ * de §15.5 — le tick était un second écrivain sur la case mesurée. */
+static bool s_vent_poussee;
 /* Dernière zone touchée — la preuve d'AC3, lue par la console. */
 static volatile int s_dernier_tap = DN_UI_ZONE_AUCUNE;
 static volatile uint32_t s_taps;
@@ -1110,11 +1119,12 @@ static void build_dashboard(lv_obj_t *scr)
                                      on_case_clic, (void *)(intptr_t)i);
         texte(case_, k_nom[i], &dn_font_14, lv_color_hex(0xa0d8ff), 12, 10);
         s_wobj[i].racine = case_;
+        /* Même convention qu'à la mise à jour, et par le MÊME appel : c'est la
+         * duplication de ce ternaire (ici ET dans `case_poser`) qui avait rendu
+         * SIMULÉE indiscernable d'ABSENTE sur les cases nues (revue 2026-08-18). */
         s_wobj[i].valeur[0] =
             texte(case_, s_wetat[i].txt[0][0] ? s_wetat[i].txt[0] : "--",
-                  &dn_font_28,
-                  s_wetat[i].regime == DN_VAL_REELLE ? lv_color_white()
-                                                     : lv_color_hex(0x9a9a9a),
+                  &dn_font_28, dn_val_regime_couleur(s_wetat[i].regime),
                   12, 60);
     }
 
@@ -1222,23 +1232,23 @@ static void build_detail(lv_obj_t *scr, int idx)
  *    donc « MIN --   ·   MAX -- ». Y remettre « MIN 12 % - MAX 91 % » parce que
  *    « le panneau a l'air vide » serait refaire le défaut qu'on solde.
  */
-static const char *etat_source(int idx, bool *vivante)
+/* ⚠️ Le paramètre de sortie `vivante` a été RETIRÉ le 2026-08-18 (revue de
+ * code) : il était écrit et JAMAIS lu — son unique appelant le déclarait puis
+ * l'ignorait, ce que `-Wunused-but-set-variable` aurait fini par dire. Le nom
+ * d'état rendu porte déjà l'information, et le régime la porte une seconde
+ * fois. Un paramètre de sortie mort suggère un contrat qui n'existe pas. */
+static const char *etat_source(int idx)
 {
-    *vivante = false;
     if (idx == DN_UI_CASE_CPU) {
-        dn_link_etat_t e = dn_link_etat();
-        *vivante = (e == DN_LINK_VIVANTE);
-        return dn_link_etat_nom(e);
+        return dn_link_etat_nom(dn_link_etat());
     }
     if (idx == DN_UI_CASE_AMB) {
-        dn_capt_etat_t e = dn_capt_etat();
-        *vivante = (e == DN_CAPT_VIVANT);
-        return dn_capt_etat_nom(e);
+        return dn_capt_etat_nom(dn_capt_etat());
     }
     if (idx == DN_UI_CASE_VENT) {
         /* Le mock n'a pas d'état de source : il EN EST une, et son régime le
          * dit déjà. Le nommer « VIVANT » l'habillerait en mesure. */
-        return s_mock_on ? "generateur interne" : "arrete";
+        return s_mock_on ? "générateur interne" : "arrêté";
     }
     return "aucune";
 }
@@ -1253,7 +1263,7 @@ static const char *nom_source(int idx)
     case DN_UI_CASE_VENT:
         return "MOCK dn3-1 (aucun capteur)";
     default:
-        return "AUCUNE — pas encore branchee";
+        return "AUCUNE — pas encore branchée";
     }
 }
 
@@ -1298,11 +1308,10 @@ static void detail_reparametrer(int idx)
     }
 
     if (s_det_sec) {
-        bool vivante = false;
-        const char *etat = etat_source(idx, &vivante);
+        const char *etat = etat_source(idx);
         /* TROIS lignes, toutes RELUES de l'état réel : la source, son état, le
          * régime de la valeur. Aucune n'est une constante d'affichage. */
-        snprintf(buf, sizeof(buf), "source : %s\netat  : %s\nregime : %s",
+        snprintf(buf, sizeof(buf), "source : %s\nétat   : %s\nrégime : %s",
                  nom_source(idx), etat, dn_val_regime_nom(e->regime));
         lv_label_set_text(s_det_sec, buf);
     }
@@ -1481,6 +1490,23 @@ static bool nav_appliquer(int cible, int64_t t_clic)
         for (int i = 0; i < DN_UI_METRIQUES; i++) {
             dn_widget_oublier(&s_wobj[i]);
         }
+        /*
+         * 🔴 LA DÉMO MANQUAIT ICI, ET C'ÉTAIT LE DÉFAUT LE PLUS GRAVE DE dn3-1
+         *    (revue du 2026-08-18, convergence des TROIS couches).
+         *    `lv_obj_clean(scr)` DÉTRUIT la démo — elle est créée sur
+         *    `lv_screen_active()`, qui EN MODÈLE REBUILD *est* ce `scr`. Le
+         *    pointeur survivait à son objet, et `widget demo off` faisait alors
+         *    un `lv_obj_delete()` sur de la mémoire libérée : le use-after-free
+         *    que la revue dn1-3 avait déjà trouvé, et qu'AC1 cite NOMMÉMENT.
+         *    ⚠️ La branche SCREENS ci-dessus le faisait, pas celle-ci — un
+         *    invariant tenu dans une branche sur deux n'est pas un invariant.
+         */
+        if (s_demo_on) {
+            s_demo_on = false;
+            ESP_LOGW(TAG, "reconstruction (rebuild) : la démo `widget demo` est "
+                          "RETIRÉE (relancer `widget demo on` si besoin)");
+        }
+        dn_widget_oublier(&s_demo);
         /* Même règle qu'en reconstruction complète : la barre du stimulus vient
          * d'être détruite, l'ombre le dit. Sans le log ici (il tomberait à chaque
          * transition), mais avec le même effet sur l'état annoncé. */
@@ -1618,6 +1644,23 @@ esp_err_t dn_ui_set_nav_model(dn_nav_model_t m)
         for (int i = 0; i < DN_UI_METRIQUES; i++) {
             dn_widget_oublier(&s_wobj[i]);
         }
+        /*
+         * 🔴 ET LA DÉMO AUSSI — elle manquait ici, et le commentaire ci-dessus
+         *    s'appliquait à elle sans la traiter (revue de code du 2026-08-18,
+         *    trouvée SÉPARÉMENT par les trois couches). Elle est posée sur
+         *    `lv_screen_active()`, c'est-à-dire l'une des deux racines qu'on
+         *    vient de détruire : `s_demo.racine` désignait donc de la mémoire
+         *    libérée, et `dn_ui_demo_on()` (`s_demo_on && racine != NULL`)
+         *    rendait VRAI ⇒ la console annonçait « AFFICHEE » pour un widget
+         *    mort. `build_scene()` juste en dessous rattrapait — mais c'est
+         *    exactement le « ce qui suit » dont l'invariant ne doit pas dépendre.
+         */
+        if (s_demo_on) {
+            s_demo_on = false;
+            ESP_LOGW(TAG, "bascule de modèle : la démo `widget demo` est "
+                          "RETIRÉE (relancer `widget demo on` si besoin)");
+        }
+        dn_widget_oublier(&s_demo);
         s_det_titre = NULL;
         s_det_valeur = NULL;
         s_det_minmax = NULL;
@@ -1976,11 +2019,17 @@ static void case_poser(int idx, dn_val_regime_t regime, const char *t0,
              * branchera une source. */
             lv_label_set_text(s_wobj[idx].valeur[0], e->txt[0][0] ? e->txt[0]
                                                                  : "--");
+            /* 🔴 LES TROIS RÉGIMES, PAS DEUX (revue 2026-08-18). Ce ternaire
+             *    disait `REELLE ? blanc : gris` — donc SIMULÉE peinte comme
+             *    ABSENTE, alors que `widget pousser <idx>` sur une case nue EST
+             *    le chemin nominal de l'instrument d'AC8 : un chiffre inventé
+             *    s'affichait dans le gris de « aucune source », sans badge,
+             *    pendant que la console annonçait SIMULEE. Trois signaux
+             *    contradictoires pour un seul état.
+             *    La convention vit dans `dn_val_regime_couleur()` et nulle part
+             *    ailleurs — la dupliquer ici est ce qui avait produit l'écart. */
             lv_obj_set_style_text_color(s_wobj[idx].valeur[0],
-                                        regime == DN_VAL_REELLE
-                                            ? lv_color_white()
-                                            : lv_color_hex(0x9a9a9a),
-                                        0);
+                                        dn_val_regime_couleur(regime), 0);
         }
         if (pose) {
             *pose = s_active;
@@ -2140,12 +2189,35 @@ static void mock_tick_nolock(void)
      * innocente.
      */
     if (!s_mock_on) {
-        if (s_wetat[DN_UI_CASE_VENT].regime != DN_VAL_ABSENTE) {
+        /*
+         * 🔴 DÉCISION D1 DE LA REVUE DU 2026-08-18 — LE TICK ÉTAIT UN SECOND
+         *    ÉCRIVAIN SUR LA CASE QUE LA CAMPAGNE AC8 MESURAIT.
+         *
+         *    `indicateur = true` n'existe que sur VENTILOS : le cas (a′) de
+         *    §15.5 (« widget MONO avec jauge ») EST donc cette case. Or le
+         *    protocole publié dit « mock isolé », c'est-à-dire `widget mock off`
+         *    — et c'est EXACTEMENT ce réglage qui armait le défaut : après
+         *    chaque `widget pousser 4`, le régime valait SIMULEE, ce tick voyait
+         *    `!= ABSENTE` et REPOSAIT ABSENTE. Soit UN REDESSIN DE PLUS PAR
+         *    POUSSÉE, jamais compté comme une poussée, dans le dénominateur de
+         *    la mesure la plus spectaculaire de la story.
+         *    C'était le défaut de `63344fc` dans son angle mort : ce correctif
+         *    avait fermé le repeint AU REPOS, pas le repeint APRÈS POUSSÉE.
+         *
+         *    ⇒ Une poussée est un acte DÉLIBÉRÉ de l'opérateur ; le mock coupé
+         *    n'a aucune raison de la révoquer. `widget mock on` puis `off`
+         *    rend la case au régime naturel (le drapeau est levé plus bas).
+         */
+        if (!s_vent_poussee &&
+            s_wetat[DN_UI_CASE_VENT].regime != DN_VAL_ABSENTE) {
             case_poser(DN_UI_CASE_VENT, DN_VAL_ABSENTE, NULL, NULL, 0, NULL,
                        NULL);
         }
         return;
     }
+    /* Le mock reprend la main : il EST la source de cette case, sa poussée
+     * manuelle n'a plus cours. */
+    s_vent_poussee = false;
     uint32_t s = (uint32_t)(esp_timer_get_time() / 1000000);
     uint32_t phase = s % DN_MOCK_PERIODE_S;
     uint32_t demi = DN_MOCK_PERIODE_S / 2;
@@ -2154,9 +2226,20 @@ static void mock_tick_nolock(void)
     int32_t v = DN_MOCK_MIN + (int32_t)((DN_MOCK_MAX - DN_MOCK_MIN) * pos / demi);
     char txt[DN_WIDGET_TXT_MAX];
     snprintf(txt, sizeof(txt), "%d", (int)v);
-    /* Même règle au sommet et au creux de la rampe : `pos` y vaut deux secondes
-     * de suite la même chose, et reposer le même texte coûterait un redessin
-     * complet pour une image identique. */
+    /*
+     * Ne pas reposer un texte identique : `lv_label_set_text` invalide
+     * INCONDITIONNELLEMENT, même à texte égal, et ce redessin-là ne montrerait
+     * rien de neuf.
+     * ⚠️ CE COMMENTAIRE AFFIRMAIT UN INVARIANT FAUX jusqu'au 2026-08-18 : il
+     *    disait que `pos` « vaut deux secondes de suite la même chose au sommet
+     *    et au creux de la rampe ». À période 20 (donc `demi` = 10), `pos` suit
+     *    0,1,…,9,10,9,…,1 puis reboucle sur 0 — deux valeurs consécutives ne
+     *    sont JAMAIS égales, ni en 9,10,9 ni en 1,0,1. Ce garde ne rattrape donc
+     *    pas ce qu'on croyait : il rattrape un second tick LVGL dans la MÊME
+     *    seconde. Utile, mais pour une autre raison.
+     *    « Un commentaire qui affirme un invariant que le code ne tient pas est
+     *    pire que pas de commentaire » — règle du dépôt, appliquée à elle-même.
+     */
     if (s_wetat[DN_UI_CASE_VENT].regime == DN_VAL_SIMULEE &&
         strcmp(s_wetat[DN_UI_CASE_VENT].txt[0], txt) == 0) {
         return;
@@ -2216,20 +2299,31 @@ uint32_t dn_ui_pousser(int idx)
              (unsigned)((s_seq * 3) % 10));
     int32_t brut = (int32_t)(DN_MOCK_MIN +
                              (s_seq * 37) % (DN_MOCK_MAX - DN_MOCK_MIN));
-    case_poser(idx, DN_VAL_SIMULEE, t0, t1, brut, "POUSSEE de mesure (AC8)",
+    case_poser(idx, DN_VAL_SIMULEE, t0, t1, brut, "POUSSÉE de mesure (AC8)",
                NULL);
+    /* 🔴 DÉCISION D1 (revue 2026-08-18) : marquer la case comme POUSSÉE, pour
+     *    que le tick du mock cesse de la reprendre. Voir `mock_tick_nolock`. */
+    if (idx == DN_UI_CASE_VENT) {
+        s_vent_poussee = true;
+    }
     lvgl_port_unlock();
     return s_seq;
 }
 
-void dn_ui_mock_set(bool on)
+esp_err_t dn_ui_mock_set(bool on)
 {
+    /* 🔴 RENDAIT `void` — l'échec de verrou était AVALÉ (revue 2026-08-18), et
+     *    la console annonçait « mock ARME » inconditionnellement, donc sur un
+     *    `s_mock_on` inchangé. Les trois autres sous-commandes à verrou
+     *    (`demo`, `opa`, `voile`) rendaient déjà un `esp_err_t` : celle-ci était
+     *    la seule qui ne POUVAIT PAS dire qu'elle n'avait rien fait. */
     if (!lvgl_port_lock(1000)) {
-        return;
+        return ESP_ERR_TIMEOUT;
     }
     s_mock_on = on;
     mock_tick_nolock();
     lvgl_port_unlock();
+    return ESP_OK;
 }
 
 bool dn_ui_mock_on(void) { return s_mock_on; }
@@ -2329,6 +2423,37 @@ esp_err_t dn_ui_set_case_opa(uint8_t opa)
     return ESP_OK;
 }
 
+/* Le groupage passe par ici — et PAS par un appel nu à `dn_widget_set_groupage()`
+ * depuis le REPL, comme c'était le cas jusqu'au 2026-08-18 (revue de code).
+ * `dn_widget.h` écrit que ses fonctions EXIGENT le verrou déjà pris, et que les
+ * seuls appelants légitimes sont les publiques de `dn_ui` et les callbacks de
+ * timer LVGL. ⚠️ Aucun effet mesurable manquant — `grouper` est latché en local
+ * dans `dn_widget_maj` — mais un contrat qui souffre une exception silencieuse
+ * n'en est plus un, et c'est la seule qui restait.
+ * ⛔ PAS de `build_scene()` ici : changer de branche d'A/B ne redessine rien, et
+ *    reconstruire fausserait le relevé qui suit. */
+esp_err_t dn_ui_set_groupage(bool on)
+{
+    if (!lvgl_port_lock(1000)) {
+        return ESP_ERR_TIMEOUT;
+    }
+    dn_widget_set_groupage(on);
+    lvgl_port_unlock();
+    return ESP_OK;
+}
+
+/* La géométrie d'une case, pour que la console cesse de réciter « 225x156 =
+ * 35 100 px » alors que dn3-2 la refait (§15.2). */
+void dn_ui_case_dim(int *w, int *h)
+{
+    if (w) {
+        *w = DN_UI_CASE_W;
+    }
+    if (h) {
+        *h = DN_UI_CASE_H;
+    }
+}
+
 /*
  * ── AC1 : LA PREUVE D'UNICITÉ, ET ELLE EST FALSIFIABLE ───────────────────────
  *
@@ -2370,7 +2495,7 @@ esp_err_t dn_ui_demo_set(bool on)
             etat.regime = DN_VAL_SIMULEE;
             snprintf(etat.txt[0], sizeof(etat.txt[0]), "985");
             snprintf(etat.txt[1], sizeof(etat.txt[1]), "48");
-            snprintf(etat.secondaire, sizeof(etat.secondaire), "7e metrique FICTIVE");
+            snprintf(etat.secondaire, sizeof(etat.secondaire), "7e métrique FICTIVE");
             dn_widget_creer(lv_screen_active(), 120, 240, DN_UI_CASE_W,
                             DN_UI_CASE_H, &k_demo_desc, &etat, NULL, NULL,
                             &s_demo);
@@ -2391,8 +2516,16 @@ bool dn_ui_case_dessinee(int idx)
     /* Le pointeur RACINE, pas une supposition sur le modèle de navigation : en
      * REBUILD vue détail, le dashboard n'existe pas et la case n'est dessinée
      * nulle part. La console doit pouvoir le DIRE plutôt que de laisser croire
-     * qu'un texte posé a atteint la dalle. */
-    return idx >= 0 && idx < DN_UI_METRIQUES && s_wobj[idx].racine != NULL;
+     * qu'un texte posé a atteint la dalle.
+     * 🔴 ET `s_active` COMPTE AUSSI (revue du 2026-08-18) : c'est la leçon que
+     *    `case_poser` a apprise 400 lignes plus haut le 2026-08-16, et qui
+     *    n'avait pas été reportée ici. Quand LVGL est arrêté (`ui off`,
+     *    `scene <mire>`, `tear`), le mutex reste LIBRE et les racines restent
+     *    non-NULL : cette fonction annonçait donc « dessinee = oui » pour six
+     *    cases dont RIEN n'atteignait la dalle — pendant que le texte imprimé
+     *    par la commande explique que « NON » veut dire exactement ça. */
+    return idx >= 0 && idx < DN_UI_METRIQUES && s_active &&
+           s_wobj[idx].racine != NULL;
 }
 
 bool dn_ui_label_shown(void) { return s_label_shown; }

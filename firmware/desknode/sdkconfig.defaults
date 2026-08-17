@@ -223,8 +223,10 @@ CONFIG_LV_COLOR_DEPTH_16=y
 # héritée de dn1-2, qui demande des jambages FINS et ANTIALIASÉS pour se rejouer.
 #
 # 🔴 dn3-1 : MONTSERRAT_28 EST DÉSACTIVÉE. `main/fonts/dn_font_28.c` la remplace
-#    — même TTF, même bpp, mêmes drapeaux, mais avec le LATIN-1 COMPLET et 7
-#    icônes FontAwesome en plus. Plus rien dans le firmware ne référence
+#    — même TTF, même bpp, mêmes drapeaux, mais avec le LATIN-1 COMPLET et 10
+#    icônes FontAwesome en plus (dont 2 déjà symboles ⇒ 8 codepoints neufs ;
+#    disait « 7 », corrigé en revue le 2026-08-18 — les comptes font foi dans
+#    `main/fonts/dn_font.h`, qui les calcule). Plus rien dans le firmware ne référence
 #    `lv_font_montserrat_28` : la garder aurait coûté ses 37 248 o de données
 #    pour un symbole mort.
 CONFIG_LV_FONT_MONTSERRAT_28=n

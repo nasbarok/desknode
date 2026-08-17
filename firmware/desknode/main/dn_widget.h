@@ -120,6 +120,15 @@ typedef enum {
  * imprime ceci, et une étiquette qui ment est un défaut à part entière. */
 const char *dn_val_regime_nom(dn_val_regime_t r);
 
+/* LA couleur d'un régime — UNE seule définition pour tout le firmware.
+ * 🔴 Exposée le 2026-08-18 (revue de code) : les cases NUES peignaient
+ * `regime == REELLE ? blanc : gris`, ce qui rendait SIMULÉE **à l'identique**
+ * d'ABSENTE — or `widget pousser <idx>` sur une case nue est le chemin NOMINAL
+ * de l'instrument d'AC8. Un chiffre inventé s'affichait donc dans le gris que ce
+ * dépôt réserve à « aucune source », pendant que la console annonçait SIMULEE.
+ * AC3 exige trois régimes DISTINGUÉS : la convention ne doit exister qu'ICI. */
+lv_color_t dn_val_regime_couleur(dn_val_regime_t r);
+
 /* Une grandeur du widget. `unite` peut être NULL (aucune unité affichée). */
 typedef struct {
     const char *unite;  /* « % », « °C », « tr/min » — affichée après la valeur */
@@ -149,7 +158,13 @@ typedef struct {
 typedef struct {
     dn_val_regime_t regime;
     char txt[DN_WIDGET_GRANDEURS_MAX][DN_WIDGET_TXT_MAX];
-    int32_t brut[DN_WIDGET_GRANDEURS_MAX]; /* pour la jauge, unité du descripteur */
+    /* Valeur brute, pour la jauge — unité du descripteur.
+     * ⚠️ SEUL `brut[0]` est écrit et lu aujourd'hui (relevé en revue le
+     *    2026-08-18) : `case_poser` ne prend qu'un `brut0`, et l'indicateur ne
+     *    porte que sur la grandeur 0 (voir `indicateur` ci-dessous). Le tableau
+     *    est dimensionné pour N par cohérence avec `txt[]` et `valeur[]` — il
+     *    est PRÊT, pas mort, mais ne pas croire qu'il est alimenté. */
+    int32_t brut[DN_WIDGET_GRANDEURS_MAX];
     char secondaire[DN_WIDGET_SEC_MAX];    /* ligne libre, "" = rien à dire */
 } dn_widget_etat_t;
 
@@ -220,7 +235,13 @@ void dn_widget_oublier(dn_widget_t *w);
 /*
  * ── AC8 : LE GROUPAGE D'INVALIDATION, ET C'EST UN A/B, PAS UN RÉGLAGE ────────
  *
- * `false` (défaut) : chaque enfant modifié produit SA zone sale. LVGL NE FUSIONNE
+ * ⚠️ LE DÉFAUT EST `true` DEPUIS QUE W7 A ÉTÉ TRANCHÉ PAR LA MESURE. Cet en-tête
+ *    a annoncé `false` jusqu'au 2026-08-18 — il décrivait l'état d'AVANT l'A/B,
+ *    dans le document qu'AC1 désigne comme le contrat du module. Quelqu'un qui
+ *    rejouait la campagne en croyant partir de la branche fine mesurait DEUX
+ *    FOIS la même branche. Relevé en revue de code.
+ *
+ * `false` : chaque enfant modifié produit SA zone sale. LVGL NE FUSIONNE
  *   PAS — mesuré en dn2-1 : deux cases côte à côte dans la MÊME bande de 128
  *   lignes du draw buffer coûtent 2,0 flushes, pas 1,0. Un widget à N enfants
  *   qui changent coûterait donc N flushes, chacun attendant sa trame.

@@ -2423,16 +2423,29 @@ static int cmd_pc(int argc, char **argv)
 /*
  * ── `widget` — L'INSTRUMENT DU MODÈLE (dn3-1) ────────────────────────────────
  *
- * Il fait quatre choses, et AUCUNE n'est un travail long : la console EST le
- * transport PC depuis dn2-2, une commande qui dort couperait la liaison qu'elle
- * prétend observer (c'est le défaut mesuré de `cpu N`).
+ * Il fait SEPT choses. Aucune ne DORT — la console EST le transport PC depuis
+ * dn2-2, et une commande qui dort couperait la liaison qu'elle prétend observer
+ * (c'est le défaut mesuré de `cpu N`). Mais trois d'entre elles font un travail
+ * LONG, et c'est écrit ci-dessous plutôt que nié.
  *
  *   widget                  l'état des 6 cases : régime, valeurs, forme du mock
  *   widget groupe on|off    A/B d'AC8 — N zones sales fines vs 1 englobante
- *   widget opa <0..255>     A/B d'AC9 — opacité des CASES (reconstruit la scène)
- *   widget voile <0..255>   AC9 — opacité du voile plein écran
+ *   widget opa <0..255>     A/B d'AC9 — opacité des CASES        ⚠️ RECONSTRUIT
+ *   widget voile <0..255>   AC9 — opacité du voile plein écran   ⚠️ RECONSTRUIT
+ *   widget icone <0..3>     W4 — A/B du glyphe VENTILOS          ⚠️ RECONSTRUIT
  *   widget mock on|off      coupe le mock : la case redevient « -- » (témoin)
  *   widget demo on|off      AC1 — la 7e métrique FICTIVE, sans code de dessin
+ *   widget pousser <idx>    AC8 — UNE mise à jour synthétique, une par appel
+ *
+ * 🔴 LES TROIS « RECONSTRUIT » BLOQUENT LE REPL, DONC LE TRANSPORT PC (relevé en
+ *    revue le 2026-08-18 : ce docblock affirmait qu'AUCUNE sous-commande n'était
+ *    un travail long, trois lignes au-dessus de trois qui le sont). Elles
+ *    prennent `lvgl_port_lock(2000)` puis appellent `build_scene()`, qui détruit
+ *    et reconstruit LES DEUX racines — plus lourd qu'une transition, que §15.6
+ *    chiffre à 307-322 ms avec un plancher de rendu LVGL ~230 ms. Comparaison :
+ *    `i2c` bloque ~26 ms et le README le signale.
+ *    ⇒ NE PAS les appeler pendant une campagne de mesure de la liaison. Elles
+ *    sont faites pour un A/B à l'œil, entre deux campagnes, pas pendant.
  *
  * 🔴 TOUT CE QU'IL IMPRIME EST RELU DE L'ÉTAT RÉEL. Le régime vient de
  *    `dn_ui_regime()`, la forme du mock de `dn_ui_mock_forme()`, l'opacité de
@@ -2473,11 +2486,25 @@ static int cmd_widget(int argc, char **argv)
             printf("usage : widget groupe on|off\n");
             return 1;
         }
-        dn_widget_set_groupage(on);
+        /* ⚠️ PASSE PAR `dn_ui`, QUI PREND LE VERROU (revue 2026-08-18).
+         *    `dn_widget_set_groupage()` était appelée NUE depuis le REPL, alors
+         *    que `dn_widget.h` écrit que « les seuls appelants légitimes sont
+         *    les fonctions publiques de `dn_ui` et les callbacks de timer LVGL ».
+         *    C'était la seule exception non marquée du module. */
+        if (dn_ui_set_groupage(on) != ESP_OK) {
+            printf("verrou LVGL non pris — RIEN n'a change\n");
+            return 1;
+        }
+        /* Géométrie RELUE, pas récitée : « 225x156 = 35 100 px » était écrit en
+         * dur, alors que dn3-2 refait la géométrie (§15.2). */
         printf("invalidation : %s\n",
-               on ? "GROUPEE — 1 zone sale par widget (le conteneur, 225x156 = "
-                    "35 100 px)"
+               on ? "GROUPEE — 1 zone sale par widget (le conteneur)"
                   : "FINE — LVGL fait SES zones, une par enfant modifie");
+        if (on) {
+            int cw = 0, ch = 0;
+            dn_ui_case_dim(&cw, &ch);
+            printf("   soit %d x %d = %d px par mise a jour\n", cw, ch, cw * ch);
+        }
         printf("⚠️ `flush reset` MAINTENANT, puis attendre >= 3 cycles de source\n");
         printf("   avant `flush` : sinon la mesure melange les deux branches.\n");
         return 0;
@@ -2485,7 +2512,12 @@ static int cmd_widget(int argc, char **argv)
     if (argc == 3 && strcmp(argv[1], "icone") == 0) {
         char *fin = NULL;
         long n = strtol(argv[2], &fin, 0);
-        if (!fin || *fin != '\0' || dn_ui_set_icone_vent((int)n) != ESP_OK) {
+        /* ⚠️ `fin == argv[2]` : la CHAÎNE VIDE passait (revue 2026-08-18).
+         *    `!fin` est toujours faux — `strtol` renseigne TOUJOURS `endptr` —
+         *    et pour "" l'endptr vaut nptr avec `*fin == '\0'`. `widget icone ""`
+         *    basculait donc le glyphe et reconstruisait la scène. La convention
+         *    du fichier est celle-ci (`:94`, `:120`, `:2920`). */
+        if (fin == argv[2] || *fin != '\0') {
             printf("usage : widget icone <0..%d>\n", dn_ui_icones_vent_n() - 1);
             for (int i = 0; i < dn_ui_icones_vent_n(); i++) {
                 printf("   %d = %s\n", i, dn_ui_icone_vent_nom(i));
@@ -2493,6 +2525,21 @@ static int cmd_widget(int argc, char **argv)
             printf("⚠️ `fan` (0xF863) est ABSENT du FontAwesome du depot —\n");
             printf("   VERIFIE en le convertissant seul, pas deduit d'une table.\n");
             printf("   Il est arrive en FontAwesome 5.11, le .woff est anterieur.\n");
+            return 1;
+        }
+        /* 🔴 UN ÉCHEC DE VERROU N'EST PAS UNE ERREUR D'ARGUMENT (revue
+         *    2026-08-18) : les deux tombaient dans la même branche, et
+         *    l'opérateur lisait « usage : widget icone <0..3> » pour une
+         *    commande correctement tapée dont le seul tort était que LVGL était
+         *    occupé. Les sous-commandes voisines distinguent déjà les deux. */
+        esp_err_t err = dn_ui_set_icone_vent((int)n);
+        if (err == ESP_ERR_TIMEOUT) {
+            printf("verrou LVGL non pris — RIEN n'a change (reessayer)\n");
+            return 1;
+        }
+        if (err != ESP_OK) {
+            printf("index hors plage : widget icone <0..%d>\n",
+                   dn_ui_icones_vent_n() - 1);
             return 1;
         }
         printf("icone VENTILOS = %s — SCENE RECONSTRUITE\n",
@@ -2503,14 +2550,28 @@ static int cmd_widget(int argc, char **argv)
     if (argc == 3 && strcmp(argv[1], "pousser") == 0) {
         char *fin = NULL;
         long idx = strtol(argv[2], &fin, 0);
-        if (!fin || *fin != '\0' || idx < 0 || idx >= DN_UI_METRIQUES) {
+        if (fin == argv[2] || *fin != '\0' || idx < 0 ||
+            idx >= DN_UI_METRIQUES) {
             printf("usage : widget pousser <0..%d>\n", DN_UI_METRIQUES - 1);
-            printf("⚠️ CE QUE CETTE COMMANDE NE FAIT PAS : elle ne se retire\n");
-            printf("   pas. La case reste en SIMULEE jusqu'a ce que sa vraie\n");
-            printf("   source reparle, ou jusqu'au prochain `reboot`. Une case\n");
-            printf("   NUE n'a aucune source : elle restera donc SIMULEE.\n");
-            printf("   ⇒ rebooter avant tout constat owner sur l'aspect.\n");
             return 1;
+        }
+        /* 🔴 L'AVERTISSEMENT EST SUR LE CHEMIN NOMINAL depuis le 2026-08-18.
+         *    Il ne vivait QUE dans la branche d'erreur ci-dessus : celui qui
+         *    tape la commande CORRECTEMENT — donc tous ceux qui l'exécutent en
+         *    campagne — ne le voyait jamais. Or c'est lui qui gouverne la
+         *    validité du constat owner suivant.
+         *    ⚠️ Imprimé UNE SEULE FOIS par session : cette commande est appelée
+         *    des dizaines de fois de suite, et chaque octet sur le lien série
+         *    est du temps pendant lequel une source peut glisser un cycle
+         *    parasite dans la fenêtre de mesure. */
+        static bool s_pousser_dit;
+        if (!s_pousser_dit) {
+            s_pousser_dit = true;
+            printf("⚠️ `pousser` NE SE RETIRE PAS : la case reste SIMULEE jusqu'a\n");
+            printf("   ce que sa vraie source reparle, ou jusqu'au `reboot`. Une\n");
+            printf("   case NUE n'a aucune source : elle y restera.\n");
+            printf("   ⇒ rebooter avant tout constat owner sur l'aspect.\n");
+            printf("   (avertissement imprime une seule fois par session)\n");
         }
         uint32_t seq = dn_ui_pousser((int)idx);
         if (seq == 0) {
@@ -2530,9 +2591,20 @@ static int cmd_widget(int argc, char **argv)
             printf("usage : widget mock on|off\n");
             return 1;
         }
-        dn_ui_mock_set(on);
+        /* 🔴 L'ÉCHEC DE VERROU EST DIT (revue 2026-08-18) : `dn_ui_mock_set`
+         *    rendait `void` et avalait le timeout, pendant que ce `printf`
+         *    annonçait la bascule inconditionnellement — sur un `s_mock_on`
+         *    inchangé. Seule des quatre sous-commandes à verrou à mentir. */
+        if (dn_ui_mock_set(on) != ESP_OK) {
+            printf("verrou LVGL non pris — RIEN n'a change\n");
+            return 1;
+        }
         printf("mock VENTILOS %s — la case passe en %s\n", on ? "ARME" : "COUPE",
                on ? "SIMULEE" : "ABSENTE (« -- » grise)");
+        if (!on) {
+            printf("⚠️ une case POUSSEE (`widget pousser 4`) n'est PAS reprise :\n");
+            printf("   le tick ne revoque pas un acte delibere de l'operateur.\n");
+        }
         return 0;
     }
     if (argc == 3 && strcmp(argv[1], "demo") == 0) {
@@ -2563,7 +2635,11 @@ static int cmd_widget(int argc, char **argv)
         (strcmp(argv[1], "opa") == 0 || strcmp(argv[1], "voile") == 0)) {
         char *fin = NULL;
         long v = strtol(argv[2], &fin, 0);
-        if (!fin || *fin != '\0' || v < 0 || v > 255) {
+        /* ⚠️ `fin == argv[2]` : la CHAÎNE VIDE passait pour 0 (revue
+         *    2026-08-18) ⇒ `widget opa ""` mettait l'opacité des cases à ZÉRO et
+         *    reconstruisait la scène en annonçant « 0/255 (0 %) ». `!fin` ne
+         *    teste rien : `strtol` renseigne toujours `endptr`. */
+        if (fin == argv[2] || *fin != '\0' || v < 0 || v > 255) {
             /* BORNER ET REFUSER, jamais ecreter en silence : la regle du depot
              * (`touch int 30000` refuse au lieu d'annoncer 30 s et d'en scanner
              * 5). Un reglage ecrete rend une mesure etiquetee faux. */
@@ -2600,7 +2676,20 @@ static int cmd_widget(int argc, char **argv)
         return 1;
     }
 
-    printf("modele de widget (dn3-1) — 3 cases sur 6 le portent\n");
+    /* 🔴 COMPTÉ, PAS RÉCITÉ (revue 2026-08-18). Cette ligne disait « 3 cases sur
+     *    6 » en dur, TROIS lignes sous le docblock qui jure que tout est relu de
+     *    l'état réel — et le compte est disponible par la fonction que la boucle
+     *    ci-dessous appelle déjà. Ajouter la ligne de `k_desc[]` que ce module
+     *    présente comme LE point d'ajout d'une métrique faisait mentir la
+     *    première ligne de son propre instrument. */
+    int n_widgets = 0;
+    for (int i = 0; i < DN_UI_METRIQUES; i++) {
+        if (dn_ui_est_widget(i)) {
+            n_widgets++;
+        }
+    }
+    printf("modele de widget (dn3-1) — %d cases sur %d le portent\n", n_widgets,
+           DN_UI_METRIQUES);
     printf("invalidation : %s\n",
            dn_widget_groupage() ? "GROUPEE (1 zone englobante par widget)"
                                 : "FINE (N zones, LVGL decide)");
@@ -2630,9 +2719,14 @@ static int cmd_widget(int argc, char **argv)
          * faux. On paie donc les colonnes à la main. */
         printf("  %2d  ", i);
         colonnes(dn_ui_metrique_nom(i), 11);
-        printf("%-7s %-8s %-9s", d ? "WIDGET" : "nue",
-               dn_val_regime_nom(dn_ui_regime(i)),
-               dn_ui_case_dessinee(i) ? "oui" : "NON");
+        printf("%-7s ", d ? "WIDGET" : "nue");
+        /* ⚠️ ET LE RÉGIME AUSSI passe par `colonnes()` depuis le 2026-08-18 :
+         *    il était en `%-8s`, or « RÉELLE » et « SIMULÉE » sont ACCENTUÉS
+         *    depuis la même revue — 7 et 8 octets pour 6 et 7 colonnes. Le
+         *    défaut que le commentaire ci-dessus décrit, re-commis une ligne
+         *    plus bas que sa propre mise en garde. */
+        colonnes(dn_val_regime_nom(dn_ui_regime(i)), 9);
+        printf("%-9s", dn_ui_case_dessinee(i) ? "oui" : "NON");
         int n = d ? d->n_grandeurs : 1;
         for (int g = 0; g < n; g++) {
             const char *t = dn_ui_valeur_txt(i, g);
@@ -2653,12 +2747,21 @@ static int cmd_widget(int argc, char **argv)
     printf("   mesure. C'est le meme mensonge d'interface qu'un CPU fige a\n");
     printf("   47 %% pendant que la tour dort — en plus discret.\n");
     printf("⚠️ « dessinee = NON » : la case n'est sur AUCUN ecran en ce moment\n");
-    printf("   (modele REBUILD en vue detail). L'etat est CONSERVE et sera pose\n");
-    printf("   a la prochaine construction — mais rien n'atteint la dalle.\n");
-    printf("\nGPU/RAM/RESEAU sont NUES : elles n'ont pas le modele, et c'est le\n");
-    printf("TEMOIN NEGATIF d'AC8 — la seule facon de chiffrer une case-widget\n");
-    printf("contre une case nue sous le meme fps/bounce/draw buffer. Leur\n");
-    printf("regime est ABSENTE : aucune source ne les alimente, elles le DISENT.\n");
+    printf("   (modele REBUILD en vue detail), OU LVGL est arrete (`ui off`,\n");
+    printf("   `scene`, `tear`). L'etat est CONSERVE et sera pose a la prochaine\n");
+    printf("   construction — mais rien n'atteint la dalle.\n");
+    /* 🔴 LA LISTE DES CASES NUES EST RELUE (revue 2026-08-18) : « GPU/RAM/RESEAU »
+     *    était écrit en dur, dans la commande dont le docblock jure que rien
+     *    n'est récité. Une ligne de `k_widget[]` qui bascule, et la phrase ment. */
+    printf("\nCases NUES (temoin negatif d'AC8) :");
+    for (int i = 0; i < DN_UI_METRIQUES; i++) {
+        if (!dn_ui_est_widget(i)) {
+            printf(" %s", dn_ui_metrique_nom(i));
+        }
+    }
+    printf("\nElles n'ont pas le modele — c'est la seule facon de chiffrer une\n");
+    printf("case-widget contre une case nue sous le meme fps/bounce/draw buffer.\n");
+    printf("Aucune source ne les alimente, et elles le DISENT.\n");
     return 0;
 }
 
@@ -3413,12 +3516,20 @@ void dn_console_banner(void)
      * dépôt a déjà menti trois fois (« 5 kHz » pour 24 kHz, « FORCED T/H 8x »
      * sur des registres à 0x00, un checksum d'exemple faux) : chaque chiffre
      * ici vient de la fonction qui détient l'état. */
+    /* ⚠️ BOUCLE, pas six appels déroulés à la main (revue 2026-08-18) : le
+     *    numérateur était écrit `est_widget(0) + … + est_widget(5)` face à un
+     *    dénominateur `DN_UI_METRIQUES`. Porter DN_UI_METRIQUES à 7 ou 8 — ce
+     *    que le modèle PROMET — aurait affiché « 3/8 » en ignorant les cases au
+     *    delà de 5, sans la moindre erreur de compilation. */
+    int n_widgets = 0;
+    for (int i = 0; i < DN_UI_METRIQUES; i++) {
+        if (dn_ui_est_widget(i)) {
+            n_widgets++;
+        }
+    }
     printf("       widgets : %d/%d cases · invalidation « %s » · opa cases %u, "
            "voile %u\n",
-           (dn_ui_est_widget(0) ? 1 : 0) + (dn_ui_est_widget(1) ? 1 : 0) +
-               (dn_ui_est_widget(2) ? 1 : 0) + (dn_ui_est_widget(3) ? 1 : 0) +
-               (dn_ui_est_widget(4) ? 1 : 0) + (dn_ui_est_widget(5) ? 1 : 0),
-           DN_UI_METRIQUES,
+           n_widgets, DN_UI_METRIQUES,
            dn_widget_groupage() ? "groupée" : "fine", dn_widget_opa(),
            dn_ui_voile_opa());
     printf("\n");
