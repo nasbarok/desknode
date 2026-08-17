@@ -202,7 +202,7 @@ idf.py -p /dev/ttyACM0 flash monitor               # quitter le moniteur : Ctrl+
   | **`capteurs`** (dn2-1) | le **BME680** : état (VIVANT / MUET / jamais lu), valeurs + âge, cadence, cycle de mesure mesuré, compteurs **par cause** (i2c / donnée / bornes / **reconfigurations**). `capteurs gaz on|off` = l'A/B d'auto-échauffement à chaud. 🔴 **`capteurs simuler muet\|bornes\|config <n>`** rejoue une panne SANS toucher au connecteur (un Dupont ne supporte pas les insertions répétées) — l'injecteur ne falsifie que le VERDICT, jamais la lecture, et s'annonce bruyamment. ⚠️ **Elle ne déclenche AUCUNE mesure** : `bme680_get_data()` peut dormir 1 500 ms, et le REPL est le transport PC |
   | **`i2c`** (dn2-1) | le **bus vu de ses adresses** : `i2c` scanne 0x08..0x77, `i2c lire <addr> <reg> [n]` lit un registre (hexa). 🔴 **Chaque adresse trouvée est RE-SONDÉE 5 fois et le résultat publié `n/5`** — un scan à une passe fabrique des faux positifs, et il en a sorti un **à `0x76`, l'adresse du BME680, alors qu'aucun capteur n'était branché** (`hardware/…-capteurs-i2c.md` §13.2). Témoin positif intégré : la commande conclut elle-même sur `0x20`+`0x5D`, et un scan qui ne les voit pas est un instrument cassé. ⚠️ bloque le REPL — donc le transport PC — pendant sa durée (~26 ms) |
   | **`pc`** (dn2-2) | la **liaison PC** : état (VIVANTE / MORTE / jamais reçue), dernière valeur + son âge, compteurs (trames valides, doublons, pertes de seq, **resynchros**, reprises, rejets **par cause** — ⚠️ « tronquée » = la fin de ligne est PERDUE, **« trop longue »** = la ligne est COMPLÈTE mais dépasse 63 o, deux diagnostics opposés), latence acceptation→label. `pc reset` remet les compteurs **et oublie le seq** (sans ça, une campagne relancée avec la trame d'exemple retombait en doublon et mesurait du vide). **`pc $DN,…`** ingère UNE trame — c'est le dialecte de l'agent en branche A, et l'injecteur des campagnes de bruit |
-  | **`widget`** (dn3-1) | le **modèle de case** : pour chacune des 6 cases, sa **forme** (widget / nue), son **régime** (RÉELLE / SIMULÉE / ABSENTE), si elle est **dessinée en ce moment**, et ses valeurs — le tout **RELU de l'état réel**, jamais récité d'une constante. Plus la forme **annoncée** du mock (rampe triangulaire 800→1600 tr/min, période 20 s) et l'icône active. Sous-commandes : **`widget groupe on\|off`** (l'A/B d'invalidation d'AC8, §15.5 — rejouable sans reflasher), **`widget opa <0..255>`** et **`widget voile <0..255>`** (l'A/B d'opacité, §15.6 ; **bornées et REFUSÉES** hors plage, jamais écrêtées), **`widget mock on\|off`** (couper le mock rend la case ABSENTE : c'est le témoin que le mock EST sa seule source), **`widget icone <0..3>`** (l'A/B du glyphe VENTILOS, `fan` étant absent du FontAwesome du dépôt), **`widget demo on\|off`** (la **7ᵉ métrique fictive** d'AC1 : une case complète produite par le même appel que les autres, depuis un descripteur et **rien d'autre**), **`widget pousser <idx>`** (UNE mise à jour synthétique — ⚠️ **une par appel**, sinon les N invalidations tombent dans le même cycle LVGL et LVGL les fusionne ; c'est l'appelant PC qui les espace). ⚠️ **`pousser` ne se retire pas** : la case reste SIMULÉE jusqu'à ce que sa vraie source reparle ou jusqu'au `reboot` — **rebooter avant tout constat owner sur l'aspect**. ⚠️ `opa`, `voile` et `icone` **reconstruisent la scène**, ce qui retire le stimulus `anim` et la démo, et ramène la vue au dashboard |
+  | **`widget`** (dn3-1) | le **modèle de case** : pour chacune des 6 cases, sa **forme** (widget / nue), son **régime** (RÉELLE / SIMULÉE / ABSENTE), si elle est **dessinée en ce moment**, et ses valeurs — le tout **RELU de l'état réel**, jamais récité d'une constante. Plus la forme **annoncée** du mock (rampe triangulaire 800→1600 tr/min, période 20 s) et l'icône active. Sous-commandes : **`widget groupe on\|off`** (l'A/B d'invalidation d'AC8, §15.5 — rejouable sans reflasher), **`widget opa <0..255>`** et **`widget voile <0..255>`** (l'A/B d'opacité, §15.6 ; **bornées et REFUSÉES** hors plage, jamais écrêtées), **`widget mock on\|off`** (couper le mock rend la case ABSENTE : c'est le témoin que le mock EST sa seule source), **`widget icone <0..3>`** (l'A/B du glyphe VENTILOS, `fan` étant absent du FontAwesome du dépôt), **`widget demo on\|off`** (la **7ᵉ métrique fictive** d'AC1 : une case complète produite par le même appel que les autres, depuis un descripteur et **rien d'autre**), **`widget pousser <idx>`** (UNE mise à jour synthétique — ⚠️ **une par appel**, sinon les N invalidations tombent dans le même cycle LVGL et LVGL les fusionne ; c'est l'appelant PC qui les espace). ⚠️ **`pousser` ne se retire pas** : la case reste SIMULÉE jusqu'à ce que sa vraie source reparle ou jusqu'au `reboot` — **rebooter avant tout constat owner sur l'aspect**. ⚠️ `opa`, `voile` et `icone` **reconstruisent la scène**, ce qui retire le stimulus `anim` et la démo, et ramène la vue au dashboard. 🔴 **Et ce sont les trois seules sous-commandes de `widget` qui BLOQUENT le REPL** — donc le transport PC (dn2-2) — le temps d'un `lvgl_port_lock(2000)` **plus** un `build_scene()` complet : les deux racines sont détruites et reconstruites, soit plus lourd qu'une transition, que §15.6 chiffre à **307-322 ms** avec un plancher de rendu LVGL ~230 ms. Comparaison : `i2c` bloque ~26 ms. Ne pas les appeler pendant une campagne de mesure de la liaison (relevé en revue de code le 2026-08-18 : le docblock de `cmd_widget` affirmait qu'aucune sous-commande n'était un travail long) |
   | **`wifi`** (dn2-2) | la maquette **branche B**, ÉCARTÉE par la fourche (verrou RAM, `hardware/…-liaison-pc.md` §12.2). **Non compilée par défaut** : la commande répond « maquette B non compilee » avec la recette de re-mesure |
   ⚠️ Le log de ce projet ne part **plus** sur le header UART GPIO43/44 : la console primaire est
   passée sur l'USB pour pouvoir RECEVOIR des commandes. Pour retrouver le header, voir le
@@ -623,7 +623,13 @@ leur `.c`), soit ASCII + le signe degré + la puce, **et rien d'autre**. LVGL ne
 glyphe absent **et ne se plaint pas** — « RÉSEAU », « HUMIDITÉ », « AOÛT » y perdaient leur lettre.
 
 `main/fonts/dn_font_14.c` et `dn_font_28.c` les remplacent : **ASCII + latin-1 complet + la puce +
-les 61 `LV_SYMBOL_*` + 9 icônes FontAwesome**. Ce sont des **sur-ensembles stricts** des built-ins.
+les 60 `LV_SYMBOL_*` uniques + 10 icônes FontAwesome** — dont **2 sont déjà des symboles** (`cog`
+0xF013, `tint` 0xF043), soit **8 codepoints neufs** et **68 au `-r` FontAwesome final**. Ce sont des
+**sur-ensembles stricts** des built-ins.
+⚠️ **« 61 » est le nombre d'entrées BRUTES de la liste amont** : elle contient un **doublon** (61452
+deux fois), d'où **60** uniques. Ces nombres sont désormais **calculés** par le générateur et
+réinjectés dans `dn_font.h` — cinq endroits du dépôt en annonçaient **trois valeurs différentes,
+aucune juste** (revue de code du 2026-08-18).
 
 ### Régénérer
 
@@ -639,12 +645,25 @@ python3 tools/gen_font_dn.py --mesure   # compare les plages et le kerning, ne g
 
 - **Mesuré depuis ce WSL le 2026-08-17** : `node v24.14.0`, `npm 11.9.0`,
   `npx --yes lv_font_conv --version` → **1.5.3** (rc=0).
-- Le générateur **lit** les 61 codepoints de symboles dans
+- Le générateur **lit** les codepoints de symboles dans
   `managed_components/lvgl__lvgl/scripts/built_in_font/built_in_font_gen.py` — il ne les recopie
   **jamais**. Une liste recopiée dérive, et sa dérive est **silencieuse** : `LV_SYMBOL_LIST` (bandeau
   MENU) et `LV_SYMBOL_LEFT` (chevron de retour) disparaîtraient sans un mot.
 - Il **relit** ensuite le `.c` produit et **échoue bruyamment** si un symbole, une icône ou un témoin
   accentué manque. Une génération qui « réussit » sans ses glyphes est l'étiquette qui ment.
+  🔴 **Et cette garde a été aveugle une fois** (corrigée le 2026-08-18, revue de code) : elle testait
+  les **bornes** des cmaps au lieu de leur **contenu**, or la cmap qui porte les symboles est de type
+  **SPARSE** — elle borne `8226 → 63650` en n'y portant que **69** codepoints. Tout `syms` passait
+  donc quoi qu'il arrive, **`fan` (0xF863) compris** — le glyphe absent que ce README documente.
+  `codepoints_du_c()` décode maintenant `unicode_list_N` (offsets depuis `range_start`). **Contrôlé
+  après correctif** : `fan` → absent, `Ā` (hors latin-1) → absent, les 68 + les témoins → présents,
+  **260 codepoints réellement portés** par police.
+- ⚠️ **Deux témoins ne viennent PAS de l'amont, et c'est délibéré** : `LV_SYMBOL_LIST` (U+F00B) et
+  `LV_SYMBOL_LEFT` (U+F053) sont écrits **en dur** dans `SYMBOLES_TEMOINS`. Un témoin tiré de la
+  chose qu'il témoigne n'est pas un témoin — sans eux, un retrait amont serait retiré de la police
+  **et** de la liste de contrôle, et le script annoncerait un succès.
+- `--mesure` **vérifie aussi** chaque police qu'il chiffre (correctif du 2026-08-18 : il ne
+  vérifiait rien, alors que c'est lui qui a produit le tableau ayant tranché **W5**).
 - `dn_font.h` (les macros `DN_ICONE_*`) est **généré depuis le même dictionnaire** que la police :
   une macro **ne peut pas** pointer un codepoint que la police n'aurait pas.
 - ⚠️ `managed_components/` est **gitignoré mais régénéré** par `idf.py` depuis `main/idf_component.yml`,
@@ -672,7 +691,10 @@ Détail, tableau des plages et les **deux erreurs de la story corrigées par la 
 arrivé en **FontAwesome 5.11** et le fichier embarqué est antérieur. **Vérifié en le convertissant
 seul**, pas déduit d'une table. Quatre substituts sont embarqués **ensemble** et commutables à chaud
 (`widget icone`) ; **`cog` a été retenu** par constat owner — et il est **gratuit**, `0xF013` étant
-déjà l'un des 61 symboles injectés par le générateur amont.
+déjà l'un des 60 symboles injectés par le générateur amont.
+⚠️ **`main/fonts/dn_font.h` annonçait `sync-alt` jusqu'au 2026-08-18**, alors que `k_desc[]` pose
+`DN_ICONE_COG`. Le `.h` étant **généré**, la phrase revenait à chaque régénération : le correctif est
+dans `tools/gen_font_dn.py` (`ENTETE_MODELE`), pas dans le `.h`.
 
 ⛔ **Aucun asset image pour les icônes** : `dn_asset` ne gère qu'**un** asset, et la partition
 `assets` n'a que ~434 Ko libres — que **dn3-3 réclame déjà**.

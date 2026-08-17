@@ -2012,7 +2012,7 @@ n'est **pas** le même arbitrage que l'asset Living PCB, dont le générateur es
 demanderait de patcher un composant managé — gitignoré et régénéré, donc un correctif qui ne
 survivrait pas au premier `idf.py reconfigure`. Ses 13 596 o sont payés **délibérément**.
 
-### 15.4 Les icônes — 7 glyphes, zéro asset, et le manquant est nommé
+### 15.4 Les icônes — 10 glyphes dont 8 neufs, zéro asset, et le manquant est nommé
 
 🔴 **`0xF863` (`fan`) est ABSENT** du `FontAwesome5-Solid+Brands+Regular.woff` du dépôt : il est
 arrivé en FontAwesome **5.11** et le fichier embarqué est antérieur. **Vérifié en le convertissant
@@ -2026,8 +2026,33 @@ thermometer · `0xF043` tint · `0xF72E` wind · `0xF021` sync · `0xF085` cogs 
 **W4 tranché par A/B sur la dalle**, quatre substituts embarqués **ensemble** et commutables à chaud
 (`widget icone`) — un A/B qui aurait exigé trois reflashs coûte trois observations à l'owner pour un
 rendement qui baisse. `sync-alt` : *« ne dit rien »*. `wind` : écarté. **`cog` RETENU.**
-🔴 **Et il est GRATUIT** : `0xF013` est **déjà** l'un des 61 codepoints que `built_in_font_gen.py`
+🔴 **Et il est GRATUIT** : `0xF013` est **déjà** l'un des codepoints que `built_in_font_gen.py`
 injecte (61459). L'icône retenue ne coûte **aucun glyphe** de plus que la police de base.
+
+**Le compte exact, CALCULÉ le 2026-08-18 et non plus récité** — le dictionnaire `ICONES` porte
+**10** entrées, dont **2** (`cog` 0xF013 et `tint` 0xF043) sont **déjà** des symboles `LV_SYMBOL_*`
+⇒ **8 codepoints neufs**, et **68** au `-r` FontAwesome final. La liste amont déclare **61** entrées
+mais en contient **60 uniques** (doublon `61452`).
+⚠️ **Ce paragraphe corrige cinq étiquettes fausses relevées en revue de code** : ce titre disait
+« 7 glyphes », le README « 9 icônes », `dn_ui.c` et `sdkconfig.defaults` « 7 icônes », et
+`dn_font.h` « 61 symboles + 10 icônes » — **aucune n'était simultanément juste**. Les nombres sont
+désormais produits par `tools/gen_font_dn.py` et réinjectés dans le `.h` généré.
+
+🔴 **ET LA GARDE QUI VÉRIFIAIT LEUR PRÉSENCE ÉTAIT AVEUGLE** (corrigée le 2026-08-18). `verifier()`
+testait les **bornes** de chaque cmap. Or la cmap qui porte les symboles et les icônes est de type
+**`SPARSE_TINY`** : dans le `.c` livré elle vaut `.range_start = 8226, .range_length = 55425,
+.list_length = 69` — elle **borne** 8226 → 63650 en n'y portant que **69** codepoints. Le test de
+bornes rendait donc `True` pour la **totalité** de `syms`, **`couvert(0xF863)` compris** :
+**`fan`, le glyphe dont l'absence justifie toute cette section, aurait passé la vérification.**
+Seuls les témoins accentués étaient réellement contrôlés (cmaps denses 32..126 et 160..255).
+⇒ `codepoints_du_c()` décode maintenant `unicode_list_N` (offsets depuis `range_start`), et échoue
+bruyamment si `list_length` et la liste se contredisent. **Contrôlé après correctif, sur les deux
+polices livrées** : `fan` → **absent** · `Ā` (hors latin-1) → **absent** · `cog`, `LV_SYMBOL_LIST`,
+`LV_SYMBOL_LEFT`, `É` → **présents** · **260 codepoints réellement portés** par police.
+⚠️ Deuxième correctif du même bloc : `--mesure` **ne vérifiait rien** alors que c'est lui qui a
+produit le tableau de §15.3 ayant tranché **W5** ; et les symboles étaient re-testés contre la liste
+**lue dans l'amont** — un témoin tiré de la chose qu'il témoigne n'en est pas un, d'où deux
+codepoints (`LV_SYMBOL_LIST` U+F00B, `LV_SYMBOL_LEFT` U+F053) écrits **en dur** et **délibérément**.
 
 ⛔ **Aucun asset image**, et le conflit est porté au ledger : `dn_asset` ne gère qu'**un** asset, et
 la partition `assets` (1 MiB, 614 400 o occupés) n'a que ~434 Ko libres — **que dn3-3 réclame déjà
@@ -2038,6 +2063,30 @@ pour trois déclinaisons de 614 400 o : 3 × 614 400 > 1 MiB.**
 **Protocole** : `flush reset` avant chaque relevé · 25 mises à jour forcées sur **une seule** case
 (`widget pousser`) · mock et capteur isolés · aire, flushes, `copie_us` et `attente_us` publiés
 **séparément**.
+
+> 🔴 **RÉSERVE POSÉE PAR LA REVUE DE CODE DU 2026-08-18 — LE CAS (a′) EST À REJOUER.**
+> `indicateur = true` n'existe que sur **`VENTILOS`** (`dn_ui.c:187-193`) : le cas **(a′) « widget
+> MONO avec jauge » EST donc la case 4**, celle que le mock possède. Or « mock isolé » veut dire
+> `widget mock off` — et c'est **exactement** ce réglage qui arme un **second écrivain** : après
+> chaque `widget pousser 4`, le tick 1 Hz de `mock_tick_nolock` (`dn_ui.c:2142-2148`) voit
+> `regime != DN_VAL_ABSENTE` et **repose `ABSENTE`**, soit **un redessin de plus par poussée**, jamais
+> compté comme une poussée.
+> ⇒ C'est le défaut de `63344fc` **dans son angle mort** : le correctif a fermé le repeint *au repos*,
+> pas le repeint *après poussée*. La règle du dépôt s'applique — *« un correctif qui touche un
+> instrument invalide rétroactivement ce qu'il a publié »*.
+> **Portée** : la ligne (a′) et le titre « −64 % », plus l'écart (a)→(a′) attribué à la jauge.
+> **Non touchés** : (c) case nue (aucune source) et (a) `CPU` (`pc` jamais reçue).
+> **(b) `AMBIANCE` est à instruire** : `dn_capteurs` y écrit toutes les 5 s et « capteur isolé »
+> n'est défini nulle part.
+> **Verdict owner (2026-08-17) : neutraliser le tick, rejouer (a′), instruire (b).**
+> ⛔ **dn3-2 ne doit pas dépenser (a′) avant cette passe.**
+>
+> 🔴 **ET DEUX DES SEPT GRANDEURS EXIGÉES PAR AC8 MANQUENT ICI : `timeouts` ET `noops`.**
+> `dn_ui.h:174` documente `timeouts` comme *« instrument **suspect** si non nul »*, et
+> `dn_ui.h:175-177` documente `noops` comme *« **à SOUSTRAIRE du dénominateur** des moyennes
+> temporelles »* — c'est-à-dire des colonnes **ms/cycle** ci-dessous. Sans eux, **le dénominateur du
+> legs chiffré n'est pas vérifiable**. `flush reset` puis `flush` les rend déjà : aucun code neuf
+> n'est nécessaire. **Verdict owner : les relever et compléter ce tableau**, dans la même passe.
 
 ⚠️ **L'injecteur pousse UNE fois par appel, et c'est structurel** : une boucle de *N* poussées dans
 la commande aurait fait tomber les *N* invalidations dans le **même cycle LVGL de 33 ms**. LVGL les
