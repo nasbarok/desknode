@@ -1,7 +1,9 @@
 # DeskNode
 
-Mini-display tactile 2,8" (Waveshare **ESP32-S3-Touch-LCD-2.8B**, 480×640 IPS portrait) monté sur
-la façade de la tour PC (NZXT Phantom 630). Affiche en continu 6 métriques — CPU, GPU, RAM,
+Mini-display tactile 2,8" (Waveshare **ESP32-S3-Touch-LCD-2.8B**, 480×640 IPS portrait) **posé à
+côté de la tour PC** (décision owner du 2026-08-17 — le brief dit encore « monté sur la façade du
+NZXT Phantom 630 », c'est périmé : pas de support imprimé, pas de passage de câble interne, et le
+capteur mesure l'ambiance là où il est posé, ce qui est assumé). Affiche en continu 6 métriques — CPU, GPU, RAM,
 réseau (via un agent Windows) + température, humidité (capteurs I²C locaux) — avec deux états
 visuels (**Ambient** H24 / **Actif** au toucher) et une identité « **Living PCB** ».
 

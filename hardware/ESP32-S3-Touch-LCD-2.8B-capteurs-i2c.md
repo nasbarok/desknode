@@ -409,9 +409,18 @@ une compensation du biais — laquelle exigerait de le caractériser en tempéra
 soit une campagne à elle seule. ⚠️ **Et un offset ne se persiste PAS en NVS en régime (D4).**
 
 ⚠️ **Ce que cet A/B ne mesure PAS** : l'échauffement dû à la **proximité de la carte** (dalle RGB,
-rétroéclairage, S3 à 240 MHz), qui est un tout autre terme. Le capteur est ici sur fils volants,
-écarté. Le montage définitif dans la façade d'une tour de jeu est **dn4-1**, et il faudra le
-re-mesurer là-bas.
+rétroéclairage, S3 à 240 MHz), qui est un tout autre terme.
+
+> ✅ **ET CETTE QUESTION EST FERMÉE PAR DÉCISION OWNER (2026-08-17), PAS PAR UNE MESURE.**
+> Le module sera **POSÉ À CÔTÉ de la tour**, pas monté dans la façade du Phantom 630 — verbatim :
+> *« y aura pas de montage définitif dans le phantom, il sera posé à côté »*. Et l'owner assume
+> explicitement que le capteur mesure la température **à l'endroit où il est** : *« c'est conscient
+> que ça prend la temp au niveau du capteur donc c'est ok »*.
+> ⇒ **Il n'y a donc rien à re-mesurer en dn4-1** sur ce point : pas de flux d'air chaud de boîtier,
+> pas de support imprimé, pas de passage de câble interne. Le legs thermique que cette section
+> annonçait est **annulé**.
+> ⚠️ **Le README et le brief disent encore « monté sur la façade »** — c'est désormais faux et
+> corrigé au README. Le **brief** relève d'un correct-course, pas d'une réécriture silencieuse.
 
 ## 13.10 🔴 LE CAPTEUR FANTÔME — le mode de panne que personne n'avait imaginé
 
@@ -533,14 +542,28 @@ Deux garanties de conception, parce qu'un injecteur qui ment est pire que pas d'
 
 - **Le driver** : `k0i05/esp_bme680 == 1.2.7` épinglé au manifeste, il compile (§13.6 ter).
 
-**Restant, dans l'ordre :**
+- **La barrette est SOUDÉE** (§13.6 bis) : le contact est une propriété du montage, plus un geste.
+- **Le module** `dn_capteurs` : tâche dédiée, cadence raisonnée, état + péremption, compteurs par
+  cause, garde de reconfiguration, injecteur de fautes.
+- **Les cases** `TEMP.` et `HUMIDITE` vivent, constatées à l'œil, **image stable** sous rafales I²C.
+- **Les budgets** (§13.8) et **l'A/B du chauffage** (§13.9).
+- **Le mode de panne « capteur fantôme »** (§13.10), que rien n'avait anticipé.
 
-1. **SOUDER la barrette** (6 broches, ou les 4 utiles) — préalable à toute campagne. Le contact
-   tenait sans les mains en fin de séance (`0x77` à 5/5 sur 6 passes), mais c'est un **état**, pas
-   une propriété du montage.
-2. Après soudure : re-scan de confirmation (`0x77` attendu à 5/5 **sans** les mains), puis le
-   module `dn_capteurs` (AC6/AC7), les cases du dashboard (AC8), l'A/B chauffage (AC9) et les
-   budgets (AC10) — **dont le coût binaire réel du composant**, qui n'existe pas tant que rien ne
-   l'appelle.
-3. Les 3 autres breakouts (BH1750, VL53L0X, INA219) ne sont **ni inventoriés ni branchés** — une
-   variable à la fois (décision owner **D2-1a**), ils sont à dn4-1.
+**Ce qui reste, et à qui :**
+
+1. **dn4-1** — les 3 autres breakouts (BH1750 `0x23`, VL53L0X `0x29`, INA219 `0x40`) : **ni
+   inventoriés ni branchés**, une variable à la fois (décision owner **D2-1a**). Ils se
+   ré-arbitrent chacun sur le critère 1 de §13.6 ter (compatibilité avec le bus existant) —
+   **rien n'oblige à rester chez `k0i05`**. ⚠️ Et ils feront une **campagne physique** : l'injecteur
+   de §13.11 ne découvre pas les modes de panne qu'on n'a pas imaginés.
+2. **dn3-1 / dn3-2** — la vue **détail** de `TEMP.`/`HUMIDITE` reste **factice** (comme celle de
+   CPU depuis dn2-2, décision owner R1) ; le legs de flush de §13.8 ; et la **fusion des deux cases
+   en une « Ambiance »** demandée par l'owner le 2026-08-17, qui libère une 6ᵉ place — **à cadrer
+   en correct-course**, c'est un changement de brief.
+3. **Correct-course** — l'affichage du **gaz**, qui renverse la décision mesurée de §13.9
+   (+0,3 °C et −2 pts de RH) et bute sur deux défauts du composant tiers **plus** le fait que la
+   résistance de gaz du BME680 est **relative** (ligne de base + rodage requis).
+
+⚠️ **Ce que dn2-1 change pour dn4-1, en une ligne** : le bus porte désormais **5 occupants**, la
+commande `i2c` en fait l'inventaire en une seconde, `dn_capteurs` est le patron à étendre, et la
+RAM interne libre est passée de 113 847 à **109 295 o**.

@@ -135,7 +135,7 @@ sorti par le périphérique LCD_CAM. Le framebuffer étant en RGB565
 | Signal | Broche | Note |
 |---|---|---|
 | HSYNC / VSYNC / DE / PCLK | GPIO **38 / 39 / 40 / 41** | vérifiés par l'affichage |
-| I²C (bus unique) | SDA = GPIO**15**, SCL = GPIO**7** | ⚠️ **la fréquence se pose PAR DEVICE**, pas par le bus (voir l'encart) ; TCA9554 répond à **0x20** |
+| I²C (bus unique) | SDA = GPIO**15**, SCL = GPIO**7** | ⚠️ **la fréquence se pose PAR DEVICE**, pas par le bus (voir l'encart). **Occupants MESURÉS au scan** (dn2-1) : TCA9554 **0x20** · **RTC PCF85063 `0x51`** · GT911 **0x5D** · **IMU QMI8658 `0x6B`** *(et non 0x6A)* · **BME680 `0x77`**. Détail : fichier frère §13.3 |
 | 3-wire SPI (init ST7701S) | SDA = GPIO**1**, SCL = GPIO**2** | ⛔ **partagées avec le slot TF** — ne jamais initialiser la SD |
 | **LCD_RST** | expander **bit 0** (EXIO1) | derrière le TCA9554 |
 | **TP_RST** | expander **bit 1** (EXIO2) | *voir §1.3* |
