@@ -75,3 +75,12 @@ dependencies:
   ##    régénération par dotnet-gitversion, gardé par des templates absents chez
   ##    nous, donc inerte). À surveiller à chaque mise à jour d'IDF.
   k0i05/esp_bme680: "==1.2.7"
+  ## ⚠️ ÉPINGLÉ EXPLICITEMENT BIEN QUE TRANSITIF — correctif de la revue du
+  ##    2026-08-17. Le README l'annonçait déjà `==1.2.7` dans sa colonne
+  ##    « Épinglé », mais RIEN ne l'épinglait : `esp_bme680` le déclare en
+  ##    `>=0.0.1`, et `dependencies.lock` le résolvait comme tel. Or le lock et
+  ##    `managed_components/` sont GITIGNORÉS ⇒ ce manifeste est la seule autorité
+  ##    versionnée, et elle disait le contraire de la doc. Même précédent assumé
+  ##    que `espressif/esp_lcd_touch` : sans cette ligne, le résolveur prend
+  ##    « la dernière » — sur la seule chaîne non-Espressif du dépôt.
+  k0i05/esp_type_utils: "==1.2.7"
