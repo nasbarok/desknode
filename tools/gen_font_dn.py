@@ -89,9 +89,18 @@ ICONES = {
     "desktop":          0xF108,  # GPU
     "memory":           0xF538,  # RAM
     "network-wired":    0xF6FF,  # RESEAU
-    "sync-alt":         0xF2F1,  # VENTILOS — substitut de `fan` (0xF863 ABSENT)
     "thermometer-half": 0xF2C9,  # AMBIANCE (température)
     "tint":             0xF043,  # AMBIANCE (humidité)
+    # ── LES QUATRE CANDIDATS AU VENTILATEUR ──────────────────────────────────
+    # `fan` (0xF863) est ABSENT du .woff du dépôt. Les quatre substituts sont
+    # EMBARQUÉS ENSEMBLE et commutables à chaud (`widget icone <0..3>`) : le
+    # choix est un constat owner sur la dalle, pas une intuition — et un A/B qui
+    # demande trois reflashs coûte trois observations à l'owner pour un rendement
+    # qui baisse. Les 4 glyphes coûtent ~3 ko sur une partition libre à 79 %.
+    "sync-alt":         0xF2F1,  # deux flèches en rotation
+    "wind":             0xF72E,  # lignes de souffle
+    "cogs":             0xF085,  # engrenages
+    "cog":              0xF013,  # un engrenage
 }
 
 TAILLES = (14, 28)

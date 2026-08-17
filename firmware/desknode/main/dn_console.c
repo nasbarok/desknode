@@ -2482,11 +2482,34 @@ static int cmd_widget(int argc, char **argv)
         printf("   avant `flush` : sinon la mesure melange les deux branches.\n");
         return 0;
     }
+    if (argc == 3 && strcmp(argv[1], "icone") == 0) {
+        char *fin = NULL;
+        long n = strtol(argv[2], &fin, 0);
+        if (!fin || *fin != '\0' || dn_ui_set_icone_vent((int)n) != ESP_OK) {
+            printf("usage : widget icone <0..%d>\n", dn_ui_icones_vent_n() - 1);
+            for (int i = 0; i < dn_ui_icones_vent_n(); i++) {
+                printf("   %d = %s\n", i, dn_ui_icone_vent_nom(i));
+            }
+            printf("⚠️ `fan` (0xF863) est ABSENT du FontAwesome du depot —\n");
+            printf("   VERIFIE en le convertissant seul, pas deduit d'une table.\n");
+            printf("   Il est arrive en FontAwesome 5.11, le .woff est anterieur.\n");
+            return 1;
+        }
+        printf("icone VENTILOS = %s — SCENE RECONSTRUITE\n",
+               dn_ui_icone_vent_nom((int)n));
+        printf("⚠️ la reconstruction a retire le stimulus `anim` et la demo.\n");
+        return 0;
+    }
     if (argc == 3 && strcmp(argv[1], "pousser") == 0) {
         char *fin = NULL;
         long idx = strtol(argv[2], &fin, 0);
         if (!fin || *fin != '\0' || idx < 0 || idx >= DN_UI_METRIQUES) {
             printf("usage : widget pousser <0..%d>\n", DN_UI_METRIQUES - 1);
+            printf("⚠️ CE QUE CETTE COMMANDE NE FAIT PAS : elle ne se retire\n");
+            printf("   pas. La case reste en SIMULEE jusqu'a ce que sa vraie\n");
+            printf("   source reparle, ou jusqu'au prochain `reboot`. Une case\n");
+            printf("   NUE n'a aucune source : elle restera donc SIMULEE.\n");
+            printf("   ⇒ rebooter avant tout constat owner sur l'aspect.\n");
             return 1;
         }
         uint32_t seq = dn_ui_pousser((int)idx);
@@ -2572,6 +2595,8 @@ static int cmd_widget(int argc, char **argv)
     if (argc != 1) {
         printf("usage : widget | groupe on|off | opa <0..255> | voile <0..255>\n");
         printf("        | mock on|off | demo on|off | pousser <idx>\n");
+        printf("        | icone <0..%d>  (A/B du glyphe VENTILOS, W4)\n",
+               dn_ui_icones_vent_n() - 1);
         return 1;
     }
 
@@ -2588,6 +2613,8 @@ static int cmd_widget(int argc, char **argv)
     printf("mock VENTILOS : %s · rampe TRIANGULAIRE %d -> %d tr/min · periode "
            "%d s · pas 1 s\n",
            dn_ui_mock_on() ? "ARME" : "COUPE", mn, mx, per);
+    printf("icone VENTILOS : %s   (W4 — `fan` 0xF863 est ABSENT du .woff)\n",
+           dn_ui_icone_vent_nom(dn_ui_icone_vent()));
     printf("   (forme RELUE des constantes qui le pilotent. La valeur VARIE :\n");
     printf("    un mock fige serait indiscernable d'un affichage bloque.)\n");
 
@@ -3321,7 +3348,7 @@ static const esp_console_cmd_t k_cmds[] = {
      * qu'on ne trouve que depuis la carte n'est pas documentée. */
     DN_CMD("widget",
            "widget | groupe on|off | opa <n> | voile <n> | mock on|off | demo "
-           "on|off | pousser <n> — modèle de case (dn3-1)",
+           "on|off | pousser <n> | icone <n> — modèle de case (dn3-1)",
            cmd_widget),
     DN_CMD("aide", "cette aide", cmd_help),
 };

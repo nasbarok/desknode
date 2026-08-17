@@ -236,12 +236,22 @@ void dn_widget_set_groupage(bool on);
 bool dn_widget_groupage(void);
 
 /*
- * ── AC9 : L'OPACITÉ, ET C'EST AUSSI UN A/B ───────────────────────────────────
- * Opacité des CASES (conteneurs). `LV_OPA_COVER` (255) supprime le re-blit du
- * fond sous chaque case — gratuit en mémoire, coûteux en esthétique : le Living
- * PCB ne transparaîtrait plus DANS les cases. `LV_OPA_70` (178, relu de lv_color.h:49) est l'état des
- * lieux, monté de 40 % après le constat owner « les pistes claires mangeaient
- * le texte blanc » (2026-08-16).
+ * ── AC9/W8 : L'OPACITÉ DES CASES — A/B JOUÉ, ET L'OWNER A TRANCHÉ ────────────
+ * `LV_OPA_COVER` (255) supprime le re-blit du fond sous chaque case.
+ * MESURÉ le 2026-08-17, `nav ab 20` de chaque côté, n=40 :
+ *     translucide 178 -> 321,8 ms de moyenne (293,8 / 369,9)
+ *     OPAQUE  255 -> 299,9 ms de moyenne (267,0 / 343,2)   soit -21,9 ms (-6,8 %)
+ *     translucide 127 -> 321,5 ms — IDENTIQUE à 178 : ce n'est pas la VALEUR
+ *     d'opacité qui coûte, c'est le fait de n'être pas opaque. Le re-blit du
+ *     fond est tout ou rien.
+ * 🔴 VERDICT OWNER : TRANSLUCIDE. « C'était mieux avant. » Les 21,9 ms sont
+ *    RENDUES délibérément — le Living PCB est l'identité du produit, et un
+ *    dashboard qui l'efface de ses six cases n'est plus le même objet.
+ *    Ce n'est donc PAS une optimisation en attente : c'est un arbitrage fermé,
+ *    esthétique CONTRE latence, et l'esthétique a gagné avec son chiffre en
+ *    face. `LV_OPA_70` (178, relu de lv_color.h:49) est l'état des lieux, monté
+ *    de 40 % après le constat owner « les pistes claires mangeaient le texte
+ *    blanc » (2026-08-16), et il RESTE le défaut.
  * ⚠️ Ne s'applique qu'aux conteneurs CRÉÉS APRÈS l'appel : il faut reconstruire
  *    la scène pour la voir. La console le fait, et le dit.
  */

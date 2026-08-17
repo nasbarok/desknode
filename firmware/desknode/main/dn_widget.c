@@ -67,9 +67,43 @@
  * monté de 40 % le 2026-08-16 après le constat owner « les pistes claires
  * mangeaient le texte blanc ». */
 static uint8_t s_opa = LV_OPA_70;
-/* Groupage d'invalidation — A/B d'AC8. Défaut : LVGL fait comme il l'entend,
- * c'est-à-dire N zones fines. C'est la branche TÉMOIN. */
-static bool s_groupage;
+/*
+ * ── W7 TRANCHÉ PAR LA MESURE : LE GROUPAGE EST LE DÉFAUT (AC8) ───────────────
+ *
+ * MESURÉ le 2026-08-17, firmware e2cb5ba+, 25 mises à jour par relevé, mock et
+ * capteur isolés, `flush reset` avant chacun :
+ *
+ *   cas                                  fine (N zones)        groupée (1 zone)
+ *   ------------------------------------------------------------------------
+ *   widget MONO sans jauge  (CPU)    2,08 f/cyc · 10 591 px   1,04 · 36 504 px
+ *   widget MONO avec jauge  (VENT)   2,95 f/cyc · 16 573 px   1,00 · 35 991 px
+ *   widget BI-grandeurs     (AMB)    2,04 f/cyc · 17 387 px   1,00 · 35 100 px
+ *   case NUE (témoin)       (GPU)    1,00 f/cyc ·  3 758 px   1,00 ·  3 758 px
+ *
+ * Temps par cycle = flushes x (copie + attente) :
+ *   MONO sans jauge  32,8 ms -> 20,0 ms   (-39 %)
+ *   MONO avec jauge  48,8 ms -> 17,6 ms   (-64 %)
+ *   BI-grandeurs     34,8 ms -> 20,0 ms   (-42 %)
+ *
+ * 🔴 LA PRÉDICTION EST CONFIRMÉE DANS SON SENS, DÉMENTIE DANS SON AMPLEUR.
+ *    La story prédisait que l'attente domine la copie « d'un facteur ~50 ».
+ *    MESURÉ : copie groupée 2,9-3,6 ms contre attente 14-17 ms, soit un facteur
+ *    ~5, pas ~50. Le groupage gagne quand même — parce qu'il SUPPRIME UN FLUSH
+ *    ENTIER (~16 ms) pour 2,7 ms de copie en plus, soit un retour de ~6 pour 1.
+ *    Écrit ici parce qu'une prédiction démentie est plus instructive qu'une
+ *    prédiction tenue, et que le dépôt a déjà vu un facteur 10 d'écart (T9).
+ *
+ * ⚠️ ET CE QUE LE GROUPAGE NE FAIT PAS : il n'économise AUCUN pixel, il en
+ *    MULTIPLIE le nombre par ~3,4 (10 591 -> 36 504). Ce n'est pas une
+ *    optimisation d'aire, c'est un échange — beaucoup de pixels contre une
+ *    attente de trame. Le jour où la copie deviendra le goulot (plus de cases
+ *    vivantes, ou une copie plus lente), l'arbitrage devra être REJOUÉ : c'est
+ *    pour ça que la branche fine reste vivante et rejouable sans reflasher.
+ * ⚠️ LE TÉMOIN NÉGATIF EST INTACT : la case NUE mesure exactement pareil dans
+ *    les deux branches (elle ne traverse pas le modèle). C'est ce qui prouve
+ *    que la différence vient bien du groupage et non d'un effet de bord.
+ */
+static bool s_groupage = true;
 
 const char *dn_val_regime_nom(dn_val_regime_t r)
 {

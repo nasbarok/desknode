@@ -171,7 +171,18 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
         .grandeurs = {{.unite = "%"}},
     },
     [DN_UI_CASE_VENT] = {
-        .icone = DN_ICONE_SYNC_ALT, /* `fan` (0xF863) est ABSENT du .woff */
+        /*
+         * W4 TRANCHÉ PAR CONSTAT OWNER, 2026-08-17, A/B joué sur la dalle.
+         * `fan` (0xF863) est ABSENT du FontAwesome du dépôt (arrivé en 5.11,
+         * le `.woff` est antérieur — vérifié en le convertissant SEUL, pas
+         * déduit d'une table). Quatre substituts embarqués et commutés à chaud
+         * (`widget icone`) : `sync-alt` « ne dit rien » (owner), `wind` écarté,
+         * `cog` RETENU — « un engrenage, ça dit pièce mécanique en rotation ».
+         * 🔴 ET IL EST GRATUIT : 0xF013 est DÉJÀ l'un des 61 codepoints de
+         *    symboles que `built_in_font_gen.py` injecte (61459). L'icône
+         *    retenue ne coûte donc AUCUN glyphe de plus que la police de base.
+         */
+        .icone = DN_ICONE_COG,
         .titre = "VENTILOS",
         .couleur = 0x35d6e8, /* cyan */
         .n_grandeurs = 1,
@@ -406,10 +417,45 @@ static dn_widget_t s_wobj[DN_UI_METRIQUES];
 static dn_widget_t s_demo;
 static bool s_demo_on;
 
-/* Opacité du voile plein écran (AC9/W9). Valeur de départ : LV_OPA_50, l'état
- * des lieux légué par dn1-4. Réglable à chaud pour que le verdict soit un
- * constat owner ; la valeur retenue est écrite en fin de story. */
-static uint8_t s_voile_opa = LV_OPA_50;
+/*
+ * ── L'A/B D'ICÔNE (W4) — UN INSTRUMENT, PAS UN RÉGLAGE PRODUIT ───────────────
+ * `fan` (0xF863) est ABSENT du FontAwesome du dépôt : il est arrivé en 5.11 et
+ * le `.woff` embarqué est antérieur (vérifié en le convertissant seul, pas
+ * déduit d'une table). Quatre substituts sont embarqués ENSEMBLE, et l'icône se
+ * commute à chaud : le choix est un CONSTAT OWNER sur la dalle, pas une
+ * intuition — et un A/B qui exigerait trois reflashs coûterait trois
+ * observations à l'owner pour un rendement qui baisse.
+ * NULL = on garde celle du descripteur. Indexé par case, sans nommer de
+ * métrique : le mécanisme sert à n'importe quelle icône, pas au ventilateur.
+ */
+static const char *s_icone_alt[DN_UI_METRIQUES];
+
+static const struct {
+    const char *nom;
+    const char *glyphe;
+} k_icones_vent[] = {
+    {"sync-alt (2 fleches en rotation)", DN_ICONE_SYNC_ALT},
+    {"wind (lignes de souffle)", DN_ICONE_WIND},
+    {"cogs (deux engrenages)", DN_ICONE_COGS},
+    {"cog (un engrenage)", DN_ICONE_COG},
+};
+#define DN_UI_ICONES_VENT (sizeof(k_icones_vent) / sizeof(k_icones_vent[0]))
+
+/*
+ * ── W9 TRANCHÉ : L'OPACITÉ DÉFINITIVE DU VOILE EST 90/255 (35 %) ─────────────
+ * dn1-4 l'avait posée à LV_OPA_50 (127) en écrivant « dn3-1 tranchera la valeur
+ * définitive avec le reste de l'esthétique ». C'est fait, par A/B sur la dalle
+ * et CONSTAT OWNER le 2026-08-17 : à 35 % « le PCB respire mieux » et le texte
+ * reste lisible partout — y compris sur les cases-widgets, plus chargées qu'une
+ * case nue, qui étaient le risque nommé par AC9.
+ * ⚠️ Le voile ne coûte RIEN en latence : la mesure d'AC9 montre que seule la
+ *    bascule opaque/translucide des CASES compte (127 et 178 donnent 321,5 et
+ *    321,8 ms, soit le même chiffre). Cette valeur-ci est donc un choix
+ *    PUREMENT esthétique, et c'est écrit pour que personne ne l'optimise.
+ * Reste réglable à chaud (`widget voile <n>`) : dn3-3 refait l'identité visuelle
+ * et aura besoin de rejouer l'arbitrage sans reflasher.
+ */
+static uint8_t s_voile_opa = 90;
 
 /* ── Le mock VENTILOS (AC3) — sa forme est ANNONCÉE, pas devinée ─────────────
  * Rampe triangulaire 800 -> 1600 -> 800 tr/min, période 20 s, pas de 1 s (le
@@ -1037,7 +1083,16 @@ static void build_dashboard(lv_obj_t *scr)
         int y = DN_UI_GRILLE_Y + DN_UI_MARGE + ligne * (DN_UI_CASE_H + DN_UI_GAP);
 
         if (k_widget[i]) {
-            dn_widget_creer(scr, x, y, DN_UI_CASE_W, DN_UI_CASE_H, &k_desc[i],
+            /* Copie locale du descripteur pour appliquer l'éventuel
+             * remplacement d'icône (A/B de W4). GÉNÉRIQUE — indexé par case,
+             * sans nommer aucune métrique : un `if (i == VENTILOS)` ici aurait
+             * remis un cas spécial dans la boucle que dn2-1 a explicitement
+             * refusé de ramifier. */
+            dn_widget_desc_t d = k_desc[i];
+            if (s_icone_alt[i]) {
+                d.icone = s_icone_alt[i];
+            }
+            dn_widget_creer(scr, x, y, DN_UI_CASE_W, DN_UI_CASE_H, &d,
                             &s_wetat[i], on_case_clic, (void *)(intptr_t)i,
                             &s_wobj[i]);
             continue;
@@ -2226,6 +2281,42 @@ esp_err_t dn_ui_set_voile_opa(uint8_t opa)
 }
 
 uint8_t dn_ui_voile_opa(void) { return s_voile_opa; }
+
+int dn_ui_icones_vent_n(void) { return (int)DN_UI_ICONES_VENT; }
+
+const char *dn_ui_icone_vent_nom(int n)
+{
+    return (n >= 0 && n < (int)DN_UI_ICONES_VENT) ? k_icones_vent[n].nom : "?";
+}
+
+int dn_ui_icone_vent(void)
+{
+    for (int i = 0; i < (int)DN_UI_ICONES_VENT; i++) {
+        /* RELU du pointeur réellement posé, pas d'un index mémorisé à part : un
+         * index et un glyphe qui divergent, c'est l'étiquette qui ment. */
+        const char *actif = s_icone_alt[DN_UI_CASE_VENT]
+                                ? s_icone_alt[DN_UI_CASE_VENT]
+                                : k_desc[DN_UI_CASE_VENT].icone;
+        if (actif == k_icones_vent[i].glyphe) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+esp_err_t dn_ui_set_icone_vent(int n)
+{
+    if (n < 0 || n >= (int)DN_UI_ICONES_VENT) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (!lvgl_port_lock(2000)) {
+        return ESP_ERR_TIMEOUT;
+    }
+    s_icone_alt[DN_UI_CASE_VENT] = k_icones_vent[n].glyphe;
+    build_scene();
+    lvgl_port_unlock();
+    return ESP_OK;
+}
 
 esp_err_t dn_ui_set_case_opa(uint8_t opa)
 {

@@ -424,6 +424,15 @@ uint32_t dn_ui_pousser(int idx);
 esp_err_t dn_ui_set_voile_opa(uint8_t opa);
 uint8_t dn_ui_voile_opa(void);
 
+/* ── W4 : l'A/B d'icône du ventilateur ────────────────────────────────────────
+ * `fan` (0xF863) est ABSENT du FontAwesome du dépôt. Quatre substituts sont
+ * embarqués ensemble et commutables à chaud, pour que le choix soit un CONSTAT
+ * OWNER sur la dalle et non une intuition. Reconstruit la scène. */
+int dn_ui_icones_vent_n(void);
+const char *dn_ui_icone_vent_nom(int n);
+int dn_ui_icone_vent(void);
+esp_err_t dn_ui_set_icone_vent(int n);
+
 /* ── AC9 : l'opacité des CASES ────────────────────────────────────────────────
  * Passe par dn_widget (une seule définition de l'aplat) et reconstruit la scène. */
 esp_err_t dn_ui_set_case_opa(uint8_t opa);

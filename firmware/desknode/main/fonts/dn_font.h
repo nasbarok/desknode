@@ -11,7 +11,7 @@
  * absent et ne se plaint pas.
  *
  * `dn_font_14` / `dn_font_28` couvrent 0x20-0x7F,0xA0-0xFF,0x2022 :
- * ASCII + LATIN-1 COMPLET + la puce + les 61 symboles LV_SYMBOL_* + 7
+ * ASCII + LATIN-1 COMPLET + la puce + les 61 symboles LV_SYMBOL_* + 10
  * icônes FontAwesome. Elles sont donc un SUR-ENSEMBLE STRICT des built-ins.
  *
  * ⚠️ `lv_font_montserrat_14` reste compilée : elle est aussi `LV_FONT_DEFAULT`
@@ -54,13 +54,16 @@ LV_FONT_DECLARE(dn_font_28)
 /* Les icônes, en UTF-8 prêt à concaténer dans un littéral de chaîne.
  * GÉNÉRÉES depuis le même dictionnaire que la police : une macro ne peut pas
  * pointer un codepoint que la police n'aurait pas. */
+#define DN_ICONE_COG                 "\xEF\x80\x93" /* U+F013 cog */
 #define DN_ICONE_TINT                "\xEF\x81\x83" /* U+F043 tint */
+#define DN_ICONE_COGS                "\xEF\x82\x85" /* U+F085 cogs */
 #define DN_ICONE_DESKTOP             "\xEF\x84\x88" /* U+F108 desktop */
 #define DN_ICONE_THERMOMETER_HALF    "\xEF\x8B\x89" /* U+F2C9 thermometer-half */
 #define DN_ICONE_MICROCHIP           "\xEF\x8B\x9B" /* U+F2DB microchip */
 #define DN_ICONE_SYNC_ALT            "\xEF\x8B\xB1" /* U+F2F1 sync-alt */
 #define DN_ICONE_MEMORY              "\xEF\x94\xB8" /* U+F538 memory */
 #define DN_ICONE_NETWORK_WIRED       "\xEF\x9B\xBF" /* U+F6FF network-wired */
+#define DN_ICONE_WIND                "\xEF\x9C\xAE" /* U+F72E wind */
 
 #ifdef __cplusplus
 }
