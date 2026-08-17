@@ -2068,8 +2068,27 @@ bool dn_ui_ambiance_maj(int temp_dixiemes, int hum_dixiemes, bool valide,
  */
 static void mock_tick_nolock(void)
 {
+    /*
+     * 🔴 NE RIEN POSER SI RIEN N'A CHANGÉ — DÉFAUT MESURÉ LE 2026-08-17.
+     *
+     * La première version posait l'état à CHAQUE tick, mock coupé compris. Or
+     * `lv_label_set_text` invalide INCONDITIONNELLEMENT, même avec un texte
+     * identique : la case VENTILOS se repeignait donc 1 fois par seconde en
+     * affichant « -- », pour rien.
+     *
+     * Ce n'est pas qu'un gaspillage : c'est un INSTRUMENT FAUSSÉ. Le témoin
+     * d'AC8 (« 0 poussée pendant 20 s ») a compté 24 cycles de redessin là où
+     * le capteur seul, à 5 s, n'en justifie que 4 — 20 fantômes, exactement le
+     * nombre de ticks. La contribution parasite qu'on croyait quantifier était
+     * donc à 83 % fabriquée par la mesure elle-même. Trouvé en REGARDANT le
+     * chiffre du témoin plutôt qu'en le notant : 24 ≠ 4 n'a pas d'explication
+     * innocente.
+     */
     if (!s_mock_on) {
-        case_poser(DN_UI_CASE_VENT, DN_VAL_ABSENTE, NULL, NULL, 0, NULL, NULL);
+        if (s_wetat[DN_UI_CASE_VENT].regime != DN_VAL_ABSENTE) {
+            case_poser(DN_UI_CASE_VENT, DN_VAL_ABSENTE, NULL, NULL, 0, NULL,
+                       NULL);
+        }
         return;
     }
     uint32_t s = (uint32_t)(esp_timer_get_time() / 1000000);
@@ -2080,6 +2099,13 @@ static void mock_tick_nolock(void)
     int32_t v = DN_MOCK_MIN + (int32_t)((DN_MOCK_MAX - DN_MOCK_MIN) * pos / demi);
     char txt[DN_WIDGET_TXT_MAX];
     snprintf(txt, sizeof(txt), "%d", (int)v);
+    /* Même règle au sommet et au creux de la rampe : `pos` y vaut deux secondes
+     * de suite la même chose, et reposer le même texte coûterait un redessin
+     * complet pour une image identique. */
+    if (s_wetat[DN_UI_CASE_VENT].regime == DN_VAL_SIMULEE &&
+        strcmp(s_wetat[DN_UI_CASE_VENT].txt[0], txt) == 0) {
+        return;
+    }
     /* La ligne secondaire DIT ce qu'est la valeur, en toutes lettres et sans
      * qu'il faille lire le code — c'est l'exigence d'AC3. Le badge « SIMULÉ » et
      * la couleur ambre le disent déjà à l'œil ; ceci le dit AU MOT, pour que le
