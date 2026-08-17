@@ -408,6 +408,17 @@ void dn_ui_mock_set(bool on);
 bool dn_ui_mock_on(void);
 void dn_ui_mock_forme(int *min, int *max, int *periode_s);
 
+/* ── AC8 : l'injecteur de poussée ─────────────────────────────────────────────
+ * Pose UNE mise à jour synthétique (régime SIMULÉE) sur la case `idx`, et rend
+ * le numéro de séquence. C'est ce qui permet d'isoler le coût de redessin d'UNE
+ * case — y compris une case NUE, qu'aucune source n'alimente et dont le coût
+ * serait sinon indémontrable.
+ * ⛔ UNE poussée par appel : N poussées dans un même appel tomberaient dans le
+ *    MÊME cycle LVGL et seraient fusionnées — on mesurerait 1 flush pour N mises
+ *    à jour, et on conclurait que grouper est gratuit. C'est l'appelant PC qui
+ *    les espace. */
+uint32_t dn_ui_pousser(int idx);
+
 /* ── AC9 : l'opacité du voile plein écran ─────────────────────────────────────
  * Reconstruit la scène (le voile est créé au dessin). 0..255. */
 esp_err_t dn_ui_set_voile_opa(uint8_t opa);

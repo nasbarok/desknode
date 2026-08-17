@@ -62,7 +62,10 @@
 #define W_COL_BORDURE 0x50c0ff
 #define W_COL_SEC 0xc0d8e8
 
-/* Opacité des conteneurs — A/B d'AC9. 179 = LV_OPA_70, l'état des lieux. */
+/* Opacité des conteneurs — A/B d'AC9. LV_OPA_70 = 178 (relu de
+ * lv_color.h:49 : 70 % de 255 fait 178,5 et LVGL tronque). C'est l'état des lieux,
+ * monté de 40 % le 2026-08-16 après le constat owner « les pistes claires
+ * mangeaient le texte blanc ». */
 static uint8_t s_opa = LV_OPA_70;
 /* Groupage d'invalidation — A/B d'AC8. Défaut : LVGL fait comme il l'entend,
  * c'est-à-dire N zones fines. C'est la branche TÉMOIN. */

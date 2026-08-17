@@ -2089,6 +2089,58 @@ static void mock_tick_nolock(void)
                "valeur SIMULÉE — aucun capteur", NULL);
 }
 
+/*
+ * ── L'INJECTEUR DE POUSSÉE (AC8) — POURQUOI IL EXISTE ────────────────────────
+ *
+ * AC8 demande d'isoler TROIS coûts dans le MÊME firmware : une case-widget
+ * mono-grandeur, une case-widget bi-grandeurs, et une CASE NUE VIVANTE. Or les
+ * trois cases nues n'ont AUCUNE source — le témoin négatif d'AC8 serait donc
+ * indémontrable, et les deux widgets seraient confondus par leurs cadences
+ * différentes (mock 1 Hz, capteur 5 s).
+ *
+ * Cette fonction pose UNE mise à jour synthétique sur UNE case, à la demande.
+ * L'agent en enchaîne N depuis le PC, ce qui donne N cycles de redessin
+ * attribuables à UNE SEULE case.
+ *
+ * ⛔ UNE POUSSÉE PAR APPEL, ET C'EST STRUCTUREL — PAS UNE PARESSE. Une boucle
+ *    de N poussées DANS la commande serait une non-mesure : les N invalidations
+ *    tomberaient dans le MÊME cycle LVGL (33 ms) et LVGL les fusionnerait en un
+ *    seul redessin. On mesurerait 1 flush pour N mises à jour et on conclurait
+ *    que grouper est gratuit. Séparer les poussées dans le TEMPS est la seule
+ *    façon que chacune ait son cycle.
+ * ⛔ Et aucun sommeil : le REPL EST le transport PC (dn2-2).
+ *
+ * 🔴 LE RÉGIME POSÉ EST `SIMULEE`, JAMAIS `REELLE`. Un injecteur de mesure qui
+ *    poserait des valeurs d'apparence réelle serait le mensonge d'interface
+ *    qu'AC3 interdit, introduit par l'instrument censé le vérifier.
+ */
+uint32_t dn_ui_pousser(int idx)
+{
+    static uint32_t s_seq;
+    if (idx < 0 || idx >= DN_UI_METRIQUES) {
+        return 0;
+    }
+    if (!lvgl_port_lock(1000)) {
+        return 0;
+    }
+    s_seq++;
+    char t0[DN_WIDGET_TXT_MAX];
+    char t1[DN_WIDGET_TXT_MAX];
+    /* Une valeur qui CHANGE à chaque poussée : `lv_label_set_text` avec un texte
+     * identique invalide quand même, mais une série de textes identiques rendrait
+     * la mesure indiscernable d'un affichage figé pour qui la relit. */
+    snprintf(t0, sizeof(t0), "%u,%u", (unsigned)(s_seq % 100),
+             (unsigned)(s_seq % 10));
+    snprintf(t1, sizeof(t1), "%u,%u", (unsigned)((s_seq * 7) % 100),
+             (unsigned)((s_seq * 3) % 10));
+    int32_t brut = (int32_t)(DN_MOCK_MIN +
+                             (s_seq * 37) % (DN_MOCK_MAX - DN_MOCK_MIN));
+    case_poser(idx, DN_VAL_SIMULEE, t0, t1, brut, "POUSSEE de mesure (AC8)",
+               NULL);
+    lvgl_port_unlock();
+    return s_seq;
+}
+
 void dn_ui_mock_set(bool on)
 {
     if (!lvgl_port_lock(1000)) {

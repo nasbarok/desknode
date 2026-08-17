@@ -2441,6 +2441,30 @@ static int cmd_pc(int argc, char **argv)
  *    un PWM à 24 kHz, « FORCED T/H 8x » sur des registres à 0x00), et dn2-1 l'a
  *    re-commise UNE LIGNE sous son propre correctif.
  */
+/*
+ * Imprime `s` puis le rembourrage pour atteindre `largeur` COLONNES D'AFFICHAGE.
+ * En UTF-8, un octet de continuation vaut `10xxxxxx` : il appartient au
+ * caractère précédent et n'occupe aucune colonne. Compter les octets — ce que
+ * fait `%-Ns` — décale toute ligne portant un accent, et depuis dn3-1 les
+ * libellés en portent.
+ * ⚠️ Vrai pour le latin-1 en UTF-8 (1 codepoint = 1 colonne). Ne conviendrait
+ *    pas à du CJK (2 colonnes par glyphe) — hors sujet ici, mais autant que la
+ *    limite soit écrite plutôt que découverte.
+ */
+static void colonnes(const char *s, int largeur)
+{
+    int cols = 0;
+    for (const unsigned char *p = (const unsigned char *)s; *p; p++) {
+        if ((*p & 0xC0) != 0x80) {
+            cols++;
+        }
+    }
+    printf("%s", s);
+    for (int i = cols; i < largeur; i++) {
+        printf(" ");
+    }
+}
+
 static int cmd_widget(int argc, char **argv)
 {
     if (argc == 3 && strcmp(argv[1], "groupe") == 0) {
@@ -2456,6 +2480,25 @@ static int cmd_widget(int argc, char **argv)
                   : "FINE — LVGL fait SES zones, une par enfant modifie");
         printf("⚠️ `flush reset` MAINTENANT, puis attendre >= 3 cycles de source\n");
         printf("   avant `flush` : sinon la mesure melange les deux branches.\n");
+        return 0;
+    }
+    if (argc == 3 && strcmp(argv[1], "pousser") == 0) {
+        char *fin = NULL;
+        long idx = strtol(argv[2], &fin, 0);
+        if (!fin || *fin != '\0' || idx < 0 || idx >= DN_UI_METRIQUES) {
+            printf("usage : widget pousser <0..%d>\n", DN_UI_METRIQUES - 1);
+            return 1;
+        }
+        uint32_t seq = dn_ui_pousser((int)idx);
+        if (seq == 0) {
+            printf("verrou LVGL non pris — AUCUNE poussee\n");
+            return 1;
+        }
+        /* Sortie MINIMALE : cette commande est appelee des dizaines de fois de
+         * suite par le pilote, et chaque octet imprime est du temps passe sur le
+         * lien serie — donc du temps pendant lequel le capteur peut glisser un
+         * cycle parasite dans la fenetre de mesure. */
+        printf("p%u\n", (unsigned)seq);
         return 0;
     }
     if (argc == 3 && strcmp(argv[1], "mock") == 0) {
@@ -2518,13 +2561,17 @@ static int cmd_widget(int argc, char **argv)
                v * 100 / 255);
         printf("⚠️ la reconstruction a RETIRE le stimulus `anim` et la demo,\n");
         printf("   et elle remet la vue au dashboard. Re-armer si besoin.\n");
+        /* Valeurs RELUES de lv_color.h:47-53, pas arrondies de tete : 70 % de
+         * 255 fait 178,5 et LVGL tronque a 178 ; 50 % fait 127,5 et donne 127.
+         * Annoncer 179 et 128 « parce que c'est le pourcentage » serait une
+         * etiquette fausse d'un cran — donc une etiquette fausse. */
         printf("⚠️ Reperes : 255 = LV_OPA_COVER (opaque, supprime le re-blit du\n");
-        printf("   fond) · 179 = LV_OPA_70 (l'etat des lieux) · 128 = LV_OPA_50.\n");
+        printf("   fond) · 178 = LV_OPA_70 (l'etat des lieux) · 127 = LV_OPA_50.\n");
         return 0;
     }
     if (argc != 1) {
         printf("usage : widget | groupe on|off | opa <0..255> | voile <0..255>\n");
-        printf("        | mock on|off | demo on|off\n");
+        printf("        | mock on|off | demo on|off | pousser <idx>\n");
         return 1;
     }
 
@@ -2547,8 +2594,17 @@ static int cmd_widget(int argc, char **argv)
     printf("\n  idx nom        forme   regime   dessinee  valeur(s)\n");
     for (int i = 0; i < DN_UI_METRIQUES; i++) {
         const dn_widget_desc_t *d = dn_ui_desc(i);
-        printf("  %2d  %-10s %-7s %-8s %-9s", i, dn_ui_metrique_nom(i),
-               d ? "WIDGET" : "nue", dn_val_regime_nom(dn_ui_regime(i)),
+        /* 🔴 `%-10s` REMPLIT EN OCTETS, PAS EN COLONNES D'AFFICHAGE — et c'est
+         * EXACTEMENT le défaut que l'en-tête de `dn_console_banner()` explique
+         * quelques centaines de lignes plus bas, commis à nouveau ici et attrapé
+         * à la première exécution : « RÉSEAU » pèse 7 octets pour 6 colonnes, et
+         * sa ligne se décalait d'un caractère vers la gauche. Depuis dn3-1 les
+         * libellés sont ACCENTUÉS, donc tout `%-Ns` sur un nom de métrique est
+         * faux. On paie donc les colonnes à la main. */
+        printf("  %2d  ", i);
+        colonnes(dn_ui_metrique_nom(i), 11);
+        printf("%-7s %-8s %-9s", d ? "WIDGET" : "nue",
+               dn_val_regime_nom(dn_ui_regime(i)),
                dn_ui_case_dessinee(i) ? "oui" : "NON");
         int n = d ? d->n_grandeurs : 1;
         for (int g = 0; g < n; g++) {
@@ -3265,7 +3321,7 @@ static const esp_console_cmd_t k_cmds[] = {
      * qu'on ne trouve que depuis la carte n'est pas documentée. */
     DN_CMD("widget",
            "widget | groupe on|off | opa <n> | voile <n> | mock on|off | demo "
-           "on|off — modèle de case (dn3-1)",
+           "on|off | pousser <n> — modèle de case (dn3-1)",
            cmd_widget),
     DN_CMD("aide", "cette aide", cmd_help),
 };

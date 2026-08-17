@@ -239,7 +239,7 @@ bool dn_widget_groupage(void);
  * ── AC9 : L'OPACITÉ, ET C'EST AUSSI UN A/B ───────────────────────────────────
  * Opacité des CASES (conteneurs). `LV_OPA_COVER` (255) supprime le re-blit du
  * fond sous chaque case — gratuit en mémoire, coûteux en esthétique : le Living
- * PCB ne transparaîtrait plus DANS les cases. `LV_OPA_70` (179) est l'état des
+ * PCB ne transparaîtrait plus DANS les cases. `LV_OPA_70` (178, relu de lv_color.h:49) est l'état des
  * lieux, monté de 40 % après le constat owner « les pistes claires mangeaient
  * le texte blanc » (2026-08-16).
  * ⚠️ Ne s'applique qu'aux conteneurs CRÉÉS APRÈS l'appel : il faut reconstruire
