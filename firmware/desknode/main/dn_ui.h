@@ -358,6 +358,20 @@ bool dn_ui_label_shown(void);
  * soit une boucle qui retente sans fin et sur-compte les reprises. */
 bool dn_ui_cpu_maj(int dixiemes, bool valide, bool *label_pose);
 
+/* ── Les cases TEMP. et HUMIDITE vivent (dn2-1) ───────────────────────────────
+ * Mêmes règles que dn_ui_cpu_maj, à trois différences près qui comptent :
+ *  · elle pose les DEUX cases sous UN SEUL verrou — sinon le dashboard pourrait
+ *    afficher une température neuve à côté d'une humidité périmée le temps
+ *    d'une trame ;
+ *  · `valide == false` grise les DEUX ensemble : un capteur muet l'est pour ses
+ *    deux grandeurs, il n'y a pas de demi-silence ;
+ *  · la température accepte le NÉGATIF (borne d'affichage -40,0 à +85,0 °C, la
+ *    plage du BME680) — « 0 <= x » aurait mangé les valeurs sous zéro.
+ * Le « ° » est écrit en UTF-8 (0xC2 0xB0) : ce glyphe EST dans la plage générée
+ * de montserrat, contrairement aux lettres accentuées (legs dn3-1). */
+bool dn_ui_ambiance_maj(int temp_dixiemes, int hum_dixiemes, bool valide,
+                        bool *label_pose);
+
 /* Stimulus adverse d'AC4 : une barre verticale qui balaie l'écran. */
 esp_err_t dn_ui_anim(bool on, int periode_ms);
 bool dn_ui_anim_running(void);

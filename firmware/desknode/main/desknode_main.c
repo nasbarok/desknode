@@ -32,6 +32,7 @@
 
 #include "dn_asset.h"
 #include "dn_bootcfg.h"
+#include "dn_capteurs.h"
 #include "dn_console.h"
 #include "dn_display.h"
 #include "dn_link.h"
@@ -310,6 +311,25 @@ void app_main(void)
         ESP_LOGE(TAG, "⛔ liaison PC ABSENTE (%s) — la case CPU restera « -- ». "
                       "Le reste du firmware et la console démarrent normalement.",
                  esp_err_to_name(err_link));
+    }
+
+    /* 8 bis. Les capteurs environnementaux (dn2-1). APRÈS dn_ui_init : la tâche
+     * pousse vers les cases TEMP./HUMIDITE par dn_ui_ambiance_maj(), qui prend
+     * le verrou LVGL elle-même. Le bus I²C, lui, existe depuis l'étape 2.
+     * ⚠️ PLACÉE ICI ET PAS AVANT L'AFFICHAGE, délibérément : l'init du BME680
+     * dort ~50 ms (power-up + commandes) et un capteur muet doit se diagnostiquer
+     * ÉCRAN ALLUMÉ. Retarder la première image pour un module optionnel serait
+     * le mauvais arbitrage — dn1-4 mesurait « prêt en 2 194 ms ».
+     * 🔴 NON FATAL, même raison que dn_link_init : le seul mode d'échec réaliste
+     * est xTaskCreate, c'est-à-dire la pénurie de RAM interne. Avec
+     * CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT=y, un abort donnerait « ni console ni
+     * flash, RESET physique » — un module optionnel ne doit pas pouvoir briquer
+     * le seul outil de diagnostic. */
+    esp_err_t err_capt = dn_capteurs_init();
+    if (err_capt != ESP_OK) {
+        ESP_LOGE(TAG, "⛔ capteurs ABSENTS (%s) — les cases TEMP./HUMIDITE "
+                      "resteront « -- ». Le reste du firmware demarre normalement.",
+                 esp_err_to_name(err_capt));
     }
 
     /* 9. La console. */

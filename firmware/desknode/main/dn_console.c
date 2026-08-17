@@ -9,6 +9,7 @@
 
 #include "dn_asset.h"
 #include "dn_bootcfg.h"
+#include "dn_capteurs.h"
 #include "dn_display.h"
 #include "dn_link.h"
 #include "dn_measure.h"
@@ -2496,12 +2497,17 @@ static int cmd_wifi(int argc, char **argv)
  *    qu'il prétend exclure ?* — la réponse était NON, et le premier scan de la
  *    session l'a démontré.
  *
- *    ⚠️ EFFET DE BORD UTILE, ET C'EST LUI QU'ON EXPLOITE EN dn2-1 : le compteur
- *    n/N est aussi un MESUREUR DE QUALITÉ DE CONTACT. Un breakout dont la
- *    barrette n'est pas soudée sortira « 3/5 » là où un composant soudé sort
- *    « 5/5 ». Ce qui départage définitivement un faux positif d'un vrai
- *    composant mal connecté : `i2c lire <addr> D0` — un faux positif n'a aucun
- *    registre à rendre.
+ *    🔴 IL PRODUIT AUSSI DES FAUX NÉGATIFS — MESURÉ LE 2026-08-17, ET C'EST LA
+ *    MOITIÉ QUI MANQUAIT. Trois composants SOUDÉS ont raté une confirmation au
+ *    cours de la séance : 0x6B (IMU), 0x5D (GT911) et 0x77 (BME680 une fois
+ *    soudé), une fois chacun. Le BME680 est même sorti ABSENT d'une passe sur
+ *    six alors que sa soudure était bonne.
+ *    ⇒ **`n/N < N` NE PROUVE RIEN, dans un sens comme dans l'autre.** Ce sondage
+ *    sert à DÉCOUVRIR ; seule `i2c lire <addr> <reg>` QUALIFIE — c'est une vraie
+ *    transaction, et 10 lectures sur 10 ont réussi là où le scan hésitait.
+ *    Croire le scan aurait fait rejeter une soudure correcte.
+ *    ⚠️ Le corollaire vaut aussi dans l'autre sens : un faux positif n'a aucun
+ *    registre à rendre. Dans les deux cas, l'arbitre est la lecture.
  *
  * ⚠️ CE SCAN EST UNE RAFALE I²C, donc du même régime que le stimulus de §11.4 —
  *    mais il dure ~25 ms, et une perturbation de 25 ms n'est PAS observable à
@@ -2761,6 +2767,158 @@ static int cmd_i2c(int argc, char **argv)
     return 0;
 }
 
+/*
+ * ── `capteurs` : l'ambiance, telle que la tâche l'a publiée (dn2-1) ──────────
+ *
+ * ⛔ ELLE NE DÉCLENCHE AUCUNE MESURE, et c'est structurel : `bme680_get_data()`
+ *    boucle jusqu'à 1 500 ms, or sur la branche A retenue en dn2-2 **le REPL EST
+ *    le transport PC**. Une commande qui mesure bloquerait la liaison pendant
+ *    tout ce temps — exactement le défaut de `cpu N`, qui décrivait le dashboard
+ *    au repos quel que soit le trafic parce qu'il bloquait ce qu'il mesurait.
+ *    Ici on LIT ce que la tâche a publié. `pc` est le modèle.
+ */
+static int cmd_capteurs(int argc, char **argv)
+{
+    if (argc == 3 && strcmp(argv[1], "gaz") == 0) {
+        bool on;
+        if (!parse_on_off(argv[2], &on)) {
+            printf("usage : capteurs gaz on|off\n");
+            return 1;
+        }
+        if (dn_capt_set_gaz(on) != ESP_OK) {
+            printf("capteur indisponible — bascule refusee\n");
+            return 1;
+        }
+        printf("chauffage gaz %s au prochain cycle (%d ms).\n",
+               on ? "DEMANDE" : "coupe", DN_CAPT_PERIODE_MS);
+        printf("⚠️ le die met du temps a se stabiliser : ne PAS lire le delta de\n");
+        printf("   temperature sur le cycle suivant — c'est l'A/B de T9.\n");
+        return 0;
+    }
+    if (argc == 2 && strcmp(argv[1], "reset") == 0) {
+        dn_capt_reset_compteurs();
+        printf("compteurs capteurs remis a zero (valeur et horodatage CONSERVES)\n");
+        return 0;
+    }
+    /* 🔴 `simuler` existe pour NE PLUS DEBRANCHER DE FIL. Un Dupont n'est donne
+     * que pour quelques dizaines d'insertions : rejouer l'AC7 a la main degrade
+     * le montage qu'on teste. Constat owner du 2026-08-17. */
+    if (argc >= 2 && strcmp(argv[1], "simuler") == 0) {
+        if (argc == 3 && strcmp(argv[2], "off") == 0) {
+            dn_capt_simuler(DN_CAPT_FAUTE_AUCUNE, 0);
+            printf("faute simulee DESARMEE\n");
+            return 0;
+        }
+        if (argc != 4) {
+            printf("usage : capteurs simuler muet|bornes|config <cycles 1..600>\n");
+            printf("        capteurs simuler off\n");
+            printf("  muet   = le capteur ne repond plus (transport)\n");
+            printf("  bornes = valeur hors plage physique\n");
+            printf("  config = capteur FANTOME : il repond, mais a perdu sa config\n");
+            printf("           (le cas mesure le 2026-08-17 : 32,8 C et 100 %%RH,\n");
+            printf("            faux ET plausibles, qu'aucune borne ne peut voir)\n");
+            printf("  ⚠️ un cycle = %d ms\n", DN_CAPT_PERIODE_MS);
+            return 1;
+        }
+        dn_capt_faute_t f = strcmp(argv[2], "muet") == 0     ? DN_CAPT_FAUTE_MUET
+                            : strcmp(argv[2], "bornes") == 0 ? DN_CAPT_FAUTE_BORNES
+                            : strcmp(argv[2], "config") == 0 ? DN_CAPT_FAUTE_CONFIG
+                                                             : DN_CAPT_FAUTE_AUCUNE;
+        if (f == DN_CAPT_FAUTE_AUCUNE) {
+            printf("cause « %s » inconnue : muet | bornes | config\n", argv[2]);
+            return 1;
+        }
+        long n;
+        if (!parse_entier(argv[3], &n) || n < 1 || n > 600) {
+            printf("nombre de cycles « %s » refuse : entre 1 et 600\n", argv[3]);
+            return 1;
+        }
+        if (dn_capt_simuler(f, (int)n) != ESP_OK) {
+            printf("injection refusee\n");
+            return 1;
+        }
+        printf("faute « %s » armee pour %ld cycle(s), soit ~%ld s\n",
+               dn_capt_faute_nom(f), n, n * DN_CAPT_PERIODE_MS / 1000);
+        printf("⚠️ elle teste le CHEMIN DE CODE, pas le materiel — elle ne peut pas\n");
+        printf("   decouvrir un mode de panne qu'on n'a pas imagine. Vaut pour la\n");
+        printf("   NON-REGRESSION, apres la campagne physique du 2026-08-17.\n");
+        return 0;
+    }
+    if (argc != 1) {
+        printf("usage : capteurs | reset | gaz on|off | simuler <cause> <cycles>\n");
+        return 1;
+    }
+
+    dn_capt_etat_t e = dn_capt_etat();
+    printf("BME680 @ 0x%02X : %s", DN_BME680_ADDR, dn_capt_etat_nom(e));
+    /* ⚠️ LA GARDE PORTE SUR LA VALEUR, PAS SUR L'ÉTAT — correctif du 2026-08-17.
+     * Elle testait `e != DN_CAPT_JAMAIS`. Le jour où l'état MUET a cessé d'être
+     * synonyme de « valeur presente » (une valeur fausse est INVALIDÉE, donc
+     * remise a -1, tout en laissant l'etat a MUET), cette garde a laissé passer
+     * la sentinelle : la console imprimait « 0,1 C · 0,-1 % · age 0 ms ».
+     * Une sentinelle formatée comme une mesure est une valeur inventée. */
+    int t = dn_capt_temperature_dixiemes();
+    int h = dn_capt_humidite_dixiemes();
+    int64_t age = dn_capt_age_us();
+    if (t >= 0 && h >= 0 && age >= 0) {
+        printf(" — %d,%d C · %d,%d %% · age %lld ms", t / 10, t % 10, h / 10,
+               h % 10, (long long)(age / 1000));
+    } else {
+        printf(" — aucune valeur courante");
+    }
+    printf("\n");
+    uint8_t cid = dn_capt_chip_id();
+    printf("identite   : chip id 0x%02X · variant 0x%02X => %s\n", cid,
+           dn_capt_variant(),
+           cid != DN_BME680_CHIP_ID ? "PAS un BME680 — le cablage n'est pas en cause"
+           : dn_capt_variant() == DN_BME680_VARIANT_688 ? "BME688"
+                                                        : "BME680");
+    /* 🔴 LES REGISTRES RELUS, PAS LA CONFIG DEMANDEE. Cette ligne a MENTI le
+     * 2026-08-17 : elle annonçait « FORCED · T/H 8x · P 1x · IIR 3 » pendant que
+     * le capteur etait a 0x00 partout, remis a ses defauts par une coupure de son
+     * 3V3. Une ombre logicielle qui ne suit pas le materiel est un defaut — la
+     * regle existait deja a cote (dn_display_backlight_pct_state). */
+    printf("config LUE : 0x72=%02X · 0x74=%02X · 0x75=%02X %s\n",
+           dn_capt_reg_ctrl_hum(), dn_capt_reg_ctrl_meas(), dn_capt_reg_config(),
+           dn_capt_config_conforme() ? "(conforme)" : "🔴 NON CONFORME");
+    if (!dn_capt_config_conforme()) {
+        printf("             => le capteur a REDEMARRE et perdu sa config. Ses\n");
+        printf("                valeurs sont FAUSSES *et* plausibles — aucune borne\n");
+        printf("                physique ne peut les voir. Reconfiguration au cycle\n");
+        printf("                suivant ; les cases passent a « -- » entre-temps.\n");
+    }
+    printf("demande    : FORCED · T/H 8x · P 1x · IIR 3 · gaz %s\n",
+           dn_capt_gaz_actif() ? "ACTIF (le die chauffe — biaise la temperature)"
+                               : "coupe");
+    printf("cadence    : %d ms · peremption %lld ms, en temps absolu\n",
+           DN_CAPT_PERIODE_MS, (long long)(DN_CAPT_PEREMPTION_US / 1000));
+    int64_t cyc = dn_capt_duree_cycle_us();
+    if (cyc >= 0) {
+        printf("cycle      : %lld ms MESURES pour la derniere lecture reussie\n",
+               (long long)(cyc / 1000));
+    }
+    if (dn_capt_faute_active() != DN_CAPT_FAUTE_AUCUNE) {
+        printf("🔴 FAUTE SIMULEE ACTIVE : %s — %d cycle(s) restant(s).\n",
+               dn_capt_faute_nom(dn_capt_faute_active()), dn_capt_faute_restants());
+        printf("             AUCUN chiffre releve maintenant n'est un chiffre REEL.\n");
+    }
+    dn_capt_compteurs_t c;
+    dn_capt_compteurs(&c);
+    printf("compteurs  : %u lectures · %u reprises · %u reconfigurations\n",
+           (unsigned)c.lectures, (unsigned)c.reprises, (unsigned)c.reconfigs);
+    if (c.reconfigs > 0) {
+        printf("             reconfigurations = le capteur a redemarre sous nos\n");
+        printf("             pieds (coupure d'alim). NI une erreur de transport, NI\n");
+        printf("             une valeur aberrante, NI un silence : son propre seau.\n");
+    }
+    printf("erreurs    : i2c %u · donnee %u · bornes %u\n", (unsigned)c.err_i2c,
+           (unsigned)c.err_donnee, (unsigned)c.err_bornes);
+    printf("             i2c = le capteur ne repond plus (fil, soudure) · donnee =\n");
+    printf("             il repond mais la conversion n'est pas prete — DEUX\n");
+    printf("             diagnostics opposes, deux seaux (lecon dn2-2)\n");
+    return 0;
+}
+
 #define DN_CMD(name, helptext, fn) \
     {.command = (name), .help = (helptext), .hint = NULL, .func = (fn)}
 
@@ -2805,6 +2963,9 @@ static const esp_console_cmd_t k_cmds[] = {
     DN_CMD("disp", "disp on|off — sortie d'affichage de la dalle (0x29/0x28)",
            cmd_disp),
     DN_CMD("dma", "relance la DMA du panneau (décalage permanent)", cmd_restart_dma),
+    DN_CMD("capteurs",
+           "capteurs | reset | gaz on|off | simuler <cause> <n> — BME680 (dn2-1)",
+           cmd_capteurs),
     DN_CMD("i2c",
            "i2c | lire <addr> <registre> [n] — scan du bus et lecture registre "
            "(dn2-1)",

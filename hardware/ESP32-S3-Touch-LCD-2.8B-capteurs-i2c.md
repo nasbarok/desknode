@@ -242,6 +242,38 @@ c'est le plus fiable qui tranche.**
 ⚠️ **Ce que ça ne prouve PAS** : la stabilité de l'image sous lecture en régime (§11.4), qui
 demande l'œil de l'owner et une cadence réelle, pas des lectures ponctuelles.
 
+### ✅ Après SOUDURE (2026-08-17) — et le scan seul aurait mal conclu
+
+Barrette soudée, carte redémarrée sans incident (**pas de pont `VCC`/`GND`** : elle boote et `cfg`
+répond). Six scans **sans les mains** :
+
+| Passe | `0x77` |
+|---|---|
+| 1, 2, 3, 5, 6 | **5/5** |
+| **4** | ⚠️ **ABSENT** (et un `0x76` parasite à 1/5 dans la même passe) |
+
+**Le scan seul aurait donc laissé un doute sur la soudure.** Départagé par l'instrument fort — la
+**lecture de registre**, qui est une vraie transaction et non un sondage :
+
+```
+8 × « i2c lire 77 D0 » → 61, 61, 61, 61, 61, 61, 61, 61      (8/8)
+i2c lire 77 89 16 → 40 43 68 03 00 18 8A 92 D7 58 00 C7 1E 5C FF 1F
+i2c lire 77 E1 16 → 42 4E 1E 00 2D 14 78 9C CD 66 9D D3 E6 12 E6 00
+```
+
+**10 lectures sur 10 réussies**, et les deux blocs d'étalonnage sont **identiques octet pour octet**
+à ceux relevés AVANT la soudure. La soudure est bonne ; la passe 4 était du bruit de sondage.
+
+> 🔴 **CARACTÉRISATION COMPLÉTÉE — `i2c_master_probe` produit aussi des FAUX NÉGATIFS.** La §13.2
+> ne documentait que les faux positifs. Sur l'ensemble de la séance, **trois composants SOUDÉS ont
+> raté une confirmation** : `0x6B` (IMU), `0x5D` (GT911) et `0x77` (BME680 après soudure), une fois
+> chacun. ⇒ **`n/5 < 5` ne prouve rien dans un sens comme dans l'autre.** Le sondage sert à
+> DÉCOUVRIR ; **seule la lecture de registre QUALIFIE**. Écrire l'inverse aurait fait rejeter une
+> soudure correcte.
+
+**Non-régression après soudure** : `touch` = **0 erreur I²C sur 2 663 lectures** · RAM interne
+**113 847 o** (T0 : 113 871) · PSRAM **7 768 448 o** — variations dans le bruit d'allocation.
+
 ## 13.6 ter L'arbitrage du driver (AC5) — critères écrits AVANT la mesure
 
 **Les critères, posés avant d'ouvrir le moindre candidat :**
@@ -290,6 +322,203 @@ dans la même famille.**
 SensorAPI Bosch nu, transport-agnostique), un coût binaire disproportionné une fois lié, ou une
 contrainte de blocage incompatible avec §6 (`bme680_get_data()` boucle jusqu'à **1 500 ms** — donc
 **tâche dédiée obligatoire**, ⛔ jamais depuis le REPL ni depuis LVGL).
+
+## 13.8 Les budgets avec les deux cases vivantes — la référence que dn3 dépensera
+
+Firmware du 2026-08-17, `dn_capteurs` en régime (BME680 @ 0x77, cadence 5 s, gaz coupé).
+Base = le relevé **post-soudure de la même session**, même instrument.
+
+| Mesure | Base (post-soudure) | dn2-1 en régime | Delta |
+|---|---:|---:|---|
+| **RAM interne libre** | 113 847 o | **109 295 o** | **−4 552 o** (tâche 4096 + TCB + état driver) — même ordre que `dn_link` (−4 452) |
+| PSRAM libre | 7 768 448 o | 7 768 412 o | −36 o, dans le bruit |
+| Tas LVGL | 15 228 o (25 %) | **15 244 o (25 %)**, frag 1 % | **+16 o** — les deux tampons de texte, PAS des labels neufs (ils existaient depuis dn1-4) |
+| **Binaire** | 800 640 o | **827 632 o** | 🔴 **+26 992 o** — *c'est LE coût réel du composant, celui que le §13.6 ter refusait de publier à 0* |
+| **CPU** (`cpu 30`) | 0,9 % | **1,2 %** | **+0,3 pt** pour DEUX cases à 5 s |
+| `fps 15` | 37,40 Hz | **37,34 Hz (−0,18 %)** | dans la bande de bruit du dépôt (37,33-37,45) |
+| Cycle de mesure | — | **26 ms** | mesuré, pas repris de la datasheet |
+| Fiabilité | — | **62 lectures, 0 erreur** (i2c/donnée/bornes) | ~5 min de régime |
+
+> ✅ **`cpu N` EST VALIDE ICI, ET C'EST UNE DIFFÉRENCE DE NATURE AVEC dn2-2.** La §12.6 a dû
+> abandonner `cpu N` parce que le trafic passait par le REPL, que la commande bloque. **La tâche
+> capteur, elle, ne passe pas par le REPL** : elle continue de mesurer et de redessiner pendant la
+> fenêtre. L'instrument voit donc réellement le régime qu'il prétend mesurer.
+> ⚠️ **En revanche, comparer ce +0,3 pt au +0,53 pt de dn2-2 demande de la prudence** : celui-là
+> venait des compteurs **cumulés** (`cpu brut`), celui-ci d'une **fenêtre**. Le delta publié ici est
+> interne à une seule session et un seul instrument (0,9 → 1,2 %) ; c'est à ce titre qu'il vaut.
+
+> 🔴 **LE LEGS CHIFFRÉ POUR dn3-2 — ET LA RÉPONSE N'EST PAS CELLE QU'ON ATTENDAIT.**
+> La question posée par dn2-2 était : *le coût suit-il le nombre de cases, ou le nombre de
+> redessins par seconde ?* Les chiffres de flush tranchent :
+>
+> | Régime | Aire/cycle | Flushes/cycle | Copie |
+> |---|---:|---:|---|
+> | dn2-2 — **1** case @ 1 Hz | 4 611 px (1,50 %) | **1,0** | 245 µs |
+> | dn2-1 — **2** cases @ 0,2 Hz | **9 581 px** | **2,0** | 257 µs/flush |
+>
+> **Deux cases coûtent exactement deux fois une case** — en aire (2,08×) **et en flushes**. Et
+> elles les coûtent alors qu'elles sont **CÔTE À CÔTE SUR LA MÊME LIGNE** de la grille (idx 4 et 5) :
+> LVGL n'a PAS fusionné leurs deux zones sales en un seul flush, alors qu'elles tiennent dans la
+> même bande de 128 lignes du draw buffer.
+> ⇒ **Extrapolation pour dn3-2 : six cases vivantes = ~6 flushes et ~28 700 px par cycle**, pas
+> moins. Le coût suit **le nombre de CASES**, et la cadence ne fait que le multiplier. Si dn3-2
+> veut payer moins, il devra **grouper l'invalidation** — et ça ne viendra pas tout seul.
+
+## 13.9 L'auto-échauffement du chauffage gaz — MESURÉ (A/B du 2026-08-17)
+
+**Protocole, écrit avant de mesurer** : trois phases, une seule variable (`capteurs gaz on|off`),
+même cadence, même pièce, même capteur, échantillons toutes les 25 s.
+
+| Phase | Gaz | Température | Humidité |
+|---|---|---:|---:|
+| **A** — ligne de base | coupé | **25,53 °C** *(25,5-25,6 · dispersion 0,1)* | **48,70 %** |
+| **B** — régime chauffé | **ACTIF** | **25,72 °C** *(plateau)* | **46,06 %** *(encore en baisse)* |
+| **C** — témoin négatif | coupé | **25,30 °C** *(plateau)* | ~47,1 % *(remontée en cours)* |
+
+> 🔴 **SANS LA PHASE C, LE CHIFFRE PUBLIÉ AURAIT ÉTÉ FAUX D'UN FACTEUR 2.**
+> B − A donne **+0,19 °C**. B − C donne **+0,42 °C**. Les deux sont des soustractions légitimes
+> entre deux états réels — **et elles ne peuvent pas être vraies toutes les deux**. L'explication
+> est dans la phase C elle-même : elle ne revient PAS à la ligne de base, elle atterrit **0,23 °C
+> plus bas**. **La pièce a refroidi pendant l'expérience.** Un A/B sans retour à l'état initial
+> aurait attribué au chauffage une dérive d'ambiance — ou l'inverse.
+>
+> **Correction de la dérive** (linéaire entre le milieu de A et le plateau de C, ~430 s) :
+> à l'instant du plateau B, la température « gaz coupé » aurait valu ~25,43 °C.
+> ⇒ **BIAIS DU CHAUFFAGE : ≈ +0,3 °C** · et sur l'humidité, même méthode : **≈ −2 points de RH**.
+
+**✅ Les deux grandeurs bougent en SENS OPPOSÉS, comme prédit avant la mesure** : chauffer le die
+fait monter la température lue et baisser l'humidité relative lue. Deux signaux corrélés en
+opposition sont bien plus durs à confondre avec une dérive ambiante qu'un seul chiffre — c'est ce
+qui rend l'attribution solide, en plus de la réversibilité.
+
+> ⚠️ **UNE PRÉDICTION DE LA STORY EST DÉMENTIE, ET DANS LE BON SENS.** Le contexte annonçait un
+> biais « de 1 à 3 °C », repris de la littérature communautaire. **Le mesuré est ~10× plus petit.**
+> Le mécanisme est dans la cadence : 300 ms de chauffe toutes les **5 000 ms** = **6 % de rapport
+> cyclique**. La cadence de 5 s, choisie pour la fidélité et le budget de redessin, **atténue déjà
+> l'auto-échauffement** — les trois entrées de l'arbitrage de cadence n'étaient pas indépendantes,
+> et personne ne l'avait vu. ⚠️ **Corollaire pour dn4-1** : une cadence à 1 Hz porterait le rapport
+> cyclique à **30 %**, et le biais avec.
+
+**✅ DÉCISION CONFIRMÉE PAR LA MESURE, PAS PAR LE RAISONNEMENT — le gaz reste COUPÉ**
+(`DN_CAPT_GAZ_DEFAUT = false`) : il coûte ~0,3 °C et ~2 points de RH **sur les deux seules
+grandeurs que la story livre**, pour une donnée (COV/IAQ) qui n'est dans **aucun** des six widgets
+du brief. Payer un biais mesurable pour une valeur qu'on n'affiche pas n'a pas de contrepartie.
+
+**Ce qui renverserait la décision** : un 7ᵉ widget « qualité d'air » (qui sortirait du brief), ou
+une compensation du biais — laquelle exigerait de le caractériser en température ET en cadence,
+soit une campagne à elle seule. ⚠️ **Et un offset ne se persiste PAS en NVS en régime (D4).**
+
+⚠️ **Ce que cet A/B ne mesure PAS** : l'échauffement dû à la **proximité de la carte** (dalle RGB,
+rétroéclairage, S3 à 240 MHz), qui est un tout autre terme. Le capteur est ici sur fils volants,
+écarté. Le montage définitif dans la façade d'une tour de jeu est **dn4-1**, et il faudra le
+re-mesurer là-bas.
+
+## 13.10 🔴 LE CAPTEUR FANTÔME — le mode de panne que personne n'avait imaginé
+
+**Le geste** : débrancher le fil `VCC` du breakout en marche, puis le rebrancher. C'est le témoin
+que l'AC7 réclamait. **Il a trouvé bien autre chose que ce qu'il cherchait.**
+
+### Ce qui s'est réellement passé
+
+Au rebranchement, les cases ont affiché **32,8 °C et 100 %RH — en BLANC**, comme si c'était fiable.
+Diagnostic par lecture directe des registres, pas par supposition :
+
+```
+0x72 (ctrl_hum)  : 00   →  suréchantillonnage humidité SKIPPED
+0x74 (ctrl_meas) : 00   →  température et pression SKIPPED, mode SLEEP
+0x75 (config)    : 00   →  filtre IIR OFF
+```
+
+**La coupure a remis le BME680 à ses défauts d'usine.** La compensation Bosch, alimentée par des
+ADC non configurés, produit alors des nombres parfaitement plausibles et entièrement faux.
+
+### 🔴 Et débrancher `VCC` NE COUPE PAS le capteur — alimentation fantôme
+
+Fil `VCC` retiré, le scan le voit toujours : **`0x77` à `5/5`**. Il est alimenté **parasitairement
+par les tirages du bus, à travers ses diodes de protection ESD sur `SDA`/`SCL`** — sa consommation
+en sommeil est de l'ordre du microampère, les pull-ups suffisent largement. Il a assez de tension
+pour acquitter en I²C, **pas assez pour tenir sa configuration ni faire tourner son étage
+analogique** (la reconfiguration échouait en boucle tant que le vrai 3,3 V n'était pas revenu).
+
+⇒ **Il existe TROIS états, pas deux** :
+
+| État | Sur le bus | Valeurs | Qui le voit |
+|---|---|---|---|
+| sain | présent | justes | — |
+| **absent** | disparaît du scan | aucune | tout le monde |
+| 🔴 **fantôme** | **présent, bavard, `5/5`** | **fausses ET plausibles** | **personne, avant ce correctif** |
+
+### Pourquoi aucune garde existante ne pouvait l'attraper
+
+- **Pas une erreur de transport** — le capteur répond parfaitement (`err_i2c` = 1, la seule
+  transaction tombée pendant la coupure) ;
+- **Pas une valeur aberrante** — 32,8 °C et 100 %RH sont dans les bornes physiques du composant ;
+- **Pas un silence** — l'état restait `VIVANT`, la péremption ne se déclenchait jamais.
+
+**L'AC7 protège contre « le capteur se tait et la case fige une valeur périmée ». Le vrai mode de
+panne est « le capteur répond avec du n'importe quoi ».** Il fallait le geste physique pour le
+faire apparaître ; aucune revue de code ne l'aurait deviné.
+
+### Le correctif : l'ombre logicielle cesse de faire autorité
+
+La configuration est **relue dans le capteur à chaque cycle** et comparée à celle que l'init y a
+**constatée** (et non à celle qu'on croit avoir demandée). Non conforme ⇒ la valeur est
+**invalidée** (les cases passent à `--`), le capteur est **reconfiguré**, et l'événement va dans
+son **propre compteur** — ni transport, ni bornes, ni silence.
+
+⚠️ **`capteurs` affichait `FORCED · T/H 8x · P 1x · IIR 3` pendant que le capteur était à `00`
+partout.** C'est l'étiquette-qui-ment que ce dépôt traque depuis dn1-3, et la règle existait déjà
+à côté : `dn_display_backlight_pct_state` ne suit le matériel qu'**après confirmation**. La console
+imprime désormais les **octets relus**, et signale l'écart.
+
+### Ce que le témoin a donné, une fois le correctif posé
+
+| Phase | Constat |
+|---|---|
+| Débranché | état **MUET**, âge qui grimpe (35 → 60 s), `config LUE 🔴 NON CONFORME`, **cases à `--` grisé** *(constat owner)* |
+| Rebranché | reconfiguration **réussie**, `config LUE (conforme)`, valeurs **plausibles** (26,6 → 26,3 °C en convergeant), **`reprises : 1`** |
+
+Recoupement complet : **1** erreur i2c (la transaction de la coupure), **1** reconfiguration,
+**1** reprise. Aucun compteur en trop, aucun manquant.
+
+### 🔴 Deux défauts de plus, trouvés dans les correctifs eux-mêmes
+
+1. **`reprises` restait à 0** alors que la reprise était visible à l'écran. Cause : l'invalidation
+   efface l'horodatage, donc l'état tombait à `JAMAIS` et non à `MUET` — et la détection de reprise
+   s'appuyait dessus. **Le code de réparation aveuglait le compteur censé prouver qu'il répare.**
+   Corrigé par deux drapeaux indépendants de l'horodatage.
+2. **La console imprimait `0,1 C · 0,-1 %`** : sa garde d'affichage portait sur l'ÉTAT
+   (`!= JAMAIS`). Le jour où `MUET` a cessé d'être synonyme de « valeur présente », la sentinelle
+   `-1` s'est retrouvée **formatée comme une mesure**. La garde porte désormais sur la **valeur**.
+   ⚠️ Défaut introduit par le correctif précédent, à une ligne de distance — et attrapé par le
+   smoke, pas par la relecture.
+
+## 13.11 L'injecteur de fautes — pour ne plus toucher au connecteur
+
+**Contrainte owner du 2026-08-17** : *« les pin ne sont pas faites pour être enlevées et remises
+sans arrêt, ça assouplit la connectique »*. C'est exact — un Dupont est donné pour quelques
+dizaines d'insertions, et rejouer l'AC7 à la main **dégrade le montage qu'on prétend éprouver**.
+
+`capteurs simuler muet|bornes|config <cycles>` arme une faute qui emprunte **exactement les chemins
+d'erreur réels**, compteurs compris.
+
+**Validé contre la vraie panne** : la faute `config` produit la **même signature de compteurs** que
+le débranchement physique (`reprises` +1, `reconfigurations` +1, cases à `--`, retour à des valeurs
+justes). Smoke des trois causes rejoué le 2026-08-17.
+
+Deux garanties de conception, parce qu'un injecteur qui ment est pire que pas d'injecteur :
+
+- il **ne falsifie que le VERDICT**, jamais la lecture — `capteurs` continue d'imprimer les octets
+  réels des registres, si bien qu'on voit `0x72=04 · 0x74=84 · 0x75=08 🔴 NON CONFORME` et qu'on
+  comprend immédiatement qu'on regarde une simulation ;
+- il **s'annonce** : `🔴 FAUTE SIMULEE ACTIVE … AUCUN chiffre releve maintenant n'est un chiffre
+  REEL`, avec les cycles restants.
+
+> ⚠️ **CE QU'IL NE PROUVE PAS, ET QUI DOIT RESTER ÉCRIT** : il teste le **chemin de code**, pas le
+> matériel. **Il ne peut pas découvrir un mode de panne qu'on n'a pas imaginé** — l'alimentation
+> fantôme par les diodes ESD, personne ne l'aurait injectée parce que personne ne la soupçonnait.
+> Il vaut pour la **non-régression**, *après* qu'une campagne physique a établi la liste des fautes
+> réelles. Cette liste a été établie le 2026-08-17, et elle a coûté trois défauts.
 
 ## 13.7 Ce que la séance laisse — et ce qu'elle a fermé
 

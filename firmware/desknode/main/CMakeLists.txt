@@ -12,6 +12,7 @@ idf_component_register(
         "dn_ui.c"
         "dn_touch.c"
         "dn_link.c"
+        "dn_capteurs.c"
         "dn_wifi.c"
     INCLUDE_DIRS "."
     REQUIRES

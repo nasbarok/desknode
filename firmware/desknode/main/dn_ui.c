@@ -270,13 +270,42 @@ static lv_obj_t *s_det_titre, *s_det_valeur, *s_det_minmax, *s_det_sec;
  * vraie donnée ici (les 5 autres gardent leur factice — dn3-1 fera le modèle).
  * NULL quand le dashboard n'existe pas (REBUILD en vue détail) — et remis à
  * NULL partout où les autres pointeurs de labels le sont déjà. */
-static lv_obj_t *s_case_cpu_valeur;
-/* Le texte et la validité COURANTS de la case CPU, conservés pour que toute
- * (re)construction du dashboard repose l'état RÉEL de la liaison au lieu du
- * « 42 % » factice de dn1-4. Écrits sous le verrou LVGL (dn_ui_cpu_maj), lus
- * sous le même verrou (build_dashboard). */
-static char s_cpu_texte[16] = "--";
-static bool s_cpu_valide;
+/*
+ * ── LES CASES VIVANTES — généralisé en dn2-1 ─────────────────────────────────
+ *
+ * dn2-2 n'avait qu'UNE case réelle (CPU) et le codait en `i == 0` dans
+ * build_scene. dn2-1 en ajoute DEUX (TEMP. et HUMIDITE), et empiler un second
+ * ternaire sur le premier aurait rendu la ligne illisible pour n'en gagner
+ * aucune. Une case est « vivante » quand sa valeur vient d'une SOURCE RÉELLE ;
+ * les autres gardent le factice de dn1-4 jusqu'à dn3-1/dn4-1.
+ *
+ * ⚠️ Les trois tableaux sont indexés par le numéro de case, pas par un compteur
+ *    de sources : c'est ce qui permet à build_scene de rester une seule boucle.
+ * ⚠️ Le pointeur est NULL quand le dashboard n'existe pas (REBUILD en vue
+ *    détail) — et remis à NULL PARTOUT où les autres pointeurs de labels le
+ *    sont. Un pointeur de label qui survit à son label, écrit par une tâche
+ *    asynchrone, c'est un use-after-free ; la revue dn1-3 en a déjà trouvé un.
+ * Le texte et la validité, eux, SURVIVENT : ils sont reposés à chaque
+ * (re)construction, sinon une bascule d'écran rendrait les cases à leur
+ * factice — régression silencieuse.
+ * Écrits sous le verrou LVGL, lus sous le même verrou (build_dashboard).
+ */
+#define DN_UI_CASE_CPU 0
+#define DN_UI_CASE_TEMP 4
+#define DN_UI_CASE_HUM 5
+
+static lv_obj_t *s_vive_label[DN_UI_METRIQUES];
+static char s_vive_texte[DN_UI_METRIQUES][24];
+static bool s_vive_valide[DN_UI_METRIQUES];
+/* Quelles cases sont alimentées par une source réelle. Posé une fois, à l'init :
+ * une case vivante affiche « -- » AVANT sa première valeur, jamais le factice —
+ * un « 21,4 °C » affiché avant qu'aucun capteur n'ait parlé est le même mensonge
+ * d'interface qu'un CPU figé, en plus discret. */
+static const bool k_vive[DN_UI_METRIQUES] = {
+    [DN_UI_CASE_CPU] = true,
+    [DN_UI_CASE_TEMP] = true,
+    [DN_UI_CASE_HUM] = true,
+};
 /* Dernière zone touchée — la preuve d'AC3, lue par la console. */
 static volatile int s_dernier_tap = DN_UI_ZONE_AUCUNE;
 static volatile uint32_t s_taps;
@@ -894,17 +923,17 @@ static void build_dashboard(lv_obj_t *scr)
                                      on_case_clic, (void *)(intptr_t)i);
         texte(case_, k_metriques[i].nom, &lv_font_montserrat_14,
               lv_color_hex(0xa0d8ff), 12, 10);
-        /* La case CPU (i == 0) affiche l'état RÉEL de la liaison PC (dn2-2) :
-         * sa valeur courante si la liaison vit, « -- » grisé sinon. Les cinq
-         * autres gardent leur factice de dn1-4 jusqu'à dn3-1/dn4-1. */
-        lv_obj_t *val =
-            texte(case_, (i == 0) ? s_cpu_texte : k_metriques[i].valeur,
-                  &lv_font_montserrat_28,
-                  (i == 0 && !s_cpu_valide) ? lv_color_hex(0x9a9a9a)
-                                            : lv_color_white(),
-                  12, 60);
-        if (i == 0) {
-            s_case_cpu_valeur = val;
+        /* Une case VIVANTE affiche l'état RÉEL de sa source : sa valeur si elle
+         * vit, « -- » grisé sinon. Les autres gardent le factice de dn1-4.
+         * CPU = liaison PC (dn2-2) ; TEMP./HUMIDITE = BME680 (dn2-1). */
+        lv_obj_t *val = texte(
+            case_, k_vive[i] ? s_vive_texte[i] : k_metriques[i].valeur,
+            &lv_font_montserrat_28,
+            (k_vive[i] && !s_vive_valide[i]) ? lv_color_hex(0x9a9a9a)
+                                             : lv_color_white(),
+            12, 60);
+        if (k_vive[i]) {
+            s_vive_label[i] = val;
         }
     }
 
@@ -1024,7 +1053,11 @@ static void build_scene(void)
     s_det_valeur = NULL;
     s_det_minmax = NULL;
     s_det_sec = NULL;
-    s_case_cpu_valeur = NULL;
+    /* ⚠️ TOUTES les cases vivantes, pas seulement CPU : un pointeur oublié ici
+     * survivrait à son label et la tâche capteur écrirait dans du vide libéré. */
+    for (int i = 0; i < DN_UI_METRIQUES; i++) {
+        s_vive_label[i] = NULL;
+    }
 
     if (s_nav == DN_NAV_SCREENS) {
         /* Les deux racines sont (re)construites ensemble : un `ui bg psram` qui
@@ -1143,7 +1176,9 @@ static bool nav_appliquer(int cible, int64_t t_clic)
         s_det_valeur = NULL;
         s_det_minmax = NULL;
         s_det_sec = NULL;
-        s_case_cpu_valeur = NULL;
+        for (int i = 0; i < DN_UI_METRIQUES; i++) {
+            s_vive_label[i] = NULL;
+        }
         /* Même règle qu'en reconstruction complète : la barre du stimulus vient
          * d'être détruite, l'ombre le dit. Sans le log ici (il tomberait à chaque
          * transition), mais avec le même effet sur l'état annoncé. */
@@ -1579,6 +1614,39 @@ void dn_ui_label_show(bool on)
     lvgl_port_unlock();
 }
 
+/*
+ * Pose le texte d'UNE case vivante. Le verrou est DÉJÀ pris par l'appelant
+ * public — c'est le seul endroit du fichier où cette convention s'inverse, et
+ * elle est locale à ce helper `static` : elle existe pour que
+ * `dn_ui_ambiance_maj` puisse écrire DEUX cases sous UN SEUL verrou. Prendre le
+ * verrou deux fois de suite laisserait le dashboard afficher une température
+ * neuve à côté d'une humidité périmée pendant une trame.
+ */
+static void case_vive_poser(int idx, const char *txt, bool valide, bool *pose)
+{
+    s_vive_valide[idx] = valide;
+    snprintf(s_vive_texte[idx], sizeof(s_vive_texte[idx]), "%s", txt);
+    /* En modèle SCREENS le dashboard survit en arrière-plan et son label est
+     * mis à jour même quand le détail est affiché — LVGL l'accepte, c'est le
+     * cas « écran non chargé » qu'AC6 exige de ne pas planter. En REBUILD vue
+     * détail, le pointeur est NULL et le texte conservé sera posé à la
+     * prochaine (re)construction : rien n'est perdu, rien n'est touché. */
+    if (s_vive_label[idx]) {
+        lv_label_set_text(s_vive_label[idx], s_vive_texte[idx]);
+        lv_obj_set_style_text_color(
+            s_vive_label[idx],
+            valide ? lv_color_white() : lv_color_hex(0x9a9a9a), 0);
+        /* ⚠️ `s_active` compte AUSSI (correctif de revue 2026-08-16). Quand LVGL
+         * est arrêté (`ui off`, `scene <mire>`, `tear`), le mutex reste LIBRE et le
+         * texte se pose sans erreur — mais rien n'atteint la dalle. Chronométrer
+         * cette poussée, c'était mesurer un geste qui n'a pas eu lieu : le Trap n°2
+         * de la story appliqué à sa propre instrumentation. */
+        if (pose) {
+            *pose = s_active;
+        }
+    }
+}
+
 bool dn_ui_cpu_maj(int dixiemes, bool valide, bool *label_pose)
 {
     if (label_pose) {
@@ -1590,38 +1658,65 @@ bool dn_ui_cpu_maj(int dixiemes, bool valide, bool *label_pose)
          * lit dans le retour, comme dn_ui_force_full_redraw. */
         return false;
     }
-    s_cpu_valide = valide && dixiemes >= 0 && dixiemes <= 1000;
-    if (s_cpu_valide) {
+    char txt[24];
+    bool ok = valide && dixiemes >= 0 && dixiemes <= 1000;
+    if (ok) {
         /* Virgule française, comme les factices (« 12,4 Go »). Pas d'accent :
          * la police montserrat n'a que la plage de base (legs dn3-1). */
-        snprintf(s_cpu_texte, sizeof(s_cpu_texte), "%d,%d %%", dixiemes / 10,
-                 dixiemes % 10);
+        snprintf(txt, sizeof(txt), "%d,%d %%", dixiemes / 10, dixiemes % 10);
     } else {
         /* Liaison morte ou jamais vue : la case le DIT au lieu de figer un
          * chiffre qui n'a plus cours (AC7 — le différenciateur du brief en
          * miniature). Le rendu exact est libre, le principe ne l'est pas. */
-        snprintf(s_cpu_texte, sizeof(s_cpu_texte), "--");
+        snprintf(txt, sizeof(txt), "--");
     }
-    /* En modèle SCREENS le dashboard survit en arrière-plan et son label est
-     * mis à jour même quand le détail est affiché — LVGL l'accepte, c'est le
-     * cas « écran non chargé » qu'AC6 exige de ne pas planter. En REBUILD vue
-     * détail, le pointeur est NULL et le texte conservé sera posé à la
-     * prochaine (re)construction : rien n'est perdu, rien n'est touché. */
-    if (s_case_cpu_valeur) {
-        lv_label_set_text(s_case_cpu_valeur, s_cpu_texte);
-        lv_obj_set_style_text_color(s_case_cpu_valeur,
-                                    s_cpu_valide ? lv_color_white()
-                                                 : lv_color_hex(0x9a9a9a),
-                                    0);
-        /* ⚠️ `s_active` compte AUSSI (correctif de revue 2026-08-16). Quand LVGL
-         * est arrêté (`ui off`, `scene <mire>`, `tear`), le mutex reste LIBRE et le
-         * texte se pose sans erreur — mais rien n'atteint la dalle. Chronométrer
-         * cette poussée, c'était mesurer un geste qui n'a pas eu lieu : le Trap n°2
-         * de la story appliqué à sa propre instrumentation. */
-        if (label_pose) {
-            *label_pose = s_active;
+    case_vive_poser(DN_UI_CASE_CPU, txt, ok, label_pose);
+    lvgl_port_unlock();
+    return true;
+}
+
+bool dn_ui_ambiance_maj(int temp_dixiemes, int hum_dixiemes, bool valide,
+                        bool *label_pose)
+{
+    if (label_pose) {
+        *label_pose = false;
+    }
+    if (!lvgl_port_lock(1000)) {
+        return false;
+    }
+    char txt[24];
+    /* ⚠️ Bornes DIFFÉRENTES des bornes physiques de dn_capteurs : celles-ci
+     * gardent l'AFFICHAGE (une valeur qui déborderait le gabarit du label), pas
+     * la plausibilité de la mesure. Les deux existent, et elles ne protègent pas
+     * la même chose. La température peut être NÉGATIVE — la case doit savoir
+     * l'écrire, et « -400 <= x » n'est pas « 0 <= x ». */
+    bool ok_t = valide && temp_dixiemes >= -400 && temp_dixiemes <= 850;
+    if (ok_t) {
+        /* Le « ° » (0xB0) EST dans la plage générée de la police
+         * (-r 0x20-0x7F,0xB0,0x2022) — vérifié dans le source du .c, pas
+         * supposé. C'est la seule lettre non-ASCII qu'on peut se permettre. */
+        int e = temp_dixiemes / 10, d = temp_dixiemes % 10;
+        if (d < 0) {
+            d = -d; /* -12 dixièmes => « -1,2 », pas « -1,-2 » */
         }
+        snprintf(txt, sizeof(txt), "%d,%d \xC2\xB0" "C", e, d);
+    } else {
+        snprintf(txt, sizeof(txt), "--");
     }
+    case_vive_poser(DN_UI_CASE_TEMP, txt, ok_t, label_pose);
+
+    bool ok_h = valide && hum_dixiemes >= 0 && hum_dixiemes <= 1000;
+    if (ok_h) {
+        snprintf(txt, sizeof(txt), "%d,%d %%", hum_dixiemes / 10,
+                 hum_dixiemes % 10);
+    } else {
+        snprintf(txt, sizeof(txt), "--");
+    }
+    /* label_pose n'est PAS repassé ici : il a déjà été renseigné par la case
+     * TEMP., et les deux cases sont posées sous le même verrou, dans le même
+     * état d'UI. Le repasser écraserait la même valeur par elle-même. */
+    case_vive_poser(DN_UI_CASE_HUM, txt, ok_h, NULL);
+
     lvgl_port_unlock();
     return true;
 }
