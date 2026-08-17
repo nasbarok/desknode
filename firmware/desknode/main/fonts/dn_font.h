@@ -11,8 +11,14 @@
  * absent et ne se plaint pas.
  *
  * `dn_font_14` / `dn_font_28` couvrent 0x20-0x7F,0xA0-0xFF,0x2022 :
- * ASCII + LATIN-1 COMPLET + la puce + les 61 symboles LV_SYMBOL_* + 10
- * icônes FontAwesome. Elles sont donc un SUR-ENSEMBLE STRICT des built-ins.
+ * ASCII + LATIN-1 COMPLET + la puce + les 60 symboles LV_SYMBOL_* UNIQUES
+ * + 10 icônes FontAwesome, dont 2 sont DÉJÀ des symboles ⇒
+ * 8 codepoints neufs, et 68 au `-r` FontAwesome final. Elles sont
+ * donc un SUR-ENSEMBLE STRICT des built-ins.
+ * ⚠️ « 61 » est le nombre d'entrées BRUTES de la liste amont — elle contient un
+ *    DOUBLON (61452 deux fois), d'où 60 uniques. Ces nombres sont
+ *    CALCULÉS à la génération, plus récités : cinq endroits du dépôt en
+ *    annonçaient trois valeurs différentes, aucune juste (revue du 2026-08-18).
  *
  * ⚠️ `lv_font_montserrat_14` reste compilée : elle est aussi `LV_FONT_DEFAULT`
  *    (`CONFIG_LV_FONT_DEFAULT_MONTSERRAT_14=y`) et le Kconfig de LVGL 9.5
@@ -31,9 +37,19 @@
  * 🔴 `0xF863` (`fan`) est ABSENT de ce `.woff` : il est arrivé en FontAwesome
  *    5.11, le fichier embarqué est antérieur. VÉRIFIÉ le 2026-08-17 en le
  *    convertissant seul (`lv_font_conv` échoue bruyamment sur un codepoint
- *    absent), pas déduit d'une table. Le substitut retenu pour VENTILOS est
- *    `sync-alt` — deux flèches en rotation, qui disent « ça tourne » là où
- *    `wind` (0xF72E) dit « ça souffle » et où `cogs` (0xF085) dit « engrenage ».
+ *    absent), pas déduit d'une table.
+ *
+ * 🔴 LE SUBSTITUT RETENU POUR VENTILOS EST `cog` (0xF013), tranché par CONSTAT
+ *    OWNER le 2026-08-17, A/B joué sur la dalle : les quatre candidats sont
+ *    embarqués ensemble et commutés à chaud (`widget icone <0..3>`) plutôt que
+ *    par trois reflashs. Verdict : `sync-alt` « ne dit rien », `wind` écarté,
+ *    `cog` RETENU — « un engrenage, ça dit pièce mécanique en rotation ».
+ *    Et il est GRATUIT : 0xF013 est DÉJÀ l'un des codepoints de symboles que
+ *    `built_in_font_gen.py` injecte, l'icône retenue ne coûte donc aucun glyphe
+ *    de plus que la police de base.
+ *    ⚠️ Cette phrase annonçait `sync-alt` jusqu'au 2026-08-18 — un fichier
+ *    GÉNÉRÉ qui contredisait le descripteur, donc un mensonge qui revenait à
+ *    chaque régénération. Relevé en revue de code.
  *
  * Reproduction :  python3 tools/gen_font_dn.py
  * La ligne de commande exacte est dans l'en-tête de chaque `.c` généré.
@@ -47,7 +63,7 @@
 extern "C" {
 #endif
 
-/* ASCII + latin-1 complet + puce + 61 symboles + icônes. */
+/* ASCII + latin-1 complet + puce + 60 symboles + 10 icônes. */
 LV_FONT_DECLARE(dn_font_14)
 LV_FONT_DECLARE(dn_font_28)
 

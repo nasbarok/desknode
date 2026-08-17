@@ -6,19 +6,25 @@ POURQUOI CE FICHIER EXISTE, ALORS QUE LVGL EN FOURNIT DÉJÀ UN
 ============================================================
 `managed_components/lvgl__lvgl/scripts/built_in_font/built_in_font_gen.py` est LE
 générateur des polices built-in : il pose seul les bons drapeaux
-(`--no-compress --no-prefilter --force-fast-kern-format`) et injecte seul les 61
-codepoints de symboles `LV_SYMBOL_*`. C'est lui qu'il faut utiliser — la story
-dn3-1 le dit explicitement.
+(`--no-compress --no-prefilter --force-fast-kern-format`) et injecte seul les
+codepoints de symboles `LV_SYMBOL_*` — **61 entrées déclarées, 60 UNIQUES** (sa
+liste contient un doublon, 61452 deux fois). C'est lui qu'il faut utiliser — la
+story dn3-1 le dit explicitement.
 
 MAIS il ne sait pas AJOUTER de codepoints FontAwesome. Sa liste de symboles est
 une constante `syms = "61441,61448,..."` dans le corps du script, et son `-r`
 utilisateur s'applique à la police LATINE (Montserrat), pas au `.woff`. Or dn3-1
-a besoin de 7 glyphes FontAwesome de PLUS (les icônes des métriques).
+a besoin d'icônes FontAwesome en plus : 10 entrées au dictionnaire `ICONES`
+ci-dessous, dont 2 (`cog` 0xF013 et `tint` 0xF043) sont DÉJÀ des symboles ⇒
+**8 codepoints neufs**, et 68 au `-r` FontAwesome final.
+⚠️ Ces nombres sont CALCULÉS et réinjectés dans `dn_font.h` à chaque génération,
+   plus récités : cinq endroits du dépôt en annonçaient trois valeurs
+   différentes, aucune juste (revue de code du 2026-08-18).
 
 Ce script est donc un sur-ensemble, et il se défend du seul risque que ça crée —
-LA DÉRIVE DE LA LISTE DES 61 SYMBOLES :
+LA DÉRIVE DE LA LISTE DES SYMBOLES :
 
-  🔴 Il ne RECOPIE PAS les 61 codepoints. Il les LIT dans le fichier amont, à
+  🔴 Il ne RECOPIE PAS les codepoints. Il les LIT dans le fichier amont, à
      chaque exécution. Si LVGL en ajoute un, on l'a. Si le fichier amont
      disparaît ou change de forme, ce script ÉCHOUE BRUYAMMENT au lieu de
      générer une police à laquelle il manquerait LV_SYMBOL_LIST (bandeau MENU)
@@ -26,10 +32,19 @@ LA DÉRIVE DE LA LISTE DES 61 SYMBOLES :
      SILENCIEUSE à l'écran : LVGL ne dessine pas un glyphe manquant et ne se
      plaint pas.
 
-  Puis il VÉRIFIE le `.c` produit : les 61 symboles + les icônes demandées +
-  quelques lettres accentuées témoins doivent être dans l'`unicode_list`. Une
+  Puis il VÉRIFIE le `.c` produit : les symboles + les icônes demandées + des
+  lettres accentuées témoins doivent être RÉELLEMENT portés par les cmaps. Une
   génération qui « réussit » sans les glyphes demandés est exactement l'étiquette
   qui ment que ce dépôt traque depuis dn1-3.
+
+  ⚠️ ET CETTE GARDE A ÉTÉ AVEUGLE UNE FOIS (corrigé le 2026-08-18, revue de
+     code) : elle testait les BORNES des cmaps au lieu de leur CONTENU, or la
+     cmap des symboles est SPARSE — elle borne 8226 → 63650 en n'y portant que
+     69 codepoints. `couvert(0xF863)` rendait donc `True` pour `fan`, LE glyphe
+     absent que ce fichier documente. Voir `codepoints_du_c()`.
+  ⚠️ Et les symboles étaient re-testés contre la liste LUE dans l'amont : un
+     témoin tiré de la chose qu'il témoigne n'est pas un témoin. D'où
+     `SYMBOLES_TEMOINS`, deux codepoints écrits en dur DÉLIBÉRÉMENT.
 
 ⚠️ `--no-compress` est OBLIGATOIRE : `CONFIG_LV_USE_FONT_COMPRESSED` n'est PAS
    activé dans ce build (vérifié dans `sdkconfig`). Une police compressée ne
@@ -82,8 +97,9 @@ PLAGE = "0x20-0x7F,0xA0-0xFF,0x2022"
 # Codepoints VÉRIFIÉS UN PAR UN dans le `.woff` du dépôt le 2026-08-17 (chacun
 # converti seul ; `lv_font_conv` échoue bruyamment sur un codepoint absent).
 # 🔴 0xF863 `fan` est ABSENT : il est arrivé en FontAwesome 5.11 et le `.woff`
-#    embarqué est antérieur. Le substitut retenu est 0xF2F1 `sync-alt` — voir
-#    le motif écrit dans la story (W4).
+#    embarqué est antérieur. Le substitut retenu est 0xF013 `cog` (W4, constat
+#    owner du 2026-08-17) — et il est gratuit, 0xF013 étant déjà l'un des
+#    codepoints de symboles injectés par l'amont.
 ICONES = {
     "microchip":        0xF2DB,  # CPU
     "desktop":          0xF108,  # GPU
@@ -104,6 +120,21 @@ ICONES = {
 }
 
 TAILLES = (14, 28)
+
+# ── LES DEUX TÉMOINS QUI SONT RECOPIÉS, ET C'EST DÉLIBÉRÉ ────────────────────
+# Tout le reste de ce script REFUSE de recopier la liste amont, et c'est juste.
+# Mais UN TÉMOIN TIRÉ DE LA CHOSE QU'IL TÉMOIGNE N'EST PAS UN TÉMOIN : `verifier`
+# re-testait `syms`, c'est-à-dire la liste LUE dans l'amont. Si LVGL retirait un
+# codepoint, ce script le retirerait de la police ET de sa propre liste de
+# contrôle, puis annoncerait un succès — exactement le scénario contre lequel
+# « ne jamais recopier la liste » est censé protéger (correctif de revue,
+# 2026-08-18). Ces deux-là sont donc écrits en dur, parce qu'ils sont les deux
+# dont l'absence est SILENCIEUSE À L'ÉCRAN :
+#   · LV_SYMBOL_LIST (U+F00B) — le bandeau MENU      (dn_ui.c)
+#   · LV_SYMBOL_LEFT (U+F053) — le chevron de retour (dn_ui.c)
+# Relevés dans `managed_components/lvgl__lvgl/src/font/lv_symbol_def.h` le
+# 2026-08-18, pas devinés.
+SYMBOLES_TEMOINS = {"LV_SYMBOL_LIST": 0xF00B, "LV_SYMBOL_LEFT": 0xF053}
 
 
 def symboles_amont():
@@ -215,38 +246,81 @@ def corriger_include(chemin):
         f.write(src)
 
 
+CMAP = re.compile(
+    r"\.range_start\s*=\s*(\d+|0x[0-9a-fA-F]+)\s*,\s*"
+    r"\.range_length\s*=\s*(\d+|0x[0-9a-fA-F]+)\s*,\s*"
+    r"\.glyph_id_start\s*=\s*\d+\s*,\s*"
+    r"\.unicode_list\s*=\s*(NULL|unicode_list_\d+)\s*,\s*"
+    r"\.glyph_id_ofs_list\s*=\s*\w+\s*,\s*"
+    r"\.list_length\s*=\s*(\d+)\s*,\s*"
+    r"\.type\s*=\s*(\w+)")
+
+
+def codepoints_du_c(src, chemin):
+    """L'ensemble EXACT des codepoints que le `.c` porte, cmap par cmap.
+
+    🔴 POURQUOI CETTE FONCTION EXISTE — LA GARDE PRÉCÉDENTE ÉTAIT AVEUGLE À CE
+       QU'ELLE PRÉTENDAIT VÉRIFIER (correctif de revue, 2026-08-18). Elle testait
+       les BORNES de chaque cmap : `range_start` → `range_start + range_length`.
+       Or la cmap qui porte les symboles et les icônes est de type SPARSE — dans
+       le `.c` livré : `.range_start = 8226, .range_length = 55425`,
+       `.list_length = 69`. Elle BORNE donc 8226 → 63650 en n'y portant que
+       **69** codepoints. Un test de bornes rendait `True` pour la TOTALITÉ de
+       `syms`, quoi qu'il arrive : `couvert(0xF863)` — `fan`, le glyphe ABSENT
+       dont l'absence motive toute la §15.4 — rendait `True`. Seuls les témoins
+       accentués, qui tombent dans les cmaps DENSES (FORMAT0_TINY 32..126 et
+       160..255), étaient réellement contrôlés.
+       ⇒ Pour une cmap sparse, `unicode_list_N` fait foi : ses entrées sont des
+       OFFSETS depuis `range_start`. C'est ce que la version précédente avait
+       constaté — puis abandonné sur un `pass`.
+    """
+    couverts, n_cmaps = set(), 0
+    for a, b, liste_nom, list_len, type_ in CMAP.findall(src):
+        n_cmaps += 1
+        start, length, list_len = int(a, 0), int(b, 0), int(list_len)
+        if liste_nom == "NULL":
+            # Dense (FORMAT0_*) : tout l'intervalle est réellement porté.
+            couverts.update(range(start, start + length))
+            continue
+        m = re.search(r"static const uint16_t %s\[\]\s*=\s*\{(.*?)\};"
+                      % re.escape(liste_nom), src, re.S)
+        if not m:
+            sys.exit("ÉCHEC : cmap sparse de %s référence `%s`, introuvable dans "
+                     "le `.c`.\n        `lv_font_conv` a changé son gabarit — "
+                     "relire le `.c`, pas ce regex." % (chemin, liste_nom))
+        offsets = [int(x, 0) for x in
+                   re.findall(r"0x[0-9a-fA-F]+|\d+", m.group(1))]
+        if len(offsets) != list_len:
+            sys.exit("ÉCHEC : `%s` porte %d entrées pour un `.list_length = %d` "
+                     "dans %s.\n        Le `.c` se contredit — ne pas passer "
+                     "outre." % (liste_nom, len(offsets), list_len, chemin))
+        couverts.update(start + o for o in offsets)
+    if not n_cmaps:
+        sys.exit("ÉCHEC : aucune cmap reconnue dans %s. Le gabarit de "
+                 "`lv_font_conv` a changé." % chemin)
+    return couverts, n_cmaps
+
+
 def verifier(chemin, syms, plage_a_temoins):
     """RELIT le `.c` produit. Une génération « réussie » ne prouve rien."""
     src = open(chemin, encoding="utf-8", errors="replace").read()
-    m = re.search(r"static const uint16_t unicode_list_\d+\[\] = \{(.*?)\};",
-                  src, re.S)
-    liste = set()
-    if m:
-        # unicode_list est en OFFSETS depuis la base du range : on ne peut pas
-        # l'utiliser seule. Le `.c` porte aussi les bornes dans cmaps.
-        pass
+    couverts, n_cmaps = codepoints_du_c(src, chemin)
     manques = []
-    # Les bornes de chaque cmap disent quelles plages sont réellement couvertes.
-    bornes = [(int(a, 0), int(b, 0)) for a, b in
-              re.findall(r"\.range_start = (\d+|0x[0-9a-fA-F]+),\s*"
-                         r"\.range_length = (\d+|0x[0-9a-fA-F]+)", src)]
-    couverts = []
-    for start, length in bornes:
-        couverts.append((start, start + length - 1))
-
-    def couvert(cp):
-        return any(a <= cp <= b for a, b in couverts)
-
     for cp in syms:
-        if not couvert(cp):
+        if cp not in couverts:
             manques.append("symbole/icône U+%04X" % cp)
     for ch in plage_a_temoins:
-        if not couvert(ord(ch)):
+        if ord(ch) not in couverts:
             manques.append("témoin « %s » (U+%04X)" % (ch, ord(ch)))
+    # ⚠️ LES DEUX TÉMOINS QUI NE VIENNENT PAS DE L'AMONT — voir SYMBOLES_TEMOINS.
+    for nom, cp in sorted(SYMBOLES_TEMOINS.items()):
+        if cp not in couverts:
+            manques.append("témoin INDÉPENDANT %s (U+%04X) — le bandeau MENU ou "
+                           "le chevron de retour disparaîtrait EN SILENCE" % (nom, cp))
     if manques:
         sys.exit("ÉCHEC de vérification sur %s :\n  - %s"
                  % (chemin, "\n  - ".join(manques)))
-    return len(couverts)
+    return n_cmaps
 
 
 def octets_police(chemin):
@@ -314,7 +388,13 @@ def main():
                 tot, glyphes, par_taille = 0, 0, []
                 for t in TAILLES:
                     out = os.path.join(tmp, "p_%d.c" % t)
-                    generer(t, plage, ICONES, kern, out)
+                    syms = generer(t, plage, ICONES, kern, out)
+                    # ⚠️ CORRECTIF DE REVUE (2026-08-18) : `--mesure` ne
+                    # vérifiait RIEN. Or c'est lui qui a produit le tableau
+                    # ayant tranché W5 — l'arbitrage a donc pu se faire sur des
+                    # octets de polices auxquelles il manquait des glyphes.
+                    # Compter ce qu'on n'a pas vérifié, c'est chiffrer du vide.
+                    verifier(out, syms, "")
                     d = octets_police(out)
                     par_taille.append(d["_total"])
                     tot += d["_total"]
@@ -359,10 +439,19 @@ def ecrire_entete():
         macro = "DN_ICONE_" + nom.upper().replace("-", "_")
         lignes.append('#define %-28s "%s" /* U+%04X %s */'
                       % (macro, octets, cp, nom))
+    # 🔴 CALCULÉS, PAS RÉCITÉS (correctif de revue 2026-08-18) : le `.h` annonçait
+    # « 61 symboles + 10 icônes » pendant que le README disait 9, `dn_ui.c` et
+    # `sdkconfig.defaults` disaient 7, et §15.4 s'intitulait « 7 glyphes ».
+    syms = symboles_amont()
+    deja = [cp for cp in ICONES.values() if cp in set(syms)]
     contenu = ENTETE_MODELE % {
         "plage": PLAGE,
         "icones": "\n".join(lignes),
         "n_icones": len(ICONES),
+        "n_syms": len(syms),
+        "n_deja": len(deja),
+        "n_neufs": len(ICONES) - len(deja),
+        "n_r": len(set(syms) | set(ICONES.values())),
     }
     with open(os.path.join(SORTIE, "dn_font.h"), "w", encoding="utf-8") as f:
         f.write(contenu)
@@ -381,8 +470,14 @@ ENTETE_MODELE = u'''/*
  * absent et ne se plaint pas.
  *
  * `dn_font_14` / `dn_font_28` couvrent %(plage)s :
- * ASCII + LATIN-1 COMPLET + la puce + les 61 symboles LV_SYMBOL_* + %(n_icones)d
- * icônes FontAwesome. Elles sont donc un SUR-ENSEMBLE STRICT des built-ins.
+ * ASCII + LATIN-1 COMPLET + la puce + les %(n_syms)d symboles LV_SYMBOL_* UNIQUES
+ * + %(n_icones)d icônes FontAwesome, dont %(n_deja)d sont DÉJÀ des symboles ⇒
+ * %(n_neufs)d codepoints neufs, et %(n_r)d au `-r` FontAwesome final. Elles sont
+ * donc un SUR-ENSEMBLE STRICT des built-ins.
+ * ⚠️ « 61 » est le nombre d'entrées BRUTES de la liste amont — elle contient un
+ *    DOUBLON (61452 deux fois), d'où %(n_syms)d uniques. Ces nombres sont
+ *    CALCULÉS à la génération, plus récités : cinq endroits du dépôt en
+ *    annonçaient trois valeurs différentes, aucune juste (revue du 2026-08-18).
  *
  * ⚠️ `lv_font_montserrat_14` reste compilée : elle est aussi `LV_FONT_DEFAULT`
  *    (`CONFIG_LV_FONT_DEFAULT_MONTSERRAT_14=y`) et le Kconfig de LVGL 9.5
@@ -401,9 +496,19 @@ ENTETE_MODELE = u'''/*
  * 🔴 `0xF863` (`fan`) est ABSENT de ce `.woff` : il est arrivé en FontAwesome
  *    5.11, le fichier embarqué est antérieur. VÉRIFIÉ le 2026-08-17 en le
  *    convertissant seul (`lv_font_conv` échoue bruyamment sur un codepoint
- *    absent), pas déduit d'une table. Le substitut retenu pour VENTILOS est
- *    `sync-alt` — deux flèches en rotation, qui disent « ça tourne » là où
- *    `wind` (0xF72E) dit « ça souffle » et où `cogs` (0xF085) dit « engrenage ».
+ *    absent), pas déduit d'une table.
+ *
+ * 🔴 LE SUBSTITUT RETENU POUR VENTILOS EST `cog` (0xF013), tranché par CONSTAT
+ *    OWNER le 2026-08-17, A/B joué sur la dalle : les quatre candidats sont
+ *    embarqués ensemble et commutés à chaud (`widget icone <0..3>`) plutôt que
+ *    par trois reflashs. Verdict : `sync-alt` « ne dit rien », `wind` écarté,
+ *    `cog` RETENU — « un engrenage, ça dit pièce mécanique en rotation ».
+ *    Et il est GRATUIT : 0xF013 est DÉJÀ l'un des codepoints de symboles que
+ *    `built_in_font_gen.py` injecte, l'icône retenue ne coûte donc aucun glyphe
+ *    de plus que la police de base.
+ *    ⚠️ Cette phrase annonçait `sync-alt` jusqu'au 2026-08-18 — un fichier
+ *    GÉNÉRÉ qui contredisait le descripteur, donc un mensonge qui revenait à
+ *    chaque régénération. Relevé en revue de code.
  *
  * Reproduction :  python3 tools/gen_font_dn.py
  * La ligne de commande exacte est dans l'en-tête de chaque `.c` généré.
@@ -417,7 +522,7 @@ ENTETE_MODELE = u'''/*
 extern "C" {
 #endif
 
-/* ASCII + latin-1 complet + puce + 61 symboles + icônes. */
+/* ASCII + latin-1 complet + puce + %(n_syms)d symboles + %(n_icones)d icônes. */
 LV_FONT_DECLARE(dn_font_14)
 LV_FONT_DECLARE(dn_font_28)
 
