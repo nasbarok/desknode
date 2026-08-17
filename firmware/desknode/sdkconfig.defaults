@@ -221,7 +221,26 @@ CONFIG_LV_COLOR_DEPTH_16=y
 # Défaut LVGL = 14, illisible sur 480x640 à ~50 cm. 28 est la taille du label
 # vivant d'AC2 ; elle porte aussi l'observation « textes fins clairs violets »
 # héritée de dn1-2, qui demande des jambages FINS et ANTIALIASÉS pour se rejouer.
-CONFIG_LV_FONT_MONTSERRAT_28=y
+#
+# 🔴 dn3-1 : MONTSERRAT_28 EST DÉSACTIVÉE. `main/fonts/dn_font_28.c` la remplace
+#    — même TTF, même bpp, mêmes drapeaux, mais avec le LATIN-1 COMPLET et 7
+#    icônes FontAwesome en plus. Plus rien dans le firmware ne référence
+#    `lv_font_montserrat_28` : la garder aurait coûté ses 37 248 o de données
+#    pour un symbole mort.
+CONFIG_LV_FONT_MONTSERRAT_28=n
+
+# ⚠️ MONTSERRAT_14, ELLE, RESTE ACTIVE — ET CE N'EST PAS UNE INCOHÉRENCE.
+#    Elle est aussi `LV_FONT_DEFAULT` (CONFIG_LV_FONT_DEFAULT_MONTSERRAT_14=y),
+#    et le Kconfig de LVGL 9.5 n'offre AUCUN choix « police personnalisée » pour
+#    ce réglage : le `choice LV_FONT_DEFAULT` (Kconfig:991-1040) n'énumère que
+#    des built-ins. La désactiver casserait le build, et l'y forcer demanderait
+#    de patcher un composant managé — gitignoré et régénéré, donc un correctif
+#    qui ne survivrait pas au premier `idf.py reconfigure`.
+#    ⇒ On paie ses 13 596 o de données DÉLIBÉRÉMENT, pour un usage unique : la
+#      police de repli des labels dont personne n'a fixé la fonte. Tous les
+#      textes de dn_ui posent la leur explicitement.
+CONFIG_LV_FONT_MONTSERRAT_14=y
+CONFIG_LV_FONT_DEFAULT_MONTSERRAT_14=y
 
 # ⚠️ CONFIG_LV_USE_PERF_MONITOR est DÉLIBÉRÉMENT ABSENT (défaut n, gardé à n).
 # Il dessine un encart fps/CPU EN PERMANENCE dans un coin de l'écran : il

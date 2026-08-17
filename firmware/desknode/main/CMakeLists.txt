@@ -14,6 +14,16 @@ idf_component_register(
         "dn_link.c"
         "dn_capteurs.c"
         "dn_wifi.c"
+        # dn3-1 : le modèle de widget, et les deux polices GÉNÉRÉES.
+        # ⚠️ Les `.c` de police sont VERSIONNÉS (décision W6), pas produits au
+        #    build : `lv_font_conv` est une dépendance npm absente du tableau des
+        #    versions figées, et un `idf.py build` sur un clone neuf SANS RÉSEAU
+        #    échouerait. Ce n'est PAS le même arbitrage que l'asset Living PCB,
+        #    dont le générateur est en stdlib Python pure.
+        #    Régénération : `python3 tools/gen_font_dn.py` (voir README).
+        "dn_widget.c"
+        "fonts/dn_font_14.c"
+        "fonts/dn_font_28.c"
     INCLUDE_DIRS "."
     REQUIRES
         driver
