@@ -28,6 +28,15 @@ firmware/
                     prouve en 6 s que la chaîne build/flash/monitor n'est pas en
                     cause. Ne pas l'enrichir.
   desknode/         P1+ — le vrai firmware : écran RGB, mires, mesures, console.
+    main/dn_widget.c/.h   dn3-1 — LE MODÈLE DE CASE du dashboard (icône, titre,
+                          valeur(s), unité, couleur, indicateur, secondaires).
+                          Son en-tête porte le CONTRAT DE VERROU et la raison
+                          pour laquelle il est inversé. Il possède aussi la
+                          BRIQUE TACTILE : les deux drapeaux qui rendent vraie
+                          « toute la case est la zone tactile » n'ont plus
+                          qu'UNE définition dans tout le firmware.
+    main/fonts/           dn3-1 — dn_font_14.c / dn_font_28.c / dn_font.h,
+                          GÉNÉRÉS et VERSIONNÉS (voir § Les polices).
 hardware/   ESP32-S3-Touch-LCD-2.8B-affichage.md  <- LA config d'affichage de
             référence (brochage VÉRIFIÉ, timings, framebuffer, chiffres datés).
             ESP32-S3-Touch-LCD-2.8B-liaison-pc.md <- §12, la FOURCHE TRANSPORT
@@ -41,6 +50,7 @@ assets/     assets graphiques 480×640
 agent/      dn_agent.py — l'agent PC (Windows), % CPU à 1 Hz (voir § L'agent PC)
 tools/      wsl-attach.sh (attachement USB WSL)
             gen_living_pcb.py (génération de l'asset 480×640)
+            gen_font_dn.py (génération des polices — voir § Les polices)
 tests/      harnais et smokes
 ```
 
@@ -167,7 +177,7 @@ idf.py -p /dev/ttyACM0 flash monitor               # quitter le moniteur : Ctrl+
 - **au DOIGT** (dn1-4) : toucher une case ouvre sa page de détail, le `←` ramène au dashboard ;
 - la **console est interactive** : taper `aide` dans le moniteur liste les commandes. Jeu complet :
   `scene`, `fps`, `bw`, `mem`, `cpu`, `cfg`, `set`, `tear`, `flash`, `ui`, `flush`, `anim`,
-  `touch`, `nav`, `recal`, `bl`, `disp`, `dma`, `i2c`, `capteurs`, `pc`, `wifi`, `reboot`, `aide`. `cfg reset` rend
+  `touch`, `nav`, `recal`, `bl`, `disp`, `dma`, `i2c`, `capteurs`, `pc`, `wifi`, `widget`, `reboot`, `aide`. `cfg reset` rend
   les défauts au prochain boot. **C'est `aide` qui fait foi**, pas cette liste. Les commandes de
   dn1-3 et dn1-4 :
 
@@ -192,6 +202,7 @@ idf.py -p /dev/ttyACM0 flash monitor               # quitter le moniteur : Ctrl+
   | **`capteurs`** (dn2-1) | le **BME680** : état (VIVANT / MUET / jamais lu), valeurs + âge, cadence, cycle de mesure mesuré, compteurs **par cause** (i2c / donnée / bornes / **reconfigurations**). `capteurs gaz on|off` = l'A/B d'auto-échauffement à chaud. 🔴 **`capteurs simuler muet\|bornes\|config <n>`** rejoue une panne SANS toucher au connecteur (un Dupont ne supporte pas les insertions répétées) — l'injecteur ne falsifie que le VERDICT, jamais la lecture, et s'annonce bruyamment. ⚠️ **Elle ne déclenche AUCUNE mesure** : `bme680_get_data()` peut dormir 1 500 ms, et le REPL est le transport PC |
   | **`i2c`** (dn2-1) | le **bus vu de ses adresses** : `i2c` scanne 0x08..0x77, `i2c lire <addr> <reg> [n]` lit un registre (hexa). 🔴 **Chaque adresse trouvée est RE-SONDÉE 5 fois et le résultat publié `n/5`** — un scan à une passe fabrique des faux positifs, et il en a sorti un **à `0x76`, l'adresse du BME680, alors qu'aucun capteur n'était branché** (`hardware/…-capteurs-i2c.md` §13.2). Témoin positif intégré : la commande conclut elle-même sur `0x20`+`0x5D`, et un scan qui ne les voit pas est un instrument cassé. ⚠️ bloque le REPL — donc le transport PC — pendant sa durée (~26 ms) |
   | **`pc`** (dn2-2) | la **liaison PC** : état (VIVANTE / MORTE / jamais reçue), dernière valeur + son âge, compteurs (trames valides, doublons, pertes de seq, **resynchros**, reprises, rejets **par cause** — ⚠️ « tronquée » = la fin de ligne est PERDUE, **« trop longue »** = la ligne est COMPLÈTE mais dépasse 63 o, deux diagnostics opposés), latence acceptation→label. `pc reset` remet les compteurs **et oublie le seq** (sans ça, une campagne relancée avec la trame d'exemple retombait en doublon et mesurait du vide). **`pc $DN,…`** ingère UNE trame — c'est le dialecte de l'agent en branche A, et l'injecteur des campagnes de bruit |
+  | **`widget`** (dn3-1) | le **modèle de case** : pour chacune des 6 cases, sa **forme** (widget / nue), son **régime** (RÉELLE / SIMULÉE / ABSENTE), si elle est **dessinée en ce moment**, et ses valeurs — le tout **RELU de l'état réel**, jamais récité d'une constante. Plus la forme **annoncée** du mock (rampe triangulaire 800→1600 tr/min, période 20 s) et l'icône active. Sous-commandes : **`widget groupe on\|off`** (l'A/B d'invalidation d'AC8, §15.5 — rejouable sans reflasher), **`widget opa <0..255>`** et **`widget voile <0..255>`** (l'A/B d'opacité, §15.6 ; **bornées et REFUSÉES** hors plage, jamais écrêtées), **`widget mock on\|off`** (couper le mock rend la case ABSENTE : c'est le témoin que le mock EST sa seule source), **`widget icone <0..3>`** (l'A/B du glyphe VENTILOS, `fan` étant absent du FontAwesome du dépôt), **`widget demo on\|off`** (la **7ᵉ métrique fictive** d'AC1 : une case complète produite par le même appel que les autres, depuis un descripteur et **rien d'autre**), **`widget pousser <idx>`** (UNE mise à jour synthétique — ⚠️ **une par appel**, sinon les N invalidations tombent dans le même cycle LVGL et LVGL les fusionne ; c'est l'appelant PC qui les espace). ⚠️ **`pousser` ne se retire pas** : la case reste SIMULÉE jusqu'à ce que sa vraie source reparle ou jusqu'au `reboot` — **rebooter avant tout constat owner sur l'aspect**. ⚠️ `opa`, `voile` et `icone` **reconstruisent la scène**, ce qui retire le stimulus `anim` et la démo, et ramène la vue au dashboard |
   | **`wifi`** (dn2-2) | la maquette **branche B**, ÉCARTÉE par la fourche (verrou RAM, `hardware/…-liaison-pc.md` §12.2). **Non compilée par défaut** : la commande répond « maquette B non compilee » avec la recette de re-mesure |
   ⚠️ Le log de ce projet ne part **plus** sur le header UART GPIO43/44 : la console primaire est
   passée sur l'USB pour pouvoir RECEVOIR des commandes. Pour retrouver le header, voir le
@@ -603,6 +614,79 @@ partition `assets`. Pour le regarder sans construire :
 ```bash
 python3 tools/gen_living_pcb.py --out-png /tmp/apercu.png
 ```
+
+## Les polices (dn3-1) — générées, vérifiées, VERSIONNÉES
+
+Les libellés du dashboard perdaient leur accent **en silence** : les built-ins
+`lv_font_montserrat_14/_28` sont générées avec `-r 0x20-0x7F,0xB0,0x2022` (relu dans l'en-tête de
+leur `.c`), soit ASCII + le signe degré + la puce, **et rien d'autre**. LVGL ne dessine pas un
+glyphe absent **et ne se plaint pas** — « RÉSEAU », « HUMIDITÉ », « AOÛT » y perdaient leur lettre.
+
+`main/fonts/dn_font_14.c` et `dn_font_28.c` les remplacent : **ASCII + latin-1 complet + la puce +
+les 61 `LV_SYMBOL_*` + 9 icônes FontAwesome**. Ce sont des **sur-ensembles stricts** des built-ins.
+
+### Régénérer
+
+```bash
+# lv_font_conv est appelé PAR SON NOM par le générateur amont de LVGL.
+# npx le fournit sans installation globale — il suffit d'un shim sur le PATH :
+printf '#!/usr/bin/env bash\nexec npx --yes lv_font_conv@1.5.3 "$@"\n' > ~/.local/bin/lv_font_conv
+chmod +x ~/.local/bin/lv_font_conv
+
+python3 tools/gen_font_dn.py            # régénère les 2 .c + dn_font.h
+python3 tools/gen_font_dn.py --mesure   # compare les plages et le kerning, ne génère rien
+```
+
+- **Mesuré depuis ce WSL le 2026-08-17** : `node v24.14.0`, `npm 11.9.0`,
+  `npx --yes lv_font_conv --version` → **1.5.3** (rc=0).
+- Le générateur **lit** les 61 codepoints de symboles dans
+  `managed_components/lvgl__lvgl/scripts/built_in_font/built_in_font_gen.py` — il ne les recopie
+  **jamais**. Une liste recopiée dérive, et sa dérive est **silencieuse** : `LV_SYMBOL_LIST` (bandeau
+  MENU) et `LV_SYMBOL_LEFT` (chevron de retour) disparaîtraient sans un mot.
+- Il **relit** ensuite le `.c` produit et **échoue bruyamment** si un symbole, une icône ou un témoin
+  accentué manque. Une génération qui « réussit » sans ses glyphes est l'étiquette qui ment.
+- `dn_font.h` (les macros `DN_ICONE_*`) est **généré depuis le même dictionnaire** que la police :
+  une macro **ne peut pas** pointer un codepoint que la police n'aurait pas.
+- ⚠️ `managed_components/` est **gitignoré mais régénéré** par `idf.py` depuis `main/idf_component.yml`,
+  où `lvgl/lvgl: "==9.5.0"` est épinglé. Sans lui, ni générateur, ni TTF, ni WOFF :
+  `idf.py reconfigure` d'abord.
+- ⚠️ **`--no-compress` est obligatoire** : `CONFIG_LV_USE_FONT_COMPRESSED` n'est **pas** activé dans
+  ce build, et la compression coûte de toute façon ~30 % de temps de rendu.
+
+### Pourquoi les `.c` sont VERSIONNÉS et non produits au build
+
+`lv_font_conv` est une dépendance **npm**, absente du tableau des versions figées : un `idf.py build`
+sur un clone neuf **sans réseau** échouerait. Ce n'est **pas** le même arbitrage que l'asset Living
+PCB, dont le générateur (`gen_living_pcb.py`) est en **stdlib Python pure** — celui-là peut se
+regénérer partout, hors ligne.
+
+### Ce que ça coûte, mesuré
+
+Binaire **832 720 → 885 232 o** (+52 512, +6,3 %), partition `factory` libre à **79 %**.
+Détail, tableau des plages et les **deux erreurs de la story corrigées par la mesure** :
+`hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md` **§15.3**.
+
+### Les icônes, et celle qui manque
+
+🔴 **`0xF863` (`fan`) est ABSENT** du `FontAwesome5-Solid+Brands+Regular.woff` du dépôt : il est
+arrivé en **FontAwesome 5.11** et le fichier embarqué est antérieur. **Vérifié en le convertissant
+seul**, pas déduit d'une table. Quatre substituts sont embarqués **ensemble** et commutables à chaud
+(`widget icone`) ; **`cog` a été retenu** par constat owner — et il est **gratuit**, `0xF013` étant
+déjà l'un des 61 symboles injectés par le générateur amont.
+
+⛔ **Aucun asset image pour les icônes** : `dn_asset` ne gère qu'**un** asset, et la partition
+`assets` n'a que ~434 Ko libres — que **dn3-3 réclame déjà**.
+
+**Licences**, **lues** dans les fichiers, pas récitées
+(`managed_components/lvgl__lvgl/scripts/built_in_font/font_license/`) :
+- `Montserrat/OFL.txt` — *« This Font Software is licensed under the SIL Open Font License,
+  Version 1.1 »*, © 2011 The Montserrat Project Authors.
+- `FontAwesome5/LICENSE.txt` — Font Awesome Free, © Fonticons Inc. : **icônes CC BY 4.0**,
+  **fontes SIL OFL 1.1**, code MIT. Nous n'embarquons que des **glyphes** ⇒ CC BY 4.0 + OFL 1.1.
+
+⚠️ Ces licences vivent dans `managed_components/`, qui est **gitignoré**. Elles sont donc
+**absentes d'un clone** tant que `idf.py reconfigure` n'a pas tourné — c'est un fait à connaître
+avant toute distribution du binaire, pas un détail d'attribution.
 
 ## L'agent PC (dn2-2) — le % CPU de la tour, à ~1 Hz, par l'USB série
 

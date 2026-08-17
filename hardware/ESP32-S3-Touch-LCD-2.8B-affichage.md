@@ -1902,3 +1902,323 @@ séparée**. C'est la formulation d'origine de la story, et elle est confirmée 
 ⚠️ **`GPIO4` et le chargeur perdent leur intérêt fonctionnel**, mais **PAS leur intérêt de
 diagnostic** : l'interrupteur « Battery Power Control » reste sur la carte et peut couper quelque
 chose, batterie ou non. **Le mesurer reste utile.**
+
+---
+
+## 15. LE MODÈLE DE WIDGET — mesuré le 2026-08-17 (dn3-1, P6)
+
+> **Ce que cette section ferme** : le `SystemMetricWidget` du brief naît ici, avec sa variante
+> multi-grandeurs (D6), sa police accentuée, ses icônes, et **les deux A/B chiffrés** que dn3-2
+> dépensera. Firmware de mesure : **`969847c`** (les chiffres de départ, eux, sont attachés à
+> `c30c7ad`).
+>
+> ⚠️ **§0 EST INCHANGÉE.** Aucune ligne de la configuration de référence n'a bougé : `num_fbs=1`,
+> `bounce_px=4800`, `draw_lines=128`, `poll`, `vsync`, LVGL sur le cœur 0, fond en flash `mmap`,
+> modèle `screens`. Vérifié ligne à ligne, pas au jugé — c'est le point noir récurrent de ce
+> fichier, relevé par la revue **trois stories de suite**.
+
+### 15.1 Où vit la brique, et le contrat de verrou
+
+`main/dn_widget.c` / `.h`, module neuf. Les critères de placement ont été écrits **avant** la
+décision (story dn3-1, T1). Le seul qui plaidait pour `dn_ui.c` — « pas de frontière d'exécution :
+ni tâche, ni état propre, ni péremption » — est **explicitement levé** par le brief, qui exige que
+ce modèle soit *généralisé d'avance*, contrairement à la règle de `dn_capteurs.h`.
+
+🔴 **Conséquence non négociable, sinon la décision aurait empiré l'existant** : `dn_widget` possède
+la **brique tactile**. Les deux drapeaux qui rendent vraie « toute la case est la zone tactile »
+(prouvée à 4 px du bord en dn1-4) étaient **déjà dupliqués** entre `zone_creer()` et `panneau()` ;
+un widget qui les aurait ré-implémentés en aurait fait une **troisième copie**. Ils n'ont plus
+qu'**une** définition, que traversent désormais toutes les zones tactiles du firmware.
+
+**Le verrou est INVERSÉ, et les deux motifs sont écrits dans l'en-tête** : `dn_widget_*` exige que
+`lvgl_port_lock()` soit **déjà pris**.
+1. Le motif de `case_vive_poser` (dn2-1) généralisé : *N* grandeurs sous **un** verrou.
+2. **Neuf** : le groupage d'invalidation (§15.5) coupe `lv_display_enable_invalidation()`, écrit
+   tous les enfants, la rétablit, puis invalide le conteneur. Relâcher le verrou au milieu
+   laisserait un cycle LVGL passer **avec l'invalidation coupée** — c'est-à-dire un écran **figé
+   sans erreur**.
+
+**Trois choses séparées** : descripteur `const` en `.rodata` · état **persistant** en RAM ·
+pointeurs LVGL. Ce qui survit au démontage n'est **jamais** un pointeur — c'est la parade au
+use-after-free trouvé par la revue dn1-3. Les pointeurs sont remis à zéro aux **trois** sites, dont
+`dn_ui_set_nav_model()` **qui ne le faisait pas**.
+
+**Les trois régimes sont dans le TYPE**, et `DN_VAL_ABSENTE` vaut **0** : un état statique naît donc
+*absent*, jamais *réel*. C'est la forme typée de l'initialiseur `= "--"` que dn2-1 avait perdu.
+
+### 15.2 La mise en page, et pourquoi « côte à côte » est impossible
+
+Case 225 × 156. Icône 28 px + titre 14 px en haut, valeurs 28 px à partir de y = 48, pas de 40 px,
+jauge et données secondaires en dessous.
+
+🔴 **« Côte à côte » a été écarté par l'arithmétique, pas par goût** : à 28 px, « 25,5 °C » mesure
+~110 px et « 52,4 % » ~95 px, soit **205 px pour 201 px utiles**. Ça ne rentre pas, et une
+température négative à deux chiffres (« −12,3 °C ») aggraverait. Le côte à côte n'aurait tenu qu'en
+**descendant la police**, donc en rendant la case principale **moins** lisible que les autres.
+« Principale + secondaire » a été écarté pour une autre raison : il **hiérarchise**, alors que
+température et humidité sont deux mesures du même capteur, de même dignité.
+⇒ **EMPILÉES**, validé par constat owner. Et c'est le mécanisme **générique** : *N* grandeurs =
+*N* lignes. Prouvé sur une instance bi-grandeurs **qui n'est ni Ambiance ni Ventilos**
+(`widget demo on`), donc la variante D6 n'est pas un cas spécial déguisé.
+
+### 15.3 La police — ce qui a été mesuré, et ce que la story annonçait de faux
+
+Générateur : `tools/gen_font_dn.py`. Il **lit** les 61 codepoints de symboles dans
+`built_in_font_gen.py` amont (jamais recopiés : une liste recopiée dérive, et sa dérive est
+**silencieuse**), ajoute les icônes, puis **relit le `.c` produit** pour vérifier que les 68
+symboles+icônes et 19 témoins accentués y sont.
+
+**Plage retenue : latin-1 complet** `0x20-0x7F,0xA0-0xFF,0x2022`, **kerning conservé**.
+Motif : la partition `factory` est libre à ~80 %, donc **le levier binaire n'existe pas ici** ;
+latin-1 ferme la *classe* de défaut au lieu d'un cas, et apporte `µ` et `²`.
+
+🔴 **LA STORY SOUS-ESTIMAIT LES OCTETS DE POLICE D'UN TIERS, ET C'EST VÉRIFIABLE.** Elle annonçait
+**33 252 o** pour la plage actuelle sur les deux tailles. Le **témoin** — les `.c` des built-ins
+réellement embarqués — en compte **50 844 o** (158 glyphes : 13 596 à 14 px + 37 248 à 28 px).
+L'instrument a été validé contre ce témoin avant d'être utilisé.
+
+| plage (icônes comprises) | glyphes | 14 px | 28 px | total |
+|---|---:|---:|---:|---:|
+| built-ins réels, **sans** icônes (témoin) | 158 | 13 596 | 37 248 | **50 844** |
+| actuelle + icônes, kerning | 164 | 14 294 | 39 692 | 53 986 |
+| minimale FR + icônes, kerning | 179 | 15 382 | 42 753 | 58 135 |
+| **latin-1 + icônes, kerning (RETENUE)** | 259 | 20 942 | 57 462 | **78 404** |
+| latin-1 + icônes, **sans** kerning | 259 | 16 164 | 52 684 | 68 848 |
+
+🔴 **ET LA STORY SE TROMPAIT AUSSI SUR LE LEVIER.** Elle affirmait que le kerning coûte *« trois
+fois le prix des accents »*. **Mesuré : 1,6 fois** — kerning **6 634-9 556 o** contre accents
+**4 149 o** (minimale FR) . Le kerning reste le plus gros poste unitaire, mais l'écart annoncé était
+faux d'un facteur 2. **Le conserver était donc encore moins cher que prévu.**
+
+**`--no-compress` est obligatoire** (`CONFIG_LV_USE_FONT_COMPRESSED` n'est pas activé).
+**Reproductibilité** : la ligne de commande exacte est dans l'en-tête de chaque `.c` généré, en
+**chemins relatifs** (une première version y gravait le `$HOME` de la machine — une recette que
+personne d'autre ne peut rejouer). `npx --yes lv_font_conv@1.5.3` mesuré fonctionnel depuis ce WSL.
+Licences : `managed_components/lvgl__lvgl/scripts/built_in_font/font_license/`.
+
+⚠️ **Un piège de génération, bruyant mais évitable** : `lv_font_conv` émet un préambule qui choisit
+son include sur `LV_LVGL_H_INCLUDE_SIMPLE`, macro que ce build **ne définit pas** (il pose
+`LV_CONF_INCLUDE_SIMPLE`, qui est une **autre** macro, pour `lv_conf.h`). Sans réécriture :
+`fatal error: lvgl/lvgl.h: No such file or directory`. Le générateur le corrige et **échoue
+bruyamment** si le gabarit amont change.
+
+**Décision W6 — VERSIONNÉ, pas généré au build.** `lv_font_conv` est une dépendance **npm** absente
+du tableau des versions figées : un `idf.py build` sur un clone neuf **sans réseau** échouerait. Ce
+n'est **pas** le même arbitrage que l'asset Living PCB, dont le générateur est en stdlib Python pure.
+
+**`CONFIG_LV_FONT_MONTSERRAT_28` est désactivée** (plus rien ne la référence).
+**`MONTSERRAT_14` reste**, et ce n'est pas une incohérence : elle est aussi `LV_FONT_DEFAULT`, et le
+`choice LV_FONT_DEFAULT` de LVGL 9.5 (`Kconfig:991-1040`) **n'énumère que des built-ins**. La forcer
+demanderait de patcher un composant managé — gitignoré et régénéré, donc un correctif qui ne
+survivrait pas au premier `idf.py reconfigure`. Ses 13 596 o sont payés **délibérément**.
+
+### 15.4 Les icônes — 7 glyphes, zéro asset, et le manquant est nommé
+
+🔴 **`0xF863` (`fan`) est ABSENT** du `FontAwesome5-Solid+Brands+Regular.woff` du dépôt : il est
+arrivé en FontAwesome **5.11** et le fichier embarqué est antérieur. **Vérifié en le convertissant
+seul** (`lv_font_conv` échoue bruyamment sur un codepoint absent), pas déduit d'une table.
+
+Codepoints **re-vérifiés un par un** le 2026-08-17, tous **présents** : `0xF2DB` microchip ·
+`0xF108` desktop · `0xF538` memory · `0xF6FF` network-wired · `0xF1EB` wifi · `0xF2C9`/`0xF2C8`
+thermometer · `0xF043` tint · `0xF72E` wind · `0xF021` sync · `0xF085` cogs · `0xF013` cog ·
+`0xF2F1` sync-alt · `0xF0A0` hdd · `0xF233` server.
+
+**W4 tranché par A/B sur la dalle**, quatre substituts embarqués **ensemble** et commutables à chaud
+(`widget icone`) — un A/B qui aurait exigé trois reflashs coûte trois observations à l'owner pour un
+rendement qui baisse. `sync-alt` : *« ne dit rien »*. `wind` : écarté. **`cog` RETENU.**
+🔴 **Et il est GRATUIT** : `0xF013` est **déjà** l'un des 61 codepoints que `built_in_font_gen.py`
+injecte (61459). L'icône retenue ne coûte **aucun glyphe** de plus que la police de base.
+
+⛔ **Aucun asset image**, et le conflit est porté au ledger : `dn_asset` ne gère qu'**un** asset, et
+la partition `assets` (1 MiB, 614 400 o occupés) n'a que ~434 Ko libres — **que dn3-3 réclame déjà
+pour trois déclinaisons de 614 400 o : 3 × 614 400 > 1 MiB.**
+
+### 15.5 🔴 L'A/B D'INVALIDATION — LE LEGS CHIFFRÉ POUR dn3-2
+
+**Protocole** : `flush reset` avant chaque relevé · 25 mises à jour forcées sur **une seule** case
+(`widget pousser`) · mock et capteur isolés · aire, flushes, `copie_us` et `attente_us` publiés
+**séparément**.
+
+⚠️ **L'injecteur pousse UNE fois par appel, et c'est structurel** : une boucle de *N* poussées dans
+la commande aurait fait tomber les *N* invalidations dans le **même cycle LVGL de 33 ms**. LVGL les
+aurait fusionnées, on aurait mesuré **1 flush pour N mises à jour**, et conclu que grouper est
+gratuit. Séparer les poussées dans le **temps** est la seule façon que chacune ait son cycle.
+
+| cas | branche A — N zones fines | branche B — 1 zone englobante |
+|---|---|---|
+| **(a)** widget MONO **sans** jauge (CPU) | 2,08 flush/cyc · 10 591 px/cyc | 1,04 · **36 504 px** |
+| **(a′)** widget MONO **avec** jauge (VENTILOS, régime réel, par soustraction) | 2,95 flush/cyc · 16 573 px/cyc | 1,00 · 35 991 px |
+| **(b)** widget **BI-grandeurs** (AMBIANCE) | 2,04 flush/cyc · 17 387 px/cyc | 1,00 · **35 100 px** = 225 × 156 |
+| **(c)** case **NUE** — témoin négatif (GPU) | 1,00 flush/cyc · 3 758 px/cyc | **1,00 · 3 758 px** |
+
+| cas | copie A | attente A | copie B | attente B | **ms/cycle A → B** |
+|---|---:|---:|---:|---:|---|
+| (a) | 268 µs/f | 15 522 µs/f | 2 990 µs/f | 16 180 µs/f | **32,8 → 20,0 (−39 %)** |
+| (a′) | 279 µs/f | 16 274 µs/f | 3 583 µs/f | 14 054 µs/f | **48,8 → 17,6 (−64 %)** |
+| (b) | 406 µs/f | 16 635 µs/f | 2 956 µs/f | 17 068 µs/f | **34,8 → 20,0 (−42 %)** |
+| (c) | 236 µs/f | 14 078 µs/f | 340 µs/f | 13 159 µs/f | 14,3 → 13,5 (**inchangé**) |
+
+🔴 **LA PRÉDICTION EST CONFIRMÉE DANS SON SENS, DÉMENTIE DANS SON AMPLEUR.** La story annonçait que
+l'attente domine la copie *« d'un facteur ~50 »*. **Mesuré : ~5** (copie groupée **2,9-3,6 ms**
+contre attente **14-17 ms**). Le groupage gagne quand même — parce qu'il **supprime un flush entier**
+(~16 ms) pour **2,7 ms** de copie en plus, soit un retour de **~6 pour 1**. Une prédiction démentie
+est plus instructive qu'une prédiction tenue, et ce dépôt a déjà vu un facteur 10 d'écart (T9).
+
+⚠️ **CE QUE LE GROUPAGE NE FAIT PAS** : il n'économise **aucun** pixel, il en **multiplie** le nombre
+par **3,4** (10 591 → 36 504). Ce n'est pas une optimisation d'aire, c'est un **échange** :
+beaucoup de pixels contre une attente de trame. Le jour où la copie deviendra le goulot, l'arbitrage
+devra être **rejoué** — la branche fine reste vivante et rejouable sans reflasher (`widget groupe`).
+
+✅ **LE TÉMOIN NÉGATIF EST INTACT** : la case nue mesure **exactement pareil** dans les deux branches
+(elle ne traverse pas le modèle). C'est ce qui prouve que la différence vient du **groupage** et non
+d'un effet de bord de la campagne.
+
+**Extrapolation à six widgets vivants, et ce qu'elle suppose** :
+- Six widgets **groupés** invalideraient **6 × 35 100 = 210 600 px/cycle**, soit **69 % d'un plein
+  écran** — le contre-argument que la story demandait d'instruire. ⚠️ **Mais il ne se réalise que si
+  les six se mettent à jour dans le MÊME cycle**, ce qui suppose des sources synchronisées. Elles ne
+  le sont pas (liaison PC ~1 s, capteur 5 s, mock 1 s).
+- En cadences **décalées**, le coût est de **~19 ms par mise à jour**, quelle que soit la case ⇒
+  **six sources à 1 Hz coûteraient ~114 ms/s (11 % de duty)** en groupé contre **~220 ms/s (22 %)**
+  en fin.
+- ⚠️ **Ce que l'extrapolation NE prouve PAS** : elle est linéaire, et rien ne dit que le rendu LVGL
+  l'est. Le plancher d'une transition est le **rendu** (~230 ms sur 307), pas la copie. **dn3-2 doit
+  re-mesurer à six, pas déduire.** *« Ça ne viendra pas tout seul. »*
+
+### 15.6 L'A/B D'OPACITÉ — la seule décision prise CONTRE sa mesure
+
+`nav ab 20`, n = 40 par branche, base dn2-1 = **307,0 ms**.
+
+| opacité des cases | min | **moyenne** | max |
+|---|---:|---:|---:|
+| **178** (`LV_OPA_70`, état des lieux) | 293,8 | **321,8 ms** | 369,9 |
+| **255** (`LV_OPA_COVER`, opaque) | 267,0 | **299,9 ms** | 343,2 |
+| **127** (`LV_OPA_50`) | 293,8 | **321,5 ms** | 352,2 |
+
+🔴 **127 et 178 donnent le MÊME chiffre.** Ce n'est donc **pas la valeur** d'opacité qui coûte,
+c'est le **fait de n'être pas opaque** : le re-blit du fond est **tout ou rien**. Ce résultat n'était
+pas dans les prévisions, et il simplifie l'arbitrage — il n'y a pas de compromis intermédiaire à
+chercher.
+
+**W8 — VERDICT OWNER : TRANSLUCIDE.** *« C'était mieux avant. »* Les **21,9 ms** (−6,8 %) sont
+**rendues délibérément** : le Living PCB est l'identité du produit, et un dashboard qui l'efface de
+ses six cases n'est plus le même objet. ⚠️ **Ce n'est donc pas une optimisation en attente** : c'est
+un arbitrage **fermé**, esthétique contre latence, l'esthétique ayant gagné **avec le chiffre en
+face**. L'option n°1 du ledger est **tranchée**, pas reportée.
+
+**W9 — voile plein écran : `90/255` (35 %)**, contre `LV_OPA_50` (127) auparavant. Constat owner :
+*« le PCB respire mieux »*, texte lisible **partout**, y compris sur les cases-widgets — qui étaient
+le risque nommé (un widget est plus contrasté qu'une case nue). ⚠️ **Purement esthétique** : la
+mesure ci-dessus montre que le voile ne coûte **rien** en latence. Écrit pour que personne ne
+l'« optimise ».
+
+⚠️ **§10.4 rappelé, et non fabriqué** : `vsync` ne protège pas une zone sale **pleine hauteur**. Une
+jauge de 10 px **dans** une case de 156 px en est très loin ; un indicateur qui traverserait la dalle
+y retomberait. **Aucun élément de dn3-1 n'est pleine hauteur.**
+
+### 15.7 « Toute la case est la zone tactile » — RE-PROUVÉ SUR LE PIÈGE
+
+🔴 **Les jauges de LVGL sont cliquables par défaut** : `lv_obj` pose `CLICKABLE`+`SCROLLABLE`
+(`lv_obj.c:584-593`), `lv_label` **retire** clickable (`:762`), mais **`lv_bar` le CONSERVE**
+(`:341`), `lv_scale` aussi (`:643`), et `lv_arc` l'**ajoute** (`:539`). Une jauge posée dans une case
+**vole le tap sur son propre rectangle**, et la propriété prouvée à 4 px du bord en dn1-4 devient
+fausse **en silence** — invisible au compteur de taps si on vise le centre.
+
+**Preuve, `touch trace 30000`, constat owner du 2026-08-17 :**
+
+```
+APPUI 1 · (133, 513)  -> TAP sur VENTILOS      <- LA JAUGE (barre y = 506..516)
+APPUI 2 · ( 94,  27)  -> TAP sur RETOUR
+APPUI 3..19 · y = 24..72 (barre heure/date)    <- AUCUN TAP : zone morte intacte
+APPUI 20 · (230, 232) -> TAP sur CPU           <- 5 px du bord droit, 4 px du bas
+APPUI 21 · ( 45,  28) -> TAP sur RETOUR
+```
+
+- **Le tap visant la jauge est arrivé sur VENTILOS**, pas sur la jauge ⇒ la parade
+  `lv_obj_clear_flag(jauge, LV_OBJ_FLAG_CLICKABLE)` tient.
+- **17 appuis consécutifs sur la barre heure/date n'ont ouvert RIEN** ⇒ la zone morte est intacte, et
+  le voile plein écran reste non cliquable.
+- **`dn_ui_async_refus()` = 0** ⇒ aucun tap refusé par `lv_async_call`. ⚠️ Cette ligne n'est imprimée
+  **que** si le compteur est non nul (`dn_console.c:1439-1445`, relu) : son absence **est** le zéro.
+- ⚠️ **Écart déclaré** : le geste 4 visait la **gouttière** et a atterri **dans** la case CPU, à 4-5 px
+  du coin. La zone morte de la gouttière n'a donc **pas** été prouvée. Ce que le tir a prouvé à la
+  place vaut mieux : **« toute la case » tient jusqu'à 4 px du bord**, re-démontré avec un widget.
+
+### 15.8 Les budgets, re-relevés — et la seule régression, attribuée
+
+Firmware **`969847c`**, boot frais, contre la base dn2-1 du 2026-08-17 (`c30c7ad`).
+
+| mesure | base `c30c7ad` | **dn3-1 `969847c`** | écart |
+|---|---:|---:|---|
+| Binaire | 832 720 o | **885 232 o** | **+52 512 o (+6,3 %)** — partition `factory` libre à **79 %** |
+| RAM interne libre | 109 303 o | **108 679 o** | −624 o |
+| PSRAM libre | 7 768 360 o | **7 768 324 o** | −36 o |
+| Tas LVGL (boot) | 15 200 o / 25 %, frag 1 % | **17 768 o / 29 %, frag 1 %** | **+2 568 o** pour 3 widgets |
+| `fps 15` | 37,40 Hz, +0,00 % | **37,40 Hz, +0,00 %** | **0** |
+| Boot | 2 190 ms | **2 236 ms** | +46 ms |
+| Latence transition | 307,0 ms | **321,8 ms** | +14,8 ms (widgets plus riches) |
+| CPU au repos | 1,3 % | **3,8 %** | **+2,5 pt — voir ci-dessous** |
+
+🔴 **LA RÉGRESSION CPU EST ENTIÈREMENT ATTRIBUABLE AU MOCK, PAS AU MODÈLE.** Décomposée avec le bon
+instrument (`cpu 20`, valide pour le redessin qui ne passe pas par le REPL) :
+
+| mock | groupage | CPU | cycles / 20 s |
+|---|---|---:|---:|
+| off | off | **1,2 %** | 4 (capteur seul) |
+| off | on | **1,4 %** | 5 |
+| on | off | **3,2 %** | 24 |
+| on | on | **3,8 %** | 33 |
+
+⇒ **À la cadence du capteur, le modèle de widget coûte zéro point mesurable** (1,2 % contre 1,3 %
+en base, dans le bruit) malgré une case 7,6 × plus grande et six enfants au lieu de deux. Le
+groupage coûte **+0,2 pt**. Les **+2,4 pt** restants viennent du **mock à 1 Hz**, soit **5 × la
+cadence du capteur** — et le mock est un **instrument de dn3-1**, pas un comportement produit.
+
+⇒ **LEGS POUR dn3-2, ET C'EST LE PLUS ACTIONNABLE DE TOUS** : **le coût suit la CADENCE DE MISE À
+JOUR, pas la richesse du widget.** Ramené par redessin/seconde, on trouve **~2,2 pt** — à comparer
+au **+0,53 pt par case et par redessin** de dn2-2, qui vaut **~2,65 pt** une fois ramené à la même
+normalisation. ⚠️ **Les deux chiffres viennent de deux instruments et de deux richesses de widget
+différentes** : la concordance est un contrôle croisé, pas une égalité.
+
+**Gardes de dn2, toutes re-vérifiées** : « `--` » grisé **dès la première trame** au boot (les six
+cases, avant que quiconque ait alimenté quoi que ce soit) · péremption capteur 15 s effective
+(`capteurs simuler muet 40` → régime `ABSENTE`) · les **deux** modèles de navigation marchent, et en
+`rebuild` vue détail les six cases rendent `dessinee = NON` avec leur **état conservé**, reposé au
+retour **sans retomber sur un factice** · `ui off`/`ui on`/`scene`/`tear`/`flush full` **sûrs**
+(`flush full` = 307 200 px, 5,0 flush/cycle, aucune panique ; `scene` et `tear` **refusés** tant que
+LVGL tient l'écran, ce qui est le comportement voulu).
+
+**Pas de fuite de tas LVGL** : 5 bascules `screens ⇄ rebuild` enchaînées laissent le tas **plat**
+(17 768 o au boot → 17 756 o après, **−12 o**).
+⚠️ **La fragmentation monte à 22 %** après bascules répétées, contre **15-19 %** au ledger. Elle
+retombe à **1 %** au boot. Résiduel **connu, aggravé**, à porter au ledger : les objets de dn3-1
+sont plus gros, donc les trous laissés le sont aussi.
+
+### 15.9 Ce qui n'a pas marché, conservé avec son symptôme
+
+1. **Le mock repeignait à 1 Hz même coupé.** `lv_label_set_text` invalide **inconditionnellement**,
+   même avec un texte identique. Le témoin d'AC8 (« 0 poussée pendant 20 s ») a compté **24 cycles**
+   là où le capteur seul, à 5 s, n'en justifie que **4**. Les 20 en trop sont exactement le nombre de
+   ticks : **83 % de la « contribution parasite » qu'on croyait quantifier était fabriquée par la
+   mesure elle-même**, et elle polluait aussi les relevés par cas. Trouvé en **regardant** le chiffre
+   du témoin au lieu de le noter : *24 ≠ 4 n'a pas d'explication innocente.*
+2. **Un compteur d'octets de police aveugle à ce qu'il mesurait.** Les regex exigeaient `= {`, mais
+   le `.c` généré met l'accolade **à la ligne suivante** : `glyph_bitmap` **et** les trois tables de
+   kerning comptaient **zéro**, et l'outil rendait un total **identique** avec et sans
+   `--no-kerning`. Corrigé en **relisant le `.c`**, puis **validé contre le témoin** des built-ins
+   embarqués — c'est cette validation qui a révélé l'erreur d'un tiers de la story (§15.3).
+3. **`%-10s` remplit en OCTETS.** « RÉSEAU » décalait sa ligne dans le tableau de `widget` — le
+   **défaut exact** que l'en-tête de `dn_console_banner()` explique quelques centaines de lignes plus
+   bas, **re-commis** parce que dn3-1 est la story qui **accentue les libellés**. Corrigé par un
+   remplissage en **colonnes d'affichage** (un octet de continuation UTF-8 vaut `10xxxxxx`).
+4. **« 179 = LV_OPA_70 » et « 128 = LV_OPA_50 » : faux.** Ce sont **178** et **127** (`lv_color.h:47-49` :
+   70 % de 255 fait 178,5 et LVGL **tronque**). Une étiquette fausse d'un cran reste une étiquette
+   fausse.
+5. **Une fausse alerte sur AC5, et c'était le protocole.** `capteurs simuler muet 4` (≈20 s) expirait
+   **pendant** l'attente : le capteur repoussait une valeur réelle avant le constat owner, qui a donc
+   vu un chiffre et conclu que le détail mentait encore. Rejoué avec `muet 40` (≈200 s) : « `--` »
+   gris. ⚠️ **Une faute simulée doit couvrir toute la fenêtre d'observation, pas seulement la
+   péremption.**
+6. **Réfutation conservée** : un `reboot`/flash rend la carte muette ~3,5 s. Deux « cartes muettes »
+   de cette session étaient des sollicitations trop précoces, **pas** des pannes — la recette du
+   README ne s'appliquait pas.
