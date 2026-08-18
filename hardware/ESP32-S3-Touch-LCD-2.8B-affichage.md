@@ -3024,6 +3024,21 @@ reprochait précisément à AC7. *Un instrument qu'on ne lit pas ne protège de 
 
 #### AC7 — les régimes, sur le firmware de cette séance
 
+> 🔴 **CETTE TABLE EST REMPLACÉE PAR §17.10 — annotation du 2026-08-19.** §17.10 mesure les
+> **trois** régimes sur **UN SEUL** firmware (`b5cd141`), définitions de colonne figées et écrites
+> AVANT le premier relevé, et son test de réconciliation passe à **−0,00 pt**.
+> Deux de ses résultats portent sur cette section :
+> 1. ✅ **La colonne par tâche de §17.9 est CONFIRMÉE** par une mesure indépendante sur un autre
+>    firmware (`taskLVGL` 2,20 contre 2,20 en (a) ; 22,56 contre 22,16 en (b)). C'est bien **§17.2
+>    qui est l'anomalie** — mais la cause en est une **erreur de dérivation de l'opérateur**, pas
+>    une propriété de l'instrument (§17.10 corrige la formulation).
+> 2. 🔴 **Le régime (c) à 210 600 px NE SE REPRODUIT PAS.** Trois tirs sur `b5cd141` donnent
+>    **4 flushes / 1 cycle / 140 400 px**, mock coupé comme mock armé — soit exactement ce que
+>    **§17.2** publiait. ⇒ **l'extrapolation d'AC8 est DÉMENTIE** : six mises à jour simultanées
+>    coûtent **45,7 %** d'un plein écran, pas 69 %. Mécanisme INCONNU, au ledger.
+> ⚠️ Ses colonnes `ms/cyc` et `duty` **excluent l'attente de synchro** et ne se comparent donc ni
+> à §16.1, ni à §17.1, ni à §17.2, ni à §17.10 — qui publie les **deux termes séparément**.
+
 | régime | CPU | `taskLVGL` | `console_repl` | `dn_link` | cyc/s | flush/cyc | flush/s | px/cyc | plus gr. aire | copie µs/flush | ms/cyc | duty |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | **(a) repos, agent arrêté** | **1,61 %** | 2,20 pt | 0,07 pt | 0,02 pt | 0,23 | 1,00 | 0,23 | 32 312 | 35 100 | 2 689 | 2,7 | **0,06 %** |
@@ -3059,7 +3074,12 @@ grandeurs ; si la rafale invalidait **quatre** cases sur `21d02be` et en invalid
 4,00 → 6,00 flush/cyc et 4 × 35 100 → 6 × 35 100 px suivent exactement. ⛔ **Ce n'est pas
 mesuré** : ni le nombre de cases réellement invalidées sur `21d02be`, ni la composition du tir.
 ⏳ **À trancher en séance carte** (même session que (a) et (b)), ou à déclarer inexpliqué.
-✅ **Ce qui tient malgré tout** : (c) est mesuré sur `d5d3539`,
+🔴 **⛔ DÉMENTI PAR §17.10 (2026-08-19) — LE 210 600 NE SE REPRODUIT PAS.** Trois tirs sur
+`b5cd141` rendent **4 flushes / 1 cycle / 140 400 px**. Le témoin cité ci-dessous a depuis été
+**SUPPRIMÉ du firmware** (il ne pouvait rendre que sa valeur de succès). La fusion, elle, **reste
+prouvée** — par `flush` seul, et avec son témoin négatif : poussées **une par une**, les six cases
+rendent bien 6 flushes / 6 cycles / 210 600 px. Texte d'origine conservé ⤵
+✅ (c) était alors mesuré sur `d5d3539`,
 et `flush` confirme **6 flushes / 1 cycle / 210 600 px** dans la même passe — soit très exactement
 le `6 × 35 100 = 69 % d'un plein écran` que l'extrapolation d'AC8 prédisait.
 ⚠️ **LES COLONNES « — » DE (c) SONT DÉCLARÉES NON DÉFINIES, PAS OUBLIÉES.** Un CPU global, un
@@ -3202,3 +3222,200 @@ fois** et trancher. Jusque-là, la cause s'écrit **INCONNUE**.
 se reproduit**, et c'est ce qui autorise à continuer.
 ⛔ **Ne pas corriger §17.2 en silence** : le défaut est nommé ici, la table d'origine reste lisible
 — et elle porte désormais un renvoi vers cette section.
+
+### 17.10 🔴 SÉANCE POST-REVUE DU 2026-08-19 — firmware `b5cd141`, UN SEUL SHA
+
+> **Firmware : `b5cd141`** — les **33 correctifs** de la revue du 2026-08-19.
+> ✅ **SHA LU AU BANDEAU `App version`, PAS DÉDUIT DU DÉPÔT** : `I (657) app_init: App version: b5cd141`,
+> compilé `Aug 19 2026 01:16:12`, ELF SHA256 `e3faa3a3c…`. ⛔ C'est **exactement** le contrôle qui
+> manquait les **deux** fois où AC12 s'est rouverte (`49a8364` au lieu de `395310e` en dn3-2 ;
+> `21d02be` au lieu de `2d97850` en dn4-1).
+> 🔴 **TOUS les relevés de cette section portent CE SHA**, régimes (a), (b) et (c) compris.
+> C'est ce qui la distingue de §17.9, qui mélangeait deux firmwares sur trois régimes.
+
+#### 🔴 LES DÉFINITIONS DE COLONNE, FIGÉES ET ÉCRITES **AVANT** LE PREMIER RELEVÉ
+
+C'est la cause du défaut n°2 de §17.9 : `ms/cyc` et `duty` y ont été **dérivés par l'opérateur**
+avec une formule **qui avait changé depuis §16.1/§17.2, sans être déclarée** — d'où un `duty`
+divisé par 8 publié sous « Aucune dérive ». ⛔ Aucun de ces deux nombres n'est imprimé par le
+firmware : `cmd_flush` publie la copie **et** l'attente **séparément**.
+
+| Colonne | Formule EXACTE | Source |
+|---|---|---|
+| `CPU global` | `100 − idle0/2 − idle1/2`, en % **machine** | `cpu brut`, delta |
+| `taskLVGL`, `console_repl`, `dn_link` | `(t_tâche × 100) / total`, **rapporté à UN cœur** | `cpu brut`, delta |
+| `cyc/s` | cycles LVGL / durée de la fenêtre | `flush` |
+| `flush/cyc` | flushes / cycles | `flush` |
+| `px/cyc` | pixels copiés / cycles | `flush` |
+| `plus gr. aire` | plus grande aire de flush, en px | `flush` |
+| `copie µs/flush` | temps de **copie seul**, ⛔ attente de synchro **EXCLUE** | `flush` |
+| **`ms/cyc`** | **`flush/cyc × copie µs/flush ÷ 1000` + attente de synchro/cycle** | dérivé, **les DEUX termes** |
+| **`duty`** | **`ms/cyc × cyc/s ÷ 10`**, en % du temps mural | dérivé |
+
+🔴 **LA DIFFÉRENCE AVEC §17.9 EST LÀ, ET ELLE VAUT UN FACTEUR 8** : §17.9 a calculé
+`ms/cyc = flush/cyc × copie µs/flush` **en oubliant l'attente de synchro** ((a) : 1,00 × 2 689
+= 2,7 ms). §16.1 et §17.2 l'incluaient (§16.1 `on/on` : 3,47 × 2 883 = 10,0 ms de copie pour
+**55,4 ms/cyc** publiés — soit **45,4 ms d'attente**). ⇒ **La colonne de §17.9 n'est pas la même
+grandeur que celle de §16.1, §17.1 et §17.2.** Ici, on publie **les deux termes séparément**, en
+plus du total, pour que la question ne puisse plus se reposer.
+
+| Terme publié | Ce qu'il est |
+|---|---|
+| `copie ms/cyc` | la copie seule — comparable à §17.9 |
+| `attente ms/cyc` | l'attente de synchro seule — **absente de §17.9** |
+| `ms/cyc` | leur **somme** — comparable à §16.1, §17.1 et §17.2 |
+
+#### AC7 — LES TROIS RÉGIMES, MÊME FIRMWARE `b5cd141`, MÊME SESSION
+
+| régime | CPU | `taskLVGL` | `console_repl` | `dn_link` | cyc/s | flush/cyc | flush/s | px/cyc | plus gr. aire | copie µs/flush | **copie ms/cyc** | **attente ms/cyc** | **ms/cyc** | **duty** |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| **(a) repos, agent arrêté** (120,4 s) | **1,58 %** | 2,20 pt | 0,03 pt | 0,02 pt | 0,216 | 1,00 | 0,216 | 32 725 | 35 100 | 2 740 (max 2 982) | 2,74 | 6,32 | **9,06** | **0,20 %** |
+| **(b) RÉGIME RÉEL, 5 métriques à 5 trames/s** (120,6 s) | **13,61 %** | **22,56 pt** | **3,01 pt** | **0,49 pt** | 2,056 | 2,52 | 5,17 | **88 069** | 35 100 | 2 913 (max 3 185) | 7,33 | 41,76 | **49,09** | **10,09 %** |
+| **(c) `widget rafale`** (tir unique) | — ⚠️ | — ⚠️ | — ⚠️ | — ⚠️ | — ⚠️ | **4,00** | — ⚠️ | **140 400** | 35 100 | 2 915 (max 2 951) | 11,66 | 31,86 | **43,52** | — ⚠️ |
+
+Autres tâches, régime (b) : `esp_timer` 0,82 · `dn_rtc` 0,23 · `dn_capt` 0,10 · `main` 0,02 pt.
+Régime (a) : `esp_timer` 0,68 · `dn_rtc` 0,16 · `dn_capt` 0,06 · `main` 0,02 pt.
+⚠️ Les colonnes « — » de (c) sont **NON DÉFINIES, pas oubliées** : CPU global, flush/s, cyc/s et
+duty sont des grandeurs **par unité de temps**, et la rafale est un **tir unique** sous un seul
+verrou. Les chiffrer supposerait de choisir une fenêtre arbitraire.
+
+##### ✅ LE TEST QUI TRANCHE : la somme des tâches se réconcilie-t-elle avec le global ?
+
+| | CPU global | = pt d'UN cœur | somme des tâches | écart |
+|---|---:|---:|---:|---|
+| **§17.10 (a)** | 1,58 % | 3,16 pt | 2,20 + 0,68 + 0,16 + 0,06 + 0,03 + 0,02 + 0,02 = **3,17 pt** | ✅ **+0,01 pt** |
+| **§17.10 (b)** | 13,61 % | 27,23 pt | 22,56 + 3,01 + 0,82 + 0,49 + 0,23 + 0,10 + 0,02 = **27,23 pt** | ✅ **−0,00 pt** |
+| §17.9 (b) | 13,19 % | 26,38 pt | **26,13 pt** | ✅ +0,25 pt |
+| §17.2 (b) | 13,09 % | 26,18 pt | **12,51 pt** | 🔴 **facteur ~2** |
+
+#### 🔴 LE « FACTEUR 2 » EST TRANCHÉ — ET LA CAUSE PUBLIÉE EN §17.9 ÉTAIT PRESQUE JUSTE
+
+**Ce que cette séance établit, PAR LA MESURE :**
+1. **§17.9 est REPRODUITE par une mesure indépendante, sur un AUTRE firmware.** Régime (a) :
+   `taskLVGL` **2,20 pt** ici contre **2,20 pt** en §17.9. Régime (b) : **22,56** contre 22,16,
+   `dn_link` **0,49** contre 0,51. ⇒ **c'est §17.2 qui est l'anomalie**, pas §17.9.
+2. **Le régime d'AFFICHAGE de §17.2, lui, se reproduit AU CHIFFRE PRÈS** : cyc/s **2,056** contre
+   2,05 · flush/cyc **2,52** contre 2,52 · flush/s **5,17** contre 5,17 · px/cyc **88 069** contre
+   87 982. ⇒ **le défaut est dans la colonne par tâche SEULE**, pas dans la mesure du régime.
+3. **Le test de réconciliation est le discriminant** : §17.10 passe à −0,00 et +0,01 pt, §17.9 à
+   +0,25 pt, **§17.2 échoue d'un facteur 2**. Ce test aurait suffi à voir le défaut en §17.2.
+
+⚠️ **CORRECTION D'UNE AFFIRMATION DE LA REVUE DU 2026-08-19, PAR SA PROPRE MESURE.** La revue avait
+écrit que la cause publiée en §17.9 — *« la colonne par tâche de §17.2 est exprimée en % de la
+MACHINE alors que son en-tête annonce pt d'un cœur »* — était **« mécaniquement impossible »**.
+C'était **trop fort**, et il faut le dire : elle est impossible **comme propriété de l'instrument**
+(`cpu brut` calcule `(t × 100) / total` avec un `total` **mono-cœur**, et son code n'a pas bougé
+depuis `395310e`), mais **parfaitement possible comme erreur de DÉRIVATION DE L'OPÉRATEUR** — et
+l'arithmétique la soutient : **12,51 × 2 = 25,02**, à comparer aux **26,18 pt** attendus, l'écart
+restant étant les tâches non listées par §17.2 (`esp_timer`, `dn_rtc`, `dn_capt`).
+⇒ **§17.9 avait raison sur le QUOI (un facteur 2, machine contre cœur), et se trompait sur le OÙ**
+(l'instrument, alors que c'est la dérivation). ⛔ §17.2 reste lisible et n'est pas réécrite ; sa
+**colonne par tâche est à lire ×2**, et **son budget `console_repl` de 1,27 pt est MORT** — la
+valeur mesurée est **3,01 pt** ici et 2,51 pt en §17.9.
+
+#### 🔴 CE QUE LA SÉANCE A TROUVÉ ET QUE PERSONNE N'AVAIT MESURÉ : L'EXTRAPOLATION D'AC8 EST DÉMENTIE
+
+| Ce qu'on provoque | flushes | cycles | px total | **px / cycle** |
+|---|---:|---:|---:|---:|
+| **Étalé** — six `widget pousser`, une par cycle | 6 | **6** | 210 600 | 35 100 |
+| **Rafale** — six poussées sous UN verrou | **4** | **1** | **140 400** | **140 400** |
+
+✅ **LA FUSION EST PROUVÉE, ET PAR `flush` SEUL** — six poussées tombent dans **un seul cycle**.
+C'est ce qu'AC7 (c) devait établir, et c'est établi **sans témoin** : le témoin de rafale a été
+**supprimé** du firmware le 2026-08-19 (il n'a jamais pu rendre autre chose que sa valeur de
+succès, trois sémantiques de suite). Le témoin négatif est là aussi : poussées **une par une**,
+les six cases produisent bien **6 flushes / 6 cycles / 210 600 px** — donc **les six salissent**.
+⇒ *un test négatif ne vaut que si le stimulus est prouvé* : il l'est.
+
+🔴 **MAIS LE COÛT N'EST PAS CELUI QUI ÉTAIT PUBLIÉ.** Trois tirs valides donnent **140 400 px**,
+jamais 210 600 — **mock coupé comme mock armé**. Et **140 400 est exactement ce que §17.2
+publiait** ; c'est le **210 600 de §17.9 qui ne se reproduit pas**.
+⇒ **L'extrapolation d'AC8 — « 6 × 35 100 = 210 600 px = 69 % d'un plein écran » — est DÉMENTIE.**
+Six mises à jour simultanées coûtent **140 400 px = 45,7 % d'un plein écran**. LVGL en élide **un
+tiers**, et c'est un **gain**, pas une perte de données (les six poussées sont bien appliquées :
+le régime étalé le prouve).
+⛔ **MÉCANISME NON ÉTABLI, ET IL NE SERA PAS INVENTÉ ICI.** Les six cases salissent quand on les
+pousse séparément ; groupées, deux n'atteignent pas la dalle. `plus grande aire` reste à **35 100
+px** dans les deux cas, donc **il n'y a pas de fusion de zones en une aire plus grande** — deux
+cases ne sont simplement pas recopiées. Pourquoi : **INCONNU**.
+⚠️ **C'est la TROISIÈME extrapolation de ce dépôt démentie par sa propre mesure** (facteur 10 de
+dn2-1, facteur 5,3 de la barre de dn3-2, celle-ci). ⇒ **Porté au ledger, et il faut un
+correct-course** : AC7 (c) **et** AC8 reposaient tous deux sur 210 600.
+
+#### AC12 — non-régression, `d5d3539` → `b5cd141`
+
+| Grandeur | séance de revue (`d5d3539`) | **cette séance (`b5cd141`)** | écart |
+|---|---:|---:|---:|
+| Binaire `desknode.bin` | 917 488 o | **917 824 o** | **+336 o** (partition libre à 78 %) |
+| RAM interne libre | 104 119 o | **103 319 o** | **−800 o** |
+| PSRAM libre | 7 768 236 o | **7 768 236 o** | **0** ✅ |
+| Tas LVGL utilisé | 20 504 o (34 %) | **20 572 o (34 %)** | **+68 o** |
+| Plus gros bloc libre | 40 744 o | **40 744 o** | **0** ✅ |
+| Fragmentation | 2 % | **2 %** | 0 ✅ |
+| Tas sur 40 transitions | +8 o | **20 572 → 20 596, final 20 568** | **PLAT** ✅ |
+| `fps 15` | 37,40 Hz | **37,40 Hz** (561 trames / 14 999 885 µs, écart **−0,00 %**) | **0** ✅ |
+| Boot « prêt en N ms » | 2 311 ms | **2 311 ms** | **0** ✅ |
+| Latence transition (n=40) | 336,5 (291,3 / 398,7) | **349,9 (291,8 / 425,6)** | **+13,4 ms** ⚠️ |
+| `dn_capteurs` | 4 999 ms, 0 erreur | **BME680 @ 0x77, 0 erreur** | ✅ |
+| Liaison, régime (b) | — | **598 valides / 600 · 0 rejet · 2 pertes seq (0,33 %) · 1 reprise** | ✅ |
+
+⚠️ **LA LATENCE DE TRANSITION PREND +13,4 ms, ET CE N'EST PAS EXPLIQUÉ.** Le **minimum est
+identique** (291,8 contre 291,3) et c'est la **queue** qui s'allonge (max 425,6 contre 398,7).
+⛔ **Déclaré, pas attribué** : rien dans les 33 correctifs ne touche le chemin de transition
+(`dn_ui_desc_brut` n'y est pas appelé, la garde `k_metriques` est dans le parseur, le `ESP_LOGE`
+de `k_pc` ne s'exécute jamais en nominal). Candidat non écarté : **variance** — n = 40, et la
+séance précédente publiait déjà 335,0 puis 336,5 pour le même firmware à un commit près.
+⚠️ Le budget < 300 ms appartient à **dn4-4**, il ne se solde pas ici.
+
+#### AC5 — LE TÉMOIN « JAUGE VISIBLE », LU POUR LA PREMIÈRE FOIS
+
+🔴 **La revue du 2026-08-18 avait trouvé que cet instrument NE POUVAIT PAS voir ce qu'il prouvait**
+(`dn_ui_widget_pointeurs()` ne lisait que `s_wobj[0..5]`, jamais `s_demo`). Le correctif a été
+appliqué le jour même — **et l'instrument n'avait jamais été LU**. Il l'est ici.
+
+| Instrument | Ce qu'il rend |
+|---|---|
+| Journal d'abandon (`ESP_LOGW`, à l'armement) | `« DÉMO 2+JAUGE » : pas de place pour la ligne secondaire (**y_bas=148 + 20 > h=156**) — 2 grandeur(s) + jauge. La jauge est prioritaire` |
+| Table de géométrie (`widget`) | `DEMO   2   OUI   non   (n=2, jauge demandee)` |
+| **Constat owner à l'œil** | ✅ **la jauge est VISIBLE** · deux lignes de valeur, **pas de troisième** · rien ne déborde |
+
+✅ **La colonne « secondaire » n'est plus constante par construction** : `non` y apparaît, pour la
+première fois depuis que la table existe. C'était le défaut n°6 de la revue précédente.
+🔴 **ET LE JOURNAL CONFIRME LA CORRECTION D'ARITHMÉTIQUE DE LA REVUE DU 2026-08-19** : il imprime
+**`148 + 20 > 156`**, exactement les chiffres que la revue a substitués dans les Dev Notes de la
+story. La story publiait **`154` / `174 > 156`** — faux sur **deux** lignes, `+26` compté là où le
+code pose `+20`. ⇒ **le correctif de doc est validé PAR LA MESURE**, pas seulement par la lecture.
+
+#### AC12 — les gestes owner, sur le firmware LIVRÉ
+
+⚠️ C'est l'écart qui a rouvert AC12 **deux fois** : des constats à l'œil relevés sur un firmware
+qui n'était pas le livré. Ici, **tout est sur `b5cd141`, SHA lu au bandeau.**
+
+| Geste | Résultat |
+|---|---|
+| **Smoke 6/6** | ✅ **conforme** — grille complète, **cinq cases sur six à « -- » et AMBIANCE seule vivante** (le différenciateur D6, PC éteint), barre `01:17 MER. 19 AOÛT` lisible, rien d'anormal |
+| **Tactile, 3 tours** | ✅ **trois taps, trois BONNES cases, retour OK à chaque fois**, aucun tap ignoré. Compteurs : **4 taps · 4 transitions · 0 sur MENU** |
+
+#### 🔴 UN PIÈGE D'INSTRUMENT RENCONTRÉ, ET IL A COÛTÉ UNE FENÊTRE DE 120 s
+
+Lire `cpu brut` **immédiatement après** une rafale d'injection capture **l'écho des dernières
+trames** au lieu de la table : la capture rend trois lignes et le relevé est **perdu**. La fenêtre
+(b) a été **jetée et rejouée**. ⇒ L'injecteur draine désormais le port **0,4 s avant de fermer**.
+⚠️ Corollaire à retenir : une capture série qui « réussit » (exit 0) peut ne contenir **aucune**
+des lignes attendues. **Compter ce qu'on a capturé avant de le publier** — c'est le même motif que
+`ffmpeg` qui sort en code 0 sans rien produire.
+
+#### ⚠️ CE QUE CETTE SÉANCE N'A PAS MESURÉ, ET QUI DOIT ÊTRE DIT
+
+- **Le régime (b) a été produit par INJECTION depuis le pilote WSL**, pas par l'agent Windows sur
+  `COM3`. Même REPL, même `dn_link`, même `dn_ui`, **même cadence mesurée (5,00 puis 4,98 trames/s,
+  en rafale une fois par seconde comme l'agent)** ⇒ **le régime FIRMWARE est celui de l'agent**.
+  ⛔ **Ce qui n'est PAS mesuré ainsi, c'est le coût côté PC** — AC9 le mesure à part, sur COM3.
+  ✅ **C'est un CHOIX, et il corrige un défaut de §17.9** : la fenêtre de §17.9 englobait le
+  détachement USB, **les commandes de l'opérateur** et le ré-attachement, puis retranchait cette
+  part au régime **(a) « repos, agent arrêté »** — alors que taper au REPL coûte à `console_repl`
+  un ordre de grandeur au-dessus. Ici, **aucune commande n'est entrée dans la fenêtre**.
+- **Le mécanisme du 140 400 contre 210 600** — voir ci-dessus, INCONNU.
+- **Le +13,4 ms de latence de transition** — déclaré, non attribué.
+
+
