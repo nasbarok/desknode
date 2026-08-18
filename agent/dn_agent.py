@@ -145,9 +145,18 @@ PERIODE_S = 1.0
 # 🔴 CORRECTIF DE REVUE 2026-08-18 : QUATRE textes du dépôt affirmaient que
 #    l'agent « exige BUS_LANES = 16 et CLK_MEMCLK ≈ 2000 MHz » et « REFUSE de
 #    servir sinon ». LE CODE N'A JAMAIS FAIT ÇA, et il a RAISON de ne pas le
-#    faire : une Radeon RX 6000 **abaisse son lien PCIe** au repos (ASPM /
-#    downtraining), donc `BUS_LANES` rend légitimement 1, 4 ou 8 sur une carte
-#    parfaitement saine. Exiger 16 aurait fait REFUSER la source GPU au repos.
+#    faire — ⚠️ MAIS LE MOTIF EXACT N'EST PAS MESURÉ, ET C'EST À DIRE : l'hypothèse
+#    posée en revue était qu'une Radeon RX 6000 **abaisse son lien PCIe** au repos
+#    (ASPM / downtraining), donc que `BUS_LANES` rendrait 1, 4 ou 8 sur une carte
+#    saine, et qu'exiger 16 ferait refuser la source GPU.
+#    🔴 LA SÉANCE DU 2026-08-18 NE CONFIRME PAS CETTE HYPOTHÈSE : le témoin a rendu
+#    `BUS_LANES = 16` et `CLK_MEMCLK = 1988 MHz` — soit exactement ce que les quatre
+#    textes annonçaient. Un durcissement à `== 16` serait donc PASSÉ ce jour-là.
+#    ⇒ Ce qui reste ACQUIS : le code vérifie une PLAGE, et les textes doivent dire
+#      ce que le code fait — c'était le vrai défaut, et il est corrigé.
+#    ⇒ Ce qui reste OUVERT : faut-il resserrer ? La réponse demande de relever
+#      `BUS_LANES` **au repos prolongé**, ce qui n'a pas été fait. ⛔ Ne pas
+#      resserrer sur la foi de l'hypothèse ci-dessus : elle n'est pas mesurée.
 # ⇒ Ce qui est vérifié est une COHÉRENCE DE PLAGE, et c'est écrit tel quel
 #   partout désormais : les indices doivent rendre une largeur de lien PCIe
 #   LÉGALE et une horloge mémoire PLAUSIBLE. ⛔ Ce n'est PAS la preuve du bon

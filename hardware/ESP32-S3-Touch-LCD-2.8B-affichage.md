@@ -3023,3 +3023,74 @@ reste **plat** sur 40 transitions et le `fps` est à la valeur théorique exacte
 - **Le re-relevé de la latence acceptation→label** : la revue a changé ce que l'instrument mesure
   (elle inclut désormais l'attente du verrou LVGL et la pose) ⇒ **`n = 8 075 · 1 / 204 / 480 ms`
   est MORT** et n'a pas encore de remplaçant. ⛔ Ne pas le republier.
+
+#### AC7 régime (b) — LE VRAI 1 Hz, agent réel sur `COM3` (2ᵉ passe de la séance)
+
+Agent lancé depuis la tour (`--duree 180 --temoin`), carte détachée de WSL. **900 trames émises
+en 180,1 s à 5,00 trames/s, 0 erreur d'envoi, 0 recalage de cadence.** Compteurs firmware remis à
+zéro avant le détachement, relus après ré-attachement — la carte **ne redémarre pas**, les
+compteurs traversent l'alternance.
+
+⚠️ **La fenêtre des compteurs (238,9 s) est plus large que la fenêtre d'agent (180,1 s)** :
+elle englobe le détachement, mes commandes et le ré-attachement. **La part au repos est
+RETRANCHÉE** en utilisant le régime (a) mesuré le même jour (1,61 % · 0,23 cyc/s · 32 312 px/cyc)
+— ⛔ pas estimée, mesurée.
+
+| grandeur | mesuré (b) | §17.2 (b) | verdict |
+|---|---:|---:|---|
+| **CPU global** | **13,19 %** | 13,09 % | ✅ reproduit |
+| cycles/s | **2,19** | 2,05 | ✅ |
+| flush/s | **5,22** | 5,17 | ✅ |
+| flush/cycle | **2,38** | 2,52 | ✅ |
+| px/cycle | **83 380** | 87 982 | ✅ |
+| copie µs/flush | **2 915** (max 3 020) | 2 925 | ✅ |
+| plus grande aire | **35 100** | 35 100 | ✅ |
+
+**Liaison** : 896 trames valides · **0 doublon · 0 resynchro · 0 rejet de TOUTE cause**
+(tronquée, trop longue, checksum, version, format, bornes) · **4 pertes seq sur 900 (0,44 %)**,
+du même ordre que les 0,31 % de la 1ʳᵉ séance.
+**Écho console de l'agent** : **225,7 o/s · 5,12 lignes/s** (1ʳᵉ séance : 232,0 · 5,11) — ✅ stable.
+**Coût propre de l'agent** : **2,421 % d'un cœur · 0,1513 % machine**, contre 2,161 % / 0,135 %
+à la 1ʳᵉ séance ⇒ **+0,26 pt, NON EXPLIQUÉ**. ⚠️ Candidat : l'isolation par source ajoutée par la
+revue (un `try` et une lambda par métrique et par cycle). ⛔ **Pas mesuré en A/B — déclaré, pas attribué.**
+✅ **Les deux compteurs ajoutés par la revue rapportent sur la vraie machine** :
+« aucun ecretage » (désormais **vérifiable** — la fréquence CPU passe enfin par le compteur) et
+« **aucune panne de source : les cinq ont répondu à chaque cycle** ».
+
+#### 🔴 La latence acceptation→label, RE-RELEVÉE — et l'ancien chiffre était autre chose
+
+| | n | min | moy | max |
+|---|---:|---:|---:|---:|
+| ⛔ **MORT** — ancien instrument, 1ʳᵉ séance | 8 075 | 1 ms | 204 ms | 480 ms |
+| ✅ **instrument corrigé**, cette séance | **896** | **30 ms** | **124 ms** | **169 ms** |
+
+⛔ **LES DEUX LIGNES NE SE COMPARENT PAS**, et pour **deux** raisons cumulées :
+1. **L'instrument a changé de définition.** L'ancien lisait `v.age_us`, figé **avant** la prise du
+   verrou LVGL : il mesurait la **péremption** d'une trame dans la file, pas le trajet jusqu'au
+   label. Le nouveau chronomètre jusqu'à la **pose**.
+2. **Les conditions diffèrent.** La 1ʳᵉ séance avait un owner qui **naviguait** (`build_scene()`
+   bloque 307-322 ms) ; ici **personne n'a touché la dalle**.
+
+✅ **ET LE NOUVEAU CHIFFRE EST PRÉDIT PAR LA THÉORIE, ce qui le rend falsifiable** : les trames
+arrivent toutes les 200 ms, la tâche `dn_link` se réveille toutes les **250 ms** ⇒ une attente
+uniforme sur la fenêtre donne une moyenne attendue de **~125 ms**. Mesuré : **124 ms**.
+Et **max 169 ms < 250 ms** ⇒ **aucune contention de verrou**, cohérent avec un écran non touché.
+⚠️ C'est pourquoi l'ancien `max = 480 ms` dépassait deux fenêtres de réveil : ce n'était pas
+l'attente du verrou (l'instrument ne pouvait pas la voir) mais les **re-essais** qu'elle
+provoquait, chacun ajoutant 250 ms d'âge. L'attribution publiée était **indirectement** juste,
+par un mécanisme qui n'était pas celui qu'elle nommait.
+
+#### 🔴 DÉFAUT TROUVÉ DANS §17.2 : sa colonne par tâche ne se réconcilie pas avec sa propre colonne globale
+
+| | CPU global | = pt d'UN cœur | somme des tâches listées | écart |
+|---|---:|---:|---:|---|
+| §17.2 régime (b) | 13,09 % | **26,18 pt** | `taskLVGL` 11,00 + `console_repl` 1,27 + `dn_link` 0,24 = **12,51 pt** | 🔴 **facteur ~2** |
+| cette séance, régime (b) | 13,19 % | **26,38 pt** | 22,16 + 2,51 + 0,51 + `esp_timer` 0,87 + `dn_capt` 0,09 = **26,13 pt** | ✅ **+0,25 pt** (tâches mineures) |
+
+Rapport tâche par tâche entre les deux séances : `taskLVGL` **×2,01**, `console_repl` **×1,98**,
+`dn_link` **×2,11**. ⇒ **La colonne par tâche de §17.2 est exprimée en % de la MACHINE (2 cœurs)
+alors que son en-tête annonce « pt d'un cœur ».** `cpu brut` avertit pourtant explicitement :
+*« le % est rapporté à UN cœur »*.
+⚠️ **Les colonnes GLOBALES, elles, sont justes** — 13,09 vs 13,19 % et 1,62 vs 1,61 % : **le régime
+se reproduit**. Seule la normalisation par tâche est fausse, d'un facteur 2 constant.
+⛔ **Ne pas corriger §17.2 en silence** : le défaut est nommé ici, la table d'origine reste lisible.

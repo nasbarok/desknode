@@ -490,9 +490,11 @@ là, sans élévation, sans driver, sans .NET — donc **sans franchir la fronti
 de l'énumération `ADLSensorType` du SDK ADL ; les prendre pour argent comptant, ce serait risquer
 de publier une tension comme une température. **Le témoin est éliminatoire** : les mêmes indices
 doivent rendre une **largeur de lien PCIe légale** et une **horloge mémoire plausible** — ⚠️ **PAS
-`BUS_LANES = 16` exactement** : une RX 6000 abaisse son lien au repos, et l'exiger ferait refuser
-la source GPU sur une carte saine (corrigé en revue le 2026-08-18 : trois textes affirmaient une
-égalité que le code ne vérifie pas, et ne doit pas vérifier). L'agent **refuse
+`BUS_LANES = 16` exactement**, et c'est le CODE qui fait foi (corrigé en revue le 2026-08-18 :
+trois textes affirmaient une égalité que le code ne vérifie pas). ⚠️ Le motif avancé alors — une
+RX 6000 abaisserait son lien au repos — est une **HYPOTHÈSE NON MESURÉE**, et la séance du même
+jour ne la confirme pas : **`BUS_LANES = 16` · `CLK_MEMCLK = 1988 MHz`** relevés sur la tour.
+⛔ Ne pas resserrer sur la foi de cette hypothèse ; il faudrait un relevé **au repos prolongé**. L'agent **refuse
 de servir** sinon. (Relevés : 16 et 1976-1990 MHz selon le tir.)
 ⚠️ **Cette tour expose SEPT `iAdapterIndex` pour UN SEUL GPU physique** (une entrée par sortie
 d'affichage) : l'agent prend **le premier qui RÉPOND à PMLog avec un mapping cohérent**, pas

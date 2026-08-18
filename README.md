@@ -750,8 +750,11 @@ l'ouverture. Un mapping décalé publierait une tension comme une température.
 🔴 **CE QUE CE TÉMOIN NE PROUVE PAS** (corrigé en revue le 2026-08-18 — ce paragraphe, la
 docstring de l'agent et `liaison-pc.md` §13.5 annonçaient tous trois « exige `BUS_LANES = 16`
 et `CLK_MEMCLK ≈ 2000 MHz` », ce que le code n'a jamais fait **et a raison de ne pas faire** :
-une RX 6000 **abaisse son lien PCIe au repos**, exiger 16 aurait fait refuser la source GPU sur
-une carte saine). C'est une **cohérence de plage**, pas la preuve du bon capteur.
+une RX 6000 **abaisserait son lien PCIe au repos** — ⚠️ **HYPOTHÈSE NON MESURÉE**, et la séance
+du 2026-08-18 ne la confirme pas : le témoin a lu **`BUS_LANES = 16` · `CLK_MEMCLK = 1988 MHz`**,
+soit exactement ce que les quatre textes annonçaient. ⇒ **Ce qui est acquis** : le code vérifie une
+plage, et les textes doivent dire ce que le code fait. ⇒ **Ce qui reste ouvert** : faut-il resserrer ?
+Il faudrait relever `BUS_LANES` **au repos prolongé**, ce qui n'a pas été fait). C'est une **cohérence de plage**, pas la preuve du bon capteur.
 ✅ **Ce qui a prouvé le capteur, c'est AC10** : **47 °C à l'écran contre 47 °C au Gestionnaire
 des tâches**, lus **en même temps**. Deux instruments, un seul répond à la question.
 ⚠️ **`ram` porte le TOTAL, pas l'utilisé** : le firmware compose « 22,7 / 34,2 Go » depuis le
