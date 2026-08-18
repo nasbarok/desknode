@@ -2206,6 +2206,37 @@ static int cpu_table_cumulee(void)
         free(etat);
         return 1;
     }
+    /*
+     * 🔴 LE REBOUCLAGE REND LA TABLE IRRECEVABLE, ET C'EST DÉTECTÉ — correctif
+     *    de revue (2026-08-18). `configRUN_TIME_COUNTER_TYPE` est un `uint32_t`
+     *    alimenté par `esp_timer_get_time()` en µs
+     *    (CONFIG_FREERTOS_RUN_TIME_STATS_USING_ESP_TIMER=y) : `total` ET chaque
+     *    `ulRunTimeCounter` rebouclent toutes les ~71,6 min, À DES INSTANTS
+     *    DIFFÉRENTS. Passé ce seuil, `t > total` est le cas NORMAL et le calcul
+     *    sortait des « 400000 % » sans clamp ni marqueur.
+     * ⚠️ dn3-2 a corrigé cet instrument parce qu'il rendait du VIDE en silence.
+     *    Le remplacement rendait du FAUX en silence dans un autre régime — et
+     *    `cpu brut` est l'instrument DÉSIGNÉ d'AC8. On refuse plutôt que de
+     *    publier.
+     */
+    bool reboucle = false;
+    for (UBaseType_t i = 0; i < n; i++) {
+        if ((unsigned long long)etat[i].ulRunTimeCounter >
+            (unsigned long long)total) {
+            reboucle = true;
+        }
+    }
+    if (reboucle) {
+        printf("🔴 COMPTEUR REBOUCLE (~71,6 min d'uptime) — au moins une tache\n");
+        printf("   cumule PLUS que le total. `total` et les compteurs de tache\n");
+        printf("   rebouclent a des instants DIFFERENTS : aucun pourcentage\n");
+        printf("   n'est calculable. TABLE IRRECEVABLE — `reboot` avant de\n");
+        printf("   publier un chiffre d'AC8, ou utiliser `cpu [secondes]`.\n");
+        printf("uptime     : %llu s\n",
+               (unsigned long long)(esp_timer_get_time() / 1000000));
+        free(etat);
+        return 1;
+    }
     printf("temps CPU CUMULÉ depuis le boot (tâche / ticks / %%) :\n");
     for (UBaseType_t i = 0; i < n; i++) {
         unsigned long long t = (unsigned long long)etat[i].ulRunTimeCounter;
@@ -2220,8 +2251,17 @@ static int cpu_table_cumulee(void)
     printf("⚠️ cumulé depuis le boot, et le compteur reboucle toutes les "
            "~71 min.\n");
     printf("   Pour chiffrer la charge ACTUELLE, utiliser `cpu [secondes]`.\n");
-    printf("⚠️ Le %% est par rapport au total DEUX CŒURS : deux IDLE a 99 %% et "
-           "85 %% ne font pas 184 %%, ils font 92 %% d'un biprocesseur au repos.\n");
+    /* 🔴 LA LÉGENDE DISAIT L'INVERSE DE SON DÉNOMINATEUR (revue 2026-08-18).
+     *    `uxTaskGetSystemState` pose `total = portGET_RUN_TIME_COUNTER_VALUE()`,
+     *    une durée ÉCOULÉE — donc MONO-cœur — pendant que chaque
+     *    `ulRunTimeCounter` cumule sur LES DEUX cœurs. La colonne somme donc à
+     *    ~200 %, pas à 100 %. L'ancien texte (« le %% est par rapport au total
+     *    DEUX CŒURS ») faisait diviser par deux un chiffre déjà rapporté à un
+     *    seul cœur — et son propre exemple ne tenait qu'avec le dénominateur
+     *    mono. */
+    printf("⚠️ Le %% est rapporte a UN cœur (le total est une duree ECOULEE).\n");
+    printf("   Sur un biprocesseur la colonne somme donc vers ~200 %%, pas 100 %% :\n");
+    printf("   deux IDLE a 99 %% et 85 %% = 184 %%, soit 92 %% d'un bi-cœur au repos.\n");
     return 0;
 }
 
@@ -2469,9 +2509,9 @@ static int cmd_pc(int argc, char **argv)
 /*
  * ── `widget` — L'INSTRUMENT DU MODÈLE (dn3-1) ────────────────────────────────
  *
- * Il fait SEPT choses. Aucune ne DORT — la console EST le transport PC depuis
+ * Il fait TREIZE choses. Aucune ne DORT — la console EST le transport PC depuis
  * dn2-2, et une commande qui dort couperait la liaison qu'elle prétend observer
- * (c'est le défaut mesuré de `cpu N`). Mais trois d'entre elles font un travail
+ * (c'est le défaut mesuré de `cpu N`). Mais QUATRE d'entre elles font un travail
  * LONG, et c'est écrit ci-dessous plutôt que nié.
  *
  *   widget                  l'état des 6 cases : régime, valeurs, forme du mock
@@ -2482,10 +2522,17 @@ static int cmd_pc(int argc, char **argv)
  *   widget mock on|off      coupe le mock : la case redevient « -- » (témoin)
  *   widget demo on|off      AC1 — la 7e métrique FICTIVE, sans code de dessin
  *   widget pousser <idx>    AC8 — UNE mise à jour synthétique, une par appel
+ *   widget oublier <idx>    rend la case à son régime NATUREL après une poussée
+ *   widget rafale           AC8 — les 6 poussées sous UN SEUL verrou (1 cycle)
+ *   widget nue <idx> on|off W11 — le témoin négatif d'AC8, à chaud ⚠️ RECONSTRUIT
+ *   widget barre 1hz|minute W2/AC4 — la cadence de la barre heure/date
+ *   widget bandes on|off    W8/AC9 — le repeint en BANDES pleine largeur
  *
- * 🔴 LES TROIS « RECONSTRUIT » BLOQUENT LE REPL, DONC LE TRANSPORT PC (relevé en
- *    revue le 2026-08-18 : ce docblock affirmait qu'AUCUNE sous-commande n'était
- *    un travail long, trois lignes au-dessus de trois qui le sont). Elles
+ * 🔴 LES QUATRE « RECONSTRUIT » BLOQUENT LE REPL, DONC LE TRANSPORT PC (relevé
+ *    en revue le 2026-08-18 : ce docblock affirmait qu'AUCUNE sous-commande
+ *    n'était un travail long, trois lignes au-dessus de trois qui le sont — puis
+ *    dn3-2 en a ajouté CINQ sans les lister, dont `nue`, qui reconstruit AUSSI
+ *    et qui est l'instrument CENTRAL du témoin négatif d'AC8). Elles
  *    prennent `lvgl_port_lock(2000)` puis appellent `build_scene()`, qui détruit
  *    et reconstruit LES DEUX racines — plus lourd qu'une transition, que §15.6
  *    chiffre à 307-322 ms avec un plancher de rendu LVGL ~230 ms. Comparaison :
@@ -2697,8 +2744,11 @@ static int cmd_widget(int argc, char **argv)
             printf("usage : widget nue <0..%d> on|off\n", DN_UI_METRIQUES - 1);
             return 1;
         }
+        bool deja = (dn_ui_nue((int)idx) == on);
         esp_err_t e = dn_ui_nue_set((int)idx, on);
         if (e == ESP_ERR_INVALID_STATE) {
+            /* ⚠️ Inatteignable depuis dn3-2 : les SIX cases portent le modele.
+             *    Conserve parce qu'une 7e case sans modele le rendrait vivant. */
             printf("case %ld n'a JAMAIS porte le modele — rien a rendre.\n", idx);
             return 1;
         }
@@ -2706,17 +2756,27 @@ static int cmd_widget(int argc, char **argv)
             printf("verrou LVGL non pris — RIEN n'a change\n");
             return 1;
         }
-        printf("case %ld (%s) : forme %s\n", idx, dn_ui_metrique_nom((int)idx),
-               on ? "NUE" : "WIDGET");
-        printf("⚠️ La scene a ete RECONSTRUITE (307-322 ms, verrou tenu) : la forme\n");
-        printf("   d'une case se decide a la CONSTRUCTION, pas a la mise a jour.\n");
+        printf("case %ld (%s) : forme %s%s\n", idx, dn_ui_metrique_nom((int)idx),
+               on ? "NUE" : "WIDGET", deja ? " (INCHANGEE)" : "");
+        if (deja) {
+            /* 🔴 Correctif de revue (2026-08-18) : `dn_ui_nue_set` sort en
+             *    ESP_OK AVANT le verrou quand la forme ne change pas, mais ce
+             *    bloc annoncait la reconstruction INCONDITIONNELLEMENT. Deux
+             *    `widget nue 2 on` de suite faisaient donc annoncer 307-322 ms
+             *    qui n'avaient pas eu lieu — au milieu d'une campagne qui
+             *    compte les cycles. */
+            printf("⚠️ AUCUNE reconstruction : la case avait DEJA cette forme.\n");
+        } else {
+            printf("⚠️ La scene a ete RECONSTRUITE (307-322 ms, verrou tenu) : la forme\n");
+            printf("   d'une case se decide a la CONSTRUCTION, pas a la mise a jour.\n");
+        }
         printf("⚠️ C'est le TEMOIN NEGATIF d'AC8, pas un reglage produit. Il existe\n");
         printf("   pour que la case nue et les six widgets se mesurent DANS LE MEME\n");
         printf("   FIRMWARE — sinon AC8 comparerait deux firmwares.\n");
         return 0;
     }
     /*
-     * ── `widget barre 1hz|minute` — W2/AC4, la cadence de la barre ───────────
+     * ── `widget bandes on|off` — W8/AC9, le levier n°2 ──────────────────────
      */
     /*
      * ── `widget bandes on|off` — W8 / AC9, le levier n°2 ─────────────────────
@@ -2770,8 +2830,11 @@ static int cmd_widget(int argc, char **argv)
         printf("cadence de la barre : %s\n",
                dn_ui_barre_secondes() ? "HH:MM:SS — invalidee CHAQUE SECONDE"
                                       : "HH:MM — invalidee au CHANGEMENT DE MINUTE");
-        printf("⚠️ La barre fait 480 x 70 = 33 600 px, soit 96 %% d'une case\n");
-        printf("   (35 100 px). En 1 Hz elle EST une 7e case vivante a 1 Hz.\n");
+        printf("🔴 MESURE (§16.5) : la barre coute 6 334 px par mise a jour,\n");
+        printf("   soit 18 %% d'une case (35 100 px) — PAS les 33 600 px que son\n");
+        printf("   rectangle 480 x 70 laisse croire. LVGL n'invalide que la zone\n");
+        printf("   des LABELS. La premisse « 7e case vivante » etait fausse d'un\n");
+        printf("   facteur 5,3, et ce message la recitait pendant l'A/B meme.\n");
         printf("⚠️ La maquette normative (addendum §1) ecrit « 21:46 » : elle\n");
         printf("   n'affiche PAS les secondes. Defaut = minute.\n");
         return 0;
@@ -2943,6 +3006,25 @@ static int cmd_widget(int argc, char **argv)
         }
         printf("\n");
     }
+    /*
+     * 🔴 REJET DE SOUS-COMMANDE INCONNUE (revue 2026-08-18). Toute invocation
+     *    mal tapee traversait TOUTES les branches jusqu'ici, imprimait ce dump
+     *    d'etat parfaitement plausible et rendait 0. `widget rafalle`,
+     *    `widget rafale on`, `widget bande on` : l'operateur croyait avoir
+     *    lance l'instrument. Pire, `dn_ui_rafale_cycles()` etant un statique
+     *    COLLANT, le dump reaffichait le verdict de la rafale PRECEDENTE.
+     * ⚠️ `widget` NU reste legitime : c'est le dump d'etat.
+     */
+    if (argc > 1) {
+        printf("🔴 sous-commande INCONNUE : « %s »", argv[1]);
+        for (int i = 2; i < argc; i++) {
+            printf(" %s", argv[i]);
+        }
+        printf("\n   RIEN n'a ete execute. `aide` liste le jeu complet.\n");
+        printf("   Sous-commandes : groupe · opa · voile · icone · mock · demo ·\n");
+        printf("   pousser · oublier · rafale · nue · barre · bandes\n");
+        return 1;
+    }
     printf("\nLES TROIS REGIMES, ET POURQUOI ILS SONT TROIS :\n");
     printf("  REELLE  = mesuree par une source            -> valeur BLANCHE\n");
     printf("  SIMULEE = fabriquee par un mock             -> AMBRE + badge "
@@ -2960,14 +3042,29 @@ static int cmd_widget(int argc, char **argv)
      *    était écrit en dur, dans la commande dont le docblock jure que rien
      *    n'est récité. Une ligne de `k_widget[]` qui bascule, et la phrase ment. */
     printf("\nCases NUES (temoin negatif d'AC8) :");
+    int n_nues = 0;
     for (int i = 0; i < DN_UI_METRIQUES; i++) {
         if (!dn_ui_est_widget(i)) {
             printf(" %s", dn_ui_metrique_nom(i));
+            n_nues++;
         }
     }
-    printf("\nElles n'ont pas le modele — c'est la seule facon de chiffrer une\n");
-    printf("case-widget contre une case nue sous le meme fps/bounce/draw buffer.\n");
-    printf("Aucune source ne les alimente, et elles le DISENT.\n");
+    if (n_nues == 0) {
+        /* 🔴 UNE LISTE VIDE DOIT SE DIRE (revue 2026-08-18) : depuis dn3-2 les
+         *    SIX cases portent le modele, donc ce dump sortait une liste vide
+         *    suivie d'un paragraphe expliquant que c'est « la seule facon de
+         *    chiffrer ». Un operateur pouvait le lire comme un etat des lieux
+         *    au lieu d'un mode d'emploi. */
+        printf(" AUCUNE");
+        printf("\n⚠️ Les SIX cases portent le modele — c'est l'etat NORMAL depuis\n");
+        printf("   dn3-2. Le temoin negatif d'AC8 ne vit plus dans des cases\n");
+        printf("   nues permanentes : il se PROVOQUE, par `widget nue <idx> on`,\n");
+        printf("   le temps d'un releve, puis se rend par `off`.\n");
+    } else {
+        printf("\nElles n'ont pas le modele — c'est la seule facon de chiffrer une\n");
+        printf("case-widget contre une case nue sous le meme fps/bounce/draw buffer.\n");
+        printf("Aucune source ne les alimente, et elles le DISENT.\n");
+    }
     return 0;
 }
 
@@ -3115,7 +3212,7 @@ static const char *i2c_nom_connu(uint8_t addr)
     case DN_GT911_ADDR_BACKUP:
         return "GT911 — adresse de REPLI (INT haut au reset)";
     case 0x51:
-        return "PCF85063 — RTC (pas encore pilotee, dn3-2)";
+        return "PCF85063A — RTC, PILOTEE par dn_rtc (dn3-2)";
     case 0x6A:
     case 0x6B:
         return "QMI8658 — IMU (hors V1)";
@@ -3636,6 +3733,20 @@ static int cmd_rtc(int argc, char **argv)
             rtc_usage();
             return 1;
         }
+        /* 🔴 BORNÉ SUR LES `unsigned`, AVANT LES CASTS — correctif de revue
+         *    (2026-08-18). Les champs étaient narcissés en uint8_t/uint16_t
+         *    d'abord : `rtc set 2026-08-18 256:00` donnait hh = 0 et posait
+         *    00:00 EN RAPPORTANT UN SUCCES, pour une heure jamais tapee. Idem
+         *    « 10:256 » (minute -> 0) et « 67536-08-18 » (annee tronquee a
+         *    exactement 2000, donc DANS l'epoque, donc acceptee). Ecreter une
+         *    saisie en silence est le meme defaut qu'afficher un chiffre sans
+         *    source : ce depot refuse, il REFUSE. */
+        if (a > 9999 || mo > 12 || j > 31 || hh > 23 || mi > 59 || ss > 59) {
+            printf("valeur HORS PLAGE — refusee, pas ecretee.\n");
+            printf("   annee 0..9999 · mois 1..12 · jour 1..31 · %s\n",
+                   "heure 0..23 · minute 0..59 · seconde 0..59");
+            return 1;
+        }
         h.annee = (uint16_t)a;
         h.mois = (uint8_t)mo;
         h.jour = (uint8_t)j;
@@ -3662,9 +3773,18 @@ static int cmd_rtc(int argc, char **argv)
         }
         dn_rtc_heure_t relu;
         bool fiable = dn_rtc_lire(&relu);
-        printf("heure posee et RELUE : %04u-%02u-%02u %02u:%02u:%02u — etat %s\n",
+        /* ⚠️ CE QUI EST RELU, ET CE QUI NE L'EST PAS (revue 2026-08-18). Cette
+         *    ligne affiche le CACHE du module, donc ce que la pose vient d'y
+         *    écrire. La vraie relecture est faite DANS `dn_rtc_poser`, qui
+         *    compare désormais LES SEPT registres à ce qu'il a écrit — avant,
+         *    il ne relisait que le bit OS du registre des secondes, et cette
+         *    ligne ré-affichait la saisie de l'operateur en l'annoncant
+         *    « RELUE ». */
+        printf("heure posee : %04u-%02u-%02u %02u:%02u:%02u — etat %s\n",
                relu.annee, relu.mois, relu.jour, relu.heure, relu.minute,
                relu.seconde, dn_rtc_etat_nom(dn_rtc_etat()));
+        printf("   (les 7 registres ont ete RELUS et COMPARES a l'ecriture ;\n");
+        printf("    la seconde affichee est celle que la PUCE porte.)\n");
         printf("OS est retombe a 0 : la barre passe de « --:-- HEURE NON POSEE »\n");
         printf("a l'heure reelle%s.\n", fiable ? "" : " (des le prochain cycle)");
         return 0;
@@ -3791,16 +3911,29 @@ static int cmd_rtc(int argc, char **argv)
     printf("             un quartet > 9. DEUX diagnostics opposes, deux seaux\n");
     printf("             (lecon dn2-2 : les confondre envoie chercher la panne du\n");
     printf("             cote du cablage, qu'on vient de prouver bon).\n");
+    printf("rejets     : bascule %u · poussee perdue %u\n", (unsigned)c.bascules,
+           (unsigned)c.poussees_perdues);
+    printf("             🔴 DEUX SEAUX AJOUTES EN REVUE (2026-08-18). Avant, la\n");
+    printf("             BASCULE — la seconde a tourne entre le burst et sa\n");
+    printf("             relecture, « ni erreur ni donnee » — tombait dans `bcd`\n");
+    printf("             et faisait chercher un quartet > 9 sur une puce SAINE.\n");
+    printf("             POUSSEE PERDUE = le verrou LVGL n'a pas ete pris, la\n");
+    printf("             barre garde son texte ; sans ce compteur une barre\n");
+    printf("             figee par contention etait indiscernable d'une barre\n");
+    printf("             a jour. Les deux sont NORMAUX en petit nombre.\n");
     printf("etats      : OS vu %u fois · temoin perdu %u fois\n", (unsigned)c.os_vus,
            (unsigned)c.temoins_perdus);
     printf("pile tache : %u o libres sur 4096 (high-water mark RELU)\n",
            (unsigned)dn_rtc_pile_libre());
     printf("             ⚠️ RAM INTERNE — la ressource meme qui a tue la branche\n");
     printf("             WiFi en dn2-2. Reduire cette pile demandera CE chiffre.\n");
+    char bh[24] = "?", bd[32] = "?";
+    dn_ui_barre_txt(bh, sizeof(bh), bd, sizeof(bd));
     printf("barre      : %s · « %s » / « %s » · %s\n",
            dn_ui_barre_secondes() ? "HH:MM:SS (1 Hz)" : "HH:MM (au changement de minute)",
-           dn_ui_barre_heure_txt(), dn_ui_barre_date_txt(),
-           dn_ui_barre_dessinee() ? "DESSINEE" : "PAS dessinee (ui off / scene / tear)");
+           bh, bd,
+           dn_ui_barre_dessinee() ? "DESSINEE"
+                                  : "PAS dessinee (ui off / scene / tear / vue detail)");
     printf("epoque     : %d..%d — CHOIX du driver, pas de la puce : le PCF85063A\n",
            DN_RTC_ANNEE_BASE, DN_RTC_ANNEE_BASE + 99);
     printf("             porte l'annee sur 0..99 et n'a AUCUN bit de siecle.\n");
@@ -3960,8 +4093,10 @@ void dn_console_banner(void)
      * ⚠️ On imprime l'ÉTAT DE L'HORLOGE, pas seulement le texte : « --:-- » sans
      *    son motif ne dirait pas si l'horloge est muette, jamais posée, ou si
      *    OS=1. Trois causes, trois conduites à tenir. */
+    char bh2[24] = "?", bd2[32] = "?";
+    dn_ui_barre_txt(bh2, sizeof(bh2), bd2, sizeof(bd2));
     printf("       barre : « %s  %s » · %s · horloge %s\n",
-           dn_ui_barre_heure_txt(), dn_ui_barre_date_txt(),
+           bh2, bd2,
            dn_ui_barre_secondes() ? "HH:MM:SS (1 Hz)" : "HH:MM (au chgt de minute)",
            dn_rtc_arme() ? dn_rtc_etat_nom(dn_rtc_etat()) : "NON ARMEE");
     printf("\n");

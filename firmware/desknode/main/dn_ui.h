@@ -262,8 +262,16 @@ uint32_t dn_ui_nav_count(void);
 int dn_ui_dernier_tap(void);
 uint32_t dn_ui_taps(void);
 const char *dn_ui_zone_nom(int zone);
-/* Taps sur le bandeau MENU. Compté à part : c'est ce compteur qui prouve que le
- * no-op est un CHOIX et pas une zone tactile qui ne marche pas. */
+/* Taps sur le bandeau MENU.
+ * 🔴 STRUCTURELLEMENT ZÉRO DEPUIS dn3-2, ET C'EST LE RÉSULTAT DE W3 — pas une
+ *    panne. Le bandeau n'a plus de callback, donc `dn_widget_zone_creer` ne lui
+ *    pose plus LV_OBJ_FLAG_CLICKABLE : ce n'est plus une zone, et aucun site
+ *    n'incrémente ce compteur. Il reste exposé parce qu'un `touch trace` doit
+ *    pouvoir montrer le ZÉRO plutôt que de ne rien dire.
+ * ⛔ NE PAS le lire comme « le no-op est un CHOIX » : le no-op — un bouton qui
+ *    prend le tap et ne fait rien — est précisément la forme que W3 a
+ *    SUPPRIMÉE. La preuve de la zone morte est faite par `touch trace`
+ *    (16 appuis, 0 tap, AC5/AC6), pas par ce compteur. */
 uint32_t dn_ui_menu_taps(void);
 /* Taps REFUSÉS par LVGL (lv_async_call sur file pleine ou tas saturé). Un tap
  * refusé n'est pas compté dans dn_ui_taps() : sans ce tri, `touch trace`
@@ -402,8 +410,12 @@ bool dn_ui_ambiance_maj(int temp_dixiemes, int hum_dixiemes, bool valide,
  *    ⇒ `h` peut être NULL quand `fiable` est faux.
  *
  * ⚠️ L'invalidation n'a lieu QUE si le texte affiché (ou la fiabilité) change.
- *    La barre pèse 480 x 70 = 33 600 px, soit 96 % d'une case : la réécrire à
- *    chaque appel serait une 7e case vivante à 2 Hz.
+ * 🔴 CE QU'ELLE COÛTE EST MESURÉ (§16.5, dn3-2) : **6 334 px par mise à jour**,
+ *    soit 18 % d'une case. ⛔ NE PAS déduire son coût de son aire — la prémisse
+ *    « 480 x 70 = 33 600 px, donc 96 % d'une case, donc une 7e case vivante »
+ *    est FAUSSE D'UN FACTEUR 5,3 : LVGL n'invalide que la zone des LABELS, pas
+ *    le rectangle de la barre. Elle a survécu à toute la rédaction de dn3-2 et
+ *    a été récitée jusque dans la sortie console de l'A/B qui la réfutait.
  */
 bool dn_ui_heure_maj(const dn_rtc_heure_t *h, bool fiable, bool *label_pose);
 
@@ -440,15 +452,27 @@ bool dn_ui_bandes(void);
 
 /* Ce que la barre affiche EN CE MOMENT, relu de l'état réel — pour que `rtc`
  * n'ait pas à reformater de son côté (deux formateurs = deux vérités). */
-const char *dn_ui_barre_heure_txt(void);
-const char *dn_ui_barre_date_txt(void);
+/* 🔴 COPIE SOUS VERROU, PAS DE POINTEUR NU (revue 2026-08-18). Les anciens
+ * `dn_ui_barre_heure_txt()` / `_date_txt()` rendaient les buffers statiques tels
+ * quels, et la console les passait à `printf` depuis SA tâche pendant que la
+ * tâche RTC les réécrivait à 2 Hz — lecture déchirée possible aux transitions de
+ * longueur. Rend `false` si le verrou n'a pas été pris (les buffers sont alors
+ * vidés, jamais laissés indéterminés). */
+bool dn_ui_barre_txt(char *heure, size_t n_heure, char *date, size_t n_date);
 /* ⚠️ Tient compte de `s_active` : après `ui off` / `scene` / `tear`, les labels
  * existent mais rien n'atteint la dalle. Annoncer « dessinée » mentirait. */
 bool dn_ui_barre_dessinee(void);
 
-/* ── Le modèle de widget (dn3-1) ──────────────────────────────────────────────
- * Descripteur d'une case, ou NULL si la case est NUE (GPU/RAM/RÉSEAU — le
- * témoin négatif d'AC8). */
+/* ── Le modèle de widget (dn3-1, généralisé en dn3-2) ─────────────────────────
+ * Descripteur d'une case, ou NULL si la case est NUE.
+ * 🔴 DEPUIS dn3-2, LES SIX CASES PORTENT LE MODÈLE — `k_widget[]` est vrai
+ *    partout. GPU/RAM/RÉSEAU ne sont plus les nues : elles sont SIMULÉE, avec
+ *    badge et couleur ambre. Le témoin négatif d'AC8 vit désormais dans
+ *    l'override `s_nue_force[]`, posé À CHAUD par `widget nue <idx> on|off` —
+ *    c'est ce qui permet de mesurer une case nue et six widgets DANS LE MÊME
+ *    FIRMWARE. Ce commentaire décrivait encore le monde de dn3-1 (revue
+ *    2026-08-18) : c'est la divergence .h/code que dn3-1 avait déjà payée une
+ *    fois, quand un A/B mesurait deux fois la même branche. */
 const dn_widget_desc_t *dn_ui_desc(int idx);
 bool dn_ui_est_widget(int idx);
 

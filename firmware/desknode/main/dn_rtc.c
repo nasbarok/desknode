@@ -35,6 +35,14 @@ static uint8_t s_ctrl1_init;
 static uint8_t s_ctrl1_lu;
 static uint8_t s_temoin_lu;
 static bool s_temoin_dispo;
+/* 🔴 GÉNÉRATION — correctif de revue (2026-08-18). `tache_rtc` échantillonne
+ * l'heure HORS section critique puis l'applique DEDANS. Si `dn_rtc_poser`
+ * commite entre les deux, la tâche réécrivait le snapshot PRÉ-POSE : OS=1,
+ * 2000-01-01, et `s_lu_us` qui RECULE. Observable : `rtc set` annonçait
+ * « posee et RELUE … FIABLE » pendant que la barre retombait à « --:-- » un
+ * cycle entier, et `os_vus` s'incrémentait APRÈS une pose réussie.
+ * La tâche jette désormais son snapshot si la génération a bougé. */
+static uint32_t s_generation;
 /* 🔴 Le témoin tel qu'il a été RELU AU BOOT, AVANT toute écriture. C'est LUI
  * qui porte le verdict CROSS-BOOT ; `s_temoin_lu` ne porte que le RUNTIME. */
 static uint8_t s_temoin_boot;
@@ -206,8 +214,11 @@ static void temoin_poser(void)
         } else {
             ESP_LOGW(TAG,
                      "🔴 temoin RELU AVANT ecriture = 0x%02X (attendu 0x%02X) : "
-                     "LA PUCE A PERDU SON ALIMENTATION depuis le dernier boot. "
-                     "L'heure qu'elle porte ne vaut rien — OS le confirmera.",
+                     "la puce a PERDU SON ALIMENTATION depuis le dernier boot "
+                     "— OU ce firmware n'a JAMAIS tourne sur cette carte "
+                     "(premier boot apres flash : 0x03 vaut alors ce qu'il "
+                     "veut). DEUX causes indiscernables, meme consequence : "
+                     "l'heure portee ne vaut rien. OS tranche, pas ce temoin.",
                      avant, DN_RTC_TEMOIN);
         }
     } else {
@@ -251,18 +262,32 @@ static void temoin_poser(void)
  *    cycle suivant. Coût : un octet. ⚠️ Ce n'est PAS un fait mesuré, c'est une
  *    garde — ne pas la publier comme un comportement constaté de la puce.
  */
-static bool lire_heure(dn_rtc_heure_t *out, bool *os_out)
+/* 🔴 TRI-ÉTAT — correctif de revue (2026-08-18). Un `bool` ne pouvait pas
+ * distinguer les TROIS sorties de cette fonction, et l'appelant rangeait les
+ * trois dans `err_bcd`, que `rtc` documente à l'opérateur comme « elle répond
+ * mais rend un quartet > 9 ». Un rejet de bascule — qui n'est NI une erreur NI
+ * une donnée, comme le dit son propre commentaire — envoyait donc chercher une
+ * panne de puce qui n'existe pas. « Deux diagnostics opposés, deux seaux »
+ * était écrit dans le code sans y être tenu. */
+typedef enum {
+    LIRE_OK = 0,      /* heure valide, applicable */
+    LIRE_I2C,         /* le transport a échoué */
+    LIRE_BASCULE,     /* la seconde a tourné pendant le burst — on retente */
+    LIRE_BCD,         /* elle répond, mais le temps ne se décode pas */
+} lire_res_t;
+
+static lire_res_t lire_heure(dn_rtc_heure_t *out, bool *os_out)
 {
     uint8_t b[7];
     if (!lire_regs(DN_RTC_REG_SECONDES, b, sizeof(b))) {
-        return false;
+        return LIRE_I2C;
     }
     uint8_t sec_relu = 0;
     if (!lire_regs(DN_RTC_REG_SECONDES, &sec_relu, 1)) {
-        return false;
+        return LIRE_I2C;
     }
     if (sec_relu != b[0]) {
-        return false; /* bascule pendant le burst : ni erreur, ni donnée */
+        return LIRE_BASCULE; /* bascule pendant le burst : ni erreur, ni donnée */
     }
 
     *os_out = (b[0] & DN_RTC_BIT_OS) != 0;
@@ -272,7 +297,7 @@ static bool lire_heure(dn_rtc_heure_t *out, bool *os_out)
         !bcd_vers_dec(b[2] & 0x3F, &heu) || !bcd_vers_dec(b[3] & 0x3F, &jou) ||
         !bcd_vers_dec(b[4] & 0x07, &jse) || !bcd_vers_dec(b[5] & 0x1F, &moi) ||
         !bcd_vers_dec(b[6], &ann)) {
-        return false;
+        return LIRE_BCD;
     }
     out->seconde = sec;
     out->minute = min;
@@ -281,7 +306,7 @@ static bool lire_heure(dn_rtc_heure_t *out, bool *os_out)
     out->jsem = jse;
     out->mois = moi;
     out->annee = (uint16_t)(DN_RTC_ANNEE_BASE + ann);
-    return date_plausible(out);
+    return date_plausible(out) ? LIRE_OK : LIRE_BCD;
 }
 
 static void tache_rtc(void *arg)
@@ -307,9 +332,16 @@ static void tache_rtc(void *arg)
         bool garde_ok = lire_regs(DN_RTC_REG_CTRL1, &ctrl1, 1) &&
                         lire_regs(DN_RTC_REG_RAM, &temoin, 1);
 
+        /* 🔴 GÉNÉRATION RELUE AVANT la lecture : si `rtc set` commite pendant
+         *    le cycle, le snapshot ci-dessous est PÉRIMÉ et ne doit pas
+         *    écraser l'heure fraîchement posée. */
+        portENTER_CRITICAL(&s_mux);
+        uint32_t gen_avant = s_generation;
+        portEXIT_CRITICAL(&s_mux);
+
         dn_rtc_heure_t h;
         bool os = true;
-        bool ok = lire_heure(&h, &os);
+        lire_res_t res = lire_heure(&h, &os);
 
         int64_t maintenant = esp_timer_get_time();
         dn_rtc_etat_t avant = dn_rtc_etat();
@@ -319,7 +351,8 @@ static void tache_rtc(void *arg)
             s_ctrl1_lu = ctrl1;
             s_temoin_lu = temoin;
         }
-        if (ok) {
+        bool perime = (s_generation != gen_avant);
+        if (res == LIRE_OK && !perime) {
             s_heure = h;
             s_lu_us = maintenant;
             s_os = os;
@@ -327,9 +360,14 @@ static void tache_rtc(void *arg)
             if (os) {
                 s_cpt.os_vus++;
             }
-        } else if (!garde_ok) {
+        } else if (res == LIRE_I2C) {
             s_cpt.err_i2c++;
-        } else {
+        } else if (res == LIRE_BASCULE) {
+            /* NI erreur, NI donnée : la seconde a tourné entre le burst et sa
+             * relecture. Son propre seau — le confondre avec `err_bcd` faisait
+             * chercher « un quartet > 9 » sur une puce parfaitement saine. */
+            s_cpt.bascules++;
+        } else if (res == LIRE_BCD) {
             /* Elle répond (la garde vient de lire deux registres) mais le temps
              * ne se décode pas : c'est une DONNÉE illégale, pas un transport
              * cassé. Deux diagnostics opposés, deux seaux. */
@@ -348,9 +386,21 @@ static void tache_rtc(void *arg)
                      "L'heure qu'elle affiche n'a plus de garantie.",
                      temoin, DN_RTC_TEMOIN);
             /* On le repose : sans ça, l'erreur se répéterait à 2 Hz et noierait
-             * le log. Le COMPTEUR garde la trace, lui. */
+             * le log. Le COMPTEUR garde la trace, lui.
+             * 🔴 ET LA RÉ-POSE EST VÉRIFIÉE (revue 2026-08-18) : si 0x03 est
+             *    lisible mais NON INSCRIPTIBLE, la ré-pose échouait en silence
+             *    et c'est justement le noyage qu'elle prétend éviter qui se
+             *    produisait — ESP_LOGE à 2 Hz sur la console qui EST le
+             *    transport, et `temoins_perdus` montant de 2/s. La garde se
+             *    déclare alors INERTE, ce que `rtc` sait déjà dire. */
             uint8_t v = DN_RTC_TEMOIN;
-            ecrire_regs(DN_RTC_REG_RAM, &v, 1);
+            if (!ecrire_regs(DN_RTC_REG_RAM, &v, 1)) {
+                portENTER_CRITICAL(&s_mux);
+                s_temoin_dispo = false;
+                portEXIT_CRITICAL(&s_mux);
+                ESP_LOGE(TAG, "  ré-pose du temoin IMPOSSIBLE — 0x03 n'est pas "
+                              "inscriptible. Garde anti-fantome INERTE.");
+            }
         }
 
         dn_rtc_etat_t apres = dn_rtc_etat();
@@ -372,7 +422,18 @@ static void tache_rtc(void *arg)
          * elle-même (contrat des entrées publiques de dn_ui) et ne redessine
          * QUE si le texte affiché change — c'est ce qui rend la cadence de la
          * barre observable en flush/cycle (AC4). */
-        dn_ui_heure_maj(&vue, apres == DN_RTC_VIVANT, NULL);
+        /* 🔴 LE RETOUR EST LU (revue 2026-08-18). `false` = verrou LVGL non
+         *    pris ⇒ la poussée est PERDUE et la barre garde son texte. Les deux
+         *    modules frères le comptent déjà ; le jeter ici rendait une barre
+         *    figée par contention (p. ex. `widget nue`, 307-322 ms)
+         *    indiscernable d'une barre à jour. Pas de retry immédiat : le cycle
+         *    suivant est à 500 ms et repousse la même vue — c'est le compteur
+         *    qui manquait, pas la reprise. */
+        if (!dn_ui_heure_maj(&vue, apres == DN_RTC_VIVANT, NULL)) {
+            portENTER_CRITICAL(&s_mux);
+            s_cpt.poussees_perdues++;
+            portEXIT_CRITICAL(&s_mux);
+        }
     }
 }
 
@@ -443,10 +504,16 @@ esp_err_t dn_rtc_poser(const dn_rtc_heure_t *h)
     if (v.annee < DN_RTC_ANNEE_BASE || v.annee > DN_RTC_ANNEE_BASE + 99) {
         return ESP_ERR_INVALID_ARG;
     }
-    v.jsem = jour_semaine(v.annee, v.mois, v.jour);
+    /* 🔴 L'ORDRE EST UN CORRECTIF DE REVUE (2026-08-18) : `jour_semaine()`
+     *    indexe `k_dec[mois - 1]` sans borne. L'appeler AVANT `date_plausible`
+     *    faisait lire hors tableau pour tout mois invalide venu de la console
+     *    (`rtc set 2026-13-01 …` -> k_dec[12] ; `2026-0-01` -> k_dec[-1]). La
+     *    valeur était ensuite jetée, mais c'est de l'UB — et `barre_composer`
+     *    fait explicitement l'inverse, avec le commentaire qui l'exige. */
     if (!date_plausible(&v)) {
         return ESP_ERR_INVALID_ARG;
     }
+    v.jsem = jour_semaine(v.annee, v.mois, v.jour);
 
     /* 🔴 LES SECONDES SONT ÉCRITES SANS LE BIT OS, ET C'EST LE GESTE ENTIER :
      * écrire ce registre est ce qui REMET OS À 0 côté puce. C'est la seule
@@ -466,20 +533,49 @@ esp_err_t dn_rtc_poser(const dn_rtc_heure_t *h)
     /* RELIRE, pas supposer : c'est la règle du dépôt (« ce qui est affiché doit
      * être RELU de l'état réel »), et ici elle a un effet concret — si OS ne
      * retombe pas, la pose a ÉCHOUÉ même si l'I²C a acquitté. */
-    uint8_t sec = 0;
-    if (!lire_regs(DN_RTC_REG_SECONDES, &sec, 1)) {
+    /* 🔴 LES SEPT REGISTRES SONT RELUS ET COMPARÉS (revue 2026-08-18).
+     *    La version précédente ne relisait QUE le registre des secondes et n'y
+     *    testait QUE le bit OS : minutes, heures, jour, jsem, mois, année et la
+     *    VALEUR des secondes n'étaient jamais vérifiées. Une puce qui acquitte
+     *    l'écriture et range autre chose passait le contrôle, et la console
+     *    affirmait pourtant « l'ecriture est RELUE : un ESP_OK d'I2C ne prouve
+     *    rien ». C'est le mensonge d'instrument que ce dépôt traque.
+     * ⚠️ La seconde a le droit d'avoir AVANCÉ entre l'écriture et la relecture
+     *    (l'oscillateur tourne) : on tolère un écart de 0 ou 1 sur ce seul
+     *    champ, et on refuse tout le reste. */
+    uint8_t r[7] = {0};
+    if (!lire_regs(DN_RTC_REG_SECONDES, r, sizeof(r))) {
         return ESP_FAIL;
     }
-    if (sec & DN_RTC_BIT_OS) {
+    if (r[0] & DN_RTC_BIT_OS) {
         ESP_LOGE(TAG, "heure ecrite mais OS RESTE A 1 — la pose n'a PAS pris");
         return ESP_FAIL;
     }
+    uint8_t sec_relu = 0;
+    if (!bcd_vers_dec(r[0] & 0x7F, &sec_relu)) {
+        ESP_LOGE(TAG, "relecture : secondes non BCD (0x%02X) — pose REFUSEE", r[0]);
+        return ESP_FAIL;
+    }
+    uint8_t ecart = (uint8_t)((sec_relu >= v.seconde) ? (sec_relu - v.seconde)
+                                                      : (60 + sec_relu - v.seconde));
+    if (ecart > 1 || r[1] != b[1] || r[2] != b[2] || r[3] != b[3] ||
+        r[4] != b[4] || r[5] != b[5] || r[6] != b[6]) {
+        ESP_LOGE(TAG,
+                 "🔴 RELECTURE DIVERGENTE — ecrit %02X %02X %02X %02X %02X %02X %02X, "
+                 "relu %02X %02X %02X %02X %02X %02X %02X. La puce a ACQUITTE et "
+                 "range autre chose : pose REFUSEE.",
+                 b[0], b[1], b[2], b[3], b[4], b[5], b[6],
+                 r[0], r[1], r[2], r[3], r[4], r[5], r[6]);
+        return ESP_FAIL;
+    }
+    v.seconde = sec_relu; /* ce que la PUCE porte, pas ce qu'on a tapé */
 
     portENTER_CRITICAL(&s_mux);
     s_heure = v;
     s_lu_us = esp_timer_get_time();
     s_os = false;
     s_cpt.poses++;
+    s_generation++; /* invalide tout snapshot de cycle en vol */
     portEXIT_CRITICAL(&s_mux);
 
     ESP_LOGI(TAG, "heure posee : %04u-%02u-%02u %02u:%02u:%02u (jsem %u) — OS retombe a 0",
@@ -597,13 +693,66 @@ esp_err_t dn_rtc_init(void)
                   "quel quartz est soude. Un mauvais reglage se paie en DERIVE, "
                   "pas en panne. Laisse tel quel, consigne comme INCONNU.");
 
+    /*
+     * 🔴 CONTROL_1 ÉTAIT LU, AFFICHÉ, ET JAMAIS APPLIQUÉ — correctif de revue
+     *    (2026-08-18). Deux bits gouvernent la validité de tout ce que ce
+     *    module rend, et aucun des deux n'était traité :
+     *
+     *    · STOP=1  — les compteurs GÈLENT, mais OS reste 0, le BCD reste légal
+     *                et `date_plausible` passe. `dn_rtc_etat()` rendait donc
+     *                VIVANT et la barre affichait une heure FIGÉE en blanc
+     *                « fiable », indéfiniment. `rtc set` ne pouvait pas la
+     *                récupérer (il n'écrit que 0x04..0x0A) et rapportait un
+     *                succès, puisque OS retombe bien à 0.
+     *    · 12_24=1 — le bit 5 de l'octet heures devient AM/PM au lieu du
+     *                dizaine d'heures. `lire_heure` décode inconditionnellement
+     *                en 24 h (`b[2] & 0x3F`) ⇒ heure PLAUSIBLE ET FAUSSE, qui
+     *                passe le BCD, OS et la péremption.
+     *
+     *    Les deux violent frontalement AC3 : « ⛔ Jamais une heure fausse ».
+     * ⚠️ Probabilité MESURÉE nulle sur cette carte (Control_1 relevé à 0x00,
+     *    §13.15) — c'est un trou de conception qu'on ferme, pas un défaut
+     *    constaté. On CORRIGE puis on RELIT ; si la correction ne prend pas, on
+     *    DÉSARME, parce qu'une horloge dont on ne maîtrise pas le mode est
+     *    exactement ce que la barre ne doit pas relayer.
+     * ⛔ Ce qui reste NON couvert : un oscillateur qui s'arrête tout seul
+     *    (quartz mort) avec STOP=0. Il faudrait un détecteur de VIVACITÉ — les
+     *    secondes avancent-elles ? — qui est du périmètre neuf : porté au
+     *    ledger, pas improvisé ici.
+     */
+    if (s_ctrl1_init & (DN_RTC_BIT_STOP | DN_RTC_BIT_1224)) {
+        uint8_t corrige = (uint8_t)(s_ctrl1_init & ~(DN_RTC_BIT_STOP | DN_RTC_BIT_1224));
+        ESP_LOGW(TAG,
+                 "🔴 Control_1 = 0x%02X : %s%s— CORRECTION vers 0x%02X",
+                 s_ctrl1_init,
+                 (s_ctrl1_init & DN_RTC_BIT_STOP) ? "horloge ARRETEE " : "",
+                 (s_ctrl1_init & DN_RTC_BIT_1224) ? "format 12 h " : "", corrige);
+        uint8_t relu = 0xFF;
+        if (!ecrire_regs(DN_RTC_REG_CTRL1, &corrige, 1) ||
+            !lire_regs(DN_RTC_REG_CTRL1, &relu, 1) ||
+            (relu & (DN_RTC_BIT_STOP | DN_RTC_BIT_1224))) {
+            ESP_LOGE(TAG,
+                     "🔴 CORRECTION REFUSEE (Control_1 relu 0x%02X) — module "
+                     "DESARME. Une heure figee ou en 12 h serait PLAUSIBLE ET "
+                     "FAUSSE, et la barre doit se taire plutot que la relayer.",
+                     relu);
+            i2c_master_bus_rm_device(s_dev);
+            s_dev = NULL;
+            return ESP_ERR_INVALID_STATE;
+        }
+        s_ctrl1_init = relu;
+        s_ctrl1_lu = relu;
+        ESP_LOGI(TAG, "  Control_1 corrige et RELU = 0x%02X : tourne, format 24 h",
+                 relu);
+    }
+
     temoin_poser();
 
     /* Première lecture SYNCHRONE : le bandeau de boot doit pouvoir dire l'état
      * de l'heure, et pas « on verra dans 500 ms ». */
     dn_rtc_heure_t h;
     bool os = true;
-    if (lire_heure(&h, &os)) {
+    if (lire_heure(&h, &os) == LIRE_OK) {
         portENTER_CRITICAL(&s_mux);
         s_heure = h;
         s_lu_us = esp_timer_get_time();

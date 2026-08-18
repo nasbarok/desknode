@@ -2254,6 +2254,11 @@ APPUI 21 · ( 45,  28) -> TAP sur RETOUR
 - ⚠️ **Écart déclaré** : le geste 4 visait la **gouttière** et a atterri **dans** la case CPU, à 4-5 px
   du coin. La zone morte de la gouttière n'a donc **pas** été prouvée. Ce que le tir a prouvé à la
   place vaut mieux : **« toute la case » tient jusqu'à 4 px du bord**, re-démontré avec un widget.
+  > 🔴 **VERDICT dn3-2 (W4/AC10) : CET ÉCART N'EN ÉTAIT PAS UN — L'AC ÉTAIT MAL POSÉE.** Voir
+  > **§16.9**. L'arithmétique la réfute avant tout tir : la cible fait 10 px, l'instrument (une
+  > empreinte de doigt) fait 8 à 10 mm, soit **4 à 5 fois plus large**. Aucun geste owner ne pouvait
+  > atteindre une gouttière, et en réclamer la preuve était demander à un instrument de mesurer
+  > plus fin que lui-même. **L'exigence est RETIRÉE, pas reconduite.**
 
 ### 15.8 Les budgets, re-relevés — et la seule régression, attribuée
 
@@ -2341,7 +2346,28 @@ sont plus gros, donc les trous laissés le sont aussi.
 
 ## 16. LE BUDGET À SIX WIDGETS VIVANTS — mesuré le 2026-08-18 (dn3-2, P7)
 
-**Firmware `ea986ed`.** Géométrie **inchangée** (W4 tranché « exigence retirée ») ⇒ **l'unité de
+🔴 **LE FIRMWARE N'EST PAS LE MÊME POUR TOUTE LA SECTION — corrigé en revue de code le 2026-08-18.**
+Cet en-tête annonçait « **Firmware `ea986ed`** » pour §16.0 à §16.8, ce qui est **impossible** :
+`widget bandes`, l'instrument de §16.7, **n'existe qu'à partir de `ca17ad9`**. Chaque sous-section
+porte donc désormais **le SHA sur lequel elle a réellement été relevée** :
+
+| sous-section | firmware du relevé | pourquoi |
+|---|---|---|
+| §16.0 à §16.4 (décomposition, coût par mise à jour) | **`ea986ed`** | le correctif de `cpu brut` est ce commit |
+| §16.5 / §16.5 bis / §16.5 ter (la barre) | **`421801d`** | §16.5 bis EST le correctif de ce commit |
+| §16.6 (non-régression) | **`ea986ed`** ⚠️ **voir l'écart déclaré ci-dessous** | relevé avant trois commits de code |
+| §16.7 (W8, les bandes) | **`ca17ad9`** | `widget bandes` naît là |
+
+⚠️ **ÉCART DÉCLARÉ — LA TABLE DE §16.6 NE DÉCRIT PAS LE FIRMWARE LIVRÉ.** Après `ea986ed` sont
+arrivés **`ca17ad9`** (le callback `LV_EVENT_INVALIDATE_AREA`, enregistré en permanence),
+**`421801d`** (le correctif de la barre) et **`49a8364`** (le correctif du témoin anti-fantôme, qui
+touche `dn_rtc.c/.h` et `dn_console.c`). Les colonnes **RAM interne libre, tas LVGL, boot, fps et
+latence** de §16.6 sont donc celles de `ea986ed`, **pas** celles de `8f9148a`. **Le binaire, lui, a
+été re-relevé** (voir la table). Re-relever le reste demande une séance carte : **porté au ledger,
+pas fabriqué ici.** ⛔ Règle du dépôt : *« jamais fabriquer une mesure pour satisfaire une
+cohérence. »*
+
+Géométrie **inchangée** (W4 tranché « exigence retirée ») ⇒ **l'unité de
 35 100 px de la §15 reste valide et tous les chiffres de dn3-1 restent comparables.**
 
 ⚠️ **Cette section remplace l'EXTRAPOLATION de la §15.5, elle ne la contredit pas partout** :
@@ -2505,9 +2531,14 @@ sondage et l'affichage sont deux cadences distinctes, et seul le second coûte d
 
 ### 16.6 Non-régression — table avant/après
 
-| Mesure | `a64d4c3` (dn3-1) | `ea986ed` (dn3-2) | Δ |
+⚠️ **Colonne dn3-2 = `ea986ed`, SAUF le binaire, re-relevé sur le firmware livré.** Voir l'écart
+déclaré en tête de §16.
+
+| Mesure | `a64d4c3` (dn3-1) | dn3-2 | Δ |
 |---|---:|---:|---|
-| Binaire `desknode.bin` | 886 608 o | **903 344 o** | +16 736 o · partition libre à **78 %** |
+| Binaire `desknode.bin` **@ `ea986ed`** | 886 608 o | 903 344 o | +16 736 o |
+| 🔴 Binaire `desknode.bin` **@ `8f9148a` (LIVRÉ)** | 886 608 o | **904 768 o** | **+18 160 o** · partition libre à **78 %** |
+| 🔴 Binaire **@ post-revue de code** | 886 608 o | **908 944 o** | **+22 336 o** · partition libre à **78 %** |
 | RAM interne libre | 108 435 o | **104 311 o** | **−4 124 o** = la pile 4 096 o de `dn_rtc` + son `.bss` |
 | PSRAM libre | 7 768 324 o | 7 768 236 o | −88 o |
 | Tas LVGL | 17 772 o / 29 % | **20 108 o / 33 %** | **+2 336 o** pour 3 widgets + 2 labels de barre |
@@ -2576,6 +2607,39 @@ dn4-1 qui tranche**, avec ces chiffres en main et la condition écrite : **le le
 
 ⚠️ **Et il interagit avec la géométrie** : si une future story change `DN_UI_CASE_H`, la condition
 change avec elle. Les deux nombres doivent être lus **ensemble**, jamais l'un sans l'autre.
+
+### 16.9 🔴 W4/AC10 — LA GOUTTIÈRE : L'EXIGENCE EST **RETIRÉE**, ET C'EST L'ARITHMÉTIQUE QUI TRANCHE
+
+**La géométrie qui FAIT FOI à partir de dn3-2** (inchangée depuis dn3-1, et c'est le point) :
+
+| grandeur | valeur | commentaire |
+|---|---:|---|
+| Case | **225 × 156 px** | `DN_UI_CASE_W` / `DN_UI_CASE_H` = **35 100 px**, l'unité de tous les chiffres d'AC8 |
+| Marge extérieure | 10 px | |
+| Gouttière entre cases | **10 px** | la « zone morte » que dn3-1 cherchait à prouver |
+| Plus large bande de fond du dashboard | **12 px** | le meilleur cas possible pour un tir |
+| Grille | 2 × 3, à partir de `y = 80` | sous la barre heure/date (70 px) |
+
+🔴 **POURQUOI L'EXIGENCE EST RETIRÉE, ET NON REPORTÉE.** L'empreinte d'un doigt sur une dalle
+capacitive fait **8 à 10 mm**. À 480 px pour ~57,6 mm de largeur utile, cela représente **67 à
+83 px** de contact. La cible la plus large disponible fait **12 px**.
+
+> **La cible est 4 à 5 fois plus petite que l'instrument** — et encore, en comparant sa largeur à
+> celle de l'empreinte, pas à sa surface.
+
+⇒ Aucun geste owner ne peut atteindre une gouttière **par construction**. L'AC de dn3-1 n'était donc
+pas « non tenue » : elle était **MAL POSÉE**. Elle demandait à un doigt de mesurer plus fin que
+lui-même, et le tir manqué (4-5 px dans la case CPU) en est la démonstration, pas l'échec.
+
+✅ **CE QUI EST PROUVÉ À LA PLACE, ET QUI VAUT MIEUX** : « toute la case est la zone tactile » tient
+**jusqu'à 4 px du bord** (dn3-1), et **à six cases, jauges comprises** (dn3-2, 124 appuis / 48 taps).
+C'est la propriété que l'owner ressent ; la gouttière était une propriété que personne ne peut
+toucher.
+
+🔴 **CONSÉQUENCE CHIFFRÉE DE NE PAS ÉLARGIR — et c'est la raison de fond.** Élargir la gouttière
+change `DN_UI_CASE_W/H`, donc **l'unité de 35 100 px**, donc **la comparabilité de TOUS les chiffres
+d'AC8 de dn3-1**. La géométrie serait à re-mesurer entièrement dans le nouveau firmware, pas
+héritée. On échangeait un legs chiffré complet contre une exigence qu'aucun doigt ne peut vérifier.
 
 ### 16.8 Ce que cette section N'A PAS mesuré
 

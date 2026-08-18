@@ -70,37 +70,59 @@ static uint8_t s_opa = LV_OPA_70;
 /*
  * ── W7 TRANCHÉ PAR LA MESURE : LE GROUPAGE EST LE DÉFAUT (AC8) ───────────────
  *
- * MESURÉ le 2026-08-17, firmware e2cb5ba+, 25 mises à jour par relevé, mock et
- * capteur isolés, `flush reset` avant chacun :
+ * 🔴 CES CHIFFRES SONT LES REJOUÉS. La première campagne (2026-08-17,
+ *    firmware e2cb5ba+) a été JETÉE : un second écrivain — le tick 1 Hz du mock
+ *    reposant `ABSENTE` après chaque poussée — gonflait le dénominateur de
+ *    cycles. Les valeurs pré-rejeu (2,08 f/cyc · 10 591 px · « −39 à −64 % » ·
+ *    aire ×3,4) survivaient encore ICI le 2026-08-18, dans la SOURCE que le dev
+ *    lit, alors que le ledger avait été corrigé. §15.5 de `hardware/` fait foi.
+ *
+ * MESURÉ le 2026-08-18, firmware `9699adb`, 25 poussées par relevé espacées de
+ * 120 ms, mock COUPÉ, `flush reset` avant chacun, `timeouts` = `noops` = 0 :
  *
  *   cas                                  fine (N zones)        groupée (1 zone)
  *   ------------------------------------------------------------------------
- *   widget MONO sans jauge  (CPU)    2,08 f/cyc · 10 591 px   1,04 · 36 504 px
- *   widget MONO avec jauge  (VENT)   2,95 f/cyc · 16 573 px   1,00 · 35 991 px
- *   widget BI-grandeurs     (AMB)    2,04 f/cyc · 17 387 px   1,00 · 35 100 px
- *   case NUE (témoin)       (GPU)    1,00 f/cyc ·  3 758 px   1,00 ·  3 758 px
+ *   widget MONO sans jauge  (CPU)    2,00 f/cyc · 10 749 px   1,00 · 35 100 px
+ *   widget MONO avec jauge  (VENT)   3,12 f/cyc · 16 577 px   1,00 · 35 100 px
+ *   widget BI-grandeurs     (AMB)    2,12 f/cyc · 17 536 px   1,00 · 35 100 px
+ *   case NUE (témoin)       (GPU)    1,00 f/cyc ·  3 321 px   1,00 ·  3 356 px
  *
  * Temps par cycle = flushes x (copie + attente) :
- *   MONO sans jauge  32,8 ms -> 20,0 ms   (-39 %)
- *   MONO avec jauge  48,8 ms -> 17,6 ms   (-64 %)
- *   BI-grandeurs     34,8 ms -> 20,0 ms   (-42 %)
+ *   MONO sans jauge  30,0 ms -> 16,1 ms   (-46 %)
+ *   MONO avec jauge  55,5 ms -> 15,8 ms   (-71 %)   [passe 2 : 53,6 -> 17,2]
+ *   BI-grandeurs     31,0 ms -> 17,6 ms   (-43 %)
+ *
+ * 🔴 LE REJEU CHANGE LE CHIFFRE-TITRE DANS LE SENS QUI DÉRANGE : il n'était pas
+ *    trop optimiste, il était trop TIMIDE (−68 à −71 % contre −64 % publiés).
+ *    ⚠️ L'AIRE, elle, était JUSTE à 0,02 % près — le défaut d'instrument
+ *    touchait le compte de flushes et de cycles, jamais la surface. C'est ce
+ *    qu'un relevé publiant ses grandeurs SÉPARÉMENT permet de dire.
  *
  * 🔴 LA PRÉDICTION EST CONFIRMÉE DANS SON SENS, DÉMENTIE DANS SON AMPLEUR.
  *    La story prédisait que l'attente domine la copie « d'un facteur ~50 ».
- *    MESURÉ : copie groupée 2,9-3,6 ms contre attente 14-17 ms, soit un facteur
+ *    MESURÉ : copie groupée 2,9-3,6 ms contre attente 13-15 ms, soit un facteur
  *    ~5, pas ~50. Le groupage gagne quand même — parce qu'il SUPPRIME UN FLUSH
  *    ENTIER (~16 ms) pour 2,7 ms de copie en plus, soit un retour de ~6 pour 1.
  *    Écrit ici parce qu'une prédiction démentie est plus instructive qu'une
  *    prédiction tenue, et que le dépôt a déjà vu un facteur 10 d'écart (T9).
  *
+ * 🔴 ET IL GAGNE EN TEMPS MURAL TOUT EN PERDANT EN CPU — dn3-2, §16.2 : le
+ *    groupage coûte **+2,52 points de CPU**, parce qu'il copie beaucoup plus de
+ *    pixels pour attendre une trame de moins. « Le groupage gagne » sans cette
+ *    qualification est une demi-vérité : il gagne du TEMPS, il dépense du CPU.
+ *
  * ⚠️ ET CE QUE LE GROUPAGE NE FAIT PAS : il n'économise AUCUN pixel, il en
- *    MULTIPLIE le nombre par ~3,4 (10 591 -> 36 504). Ce n'est pas une
- *    optimisation d'aire, c'est un échange — beaucoup de pixels contre une
- *    attente de trame. Le jour où la copie deviendra le goulot (plus de cases
- *    vivantes, ou une copie plus lente), l'arbitrage devra être REJOUÉ : c'est
- *    pour ça que la branche fine reste vivante et rejouable sans reflasher.
- * ⚠️ LE TÉMOIN NÉGATIF EST INTACT : la case NUE mesure exactement pareil dans
- *    les deux branches (elle ne traverse pas le modèle). C'est ce qui prouve
+ *    MULTIPLIE le nombre par 2,0 à 3,3 selon la case (10 749 -> 35 100 pour la
+ *    mono sans jauge). Ce n'est pas une optimisation d'aire, c'est un échange —
+ *    beaucoup de pixels contre une attente de trame. Le jour où la copie
+ *    deviendra le goulot (plus de cases vivantes, ou une copie plus lente),
+ *    l'arbitrage devra être REJOUÉ : c'est pour ça que la branche fine reste
+ *    vivante et rejouable sans reflasher.
+ * ⚠️ LE TÉMOIN NÉGATIF EST INTACT : la case NUE mesure quasiment pareil dans
+ *    les deux branches (3 321 -> 3 356 px, elle ne traverse pas le modèle).
+ *    ⚠️ dn3-2 : il n'y a plus de case nue PERMANENTE — les six portent le
+ *       modèle. Le témoin se PROVOQUE par `widget nue <idx> on`, à chaud, pour
+ *       que la comparaison reste DANS LE MÊME FIRMWARE. C'est ce qui prouve
  *    que la différence vient bien du groupage et non d'un effet de bord.
  */
 static bool s_groupage = true;

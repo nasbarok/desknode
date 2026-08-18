@@ -14,7 +14,7 @@
  * REGISTRE QUALIFIE ». Le scan produit des faux positifs (0x76, l'adresse même
  * du BME680, vue à vide) ET des faux négatifs (0x6B, 0x5D, 0x77 soudés ont
  * chacun raté une confirmation en passe x5). Voici donc des LECTURES, pas un
- * scan — sortie console consignée verbatim dans hardware/ §13.14 :
+ * scan — sortie console consignée verbatim dans hardware/ §13.15 :
  *
  *   i2c lire 51 00 16  ->  00 00 00 00 96 25 15 01 06 01 00 80 80 80 80 80
  *   i2c lire 51 10 2   ->  00 18
@@ -114,6 +114,7 @@
 
 #define DN_RTC_BIT_OS 0x80   /* Seconds bit 7 — Oscillator Stopped */
 #define DN_RTC_BIT_STOP 0x20 /* Control_1 bit 5 */
+#define DN_RTC_BIT_1224 0x02 /* Control_1 bit 1 — 1 = format 12 h */
 
 /*
  * 🔴 LE TÉMOIN ANTI-FANTÔME. Valeur arbitraire, mais NON NULLE et non
@@ -188,6 +189,20 @@ typedef struct {
      * (le BCD est parfait) — c'est une horloge qui a redémarré en silence. */
     uint32_t temoins_perdus;
     uint32_t poses;      /* `rtc set` appliqués avec succès */
+    /* 🔴 SEAU AJOUTÉ EN REVUE (2026-08-18). La garde de bascule de seconde
+     * (`lire_heure`, relecture des secondes après le burst) rejette un cycle
+     * SANS que ce soit une erreur : « ni erreur, ni donnée », dit son propre
+     * commentaire. Elle tombait pourtant dans `err_bcd`, dont `rtc` affirme à
+     * l'opérateur qu'il compte « un quartet > 9 » — soit exactement la
+     * confusion que ce module dit exister pour éviter. */
+    uint32_t bascules;
+    /* 🔴 SEAU AJOUTÉ EN REVUE (2026-08-18). `dn_ui_heure_maj()` rend `false`
+     * quand le verrou LVGL n'a pas été pris : la poussée est PERDUE et la
+     * barre garde son texte. Sans ce compteur, une barre figée par contention
+     * (p. ex. `widget nue`, 307-322 ms) est indiscernable d'une barre à jour —
+     * sur la seule surface dont le but est de ne pas mentir. Les deux modules
+     * frères comptent déjà l'équivalent (`dn_capteurs`, `dn_link`). */
+    uint32_t poussees_perdues;
 } dn_rtc_compteurs_t;
 
 /*

@@ -570,10 +570,13 @@ static bool s_barre_secondes;
  *    d'ignorance, et `composer()` rend « -- » pour tout état absent SANS lire le
  *    texte. Toute case dit « -- » dès la toute première trame.
  *
- * ⚠️ Les six cases ont un état, y compris les NUES (GPU/RAM/RÉSEAU) : elles
- *    restent ABSENTES pour toujours, ce qui est exactement ce qu'AC3 leur
- *    demande de dire. Ce qui les distingue des widgets est leur FORME, pas leur
- *    honnêteté.
+ * ⚠️ Les six cases ont un état, y compris celles qu'on rend NUES à chaud par
+ *    `widget nue <idx>` : une case nue reste ABSENTE tant qu'aucune source ne
+ *    parle, ce qui est exactement ce qu'AC3 lui demande de dire. Ce qui la
+ *    distingue d'un widget est sa FORME, pas son honnêteté.
+ * 🔴 dn3-2 : GPU/RAM/RÉSEAU NE SONT PLUS LES NUES — elles portent le modèle et
+ *    un mock déclaré (SIMULÉE + badge). Le témoin négatif d'AC8 est l'override
+ *    `s_nue_force[]`, pas une liste de cases en dur.
  * Écrits sous le verrou LVGL, lus sous le même verrou (build_dashboard).
  */
 static dn_widget_etat_t s_wetat[DN_UI_METRIQUES];
@@ -657,14 +660,37 @@ static uint8_t s_voile_opa = 90;
  *    `demi = periode / 2`, et une période impaire fait que `pos` ne remonte
  *    jamais exactement à `demi`, donc `max` n'est jamais atteint).
  * ⚠️ Elles sont aussi PREMIÈRES ENTRE ELLES DEUX À DEUX autant que possible
- *    (14, 20, 26, 34) : des périodes multiples se rephaseraient sans arrêt et
- *    la grille battrait à l'unisson, ce qui n'est pas le régime réel qu'AC8
- *    veut chiffrer. Le cas « tous dans le même cycle » se PROVOQUE
- *    explicitement (`widget rafale`), il ne se subit pas.
+ *    (14, 20, 26, 34).
+ *
+ * 🔴 CE QUE CES PÉRIODES FONT, ET CE QU'ELLES NE FONT PAS — relevé en revue le
+ *    2026-08-18, et ce paragraphe affirmait l'inverse. Elles façonnent la
+ *    TRAJECTOIRE de la valeur ; elles ne décalent PAS l'instant de mise à jour.
+ *    Les quatre mocks sont pilotés par L'UNIQUE timer 1 Hz (`label_tick`) :
+ *    **ils battent à l'unisson, chaque seconde, dans le même cycle LVGL.**
+ *    Le dédoublonnage plus bas ne les désynchronise pas non plus — à chaque pas
+ *    de chaque rampe l'écart dépasse l'unité affichée (GPU 34/13 ≈ 2,6 ·
+ *    RAM 60/17 ≈ 3,5 · RÉSEAU 980/7 = 140 · VENT 800/10 = 80), donc il ne se
+ *    déclenche JAMAIS.
+ * ⇒ La ligne « mock on » de la table de décomposition d'AC8 (§16.1) contient
+ *   donc DÉJÀ quatre mises à jour par cycle. Ce n'est pas le régime désynchronisé
+ *   qu'elle prétendait chiffrer, et il faut le lire ainsi.
+ * ⚠️ Les périodes restent premières entre elles pour que les VALEURS ne se
+ *    rephasent pas — c'est utile à l'œil, pas au coût.
+ * ⛔ ON NE LES DÉPHASE PAS : décaler les ticks changerait le régime sur lequel
+ *    tout §16 a été mesuré, et invaliderait des chiffres publiés pour corriger
+ *    une étiquette. On corrige l'étiquette.
+ * ⚠️ `widget rafale` garde son sens : il ajoute CPU, AMBIANCE et la barre au
+ *    même cycle — les six, pas seulement les quatre mocks.
  */
 #define DN_MOCK_MIN 800
 #define DN_MOCK_MAX 1600
 #define DN_MOCK_PERIODE_S 20
+
+/* Attente maximale d'un cycle LVGL après une rafale, pour que son témoin puisse
+ * effectivement DÉCLENCHER (revue 2026-08-18). Un cycle nominal dure ~26,7 ms
+ * (37,40 Hz) ; 500 ms laissent la marge d'un `build_scene()` en cours sans
+ * jamais bloquer le REPL de façon perceptible. */
+#define DN_UI_RAFALE_ATTENTE_MS 500
 
 /* Ce que la ligne secondaire d'un mock raconte. Nommé par INTENTION, pas par
  * index : la table reste lisible et le tick n'a aucun `if (i == RAM)`. */
@@ -1338,7 +1364,10 @@ static const char *const k_mois_court[12] = {
  * Compose le texte de la barre dans `s_barre_h` / `s_barre_d`. Rend `true` si
  * quelque chose d'AFFICHÉ a changé — c'est ce booléen, et lui seul, qui décide
  * d'une invalidation. Une barre qui se réécrit à l'identique coûterait
- * 33 600 px (96 % d'une case) pour rien.
+ * 6 334 px (18 % d'une case) pour rien.
+ * 🔴 CE CHIFFRE EST MESURÉ (§16.5, dn3-2) et il REMPLACE la prémisse « 480 x 70
+ *    = 33 600 px, soit 96 % d'une case », qui était fausse D'UN FACTEUR 5,3 :
+ *    LVGL n'invalide que la zone des LABELS, pas le rectangle de la barre.
  */
 static bool s_barre_h_change, s_barre_d_change;
 
@@ -1440,9 +1469,13 @@ static void build_dashboard(lv_obj_t *scr)
      * pilotée par `dn_rtc`, qualifiée par LECTURE DE REGISTRE et non par le
      * scan. Pleine largeur, 70 px de haut : elle n'est PAS un cas adverse au
      * sens de §10.4, qui parle de hauteur.
-     * ⚠️ 480 x 70 = 33 600 px, soit 96 % d'une case (35 100 px). Une barre qui
-     *    bat à 1 Hz en permanence est donc, en coût brut, une 7e case vivante —
-     *    c'est ce qu'AC4 mesure, et pourquoi le régime par défaut est HH:MM. */
+     * 🔴 CE QU'ELLE COÛTE EST MESURÉ, PAS DÉDUIT DE SON AIRE (§16.5, dn3-2) :
+     *    **6 334 px par mise à jour**, soit 18 % d'une case (35 100 px) — et
+     *    NON les 33 600 px (96 %) que son rectangle laisse croire. La prémisse
+     *    « une barre à 1 Hz est une 7e case vivante » était fausse d'un facteur
+     *    5,3 : LVGL n'invalide que la zone des LABELS. Le régime par défaut
+     *    reste HH:MM, mais parce que la MAQUETTE n'affiche pas les secondes
+     *    (addendum §1, « 21:46 »), pas parce que le 1 Hz coûterait cher. */
     lv_obj_t *barre = lv_obj_create(scr);
     lv_obj_remove_style_all(barre);
     lv_obj_set_pos(barre, 0, 0);
@@ -1945,7 +1978,7 @@ uint32_t dn_ui_taps(void) { return s_taps; }
 const char *dn_ui_zone_nom(int zone)
 {
     if (zone == DN_UI_ZONE_MENU) {
-        return "MENU (no-op)";
+        return "MENU (zone morte — W3)";
     }
     if (zone == DN_UI_ZONE_RETOUR) {
         return "RETOUR";
@@ -2717,13 +2750,53 @@ void dn_ui_bandes_set(bool on)
 
 bool dn_ui_bandes(void) { return s_bandes; }
 
-const char *dn_ui_barre_heure_txt(void) { return s_barre_h; }
-const char *dn_ui_barre_date_txt(void) { return s_barre_d; }
+/*
+ * 🔴 COPIE SOUS VERROU, PAS DE POINTEUR NU — correctif de revue (2026-08-18).
+ *    Les deux getters rendaient `s_barre_h` / `s_barre_d` tels quels, et la
+ *    console les passait à `printf` depuis SA tâche, sans verrou, pendant que
+ *    la tâche RTC les réécrivait par `memcpy` à 2 Hz. Aux transitions de
+ *    longueur (« HEURE NON POSÉE » -> « VEN. 06 AOÛT ») une lecture déchirée
+ *    rendait une chaîne épissée dans un DIAGNOSTIC — au milieu d'une campagne
+ *    où l'opérateur lit justement ces lignes pour trancher.
+ * ⚠️ Rien à l'écran n'était affecté : les labels LVGL, eux, sont écrits sous
+ *    verrou. C'est l'instrument qui mentait, pas la barre.
+ */
+bool dn_ui_barre_txt(char *heure, size_t n_heure, char *date, size_t n_date)
+{
+    if (heure && n_heure) {
+        heure[0] = '\0';
+    }
+    if (date && n_date) {
+        date[0] = '\0';
+    }
+    if (!lvgl_port_lock(200)) {
+        return false;
+    }
+    if (heure && n_heure) {
+        snprintf(heure, n_heure, "%s", s_barre_h);
+    }
+    if (date && n_date) {
+        snprintf(date, n_date, "%s", s_barre_d);
+    }
+    lvgl_port_unlock();
+    return true;
+}
+
 bool dn_ui_barre_dessinee(void)
 {
     /* RELU de l'état réel, pas récité : les labels peuvent être NULL entre un
-     * démontage et la reconstruction, et `s_active` peut être faux. */
-    return s_barre_heure != NULL && s_barre_date != NULL && s_active;
+     * démontage et la reconstruction, et `s_active` peut être faux.
+     * 🔴 ET L'ÉCRAN CHARGÉ EST CROISÉ — correctif de revue (2026-08-18). En
+     *    `DN_NAV_SCREENS` la transition détail ne détruit que `s_bar` et
+     *    `s_demo` : le dashboard et ses deux labels SURVIVENT, donc la fonction
+     *    répondait « DESSINEE » pendant que l'écran de détail était sur la
+     *    dalle — quand le MÊME état visuel répond « PAS dessinee » en REBUILD.
+     *    Un instrument dont la réponse dépend du mode de nav et pas de ce qu'on
+     *    voit ne mesure pas ce qu'il annonce. */
+    if (s_barre_heure == NULL || s_barre_date == NULL || !s_active) {
+        return false;
+    }
+    return s_scr_dash != NULL && lv_screen_active() == s_scr_dash;
 }
 
 /*
@@ -2802,11 +2875,23 @@ static void mock_tick_nolock(void)
         s_poussee[i] = false;
 
         uint32_t periode = k_mock[i].periode_s;
+        /* 🔴 LA GARDE DÉSARME, elle ne se contente plus de journaliser
+         *    (revue 2026-08-18). `dn_ui_init` détecte bien une période < 2 mais
+         *    ne l'empêchait pas d'arriver ici, où `periode / 2` vaut 0 : la
+         *    division entière par zéro lève une exception, et ce build a
+         *    `CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT=y` — « ni console, ni flash,
+         *    RESET physique ». La garde avait été ajoutée POUR cette classe de
+         *    faute de frappe et laissait passer le seul cas qui brique la carte. */
+        if (periode < 2) {
+            continue;
+        }
         uint32_t phase = s % periode;
         uint32_t demi = periode / 2;
         /* Triangle : on monte sur la première moitié, on descend sur la
          * seconde. ⚠️ Ne tient QUE pour une période PAIRE >= 2 — c'est pour ça
-         * que la table les impose, et le boot le vérifie (`mock_verifier`). */
+         * que la table les impose, et le boot le vérifie (la boucle de
+         * validation de `dn_ui_init`). ⚠️ La garde ci-dessus DÉSARME l'entrée
+         * fautive ; le boot, lui, se contente de la JOURNALISER. */
         uint32_t pos = phase < demi ? phase : (periode - phase);
         int32_t v = k_mock[i].min +
                     (int32_t)((k_mock[i].max - k_mock[i].min) * pos / demi);
@@ -2826,11 +2911,16 @@ static void mock_tick_nolock(void)
          *    second tick LVGL dans la MÊME seconde. Utile, mais pour une autre
          *    raison. « Un commentaire qui affirme un invariant que le code ne
          *    tient pas est pire que pas de commentaire. »
-         * ⚠️ dn3-2 : avec des plages étroites, DEUX secondes consécutives
-         *    PEUVENT désormais donner le même texte (GPU : 34 pas pour 34 °C de
-         *    plage, mais RAM : 60 % sur 34 pas ⇒ des paliers). Le garde devient
-         *    donc utile POUR LA RAISON QU'ON LUI PRÊTAIT — et c'est ce qui rend
-         *    les quatre mocks NON synchrones même à tick commun.
+         * 🔴 dn3-2, CORRIGÉ EN REVUE (2026-08-18) : ce paragraphe annonçait
+         *    « RAM : 60 % sur 34 pas ⇒ des paliers » et concluait que le garde
+         *    rendait « les quatre mocks NON synchrones même à tick commun ».
+         *    LES DEUX SONT FAUX. `demi` vaut 17 pour RAM, donc le pas est
+         *    60/17 ≈ 3,5 unités : aucun palier. Idem pour les trois autres
+         *    (GPU ≈ 2,6 · RÉSEAU 140 · VENT 80). Le garde NE SE DÉCLENCHE
+         *    JAMAIS sur les rampes actuelles, et les quatre mocks battent bien
+         *    à l'unisson chaque seconde. Il ne rattrape donc toujours que le
+         *    cas d'un second tick LVGL dans la MÊME seconde — utile, mais pour
+         *    la raison d'origine.
          */
         if (s_wetat[i].regime == DN_VAL_SIMULEE &&
             strcmp(s_wetat[i].txt[0], txt) == 0) {
@@ -2863,8 +2953,12 @@ static void mock_tick_nolock(void)
              *    U+2193/U+2191 : celles-ci sont HORS latin-1 et le glyphe absent
              *    serait dessiné EN SILENCE. Les deux codepoints FontAwesome ont
              *    été VÉRIFIÉS présents dans `fonts/dn_font_14.c`. */
+            /* ⚠️ /20,5 et non /20 : l'addendum §1 écrit « ↓ 985 ↑ 48 », et
+             *    985/20 donne 49. Le verbatim de la maquette fait foi — le
+             *    diviseur est choisi POUR le reproduire au pic du mock
+             *    (985 * 2 / 41 = 48). Relevé en revue le 2026-08-18. */
             snprintf(sec, sizeof(sec), LV_SYMBOL_DOWN " %d  " LV_SYMBOL_UP " %d",
-                     (int)v, (int)(v / 20));
+                     (int)v, (int)(v * 2 / 41));
             break;
         case DN_SEC_SIMULE:
         default:
@@ -2879,10 +2973,13 @@ static void mock_tick_nolock(void)
  * ── L'INJECTEUR DE POUSSÉE (AC8) — POURQUOI IL EXISTE ────────────────────────
  *
  * AC8 demande d'isoler TROIS coûts dans le MÊME firmware : une case-widget
- * mono-grandeur, une case-widget bi-grandeurs, et une CASE NUE VIVANTE. Or les
- * trois cases nues n'ont AUCUNE source — le témoin négatif d'AC8 serait donc
+ * mono-grandeur, une case-widget bi-grandeurs, et une CASE NUE VIVANTE. Or une
+ * case rendue nue n'a plus AUCUNE source — le témoin négatif d'AC8 serait donc
  * indémontrable, et les deux widgets seraient confondus par leurs cadences
  * différentes (mock 1 Hz, capteur 5 s).
+ * ⚠️ dn3-2 : il n'y a plus de « trois cases nues » permanentes. Les six portent
+ *    le modèle ; c'est `widget nue <idx> on` qui en rend une nue À CHAUD, le
+ *    temps du relevé.
  *
  * Cette fonction pose UNE mise à jour synthétique sur UNE case, à la demande.
  * L'agent en enchaîne N depuis le PC, ce qui donne N cycles de redessin
@@ -2921,8 +3018,21 @@ static bool pousser_nolock(int idx)
              (unsigned)(s_pousse_seq % 10));
     snprintf(t1, sizeof(t1), "%u,%u", (unsigned)((s_pousse_seq * 7) % 100),
              (unsigned)((s_pousse_seq * 3) % 10));
-    int32_t brut = (int32_t)(DN_MOCK_MIN +
-                             (s_pousse_seq * 37) % (DN_MOCK_MAX - DN_MOCK_MIN));
+    /* 🔴 BRUT MIS À L'ÉCHELLE DE LA CASE — correctif de revue (2026-08-18).
+     *    La valeur était figée à 800..1599 pour TOUTE case, quelle que soit la
+     *    plage annoncée de sa jauge. RAM, jauge NEUVE de dn3-2, borne à
+     *    `ind_max = 100` : `lv_bar_set_value` clampait ⇒ la jauge se clouait au
+     *    plein dès la 1re poussée et ne bougeait plus des 24 suivantes. Elle ne
+     *    salissait donc AUCUN pixel pendant la campagne, et le px/mise-à-jour
+     *    publié pour RAM en est systématiquement bas. VENTILOS (ind_max = 2000)
+     *    n'était pas touchée — d'où l'absence du défaut en dn3-1, où RAM était
+     *    encore une case nue. ⚠️ §16.4 est à re-relever pour la ligne RAM. */
+    const dn_widget_desc_t *d_pou = &k_desc[idx];
+    int32_t plage = d_pou->ind_max - d_pou->ind_min;
+    int32_t brut = (plage > 0)
+                       ? (int32_t)(d_pou->ind_min + (s_pousse_seq * 37) % (uint32_t)(plage + 1))
+                       : (int32_t)(DN_MOCK_MIN +
+                                   (s_pousse_seq * 37) % (DN_MOCK_MAX - DN_MOCK_MIN));
     case_poser(idx, DN_VAL_SIMULEE, t0, t1, brut, "POUSSÉE de mesure (AC8)",
                NULL);
     /* 🔴 DÉCISION D1 (revue 2026-08-18) : marquer la case comme POUSSÉE, pour
@@ -2990,9 +3100,27 @@ uint32_t dn_ui_rafale(void)
      * n'a pas encore eu lieu ici (on tient le verrou) : ce delta doit donc
      * valoir 0. S'il vaut plus, la rafale a été COUPÉE et son chiffre ne vaut
      * rien — c'est exactement ce que `widget` doit dire à l'opérateur. */
-    s_rafale_cycles = s_n_cycles - cyc;
     s_rafale_n = n;
     lvgl_port_unlock();
+    /* 🔴 LE TÉMOIN EST ÉCHANTILLONNÉ APRÈS LA RELÂCHE — correctif de revue
+     *    (2026-08-18). Il était relu SOUS le verrou, et `s_n_cycles` n'est
+     *    incrémenté que dans `dn_ui_flush()`, c'est-à-dire dans la tâche LVGL,
+     *    qui ne PEUT PAS tourner tant que la console tient le mutex. Le delta
+     *    valait donc 0 par construction : la branche « un cycle s'est
+     *    INTERCALÉ » était INATTEIGNABLE et le verdict « ✅ le verrou a TENU »
+     *    ne prouvait rien. C'est exactement le piège que ce dépôt refuse
+     *    ailleurs — un instrument qui ne pouvait pas voir le défaut qu'il
+     *    annonce exclure.
+     * ⇒ On attend qu'un cycle LVGL ait effectivement eu lieu, puis on compte
+     *   COMBIEN il en a fallu pour dessiner la rafale. La prédiction est UN.
+     *   Deux ou plus = les N poussées n'ont PAS été fusionnées, et le chiffre
+     *   du tir ne vaut rien. La garde peut désormais déclencher. */
+    uint32_t attente = 0;
+    while (s_n_cycles == cyc && attente < DN_UI_RAFALE_ATTENTE_MS) {
+        vTaskDelay(pdMS_TO_TICKS(5));
+        attente += 5;
+    }
+    s_rafale_cycles = s_n_cycles - cyc;
     return n;
 }
 
@@ -3058,7 +3186,12 @@ esp_err_t dn_ui_nue_set(int idx, bool nue)
     }
     if (!k_widget[idx]) {
         /* Elle n'a jamais eu le modèle : la rendre « nue » n'a pas de sens, et
-         * acquitter donnerait à croire qu'on a fait quelque chose. */
+         * acquitter donnerait à croire qu'on a fait quelque chose.
+         * ⚠️ BRANCHE MORTE DEPUIS dn3-2 (relevé en revue le 2026-08-18) : les
+         *    SIX entrées de `k_widget[]` sont vraies. Elle est conservée parce
+         *    qu'elle redeviendrait vivante si une 7e case arrivait sans modèle
+         *    — mais aucun message console ne doit la présenter comme un cas
+         *    qu'un opérateur peut rencontrer aujourd'hui. */
         return ESP_ERR_INVALID_STATE;
     }
     if (s_nue_force[idx] == nue) {

@@ -27,7 +27,7 @@ LA DÉRIVE DE LA LISTE DES SYMBOLES :
   🔴 Il ne RECOPIE PAS les codepoints. Il les LIT dans le fichier amont, à
      chaque exécution. Si LVGL en ajoute un, on l'a. Si le fichier amont
      disparaît ou change de forme, ce script ÉCHOUE BRUYAMMENT au lieu de
-     générer une police à laquelle il manquerait LV_SYMBOL_LIST (bandeau MENU)
+     générer une police à laquelle il manquerait LV_SYMBOL_LIST (témoin pur)
      ou LV_SYMBOL_LEFT (chevron de retour) — deux glyphes dont l'absence est
      SILENCIEUSE à l'écran : LVGL ne dessine pas un glyphe manquant et ne se
      plaint pas.
@@ -130,7 +130,13 @@ TAILLES = (14, 28)
 # « ne jamais recopier la liste » est censé protéger (correctif de revue,
 # 2026-08-18). Ces deux-là sont donc écrits en dur, parce qu'ils sont les deux
 # dont l'absence est SILENCIEUSE À L'ÉCRAN :
-#   · LV_SYMBOL_LIST (U+F00B) — le bandeau MENU      (dn_ui.c)
+#   · LV_SYMBOL_LIST (U+F00B) — TÉMOIN PUR depuis dn3-2 : plus aucun code
+#     de `main/` ne le référence. W3 a retiré le chevron du bandeau MENU
+#     (une affordance sur un élément non actionnable), et cette ligne a
+#     gardé sa justification périmée jusqu'à la revue du 2026-08-18.
+#     ⚠️ On le GARDE quand même : un glyphe FontAwesome dans la plage haute
+#     reste le meilleur témoin d'une police tronquée. C'est le MOTIF qui
+#     était faux, pas le choix.
 #   · LV_SYMBOL_LEFT (U+F053) — le chevron de retour (dn_ui.c)
 # Relevés dans `managed_components/lvgl__lvgl/src/font/lv_symbol_def.h` le
 # 2026-08-18, pas devinés.
