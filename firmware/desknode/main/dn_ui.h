@@ -534,6 +534,13 @@ bool dn_ui_barre_dessinee(void);
  *    fois, quand un A/B mesurait deux fois la même branche. */
 const dn_widget_desc_t *dn_ui_desc(int idx);
 
+/* Le descripteur BRUT, ⛔ SANS l'override W11 — pour les INSTRUMENTS qui publient
+ * ce que le descripteur DEMANDE (table de géométrie de la console), jamais pour
+ * décider d'un rendu. Voir `dn_ui_desc()`, qui fait foi côté dessin.
+ * (Correctif de revue 2026-08-19 : la colonne « demandé » d'une case NUE annonçait
+ *  « n=0 » et perdait « jauge demandee ».) */
+const dn_widget_desc_t *dn_ui_desc_brut(int idx);
+
 /* Le descripteur du widget de DÉMO (`widget demo on`) — le SEUL du firmware à
  * demander deux grandeurs ET une jauge, donc le seul à armer l'abandon de la
  * ligne secondaire. La table de géométrie d'AC5 en a besoin pour confronter
@@ -606,32 +613,25 @@ uint32_t dn_ui_pousser(int idx);
  *    Sans elle, ce cas devrait être DÉCLARÉ NON MESURÉ. Avec elle, il se
  *    mesure — mais il se publie comme un INSTRUMENT, jamais comme un régime.
  *
- * Rend le nombre de cases poussées. 🔴 `dn_ui_rafale_cycles()` doit valoir **1** :
- *    c'est LE NOMBRE DE CYCLES LVGL QU'IL A FALLU pour dessiner la rafale, et la
- *    prédiction est UN — les N invalidations fusionnent dans un seul cycle.
- *      · **1**  = ✅ le verrou a tenu, le chiffre vaut ;
- *      · **≥ 2** = 🔴 les poussées n'ont PAS fusionné, le chiffre ne vaut rien ;
- *      · **0**  = ⚠️ aucun cycle observé dans le délai d'attente — le témoin n'a
- *                pas pu CONCLURE. ⛔ Ce n'est pas un succès, c'est une non-mesure.
- * ⚠️ CE CONTRAT DISAIT « doit valoir 0 » JUSQU'À LA SÉANCE DU 2026-08-18. C'était
- *    l'ancienne sémantique : le témoin était alors échantillonné SOUS le verrou,
- *    où le compteur ne peut pas bouger, donc il valait 0 par construction et la
- *    branche « coupée » était INATTEIGNABLE. La revue de dn3-2 a corrigé la
- *    MESURE ; ni ce contrat, ni le message de la console, ni AC7, ni le README
- *    n'avaient suivi. ⇒ l'instrument criait « rejouer » sur une mesure parfaite.
- *    Découvert à la PREMIÈRE lecture réelle du témoin. C'est le témoin qui rend
- *    la mesure falsifiable — encore faut-il lire ce qu'il dit.
+ * Rend le nombre de cases poussées, et RIEN D'AUTRE.
+ *
+ * 🔴 IL N'Y A PLUS DE TÉMOIN DE FUSION — DÉCISION OWNER DU 2026-08-19. Ce contrat
+ *    a énoncé TROIS sémantiques successives (« cycles intercalés », puis « 0 =
+ *    succès », puis « 1 = succès ») pour un chiffre qui, à chaque fois, ne pouvait
+ *    rendre QUE sa valeur de succès : sous le verrou le compteur ne bougeait pas ;
+ *    après la relâche, la boucle d'attente sortait au PREMIER cycle observé, donc
+ *    le delta valait 1 quoi qu'il se soit passé pendant la rafale.
+ * ⇒ LA FUSION SE PROUVE PAR `flush`, ET PAR LUI SEUL — « 6 flushes / 1 cycle /
+ *   210 600 px » dans la même passe, mesure indépendante de cette fonction. C'est
+ *   elle qui porte le chiffre d'AC7 régime (c), et c'est elle qu'on publie.
+ * ⛔ NE PAS RÉINTRODUIRE `dn_ui_rafale_cycles()` sans démontrer PAR LA MESURE que
+ *   le nouveau témoin peut rendre autre chose que sa valeur de succès. Trois
+ *   tours d'un instrument aveugle suffisent.
+ * ✅ Conséquence : la rafale NE DORT PLUS (`DN_UI_RAFALE_ATTENTE_MS` supprimé), ce
+ *   qui rétablit l'invariant « aucune sous-commande de `widget` ne DORT » — il
+ *   était faux depuis que l'attente de 500 ms bloquait le REPL, donc le transport.
  */
-/* Attente maximale d'un cycle LVGL après une rafale, pour que son témoin puisse
- * effectivement DÉCLENCHER (revue 2026-08-18). Un cycle nominal dure ~26,7 ms
- * (37,40 Hz) ; 500 ms laissent la marge d'un `build_scene()` en cours sans
- * jamais bloquer le REPL de façon perceptible.
- * ⚠️ REMONTÉ DANS L'EN-TÊTE en séance le 2026-08-18 : la console doit pouvoir
- *    NOMMER ce délai quand le témoin ne conclut pas, plutôt que réciter « 500 ms ». */
-#define DN_UI_RAFALE_ATTENTE_MS 500
-
 uint32_t dn_ui_rafale(void);
-uint32_t dn_ui_rafale_cycles(void);
 uint32_t dn_ui_rafale_n(void);
 
 /* ── W11 : le TÉMOIN NÉGATIF d'AC8, commutable à chaud ────────────────────────

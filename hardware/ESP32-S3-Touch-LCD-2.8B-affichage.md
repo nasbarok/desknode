@@ -2683,8 +2683,23 @@ héritée. On échangeait un legs chiffré complet contre une exigence qu'aucun 
 
 ### 17.0 🔴 Le firmware sur lequel ces chiffres sont pris
 
-**Tous les relevés de cette section sont pris sur le MÊME firmware et dans la MÊME session**,
-`draw_lines = 128` restauré, mock **coupé** sauf mention contraire.
+> 🔴 **CETTE PHRASE ÉTAIT FAUSSE ET ELLE EST CORRIGÉE (revue 2026-08-19).** Elle disait
+> « Tous les relevés de cette section sont pris sur le MÊME firmware et dans la MÊME session » —
+> c'est très exactement le **SHA global qui ment sur trois lignes** qu'AC13 interdit.
+> **§17 couvre désormais TROIS firmwares**, et chaque sous-section nomme le sien :
+
+| Sous-section | Firmware | Séance |
+|---|---|---|
+| §17.1 (T0) | `395310e` | dev dn4-1 |
+| §17.2 · §17.4 · §17.5 · §17.6 | `21d02be` | dev dn4-1 |
+| §17.9 | `d5d3539` | séance post-revue du 2026-08-18 |
+
+> ⚠️ **§17.4 et §17.5 ne nomment toujours aucun SHA dans leur propre en-tête** — ils sont pris
+> dans la session `21d02be` d'après leur position, mais ce n'est pas ÉCRIT là où on les lit.
+> ⏳ **Rattaché au ledger** (revue 2026-08-19) : à qualifier explicitement, ou à re-relever.
+
+Conditions communes à tous les relevés : `draw_lines = 128` restauré, mock **coupé** sauf
+mention contraire.
 ⚠️ **Et T0 a commencé par corriger un écart** : la carte tournait sur `49a8364`, **deux commits
 avant** le firmware que dn3-2 déclarait livré. Les budgets de §16.6 ont donc été **re-relevés
 sur `395310e`** avant tout changement — c'est la baseline T0 ci-dessous.
@@ -2731,6 +2746,16 @@ avant/après une écoute passive de 45 s) :
 > ⚠️ Le régime **(c) `widget rafale`** est en outre **publié incomplet** (8 colonnes sur 12
 > valent « — ») et son **témoin de validité n'a jamais été relevé** —
 > AC7 exigeait les deux. Même tâche de séance.
+>
+> 🔴 **CETTE TABLE EST REMPLACÉE PAR §17.9 — LIRE §17.9 AVANT DE CITER UN CHIFFRE D'ICI**
+> (renvoi ajouté par la revue du 2026-08-19 ; il manquait, et cette table est celle que citent
+> les Completion Notes de la story). Trois choses que §17.9 établit et que cette table ignore :
+> 1. sa **colonne par tâche ne se réconcilie pas** avec sa propre colonne globale (facteur ~2) —
+>    voir §17.9, et ⚠️ **la cause en est INCONNUE**, pas celle qui avait été publiée ;
+> 2. sa **ligne (c) est remplacée** : 140 400 px/cyc y devient **210 600** sur `d5d3539` ;
+> 3. ses colonnes `ms/cyc` et `duty` **ne se comparent pas** à celles de §17.9 — la définition
+>    a changé (voir §17.9, régime (a)).
+> ⛔ **Elle n'est pas effacée** — AC13 l'exige — mais elle ne fait plus autorité seule.
 
 Instrument : **`flush` + `cpu brut` uniquement**. ⛔ `cpu N` est interdit — il **bloque** la
 tâche du REPL, et **sur la branche A le REPL EST le transport** : il décrirait le dashboard au
@@ -2781,6 +2806,13 @@ REPL ré-imprime pour 5 lignes/s. La prédiction avait explicitement laissé ce 
 ⚠️ **Et ce n'est pas un artefact de mesure** : sur la branche A, **le REPL EST le transport**.
 L'agent réel produit exactement les mêmes 5 lignes/s. Ce 1,27 pt est un **coût réel du transport
 retenu**, à porter au budget.
+🔴 ⚠️ **CE CHIFFRE DE BUDGET EST CONTREDIT PAR §17.9, ET LES DEUX SONT EN VIGUEUR**
+(revue 2026-08-19). §17.9 mesure **2,51 pt** pour le même poste, dans le même régime. C'est le
+« facteur ~2 » que §17.9 relève sur toute la colonne par tâche — et ⛔ **sa cause est INCONNUE**,
+l'explication d'abord publiée (normalisation machine contre cœur) étant **mécaniquement
+impossible** : `cpu brut` n'a qu'un seul dénominateur, mono-cœur, et son code n'a pas changé
+entre les deux séances. ⏳ **Tant que la séance carte n'a pas tranché, aucun budget ne se pose
+sur ce poste** : ni 1,27 ni 2,51 ne peut être cité seul.
 `dn_link` : **0,24 pt** mesuré contre **0,20 pt** prédit (legs dn2-2 × 5) ✅.
 
 ### 17.3 🔴 LE DÉFAUT QUE CETTE MESURE A TROUVÉ — deux écrivains sur la même case
@@ -2977,6 +3009,19 @@ par construction, branche « coupée » **inatteignable**) ⇒ la valeur de succ
 ⚠️ **Le défaut a survécu parce que personne n'avait jamais lu le témoin** — ce que la revue
 reprochait précisément à AC7. *Un instrument qu'on ne lit pas ne protège de rien.*
 
+> 🔴 **ÉPILOGUE — LE TÉMOIN A ÉTÉ ENTERRÉ LE 2026-08-19, IL N'A JAMAIS RIEN PU VOIR.**
+> La revue du 2026-08-19 a montré que **le correctif ci-dessus n'a pas fermé le défaut, il l'a
+> déplacé de `0` à `1`** : la boucle d'attente sort au **PREMIER** incrément de `s_n_cycles`, donc
+> le delta vaut **1 quoi qu'il se soit passé** pendant la rafale. Obtenir `2` aurait demandé deux
+> cycles complets dans un seul `vTaskDelay(5 ms)` — **impossible** à 26,7 ms/cycle (37,40 Hz).
+> ⇒ **Les « quatre rejeux, quatre fois 1 » sont la signature d'un témoin CONSTANT**, pas d'une
+> validation. C'était son **troisième** état successif, et aucun n'était discriminant.
+> ✅ **Décision owner du 2026-08-19 : le témoin est SUPPRIMÉ** (`dn_ui_rafale_cycles()` retiré du
+> firmware), et **la fusion se prouve par `flush`, et par lui seul** — les *« 6 flushes, 1 CYCLE,
+> 210 600 px »* ci-dessus, qui sont une **mesure indépendante** et qui, eux, tiennent.
+> ✅ Effet de bord voulu : la rafale **ne dort plus** (l'attente de 500 ms bloquait le REPL, donc
+> le transport PC, plus longtemps que les cinq commandes « RECONSTRUIT »).
+
 #### AC7 — les régimes, sur le firmware de cette séance
 
 | régime | CPU | `taskLVGL` | `console_repl` | `dn_link` | cyc/s | flush/cyc | flush/s | px/cyc | plus gr. aire | copie µs/flush | ms/cyc | duty |
@@ -2984,9 +3029,37 @@ reprochait précisément à AC7. *Un instrument qu'on ne lit pas ne protège de 
 | **(a) repos, agent arrêté** | **1,61 %** | 2,20 pt | 0,07 pt | 0,02 pt | 0,23 | 1,00 | 0,23 | 32 312 | 35 100 | 2 689 | 2,7 | **0,06 %** |
 | **(c) `widget rafale`** | — ⚠️ | — ⚠️ | — ⚠️ | — ⚠️ | — ⚠️ | **6,00** | — ⚠️ | **210 600** | 35 100 | **2 933** (max 2 965) | **17,6** | — ⚠️ |
 
-✅ **(a) reproduit la référence** : 1,61 % contre 1,62 % en §17.2, cyc/s 0,23 contre 0,22,
-flush/cyc 1,00, plus grande aire 35 100 px. **Aucune dérive.**
-✅ **(c) est mesuré et VALIDÉ pour la première fois** : témoin **`cycles pour dessiner la rafale = 1`**,
+⚠️ **(a) reproduit la référence SUR QUATRE COLONNES, ET DIVERGE D'UN FACTEUR 8 SUR DEUX** —
+constat corrigé le 2026-08-19 ; ce paragraphe concluait « **Aucune dérive** » en n'énumérant
+que les colonnes qui concordent.
+· ✅ **Concordent** : CPU **1,61 %** contre 1,62 % en §17.2 · cyc/s **0,23** contre 0,22 ·
+  flush/cyc **1,00** · plus grande aire **35 100 px**.
+· 🔴 **Divergent** : `ms/cyc` **2,7** contre **22,1** en §17.2 · `duty` **0,06 %** contre
+  **0,5 %**. Références antérieures du **même** régime : §16.1 (`mock off / groupage on`)
+  = **19,1 ms/cyc · 0,4 %** ; §17.1 (T0) = **duty 0,5 %**. Le 2,7 / 0,06 % est **seul de son
+  espèce**, et le `duty` est précisément le chiffre sur lequel §16.2 dit qu'un module H24 se
+  budgète.
+🔴 **CAUSE IDENTIFIÉE : LA DÉFINITION DE LA COLONNE A CHANGÉ, ET CE N'ÉTAIT PAS DÉCLARÉ.** Ici,
+`ms/cyc = flush/cyc × copie µs/flush` **exactement** ((a) : 1,00 × 2 689 = 2,7 ; (c) : 6,00 ×
+2 933 = 17,6). En §16.1 et §17.2 il **incluait l'attente de synchro** (§16.1 `on/on` : 3,47 ×
+2 883 = 10,0 ms pour **55,4** publiés). ⚠️ `cmd_flush` imprime la copie **et** l'attente
+**séparément** et ne publie ni `ms/cyc` ni `duty` : **ces deux colonnes sont dérivées par
+l'opérateur**, et la formule a changé d'une séance à l'autre sans être écrite.
+⏳ **TÂCHE DE SÉANCE CARTE OUVERTE** : re-relever (a) et (b) avec la formule **FIGÉE ET ÉCRITE**.
+⛔ Jusque-là, aucun `duty` de cette table ne se compare à §16.1, §17.1 ou §17.2.
+🔴 **(c) A CHANGÉ DE VALEUR DEPUIS §17.2, ET LA CONFRONTATION MANQUAIT** — ajoutée le
+2026-08-19. §17.2 (`21d02be`) publiait `flush/cyc` **4,00** et `px/cyc` **140 400** ; cette
+séance (`d5d3539`) publie **6,00** et **210 600** — soit **+2 flushes et +50 % de pixels**.
+Le paragraphe ci-dessous confrontait le nouveau chiffre à l'**extrapolation** d'AC8
+(`6 × 35 100`) et **jamais à sa propre mesure précédente**, alors qu'AC7 exige que *« l'écart
+soit expliqué ou déclaré inexpliqué »* — et que c'est ce régime que la séance avait été
+convoquée pour refaire.
+⚠️ **HYPOTHÈSE, ÉCRITE COMME TELLE ET NON MESURÉE** : `2d97850` a fait passer `RÉSEAU` à deux
+grandeurs ; si la rafale invalidait **quatre** cases sur `21d02be` et en invalide **six** ici,
+4,00 → 6,00 flush/cyc et 4 × 35 100 → 6 × 35 100 px suivent exactement. ⛔ **Ce n'est pas
+mesuré** : ni le nombre de cases réellement invalidées sur `21d02be`, ni la composition du tir.
+⏳ **À trancher en séance carte** (même session que (a) et (b)), ou à déclarer inexpliqué.
+✅ **Ce qui tient malgré tout** : (c) est mesuré sur `d5d3539`,
 et `flush` confirme **6 flushes / 1 cycle / 210 600 px** dans la même passe — soit très exactement
 le `6 × 35 100 = 69 % d'un plein écran` que l'extrapolation d'AC8 prédisait.
 ⚠️ **LES COLONNES « — » DE (c) SONT DÉCLARÉES NON DÉFINIES, PAS OUBLIÉES.** Un CPU global, un
@@ -3012,9 +3085,15 @@ mal posée, et c'est écrit plutôt que rempli au jugé.**
 | Latence transition (n=40) | 335,0 (291,3 / 397,1) | **336,5 (291,3 / 398,7)** | **+1,5 ms** |
 | `dn_capteurs` | 5 000 ms, 0 erreur | **4 999 ms mesurés, 0 erreur** | ✅ |
 
-⇒ **Aucune régression.** Le coût de la revue de code est de **+3 440 o de binaire** et
-**+212 o de tas LVGL** ; la RAM interne libre **remonte** de 32 o, la PSRAM ne bouge pas, le tas
+⇒ **Aucune régression.** La RAM interne libre **remonte** de 32 o, la PSRAM ne bouge pas, le tas
 reste **plat** sur 40 transitions et le `fps` est à la valeur théorique exacte.
+🔴 ⚠️ **CE DELTA N'EST PAS « LE COÛT DE LA REVUE DE CODE » — ATTRIBUTION CORRIGÉE LE 2026-08-19.**
+La plage `21d02be → d5d3539` contient **`2d97850`**, c'est-à-dire **la séance carte**, dont §17.2
+chiffre elle-même l'ampleur (« `dn_ui.c` +45, `dn_widget.c` +26, `dn_console.c` +32, `dn_ui.h` +4,
+`dn_widget.h` +9 »). Le **+3 440 o de binaire** et le **+212 o de tas LVGL** couvrent donc **AU
+MOINS DEUX CAUSES INDÉPENDANTES**, et rien ici ne permet de les séparer.
+⇒ La borne basse correcte pour isoler la revue est **`2e06ff0`** — l'ancre de la plage de revue.
+⛔ Ne pas citer ce delta comme un coût de revue tant qu'il n'a pas été re-mesuré depuis `2e06ff0`.
 ⚠️ **La latence de transition ne se solde toujours pas ici** : le budget < 300 ms appartient à `dn4-4`.
 
 #### ⏳ CE QUE CETTE SÉANCE N'A PAS PU FERMER
@@ -3071,9 +3150,19 @@ revue (un `try` et une lambda par métrique et par cycle). ⛔ **Pas mesuré en 
 2. **Les conditions diffèrent.** La 1ʳᵉ séance avait un owner qui **naviguait** (`build_scene()`
    bloque 307-322 ms) ; ici **personne n'a touché la dalle**.
 
-✅ **ET LE NOUVEAU CHIFFRE EST PRÉDIT PAR LA THÉORIE, ce qui le rend falsifiable** : les trames
-arrivent toutes les 200 ms, la tâche `dn_link` se réveille toutes les **250 ms** ⇒ une attente
-uniforme sur la fenêtre donne une moyenne attendue de **~125 ms**. Mesuré : **124 ms**.
+✅ **ET LE NOUVEAU CHIFFRE EST PRÉDIT PAR LA THÉORIE, ce qui le rend falsifiable** : la tâche
+`dn_link` se réveille toutes les **250 ms** ⇒ une attente uniforme sur cette fenêtre donne une
+moyenne attendue de **~125 ms**. Mesuré : **124 ms**.
+⚠️ **LA PRÉMISSE D'ABORD PUBLIÉE ICI ÉTAIT FAUSSE** (revue 2026-08-19) : elle disait « les trames
+arrivent **toutes les 200 ms** ». L'agent **n'espace pas ses trames** — `t_ms` est calculé **une
+seule fois pour tout le cycle** (`dn_agent.py`), puis les cinq trames sont écrites **sans aucun
+`sleep`** avant le sommeil jusqu'au top de seconde suivant. Les cinq portent d'ailleurs le **même
+horodatage**, ce qui le prouve indépendamment. « 5,00 trames/s » avait été lu comme « une trame
+toutes les 200 ms ». Le nombre attendu **reste ~125 ms** sous le modèle rafale (la rafale est
+courte devant les 250 ms de réveil) — ⛔ mais dans un dépôt qui vient de consacrer §17.4 à punir
+une prémisse écrite d'avance que la mesure a démentie, **une prédiction validée sur une prémisse
+fausse ne peut pas être ce qui « rend le chiffre falsifiable »**. La prédiction tient ; sa
+justification a été refaite.
 Et **max 169 ms < 250 ms** ⇒ **aucune contention de verrou**, cohérent avec un écran non touché.
 ⚠️ C'est pourquoi l'ancien `max = 480 ms` dépassait deux fenêtres de réveil : ce n'était pas
 l'attente du verrou (l'instrument ne pouvait pas la voir) mais les **re-essais** qu'elle
@@ -3088,9 +3177,28 @@ par un mécanisme qui n'était pas celui qu'elle nommait.
 | cette séance, régime (b) | 13,19 % | **26,38 pt** | 22,16 + 2,51 + 0,51 + `esp_timer` 0,87 + `dn_capt` 0,09 = **26,13 pt** | ✅ **+0,25 pt** (tâches mineures) |
 
 Rapport tâche par tâche entre les deux séances : `taskLVGL` **×2,01**, `console_repl` **×1,98**,
-`dn_link` **×2,11**. ⇒ **La colonne par tâche de §17.2 est exprimée en % de la MACHINE (2 cœurs)
-alors que son en-tête annonce « pt d'un cœur ».** `cpu brut` avertit pourtant explicitement :
-*« le % est rapporté à UN cœur »*.
-⚠️ **Les colonnes GLOBALES, elles, sont justes** — 13,09 vs 13,19 % et 1,62 vs 1,61 % : **le régime
-se reproduit**. Seule la normalisation par tâche est fausse, d'un facteur 2 constant.
-⛔ **Ne pas corriger §17.2 en silence** : le défaut est nommé ici, la table d'origine reste lisible.
+`dn_link` **×2,11** — et le régime (a) fait de même (`taskLVGL` 1,11 → **2,20 pt**).
+
+🔴 **LA CAUSE DE CE FACTEUR 2 EST INCONNUE — ET LA CAUSE D'ABORD PUBLIÉE ICI EST MÉCANIQUEMENT
+IMPOSSIBLE** (revue 2026-08-19). Ce paragraphe concluait : *« la colonne par tâche de §17.2 est
+exprimée en % de la MACHINE (2 cœurs) alors que son en-tête annonce “pt d'un cœur” »*.
+**Cette explication ne peut pas être vraie**, pour deux raisons vérifiées dans le code :
+1. `cpu brut` calcule **chaque** pourcentage de tâche par une seule expression —
+   `(t * 100ULL) / total` avec `total = portGET_RUN_TIME_COUNTER_VALUE()`, une durée écoulée
+   **MONO-CŒUR**. **Il n'existe aucune branche** capable de produire une colonne par tâche
+   normalisée machine. Le dénominateur est unique.
+2. **Le code n'a pas bougé entre les deux séances** : la légende « rapporté à UN cœur » et la
+   garde de rebouclage ont été posées en **`395310e`** (dn3-2), donc **avant** `21d02be` sur
+   lequel §17.2 a été relevée. Les deux tables sortent du même binaire et de la même légende.
+
+⚠️ **Le facteur 2 est RÉEL** — il est mesuré, sur cinq postes, dans deux régimes. **C'est son
+explication qui est fausse.** ⛔ Le dépôt a remplacé une affirmation chiffrée fausse par une
+**autre affirmation chiffrée non mesurée**, alors que la falsification tenait en une commande
+(`cpu brut` rejoué deux fois sur le firmware courant), dans la séance même où la carte était
+sous la main.
+⏳ **TÂCHE DE SÉANCE CARTE OUVERTE** (décision owner du 2026-08-19) : rejouer `cpu brut` **deux
+fois** et trancher. Jusque-là, la cause s'écrit **INCONNUE**.
+✅ **Les colonnes GLOBALES, elles, sont justes** — 13,09 vs 13,19 % et 1,62 vs 1,61 % : **le régime
+se reproduit**, et c'est ce qui autorise à continuer.
+⛔ **Ne pas corriger §17.2 en silence** : le défaut est nommé ici, la table d'origine reste lisible
+— et elle porte désormais un renvoi vers cette section.

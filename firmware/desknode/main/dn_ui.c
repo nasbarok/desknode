@@ -187,11 +187,16 @@ static const bool k_widget[DN_UI_METRIQUES] = {
  *    mutable) NE SE CASSE PAS. Le mécanisme est donc un tableau d'OVERRIDE
  *    `s_*` consulté par les lecteurs — ⛔ pas un `const` retiré.
  *
- * ⚠️ Il y a CINQ lecteurs, et les cinq passent par `case_est_widget()` :
+ * ⚠️ Il y a SIX lecteurs, et les six passent par `case_est_widget()` :
  *    `dn_ui_desc`, `dn_ui_est_widget`, la boucle de `build_dashboard`,
- *    `detail_reparametrer` et `case_poser`. En oublier un rendrait une case
+ *    `detail_reparametrer`, `case_poser` et `dn_ui_case_est_widget` (exposé pour
+ *    la table de géométrie de la console). En oublier un rendrait une case
  *    dessinée nue mais mise à jour comme un widget — un pointeur `valeur[0]`
  *    lu là où le modèle attend une racine de widget.
+ * 🔴 dn4-1 EN A AJOUTÉ UN SANS METTRE À JOUR CE COMPTE (revue 2026-08-19) : la
+ *    garde de complétude de W11 repose ENTIÈREMENT sur cette énumération. Un
+ *    compte récité là où une liste existe est le motif que dn4-1 corrige trois
+ *    fois ailleurs. ⇒ ajouter un lecteur, c'est l'ajouter ICI dans le même geste.
  */
 static bool s_nue_force[DN_UI_METRIQUES];
 
@@ -415,8 +420,22 @@ const char *dn_ui_metrique_nom(int idx)
 
 const dn_widget_desc_t *dn_ui_desc(int idx)
 {
-    /* LECTEUR 1/5 de l'override W11 — voir `case_est_widget()`. */
+    /* LECTEUR 1/6 de l'override W11 — voir `case_est_widget()`. */
     return case_est_widget(idx) ? &k_desc[idx] : NULL;
+}
+
+/* Le descripteur BRUT — ⛔ SANS l'override W11 (revue 2026-08-19).
+ * `dn_ui_desc()` rend NULL pour une case rendue NUE, ce qui est correct pour tout
+ * ce qui DESSINE. Mais la table de géométrie de la console publie une colonne
+ * « demandé par le descripteur » : elle doit lire ce que le descripteur DEMANDE,
+ * pas ce que l'override RÉALISE. Sans ça, `widget nue 2 on` faisait annoncer
+ * « (n=0) » et faisait disparaître « jauge demandee » pour une case dont le
+ * descripteur demande n=1 AVEC jauge — deux chiffres faux dans la colonne dont
+ * l'en-tête promet le contraire.
+ * ⛔ NE PAS l'utiliser pour décider d'un rendu : c'est `dn_ui_desc()` qui fait foi. */
+const dn_widget_desc_t *dn_ui_desc_brut(int idx)
+{
+    return (idx >= 0 && idx < DN_UI_METRIQUES) ? &k_desc[idx] : NULL;
 }
 
 /* Une case est-elle rendue NUE (override W11, `widget nue <idx> on`) ?
@@ -866,9 +885,10 @@ static bool s_mock_on = false;
  *    laisserait les trois autres se faire révoquer — le même défaut, déplacé. */
 static bool s_poussee[DN_UI_METRIQUES];
 
-/* Le résultat de la dernière rafale d'AC8 — RELU, jamais récité. Voir
- * `dn_ui_rafale()`. */
-static uint32_t s_rafale_cycles, s_rafale_n;
+/* Le nombre de cases poussées par la dernière rafale d'AC8 — RELU, jamais récité.
+ * ⛔ `s_rafale_cycles` A ÉTÉ SUPPRIMÉ le 2026-08-19 : voir `dn_ui_rafale()`, il ne
+ *    pouvait rendre que sa valeur de succès. La fusion se prouve par `flush`. */
+static uint32_t s_rafale_n;
 /* Dernière zone touchée — la preuve d'AC3, lue par la console. */
 static volatile int s_dernier_tap = DN_UI_ZONE_AUCUNE;
 static volatile uint32_t s_taps;
@@ -2796,29 +2816,46 @@ typedef enum {
  *    C'est la quatrième table câblée par index, dans le fichier même où on en
  *    supprime trois ; le commentaire ci-dessus prévient que les deux énumérations
  *    « doivent rester indépendantes », mais rien ne le VÉRIFIAIT.
- * ⇒ Le `_Static_assert` ci-dessous force à toucher cette table quand l'énumération
- *   bouge, et `dn_ui_case_de_metrique()` refuse une entrée non renseignée.
- *   (Correctif de revue 2026-08-18 — défaut latent, aucune métrique ne l'armait.) */
+ * 🔴 LE CORRECTIF DE 2026-08-18 NE POUVAIT PAS MARCHER, ET LA REVUE DU 2026-08-19
+ *    L'A REPRODUIT À LA COMPILATION. Il posait
+ *    `_Static_assert(sizeof(k_pc)/sizeof(k_pc[0]) == DN_LINK_METRIQUES)` — or ce
+ *    tableau est déclaré `k_pc[DN_LINK_METRIQUES]` : le quotient vaut
+ *    `DN_LINK_METRIQUES` **PAR DÉCLARATION**, quel que soit le nombre
+ *    d'initialiseurs désignés réellement écrits. L'assertion comparait `X == X`
+ *    et le commentaire promettait qu'elle cesserait de compiler : elle n'aurait
+ *    JAMAIS échoué. ⛔ Un instrument qui ne peut pas voir le défaut qu'il annonce
+ *    exclure — le trap n°2 de la méthodo, introduit PAR le correctif censé le
+ *    fermer.
+ * ⇒ LA SENTINELLE EST DÉSORMAIS DÉTECTABLE : on stocke la case **DÉCALÉE DE 1**,
+ *   donc `0` = « entrée jamais renseignée » et ce n'est plus confondable avec
+ *   `DN_UI_CASE_CPU`. `dn_ui_case_de_metrique()` rend `-1` et JOURNALISE, au lieu
+ *   d'écrire dans la case CPU en silence à 1 Hz.
+ *   (Correctif de revue 2026-08-19 ; dn4-6 s'apprête à ajouter une métrique.) */
 static const struct {
-    int idx;                /* la case de dn_ui, -1 si aucune */
+    int idx_p1;             /* la case de dn_ui, DÉCALÉE DE 1. ⛔ 0 = NON RENSEIGNÉE */
     dn_sec_pc_t sec;
 } k_pc[DN_LINK_METRIQUES] = {
-    [DN_LINK_M_CPU] = {DN_UI_CASE_CPU, DN_SEC_PC_AUCUNE},
-    [DN_LINK_M_GPU] = {DN_UI_CASE_GPU, DN_SEC_PC_AUCUNE},
-    [DN_LINK_M_RAM] = {DN_UI_CASE_RAM, DN_SEC_PC_RAM_GO},
+    [DN_LINK_M_CPU] = {DN_UI_CASE_CPU + 1, DN_SEC_PC_AUCUNE},
+    [DN_LINK_M_GPU] = {DN_UI_CASE_GPU + 1, DN_SEC_PC_AUCUNE},
+    [DN_LINK_M_RAM] = {DN_UI_CASE_RAM + 1, DN_SEC_PC_RAM_GO},
     /* ⚠️ PLUS DE LIGNE SECONDAIRE POUR RÉSEAU (constat owner 2026-08-18) : ↓ et ↑
      * sont devenues les DEUX GRANDEURS de la case. Les laisser AUSSI en
      * secondaire afficherait les mêmes deux nombres deux fois dans le même
      * rectangle — le genre de redondance qui finit par diverger. */
-    [DN_LINK_M_NET] = {DN_UI_CASE_RESEAU, DN_SEC_PC_AUCUNE},
-    [DN_LINK_M_DISK] = {DN_UI_CASE_DISQUE, DN_SEC_PC_AUCUNE},
+    [DN_LINK_M_NET] = {DN_UI_CASE_RESEAU + 1, DN_SEC_PC_AUCUNE},
+    [DN_LINK_M_DISK] = {DN_UI_CASE_DISQUE + 1, DN_SEC_PC_AUCUNE},
 };
 
-/* ⛔ SI CETTE LIGNE NE COMPILE PLUS, C'EST QUE `dn_link_metrique_t` A GAGNÉ UNE
- *    ENTRÉE ET QUE `k_pc[]` NE L'A PAS. Ne pas l'élargir sans ajouter la ligne :
- *    c'est précisément la vérification qui manquait. */
-_Static_assert(sizeof(k_pc) / sizeof(k_pc[0]) == DN_LINK_METRIQUES,
-               "k_pc[] doit couvrir TOUTES les metriques de dn_link_metrique_t");
+/* ⚠️ CE QUE CET ASSERT VÉRIFIE, ET CE QU'IL NE PEUT PAS VÉRIFIER. Il garde la
+ *    correspondance de TAILLE entre les deux énumérations — utile le jour où
+ *    `DN_UI_METRIQUES` change. ⛔ Il ne peut PAS voir une entrée manquante de
+ *    `k_pc[]` : aucune construction C ne compte les initialiseurs désignés d'un
+ *    tableau à taille explicite. C'est le décalage de 1 ci-dessus qui rend
+ *    l'oubli détectable, et `dn_ui_case_de_metrique()` qui le JOURNALISE.
+ *    ⛔ Ne pas réécrire ici une assertion qui a l'air de garder l'exhaustivité :
+ *    c'est exactement le mensonge que la revue du 2026-08-19 a trouvé. */
+_Static_assert(DN_LINK_METRIQUES <= DN_UI_METRIQUES,
+               "chaque metrique PC doit pouvoir viser une case de dn_ui");
 
 /* Le nombre de cases RÉELLEMENT mockées — COMPTÉ dans `k_mock[]`, jamais récité.
  * `widget mock on` imprimait « 4 » en dur : ajouter ou retirer un mock aurait
@@ -2840,11 +2877,18 @@ int dn_ui_case_de_metrique(dn_link_metrique_t m)
     if (m < 0 || m >= DN_LINK_METRIQUES) {
         return -1;
     }
-    /* ⚠️ Une entrée jamais renseignée vaut `{0, 0}`, indiscernable d'un vrai
-     * « case 0 ». On ne peut pas le distinguer ici ; le `_Static_assert` et la
-     * revue de cette table sont la garde. Le test explicite reste utile le jour
-     * où une entrée est mise à `-1` À DESSEIN (métrique sans case). */
-    return (k_pc[m].idx >= 0 && k_pc[m].idx < DN_UI_METRIQUES) ? k_pc[m].idx : -1;
+    /* 🔴 L'ENTRÉE NON RENSEIGNÉE EST DÉTECTÉE ICI, ET ELLE PARLE. `idx_p1 == 0`
+     * ne peut venir que du remplissage de zéros de l'initialiseur désigné : une
+     * métrique a été ajoutée à `dn_link_metrique_t` sans sa ligne dans `k_pc[]`.
+     * ⛔ Avant le 2026-08-19 ce cas rendait `0` = la case CPU, et la nouvelle
+     * métrique écrasait le CPU à 1 Hz sans un mot. */
+    if (k_pc[m].idx_p1 == 0) {
+        ESP_LOGE(TAG, "k_pc[%d] NON RENSEIGNEE — metrique ajoutee sans sa case. "
+                      "Aucune case ne sera mise a jour pour cette metrique.", (int)m);
+        return -1;
+    }
+    int idx = k_pc[m].idx_p1 - 1;
+    return (idx >= 0 && idx < DN_UI_METRIQUES) ? idx : -1;
 }
 
 /*
@@ -2979,10 +3023,12 @@ bool dn_ui_pc_maj(dn_link_metrique_t m, const dn_link_vue_t *vue,
 
 /*
  * ── LE POINT D'ENTRÉE HISTORIQUE DE dn2-2 ────────────────────────────────────
- * ⚠️ Il SURVIT, et ce n'est pas un doublon : il garde exécutable le témoin de
- *    non-régression v1 d'AC2, et il fabrique une `dn_link_vue_t` plutôt que de
- *    dupliquer le formatage — le CHEMIN reste unique, c'est la seule chose qui
- *    devait l'être.
+ * ⛔ CE PARAGRAPHE AFFIRMAIT « Il SURVIT, et ce n'est pas un doublon : il garde
+ *    exécutable le témoin de non-régression v1 d'AC2 ». C'EST FAUX — le bloc
+ *    ci-dessous le démontre, et les deux ont cohabité à trois lignes d'écart,
+ *    l'affirmation AVANT sa réfutation, jusqu'à la revue du 2026-08-19. `dn_ui.h`
+ *    avait été corrigé ; ce fichier, non. Retiré : ce qui reste vrai est écrit
+ *    ci-dessous, et une seule fois.
  */
 /* 🔴 ELLE N'A AUCUN APPELANT DANS LE FIRMWARE — constaté par grep en revue le
  * 2026-08-18, et sa justification publiée était FAUSSE. `dn_ui.h` écrivait
@@ -3002,7 +3048,10 @@ bool dn_ui_cpu_maj(int dixiemes, bool valide, bool *label_pose)
         .v1 = (valide && dixiemes >= 0 && dixiemes <= 1000) ? dixiemes : -1,
         .v2 = 0,
         .v2_connue = false,
-        .age_us = -1, /* ⛔ PAS 0 : « inconnu », pas « instantané » */
+        .age_us = -1,  /* ⛔ PAS 0 : « inconnu », pas « instantané » */
+        .recu_us = -1, /* ⛔ idem — le champ ajouté le 2026-08-19 vaudrait 0 par
+                        * défaut, soit « reçue à l'instant du boot », ce qui
+                        * injecterait des latences absurdes chez un futur appelant */
         .seq = 0,
     };
     return dn_ui_pc_maj(DN_LINK_M_CPU, &v, label_pose);
@@ -3556,14 +3605,23 @@ uint32_t dn_ui_pousser(int idx)
  *   verrou, donc dans UN SEUL cycle LVGL. Ce n'est pas un comportement produit,
  *   c'est un INSTRUMENT — au même titre que le mock, et il se déclare comme tel
  *   quand on publie son chiffre.
- * ⚠️ Le résultat attendu est UN cycle de redessin pour N mises à jour, et c'est
- *    exactement ce que `dn_ui_rafale_cycles()` rend : **1 = succès**. Si la mesure
- *    en montre 2 ou plus, le verrou n'a pas tenu et le chiffre ne vaut rien ; si
- *    elle rend 0, aucun cycle n'a été observé dans le délai — non-mesure.
- * ⛔ NE PAS RELIRE CE TÉMOIN COMME UN « NOMBRE DE CYCLES INTERCALÉS » : c'était sa
- *    sémantique AVANT la revue de dn3-2, et le message de la console est resté sur
- *    l'ancienne pendant que la mesure changeait. Corrigé en séance le 2026-08-18,
- *    à la première lecture réelle du témoin.
+ * 🔴 CETTE FONCTION N'A PLUS DE TÉMOIN DE FUSION, ET C'EST UNE DÉCISION OWNER
+ *    (2026-08-19). L'instrument en était à son TROISIÈME état successif — « cycles
+ *    intercalés » (dn3-2), puis « valeur de succès 0 » (revue dn3-2), puis
+ *    « valeur de succès 1 » (séance dn4-1) — et il n'a JAMAIS pu voir ce qu'il
+ *    annonçait exclure : la boucle d'attente sortait au PREMIER incrément de
+ *    `s_n_cycles`, donc le delta valait 1 quoi qu'il se soit passé. Obtenir 2
+ *    aurait demandé deux cycles complets dans un seul `vTaskDelay(5 ms)`,
+ *    impossible à 26,7 ms/cycle. Les « quatre rejeux, quatre fois 1 » de la séance
+ *    sont la signature d'un témoin CONSTANT, pas d'une validation.
+ * ⇒ LA FUSION SE PROUVE PAR `flush`, ET PAR LUI SEUL : « 6 flushes / 1 cycle /
+ *   210 600 px » dans la même passe. C'est une mesure indépendante de cette
+ *   fonction, et c'est elle qui porte le chiffre d'AC7 régime (c).
+ * ⛔ NE PAS RÉINTRODUIRE UN TÉMOIN ICI sans démontrer d'abord, par une mesure,
+ *   qu'il PEUT rendre autre chose que sa valeur de succès. Trois tours suffisent.
+ * ✅ Effet de bord voulu : cette fonction NE DORT PLUS. Le docblock de `cmd_widget`
+ *   affirme « Aucune ne DORT » — il redevient vrai (l'attente de 500 ms bloquait
+ *   le REPL, donc le transport PC, plus longtemps que les cinq « RECONSTRUIT »).
  */
 uint32_t dn_ui_rafale(void)
 {
@@ -3571,42 +3629,16 @@ uint32_t dn_ui_rafale(void)
         return 0;
     }
     uint32_t n = 0;
-    uint32_t cyc = s_n_cycles;
     for (int i = 0; i < DN_UI_METRIQUES; i++) {
         if (pousser_nolock(i)) {
             n++;
         }
     }
-    /* RELU, pas supposé : si un cycle LVGL s'est glissé au milieu, le compteur
-     * l'a vu et l'appelant doit le savoir. ⚠️ Le cycle qui DESSINE la rafale
-     * n'a pas encore eu lieu ici (on tient le verrou) : ce delta doit donc
-     * valoir 0. S'il vaut plus, la rafale a été COUPÉE et son chiffre ne vaut
-     * rien — c'est exactement ce que `widget` doit dire à l'opérateur. */
     s_rafale_n = n;
     lvgl_port_unlock();
-    /* 🔴 LE TÉMOIN EST ÉCHANTILLONNÉ APRÈS LA RELÂCHE — correctif de revue
-     *    (2026-08-18). Il était relu SOUS le verrou, et `s_n_cycles` n'est
-     *    incrémenté que dans `dn_ui_flush()`, c'est-à-dire dans la tâche LVGL,
-     *    qui ne PEUT PAS tourner tant que la console tient le mutex. Le delta
-     *    valait donc 0 par construction : la branche « un cycle s'est
-     *    INTERCALÉ » était INATTEIGNABLE et le verdict « ✅ le verrou a TENU »
-     *    ne prouvait rien. C'est exactement le piège que ce dépôt refuse
-     *    ailleurs — un instrument qui ne pouvait pas voir le défaut qu'il
-     *    annonce exclure.
-     * ⇒ On attend qu'un cycle LVGL ait effectivement eu lieu, puis on compte
-     *   COMBIEN il en a fallu pour dessiner la rafale. La prédiction est UN.
-     *   Deux ou plus = les N poussées n'ont PAS été fusionnées, et le chiffre
-     *   du tir ne vaut rien. La garde peut désormais déclencher. */
-    uint32_t attente = 0;
-    while (s_n_cycles == cyc && attente < DN_UI_RAFALE_ATTENTE_MS) {
-        vTaskDelay(pdMS_TO_TICKS(5));
-        attente += 5;
-    }
-    s_rafale_cycles = s_n_cycles - cyc;
     return n;
 }
 
-uint32_t dn_ui_rafale_cycles(void) { return s_rafale_cycles; }
 uint32_t dn_ui_rafale_n(void) { return s_rafale_n; }
 
 esp_err_t dn_ui_mock_set(bool on)

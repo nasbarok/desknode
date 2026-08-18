@@ -271,6 +271,18 @@ bool dn_link_ingest_ligne(const char *ligne)
     /* La MÉTRIQUE, par la table — ⛔ aucun `strcmp` nommé en dur. */
     int im = -1;
     for (int i = 0; i < DN_LINK_METRIQUES; i++) {
+        /* 🔴 GARDE D'ENTRÉE NON RENSEIGNÉE (revue 2026-08-19). `k_metriques[]` est
+         * la deuxième table câblée par index de ce dépôt, et elle n'avait AUCUNE
+         * garde : ajouter une entrée à `dn_link_metrique_t` sans sa ligne ici
+         * laissait `nom` à NULL, et `strcmp(champ[4], NULL)` faisait CRASHER le
+         * firmware à la PREMIÈRE trame reçue. Le compagnon `k_pc[]` de `dn_ui.c`
+         * a reçu le même traitement (sentinelle décalée de 1). ⛔ dn4-6 s'apprête
+         * à ajouter une métrique. */
+        if (k_metriques[i].nom == NULL) {
+            ESP_LOGE(TAG, "k_metriques[%d] NON RENSEIGNEE — metrique ajoutee sans "
+                          "sa ligne de table. Cette metrique sera REJETEE.", i);
+            continue;
+        }
         if (strcmp(champ[4], k_metriques[i].nom) == 0) {
             im = i;
             break;
@@ -404,6 +416,7 @@ bool dn_link_vue(dn_link_metrique_t m, dn_link_vue_t *out)
     out->v2 = e.v2;
     out->v2_connue = e.v2_connue;
     out->age_us = (e.recu_us < 0) ? -1 : maintenant - e.recu_us;
+    out->recu_us = e.recu_us; /* origine ABSOLUE — voir `dn_link.h` (revue 2026-08-19) */
     out->seq = e.seq;
     return true;
 }
@@ -606,19 +619,21 @@ static bool pousser_metrique(int i, bool *a_pousse)
     *a_pousse = false;
 
     dn_link_vue_t v;
-    int64_t t_vue = esp_timer_get_time();
     if (!dn_link_vue((dn_link_metrique_t)i, &v)) {
         return true;
     }
-    /* 🔴 L'INSTANT DE RÉCEPTION, RECONSTRUIT ICI — correctif de revue 2026-08-18.
-     * `v.age_us` est figé au moment de la LECTURE de l'état (dn_link_vue), donc
-     * AVANT `lvgl_port_lock()` et AVANT la pose du texte. Le chronométrer tel
-     * quel excluait l'attente du verrou : sur un `build_scene()` en cours (307 à
-     * 322 ms mesurés), la poussée bloquait puis enregistrait une latence qui ne
-     * contenait PAS ce blocage. dn2-2 chronométrait APRÈS le retour de
-     * `dn_ui_cpu_maj` ; dn4-1 avait perdu cette propriété en changeant d'appel.
-     * ⇒ On garde l'instant de réception et on mesure jusqu'à la POSE. */
-    int64_t recu_us = (v.age_us >= 0) ? (t_vue - v.age_us) : -1;
+    /* 🔴 L'INSTANT DE RÉCEPTION VIENT DE `dn_link_vue()`, EN ABSOLU — correctif de
+     * revue 2026-08-19. Le correctif du 2026-08-18 le RECONSTRUISAIT ici, par
+     * `t_vue − v.age_us` avec un `t_vue` pris AVANT l'appel : or `age_us` est
+     * calculé à l'intérieur, avec un « maintenant » postérieur. L'origine était
+     * donc décalée de tout le temps passé DANS `dn_link_vue()` — spin sur `s_mux`,
+     * et surtout toute préemption par la tâche LVGL (priorité supérieure à la 3 de
+     * `dn_link`), qui peut rendre un cycle complet ou un `build_scene()`. La
+     * latence publiée valait `vraie + δ`, δ NON BORNÉ : un maximum pouvait être
+     * imputé au verrou LVGL sans que le verrou y soit pour rien, dans l'instrument
+     * même dont §13.11.4 fait dépendre son attribution. ⛔ Ne pas la reconstruire.
+     * ⇒ L'origine est ABSOLUE ; on mesure d'elle jusqu'à la POSE, comme dn2-2. */
+    int64_t recu_us = v.recu_us;
     bool fraiche = (v.etat == DN_LINK_VIVANTE) &&
                    (s_etat_pousse[i] != (int)DN_LINK_VIVANTE ||
                     v.seq != s_seq_poussee[i]);
@@ -662,8 +677,18 @@ static bool pousser_metrique(int i, bool *a_pousse)
      * l'instrument lui-même : avec `v.age_us`, cette attente était précisément
      * ce que le chiffre NE contenait PAS. ⛔ Un instrument ne doit pas exclure la
      * cause qu'on lui fait désigner.
-     * ⚠️ Le relevé de séance `n = 8 075 · 1 / 204 / 480 ms` a été pris AVANT ce
-     *    correctif : il SOUS-ESTIME, et il est à re-relever (voir la story). */
+     * ⚠️ HISTORIQUE DES RELEVÉS — ⛔ NE PAS RÉCITER LE PREMIER.
+     *    · `n = 8 075 · 1 / 204 / 480 ms` : pris AVANT le correctif du 2026-08-18.
+     *      Il est **MORT** et son attribution publiée (« le verrou LVGL était pris »)
+     *      est RÉFUTÉE : l'instrument d'alors ne pouvait pas voir cette attente.
+     *      ⛔ Il a été annoté « ne pas republier » — voir §17.9 de `affichage.md`.
+     *      ⚠️ Le commentaire disait ici « il SOUS-ESTIME » : c'était une affirmation
+     *      NON MESURÉE, et le remplaçant la contredit dans le sens opposé.
+     *    · `n = 896 · 30 / 124 / 169 ms` : relevé le 2026-08-18 (`c1072c0`), sur le
+     *      correctif du 2026-08-18.
+     *    · ⚠️ CE CHIFFRE EST À SON TOUR À RE-RELEVER : le correctif du 2026-08-19
+     *      (origine absolue, ci-dessus) retire un δ non borné de chaque échantillon.
+     *      ⛔ L'annoter, pas le remplacer en silence. */
     if (fraiche && label_pose && recu_us >= 0) {
         int64_t lat = esp_timer_get_time() - recu_us;
         portENTER_CRITICAL(&s_mux);

@@ -239,8 +239,14 @@ class SourceGpuAdl:
        Le témoin (`_coherent`) lit deux capteurs par les MÊMES indices et vérifie
        qu'ils rendent une **largeur de lien PCIe légale** et une **horloge mémoire
        plausible**. ⛔ ATTENTION À CE QU'IL EST : une COHÉRENCE DE PLAGE, pas une
-       égalité — `BUS_LANES` n'est PAS toujours 16, la carte abaisse son lien au
-       repos. Trois textes du dépôt ont affirmé le contraire jusqu'au 2026-08-18.
+       égalité. Trois textes du dépôt ont affirmé le contraire jusqu'au 2026-08-18.
+    ⛔ CE PARAGRAPHE AFFIRMAIT « `BUS_LANES` n'est PAS toujours 16, la carte abaisse
+       son lien au repos ». C'ÉTAIT UNE HYPOTHÈSE, PAS UNE MESURE, et la séance du
+       2026-08-18 NE LA CONFIRME PAS : le témoin a rendu `BUS_LANES = 16` et
+       `CLK_MEMCLK = 1988 MHz`. Retiré le 2026-08-19 — le fichier la déclarait non
+       mesurée cent cinquante lignes plus haut et la publiait comme un fait ici.
+    ⇒ CE QUI RESTE VRAI : le code vérifie une PLAGE, ce qui est le bon choix tant
+      que le comportement au repos prolongé n'est pas relevé (entrée au ledger).
     🔴 CE QUI A RÉELLEMENT PROUVÉ LE MAPPING, C'EST AC10 : 47 °C à l'écran contre
        47 °C au Gestionnaire des tâches, lus EN MÊME TEMPS. Le témoin de plage
        garde la session ; la confrontation à Windows a fermé la question.
@@ -304,9 +310,15 @@ class SourceGpuAdl:
            LE CODE. Quatre textes (cette docstring, `README.md`, `liaison-pc.md`
            §13.5, la story dn4-1) affirmaient que l'agent « exige BUS_LANES = 16
            et CLK_MEMCLK ≈ 2000 MHz » et « REFUSE de servir sinon ». Le code
-           vérifie en réalité une **plage** — et il a RAISON : une RX 6000 abaisse
-           son lien PCIe au repos, donc 16 n'est PAS un invariant. Exiger 16
-           aurait fait refuser la source GPU sur une carte saine, au repos.
+           vérifie en réalité une **plage**. ⛔ LA JUSTIFICATION PUBLIÉE ICI —
+           « il a RAISON : une RX 6000 abaisse son lien PCIe au repos, donc 16
+           n'est PAS un invariant ; exiger 16 aurait fait refuser la source GPU
+           sur une carte saine » — ÉTAIT UNE HYPOTHÈSE NON MESURÉE, et la séance
+           du 2026-08-18 ne l'a PAS confirmée (`BUS_LANES = 16`,
+           `CLK_MEMCLK = 1988 MHz` : un durcissement serait passé ce jour-là).
+           Retirée le 2026-08-19. ⇒ La plage reste le bon choix, mais pour une
+           raison qui se dit autrement : ON N'A PAS MESURÉ le comportement au
+           repos prolongé, donc on ne resserre pas. C'est au ledger.
         ⇒ Les quatre textes disent désormais ce qui est réellement vérifié.
         ⚠️ CE QUE CE TÉMOIN PROUVE, ET CE QU'IL NE PROUVE PAS : il rend improbable
            qu'on interroge un adaptateur qui ne répond pas à PMLog, ou dont la
@@ -384,7 +396,7 @@ def _dx(valeur, plafond, compteur, nom):
 def _borner(dixiemes, plafond, compteur, nom):
     """Borne une valeur DÉJÀ exprimée en dixièmes, et COMPTE l'écrêtage.
 
-    🔴 CORRECTIF DE REVUE 2026-08-18. La fréquence CPU était la SEULE des sept
+    🔴 CORRECTIF DE REVUE 2026-08-18. La fréquence CPU était la SEULE des NEUF
        grandeurs à être écrêtée par un `min()` nu, HORS de `_dx()` — donc sans
        incrémenter `ecretages`, pendant que le bilan imprimait « aucun ecretage :
        toute valeur emise est la valeur mesuree ». ⛔ C'est exactement l'écrêtage
@@ -467,10 +479,31 @@ class Collecteur:
         """Après un recalage de cadence : la fenêtre repart PROPRE, comme au
         départ. Sans ça, le premier débit d'après-veille serait calculé sur un
         Δt énorme et rendrait un chiffre FRAIS ET FAUX — le défaut exact que la
-        resynchronisation de dn2-2 a corrigé pour le % CPU."""
-        psutil.cpu_percent(interval=None)
-        self._d0 = psutil.disk_io_counters()
-        self._n0 = psutil.net_io_counters()
+        resynchronisation de dn2-2 a corrigé pour le % CPU.
+
+        🔴 CHAQUE APPEL EST ISOLÉ (correctif de revue 2026-08-19). `photo()` isolait
+           ses cinq sources ; CETTE fonction, non — et c'est le SEUL chemin où
+           l'omission tuait l'agent ENTIER : la boucle ne rattrape que
+           `KeyboardInterrupt`, donc une exception ici produisait un traceback, un
+           code de retour non nul, et LES CINQ CASES À « -- » ENSEMBLE. C'est
+           exactement ce que `photo()` déclare avoir corrigé, et le différenciateur
+           D6 qui tombe pour une raison qui n'est pas « le PC éteint ».
+        ⚠️ LA COÏNCIDENCE EST STRUCTURELLE : `reamorcer()` n'est appelée qu'après un
+           recalage de cadence — donc après une SORTIE DE VEILLE, une reconnexion ou
+           un blocage d'envoi, précisément les instants où l'état matériel vient de
+           changer et où `disk_io_counters()` / `net_io_counters()` peuvent lever.
+        ⚠️ Un ré-amorçage qui échoue laisse son compteur à `None` : le tour suivant
+           tombe dans la branche « premier tour après une panne » et ne publie rien,
+           ce qui est le comportement voulu — pas de débit calculé sur un Δt faux."""
+        def _sur(nom, lecture):
+            try:
+                return lecture()
+            except Exception as exc:
+                self._panne(nom, type(exc).__name__, f"reamorcage : {exc}")
+                return None
+        _sur("cpu", lambda: psutil.cpu_percent(interval=None))
+        self._d0 = _sur("disk", psutil.disk_io_counters)
+        self._n0 = _sur("net", psutil.net_io_counters)
         self._t0 = time.monotonic()
         self._nt0 = self._t0
         self._dt0 = self._t0
@@ -490,6 +523,18 @@ class Collecteur:
             valeur = lecture()
         except Exception as exc:
             return self._panne(nom, type(exc).__name__, str(exc))
+        # 🔴 UN TUPLE DE `None` N'EST PAS `None` (revue 2026-08-19). `SourceGpuAdl.lire()`
+        #    rend `(None, None)` quand `_brut()` échoue OU quand le témoin de mapping
+        #    rejoué par tir refuse : le test `valeur is None` ne le voyait PAS. La case
+        #    GPU passait à « -- », `pannes` restait vide, et `_bilan` imprimait
+        #    « aucune panne de source : les cinq ont repondu a chaque cycle ». Comme
+        #    `self.gpu is not None`, la ligne « source GPU INDISPONIBLE » était sautée
+        #    aussi : SILENCE SUR LES DEUX INSTRUMENTS. ⛔ C'est la classe de défaut que
+        #    le correctif du 2026-08-18 déclarait fermer, déplacée d'un cran de plus —
+        #    et son propre commentaire, dix lignes plus bas, la décrit mot pour mot.
+        if isinstance(valeur, tuple) and valeur and all(v is None for v in valeur):
+            return self._panne(nom, "None", "la source rend un tuple entierement vide "
+                                            "(pas d'exception)")
         if valeur is None:
             # 🔴 UNE SOURCE PEUT MOURIR SANS LEVER (trouvé par le harnais de revue,
             #    2026-08-18, en testant le correctif lui-même) : `disk_io_counters()`
@@ -537,13 +582,32 @@ class Collecteur:
         out = []
 
         # ── cpu : % + fréquence ──────────────────────────────────────────────
-        cpu = self._tenter("cpu", lambda: (psutil.cpu_percent(interval=None),
-                                           psutil.cpu_freq()))
-        if cpu is not None:
-            pct, fr = cpu
+        # 🔴 LES DEUX GRANDEURS SONT LUES SÉPARÉMENT (correctif de revue 2026-08-19).
+        #    Elles étaient dans la MÊME lambda, donc dans le même tout-ou-rien : un
+        #    `psutil.cpu_freq()` qui LÈVE — `NotImplementedError`, nommée trois lignes
+        #    plus bas comme un chemin MESURÉ — emportait le **%** CPU avec lui, et la
+        #    métrique `cpu` n'était pas émise du tout. Or `cpu` est la seule métrique
+        #    de v1, celle du témoin de non-régression d'AC2 : la case restait à « -- »
+        #    PC ALLUMÉ, ce qui INVERSE le différenciateur D6.
+        # ⇒ W10 existe exactement pour ça : `v2 = None` = « je ne sais pas », et la
+        #   grandeur principale continue. C'est déjà ce qu'on fait pour la °C du GPU.
+        pct = self._tenter("cpu", lambda: psutil.cpu_percent(interval=None))
+        if pct is not None:
+            # ⚠️ PAS `_tenter` ICI : `cpu_freq()` rendant `None` est un retour
+            #    LÉGITIME sur certaines plateformes (« je ne sais pas »), pas une
+            #    panne — le compter en ferait 3 600 par heure et noierait les vraies.
+            #    Seule l'EXCEPTION est une panne, et elle est comptée sous sa propre
+            #    clé pour ne pas contaminer le compteur de la métrique `cpu`.
+            try:
+                fr = psutil.cpu_freq()
+            except Exception as exc:
+                fr = self._panne("cpu.freq", type(exc).__name__, str(exc))
             # MHz -> dixièmes de GHz, en ENTIER : 3201 MHz -> 32 -> « 3,2 GHz ».
             # ⛔ Pas de flottant sur le fil (doctrine `parse_entier` du firmware).
             ghz_dx = round(fr.current / 100.0) if fr and fr.current else None
+            # ⚠️ `fr is None` couvre les DEUX cas : `cpu_freq()` a levé (compté par
+            #    `_tenter` sous la clé `cpu.freq`), ou elle rend une fréquence nulle.
+            #    Dans les deux cas la case affiche le % et « -- » pour la fréquence.
             # ⚠️ `_borner`, PAS un `min()` nu : l'écrêtage doit être COMPTÉ.
             out.append(("cpu", _dx(pct, BORNES["cpu"][0], e, "cpu.pct"),
                         _borner(ghz_dx, BORNES["cpu"][1], e, "cpu.ghz")
@@ -598,7 +662,15 @@ class Collecteur:
                 #    du compteur d'écrêtages ⇒ le bilan certifiait « toute valeur
                 #    emise est la valeur mesuree » sur une valeur inventée.
                 #    ⇒ On ne publie RIEN, on ré-amorce, et ON LE COMPTE.
-                self.pannes["net:recul"] = self.pannes.get("net:recul", 0) + 1
+                # ⚠️ PAR `_panne()`, PAS PAR UN INCRÉMENT NU (revue 2026-08-19) :
+                #    l'incrément direct sautait la ligne de stderr du premier
+                #    événement, donc l'information n'apparaissait QU'AU BILAN — à la
+                #    fin de la session. Asymétrique avec toutes les autres pannes de
+                #    source, et avec la doctrine « une source morte meurt SEULE »,
+                #    qui est bruyante partout ailleurs.
+                self._panne("net", "recul",
+                            "un compteur cumule a RECULE (interface reactivee ? "
+                            "pilote reinitialise ?) — rien n'est publie ce tour")
             else:
                 rx = (n1.bytes_recv - self._n0.bytes_recv) * 8 / 1e6 / dtn
                 tx = (n1.bytes_sent - self._n0.bytes_sent) * 8 / 1e6 / dtn
@@ -617,7 +689,11 @@ class Collecteur:
                 pass
             elif (d1.read_bytes < self._d0.read_bytes or
                   d1.write_bytes < self._d0.write_bytes):
-                self.pannes["disk:recul"] = self.pannes.get("disk:recul", 0) + 1
+                # ⚠️ Idem `net:recul` — par `_panne()`, pour que le PREMIER
+                #    événement soit dit sur stderr et pas seulement au bilan.
+                self._panne("disk", "recul",
+                            "un compteur cumule a RECULE (disque retire ? reset de "
+                            "pilote ?) — rien n'est publie ce tour")
             else:
                 mo_s = ((d1.read_bytes - self._d0.read_bytes) +
                         (d1.write_bytes - self._d0.write_bytes)) / 1e6 / dtd
@@ -630,6 +706,17 @@ class Collecteur:
     def fermer(self):
         if self.gpu is not None:
             self.gpu.fermer()
+
+
+class LiaisonEnAttente(IOError):
+    """Le port est en backoff : la trame n'est pas envoyée, et ce n'est PAS une
+    nouvelle panne — c'est la panne déjà signalée qui dure.
+
+    ⚠️ Type DISTINCT pour que la boucle d'émission puisse dédoublonner (revue
+       2026-08-19). Sans lui, chaque trame produisait une ligne de stderr, soit
+       CINQ PAR SECONDE sans fin, alors que le correctif du 2026-08-18 promettait
+       précisément d'éviter « cinq tentatives ET cinq lignes de stderr par seconde ».
+    """
 
 
 class SortieStdout:
@@ -675,7 +762,15 @@ class SortieSerie:
         # cours de session (usbipd attach, carte débranchée) ne doit pas produire
         # cinq tentatives et cinq lignes de stderr par seconde, sans fin.
         self._echecs_ouverture = 0
+        # ⚠️ COMPTEUR SÉPARÉ DES ÉCHECS D'ENVOI (revue 2026-08-19) : c'est lui qui
+        #    arme le backoff quand le port s'ouvre mais que `write()` expire — la
+        #    carte en panique haltée, le pire cas que le correctif précédent nommait
+        #    sans le couvrir. Deux compteurs, parce que les deux pannes sont
+        #    différentes : port absent contre carte muette.
+        self._echecs_envoi = 0
         self._prochain_essai = 0.0
+        # Queue du dernier drain — voir `_drainer()` (revue 2026-08-19).
+        self._queue_drain = b""
         self.echo_octets = 0
         self.echo_lignes = 0
         # ⚠️ Le firmware REFUSE des trames en silence pour l'agent : le REPL renvoie
@@ -742,10 +837,17 @@ class SortieSerie:
             #    dn2-2 a été dimensionné pour UNE trame par seconde, pas cinq.
             maintenant = time.monotonic()
             if maintenant < self._prochain_essai:
-                raise IOError(
+                # ⚠️ PAS DE COMPTE À REBOURS DANS CE MESSAGE (revue 2026-08-19) : il
+                #    changeait à chaque ligne, donc AUCUN dédoublonnage n'était
+                #    possible en aval, et la boucle imprimait cinq lignes par seconde
+                #    sans fin — la moitié exacte de ce que le correctif du 2026-08-18
+                #    promettait d'éviter (« cinq tentatives ET cinq lignes de stderr
+                #    par seconde »). Le texte est désormais STABLE et l'appelant le
+                #    dédoublonne.
+                raise LiaisonEnAttente(
                     f"port {self._port} en attente de reouverture "
-                    f"({self._prochain_essai - maintenant:.1f} s restantes, "
-                    f"{self._echecs_ouverture} echec(s) consecutif(s))")
+                    f"({self._echecs_ouverture + self._echecs_envoi} echec(s) "
+                    f"consecutif(s))")
             try:
                 self._ouvrir()
             except Exception:
@@ -765,7 +867,20 @@ class SortieSerie:
                 # suivante. Mieux vaut le dire que de compter un envoi réussi.
                 raise IOError(f"ecriture partielle {ecrits}/{len(trame_octets)} o")
             self._drainer()
+            self._echecs_envoi = 0
         except Exception:
+            # 🔴 LE BACKOFF S'ARME AUSSI SUR L'ÉCHEC D'ENVOI — correctif de revue
+            #    2026-08-19, ET C'EST LE PIRE CAS QUE LE CORRECTIF DU 2026-08-18
+            #    NOMMAIT SANS LE COUVRIR. Sur une carte en PANIQUE HALTÉE, le port
+            #    reste énuméré : `_ouvrir()` RÉUSSIT (donc `_prochain_essai` était
+            #    remis à 0,0), et c'est `write()` qui expire sur `write_timeout = 2`.
+            #    Le backoff n'était armé que dans l'`except` de l'ouverture ⇒ la
+            #    trame suivante rouvrait IMMÉDIATEMENT : les 5 × 2 s = 10 s bloquées
+            #    par cycle et les 5 `close()/open()` par seconde — chacun re-posant
+            #    `dtr=False; rts=False` — SUBSISTAIENT INTÉGRALEMENT.
+            self._echecs_envoi += 1
+            delai = min(0.5 * (2 ** min(self._echecs_envoi - 1, 4)), 5.0)
+            self._prochain_essai = time.monotonic() + delai
             try:
                 self._con.close()
             finally:
@@ -784,8 +899,19 @@ class SortieSerie:
         if retour:
             self.echo_octets += len(retour)
             self.echo_lignes += retour.count(b"\n")
-            # Le REPL signale un refus du firmware sur le fil : on le compte.
-            self.refus_firmware += retour.count(b"non-zero error code")
+            # 🔴 LE MARQUEUR PEUT ÊTRE COUPÉ ENTRE DEUX DRAINS (revue 2026-08-19).
+            #    `count()` portait sur le résultat d'UN SEUL `read()`, sans report :
+            #    à 5 drains/s et 115 200 bauds, une frontière de `read()` tombant à
+            #    l'intérieur des 22 octets du marqueur est banale. ⇒ refus
+            #    SOUS-COMPTÉS, et si tous les marqueurs sont coupés le bilan imprime
+            #    « aucun refus signalé par le firmware sur le fil » pendant que
+            #    100 % des trames sont rejetées — le défaut exact que ce compteur a
+            #    été créé pour fermer. On garde la queue du tampon précédent.
+            MARQUEUR = b"non-zero error code"
+            fenetre = self._queue_drain + retour
+            self.refus_firmware += fenetre.count(MARQUEUR)
+            # On ne conserve que ce qui pourrait être un début de marqueur coupé.
+            self._queue_drain = fenetre[-(len(MARQUEUR) - 1):] if len(MARQUEUR) > 1 else b""
 
     def fermer(self) -> None:
         """Dernier drain (l'écho du dernier envoi n'était pas encore revenu) puis
@@ -885,6 +1011,10 @@ def principal() -> int:
     depart = time.monotonic()
     seq = 0
     erreurs_envoi = 0
+    # ⚠️ Le dernier message d'attente DÉJÀ IMPRIMÉ — pour ne pas répéter cinq fois
+    #    par seconde que le port est en backoff (revue 2026-08-19). Les VRAIES
+    #    erreurs, elles, restent imprimées une par une.
+    attente_signalee = None
     rattrapages = 0
     cycles = 0  # cycles de photo RÉELLEMENT effectués (cadence de `--temoin`)
     trames_emises = 0
@@ -950,8 +1080,19 @@ def principal() -> int:
                           file=sys.stderr)
                     rompu = True
                     break
+                except LiaisonEnAttente as exc:
+                    # La panne a DÉJÀ été signalée : on compte, on n'imprime qu'au
+                    # changement d'état. ⛔ Cinq lignes par seconde noieraient
+                    # précisément ce qu'on veut voir.
+                    erreurs_envoi += 1
+                    if attente_signalee != str(exc):
+                        attente_signalee = str(exc)
+                        print(f"[agent] {exc} — les trames sont ABANDONNEES tant que "
+                              f"le backoff court (compte total : {erreurs_envoi})",
+                              file=sys.stderr)
                 except Exception as exc:
                     erreurs_envoi += 1
+                    attente_signalee = None
                     print(f"[agent] envoi {sortie.nom} en échec ({erreurs_envoi}) : {exc}",
                           file=sys.stderr)
             if rompu:

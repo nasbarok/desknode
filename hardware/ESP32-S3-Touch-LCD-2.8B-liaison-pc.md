@@ -549,6 +549,20 @@ charge constante : 3201 · 1200 · 1300 · 2100 · 1200 MHz).
 
 ## 13.8 AC9 — le coût de l'agent, mesuré AU CUMUL
 
+> ⚠️ **CETTE SECTION MESURE `--stdout`, PAS LE TRANSPORT RETENU — ET PAS L'AGENT LIVRÉ**
+> (annotation de revue 2026-08-19 ; elle manquait, et c'est la section que les stories citent).
+> Trois chiffres coexistent dans le dépôt, et ils ne se remplacent pas l'un l'autre :
+>
+> | Mesure | Coût | Où |
+> |---|---:|---|
+> | `--stdout` (témoin) | **1,528 % d'un cœur · 0,0955 % machine** | ci-dessous |
+> | `COM3`, agent de la 1ʳᵉ séance | **2,161 % · 0,135 %** | §13.11.3, README |
+> | `COM3`, **agent LIVRÉ** (`d5d3539`) | **2,421 % · 0,1513 %** | `…-affichage.md` §17.9 |
+>
+> 🔴 **+0,63 pt** entre `--stdout` et `COM3` : le port série a un coût propre, absent de tout
+> budget. 🔴 **+0,26 pt** de plus sur l'agent livré, **NON EXPLIQUÉ** — au ledger.
+> ⛔ **Ne pas citer le chiffre ci-dessous comme le coût de l'agent.**
+
 Lancé depuis une session **non élevée**, sans driver, sans .NET.
 **Méthode** : cumul `psutil.Process().cpu_times()` rapporté au temps mural. ⛔ **Jamais une
 fenêtre glissante** : sa résolution (~0,16 pt sur 10 s, ticks de 15,6 ms) **ne peut pas voir**
@@ -711,7 +725,7 @@ sont publiées, comme dn2-2 le faisait déjà. ⛔ Le brief ne tranche pas laque
 | doublons | **0** | |
 | pertes seq | **25** (0,31 %) | ⚠️ **attribué** : l'owner a navigué pendant la session, et `build_scene()` bloque le REPL **307-322 ms**, donc le transport. Ce n'est pas du bruit de liaison |
 | **resynchros / reprises** | **2 / 2** | 🔴 **trois lancements d'agent ⇒ DEUX reprises.** Le compteur **ne sur-compte pas** — c'est AC6 prouvé sur le vrai transport, là où dn2-2 pouvait publier une reprise **4 à 9 fois** |
-| latence acceptation→label | n=8 075 · 1 / **204** / **480** ms | ⚠️ **le max dépasse la borne de 250 ms**, et c'est **attribué** : le verrou LVGL était pris pendant les ouvertures de détail. **Déclaré, pas lissé** |
+| latence acceptation→label | ~~n=8 075 · 1 / **204** / **480** ms~~ | 🔴 **CE CHIFFRE EST MORT — ⛔ NE PAS LE REPUBLIER** (annotation de revue 2026-08-19). Il a été pris **avant** le correctif d'instrument du 2026-08-18, avec un chronomètre qui partait de `v.age_us`, donc **AVANT la prise du verrou LVGL**. ⚠️ **Son attribution ci-contre est RÉFUTÉE** : ce n'était **pas** l'attente du verrou — l'instrument ne pouvait pas la voir — mais les **re-essais** qu'elle provoquait, chacun ajoutant 250 ms d'âge (`…-affichage.md` §17.9). Remplaçant relevé le 2026-08-18 sur `c1072c0` : **n=896 · 30 / 124 / 169 ms**. ⏳ **Lui-même à re-relever** : le correctif du 2026-08-19 (origine absolue, `dn_link.h`) retire de chaque échantillon un δ non borné |
 
 ⚠️ **RAPPEL D'INSTRUMENT** : cette latence **n'est plus celle de dn2-2**. Elle agrège désormais
 **les cinq métriques** ; dn2-2 publiait `n=45 : 10 / 42 / 248 ms` pour **une seule**. Les comparer

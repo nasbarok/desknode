@@ -131,6 +131,19 @@
  *  (MESURÉ en dn4-1, voir DN_LINK_LIGNE_MAX) quand DN_LINK_LIGNE_MAX vaut 63 : la
  *  plage 64..124 est atteignable et arrivait en « tronquée ». Deux compteurs désormais.
  *
+ *  🔴 ⚠️ ILS NE SONT CONTRAIRES QUE JUSQU'À 124 — CORRECTIF DE REVUE 2026-08-19.
+ *  Au-delà, LES DEUX SE CONFONDENT : une ligne émise à 125 o ou plus arrive
+ *  AMPUTÉE DE SA FIN (le REPL tronque à 124), donc avec le symptôme « tronquée »,
+ *  mais avec `len = 124 > DN_LINK_LIGNE_MAX` elle est comptée `rejets_trop_longue`.
+ *  ⇒ **la plage réellement DISCRIMINANTE est 64..124** ; au-delà,
+ *  `rejets_trop_longue` ne prouve PLUS que l'émetteur a envoyé large — il peut
+ *  aussi dire que le transport a coupé. ⛔ Un opérateur qui voit ce compteur monter
+ *  et va chercher une régression côté agent cherche peut-être au mauvais endroit.
+ *  ⚠️ Cette réserve était écrite dans `dn_link.c:157-172` et PAS ici : l'AUTORITÉ
+ *  contredisait le code pendant que le code était juste — l'inverse exact du
+ *  dispositif « une seule source de vérité » sur lequel AC2 repose, et le motif
+ *  que dn4-1 venait de corriger pour la ligne `ram`.
+ *
  *  ⚠️ CORRECTIF DE REVUE (2026-08-16) — LES REJETS D'AVANT dn_link SONT COMPTÉS AUSSI.
  *  Sur la branche A, le REPL découpe la ligne AVANT que dn_link la voie : une trame
  *  contenant un espace (un octet corrompu en 0x20) arrive en plusieurs argv, et un
@@ -202,14 +215,13 @@
 /* Ce que le REPL délivre au parseur, MESURÉ (voir ci-dessus). Publié ici pour que
  * la bande « trop longue » se relise sans refaire la mesure. */
 #define DN_LINK_REPL_LIGNE_MESUREE 124
-/* Plafond d'un trou de seq CRÉDIBLE. Au-delà, ce n'est pas une perte : c'est un
- * émetteur qui a redémarré (seq revenu à 1, donc saut ARRIÈRE), un seq fabriqué,
- * ou du bruit. La trame reste APPLIQUÉE — son checksum, sa version et ses bornes
- * sont bons, et la refuser condamnerait la reprise sans reboot d'AC7 — mais l'écart
- * va dans `resynchros`, pas dans `pertes_seq` : compter ~4 milliards de pertes sur
- * UNE trame injectée rendait le compteur illisible (correctif de revue 2026-08-16).
- * À 1 Hz, 3 600 trous = une heure de silence : au-delà, c'est l'état de liaison qui
- * diagnostique, pas ce compteur. */
+/* ⛔ BLOC ORPHELIN SUPPRIMÉ ICI (revue 2026-08-19). Il documentait
+ * `DN_LINK_SAUT_MAX`, qui a été DÉPLACÉ plus bas et redéfini en
+ * `(3600u * DN_LINK_METRIQUES)` avec son propre commentaire à jour. Le paragraphe
+ * était resté sur place, accroché à l'énumération ci-dessous qui n'a aucun rapport,
+ * et il publiait encore « À 1 Hz, 3 600 trous = une heure de silence » — la valeur
+ * que le déplacement corrigeait. Deux paragraphes contradictoires sur le même seuil
+ * dans le même en-tête. ⇒ voir la définition de `DN_LINK_SAUT_MAX` plus bas. */
 typedef enum {
     DN_LINK_JAMAIS,  /* aucune trame valide depuis le boot */
     DN_LINK_VIVANTE, /* dernière trame valide plus récente que la péremption */
@@ -252,6 +264,18 @@ typedef struct {
     int v2;          /* dixièmes, valable seulement si `v2_connue` */
     bool v2_connue;  /* W10 : la trame portait-elle une 2ᵉ grandeur ? */
     int64_t age_us;  /* -1 si jamais reçue */
+    /* 🔴 L'INSTANT DE RÉCEPTION EN ABSOLU — ajouté par la revue du 2026-08-19.
+     * `age_us` est un ÂGE, calculé à l'intérieur de `dn_link_vue()` : le
+     * reconstruire chez l'appelant (`t_pris_avant − age_us`) décalait l'origine de
+     * tout le temps passé DANS `dn_link_vue()` — spin sur le verrou, et surtout
+     * toute préemption par la tâche LVGL, de priorité supérieure, qui peut rendre
+     * un cycle complet (~26,7 ms) voire un `build_scene()` (307-322 ms). La
+     * latence publiée valait donc `vraie + δ`, avec δ NON BORNÉ par le haut : une
+     * préemption au mauvais endroit fabriquait un maximum imputé au verrou LVGL
+     * alors que le verrou n'y était pour rien — dans l'instrument même dont AC7
+     * fait dépendre l'attribution de §13.11.4.
+     * ⇒ On rend l'origine, pas un âge. ⛔ Ne pas la recalculer chez l'appelant. */
+    int64_t recu_us;  /* -1 si jamais reçue */
     uint32_t seq;    /* seq de la trame qui a posé cette valeur (diagnostic) */
 } dn_link_vue_t;
 
@@ -265,7 +289,10 @@ typedef struct {
                                  * PAS compté en pertes — sinon une trame injectée
                                  * ferait bondir pertes_seq de ~4 milliards. */
     uint32_t rejets_tronquee;   /* pas de « *CK » en queue : la fin est perdue */
-    uint32_t rejets_trop_longue;/* ligne COMPLÈTE, mais > DN_LINK_LIGNE_MAX */
+    uint32_t rejets_trop_longue;/* ligne > DN_LINK_LIGNE_MAX. ⚠️ « COMPLÈTE » n'est
+                                 * garanti que jusqu'à 124 o : au-delà le REPL a
+                                 * tronqué, et ce compteur se confond avec
+                                 * `rejets_tronquee` (revue 2026-08-19). */
     uint32_t rejets_checksum;
     uint32_t rejets_version;
     uint32_t rejets_format;     /* structure, champ absent/illisible, métrique,
@@ -354,9 +381,12 @@ uint32_t dn_link_dernier_t_ms(void);
  * 🔴 ⚠️ CE PARAGRAPHE ANNONÇAIT « ça ne réduit PAS le travail total (mêmes pixels,
  *    mêmes redessins), ça réduit le PIC ». **LA MESURE L'A DÉMENTI** (§17.4, et
  *    c'était une prémisse écrite d'avance) : le travail total **BAISSE**,
- *    **5,20 → 4,21 flush/s** — mais il baisse parce que l'étalé **JETTE 19 % DES
- *    MISES À JOUR** (185 sur 226). ⛔ **Ce n'est pas un gain, c'est une perte de
+ *    **5,20 → 4,21 flush/s** — mais il baisse parce que l'étalé **JETTE 18,1 % DES
+ *    MISES À JOUR** (185 poussées atteignent l'écran sur **226** trames reçues, soit
+ *    **41 jetées / 226 = 18,1 %**). ⛔ **Ce n'est pas un gain, c'est une perte de
  *    données**, et la latence max est **multipliée par 4** (301 → 1 204 ms).
+ *    ⚠️ Ce chiffre a été publié « 19 % » aux trois endroits jusqu'au 2026-08-19 :
+ *    18,86 % est le rapport 185 sur **228** — le dénominateur de l'AUTRE branche.
  * ⛔ NE PAS LIRE UNE BAISSE DE flush/s COMME UN GAIN SUR CETTE BRANCHE.
  *    Le levier est **NON ADOPTÉ** pour cette raison. (Corrigé en revue 2026-08-18 :
  *    l'en-tête et la console publiaient encore la prémisse que §17.4 réfutait.)

@@ -2465,8 +2465,9 @@ static int cmd_pc(int argc, char **argv)
              * prediction esperait. */
             printf("🔴 MESURE (§17.4) — LA PREMISSE ECRITE D'AVANCE EST DEMENTIE :\n");
             printf("   le travail total BAISSE (5,20 -> 4,21 flush/s), mais il\n");
-            printf("   baisse parce que l'etale JETTE 19 %% des mises a jour\n");
-            printf("   (185 sur 226). ⛔ CE N'EST PAS UN GAIN, C'EST UNE PERTE.\n");
+            printf("   baisse parce que l'etale JETTE 18,1 %% des mises a jour\n");
+            printf("   (185 poussees atteignent l'ecran sur 226 trames recues :\n");
+            printf("   41 jetees / 226 = 18,1 %%). ⛔ PAS UN GAIN, UNE PERTE.\n");
             printf("⚠️ PRIX 1 : latence max MULTIPLIEE PAR 4 (301 -> 1204 ms).\n");
             printf("⚠️ PRIX 2 : une metrique est rafraichie toutes les ~1,25 s au\n");
             printf("   lieu de ~1 s, et un passage VIVANTE->MORTE met jusqu'a\n");
@@ -2795,6 +2796,16 @@ static int cmd_widget(int argc, char **argv)
             printf("   ⇒ `widget oublier <idx>` la rend a son regime naturel (dn3-2,\n");
             printf("     entree de ledger soldee). ⛔ Ne plus rebooter pour ca : un\n");
             printf("     reboot rejoue le boot entier et perd la fenetre de mesure.\n");
+            /* ⚠️ DEUX ECRIVAINS SUR LA MEME CASE (revue 2026-08-19). `dn_ui_pc_maj`
+             * ne consulte PAS `s_poussee[]` — seul le tick du mock le fait. Avec
+             * l'agent en marche (le regime nominal depuis dn4-1), les cinq cases PC
+             * sont reecrites en <= 250 ms : la poussee, son badge SIMULE et sa ligne
+             * de mesure disparaissent, et le denominateur de cycles de la campagne
+             * est pollue par 5 poussees/s etrangeres. Le README le disait pour
+             * `pc pousse` ; ni `pousser` ni `rafale` ne le disaient. */
+            printf("⚠️ ARRETER L'AGENT PC D'ABORD : sur les 5 cases PC, la poussee\n");
+            printf("   est ECRASEE en <= 250 ms par la trame reelle suivante, et le\n");
+            printf("   compte de cycles de la campagne est pollue.\n");
             printf("   (avertissement imprime une seule fois par session)\n");
         }
         uint32_t seq = dn_ui_pousser((int)idx);
@@ -2845,36 +2856,29 @@ static int cmd_widget(int argc, char **argv)
             printf("verrou LVGL non pris — AUCUNE poussee\n");
             return 1;
         }
-        uint32_t cyc = dn_ui_rafale_cycles();
         printf("RAFALE : %u cases poussees sous UN SEUL verrou\n", (unsigned)n);
-        /* 🔴 CE VERDICT TESTAIT L'ANCIENNE SEMANTIQUE — corrige en SEANCE CARTE le
-         * 2026-08-18, et c'est la PREMIERE FOIS que ce temoin etait lu. La revue de
-         * dn3-2 a change ce que `dn_ui_rafale_cycles()` MESURE : il rendait un delta
-         * echantillonne SOUS le verrou (donc 0 par construction, branche « coupee »
-         * INATTEIGNABLE), il rend desormais LE NOMBRE DE CYCLES QU'IL A FALLU pour
-         * dessiner la rafale. La valeur de succes est donc **1**, plus 0.
-         * ⛔ La mesure avait ete corrigee, PAS le message qui l'interprete : la
-         * console imprimait « la rafale a ete COUPEE, rejouer » sur une mesure
-         * PARFAITE, indefiniment. Quatre rejeux en seance, quatre fois « 1 »,
-         * pendant que `flush` disait « 6 flushes, 1 cycle, 210 600 px » — soit
-         * exactement la fusion annoncee. Une etiquette qui ment sur son propre
-         * chiffre, et elle a survecu parce que PERSONNE ne l'avait jamais lue. */
-        printf("cycles LVGL pour dessiner la rafale : %u\n", (unsigned)cyc);
-        if (cyc == 1) {
-            printf("  ✅ 1 = le verrou a TENU : les %u invalidations tombent dans\n",
-                   (unsigned)n);
-            printf("     le MEME cycle. C'est le cas que l'extrapolation predit\n");
-            printf("     a 6 x 35 100 = 210 600 px (69 %% d'un plein ecran).\n");
-        } else if (cyc == 0) {
-            printf("  ⚠️ 0 = AUCUN cycle observe en %u ms : le temoin n'a pas pu\n",
-                   (unsigned)DN_UI_RAFALE_ATTENTE_MS);
-            printf("     CONCLURE. ⛔ Ce n'est PAS un succes — c'est une absence de\n");
-            printf("     mesure (UI arretee ? aucune case a redessiner ?). Rejouer.\n");
-        } else {
-            printf("  🔴 %u cycles = les %u poussees n'ont PAS ete fusionnees : la\n",
-                   (unsigned)cyc, (unsigned)n);
-            printf("     rafale a ete COUPEE et son chiffre NE VAUT RIEN. Rejouer.\n");
-        }
+        /* ⚠️ DEUX ECRIVAINS SUR LA MEME CASE (revue 2026-08-19). Le tick du mock
+         * respecte `s_poussee[]` ; le chemin PC (`dn_ui_pc_maj`) ne le consulte
+         * PAS. Avec l'agent en marche — le regime nominal depuis dn4-1 — les cinq
+         * cases PC sont reecrites en <= 250 ms et le denominateur de cycles d'une
+         * campagne est pollue par 5 poussees/s etrangeres. */
+        printf("⚠️ ARRETER L'AGENT PC D'ABORD : sinon les 5 cases PC sont reecrites\n");
+        printf("   en <= 250 ms et le compte de cycles de la campagne est pollue.\n");
+        /* 🔴 IL N'Y A PLUS DE VERDICT ICI — DECISION OWNER DU 2026-08-19.
+         * `dn_ui_rafale_cycles()` a ete SUPPRIME : il en etait a sa TROISIEME
+         * semantique (« cycles intercales », puis « 0 = succes », puis « 1 =
+         * succes ») pour un chiffre qui ne pouvait rendre QUE sa valeur de succes.
+         * Sous le verrou, le compteur ne bougeait pas ; apres la relache, la boucle
+         * d'attente sortait au PREMIER cycle. Les « quatre rejeux, quatre fois 1 »
+         * de la seance sont la signature d'un temoin CONSTANT.
+         * ⇒ LA FUSION SE PROUVE PAR `flush`, ET PAR LUI SEUL. On le DIT ici plutot
+         *   que d'imprimer un verdict que l'instrument ne peut pas rendre. */
+        printf("⛔ CETTE COMMANDE NE CONCLUT PAS SEULE. Pour prouver la fusion :\n");
+        printf("   `flush` AVANT et APRES ce tir — la fusion est demontree si le\n");
+        printf("   delta vaut %u flushes pour UN SEUL cycle (et %u x 35 100 px).\n",
+               (unsigned)n, (unsigned)n);
+        printf("   C'est la mesure qui porte AC7 regime (c) ; ce tir ne fait que\n");
+        printf("   PROVOQUER le cas.\n");
         printf("⚠️ INSTRUMENT, pas un regime : les six sources reelles ne sont PAS\n");
         printf("   synchronisees (liaison ~1 s, capteur 5 s, mocks 14/20/26/34 s,\n");
         printf("   barre a la minute). Le dire en publiant le chiffre.\n");
@@ -3188,11 +3192,16 @@ static int cmd_widget(int argc, char **argv)
                    demo ? " — `widget demo on` pour l'armer" : "");
             continue;
         }
-        const dn_widget_desc_t *dd = demo ? dn_ui_demo_desc() : dn_ui_desc(i);
-        /* ⚠️ Une case rendue NUE (`widget nue <idx> on`) n'a qu'un `valeur[0]` :
-         * elle afficherait « n_gr = 1 (n=2) », lisible comme un abandon
-         * geometrique alors que c'est l'override W11. On le DIT. */
         bool nue = (!demo && !dn_ui_case_est_widget(i));
+        /* 🔴 LA COLONNE « DEMANDE » LIT LE DESCRIPTEUR BRUT, PAS `dn_ui_desc()`
+         * (revue 2026-08-19). `dn_ui_desc()` rend NULL pour une case NUE — c'est
+         * l'override W11 — et les deux colonnes retombaient alors sur `0` et sur
+         * « pas de jauge ». Sur `widget nue 2 on` (RAM, descripteur n=1 AVEC
+         * jauge), la table annoncait donc « (n=0) » sans « jauge demandee » : DEUX
+         * CHIFFRES FAUX dans la colonne dont l'en-tete promet de dire ce que LE
+         * DESCRIPTEUR demande — sur le chemin le plus actionne d'une campagne AC8.
+         * ⚠️ L'override porte sur le RENDU, jamais sur la demande. */
+        const dn_widget_desc_t *dd = demo ? dn_ui_demo_desc() : dn_ui_desc_brut(i);
         printf("   ");
         colonnes(nom, 10);
         printf("  %d     %-5s  %-10s  (n=%d%s)%s\n", ng, jauge ? "OUI" : "non",
@@ -3249,6 +3258,8 @@ static int cmd_widget(int argc, char **argv)
      *    `widget rafale on`, `widget bande on` : l'operateur croyait avoir
      *    lance l'instrument. Pire, `dn_ui_rafale_cycles()` etant un statique
      *    COLLANT, le dump reaffichait le verdict de la rafale PRECEDENTE.
+     *    ⚠️ Ce verdict n'existe plus (revue 2026-08-19, temoin enterre) ; le rejet
+     *    de sous-commande inconnue, lui, reste indispensable.
      * ⚠️ `widget` NU reste legitime : c'est le dump d'etat.
      */
     if (argc > 1) {
