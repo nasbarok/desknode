@@ -141,6 +141,23 @@ import ctypes
 PROTO_VERSION = 2
 PERIODE_S = 1.0
 
+# ── LE TÉMOIN DE MAPPING PMLog — CE QU'IL VÉRIFIE, EXACTEMENT ────────────────
+# 🔴 CORRECTIF DE REVUE 2026-08-18 : QUATRE textes du dépôt affirmaient que
+#    l'agent « exige BUS_LANES = 16 et CLK_MEMCLK ≈ 2000 MHz » et « REFUSE de
+#    servir sinon ». LE CODE N'A JAMAIS FAIT ÇA, et il a RAISON de ne pas le
+#    faire : une Radeon RX 6000 **abaisse son lien PCIe** au repos (ASPM /
+#    downtraining), donc `BUS_LANES` rend légitimement 1, 4 ou 8 sur une carte
+#    parfaitement saine. Exiger 16 aurait fait REFUSER la source GPU au repos.
+# ⇒ Ce qui est vérifié est une COHÉRENCE DE PLAGE, et c'est écrit tel quel
+#   partout désormais : les indices doivent rendre une largeur de lien PCIe
+#   LÉGALE et une horloge mémoire PLAUSIBLE. ⛔ Ce n'est PAS la preuve du bon
+#   capteur — c'est AC10 qui l'a apportée (47 °C écran contre 47 °C Windows).
+# ⚠️ Ne pas resserrer sans un relevé de la carte concernée : le durcissement
+#    « évident » casse la source au repos, et ça ne se verrait qu'à l'usage.
+_LANES_LEGALES = (1, 2, 4, 8, 16, 32)
+_MEMCLK_MIN_MHZ = 100
+_MEMCLK_MAX_MHZ = 20000
+
 # ── LES BORNES, MIROIR DE `k_metriques[]` DANS main/dn_link.c ─────────────────
 # ⚠️ ELLES SONT RECOPIÉES, ET C'EST UN RISQUE ASSUMÉ ET NOMMÉ : le firmware
 #    REJETTE (rejets_bornes) ce qui les dépasse, donc une dérive entre les deux
@@ -207,12 +224,17 @@ class _PMLogOut(ctypes.Structure):
 class SourceGpuAdl:
     """% et °C du GPU par `ADL2_New_QueryPMLogData_Get`. UN appel, DEUX grandeurs.
 
-    ⚠️ CETTE CLASSE REFUSE DE SERVIR SI SON MAPPING N'EST PAS CONFIRMÉ. Les
-       indices de capteur ne sont pas lisibles dans la DLL : les prendre pour
-       argent comptant, c'est risquer de publier la tension du SOC comme une
-       température. Le témoin est deux invariants de la carte lus par les MÊMES
-       indices : BUS_LANES doit valoir 16 et CLK_MEMCLK ~2000 MHz sur une RX 6800
-       XT. Un mapping décalé ne les rendrait pas.
+    ⚠️ CETTE CLASSE REFUSE DE SERVIR SI SON MAPPING EST INCOHÉRENT. Les indices
+       de capteur ne sont pas lisibles dans la DLL : les prendre pour argent
+       comptant, c'est risquer de publier la tension du SOC comme une température.
+       Le témoin (`_coherent`) lit deux capteurs par les MÊMES indices et vérifie
+       qu'ils rendent une **largeur de lien PCIe légale** et une **horloge mémoire
+       plausible**. ⛔ ATTENTION À CE QU'IL EST : une COHÉRENCE DE PLAGE, pas une
+       égalité — `BUS_LANES` n'est PAS toujours 16, la carte abaisse son lien au
+       repos. Trois textes du dépôt ont affirmé le contraire jusqu'au 2026-08-18.
+    🔴 CE QUI A RÉELLEMENT PROUVÉ LE MAPPING, C'EST AC10 : 47 °C à l'écran contre
+       47 °C au Gestionnaire des tâches, lus EN MÊME TEMPS. Le témoin de plage
+       garde la session ; la confrontation à Windows a fermé la question.
     ⚠️ Cette tour expose SEPT `iAdapterIndex` pour UN SEUL GPU physique (une
        entrée par sortie d'affichage) : on prend le premier qui RÉPOND à PMLog,
        pas « le premier présent » — ce serait un pari.
@@ -259,17 +281,41 @@ class SourceGpuAdl:
             out = self._brut(a.iAdapterIndex)
             if out is None:
                 continue
-            lanes = out.sensors[_PM_BUS_LANES]
-            memclk = out.sensors[_PM_CLK_MEMCLK]
-            # LE TÉMOIN DE MAPPING, et il est éliminatoire.
-            if not (lanes[0] and lanes[1] in (1, 2, 4, 8, 16, 32)):
-                continue
-            if not (memclk[0] and 100 <= memclk[1] <= 20000):
+            if not self._coherent(out):
                 continue
             return a.iAdapterIndex, a.strAdapterName.decode("latin-1", "replace")
         raise RuntimeError(
             "aucun adaptateur ne repond a PMLog avec un mapping COHERENT "
             "(BUS_LANES / CLK_MEMCLK invraisemblables)")
+
+    def _coherent(self, out):
+        """LE TÉMOIN DE MAPPING, ET IL EST ÉLIMINATOIRE — pour de bon.
+
+        🔴 CORRECTIF DE REVUE 2026-08-18 — ET C'EST LE TEXTE QUI AVAIT TORT, PAS
+           LE CODE. Quatre textes (cette docstring, `README.md`, `liaison-pc.md`
+           §13.5, la story dn4-1) affirmaient que l'agent « exige BUS_LANES = 16
+           et CLK_MEMCLK ≈ 2000 MHz » et « REFUSE de servir sinon ». Le code
+           vérifie en réalité une **plage** — et il a RAISON : une RX 6000 abaisse
+           son lien PCIe au repos, donc 16 n'est PAS un invariant. Exiger 16
+           aurait fait refuser la source GPU sur une carte saine, au repos.
+        ⇒ Les quatre textes disent désormais ce qui est réellement vérifié.
+        ⚠️ CE QUE CE TÉMOIN PROUVE, ET CE QU'IL NE PROUVE PAS : il rend improbable
+           qu'on interroge un adaptateur qui ne répond pas à PMLog, ou dont la
+           structure est décalée au point de rendre des valeurs illégales. Il ne
+           prouve **PAS** que l'indice 8 soit bien la température : un mapping
+           décalé tombant sur un autre capteur d'horloge pourrait le franchir.
+        🔴 **C'est AC10 qui a fermé cette question-là, et par la mesure directe :
+           47 °C à l'écran contre 47 °C au Gestionnaire des tâches, lus EN MÊME
+           TEMPS le 2026-08-18.** ⛔ Ne jamais présenter le témoin de plage comme
+           la preuve du capteur — c'est deux instruments, et un seul répond.
+        """
+        lanes = out.sensors[_PM_BUS_LANES]
+        memclk = out.sensors[_PM_CLK_MEMCLK]
+        if not (lanes[0] and lanes[1] in _LANES_LEGALES):
+            return False
+        if not (memclk[0] and _MEMCLK_MIN_MHZ <= memclk[1] <= _MEMCLK_MAX_MHZ):
+            return False
+        return True
 
     def temoin(self):
         out = self._brut(self.adaptateur)
@@ -279,9 +325,19 @@ class SourceGpuAdl:
 
     def lire(self):
         """Rend (pct, degc) en unités entières, ou (None, None) si l'appel échoue.
-        `degc` peut être None seul : c'est le cas W10, et il doit rester possible."""
+        `degc` peut être None seul : c'est le cas W10, et il doit rester possible.
+
+        ⚠️ LE TÉMOIN EST RE-JOUÉ À CHAQUE TIR (correctif de revue 2026-08-18) : il
+           n'était vérifié qu'au constructeur, alors qu'une mise à jour de pilote
+           ou une ré-énumération des adaptateurs en cours de session peut décaler
+           le mapping. Un témoin qui ne regarde qu'une fois garde une carte, pas
+           une session. Le coût est nul : les deux capteurs sont dans la structure
+           que `_brut()` vient déjà de remplir, aucun appel supplémentaire.
+        """
         out = self._brut(self.adaptateur)
         if out is None:
+            return None, None
+        if not self._coherent(out):
             return None, None
         act = out.sensors[_PM_ACTIVITY_GFX]
         edge = out.sensors[_PM_TEMP_EDGE]
@@ -316,6 +372,28 @@ def _dx(valeur, plafond, compteur, nom):
     return d
 
 
+def _borner(dixiemes, plafond, compteur, nom):
+    """Borne une valeur DÉJÀ exprimée en dixièmes, et COMPTE l'écrêtage.
+
+    🔴 CORRECTIF DE REVUE 2026-08-18. La fréquence CPU était la SEULE des sept
+       grandeurs à être écrêtée par un `min()` nu, HORS de `_dx()` — donc sans
+       incrémenter `ecretages`, pendant que le bilan imprimait « aucun ecretage :
+       toute valeur emise est la valeur mesuree ». ⛔ C'est exactement l'écrêtage
+       muet que l'en-tête de ce fichier interdit dix lignes plus haut.
+    ⚠️ Et une valeur NÉGATIVE n'était pas bornée du tout : elle partait sur le
+       fil et le firmware rejetait la trame CPU ENTIÈRE en `rejets_format`.
+       Déclencheur documenté dans ce fichier même : cette tour rend déjà
+       `dropin = 113 558 935 299 979` — les compteurs Windows savent mentir.
+    """
+    if dixiemes < 0:
+        compteur[nom] = compteur.get(nom, 0) + 1
+        return 0
+    if dixiemes > plafond:
+        compteur[nom] = compteur.get(nom, 0) + 1
+        return plafond
+    return dixiemes
+
+
 class Collecteur:
     """Prend la photo des cinq métriques et rend une liste de trames à émettre.
 
@@ -338,6 +416,18 @@ class Collecteur:
                       f"BUS_LANES={lanes} CLK_MEMCLK={memclk} MHz",
                       file=sys.stderr)
         except Exception as exc:
+            # 🔴 CORRECTIF DE REVUE 2026-08-18 : `self.gpu` avait DÉJÀ été assigné
+            #    quand `temoin()` levait ⇒ on annonçait « INDISPONIBLE », puis
+            #    `photo()` appelait quand même `self.gpu.lire()` et l'écran
+            #    affichait des valeurs GPU, pendant que le bilan (`if gpu is None`)
+            #    ne réconciliait RIEN. Le démarrage disait une chose, l'écran une
+            #    autre. ⇒ la source est REFERMÉE et remise à None, dans cet ordre.
+            if self.gpu is not None:
+                try:
+                    self.gpu.fermer()
+                except Exception:
+                    pass
+                self.gpu = None
             self.gpu_motif = f"{type(exc).__name__}: {exc}"
             if verbeux:
                 # ⚠️ UN MODULE OPTIONNEL NE DOIT PAS BRIQUER L'AGENT — même patron
@@ -347,10 +437,22 @@ class Collecteur:
                       f"la case GPU restera « -- ». Les quatre autres metriques "
                       f"continuent : une source morte meurt SEULE.", file=sys.stderr)
 
+        # Pannes de source, comptées ET nommées. ⛔ Isoler une source sans
+        # compter ses échecs remplacerait une mort bruyante par un silence.
+        self.pannes = {}
         psutil.cpu_percent(interval=None)  # amorçage : le 1er appel vaut 0.0
         self._d0 = psutil.disk_io_counters()
         self._n0 = psutil.net_io_counters()
         self._t0 = time.monotonic()
+        # 🔴 UN HORODATAGE PAR COMPTEUR CUMULÉ (correctif de revue 2026-08-18).
+        #    Avec une fenêtre unique, une source qui échoue puis revient voyait
+        #    son delta divisé par un Δt qui, lui, avait continué d'avancer : un
+        #    débit GONFLÉ, frais et faux. Les compteurs sont cumulatifs, donc le
+        #    Δt doit être celui de LEUR dernière lecture réussie.
+        # ⚠️ En régime nominal les trois valent la même chose : la propriété
+        #    « la fenêtre des débits et celle du % CPU sont la MÊME » tient.
+        self._nt0 = self._t0
+        self._dt0 = self._t0
 
     def reamorcer(self):
         """Après un recalage de cadence : la fenêtre repart PROPRE, comme au
@@ -361,33 +463,95 @@ class Collecteur:
         self._d0 = psutil.disk_io_counters()
         self._n0 = psutil.net_io_counters()
         self._t0 = time.monotonic()
+        self._nt0 = self._t0
+        self._dt0 = self._t0
+
+    def _tenter(self, nom, lecture):
+        """Lit UNE source. Si elle lève, la panne est COMPTÉE et NOMMÉE, et
+        `None` est rendu ⇒ la métrique n'est pas émise, sa case périme d'elle-même
+        en 3 s et dit « -- ».
+
+        ⛔ JAMAIS une valeur inventée, JAMAIS la dernière connue — c'est AC7 de
+           dn2-2, et il ne se re-négocie pas.
+        ⚠️ Le message n'est imprimé qu'au PREMIER échec de chaque type : une
+           source morte à 1 Hz produirait sinon 3 600 lignes de stderr par heure,
+           ce qui noierait précisément ce qu'on veut voir.
+        """
+        try:
+            valeur = lecture()
+        except Exception as exc:
+            return self._panne(nom, type(exc).__name__, str(exc))
+        if valeur is None:
+            # 🔴 UNE SOURCE PEUT MOURIR SANS LEVER (trouvé par le harnais de revue,
+            #    2026-08-18, en testant le correctif lui-même) : `disk_io_counters()`
+            #    rend `None` — c'est DOCUMENTÉ, pas exceptionnel. Sans ce test,
+            #    isoler les sources aurait remplacé une mort BRUYANTE (l'agent
+            #    entier tombait) par une DISPARITION SILENCIEUSE : la case passe à
+            #    « -- », le bilan imprime « aucune panne de source », et personne
+            #    ne sait pourquoi. ⛔ C'est la classe de défaut que ce correctif
+            #    était censé fermer, déplacée d'un cran.
+            return self._panne(nom, "None", "la source rend None (pas d'exception)")
+        return valeur
+
+    def _panne(self, nom, genre, message):
+        cle = f"{nom}:{genre}"
+        self.pannes[cle] = self.pannes.get(cle, 0) + 1
+        if self.pannes[cle] == 1:
+            print(f"[agent] ⚠️ source `{nom}` en ECHEC ({message}) — cette metrique "
+                  f"n'est plus emise, sa case dira « -- ». Les autres "
+                  f"continuent : une source morte meurt SEULE.", file=sys.stderr)
+        return None
 
     def photo(self):
-        """Rend [(metrique, v1, v2|None), ...] — v2 None = « je ne sais pas »."""
+        """Rend [(metrique, v1, v2|None), ...] — v2 None = « je ne sais pas ».
+
+        🔴 CHAQUE SOURCE EST ISOLÉE (correctif de revue 2026-08-18). Avant, UNE
+           seule exception ici remontait jusqu'à la boucle principale, qui ne
+           rattrape que `KeyboardInterrupt` : **L'AGENT ENTIER MOURAIT, et les
+           CINQ cases passaient à « -- » ensemble.** Les trois chemins mesurés :
+             · `psutil.disk_io_counters()` rend `None` (documenté quand aucun
+               disque n'est exposé) -> `self._d0.read_bytes` -> AttributeError ;
+             · `psutil.cpu_freq()` peut LEVER (NotImplementedError) — le
+               `if fr and fr.current` ne protégeait que le retour `None` ;
+             · `self.gpu.lire()` -> ctypes sur `atiadlxx.dll` : un **TDR du
+               pilote AMD** (redémarrage du pilote graphique, banal sur une tour
+               de jeu) ou une mise à jour de pilote en cours de session.
+        ⛔ C'était le contraire exact de ce que ce fichier promet DEUX FOIS
+           (« UN MODULE OPTIONNEL NE DOIT PAS BRIQUER L'AGENT », « une source
+           morte meurt SEULE ») : la garde n'existait qu'au `__init__`, JAMAIS à
+           la lecture. Et c'est le différenciateur de D6 qui tombait avec :
+           « PC éteint, une seule case sur six est vivante » ne se voit plus si
+           les cinq meurent d'un coup pour une raison qui n'est pas le PC éteint.
+        """
         t = time.monotonic()
-        dt = max(t - self._t0, 1e-6)
         e = self.ecretages
         out = []
 
         # ── cpu : % + fréquence ──────────────────────────────────────────────
-        pct = psutil.cpu_percent(interval=None)
-        fr = psutil.cpu_freq()
-        # MHz -> dixièmes de GHz, en ENTIER : 3201 MHz -> 32 -> « 3,2 GHz ».
-        # ⛔ Pas de flottant sur le fil (doctrine `parse_entier` du firmware).
-        ghz_dx = round(fr.current / 100.0) if fr and fr.current else None
-        out.append(("cpu", _dx(pct, BORNES["cpu"][0], e, "cpu.pct"),
-                    min(ghz_dx, BORNES["cpu"][1]) if ghz_dx is not None else None))
+        cpu = self._tenter("cpu", lambda: (psutil.cpu_percent(interval=None),
+                                           psutil.cpu_freq()))
+        if cpu is not None:
+            pct, fr = cpu
+            # MHz -> dixièmes de GHz, en ENTIER : 3201 MHz -> 32 -> « 3,2 GHz ».
+            # ⛔ Pas de flottant sur le fil (doctrine `parse_entier` du firmware).
+            ghz_dx = round(fr.current / 100.0) if fr and fr.current else None
+            # ⚠️ `_borner`, PAS un `min()` nu : l'écrêtage doit être COMPTÉ.
+            out.append(("cpu", _dx(pct, BORNES["cpu"][0], e, "cpu.pct"),
+                        _borner(ghz_dx, BORNES["cpu"][1], e, "cpu.ghz")
+                        if ghz_dx is not None else None))
 
         # ── gpu : % + °C, et l'absence de °C est une DONNÉE (W10) ────────────
         if self.gpu is not None:
-            g_pct, g_c = self.gpu.lire()
-            if g_pct is not None:
-                out.append(("gpu", _dx(g_pct, BORNES["gpu"][0], e, "gpu.pct"),
-                            _dx(g_c, BORNES["gpu"][1], e, "gpu.degc")
-                            if g_c is not None else None))
-            # g_pct None ⇒ ON N'ÉMET RIEN : la case périmera d'elle-même en 3 s
-            # et dira « -- ». ⛔ Émettre une valeur inventée serait le mensonge
-            # que tout ce projet traque.
+            lu = self._tenter("gpu", self.gpu.lire)
+            if lu is not None:
+                g_pct, g_c = lu
+                if g_pct is not None:
+                    out.append(("gpu", _dx(g_pct, BORNES["gpu"][0], e, "gpu.pct"),
+                                _dx(g_c, BORNES["gpu"][1], e, "gpu.degc")
+                                if g_c is not None else None))
+                # g_pct None ⇒ ON N'ÉMET RIEN : la case périmera d'elle-même en
+                # 3 s et dira « -- ». ⛔ Émettre une valeur inventée serait le
+                # mensonge que tout ce projet traque.
 
         # ── ram : % + TOTAL (pas l'utilisé — voir l'en-tête) ─────────────────
         # 🔴 EN GIO BINAIRES (2^30), PAS EN GO DECIMAUX (1e9) — CONSTAT OWNER DU
@@ -406,27 +570,52 @@ class Collecteur:
         #       ecrit en francais. Mettre « Gio » serait plus pur et rendrait le
         #       module le SEUL afficheur de la machine a le dire autrement.
         #       La convention est ecrite ici pour que personne ne la « corrige ».
-        vm = psutil.virtual_memory()
-        out.append(("ram", _dx(vm.percent, BORNES["ram"][0], e, "ram.pct"),
-                    _dx(vm.total / 2**30, BORNES["ram"][1], e, "ram.total")))
+        vm = self._tenter("ram", psutil.virtual_memory)
+        if vm is not None:
+            out.append(("ram", _dx(vm.percent, BORNES["ram"][0], e, "ram.pct"),
+                        _dx(vm.total / 2**30, BORNES["ram"][1], e, "ram.total")))
 
         # ── net : ↓ et ↑ en Mb/s (BITS — c'est l'unité du descripteur) ───────
-        n1 = psutil.net_io_counters()
-        rx = (n1.bytes_recv - self._n0.bytes_recv) * 8 / 1e6 / dt
-        tx = (n1.bytes_sent - self._n0.bytes_sent) * 8 / 1e6 / dt
-        out.append(("net", _dx(max(rx, 0.0), BORNES["net"][0], e, "net.rx"),
-                    _dx(max(tx, 0.0), BORNES["net"][1], e, "net.tx")))
+        n1 = self._tenter("net", psutil.net_io_counters)
+        if n1 is not None:
+            dtn = max(t - self._nt0, 1e-6)
+            if self._n0 is None:
+                pass  # premier tour après une panne : on ré-amorce, sans publier
+            elif (n1.bytes_recv < self._n0.bytes_recv or
+                  n1.bytes_sent < self._n0.bytes_sent):
+                # 🔴 UN COMPTEUR CUMULÉ QUI RECULE (correctif de revue 2026-08-18).
+                #    Interface désactivée/réactivée, pilote réinitialisé : l'ancien
+                #    `max(delta, 0)` publiait alors un **0 Mb/s FABRIQUÉ**, hors
+                #    du compteur d'écrêtages ⇒ le bilan certifiait « toute valeur
+                #    emise est la valeur mesuree » sur une valeur inventée.
+                #    ⇒ On ne publie RIEN, on ré-amorce, et ON LE COMPTE.
+                self.pannes["net:recul"] = self.pannes.get("net:recul", 0) + 1
+            else:
+                rx = (n1.bytes_recv - self._n0.bytes_recv) * 8 / 1e6 / dtn
+                tx = (n1.bytes_sent - self._n0.bytes_sent) * 8 / 1e6 / dtn
+                out.append(("net", _dx(rx, BORNES["net"][0], e, "net.rx"),
+                            _dx(tx, BORNES["net"][1], e, "net.tx")))
+            self._n0, self._nt0 = n1, t
         # ⛔ errin/errout/dropin/dropout NE SONT PAS PUBLIÉS : cette tour rend
         #    `dropin = 113 558 935 299 979`, une valeur impossible. On regarde un
         #    compteur avant de le publier.
 
         # ── disk : DÉBIT total en Mo/s (OCTETS — l'unité d'un disque) ────────
-        d1 = psutil.disk_io_counters()
-        mo_s = ((d1.read_bytes - self._d0.read_bytes) +
-                (d1.write_bytes - self._d0.write_bytes)) / 1e6 / dt
-        out.append(("disk", _dx(max(mo_s, 0.0), BORNES["disk"][0], e, "disk"), None))
+        d1 = self._tenter("disk", psutil.disk_io_counters)
+        if d1 is not None:
+            dtd = max(t - self._dt0, 1e-6)
+            if self._d0 is None:
+                pass
+            elif (d1.read_bytes < self._d0.read_bytes or
+                  d1.write_bytes < self._d0.write_bytes):
+                self.pannes["disk:recul"] = self.pannes.get("disk:recul", 0) + 1
+            else:
+                mo_s = ((d1.read_bytes - self._d0.read_bytes) +
+                        (d1.write_bytes - self._d0.write_bytes)) / 1e6 / dtd
+                out.append(("disk", _dx(mo_s, BORNES["disk"][0], e, "disk"), None))
+            self._d0, self._dt0 = d1, t
 
-        self._d0, self._n0, self._t0 = d1, n1, t
+        self._t0 = t
         return out
 
     def fermer(self):
@@ -473,6 +662,11 @@ class SortieSerie:
         self._serial_mod = serial
         self._port = port
         self._con = None
+        # Backoff de réouverture — voir `envoyer()`. ⛔ Un port qui a disparu en
+        # cours de session (usbipd attach, carte débranchée) ne doit pas produire
+        # cinq tentatives et cinq lignes de stderr par seconde, sans fin.
+        self._echecs_ouverture = 0
+        self._prochain_essai = 0.0
         self.echo_octets = 0
         self.echo_lignes = 0
         # ⚠️ Le firmware REFUSE des trames en silence pour l'agent : le REPL renvoie
@@ -525,7 +719,35 @@ class SortieSerie:
 
     def envoyer(self, ligne: str) -> None:
         if self._con is None:
-            self._ouvrir()
+            # 🔴 BACKOFF (correctif de revue 2026-08-18). Sans lui, une panne de
+            #    liaison était AMPLIFIÉE ×5 par dn4-1 : dn2-2 émettait 1 trame/s
+            #    donc 1 tentative/s ; dn4-1 en émet CINQ, et `envoyer` referme le
+            #    port à la moindre exception ⇒ **5 close()/open() PAR SECONDE**,
+            #    chacun re-posant `dtr=False; rts=False` sous Windows — cinq fois
+            #    par seconde la séquence dont §13.11.5 dit précisément qu'on n'a
+            #    JAMAIS prouvé qu'elle n'était pas nécessaire pour éviter un reset.
+            # ⚠️ PIRE CAS MESURABLE : carte en panique haltée, `write_timeout = 2` s
+            #    ⇒ 5 × 2 s = **10 s bloquées dans un seul cycle**, ce qui déclenche
+            #    `rattrapages` + `reamorcer()` à chaque tour et fait monter
+            #    `erreurs_envoi` à 5/s sur stderr. Le budget `write_timeout` de
+            #    dn2-2 a été dimensionné pour UNE trame par seconde, pas cinq.
+            maintenant = time.monotonic()
+            if maintenant < self._prochain_essai:
+                raise IOError(
+                    f"port {self._port} en attente de reouverture "
+                    f"({self._prochain_essai - maintenant:.1f} s restantes, "
+                    f"{self._echecs_ouverture} echec(s) consecutif(s))")
+            try:
+                self._ouvrir()
+            except Exception:
+                self._echecs_ouverture += 1
+                # Paliers 0,5 · 1 · 2 · 4 s, plafonnés à 5 s — soit AU PLUS une
+                # tentative d'ouverture par cycle de cinq trames, jamais cinq.
+                delai = min(0.5 * (2 ** min(self._echecs_ouverture - 1, 4)), 5.0)
+                self._prochain_essai = time.monotonic() + delai
+                raise
+            self._echecs_ouverture = 0
+            self._prochain_essai = 0.0
         try:
             trame_octets = b"pc " + ligne.encode("ascii")
             ecrits = self._con.write(trame_octets)
@@ -655,6 +877,7 @@ def principal() -> int:
     seq = 0
     erreurs_envoi = 0
     rattrapages = 0
+    cycles = 0  # cycles de photo RÉELLEMENT effectués (cadence de `--temoin`)
     trames_emises = 0
     prochain = depart + PERIODE_S
 
@@ -725,7 +948,16 @@ def principal() -> int:
             if rompu:
                 break
 
-            if args.temoin and (seq // max(len(photo), 1)) % 10 == 0:
+            cycles += 1
+            # 🔴 UN COMPTEUR DE CYCLES, PAS `seq // len(photo)` (correctif de revue
+            #    2026-08-18). `seq` numérote les TRAMES et `len(photo)` vaut 5 OU
+            #    MOINS selon que les sources ont répondu : le quotient n'était donc
+            #    pas le numéro de cycle. Après un cycle à 4 trames il pouvait
+            #    STAGNER (ligne de témoin répétée) ou BONDIR de 2 (ligne sautée).
+            #    ⇒ l'instrument qui publie le coût propre de l'agent — LE CHIFFRE
+            #    DU CRITÈRE N°4 DU BRIEF — avait un pas qui dépendait de la santé
+            #    d'une source. Une variable coûte moins cher qu'un doute.
+            if args.temoin and cycles % 10 == 0:
                 # Coût de l'agent LUI-MÊME : cumul cpu_times() depuis le lancement, rapporté
                 # au temps mural écoulé. ⚠️ Une fenêtre glissante de 10 s a une résolution de
                 # ~0,16 pt (ticks de 15,6 ms) — le CUMUL, lui, affine avec la durée : c'est
@@ -792,6 +1024,19 @@ def _bilan(sortie, depart: float, seq: int, erreurs_envoi: int, rattrapages: int
                   f"{détail}", file=sys.stderr)
         else:
             print("[agent] aucun ecretage : toute valeur emise est la valeur mesuree",
+                  file=sys.stderr)
+        # ⛔ UNE SOURCE QUI EST MORTE EN COURS DE ROUTE NE SORT PAS EN SILENCE
+        #    NON PLUS. Isoler les sources (correctif de revue 2026-08-18) évite
+        #    que l'agent meure entier ; sans ce bilan, ça remplacerait une mort
+        #    BRUYANTE par un silence — la case dirait « -- » et personne ne
+        #    saurait pourquoi.
+        if collecteur.pannes:
+            détail = " · ".join(f"{k}={v}" for k, v in
+                                sorted(collecteur.pannes.items()))
+            print(f"[agent] 🔴 PANNES DE SOURCE (metrique NON emise, case a « -- ») : "
+                  f"{détail}", file=sys.stderr)
+        else:
+            print("[agent] aucune panne de source : les cinq ont repondu a chaque cycle",
                   file=sys.stderr)
         if collecteur.gpu is None:
             print(f"[agent] ⚠️ source GPU restee INDISPONIBLE toute la session "
