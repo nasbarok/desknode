@@ -2336,3 +2336,157 @@ sont plus gros, donc les trous laissés le sont aussi.
 6. **Réfutation conservée** : un `reboot`/flash rend la carte muette ~3,5 s. Deux « cartes muettes »
    de cette session étaient des sollicitations trop précoces, **pas** des pannes — la recette du
    README ne s'appliquait pas.
+
+---
+
+## 16. LE BUDGET À SIX WIDGETS VIVANTS — mesuré le 2026-08-18 (dn3-2, P7)
+
+**Firmware `ea986ed`.** Géométrie **inchangée** (W4 tranché « exigence retirée ») ⇒ **l'unité de
+35 100 px de la §15 reste valide et tous les chiffres de dn3-1 restent comparables.**
+
+⚠️ **Cette section remplace l'EXTRAPOLATION de la §15.5, elle ne la contredit pas partout** :
+elle en confirme une moitié au pixel près et en **dément une autre**, et les deux sont écrites.
+
+### 16.0 🔴 Le correctif d'instrument qui précède tout le reste
+
+`cpu brut` **rendait du VIDE en silence** — en-tête imprimé, zéro ligne de tâche, invite rendue.
+Ce n'était ni une troncature série (l'invite est arrivée), ni un port volé (`TIOCEXCL`), ni le hook
+`rtk` (capture par `rtk proxy`). `vTaskGetRunTimeStats()` fait son propre `pvPortMalloc` puis teste
+`if (ulTotalTime > 0)`, **et n'a aucun chemin pour signaler qu'elle n'a rien écrit**.
+
+⇒ Remplacée par `uxTaskGetSystemState()`, même source, allocation vérifiée, échec **nommé**.
+🔴 **La première campagne AC8 (firmware `e9c52e2`) a donc été JETÉE, pas rattrapée**, et rejouée
+entièrement — règle §13.7 : *« un correctif qui touche un instrument invalide rétroactivement tout
+ce que cet instrument a publié »*.
+
+⚠️ Le `%` de `cpu brut` est désormais calculé sur le **total DEUX CŒURS** relu et **imprimé** :
+deux `IDLE` à 99 % et 85 % ne font pas 184 %, ils font 92 % d'un biprocesseur au repos.
+
+### 16.1 La table de décomposition — mock × groupage, fenêtre 45 s
+
+Protocole : `flush reset` puis `cpu brut` avant, écoute passive 45 s (**rien n'est envoyé**),
+`cpu brut` puis `flush` après. `cfg` relevé au début **et** à la fin, identique
+(`num_fbs=1 bounce_px=4800 draw_lines=128 draw_psram=0 lvgl_core=0`).
+
+| mock | groupage | CPU | dont `taskLVGL` | cycles/s | **flush/cyc** | **px/cyc** | copie µs/f | attente µs/f | ms/cyc | duty |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| off | off | 1,35 % | 0,86 pt | 0,20 | **2,00** | 12 210 | 315 | 12 439 | 25,5 | 0,5 % |
+| off | **on** | 1,49 % | 1,00 pt | 0,22 | **1,10** | 32 342 | 2 437 | 14 913 | 19,1 | 0,4 % |
+| on | off | 7,66 % | 7,08 pt | 1,20 | **8,67** | 39 427 | 240 | 15 565 | 137,0 | 16,4 % |
+| on | **on** | **10,18 %** | 9,64 pt | 1,21 | **3,47** | 120 756 | 2 883 | 13 075 | 55,4 | 6,7 % |
+
+### 16.2 🔴 LE GROUPAGE GAGNE EN TEMPS MURAL ET PERD EN CPU — dn3-1 n'avait pas de colonne CPU
+
+| | fine | groupé | écart |
+|---|---:|---:|---|
+| flush/cycle | 8,67 | 3,47 | **−60 %** |
+| px/cycle | 39 427 | 120 756 | **×3,06** |
+| ms/cycle | 137,0 | 55,4 | **−60 %** |
+| duty | 16,4 % | 6,7 % | **−59 %** |
+| **CPU** | 7,66 % | **10,18 %** | 🔴 **+2,52 pt** |
+
+**Le mécanisme, et il n'a rien de paradoxal** : ce que le groupage SUPPRIME est de l'**attente de
+synchro** — la tâche dort en attendant sa trame, et dormir ne coûte pas de CPU. Ce qu'il AJOUTE est
+du **rendu et de la copie** : 2 883 µs/flush contre 240, et une aire ×3,06 que LVGL doit
+effectivement **dessiner**. `taskLVGL` passe de 7,08 à 9,64 pt, soit **+2,56 pt** — c'est-à-dire la
+totalité de l'écart.
+
+🔴 **dn3-1 a mesuré des ms/cycle SANS colonne CPU** (§15.5 : copie, attente, ms/cycle) et a conclu
+« le groupage gagne ». **C'est vrai en LATENCE et muet en CHARGE.** Les deux mesures sont justes,
+elles ne portent pas sur la même grandeur — et le budget d'un module qui tourne H24 (dn4-1) se
+raisonne sur la seconde.
+
+⚠️ **Ce que le groupage ne fait toujours pas** : il n'économise **aucun pixel**, il en **multiplie
+le nombre par 2,65 à 3,06** selon le régime (2,0 à 3,3 en dn3-1 — même ordre, confirmé).
+
+### 16.3 ✅ LE CAS « LES SIX DANS LE MÊME CYCLE » — PROVOQUÉ, ET L'EXTRAPOLATION EST EXACTE
+
+Les six sources ne sont **pas** synchronisées (liaison ~1 s, capteur 5 s, mocks 14/20/26/34 s,
+barre à la minute) et `dn_ui_pousser` **interdit par conception** N poussées dans un même appel.
+Le cas a donc été **provoqué** par un instrument neuf, `widget rafale` : N poussées sous **un seul
+verrou LVGL**, donc dans un seul cycle. Son témoin de validité est `cycles intercalés == 0` — un
+cycle qui s'intercale signifie que la rafale a été coupée et que le chiffre ne vaut rien.
+
+Six tirs, stabilisation de 3 s avant chacun, fenêtre de 2 s après :
+
+| tirs | cycles | flushes | aire | lecture |
+|---|---|---|---|---|
+| **3 / 6** | **1** | **6** | **210 600 px** | le cas pur |
+| 3 / 6 | 2 | 7 | 245 700 px | + une source concurrente (exactement +1 case) |
+
+> **6 × 35 100 = 210 600 px, soit 68,6 % d'un plein écran, en 6 flushes.**
+> L'extrapolation de la §15.5 annonçait **210 600 px et 69 %**. ✅ **Confirmée au pixel près.**
+
+🔴 **Et elle reconfirme le legs de dn2 : LVGL NE FUSIONNE AUCUNE des six zones.** Six zones
+disjointes de 225 × 156 donnent six flushes, pas moins — la plus grande aire relevée reste
+**35 100 px**, jamais une union. Copie **2 912 ± 5 µs/flush** sur les six tirs.
+
+⚠️ **PIÈGE D'INSTRUMENT DÉCOUVERT ICI** : `flush reset` remet les **compteurs** à zéro mais **ne
+vide pas la file d'invalidation LVGL en attente**. Un premier tir précédé d'un `widget mock off`
+dans le même envoi a rendu **5 flushes / 175 500 px** — une invalidation en vol avait traversé le
+reset. ⇒ **laisser 3 s de stabilisation avant `flush reset`**, sinon le tir suivant est faussé
+*vers le bas*, ce qu'aucune pollution ne peut expliquer et qu'on lirait donc comme un résultat.
+
+### 16.4 Le coût par MISE À JOUR — l'autre moitié de l'extrapolation
+
+| | mesuré à six | extrapolé §15.5 | verdict |
+|---|---:|---:|---|
+| ms par mise à jour, **groupé** | **16,0 ms** | 15,8 – 17,6 ms | ✅ **dans la fourchette** |
+| ms par mise à jour, fine | 39,5 ms | 16,0 – 55,5 ms | ✅ dans la fourchette |
+| duty, **groupé** | **6,7 %** | ~10 % | ⚠️ l'extrapolation **surestimait de 49 %** |
+| duty, fine | 16,4 % | 18 – 33 % | ⚠️ **sous** le bas de la fourchette |
+
+**Lecture** : l'extrapolation était juste **par mise à jour** et pessimiste **en duty**, parce
+qu'elle supposait six sources à 1 Hz. Le régime réel en compte moins : 1,21 cycle/s mesuré, pour
+3,47 mises à jour par cycle.
+
+### 16.5 La barre heure/date — 33 600 px, soit 96 % d'une case
+
+`480 × 70 = 33 600 px`. Une barre qui bat à 1 Hz **en permanence** est donc, en coût brut, une
+**7ᵉ case vivante à 1 Hz** — et le legs dit que le coût suit **la cadence**, pas la richesse.
+
+🔴 **Le régime par défaut est HH:MM, sans secondes**, et c'est la maquette normative qui tranche
+(addendum §1 écrit « 21:46 »). Le mécanisme est **structurel, pas temporisé** : `dn_ui_heure_maj`
+n'écrit dans les labels que si le **texte composé change**. En HH:MM il ne change qu'au changement
+de minute ⇒ le calage sur la minute qu'AC4 exige ne dépend d'aucun timer libre, et ne peut donc pas
+retarder de 59 s. `widget barre 1hz|minute` rejoue l'A/B **sans reflasher**.
+
+⚠️ La barre est **sondée à 2 Hz** (`DN_RTC_PERIODE_MS 500`) et **dessinée** à la minute : le
+sondage et l'affichage sont deux cadences distinctes, et seul le second coûte des pixels.
+
+### 16.6 Non-régression — table avant/après
+
+| Mesure | `a64d4c3` (dn3-1) | `ea986ed` (dn3-2) | Δ |
+|---|---:|---:|---|
+| Binaire `desknode.bin` | 886 608 o | **901 328 o** | +14 720 o · partition libre à **79 %** |
+| RAM interne libre | 108 435 o | **103 559 o** | **−4 876 o** = la pile 4 096 o de `dn_rtc` + son `.bss` |
+| PSRAM libre | 7 768 324 o | 7 768 236 o | −88 o |
+| Tas LVGL | 17 772 o / 29 % | **20 108 o / 33 %** | **+2 336 o** pour 3 widgets + 2 labels de barre |
+| Plus gros bloc libre | 44 164 / 44 596 | **41 304 / 41 996** | **98,4 % du libre en un bloc** |
+| Fragmentation | 28 % (post-revue dn3-1) | **2 %** | 🔴 voir ci-dessous |
+| Tas sur transitions | +20 o (n=5) | **+24 o (n=40)** | ✅ PLAT, pas de fuite |
+| `fps 15` | 37,40 Hz, +0,00 % | **37,40 Hz, +0,00 %** | ✅ identique |
+| Boot | 2 245 ms | **2 287 ms** | +42 ms |
+| Latence transition (n=40) | 321,8 (293,8 / 369,9) | **349,1 (293,2 / 452,3)** | 🔴 **+27,3 ms de moyenne, +82,4 ms au max** |
+
+🔴 **LA « TENDANCE À TROIS POINTS » DE LA FRAGMENTATION EST ROMPUE — ET LE CHIFFRE N'ÉTAIT PAS
+COMPARABLE.** Le ledger disait 15-19 %, dn3-1 22 % puis 28 %. On mesure **2 %**. Mais le critère
+imposé par le tracker est **le plus gros bloc libre**, et lui raconte autre chose : dn3-1 publiait
+**44 164 o libres d'un bloc sur 44 596** — soit **99,0 %**, ce qui est **incompatible avec 28 % de
+fragmentation**. ⇒ Les deux chiffres de dn3-1 ne décrivaient pas le même instant. **On garde les
+deux et on le dit** (règle du dépôt), et on ne publie plus que le plus gros bloc libre : **41 304
+sur 41 996, soit 98,4 %.**
+
+🔴 **LA LATENCE DE TRANSITION RÉGRESSE DE +27,3 ms, ET C'EST ATTENDU** : `build_scene()` construit
+désormais **six widgets** au lieu de trois widgets + trois cases nues. ⚠️ Le budget brief
+**< 300 ms** était **déjà non tenu** (321,8 ms) et **se solde en dn4-1** — mais **l'écart se
+creuse**, et le maximum passe de 369,9 à **452,3 ms**. ⛔ Ne pas présenter l'opaque comme la parade :
+l'A/B d'opacité est **tranché** (§15.6), l'owner rend les 21,9 ms délibérément.
+
+### 16.7 Ce que cette section N'A PAS mesuré
+
+- ⛔ **Le repeint en BANDES (W8)** — `LV_EVENT_INVALIDATE_AREA` : voir la puce d'AC9 de la story.
+- ⛔ **L'option n°2 du ledger** (« ne pas invalider le fond à la transition »).
+- ⚠️ Les constats **à l'œil** (image stable, aucune bande discernable, six valeurs vivantes) sont
+  des **gestes owner** : aucun chiffre de cette section ne les remplace. *« Un fps vert ne prouve
+  PAS qu'il y a une image. »*

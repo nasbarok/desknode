@@ -834,3 +834,107 @@ présente aucun risque électrique ni thermique** — un scan n'est que du trafi
 | Sentinelle hors plage physique (`DN_CAPT_DX_ABSENT`) | `MUET — aucune valeur courante` au lieu de `0,1 C · 0,-1 %` |
 | Durée minimale d'injection annoncée | `1 cycle(s) NE SUFFIT PAS … armer au moins 4 cycles` |
 | Boot non retardé par la re-tentative d'ouverture | `prêt en 2190 ms` — **inchangé** |
+
+---
+
+## 13.14 🔴 LA STABILISATION DU DIE APRÈS EXTINCTION DU CHAUFFEUR — **D7 TOMBE** (dn3-2, 2026-08-18)
+
+**Firmware `ea986ed`.** C'était le **prérequis BLOQUANT** de dn3-2 : dn2-1 (§13.9) avait mesuré le
+**coût** du chauffeur (+0,3 °C, −2 pts RH), **jamais le temps de RETOUR**. Sans ce temps, D7 — « le
+gaz à la demande, à l'ouverture de la page de détail Ambiance » — ne pouvait pas être décidé.
+
+### Le critère, ÉCRIT AVANT LA MESURE
+
+> **Retour à ≤ 0,1 °C de la ligne de base en ≤ 3 cycles capteur (15 s).**
+
+Les deux nombres viennent d'ailleurs que de cette mesure, délibérément : **0,1 °C est la résolution
+AFFICHÉE** par les cases, **15 s est déjà la constante de péremption** du module
+(`DN_CAPT_PEREMPTION_US`). *« Les critères écrits avant la décision »* — sinon on trouve toujours la
+mesure acceptable.
+
+### Le protocole — TROIS phases, avec témoin de dérive de pièce
+
+Sans la phase C, le chiffre de T9 (dn2-1) aurait été **faux d'un facteur 2**. On ne refait pas
+l'erreur. Phases A (gaz OFF, 240 s) → B (gaz ON, 240 s) → C (gaz OFF, 360 s), échantillonnage
+continu (~11 relevés/s, dédoublonnés par lecture capteur distincte), cadence capteur **inchangée**,
+`capteurs gaz on|off` comme **unique** variable.
+
+⚠️ **Les horodatages sont corrigés DEUX fois** : on retranche l'`age` rendu par `capteurs` **et**
+**un cycle capteur de 5 s**, parce que la boucle « data ready » sort à la première itération —
+chaque cycle **déclenche une conversion ET LIT LA PRÉCÉDENTE**. ⛔ Ce comportement n'est **pas**
+corrigé par cette story, il est **compensé à l'analyse**.
+
+### Les plateaux
+
+| plateau | fenêtre | T | RH | n |
+|---|---|---:|---:|---:|
+| **A** — gaz OFF | 90–240 s | **25,503 °C** | **53,90 %** | 60 |
+| **B** — gaz ON | 370–478 s | **25,850 °C** | **52,66 %** | 34 |
+| **C** — gaz OFF | 660–840 s | **25,615 °C** | **53,78 %** | 60 |
+
+### ✅ Le coût du chauffeur — dn2-1 est CONFIRMÉ, et le témoin sert encore
+
+| | T | RH |
+|---|---:|---:|
+| naïf **B − A** | +0,347 °C | −1,23 pt |
+| naïf **B − C** | +0,235 °C | −1,11 pt |
+| **DÉRIVE DE PIÈCE A → C** | **+0,112 °C** sur 583 s (**+0,69 °C/h**) | −0,12 pt |
+| 🔴 **CORRIGÉ** (base interpolée à l'instant de B) | **+0,299 °C** | **−1,18 pt** |
+
+> **dn2-1 publiait +0,3 °C et −2 pts.** La température est **confirmée au centième** ; l'humidité
+> est **moins sévère que publiée** (−1,18 au lieu de −2).
+> ⚠️ **Sans la phase C on publiait +0,347 °C, soit 16 % trop haut.** L'écart est plus petit qu'en
+> dn2-1 (facteur 2) — **le principe tient, son ampleur varie d'une séance à l'autre**, ce qui est
+> précisément pourquoi le témoin n'est pas négociable.
+
+### 🔴 LE TEMPS DE RETOUR — la mesure qui n'avait jamais été faite
+
+Ligne de base à l'instant de la commande (interpolée) : **T = 25,563 °C · RH = 53,83 %**.
+
+| grandeur | seuil | temps de retour | en cycles capteur |
+|---|---|---:|---:|
+| **T** | **≤ 0,1 °C** *(le critère)* | **24,6 s** | **4,9** |
+| T | ≤ 0,15 °C | 9,6 s | 1,9 |
+| **RH** | **≤ 0,2 pt** | **89,6 s** | **17,9** |
+| RH | ≤ 0,5 pt | 24,6 s | 4,9 |
+
+### 🔴 ET LE PROTOCOLE SE RÉFUTE LUI-MÊME — le bruit de pièce dépasse le critère
+
+| phase | gaz | étendue de T sur la phase |
+|---|---|---:|
+| A | OFF tout du long | **0,20 °C** (25,40 → 25,60) |
+| **C** | **OFF tout du long** | **0,40 °C** (25,40 → 25,80) |
+
+**Gaz coupé du début à la fin, la température parcourt 0,20 à 0,40 °C.** Le critère en demande
+**0,1**. ⇒ **Le bruit propre de la pièce est 2 à 4 fois plus grand que la grandeur à trancher.**
+
+🔴 C'est le **piège n°2 de la méthodologie appliqué au protocole lui-même** : *« cet instrument
+PEUT-IL voir le défaut qu'il prétend exclure ? »* — **non.** Un « retour en 24,6 s » mesuré contre
+une ligne de base qui bouge de 0,4 °C n'est pas une mesure de 0,1 °C.
+
+### ⇒ VERDICT : **D7 TOMBE**, pour TROIS raisons cumulées
+
+1. **Le critère écrit avant n'est pas tenu** : **4,9 cycles** contre ≤ 3.
+2. 🔴 **L'humidité met 17,9 cycles (89,6 s)** — et la case **AMBIANCE affiche T *et* RH** (D6). La
+   page de détail laisserait donc l'humidité fausse **une minute et demie** après sa fermeture, sur
+   la seule case du dashboard qui porte une source **réelle**. C'est le mensonge d'interface que ce
+   dépôt traque depuis dn1-3, réintroduit par la fonctionnalité censée enrichir la page.
+3. **Le critère est ININSTRUMENTABLE ici** : 0,1 °C demandé contre 0,2–0,4 °C de bruit de pièce.
+
+**Conséquences, écrites :** `DN_CAPT_GAZ_DEFAUT` **reste `false`** · **le gaz repart post-V1** ·
+la tâche T7 de dn3-2 **n'est pas exécutée** · les deux défauts de l'`iaq_score`
+(`deferred-work.md`) **redeviennent non bloquants**, et le choix de source d'indice (BSEC…) est
+**reporté avec le gaz**.
+
+⚠️ **Ce n'est PAS un échec de la story.** D1 : *« chaque story-POC ferme sa question PAR LA MESURE,
+jamais sur le papier. »* La question est **fermée**.
+
+### Ce qu'il faudrait pour rouvrir D7 proprement (post-V1)
+
+- Une **enceinte thermiquement stable** — ou un témoin de température **indépendant du BME680**,
+  puisque c'est le die chauffé qui porte le thermomètre. Sans référence externe, la ligne de base et
+  la grandeur mesurée partagent le même capteur.
+- Ou **abandonner le critère en température absolue** au profit d'un critère sur la **dérivée**
+  (« la pente est retombée sous X °C/min »), qui est insensible à une dérive lente de pièce.
+- ⚠️ Et le problème de la **RH** resterait entier : 90 s de retour, c'est structurel au capteur, pas
+  au protocole de mesure.
