@@ -35,6 +35,10 @@ static uint8_t s_ctrl1_init;
 static uint8_t s_ctrl1_lu;
 static uint8_t s_temoin_lu;
 static bool s_temoin_dispo;
+/* 🔴 Le témoin tel qu'il a été RELU AU BOOT, AVANT toute écriture. C'est LUI
+ * qui porte le verdict CROSS-BOOT ; `s_temoin_lu` ne porte que le RUNTIME. */
+static uint8_t s_temoin_boot;
+static bool s_temoin_boot_dispo;
 
 static dn_rtc_compteurs_t s_cpt;
 
@@ -143,10 +147,25 @@ static bool ecrire_regs(uint8_t reg, const uint8_t *src, size_t n)
  *    La référence n'est plus une valeur qu'on CONSTATE, c'est une valeur qu'on
  *    IMPOSE — et c'est ce qui la rend discriminante.
  *
- * 🔴 ET IL RÉPOND À LA QUESTION DE LA RÉTENTION (AC3) SANS AMBIGUÏTÉ. Après une
- *    coupure d'alimentation, regarder l'heure ne prouve rien : elle pourrait
- *    « avoir l'air » d'avoir continué. Le témoin, lui, tranche — il ne peut pas
- *    survivre à une puce non sauvegardée, et il ne peut pas se recréer seul.
+ * 🔴 ET IL RÉPOND À LA QUESTION DE LA RÉTENTION (AC3) — MAIS SEULEMENT DEPUIS
+ *    LE CORRECTIF DU 2026-08-18, QUI LE LIT AVANT DE L'ÉCRIRE.
+ *    ⚠️ CETTE LIGNE A MENTI : la première version écrivait sans relire, donc
+ *       après toute coupure — et le reboot qui la suit — le témoin valait
+ *       `0xD7` quoi qu'il se soit passé. AVEUGLE au cas cross-boot, c'est-à-dire
+ *       exactement celui de la rétention. Piège n°2 retourné contre le garde.
+ *    ⇒ CORRIGÉ : `temoin_poser()` RELIT d'abord, journalise le verdict, PUIS
+ *      écrit. Le témoin porte désormais DEUX verdicts distincts —
+ *      `dn_rtc_temoin_boot()` (cross-boot : l'alimentation a-t-elle été coupée
+ *      depuis le dernier démarrage ?) et `dn_rtc_temoin_lu()` (runtime : la puce
+ *      a-t-elle redémarré PENDANT que le firmware tourne ?).
+ *
+ * ✅ RÉSULTAT DE LA MESURE DU 2026-08-18 : **CETTE CARTE N'A AUCUNE SAUVEGARDE.**
+ *    Coupure USB de 30 s ⇒ au rebranchement, `OS = 1` et l'heure lue vaut
+ *    `2000-01-01 00:00:54` — la valeur de sortie de reset, qui a recompté depuis
+ *    zéro. ⇒ D5 (« pas de batterie ») ne disait rien d'une cellule de backup du
+ *    RTC : il n'y en a pas. L'heure doit être re-posée après toute coupure
+ *    secteur, et la barre affiche « --:-- HEURE NON POSÉE » en attendant — ce
+ *    qui a été VU sur la dalle, pas déduit.
  *
  * ⚠️ Sur le variant TP, 0x03 est le registre des MINUTES : écrire 0xD7 y serait
  *    destructeur. Le variant A a été CONFIRMÉ PAR LA MESURE avant d'écrire ceci
@@ -154,6 +173,48 @@ static bool ecrire_regs(uint8_t reg, const uint8_t *src, size_t n)
  */
 static void temoin_poser(void)
 {
+    /*
+     * 🔴 ON LIT AVANT D'ÉCRIRE — CORRECTIF DU 2026-08-18, ET C'EST LA MESURE DE
+     *    RÉTENTION QUI L'A EXIGÉ.
+     *
+     * La première version écrivait `0xD7` sans rien lire. Conséquence : après
+     * TOUTE coupure d'alimentation — donc après le reboot qui la suit — le
+     * témoin valait `0xD7` quoi qu'il se soit passé, et `rtc` annonçait
+     * tranquillement « la puce n'a pas redémarré ». VRAI au sens strict (depuis
+     * l'init), et TROMPEUR pour qui cherchait à savoir si l'heure avait survécu.
+     *
+     * ⚠️ C'était le piège n°2 retourné contre le garde lui-même : « cet
+     *    instrument PEUT-IL voir le défaut qu'il prétend exclure ? » — le témoin
+     *    voyait très bien un reset de puce EN COURS DE ROUTE (compteur
+     *    `temoins_perdus`), et était AVEUGLE au cas cross-boot, qui est
+     *    justement celui de la rétention.
+     *
+     * ⇒ La lecture PRÉALABLE le rend cross-boot : toute coupure future, même
+     *   accidentelle, donnera son verdict GRATUITEMENT dans le log de boot.
+     *   Le 2026-08-18 c'est `OS` qui a tranché (OS=1 + 2000-01-01 00:00:54) —
+     *   il fallait deux témoins, on n'en avait qu'un et demi.
+     */
+    uint8_t avant = 0;
+    if (lire_regs(DN_RTC_REG_RAM, &avant, 1)) {
+        s_temoin_boot = avant;
+        s_temoin_boot_dispo = true;
+        if (avant == DN_RTC_TEMOIN) {
+            ESP_LOGI(TAG,
+                     "temoin RELU AVANT ecriture = 0x%02X : la puce a GARDE son "
+                     "alimentation depuis le dernier boot",
+                     avant);
+        } else {
+            ESP_LOGW(TAG,
+                     "🔴 temoin RELU AVANT ecriture = 0x%02X (attendu 0x%02X) : "
+                     "LA PUCE A PERDU SON ALIMENTATION depuis le dernier boot. "
+                     "L'heure qu'elle porte ne vaut rien — OS le confirmera.",
+                     avant, DN_RTC_TEMOIN);
+        }
+    } else {
+        ESP_LOGW(TAG, "temoin ILLISIBLE avant ecriture — verdict cross-boot "
+                      "INDISPONIBLE, et `rtc` le dira");
+    }
+
     uint8_t v = DN_RTC_TEMOIN;
     if (!ecrire_regs(DN_RTC_REG_RAM, &v, 1)) {
         s_temoin_dispo = false;
@@ -468,6 +529,14 @@ uint8_t dn_rtc_ctrl1_init(void) { return s_ctrl1_init; }
 uint8_t dn_rtc_ctrl1_lu(void) { return s_ctrl1_lu; }
 uint8_t dn_rtc_temoin_lu(void) { return s_temoin_lu; }
 bool dn_rtc_temoin_dispo(void) { return s_temoin_dispo; }
+
+bool dn_rtc_temoin_boot(uint8_t *out)
+{
+    if (out) {
+        *out = s_temoin_boot;
+    }
+    return s_temoin_boot_dispo;
+}
 
 uint32_t dn_rtc_pile_libre(void)
 {

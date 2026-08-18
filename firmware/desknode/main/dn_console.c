@@ -3721,6 +3721,32 @@ static int cmd_rtc(int argc, char **argv)
      * du choix de registre — Control_1 NE POUVAIT PAS voir un redemarrage,
      * puisque sa valeur de sortie de reset est exactement celle qu'on mesure.
      */
+    /*
+     * 🔴 LE VERDICT CROSS-BOOT D'ABORD — c'est celui qui repond a la RETENTION,
+     *    et c'est celui qui MANQUAIT le 2026-08-18 : le temoin etait reecrit a
+     *    chaque init, donc il valait 0xD7 apres toute coupure et `rtc` annoncait
+     *    « la puce n'a pas redemarre » precisement quand elle venait de le faire.
+     */
+    uint8_t tb = 0;
+    printf("retention  : ");
+    if (!dn_rtc_temoin_boot(&tb)) {
+        printf("INDISPONIBLE — le temoin n'a pas pu etre relu au boot\n");
+    } else if (tb == DN_RTC_TEMOIN) {
+        printf("0x%02X relu AU BOOT = attendu ⇒ ✅ la puce a GARDE son "
+               "alimentation\n             depuis le dernier demarrage\n",
+               tb);
+    } else {
+        printf("0x%02X relu AU BOOT (attendu 0x%02X) ⇒ 🔴 ELLE A PERDU SON\n"
+               "             ALIMENTATION depuis le dernier demarrage — l'heure\n"
+               "             qu'elle portait est morte avec.\n",
+               tb, DN_RTC_TEMOIN);
+        printf("             📌 MESURE DU 2026-08-18 : cette carte N'A AUCUNE\n");
+        printf("             SAUVEGARDE. Coupure USB de 30 s ⇒ OS=1 et\n");
+        printf("             2000-01-01 00:00:54. D5 (« pas de batterie ») ne\n");
+        printf("             disait rien d'une cellule de backup du RTC : il n'y\n");
+        printf("             en a pas. `rtc set` apres chaque coupure secteur.\n");
+    }
+
     printf("temoin     : ");
     if (!dn_rtc_temoin_dispo()) {
         printf("INDISPONIBLE — la garde est INERTE (et le dit, au lieu de\n");
@@ -3729,8 +3755,9 @@ static int cmd_rtc(int argc, char **argv)
         uint8_t t = dn_rtc_temoin_lu();
         printf("0x%02X en 0x%02X (attendu 0x%02X) — %s\n", t, DN_RTC_REG_RAM,
                DN_RTC_TEMOIN,
-               t == DN_RTC_TEMOIN ? "✅ la puce n'a pas redemarre depuis l'init"
-                                  : "🔴 ELLE A REDEMARRE SOUS NOS PIEDS");
+               t == DN_RTC_TEMOIN
+                   ? "✅ pas de redemarrage EN COURS DE ROUTE (verdict RUNTIME)"
+                   : "🔴 ELLE A REDEMARRE SOUS NOS PIEDS");
     }
     printf("Control_1  : 0x%02X a l'init, 0x%02X maintenant%s\n",
            dn_rtc_ctrl1_init(), dn_rtc_ctrl1_lu(),

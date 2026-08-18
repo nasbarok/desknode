@@ -247,6 +247,18 @@ uint8_t dn_rtc_ctrl1_init(void); /* Control_1 constaté à l'init */
 uint8_t dn_rtc_ctrl1_lu(void);   /* Control_1 au dernier cycle */
 uint8_t dn_rtc_temoin_lu(void);  /* RAM_byte au dernier cycle */
 bool dn_rtc_temoin_dispo(void);  /* le témoin a-t-il pu être POSÉ à l'init ? */
+/*
+ * 🔴 LE VERDICT CROSS-BOOT : le témoin tel qu'il a été RELU AU BOOT, AVANT
+ *    toute écriture. `0xD7` ⇒ la puce a GARDÉ son alimentation depuis le
+ *    dernier démarrage ; autre chose (typiquement `0x00`) ⇒ ELLE L'A PERDUE.
+ * ⚠️ À ne pas confondre avec `dn_rtc_temoin_lu()`, qui porte le verdict
+ *    RUNTIME (la puce a-t-elle redémarré PENDANT que le firmware tourne ?).
+ *    Les deux sont nécessaires, et la première version n'avait que le second —
+ *    ce qui rendait `rtc` rassurant précisément quand il ne fallait pas.
+ * MESURÉ le 2026-08-18 : cette carte N'A AUCUNE SAUVEGARDE. Coupure de 30 s
+ * ⇒ OS=1 et 2000-01-01 00:00:54, la valeur de sortie de reset.
+ */
+bool dn_rtc_temoin_boot(uint8_t *out);
 /* Pile restante de la tâche, en octets. Instrument, pas décoration : les
  * 4 096 o viennent de la RAM INTERNE, la ressource même qui a tué la branche
  * WiFi en dn2-2 (6 407 o libres après init). Sans ce chiffre, un futur
