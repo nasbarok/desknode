@@ -938,3 +938,147 @@ jamais sur le papier. »* La question est **fermée**.
   (« la pente est retombée sous X °C/min »), qui est insensible à une dérive lente de pièce.
 - ⚠️ Et le problème de la **RH** resterait entier : 90 s de retour, c'est structurel au capteur, pas
   au protocole de mesure.
+
+---
+
+## 13.15 🔴 LE RTC PCF85063A À `0x51` — QUALIFIÉ, ET SA RÉTENTION MESURÉE (dn3-2, 2026-08-18)
+
+Jusqu'à dn3-2, tout ce que le dépôt savait de cette puce tenait en une ligne : *« adresse `0x51`,
+stable sur les 4 passes du scan »*. **Aucun registre lu, aucun driver, état de l'heure et existence
+d'une pile totalement inconnus.** Cette section ferme les trois.
+
+### 13.15.1 La qualification — par LECTURE, jamais par le scan
+
+Doctrine dn2-1, payée deux fois (faux positifs **et** faux négatifs, §13.2 et §13.6 bis) :
+*« le sondage DÉCOUVRE, seule la LECTURE DE REGISTRE QUALIFIE »*. Sortie verbatim :
+
+```
+i2c lire 51 00 16  ->  00 00 00 00 96 25 15 01 06 01 00 80 80 80 80 80
+i2c lire 51 10 2   ->  00 18
+```
+
+| Registre | Valeur | Ce qu'on en tire |
+|---|---|---|
+| `0x00` Control_1 | `0x00` | `STOP=0` (elle tourne) · `12_24=0` (**24 h**) · **`CAP_SEL=0` ⇒ quartz 7 pF** |
+| `0x01` Control_2 | `0x00` | `COF=000` ⇒ **sortie CLKOUT 32,768 kHz ACTIVE** — consommation pour rien, aucune piste ne l'utilise. Consignée, **non touchée** (la couper est une écriture dont le bénéfice n'est pas mesuré) |
+| `0x02`-`0x03` | `00 00` | Offset et RAM_byte |
+| `0x04` Seconds | `0x96` | 🔴 **bit 7 = `OS` = 1** + `16` s en BCD |
+| `0x05`-`0x0A` | | `25` min · `15` h · `01` · jsem `6` · mois `01` · an `00` |
+| `0x0B`-`0x0F` | `0x80` ×5 | bit `AEN_x` posé sur les cinq ⇒ **toutes les alarmes DÉSARMÉES** |
+| `0x10`-`0x11` | `00 18` | Timer désactivé, `TCF` = 1/60 Hz (défaut) |
+
+### 13.15.2 ✅ LE VARIANT EST « A », ET C'EST LA MESURE QUI RÉFUTE « TP »
+
+⚠️ La story avertissait que *« le variant A et le variant TP ne portent pas la même carte de
+registres »*, et le dépôt a payé **quatre fois** pour avoir cru une source externe — dont **SDA/SCL
+inversés dans la doc officielle Waveshare** (§13.1). On ne tranche donc pas sur la doc.
+
+**Trois passes espacées** : `0x04`/`0x05` **bougent** (`96 25` → `81 26` → `A8 26`) pendant que
+`0x02`/`0x03` **ne bougent pas**. ⇒ la base de temps est en **`0x04`**. Sur le variant **TP** elle
+serait en `0x02`, qui aurait bougé. **⇒ TP RÉFUTÉ PAR LA MESURE.**
+
+✅ **Confirmé une seconde fois, autrement** : après écriture du témoin, `0x03` relit **`0xD7`** —
+une valeur arbitraire qu'il conserve. C'est donc bien un **octet de RAM libre**, ce que seul le
+variant A possède. Sur TP, `0x03` est le registre des **minutes** et `0xD7` y serait destructeur.
+
+### 13.15.3 🔴 LA RÉTENTION — **CETTE CARTE N'A AUCUNE SAUVEGARDE**
+
+**Geste owner** : câble USB débranché (**seule** alimentation — D5 : pas de batterie), **30 s**,
+rebranché. 30 s et pas 2, délibérément : sans sauvegarde le RTC perd tout en moins d'une seconde,
+un **supercondensateur** tiendrait quelques secondes — 30 s discrimine les deux.
+
+| Instrument | Avant coupure | Après rebranchement |
+|---|---|---|
+| `OS` | **0** | 🔴 **1** |
+| Heure lue | `2026-08-18 11:32:13` | 🔴 **`2000-01-01 00:00:54`** (valeur de sortie de reset, recomptée depuis zéro) |
+| Témoin cross-boot | — | 🔴 **`0x00`** au lieu de `0xD7` |
+| Barre à l'écran | `11:32` / `MAR. 18 AOÛT` | **`--:--` / `HEURE NON POSÉE`** |
+
+**⇒ TROIS instruments indépendants concordent. Il n'y a pas de cellule de sauvegarde.**
+D5 disait *« PAS DE BATTERIE »* en parlant de la LiPo principale et **ne disait rien** d'un backup
+RTC. **Maintenant on sait** : l'heure doit être re-posée après **toute** coupure secteur.
+
+✅ **Et W9 est validé EN CONDITIONS RÉELLES, pas en simulation** : la barre a affiché
+**« --:-- HEURE NON POSÉE »**, **vu sur la dalle par l'owner**. Une barre qui aurait affiché
+« 00:00 » aurait été le mensonge exact qu'AC3 interdit — et il aurait été **indétectable**.
+
+📌 **Le jour de semaine relit `6` au reset**, comme au tout premier allumage. ⇒ **confirmation que
+la prudence de l'en-tête était fondée** : `6` est la valeur POR du registre, **pas** une cohérence
+calculée avec « 2000-01-01 était un samedi ». La puce compte le jour de semaine dans son propre
+registre, indépendamment de la date — d'où `dn_rtc_poser()` qui le **calcule** (Sakamoto).
+
+### 13.15.4 🔴 LE TÉMOIN ANTI-FANTÔME ÉTAIT AVEUGLE AU CAS QU'IL PRÉTENDAIT TRANCHER
+
+Le patron du BME680 (§13.6 bis) transposé au RTC posait déjà une question : **Control_1 ne peut pas
+servir de témoin**, parce que sa valeur de sortie de reset est `0x00` — exactement celle qu'on
+mesure. Une garde dessus serait **verte pendant le défaut qu'elle prétend détecter**.
+⇒ Le témoin est donc **`RAM_byte` (0x03)**, où l'on **impose** `0xD7` au lieu de **constater** une
+valeur. C'était juste.
+
+🔴 **Mais la première implémentation ÉCRIVAIT sans relire.** Or toute coupure est suivie d'un
+reboot, donc d'un `dn_rtc_init()`, donc d'une réécriture : après la coupure, `rtc` annonçait
+tranquillement **« témoin 0xD7 ✅ la puce n'a pas redémarré »**. Vrai *depuis l'init*, et **trompeur
+pour qui cherchait justement à savoir si l'heure avait survécu**.
+⚠️ Et l'en-tête du module **affirmait** qu'il *« répond à la question de la rétention sans
+ambiguïté »* — *« un commentaire qui affirme un invariant que le code ne tient pas est pire que pas
+de commentaire »*. **C'est le piège n°2 retourné contre le garde lui-même.**
+
+**Correctif** : `temoin_poser()` **relit d'abord, journalise, puis écrit**. Le module porte
+désormais **deux verdicts nommés et distincts** :
+
+| Verdict | Question | Instrument |
+|---|---|---|
+| **CROSS-BOOT** | l'alimentation a-t-elle été coupée depuis le dernier démarrage ? | `dn_rtc_temoin_boot()` |
+| **RUNTIME** | la puce a-t-elle redémarré **pendant** que le firmware tourne ? | `dn_rtc_temoin_lu()` + compteur `temoins_perdus` |
+
+✅ **Prouvé DES DEUX CÔTÉS le 2026-08-18**, et la seconde coupure le montre de façon décisive —
+les deux verdicts sont **opposés au même instant**, et tous deux vrais :
+
+```
+retention : 0x00 relu AU BOOT (attendu 0xD7) ⇒ 🔴 ELLE A PERDU SON ALIMENTATION
+temoin    : 0xD7 en 0x03                      ⇒ ✅ pas de redemarrage EN COURS DE ROUTE
+```
+
+**Un instrument unique aurait affiché `0xD7 ✅` et masqué la coupure.**
+
+⚠️ **Et la preuve a failli être effacée par sa propre lecture** : le verdict est relevé **au boot**.
+Un `dn_console.py --reset` aurait rejoué `temoin_poser()`, réécrit `0xD7`, et détruit l'évidence.
+⇒ **C'est parce que le verdict est LATCHÉ EN RAM et exposé par `rtc` qu'il a survécu.** Un verdict
+qui ne vivrait que dans le log de boot serait perdu dès qu'on rate la fenêtre de capture.
+
+### 13.15.5 La dérive — une borne, honnête, et un instrument laissé en place
+
+Protocole : `rtc set` sur l'heure de l'hôte, puis relecture **encadrée** par deux `date` (fenêtre
+hôte de **0 s**, donc ±1 s de quantification).
+
+| t | RTC | hôte | écart |
+|---|---|---|---|
+| référence | `09:32:44` | `09:32:44` | **0 s** |
+| +35 min | `10:08:06` | `10:08:06` | **0 s** |
+| +2 h 00 | `11:32:13` | `11:32:14` | **−1 s** |
+
+⇒ **≈ −139 ppm (−12 s/jour)**, ⚠️ **mais l'incertitude de quantification est du même ordre que la
+mesure** (±1 s sur 7 170 s = ±140 ppm). **Borne honnête : |dérive| < 280 ppm.**
+⛔ **Ne pas publier −139 ppm comme un fait** : la mesure ne sait pas encore distinguer −139 de 0.
+Une fenêtre de **24 h** resserrerait la borne d'un facteur 12 — et l'instrument (un `rtc` encadré
+par deux `date`) est **déjà en place**, donc la mesure est gratuite.
+
+⚠️ **Ça compte pour `CAP_SEL`** : un quartz 32,768 kHz correctement chargé dérive de ±20 ppm. Une
+dérive réelle de −139 ppm serait cohérente avec un **désaccord de capacité de charge** (7 pF posés
+contre un quartz qui en demanderait 12,5) — mais **la mesure ne le prouve pas encore**, et
+`CAP_SEL` reste consigné **INCONNU**, non touché.
+
+### 13.15.6 Le coût du module, mesuré
+
+| | |
+|---|---|
+| Pile de la tâche `dn_rtc` | **4 096 o alloués**, high-water mark relu : **2 836 o libres** ⇒ **1 260 o réellement consommés au pire** |
+| RAM interne libre, avant → après | 108 435 → **104 311 o** (**−4 124 o**) |
+| Cadence de sondage | **2 Hz** (`DN_RTC_PERIODE_MS 500`), ~8 octets par lecture |
+| Charge de bus | négligeable devant les **~30 transactions/s** du GT911 en `poll` |
+| Erreurs sur ~1 700 lectures | **i2c 0 · bcd 0 · témoins perdus 0** |
+
+📌 **Piste chiffrée pour dn4-1, pas une action** : à 1 260 o consommés sur 4 096, la pile pourrait
+descendre à **2 048 o** et rendre ~2 Ko de RAM interne. ⛔ Non fait ici : le budget n'est pas
+contraint aujourd'hui, et la marge protège contre un `printf` ajouté plus tard. **Le chiffre est
+publié pour que la décision soit une mesure, pas une intuition.**
