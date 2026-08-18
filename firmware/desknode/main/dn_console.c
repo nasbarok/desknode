@@ -2157,26 +2157,71 @@ static int cmd_restart_dma(int argc, char **argv)
 #define DN_CPU_WINDOW_MIN_S 1
 #define DN_CPU_WINDOW_MAX_S 60
 
+/*
+ * 🔴 dn3-2 — `vTaskGetRunTimeStats()` EST RETIRÉE, PARCE QU'ELLE REND DU VIDE
+ *    EN SILENCE, ET QUE CET INSTRUMENT EST CELUI D'AC8.
+ *
+ * MESURÉ le 2026-08-18, deux fois pendant la campagne AC8 : l'en-tête
+ * « temps CPU CUMULÉ… » s'imprimait, PUIS RIEN — zéro ligne de tâche — puis
+ * l'invite revenait. Ce n'était donc NI une troncature série (l'invite est
+ * arrivée), NI un port volé : la fonction a réellement produit une chaîne vide.
+ *
+ * En cause, sa structure même (FreeRTOS `tasks.c`) : elle fait son PROPRE
+ * `pvPortMalloc`, puis `if (ulTotalTime > 0)` après `ulTotalTime /= 100`, et
+ * elle N'A AUCUN CHEMIN pour signaler qu'elle n'a rien écrit. Les deux causes
+ * possibles — allocation ratée, compteur global inexploitable — sortent
+ * EXACTEMENT du même silence, et l'appelant ne peut pas les distinguer.
+ *
+ * ⚠️ La conséquence en campagne est pire que la panne : une ligne de table
+ *    manquante ressemble à une erreur de capture, on la rejoue, et on ne
+ *    cherche jamais plus loin. Un relevé perdu au milieu d'une fenêtre de
+ *    mesure fait perdre la fenêtre, pas seulement la ligne.
+ *
+ * ⇒ On passe par `uxTaskGetSystemState()`, exactement comme `cpu [secondes]` un
+ *   peu plus bas : MÊME source, MÊME allocation vérifiée, et un message quand
+ *   ça rate. « Un instrument qui rend du vide en silence est pire qu'un
+ *   instrument en panne. »
+ * ⚠️ Le FORMAT de sortie est conservé (`nom \t ticks \t %`) pour que les
+ *    dépouillements écrits pour les campagnes dn2/dn3-1 continuent de parser.
+ */
 static int cpu_table_cumulee(void)
 {
-    /* ~40 o par tâche d'après la doc FreeRTOS ; 64 o et quelques tâches de
-     * marge, parce qu'un débordement ici écrase le tas sans rien dire. */
-    UBaseType_t n = uxTaskGetNumberOfTasks() + 8;
-    size_t taille = (size_t)n * 64;
-    char *table = malloc(taille);
-    if (!table) {
-        printf("pas assez de RAM pour la table (%u o demandés)\n",
-               (unsigned)taille);
+    UBaseType_t capacite = uxTaskGetNumberOfTasks() + 8;
+    TaskStatus_t *etat = calloc(capacite, sizeof(TaskStatus_t));
+    if (!etat) {
+        printf("pas assez de RAM pour %u tâches — AUCUNE table produite\n",
+               (unsigned)capacite);
         return 1;
     }
-    table[0] = '\0';
-    vTaskGetRunTimeStats(table);
+    configRUN_TIME_COUNTER_TYPE total = 0;
+    UBaseType_t n = uxTaskGetSystemState(etat, capacite, &total);
+    if (n == 0) {
+        /* Le cas que `vTaskGetRunTimeStats` taisait. Il devient un DIAGNOSTIC :
+         * `uxTaskGetSystemState` ne rend 0 que si le tableau est trop petit,
+         * c'est-à-dire si des tâches sont nées entre le comptage et l'appel. */
+        printf("🔴 uxTaskGetSystemState a rendu 0 tâche pour une capacité de %u "
+               "— des tâches sont nées entre le comptage et l'appel. RIEN n'est "
+               "publiable, REJOUER.\n",
+               (unsigned)capacite);
+        free(etat);
+        return 1;
+    }
     printf("temps CPU CUMULÉ depuis le boot (tâche / ticks / %%) :\n");
-    printf("%s", table);
+    for (UBaseType_t i = 0; i < n; i++) {
+        unsigned long long t = (unsigned long long)etat[i].ulRunTimeCounter;
+        /* Le pourcentage est calculé ICI, sur le total RELU — et non récité
+         * d'un « <1% » que FreeRTOS produisait sans dire par rapport à quoi. */
+        unsigned pct = total ? (unsigned)((t * 100ULL) / (unsigned long long)total)
+                             : 0;
+        printf("%-15s\t%llu\t\t%u%%\n", etat[i].pcTaskName, t, pct);
+    }
+    printf("total          \t%llu\n", (unsigned long long)total);
+    free(etat);
     printf("⚠️ cumulé depuis le boot, et le compteur reboucle toutes les "
            "~71 min.\n");
     printf("   Pour chiffrer la charge ACTUELLE, utiliser `cpu [secondes]`.\n");
-    free(table);
+    printf("⚠️ Le %% est par rapport au total DEUX CŒURS : deux IDLE a 99 %% et "
+           "85 %% ne font pas 184 %%, ils font 92 %% d'un biprocesseur au repos.\n");
     return 0;
 }
 
