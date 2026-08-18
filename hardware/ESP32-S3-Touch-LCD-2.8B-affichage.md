@@ -2507,8 +2507,8 @@ sondage et l'affichage sont deux cadences distinctes, et seul le second coûte d
 
 | Mesure | `a64d4c3` (dn3-1) | `ea986ed` (dn3-2) | Δ |
 |---|---:|---:|---|
-| Binaire `desknode.bin` | 886 608 o | **901 328 o** | +14 720 o · partition libre à **79 %** |
-| RAM interne libre | 108 435 o | **103 559 o** | **−4 876 o** = la pile 4 096 o de `dn_rtc` + son `.bss` |
+| Binaire `desknode.bin` | 886 608 o | **903 344 o** | +16 736 o · partition libre à **78 %** |
+| RAM interne libre | 108 435 o | **104 311 o** | **−4 124 o** = la pile 4 096 o de `dn_rtc` + son `.bss` |
 | PSRAM libre | 7 768 324 o | 7 768 236 o | −88 o |
 | Tas LVGL | 17 772 o / 29 % | **20 108 o / 33 %** | **+2 336 o** pour 3 widgets + 2 labels de barre |
 | Plus gros bloc libre | 44 164 / 44 596 | **41 304 / 41 996** | **98,4 % du libre en un bloc** |
