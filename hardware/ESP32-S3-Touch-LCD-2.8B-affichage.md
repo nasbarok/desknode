@@ -2874,3 +2874,46 @@ pouvant régresser (deux grandeurs de plus à construire). Elle **s'améliore de
    limite est **124 caractères de trame** (127 pour la ligne entière, « pc » compris).
    ⇒ La bande « ligne trop longue » est **64..124**, large de 61 octets, donc **atteignable** —
    ce qui est la condition pour que `rejets_trop_longue` ne soit pas un compteur décoratif.
+
+### 17.8 Séance carte du 2026-08-18 — ce que l'œil a ajouté, et ce qu'il a corrigé
+
+**Les constats owner et le détail des mesures de liaison sont en `…-liaison-pc.md` §13.11.**
+Ce qui touche l'AFFICHAGE, et seulement lui :
+
+- ✅ **Le clignotement gris est confirmé RÉPARÉ À L'ŒIL.** §17.3 l'avait trouvé par la mesure
+  (408 flushes pour 232 justifiées) et corrigé ; l'owner confirme *« pas de clignotement »* sous
+  agent réel. ⚠️ **Le chiffre seul ne suffisait pas** : un flush de moins ne dit pas qu'un
+  scintillement a disparu de la dalle.
+- ✅ **Image STABLE sous trafic 1 Hz réel** (*« nickel »*) — pas de déchirement, pas de bande.
+- ✅ **Zéro badge « SIMULÉ »** en régime nominal, **vu**, pas seulement relu de `widget`.
+- ✅ **Deux grandeurs empilées : PRÉFÉRÉES** (*« oui, mieux »*). ⚠️ L'écart avec la maquette de
+  l'addendum §1 (qui les écrit sur UNE ligne) n'est donc plus seulement **assumé** — il est
+  **arbitré dans l'autre sens par l'owner, sur la dalle**.
+- ✅ **Le différenciateur du brief, VU** : agent arrêté, **5 cases à « -- » et AMBIANCE seule
+  vivante**.
+
+**Deux changements de rendu demandés par l'owner EN SÉANCE, et appliqués :**
+
+1. **`RÉSEAU` passe à DEUX GRANDEURS EMPILÉES**, avec ↓ et ↑ comme icônes de grandeur
+   (`LV_SYMBOL_DOWN`/`UP`, U+F078/U+F077 — ⛔ **pas** U+2193/U+2191, hors latin-1, qui seraient
+   dessinées EN SILENCE). ⚠️ La ligne secondaire duplex disparaît : la garder afficherait **les
+   mêmes deux nombres deux fois dans le même rectangle**.
+   ✅ **Aucune borne touchée** : c'est le mécanisme `n_grandeurs` d'AMBIANCE, tel quel.
+2. **La PISTE de la jauge** (le fond, la part non remplie) passe de `0x203040` à **`0x5A5F6A`**,
+   et devient **réglable à chaud** (`widget piste <0xRRGGBB>`) — patron de `opa`/`voile`/`icone` :
+   *un A/B qui exigerait trois reflashs coûterait trois observations à l'owner*.
+   ⚠️ **Constat owner d'origine** : *« la barre de vide apparaît en vert »*. **Le code n'a JAMAIS
+   posé de vert** — `0x203040` est un bleu-gris FONCÉ. Ce qui se voyait est le **PCB vert du fond
+   par contraste simultané**. ⛔ On n'a donc pas « corrigé » une couleur qu'on n'avait pas posée :
+   on a éclairci la piste pour que le violet tranche, et l'œil a arbitré (*« la barre ressort
+   bien »*).
+   ⛔ **CE N'EST PAS LA PASSE DE PALETTE** : `dn3-3` refait l'identité visuelle et rejouera cet
+   arbitrage. Exception ciblée, demandée explicitement par l'owner en séance.
+
+⚠️ **Le tactile a demandé TROIS tours, et le motif est un enseignement d'affichage** : la jauge de
+`RAM` est haute de **10 px**, et quand la case est à « -- » **elle est vide, donc quasi
+invisible**. Les deux premiers tours (31 appuis) n'ont jamais atteint la bande. Il a fallu **armer
+le mock** pour que la barre se remplisse avant que la cible devienne visible — et alors deux
+appuis sur 16 y sont tombés, tous deux rendant « TAP sur RAM ». ⇒ *On ne peut pas viser ce qu'on
+ne voit pas*, et une campagne tactile sur un élément dont l'état d'affichage varie doit **d'abord
+rendre la cible visible**.

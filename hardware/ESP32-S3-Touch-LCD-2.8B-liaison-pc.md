@@ -618,3 +618,160 @@ installée par le pilote AMD.
   ⚠️ **Ce sont des valeurs ABSURDES qui ont sauvé la mesure ; un décalage plausible ne l'aurait
   pas fait.** Le lecteur **compte et rejette** désormais toute ligne malformée, et vérifie que
   les horodatages sont strictement croissants.
+
+## 13.11 🔴 SÉANCE CARTE DU 2026-08-18 — le vrai agent sur COM3, et ce que l'œil a trouvé
+
+> Carte **détachée de WSL**, agent réel sur `COM3`, trois lancements successifs.
+> ⚠️ Tout ce qui suit est mesuré **sur le transport série**, pas par injection console.
+
+### 13.11.1 AC10 — LE TÉMOIN INDÉPENDANT, ÉCRAN CONTRE GESTIONNAIRE DES TÂCHES
+
+**Le critère a été fixé AVANT de regarder** (sinon on justifie ce qu'on voit) : *quelques points
+d'écart = fenêtres d'échantillonnage décalées, **normal** ; un écart de **facteur** = défaut.*
+
+| métrique | écran DeskNode | Gestionnaire des tâches | écart | verdict |
+|---|---:|---:|---|---|
+| CPU % | 14 | 17 | 3 points | ✅ |
+| CPU GHz | 1,3 | 1,5 | 0,2 | ✅ sous le saut médian mesuré (0,8 GHz) |
+| GPU % | 5, quasi constant | oscille 3 · 4 · 5 · 8 | dans la plage | ✅ |
+| **GPU °C** | **47** | **47** | **0** | 🔴 **exact** |
+| RAM % | 63,5 | 64 | 0,5 point | ✅ |
+| **RAM totale** | **31,9 Go** | **31,9 Go** | **0** | ✅ **après correctif** — voir 13.11.2 |
+
+⚠️ Constat owner sur le décalage : *« genre moins d'1 s de décalage, tout à fait acceptable »* —
+c'est exactement le mécanisme que le critère anticipait.
+
+🔴 **LE `47` CONTRE `47` VAUT PLUS QUE SA PRÉCISION.** Le témoin de mapping PMLog était
+**INDIRECT** : `BUS_LANES = 16` et `CLK_MEMCLK ≈ 2000 MHz` prouvaient qu'on interrogeait la bonne
+carte, **pas** que l'indice 8 portait bien la température. Windows vient de le confirmer
+**directement**. ⇒ **L'indice n'est plus un pari.**
+
+⚠️ **UNE NUANCE À GARDER POUR `dn4-5`** : le GPU % est « quasi constant » chez nous et oscille
+3-8 chez Windows. Ce n'est **pas** un écart de valeur, c'est une **agrégation différente** — ADL
+rend l'activité instantanée d'un capteur, Windows moyenne sur ses moteurs. À savoir **avant** de
+décider d'un lissage : lisser une source déjà plus lisse que sa référence n'ajouterait qu'un retard.
+
+### 13.11.2 🔴 LE DÉFAUT QUE L'ŒIL A TROUVÉ, ET QUE PERSONNE D'AUTRE N'AURAIT VU
+
+**Constat owner, verbatim** : *« correspond au gestionnaire des tâches, par contre c'est 31.9
+(pourquoi 34 ?) »*.
+
+```
+34 254 475 264 octets  ÷ 1e9   = 34,3   ← ce que l'écran affichait  (Go DÉCIMAUX)
+                       ÷ 2^30  = 31,9   ← ce que Windows affiche    (Gio BINAIRES)
+```
+
+**Mêmes octets, deux conventions.** Windows affiche des **Gio** et les étiquette « Go ».
+
+🔴 **CE N'EST PAS UN ARRONDI, C'EST UN MENSONGE D'INTERFACE — ET LE PIRE GENRE : celui qui a
+l'air d'un arrondi.** Le module est **posé à côté de la tour** : les deux chiffres se lisent côte
+à côte, tous les jours, avec **7,4 % d'écart**.
+⚠️ **Aucun instrument du firmware ne pouvait le voir.** `flush` voit les zones sales, `pc` voit
+les compteurs, `cpu brut` voit la charge — **aucun ne sait ce que Windows affiche à côté.** C'est
+la définition même d'AC10, et c'est la première fois qu'il rapporte.
+⚠️ **La spec était du bon côté** : l'addendum §1 écrivait déjà « 12.1 / **32** Go », soit la
+convention binaire arrondie. C'est l'implémentation qui avait dérivé.
+
+⇒ **Correctif** : l'agent envoie des **Gio** (2^30). ⛔ **L'étiquette reste « Go », délibérément** :
+c'est ce que Windows écrit en français, et mettre « Gio » ferait du module **le seul afficheur de
+la machine à le dire autrement**.
+
+### 13.11.3 AC2 / AC9 — CE QUE SEUL L'AGENT RÉEL POUVAIT MESURER
+
+| | 300 s | 600 s | note |
+|---|---:|---:|---|
+| trames émises | 1 500 | **3 000** | **5,00 /s** dans les deux cas |
+| erreurs d'envoi · recalages · écrêtages | 0 · 0 · 0 | **0 · 0 · 0** | |
+| **refus signalés par le firmware** | **aucun** | **aucun** | 🔴 *« n trames émises » prouvait n ÉCRITURES ; ceci prouve n **ACCEPTATIONS*** |
+| **écho console (AC2)** | 228,7 o/s · **5,11 lignes/s** | 232,0 o/s · **5,11 lignes/s** | **PLAFOND** : inclut le battement 10 s et tout `ESP_LOGx` |
+| **coût agent (AC9)** | 1,984 % d'un cœur · 0,124 % machine | **2,161 %** · **0,135 %** | |
+
+🔴 **LE PRIX DE W3 EST CONFIRMÉ PAR LA MESURE.** « Une trame par métrique » avait été tranchée en
+annonçant *« ×5 sur l'écho, à mesurer »*. **5,11 lignes/s pour 5 trames/s** : le facteur est bien
+là, et il est payé en connaissance de cause.
+
+🔴 **ET LE TRANSPORT A UN COÛT PROPRE, ISOLÉ** : **2,161 %** d'un cœur en `--serie` contre
+**1,528 %** en `--stdout`, mêmes sources, même cadence. ⇒ **+0,63 pt** pour l'ouverture, l'écriture
+et le drain du port. ⚠️ Ce poste n'existait dans aucun budget : il apparaît parce qu'on a mesuré
+l'agent **là où il tourne vraiment**.
+⚠️ « < 1 % CPU » (brief n°4) : **0,135 % machine** ✅ · **2,161 % d'un cœur** ❌. Les deux lectures
+sont publiées, comme dn2-2 le faisait déjà. ⛔ Le brief ne tranche pas laquelle il vise.
+
+### 13.11.4 Les compteurs après 8 075 trames RÉELLES
+
+| | valeur | lecture |
+|---|---:|---|
+| trames valides | **8 075** | |
+| **rejets, toutes causes** | **0** | aucune trame réelle refusée |
+| doublons | **0** | |
+| pertes seq | **25** (0,31 %) | ⚠️ **attribué** : l'owner a navigué pendant la session, et `build_scene()` bloque le REPL **307-322 ms**, donc le transport. Ce n'est pas du bruit de liaison |
+| **resynchros / reprises** | **2 / 2** | 🔴 **trois lancements d'agent ⇒ DEUX reprises.** Le compteur **ne sur-compte pas** — c'est AC6 prouvé sur le vrai transport, là où dn2-2 pouvait publier une reprise **4 à 9 fois** |
+| latence acceptation→label | n=8 075 · 1 / **204** / **480** ms | ⚠️ **le max dépasse la borne de 250 ms**, et c'est **attribué** : le verrou LVGL était pris pendant les ouvertures de détail. **Déclaré, pas lissé** |
+
+⚠️ **RAPPEL D'INSTRUMENT** : cette latence **n'est plus celle de dn2-2**. Elle agrège désormais
+**les cinq métriques** ; dn2-2 publiait `n=45 : 10 / 42 / 248 ms` pour **une seule**. Les comparer
+serait comparer deux grandeurs différentes.
+
+### 13.11.5 🔴 LA PARADE DTR/RTS SOUS WINDOWS — l'incertitude de dn2-2 tombe
+
+dn2-2 écrivait : *« la parade est WINDOWS-ONLY, et sous Linux elle PROVOQUE le reset qu'elle
+prétend empêcher (A/B mesuré). ⚠️ Le côté Windows n'a jamais été re-vérifié par A/B. »*
+
+**Témoin POSITIF, et c'est ce qui compte** : le compteur d'uptime du firmware.
+
+| | uptime |
+|---|---:|
+| avant le détachement de WSL | **1 180 s** |
+| après **trois** ouvertures/fermetures de `COM3` par l'agent, et ré-attachement | **3 130 s** |
+| **différence** | **+1 950 s** = exactement le temps écoulé |
+
+⇒ **LA CARTE N'A PAS REBOOTÉ.** ⛔ Ce n'est **pas** une absence de symptôme : le compteur
+**continue**, il aurait été remis à zéro par un `esp_restart()`.
+
+⚠️ **CE QUE CE TÉMOIN NE PROUVE PAS, ET IL FAUT L'ÉCRIRE** : que la parade soit **NÉCESSAIRE**.
+Ce n'est **pas** un A/B — l'agent force `dtr=False, rts=False` avant `open()` dans les trois tirs,
+et personne n'a essayé **sans**. ⇒ **Prouvé : avec la parade, Windows n'a pas reset la carte, trois
+fois de suite.** Non prouvé : ce qui se passerait sans elle.
+
+### 13.11.6 Les constats owner de la séance, verbatim
+
+| constat | verdict |
+|---|---|
+| décor plein écran, rétroéclairage fixe | ✅ |
+| 💾 icône disquette à 28 px | ✅ acceptée |
+| deux grandeurs **empilées** | ✅ *« oui, mieux »* — ⚠️ **préférées** à la ligne unique de l'addendum §1, l'écart n'est plus seulement assumé |
+| 5 cases « -- », AMBIANCE seule vivante, agent arrêté | ✅ **le différenciateur du brief, VU** |
+| six cases vivantes, **zéro badge ambre** | ✅ |
+| 🔴 **aucun clignotement gris** | ✅ **le défaut trouvé par la mesure (408 → 234 flushes) est confirmé réparé À L'ŒIL** |
+| image stable sous trafic 1 Hz | ✅ *« nickel »* |
+| « est-ce que ça saute désagréablement ? » | ✅ **non** |
+| vue détail | ✅ *« données live et pas déconnantes »* |
+| **piste de jauge éclaircie** (`0x5A5F6A`) | ✅ *« la barre ressort bien »* |
+| **RÉSEAU ↓/↑ empilés** | ✅ *« ok »* |
+
+⚠️ **NON CONFIRMÉ À L'ŒIL, ET DÉCLARÉ TEL** : que le détail affiche bien **« MIN -- · MAX -- »**.
+L'owner a jugé le détail « pas déconnant » sans vérifier ce point précis. ⇒ **Vérifié par lecture
+du code** : `s_det_minmax` n'a **qu'un seul écrivain** (`dn_ui.c:1946`) et c'est une **constante
+littérale**. ⛔ **Une preuve de code n'est pas un constat owner**, et les deux ne se remplacent pas.
+
+### 13.11.7 Le tactile sur la jauge — et il a fallu trois tours
+
+**AC12 exige de viser LA JAUGE**, pas le centre : c'est le seul endroit où `lv_bar` peut voler le
+tap sans que rien ne le signale. La bande de la jauge RAM est haute de **10 px** (`y = 340..350`,
+formule contrôlée contre le relevé publié de dn3-2 : VENTILOS à `506..516`).
+
+| tour | appuis / taps | dans la bande ? |
+|---|---:|---|
+| 1 | 10 / 10 | ❌ y = 359 · 363 · 373 · 359 · 362 — **9 à 23 px SOUS la barre** |
+| 2 | 21 / 14 | ❌ le plus proche : **337**, à 3 px au-dessus |
+| **3** | **16 / 16** | ✅ **y = 349 et y = 350 — DANS la bande, et les deux rendent « TAP sur RAM »** |
+
+🔴 **POURQUOI LES DEUX PREMIERS TOURS ONT ÉCHOUÉ, ET CE QUE ÇA APPREND** : `RAM` était à « -- »,
+donc **sa jauge était VIDE** — une fine bande de fond, à peine visible. **On ne peut pas viser ce
+qu'on ne voit pas.** Il a fallu **armer le mock** pour que la barre se remplisse et bouge avant
+que la cible devienne atteignable.
+⇒ **Le stimulus est prouvé** : `lv_bar` ne vole rien, le tap traverse jusqu'à la case.
+⚠️ Et un constat non demandé, mais réel : **une bande de 10 px est presque impossible à viser au
+doigt**. Les 47 appuis de la séance ne l'ont atteinte **que deux fois**. Le risque pratique que
+l'AC redoutait est donc faible — mais c'est le correctif qui le rend nul, pas la difficulté de
+visée.
