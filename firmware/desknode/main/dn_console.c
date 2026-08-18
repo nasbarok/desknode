@@ -2680,6 +2680,34 @@ static int cmd_widget(int argc, char **argv)
      *    (D8), l'A/B aurait continué de viser « l'ancienne case ventilateur »
      *    par pur hasard d'index, en l'annonçant comme un choix. La forme est
      *    donc `widget icone <case> <n>`. */
+    /* La PISTE de la jauge — constat owner du 2026-08-18. Même patron que
+     * `opa`/`voile` : l'arbitrage de teinte est un CONSTAT OWNER sur la dalle,
+     * et il ne doit pas coûter un reflash par essai. */
+    if (argc == 3 && strcmp(argv[1], "piste") == 0) {
+        char *fin = NULL;
+        long v = strtol(argv[2], &fin, 0);   /* accepte 0x… et le décimal */
+        if (fin == argv[2] || *fin != '\0' || v < 0 || v > 0xFFFFFF) {
+            printf("usage : widget piste <0xRRGGBB>   (actuelle : 0x%06X)\n",
+                   (unsigned)dn_widget_piste());
+            printf("   la PISTE est le fond de la jauge, la part NON remplie.\n");
+            printf("   ⚠️ le code n'a JAMAIS pose de vert : 0x203040 (l'origine)\n");
+            printf("      est un bleu-gris FONCE. Ce qui se voit verdatre est le\n");
+            printf("      PCB du fond, par contraste simultane.\n");
+            return 1;
+        }
+        esp_err_t err = dn_ui_set_piste((uint32_t)v);
+        if (err == ESP_ERR_TIMEOUT) {
+            printf("verrou LVGL non pris — RIEN n'a change (reessayer)\n");
+            return 1;
+        }
+        printf("piste de jauge = 0x%06X — SCENE RECONSTRUITE\n", (unsigned)v);
+        printf("⚠️ seule RAM porte une jauge aujourd'hui : c'est la seule case ou\n");
+        printf("   le changement se voit.\n");
+        printf("⚠️ la reconstruction a retire le stimulus `anim` et la demo.\n");
+        printf("⛔ dn3-3 refait l'identite visuelle et rejouera cet arbitrage :\n");
+        printf("   ceci n'est PAS la passe de palette.\n");
+        return 0;
+    }
     if (argc == 4 && strcmp(argv[1], "icone") == 0) {
         char *fin = NULL;
         long idx = strtol(argv[2], &fin, 0);
@@ -3021,6 +3049,7 @@ static int cmd_widget(int argc, char **argv)
     }
     if (argc != 1) {
         printf("usage : widget | groupe on|off | opa <0..255> | voile <0..255>\n");
+        printf("        | piste <0xRRGGBB>  (fond de la jauge)\n");
         printf("        | mock on|off | demo on|off | pousser <idx>\n");
         printf("        | icone <case> <0..%d>  (A/B de glyphe sur une case, W4)\n",
                dn_ui_icones_alt_n() - 1);
@@ -3046,6 +3075,9 @@ static int cmd_widget(int argc, char **argv)
                                 : "FINE (N zones, LVGL decide)");
     printf("opacite      : cases %u/255 · voile %u/255\n", dn_widget_opa(),
            dn_ui_voile_opa());
+    printf("piste jauge  : 0x%06X   (le fond de la barre, part NON remplie —\n",
+           (unsigned)dn_widget_piste());
+    printf("               `widget piste <0xRRGGBB>`, arbitrage a l'oeil)\n");
     printf("demo 7e metrique : %s\n", dn_ui_demo_on() ? "AFFICHEE" : "retiree");
 
     /* 🔴 dn3-2 : QUATRE mocks, donc QUATRE formes imprimées. L'ancienne version

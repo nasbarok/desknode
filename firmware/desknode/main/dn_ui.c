@@ -313,9 +313,29 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
         /* Pas de jauge : un débit n'a pas de plein. `ind_max` devrait valoir la
          * capacité du lien, que le firmware ne connaît pas — une jauge dont
          * l'échelle est inventée est un mensonge d'interface silencieux. */
-        .n_grandeurs = 1,
+        /*
+         * 🔴 DEUX GRANDEURS EMPILÉES — CONSTAT OWNER EN SÉANCE CARTE (2026-08-18) :
+         *    « réseau, il faudrait mettre les 2 valeurs l'une au-dessus de l'autre,
+         *    avec flèche vers le bas (reçoit) et vers le haut à côté ».
+         *
+         * ⚠️ CE QUE ÇA REMPLACE : le descendant vivait en grandeur 0 et le couple
+         *    ↓/↑ en LIGNE SECONDAIRE (« ↓ 985 ↑ 48 », verbatim de l'addendum §1).
+         *    L'owner l'a vu sur la dalle et préfère les deux montants à égalité.
+         * ✅ AUCUNE BORNE N'EST TOUCHÉE : c'est EXACTEMENT le mécanisme
+         *    `n_grandeurs` qu'AMBIANCE utilise déjà, icône par grandeur comprise.
+         *    L'agent envoie déjà v1 (↓) et v2 (↑) — rien ne change côté trame.
+         * ⚠️ `LV_SYMBOL_DOWN`/`UP` (U+F078/U+F077), ⛔ PAS les flèches Unicode
+         *    U+2193/U+2191 : celles-ci sont HORS latin-1 et le glyphe absent
+         *    serait dessiné EN SILENCE. Les deux codepoints FontAwesome sont
+         *    VÉRIFIÉS présents dans les deux `.c` de police.
+         * ⚠️ L'unité est portée par les DEUX lignes : elles sont indépendantes, et
+         *    une valeur ABSENTE ne porte jamais son unité — la règle ne tiendrait
+         *    plus si la seconde héritait de la première.
+         */
+        .n_grandeurs = 2,
         .indicateur = false,
-        .grandeurs = {{.unite = "Mb/s"}},
+        .grandeurs = {{.unite = "Mb/s", .icone = LV_SYMBOL_DOWN},
+                      {.unite = "Mb/s", .icone = LV_SYMBOL_UP}},
     },
     [DN_UI_CASE_DISQUE] = {
         /*
@@ -2774,7 +2794,11 @@ static const struct {
     [DN_LINK_M_CPU] = {DN_UI_CASE_CPU, DN_SEC_PC_AUCUNE},
     [DN_LINK_M_GPU] = {DN_UI_CASE_GPU, DN_SEC_PC_AUCUNE},
     [DN_LINK_M_RAM] = {DN_UI_CASE_RAM, DN_SEC_PC_RAM_GO},
-    [DN_LINK_M_NET] = {DN_UI_CASE_RESEAU, DN_SEC_PC_NET_DUPLEX},
+    /* ⚠️ PLUS DE LIGNE SECONDAIRE POUR RÉSEAU (constat owner 2026-08-18) : ↓ et ↑
+     * sont devenues les DEUX GRANDEURS de la case. Les laisser AUSSI en
+     * secondaire afficherait les mêmes deux nombres deux fois dans le même
+     * rectangle — le genre de redondance qui finit par diverger. */
+    [DN_LINK_M_NET] = {DN_UI_CASE_RESEAU, DN_SEC_PC_AUCUNE},
     [DN_LINK_M_DISK] = {DN_UI_CASE_DISQUE, DN_SEC_PC_AUCUNE},
 };
 
@@ -3693,6 +3717,21 @@ esp_err_t dn_ui_set_icone_alt(int idx, int n)
         return ESP_ERR_TIMEOUT;
     }
     s_icone_alt[idx] = k_icones_alt[n].glyphe;
+    build_scene();
+    lvgl_port_unlock();
+    return ESP_OK;
+}
+
+/* La piste de la jauge — même contrat que `dn_ui_set_case_opa` : le style est
+ * résolu à la CRÉATION des objets, donc on reconstruit la scène, et la console
+ * le DIT. Un réglage qui « ne fait rien » sans l'annoncer est la classe de
+ * défaut que `dma` (inerte dans ce build) a coûtée au dépôt. */
+esp_err_t dn_ui_set_piste(uint32_t rgb)
+{
+    if (!lvgl_port_lock(2000)) {
+        return ESP_ERR_TIMEOUT;
+    }
+    dn_widget_set_piste(rgb);
     build_scene();
     lvgl_port_unlock();
     return ESP_OK;

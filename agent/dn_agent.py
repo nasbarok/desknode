@@ -82,7 +82,11 @@ le Gestionnaire des tâches (onglet Performance, « % temps processeur »).
         ⚠️ Le mapping des capteurs PMLog n'est pas devinable : il se VÉRIFIE par
            deux valeurs invariantes — BUS_LANES doit rendre 16 et CLK_MEMCLK
            ~1990 sur cette carte. `SourceGpuAdl` refuse de servir sinon.
-  ram   psutil.virtual_memory() — le % ET LE TOTAL (pas l'utilisé).
+  ram   psutil.virtual_memory() — le % ET LE TOTAL (pas l'utilisé), en GIO
+        BINAIRES (2^30). 🔴 CONSTAT OWNER DU 2026-08-18 : en Go décimaux l'écran
+        annonçait 34,3 quand le Gestionnaire des tâches de la même machine
+        annonçait 31,9 — mêmes octets, deux conventions. Le module est posé à
+        côté de la tour : les deux chiffres se lisent côte à côte.
         🔴 LE TOTAL, PAS L'UTILISÉ, ET C'EST STRUCTUREL : le firmware compose
            « 22,7 / 34,2 Go » en calculant utilisé = % x total. Envoyer deux
            nombres échantillonnés séparément afficherait tôt ou tard deux vérités
@@ -386,9 +390,25 @@ class Collecteur:
             # que tout ce projet traque.
 
         # ── ram : % + TOTAL (pas l'utilisé — voir l'en-tête) ─────────────────
+        # 🔴 EN GIO BINAIRES (2^30), PAS EN GO DECIMAUX (1e9) — CONSTAT OWNER DU
+        #    2026-08-18, ET C'EST UN DEFAUT D'HONNETETE, PAS UN ARRONDI.
+        #    L'ecran affichait « 34,3 Go » pendant que le Gestionnaire des taches
+        #    de la MEME machine affichait « 31,9 Go » : memes octets
+        #    (34 254 475 264), deux conventions. Windows affiche des GIO et les
+        #    etiquette « Go ».
+        #    ⚠️ Le module est POSE A COTE DE LA TOUR : les deux chiffres sont lus
+        #       cote a cote, tous les jours. Une divergence de 7,4 % entre l'ecran
+        #       et sa propre source est exactement le mensonge d'interface que ce
+        #       depot traque — en plus discret, parce qu'il a l'air d'un arrondi.
+        #    ⚠️ La maquette de l'addendum §1 ecrivait deja « 12.1 / 32 Go », soit
+        #       la convention BINAIRE arrondie : la spec etait du cote de Windows.
+        #    ⛔ L'ETIQUETTE RESTE « Go » et c'est DELIBERE : c'est ce que Windows
+        #       ecrit en francais. Mettre « Gio » serait plus pur et rendrait le
+        #       module le SEUL afficheur de la machine a le dire autrement.
+        #       La convention est ecrite ici pour que personne ne la « corrige ».
         vm = psutil.virtual_memory()
         out.append(("ram", _dx(vm.percent, BORNES["ram"][0], e, "ram.pct"),
-                    _dx(vm.total / 1e9, BORNES["ram"][1], e, "ram.total")))
+                    _dx(vm.total / 2**30, BORNES["ram"][1], e, "ram.total")))
 
         # ── net : ↓ et ↑ en Mb/s (BITS — c'est l'unité du descripteur) ───────
         n1 = psutil.net_io_counters()

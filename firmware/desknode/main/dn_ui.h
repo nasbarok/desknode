@@ -635,6 +635,10 @@ const char *dn_ui_icone_alt_nom(int n);
 int dn_ui_icone_alt(int idx);
 esp_err_t dn_ui_set_icone_alt(int idx, int n);
 
+/* ── La PISTE de la jauge (constat owner 2026-08-18) ──────────────────────────
+ * Passe par dn_widget (une seule définition) et reconstruit la scène. */
+esp_err_t dn_ui_set_piste(uint32_t rgb);
+
 /* ── AC9 : l'opacité des CASES ────────────────────────────────────────────────
  * Passe par dn_widget (une seule définition de l'aplat) et reconstruit la scène. */
 esp_err_t dn_ui_set_case_opa(uint8_t opa);

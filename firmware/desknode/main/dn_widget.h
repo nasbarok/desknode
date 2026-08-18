@@ -298,6 +298,15 @@ void dn_widget_maj(const dn_widget_desc_t *desc, const dn_widget_etat_t *etat,
 /* Remet TOUS les pointeurs à NULL. À appeler aux trois sites de démontage. */
 void dn_widget_oublier(dn_widget_t *w);
 
+/* ── La PISTE de la jauge (le fond, la part NON remplie) ─────────────────────
+ * Constat owner du 2026-08-18 : la piste sombre d'origine (`0x203040`) se lit
+ * verdâtre contre le PCB du fond et n'aide pas l'indicateur violet à ressortir.
+ * Réglable à chaud (`widget piste <0xRRGGBB>`) — même patron que `opa`/`voile` :
+ * l'arbitrage est un CONSTAT OWNER sur la dalle, pas une intuition.
+ * ⚠️ N'affecte que les jauges CRÉÉES ensuite ⇒ l'appelant reconstruit la scène. */
+void dn_widget_set_piste(uint32_t rgb);
+uint32_t dn_widget_piste(void);
+
 /*
  * ── AC8 : LE GROUPAGE D'INVALIDATION, ET C'EST UN A/B, PAS UN RÉGLAGE ────────
  *

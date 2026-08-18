@@ -70,6 +70,30 @@ static const char *TAG = "dn_widget";
  * lv_color.h:49 : 70 % de 255 fait 178,5 et LVGL tronque). C'est l'état des lieux,
  * monté de 40 % le 2026-08-16 après le constat owner « les pistes claires
  * mangeaient le texte blanc ». */
+/*
+ * ── LA PISTE DE LA JAUGE — RÉGLABLE À CHAUD (constat owner, 2026-08-18) ──────
+ *
+ * 🔴 CONSTAT OWNER EN SÉANCE CARTE : « la barre de vide apparaît en vert,
+ *    pourrait être plus claire pour faire ressortir la violette ».
+ *    ⚠️ Le code ne posait PAS de vert : `0x203040` est un bleu-gris FONCÉ. Ce
+ *       qui se voit est très probablement le PCB vert du fond qui joue par
+ *       contraste simultané autour d'une piste sombre. ⛔ On ne « corrige » donc
+ *       pas une couleur qu'on n'a pas posée : on ÉCLAIRCIT la piste pour que le
+ *       violet de l'indicateur tranche, et on laisse l'œil arbitrer.
+ *
+ * ⚠️ RÉGLABLE À CHAUD, ET C'EST LE PATRON DU FICHIER (`widget opa`,
+ *    `widget voile`, `widget icone`) : « un A/B qui exigerait trois reflashs
+ *    coûterait trois observations à l'owner pour un rendement qui baisse ».
+ * ⚠️ dn3-3 refait l'identité visuelle et rejouera cet arbitrage — ce défaut-ci
+ *    est corrigé sur demande owner explicite, ⛔ ce n'est PAS la passe de
+ *    palette, qui reste à dn3-3.
+ */
+#define W_COL_PISTE_DEFAUT 0x5a5f6a
+static uint32_t s_piste = W_COL_PISTE_DEFAUT;
+
+void dn_widget_set_piste(uint32_t rgb) { s_piste = rgb & 0xFFFFFF; }
+uint32_t dn_widget_piste(void) { return s_piste; }
+
 static uint8_t s_opa = LV_OPA_70;
 /*
  * ── W7 TRANCHÉ PAR LA MESURE : LE GROUPAGE EST LE DÉFAUT (AC8) ───────────────
@@ -321,7 +345,7 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
         lv_obj_set_pos(out->jauge, W_PAD, y_bas + 6);
         lv_obj_set_size(out->jauge, w - 2 * W_PAD, W_JAUGE_H);
         lv_bar_set_range(out->jauge, desc->ind_min, desc->ind_max);
-        lv_obj_set_style_bg_color(out->jauge, lv_color_hex(0x203040), 0);
+        lv_obj_set_style_bg_color(out->jauge, lv_color_hex(s_piste), 0);
         lv_obj_set_style_bg_opa(out->jauge, LV_OPA_COVER, 0);
         lv_obj_set_style_bg_color(out->jauge, lv_color_hex(desc->couleur),
                                   LV_PART_INDICATOR);
