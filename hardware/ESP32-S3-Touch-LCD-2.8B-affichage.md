@@ -2712,7 +2712,18 @@ avant/après une écoute passive de 45 s) :
 
 ⇒ **§16.1 est reproductible à ≤ 1 % près.** C'est ce qui autorise à s'en servir de baseline.
 
-### 17.2 🔴 LES TROIS RÉGIMES, MÊME FIRMWARE, MÊME SESSION (AC7)
+### 17.2 🔴 LES TROIS RÉGIMES, MÊME FIRMWARE (`21d02be`), MÊME SESSION (AC7)
+
+> ⚠️ **CES RELEVÉS PORTENT SUR `21d02be`, PAS SUR LE FIRMWARE LIVRÉ `2d97850`.**
+> Relevé en revue de code le 2026-08-18. `2d97850` (séance carte) modifie **cinq fichiers de
+> firmware** — `dn_ui.c` +45, `dn_widget.c` +26, `dn_console.c` +32, `dn_ui.h` +4,
+> `dn_widget.h` +9 — dont le passage de **`RÉSEAU` à deux grandeurs** et la suppression de sa
+> secondaire duplex. ⛔ **AC12 interdit nommément de mesurer trois commits avant le livré**
+> (« c'est l'écart déclaré de dn3-2 ») : l'écart est donc **DÉCLARÉ ICI**, et le re-relevé sur
+> `2d97850` est une **tâche de séance carte ouverte** (décision owner du 2026-08-18).
+> ⚠️ Le régime **(c) `widget rafale`** est en outre **publié incomplet** (8 colonnes sur 12
+> valent « — ») et son **témoin de validité `cycles intercalés = 0` n'a jamais été relevé** —
+> AC7 exigeait les deux. Même tâche de séance.
 
 Instrument : **`flush` + `cpu brut` uniquement**. ⛔ `cpu N` est interdit — il **bloque** la
 tâche du REPL, et **sur la branche A le REPL EST le transport** : il décrirait le dashboard au
@@ -2732,6 +2743,19 @@ que `CPU` et `GPU` portent désormais **deux labels au lieu d'un**.
 supplémentaires sont GRATUITES en pixels**, parce que l'invalidation porte sur le **conteneur**
 (225 × 156) et pas sur les enfants. ⚠️ En mode **fin**, ce serait +1 flush par grandeur — le
 firmware sait jouer les deux branches (`widget groupe on|off`).
+
+🔴 **L'ÉCART `cycles/s` A UNE CAUSE MÉCANIQUE, ET ELLE EST DANS LE CODE** (trouvée en revue
+le 2026-08-18, après coup). `2,05 cyc/s` contre `~1,2` prédit, et `2,52 flush/cyc` au lieu de
+4,4 : c'est la signature de **cinq poussées réparties sur ~2 cycles**, pas d'un cycle unique.
+En cause : `dn_ui_pc_maj()` prend **et rend** le verrou LVGL **à chaque métrique**, donc la
+boucle « groupée » de `dn_link.c` produit **cinq verrous**, pas un — et entre deux, la tâche
+LVGL (priorité supérieure) reprend le mutex et rend un cycle complet.
+⇒ **« Groupé » signifiait « dans le même RÉVEIL de `dn_link` », jamais « dans le même cycle
+LVGL »** — ce que `dn_link.h` affirmait pourtant, et qui est corrigé depuis.
+⚠️ **Ces chiffres restent VALIDES** : c'est bien le régime que le produit produit. Ce qui était
+faux, c'est sa description. ⛔ Le « vrai » groupage (les cinq sous UN verrou) est **NON ADOPTÉ**
+et renvoyé à `dn4-4` avec son A/B — il allongerait la fenêtre bloquante, donc **le PIC**, ce que
+W4 cherchait précisément à réduire. (Décision owner du 2026-08-18.)
 
 **Confrontation à la prédiction, écrite AVANT la mesure** (~4,4 flush/cyc, ~151 000 px/cyc,
 CPU ~11,0 %, cyc/s ~1,2) :
@@ -2842,7 +2866,7 @@ la §0 ne bouge pas.**
 
 ### 17.6 Non-régression — table avant/après, **sur le firmware LIVRÉ**
 
-| Grandeur | T0 (`395310e`) | **dn4-1 livré** | écart |
+| Grandeur | T0 (`395310e`) | **`21d02be`** ⚠️ | écart |
 |---|---:|---:|---:|
 | Binaire `desknode.bin` | 908 944 o | **914 048 o** | **+5 104 o** (partition libre à 78 %) |
 | RAM interne libre | 104 287 o | **104 087 o** | **−200 o** |

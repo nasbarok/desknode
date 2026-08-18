@@ -489,7 +489,10 @@ là, sans élévation, sans driver, sans .NET — donc **sans franchir la fronti
 ⚠️ **LE MAPPING DES CAPTEURS PMLog N'EST PAS DEVINABLE, ET IL SE VÉRIFIE.** Les indices viennent
 de l'énumération `ADLSensorType` du SDK ADL ; les prendre pour argent comptant, ce serait risquer
 de publier une tension comme une température. **Le témoin est éliminatoire** : les mêmes indices
-doivent rendre `BUS_LANES = 16` et `CLK_MEMCLK ≈ 2000 MHz` sur une RX 6800 XT. L'agent **refuse
+doivent rendre une **largeur de lien PCIe légale** et une **horloge mémoire plausible** — ⚠️ **PAS
+`BUS_LANES = 16` exactement** : une RX 6000 abaisse son lien au repos, et l'exiger ferait refuser
+la source GPU sur une carte saine (corrigé en revue le 2026-08-18 : trois textes affirmaient une
+égalité que le code ne vérifie pas, et ne doit pas vérifier). L'agent **refuse
 de servir** sinon. (Relevés : 16 et 1976-1990 MHz selon le tir.)
 ⚠️ **Cette tour expose SEPT `iAdapterIndex` pour UN SEUL GPU physique** (une entrée par sortie
 d'affichage) : l'agent prend **le premier qui RÉPOND à PMLog avec un mapping cohérent**, pas
@@ -642,7 +645,7 @@ d'écart = fenêtres d'échantillonnage décalées, **normal** ; un écart de **
 c'est exactement le mécanisme que le critère anticipait.
 
 🔴 **LE `47` CONTRE `47` VAUT PLUS QUE SA PRÉCISION.** Le témoin de mapping PMLog était
-**INDIRECT** : `BUS_LANES = 16` et `CLK_MEMCLK ≈ 2000 MHz` prouvaient qu'on interrogeait la bonne
+**INDIRECT** : une largeur de lien PCIe légale et une horloge mémoire plausible prouvaient qu'on interrogeait la bonne
 carte, **pas** que l'indice 8 portait bien la température. Windows vient de le confirmer
 **directement**. ⇒ **L'indice n'est plus un pari.**
 

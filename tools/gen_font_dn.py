@@ -570,17 +570,28 @@ ENTETE_MODELE = u'''/*
  *    convertissant seul (`lv_font_conv` échoue bruyamment sur un codepoint
  *    absent), pas déduit d'une table.
  *
- * 🔴 LE SUBSTITUT RETENU POUR VENTILOS EST `cog` (0xF013), tranché par CONSTAT
- *    OWNER le 2026-08-17, A/B joué sur la dalle : les quatre candidats sont
- *    embarqués ensemble et commutés à chaud (`widget icone <0..3>`) plutôt que
- *    par trois reflashs. Verdict : `sync-alt` « ne dit rien », `wind` écarté,
- *    `cog` RETENU — « un engrenage, ça dit pièce mécanique en rotation ».
- *    Et il est GRATUIT : 0xF013 est DÉJÀ l'un des codepoints de symboles que
- *    `built_in_font_gen.py` injecte, l'icône retenue ne coûte donc aucun glyphe
- *    de plus que la police de base.
- *    ⚠️ Cette phrase annonçait `sync-alt` jusqu'au 2026-08-18 — un fichier
- *    GÉNÉRÉ qui contredisait le descripteur, donc un mensonge qui revenait à
- *    chaque régénération. Relevé en revue de code.
+ * 🔴 L'ICÔNE DE LA CASE 4 EST LA DISQUETTE `save` (0xF0C7), tranchée par DÉCISION
+ *    OWNER le 2026-08-18 (« icône disquette ») EN MÊME TEMPS QUE LE RENOMMAGE
+ *    `VENTILOS` -> `DISQUE` : la case a changé de métrique (tr/min -> Mo/s), donc
+ *    d'icône. Elle est GRATUITE — 0xF0C7 est DÉJÀ l'un des 60 codepoints de
+ *    symboles que `built_in_font_gen.py` injecte : union `-r` inchangée à 68
+ *    glyphes, delta = 0, les deux `.c` de police BIT-IDENTIQUES.
+ *    ⚠️ Vérifié DANS LES `.c` PRODUITS avec `codepoints_du_c()`, ⛔ jamais par un
+ *    test de bornes — c'est ce test-là qui avait fait croire `fan` présent.
+ *
+ * 📜 HISTORIQUE DE CETTE LIGNE — ELLE A MENTI DEUX FOIS, ET C'EST LA MÊME CAUSE.
+ *    · jusqu'au 2026-08-17 elle annonçait `sync-alt`, alors que le descripteur
+ *      disait autre chose ;
+ *    · corrigée en `cog` le 2026-08-18… et re-fausse le jour même, parce que la
+ *      story dn4-1 a changé l'icône POUR `save` sans toucher `ENTETE_MODELE`.
+ *    🔴 LA CAUSE N'EST PAS L'ÉTOURDERIE, C'EST L'ENDROIT : `dn_font.h` est
+ *    GÉNÉRÉ, donc toute correction faite dans le `.h` est effacée à la
+ *    régénération suivante. ⛔ CE TEXTE SE CORRIGE **ICI**, dans
+ *    `tools/gen_font_dn.py`, JAMAIS dans `main/fonts/dn_font.h`.
+ *    ⚠️ Et il décrit un CHOIX D'AFFICHAGE, qui vit dans `dn_ui.c` (`k_desc[].icone`)
+ *    et dans `k_icones_alt[]` : ce fichier ne peut que le RECOPIER, donc il
+ *    re-divergera. La seule vraie parade serait de ne pas le recopier du tout.
+ *    (Relevé en revue de code le 2026-08-18, DEUXIÈME occurrence.)
  *
  * Reproduction :  python3 tools/gen_font_dn.py
  * La ligne de commande exacte est dans l'en-tête de chaque `.c` généré.
