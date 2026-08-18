@@ -141,11 +141,18 @@ static const char *TAG = "dn_ui";
 #define DN_UI_CASE_GPU 1
 #define DN_UI_CASE_RAM 2
 #define DN_UI_CASE_RESEAU 3
-#define DN_UI_CASE_VENT 4
+/* 🔴 dn4-1 / D8 : l'index 4 n'est plus VENTILOS mais DISQUE. Le SYMBOLE et le
+ * LIBELLÉ changent ; ⛔ les commentaires HISTORIQUES qui racontent pourquoi
+ * VENTILOS a existé sont ANNOTÉS, pas réécrits — l'histoire d'un dépôt ne se
+ * masque pas, et c'est elle qui explique pourquoi quatre glyphes de ventilateur
+ * restent embarqués. Motif du changement : les RPM boîtier et CPU passent par le
+ * Super I/O de LibreHardwareMonitor (driver kernel + admin), et D8 sort le Ring0
+ * du périmètre V1. Une case qui ne peut pas être alimentée n'est pas une case. */
+#define DN_UI_CASE_DISQUE 4
 #define DN_UI_CASE_AMB 5
 
 static const char *const k_nom[DN_UI_METRIQUES] = {
-    "CPU", "GPU", "RAM", "RÉSEAU", "VENTILOS", "AMBIANCE",
+    "CPU", "GPU", "RAM", "RÉSEAU", "DISQUE", "AMBIANCE",
 };
 
 /*
@@ -158,7 +165,7 @@ static const char *const k_nom[DN_UI_METRIQUES] = {
 static const bool k_widget[DN_UI_METRIQUES] = {
     [DN_UI_CASE_CPU] = true,   [DN_UI_CASE_GPU] = true,
     [DN_UI_CASE_RAM] = true,   [DN_UI_CASE_RESEAU] = true,
-    [DN_UI_CASE_VENT] = true,  [DN_UI_CASE_AMB] = true,
+    [DN_UI_CASE_DISQUE] = true, [DN_UI_CASE_AMB] = true,
 };
 
 /*
@@ -213,9 +220,17 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
         .icone = DN_ICONE_MICROCHIP,
         .titre = "CPU",
         .couleur = 0x9b6cff, /* violet */
-        .n_grandeurs = 1,
+        /* 🔴 D10 (dn4-1) : DEUX grandeurs — % et fréquence. ⚠️ La TEMPÉRATURE
+         *    CPU que la maquette de l'addendum §1 dessinait (« CPU 54°C ») est
+         *    INATTEIGNABLE sans Ring0, et D8 sort le Ring0 du périmètre V1 :
+         *    c'est la FRÉQUENCE qui prend la place, parce qu'elle est libre de
+         *    droits ET qu'elle bouge (mesuré sur la tour : 1,2 à 3,2 GHz).
+         * ⚠️ Pas de jauge : un % de CPU n'en avait déjà pas, et à n = 2 la
+         *    géométrie ne laisserait plus de place à la secondaire (contrat
+         *    écrit dans `dn_widget.h`). */
+        .n_grandeurs = 2,
         .indicateur = false,
-        .grandeurs = {{.unite = "%"}},
+        .grandeurs = {{.unite = "%"}, {.unite = "GHz"}},
     },
     /*
      * ── LES TROIS NEUVES DE dn3-2 (W6, W10) ─────────────────────────────────
@@ -243,9 +258,30 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
         .icone = DN_ICONE_DESKTOP,
         .titre = "GPU",
         .couleur = 0x35d6e8, /* cyan — famille « données PC » */
-        .n_grandeurs = 1,
+        /*
+         * 🔴 D10 (dn4-1) : DEUX grandeurs, et LA GRANDEUR 0 CHANGE DE NATURE —
+         *    elle était la TEMPÉRATURE (le mock rampait de 38 à 72 « °C »), elle
+         *    devient le POURCENTAGE D'UTILISATION, la °C passant en grandeur 1.
+         *    C'est l'ordre de la maquette (« 46 % · 61°C ») et l'ordre de tout
+         *    le reste du dashboard : la grandeur 0 est celle qui porterait la
+         *    jauge et celle que le détail montre en premier.
+         *
+         * ✅ W1 EST FERMÉE PAR LA MESURE, ET DANS L'AUTRE SENS QUE PRÉVU. Le
+         *    cadrage annonçait NVML — inapplicable, la tour est une AMD Radeon
+         *    RX 6800 XT (contrôleur UNIQUE) — et pré-autorisait le repli « % seul,
+         *    °C déclarée absente ». LE REPLI N'A PAS ÉTÉ NÉCESSAIRE : `atiadlxx.dll`
+         *    (`ADL2_New_QueryPMLogData_Get`, ctypes, SANS élévation ni driver)
+         *    rend le % ET la °C en UN appel, pour 0,5 ms de CPU.
+         * ⚠️ Et le candidat que le cadrage nommait pour le % — les 720 instances
+         *    WMI `GPUEngine` — a été MESURÉ à 342 ms de CPU par tir, soit 657x
+         *    plus cher : à lui seul il faisait sauter le critère n°4 du brief
+         *    (« < 1 % CPU ») et ne tenait même pas la cadence 1 Hz.
+         * ⚠️ La 2ᵉ grandeur reste DÉCLARÉE même si une source future ne la donne
+         *    pas : W10 fait afficher « -- » en gris sur CETTE ligne seulement.
+         */
+        .n_grandeurs = 2,
         .indicateur = false,
-        .grandeurs = {{.unite = "\xC2\xB0" "C"}},
+        .grandeurs = {{.unite = "%"}, {.unite = "\xC2\xB0" "C"}},
     },
     [DN_UI_CASE_RAM] = {
         .icone = DN_ICONE_MEMORY,
@@ -281,26 +317,59 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
         .indicateur = false,
         .grandeurs = {{.unite = "Mb/s"}},
     },
-    [DN_UI_CASE_VENT] = {
+    [DN_UI_CASE_DISQUE] = {
         /*
-         * W4 TRANCHÉ PAR CONSTAT OWNER, 2026-08-17, A/B joué sur la dalle.
-         * `fan` (0xF863) est ABSENT du FontAwesome du dépôt (arrivé en 5.11,
-         * le `.woff` est antérieur — vérifié en le convertissant SEUL, pas
-         * déduit d'une table). Quatre substituts embarqués et commutés à chaud
-         * (`widget icone`) : `sync-alt` « ne dit rien » (owner), `wind` écarté,
-         * `cog` RETENU — « un engrenage, ça dit pièce mécanique en rotation ».
-         * 🔴 ET IL EST GRATUIT : 0xF013 est DÉJÀ l'un des 61 codepoints de
-         *    symboles que `built_in_font_gen.py` injecte (61459). L'icône
-         *    retenue ne coûte donc AUCUN glyphe de plus que la police de base.
+         * ── HISTORIQUE, CONSERVÉ ET ANNOTÉ (dn4-1 / W11) ────────────────────
+         * ⚠️ CE PARAGRAPHE DÉCRIT LA CASE **VENTILOS**, QUI OCCUPAIT CET INDEX
+         *    JUSQU'À dn3-2. Il est gardé parce qu'il explique pourquoi quatre
+         *    glyphes de ventilateur restent embarqués dans la police. ⛔ Il n'est
+         *    PAS réécrit : l'histoire d'un dépôt ne se falsifie pas.
+         *
+         *   « W4 TRANCHÉ PAR CONSTAT OWNER, 2026-08-17, A/B joué sur la dalle.
+         *     `fan` (0xF863) est ABSENT du FontAwesome du dépôt (arrivé en 5.11,
+         *     le `.woff` est antérieur — vérifié en le convertissant SEUL, pas
+         *     déduit d'une table). Quatre substituts embarqués et commutés à
+         *     chaud (`widget icone`) : `sync-alt` « ne dit rien » (owner), `wind`
+         *     écarté, `cog` RETENU — « un engrenage, ça dit pièce mécanique en
+         *     rotation ». ET IL EST GRATUIT : 0xF013 est DÉJÀ l'un des
+         *     codepoints de symboles que `built_in_font_gen.py` injecte. »
+         *
+         * ── CE QUE LA CASE EST AUJOURD'HUI (D8, 2026-08-18) ──────────────────
+         * 🔴 DISQUE. Le ventilateur sort du périmètre V1 avec le Ring0 (D8).
+         *
+         * ✅ ICÔNE : la DISQUETTE `save` (U+F0C7), DÉCISION OWNER du 2026-08-18.
+         *    Et elle coûte ZÉRO glyphe — MESURÉ avec `codepoints_du_c()` du
+         *    dépôt (⛔ pas par un test de bornes, c'est ce test-là qui avait fait
+         *    croire `fan` présent) : U+F0C7 est déjà l'un des 60 symboles amont,
+         *    présent dans les DEUX `.c` (260 codepoints / 3 cmaps chacun),
+         *    l'union `-r` reste à 68 et les `.c` sont BIT-IDENTIQUES (sha256).
+         *
+         * ✅ GRANDEUR : le DÉBIT, tranché PAR LA MESURE (W2), pas par la
+         *    maquette. Critère écrit AVANT la mesure (« une case de six doit
+         *    BOUGER », quantifié) puis session réelle de 16 min à 1 Hz sur la
+         *    tour, les deux candidats échantillonnés ENSEMBLE à la MÊME
+         *    résolution (le dixième d'unité affichée) :
+         *      · débit I/O      : texte changé 93,3 % du temps, étendue 268,4 Mo/s
+         *      · taux d'occupation : texte changé 0,0 % du temps, étendue NULLE
+         *        (54,9 % du premier au dernier échantillon)
+         *    ⇒ l'occupation est une CASE MORTE. W12 ne se pose donc pas.
+         *
+         * ⛔ PAS DE JAUGE, et c'est le MÊME motif écrit que pour RÉSEAU : un
+         *    débit n'a pas de plein. `ind_max` devrait valoir la capacité du
+         *    lien, que le firmware ne connaît pas — et une jauge dont l'échelle
+         *    est inventée est un mensonge d'interface silencieux.
+         *
+         * ⚠️ COULEUR PROVISOIRE : le cyan est HÉRITÉ de VENTILOS (famille
+         *    « données PC »). La teinte exacte est un LEGS EXPLICITE À dn3-3
+         *    (décision owner : « dn4-1 stabilise, dn3-3 peaufine »). ⛔ Ne pas la
+         *    présenter comme une décision.
          */
-        .icone = DN_ICONE_COG,
-        .titre = "VENTILOS",
-        .couleur = 0x35d6e8, /* cyan */
+        .icone = DN_ICONE_SAVE,
+        .titre = "DISQUE",
+        .couleur = 0x35d6e8, /* cyan — PROVISOIRE, hérité de VENTILOS (legs dn3-3) */
         .n_grandeurs = 1,
-        .indicateur = true,
-        .ind_min = 0,
-        .ind_max = 2000, /* tr/min — la plage ANNONCÉE du mock (AC3) */
-        .grandeurs = {{.unite = "tr/min"}},
+        .indicateur = false,
+        .grandeurs = {{.unite = "Mo/s"}},
     },
     [DN_UI_CASE_AMB] = {
         .icone = DN_ICONE_THERMOMETER_HALF,
@@ -610,13 +679,21 @@ static const char *s_icone_alt[DN_UI_METRIQUES];
 static const struct {
     const char *nom;
     const char *glyphe;
-} k_icones_vent[] = {
+} k_icones_alt[] = {
+    /* ⚠️ LES QUATRE PREMIERS SONT LES CANDIDATS VENTILATEUR DE dn3-1, ET ILS
+     *    RESTENT. La case n'est plus VENTILOS (D8), mais les retirer coûterait
+     *    une VRAIE régénération de police : MESURÉ le 2026-08-18, `cog` (0xF013)
+     *    est déjà un symbole amont, donc le ménage n'économiserait que 3 glyphes
+     *    tout en faisant passer l'union `-r` de 68 à 65. Hors périmètre dn4-1. */
     {"sync-alt (2 fleches en rotation)", DN_ICONE_SYNC_ALT},
     {"wind (lignes de souffle)", DN_ICONE_WIND},
     {"cogs (deux engrenages)", DN_ICONE_COGS},
     {"cog (un engrenage)", DN_ICONE_COG},
+    /* dn4-1 : l'icône RETENUE pour DISQUE, dans la liste pour que l'A/B puisse
+     * y revenir sans reflasher. Gratuite (déjà dans les deux `.c`). */
+    {"save (la disquette) — DISQUE", DN_ICONE_SAVE},
 };
-#define DN_UI_ICONES_VENT (sizeof(k_icones_vent) / sizeof(k_icones_vent[0]))
+#define DN_UI_ICONES_ALT (sizeof(k_icones_alt) / sizeof(k_icones_alt[0]))
 
 /*
  * ── W9 TRANCHÉ : L'OPACITÉ DÉFINITIVE DU VOILE EST 90/255 (35 %) ─────────────
@@ -682,6 +759,20 @@ static uint8_t s_voile_opa = 90;
  * ⚠️ `widget rafale` garde son sens : il ajoute CPU, AMBIANCE et la barre au
  *    même cycle — les six, pas seulement les quatre mocks.
  */
+/*
+ * 🔴 dn4-1 : CES TROIS NOMBRES NE BOUGENT PAS, ET C'EST UN CHOIX MOTIVÉ.
+ *    L'index 4 change de métrique (VENTILOS -> DISQUE, D8) et donc d'unité
+ *    (tr/min -> Mo/s). La tentation était de recaler la rampe sur ce que la tour
+ *    produit réellement (0 à 268 Mo/s, mesuré). ⛔ ON NE LE FAIT PAS :
+ *      · la ligne « mock on / groupage on » de §16.1 EST la baseline d'AC7, et
+ *        elle doit rester REJOUABLE à l'identique — même nombre de chiffres
+ *        (4), même période (20 s), donc même géométrie de texte ;
+ *      · 800 à 1 600 Mo/s reste PLAUSIBLE en Mo/s : c'est la plage d'un NVMe,
+ *        et un mock doit être plausible sans être crédible — le badge
+ *        « SIMULÉ » et l'ambre s'occupent du reste.
+ *    ⚠️ Un mock est un INSTRUMENT. Le recaler « pour faire joli » aurait
+ *       invalidé un chiffre publié afin d'améliorer une apparence.
+ */
 #define DN_MOCK_MIN 800
 #define DN_MOCK_MAX 1600
 #define DN_MOCK_PERIODE_S 20
@@ -715,11 +806,34 @@ static const dn_mock_t k_mock[DN_UI_METRIQUES] = {
     [DN_UI_CASE_GPU] = {true, 38, 72, 26, DN_SEC_SIMULE},
     [DN_UI_CASE_RAM] = {true, 18, 78, 34, DN_SEC_RAM_GO},
     [DN_UI_CASE_RESEAU] = {true, 5, 985, 14, DN_SEC_RESEAU_DUPLEX},
-    [DN_UI_CASE_VENT] = {true, DN_MOCK_MIN, DN_MOCK_MAX, DN_MOCK_PERIODE_S,
-                         DN_SEC_SIMULE},
+    [DN_UI_CASE_DISQUE] = {true, DN_MOCK_MIN, DN_MOCK_MAX, DN_MOCK_PERIODE_S,
+                           DN_SEC_SIMULE},
 };
 
-static bool s_mock_on = true;
+/*
+ * ── W7 TRANCHÉ (dn4-1) : LE MOCK EST COUPÉ PAR DÉFAUT, PAS SUPPRIMÉ ──────────
+ *
+ * 🔴 `false` DEPUIS dn4-1 — c'était `true` depuis dn3-1. Les quatre cases
+ *    mockées ont désormais des sources RÉELLES ; laisser le générateur armé
+ *    ferait cohabiter un chiffre inventé et une mesure sur le même dashboard,
+ *    et le brief demande « ZÉRO badge SIMULÉ » en régime nominal.
+ *
+ * ⛔ MAIS ON NE LE SUPPRIME PAS, ET LE MOTIF EST CHIFFRÉ : la ligne
+ *    « mock on / groupage on » de §16.1 (10,18 % CPU · 3,47 flush/cycle ·
+ *    120 756 px/cycle · duty 6,7 %) est LA BASELINE à laquelle AC7 confronte le
+ *    régime réel. Retirer le mock du firmware rendrait cette ligne INJOUABLE et
+ *    la comparaison impossible — on aurait publié un chiffre sans pouvoir le
+ *    confronter à celui qu'il remplace, exactement la faute que dn3-2 a payée
+ *    trois fois. `widget mock on` reste donc la commande qui ARME l'instrument.
+ *
+ * ⚠️ CONSÉQUENCE NON DEMANDÉE, ÉCRITE D'AVANCE : PC éteint, l'écran passe de
+ *    « quatre cases qui bougent » à CINQ cases sur six à « -- ». Ce n'est pas
+ *    une régression, c'est l'honnêteté qui arrive AVANT son remède (dn4-3).
+ *    Corollaire chiffré : au repos sans agent, la charge du module tombe de
+ *    10,18 % à ~1,49 % (§16.1 ligne 2) — le mock coûtait sept fois le module
+ *    qu'il décorait.
+ */
+static bool s_mock_on = false;
 /* 🔴 D1 (revue 2026-08-18) : « cette case porte une POUSSÉE manuelle », donc le
  * tick du mock coupé ne doit pas la révoquer. Sans ce drapeau, chaque
  * `widget pousser 4` coûtait DEUX redessins au lieu d'un et polluait le cas (a′)
@@ -1671,34 +1785,81 @@ static void build_detail(lv_obj_t *scr, int idx)
  * l'ignorait, ce que `-Wunused-but-set-variable` aurait fini par dire. Le nom
  * d'état rendu porte déjà l'information, et le régime la porte une seconde
  * fois. Un paramètre de sortie mort suggère un contrat qui n'existe pas. */
+/*
+ * ── LES DEUX TABLES CACHÉES, DÉSORMAIS DES TABLES (dn4-1 / AC6) ──────────────
+ *
+ * 🔴 CE SONT ELLES QUE dn4-1 AURAIT FAIT MENTIR. Le dépôt répète que « ajouter
+ *    une métrique = une ligne de `k_desc[]`, aucun `if (idx == …)` dans le
+ *    dessin ». C'est vrai du DESSIN. Ce n'était PAS vrai ici : `etat_source` et
+ *    `nom_source` étaient deux cascades câblées PAR INDEX, qui rendaient
+ *    « aucune » et « AUCUNE — pas encore branchée » pour GPU, RAM et RÉSEAU.
+ *    Les laisser telles quelles aurait fait dire à la page de détail d'une case
+ *    VIVANTE qu'elle n'a pas de source — l'étiquette qui ment, sur le SEUL écran
+ *    qui prétend expliquer d'où vient le chiffre.
+ *
+ * ⇒ On les GÉNÉRALISE (une table, comme `k_desc[]`) au lieu d'y ajouter quatre
+ *   branches de plus. Ajouter une métrique reste une LIGNE.
+ *
+ * ⚠️ Le nom rendu ici est RELU de `dn_link`/`dn_capteurs`, jamais récité : c'est
+ *    l'état RÉEL de la source, métrique par métrique — ⛔ surtout pas le résumé
+ *    global `dn_link_etat()`, qui déclarerait « VIVANTE » quatre cases mortes
+ *    parce que la cinquième vit.
+ */
+typedef enum {
+    DN_SRC_AUCUNE = 0, /* aucune source branchée — l'aveu d'ignorance par défaut */
+    DN_SRC_LIEN_PC,    /* dn_link, métrique donnée par `metrique` */
+    DN_SRC_CAPTEUR,    /* dn_capteurs (BME680) */
+} dn_src_t;
+
+static const struct {
+    dn_src_t type;
+    dn_link_metrique_t metrique; /* n'a de sens que si type == DN_SRC_LIEN_PC */
+    const char *nom;
+} k_source[DN_UI_METRIQUES] = {
+    [DN_UI_CASE_CPU] = {DN_SRC_LIEN_PC, DN_LINK_M_CPU, "liaison PC (dn_link) — cpu"},
+    [DN_UI_CASE_GPU] = {DN_SRC_LIEN_PC, DN_LINK_M_GPU, "liaison PC (dn_link) — gpu"},
+    [DN_UI_CASE_RAM] = {DN_SRC_LIEN_PC, DN_LINK_M_RAM, "liaison PC (dn_link) — ram"},
+    [DN_UI_CASE_RESEAU] = {DN_SRC_LIEN_PC, DN_LINK_M_NET, "liaison PC (dn_link) — net"},
+    [DN_UI_CASE_DISQUE] = {DN_SRC_LIEN_PC, DN_LINK_M_DISK, "liaison PC (dn_link) — disk"},
+    [DN_UI_CASE_AMB] = {DN_SRC_CAPTEUR, 0, "BME680 (dn_capteurs)"},
+};
+
 static const char *etat_source(int idx)
 {
-    if (idx == DN_UI_CASE_CPU) {
-        return dn_link_etat_nom(dn_link_etat());
+    if (idx < 0 || idx >= DN_UI_METRIQUES) {
+        return "?";
     }
-    if (idx == DN_UI_CASE_AMB) {
+    /* 🔴 LE MOCK PASSE AVANT LA SOURCE, ET C'EST LE SEUL ORDRE HONNÊTE. Quand
+     *    le générateur est armé, c'est LUI qui alimente la case : annoncer
+     *    l'état de la vraie source pendant qu'un chiffre inventé s'affiche
+     *    serait un mensonge de plus, sur l'écran qui explique les chiffres.
+     * ⚠️ Le mock n'a pas d'« état de source » : il EN EST une, et son régime le
+     *    dit déjà. Le nommer « VIVANT » l'habillerait en mesure. */
+    if (s_mock_on && k_mock[idx].actif) {
+        return "générateur interne";
+    }
+    switch (k_source[idx].type) {
+    case DN_SRC_LIEN_PC:
+        return dn_link_etat_nom(dn_link_etat_metrique(k_source[idx].metrique));
+    case DN_SRC_CAPTEUR:
         return dn_capt_etat_nom(dn_capt_etat());
+    default:
+        return "aucune";
     }
-    if (idx == DN_UI_CASE_VENT) {
-        /* Le mock n'a pas d'état de source : il EN EST une, et son régime le
-         * dit déjà. Le nommer « VIVANT » l'habillerait en mesure. */
-        return s_mock_on ? "générateur interne" : "arrêté";
-    }
-    return "aucune";
 }
 
 static const char *nom_source(int idx)
 {
-    switch (idx) {
-    case DN_UI_CASE_CPU:
-        return "liaison PC (dn_link)";
-    case DN_UI_CASE_AMB:
-        return "BME680 (dn_capteurs)";
-    case DN_UI_CASE_VENT:
-        return "MOCK dn3-1 (aucun capteur)";
-    default:
+    if (idx < 0 || idx >= DN_UI_METRIQUES) {
+        return "?";
+    }
+    if (s_mock_on && k_mock[idx].actif) {
+        return "MOCK dn3-1 (aucun capteur) — instrument ARMÉ";
+    }
+    if (k_source[idx].type == DN_SRC_AUCUNE) {
         return "AUCUNE — pas encore branchée";
     }
+    return k_source[idx].nom;
 }
 
 static void detail_reparametrer(int idx)
@@ -1722,13 +1883,23 @@ static void detail_reparametrer(int idx)
          * réel, ce qu'AC5 interdit explicitement. */
         if (e->regime == DN_VAL_ABSENTE || e->txt[0][0] == '\0') {
             snprintf(buf, sizeof(buf), "--");
-        } else if (d && d->n_grandeurs >= 2 && e->txt[1][0]) {
+        } else if (d && d->n_grandeurs >= 2) {
             /* Bi-grandeurs : les DEUX valeurs, sur la même ligne — le détail ne
-             * peut pas en cacher une, ce serait un demi-silence. */
-            snprintf(buf, sizeof(buf), "%s %s   ·   %s %s", e->txt[0],
+             * peut pas en cacher une, ce serait un demi-silence.
+             * 🔴 dn4-1 / W10 : LA CONDITION `&& e->txt[1][0]` A ÉTÉ RETIRÉE, et
+             *    c'est ce même principe qui l'exige. Elle faisait retomber le
+             *    détail sur la branche mono-grandeur quand la 2ᵉ grandeur était
+             *    absente : la page qui prétend TOUT expliquer cachait alors
+             *    l'existence même de la seconde grandeur, au lieu de dire
+             *    qu'elle manque. Un GPU dont la °C n'est pas publiée doit
+             *    afficher « 46,0 %   ·   -- », pas « 46,0 % ».
+             * ⚠️ Et « -- » ne porte JAMAIS son unité — même règle que la tuile. */
+            bool g1 = e->txt[1][0] != '\0';
+            snprintf(buf, sizeof(buf), "%s %s   ·   %s%s%s", e->txt[0],
                      d->grandeurs[0].unite ? d->grandeurs[0].unite : "",
-                     e->txt[1],
-                     d->grandeurs[1].unite ? d->grandeurs[1].unite : "");
+                     g1 ? e->txt[1] : "--",
+                     (g1 && d->grandeurs[1].unite) ? " " : "",
+                     (g1 && d->grandeurs[1].unite) ? d->grandeurs[1].unite : "");
         } else {
             snprintf(buf, sizeof(buf), "%s %s", e->txt[0],
                      (d && d->grandeurs[0].unite) ? d->grandeurs[0].unite : "");
@@ -2565,10 +2736,67 @@ static void case_poser(int idx, dn_val_regime_t regime, const char *t0,
     }
 }
 
-bool dn_ui_cpu_maj(int dixiemes, bool valide, bool *label_pose)
+/*
+ * ── LE FORMATAGE DES DIXIÈMES, EN UN SEUL ENDROIT ───────────────────────────
+ * Virgule française. ⚠️ L'unité n'est PAS dans le texte : elle vit dans le
+ * descripteur (`grandeurs[i].unite`) et c'est le modèle qui la concatène —
+ * c'est ce qui permet la règle « une valeur ABSENTE ne porte JAMAIS son unité »
+ * (« -- % » suggérerait qu'on sait de quoi on parle).
+ * 🔴 LE SIGNE NE VIT PAS DANS LES DIXIÈMES : la division entière tronque VERS
+ *    ZÉRO, donc -5 dixièmes rendait « 0,5 » (CR dn2-1). On sépare signe et
+ *    magnitude au lieu de déduire le signe d'un quotient. Aucune métrique PC
+ *    n'est négative aujourd'hui — la garde est là pour le jour où.
+ */
+static void fmt_dixiemes(char *out, size_t n, int dixiemes)
+{
+    int mag = dixiemes < 0 ? -dixiemes : dixiemes;
+    snprintf(out, n, "%s%d,%d", dixiemes < 0 ? "-" : "", mag / 10, mag % 10);
+}
+
+/*
+ * ── dn4-1 : LA TABLE MÉTRIQUE -> CASE, ET LA FORME DE SA SECONDAIRE ─────────
+ *
+ * ⛔ C'est la SEULE correspondance entre les index de `dn_link` et ceux de
+ *    `dn_ui`. Les deux énumérations sont indépendantes et doivent le rester :
+ *    supposer qu'elles coïncident serait une quatrième table câblée par index,
+ *    au moment précis où on en supprime trois.
+ */
+typedef enum {
+    DN_SEC_PC_AUCUNE = 0,
+    DN_SEC_PC_RAM_GO,     /* « 12,1 / 32,0 Go » — verbatim addendum §1 */
+    DN_SEC_PC_NET_DUPLEX, /* « v 985  ^ 48 »   — verbatim addendum §1 */
+} dn_sec_pc_t;
+
+static const struct {
+    int idx;                /* la case de dn_ui, -1 si aucune */
+    dn_sec_pc_t sec;
+} k_pc[DN_LINK_METRIQUES] = {
+    [DN_LINK_M_CPU] = {DN_UI_CASE_CPU, DN_SEC_PC_AUCUNE},
+    [DN_LINK_M_GPU] = {DN_UI_CASE_GPU, DN_SEC_PC_AUCUNE},
+    [DN_LINK_M_RAM] = {DN_UI_CASE_RAM, DN_SEC_PC_RAM_GO},
+    [DN_LINK_M_NET] = {DN_UI_CASE_RESEAU, DN_SEC_PC_NET_DUPLEX},
+    [DN_LINK_M_DISK] = {DN_UI_CASE_DISQUE, DN_SEC_PC_AUCUNE},
+};
+
+int dn_ui_case_de_metrique(dn_link_metrique_t m)
+{
+    return (m >= 0 && m < DN_LINK_METRIQUES) ? k_pc[m].idx : -1;
+}
+
+/*
+ * ── L'ENTRÉE UNIQUE DES CINQ MÉTRIQUES PC (dn4-1) ───────────────────────────
+ * Contrat, motifs et raison d'être : voir `dn_ui.h`. Ici, l'essentiel en trois
+ * lignes : UN verrou, UN formatage, UN `case_poser()`.
+ */
+bool dn_ui_pc_maj(dn_link_metrique_t m, const dn_link_vue_t *vue,
+                  bool *label_pose)
 {
     if (label_pose) {
         *label_pose = false;
+    }
+    int idx = dn_ui_case_de_metrique(m);
+    if (idx < 0 || !vue) {
+        return true; /* rien à faire — ⛔ pas un échec de verrou */
     }
     if (!lvgl_port_lock(1000)) {
         /* Pas de log ici : l'appelant (tâche dn_link) retente 250 ms plus tard,
@@ -2576,24 +2804,135 @@ bool dn_ui_cpu_maj(int dixiemes, bool valide, bool *label_pose)
          * lit dans le retour, comme dn_ui_force_full_redraw. */
         return false;
     }
-    char txt[DN_WIDGET_TXT_MAX];
-    bool ok = valide && dixiemes >= 0 && dixiemes <= 1000;
-    if (ok) {
-        /* Virgule française. ⚠️ L'unité n'est PLUS dans le texte : elle vit dans
-         * le descripteur (`grandeurs[0].unite`), et c'est le modèle qui la
-         * concatène. Un « % » écrit ici ET dans le descripteur en aurait affiché
-         * deux ; l'y laisser aurait aussi rendu impossible la règle « une valeur
-         * ABSENTE ne porte jamais son unité ». */
-        snprintf(txt, sizeof(txt), "%d,%d", dixiemes / 10, dixiemes % 10);
-    } else {
-        /* Liaison morte ou jamais vue : la case le DIT au lieu de figer un
-         * chiffre qui n'a plus cours (AC7 de dn2-2 — le différenciateur du brief
-         * en miniature). */
-        txt[0] = '\0';
+
+    /* 🔴 LE MOCK ARMÉ A LA PRIORITÉ, ET C'EST L'INSTRUMENT QUI L'EXIGE. Sans
+     *    cette garde, une trame réelle écraserait la rampe entre deux ticks de
+     *    mock : la ligne « mock on » de §16.1 deviendrait injouable dès qu'un
+     *    agent tourne, et la campagne mesurerait un régime hybride sans le dire.
+     *    ⚠️ C'est le pendant exact du drapeau `s_poussee[]` de dn3-2 : un
+     *       instrument délibérément armé ne se fait pas révoquer en silence. */
+    if (s_mock_on && k_mock[idx].actif) {
+        lvgl_port_unlock();
+        return true;
     }
-    case_poser(DN_UI_CASE_CPU, ok ? DN_VAL_REELLE : DN_VAL_ABSENTE, txt, NULL, 0,
-               NULL, label_pose);
+
+    char t0[DN_WIDGET_TXT_MAX];
+    char t1[DN_WIDGET_TXT_MAX];
+    char sec[DN_WIDGET_SEC_MAX];
+    t0[0] = t1[0] = sec[0] = '\0';
+
+    /* Une valeur n'existe QUE si la métrique est VIVANTE. Morte ou jamais vue :
+     * la case le DIT au lieu de figer un chiffre qui n'a plus cours (AC7 de
+     * dn2-2 — le différenciateur du brief en miniature, et il ne se renégocie
+     * pas). ⚠️ `dn_link` borne déjà par métrique ; ce test-ci est la garde de
+     * l'AFFICHAGE, redondante et assumée. */
+    bool ok = (vue->etat == DN_LINK_VIVANTE) && vue->v1 >= 0;
+    int32_t brut0 = 0;
+
+    if (ok) {
+        fmt_dixiemes(t0, sizeof(t0), vue->v1);
+        brut0 = vue->v1 / 10; /* la jauge travaille en UNITÉS AFFICHÉES */
+
+        /* W10 — la 2ᵉ grandeur seulement si la trame la portait. Sinon `t1`
+         * reste VIDE, et le modèle écrit « -- » EN GRIS sur cette ligne-là
+         * uniquement : la case reste RÉELLE. */
+        if (vue->v2_connue) {
+            fmt_dixiemes(t1, sizeof(t1), vue->v2);
+        }
+
+        switch (k_pc[m].sec) {
+        case DN_SEC_PC_RAM_GO:
+            /* 🔴 LA SECONDAIRE EST CALCULÉE DEPUIS LE POURCENTAGE, ELLE N'EST PAS
+             *    UNE SECONDE MESURE — c'est le motif écrit du mock de dn3-2, et
+             *    il vaut PLUS ENCORE pour du réel : « 66,4 % » à côté de
+             *    « 22,7 / 34,2 Go » doivent se répondre. Deux nombres échantillonnés
+             *    séparément afficheraient tôt ou tard deux vérités contradictoires
+             *    dans le même rectangle.
+             * ⇒ L'agent envoie le TOTAL (v2, constant), le firmware en déduit
+             *   l'utilisé : utilisé = % x total / 100. La cohérence est alors
+             *   STRUCTURELLE, pas une discipline d'échantillonnage. */
+            if (vue->v2_connue) {
+                int utilise = (int)((int64_t)vue->v1 * vue->v2 / 1000);
+                char a[DN_WIDGET_TXT_MAX], b[DN_WIDGET_TXT_MAX];
+                fmt_dixiemes(a, sizeof(a), utilise);
+                fmt_dixiemes(b, sizeof(b), vue->v2);
+                snprintf(sec, sizeof(sec), "%s / %s Go", a, b);
+            }
+            break;
+        case DN_SEC_PC_NET_DUPLEX:
+            /* ⚠️ `LV_SYMBOL_DOWN`/`UP` (U+F078/U+F077), PAS les flèches Unicode
+             *    U+2193/U+2191 : celles-ci sont HORS latin-1 et le glyphe absent
+             *    serait dessiné EN SILENCE. Les deux codepoints FontAwesome ont
+             *    été VÉRIFIÉS présents dans les `.c` de police. */
+            if (vue->v2_connue) {
+                char a[DN_WIDGET_TXT_MAX], b[DN_WIDGET_TXT_MAX];
+                fmt_dixiemes(a, sizeof(a), vue->v1);
+                fmt_dixiemes(b, sizeof(b), vue->v2);
+                /* ⚠️ PRÉCISION EXPLICITE `%.12s` : sans elle, GCC refuse de
+                 *    prouver que 3+1+15+2+3+1+15 = 40 tient dans les 40 octets
+                 *    de `DN_WIDGET_SEC_MAX` (-Werror=format-truncation). Les
+                 *    bornes de `k_metriques[]` plafonnent en fait le texte à
+                 *    8 caractères (« 100000,0 ») : la précision ne peut PAS
+                 *    tronquer une valeur réelle — c'est une ceinture, pas un
+                 *    écrêtage silencieux. */
+                snprintf(sec, sizeof(sec),
+                         LV_SYMBOL_DOWN " %.12s  " LV_SYMBOL_UP " %.12s", a, b);
+            }
+            break;
+        case DN_SEC_PC_AUCUNE:
+        default:
+            break;
+        }
+    }
+
+    case_poser(idx, ok ? DN_VAL_REELLE : DN_VAL_ABSENTE, t0, t1, brut0, sec,
+               label_pose);
     lvgl_port_unlock();
+    return true;
+}
+
+/*
+ * ── LE POINT D'ENTRÉE HISTORIQUE DE dn2-2 ────────────────────────────────────
+ * ⚠️ Il SURVIT, et ce n'est pas un doublon : il garde exécutable le témoin de
+ *    non-régression v1 d'AC2, et il fabrique une `dn_link_vue_t` plutôt que de
+ *    dupliquer le formatage — le CHEMIN reste unique, c'est la seule chose qui
+ *    devait l'être.
+ */
+bool dn_ui_cpu_maj(int dixiemes, bool valide, bool *label_pose)
+{
+    dn_link_vue_t v = {
+        .etat = valide ? DN_LINK_VIVANTE : DN_LINK_MORTE,
+        .v1 = (valide && dixiemes >= 0 && dixiemes <= 1000) ? dixiemes : -1,
+        .v2 = 0,
+        .v2_connue = false,
+        .age_us = 0,
+        .seq = 0,
+    };
+    return dn_ui_pc_maj(DN_LINK_M_CPU, &v, label_pose);
+}
+
+/* AC5 — RELU des pointeurs LVGL réellement construits, jamais récité du
+ * descripteur. Voir `dn_ui.h` pour le motif. */
+bool dn_ui_widget_pointeurs(int idx, int *n_grandeurs, bool *jauge, bool *sec)
+{
+    if (idx < 0 || idx >= DN_UI_METRIQUES || !s_wobj[idx].racine) {
+        return false;
+    }
+    if (n_grandeurs) {
+        int n = 0;
+        for (int i = 0; i < DN_WIDGET_GRANDEURS_MAX; i++) {
+            if (s_wobj[idx].valeur[i]) {
+                n++;
+            }
+        }
+        *n_grandeurs = n;
+    }
+    if (jauge) {
+        *jauge = s_wobj[idx].jauge != NULL;
+    }
+    if (sec) {
+        *sec = s_wobj[idx].sec != NULL;
+    }
     return true;
 }
 
@@ -2864,7 +3203,33 @@ static void mock_tick_nolock(void)
              *    laissé les trois autres mocks se faire révoquer — le même
              *    défaut, simplement déplacé d'une case aux trois autres.
              */
-            if (!s_poussee[i] && s_wetat[i].regime != DN_VAL_ABSENTE) {
+            /*
+             * 🔴 dn4-1 — LE TICK ÉTAIT UN SECOND ÉCRIVAIN SUR DES CASES QUI ONT
+             *    MAINTENANT UNE SOURCE RÉELLE, ET ÇA SE VOYAIT.
+             *
+             *    Le test était `regime != DN_VAL_ABSENTE`. Il a été écrit quand
+             *    GPU/RAM/RÉSEAU/VENTILOS n'avaient AUCUNE source : « pas ABSENTE »
+             *    y voulait dire « le mock l'a peinte », et la remettre à ABSENTE
+             *    était juste. dn4-1 leur donne une source ⇒ leur régime devient
+             *    RÉELLE, et ce tick les REPEIGNAIT EN GRIS UNE FOIS PAR SECONDE,
+             *    juste avant que `dn_link` ne les repose. Deux écrivains qui se
+             *    battent sur la même case, à 1 Hz.
+             *
+             *    ⚠️ SYMPTÔME VISIBLE : les quatre cases clignotent « -- » gris.
+             *    ⚠️ SYMPTÔME MESURÉ, et c'est LUI qui a trouvé le défaut : le
+             *       régime réel rendait **408 flushes** là où 223 poussées de
+             *       métrique + 9 d'AMBIANCE en justifiaient **232**. L'écart,
+             *       176, vaut 4 cases x 45 s. La prédiction d'AC7 avait nommé
+             *       « le nombre de cycles/s » comme ce qu'elle ne couvrait pas —
+             *       il a doublé (2,19 au lieu de ~1,2), et c'est ce qui a fait
+             *       ouvrir le dossier au lieu de publier le chiffre.
+             *
+             * ⇒ LE TICK NE RÉVOQUE QUE CE QU'IL A LUI-MÊME PEINT : `SIMULEE`.
+             *   Une case RÉELLE ne lui appartient pas ; une case ABSENTE n'a
+             *   rien à recevoir (et la reposer coûterait un redessin pour rien —
+             *   c'est le défaut mesuré du 2026-08-17, 24 cycles pour 4).
+             */
+            if (!s_poussee[i] && s_wetat[i].regime == DN_VAL_SIMULEE) {
                 case_poser(i, DN_VAL_ABSENTE, NULL, NULL, 0, NULL, NULL);
             }
             continue;
@@ -3284,37 +3649,50 @@ esp_err_t dn_ui_set_voile_opa(uint8_t opa)
 
 uint8_t dn_ui_voile_opa(void) { return s_voile_opa; }
 
-int dn_ui_icones_vent_n(void) { return (int)DN_UI_ICONES_VENT; }
+/*
+ * ── LA TROISIÈME TABLE CACHÉE, GÉNÉRALISÉE (dn4-1 / AC6) ────────────────────
+ *
+ * 🔴 `dn_ui_set_icone_vent()` écrivait `s_icone_alt[DN_UI_CASE_VENT]` EN DUR.
+ *    L'A/B d'icône visait donc l'ancienne case ventilateur — et aurait continué
+ *    de la viser après le renommage, en silence : `widget icone 2` aurait
+ *    annoncé un changement en le posant au bon endroit par pur hasard d'index.
+ *    Le mécanisme est générique DEPUIS SA NAISSANCE (« indexé par case, sans
+ *    nommer de métrique », dn3-1) — seul son point d'entrée ne l'était pas.
+ * ⇒ La CASE devient un paramètre. Ajouter une métrique ne touche plus rien ici.
+ */
+int dn_ui_icones_alt_n(void) { return (int)DN_UI_ICONES_ALT; }
 
-const char *dn_ui_icone_vent_nom(int n)
+const char *dn_ui_icone_alt_nom(int n)
 {
-    return (n >= 0 && n < (int)DN_UI_ICONES_VENT) ? k_icones_vent[n].nom : "?";
+    return (n >= 0 && n < (int)DN_UI_ICONES_ALT) ? k_icones_alt[n].nom : "?";
 }
 
-int dn_ui_icone_vent(void)
+int dn_ui_icone_alt(int idx)
 {
-    for (int i = 0; i < (int)DN_UI_ICONES_VENT; i++) {
+    if (idx < 0 || idx >= DN_UI_METRIQUES) {
+        return -1;
+    }
+    for (int i = 0; i < (int)DN_UI_ICONES_ALT; i++) {
         /* RELU du pointeur réellement posé, pas d'un index mémorisé à part : un
          * index et un glyphe qui divergent, c'est l'étiquette qui ment. */
-        const char *actif = s_icone_alt[DN_UI_CASE_VENT]
-                                ? s_icone_alt[DN_UI_CASE_VENT]
-                                : k_desc[DN_UI_CASE_VENT].icone;
-        if (actif == k_icones_vent[i].glyphe) {
+        const char *actif = s_icone_alt[idx] ? s_icone_alt[idx]
+                                             : k_desc[idx].icone;
+        if (actif == k_icones_alt[i].glyphe) {
             return i;
         }
     }
     return -1;
 }
 
-esp_err_t dn_ui_set_icone_vent(int n)
+esp_err_t dn_ui_set_icone_alt(int idx, int n)
 {
-    if (n < 0 || n >= (int)DN_UI_ICONES_VENT) {
+    if (idx < 0 || idx >= DN_UI_METRIQUES || n < 0 || n >= (int)DN_UI_ICONES_ALT) {
         return ESP_ERR_INVALID_ARG;
     }
     if (!lvgl_port_lock(2000)) {
         return ESP_ERR_TIMEOUT;
     }
-    s_icone_alt[DN_UI_CASE_VENT] = k_icones_vent[n].glyphe;
+    s_icone_alt[idx] = k_icones_alt[n].glyphe;
     build_scene();
     lvgl_port_unlock();
     return ESP_OK;
@@ -3380,13 +3758,36 @@ void dn_ui_case_dim(int *w, int *h)
  *    métrique qui n'est ni Ambiance ni Ventilos. Une variante multi-grandeurs
  *    qui ne marcherait que pour « Ambiance » serait un cas spécial déguisé.
  */
+/*
+ * ── LA 7ᵉ MÉTRIQUE FICTIVE — ET dn4-1 LUI DONNE UN SECOND RÔLE ───────────────
+ *
+ * Elle prouvait déjà « ajouter une métrique = une ligne de descripteur ».
+ * 🔴 dn4-1 EN FAIT AUSSI LE TÉMOIN D'AC5, et c'est un ajout NÉCESSAIRE : après
+ *    le correctif W5, AUCUNE des six cases réelles ne combine deux grandeurs ET
+ *    une jauge (CPU et GPU n'en demandent pas, RAM est à n = 1). Le correctif
+ *    serait donc VRAI et JAMAIS EXERCÉ — c'est-à-dire invérifiable autrement
+ *    qu'en relisant le source, exactement la situation dans laquelle le défaut a
+ *    dormi depuis la revue dn3-1.
+ * ⇒ `.n_grandeurs = 2` ET `.indicateur = true`. `widget demo on` construit donc
+ *   le cas EXACT que `if (desc->indicateur && n == 1)` faisait échouer en
+ *   silence, et l'on VOIT la jauge. C'est le stimulus prouvé qu'exige la
+ *   méthodo (« un test négatif ne vaut que si le stimulus est prouvé »).
+ * ⚠️ ET IL MONTRE AUSSI LE PRIX : à n = 2 avec jauge, y_bas vaut 148 et
+ *    148 + 20 = 168 > 156 ⇒ la ligne secondaire NE TIENT PAS. Elle est
+ *    abandonnée — et JOURNALISÉE (ESP_LOGW dans `dn_widget_creer`). La démo
+ *    fabrique donc aussi la preuve que l'abandon n'est plus silencieux.
+ */
 static const dn_widget_desc_t k_demo_desc = {
     .icone = DN_ICONE_NETWORK_WIRED,
-    .titre = "RÉSEAU (démo)",
+    .titre = "DÉMO 2+JAUGE",
     .couleur = 0x35d6e8,
-    .n_grandeurs = 2, /* ↓ et ↑ — le candidat nommé par l'addendum §1 */
-    .indicateur = false,
-    .grandeurs = {{.unite = "Mo/s"}, {.unite = "Mo/s", .icone = DN_ICONE_DESKTOP}},
+    .n_grandeurs = 2,
+    .indicateur = true,
+    .ind_min = 0,
+    .ind_max = 100, /* % — et la plage COUVRE la source (piège d'instrument n°7 :
+                     * une jauge bornée écrête EN SILENCE, et la jauge RAM avait
+                     * été clouée au plein par un injecteur hors plage) */
+    .grandeurs = {{.unite = "%"}, {.unite = "Mo/s", .icone = DN_ICONE_DESKTOP}},
 };
 
 esp_err_t dn_ui_demo_set(bool on)
@@ -3401,8 +3802,15 @@ esp_err_t dn_ui_demo_set(bool on)
              * badge. */
             static dn_widget_etat_t etat;
             etat.regime = DN_VAL_SIMULEE;
-            snprintf(etat.txt[0], sizeof(etat.txt[0]), "985");
-            snprintf(etat.txt[1], sizeof(etat.txt[1]), "48");
+            snprintf(etat.txt[0], sizeof(etat.txt[0]), "62,0");
+            snprintf(etat.txt[1], sizeof(etat.txt[1]), "48,0");
+            /* ⚠️ DANS LA PLAGE DE LA JAUGE (0..100), et pas au-delà : une jauge
+             * bornée écrête EN SILENCE, et un témoin cloué au plein ne prouve
+             * pas que la jauge se remplit — il prouve qu'elle existe, ce qui
+             * n'est pas la même chose. */
+            etat.brut[0] = 62;
+            /* Elle sera ABANDONNÉE (168 > 156) — c'est le second témoin : le
+             * log doit apparaître, et `widget` doit afficher « secondaire non ». */
             snprintf(etat.secondaire, sizeof(etat.secondaire), "7e métrique FICTIVE");
             dn_widget_creer(lv_screen_active(), 120, 240, DN_UI_CASE_W,
                             DN_UI_CASE_H, &k_demo_desc, &etat, NULL, NULL,

@@ -68,6 +68,7 @@
 #include <stdint.h>
 
 #include "dn_bootcfg.h"
+#include "dn_link.h"
 /* dn3-2 : `dn_ui_heure_maj()` prend un `dn_rtc_heure_t`. La dépendance va dans
  * CE sens seulement — `dn_rtc.h` n'inclut PAS `dn_ui.h` (c'est le `.c` qui le
  * fait), donc pas de cycle. Passer les 7 champs en scalaires aurait donné une
@@ -372,6 +373,44 @@ bool dn_ui_label_shown(void);
  * soit une boucle qui retente sans fin et sur-compte les reprises. */
 bool dn_ui_cpu_maj(int dixiemes, bool valide, bool *label_pose);
 
+/*
+ * ── dn4-1 : L'ENTRÉE UNIQUE DES CINQ MÉTRIQUES PC ────────────────────────────
+ *
+ * ⛔ IL N'Y A PAS CINQ `dn_ui_xxx_maj()` COPIÉES LES UNES DES AUTRES, ET C'EST
+ *    DÉLIBÉRÉ. Ce seraient cinq endroits où le contrat de verrou, le format des
+ *    dixièmes et la règle « une valeur ABSENTE ne porte jamais son unité »
+ *    peuvent diverger. Ce fichier a déjà payé exactement ça (trois divergences
+ *    .h/code, un A/B mesuré deux fois sur la même branche).
+ *
+ * ⇒ UN SEUL CHEMIN : verrou pris ici, formatage centralisé, `case_poser()` en
+ *   sortie, `label_pose` rendu à part de la valeur de retour. La correspondance
+ *   métrique → case et la forme de la ligne secondaire vivent dans UNE TABLE de
+ *   `dn_ui.c`, pas dans des `if (m == …)`.
+ *
+ * ⚠️ `dn_ui_cpu_maj` SURVIT et n'est pas un doublon : c'est le point d'entrée
+ *    HISTORIQUE de dn2-2, conservé pour que le témoin de non-régression v1 reste
+ *    exécutable. Elle délègue au même chemin.
+ *
+ * `vue` porte l'état, les deux grandeurs et `v2_connue` (W10) : une 2ᵉ grandeur
+ * absente laisse la case RÉELLE et n'écrit « -- » que sur SA ligne.
+ */
+bool dn_ui_pc_maj(dn_link_metrique_t m, const dn_link_vue_t *vue,
+                  bool *label_pose);
+
+/* L'index de case d'une métrique PC — RELU de la table, pour la console.
+ * Rend -1 si la métrique n'a pas de case. */
+int dn_ui_case_de_metrique(dn_link_metrique_t m);
+
+/*
+ * ── AC5 : CE QUE LA CASE A RÉELLEMENT CONSTRUIT, RELU DES POINTEURS ──────────
+ * ⚠️ RELU, jamais récité du descripteur : c'est tout l'objet du correctif W5.
+ *    Un descripteur qui DEMANDE une jauge et une secondaire peut n'obtenir que
+ *    la jauge (la géométrie ne permet pas les deux à n = 2) — et c'est
+ *    précisément ce qu'il faut pouvoir CONSTATER sans lire le source.
+ * Rend false si `idx` est hors bornes ou si la case n'est pas dessinée.
+ */
+bool dn_ui_widget_pointeurs(int idx, int *n_grandeurs, bool *jauge, bool *sec);
+
 /* ── LA CASE « AMBIANCE » : DEUX GRANDEURS DANS UNE CASE (D6, dn3-1) ──────────
  * Jusqu'à dn2-1 c'étaient DEUX cases (TEMP. idx 4, HUMIDITÉ idx 5). D6 les
  * fusionne en UNE case bi-grandeurs (idx 5) et libère idx 4 pour VENTILOS.
@@ -580,14 +619,21 @@ esp_err_t dn_ui_oublier(int idx);
 esp_err_t dn_ui_set_voile_opa(uint8_t opa);
 uint8_t dn_ui_voile_opa(void);
 
-/* ── W4 : l'A/B d'icône du ventilateur ────────────────────────────────────────
- * `fan` (0xF863) est ABSENT du FontAwesome du dépôt. Quatre substituts sont
- * embarqués ensemble et commutables à chaud, pour que le choix soit un CONSTAT
- * OWNER sur la dalle et non une intuition. Reconstruit la scène. */
-int dn_ui_icones_vent_n(void);
-const char *dn_ui_icone_vent_nom(int n);
-int dn_ui_icone_vent(void);
-esp_err_t dn_ui_set_icone_vent(int n);
+/* ── L'A/B D'ICÔNE, SUR N'IMPORTE QUELLE CASE (W4 dn3-1, généralisé dn4-1) ────
+ * Des glyphes embarqués ensemble et commutables à chaud, pour qu'un choix
+ * d'icône soit un CONSTAT OWNER sur la dalle et non une intuition — un A/B qui
+ * exigerait un reflash par candidat coûterait une observation par candidat.
+ * Reconstruit la scène.
+ * ⚠️ dn4-1 : la CASE est devenue un paramètre. `dn_ui_set_icone_vent(n)` écrivait
+ *    `s_icone_alt[DN_UI_CASE_VENT]` en dur — après le renommage D8, l'A/B aurait
+ *    continué de viser l'ancienne case ventilateur SANS RIEN DIRE. C'était l'une
+ *    des trois tables « câblées par index » que dn4-1 aurait fait mentir.
+ * `dn_ui_icone_alt(idx)` rend -1 si l'icône active n'est aucun des candidats
+ * (cas nominal : la case porte celle de son descripteur). */
+int dn_ui_icones_alt_n(void);
+const char *dn_ui_icone_alt_nom(int n);
+int dn_ui_icone_alt(int idx);
+esp_err_t dn_ui_set_icone_alt(int idx, int n);
 
 /* ── AC9 : l'opacité des CASES ────────────────────────────────────────────────
  * Passe par dn_widget (une seule définition de l'aplat) et reconstruit la scène. */

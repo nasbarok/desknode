@@ -2440,21 +2440,87 @@ static int cmd_pc(int argc, char **argv)
         printf("compteurs de liaison remis a zero\n");
         return 0;
     }
+    /* W4 — l'A/B de poussee, dans le MEME firmware (AC8). */
+    if (argc == 3 && strcmp(argv[1], "pousse") == 0) {
+        bool etale;
+        if (strcmp(argv[2], "groupe") == 0) {
+            etale = false;
+        } else if (strcmp(argv[2], "etale") == 0) {
+            etale = true;
+        } else {
+            printf("usage : pc pousse groupe|etale\n");
+            return 1;
+        }
+        dn_link_set_etalement(etale);
+        printf("poussee : %s\n",
+               etale ? "ETALEE — au plus UNE metrique par reveil de 250 ms"
+                     : "GROUPEE — tout ce qui a change part dans le MEME reveil");
+        if (etale) {
+            printf("⚠️ CE QUE CE LEVIER FAIT ET NE FAIT PAS : il ne reduit PAS le\n");
+            printf("   travail total (memes pixels, memes redessins) — il reduit le\n");
+            printf("   PIC, et c'est le pic qu'un doigt ressent.\n");
+            printf("⚠️ PRIX : une metrique est rafraichie toutes les ~1,25 s au lieu\n");
+            printf("   de ~1 s, et un passage VIVANTE->MORTE met jusqu'a 1,25 s de\n");
+            printf("   plus a s'afficher sur les cinq cases.\n");
+        }
+        printf("⚠️ `flush reset` MAINTENANT, puis attendre >= 3 cycles de source\n");
+        printf("   avant `flush` : sinon la mesure melange les deux branches.\n");
+        return 0;
+    }
     if (argc != 1) {
-        printf("usage : pc | pc reset | pc $DN,<ver>,<seq>,<t_ms>,cpu,<dixiemes>*<CK>\n");
+        printf("usage : pc | pc reset | pc pousse groupe|etale\n");
+        printf("        pc $DN,<ver>,<seq>,<t_ms>,<metrique>,<v1>[,<v2>]*<CK>\n");
+        printf("        v1 = 6 champs, metrique « cpu » UNIQUEMENT.\n");
+        printf("        v2 = 5 metriques, 2e grandeur OPTIONNELLE (son absence\n");
+        printf("             est une donnee : « je ne connais pas v2 »).\n");
         return 1;
     }
 
     dn_link_etat_t etat = dn_link_etat();
-    printf("liaison PC : %s", dn_link_etat_nom(etat));
+    printf("liaison PC : %s (RESUME GLOBAL : VIVANTE des qu'UNE metrique l'est)\n",
+           dn_link_etat_nom(etat));
     if (etat != DN_LINK_JAMAIS) {
-        int v = dn_link_valeur_dixiemes();
-        int64_t age = dn_link_age_us();
-        printf(" — derniere valeur %d,%d %% · age %lld ms · seq %u · t_ms agent %u",
-               v / 10, v % 10, (long long)(age / 1000),
+        printf("             derniere trame toutes metriques : age %lld ms · "
+               "seq %u · t_ms agent %u\n",
+               (long long)(dn_link_age_us() / 1000),
                (unsigned)dn_link_derniere_seq(), (unsigned)dn_link_dernier_t_ms());
     }
-    printf("\n");
+    /*
+     * 🔴 LES CINQ METRIQUES, UNE PAR UNE, RELUES DE dn_link — et c'est le seul
+     *    endroit qui puisse montrer qu'une source meurt SEULE. Le resume global
+     *    ci-dessus dirait « VIVANTE » avec quatre cases mortes.
+     */
+    printf("metriques  : (peremption %lld ms, par metrique)\n",
+           (long long)(DN_LINK_PEREMPTION_US / 1000));
+    for (int i = 0; i < DN_LINK_METRIQUES; i++) {
+        dn_link_vue_t v;
+        if (!dn_link_vue((dn_link_metrique_t)i, &v)) {
+            continue;
+        }
+        int idx = dn_ui_case_de_metrique((dn_link_metrique_t)i);
+        printf("  %-5s -> case %d %-9s %-12s", dn_link_metrique_nom(i), idx,
+               idx >= 0 ? dn_ui_metrique_nom(idx) : "(aucune)",
+               dn_link_etat_nom(v.etat));
+        if (v.etat == DN_LINK_JAMAIS) {
+            printf("  --\n");
+            continue;
+        }
+        printf("  %d,%d %s", v.v1 / 10, v.v1 % 10,
+               dn_link_metrique_unite((dn_link_metrique_t)i, 0));
+        if (v.v2_connue) {
+            printf(" · %d,%d %s", v.v2 / 10, v.v2 % 10,
+                   dn_link_metrique_unite((dn_link_metrique_t)i, 1));
+        } else if (dn_link_metrique_v2_attendue((dn_link_metrique_t)i)) {
+            /* ⚠️ « attendue mais absente » n'est PAS « pas de 2e grandeur » :
+             *    deux silences tres differents, et le confondre effacerait
+             *    l'information que la source ne publie pas sa °C. */
+            printf(" · -- (2e grandeur ATTENDUE, non publiee par la source)");
+        }
+        printf("  · age %lld ms · seq %u\n", (long long)(v.age_us / 1000),
+               (unsigned)v.seq);
+    }
+    printf("poussee    : %s\n",
+           dn_link_etalement() ? "ETALEE (A/B W4)" : "GROUPEE (defaut)");
     printf("peremption : %lld ms, en temps absolu de RECEPTION — la cadence de\n",
            (long long)(DN_LINK_PEREMPTION_US / 1000));
     printf("             l'agent ne fait jamais foi (AC7)\n");
@@ -2473,6 +2539,13 @@ static int cmd_pc(int argc, char **argv)
     printf("             tronquee = la fin de ligne est PERDUE · trop longue = la\n");
     printf("             ligne est COMPLETE mais depasse %d o (emetteur elargi)\n",
            DN_LINK_LIGNE_MAX);
+    printf("             ⚠️ bande « trop longue » ATTEIGNABLE : le REPL delivre\n");
+    printf("             %d caracteres de trame au parseur (MESURE, dn4-1) —\n",
+           DN_LINK_REPL_LIGNE_MESUREE);
+    printf("             la bande %d..%d est donc large de %d o. Un compteur\n",
+           DN_LINK_LIGNE_MAX + 1, DN_LINK_REPL_LIGNE_MESUREE,
+           DN_LINK_REPL_LIGNE_MESUREE - DN_LINK_LIGNE_MAX);
+    printf("             inatteignable serait un instrument qui ment.\n");
     printf("             resynchros = saut de seq non credible (agent redemarre,\n");
     printf("             seq fabrique) : trame APPLIQUEE, pas comptee en pertes\n");
 
@@ -2518,7 +2591,7 @@ static int cmd_pc(int argc, char **argv)
  *   widget groupe on|off    A/B d'AC8 — N zones sales fines vs 1 englobante
  *   widget opa <0..255>     A/B d'AC9 — opacité des CASES        ⚠️ RECONSTRUIT
  *   widget voile <0..255>   AC9 — opacité du voile plein écran   ⚠️ RECONSTRUIT
- *   widget icone <0..3>     W4 — A/B du glyphe VENTILOS          ⚠️ RECONSTRUIT
+ *   widget icone <case> <n> W4 — A/B de glyphe sur UNE case      ⚠️ RECONSTRUIT
  *   widget mock on|off      coupe le mock : la case redevient « -- » (témoin)
  *   widget demo on|off      AC1 — la 7e métrique FICTIVE, sans code de dessin
  *   widget pousser <idx>    AC8 — UNE mise à jour synthétique, une par appel
@@ -2602,22 +2675,32 @@ static int cmd_widget(int argc, char **argv)
         printf("   avant `flush` : sinon la mesure melange les deux branches.\n");
         return 0;
     }
-    if (argc == 3 && strcmp(argv[1], "icone") == 0) {
+    /* ⚠️ dn4-1 : LA CASE EST DEVENUE UN ARGUMENT. `widget icone <n>` écrivait
+     *    l'icône de la case 4 EN DUR — après le renommage VENTILOS -> DISQUE
+     *    (D8), l'A/B aurait continué de viser « l'ancienne case ventilateur »
+     *    par pur hasard d'index, en l'annonçant comme un choix. La forme est
+     *    donc `widget icone <case> <n>`. */
+    if (argc == 4 && strcmp(argv[1], "icone") == 0) {
         char *fin = NULL;
-        long n = strtol(argv[2], &fin, 0);
-        /* ⚠️ `fin == argv[2]` : la CHAÎNE VIDE passait (revue 2026-08-18).
+        long idx = strtol(argv[2], &fin, 0);
+        bool ok_idx = (fin != argv[2] && *fin == '\0');
+        long n = strtol(argv[3], &fin, 0);
+        /* ⚠️ `fin == argv[i]` : la CHAÎNE VIDE passait (revue 2026-08-18).
          *    `!fin` est toujours faux — `strtol` renseigne TOUJOURS `endptr` —
          *    et pour "" l'endptr vaut nptr avec `*fin == '\0'`. `widget icone ""`
          *    basculait donc le glyphe et reconstruisait la scène. La convention
          *    du fichier est celle-ci (`:94`, `:120`, `:2920`). */
-        if (fin == argv[2] || *fin != '\0') {
-            printf("usage : widget icone <0..%d>\n", dn_ui_icones_vent_n() - 1);
-            for (int i = 0; i < dn_ui_icones_vent_n(); i++) {
-                printf("   %d = %s\n", i, dn_ui_icone_vent_nom(i));
+        if (!ok_idx || fin == argv[3] || *fin != '\0') {
+            printf("usage : widget icone <case 0..%d> <glyphe 0..%d>\n",
+                   DN_UI_METRIQUES - 1, dn_ui_icones_alt_n() - 1);
+            for (int i = 0; i < dn_ui_icones_alt_n(); i++) {
+                printf("   %d = %s\n", i, dn_ui_icone_alt_nom(i));
             }
             printf("⚠️ `fan` (0xF863) est ABSENT du FontAwesome du depot —\n");
             printf("   VERIFIE en le convertissant seul, pas deduit d'une table.\n");
             printf("   Il est arrive en FontAwesome 5.11, le .woff est anterieur.\n");
+            printf("   (les 4 premiers glyphes sont ses substituts, gardes : les\n");
+            printf("    retirer changerait l'union -r de 68 a 65 — vraie regen.)\n");
             return 1;
         }
         /* 🔴 UN ÉCHEC DE VERROU N'EST PAS UNE ERREUR D'ARGUMENT (revue
@@ -2625,18 +2708,19 @@ static int cmd_widget(int argc, char **argv)
          *    l'opérateur lisait « usage : widget icone <0..3> » pour une
          *    commande correctement tapée dont le seul tort était que LVGL était
          *    occupé. Les sous-commandes voisines distinguent déjà les deux. */
-        esp_err_t err = dn_ui_set_icone_vent((int)n);
+        esp_err_t err = dn_ui_set_icone_alt((int)idx, (int)n);
         if (err == ESP_ERR_TIMEOUT) {
             printf("verrou LVGL non pris — RIEN n'a change (reessayer)\n");
             return 1;
         }
         if (err != ESP_OK) {
-            printf("index hors plage : widget icone <0..%d>\n",
-                   dn_ui_icones_vent_n() - 1);
+            printf("index hors plage : widget icone <case 0..%d> <glyphe 0..%d>\n",
+                   DN_UI_METRIQUES - 1, dn_ui_icones_alt_n() - 1);
             return 1;
         }
-        printf("icone VENTILOS = %s — SCENE RECONSTRUITE\n",
-               dn_ui_icone_vent_nom((int)n));
+        printf("icone de la case %d (%s) = %s — SCENE RECONSTRUITE\n",
+               (int)idx, dn_ui_metrique_nom((int)idx),
+               dn_ui_icone_alt_nom((int)n));
         printf("⚠️ la reconstruction a retire le stimulus `anim` et la demo.\n");
         return 0;
     }
@@ -2853,11 +2937,24 @@ static int cmd_widget(int argc, char **argv)
             printf("verrou LVGL non pris — RIEN n'a change\n");
             return 1;
         }
-        printf("mock VENTILOS %s — la case passe en %s\n", on ? "ARME" : "COUPE",
-               on ? "SIMULEE" : "ABSENTE (« -- » grise)");
-        if (!on) {
+        /* 🔴 dn4-1 : LA SORTIE ANNONCE QUE C'EST UN INSTRUMENT QU'ON ARME.
+         *    Le mock est COUPE PAR DEFAUT depuis dn4-1 (les quatre cases ont des
+         *    sources reelles) ; `on` fait donc apparaitre des badges « SIMULE »
+         *    sur un dashboard qui n'en porte plus. Quelqu'un qui trouve l'ambre
+         *    sans savoir qu'il l'a arme lira une regression. */
+        printf("mock %s — les %d cases mockees passent en %s\n",
+               on ? "ARME" : "COUPE", 4, on ? "SIMULEE" : "ABSENTE (« -- » grise)");
+        if (on) {
+            printf("⚠️ INSTRUMENT ARME, PAS UN REGLAGE. Il REJOUE la ligne\n");
+            printf("   « mock on / groupage on » de §16.1 (la baseline d'AC7 :\n");
+            printf("   10,18 %% CPU · 3,47 flush/cycle · 120 756 px/cycle · 6,7 %%).\n");
+            printf("   Tant qu'il tourne, les trames reelles de dn_link sont\n");
+            printf("   IGNOREES sur ces cases — sinon la ligne serait injouable.\n");
+            printf("   ⛔ Le regime nominal de dn4-1 est `off` : ZERO badge SIMULE.\n");
+        } else {
             printf("⚠️ une case POUSSEE (`widget pousser 4`) n'est PAS reprise :\n");
             printf("   le tick ne revoque pas un acte delibere de l'operateur.\n");
+            printf("   Les cases a source reelle repartent des la prochaine trame.\n");
         }
         return 0;
     }
@@ -2925,8 +3022,8 @@ static int cmd_widget(int argc, char **argv)
     if (argc != 1) {
         printf("usage : widget | groupe on|off | opa <0..255> | voile <0..255>\n");
         printf("        | mock on|off | demo on|off | pousser <idx>\n");
-        printf("        | icone <0..%d>  (A/B du glyphe VENTILOS, W4)\n",
-               dn_ui_icones_vent_n() - 1);
+        printf("        | icone <case> <0..%d>  (A/B de glyphe sur une case, W4)\n",
+               dn_ui_icones_alt_n() - 1);
         return 1;
     }
 
@@ -2973,8 +3070,41 @@ static int cmd_widget(int argc, char **argv)
     printf("   (une valeur qui VARIE : un mock fige serait indiscernable d'un\n");
     printf("    affichage bloque. CPU et AMBIANCE n'ont PAS de mock — elles ont\n");
     printf("    des sources REELLES, et D6 veut que ca se voie.)\n");
-    printf("icone VENTILOS : %s   (W4 — `fan` 0xF863 est ABSENT du .woff)\n",
-           dn_ui_icone_vent_nom(dn_ui_icone_vent()));
+    /*
+     * 🔴 dn4-1 / AC5 — CE QUE CHAQUE CASE A REELLEMENT CONSTRUIT, RELU DES
+     *    POINTEURS LVGL. ⛔ Pas recite du descripteur : c'est TOUT l'objet du
+     *    correctif W5. Un descripteur peut DEMANDER une jauge et une secondaire
+     *    et n'obtenir que la jauge — la geometrie ne permet pas les deux a deux
+     *    grandeurs (y_bas 148 + 20 = 168 > 156). Sans cette lecture, on ne
+     *    pourrait le CONSTATER qu'en lisant le source, et c'est exactement
+     *    comme ca que le defaut a dormi depuis dn3-1.
+     */
+    printf("geometrie des cases — RELUE des pointeurs, pas du descripteur :\n");
+    printf("        case      n_gr  jauge  secondaire   (demande par le descripteur)\n");
+    for (int i = 0; i < DN_UI_METRIQUES; i++) {
+        int ng = 0;
+        bool jauge = false, sec = false;
+        if (!dn_ui_widget_pointeurs(i, &ng, &jauge, &sec)) {
+            continue;
+        }
+        const dn_widget_desc_t *dd = dn_ui_desc(i);
+        printf("   ");
+        colonnes(dn_ui_metrique_nom(i), 10);
+        printf("  %d     %-5s  %-10s  (n=%d%s)\n", ng, jauge ? "OUI" : "non",
+               sec ? "OUI" : "non", dd ? dd->n_grandeurs : 0,
+               (dd && dd->indicateur) ? ", jauge demandee" : "");
+    }
+    printf("   ⚠️ REGLE ECRITE (dn_widget.h) : quand les deux ne tiennent pas dans\n");
+    printf("      les 156 px, LA JAUGE GAGNE et l'abandon de la secondaire est\n");
+    printf("      JOURNALISE (ESP_LOGW). Un abandon silencieux etait le defaut.\n");
+    /* ⚠️ L'index de la case est RELU de la table métrique->case, ⛔ pas écrit en
+     *    dur : c'est exactement le défaut que dn4-1 corrige trois fois ailleurs. */
+    {
+        int i_disque = dn_ui_case_de_metrique(DN_LINK_M_DISK);
+        printf("icone DISQUE : %s   (W4 — `fan` 0xF863 est ABSENT du .woff ;\n",
+               dn_ui_icone_alt_nom(dn_ui_icone_alt(i_disque)));
+        printf("               « ? » = celle du descripteur, non commutee)\n");
+    }
 
     printf("\n  idx nom        forme   regime   dessinee  valeur(s)\n");
     for (int i = 0; i < DN_UI_METRIQUES; i++) {
@@ -4001,7 +4131,7 @@ static const esp_console_cmd_t k_cmds[] = {
     DN_CMD("widget",
            "widget | groupe on|off | opa <n> | voile <n> | mock on|off | demo "
            "on|off | pousser <n> | oublier <n> | rafale | nue <n> on|off | barre "
-           "1hz|minute | bandes on|off | icone <n> — modèle de case (dn3-1/dn3-2)",
+           "1hz|minute | bandes on|off | icone <case> <n> — modèle de case (dn3-1/dn3-2)",
            cmd_widget),
     /* ⚠️ INSCRITE ICI **ET** DANS LE « Jeu complet » DU README dans le même
      * geste — dn2-1 avait oublié `capteurs` au README, et une commande qu'on ne

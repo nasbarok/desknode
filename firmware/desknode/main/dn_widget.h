@@ -144,7 +144,50 @@ typedef struct {
     const char *titre;   /* « CPU », « AMBIANCE » — accentué, la police suit */
     uint32_t couleur;    /* 0xRRGGBB, accent. dn3-1 le PORTE ; dn3-3 l'exploite. */
     uint8_t n_grandeurs; /* 1..DN_WIDGET_GRANDEURS_MAX */
-    bool indicateur;     /* jauge horizontale sur la grandeur 0 */
+    /*
+     * ── LA JAUGE, ET LE CONTRAT GÉOMÉTRIQUE QU'ELLE IMPOSE (dn4-1 / W5) ──────
+     *
+     * Jauge horizontale sur la grandeur 0. ⚠️ ELLE N'EST PLUS CONDITIONNÉE À
+     * `n_grandeurs == 1` : jusqu'à dn3-2 le code testait
+     * `if (desc->indicateur && n == 1)`, si bien qu'un descripteur bi-grandeurs
+     * avec `indicateur = true` PERDAIT SA JAUGE SANS ERREUR NI LOG, alors que ce
+     * champ était documenté ici SANS restriction. Le ledger le portait 🟠 latent
+     * depuis la revue dn3-1 ; D10 l'a armé en passant CPU et GPU à deux
+     * grandeurs. Corrigé en dn4-1 : le champ fait ce qu'il dit.
+     *
+     * 🔴 MAIS CORRIGER SEULEMENT ÇA DÉPLACE LA PANNE, IL NE LA SUPPRIME PAS.
+     *    L'arithmétique, POSÉE AVANT LE CODE et relue dans `dn_widget.c:48-55`
+     *    (h = 156, W_VAL_Y = 48, W_VAL_PAS = 40, W_JAUGE_H = 10, W_SEC_H = 20 ;
+     *    la jauge consomme W_JAUGE_H + 10 = 20 px, pas 26) :
+     *
+     *      n=1 sans jauge : y_bas =  88          -> 88 + 20 = 108 <= 156  sec OUI
+     *      n=1 avec jauge : y_bas =  88 -> 108   -> 108 + 20 = 128 <= 156 sec OUI
+     *      n=2 sans jauge : y_bas = 128          -> 128 + 20 = 148 <= 156 sec OUI
+     *      n=2 AVEC jauge : y_bas = 128 -> 148   -> 148 + 20 = 168 > 156  sec NON
+     *
+     *    ⚠️ La story annonçait 174 > 156 : le chiffre exact est **168 > 156**
+     *       (elle comptait 26 px de jauge au lieu de 20). La CONCLUSION est la
+     *       même, et c'est elle qui compte — mais un chiffre publié se relit.
+     *
+     * ⇒ RÈGLE ÉCRITE, ET C'EST UNE PRIORITÉ, PAS UN HASARD : quand les deux ne
+     *   tiennent pas, LA JAUGE GAGNE ET LA SECONDAIRE EST ABANDONNÉE — parce que
+     *   la jauge est demandée explicitement par un champ du descripteur, tandis
+     *   que la secondaire est une ligne libre que l'état peut laisser vide de
+     *   toute façon. ⛔ ET L'ABANDON EST JOURNALISÉ (`dn_widget_creer`), jamais
+     *   silencieux : c'est tout l'objet du correctif.
+     *
+     * ⚠️ CE QUE ÇA NE CHANGE PAS, ET QUI SE VÉRIFIE : `RAM` est à n = 1, donc
+     *    elle GARDE sa jauge ET son « 12,1 / 32 Go ». Le corollaire nommé au
+     *    ledger (« le jour où on lui ajoute une 2ᵉ grandeur, la jauge disparaît
+     *    en silence ») est désormais faux dans les deux moitiés : la jauge ne
+     *    disparaît plus, et rien n'est plus silencieux.
+     *
+     * ⛔ RESSERRER LA GÉOMÉTRIE (W_VAL_PAS, W_JAUGE_H) POUR FAIRE TENIR LES TROIS
+     *    A ÉTÉ ÉCARTÉ : il faudrait descendre W_VAL_PAS à 34, ce qui change la
+     *    lisibilité des SIX cases pour le besoin de deux — et aucune case de
+     *    dn4-1 ne demande jauge + secondaire sur deux grandeurs.
+     */
+    bool indicateur;
     int32_t ind_min;     /* bornes de la jauge, dans l'unité BRUTE de l'état */
     int32_t ind_max;
     dn_widget_grandeur_t grandeurs[DN_WIDGET_GRANDEURS_MAX];
@@ -155,8 +198,31 @@ typedef struct {
  * C'est lui qui garantit qu'une bascule d'écran ne rend pas les cases à un
  * factice : le texte conservé est reposé à la (re)construction.
  */
+/*
+ * ── W10 (dn4-1) : UNE CASE RÉELLE DONT UNE SEULE GRANDEUR EST ABSENTE ────────
+ *
+ * Le cas exact : le GPU rend son % mais pas sa °C (source de température
+ * indisponible sur une carte donnée). Faut-il taire les deux ?
+ *
+ * 🔴 NON — ET C'EST UN ÉCART ASSUMÉ AVEC `dn_ui_ambiance_maj`, PAS UN OUBLI.
+ *    AMBIANCE grise ses deux grandeurs ensemble (« il n'y a pas de demi-
+ *    silence ») parce qu'elles viennent d'UN SEUL capteur : si le BME680 se
+ *    tait, il se tait pour les deux, et en afficher une seule serait affirmer
+ *    qu'on sait quelque chose du capteur. Ici les deux grandeurs ont des
+ *    sources INDÉPENDANTES : taire le % GPU parce que la °C manque
+ *    supprimerait une information VRAIE et disponible.
+ *
+ * ⇒ RÈGLE : le RÉGIME reste porté par la CASE (le motif du verrou unique —
+ *   cohérence de trame — est intact), et une grandeur dont le texte est VIDE
+ *   s'affiche « -- » DANS LA COULEUR D'ABSENCE, quelle que soit la couleur du
+ *   régime de la case. Une case RÉELLE peut donc porter une ligne grise.
+ * ⛔ Ce qui reste interdit et ne se renégocie pas : inventer la grandeur
+ *   manquante, l'emprunter à une autre, ou recopier celle du CPU.
+ */
 typedef struct {
     dn_val_regime_t regime;
+    /* ⚠️ Un `txt[i]` VIDE n'est PAS « zéro » : c'est « cette grandeur-là est
+     * absente » (W10). Le modèle l'affiche « -- » en gris, sans unité. */
     char txt[DN_WIDGET_GRANDEURS_MAX][DN_WIDGET_TXT_MAX];
     /* Valeur brute, pour la jauge — unité du descripteur.
      * ⚠️ SEUL `brut[0]` est écrit et lu aujourd'hui (relevé en revue le

@@ -354,3 +354,267 @@ grandeur total : **~0,7 s moyenne, < 1,3 s pire cas** — largement sous la pér
   le modèle) — dn2-1 fera pareil pour ses cases capteurs, dn3-1 généralisera.
 - ⚠️ Sous Windows, **toute ouverture de port série reset la carte si DTR/RTS ne
   sont pas forcés bas AVANT l'open** — vaut pour tout outil côté tour à venir.
+
+---
+
+# 13. LE PROTOCOLE v2 ET LES CINQ SOURCES PC — mesuré le 2026-08-18 (dn4-1, P9.1)
+
+## 13.1 La grammaire v2 — ⛔ l'autorité reste `main/dn_link.h`
+
+**Ce paragraphe RÉSUME, il ne redéfinit pas.** Le dépôt a déjà publié un checksum **faux** dans
+**trois** fichiers d'autorité à la fois (`dn_link.h`, la docstring de l'agent et §12.5), si bien
+que l'« exemple valide » du projet était la **seule trame que le firmware refuse**. Une grammaire
+recopiée dérive ; celle qui fait foi vit dans `dn_link.h`.
+
+    v1 (dn2-2, TOUJOURS ACCEPTÉE) : $DN,1,<seq>,<t_ms>,cpu,<dixiemes>*<CK>      6 champs EXACTEMENT
+    v2 (dn4-1)                    : $DN,2,<seq>,<t_ms>,<metrique>,<v1>[,<v2>]*<CK>   6 OU 7 champs
+
+| métrique | v1 (grandeur 0) | v2 (grandeur 1) | v2 attendue ? |
+|---|---|---|---|
+| `cpu` | % d'utilisation (0..1000) | GHz (0..1000) | oui |
+| `gpu` | % d'utilisation (0..1000) | °C (0..1500) | oui |
+| `ram` | % d'occupation (0..1000) | **Go TOTAUX** (0..40000) | oui |
+| `net` | Mb/s ↓ (0..1000000) | Mb/s ↑ (0..1000000) | oui |
+| `disk` | Mo/s (0..1000000) | — | **non** |
+
+Toutes les valeurs sont en **DIXIÈMES**, entières. ⛔ Aucun flottant sur le fil.
+
+🔴 **`ram` porte le TOTAL, pas l'utilisé, et c'est structurel.** Le firmware compose
+« 22,7 / 34,2 Go » en calculant `utilisé = % × total`. Envoyer deux nombres échantillonnés
+séparément afficherait tôt ou tard **deux vérités contradictoires dans le même rectangle** —
+c'est le motif écrit du mock « 12,1 / 32 Go » de dn3-2, et il vaut plus encore pour du réel.
+
+🔴 **W3 tranché : UNE TRAME PAR MÉTRIQUE.** Trois raisons, dans cet ordre :
+1. **Chaque métrique a son horodatage de réception**, donc sa **péremption propre**,
+   gratuitement. Une source qui meurt seule meurt seule (W8 fermée du même coup).
+2. **La ligne reste courte** : pire cas v2 au gabarit = **51 octets**
+   (`$DN,2,4294967295,4294967295,disk,1000000,1000000*FF`). `DN_LINK_LIGNE_MAX` **reste à 63**.
+3. **Une 10ᵉ grandeur rentrera encore.** L'option « tout-en-un » faisait ~96 octets.
+
+🔴 **W10 tranché : la 2ᵉ grandeur est OPTIONNELLE, et son absence EST une donnée.** Une trame v2
+à 6 champs dit « je connais v1, je ne connais pas v2 ». ⛔ **Pas de jeton « inconnu »** :
+`parse_u32_strict` refuse un champ vide (« champ VIDE ≠ zéro », délibéré). Côté écran, la case
+reste **RÉELLE** et la seule grandeur manquante s'affiche **« -- » en gris**.
+⚠️ **Écart assumé avec `dn_ui_ambiance_maj`**, qui grise ses deux grandeurs ensemble : là, elles
+viennent d'**un seul** capteur ; ici, de sources **indépendantes**. Taire le % GPU parce que la
+°C manque supprimerait une information vraie et disponible.
+
+**Le seq reste GLOBAL**, jamais par métrique : il numérote les trames de l'**agent**, qui est un
+émetteur unique. Le suivre par métrique compterait **4 « pertes » à chaque tour de cinq trames**.
+
+## 13.2 🔴 LA LONGUEUR DE LIGNE, MESURÉE — et l'instrument évident était faux
+
+`max_cmdline_length = 128` est ce que le code **alloue**, pas ce que le fil **délivre**.
+
+| instrument | verdict | valide ? |
+|---|---|---|
+| l'**écho** du REPL | « intact » jusqu'à **127** caractères | 🔴 **NON** — linenoise renvoie les octets **à mesure qu'ils arrivent**, donc **avant** le plafond du tampon |
+| le **firmware lui-même** (`pc $<...>` ré-imprime `argv[1]`) | **124** caractères de trame, **127** pour la ligne entière | ✅ c'est la vue du **consommateur** |
+
+Mesuré par balayage de 115 à 135 caractères : intact jusqu'à 124, plateau à 124 ensuite (9 tirs).
+⇒ **La bande « ligne COMPLÈTE mais trop longue » est 64..124**, large de **61 octets**, donc
+**atteignable**. C'est la condition pour que `rejets_trop_longue` ne soit pas un compteur
+décoratif — *et un compteur décoratif est un instrument qui ment.*
+
+## 13.3 La campagne de bruit — 15 cas, chacun sur SON compteur
+
+`pc reset` avant chaque cas, relevé du delta après. **Critère : le compteur attendu +1, ET LUI
+SEUL.**
+
+| cas | compteur | ✓ |
+|---|---|---|
+| pas de queue `*CK` / queue mutilée (`*4`) | `rejets_tronquee` | ✅ ✅ |
+| ligne complète de 64..124 o | `rejets_trop_longue` | ✅ |
+| checksum faux | `rejets_checksum` | ✅ |
+| version 3 / version 0 | `rejets_version` | ✅ ✅ |
+| champ absent (5) / en trop (8) / VIDE | `rejets_format` | ✅ ✅ ✅ |
+| métrique inconnue | `rejets_format` | ✅ |
+| **v1 avec métrique v2** / **v1 à 7 champs** | `rejets_format` | ✅ ✅ |
+| v2 sur métrique sans 2ᵉ grandeur (`disk`) | `rejets_format` | ✅ |
+| `cpu` > 1000 / `gpu` °C > 1500 | `rejets_bornes` | ✅ ✅ |
+
+**15 / 15.** Et les trois cas de `seq`, qui demandent deux trames :
+
+| cas | observé |
+|---|---|
+| doublon de `seq` | `recues` +1, `doublons` +1 — valeur IGNORÉE |
+| saut ARRIÈRE (agent redémarré) | `recues` +2, `resynchros` +1 — trame **APPLIQUÉE** |
+| trou crédible (+3) | `recues` +2, `pertes_seq` +2 |
+
+⚠️ Mes attentes écrites pour ces trois-là étaient **fausses** (j'avais prédit `resynchros` +2 et
+un `resynchros` sur le trou crédible). **C'est le firmware qui a raison** : la première trame
+après un `pc reset` est « première », son saut vaut 1 et ne compte rien.
+
+## 13.4 🔴 TÉMOIN DE NON-RÉGRESSION v1 — l'extension EST additive
+
+`agent/dn_agent.py` **de dn2-2, NON MODIFIÉ** (copie figée depuis `git show 395310e:`, vérifiée
+identique à l'arbre avant modification), exécuté **sur la tour**, sa sortie `--stdout` capturée
+**telle quelle** et injectée. ⛔ **Les trames ne sont pas re-fabriquées par le harnais** : un
+harnais qui rejoue au lieu d'extraire fabrique sa propre vérité.
+
+| tir | valides | doublons | pertes | **`rejets_version`** | tous rejets |
+|---|---:|---:|---:|---:|---|
+| 1 | 7 / 8 | 0 | 1 | **0** | 0 partout |
+| 2 | **8 / 8** | 0 | 0 | **0** | 0 partout |
+| 3 | **8 / 8** | 0 | 0 | **0** | 0 partout |
+| 4 | **8 / 8** | 0 | 0 | **0** | 0 partout |
+
+⇒ **La case CPU vit, `rejets_version` = 0.** L'extension est prouvée additive.
+⚠️ **La perte du premier tir est déclarée et NON reproductible** (3 rejeux à 8/8, aucun rejet) :
+une trame n'a jamais atteint le parseur — donc ni rejetée ni comptée. C'est un aléa du **harnais
+console**, pas du firmware, et il est écrit plutôt que lissé.
+✅ **Et le témoin montre W10 en action** : l'agent v1 ne publie pas de fréquence, la case affiche
+donc **« 21,3 % » en blanc et « -- » en gris** sur la seconde ligne. Elle ne l'invente pas.
+
+## 13.5 🔴 W1 — LA SOURCE GPU SUR CETTE TOUR : le repli n'a pas servi
+
+**Le constat qui ouvrait la story** : `Win32_VideoController` rend **UN SEUL** contrôleur,
+**AMD Radeon RX 6800 XT**, driver 32.0.21045.1000, `PCI\VEN_1002&DEV_73BF`. `pynvml` est
+**absent** du Python 3.13 de la tour. ⇒ **NVML, nommée par D10, n'a aucun device ici.**
+
+**Les deux candidats, MÊME protocole (30 tirs à 1 Hz, cumul `Process().cpu_times()`)** :
+
+| source | par tir | % d'un cœur | % machine | rend | verdict |
+|---|---:|---:|---:|---|---|
+| **`atiadlxx.dll` — `ADL2_New_QueryPMLogData_Get`** | **0,5 ms** | **0,052 %** | **0,0033 %** | **% ET °C en UN appel** | ✅ **RETENUE** |
+| WMI `..._GPUEngine` (720 instances) | **342,2 ms** | **30,8 %** | **1,93 %** | % seul | ⛔ **ÉCARTÉE** |
+
+🔴 **657× plus cher** — et le candidat WMI **faisait sauter à lui seul le critère n°4 du brief**
+(« l'agent reste imperceptible, < 1 % CPU ») **et ne tenait même pas la cadence 1 Hz** : 33,3 s
+de temps mural pour 30 tirs espacés d'une seconde.
+
+⇒ **LE REPLI PRÉ-AUTORISÉ PAR L'OWNER (« % seul, °C absente ») N'A PAS SERVI.** La °C GPU est
+là, sans élévation, sans driver, sans .NET — donc **sans franchir la frontière D8**.
+
+⚠️ **LE MAPPING DES CAPTEURS PMLog N'EST PAS DEVINABLE, ET IL SE VÉRIFIE.** Les indices viennent
+de l'énumération `ADLSensorType` du SDK ADL ; les prendre pour argent comptant, ce serait risquer
+de publier une tension comme une température. **Le témoin est éliminatoire** : les mêmes indices
+doivent rendre `BUS_LANES = 16` et `CLK_MEMCLK ≈ 2000 MHz` sur une RX 6800 XT. L'agent **refuse
+de servir** sinon. (Relevés : 16 et 1976-1990 MHz selon le tir.)
+⚠️ **Cette tour expose SEPT `iAdapterIndex` pour UN SEUL GPU physique** (une entrée par sortie
+d'affichage) : l'agent prend **le premier qui RÉPOND à PMLog avec un mapping cohérent**, pas
+« le premier présent » — ce serait un pari.
+
+## 13.6 W2 — la grandeur de `DISQUE`, tranchée par la mesure
+
+**Critère écrit AVANT l'échantillonnage** (une case de six doit BOUGER, quantifié), les **deux**
+candidats sur la **même** session réelle de **16 min à 1 Hz** (960 échantillons), à la **même**
+résolution (le dixième d'unité affichée) :
+
+| candidat | C1 étendue ≥ 5 dixièmes | C2 texte changé ≥ 10 % | C3 σ ≥ 1 dixième | verdict |
+|---|---:|---:|---:|---|
+| **débit I/O (Mo/s)** | **2 684** (268,4 Mo/s) ✅ | **93,3 %** ✅ | **126,4** ✅ | ✅ **QUALIFIE** |
+| taux d'occupation (%) | **0** ❌ | **0,0 %** ❌ | **0,00** ❌ | ❌ |
+
+L'occupation vaut **54,9 %** du premier au dernier échantillon, **étendue nulle au dixième de
+point**. ⇒ **le DÉBIT**, et **W12 ne se pose pas** : le candidat retenu bouge.
+⛔ **Pas de jauge** : un débit n'a pas de plein, et une jauge dont l'échelle est inventée est un
+mensonge d'interface silencieux — **même motif écrit que pour `RÉSEAU`**.
+
+## 13.7 AC11 — ce qui saute, et le legs à `dn4-5`
+
+960 échantillons consécutifs à 1 Hz, côté PC. **Saut = écart entre deux échantillons
+consécutifs, à la résolution AFFICHÉE.**
+
+| grandeur | min | max | saut méd. | saut p95 | saut max | % d'échantillons qui changent |
+|---|---:|---:|---:|---:|---:|---:|
+| **CPU GHz** | 1,2 | 3,2 | **0,8** | **2,0** | **2,0** | 76 % |
+| CPU % | 14,2 | 86,9 | 7,3 | 45,7 | 58,4 | 99 % |
+| RÉSEAU ↓ Mb/s | 0,1 | 296,1 | 14,0 | 86,1 | 260,8 | 97 % |
+| RÉSEAU ↑ Mb/s | 0,2 | 28,1 | 0,6 | 9,3 | 25,2 | 94 % |
+| DISQUE Mo/s | 0,0 | 268,4 | 1,0 | 7,6 | 191,1 | 93 % |
+| GPU % | 0,0 | 19,0 | 1,0 | 6,0 | 18,0 | 54 % |
+| GPU °C | 46,0 | 48,0 | 0,0 | 1,0 | 1,0 | 29 % |
+| RAM % | 60,1 | 67,6 | 0,0 | 0,1 | 0,8 | 28 % |
+
+🔴 **LA FRÉQUENCE CPU EST LA PLUS BRUYANTE, ET PAS PAR SON AMPLITUDE — PAR SA NATURE.** Son saut
+médian vaut **0,8 GHz sur une plage totale de 2,0** : la moitié des rafraîchissements déplace le
+chiffre de **40 % de sa course**, sans rapport lisible avec la charge instantanée (relevé sous
+charge constante : 3201 · 1200 · 1300 · 2100 · 1200 MHz).
+
+**Legs à `dn4-5`, écrit** :
+- **Lissage NÉCESSAIRE** : `CPU GHz` (le cas d'école), `RÉSEAU ↓`, `DISQUE` — saut p95 ≥ 40 % de
+  la plage observée.
+- **Lissage INUTILE** : `RAM %` et `GPU °C` — elles changent moins d'un tiers du temps et d'un
+  dixième d'unité. Les lisser n'ajouterait qu'un retard.
+- **À DISCUTER** : `CPU %` — elle saute beaucoup **mais c'est la vérité de la machine**, et un
+  CPU lissé ment sur les pics. *« Le lissage ne se décide pas par principe. »*
+- ⚠️ **Contrainte non négociable** : **aucune valeur lissée ne doit survivre à la péremption de
+  3 s**, sinon AC7 de dn2-2 tombe.
+
+## 13.8 AC9 — le coût de l'agent, mesuré AU CUMUL
+
+Lancé depuis une session **non élevée**, sans driver, sans .NET.
+**Méthode** : cumul `psutil.Process().cpu_times()` rapporté au temps mural. ⛔ **Jamais une
+fenêtre glissante** : sa résolution (~0,16 pt sur 10 s, ticks de 15,6 ms) **ne peut pas voir**
+un coût de cet ordre.
+
+| | dn2-2 (1 métrique) | **dn4-1 (5 métriques / 7 grandeurs)** |
+|---|---:|---:|
+| durée | 40 s | **180,0 s** |
+| s CPU | 0,141 | **2,750** |
+| **% d'un cœur** | 0,35 % | **1,528 %** |
+| **% machine (16 cœurs)** | 0,022 % | **0,0955 %** |
+| trames émises | 40 | **900** (5,00 /s) |
+| écrêtages | — | **0** |
+| recalages de cadence | — | **0** |
+
+**L'augmentation est ATTRIBUÉE, source par source** (30 tirs chacune, même méthode) :
+
+| source | ms CPU / tir | part des 15,1 ms/s |
+|---|---:|---:|
+| `psutil.virtual_memory()` | **7,8** | 52 % |
+| `psutil.net_io_counters()` | **6,8** | 45 % |
+| **ADL PMLog (GPU % + °C)** | **0,5** | **3 %** |
+| `psutil.cpu_percent()` + `cpu_freq()` | ~0,0 | ~0 |
+| `psutil.disk_io_counters()` | ~0,0 | ~0 |
+| **somme** | **≈ 15,1 ms/s** | **= 1,51 % d'un cœur** |
+
+⇒ **1,51 sur les 1,528 points mesurés sont expliqués.** L'attribution ferme.
+🔴 **ET ELLE RENVERSE L'INTUITION DU CADRAGE** : la source GPU était le poste suspect (« mesurer
+le coût de l'énumération des 720 instances, c'est le critère n°4 du brief qui est en jeu »).
+C'est vrai **du candidat WMI** ; la source **retenue** pèse **3 %** du coût. Les postes
+dominants sont `virtual_memory` et `net_io_counters`, deux appels qu'on n'aurait pas soupçonnés.
+
+⚠️ **Quelle lecture de « < 1 % CPU » ?** Le brief ne le dit pas. Les deux sont publiées :
+**0,0955 % machine** (ce qu'affiche le Gestionnaire des tâches) ✅ **tenu, avec un facteur 10 de
+marge** · **1,528 % d'un cœur** ❌ au-dessus de 1. dn2-2 publiait déjà les deux (0,35 / 0,022).
+⚠️ **D8** : ce chiffre porte sur **l'AGENT SEUL** — et c'est légitime **parce qu'il n'y a rien
+d'autre**. Sous Ring0 il aurait fallu y ajouter le service LibreHardwareMonitor.
+
+## 13.9 Les dépendances de l'agent, avec leur statut MESURÉ
+
+| dépendance | statut | pourquoi |
+|---|---|---|
+| `psutil` **7.2.2** | ✅ déjà installée | CPU, RAM, réseau, disque — même chiffre que le noyau |
+| `pyserial` | ✅ déjà installée | branche A (COM3) |
+| `websockets` | ✅ déjà installée | branche B, **écartée** par la fourche dn2-2 — gardée pour re-mesure |
+| **`ctypes` + `atiadlxx.dll`** | ✅ **stdlib + DLL déjà présente** | **aucune dépendance ajoutée** pour le GPU |
+| `pywin32` (`win32com`) | ✅ présente, **NON UTILISÉE** en régime | a servi à mesurer le candidat WMI, puis écartée |
+| `pynvml` | ❌ absente | **inapplicable** : la tour est AMD |
+
+⇒ **dn4-1 n'ajoute AUCUNE dépendance.** La source GPU passe par `ctypes` (stdlib) et une DLL
+installée par le pilote AMD.
+
+## 13.10 Ce qui n'a pas marché, avec son symptôme
+
+- ⛔ **NVML** — écartée **sans être essayée**, et c'est justifié : `Win32_VideoController` rend
+  un contrôleur **unique** et **AMD**. Essayer NVML aurait été essayer un pilote NVIDIA sur une
+  machine sans NVIDIA.
+- ⛔ **WMI `GPUEngine`** — **essayée et mesurée** : fonctionne (720 instances, neutre en langue,
+  sans droits) mais **342 ms de CPU par tir**. Écartée par le chiffre, pas par principe.
+- ⛔ **`ADL_Overdrive5_Temperature_Get`** → `rc = -5` · **`ADL_Overdrive6_Temperature_Get`** →
+  `rc = -5` · **`ADL2_OverdriveN_Temperature_Get`** → `rc = -8`. Les trois API de température
+  « classiques » d'ADL sont **mortes sur RDNA2**. Seule `ADL2_New_QueryPMLogData_Get` répond.
+- ⛔ **L'écho du REPL comme mesure de longueur de ligne** — rendait « intact » à 127 caractères
+  alors que le parseur n'en recevait que 124. **L'instrument ne pouvait pas voir le défaut.**
+- ⛔ **`psutil` `errin`/`errout`/`dropin`/`dropout`** — **jamais publiés** : cette tour rend
+  `dropin = 113 558 935 299 979`, une valeur impossible. Les compteurs d'octets et de paquets,
+  eux, sont cohérents.
+- 🔴 **Une session d'échantillonnage a été JETÉE** : un premier lancement en arrière-plan n'était
+  pas mort et un second écrivait le même CSV. Symptôme : une ligne à 20 champs au lieu de 21, que
+  `csv.DictReader` a avalée **en décalant toutes les colonnes** — l'analyse a publié
+  « CPU % max = 1600 » (c'était la fréquence) et « RAM % max = 22 milliards » (des octets).
+  ⚠️ **Ce sont des valeurs ABSURDES qui ont sauvé la mesure ; un décalage plausible ne l'aurait
+  pas fait.** Le lecteur **compte et rejette** désormais toute ligne malformée, et vérifie que
+  les horodatages sont strictement croissants.

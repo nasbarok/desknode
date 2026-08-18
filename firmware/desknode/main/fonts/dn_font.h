@@ -12,7 +12,7 @@
  *
  * `dn_font_14` / `dn_font_28` couvrent 0x20-0x7F,0xA0-0xFF,0x2022 :
  * ASCII + LATIN-1 COMPLET + la puce + les 60 symboles LV_SYMBOL_* UNIQUES
- * + 10 icônes FontAwesome, dont 2 sont DÉJÀ des symboles ⇒
+ * + 11 icônes FontAwesome, dont 3 sont DÉJÀ des symboles ⇒
  * 8 codepoints neufs, et 68 au `-r` FontAwesome final. Elles sont
  * donc un SUR-ENSEMBLE STRICT des built-ins.
  * ⚠️ « 61 » est le nombre d'entrées BRUTES de la liste amont — elle contient un
@@ -63,7 +63,7 @@
 extern "C" {
 #endif
 
-/* ASCII + latin-1 complet + puce + 60 symboles + 10 icônes. */
+/* ASCII + latin-1 complet + puce + 60 symboles + 11 icônes. */
 LV_FONT_DECLARE(dn_font_14)
 LV_FONT_DECLARE(dn_font_28)
 
@@ -73,6 +73,7 @@ LV_FONT_DECLARE(dn_font_28)
 #define DN_ICONE_COG                 "\xEF\x80\x93" /* U+F013 cog */
 #define DN_ICONE_TINT                "\xEF\x81\x83" /* U+F043 tint */
 #define DN_ICONE_COGS                "\xEF\x82\x85" /* U+F085 cogs */
+#define DN_ICONE_SAVE                "\xEF\x83\x87" /* U+F0C7 save */
 #define DN_ICONE_DESKTOP             "\xEF\x84\x88" /* U+F108 desktop */
 #define DN_ICONE_THERMOMETER_HALF    "\xEF\x8B\x89" /* U+F2C9 thermometer-half */
 #define DN_ICONE_MICROCHIP           "\xEF\x8B\x9B" /* U+F2DB microchip */

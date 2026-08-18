@@ -7,9 +7,68 @@
  * dn_link_ingest_ligne() à chaque message. dn_link ne sait pas d'où vient la
  * trame — et c'est voulu : la fourche transport (AC5) se tranche sans le réécrire.
  *
- * ── LE PROTOCOLE DE TRAME, VERSION 1 — fait foi avec agent/dn_agent.py ────────
+ * ════════════════════════════════════════════════════════════════════════════
+ * ── LE PROTOCOLE DE TRAME — CE FICHIER FAIT FOI (dn4-1 : v2) ─────────────────
+ * ════════════════════════════════════════════════════════════════════════════
  *
- *      $DN,<ver>,<seq>,<t_ms>,cpu,<dixiemes>*<CK>
+ * ⛔ NE PAS RECOPIER CETTE GRAMMAIRE AILLEURS SANS RENVOI. Le dépôt a déjà
+ *    publié un checksum FAUX dans TROIS fichiers d'autorité à la fois, et
+ *    l'« exemple valide » du projet était la seule trame que le firmware
+ *    REFUSE. `agent/dn_agent.py`, `hardware/…-liaison-pc.md` et le README
+ *    RENVOIENT ici ; ils ne redéfinissent rien.
+ *
+ *      v1 (dn2-2, TOUJOURS ACCEPTÉE) :
+ *          $DN,1,<seq>,<t_ms>,cpu,<dixiemes>*<CK>        — 6 champs, EXACTEMENT
+ *
+ *      v2 (dn4-1) :
+ *          $DN,2,<seq>,<t_ms>,<metrique>,<v1>[,<v2>]*<CK>  — 6 OU 7 champs
+ *
+ * 🔴 L'EXTENSION EST ADDITIVE, ET C'EST UNE PROPRIÉTÉ TESTABLE, PAS UNE
+ *    INTENTION : l'agent de dn2-2, NON MODIFIÉ, doit continuer de faire vivre
+ *    la case CPU, avec `rejets_version` à ZÉRO. C'est le témoin de
+ *    non-régression d'AC2 de dn4-1, et sans lui « additive » n'est qu'un mot.
+ *
+ * ── LES CINQ MÉTRIQUES DE v2, ET LEUR UNITÉ (toujours en DIXIÈMES) ───────────
+ *
+ *   nom     v1 (grandeur 0)              v2 (grandeur 1)          v2 attendue ?
+ *   ─────   ──────────────────────────   ──────────────────────   ─────────────
+ *   cpu     % d'utilisation   (0..1000)  GHz              (0..1000)   oui
+ *   gpu     % d'utilisation   (0..1000)  °C               (0..1500)   oui
+ *   ram     % d'occupation    (0..1000)  Go utilisés  (0..40000)      oui
+ *   net     Mb/s descendant (0..1000000) Mb/s montant (0..1000000)    oui
+ *   disk    (unité tranchée par W2)      —                            non
+ *
+ * 🔴 UNE TRAME PAR MÉTRIQUE, ET C'EST W3 TRANCHÉE (dn4-1) — trois raisons, dans
+ *    cet ordre :
+ *      1. CHAQUE MÉTRIQUE A SON PROPRE HORODATAGE DE RÉCEPTION, donc sa propre
+ *         péremption, GRATUITEMENT. Une source qui meurt seule (la °C d'un GPU
+ *         dont le pilote ne l'expose pas) meurt seule et honnêtement. Avec une
+ *         trame unique il aurait fallu UNE horloge + un jeton « inconnu » par
+ *         champ, donc une règle de grammaire de plus — et `parse_u32_strict`
+ *         REFUSE un champ vide (« champ VIDE ≠ zéro », délibéré).
+ *      2. LA LIGNE RESTE COURTE. Pire cas v2 mesuré au gabarit :
+ *         « $DN,2,4294967295,4294967295,disk,1000000,1000000*FF » = 51 octets.
+ *         `DN_LINK_LIGNE_MAX` peut donc RESTER À 63 — voir sa définition.
+ *      3. UNE 10ᵉ GRANDEUR RENTRERA ENCORE. Une trame tout-en-un faisait
+ *         ~96 octets et saturait la ligne pour rien.
+ *    ⚠️ LE PRIX EST RÉEL ET SE MESURE : ×5 sur l'écho console de la branche A
+ *       (instrument d'AC3 de dn2-2 : octets/s et lignes/s).
+ *
+ * 🔴 CE QUE LA FORME DE TRAME NE FAIT PAS : elle ne décorrèle RIEN. La tâche de
+ *    poussée agrège ce qui est arrivé depuis son dernier réveil ; cinq trames
+ *    dans la même fenêtre de 250 ms produisent UNE salve de poussées, donc UN
+ *    cycle LVGL. Décorréler est un acte DÉLIBÉRÉ côté poussée
+ *    (`dn_link_set_etalement`), pas une conséquence du transport.
+ *
+ * ── LA 2ᵉ GRANDEUR EST OPTIONNELLE, ET SON ABSENCE EST UNE DONNÉE (W10) ──────
+ *
+ * Une trame v2 à 6 champs dit « je connais v1, je ne connais PAS v2 ». Ce n'est
+ * pas un défaut de format : c'est le seul moyen honnête de publier un GPU dont
+ * le % est lisible et la température non. ⛔ Et c'est pour ça qu'il n'y a PAS de
+ * jeton « inconnu » : un champ absent est absent, il ne se code pas.
+ * ⇒ Côté UI, la case reste RÉELLE et la seule grandeur manquante s'affiche
+ *   « -- » en gris (contrat écrit dans `dn_widget.h`).
+ *
  *
  *  $DN         marqueur de début. Une ligne qui ne commence pas par « $DN, »
  *              n'atteint jamais ce module (le REPL la traite en commande, le
@@ -46,7 +105,7 @@
  *  · version inconnue                           → rejets_version
  *  · champ absent / en trop / non numérique /
  *    métrique inconnue / hex de checksum cassé  → rejets_format
- *  · valeur hors bornes (> 1000)                → rejets_bornes
+ *  · valeur hors bornes (plafond PAR MÉTRIQUE)  → rejets_bornes
  *  · seq identique au précédent (doublon)       → doublons (valeur IGNORÉE)
  *  · saut de seq non crédible (> SAUT_MAX,
  *    y compris ARRIÈRE : agent redémarré)      → resynchros (valeur APPLIQUÉE)
@@ -55,9 +114,9 @@
  *  SEAU. « tronquée » (le flux a perdu sa fin) et « trop longue » (l'émetteur
  *  envoie un format plus large : v2, métrique en plus) sont des diagnostics
  *  CONTRAIRES : le premier envoie chercher une perte dans le transport, le second
- *  un émetteur qui a changé. Le REPL laisse passer 128 caractères (`max_cmdline_length`)
- *  quand DN_LINK_LIGNE_MAX vaut 63 : la plage 64..128 est atteignable et arrivait
- *  en « tronquée ». Deux compteurs désormais.
+ *  un émetteur qui a changé. Le REPL délivre au parseur 124 caractères de trame
+ *  (MESURÉ en dn4-1, voir DN_LINK_LIGNE_MAX) quand DN_LINK_LIGNE_MAX vaut 63 : la
+ *  plage 64..124 est atteignable et arrivait en « tronquée ». Deux compteurs désormais.
  *
  *  ⚠️ CORRECTIF DE REVUE (2026-08-16) — LES REJETS D'AVANT dn_link SONT COMPTÉS AUSSI.
  *  Sur la branche A, le REPL découpe la ligne AVANT que dn_link la voie : une trame
@@ -69,12 +128,28 @@
  *  la SECONDE moitié d'une trame coupée en deux, qui ne commence pas par « $DN » et
  *  tombe en « commande inconnue » du REPL — le REPL, lui, la signale bruyamment.
  *
- * ── L'ÉTAT DE LIAISON (AC7) ──────────────────────────────────────────────────
+ * ── L'ÉTAT DE LIAISON (AC7) — UNE HORLOGE PAR MÉTRIQUE (dn4-1 / W8) ──────────
  *  Le firmware ne suppose JAMAIS la cadence de l'agent. Une seule règle, en
  *  temps absolu : âge = maintenant − horodatage de réception de la dernière
- *  trame VALIDE. Au-delà de DN_LINK_PEREMPTION_US, la liaison est MORTE et la
- *  case CPU l'affiche (« -- » grisé), au lieu de figer un chiffre qui n'a plus
- *  cours. La reprise est le chemin inverse, sans reboot.
+ *  trame VALIDE **de cette métrique**. Au-delà de DN_LINK_PEREMPTION_US, elle est
+ *  MORTE et sa case l'affiche (« -- » grisé), au lieu de figer un chiffre qui n'a
+ *  plus cours. La reprise est le chemin inverse, sans reboot.
+ *
+ *  🔴 CINQ HORLOGES, PAS UNE — et ça ne coûte rien parce que la trame est déjà
+ *     par métrique (W3). Une source qui s'arrête seule s'éteint seule : c'est le
+ *     différenciateur du brief appliqué À L'INTÉRIEUR des données PC.
+ *  ⚠️ `dn_link_etat()` (sans métrique) reste le RÉSUMÉ GLOBAL, et il est défini :
+ *     VIVANTE si AU MOINS UNE métrique est fraîche, MORTE si au moins une a déjà
+ *     été reçue mais qu'aucune ne l'est plus, JAMAIS sinon. Il sert à `pc` et à
+ *     rien d'autre — ⛔ une CASE ne se juge JAMAIS dessus, sinon quatre cases
+ *     mentiraient parce que la cinquième vit.
+ *
+ *  ── LE SEQ EST GLOBAL, PAS PAR MÉTRIQUE, ET C'EST DÉLIBÉRÉ ──────────────────
+ *  `seq` numérote les trames de L'AGENT, qui est un émetteur unique. Le suivre
+ *  par métrique compterait 4 « pertes » à chaque tour de cinq trames : le
+ *  compteur `pertes_seq` deviendrait un générateur de bruit au lieu d'un
+ *  diagnostic. Doublons, pertes et resynchros restent donc GLOBAUX ; seuls la
+ *  valeur et son horodatage sont par métrique.
  */
 
 #include <stdbool.h>
@@ -82,14 +157,38 @@
 #include <stdint.h>
 #include "esp_err.h"
 
-#define DN_LINK_PROTO_VERSION 1
+/* La version que l'agent COURANT émet, et la plus haute que ce parseur accepte.
+ * ⚠️ Les DEUX sont acceptées : voir `dn_link_version_connue()`. Une v1 reste une
+ * v1 — 6 champs, métrique « cpu », rien d'autre. */
+#define DN_LINK_PROTO_VERSION 2
+#define DN_LINK_PROTO_VERSION_MIN 1
 /* 3 périodes nominales de l'agent (~1 Hz). Choisi court pour que l'état menteur
  * dure peu, assez long pour survivre à un hoquet d'ordonnanceur Windows. */
 #define DN_LINK_PEREMPTION_US 3000000LL
-/* Une trame v1 fait ~30 octets ; 63 laisse de la marge sans accepter n'importe
- * quoi. Au-delà : la ligne est COMPLÈTE mais trop longue (rejets_trop_longue),
- * ce qui n'est PAS le même symptôme qu'une fin de ligne perdue (rejets_tronquee). */
+/*
+ * ── 63 EST CONSERVÉ, ET MAINTENANT C'EST MESURÉ (dn4-1 / AC2) ────────────────
+ *
+ * Deux nombres, et il faut les deux :
+ *  · PIRE CAS D'UNE TRAME v2, au gabarit : 51 octets
+ *    (« $DN,2,4294967295,4294967295,disk,1000000,1000000*FF »). 63 laisse donc
+ *    12 octets de marge à la forme la plus large que la grammaire autorise.
+ *  · CE QUE LE REPL DÉLIVRE RÉELLEMENT AU PARSEUR : **124 caractères de trame**
+ *    (127 pour la ligne entière, « pc » + espace compris). MESURÉ le 2026-08-18
+ *    en envoyant des lignes de longueur croissante et en lisant ce que le
+ *    firmware RE-IMPRIME de son `argv[1]` — ⛔ PAS l'écho, qui renvoie les octets
+ *    à mesure qu'ils arrivent, DONC AVANT le plafond du tampon, et qui rendait
+ *    « intact » jusqu'à 127. L'instrument qui ne peut pas voir le défaut ne
+ *    tranche rien.
+ *
+ * ⇒ La bande « ligne COMPLÈTE mais trop longue » est donc **64..124**, large de
+ *   61 octets, et elle reste ATTEIGNABLE. C'est la condition pour que
+ *   `rejets_trop_longue` ne devienne pas un compteur décoratif — et un compteur
+ *   décoratif est un instrument qui ment.
+ */
 #define DN_LINK_LIGNE_MAX 63
+/* Ce que le REPL délivre au parseur, MESURÉ (voir ci-dessus). Publié ici pour que
+ * la bande « trop longue » se relise sans refaire la mesure. */
+#define DN_LINK_REPL_LIGNE_MESUREE 124
 /* Plafond d'un trou de seq CRÉDIBLE. Au-delà, ce n'est pas une perte : c'est un
  * émetteur qui a redémarré (seq revenu à 1, donc saut ARRIÈRE), un seq fabriqué,
  * ou du bruit. La trame reste APPLIQUÉE — son checksum, sa version et ses bornes
@@ -105,6 +204,34 @@ typedef enum {
     DN_LINK_VIVANTE, /* dernière trame valide plus récente que la péremption */
     DN_LINK_MORTE,   /* la péremption est passée — la case doit le dire */
 } dn_link_etat_t;
+
+/*
+ * ── LES MÉTRIQUES DE v2 ──────────────────────────────────────────────────────
+ * ⚠️ L'ORDRE DE CETTE ÉNUMÉRATION EST UN CONTRAT INTERNE À dn_link : il ne
+ *    correspond PAS aux index de case de `dn_ui` et ne doit jamais être supposé
+ *    tel. La correspondance vit dans `dn_ui.c`, dans une TABLE, explicitement.
+ *    (Le dépôt a déjà payé trois tables « câblées par index » qui mentaient.)
+ */
+typedef enum {
+    DN_LINK_M_CPU = 0,
+    DN_LINK_M_GPU,
+    DN_LINK_M_RAM,
+    DN_LINK_M_NET,
+    DN_LINK_M_DISK,
+    DN_LINK_METRIQUES,
+} dn_link_metrique_t;
+
+/* L'instantané d'UNE métrique, pris sous le verrou en UNE fois — c'est le point.
+ * Lire la valeur puis l'horodatage par deux appels laisserait afficher une
+ * valeur neuve avec un âge périmé, ou l'inverse. */
+typedef struct {
+    dn_link_etat_t etat;
+    int v1;          /* dixièmes, -1 si jamais reçue */
+    int v2;          /* dixièmes, valable seulement si `v2_connue` */
+    bool v2_connue;  /* W10 : la trame portait-elle une 2ᵉ grandeur ? */
+    int64_t age_us;  /* -1 si jamais reçue */
+    uint32_t seq;    /* seq de la trame qui a posé cette valeur (diagnostic) */
+} dn_link_vue_t;
 
 typedef struct {
     uint32_t recues;            /* trames VALIDES appliquées */
@@ -148,15 +275,55 @@ bool dn_link_ingest_ligne(const char *ligne);
  * chemins ne laissaient AUCUNE trace et le compteur mentait par omission. */
 void dn_link_compter_rejet(dn_link_rejet_t cause);
 
+/* Le RÉSUMÉ GLOBAL — VIVANTE si au moins UNE métrique est fraîche. ⛔ Ne jamais
+ * en juger une CASE : quatre cases mentiraient parce que la cinquième vit. */
 dn_link_etat_t dn_link_etat(void);
 const char *dn_link_etat_nom(dn_link_etat_t e);
-/* Dernière valeur VALIDE en dixièmes de % (0..1000). -1 si jamais reçue. */
+/* L'état d'UNE métrique — c'est CELUI-CI qu'une case doit lire. */
+dn_link_etat_t dn_link_etat_metrique(dn_link_metrique_t m);
+/* Le nom de la métrique tel qu'il circule SUR LE FIL. RELU de la table du
+ * parseur, jamais récité : c'est elle qui fait foi, ici comme dans la console. */
+const char *dn_link_metrique_nom(dn_link_metrique_t m);
+/* L'unité affichable de chaque grandeur (diagnostic console). NULL si aucune. */
+const char *dn_link_metrique_unite(dn_link_metrique_t m, int grandeur);
+/* Une 2ᵉ grandeur est-elle ATTENDUE pour cette métrique ? Sert à distinguer
+ * « elle n'existe pas » (disk) de « elle existe mais la source ne la donne pas »
+ * (gpu sans °C) — deux silences très différents. */
+bool dn_link_metrique_v2_attendue(dn_link_metrique_t m);
+/* L'instantané cohérent d'une métrique. Rend false si `m` est hors bornes. */
+bool dn_link_vue(dn_link_metrique_t m, dn_link_vue_t *out);
+
+/* Dernière valeur VALIDE du % CPU en dixièmes (0..1000). -1 si jamais reçue.
+ * ⚠️ CONSERVÉE POUR CE QU'ELLE EST : le raccourci de dn2-2 vers la métrique CPU.
+ *    Un nouvel appelant passe par `dn_link_vue()`. */
 int dn_link_valeur_dixiemes(void);
-/* Âge de la dernière trame valide en µs (esp_timer). -1 si jamais reçue. */
+/* Âge de la dernière trame valide TOUTES MÉTRIQUES CONFONDUES, en µs. -1 si
+ * jamais reçue. Diagnostic global (`pc`) — pas un critère de case. */
 int64_t dn_link_age_us(void);
-/* seq et t_ms de la dernière trame valide (diagnostic). */
+/* seq et t_ms de la dernière trame valide, toutes métriques (diagnostic). */
 uint32_t dn_link_derniere_seq(void);
 uint32_t dn_link_dernier_t_ms(void);
+
+/*
+ * ── W4 : CORRÉLER OU DÉCORRÉLER LES POUSSÉES — UN A/B, DANS LE MÊME FIRMWARE ─
+ *
+ * `false` (défaut, « groupé ») : à chaque réveil de 250 ms, TOUTES les métriques
+ *   qui ont changé sont poussées. Cinq trames arrivées dans la même fenêtre
+ *   produisent donc cinq poussées dans le MÊME cycle LVGL — c'est le régime que
+ *   la baseline §16.1 décrit, et celui que la prédiction d'AC7 chiffre.
+ * `true` (« étalé ») : AU PLUS UNE métrique poussée par réveil, en tourniquet.
+ *   ⇒ les cases se répartissent sur plusieurs cycles LVGL.
+ *
+ * ⚠️ CE QUE ÇA NE FAIT PAS : ça ne réduit PAS le travail total (mêmes pixels,
+ *    mêmes redessins). Ça réduit le PIC — et c'est le pic qu'un doigt ressent.
+ * ⚠️ CE QUE ÇA COÛTE, ÉCRIT D'AVANCE : en étalé, une métrique est rafraîchie
+ *    toutes les ~1,25 s (5 métriques × 250 ms) au lieu de ~1 s, et un passage
+ *    VIVANTE→MORTE met jusqu'à 1,25 s de plus à s'afficher sur les cinq cases.
+ *    C'est pour ça que le DÉFAUT est « groupé » : la mesure d'AC6 se fait sur le
+ *    régime nominal, pas sur une branche d'A/B.
+ */
+void dn_link_set_etalement(bool etale);
+bool dn_link_etalement(void);
 
 void dn_link_compteurs(dn_link_compteurs_t *out);
 /* Remet à zéro compteurs et latence, et OUBLIE le seq de la dernière trame.

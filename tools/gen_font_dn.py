@@ -107,7 +107,23 @@ ICONES = {
     "network-wired":    0xF6FF,  # RESEAU
     "thermometer-half": 0xF2C9,  # AMBIANCE (température)
     "tint":             0xF043,  # AMBIANCE (humidité)
+    # ── dn4-1 / W9 : L'ICÔNE DE `DISQUE`, ET SON PRIX MESURÉ ─────────────────
+    # Décision owner du 2026-08-18 : « icône disquette ». 🔴 ET ELLE EST
+    # GRATUITE, MESURÉ AVANT DE L'AJOUTER : 0xF0C7 est DÉJÀ l'un des 60
+    # codepoints de symboles que le générateur amont injecte (LV_SYMBOL_SAVE),
+    # donc l'union `-r` reste à 68 et les deux `.c` de police sont INCHANGÉS.
+    # ⚠️ Vérifié DANS LES `.c` PRODUITS avec `codepoints_du_c()` (260 codepoints
+    #    / 3 cmaps, présent en 14 px ET en 28 px), ⛔ PAS par un test de bornes :
+    #    c'est précisément ce test-là qui avait fait croire `fan` présent.
+    "save":             0xF0C7,  # DISQUE (dn4-1) — la disquette
     # ── LES QUATRE CANDIDATS AU VENTILATEUR ──────────────────────────────────
+    # ⚠️ dn4-1 les GARDE alors que la case ne s'appelle plus VENTILOS (D8).
+    #    MESURÉ le 2026-08-18 : sur les quatre, `cog` (0xF013) est DÉJÀ amont ;
+    #    seuls `sync-alt`, `wind` et `cogs` sont propres au dépôt. Les retirer
+    #    n'économiserait donc que **3 glyphes**, mais ferait passer l'union `-r`
+    #    de **68 à 65** — donc imposerait une VRAIE régénération (npm + réseau)
+    #    pour un gain négligeable. ⇒ HORS PÉRIMÈTRE de dn4-1 : le ménage attend
+    #    le jour où une régénération est nécessaire pour une autre raison.
     # `fan` (0xF863) est ABSENT du .woff du dépôt. Les quatre substituts sont
     # EMBARQUÉS ENSEMBLE et commutables à chaud (`widget icone <0..3>`) : le
     # choix est un constat owner sur la dalle, pas une intuition — et un A/B qui
@@ -376,7 +392,16 @@ def main():
     ap.add_argument("--sans-kerning", action="store_true",
                     help="supprime les trois tables de kerning (~6 900 o pour "
                          "les deux tailles)")
+    ap.add_argument("--entete-seule", action="store_true",
+                    help="réécrit UNIQUEMENT dn_font.h depuis ICONES, sans "
+                         "toucher aux .c ni appeler lv_font_conv (donc sans npm "
+                         "ni réseau). ⛔ N'EST LÉGITIME QUE SI LE CODEPOINT AJOUTÉ "
+                         "EST DÉJÀ DANS LES .c : la commande le VÉRIFIE et refuse "
+                         "sinon.")
     args = ap.parse_args()
+
+    if args.entete_seule:
+        return entete_seule()
 
     if args.mesure:
         tmp = os.path.join("/tmp", "dn_font_mesure")
@@ -428,6 +453,47 @@ def main():
     print("dn_font.h : réécrit · TOTAL %d o de données de police (les deux "
           "tailles). ⚠️ PLANCHER : le coût qui fait foi est le delta de BINAIRE."
           % total)
+
+
+def entete_seule():
+    """dn4-1 — réécrit `dn_font.h` SANS régénérer les `.c`, et le PROUVE légitime.
+
+    🔴 POURQUOI CETTE PORTE EXISTE, ET POURQUOI ELLE EST GARDÉE. Ajouter une
+       icône dont le codepoint est DÉJÀ dans les `.c` (parce que le générateur
+       amont l'injecte avec ses symboles) ne change rien aux polices : l'union
+       `-r` est identique, `lv_font_conv` produirait des `.c` bit-identiques.
+       Relancer le générateur complet pour ça coûte npm + réseau, deux choses que
+       le tableau des versions figées ne garantit pas — et un clone neuf SANS
+       RÉSEAU échouerait.
+       ⚠️ MAIS LE RACCOURCI EST UN PIÈGE S'IL N'EST PAS GARDÉ : écrire une macro
+       `DN_ICONE_*` pour un codepoint ABSENT de la police ne produit AUCUNE
+       erreur — juste un rectangle vide. C'est la classe de défaut « l'étiquette
+       qui ment », et c'est exactement ce qui avait fait croire `fan` présent.
+       ⇒ On RELIT donc les `.c` avec `codepoints_du_c()` (⛔ jamais un test de
+         bornes) et on REFUSE si un codepoint d'`ICONES` n'y est pas.
+    """
+    manques = []
+    for t in TAILLES:
+        chemin = os.path.join(SORTIE, "dn_font_%d.c" % t)
+        if not os.path.isfile(chemin):
+            sys.exit("ÉCHEC : %s absent — il faut une vraie génération." % chemin)
+        src = open(chemin, encoding="utf-8", errors="replace").read()
+        couverts, n_cmaps = codepoints_du_c(src, chemin)
+        absents = sorted(cp for cp in ICONES.values() if cp not in couverts)
+        print("dn_font_%d.c : %d codepoints portés · %d cmaps · %d/%d icônes "
+              "présentes" % (t, len(couverts), n_cmaps,
+                             len(ICONES) - len(absents), len(ICONES)))
+        for cp in absents:
+            manques.append("U+%04X absent de %s" % (cp, chemin))
+    if manques:
+        sys.exit("ÉCHEC : --entete-seule REFUSÉ, les `.c` ne portent pas tout :\n"
+                 "  - %s\n"
+                 "  ⇒ il faut une VRAIE génération (`python3 tools/gen_font_dn.py`)."
+                 % "\n  - ".join(manques))
+    ecrire_entete()
+    print("dn_font.h : réécrit depuis ICONES. Les deux `.c` n'ont PAS été touchés "
+          "— vérifiable au `sha256sum`.")
+    return 0
 
 
 def ecrire_entete():

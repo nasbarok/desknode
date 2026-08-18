@@ -2647,8 +2647,230 @@ héritée. On échangeait un legs chiffré complet contre une exigence qu'aucun 
   ESSAYÉE**, avec son motif : elle porte sur le coût d'une **transition** (`build_scene`), pas sur
   le coût d'une **mise à jour**, et la latence de transition **régresse déjà de +27,3 ms** dans
   cette story pour une raison connue et suffisante (six widgets construits au lieu de trois widgets
-  + trois cases nues). L'essayer ici mélangerait deux causes dans un même chiffre. ⚠️ Elle reste
-  **entière** pour dn4-1, où le budget < 300 ms se solde.
+  + trois cases nues). L'essayer ici mélangerait deux causes dans un même chiffre.
+  🔴 **CORRIGÉ LE 2026-08-18 (dn4-1)** : cette ligne écrivait « elle reste **entière** pour dn4-1,
+  où le budget < 300 ms se solde ». **C'EST FAUX DEPUIS LE CORRECT-COURSE DU 2026-08-18**, qui a
+  redécoupé l'epic dn4 en cinq marches et **réassigné l'option n°2 ET le budget < 300 ms à
+  `dn4-4`** (la page de détail avec sa courbe). `dn4-1` porte les **données PC réelles** ; elle
+  n'a **pas** touché à `build_scene()`. ⛔ **Ne pas la ramener dans dn4-1** — et ⛔ ne pas
+  l'échanger avec W8 (§16.7) : *« W8 n'a jamais été mesuré sur une transition, et l'option n°2
+  jamais sur une mise à jour. Les échanger serait une faute de lecture. »*
 - ⚠️ Les constats **à l'œil** (image stable, aucune bande discernable, six valeurs vivantes) sont
   des **gestes owner** : aucun chiffre de cette section ne les remplace. *« Un fps vert ne prouve
   PAS qu'il y a une image. »*
+
+---
+
+## 17. LE BUDGET SOUS DONNÉES PC RÉELLES — mesuré le 2026-08-18 (dn4-1, P9.1)
+
+> 🔴 **AVERTISSEMENT DE LECTURE, ET IL VAUT POUR TOUTE LA §16 QUI PRÉCÈDE** : à partir de
+> dn4-1, **l'index 4 n'est plus `VENTILOS` mais `DISQUE`** (décision owner D8 du 2026-08-18 :
+> les RPM boîtier exigent le Ring0, qui sort du périmètre V1). ⛔ **Les mentions de
+> `VENTILOS` en §15 et §16 NE SONT PAS RÉÉCRITES** : ce sont des relevés historiques, et
+> l'histoire d'un dépôt ne se falsifie pas. Lire « VENTILOS » comme « la case d'index 4 »
+> partout où un chiffre y est attaché — la géométrie (225 × 156, 35 100 px) et la position
+> n'ont pas bougé, donc les chiffres restent comparables.
+> ⚠️ Ce qui a changé sur cette case : son **libellé**, son **icône** (la disquette `save`
+> U+F0C7, gratuite — déjà dans les deux `.c`), son **unité** (tr/min → Mo/s) et sa **jauge**
+> (elle en avait une, elle n'en a plus : un débit n'a pas de plein, même motif que RÉSEAU).
+
+### 17.0 🔴 Le firmware sur lequel ces chiffres sont pris
+
+**Tous les relevés de cette section sont pris sur le MÊME firmware et dans la MÊME session**,
+`draw_lines = 128` restauré, mock **coupé** sauf mention contraire.
+⚠️ **Et T0 a commencé par corriger un écart** : la carte tournait sur `49a8364`, **deux commits
+avant** le firmware que dn3-2 déclarait livré. Les budgets de §16.6 ont donc été **re-relevés
+sur `395310e`** avant tout changement — c'est la baseline T0 ci-dessous.
+
+### 17.1 T0 — §16.1 et §16.6 re-relevées sur `395310e`, avant de toucher au code
+
+| Grandeur | §16.6 (mesurée à `ea986ed`) | **T0 re-relevé (`395310e`)** | écart |
+|---|---:|---:|---:|
+| Binaire `desknode.bin` | 908 944 o | **908 944 o** | 0 |
+| RAM interne libre | 104 311 o | **104 287 o** | −24 o |
+| PSRAM libre | 7 768 236 o | **7 768 236 o** | **0** |
+| Tas LVGL utilisé | 20 108 o (33 %) | **20 144 o (33 %)** | +36 o |
+| Plus gros bloc libre | 41 304 o | **41 308 o** | +4 o |
+| Tas sur 40 transitions | +24 o | **+20 o** | PLAT |
+| `fps 15` | 37,40 Hz | **37,40 Hz** | 0 |
+| Boot « prêt en N ms » | 2 287 ms | **2 288 ms** | +1 ms |
+| Latence transition (n=40) | 349,1 (293,2 / 452,3) | **347,1 (285,7 / 401,0)** | −2,0 ms |
+
+⇒ **Les trois commits de fin de dn3-2 ont coûté 24 octets de RAM interne et rien d'autre.**
+L'écart déclaré par dn3-2 était donc réel mais **sans conséquence chiffrable** — c'est une
+information, et elle valait la peine d'être relevée plutôt que supposée.
+
+**§16.1 re-jouée à T0**, protocole identique (stabilisation 3 s, `flush reset`, `cpu brut`
+avant/après une écoute passive de 45 s) :
+
+| ligne §16.1 | CPU | `taskLVGL` | cycles/s | flush/cyc | px/cyc | duty |
+|---|---:|---:|---:|---:|---:|---:|
+| `mock off / groupage on` (§16.1) | 1,49 % | 1,00 pt | 0,22 | 1,10 | 32 342 | 0,4 % |
+| **`mock off / groupage on` (T0)** | **1,55 %** | **1,06 pt** | **0,22** | **1,00** | **32 023** | **0,5 %** |
+| `mock on / groupage on` (§16.1) | 10,18 % | 9,64 pt | 1,21 | 3,47 | 120 756 | 6,7 % |
+| **`mock on / groupage on` (T0)** | **10,27 %** | **9,72 pt** | **1,21** | **3,50** | **120 694** | **6,3 %** |
+
+⇒ **§16.1 est reproductible à ≤ 1 % près.** C'est ce qui autorise à s'en servir de baseline.
+
+### 17.2 🔴 LES TROIS RÉGIMES, MÊME FIRMWARE, MÊME SESSION (AC7)
+
+Instrument : **`flush` + `cpu brut` uniquement**. ⛔ `cpu N` est interdit — il **bloque** la
+tâche du REPL, et **sur la branche A le REPL EST le transport** : il décrirait le dashboard au
+repos quel que soit le trafic.
+
+| régime | CPU | `taskLVGL` | `console_repl` | `dn_link` | cyc/s | flush/cyc | **flush/s** | px/cyc | plus gr. aire | ms/cyc | duty |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| **(a) repos, agent arrêté** | **1,62 %** | 1,11 pt | ~0 | ~0 | 0,22 | 1,00 | 0,22 | 31 998 | 35 100 | 22,1 | **0,5 %** |
+| **(d) mock ON — §16.1 rejouée ICI** | **10,51 %** | 9,92 pt | ~0 | ~0 | 1,24 | 3,40 | 4,26 | **120 418** | 35 100 | 56,1 | **7,0 %** |
+| **(b) RÉGIME RÉEL, 5 métriques 1 Hz** | **13,09 %** | 11,00 pt | **1,27 pt** | **0,24 pt** | 2,05 | 2,52 | **5,17** | 87 982 | 35 100 | 40,3 | **8,3 %** |
+| (c) `widget rafale` (cas provoqué) | — | — | — | — | — | 4,00 | — | **140 400** | 35 100 | — | — |
+
+🔴 **LA LIGNE (d) EST LE POINT LE PLUS IMPORTANT DE CETTE SECTION** : `mock on` rejoué sur le
+firmware dn4-1 rend **120 418 px/cycle** contre **120 756** en §16.1 — soit **−0,3 %**, alors
+que `CPU` et `GPU` portent désormais **deux labels au lieu d'un**.
+⇒ **La prédiction falsifiable d'AC7 est CONFIRMÉE : en mode groupé, les grandeurs
+supplémentaires sont GRATUITES en pixels**, parce que l'invalidation porte sur le **conteneur**
+(225 × 156) et pas sur les enfants. ⚠️ En mode **fin**, ce serait +1 flush par grandeur — le
+firmware sait jouer les deux branches (`widget groupe on|off`).
+
+**Confrontation à la prédiction, écrite AVANT la mesure** (~4,4 flush/cyc, ~151 000 px/cyc,
+CPU ~11,0 %, cyc/s ~1,2) :
+
+| | prédit | mesuré | verdict |
+|---|---:|---:|---|
+| **travail total** (flush/s) | 5,3 | **5,17** | ✅ **−2,5 %, la prédiction tient** |
+| cycles/s | ~1,2 | **2,05** | 🔴 **×1,7 — la prédiction l'avait nommé comme NON couvert** |
+| flush/cycle | 4,4 | 2,52 | conséquence directe du point ci-dessus |
+| px/cycle | ~151 000 | 87 982 | idem |
+| CPU | ~11,0 % | **13,09 %** | +2,1 pt, **attribué** ⤵ |
+| plus grande aire | 35 100 | **35 100** | ✅ |
+
+**L'écart de CPU est ATTRIBUÉ, pas constaté** : `console_repl` pèse **1,27 pt** — l'écho que le
+REPL ré-imprime pour 5 lignes/s. La prédiction avait explicitement laissé ce poste non chiffré.
+⚠️ **Et ce n'est pas un artefact de mesure** : sur la branche A, **le REPL EST le transport**.
+L'agent réel produit exactement les mêmes 5 lignes/s. Ce 1,27 pt est un **coût réel du transport
+retenu**, à porter au budget.
+`dn_link` : **0,24 pt** mesuré contre **0,20 pt** prédit (legs dn2-2 × 5) ✅.
+
+### 17.3 🔴 LE DÉFAUT QUE CETTE MESURE A TROUVÉ — deux écrivains sur la même case
+
+**Premier tir du régime réel : 408 flushes.** Or 223 poussées de métrique (compteur de latence
+`n`) + 9 d'AMBIANCE en justifiaient **232**. L'écart, **176**, vaut exactement **4 cases × 45 s**.
+
+**Cause** : avec le mock **coupé**, son tick faisait, chaque seconde, pour chaque case mockable :
+`if (!s_poussee[i] && regime != ABSENTE) case_poser(ABSENTE)`. Ce test a été écrit quand
+GPU/RAM/RÉSEAU/VENTILOS n'avaient **aucune source** — « pas ABSENTE » y voulait dire « le mock
+l'a peinte ». dn4-1 leur donne une source : leur régime devient **RÉELLE**, et le tick les
+**repeignait en gris une fois par seconde**, juste avant que `dn_link` ne les repose.
+
+- **Symptôme visible** : les quatre cases clignotent « -- » gris à 1 Hz.
+- **Symptôme mesuré** : +176 redessins de case sur 45 s, soit **+76 % de flushes**.
+- **Correctif** : le tick ne révoque que ce qu'il a lui-même peint (`regime == SIMULEE`).
+- **Vérification** : **408 → 234 flushes**, pour 229 poussées + 9 AMBIANCE = 238 attendues ✅.
+
+⚠️ **CE QUI A OUVERT LE DOSSIER N'EST PAS LE DÉFAUT, C'EST LA PRÉDICTION.** Le nombre de
+cycles/s avait été nommé d'avance comme *« ce que la prédiction ne couvre pas — s'il monte, tout
+se réévalue »*. Il a doublé. Sans cette phrase écrite avant, le chiffre de 408 aurait été publié
+comme « le coût du régime réel ».
+
+### 17.4 LEVIER 1 — décorréler les poussées (W4) : **NON ADOPTÉ**, et le motif est mesuré
+
+A/B dans le **même firmware** (`pc pousse groupe|etale`), régime réel 5 métriques à 1 Hz :
+
+| | **GROUPÉE** (défaut) | **ÉTALÉE** |
+|---|---:|---:|
+| CPU | 12,85 % | 11,76 % |
+| `taskLVGL` | 10,75 pt | 9,61 pt |
+| cycles/s | 2,54 | 4,21 |
+| **flush/cycle — LE PIC** | **1,94** | **1,00** |
+| **px/cycle — LE PIC** | **67 951** | **34 942** (**−49 %**) |
+| flush/s (travail total) | 5,20 | 4,21 |
+| ms/cycle | 31,2 | 16,2 |
+| duty | 7,9 % | 6,8 % |
+| trames reçues | 228 | 226 |
+| **poussées atteignant l'écran** | **228 / 228** | 🔴 **185 / 226** |
+| **latence moy / max** | 221 / 301 ms | 🔴 **574 / 1204 ms** |
+
+🔴 **UNE PRÉMISSE ÉCRITE D'AVANCE EST DÉMENTIE PAR LA MESURE.** Le contrat annonçait *« ça ne
+réduit pas le travail total, ça réduit le pic »*. **Le travail total baisse** (5,20 → 4,21
+flush/s) — **parce que l'étalé JETTE des mises à jour**. Le mécanisme est arithmétique et il
+était prévisible : **4 réveils/s pour 5 métriques/s**. Une métrique sur cinq n'a pas de tour.
+
+⇒ **NON ADOPTÉ.** Il divise le pic par ~1,94 et économise 1,1 pt de CPU, mais **19 % des valeurs
+mesurées par la tour n'atteignent jamais l'écran**, et la latence maximale est **multipliée par
+4**. Pour un module dont tout le propos est l'honnêteté de l'affichage, c'est disqualifiant.
+⚠️ Le levier **reste dans le firmware** (`pc pousse etale`) : c'est l'autre branche de l'A/B, et
+elle doit rester vivante pour que ce verdict soit rejouable.
+
+### 17.5 LEVIER 2 — W8, le repeint en bandes : **NON ADOPTÉ**, et à 160 aussi
+
+Les **deux nombres lus ensemble**, comme la méthodologie l'exige — sur le **régime réel**, pas
+sur la rafale de §16.7 :
+
+| | `draw_lines=128` OFF | `draw_lines=128` **ON** | `draw_lines=160` OFF | `draw_lines=160` **ON** |
+|---|---:|---:|---:|---:|
+| CPU | 13,22 % | 🔴 **21,08 %** | 12,99 % | 🔴 **18,44 %** |
+| `taskLVGL` | 11,15 pt | 18,89 pt | 10,93 pt | 16,35 pt |
+| cycles/s | 2,29 | 3,58 | 2,23 | 2,23 |
+| flush/cycle | 2,27 | 2,49 | 2,31 | **1,88** |
+| **flush/s** | 5,20 | 8,91 | 5,14 | **4,19** (−18 %) |
+| px/cycle | 79 513 | 93 070 | 81 104 | **140 546** (+73 %) |
+| **plus grande aire** | 35 100 | 🔴 **61 440** | 35 100 | 🔴 **74 880** |
+| copie µs/flush | 2 912 | 2 967 | 2 925 | **6 865** (×2,3) |
+| duty | 8,1 % | 12,2 % | 8,1 % | **7,8 %** |
+| latence moy/max | 87 / 242 ms | 176 / 399 ms | 179 / 221 ms | 239 / 363 ms |
+| **RAM interne libre** | 102 943 o | — | **71 335 o** | — |
+
+🔴 **LES DEUX SIGNATURES PRÉDITES APPARAISSENT, ET ELLES DISENT CE QU'ELLES DEVAIENT DIRE** :
+`plus grande aire = 61 440` à `draw_lines=128` (**le draw buffer scinde** — 480 × 128) et
+`74 880` à 160 (**les bandes sont actives** — 480 × 156). La prédiction les avait nommées comme
+les deux valeurs à surveiller.
+
+- **À 128, le levier est STRICTEMENT PIRE** : +7,9 pt de CPU, +71 % de flushes. Conforme à
+  l'avertissement de §16.7 — et maintenant **mesuré sur le régime réel**, pas déduit.
+- **À 160, il gagne où §16.7 l'annonçait** (−18 % de flushes, duty 8,1 → 7,8 %) **et il perd
+  ailleurs, beaucoup plus fort** : **+5,45 pt de CPU**, **+73 % de pixels**, copie **×2,3**.
+  Le mécanisme est le même qu'en §16.2 : on supprime de l'attente vsync (dormir ne coûte rien)
+  et on ajoute du rendu et de la copie. **Un module H24 se budgète sur la CHARGE.**
+- **Le prix en RAM est MESURÉ à 31 608 o** (102 943 → 71 335), et **non 32 784** comme §16.7
+  l'annonçait — écart de 1 176 o, déclaré.
+
+⇒ **NON ADOPTÉ**, et le motif validé par l'owner s'applique : *« on ne tranche qu'après la
+mesure ; s'il n'y a pas de gêne mesurée et vue, on ne paie pas les 32 Ko. »* Il n'y a **pas** de
+gêne : duty 8,1 %, `fps` à 37,40 Hz, plus grande aire à 35 100 px. **`draw_lines` reste à 128 et
+la §0 ne bouge pas.**
+
+### 17.6 Non-régression — table avant/après, **sur le firmware LIVRÉ**
+
+| Grandeur | T0 (`395310e`) | **dn4-1 livré** | écart |
+|---|---:|---:|---:|
+| Binaire `desknode.bin` | 908 944 o | **914 048 o** | **+5 104 o** (partition libre à 78 %) |
+| RAM interne libre | 104 287 o | **104 087 o** | **−200 o** |
+| PSRAM libre | 7 768 236 o | **7 768 236 o** | **0** |
+| Tas LVGL utilisé | 20 144 o (33 %) | **20 292 o (33 %)** | +148 o |
+| Plus gros bloc libre | 41 308 o | **41 112 o** | −196 o (**98,4 % du libre**, inchangé) |
+| Fragmentation | 2 % | **2 %** | 0 |
+| Tas sur 40 transitions | +20 o | **−20 o** | **PLAT** ✅ |
+| `fps 15` | 37,40 Hz | **37,40 Hz** | **0** ✅ |
+| Boot « prêt en N ms » | 2 288 ms | **2 297 ms** | +9 ms (bruit) |
+| Latence transition (n=40) | 347,1 (285,7 / 401,0) | **335,0 (291,3 / 397,1)** | **−12,1 ms** |
+| `dn_capteurs` | 5 000 ms, 0 erreur | **5 000 ms, 0 erreur** | ✅ |
+
+⚠️ **La latence de transition ne RÉGRESSE PAS**, alors que la story l'avait annoncée comme
+pouvant régresser (deux grandeurs de plus à construire). Elle **s'améliore de 12,1 ms**.
+⛔ **Elle ne se solde pas ici** : le budget < 300 ms appartient à `dn4-4`.
+
+### 17.7 🔴 Deux défauts d'INSTRUMENT rencontrés, et ce qu'ils coûtaient
+
+1. **La table de `cpu brut` sort TRONQUÉE** juste après une session d'écriture soutenue sur le
+   REPL : les lignes `IDLE0`/`IDLE1`/`taskLVGL` manquent, seul `total` survit. Vu **deux fois**.
+   ⇒ Un parseur permissif aurait divisé par un idle partiel et rendu **un chiffre faux qui
+   ressemble à un succès**. Le harnais de dn4-1 **refuse** une table amputée et retente.
+   ⚠️ **Le même symptôme touche `pc`** : un bloc de 5 lignes contiguës a disparu d'un relevé.
+2. **L'ÉCHO N'EST PAS UN INSTRUMENT DE LONGUEUR DE LIGNE.** Pour mesurer ce que le REPL délivre
+   au parseur, l'écho rendait « intact » jusqu'à **127** caractères — parce que linenoise renvoie
+   les octets **à mesure qu'ils arrivent**, donc **avant** le plafond du tampon. L'instrument
+   valide est le firmware lui-même (`pc $<...>` sans virgule ré-imprime `argv[1]`) : la vraie
+   limite est **124 caractères de trame** (127 pour la ligne entière, « pc » compris).
+   ⇒ La bande « ligne trop longue » est **64..124**, large de 61 octets, donc **atteignable** —
+   ce qui est la condition pour que `rejets_trop_longue` ne soit pas un compteur décoratif.

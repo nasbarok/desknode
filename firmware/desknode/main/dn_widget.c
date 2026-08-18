@@ -43,7 +43,11 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "esp_log.h"
+
 #include "fonts/dn_font.h"
+
+static const char *TAG = "dn_widget";
 
 /* ── Géométrie interne de la case ─────────────────────────────────────────── */
 #define W_PAD 12
@@ -286,7 +290,19 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
     }
 
     int y_bas = W_VAL_Y + n * W_VAL_PAS;
-    if (desc->indicateur && n == 1) {
+    /*
+     * 🔴 dn4-1 / W5 : LE `&& n == 1` A ÉTÉ RETIRÉ. Il faisait disparaître la
+     *    jauge d'un descripteur bi-grandeurs SANS ERREUR NI LOG, alors que
+     *    `dn_widget.h` documentait `indicateur` sans aucune restriction — le
+     *    ledger le portait 🟠 latent depuis la revue dn3-1, avec la note
+     *    « dn3-2 est la story qui instancie six descripteurs, c'est là que ça
+     *    se paiera ». Ça ne s'est pas payé en dn3-2 parce qu'aucune case
+     *    bi-grandeurs n'avait de jauge ; D10 change ça.
+     *    ⚠️ La conséquence géométrique est traitée juste après, et JOURNALISÉE :
+     *       corriger ceci SEUL aurait déplacé la panne silencieuse de la jauge
+     *       vers la ligne secondaire.
+     */
+    if (desc->indicateur) {
         /*
          * 🔴 `lv_bar` EST CLIQUABLE PAR DÉFAUT — `lv_bar.c:341` le CONSERVE là
          *    où `lv_label.c:762` le retire. Sans la ligne ci-dessous, la jauge
@@ -321,6 +337,27 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
                                                                  : "",
                                    &dn_font_14, lv_color_hex(W_COL_SEC), W_PAD,
                                    y_bas + 2);
+    } else {
+        /*
+         * 🔴 dn4-1 / W5 — L'ABANDON DE LA SECONDAIRE NE PEUT PLUS ÊTRE
+         *    SILENCIEUX. C'est le PIÈGE que le correctif de la jauge arme :
+         *    à n = 2 AVEC jauge, y_bas vaut 148 et 148 + 20 = 168 > 156, donc
+         *    `out->sec` reste NULL et `dn_widget_maj` saute le bloc — exactement
+         *    la même panne muette, un cran plus loin, et pas plus visible.
+         *    La règle de priorité est écrite dans `dn_widget.h` (la jauge gagne,
+         *    parce qu'elle est demandée par un champ explicite du descripteur) ;
+         *    ici on la REND AUDIBLE. Un descripteur qui perd sa ligne secondaire
+         *    doit le dire à qui lit les logs, pas se taire.
+         * ⚠️ Ce log est rare PAR CONSTRUCTION : aucune des six cases de dn4-1 ne
+         *    demande jauge + secondaire sur deux grandeurs. S'il apparaît en
+         *    rafale, c'est qu'un descripteur a changé — et c'est le signal.
+         */
+        ESP_LOGW(TAG,
+                 "« %s » : pas de place pour la ligne secondaire "
+                 "(y_bas=%d + %d > h=%d) — %d grandeur(s)%s. La jauge est "
+                 "prioritaire (contrat dn_widget.h / W5).",
+                 desc->titre ? desc->titre : "?", y_bas, W_SEC_H, h, n,
+                 desc->indicateur ? " + jauge" : "");
     }
 
     /* Poser l'état une fois de plus : c'est LUI qui décide de la visibilité du
@@ -358,7 +395,21 @@ void dn_widget_maj(const dn_widget_desc_t *desc, const dn_widget_etat_t *etat,
         }
         composer(desc, etat, i, buf, sizeof(buf));
         lv_label_set_text(w->valeur[i], buf);
-        lv_obj_set_style_text_color(w->valeur[i], c, 0);
+        /*
+         * 🔴 dn4-1 / W10 — UNE GRANDEUR ABSENTE SE PEINT EN GRIS, MÊME DANS UNE
+         *    CASE RÉELLE. `composer()` rend déjà « -- » sans unité pour un texte
+         *    vide ; sans cette ligne, ce « -- » sortait dans le BLANC du régime
+         *    RÉEL — un tiret présenté comme une mesure. Le motif complet est
+         *    dans `dn_widget.h` : ici les deux grandeurs ont des sources
+         *    INDÉPENDANTES (GPU % ≠ GPU °C), contrairement à AMBIANCE dont les
+         *    deux viennent d'un seul capteur.
+         * ⚠️ Aucun effet sur l'existant : CPU (n=1), AMBIANCE (les deux textes
+         *    posés ensemble) et les mocks ne produisent jamais un seul texte vide.
+         */
+        bool grandeur_vide = !etat || etat->txt[i][0] == '\0';
+        lv_obj_set_style_text_color(
+            w->valeur[i],
+            grandeur_vide ? dn_val_regime_couleur(DN_VAL_ABSENTE) : c, 0);
     }
     if (w->jauge) {
         /* Une valeur ABSENTE ou SIMULÉE remplit quand même la jauge : elle
