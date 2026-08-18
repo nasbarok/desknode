@@ -1340,6 +1340,8 @@ static const char *const k_mois_court[12] = {
  * d'une invalidation. Une barre qui se réécrit à l'identique coûterait
  * 33 600 px (96 % d'une case) pour rien.
  */
+static bool s_barre_h_change, s_barre_d_change;
+
 static bool barre_composer(const dn_rtc_heure_t *h, bool fiable)
 {
     char nh[sizeof(s_barre_h)];
@@ -1364,14 +1366,31 @@ static bool barre_composer(const dn_rtc_heure_t *h, bool fiable)
         snprintf(nd, sizeof(nd), "%s %02u %s", js, h->jour, mo);
     }
 
-    bool change = strcmp(nh, s_barre_h) != 0 || strcmp(nd, s_barre_d) != 0 ||
-                  fiable != s_barre_fiable;
-    if (change) {
+    /*
+     * 🔴 LES DEUX LABELS SONT SUIVIS SÉPARÉMENT — DÉFAUT MESURÉ LE 2026-08-18.
+     *    La première version rendait UN booléen « quelque chose a changé » et
+     *    `barre_ecrire_nolock()` réécrivait LES DEUX labels. Or en régime 1 Hz
+     *    l'heure change chaque seconde et la DATE ne change qu'une fois par
+     *    jour : `lv_label_set_text` invalidant INCONDITIONNELLEMENT, la date
+     *    coûtait une seconde zone sale par seconde, pour rien.
+     *    ⚠️ MESURÉ, pas déduit : **2,0 flush par mise à jour de barre** au lieu
+     *       de 1,0 — c'est-à-dire le DOUBLE, sur l'A/B même qui devait chiffrer
+     *       la cadence. C'est le défaut que dn3-1 avait corrigé sur le mock
+     *       (« ne rien poser si rien n'a changé »), réintroduit ici par une
+     *       autre porte.
+     * ⚠️ Un changement de FIABILITÉ touche les DEUX (la couleur des deux
+     *    change), donc il force les deux drapeaux.
+     */
+    bool fiab_change = (fiable != s_barre_fiable);
+    s_barre_h_change = fiab_change || strcmp(nh, s_barre_h) != 0;
+    s_barre_d_change = fiab_change || strcmp(nd, s_barre_d) != 0;
+    if (s_barre_h_change || s_barre_d_change) {
         memcpy(s_barre_h, nh, sizeof(nh));
         memcpy(s_barre_d, nd, sizeof(nd));
         s_barre_fiable = fiable;
+        return true;
     }
-    return change;
+    return false;
 }
 
 /*
@@ -1387,14 +1406,28 @@ static void barre_ecrire_nolock(void)
     lv_color_t c_h = s_barre_fiable ? lv_color_white() : lv_color_hex(0x9a9a9a);
     lv_color_t c_d =
         s_barre_fiable ? lv_color_hex(0xa0d8ff) : lv_color_hex(0x9a9a9a);
-    if (s_barre_heure) {
+    /* ⚠️ CHAQUE LABEL N'EST ÉCRIT QUE SI SON PROPRE TEXTE A CHANGÉ — voir le
+     *    long commentaire de `barre_composer`. Écrire les deux coûtait le DOUBLE
+     *    de zones sales, mesuré. */
+    if (s_barre_heure && s_barre_h_change) {
         lv_label_set_text(s_barre_heure, s_barre_h);
         lv_obj_set_style_text_color(s_barre_heure, c_h, 0);
     }
-    if (s_barre_date) {
+    if (s_barre_date && s_barre_d_change) {
         lv_label_set_text(s_barre_date, s_barre_d);
         lv_obj_set_style_text_color(s_barre_date, c_d, 0);
     }
+}
+
+/* La (re)construction, elle, doit poser LES DEUX inconditionnellement : les
+ * labels viennent de naître et ne portent encore ni texte ni couleur. Confondre
+ * les deux chemins, c'est le mensonge d'interface que dn3-1 a soldé — un label
+ * neuf qui garde le placeholder d'un côté et l'état réel de l'autre. */
+static void barre_ecrire_tout_nolock(void)
+{
+    s_barre_h_change = true;
+    s_barre_d_change = true;
+    barre_ecrire_nolock();
 }
 
 /* ── Les deux vues ────────────────────────────────────────────────────────── */
@@ -1435,7 +1468,7 @@ static void build_dashboard(lv_obj_t *scr)
      * simple que la police générée est bien celle qui est liée. */
     s_barre_date =
         texte(barre, s_barre_d, &dn_font_14, lv_color_hex(0xa0d8ff), 300, 28);
-    barre_ecrire_nolock();
+    barre_ecrire_tout_nolock();
 
     /*
      * La grille 2x3, TOUJOURS UNE SEULE BOUCLE (dn2-1 a explicitement refusé
