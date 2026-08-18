@@ -2948,3 +2948,78 @@ le mock** pour que la barre se remplisse avant que la cible devienne visible —
 appuis sur 16 y sont tombés, tous deux rendant « TAP sur RAM ». ⇒ *On ne peut pas viser ce qu'on
 ne voit pas*, et une campagne tactile sur un élément dont l'état d'affichage varie doit **d'abord
 rendre la cible visible**.
+
+---
+
+### 17.9 🔴 Séance carte du 2026-08-18 (2ᵉ) — après la revue de code, sur le firmware `d5d3539`
+
+> **Firmware de cette section : `d5d3539`** — la revue de code de dn4-1 **plus** le correctif du
+> témoin de rafale trouvé ici même. ⛔ **Toutes les lignes ci-dessous portent CE SHA**, et lui seul :
+> AC13 exige que le tableau nomme le SHA de **chaque** relevé.
+> ⚠️ §17.2 et §17.6 restent telles quelles — elles documentent le firmware du **dev** (`21d02be`)
+> et l'histoire ne se masque pas. **Cette section les REMPLACE comme référence**, elle ne les efface pas.
+
+**Pourquoi cette session existe** : la revue de code a établi que la table de non-régression avait
+été relevée sur le firmware du **dev**, alors que le livré était celui de la **séance**, et
+qu'AC7 régime (c) n'était publié qu'à 4 colonnes sur 12 avec un témoin **jamais relevé**.
+
+#### 🔴 CE QUE LA PREMIÈRE LECTURE DU TÉMOIN A TROUVÉ
+
+`widget rafale` rendait **1**, quatre rejeux de suite, et la console imprimait
+*« la rafale a été COUPÉE, son chiffre NE VAUT RIEN. Rejouer. »* — pendant que `flush`, dans la
+**même passe**, disait **6 flushes, 1 CYCLE, 210 600 px**, soit exactement la fusion annoncée.
+
+**La rafale marchait parfaitement. C'est l'étiquette qui mentait.** La revue de dn3-2 avait
+corrigé ce que la fonction **mesure** (le témoin était échantillonné *sous* le verrou, donc nul
+par construction, branche « coupée » **inatteignable**) ⇒ la valeur de succès est passée de 0 à
+**1**. ⛔ **Aucun des cinq textes qui l'interprètent n'avait suivi** : la console, `dn_ui.h`,
+`dn_ui.c`, ce fichier, le README — et **AC7 lui-même**.
+⚠️ **Le défaut a survécu parce que personne n'avait jamais lu le témoin** — ce que la revue
+reprochait précisément à AC7. *Un instrument qu'on ne lit pas ne protège de rien.*
+
+#### AC7 — les régimes, sur le firmware de cette séance
+
+| régime | CPU | `taskLVGL` | `console_repl` | `dn_link` | cyc/s | flush/cyc | flush/s | px/cyc | plus gr. aire | copie µs/flush | ms/cyc | duty |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| **(a) repos, agent arrêté** | **1,61 %** | 2,20 pt | 0,07 pt | 0,02 pt | 0,23 | 1,00 | 0,23 | 32 312 | 35 100 | 2 689 | 2,7 | **0,06 %** |
+| **(c) `widget rafale`** | — ⚠️ | — ⚠️ | — ⚠️ | — ⚠️ | — ⚠️ | **6,00** | — ⚠️ | **210 600** | 35 100 | **2 933** (max 2 965) | **17,6** | — ⚠️ |
+
+✅ **(a) reproduit la référence** : 1,61 % contre 1,62 % en §17.2, cyc/s 0,23 contre 0,22,
+flush/cyc 1,00, plus grande aire 35 100 px. **Aucune dérive.**
+✅ **(c) est mesuré et VALIDÉ pour la première fois** : témoin **`cycles pour dessiner la rafale = 1`**,
+et `flush` confirme **6 flushes / 1 cycle / 210 600 px** dans la même passe — soit très exactement
+le `6 × 35 100 = 69 % d'un plein écran` que l'extrapolation d'AC8 prédisait.
+⚠️ **LES COLONNES « — » DE (c) SONT DÉCLARÉES NON DÉFINIES, PAS OUBLIÉES.** Un CPU global, un
+flush/s, un cyc/s ou un duty sont des grandeurs **par unité de temps** : la rafale est un **tir
+unique** sous un seul verrou, elle n'a pas de régime permanent. Les chiffrer supposerait de
+choisir une fenêtre arbitraire, et le nombre obtenu ne décrirait que cette fenêtre.
+⛔ **AC7 demandait les douze colonnes pour chaque régime ; pour (c) c'est la DEMANDE qui est
+mal posée, et c'est écrit plutôt que rempli au jugé.**
+
+#### AC12 — non-régression, sur le firmware LIVRÉ de cette séance
+
+| Grandeur | dev dn4-1 (`21d02be`) | **séance de revue (`d5d3539`)** | écart |
+|---|---:|---:|---:|
+| Binaire `desknode.bin` | 914 048 o | **917 488 o** | **+3 440 o** (partition libre à 78 %) |
+| RAM interne libre | 104 087 o | **104 119 o** | **+32 o** |
+| PSRAM libre | 7 768 236 o | **7 768 236 o** | **0** |
+| Tas LVGL utilisé | 20 292 o (33 %) | **20 504 o (34 %)** | +212 o |
+| Plus gros bloc libre | 41 112 o | **40 744 o** | −368 o (**98,0 % du libre**) |
+| Fragmentation | 2 % | **2 %** | 0 |
+| Tas sur 40 transitions | −20 o | **+8 o** | **PLAT** ✅ |
+| `fps 15` | 37,40 Hz | **37,40 Hz** (écart −0,00 %) | **0** ✅ |
+| Boot « prêt en N ms » | 2 297 ms | **2 311 ms** | +14 ms (bruit) |
+| Latence transition (n=40) | 335,0 (291,3 / 397,1) | **336,5 (291,3 / 398,7)** | **+1,5 ms** |
+| `dn_capteurs` | 5 000 ms, 0 erreur | **4 999 ms mesurés, 0 erreur** | ✅ |
+
+⇒ **Aucune régression.** Le coût de la revue de code est de **+3 440 o de binaire** et
+**+212 o de tas LVGL** ; la RAM interne libre **remonte** de 32 o, la PSRAM ne bouge pas, le tas
+reste **plat** sur 40 transitions et le `fps` est à la valeur théorique exacte.
+⚠️ **La latence de transition ne se solde toujours pas ici** : le budget < 300 ms appartient à `dn4-4`.
+
+#### ⏳ CE QUE CETTE SÉANCE N'A PAS PU FERMER
+
+- **AC7 régime (b), le vrai 1 Hz avec l'agent** : il exige `COM3`, donc la carte **détachée de WSL**.
+- **Le re-relevé de la latence acceptation→label** : la revue a changé ce que l'instrument mesure
+  (elle inclut désormais l'attente du verrou LVGL et la pose) ⇒ **`n = 8 075 · 1 / 204 / 480 ms`
+  est MORT** et n'a pas encore de remplaçant. ⛔ Ne pas le republier.
