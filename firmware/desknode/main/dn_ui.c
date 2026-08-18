@@ -374,6 +374,8 @@ bool dn_nav_model_from_name(const char *nom, dn_nav_model_t *out)
 /* ── État ─────────────────────────────────────────────────────────────────── */
 
 static lv_display_t *s_disp;
+/* W8/AC9 — le repeint en BANDES. INERTE par défaut (`widget bandes on`). */
+static bool s_bandes;
 static esp_lcd_panel_handle_t s_panel;
 /*
  * DEUX slots pour le label vivant, un par vue — et ce n'est pas du zèle.
@@ -791,6 +793,25 @@ esp_err_t dn_ui_set_path(dn_flush_path_t p)
 }
 
 /* ── Le flush ─────────────────────────────────────────────────────────────── */
+
+/*
+ * W8 — élargit CHAQUE aire invalidée à la pleine largeur de la dalle. Voir le
+ * long commentaire à l'enregistrement, dans dn_ui_init().
+ * ⚠️ INERTE par défaut : c'est un INSTRUMENT d'AC9, pas un réglage produit. Un
+ *    levier non essayé doit rester non essayé tant qu'on n'a pas son chiffre.
+ */
+static void bandes_event_cb(lv_event_t *e)
+{
+    if (!s_bandes) {
+        return;
+    }
+    lv_area_t *a = lv_event_get_invalidated_area(e);
+    if (!a) {
+        return;
+    }
+    a->x1 = 0;
+    a->x2 = DN_LCD_H_RES - 1;
+}
 
 static void dn_ui_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 {
@@ -2238,6 +2259,34 @@ esp_err_t dn_ui_init(const dn_bootcfg_t *cfg, esp_err_t asset_err)
      *    changement de résolution) sont CONSERVÉS : on ne remplace que le flush.
      */
     lv_display_set_flush_cb(s_disp, dn_ui_flush);
+
+    /*
+     * ── W8 (AC9) — LE REPEINT EN BANDES, ET SON MÉCANISME EST LU, PAS SUPPOSÉ ──
+     *
+     * L'hypothèse de la story : deux cases d'une même ligne ne fusionnent pas
+     * parce qu'elles ne se CONTIENNENT ni ne s'INTERSECTENT ; les aligner sur
+     * des bandes PLEINE LARGEUR les ferait fusionner.
+     *
+     * ✅ Le mécanisme est CONFIRMÉ dans le source du composant managé —
+     *    `lv_refr.c:321-328` : LVGL envoie `LV_EVENT_INVALIDATE_AREA` avec
+     *    l'aire, PUIS dédoublonne par `lv_area_is_in(nouvelle, sauvegardée)`.
+     *    Il ne fusionne JAMAIS : il JETTE une aire CONTENUE dans une autre.
+     *    ⇒ deux cases d'une même ligne élargies à 0..479 deviennent IDENTIQUES,
+     *      donc la seconde est contenue dans la première, donc jetée.
+     *
+     * 🔴 MAIS L'ARITHMÉTIQUE DU DRAW BUFFER S'Y OPPOSE, ET C'EST CE QUE LA
+     *    MESURE DOIT TRANCHER : le buffer fait `480 x draw_lines` PIXELS. À
+     *    225 px de large, il tient 61 440 / 225 = 273 lignes, donc une case de
+     *    156 passe en UN flush. À 480 de large il ne tient que `draw_lines`
+     *    lignes — 128 par défaut, soit MOINS que les 156 d'une case. Une bande
+     *    devrait donc être rendue en DEUX passes.
+     *    ⇒ Prédiction : 2 flushes par ligne au lieu de 2, pour 74 880 px au
+     *      lieu de 70 200 — soit STRICTEMENT PIRE. ⚠️ C'est une PRÉDICTION.
+     *      `widget bandes on|off` la met à l'épreuve sans reflasher, et
+     *      `set lines 160` permet d'essayer la seule config où elle tomberait.
+     */
+    lv_display_add_event_cb(s_disp, bandes_event_cb, LV_EVENT_INVALIDATE_AREA,
+                            NULL);
     build_scene();
     s_timer = lv_timer_create(label_tick, 1000, NULL);
     lvgl_port_unlock();
@@ -2616,6 +2665,24 @@ void dn_ui_barre_secondes_set(bool on)
 }
 
 bool dn_ui_barre_secondes(void) { return s_barre_secondes; }
+
+/* W8/AC9 — le repeint en BANDES. ⚠️ Aucune reconstruction : le drapeau agit sur
+ * la PROCHAINE invalidation, donc l'A/B se joue sans perdre la scène ni la
+ * fenêtre de mesure. C'est ce qui le distingue de `widget nue`. */
+void dn_ui_bandes_set(bool on)
+{
+    if (on == s_bandes) {
+        return;
+    }
+    s_bandes = on;
+    ESP_LOGW(TAG, "repeint en BANDES %s — INSTRUMENT d'AC9 (W8), pas un réglage "
+                  "produit. ⚠️ une bande fait 480 x %d px : si draw_lines (%d) "
+                  "est INFÉRIEUR à la hauteur d'une case, LVGL la rendra en "
+                  "PLUSIEURS passes et le levier sera contre-productif.",
+             on ? "ARMÉ" : "coupé", DN_UI_CASE_H, s_draw_lines);
+}
+
+bool dn_ui_bandes(void) { return s_bandes; }
 
 const char *dn_ui_barre_heure_txt(void) { return s_barre_h; }
 const char *dn_ui_barre_date_txt(void) { return s_barre_d; }

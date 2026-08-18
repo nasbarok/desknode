@@ -423,6 +423,21 @@ bool dn_ui_heure_maj(const dn_rtc_heure_t *h, bool fiable, bool *label_pose);
 void dn_ui_barre_secondes_set(bool on);
 bool dn_ui_barre_secondes(void);
 
+/* ── W8 / AC9 : LE REPEINT EN BANDES ──────────────────────────────────────────
+ * Élargit chaque aire invalidée à la pleine largeur de la dalle.
+ * ✅ Mécanisme LU dans `lv_refr.c:321-328` : LVGL dédoublonne par
+ *    `lv_area_is_in(nouvelle, sauvegardée)` — il JETTE une aire CONTENUE dans
+ *    une autre, il ne FUSIONNE jamais. Deux cases d'une même ligne élargies à
+ *    0..479 deviennent identiques ⇒ la seconde est jetée.
+ * 🔴 Mais le draw buffer fait `480 x draw_lines` PIXELS : à 480 de large il ne
+ *    tient que `draw_lines` lignes (128 par défaut) contre 156 pour une case.
+ *    Une bande devrait donc être rendue en DEUX passes ⇒ même compte de
+ *    flushes, +6,7 % de pixels. ⚠️ PRÉDICTION, pas fait : c'est la mesure qui
+ *    tranche, et `set lines 160` permet d'essayer la config où elle tomberait.
+ * ⚠️ INERTE par défaut. INSTRUMENT, pas un réglage produit. */
+void dn_ui_bandes_set(bool on);
+bool dn_ui_bandes(void);
+
 /* Ce que la barre affiche EN CE MOMENT, relu de l'état réel — pour que `rtc`
  * n'ait pas à reformater de son côté (deux formateurs = deux vérités). */
 const char *dn_ui_barre_heure_txt(void);

@@ -2718,6 +2718,44 @@ static int cmd_widget(int argc, char **argv)
     /*
      * ── `widget barre 1hz|minute` — W2/AC4, la cadence de la barre ───────────
      */
+    /*
+     * ── `widget bandes on|off` — W8 / AC9, le levier n°2 ─────────────────────
+     */
+    if (argc == 3 && strcmp(argv[1], "bandes") == 0) {
+        bool on;
+        if (!parse_on_off(argv[2], &on)) {
+            printf("usage : widget bandes on|off\n");
+            return 1;
+        }
+        dn_ui_bandes_set(on);
+        int w = 0, h = 0;
+        dn_ui_case_dim(&w, &h);
+        printf("repeint en BANDES %s\n", dn_ui_bandes() ? "ARME" : "coupe");
+        printf("  mecanisme LU dans lv_refr.c:321-328 : LVGL dedoublonne par\n");
+        printf("  `lv_area_is_in(nouvelle, sauvegardee)` — il JETTE une aire\n");
+        printf("  CONTENUE dans une autre, il ne FUSIONNE jamais. Deux cases\n");
+        printf("  d'une meme ligne elargies a 0..%d deviennent identiques.\n",
+               DN_LCD_H_RES - 1);
+        printf("⚠️ MAIS le draw buffer fait %d x %d px : a %d de large il ne\n",
+               DN_LCD_H_RES, dn_ui_draw_lines(), DN_LCD_H_RES);
+        printf("   tient que %d lignes, contre %d pour une case.\n",
+               dn_ui_draw_lines(), h);
+        if (dn_ui_draw_lines() < h) {
+            printf("   🔴 %d < %d ⇒ une bande sera rendue en PLUSIEURS passes.\n",
+                   dn_ui_draw_lines(), h);
+            printf("      Prediction : MEME compte de flushes, +%d px par ligne.\n",
+                   DN_LCD_H_RES * h - 2 * w * h);
+            printf("      `set lines 160` + `reboot` est la SEULE config ou le\n");
+            printf("      levier peut tomber. C'est la mesure qui tranche.\n");
+        } else {
+            printf("   ✅ %d >= %d ⇒ une bande tient en UNE passe : c'est LA\n",
+                   dn_ui_draw_lines(), h);
+            printf("      configuration ou le levier peut gagner.\n");
+        }
+        printf("⚠️ INSTRUMENT d'AC9, pas un reglage produit. Aucune scene n'a ete\n");
+        printf("   reconstruite : le drapeau agit sur la PROCHAINE invalidation.\n");
+        return 0;
+    }
     if (argc == 3 && strcmp(argv[1], "barre") == 0) {
         bool sec;
         if (strcasecmp(argv[2], "1hz") == 0) {
@@ -3803,7 +3841,7 @@ static const esp_console_cmd_t k_cmds[] = {
     DN_CMD("widget",
            "widget | groupe on|off | opa <n> | voile <n> | mock on|off | demo "
            "on|off | pousser <n> | oublier <n> | rafale | nue <n> on|off | barre "
-           "1hz|minute | icone <n> — modèle de case (dn3-1/dn3-2)",
+           "1hz|minute | bandes on|off | icone <n> — modèle de case (dn3-1/dn3-2)",
            cmd_widget),
     /* ⚠️ INSCRITE ICI **ET** DANS LE « Jeu complet » DU README dans le même
      * geste — dn2-1 avait oublié `capteurs` au README, et une commande qu'on ne
