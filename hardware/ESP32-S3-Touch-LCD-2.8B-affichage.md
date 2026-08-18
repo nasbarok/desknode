@@ -2440,10 +2440,59 @@ reset. ⇒ **laisser 3 s de stabilisation avant `flush reset`**, sinon le tir su
 qu'elle supposait six sources à 1 Hz. Le régime réel en compte moins : 1,21 cycle/s mesuré, pour
 3,47 mises à jour par cycle.
 
-### 16.5 La barre heure/date — 33 600 px, soit 96 % d'une case
+### 16.5 🔴 LA BARRE NE COÛTE PAS 33 600 px — ELLE EN COÛTE **6 334**, ET LA PRÉMISSE ÉTAIT FAUSSE
 
-`480 × 70 = 33 600 px`. Une barre qui bat à 1 Hz **en permanence** est donc, en coût brut, une
-**7ᵉ case vivante à 1 Hz** — et le legs dit que le coût suit **la cadence**, pas la richesse.
+La story de dn3-2 posait : *« la barre fait 480 × 70 = 33 600 px, soit 96 % d'une case ⇒ une barre
+qui bat à 1 Hz est, en coût brut, une 7ᵉ case vivante à 1 Hz »*. ⚠️ Elle demandait aussi que
+*« l'ordre de grandeur soit vérifié, pas récité »*. **Il l'a été, et il est faux d'un facteur 5,3.**
+
+**Mécanisme** : la barre n'est **PAS un widget**, donc elle **n'est pas groupée**. Ses deux labels
+sont des objets LVGL indépendants, et `lv_label_set_text` invalide **la bbox du label**, pas le
+conteneur de 480 × 70. Le raisonnement « 96 % d'une case » supposait implicitement un groupage qui
+n'existe pas ici.
+
+**Protocole** : mock coupé, capteur muté (`capteurs simuler muet 60`), `flush reset`, fenêtre 70 s,
+`draw_lines = 128`, groupage ON. Le capteur muté continue de pousser ABSENTE toutes les 5 s : il
+donne **14 cycles à 35 100 px** qui se soustraient.
+
+| régime | flushes | cycles | flush/cyc | dont barre | **px par mise à jour de barre** |
+|---|---:|---:|---:|---:|---:|
+| **HH:MM** *(défaut)* | 16 | 16 | 1,00 | ~2 cycles / 70 s | — |
+| **HH:MM:SS (1 Hz)** | 84 | 84 | **1,00** | **70 cycles / 70 s** | **6 334 px** |
+
+⇒ **6 334 px = 18 % d'une case (35 100 px)**, et **1,0 flush par mise à jour**.
+⇒ En duty, le régime 1 Hz coûte **70 × (678 + 8 252) µs = 625 ms sur 70 s, soit 0,89 %**.
+
+### 16.5 bis 🔴 LE CORRECTIF QUE CETTE MESURE A TROUVÉ — la barre invalidait DEUX zones pour UNE
+
+**Premier relevé, avant correctif : 154 flushes pour 84 cycles**, soit **2,0 flush par mise à jour
+de barre** au lieu de 1,0. `barre_composer()` rendait **un seul** booléen « quelque chose a changé »
+et `barre_ecrire_nolock()` réécrivait **les deux** labels. Or en 1 Hz l'heure change chaque seconde
+et **la date ne change qu'une fois par jour** — et `lv_label_set_text` invalide
+**inconditionnellement**, même à texte identique. La date coûtait donc **une seconde zone sale par
+seconde, pour rien.**
+
+⚠️ **C'est le défaut que dn3-1 avait corrigé sur le mock** (§15.5 : 24 cycles comptés là où 4
+étaient justifiés, **83 % de la contribution parasite fabriquée par la mesure elle-même**),
+**réintroduit par une autre porte** — et il polluait l'A/B **même** qui devait chiffrer la cadence.
+⇒ Deux drapeaux séparés ; chaque label n'est écrit que si **son** texte a changé. La
+(re)construction, elle, passe par un chemin qui pose **les deux** : des labels qui viennent de
+naître ne portent ni texte ni couleur.
+
+### 16.5 ter W2 — LA CADENCE EST TRANCHÉE PAR LA MAQUETTE, **ET LE CHIFFRE LE DIT HONNÊTEMENT**
+
+**Régime retenu : `HH:MM`, sans secondes.** Le motif est **la maquette normative** (addendum §1,
+qui écrit « 21:46 »), ⛔ **et PAS le coût** — parce que le coût mesuré du 1 Hz est **modeste**
+(0,89 % de duty, 6 334 px par mise à jour, 1,0 flush) et **n'aurait pas suffi à trancher**. Écrire
+« on prend la minute parce que c'est moins cher » aurait été un raisonnement fabriqué après coup.
+
+⚠️ Le calage sur la minute est **structurel, pas temporisé** : `dn_ui_heure_maj` n'écrit dans les
+labels que si le **texte composé change**. En `HH:MM` il ne change qu'au changement de minute ⇒ ça
+ne peut pas retarder de 59 s, contrairement à un timer libre. `widget barre 1hz|minute` rejoue l'A/B
+**sans reflasher**.
+
+⚠️ La barre est **sondée à 2 Hz** (`DN_RTC_PERIODE_MS 500`) et **dessinée** à la minute : le sondage
+et l'affichage sont deux cadences distinctes, et seul le second coûte des pixels.
 
 🔴 **Le régime par défaut est HH:MM, sans secondes**, et c'est la maquette normative qui tranche
 (addendum §1 écrit « 21:46 »). Le mécanisme est **structurel, pas temporisé** : `dn_ui_heure_maj`
@@ -2483,10 +2532,59 @@ désormais **six widgets** au lieu de trois widgets + trois cases nues. ⚠️ L
 creuse**, et le maximum passe de 369,9 à **452,3 ms**. ⛔ Ne pas présenter l'opaque comme la parade :
 l'A/B d'opacité est **tranché** (§15.6), l'owner rend les 21,9 ms délibérément.
 
-### 16.7 Ce que cette section N'A PAS mesuré
+### 16.7 ✅ W8 — LE REPEINT EN BANDES : ESSAYÉ, CHIFFRÉ, ET IL GAGNE **SOUS CONDITION**
 
-- ⛔ **Le repeint en BANDES (W8)** — `LV_EVENT_INVALIDATE_AREA` : voir la puce d'AC9 de la story.
-- ⛔ **L'option n°2 du ledger** (« ne pas invalider le fond à la transition »).
+**Le mécanisme est LU dans le source du composant managé, pas supposé** — `lv_refr.c:321-328` :
+LVGL envoie `LV_EVENT_INVALIDATE_AREA` avec l'aire, **puis** dédoublonne par
+`lv_area_is_in(nouvelle, sauvegardée)`. 🔴 **Il ne FUSIONNE jamais : il JETTE une aire CONTENUE
+dans une autre.** ⇒ l'hypothèse de la story est **fondée** : deux cases d'une même ligne élargies à
+`0..479` deviennent **identiques**, donc la seconde est jetée.
+
+**Mais l'arithmétique du draw buffer s'y oppose, et la prédiction a été écrite AVANT la mesure** :
+le buffer fait `480 × draw_lines` **pixels**. À 225 px de large il tient `61 440 / 225 = 273`
+lignes, donc une case de 156 passe en **un** flush. À 480 de large il n'en tient que `draw_lines`.
+
+**Instrument** : `widget bandes on|off`, **inerte par défaut**, et qui **ne reconstruit rien** — le
+drapeau agit sur la **prochaine** invalidation, donc l'A/B se joue sans perdre la scène ni la
+fenêtre. Mesure sur `widget rafale` (les 6 cases dans un seul cycle), tirs à **1 cycle** retenus :
+
+| `draw_lines` | bandes | **flush/cycle** | px/cycle | **plus grande aire** | copie µs/f | ms/cycle |
+|---:|---|---:|---:|---:|---:|---:|
+| **128** *(réf. §0)* | off | **6,0** | 210 600 | 35 100 | 2 927 | 87,6 |
+| **128** | **on** | **6,0** | 224 640 | **61 440** = `480 × 128` | 2 963 | ~93 |
+| **160** | off | **6,0** | 210 600 | 35 100 | 2 927 | 87,6 |
+| **160** | **on** | 🔴 **3,0** | 224 640 | **74 880** = `480 × 156` | 6 762 | **59,3** |
+
+🔴 **LA PRÉDICTION EST EXACTE AU PIXEL.** À `draw_lines = 128 < 156`, la plus grande aire mesurée
+vaut **61 440 px = 480 × 128, c'est-à-dire le draw buffer lui-même** : chaque bande est **scindée en
+deux passes**, le compte de flushes ne bouge pas, et il ne reste que **+6,67 % de pixels**
+(224 640 / 210 600 = 1,0667). **Le levier est alors strictement PIRE.**
+
+✅ **À `draw_lines = 160 ≥ 156`, la bande tient en UNE passe** (plus grande aire = **74 880 px =
+480 × 156**, exactement une ligne de la grille) et le levier **tombe** :
+**6 → 3 flushes (−50 %)**, **87,6 → 59,3 ms/cycle (−32 %)**, pour **+6,67 % de pixels**.
+
+🔴 **ET IL COÛTE** : le draw buffer passe de **122 880 à 153 600 o de RAM interne DMA**, et la RAM
+interne libre tombe de **104 311 à 71 527 o (−32 784 o)**. Il reste au-dessus de la réserve DMA
+(32 768 o) et de `DN_BUDGET_MARGE_O` (48 KiB = 49 152 o), **mais la marge se resserre nettement**.
+
+⇒ **CHIFFRÉ ET LAISSÉ NON ADOPTÉ, DÉLIBÉRÉMENT.** `draw_lines = 128` appartient à la **§0**, que le
+périmètre de dn3-2 interdit explicitement de changer. La configuration de référence a été
+**restaurée immédiatement** après la mesure (`cfg` re-relu : `draw_lines=128`). ⇒ **C'est dn3-3 ou
+dn4-1 qui tranche**, avec ces chiffres en main et la condition écrite : **le levier n'existe que si
+`draw_lines >= DN_UI_CASE_H`.**
+
+⚠️ **Et il interagit avec la géométrie** : si une future story change `DN_UI_CASE_H`, la condition
+change avec elle. Les deux nombres doivent être lus **ensemble**, jamais l'un sans l'autre.
+
+### 16.8 Ce que cette section N'A PAS mesuré
+
+- ⛔ **L'option n°2 du ledger** (« ne pas invalider le fond à la transition ») — **déclarée NON
+  ESSAYÉE**, avec son motif : elle porte sur le coût d'une **transition** (`build_scene`), pas sur
+  le coût d'une **mise à jour**, et la latence de transition **régresse déjà de +27,3 ms** dans
+  cette story pour une raison connue et suffisante (six widgets construits au lieu de trois widgets
+  + trois cases nues). L'essayer ici mélangerait deux causes dans un même chiffre. ⚠️ Elle reste
+  **entière** pour dn4-1, où le budget < 300 ms se solde.
 - ⚠️ Les constats **à l'œil** (image stable, aucune bande discernable, six valeurs vivantes) sont
   des **gestes owner** : aucun chiffre de cette section ne les remplace. *« Un fps vert ne prouve
   PAS qu'il y a une image. »*
