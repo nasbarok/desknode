@@ -2430,8 +2430,15 @@ le nombre par 2,65 à 3,06** selon le régime (2,0 à 3,3 en dn3-1 — même ord
 Les six sources ne sont **pas** synchronisées (liaison ~1 s, capteur 5 s, mocks 14/20/26/34 s,
 barre à la minute) et `dn_ui_pousser` **interdit par conception** N poussées dans un même appel.
 Le cas a donc été **provoqué** par un instrument neuf, `widget rafale` : N poussées sous **un seul
-verrou LVGL**, donc dans un seul cycle. Son témoin de validité est `cycles intercalés == 0` — un
-cycle qui s'intercale signifie que la rafale a été coupée et que le chiffre ne vaut rien.
+verrou LVGL**, donc dans un seul cycle. Son témoin de validité est **`cycles pour dessiner la
+rafale == 1`** — deux ou plus signifient que les poussées n'ont pas fusionné et que le chiffre ne
+vaut rien ; **zéro** signifie qu'aucun cycle n'a été observé dans le délai, donc une **non-mesure**.
+🔴 ⚠️ **CETTE PHRASE DISAIT `== 0` JUSQU'À LA SÉANCE DU 2026-08-18**, comme la console, `dn_ui.h`,
+AC7 et le README. C'était l'**ancienne sémantique** : le témoin était alors échantillonné **sous**
+le verrou, où le compteur ne peut pas bouger ⇒ il valait 0 par construction et la branche
+« coupée » était **inatteignable**. La revue de dn3-2 a corrigé la **mesure** — aucun des cinq
+textes qui l'interprètent n'a suivi. ⇒ **l'instrument criait « rejouer » sur une mesure parfaite.**
+Découvert à la **première lecture réelle du témoin**, en séance.
 
 Six tirs, stabilisation de 3 s avant chacun, fenêtre de 2 s après :
 
@@ -2722,7 +2729,7 @@ avant/après une écoute passive de 45 s) :
 > (« c'est l'écart déclaré de dn3-2 ») : l'écart est donc **DÉCLARÉ ICI**, et le re-relevé sur
 > `2d97850` est une **tâche de séance carte ouverte** (décision owner du 2026-08-18).
 > ⚠️ Le régime **(c) `widget rafale`** est en outre **publié incomplet** (8 colonnes sur 12
-> valent « — ») et son **témoin de validité `cycles intercalés = 0` n'a jamais été relevé** —
+> valent « — ») et son **témoin de validité n'a jamais été relevé** —
 > AC7 exigeait les deux. Même tâche de séance.
 
 Instrument : **`flush` + `cpu brut` uniquement**. ⛔ `cpu N` est interdit — il **bloque** la

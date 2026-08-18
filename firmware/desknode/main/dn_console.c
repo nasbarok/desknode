@@ -2847,15 +2847,33 @@ static int cmd_widget(int argc, char **argv)
         }
         uint32_t cyc = dn_ui_rafale_cycles();
         printf("RAFALE : %u cases poussees sous UN SEUL verrou\n", (unsigned)n);
-        printf("cycles LVGL intercales : %u\n", (unsigned)cyc);
-        if (cyc == 0) {
-            printf("  ✅ 0 = le verrou a TENU : les %u invalidations tombent dans\n",
+        /* 🔴 CE VERDICT TESTAIT L'ANCIENNE SEMANTIQUE — corrige en SEANCE CARTE le
+         * 2026-08-18, et c'est la PREMIERE FOIS que ce temoin etait lu. La revue de
+         * dn3-2 a change ce que `dn_ui_rafale_cycles()` MESURE : il rendait un delta
+         * echantillonne SOUS le verrou (donc 0 par construction, branche « coupee »
+         * INATTEIGNABLE), il rend desormais LE NOMBRE DE CYCLES QU'IL A FALLU pour
+         * dessiner la rafale. La valeur de succes est donc **1**, plus 0.
+         * ⛔ La mesure avait ete corrigee, PAS le message qui l'interprete : la
+         * console imprimait « la rafale a ete COUPEE, rejouer » sur une mesure
+         * PARFAITE, indefiniment. Quatre rejeux en seance, quatre fois « 1 »,
+         * pendant que `flush` disait « 6 flushes, 1 cycle, 210 600 px » — soit
+         * exactement la fusion annoncee. Une etiquette qui ment sur son propre
+         * chiffre, et elle a survecu parce que PERSONNE ne l'avait jamais lue. */
+        printf("cycles LVGL pour dessiner la rafale : %u\n", (unsigned)cyc);
+        if (cyc == 1) {
+            printf("  ✅ 1 = le verrou a TENU : les %u invalidations tombent dans\n",
                    (unsigned)n);
             printf("     le MEME cycle. C'est le cas que l'extrapolation predit\n");
             printf("     a 6 x 35 100 = 210 600 px (69 %% d'un plein ecran).\n");
+        } else if (cyc == 0) {
+            printf("  ⚠️ 0 = AUCUN cycle observe en %u ms : le temoin n'a pas pu\n",
+                   (unsigned)DN_UI_RAFALE_ATTENTE_MS);
+            printf("     CONCLURE. ⛔ Ce n'est PAS un succes — c'est une absence de\n");
+            printf("     mesure (UI arretee ? aucune case a redessiner ?). Rejouer.\n");
         } else {
-            printf("  🔴 != 0 = un cycle s'est INTERCALE : la rafale a ete COUPEE\n");
-            printf("     et son chiffre NE VAUT RIEN. Rejouer.\n");
+            printf("  🔴 %u cycles = les %u poussees n'ont PAS ete fusionnees : la\n",
+                   (unsigned)cyc, (unsigned)n);
+            printf("     rafale a ete COUPEE et son chiffre NE VAUT RIEN. Rejouer.\n");
         }
         printf("⚠️ INSTRUMENT, pas un regime : les six sources reelles ne sont PAS\n");
         printf("   synchronisees (liaison ~1 s, capteur 5 s, mocks 14/20/26/34 s,\n");

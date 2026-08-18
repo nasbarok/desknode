@@ -806,12 +806,6 @@ static uint8_t s_voile_opa = 90;
 #define DN_MOCK_MAX 1600
 #define DN_MOCK_PERIODE_S 20
 
-/* Attente maximale d'un cycle LVGL après une rafale, pour que son témoin puisse
- * effectivement DÉCLENCHER (revue 2026-08-18). Un cycle nominal dure ~26,7 ms
- * (37,40 Hz) ; 500 ms laissent la marge d'un `build_scene()` en cours sans
- * jamais bloquer le REPL de façon perceptible. */
-#define DN_UI_RAFALE_ATTENTE_MS 500
-
 /* Ce que la ligne secondaire d'un mock raconte. Nommé par INTENTION, pas par
  * index : la table reste lisible et le tick n'a aucun `if (i == RAM)`. */
 typedef enum {
@@ -3562,9 +3556,14 @@ uint32_t dn_ui_pousser(int idx)
  *   verrou, donc dans UN SEUL cycle LVGL. Ce n'est pas un comportement produit,
  *   c'est un INSTRUMENT — au même titre que le mock, et il se déclare comme tel
  *   quand on publie son chiffre.
- * ⚠️ Le résultat attendu est UN cycle de redessin pour N mises à jour. Si la
- *    mesure en montre N, c'est que le verrou n'a PAS tenu (ou qu'un cycle LVGL
- *    s'est intercalé) — et le chiffre ne vaut alors rien.
+ * ⚠️ Le résultat attendu est UN cycle de redessin pour N mises à jour, et c'est
+ *    exactement ce que `dn_ui_rafale_cycles()` rend : **1 = succès**. Si la mesure
+ *    en montre 2 ou plus, le verrou n'a pas tenu et le chiffre ne vaut rien ; si
+ *    elle rend 0, aucun cycle n'a été observé dans le délai — non-mesure.
+ * ⛔ NE PAS RELIRE CE TÉMOIN COMME UN « NOMBRE DE CYCLES INTERCALÉS » : c'était sa
+ *    sémantique AVANT la revue de dn3-2, et le message de la console est resté sur
+ *    l'ancienne pendant que la mesure changeait. Corrigé en séance le 2026-08-18,
+ *    à la première lecture réelle du témoin.
  */
 uint32_t dn_ui_rafale(void)
 {
