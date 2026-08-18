@@ -297,11 +297,25 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
                                  lv_color_hex(W_COL_SIMULEE), w - 66, W_TITRE_Y);
     lv_obj_add_flag(out->badge, LV_OBJ_FLAG_HIDDEN);
 
+    /* 🔴 L'ÉCRÊTAGE DU NOMBRE DE GRANDEURS EST JOURNALISÉ — correctif de revue
+     * 2026-08-18. Il était MUET des deux côtés, dix lignes au-dessus du correctif
+     * W5 qui vient précisément de rendre AUDIBLE l'abandon de la ligne secondaire.
+     * Une grandeur demandée et jamais dessinée disparaissait sans un mot : c'est
+     * la classe de défaut que cette story traque, laissée en place à trois lignes
+     * de sa correction.
+     * ⚠️ ET C'EST UN PRÉREQUIS DE dn4-6, qui va élargir `DN_WIDGET_GRANDEURS_MAX` :
+     *    sans ce log, un descripteur à n = 3 sur un firmware encore à 2 perdrait
+     *    sa troisième grandeur en silence. */
     int n = desc->n_grandeurs;
     if (n < 1) {
+        ESP_LOGW(TAG, "« %s » : %d grandeur(s) demandee(s) — plancher a 1",
+                 desc->titre ? desc->titre : "?", desc->n_grandeurs);
         n = 1;
     }
     if (n > DN_WIDGET_GRANDEURS_MAX) {
+        ESP_LOGW(TAG, "« %s » : %d grandeurs demandees, %d posees — %d PERDUE(S)",
+                 desc->titre ? desc->titre : "?", desc->n_grandeurs,
+                 DN_WIDGET_GRANDEURS_MAX, desc->n_grandeurs - DN_WIDGET_GRANDEURS_MAX);
         n = DN_WIDGET_GRANDEURS_MAX;
     }
     char buf[DN_WIDGET_TXT_MAX + 24];

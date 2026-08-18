@@ -292,7 +292,8 @@ void app_main(void)
              (long long)((esp_timer_get_time() - t_boot) / 1000));
 
     /* 8. La liaison PC (dn2-2). APRÈS dn_ui_init : sa tâche pousse l'état vers
-     * la case CPU par dn_ui_cpu_maj(), qui prend le verrou LVGL elle-même. Le
+     * les cinq cases PC par dn_ui_pc_maj(), qui prend le verrou LVGL elle-même
+     * (⚠️ corrigé en revue 2026-08-18 : `dn_ui_cpu_maj` n'est plus appelée). Le
      * premier tour affiche « -- » (liaison jamais vue) — la case CPU cesse de
      * mentir dès le boot, les 5 autres restent factices jusqu'à dn3/dn4-1.
      * ⚠️ Le WiFi (branche B) ne démarre PAS ici : `wifi on` à la console — la

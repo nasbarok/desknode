@@ -154,10 +154,22 @@ bool dn_link_ingest_ligne(const char *ligne)
 {
     size_t len = strlen(ligne);
     if (len > DN_LINK_LIGNE_MAX) {
-        /* COMPLÈTE mais trop longue — PAS « tronquée ». Diagnostic opposé : ici
-         * l'émetteur envoie plus large (v2, métrique en plus), là le transport a
-         * perdu la fin. Le REPL laisse passer 128 caractères, la plage 64..128
-         * est donc atteignable (correctif de revue 2026-08-16). */
+        /* Plus longue que la grammaire ne l'autorise. Diagnostic voulu : l'émetteur
+         * envoie plus large (v2, métrique en plus) ; « tronquée », c'est le
+         * transport qui a perdu la fin.
+         * 🔴 ⚠️ ET LES DEUX SE CONFONDENT AU-DESSUS DE 124 — mesuré, correctif de
+         * revue 2026-08-18. §13.2 établit que LE REPL TRONQUE À 124 CARACTÈRES
+         * (plateau relevé sur 9 tirs), pas 128. Donc toute ligne émise à 125 o ou
+         * plus arrive ici AMPUTÉE DE SA FIN — c'est le symptôme « tronquée » — mais
+         * avec `len` ramené à 124, donc > 63, et elle tombe dans CE compteur, dont
+         * la définition écrite est « la ligne est COMPLÈTE mais trop longue ».
+         * ⇒ La plage réellement discriminante est 64..124 : au-delà, `rejets_trop_longue`
+         *   ne prouve PLUS que l'émetteur a envoyé large, il peut aussi dire que le
+         *   transport a coupé. ⛔ Un opérateur qui perd la fin de ses trames sur le
+         *   fil irait chercher « un émetteur qui a changé ».
+         * ⚠️ La bande reste ATTEIGNABLE (c'est ce qui compte pour AC2), mais elle
+         *   n'est pas EXCLUSIVE. Le compteur `rejets_tronquee` reste le seul à ne
+         *   pouvoir dire qu'une chose : la queue « *CK » manquait. */
         s_cnt.rejets_trop_longue++;
         return false;
     }
@@ -561,7 +573,9 @@ void dn_link_latence(uint32_t *n, int64_t *min_us, int64_t *moy_us, int64_t *max
  * une trame fraîche, ou un changement d'état de liaison — la case CPU n'est
  * donc redessinée qu'à ~1 Hz en régime, pas à 4 Hz.
  *
- * Elle appelle dn_ui_cpu_maj(), fonction publique qui prend le verrou LVGL
+ * Elle appelle dn_ui_pc_maj(), fonction publique qui prend le verrou LVGL
+ * (⚠️ corrigé en revue 2026-08-18 : ce commentaire nommait `dn_ui_cpu_maj`, qui
+ *  n'est plus sur le chemin depuis dn4-1 et n'a plus aucun appelant)
  * ELLE-MÊME (règle du dépôt : l'appelant jamais). Si le verrou est occupé,
  * la poussée est réputée NON faite et sera retentée au tick suivant.
  */
@@ -592,9 +606,19 @@ static bool pousser_metrique(int i, bool *a_pousse)
     *a_pousse = false;
 
     dn_link_vue_t v;
+    int64_t t_vue = esp_timer_get_time();
     if (!dn_link_vue((dn_link_metrique_t)i, &v)) {
         return true;
     }
+    /* 🔴 L'INSTANT DE RÉCEPTION, RECONSTRUIT ICI — correctif de revue 2026-08-18.
+     * `v.age_us` est figé au moment de la LECTURE de l'état (dn_link_vue), donc
+     * AVANT `lvgl_port_lock()` et AVANT la pose du texte. Le chronométrer tel
+     * quel excluait l'attente du verrou : sur un `build_scene()` en cours (307 à
+     * 322 ms mesurés), la poussée bloquait puis enregistrait une latence qui ne
+     * contenait PAS ce blocage. dn2-2 chronométrait APRÈS le retour de
+     * `dn_ui_cpu_maj` ; dn4-1 avait perdu cette propriété en changeant d'appel.
+     * ⇒ On garde l'instant de réception et on mesure jusqu'à la POSE. */
+    int64_t recu_us = (v.age_us >= 0) ? (t_vue - v.age_us) : -1;
     bool fraiche = (v.etat == DN_LINK_VIVANTE) &&
                    (s_etat_pousse[i] != (int)DN_LINK_VIVANTE ||
                     v.seq != s_seq_poussee[i]);
@@ -631,9 +655,17 @@ static bool pousser_metrique(int i, bool *a_pousse)
     /* ⚠️ La latence ne se compte QUE si le texte a atteint un label vivant.
      * Sans `label_pose`, on chronométrait aussi les poussées où le pointeur
      * était NULL (modèle REBUILD, vue détail ouverte) ou l'UI arrêtée : un
-     * instrument qui ne pouvait pas voir ce qu'il prétendait mesurer. */
-    if (fraiche && label_pose && v.age_us >= 0) {
-        int64_t lat = v.age_us;
+     * instrument qui ne pouvait pas voir ce qu'il prétendait mesurer.
+     * 🔴 ET ELLE SE MESURE ICI, APRÈS LA POSE — pas depuis `v.age_us`. C'est ce
+     * qui rend l'attribution publiée en §13.11.4 (« le max dépasse 250 ms parce
+     * que le verrou LVGL était pris pendant les détails ») VÉRIFIABLE par
+     * l'instrument lui-même : avec `v.age_us`, cette attente était précisément
+     * ce que le chiffre NE contenait PAS. ⛔ Un instrument ne doit pas exclure la
+     * cause qu'on lui fait désigner.
+     * ⚠️ Le relevé de séance `n = 8 075 · 1 / 204 / 480 ms` a été pris AVANT ce
+     *    correctif : il SOUS-ESTIME, et il est à re-relever (voir la story). */
+    if (fraiche && label_pose && recu_us >= 0) {
+        int64_t lat = esp_timer_get_time() - recu_us;
         portENTER_CRITICAL(&s_mux);
         if (s_lat_n == 0 || lat < s_lat_min) {
             s_lat_min = lat;
@@ -692,7 +724,7 @@ static void tache_lien(void *arg)
 
 esp_err_t dn_link_init(void)
 {
-    /* 4096 o de pile : dn_ui_cpu_maj formate un petit texte sous le verrou
+    /* 4096 o de pile : dn_ui_pc_maj formate un petit texte sous le verrou
      * LVGL, rien de gourmand. Priorité basse : la donnée PC ne doit jamais
      * passer devant le rendu. Pas d'affinité : le verrou LVGL fait la sûreté. */
     BaseType_t ok = xTaskCreate(tache_lien, "dn_link", 4096, NULL, 3, NULL);

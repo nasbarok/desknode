@@ -2456,12 +2456,23 @@ static int cmd_pc(int argc, char **argv)
                etale ? "ETALEE — au plus UNE metrique par reveil de 250 ms"
                      : "GROUPEE — tout ce qui a change part dans le MEME reveil");
         if (etale) {
-            printf("⚠️ CE QUE CE LEVIER FAIT ET NE FAIT PAS : il ne reduit PAS le\n");
-            printf("   travail total (memes pixels, memes redessins) — il reduit le\n");
-            printf("   PIC, et c'est le pic qu'un doigt ressent.\n");
-            printf("⚠️ PRIX : une metrique est rafraichie toutes les ~1,25 s au lieu\n");
-            printf("   de ~1 s, et un passage VIVANTE->MORTE met jusqu'a 1,25 s de\n");
-            printf("   plus a s'afficher sur les cinq cases.\n");
+            /* 🔴 CE BLOC PUBLIAIT UNE PREMISSE QUE LA MESURE A DEMENTIE (§17.4).
+             * Il annoncait « ca ne reduit pas le travail total, ca reduit le
+             * PIC » ; le travail total BAISSE, et il baisse parce que l'etale
+             * JETTE des mises a jour. Un operateur qui rejouait l'A/B lisait donc
+             * une baisse de flush/s comme un GAIN. Corrige en revue 2026-08-18 :
+             * l'instrument doit dire ce que la mesure a trouve, pas ce que la
+             * prediction esperait. */
+            printf("🔴 MESURE (§17.4) — LA PREMISSE ECRITE D'AVANCE EST DEMENTIE :\n");
+            printf("   le travail total BAISSE (5,20 -> 4,21 flush/s), mais il\n");
+            printf("   baisse parce que l'etale JETTE 19 %% des mises a jour\n");
+            printf("   (185 sur 226). ⛔ CE N'EST PAS UN GAIN, C'EST UNE PERTE.\n");
+            printf("⚠️ PRIX 1 : latence max MULTIPLIEE PAR 4 (301 -> 1204 ms).\n");
+            printf("⚠️ PRIX 2 : une metrique est rafraichie toutes les ~1,25 s au\n");
+            printf("   lieu de ~1 s, et un passage VIVANTE->MORTE met jusqu'a\n");
+            printf("   1,25 s de plus a s'afficher sur les cinq cases.\n");
+            printf("⛔ LEVIER NON ADOPTE pour ces raisons. Ne pas lire une baisse\n");
+            printf("   de flush/s comme un progres sur cette branche.\n");
         }
         printf("⚠️ `flush reset` MAINTENANT, puis attendre >= 3 cycles de source\n");
         printf("   avant `flush` : sinon la mesure melange les deux branches.\n");
@@ -2582,9 +2593,9 @@ static int cmd_pc(int argc, char **argv)
 /*
  * ── `widget` — L'INSTRUMENT DU MODÈLE (dn3-1) ────────────────────────────────
  *
- * Il fait TREIZE choses. Aucune ne DORT — la console EST le transport PC depuis
+ * Il fait QUATORZE choses. Aucune ne DORT — la console EST le transport PC depuis
  * dn2-2, et une commande qui dort couperait la liaison qu'elle prétend observer
- * (c'est le défaut mesuré de `cpu N`). Mais QUATRE d'entre elles font un travail
+ * (c'est le défaut mesuré de `cpu N`). Mais CINQ d'entre elles font un travail
  * LONG, et c'est écrit ci-dessous plutôt que nié.
  *
  *   widget                  l'état des 6 cases : régime, valeurs, forme du mock
@@ -2600,12 +2611,18 @@ static int cmd_pc(int argc, char **argv)
  *   widget nue <idx> on|off W11 — le témoin négatif d'AC8, à chaud ⚠️ RECONSTRUIT
  *   widget barre 1hz|minute W2/AC4 — la cadence de la barre heure/date
  *   widget bandes on|off    W8/AC9 — le repeint en BANDES pleine largeur
+ *   widget piste <0xRRGGBB> le fond de la jauge, part NON remplie ⚠️ RECONSTRUIT
  *
- * 🔴 LES QUATRE « RECONSTRUIT » BLOQUENT LE REPL, DONC LE TRANSPORT PC (relevé
+ * 🔴 LES CINQ « RECONSTRUIT » BLOQUENT LE REPL, DONC LE TRANSPORT PC (relevé
  *    en revue le 2026-08-18 : ce docblock affirmait qu'AUCUNE sous-commande
  *    n'était un travail long, trois lignes au-dessus de trois qui le sont — puis
  *    dn3-2 en a ajouté CINQ sans les lister, dont `nue`, qui reconstruit AUSSI
- *    et qui est l'instrument CENTRAL du témoin négatif d'AC8). Elles
+ *    et qui est l'instrument CENTRAL du témoin négatif d'AC8 ; puis la séance du
+ *    2026-08-18 a ajouté `piste`, qui reconstruit AUSSI, et le compte est reparti
+ *    de « trois » à « quatre » sans jamais atteindre CINQ. ⛔ Ce compte est
+ *    manifestement un point de rupture : il se corrige ICI **et** dans le « Jeu
+ *    complet » du README **dans le même geste**, jamais dans un seul des deux).
+ *    Elles
  *    prennent `lvgl_port_lock(2000)` puis appellent `build_scene()`, qui détruit
  *    et reconstruit LES DEUX racines — plus lourd qu'une transition, que §15.6
  *    chiffre à 307-322 ms avec un plancher de rendu LVGL ~230 ms. Comparaison :
@@ -2970,8 +2987,13 @@ static int cmd_widget(int argc, char **argv)
          *    sources reelles) ; `on` fait donc apparaitre des badges « SIMULE »
          *    sur un dashboard qui n'en porte plus. Quelqu'un qui trouve l'ambre
          *    sans savoir qu'il l'a arme lira une regression. */
+        /* ⛔ COMPTE, NE RECITE PAS. C'est le motif que dn4-1 corrige trois fois
+         * ailleurs (`widget icone`, `etat_source`, `nom_source`) : une constante
+         * la ou une table existe. Ajouter ou retirer un mock faisait mentir cette
+         * ligne SANS erreur de compilation. Corrige en revue 2026-08-18. */
         printf("mock %s — les %d cases mockees passent en %s\n",
-               on ? "ARME" : "COUPE", 4, on ? "SIMULEE" : "ABSENTE (« -- » grise)");
+               on ? "ARME" : "COUPE", dn_ui_mocks_actifs(),
+               on ? "SIMULEE" : "ABSENTE (« -- » grise)");
         if (on) {
             printf("⚠️ INSTRUMENT ARME, PAS UN REGLAGE. Il REJOUE la ligne\n");
             printf("   « mock on / groupage on » de §16.1 (la baseline d'AC7 :\n");
@@ -2983,6 +3005,20 @@ static int cmd_widget(int argc, char **argv)
             printf("⚠️ une case POUSSEE (`widget pousser 4`) n'est PAS reprise :\n");
             printf("   le tick ne revoque pas un acte delibere de l'operateur.\n");
             printf("   Les cases a source reelle repartent des la prochaine trame.\n");
+            /* 🔴 `mock off` A CHANGE DE SENS AVEC dn4-1, ET LE PROTOCOLE §15.5 LE
+             * SUPPOSE ENCORE. Jusqu'a dn3-2, « mock isole » voulait dire SILENCE
+             * sur les cases. Depuis dn4-1, `off` est le REGIME NOMINAL avec cinq
+             * sources reelles qui ecrivent a 1 Hz. C'est le meme piege « deux
+             * ecrivains sur la meme case » que §17.3 vient de corriger, deplace
+             * du tick de mock vers le chemin d'instrument. (Revue 2026-08-18.) */
+            printf("🔴 `mock off` N'EST PLUS UNE CONDITION D'ISOLEMENT depuis\n");
+            printf("   dn4-1 : c'est le REGIME NOMINAL, et si l'agent tourne les\n");
+            printf("   cinq cases PC sont reecrites a 1 Hz. ⛔ Une campagne AC8\n");
+            printf("   (`widget pousser` / `rafale`) exige d'ARRETER L'AGENT :\n");
+            printf("   sinon la poussee est ecrasee en <= 250 ms et le denominateur\n");
+            printf("   de cycles est pollue par 5 poussees/s qui ne sont pas les\n");
+            printf("   siennes. Le protocole de §15.5 disait « mock isole » quand\n");
+            printf("   cela suffisait — ce n'est plus le cas.\n");
         }
         return 0;
     }
@@ -3001,7 +3037,7 @@ static int cmd_widget(int argc, char **argv)
             printf("  Elle est produite par le MEME `dn_widget_creer` que les\n");
             printf("  trois autres, depuis un descripteur et RIEN D'AUTRE :\n");
             printf("  aucune ligne de code de dessin n'existe pour elle.\n");
-            printf("  Elle est BI-GRANDEURS et n'est ni Ambiance ni Ventilos —\n");
+            printf("  Elle est BI-GRANDEURS et n'est ni Ambiance ni Disque —\n");
             printf("  donc la variante D6 n'est pas un cas special deguise.\n");
             printf("⚠️ Elle recouvre des cases : c'est un INSTRUMENT, comme\n");
             printf("   `ui label on`. `widget demo off` la retire.\n");
@@ -3113,18 +3149,38 @@ static int cmd_widget(int argc, char **argv)
      */
     printf("geometrie des cases — RELUE des pointeurs, pas du descripteur :\n");
     printf("        case      n_gr  jauge  secondaire   (demande par le descripteur)\n");
-    for (int i = 0; i < DN_UI_METRIQUES; i++) {
+    /* 🔴 LA BOUCLE VA JUSQU'A DN_UI_METRIQUES **INCLUS** : la derniere ligne est
+     * le widget de DEMO, et c'est le seul du firmware a demander DEUX grandeurs
+     * ET une jauge — donc le seul a pouvoir afficher « secondaire : non ». Sans
+     * lui, cette colonne etait constante par construction et l'instrument ne
+     * pouvait pas voir le cas qu'il pretend prouver (revue 2026-08-18).
+     * ⚠️ ET UNE CASE NON CONSTRUITE LE DIT, au lieu d'etre sautee en silence :
+     * en modele REBUILD avec la vue detail ouverte, ou apres `ui off`, les six
+     * racines sont NULL et la table sortait VIDE sous son en-tete — impossible de
+     * distinguer « rien a dire » de « rien de construit ». */
+    for (int i = 0; i <= DN_UI_METRIQUES; i++) {
+        bool demo = (i == DN_UI_METRIQUES);
+        const char *nom = demo ? "DEMO" : dn_ui_metrique_nom(i);
         int ng = 0;
         bool jauge = false, sec = false;
         if (!dn_ui_widget_pointeurs(i, &ng, &jauge, &sec)) {
+            printf("   ");
+            colonnes(nom, 10);
+            printf("  —     —      —           (non dessinee%s)\n",
+                   demo ? " — `widget demo on` pour l'armer" : "");
             continue;
         }
-        const dn_widget_desc_t *dd = dn_ui_desc(i);
+        const dn_widget_desc_t *dd = demo ? dn_ui_demo_desc() : dn_ui_desc(i);
+        /* ⚠️ Une case rendue NUE (`widget nue <idx> on`) n'a qu'un `valeur[0]` :
+         * elle afficherait « n_gr = 1 (n=2) », lisible comme un abandon
+         * geometrique alors que c'est l'override W11. On le DIT. */
+        bool nue = (!demo && !dn_ui_case_est_widget(i));
         printf("   ");
-        colonnes(dn_ui_metrique_nom(i), 10);
-        printf("  %d     %-5s  %-10s  (n=%d%s)\n", ng, jauge ? "OUI" : "non",
+        colonnes(nom, 10);
+        printf("  %d     %-5s  %-10s  (n=%d%s)%s\n", ng, jauge ? "OUI" : "non",
                sec ? "OUI" : "non", dd ? dd->n_grandeurs : 0,
-               (dd && dd->indicateur) ? ", jauge demandee" : "");
+               (dd && dd->indicateur) ? ", jauge demandee" : "",
+               nue ? "  ⚠️ CASE NUE (override W11), pas un abandon" : "");
     }
     printf("   ⚠️ REGLE ECRITE (dn_widget.h) : quand les deux ne tiennent pas dans\n");
     printf("      les 156 px, LA JAUGE GAGNE et l'abandon de la secondaire est\n");
@@ -4163,7 +4219,8 @@ static const esp_console_cmd_t k_cmds[] = {
     DN_CMD("widget",
            "widget | groupe on|off | opa <n> | voile <n> | mock on|off | demo "
            "on|off | pousser <n> | oublier <n> | rafale | nue <n> on|off | barre "
-           "1hz|minute | bandes on|off | icone <case> <n> — modèle de case (dn3-1/dn3-2)",
+           "1hz|minute | bandes on|off | icone <case> <n> | piste <0xRRGGBB> — "
+           "modèle de case (dn3-1/dn3-2/dn4-1)",
            cmd_widget),
     /* ⚠️ INSCRITE ICI **ET** DANS LE « Jeu complet » DU README dans le même
      * geste — dn2-1 avait oublié `capteurs` au README, et une commande qu'on ne

@@ -34,9 +34,22 @@
  *   ─────   ──────────────────────────   ──────────────────────   ─────────────
  *   cpu     % d'utilisation   (0..1000)  GHz              (0..1000)   oui
  *   gpu     % d'utilisation   (0..1000)  °C               (0..1500)   oui
- *   ram     % d'occupation    (0..1000)  Go utilisés  (0..40000)      oui
+ *   ram     % d'occupation    (0..1000)  Go TOTAUX    (0..40000)      oui
  *   net     Mb/s descendant (0..1000000) Mb/s montant (0..1000000)    oui
- *   disk    (unité tranchée par W2)      —                            non
+ *   disk    Mo/s (débit total) (0..1000000)  —                          non
+ *
+ * 🔴 `ram` ENVOIE LE **TOTAL**, ET C'EST STRUCTUREL. L'écran affiche « 22,7 /
+ *    34,2 Go », mais l'utilisé n'est PAS transmis : le firmware le DÉRIVE du
+ *    pourcentage (`utilisé = v1 × v2 / 1000`, dn_ui.c). Deux nombres échantillonnés
+ *    séparément afficheraient tôt ou tard deux vérités contradictoires dans le
+ *    même rectangle ; ici la cohérence est structurelle, pas une discipline.
+ *    ⚠️ Le total est en **GIO BINAIRES** (2^30) étiquetés « Go », comme Windows :
+ *    l'écran disait 34,3 quand le Gestionnaire des tâches disait 31,9 (AC10,
+ *    2026-08-18). ⛔ Ne pas « corriger » l'étiquette — voir dn_agent.py.
+ *    ⚠️ Cette ligne annonçait « Go utilisés » jusqu'à la revue du 2026-08-18 :
+ *    l'AUTORITÉ contredisait le code, pendant que les documents DÉRIVÉS
+ *    (liaison-pc.md, README, docstring de l'agent) étaient justes. C'est
+ *    exactement le dispositif « une seule source de vérité » retourné.
  *
  * 🔴 UNE TRAME PAR MÉTRIQUE, ET C'EST W3 TRANCHÉE (dn4-1) — trois raisons, dans
  *    cet ordre :
@@ -197,8 +210,6 @@
  * UNE trame injectée rendait le compteur illisible (correctif de revue 2026-08-16).
  * À 1 Hz, 3 600 trous = une heure de silence : au-delà, c'est l'état de liaison qui
  * diagnostique, pas ce compteur. */
-#define DN_LINK_SAUT_MAX 3600u
-
 typedef enum {
     DN_LINK_JAMAIS,  /* aucune trame valide depuis le boot */
     DN_LINK_VIVANTE, /* dernière trame valide plus récente que la péremption */
@@ -220,6 +231,17 @@ typedef enum {
     DN_LINK_M_DISK,
     DN_LINK_METRIQUES,
 } dn_link_metrique_t;
+
+/* ⚠️ CE SEUIL EST EN **TRAMES**, ET LA CADENCE A ÉTÉ ×5 PAR W3 (revue 2026-08-18).
+ * 3600 valait ~60 min quand dn2-2 émettait 1 trame/s. dn4-1 émet CINQ trames par
+ * seconde (une par métrique, `seq` étant GLOBAL) ⇒ le même 3600 ne couvrait plus
+ * que **~12 min**. Un trou plus long basculait donc de `resynchros` vers
+ * `pertes_seq` bien plus tôt qu'avant : le diagnostic changeait de sens sans le
+ * dire. ⇒ Exprimé en trames À LA CADENCE RÉELLE, pour que « ~1 h » reste « ~1 h ».
+ * ⚠️ IL EST DÉFINI **APRÈS** l'énumération, et c'est délibéré : il s'appuie sur
+ *    `DN_LINK_METRIQUES`. Le placer avant compilait (une macro s'expanse au point
+ *    d'usage) mais aurait cassé au premier usage intra-en-tête. */
+#define DN_LINK_SAUT_MAX (3600u * DN_LINK_METRIQUES)
 
 /* L'instantané d'UNE métrique, pris sous le verrou en UNE fois — c'est le point.
  * Lire la valeur puis l'horodatage par deux appels laisserait afficher une
@@ -249,7 +271,11 @@ typedef struct {
     uint32_t rejets_format;     /* structure, champ absent/illisible, métrique,
                                  * saut de seq aberrant, et les rejets d'AVANT
                                  * dn_link signalés par dn_console (voir en-tête) */
-    uint32_t rejets_bornes;     /* dixiemes > 1000 */
+    uint32_t rejets_bornes;     /* hors du plafond de SA metrique (k_metriques[]) :
+                                 * 1000 pour un %, 1500 pour une °C, 40000 pour
+                                 * les Go, 1000000 pour Mb/s et Mo/s. ⛔ PAS un
+                                 * seuil unique a 1000 — corrige en revue 2026-08-18,
+                                 * le commentaire datait de la v1 mono-metrique. */
     uint32_t reprises;          /* transitions MORTE→VIVANTE (AC7) */
 } dn_link_compteurs_t;
 
@@ -308,14 +334,32 @@ uint32_t dn_link_dernier_t_ms(void);
  * ── W4 : CORRÉLER OU DÉCORRÉLER LES POUSSÉES — UN A/B, DANS LE MÊME FIRMWARE ─
  *
  * `false` (défaut, « groupé ») : à chaque réveil de 250 ms, TOUTES les métriques
- *   qui ont changé sont poussées. Cinq trames arrivées dans la même fenêtre
- *   produisent donc cinq poussées dans le MÊME cycle LVGL — c'est le régime que
- *   la baseline §16.1 décrit, et celui que la prédiction d'AC7 chiffre.
+ *   qui ont changé sont poussées, dans le MÊME réveil de la tâche `dn_link`.
+ * 🔴 ⚠️ « GROUPÉ » NE VEUT **PAS** DIRE « DANS UN SEUL CYCLE LVGL » — corrigé en
+ *    revue le 2026-08-18, ce paragraphe affirmait le contraire. Chaque poussée
+ *    passe par `dn_ui_pc_maj()`, qui prend **ET REND** le verrou LVGL (dn_ui.c).
+ *    Cinq poussées = **CINQ verrous**, et entre deux la tâche LVGL — de priorité
+ *    supérieure à la priorité 3 de `dn_link` — reprend le mutex et rend un cycle
+ *    complet. ⇒ les cinq métriques se répartissent en pratique sur ~2 cycles.
+ * 🔴 **C'EST LA CAUSE MÉCANIQUE DE L'ÉCART QUE §17.2 CLASSAIT « NON COUVERT »** :
+ *    cycles/s mesuré à **2,05** contre **~1,2** prédit, et flush/cycle à **2,52**
+ *    au lieu de 4,4 — la signature de cinq poussées étalées sur deux cycles.
+ * ⚠️ Le vrai groupage (les cinq sous UN verrou, comme `widget rafale`) est une
+ *    OPTION NON ADOPTÉE, renvoyée à `dn4-4` avec son A/B : il allongerait la
+ *    fenêtre bloquante, donc le **PIC** — précisément ce que W4 voulait réduire.
+ *    ⛔ Ne pas l'adopter par principe. Voir `deferred-work.md`.
  * `true` (« étalé ») : AU PLUS UNE métrique poussée par réveil, en tourniquet.
  *   ⇒ les cases se répartissent sur plusieurs cycles LVGL.
  *
- * ⚠️ CE QUE ÇA NE FAIT PAS : ça ne réduit PAS le travail total (mêmes pixels,
- *    mêmes redessins). Ça réduit le PIC — et c'est le pic qu'un doigt ressent.
+ * 🔴 ⚠️ CE PARAGRAPHE ANNONÇAIT « ça ne réduit PAS le travail total (mêmes pixels,
+ *    mêmes redessins), ça réduit le PIC ». **LA MESURE L'A DÉMENTI** (§17.4, et
+ *    c'était une prémisse écrite d'avance) : le travail total **BAISSE**,
+ *    **5,20 → 4,21 flush/s** — mais il baisse parce que l'étalé **JETTE 19 % DES
+ *    MISES À JOUR** (185 sur 226). ⛔ **Ce n'est pas un gain, c'est une perte de
+ *    données**, et la latence max est **multipliée par 4** (301 → 1 204 ms).
+ * ⛔ NE PAS LIRE UNE BAISSE DE flush/s COMME UN GAIN SUR CETTE BRANCHE.
+ *    Le levier est **NON ADOPTÉ** pour cette raison. (Corrigé en revue 2026-08-18 :
+ *    l'en-tête et la console publiaient encore la prémisse que §17.4 réfutait.)
  * ⚠️ CE QUE ÇA COÛTE, ÉCRIT D'AVANCE : en étalé, une métrique est rafraîchie
  *    toutes les ~1,25 s (5 métriques × 250 ms) au lieu de ~1 s, et un passage
  *    VIVANTE→MORTE met jusqu'à 1,25 s de plus à s'afficher sur les cinq cases.

@@ -387,9 +387,16 @@ bool dn_ui_cpu_maj(int dixiemes, bool valide, bool *label_pose);
  *   métrique → case et la forme de la ligne secondaire vivent dans UNE TABLE de
  *   `dn_ui.c`, pas dans des `if (m == …)`.
  *
- * ⚠️ `dn_ui_cpu_maj` SURVIT et n'est pas un doublon : c'est le point d'entrée
- *    HISTORIQUE de dn2-2, conservé pour que le témoin de non-régression v1 reste
- *    exécutable. Elle délègue au même chemin.
+ * ⚠️ `dn_ui_cpu_maj` SURVIT comme point d'entrée mono-métrique historique de
+ *    dn2-2, et elle délègue au même chemin.
+ * 🔴 ⛔ MAIS ELLE N'A **AUCUN APPELANT** DANS LE FIRMWARE (grep exhaustif, revue
+ *    du 2026-08-18), ET LA RAISON QUI ÉTAIT ÉCRITE ICI ÉTAIT FAUSSE : ce
+ *    paragraphe disait « conservé pour que le témoin de non-régression v1 reste
+ *    exécutable ». Le témoin v1 d'AC2 passe par `dn_link_ingest_ligne` ->
+ *    `pousser_metrique` -> `dn_ui_pc_maj`. Il ne l'a jamais traversée.
+ *    ⇒ Ce qui n'est jamais appelé ne prouve rien. Si un appelant revient, il
+ *    doit savoir que la vue fabriquée porte `age_us = -1` (« pas d'horodatage ») :
+ *    c'était `0`, ce qui injectait des latences à 0 µs dans la statistique.
  *
  * `vue` porte l'état, les deux grandeurs et `v2_connue` (W10) : une 2ᵉ grandeur
  * absente laisse la case RÉELLE et n'écrit « -- » que sur SA ligne.
@@ -401,13 +408,26 @@ bool dn_ui_pc_maj(dn_link_metrique_t m, const dn_link_vue_t *vue,
  * Rend -1 si la métrique n'a pas de case. */
 int dn_ui_case_de_metrique(dn_link_metrique_t m);
 
+/* Le nombre de cases mockées — COMPTÉ dans `k_mock[]`, pour que la console
+ * n'ait pas à le réciter. ⛔ Une constante là où une table existe est le défaut
+ * que ce fichier corrige trois fois par ailleurs. */
+int dn_ui_mocks_actifs(void);
+
 /*
  * ── AC5 : CE QUE LA CASE A RÉELLEMENT CONSTRUIT, RELU DES POINTEURS ──────────
  * ⚠️ RELU, jamais récité du descripteur : c'est tout l'objet du correctif W5.
  *    Un descripteur qui DEMANDE une jauge et une secondaire peut n'obtenir que
  *    la jauge (la géométrie ne permet pas les deux à n = 2) — et c'est
  *    précisément ce qu'il faut pouvoir CONSTATER sans lire le source.
- * Rend false si `idx` est hors bornes ou si la case n'est pas dessinée.
+ * 🔴 `idx == DN_UI_METRIQUES` DÉSIGNE LE WIDGET DE DÉMO (`widget demo on`), et
+ *    c'est OBLIGATOIRE pour que cet instrument serve à quelque chose (correctif
+ *    de revue 2026-08-18). Il est le SEUL objet du firmware à demander
+ *    `n_grandeurs = 2` ET `indicateur = true`, donc le seul à déclencher
+ *    l'abandon de la secondaire. Les six cases réelles ne peuvent PAS le
+ *    produire — la colonne « secondaire » était constante par construction, et
+ *    l'instrument ne pouvait pas voir le cas qu'il prétendait prouver.
+ * Rend false si `idx` est hors bornes (0..DN_UI_METRIQUES inclus) ou si l'objet
+ * n'est pas dessiné.
  */
 bool dn_ui_widget_pointeurs(int idx, int *n_grandeurs, bool *jauge, bool *sec);
 
@@ -513,6 +533,17 @@ bool dn_ui_barre_dessinee(void);
  *    2026-08-18) : c'est la divergence .h/code que dn3-1 avait déjà payée une
  *    fois, quand un A/B mesurait deux fois la même branche. */
 const dn_widget_desc_t *dn_ui_desc(int idx);
+
+/* Le descripteur du widget de DÉMO (`widget demo on`) — le SEUL du firmware à
+ * demander deux grandeurs ET une jauge, donc le seul à armer l'abandon de la
+ * ligne secondaire. La table de géométrie d'AC5 en a besoin pour confronter
+ * demandé/obtenu ; sans lui, la colonne « secondaire » ne peut valoir que OUI. */
+const dn_widget_desc_t *dn_ui_demo_desc(void);
+
+/* La case `idx` est-elle rendue en WIDGET (true) ou NUE (false, override W11) ?
+ * ⛔ Une case nue n'a qu'un `valeur[0]` : sans cette lecture, la table de
+ * géométrie affiche « n_gr = 1 (n=2) » et ça se lit comme un abandon. */
+bool dn_ui_case_est_widget(int idx);
 bool dn_ui_est_widget(int idx);
 
 /* Le RÉGIME de la valeur d'une case, RELU de l'état réel. C'est ce que la

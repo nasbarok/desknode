@@ -419,6 +419,15 @@ const dn_widget_desc_t *dn_ui_desc(int idx)
     return case_est_widget(idx) ? &k_desc[idx] : NULL;
 }
 
+/* Une case est-elle rendue NUE (override W11, `widget nue <idx> on`) ?
+ * ⚠️ LECTEUR de l'override, exposé pour que la table de géométrie ne présente pas
+ * un `n_gr = 1` de case nue comme un abandon géométrique — c'était un faux
+ * positif sur le chemin le plus utilisé d'une campagne AC8. */
+bool dn_ui_case_est_widget(int idx)
+{
+    return case_est_widget(idx);
+}
+
 bool dn_ui_est_widget(int idx)
 {
     /* LECTEUR 2/5 de l'override W11. */
@@ -2787,6 +2796,15 @@ typedef enum {
     DN_SEC_PC_NET_DUPLEX, /* « v 985  ^ 48 »   — verbatim addendum §1 */
 } dn_sec_pc_t;
 
+/* ⚠️ LA SENTINELLE EST `-1`, MAIS L'INITIALISEUR DÉSIGNÉ, LUI, REMPLIT DE ZÉROS.
+ *    Une entrée OUBLIÉE vaudrait donc `{0, 0}` — et `DN_UI_CASE_CPU == 0` : la
+ *    nouvelle métrique irait écrire dans la case CPU, EN SILENCE, à 1 Hz.
+ *    C'est la quatrième table câblée par index, dans le fichier même où on en
+ *    supprime trois ; le commentaire ci-dessus prévient que les deux énumérations
+ *    « doivent rester indépendantes », mais rien ne le VÉRIFIAIT.
+ * ⇒ Le `_Static_assert` ci-dessous force à toucher cette table quand l'énumération
+ *   bouge, et `dn_ui_case_de_metrique()` refuse une entrée non renseignée.
+ *   (Correctif de revue 2026-08-18 — défaut latent, aucune métrique ne l'armait.) */
 static const struct {
     int idx;                /* la case de dn_ui, -1 si aucune */
     dn_sec_pc_t sec;
@@ -2802,9 +2820,37 @@ static const struct {
     [DN_LINK_M_DISK] = {DN_UI_CASE_DISQUE, DN_SEC_PC_AUCUNE},
 };
 
+/* ⛔ SI CETTE LIGNE NE COMPILE PLUS, C'EST QUE `dn_link_metrique_t` A GAGNÉ UNE
+ *    ENTRÉE ET QUE `k_pc[]` NE L'A PAS. Ne pas l'élargir sans ajouter la ligne :
+ *    c'est précisément la vérification qui manquait. */
+_Static_assert(sizeof(k_pc) / sizeof(k_pc[0]) == DN_LINK_METRIQUES,
+               "k_pc[] doit couvrir TOUTES les metriques de dn_link_metrique_t");
+
+/* Le nombre de cases RÉELLEMENT mockées — COMPTÉ dans `k_mock[]`, jamais récité.
+ * `widget mock on` imprimait « 4 » en dur : ajouter ou retirer un mock aurait
+ * fait mentir la commande sans erreur de compilation, dans le fichier même où
+ * dn4-1 corrige trois fois ce motif. (Correctif de revue 2026-08-18.) */
+int dn_ui_mocks_actifs(void)
+{
+    int n = 0;
+    for (int i = 0; i < DN_UI_METRIQUES; i++) {
+        if (k_mock[i].actif) {
+            n++;
+        }
+    }
+    return n;
+}
+
 int dn_ui_case_de_metrique(dn_link_metrique_t m)
 {
-    return (m >= 0 && m < DN_LINK_METRIQUES) ? k_pc[m].idx : -1;
+    if (m < 0 || m >= DN_LINK_METRIQUES) {
+        return -1;
+    }
+    /* ⚠️ Une entrée jamais renseignée vaut `{0, 0}`, indiscernable d'un vrai
+     * « case 0 ». On ne peut pas le distinguer ici ; le `_Static_assert` et la
+     * revue de cette table sont la garde. Le test explicite reste utile le jour
+     * où une entrée est mise à `-1` À DESSEIN (métrique sans case). */
+    return (k_pc[m].idx >= 0 && k_pc[m].idx < DN_UI_METRIQUES) ? k_pc[m].idx : -1;
 }
 
 /*
@@ -2881,9 +2927,31 @@ bool dn_ui_pc_maj(dn_link_metrique_t m, const dn_link_vue_t *vue,
                 fmt_dixiemes(a, sizeof(a), utilise);
                 fmt_dixiemes(b, sizeof(b), vue->v2);
                 snprintf(sec, sizeof(sec), "%s / %s Go", a, b);
+            } else {
+                /* 🔴 W10 S'APPLIQUE AUSSI À LA SECONDAIRE (revue 2026-08-18).
+                 * Sans ce `else`, `sec` restait VIDE et la ligne « 22,7 / 34,2 Go »
+                 * DISPARAISSAIT au lieu de dire qu'elle ne sait pas — alors que le
+                 * bloc dix lignes plus haut applique correctement la règle à la
+                 * GRANDEUR (« -- » en gris, case RÉELLE). Deux traitements opposés
+                 * pour la même absence, dans la même case.
+                 * ⚠️ Non atteignable depuis l'agent courant (il envoie toujours v2),
+                 *    mais LE PROTOCOLE L'AUTORISE : c'est le mécanisme même de W10,
+                 *    celui par lequel la °C GPU peut manquer seule. */
+                snprintf(sec, sizeof(sec), "-- / -- Go");
             }
             break;
         case DN_SEC_PC_NET_DUPLEX:
+            /* ⛔ BRANCHE MORTE DEPUIS LA SÉANCE DU 2026-08-18, ET C'EST DÉLIBÉRÉ :
+             * `k_pc[DN_LINK_M_NET].sec` vaut `DN_SEC_PC_AUCUNE` — ↓ et ↑ sont
+             * devenues les DEUX GRANDEURS de la case, les remettre en secondaire
+             * afficherait les mêmes deux nombres deux fois. AUCUNE métrique ne
+             * sélectionne donc plus ce cas.
+             * ⚠️ Le code est CONSERVÉ (le duplex peut revenir sur une autre case),
+             * mais il ne s'exécute pas : ⛔ ne pas lire la justification ci-dessous
+             * comme la description d'un chemin exercé. Relevé en revue 2026-08-18 —
+             * l'arithmétique du commentaire est d'ailleurs fausse d'un octet
+             * (3+1+15+2+3+1+15 = 40 oublie le NUL terminal, il en faut 41), et ça
+             * ne s'est jamais vu PRÉCISÉMENT parce que le code est mort. */
             /* ⚠️ `LV_SYMBOL_DOWN`/`UP` (U+F078/U+F077), PAS les flèches Unicode
              *    U+2193/U+2191 : celles-ci sont HORS latin-1 et le glyphe absent
              *    serait dessiné EN SILENCE. Les deux codepoints FontAwesome ont
@@ -2922,6 +2990,17 @@ bool dn_ui_pc_maj(dn_link_metrique_t m, const dn_link_vue_t *vue,
  *    dupliquer le formatage — le CHEMIN reste unique, c'est la seule chose qui
  *    devait l'être.
  */
+/* 🔴 ELLE N'A AUCUN APPELANT DANS LE FIRMWARE — constaté par grep en revue le
+ * 2026-08-18, et sa justification publiée était FAUSSE. `dn_ui.h` écrivait
+ * « conservé pour que le témoin de non-régression v1 reste exécutable » : le
+ * témoin v1 d'AC2 passe en réalité par `dn_link_ingest_ligne` -> `pousser_metrique`
+ * -> `dn_ui_pc_maj`, jamais par ici. ⇒ Ce qui n'est jamais appelé ne prouve rien
+ * (leçon T4, citée trois fois dans ce dépôt).
+ * ⚠️ ELLE EST CONSERVÉE comme point d'entrée mono-métrique, mais son piège est
+ * désormais fermé : `.age_us = 0` injectait un échantillon de latence à **0 µs**
+ * dans `s_lat_min/somme/n` à chaque appel, écrasant le minimum et tirant la
+ * moyenne vers le bas SANS AUCUN SIGNAL. `-1` veut dire « pas d'horodatage », et
+ * `pousser_metrique` sait ne pas chronométrer ce cas. */
 bool dn_ui_cpu_maj(int dixiemes, bool valide, bool *label_pose)
 {
     dn_link_vue_t v = {
@@ -2929,7 +3008,7 @@ bool dn_ui_cpu_maj(int dixiemes, bool valide, bool *label_pose)
         .v1 = (valide && dixiemes >= 0 && dixiemes <= 1000) ? dixiemes : -1,
         .v2 = 0,
         .v2_connue = false,
-        .age_us = 0,
+        .age_us = -1, /* ⛔ PAS 0 : « inconnu », pas « instantané » */
         .seq = 0,
     };
     return dn_ui_pc_maj(DN_LINK_M_CPU, &v, label_pose);
@@ -2937,25 +3016,40 @@ bool dn_ui_cpu_maj(int dixiemes, bool valide, bool *label_pose)
 
 /* AC5 — RELU des pointeurs LVGL réellement construits, jamais récité du
  * descripteur. Voir `dn_ui.h` pour le motif. */
+/* 🔴 `idx == DN_UI_METRIQUES` DÉSIGNE LE WIDGET DE DÉMO — et c'est le correctif
+ * de revue du 2026-08-18. Cette fonction ne lisait que `s_wobj[0..5]`, or le
+ * widget de démo (`s_demo`) est LE SEUL objet du firmware à combiner
+ * `n_grandeurs = 2` ET `indicateur = true`, donc le SEUL à déclencher l'abandon
+ * de la ligne secondaire que la commande `widget` prétend rapporter. Aucune des
+ * six cases réelles ne peut produire « secondaire non » (CPU/GPU/RÉSEAU n=2 sans
+ * jauge -> 148 ≤ 156 ; RAM n=1 avec jauge -> 128 ≤ 156) : la colonne était donc
+ * CONSTANTE PAR CONSTRUCTION. ⛔ Un instrument qui ne peut pas voir le cas qu'il
+ * a été construit pour prouver est une gate décorative. */
 bool dn_ui_widget_pointeurs(int idx, int *n_grandeurs, bool *jauge, bool *sec)
 {
-    if (idx < 0 || idx >= DN_UI_METRIQUES || !s_wobj[idx].racine) {
+    const dn_widget_t *o = NULL;
+    if (idx >= 0 && idx < DN_UI_METRIQUES) {
+        o = &s_wobj[idx];
+    } else if (idx == DN_UI_METRIQUES) {
+        o = &s_demo;
+    }
+    if (!o || !o->racine) {
         return false;
     }
     if (n_grandeurs) {
         int n = 0;
         for (int i = 0; i < DN_WIDGET_GRANDEURS_MAX; i++) {
-            if (s_wobj[idx].valeur[i]) {
+            if (o->valeur[i]) {
                 n++;
             }
         }
         *n_grandeurs = n;
     }
     if (jauge) {
-        *jauge = s_wobj[idx].jauge != NULL;
+        *jauge = o->jauge != NULL;
     }
     if (sec) {
-        *sec = s_wobj[idx].sec != NULL;
+        *sec = o->sec != NULL;
     }
     return true;
 }
@@ -3828,6 +3922,16 @@ static const dn_widget_desc_t k_demo_desc = {
                      * été clouée au plein par un injecteur hors plage) */
     .grandeurs = {{.unite = "%"}, {.unite = "Mo/s", .icone = DN_ICONE_DESKTOP}},
 };
+
+/* Le descripteur du widget de DÉMO — pour que la table de géométrie puisse
+ * confronter ce qu'il DEMANDE (n = 2 + jauge) à ce qu'il a OBTENU. C'est le seul
+ * descripteur du firmware à armer l'abandon de la secondaire (168 > 156).
+ * ⚠️ DÉFINI ICI, après `k_demo_desc` : le placer près de `dn_ui_desc()` le
+ *    référençait 3 500 lignes avant sa définition. */
+const dn_widget_desc_t *dn_ui_demo_desc(void)
+{
+    return &k_demo_desc;
+}
 
 esp_err_t dn_ui_demo_set(bool on)
 {
