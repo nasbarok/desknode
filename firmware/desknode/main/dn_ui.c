@@ -12,6 +12,7 @@
 #include "dn_measure.h"
 #include "dn_pins.h"
 #include "dn_recal.h"
+#include "dn_rtc.h"
 #include "dn_touch.h"
 #include "dn_widget.h"
 #include "fonts/dn_font.h"
@@ -137,6 +138,9 @@ static const char *TAG = "dn_ui";
  * servent comme initialiseurs désignés. ⚠️ D6 les a DÉPLACÉS : 4 était TEMP. et
  * 5 HUMIDITÉ jusqu'à dn2-1. */
 #define DN_UI_CASE_CPU 0
+#define DN_UI_CASE_GPU 1
+#define DN_UI_CASE_RAM 2
+#define DN_UI_CASE_RESEAU 3
 #define DN_UI_CASE_VENT 4
 #define DN_UI_CASE_AMB 5
 
@@ -144,12 +148,51 @@ static const char *const k_nom[DN_UI_METRIQUES] = {
     "CPU", "GPU", "RAM", "RÉSEAU", "VENTILOS", "AMBIANCE",
 };
 
-/* Quelles cases reçoivent le MODÈLE de widget. Les autres restent nues. */
+/*
+ * Quelles cases reçoivent le MODÈLE de widget.
+ * 🔴 dn3-2 : LES SIX. C'est la marche P7 — la grille cesse d'être « trois
+ *    briques et trois trous ». ⚠️ `k_desc[]` était DÉJÀ dimensionnée à
+ *    DN_UI_METRIQUES : le travail a été TROIS INITIALISEURS DÉSIGNÉS à ajouter,
+ *    pas un redimensionnement ni un refactor.
+ */
 static const bool k_widget[DN_UI_METRIQUES] = {
-    [DN_UI_CASE_CPU] = true,
-    [DN_UI_CASE_VENT] = true,
-    [DN_UI_CASE_AMB] = true,
+    [DN_UI_CASE_CPU] = true,   [DN_UI_CASE_GPU] = true,
+    [DN_UI_CASE_RAM] = true,   [DN_UI_CASE_RESEAU] = true,
+    [DN_UI_CASE_VENT] = true,  [DN_UI_CASE_AMB] = true,
 };
+
+/*
+ * ── W11 — LE TÉMOIN NÉGATIF D'AC8 NE DOIT PAS QUITTER LE FIRMWARE ────────────
+ *
+ * 🔴 LE PROBLÈME, ÉCRIT AVANT LA SOLUTION. Jusqu'à dn3-1, GPU/RAM/RÉSEAU
+ *    étaient NUES, et c'est CONTRE ELLES que tous les chiffres d'AC8 se
+ *    comparaient : « une case-widget contre une case nue, sous le MÊME fps, le
+ *    MÊME bounce, le MÊME draw buffer, dans le MÊME firmware ». Les six
+ *    devenant des widgets, cette référence DISPARAÎT — et AC8 se retrouverait à
+ *    comparer un firmware à un autre firmware, exactement ce que dn3-1 s'est
+ *    interdit.
+ *
+ * ⇒ On peut rendre une case NUE À CHAUD (`widget nue <idx> on|off`). La
+ *   référence reste donc mesurable dans le firmware des six widgets.
+ *
+ * ⚠️ CONTRAINTE DE FORME, ET ELLE N'EST PAS NÉGOCIABLE : `k_widget[]` est
+ *    `const`, en `.rodata`, et la convention du dépôt (`k_*` const / `s_*`
+ *    mutable) NE SE CASSE PAS. Le mécanisme est donc un tableau d'OVERRIDE
+ *    `s_*` consulté par les lecteurs — ⛔ pas un `const` retiré.
+ *
+ * ⚠️ Il y a CINQ lecteurs, et les cinq passent par `case_est_widget()` :
+ *    `dn_ui_desc`, `dn_ui_est_widget`, la boucle de `build_dashboard`,
+ *    `detail_reparametrer` et `case_poser`. En oublier un rendrait une case
+ *    dessinée nue mais mise à jour comme un widget — un pointeur `valeur[0]`
+ *    lu là où le modèle attend une racine de widget.
+ */
+static bool s_nue_force[DN_UI_METRIQUES];
+
+static bool case_est_widget(int idx)
+{
+    return idx >= 0 && idx < DN_UI_METRIQUES && k_widget[idx] &&
+           !s_nue_force[idx];
+}
 
 /*
  * ── LES DESCRIPTEURS — LE SEUL POINT D'AJOUT D'UNE MÉTRIQUE ──────────────────
@@ -173,6 +216,70 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
         .n_grandeurs = 1,
         .indicateur = false,
         .grandeurs = {{.unite = "%"}},
+    },
+    /*
+     * ── LES TROIS NEUVES DE dn3-2 (W6, W10) ─────────────────────────────────
+     *
+     * W10 — les hex viennent de la palette du mode Actif (addendum §1) : GPU
+     * CYAN, RAM VIOLET, RÉSEAU CYAN. ⚠️ dn3-2 les PORTE, dn3-3 FAIT FOI. Elles
+     * sont posées ici pour la même raison que dn3-1 a posé les trois autres :
+     * pour que le champ `couleur` ne soit pas un champ MORT que dn3-3
+     * découvrirait non branché (leçon T4 de dn2-1 — ce qui n'est jamais appelé
+     * ne prouve rien).
+     *
+     * Les icônes sont prises parmi les 10 FontAwesome DÉJÀ EMBARQUÉES par
+     * dn3-1 — `memory` et `network-wired` y sont, ce qui n'est pas un hasard :
+     * elles ont été embarquées EN PRÉVISION de ces cases. ⛔ Aucun glyphe neuf,
+     * donc aucune régénération de police (elle exige un shim npm absent du
+     * tableau des versions figées, et un clone neuf SANS RÉSEAU échouerait).
+     * ⚠️ Un glyphe absent serait dessiné EN SILENCE — c'est pour ça qu'on ne
+     *    pioche que dans la liste vérifiée de `fonts/dn_font.h`.
+     */
+    [DN_UI_CASE_GPU] = {
+        /* `desktop` (U+F108) : le GPU est ce qui pilote l'écran. C'est le
+         * moins mauvais des glyphes DISPONIBLES — `microchip` est déjà pris
+         * par CPU, et un doublon rendrait les deux cases confusibles au coup
+         * d'oeil, qui est le seul usage réel d'une icône de 28 px. */
+        .icone = DN_ICONE_DESKTOP,
+        .titre = "GPU",
+        .couleur = 0x35d6e8, /* cyan — famille « données PC » */
+        .n_grandeurs = 1,
+        .indicateur = false,
+        .grandeurs = {{.unite = "\xC2\xB0" "C"}},
+    },
+    [DN_UI_CASE_RAM] = {
+        .icone = DN_ICONE_MEMORY,
+        .titre = "RAM",
+        .couleur = 0x9b6cff, /* violet */
+        /*
+         * 🔴 UNE SEULE GRANDEUR, ET C'EST LE PIÈGE N°1 DU MODÈLE QUI L'IMPOSE.
+         *    L'addendum §1 demande « violet + JAUGE » ET une donnée secondaire
+         *    « 12.1 / 32 Go ». Or `dn_widget.c:267` teste
+         *    `if (desc->indicateur && n == 1)` : avec `n_grandeurs >= 2`, LA
+         *    JAUGE N'EST JAMAIS CRÉÉE, EN SILENCE — et le champ `indicateur`
+         *    est documenté SANS cette restriction (différé de la revue dn3-1).
+         *    ⇒ « 12,1 / 32 Go » n'est PAS une seconde grandeur : c'est la
+         *      DONNÉE SECONDAIRE (`etat.secondaire`), qui a son propre label et
+         *      ne compte pas dans `n_grandeurs`. La jauge survit.
+         * ⚠️ Vérifié dans le source AVANT de poser la jauge, pas découvert
+         *    après coup sur une case sans barre.
+         */
+        .n_grandeurs = 1,
+        .indicateur = true,
+        .ind_min = 0,
+        .ind_max = 100, /* % — la plage ANNONCÉE, et celle du mock */
+        .grandeurs = {{.unite = "%"}},
+    },
+    [DN_UI_CASE_RESEAU] = {
+        .icone = DN_ICONE_NETWORK_WIRED,
+        .titre = "RÉSEAU",
+        .couleur = 0x35d6e8, /* cyan */
+        /* Pas de jauge : un débit n'a pas de plein. `ind_max` devrait valoir la
+         * capacité du lien, que le firmware ne connaît pas — une jauge dont
+         * l'échelle est inventée est un mensonge d'interface silencieux. */
+        .n_grandeurs = 1,
+        .indicateur = false,
+        .grandeurs = {{.unite = "Mb/s"}},
     },
     [DN_UI_CASE_VENT] = {
         /*
@@ -206,8 +313,11 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
     },
 };
 
-/* Les descripteurs des cases NUES ne sont pas construits : elles ne passent pas
- * par le modèle. C'est ce qui en fait le témoin négatif d'AC8. */
+/* 🔴 dn3-2 : LES SIX DESCRIPTEURS EXISTENT. Une case n'est plus NUE par absence
+ * de descripteur, mais parce que `s_nue_force[]` le demande (W11) — le témoin
+ * négatif d'AC8 est devenu un RÉGLAGE À CHAUD au lieu d'un trou dans la table.
+ * C'est ce qui permet de mesurer la case nue et les six widgets DANS LE MÊME
+ * FIRMWARE, ce qu'AC8 exige. */
 
 const char *dn_ui_metrique_nom(int idx)
 {
@@ -216,13 +326,14 @@ const char *dn_ui_metrique_nom(int idx)
 
 const dn_widget_desc_t *dn_ui_desc(int idx)
 {
-    return (idx >= 0 && idx < DN_UI_METRIQUES && k_widget[idx]) ? &k_desc[idx]
-                                                                : NULL;
+    /* LECTEUR 1/5 de l'override W11 — voir `case_est_widget()`. */
+    return case_est_widget(idx) ? &k_desc[idx] : NULL;
 }
 
 bool dn_ui_est_widget(int idx)
 {
-    return idx >= 0 && idx < DN_UI_METRIQUES && k_widget[idx];
+    /* LECTEUR 2/5 de l'override W11. */
+    return case_est_widget(idx);
 }
 
 const char *dn_ui_vue_name(dn_ui_vue_t v)
@@ -372,6 +483,63 @@ static lv_obj_t *s_scr_detail;
  * En REBUILD ils sont recréés à chaque transition et ces pointeurs ne servent
  * qu'à ne pas les chercher dans l'arbre. */
 static lv_obj_t *s_det_titre, *s_det_valeur, *s_det_minmax, *s_det_sec;
+
+/*
+ * ── LA BARRE HEURE/DATE (dn3-2) — DEUX POINTEURS NUS DE PLUS ─────────────────
+ *
+ * 🔴 CE SONT EXACTEMENT LES POINTEURS QUE LA REVUE dn3-1 A TROUVÉS DANGEREUX.
+ *    Le tableau `s_wobj[]` est couvert PAR CONSTRUCTION (les trois sites de
+ *    démontage bouclent sur DN_UI_METRIQUES), mais un pointeur NU doit être
+ *    remis à NULL EXPLICITEMENT, un par un, aux MÊMES trois sites — c'est la
+ *    forme du défaut n°1 de la revue dn3-1 (`s_demo` oublié à un seul site ⇒
+ *    pointeur pendant, puis `lv_obj_delete` dessus). Ils sont donc ajoutés à
+ *    `build_scene()`, à la branche REBUILD de `nav_appliquer()` et à
+ *    `dn_ui_set_nav_model()`.
+ *    ⚠️ Le QUATRIÈME site (branche SCREENS de `nav_appliquer`) ne les traite
+ *       PAS, et c'est CORRECT : il ne détruit que ce qu'il a explicitement
+ *       détruit (`s_bar`, `s_demo`) — le dashboard, lui, SURVIT en SCREENS,
+ *       donc ses labels aussi. Y mettre la barre à NULL la rendrait morte alors
+ *       qu'elle est vivante et affichée. Vérifié, pas supposé.
+ */
+static lv_obj_t *s_barre_heure, *s_barre_date;
+
+/*
+ * ── CE QUE LA BARRE AFFICHE QUAND ELLE NE SAIT PAS (W9) ──────────────────────
+ * ⛔ JAMAIS UNE HEURE FAUSSE. Une barre qui affiche « 03:47 » après une coupure
+ *    est PIRE qu'une barre qui se tait : le mensonge est indétectable. Et un
+ *    « --:-- » MUET à côté d'une date d'apparence normale serait ambigu à son
+ *    tour — la ligne de date porte donc le MOTIF, pas une date inventée.
+ * Ces deux chaînes sont l'ÉTAT RÉEL au boot (aucune lecture n'a encore eu lieu),
+ * pas une valeur de remplissage : elles servent d'initialiseur ET de sortie du
+ * composeur, par le même #define, pour qu'elles ne puissent pas diverger.
+ */
+#define DN_UI_HEURE_INCONNUE "--:--"
+#define DN_UI_DATE_INCONNUE "HEURE NON POSÉE"
+
+/* Le texte COURANT de la barre. Il vit en RAM et SURVIT au démontage, comme
+ * `s_wetat[]` survit à `s_wobj[]` : une reconstruction de scène le repose au
+ * lieu de repartir d'un placeholder. C'est la règle anti-mensonge soldée par
+ * dn3-1 — « les labels naissent vides et sont remplis par le MÊME code que la
+ * réouverture » — appliquée à la barre. */
+static char s_barre_h[16] = DN_UI_HEURE_INCONNUE;
+static char s_barre_d[24] = DN_UI_DATE_INCONNUE;
+static bool s_barre_fiable;
+
+/*
+ * 🔴 LA CADENCE DE LA BARRE (W2 / AC4), COMMUTABLE À CHAUD.
+ * `false` = HH:MM (le régime de la maquette du brief, qui n'affiche PAS les
+ * secondes) · `true` = HH:MM:SS. ⚠️ LA DOC ET LE CODE DOIVENT DIRE LA MÊME
+ * VALEUR PAR DÉFAUT : en dn3-1, le `.h` annonçait `false` là où le code valait
+ * `true`, et QUI REJOUAIT L'A/B MESURAIT DEUX FOIS LA MÊME BRANCHE. Défaut
+ * ici = false, et `dn_ui.h`, `rtc`, le README et hardware/ disent tous false.
+ *
+ * ⚠️ Le régime n'est QU'UN FORMAT : c'est la détection de changement de texte
+ *    qui décide de la ré-invalidation. En « minute », le texte ne change qu'au
+ *    changement de minute — le calage sur la minute qu'AC4 exige est donc
+ *    STRUCTUREL, pas confié à un timer libre qui pourrait retarder de 59 s.
+ */
+static bool s_barre_secondes;
+
 /*
  * ── HISTORIQUE DE CETTE ZONE, CONSERVÉ PARCE QU'IL EXPLIQUE LA FORME ─────────
  * dn2-2 n'avait qu'UNE case réelle (CPU) et la codait en `i == 0` dans
@@ -461,21 +629,81 @@ static const struct {
  */
 static uint8_t s_voile_opa = 90;
 
-/* ── Le mock VENTILOS (AC3) — sa forme est ANNONCÉE, pas devinée ─────────────
- * Rampe triangulaire 800 -> 1600 -> 800 tr/min, période 20 s, pas de 1 s (le
- * tick du timer LVGL existant). ⚠️ La valeur DOIT varier : un mock figé serait
- * indiscernable d'un affichage bloqué, et AC3 exige qu'un observateur puisse
- * faire la différence. La cadence, la plage et la forme sont imprimées par
- * `widget` — RELUES de ces constantes, jamais récitées ailleurs. */
+/* ── Le mock (AC3, GÉNÉRALISÉ EN dn3-2 / W5) — forme ANNONCÉE, pas devinée ───
+ *
+ * Rampe triangulaire min -> max -> min, pas de 1 s (le tick du timer LVGL
+ * existant). ⚠️ La valeur DOIT varier : un mock figé serait indiscernable d'un
+ * affichage bloqué, et AC3 exige qu'un observateur puisse faire la différence.
+ * La cadence, la plage et la forme sont imprimées par `widget` — RELUES de ces
+ * constantes, jamais récitées ailleurs.
+ *
+ * 🔴 W5 — POURQUOI UN MOCK ET PAS DE VRAIES SOURCES POUR GPU/RAM/RÉSEAU.
+ *    `dn_link` NE PORTE QU'UNE SEULE VALEUR (`s_valeur`, la CPU). Publier trois
+ *    grandeurs de plus demanderait de généraliser `dn_link`, de passer le
+ *    protocole en `ver=2` (une trame v2 tombe aujourd'hui en `rejets_version`,
+ *    comptée) ET d'étendre l'agent Windows — ⚠️ sachant que
+ *    `DN_LINK_LIGNE_MAX = 63` et qu'une trame multi-métriques dépasse vite.
+ *    L'epic assigne ce travail NOMMÉMENT à dn4-1 (« extension ADDITIVE du
+ *    protocole `$DN` de dn2-2 — la story reste close »).
+ *    ⇒ Ici, les trois cases vivent en mock DÉCLARÉ : régime SIMULEE, ambre,
+ *      badge « SIMULÉ ». ⛔ Aucun chiffre plausible sans source — les factices
+ *      d'apparence réelle de dn1-4 (« 37 % », « 12,4 Go ») ont déjà été
+ *      supprimés une fois, on ne les réintroduit pas par la bande.
+ *
+ * ⚠️ TOUTES LES PÉRIODES SONT PAIRES ET >= 2, et ce n'est pas cosmétique : la
+ *    forme du triangle n'est bornée QUE dans ce cas (différé connu de dn3-1 —
+ *    `demi = periode / 2`, et une période impaire fait que `pos` ne remonte
+ *    jamais exactement à `demi`, donc `max` n'est jamais atteint).
+ * ⚠️ Elles sont aussi PREMIÈRES ENTRE ELLES DEUX À DEUX autant que possible
+ *    (14, 20, 26, 34) : des périodes multiples se rephaseraient sans arrêt et
+ *    la grille battrait à l'unisson, ce qui n'est pas le régime réel qu'AC8
+ *    veut chiffrer. Le cas « tous dans le même cycle » se PROVOQUE
+ *    explicitement (`widget rafale`), il ne se subit pas.
+ */
 #define DN_MOCK_MIN 800
 #define DN_MOCK_MAX 1600
 #define DN_MOCK_PERIODE_S 20
+
+/* Ce que la ligne secondaire d'un mock raconte. Nommé par INTENTION, pas par
+ * index : la table reste lisible et le tick n'a aucun `if (i == RAM)`. */
+typedef enum {
+    DN_SEC_SIMULE = 0,  /* « valeur SIMULÉE — aucun capteur » */
+    DN_SEC_RAM_GO,      /* « 12,1 / 32 Go » — verbatim addendum §1 */
+    DN_SEC_RESEAU_DUPLEX, /* « v 985  ^ 48 » — verbatim addendum §1 */
+} dn_sec_forme_t;
+
+typedef struct {
+    bool actif;            /* cette case a-t-elle un mock ? */
+    int32_t min, max;      /* en UNITÉS AFFICHÉES, pas en dixièmes */
+    uint32_t periode_s;    /* PAIRE et >= 2 — voir ci-dessus */
+    dn_sec_forme_t sec;
+} dn_mock_t;
+
+/* ⚠️ CPU et AMBIANCE n'y sont PAS, et c'est structurel : elles ont des sources
+ * RÉELLES (`dn_link`, `dn_capteurs`). Un mock sur une case réelle serait le
+ * mensonge d'interface exact que D6 rend visible — « PC éteint, une seule case
+ * sur six reste vivante » doit SE VOIR. */
+static const dn_mock_t k_mock[DN_UI_METRIQUES] = {
+    [DN_UI_CASE_GPU] = {true, 38, 72, 26, DN_SEC_SIMULE},
+    [DN_UI_CASE_RAM] = {true, 18, 78, 34, DN_SEC_RAM_GO},
+    [DN_UI_CASE_RESEAU] = {true, 5, 985, 14, DN_SEC_RESEAU_DUPLEX},
+    [DN_UI_CASE_VENT] = {true, DN_MOCK_MIN, DN_MOCK_MAX, DN_MOCK_PERIODE_S,
+                         DN_SEC_SIMULE},
+};
+
 static bool s_mock_on = true;
 /* 🔴 D1 (revue 2026-08-18) : « cette case porte une POUSSÉE manuelle », donc le
  * tick du mock coupé ne doit pas la révoquer. Sans ce drapeau, chaque
  * `widget pousser 4` coûtait DEUX redessins au lieu d'un et polluait le cas (a′)
- * de §15.5 — le tick était un second écrivain sur la case mesurée. */
-static bool s_vent_poussee;
+ * de §15.5 — le tick était un second écrivain sur la case mesurée.
+ * ⚠️ dn3-2 : GÉNÉRALISÉ AUX SIX CASES. Le défaut était scopé à VENTILOS parce
+ *    qu'elle était le seul mock ; avec quatre mocks, un drapeau unique
+ *    laisserait les trois autres se faire révoquer — le même défaut, déplacé. */
+static bool s_poussee[DN_UI_METRIQUES];
+
+/* Le résultat de la dernière rafale d'AC8 — RELU, jamais récité. Voir
+ * `dn_ui_rafale()`. */
+static uint32_t s_rafale_cycles, s_rafale_n;
 /* Dernière zone touchée — la preuve d'AC3, lue par la console. */
 static volatile int s_dernier_tap = DN_UI_ZONE_AUCUNE;
 static volatile uint32_t s_taps;
@@ -1033,24 +1261,119 @@ static void on_retour_clic(lv_event_t *e)
 }
 
 /*
- * ── LE BANDEAU MENU : UN NO-OP CONSIGNÉ, PAS UN OUBLI ────────────────────────
- * Aucune destination ne lui est spécifiée — ni dans le brief, ni dans son
- * addendum, ni dans l'epic. dn1-4 le DESSINE (fidélité au layout, et c'est une
- * 7e zone tactile à instrumenter) et son tap écrit une ligne de log. C'est une
- * décision de story, renversable par l'owner, et elle est écrite plutôt que
- * subie : un bouton muet SANS trace serait indiscernable d'une zone tactile qui
- * ne marche pas.
+ * ── LE BANDEAU MENU : W3 EST TRANCHÉ — IL N'EST PLUS ACTIONNABLE (dn3-2) ─────
+ *
+ * HISTORIQUE, conservé parce qu'il explique la forme actuelle : dn1-4 le
+ * DESSINAIT comme une 7e zone tactile, cliquable, dont le tap n'écrivait qu'un
+ * compteur. C'était un no-op consigné — honnête envers l'instrumentation, mais
+ * pas envers l'utilisateur.
+ *
+ * 🔴 DÉCISION OWNER DU 2026-08-18 (W3) : le bandeau CESSE de se présenter comme
+ *    actionnable. Motif écrit : aucune destination ne lui est spécifiée — ni
+ *    dans le brief, ni dans l'addendum §1 (qui ne dessine que « │ MENU ○ │ »),
+ *    ni dans l'epic. Il n'y a AUCUNE spec à appliquer. Et « un bouton qui a
+ *    l'air actionnable et ne fait rien EST un mensonge d'interface », du même
+ *    genre que la case qui affiche un chiffre sans source — que ce dépôt traque
+ *    depuis dn1-3. C'est la seule branche qui ne crée aucune dette de spec.
+ *    ⛔ La bascule Ambient/Actif, seule destination plausible, est
+ *       explicitement réservée à dn3-3 : la brancher ici déborderait le
+ *       périmètre.
+ *
+ * ⇒ `on_menu_clic` est SUPPRIMÉE et la zone est créée avec un callback NULL,
+ *   ce qui — par le contrat de `dn_widget_zone_creer` (dn_widget.c:149-166,
+ *   « CLICKABLE est CONDITIONNÉ au callback ») — lui RETIRE le drapeau
+ *   CLICKABLE au lieu de la laisser avaler le tap en silence.
+ *   ⛔ Surtout PAS un callback vide : une zone cliquable sans handler devient
+ *      `act_obj`, reçoit le CLICKED et l'absorbe — le pire des trois états.
+ *
+ * ⚠️ `s_menu_taps` et `dn_ui_menu_taps()` SURVIVENT, et ce n'est pas du code
+ *    mort : ce compteur est désormais STRUCTURELLEMENT à zéro, et c'est lui la
+ *    preuve chiffrée qu'AC6 demande. Un compteur retiré ne prouverait plus
+ *    rien ; laissé en place, il ne peut plus monter, et `nav` le dit.
+ *    La preuve POSITIVE, elle, vient de `touch trace` : un appui dans la bande
+ *    y = 580..640 s'imprime avec ses coordonnées et SANS zone attribuée.
  */
-static void on_menu_clic(lv_event_t *e)
+
+/* ── La barre heure/date (dn3-2) ──────────────────────────────────────────── */
+
+/*
+ * Les libellés FRANÇAIS ET ACCENTUÉS. `dn_font_14` porte le latin-1 complet
+ * depuis dn3-1 — ⚠️ un glyphe absent serait dessiné EN SILENCE, et c'est
+ * exactement ce qui faisait perdre son Û à « AOÛT » avec les built-ins.
+ *
+ * Les mois sont ABRÉGÉS À 4-5 CARACTÈRES, et c'est de l'arithmétique, pas du
+ * goût : la date est posée en x = 300, il reste 480 − 300 − 10 = 170 px utiles.
+ * « VEN. 06 SEPTEMBRE » en 14 px n'y tiendrait pas de façon sûre.
+ * ✅ Et l'abréviation REPRODUIT EXACTEMENT la maquette normative de
+ *    l'addendum §1, qui écrit « VEN. 06 AOÛT » : août ne s'abrège pas.
+ */
+static const char *const k_jsem_court[7] = {"DIM.", "LUN.", "MAR.", "MER.",
+                                            "JEU.", "VEN.", "SAM."};
+static const char *const k_mois_court[12] = {
+    "JANV.", "FÉVR.", "MARS", "AVR.", "MAI",  "JUIN",
+    "JUIL.", "AOÛT",  "SEPT.", "OCT.", "NOV.", "DÉC."};
+
+/*
+ * Compose le texte de la barre dans `s_barre_h` / `s_barre_d`. Rend `true` si
+ * quelque chose d'AFFICHÉ a changé — c'est ce booléen, et lui seul, qui décide
+ * d'une invalidation. Une barre qui se réécrit à l'identique coûterait
+ * 33 600 px (96 % d'une case) pour rien.
+ */
+static bool barre_composer(const dn_rtc_heure_t *h, bool fiable)
 {
-    (void)e;
-    /* ENREGISTRÉ, pas loggé — voir dn_ui.h : un printf ici bloquerait la tâche
-     * LVGL sur le lien USB. `touch trace` et `nav` le restituent, et c'est bien
-     * une trace VISIBLE, ce qu'exige AC3 pour distinguer un no-op d'une zone
-     * tactile morte. */
-    s_dernier_tap = DN_UI_ZONE_MENU;
-    s_taps++;
-    s_menu_taps++;
+    char nh[sizeof(s_barre_h)];
+    char nd[sizeof(s_barre_d)];
+
+    if (!fiable || !h) {
+        snprintf(nh, sizeof(nh), "%s", DN_UI_HEURE_INCONNUE);
+        snprintf(nd, sizeof(nd), "%s", DN_UI_DATE_INCONNUE);
+    } else {
+        if (s_barre_secondes) {
+            snprintf(nh, sizeof(nh), "%02u:%02u:%02u", h->heure, h->minute,
+                     h->seconde);
+        } else {
+            snprintf(nh, sizeof(nh), "%02u:%02u", h->heure, h->minute);
+        }
+        /* Bornes RELUES avant indexation : `dn_rtc` les garantit déjà, mais un
+         * index hors tableau ici serait une lecture de .rodata arbitraire — et
+         * la garde coûte deux comparaisons. */
+        const char *js = (h->jsem < 7) ? k_jsem_court[h->jsem] : "???";
+        const char *mo = (h->mois >= 1 && h->mois <= 12) ? k_mois_court[h->mois - 1]
+                                                         : "???";
+        snprintf(nd, sizeof(nd), "%s %02u %s", js, h->jour, mo);
+    }
+
+    bool change = strcmp(nh, s_barre_h) != 0 || strcmp(nd, s_barre_d) != 0 ||
+                  fiable != s_barre_fiable;
+    if (change) {
+        memcpy(s_barre_h, nh, sizeof(nh));
+        memcpy(s_barre_d, nd, sizeof(nd));
+        s_barre_fiable = fiable;
+    }
+    return change;
+}
+
+/*
+ * Applique le texte courant aux deux labels. ⚠️ VERROU LVGL DÉJÀ PRIS —
+ * même contrat que `case_poser` et que tout `dn_widget_*`.
+ * ⚠️ Les DEUX labels sont écrits sous LE MÊME verrou : l'heure et la date
+ *    séparées par deux verrous laisseraient une trame afficher « 00:03 » du
+ *    jour neuf à côté de la date de la veille. C'est le motif n°1 du contrat
+ *    de verrou inversé de dn3-1, transposé.
+ */
+static void barre_ecrire_nolock(void)
+{
+    lv_color_t c_h = s_barre_fiable ? lv_color_white() : lv_color_hex(0x9a9a9a);
+    lv_color_t c_d =
+        s_barre_fiable ? lv_color_hex(0xa0d8ff) : lv_color_hex(0x9a9a9a);
+    if (s_barre_heure) {
+        lv_label_set_text(s_barre_heure, s_barre_h);
+        lv_obj_set_style_text_color(s_barre_heure, c_h, 0);
+    }
+    if (s_barre_date) {
+        lv_label_set_text(s_barre_date, s_barre_d);
+        lv_obj_set_style_text_color(s_barre_date, c_d, 0);
+    }
 }
 
 /* ── Les deux vues ────────────────────────────────────────────────────────── */
@@ -1059,24 +1382,39 @@ static void build_dashboard(lv_obj_t *scr)
 {
     fond_poser(scr);
 
-    /* Barre heure/date — statique et FACTICE : la RTC PCF85063 est sur le bus
-     * mais n'est pas initialisée ici (dn2). Pleine largeur, 70 px de haut : elle
-     * n'est PAS un cas adverse au sens de §10.4, qui parle de hauteur. */
+    /* Barre heure/date — VIVANTE depuis dn3-2 : la RTC PCF85063 (0x51) est
+     * pilotée par `dn_rtc`, qualifiée par LECTURE DE REGISTRE et non par le
+     * scan. Pleine largeur, 70 px de haut : elle n'est PAS un cas adverse au
+     * sens de §10.4, qui parle de hauteur.
+     * ⚠️ 480 x 70 = 33 600 px, soit 96 % d'une case (35 100 px). Une barre qui
+     *    bat à 1 Hz en permanence est donc, en coût brut, une 7e case vivante —
+     *    c'est ce qu'AC4 mesure, et pourquoi le régime par défaut est HH:MM. */
     lv_obj_t *barre = lv_obj_create(scr);
     lv_obj_remove_style_all(barre);
     lv_obj_set_pos(barre, 0, 0);
     lv_obj_set_size(barre, DN_LCD_H_RES, DN_UI_BARRE_H);
     lv_obj_clear_flag(barre, LV_OBJ_FLAG_SCROLLABLE);
     /* NON cliquable, et c'est une exigence d'AC3 : un tap sur la barre ne doit
-     * RIEN ouvrir. C'est l'une des deux zones mortes que le constat vérifie. */
+     * RIEN ouvrir. C'est l'une des deux zones mortes que le constat vérifie.
+     * ⛔ LA RENDRE VIVANTE NE LA REND PAS TACTILE — prouvé deux fois (AC3 de
+     *    dn1-4 : 13 appuis de (8,21) à (415,30) ; AC4 de dn3-1 : 17 appuis à
+     *    y = 24..72), et re-prouvé par AC5 de cette story. */
     lv_obj_clear_flag(barre, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_set_style_bg_color(barre, lv_color_black(), 0);
     lv_obj_set_style_bg_opa(barre, LV_OPA_70, 0);
-    texte(barre, "21:46", &dn_font_28, lv_color_white(), DN_UI_MARGE, 18);
+    /* 🔴 LES DEUX LABELS NAISSENT AVEC L'ÉTAT COURANT, PAS AVEC UN PLACEHOLDER.
+     *    `texte()` reçoit `s_barre_h` / `s_barre_d`, qui portent déjà ce que la
+     *    barre doit dire — et `barre_ecrire_nolock()` juste après pose AUSSI la
+     *    couleur. C'est l'anti-mensonge soldé par dn3-1 : « les labels sont
+     *    remplis par le MÊME code que la réouverture ». Un « 21:46 » en dur ici
+     *    s'afficherait pendant une trame après chaque reconstruction. */
+    s_barre_heure =
+        texte(barre, s_barre_h, &dn_font_28, lv_color_white(), DN_UI_MARGE, 18);
     /* Accentué depuis dn3-1 : « AOÛT » a récupéré son Û. C'est le témoin le plus
      * simple que la police générée est bien celle qui est liée. */
-    texte(barre, "VEN. 06 AOÛT", &dn_font_14,
-          lv_color_hex(0xa0d8ff), 300, 28);
+    s_barre_date =
+        texte(barre, s_barre_d, &dn_font_14, lv_color_hex(0xa0d8ff), 300, 28);
+    barre_ecrire_nolock();
 
     /*
      * La grille 2x3, TOUJOURS UNE SEULE BOUCLE (dn2-1 a explicitement refusé
@@ -1091,7 +1429,11 @@ static void build_dashboard(lv_obj_t *scr)
         int x = DN_UI_MARGE + col * (DN_UI_CASE_W + DN_UI_GAP);
         int y = DN_UI_GRILLE_Y + DN_UI_MARGE + ligne * (DN_UI_CASE_H + DN_UI_GAP);
 
-        if (k_widget[i]) {
+        /* LECTEUR 3/5 de l'override W11. ⚠️ LA BOUCLE RESTE UNE BOUCLE : le
+         * branchement porte sur la FORME de la case (widget ou nue) et sur rien
+         * d'autre — aucune métrique n'est nommée. dn2-1 a explicitement refusé
+         * d'y empiler un second ternaire, on ne le refait pas. */
+        if (case_est_widget(i)) {
             /* Copie locale du descripteur pour appliquer l'éventuel
              * remplacement d'icône (A/B de W4). GÉNÉRIQUE — indexé par case,
              * sans nommer aucune métrique : un `if (i == VENTILOS)` ici aurait
@@ -1128,11 +1470,16 @@ static void build_dashboard(lv_obj_t *scr)
                   12, 60);
     }
 
-    /* Le bandeau MENU — 7e zone, cliquable, no-op consigné. */
+    /* Le bandeau MENU — DESSINÉ mais NON ACTIONNABLE depuis dn3-2 (W3). Le
+     * callback NULL lui retire CLICKABLE par le contrat de `zone_creer` ; le
+     * long motif est au-dessus de l'ancienne `on_menu_clic`. C'est un bandeau,
+     * plus un bouton : il reste au layout de la maquette, il ne promet rien.
+     * ⚠️ Le texte perd aussi son chevron `LV_SYMBOL_LIST` : un glyphe de menu
+     *    est une AFFORDANCE, et la garder ferait exactement ce que W3 supprime
+     *    — annoncer une action qui n'existe pas. */
     lv_obj_t *menu = zone_creer(scr, 0, DN_LCD_V_RES - DN_UI_MENU_H, DN_LCD_H_RES,
-                                DN_UI_MENU_H, on_menu_clic, NULL);
-    texte(menu, "MENU  " LV_SYMBOL_LIST, &dn_font_28, lv_color_white(),
-          DN_UI_MARGE + 6, 14);
+                                DN_UI_MENU_H, NULL, NULL);
+    texte(menu, "MENU", &dn_font_28, lv_color_hex(0x9a9a9a), DN_UI_MARGE + 6, 14);
 
     label_poser(scr, &s_label_dash);
 }
@@ -1277,7 +1624,8 @@ static void detail_reparametrer(int idx)
     }
 
     const dn_widget_etat_t *e = &s_wetat[idx];
-    const dn_widget_desc_t *d = k_widget[idx] ? &k_desc[idx] : NULL;
+    /* LECTEUR 4/5 de l'override W11. */
+    const dn_widget_desc_t *d = case_est_widget(idx) ? &k_desc[idx] : NULL;
     char buf[96];
 
     if (s_det_valeur) {
@@ -1356,6 +1704,11 @@ static void build_scene(void)
     s_det_valeur = NULL;
     s_det_minmax = NULL;
     s_det_sec = NULL;
+    /* SITE 1/3 — la barre heure/date (dn3-2). ⚠️ La tâche `dn_rtc` pousse à
+     * 2 Hz : un pointeur laissé non-NULL ici survivrait à son label et elle
+     * écrirait dans de la mémoire libérée dès la trame suivante. */
+    s_barre_heure = NULL;
+    s_barre_date = NULL;
     /* ⚠️ TOUTES les cases vivantes, pas seulement CPU : un pointeur oublié ici
      * survivrait à son label et la tâche capteur écrirait dans du vide libéré. */
     for (int i = 0; i < DN_UI_METRIQUES; i++) {
@@ -1487,6 +1840,10 @@ static bool nav_appliquer(int cible, int64_t t_clic)
         s_det_valeur = NULL;
         s_det_minmax = NULL;
         s_det_sec = NULL;
+        /* SITE 2/3 — la barre heure/date (dn3-2). `lv_obj_clean` vient de
+         * DÉTRUIRE ses deux labels avec tout l'écran. */
+        s_barre_heure = NULL;
+        s_barre_date = NULL;
         for (int i = 0; i < DN_UI_METRIQUES; i++) {
             dn_widget_oublier(&s_wobj[i]);
         }
@@ -1665,6 +2022,10 @@ esp_err_t dn_ui_set_nav_model(dn_nav_model_t m)
         s_det_valeur = NULL;
         s_det_minmax = NULL;
         s_det_sec = NULL;
+        /* SITE 3/3 — la barre heure/date (dn3-2). Les DEUX racines viennent
+         * d'être détruites ; ses labels vivaient sur celle du dashboard. */
+        s_barre_heure = NULL;
+        s_barre_date = NULL;
         s_label_dash = NULL;
         s_label_det = NULL;
         s_bar = NULL;
@@ -1681,6 +2042,41 @@ esp_err_t dn_ui_set_nav_model(dn_nav_model_t m)
 esp_err_t dn_ui_init(const dn_bootcfg_t *cfg, esp_err_t asset_err)
 {
     ESP_RETURN_ON_FALSE(cfg, ESP_ERR_INVALID_ARG, TAG, "cfg NULL");
+
+    /*
+     * 🔴 LA FORME DU MOCK EST VÉRIFIÉE AU BOOT, PAS SUPPOSÉE (différé de dn3-1
+     *    soldé en dn3-2). La rampe triangulaire n'est bornée QUE pour une
+     *    période PAIRE et >= 2 : `demi = periode / 2`, et sur une période
+     *    impaire `pos` n'atteint jamais `demi`, donc `max` n'est jamais atteint
+     *    — un mock qui n'atteint pas sa borne ANNONCÉE est une étiquette qui
+     *    ment, et personne ne le verrait à l'œil.
+     *    ⚠️ Le défaut n'existait pas tant qu'il n'y avait qu'UNE période écrite
+     *       en dur (20). Avec quatre entrées de table, il devient une faute de
+     *       frappe possible — donc une garde, pas un commentaire.
+     * ⚠️ NON FATALE : elle JOURNALISE. Un mock mal borné n'est pas une raison de
+     *    priver l'opérateur de l'écran qui le lui montrerait.
+     */
+    for (int i = 0; i < DN_UI_METRIQUES; i++) {
+        if (!k_mock[i].actif) {
+            continue;
+        }
+        if (k_mock[i].periode_s < 2 || (k_mock[i].periode_s % 2) != 0) {
+            ESP_LOGE(TAG,
+                     "🔴 mock case %d (%s) : période %u s INVALIDE (doit être "
+                     "PAIRE et >= 2). La rampe n'atteindra JAMAIS son max "
+                     "annoncé de %d — le chiffre affiché mentirait sur sa forme.",
+                     i, k_nom[i], (unsigned)k_mock[i].periode_s,
+                     (int)k_mock[i].max);
+        }
+        if (k_mock[i].max <= k_mock[i].min) {
+            ESP_LOGE(TAG,
+                     "🔴 mock case %d (%s) : max %d <= min %d — la valeur ne "
+                     "VARIERAIT PAS, et un mock figé est indiscernable d'un "
+                     "affichage bloqué (exigence d'AC3).",
+                     i, k_nom[i], (int)k_mock[i].max, (int)k_mock[i].min);
+        }
+    }
+
     s_asset_err = asset_err;
     s_panel = dn_display_panel();
     ESP_RETURN_ON_FALSE(s_panel, ESP_ERR_INVALID_STATE, TAG,
@@ -2010,7 +2406,11 @@ static void case_poser(int idx, dn_val_regime_t regime, const char *t0,
      * détail, `racine` est NULL, l'état conservé sera posé à la prochaine
      * (re)construction : rien n'est perdu, rien n'est touché. */
     if (s_wobj[idx].racine) {
-        if (k_widget[idx]) {
+        /* LECTEUR 5/5 de l'override W11. 🔴 Celui-ci est le plus dangereux à
+         * oublier : appeler `dn_widget_maj` sur une case DESSINÉE nue lirait
+         * `w->valeur[1]`, `w->jauge` et `w->badge` — des pointeurs que le
+         * chemin « nue » ne renseigne jamais. */
+        if (case_est_widget(idx)) {
             dn_widget_maj(&k_desc[idx], e, &s_wobj[idx]);
         } else if (s_wobj[idx].valeur[0]) {
             /* Case NUE : un seul label, pas de modèle. Elle n'est alimentée par
@@ -2154,6 +2554,79 @@ bool dn_ui_ambiance_maj(int temp_dixiemes, int hum_dixiemes, bool valide,
 }
 
 /*
+ * ── LA BARRE HEURE/DATE (dn3-2, AC3/AC4) ────────────────────────────────────
+ *
+ * Appelée par la tâche `dn_rtc` à 2 Hz. Même contrat que les autres entrées
+ * publiques : elle prend le verrou LVGL elle-même, et `false` signifie « verrou
+ * non pris ⇒ RIEN n'a été modifié », charge à l'appelant de retenter.
+ *
+ * 🔴 L'INVALIDATION EST CONDITIONNÉE AU CHANGEMENT DE TEXTE, ET C'EST TOUT LE
+ *    MÉCANISME D'AC4. La barre fait 480 x 70 = 33 600 px, soit 96 % d'une case :
+ *    la réécrire à chaque appel coûterait une 7e case vivante à 2 Hz. En régime
+ *    HH:MM le texte ne bouge qu'au CHANGEMENT DE MINUTE ⇒ le calage sur la
+ *    minute qu'AC4 exige est structurel, et non confié à un timer libre qui
+ *    pourrait retarder jusqu'à 59 s.
+ * ⚠️ `barre_composer` compare AUSSI `fiable` : une bascule FIABLE -> NON FIABLE
+ *    change la COULEUR sans forcément changer le texte (« --:-- » reste
+ *    « --:-- »). Sans ce troisième terme, une horloge qui meurt garderait ses
+ *    couleurs de vivante.
+ */
+bool dn_ui_heure_maj(const dn_rtc_heure_t *h, bool fiable, bool *label_pose)
+{
+    if (label_pose) {
+        *label_pose = false;
+    }
+    if (!lvgl_port_lock(1000)) {
+        return false;
+    }
+    if (barre_composer(h, fiable)) {
+        barre_ecrire_nolock();
+        if (label_pose) {
+            /* ⚠️ `s_active` compte AUSSI : après `ui off`, `scene` ou `tear`, le
+             * verrou reste libre et le texte se pose sans erreur — mais rien
+             * n'atteint la dalle. Annoncer « posé » serait mesurer un geste qui
+             * n'a pas eu lieu (correctif de revue 2026-08-16). */
+            *label_pose = s_active;
+        }
+    }
+    lvgl_port_unlock();
+    return true;
+}
+
+void dn_ui_barre_secondes_set(bool on)
+{
+    if (on == s_barre_secondes) {
+        return;
+    }
+    s_barre_secondes = on;
+    /* Repose immédiatement : sans ça, en régime HH:MM, le passage à HH:MM:SS ne
+     * se verrait qu'à la prochaine minute — et l'A/B mesurerait la mauvaise
+     * branche pendant jusqu'à 59 s. C'est exactement le défaut d'A/B que dn3-1
+     * a payé sur le groupage (`.h` et code en désaccord). */
+    dn_rtc_heure_t h;
+    bool fiable = dn_rtc_lire(&h);
+    if (lvgl_port_lock(1000)) {
+        if (barre_composer(&h, fiable)) {
+            barre_ecrire_nolock();
+        }
+        lvgl_port_unlock();
+    }
+    ESP_LOGI(TAG, "cadence de la barre : %s",
+             on ? "HH:MM:SS (1 Hz)" : "HH:MM (au changement de minute)");
+}
+
+bool dn_ui_barre_secondes(void) { return s_barre_secondes; }
+
+const char *dn_ui_barre_heure_txt(void) { return s_barre_h; }
+const char *dn_ui_barre_date_txt(void) { return s_barre_d; }
+bool dn_ui_barre_dessinee(void)
+{
+    /* RELU de l'état réel, pas récité : les labels peuvent être NULL entre un
+     * démontage et la reconstruction, et `s_active` peut être faux. */
+    return s_barre_heure != NULL && s_barre_date != NULL && s_active;
+}
+
+/*
  * ── LE MOCK VENTILOS (AC3) — ET IL NE PEUT PAS SE FAIRE PASSER POUR DU RÉEL ──
  *
  * Appelée depuis le tick 1 Hz de LVGL, où le verrou est DÉJÀ détenu par le
@@ -2188,69 +2661,118 @@ static void mock_tick_nolock(void)
      * chiffre du témoin plutôt qu'en le notant : 24 ≠ 4 n'a pas d'explication
      * innocente.
      */
-    if (!s_mock_on) {
-        /*
-         * 🔴 DÉCISION D1 DE LA REVUE DU 2026-08-18 — LE TICK ÉTAIT UN SECOND
-         *    ÉCRIVAIN SUR LA CASE QUE LA CAMPAGNE AC8 MESURAIT.
-         *
-         *    `indicateur = true` n'existe que sur VENTILOS : le cas (a′) de
-         *    §15.5 (« widget MONO avec jauge ») EST donc cette case. Or le
-         *    protocole publié dit « mock isolé », c'est-à-dire `widget mock off`
-         *    — et c'est EXACTEMENT ce réglage qui armait le défaut : après
-         *    chaque `widget pousser 4`, le régime valait SIMULEE, ce tick voyait
-         *    `!= ABSENTE` et REPOSAIT ABSENTE. Soit UN REDESSIN DE PLUS PAR
-         *    POUSSÉE, jamais compté comme une poussée, dans le dénominateur de
-         *    la mesure la plus spectaculaire de la story.
-         *    C'était le défaut de `63344fc` dans son angle mort : ce correctif
-         *    avait fermé le repeint AU REPOS, pas le repeint APRÈS POUSSÉE.
-         *
-         *    ⇒ Une poussée est un acte DÉLIBÉRÉ de l'opérateur ; le mock coupé
-         *    n'a aucune raison de la révoquer. `widget mock on` puis `off`
-         *    rend la case au régime naturel (le drapeau est levé plus bas).
-         */
-        if (!s_vent_poussee &&
-            s_wetat[DN_UI_CASE_VENT].regime != DN_VAL_ABSENTE) {
-            case_poser(DN_UI_CASE_VENT, DN_VAL_ABSENTE, NULL, NULL, 0, NULL,
-                       NULL);
-        }
-        return;
-    }
-    /* Le mock reprend la main : il EST la source de cette case, sa poussée
-     * manuelle n'a plus cours. */
-    s_vent_poussee = false;
     uint32_t s = (uint32_t)(esp_timer_get_time() / 1000000);
-    uint32_t phase = s % DN_MOCK_PERIODE_S;
-    uint32_t demi = DN_MOCK_PERIODE_S / 2;
-    /* Triangle : on monte sur la première moitié, on descend sur la seconde. */
-    uint32_t pos = phase < demi ? phase : (DN_MOCK_PERIODE_S - phase);
-    int32_t v = DN_MOCK_MIN + (int32_t)((DN_MOCK_MAX - DN_MOCK_MIN) * pos / demi);
-    char txt[DN_WIDGET_TXT_MAX];
-    snprintf(txt, sizeof(txt), "%d", (int)v);
-    /*
-     * Ne pas reposer un texte identique : `lv_label_set_text` invalide
-     * INCONDITIONNELLEMENT, même à texte égal, et ce redessin-là ne montrerait
-     * rien de neuf.
-     * ⚠️ CE COMMENTAIRE AFFIRMAIT UN INVARIANT FAUX jusqu'au 2026-08-18 : il
-     *    disait que `pos` « vaut deux secondes de suite la même chose au sommet
-     *    et au creux de la rampe ». À période 20 (donc `demi` = 10), `pos` suit
-     *    0,1,…,9,10,9,…,1 puis reboucle sur 0 — deux valeurs consécutives ne
-     *    sont JAMAIS égales, ni en 9,10,9 ni en 1,0,1. Ce garde ne rattrape donc
-     *    pas ce qu'on croyait : il rattrape un second tick LVGL dans la MÊME
-     *    seconde. Utile, mais pour une autre raison.
-     *    « Un commentaire qui affirme un invariant que le code ne tient pas est
-     *    pire que pas de commentaire » — règle du dépôt, appliquée à elle-même.
-     */
-    if (s_wetat[DN_UI_CASE_VENT].regime == DN_VAL_SIMULEE &&
-        strcmp(s_wetat[DN_UI_CASE_VENT].txt[0], txt) == 0) {
-        return;
+
+    /* ⚠️ UNE BOUCLE SUR LES CASES, et le branchement porte sur la TABLE
+     * (`k_mock[i].actif`), jamais sur un index nommé. Même règle que
+     * `build_dashboard` : ajouter ou retirer un mock est une ligne de table. */
+    for (int i = 0; i < DN_UI_METRIQUES; i++) {
+        if (!k_mock[i].actif) {
+            continue;
+        }
+
+        if (!s_mock_on) {
+            /*
+             * 🔴 DÉCISION D1 DE LA REVUE DU 2026-08-18 — LE TICK ÉTAIT UN SECOND
+             *    ÉCRIVAIN SUR LA CASE QUE LA CAMPAGNE AC8 MESURAIT.
+             *
+             *    Le protocole publié dit « mock isolé », c'est-à-dire
+             *    `widget mock off` — et c'est EXACTEMENT ce réglage qui armait
+             *    le défaut : après chaque `widget pousser <i>`, le régime valait
+             *    SIMULEE, ce tick voyait `!= ABSENTE` et REPOSAIT ABSENTE. Soit
+             *    UN REDESSIN DE PLUS PAR POUSSÉE, jamais compté comme une
+             *    poussée, dans le dénominateur de la mesure la plus
+             *    spectaculaire de la story.
+             *
+             *    ⇒ Une poussée est un acte DÉLIBÉRÉ de l'opérateur ; le mock
+             *    coupé n'a aucune raison de la révoquer. `widget mock on` puis
+             *    `off` rend la case au régime naturel (drapeau levé plus bas).
+             * ⚠️ dn3-2 : le drapeau est PAR CASE. Un drapeau unique aurait
+             *    laissé les trois autres mocks se faire révoquer — le même
+             *    défaut, simplement déplacé d'une case aux trois autres.
+             */
+            if (!s_poussee[i] && s_wetat[i].regime != DN_VAL_ABSENTE) {
+                case_poser(i, DN_VAL_ABSENTE, NULL, NULL, 0, NULL, NULL);
+            }
+            continue;
+        }
+
+        /* Le mock reprend la main : il EST la source de cette case, sa poussée
+         * manuelle n'a plus cours. */
+        s_poussee[i] = false;
+
+        uint32_t periode = k_mock[i].periode_s;
+        uint32_t phase = s % periode;
+        uint32_t demi = periode / 2;
+        /* Triangle : on monte sur la première moitié, on descend sur la
+         * seconde. ⚠️ Ne tient QUE pour une période PAIRE >= 2 — c'est pour ça
+         * que la table les impose, et le boot le vérifie (`mock_verifier`). */
+        uint32_t pos = phase < demi ? phase : (periode - phase);
+        int32_t v = k_mock[i].min +
+                    (int32_t)((k_mock[i].max - k_mock[i].min) * pos / demi);
+
+        char txt[DN_WIDGET_TXT_MAX];
+        snprintf(txt, sizeof(txt), "%d", (int)v);
+
+        /*
+         * Ne pas reposer un texte identique : `lv_label_set_text` invalide
+         * INCONDITIONNELLEMENT, même à texte égal, et ce redessin-là ne
+         * montrerait rien de neuf.
+         * ⚠️ CE COMMENTAIRE AFFIRMAIT UN INVARIANT FAUX jusqu'au 2026-08-18 : il
+         *    disait que `pos` « vaut deux secondes de suite la même chose au
+         *    sommet et au creux de la rampe ». À période 20 (donc `demi` = 10),
+         *    `pos` suit 0,1,…,9,10,9,…,1 puis reboucle sur 0 — deux valeurs
+         *    consécutives ne sont JAMAIS égales. Ce garde rattrape en fait un
+         *    second tick LVGL dans la MÊME seconde. Utile, mais pour une autre
+         *    raison. « Un commentaire qui affirme un invariant que le code ne
+         *    tient pas est pire que pas de commentaire. »
+         * ⚠️ dn3-2 : avec des plages étroites, DEUX secondes consécutives
+         *    PEUVENT désormais donner le même texte (GPU : 34 pas pour 34 °C de
+         *    plage, mais RAM : 60 % sur 34 pas ⇒ des paliers). Le garde devient
+         *    donc utile POUR LA RAISON QU'ON LUI PRÊTAIT — et c'est ce qui rend
+         *    les quatre mocks NON synchrones même à tick commun.
+         */
+        if (s_wetat[i].regime == DN_VAL_SIMULEE &&
+            strcmp(s_wetat[i].txt[0], txt) == 0) {
+            continue;
+        }
+
+        /* La ligne secondaire DIT ce qu'est la valeur, en toutes lettres et sans
+         * qu'il faille lire le code — c'est l'exigence d'AC3. Le badge
+         * « SIMULÉ » et la couleur ambre le disent déjà à l'œil ; ceci le dit AU
+         * MOT, pour que le régime ne dépende pas d'une convention de couleur que
+         * dn3-3 pourrait réattribuer. */
+        char sec[DN_WIDGET_SEC_MAX];
+        switch (k_mock[i].sec) {
+        case DN_SEC_RAM_GO: {
+            /* 🔴 LA SECONDAIRE EST CALCULÉE DEPUIS LE POURCENTAGE, PAS TIRÉE
+             *    D'UN SECOND GÉNÉRATEUR. « 38 % » à côté de « 12,1 / 32 Go »
+             *    doivent se répondre : deux mocks indépendants afficheraient
+             *    deux vérités contradictoires dans le même rectangle, ce qui est
+             *    précisément le mensonge d'interface qu'on traque.
+             *    32 Go x v% en DIXIÈMES de Go : v * 320 / 100.
+             *    Contrôle : v = 38 -> 121 -> « 12,1 / 32 Go », soit exactement
+             *    l'exemple verbatim de l'addendum §1. */
+            int32_t dx = v * 320 / 100;
+            snprintf(sec, sizeof(sec), "%d,%d / 32 Go", (int)(dx / 10),
+                     (int)(dx % 10));
+            break;
+        }
+        case DN_SEC_RESEAU_DUPLEX:
+            /* ⚠️ `LV_SYMBOL_DOWN`/`UP` (U+F078/U+F077), PAS les flèches Unicode
+             *    U+2193/U+2191 : celles-ci sont HORS latin-1 et le glyphe absent
+             *    serait dessiné EN SILENCE. Les deux codepoints FontAwesome ont
+             *    été VÉRIFIÉS présents dans `fonts/dn_font_14.c`. */
+            snprintf(sec, sizeof(sec), LV_SYMBOL_DOWN " %d  " LV_SYMBOL_UP " %d",
+                     (int)v, (int)(v / 20));
+            break;
+        case DN_SEC_SIMULE:
+        default:
+            snprintf(sec, sizeof(sec), "valeur SIMULÉE — aucun capteur");
+            break;
+        }
+        case_poser(i, DN_VAL_SIMULEE, txt, NULL, v, sec, NULL);
     }
-    /* La ligne secondaire DIT ce qu'est la valeur, en toutes lettres et sans
-     * qu'il faille lire le code — c'est l'exigence d'AC3. Le badge « SIMULÉ » et
-     * la couleur ambre le disent déjà à l'œil ; ceci le dit AU MOT, pour que le
-     * régime ne dépende pas d'une convention de couleur que dn3-3 pourrait
-     * réattribuer. */
-    case_poser(DN_UI_CASE_VENT, DN_VAL_SIMULEE, txt, NULL, v,
-               "valeur SIMULÉE — aucun capteur", NULL);
 }
 
 /*
@@ -2278,37 +2800,104 @@ static void mock_tick_nolock(void)
  *    poserait des valeurs d'apparence réelle serait le mensonge d'interface
  *    qu'AC3 interdit, introduit par l'instrument censé le vérifier.
  */
+/* Le CORPS de la poussée. ⚠️ VERROU DÉJÀ PRIS — extrait en dn3-2 pour que la
+ * rafale d'AC8 puisse en enchaîner N sous UN SEUL verrou sans dupliquer la
+ * fabrication des valeurs. Deux fabricants pour un même instrument, c'est deux
+ * façons de mesurer, donc deux résultats. */
+static uint32_t s_pousse_seq;
+
+static bool pousser_nolock(int idx)
+{
+    if (idx < 0 || idx >= DN_UI_METRIQUES) {
+        return false;
+    }
+    s_pousse_seq++;
+    char t0[DN_WIDGET_TXT_MAX];
+    char t1[DN_WIDGET_TXT_MAX];
+    /* Une valeur qui CHANGE à chaque poussée : `lv_label_set_text` avec un texte
+     * identique invalide quand même, mais une série de textes identiques rendrait
+     * la mesure indiscernable d'un affichage figé pour qui la relit. */
+    snprintf(t0, sizeof(t0), "%u,%u", (unsigned)(s_pousse_seq % 100),
+             (unsigned)(s_pousse_seq % 10));
+    snprintf(t1, sizeof(t1), "%u,%u", (unsigned)((s_pousse_seq * 7) % 100),
+             (unsigned)((s_pousse_seq * 3) % 10));
+    int32_t brut = (int32_t)(DN_MOCK_MIN +
+                             (s_pousse_seq * 37) % (DN_MOCK_MAX - DN_MOCK_MIN));
+    case_poser(idx, DN_VAL_SIMULEE, t0, t1, brut, "POUSSÉE de mesure (AC8)",
+               NULL);
+    /* 🔴 DÉCISION D1 (revue 2026-08-18) : marquer la case comme POUSSÉE, pour
+     *    que le tick du mock cesse de la reprendre. Voir `mock_tick_nolock`.
+     * ⚠️ dn3-2 : plus de `if (idx == VENTILOS)`. Le drapeau est posé pour
+     *    TOUTE case — quatre cases portent un mock désormais, et la garder
+     *    scopée à une seule aurait reproduit le défaut sur les trois autres.
+     *    C'est exactement la forme du piège « gate scopée à UNE fonction ». */
+    s_poussee[idx] = true;
+    return true;
+}
+
 uint32_t dn_ui_pousser(int idx)
 {
-    static uint32_t s_seq;
     if (idx < 0 || idx >= DN_UI_METRIQUES) {
         return 0;
     }
     if (!lvgl_port_lock(1000)) {
         return 0;
     }
-    s_seq++;
-    char t0[DN_WIDGET_TXT_MAX];
-    char t1[DN_WIDGET_TXT_MAX];
-    /* Une valeur qui CHANGE à chaque poussée : `lv_label_set_text` avec un texte
-     * identique invalide quand même, mais une série de textes identiques rendrait
-     * la mesure indiscernable d'un affichage figé pour qui la relit. */
-    snprintf(t0, sizeof(t0), "%u,%u", (unsigned)(s_seq % 100),
-             (unsigned)(s_seq % 10));
-    snprintf(t1, sizeof(t1), "%u,%u", (unsigned)((s_seq * 7) % 100),
-             (unsigned)((s_seq * 3) % 10));
-    int32_t brut = (int32_t)(DN_MOCK_MIN +
-                             (s_seq * 37) % (DN_MOCK_MAX - DN_MOCK_MIN));
-    case_poser(idx, DN_VAL_SIMULEE, t0, t1, brut, "POUSSÉE de mesure (AC8)",
-               NULL);
-    /* 🔴 DÉCISION D1 (revue 2026-08-18) : marquer la case comme POUSSÉE, pour
-     *    que le tick du mock cesse de la reprendre. Voir `mock_tick_nolock`. */
-    if (idx == DN_UI_CASE_VENT) {
-        s_vent_poussee = true;
-    }
+    bool ok = pousser_nolock(idx);
+    uint32_t seq = s_pousse_seq;
     lvgl_port_unlock();
-    return s_seq;
+    return ok ? seq : 0;
 }
+
+/*
+ * ── LA RAFALE (AC8) — LE CAS « TOUTES DANS LE MÊME CYCLE », PROVOQUÉ ─────────
+ *
+ * 🔴 POURQUOI ELLE EXISTE, ET POURQUOI ELLE CONTREDIT DÉLIBÉRÉMENT
+ *    `dn_ui_pousser`. L'en-tête de `dn_ui_pousser` interdit N poussées dans un
+ *    même appel, parce qu'elles tomberaient dans le MÊME cycle LVGL et seraient
+ *    fusionnées : on mesurerait 1 flush pour N mises à jour et on conclurait à
+ *    tort que grouper est gratuit.
+ *
+ *    Or l'extrapolation d'AC8 porte précisément sur le cas « six widgets qui se
+ *    mettent à jour dans le MÊME cycle » (6 x 35 100 = 210 600 px, 69 % d'un
+ *    plein écran). Et ce cas NE SE PRODUIT PAS naturellement : les six sources
+ *    ne sont pas synchronisées (liaison ~1 s, capteur 5 s, mocks 14/20/26/34 s,
+ *    barre à la minute). L'instrument existant l'INTERDIT PAR CONCEPTION, et le
+ *    seul appelant est le REPL, qui attend l'invite entre deux commandes.
+ *
+ * ⇒ Cette fonction est l'exception NOMMÉE : elle pose les N cases sous UN SEUL
+ *   verrou, donc dans UN SEUL cycle LVGL. Ce n'est pas un comportement produit,
+ *   c'est un INSTRUMENT — au même titre que le mock, et il se déclare comme tel
+ *   quand on publie son chiffre.
+ * ⚠️ Le résultat attendu est UN cycle de redessin pour N mises à jour. Si la
+ *    mesure en montre N, c'est que le verrou n'a PAS tenu (ou qu'un cycle LVGL
+ *    s'est intercalé) — et le chiffre ne vaut alors rien.
+ */
+uint32_t dn_ui_rafale(void)
+{
+    if (!lvgl_port_lock(1000)) {
+        return 0;
+    }
+    uint32_t n = 0;
+    uint32_t cyc = s_n_cycles;
+    for (int i = 0; i < DN_UI_METRIQUES; i++) {
+        if (pousser_nolock(i)) {
+            n++;
+        }
+    }
+    /* RELU, pas supposé : si un cycle LVGL s'est glissé au milieu, le compteur
+     * l'a vu et l'appelant doit le savoir. ⚠️ Le cycle qui DESSINE la rafale
+     * n'a pas encore eu lieu ici (on tient le verrou) : ce delta doit donc
+     * valoir 0. S'il vaut plus, la rafale a été COUPÉE et son chiffre ne vaut
+     * rien — c'est exactement ce que `widget` doit dire à l'opérateur. */
+    s_rafale_cycles = s_n_cycles - cyc;
+    s_rafale_n = n;
+    lvgl_port_unlock();
+    return n;
+}
+
+uint32_t dn_ui_rafale_cycles(void) { return s_rafale_cycles; }
+uint32_t dn_ui_rafale_n(void) { return s_rafale_n; }
 
 esp_err_t dn_ui_mock_set(bool on)
 {
@@ -2328,19 +2917,105 @@ esp_err_t dn_ui_mock_set(bool on)
 
 bool dn_ui_mock_on(void) { return s_mock_on; }
 
-void dn_ui_mock_forme(int *min, int *max, int *periode_s)
+bool dn_ui_mock_forme(int idx, int *min, int *max, int *periode_s)
 {
-    /* RELU des constantes qui pilotent réellement le mock — la console ne
-     * récite rien. « Une étiquette qui mentait est un défaut à part entière ». */
+    /* RELU de la table qui pilote réellement le mock — la console ne récite
+     * rien. « Une étiquette qui ment est un défaut à part entière ».
+     * ⚠️ dn3-2 : la signature prend un INDEX. Elle rendait `void` et ne
+     *    décrivait QUE VENTILOS ; avec quatre mocks de formes différentes, une
+     *    console qui aurait continué à imprimer la seule rampe 800-1600 aurait
+     *    décrit trois cases par les chiffres d'une quatrième. */
+    if (idx < 0 || idx >= DN_UI_METRIQUES || !k_mock[idx].actif) {
+        return false;
+    }
     if (min) {
-        *min = DN_MOCK_MIN;
+        *min = k_mock[idx].min;
     }
     if (max) {
-        *max = DN_MOCK_MAX;
+        *max = k_mock[idx].max;
     }
     if (periode_s) {
-        *periode_s = DN_MOCK_PERIODE_S;
+        *periode_s = (int)k_mock[idx].periode_s;
     }
+    return true;
+}
+
+/*
+ * ── W11 — RENDRE UNE CASE NUE À CHAUD, ET LA LUI RENDRE ─────────────────────
+ * Le témoin négatif d'AC8. Voir `case_est_widget()` pour le motif complet.
+ * ⚠️ Il FAUT reconstruire : la forme d'une case est décidée à la CONSTRUCTION
+ *    (`build_dashboard`), pas à la mise à jour. Changer le seul drapeau
+ *    laisserait un widget dessiné mis à jour par le chemin « nue ».
+ * ⚠️ Et c'est cher : `build_scene()` coûte 307-322 ms verrou tenu, plus qu'une
+ *    transition. C'est assumé pour un INSTRUMENT qu'on actionne entre deux
+ *    relevés — ⛔ mais ça reste la raison pour laquelle aucune commande de
+ *    régime courant ne doit déclencher `build_scene()`.
+ */
+esp_err_t dn_ui_nue_set(int idx, bool nue)
+{
+    if (idx < 0 || idx >= DN_UI_METRIQUES) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (!k_widget[idx]) {
+        /* Elle n'a jamais eu le modèle : la rendre « nue » n'a pas de sens, et
+         * acquitter donnerait à croire qu'on a fait quelque chose. */
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (s_nue_force[idx] == nue) {
+        return ESP_OK;
+    }
+    if (!lvgl_port_lock(2000)) {
+        return ESP_ERR_TIMEOUT;
+    }
+    s_nue_force[idx] = nue;
+    build_scene();
+    lvgl_port_unlock();
+    ESP_LOGW(TAG, "case %d (%s) : forme %s — TÉMOIN d'AC8, pas un réglage produit",
+             idx, k_nom[idx], nue ? "NUE" : "WIDGET");
+    return ESP_OK;
+}
+
+bool dn_ui_nue(int idx)
+{
+    return (idx >= 0 && idx < DN_UI_METRIQUES) ? s_nue_force[idx] : false;
+}
+
+/*
+ * ── `widget oublier <idx>` — RENDRE UNE CASE À SON RÉGIME NATUREL ───────────
+ *
+ * 🔴 ENTRÉE DE LEDGER `deferred-work.md:1019-1023`, DEVENUE ACTIVE EN dn3-2 :
+ *    « une case NUE n'a aucune source, donc elle reste SIMULÉE jusqu'au reboot
+ *    […] SI dn3-2 EN FAIT UN USAGE COURANT, ajouter un `widget oublier <idx>`
+ *    qui rend la case à son régime naturel serait moins piégeux que "rebooter
+ *    avant tout constat owner". »
+ *    LA CONDITION EST DÉCLENCHÉE : AC8 fait de `widget pousser` l'instrument
+ *    central (25 poussées par relevé, table à 4 lignes) et ajoute la rafale.
+ *    ⇒ Sans cette commande, tout constat owner d'AC11 lancé après une campagne
+ *      verrait des badges « SIMULÉ » RÉSIDUELS et pourrait les lire comme une
+ *      régression — un faux positif fabriqué par l'instrument.
+ *
+ * « Régime naturel » = celui que la SOURCE de la case impose, relu d'elle :
+ *   · une case à mock  -> le mock la reprendra au prochain tick ;
+ *   · une case réelle  -> ABSENTE, et sa source la repeindra quand elle parlera ;
+ *   · une case sans source -> ABSENTE, définitivement, et c'est la vérité.
+ */
+esp_err_t dn_ui_oublier(int idx)
+{
+    if (idx < 0 || idx >= DN_UI_METRIQUES) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (!lvgl_port_lock(1000)) {
+        return ESP_ERR_TIMEOUT;
+    }
+    s_poussee[idx] = false;
+    /* ABSENTE, pas « la dernière valeur connue » : on vient d'effacer la seule
+     * source qu'avait cette case. Prétendre autre chose serait inventer. */
+    case_poser(idx, DN_VAL_ABSENTE, NULL, NULL, 0, NULL, NULL);
+    /* Le mock reprend AU PROCHAIN TICK s'il est armé — on ne l'appelle pas ici :
+     * ce serait un second redessin dans le même verrou, donc un chiffre de plus
+     * dans une campagne qui compte les cycles. */
+    lvgl_port_unlock();
+    return ESP_OK;
 }
 
 dn_val_regime_t dn_ui_regime(int idx)

@@ -13,6 +13,13 @@ idf_component_register(
         "dn_touch.c"
         "dn_link.c"
         "dn_capteurs.c"
+        # dn3-2 : l'heure du module (PCF85063A @ 0x51). Driver MAISON — W1
+        # tranché après lecture du source des deux composants du registre :
+        # `waveshare/pcf85063a` masque le bit OS (`& 0x7F`, deux sites) et
+        # `espp/pcf85063` est du C++ avec deux dépendances de framework.
+        # ⛔ Rien à ajouter aux REQUIRES : il n'utilise que `driver` (i2c_master),
+        #    déjà listé.
+        "dn_rtc.c"
         "dn_wifi.c"
         # dn3-1 : le modèle de widget, et les deux polices GÉNÉRÉES.
         # ⚠️ Les `.c` de police sont VERSIONNÉS (décision W6), pas produits au

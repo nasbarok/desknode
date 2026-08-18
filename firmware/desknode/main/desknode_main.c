@@ -40,6 +40,7 @@
 #include "dn_patterns.h"
 #include "dn_pins.h"
 #include "dn_recal.h"
+#include "dn_rtc.h"
 #include "dn_touch.h"
 #include "dn_ui.h"
 #include "esp_err.h"
@@ -330,6 +331,25 @@ void app_main(void)
         ESP_LOGE(TAG, "⛔ capteurs ABSENTS (%s) — les cases TEMP./HUMIDITE "
                       "resteront « -- ». Le reste du firmware demarre normalement.",
                  esp_err_to_name(err_capt));
+    }
+
+    /* 8 ter. L'heure (dn3-2). APRÈS dn_display_init (étape 2) : le RTC est sur
+     * l'UNIQUE bus I²C de la carte, et `dn_display_i2c_bus()` rend NULL tant que
+     * la dalle ne l'a pas créé. APRÈS dn_ui_init aussi : la tâche pousse vers la
+     * barre par `dn_ui_heure_maj()`, qui prend le verrou LVGL elle-même.
+     * ⚠️ Placée ICI et pas avant l'affichage, même arbitrage que les capteurs :
+     *    une horloge qui ne répond pas doit se diagnostiquer ÉCRAN ALLUMÉ.
+     * 🔴 NON FATALE, exactement comme dn_link_init et dn_capteurs_init : le seul
+     *    mode d'échec réaliste est xTaskCreate, c'est-à-dire la pénurie de RAM
+     *    interne. Avec CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT=y, un abort donnerait
+     *    « ni console ni flash, RESET physique » — une BARRE ne doit pas pouvoir
+     *    briquer le seul outil de diagnostic. */
+    esp_err_t err_rtc = dn_rtc_init();
+    if (err_rtc != ESP_OK) {
+        ESP_LOGE(TAG, "⛔ horloge ABSENTE (%s) — la barre affichera « --:-- "
+                      "HEURE NON POSEE ». Le reste du firmware demarre "
+                      "normalement, et `rtc` dira pourquoi.",
+                 esp_err_to_name(err_rtc));
     }
 
     /* 9. La console. */

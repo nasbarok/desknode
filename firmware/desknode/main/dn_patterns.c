@@ -363,7 +363,7 @@ static void draw_frame(uint16_t *buf)
     /* étiquettes : orientation et dimensions annoncées */
     draw_text(buf, 60, 20, "HAUT", blanc, 3);
     draw_text(buf, 130, 300, "480 X 640", blanc, 4);
-    draw_text(buf, 150, 340, "DESKNODE P1", gris, 2);
+    draw_text(buf, 150, 340, "DESKNODE P7", gris, 2);
     draw_text(buf, 60, H - 40, "BAS", blanc, 3);
 }
 

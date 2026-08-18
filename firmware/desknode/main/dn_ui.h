@@ -68,6 +68,11 @@
 #include <stdint.h>
 
 #include "dn_bootcfg.h"
+/* dn3-2 : `dn_ui_heure_maj()` prend un `dn_rtc_heure_t`. La dépendance va dans
+ * CE sens seulement — `dn_rtc.h` n'inclut PAS `dn_ui.h` (c'est le `.c` qui le
+ * fait), donc pas de cycle. Passer les 7 champs en scalaires aurait donné une
+ * signature à huit paramètres, où une inversion jour/mois serait silencieuse. */
+#include "dn_rtc.h"
 #include "dn_widget.h"
 #include "esp_err.h"
 #include "lvgl.h"
@@ -384,6 +389,48 @@ bool dn_ui_cpu_maj(int dixiemes, bool valide, bool *label_pose);
 bool dn_ui_ambiance_maj(int temp_dixiemes, int hum_dixiemes, bool valide,
                         bool *label_pose);
 
+/* ── La barre heure/date (dn3-2, AC3/AC4) ─────────────────────────────────────
+ *
+ * Poussée par la tâche `dn_rtc` à 2 Hz. Mêmes règles que `dn_ui_cpu_maj` :
+ * le verrou LVGL est pris ICI, `false` = verrou non pris ⇒ RIEN n'a bougé.
+ *
+ * 🔴 `fiable` EST LE VERDICT D'HONNÊTETÉ, PAS UN CODE D'ERREUR. À `false`, la
+ *    barre affiche « --:-- » gris et « HEURE NON POSÉE » — jamais l'heure
+ *    contenue dans `h`, même si elle a l'air normale. Une barre qui affiche
+ *    « 03:47 » après une coupure est PIRE qu'une barre qui se tait, et le
+ *    PCF85063 a un bit dédié pour le dire (OS, Seconds bit 7).
+ *    ⇒ `h` peut être NULL quand `fiable` est faux.
+ *
+ * ⚠️ L'invalidation n'a lieu QUE si le texte affiché (ou la fiabilité) change.
+ *    La barre pèse 480 x 70 = 33 600 px, soit 96 % d'une case : la réécrire à
+ *    chaque appel serait une 7e case vivante à 2 Hz.
+ */
+bool dn_ui_heure_maj(const dn_rtc_heure_t *h, bool fiable, bool *label_pose);
+
+/*
+ * La CADENCE de la barre — l'A/B de W2/AC4, commutable à chaud, sans reflasher.
+ * 🔴 DÉFAUT = `false`, c'est-à-dire HH:MM SANS LES SECONDES, parce que la
+ *    maquette normative du brief (addendum §1) écrit « 21:46 » et n'affiche PAS
+ *    les secondes.
+ * ⚠️ CETTE VALEUR PAR DÉFAUT EST RÉPÉTÉE DANS `dn_ui.c`, `rtc`, le README et
+ *    hardware/ — elle doit être la MÊME partout. En dn3-1, le `.h` du groupage
+ *    annonçait `false` là où le code valait `true`, et QUI REJOUAIT L'A/B
+ *    MESURAIT DEUX FOIS LA MÊME BRANCHE.
+ * ⚠️ Le régime n'est qu'un FORMAT : c'est la détection de changement de texte
+ *    qui déclenche l'invalidation. En HH:MM, le texte ne bouge qu'au changement
+ *    de minute ⇒ le calage sur la minute est structurel.
+ */
+void dn_ui_barre_secondes_set(bool on);
+bool dn_ui_barre_secondes(void);
+
+/* Ce que la barre affiche EN CE MOMENT, relu de l'état réel — pour que `rtc`
+ * n'ait pas à reformater de son côté (deux formateurs = deux vérités). */
+const char *dn_ui_barre_heure_txt(void);
+const char *dn_ui_barre_date_txt(void);
+/* ⚠️ Tient compte de `s_active` : après `ui off` / `scene` / `tear`, les labels
+ * existent mais rien n'atteint la dalle. Annoncer « dessinée » mentirait. */
+bool dn_ui_barre_dessinee(void);
+
 /* ── Le modèle de widget (dn3-1) ──────────────────────────────────────────────
  * Descripteur d'une case, ou NULL si la case est NUE (GPU/RAM/RÉSEAU — le
  * témoin négatif d'AC8). */
@@ -398,12 +445,16 @@ const char *dn_ui_valeur_txt(int idx, int grandeur);
  * dashboard n'existe pas, l'état est conservé mais rien n'atteint la dalle.) */
 bool dn_ui_case_dessinee(int idx);
 
-/* ── Le mock VENTILOS (AC3) ───────────────────────────────────────────────────
+/* ── Le mock (AC3) — GÉNÉRALISÉ À QUATRE CASES EN dn3-2 (W5) ──────────────────
  * Il bat sur le tick 1 Hz de LVGL (pas de tâche : produire un nombre ne dort
  * pas). Sa FORME est annoncée et relue, pas récitée : rampe triangulaire
- * min -> max -> min, période fixe, dérivée du TEMPS ABSOLU.
- * `dn_ui_mock_set(false)` le coupe : la case redevient ABSENTE (« -- »), ce qui
- * est le témoin que le mock EST la seule source de cette case. */
+ * min -> max -> min, période fixe et PAIRE, dérivée du TEMPS ABSOLU.
+ * `dn_ui_mock_set(false)` le coupe : les cases redeviennent ABSENTES (« -- »),
+ * ce qui est le témoin que le mock EST leur seule source.
+ * 🔴 GPU, RAM, RÉSEAU et VENTILOS ont un mock ; CPU et AMBIANCE n'en ont PAS —
+ *    elles ont des sources RÉELLES (`dn_link`, `dn_capteurs`). C'est la
+ *    conséquence écrite de D6 : PC éteint, UNE SEULE case sur six est vivante,
+ *    et ça doit SE VOIR. */
 /* A/B d'AC8 : bascule le groupage d'invalidation. C'est `dn_ui` qui prend le
  * verrou, jamais l'appelant — `dn_widget_*` EXIGE qu'il soit déjà pris. */
 esp_err_t dn_ui_set_groupage(bool on);
@@ -417,7 +468,11 @@ void dn_ui_case_dim(int *w, int *h);
  * fonction rendait `void` et la console mentait sur son propre effet). */
 esp_err_t dn_ui_mock_set(bool on);
 bool dn_ui_mock_on(void);
-void dn_ui_mock_forme(int *min, int *max, int *periode_s);
+/* Rend `false` si la case `idx` n'a PAS de mock — ⚠️ signature changée en
+ * dn3-2 : elle rendait `void` et décrivait uniquement VENTILOS. Avec quatre
+ * mocks de formes différentes, une console qui aurait gardé l'ancienne aurait
+ * décrit trois cases par les chiffres d'une quatrième. */
+bool dn_ui_mock_forme(int idx, int *min, int *max, int *periode_s);
 
 /* ── AC8 : l'injecteur de poussée ─────────────────────────────────────────────
  * Pose UNE mise à jour synthétique (régime SIMULÉE) sur la case `idx`, et rend
@@ -429,6 +484,57 @@ void dn_ui_mock_forme(int *min, int *max, int *periode_s);
  *    à jour, et on conclurait que grouper est gratuit. C'est l'appelant PC qui
  *    les espace. */
 uint32_t dn_ui_pousser(int idx);
+
+/* ── AC8 : LA RAFALE — le cas « toutes dans le MÊME cycle », PROVOQUÉ ─────────
+ *
+ * 🔴 ELLE CONTREDIT DÉLIBÉRÉMENT L'INTERDIT CI-DESSUS, et c'est pour ça qu'elle
+ *    porte un autre nom. L'extrapolation d'AC8 porte sur « six widgets qui se
+ *    mettent à jour dans le MÊME cycle » (6 x 35 100 = 210 600 px, 69 % d'un
+ *    plein écran) — un cas qui NE SE PRODUIT PAS naturellement, puisque les six
+ *    sources ne sont pas synchronisées (liaison ~1 s, capteur 5 s, mocks
+ *    14/20/26/34 s, barre à la minute) et que le seul appelant est le REPL, qui
+ *    attend l'invite entre deux commandes.
+ *    Sans elle, ce cas devrait être DÉCLARÉ NON MESURÉ. Avec elle, il se
+ *    mesure — mais il se publie comme un INSTRUMENT, jamais comme un régime.
+ *
+ * Rend le nombre de cases poussées. ⚠️ `dn_ui_rafale_cycles()` doit valoir 0 :
+ *    un cycle LVGL intercalé signifie que la rafale a été COUPÉE et que son
+ *    chiffre ne vaut rien. C'est le témoin qui rend la mesure falsifiable.
+ */
+uint32_t dn_ui_rafale(void);
+uint32_t dn_ui_rafale_cycles(void);
+uint32_t dn_ui_rafale_n(void);
+
+/* ── W11 : le TÉMOIN NÉGATIF d'AC8, commutable à chaud ────────────────────────
+ *
+ * Jusqu'à dn3-1, GPU/RAM/RÉSEAU étaient NUES et servaient de référence à tous
+ * les chiffres d'AC8. Les six devenant des widgets (dn3-2), cette référence
+ * quitterait le firmware — et AC8 se retrouverait à comparer un firmware à un
+ * AUTRE firmware, exactement ce que dn3-1 s'est interdit en mesurant « dans le
+ * même firmware ».
+ * ⚠️ RECONSTRUIT LA SCÈNE (307-322 ms, verrou tenu) : la forme d'une case est
+ *    décidée à la CONSTRUCTION, pas à la mise à jour. C'est cher, et c'est
+ *    assumé pour un instrument qu'on actionne ENTRE deux relevés.
+ * ⚠️ `ESP_ERR_INVALID_STATE` si la case n'a jamais eu le modèle : acquitter
+ *    donnerait à croire qu'on a fait quelque chose.
+ */
+esp_err_t dn_ui_nue_set(int idx, bool nue);
+bool dn_ui_nue(int idx);
+
+/* ── `widget oublier <idx>` — rendre une case à son RÉGIME NATUREL ────────────
+ *
+ * 🔴 Entrée de ledger `deferred-work.md:1019-1023`, dont la condition est
+ *    DÉCLENCHÉE par dn3-2 : « une case NUE n'a aucune source, donc elle reste
+ *    SIMULÉE jusqu'au reboot […] SI dn3-2 en fait un usage courant, ajouter un
+ *    `widget oublier <idx>` serait moins piégeux que "rebooter avant tout
+ *    constat owner" ». AC8 fait de `widget pousser` l'instrument central.
+ *    ⇒ Sans elle, un constat owner lancé après une campagne verrait des badges
+ *      « SIMULÉ » résiduels et pourrait les lire comme une RÉGRESSION.
+ * Pose ABSENTE et lève le drapeau de poussée : le mock, s'il est armé,
+ * reprendra la case au prochain tick ; une source réelle la repeindra quand
+ * elle parlera ; une case sans source restera « -- », et c'est la vérité.
+ */
+esp_err_t dn_ui_oublier(int idx);
 
 /* ── AC9 : l'opacité du voile plein écran ─────────────────────────────────────
  * Reconstruit la scène (le voile est créé au dessin). 0..255. */

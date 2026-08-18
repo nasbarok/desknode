@@ -16,6 +16,7 @@
 #include "dn_patterns.h"
 #include "dn_pins.h"
 #include "dn_recal.h"
+#include "dn_rtc.h"
 #include "dn_stimulus.h"
 #include "dn_touch.h"
 #include "dn_ui.h"
@@ -2567,10 +2568,12 @@ static int cmd_widget(int argc, char **argv)
         static bool s_pousser_dit;
         if (!s_pousser_dit) {
             s_pousser_dit = true;
-            printf("⚠️ `pousser` NE SE RETIRE PAS : la case reste SIMULEE jusqu'a\n");
-            printf("   ce que sa vraie source reparle, ou jusqu'au `reboot`. Une\n");
-            printf("   case NUE n'a aucune source : elle y restera.\n");
-            printf("   ⇒ rebooter avant tout constat owner sur l'aspect.\n");
+            printf("⚠️ `pousser` NE SE RETIRE PAS TOUT SEUL : la case reste SIMULEE\n");
+            printf("   jusqu'a ce que sa vraie source reparle. Une case NUE n'a\n");
+            printf("   aucune source : elle y resterait.\n");
+            printf("   ⇒ `widget oublier <idx>` la rend a son regime naturel (dn3-2,\n");
+            printf("     entree de ledger soldee). ⛔ Ne plus rebooter pour ca : un\n");
+            printf("     reboot rejoue le boot entier et perd la fenetre de mesure.\n");
             printf("   (avertissement imprime une seule fois par session)\n");
         }
         uint32_t seq = dn_ui_pousser((int)idx);
@@ -2583,6 +2586,111 @@ static int cmd_widget(int argc, char **argv)
          * lien serie — donc du temps pendant lequel le capteur peut glisser un
          * cycle parasite dans la fenetre de mesure. */
         printf("p%u\n", (unsigned)seq);
+        return 0;
+    }
+    /*
+     * ── `widget oublier <idx>` — dn3-2, entree de ledger :1019-1023 SOLDEE ───
+     * Sa condition (« si dn3-2 en fait un usage courant ») est DECLENCHEE : AC8
+     * fait de `pousser` l'instrument central. Sans elle, un constat owner lance
+     * apres une campagne verrait des badges « SIMULE » RESIDUELS et pourrait les
+     * lire comme une regression.
+     */
+    if (argc == 3 && strcmp(argv[1], "oublier") == 0) {
+        long idx = 0;
+        if (!parse_entier(argv[2], &idx) || idx < 0 || idx >= DN_UI_METRIQUES) {
+            printf("usage : widget oublier <0..%d>\n", DN_UI_METRIQUES - 1);
+            return 1;
+        }
+        if (dn_ui_oublier((int)idx) != ESP_OK) {
+            printf("verrou LVGL non pris — RIEN n'a change\n");
+            return 1;
+        }
+        printf("case %ld (%s) rendue a son REGIME NATUREL : ABSENTE (« -- »).\n",
+               idx, dn_ui_metrique_nom((int)idx));
+        printf("  · si elle a un mock ARME, il la reprend au prochain tick ;\n");
+        printf("  · si elle a une source REELLE, celle-ci la repeindra ;\n");
+        printf("  · sinon elle reste « -- », et c'est la VERITE.\n");
+        return 0;
+    }
+    /*
+     * ── `widget rafale` — AC8, le cas « toutes dans le MEME cycle » ──────────
+     * ⛔ CONTREDIT DELIBEREMENT l'interdit de `pousser` (une poussee par appel).
+     *    C'est l'INSTRUMENT qui produit le seul cas que l'extrapolation d'AC8
+     *    predit et que le regime reel ne produit jamais.
+     */
+    if (argc == 2 && strcmp(argv[1], "rafale") == 0) {
+        uint32_t n = dn_ui_rafale();
+        if (n == 0) {
+            printf("verrou LVGL non pris — AUCUNE poussee\n");
+            return 1;
+        }
+        uint32_t cyc = dn_ui_rafale_cycles();
+        printf("RAFALE : %u cases poussees sous UN SEUL verrou\n", (unsigned)n);
+        printf("cycles LVGL intercales : %u\n", (unsigned)cyc);
+        if (cyc == 0) {
+            printf("  ✅ 0 = le verrou a TENU : les %u invalidations tombent dans\n",
+                   (unsigned)n);
+            printf("     le MEME cycle. C'est le cas que l'extrapolation predit\n");
+            printf("     a 6 x 35 100 = 210 600 px (69 %% d'un plein ecran).\n");
+        } else {
+            printf("  🔴 != 0 = un cycle s'est INTERCALE : la rafale a ete COUPEE\n");
+            printf("     et son chiffre NE VAUT RIEN. Rejouer.\n");
+        }
+        printf("⚠️ INSTRUMENT, pas un regime : les six sources reelles ne sont PAS\n");
+        printf("   synchronisees (liaison ~1 s, capteur 5 s, mocks 14/20/26/34 s,\n");
+        printf("   barre a la minute). Le dire en publiant le chiffre.\n");
+        return 0;
+    }
+    /*
+     * ── `widget nue <idx> on|off` — W11, le TEMOIN NEGATIF d'AC8 ─────────────
+     */
+    if (argc == 4 && strcmp(argv[1], "nue") == 0) {
+        long idx = 0;
+        bool on;
+        if (!parse_entier(argv[2], &idx) || idx < 0 || idx >= DN_UI_METRIQUES ||
+            !parse_on_off(argv[3], &on)) {
+            printf("usage : widget nue <0..%d> on|off\n", DN_UI_METRIQUES - 1);
+            return 1;
+        }
+        esp_err_t e = dn_ui_nue_set((int)idx, on);
+        if (e == ESP_ERR_INVALID_STATE) {
+            printf("case %ld n'a JAMAIS porte le modele — rien a rendre.\n", idx);
+            return 1;
+        }
+        if (e != ESP_OK) {
+            printf("verrou LVGL non pris — RIEN n'a change\n");
+            return 1;
+        }
+        printf("case %ld (%s) : forme %s\n", idx, dn_ui_metrique_nom((int)idx),
+               on ? "NUE" : "WIDGET");
+        printf("⚠️ La scene a ete RECONSTRUITE (307-322 ms, verrou tenu) : la forme\n");
+        printf("   d'une case se decide a la CONSTRUCTION, pas a la mise a jour.\n");
+        printf("⚠️ C'est le TEMOIN NEGATIF d'AC8, pas un reglage produit. Il existe\n");
+        printf("   pour que la case nue et les six widgets se mesurent DANS LE MEME\n");
+        printf("   FIRMWARE — sinon AC8 comparerait deux firmwares.\n");
+        return 0;
+    }
+    /*
+     * ── `widget barre 1hz|minute` — W2/AC4, la cadence de la barre ───────────
+     */
+    if (argc == 3 && strcmp(argv[1], "barre") == 0) {
+        bool sec;
+        if (strcasecmp(argv[2], "1hz") == 0) {
+            sec = true;
+        } else if (strcasecmp(argv[2], "minute") == 0) {
+            sec = false;
+        } else {
+            printf("usage : widget barre 1hz|minute\n");
+            return 1;
+        }
+        dn_ui_barre_secondes_set(sec);
+        printf("cadence de la barre : %s\n",
+               dn_ui_barre_secondes() ? "HH:MM:SS — invalidee CHAQUE SECONDE"
+                                      : "HH:MM — invalidee au CHANGEMENT DE MINUTE");
+        printf("⚠️ La barre fait 480 x 70 = 33 600 px, soit 96 %% d'une case\n");
+        printf("   (35 100 px). En 1 Hz elle EST une 7e case vivante a 1 Hz.\n");
+        printf("⚠️ La maquette normative (addendum §1) ecrit « 21:46 » : elle\n");
+        printf("   n'affiche PAS les secondes. Defaut = minute.\n");
         return 0;
     }
     if (argc == 3 && strcmp(argv[1], "mock") == 0) {
@@ -2697,15 +2805,30 @@ static int cmd_widget(int argc, char **argv)
            dn_ui_voile_opa());
     printf("demo 7e metrique : %s\n", dn_ui_demo_on() ? "AFFICHEE" : "retiree");
 
-    int mn = 0, mx = 0, per = 0;
-    dn_ui_mock_forme(&mn, &mx, &per);
-    printf("mock VENTILOS : %s · rampe TRIANGULAIRE %d -> %d tr/min · periode "
-           "%d s · pas 1 s\n",
-           dn_ui_mock_on() ? "ARME" : "COUPE", mn, mx, per);
+    /* 🔴 dn3-2 : QUATRE mocks, donc QUATRE formes imprimées. L'ancienne version
+     * n'en décrivait qu'une (VENTILOS) — la garder aurait décrit trois cases
+     * par les chiffres d'une quatrieme, ce qui est une etiquette qui ment. */
+    printf("mock : %s — les formes sont RELUES de la table qui les pilote\n",
+           dn_ui_mock_on() ? "ARME" : "COUPE");
+    for (int i = 0; i < DN_UI_METRIQUES; i++) {
+        int mn = 0, mx = 0, per = 0;
+        if (!dn_ui_mock_forme(i, &mn, &mx, &per)) {
+            continue;
+        }
+        /* ⚠️ `colonnes()` IMPRIME, elle ne rend rien — `%-9s` compterait en
+         * OCTETS et « RÉSEAU » (7 octets pour 6 colonnes) décalerait la sienne. */
+        printf("   ");
+        colonnes(dn_ui_metrique_nom(i), 9);
+        const dn_widget_desc_t *dm = dn_ui_desc(i);
+        printf(" rampe TRIANGULAIRE %d -> %d %s · periode %d s · pas 1 s\n", mn,
+               mx, (dm && dm->grandeurs[0].unite) ? dm->grandeurs[0].unite : "",
+               per);
+    }
+    printf("   (une valeur qui VARIE : un mock fige serait indiscernable d'un\n");
+    printf("    affichage bloque. CPU et AMBIANCE n'ont PAS de mock — elles ont\n");
+    printf("    des sources REELLES, et D6 veut que ca se voie.)\n");
     printf("icone VENTILOS : %s   (W4 — `fan` 0xF863 est ABSENT du .woff)\n",
            dn_ui_icone_vent_nom(dn_ui_icone_vent()));
-    printf("   (forme RELUE des constantes qui le pilotent. La valeur VARIE :\n");
-    printf("    un mock fige serait indiscernable d'un affichage bloque.)\n");
 
     printf("\n  idx nom        forme   regime   dessinee  valeur(s)\n");
     for (int i = 0; i < DN_UI_METRIQUES; i++) {
@@ -3391,6 +3514,189 @@ static int cmd_capteurs(int argc, char **argv)
 #define DN_CMD(name, helptext, fn) \
     {.command = (name), .help = (helptext), .hint = NULL, .func = (fn)}
 
+/*
+ * ── `rtc` — L'HEURE, ET SURTOUT SON HONNETETE (dn3-2, AC3) ───────────────────
+ *
+ * ⚠️ Elle RELIT les registres a chaque appel au lieu de reciter l'etat cache :
+ *    une commande qui reciterait ne pourrait pas voir une horloge qui vient de
+ *    mourir. Cout : une transaction I2C (~1 ms), acceptable pour le REPL —
+ *    ⛔ contrairement a `build_scene()`, qui coute 307-322 ms et que AUCUNE
+ *      commande ne doit declencher (le REPL EST le transport PC).
+ */
+static void rtc_usage(void)
+{
+    printf("usage : rtc                        etat, registres bruts, compteurs\n");
+    printf("        rtc set <AAAA-MM-JJ> <HH:MM[:SS]>   pose l'heure (remet OS a 0)\n");
+    printf("        rtc reset                  remet les compteurs a zero\n");
+}
+
+static int cmd_rtc(int argc, char **argv)
+{
+    if (argc == 2 && strcmp(argv[1], "reset") == 0) {
+        dn_rtc_reset_compteurs();
+        printf("compteurs de l'horloge remis a zero.\n");
+        return 0;
+    }
+
+    if (argc >= 3 && strcmp(argv[1], "set") == 0) {
+        dn_rtc_heure_t h = {0};
+        unsigned a = 0, mo = 0, j = 0, hh = 0, mi = 0, ss = 0;
+        int n = 0;
+        if (argc == 4) {
+            n = sscanf(argv[2], "%u-%u-%u", &a, &mo, &j);
+            n += sscanf(argv[3], "%u:%u:%u", &hh, &mi, &ss);
+        }
+        /* 3 champs de date + AU MOINS 2 de temps (les secondes sont
+         * optionnelles : la maquette ne les affiche pas, les taper serait une
+         * precision qu'on n'a pas). */
+        if (argc != 4 || n < 5) {
+            rtc_usage();
+            return 1;
+        }
+        h.annee = (uint16_t)a;
+        h.mois = (uint8_t)mo;
+        h.jour = (uint8_t)j;
+        h.heure = (uint8_t)hh;
+        h.minute = (uint8_t)mi;
+        h.seconde = (uint8_t)ss;
+        esp_err_t e = dn_rtc_poser(&h);
+        if (e == ESP_ERR_INVALID_STATE) {
+            printf("horloge NON ARMEE — rien a poser. `rtc` dira pourquoi.\n");
+            return 1;
+        }
+        if (e == ESP_ERR_INVALID_ARG) {
+            printf("date ou heure INVALIDE. Epoque du driver : %d..%d.\n",
+                   DN_RTC_ANNEE_BASE, DN_RTC_ANNEE_BASE + 99);
+            printf("⚠️ Le jour de semaine n'est PAS demande : il est CALCULE de la\n");
+            printf("   date. La puce ne le deduit pas, elle le compte a part —\n");
+            printf("   le laisser saisir ferait deux sources de verite.\n");
+            return 1;
+        }
+        if (e != ESP_OK) {
+            printf("🔴 ECRITURE REFUSEE ou OS RESTE A 1 — la pose n'a PAS pris.\n");
+            printf("   (l'ecriture est RELUE : un ESP_OK d'I2C ne prouve rien.)\n");
+            return 1;
+        }
+        dn_rtc_heure_t relu;
+        bool fiable = dn_rtc_lire(&relu);
+        printf("heure posee et RELUE : %04u-%02u-%02u %02u:%02u:%02u — etat %s\n",
+               relu.annee, relu.mois, relu.jour, relu.heure, relu.minute,
+               relu.seconde, dn_rtc_etat_nom(dn_rtc_etat()));
+        printf("OS est retombe a 0 : la barre passe de « --:-- HEURE NON POSEE »\n");
+        printf("a l'heure reelle%s.\n", fiable ? "" : " (des le prochain cycle)");
+        return 0;
+    }
+
+    if (argc != 1) {
+        rtc_usage();
+        return 1;
+    }
+
+    dn_rtc_etat_t etat = dn_rtc_etat();
+    printf("horloge PCF85063A @ 0x%02X : %s\n", DN_RTC_ADDR,
+           dn_rtc_arme() ? dn_rtc_etat_nom(etat) : "NON ARMEE");
+    if (!dn_rtc_arme()) {
+        printf("  le device I2C n'existe pas : soit le bus etait absent au boot,\n");
+        printf("  soit Control_1 etait illisible, soit xTaskCreate a echoue.\n");
+        printf("  ⇒ la barre affiche « --:-- HEURE NON POSEE », et c'est CORRECT.\n");
+        return 0;
+    }
+
+    dn_rtc_heure_t h;
+    bool fiable = dn_rtc_lire(&h);
+    int64_t age = dn_rtc_age_us();
+    /* 🔴 LA VALEUR ET SA RECEVABILITE SONT IMPRIMEES ENSEMBLE. `dn_rtc_lire()`
+     *    rend le VERDICT D'HONNETETE, pas un code d'erreur de transport :
+     *    imprimer l'heure sans lui, c'est exactement le mensonge que la barre a
+     *    interdiction de commettre — sur l'autre surface de rendu. */
+    printf("lue        : %04u-%02u-%02u %02u:%02u:%02u (jour de semaine %u) — %s\n",
+           h.annee, h.mois, h.jour, h.heure, h.minute, h.seconde, h.jsem,
+           fiable ? "AFFICHABLE" : "⛔ NON AFFICHABLE (la barre ne la montrera pas)");
+    printf("age        : ");
+    if (age < 0) {
+        printf("aucune lecture valide depuis le boot\n");
+    } else {
+        printf("%lld ms (peremption %lld ms, en temps absolu)\n",
+               (long long)(age / 1000), (long long)(DN_RTC_PEREMPTION_US / 1000));
+    }
+
+    /*
+     * 🔴 LE BIT OS EST LE TEMOIN D'HONNETETE, ET IL EST IMPRIME EN CLAIR.
+     */
+    printf("bit OS     : %d — %s\n", dn_rtc_os() ? 1 : 0,
+           dn_rtc_os() ? "🔴 L'OSCILLATEUR S'EST ARRETE : l'heure lue NE VAUT RIEN"
+                       : "✅ l'oscillateur n'a pas decroche depuis la derniere pose");
+    if (dn_rtc_os()) {
+        printf("  Deux causes indiscernables, meme consequence : l'heure n'a JAMAIS\n");
+        printf("  ete posee, ou elle a ete PERDUE (coupure). `rtc set` la pose.\n");
+        printf("  ⛔ La barre n'affichera JAMAIS cette heure-la : une barre qui dit\n");
+        printf("     « 03:47 » apres une coupure est PIRE qu'une barre qui se tait.\n");
+    }
+
+    /*
+     * Le temoin anti-fantome. Voir `temoin_poser()` dans dn_rtc.c pour le motif
+     * du choix de registre — Control_1 NE POUVAIT PAS voir un redemarrage,
+     * puisque sa valeur de sortie de reset est exactement celle qu'on mesure.
+     */
+    printf("temoin     : ");
+    if (!dn_rtc_temoin_dispo()) {
+        printf("INDISPONIBLE — la garde est INERTE (et le dit, au lieu de\n");
+        printf("             se declarer « conforme » sans rien verifier)\n");
+    } else {
+        uint8_t t = dn_rtc_temoin_lu();
+        printf("0x%02X en 0x%02X (attendu 0x%02X) — %s\n", t, DN_RTC_REG_RAM,
+               DN_RTC_TEMOIN,
+               t == DN_RTC_TEMOIN ? "✅ la puce n'a pas redemarre depuis l'init"
+                                  : "🔴 ELLE A REDEMARRE SOUS NOS PIEDS");
+    }
+    printf("Control_1  : 0x%02X a l'init, 0x%02X maintenant%s\n",
+           dn_rtc_ctrl1_init(), dn_rtc_ctrl1_lu(),
+           dn_rtc_ctrl1_init() == dn_rtc_ctrl1_lu() ? "" : "  ⚠️ IL A CHANGE");
+    printf("             STOP=%d · format %s · quartz %s\n",
+           (dn_rtc_ctrl1_lu() & DN_RTC_BIT_STOP) ? 1 : 0,
+           (dn_rtc_ctrl1_lu() & 0x02) ? "12 h" : "24 h",
+           (dn_rtc_ctrl1_lu() & 0x01) ? "12,5 pF" : "7 pF");
+    printf("             ⚠️ CAP_SEL n'est PAS verifie : rien sur cette carte ne dit\n");
+    printf("                quel quartz est soude. Mauvais reglage = DERIVE, pas panne.\n");
+
+    uint8_t regs[DN_RTC_REG_MAX];
+    if (dn_rtc_registres(regs, sizeof(regs)) == ESP_OK) {
+        printf("registres 0x00..0x%02X (RELUS a l'instant) :\n", DN_RTC_REG_MAX - 1);
+        printf("  ");
+        for (unsigned i = 0; i < sizeof(regs); i++) {
+            printf("%02X ", regs[i]);
+        }
+        printf("\n");
+    } else {
+        printf("registres  : LECTURE ECHOUEE a l'instant\n");
+    }
+
+    dn_rtc_compteurs_t c;
+    dn_rtc_compteurs(&c);
+    printf("compteurs  : %u lectures · %u reprises · %u poses\n",
+           (unsigned)c.lectures, (unsigned)c.reprises, (unsigned)c.poses);
+    printf("erreurs    : i2c %u · bcd %u\n", (unsigned)c.err_i2c,
+           (unsigned)c.err_bcd);
+    printf("             i2c = elle ne repond plus · bcd = elle repond mais rend\n");
+    printf("             un quartet > 9. DEUX diagnostics opposes, deux seaux\n");
+    printf("             (lecon dn2-2 : les confondre envoie chercher la panne du\n");
+    printf("             cote du cablage, qu'on vient de prouver bon).\n");
+    printf("etats      : OS vu %u fois · temoin perdu %u fois\n", (unsigned)c.os_vus,
+           (unsigned)c.temoins_perdus);
+    printf("pile tache : %u o libres sur 4096 (high-water mark RELU)\n",
+           (unsigned)dn_rtc_pile_libre());
+    printf("             ⚠️ RAM INTERNE — la ressource meme qui a tue la branche\n");
+    printf("             WiFi en dn2-2. Reduire cette pile demandera CE chiffre.\n");
+    printf("barre      : %s · « %s » / « %s » · %s\n",
+           dn_ui_barre_secondes() ? "HH:MM:SS (1 Hz)" : "HH:MM (au changement de minute)",
+           dn_ui_barre_heure_txt(), dn_ui_barre_date_txt(),
+           dn_ui_barre_dessinee() ? "DESSINEE" : "PAS dessinee (ui off / scene / tear)");
+    printf("epoque     : %d..%d — CHOIX du driver, pas de la puce : le PCF85063A\n",
+           DN_RTC_ANNEE_BASE, DN_RTC_ANNEE_BASE + 99);
+    printf("             porte l'annee sur 0..99 et n'a AUCUN bit de siecle.\n");
+    return 0;
+}
+
 static const esp_console_cmd_t k_cmds[] = {
     DN_CMD("scene",
            "affiche une mire : bits|nbits|rgb|red|green|blue|white|black|frame|gray|asset",
@@ -3451,8 +3757,16 @@ static const esp_console_cmd_t k_cmds[] = {
      * qu'on ne trouve que depuis la carte n'est pas documentée. */
     DN_CMD("widget",
            "widget | groupe on|off | opa <n> | voile <n> | mock on|off | demo "
-           "on|off | pousser <n> | icone <n> — modèle de case (dn3-1)",
+           "on|off | pousser <n> | oublier <n> | rafale | nue <n> on|off | barre "
+           "1hz|minute | icone <n> — modèle de case (dn3-1/dn3-2)",
            cmd_widget),
+    /* ⚠️ INSCRITE ICI **ET** DANS LE « Jeu complet » DU README dans le même
+     * geste — dn2-1 avait oublié `capteurs` au README, et une commande qu'on ne
+     * trouve que depuis la carte n'est pas documentée. */
+    DN_CMD("rtc",
+           "rtc | set <AAAA-MM-JJ> <HH:MM[:SS]> | reset — horloge PCF85063A "
+           "(dn3-2)",
+           cmd_rtc),
     DN_CMD("aide", "cette aide", cmd_help),
 };
 
@@ -3484,7 +3798,7 @@ static int cmd_help(int argc, char **argv)
 void dn_console_banner(void)
 {
     printf("\n");
-    printf("── DeskNode P6 — console de mesure ──\n");
+    printf("── DeskNode P7 — console de mesure ──\n");
     for (size_t i = 0; i < sizeof(k_cmds) / sizeof(k_cmds[0]); i++) {
         printf("  %-7s %s\n", k_cmds[i].command, k_cmds[i].help);
     }
@@ -3532,6 +3846,14 @@ void dn_console_banner(void)
            n_widgets, DN_UI_METRIQUES,
            dn_widget_groupage() ? "groupée" : "fine", dn_widget_opa(),
            dn_ui_voile_opa());
+    /* La barre heure/date (dn3-2) — RELUE, comme tout le reste de ce bandeau.
+     * ⚠️ On imprime l'ÉTAT DE L'HORLOGE, pas seulement le texte : « --:-- » sans
+     *    son motif ne dirait pas si l'horloge est muette, jamais posée, ou si
+     *    OS=1. Trois causes, trois conduites à tenir. */
+    printf("       barre : « %s  %s » · %s · horloge %s\n",
+           dn_ui_barre_heure_txt(), dn_ui_barre_date_txt(),
+           dn_ui_barre_secondes() ? "HH:MM:SS (1 Hz)" : "HH:MM (au chgt de minute)",
+           dn_rtc_arme() ? dn_rtc_etat_nom(dn_rtc_etat()) : "NON ARMEE");
     printf("\n");
 }
 
