@@ -132,11 +132,19 @@ static int entete_y_badge(void)
  *    ambigu au moment précis où on arbitre entre trois voies. */
 static uint32_t s_chevauchements;
 static uint32_t s_debordements;
+/* ⚠️ La largeur en colonne UNIQUE — voir le motif dans `dn_widget.h`. Séparé de
+ * `s_chevauchements` À DESSEIN : « deux colonnes se marchent dessus » et « une
+ * valeur seule dépasse la case » sont deux diagnostics DIFFÉRENTS, et ce dépôt
+ * a déjà payé d'avoir mis deux causes opposées dans le même seau (`tronquee` /
+ * `trop_longue`, dn_link.h). */
+static uint32_t s_trop_larges;
 
 uint32_t dn_widget_chevauchements(void) { return s_chevauchements; }
 void dn_widget_chevauchements_reset(void) { s_chevauchements = 0; }
 uint32_t dn_widget_debordements(void) { return s_debordements; }
 void dn_widget_debordements_reset(void) { s_debordements = 0; }
+uint32_t dn_widget_trop_larges(void) { return s_trop_larges; }
+void dn_widget_trop_larges_reset(void) { s_trop_larges = 0; }
 
 int dn_widget_gouttiere(void) { return W_GOUTTIERE; }
 int dn_widget_largeur_utile(int w) { return w - 2 * W_PAD; }
@@ -584,7 +592,13 @@ static void valeur_placer(lv_obj_t *lbl, int i, int n, int w, int fin_gauche,
          *    parcourt la chaîne, cherche chaque glyphe dans les cmaps (dont une
          *    SPARSE) et applique le crénage : ce n'est pas une lecture de champ.
          * ⚠️ `cols >= 2 && col == 0` est la SEULE situation où `fin_gauche`
-         *    servira : la grandeur suivante est sur la même ligne, à droite. */
+         *    servira : la grandeur suivante est sur la même ligne, à droite.
+         * 🔴 ⛔ ET CE RETOUR SEC EST EXACTEMENT CE QUI LAISSAIT LA DISPOSITION
+         *    LIVRÉE SANS INSTRUMENT DE LARGEUR (revue 2026-08-19) : en `EMPILE`
+         *    on passe toujours ici, donc `s_chevauchements` restait à zéro quoi
+         *    qu'il arrive. La détection existe désormais, mais À LA CONSTRUCTION
+         *    (`dn_widget_creer`, compteur `s_trop_larges`) — ⛔ surtout pas ici,
+         *    où elle rendrait au chemin chaud le coût qu'on vient d'en retirer. */
         if (fin_gauche_out && cols >= 2) {
             *fin_gauche_out = W_PAD + dn_widget_largeur(lv_label_get_text(lbl),
                                                         font_val());
@@ -687,12 +701,36 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
         /* 🔴 LA VALEUR QUI NE TIENT PAS EN HAUTEUR — voir `dn_widget.h`.
          *    Le bas de la BOÎTE, ⛔ pas le `y` posé : un texte posé à 128 dans
          *    une case de 156 « a l'air » dedans et déborde de 7 px. */
-        int ligne = 0;
-        place(s_geom.dispo, n, i, &ligne, NULL, NULL);
+        int ligne = 0, col = 0, cols = 1;
+        place(s_geom.dispo, n, i, &ligne, &col, &cols);
         int bas = s_geom.val_y + ligne * s_geom.val_pas + lh_val;
         if (bas > h) {
             hors++;
             dernier_bas = bas;
+        }
+        /* 🔴 ET LA VALEUR QUI NE TIENT PAS EN LARGEUR **SEULE** — le trou que le
+         *    côte à côte cachait (revue de code du 2026-08-19). `valeur_placer()`
+         *    ne mesure la largeur que s'il y a une colonne DROITE à caler ; en
+         *    `EMPILE`, la disposition LIVRÉE, il n'y en a aucune, donc rien
+         *    n'était mesuré — et `dn_widget_chevauchements()` promettait pourtant
+         *    de compter « ça ne tient pas en LARGEUR ». La marge est mince et
+         *    MESURÉE : « c.max 100,0 % » = 197 px pour 201 utiles.
+         * ⚠️ ICI ET PAS DANS `dn_widget_maj` : à la construction, la mesure est
+         *    payée une fois par reconstruction ; dans la MAJ elle rajouterait les
+         *    15 `lv_text_get_size()` par seconde sous le verrou que dn4-6 vient
+         *    justement de retirer du chemin chaud. */
+        if (cols < 2) {
+            int lw_val = dn_widget_largeur(buf, font_val());
+            int utile = dn_widget_largeur_utile(w);
+            if (lw_val > utile) {
+                s_trop_larges++;
+                ESP_LOGW(TAG,
+                         "« %s » grandeur %d : TROP LARGE en colonne unique — "
+                         "« %s » mesure %d px pour %d utiles (case %d, marges "
+                         "2x%d) : il manque %d px. LVGL la CLIPPE sans un mot.",
+                         desc->titre ? desc->titre : "?", i, buf, lw_val, utile,
+                         w, W_PAD, lw_val - utile);
+            }
         }
     }
     if (hors > 0) {
@@ -792,25 +830,45 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
         /*
          * 🔴 dn4-1 / W5 — L'ABANDON DE LA SECONDAIRE NE PEUT PLUS ÊTRE
          *    SILENCIEUX. C'est le PIÈGE que le correctif de la jauge arme :
-         *    à n = 2 AVEC jauge, y_bas vaut 148 et 148 + 20 = 168 > 156, donc
+         *    à n = 2 AVEC jauge, y_bas vaut 148 et 148 + 20 = 168 > 163, donc
          *    `out->sec` reste NULL et `dn_widget_maj` saute le bloc — exactement
          *    la même panne muette, un cran plus loin, et pas plus visible.
          *    La règle de priorité est écrite dans `dn_widget.h` (la jauge gagne,
          *    parce qu'elle est demandée par un champ explicite du descripteur) ;
          *    ici on la REND AUDIBLE. Un descripteur qui perd sa ligne secondaire
          *    doit le dire à qui lit les logs, pas se taire.
-         * ⚠️ Ce log est rare PAR CONSTRUCTION : aucune des six cases de dn4-1 ne
-         *    demande jauge + secondaire sur deux grandeurs. S'il apparaît en
-         *    rafale, c'est qu'un descripteur a changé — et c'est le signal.
+         *
+         * 🔴 ⚠️ CE LOG N'EST PLUS INCONDITIONNEL — REVUE DE CODE DU 2026-08-19.
+         *    Il disait de lui-même : *« rare PAR CONSTRUCTION ; s'il apparaît en
+         *    rafale, c'est qu'un descripteur a changé — et c'est le signal »*.
+         *    LE DESCRIPTEUR A CHANGÉ : à trois grandeurs dans une case de 163,
+         *    `y_bas` vaut 168 et **`CPU` comme `GPU` tombent ici à CHAQUE
+         *    reconstruction**, alors qu'aucune des deux ne demande de secondaire.
+         *    Le signal était devenu l'état nominal, c'est-à-dire du bruit — et
+         *    une garde qu'on apprend à ignorer ne garde plus rien (c'est la
+         *    doctrine que `1a31a9d` venait d'appliquer au détail).
+         * ⇒ On journalise ici **la place refusée à une secondaire RÉELLEMENT
+         *    DEMANDÉE**, et `dn_widget_maj` journalise, une seule fois par
+         *    widget, **le texte réellement PERDU** quand il arrive plus tard.
+         *    Deux moments, deux messages, aucun bruit de fond.
          */
-        ESP_LOGW(TAG,
-                 "« %s » : pas de place pour la ligne secondaire "
-                 "(y_bas=%d + %d > h=%d) — %d grandeur(s) sur %d ligne(s), "
-                 "disposition %s%s. La jauge est prioritaire "
-                 "(contrat dn_widget.h / W5).",
-                 desc->titre ? desc->titre : "?", y_bas, W_SEC_H, h, n, n_lignes,
-                 dn_widget_dispo_nom(s_geom.dispo),
-                 (desc->indicateur && jauge_place) ? " + jauge" : "");
+        if (etat && etat->secondaire[0]) {
+            ESP_LOGW(TAG,
+                     "« %s » : pas de place pour la ligne secondaire "
+                     "(y_bas=%d + %d > h=%d) — %d grandeur(s) sur %d ligne(s), "
+                     "disposition %s%s. La jauge est prioritaire "
+                     "(contrat dn_widget.h / W5). Texte PERDU : « %s ».",
+                     desc->titre ? desc->titre : "?", y_bas, W_SEC_H, h, n,
+                     n_lignes, dn_widget_dispo_nom(s_geom.dispo),
+                     (desc->indicateur && jauge_place) ? " + jauge" : "",
+                     etat->secondaire);
+            out->sec_perdue_dite = true;
+        } else {
+            ESP_LOGD(TAG,
+                     "« %s » : aucune ligne secondaire posee (y_bas=%d + %d > "
+                     "h=%d) — et le descripteur n'en demande pas.",
+                     desc->titre ? desc->titre : "?", y_bas, W_SEC_H, h);
+        }
     }
 
     /* Poser l'état une fois de plus : c'est LUI qui décide de la visibilité du
@@ -859,9 +917,16 @@ void dn_widget_maj(const dn_widget_desc_t *desc, const dn_widget_etat_t *etat,
          *    est un `lv_obj_set_pos` par grandeur ; en côte à côte il s'y ajoute
          *    UN `lv_text_get_size` par colonne droite. Le budget est mesuré en
          *    AC12, ⛔ pas supposé négligeable. */
-        if (s_replacer) {
-            valeur_placer(w->valeur[i], i, w->n ? w->n : 1, w->w ? w->w : 225,
-                          fin_gauche, desc, &fin_gauche);
+        /* ⛔ `w->w` N'EST PLUS REMPLACÉ PAR UN 225 RÉCITÉ (revue 2026-08-19) :
+         *    le dépôt écrit « toute valeur affichée est RELUE de l'état réel,
+         *    jamais récitée d'une constante », et ce module vient de purger les
+         *    siennes. Un widget sans largeur mémorisée n'a pas été construit par
+         *    `dn_widget_creer` — le caler sur une largeur DEVINÉE placerait la
+         *    colonne droite au mauvais endroit sans que rien ne le dise. On ne
+         *    repositionne pas : ce qui a été POSÉ fait foi. */
+        if (s_replacer && w->w > 0) {
+            valeur_placer(w->valeur[i], i, w->n ? w->n : 1, w->w, fin_gauche,
+                          desc, &fin_gauche);
         }
         /*
          * 🔴 dn4-1 / W10 — UNE GRANDEUR ABSENTE SE PEINT EN GRIS, MÊME DANS UNE
@@ -892,6 +957,20 @@ void dn_widget_maj(const dn_widget_desc_t *desc, const dn_widget_etat_t *etat,
     if (w->sec) {
         lv_label_set_text(w->sec, (etat && etat->secondaire[0]) ? etat->secondaire
                                                                 : "");
+    } else if (etat && etat->secondaire[0] && !w->sec_perdue_dite) {
+        /* 🔴 LA PERTE EST DITE LÀ OÙ ELLE A LIEU (revue 2026-08-19). Sans ce
+         *    bloc, un texte secondaire qui arrive APRÈS la construction sur une
+         *    case dont la géométrie n'a pas gardé la ligne disparaissait sans un
+         *    mot — la panne muette que le log de `dn_widget_creer` existe pour
+         *    fermer, déplacée d'un cran. ⚠️ UNE SEULE FOIS par widget : en régime
+         *    ce chemin est parcouru 5 fois par seconde, et le port série EST le
+         *    transport. */
+        w->sec_perdue_dite = true;
+        ESP_LOGW(TAG,
+                 "« %s » : texte secondaire PERDU — la geometrie n'a pas garde "
+                 "la ligne (voir le log de construction). Texte : « %s ». "
+                 "⚠️ Ce message ne sortira qu'UNE fois pour cette case.",
+                 desc && desc->titre ? desc->titre : "?", etat->secondaire);
     }
     if (w->badge) {
         if (r == DN_VAL_SIMULEE) {

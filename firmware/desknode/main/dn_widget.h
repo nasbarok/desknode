@@ -263,23 +263,46 @@ typedef struct {
      *    la jauge comme pour la secondaire. Un abandon silencieux était LE défaut.
      *
      * ── L'ARITHMÉTIQUE, POSÉE AVANT LE CODE ET RELUE DANS `dn_widget.c` ───────
-     * (h = 156, `val_y` = 48, `val_pas` = 40, `W_JAUGE_H` = 10, `W_SEC_H` = 20 ;
-     *  la jauge consomme `W_JAUGE_H + 10` = 20 px, pas 26 ; `y_bas` est calculé
-     *  sur le nombre de LIGNES, qui n'est le nombre de grandeurs qu'en EMPILÉ.)
+     * 🔴 RECALCULÉE SUR LA GÉOMÉTRIE **LIVRÉE** (revue de code du 2026-08-19) :
+     *    la table ci-dessous était restée à `h = 156`, c'est-à-dire à l'AVANT-D12,
+     *    alors que le défaut gravé est `DN_UI_CASE_H = 163`. Ses conclusions
+     *    étaient justes, ⛔ mais toutes ses valeurs de référence étaient périmées
+     *    d'un cran — le motif exact du « 156 px » en dur que dn4-6 a supprimé de
+     *    `dn_console.c`. Un contrat qui ne dit pas ce que le code fait a déjà
+     *    coûté à ce dépôt un A/B mesuré DEUX FOIS sur la même branche.
+     *
+     * (h = **163** (D12), `val_y` = 48, `val_pas` = 40, `W_JAUGE_H` = 10,
+     *  `W_SEC_H` = 20 ; la jauge consomme `W_JAUGE_H + 10` = 20 px, pas 26 ;
+     *  `y_bas` est calculé sur le nombre de LIGNES, qui n'est le nombre de
+     *  grandeurs qu'en EMPILÉ ; `lh_val` = 35 pour `dn_font_28`.)
      *
      *   lignes  jauge   y_bas   + jauge        + secondaire
      *   -----------------------------------------------------------------
-     *     1     non      88        —           108 <= 156   sec OUI
-     *     1     oui      88      108           128 <= 156   sec OUI     (RAM)
-     *     2     non     128        —           148 <= 156   sec OUI
-     *     2     oui     128      148           168 >  156   sec NON  (journalisé)
-     *     3     oui     168   188 > 156        🔴 JAUGE HORS CASE  <- dn4-6
-     *     4     oui     208   228 > 156        🔴 JAUGE HORS CASE  <- dn4-6
+     *     1     non      88        —           108 <= 163   sec OUI
+     *     1     oui      88      108           128 <= 163   sec OUI     (RAM)
+     *     2     non     128        —           148 <= 163   sec OUI
+     *     2     oui     128      148           168 >  163   sec NON  (journalisé)
+     *     3     non     168        —           188 >  163   sec NON  <- CPU, GPU
+     *     3     oui     168   188 > 163        🔴 JAUGE HORS CASE  <- dn4-6
+     *     4     oui     208   228 > 163        🔴 JAUGE HORS CASE  <- dn4-6
      *
-     * ⚠️ AUCUNE DES SIX CASES NE DÉCLENCHE LE DÉFAUT AUJOURD'HUI : `RAM` est la
-     *    seule à `indicateur = true` et elle est à une ligne. C'est EXACTEMENT ce
-     *    qui l'a laissé passer deux fois. Le témoin se PROVOQUE (`widget demo`,
-     *    descripteur à n ≥ 3 AVEC jauge), il ne s'observe pas en régime.
+     * 🔴 LIRE LA LIGNE « 3 non » : C'EST L'ÉTAT LIVRÉ, PAS UN CAS LIMITE.
+     *    Les trois valeurs TIENNENT (bas de la 3ᵉ = 48 + 2x40 + 35 = 163 = h,
+     *    pile), mais `y_bas` vaut déjà 168 ⇒ **`CPU` et `GPU` n'ont NI jauge NI
+     *    secondaire**, et l'abandon de la secondaire est le régime NOMINAL.
+     * ⛔ C'est pourquoi son `ESP_LOGW` ne se déclenche plus que si un texte
+     *    secondaire est RÉELLEMENT perdu (revue 2026-08-19) : journalisé à chaque
+     *    reconstruction pour deux cases qui n'en demandent pas, il serait devenu
+     *    une garde qui crie au loup — et une garde qu'on apprend à ignorer ne
+     *    garde plus rien.
+     *
+     * ⚠️ AUCUNE DES SIX CASES NE DÉCLENCHE LE DÉFAUT **DE LA JAUGE** AUJOURD'HUI :
+     *    `RAM` est la seule à `indicateur = true` et elle est à une ligne. C'est
+     *    EXACTEMENT ce qui l'a laissé passer deux fois. Le témoin se PROVOQUE
+     *    (`widget demo`, descripteur à n >= 3 AVEC jauge), il ne s'observe pas en
+     *    régime. ⚠️ Et `widget demo on <n>` RECONSTRUIT désormais la démo quand
+     *    `n` change, même si elle est déjà posée — sans quoi le témoin n'était pas
+     *    joué et la console annonçait le contraire (revue 2026-08-19).
      *
      * ⚠️ CE QUE ÇA NE CHANGE PAS, ET QUI SE VÉRIFIE : `RAM` GARDE sa jauge ET son
      *    « 12,1 / 32 Go ». Vérifié par `widget` (`RAM 1 OUI OUI`), pas supposé.
@@ -356,6 +379,14 @@ typedef struct {
      *    les pointeurs et jamais la demande. */
     uint8_t n;        /* grandeurs RÉELLEMENT posées */
     int16_t w;        /* largeur de la case, pour le calage à droite */
+    /* ⚠️ dn4-6 / revue 2026-08-19 — VERROU ANTI-RÉPÉTITION. La perte d'un texte
+     *    secondaire se journalise là où elle a lieu (dans `dn_widget_maj`, quand
+     *    un texte arrive sur un `sec` qui n'existe pas), ⛔ pas à la construction
+     *    d'une case qui n'en demandait aucun. Sans ce verrou le message sortirait
+     *    à la cadence des mises à jour, soit 5 fois par seconde en régime — et un
+     *    log en rafale sur le port qui EST le transport n'est pas un instrument,
+     *    c'est une charge. */
+    bool sec_perdue_dite;
 } dn_widget_t;
 
 /*
@@ -436,7 +467,9 @@ uint32_t dn_widget_piste(void);
  *   lignes du draw buffer coûtent 2,0 flushes, pas 1,0. Un widget à N enfants
  *   qui changent coûterait donc N flushes, chacun attendant sa trame.
  * `true` : l'invalidation est coupée le temps d'écrire les enfants, puis le
- *   CONTENEUR est invalidé une fois — une seule zone sale de 225 x 156 px.
+ *   CONTENEUR est invalidé une fois — une seule zone sale de `CASE_W x CASE_H`
+ *   (⛔ pas un chiffre récité : la case a mesuré 156 px avant D12 et 163 après,
+ *   et l'aire par flush a suivi — 35 100 px puis 36 675, MESURÉS en AC12).
  *
  * ⚠️ CE N'EST PAS UNE OPTIMISATION ACQUISE : c'est l'hypothèse qu'AC8 doit
  *    FALSIFIER, et le dépôt a déjà vu une prédiction démentie d'un facteur 10
@@ -574,12 +607,38 @@ int dn_widget_largeur_utile(int w);
 /* La gouttière minimale entre deux colonnes en côte à côte. */
 int dn_widget_gouttiere(void);
 
-/* Combien de chevauchements côte à côte ont été DÉTECTÉS depuis le dernier
+/* Combien de chevauchements CÔTE À CÔTE ont été DÉTECTÉS depuis le dernier
  * `dn_widget_chevauchements_reset()`. ⚠️ Un chevauchement est journalisé ET
  * compté : LVGL clipperait sans un mot, et « rien n'a planté » n'est pas
- * « ça tient » (piège d'instrument n°13). */
+ * « ça tient » (piège d'instrument n°13).
+ * 🔴 ⛔ CE COMPTEUR NE VOIT QUE LE CÔTE À CÔTE, ET C'EST ÉCRIT ICI PARCE QUE
+ *    L'EN-TÊTE PROMETTAIT « ÇA NE TIENT PAS EN LARGEUR » TOUT COURT (revue
+ *    2026-08-19). En `EMPILE` — LA DISPOSITION LIVRÉE — il n'y a aucune colonne
+ *    droite à caler, donc AUCUN appel à cette détection : une valeur seule plus
+ *    large que les 201 px utiles était clippée en silence, et le compteur
+ *    restait à zéro en le certifiant. ⇒ voir `dn_widget_trop_larges()`. */
 uint32_t dn_widget_chevauchements(void);
 void dn_widget_chevauchements_reset(void);
+
+/*
+ * ── LA VALEUR TROP LARGE EN COLONNE UNIQUE — LE TROU QUE LE CÔTE À CÔTE CACHAIT
+ *
+ * 🔴 CE COMPTEUR EXISTE PARCE QUE LA DISPOSITION LIVRÉE EST CELLE QUI N'AVAIT
+ *    PAS D'INSTRUMENT. `valeur_placer()` ne mesure la largeur que s'il y a une
+ *    colonne DROITE à caler ; en `EMPILE` la branche gauche retourne sans rien
+ *    mesurer. Or la marge est mince ET MESURÉE : « c.max 100,0 % » fait **197 px
+ *    pour 201 utiles** (AC5, §18.2). Quatre pixels.
+ * ⚠️ LA MESURE EST FAITE À LA CONSTRUCTION, ⛔ PAS À CHAQUE MISE À JOUR : dn4-6
+ *    a retiré exprès les 15 `lv_text_get_size()` par seconde du chemin de MAJ
+ *    (ils tournaient sous le verrou LVGL, pour rien en EMPILE), et les y remettre
+ *    rouvrirait le budget que §18.9 vient de payer au bounce buffer.
+ * ⚠️ CE QUE ÇA NE VOIT DONC PAS, ET IL FAUT LE SAVOIR : une valeur qui devient
+ *    trop large ENTRE deux reconstructions. `widget largeur` reste l'instrument
+ *    du PIRE CAS, celui-ci celui de l'ÉTAT POSÉ — ⛔ ni l'un ni l'autre seul ne
+ *    tranche, c'est déjà écrit en toutes lettres dans AC5.
+ */
+uint32_t dn_widget_trop_larges(void);
+void dn_widget_trop_larges_reset(void);
 
 /*
  * ── LE DÉBORDEMENT VERTICAL — LE PENDANT EXACT DU CHEVAUCHEMENT ──────────────
