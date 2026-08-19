@@ -146,6 +146,41 @@ natif `303a:1001`, aucun périphérique `1A86`). **Elle mélange les variantes 2
 correctement le capteur (3V3 + GND aux mêmes rangs) mais lui envoie l'UART à la place de l'I²C :
 le composant reste muet, et rien ne signale l'erreur. **La sérigraphie fait foi, pas la position.**
 
+### 🔴 13.1 bis LE HEADER 2×12 — IL N'Y EN A QU'**UN**, ET LE DÉPÔT ÉCRIVAIT « GAUCHE » ET « DROIT » COMME S'IL Y EN AVAIT DEUX (`dn4-2`, 2026-08-19)
+
+**Sérigraphie relue sur `docs/cablage/2026-08-16_2228-carte-embases-jst-jumelles-i2c-uart.jpg`** —
+une photo **versée au dépôt depuis le 2026-08-17** et jamais relue à ce niveau de détail — puis
+**CONFIRMÉE PAR CONSTAT OWNER, carte en main** (2026-08-19) : *« UN seul »*.
+
+| Rangée | Position 1 → 12 |
+|---|---|
+| **A** | `5V · BAT · G · **33** · **34** · **35** · **36** · **37** · **RXD** · **TXD** · 3V3 · G |
+| **B** | `5V · VCC · G · D- · D+ · 0 · 4 · 16 · **SCL** · **SDA** · 3V3 · G` |
+
+🔴 **CE QUE ÇA CORRIGE.** `§14.3` de `…-affichage.md` et l'entrée de ledger correspondante parlent du
+*« header 2×12 **DROIT** »* (les broches PSRAM), et la story `dn4-2` du *« header 2×12 **GAUCHE** »*
+(l'accès I²C) — **comme s'il s'agissait de deux connecteurs distincts**. Il n'y en a qu'un :
+**« gauche » et « droite » désignaient les deux RANGÉES du même header**, et personne ne l'avait
+écrit. ⚠️ **Ce n'est pas une contradiction du brief ni de l'epic** (ni l'un ni l'autre ne parle de
+headers) ⇒ **pas de `[CC]`** : c'est une imprécision de `hardware/`, corrigée ici.
+
+🔴 **ET ÇA ARME UN PIÈGE QUI EST LE JUMEAU EXACT DE CELUI DES DEUX EMBASES JST — MAIS À 2,54 mm.**
+`RXD` et `TXD` sont en **positions 9 et 10 de la rangée A**, c'est-à-dire **exactement derrière
+`SCL` et `SDA`**. Se tromper de rangée **alimente correctement le capteur** (`3V3`/`G` sont en 11-12
+sur les **deux** rangées) et **lui envoie l'UART** : le composant reste muet, **et rien ne le
+signale** — le symptôme de la mauvaise soudure, pour la troisième fois dans ce dossier.
+⇒ **La rangée B se reconnaît à ce qu'elle porte aussi `D- · D+ · 0 · 4 · 16`.**
+**La sérigraphie fait foi, pas la position.**
+
+⚠️ **Conséquence sur le piège PSRAM (`§14.3`, AC3 de `dn4-2`)** : `33..37` ne sont pas sur *« un autre
+header »*, ils sont sur **le même connecteur, une rangée plus loin**. La parade tient — l'I²C est un
+bus, aucune de ces broches n'est consommée — mais **le risque de contact accidentel est plus élevé
+que la doc ne le laissait croire**, et l'entrée de ledger reste **OUVERTE** pour cette raison de plus.
+
+✅ **Et un gain, mesuré sur la même sérigraphie** : `3V3` et `G` sont en **positions 11-12 des DEUX
+rangées** ⇒ **deux masses et deux 3V3 disponibles**, de quoi alimenter la guirlande *et* tirer
+`ADDR` du BH1750 à la masse sans se battre pour un point unique.
+
 ---
 
 ## 13.2 🔴 LE SCAN DE BUS À UNE SEULE PASSE FABRIQUE DES FAUX POSITIFS — ET IL EN A FABRIQUÉ UN À 0x76
@@ -1276,3 +1311,218 @@ contre un quartz qui en demanderait 12,5) — mais **la mesure ne le prouve pas 
 descendre à **2 048 o** et rendre ~2 Ko de RAM interne. ⛔ Non fait ici : le budget n'est pas
 contraint aujourd'hui, et la marge protège contre un `printf` ajouté plus tard. **Le chiffre est
 publié pour que la décision soit une mesure, pas une intuition.**
+
+---
+
+## 13.16 🔴 SÉANCE `dn4-2` (2026-08-19) — T0, ET L'INSTRUMENT RÉPARÉ **AVANT** LE FER
+
+### 13.16.1 T0 — le point de départ, prouvé sur `df5d23d` (SHA **LU AU BANDEAU**)
+
+**Protocole** : arbre `~/projects/desknode` **propre** (`git status --porcelain` vide, vérifié
+**AVANT** le flash), `idf.py build`, `idf.py -p /dev/ttyACM0 flash`, puis `dn_console.py --reset`
+pour capturer depuis la **première ligne**. `App version: df5d23d` **lu au bandeau**, ⛔ pas déduit
+du dépôt. Aucun `idf.py monitor` ouvert.
+
+| Grandeur | T0 mesuré (`df5d23d`) | Référence `dn4-6` (`1156eac`) | Écart |
+|---|---|---|---|
+| Binaire | **943 712 o** | 943 712 o | **0,00 %** |
+| RAM interne libre | **92 219 o** | 92 315 o | **−0,10 %** |
+| PSRAM libre | **7 768 236 o** | 7 768 236 o | **0,00 %** |
+| Tas LVGL utilisé | **20 468 o (33 %)** | 20 504 o (34 %) | **−0,18 %** |
+| Plus gros bloc libre | **40 752 o** | 40 752 o | **0,00 %** |
+| Fragmentation | **3 %** | 2 % | +1 pt |
+| `fps 15` | **37,40 Hz**, écart **+0,00 %** | 37,40 Hz, +0,00 % | **0,00 %** |
+| Boot | **2 319 ms** | 2 321 ms | −0,09 % |
+| `nav ab 40` (n=80) | **291,1 / 335,2 / 398,7 ms** | 334,4 (291,1 / 396,7) | +0,8 ms sur la moyenne |
+
+✅ **GATE D'ARRÊT PASSÉE** : aucun écart > 2 % sur `fps`, aucun > 5 % sur un budget mémoire.
+⚠️ Le +0,8 ms de `nav ab` est **très en dessous des ±16 ms de bruit sur n=40** — ⛔ ce n'est pas un
+verdict, c'est du bruit, et c'est dit.
+⚠️ **Instruments modifiés depuis la dernière séance carte : AUCUN** — HEAD est resté `df5d23d`,
+c'est-à-dire exactement le commit de la séance post-revue de `dn4-6`. Les chiffres de `dn4-6` ne
+sont donc pas morts, et cette table le **confirme par la mesure** plutôt que par le raisonnement.
+
+**Gardes des marches du dessous, toutes vertes** : BME680 `VIVANT`, config `LUE (conforme)`
+(`0x72=04 · 0x74=84 · 0x75=08`), cadence **4 999 ms**, `err_i2c` **0** · RTC `0x51` **FIABLE**,
+bit `OS` **0**, témoin anti-fantôme `0xD7` **relu au boot ET en régime** · GT911 **0 erreur I²C**.
+Bandeau de boot : **aucune ligne d'erreur nouvelle**. La seule qui reste est
+`E gpio_install_isr_service already installed` (ligne 123 de la capture), **nommée et rattachée** —
+c'est le sujet d'AC11, fermé par cette story.
+
+**Couple encadrant à 5 devices** (la référence que AC8 devra battre à 8) : `touch` avant / 5 scans
+`i2c` / `touch` après ⇒ **0 erreur I²C induite**. Scan sain : **27-31 ms**.
+
+---
+
+### 13.16.2 🔴 CONSTAT NEUF À T0 — `dn_console.py` PERD DES LIGNES, ET LA PERTE EST INVISIBLE
+
+**Ce n'est pas une impression de lecture, c'est une violation arithmétique.** La commande `i2c`
+imprime N lignes `0xNN n/5`, **puis** un bilan `« X stable(s), Y instable(s) »`, **puis** un verdict
+de témoin positif — les trois produits par le **même** firmware, dans la **même** passe. L'invariant
+`N == X + Y` ne peut pas être faux côté carte.
+
+| Mode | Passes | Captures violant `N == X+Y` |
+|---|---|---|
+| **LOT** (`dn_console.py "i2c" "i2c" …`) | **20** | 🔴 **6** |
+| **SOLO** (une commande, un processus) | **5** | ✅ **0** |
+
+**Les deux pires, et elles touchent les TÉMOINS** :
+- une passe rend **5 lignes pour un bilan de 6**, `0x5D` **absent de la liste** — or `0x5D` est
+  **l'un des deux témoins positifs**, et le verdict imprimé juste en dessous dit
+  **« ✅ témoin positif OK »**, ce que `dn_console.c:4471-4473` ne peut produire **que si `0x5D` a
+  été vu STABLE**. ⇒ **la liste ment, le verdict dit vrai, et rien ne signale le désaccord** ;
+- deux passes rendent **4 lignes pour un bilan de 5**, `0x20` (**l'autre témoin**) absent ;
+- une passe est rendue **vide**, une autre recolle **11 lignes** sous un bilan de 6.
+
+🔴 **POURQUOI C'EST EXACTEMENT LE DÉFAUT QUE `dn4-2` NE POUVAIT PAS SE PERMETTRE** : une ligne
+perdue produit *« l'adresse `0x23` n'est pas là »* sur un BH1750 **qui répond** — juste avant qu'on
+décide de dessouder. C'est le faux négatif de §13.2, mais fabriqué **côté hôte**, là où aucun
+compteur ne regarde.
+
+⚠️ **VARIABLE CAUSALE NON ISOLÉE, ET C'EST ÉCRIT PLUTÔT QUE DEVINÉ.** Budget d'essais dépensé :
+**2 A/B, 30 passes de contrôle** (15 avec `--capture`, 15 sans) — **aucune n'a reproduit**. Deux
+mécanismes candidats, aucun prouvé : `ser.reset_input_buffer()` appelé **avant** l'écriture de la
+commande suivante (`tools/dn_console.py:170`), et `nettoyer()` (`:154-166`) qui coupe *« jusqu'à la
+première ligne qui se termine par la commande »*. ⇒ **Le défaut est RÉEL, INTERMITTENT, et son
+déclencheur reste OUVERT.**
+
+✅ **PARADE APPLIQUÉE DANS TOUTE CETTE STORY, et elle ne dépend d'AUCUNE hypothèse causale** :
+1. **toute passe publiée vient d'une invocation SOLO** ;
+2. **l'invariant `lignes == stables + instables` est vérifié sur chaque capture avant publication.**
+Il aurait attrapé les six, qu'elles viennent de l'USB ou du nettoyage.
+
+---
+
+### 13.16.3 ✅ AC4 SOLDÉ — l'instrument couvre les TROIS capteurs, et il est **PROUVÉ SUR DU CONNU**
+
+**Firmware `62e5f1d`, SHA LU AU BANDEAU**, `git status --porcelain` vérifié **VIDE AVANT** le flash.
+Critères d'arbitrage : §13.6 quater, **écrits et horodatés AVANT d'ouvrir le code**.
+
+#### Les témoins POSITIFS — chaque primitive reproduit une valeur DÉJÀ PUBLIÉE par ce dépôt
+
+| # | Transaction | Rendu | Ce que ça prouve |
+|---|---|---|---|
+| 1 | `i2c lire 77 D0` | **`61`** | ✅ le chemin **existant** est intact |
+| 2 | `i2c lire 77 89 16` | **`40 43 68 03 00 18 8A 92 D7 58 00 C7 1E 5C FF 1F`** | ✅ **identique OCTET POUR OCTET** au bloc d'étalonnage relevé deux fois en `dn2-1` |
+| 3 | `i2c lire 77 E1 16` | **`42 4E 1E 00 2D 14 78 9C CD 66 9D D3 E6 12 E6 00`** | ✅ idem, second bloc |
+| 4 | **`i2c ecrire 77 D0`** | **ACQUITTÉ**, `1 octet ENVOYÉ` | ✅ **écriture NUE** — le pointeur du BME680 est posé **sans lecture** |
+| 5 | **`i2c brut 77 1`** | **`61`** | 🔴 **LE TÉMOIN CROISÉ** : le chip id relu **SANS index**, parce que (4) avait posé le pointeur. ⇒ `ecrire` et `brut` **coopèrent à travers DEUX invocations séparées** — c'est **exactement** le protocole que le BH1750 exigera (opcode, attente ≥ 180 ms, lecture) |
+| 6 | **`i2c lire16 5D 8140 4`** | **`39 31 31 00`** | 🔴 = **`"911\0"` en ASCII**, le Product ID du GT911 — que `touch` publie déjà (`identite : « 911 »`). ✅ **L'index 16 bits fonctionne, prouvé sur un composant SOUDÉ dont la valeur était connue d'avance** |
+
+#### Les témoins NÉGATIFS — sans eux, un témoin positif peut être une coïncidence
+
+| Transaction | Rendu | Ce que ça écarte |
+|---|---|---|
+| `i2c lire 5D 40 4` (index **8 bits** sur un device **16 bits**) | `00 20 0A FE` | 🔴 **PAS `39 31 31`.** ⇒ l'ancien instrument **ne peut structurellement pas** lire ce que le neuf lit — la primitive n'est pas décorative |
+| `i2c lire16 5D 0140 4` (mauvais index 16 bits) | `00 00 00 00` | ⇒ `"911"` ne sort **pas par accident** : c'est bien l'index `8140` qui le produit |
+| `i2c lire16 80 0000` | **refus expliqué**, bornes annoncées | `0x78-0x7F` sont RÉSERVÉES par la spec I²C |
+| `i2c ecrire 23 GG` | **refus**, `⛔ RIEN N'A ÉTÉ ENVOYÉ` | ⇒ la validation est **AVANT** l'écriture — une écriture partielle laisserait un état qu'on ne sait pas nommer |
+| `i2c brut 77 99` | **refus**, bornes `1..16` | ⛔ jamais d'écrêtage silencieux |
+
+#### Non-régression, mesurée après avoir exercé les primitives sur le bus
+
+| Garde | Après |
+|---|---|
+| GT911 | **0 erreur I²C / 2 426 lectures** — et `0x5D` a pourtant reçu une écriture d'index 16 bits |
+| BME680 | **`VIVANT`**, config `LUE (conforme)`, cadence **4 999 ms**, cycle **25 ms**, `err_i2c` **0** |
+
+#### Le coût
+
+| | Avant (`df5d23d`) | Après (`62e5f1d`) | Δ |
+|---|---|---|---|
+| Binaire | 943 712 o | **948 944 o** | **+5 232 o** (partition **77 %** libre) |
+| Coût en **régime** | — | — | ⛔ **ZÉRO** — aucune tâche, aucun timer, aucune allocation permanente, aucune boucle, aucun `vTaskDelay` |
+
+*(Référence historique : la commande `i2c` complète avait coûté +4 400 o en `dn2-1`.)*
+
+⇒ **Le repli « qualification par stimulus physique » n'a PAS eu à être dégainé** : le budget d'essais
+annoncé était de **3 variantes**, **une seule a été nécessaire**. Le stimulus reste néanmoins la
+voie de qualification du **BH1750**, non par repli mais **parce qu'il n'a aucun registre d'identité**
+(AC6).
+
+---
+
+### 13.16.4 🔴 LES DÉCISIONS DE T5 — prises AVANT le fer, et l'owner a corrigé le plan
+
+**Toutes datées du 2026-08-19, toutes owner.** Elles sont écrites **avant** le geste, parce qu'après
+il n'y a pas de retour en arrière.
+
+#### Y2 — La topologie : l'owner a demandé de PIQUER, et il avait raison
+
+**Demande owner, verbatim** : *« heu je ne peux pas les piquer dans la barre de connectique ? »*
+
+⇒ **Il y a DEUX jonctions, et une seule demande le fer** — ce que ni la story ni l'epic n'avaient
+séparé :
+
+| Jonction | Verdict |
+|---|---|
+| **Côté CARTE** (header 2×12) | ✅ **Rien à souder** — le header est **déjà soudé**, des Dupont femelles s'y piquent |
+| **Côté BREAKOUT** | 🔴 **Il FAUT souder** — les trois barrettes sont **fournies non soudées** (constaté sur les 9 photos) |
+
+🔴 **ET C'EST MESURÉ, PAS SUPPOSÉ** : `dn2-1` a essayé exactement *« barrette insérée, non soudée »*.
+§13.5 en garde les deux lignes — **hypothèse 3** *« contact mécanique absent »* → **« ÉLIMINÉE POUR
+L'ALIMENTATION »** (les 3,3 V arrivaient bien), et **hypothèse 6** *« les fils de signal n'arrivent
+pas, trous non soudés côté `SDA`/`SCL` »* → ✅ **« CONFIRMÉE — C'ÉTAIT ELLE »**.
+⇒ **Une barrette posée conduit CERTAINES broches et pas d'autres.** C'est **pire** qu'un contact
+absent : le capteur est alimenté, il a l'air vivant, et il ne répond jamais. Ça a coûté une séance.
+
+✅ **Compatible avec D9, et vérifié dans son texte plutôt que supposé** : D9 justifie le soudé par
+*« un Dupont n'est donné que pour quelques dizaines d'insertions »* — la contrainte visait les
+**insertions RÉPÉTÉES**. Un connecteur piqué **une fois** et laissé en place n'en fait pas des
+dizaines. ⇒ **Barrette soudée au breakout + Dupont côté carte** satisfait la raison de D9 et garde
+le montage démontable.
+
+⚠️ **UNE PRÉMISSE D'AC9 BOUGE, ET C'EST ÉCRIT PLUTÔT QUE LAISSÉ FILER.** D9 concluait *« en soudé,
+plus aucun débranchement à chaud sans dessouder »*, et **AC9 en tire que la saturation logicielle est
+« la seule voie restante »**. Avec des Dupont côté carte, **le débranchement à chaud du GROUPE
+redevient possible** (⛔ pas module par module : la guirlande, elle, est soudée). ⇒ **AC7 (a) par le
+fil redevient jouable**, et le mode « capteur fantôme » (§13.10) **redevient testable** — c'est un
+**gain**. AC9 reste dû : trois devices de plus rendent la saturation réellement neuve.
+
+#### Y4 — `ADDR` du BH1750 : **fil vers `GND`** (décision owner)
+
+La datasheet ROHM ne définit `0x23` que pour **`ADDR ≤ 0,3 × VCC`** ; **flottant est INDÉFINI**.
+⇒ `0x23` devient **déterministe** pour le prix d'un fil. Le laisser en l'air aurait été accepter
+qu'une adresse instable ressemble un jour à l'un des **~15 faux positifs** que le scan de cette carte
+fabrique (§13.2).
+
+#### `XSHUT` du ToF : **fil vers `3V3`** — ce n'est pas une option
+
+Basse ou flottante, **la puce reste en shutdown et n'acquitte pas** : le symptôme **exact** de la
+mauvaise soudure. Aucune photo ne dit si ce breakout la tire déjà haut ⇒ ⛔ **cela ne se suppose
+pas**, on la tire.
+
+#### `INT` du ToF : **NON CÂBLÉ** — c'est AC11
+
+Décision écrite et entrée de ledger **fermée** : aucune broche d'interruption n'est câblée, le
+polling suffit.
+
+#### L'INA219 **EN SÉRIE** : décision owner = **PAS MAINTENANT**
+
+⚠️ La question a d'abord été **mal comprise** — l'owner a répondu sur la **guirlande** (chaîner les
+modules) alors qu'elle portait sur le **shunt** (faire passer un courant à mesurer par `Vin+`/`Vin-`).
+**Reposée en la distinguant explicitement**, la réponse est : **bus seulement**.
+⇒ `Vin+` et `Vin-` **restent libres**, le **bornier à vis reste NON SOUDÉ**, et l'INA219 est un
+device de plus sur le bus, qualifié par `i2c lire 40 00 2` → **`39 9F`**. **`dn4-3` décidera ce qu'il
+mesure.** ✅ *La réponse est écrite, même négative* — c'était l'exigence de la question n°2 du cadrage.
+
+#### Le tableau ANTI-MIROIR de la guirlande, écrit avant le fer
+
+🔴 **Le BH1750 et le ToF ont `SDA`/`SCL` dans l'ordre INVERSE l'un de l'autre.** Câbler « en face »
+les croise.
+
+| Signal du bus | **BH1750** | **ToF** | **INA219** |
+|---|---|---|---|
+| `3V3` | `VCC` — br. **1** | `VIN` — br. **1** | `Vcc` — br. **6** |
+| `GND` | `GND` — br. **2** | `GND` — br. **2** | `Gnd` — br. **5** |
+| `SDA` | `SDA` — br. **4** | `SDA` — br. **3** | `Sda` — br. **3** |
+| `SCL` | `SCL` — br. **3** | `SCL` — br. **4** | `Scl` — br. **4** |
+
+Plus : **`ADDR`** (BH1750, br. 5) → `GND` · **`XSHUT`** (ToF, br. 6) → `3V3` ·
+⛔ **`INT`** (ToF, br. 5), **`Vin+`/`Vin-`** (INA219, br. 1-2) → **rien**.
+
+**Point d'entrée sur la carte** : header **rangée B**, les 4 broches contiguës de bout de rangée
+`SCL · SDA · 3V3 · G`. ⛔ **`RXD`/`TXD` sont juste derrière** (§13.1 bis).
+⚠️ **Le BME680 reste sur l'embase JST** : le bus aura donc **deux points d'entrée physiques**, ce qui
+est sans conséquence électrique — c'est le même bus — mais doit être **photographié** (AC5).
+

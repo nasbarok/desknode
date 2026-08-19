@@ -4519,6 +4519,87 @@ static int i2c_lire_brut(uint8_t addr, int n)
     return 0;
 }
 
+/* ── `i2c rafale <ms>` — SATURATION DU BUS, l'instrument d'AC9 (dn4-2) ──────
+ *
+ * 🔴 POURQUOI IL EXISTE : D9 a soude les capteurs, donc AC7 (a) de dn2-1 — le
+ *    tactile pendant une perturbation ELECTRIQUE du bus — ne peut plus se
+ *    rejouer en debranchant un fil. La variante logicielle (saturer le bus de
+ *    sondages pendant que l'owner appuie) « n'est plus l'information marginale
+ *    qu'elle etait le 17/08 : c'est la seule voie restante ».
+ *
+ * ⛔ POURQUOI CE N'EST PAS `i2c` DANS UNE BOUCLE HOTE : `i2c` est une passe
+ *    UNIQUE et BLOQUANTE qui IMPRIME. Une boucle cote `dn_console.py` ferait
+ *    passer chaque passe par le REPL — donc par le transport — et noierait la
+ *    capture. Pire : T0 de dn4-2 a mesure que le pilote PERD DES LIGNES quand on
+ *    lui passe plusieurs commandes (6 captures sur 20, §13.16.2). L'instrument
+ *    d'AC9 ne pouvait donc pas etre une boucle hote.
+ *
+ * ⚠️ ELLE BLOQUE LE REPL PENDANT TOUTE SA FENETRE, et c'est VOULU : l'owner
+ *    appuie sur la dalle, il ne tape pas. La fenetre est BORNEE et ANNONCEE, et
+ *    l'appelant doit passer `--timeout` en consequence — sinon le pilote annonce
+ *    une carte muette sur une carte qui va parfaitement bien (piege mesure en
+ *    dn2-2 avec `cpu 30`).
+ *
+ * ⚠️ AUCUNE ECRITURE DE DONNEE : `i2c_master_probe()` n'emet qu'une adresse et
+ *    lit l'acquittement, a 400 kHz, borne a 0x08..0x77 donc hors adresses
+ *    reservees. Aucun risque electrique ni thermique — c'est ecrit pour que
+ *    personne n'ait a le re-etablir en seance.
+ *
+ * ⛔ ELLE N'IMPRIME RIEN AVANT LA FIN : imprimer par passe noierait la capture
+ *    et changerait la cadence qu'on pretend mesurer.
+ */
+#define DN_I2C_RAFALE_MS_MIN 1000
+#define DN_I2C_RAFALE_MS_MAX 30000
+static int i2c_rafale(int duree_ms)
+{
+    i2c_master_bus_handle_t bus = dn_display_i2c_bus();
+    if (!bus) {
+        printf("bus I2C absent — dn_display_init() n'a pas tourne\n");
+        return 1;
+    }
+    printf("rafale de sondages sur 0x08..0x77 pendant %d ms — le REPL est BLOQUE\n",
+           duree_ms);
+    printf("⚠️ APPUYER SUR LA DALLE MAINTENANT. Aucune ecriture de donnee n'est\n");
+    printf("   emise : que des adresses a 400 kHz.\n");
+
+    int64_t t0 = esp_timer_get_time();
+    int64_t fin = t0 + (int64_t)duree_ms * 1000;
+    uint32_t passes = 0, sondages = 0, acquits = 0, timeouts = 0;
+    while (esp_timer_get_time() < fin) {
+        for (uint8_t a = 0x08; a <= 0x77; a++) {
+            esp_err_t e = i2c_master_probe(bus, a, DN_I2C_SCAN_TIMEOUT_MS);
+            sondages++;
+            if (e == ESP_OK) {
+                acquits++;
+            } else if (e == ESP_ERR_TIMEOUT) {
+                timeouts++;
+            }
+        }
+        passes++;
+    }
+    int64_t reel_us = esp_timer_get_time() - t0;
+    int64_t reel_ms = reel_us / 1000;
+
+    printf("--- rafale ------------------------------------------------\n");
+    printf("  duree DEMANDEE  : %d ms\n", duree_ms);
+    printf("  duree REELLE    : %lld ms\n", (long long)reel_ms);
+    printf("  passes completes: %lu\n", (unsigned long)passes);
+    printf("  sondages emis   : %lu\n", (unsigned long)sondages);
+    if (reel_ms > 0) {
+        printf("  CADENCE         : %lld sondages/s  (%lld passes/s)\n",
+               (long long)((int64_t)sondages * 1000 / reel_ms),
+               (long long)((int64_t)passes * 1000 / reel_ms));
+    }
+    printf("  acquittements   : %lu\n", (unsigned long)acquits);
+    printf("  timeouts        : %lu\n", (unsigned long)timeouts);
+    printf("⚠️ ces compteurs decrivent la RAFALE, pas le tactile. Le verdict\n");
+    printf("   d'AC9 se lit dans `touch` AVANT et APRES — et dans ce que\n");
+    printf("   l'owner RESSENT : un compteur ne peut pas repondre a « le\n");
+    printf("   tactile est-il fache ».\n");
+    printf("-----------------------------------------------------------\n");
+    return 0;
+}
+
 /* ── `i2c lire16 <addr> <reg16> [n]` — INDEX DE REGISTRE SUR 2 OCTETS ───────
  * MSB d'abord, comme l'exige le VL6180X (ST, IDENTIFICATION__MODEL_ID). */
 static int i2c_lire_registre16(uint8_t addr, uint16_t reg, int n)
@@ -4679,12 +4760,33 @@ static int cmd_i2c(int argc, char **argv)
         return i2c_ecrire_nu(addr, o, n);
     }
 
+    /* ── `i2c rafale <ms>` — saturation du bus (AC9 de dn4-2) ─────────────── */
+    if (argc >= 2 && strcmp(argv[1], "rafale") == 0) {
+        long ms = 0;
+        if (argc != 3 || !parse_entier(argv[2], &ms) || ms < DN_I2C_RAFALE_MS_MIN ||
+            ms > DN_I2C_RAFALE_MS_MAX) {
+            printf("usage : i2c rafale <ms=%d..%d>\n", DN_I2C_RAFALE_MS_MIN,
+                   DN_I2C_RAFALE_MS_MAX);
+            printf("        ex. : i2c rafale 20000   (20 s de sondages en rafale)\n");
+            printf("⚠️ elle BLOQUE le REPL pendant toute sa fenetre — c'est voulu,\n");
+            printf("   l'owner appuie sur la dalle. Passer `--timeout` en\n");
+            printf("   consequence, sinon le pilote annonce une carte muette sur\n");
+            printf("   une carte qui va parfaitement bien.\n");
+            printf("⛔ borne HAUTE a %d ms : au-dela, le transport PC serait coupe\n",
+                   DN_I2C_RAFALE_MS_MAX);
+            printf("   trop longtemps. Enchainer plusieurs fenetres si besoin.\n");
+            return 1;
+        }
+        return i2c_rafale((int)ms);
+    }
+
     if (argc != 1) {
         printf("usage : i2c\n");
         printf("        i2c lire   <addr> <registre>       [n=1..16]  index 8 bits\n");
         printf("        i2c lire16 <addr> <registre 16 b>  [n=1..16]  index 16 bits\n");
         printf("        i2c brut   <addr>                  [n=1..16]  SANS index\n");
         printf("        i2c ecrire <addr> <o1> [o2..o8]               SANS lecture\n");
+        printf("        i2c rafale <ms=1000..30000>        saturation du bus (AC9)\n");
         printf("⚠️ tout est en HEXA, sans « 0x ».\n");
         printf("🔴 le scan DECOUVRE, seule une transaction de DONNEE QUALIFIE.\n");
         return 1;
@@ -5339,8 +5441,8 @@ static const esp_console_cmd_t k_cmds[] = {
      * ajoutées en dn4-2 y sont entrées avec cette ligne. */
     DN_CMD("i2c",
            "i2c | lire <addr> <reg> [n] | lire16 <addr> <reg16> [n] | brut "
-           "<addr> [n] | ecrire <addr> <o1..o8> — scan et transactions "
-           "(dn2-1/dn4-2)",
+           "<addr> [n] | ecrire <addr> <o1..o8> | rafale <ms> — scan, "
+           "transactions et saturation (dn2-1/dn4-2)",
            cmd_i2c),
     DN_CMD("pc",
            "pc | reset | $DN,<trame> — liaison PC : état, compteurs, injection "
