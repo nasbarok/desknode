@@ -112,13 +112,22 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--jeu", choices=sorted(JEUX), default="pire")
     p.add_argument("--secondes", type=float, default=30.0)
+    # 🔴 L'ESPACEMENT DES CINQ TRAMES DANS LA SECONDE N'EST PAS UN DETAIL DE
+    #    CONFORT : c'est l'axe `dn_link_etalement` (l'A/B « poussee ETALEE vs
+    #    GROUPEE » de W4). Serrees, plusieurs mises a jour tombent dans le MEME
+    #    cycle LVGL et le flush/cycle monte ; espacees, chacune a son cycle.
+    #    ⛔ Un releve de regime (b) qui ne dit pas son espacement n'est pas
+    #      comparable a un autre.
+    p.add_argument("--espacement", type=float, default=0.04, metavar="S",
+                   help="delai entre deux trames de la meme seconde (defaut 0,04)")
     p.add_argument("--port", default=dn_console.DEFAULT_PORT)
     p.add_argument("--baud", type=int, default=dn_console.DEFAULT_BAUD)
     a = p.parse_args()
 
     jeu = JEUX[a.jeu]
     ser = dn_console.ouvrir(a.port, a.baud)
-    print(f"[injecteur] jeu « {a.jeu} » — {a.secondes:.0f} s a 1 Hz "
+    print(f"[injecteur] jeu « {a.jeu} » — {a.secondes:.0f} s a 1 Hz, "
+          f"espacement {a.espacement*1000:.0f} ms "
           f"(peremption 3 s : sans ca les cases retombent a « -- »)")
     print("[injecteur] ⚠️ branche A : ceci teste le CHEMIN DE CODE, pas le materiel.")
     sys.stdout.flush()
@@ -140,7 +149,7 @@ def main():
                 #    qu'il renvoie, sinon le tampon d'entree finit par saturer et
                 #    les trames suivantes arrivent TRONQUEES — donc comptees en
                 #    `rejets_tronquee` alors que l'emetteur allait bien.
-                time.sleep(0.04)
+                time.sleep(a.espacement)
                 ser.read(ser.in_waiting or 0)
             reste = 1.0 - (time.monotonic() - cycle)
             if reste > 0:
