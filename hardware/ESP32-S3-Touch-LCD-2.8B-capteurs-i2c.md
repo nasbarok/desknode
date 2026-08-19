@@ -1526,3 +1526,56 @@ Plus : **`ADDR`** (BH1750, br. 5) → `GND` · **`XSHUT`** (ToF, br. 6) → `3V3
 ⚠️ **Le BME680 reste sur l'embase JST** : le bus aura donc **deux points d'entrée physiques**, ce qui
 est sans conséquence électrique — c'est le même bus — mais doit être **photographié** (AC5).
 
+---
+
+### 13.16.5 ✅ L'INSTRUMENT D'AC9 (`i2c rafale`) EXISTE, ET SA MISE À L'ÉPREUVE À 5 DEVICES DONNE LA RÉFÉRENCE À BATTRE
+
+**Firmware `43e108f`, SHA LU AU BANDEAU**, `porcelain` vérifié **VIDE avant** le flash.
+Bus **à 5 devices** (⛔ avant soudure), **sans appui** — c'est la référence « saturation seule ».
+
+**Protocole** : `touch reset` (solo) → `touch` (solo, le relevé AVANT) → `i2c rafale 10000`
+(solo, `--timeout 60`) → `touch` (solo, le relevé APRÈS). **Quatre invocations séparées**, parade de
+§13.16.2.
+
+| Grandeur | Mesuré |
+|---|---|
+| Durée **demandée** | 10 000 ms |
+| Durée **réelle** | **10 003 ms** (+0,03 %) — ⚠️ **mesurée, pas déduite** |
+| Passes complètes | **537** |
+| Sondages émis | **60 144** |
+| **Cadence** | 🔴 **6 012 sondages/s** · **53 passes/s** |
+| Timeouts | **0** sur 60 144 |
+| GT911 pendant la rafale | **292 lectures**, soit **~29 Hz** — sa cadence nominale |
+| **Erreurs I²C GT911** | **0 avant · 0 après** |
+
+⇒ ✅ **À 5 devices, une saturation à 6 012 sondages/s n'affame PAS le contrôleur tactile** : il tient
+sa cadence nominale et n'enregistre **aucune** erreur. **C'est la référence que le bus à 8 devices
+devra battre**, et le couple encadrant est publié comme AC8 l'exige — *« sans ces deux relevés on ne
+le verrait pas »*.
+⛔ **Ce que ce relevé NE dit PAS** : il n'y a **eu aucun appui**. AC9 exige que **l'owner appuie
+pendant la rafale et dise ce qu'il ressent** — *« un compteur seul ne peut pas répondre à "le tactile
+est-il fâché" »*. Ce relevé est le **témoin sans stimulus**, pas le verdict.
+
+#### 🔴 EFFET DE BORD : LE TAUX DE FAUX POSITIFS DU SONDAGE EST MESURÉ SUR UN ÉCHANTILLON **27× PLUS GRAND**, ET IL CONFIRME §13.2
+
+La rafale compte ses acquittements. À 5 devices réels et 537 passes, on attend **2 685**
+acquittements ; il en est venu **3 110**.
+
+| | |
+|---|---|
+| Acquittements **en trop** | **425** |
+| Par passe | **0,79 fantôme** |
+| Sondages d'adresses **vides** (537 × 107) | **57 459** |
+| **Taux de faux positif par sondage d'adresse vide** | 🔴 **0,740 %** |
+| Estimation historique de §13.2 (~15 fantômes en ~20 scans) | **0,75 par passe** |
+
+⇒ ✅ **L'estimation « à la louche » de `dn2-1` était JUSTE à 5 % près**, et elle est désormais
+confirmée par un échantillon **27 fois plus grand**, par un chemin de code **différent**, et **sans
+qu'aucune passe n'ait été imprimée** — donc sans le biais de capture de §13.2.
+⚠️ **425 est un PLANCHER, pas une valeur exacte** : le calcul suppose que les 5 devices réels ont
+acquitté à **chaque** passe. §13.2 a mesuré des **faux négatifs** sur composants soudés — s'il y en a
+eu ici, les fantômes sont **plus nombreux** que 425, jamais moins.
+⛔ **Et ça ne change RIEN à la règle** : le scan **découvre**, seule une transaction de donnée
+**qualifie**. Ce chiffre la **renforce** — 0,74 % par adresse vide, c'est **près d'un fantôme par
+passe**, dans un balayage qui en fait 53 par seconde.
+
