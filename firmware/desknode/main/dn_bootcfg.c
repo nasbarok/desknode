@@ -125,7 +125,38 @@ static const char *TAG = "dn_cfg";
  *    la fois. Corrigé par un A/B propre.
  */
 #define DN_DEFAULT_NUM_FBS 1
-#define DN_DEFAULT_BOUNCE_PX 4800
+/*
+ * 🔴 4800 -> 7680 LE 2026-08-19 (dn4-6) — CORRECTION DE DÉFAUT, ⛔ pas confort.
+ *
+ * SYMPTÔME, constat owner verbatim : *« l'image entière glisse d'un cran et se
+ * recale vers le bas, ensuite tous les chiffres clignotent une fois, et
+ * rebelote »*, **une fois par seconde**, dès que des données PC arrivent à
+ * 5 trames/s ET que les cases se repeignent.
+ *
+ * ⚠️ TROISIÈME OCCURRENCE DE §11.4 — LA FAMINE DMA — ET L'AGRESSEUR EST NEUF.
+ *    Le dépôt l'avait vue sous **I²C** (le bounce y met fin) et sous **écriture
+ *    flash** (le bounce y perd, D4 en est motivé). **L'USB n'avait JAMAIS été
+ *    testé.**
+ *
+ * 🔴 CE N'EST PAS UN COUPABLE, C'EST UN SEUIL. Onze tests à UNE variable :
+ *    le dessin seul ne le produit pas (mock 1 Hz sur 4 cases : rien) ; le
+ *    trafic seul non plus (mêmes trames à checksum FAUX, donc zéro dessin :
+ *    rien) ; la géométrie est innocentée (`widget grille 70 60` remet
+ *    35 100 px : ça glisse quand même) ; le nombre de labels aussi (2
+ *    grandeurs : ça glisse) ; le volume d'octets aussi (trames v2 : ça glisse).
+ *    Et le firmware **`cfd1a54` (dn4-1) sous le MÊME stimulus ne glisse pas**.
+ *    ⇒ dn4-6 a franchi le seuil **par ACCUMULATION**, et c'est exactement pour
+ *      ça qu'aucun test à une variable ne le supprimait. Le remède est la MARGE.
+ *
+ * ⚠️ 7 680 EST LA PLUS PETITE VALEUR *LÉGITIME* QUI TIENNE, et les deux mots
+ *    comptent : 4 800 glisse, 7 680 tient, et il n'existe **AUCUNE** valeur
+ *    admissible entre les deux (voir `bounce_px_refus` : 5120, 6144 et 6400
+ *    divisent bien la trame mais ne font pas un compte entier de lignes).
+ *    Prix : **+11 520 o** de RAM interne, contre +19 200 pour 9 600.
+ * ⛔ Ce n'est PAS gratuit : §11.5 impute au bounce buffer +160 ms de latence.
+ *    Le relevé avant/après est en §18 du fichier d'affichage.
+ */
+#define DN_DEFAULT_BOUNCE_PX 7680
 /*
  * ── draw_lines : 64 -> 128, décision owner du 2026-08-16 ─────────────────────
  *
@@ -202,6 +233,29 @@ static const char *bounce_px_refus(int32_t v)
          * trame. On refuse ici plutôt que de laisser le driver échouer plus
          * loin avec un message obscur. */
         return "ne divise pas les pixels d'une trame";
+    }
+    /*
+     * 🔴 LA GARDE VÉRIFIAIT LE MAUVAIS INVARIANT, ET L'ŒIL DE L'OWNER L'A
+     *    ATTRAPÉE (2026-08-19, dn4-6). « Diviser les pixels d'une trame » ne
+     *    suffit pas : il faut un nombre **ENTIER DE LIGNES**. Sinon chaque
+     *    morceau de bounce se termine AU MILIEU d'une ligne, et l'image sort
+     *    **décalée horizontalement** — constat verbatim sur `bounce_px = 6400`
+     *    (13,33 lignes) : *« image décentrée sur la droite »*.
+     *
+     * ⚠️ SUR LES 17 VALEURS QUE CETTE GARDE ACCEPTAIT, **DIX CASSAIENT L'IMAGE** :
+     *    2560, 3072, 3200, 4096, 5120, 6144, 6400, 10240, 12288, 12800.
+     *    Il n'en reste que SEPT : 2400, 3840, 4800, 7680, 9600, 15360, 19200 —
+     *    soit 5, 8, 10, 16, 20, 32 et 40 lignes.
+     * ⛔ LE PIÈGE ÉTAIT ARMÉ POUR QUICONQUE RÉGLERAIT CE PARAMÈTRE, et il s'est
+     *    déclenché à la PREMIÈRE tentative de le régler. Un réglage refusé est
+     *    une gêne ; un réglage ACCEPTÉ qui casse l'image en silence est un
+     *    défaut — et rien, dans la console, ne l'aurait dit.
+     * ⚠️ Le commentaire ci-dessus disait déjà « sinon la DMA se décale d'un
+     *    reliquat à chaque trame » : il DÉCRIVAIT le mécanisme et le test ne le
+     *    couvrait qu'à moitié.
+     */
+    if (v != 0 && ((size_t)v % (size_t)DN_LCD_H_RES) != 0) {
+        return "n'est pas un nombre ENTIER de lignes (l'image sortirait décalée)";
     }
     return NULL;
 }
