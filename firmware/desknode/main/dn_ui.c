@@ -2242,10 +2242,30 @@ static void detail_reparametrer(int idx)
             int wp = par ? (int)lv_obj_get_width(par) : 0;
             int x = (int)lv_obj_get_x(s_det_valeur);
             int utile = wp - 2 * x;
+            /*
+             * 🔴 LA GARDE SE TAIT TANT QUE LVGL N'A PAS RÉSOLU LA GÉOMÉTRIE, ET
+             *    C'EST UN CORRECTIF, PAS UNE ÉCHAPPATOIRE. `detail_reparametrer`
+             *    est appelée depuis `build_detail`, AVANT la passe de layout :
+             *    le parent rend alors une largeur de **0** et le label un x de
+             *    **-1**. La garde calculait « 2 px utiles » et hurlait à chaque
+             *    ouverture du détail, sur des lignes qui TIENNENT.
+             * ⛔ Une garde qui crie au loup à chaque ouverture est PIRE que pas
+             *    de garde : elle apprend à ignorer ses propres messages, et
+             *    c'est la famille du « compteur décoratif » que ce dépôt traque.
+             * ⚠️ RIEN N'EST PERDU : `detail_reparametrer` est rejouée à CHAQUE
+             *    mise à jour de la case affichée (5 fois par seconde en régime),
+             *    donc le premier passage avec une géométrie résolue vérifie. Et
+             *    quand aucune source ne parle, la ligne vaut « -- » — qui ne peut
+             *    pas déborder.
+             * ⛔ NE PAS « corriger » par un `lv_obj_update_layout()` ici : il
+             *    forcerait une passe de layout complète 5 fois par seconde, sur
+             *    le chemin le plus chaud de la vue détail, pour un contrôle qui
+             *    se fera de toute façon 200 ms plus tard.
+             */
             char ligne[sizeof(buf)];
-            const char *deb = buf;
+            const char *deb = (utile > 0) ? buf : NULL;
             int nl = 0;
-            while (deb && *deb && utile > 0) {
+            while (deb && *deb) {
                 const char *fin = strchr(deb, '\n');
                 size_t len = fin ? (size_t)(fin - deb) : strlen(deb);
                 if (len >= sizeof(ligne)) {
