@@ -3532,6 +3532,46 @@ const char *dn_ui_case_unite(int idx, int grandeur)
     return dn_widget_unite(&k_desc[idx], &s_wetat[idx], grandeur);
 }
 
+/*
+ * ── dn4-6 / AC10 : CE QUE LE DÉTAIL A RÉELLEMENT POSÉ ────────────────────────
+ *
+ * 🔴 CONSTAT OWNER DU 2026-08-19 : *« la 3ᵉ grandeur est tronquée »*. Or la
+ *    ligne complète mesure **396 px pour 446 utiles** — elle DEVRAIT tenir.
+ *    ⛔ On ne corrige pas un défaut qu'on n'a pas expliqué : « mettre deux par
+ *    ligne » ferait peut-être disparaître le symptôme sans toucher la cause, et
+ *    le même défaut reviendrait à la 4ᵉ grandeur.
+ * ⇒ Cet accesseur RELIT le label construit : son texte, sa largeur RÉELLE, et
+ *   celle de son parent. Trois nombres qui suffisent à trancher entre « le
+ *   texte est trop large », « le panneau est trop étroit » et « le texte n'est
+ *   pas celui qu'on croit ».
+ * ⚠️ Il rend `false` si le détail n'est PAS affiché : en vue dashboard les
+ *    pointeurs sont NULL, et répondre quand même inventerait une géométrie.
+ */
+bool dn_ui_detail_label(const char **txt, int *w, int *w_parent, int *x)
+{
+    if (s_vue != DN_VUE_DETAIL || !s_det_valeur) {
+        return false;
+    }
+    if (!lvgl_port_lock(1000)) {
+        return false;
+    }
+    if (txt) {
+        *txt = lv_label_get_text(s_det_valeur);
+    }
+    if (w) {
+        *w = (int)lv_obj_get_width(s_det_valeur);
+    }
+    if (x) {
+        *x = (int)lv_obj_get_x(s_det_valeur);
+    }
+    if (w_parent) {
+        lv_obj_t *p = lv_obj_get_parent(s_det_valeur);
+        *w_parent = p ? (int)lv_obj_get_width(p) : -1;
+    }
+    lvgl_port_unlock();
+    return true;
+}
+
 bool dn_ui_widget_pointeurs(int idx, int *n_grandeurs, bool *jauge, bool *sec)
 {
     const dn_widget_t *o = NULL;

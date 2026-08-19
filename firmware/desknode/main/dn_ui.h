@@ -739,6 +739,13 @@ int dn_ui_case_grandeurs(int idx);
  * valeur convertie en Gb/s, fausse d'un facteur mille, dans l'instrument
  * qui sert précisément à vérifier. */
 const char *dn_ui_case_unite(int idx, int grandeur);
+
+/* Ce que la GRANDE VALEUR du détail a réellement posé : son texte, sa largeur,
+ * celle de son parent, son x. ⛔ Relu des objets LVGL, jamais recomposé — c'est
+ * la seule façon de distinguer « le texte est trop large » de « le panneau est
+ * trop étroit » de « le texte n'est pas celui qu'on croit ».
+ * Rend `false` si le détail n'est pas affiché. */
+bool dn_ui_detail_label(const char **txt, int *w, int *w_parent, int *x);
 esp_err_t dn_ui_set_case_grandeurs(int idx, int n);
 esp_err_t dn_ui_bandes_valider(int barre_h, int menu_h);
 esp_err_t dn_ui_geom_valider(const dn_widget_geom_t *g);

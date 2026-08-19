@@ -2644,6 +2644,8 @@ static int cmd_pc(int argc, char **argv)
  *   widget police 14|28             la police des VALEURS         ⚠️ RECONSTRUIT
  *   widget grille <barre> <menu>    D12 (60 51) / voie (a) (60 0) ⚠️ RECONSTRUIT
  *   ── dn4-6 / AC5 : LA LARGEUR, MESURÉE ───────────────────────────────────
+ *   widget detail           ce que la GRANDE VALEUR du détail a POSÉ : texte,
+ *                           largeur réelle, panneau — ⛔ relu, jamais recomposé
  *   widget largeur          la table des couples, RELUE de `lv_text_get_size()`
  *   widget largeur <texte>  la largeur d'UNE chaîne dans la police liée
  *   widget largeur reset    remet à zéro le compteur de CHEVAUCHEMENTS détectés
@@ -2934,6 +2936,35 @@ static int cmd_widget(int argc, char **argv)
                (unsigned)dn_widget_debordements());
         if (n == 0) {
             printf("  (override RETIRE — la case suit de nouveau son descripteur)\n");
+        }
+        return 0;
+    }
+
+    if (argc == 2 && strcmp(argv[1], "detail") == 0) {
+        const char *t = NULL;
+        int w = 0, wp = 0, x = 0;
+        if (!dn_ui_detail_label(&t, &w, &wp, &x)) {
+            printf("le detail n'est PAS affiche (ou le verrou LVGL n'est pas "
+                   "pris) — `nav open <idx>` d'abord.\n");
+            printf("⛔ Repondre quand meme inventerait une geometrie.\n");
+            return 1;
+        }
+        int utile = wp - 2 * x;
+        printf("GRANDE VALEUR du detail — RELUE des objets LVGL :\n");
+        printf("  texte    : « %s »\n", t ? t : "(NULL)");
+        printf("  largeur  : %d px   posee a x = %d\n", w, x);
+        printf("  panneau  : %d px   ⇒ utile = %d - 2x%d = %d px\n", wp, wp, x,
+               utile);
+        if (w + x > wp) {
+            printf("  🔴 %d + %d = %d > %d : LE TEXTE SORT DU PANNEAU et LVGL le\n",
+                   w, x, w + x, wp);
+            printf("     CLIPPE sans un mot.\n");
+        } else {
+            printf("  ✅ %d + %d = %d <= %d : le texte TIENT dans le panneau.\n",
+                   w, x, w + x, wp);
+            printf("  ⚠️ Si l'oeil voit une troncature malgre ca, la cause n'est\n");
+            printf("     PAS la largeur — chercher la HAUTEUR du panneau ou le\n");
+            printf("     retour a la ligne du label.\n");
         }
         return 0;
     }
