@@ -528,8 +528,30 @@ static void valeur_placer(lv_obj_t *lbl, int i, int n, int w, int fin_gauche,
     place(s_geom.dispo, n, i, &ligne, &col, &cols);
     int y = s_geom.val_y + ligne * s_geom.val_pas;
 
+    /*
+     * 🔴 ON NE REPOSE LA POSITION QUE SI ELLE CHANGE — CONSTAT OWNER DU
+     *    2026-08-19 : *« l'image tressaute à chaque seconde »*.
+     *
+     *    `dn_widget_maj` appelait `lv_obj_set_pos()` sur CHAQUE grandeur à
+     *    CHAQUE mise à jour, y compris en `EMPILE` où le `x` ne bouge JAMAIS —
+     *    soit 15 repositionnements par seconde en régime (5 trames/s × 3
+     *    grandeurs) qui ne déplacent rien.
+     * ⚠️ ET CE N'EST PAS GRATUIT : `lv_obj_set_pos()` marque la disposition du
+     *    parent comme SALE. La passe de layout qui en résulte tourne **hors** du
+     *    bloc où l'invalidation est coupée (le groupage d'AC8), donc ses propres
+     *    invalidations échappent à la zone unique que le groupage prépare.
+     * ⛔ C'EST NEUF DANS dn4-6 : jusqu'ici aucune mise à jour ne repositionnait
+     *    un label. Le côte à côte l'exige (la colonne droite est calée à droite,
+     *    donc son `x` dépend de la largeur du texte) — mais SEULEMENT le côte à
+     *    côte, et seulement quand le texte change de largeur.
+     * ⚠️ HYPOTHÈSE, pas certitude : elle se falsifie à l'œil, et la voie est
+     *    commutable (`widget dispo`). Si le tressautement persiste en `EMPILE`
+     *    avec ce correctif, la cause est AILLEURS et il faudra le dire.
+     */
     if (cols < 2 || col == 0) {
-        lv_obj_set_pos(lbl, W_PAD, y);
+        if (lv_obj_get_x(lbl) != W_PAD || lv_obj_get_y(lbl) != y) {
+            lv_obj_set_pos(lbl, W_PAD, y);
+        }
         if (fin_gauche_out) {
             *fin_gauche_out = W_PAD + dn_widget_largeur(lv_label_get_text(lbl),
                                                         font_val());
@@ -558,7 +580,9 @@ static void valeur_placer(lv_obj_t *lbl, int i, int n, int w, int fin_gauche,
          *    tronquer serait remplacer un défaut visible par un défaut muet.
          *    Le log et le compteur sont l'instrument ; l'œil de l'owner tranche. */
     }
-    lv_obj_set_pos(lbl, x, y);
+    if (lv_obj_get_x(lbl) != x || lv_obj_get_y(lbl) != y) {
+        lv_obj_set_pos(lbl, x, y);
+    }
 }
 
 void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,

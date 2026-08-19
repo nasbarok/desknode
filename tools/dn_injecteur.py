@@ -80,15 +80,32 @@ JEUX = {
         "net": [999999, 999999],            # 99999,9 Mb/s des deux côtés
         "disk": [999999],                   # 99999,9 Mo/s
     },
-    # Ce que la tour rend VRAIMENT (mesuré le 2026-08-19, n=959).
+    # 🔴 CE JEU A MENTI, ET IL A FAIT TIRER UNE CONCLUSION FAUSSE À L'OWNER.
+    #    Il était étiqueté « ce que la tour rend VRAIMENT (mesuré, n=959) » alors
+    #    que SEULS `cpu` et `gpu` venaient de la mesure : `net`, `ram` et `disk`
+    #    avaient été RECOPIÉS de la maquette illustrative de l'addendum §1.
+    #    ⚠️ Résultat : l'écran affichait « ↓ 985,0 Mb/s ↑ 48,0 Mb/s » sous une
+    #       étiquette « réel », et l'owner a demandé, en séance, *« je suis
+    #       étonné que mon PC dl et upload autant, qu'est-ce qu'il fait ? »*.
+    #       La tour était en fait à **0,0 Mb/s dans les deux sens** (vérifié par
+    #       `psutil.net_io_counters()` sur 5 s, le 2026-08-19).
+    # ⛔ C'EST EXACTEMENT LE MENSONGE D'INTERFACE QUE CE DÉPÔT TRAQUE, commis par
+    #    l'INSTRUMENT au lieu du produit — et c'est pire, parce qu'un instrument
+    #    est là pour être cru.
+    # ⇒ RÈGLE : chaque nombre de ce jeu porte SA provenance et SA date. Un
+    #   nombre sans provenance n'a rien à faire dans un jeu nommé « reel ».
     "reel": {
-        "cpu": [52, 32, 350],               # 5,2 %  3,2 GHz  c.max 35,0 %
-        "gpu": [0, 460, 500, 5980],         # 0,0 %  46,0 °C  50 W  598 tr/min
-        "ram": [664, 342],
-        "net": [9850, 480],
-        "disk": [12684],
+        # MESURÉS le 2026-08-19, session de 959 échantillons / 16 min :
+        "cpu": [52, 32, 350],               # 5,2 %   3,2 GHz   c.max 35,0 %
+        "gpu": [0, 460, 500, 5980],         # 0,0 %   46,0 °C   50 W   598 tr/min
+        # MESURÉS le 2026-08-19 par un tir psutil de 5 s sur la tour :
+        "ram": [489, 319],                  # 48,9 %  31,9 Gio (⚠️ Windows écrit « Go »)
+        "net": [0, 0],                      # 0,0 Mb/s dans LES DEUX SENS — la tour
+                                            # ne faisait RIEN sur le réseau
+        "disk": [2],                        # 0,2 Mo/s
     },
-    # La maquette de l'addendum §1 — ⚠️ ses nombres sont ILLUSTRATIFS.
+    # La maquette de l'addendum §1 — 🔴 SES NOMBRES SONT ILLUSTRATIFS, ET C'EST
+    # D'ICI QUE `net` ET `disk` AVAIENT ÉTÉ RECOPIÉS DANS « reel » PAR ERREUR.
     "nominal": {
         "cpu": [540, 47, 880],
         "gpu": [460, 610, 2120, 14500],
