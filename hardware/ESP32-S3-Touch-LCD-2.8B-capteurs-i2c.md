@@ -1579,3 +1579,237 @@ eu ici, les fantômes sont **plus nombreux** que 425, jamais moins.
 **qualifie**. Ce chiffre la **renforce** — 0,74 % par adresse vide, c'est **près d'un fantôme par
 passe**, dans un balayage qui en fait 53 par seconde.
 
+---
+
+### 13.16.6 ✅ L'INA219 EST SUR LE BUS ET QUALIFIÉ — et il **RÉFUTE** le verdict d'AC7 sur son propre témoin
+
+**Firmware `43e108f`, SHA LU AU BANDEAU.** Bus à **6 devices** (BME680 + INA219 + les 4 de la carte).
+Boot **2 320 ms** (T0 : 2 319), **aucune ligne d'erreur nouvelle**.
+
+#### Le montage, décidé par l'owner et corrigé PAR l'owner
+
+🔴 **Le header 2×12 de la carte est une embase FEMELLE**, pas des broches mâles — **constat owner,
+carte en main**, confirmé ensuite au zoom sur `docs/cablage/2026-08-16_2228-…jpg` (cavités carrées,
+contacts dorés au fond). **Le dépôt ne l'avait jamais noté**, et ça décide du type de câble :
+**MF** (mâle côté carte, femelle sur la broche du module), ⛔ pas FF.
+⚠️ **L'agent avait donné la consigne inverse** ; c'est l'owner qui l'a réfutée. *L'œil de l'owner est
+l'instrument.*
+
+⛔ **Une seule cavité `SCL` et une seule cavité `SDA`** ⇒ **UN module à la fois** sur le header.
+L'embase JST — le second point d'entrée du bus — **est prise par le BME680**. ⇒ Les trois modules
+sont qualifiés **un par un**, ce qui est **méthodologiquement meilleur** : un module qui ne répond
+pas n'a **aucune ambiguïté** sur son identité, alors que brancher les trois puis scanner recrée la
+séance de `dn2-1` où l'on cherchait quelle hypothèse tombait.
+
+#### Le scan — 5 passes en invocations SOLO, invariant vérifié sur chacune
+
+| Passe | Adresses | Bilan | Invariant | Témoin |
+|---|---|---|---|---|
+| 1 | `0x20` `**0x2F(1/5)**` `0x40` `0x51` `0x5D` `0x6B` `0x77` | 6 st + 1 inst, 32 ms | ✅ 7 = 7 | ✅ |
+| 2 | `0x20` `**0x3B(1/5)**` `0x40` `0x51` `0x5D` `0x6B` `0x77` | 6 st + 1 inst, 33 ms | ✅ 7 = 7 | ✅ |
+| 3 | `0x20` `0x40` `0x51` `0x5D` `0x6B` `0x77` | 6 st + 0, 32 ms | ✅ 6 = 6 | ✅ |
+| 4 | `0x20` `0x40` `0x51` `0x5D` `0x6B` `0x77` | 6 st + 0, 32 ms | ✅ 6 = 6 | ✅ |
+| 5 | `0x20` `**0x29(1/5)**` `0x40` `0x51` `**0x52(1/5)**` `0x5D` `0x6B` `0x77` | 6 st + 2 inst, 39 ms | ✅ 8 = 8 | ✅ |
+
+⇒ **`0x40` à `5/5` sur les CINQ passes.**
+
+🔴 **ET LA PASSE 5 OFFRE UNE PREUVE GRATUITE ET DATÉE QUE LE SCAN NE QUALIFIE RIEN** : elle sort
+**`0x29` à 1/5** — **l'adresse du ToF, qui n'était PAS branché**. Si le ToF avait été là, ce `1/5` se
+serait lu comme un **mauvais contact**, et la séance serait partie chercher une soudure. §13.2
+annonçait que la liste des fantômes *« contient `0x29` ET `0x40` »* ; la voici prise sur le fait.
+
+#### La qualification — par la DONNÉE, jamais par le scan
+
+| Transaction | Rendu | Attendu |
+|---|---|---|
+| `i2c lire 40 00 2` (Configuration) **×5** | 🎯 **`39 9F` · 5 fois sur 5** | `399F` = reset, TI **SBOS448G** §8.6.2.1 |
+| `i2c lire 40 05 2` (Calibration) **×2** | **`00 00`** | contrôle négatif ✅ |
+| `i2c lire 40 01 2` (Shunt Voltage) | `00 00` | shunt libre, cohérent |
+| `i2c lire 40 02 2` (Bus Voltage) | **`07 0A`** | ⇒ **bit `CNVR` = 1 : l'ADC a CONVERTI.** ⚠️ Le reset de `02h` est `0000` — **c'est une valeur que la puce PRODUIT**, pas une qu'elle hérite |
+
+#### 🔴 AC7 EST RÉFUTÉ POUR L'INA219 — son témoin anti-fantôme est FORT, pas faible
+
+**Ce que la story écrivait** : *« un témoin existe mais il est FAIBLE, et sa faiblesse est nommée —
+c'est le cas de l'INA219, qui se qualifie par sa valeur de reset, donc exactement à la manière de
+`Control_1` : ⛔ il ne peut pas distinguer "sain au repos" de "redémarré". »*
+
+**Ce que la mesure dit** :
+
+```
+i2c lire   40 05 2      →  00 00      état de départ, RELU et journalisé AVANT d'écrire
+i2c ecrire 40 05 D7 A4  →  ACQUITTE   on IMPOSE une valeur, on ne CONSTATE pas
+i2c lire   40 05 2      →  D7 A4      ✅ le temoin est POSE et RELU
+i2c lire   40 05 2      →  D7 A4      ✅ et il SURVIT en regime
+```
+
+⇒ Le registre **Calibration (`05h`) est INSCRIPTIBLE, RELISIBLE, et sa valeur de reset (`0000`)
+DIFFÈRE de la valeur imposée (`D7A4`)** — **les trois propriétés exactes** que §13.15.4 exige d'un
+témoin valide, et que le `Control_1` du RTC n'avait justement **pas** (sa valeur de reset **était**
+celle du défaut, d'où une garde *« verte pendant le défaut qu'elle prétend détecter »*).
+
+✅ **L'INA219 passe donc de « témoin FAIBLE » à « témoin FORT »**, du même type que le
+`RAM_byte = 0xD7` de la RTC, et selon le **même patron** : *relire d'abord, journaliser, puis écrire*.
+⚠️ **Et c'est la primitive `i2c ecrire` construite en T4 qui l'a rendu possible** — sans écriture nue,
+on ne pouvait qu'**observer**, jamais **imposer**. L'instrument réparé a produit un résultat que la
+story n'attendait pas de lui.
+⚠️ **Ce que ce témoin ne prouve toujours pas** : qu'un INA219 alimenté **parasitement** ne saurait pas
+accepter l'écriture. §13.10 n'a jamais mesuré ce cas sur cette puce. ⇒ **La garde est possible ;
+`dn4-3` l'écrira, et c'est à elle de la mettre à l'épreuve.**
+
+#### Non-régression à 6 devices
+
+| Garde | Mesuré |
+|---|---|
+| `touch` **encadrant** (avant / scan complet / après) | **0 erreur I²C · 0 erreur I²C** |
+| BME680 | `config LUE (conforme)` · cadence **4 999 ms** · `err_i2c` **0** |
+| Bandeau de boot | **aucune ligne d'erreur nouvelle** ; seule reste la ligne ISR d'AC11 |
+
+#### ✅ CONSTAT OWNER À L'ŒIL (AC5), cité verbatim
+
+Question groupée posée en trois points ; réponses : **« A »** (le dashboard s'affiche), *« ok »* pour
+le rétroéclairage allumé fixe, *« tt est ok »* pour l'absence d'anomalie — **et une précision
+spontanée de l'owner** : *« mais seul le temps humidité est vivant »*.
+
+✅ **C'est le comportement ATTENDU, et c'est précisément ce que `D6` voulait rendre VISIBLE.** Les
+cinq autres cases sont nourries par l'agent qui tourne **sur la tour Windows via `COM3`**, et `COM3`
+**n'existe pas** tant que la carte est attachée à WSL — l'exclusivité est stricte et mesurée depuis
+`dn2-2`. ⇒ **Pendant toute séance carte, les 5 cases PC sont nécessairement mortes**, et la seule
+case vivante est celle qui **peut** l'être. ⛔ **Ce n'est pas une régression** : *« le mock MASQUAIT
+le déséquilibre que D6 avait annoncé ; le supprimer le REND VISIBLE. »*
+⚠️ **À dire chaque fois qu'on publiera un constat d'écran en séance carte**, sinon un lecteur futur
+le lira comme un défaut.
+
+---
+
+### 13.16.7 🎯 AC2 SOLDÉ — **LE ToF EST UN VL6180X**, et l'étiquette mentait depuis cinq jours
+
+**Firmware `43e108f`, SHA lu au bandeau.** Bus à **6 devices** (BME680 + ToF).
+
+| Hypothèse | Transaction | Rendu | Verdict |
+|---|---|---|---|
+| **VL6180X** | `i2c lire16 29 0000` — index **16 bits** | 🎯 **`B4` · 5 fois sur 5** | ✅ **CONFIRMÉE** |
+| **VL53L0X** (témoin négatif) | `i2c lire 29 C0` · `C1` · `C2` — index **8 bits** | **`01` · `00` · `00`** | ⛔ **RÉFUTÉE** (attendu `EE`/`AA`/`10`) |
+
+**Registres d'identité complémentaires** (index 16 bits) : `0x0001` = `01` · `0x0002` = `03` ·
+`0x0003` = `02` · `0x0004` = `00` ⇒ **modèle rév. 1.3, module rév. 2.0**.
+Scan : `0x29` à **`5/5` sur 3 passes**, invariant vérifié, témoins verts.
+
+⇒ 🔴 **Le brief, l'epic, le tracker, `dn_pins.h`, `i2c_nom_connu()` et six stories se trompaient
+depuis le 2026-08-14.** L'addendum §3 avait **posé** la question — *« noter la réf réelle du breakout
+à l'inventaire »* — et personne ne l'avait fermée. **Fermée par la lecture, pas par l'étiquette.**
+⚠️ Et il a fallu **construire l'instrument** pour ça : `i2c lire16` n'existait pas ce matin, et
+`i2c lire` **ne pouvait structurellement pas** poser un index de 2 octets.
+
+#### 🔴 Y5 FERMÉ PAR LA MESURE, ET LA RÉPONSE EST L'INVERSE DE LA PRÉCAUTION
+
+**`XSHUT` est TIRÉ HAUT sur ce breakout.** Preuve : la puce rend **`B4` cinq fois sur cinq avec le
+fil RETIRÉ**, alors que la datasheet ST est formelle — `XSHUT` basse ou flottante ⇒ **shutdown, pas
+d'acquittement**. ⇒ **Le fil n'était pas seulement inutile : c'est lui qui a tué le bus** (ci-dessous).
+
+⇒ **DÉCISION : `XSHUT` n'est PAS câblé**, et c'est une décision **mesurée**, pas une précaution.
+Les trois usages de la broche sont sans objet ici : endormir (**D4** range le ToF en bonus post-V1),
+reset matériel (on a le cycle d'alimentation), et **mettre DEUX VL6180X sur le bus** — son vrai usage,
+l'adresse `0x29` étant fixe et reprogrammable seulement en RAM. **On en a un.**
+⚠️ **Résiduel écrit** : on s'appuie sur le tirage du breakout, pas sur un fil à nous. **Si le ToF
+devient un jour intermittent, `XSHUT` est le premier suspect à re-nommer — pas la soudure.**
+
+#### 🔴 L'INCIDENT : LE 5ᵉ FIL A TUÉ LE BUS ENTIER, ET LE MÉCANISME N'EST **PAS** ISOLÉ
+
+**Symptôme, au boot** : `E dn_disp: expander_bring_up(191): TCA9554 muet à 0x20` puis
+`E dn_disp: dn_display_init(451): étape 2/5`. **`0x20` est sur la CARTE et c'est l'un des deux
+témoins positifs** ⇒ ce n'était pas *« le ToF ne répond pas »*, c'était *« plus rien ne répond »*.
+`dn_display_init()` étant sous `ESP_ERROR_CHECK`, la panique a **halté le CPU** (§8 des pièges) :
+**plus de console non plus** — le pilote n'obtenait plus l'invite. **Troisième état.**
+
+C'est mot pour mot **l'hypothèse 1 de §13.5** : *« SCL serait tiré à la masse ⇒ le bus mourrait »*.
+
+**Bissection, une seule variable annoncée** : retirer **uniquement** le fil `XSHUT`, couper
+l'alimentation, rebrancher. ⇒ **Le bus est revenu du premier coup** : plus d'erreur `TCA9554`,
+console vivante, `0x20` et `0x5D` à `5/5`, et le ToF répond.
+
+⚠️ **CONSTAT OWNER SUR L'EMPLACEMENT** : *« XSHUT était sur le 3V3 de l'autre côté »* — c'est-à-dire
+**la cavité `3V3` de la rangée A, l'emplacement DEMANDÉ**. ⇒ 🔴 **LE MÉCANISME N'EST PAS EXPLIQUÉ** :
+un fil vers `3V3` ne devrait pas tuer un bus I²C.
+
+⛔ **ET LA CONCLUSION « c'était XSHUT » N'EST PAS PROUVÉE** : un seul essai a changé **DEUX choses** —
+le fil retiré **et** un cycle d'alimentation (qui a pu reseater un contact). *Bouger → ça marche* est
+exactement le raisonnement que ce dépôt refuse. **Le test de reproduction n'a pas été fait** —
+arbitrage owner, et il se défend : `XSHUT` ne sera **pas** câblé, donc le fil n'existera plus.
+⇒ **Écrit comme : « corrélation forte, mécanisme NON ISOLÉ, une variable non séparée du cycle
+d'alimentation ».**
+⚠️ **Hypothèse la plus plausible, à traiter comme telle** : la cavité `3V3` (rang 11) est **voisine
+de `G` (rang 12)** sur la même rangée ; un pin mal enfoncé ou de travers **pontant `3V3` et `G`**
+produirait un affaissement partiel du rail — assez pour faire taire le TCA9554 sans empêcher l'ESP
+de démarrer ni le rétroéclairage de s'allumer. ⇒ **`dn4-5` (installation définitive) doit le savoir :
+une cavité ou un pin capricieux se re-tendra.**
+
+---
+
+### 13.16.8 🎯 AC6 SOLDÉ POUR LES TROIS — et **le BH1750 est le plus fortement qualifié des trois**
+
+#### Y4 fermé par la mesure, symétriquement à Y5
+
+**Le BH1750 a été branché avec les 4 fils de bus SEULEMENT, ⛔ sans fil `ADDR`** — délibérément,
+pour que la carte réponde à la question au lieu qu'on la contourne.
+⇒ **`0x23` répond `5/5` sur CINQ passes**, et `0x5C` n'apparaît **nulle part**.
+⇒ **`ADDR` est TIRÉ BAS sur le GY-302.** L'adresse est déterministe **sans fil supplémentaire**.
+
+🔴 **DEUX PRÉCAUTIONS ÉCRITES D'AVANCE, DEUX FOIS RÉFUTÉES PAR LA CARTE** : `XSHUT` tiré haut,
+`ADDR` tiré bas. Les deux breakouts mettent leur broche spéciale **dans l'état sûr**. ⚠️ Ça ne rend
+pas les précautions inutiles — **elles étaient indispensables tant que ce n'était pas mesuré**, et
+la datasheet ROHM ne définit toujours `0x23` que pour `ADDR ≤ 0,3 × VCC`. **Ce qui a changé, c'est
+qu'on a la mesure.**
+
+#### 🔴 LE PIÈGE DE CADENCE S'EST DÉCLENCHÉ EN DIRECT, ET LE CODE L'AVAIT ANNONCÉ
+
+```
+i2c ecrire 23 01   ->  ACQUITTE, opcode POWER ON
+i2c ecrire 23 10   ->  ACQUITTE, mesure CONTINUE haute resolution (120-180 ms)
+i2c brut   23 2    ->  00 00  =  0,0 lx     <- 🔴 MESURE PAS ENCORE PRETE
+i2c brut   23 2    ->  00 17  =  1,9 lx
+i2c brut   23 2    ->  00 17  =  1,9 lx
+i2c brut   23 2    ->  00 17  =  1,9 lx     <- stable
+```
+
+⇒ **La première lecture rend `00 00`.** Une lecture unique aurait **déclaré mort un capteur qui
+fonctionne** — exactement le faux négatif que la story avait armé d'avance et que la sortie de
+`i2c ecrire` imprime en garde. **Le piège n'est plus théorique : il est daté.**
+
+#### Le stimulus — geste owner, lecture agent, ⛔ jamais l'inverse
+
+| État | Geste **owner** | Brut | Lux | Lectures |
+|---|---|---|---|---|
+| **départ** | — | 23 | **1,9 lx** | 3, identiques |
+| **masqué** | main posée sur le capteur | 0 | **0,0 lx** | 3, identiques |
+| **retiré** | main retirée | 28 | **2,3 lx** | 3, identiques |
+| **éclairé** | 🔦 lampe du téléphone | **55 378** | 🎯 **4 614,8 lx** | 3 (4 605,8 puis 4 614,8 ×2) |
+
+⇒ **Quatre décades, dans les DEUX sens, sous le geste de l'owner.**
+
+✅ **DEUX DÉTAILS QUI FONT LA PREUVE, ET PAS SEULEMENT LE CHIFFRE** :
+1. **Le retour n'est pas identique au départ** (2,3 contre 1,9 lx). Une valeur **rejouée** serait
+   revenue **exacte**. Une vraie pièce dérive.
+2. **La lampe lève l'ambiguïté du `00 00`** : masqué, le capteur rend `00 00`, ce qui est **aussi**
+   ce que rend une mesure pas prête. Le masquage seul était donc **faible**. **4 615 lx ne peut
+   venir que de la lumière.**
+
+🔴 **POURQUOI LE BH1750 EST LE MIEUX QUALIFIÉ DES TROIS, ET PAS LE MOINS BIEN.** L'INA219 et le
+VL6180X rendent chacun **un octet constant** (`39 9F`, `B4`) — un faux positif de bus peut acquitter
+et peut rendre des octets. **Il ne répond pas à une main.** Privé de registre d'identité, le BH1750
+se trouve qualifié par **l'instrument le plus discriminant du lot**, et c'est ce que la story avait
+écrit *avant* de le mesurer.
+⚠️ **Et ça n'aurait pas été possible ce matin** : `i2c ecrire` (opcode sans lecture) et `i2c brut`
+(lecture sans index) **n'existaient pas**, et `i2c lire` aurait **piloté le capteur au hasard** au
+lieu de le lire.
+
+#### Non-régression, à 6 devices, sur chacun des trois montages
+
+| Montage | `touch` avant → après (scan complet entre) | BME680 | `fps 15` |
+|---|---|---|---|
+| **INA219** | **0 err → 0 err** | `config LUE (conforme)`, 4 999 ms, 0 err | — |
+| **ToF** | **0 err → 0 err** | `config LUE (conforme)`, 0 err | **37,40 Hz, +0,00 %** |
+| **BH1750** | **0 err → 0 err** | `config LUE (conforme)`, 0 err | — |
+
+Bandeau de boot : **aucune ligne d'erreur nouvelle** sur les trois montages ; seule reste la ligne
+ISR d'AC11.
+

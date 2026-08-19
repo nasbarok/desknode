@@ -80,8 +80,9 @@
  * ⚠️ Aucune des deux ne rentre en conflit sur ce bus. Occupants MESURÉS par le
  *    scan `i2c` du 2026-08-17 : TCA9554 **0x20**, RTC PCF85063 **0x51** (première
  *    confirmation qu'elle vit), IMU QMI8658 **0x6B** (et NON 0x6A, que ce fichier
- *    laissait ouvert), BME680 **0x77**. Les 3 capteurs restants (BH1750 0x23,
- *    VL53L0X 0x29, INA219 0x40) sont à dn4-1 — adresses ATTENDUES, pas mesurées.
+ *    laissait ouvert), BME680 **0x77**. ✅ Les 3 derniers capteurs sont MESURÉS
+ *    depuis dn4-2 (2026-08-19/20) : BH1750 **0x23**, TOF050C-VL6180X **0x29**,
+ *    INA219 **0x40** — voir le bloc dédié plus bas.
  * 🔴 LE PROBE AVANT LE RESET RÉPOND DÉJÀ — MESURÉ LE 2026-08-16 SUR CETTE CARTE.
  *    Ce fichier enseignait le contraire (« tant que la séquence EXIO2 n'a pas été
  *    jouée, le GT911 ne répond à AUCUNE des deux : c'est le témoin négatif
@@ -123,11 +124,51 @@
  *    donnait SCL·SDA (inversés) sur un « header 2,54 mm » qui n'existe pas sous
  *    cette forme : c'est une embase JST, et sa JUMELLE adjacente est l'UART.
  *
- * Les 3 autres capteurs (BH1750 0x23, VL53L0X 0x29, INA219 0x40) sont à dn4-1 :
- * ni inventoriés, ni photographiés, ni branchés (décision owner D2-1a — une
- * variable à la fois). ⚠️ Leurs adresses ci-dessus sont ATTENDUES, pas mesurées.
+ * ✅ LES 3 AUTRES CAPTEURS SONT INVENTORIÉS, BRANCHÉS ET QUALIFIÉS (dn4-2,
+ * 2026-08-19/20). Le legs D2-1a est SOLDÉ : 9 photos recto/verso dans
+ * docs/cablage/, réfs lues sur la SÉRIGRAPHIE. ⛔ Rien n'entre ici qui ne soit
+ * MESURÉ — c'est la source unique du brochage.
  */
 #define DN_BME680_ADDR 0x77
+
+/* ── Les 3 capteurs de dn4-2 — adresses MESURÉES, pas attendues ──────────────
+ *
+ * 🔴 LE 3ᵉ N'EST PAS UN VL53L0X : C'EST UN **TOF050C-VL6180X**. Ce fichier, le
+ *    brief, l'epic, le tracker, `i2c_nom_connu()` et six stories ont écrit
+ *    « VL53L0X » du 2026-08-14 au 2026-08-19. L'addendum §3 du brief avait POSÉ
+ *    la question (« noter la réf réelle du breakout à l'inventaire ») et personne
+ *    ne l'avait fermée. Tranché PAR LA LECTURE le 2026-08-19 :
+ *      · `i2c lire16 29 0000` -> **B4** (IDENTIFICATION__MODEL_ID), 5 fois sur 5
+ *      · témoin négatif `i2c lire 29 C0/C1/C2` -> 01/00/00, ⛔ PAS EE/AA/10
+ *      · rév. modèle 1.3, rév. module 2.0 (registres 0x0001..0x0004)
+ *    ⚠️ Et « même famille ToF » est FAUX sur les trois points qui comptent :
+ *    index 16 bits (pas 8), identité 0x0000 (pas 0xC0), portée GARANTIE 100 mm
+ *    (pas 2 m). Le « 50 cm » est une annonce revendeur. dn4-3 hérite du chiffre.
+ *
+ * ⚠️ CHACUNE DE CES ADRESSES A ÉTÉ QUALIFIÉE PAR UNE TRANSACTION DE DONNÉE,
+ *    ⛔ jamais par le scan — qui ment dans les deux sens (§13.2, et le taux de
+ *    faux positifs est mesuré à 0,740 % par sondage d'adresse vide en §13.16.5).
+ *
+ * ✅ ET DEUX BROCHES DE SÉLECTION SONT MESURÉES, PAS SUPPOSÉES :
+ *    · `ADDR` du BH1750 est TIRÉ BAS sur le GY-302 -> 0x23 déterministe SANS
+ *      fil ajouté (mesuré : il répond 5/5 avec les 4 fils de bus seulement).
+ *      ⚠️ La datasheet ROHM ne définit 0x23 que pour ADDR <= 0,3 x VCC ; c'est
+ *      le BREAKOUT qui le garantit ici, pas la puce.
+ *    · `XSHUT` du VL6180X est TIRÉ HAUT sur le TOF050C -> la puce répond FIL
+ *      RETIRÉ, alors que basse ou flottante elle resterait en shutdown sans
+ *      acquitter. ⇒ XSHUT n'est PAS câblé, par DÉCISION MESURÉE.
+ *      🔴 Si le ToF devient un jour intermittent, XSHUT est le PREMIER suspect
+ *         à re-nommer — pas la soudure.
+ *    · `INT` du VL6180X n'est PAS câblé (AC11 : aucune broche d'interruption,
+ *      le polling suffit ; l'entrée de ledger est FERMÉE).
+ *    · `A0`/`A1` de l'INA219 NON PONTÉS (lu à la photo) -> 0x40.
+ *
+ * ⛔ ZÉRO GPIO CONSOMMÉ : l'I²C est un BUS. Les quatre capteurs partagent
+ *    DN_PIN_I2C_SDA et DN_PIN_I2C_SCL. Aucune broche des headers n'est prise.
+ */
+#define DN_BH1750_ADDR  0x23  /* MESURÉ 5/5, ADDR tiré bas par le breakout      */
+#define DN_VL6180X_ADDR 0x29  /* MESURÉ : lire16 0x0000 -> B4, 5/5             */
+#define DN_INA219_ADDR  0x40  /* MESURÉ : lire 00 (2 o) -> 39 9F, 5/5          */
 
 /* ── 3-wire SPI d'initialisation du ST7701S ──────────────────────────────── */
 /* ⛔ GPIO1/GPIO2 sont PARTAGÉS avec le slot TF (SD_CMD / SD_SCK).

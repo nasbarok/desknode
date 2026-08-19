@@ -911,9 +911,9 @@ et `rst:0x15 (USB_UART_CHIP_RESET)` ; **sans**, 38 o et aucun reboot. Témoin n�
 |---|---|---|
 | ESP32-S3-Touch-LCD-2.8B | carte + écran + tactile (16 MB flash / 8 MB PSRAM, IMU QMI8658, RTC PCF85063, buzzer) | ext. : SCL=GPIO7, SDA=GPIO15 |
 | BME680 | température, humidité (pression et VOC non affichés — brief : 6 widgets) | ✅ **`0x77` MESURÉ** · chip id `0x61`, variant `0x00` |
-| BH1750 | luminosité ambiante | 0x23 — ⚠️ adresse ATTENDUE ; **ni inventorié ni branché** (dn4-1) |
-| VL53L0X | proximité / présence | 0x29 — ⚠️ adresse ATTENDUE ; **ni inventorié ni branché** (dn4-1) |
-| INA219 | tension / courant / puissance | 0x40 — ⚠️ adresse ATTENDUE ; **ni inventorié ni branché** (dn4-1) |
+| BH1750 (GY-302) | luminosité ambiante | **`0x23` MESURÉ** ✅ inventorié, branché, **QUALIFIÉ PAR STIMULUS** (dn4-2, 2026-08-19) — il n'a **aucun registre d'identité**, donc aucune lecture ne peut le prouver : 0,0 lx main posée → 2,3 lx main retirée → **4 614,8 lx sous une lampe**. ⚠️ `ADDR` **tiré bas par le breakout** ⇒ `0x23` déterministe **sans fil ajouté** (mesuré). ⛔ **`i2c lire` le PILOTE au hasard** (l'octet est un opcode) : utiliser `i2c ecrire` + `i2c brut` |
+| 🔴 **TOF050C-VL6180X** (⛔ **PAS** un VL53L0X) | proximité / présence | **`0x29` MESURÉ** ✅ **QUALIFIÉ PAR LECTURE** (dn4-2, 2026-08-19) : `i2c lire16 29 0000` → **`B4`**, 5 fois sur 5 ; témoin négatif `i2c lire 29 C0/C1/C2` → `01`/`00`/`00`, ⛔ **pas** `EE`/`AA`/`10`. Rév. modèle 1.3, module 2.0. ⚠️ **index de registre sur 16 BITS** ⇒ `i2c lire` ne peut **structurellement pas** le qualifier. ⚠️ **Portée GARANTIE 100 mm** (le « 50 cm » est une annonce revendeur) et **ALS intégré**. `XSHUT` **tiré haut par le breakout** ⇒ **non câblé**, décision mesurée ; `INT` **non câblé** (AC11) |
+| INA219 (CJMCU) | tension / courant / puissance | **`0x40` MESURÉ** ✅ **QUALIFIÉ PAR LECTURE** (dn4-2, 2026-08-19) : `i2c lire 40 00 2` → **`39 9F`**, 5 fois sur 5 (reset du registre Configuration, TI SBOS448G) ; contrôle négatif `05` → `00 00`. Cavaliers `A0`/`A1` **non pontés** ⇒ `0x40`. Shunt `R100`. ⛔ **`Vin+`/`Vin-` NON câblés** — c'est `dn4-3` qui décidera ce qu'il mesure. ✅ **Témoin anti-fantôme FORT** : le registre Calibration (`05h`) est inscriptible et relisible, et sa valeur de reset (`0000`) **diffère** de la valeur imposée — vérifié `D7 A4` posé puis relu |
 
 **Occupants du bus MESURÉS le 2026-08-16** (scan stable `5/5`, ~20 passes) : `0x20` TCA9554 ·
 **`0x51` PCF85063 — la RTC est vivante, première confirmation** · `0x5D` GT911 ·
