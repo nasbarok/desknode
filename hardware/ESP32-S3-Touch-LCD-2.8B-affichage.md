@@ -3703,3 +3703,87 @@ fois l'estimation, qui ne comptait que `txt[][]` et `brut[]` : il faut y ajouter
   reste inaccessible.
 - **`FAN_RPM`** — qualifié, sans place. **Dette de PLACE, ⛔ pas question
   ouverte de source.**
+
+### 18.9 🔴 LA FAMINE DMA, TROISIÈME OCCURRENCE — ET L'AGRESSEUR EST L'USB
+
+> **Ceci amende §11.4 et §11.5.** Constat owner du 2026-08-19, verbatim :
+> *« l'image entière glisse d'un cran et se recale vers le bas, ensuite tous les
+> chiffres clignotent une fois, et rebelote »*, **une fois par seconde**, dès que
+> des données PC arrivent à 5 trames/s **et** que les cases se repeignent.
+
+§11.4 avait établi deux régimes : le bounce buffer **gagne contre l'I²C**, il
+**perd contre l'écriture flash**. ⛔ **L'USB n'avait jamais été testé.** C'en est
+le troisième régime.
+
+#### CE N'EST PAS UN COUPABLE, C'EST UN SEUIL — ONZE TESTS À UNE VARIABLE
+
+| test | glisse ? |
+|---|---|
+| mock 1 Hz, 4 cases, **aucun trafic série** | **non** |
+| AMBIANCE toutes les 5 s (BME680), sans série | **non** |
+| trafic série 5/s, **checksum FAUX** (⇒ zéro dessin) | **non** |
+| trafic série 5/s **+ dessin** | 🔴 **OUI** |
+| firmware **`cfd1a54` (dn4-1)**, même stimulus | **non** |
+| firmware `dn4-6`, **géométrie de dn4-1** (35 100 px) | 🔴 OUI |
+| firmware `dn4-6`, chemin de MAJ de dn4-1 (`widget replacer off`) | 🔴 OUI |
+| firmware `dn4-6`, **2 grandeurs** (même compte de labels) | 🔴 OUI |
+| firmware `dn4-6`, trames **v2** (même volume d'octets) | 🔴 OUI |
+| fond en **PSRAM** au lieu de flash mmap | 🔴 OUI |
+| compteur de **synchros expirées**, 45 s d'injection | **0** |
+
+⇒ **Ni le dessin seul, ni le trafic seul : leur CONJONCTION.** Et **aucun test à
+une variable ne supprime le défaut** — c'est la signature d'un **seuil franchi
+par ACCUMULATION**, pas d'un coupable identifiable.
+⛔ **AUCUN INSTRUMENT NE LE COMPTE** : zéro synchro expirée, et `fps` rend
+**37,40 Hz** — or §11.4 écrit déjà que **`fps` est AVEUGLE à ce défaut**. La
+bissection se paie donc en constats owner, et il faut le savoir avant de
+commencer.
+
+#### LE REMÈDE : LA MARGE
+
+`DN_DEFAULT_BOUNCE_PX` **4 800 → 7 680** px (10 → **16 lignes**).
+**Plus petite valeur *légitime* qui tienne** — il n'existe **aucune** valeur
+admissible entre 4 800 et 7 680.
+
+| grandeur | bounce 4 800 | **bounce 7 680** | écart |
+|---|---:|---:|---|
+| RAM interne libre | 103 503 o | **92 203 o** | **−11 300 o** |
+| `fps 15` | 37,40 Hz | **37,40 Hz** | **0** |
+| boot | 2 327 ms | **2 321 ms** | −6 ms |
+| latence `nav ab 40` (n=80) | 290,9 / **334,6** / 398,8 | 288,2 / **335,2** / 398,7 | **+0,6 ms** |
+| tas sur 80 transitions | −28 o | +8 o | **PLAT** |
+
+🔴 **ET ÇA CORRIGE UNE LECTURE DE §11.5.** Elle impute **+160 ms de latence** au
+bounce buffer ; passer de 10 à 16 lignes coûte **+0,6 ms** — rien de mesurable,
+et bien à l'intérieur du bruit de **±16 ms** chiffré en §18.0.
+⇒ **Les 160 ms sont le prix d'AVOIR un bounce, ⛔ pas de sa TAILLE.**
+
+#### 🔴 ET LA GARDE DE `bounce_px` VÉRIFIAIT LE MAUVAIS INVARIANT
+
+En testant **6 400** (13,33 lignes), constat owner : *« image décentrée sur la
+droite »*. Un bounce qui n'est pas un **nombre entier de lignes** termine chaque
+morceau **au milieu d'une ligne** ⇒ décalage **horizontal** permanent.
+
+`bounce_px_refus()` n'exigeait que *« diviser les pixels d'une trame »*.
+⚠️ **Sur les 17 valeurs qu'elle acceptait, DIX cassaient l'image** : 2560, 3072,
+3200, 4096, 5120, 6144, 6400, 10240, 12288, 12800.
+✅ **Les sept légitimes** : 2400, 3840, 4800, **7680**, 9600, 15360, 19200 —
+soit 5, 8, 10, **16**, 20, 32 et 40 lignes.
+⛔ Le piège était armé pour quiconque réglerait ce paramètre, et il s'est
+déclenché **à la première tentative de le régler**. Un réglage refusé est une
+gêne ; un réglage **ACCEPTÉ** qui casse l'image en silence est un défaut.
+⚠️ Le commentaire de la garde **décrivait déjà** le mécanisme (*« sinon la DMA se
+décale d'un reliquat à chaque trame »*) — le test ne le couvrait qu'à moitié.
+⇒ Corrigé : `v % DN_LCD_H_RES == 0`. Vérifié : `set bounce 6400` est **refusé**.
+
+#### CE QU'IL FAUT SAVOIR POUR LA SUITE
+
+⚠️ **LA MARGE EST FRANCHIE, PAS CONFORTABLE.** `dn4-2` branche trois capteurs
+I²C — **le PREMIER agresseur connu de §11.4**. ⇒ **ce stimulus est à REJOUER en
+`dn4-2`**, et le bounce peut avoir à monter encore.
+⚠️ **Non vérifié avec l'agent PC réel** : l'exclusivité `WSL ↔ COM3` l'interdit
+tant que la carte est attachée à WSL. Même chemin de code, ⛔ pas le même
+émetteur.
+✅ Deux correctifs posés en chemin **augmentent aussi la marge**, et sont donc
+justifiés deux fois : la suppression des 15 `lv_obj_set_pos()` inutiles par
+seconde, et celle des 15 `lv_text_get_size()` inutiles par seconde.
