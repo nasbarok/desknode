@@ -398,7 +398,7 @@ bool dn_ui_cpu_maj(int dixiemes, bool valide, bool *label_pose);
  *    doit savoir que la vue fabriquée porte `age_us = -1` (« pas d'horodatage ») :
  *    c'était `0`, ce qui injectait des latences à 0 µs dans la statistique.
  *
- * `vue` porte l'état, les deux grandeurs et `v2_connue` (W10) : une 2ᵉ grandeur
+ * `vue` porte l'état, les N grandeurs et leurs drapeaux `connue[]` (W10) : une grandeur
  * absente laisse la case RÉELLE et n'écrit « -- » que sur SA ligne.
  */
 bool dn_ui_pc_maj(dn_link_metrique_t m, const dn_link_vue_t *vue,
@@ -693,6 +693,36 @@ esp_err_t dn_ui_set_piste(uint32_t rgb);
 /* ── AC9 : l'opacité des CASES ────────────────────────────────────────────────
  * Passe par dn_widget (une seule définition de l'aplat) et reconstruit la scène. */
 esp_err_t dn_ui_set_case_opa(uint8_t opa);
+
+/*
+ * ════════════════════════════════════════════════════════════════════════════
+ * dn4-6 / AC4 — LES TROIS VOIES, COMMUTABLES DANS UN SEUL FIRMWARE
+ * ════════════════════════════════════════════════════════════════════════════
+ * ⚠️ LES TROIS RECONSTRUISENT LA SCÈNE. `build_scene()` coûte 307-322 ms verrou
+ *    tenu — et sur la branche A LE REPL EST LE TRANSPORT PC. La console DOIT
+ *    l'annoncer AVANT, ⛔ pas le laisser découvrir par une trame perdue.
+ * ⚠️ Verrou non pris ⇒ `ESP_ERR_TIMEOUT` et RIEN n'a bougé. ⛔ Ne jamais
+ *    annoncer une bascule qui n'a pas eu lieu.
+ */
+
+/* Les deux bandes (voie (a) : `menu_h = 0` ; D12 : 60 / 51).
+ * Bornes RELUES du contenu, ⛔ pas rondes : barre ≥ 53 (heure `dn_font_28` à
+ * y = 18), MENU ≥ 49 (`dn_font_28` à y = 14) ou 0 = pas de bandeau. */
+esp_err_t dn_ui_set_bandes(int barre_h, int menu_h);
+void dn_ui_geom_bandes(int *barre_h, int *menu_h, int *grille_h, int *case_h);
+void dn_ui_geom_bandes_defaut(int *barre_h, int *menu_h);
+
+/* La géométrie interne de la case (voie (b) : la police ; voie (c) : `dispo`).
+ * ⚠️ Enveloppe de `dn_widget_set_geom()` : elle prend le verrou et RECONSTRUIT.
+ *    Appeler `dn_widget_set_geom()` nu changerait le réglage sans redessiner —
+ *    « un réglage qui ne fait rien sans l'annoncer » est la classe de défaut
+ *    que `dma` (inerte dans ce build) a coûtée au dépôt. */
+esp_err_t dn_ui_set_widget_geom(const dn_widget_geom_t *g);
+
+/* Le `n` de la démo — le SEUL moyen d'atteindre les deux témoins d'AC2 (abandon
+ * de jauge à n ≥ 3, clamp à n > `DN_WIDGET_GRANDEURS_MAX`). Défaut 2, borne 6. */
+int dn_ui_demo_n(void);
+esp_err_t dn_ui_set_demo_n(int n);
 
 /* ── AC1 : la preuve d'unicité, rendue falsifiable ────────────────────────────
  * Construit une 7e métrique FICTIVE depuis un descripteur, SANS aucune ligne de

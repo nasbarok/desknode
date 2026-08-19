@@ -42,9 +42,13 @@ static dn_link_compteurs_t s_cnt;
  *    générateur de bruit.
  */
 typedef struct {
-    int v1;         /* dixièmes, -1 = jamais reçue */
-    int v2;         /* dixièmes, valable si v2_connue */
-    bool v2_connue; /* W10 : la trame portait-elle une 2ᵉ grandeur ? */
+    /* dn4-6 : N valeurs + N drapeaux — voir `dn_link_vue_t` pour le motif.
+     * ⚠️ `v[0] = -1` est l'aveu « jamais reçue », et `n = 0` le dit aussi ;
+     *    les deux se posent ENSEMBLE à l'initialisation, jamais l'un sans
+     *    l'autre. */
+    int v[DN_LINK_GRANDEURS_MAX];
+    bool connue[DN_LINK_GRANDEURS_MAX];
+    uint8_t n;      /* grandeurs portées par la DERNIÈRE trame acceptée */
     int64_t recu_us;
     uint32_t seq;   /* seq de la trame qui a posé cette valeur */
 } dn_link_etat_m_t;
@@ -54,11 +58,11 @@ typedef struct {
  * `DN_VAL_ABSENTE = 0` dans `dn_widget.h`. ⛔ Pas d'initialiseur de PLAGE
  * (`[0 ... N-1]`) : c'est une extension GCC, et une table nommée se relit. */
 static dn_link_etat_m_t s_m[DN_LINK_METRIQUES] = {
-    [DN_LINK_M_CPU] = {.v1 = -1, .recu_us = -1},
-    [DN_LINK_M_GPU] = {.v1 = -1, .recu_us = -1},
-    [DN_LINK_M_RAM] = {.v1 = -1, .recu_us = -1},
-    [DN_LINK_M_NET] = {.v1 = -1, .recu_us = -1},
-    [DN_LINK_M_DISK] = {.v1 = -1, .recu_us = -1},
+    [DN_LINK_M_CPU] = {.v = {-1}, .recu_us = -1},
+    [DN_LINK_M_GPU] = {.v = {-1}, .recu_us = -1},
+    [DN_LINK_M_RAM] = {.v = {-1}, .recu_us = -1},
+    [DN_LINK_M_NET] = {.v = {-1}, .recu_us = -1},
+    [DN_LINK_M_DISK] = {.v = {-1}, .recu_us = -1},
 };
 
 /*
@@ -67,35 +71,54 @@ static dn_link_etat_m_t s_m[DN_LINK_METRIQUES] = {
  * Ajouter une métrique au protocole, c'est ajouter UNE ligne ici. ⛔ Aucun
  * `if (m == …)` dans le parseur : il branche sur la TABLE, jamais sur un nom.
  *
- * `max1`/`max2` sont les plafonds de PLAUSIBILITÉ, en dixièmes de l'unité. Ils
- * ne sont pas décoratifs : au-delà, la trame part en `rejets_bornes` au lieu
+ * `max[i]` sont les plafonds de PLAUSIBILITÉ, en dixièmes de l'unité. Ils ne
+ * sont pas décoratifs : au-delà, la trame part en `rejets_bornes` au lieu
  * d'écrire un chiffre absurde à l'écran. ⚠️ Ils sont LARGES à dessein — leur
  * rôle est d'attraper un émetteur cassé, pas de juger la tour.
  *
- * `v2_attendue` distingue deux silences que rien d'autre ne distingue :
- *   · `disk` n'a PAS de 2ᵉ grandeur — son absence est NORMALE ;
- *   · `gpu` en a une (°C) — son absence veut dire « la source ne la donne pas »,
- *     et c'est une information, pas un format invalide.
+ * `n_grandeurs` distingue deux silences que rien d'autre ne distingue :
+ *   · `disk` n'a QU'UNE grandeur — une 2ᵉ valeur est un défaut de FORMAT ;
+ *   · `gpu` en a quatre — en recevoir deux veut dire « la source ne donne pas
+ *     les autres », et c'est une INFORMATION (W10), pas un format invalide.
+ * ⚠️ LES BORNES SONT RECOPIÉES CÔTÉ AGENT (`BORNES` dans `dn_agent.py`) —
+ *    risque assumé et NOMMÉ : une dérive se verrait en `rejets_bornes` qui
+ *    monte, ⛔ pas en silence. ⇒ les deux tables bougent dans le MÊME geste.
+ */
+/*
+ * 🔴 dn4-6 : LA TABLE DEVIENT TABULAIRE EN N. `max1`/`max2`/`unite1`/`unite2`
+ *    portaient DEUX grandeurs DANS LA FORME MÊME DE LA TABLE — c'est-à-dire que
+ *    « ajouter une grandeur » n'était pas « ajouter une ligne », contrairement à
+ *    ce que l'en-tête ci-dessus promet. À quatre grandeurs il aurait fallu
+ *    `max3`, `max4`, `unite3`, `unite4` : la promesse serait devenue fausse
+ *    d'un facteur deux.
+ * ⚠️ `v2_attendue` (booléen) DEVIENT `n_grandeurs` (un COMPTE). Un booléen ne
+ *    peut pas distinguer « gpu en attend 4 » de « gpu en attend 2 », et c'est
+ *    exactement le test qui envoie une trame mal formée en `rejets_format`.
  */
 static const struct {
     const char *nom;    /* tel qu'il circule SUR LE FIL */
-    uint32_t max1;
-    uint32_t max2;
-    bool v2_attendue;
-    const char *unite1;
-    const char *unite2;
+    uint8_t n_grandeurs; /* combien la métrique en PUBLIE — ⛔ 0 = non renseignée */
+    uint32_t max[DN_LINK_GRANDEURS_MAX];
+    const char *unite[DN_LINK_GRANDEURS_MAX];
 } k_metriques[DN_LINK_METRIQUES] = {
-    [DN_LINK_M_CPU] = {"cpu", 1000u, 1000u, true, "%", "GHz"},
-    [DN_LINK_M_GPU] = {"gpu", 1000u, 1500u, true, "%", "degC"},
-    [DN_LINK_M_RAM] = {"ram", 1000u, 40000u, true, "%", "Go"},
-    [DN_LINK_M_NET] = {"net", 1000000u, 1000000u, true, "Mb/s", "Mb/s"},
+    /* 🔴 D11 : `cpu` passe à TROIS (% · GHz · cœur le plus chargé), `gpu` à
+     *    QUATRE (% · °C · W · tr/min). ⛔ AUCUNE MÉTRIQUE N'EST AJOUTÉE — des
+     *    GRANDEURS le sont. Les deux gardes posées en revue « parce que dn4-6
+     *    s'apprête à ajouter une métrique » restent en place et restent bonnes,
+     *    mais leur motif était FAUX : ⛔ ne pas ajouter une métrique pour leur
+     *    donner raison. `DN_LINK_SAUT_MAX` est donc INCHANGÉ. */
+    [DN_LINK_M_CPU] = {"cpu", 3, {1000u, 1000u, 1000u}, {"%", "GHz", "%"}},
+    [DN_LINK_M_GPU] = {"gpu", 4, {1000u, 1500u, 10000u, 100000u},
+                       {"%", "degC", "W", "tr/min"}},
+    [DN_LINK_M_RAM] = {"ram", 2, {1000u, 40000u}, {"%", "Go"}},
+    [DN_LINK_M_NET] = {"net", 2, {1000000u, 1000000u}, {"Mb/s", "Mb/s"}},
     /* W2 TRANCHÉ PAR LA MESURE le 2026-08-18 : `disk` porte un DÉBIT, pas un
      * taux d'occupation. Session réelle de 16 min à 1 Hz sur la tour, critère
      * écrit AVANT : le débit change de texte 93,3 % du temps (étendue
      * 268,4 Mo/s), l'occupation 0,0 % (54,9 % du premier au dernier
      * échantillon, étendue NULLE au dixième de point). Une case de six doit
      * bouger. */
-    [DN_LINK_M_DISK] = {"disk", 1000000u, 0u, false, "Mo/s", NULL},
+    [DN_LINK_M_DISK] = {"disk", 1, {1000000u}, {"Mo/s"}},
 };
 
 /* Le dernier état valide reçu, TOUTES MÉTRIQUES CONFONDUES — diagnostic global
@@ -222,8 +245,12 @@ bool dn_link_ingest_ligne(const char *ligne)
      *    `format`, une valeur hors plafond reste `bornes`. La campagne de bruit
      *    d'AC2 doit incrémenter le compteur attendu ET LUI SEUL.
      */
-    enum { NB_CHAMPS_MAX = 7 }; /* DN · ver · seq · t_ms · metrique · v1 [· v2] */
-    enum { NB_CHAMPS_MIN = 6 };
+    /* 🔴 dn4-6 : 7 -> 9, EN EXTENSION ADDITIVE. Cinq champs fixes
+     * (DN · ver · seq · t_ms · metrique) + 1 à 4 valeurs. ⛔ v1 et v2 restent
+     * ACCEPTÉES : le témoin de non-régression de dn2-2/dn4-1 doit rester VERT. */
+    enum { NB_CHAMPS_FIXES = 5 };
+    enum { NB_CHAMPS_MAX = NB_CHAMPS_FIXES + DN_LINK_GRANDEURS_MAX }; /* 9 */
+    enum { NB_CHAMPS_MIN = NB_CHAMPS_FIXES + 1 };                     /* 6 */
     char *champ[NB_CHAMPS_MAX];
     int n = 0;
     champ[n++] = corps;
@@ -299,26 +326,71 @@ bool dn_link_ingest_ligne(const char *ligne)
         return false;
     }
 
-    uint32_t v1, v2 = 0;
-    bool v2_connue = (n == NB_CHAMPS_MAX);
-    if (!parse_u32_strict(champ[5], &v1)) {
+    /*
+     * ── LES VALEURS, EN NOMBRE VARIABLE (dn4-6) ─────────────────────────────
+     *
+     * 🔴 v2 RESTE v2, EXACTEMENT COMME v1 RESTE v1. Une trame annonçant `ver=2`
+     *    avec trois ou quatre valeurs est un émetteur qui MENT SUR SA VERSION,
+     *    pas une extension — même doctrine que la v1 à 7 champs, et elle tombe
+     *    au même endroit : `rejets_format`. ⛔ Sans ce test, `ver=2` à 9 champs
+     *    aurait été SILENCIEUSEMENT interprétée comme une v3.
+     */
+    int nv = n - NB_CHAMPS_FIXES; /* 1..4 par construction du découpage */
+    if (ver <= 2u && nv > 2) {
         s_cnt.rejets_format++;
         return false;
     }
-    if (v2_connue && !parse_u32_strict(champ[6], &v2)) {
+    /* Plus de valeurs que la métrique n'en PUBLIE est un défaut de format, ⛔ pas
+     * une donnée en trop qu'on jetterait en silence. ⚠️ MOINS, en revanche, est
+     * LÉGAL et signifiant : c'est W10 — « la source ne donne pas celle-là ». */
+    if (nv > (int)k_metriques[im].n_grandeurs) {
         s_cnt.rejets_format++;
         return false;
     }
-    /* Une 2ᵉ grandeur envoyée pour une métrique qui n'en a PAS est un défaut de
-     * format, pas une donnée en trop qu'on jetterait en silence. */
-    if (v2_connue && !k_metriques[im].v2_attendue) {
-        s_cnt.rejets_format++;
-        return false;
+    /*
+     * ── LE CHAMP VIDE : « CETTE GRANDEUR-LÀ, JE NE LA CONNAIS PAS » (W10) ────
+     *
+     * 🔴 SANS ÇA, W10 NE SURVIT PAS À N GRANDEURS. Le fil est POSITIONNEL : une
+     *    source qui rend (46 %, °C inconnue, 53 W, 604 tr/min) ne peut pas
+     *    « sauter » la deuxième — la faire glisser afficherait la PUISSANCE
+     *    dans la case de la TEMPÉRATURE, ce qui est pire qu'une absence. Et la
+     *    tronquer à la première inconnue perdrait deux valeurs VRAIES et
+     *    disponibles, ce que W10 interdit explicitement.
+     * ✅ ET LE DÉCOUPAGE SAIT DÉJÀ LE VOIR : le corps est découpé À LA MAIN et
+     *    non par `strtok` précisément parce que `strtok` FUSIONNE les
+     *    séparateurs consécutifs — « ,, » lui serait invisible. La capacité
+     *    existait, elle n'était pas exploitée.
+     * ⛔ SAUF EN POSITION 0 : une trame sans sa valeur principale ne dit rien.
+     *    L'agent, lui, n'émet simplement pas la métrique — la case périme d'elle
+     *    -même en 3 s et dit « -- ». Un champ 0 vide est donc un émetteur cassé.
+     */
+    uint32_t v[DN_LINK_GRANDEURS_MAX] = {0};
+    bool connue[DN_LINK_GRANDEURS_MAX] = {false};
+    for (int i = 0; i < nv; i++) {
+        const char *c = champ[NB_CHAMPS_FIXES + i];
+        if (c[0] == '\0') {
+            if (i == 0) {
+                s_cnt.rejets_format++;
+                return false;
+            }
+            connue[i] = false;
+            continue;
+        }
+        if (!parse_u32_strict(c, &v[i])) {
+            s_cnt.rejets_format++;
+            return false;
+        }
+        connue[i] = true;
     }
-    if (v1 > k_metriques[im].max1 ||
-        (v2_connue && v2 > k_metriques[im].max2)) {
-        s_cnt.rejets_bornes++;
-        return false;
+    /* ⚠️ LES BORNES SE JUGENT APRÈS TOUS LES PARSES, ET SUR TOUTES LES VALEURS.
+     *    Un `return` au premier champ hors plafond aurait laissé un champ
+     *    NON-DÉCIMAL en 4ᵉ position tomber en `rejets_bornes` au lieu de
+     *    `rejets_format` — un compteur qui change de sens, ce qu'AC7 interdit. */
+    for (int i = 0; i < nv; i++) {
+        if (connue[i] && v[i] > k_metriques[im].max[i]) {
+            s_cnt.rejets_bornes++;
+            return false;
+        }
     }
 
     portENTER_CRITICAL(&s_mux);
@@ -351,9 +423,16 @@ bool dn_link_ingest_ligne(const char *ligne)
     }
     s_seq_connu = true;
     int64_t maintenant = esp_timer_get_time();
-    s_m[im].v1 = (int)v1;
-    s_m[im].v2 = (int)v2;
-    s_m[im].v2_connue = v2_connue;
+    for (int i = 0; i < DN_LINK_GRANDEURS_MAX; i++) {
+        /* ⚠️ LES GRANDEURS NON PORTÉES SONT REMISES À « inconnue », ⛔ pas
+         *    laissées telles quelles : garder la valeur du tour précédent
+         *    ferait afficher un chiffre périmé sous un régime VIVANT — le
+         *    mensonge d'interface que dn2-2 a chassé, un cran plus loin. */
+        bool c = (i < nv) && connue[i];
+        s_m[im].v[i] = c ? (int)v[i] : -1;
+        s_m[im].connue[i] = c;
+    }
+    s_m[im].n = (uint8_t)nv;
     s_m[im].recu_us = maintenant;
     s_m[im].seq = seq;
     s_seq = seq;
@@ -379,12 +458,15 @@ const char *dn_link_metrique_unite(dn_link_metrique_t m, int grandeur)
     if (m < 0 || m >= DN_LINK_METRIQUES) {
         return NULL;
     }
-    return grandeur == 0 ? k_metriques[m].unite1 : k_metriques[m].unite2;
+    if (grandeur < 0 || grandeur >= DN_LINK_GRANDEURS_MAX) {
+        return NULL;
+    }
+    return k_metriques[m].unite[grandeur];
 }
 
-bool dn_link_metrique_v2_attendue(dn_link_metrique_t m)
+int dn_link_metrique_grandeurs(dn_link_metrique_t m)
 {
-    return (m >= 0 && m < DN_LINK_METRIQUES) && k_metriques[m].v2_attendue;
+    return (m >= 0 && m < DN_LINK_METRIQUES) ? k_metriques[m].n_grandeurs : 0;
 }
 
 /* ── Accès à l'état ──────────────────────────────────────────────────────── */
@@ -412,9 +494,11 @@ bool dn_link_vue(dn_link_metrique_t m, dn_link_vue_t *out)
     portEXIT_CRITICAL(&s_mux);
     int64_t maintenant = esp_timer_get_time();
     out->etat = etat_depuis(e.recu_us, maintenant);
-    out->v1 = e.v1;
-    out->v2 = e.v2;
-    out->v2_connue = e.v2_connue;
+    for (int i = 0; i < DN_LINK_GRANDEURS_MAX; i++) {
+        out->v[i] = e.v[i];
+        out->connue[i] = e.connue[i];
+    }
+    out->n = e.n;
     out->age_us = (e.recu_us < 0) ? -1 : maintenant - e.recu_us;
     out->recu_us = e.recu_us; /* origine ABSOLUE — voir `dn_link.h` (revue 2026-08-19) */
     out->seq = e.seq;
@@ -434,7 +518,7 @@ static void etat_brut(int *valeur, int64_t *recu_us, uint32_t *seq, uint32_t *t_
 {
     portENTER_CRITICAL(&s_mux);
     if (valeur) {
-        *valeur = s_m[DN_LINK_M_CPU].v1;
+        *valeur = s_m[DN_LINK_M_CPU].v[0];
     }
     if (recu_us) {
         *recu_us = s_recu_us;

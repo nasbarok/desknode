@@ -186,8 +186,15 @@
 /* La version que l'agent COURANT émet, et la plus haute que ce parseur accepte.
  * ⚠️ Les DEUX sont acceptées : voir `dn_link_version_connue()`. Une v1 reste une
  * v1 — 6 champs, métrique « cpu », rien d'autre. */
-#define DN_LINK_PROTO_VERSION 2
+#define DN_LINK_PROTO_VERSION 3
 #define DN_LINK_PROTO_VERSION_MIN 1
+/* Le nombre MAXIMAL de grandeurs qu'une trame peut porter (v3). ⚠️ MIROIR de
+ * `DN_WIDGET_GRANDEURS_MAX` — ⛔ mais PAS le même symbole : le fil et l'écran
+ * sont deux contrats distincts, et `RAM` prouve qu'ils ne coïncident pas
+ * (elle envoie 2 valeurs pour 1 grandeur affichée, le total partant en ligne
+ * secondaire). Les faire dépendre l'un de l'autre rendrait un changement
+ * d'affichage capable de casser le protocole en silence. */
+#define DN_LINK_GRANDEURS_MAX 4
 /* 3 périodes nominales de l'agent (~1 Hz). Choisi court pour que l'état menteur
  * dure peu, assez long pour survivre à un hoquet d'ordonnanceur Windows. */
 #define DN_LINK_PEREMPTION_US 3000000LL
@@ -211,7 +218,21 @@
  *   `rejets_trop_longue` ne devienne pas un compteur décoratif — et un compteur
  *   décoratif est un instrument qui ment.
  */
-#define DN_LINK_LIGNE_MAX 63
+/*
+ * 🔴 dn4-6 : 63 -> 71, ET L'INVARIANT SE RECALCULE, PAS SEULEMENT LA VALEUR.
+ *
+ *  · PIRE CAS D'UNE TRAME v3, recompté CARACTÈRE PAR CARACTÈRE au gabarit :
+ *    « $DN,3,4294967295,4294967295,gpu,1000000,1000000,1000000,1000000*FF »
+ *    = 66 octets. 71 laisse 5 octets de marge.
+ *  · CE QUE LE REPL DÉLIVRE reste 124 (`DN_LINK_REPL_LIGNE_MESUREE`, mesuré).
+ *
+ * ⇒ La bande « ligne COMPLÈTE mais trop longue » devient **72..124 = 53 octets**
+ *   contre 61 : elle RÉTRÉCIT DE 13 % ET RESTE ATTEIGNABLE. C'est la condition
+ *   pour que `rejets_trop_longue` ne devienne pas un compteur décoratif — et un
+ *   compteur décoratif est un instrument qui ment.
+ * ✅ Budget côté REPL : 66 + « pc » + espace = 69 ≤ 124. Aucune contrainte.
+ */
+#define DN_LINK_LIGNE_MAX 71
 /* Ce que le REPL délivre au parseur, MESURÉ (voir ci-dessus). Publié ici pour que
  * la bande « trop longue » se relise sans refaire la mesure. */
 #define DN_LINK_REPL_LIGNE_MESUREE 124
@@ -260,9 +281,20 @@ typedef enum {
  * valeur neuve avec un âge périmé, ou l'inverse. */
 typedef struct {
     dn_link_etat_t etat;
-    int v1;          /* dixièmes, -1 si jamais reçue */
-    int v2;          /* dixièmes, valable seulement si `v2_connue` */
-    bool v2_connue;  /* W10 : la trame portait-elle une 2ᵉ grandeur ? */
+    /*
+     * 🔴 dn4-6 : `v1`/`v2`/`v2_connue` DEVIENNENT DES TABLEAUX. Empiler `v3` et
+     *    `v4` à côté aurait multiplié par deux les endroits où W10 (« l'absence
+     *    est une DONNÉE, pas un silence global ») peut diverger — et ce dépôt a
+     *    déjà payé une règle dupliquée qui s'est mise à mentir d'un côté.
+     * ⚠️ `v[i]` ne vaut QUE si `connue[i]`. ⛔ Pas de sentinelle entière : le
+     *    dépôt en porte DEUX conventions contradictoires (`-1` pour `dn_link`,
+     *    `INT32_MIN` pour `dn_capteurs`) et elles ne s'uniformisent pas à
+     *    l'aveugle. Un drapeau explicite, comme `v2_connue` l'était.
+     * ⚠️ `v[0]` vaut -1 tant qu'aucune trame n'a été reçue, et `n` vaut alors 0.
+     */
+    int v[DN_LINK_GRANDEURS_MAX];    /* dixièmes */
+    bool connue[DN_LINK_GRANDEURS_MAX]; /* W10, PAR GRANDEUR */
+    uint8_t n;       /* combien de grandeurs la DERNIÈRE trame portait (0..4) */
     int64_t age_us;  /* -1 si jamais reçue */
     /* 🔴 L'INSTANT DE RÉCEPTION EN ABSOLU — ajouté par la revue du 2026-08-19.
      * `age_us` est un ÂGE, calculé à l'intérieur de `dn_link_vue()` : le
@@ -342,7 +374,12 @@ const char *dn_link_metrique_unite(dn_link_metrique_t m, int grandeur);
 /* Une 2ᵉ grandeur est-elle ATTENDUE pour cette métrique ? Sert à distinguer
  * « elle n'existe pas » (disk) de « elle existe mais la source ne la donne pas »
  * (gpu sans °C) — deux silences très différents. */
-bool dn_link_metrique_v2_attendue(dn_link_metrique_t m);
+/* Combien de grandeurs la métrique PUBLIE (1..DN_LINK_GRANDEURS_MAX).
+ * ⚠️ dn4-6 : remplace `dn_link_metrique_v2_attendue()`, qui était un BOOLÉEN et
+ *    ne pouvait donc pas distinguer « gpu en attend 4 » de « gpu en attend 2 ».
+ *    Un booléen là où un compte est nécessaire, c'est le test de format qui
+ *    devient approximatif — et un rejet approximatif est un compteur qui ment. */
+int dn_link_metrique_grandeurs(dn_link_metrique_t m);
 /* L'instantané cohérent d'une métrique. Rend false si `m` est hors bornes. */
 bool dn_link_vue(dn_link_metrique_t m, dn_link_vue_t *out);
 

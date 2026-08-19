@@ -88,9 +88,25 @@
 extern "C" {
 #endif
 
-/* D6 en admet 2 (Ambiance). Le mécanisme est générique ; cette borne n'est
- * qu'une taille de tableau, et l'élargir ne touche aucune fonction de dessin. */
-#define DN_WIDGET_GRANDEURS_MAX 2
+/*
+ * ── dn4-6 / D11 : LA BORNE PASSE DE 2 À 4, ET PAS AVANT SES DEUX CORRECTIFS ──
+ *
+ * D6 en admettait 2 (Ambiance). D11 demande `CPU` à TROIS grandeurs
+ * (% · GHz · cœur le plus chargé) et `GPU` à QUATRE (% · °C · W · tr/min).
+ *
+ * 🔴 L'ORDRE EST UN LIVRABLE, PAS UNE PRÉCAUTION DE STYLE. Élargir cette borne
+ *    AVANT de borner la jauge aurait rendu ATTEIGNABLE un défaut jusque-là
+ *    théorique : à n ≥ 3 empilé avec jauge, `y_bas` vaut 168 puis 208, et la
+ *    jauge était posée à `y_bas + 6` SANS AUCUN TEST contre `h`. Elle serait
+ *    donc sortie de la case, EN SILENCE — 3ᵉ occurrence de la même famille.
+ *    ⇒ La borne ne monte qu'APRÈS le correctif, et le correctif a son témoin
+ *      (`widget demo` à n ≥ 3 + jauge, log capturé).
+ *
+ * ⚠️ CE QUE L'ÉLARGISSEMENT COÛTE EN RAM, ET IL SE LIT, IL NE SE SUPPOSE PAS :
+ *    `txt[N][16]` + `brut[N]` par état de case, × 6 cases + la démo. Le chiffre
+ *    RÉEL est dans la table de non-régression d'AC13 (`mem` avant/après).
+ */
+#define DN_WIDGET_GRANDEURS_MAX 4
 
 /* Longueurs : un texte formaté (« -1234,5 » + marge) et une ligne secondaire. */
 #define DN_WIDGET_TXT_MAX 16
@@ -129,10 +145,54 @@ const char *dn_val_regime_nom(dn_val_regime_t r);
  * AC3 exige trois régimes DISTINGUÉS : la convention ne doit exister qu'ICI. */
 lv_color_t dn_val_regime_couleur(dn_val_regime_t r);
 
+/*
+ * ── dn4-6 / AC9 : LA PRÉCISION EST UNE PROPRIÉTÉ DE LA GRANDEUR ──────────────
+ *
+ * 🔴 `fmt_dixiemes()` était GLOBAL et rendait TOUJOURS un dixième. « 604,0 tr/min »
+ *    pour un ventilateur et « 212,0 W » pour une puissance : la source ne porte
+ *    PAS cette décimale, et l'inventer est un mensonge d'interface — la même
+ *    famille que le « 34,3 Go » décimal affiché contre le « 31,9 » de Windows.
+ *
+ * ⚠️ `NON_RENSEIGNEE` VAUT 0 DÉLIBÉRÉMENT, ET C'EST LE MÊME MOTIF QUE
+ *    `DN_VAL_ABSENTE = 0`. Un champ ajouté à une table d'initialiseurs désignés
+ *    naît à zéro : si `0` avait voulu dire « entier », TOUTES les grandeurs
+ *    existantes seraient passées de « 46,0 % » à « 46 % » EN SILENCE, au premier
+ *    build, sans qu'une ligne de descripteur ait bougé. Ici l'oubli est
+ *    DÉTECTABLE : `dn_prec_dixiemes()` journalise et retombe sur le dixième,
+ *    c'est-à-dire sur le comportement d'AVANT. C'est le patron de la sentinelle
+ *    décalée de `k_pc[]`, appliqué à un champ au lieu d'un index.
+ * ⛔ Le FIL reste en ENTIERS (dixièmes) dans les deux sens : c'est l'AFFICHAGE
+ *    qui porte la précision, jamais le transport (doctrine `parse_entier`).
+ */
+typedef enum {
+    DN_PREC_NON_RENSEIGNEE = 0, /* ⛔ oubli de descripteur — journalisé */
+    DN_PREC_ENTIER,             /* « 212 W », « 604 tr/min » */
+    DN_PREC_DIXIEME,            /* « 46,0 % », « 61,0 °C », « 4,7 GHz » */
+} dn_prec_t;
+
 /* Une grandeur du widget. `unite` peut être NULL (aucune unité affichée). */
 typedef struct {
     const char *unite;  /* « % », « °C », « tr/min » — affichée après la valeur */
     const char *icone;  /* glyphe UTF-8 en ligne, NULL = aucun (voir dn_font.h) */
+    /*
+     * ── dn4-6 / AC1 : LE MARQUAGE, ET C'EST UN CHAMP À LUI, PAS UN DÉTOURNEMENT ─
+     *
+     * 🔴 `CPU` porte DEUX POURCENTAGES : la moyenne (« 54 % ») et le cœur le plus
+     *    chargé (« 88 % »). Deux lignes visuellement identiques dont l'une ment par
+     *    omission — c'est précisément ce que D11 veut faire cesser (un cœur saturé
+     *    sur 16 logiques ne pèse que ~6 % de moyenne).
+     * ⚠️ La maquette écrit « c.max 88 % ». Le champ `icone` accepte n'importe quel
+     *    préfixe UTF-8 et aurait « marché » — ⛔ mais il s'appelle `icone` et sa
+     *    doc dit « glyphe ». Détourner un champ en silence, c'est fabriquer la
+     *    prochaine divergence `.h`/code, et ce dépôt en a déjà payé trois.
+     * ⇒ Un champ NOMMÉ. `icone` reste un glyphe, `prefixe` est du texte.
+     * ⚠️ Le préfixe est CONSERVÉ quand la valeur est ABSENTE (« c.max -- ») :
+     *    l'unité disparaît parce qu'elle affirmerait qu'on sait de quoi on parle,
+     *    le préfixe reste parce qu'il DÉSIGNE la grandeur qui manque. Cacher le
+     *    préfixe cacherait l'existence même de la grandeur — ce que W10 interdit.
+     */
+    const char *prefixe;
+    dn_prec_t prec;     /* AC9 — ⛔ 0 = NON RENSEIGNÉE, journalisée */
 } dn_widget_grandeur_t;
 
 /*
@@ -145,47 +205,63 @@ typedef struct {
     uint32_t couleur;    /* 0xRRGGBB, accent. dn3-1 le PORTE ; dn3-3 l'exploite. */
     uint8_t n_grandeurs; /* 1..DN_WIDGET_GRANDEURS_MAX */
     /*
-     * ── LA JAUGE, ET LE CONTRAT GÉOMÉTRIQUE QU'ELLE IMPOSE (dn4-1 / W5) ──────
+     * ── LA JAUGE, ET LE CONTRAT GÉOMÉTRIQUE QU'ELLE IMPOSE (W5) ─────────────
      *
      * Jauge horizontale sur la grandeur 0. ⚠️ ELLE N'EST PLUS CONDITIONNÉE À
      * `n_grandeurs == 1` : jusqu'à dn3-2 le code testait
      * `if (desc->indicateur && n == 1)`, si bien qu'un descripteur bi-grandeurs
      * avec `indicateur = true` PERDAIT SA JAUGE SANS ERREUR NI LOG, alors que ce
-     * champ était documenté ici SANS restriction. Le ledger le portait 🟠 latent
-     * depuis la revue dn3-1 ; D10 l'a armé en passant CPU et GPU à deux
-     * grandeurs. Corrigé en dn4-1 : le champ fait ce qu'il dit.
+     * champ était documenté ici SANS restriction. Corrigé en dn4-1 : le champ
+     * fait ce qu'il dit.
      *
-     * 🔴 MAIS CORRIGER SEULEMENT ÇA DÉPLACE LA PANNE, IL NE LA SUPPRIME PAS.
-     *    L'arithmétique, POSÉE AVANT LE CODE et relue dans `dn_widget.c:48-55`
-     *    (h = 156, W_VAL_Y = 48, W_VAL_PAS = 40, W_JAUGE_H = 10, W_SEC_H = 20 ;
-     *    la jauge consomme W_JAUGE_H + 10 = 20 px, pas 26) :
+     * 🔴 ET dn4-6 FERME LA MOITIÉ QUI RESTAIT OUVERTE — 3ᵉ OCCURRENCE. dn4-1
+     *    avait rendu AUDIBLE l'abandon de la ligne secondaire, et laissé la
+     *    JAUGE posée à `y_bas + 6` SANS AUCUN TEST contre `h` (`dn_widget.c`,
+     *    `lv_obj_set_pos(out->jauge, …)`). Tant que le maximum était 2, aucune
+     *    case ne pouvait sortir de la boîte ; à 3 et 4 grandeurs empilées, si.
+     *    ⚠️ Et le défaut ne se serait PAS VU comme une erreur : LVGL clippe au
+     *       parent sans un mot. Une jauge à moitié dehors ressemble à une jauge.
      *
-     *      n=1 sans jauge : y_bas =  88          -> 88 + 20 = 108 <= 156  sec OUI
-     *      n=1 avec jauge : y_bas =  88 -> 108   -> 108 + 20 = 128 <= 156 sec OUI
-     *      n=2 sans jauge : y_bas = 128          -> 128 + 20 = 148 <= 156 sec OUI
-     *      n=2 AVEC jauge : y_bas = 128 -> 148   -> 148 + 20 = 168 > 156  sec NON
+     * ── LA RÈGLE DE PRIORITÉ, ÉCRITE ET NON SUBIE ────────────────────────────
      *
-     *    ⚠️ La story annonçait 174 > 156 : le chiffre exact est **168 > 156**
-     *       (elle comptait 26 px de jauge au lieu de 20). La CONCLUSION est la
-     *       même, et c'est elle qui compte — mais un chiffre publié se relit.
+     *        VALEURS  >  JAUGE  >  SECONDAIRE
      *
-     * ⇒ RÈGLE ÉCRITE, ET C'EST UNE PRIORITÉ, PAS UN HASARD : quand les deux ne
-     *   tiennent pas, LA JAUGE GAGNE ET LA SECONDAIRE EST ABANDONNÉE — parce que
-     *   la jauge est demandée explicitement par un champ du descripteur, tandis
-     *   que la secondaire est une ligne libre que l'état peut laisser vide de
-     *   toute façon. ⛔ ET L'ABANDON EST JOURNALISÉ (`dn_widget_creer`), jamais
-     *   silencieux : c'est tout l'objet du correctif.
+     * · Les VALEURS d'abord : elles sont la raison d'être de la case, et leur
+     *   nombre est déclaré par `n_grandeurs`. Une valeur qui ne tient pas est
+     *   déjà écrêtée ET journalisée par le clamp de `GRANDEURS_MAX` (dn4-1).
+     * · La JAUGE ensuite : elle est demandée par un CHAMP EXPLICITE du
+     *   descripteur (`indicateur`), c'est-à-dire par une intention écrite.
+     * · La SECONDAIRE en dernier : c'est une ligne LIBRE que l'état peut laisser
+     *   vide de toute façon — l'abandonner ne contredit aucune déclaration.
      *
-     * ⚠️ CE QUE ÇA NE CHANGE PAS, ET QUI SE VÉRIFIE : `RAM` est à n = 1, donc
-     *    elle GARDE sa jauge ET son « 12,1 / 32 Go ». Le corollaire nommé au
-     *    ledger (« le jour où on lui ajoute une 2ᵉ grandeur, la jauge disparaît
-     *    en silence ») est désormais faux dans les deux moitiés : la jauge ne
-     *    disparaît plus, et rien n'est plus silencieux.
+     * ⛔ ET CHAQUE ABANDON EST AUDIBLE (`ESP_LOGW` dans `dn_widget_creer`), pour
+     *    la jauge comme pour la secondaire. Un abandon silencieux était LE défaut.
      *
-     * ⛔ RESSERRER LA GÉOMÉTRIE (W_VAL_PAS, W_JAUGE_H) POUR FAIRE TENIR LES TROIS
-     *    A ÉTÉ ÉCARTÉ : il faudrait descendre W_VAL_PAS à 34, ce qui change la
-     *    lisibilité des SIX cases pour le besoin de deux — et aucune case de
-     *    dn4-1 ne demande jauge + secondaire sur deux grandeurs.
+     * ── L'ARITHMÉTIQUE, POSÉE AVANT LE CODE ET RELUE DANS `dn_widget.c` ───────
+     * (h = 156, `val_y` = 48, `val_pas` = 40, `W_JAUGE_H` = 10, `W_SEC_H` = 20 ;
+     *  la jauge consomme `W_JAUGE_H + 10` = 20 px, pas 26 ; `y_bas` est calculé
+     *  sur le nombre de LIGNES, qui n'est le nombre de grandeurs qu'en EMPILÉ.)
+     *
+     *   lignes  jauge   y_bas   + jauge        + secondaire
+     *   -----------------------------------------------------------------
+     *     1     non      88        —           108 <= 156   sec OUI
+     *     1     oui      88      108           128 <= 156   sec OUI     (RAM)
+     *     2     non     128        —           148 <= 156   sec OUI
+     *     2     oui     128      148           168 >  156   sec NON  (journalisé)
+     *     3     oui     168   188 > 156        🔴 JAUGE HORS CASE  <- dn4-6
+     *     4     oui     208   228 > 156        🔴 JAUGE HORS CASE  <- dn4-6
+     *
+     * ⚠️ AUCUNE DES SIX CASES NE DÉCLENCHE LE DÉFAUT AUJOURD'HUI : `RAM` est la
+     *    seule à `indicateur = true` et elle est à une ligne. C'est EXACTEMENT ce
+     *    qui l'a laissé passer deux fois. Le témoin se PROVOQUE (`widget demo`,
+     *    descripteur à n ≥ 3 AVEC jauge), il ne s'observe pas en régime.
+     *
+     * ⚠️ CE QUE ÇA NE CHANGE PAS, ET QUI SE VÉRIFIE : `RAM` GARDE sa jauge ET son
+     *    « 12,1 / 32 Go ». Vérifié par `widget` (`RAM 1 OUI OUI`), pas supposé.
+     *
+     * ⛔ RESSERRER LA GÉOMÉTRIE (`val_pas`, `W_JAUGE_H`) POUR FAIRE TENIR LES
+     *    TROIS reste écarté : il faudrait descendre `val_pas` à 34, ce qui change
+     *    la lisibilité des SIX cases pour le besoin d'une seule.
      */
     bool indicateur;
     int32_t ind_min;     /* bornes de la jauge, dans l'unité BRUTE de l'état */
@@ -241,6 +317,14 @@ typedef struct {
     lv_obj_t *jauge;  /* NULL si le descripteur n'a pas d'indicateur */
     lv_obj_t *sec;    /* NULL si aucune donnée secondaire n'est prévue */
     lv_obj_t *badge;  /* la marque « SIMULÉ », créée mais masquée si non simulé */
+    /* ⚠️ dn4-6 : `n` et `w` sont MÉMORISÉS À LA CONSTRUCTION, ⛔ pas relus du
+     *    descripteur à la mise à jour. Le descripteur peut demander 5 grandeurs
+     *    et n'en obtenir que 4 (clamp journalisé) ; repositionner sur `n = 5`
+     *    calerait la colonne droite d'une ligne qui n'existe pas. Ce qui a été
+     *    POSÉ fait foi — même doctrine que `dn_ui_widget_pointeurs()`, qui relit
+     *    les pointeurs et jamais la demande. */
+    uint8_t n;        /* grandeurs RÉELLEMENT posées */
+    int16_t w;        /* largeur de la case, pour le calage à droite */
 } dn_widget_t;
 
 /*
@@ -353,6 +437,118 @@ bool dn_widget_groupage(void);
  */
 void dn_widget_set_opa(uint8_t opa);
 uint8_t dn_widget_opa(void);
+
+/*
+ * ════════════════════════════════════════════════════════════════════════════
+ * dn4-6 / AC4 — LA GÉOMÉTRIE ET LA MISE EN FORME DEVIENNENT COMMUTABLES
+ * ════════════════════════════════════════════════════════════════════════════
+ *
+ * 🔴 LA QUESTION QUE dn4-6 FERME N'EST PAS « FAUT-IL » MAIS « PAR QUELLE VOIE ».
+ *    Quatre valeurs dans une case de 225 px, ça ne se décide pas au papier — et
+ *    un A/B qui exigerait trois reflashs coûterait trois observations à l'owner
+ *    pour un rendement qui baisse. Le patron est celui de `widget opa`,
+ *    `widget piste` et `widget icone` : un `s_*` réglable, `build_scene()`, et
+ *    LA CONSOLE LE DIT.
+ * ⛔ ON NE RETIRE PAS UN `const` : les `#define` restent LES DÉFAUTS, ce bloc
+ *    est un OVERRIDE (patron `s_nue_force[]`).
+ * ⚠️ N'affecte que les cases CRÉÉES ENSUITE ⇒ l'appelant reconstruit la scène,
+ *    et la reconstruction bloque le REPL ~350 ms — donc le TRANSPORT PC. La
+ *    commande doit l'annoncer AVANT, pas le laisser découvrir.
+ */
+
+/*
+ * LA MISE EN FORME DES GRANDEURS.
+ *
+ * ⛔ `EMPILE` EST ET RESTE LE DÉFAUT, tant que rien ne l'a battu SUR LA DALLE.
+ *    C'est aussi la valeur 0 : un état statique naît empilé, jamais dans une
+ *    disposition qu'aucun constat owner n'a retenue.
+ *
+ * ⚠️ `COTE` N'EST PAS ACQUISE : `dn_widget.c` porte depuis dn3-1 une estimation
+ *    qui l'écartait (« 205 px pour 201 utiles »). Cette estimation est
+ *    CONFRONTÉE À LA MESURE en dn4-6 (AC5, `widget largeur`) — ⛔ et un texte
+ *    trop large ne se voit PAS comme une erreur, LVGL clippe au parent sans un
+ *    mot. C'est pourquoi le chevauchement est DÉTECTÉ ET JOURNALISÉ ici.
+ */
+typedef enum {
+    DN_DISPO_EMPILE = 0, /* N lignes de 1 — LE DÉFAUT (D6, dn3-1) */
+    DN_DISPO_COTE,       /* 2 par ligne : (0,1) puis (2,3) */
+    DN_DISPO_MIXTE,      /* ligne 1 = grandeurs 0+1 côte à côte, puis 1 par ligne */
+    DN_DISPO_COUNT,
+} dn_widget_dispo_t;
+
+const char *dn_widget_dispo_nom(dn_widget_dispo_t d);
+
+/*
+ * L'EN-TÊTE. 🔴 CE RÉGLAGE EXISTE PARCE QUE LA TABLE DE D12 SUPPOSE
+ * `val_y = 36` ET QUE LE CODE POSE 48 — personne ne l'avait écrit, et ça change
+ * les verdicts (AC3). Le plancher réel de l'en-tête, relu du code :
+ *
+ *   NORMAL   icône `dn_font_28` @ y=8  -> boîte  8..43   <- le plancher
+ *            titre `dn_font_14` @ y=22 -> boîte 22..40
+ *            badge `dn_font_14` @ y=14 -> boîte 14..32
+ *            ⇒ bas de l'en-tête = 43, et `val_y = 48` laisse 5 px.
+ *
+ *   COMPACT  les TROIS en `dn_font_14` @ y=8 -> boîtes 8..26
+ *            ⇒ bas de l'en-tête = 26, `val_y = 36` laisse 10 px.
+ *
+ * ⚠️ CE QUE LA TABLE DE D12 NE DIT PAS, ET QU'IL FAUT DIRE AVANT L'A/B :
+ *    compacter l'en-tête N'EST PAS « rétrécir l'icône ». À `val_y = 36`, la
+ *    boîte du TITRE (22..40) déborde aussi de 4 px. Les trois éléments montent
+ *    ensemble, ou rien ne monte.
+ * 🔴 ET C'EST UNE DÉCISION OWNER, PAS UN CHOIX DE DEV : elle change les SIX
+ *    cases, et l'icône est le SEUL endroit où le champ `couleur` du descripteur
+ *    est EXERCÉ (dn3-1 l'y a posé pour qu'il ne soit pas un champ mort).
+ */
+typedef enum {
+    DN_ENTETE_NORMAL = 0, /* icône 28 px — LE DÉFAUT, bas d'en-tête à 43 */
+    DN_ENTETE_COMPACT,    /* les trois en 14 px — bas d'en-tête à 26 */
+    DN_ENTETE_COUNT,
+} dn_widget_entete_t;
+
+const char *dn_widget_entete_nom(dn_widget_entete_t e);
+
+typedef struct {
+    int16_t val_y;             /* y de la 1ʳᵉ valeur (défaut W_VAL_Y = 48) */
+    int16_t val_pas;           /* pas vertical entre lignes (défaut 40) */
+    dn_widget_dispo_t dispo;   /* défaut EMPILE */
+    dn_widget_entete_t entete; /* défaut NORMAL */
+    const lv_font_t *font_val; /* police des valeurs (défaut `dn_font_28`) */
+} dn_widget_geom_t;
+
+void dn_widget_geom(dn_widget_geom_t *out);       /* l'état COURANT, relu */
+void dn_widget_geom_defaut(dn_widget_geom_t *out); /* les `#define`, jamais récités */
+void dn_widget_set_geom(const dn_widget_geom_t *g);
+
+/* Le nombre de LIGNES qu'occupent `n` grandeurs dans une disposition donnée.
+ * ⚠️ Ce n'est `n` qu'en EMPILÉ — et c'est LUI qui gouverne `y_bas`, donc la
+ *    jauge et la secondaire. Exposé pour que la console CALCULE au lieu de
+ *    réciter (le dépôt a payé « 156 px » en dur trois cents lignes plus loin). */
+int dn_widget_lignes(dn_widget_dispo_t dispo, int n);
+
+/*
+ * ── AC5 : L'INSTRUMENT DE LARGEUR — LVGL, PAS UNE RÈGLE DE TROIS ─────────────
+ *
+ * Rend la largeur RÉELLE d'une chaîne dans la police RÉELLEMENT LIÉE, kerning
+ * compris, par `lv_text_get_size()`. ⛔ Jamais un produit
+ * `nb_caractères × largeur_moyenne` : c'est cette extrapolation-là
+ * (« ~15,8 px/caractère ») qui a servi à écarter le côte à côte en dn3-1, et si
+ * elle est fausse, c'est une décision qui reposait sur du vent.
+ * ⚠️ NE PREND PAS le verrou LVGL — même contrat inversé que le reste du module.
+ */
+int dn_widget_largeur(const char *txt, const lv_font_t *font);
+
+/* La largeur UTILE d'une case de `w` px : `w - 2 * W_PAD`. Relue, pas récitée. */
+int dn_widget_largeur_utile(int w);
+
+/* La gouttière minimale entre deux colonnes en côte à côte. */
+int dn_widget_gouttiere(void);
+
+/* Combien de chevauchements côte à côte ont été DÉTECTÉS depuis le dernier
+ * `dn_widget_chevauchements_reset()`. ⚠️ Un chevauchement est journalisé ET
+ * compté : LVGL clipperait sans un mot, et « rien n'a planté » n'est pas
+ * « ça tient » (piège d'instrument n°13). */
+uint32_t dn_widget_chevauchements(void);
+void dn_widget_chevauchements_reset(void);
 
 #ifdef __cplusplus
 }

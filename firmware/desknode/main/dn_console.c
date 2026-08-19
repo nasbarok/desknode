@@ -19,6 +19,7 @@
 #include "dn_rtc.h"
 #include "dn_stimulus.h"
 #include "dn_touch.h"
+#include "fonts/dn_font.h"
 #include "dn_ui.h"
 #include "dn_wifi.h"
 #include "driver/i2c_master.h"
@@ -2517,16 +2518,26 @@ static int cmd_pc(int argc, char **argv)
             printf("  --\n");
             continue;
         }
-        printf("  %d,%d %s", v.v1 / 10, v.v1 % 10,
-               dn_link_metrique_unite((dn_link_metrique_t)i, 0));
-        if (v.v2_connue) {
-            printf(" · %d,%d %s", v.v2 / 10, v.v2 % 10,
-                   dn_link_metrique_unite((dn_link_metrique_t)i, 1));
-        } else if (dn_link_metrique_v2_attendue((dn_link_metrique_t)i)) {
-            /* ⚠️ « attendue mais absente » n'est PAS « pas de 2e grandeur » :
-             *    deux silences tres differents, et le confondre effacerait
-             *    l'information que la source ne publie pas sa °C. */
-            printf(" · -- (2e grandeur ATTENDUE, non publiee par la source)");
+        /* 🔴 dn4-6 : LA BOUCLE VA JUSQU'AU COMPTE DECLARE PAR LA METRIQUE, pas
+         *    jusqu'a ce que la trame a porte. C'est ce qui permet de DIRE
+         *    « attendue mais absente » — un silence tres different de « pas de
+         *    grandeur la », et les confondre effacerait l'information que la
+         *    source ne publie pas sa °C (ou son tr/min).
+         * ⚠️ La valeur est imprimee en DIXIEMES ici, quelle que soit la
+         *    precision d'AFFICHAGE du descripteur : la console est un
+         *    instrument, elle montre ce qui circule SUR LE FIL. La precision de
+         *    l'ecran vit dans `k_desc[]` et se lit par `widget`. */
+        int ng = dn_link_metrique_grandeurs((dn_link_metrique_t)i);
+        for (int g = 0; g < ng; g++) {
+            const char *u = dn_link_metrique_unite((dn_link_metrique_t)i, g);
+            if (g > 0) {
+                printf(" ·");
+            }
+            if (g < (int)v.n && v.connue[g]) {
+                printf(" %d,%d %s", v.v[g] / 10, v.v[g] % 10, u ? u : "");
+            } else {
+                printf(" -- (%s ATTENDUE, non publiee par la source)", u ? u : "?");
+            }
         }
         printf("  · age %lld ms · seq %u\n", (long long)(v.age_us / 1000),
                (unsigned)v.seq);
@@ -2605,7 +2616,10 @@ static int cmd_pc(int argc, char **argv)
  *   widget voile <0..255>   AC9 — opacité du voile plein écran   ⚠️ RECONSTRUIT
  *   widget icone <case> <n> W4 — A/B de glyphe sur UNE case      ⚠️ RECONSTRUIT
  *   widget mock on|off      coupe le mock : la case redevient « -- » (témoin)
- *   widget demo on|off      AC1 — la 7e métrique FICTIVE, sans code de dessin
+ *   widget demo on|off [n]  AC1 — la 7e métrique FICTIVE, sans code de dessin
+ *                           ⚠️ `n` (1..6) est le SEUL chemin vers les deux
+ *                           témoins d'AC2 de dn4-6 : abandon de jauge (n ≥ 3)
+ *                           et clamp de `GRANDEURS_MAX` (n = 5)
  *   widget pousser <idx>    AC8 — UNE mise à jour synthétique, une par appel
  *   widget oublier <idx>    rend la case à son régime NATUREL après une poussée
  *   widget rafale           AC8 — les 6 poussées sous UN SEUL verrou (1 cycle)
@@ -2614,15 +2628,32 @@ static int cmd_pc(int argc, char **argv)
  *   widget bandes on|off    W8/AC9 — le repeint en BANDES pleine largeur
  *   widget piste <0xRRGGBB> le fond de la jauge, part NON remplie ⚠️ RECONSTRUIT
  *
- * 🔴 LES CINQ « RECONSTRUIT » BLOQUENT LE REPL, DONC LE TRANSPORT PC (relevé
+ *   ── dn4-6 / AC4 : LES TROIS VOIES, COMMUTÉES À CHAUD ────────────────────
+ *   widget voie defaut|a|b|c|c2   applique une voie ENTIÈRE et IMPRIME SON PRIX
+ *                                 avant le constat owner       ⚠️ RECONSTRUIT ×2
+ *   widget dispo empile|cote|mixte  la mise en forme des grandeurs ⚠️ RECONSTRUIT
+ *   widget entete normal|compact    l'en-tête (icône 28 -> 14)    ⚠️ RECONSTRUIT
+ *   widget val <y> <pas>            `val_y` / `val_pas`, interligne ⚠️ RECONSTRUIT
+ *   widget police 14|28             la police des VALEURS         ⚠️ RECONSTRUIT
+ *   widget grille <barre> <menu>    D12 (60 51) / voie (a) (60 0) ⚠️ RECONSTRUIT
+ *   ── dn4-6 / AC5 : LA LARGEUR, MESURÉE ───────────────────────────────────
+ *   widget largeur          la table des couples, RELUE de `lv_text_get_size()`
+ *   widget largeur <texte>  la largeur d'UNE chaîne dans la police liée
+ *   widget largeur reset    remet à zéro le compteur de CHEVAUCHEMENTS détectés
+ *
+ * 🔴 LES ONZE « RECONSTRUIT » BLOQUENT LE REPL, DONC LE TRANSPORT PC (relevé
  *    en revue le 2026-08-18 : ce docblock affirmait qu'AUCUNE sous-commande
  *    n'était un travail long, trois lignes au-dessus de trois qui le sont — puis
  *    dn3-2 en a ajouté CINQ sans les lister, dont `nue`, qui reconstruit AUSSI
  *    et qui est l'instrument CENTRAL du témoin négatif d'AC8 ; puis la séance du
  *    2026-08-18 a ajouté `piste`, qui reconstruit AUSSI, et le compte est reparti
- *    de « trois » à « quatre » sans jamais atteindre CINQ. ⛔ Ce compte est
- *    manifestement un point de rupture : il se corrige ICI **et** dans le « Jeu
- *    complet » du README **dans le même geste**, jamais dans un seul des deux).
+ *    de « trois » à « quatre » sans jamais atteindre CINQ ; puis dn4-6 en a
+ *    ajouté SIX (`voie`, `dispo`, `entete`, `val`, `police`, `grille`) et le
+ *    compte passe à ONZE. ⛔ Ce compte est manifestement un point de rupture :
+ *    il se corrige ICI **et** dans le « Jeu complet » du README **dans le même
+ *    geste**, jamais dans un seul des deux).
+ *    ⚠️ `widget voie` reconstruit DEUX FOIS (les bandes, puis la géométrie de
+ *       case) : ~700 ms de REPL bloqué. Elle le dit dans sa sortie.
  *    Elles
  *    prennent `lvgl_port_lock(2000)` puis appellent `build_scene()`, qui détruit
  *    et reconstruit LES DEUX racines — plus lourd qu'une transition, que §15.6
@@ -2701,6 +2732,393 @@ static int cmd_widget(int argc, char **argv)
     /* La PISTE de la jauge — constat owner du 2026-08-18. Même patron que
      * `opa`/`voile` : l'arbitrage de teinte est un CONSTAT OWNER sur la dalle,
      * et il ne doit pas coûter un reflash par essai. */
+    /*
+     * ════════════════════════════════════════════════════════════════════════
+     * dn4-6 / AC4 — LES TROIS VOIES, COMMUTEES A CHAUD
+     * ════════════════════════════════════════════════════════════════════════
+     * ⛔ RIEN N'EST TRANCHE SUR LE PAPIER. Le verdict est un CONSTAT OWNER
+     *    verbatim sur la dalle. Ce que la console doit faire, c'est rendre les
+     *    trois JOUABLES sans reflasher, et ANNONCER LE PRIX DE CHACUNE AVANT le
+     *    constat — un A/B dont une branche est deja refutee par l'arithmetique
+     *    sans qu'on l'ait dit n'est pas un A/B.
+     */
+    if (argc == 3 && strcmp(argv[1], "voie") == 0) {
+        dn_widget_geom_t g;
+        dn_widget_geom(&g);
+        int bh = 0, mh = 0;
+        dn_ui_geom_bandes_defaut(&bh, &mh); /* ⛔ RELUS, jamais recites */
+        const char *quoi = argv[2];
+        bool connue = true;
+
+        if (strcmp(quoi, "defaut") == 0) {
+            dn_widget_geom_defaut(&g);
+        } else if (strcmp(quoi, "a") == 0) {
+            /* (a) police 28, MENU SUPPRIME. case_h = 180. */
+            bh = 60;
+            mh = 0;
+            dn_widget_geom_defaut(&g);
+            g.entete = DN_ENTETE_COMPACT;
+            g.val_y = 36;
+            g.val_pas = 36; /* interligne 1 px — 36 + 4x36 = 180 PILE */
+        } else if (strcmp(quoi, "b") == 0) {
+            /* (b) 3e police + D12. ⚠️ LA 3e POLICE N'EST PAS EMBARQUEE : voir
+             * le prix imprime ci-dessous. On joue la branche avec la police 14
+             * pour que la GEOMETRIE soit constatable, ⛔ et on le DIT. */
+            bh = 60;
+            mh = 51;
+            dn_widget_geom_defaut(&g);
+            g.entete = DN_ENTETE_COMPACT;
+            g.val_y = 36;
+            g.font_val = &dn_font_14;
+            g.val_pas = 30;
+        } else if (strcmp(quoi, "c") == 0) {
+            /* (c) cote a cote. ⛔ NE TOUCHE NI LA POLICE, NI LE CHROME, NI
+             * L'EN-TETE, NI LES BANDES. C'est son argument principal. */
+            dn_widget_geom_defaut(&g);
+            g.dispo = DN_DISPO_COTE;
+        } else if (strcmp(quoi, "c2") == 0) {
+            /* (c) variante MIXTE : ligne 1 cote a cote, le reste empile.
+             * ⚠️ A 4 grandeurs elle fait TROIS lignes (y_bas 168) : elle ne
+             *    tient QUE sur une case de 180, donc avec (a). C'est une
+             *    variante, pas une voie — et elle est nommee pour ca. */
+            bh = 60;
+            mh = 0;
+            dn_widget_geom_defaut(&g);
+            g.dispo = DN_DISPO_MIXTE;
+        } else {
+            connue = false;
+        }
+        if (!connue) {
+            printf("usage : widget voie defaut|a|b|c|c2\n");
+            printf("  defaut  l'etat des lieux : empile, 28 px, barre 70/menu 60\n");
+            printf("  a       28 px, MENU SUPPRIME (case 180), en-tete COMPACT\n");
+            printf("  b       3e police + D12 (case 163), en-tete COMPACT\n");
+            printf("  c       COTE A COTE, geometrie INCHANGEE\n");
+            printf("  c2      MIXTE (l1 cote a cote) — exige la case de 180\n");
+            return 1;
+        }
+
+        esp_err_t e1 = dn_ui_set_bandes(bh, mh);
+        if (e1 != ESP_OK) {
+            printf("bandes refusees (%s) — RIEN n'a change\n", esp_err_to_name(e1));
+            return 1;
+        }
+        esp_err_t e2 = dn_ui_set_widget_geom(&g);
+        if (e2 != ESP_OK) {
+            printf("geometrie refusee (%s) — ⚠️ LES BANDES, ELLES, ONT CHANGE.\n",
+                   esp_err_to_name(e2));
+            printf("   `widget voie defaut` pour revenir a l'etat des lieux.\n");
+            return 1;
+        }
+
+        int cw = 0, ch = 0;
+        dn_ui_case_dim(&cw, &ch);
+        int lh = (int)lv_font_get_line_height(g.font_val ? g.font_val
+                                                         : &dn_font_28);
+        printf("VOIE « %s » APPLIQUEE — scene reconstruite (2 fois).\n", quoi);
+        printf("  case %dx%d · val_y %d · val_pas %d · interligne %d px\n", cw, ch,
+               g.val_y, g.val_pas, g.val_pas - lh);
+        printf("  %s · %s\n", dn_widget_dispo_nom(g.dispo),
+               dn_widget_entete_nom(g.entete));
+        printf("\n⚠️ CE QU'ELLE COUTE — A LIRE AVANT DE REGARDER LA DALLE :\n");
+        if (strcmp(quoi, "a") == 0) {
+            printf("  · la barre MENU QUITTE LA MAQUETTE (addendum §1 a amender)\n");
+            printf("  · interligne 1 px : LES VALEURS SE TOUCHENT — le critere\n");
+            printf("    ecrit de D12 est « jamais sous 5 px »\n");
+            printf("  · l'en-tete est COMPACTE : les SIX icones passent de 28 a\n");
+            printf("    14 px, et l'icone est le SEUL endroit ou le champ\n");
+            printf("    `couleur` du descripteur est EXERCE. C'est une DECISION\n");
+            printf("    OWNER, pas un reglage de dev.\n");
+            printf("  🔴 SANS l'en-tete compacte, (a) EST REFUTEE PAR L'ARITHMETIQUE :\n");
+            printf("     l'icone 28 descend a 43 px, et 44 + 4x35 = 184 > 180.\n");
+        } else if (strcmp(quoi, "b") == 0) {
+            printf("  🔴 LA 3e POLICE (~22) N'EST PAS EMBARQUEE. Ce qui est joue\n");
+            printf("     ici est la police 14 — la geometrie est representative,\n");
+            printf("     LA LISIBILITE NE L'EST PAS (14 px contre ~22 vises).\n");
+            printf("     ⛔ Ne pas conclure « illisible » de cette branche : le\n");
+            printf("        verdict de (b) exige de GENERER la police (T10), ce\n");
+            printf("        qui coute npm + reseau et ~19 Ko EXTRAPOLES.\n");
+            printf("  · D12 applique : toutes les coordonnees tactiles publiees\n");
+            printf("    PERIMENT (VENTILOS 506..516, jauge y=340..350)\n");
+            printf("  · +4,5%% de surface par case (35 100 -> 36 675 px)\n");
+            printf("  · en-tete COMPACTE — meme decision owner que (a)\n");
+        } else if (strcmp(quoi, "c") == 0 || strcmp(quoi, "c2") == 0) {
+            printf("  · LE MUR PASSE SUR LA LARGEUR : `widget largeur` MESURE,\n");
+            printf("    ⛔ ne pas conclure « ca tient » parce que rien n'a plante\n");
+            printf("    — LVGL clippe au parent SANS un mot.\n");
+            printf("  · `y_bas` BAISSE ⇒ le contrat W5 de dn_widget.h est a\n");
+            printf("    REECRIRE : l'arbitrage jauge/secondaire n'avait de sens\n");
+            printf("    que parce que l'empilement mangeait la hauteur.\n");
+            if (strcmp(quoi, "c") == 0) {
+                printf("  ✅ ELLE NE TOUCHE NI LA POLICE, NI LE CHROME, NI L'EN-TETE,\n");
+                printf("     NI LES BANDES — et elle rend D12 NON NECESSAIRE a la\n");
+                printf("     tenue (48 + 2x40 = 128 <= 156). Le MOTIF de D12 tombe ;\n");
+                printf("     D12 reste une decision owner. ⇒ question OWNER (X10).\n");
+            } else {
+                printf("  ⚠️ c2 exige la case de 180 (donc le MENU supprime) : a 4\n");
+                printf("     grandeurs elle fait TROIS lignes, y_bas = 168.\n");
+            }
+        } else {
+            printf("  (aucun — c'est l'etat des lieux mesure en §17.10)\n");
+        }
+        printf("\n⚠️ La reconstruction a retire le stimulus `anim` et la demo.\n");
+        printf("⚠️ Elle a bloque le REPL ~350 ms x2 — donc le TRANSPORT PC.\n");
+        printf("   Les trames emises pendant ce temps sont PERDUES : attendre\n");
+        printf("   3 s avant tout releve (`flush reset` ne vide pas la file).\n");
+        return 0;
+    }
+
+    if (argc == 3 && strcmp(argv[1], "dispo") == 0) {
+        dn_widget_geom_t g;
+        dn_widget_geom(&g);
+        if (strcmp(argv[2], "empile") == 0) {
+            g.dispo = DN_DISPO_EMPILE;
+        } else if (strcmp(argv[2], "cote") == 0) {
+            g.dispo = DN_DISPO_COTE;
+        } else if (strcmp(argv[2], "mixte") == 0) {
+            g.dispo = DN_DISPO_MIXTE;
+        } else {
+            printf("usage : widget dispo empile|cote|mixte   (actuelle : %s)\n",
+                   dn_widget_dispo_nom(g.dispo));
+            printf("⛔ EMPILE est et reste LE DEFAUT tant que rien ne l'a battu\n");
+            printf("   SUR LA DALLE (addendum §1).\n");
+            return 1;
+        }
+        esp_err_t e = dn_ui_set_widget_geom(&g);
+        if (e != ESP_OK) {
+            printf("refuse (%s) — RIEN n'a change\n", esp_err_to_name(e));
+            return 1;
+        }
+        printf("disposition = %s — SCENE RECONSTRUITE\n",
+               dn_widget_dispo_nom(g.dispo));
+        printf("⚠️ `widget largeur` MESURE si les couples tiennent. Un texte trop\n");
+        printf("   large ne se voit PAS comme une erreur.\n");
+        return 0;
+    }
+
+    if (argc == 3 && strcmp(argv[1], "entete") == 0) {
+        dn_widget_geom_t g;
+        dn_widget_geom(&g);
+        if (strcmp(argv[2], "normal") == 0) {
+            g.entete = DN_ENTETE_NORMAL;
+        } else if (strcmp(argv[2], "compact") == 0) {
+            g.entete = DN_ENTETE_COMPACT;
+        } else {
+            printf("usage : widget entete normal|compact   (actuel : %s)\n",
+                   dn_widget_entete_nom(g.entete));
+            printf("🔴 COMPACT change les SIX cases et l'icone est le SEUL endroit\n");
+            printf("   ou le champ `couleur` du descripteur est EXERCE.\n");
+            printf("   ⇒ DECISION OWNER (AC3 / X7), pas un reglage de dev.\n");
+            return 1;
+        }
+        esp_err_t e = dn_ui_set_widget_geom(&g);
+        if (e != ESP_OK) {
+            printf("refuse (%s) — RIEN n'a change\n", esp_err_to_name(e));
+            return 1;
+        }
+        printf("en-tete = %s — SCENE RECONSTRUITE\n", dn_widget_entete_nom(g.entete));
+        printf("⚠️ Le bas de l'en-tete passe a %d px. `widget valy` doit suivre :\n",
+               g.entete == DN_ENTETE_COMPACT ? 26 : 43);
+        printf("   le laisser a %d laisserait %d px de garde au lieu de 5.\n",
+               g.val_y, g.val_y - (g.entete == DN_ENTETE_COMPACT ? 26 : 43));
+        return 0;
+    }
+
+    if (argc == 4 && strcmp(argv[1], "val") == 0) {
+        dn_widget_geom_t g;
+        dn_widget_geom(&g);
+        char *f1 = NULL, *f2 = NULL;
+        long y = strtol(argv[2], &f1, 0);
+        long pas = strtol(argv[3], &f2, 0);
+        if (f1 == argv[2] || *f1 != '\0' || f2 == argv[3] || *f2 != '\0') {
+            printf("usage : widget val <y> <pas>   (actuels : %d %d)\n", g.val_y,
+                   g.val_pas);
+            return 1;
+        }
+        g.val_y = (int16_t)y;
+        g.val_pas = (int16_t)pas;
+        esp_err_t e = dn_ui_set_widget_geom(&g);
+        if (e != ESP_OK) {
+            printf("refuse (%s) — RIEN n'a change\n", esp_err_to_name(e));
+            return 1;
+        }
+        int lh = (int)lv_font_get_line_height(g.font_val ? g.font_val
+                                                         : &dn_font_28);
+        int ch = 0;
+        dn_ui_case_dim(NULL, &ch);
+        printf("val_y = %d · val_pas = %d — SCENE RECONSTRUITE\n", g.val_y,
+               g.val_pas);
+        printf("  interligne = %d - %d = %d px", g.val_pas, lh, g.val_pas - lh);
+        if (g.val_pas - lh < 5) {
+            printf("   🔴 SOUS LE CRITERE ECRIT DE D12 (>= 5 px)");
+        }
+        printf("\n  garde sous l'en-tete = %d - %d = %d px\n", g.val_y,
+               g.entete == DN_ENTETE_COMPACT ? 26 : 43,
+               g.val_y - (g.entete == DN_ENTETE_COMPACT ? 26 : 43));
+        printf("  4 grandeurs empilees : y_bas = %d + 4 x %d = %d (case %d)%s\n",
+               g.val_y, g.val_pas, g.val_y + 4 * g.val_pas, ch,
+               g.val_y + 4 * g.val_pas > ch ? "  🔴 DEBORDE" : "");
+        return 0;
+    }
+
+    if (argc == 3 && strcmp(argv[1], "police") == 0) {
+        dn_widget_geom_t g;
+        dn_widget_geom(&g);
+        if (strcmp(argv[2], "28") == 0) {
+            g.font_val = &dn_font_28;
+        } else if (strcmp(argv[2], "14") == 0) {
+            g.font_val = &dn_font_14;
+        } else {
+            printf("usage : widget police 14|28   (actuelle : line_height %d)\n",
+                   (int)lv_font_get_line_height(g.font_val));
+            printf("⚠️ IL N'Y A QUE DEUX POLICES EMBARQUEES. La voie (b) vise ~22,\n");
+            printf("   qui EXIGE une regeneration (`tools/gen_font_dn.py`, npm +\n");
+            printf("   reseau, ~19 Ko EXTRAPOLES — a confirmer PAR UN BUILD).\n");
+            printf("⛔ Ne pas conclure sur (b) depuis la police 14.\n");
+            return 1;
+        }
+        esp_err_t e = dn_ui_set_widget_geom(&g);
+        if (e != ESP_OK) {
+            printf("refuse (%s) — RIEN n'a change\n", esp_err_to_name(e));
+            return 1;
+        }
+        printf("police des valeurs : line_height %d — SCENE RECONSTRUITE\n",
+               (int)lv_font_get_line_height(g.font_val));
+        return 0;
+    }
+
+    if (argc == 4 && strcmp(argv[1], "grille") == 0) {
+        char *f1 = NULL, *f2 = NULL;
+        long bh = strtol(argv[2], &f1, 0);
+        long mh = strtol(argv[3], &f2, 0);
+        if (f1 == argv[2] || *f1 != '\0' || f2 == argv[3] || *f2 != '\0') {
+            int b = 0, m = 0, gh = 0, ch = 0;
+            dn_ui_geom_bandes(&b, &m, &gh, &ch);
+            printf("usage : widget grille <barre_h> <menu_h>   (actuels : %d %d)\n",
+                   b, m);
+            printf("  70 60 = l'etat des lieux (case 156)\n");
+            printf("  60 51 = D12                (case 163)\n");
+            printf("  60  0 = voie (a), MENU supprime (case 180)\n");
+            printf("⚠️ Bornes RELUES du contenu : barre >= 53 (heure dn_font_28 a\n");
+            printf("   y=18, boite 18..53), menu >= 49 (dn_font_28 a y=14) ou 0.\n");
+            return 1;
+        }
+        esp_err_t e = dn_ui_set_bandes((int)bh, (int)mh);
+        if (e != ESP_OK) {
+            printf("refuse (%s) — RIEN n'a change\n", esp_err_to_name(e));
+            return 1;
+        }
+        int b = 0, m = 0, gh = 0, ch = 0, cw = 0;
+        dn_ui_geom_bandes(&b, &m, &gh, &ch);
+        dn_ui_case_dim(&cw, NULL);
+        printf("barre %d · menu %d · grille %d · case %dx%d — SCENE RECONSTRUITE\n",
+               b, m, gh, cw, ch);
+        printf("🔴 TOUTE COORDONNEE TACTILE PUBLIEE EST DESORMAIS PERIMEE :\n");
+        printf("   VENTILOS y=506..516 (dn3-2), bande de jauge y=340..350 (dn4-1).\n");
+        printf("   ⇒ recalculer ET controler la formule contre un releve deja\n");
+        printf("     publie AVANT de faire viser quoi que ce soit (AC11).\n");
+        printf("⚠️ surface d'une case : %d px (etait 35 100 a 156)\n", cw * ch);
+        return 0;
+    }
+
+    /*
+     * ════════════════════════════════════════════════════════════════════════
+     * dn4-6 / AC5 — LA LARGEUR EST MESUREE, PAS ESTIMEE
+     * ════════════════════════════════════════════════════════════════════════
+     * ⛔ JAMAIS UN PRODUIT `nb_caracteres x largeur_moyenne`. C'est cette
+     *    extrapolation (~15,8 px/car.) qui a servi a ECARTER le cote a cote en
+     *    dn3-1 : « a 28 px, 25,5 °C mesure ~110 px et 52,4 % ~95 px : 205 px
+     *    pour 201 utiles ». Si elle est fausse, c'est une decision qui reposait
+     *    sur du vent. On la CONFRONTE.
+     * ⚠️ La largeur est relue de `lv_text_get_size()` — la POLICE REELLEMENT
+     *    LIEE, kerning compris.
+     */
+    if (argc == 3 && strcmp(argv[1], "largeur") == 0 &&
+        strcmp(argv[2], "reset") == 0) {
+        /* ⚠️ AVANT la mesure d'une chaine libre : sinon « reset » serait MESURE
+         *    comme un texte et le compteur ne bougerait jamais — une commande
+         *    qui a l'air de marcher et ne fait rien. */
+        dn_widget_chevauchements_reset();
+        printf("compteur de chevauchements remis a 0\n");
+        return 0;
+    }
+    if ((argc == 2 || argc == 3) && strcmp(argv[1], "largeur") == 0) {
+        dn_widget_geom_t g;
+        dn_widget_geom(&g);
+        int cw = 0;
+        dn_ui_case_dim(&cw, NULL); /* ⛔ RELUE, jamais recitee */
+        int utile = dn_widget_largeur_utile(cw);
+        int gout = dn_widget_gouttiere();
+
+        if (argc == 3) {
+            /* Mesure d'UNE chaine donnee — pour que l'operateur puisse poser sa
+             * propre question sans recompiler. */
+            int w = dn_widget_largeur(argv[2], g.font_val);
+            printf("« %s » = %d px   (utile %d, gouttiere %d)\n", argv[2], w,
+                   utile, gout);
+            return 0;
+        }
+
+        printf("LARGEURS RELUES DE LVGL — police line_height %d, case %d px,\n",
+               (int)lv_font_get_line_height(g.font_val), cw);
+        printf("utile = %d - 2x12 = %d px · gouttiere minimale = %d px\n\n", cw,
+               utile, gout);
+
+        /* 🔴 LE TEMOIN HISTORIQUE D'ABORD : c'est LUI qui a ecarte le cote a
+         *    cote, et c'est LUI qu'il faut confronter. */
+        {
+            const char *a = "25,5 \xC2\xB0" "C";
+            const char *b = "52,4 %";
+            int wa = dn_widget_largeur(a, g.font_val);
+            int wb = dn_widget_largeur(b, g.font_val);
+            printf("TEMOIN dn3-1 (dn_widget.c:19-29) — l'estimation qui a ECARTE\n");
+            printf("le cote a cote :\n");
+            printf("  estime  « %s » ~110 px + « %s » ~95 px = 205 px\n", a, b);
+            printf("  MESURE  « %s »  %3d px + « %s »  %3d px = %d px\n", a, wa, b,
+                   wb, wa + wb);
+            printf("  ecart %+d px  ⇒  %s\n", (wa + wb) - 205,
+                   (wa + wb + gout) <= utile
+                       ? "🔴 LE COUPLE TIENT. L'ESTIMATION ETAIT FAUSSE."
+                       : "l'estimation est CONFIRMEE : ca ne tient pas.");
+        }
+
+        printf("\nPIRE CAS DE CHAQUE COUPLE (AC5) — « tient » = a + b + %d <= %d :\n",
+               gout, utile);
+        static const struct {
+            const char *quoi;
+            const char *a;
+            const char *b;
+        } k_couples[] = {
+            {"CPU  G0+G1 plausible", "100,0 %", "5,7 GHz"},
+            {"CPU  G0+G1 grammatical", "100,0 %", "100,0 GHz"},
+            {"CPU  G2 seule", "c.max 100,0 %", NULL},
+            {"GPU  G0+G1 plausible", "100,0 %", "95,0 \xC2\xB0" "C"},
+            {"GPU  G0+G1 grammatical", "100,0 %", "150,0 \xC2\xB0" "C"},
+            {"GPU  G2+G3 dixiemes", "350,0 W", "3000,0 tr/min"},
+            {"GPU  G2+G3 ENTIERS (AC9)", "350 W", "3000 tr/min"},
+            {"GPU  G2+G3 entiers + rpm", "350 W", "3000 rpm"},
+            {"GPU  G2+G3 mesures reels", "53 W", "604 tr/min"},
+            {"AMB  G0+G1 plausible", "-12,3 \xC2\xB0" "C", "100,0 %"},
+            {"NET  G0+G1 plausible", LV_SYMBOL_DOWN " 1000,0 Mb/s",
+             LV_SYMBOL_UP " 1000,0 Mb/s"},
+        };
+        for (size_t i = 0; i < sizeof(k_couples) / sizeof(k_couples[0]); i++) {
+            int wa = dn_widget_largeur(k_couples[i].a, g.font_val);
+            int wb = k_couples[i].b ? dn_widget_largeur(k_couples[i].b, g.font_val)
+                                    : 0;
+            int tot = wa + wb + (k_couples[i].b ? gout : 0);
+            printf("  ");
+            colonnes(k_couples[i].quoi, 26);
+            printf(" %3d + %3d + %2d = %3d  %s\n", wa, wb,
+                   k_couples[i].b ? gout : 0, tot,
+                   tot <= utile ? "OK" : "🔴 NE TIENT PAS");
+        }
+        printf("\n⛔ « Rien n'a plante » n'est PAS « ca tient » : LVGL clippe au\n");
+        printf("   parent SANS un mot. Chevauchements DETECTES a ce jour : %u\n",
+               (unsigned)dn_widget_chevauchements());
+        printf("   (`widget largeur reset` remet le compteur a zero)\n");
+        return 0;
+    }
     if (argc == 3 && strcmp(argv[1], "piste") == 0) {
         char *fin = NULL;
         long v = strtol(argv[2], &fin, 0);   /* accepte 0x… et le décimal */
@@ -3044,18 +3462,42 @@ static int cmd_widget(int argc, char **argv)
         }
         return 0;
     }
-    if (argc == 3 && strcmp(argv[1], "demo") == 0) {
+    if ((argc == 3 || argc == 4) && strcmp(argv[1], "demo") == 0) {
         bool on;
         if (!parse_on_off(argv[2], &on)) {
-            printf("usage : widget demo on|off\n");
+            printf("usage : widget demo on|off [n]\n");
+            printf("   `n` = nombre de grandeurs du descripteur de demo (1..6).\n");
+            printf("   ⛔ IL PEUT DEPASSER DN_WIDGET_GRANDEURS_MAX (4), ET C'EST\n");
+            printf("      LE POINT : le clamp de dn4-1 n'est ATTEIGNABLE que par\n");
+            printf("      un descripteur a n = 5. Aucune case figee ne le fera.\n");
             return 1;
+        }
+        if (argc == 4) {
+            char *fin = NULL;
+            long n = strtol(argv[3], &fin, 0);
+            if (fin == argv[3] || *fin != '\0' ||
+                dn_ui_set_demo_n((int)n) != ESP_OK) {
+                printf("n hors bornes (1..6) — RIEN n'a change\n");
+                return 1;
+            }
         }
         if (dn_ui_demo_set(on) != ESP_OK) {
             printf("verrou LVGL non pris — RIEN n'a change\n");
             return 1;
         }
-        printf("7e metrique FICTIVE %s.\n", on ? "AFFICHEE" : "retiree");
+        printf("7e metrique FICTIVE %s — n = %d grandeur(s) demandee(s).\n",
+               on ? "AFFICHEE" : "retiree", dn_ui_demo_n());
         if (on) {
+            /* 🔴 LES DEUX TEMOINS D'AC2 SE PROVOQUENT ICI, ET NULLE PART
+             *    AILLEURS. Le dire au moment ou l'operateur arme l'instrument
+             *    evite qu'il cherche le log au mauvais endroit. */
+            printf("⚠️ CE QUE CE `n` PROUVE (AC2 de dn4-6) :\n");
+            printf("     n=2  la SECONDAIRE est abandonnee (y_bas 128+20=148, +20>156)\n");
+            printf("     n>=3 la JAUGE est abandonnee (y_bas 168, +6+10=184 > 156)\n");
+            printf("     n=5  le CLAMP journalise « 1 PERDUE(S) » (MAX = %d)\n",
+                   DN_WIDGET_GRANDEURS_MAX);
+            printf("   Chaque abandon est un ESP_LOGW, et `widget` le RELIT des\n");
+            printf("   pointeurs — ⛔ pas du descripteur.\n");
             printf("  Elle est produite par le MEME `dn_widget_creer` que les\n");
             printf("  trois autres, depuis un descripteur et RIEN D'AUTRE :\n");
             printf("  aucune ligne de code de dessin n'existe pour elle.\n");
@@ -3128,6 +3570,31 @@ static int cmd_widget(int argc, char **argv)
     }
     printf("modele de widget (dn3-1) — %d cases sur %d le portent\n", n_widgets,
            DN_UI_METRIQUES);
+    {
+        /* 🔴 dn4-6 / AC4 : LA GEOMETRIE COURANTE EST RELUE, ⛔ JAMAIS RECITEE.
+         *    La table ci-dessous imprimait « 156 px » EN DUR — un chiffre juste
+         *    tant que personne ne touchait aux bandes, et FAUX a la premiere
+         *    bascule de voie. C'est exactement le motif que dn4-1 corrige trois
+         *    fois ailleurs. */
+        dn_widget_geom_t g;
+        dn_widget_geom(&g);
+        int bh = 0, mh = 0, gh = 0, ch = 0;
+        dn_ui_geom_bandes(&bh, &mh, &gh, &ch);
+        int cw0 = 0;
+        dn_ui_case_dim(&cw0, NULL);
+        printf("geometrie    : barre %d · menu %d · grille %d · case %dx%d\n", bh,
+               mh, gh, cw0, ch);
+        printf("               val_y %d · val_pas %d (interligne %d px) · %s · %s\n",
+               g.val_y, g.val_pas, g.val_pas - (int)lv_font_get_line_height(g.font_val),
+               dn_widget_dispo_nom(g.dispo), dn_widget_entete_nom(g.entete));
+        printf("               chevauchements cote a cote DETECTES : %u\n",
+               (unsigned)dn_widget_chevauchements());
+        if (dn_widget_chevauchements() > 0) {
+            printf("               🔴 un texte a debordé sa colonne. LVGL clippe\n");
+            printf("                  SANS un mot : « rien n'a plante » n'est pas\n");
+            printf("                  « ca tient ». Voir les ESP_LOGW.\n");
+        }
+    }
     printf("invalidation : %s\n",
            dn_widget_groupage() ? "GROUPEE (1 zone englobante par widget)"
                                 : "FINE (N zones, LVGL decide)");
@@ -3209,9 +3676,19 @@ static int cmd_widget(int argc, char **argv)
                (dd && dd->indicateur) ? ", jauge demandee" : "",
                nue ? "  ⚠️ CASE NUE (override W11), pas un abandon" : "");
     }
-    printf("   ⚠️ REGLE ECRITE (dn_widget.h) : quand les deux ne tiennent pas dans\n");
-    printf("      les 156 px, LA JAUGE GAGNE et l'abandon de la secondaire est\n");
-    printf("      JOURNALISE (ESP_LOGW). Un abandon silencieux etait le defaut.\n");
+    {
+        /* 🔴 « 156 px » ETAIT ECRIT EN DUR ICI (dn_console.c:3213, releve par le
+         *    cadrage de dn4-6). La hauteur de case est desormais un REGLAGE
+         *    (voie (a) : 180, D12 : 163) : le chiffre en dur serait devenu FAUX
+         *    a la premiere bascule, dans la phrase meme qui explique la regle. */
+        int ch = 0;
+        dn_ui_case_dim(NULL, &ch);
+        printf("   ⚠️ REGLE ECRITE (dn_widget.h) : VALEURS > JAUGE > SECONDAIRE.\n");
+        printf("      Quand tout ne tient pas dans les %d px de la case, on\n", ch);
+        printf("      abandonne dans CET ordre, et CHAQUE abandon est JOURNALISE\n");
+        printf("      (ESP_LOGW). Un abandon silencieux etait le defaut — la\n");
+        printf("      jauge l'etait encore jusqu'a dn4-6 (3e occurrence).\n");
+    }
     /* ⚠️ L'index de la case est RELU de la table métrique->case, ⛔ pas écrit en
      *    dur : c'est exactement le défaut que dn4-1 corrige trois fois ailleurs. */
     {

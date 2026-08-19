@@ -138,7 +138,7 @@ except ImportError:
 
 import ctypes
 
-PROTO_VERSION = 2
+PROTO_VERSION = 3
 PERIODE_S = 1.0
 
 # ── LE TÉMOIN DE MAPPING PMLog — CE QU'IL VÉRIFIE, EXACTEMENT ────────────────
@@ -175,12 +175,21 @@ _MEMCLK_MAX_MHZ = 20000
 #    `ecretages` au bilan), pas pour se substituer au firmware.
 # ⛔ Un écrêtage muet serait un mensonge : la valeur affichée ne serait plus la
 #    valeur mesurée, et rien ne le signalerait.
+# 🔴 dn4-6 : LA TABLE DEVIENT UNE LISTE PAR MÉTRIQUE. Le tuple à deux places
+#    portait DEUX grandeurs dans sa FORME même — à quatre, il aurait fallu
+#    `(a, b, c, d)` partout et des `BORNES[m][2]` que rien ne garde.
+# ⚠️ ELLE EST LE MIROIR DE `k_metriques[]` DANS `dn_link.c`, ET C'EST UN RISQUE
+#    ASSUMÉ ET NOMMÉ : les deux tables sont recopiées, pas dérivées l'une de
+#    l'autre (le fil n'a pas de canal de négociation). Une dérive ne serait PAS
+#    silencieuse — elle se verrait en `rejets_bornes` qui monte côté firmware.
+#    ⇒ LES DEUX TABLES BOUGENT DANS LE MÊME GESTE. Si vous éditez celle-ci sans
+#      l'autre, la campagne de bruit d'AC7 le dira.
 BORNES = {
-    "cpu": (1000, 1000),        # % · GHz
-    "gpu": (1000, 1500),        # % · °C
-    "ram": (1000, 40000),       # % · Go TOTAUX
-    "net": (1000000, 1000000),  # Mb/s ↓ · Mb/s ↑
-    "disk": (1000000, 0),       # Mo/s · (pas de 2e grandeur)
+    "cpu": [1000, 1000, 1000],            # % · GHz · % du cœur le plus chargé
+    "gpu": [1000, 1500, 10000, 100000],   # % · °C · W · tr/min
+    "ram": [1000, 40000],                 # % · Go TOTAUX
+    "net": [1000000, 1000000],            # Mb/s ↓ · Mb/s ↑
+    "disk": [1000000],                    # Mo/s
 }
 
 
@@ -192,11 +201,44 @@ def checksum(corps: str) -> str:
     return f"{ck:02X}"
 
 
-def trame(seq: int, t_ms: int, metrique: str, v1: int, v2=None) -> str:
-    """Une trame v2. `v2 = None` ⇒ 6 champs : « je ne connais pas v2 » (W10)."""
-    corps = f"DN,{PROTO_VERSION},{seq},{t_ms},{metrique},{v1}"
-    if v2 is not None:
-        corps += f",{v2}"
+def trame(seq: int, t_ms: int, metrique: str, valeurs) -> str:
+    """Une trame v3 : 5 champs fixes + 1 à 4 valeurs.
+
+    ⛔ `valeurs` EST UNE LISTE, PAS `v2, v3, v4` EMPILÉS. Empiler les paramètres
+       aurait mis la borne du protocole dans la SIGNATURE d'une fonction, c'est-
+       à-dire à l'endroit le plus coûteux à élargir — et ce fichier vient de le
+       payer sur `BORNES`.
+
+    🔴 W10 SURVIT À N GRANDEURS PAR LE **CHAMP VIDE**. Une source qui rend
+       `[46, None, 53, 604]` publie les TROIS qu'elle connaît et TAIT la
+       deuxième — sur un fil POSITIONNEL, ça ne peut pas être un décalage (la
+       puissance s'afficherait dans la case de la température) ni une
+       troncature (deux valeurs VRAIES seraient perdues). C'est donc un champ
+       VIDE : `$DN,3,…,gpu,460,,530,6040*CK`.
+    ✅ ET LE PARSEUR SAIT DÉJÀ LE VOIR : il découpe le corps À LA MAIN et non
+       par `strtok`, précisément parce que `strtok` fusionne les séparateurs
+       consécutifs et que « ,, » lui serait invisible. La capacité existait
+       depuis dn2-2, elle n'était pas exploitée.
+    ⚠️ LES `None` DE QUEUE SONT TRONQUÉS, pas rendus vides : « je n'ai que trois
+       grandeurs » et « ma quatrième est inconnue » sont le même fait ici, et la
+       forme courte économise des octets sur une ligne déjà bornée à 71.
+    ⛔ UN `None` EN POSITION 0 EST REFUSÉ : une trame sans sa valeur principale
+       ne dit rien. L'appelant ne doit alors PAS émettre la métrique — sa case
+       périme d'elle-même en 3 s et dit « -- ».
+    ⚠️ `valeurs = [v1]` ⇒ 6 champs, exactement la trame v1/v2 mono-grandeur.
+    """
+    vs = list(valeurs)
+    while vs and vs[-1] is None:
+        vs.pop()
+    if not vs:
+        raise ValueError(
+            "trame sans aucune valeur — la métrique ne doit pas être émise")
+    if vs[0] is None:
+        raise ValueError(
+            f"trame `{metrique}` : valeur PRINCIPALE absente — ne pas emettre "
+            "cette metrique du tout (sa case perimera en 3 s)")
+    corps = f"DN,{PROTO_VERSION},{seq},{t_ms},{metrique}," + ",".join(
+        "" if v is None else str(v) for v in vs)
     return f"${corps}*{checksum(corps)}\n"
 
 
@@ -212,6 +254,18 @@ _PM_ACTIVITY_GFX = 19
 _PM_TEMP_HOTSPOT = 27
 _PM_CLK_MEMCLK = 2
 _PM_BUS_LANES = 41
+# 🔴 dn4-6 / D11 : DEUX INDICES DE PLUS, ET ILS SONT GRATUITS. Ils sortent de la
+#    MÊME structure que `_brut()` remplit déjà — ⛔ AUCUN appel supplémentaire à
+#    `ADL2_New_QueryPMLogData_Get` (0,976 ms, mesuré n=30). Le budget de dn4-6
+#    est LE PIXEL, pas le CPU.
+# ✅ `ASIC_POWER` est MESURÉ : 53 W instantané, étendue 52..57, texte changé
+#    12/29 (41,4 %) — il qualifie déjà au critère W2, c'est le repli écrit
+#    d'avance si `FAN_RPM` échoue.
+# ⚠️ `FAN_RPM` ENTRE AVEC UNE DETTE DE MESURE : son MOUVEMENT n'a jamais été
+#    échantillonné (six indices suivis le 2026-08-18, pas celui-là). Son critère
+#    de qualification est écrit et horodaté AVANT la session (AC6 de dn4-6).
+_PM_ASIC_POWER = 23
+_PM_FAN_RPM = 14
 
 
 class _AdapterInfo(ctypes.Structure):
@@ -360,9 +414,18 @@ class SourceGpuAdl:
             return None, None
         if not self._coherent(out):
             return None, None
-        act = out.sensors[_PM_ACTIVITY_GFX]
-        edge = out.sensors[_PM_TEMP_EDGE]
-        return (act[1] if act[0] else None), (edge[1] if edge[0] else None)
+        # 🔴 QUATRE GRANDEURS, UN SEUL APPEL. `out` est déjà rempli : lire deux
+        #    capteurs de plus dans la MÊME structure coûte deux déréférencements.
+        # ⚠️ Chaque capteur porte SON drapeau de validité (`[0]`) : un capteur
+        #    invalide rend `None` POUR LUI SEUL. ⛔ Jamais un tout-ou-rien — les
+        #    quatre grandeurs du GPU sont indépendantes au sens de W10, même si
+        #    elles viennent du même appel.
+        def _v(idx):
+            c = out.sensors[idx]
+            return c[1] if c[0] else None
+
+        return (_v(_PM_ACTIVITY_GFX), _v(_PM_TEMP_EDGE), _v(_PM_ASIC_POWER),
+                _v(_PM_FAN_RPM))
 
     def fermer(self):
         try:
@@ -557,7 +620,7 @@ class Collecteur:
         return None
 
     def photo(self):
-        """Rend [(metrique, v1, v2|None), ...] — v2 None = « je ne sais pas ».
+        """Rend [(metrique, [v1, v2, …]), ...] — un `None` = « je ne sais pas ».
 
         🔴 CHAQUE SOURCE EST ISOLÉE (correctif de revue 2026-08-18). Avant, UNE
            seule exception ici remontait jusqu'à la boucle principale, qui ne
@@ -609,19 +672,57 @@ class Collecteur:
             #    `_tenter` sous la clé `cpu.freq`), ou elle rend une fréquence nulle.
             #    Dans les deux cas la case affiche le % et « -- » pour la fréquence.
             # ⚠️ `_borner`, PAS un `min()` nu : l'écrêtage doit être COMPTÉ.
-            out.append(("cpu", _dx(pct, BORNES["cpu"][0], e, "cpu.pct"),
-                        _borner(ghz_dx, BORNES["cpu"][1], e, "cpu.ghz")
-                        if ghz_dx is not None else None))
+            # 🔴 dn4-6 / D11 : LE CŒUR LE PLUS CHARGÉ.
+            #    `cpu_percent(percpu=True)` lit LE MÊME COMPTEUR SYSTÈME que
+            #    `cpu_percent()` — MESURÉ à 0,07..0,10 ms (n=29), contre 8,4 ms
+            #    pour `len(pids())`, écarté DEUX FOIS : case morte (1/28 de
+            #    changements) ET hors budget (0,84 % d'un cœur).
+            # ⚠️ C'EST BIEN UN SECOND APPEL psutil, ⛔ pas « le même appel » : ce
+            #    qui est partagé est le COMPTEUR NOYAU, pas l'appel. Et les deux
+            #    formes gardent des états internes SÉPARÉS (`_last_cpu_times` vs
+            #    `_last_per_cpu_times`) — sans quoi le second appel mesurerait un
+            #    intervalle nul et rendrait 0,0 % sur tous les cœurs, en boucle.
+            #    ⇒ HYPOTHÈSE FALSIFIABLE, et elle se falsifie À L'ŒIL sur la
+            #      dalle : une 3ᵉ ligne CPU clouée à « 0,0 % » pendant que la
+            #      moyenne bouge est exactement ce symptôme.
+            # ⚠️ ET SON MOUVEMENT EST MESURÉ, PAS ESPÉRÉ : étendue 25,0..73,9 %,
+            #    texte changé 28/28 (100 %), σ = 13,2. C'est ce qui RÉFUTE la
+            #    conclusion écrite du ledger (« le CPU n'aurait rien à mettre en
+            #    troisième »).
+            # ⚠️ `_tenter`, pas un appel nu : `percpu=True` peut lever là où
+            #    l'agrégat passe. Une demi-panne reste une DEMI-panne — le % et
+            #    la fréquence continuent, seule la 3ᵉ ligne dit « -- » (W10).
+            percpu = self._tenter("cpu.percpu",
+                                  lambda: psutil.cpu_percent(interval=None,
+                                                             percpu=True))
+            cmax = max(percpu) if percpu else None
+            out.append(("cpu", [
+                _dx(pct, BORNES["cpu"][0], e, "cpu.pct"),
+                _borner(ghz_dx, BORNES["cpu"][1], e, "cpu.ghz")
+                if ghz_dx is not None else None,
+                _dx(cmax, BORNES["cpu"][2], e, "cpu.cmax")
+                if cmax is not None else None,
+            ]))
 
         # ── gpu : % + °C, et l'absence de °C est une DONNÉE (W10) ────────────
         if self.gpu is not None:
             lu = self._tenter("gpu", self.gpu.lire)
             if lu is not None:
-                g_pct, g_c = lu
+                g_pct, g_c, g_w, g_rpm = lu
                 if g_pct is not None:
-                    out.append(("gpu", _dx(g_pct, BORNES["gpu"][0], e, "gpu.pct"),
-                                _dx(g_c, BORNES["gpu"][1], e, "gpu.degc")
-                                if g_c is not None else None))
+                    # ⚠️ CHAQUE GRANDEUR PORTE SON PROPRE `None` (W10) : un
+                    #    capteur invalide tait SA ligne, pas les trois autres.
+                    #    Le firmware écrit « -- » en gris sur CETTE ligne-là et
+                    #    la case reste RÉELLE.
+                    out.append(("gpu", [
+                        _dx(g_pct, BORNES["gpu"][0], e, "gpu.pct"),
+                        _dx(g_c, BORNES["gpu"][1], e, "gpu.degc")
+                        if g_c is not None else None,
+                        _dx(g_w, BORNES["gpu"][2], e, "gpu.w")
+                        if g_w is not None else None,
+                        _dx(g_rpm, BORNES["gpu"][3], e, "gpu.rpm")
+                        if g_rpm is not None else None,
+                    ]))
                 # g_pct None ⇒ ON N'ÉMET RIEN : la case périmera d'elle-même en
                 # 3 s et dira « -- ». ⛔ Émettre une valeur inventée serait le
                 # mensonge que tout ce projet traque.
@@ -645,8 +746,9 @@ class Collecteur:
         #       La convention est ecrite ici pour que personne ne la « corrige ».
         vm = self._tenter("ram", psutil.virtual_memory)
         if vm is not None:
-            out.append(("ram", _dx(vm.percent, BORNES["ram"][0], e, "ram.pct"),
-                        _dx(vm.total / 2**30, BORNES["ram"][1], e, "ram.total")))
+            out.append(("ram", [_dx(vm.percent, BORNES["ram"][0], e, "ram.pct"),
+                                _dx(vm.total / 2**30, BORNES["ram"][1], e,
+                                    "ram.total")]))
 
         # ── net : ↓ et ↑ en Mb/s (BITS — c'est l'unité du descripteur) ───────
         n1 = self._tenter("net", psutil.net_io_counters)
@@ -674,8 +776,8 @@ class Collecteur:
             else:
                 rx = (n1.bytes_recv - self._n0.bytes_recv) * 8 / 1e6 / dtn
                 tx = (n1.bytes_sent - self._n0.bytes_sent) * 8 / 1e6 / dtn
-                out.append(("net", _dx(rx, BORNES["net"][0], e, "net.rx"),
-                            _dx(tx, BORNES["net"][1], e, "net.tx")))
+                out.append(("net", [_dx(rx, BORNES["net"][0], e, "net.rx"),
+                                    _dx(tx, BORNES["net"][1], e, "net.tx")]))
             self._n0, self._nt0 = n1, t
         # ⛔ errin/errout/dropin/dropout NE SONT PAS PUBLIÉS : cette tour rend
         #    `dropin = 113 558 935 299 979`, une valeur impossible. On regarde un
@@ -697,7 +799,7 @@ class Collecteur:
             else:
                 mo_s = ((d1.read_bytes - self._d0.read_bytes) +
                         (d1.write_bytes - self._d0.write_bytes)) / 1e6 / dtd
-                out.append(("disk", _dx(mo_s, BORNES["disk"][0], e, "disk"), None))
+                out.append(("disk", [_dx(mo_s, BORNES["disk"][0], e, "disk")]))
             self._d0, self._dt0 = d1, t
 
         self._t0 = t
@@ -1064,14 +1166,14 @@ def principal() -> int:
             t_ms = int((time.monotonic() - depart) * 1000) & 0xFFFFFFFF
 
             rompu = False
-            for metrique, v1, v2 in photo:
+            for metrique, valeurs in photo:
                 # ⚠️ `seq` numérote les TRAMES, pas les cycles : cinq trames par
                 #    seconde consomment cinq seq. C'est ce que le firmware
                 #    attend (suivi de seq GLOBAL, jamais par métrique — sinon il
                 #    compterait 4 « pertes » à chaque tour de cinq).
                 seq += 1
                 try:
-                    sortie.envoyer(trame(seq, t_ms, metrique, v1, v2))
+                    sortie.envoyer(trame(seq, t_ms, metrique, valeurs))
                     trames_emises += 1
                 except BrokenPipeError:
                     # stdout redirigé vers un consommateur qui s'est fermé : boucler en

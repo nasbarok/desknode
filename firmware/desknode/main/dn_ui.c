@@ -80,14 +80,52 @@ static const char *TAG = "dn_ui";
  *   |  MENU (o)                                                    |
  *   +--------------------------------------------------------------+ 640
  */
-#define DN_UI_BARRE_H 70
-#define DN_UI_MENU_H 60
+/*
+ * ── dn4-6 / AC4 + AC11 : LES DEUX BANDES DEVIENNENT COMMUTABLES ──────────────
+ *
+ * 🔴 CE SONT LES DÉFAUTS, ET ILS RESTENT LES DÉFAUTS. Les override `s_*`
+ *    ci-dessous existent pour que les TROIS voies de dn4-6 se jouent DANS UN
+ *    SEUL FIRMWARE — la méthode qui a tranché `poll`/`event` (dn1-4), l'icône
+ *    `cog` (dn3-2), la disquette et la piste de jauge (dn4-1). ⛔ On ne retire
+ *    pas un `const` et on ne réécrit pas un défaut : on ajoute un override.
+ *
+ *   BARRE_H  MENU_H   GRILLE_H   CASE_H   ce que c'est
+ *   ------------------------------------------------------------------------
+ *      70      60       510       156     le DÉFAUT (dn3-2), l'état des lieux
+ *      60      51       529       163     D12 — décision owner acquise
+ *      60       0       580       180     voie (a), le MENU quitte la maquette
+ *
+ * ⚠️ D12 EST ACQUISE MAIS SON MOTIF PEUT TOMBER (X10). Elle a été prise pour
+ *    « trouver 13 px ». Si la voie (c) gagne, la place ne manque plus
+ *    (`48 + 2 × 40 = 128 ≤ 156`) et D12 coûte alors, sans rien acheter :
+ *    +4,5 % de surface par case (35 100 -> 36 675 px) sur un `duty` déjà à
+ *    10,09 %, et TOUTES les coordonnées tactiles publiées périment
+ *    (VENTILOS 506..516 de dn3-2, bande de jauge y = 340..350 de dn4-1).
+ *    ⇒ C'est une QUESTION OWNER, pas un choix de dev. Voir AC11.
+ */
+#define DN_UI_BARRE_H_DEFAUT 70
+#define DN_UI_MENU_H_DEFAUT 60
 #define DN_UI_MARGE 10
 #define DN_UI_GAP 10
 #define DN_UI_CASE_W ((DN_LCD_H_RES - 2 * DN_UI_MARGE - DN_UI_GAP) / 2) /* 225 */
-#define DN_UI_GRILLE_Y DN_UI_BARRE_H                                    /* 70 */
-#define DN_UI_GRILLE_H (DN_LCD_V_RES - DN_UI_BARRE_H - DN_UI_MENU_H)    /* 510 */
-#define DN_UI_CASE_H ((DN_UI_GRILLE_H - 2 * DN_UI_MARGE - 2 * DN_UI_GAP) / 3) /* 156 */
+
+static int s_geo_barre_h = DN_UI_BARRE_H_DEFAUT;
+static int s_geo_menu_h = DN_UI_MENU_H_DEFAUT;
+
+/* ⚠️ DES FONCTIONS, PAS DES MACROS QUI LIRAIENT LES `s_*` : une macro qui
+ *    dépend d'un statique mutable a l'air d'une constante au point d'usage, et
+ *    c'est exactement ce qui fait qu'on la récite au lieu de la relire. */
+static inline int ui_barre_h(void) { return s_geo_barre_h; }
+static inline int ui_menu_h(void) { return s_geo_menu_h; }
+static inline int ui_grille_y(void) { return s_geo_barre_h; }
+static inline int ui_grille_h(void)
+{
+    return DN_LCD_V_RES - s_geo_barre_h - s_geo_menu_h;
+}
+static inline int ui_case_h(void)
+{
+    return (ui_grille_h() - 2 * DN_UI_MARGE - 2 * DN_UI_GAP) / 3;
+}
 
 /* Zone tactile du retour : généreuse par exigence d'AC4 (« pas juste le
  * glyphe »). 120x60 dans le coin haut-gauche, soit 24 fois l'aire du chevron. */
@@ -187,16 +225,23 @@ static const bool k_widget[DN_UI_METRIQUES] = {
  *    mutable) NE SE CASSE PAS. Le mécanisme est donc un tableau d'OVERRIDE
  *    `s_*` consulté par les lecteurs — ⛔ pas un `const` retiré.
  *
- * ⚠️ Il y a SIX lecteurs, et les six passent par `case_est_widget()` :
- *    `dn_ui_desc`, `dn_ui_est_widget`, la boucle de `build_dashboard`,
- *    `detail_reparametrer`, `case_poser` et `dn_ui_case_est_widget` (exposé pour
- *    la table de géométrie de la console). En oublier un rendrait une case
- *    dessinée nue mais mise à jour comme un widget — un pointeur `valeur[0]`
- *    lu là où le modèle attend une racine de widget.
- * 🔴 dn4-1 EN A AJOUTÉ UN SANS METTRE À JOUR CE COMPTE (revue 2026-08-19) : la
- *    garde de complétude de W11 repose ENTIÈREMENT sur cette énumération. Un
- *    compte récité là où une liste existe est le motif que dn4-1 corrige trois
- *    fois ailleurs. ⇒ ajouter un lecteur, c'est l'ajouter ICI dans le même geste.
+ * ⚠️ IL Y A SEPT LECTEURS, ET LES SEPT PASSENT PAR `case_est_widget()` :
+ *      1  `dn_ui_desc`
+ *      2  `dn_ui_case_est_widget`   (exposé pour la table de géométrie console)
+ *      3  `dn_ui_est_widget`
+ *      4  la boucle de `build_dashboard`
+ *      5  `detail_reparametrer`
+ *      6  `case_poser`
+ *      7  `dn_ui_pc_maj`            <- AJOUTÉ PAR dn4-6, pour lire la PRÉCISION
+ *    En oublier un rendrait une case dessinée nue mais mise à jour comme un
+ *    widget — un pointeur `valeur[0]` lu là où le modèle attend une racine.
+ * 🔴 dn4-1 EN A AJOUTÉ UN SANS METTRE À JOUR CE COMPTE (revue 2026-08-19), et
+ *    l'écart avait SURVÉCU dans les étiquettes elles-mêmes : le fichier portait
+ *    « LECTEUR 1/6 », « 2/5 », « 3/5 », « 4/6 », « 5/5 » — cinq numérotations
+ *    pour une seule liste. La garde de complétude de W11 repose ENTIÈREMENT sur
+ *    cette énumération : un compte récité là où une liste existe est le motif
+ *    que dn4-1 corrige trois fois ailleurs.
+ * ⇒ AJOUTER UN LECTEUR, C'EST L'AJOUTER ICI DANS LE MÊME GESTE, et renuméroter.
  */
 static bool s_nue_force[DN_UI_METRIQUES];
 
@@ -233,9 +278,32 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
          * ⚠️ Pas de jauge : un % de CPU n'en avait déjà pas, et à n = 2 la
          *    géométrie ne laisserait plus de place à la secondaire (contrat
          *    écrit dans `dn_widget.h`). */
-        .n_grandeurs = 2,
+        /*
+         * 🔴 D11 (dn4-6) : TROISIÈME GRANDEUR — LE CŒUR LE PLUS CHARGÉ.
+         *    Le motif est chiffré : sur 16 cœurs logiques, UN cœur saturé ne
+         *    pèse que ~6 % de moyenne. La case disait donc « 6 % » d'un PC en
+         *    train de ramer — vrai, et faux de ce qui compte.
+         * ✅ ET LA CONCLUSION ÉCRITE DU LEDGER EST RÉFUTÉE : « le CPU n'aurait
+         *    rien à mettre en troisième » est FAUX. `max(cpu_percent(percpu=True))`
+         *    a été MESURÉ (n=29, 1 Hz) : étendue 25,0..73,9 %, texte changé
+         *    28/28 (100 %), σ = 13,2 — et il coûte 0,07..0,10 ms parce que c'est
+         *    LE MÊME APPEL `psutil` que le % moyen, pas un appel de plus.
+         * ⛔ `len(pids())` est écarté DEUX FOIS par la mesure : 1/28 de
+         *    changements (case morte) ET 8,4 ms par tir (0,84 % d'un cœur).
+         *
+         * 🔴 LE MARQUAGE EST UN LIVRABLE, PAS UN DÉTAIL (AC1). Deux
+         *    pourcentages dans la même case, c'est deux lignes visuellement
+         *    identiques dont l'une ment par omission. `prefixe = "c.max"` est
+         *    le verbatim de la maquette (addendum §1) — et c'est un champ NOMMÉ,
+         *    ⛔ pas le champ `icone` détourné.
+         * ⚠️ Pas de jauge : un % de CPU n'en avait déjà pas, et à trois lignes
+         *    la géométrie ne laisserait plus de place (contrat `dn_widget.h`).
+         */
+        .n_grandeurs = 3,
         .indicateur = false,
-        .grandeurs = {{.unite = "%"}, {.unite = "GHz"}},
+        .grandeurs = {{.unite = "%", .prec = DN_PREC_DIXIEME},
+                      {.unite = "GHz", .prec = DN_PREC_DIXIEME},
+                      {.unite = "%", .prefixe = "c.max", .prec = DN_PREC_DIXIEME}},
     },
     /*
      * ── LES TROIS NEUVES DE dn3-2 (W6, W10) ─────────────────────────────────
@@ -284,9 +352,37 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
          * ⚠️ La 2ᵉ grandeur reste DÉCLARÉE même si une source future ne la donne
          *    pas : W10 fait afficher « -- » en gris sur CETTE ligne seulement.
          */
-        .n_grandeurs = 2,
+        /*
+         * 🔴 D11 (dn4-6) : QUATRE GRANDEURS — % · °C · W · tr/min.
+         *
+         * ✅ ET ELLES SONT GRATUITES À LA SOURCE, C'EST MESURÉ : les six index
+         *    ADL sortent du MÊME appel `ADL2_New_QueryPMLogData_Get` déjà payé
+         *    (0,976 ms, sans élévation ni driver — D8 tenu). Le budget de cette
+         *    story est LE PIXEL, pas le CPU.
+         *      idx 23 `ASIC_POWER`  53 W, étendue 52..57, 12/29 changements (41,4 %)
+         *      idx 14 `FAN_RPM`     604 tr/min — ⚠️ MOUVEMENT NON MESURÉ (X1/AC6)
+         *    ⛔ `CLK_GFXCLK` (idx 1) reste ÉCARTÉ par la mesure : 6..499 MHz au
+         *      repos, 29/29 changements ⇒ « 0,0 GHz » au repos et un saut par
+         *      seconde. Une case qui clignote n'est pas une case qui informe.
+         *
+         * ⚠️ `FAN_RPM` ENTRE AVEC UNE DETTE DE MESURE EXPLICITE. Son critère de
+         *    qualification (W2) est écrit et horodaté AVANT l'échantillonnage
+         *    (AC6 : étendue ≥ 5 unités affichées, ≥ 10 % de changements DU
+         *    TEXTE, σ ≥ 1). S'il échoue, le repli est ÉCRIT D'AVANCE et déjà
+         *    mesuré : `ASIC_POWER` seul, donc `GPU` à trois.
+         *
+         * 🔴 AC9 — `W` ET `tr/min` SONT DES ENTIERS. « 212,0 W » et
+         *    « 604,0 tr/min » inventent une décimale que la source ne porte pas :
+         *    c'est un mensonge d'interface, la même famille que le « 34,3 Go »
+         *    décimal affiché contre le « 31,9 » de Windows. Le FIL reste en
+         *    dixièmes ; c'est l'AFFICHAGE qui arrondit.
+         */
+        .n_grandeurs = 4,
         .indicateur = false,
-        .grandeurs = {{.unite = "%"}, {.unite = "\xC2\xB0" "C"}},
+        .grandeurs = {{.unite = "%", .prec = DN_PREC_DIXIEME},
+                      {.unite = "\xC2\xB0" "C", .prec = DN_PREC_DIXIEME},
+                      {.unite = "W", .prec = DN_PREC_ENTIER},
+                      {.unite = "tr/min", .prec = DN_PREC_ENTIER}},
     },
     [DN_UI_CASE_RAM] = {
         .icone = DN_ICONE_MEMORY,
@@ -309,7 +405,7 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
         .indicateur = true,
         .ind_min = 0,
         .ind_max = 100, /* % — la plage ANNONCÉE, et celle du mock */
-        .grandeurs = {{.unite = "%"}},
+        .grandeurs = {{.unite = "%", .prec = DN_PREC_DIXIEME}},
     },
     [DN_UI_CASE_RESEAU] = {
         .icone = DN_ICONE_NETWORK_WIRED,
@@ -339,8 +435,10 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
          */
         .n_grandeurs = 2,
         .indicateur = false,
-        .grandeurs = {{.unite = "Mb/s", .icone = LV_SYMBOL_DOWN},
-                      {.unite = "Mb/s", .icone = LV_SYMBOL_UP}},
+        .grandeurs = {{.unite = "Mb/s", .icone = LV_SYMBOL_DOWN,
+                       .prec = DN_PREC_DIXIEME},
+                      {.unite = "Mb/s", .icone = LV_SYMBOL_UP,
+                       .prec = DN_PREC_DIXIEME}},
     },
     [DN_UI_CASE_DISQUE] = {
         /*
@@ -394,7 +492,7 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
         .couleur = 0x35d6e8, /* cyan — PROVISOIRE, hérité de VENTILOS (legs dn3-3) */
         .n_grandeurs = 1,
         .indicateur = false,
-        .grandeurs = {{.unite = "Mo/s"}},
+        .grandeurs = {{.unite = "Mo/s", .prec = DN_PREC_DIXIEME}},
     },
     [DN_UI_CASE_AMB] = {
         .icone = DN_ICONE_THERMOMETER_HALF,
@@ -402,8 +500,9 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
         .couleur = 0xff9640, /* orange */
         .n_grandeurs = 2,    /* D6 — DANS LE MODÈLE, pas rustiné après */
         .indicateur = false,
-        .grandeurs = {{.unite = "\xC2\xB0" "C"},
-                      {.unite = "%", .icone = DN_ICONE_TINT}},
+        .grandeurs = {{.unite = "\xC2\xB0" "C", .prec = DN_PREC_DIXIEME},
+                      {.unite = "%", .icone = DN_ICONE_TINT,
+                       .prec = DN_PREC_DIXIEME}},
     },
 };
 
@@ -420,7 +519,7 @@ const char *dn_ui_metrique_nom(int idx)
 
 const dn_widget_desc_t *dn_ui_desc(int idx)
 {
-    /* LECTEUR 1/6 de l'override W11 — voir `case_est_widget()`. */
+    /* LECTEUR 1/7 de l'override W11 — voir `case_est_widget()`. */
     return case_est_widget(idx) ? &k_desc[idx] : NULL;
 }
 
@@ -439,7 +538,7 @@ const dn_widget_desc_t *dn_ui_desc_brut(int idx)
 }
 
 /* Une case est-elle rendue NUE (override W11, `widget nue <idx> on`) ?
- * ⚠️ LECTEUR de l'override, exposé pour que la table de géométrie ne présente pas
+ * ⚠️ LECTEUR 2/7 de l'override, exposé pour que la table de géométrie ne présente pas
  * un `n_gr = 1` de case nue comme un abandon géométrique — c'était un faux
  * positif sur le chemin le plus utilisé d'une campagne AC8. */
 bool dn_ui_case_est_widget(int idx)
@@ -449,7 +548,7 @@ bool dn_ui_case_est_widget(int idx)
 
 bool dn_ui_est_widget(int idx)
 {
-    /* LECTEUR 2/5 de l'override W11. */
+    /* LECTEUR 3/7 de l'override W11. */
     return case_est_widget(idx);
 }
 
@@ -1636,7 +1735,7 @@ static void build_dashboard(lv_obj_t *scr)
     lv_obj_t *barre = lv_obj_create(scr);
     lv_obj_remove_style_all(barre);
     lv_obj_set_pos(barre, 0, 0);
-    lv_obj_set_size(barre, DN_LCD_H_RES, DN_UI_BARRE_H);
+    lv_obj_set_size(barre, DN_LCD_H_RES, ui_barre_h());
     lv_obj_clear_flag(barre, LV_OBJ_FLAG_SCROLLABLE);
     /* NON cliquable, et c'est une exigence d'AC3 : un tap sur la barre ne doit
      * RIEN ouvrir. C'est l'une des deux zones mortes que le constat vérifie.
@@ -1671,9 +1770,9 @@ static void build_dashboard(lv_obj_t *scr)
         int col = i % 2;
         int ligne = i / 2;
         int x = DN_UI_MARGE + col * (DN_UI_CASE_W + DN_UI_GAP);
-        int y = DN_UI_GRILLE_Y + DN_UI_MARGE + ligne * (DN_UI_CASE_H + DN_UI_GAP);
+        int y = ui_grille_y() + DN_UI_MARGE + ligne * (ui_case_h() + DN_UI_GAP);
 
-        /* LECTEUR 3/5 de l'override W11. ⚠️ LA BOUCLE RESTE UNE BOUCLE : le
+        /* LECTEUR 4/7 de l'override W11. ⚠️ LA BOUCLE RESTE UNE BOUCLE : le
          * branchement porte sur la FORME de la case (widget ou nue) et sur rien
          * d'autre — aucune métrique n'est nommée. dn2-1 a explicitement refusé
          * d'y empiler un second ternaire, on ne le refait pas. */
@@ -1687,7 +1786,7 @@ static void build_dashboard(lv_obj_t *scr)
             if (s_icone_alt[i]) {
                 d.icone = s_icone_alt[i];
             }
-            dn_widget_creer(scr, x, y, DN_UI_CASE_W, DN_UI_CASE_H, &d,
+            dn_widget_creer(scr, x, y, DN_UI_CASE_W, ui_case_h(), &d,
                             &s_wetat[i], on_case_clic, (void *)(intptr_t)i,
                             &s_wobj[i]);
             continue;
@@ -1701,7 +1800,7 @@ static void build_dashboard(lv_obj_t *scr)
          * ⚠️ Mais elle est HONNÊTE : son état est ABSENT (aucune source ne
          *    l'alimente), donc « -- » grisé. Les factices d'apparence réelle de
          *    dn1-4 (« 37 % », « 12,4 Go », « 48 Mo/s ») sont supprimés. */
-        lv_obj_t *case_ = zone_creer(scr, x, y, DN_UI_CASE_W, DN_UI_CASE_H,
+        lv_obj_t *case_ = zone_creer(scr, x, y, DN_UI_CASE_W, ui_case_h(),
                                      on_case_clic, (void *)(intptr_t)i);
         texte(case_, k_nom[i], &dn_font_14, lv_color_hex(0xa0d8ff), 12, 10);
         s_wobj[i].racine = case_;
@@ -1721,9 +1820,18 @@ static void build_dashboard(lv_obj_t *scr)
      * ⚠️ Le texte perd aussi son chevron `LV_SYMBOL_LIST` : un glyphe de menu
      *    est une AFFORDANCE, et la garder ferait exactement ce que W3 supprime
      *    — annoncer une action qui n'existe pas. */
-    lv_obj_t *menu = zone_creer(scr, 0, DN_LCD_V_RES - DN_UI_MENU_H, DN_LCD_H_RES,
-                                DN_UI_MENU_H, NULL, NULL);
-    texte(menu, "MENU", &dn_font_28, lv_color_hex(0x9a9a9a), DN_UI_MARGE + 6, 14);
+    /* 🔴 dn4-6 / voie (a) : À `menu_h = 0` LE BANDEAU N'EST PAS DESSINÉ DU TOUT.
+     *    Le dessiner à hauteur nulle laisserait un conteneur de 0 px dans
+     *    l'arbre LVGL — invisible, mais présent dans les parcours et dans les
+     *    comptes d'objets, donc un écart entre ce que la scène EST et ce que la
+     *    console en DIT. La voie (a) supprime la barre MENU de la maquette :
+     *    elle doit la supprimer pour de bon. */
+    if (ui_menu_h() > 0) {
+        lv_obj_t *menu = zone_creer(scr, 0, DN_LCD_V_RES - ui_menu_h(),
+                                    DN_LCD_H_RES, ui_menu_h(), NULL, NULL);
+        texte(menu, "MENU", &dn_font_28, lv_color_hex(0x9a9a9a), DN_UI_MARGE + 6,
+              14);
+    }
 
     label_poser(scr, &s_label_dash);
 }
@@ -1770,17 +1878,28 @@ static void build_detail(lv_obj_t *scr, int idx)
                         lv_color_hex(0xa0d8ff), DN_UI_MARGE + DN_UI_RETOUR_W + 20,
                         24);
 
-    /* Grande valeur. « Grande » = dn_font_28, la plus grosse police embarquée. */
+    /* Grande valeur. « Grande » = dn_font_28, la plus grosse police embarquée.
+     * 🔴 dn4-6 / AC10 : LE BLOC PASSE DE 62 À 97 px — DEUX LIGNES DE 35.
+     *    `GPU` porte QUATRE grandeurs, et quatre ne tiennent pas sur une ligne
+     *    de 446 px utiles (~632 px mesurés au pire cas contre ~410 pour trois).
+     *    Sans cette hauteur, la deuxième ligne serait CLIPPÉE PAR LE PANNEAU —
+     *    sans un mot, comme toujours avec LVGL.
+     * ⚠️ LES 35 px SONT PRIS AU PLACEHOLDER DE COURBE, PAS À LA PAGE : le cadre
+     *    descend de 170 à 205 et perd 35 px de hauteur, son BAS reste à 370, et
+     *    le panneau du bas (385) NE BOUGE PAS. Le template reste UN template et
+     *    garde ses quatre panneaux (addendum §1 : « on ne change que les
+     *    données, jamais la structure »). Ce qui rétrécit est un cadre vide qui
+     *    ne dessine aucune courbe — l'historique arrive en dn4-4. */
     lv_obj_t *bloc_valeur =
-        panneau(scr, DN_UI_MARGE, 95, DN_LCD_H_RES - 2 * DN_UI_MARGE, 62);
+        panneau(scr, DN_UI_MARGE, 95, DN_LCD_H_RES - 2 * DN_UI_MARGE, 97);
     s_det_valeur = texte(bloc_valeur, "--", &dn_font_28, lv_color_white(), 14, 14);
 
     /* Placeholder de courbe : un cadre étiqueté, PAS une courbe. Les vraies
-     * séries arrivent avec l'historique RAM-session (dn2/dn4-1). */
-    lv_obj_t *cadre = panneau(scr, DN_UI_MARGE, 170, DN_LCD_H_RES - 2 * DN_UI_MARGE,
-                              200);
-    texte(cadre, "COURBE (dn2 / dn4-1)", &dn_font_14,
-          lv_color_hex(0x80a0b0), 12, 88);
+     * séries arrivent avec l'historique RAM-session (dn4-4). */
+    lv_obj_t *cadre = panneau(scr, DN_UI_MARGE, 205, DN_LCD_H_RES - 2 * DN_UI_MARGE,
+                              165);
+    texte(cadre, "COURBE (dn4-4)", &dn_font_14,
+          lv_color_hex(0x80a0b0), 12, 70);
 
     /* Données secondaires et MIN/MAX, sur un seul aplat de bas de page — c'est
      * celui-là que l'owner a signalé comme illisible le 2026-08-16. */
@@ -1915,9 +2034,18 @@ static void detail_reparametrer(int idx)
     }
 
     const dn_widget_etat_t *e = &s_wetat[idx];
-    /* LECTEUR 4/5 de l'override W11. */
+    /* LECTEUR 5/7 de l'override W11. */
     const dn_widget_desc_t *d = case_est_widget(idx) ? &k_desc[idx] : NULL;
-    char buf[96];
+    /*
+     * 🔴 dn4-6 / AC10 — LE TAMPON EST DIMENSIONNÉ, PAS ESPÉRÉ. `snprintf`
+     *    TRONQUE EN SILENCE (piège d'instrument n°14) : un `buf[96]` qui reçoit
+     *    quatre grandeurs aurait coupé la dernière sans lever quoi que ce soit,
+     *    sur l'écran qui prétend TOUT expliquer.
+     *    Pire cas par grandeur : texte (`DN_WIDGET_TXT_MAX` = 16) + espace +
+     *    unité (« tr/min » = 6) + préfixe (« c.max » = 5) + espace, plus le
+     *    séparateur « \u00a0·\u00a0 » entre deux. On prend large ET on VÉRIFIE.
+     */
+    char buf[4 * (DN_WIDGET_TXT_MAX + 24) + 8];
 
     if (s_det_valeur) {
         /* La MÊME règle que la tuile : régime ABSENT ⇒ « -- » grisé, jamais un
@@ -1926,26 +2054,57 @@ static void detail_reparametrer(int idx)
          * réel, ce qu'AC5 interdit explicitement. */
         if (e->regime == DN_VAL_ABSENTE || e->txt[0][0] == '\0') {
             snprintf(buf, sizeof(buf), "--");
-        } else if (d && d->n_grandeurs >= 2) {
-            /* Bi-grandeurs : les DEUX valeurs, sur la même ligne — le détail ne
-             * peut pas en cacher une, ce serait un demi-silence.
-             * 🔴 dn4-1 / W10 : LA CONDITION `&& e->txt[1][0]` A ÉTÉ RETIRÉE, et
-             *    c'est ce même principe qui l'exige. Elle faisait retomber le
-             *    détail sur la branche mono-grandeur quand la 2ᵉ grandeur était
-             *    absente : la page qui prétend TOUT expliquer cachait alors
-             *    l'existence même de la seconde grandeur, au lieu de dire
-             *    qu'elle manque. Un GPU dont la °C n'est pas publiée doit
-             *    afficher « 46,0 %   ·   -- », pas « 46,0 % ».
-             * ⚠️ Et « -- » ne porte JAMAIS son unité — même règle que la tuile. */
-            bool g1 = e->txt[1][0] != '\0';
-            snprintf(buf, sizeof(buf), "%s %s   ·   %s%s%s", e->txt[0],
-                     d->grandeurs[0].unite ? d->grandeurs[0].unite : "",
-                     g1 ? e->txt[1] : "--",
-                     (g1 && d->grandeurs[1].unite) ? " " : "",
-                     (g1 && d->grandeurs[1].unite) ? d->grandeurs[1].unite : "");
         } else {
-            snprintf(buf, sizeof(buf), "%s %s", e->txt[0],
-                     (d && d->grandeurs[0].unite) ? d->grandeurs[0].unite : "");
+            /*
+             * 🔴 dn4-6 / AC10 — TOUTES LES GRANDEURS, ET AUCUNE TRONCATURE
+             *    SILENCIEUSE. La version d'avant ne connaissait que `txt[0]` et
+             *    `txt[1]` : à quatre grandeurs, la page qui explique la case en
+             *    aurait caché la moitié — le mensonge par omission que dn4-1
+             *    avait déjà chassé d'ici une fois (la condition
+             *    `&& e->txt[1][0]` faisait retomber sur la branche mono).
+             *
+             * ⚠️ TROIS PAR LIGNE, ET C'EST ARITHMÉTIQUE, PAS ESTHÉTIQUE. Le
+             *    panneau fait 460 px, le label est posé à x = 14 ⇒ 446 px
+             *    utiles. Largeurs RELUES de la police liée (AC5) :
+             *      3 grandeurs, pire cas  « 100,0 % · 150,0 °C · 350 W »  ~410 px  OK
+             *      4 grandeurs, pire cas  + « · 3000 tr/min »             ~632 px  NON
+             *    ⇒ au-delà de trois, on passe à la ligne. ⛔ Et LVGL clipperait
+             *      sans un mot : « rien n'a planté » n'est pas « ça tient ».
+             * ⚠️ « -- » ne porte JAMAIS son unité, ✅ mais garde son préfixe :
+             *    c'est lui qui dit QUELLE grandeur manque (W10 jusque dans le
+             *    détail — l'existence d'une grandeur ne se cache jamais).
+             */
+            int n = d ? d->n_grandeurs : 1;
+            if (n < 1) {
+                n = 1;
+            }
+            if (n > DN_WIDGET_GRANDEURS_MAX) {
+                n = DN_WIDGET_GRANDEURS_MAX;
+            }
+            size_t p = 0;
+            int ecrit = 0;
+            for (int i = 0; i < n && p < sizeof(buf); i++) {
+                const char *sep = (i == 0) ? "" : ((i % 3) == 0 ? "\n" : "   ·   ");
+                bool connue = e->txt[i][0] != '\0';
+                const char *px = d ? d->grandeurs[i].prefixe : NULL;
+                const char *u = (connue && d) ? d->grandeurs[i].unite : NULL;
+                ecrit = snprintf(buf + p, sizeof(buf) - p, "%s%s%s%s%s%s", sep,
+                                 px ? px : "", px ? " " : "",
+                                 connue ? e->txt[i] : "--", u ? " " : "",
+                                 u ? u : "");
+                if (ecrit < 0 || (size_t)ecrit >= sizeof(buf) - p) {
+                    /* ⛔ LA TRONCATURE EST AUDIBLE, JAMAIS SUBIE. Elle est
+                     * impossible avec le dimensionnement ci-dessus ; ce log
+                     * existe pour que le jour où une unité s'allonge, on
+                     * l'apprenne par la console et pas par un écran amputé. */
+                    ESP_LOGE(TAG,
+                             "detail « %s » : TAMPON TROP COURT a la grandeur %d "
+                             "(%u octets) — texte TRONQUE.",
+                             k_nom[idx], i, (unsigned)sizeof(buf));
+                    break;
+                }
+                p += (size_t)ecrit;
+            }
         }
         lv_label_set_text(s_det_valeur, buf);
         lv_obj_set_style_text_color(
@@ -2340,9 +2499,55 @@ esp_err_t dn_ui_set_nav_model(dn_nav_model_t m)
 
 /* ── Init ─────────────────────────────────────────────────────────────────── */
 
+/*
+ * ── dn4-6 / AC9 : L'AUDIT DES DESCRIPTEURS, UNE FOIS, AU BOOT ────────────────
+ *
+ * 🔴 `DN_PREC_NON_RENSEIGNEE = 0` REND L'OUBLI DÉTECTABLE, ENCORE FAUT-IL LE
+ *    DÉTECTER. Le repli silencieux vers le dixième est le comportement d'AVANT
+ *    dn4-6 — donc invisible à l'œil, et c'est précisément ce qui en fait un
+ *    piège : le jour où une grandeur sera ajoutée sans sa précision, elle
+ *    affichera « 604,0 tr/min » et personne ne saura que c'était un oubli.
+ * ⚠️ ICI ET PAS DANS `fmt_grandeur()` : le formatage tourne 5 fois par seconde,
+ *    un log par appel noierait la console — et une console noyée est une console
+ *    qu'on cesse de lire.
+ * ⚠️ NON FATALE, comme l'audit du mock juste en dessous : un affichage trop
+ *    précis n'est pas une raison de priver l'opérateur de son écran.
+ * ⛔ ET ELLE PARCOURT `n_grandeurs`, PAS `GRANDEURS_MAX` : les entrées au-delà
+ *    de ce que la case déclare ne sont jamais lues, et les signaler ferait
+ *    hurler l'audit sur des champs qui n'existent pas.
+ */
+static void descripteurs_auditer(void)
+{
+    int trous = 0;
+    for (int i = 0; i < DN_UI_METRIQUES; i++) {
+        int n = k_desc[i].n_grandeurs;
+        if (n > DN_WIDGET_GRANDEURS_MAX) {
+            n = DN_WIDGET_GRANDEURS_MAX;
+        }
+        for (int g = 0; g < n; g++) {
+            if (k_desc[i].grandeurs[g].prec == DN_PREC_NON_RENSEIGNEE) {
+                ESP_LOGE(TAG,
+                         "k_desc[%s].grandeurs[%d].prec NON RENSEIGNEE — "
+                         "l'affichage retombe au DIXIEME (comportement d'avant "
+                         "dn4-6). Une decimale que la source ne porte pas est un "
+                         "mensonge d'interface : renseigner DN_PREC_ENTIER ou "
+                         "DN_PREC_DIXIEME.",
+                         k_nom[i], g);
+                trous++;
+            }
+        }
+    }
+    if (trous == 0) {
+        ESP_LOGI(TAG, "precision d'affichage : %d cases auditees, 0 trou (AC9)",
+                 DN_UI_METRIQUES);
+    }
+}
+
 esp_err_t dn_ui_init(const dn_bootcfg_t *cfg, esp_err_t asset_err)
 {
     ESP_RETURN_ON_FALSE(cfg, ESP_ERR_INVALID_ARG, TAG, "cfg NULL");
+
+    descripteurs_auditer();
 
     /*
      * 🔴 LA FORME DU MOCK EST VÉRIFIÉE AU BOOT, PAS SUPPOSÉE (différé de dn3-1
@@ -2706,6 +2911,29 @@ void dn_ui_label_show(bool on)
 }
 
 /*
+ * ── dn4-6 : LE PORTEUR DE VALEURS — UN SEUL, ⛔ PAS `t0`/`t1`/`t2`/`t3` ───────
+ *
+ * 🔴 EMPILER `t2` ET `t3` À CÔTÉ DE `t0`/`t1` AURAIT CRÉÉ QUATRE ENDROITS OÙ LA
+ *    RÈGLE « une valeur ABSENTE ne porte JAMAIS son unité » PEUT DIVERGER. Ce
+ *    fichier a déjà payé exactement ça : le ternaire de couleur dupliqué entre
+ *    `build_dashboard` et `case_poser` avait rendu SIMULÉE indiscernable
+ *    d'ABSENTE sur les cases nues.
+ *
+ * ⛔ PAS DE SENTINELLE ENTIÈRE. Le dépôt en porte DEUX conventions
+ *    contradictoires (`-1` pour `dn_link`, `INT32_MIN` pour `dn_capteurs`) et
+ *    elles ne doivent pas être uniformisées à l'aveugle. L'absence est portée
+ *    par un texte VIDE — c'est déjà la convention de `dn_widget_etat_t.txt[]`,
+ *    et W10 la lit telle quelle.
+ * ⚠️ `n` est le nombre de valeurs FOURNIES par l'appelant, ⛔ pas
+ *    `desc->n_grandeurs` : une source peut en donner moins que la case n'en
+ *    déclare, et c'est précisément le cas W10 (« la °C manque, le % est là »).
+ */
+typedef struct {
+    const char *txt[DN_WIDGET_GRANDEURS_MAX]; /* NULL ou "" = ABSENTE (W10) */
+    uint8_t n;
+} dn_valeurs_t;
+
+/*
  * ── POSER L'ÉTAT D'UNE CASE ──────────────────────────────────────────────────
  *
  * Le verrou LVGL est DÉJÀ pris par l'appelant public. C'était déjà la
@@ -2719,13 +2947,20 @@ void dn_ui_label_show(bool on)
  * texte se pose sans erreur — mais rien n'atteint la dalle. Chronométrer cette
  * poussée, c'était mesurer un geste qui n'a pas eu lieu.
  */
-static void case_poser(int idx, dn_val_regime_t regime, const char *t0,
-                       const char *t1, int32_t brut0, const char *sec, bool *pose)
+static void case_poser(int idx, dn_val_regime_t regime, const dn_valeurs_t *v,
+                       int32_t brut0, const char *sec, bool *pose)
 {
     dn_widget_etat_t *e = &s_wetat[idx];
     e->regime = regime;
-    snprintf(e->txt[0], sizeof(e->txt[0]), "%s", t0 ? t0 : "");
-    snprintf(e->txt[1], sizeof(e->txt[1]), "%s", t1 ? t1 : "");
+    /* 🔴 TOUTES LES GRANDEURS SONT ÉCRITES, Y COMPRIS CELLES QU'ON NE DONNE PAS.
+     *    Un `txt[i]` laissé tel quel garderait la valeur du TOUR PRÉCÉDENT :
+     *    une source qui cesse de publier sa 3ᵉ grandeur figerait le dernier
+     *    chiffre connu, sans badge et sans gris — exactement le mensonge que
+     *    dn2-2 a chassé du dashboard. ⇒ non fournie = VIDE = « -- » gris (W10). */
+    for (int i = 0; i < DN_WIDGET_GRANDEURS_MAX; i++) {
+        const char *t = (v && i < v->n) ? v->txt[i] : NULL;
+        snprintf(e->txt[i], sizeof(e->txt[i]), "%s", t ? t : "");
+    }
     e->brut[0] = brut0;
     snprintf(e->secondaire, sizeof(e->secondaire), "%s", sec ? sec : "");
 
@@ -2735,7 +2970,7 @@ static void case_poser(int idx, dn_val_regime_t regime, const char *t0,
      * détail, `racine` est NULL, l'état conservé sera posé à la prochaine
      * (re)construction : rien n'est perdu, rien n'est touché. */
     if (s_wobj[idx].racine) {
-        /* LECTEUR 5/5 de l'override W11. 🔴 Celui-ci est le plus dangereux à
+        /* LECTEUR 6/7 de l'override W11. 🔴 Celui-ci est le plus dangereux à
          * oublier : appeler `dn_widget_maj` sur une case DESSINÉE nue lirait
          * `w->valeur[1]`, `w->jauge` et `w->badge` — des pointeurs que le
          * chemin « nue » ne renseigne jamais. */
@@ -2794,6 +3029,44 @@ static void fmt_dixiemes(char *out, size_t n, int dixiemes)
 {
     int mag = dixiemes < 0 ? -dixiemes : dixiemes;
     snprintf(out, n, "%s%d,%d", dixiemes < 0 ? "-" : "", mag / 10, mag % 10);
+}
+
+/*
+ * ── dn4-6 / AC9 : LA PRÉCISION, PAR GRANDEUR ET EN UN SEUL ENDROIT ──────────
+ *
+ * ⚠️ L'ARRONDI EST AU PLUS PROCHE, LOIN DE ZÉRO — ⛔ pas une troncature. Une
+ *    puissance de 52,6 W affichée « 52 W » perd systématiquement vers le bas :
+ *    sur une grandeur qui ne bouge que de 5 unités (`ASIC_POWER` 52..57), un
+ *    biais d'un demi-watt n'est pas cosmétique, il rétrécit l'étendue VISIBLE
+ *    et fausserait le critère de mouvement d'AC6, qui porte sur le texte AFFICHÉ.
+ * 🔴 ET LE SIGNE NE VIT PAS DANS LES DIXIÈMES : la division entière tronque VERS
+ *    ZÉRO (-5 dixièmes rendait « 0,5 », CR dn2-1). On sépare signe et magnitude
+ *    dans les DEUX branches. ⛔ Ne pas re-casser cette garde.
+ * ⚠️ `NON_RENSEIGNEE` retombe sur le DIXIÈME, c'est-à-dire sur le comportement
+ *    d'AVANT dn4-6 — et l'oubli est dit ailleurs, une fois, par l'audit de
+ *    descripteurs du boot (`descripteurs_auditer`). Le journaliser ICI le
+ *    répéterait 5 fois par seconde et noierait la console.
+ */
+static void fmt_grandeur(char *out, size_t n, int dixiemes, dn_prec_t prec)
+{
+    if (prec == DN_PREC_ENTIER) {
+        int neg = dixiemes < 0;
+        int mag = neg ? -dixiemes : dixiemes;
+        snprintf(out, n, "%s%d", neg ? "-" : "", (mag + 5) / 10);
+        return;
+    }
+    fmt_dixiemes(out, n, dixiemes);
+}
+
+/* La précision d'une grandeur d'une case — RELUE du descripteur, jamais
+ * supposée. ⚠️ Une case NUE n'a pas de descripteur exploitable ici : le repli
+ * dixième est le comportement historique. */
+static dn_prec_t prec_de(const dn_widget_desc_t *d, int i)
+{
+    if (!d || i < 0 || i >= DN_WIDGET_GRANDEURS_MAX) {
+        return DN_PREC_DIXIEME;
+    }
+    return d->grandeurs[i].prec;
 }
 
 /*
@@ -2924,28 +3197,61 @@ bool dn_ui_pc_maj(dn_link_metrique_t m, const dn_link_vue_t *vue,
         return true;
     }
 
-    char t0[DN_WIDGET_TXT_MAX];
-    char t1[DN_WIDGET_TXT_MAX];
+    /* 🔴 N TEXTES, UN SEUL FORMATAGE, UN SEUL `case_poser()` — le contrat de
+     *    `dn_ui.h`. ⛔ Pas de `t2`/`t3` empilés à côté de `t0`/`t1` : voir le
+     *    motif écrit au-dessus de `dn_valeurs_t`. */
+    char txt[DN_WIDGET_GRANDEURS_MAX][DN_WIDGET_TXT_MAX];
     char sec[DN_WIDGET_SEC_MAX];
-    t0[0] = t1[0] = sec[0] = '\0';
+    for (int i = 0; i < DN_WIDGET_GRANDEURS_MAX; i++) {
+        txt[i][0] = '\0';
+    }
+    sec[0] = '\0';
+    /* LECTEUR 7/7 de l'override W11 — ⚠️ ET IL EST AJOUTÉ ICI DANS LE MÊME
+     * GESTE QUE SON ÉNUMÉRATION (`s_nue_force[]`, plus haut). L'énumération FAIT
+     * PARTIE de la garde de complétude : dn4-1 en avait ajouté un sans mettre le
+     * compte à jour, et la revue du 2026-08-19 l'a relevé. La précision d'une
+     * case NUE n'a pas de descripteur — `prec_de(NULL, …)` retombe au dixième,
+     * c'est-à-dire au comportement historique de la case nue. */
+    const dn_widget_desc_t *dsc = case_est_widget(idx) ? &k_desc[idx] : NULL;
 
     /* Une valeur n'existe QUE si la métrique est VIVANTE. Morte ou jamais vue :
      * la case le DIT au lieu de figer un chiffre qui n'a plus cours (AC7 de
      * dn2-2 — le différenciateur du brief en miniature, et il ne se renégocie
      * pas). ⚠️ `dn_link` borne déjà par métrique ; ce test-ci est la garde de
      * l'AFFICHAGE, redondante et assumée. */
-    bool ok = (vue->etat == DN_LINK_VIVANTE) && vue->v1 >= 0;
+    bool ok = (vue->etat == DN_LINK_VIVANTE) && vue->n > 0 && vue->v[0] >= 0;
     int32_t brut0 = 0;
 
     if (ok) {
-        fmt_dixiemes(t0, sizeof(t0), vue->v1);
-        brut0 = vue->v1 / 10; /* la jauge travaille en UNITÉS AFFICHÉES */
+        brut0 = vue->v[0] / 10; /* la jauge travaille en UNITÉS AFFICHÉES */
 
-        /* W10 — la 2ᵉ grandeur seulement si la trame la portait. Sinon `t1`
-         * reste VIDE, et le modèle écrit « -- » EN GRIS sur cette ligne-là
-         * uniquement : la case reste RÉELLE. */
-        if (vue->v2_connue) {
-            fmt_dixiemes(t1, sizeof(t1), vue->v2);
+        /*
+         * 🔴 W10 SURVIT À N GRANDEURS, ET C'EST UNE BOUCLE, PAS QUATRE `if`.
+         *    Une grandeur non portée par la trame laisse son texte VIDE, et le
+         *    modèle écrit « -- » EN GRIS sur CETTE LIGNE-LÀ uniquement : la case
+         *    reste RÉELLE. ⛔ Jamais un tout-ou-rien — les grandeurs d'une case
+         *    PC ont des sources INDÉPENDANTES (le % GPU ne meurt pas parce que
+         *    le ventilateur se tait), contrairement à AMBIANCE dont les deux
+         *    viennent d'un seul capteur.
+         * ⚠️ `vue->n` EST LE COMPTE DU FIL, `dsc->n_grandeurs` CELUI DE LA CASE,
+         *    ET ILS NE SONT PAS FORCÉMENT ÉGAUX. `RAM` en est la preuve vivante :
+         *    elle reçoit DEUX valeurs (%, TOTAL Go) et n'affiche qu'UNE grandeur,
+         *    le total partant en ligne secondaire. ⇒ La correspondance
+         *    « valeur i du fil = grandeur i de la case » n'est PAS universelle ;
+         *    elle est bornée ici par les DEUX comptes, et la secondaire lit le
+         *    fil directement.
+         */
+        int n_aff = (int)vue->n;
+        if (dsc && dsc->n_grandeurs < n_aff) {
+            n_aff = dsc->n_grandeurs;
+        }
+        if (n_aff > DN_WIDGET_GRANDEURS_MAX) {
+            n_aff = DN_WIDGET_GRANDEURS_MAX;
+        }
+        for (int i = 0; i < n_aff; i++) {
+            if (vue->connue[i]) {
+                fmt_grandeur(txt[i], sizeof(txt[i]), vue->v[i], prec_de(dsc, i));
+            }
         }
 
         switch (k_pc[m].sec) {
@@ -2959,11 +3265,11 @@ bool dn_ui_pc_maj(dn_link_metrique_t m, const dn_link_vue_t *vue,
              * ⇒ L'agent envoie le TOTAL (v2, constant), le firmware en déduit
              *   l'utilisé : utilisé = % x total / 100. La cohérence est alors
              *   STRUCTURELLE, pas une discipline d'échantillonnage. */
-            if (vue->v2_connue) {
-                int utilise = (int)((int64_t)vue->v1 * vue->v2 / 1000);
+            if (vue->n > 1 && vue->connue[1]) {
+                int utilise = (int)((int64_t)vue->v[0] * vue->v[1] / 1000);
                 char a[DN_WIDGET_TXT_MAX], b[DN_WIDGET_TXT_MAX];
                 fmt_dixiemes(a, sizeof(a), utilise);
-                fmt_dixiemes(b, sizeof(b), vue->v2);
+                fmt_dixiemes(b, sizeof(b), vue->v[1]);
                 snprintf(sec, sizeof(sec), "%s / %s Go", a, b);
             } else {
                 /* 🔴 W10 S'APPLIQUE AUSSI À LA SECONDAIRE (revue 2026-08-18).
@@ -2994,10 +3300,10 @@ bool dn_ui_pc_maj(dn_link_metrique_t m, const dn_link_vue_t *vue,
              *    U+2193/U+2191 : celles-ci sont HORS latin-1 et le glyphe absent
              *    serait dessiné EN SILENCE. Les deux codepoints FontAwesome ont
              *    été VÉRIFIÉS présents dans les `.c` de police. */
-            if (vue->v2_connue) {
+            if (vue->n > 1 && vue->connue[1]) {
                 char a[DN_WIDGET_TXT_MAX], b[DN_WIDGET_TXT_MAX];
-                fmt_dixiemes(a, sizeof(a), vue->v1);
-                fmt_dixiemes(b, sizeof(b), vue->v2);
+                fmt_dixiemes(a, sizeof(a), vue->v[0]);
+                fmt_dixiemes(b, sizeof(b), vue->v[1]);
                 /* ⚠️ PRÉCISION EXPLICITE `%.12s` : sans elle, GCC refuse de
                  *    prouver que 3+1+15+2+3+1+15 = 40 tient dans les 40 octets
                  *    de `DN_WIDGET_SEC_MAX` (-Werror=format-truncation). Les
@@ -3015,7 +3321,11 @@ bool dn_ui_pc_maj(dn_link_metrique_t m, const dn_link_vue_t *vue,
         }
     }
 
-    case_poser(idx, ok ? DN_VAL_REELLE : DN_VAL_ABSENTE, t0, t1, brut0, sec,
+    dn_valeurs_t val = {.n = DN_WIDGET_GRANDEURS_MAX};
+    for (int i = 0; i < DN_WIDGET_GRANDEURS_MAX; i++) {
+        val.txt[i] = txt[i];
+    }
+    case_poser(idx, ok ? DN_VAL_REELLE : DN_VAL_ABSENTE, &val, brut0, sec,
                label_pose);
     lvgl_port_unlock();
     return true;
@@ -3045,9 +3355,9 @@ bool dn_ui_cpu_maj(int dixiemes, bool valide, bool *label_pose)
 {
     dn_link_vue_t v = {
         .etat = valide ? DN_LINK_VIVANTE : DN_LINK_MORTE,
-        .v1 = (valide && dixiemes >= 0 && dixiemes <= 1000) ? dixiemes : -1,
-        .v2 = 0,
-        .v2_connue = false,
+        .v = {(valide && dixiemes >= 0 && dixiemes <= 1000) ? dixiemes : -1},
+        .connue = {true},
+        .n = 1,
         .age_us = -1,  /* ⛔ PAS 0 : « inconnu », pas « instantané » */
         .recu_us = -1, /* ⛔ idem — le champ ajouté le 2026-08-19 vaudrait 0 par
                         * défaut, soit « reçue à l'instant du boot », ce qui
@@ -3162,8 +3472,9 @@ bool dn_ui_ambiance_maj(int temp_dixiemes, int hum_dixiemes, bool valide,
     /* Un seul appel, donc un seul verrou, donc une seule trame : le motif de
      * `case_vive_poser` est désormais tenu par la STRUCTURE et non par la
      * discipline de l'appelant. */
-    case_poser(DN_UI_CASE_AMB, ok ? DN_VAL_REELLE : DN_VAL_ABSENTE, t_txt, h_txt,
-               0, NULL, label_pose);
+    dn_valeurs_t val = {.txt = {t_txt, h_txt}, .n = 2};
+    case_poser(DN_UI_CASE_AMB, ok ? DN_VAL_REELLE : DN_VAL_ABSENTE, &val, 0, NULL,
+               label_pose);
     lvgl_port_unlock();
     return true;
 }
@@ -3245,7 +3556,7 @@ void dn_ui_bandes_set(bool on)
                   "produit. ⚠️ une bande fait 480 x %d px : si draw_lines (%d) "
                   "est INFÉRIEUR à la hauteur d'une case, LVGL la rendra en "
                   "PLUSIEURS passes et le levier sera contre-productif.",
-             on ? "ARMÉ" : "coupé", DN_UI_CASE_H, s_draw_lines);
+             on ? "ARMÉ" : "coupé", ui_case_h(), s_draw_lines);
 }
 
 bool dn_ui_bandes(void) { return s_bandes; }
@@ -3391,7 +3702,7 @@ static void mock_tick_nolock(void)
              *   c'est le défaut mesuré du 2026-08-17, 24 cycles pour 4).
              */
             if (!s_poussee[i] && s_wetat[i].regime == DN_VAL_SIMULEE) {
-                case_poser(i, DN_VAL_ABSENTE, NULL, NULL, 0, NULL, NULL);
+                case_poser(i, DN_VAL_ABSENTE, NULL, 0, NULL, NULL);
             }
             continue;
         }
@@ -3491,7 +3802,10 @@ static void mock_tick_nolock(void)
             snprintf(sec, sizeof(sec), "valeur SIMULÉE — aucun capteur");
             break;
         }
-        case_poser(i, DN_VAL_SIMULEE, txt, NULL, v, sec, NULL);
+        {
+            dn_valeurs_t val = {.txt = {txt}, .n = 1};
+            case_poser(i, DN_VAL_SIMULEE, &val, v, sec, NULL);
+        }
     }
 }
 
@@ -3559,7 +3873,8 @@ static bool pousser_nolock(int idx)
                        ? (int32_t)(d_pou->ind_min + (s_pousse_seq * 37) % (uint32_t)(plage + 1))
                        : (int32_t)(DN_MOCK_MIN +
                                    (s_pousse_seq * 37) % (DN_MOCK_MAX - DN_MOCK_MIN));
-    case_poser(idx, DN_VAL_SIMULEE, t0, t1, brut, "POUSSÉE de mesure (AC8)",
+    dn_valeurs_t val = {.txt = {t0, t1}, .n = 2};
+    case_poser(idx, DN_VAL_SIMULEE, &val, brut, "POUSSÉE de mesure (AC8)",
                NULL);
     /* 🔴 DÉCISION D1 (revue 2026-08-18) : marquer la case comme POUSSÉE, pour
      *    que le tick du mock cesse de la reprendre. Voir `mock_tick_nolock`.
@@ -3757,7 +4072,7 @@ esp_err_t dn_ui_oublier(int idx)
     s_poussee[idx] = false;
     /* ABSENTE, pas « la dernière valeur connue » : on vient d'effacer la seule
      * source qu'avait cette case. Prétendre autre chose serait inventer. */
-    case_poser(idx, DN_VAL_ABSENTE, NULL, NULL, 0, NULL, NULL);
+    case_poser(idx, DN_VAL_ABSENTE, NULL, 0, NULL, NULL);
     /* Le mock reprend AU PROCHAIN TICK s'il est armé — on ne l'appelle pas ici :
      * ce serait un second redessin dans le même verrou, donc un chiffre de plus
      * dans une campagne qui compte les cycles. */
@@ -3900,7 +4215,94 @@ void dn_ui_case_dim(int *w, int *h)
         *w = DN_UI_CASE_W;
     }
     if (h) {
-        *h = DN_UI_CASE_H;
+        *h = ui_case_h(); /* ⚠️ CALCULÉ de l'override, ⛔ plus une macro figée */
+    }
+}
+
+/*
+ * ── dn4-6 / AC4 + AC11 : LES DEUX BANDES, RÉGLABLES ET RELUES ────────────────
+ * ⚠️ RECONSTRUIT LA SCÈNE — `case_h` change, donc toutes les cases. L'appelant
+ *    (la console) DOIT l'annoncer AVANT : `build_scene()` bloque le REPL ~350 ms,
+ *    et sur la branche A le REPL EST le transport PC.
+ */
+static void build_scene(void);
+
+esp_err_t dn_ui_set_bandes(int barre_h, int menu_h)
+{
+    /* Bornes : la barre doit contenir l'heure (`dn_font_28` à y = 18, boîte
+     * 18..53) et la date (`dn_font_14` à y = 28, boîte 28..46) ⇒ 53 est le
+     * plancher RELU du code, ⛔ pas un chiffre rond. Le MENU porte
+     * `dn_font_28` à y = 14 ⇒ boîte 14..49, plancher 49 — ou ZÉRO, qui est la
+     * voie (a) et signifie « pas de bandeau du tout ». */
+    if (barre_h < 53 || barre_h > 120) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (menu_h != 0 && (menu_h < 49 || menu_h > 120)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (!lvgl_port_lock(2000)) {
+        return ESP_ERR_TIMEOUT; /* ⛔ RIEN n'a bougé — ne pas annoncer la bascule */
+    }
+    s_geo_barre_h = barre_h;
+    s_geo_menu_h = menu_h;
+    build_scene();
+    lvgl_port_unlock();
+    return ESP_OK;
+}
+
+esp_err_t dn_ui_set_widget_geom(const dn_widget_geom_t *g)
+{
+    if (!g) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    /* Bornes RELUES de ce que la case peut porter, ⛔ pas des chiffres ronds :
+     * `val_y` sous le bas de l'en-tête NORMAL (43) est LÉGAL mais doit avoir
+     * été constaté à l'œil (AC3) — on ne l'interdit donc pas, on ne descend
+     * simplement pas sous le haut de la boîte du badge (14). */
+    if (g->val_y < 14 || g->val_y > 200 || g->val_pas < 18 || g->val_pas > 80) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (g->dispo < 0 || g->dispo >= DN_DISPO_COUNT) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (g->entete < 0 || g->entete >= DN_ENTETE_COUNT) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (!lvgl_port_lock(2000)) {
+        return ESP_ERR_TIMEOUT;
+    }
+    dn_widget_set_geom(g);
+    build_scene();
+    lvgl_port_unlock();
+    return ESP_OK;
+}
+
+/* Les DÉFAUTS, relus des macros — ⛔ jamais récités par l'appelant. C'est le
+ * même motif que `dn_widget_geom_defaut()` : un défaut recopié ailleurs cesse
+ * d'être le défaut au premier changement, et personne ne le voit. */
+void dn_ui_geom_bandes_defaut(int *barre_h, int *menu_h)
+{
+    if (barre_h) {
+        *barre_h = DN_UI_BARRE_H_DEFAUT;
+    }
+    if (menu_h) {
+        *menu_h = DN_UI_MENU_H_DEFAUT;
+    }
+}
+
+void dn_ui_geom_bandes(int *barre_h, int *menu_h, int *grille_h, int *case_h)
+{
+    if (barre_h) {
+        *barre_h = ui_barre_h();
+    }
+    if (menu_h) {
+        *menu_h = ui_menu_h();
+    }
+    if (grille_h) {
+        *grille_h = ui_grille_h();
+    }
+    if (case_h) {
+        *case_h = ui_case_h();
     }
 }
 
@@ -3951,8 +4353,49 @@ static const dn_widget_desc_t k_demo_desc = {
     .ind_max = 100, /* % — et la plage COUVRE la source (piège d'instrument n°7 :
                      * une jauge bornée écrête EN SILENCE, et la jauge RAM avait
                      * été clouée au plein par un injecteur hors plage) */
-    .grandeurs = {{.unite = "%"}, {.unite = "Mo/s", .icone = DN_ICONE_DESKTOP}},
+    /* ⚠️ QUATRE GRANDEURS SONT DÉCLARÉES ICI POUR DEUX POSÉES PAR DÉFAUT, et ce
+     * n'est pas du remplissage : `widget demo on <n>` fait varier `n` à chaud
+     * (voir `s_demo_n`), et une grandeur sans unité ni précision rendrait le
+     * témoin d'AC2 illisible au moment précis où on le regarde. */
+    .grandeurs = {{.unite = "%", .prec = DN_PREC_DIXIEME},
+                  {.unite = "Mo/s", .icone = DN_ICONE_DESKTOP,
+                   .prec = DN_PREC_DIXIEME},
+                  {.unite = "W", .prefixe = "d3", .prec = DN_PREC_ENTIER},
+                  {.unite = "tr/min", .prefixe = "d4", .prec = DN_PREC_ENTIER}},
 };
+
+/*
+ * ── dn4-6 / AC2 : LE NOMBRE DE GRANDEURS DE LA DÉMO EST RÉGLABLE À CHAUD ─────
+ *
+ * 🔴 SANS ÇA, LES DEUX PREUVES D'AC2 SONT INATTEIGNABLES. Aucune des six cases
+ *    réelles ne peut déclencher les cas à prouver :
+ *      · l'abandon de la JAUGE exige n ≥ 3 AVEC jauge — seule la démo a une
+ *        jauge en plus d'une grandeur multiple ;
+ *      · le CLAMP de dn4-1 exige un descripteur à n > `GRANDEURS_MAX`, soit 5
+ *        sur un firmware à 4 — aucun descripteur figé ne le fera jamais.
+ *    ⛔ « Un instrument qui ne peut pas voir le cas qu'il a été construit pour
+ *      prouver est une gate décorative » — le dépôt l'a payé sur la colonne
+ *      « secondaire » de la table `widget`, constante par construction.
+ *
+ * ⚠️ LE DÉFAUT RESTE 2, et c'est délibéré : `DEMO 2 OUI non` est le témoin de
+ *    non-régression de dn4-1, cité tel quel dans la baseline T0. Le changer
+ *    ferait échouer une comparaison avant/après pour une raison sans rapport.
+ * ⚠️ La borne haute est 6, ⛔ pas `DN_WIDGET_GRANDEURS_MAX` : il FAUT pouvoir
+ *    demander plus que le maximum, sinon le clamp devient injoignable.
+ */
+#define DN_UI_DEMO_N_MAX 6
+static int s_demo_n = 2;
+
+int dn_ui_demo_n(void) { return s_demo_n; }
+
+esp_err_t dn_ui_set_demo_n(int n)
+{
+    if (n < 1 || n > DN_UI_DEMO_N_MAX) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    s_demo_n = n;
+    return ESP_OK;
+}
 
 /* Le descripteur du widget de DÉMO — pour que la table de géométrie puisse
  * confronter ce qu'il DEMANDE (n = 2 + jauge) à ce qu'il a OBTENU. C'est le seul
@@ -3961,7 +4404,16 @@ static const dn_widget_desc_t k_demo_desc = {
  *    référençait 3 500 lignes avant sa définition. */
 const dn_widget_desc_t *dn_ui_demo_desc(void)
 {
-    return &k_demo_desc;
+    /* 🔴 LE `n` RÉGLABLE DOIT SE VOIR DANS LA COLONNE « DEMANDÉ » DE `widget`.
+     *    Rendre `&k_demo_desc` tel quel annoncerait « n=2 » pendant qu'une démo
+     *    à n=5 est posée — la colonne dont l'en-tête promet de dire ce que LE
+     *    DESCRIPTEUR demande mentirait sur le seul chemin qui prouve le clamp.
+     *    C'est exactement le défaut relevé en revue le 2026-08-19, un cran plus
+     *    loin. ⇒ copie statique, rafraîchie à chaque lecture. */
+    static dn_widget_desc_t d;
+    d = k_demo_desc;
+    d.n_grandeurs = (uint8_t)s_demo_n;
+    return &d;
 }
 
 esp_err_t dn_ui_demo_set(bool on)
@@ -3986,9 +4438,19 @@ esp_err_t dn_ui_demo_set(bool on)
             /* Elle sera ABANDONNÉE (168 > 156) — c'est le second témoin : le
              * log doit apparaître, et `widget` doit afficher « secondaire non ». */
             snprintf(etat.secondaire, sizeof(etat.secondaire), "7e métrique FICTIVE");
+            /* Copie locale pour appliquer le `n` réglable — MÊME PATRON que
+             * l'override d'icône de `build_dashboard` : le descripteur `const`
+             * ne bouge pas, l'override est local et explicite. */
+            dn_widget_desc_t d = k_demo_desc;
+            d.n_grandeurs = (uint8_t)s_demo_n;
+            /* Des textes pour TOUTES les grandeurs demandées : une démo à n = 4
+             * qui n'aurait que deux textes afficherait « -- » sur les deux
+             * dernières, et on lirait le témoin de W10 là où on veut lire celui
+             * de la géométrie. Deux instruments dans le même relevé. */
+            snprintf(etat.txt[2], sizeof(etat.txt[2]), "212");
+            snprintf(etat.txt[3], sizeof(etat.txt[3]), "604");
             dn_widget_creer(lv_screen_active(), 120, 240, DN_UI_CASE_W,
-                            DN_UI_CASE_H, &k_demo_desc, &etat, NULL, NULL,
-                            &s_demo);
+                            ui_case_h(), &d, &etat, NULL, NULL, &s_demo);
         }
     } else if (s_demo.racine) {
         lv_obj_delete(s_demo.racine);

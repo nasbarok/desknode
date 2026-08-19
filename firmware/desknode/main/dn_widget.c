@@ -16,17 +16,36 @@
  *
  * Bi-grandeurs (D6, « AMBIANCE ») : les valeurs sont EMPILÉES, 40 px de pas.
  *
- *   🔴 « CÔTE À CÔTE » A ÉTÉ ÉCARTÉ PAR L'ARITHMÉTIQUE, PAS PAR GOÛT.
- *      À 28 px, « 25,5 °C » mesure ~110 px et « 52,4 % » ~95 px : 205 px pour
- *      201 px utiles (225 moins deux marges de 12). Ça ne rentre pas, et ça ne
- *      rentrerait pas davantage avec une température négative à deux chiffres
- *      (« -12,3 °C »). Le côte à côte n'aurait tenu qu'en descendant la police,
- *      c'est-à-dire en rendant la case principale MOINS lisible que les autres
- *      — l'inverse de « lisible à ~50 cm ».
- *      « principale + secondaire » a été écarté pour une autre raison : il
- *      HIÉRARCHISE. Or température et humidité sont deux mesures du même
+ *   ⚠️ « CÔTE À CÔTE A ÉTÉ ÉCARTÉ PAR L'ARITHMÉTIQUE » — ET L'ARITHMÉTIQUE
+ *      ÉTAIT UNE ESTIMATION, QUE dn4-6 CONFRONTE À LA MESURE.
+ *
+ *      CE QUI ÉTAIT ÉCRIT ICI DEPUIS dn3-1, conservé mot pour mot :
+ *        « À 28 px, "25,5 °C" mesure ~110 px et "52,4 %" ~95 px : 205 px pour
+ *          201 px utiles (225 moins deux marges de 12). Ça ne rentre pas […]
+ *          Le côte à côte n'aurait tenu qu'en descendant la police. »
+ *
+ *      🔴 CE N'ÉTAIT PAS UNE MESURE. C'était ~15,8 px par caractère, extrapolé
+ *         — exactement le « produit nb_caractères × largeur_moyenne » que ce
+ *         dépôt s'interdit ailleurs. Et une décision de conception REPOSAIT
+ *         dessus.
+ *      ⇒ `widget largeur` (dn4-6 / AC5) relit la largeur RÉELLE de
+ *        `lv_text_get_size()` — la police RÉELLEMENT LIÉE, KERNING COMPRIS — et
+ *        publie l'écart. ⛔ Le verdict est CE RELEVÉ-LÀ, pas ce paragraphe.
+ *      ⚠️ Recalcul hors carte depuis les tables de `dn_font_28.c` (`adv_w` +
+ *         classes de kerning) : « 25,5 °C » ~94 px et « 52,4 % » ~88 px, soit
+ *         ~182 px — l'estimation serait haute de ~12 %, et le couple TIENDRAIT.
+ *         ⛔ CE CHIFFRE N'EST PAS LA MESURE NON PLUS : il vient des mêmes tables
+ *         que LVGL, mais pas de LVGL. Il dit seulement qu'il FALLAIT mesurer.
+ *      ⚠️ Ce que ça ne change pas : à QUATRE grandeurs, les couples s'allongent
+ *         (« 350 W » + « 3000 tr/min »), et c'est là que le mur se déplace.
+ *         Le relevé couvre le PIRE CAS de chaque couple, pas un cas nominal.
+ *      ⛔ EN REVANCHE « principale + secondaire » RESTE écarté, et pour une
+ *      raison que la largeur ne touche pas : il HIÉRARCHISE. Or température et humidité sont deux mesures du même
  *      capteur, de même dignité ; en reléguer une en petit dirait le contraire.
- *   ⇒ EMPILÉES. Et c'est le mécanisme GÉNÉRIQUE : N grandeurs = N lignes.
+ *   ⇒ EMPILÉES **PAR DÉFAUT**, et c'est le mécanisme GÉNÉRIQUE. ⚠️ dn4-6 :
+ *     « N grandeurs = N lignes » n'est plus vrai qu'en `DN_DISPO_EMPILE` — le
+ *     nombre de LIGNES se calcule par `dn_widget_lignes()`, et c'est LUI qui
+ *     gouverne `y_bas`, donc la jauge et la secondaire.
  *
  * ── CE QUI FAIT LE RÉGIME VISIBLE (AC3) ──────────────────────────────────────
  * RÉELLE  : valeur blanche.
@@ -49,7 +68,7 @@
 
 static const char *TAG = "dn_widget";
 
-/* ── Géométrie interne de la case ─────────────────────────────────────────── */
+/* ── Géométrie interne de la case — CE SONT LES DÉFAUTS ───────────────────── */
 #define W_PAD 12
 #define W_TITRE_Y 14
 #define W_ICONE_Y 8
@@ -57,6 +76,188 @@ static const char *TAG = "dn_widget";
 #define W_VAL_PAS 40
 #define W_JAUGE_H 10
 #define W_SEC_H 20
+/* Gouttière minimale entre deux colonnes en côte à côte. En dessous, deux
+ * nombres se lisent comme un seul — et « ça tient » deviendrait « ça touche ». */
+#define W_GOUTTIERE 12
+/* Largeur du sillon réservé à l'icône de la case, par taille de police. */
+#define W_ICONE_AV_28 40
+#define W_ICONE_AV_14 22
+
+/*
+ * ── dn4-6 / AC4 : L'OVERRIDE DE GÉOMÉTRIE ────────────────────────────────────
+ * Les `#define` ci-dessus restent LES DÉFAUTS et ne bougent pas (convention du
+ * dépôt : `k_*` const, `s_*` mutable, ⛔ on ne retire pas un `const`). Ce bloc
+ * est l'override, et `dn_widget_geom_defaut()` RELIT les macros au lieu de les
+ * réciter — c'est la seule façon que « le défaut » ne diverge pas du défaut.
+ */
+static dn_widget_geom_t s_geom = {
+    .val_y = W_VAL_Y,
+    .val_pas = W_VAL_PAS,
+    .dispo = DN_DISPO_EMPILE,
+    .entete = DN_ENTETE_NORMAL,
+    .font_val = NULL, /* NULL = `dn_font_28` — résolu à l'usage, voir font_val() */
+};
+
+/* ⚠️ RÉSOLU À L'USAGE, PAS À L'INITIALISATION : `&dn_font_28` n'est pas une
+ *    constante d'initialiseur portable ici, et surtout un `NULL` explicite rend
+ *    lisible « personne n'a choisi » au lieu de figer un pointeur dans un
+ *    statique que la console imprimerait comme un réglage. */
+static const lv_font_t *font_val(void)
+{
+    return s_geom.font_val ? s_geom.font_val : &dn_font_28;
+}
+
+static const lv_font_t *font_entete(void)
+{
+    return s_geom.entete == DN_ENTETE_COMPACT ? &dn_font_14 : &dn_font_28;
+}
+
+/* Le y des trois éléments d'en-tête. En COMPACT ils montent ENSEMBLE : le titre
+ * déborde de `val_y = 36` tout autant que l'icône (boîte 22..40), et ne monter
+ * que l'icône aurait laissé le défaut à moitié corrigé — sans le dire. */
+static int entete_y_icone(void) { return W_ICONE_Y; }
+static int entete_y_titre(void)
+{
+    return s_geom.entete == DN_ENTETE_COMPACT ? W_ICONE_Y : W_TITRE_Y + 8;
+}
+static int entete_y_badge(void)
+{
+    return s_geom.entete == DN_ENTETE_COMPACT ? W_ICONE_Y : W_TITRE_Y;
+}
+
+/* Le compteur de chevauchements côte à côte — voir `dn_widget.h`. */
+static uint32_t s_chevauchements;
+
+uint32_t dn_widget_chevauchements(void) { return s_chevauchements; }
+void dn_widget_chevauchements_reset(void) { s_chevauchements = 0; }
+
+int dn_widget_gouttiere(void) { return W_GOUTTIERE; }
+int dn_widget_largeur_utile(int w) { return w - 2 * W_PAD; }
+
+const char *dn_widget_dispo_nom(dn_widget_dispo_t d)
+{
+    switch (d) {
+    case DN_DISPO_EMPILE:
+        return "EMPILE";
+    case DN_DISPO_COTE:
+        return "COTE-A-COTE";
+    case DN_DISPO_MIXTE:
+        return "MIXTE";
+    default:
+        return "?";
+    }
+}
+
+const char *dn_widget_entete_nom(dn_widget_entete_t e)
+{
+    switch (e) {
+    case DN_ENTETE_NORMAL:
+        return "NORMAL (icone 28, bas d'en-tete 43)";
+    case DN_ENTETE_COMPACT:
+        return "COMPACT (les trois en 14, bas d'en-tete 26)";
+    default:
+        return "?";
+    }
+}
+
+void dn_widget_geom(dn_widget_geom_t *out)
+{
+    if (out) {
+        *out = s_geom;
+        out->font_val = font_val(); /* ⛔ jamais NULL vers l'extérieur */
+    }
+}
+
+void dn_widget_geom_defaut(dn_widget_geom_t *out)
+{
+    if (out) {
+        out->val_y = W_VAL_Y;
+        out->val_pas = W_VAL_PAS;
+        out->dispo = DN_DISPO_EMPILE;
+        out->entete = DN_ENTETE_NORMAL;
+        out->font_val = &dn_font_28;
+    }
+}
+
+void dn_widget_set_geom(const dn_widget_geom_t *g)
+{
+    if (g) {
+        s_geom = *g;
+    }
+}
+
+/*
+ * ── LE PLACEMENT D'UNE GRANDEUR — UNE SEULE DÉFINITION ───────────────────────
+ *
+ * Rend la LIGNE et la COLONNE de la grandeur `i`, et combien de colonnes cette
+ * ligne-là porte. ⚠️ Le nombre de colonnes de la DERNIÈRE ligne n'est pas
+ * toujours 2 (n impair) : une grandeur seule sur sa ligne prend toute la
+ * largeur, et la traiter en demi-colonne l'écrêterait sans raison.
+ */
+static void place(dn_widget_dispo_t dispo, int n, int i, int *ligne, int *col,
+                  int *cols)
+{
+    int l = i, c = 0, k = 1;
+    switch (dispo) {
+    case DN_DISPO_COTE:
+        l = i / 2;
+        c = i % 2;
+        k = (n - 2 * l) >= 2 ? 2 : 1;
+        break;
+    case DN_DISPO_MIXTE:
+        if (i < 2) {
+            l = 0;
+            c = i;
+            k = n >= 2 ? 2 : 1;
+        } else {
+            l = i - 1;
+            c = 0;
+            k = 1;
+        }
+        break;
+    case DN_DISPO_EMPILE:
+    default:
+        break;
+    }
+    if (ligne) {
+        *ligne = l;
+    }
+    if (col) {
+        *col = c;
+    }
+    if (cols) {
+        *cols = k;
+    }
+}
+
+int dn_widget_lignes(dn_widget_dispo_t dispo, int n)
+{
+    if (n < 1) {
+        return 0;
+    }
+    switch (dispo) {
+    case DN_DISPO_COTE:
+        return (n + 1) / 2;
+    case DN_DISPO_MIXTE:
+        return n <= 2 ? 1 : n - 1;
+    case DN_DISPO_EMPILE:
+    default:
+        return n;
+    }
+}
+
+int dn_widget_largeur(const char *txt, const lv_font_t *font)
+{
+    if (!txt || !font) {
+        return 0;
+    }
+    lv_point_t p;
+    /* ⚠️ `LV_COORD_MAX` en `max_width` : sans ça LVGL casserait les lignes et
+     *    rendrait la largeur du CONTENEUR, pas celle du TEXTE — l'instrument
+     *    mesurerait alors ce qu'on lui impose au lieu de ce qu'il coûte. */
+    lv_text_get_size(&p, txt, font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    return (int)p.x;
+}
 
 /* ── Couleurs des régimes ─────────────────────────────────────────────────── */
 #define W_COL_ABSENTE 0x9a9a9a
@@ -255,19 +456,76 @@ lv_color_t dn_val_regime_couleur(dn_val_regime_t r)
     }
 }
 
-/* Le texte d'une grandeur, unité comprise. Une valeur ABSENTE ne porte JAMAIS
- * son unité : « -- % » suggérerait qu'on sait de quoi on parle. */
+/*
+ * Le texte d'une grandeur : [icône ][préfixe ]valeur[ unité].
+ *
+ * ⛔ Une valeur ABSENTE ne porte JAMAIS son unité (« -- % » suggérerait qu'on
+ *    sait de quoi on parle) — ✅ mais elle GARDE son préfixe : « c.max -- » dit
+ *    QUELLE grandeur manque, et taire le préfixe cacherait l'existence même de
+ *    la grandeur, ce que W10 interdit explicitement.
+ */
 static void composer(const dn_widget_desc_t *d, const dn_widget_etat_t *e, int i,
                      char *out, size_t n)
 {
     const char *ic = d->grandeurs[i].icone;
+    const char *px = d->grandeurs[i].prefixe;
     if (!e || e->regime == DN_VAL_ABSENTE || e->txt[i][0] == '\0') {
-        snprintf(out, n, "%s%s", ic ? ic : "", ic ? " --" : "--");
+        snprintf(out, n, "%s%s%s%s--", ic ? ic : "", ic ? " " : "",
+                 px ? px : "", px ? " " : "");
         return;
     }
     const char *u = d->grandeurs[i].unite;
-    snprintf(out, n, "%s%s%s%s%s", ic ? ic : "", ic ? " " : "", e->txt[i],
-             u ? " " : "", u ? u : "");
+    snprintf(out, n, "%s%s%s%s%s%s%s", ic ? ic : "", ic ? " " : "",
+             px ? px : "", px ? " " : "", e->txt[i], u ? " " : "", u ? u : "");
+}
+
+/*
+ * ── POSER UNE VALEUR À SA PLACE, ET DÉTECTER LE CHEVAUCHEMENT ────────────────
+ *
+ * 🔴 CETTE FONCTION EXISTE POUR UNE RAISON PRÉCISE : en côte à côte, un texte
+ *    trop large NE SE VOIT PAS comme une erreur. LVGL clippe au parent SANS UN
+ *    MOT (piège d'instrument n°13 du dépôt). « Rien n'a planté » n'est donc pas
+ *    « ça tient » — il faut MESURER et DIRE.
+ *
+ * Colonne 0 : calée à gauche, à `W_PAD`.
+ * Colonne 1 : calée à DROITE, à `w - W_PAD - largeur`. ⚠️ Pas une demi-case
+ *   fixe : un partage à 50/50 écrêterait « 100,0 % » (mesuré à ~103 px pour
+ *   100 px de demi-largeur) alors que le couple entier tient. Le calage à droite
+ *   rend la CONTRAINTE RÉELLE — « les deux plus la gouttière tiennent-ils dans
+ *   les 201 px utiles ? » — au lieu d'en fabriquer une plus dure.
+ */
+static void valeur_placer(lv_obj_t *lbl, int i, int n, int w, int fin_gauche,
+                          const dn_widget_desc_t *desc, int *fin_gauche_out)
+{
+    int ligne = 0, col = 0, cols = 1;
+    place(s_geom.dispo, n, i, &ligne, &col, &cols);
+    int y = s_geom.val_y + ligne * s_geom.val_pas;
+
+    if (cols < 2 || col == 0) {
+        lv_obj_set_pos(lbl, W_PAD, y);
+        if (fin_gauche_out) {
+            *fin_gauche_out = W_PAD + dn_widget_largeur(lv_label_get_text(lbl),
+                                                        font_val());
+        }
+        return;
+    }
+
+    int lw = dn_widget_largeur(lv_label_get_text(lbl), font_val());
+    int x = w - W_PAD - lw;
+    if (x < fin_gauche + W_GOUTTIERE) {
+        s_chevauchements++;
+        ESP_LOGW(TAG,
+                 "« %s » grandeur %d : CHEVAUCHEMENT cote a cote — « %s » finit a "
+                 "%d px, la colonne droite commencerait a %d px (gouttiere %d, "
+                 "utile %d px). LVGL clipperait SANS un mot.",
+                 desc && desc->titre ? desc->titre : "?", i,
+                 lv_label_get_text(lbl), fin_gauche, x, W_GOUTTIERE,
+                 dn_widget_largeur_utile(w));
+        /* ⛔ On pose QUAND MÊME, à la place demandée : masquer la valeur ou la
+         *    tronquer serait remplacer un défaut visible par un défaut muet.
+         *    Le log et le compteur sont l'instrument ; l'œil de l'owner tranche. */
+    }
+    lv_obj_set_pos(lbl, x, y);
 }
 
 void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
@@ -277,24 +535,29 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
     memset(out, 0, sizeof(*out));
     out->racine = dn_widget_zone_creer(parent, x, y, w, h, cb, user);
 
+    out->w = (int16_t)w;
+
     int tx = W_PAD;
     if (desc->icone) {
         /* L'icône porte la COULEUR D'ACCENT du descripteur : c'est le seul
          * endroit où dn3-1 EXERCE le champ `couleur`, pour qu'il ne soit pas un
-         * champ mort que dn3-3 découvrirait non branché. */
-        dn_widget_texte(out->racine, desc->icone, &dn_font_28,
-                        lv_color_hex(desc->couleur), tx, W_ICONE_Y);
-        tx += 40;
+         * champ mort que dn3-3 découvrirait non branché.
+         * ⚠️ dn4-6 / AC3 : en en-tête COMPACT elle descend en `dn_font_14`, et
+         *    c'est LA décision owner de l'A/B — pas un réglage de dev. */
+        dn_widget_texte(out->racine, desc->icone, font_entete(),
+                        lv_color_hex(desc->couleur), tx, entete_y_icone());
+        tx += (s_geom.entete == DN_ENTETE_COMPACT) ? W_ICONE_AV_14 : W_ICONE_AV_28;
     }
     dn_widget_texte(out->racine, desc->titre, &dn_font_14,
-                    lv_color_hex(W_COL_TITRE), tx, W_TITRE_Y + 8);
+                    lv_color_hex(W_COL_TITRE), tx, entete_y_titre());
 
     /* Le badge de régime — CRÉÉ TOUJOURS, masqué quand il ne s'applique pas.
      * Le créer à la demande obligerait `dn_widget_maj` à construire des objets
      * LVGL, donc à allouer, sous le verrou et depuis une tâche de source. Un
      * `lv_obj_add_flag(HIDDEN)` ne peut pas échouer ; un `lv_label_create` si. */
     out->badge = dn_widget_texte(out->racine, "SIMULÉ", &dn_font_14,
-                                 lv_color_hex(W_COL_SIMULEE), w - 66, W_TITRE_Y);
+                                 lv_color_hex(W_COL_SIMULEE), w - 66,
+                                 entete_y_badge());
     lv_obj_add_flag(out->badge, LV_OBJ_FLAG_HIDDEN);
 
     /* 🔴 L'ÉCRÊTAGE DU NOMBRE DE GRANDEURS EST JOURNALISÉ — correctif de revue
@@ -318,16 +581,25 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
                  DN_WIDGET_GRANDEURS_MAX, desc->n_grandeurs - DN_WIDGET_GRANDEURS_MAX);
         n = DN_WIDGET_GRANDEURS_MAX;
     }
-    char buf[DN_WIDGET_TXT_MAX + 24];
+    out->n = (uint8_t)n;
+
+    char buf[DN_WIDGET_TXT_MAX + 32];
+    int fin_gauche = W_PAD;
     for (int i = 0; i < n; i++) {
         composer(desc, etat, i, buf, sizeof(buf));
         out->valeur[i] = dn_widget_texte(
-            out->racine, buf, &dn_font_28,
+            out->racine, buf, font_val(),
             dn_val_regime_couleur(etat ? etat->regime : DN_VAL_ABSENTE), W_PAD,
-            W_VAL_Y + i * W_VAL_PAS);
+            s_geom.val_y);
+        valeur_placer(out->valeur[i], i, n, w, fin_gauche, desc, &fin_gauche);
     }
 
-    int y_bas = W_VAL_Y + n * W_VAL_PAS;
+    /* 🔴 `y_bas` SE CALCULE SUR LES LIGNES, PAS SUR LES GRANDEURS. En côte à
+     *    côte quatre grandeurs tiennent en DEUX lignes — et confondre les deux
+     *    ferait abandonner une jauge qui a la place, ou en poser une qui ne l'a
+     *    pas. C'est le même nombre qui gouverne la jauge et la secondaire. */
+    int n_lignes = dn_widget_lignes(s_geom.dispo, n);
+    int y_bas = s_geom.val_y + n_lignes * s_geom.val_pas;
     /*
      * 🔴 dn4-1 / W5 : LE `&& n == 1` A ÉTÉ RETIRÉ. Il faisait disparaître la
      *    jauge d'un descripteur bi-grandeurs SANS ERREUR NI LOG, alors que
@@ -340,7 +612,35 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
      *       corriger ceci SEUL aurait déplacé la panne silencieuse de la jauge
      *       vers la ligne secondaire.
      */
-    if (desc->indicateur) {
+    /*
+     * 🔴 dn4-6 / AC2 — LA JAUGE EST BORNÉE. 3ᵉ OCCURRENCE DE LA MÊME FAMILLE.
+     *
+     *    dn4-1 avait retiré le `&& n == 1` (la jauge d'un descripteur
+     *    bi-grandeurs disparaissait sans un mot) PUIS rendu audible l'abandon de
+     *    la ligne secondaire. Il restait la jauge elle-même : `lv_obj_set_pos`
+     *    la posait à `y_bas + 6` SANS AUCUN TEST contre `h`. À n ≤ 2 aucune case
+     *    ne pouvait sortir ; à 3 et 4 grandeurs EMPILÉES, `y_bas` vaut 168 puis
+     *    208 et la jauge part HORS CASE — clippée en silence par LVGL.
+     *    ⇒ Le test est écrit AVANT d'élargir `GRANDEURS_MAX` (l'ordre est un
+     *      livrable, AC2), et l'abandon est JOURNALISÉ comme celui de la
+     *      secondaire — la règle de priorité de `dn_widget.h` est appliquée ici,
+     *      pas subie ailleurs.
+     * ⚠️ La jauge consomme `W_JAUGE_H + 10` = 20 px : 6 px de garde au-dessus,
+     *    `W_JAUGE_H` de barre, 4 px en dessous. Le test porte sur le BAS RÉEL de
+     *    la barre (`y_bas + 6 + W_JAUGE_H`), ⛔ pas sur les 20 px de l'avance —
+     *    deux chiffres publiés par dn4-1 étaient faux de +6 sur cette ligne.
+     */
+    bool jauge_place = (y_bas + 6 + W_JAUGE_H) <= h;
+    if (desc->indicateur && !jauge_place) {
+        ESP_LOGW(TAG,
+                 "« %s » : pas de place pour la JAUGE (y_bas=%d + 6 + %d > h=%d) "
+                 "— %d grandeur(s) sur %d ligne(s), disposition %s. La jauge est "
+                 "ABANDONNEE (contrat dn_widget.h / W5 : valeurs > jauge > "
+                 "secondaire).",
+                 desc->titre ? desc->titre : "?", y_bas, W_JAUGE_H, h, n,
+                 n_lignes, dn_widget_dispo_nom(s_geom.dispo));
+    }
+    if (desc->indicateur && jauge_place) {
         /*
          * 🔴 `lv_bar` EST CLIQUABLE PAR DÉFAUT — `lv_bar.c:341` le CONSERVE là
          *    où `lv_label.c:762` le retire. Sans la ligne ci-dessous, la jauge
@@ -392,10 +692,12 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
          */
         ESP_LOGW(TAG,
                  "« %s » : pas de place pour la ligne secondaire "
-                 "(y_bas=%d + %d > h=%d) — %d grandeur(s)%s. La jauge est "
-                 "prioritaire (contrat dn_widget.h / W5).",
-                 desc->titre ? desc->titre : "?", y_bas, W_SEC_H, h, n,
-                 desc->indicateur ? " + jauge" : "");
+                 "(y_bas=%d + %d > h=%d) — %d grandeur(s) sur %d ligne(s), "
+                 "disposition %s%s. La jauge est prioritaire "
+                 "(contrat dn_widget.h / W5).",
+                 desc->titre ? desc->titre : "?", y_bas, W_SEC_H, h, n, n_lignes,
+                 dn_widget_dispo_nom(s_geom.dispo),
+                 (desc->indicateur && jauge_place) ? " + jauge" : "");
     }
 
     /* Poser l'état une fois de plus : c'est LUI qui décide de la visibilité du
@@ -426,13 +728,26 @@ void dn_widget_maj(const dn_widget_desc_t *desc, const dn_widget_etat_t *etat,
 
     dn_val_regime_t r = etat ? etat->regime : DN_VAL_ABSENTE;
     lv_color_t c = dn_val_regime_couleur(r);
-    char buf[DN_WIDGET_TXT_MAX + 24];
+    char buf[DN_WIDGET_TXT_MAX + 32];
+    int fin_gauche = W_PAD;
     for (int i = 0; i < DN_WIDGET_GRANDEURS_MAX; i++) {
         if (!w->valeur[i]) {
             continue;
         }
         composer(desc, etat, i, buf, sizeof(buf));
         lv_label_set_text(w->valeur[i], buf);
+        /* 🔴 LA POSITION SE RECALCULE À CHAQUE MISE À JOUR EN CÔTE À CÔTE, ET
+         *    CE N'EST PAS UN LUXE : la colonne droite est calée à DROITE, donc
+         *    son x DÉPEND de la largeur du texte. « 9,9 % » et « 100,0 % » ne
+         *    commencent pas au même endroit. Ne pas repositionner laisserait la
+         *    valeur à la place de la PRÉCÉDENTE — un décalage qui grandit avec
+         *    le nombre de chiffres, et que rien ne signalerait.
+         * ⚠️ En EMPILÉ (le défaut) `valeur_placer` repose au même x et le coût
+         *    est un `lv_obj_set_pos` par grandeur ; en côte à côte il s'y ajoute
+         *    UN `lv_text_get_size` par colonne droite. Le budget est mesuré en
+         *    AC12, ⛔ pas supposé négligeable. */
+        valeur_placer(w->valeur[i], i, w->n ? w->n : 1, w->w ? w->w : 225,
+                      fin_gauche, desc, &fin_gauche);
         /*
          * 🔴 dn4-1 / W10 — UNE GRANDEUR ABSENTE SE PEINT EN GRIS, MÊME DANS UNE
          *    CASE RÉELLE. `composer()` rend déjà « -- » sans unité pour un texte
