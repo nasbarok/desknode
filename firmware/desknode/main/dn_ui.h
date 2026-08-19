@@ -544,8 +544,12 @@ const dn_widget_desc_t *dn_ui_desc_brut(int idx);
 /* Le descripteur du widget de DÉMO (`widget demo on`) — le SEUL du firmware à
  * demander deux grandeurs ET une jauge, donc le seul à armer l'abandon de la
  * ligne secondaire. La table de géométrie d'AC5 en a besoin pour confronter
- * demandé/obtenu ; sans lui, la colonne « secondaire » ne peut valoir que OUI. */
-const dn_widget_desc_t *dn_ui_demo_desc(void);
+ * demandé/obtenu ; sans lui, la colonne « secondaire » ne peut valoir que OUI.
+ * ⚠️ RENDU PAR VALEUR (revue 2026-08-19) : la version précédente rendait
+ *    l'adresse d'un statique de fonction réécrit à chaque appel, donc un pointeur
+ *    dont la stabilité promise par `const dn_widget_desc_t *` n'existait pas.
+ * Rend `false` si `out` est NULL. */
+bool dn_ui_demo_desc(dn_widget_desc_t *out);
 
 /* La case `idx` est-elle rendue en WIDGET (true) ou NUE (false, override W11) ?
  * ⛔ Une case nue n'a qu'un `valeur[0]` : sans cette lecture, la table de
@@ -744,8 +748,19 @@ const char *dn_ui_case_unite(int idx, int grandeur);
  * celle de son parent, son x. ⛔ Relu des objets LVGL, jamais recomposé — c'est
  * la seule façon de distinguer « le texte est trop large » de « le panneau est
  * trop étroit » de « le texte n'est pas celui qu'on croit ».
- * Rend `false` si le détail n'est pas affiché. */
-bool dn_ui_detail_label(const char **txt, int *w, int *w_parent, int *x);
+ * Rend `false` si le détail n'est pas affiché.
+ *
+ * 🔴 LE TEXTE EST **COPIÉ** DANS `txt` SOUS LE VERROU LVGL (revue 2026-08-19) —
+ *    ⛔ plus un `const char *` vers le tampon interne du label rendu APRÈS le
+ *    déverrouillage : `detail_reparametrer()` `lv_realloc` ce tampon 5 fois par
+ *    seconde en régime, et l'appelant l'imprimait hors verrou.
+ * ⚠️ `resolue` dit si `w_parent`/`x` sont exploitables. Quand la scène est en
+ *    cours de construction, le parent est NULL et l'ancienne API rendait
+ *    `w_parent = -1` ⇒ l'appelant calculait `utile = -1 - 2*x` et criait « LE
+ *    TEXTE SORT DU PANNEAU ». ⛔ Ne rien conclure de la largeur si `resolue`
+ *    est `false` — c'est la même garde que dans `detail_reparametrer`. */
+bool dn_ui_detail_label(char *txt, size_t txt_n, int *w, int *w_parent, int *x,
+                        bool *resolue);
 esp_err_t dn_ui_set_case_grandeurs(int idx, int n);
 esp_err_t dn_ui_bandes_valider(int barre_h, int menu_h);
 esp_err_t dn_ui_geom_valider(const dn_widget_geom_t *g);

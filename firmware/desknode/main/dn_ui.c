@@ -277,12 +277,20 @@ static bool case_est_widget(int idx)
  *    un `s_*` consulté par les lecteurs.
  * ⚠️ `0` = PAS D'OVERRIDE, et c'est cohérent : un descripteur à zéro grandeur
  *    n'a aucun sens, donc zéro ne peut pas être une valeur demandée.
- * ⛔ IL Y A **TROIS** LECTEURS, et cette énumération FAIT PARTIE DE LA GARDE —
+ * ⛔ IL Y A **QUATRE** LECTEURS, et cette énumération FAIT PARTIE DE LA GARDE —
  *    même doctrine que W11, dont le compte avait divergé cinq fois :
- *      1  la boucle de `build_dashboard` (la copie locale du descripteur)
- *      2  `detail_reparametrer`
- *      3  `dn_ui_pc_maj`
+ *      1/4  la boucle de `build_dashboard` (la copie locale du descripteur)
+ *      2/4  `detail_reparametrer`
+ *      3/4  `dn_ui_pc_maj`
+ *      4/4  la table de `widget` (`dn_console.c`, `cmd_widget`) — ⚠️ AJOUTÉ PAR
+ *           LA REVUE DE CODE DU 2026-08-19. Elle lisait `dn_ui_desc(i)->n_grandeurs`,
+ *           c'est-à-dire le descripteur BRUT, et imprimait donc 3 pendant qu'un
+ *           `widget grandeurs 1 4` en dessinait 4. **L'instrument qui sert à
+ *           arbitrer le repli se désynchronisait du sujet de l'arbitrage** —
+ *           exactement ce que cette énumération est censée empêcher, et elle
+ *           l'a laissé passer parce qu'elle comptait TROIS.
  *    En oublier un afficherait N grandeurs et en formaterait un autre nombre.
+ * ⇒ Le seul accès légitime hors de ce fichier est `dn_ui_case_grandeurs()`.
  */
 static uint8_t s_gr_force[DN_UI_METRIQUES];
 
@@ -1876,7 +1884,7 @@ static void build_dashboard(lv_obj_t *scr)
             if (s_icone_alt[i]) {
                 d.icone = s_icone_alt[i];
             }
-            /* LECTEUR 1/3 de l'override de grandeurs — voir `desc_n()`. */
+            /* LECTEUR 1/4 de l'override de grandeurs — voir `desc_n()`. */
             d.n_grandeurs = (uint8_t)desc_n(i);
             dn_widget_creer(scr, x, y, DN_UI_CASE_W, ui_case_h(), &d,
                             &s_wetat[i], on_case_clic, (void *)(intptr_t)i,
@@ -2183,7 +2191,7 @@ static void detail_reparametrer(int idx)
              *    c'est lui qui dit QUELLE grandeur manque (W10 jusque dans le
              *    détail — l'existence d'une grandeur ne se cache jamais).
              */
-            /* LECTEUR 2/3 de l'override de grandeurs — voir `desc_n()`. Lire
+            /* LECTEUR 2/4 de l'override de grandeurs — voir `desc_n()`. Lire
              * `d->n_grandeurs` ici ferait detailler QUATRE grandeurs sur une
              * case qui n'en DESSINE que trois : la page qui explique la case
              * expliquerait autre chose que la case. */
@@ -2702,6 +2710,41 @@ esp_err_t dn_ui_set_nav_model(dn_nav_model_t m)
  *    de ce que la case déclare ne sont jamais lues, et les signaler ferait
  *    hurler l'audit sur des champs qui n'existent pas.
  */
+/*
+ * ── COMBIEN D'ENTRÉES `grandeurs[]` UN DESCRIPTEUR PEUPLE-T-IL RÉELLEMENT ? ───
+ *
+ * 🔴 CE N'EST PAS `n_grandeurs`, ET LA DIFFÉRENCE EST LE SUJET (revue 2026-08-19).
+ *    `GPU` déclare `n_grandeurs = 3` (le repli retenu sur la dalle) mais peuple
+ *    QUATRE entrées : le `tr/min` a QUALIFIÉ en T6, il n'a simplement pas de
+ *    PLACE. `widget grandeurs 1 4` est donc légitime, et c'est le chemin de
+ *    comparaison prévu. `RAM`, elle, n'en peuple qu'UNE.
+ * ⛔ D'OÙ LA GARDE : `dn_ui_set_case_grandeurs()` n'acceptait que `n <=
+ *    GRANDEURS_MAX` ⇒ `widget grandeurs 2 3` sur `RAM` créait deux labels sur
+ *    des entrées ZÉRO-INITIALISÉES (`unite = NULL`, `prec = NON_RENSEIGNEE`),
+ *    donc des nombres NUS formatés au dixième par repli silencieux — et
+ *    `descripteurs_auditer()` ne les voit jamais, puisqu'elle parcourt
+ *    `n_grandeurs`. **L'override pouvait fabriquer exactement le trou que
+ *    l'audit d'AC9 prétend interdire.**
+ * ⚠️ LE MARQUEUR EST `prec` : c'est le seul champ dont `DN_PREC_NON_RENSEIGNEE`
+ *    vaut zéro ET signifie « personne n'a rempli cette entrée ». `unite` peut
+ *    légitimement être NULL (une grandeur sans unité), `prefixe` presque
+ *    toujours — aucun des deux ne discrimine.
+ */
+static int desc_peuplees(int idx)
+{
+    if (idx < 0 || idx >= DN_UI_METRIQUES) {
+        return 0;
+    }
+    int n = 0;
+    for (int g = 0; g < DN_WIDGET_GRANDEURS_MAX; g++) {
+        if (k_desc[idx].grandeurs[g].prec != DN_PREC_NON_RENSEIGNEE) {
+            n = g + 1; /* la DERNIÈRE peuplée, ⛔ pas le compte : un trou au
+                        * milieu doit rester visible, pas être compacté. */
+        }
+    }
+    return n;
+}
+
 static void descripteurs_auditer(void)
 {
     int trous = 0;
@@ -2726,6 +2769,20 @@ static void descripteurs_auditer(void)
     if (trous == 0) {
         ESP_LOGI(TAG, "precision d'affichage : %d cases auditees, 0 trou (AC9)",
                  DN_UI_METRIQUES);
+    }
+    /* 🔴 ET CE QUE L'OVERRIDE PEUT ATTEINDRE — publié au boot (revue 2026-08-19).
+     *    L'audit ci-dessus ne parcourt QUE `n_grandeurs`, délibérément. Mais
+     *    `widget grandeurs <case> <n>` peut demander plus, et le plafond utile
+     *    n'est pas `GRANDEURS_MAX` : c'est le nombre d'entrées PEUPLÉES. Le
+     *    publier au boot évite d'avoir à le deviner devant la carte. */
+    for (int i = 0; i < DN_UI_METRIQUES; i++) {
+        int pe = desc_peuplees(i);
+        if (pe > k_desc[i].n_grandeurs) {
+            ESP_LOGI(TAG,
+                     "k_desc[%s] : %d grandeur(s) affichee(s), %d PEUPLEE(S) — "
+                     "`widget grandeurs %d %d` est jouable (AC4).",
+                     k_nom[i], k_desc[i].n_grandeurs, pe, i, pe);
+        }
     }
 }
 
@@ -3467,7 +3524,7 @@ bool dn_ui_pc_maj(dn_link_metrique_t m, const dn_link_vue_t *vue,
          *    elle est bornée ici par les DEUX comptes, et la secondaire lit le
          *    fil directement.
          */
-        /* LECTEUR 3/3 de l'override de grandeurs — voir `desc_n()`. */
+        /* LECTEUR 3/4 de l'override de grandeurs — voir `desc_n()`. */
         int n_aff = (int)vue->n;
         if (dsc && desc_n(idx) < n_aff) {
             n_aff = desc_n(idx);
@@ -3631,7 +3688,28 @@ const char *dn_ui_case_unite(int idx, int grandeur)
  * ⚠️ Il rend `false` si le détail n'est PAS affiché : en vue dashboard les
  *    pointeurs sont NULL, et répondre quand même inventerait une géométrie.
  */
-bool dn_ui_detail_label(const char **txt, int *w, int *w_parent, int *x)
+/*
+ * 🔴 LE TEXTE EST **COPIÉ** SOUS LE VERROU — CORRECTIF DE LA REVUE 2026-08-19.
+ *    La fonction rendait `lv_label_get_text()`, c'est-à-dire un pointeur vers le
+ *    tampon INTERNE du label, **après** avoir relâché le verrou. L'appelant
+ *    l'imprimait ensuite hors verrou, pendant que `detail_reparametrer()` tourne
+ *    5 fois par seconde en régime et appelle `lv_label_set_text()` — qui
+ *    `lv_realloc` ce tampon. Fenêtre étroite, mais sur le chemin EXACT où
+ *    l'instrument sert : détail ouvert **et** injecteur actif, la configuration
+ *    du constat owner de §18.4.
+ * ⛔ Un instrument qui lit de la mémoire réallouée pour dire « le texte n'est pas
+ *    celui qu'on croit » ne prouve plus rien.
+ *
+ * 🔴 ET LA GÉOMÉTRIE NON RÉSOLUE EST DITE, PAS DEVINÉE. `w_parent = -1` (parent
+ *    NULL, scène en cours de construction) faisait calculer `utile = -1 - 2*x`
+ *    chez l'appelant, qui concluait « LE TEXTE SORT DU PANNEAU » — un faux
+ *    positif produit par l'instrument lui-même. La garde `geom_resolue` posée
+ *    dans `detail_reparametrer` par `1a31a9d` n'avait pas été reportée ici.
+ *    ⇒ `*resolue` dit si `w_parent`/`x` sont exploitables ; l'appelant refuse de
+ *    conclure sinon.
+ */
+bool dn_ui_detail_label(char *txt, size_t txt_n, int *w, int *w_parent, int *x,
+                        bool *resolue)
 {
     if (s_vue != DN_VUE_DETAIL || !s_det_valeur) {
         return false;
@@ -3639,20 +3717,29 @@ bool dn_ui_detail_label(const char **txt, int *w, int *w_parent, int *x)
     if (!lvgl_port_lock(1000)) {
         return false;
     }
-    if (txt) {
-        *txt = lv_label_get_text(s_det_valeur);
+    if (txt && txt_n) {
+        const char *src = lv_label_get_text(s_det_valeur);
+        snprintf(txt, txt_n, "%s", src ? src : "");
     }
+    int wl = (int)lv_obj_get_width(s_det_valeur);
+    int xl = (int)lv_obj_get_x(s_det_valeur);
+    lv_obj_t *p = lv_obj_get_parent(s_det_valeur);
+    int wp = p ? (int)lv_obj_get_width(p) : -1;
+    lvgl_port_unlock();
     if (w) {
-        *w = (int)lv_obj_get_width(s_det_valeur);
+        *w = wl;
     }
     if (x) {
-        *x = (int)lv_obj_get_x(s_det_valeur);
+        *x = xl;
     }
     if (w_parent) {
-        lv_obj_t *p = lv_obj_get_parent(s_det_valeur);
-        *w_parent = p ? (int)lv_obj_get_width(p) : -1;
+        *w_parent = wp;
     }
-    lvgl_port_unlock();
+    if (resolue) {
+        /* MÊME condition que `detail_reparametrer` : sans elle, `0 - 2x(-1) = 2`
+         * ressortait « positif » et la garde criait au loup. */
+        *resolue = (wp > 0 && xl >= 0 && wp - 2 * xl > 0);
+    }
     return true;
 }
 
@@ -4127,15 +4214,45 @@ static bool pousser_nolock(int idx)
         return false;
     }
     s_pousse_seq++;
-    char t0[DN_WIDGET_TXT_MAX];
-    char t1[DN_WIDGET_TXT_MAX];
+    /*
+     * 🔴 TOUTES LES GRANDEURS DE LA CASE, ⛔ PLUS SEULEMENT DEUX — CORRECTIF DE
+     *    LA REVUE DE CODE DU 2026-08-19.
+     *    Cette fonction posait `{.txt = {t0, t1}, .n = 2}` alors que `CPU` et
+     *    `GPU` portent TROIS grandeurs depuis D11 : `case_poser` remettait donc
+     *    `txt[2]` à vide et la case poussée affichait « c.max -- » en gris.
+     * ⛔ CE N'EST PAS COSMÉTIQUE : `widget rafale` passe par ici, et c'est
+     *    l'instrument du régime (c) d'AC12. Il redessinait DEUX labels par case
+     *    là où le régime réel en redessine TROIS — donc il ne mesurait pas le
+     *    même travail de dessin que le T0 de §17.10, tout en prétendant s'y
+     *    comparer. Un instrument qui ne reproduit pas ce qu'il prétend
+     *    reproduire est un instrument qui ment.
+     * ⚠️ Le nombre vient de `desc_n()`, ⛔ pas de `k_desc[]` : un
+     *    `widget grandeurs <case> <n>` doit se voir dans la poussée aussi,
+     *    sinon la campagne mesure une autre géométrie que celle qu'on regarde.
+     */
+    int n_pou = desc_n(idx);
+    if (n_pou < 1) {
+        n_pou = 1;
+    }
+    if (n_pou > DN_WIDGET_GRANDEURS_MAX) {
+        n_pou = DN_WIDGET_GRANDEURS_MAX;
+    }
+    char tb[DN_WIDGET_GRANDEURS_MAX][DN_WIDGET_TXT_MAX];
+    const char *tp[DN_WIDGET_GRANDEURS_MAX] = {0};
     /* Une valeur qui CHANGE à chaque poussée : `lv_label_set_text` avec un texte
      * identique invalide quand même, mais une série de textes identiques rendrait
-     * la mesure indiscernable d'un affichage figé pour qui la relit. */
-    snprintf(t0, sizeof(t0), "%u,%u", (unsigned)(s_pousse_seq % 100),
-             (unsigned)(s_pousse_seq % 10));
-    snprintf(t1, sizeof(t1), "%u,%u", (unsigned)((s_pousse_seq * 7) % 100),
-             (unsigned)((s_pousse_seq * 3) % 10));
+     * la mesure indiscernable d'un affichage figé pour qui la relit.
+     * ⚠️ Les multiplicateurs sont PREMIERS ENTRE EUX avec 100 et 10 pour que les
+     *    N textes ne changent pas en phase : deux labels qui portent toujours le
+     *    même nombre se dédoublonneraient ensemble et fausseraient le px/cycle. */
+    static const unsigned k_mul[DN_WIDGET_GRANDEURS_MAX] = {1u, 7u, 13u, 21u};
+    static const unsigned k_mul2[DN_WIDGET_GRANDEURS_MAX] = {1u, 3u, 9u, 7u};
+    for (int g = 0; g < n_pou; g++) {
+        snprintf(tb[g], sizeof(tb[g]), "%u,%u",
+                 (unsigned)((s_pousse_seq * k_mul[g]) % 100),
+                 (unsigned)((s_pousse_seq * k_mul2[g]) % 10));
+        tp[g] = tb[g];
+    }
     /* 🔴 BRUT MIS À L'ÉCHELLE DE LA CASE — correctif de revue (2026-08-18).
      *    La valeur était figée à 800..1599 pour TOUTE case, quelle que soit la
      *    plage annoncée de sa jauge. RAM, jauge NEUVE de dn3-2, borne à
@@ -4151,7 +4268,10 @@ static bool pousser_nolock(int idx)
                        ? (int32_t)(d_pou->ind_min + (s_pousse_seq * 37) % (uint32_t)(plage + 1))
                        : (int32_t)(DN_MOCK_MIN +
                                    (s_pousse_seq * 37) % (DN_MOCK_MAX - DN_MOCK_MIN));
-    dn_valeurs_t val = {.txt = {t0, t1}, .n = 2};
+    dn_valeurs_t val = {.n = (uint8_t)n_pou};
+    for (int g = 0; g < n_pou; g++) {
+        val.txt[g] = tp[g];
+    }
     case_poser(idx, DN_VAL_SIMULEE, &val, brut, "POUSSÉE de mesure (AC8)",
                NULL);
     /* 🔴 DÉCISION D1 (revue 2026-08-18) : marquer la case comme POUSSÉE, pour
@@ -4505,6 +4625,26 @@ void dn_ui_case_dim(int *w, int *h)
  */
 static void build_scene(void);
 
+/*
+ * ── LES COMPTEURS DE GÉOMÉTRIE, REMIS À ZÉRO EN **UN** ENDROIT ───────────────
+ *
+ * 🔴 CETTE FONCTION EXISTE PARCE QUE LA LISTE ÉTAIT RECOPIÉE (revue 2026-08-19).
+ *    Deux chemins de reconstruction sur quatre appelaient les `*_reset()` ; les
+ *    deux autres non, et rien ne le disait. ⛔ Un compteur qu'on remet à zéro
+ *    « quand on y pense » ne mesure pas ce que son nom dit — et dn4-6 a
+ *    justement publié une table de voies dont une ligne n'est pas reproductible.
+ * ⚠️ AJOUTER UN COMPTEUR DE GÉOMÉTRIE, C'EST L'AJOUTER **ICI** : c'est le seul
+ *    endroit qui garantit que les trois repartent ensemble, donc que ce qui est
+ *    compté après une reconstruction vient bien de CETTE reconstruction.
+ * ⛔ À APPELER SOUS LE VERROU, juste avant `build_scene()`.
+ */
+static void compteurs_geom_reset(void)
+{
+    dn_widget_chevauchements_reset();
+    dn_widget_debordements_reset();
+    dn_widget_trop_larges_reset();
+}
+
 esp_err_t dn_ui_set_bandes(int barre_h, int menu_h)
 {
     /* Bornes : la barre doit contenir l'heure (`dn_font_28` à y = 18, boîte
@@ -4521,6 +4661,14 @@ esp_err_t dn_ui_set_bandes(int barre_h, int menu_h)
     }
     s_geo_barre_h = barre_h;
     s_geo_menu_h = menu_h;
+    /* 🔴 REMISE À ZÉRO SOUS LE VERROU — CORRECTIF DE LA REVUE DU 2026-08-19.
+     *    Seuls `dn_ui_set_voie()` et `dn_ui_set_case_grandeurs()` le faisaient,
+     *    alors que CE chemin (`widget grille`) reconstruit lui aussi. Un
+     *    opérateur qui atteignait la géométrie de référence par `widget grille
+     *    70 60` — LE chemin de la campagne DMA de §18.9 — puis lisait `widget`
+     *    additionnait le résidu de l'état précédent : le compteur mesurait des
+     *    événements de CONSTRUCTION, pas des défauts géométriques distincts. */
+    compteurs_geom_reset();
     build_scene();
     lvgl_port_unlock();
     return ESP_OK;
@@ -4548,12 +4696,25 @@ esp_err_t dn_ui_set_case_grandeurs(int idx, int n)
         n > DN_WIDGET_GRANDEURS_MAX) {
         return ESP_ERR_INVALID_ARG;
     }
+    /* 🔴 BORNÉ PAR CE QUE LE DESCRIPTEUR PEUPLE — voir `desc_peuplees()`.
+     * ⛔ Refuser plutôt que poser des lignes sans unité ni précision : un nombre
+     *    nu formaté au dixième par repli est exactement le mensonge d'interface
+     *    qu'AC9 ferme, et l'audit de boot ne peut pas le voir. */
+    int pe = desc_peuplees(idx);
+    if (n > pe) {
+        ESP_LOGW(TAG,
+                 "widget grandeurs %s %d REFUSE : le descripteur ne peuple que "
+                 "%d entree(s) — au-dela, les lignes n'ont ni unite ni precision "
+                 "(elles retomberaient au DIXIEME en silence, et l'audit AC9 ne "
+                 "les voit pas).",
+                 k_nom[idx], n, pe);
+        return ESP_ERR_INVALID_ARG;
+    }
     if (!lvgl_port_lock(2000)) {
         return ESP_ERR_TIMEOUT; /* ⛔ RIEN n'a bougé */
     }
     s_gr_force[idx] = (uint8_t)n; /* 0 = rendre la case a son descripteur */
-    dn_widget_chevauchements_reset();
-    dn_widget_debordements_reset();
+    compteurs_geom_reset();
     build_scene();
     lvgl_port_unlock();
     return ESP_OK;
@@ -4581,8 +4742,7 @@ esp_err_t dn_ui_set_voie(int barre_h, int menu_h, const dn_widget_geom_t *g)
     /* Les compteurs sont remis à zéro SOUS LE VERROU, juste avant l'unique
      * reconstruction : ce qui sera compté est donc EXACTEMENT ce que la voie
      * retenue produit, ⛔ jamais un résidu de l'état précédent. */
-    dn_widget_chevauchements_reset();
-    dn_widget_debordements_reset();
+    compteurs_geom_reset();
     build_scene();
     lvgl_port_unlock();
     return ESP_OK;
@@ -4636,6 +4796,9 @@ esp_err_t dn_ui_set_widget_geom(const dn_widget_geom_t *g)
         return ESP_ERR_TIMEOUT;
     }
     dn_widget_set_geom(g);
+    /* Même motif que `dn_ui_set_bandes()` : `widget dispo|entete|val|police`
+     * reconstruisent, donc ils remettent les compteurs à zéro. */
+    compteurs_geom_reset();
     build_scene();
     lvgl_port_unlock();
     return ESP_OK;
@@ -4749,6 +4912,9 @@ static const dn_widget_desc_t k_demo_desc = {
  */
 #define DN_UI_DEMO_N_MAX 6
 static int s_demo_n = 2;
+/* Le `n` RÉELLEMENT POSÉ, ⛔ pas celui demandé — même doctrine que `dn_widget_t.n`.
+ * Il sert à savoir s'il faut reconstruire : voir `dn_ui_demo_set()`. */
+static int s_demo_n_pose;
 
 int dn_ui_demo_n(void) { return s_demo_n; }
 
@@ -4766,18 +4932,25 @@ esp_err_t dn_ui_set_demo_n(int n)
  * descripteur du firmware à armer l'abandon de la secondaire (168 > 156).
  * ⚠️ DÉFINI ICI, après `k_demo_desc` : le placer près de `dn_ui_desc()` le
  *    référençait 3 500 lignes avant sa définition. */
-const dn_widget_desc_t *dn_ui_demo_desc(void)
+bool dn_ui_demo_desc(dn_widget_desc_t *out)
 {
     /* 🔴 LE `n` RÉGLABLE DOIT SE VOIR DANS LA COLONNE « DEMANDÉ » DE `widget`.
      *    Rendre `&k_demo_desc` tel quel annoncerait « n=2 » pendant qu'une démo
      *    à n=5 est posée — la colonne dont l'en-tête promet de dire ce que LE
      *    DESCRIPTEUR demande mentirait sur le seul chemin qui prouve le clamp.
-     *    C'est exactement le défaut relevé en revue le 2026-08-19, un cran plus
-     *    loin. ⇒ copie statique, rafraîchie à chaque lecture. */
-    static dn_widget_desc_t d;
-    d = k_demo_desc;
-    d.n_grandeurs = (uint8_t)s_demo_n;
-    return &d;
+     * 🔴 ⛔ ET LE RÉSULTAT EST RENDU **PAR VALEUR** (revue 2026-08-19) : la
+     *    version précédente rendait l'adresse d'un statique de fonction réécrit
+     *    à chaque appel, donc deux lecteurs qui gardaient le pointeur voyaient le
+     *    même objet. Aucune conséquence atteignable en console mono-tâche — mais
+     *    le type `const dn_widget_desc_t *` PROMETTAIT une stabilité que
+     *    l'implémentation n'avait pas, et ce dépôt a déjà payé deux fois un
+     *    contrat qui ne décrivait pas le code. */
+    if (!out) {
+        return false;
+    }
+    *out = k_demo_desc;
+    out->n_grandeurs = (uint8_t)s_demo_n;
+    return true;
 }
 
 esp_err_t dn_ui_demo_set(bool on)
@@ -4786,6 +4959,25 @@ esp_err_t dn_ui_demo_set(bool on)
         return ESP_ERR_TIMEOUT;
     }
     if (on) {
+        /*
+         * 🔴 SI `n` A CHANGÉ, ON RECONSTRUIT — CORRECTIF DE LA REVUE 2026-08-19.
+         *    `dn_ui_demo_set(true)` ne créait la démo que si elle n'existait pas
+         *    encore. La séquence `widget demo on` puis `widget demo on 5` ne
+         *    rejouait donc AUCUN `dn_widget_creer()` : ni le clamp de
+         *    `GRANDEURS_MAX` (« 5 grandeurs demandees, 4 posees — 1 PERDUE(S) »),
+         *    ni l'abandon de la jauge à n >= 3 n'étaient journalisés, pendant que
+         *    la console imprimait « AFFICHEE — n = 5 » et que `dn_ui_demo_desc()`
+         *    rendait `n_grandeurs = 5`.
+         * ⛔ C'est la classe « un réglage qui ne fait rien sans l'annoncer », que
+         *    `dn_ui.h` condamne à trois lignes de là — et elle tombait sur LE
+         *    chemin dont le docblock dit qu'il est *« le SEUL »* vers les deux
+         *    témoins d'AC2. Ils restaient atteignables par `demo off` puis
+         *    `demo on <n>` : encore fallait-il le deviner.
+         */
+        if (s_demo.racine && s_demo_n_pose != s_demo_n) {
+            lv_obj_delete(s_demo.racine);
+            dn_widget_oublier(&s_demo);
+        }
         if (!s_demo.racine) {
             /* Un état fabriqué, DÉCLARÉ SIMULÉ : la démo ne doit pas être le
              * seul endroit du firmware où un chiffre inventé se présente sans
@@ -4815,6 +5007,7 @@ esp_err_t dn_ui_demo_set(bool on)
             snprintf(etat.txt[3], sizeof(etat.txt[3]), "604");
             dn_widget_creer(lv_screen_active(), 120, 240, DN_UI_CASE_W,
                             ui_case_h(), &d, &etat, NULL, NULL, &s_demo);
+            s_demo_n_pose = s_demo_n; /* ce qui a été POSÉ, pas ce qui est demandé */
         }
     } else if (s_demo.racine) {
         lv_obj_delete(s_demo.racine);

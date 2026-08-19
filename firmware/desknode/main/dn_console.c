@@ -2652,19 +2652,33 @@ static int cmd_pc(int argc, char **argv)
  *   widget largeur <texte>  la largeur d'UNE chaîne dans la police liée
  *   widget largeur reset    remet à zéro le compteur de CHEVAUCHEMENTS détectés
  *
- * 🔴 LES TREIZE « RECONSTRUIT » BLOQUENT LE REPL, DONC LE TRANSPORT PC (relevé
+ * 🔴 LES **DOUZE** « RECONSTRUIT » BLOQUENT LE REPL, DONC LE TRANSPORT PC (relevé
  *    en revue le 2026-08-18 : ce docblock affirmait qu'AUCUNE sous-commande
  *    n'était un travail long, trois lignes au-dessus de trois qui le sont — puis
  *    dn3-2 en a ajouté CINQ sans les lister, dont `nue`, qui reconstruit AUSSI
  *    et qui est l'instrument CENTRAL du témoin négatif d'AC8 ; puis la séance du
  *    2026-08-18 a ajouté `piste`, qui reconstruit AUSSI, et le compte est reparti
- *    de « trois » à « quatre » sans jamais atteindre CINQ ; puis dn4-6 en a
- *    ajouté HUIT (`voie`, `grandeurs`, `dispo`, `entete`, `val`, `police`,
- *    `grille` — et `voie` en est l'enveloppe) et le compte passe à TREIZE. ⛔ Ce compte est manifestement un point de rupture :
- *    il se corrige ICI **et** dans le « Jeu complet » du README **dans le même
- *    geste**, jamais dans un seul des deux).
- *    ⚠️ `widget voie` reconstruit DEUX FOIS (les bandes, puis la géométrie de
- *       case) : ~700 ms de REPL bloqué. Elle le dit dans sa sortie.
+ *    de « trois » à « quatre » sans jamais atteindre CINQ. ⛔ Ce compte est
+ *    manifestement un point de rupture : il se corrige ICI **et** dans le
+ *    « Jeu complet » du README **dans le même geste**, jamais dans un seul des
+ *    deux).
+ *
+ * 🔴 ET IL A ROMPU UNE TROISIÈME FOIS — REVUE DE CODE DU 2026-08-19. dn4-6 avait
+ *    écrit ici « dn4-6 en a ajouté HUIT … le compte passe à TREIZE » en n'en
+ *    listant que SEPT, pendant que le README publiait « de CINQ à ONZE ».
+ *    **Trois textes, trois valeurs, aucune juste**, et corrigés dans le MÊME
+ *    commit — la règle « dans le même geste » avait donc été tenue à la lettre
+ *    et manquée sur le fond.
+ *    LA LISTE, RELUE DU CODE, EST CELLE-CI — 5 anciennes + 7 de dn4-6 = **12** :
+ *      anciennes : `opa` · `voile` · `icone` · `nue` · `piste`
+ *      dn4-6     : `voie` · `grandeurs` · `dispo` · `entete` · `val` · `police`
+ *                  · `grille`
+ *    ⛔ `replacer`, `largeur` et `detail` NE reconstruisent PAS : ne pas les y
+ *       ajouter « pour faire le compte ».
+ *    ⚠️ `widget voie` ne reconstruit plus qu'**UNE SEULE FOIS** (~350 ms) depuis
+ *       `ce41caf` : `dn_ui_set_voie()` prend un verrou et appelle un seul
+ *       `build_scene()`. Le texte qui annonçait « DEUX FOIS, ~700 ms » décrivait
+ *       le DÉFAUT corrigé, pas le produit.
  *    Elles
  *    prennent `lvgl_port_lock(2000)` puis appellent `build_scene()`, qui détruit
  *    et reconstruit LES DEUX racines — plus lourd qu'une transition, que §15.6
@@ -2762,6 +2776,20 @@ static int cmd_widget(int argc, char **argv)
         bool connue = true;
 
         if (strcmp(quoi, "defaut") == 0) {
+            /* ⚠️ « defaut » = LES DÉFAUTS DU FIRMWARE, relus des macros — donc
+             *    D12 (60/51, case 163) depuis que la voie retenue est gravée,
+             *    ⛔ PAS l'état d'avant-D12. L'aide affirmait « barre 70/menu 60 »
+             *    alors que ce chemin applique 60/51 (revue 2026-08-19). */
+            dn_widget_geom_defaut(&g);
+        } else if (strcmp(quoi, "avantd12") == 0) {
+            /* 🔴 LA RÉFÉRENCE D'AVANT-D12, REDEVENUE ATTEIGNABLE PAR `voie`.
+             *    La ligne « défaut (avant D12) 225x156 » de la table §18.1 ne se
+             *    rejouait plus que par `widget grille 70 60` — un chemin qui ne
+             *    remettait pas les compteurs à zéro, donc qui additionnait le
+             *    résidu de l'état précédent. Une table de voies dont une ligne
+             *    n'est pas reproductible n'arbitre rien. */
+            bh = 70;
+            mh = 60;
             dn_widget_geom_defaut(&g);
         } else if (strcmp(quoi, "a") == 0) {
             /* (a) police 28, MENU SUPPRIME. case_h = 180. */
@@ -2809,8 +2837,13 @@ static int cmd_widget(int argc, char **argv)
             connue = false;
         }
         if (!connue) {
-            printf("usage : widget voie defaut|a|b|c|c2|repli\n");
-            printf("  defaut  l'etat des lieux : empile, 28 px, barre 70/menu 60\n");
+            printf("usage : widget voie defaut|avantd12|a|b|c|c2|repli\n");
+            printf("  defaut   LES DEFAUTS DU FIRMWARE, relus : empile, 28 px,\n");
+            printf("           barre 60/menu 51 (D12) ⇒ case 163. C'est la VOIE\n");
+            printf("           RETENUE, pas l'etat d'avant-D12.\n");
+            printf("  avantd12 la reference §18.1 : barre 70/menu 60 ⇒ case 156,\n");
+            printf("           compteurs remis a zero — c'est la ligne « defaut\n");
+            printf("           (avant D12) » de la table des voies.\n");
             printf("  a       28 px, MENU SUPPRIME (case 180), en-tete COMPACT\n");
             printf("  b       3e police + D12 (case 163), en-tete COMPACT\n");
             printf("  c       COTE A COTE, geometrie INCHANGEE\n");
@@ -2894,8 +2927,10 @@ static int cmd_widget(int argc, char **argv)
         } else {
             printf("  (aucun — c'est l'etat des lieux mesure en §17.10)\n");
         }
-        printf("\n  ⇒ « ca ne tient pas » SUR CETTE VOIE : %u en LARGEUR · %u en HAUTEUR\n",
+        printf("\n  ⇒ « ca ne tient pas » SUR CETTE VOIE : %u chevauchement(s) "
+               "cote a cote · %u trop large(s) en colonne unique · %u en HAUTEUR\n",
                (unsigned)dn_widget_chevauchements(),
+               (unsigned)dn_widget_trop_larges(),
                (unsigned)dn_widget_debordements());
         printf("     (compteurs remis a zero SOUS LE VERROU juste avant la\n");
         printf("      reconstruction : c'est bien CETTE voie qui est comptee)\n");
@@ -2933,8 +2968,10 @@ static int cmd_widget(int argc, char **argv)
         }
         printf("« %s » : %d grandeur(s) — SCENE RECONSTRUITE\n",
                dn_ui_metrique_nom((int)idx), dn_ui_case_grandeurs((int)idx));
-        printf("  « ca ne tient pas » : %u en LARGEUR · %u en HAUTEUR\n",
+        printf("  « ca ne tient pas » : %u chevauchement(s) · %u trop large(s) "
+               "en colonne unique · %u en HAUTEUR\n",
                (unsigned)dn_widget_chevauchements(),
+               (unsigned)dn_widget_trop_larges(),
                (unsigned)dn_widget_debordements());
         if (n == 0) {
             printf("  (override RETIRE — la case suit de nouveau son descripteur)\n");
@@ -2943,18 +2980,33 @@ static int cmd_widget(int argc, char **argv)
     }
 
     if (argc == 2 && strcmp(argv[1], "detail") == 0) {
-        const char *t = NULL;
+        /* 🔴 LE TEXTE EST COPIE SOUS LE VERROU — revue du 2026-08-19. On
+         *    imprimait ici un `const char *` vers le tampon INTERNE du label,
+         *    rendu APRES le deverrouillage, pendant que `detail_reparametrer()`
+         *    le `lv_realloc` 5 fois par seconde en regime. */
+        char t[DN_WIDGET_TXT_MAX * 4 + 64] = {0};
         int w = 0, wp = 0, x = 0;
-        if (!dn_ui_detail_label(&t, &w, &wp, &x)) {
+        bool resolue = false;
+        if (!dn_ui_detail_label(t, sizeof(t), &w, &wp, &x, &resolue)) {
             printf("le detail n'est PAS affiche (ou le verrou LVGL n'est pas "
                    "pris) — `nav open <idx>` d'abord.\n");
             printf("⛔ Repondre quand meme inventerait une geometrie.\n");
             return 1;
         }
-        int utile = wp - 2 * x;
         printf("GRANDE VALEUR du detail — RELUE des objets LVGL :\n");
-        printf("  texte    : « %s »\n", t ? t : "(NULL)");
+        printf("  texte    : « %s »\n", t);
         printf("  largeur  : %d px   posee a x = %d\n", w, x);
+        if (!resolue) {
+            /* ⛔ MEME GARDE QUE `detail_reparametrer` (1a31a9d) : sans elle,
+             *    `wp = -1` faisait calculer `utile = -1 - 2x` et crier « LE
+             *    TEXTE SORT DU PANNEAU » — un faux positif fabrique par
+             *    l'instrument. Une garde qui crie au loup ne garde rien. */
+            printf("  panneau  : NON RESOLU (parent %d px, x %d)\n", wp, x);
+            printf("  ⏳ La scene n'a pas encore ete disposee : ⛔ AUCUN verdict\n");
+            printf("     de largeur ici. Relancer apres un cycle d'affichage.\n");
+            return 0;
+        }
+        int utile = wp - 2 * x;
         printf("  panneau  : %d px   ⇒ utile = %d - 2x%d = %d px\n", wp, wp, x,
                utile);
         if (w + x > wp) {
@@ -3049,7 +3101,8 @@ static int cmd_widget(int argc, char **argv)
             return 1;
         }
         printf("en-tete = %s — SCENE RECONSTRUITE\n", dn_widget_entete_nom(g.entete));
-        printf("⚠️ Le bas de l'en-tete passe a %d px. `widget valy` doit suivre :\n",
+        printf("⚠️ Le bas de l'en-tete passe a %d px. `widget val <y> <pas>` doit "
+               "suivre :\n",
                g.entete == DN_ENTETE_COMPACT ? 26 : 43);
         printf("   le laisser a %d laisserait %d px de garde au lieu de 5.\n",
                g.val_y, g.val_y - (g.entete == DN_ENTETE_COMPACT ? 26 : 43));
@@ -3065,6 +3118,21 @@ static int cmd_widget(int argc, char **argv)
         if (f1 == argv[2] || *f1 != '\0' || f2 == argv[3] || *f2 != '\0') {
             printf("usage : widget val <y> <pas>   (actuels : %d %d)\n", g.val_y,
                    g.val_pas);
+            return 1;
+        }
+        /* 🔴 LA PLAGE EST TESTEE SUR LE `long`, **AVANT** LA TRONCATURE —
+         *    revue de code du 2026-08-19. `(int16_t)y` d'abord, validation
+         *    ensuite : `widget val 65572 40` devenait `65572 & 0xFFFF = 36`,
+         *    que `dn_ui_geom_valider` (14..200) ACCEPTAIT, et la console
+         *    imprimait « val_y = 36 — SCENE RECONSTRUITE » comme si c'etait ce
+         *    qui avait ete demande. ⛔ C'est mot pour mot le defaut que
+         *    `bounce_px_refus()` vient de fermer : un reglage REFUSE est une
+         *    gene, un reglage ACCEPTE qui applique autre chose est un defaut. */
+        if (y < INT16_MIN || y > INT16_MAX || pas < INT16_MIN || pas > INT16_MAX) {
+            printf("refuse : %ld / %ld hors de la plage d'un int16 — RIEN n'a "
+                   "change.\n", y, pas);
+            printf("⛔ Tronquer d'abord et valider ensuite appliquerait une AUTRE\n");
+            printf("   valeur que celle demandee, sans le dire.\n");
             return 1;
         }
         g.val_y = (int16_t)y;
@@ -3172,8 +3240,10 @@ static int cmd_widget(int argc, char **argv)
          *    qui a l'air de marcher et ne fait rien. */
         dn_widget_chevauchements_reset();
         dn_widget_debordements_reset();
-        printf("compteurs de chevauchement (largeur) ET de debordement (hauteur)\n");
-        printf("remis a 0\n");
+        dn_widget_trop_larges_reset();
+        printf("compteurs remis a 0 : chevauchement (cote a cote), debordement\n");
+        printf("(hauteur) ET trop-large (colonne unique — le trou que le cote a\n");
+        printf("cote cachait, revue 2026-08-19)\n");
         return 0;
     }
     if ((argc == 2 || argc == 3) && strcmp(argv[1], "largeur") == 0) {
@@ -3210,10 +3280,24 @@ static int cmd_widget(int argc, char **argv)
             printf("  estime  « %s » ~110 px + « %s » ~95 px = 205 px\n", a, b);
             printf("  MESURE  « %s »  %3d px + « %s »  %3d px = %d px\n", a, wa, b,
                    wb, wa + wb);
-            printf("  ecart %+d px  ⇒  %s\n", (wa + wb) - 205,
-                   (wa + wb + gout) <= utile
-                       ? "🔴 LE COUPLE TIENT. L'ESTIMATION ETAIT FAUSSE."
-                       : "l'estimation est CONFIRMEE : ca ne tient pas.");
+            /* 🔴 DEUX PROPOSITIONS, DEUX VERDICTS — REVUE DU 2026-08-19.
+             *    Cette ligne testait « le couple tient-il ? » et annonçait
+             *    « l'estimation etait fausse » : une estimation haute de 10 %
+             *    qui n'aurait pas changé la conclusion aurait été proclamee
+             *    « CONFIRMEE ». Sur l'instrument dont §18.2 tire la refutation
+             *    de (c), c'est exactement le genre de raccourci qui fait
+             *    conclure juste pour une raison fausse. */
+            int ecart = (wa + wb) - 205;
+            printf("  ecart %+d px  ⇒  l'ESTIMATION est %s\n", ecart,
+                   (ecart > 5 || ecart < -5)
+                       ? "FAUSSE (plus de 5 px)"
+                       : "EXACTE a 5 px pres");
+            printf("  et le COUPLE, lui, %s (%d + %d = %d <= %d ?)\n",
+                   (wa + wb + gout) <= utile ? "🔴 TIENT" : "NE TIENT PAS",
+                   wa + wb, gout, wa + wb + gout, utile);
+            printf("  ⛔ Les deux questions sont DISTINCTES : dn3-1 s'est trompee\n");
+            printf("     d'arithmetique ET a conclu juste — sur le PIRE CAS, pas\n");
+            printf("     sur ce couple-ci.\n");
         }
 
         printf("\nPIRE CAS DE CHAQUE COUPLE (AC5) — « tient » = a + b + %d <= %d :\n",
@@ -3643,14 +3727,28 @@ static int cmd_widget(int argc, char **argv)
             dn_widget_geom(&gd);
             int chh = 0;
             dn_ui_case_dim(NULL, &chh);
-            int yb2 = gd.val_y + 2 * gd.val_pas;
-            int yb3 = gd.val_y + 3 * gd.val_pas;
+            /* 🔴 LE NOMBRE DE LIGNES VIENT DE `dn_widget_lignes()`, PAS DE `n`
+             *    — revue de code du 2026-08-19. Ces deux lignes multipliaient
+             *    `val_pas` par le nombre de GRANDEURS, ce qui n'est vrai qu'en
+             *    `EMPILE`. Sous `widget dispo cote`, n=2 fait UNE ligne et n=3
+             *    en fait DEUX : les deux verdicts imprimes etaient faux, au
+             *    moment precis ou l'operateur arme le temoin. Et le commentaire
+             *    trois lignes plus haut se felicitait de CALCULER au lieu de
+             *    reciter, pendant que `dn_widget_lignes()` — exporte EXPRES
+             *    « pour que la console calcule » — n'etait pas appele. */
+            int yb2 = gd.val_y + dn_widget_lignes(gd.dispo, 2) * gd.val_pas;
+            int yb3 = gd.val_y + dn_widget_lignes(gd.dispo, 3) * gd.val_pas;
             printf("⚠️ CE QUE CE `n` PROUVE (AC2 de dn4-6), sur la geometrie "
-                   "COURANTE (case %d px) :\n", chh);
-            printf("     n=2  SECONDAIRE abandonnee si y_bas %d + 20 > %d : %s\n",
-                   yb2, chh, (yb2 + 20 > chh) ? "OUI" : "non (elle tient)");
-            printf("     n=3  JAUGE abandonnee si y_bas %d + 6 + 10 > %d : %s\n",
-                   yb3, chh, (yb3 + 16 > chh) ? "OUI" : "non (elle tient)");
+                   "COURANTE (case %d px, disposition %s) :\n", chh,
+                   dn_widget_dispo_nom(gd.dispo));
+            printf("     n=2  (%d ligne(s))  SECONDAIRE abandonnee si y_bas %d + "
+                   "20 > %d : %s\n",
+                   dn_widget_lignes(gd.dispo, 2), yb2, chh,
+                   (yb2 + 20 > chh) ? "OUI" : "non (elle tient)");
+            printf("     n=3  (%d ligne(s))  JAUGE abandonnee si y_bas %d + 6 + "
+                   "10 > %d : %s\n",
+                   dn_widget_lignes(gd.dispo, 3), yb3, chh,
+                   (yb3 + 16 > chh) ? "OUI" : "non (elle tient)");
             printf("     n=5  le CLAMP journalise « 1 PERDUE(S) » (MAX = %d)\n",
                    DN_WIDGET_GRANDEURS_MAX);
             printf("   Chaque abandon est un ESP_LOGW, et `widget` le RELIT des\n");
@@ -3707,9 +3805,24 @@ static int cmd_widget(int argc, char **argv)
     if (argc != 1) {
         printf("usage : widget | groupe on|off | opa <0..255> | voile <0..255>\n");
         printf("        | piste <0xRRGGBB>  (fond de la jauge)\n");
-        printf("        | mock on|off | demo on|off | pousser <idx>\n");
+        printf("        | mock on|off | demo on|off [n] | pousser <idx>\n");
         printf("        | icone <case> <0..%d>  (A/B de glyphe sur une case, W4)\n",
                dn_ui_icones_alt_n() - 1);
+        /* ⚠️ AJOUTE PAR LA REVUE DU 2026-08-19 : les dix sous-commandes de dn4-6
+         *    n'etaient NI ici, NI dans `DN_CMD`, NI dans la liste de secours du
+         *    rejet — tout l'outillage de la story etait donc introuvable depuis
+         *    la carte, alors qu'AC14 exige `aide` ET le README dans le meme
+         *    geste (dn2-1 avait oublie `capteurs`, exactement pareil). */
+        printf("      dn4-6 — la geometrie et la forme, COMMUTABLES A CHAUD :\n");
+        printf("        | voie defaut|avantd12|a|b|c|c2|repli   ⚠️ RECONSTRUIT\n");
+        printf("        | grandeurs <case> <n>                  ⚠️ RECONSTRUIT\n");
+        printf("        | dispo empile|cote|mixte               ⚠️ RECONSTRUIT\n");
+        printf("        | entete normal|compact                 ⚠️ RECONSTRUIT\n");
+        printf("        | val <y> <pas>                         ⚠️ RECONSTRUIT\n");
+        printf("        | police 14|28                          ⚠️ RECONSTRUIT\n");
+        printf("        | grille <barre> <menu>                 ⚠️ RECONSTRUIT\n");
+        printf("      dn4-6 — les instruments (ne reconstruisent PAS) :\n");
+        printf("        | largeur [<texte>|reset] | detail | replacer on|off\n");
         return 1;
     }
 
@@ -3829,12 +3942,22 @@ static int cmd_widget(int argc, char **argv)
          * CHIFFRES FAUX dans la colonne dont l'en-tete promet de dire ce que LE
          * DESCRIPTEUR demande — sur le chemin le plus actionne d'une campagne AC8.
          * ⚠️ L'override porte sur le RENDU, jamais sur la demande. */
-        const dn_widget_desc_t *dd = demo ? dn_ui_demo_desc() : dn_ui_desc_brut(i);
+        dn_widget_desc_t dbuf;
+        bool a_desc;
+        if (demo) {
+            a_desc = dn_ui_demo_desc(&dbuf); /* PAR VALEUR — voir `dn_ui.h` */
+        } else {
+            const dn_widget_desc_t *db = dn_ui_desc_brut(i);
+            a_desc = (db != NULL);
+            if (a_desc) {
+                dbuf = *db;
+            }
+        }
         printf("   ");
         colonnes(nom, 10);
         printf("  %d     %-5s  %-10s  (n=%d%s)%s\n", ng, jauge ? "OUI" : "non",
-               sec ? "OUI" : "non", dd ? dd->n_grandeurs : 0,
-               (dd && dd->indicateur) ? ", jauge demandee" : "",
+               sec ? "OUI" : "non", a_desc ? dbuf.n_grandeurs : 0,
+               (a_desc && dbuf.indicateur) ? ", jauge demandee" : "",
                nue ? "  ⚠️ CASE NUE (override W11), pas un abandon" : "");
     }
     {
@@ -3879,7 +4002,18 @@ static int cmd_widget(int argc, char **argv)
          *    plus bas que sa propre mise en garde. */
         colonnes(dn_val_regime_nom(dn_ui_regime(i)), 9);
         printf("%-9s", dn_ui_case_dessinee(i) ? "oui" : "NON");
-        int n = d ? d->n_grandeurs : 1;
+        /* 🔴 LECTEUR 4/4 DE L'OVERRIDE — voir l'énumération de `dn_ui.c`.
+         *    Cette ligne lisait `d->n_grandeurs`, c'est-à-dire le descripteur
+         *    BRUT : après `widget grandeurs 1 4` la case DESSINAIT 4 valeurs et
+         *    la table en imprimait 3 ; après `widget grandeurs 0 1`, l'inverse,
+         *    avec deux « -- » inventés. L'instrument qui sert à arbitrer le
+         *    repli se désynchronisait du sujet de l'arbitrage (revue 2026-08-19). */
+        /* ⚠️ `d == NULL` = case NUE (override W11) : elle n'a qu'un `valeur[0]`,
+         *    et lui demander N textes en inventerait N-1 en « -- ». */
+        int n = d ? dn_ui_case_grandeurs(i) : 1;
+        if (n < 1) {
+            n = 1;
+        }
         for (int g = 0; g < n; g++) {
             const char *t = dn_ui_valeur_txt(i, g);
             /* 🔴 L'UNITE VIENT DE LA DEFINITION UNIQUE. Cette ligne relisait
@@ -3906,13 +4040,45 @@ static int cmd_widget(int argc, char **argv)
      * ⚠️ `widget` NU reste legitime : c'est le dump d'etat.
      */
     if (argc > 1) {
-        printf("🔴 sous-commande INCONNUE : « %s »", argv[1]);
-        for (int i = 2; i < argc; i++) {
-            printf(" %s", argv[i]);
+        /* 🔴 « INCONNUE » CONTRE « MAL COMPTEE » — REVUE DU 2026-08-19.
+         *    Ce rejet se declenche sur tout `argc > 1` non consomme, y compris
+         *    quand la sous-commande EXISTE et que seul le nombre d'arguments est
+         *    faux : `widget voie`, `widget grandeurs 1`, `widget grille 60`
+         *    ressortaient « sous-commande INCONNUE : "voie" », ce qui est
+         *    factuellement faux et envoie chercher au mauvais endroit.
+         * ⚠️ La liste de secours, elle, avait douze entrees de retard : `piste`
+         *    manquait DEJA, et les dix de dn4-6 n'y ont jamais ete ajoutees.
+         *    C'est le grief exact du README (« une commande qu'on ne trouve que
+         *    depuis la carte n'est pas documentee »), deplace du README vers le
+         *    chemin d'erreur. */
+        static const char *const k_connues[] = {
+            "groupe", "opa",   "voile",     "icone",   "mock",    "demo",
+            "pousser", "oublier", "rafale",  "nue",     "barre",   "bandes",
+            "piste",  "voie",  "grandeurs", "dispo",   "entete",  "val",
+            "police", "grille", "largeur",  "detail",  "replacer",
+        };
+        bool connue_mais_arite = false;
+        for (size_t k = 0; k < sizeof(k_connues) / sizeof(k_connues[0]); k++) {
+            if (strcmp(argv[1], k_connues[k]) == 0) {
+                connue_mais_arite = true;
+                break;
+            }
         }
-        printf("\n   RIEN n'a ete execute. `aide` liste le jeu complet.\n");
-        printf("   Sous-commandes : groupe · opa · voile · icone · mock · demo ·\n");
-        printf("   pousser · oublier · rafale · nue · barre · bandes\n");
+        if (connue_mais_arite) {
+            printf("🔴 « %s » EXISTE, mais pas avec %d argument(s).", argv[1],
+                   argc - 2);
+            printf("\n   RIEN n'a ete execute. `aide` donne la forme exacte.\n");
+        } else {
+            printf("🔴 sous-commande INCONNUE : « %s »", argv[1]);
+            for (int i = 2; i < argc; i++) {
+                printf(" %s", argv[i]);
+            }
+            printf("\n   RIEN n'a ete execute. `aide` liste le jeu complet.\n");
+        }
+        printf("   Sous-commandes : groupe · opa · voile · icone · piste ·\n");
+        printf("   mock · demo · pousser · oublier · rafale · nue · barre ·\n");
+        printf("   bandes · voie · grandeurs · dispo · entete · val · police ·\n");
+        printf("   grille · largeur · detail · replacer\n");
         return 1;
     }
     printf("\nLES TROIS REGIMES, ET POURQUOI ILS SONT TROIS :\n");
@@ -4890,9 +5056,12 @@ static const esp_console_cmd_t k_cmds[] = {
      * qu'on ne trouve que depuis la carte n'est pas documentée. */
     DN_CMD("widget",
            "widget | groupe on|off | opa <n> | voile <n> | mock on|off | demo "
-           "on|off | pousser <n> | oublier <n> | rafale | nue <n> on|off | barre "
-           "1hz|minute | bandes on|off | icone <case> <n> | piste <0xRRGGBB> — "
-           "modèle de case (dn3-1/dn3-2/dn4-1)",
+           "on|off [n] | pousser <n> | oublier <n> | rafale | nue <n> on|off | "
+           "barre 1hz|minute | bandes on|off | icone <case> <n> | piste "
+           "<0xRRGGBB> | voie defaut|avantd12|a|b|c|c2|repli | grandeurs <case> "
+           "<n> | dispo empile|cote|mixte | entete normal|compact | val <y> <pas> "
+           "| police 14|28 | grille <barre> <menu> | largeur [texte|reset] | "
+           "detail | replacer on|off — modèle de case (dn3-1/dn3-2/dn4-1/dn4-6)",
            cmd_widget),
     /* ⚠️ INSCRITE ICI **ET** DANS LE « Jeu complet » DU README dans le même
      * geste — dn2-1 avait oublié `capteurs` au README, et une commande qu'on ne
