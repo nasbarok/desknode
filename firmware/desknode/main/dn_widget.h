@@ -193,6 +193,31 @@ typedef struct {
      */
     const char *prefixe;
     dn_prec_t prec;     /* AC9 — ⛔ 0 = NON RENSEIGNÉE, journalisée */
+    /*
+     * ── L'ÉCHELLE HAUTE — CONSTAT OWNER EN SÉANCE, 2026-08-19 ────────────────
+     *
+     * 🔴 VERBATIM : *« réseau, pour si valeur haute, convertir en Gb/s »*.
+     *    `RÉSEAU` porte les deux chaînes les plus longues du dashboard :
+     *    « ↓ 99999,9 Mb/s » mesure **202 px pour 201 utiles** — elle DÉBORDE
+     *    déjà, et LVGL la clipperait sans un mot.
+     *
+     * ⚠️ ET ÇA NE CASSE PAS « L'UNITÉ VIT DANS LE DESCRIPTEUR ». C'est la règle
+     *    qui permet *« une valeur ABSENTE ne porte JAMAIS son unité »*, et elle
+     *    tient : les DEUX unités sont ici, en `.rodata`. Ce qui varie n'est pas
+     *    l'endroit où l'unité vit, c'est LAQUELLE des deux s'applique — et le
+     *    choix est porté par l'ÉTAT (`echelle_haute`), là où vivent déjà le
+     *    régime et le texte.
+     * ⛔ Le seuil et le diviseur sont DEUX champs, ⛔ pas un seul déduit de
+     *    l'autre : « bascule à 1000 » et « divise par 1000 » coïncident pour
+     *    Mb/s → Gb/s et ne coïncideront pas pour la prochaine paire. Déduire
+     *    l'un de l'autre serait une hypothèse cachée dans une table.
+     * ⚠️ `seuil_haut = 0` ⇒ AUCUNE bascule. C'est le défaut, et c'est le cas de
+     *    cinq grandeurs sur sept : une unité qui change toute seule est un
+     *    comportement, pas une commodité — il se DEMANDE.
+     */
+    int32_t seuil_haut;      /* en dixièmes de `unite`. 0 = pas de bascule */
+    int32_t diviseur_haut;   /* dixièmes de `unite` par dixième de `unite_haute` */
+    const char *unite_haute; /* « Gb/s » — ⛔ NULL si `seuil_haut` est nul */
 } dn_widget_grandeur_t;
 
 /*
@@ -307,6 +332,12 @@ typedef struct {
      *    est dimensionné pour N par cohérence avec `txt[]` et `valeur[]` — il
      *    est PRÊT, pas mort, mais ne pas croire qu'il est alimenté. */
     int32_t brut[DN_WIDGET_GRANDEURS_MAX];
+    /* ⚠️ QUELLE unité s'applique à `txt[i]` — un bit par grandeur. Posé par
+     *    celui qui a FORMATÉ (il seul connaît le nombre), lu par celui qui
+     *    CONCATÈNE. ⛔ Ne jamais le déduire du texte : « 99,9 » ne dit pas s'il
+     *    s'agit de Mb/s ou de Gb/s, et le deviner serait un mensonge d'une
+     *    unité entière. */
+    bool echelle_haute[DN_WIDGET_GRANDEURS_MAX];
     char secondaire[DN_WIDGET_SEC_MAX];    /* ligne libre, "" = rien à dire */
 } dn_widget_etat_t;
 

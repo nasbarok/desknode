@@ -481,7 +481,14 @@ static void composer(const dn_widget_desc_t *d, const dn_widget_etat_t *e, int i
                  px ? px : "", px ? " " : "");
         return;
     }
+    /* L'unité EFFECTIVE — l'échelle haute est portée par l'ÉTAT, jamais devinée
+     * du texte (voir `dn_widget.h`). ⚠️ Si `unite_haute` manque là où le drapeau
+     * est posé, on retombe sur l'unité de base plutôt que sur RIEN : une valeur
+     * convertie SANS unité serait pire que non convertie. */
     const char *u = d->grandeurs[i].unite;
+    if (e->echelle_haute[i] && d->grandeurs[i].unite_haute) {
+        u = d->grandeurs[i].unite_haute;
+    }
     snprintf(out, n, "%s%s%s%s%s%s%s", ic ? ic : "", ic ? " " : "",
              px ? px : "", px ? " " : "", e->txt[i], u ? " " : "", u ? u : "");
 }

@@ -3171,8 +3171,17 @@ static int cmd_widget(int argc, char **argv)
             {"GPU  G2+G3 entiers + rpm", "350 W", "3000 rpm"},
             {"GPU  G2+G3 mesures reels", "53 W", "604 tr/min"},
             {"AMB  G0+G1 plausible", "-12,3 \xC2\xB0" "C", "100,0 %"},
-            {"NET  G0+G1 plausible", LV_SYMBOL_DOWN " 1000,0 Mb/s",
-             LV_SYMBOL_UP " 1000,0 Mb/s"},
+            /* ⚠️ LES DEUX ECHELLES, ET C'EST LE CONSTAT OWNER DU 2026-08-19 :
+             *    « Mb/s » au pire cas DEBORDE (202 px pour 201 utiles), et
+             *    c'est pour ca que RESEAU bascule en « Gb/s » au-dela de
+             *    1000,0 Mb/s. Les deux lignes sont la pour que la bascule se
+             *    JUSTIFIE par un chiffre, pas par une preference. */
+            {"NET  Mb/s AVANT bascule", LV_SYMBOL_DOWN " 999,9 Mb/s",
+             LV_SYMBOL_UP " 999,9 Mb/s"},
+            {"NET  Gb/s APRES bascule", LV_SYMBOL_DOWN " 100,0 Gb/s",
+             LV_SYMBOL_UP " 100,0 Gb/s"},
+            {"NET  Mb/s SANS bascule (avant)", LV_SYMBOL_DOWN " 99999,9 Mb/s",
+             NULL},
         };
         for (size_t i = 0; i < sizeof(k_couples) / sizeof(k_couples[0]); i++) {
             int wa = dn_widget_largeur(k_couples[i].a, g.font_val);

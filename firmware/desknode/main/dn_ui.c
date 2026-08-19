@@ -103,8 +103,21 @@ static const char *TAG = "dn_ui";
  *    (VENTILOS 506..516 de dn3-2, bande de jauge y = 340..350 de dn4-1).
  *    ⇒ C'est une QUESTION OWNER, pas un choix de dev. Voir AC11.
  */
-#define DN_UI_BARRE_H_DEFAUT 70
-#define DN_UI_MENU_H_DEFAUT 60
+/* 🔴 D12 EST LE DÉFAUT DEPUIS LE CONSTAT OWNER DU 2026-08-19. Ce n'est pas un
+ *    réglage laissé sur une valeur : la voie « repli » a été RETENUE sur la
+ *    dalle, et une voie retenue se grave. La laisser en override `widget voie`
+ *    aurait fait repartir le module en 70/60 au premier reboot — c'est-à-dire
+ *    dans un état où `CPU` et `GPU` DÉBORDENT (bas 163 > 156, journalisé).
+ * ⚠️ Bornes RELUES du contenu : la barre à 60 contient l'heure (`dn_font_28` à
+ *    y = 18, boîte 18..53) et la date (`dn_font_14` à y = 28, boîte 28..46) ;
+ *    le MENU à 51 contient `dn_font_28` à y = 14 (boîte 14..49). ✅ Constat
+ *    owner : « non c'est bon », les deux bandes ne serrent pas.
+ * ⚠️ CONSÉQUENCE, ÉCRITE ET NON MASQUÉE : `CASE_H` passe de 156 à **163**, donc
+ *    TOUTE COORDONNÉE TACTILE PUBLIÉE EST PÉRIMÉE (`VENTILOS 506..516` de
+ *    dn3-2, bande de jauge `y = 340..350` de dn4-1) et la case gagne +4,5 % de
+ *    surface (35 100 -> 36 675 px) sur un `duty` déjà à 10,09 %. */
+#define DN_UI_BARRE_H_DEFAUT 60
+#define DN_UI_MENU_H_DEFAUT 51
 #define DN_UI_MARGE 10
 #define DN_UI_GAP 10
 #define DN_UI_CASE_W ((DN_LCD_H_RES - 2 * DN_UI_MARGE - DN_UI_GAP) / 2) /* 225 */
@@ -399,7 +412,30 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
          *    décimal affiché contre le « 31,9 » de Windows. Le FIL reste en
          *    dixièmes ; c'est l'AFFICHAGE qui arrondit.
          */
-        .n_grandeurs = 4,
+        /*
+         * 🔴 TROIS, PAS QUATRE — DÉCISION OWNER DU 2026-08-19, PRISE SUR LA DALLE.
+         *
+         * ⚠️ ET CE N'EST PAS `FAN_RPM` QUI EST DISQUALIFIÉ : il a QUALIFIÉ, et
+         *    largement. Session de 959 échantillons / 16 min à 1 Hz, critère
+         *    écrit et HORODATÉ avant le tir : étendue **13 tr/min** (≥ 5),
+         *    **55,2 %** de changements du TEXTE (≥ 10 %), **σ 2,02** (≥ 1).
+         *    Les trois conditions de W2 sont tenues.
+         * ⛔ CE QUI MANQUE EST LA PLACE, ET ELLE A ÉTÉ MESURÉE : à quatre
+         *    grandeurs empilées en police 28, `48 + 3×40 + 35 = 203 > 163` — la
+         *    4ᵉ valeur est ENTIÈREMENT hors case. Les deux seules voies qui la
+         *    feraient tenir coûtent, l'une la barre MENU **et** un interligne de
+         *    1 px (sous le critère écrit de D12), l'autre une 3ᵉ police à
+         *    générer **et** des valeurs 21 % plus petites. L'owner a préféré
+         *    trois grandeurs lisibles à quatre grandeurs serrées.
+         * ⚠️ LE FIL, LUI, CONTINUE DE PORTER LES QUATRE (`k_metriques[]` déclare
+         *    `n_grandeurs = 4` pour `gpu`) : la source est prouvée, l'agent la
+         *    publie, seule la PLACE manque. C'est exactement le cas de `RAM`,
+         *    qui reçoit deux valeurs et n'en affiche qu'une. ⛔ Ne pas « nettoyer »
+         *    le protocole : le jour où la place existe, la grandeur est déjà là.
+         * ⇒ AU LEDGER : « `FAN_RPM` qualifie et n'a pas de place » — c'est une
+         *   dette de PLACE, pas une question ouverte de source.
+         */
+        .n_grandeurs = 3,
         .indicateur = false,
         .grandeurs = {{.unite = "%", .prec = DN_PREC_DIXIEME},
                       {.unite = "\xC2\xB0" "C", .prec = DN_PREC_DIXIEME},
@@ -457,10 +493,27 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
          */
         .n_grandeurs = 2,
         .indicateur = false,
+        /*
+         * 🔴 CONSTAT OWNER EN SÉANCE, 2026-08-19, VERBATIM : *« réseau, pour si
+         *    valeur haute, convertir en Gb/s »*. Il répondait « oui, MAIS » à la
+         *    question de lisibilité d'AC1 — donc AC1 n'était pas satisfaite.
+         * ⚠️ ET LE CHIFFRE LUI DONNE RAISON : « ↓ 99999,9 Mb/s » mesure
+         *    **202 px pour 201 utiles** (relu de `lv_text_get_size()`, AC5).
+         *    Elle DÉBORDAIT déjà, et LVGL la clippait sans un mot.
+         * ⚠️ SEUIL À 1000,0 Mb/s = 1 Gb/s, ⛔ pas un chiffre rond arbitraire :
+         *    c'est l'endroit où l'unité change de nom. En dessous, « 999,9 Mb/s »
+         *    tient ; au-dessus, « 100,0 Gb/s » est plus court ET plus lisible.
+         * ⚠️ `DISQUE` a exactement la même forme (« 99999,9 Mo/s ») et le
+         *    mécanisme est PRÊT pour elle — ⛔ il n'est PAS armé : l'owner a
+         *    nommé RÉSEAU, et étendre en silence serait décider à sa place.
+         *    Legs explicite, pas un oubli.
+         */
         .grandeurs = {{.unite = "Mb/s", .icone = LV_SYMBOL_DOWN,
-                       .prec = DN_PREC_DIXIEME},
+                       .prec = DN_PREC_DIXIEME, .seuil_haut = 10000,
+                       .diviseur_haut = 1000, .unite_haute = "Gb/s"},
                       {.unite = "Mb/s", .icone = LV_SYMBOL_UP,
-                       .prec = DN_PREC_DIXIEME}},
+                       .prec = DN_PREC_DIXIEME, .seuil_haut = 10000,
+                       .diviseur_haut = 1000, .unite_haute = "Gb/s"}},
     },
     [DN_UI_CASE_DISQUE] = {
         /*
@@ -2128,7 +2181,18 @@ static void detail_reparametrer(int idx)
                 const char *sep = (i == 0) ? "" : ((i % 3) == 0 ? "\n" : "   ·   ");
                 bool connue = e->txt[i][0] != '\0';
                 const char *px = d ? d->grandeurs[i].prefixe : NULL;
-                const char *u = (connue && d) ? d->grandeurs[i].unite : NULL;
+                /* 🔴 L'ÉCHELLE HAUTE VAUT ICI AUSSI. Sans ça, la tuile dirait
+                 *    « ↓ 100,0 Gb/s » et le détail « 100,0 Mb/s » POUR LE MÊME
+                 *    NOMBRE — deux vérités contradictoires à un tap d'écart,
+                 *    dont l'une est fausse d'un facteur mille. C'est le
+                 *    mensonge d'interface que dn4-1 a chassé du détail une
+                 *    première fois (la valeur en dur « 21,4 °C »). */
+                const char *u = NULL;
+                if (connue && d) {
+                    u = (e->echelle_haute[i] && d->grandeurs[i].unite_haute)
+                            ? d->grandeurs[i].unite_haute
+                            : d->grandeurs[i].unite;
+                }
                 ecrit = snprintf(buf + p, sizeof(buf) - p, "%s%s%s%s%s%s", sep,
                                  px ? px : "", px ? " " : "",
                                  connue ? e->txt[i] : "--", u ? " " : "",
@@ -2971,6 +3035,9 @@ void dn_ui_label_show(bool on)
  */
 typedef struct {
     const char *txt[DN_WIDGET_GRANDEURS_MAX]; /* NULL ou "" = ABSENTE (W10) */
+    /* ⚠️ QUELLE unité s'applique — posé par celui qui a FORMATÉ, parce qu'il
+     *    est le seul à connaître le NOMBRE. Le lire du texte serait deviner. */
+    bool haute[DN_WIDGET_GRANDEURS_MAX];
     uint8_t n;
 } dn_valeurs_t;
 
@@ -3001,6 +3068,11 @@ static void case_poser(int idx, dn_val_regime_t regime, const dn_valeurs_t *v,
     for (int i = 0; i < DN_WIDGET_GRANDEURS_MAX; i++) {
         const char *t = (v && i < v->n) ? v->txt[i] : NULL;
         snprintf(e->txt[i], sizeof(e->txt[i]), "%s", t ? t : "");
+        /* ⚠️ REMIS À FAUX QUAND LA VALEUR N'EST PAS FOURNIE : un drapeau qui
+         *    survit à sa valeur ferait porter « Gb/s » au tour suivant à un
+         *    nombre exprimé en Mb/s — un mensonge d'une unité entière, et
+         *    invisible. Même motif que le texte, remis à vide juste au-dessus. */
+        e->echelle_haute[i] = (v && i < v->n) ? v->haute[i] : false;
     }
     e->brut[0] = brut0;
     snprintf(e->secondaire, sizeof(e->secondaire), "%s", sec ? sec : "");
@@ -3108,6 +3180,37 @@ static dn_prec_t prec_de(const dn_widget_desc_t *d, int i)
         return DN_PREC_DIXIEME;
     }
     return d->grandeurs[i].prec;
+}
+
+/*
+ * ── L'ÉCHELLE HAUTE — LE SEUL ENDROIT QUI DÉCIDE (constat owner 2026-08-19) ──
+ *
+ * Rend le texte ET dit quelle unité s'applique. ⛔ Les deux ENSEMBLE, par un
+ * seul appel : les séparer laisserait un chemin où le nombre est converti et
+ * l'unité ne l'est pas — et « 100,0 Mb/s » pour 99999,9 Mb/s est un mensonge
+ * d'un facteur mille qui a l'air parfaitement normal.
+ * ⚠️ L'ARRONDI EST AU PLUS PROCHE : 999 999 dixièmes de Mb/s ÷ 1000 = 999,999,
+ *    qui doit rendre « 100,0 Gb/s » et non « 99,9 ». Tronquer perdrait un
+ *    dixième à chaque conversion, systématiquement vers le bas.
+ * ⚠️ LA BASCULE EST À SENS UNIQUE ET SANS HYSTÉRÉSIS. Une valeur qui oscille
+ *    autour de 1000,0 Mb/s fera clignoter l'unité. ⛔ C'est ASSUMÉ et pas un
+ *    oubli : une hystérésis rendrait l'unité affichée DÉPENDANTE DE L'HISTOIRE,
+ *    donc deux modules côte à côte pourraient afficher deux unités pour la même
+ *    valeur. Le clignotement est honnête ; la mémoire ne le serait pas.
+ */
+static bool fmt_echelle(char *out, size_t n, int dixiemes,
+                        const dn_widget_desc_t *d, int i)
+{
+    dn_prec_t p = prec_de(d, i);
+    if (d && i >= 0 && i < DN_WIDGET_GRANDEURS_MAX &&
+        d->grandeurs[i].seuil_haut > 0 && d->grandeurs[i].diviseur_haut > 0 &&
+        dixiemes >= d->grandeurs[i].seuil_haut) {
+        int32_t q = d->grandeurs[i].diviseur_haut;
+        fmt_grandeur(out, n, (dixiemes + q / 2) / q, p);
+        return true;
+    }
+    fmt_grandeur(out, n, dixiemes, p);
+    return false;
 }
 
 /*
@@ -3242,6 +3345,7 @@ bool dn_ui_pc_maj(dn_link_metrique_t m, const dn_link_vue_t *vue,
      *    `dn_ui.h`. ⛔ Pas de `t2`/`t3` empilés à côté de `t0`/`t1` : voir le
      *    motif écrit au-dessus de `dn_valeurs_t`. */
     char txt[DN_WIDGET_GRANDEURS_MAX][DN_WIDGET_TXT_MAX];
+    bool haute[DN_WIDGET_GRANDEURS_MAX] = {false};
     char sec[DN_WIDGET_SEC_MAX];
     for (int i = 0; i < DN_WIDGET_GRANDEURS_MAX; i++) {
         txt[i][0] = '\0';
@@ -3292,7 +3396,7 @@ bool dn_ui_pc_maj(dn_link_metrique_t m, const dn_link_vue_t *vue,
         }
         for (int i = 0; i < n_aff; i++) {
             if (vue->connue[i]) {
-                fmt_grandeur(txt[i], sizeof(txt[i]), vue->v[i], prec_de(dsc, i));
+                haute[i] = fmt_echelle(txt[i], sizeof(txt[i]), vue->v[i], dsc, i);
             }
         }
 
@@ -3366,6 +3470,7 @@ bool dn_ui_pc_maj(dn_link_metrique_t m, const dn_link_vue_t *vue,
     dn_valeurs_t val = {.n = DN_WIDGET_GRANDEURS_MAX};
     for (int i = 0; i < DN_WIDGET_GRANDEURS_MAX; i++) {
         val.txt[i] = txt[i];
+        val.haute[i] = haute[i];
     }
     case_poser(idx, ok ? DN_VAL_REELLE : DN_VAL_ABSENTE, &val, brut0, sec,
                label_pose);
