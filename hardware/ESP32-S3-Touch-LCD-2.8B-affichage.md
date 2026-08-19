@@ -38,7 +38,7 @@ C'est la seule chose à lire si on ne lit qu'une chose.
 | | | justifié par |
 |---|---|---|
 | `num_fbs` | **1** | le double tampon est **réparé** (§4 ter) mais n'apporte **rien de mesuré** : il ne corrige ni le déchirement (c'est la synchro qui le fait) ni l'artefact §10.5, et coûte 614 400 o + une branche Kconfig |
-| **`bounce_px`** | **4 800 px (10 lignes)** ⬅️ *change le 2026-08-16* | la DMA du panneau lit désormais un tampon en **RAM interne** au lieu d'aller chercher la PSRAM : c'est ce qui supprime **à la fois** le défilement sous I²C **et** l'artefact §10.5 (§11.4). Coût : 2 × 9 600 o de RAM interne, **rien au repos** et +1,1 point de CPU en redessin, fps **inchangé** — le vrai prix est **+160 ms de latence** (§11.5) |
+| **`bounce_px`** | **7 680 px (16 lignes)** ⬅️ *change le 2026-08-16 (0 → 4 800), puis le **2026-08-19** (4 800 → **7 680**, `dn4-6`, §18.9 — 4 800 est l'état qui GLISSE sous trafic USB + repeint). ⚠️ Cette ligne est restée à 4 800 jusqu'à la revue de code du 2026-08-19, dans le tableau qui **fait autorité** — et ~8 autres sites de ce fichier récitent encore `bounce_px=4800` dans des relevés HISTORIQUES, ce qui est correct **pour eux** : ils datent d'avant. ⛔ Ne les corriger nulle part ailleurs qu'ici sans changer aussi le SHA du relevé.* | la DMA du panneau lit désormais un tampon en **RAM interne** au lieu d'aller chercher la PSRAM : c'est ce qui supprime **à la fois** le défilement sous I²C **et** l'artefact §10.5 (§11.4). Coût : 2 × 9 600 o de RAM interne, **rien au repos** et +1,1 point de CPU en redessin, fps **inchangé** — le vrai prix est **+160 ms de latence** (§11.5) |
 | **`LCD_RGB_ISR_IRAM_SAFE`** | **`n`** ⬅️ *change le 2026-08-16* | **effet propre nul** sur le défilement (branche enfin jouée, §5.3) — mais avec `y` le bounce buffer **panique** au boot. Il est conservé à `n` comme *condition* du bounce, pas pour lui-même |
 | Rendu LVGL | **PARTIEL** | à 128 lignes, un plein écran demande **5 flushes** (§11.7). ⚠️ Le « 10 flushes et ~176 ms » de §10.3 valait à 64 lignes, et son attente a été **corrigée à 267 ms** par la mesure de §11.5 : elle supposait un rendu négligeable, ce que le dashboard n'est pas |
 | **Draw buffer** | **480 × 128 px (122 880 o), RAM interne DMA** ⬅️ *change le 2026-08-16* | décision owner pendant le dev : 128 lignes récupèrent **120 des 160 ms** que le bounce coûte, contre +61 440 o de RAM interne. Le levier **sature** à 128 — 160 lignes ne donnent plus rien (§11.5). A/B à aire identique : la PSRAM reste **1,70× plus lente** (§10.3) |
@@ -3450,7 +3450,25 @@ des lignes attendues. **Compter ce qu'on a capturé avant de le publier** — c'
 
 ## 18. `CPU` À TROIS ET `GPU` À TROIS — mesuré le 2026-08-19 (dn4-6, P9.1b)
 
-> **Firmware `690af25`, SHA LU AU BANDEAU `App version`** — ⛔ pas déduit du dépôt.
+> 🔴 **CE CHAPITRE PORTE DEUX BINAIRES, ET C'EST ÉCRIT ICI PARCE QU'IL NE L'ÉTAIT
+> PAS** (revue de code du 2026-08-19, décision owner) :
+>
+> | sous-section | firmware | SHA **LU AU BANDEAU** |
+> |---|---|---|
+> | §18.0 à §18.6 — voies, largeur, régimes, prédiction | **`690af25`** | ✅ lu au bandeau |
+> | **§18.7 — non-régression** | **`db5fcb8`** = **LE FIRMWARE LIVRÉ** | ✅ lu au bandeau |
+> | §18.9 — la famine DMA et son remède | **`db5fcb8`** | ✅ lu au bandeau |
+>
+> ⛔ **L'en-tête de ce chapitre estampillait `690af25` pour l'ENSEMBLE**, y compris
+> pour §18.7 — c'est-à-dire que le document désigné par AC14 comme porteur de la
+> non-régression décrivait **un autre binaire que celui livré** (938 112 o contre
+> 939 296 o, RAM 103 503 o contre 92 203 o). C'est **exactement** la famille
+> d'écart qui a rouvert AC12 **deux fois** (`49a8364`/`395310e` en `dn3-2`,
+> `21d02be`/`2d97850` en `dn4-1`), et qu'AC14 interdit nommément.
+> ⚠️ Les mesures de §18.0-§18.6 **restent valides sur leur SHA** : `db5fcb8` ne
+> change que `DN_DEFAULT_BOUNCE_PX` et la garde `bounce_px_refus()`. ⛔ Mais un
+> SHA global qui ment sur une ligne est un SHA global qui ment.
+>
 > Marche P9.1b, insérée entre `dn4-1` et `dn4-2`.
 
 ### 18.0 CE QUE CETTE SECTION CORRIGE DANS §17.10 — À LIRE EN PREMIER
@@ -3668,20 +3686,31 @@ bandes sont actives.**
 l'aire par flush vaut exactement `CASE_W × CASE_H`, quel que soit le nombre de
 labels — le groupage invalide bien le conteneur.
 
-### 18.7 NON-RÉGRESSION
+### 18.7 NON-RÉGRESSION — ⚠️ DEUX COLONNES, DEUX SHA, ET LE LIVRÉ EST `db5fcb8`
 
-| grandeur | T0 `cfd1a54` | **livré `690af25`** | écart |
-|---|---:|---:|---|
-| binaire | 917 824 o | **938 112 o** | +20 288 (**+2,21 %**), partition **78 % libre** |
-| RAM interne libre | 104 119 o | **103 503 o** | **−616 o (−0,59 %)** |
-| PSRAM libre | 7 768 236 o | **7 768 236 o** | **0** |
-| tas LVGL | 20 476 o (33 %) | **20 508 o (34 %)** | +32 o |
-| plus gros bloc | 40 744 o | **40 752 o** | +8 o |
-| fragmentation | 3 % | **3 %** | 0 |
-| tas sur 80 transitions | — | **−28 o** | **PLAT** |
-| `fps 15` | 37,40 Hz | **37,40 Hz** | **0** |
-| boot | 2 311 ms | **2 327 ms** | +16 ms |
-| latence | 333,8 (n=40) | **334,6 (n=80)** | +0,8 ms — **dans le bruit de ±16 ms** |
+🔴 **`690af25` N'EST PAS LE FIRMWARE LIVRÉ.** Il est publié ici parce que c'est
+lui qui porte les trois régimes de §18.6, et parce que la différence entre les
+deux colonnes **EST le prix du remède de §18.9** — la lire comme une régression
+serait l'inverse de ce qu'elle dit.
+
+| grandeur | T0 `cfd1a54` | `690af25` (bounce 4 800) | **LIVRÉ `db5fcb8`** (bounce 7 680) | écart T0 → livré |
+|---|---:|---:|---:|---|
+| binaire | 917 824 o | 938 112 o | **939 296 o** | +21 472 (**+2,34 %**), partition **78 % libre** |
+| RAM interne libre | 104 119 o | 103 503 o | **92 203 o** | **−11 916 o (−11,4 %)** — ⚠️ dont **−11 520 pour le bounce**, **−396 pour le modèle** |
+| PSRAM libre | 7 768 236 o | 7 768 236 o | **7 768 236 o** | **0** |
+| tas LVGL | 20 476 o (33 %) | 20 508 o (34 %) | **20 504 o (34 %)** | +28 o |
+| plus gros bloc | 40 744 o | 40 752 o | **40 752 o** | +8 o |
+| fragmentation | 3 % | 3 % | **2 %** | −1 pt |
+| tas sur 80 transitions | — | −28 o | **20 468 → 20 476 = +8 o** | **PLAT** |
+| `fps 15` | 37,40 Hz | 37,40 Hz | **37,40 Hz** | **0,00 %** |
+| boot | 2 311 ms | 2 327 ms | **2 321 ms** | +10 ms (+0,4 %) |
+| latence `nav ab 40` | 333,8 (n=40) | 334,6 (n=80) | **335,2 ms (n=80)** | +1,4 ms — **dans le bruit de ±16 ms** |
+| `bounce_px` | 4 800 | 4 800 | **7 680** | 🔴 **correction de défaut** (§18.9) |
+
+🔴 **LES −11,4 % DE RAM INTERNE SONT DOMINÉS PAR LE BOUNCE BUFFER, PAS PAR LE
+MODÈLE** : −11 520 o pour la marge DMA contre −396 o pour tout le reste
+(`GRANDEURS_MAX` 2→4, `connue[]`, `echelle_haute[]`, `dn_link_etat_m_t` élargi,
+la démo). ⛔ Le chiffre se lit, il ne se suppose pas.
 
 ⚠️ **Le coût RAM était annoncé à ~+300 o ; il vaut −616 o de libre**, soit deux
 fois l'estimation, qui ne comptait que `txt[][]` et `brut[]` : il faut y ajouter
@@ -3698,7 +3727,32 @@ fois l'estimation, qui ne comptait que `txt[][]` et `brut[]` : il faut y ajouter
   `x = 22..223`.** ⏳ 36 appuis / 36 relâches / **0 erreur I²C** relevés, mais
   **les ZONES n'ont pas été tracées** — ⛔ la garde « toute la case est la zone
   tactile » n'est donc **pas** re-prouvée sur la nouvelle géométrie.
-- **Le smoke owner 6/6.**
+- ⚠️ **CONTRADICTION DE COMPTAGE, RELEVÉE PAR LA REVUE DU 2026-08-19 ET NON
+  TRANCHÉE** : cette section publie **36 appuis / 36 relâches**, la story publie
+  **16 appuis sur la jauge / 32 appuis / 32 relâches**. Deux artefacts de la même
+  campagne, deux comptes. ⛔ **Aucun des deux n'est corrigé ici** : la capture
+  n'existe plus, et choisir au jugé serait fabriquer un chiffre. *« Un chiffre
+  publié se relit »* — celui-ci se **re-relève**, en même temps que les zones.
+- ✅ **Le smoke owner 6/6 est FAIT** — verbatim owner *« ok cohérent »*
+  (2026-08-19), consigné dans la story. ⚠️ Cette ligne le listait comme OUVERT,
+  et le tracker aussi : **trois artefacts, deux états**. Corrigé par la revue du
+  2026-08-19 en faveur de celui qui porte une PREUVE (le verbatim daté).
+- 🔴 **LE RÉGIME (c) D'AC12 N'A JAMAIS ÉTÉ REJOUÉ, ET CE MANQUE N'ÉTAIT ÉCRIT
+  NULLE PART** (revue du 2026-08-19). AC12 exige les **trois** régimes
+  (a) / (b) / (c) sur un seul SHA lu au bandeau. §18.6 publie (a), (b) à 4 ms et
+  (b′) à 40 ms : **(b′) n'est pas (c)** — c'est un second tir de (b). Le T0
+  §17.10 donne (c) à **6,00 flush/cyc et 210 600 px**, et rien ne s'y compare.
+  ⚠️ **ET L'INSTRUMENT DE (c) N'ÉTAIT PLUS ÉQUIVALENT AU T0** : `widget rafale`
+  passe par `pousser_nolock()`, qui posait **2 grandeurs** (`.n = 2`) là où le
+  régime réel en pose **3** — il ne redessinait donc pas le même travail tout en
+  prétendant s'y comparer. ✅ **Corrigé** (revue du 2026-08-19, `pousser_nolock`
+  pose désormais `desc_n(idx)` grandeurs) ⇒ **(c) est rejouable, et il reste à
+  le rejouer.**
+- 🔴 **TROIS GARDES EXIGÉES NOMMÉMENT PAR AC13 NE SONT NI MESURÉES NI DÉCLARÉES
+  MANQUANTES** (revue du 2026-08-19) : le **témoin négatif d'AC8** (`widget nue` —
+  « la case nue mesure quasiment pareil dans les deux branches »), **« barre et
+  MENU = zones mortes / 0 tap »**, et la colonne **`dn_capteurs`** de la table de
+  non-régression.
 - **La voie (b)** — la 3ᵉ police n'est pas générée ; son verdict de lisibilité
   reste inaccessible.
 - **`FAN_RPM`** — qualifié, sans place. **Dette de PLACE, ⛔ pas question
@@ -3767,8 +3821,20 @@ morceau **au milieu d'une ligne** ⇒ décalage **horizontal** permanent.
 `bounce_px_refus()` n'exigeait que *« diviser les pixels d'une trame »*.
 ⚠️ **Sur les 17 valeurs qu'elle acceptait, DIX cassaient l'image** : 2560, 3072,
 3200, 4096, 5120, 6144, 6400, 10240, 12288, 12800.
-✅ **Les sept légitimes** : 2400, 3840, 4800, **7680**, 9600, 15360, 19200 —
-soit 5, 8, 10, **16**, 20, 32 et 40 lignes.
+🔴 **ET CETTE ÉNUMÉRATION ÉTAIT FAUSSE — corrigée par la revue de code du
+2026-08-19.** Elle annonçait « les **sept** légitimes : 2400, 3840, 4800, 7680,
+9600, 15360, 19200 ». **Il y en a DOUZE** (plus le zéro). La garde combinée est
+`v ≤ 38400` ∧ `307200 % v == 0` ∧ `v % 480 == 0`, c'est-à-dire `v = 480 × k` avec
+`k` diviseur de 640 et `k ≤ 80` :
+
+✅ **Les douze légitimes** : **480, 960, 1920**, 2400, 3840, 4800, **7680**, 9600,
+15360, 19200, **30720, 38400** — soit 1, 2, 4, 5, 8, 10, **16**, 20, 32, 40, 64
+et 80 lignes. Les cinq oubliées sont acceptées par le code et n'apparaissaient
+nulle part. ⛔ **Une liste présentée comme EXHAUSTIVE et qui ne l'est pas est un
+instrument qui ment** — la même famille que le compteur décoratif de `dn_link.h`.
+✅ **En revanche la sous-affirmation qui porte la conclusion TIENT** : **aucune
+valeur admissible entre 4 800 et 7 680** (5 760 = 480 × 12, et 12 ∤ 640). **7 680
+reste donc la plus petite valeur LÉGITIME qui tienne.**
 ⛔ Le piège était armé pour quiconque réglerait ce paramètre, et il s'est
 déclenché **à la première tentative de le régler**. Un réglage refusé est une
 gêne ; un réglage **ACCEPTÉ** qui casse l'image en silence est un défaut.
