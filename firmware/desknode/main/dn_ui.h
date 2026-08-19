@@ -734,6 +734,11 @@ esp_err_t dn_ui_set_voie(int barre_h, int menu_h, const dn_widget_geom_t *g);
  * FIRMWARE — le reflasher pour le montrer coûterait une observation owner.
  * ⚠️ RECONSTRUIT LA SCÈNE. */
 int dn_ui_case_grandeurs(int idx);
+/* L'unité RÉELLEMENT affichée, échelle haute comprise. ⛔ La console ne doit
+ * PAS relire `desc->grandeurs[g].unite` : elle imprimait « Mb/s » sur une
+ * valeur convertie en Gb/s, fausse d'un facteur mille, dans l'instrument
+ * qui sert précisément à vérifier. */
+const char *dn_ui_case_unite(int idx, int grandeur);
 esp_err_t dn_ui_set_case_grandeurs(int idx, int n);
 esp_err_t dn_ui_bandes_valider(int barre_h, int menu_h);
 esp_err_t dn_ui_geom_valider(const dn_widget_geom_t *g);

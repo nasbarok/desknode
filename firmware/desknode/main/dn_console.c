@@ -3572,9 +3572,23 @@ static int cmd_widget(int argc, char **argv)
             /* 🔴 LES DEUX TEMOINS D'AC2 SE PROVOQUENT ICI, ET NULLE PART
              *    AILLEURS. Le dire au moment ou l'operateur arme l'instrument
              *    evite qu'il cherche le log au mauvais endroit. */
-            printf("⚠️ CE QUE CE `n` PROUVE (AC2 de dn4-6) :\n");
-            printf("     n=2  la SECONDAIRE est abandonnee (y_bas 128+20=148, +20>156)\n");
-            printf("     n>=3 la JAUGE est abandonnee (y_bas 168, +6+10=184 > 156)\n");
+            /* ⚠️ LES TROIS LIGNES SONT CALCULEES, PLUS RECITEES. Elles
+             *    portaient « 156 » EN DUR — juste tant que personne ne touchait
+             *    aux bandes, FAUX depuis que D12 est le defaut (163). Un texte
+             *    d'aide qui recite une geometrie devenue variable est la meme
+             *    faute que « 225x156 = 35 100 px » que dn3-2 a corrigee. */
+            dn_widget_geom_t gd;
+            dn_widget_geom(&gd);
+            int chh = 0;
+            dn_ui_case_dim(NULL, &chh);
+            int yb2 = gd.val_y + 2 * gd.val_pas;
+            int yb3 = gd.val_y + 3 * gd.val_pas;
+            printf("⚠️ CE QUE CE `n` PROUVE (AC2 de dn4-6), sur la geometrie "
+                   "COURANTE (case %d px) :\n", chh);
+            printf("     n=2  SECONDAIRE abandonnee si y_bas %d + 20 > %d : %s\n",
+                   yb2, chh, (yb2 + 20 > chh) ? "OUI" : "non (elle tient)");
+            printf("     n=3  JAUGE abandonnee si y_bas %d + 6 + 10 > %d : %s\n",
+                   yb3, chh, (yb3 + 16 > chh) ? "OUI" : "non (elle tient)");
             printf("     n=5  le CLAMP journalise « 1 PERDUE(S) » (MAX = %d)\n",
                    DN_WIDGET_GRANDEURS_MAX);
             printf("   Chaque abandon est un ESP_LOGW, et `widget` le RELIT des\n");
@@ -3806,8 +3820,13 @@ static int cmd_widget(int argc, char **argv)
         int n = d ? d->n_grandeurs : 1;
         for (int g = 0; g < n; g++) {
             const char *t = dn_ui_valeur_txt(i, g);
-            const char *u = (d && d->grandeurs[g].unite) ? d->grandeurs[g].unite
-                                                         : "";
+            /* 🔴 L'UNITE VIENT DE LA DEFINITION UNIQUE. Cette ligne relisait
+             *    `d->grandeurs[g].unite` et imprimait donc « 100,0 Mb/s » pour
+             *    une valeur convertie en Gb/s — fausse d'un FACTEUR MILLE, dans
+             *    l'instrument qui sert a verifier. Troisieme copie de la meme
+             *    regle ; il n'en reste qu'une (`dn_widget_unite`). */
+            const char *u0 = dn_ui_case_unite(i, g);
+            const char *u = u0 ? u0 : "";
             printf(" %s%s%s", (t && t[0]) ? t : "--", (t && t[0]) ? " " : "",
                    (t && t[0]) ? u : "");
         }

@@ -464,6 +464,26 @@ lv_color_t dn_val_regime_couleur(dn_val_regime_t r)
 }
 
 /*
+ * L'UNITÉ QUI S'APPLIQUE — voir `dn_widget.h` pour le motif (elle était
+ * concaténée à TROIS endroits, et la bascule Mb/s → Gb/s a rendu la divergence
+ * visible à la première mesure).
+ * ⚠️ Si `unite_haute` manque là où le drapeau est posé, on retombe sur l'unité
+ *    de BASE plutôt que sur RIEN : une valeur convertie SANS unité serait pire
+ *    que non convertie.
+ */
+const char *dn_widget_unite(const dn_widget_desc_t *d,
+                            const dn_widget_etat_t *e, int i)
+{
+    if (!d || i < 0 || i >= DN_WIDGET_GRANDEURS_MAX) {
+        return NULL;
+    }
+    if (e && e->echelle_haute[i] && d->grandeurs[i].unite_haute) {
+        return d->grandeurs[i].unite_haute;
+    }
+    return d->grandeurs[i].unite;
+}
+
+/*
  * Le texte d'une grandeur : [icône ][préfixe ]valeur[ unité].
  *
  * ⛔ Une valeur ABSENTE ne porte JAMAIS son unité (« -- % » suggérerait qu'on
@@ -481,14 +501,7 @@ static void composer(const dn_widget_desc_t *d, const dn_widget_etat_t *e, int i
                  px ? px : "", px ? " " : "");
         return;
     }
-    /* L'unité EFFECTIVE — l'échelle haute est portée par l'ÉTAT, jamais devinée
-     * du texte (voir `dn_widget.h`). ⚠️ Si `unite_haute` manque là où le drapeau
-     * est posé, on retombe sur l'unité de base plutôt que sur RIEN : une valeur
-     * convertie SANS unité serait pire que non convertie. */
-    const char *u = d->grandeurs[i].unite;
-    if (e->echelle_haute[i] && d->grandeurs[i].unite_haute) {
-        u = d->grandeurs[i].unite_haute;
-    }
+    const char *u = dn_widget_unite(d, e, i);
     snprintf(out, n, "%s%s%s%s%s%s%s", ic ? ic : "", ic ? " " : "",
              px ? px : "", px ? " " : "", e->txt[i], u ? " " : "", u ? u : "");
 }

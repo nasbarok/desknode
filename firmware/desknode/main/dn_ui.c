@@ -600,6 +600,8 @@ static int desc_n(int idx)
 
 int dn_ui_case_grandeurs(int idx) { return desc_n(idx); }
 
+
+
 const char *dn_ui_metrique_nom(int idx)
 {
     return (idx >= 0 && idx < DN_UI_METRIQUES) ? k_nom[idx] : "?";
@@ -2187,12 +2189,7 @@ static void detail_reparametrer(int idx)
                  *    dont l'une est fausse d'un facteur mille. C'est le
                  *    mensonge d'interface que dn4-1 a chassé du détail une
                  *    première fois (la valeur en dur « 21,4 °C »). */
-                const char *u = NULL;
-                if (connue && d) {
-                    u = (e->echelle_haute[i] && d->grandeurs[i].unite_haute)
-                            ? d->grandeurs[i].unite_haute
-                            : d->grandeurs[i].unite;
-                }
+                const char *u = connue ? dn_widget_unite(d, e, i) : NULL;
                 ecrit = snprintf(buf + p, sizeof(buf) - p, "%s%s%s%s%s%s", sep,
                                  px ? px : "", px ? " " : "",
                                  connue ? e->txt[i] : "--", u ? " " : "",
@@ -3525,6 +3522,16 @@ bool dn_ui_cpu_maj(int dixiemes, bool valide, bool *label_pose)
  * jauge -> 148 ≤ 156 ; RAM n=1 avec jauge -> 128 ≤ 156) : la colonne était donc
  * CONSTANTE PAR CONSTRUCTION. ⛔ Un instrument qui ne peut pas voir le cas qu'il
  * a été construit pour prouver est une gate décorative. */
+/* L'unité RÉELLEMENT affichée par une case, échelle haute comprise — exposée
+ * pour que la console cesse d'en avoir sa PROPRE copie. Voir `dn_widget_unite`. */
+const char *dn_ui_case_unite(int idx, int grandeur)
+{
+    if (idx < 0 || idx >= DN_UI_METRIQUES || !case_est_widget(idx)) {
+        return NULL;
+    }
+    return dn_widget_unite(&k_desc[idx], &s_wetat[idx], grandeur);
+}
+
 bool dn_ui_widget_pointeurs(int idx, int *n_grandeurs, bool *jauge, bool *sec)
 {
     const dn_widget_t *o = NULL;

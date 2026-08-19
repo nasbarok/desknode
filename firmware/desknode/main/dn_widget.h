@@ -600,6 +600,25 @@ void dn_widget_chevauchements_reset(void);
 uint32_t dn_widget_debordements(void);
 void dn_widget_debordements_reset(void);
 
+/*
+ * ── L'UNITÉ QUI S'APPLIQUE — UNE SEULE DÉFINITION, ET C'EST UN CORRECTIF ─────
+ *
+ * 🔴 L'UNITÉ ÉTAIT CONCATÉNÉE À **TROIS** ENDROITS : `composer()` ici, le
+ *    détail dans `dn_ui.c`, et la table de `widget` dans `dn_console.c`. Tant
+ *    qu'il n'y avait qu'UNE unité par grandeur, les trois disaient la même
+ *    chose et personne ne pouvait le voir. La bascule `Mb/s → Gb/s` (constat
+ *    owner du 2026-08-19) l'a rendue visible **à la première mesure** : la
+ *    console imprimait « 100,0 Mb/s » pour une valeur convertie en Gb/s —
+ *    fausse **d'un facteur mille**, dans l'instrument qui sert à vérifier.
+ * ⇒ La règle vit ICI et nulle part ailleurs. C'est exactement le motif de
+ *   `dn_val_regime_couleur()`, dont la duplication avait rendu SIMULÉE
+ *   indiscernable d'ABSENTE.
+ * ⚠️ Rend `NULL` si la grandeur n'a pas d'unité — ⛔ pas `""` : l'appelant doit
+ *    pouvoir distinguer « pas d'unité » de « une unité vide ».
+ */
+const char *dn_widget_unite(const dn_widget_desc_t *d,
+                            const dn_widget_etat_t *e, int i);
+
 #ifdef __cplusplus
 }
 #endif
