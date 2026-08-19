@@ -39,7 +39,7 @@ Séance du **2026-08-16** (`/desknode-board`), firmware `ce32c87` puis la comman
 
 ---
 
-## 13.0 LES PHOTOS DE LA SÉANCE — la base probante, versée au dépôt le 2026-08-17
+## 13.0 LES PHOTOS — la base probante (dn2-1 le 2026-08-17, **les 3 breakouts le 2026-08-19**)
 
 Livrable du **critère n°5 du brief** (« câblage photographié, capteurs référencés ») et des AC1/AC2.
 Elles vivent dans **`docs/cablage/`** et sont **nommées par leur horodatage EXIF**, pas par ce qu'on
@@ -52,16 +52,60 @@ croit y voir — c'est l'horodatage qui les situe dans la séance, et il a déj�
 | `2026-08-17_0012-cablage-4-fils-sous-tension.jpg` | 00:12:29 | Le **montage 4 fils en fonctionnement** : JST sur la BONNE embase, wattmètre en ligne (~0,5 W), et le breakout **posé à l'écart de la carte** — l'exigence AC2 « sur fils volants, écarté de la carte » constatée en image |
 | `2026-08-17_0012-breakout-ecarte-barrette-inseree.jpg` | 00:12:33 | Gros plan du breakout écarté, barrette **insérée dans ses trous** et bloc Dupont enfiché |
 
+🔴 **LES NEUF PHOTOS DE `dn4-2`** — versées le **2026-08-19**, prises par l'owner entre **17:18:48
+et 17:20:58** (EXIF). Elles couvrent les **trois nouveaux breakouts, sur leurs DEUX faces**, et
+c'est l'une d'elles qui **réfute l'étiquette « VL53L0X »** portée depuis le 2026-08-14 par le brief,
+l'epic, le tracker, `dn_pins.h`, `i2c_nom_connu()` et six stories.
+
+| Fichier (`docs/cablage/`) | EXIF | Ce qu'elle ÉTABLIT |
+|---|---|---|
+| `2026-08-19_1718-tof050c-vl6180x-face-capteur-et-sachet.jpg` | 17:18:48 | 🔴 **LA PIÈCE QUI RÉFUTE « VL53L0X ».** Étiquette du sachet lisible : **`F2/ TOF050C-VL6180X`**, *« Laser Ranging Sensor Module »*, *« Color: TOF050C-VL6180X »*. Le module montre sa **face capteur** (boîtier optique noir) et la barrette 6 broches **fournie NON SOUDÉE** |
+| `2026-08-19_1718-tof050c-vl6180x-face-capteur-et-sachet-2.jpg` | 17:18:49 | Même cadrage, **seconde prise** — la sérigraphie `TOF050C-VL6180X` du bord bas de la carte y est lisible. ⇒ **la référence est lue DEUX FOIS et sur DEUX supports** : le sachet **et** le cuivre |
+| `2026-08-19_1719-tof050c-vl6180x-face-broches-et-sachet.jpg` | 17:19:00 | 🔴 **LE VERSO du ToF** : la **face broches**, sérigraphie `VIN · GND · SDA · SCL · INT · XSHUT` — **six** broches, dont **deux qui ne sont pas des signaux de bus** et qui décident si la puce répond (`XSHUT`) |
+| `2026-08-19_1719-tof050c-vl6180x-face-broches-deux-barrettes.jpg` | 17:19:20 | Face broches en gros plan, **DEUX barrettes** posées à côté (une droite, une coudée) — les deux **non soudées**. C'est l'état de départ de T5 |
+| `2026-08-19_1719-ina219-cjmcu-recto-cavaliers-a0-a1-shunt-r100.jpg` | 17:19:56 | 🔴 **LE RECTO de l'INA219, et il porte les DEUX choses qui décident de son adresse et de sa mesure** : les cavaliers de sélection **`A0` et `A1`** (sérigraphie *« I2C Address »*), **VISIBLEMENT NON PONTÉS** — ⇒ `A1=A0=GND` ⇒ **`0x40`** (TI SBOS448G, Table 1) — et le **shunt `R100`** (0,1 Ω). Sérigraphie des broches : `Vin+ · Vin- · Sda · Scl · Gnd · Vcc`. Bornier à vis 2 points et barrette 6 broches **fournis NON SOUDÉS** |
+| `2026-08-19_1720-ina219-cjmcu-verso-caracteristiques.jpg` | 17:20:04 | **Le VERSO de l'INA219** : `INA219 DC Current Monitor` · `CJMCU` · `Bus Voltage: 0~26V` · `Max Current: 3.2A` · **`VCC/LOGIC: 3~5V`** ⇒ ✅ **compatible 3V3**, aucun adaptateur de niveau nécessaire |
+| `2026-08-19_1720-bh1750-gy302-face-composants-et-sachet.jpg` | 17:20:45 | Étiquette du sachet : *« 1PCS GY-30 GY-302 BH1750fvi BH1750 **3V-5V** … Of Module For Arduino#Color: **GY-302** »* ⇒ la variante est **GY-302**, pas GY-30. Barrette 5 broches **fournie NON SOUDÉE** |
+| `2026-08-19_1720-bh1750-gy302-face-composants-serigraphie-v322.jpg` | 17:20:48 | **La face composants du BH1750** : sérigraphie **`BH1750`** et **`V322`** (révision de carte), la puce 6 broches, et le bloc de composants passifs côté barrette. ⚠️ **Les marquages de ces passifs NE SONT PAS LISIBLES** — voir l'encart Y6 ci-dessous |
+| `2026-08-19_1720-bh1750-gy302-face-broches-vcc-gnd-scl-sda-addr.jpg` | 17:20:58 | 🔴 **LE VERSO du BH1750, et c'est la photo qui compte** : sérigraphie `VCC · GND · SCL · SDA · **ADDR**` — **CINQ** broches, la cinquième étant **une entrée de sélection d'adresse**, pas un signal de bus. Sérigraphie `GY-302` / `V322` confirmée sur cette face aussi |
+
+✅ **LE VERSO DU BME680 EST SOLDÉ PAR CONSTAT OWNER, PAS PAR PHOTO** — 2026-08-19, verbatim :
+*« le verso c'est juste écrit `bme680` dessus (en plus elle fonctionne et est branchée) »*.
+Le legs **D2-1a** demandait *« recto ET verso »* parce qu'une face non regardée peut porter un pont
+de sélection, une référence de variante ou un tirage. **L'owner a regardé : il n'y a qu'une
+sérigraphie.** C'est **l'instrument valide** — l'œil de l'owner, ⛔ jamais une déduction de l'agent.
+⇒ Cette ligne est un **CONSTAT**, ⛔ pas une photo qui existerait.
+
+> 🔴 **Y6 — LES TIRAGES DE BUS : L'INVENTAIRE PHOTO NE PEUT PAS LES LIRE, ET C'EST ÉCRIT PLUTÔT QUE
+> CONTOURNÉ.** Les trois breakouts portent chacun un bloc de passifs côté barrette (tirages
+> `SDA`/`SCL`, découplage). Les neuf photos ont été **recadrées et agrandies ×10 au cadrage** sur
+> ces blocs : **aucun code de marquage n'est lisible** — le flou optique est plus large que le
+> caractère. ⇒ **Valeur des tirages : NON MESURÉE.** ⛔ Ne pas recopier « 4,7 kΩ » d'un catalogue :
+> ce serait exactement l'étiquette héritée que cette story vient de réfuter sur le ToF.
+> **Ce qui est acquis quand même** : on passe de **2 à 5 jeux de tirages en parallèle** sur le même
+> bus, donc la résistance équivalente **est divisée**, donc le courant que chaque device doit
+> encaisser à l'état bas **augmente** (limite I²C : **3 mA**). Ce n'est pas nécessairement un
+> défaut — un tirage plus fort accélère les fronts — **mais c'est une variable qui change dans cette
+> story et que personne n'avait nommée.**
+> ⇒ **Ce qui la solderait** : ohmmètre entre `SDA` et `VCC`, puis `SCL` et `VCC`, **breakout seul et
+> hors tension**, avant soudure (deux minutes, T5). À défaut, elle se lit dans le **budget d'erreurs
+> d'AC8** : si des erreurs apparaissent à 8 devices, **les tirages sont un suspect nommé d'avance**.
+
 > 🔴 **CE QUE CES PHOTOS NE MONTRENT PAS, ET IL FAUT LE LIRE AVANT DE LES CITER.**
 > Les quatre horodatages sont **antérieurs au dénouement de séance (~00h45) et à la soudure**
 > (2026-08-17, plus tard). ⇒ **Aucune ne documente l'état SOUDÉ**, ni le montage final.
 > La quatrième montre une barrette **insérée**, pas soudée — et c'est précisément l'état dans
 > lequel le capteur **NE répondait PAS** (hypothèse 6 de §13.5). Elle vaut donc comme témoin du
 > défaut, pas comme preuve du montage.
-> ⚠️ Manquent aussi : le **verso** du breakout (T1 demandait recto ET verso) et **les 3 autres
-> breakouts** (BH1750, VL53L0X, INA219), jamais photographiés — décision owner **D2-1a**.
-> ⇒ **AC1 est PARTIEL**, tenu pour le seul BME680 et sur une seule face. Le complément est porté
-> à la prochaine séance carte (décision owner du 2026-08-17, revue de code dn2-1).
+> ⚠️ **MISE À JOUR 2026-08-19 (dn4-2) — l'encart n'est PAS effacé, il est corrigé point par point,
+> parce que ce qu'il annonçait comme manquant ne l'est plus tout à fait :**
+> - ✅ **Les 3 autres breakouts SONT photographiés**, recto ET verso — 9 photos, table ci-dessus.
+>   Le legs **D2-1a** est **SOLDÉ**.
+> - ✅ **Le verso du BME680** est soldé **par constat owner**, pas par photo (encart ci-dessus).
+> - ⛔ **RESTE VRAI, ET C'EST DÛ DANS `dn4-2` MÊME** : **aucune photo du dépôt ne documente l'état
+>   SOUDÉ des trois modules, ni le montage final à 8 devices.** C'est **AC5** qui les produit.
+> - ⛔ **RESTE VRAI AUSSI** : les quatre photos de dn2-1 restent antérieures à la soudure du BME680.
+> ⇒ **AC1 de `dn2-1` est SOLDÉ ; AC5 de `dn4-2` reste OUVERT.**
 
 ⚠️ **Correction d'une lecture faite trop vite, consignée parce qu'elle est du genre que ce dépôt
 traque** : la quatrième photo a d'abord été décrite comme « barrette **soudée** » sur la seule foi
@@ -205,6 +249,79 @@ signaux**. C'est le piège le plus coûteux de ce câblage, et il n'est signalé
 
 ---
 
+## 13.4 bis 🔴 LES TROIS BREAKOUTS DE `dn4-2` — inventaire, et **le 3ᵉ n'est PAS celui qu'on croyait**
+
+**Relevé le 2026-08-19 sur les 9 photos de l'owner (§13.0), réfs lues sur la SÉRIGRAPHIE et sur
+l'étiquette du sachet — ⛔ jamais déduites du bon de commande.**
+
+| | **BH1750** | **ToF** | **INA219** |
+|---|---|---|---|
+| Réf lue sur la carte | `BH1750` · `V322` | 🔴 **`TOF050C-VL6180X`** | `INA219 DC Current Sensor` · `CJMCU` |
+| Réf lue sur le sachet | *« GY-30 GY-302 BH1750fvi … Color: **GY-302** »* | *« **F2/ TOF050C-VL6180X** »* · *« Color: TOF050C-VL6180X »* | — |
+| Brochage, **dans l'ordre physique** | `VCC · GND · SCL · SDA · **ADDR**` (5) | `VIN · GND · SDA · SCL · **INT** · **XSHUT**` (6) | `Vin+ · Vin- · Sda · Scl · Gnd · Vcc` (6) |
+| Connecteur | barrette 5 broches, **NON SOUDÉE** | barrette 6 broches ×2 (droite + coudée), **NON SOUDÉES** | barrette 6 broches **+ bornier à vis 2 points**, **NON SOUDÉS** |
+| Alimentation supportée | **3 V – 5 V** (sachet) | 3V3 (`VIN`) | **`VCC/LOGIC: 3~5V`** (verso) ✅ |
+| Adresse par défaut | **`0x23`** | **`0x29`** (fixe) | **`0x40`** |
+| Ce qui la sélectionne | broche **`ADDR`** : bas/flottant ⇒ `0x23` · haut ⇒ `0x5C` | ⛔ **rien** — fixe en dur ; reprogrammable **en RAM**, non persistant | cavaliers **`A0`/`A1`**, **NON PONTÉS À LA PHOTO** ⇒ `1000000` = `0x40` |
+| Tirages `SDA`/`SCL` | ⛔ **NON LISIBLES** (§13.0, encart Y6) | ⛔ **NON LISIBLES** | ⛔ **NON LISIBLES** |
+| Autre marquage utile | — | — | shunt **`R100`** = 0,1 Ω · `Bus Voltage 0~26V` · `Max Current 3.2A` |
+
+> 🔴 **LE 3ᵉ CAPTEUR N'EST PAS UN VL53L0X. C'EST UN VL6180X — et *« même famille ToF »* est faux
+> sur les trois points qui comptent.** L'addendum du brief (§3) avait pourtant **posé la question**
+> le 2026-08-14 — *« La roadmap historique nomme "TOF050C" là où le dump dit VL53L0X — même famille
+> ToF, noter la réf réelle du breakout à l'inventaire »* — et **personne ne l'avait fermée pendant
+> cinq jours**. L'inventaire la ferme. Ce qui sépare les deux puces :
+>
+> | | **VL6180X** (ce qu'on a) | **VL53L0X** (ce que six documents annoncent) |
+> |---|---|---|
+> | Index de registre | **16 bits** (2 octets, MSB d'abord) | **8 bits** |
+> | Registre d'identité | `0x0000` → **`0xB4`** | `0xC0`→`0xEE` · `0xC1`→`0xAA` · `0xC2`→`0x10` |
+> | Portée **garantie** | 🔴 **100 mm** (*« ranging beyond 100 mm is possible … but not guaranteed »*) | ~2 m |
+> | Bonus | **ALS intégré** (lumière ambiante) — recouvre partiellement le BH1750 | aucun |
+>
+> ⇒ **Le « 50 cm » de l'annonce revendeur n'est PAS une spec.** `dn4-3` hérite du **100 mm**, pas de
+> l'annonce. ⚠️ Et se tromper de protocole, c'est passer une séance à chercher une mauvaise soudure
+> sur un composant qui **répond parfaitement à un protocole qu'on ne lui parle pas**.
+
+### 🔴 LE PIÈGE DU MIROIR SE RE-TEND SUR LES QUATRE — et l'INA219 est le pire
+
+```
+câble / embase carte  :  GND    3V3    SDA    SCL
+BH1750  (GY-302)      :  VCC    GND    SCL    SDA    ADDR
+ToF     (TOF050C)     :  VIN    GND    SDA    SCL    INT    XSHUT
+INA219  (CJMCU)       :  Vin+   Vin-   Sda    Scl    Gnd    Vcc
+BME680  (rappel §13.4):  VCC    GND    SCL    SDA    SDO    CS
+```
+
+⇒ **AUCUN des quatre ne s'aligne « premier avec premier » sur le câble.** Poser les fils dans
+l'ordre **inverse l'alimentation sur les quatre**, et **croise `SDA`/`SCL` sur deux d'entre eux**
+(BH1750 et BME680).
+
+🔴 **ET L'INA219 EST LE PIRE DES QUATRE, POUR UNE RAISON QUI N'EST PAS UN SIMPLE MIROIR** : ses deux
+premières broches sont **`Vin+` / `Vin-`**, c'est-à-dire **les bornes du SHUNT**, pas l'alimentation
+logique. Un câblage « dans l'ordre » n'inverse pas seulement l'alimentation : il envoie le **3V3
+directement sur un shunt de 0,1 Ω**. Son alimentation logique est à **l'autre bout** de la rangée
+(`Gnd · Vcc`, broches 5 et 6).
+
+### 🔴 DEUX MODES DE PANNE PROPRES À CES MODULES — nommés AVANT le fer
+
+Ils produisent tous les deux **le symptôme exact de la mauvaise soudure** (« le capteur ne répond
+pas »), et `dn2-1` a déjà dépensé **une séance entière** sur cette confusion (§13.5).
+
+1. 🔴 **`XSHUT` du VL6180X est une ENTRÉE D'ACTIVATION.** Basse ou flottante, **la puce reste en
+   shutdown et n'acquitte pas**. Certains breakouts la tirent au 3V3, d'autres non — ⛔ **cela ne se
+   suppose pas, et la photo ne le dit pas**. ⇒ **Avant d'accuser la soudure : tirer `XSHUT` à 3V3 et
+   rescanner.**
+2. 🔴 **`ADDR` du BH1750 est une ENTRÉE DE SÉLECTION.** La datasheet ROHM ne définit `0x23` que pour
+   **`ADDR ≤ 0,3 × VCC`** ; **flottant est INDÉFINI**. ⇒ **Décision : souder `ADDR` à `GND`** —
+   une soudure pour une adresse déterministe. Le laisser en l'air, c'est accepter qu'une adresse
+   instable ressemble un jour à un faux positif du scan (et §13.2 en fabrique une quinzaine).
+
+⛔ **Et la séquence *bouger → scanner* ne peut structurellement pas converger** sur cette famille :
+seule *bouger → **couper l'alimentation** → rescanner* est valable (§13.10, alimentation fantôme).
+
+---
+
 ## 13.5 L'arbre de diagnostic — quatre hypothèses ÉLIMINÉES, deux vivantes
 
 Le capteur n'a **jamais** répondu, ni à `0x76` ni à `0x77`, sur ~20 scans — pas même une fois à
@@ -325,6 +442,83 @@ i2c lire 77 E1 16 → 42 4E 1E 00 2D 14 78 9C CD 66 9D D3 E6 12 E6 00
 
 **Non-régression après soudure** : `touch` = **0 erreur I²C sur 2 663 lectures** · RAM interne
 **113 847 o** (T0 : 113 871) · PSRAM **7 768 448 o** — variations dans le bruit d'allocation.
+
+## 13.6 quater 🔴 L'INSTRUMENT NE QUALIFIE QU'**UN** CAPTEUR SUR TROIS — critères d'extension écrits AVANT le code (`dn4-2`, 2026-08-19 ~18h20)
+
+### Le fait, établi aux datasheets et dans le code — ⛔ ce n'est pas une opinion de conception
+
+`i2c lire <addr> <reg> [n]` fait, à `dn_console.c:4330` :
+`i2c_master_transmit_receive(dev, &reg, **1**, rx, n, 200)` — **il ÉCRIT un octet d'index, puis
+lit**. Conséquences, chacune vérifiée à la datasheet :
+
+| | **BH1750** `0x23` | **VL6180X** `0x29` | **INA219** `0x40` |
+|---|---|---|---|
+| Adressage de registre | 🔴 **AUCUN** — machine à **OPCODES** | 🔴 **16 bits** (2 o, MSB d'abord) | ✅ **8 bits** |
+| Registre d'identité | 🔴 **inexistant** | `0x0000` `IDENTIFICATION__MODEL_ID` → **`0xB4`** | `0x00` Configuration, reset = **`0x399F`** |
+| **`i2c lire` le qualifie-t-il ?** | ⛔ **NON — et pire : il le PILOTE au hasard** | ⛔ **NON — violation de protocole** | ✅ **OUI** : `i2c lire 40 00 2` → `39 9F` |
+
+- 🔴 **BH1750** — l'octet « registre » **EST une commande**. `i2c lire 23 00` le met en **power
+  down**, `i2c lire 23 07` **reset** son registre de données, `0x08..0x0F` sont **INDÉFINIS**, et
+  `0x40..0x7F` reprogramment le `MTreg`. ⇒ **Utiliser `i2c lire` sur le BH1750 ne le qualifie pas :
+  ça le pilote au hasard**, et les 2 octets rendus seraient lus comme une identité alors que ce sont
+  des **lux**. *(Jeu d'opcodes utile : `0x01` power on · `0x10` continu H-res — **120 ms typiques,
+  jusqu'à 180 ms** · `0x20` one-shot H-res · `0x00` power down · `0x07` reset. Conversion :
+  **`lux = brut / 1,2`** au `MTreg` par défaut de 69.)*
+- 🔴 **VL6180X** — l'index fait **deux octets**. Envoyer **un** octet puis un restart-read est une
+  **violation de protocole** : le résultat n'est ni `0xB4` ni reproductible. ⇒ l'instrument ne peut
+  pas le qualifier, et **un échec ici ressemblerait EXACTEMENT à une mauvaise soudure** — la
+  confusion qui a coûté une séance entière à `dn2-1` (§13.5).
+- ✅ **INA219** — registres 16 bits **derrière un index 8 bits** : `i2c lire 40 00 2` rend les deux
+  octets du registre Configuration, **`39 9F`** au reset (TI **SBOS448G** §8.6.2.1). Contrôle
+  négatif gratuit dans la même foulée : `05` (Calibration) doit rendre **`00 00`**.
+
+### Les CINQ critères d'arbitrage, posés avant d'ouvrir le code
+
+1. 🔴 **Compatibilité avec le bus EXISTANT — ÉLIMINATOIRE.** ⛔ Jamais `i2c_new_master_bus()` sur
+   `I2C_NUM_0` (rend `ESP_ERR_INVALID_STATE`). Le handle se demande à `dn_display_i2c_bus()`.
+2. **Le device temporaire est retiré sur TOUS les chemins de sortie** — patron de
+   `i2c_lire_registre()` (`:4304-4360`) et de `relever_identite()` (`dn_capteurs.c:378-398`).
+3. **Coût en binaire mesuré** ; ⛔ **ZÉRO coût en régime** : aucune tâche, aucun timer, aucune
+   allocation permanente, aucune boucle, aucun `vTaskDelay` — **le REPL EST le transport PC**.
+4. **Refus expliqués, bornes annoncées ET tenues** (`parse_*`, ⛔ `atoi` interdit, ⛔ jamais
+   d'écrêtage silencieux).
+5. **`aide` fait foi** : toute sous-commande neuve entre dans `k_cmds[]` **et** dans la liste
+   « Jeu complet » du `README.md`, **dans le même geste**.
+
+### Les TROIS primitives que les datasheets imposent, et pourquoi elles manquent
+
+| Primitive retenue | Pourquoi elle manque aujourd'hui | Qui en a besoin |
+|---|---|---|
+| `i2c ecrire <addr> <o1> [o2..o8]` — **écriture NUE**, aucune lecture | `i2c lire` **lit toujours** ⇒ impossible d'envoyer un opcode sans lire | **BH1750** (`01` power on, `10` mode continu) |
+| `i2c brut <addr> [n]` — **lecture SANS index** | `i2c lire` **écrit toujours** un index ⇒ chaque lecture **repiloterait** le BH1750 | **BH1750** (2 o de mesure) |
+| `i2c lire16 <addr> <reg16> [n]` — **index sur 2 octets** | `transmit_receive` n'envoie **qu'un** octet | **VL6180X** (`0x0000` → `0xB4`) |
+
+⛔ **Ne PAS surcharger `i2c lire` d'un drapeau** : elle **interprète déjà l'octet elle-même** pour le
+BME680 (`0xD0` → chip id, `0xF0` → variant, en dur). Deux sémantiques d'index dans une même commande
+est exactement l'ambiguïté qui produit un chiffre **faux ET plausible**.
+
+⚠️ **`i2c ecrire` PEUT CASSER UN COMPOSANT SAIN** (`00` = power down du BH1750, `07` = reset) ⇒ la
+sortie **dit ce qu'elle a envoyé**, et l'aide porte l'avertissement.
+
+### 🔴 LE TÉMOIN POSITIF : l'instrument est prouvé sur du CONNU avant de servir sur de l'INCONNU
+
+Le dépôt a une cible parfaite — les blocs d'étalonnage du BME680, relevés **deux fois** en `dn2-1`
+et **identiques octet pour octet** :
+
+```
+i2c lire 77 89 16 → 40 43 68 03 00 18 8A 92 D7 58 00 C7 1E 5C FF 1F
+i2c lire 77 E1 16 → 42 4E 1E 00 2D 14 78 9C CD 66 9D D3 E6 12 E6 00
+i2c lire 77 D0    → 61   (chip id)
+```
+
+⇒ **Toute primitive neuve doit reproduire ces octets sur un composant DÉJÀ SOUDÉ, AVANT qu'on lui
+fasse dire quoi que ce soit sur un composant neuf.** ⛔ *Un instrument neuf non prouvé sur du connu
+est exactement l'étiquette qui ment que ce dépôt traque.*
+
+**Budget d'essais annoncé** : **3 variantes** d'implémentation maximum, puis on consigne et on
+bascule sur le repli (qualification **par stimulus physique**, §AC6), avec l'écart écrit.
+
+---
 
 ## 13.6 ter L'arbitrage du driver (AC5) — critères écrits AVANT la mesure
 

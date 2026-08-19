@@ -1878,11 +1878,31 @@ bas ⇒ 0x5D). Entrée ⚪ déjà ouverte au ledger sur ce conflit.
 
 | Fait annoncé | Pourquoi ça compte | Statut |
 |---|---|---|
-| 🔴 **`GPIO37, 36, 35, 34, 33` sortis sur le header 2×12 DROIT mais « déconseillés — PSRAM interne »** | **Piège pour dn4-1** : y câbler un capteur casse la PSRAM, donc **le framebuffer**. Un header qui expose des broches inutilisables est exactement le genre de chose qui coûte une soirée | ⚠️ à vérifier avant tout câblage |
+| 🔴 **`GPIO37, 36, 35, 34, 33` sortis sur le header 2×12 DROIT mais « déconseillés — PSRAM interne »** | **Piège pour `dn4-2`** (⚠️ l'entrée disait « dn4-1 » : le correct-course du 2026-08-18 a réassigné le câblage à `dn4-2`) : y câbler un capteur casse la PSRAM, donc **le framebuffer** que la DMA lit à ~23 Mo/s. Le symptôme **ne ressemble pas à un problème de capteur** — image corrompue, plantages erratiques, ou pire, dégradation intermittente — et un diagnostic partirait du mauvais côté, alors que la soudure est **irréversible** | ⚠️ **TOUJOURS HYPOTHÈSE — voir la PARADE ci-dessous (`dn4-2`, 2026-08-19)** |
 | **`GPIO4` = lecture de la tension batterie**, « isolable en dessoudant la résistance » | seule broche analogique documentée ; ⚠️ **aucun rapport de pont diviseur donné** ⇒ à mesurer, jamais à supposer | ⚠️ hypothèse |
 | **Connecteur `MX1.25 2PIN` pour LiPo 3,7 V** + chargeur **`MP1605GTF-Z` (2 A max)** | voir la décision **D5** ci-dessous | ⚠️ hypothèse |
 | **L'interrupteur ON/OFF est un « Battery Power Control Switch »** | 🔴 **Il n'avait jamais été identifié**, alors qu'il est visible sur `docs/cablage/2026-08-16_2228-…`. Sa portée sur l'alimentation USB **n'est pas documentée** ⇒ une carte qui ne démarre pas après qu'on l'a bougé est un diagnostic à connaître AVANT de dérouler la recette « carte muette » | ⚠️ **à établir par la mesure**, et c'est le plus actionnable des cinq |
 | **`TCA9554PWR` : « toutes les broches utilisées, non sorties »** | confirme §1.2 : l'expander est entièrement consommé, rien à en tirer pour dn4-1 | ✅ cohérent avec la mesure |
+
+> ✅ **PARADE ÉCRITE AVANT LE FER — `dn4-2`, 2026-08-19 (AC3, Y1). LA PARADE DOMINE LA QUESTION,
+> ELLE NE LA RÉFUTE PAS.**
+> **Le constat** : l'I²C est un **BUS**. Les quatre capteurs (BME680 déjà soudé, plus BH1750, ToF et
+> INA219) partagent **`SDA = GPIO15` et `SCL = GPIO7`** (`dn_pins.h:31-32`), plus `3V3` et `GND`.
+> ⇒ **Brancher trois capteurs de plus coûte ZÉRO GPIO**, et **aucune broche des headers 2×12 n'est
+> consommée par cette story** — ni à droite, ni à gauche. Les deux points d'accès physiques au bus
+> (embase JST 4 points côté interrupteur, header 2×12 **GAUCHE**) n'exposent **aucune** de ces cinq
+> broches : ils portent `GND · 3V3 · SDA · SCL` et `SCL · SDA · 3V3 · G`.
+> ⇒ **`dn4-2` ne peut pas tomber dans ce piège**, et c'est écrit **avant** que le fer ne chauffe.
+>
+> 🔴 **MAIS L'ENTRÉE DE LEDGER RESTE OUVERTE, ET SON STATUT « HYPOTHÈSE » EST CONSERVÉ.** Une parade
+> **n'est pas une réfutation** : personne n'a vérifié à la carte que ces cinq broches sont bien la
+> PSRAM interne. *« Un piège non vérifié se re-tend »* — la prochaine story qui voudra une broche
+> d'interruption, un bouton ou un capteur non-I²C retombera exactement dessus.
+> ⚠️ **Et la source qui l'annonce est celle qui s'est trompée ou contredite QUATRE fois sur quatre
+> points vérifiables** (§14.2) : elle ne peut ni fermer l'entrée, ni la disqualifier.
+> ⇒ **Ce qui la fermerait** : un `gpio_dump_io_configuration()` au boot, ou un essai de
+> `gpio_config()` sur l'une des cinq **avec relevé de `mem`/PSRAM avant-après** — ⛔ hors périmètre
+> de `dn4-2`, qui n'utilise aucune de ces broches.
 
 **Absent des deux pages officielles**, et que ce dépôt possède **par la mesure** : les timings RGB
 (pclk, porches), le contrôleur d'écran, la broche du rétroéclairage, les broches TF, **toutes les
