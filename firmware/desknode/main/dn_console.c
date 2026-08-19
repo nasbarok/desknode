@@ -2638,6 +2638,8 @@ static int cmd_pc(int argc, char **argv)
  *                                   le SEUL moyen de comparer le repli aux
  *                                   trois voies dans le MÊME firmware
  *                                                                ⚠️ RECONSTRUIT
+ *   widget replacer on|off          INSTRUMENT de bissection : `off` ramène le
+ *                                   chemin de MISE À JOUR à celui de dn4-1
  *   widget dispo empile|cote|mixte  la mise en forme des grandeurs ⚠️ RECONSTRUIT
  *   widget entete normal|compact    l'en-tête (icône 28 -> 14)    ⚠️ RECONSTRUIT
  *   widget val <y> <pas>            `val_y` / `val_pas`, interligne ⚠️ RECONSTRUIT
@@ -2965,6 +2967,35 @@ static int cmd_widget(int argc, char **argv)
             printf("  ⚠️ Si l'oeil voit une troncature malgre ca, la cause n'est\n");
             printf("     PAS la largeur — chercher la HAUTEUR du panneau ou le\n");
             printf("     retour a la ligne du label.\n");
+        }
+        return 0;
+    }
+
+    if (argc == 3 && strcmp(argv[1], "replacer") == 0) {
+        bool on;
+        if (!parse_on_off(argv[2], &on)) {
+            printf("usage : widget replacer on|off   (actuel : %s)\n",
+                   dn_widget_replacer() ? "on" : "off");
+            printf("🔴 INSTRUMENT DE BISSECTION DU TRESSAUTEMENT, ⛔ pas un reglage.\n");
+            printf("   `off` supprime `valeur_placer()` du chemin de MISE A JOUR :\n");
+            printf("   `dn_widget_maj` redevient LIGNE POUR LIGNE celui de dn4-1.\n");
+            printf("⛔ Legitime UNIQUEMENT en EMPILE. En cote a cote la colonne\n");
+            printf("   droite resterait a la place de la valeur PRECEDENTE.\n");
+            return 1;
+        }
+        dn_widget_set_replacer(on);
+        printf("replacer = %s — ⛔ AUCUNE reconstruction : le changement porte sur\n",
+               on ? "on" : "off");
+        printf("les MISES A JOUR suivantes, pas sur la scene actuelle.\n");
+        dn_widget_geom_t g;
+        dn_widget_geom(&g);
+        if (g.dispo != DN_DISPO_EMPILE && !on) {
+            printf("🔴 ATTENTION : la disposition est %s, PAS empilee. `off` va\n",
+                   dn_widget_dispo_nom(g.dispo));
+            printf("   figer la colonne droite a sa position precedente.\n");
+        } else if (on) {
+            printf("⚠️ En EMPILE, `on` et `off` doivent etre VISUELLEMENT\n");
+            printf("   IDENTIQUES. S'ils ne le sont pas, c'est le resultat.\n");
         }
         return 0;
     }

@@ -363,6 +363,31 @@ static uint8_t s_opa = LV_OPA_70;
  */
 static bool s_groupage = true;
 
+/*
+ * ── L'INTERRUPTEUR DE BISSECTION DU TRESSAUTEMENT (constat owner 2026-08-19) ──
+ *
+ * 🔴 A/B ÉTABLI, ET IL ACCUSE dn4-6 : même stimulus (5 trames/s), même carte,
+ *    même géométrie remise à 156 px — le firmware de `dn4-1` (`cfd1a54`) NE
+ *    tressaute PAS, celui de `dn4-6` SI. La géométrie est donc innocentée
+ *    (`widget grille 70 60` ne change rien), et le delta est dans LE CODE.
+ *
+ * ⇒ Le SEUL travail que `dn4-6` a ajouté au chemin de MISE À JOUR est
+ *   `valeur_placer()`. `off` le supprime entièrement : `dn_widget_maj` redevient
+ *   alors, ligne pour ligne, celui de `dn4-1` (texte + couleur, rien d'autre).
+ *
+ * ⚠️ CE QUE `off` CASSE, ET IL FAUT LE SAVOIR AVANT DE L'UTILISER : en
+ *    `COTE-A-COTE` la colonne droite est calée à DROITE, donc son `x` dépend de
+ *    la largeur du texte. Sans repositionnement elle resterait à la place de la
+ *    valeur PRÉCÉDENTE. ⛔ `off` n'est légitime qu'en `EMPILE` — c'est un
+ *    INSTRUMENT de bissection, pas un réglage produit.
+ * ⛔ Le défaut est `on` : la voie livrée est `EMPILE`, où `off` et `on` doivent
+ *    être visuellement IDENTIQUES. S'ils ne le sont pas, c'est le résultat.
+ */
+static bool s_replacer = true;
+
+void dn_widget_set_replacer(bool on) { s_replacer = on; }
+bool dn_widget_replacer(void) { return s_replacer; }
+
 const char *dn_val_regime_nom(dn_val_regime_t r)
 {
     switch (r) {
@@ -552,7 +577,15 @@ static void valeur_placer(lv_obj_t *lbl, int i, int n, int w, int fin_gauche,
         if (lv_obj_get_x(lbl) != W_PAD || lv_obj_get_y(lbl) != y) {
             lv_obj_set_pos(lbl, W_PAD, y);
         }
-        if (fin_gauche_out) {
+        /* 🔴 LA LARGEUR N'EST MESURÉE QUE S'IL Y A UNE COLONNE DROITE À CALER.
+         *    Elle l'était pour CHAQUE grandeur, y compris en `EMPILE` où
+         *    personne ne la lit — soit **15 `lv_text_get_size()` par seconde**
+         *    en régime, sous le verrou LVGL, pour rien. `lv_text_get_size()`
+         *    parcourt la chaîne, cherche chaque glyphe dans les cmaps (dont une
+         *    SPARSE) et applique le crénage : ce n'est pas une lecture de champ.
+         * ⚠️ `cols >= 2 && col == 0` est la SEULE situation où `fin_gauche`
+         *    servira : la grandeur suivante est sur la même ligne, à droite. */
+        if (fin_gauche_out && cols >= 2) {
             *fin_gauche_out = W_PAD + dn_widget_largeur(lv_label_get_text(lbl),
                                                         font_val());
         }
@@ -826,8 +859,10 @@ void dn_widget_maj(const dn_widget_desc_t *desc, const dn_widget_etat_t *etat,
          *    est un `lv_obj_set_pos` par grandeur ; en côte à côte il s'y ajoute
          *    UN `lv_text_get_size` par colonne droite. Le budget est mesuré en
          *    AC12, ⛔ pas supposé négligeable. */
-        valeur_placer(w->valeur[i], i, w->n ? w->n : 1, w->w ? w->w : 225,
-                      fin_gauche, desc, &fin_gauche);
+        if (s_replacer) {
+            valeur_placer(w->valeur[i], i, w->n ? w->n : 1, w->w ? w->w : 225,
+                          fin_gauche, desc, &fin_gauche);
+        }
         /*
          * 🔴 dn4-1 / W10 — UNE GRANDEUR ABSENTE SE PEINT EN GRIS, MÊME DANS UNE
          *    CASE RÉELLE. `composer()` rend déjà « -- » sans unité pour un texte

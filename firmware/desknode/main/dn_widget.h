@@ -600,6 +600,14 @@ void dn_widget_chevauchements_reset(void);
 uint32_t dn_widget_debordements(void);
 void dn_widget_debordements_reset(void);
 
+/* ── INSTRUMENT DE BISSECTION — voir le motif dans `dn_widget.c` ─────────────
+ * `off` supprime `valeur_placer()` du chemin de MISE À JOUR : `dn_widget_maj`
+ * redevient alors, ligne pour ligne, celui de `dn4-1`.
+ * ⛔ Légitime UNIQUEMENT en `EMPILE` : en côte à côte la colonne droite resterait
+ *    à la place de la valeur précédente. ⚠️ INSTRUMENT, pas réglage produit. */
+void dn_widget_set_replacer(bool on);
+bool dn_widget_replacer(void);
+
 /*
  * ── L'UNITÉ QUI S'APPLIQUE — UNE SEULE DÉFINITION, ET C'EST UN CORRECTIF ─────
  *
