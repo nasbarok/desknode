@@ -125,11 +125,18 @@ static int entete_y_badge(void)
     return s_geom.entete == DN_ENTETE_COMPACT ? W_ICONE_Y : W_TITRE_Y;
 }
 
-/* Le compteur de chevauchements côte à côte — voir `dn_widget.h`. */
+/* Les deux compteurs de « ça ne tient pas » — voir `dn_widget.h`.
+ * ⚠️ DEUX compteurs et non un : un chevauchement HORIZONTAL et un débordement
+ *    VERTICAL ne se corrigent pas par le même levier (la largeur d'une chaîne
+ *    contre la hauteur de la case), et les additionner rendrait le diagnostic
+ *    ambigu au moment précis où on arbitre entre trois voies. */
 static uint32_t s_chevauchements;
+static uint32_t s_debordements;
 
 uint32_t dn_widget_chevauchements(void) { return s_chevauchements; }
 void dn_widget_chevauchements_reset(void) { s_chevauchements = 0; }
+uint32_t dn_widget_debordements(void) { return s_debordements; }
+void dn_widget_debordements_reset(void) { s_debordements = 0; }
 
 int dn_widget_gouttiere(void) { return W_GOUTTIERE; }
 int dn_widget_largeur_utile(int w) { return w - 2 * W_PAD; }
@@ -585,6 +592,8 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
 
     char buf[DN_WIDGET_TXT_MAX + 32];
     int fin_gauche = W_PAD;
+    int lh_val = (int)lv_font_get_line_height(font_val());
+    int hors = 0, dernier_bas = 0;
     for (int i = 0; i < n; i++) {
         composer(desc, etat, i, buf, sizeof(buf));
         out->valeur[i] = dn_widget_texte(
@@ -592,6 +601,27 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
             dn_val_regime_couleur(etat ? etat->regime : DN_VAL_ABSENTE), W_PAD,
             s_geom.val_y);
         valeur_placer(out->valeur[i], i, n, w, fin_gauche, desc, &fin_gauche);
+        /* 🔴 LA VALEUR QUI NE TIENT PAS EN HAUTEUR — voir `dn_widget.h`.
+         *    Le bas de la BOÎTE, ⛔ pas le `y` posé : un texte posé à 128 dans
+         *    une case de 156 « a l'air » dedans et déborde de 7 px. */
+        int ligne = 0;
+        place(s_geom.dispo, n, i, &ligne, NULL, NULL);
+        int bas = s_geom.val_y + ligne * s_geom.val_pas + lh_val;
+        if (bas > h) {
+            hors++;
+            dernier_bas = bas;
+        }
+    }
+    if (hors > 0) {
+        s_debordements += (uint32_t)hors;
+        ESP_LOGW(TAG,
+                 "« %s » : %d valeur(s) sur %d DEBORDENT la case — bas %d > h=%d "
+                 "(%d ligne(s) x pas %d, police lh %d, val_y %d, disposition %s). "
+                 "LVGL les CLIPPE sans un mot : la case en montre moins qu'elle "
+                 "n'en declare.",
+                 desc->titre ? desc->titre : "?", hors, n, dernier_bas, h,
+                 dn_widget_lignes(s_geom.dispo, n), s_geom.val_pas, lh_val,
+                 s_geom.val_y, dn_widget_dispo_nom(s_geom.dispo));
     }
 
     /* 🔴 `y_bas` SE CALCULE SUR LES LIGNES, PAS SUR LES GRANDEURS. En côte à

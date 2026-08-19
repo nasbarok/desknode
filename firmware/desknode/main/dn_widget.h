@@ -550,6 +550,25 @@ int dn_widget_gouttiere(void);
 uint32_t dn_widget_chevauchements(void);
 void dn_widget_chevauchements_reset(void);
 
+/*
+ * ── LE DÉBORDEMENT VERTICAL — LE PENDANT EXACT DU CHEVAUCHEMENT ──────────────
+ *
+ * 🔴 CE COMPTEUR EXISTE PARCE QUE dn4-6 A FAILLI REFAIRE SON PROPRE DÉFAUT.
+ *    La story borne la JAUGE et journalise l'abandon de la SECONDAIRE ; à 3 et
+ *    4 grandeurs EMPILÉES dans une case de 156 px, ce sont les **VALEURS**
+ *    elles-mêmes qui sortent : la 3ᵉ déborde de 7 px, la 4ᵉ est ENTIÈREMENT
+ *    hors case. Et LVGL les clippe SANS UN MOT — donc la case affiche trois
+ *    lignes là où le descripteur en demande quatre, sans que rien ne le dise.
+ * ⛔ Le clamp de `GRANDEURS_MAX` ne voit PAS ce cas : il compte les grandeurs
+ *    DEMANDÉES, pas celles qui TIENNENT. Deux gardes, deux questions.
+ * ⚠️ La règle de priorité (VALEURS > jauge > secondaire) dit que les valeurs
+ *    gagnent — elle ne dit pas qu'elles TIENNENT. Quand elles ne tiennent pas,
+ *    il n'y a plus rien à sacrifier : ⇒ on les pose quand même (tronquer serait
+ *    remplacer un défaut visible par un défaut muet) et **ON LE DIT**.
+ */
+uint32_t dn_widget_debordements(void);
+void dn_widget_debordements_reset(void);
+
 #ifdef __cplusplus
 }
 #endif

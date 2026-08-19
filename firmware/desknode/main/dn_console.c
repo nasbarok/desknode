@@ -3039,7 +3039,9 @@ static int cmd_widget(int argc, char **argv)
          *    comme un texte et le compteur ne bougerait jamais — une commande
          *    qui a l'air de marcher et ne fait rien. */
         dn_widget_chevauchements_reset();
-        printf("compteur de chevauchements remis a 0\n");
+        dn_widget_debordements_reset();
+        printf("compteurs de chevauchement (largeur) ET de debordement (hauteur)\n");
+        printf("remis a 0\n");
         return 0;
     }
     if ((argc == 2 || argc == 3) && strcmp(argv[1], "largeur") == 0) {
@@ -3587,12 +3589,16 @@ static int cmd_widget(int argc, char **argv)
         printf("               val_y %d · val_pas %d (interligne %d px) · %s · %s\n",
                g.val_y, g.val_pas, g.val_pas - (int)lv_font_get_line_height(g.font_val),
                dn_widget_dispo_nom(g.dispo), dn_widget_entete_nom(g.entete));
-        printf("               chevauchements cote a cote DETECTES : %u\n",
-               (unsigned)dn_widget_chevauchements());
-        if (dn_widget_chevauchements() > 0) {
-            printf("               🔴 un texte a debordé sa colonne. LVGL clippe\n");
-            printf("                  SANS un mot : « rien n'a plante » n'est pas\n");
-            printf("                  « ca tient ». Voir les ESP_LOGW.\n");
+        printf("               « ca ne tient pas » DETECTES : %u en LARGEUR "
+               "(chevauchement) · %u en HAUTEUR (debordement)\n",
+               (unsigned)dn_widget_chevauchements(),
+               (unsigned)dn_widget_debordements());
+        if (dn_widget_chevauchements() || dn_widget_debordements()) {
+            printf("               🔴 LVGL CLIPPE SANS UN MOT : « rien n'a plante »\n");
+            printf("                  n'est pas « ca tient ». Voir les ESP_LOGW —\n");
+            printf("                  ils nomment la case et le nombre de px.\n");
+            printf("               ⚠️ LARGEUR et HAUTEUR sont comptees A PART : elles\n");
+            printf("                  ne se corrigent pas par le meme levier.\n");
         }
     }
     printf("invalidation : %s\n",
