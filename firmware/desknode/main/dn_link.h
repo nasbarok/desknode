@@ -61,7 +61,13 @@
  *         REFUSE un champ vide (« champ VIDE ≠ zéro », délibéré).
  *      2. LA LIGNE RESTE COURTE. Pire cas v2 mesuré au gabarit :
  *         « $DN,2,4294967295,4294967295,disk,1000000,1000000*FF » = 51 octets.
- *         `DN_LINK_LIGNE_MAX` peut donc RESTER À 63 — voir sa définition.
+ *         ⚠️ CETTE LIGNE DISAIT « `DN_LINK_LIGNE_MAX` peut donc RESTER À 63 »,
+ *         ET C'EST PÉRIMÉ (revue de code du 2026-08-19) : dn4-6 l'a portée à
+ *         **71** pour le pire cas v3 (66 o). L'argument, lui, tient — la forme
+ *         « une trame par métrique » garde la ligne courte ; c'est sa
+ *         CONCLUSION CHIFFRÉE qui avait vieilli, dans l'en-tête même qui
+ *         reproche à l'autorité de contredire le code. ⇒ voir la définition de
+ *         `DN_LINK_LIGNE_MAX`, qui fait foi.
  *      3. UNE 10ᵉ GRANDEUR RENTRERA ENCORE. Une trame tout-en-un faisait
  *         ~96 octets et saturait la ligne pour rien.
  *    ⚠️ LE PRIX EST RÉEL ET SE MESURE : ×5 sur l'écho console de la branche A
@@ -135,7 +141,9 @@
  *  Au-delà, LES DEUX SE CONFONDENT : une ligne émise à 125 o ou plus arrive
  *  AMPUTÉE DE SA FIN (le REPL tronque à 124), donc avec le symptôme « tronquée »,
  *  mais avec `len = 124 > DN_LINK_LIGNE_MAX` elle est comptée `rejets_trop_longue`.
- *  ⇒ **la plage réellement DISCRIMINANTE est 64..124** ; au-delà,
+ *  ⇒ la plage réellement DISCRIMINANTE était alors **64..124** ⚠️ — depuis dn4-6
+ *  et `DN_LINK_LIGNE_MAX = 71`, elle vaut **72..124 = 53 octets** (revue de code
+ *  du 2026-08-19 : ce paragraphe avait gardé les bornes de la v2). Au-delà,
  *  `rejets_trop_longue` ne prouve PLUS que l'émetteur a envoyé large — il peut
  *  aussi dire que le transport a coupé. ⛔ Un opérateur qui voit ce compteur monter
  *  et va chercher une régression côté agent cherche peut-être au mauvais endroit.
@@ -371,9 +379,13 @@ dn_link_etat_t dn_link_etat_metrique(dn_link_metrique_t m);
 const char *dn_link_metrique_nom(dn_link_metrique_t m);
 /* L'unité affichable de chaque grandeur (diagnostic console). NULL si aucune. */
 const char *dn_link_metrique_unite(dn_link_metrique_t m, int grandeur);
-/* Une 2ᵉ grandeur est-elle ATTENDUE pour cette métrique ? Sert à distinguer
- * « elle n'existe pas » (disk) de « elle existe mais la source ne la donne pas »
- * (gpu sans °C) — deux silences très différents. */
+/* ⛔ DOCBLOC ORPHELIN SUPPRIMÉ ICI (revue de code du 2026-08-19). Il décrivait
+ * `dn_link_metrique_v2_attendue()` — « Une 2ᵉ grandeur est-elle ATTENDUE ? …
+ * (gpu sans °C) » — et était resté EMPILÉ au-dessus de la déclaration qui l'a
+ * remplacée : deux docblocs contradictoires sur une seule fonction, dans le
+ * fichier dont les Dev Notes chiffrent le prix (« trois divergences .h/code ont
+ * déjà coûté un A/B mesuré deux fois »). La distinction qu'il portait n'est pas
+ * perdue — un COMPTE la rend plus fine qu'un booléen. */
 /* Combien de grandeurs la métrique PUBLIE (1..DN_LINK_GRANDEURS_MAX).
  * ⚠️ dn4-6 : remplace `dn_link_metrique_v2_attendue()`, qui était un BOOLÉEN et
  *    ne pouvait donc pas distinguer « gpu en attend 4 » de « gpu en attend 2 ».
