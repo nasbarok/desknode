@@ -2155,13 +2155,30 @@ static void detail_reparametrer(int idx)
              *    avait déjà chassé d'ici une fois (la condition
              *    `&& e->txt[1][0]` faisait retomber sur la branche mono).
              *
-             * ⚠️ TROIS PAR LIGNE, ET C'EST ARITHMÉTIQUE, PAS ESTHÉTIQUE. Le
-             *    panneau fait 460 px, le label est posé à x = 14 ⇒ 446 px
-             *    utiles. Largeurs RELUES de la police liée (AC5) :
-             *      3 grandeurs, pire cas  « 100,0 % · 150,0 °C · 350 W »  ~410 px  OK
-             *      4 grandeurs, pire cas  + « · 3000 tr/min »             ~632 px  NON
-             *    ⇒ au-delà de trois, on passe à la ligne. ⛔ Et LVGL clipperait
-             *      sans un mot : « rien n'a planté » n'est pas « ça tient ».
+             * 🔴 DEUX PAR LIGNE — ET LA PREMIÈRE VERSION EN METTAIT TROIS,
+             *    SUR UNE ARITHMÉTIQUE FAITE SUR LA MAUVAISE CASE.
+             *
+             *    Elle avait été dimensionnée sur `GPU` (« 100,0 % · 95,0 °C ·
+             *    350 W » = 405 px pour 446 utiles, ça tient) et appliquée aux
+             *    SIX. Or `CPU` porte un PRÉFIXE : « c.max 100,0 % » mesure à
+             *    elle seule **197 px**, et la ligne complète **520 px** —
+             *    ⇒ elle DÉBORDAIT de 74 px, clippée en silence par LVGL.
+             *    ⚠️ CONSTAT OWNER DU 2026-08-19 : *« la 3ᵉ grandeur est
+             *       tronquée, mais pourrait être mise sous la 1ʳᵉ, y a la
+             *       place »*. L'œil l'a vu avant l'arithmétique, parce que
+             *       l'arithmétique avait été faite sur un seul cas.
+             *    ⛔ LA LEÇON N'EST PAS « mettre deux » : c'est qu'une règle de
+             *       mise en page dimensionnée sur UNE case et appliquée aux SIX
+             *       est une extrapolation, exactement celle qu'AC5 interdit.
+             *       ⇒ D'où la garde ci-dessous, qui MESURE chaque ligne.
+             *
+             *    Pire cas mesuré à deux par ligne, pour 446 px utiles :
+             *      CPU l1 « 100,0 % · 5,7 GHz »        264 px  OK
+             *      CPU l2 « c.max 100,0 % »            197 px  OK
+             *      GPU l1 « 100,0 % · 150,0 °C »       265 px  OK
+             *      GPU l2 « 350 W »                     90 px  OK
+             *    ⚠️ Et le panneau fait 97 px = DEUX lignes de 35. À quatre
+             *       grandeurs on reste à deux lignes : la hauteur suffit.
              * ⚠️ « -- » ne porte JAMAIS son unité, ✅ mais garde son préfixe :
              *    c'est lui qui dit QUELLE grandeur manque (W10 jusque dans le
              *    détail — l'existence d'une grandeur ne se cache jamais).
@@ -2180,7 +2197,7 @@ static void detail_reparametrer(int idx)
             size_t p = 0;
             int ecrit = 0;
             for (int i = 0; i < n && p < sizeof(buf); i++) {
-                const char *sep = (i == 0) ? "" : ((i % 3) == 0 ? "\n" : "   ·   ");
+                const char *sep = (i == 0) ? "" : ((i % 2) == 0 ? "\n" : "   ·   ");
                 bool connue = e->txt[i][0] != '\0';
                 const char *px = d ? d->grandeurs[i].prefixe : NULL;
                 /* 🔴 L'ÉCHELLE HAUTE VAUT ICI AUSSI. Sans ça, la tuile dirait
@@ -2209,6 +2226,45 @@ static void detail_reparametrer(int idx)
             }
         }
         lv_label_set_text(s_det_valeur, buf);
+        /*
+         * 🔴 CHAQUE LIGNE EST MESURÉE, ET UN DÉBORDEMENT EST AUDIBLE.
+         *    C'est le pendant exact du détecteur de la tuile, et il existe pour
+         *    la même raison : LVGL clippe au parent SANS UN MOT, donc une règle
+         *    de mise en page qui cesse de tenir ne se signale JAMAIS. Celle-ci
+         *    a déjà cessé de tenir une fois — sur `CPU`, à cause d'un préfixe
+         *    que le calcul n'avait pas vu.
+         * ⛔ On ne tronque pas et on ne réduit pas la police : on POSE et on le
+         *    DIT. Remplacer un défaut visible par un défaut muet serait refaire
+         *    exactement ce qu'on solde.
+         */
+        {
+            lv_obj_t *par = lv_obj_get_parent(s_det_valeur);
+            int wp = par ? (int)lv_obj_get_width(par) : 0;
+            int x = (int)lv_obj_get_x(s_det_valeur);
+            int utile = wp - 2 * x;
+            char ligne[sizeof(buf)];
+            const char *deb = buf;
+            int nl = 0;
+            while (deb && *deb && utile > 0) {
+                const char *fin = strchr(deb, '\n');
+                size_t len = fin ? (size_t)(fin - deb) : strlen(deb);
+                if (len >= sizeof(ligne)) {
+                    len = sizeof(ligne) - 1;
+                }
+                memcpy(ligne, deb, len);
+                ligne[len] = '\0';
+                int lw = dn_widget_largeur(ligne, &dn_font_28);
+                if (lw > utile) {
+                    ESP_LOGW(TAG,
+                             "detail « %s » ligne %d : « %s » mesure %d px pour "
+                             "%d utiles (panneau %d, x %d) — elle DEBORDE de %d px "
+                             "et LVGL la CLIPPE sans un mot.",
+                             k_nom[idx], nl, ligne, lw, utile, wp, x, lw - utile);
+                }
+                nl++;
+                deb = fin ? fin + 1 : NULL;
+            }
+        }
         lv_obj_set_style_text_color(
             s_det_valeur,
             e->regime == DN_VAL_REELLE    ? lv_color_white()
