@@ -3032,10 +3032,12 @@ reprochait précisément à AC7. *Un instrument qu'on ne lit pas ne protège de 
 >    firmware (`taskLVGL` 2,20 contre 2,20 en (a) ; 22,56 contre 22,16 en (b)). C'est bien **§17.2
 >    qui est l'anomalie** — mais la cause en est une **erreur de dérivation de l'opérateur**, pas
 >    une propriété de l'instrument (§17.10 corrige la formulation).
-> 2. 🔴 **Le régime (c) à 210 600 px NE SE REPRODUIT PAS.** Trois tirs sur `b5cd141` donnent
->    **4 flushes / 1 cycle / 140 400 px**, mock coupé comme mock armé — soit exactement ce que
->    **§17.2** publiait. ⇒ **l'extrapolation d'AC8 est DÉMENTIE** : six mises à jour simultanées
->    coûtent **45,7 %** d'un plein écran, pas 69 %. Mécanisme INCONNU, au ledger.
+> 2. ✅ **Le régime (c) à 210 600 px EST REPRODUIT** — 6 flushes / 1 cycle / 210 600 px, deux tirs
+>    propres sur `b5cd141` avec un settle **garanti** de 3 s. ⚠️ §17.10 avait d'abord publié
+>    « 4 / 1 / 140 400 » et conclu que l'extrapolation d'AC8 était démentie : **c'était un artefact
+>    de lecture précoce**, réfuté le soir même parce que **l'owner a lu la dalle** et y a vu les
+>    **six** cases à jour. ⇒ **§17.9 avait raison, l'extrapolation d'AC8 TIENT**, et c'est **§17.2
+>    (4,00 / 140 400) qui reste à qualifier** — même piège probable, non vérifié.
 > ⚠️ Ses colonnes `ms/cyc` et `duty` **excluent l'attente de synchro** et ne se comparent donc ni
 > à §16.1, ni à §17.1, ni à §17.2, ni à §17.10 — qui publie les **deux termes séparément**.
 
@@ -3074,12 +3076,13 @@ grandeurs ; si la rafale invalidait **quatre** cases sur `21d02be` et en invalid
 4,00 → 6,00 flush/cyc et 4 × 35 100 → 6 × 35 100 px suivent exactement. ⛔ **Ce n'est pas
 mesuré** : ni le nombre de cases réellement invalidées sur `21d02be`, ni la composition du tir.
 ⏳ **À trancher en séance carte** (même session que (a) et (b)), ou à déclarer inexpliqué.
-🔴 **⛔ DÉMENTI PAR §17.10 (2026-08-19) — LE 210 600 NE SE REPRODUIT PAS.** Trois tirs sur
-`b5cd141` rendent **4 flushes / 1 cycle / 140 400 px**. Le témoin cité ci-dessous a depuis été
-**SUPPRIMÉ du firmware** (il ne pouvait rendre que sa valeur de succès). La fusion, elle, **reste
-prouvée** — par `flush` seul, et avec son témoin négatif : poussées **une par une**, les six cases
-rendent bien 6 flushes / 6 cycles / 210 600 px. Texte d'origine conservé ⤵
-✅ (c) était alors mesuré sur `d5d3539`,
+✅ **CONFIRMÉ PAR §17.10 (2026-08-19) — 210 600 px, REPRODUIT DEUX FOIS** sur `b5cd141` avec un
+settle garanti (6 flushes / 1 cycle). ⚠️ §17.10 avait d'abord publié un démenti (« 4 / 1 /
+140 400 ») : **artefact de lecture précoce**, réfuté le soir même par la **lecture de la dalle**.
+Le témoin cité ci-dessous a, lui, bien été **SUPPRIMÉ du firmware** — il ne pouvait rendre que sa
+valeur de succès, et la fusion se prouve désormais par `flush` seul, avec son témoin négatif
+(poussées une par une : 6 flushes / **6 cycles** / 210 600 px).
+✅ (c) était mesuré sur `d5d3539`,
 et `flush` confirme **6 flushes / 1 cycle / 210 600 px** dans la même passe — soit très exactement
 le `6 × 35 100 = 69 % d'un plein écran` que l'extrapolation d'AC8 prédisait.
 ⚠️ **LES COLONNES « — » DE (c) SONT DÉCLARÉES NON DÉFINIES, PAS OUBLIÉES.** Un CPU global, un
@@ -3271,7 +3274,7 @@ plus du total, pour que la question ne puisse plus se reposer.
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | **(a) repos, agent arrêté** (120,4 s) | **1,58 %** | 2,20 pt | 0,03 pt | 0,02 pt | 0,216 | 1,00 | 0,216 | 32 725 | 35 100 | 2 740 (max 2 982) | 2,74 | 6,32 | **9,06** | **0,20 %** |
 | **(b) RÉGIME RÉEL, 5 métriques à 5 trames/s** (120,6 s) | **13,61 %** | **22,56 pt** | **3,01 pt** | **0,49 pt** | 2,056 | 2,52 | 5,17 | **88 069** | 35 100 | 2 913 (max 3 185) | 7,33 | 41,76 | **49,09** | **10,09 %** |
-| **(c) `widget rafale`** (tir unique) | — ⚠️ | — ⚠️ | — ⚠️ | — ⚠️ | — ⚠️ | **4,00** | — ⚠️ | **140 400** | 35 100 | 2 915 (max 2 951) | 11,66 | 31,86 | **43,52** | — ⚠️ |
+| **(c) `widget rafale`** (tir unique) | — ⚠️ | — ⚠️ | — ⚠️ | — ⚠️ | — ⚠️ | **6,00** | — ⚠️ | **210 600** | 35 100 | 2 915 (max 2 951) | 17,49 | 47,79 | **65,28** | — ⚠️ |
 
 Autres tâches, régime (b) : `esp_timer` 0,82 · `dn_rtc` 0,23 · `dn_capt` 0,10 · `main` 0,02 pt.
 Régime (a) : `esp_timer` 0,68 · `dn_rtc` 0,16 · `dn_capt` 0,06 · `main` 0,02 pt.
@@ -3313,12 +3316,40 @@ restant étant les tâches non listées par §17.2 (`esp_timer`, `dn_rtc`, `dn_c
 **colonne par tâche est à lire ×2**, et **son budget `console_repl` de 1,27 pt est MORT** — la
 valeur mesurée est **3,01 pt** ici et 2,51 pt en §17.9.
 
-#### 🔴 CE QUE LA SÉANCE A TROUVÉ ET QUE PERSONNE N'AVAIT MESURÉ : L'EXTRAPOLATION D'AC8 EST DÉMENTIE
+#### 🔴 AC7 (c) — L'EXTRAPOLATION D'AC8 EST **CONFIRMÉE**, ET CETTE SECTION A D'ABORD PUBLIÉ LE CONTRAIRE
+
+> 🔴 **AUTO-RÉFUTATION, LE MÊME SOIR, ET C'EST L'ŒIL DE L'OWNER QUI L'A DÉCLENCHÉE.**
+> Cette section a d'abord publié **« 4 flushes / 1 cycle / 140 400 px = 45,7 % d'un plein écran »**
+> et en a conclu que l'extrapolation d'AC8 était **démentie**. **C'ÉTAIT FAUX**, et le chiffre a été
+> committé avant d'être réfuté. Ce qui s'est passé, dans l'ordre :
+> 1. Trois tirs avec un délai de settle **NON GARANTI** (~0,7-1 s, la durée d'un lancement de
+>    `dn_console.py`) rendaient **4 flushes / 1 cycle**, de façon **reproductible**.
+> 2. ⚠️ **Le tir n°1 de la même série rendait « 1 flush / 0 cycle »** — donc le piège de lecture
+>    précoce était **visible**, et il a été écarté comme un cas isolé au lieu d'être suspecté
+>    partout. **Un chiffre faux mais PLAUSIBLE est plus dangereux qu'un chiffre absurde.**
+> 3. 🔴 **L'OWNER A LU LA DALLE** : les **six** cases affichaient leurs nouvelles valeurs, et elles
+>    correspondaient **exactement** au modèle (`48,8 % 36,4 GHz` · `49,9 % 43,7 °C` · `50,0 %` ·
+>    `51,1 / 57,3 Mb/s` · `52,2 Mo/s`). ⇒ **six cases peintes ne peuvent pas tenir en 4 flushes** :
+>    les deux affirmations ne pouvaient pas être vraies ensemble.
+> 4. Rejeu avec une attente **GARANTIE de 3 s** (`--listen 3`), quatre tirs :
+>    **6 / 1 / 210 600** · **6 / 1 / 210 600** · 7 / 2 / 245 700 · 7 / 2 / 245 700 — les deux
+>    derniers portant exactement **un flush et un cycle de parasite** (AMBIANCE, tick 5 s).
+> ⇒ ✅ **LE CHIFFRE EST 6 flushes / 1 cycle / 210 600 px**, et **l'extrapolation d'AC8 tient** :
+>   6 × 35 100 = 210 600 px = **69 % d'un plein écran**, LVGL ne fusionne aucune des six zones.
+> ⇒ ✅ **§17.9 avait RAISON** et elle est ici reproduite ; c'est **§17.2 (4,00 / 140 400) qui porte
+>   le défaut**, très probablement **le même piège de lecture précoce** — hypothèse, non vérifiée.
+> ⛔ **LA LEÇON, ET ELLE COÛTE CHER** : le settle d'un compteur de redessin **doit être garanti**,
+>   jamais laissé au hasard d'un temps de lancement de process. Et surtout : **l'œil a corrigé
+>   l'instrument**. Aucune console de ce firmware ne pouvait voir que 4 flushes contredisaient
+>   l'écran — il fallait regarder la dalle. *Le constat owner à l'œil fait foi*, ici littéralement.
+
+#### AC7 (c) — le détail de la mesure retenue
 
 | Ce qu'on provoque | flushes | cycles | px total | **px / cycle** |
 |---|---:|---:|---:|---:|
 | **Étalé** — six `widget pousser`, une par cycle | 6 | **6** | 210 600 | 35 100 |
-| **Rafale** — six poussées sous UN verrou | **4** | **1** | **140 400** | **140 400** |
+| **Rafale** — six poussées sous UN verrou (settle 3 s garanti, 2 tirs propres) | **6** | **1** | **210 600** | **210 600** |
+| *(rafale, settle NON garanti ~1 s — ⛔ MESURE FAUSSE, conservée pour la leçon)* | *4* | *1* | *140 400* | *140 400* |
 
 ✅ **LA FUSION EST PROUVÉE, ET PAR `flush` SEUL** — six poussées tombent dans **un seul cycle**.
 C'est ce qu'AC7 (c) devait établir, et c'est établi **sans témoin** : le témoin de rafale a été
@@ -3327,20 +3358,15 @@ succès, trois sémantiques de suite). Le témoin négatif est là aussi : pouss
 les six cases produisent bien **6 flushes / 6 cycles / 210 600 px** — donc **les six salissent**.
 ⇒ *un test négatif ne vaut que si le stimulus est prouvé* : il l'est.
 
-🔴 **MAIS LE COÛT N'EST PAS CELUI QUI ÉTAIT PUBLIÉ.** Trois tirs valides donnent **140 400 px**,
-jamais 210 600 — **mock coupé comme mock armé**. Et **140 400 est exactement ce que §17.2
-publiait** ; c'est le **210 600 de §17.9 qui ne se reproduit pas**.
-⇒ **L'extrapolation d'AC8 — « 6 × 35 100 = 210 600 px = 69 % d'un plein écran » — est DÉMENTIE.**
-Six mises à jour simultanées coûtent **140 400 px = 45,7 % d'un plein écran**. LVGL en élide **un
-tiers**, et c'est un **gain**, pas une perte de données (les six poussées sont bien appliquées :
-le régime étalé le prouve).
-⛔ **MÉCANISME NON ÉTABLI, ET IL NE SERA PAS INVENTÉ ICI.** Les six cases salissent quand on les
-pousse séparément ; groupées, deux n'atteignent pas la dalle. `plus grande aire` reste à **35 100
-px** dans les deux cas, donc **il n'y a pas de fusion de zones en une aire plus grande** — deux
-cases ne sont simplement pas recopiées. Pourquoi : **INCONNU**.
-⚠️ **C'est la TROISIÈME extrapolation de ce dépôt démentie par sa propre mesure** (facteur 10 de
-dn2-1, facteur 5,3 de la barre de dn3-2, celle-ci). ⇒ **Porté au ledger, et il faut un
-correct-course** : AC7 (c) **et** AC8 reposaient tous deux sur 210 600.
+✅ **ET LE COÛT EST CELUI QUI ÉTAIT PRÉDIT** : **210 600 px = 69 % d'un plein écran**, LVGL ne
+fusionnant **aucune** des six zones — ce que l'epic écrit, et qui est ici **reproduit deux fois**
+avec un settle garanti. `plus grande aire` reste à **35 100 px** : chaque case est copiée
+séparément, entière, et aucune n'est jointe à sa voisine.
+⇒ **AC7 (c) et AC8 gardent leur chiffre. Aucun correct-course n'est requis de ce côté.**
+⚠️ **Ce qui reste à qualifier** : §17.2 publie **4,00 / 140 400** pour ce même régime. L'hypothèse
+la plus simple est qu'elle a subi **le même piège de lecture précoce** que cette section a subi ce
+soir — mais ⛔ **ce n'est pas vérifié**, et §17.2 n'est pas réécrite sur une hypothèse. Porté au
+ledger comme question ouverte, avec sa recette : rejouer (c) sur `21d02be` avec settle garanti.
 
 #### AC12 — non-régression, `d5d3539` → `b5cd141`
 
