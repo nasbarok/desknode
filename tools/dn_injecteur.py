@@ -51,13 +51,16 @@ def _ck(corps):
     return f"{x:02X}"
 
 
-def trame(seq, t_ms, metrique, valeurs):
+def trame(seq, t_ms, metrique, valeurs, version=3):
     """v3. ⚠️ `None` = champ VIDE = « cette grandeur-là, je ne la connais pas »
     (W10 sur un fil positionnel). Les `None` de queue sont tronqués."""
     vs = list(valeurs)
     while vs and vs[-1] is None:
         vs.pop()
-    corps = f"DN,3,{seq},{t_ms},{metrique}," + ",".join(
+    if version <= 2:
+        # v1 ne connaît que `cpu` et 6 champs ; v2 plafonne à deux valeurs.
+        vs = vs[:1] if version == 1 else vs[:2]
+    corps = f"DN,{version},{seq},{t_ms},{metrique}," + ",".join(
         "" if v is None else str(v) for v in vs)
     return f"${corps}*{_ck(corps)}"
 
@@ -128,6 +131,27 @@ JEUX = {
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--jeu", choices=sorted(JEUX), default="pire")
+    # 🔴 LE DISCRIMINATEUR DU TRESSAUTEMENT (constat owner, 2026-08-19).
+    #    Émet EXACTEMENT le même trafic série, au même rythme, avec le même
+    #    travail de REPL et de parseur — mais un CHECKSUM VOLONTAIREMENT FAUX,
+    #    donc **AUCUNE mise à jour d'affichage**.
+    #    · ça tressaute quand même ⇒ la cause est le TRAFIC (USB / console /
+    #      contention de verrou), ⛔ pas le dessin ;
+    #    · ça ne tressaute plus  ⇒ la cause est le DESSIN SOUS TRAFIC.
+    #    ⚠️ Une seule variable change entre les deux tirs. C'est tout l'intérêt.
+    # 🔴 POUR L'A/B CONTRE LE FIRMWARE DE dn4-1 (`cfd1a54`), qui ne connaît que
+    #    v1 et v2. Sans ça, toutes les trames partiraient en `rejets_version` et
+    #    l'A/B mesurerait DEUX firmwares sous DEUX stimuli différents — c'est-à-
+    #    dire rien du tout.
+    # ⚠️ En v2 le protocole plafonne à DEUX valeurs : les grandeurs 3 et 4 sont
+    #    tronquées. ⛔ Le FLUSH, lui, ne change pas : le groupage invalide LE
+    #    CONTENEUR, donc une case repeint la même surface quel que soit le
+    #    nombre de labels réécrits. C'est ce qui rend l'A/B honnête.
+    p.add_argument("--version", type=int, choices=(1, 2, 3), default=3,
+                   help="version de protocole emise (2 pour le firmware dn4-1)")
+    p.add_argument("--checksum-faux", action="store_true",
+                   help="emet le meme trafic mais SANS aucune mise a jour "
+                        "d'affichage (les trames partent en rejets_checksum)")
     p.add_argument("--secondes", type=float, default=30.0)
     # 🔴 L'ESPACEMENT DES CINQ TRAMES DANS LA SECONDE N'EST PAS UN DETAIL DE
     #    CONFORT : c'est l'axe `dn_link_etalement` (l'A/B « poussee ETALEE vs
@@ -143,6 +167,10 @@ def main():
 
     jeu = JEUX[a.jeu]
     ser = dn_console.ouvrir(a.port, a.baud)
+    if a.checksum_faux:
+        print("[injecteur] ⚠️ CHECKSUM FAUX : meme trafic, AUCUNE mise a jour "
+              "d'affichage.")
+    print(f"[injecteur] protocole v{a.version}")
     print(f"[injecteur] jeu « {a.jeu} » — {a.secondes:.0f} s a 1 Hz, "
           f"espacement {a.espacement*1000:.0f} ms "
           f"(peremption 3 s : sans ca les cases retombent a « -- »)")
@@ -159,7 +187,16 @@ def main():
             t_ms = int((cycle - t0) * 1000) & 0xFFFFFFFF
             for m, vs in jeu.items():
                 seq += 1
-                ser.write((f"pc {trame(seq, t_ms, m, vs)}\n").encode("ascii"))
+                if a.version == 1 and m != "cpu":
+                    continue  # v1 ne connaît QUE `cpu` — le reste serait rejeté
+                tr = trame(seq, t_ms, m, vs, a.version)
+                if a.checksum_faux:
+                    # ⛔ On casse le checksum, ⛔ PAS la grammaire : la trame doit
+                    #    traverser TOUT le parseur (decoupage, version, metrique)
+                    #    et ne tomber qu'a la toute derniere garde. Sinon on ne
+                    #    mesurerait pas le meme travail.
+                    tr = tr[:-2] + ("00" if not tr.endswith("00") else "11")
+                ser.write((f"pc {tr}\n").encode("ascii"))
                 ser.flush()
                 n += 1
                 # ⚠️ Le REPL rend l'invite entre deux commandes ; on draine ce
