@@ -3445,3 +3445,261 @@ des lignes attendues. **Compter ce qu'on a capturé avant de le publier** — c'
 - **Le +13,4 ms de latence de transition** — déclaré, non attribué.
 
 
+
+---
+
+## 18. `CPU` À TROIS ET `GPU` À TROIS — mesuré le 2026-08-19 (dn4-6, P9.1b)
+
+> **Firmware `690af25`, SHA LU AU BANDEAU `App version`** — ⛔ pas déduit du dépôt.
+> Marche P9.1b, insérée entre `dn4-1` et `dn4-2`.
+
+### 18.0 CE QUE CETTE SECTION CORRIGE DANS §17.10 — À LIRE EN PREMIER
+
+🔴 **DEUX CHIFFRES DE §17 NE SONT PAS REPRODUCTIBLES TELS QU'ILS SONT PUBLIÉS.**
+
+1. **La latence de transition n'est pas reproductible à mieux que ±16 ms.**
+   Rejouée sur le **MÊME binaire** que §17.10 (`cfd1a54` ≡ `b5cd141`
+   fonctionnellement) :
+
+   | | §17.10 | **re-relevé dn4-6** | écart |
+   |---|---:|---:|---|
+   | moyenne | 349,9 ms | **333,8 ms** | **−16,1 ms (−4,6 %)** |
+   | minimum | 291,8 ms | **291,9 ms** | **+0,1 ms** |
+   | maximum | 425,6 ms | **374,3 ms** | −51,3 ms |
+
+   ✅ **Cela CONFIRME l'hypothèse que §17.10 avait laissée ouverte** sur le
+   « +13,4 ms déclaré, NON attribué » : *« le minimum est identique à 0,5 ms
+   près, c'est la QUEUE qui s'allonge »*. **C'était de la variance de queue.**
+   ⇒ 🔴 **Le budget « < 300 ms » de `dn4-4` doit se juger sur une DISTRIBUTION,
+   pas sur une moyenne.** Un verdict à ±13 ms sur n=40 est du bruit.
+
+2. 🔴 **`flush/cyc`, `px/cyc` et `duty` du régime (b) DÉPENDENT DU RYTHME DE
+   L'ÉMETTEUR, que §17.10 n'a pas enregistré.** Même firmware, même jeu de
+   valeurs, **seul l'espacement des cinq trames dans la seconde change** :
+
+   | espacement | cycles/s | flush/cyc | px/cyc | duty |
+   |---|---:|---:|---:|---:|
+   | **40 ms** | 3,154 | 1,63 | **59 630** | 7,96 % |
+   | **4 ms** | 2,194 | 2,34 | **85 712** | 9,81 % |
+   | *§17.10 (espacement inconnu)* | *2,056* | *2,52* | *88 069* | *10,09 %* |
+
+   ⇒ **32 % d'écart sur `px/cyc`, produit par l'INSTRUMENT et non par le
+   firmware.** ⛔ Un relevé de régime (b) qui ne déclare pas son espacement
+   n'est comparable à rien. `tools/dn_injecteur.py --espacement` le rend
+   explicite.
+
+### 18.1 LA GÉOMÉTRIE RETENUE — ET LES TROIS VOIES AVEC LEUR PRIX
+
+**Décision owner du 2026-08-19, prise SUR LA DALLE** : la voie **« repli »**.
+
+```
+case 225 x 163   (D12 : barre 70->60, MENU 60->51, grille 510->529)
+  icone  dn_font_28 @ y=8   -> boite  8..43     <- EN-TETE INTACT
+  titre  dn_font_14 @ y=22  -> boite 22..40
+  val_y = 48, val_pas = 40  -> interligne 40-35 = 5 px  (= le critere de D12)
+  3 grandeurs : derniere boite 48 + 2x40 + 35 = 163 = h  PILE
+```
+
+**LA TABLE OBJECTIVE DES CINQ CANDIDATS** — compteurs remis à zéro **sous le
+verrou**, juste avant l'unique reconstruction de chaque voie :
+
+| voie | case | `val_y`/`val_pas` | interligne | chevauch. | déborde | verdict |
+|---|---|---|---:|---:|---:|---|
+| **défaut** (avant D12) | 225×156 | 48 / 40 | 5 px | 0 | **3** | 🔴 3 valeurs CLIPPÉES |
+| **(a)** MENU supprimé | 225×180 | 36 / 36 | **1 px** | 0 | 0 | ⚠️ tient, **sous le critère D12** |
+| **(b)** 3ᵉ police + D12 | 225×163 | 36 / 30 | 12 px* | 0 | 0 | ⚠️ tient — *****police 14, PAS 22** |
+| **(c)** côte à côte | 225×156 | 48 / 40 | 5 px | **2** | 0 | 🔴 **RÉFUTÉE** (§18.2) |
+| **(c2)** mixte | 225×180 | 48 / 40 | 5 px | **2** | 0 | 🔴 **RÉFUTÉE** (§18.2) |
+| ✅ **repli** GPU à 3 + D12 | 225×163 | 48 / 40 | **5 px** | **0** | **0** | ✅ **RETENUE** |
+
+**CE QUE CHAQUE VOIE COÛTAIT, ANNONCÉ AVANT LE CONSTAT :**
+- **(a)** — la barre MENU quitte la maquette · interligne **1 px, les valeurs se
+  touchent** · l'en-tête compacté fait passer **les SIX icônes de 28 à 14 px**,
+  or l'icône est le **seul** endroit où le champ `couleur` est exercé.
+  🔴 **Sans en-tête compacté, (a) est réfutée par l'arithmétique** : l'icône 28
+  descend à 43, et `44 + 4×35 = 184 > 180`.
+- **(b)** — la police ~22 **n'est pas embarquée** ; la branche jouable utilise la
+  14, donc *la géométrie est représentative, la lisibilité ne l'est pas*. Son
+  verdict exigerait une régénération (npm + réseau, ~19 Ko extrapolés).
+- **repli** — le `tr/min` tombe. ⚠️ **Alors qu'il a QUALIFIÉ** (§18.3).
+
+**CONSTATS OWNER, VERBATIM (2026-08-19, firmware `793c880`, pire cas injecté) :**
+1. lisibilité à ~50 cm : **« oui MAIS reseau pour si valeur haute convertir en Gb/s »**
+2. le marquage `c.max` se distingue du % du dessus : **« ok »**
+3. l'interligne de 5 px suffit : **« non c'est bon »**
+4. la barre et le MENU rétrécis : **« non c'est bon »**
+5. la page de détail : **« la 3ᵉ grandeur est tronquée mais pourrait être mise
+   sous la 1ʳᵉ, y a la place »** ⇒ §18.4
+
+### 18.2 LA LARGEUR, MESURÉE — L'ESTIMATION DE dn3-1 ÉTAIT FAUSSE DE 22 px
+
+Relue de `lv_text_get_size()` (police liée, **kerning compris**) par
+`widget largeur`. Case 225, **utile 201 px**, gouttière 12.
+
+| | « 25,5 °C » | « 52,4 % » | total |
+|---|---:|---:|---:|
+| **estimé** (dn3-1, ~15,8 px/car.) | ~110 | ~95 | **205** |
+| **MESURÉ** | **94** | **89** | **183** |
+
+🔴 **L'estimation qui a écarté le côte à côte en dn3-1 était haute de 22 px
+(−10,7 %)**, et `183 + 12 = 195 ≤ 201` : ce couple-là **TIENT**. Une décision de
+conception reposait sur un produit `nb_caractères × largeur_moyenne`.
+
+**MAIS AUCUN COUPLE NE TIENT AU PIRE CAS** — `a + b + 12 ≤ 201` :
+
+| couple | a | b | total | tient ? |
+|---|---:|---:|---:|---|
+| CPU `100,0 %` + `5,7 GHz` | 104 | 107 | **223** | 🔴 |
+| CPU `100,0 %` + `100,0 GHz` | 104 | 140 | **256** | 🔴 |
+| GPU `100,0 %` + `95,0 °C` | 104 | 98 | **214** | 🔴 |
+| GPU `100,0 %` + `150,0 °C` | 104 | 109 | **225** | 🔴 |
+| GPU `350,0 W` + `3000,0 tr/min` | 115 | 194 | **321** | 🔴 |
+| GPU **entiers** `350 W` + `3000 tr/min` | 91 | 170 | **273** | 🔴 |
+| GPU entiers + **unité courte** `350 W` + `3000 rpm` | 91 | 141 | **244** | 🔴 |
+| GPU **valeurs réelles** `53 W` + `604 tr/min` | 72 | 152 | **236** | 🔴 |
+| AMB `-12,3 °C` + `100,0 %` | 99 | 104 | **215** | 🔴 |
+| NET `↓ 1000,0 Mb/s` + `↑ 1000,0 Mb/s` | 202 | 202 | **416** | 🔴 |
+| CPU `c.max 100,0 %` **seule** | 197 | — | **197** | ✅ |
+
+⇒ **(c) et (c2) sont RÉFUTÉES.** Les trois variantes qu'il fallait instruire
+avant de le dire le sont : **sans décimale** (273), **unité courte** (244),
+**ligne mixte** (voie c2). Toutes échouent.
+✅ **Un SECOND instrument, indépendant, le confirme sur la dalle** : en voie (c)
+le détecteur de chevauchement du runtime lève **2 chevauchements** nommés et
+chiffrés (`AMBIANCE` grandeur 1 : colonne gauche à 106 px, colonne droite à 112,
+**il manque 6 px**).
+⚠️ **Ni l'un ni l'autre seul ne tranche** : le compteur runtime ne voit que ce
+qui est affiché À CET INSTANT (agent arrêté, `CPU` et `GPU` sont à « -- » et ne
+chevauchent rien), `widget largeur` voit le pire cas.
+⚠️ **La conclusion de dn3-1 tient donc, mais pour une raison qu'elle n'avait pas
+calculée** : ce n'est pas le couple nominal qui déborde, c'est le pire cas.
+
+### 18.3 `FAN_RPM` A QUALIFIÉ, ET IL N'A PAS DE PLACE
+
+Session **959 échantillons / 16,0 min à 1 Hz**, tour en usage normal, critère
+**écrit et HORODATÉ à `2026-08-19T11:17:55Z`, AVANT le tir**. Jugé sur la valeur
+**AFFICHÉE** (le `tr/min` ENTIER).
+
+| candidat | étendue (C1 ≥ 5) | taux texte (C2 ≥ 10 %) | σ (C3 ≥ 1) | verdict |
+|---|---|---:|---:|---|
+| **`FAN_RPM`** (idx 14) | **593..606 = 13** ✅ | **55,2 %** ✅ | **2,02** ✅ | ✅ **QUALIFIE** |
+| `ASIC_POWER` (idx 23) *témoin* | 48..51 = **3** ❌ | 57,9 % ✅ | **0,75** ❌ | 🔴 **NE QUALIFIE PAS** |
+| `max(cpu_percent(percpu))` | 0..77 ✅ | **90,2 %** ✅ | **12,29** ✅ | ✅ **QUALIFIE** |
+| `cpu_percent()` | 0..34 ✅ | 69,3 % ✅ | 4,26 ✅ | ✅ |
+
+🔴 **LE REPLI PRÉ-AUTORISÉ NE QUALIFIAIT PAS.** Trois textes du dépôt écrivent
+que `ASIC_POWER` *« qualifie, déjà mesuré »* : le relevé du 2026-08-18 (n=29) ne
+publiait que le **taux** (41,4 %) et une étendue de **5** — soit C1 **à la
+limite exacte**. Sur 959 échantillons, l'étendue tombe à **3** et σ à **0,75**.
+⚠️ **Le témoin fait son travail dans l'autre sens** : son taux (57,9 %) est
+cohérent avec les 41,4 % attendus ⇒ **ce n'est pas une session plate**.
+⇒ Si `FAN_RPM` avait échoué, le repli aurait été appliqué **sur une
+qualification fausse**, en croyant l'avoir mesurée.
+
+✅ **La conclusion de ledger *« le CPU n'aurait rien à mettre en troisième »* est
+RÉFUTÉE** : la 3ᵉ grandeur bouge **plus** que la 1ʳᵉ (90,2 % contre 69,3 %,
+σ 12,29 contre 4,26).
+✅ **Coût de l'agent** : `cpu_percent()` **161 µs** de médiane, `percpu`
+**287 µs**, les deux **383 µs/cycle = 0,0383 % d'un cœur** à 1 Hz — **facteur 26
+sous le critère brief n°4**. Ordre **alterné** à chaque cycle ; la 1ʳᵉ série
+n'était PAS anormale cette fois (158 contre 161 de médiane).
+⚠️ **Correction d'un chiffre publié** : `percpu` était annoncé à
+**0,07..0,10 ms** ; mesuré à **0,287 ms** de médiane, soit **~3× plus cher**.
+
+### 18.4 LA PAGE DE DÉTAIL — UNE RÈGLE DIMENSIONNÉE SUR LA MAUVAISE CASE
+
+`widget detail` relit le label construit (texte, largeur, x, largeur du parent).
+
+| case | ligne composée | largeur | utile | verdict |
+|---|---|---:|---:|---|
+| GPU | `100,0 % · 95,0 °C · 350 W` | 405 px | 446 | ✅ tient |
+| **CPU** | `100,0 % · 5,7 GHz · c.max 100,0 %` | **520 px** | 446 | 🔴 **DÉBORDE de 74 px** |
+
+🔴 **La règle « trois par ligne » avait été dimensionnée sur `GPU` et appliquée
+aux SIX.** Elle n'avait jamais été vérifiée sur la case qui porte un **préfixe** :
+`c.max 100,0 %` mesure **197 px** à elle seule. ⛔ C'est l'extrapolation que
+§18.2 interdit, commise dans la story qui l'interdit.
+⇒ **Deux par ligne**, et **chaque ligne est MESURÉE à la pose**, avec un
+`ESP_LOGW` nommant la case, la ligne, sa largeur et les px qui débordent.
+Pire cas à deux par ligne, pour 446 utiles : CPU l1 **267** / l2 **197**,
+GPU l1 **258** / l2 **90**. Le panneau passe de 62 à **97 px** (deux lignes de
+35), pris au **cadre de courbe vide**, dont le bas ne bouge pas.
+
+### 18.5 `RÉSEAU` BASCULE EN `Gb/s` — CONSTAT OWNER, ET LE CHIFFRE LE CONFIRME
+
+`↓ 99999,9 Mb/s` mesure **202 px pour 201 utiles** : elle **débordait déjà**, et
+LVGL la clippait sans un mot. Seuil **1000,0 Mb/s** (l'endroit où l'unité change
+de nom), diviseur 1000, unité haute `Gb/s`.
+- l'unité reste **dans le descripteur** (les DEUX y sont) ⇒ la règle *« une
+  valeur ABSENTE ne porte JAMAIS son unité »* tient ; ce qui varie est
+  **laquelle**, et ce choix vit dans l'**état**.
+- ⚠️ **pas d'hystérésis, et c'est assumé** : elle rendrait l'unité affichée
+  dépendante de l'HISTOIRE, donc deux modules côte à côte pourraient afficher
+  deux unités pour la même valeur. Le clignotement est honnête.
+- 🔴 **L'unité était concaténée à TROIS endroits** (`composer()`,
+  `detail_reparametrer`, la table de `widget`). Tant qu'il n'y avait qu'une
+  unité par grandeur, les trois disaient la même chose. La bascule l'a révélé
+  **à la première mesure** : la console imprimait « 100,0 **Mb/s** » sur une
+  valeur convertie en Gb/s — **fausse d'un facteur mille**, dans l'instrument
+  qui sert à vérifier. ⇒ `dn_widget_unite()`, une définition, trois appelants.
+- ⚠️ `DISQUE` a la même forme (`99999,9 Mo/s`) et le mécanisme est **prêt** —
+  ⛔ **non armé** : l'owner a nommé `RÉSEAU`. Legs explicite.
+
+### 18.6 LES TROIS RÉGIMES, SUR LE FIRMWARE LIVRÉ
+
+`ms/cyc` = **copie + attente**, publiées **séparément** (§17.9 avait oublié
+l'attente et publié un `duty` divisé par 8 sous le titre « Aucune dérive »).
+
+| régime | cyc/s | flush/cyc | flush/s | px/cyc | plus gr. aire | copie µs/flush | attente µs/flush | ms/cyc | duty |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| **(a) repos** | 0,214 | 1,00 | 0,214 | 36 675 | **36 675** | 3 033 | 6 181 | **9,21** | — |
+| **(b) 5 tr/s, espacement 4 ms** | 2,194 | 2,34 | 5,13 | 85 712 | **36 675** | 3 067 | 16 062 | **44,71** | **9,81 %** |
+| **(b′) 5 tr/s, espacement 40 ms** | 3,154 | 1,63 | 5,15 | 59 630 | **36 675** | 3 076 | 12 386 | **25,25** | **7,96 %** |
+
+✅ **La plus grande aire vaut EXACTEMENT `225 × 163 = 36 675`** dans les trois
+régimes. ⛔ **61 440 aurait signifié que le draw buffer scinde, 74 880 que les
+bandes sont actives.**
+✅ **Test de réconciliation** (somme des tâches = CPU global × 2) : **écart
++0,00 pt**. `taskLVGL` **22,73 pt**, `console_repl` 2,80, `dn_link` **1,04**
+(contre 0,49 — le parseur v3 lit plus de champs), CPU global **13,88 %**.
+✅ **La prédiction sur la SURFACE est tenue** : aire/flush **34 948 → 36 675 =
++4,9 %** contre **+4,5 %** prédits ; copie/flush **+5,3 %**.
+✅ **« Les grandeurs supplémentaires sont GRATUITES en pixels »** est CONFIRMÉ :
+l'aire par flush vaut exactement `CASE_W × CASE_H`, quel que soit le nombre de
+labels — le groupage invalide bien le conteneur.
+
+### 18.7 NON-RÉGRESSION
+
+| grandeur | T0 `cfd1a54` | **livré `690af25`** | écart |
+|---|---:|---:|---|
+| binaire | 917 824 o | **938 112 o** | +20 288 (**+2,21 %**), partition **78 % libre** |
+| RAM interne libre | 104 119 o | **103 503 o** | **−616 o (−0,59 %)** |
+| PSRAM libre | 7 768 236 o | **7 768 236 o** | **0** |
+| tas LVGL | 20 476 o (33 %) | **20 508 o (34 %)** | +32 o |
+| plus gros bloc | 40 744 o | **40 752 o** | +8 o |
+| fragmentation | 3 % | **3 %** | 0 |
+| tas sur 80 transitions | — | **−28 o** | **PLAT** |
+| `fps 15` | 37,40 Hz | **37,40 Hz** | **0** |
+| boot | 2 311 ms | **2 327 ms** | +16 ms |
+| latence | 333,8 (n=40) | **334,6 (n=80)** | +0,8 ms — **dans le bruit de ±16 ms** |
+
+⚠️ **Le coût RAM était annoncé à ~+300 o ; il vaut −616 o de libre**, soit deux
+fois l'estimation, qui ne comptait que `txt[][]` et `brut[]` : il faut y ajouter
+`connue[]`, `echelle_haute[]`, les `dn_link_etat_m_t` élargis et la démo.
+✅ **D4** : les seuls `nvs_*` hors `dn_bootcfg.c` sont dans `desknode_main.c`, au
+**BOOT** (`nvs_flash_init`) — ⛔ aucun sur un chemin de régime. Vérifié par grep.
+
+### 18.8 CE QUI RESTE OUVERT — ⛔ ÉCRIT COMME MANQUANT, PAS COMME TENU
+
+- **La campagne tactile en visant les jauges.** D12 a périmé toutes les
+  coordonnées publiées. **Formule contrôlée contre un relevé déjà publié avant
+  de faire viser quoi que ce soit** : elle reproduit `y = 340..350` (dn4-1) sur
+  l'ancienne géométrie. **Nouvelle bande de la jauge `RAM` : `y = 337..347`,
+  `x = 22..223`.** ⏳ 36 appuis / 36 relâches / **0 erreur I²C** relevés, mais
+  **les ZONES n'ont pas été tracées** — ⛔ la garde « toute la case est la zone
+  tactile » n'est donc **pas** re-prouvée sur la nouvelle géométrie.
+- **Le smoke owner 6/6.**
+- **La voie (b)** — la 3ᵉ police n'est pas générée ; son verdict de lisibilité
+  reste inaccessible.
+- **`FAN_RPM`** — qualifié, sans place. **Dette de PLACE, ⛔ pas question
+  ouverte de source.**

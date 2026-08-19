@@ -794,3 +794,143 @@ que la cible devienne atteignable.
 doigt**. Les 47 appuis de la séance ne l'ont atteinte **que deux fois**. Le risque pratique que
 l'AC redoutait est donc faible — mais c'est le correctif qui le rend nul, pas la difficulté de
 visée.
+
+---
+
+## 14. LE PROTOCOLE v3 — mesuré le 2026-08-19 (dn4-6, P9.1b)
+
+> Firmware **`690af25`**, SHA lu au bandeau. Extension **ADDITIVE** : ⛔ v1 et v2
+> restent acceptées, et leurs témoins de non-régression restent **VERTS**.
+
+### 14.1 CE QUI CHANGE, ET CE QUI NE CHANGE PAS
+
+| | v2 | **v3** |
+|---|---|---|
+| `DN_LINK_PROTO_VERSION` | 2 | **3** |
+| `..._VERSION_MIN` | 1 | **1** — ⛔ inchangé |
+| `NB_CHAMPS_MAX` | 7 | **9** (5 fixes + **1 à 4 valeurs**) |
+| `NB_CHAMPS_MIN` | 6 | **6** — inchangé |
+| `DN_LINK_LIGNE_MAX` | 63 | **71** |
+| `k_metriques[]` | `max1`/`max2`/`unite1`/`unite2`/`v2_attendue` | **`max[4]` · `unite[4]` · `n_grandeurs`** |
+| `dn_link_vue_t` | `v1`/`v2`/`v2_connue` | **`v[4]` · `connue[4]` · `n`** |
+| `DN_LINK_SAUT_MAX` | `3600 × METRIQUES` | ⛔ **INCHANGÉ** |
+
+🔴 **AUCUNE MÉTRIQUE N'EST AJOUTÉE — DES GRANDEURS LE SONT.** Deux gardes avaient
+été posées en revue « parce que `dn4-6` s'apprête à ajouter une métrique »
+(`k_metriques[].nom == NULL`, sentinelle décalée de `k_pc[]`). **Ce motif était
+faux.** Les gardes sont bonnes et restent ; ⛔ **on n'ajoute pas une métrique pour
+leur donner raison**, et `SAUT_MAX` ne bouge donc pas.
+
+⚠️ **`v2_attendue` (booléen) devient `n_grandeurs` (un COMPTE).** Un booléen ne
+peut pas distinguer « `gpu` en attend 4 » de « `gpu` en attend 2 » — c'est
+pourtant exactement le test qui envoie une trame mal formée en `rejets_format`.
+
+### 14.2 LE PIRE CAS, RECOMPTÉ ET **VÉRIFIÉ PAR L'ÉMETTEUR**
+
+```
+$DN,3,4294967295,4294967295,gpu,1000000,1000000,1000000,1000000*FF
+```
+= **66 octets** — ⛔ pas estimé : `trame()` de l'agent produit la ligne et sa
+longueur est **mesurée à 66**. `LIGNE_MAX = 71` laisse **5 octets** de marge.
+
+✅ **L'INVARIANT SE RECALCULE, PAS SEULEMENT LA VALEUR.** Le REPL délivre
+**124 caractères** au parseur (mesuré, dn4-1) ⇒ la bande *« ligne COMPLÈTE mais
+trop longue »* passe de **64..124 = 61 o** à **72..124 = 53 o** : elle
+**rétrécit de 13 % et RESTE ATTEIGNABLE**. Sans quoi `rejets_trop_longue`
+deviendrait un compteur décoratif — et un compteur décoratif est un instrument
+qui ment. ✅ Budget côté REPL : `66 + "pc " = 69 ≤ 124`.
+
+### 14.3 🔴 W10 À N GRANDEURS — LE CHAMP VIDE
+
+Une source qui rend `(46 %, °C inconnue, 53 W, 604 tr/min)` publie les **trois**
+qu'elle connaît et **tait** la deuxième. Sur un fil **positionnel**, ça ne peut
+être ni un décalage (la puissance s'afficherait dans la case de la température)
+ni une troncature (deux valeurs VRAIES seraient perdues).
+
+⇒ **UN CHAMP VIDE** : `$DN,3,911,1000,gpu,460,,2120,14500*CK`
+
+✅ **Et le parseur savait déjà le voir** : il découpe le corps **à la main** et
+non par `strtok`, précisément parce que `strtok` fusionne les séparateurs
+consécutifs et que « ,, » lui serait invisible. **La capacité existait depuis
+`dn2-2`, elle n'était pas exploitée.**
+⚠️ Les `None` de queue sont **tronqués** (« je n'ai que trois grandeurs » et « ma
+quatrième est inconnue » sont le même fait, et la forme courte économise des
+octets). ⛔ Un champ **0** vide est un `rejets_format` : une trame sans sa valeur
+principale ne dit rien, et l'agent ne doit alors **pas émettre** la métrique.
+
+**VÉRIFIÉ SUR LA CARTE** — une valeur après un trou n'est **pas décalée** :
+```
+gpu -> case 1 GPU VIVANTE  46,0 % · -- (degC ATTENDUE, non publiee par la source) · 212,0 W · 1450,0 tr/min
+```
+
+### 14.4 LA CAMPAGNE DE BRUIT — 9 CAS, 9 COMPTEURS, AUCUN CROISEMENT
+
+Chaque cas incrémente **le compteur attendu ET LUI SEUL** (diff avant/après) :
+
+| trame injectée | compteur attendu | **mesuré** |
+|---|---|---|
+| `ver = 4` | `rejets_version` | ✅ |
+| `ver = 1` à 7 champs | `rejets_format` | ✅ |
+| `ver = 2` à 9 champs | `rejets_format` (champ EN TROP — **v2 reste v2**) | ✅ |
+| `ver = 3` à 10 champs | `rejets_format` | ✅ |
+| `ver = 3`, `disk` à 4 valeurs | `rejets_format` | ✅ |
+| `ver = 3`, `gpu` v4 hors plafond | `rejets_bornes` | ✅ |
+| ligne COMPLÈTE de 72..124 o | `rejets_trop_longue` | ✅ |
+| ligne sans `*CK` | `rejets_tronquee` | ✅ |
+| checksum FAUX | `rejets_checksum` | ✅ |
+
+**LES TROIS TÉMOINS, TOUS ACCEPTÉS :**
+
+| témoin | origine | **mesuré** |
+|---|---|---|
+| **v1** (agent `dn2-2` non modifié) | dn2-2 / dn4-1 AC2 | ✅ **VALIDE** |
+| **v2** (agent `dn4-1` non modifié) | dn4-1 | ✅ **VALIDE** |
+| **v3 à trou interne** | dn4-6 / W10 | ✅ **VALIDE, sans décalage** |
+
+⚠️ **`rejets_bornes` a été prouvé PAR ACCIDENT avant sa campagne** : le premier
+jeu « pire cas » de l'injecteur envoyait 9 999 999 dixièmes de Mb/s, au-dessus du
+plafond de `k_metriques[]` ⇒ **8 `rejets_bornes` et rien à l'écran**. Le pire cas
+d'un injecteur doit rester **dans la grammaire**, sinon on ne mesure pas la
+lisibilité, on mesure le parseur.
+
+### 14.5 L'AGENT — SEPT GRANDEURS SANS UN APPEL DE PLUS
+
+| métrique | grandeurs publiées | source |
+|---|---|---|
+| `cpu` | `%` · `GHz` · **`max(cpu_percent(percpu))`** | `psutil` |
+| `gpu` | `%` · `°C` · **`W` (idx 23)** · **`tr/min` (idx 14)** | **UN** `ADL2_New_QueryPMLogData_Get` |
+| `ram` | `%` · `Go` totaux | `psutil` |
+| `net` | `↓ Mb/s` · `↑ Mb/s` | `psutil` |
+| `disk` | `Mo/s` | `psutil` |
+
+✅ **Les deux indices ADL sont GRATUITS** : ils sortent de la **même structure**
+que `_brut()` remplit déjà — ⛔ aucun appel supplémentaire.
+✅ **Coût mesuré, ordre ALTERNÉ à chaque cycle** (n=958) : `cpu_percent()`
+**161 µs** de médiane, `percpu` **287 µs**, les deux **383 µs/cycle** =
+**0,0383 % d'un cœur** à 1 Hz — **facteur 26 sous le critère brief n°4**.
+⚠️ **Correction d'un chiffre publié** : `percpu` était annoncé à
+**0,07..0,10 ms** ; il vaut **0,287 ms** de médiane, **~3× plus cher**.
+⚠️ La 1ʳᵉ série **n'était pas anormale** cette fois (158 contre 161 de médiane) :
+l'alternance d'ordre est **la garde**, pas la preuve d'un défaut à chaque tir.
+✅ **Aucun droit, aucun driver** : lancé depuis une session **NON élevée**.
+
+⚠️ **`BORNES` (agent) est le MIROIR de `k_metriques[]` (firmware), recopié et non
+dérivé** — le fil n'a pas de canal de négociation. **Risque assumé et NOMMÉ** :
+une dérive se verrait en `rejets_bornes` qui monte, ⛔ pas en silence. ⇒ **les
+deux tables bougent dans le MÊME geste.**
+
+### 14.6 🔴 CE QUE CE FICHIER DOIT CORRIGER DANS §13
+
+**`flush/cyc`, `px/cyc` et `duty` du régime (b) dépendent du RYTHME DE
+L'ÉMETTEUR.** Même firmware, même jeu de valeurs, seul l'espacement des cinq
+trames dans la seconde change :
+
+| espacement | cycles/s | flush/cyc | px/cyc | duty |
+|---|---:|---:|---:|---:|
+| **40 ms** | 3,154 | 1,63 | **59 630** | 7,96 % |
+| **4 ms** | 2,194 | 2,34 | **85 712** | 9,81 % |
+
+⇒ **32 % d'écart sur `px/cyc`, produit par l'instrument.** ⛔ Un relevé de régime
+(b) qui ne déclare pas son espacement n'est comparable à rien.
+`tools/dn_injecteur.py --espacement` le rend explicite. Voir §18.0 du fichier
+d'affichage.
