@@ -3523,12 +3523,39 @@ verrou**, juste avant l'unique reconstruction de chaque voie :
 
 | voie | case | `val_y`/`val_pas` | interligne | chevauch. | déborde | verdict |
 |---|---|---|---:|---:|---:|---|
-| **défaut** (avant D12) | 225×156 | 48 / 40 | 5 px | 0 | **3** | 🔴 3 valeurs CLIPPÉES |
+| **défaut** (avant D12) | 225×156 | 48 / 40 | 5 px | 0 | **2** ⬅️ | 🔴 2 valeurs CLIPPÉES (CPU, GPU) |
 | **(a)** MENU supprimé | 225×180 | 36 / 36 | **1 px** | 0 | 0 | ⚠️ tient, **sous le critère D12** |
 | **(b)** 3ᵉ police + D12 | 225×163 | 36 / 30 | 12 px* | 0 | 0 | ⚠️ tient — *****police 14, PAS 22** |
 | **(c)** côte à côte | 225×156 | 48 / 40 | 5 px | **2** | 0 | 🔴 **RÉFUTÉE** (§18.2) |
 | **(c2)** mixte | 225×180 | 48 / 40 | 5 px | **2** | 0 | 🔴 **RÉFUTÉE** (§18.2) |
 | ✅ **repli** GPU à 3 + D12 | 225×163 | 48 / 40 | **5 px** | **0** | **0** | ✅ **RETENUE** |
+
+🔴 **LA LIGNE « défaut » DISAIT 3, ET C'ÉTAIT UN RÉSIDU — CORRIGÉ PAR LA MESURE
+LE 2026-08-19** (séance post-revue, firmware **`1156eac`**, SHA lu au bandeau).
+
+L'arithmétique donnait 2 : à `case_h = 156`, `val_y = 48`, `val_pas = 40` et
+`lh_val = 35`, seules `CPU` et `GPU` (n = 3) débordent — bas de la 3ᵉ valeur
+`48 + 2×40 + 35 = 163 > 156` — tandis que `RÉSEAU`/`AMBIANCE` (n = 2) finissent à
+123 et `RAM`/`DISQUE` (n = 1) à 83. **Rejouée sur un compteur propre, la mesure
+donne 2, et elle les NOMME :**
+
+```
+« CPU » : 1 valeur(s) sur 3 DEBORDENT la case — bas 163 > h=156
+« GPU » : 1 valeur(s) sur 3 DEBORDENT la case — bas 163 > h=156
+⇒ 0 chevauchement · 0 trop large · 2 en HAUTEUR
+```
+
+⛔ **LA CAUSE EST INSTRUMENTALE, PAS GÉOMÉTRIQUE**, et c'est ce qui rendait le
+chiffre plausible : `s_debordements += hors` vit dans `dn_widget_creer`, donc
+s'accumule à **chaque** `build_scene()` — et `widget grille` comme
+`widget dispo|entete|val|police` reconstruisaient **sans remettre les compteurs à
+zéro**, contrairement à `widget voie`. Le « 3 » additionnait donc un résidu de
+l'état précédent. ⇒ corrigé (`compteurs_geom_reset()`, UN endroit) et la voie de
+référence est redevenue atteignable par `widget voie avantd12`, qui remet les
+compteurs sous le verrou.
+⚠️ **Ce que ça ne change pas** : le verdict de la voie « défaut » reste le même —
+des valeurs clippées en silence, donc une case qui montre moins qu'elle ne
+déclare. Ce sont **deux** cases, pas trois.
 
 **CE QUE CHAQUE VOIE COÛTAIT, ANNONCÉ AVANT LE CONSTAT :**
 - **(a)** — la barre MENU quitte la maquette · interligne **1 px, les valeurs se
@@ -3720,6 +3747,12 @@ fois l'estimation, qui ne comptait que `txt[][]` et `brut[]` : il faut y ajouter
 
 ### 18.8 CE QUI RESTE OUVERT — ⛔ ÉCRIT COMME MANQUANT, PAS COMME TENU
 
+> 🔴 **LA SÉANCE POST-REVUE DU 2026-08-19 (firmware `1156eac`) A FERMÉ QUATRE DE
+> CES LIGNES PAR LA MESURE — voir §18.10.** Elles sont **conservées telles
+> quelles ci-dessous**, avec leur état d'origine : c'est la règle du dépôt, et
+> c'est aussi ce qui rend lisible *pourquoi* elles étaient ouvertes. Le verdict
+> à jour de chacune est en §18.10.
+
 - **La campagne tactile en visant les jauges.** D12 a périmé toutes les
   coordonnées publiées. **Formule contrôlée contre un relevé déjà publié avant
   de faire viser quoi que ce soit** : elle reproduit `y = 340..350` (dn4-1) sur
@@ -3853,3 +3886,226 @@ tant que la carte est attachée à WSL. Même chemin de code, ⛔ pas le même
 ✅ Deux correctifs posés en chemin **augmentent aussi la marge**, et sont donc
 justifiés deux fois : la suppression des 15 `lv_obj_set_pos()` inutiles par
 seconde, et celle des 15 `lv_text_get_size()` inutiles par seconde.
+
+---
+
+### 18.10 SÉANCE POST-REVUE DE CODE — firmware `1156eac`, SHA LU AU BANDEAU
+
+> **Séance du 2026-08-19, APRÈS la revue de code adversariale 3 couches.**
+> 33 correctifs appliqués (`b2db419` → `1156eac`), `git status --porcelain`
+> **vérifié VIDE avant le flash** — ⚠️ c'est la première fois de cette story que
+> le bandeau porte le SHA du commit **sans rattrapage**, la règle qu'AC14 pose et
+> que `ce41caf` avait violée pour la 3ᵉ fois du dépôt.
+
+#### 18.10.1 🔴 LES TROIS RÉGIMES, SUR **UN SEUL SHA** — CE QU'AC12 EXIGE
+
+⚠️ **§18.6 publiait (a) et (b) sur `690af25` ; (c) n'existait pas.** Relever (c)
+seul sur `1156eac` aurait produit exactement la coupure que §18 vient de se
+reprocher (décision ② de la revue). Les trois sont donc **rejoués ensemble**.
+
+**RÉGIME (a) — repos, aucune injection, fenêtre de 30 s :**
+
+| grandeur | T0 §17.10 (`b5cd141`) | **`1156eac`** | verdict |
+|---|---:|---:|---|
+| flush / cycle | 1,00 | **1,00** | ✅ |
+| cycles/s | 0,216 | **0,200** | ✅ |
+| plus grande aire | 35 100 | **36 675** | = `225 × 163` |
+| copie µs/flush | 2 740 | **2 946** | **+7,5 %** |
+
+**RÉGIME (b) — 5 trames/s, `--espacement 4 ms`, 30 s, 150 trames émises :**
+
+| grandeur | T0 §17.10 | `690af25` (tir 4 ms) | **`1156eac`** | verdict |
+|---|---:|---:|---:|---|
+| flush/s | 5,17 | 5,13 | **5,37** | ✅ |
+| cycles/s | 2,056 | 2,194 | **2,30** | ✅ |
+| flush/cycle | 2,52 | 2,34 | **2,33** | ✅ |
+| px/cycle | 88 069 | 85 712 | **85 575** | ✅ −2,8 % |
+| copie µs/flush | 2 913 | 3 067 | **3 032** | ✅ |
+| plus grande aire | 35 100 | 36 675 | **36 675** | ✅ |
+
+⚠️ **L'ESPACEMENT EST DÉCLARÉ, ET C'EST LA CORRECTION QUE §18.6 APPORTE À §17.10** :
+ces colonnes **ne sont pas des propriétés du firmware seul**, elles dépendent du
+rythme de l'émetteur — le même binaire a rendu −32 % de `px/cyc` rien qu'en
+passant de 4 à 40 ms.
+
+✅ **LIAISON, régime (b)** : **149 valides sur 150 émises** · 0 doublon ·
+**1 perte de seq** · 0 resynchro · **0 rejet de toute cause** (tronquée, trop
+longue, checksum, version, format, bornes).
+
+**LES DEUX TÉMOINS DE NON-RÉGRESSION D'AC13, REJOUÉS SUR `1156eac` :**
+
+| témoin | émises | valides | doublons | **pertes seq** | rejets |
+|---|---:|---:|---:|---:|---:|
+| **v1** (le dialecte de `dn2-2`) | 15 | **15** | 0 | **0** | **0** |
+| **v2** (le dialecte de `dn4-1`) | 75 | **75** | 0 | **0** | **0** |
+
+🔴 **ET CES DEUX ZÉROS SONT AUSSI LA PREUVE D'UN CORRECTIF DE LA REVUE.**
+`tools/dn_injecteur.py` incrémentait `seq` **avant** le `continue` qui saute les
+métriques inconnues de la v1 : l'émetteur produisait seq 1, 6, 11… et le firmware
+comptait `pertes_seq += saut - 1`, soit **QUATRE pertes fabriquées par cycle**.
+Sur cette campagne de 15 cycles, l'ancien injecteur aurait affiché **~56 pertes**
+— sur le témoin de non-régression lui-même. ⛔ Un compteur pollué par l'émetteur
+ne prouve rien sur le récepteur ; celui-ci rend maintenant **0**.
+
+#### 18.10.2 🔴 LE RÉGIME (c) — RELEVÉ POUR LA PREMIÈRE FOIS
+
+AC12 exige **trois** régimes ; §18.6 n'en publiait que deux, (b′) n'étant qu'un
+second tir de (b). Et son instrument était **cassé** : `pousser_nolock()` posait
+`.n = 2` là où le régime réel en pose 3, donc `widget rafale` redessinait deux
+labels par case au lieu de trois — il ne mesurait pas le travail auquel il
+prétendait se comparer. Corrigé (`desc_n(idx)`), puis relevé.
+
+⚠️ **LE PROTOCOLE A DÛ ÊTRE CORRIGÉ EN COURS DE ROUTE, ET C'EST LE POINT DE
+MÉTHODE DE CETTE SÉANCE.** Premier tir : `flush reset` → settle 3 s → rafale →
+settle 3 s → `flush` ⇒ **10 flushes / 5 cycles = 2,0 flush/cyc**, très loin des
+6,00 du T0. ⛔ Avant d'en conclure quoi que ce soit, **témoin négatif** : la même
+fenêtre **sans rafale** rend **3 flushes / 3 cycles**. La fenêtre était donc trop
+longue et mesurait la rafale **plus le fond** (`AMBIANCE` toutes les 5 s, la
+barre). Fenêtre resserrée, et le témoin rejoué à la même durée :
+
+| | flushes | cycles | aire cumulée |
+|---|---:|---:|---:|
+| rafale, tir 1 | 7 | 2 | 256 725 px |
+| rafale, tir 2 | 7 | 2 | 256 725 px |
+| rafale, tir 3 | 7 | 2 | 256 725 px |
+| **témoin, même fenêtre, SANS rafale** | **1** puis **0** | **1** puis **0** | 36 675 puis 0 |
+
+⇒ **la rafale seule vaut 7 − 1 = 6 flushes en 2 − 1 = 1 cycle.**
+
+| grandeur | T0 §17.10 (`b5cd141`, case 156) | **`1156eac` (case 163)** | écart |
+|---|---:|---:|---|
+| **flush / cycle** | **6,00** | **6,00** | **0** ✅ la fusion tient |
+| **px / cycle** | 210 600 | **220 050** | **+4,49 %** |
+| **plus grande aire** | 35 100 | **36 675** | = `225 × 163` **exactement** |
+| copie µs/flush | 2 915 | **2 992** (3003 / 2972 / 3001) | +2,6 % |
+| attente | 47,79 ms/cyc | ⛔ **NON PUBLIÉE** | voir ci-dessous |
+
+✅ **Le +4,49 % de px/cycle est EXACTEMENT le rapport de surface de D12**
+(163/156 = 1,0449) : la géométrie coûte ce qu'elle mesure, et rien de plus.
+✅ **36 675 = `CASE_W × CASE_H`** ⛔ ni **61 440** (le draw buffer scinderait) ni
+**74 880** (les bandes seraient actives) — les deux témoins que la prédiction
+d'AC12 nommait.
+⛔ **L'`attente` n'est PAS publiée** : 76 / 85 / 91 ms cumulés sur trois tirs
+**strictement identiques** (7 flushes, 2 cycles, même aire au pixel près), soit
+±20 % de dérive de phase vsync. La story l'interdit nommément — *« conclure sur
+`flush/cyc`, JAMAIS sur des `attente_us` de fenêtres différentes »*.
+⛔ **Le CPU reste « — »**, comme au T0 : une rafale unique est trop courte pour
+déplacer un compteur cumulé. Ce n'est pas un oubli, c'est une limite d'instrument.
+
+#### 18.10.3 ✅ LES TROIS TÉMOINS D'AC2 — DANS UNE SEULE SÉQUENCE
+
+T2 laissait décoché *« VÉRIFIER le clamp livré par `dn4-1` (n = 5 sur MAX = 4) »*,
+et pour cause : la séquence qui le déclenche était **inerte**. `dn_ui_demo_set()`
+ne construisait que si la démo n'existait pas encore, donc `widget demo on` puis
+`widget demo on 5` ne rejouait **aucun** `dn_widget_creer()` — pendant que la
+console imprimait « AFFICHEE — n = 5 ». Corrigé par la revue (reconstruction quand
+`n` change), et joué **sur une démo déjà posée** :
+
+```
+« DÉMO 2+JAUGE » : 5 grandeurs demandees, 4 posees — 1 PERDUE(S)
+« DÉMO 2+JAUGE » : 1 valeur(s) sur 4 DEBORDENT la case — bas 203 > h=163 …
+                   LVGL les CLIPPE sans un mot
+« DÉMO 2+JAUGE » : pas de place pour la JAUGE (y_bas=208 + 6 + 10 > h=163)
+                   — La jauge est ABANDONNEE (valeurs > jauge > secondaire)
+« DÉMO 2+JAUGE » : pas de place pour la ligne secondaire … Texte PERDU
+```
+
+✅ **Le clamp de `dn4-1`** — vérifié, ⛔ pas réécrit, exactement ce qu'AC2 exige.
+✅ **La jauge bornée ET journalisée** — AC2 preuve n°1, la « 3ᵉ occurrence » du
+ledger, prise sur le fait.
+✅ **Le débordement de valeur** — le compteur que `dn4-6` a dû ajouter parce que
+le clamp *« compte les grandeurs DEMANDÉES, pas celles qui TIENNENT »*.
+✅ **La règle de priorité se lit dans l'ordre des trois logs** : les valeurs sont
+posées (une clippée, et elle le DIT), puis la jauge cède, puis la secondaire.
+
+#### 18.10.4 ✅ LE TÉMOIN NÉGATIF D'AC8 — VERT, ET CHIFFRÉ
+
+Garde exigée par AC13 et **jamais mesurée** jusqu'ici. Une case rendue **NUE**
+(`widget nue 4 on`) doit être **insensible au groupage** — sinon l'A/B d'AC8
+mesure autre chose que le widget. Cinq poussées par branche, fond soustrait :
+
+| branche | px par mise à jour (case NUE) |
+|---|---:|
+| `widget groupe on` | **3 805** · **3 866** |
+| `widget groupe off` | **3 785** · **3 896** |
+
+⇒ écart **< 3 %** : la case nue ne voit pas le groupage. ✅
+🔴 **Et le contraste porte la conclusion d'AC8** : une case **widget** coûte
+**36 675 px/maj** (le conteneur est invalidé d'un bloc) contre **~3 850** pour une
+case nue — **facteur 9,5**. C'est ce facteur que le groupage achète.
+
+#### 18.10.5 ✅ LA CAMPAGNE TACTILE, ENFIN **TRACÉE** — la garde passe du COMPTE à la ZONE
+
+§18.8 le disait en toutes lettres : *« la garde est corroborée par le compte, pas
+prouvée par la zone »*. `touch trace 90000` imprime **chaque appui avec sa
+coordonnée** :
+
+```
+fin de trace : 37 appui(s), 20 tap(s) sur zone.  (17 hors zone)
+```
+
+| phase | appuis | coordonnées relevées | taps |
+|---|---:|---|---:|
+| **jauge de `RAM`** | 10 | `y = 326..347` · `x = 58..203` | **10 → TAP sur RAM** |
+| retours (bouton RETOUR) | 11 | `y = 9..36` | 10 |
+| **BARRE** | 8 | `y = 15..26` · `x = 32..389` | **0** |
+| **MENU** | 8 | `y = 602..633` | **0** |
+
+✅ **« Toute la case est la zone tactile » (dn1-4 AC4)** : les dix appuis visant
+**la jauge** ont tous ouvert `RAM`, **y compris ceux tombés à `y = 326`**, donc
+**au-dessus** de la bande calculée `337..347`. La formule d'AC11 n'est plus
+seulement contrôlée contre un relevé publié : elle est **contrôlée par l'usage**.
+✅ **« Barre et MENU = zones mortes » (dn1-4 AC3 / dn3-1 AC4 / dn3-2 AC5)** :
+**16 appuis, 0 tap**, avec leurs `y` qui disent où ils sont tombés. ⛔ Ce n'est
+plus « l'owner n'a rien signalé », c'est seize coordonnées hors zone, comptées.
+✅ **0 erreur I²C** sur la campagne.
+
+⚠️ **UN FAIT QUE SEULE LA TRACE POUVAIT DONNER** : l'appui n°8, à **`y = 9`**, n'a
+**rien déclenché** — il est passé **au-dessus** du bouton RETOUR, et l'owner l'a
+rejoué sans le savoir. Ce n'est pas un défaut de la garde ; c'est la marge haute
+du bouton, et elle n'était visible dans aucun compteur.
+
+🔴 **ET ÇA SOLDE LA CONTRADICTION 32/32 CONTRE 36/36 — PAR REMPLACEMENT, PAS PAR
+ARBITRAGE.** Les deux comptes d'origine (story : 16 appuis / 32-32 · §18.8 :
+36/36) portaient sur une campagne **non tracée** dont la capture n'existe plus :
+⛔ aucun des deux n'est déclaré vainqueur, et aucun n'est corrigé. Ils sont
+**périmés** par une campagne qui, elle, publie ses coordonnées.
+
+#### 18.10.6 NON-RÉGRESSION SUR `1156eac` — au BOOT, ⛔ pas après la campagne
+
+| grandeur | `db5fcb8` (livré) | **`1156eac`** | écart |
+|---|---:|---:|---|
+| binaire | 939 296 o | **943 712 o** | +4 416 (**+0,47 %**), partition **78 % libre** |
+| RAM interne libre | 92 203 o | **92 315 o** | **+112 o** |
+| PSRAM libre | 7 768 236 o | **7 768 236 o** | **0** |
+| tas LVGL utilisé | 20 504 o (34 %) | **20 496 o (34 %)** | −8 o |
+| plus gros bloc | 40 752 o | **40 752 o** | **0** |
+| fragmentation | 2 % | **2 %** | **0** |
+| tas sur 80 transitions | +8 o | **20 496 → 20 476 = −20 o** | **PLAT** ✅ |
+| `fps 15` | 37,40 Hz | **37,40 Hz** | **0,00 %** |
+| latence `nav ab 40` (n=80) | 288,2 / **335,2** / 398,7 ms | 291,1 / **334,4** / 396,7 ms | **−0,8 ms**, dans le bruit de ±16 ms |
+| `dn_capteurs` | — | **BME680 VIVANT** · 61 lectures · 0 reprise · 0 reconfiguration · 0 erreur (i²c/donnée/bornes) · cadence **4 999 ms mesurés** pour 5 000 nominale · cycle 26 ms | ✅ colonne exigée par AC13, **jamais publiée avant** |
+
+🔴 **UN PIÈGE ÉVITÉ, ET IL MÉRITE D'ÊTRE ÉCRIT.** Le premier relevé de tas, pris
+**après** la campagne, donnait `plus gros bloc 24 724 o` et **`fragmentation
+40 %`** contre 40 752 o et 2 % sur `db5fcb8`. Publié tel quel, c'était une
+régression spectaculaire — et **fausse** : les chiffres de référence sont pris
+**au boot**, et dix navigations, quatre rafales, des bascules `nue` et trois
+changements de géométrie fragmentent le tas. Re-relevé après un boot propre :
+**40 752 o et 2 %, identiques au pixel près.** ⚠️ *Un chiffre faux mais plausible
+est plus dangereux qu'un chiffre absurde* — celui-là était les deux à la fois.
+
+#### 18.10.7 CE QUI RESTE, APRÈS CETTE SÉANCE
+
+- ⏳ **La voie (b)** — la 3ᵉ police n'est toujours pas générée ; son verdict de
+  lisibilité reste inaccessible. **Inchangé.**
+- ⏳ **`FAN_RPM`** — qualifié, sans place. **Dette de PLACE**, au ledger.
+- ⏳ **Le défaut de §18.9 avec l'agent PC RÉEL** — l'exclusivité `WSL ↔ COM3`
+  l'interdit tant que la carte est attachée à WSL. Même chemin de code, ⛔ pas le
+  même émetteur. **À rejouer en `dn4-2`, avec l'I²C en plus.**
+- 🟡 **`widget rafale` récite encore « 6 × 35 100 px »** dans son propre mode
+  d'emploi — l'aire d'**avant D12**. Un opérateur qui suit cette consigne calcule
+  210 600 et conclut que la mesure est fausse, alors que la valeur juste est
+  **220 050**. Même famille que le « 156 px » en dur que dn4-6 a supprimé de
+  `dn_console.c`. ⇒ **porté au ledger**, ⛔ pas corrigé en séance : changer le
+  code aurait changé le SHA au milieu des relevés.
