@@ -161,9 +161,18 @@ def main():
     #      comparable a un autre.
     p.add_argument("--espacement", type=float, default=0.04, metavar="S",
                    help="delai entre deux trames de la meme seconde (defaut 0,04)")
+    # ⚠️ BORNE VERIFIEE AVANT D'OUVRIR LE PORT (revue 2026-08-19) : `time.sleep()`
+    #    leve `ValueError` sur un negatif, et il le levait EN PLEIN TIR, port
+    #    ouvert — la campagne etait perdue apres avoir consomme sa fenetre.
+    #    Une seconde entiere entre deux trames n'a pas de sens non plus : les cinq
+    #    ne tiendraient plus dans le cycle de 1 Hz.
     p.add_argument("--port", default=dn_console.DEFAULT_PORT)
     p.add_argument("--baud", type=int, default=dn_console.DEFAULT_BAUD)
     a = p.parse_args()
+    if not (0.0 <= a.espacement <= 0.2):
+        p.error(f"--espacement {a.espacement} hors de [0 ; 0,2] s : cinq trames "
+                f"doivent tenir dans le cycle de 1 Hz, et time.sleep() leverait "
+                f"sur un negatif EN PLEIN TIR.")
 
     jeu = JEUX[a.jeu]
     ser = dn_console.ouvrir(a.port, a.baud)
@@ -186,9 +195,19 @@ def main():
             cycle = time.monotonic()
             t_ms = int((cycle - t0) * 1000) & 0xFFFFFFFF
             for m, vs in jeu.items():
-                seq += 1
+                # 🔴 `seq` N'EST CONSOMME QUE PAR UNE TRAME REELLEMENT EMISE —
+                #    CORRECTIF DE REVUE DU 2026-08-19. Il etait incremente AVANT
+                #    le `continue` : en v1, une seule metrique sur cinq part, donc
+                #    le firmware voyait seq 1, 6, 11... et comptait
+                #    `pertes_seq += saut - 1` = QUATRE pertes par cycle
+                #    (`dn_link.c`, la branche `saut > 1`).
+                # ⛔ Et la v1 est LE TEMOIN DE NON-REGRESSION d'AC7/AC13 :
+                #    l'instrument fabriquait des pertes sur la garde meme qu'il
+                #    doit valider. Un compteur pollue par l'emetteur ne prouve
+                #    rien sur le recepteur.
                 if a.version == 1 and m != "cpu":
                     continue  # v1 ne connaît QUE `cpu` — le reste serait rejeté
+                seq += 1
                 tr = trame(seq, t_ms, m, vs, a.version)
                 if a.checksum_faux:
                     # ⛔ On casse le checksum, ⛔ PAS la grammaire : la trame doit

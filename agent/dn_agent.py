@@ -393,14 +393,34 @@ class SourceGpuAdl:
         return True
 
     def temoin(self):
+        """Rend `(lanes, memclk)` — un 2-uplet, et il le RESTE : c'est un témoin
+        de mapping, pas une lecture de grandeurs. ⛔ Ne pas l'aligner sur `lire()`
+        « par symétrie » : les deux ne publient pas la même chose."""
         out = self._brut(self.adaptateur)
         if out is None:
             return None, None
         return out.sensors[_PM_BUS_LANES][1], out.sensors[_PM_CLK_MEMCLK][1]
 
     def lire(self):
-        """Rend (pct, degc) en unités entières, ou (None, None) si l'appel échoue.
-        `degc` peut être None seul : c'est le cas W10, et il doit rester possible.
+        """Rend `(pct, degc, watts, tr_min)` en unités entières — QUATRE valeurs,
+        TOUJOURS, y compris sur les chemins d'échec.
+
+        N'importe laquelle peut valoir `None` seule : c'est le cas W10, et il doit
+        rester possible. Un tuple entièrement `None` = la source n'a pas répondu ;
+        `_tenter()` le convertit en panne COMPTÉE ET NOMMÉE.
+
+        🔴 CORRECTIF DE REVUE DU 2026-08-19 — L'ARITÉ ÉTAIT MIXTE, ET C'ÉTAIT UNE
+           MINE. Les trois chemins d'échec rendaient `(None, None)` — un 2-uplet
+           hérité de la v2 — face à un appelant qui déballe QUATRE valeurs
+           (`g_pct, g_c, g_w, g_rpm = lu`). Ça ne cassait pas : la garde
+           tuple-tout-`None` de `_tenter()` les interceptait avant le déballage.
+           ⛔ Mais elle a été posée pour une AUTRE raison (compter la panne), et
+           la boucle principale ne rattrape que `KeyboardInterrupt` : le jour où
+           un chemin d'échec devient PARTIEL — `return None, 0` — le `ValueError`
+           du déballage emporte l'agent ENTIER, donc les CINQ métriques. C'est
+           exactement ce que l'isolement des sources existe pour empêcher.
+        ⚠️ Et le docstring annonçait encore « Rend (pct, degc) », c'est-à-dire le
+           contrat de la v2, dans le fichier qui EST le document d'autorité côté PC.
 
         ⚠️ LE TÉMOIN EST RE-JOUÉ À CHAQUE TIR (correctif de revue 2026-08-18) : il
            n'était vérifié qu'au constructeur, alors qu'une mise à jour de pilote
@@ -411,9 +431,9 @@ class SourceGpuAdl:
         """
         out = self._brut(self.adaptateur)
         if out is None:
-            return None, None
+            return None, None, None, None
         if not self._coherent(out):
-            return None, None
+            return None, None, None, None
         # 🔴 QUATRE GRANDEURS, UN SEUL APPEL. `out` est déjà rempli : lire deux
         #    capteurs de plus dans la MÊME structure coûte deux déréférencements.
         # ⚠️ Chaque capteur porte SON drapeau de validité (`[0]`) : un capteur
@@ -525,6 +545,15 @@ class Collecteur:
         # compter ses échecs remplacerait une mort bruyante par un silence.
         self.pannes = {}
         psutil.cpu_percent(interval=None)  # amorçage : le 1er appel vaut 0.0
+        # 🔴 ET `percpu=True` A SON PROPRE ÉTAT INTERNE — CORRECTIF DE REVUE DU
+        #    2026-08-19. `psutil` garde DEUX derniers relevés séparés
+        #    (`_last_cpu_times` et `_last_per_cpu_times`) : amorcer la forme
+        #    globale n'amorce PAS la forme par cœur. Sans cette ligne, le premier
+        #    cycle publiait `c.max 0,0 %` (la liste vaut `[0.0] x N`, donc elle
+        #    est NON VIDE et `max()` rend 0.0) pendant que le % moyen, lui, était
+        #    juste. ⛔ Une 3ᵉ ligne CPU clouée à zéro au démarrage est exactement
+        #    le symptôme que ce fichier décrit — il l'attribuait à une autre cause.
+        psutil.cpu_percent(interval=None, percpu=True)
         self._d0 = psutil.disk_io_counters()
         self._n0 = psutil.net_io_counters()
         self._t0 = time.monotonic()
@@ -565,6 +594,13 @@ class Collecteur:
                 self._panne(nom, type(exc).__name__, f"reamorcage : {exc}")
                 return None
         _sur("cpu", lambda: psutil.cpu_percent(interval=None))
+        # ⚠️ MÊME MOTIF QU'AU CONSTRUCTEUR, ET C'EST ICI QUE ÇA COMPTE LE PLUS :
+        #    sans ce ré-amorçage, les trois autres compteurs repartaient propres
+        #    et `_last_per_cpu_times` restait celui d'AVANT la veille — le `c.max`
+        #    du tour suivant était donc calculé sur une fenêtre de plusieurs
+        #    minutes. « Frais et faux », c'est-à-dire précisément ce que
+        #    `reamorcer()` existe pour empêcher (revue 2026-08-19).
+        _sur("cpu.percpu", lambda: psutil.cpu_percent(interval=None, percpu=True))
         self._d0 = _sur("disk", psutil.disk_io_counters)
         self._n0 = _sur("net", psutil.net_io_counters)
         self._t0 = time.monotonic()

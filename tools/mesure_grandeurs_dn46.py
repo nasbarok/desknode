@@ -326,16 +326,36 @@ def main():
     juger("cpu moyen", [None if v is None else round(v) for v in col["cpu_pct"]], "%")
 
     print("\nT8 / AC8 — LE COUT, ORDRE ALTERNE (la 1re serie est publiee A PART) :")
+    # 🔴 UN INSTRUMENT QUI MEURT EN IMPRIMANT SON RESULTAT NE REND RIEN — et
+    #    celui-ci mourait (revue de code du 2026-08-19). `prem[0]` levait
+    #    `IndexError` sur une session vide, et `statistics.median(reste)` levait
+    #    `StatisticsError` des que n <= 1 : la session etait DEJA consommee quand
+    #    ca tombait. L'en-tete de ce fichier dit avoir ferme ce mode de
+    #    defaillance pour l'ENCODAGE ; il ne l'etait pas pour le COMPTAGE.
+    # ⛔ On ne fabrique aucun chiffre : on dit ce qu'on n'a pas.
     for nom, cle in (("cpu_percent()", "us_pct"), ("percpu=True", "us_percpu")):
         v = [x for x in col[cle] if x is not None]
+        if not v:
+            print(f"  {nom:<16} ⛔ AUCUN echantillon exploitable — rien a publier.")
+            continue
         prem, reste = v[:1], v[1:]
+        if not reste:
+            print(f"  {nom:<16} 1re serie {prem[0]:7.1f} us  |  "
+                  f"⚠️ n=1 : PAS de mediane. La 1re boucle chronometree d'un "
+                  f"processus paie son amorcage — ce chiffre seul ne vaut rien.")
+            continue
         print(f"  {nom:<16} 1re serie {prem[0]:7.1f} us  |  "
               f"n={len(reste)} mediane {statistics.median(reste):7.1f} us  "
               f"max {max(reste):7.1f} us")
-    tot = [a_ + b_ for a_, b_ in zip(col["us_pct"], col["us_percpu"])]
-    print(f"  les DEUX ensemble : mediane {statistics.median(tot[1:]):.1f} us/cycle "
-          f"= {statistics.median(tot[1:]) / 10000.0:.4f} %% d'un coeur a 1 Hz"
-          .replace("%%", "%"))
+    tot = [a_ + b_ for a_, b_ in zip(col["us_pct"], col["us_percpu"])
+           if a_ is not None and b_ is not None]
+    if len(tot) > 1:
+        med = statistics.median(tot[1:])
+        print(f"  les DEUX ensemble : mediane {med:.1f} us/cycle "
+              f"= {med / 10000.0:.4f} %% d'un coeur a 1 Hz".replace("%%", "%"))
+    else:
+        print("  les DEUX ensemble : ⛔ moins de 2 cycles complets — le cout "
+              "n'est PAS mesure. ⚠️ Relancer avec --minutes plus grand.")
 
     print("\n══ VERDICT ══")
     if ok_fan:
