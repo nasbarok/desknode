@@ -2262,8 +2262,16 @@ static void detail_reparametrer(int idx)
              *    le chemin le plus chaud de la vue détail, pour un contrôle qui
              *    se fera de toute façon 200 ms plus tard.
              */
+            /* ⚠️ LA CONDITION PORTE SUR `wp` ET `x`, ⛔ PAS SUR `utile`. Un
+             *    premier correctif testait `utile > 0` — et
+             *    `0 - 2 x (-1) = 2` est POSITIF : la garde repassait sur des
+             *    entrées qui n'ont aucun sens, en calculant « 2 px utiles ».
+             *    Une condition de garde qui accepte l'absurde ne garde rien.
+             *    ⇒ On teste ce qu'on veut vraiment savoir : le parent a-t-il une
+             *      largeur, et le label une position ? */
+            bool geom_resolue = (wp > 0 && x >= 0 && utile > 0);
             char ligne[sizeof(buf)];
-            const char *deb = (utile > 0) ? buf : NULL;
+            const char *deb = geom_resolue ? buf : NULL;
             int nl = 0;
             while (deb && *deb) {
                 const char *fin = strchr(deb, '\n');
