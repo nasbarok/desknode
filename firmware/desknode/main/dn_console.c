@@ -4284,12 +4284,32 @@ static const char *i2c_nom_connu(uint8_t addr)
         return "0x76 — ⚠️ PAS notre BME680 (il est a 0x77, SDO haut). C'est "
                "l'adresse du FAUX POSITIF de §13.2 : verifier par `i2c lire 76 D0` "
                "AVANT d'en conclure quoi que ce soit";
+    /* 🔴 TROIS ETIQUETTES CORRIGEES EN dn4-2 (2026-08-19), ET L'UNE ETAIT
+     * DOUBLEMENT FAUSSE.
+     *  (a) « (dn4-1) » : le correct-course du 2026-08-18 a rendu
+     *      `dn4-1-tout-branche-tenue-h24` SUPERSEDED et reassigne le cablage a
+     *      `dn4-2`. Un lecteur qui suivait ce pointeur arrivait sur une story
+     *      close qui ne parle pas de capteurs.
+     *  (b) 🔴 « VL53L0X » : REFUTE PAR L'INVENTAIRE PHYSIQUE. Le module est un
+     *      `TOF050C-VL6180X`, lu DEUX fois — sur l'etiquette du sachet et sur la
+     *      serigraphie de la carte (9 photos EXIF 2026-08-19 17:18-17:20,
+     *      docs/cablage/, §13.0 et §13.4 bis). L'addendum du brief §3 avait POSE
+     *      la question le 2026-08-14 (« noter la ref reelle du breakout a
+     *      l'inventaire ») et personne ne l'avait fermee pendant cinq jours.
+     *      ⛔ Et « meme famille ToF » est FAUX sur les trois points qui comptent :
+     *      index de registre 16 bits (pas 8), identite 0x0000 -> 0xB4 (pas
+     *      0xC0 -> 0xEE), portee GARANTIE 100 mm (pas 2 m). */
     case 0x23:
-        return "BH1750 — luminosite (dn4-1)";
+        return "BH1750 — luminosite (dn4-2) — ⛔ AUCUN registre : "
+               "`i2c lire` le PILOTE au lieu de le lire (opcodes). "
+               "Le qualifier par STIMULUS, voir `i2c ecrire`/`i2c brut`";
     case 0x29:
-        return "VL53L0X — distance (dn4-1)";
+        return "TOF050C-VL6180X — distance (dn4-2) — ⛔ index de registre sur "
+               "16 BITS : `i2c lire` ne peut pas le qualifier, utiliser "
+               "`i2c lire16 29 0000` (attendu B4)";
     case 0x40:
-        return "INA219 — tension/courant (dn4-1)";
+        return "INA219 — tension/courant (dn4-2) — ✅ `i2c lire 40 00 2` "
+               "doit rendre 39 9F (reset du registre Configuration)";
     default:
         return "INCONNU — a identifier avant d'en tirer quoi que ce soit";
     }
@@ -4301,12 +4321,18 @@ static const char *i2c_nom_connu(uint8_t addr)
  *    retiré sur TOUS les chemins de sortie : en laisser fuir un à chaque appel
  *    épuiserait la table du bus, et l'échec arriverait bien plus tard, ailleurs,
  *    sans rapport visible avec cette commande. */
-static int i2c_lire_registre(uint8_t addr, uint8_t reg, int n)
+/* Ouverture du device TEMPORAIRE, factorisee en dn4-2 : les QUATRE primitives
+ * (`lire`, `lire16`, `ecrire`, `brut`) partagent exactement ce geste, et le
+ * dupliquer trois fois de plus multiplierait par quatre les chemins de sortie
+ * ou un device peut FUIR. Rend ESP_OK et pose *dev, ou imprime son refus.
+ * ⛔ Le device se retire sur TOUS les chemins de sortie de l'appelant. */
+static esp_err_t i2c_dev_ouvrir(uint8_t addr, i2c_master_dev_handle_t *dev)
 {
+    *dev = NULL;
     i2c_master_bus_handle_t bus = dn_display_i2c_bus();
     if (!bus) {
         printf("bus I2C absent — dn_display_init() n'a pas tourne\n");
-        return 1;
+        return ESP_ERR_INVALID_STATE;
     }
     /* ⚠️ Le type est `i2c_device_config_t`, PAS `i2c_master_dev_config_t` — le
      * second n'existe pas, et le compilateur ne le dit qu'en aval, sur un
@@ -4320,12 +4346,21 @@ static int i2c_lire_registre(uint8_t addr, uint8_t reg, int n)
          * autres devices, pas un defaut de composant tiers. */
         .scl_speed_hz = DN_I2C_FREQ_HZ,
     };
-    i2c_master_dev_handle_t dev = NULL;
-    esp_err_t err = i2c_master_bus_add_device(bus, &cfg, &dev);
+    esp_err_t err = i2c_master_bus_add_device(bus, &cfg, dev);
     if (err != ESP_OK) {
         printf("ajout du device 0x%02X refuse : %s\n", addr, esp_err_to_name(err));
+        *dev = NULL;
+    }
+    return err;
+}
+
+static int i2c_lire_registre(uint8_t addr, uint8_t reg, int n)
+{
+    i2c_master_dev_handle_t dev = NULL;
+    if (i2c_dev_ouvrir(addr, &dev) != ESP_OK) {
         return 1;
     }
+    esp_err_t err;
     uint8_t rx[16] = {0};
     err = i2c_master_transmit_receive(dev, &reg, 1, rx, (size_t)n, 200);
     i2c_master_bus_rm_device(dev);
@@ -4356,6 +4391,166 @@ static int i2c_lire_registre(uint8_t addr, uint8_t reg, int n)
                rx[0] == 0x00   ? "BME680"
                : rx[0] == 0x01 ? "BME688"
                                : "INCONNU");
+    }
+    return 0;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * dn4-2 (2026-08-19) — LES TROIS PRIMITIVES QUE LES DATASHEETS IMPOSENT.
+ *
+ * 🔴 LE CONSTAT QUI LES REND NECESSAIRES, ET CE N'EST PAS UNE OPINION DE
+ *    CONCEPTION : `i2c lire` fait `transmit_receive(dev, &reg, 1, …)` — elle
+ *    ECRIT UN octet d'index PUIS lit. Or, sur les trois capteurs que dn4-2
+ *    branche, elle n'en qualifie qu'UN :
+ *
+ *      · BH1750 (0x23)  — AUCUN registre. L'octet « registre » EST UNE COMMANDE.
+ *        `i2c lire 23 00` le met en POWER DOWN, `23 07` RESET son registre de
+ *        donnee, 0x08..0x0F sont INDEFINIS, 0x40..0x7F reprogramment le MTreg.
+ *        ⇒ l'utiliser ne le qualifie pas : ça le PILOTE AU HASARD, et les deux
+ *        octets rendus se liraient comme une identite alors que ce sont des lux.
+ *      · VL6180X (0x29) — index de registre sur 16 BITS, MSB d'abord. Envoyer UN
+ *        octet puis un restart-read est une VIOLATION DE PROTOCOLE : le resultat
+ *        n'est ni 0xB4 ni reproductible. ⛔ Et un echec ici ressemblerait
+ *        EXACTEMENT a une mauvaise soudure — la confusion qui a coute une seance
+ *        entiere a dn2-1 (§13.5).
+ *      · INA219 (0x40) — registres 16 bits DERRIERE un index 8 bits ⇒ `i2c lire
+ *        40 00 2` rend 39 9F. ✅ Le seul des trois que l'instrument couvrait.
+ *
+ * ⛔ POURQUOI TROIS COMMANDES ET NON UN DRAPEAU SUR `i2c lire` : celle-ci
+ *    INTERPRETE DEJA l'octet elle-meme pour le BME680 (0xD0 -> chip id,
+ *    0xF0 -> variant, en dur). Deux semantiques d'index dans une meme commande
+ *    est exactement l'ambiguite qui produit un chiffre FAUX ET PLAUSIBLE — et
+ *    « un chiffre faux mais plausible est plus dangereux qu'un chiffre absurde ».
+ *
+ * ⛔ AUCUNE des trois ne boucle ni ne dort : le REPL EST le transport PC.
+ *    Cout en regime : ZERO — ni tache, ni timer, ni allocation permanente.
+ * ════════════════════════════════════════════════════════════════════════════
+ */
+
+/* ── `i2c ecrire <addr> <o1> [o2..o8]` — ECRITURE NUE, aucune lecture ────────
+ * ⚠️ ELLE PEUT CASSER UN COMPOSANT SAIN : sur le BH1750, `00` = power down et
+ *    `07` = reset du registre de donnee. La sortie DIT CE QU'ELLE A ENVOYE,
+ *    pour qu'un « le capteur ne repond plus » se rattache a son geste. */
+static int i2c_ecrire_nu(uint8_t addr, const uint8_t *o, int n)
+{
+    i2c_master_dev_handle_t dev = NULL;
+    if (i2c_dev_ouvrir(addr, &dev) != ESP_OK) {
+        return 1;
+    }
+    esp_err_t err = i2c_master_transmit(dev, o, (size_t)n, 200);
+    i2c_master_bus_rm_device(dev);
+
+    printf("0x%02X <-", addr);
+    for (int i = 0; i < n; i++) {
+        printf(" %02X", o[i]);
+    }
+    printf("  (%d octet(s) ENVOYE(S))\n", n);
+
+    if (err != ESP_OK) {
+        printf("ECHEC : %s\n", esp_err_to_name(err));
+        printf("  un NACK ici veut dire que le composant n'a pas acquitte son\n");
+        printf("  ADRESSE — pas que l'octet etait mauvais. Le scan peut l'avoir\n");
+        printf("  vu et le composant ne plus repondre : contact intermittent.\n");
+        return 1;
+    }
+    printf("  => ACQUITTE. ⚠️ « acquitte » ne veut pas dire « a obei » : rien\n");
+    printf("     ne relit ce qui vient d'etre ecrit. Seule la LECTURE qui suit\n");
+    printf("     (ou un stimulus physique) le prouve.\n");
+    if (addr == 0x23 && n == 1) {
+        const char *quoi = o[0] == 0x00   ? "POWER DOWN"
+                           : o[0] == 0x01 ? "POWER ON (attend une commande)"
+                           : o[0] == 0x07 ? "RESET du registre de donnee"
+                           : o[0] == 0x10 ? "mesure CONTINUE haute resolution "
+                                            "(1 lx) — 120 ms typiques, JUSQU'A "
+                                            "180 ms"
+                           : o[0] == 0x20 ? "mesure ONE-SHOT haute resolution — "
+                                            "120 ms typiques, JUSQU'A 180 ms"
+                                          : "opcode NON REPERTORIE ici";
+        printf("  => BH1750, opcode 0x%02X = %s\n", o[0], quoi);
+        if (o[0] == 0x10 || o[0] == 0x20) {
+            printf("  🔴 NE PAS enchainer `i2c brut 23 2` DANS LE MEME LOT : le\n");
+            printf("     pilote envoie le lot en quelques DIZAINES de ms, la\n");
+            printf("     mesure en demande jusqu'a 180. La lecture rendrait 00 00\n");
+            printf("     ou la mesure PRECEDENTE, et le capteur serait declare\n");
+            printf("     mort alors qu'il fonctionne. ⇒ DEUX INVOCATIONS SEPAREES.\n");
+        }
+    }
+    return 0;
+}
+
+/* ── `i2c brut <addr> [n]` — LECTURE SANS INDEX ─────────────────────────────
+ * Le BH1750 rend sa mesure sur 2 octets SANS qu'on lui envoie quoi que ce soit ;
+ * `i2c lire` ecrirait un index et le REPILOTERAIT a chaque lecture. */
+static int i2c_lire_brut(uint8_t addr, int n)
+{
+    i2c_master_dev_handle_t dev = NULL;
+    if (i2c_dev_ouvrir(addr, &dev) != ESP_OK) {
+        return 1;
+    }
+    uint8_t rx[16] = {0};
+    esp_err_t err = i2c_master_receive(dev, rx, (size_t)n, 200);
+    i2c_master_bus_rm_device(dev);
+    if (err != ESP_OK) {
+        printf("lecture BRUTE 0x%02X (%d o) : ECHEC (%s)\n", addr, n,
+               esp_err_to_name(err));
+        return 1;
+    }
+    printf("0x%02X brut (%d o, SANS index) :", addr, n);
+    for (int i = 0; i < n; i++) {
+        printf(" %02X", rx[i]);
+    }
+    printf("\n");
+    /* Interpretation BH1750 : elle est ICI parce que la relire de tete a chaque
+     * session est exactement la ou naissent les erreurs de transcription — meme
+     * motif que 0xD0/0xF0 pour le BME680 ci-dessus. */
+    if (addr == 0x23 && n == 2) {
+        unsigned brut = ((unsigned)rx[0] << 8) | rx[1];
+        /* lux = brut / 1,2 au MTreg par defaut (69). Entiers uniquement :
+         * brut * 10 / 12, et le reste imprime pour ne pas cacher la troncature. */
+        unsigned lux10 = (brut * 10u) / 12u;
+        printf("  => BH1750 : brut %u => %u.%u lx (lux = brut / 1,2 au MTreg\n",
+               brut, lux10 / 10u, lux10 % 10u);
+        printf("     par defaut de 69)\n");
+        printf("  ⚠️ 0000 ne prouve PAS un capteur mort : c'est aussi ce que\n");
+        printf("     rend une mesure PAS ENCORE PRETE (jusqu'a 180 ms) ou un\n");
+        printf("     capteur en POWER DOWN. Le discriminant est le STIMULUS :\n");
+        printf("     une valeur qui CHANGE quand on masque le capteur.\n");
+    }
+    return 0;
+}
+
+/* ── `i2c lire16 <addr> <reg16> [n]` — INDEX DE REGISTRE SUR 2 OCTETS ───────
+ * MSB d'abord, comme l'exige le VL6180X (ST, IDENTIFICATION__MODEL_ID). */
+static int i2c_lire_registre16(uint8_t addr, uint16_t reg, int n)
+{
+    i2c_master_dev_handle_t dev = NULL;
+    if (i2c_dev_ouvrir(addr, &dev) != ESP_OK) {
+        return 1;
+    }
+    uint8_t idx[2] = {(uint8_t)(reg >> 8), (uint8_t)(reg & 0xFF)};
+    uint8_t rx[16] = {0};
+    esp_err_t err = i2c_master_transmit_receive(dev, idx, 2, rx, (size_t)n, 200);
+    i2c_master_bus_rm_device(dev);
+    if (err != ESP_OK) {
+        printf("lecture 0x%02X reg16 0x%04X : ECHEC (%s)\n", addr, reg,
+               esp_err_to_name(err));
+        printf("  ⚠️ AVANT d'accuser la soudure : sur un VL6180X, `XSHUT` bas ou\n");
+        printf("     FLOTTANT laisse la puce en SHUTDOWN — elle N'ACQUITTE PAS,\n");
+        printf("     et c'est le symptome EXACT d'une mauvaise soudure.\n");
+        return 1;
+    }
+    printf("0x%02X reg16 0x%04X :", addr, reg);
+    for (int i = 0; i < n; i++) {
+        printf(" %02X", rx[i]);
+    }
+    printf("\n");
+    if (reg == 0x0000 && n >= 1) {
+        printf("  => IDENTIFICATION__MODEL_ID = 0x%02X = %s\n", rx[0],
+               rx[0] == 0xB4 ? "✅ VL6180X — c'est bien le TOF050C-VL6180X"
+                             : "⛔ PAS un VL6180X (attendu B4). Temoin negatif : "
+                               "`i2c lire 29 C0` — s'il rend EE de facon "
+                               "REPRODUCTIBLE, c'est un VL53L0X et le sachet ment "
+                               "=> REMONTEE OWNER, pas un choix de dev");
     }
     return 0;
 }
@@ -4391,8 +4586,107 @@ static int cmd_i2c(int argc, char **argv)
         }
         return i2c_lire_registre(addr, reg, (int)n);
     }
+
+    /* ── `i2c lire16 <addr> <reg16 hex> [n]` — index sur 2 octets (VL6180X) ── */
+    if (argc >= 2 && strcmp(argv[1], "lire16") == 0) {
+        if (argc != 4 && argc != 5) {
+            printf("usage : i2c lire16 <addr hex> <registre hex 0000..FFFF> "
+                   "[n=1..16]\n");
+            printf("        ex. : i2c lire16 29 0000   (VL6180X : attendu B4)\n");
+            return 1;
+        }
+        uint8_t addr;
+        if (!parse_adresse_i2c(argv[2], &addr)) {
+            printf("adresse « %s » refusee : hexa, entre 08 et 77 (0x00-0x07 et\n",
+                   argv[2]);
+            printf("0x78-0x7F sont RESERVEES par la specification I2C)\n");
+            return 1;
+        }
+        char *fin = NULL;
+        errno = 0;
+        long r = strtol(argv[3], &fin, 16);
+        if (fin == argv[3] || *fin != '\0' || errno == ERANGE || r < 0 ||
+            r > 0xFFFF) {
+            printf("registre « %s » refuse : hexa, entre 0000 et FFFF\n", argv[3]);
+            return 1;
+        }
+        long n = 1;
+        if (argc == 5 && (!parse_entier(argv[4], &n) || n < 1 || n > 16)) {
+            printf("nombre d'octets « %s » refuse : entre 1 et 16\n", argv[4]);
+            return 1;
+        }
+        return i2c_lire_registre16(addr, (uint16_t)r, (int)n);
+    }
+
+    /* ── `i2c brut <addr> [n]` — lecture SANS index (BH1750) ───────────────── */
+    if (argc >= 2 && strcmp(argv[1], "brut") == 0) {
+        if (argc != 3 && argc != 4) {
+            printf("usage : i2c brut <addr hex> [n=1..16]\n");
+            printf("        ex. : i2c brut 23 2   (BH1750 : 2 octets de mesure)\n");
+            return 1;
+        }
+        uint8_t addr;
+        if (!parse_adresse_i2c(argv[2], &addr)) {
+            printf("adresse « %s » refusee : hexa, entre 08 et 77 (0x00-0x07 et\n",
+                   argv[2]);
+            printf("0x78-0x7F sont RESERVEES par la specification I2C)\n");
+            return 1;
+        }
+        long n = 1;
+        if (argc == 4 && (!parse_entier(argv[3], &n) || n < 1 || n > 16)) {
+            printf("nombre d'octets « %s » refuse : entre 1 et 16\n", argv[3]);
+            return 1;
+        }
+        return i2c_lire_brut(addr, (int)n);
+    }
+
+    /* ── `i2c ecrire <addr> <o1> [o2..o8]` — ECRITURE NUE ──────────────────── */
+    if (argc >= 2 && strcmp(argv[1], "ecrire") == 0) {
+        /* argv[0]=i2c argv[1]=ecrire argv[2]=addr argv[3..]=octets */
+        int n = argc - 3;
+        if (n < 1 || n > 8) {
+            printf("usage : i2c ecrire <addr hex> <o1 hex> [o2..o8]\n");
+            printf("        ex. : i2c ecrire 23 01   (BH1750 : power on)\n");
+            printf("              i2c ecrire 23 10   (BH1750 : continu H-res)\n");
+            printf("⚠️ ELLE ECRIT SANS LIRE, et elle PEUT CASSER UN COMPOSANT\n");
+            printf("   SAIN : sur le BH1750, 00 = power down et 07 = reset.\n");
+            printf("de 1 a 8 octets — « %d » refuse\n", n < 1 ? 0 : n);
+            return 1;
+        }
+        uint8_t addr;
+        if (!parse_adresse_i2c(argv[2], &addr)) {
+            printf("adresse « %s » refusee : hexa, entre 08 et 77 (0x00-0x07 et\n",
+                   argv[2]);
+            printf("0x78-0x7F sont RESERVEES par la specification I2C)\n");
+            return 1;
+        }
+        uint8_t o[8] = {0};
+        for (int i = 0; i < n; i++) {
+            char *fin = NULL;
+            errno = 0;
+            long v = strtol(argv[3 + i], &fin, 16);
+            if (fin == argv[3 + i] || *fin != '\0' || errno == ERANGE || v < 0 ||
+                v > 0xFF) {
+                printf("octet n°%d « %s » refuse : hexa, entre 00 et FF\n", i + 1,
+                       argv[3 + i]);
+                printf("⛔ RIEN N'A ETE ENVOYE — la commande refuse AVANT d'ecrire,\n");
+                printf("   parce qu'une ecriture partielle sur un capteur laisse\n");
+                printf("   un etat qu'on ne sait pas nommer.\n");
+                return 1;
+            }
+            o[i] = (uint8_t)v;
+        }
+        return i2c_ecrire_nu(addr, o, n);
+    }
+
     if (argc != 1) {
-        printf("usage : i2c | i2c lire <addr> <registre> [n]\n");
+        printf("usage : i2c\n");
+        printf("        i2c lire   <addr> <registre>       [n=1..16]  index 8 bits\n");
+        printf("        i2c lire16 <addr> <registre 16 b>  [n=1..16]  index 16 bits\n");
+        printf("        i2c brut   <addr>                  [n=1..16]  SANS index\n");
+        printf("        i2c ecrire <addr> <o1> [o2..o8]               SANS lecture\n");
+        printf("⚠️ tout est en HEXA, sans « 0x ».\n");
+        printf("🔴 le scan DECOUVRE, seule une transaction de DONNEE QUALIFIE.\n");
         return 1;
     }
 
@@ -5040,9 +5334,13 @@ static const esp_console_cmd_t k_cmds[] = {
     DN_CMD("capteurs",
            "capteurs | reset | gaz on|off | simuler <cause> <n> — BME680 (dn2-1)",
            cmd_capteurs),
+    /* ⚠️ INSCRITE ICI **ET** DANS LE « Jeu complet » DU README dans le même
+     * geste — dn2-1 avait oublié `capteurs` au README. Les trois primitives
+     * ajoutées en dn4-2 y sont entrées avec cette ligne. */
     DN_CMD("i2c",
-           "i2c | lire <addr> <registre> [n] — scan du bus et lecture registre "
-           "(dn2-1)",
+           "i2c | lire <addr> <reg> [n] | lire16 <addr> <reg16> [n] | brut "
+           "<addr> [n] | ecrire <addr> <o1..o8> — scan et transactions "
+           "(dn2-1/dn4-2)",
            cmd_i2c),
     DN_CMD("pc",
            "pc | reset | $DN,<trame> — liaison PC : état, compteurs, injection "
