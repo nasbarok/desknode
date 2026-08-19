@@ -521,13 +521,19 @@ static void valeur_placer(lv_obj_t *lbl, int i, int n, int w, int fin_gauche,
     int x = w - W_PAD - lw;
     if (x < fin_gauche + W_GOUTTIERE) {
         s_chevauchements++;
+        /* ⚠️ LE MESSAGE NOMME LES DEUX COLONNES SEPAREMENT — il disait
+         *    « "<texte DROIT>" finit a <fin de la colonne GAUCHE> », ce qui
+         *    attribuait au texte de droite une coordonnee qui est celle de
+         *    gauche. Un log qui melange ses deux termes envoie chercher le
+         *    defaut du mauvais cote. */
         ESP_LOGW(TAG,
-                 "« %s » grandeur %d : CHEVAUCHEMENT cote a cote — « %s » finit a "
-                 "%d px, la colonne droite commencerait a %d px (gouttiere %d, "
-                 "utile %d px). LVGL clipperait SANS un mot.",
-                 desc && desc->titre ? desc->titre : "?", i,
-                 lv_label_get_text(lbl), fin_gauche, x, W_GOUTTIERE,
-                 dn_widget_largeur_utile(w));
+                 "« %s » grandeur %d : CHEVAUCHEMENT cote a cote — la colonne "
+                 "GAUCHE finit a %d px, et « %s » (%d px, calee a DROITE) "
+                 "commencerait a %d px : il manque %d px (gouttiere %d, utile "
+                 "%d px). LVGL clipperait SANS un mot.",
+                 desc && desc->titre ? desc->titre : "?", i, fin_gauche,
+                 lv_label_get_text(lbl), lw, x, fin_gauche + W_GOUTTIERE - x,
+                 W_GOUTTIERE, dn_widget_largeur_utile(w));
         /* ⛔ On pose QUAND MÊME, à la place demandée : masquer la valeur ou la
          *    tronquer serait remplacer un défaut visible par un défaut muet.
          *    Le log et le compteur sont l'instrument ; l'œil de l'owner tranche. */

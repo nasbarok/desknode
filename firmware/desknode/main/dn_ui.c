@@ -252,6 +252,28 @@ static bool case_est_widget(int idx)
 }
 
 /*
+ * ── dn4-6 / AC4 : LE NOMBRE DE GRANDEURS D'UNE CASE, RÉGLABLE À CHAUD ────────
+ *
+ * 🔴 SANS ÇA, LE REPLI PRÉ-AUTORISÉ N'EST PAS COMPARABLE. Le repli écrit
+ *    d'avance est **`GPU` à TROIS** (`% · °C · W`), qui tient en police 28 avec
+ *    D12 seule — et l'owner ne peut l'arbitrer contre (a) et (b) que s'il le
+ *    voit SUR LA MÊME DALLE, DANS LE MÊME FIRMWARE. Le reflasher pour le
+ *    montrer coûterait une observation, ce que ce dépôt refuse depuis dn3-2.
+ * ⚠️ MÊME PATRON QUE `s_nue_force[]` ET `s_icone_alt[]` : `k_desc[]` est `const`
+ *    en `.rodata` et le RESTE (⛔ on ne retire pas un `const`). L'override est
+ *    un `s_*` consulté par les lecteurs.
+ * ⚠️ `0` = PAS D'OVERRIDE, et c'est cohérent : un descripteur à zéro grandeur
+ *    n'a aucun sens, donc zéro ne peut pas être une valeur demandée.
+ * ⛔ IL Y A **TROIS** LECTEURS, et cette énumération FAIT PARTIE DE LA GARDE —
+ *    même doctrine que W11, dont le compte avait divergé cinq fois :
+ *      1  la boucle de `build_dashboard` (la copie locale du descripteur)
+ *      2  `detail_reparametrer`
+ *      3  `dn_ui_pc_maj`
+ *    En oublier un afficherait N grandeurs et en formaterait un autre nombre.
+ */
+static uint8_t s_gr_force[DN_UI_METRIQUES];
+
+/*
  * ── LES DESCRIPTEURS — LE SEUL POINT D'AJOUT D'UNE MÉTRIQUE ──────────────────
  *
  * C'est la promesse du brief rendue structurelle : « ajouter une métrique future
@@ -511,6 +533,19 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
  * négatif d'AC8 est devenu un RÉGLAGE À CHAUD au lieu d'un trou dans la table.
  * C'est ce qui permet de mesurer la case nue et les six widgets DANS LE MÊME
  * FIRMWARE, ce qu'AC8 exige. */
+
+/* Le nombre de grandeurs EFFECTIF d'une case — override compris.
+ * ⚠️ DÉFINI ICI, après `k_desc[]` : le placer près de `s_gr_force[]` le
+ *    référençait avant sa définition. */
+static int desc_n(int idx)
+{
+    if (idx < 0 || idx >= DN_UI_METRIQUES) {
+        return 0;
+    }
+    return s_gr_force[idx] ? s_gr_force[idx] : k_desc[idx].n_grandeurs;
+}
+
+int dn_ui_case_grandeurs(int idx) { return desc_n(idx); }
 
 const char *dn_ui_metrique_nom(int idx)
 {
@@ -1786,6 +1821,8 @@ static void build_dashboard(lv_obj_t *scr)
             if (s_icone_alt[i]) {
                 d.icone = s_icone_alt[i];
             }
+            /* LECTEUR 1/3 de l'override de grandeurs — voir `desc_n()`. */
+            d.n_grandeurs = (uint8_t)desc_n(i);
             dn_widget_creer(scr, x, y, DN_UI_CASE_W, ui_case_h(), &d,
                             &s_wetat[i], on_case_clic, (void *)(intptr_t)i,
                             &s_wobj[i]);
@@ -2074,7 +2111,11 @@ static void detail_reparametrer(int idx)
              *    c'est lui qui dit QUELLE grandeur manque (W10 jusque dans le
              *    détail — l'existence d'une grandeur ne se cache jamais).
              */
-            int n = d ? d->n_grandeurs : 1;
+            /* LECTEUR 2/3 de l'override de grandeurs — voir `desc_n()`. Lire
+             * `d->n_grandeurs` ici ferait detailler QUATRE grandeurs sur une
+             * case qui n'en DESSINE que trois : la page qui explique la case
+             * expliquerait autre chose que la case. */
+            int n = d ? desc_n(idx) : 1;
             if (n < 1) {
                 n = 1;
             }
@@ -3241,9 +3282,10 @@ bool dn_ui_pc_maj(dn_link_metrique_t m, const dn_link_vue_t *vue,
          *    elle est bornée ici par les DEUX comptes, et la secondaire lit le
          *    fil directement.
          */
+        /* LECTEUR 3/3 de l'override de grandeurs — voir `desc_n()`. */
         int n_aff = (int)vue->n;
-        if (dsc && dsc->n_grandeurs < n_aff) {
-            n_aff = dsc->n_grandeurs;
+        if (dsc && desc_n(idx) < n_aff) {
+            n_aff = desc_n(idx);
         }
         if (n_aff > DN_WIDGET_GRANDEURS_MAX) {
             n_aff = DN_WIDGET_GRANDEURS_MAX;
@@ -4264,6 +4306,23 @@ esp_err_t dn_ui_set_bandes(int barre_h, int menu_h)
  * ⇒ UN verrou, UN `build_scene()`, donc UN état mesuré. ⚠️ Effet de bord voulu :
  *   la commande ne bloque plus le REPL ~700 ms mais ~350 ms.
  */
+esp_err_t dn_ui_set_case_grandeurs(int idx, int n)
+{
+    if (idx < 0 || idx >= DN_UI_METRIQUES || n < 0 ||
+        n > DN_WIDGET_GRANDEURS_MAX) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (!lvgl_port_lock(2000)) {
+        return ESP_ERR_TIMEOUT; /* ⛔ RIEN n'a bougé */
+    }
+    s_gr_force[idx] = (uint8_t)n; /* 0 = rendre la case a son descripteur */
+    dn_widget_chevauchements_reset();
+    dn_widget_debordements_reset();
+    build_scene();
+    lvgl_port_unlock();
+    return ESP_OK;
+}
+
 esp_err_t dn_ui_set_voie(int barre_h, int menu_h, const dn_widget_geom_t *g)
 {
     if (!g) {

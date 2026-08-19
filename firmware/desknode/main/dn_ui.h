@@ -727,6 +727,14 @@ esp_err_t dn_ui_set_widget_geom(const dn_widget_geom_t *g);
  * qu'elle tient. Les compteurs sont remis à zéro SOUS LE VERROU juste avant
  * l'unique reconstruction. */
 esp_err_t dn_ui_set_voie(int barre_h, int menu_h, const dn_widget_geom_t *g);
+
+/* Le nombre de grandeurs d'UNE case, réglable à chaud (0 = rendre la case à son
+ * descripteur). 🔴 C'est le SEUL moyen de comparer le REPLI pré-autorisé
+ * (« `GPU` à trois ») aux trois voies SUR LA MÊME DALLE et DANS LE MÊME
+ * FIRMWARE — le reflasher pour le montrer coûterait une observation owner.
+ * ⚠️ RECONSTRUIT LA SCÈNE. */
+int dn_ui_case_grandeurs(int idx);
+esp_err_t dn_ui_set_case_grandeurs(int idx, int n);
 esp_err_t dn_ui_bandes_valider(int barre_h, int menu_h);
 esp_err_t dn_ui_geom_valider(const dn_widget_geom_t *g);
 

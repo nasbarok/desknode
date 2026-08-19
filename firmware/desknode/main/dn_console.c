@@ -2631,6 +2631,13 @@ static int cmd_pc(int argc, char **argv)
  *   ── dn4-6 / AC4 : LES TROIS VOIES, COMMUTÉES À CHAUD ────────────────────
  *   widget voie defaut|a|b|c|c2   applique une voie ENTIÈRE et IMPRIME SON PRIX
  *                                 avant le constat owner       ⚠️ RECONSTRUIT ×2
+ *   widget voie repli               le REPLI pré-autorisé : D12 seule, police
+ *                                   28 INCHANGÉE, en-tête INTACT ⚠️ RECONSTRUIT
+ *   widget grandeurs <case> <n>     le nombre de grandeurs d'UNE case, à chaud
+ *                                   (0 = rendre la case à son descripteur) —
+ *                                   le SEUL moyen de comparer le repli aux
+ *                                   trois voies dans le MÊME firmware
+ *                                                                ⚠️ RECONSTRUIT
  *   widget dispo empile|cote|mixte  la mise en forme des grandeurs ⚠️ RECONSTRUIT
  *   widget entete normal|compact    l'en-tête (icône 28 -> 14)    ⚠️ RECONSTRUIT
  *   widget val <y> <pas>            `val_y` / `val_pas`, interligne ⚠️ RECONSTRUIT
@@ -2641,15 +2648,15 @@ static int cmd_pc(int argc, char **argv)
  *   widget largeur <texte>  la largeur d'UNE chaîne dans la police liée
  *   widget largeur reset    remet à zéro le compteur de CHEVAUCHEMENTS détectés
  *
- * 🔴 LES ONZE « RECONSTRUIT » BLOQUENT LE REPL, DONC LE TRANSPORT PC (relevé
+ * 🔴 LES TREIZE « RECONSTRUIT » BLOQUENT LE REPL, DONC LE TRANSPORT PC (relevé
  *    en revue le 2026-08-18 : ce docblock affirmait qu'AUCUNE sous-commande
  *    n'était un travail long, trois lignes au-dessus de trois qui le sont — puis
  *    dn3-2 en a ajouté CINQ sans les lister, dont `nue`, qui reconstruit AUSSI
  *    et qui est l'instrument CENTRAL du témoin négatif d'AC8 ; puis la séance du
  *    2026-08-18 a ajouté `piste`, qui reconstruit AUSSI, et le compte est reparti
  *    de « trois » à « quatre » sans jamais atteindre CINQ ; puis dn4-6 en a
- *    ajouté SIX (`voie`, `dispo`, `entete`, `val`, `police`, `grille`) et le
- *    compte passe à ONZE. ⛔ Ce compte est manifestement un point de rupture :
+ *    ajouté HUIT (`voie`, `grandeurs`, `dispo`, `entete`, `val`, `police`,
+ *    `grille` — et `voie` en est l'enveloppe) et le compte passe à TREIZE. ⛔ Ce compte est manifestement un point de rupture :
  *    il se corrige ICI **et** dans le « Jeu complet » du README **dans le même
  *    geste**, jamais dans un seul des deux).
  *    ⚠️ `widget voie` reconstruit DEUX FOIS (les bandes, puis la géométrie de
@@ -2785,16 +2792,29 @@ static int cmd_widget(int argc, char **argv)
             mh = 0;
             dn_widget_geom_defaut(&g);
             g.dispo = DN_DISPO_MIXTE;
+        } else if (strcmp(quoi, "repli") == 0) {
+            /* LE REPLI PRE-AUTORISE, ECRIT D'AVANCE DANS LA STORY : `GPU` a
+             * TROIS (% · °C · W) + D12, police 28 INCHANGEE, en-tete INTACT.
+             * Arithmetique : derniere valeur a 48 + 2x40 = 128, bas de boite
+             * 128 + 35 = 163 <= 163 PILE, interligne 40 - 35 = 5 px — le
+             * critere ecrit de D12, tenu a l'unite pres. */
+            bh = 60;
+            mh = 51;
+            dn_widget_geom_defaut(&g);
         } else {
             connue = false;
         }
         if (!connue) {
-            printf("usage : widget voie defaut|a|b|c|c2\n");
+            printf("usage : widget voie defaut|a|b|c|c2|repli\n");
             printf("  defaut  l'etat des lieux : empile, 28 px, barre 70/menu 60\n");
             printf("  a       28 px, MENU SUPPRIME (case 180), en-tete COMPACT\n");
             printf("  b       3e police + D12 (case 163), en-tete COMPACT\n");
             printf("  c       COTE A COTE, geometrie INCHANGEE\n");
             printf("  c2      MIXTE (l1 cote a cote) — exige la case de 180\n");
+            printf("  repli   D12 seule, police 28 INCHANGEE, en-tete INTACT\n");
+            printf("          ⚠️ elle exige `widget grandeurs 1 3` (GPU a TROIS) :\n");
+            printf("             c'est le repli PRE-AUTORISE de la story, et il\n");
+            printf("             ne peut pas se juger sans etre APPLIQUE.\n");
             return 1;
         }
 
@@ -2856,6 +2876,17 @@ static int cmd_widget(int argc, char **argv)
                 printf("  ⚠️ c2 exige la case de 180 (donc le MENU supprime) : a 4\n");
                 printf("     grandeurs elle fait TROIS lignes, y_bas = 168.\n");
             }
+        } else if (strcmp(quoi, "repli") == 0) {
+            printf("  · `GPU` DESCEND A TROIS : le tr/min est ABANDONNE. C'est le\n");
+            printf("    prix, et il est ecrit d'avance dans la story.\n");
+            printf("    ⇒ `widget grandeurs 1 3` pour l'appliquer, sinon la case\n");
+            printf("      GPU DEBORDE encore et le compteur le dira.\n");
+            printf("  · D12 : toutes les coordonnees tactiles publiees PERIMENT,\n");
+            printf("    +4,5%% de surface par case sur un duty deja a 10,09 %%\n");
+            printf("  ✅ EN ECHANGE : police 28 INCHANGEE, en-tete INTACT (l'icone\n");
+            printf("     garde ses 28 px et le champ `couleur` reste exerce),\n");
+            printf("     interligne 5 px = le critere ecrit de D12, AUCUNE\n");
+            printf("     regeneration de police, AUCUNE npm, AUCUN reseau.\n");
         } else {
             printf("  (aucun — c'est l'etat des lieux mesure en §17.10)\n");
         }
@@ -2868,6 +2899,42 @@ static int cmd_widget(int argc, char **argv)
         printf("⚠️ Elle a bloque le REPL ~350 ms — donc le TRANSPORT PC.\n");
         printf("   Les trames emises pendant ce temps sont PERDUES : attendre\n");
         printf("   3 s avant tout releve (`flush reset` ne vide pas la file).\n");
+        return 0;
+    }
+
+    if (argc == 4 && strcmp(argv[1], "grandeurs") == 0) {
+        char *f1 = NULL, *f2 = NULL;
+        long idx = strtol(argv[2], &f1, 0);
+        long n = strtol(argv[3], &f2, 0);
+        if (f1 == argv[2] || *f1 != '\0' || f2 == argv[3] || *f2 != '\0' ||
+            idx < 0 || idx >= DN_UI_METRIQUES) {
+            printf("usage : widget grandeurs <0..%d> <n>   (n = 0 rend la case a "
+                   "son descripteur)\n", DN_UI_METRIQUES - 1);
+            for (int i = 0; i < DN_UI_METRIQUES; i++) {
+                const dn_widget_desc_t *dd = dn_ui_desc_brut(i);
+                printf("   %d ", i);
+                colonnes(dn_ui_metrique_nom(i), 10);
+                printf(" effectif %d  (descripteur %d)\n", dn_ui_case_grandeurs(i),
+                       dd ? dd->n_grandeurs : 0);
+            }
+            printf("🔴 C'est le SEUL moyen de comparer le REPLI pre-autorise\n");
+            printf("   (« GPU a trois ») aux trois voies SUR LA MEME DALLE et\n");
+            printf("   DANS LE MEME FIRMWARE.\n");
+            return 1;
+        }
+        esp_err_t e = dn_ui_set_case_grandeurs((int)idx, (int)n);
+        if (e != ESP_OK) {
+            printf("refuse (%s) — RIEN n'a change\n", esp_err_to_name(e));
+            return 1;
+        }
+        printf("« %s » : %d grandeur(s) — SCENE RECONSTRUITE\n",
+               dn_ui_metrique_nom((int)idx), dn_ui_case_grandeurs((int)idx));
+        printf("  « ca ne tient pas » : %u en LARGEUR · %u en HAUTEUR\n",
+               (unsigned)dn_widget_chevauchements(),
+               (unsigned)dn_widget_debordements());
+        if (n == 0) {
+            printf("  (override RETIRE — la case suit de nouveau son descripteur)\n");
+        }
         return 0;
     }
 
