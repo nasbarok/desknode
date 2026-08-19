@@ -2798,16 +2798,14 @@ static int cmd_widget(int argc, char **argv)
             return 1;
         }
 
-        esp_err_t e1 = dn_ui_set_bandes(bh, mh);
+        /* ⚠️ UN SEUL APPEL, DONC UNE SEULE RECONSTRUCTION. Enchainer les deux
+         *    setters produisait une scene INTERMEDIAIRE (nouvelle hauteur,
+         *    ancienne geometrie interne) dont les debordements etaient comptes
+         *    et attribues a la voie — l'instrument accusait la voie du defaut
+         *    de son propre chemin d'application. Voir `dn_ui_set_voie`. */
+        esp_err_t e1 = dn_ui_set_voie(bh, mh, &g);
         if (e1 != ESP_OK) {
-            printf("bandes refusees (%s) — RIEN n'a change\n", esp_err_to_name(e1));
-            return 1;
-        }
-        esp_err_t e2 = dn_ui_set_widget_geom(&g);
-        if (e2 != ESP_OK) {
-            printf("geometrie refusee (%s) — ⚠️ LES BANDES, ELLES, ONT CHANGE.\n",
-                   esp_err_to_name(e2));
-            printf("   `widget voie defaut` pour revenir a l'etat des lieux.\n");
+            printf("voie refusee (%s) — RIEN n'a change\n", esp_err_to_name(e1));
             return 1;
         }
 
@@ -2815,7 +2813,7 @@ static int cmd_widget(int argc, char **argv)
         dn_ui_case_dim(&cw, &ch);
         int lh = (int)lv_font_get_line_height(g.font_val ? g.font_val
                                                          : &dn_font_28);
-        printf("VOIE « %s » APPLIQUEE — scene reconstruite (2 fois).\n", quoi);
+        printf("VOIE « %s » APPLIQUEE — scene reconstruite UNE fois.\n", quoi);
         printf("  case %dx%d · val_y %d · val_pas %d · interligne %d px\n", cw, ch,
                g.val_y, g.val_pas, g.val_pas - lh);
         printf("  %s · %s\n", dn_widget_dispo_nom(g.dispo),
@@ -2861,8 +2859,13 @@ static int cmd_widget(int argc, char **argv)
         } else {
             printf("  (aucun — c'est l'etat des lieux mesure en §17.10)\n");
         }
+        printf("\n  ⇒ « ca ne tient pas » SUR CETTE VOIE : %u en LARGEUR · %u en HAUTEUR\n",
+               (unsigned)dn_widget_chevauchements(),
+               (unsigned)dn_widget_debordements());
+        printf("     (compteurs remis a zero SOUS LE VERROU juste avant la\n");
+        printf("      reconstruction : c'est bien CETTE voie qui est comptee)\n");
         printf("\n⚠️ La reconstruction a retire le stimulus `anim` et la demo.\n");
-        printf("⚠️ Elle a bloque le REPL ~350 ms x2 — donc le TRANSPORT PC.\n");
+        printf("⚠️ Elle a bloque le REPL ~350 ms — donc le TRANSPORT PC.\n");
         printf("   Les trames emises pendant ce temps sont PERDUES : attendre\n");
         printf("   3 s avant tout releve (`flush reset` ne vide pas la file).\n");
         return 0;

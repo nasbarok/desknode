@@ -4234,11 +4234,9 @@ esp_err_t dn_ui_set_bandes(int barre_h, int menu_h)
      * plancher RELU du code, ⛔ pas un chiffre rond. Le MENU porte
      * `dn_font_28` à y = 14 ⇒ boîte 14..49, plancher 49 — ou ZÉRO, qui est la
      * voie (a) et signifie « pas de bandeau du tout ». */
-    if (barre_h < 53 || barre_h > 120) {
-        return ESP_ERR_INVALID_ARG;
-    }
-    if (menu_h != 0 && (menu_h < 49 || menu_h > 120)) {
-        return ESP_ERR_INVALID_ARG;
+    esp_err_t eb = dn_ui_bandes_valider(barre_h, menu_h);
+    if (eb != ESP_OK) {
+        return eb;
     }
     if (!lvgl_port_lock(2000)) {
         return ESP_ERR_TIMEOUT; /* ⛔ RIEN n'a bougé — ne pas annoncer la bascule */
@@ -4247,6 +4245,82 @@ esp_err_t dn_ui_set_bandes(int barre_h, int menu_h)
     s_geo_menu_h = menu_h;
     build_scene();
     lvgl_port_unlock();
+    return ESP_OK;
+}
+
+/*
+ * ── dn4-6 : LA VOIE S'APPLIQUE EN **UN SEUL** GESTE, ET C'EST UN CORRECTIF ───
+ *
+ * 🔴 `widget voie` enchaînait `dn_ui_set_bandes()` PUIS `dn_ui_set_widget_geom()`,
+ *    donc DEUX reconstructions — et la PREMIÈRE dessinait la NOUVELLE hauteur de
+ *    case avec l'ANCIENNE géométrie interne. Elle produisait donc de vrais
+ *    débordements, comptés et journalisés, POUR UNE COMBINAISON QUE PERSONNE NE
+ *    DEMANDE. La voie (a) ressortait à « 1 débordement » alors qu'elle tient
+ *    (179 ≤ 180) : l'instrument accusait la voie du défaut de son propre chemin
+ *    d'application.
+ * ⛔ C'est la classe de défaut que ce dépôt traque : un compteur qui compte
+ *    autre chose que ce que son nom dit. Et il aurait fait écarter une voie à
+ *    l'arbitrage.
+ * ⇒ UN verrou, UN `build_scene()`, donc UN état mesuré. ⚠️ Effet de bord voulu :
+ *   la commande ne bloque plus le REPL ~700 ms mais ~350 ms.
+ */
+esp_err_t dn_ui_set_voie(int barre_h, int menu_h, const dn_widget_geom_t *g)
+{
+    if (!g) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    esp_err_t e = dn_ui_bandes_valider(barre_h, menu_h);
+    if (e != ESP_OK) {
+        return e;
+    }
+    e = dn_ui_geom_valider(g);
+    if (e != ESP_OK) {
+        return e;
+    }
+    if (!lvgl_port_lock(2000)) {
+        return ESP_ERR_TIMEOUT; /* ⛔ RIEN n'a bougé */
+    }
+    s_geo_barre_h = barre_h;
+    s_geo_menu_h = menu_h;
+    dn_widget_set_geom(g);
+    /* Les compteurs sont remis à zéro SOUS LE VERROU, juste avant l'unique
+     * reconstruction : ce qui sera compté est donc EXACTEMENT ce que la voie
+     * retenue produit, ⛔ jamais un résidu de l'état précédent. */
+    dn_widget_chevauchements_reset();
+    dn_widget_debordements_reset();
+    build_scene();
+    lvgl_port_unlock();
+    return ESP_OK;
+}
+
+/* Les deux validations, EXTRAITES pour que `dn_ui_set_voie` puisse refuser
+ * AVANT de prendre le verrou — ⛔ et surtout avant d'avoir bougé la moitié des
+ * réglages, ce qui laisserait la scène dans un état que personne n'a demandé. */
+esp_err_t dn_ui_bandes_valider(int barre_h, int menu_h)
+{
+    if (barre_h < 53 || barre_h > 120) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (menu_h != 0 && (menu_h < 49 || menu_h > 120)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    return ESP_OK;
+}
+
+esp_err_t dn_ui_geom_valider(const dn_widget_geom_t *g)
+{
+    if (!g) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (g->val_y < 14 || g->val_y > 200 || g->val_pas < 18 || g->val_pas > 80) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (g->dispo < 0 || g->dispo >= DN_DISPO_COUNT) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (g->entete < 0 || g->entete >= DN_ENTETE_COUNT) {
+        return ESP_ERR_INVALID_ARG;
+    }
     return ESP_OK;
 }
 
@@ -4259,14 +4333,9 @@ esp_err_t dn_ui_set_widget_geom(const dn_widget_geom_t *g)
      * `val_y` sous le bas de l'en-tête NORMAL (43) est LÉGAL mais doit avoir
      * été constaté à l'œil (AC3) — on ne l'interdit donc pas, on ne descend
      * simplement pas sous le haut de la boîte du badge (14). */
-    if (g->val_y < 14 || g->val_y > 200 || g->val_pas < 18 || g->val_pas > 80) {
-        return ESP_ERR_INVALID_ARG;
-    }
-    if (g->dispo < 0 || g->dispo >= DN_DISPO_COUNT) {
-        return ESP_ERR_INVALID_ARG;
-    }
-    if (g->entete < 0 || g->entete >= DN_ENTETE_COUNT) {
-        return ESP_ERR_INVALID_ARG;
+    esp_err_t ev = dn_ui_geom_valider(g);
+    if (ev != ESP_OK) {
+        return ev;
     }
     if (!lvgl_port_lock(2000)) {
         return ESP_ERR_TIMEOUT;

@@ -719,6 +719,17 @@ void dn_ui_geom_bandes_defaut(int *barre_h, int *menu_h);
  *    que `dma` (inerte dans ce build) a coûtée au dépôt. */
 esp_err_t dn_ui_set_widget_geom(const dn_widget_geom_t *g);
 
+/* Les DEUX ensemble, en UN seul `build_scene()`. 🔴 Enchaîner les deux setters
+ * produisait une reconstruction INTERMÉDIAIRE — nouvelle hauteur de case,
+ * ANCIENNE géométrie interne — dont les débordements étaient comptés et
+ * attribués à la voie. L'instrument accusait la voie du défaut de son propre
+ * chemin d'application, et la voie (a) ressortait à « 1 débordement » alors
+ * qu'elle tient. Les compteurs sont remis à zéro SOUS LE VERROU juste avant
+ * l'unique reconstruction. */
+esp_err_t dn_ui_set_voie(int barre_h, int menu_h, const dn_widget_geom_t *g);
+esp_err_t dn_ui_bandes_valider(int barre_h, int menu_h);
+esp_err_t dn_ui_geom_valider(const dn_widget_geom_t *g);
+
 /* Le `n` de la démo — le SEUL moyen d'atteindre les deux témoins d'AC2 (abandon
  * de jauge à n ≥ 3, clamp à n > `DN_WIDGET_GRANDEURS_MAX`). Défaut 2, borne 6. */
 int dn_ui_demo_n(void);
