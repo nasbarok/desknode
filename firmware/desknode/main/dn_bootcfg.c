@@ -242,10 +242,26 @@ static const char *bounce_px_refus(int32_t v)
      *    **décalée horizontalement** — constat verbatim sur `bounce_px = 6400`
      *    (13,33 lignes) : *« image décentrée sur la droite »*.
      *
-     * ⚠️ SUR LES 17 VALEURS QUE CETTE GARDE ACCEPTAIT, **DIX CASSAIENT L'IMAGE** :
+     * ⚠️ SUR LES VALEURS QUE CETTE GARDE ACCEPTAIT, DIX CASSAIENT L'IMAGE :
      *    2560, 3072, 3200, 4096, 5120, 6144, 6400, 10240, 12288, 12800.
-     *    Il n'en reste que SEPT : 2400, 3840, 4800, 7680, 9600, 15360, 19200 —
-     *    soit 5, 8, 10, 16, 20, 32 et 40 lignes.
+     *
+     * 🔴 ⛔ ET L'ÉNUMÉRATION DE CE COMMENTAIRE ÉTAIT FAUSSE — REVUE DE CODE DU
+     *    2026-08-19. Elle annonçait « il n'en reste que SEPT ». **IL EN RESTE
+     *    DOUZE**, plus le zéro. La garde combinée est
+     *    `v <= DN_BOUNCE_PX_MAX` ET `DN_LCD_TOTAL_PX % v == 0` ET
+     *    `v % DN_LCD_H_RES == 0`, c'est-à-dire `v = 480 x k` avec `k` diviseur
+     *    de 640 et `k <= 80` :
+     *        480, 960, 1920, 2400, 3840, 4800, 7680, 9600, 15360, 19200,
+     *        30720, 38400   (soit 1, 2, 4, 5, 8, 10, 16, 20, 32, 40, 64 et
+     *                        80 lignes)
+     *    Les cinq oubliées — 480, 960, 1920, 30720, 38400 — sont acceptées par
+     *    le code et n'apparaissaient nulle part. ⛔ Un commentaire qui présente
+     *    une liste comme EXHAUSTIVE et ne l'est pas est un instrument qui ment,
+     *    exactement comme le compteur décoratif de `dn_link.h`.
+     * ✅ EN REVANCHE LA SOUS-AFFIRMATION TIENT, ET ELLE EST LA SEULE QUI COMPTE
+     *    POUR §18.9 : **aucune valeur admissible entre 4 800 et 7 680** —
+     *    5 760 = 480 x 12 et 12 ne divise pas 640. 7 680 est donc bien la plus
+     *    petite valeur LÉGITIME qui tienne.
      * ⛔ LE PIÈGE ÉTAIT ARMÉ POUR QUICONQUE RÉGLERAIT CE PARAMÈTRE, et il s'est
      *    déclenché à la PREMIÈRE tentative de le régler. Un réglage refusé est
      *    une gêne ; un réglage ACCEPTÉ qui casse l'image en silence est un
@@ -324,6 +340,33 @@ esp_err_t dn_bootcfg_load(dn_bootcfg_t *out)
         const char *refus = bounce_px_refus(v);
         if (!refus) {
             out->bounce_px = (int)v;
+            /*
+             * 🔴 UNE VALEUR STOCKÉE SOUS LE SEUIL MESURÉ SÛR EST **DITE** —
+             *    REVUE DE CODE DU 2026-08-19.
+             *    Élever le DÉFAUT à 7 680 ne touche pas une clé NVS déjà écrite,
+             *    et 4 800 reste parfaitement légal sous la garde durcie
+             *    (4800 % 480 == 0, 307200 % 4800 == 0). Une carte sur laquelle
+             *    un `set bounce 4800` a été posé — et §18.9 documente une séance
+             *    où l'owner RÉGLAIT ce paramètre — redémarrait donc **dans l'état
+             *    qui glisse**, avec un log de boot qui disait seulement
+             *    « bounce_px=4800 ».
+             * ⛔ ON NE FORCE PAS LA VALEUR : un réglage explicite de l'opérateur
+             *    n'est pas une erreur, et l'écraser en silence serait le défaut
+             *    symétrique. On le REND AUDIBLE, et il se corrige par
+             *    `cfg reset` (vérifié : rend bien 7 680) ou `set bounce 7680`.
+             */
+            if (v > 0 && v < DN_DEFAULT_BOUNCE_PX) {
+                ESP_LOGW(TAG,
+                         "bounce_px=%ld vient de la NVS et est SOUS le defaut "
+                         "mesure sur (%d px = %d lignes).",
+                         (long)v, DN_DEFAULT_BOUNCE_PX,
+                         DN_DEFAULT_BOUNCE_PX / DN_LCD_H_RES);
+                ESP_LOGW(TAG,
+                         "  ⚠️ C'est la valeur sous laquelle l'image GLISSE d'un "
+                         "cran sous trafic serie + repeint (famine DMA, §18.9). "
+                         "`cfg reset` ou `set bounce %d` pour revenir au defaut.",
+                         DN_DEFAULT_BOUNCE_PX);
+            }
         } else {
             ESP_LOGW(TAG, "bounce_px=%ld refusé (%s) : défaut %d appliqué",
                      (long)v, refus, DN_DEFAULT_BOUNCE_PX);
