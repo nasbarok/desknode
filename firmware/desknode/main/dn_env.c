@@ -43,12 +43,18 @@ _Static_assert(DN_ENV_PERIODE_MS == DN_CAPT_PERIODE_MS,
 #define BH1750_CONV_MAX_US   (180 * 1000)
 
 /* INA219 — registres TI SBOS448G §8.6.2 */
-#define INA219_REG_CONFIG    0x00 /* reset 0x399F, VÉRIFIÉ sur la carte */
-#define INA219_REG_SHUNT     0x01 /* signé, LSB 10 µV */
-#define INA219_REG_BUS       0x02 /* bits 15:3 = valeur, LSB 4 mV ; b1 CNVR ; b0 OVF */
-#define INA219_REG_POWER     0x03
-#define INA219_REG_CURRENT   0x04 /* signé */
-#define INA219_REG_CALIB     0x05 /* reset 0x0000, VÉRIFIÉ sur la carte */
+/* ⚠️ SEULS `CONFIG` ET `CALIB` SONT ENCORE UTILISÉS (par `configurer()`, UNE fois
+ * au boot). Les quatre registres de VALEUR ci-dessous ne sont plus lus depuis le
+ * correct-course du 2026-08-20 — ils sont CONSERVÉS À DESSEIN, avec leur
+ * datasheet, pour que remettre le composant en service ne demande pas de
+ * re-fouiller TI SBOS448G. ⛔ Deadness DÉCLARÉE, pas silencieuse : c'est le
+ * défaut « macros mortes » que la revue `dn4-2` a déjà relevé une fois. */
+#define INA219_REG_CONFIG    0x00 /* reset 0x399F, VÉRIFIÉ sur la carte — UTILISÉ */
+#define INA219_REG_CALIB     0x05 /* reset 0x0000, VÉRIFIÉ sur la carte — UTILISÉ */
+#define INA219_REG_SHUNT     0x01 /* signé, LSB 10 µV                  — non lu */
+#define INA219_REG_BUS       0x02 /* bits 15:3, LSB 4 mV ; b1 CNVR ; b0 OVF — non lu */
+#define INA219_REG_POWER     0x03 /*                                    — non lu */
+#define INA219_REG_CURRENT   0x04 /* signé                              — non lu */
 #define INA219_CONFIG_VOULU  0x399Fu
 
 /*
@@ -68,8 +74,10 @@ _Static_assert(DN_ENV_PERIODE_MS == DN_CAPT_PERIODE_MS,
  * ⛔ Le patron §13.15.4 est respecté : 0x1000 ≠ 0x0000.
  */
 #define INA219_CALIB_VOULU   0x1000u
-#define INA219_CURRENT_LSB_DIXIEME_MA 1 /* 0,1 mA -> courant_ma = brut / 10 */
-#define INA219_POWER_LSB_MW  2
+/* ⚠️ Non utilisés depuis le correct-course du 2026-08-20 — conservés avec leur
+ * dérivation (§8.5.1) pour une remise en service sans recalcul. */
+#define INA219_CURRENT_LSB_DIXIEME_MA 1 /* Current_LSB = 0,1 mA -> le registre PORTE les dixièmes */
+#define INA219_POWER_LSB_MW  2          /* Power_LSB = 20 x Current_LSB = 2 mW */
 
 /* VL6180X — registres PUBLICS, index sur 16 BITS, MSB d'abord */
 #define VL_REG_MODEL_ID      0x0000u /* = 0xB4 */
@@ -107,9 +115,9 @@ _Static_assert(DN_ENV_PERIODE_MS == DN_CAPT_PERIODE_MS,
  *     est donc ATTEIGNABLE et signale un écrêtage du PGA.
  */
 #define BH1750_BRUT_SATURE   0xFFFFu
-/* 🔴 LES BORNES VIVENT DANS `dn_env.h` — voir DN_ENV_INA219_*. Elles y ont été
- * REMONTÉES en revue de code le 2026-08-20 : la console en recopiait une en dur
- * (et se trompait). ⛔ Ne pas les redéfinir ici. */
+/* ⛔ Les bornes physiques de l'INA219 ont été RETIRÉES avec ses grandeurs
+ * (correct-course 2026-08-20). Sources à ressortir si le shunt est un jour
+ * câblé : TI SBOS448G §8.5.1 (calibration) et §8.6.2 (registres). */
 
 /* ── État ─────────────────────────────────────────────────────────────────── */
 
@@ -136,10 +144,6 @@ static env_capteur_t s_c[DN_ENV_NB];
 
 static int s_lux = DN_ENV_ABSENT;
 static int s_lux_brut = DN_ENV_ABSENT;
-static int s_bus_mv = DN_ENV_ABSENT;
-static int s_shunt_uv = DN_ENV_ABSENT;
-static int s_courant_dx_ma = DN_ENV_ABSENT; /* DIXIÈMES de mA, signés */
-static int s_puissance_mw = DN_ENV_ABSENT;
 
 static uint32_t s_cycles;
 static int64_t s_duree_cycle_us;
@@ -393,6 +397,11 @@ static conf_t conformite_verifier(dn_env_id_t id)
         return CONF_OK;
 
     case DN_ENV_ALIM:
+        /* ⚠️ BRANCHE ACTUELLEMENT INATTEIGNABLE, et c'est DÉCLARÉ : `cycle_un()`
+         * n'est plus appelée pour DN_ENV_ALIM depuis le correct-course du
+         * 2026-08-20. Elle est CONSERVÉE parce qu'elle est le pendant exact de
+         * `configurer()`, qui tourne toujours au boot — les retirer séparément
+         * ferait diverger les deux. ⛔ Deadness déclarée, pas silencieuse. */
         if (lire_reg8(id, INA219_REG_CALIB, b, 2) != ESP_OK) {
             compter_i2c(id);
             return CONF_TRANSPORT;
@@ -477,79 +486,33 @@ static void lire_bh1750(void)
     dn_w2_echantillon(DN_W2_LUX, lux);
 }
 
-static void lire_ina219(void)
-{
-    const dn_env_id_t id = DN_ENV_ALIM;
-    uint8_t b[2];
-
-    if (lire_reg8(id, INA219_REG_BUS, b, 2) != ESP_OK) {
-        compter_i2c(id);
-        return;
-    }
-    uint16_t bus_raw = (uint16_t)(b[0] << 8 | b[1]);
-    /* TI SBOS448G §8.6.2.3 : b1 = CNVR (conversion ready), b0 = OVF (math
-     * overflow). ⇒ CNVR à 0 = « il répond, la donnée n'est pas prête ». */
-    if ((bus_raw & 0x0002u) == 0) {
-        compter_donnee(id);
-        return;
-    }
-    if ((bus_raw & 0x0001u) != 0) {
-        compter_bornes(id); /* OVF : le seul dépassement que la puce signale */
-        return;
-    }
-    /* ⛔ `bus_mv < 0` a été RETIRÉ (revue de code 2026-08-20) : l'expression est
-     * non signée et tient sur 15 bits, le test ne pouvait JAMAIS être vrai. */
-    int bus_mv = (int)((bus_raw >> 3) * 4u);
-    if (bus_mv > DN_ENV_INA219_BUS_MAX_MV) {
-        compter_bornes(id);
-        return;
-    }
-
-    if (lire_reg8(id, INA219_REG_SHUNT, b, 2) != ESP_OK) {
-        compter_i2c(id);
-        return;
-    }
-    int shunt_uv = (int)(int16_t)(b[0] << 8 | b[1]) * 10;
-    if (shunt_uv > DN_ENV_INA219_SHUNT_MAX_UV || shunt_uv < -DN_ENV_INA219_SHUNT_MAX_UV) {
-        compter_bornes(id); /* écrêtage du PGA ÷8 (±320 mV) */
-        return;
-    }
-
-    if (lire_reg8(id, INA219_REG_CURRENT, b, 2) != ESP_OK) {
-        compter_i2c(id);
-        return;
-    }
-    /* 🔴 Current_LSB = 0,1 mA ⇒ le registre PORTE DÉJÀ LES DIXIÈMES. ⛔ Ne pas
-     * diviser par 10 ici : c'était détruire dans le driver une précision que la
-     * source porte, avec une troncature ASYMÉTRIQUE autour de zéro (±0,9 mA se
-     * lisait `0 mA`) — sur un capteur dont le shunt libre vit précisément autour
-     * de zéro. Le transport garde les dixièmes, l'AFFICHAGE porte la précision. */
-    int courant_dx_ma = (int)(int16_t)(b[0] << 8 | b[1])
-                        * INA219_CURRENT_LSB_DIXIEME_MA;
-    if (courant_dx_ma > DN_ENV_INA219_COURANT_MAX_DX_MA ||
-        courant_dx_ma < -DN_ENV_INA219_COURANT_MAX_DX_MA) {
-        compter_bornes(id); /* au-delà de la pleine échelle du PGA ÷8 */
-        return;
-    }
-
-    if (lire_reg8(id, INA219_REG_POWER, b, 2) != ESP_OK) {
-        compter_i2c(id);
-        return;
-    }
-    int puissance_mw = (int)(uint16_t)(b[0] << 8 | b[1]) * INA219_POWER_LSB_MW;
-    if (puissance_mw > DN_ENV_INA219_PUISSANCE_MAX_MW) {
-        compter_bornes(id); /* au-delà du maximum PHYSIQUE 32,764 V × 3,200 A */
-        return;
-    }
-
-    portENTER_CRITICAL(&s_mux);
-    s_bus_mv = bus_mv;
-    s_shunt_uv = shunt_uv;
-    s_courant_dx_ma = courant_dx_ma;
-    s_puissance_mw = puissance_mw;
-    portEXIT_CRITICAL(&s_mux);
-    marquer_valide(id);
-}
+/*
+ * 🔴 L'INA219 NE SE LIT PLUS EN RÉGIME — correct-course du 2026-08-20.
+ *
+ * `lire_ina219()` a été RETIRÉE ici, et ce n'est pas un nettoyage : c'est une
+ * décision owner, motivée par la mesure.
+ *   · `Vin+`/`Vin−` ne sont PAS câblés (`dn4-2` a tranché « bus seulement »),
+ *     donc le shunt R100 n'est traversé par AUCUN courant. La puce mesurait donc
+ *     du BRUIT sur une entrée flottante : `bus 904 mV · shunt −30 µV ·
+ *     −0,3 mA · 0 mW`, relevé sur `1b2adca`. `dn4-3` a confirmé X3 = NON par A/B.
+ *   · Elle coûtait pour ça **5 transactions I²C sur les 9 du cycle (56 %)** —
+ *     1 conformité + BUS/SHUNT/CURRENT/POWER — sur le bus que §11.4 nomme
+ *     « le PREMIER AGRESSEUR CONNU » de la famine DMA, et qui se dégrade à froid.
+ *
+ * ⛔ CE QUI N'A PAS ÉTÉ FAIT, ET POURQUOI : le composant n'est PAS dessoudé
+ *   (D9 — montage fini, le dessoudage est un risque sur le bus pour ZÉRO gain),
+ *   et son `id` n'a PAS été retiré de `dn_env_id_t`. Il reste OUVERT et
+ *   CONFIGURÉ au boot, et `env` le montre comme INERTE en disant pourquoi.
+ *   ⚠️ Un composant soudé qui DISPARAÎT de la console est un composant qu'on
+ *   redécouvrira au prochain scan en se demandant ce que c'est.
+ *
+ * ✅ POUR LE REMETTRE EN SERVICE : il faut d'abord que du courant traverse son
+ *   shunt — le bornier à vis 2 points est DÉJÀ SOUDÉ, donc `Vin+`/`Vin−` sont
+ *   accessibles SANS FER. ⚠️ Vérifier d'abord AU MULTIMÈTRE que le bornier est
+ *   bien relié à `Vin+`/`Vin−` : c'est le câblage standard CJMCU, mais ce dépôt
+ *   ne l'a JAMAIS mesuré. ⛔ Et `Vin+`/`Vin−` NE SONT PAS une alimentation : y
+ *   poser 5 V et la masse court-circuiterait le shunt de 0,1 Ω.
+ */
 
 /* 🔴 Le VL6180X ne publie AUCUNE grandeur : son ALS rend une réponse binaire
  * sans le chargement de registres privés de ST (§13.19.5). Ce qu'on lit ici est
@@ -675,7 +638,8 @@ void dn_env_cycle(void)
     int64_t t0 = esp_timer_get_time();
 
     cycle_un(DN_ENV_LUM, lire_bh1750);
-    cycle_un(DN_ENV_ALIM, lire_ina219);
+    /* ⛔ DN_ENV_ALIM (INA219) N'EST PLUS CADENCÉ — correct-course 2026-08-20.
+     * Le device reste ouvert et configuré, il n'est simplement plus lu. */
     cycle_un(DN_ENV_TOF, lire_vl6180x);
 
     int64_t duree = esp_timer_get_time() - t0;
@@ -823,17 +787,17 @@ esp_err_t dn_env_init(void)
 
 int dn_env_lux(void) { LIRE_ATOMIQUE(s_lux); }
 int dn_env_lux_brut(void) { LIRE_ATOMIQUE(s_lux_brut); }
-int dn_env_bus_mv(void) { LIRE_ATOMIQUE(s_bus_mv); }
-int dn_env_shunt_uv(void) { LIRE_ATOMIQUE(s_shunt_uv); }
-int dn_env_courant_dixiemes_ma(void) { LIRE_ATOMIQUE(s_courant_dx_ma); }
-int dn_env_puissance_mw(void) { LIRE_ATOMIQUE(s_puissance_mw); }
+/* ⛔ Les quatre accesseurs de l'INA219 ont été RETIRÉS — correct-course du
+ * 2026-08-20 : ils ne pouvaient rendre que du bruit sur une entrée flottante.
+ * Voir le bloc de motifs au-dessus de `lire_vl6180x()`. */
 
-/* 🔴 LECTURES GROUPÉES — AJOUTÉES EN REVUE DE CODE LE 2026-08-20.
- * Le cycle publie ces valeurs sous UN SEUL verrou ; les lire une par une prenait
- * deux (lux) ou quatre (INA219) sections critiques, et pouvait donc imprimer un
- * tuple qui n'a jamais existé — « 411 lx (brut 500) », ou une tension de bus du
- * cycle N avec un courant du cycle N+1. C'est le défaut « CR dn4-2 — LECTURE
- * ATOMIQUE », réintroduit pour ce module. */
+/* 🔴 LECTURE GROUPÉE — AJOUTÉE EN REVUE DE CODE LE 2026-08-20.
+ * Le cycle publie `s_lux` et `s_lux_brut` sous UN SEUL verrou ; les lire une par
+ * une prenait deux sections critiques et pouvait imprimer un tuple qui n'a
+ * jamais existé — « 411 lx (brut 500) ». C'est le défaut « CR dn4-2 — LECTURE
+ * ATOMIQUE », réintroduit pour ce module.
+ * ⛔ La variante INA219 a été retirée avec ses grandeurs (correct-course
+ *   2026-08-20). */
 void dn_env_lux_lire(int *lux, int *brut)
 {
     portENTER_CRITICAL(&s_mux);
@@ -842,16 +806,6 @@ void dn_env_lux_lire(int *lux, int *brut)
     portEXIT_CRITICAL(&s_mux);
 }
 
-void dn_env_alim_lire(int *bus_mv, int *shunt_uv, int *courant_dx_ma,
-                      int *puissance_mw)
-{
-    portENTER_CRITICAL(&s_mux);
-    if (bus_mv)        { *bus_mv = s_bus_mv; }
-    if (shunt_uv)      { *shunt_uv = s_shunt_uv; }
-    if (courant_dx_ma) { *courant_dx_ma = s_courant_dx_ma; }
-    if (puissance_mw)  { *puissance_mw = s_puissance_mw; }
-    portEXIT_CRITICAL(&s_mux);
-}
 
 dn_env_etat_t dn_env_etat(dn_env_id_t id)
 {

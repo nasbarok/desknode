@@ -5982,56 +5982,37 @@ static int cmd_env(int argc, char **argv)
         printf("     dixiemes a publie « 4 614,8 » pour 46 148, TROIS FOIS.\n");
     }
 
-    /* ── INA219 ── */
+    /* ── INA219 — INERTE DEPUIS LE CORRECT-COURSE DU 2026-08-20 ── */
     {
-        char v[128] = "";
-        /* 🔴 LECTURE ATOMIQUE (CR dn4-2) : quatre appels separes prenaient
-         * QUATRE sections critiques — une tension du cycle N pouvait s'imprimer
-         * a cote d'un courant du cycle N+1 (revue de code 2026-08-20). */
-        int mv = DN_ENV_ABSENT, uv = 0, i_dx = 0, mw = 0;
-        dn_env_alim_lire(&mv, &uv, &i_dx, &mw);
-        if (mv != DN_ENV_ABSENT) {
-            /* 🔴 Le courant est transporte en DIXIEMES de mA et c'est ICI que la
-             * precision s'affiche (AC11). ⛔ Le signe se pose, il ne se deduit
-             * pas d'une division entiere — elle tronque vers zero, et ce
-             * capteur vit AUTOUR DE ZERO. */
-            int i_m = i_dx < 0 ? -i_dx : i_dx;
-            snprintf(v, sizeof v,
-                     "bus %d mV · shunt %d uV · %s%d,%d mA · %d mW", mv, uv,
-                     i_dx < 0 ? "-" : "", i_m / 10, i_m % 10, mw);
-        }
-        env_entete(DN_ENV_ALIM, v);
+        env_entete(DN_ENV_ALIM, "⛔ INERTE — plus lu en regime");
         env_ligne_compteurs(DN_ENV_ALIM);
-        printf("  garde     : ✅ FORTE — 05h Calibration, valeur de reset 0x0000,\n");
-        printf("              imposee 0x1000, RELUE a chaque cycle. Les trois\n");
-        printf("              proprietes du patron sont tenues : inscriptible,\n");
-        printf("              relisible, reset != valeur imposee.\n");
-        printf("              ⚠️ 0x1000 n'est pas un nombre magique : c'est la\n");
-        printf("              VRAIE calibration du shunt R100 (0,1 ohm, 3,2 A) —\n");
-        printf("              Current_LSB 0,1 mA, Power_LSB 2 mW (SBOS448G 8.5.1).\n");
-        printf("  🔴 CE QU'IL MESURE N'EST PAS LE RAIL DU MODULE : `Vin+`/`Vin-`\n");
-        printf("     NE SONT PAS CABLES (README.md:916). Le shunt est LIBRE et il\n");
-        printf("     capte du BRUIT — mesure 0x01 = FF FB = -50 uV le 2026-08-20,\n");
-        printf("     ⛔ PAS `00 00` comme l'annoncait le README. La tension de bus\n");
-        printf("     lue est celle d'une entree FLOTTANTE, ⛔ pas une alimentation.\n");
-        printf("     ⇒ le poser EN SERIE est une QUESTION OWNER (X3, AC7), et\n");
-        printf("       elle demande un geste de fer sur un montage fini.\n");
-        /* ⛔ Les bornes se LISENT aux constantes, elles ne se recopient pas en
-         * dur : deux litteraux independants derivent (revue de code 2026-08-20,
-         * et ce `32760` etait DEJA faux — le champ 13 bits donne 32764). */
-        printf("  bornes    : bus 0..%d mV (LSB 4 mV, BRNG=1 ; 13 bits ⇒ 8191 x\n",
-               DN_ENV_INA219_BUS_MAX_MV);
-        printf("              4 mV, ⛔ pas les 32760 de la pleine echelle\n");
-        printf("              ARRONDIE) · le bit OVF est le SEUL depassement que\n");
-        printf("              la puce signale, il compte en `bornes` · shunt\n");
-        printf("              +-%d uV (PGA/8) · courant +-%d,%d mA et puissance\n",
-               DN_ENV_INA219_SHUNT_MAX_UV, DN_ENV_INA219_COURANT_MAX_DX_MA / 10,
-               DN_ENV_INA219_COURANT_MAX_DX_MA % 10);
-        printf("              0..%d mW — POSEES EN REVUE DE CODE : elles\n",
-               DN_ENV_INA219_PUISSANCE_MAX_MW);
-        printf("              MANQUAIENT, et 04h/03h sont des lectures\n");
-        printf("              INDEPENDANTES de celle du bus. CNVR a 0 compte en\n");
-        printf("              `donnee`. Source : TI SBOS448G 8.5.1 et 8.6.2.\n");
+        printf("  🔴 CE COMPOSANT N'EST PLUS LU, ET C'EST UNE DECISION OWNER\n");
+        printf("     (correct-course du 2026-08-20), pas une panne.\n");
+        printf("  pourquoi   : `Vin+`/`Vin-` NE SONT PAS CABLES — `dn4-2` a\n");
+        printf("               tranche « bus seulement ». Le shunt R100 (0,1 ohm)\n");
+        printf("               n'est traverse par AUCUN courant, donc la puce ne\n");
+        printf("               mesurait QUE DU BRUIT sur une entree flottante :\n");
+        printf("               bus 904 mV, shunt -30 uV, -0,3 mA, 0 mW (mesure le\n");
+        printf("               2026-08-20). X3 a ete tranche NON par A/B.\n");
+        printf("  ce que ca  : 5 transactions I2C sur les 9 du cycle (56 %%) sont\n");
+        printf("  rend       : rendues au bus — celui que §11.4 nomme « le PREMIER\n");
+        printf("               AGRESSEUR CONNU » de la famine DMA, et qui se\n");
+        printf("               degrade ~40 s a froid.\n");
+        printf("  etat reel  : SOUDE et OUVERT, configure UNE FOIS au boot. ⛔ Il\n");
+        printf("               n'est PAS dessoude (D9 : montage fini, le\n");
+        printf("               dessoudage est un risque sur le bus pour ZERO\n");
+        printf("               gain). Ses compteurs restent donc a zero A VIE.\n");
+        printf("  ⚠️ POUR LE REMETTRE EN SERVICE, il faut du COURANT dans son\n");
+        printf("     shunt. Le bornier a vis 2 points est DEJA SOUDE, donc\n");
+        printf("     `Vin+`/`Vin-` sont accessibles SANS FER — mais VERIFIER\n");
+        printf("     D'ABORD AU MULTIMETRE que le bornier est bien relie a\n");
+        printf("     `Vin+`/`Vin-` : c'est le cablage standard CJMCU, et ce depot\n");
+        printf("     ne l'a JAMAIS mesure.\n");
+        printf("  ⛔ `Vin+`/`Vin-` NE SONT PAS UNE ALIMENTATION : y poser 5 V et\n");
+        printf("     la masse court-circuiterait le shunt de 0,1 ohm. « Le miroir\n");
+        printf("     tue » — c'est le piege nomme par dn4-2.\n");
+        printf("  identite   : `i2c lire 40 00 2` rend `39 9F` (reset du registre\n");
+        printf("               Configuration) — il repond toujours.\n");
     }
 
     /* ── VL6180X ── */

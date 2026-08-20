@@ -227,24 +227,11 @@ typedef struct {
 #define DN_ENV_BL_PAS_MAX      20
 #define DN_ENV_BL_AUTO_DEFAUT  false
 
-/* ── 🔴 LES BORNES PHYSIQUES DE L'INA219 — EXPORTÉES, ⛔ PAS RECOPIÉES.
- * Corrigé en revue de code le 2026-08-20 : la console imprimait « bus 0..32760 »
- * en DUR pendant que `dn_env.c` faisait respecter sa propre constante. Deux
- * littéraux indépendants dérivent — et celui de la console était DÉJÀ faux.
- * Sources : TI SBOS448G §8.5.1 (calibration) et §8.6.2 (registres), plus la
- * sérigraphie du breakout CJMCU (shunt R100 = 0,1 Ω, 3,2 A).
- *   · Bus      : champ 13 bits (15:3), LSB 4 mV ⇒ 8191 × 4 = 32 764 mV.
- *                ⚠️ ⛔ PAS les 32 760 de la pleine échelle ARRONDIE de la fiche.
- *   · Shunt    : signé, LSB 10 µV, PGA ÷8 ⇒ ±320 000 µV.
- *   · Courant  : borné par le PGA, ⛔ pas par le registre (±3 276,7 mA serait
- *                inatteignable, donc décoratif) : 320 mV / 0,1 Ω = ±3 200,0 mA,
- *                soit ±32 000 DIXIÈMES de mA.
- *   · Puissance: maximum PHYSIQUE 32,764 V × 3,200 A = 104 844 mW, ⛔ pas les
- *                131 070 mW que le registre 16 bits pourrait porter. */
-#define DN_ENV_INA219_BUS_MAX_MV         32764
-#define DN_ENV_INA219_SHUNT_MAX_UV       320000
-#define DN_ENV_INA219_COURANT_MAX_DX_MA  32000
-#define DN_ENV_INA219_PUISSANCE_MAX_MW   104844
+/* ⛔ LES BORNES PHYSIQUES DE L'INA219 SONT RETIRÉES — correct-course du
+ * 2026-08-20. Elles n'avaient de sens que pour un seau `err_bornes` sur des
+ * grandeurs qu'on ne publie plus. Elles restent consultables dans l'historique
+ * (`git log -S DN_ENV_INA219_BUS_MAX_MV`) et leurs sources sont TI SBOS448G
+ * §8.5.1 / §8.6.2 — à ressortir telles quelles si le shunt est un jour câblé. */
 
 /*
  * Ouvre les trois devices et pose leur configuration. NON FATALE.
@@ -311,27 +298,17 @@ int dn_env_lux_brut(void); /* le compte 16 bits nu, pour le diagnostic */
  * courant en mA (SIGNÉ) et la puissance en mW.
  * 🔴 CE QU'ILS MESURENT AUJOURD'HUI EST NOMMÉ, et ce n'est PAS le rail du
  *    module : `Vin+`/`Vin-` NE SONT PAS CÂBLÉS (README.md:916). Voir dn_env.c. */
-int dn_env_bus_mv(void);
-int dn_env_shunt_uv(void);
-/* 🔴 Le courant est publié en DIXIÈMES de mA, ⛔ pas en mA — CORRIGÉ EN REVUE DE
- * CODE LE 2026-08-20. Le registre 04h porte `Current_LSB = 0,1 mA` : diviser par
- * 10 dans le driver DÉTRUISAIT une précision que la source porte, et la
- * troncature entière étant asymétrique autour de zéro, ±0,9 mA se lisait `0 mA`
- * — sur un capteur dont le shunt libre vit précisément AUTOUR DE ZÉRO
- * (`FF FB` = −50 µV mesuré, §13.19.6). ⇒ le transport garde les dixièmes,
- * l'AFFICHAGE porte la précision (AC11). */
-int dn_env_courant_dixiemes_ma(void);
-int dn_env_puissance_mw(void);
+/* ⛔ LES QUATRE ACCESSEURS DE L'INA219 SONT RETIRÉS — correct-course du
+ * 2026-08-20, décision owner. `Vin+`/`Vin−` ne sont pas câblés ⇒ ils ne
+ * pouvaient rendre que du BRUIT sur une entrée flottante, pour 5 transactions
+ * I²C sur les 9 du cycle (56 %). Le composant reste SOUDÉ et OUVERT, il n'est
+ * plus LU. Motifs complets dans `dn_env.c`, au-dessus de `lire_vl6180x()`. */
 
-/* 🔴 LECTURES GROUPÉES — le cycle publie tout sous UN SEUL verrou, un lecteur qui
- * prend deux ou quatre sections critiques peut donc imprimer un tuple qui
- * n'a jamais existé (`411 lx (brut 500)`, une tension du cycle N avec un courant
- * du cycle N+1). C'est le défaut « CR dn4-2 — LECTURE ATOMIQUE », réintroduit
- * pour ce module et corrigé en revue de code le 2026-08-20.
- * ⛔ Toute sortie qui affiche PLUSIEURS de ces grandeurs ENSEMBLE passe par ici. */
+/* 🔴 LECTURE GROUPÉE — le cycle publie `lux` et `brut` sous UN SEUL verrou ; un
+ * lecteur qui prend deux sections critiques peut imprimer un tuple qui n'a jamais
+ * existé (`411 lx (brut 500)`). C'est le défaut « CR dn4-2 — LECTURE ATOMIQUE »,
+ * réintroduit pour ce module et corrigé en revue de code le 2026-08-20. */
 void dn_env_lux_lire(int *lux, int *brut);
-void dn_env_alim_lire(int *bus_mv, int *shunt_uv, int *courant_dx_ma,
-                      int *puissance_mw);
 
 dn_env_etat_t dn_env_etat(dn_env_id_t id);
 const char *dn_env_etat_nom(dn_env_etat_t e);
