@@ -1948,12 +1948,51 @@ occurrence : **58 erreurs I²C sur 1 479 lectures GT911 = 3,9 %.**
 **Puis, sur une fenêtre chronométrée de 15 s : 435 lectures, ZÉRO erreur.** ⇒ **La dégradation est
 TRANSITOIRE et se produit AU BOOT**, pas en régime.
 
-✅ **Non reproduit** : **trois redémarrages consécutifs** à 7 devices, comptés **en Python** (⛔ pas
-par `grep -c`, que le hook `rtk` a déjà faussé dans ce dépôt) ⇒ **0 `identite INATTENDUE`, 0 erreur
-GT911, 0 expander muet, 0 `abort()`, `chip id 0x61` sur les trois**.
-⇒ **1 échec sur 4 démarrages, non reproduit sur 3 essais.** ⛔ **Cause NON ISOLÉE.** Le plus
-plausible — et déclaré comme hypothèse — est **l'instant du branchement** (contacts qui s'établissent,
-appel de courant) plutôt que le régime.
+🔴 **CE PARAGRAPHE A ÉTÉ ÉCRIT FAUX, PUIS CORRIGÉ PAR UNE REPRODUCTION — ET LES DEUX VERSIONS SONT
+CONSERVÉES, PARCE QUE L'ERREUR EST INSTRUCTIVE.**
+
+**Ce qui était écrit** : *« 1 échec sur 4 démarrages, non reproduit sur 3 essais. Cause NON ISOLÉE.
+Le plus plausible est l'instant du branchement plutôt que le régime. »* Les trois redémarrages à
+7 devices étaient bien propres — comptés **en Python**, ⛔ pas par `grep -c` que le hook `rtk` a déjà
+faussé dans ce dépôt : **0 `identite INATTENDUE`, 0 erreur GT911, 0 expander muet, 0 `abort()`,
+`chip id 0x61` sur les trois**.
+
+🔴 **Puis le défaut S'EST REPRODUIT**, sur un rebranchement physique ultérieur : `identite
+INATTENDUE = 1`, **`abort() = 1`**, `chip id 0x61 = 0`. ⇒ **carte haltée, console morte.**
+
+**Et en recomptant TOUS les démarrages depuis que des modules sont sur le bus, un motif apparaît que
+le premier dépouillement avait manqué :**
+
+| Type de démarrage | Résultats | Échecs |
+|---|---|---|
+| 🔴 **Rebranchement PHYSIQUE** (démarrage à FROID) | ❌ ❌ ✅ ❌ | **3 sur 4** |
+| ✅ **`--reset`** (impulsion RTS, **alimentation maintenue**) | ✅ ✅ ✅ ✅ | **0 sur 4** |
+
+⇒ 🔴 **CE N'EST PAS « TRANSITOIRE ET NON ISOLÉ ». C'EST UN DÉFAUT DE DÉMARRAGE À FROID,
+REPRODUCTIBLE, QUE LE RESET CHAUD NE MONTRE JAMAIS.** **3 échecs sur 8 démarrages** au total.
+
+⚠️ **CE QUE ÇA IMPLIQUE POUR LE PRODUIT, ET C'EST LE POINT** : DeskNode est censé démarrer **seul,
+quand la tour est mise sous tension** (le différenciateur du brief). Le **démarrage à froid EST le
+mode de fonctionnement normal du produit** — et il échoue **trois fois sur quatre**, en **briquant la
+carte** (§13.16.11). ⛔ **Ce n'est pas un artefact de séance.**
+
+⚠️ **Hypothèses NOMMÉES, aucune vérifiée** — ⛔ à ne pas confondre avec un diagnostic :
+1. **Séquence de démarrage des capteurs** : à froid, les trois modules s'alimentent **en même temps**
+   que l'ESP32. Le VL6180X en particulier a sa propre séquence de boot ; un composant qui tient
+   `SDA`/`SCL` pendant la sienne expliquerait des transactions ratées **tôt** et un bus sain ensuite.
+   ⇒ **Le reset RTS ne les réveille pas** : ils sont **déjà démarrés**, ce qui colle exactement au motif.
+2. **Appel de courant** à froid, affaissant le rail 3V3 le temps de l'établissement.
+3. **Tirages faibles** (Y6 : BH1750 **aucun**, ToF 10 kΩ) rendant les fronts marginaux **précisément**
+   quand le rail n'est pas encore stable.
+
+⇒ **Ce qui trancherait** : un **A/B compté** — N rebranchements physiques contre N `--reset`, avec
+le décompte des `abort()` — et, si l'hypothèse 1 tient, **retarder `dn_capteurs_init()`** ou lui
+donner une **reprise** (§13.16.11, second défaut : elle ne retente JAMAIS).
+⛔ **Hors périmètre de `dn4-2`**, qui n'a pas le droit de toucher `dn_capteurs.c`. **Porté au ledger.**
+
+⚠️ **Le montage en trois temps reste ce qui a permis de le dire** : deux modules d'un coup n'auraient
+jamais séparé « câblage d'un module » de « câble Y neuf ». **Le BH1750 seul par les Y a validé les
+Y**, puis le ToF a validé sa propre paire de pattes.
 ⚠️ **Et le montage en trois temps a permis de le dire** : deux modules d'un coup n'auraient jamais
 séparé « câblage d'un module » de « câble Y neuf ». **Le BH1750 seul par les Y a validé les Y**, puis
 le ToF a validé sa propre paire de pattes.
