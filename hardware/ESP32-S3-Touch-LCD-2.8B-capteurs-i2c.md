@@ -3311,6 +3311,76 @@ coûtent la MOITIÉ d'un composant tiers pour un capteur.** ⛔ Ce n'est pas un 
 « maison vs tiers » : c'est le chiffre de CE cas, et il va dans le sens de l'arbitrage de §13.19.4.
 ✅ Partition toujours **77 % libre**.
 
+### 13.19.5bis 🎯 AC1 / AC2 / AC3 — LA QUALIFICATION PAR LE STIMULUS ET LES SIX DÉBRANCHEMENTS
+
+🔴 **SECTION ÉCRITE EN REVUE DE CODE LE 2026-08-20, ET C'EST UN TROU QUI EST COMBLÉ, ⛔ PAS UNE
+MESURE NEUVE.** Les chiffres ci-dessous ont été relevés pendant la séance carte de `dn4-3` et
+publiés **uniquement dans la story** (`Dev Agent Record`, notes 14 et 15) et, pour la campagne, dans
+`deferred-work.md:298`. **Ils ne se trouvaient dans AUCUNE section de ce document**, alors que §14
+pose que *« le livrable de test est un TABLEAU DE MESURES »* — et que ce document EST le livrable de
+séance. ⛔ **La preuve des deux AC les plus structurants ne peut pas vivre dans le seul artefact que
+la story écrit sur elle-même.**
+⚠️ **Et le renvoi du ledger était FAUX** : `deferred-work.md:298` citait **§13.19.12**, qui est
+*« LES BUDGETS SUR LE FIRMWARE LIVRÉ »* — aucun débranchement, aucun 42,9 % n'y figure. Corrigé
+**par ajout** vers cette section-ci.
+
+#### a) 🎯 AC1 — LE STIMULUS BH1750, GESTE OWNER, DANS LES DEUX SENS
+
+**Protocole** : trois lectures par état, à la console (`env`), l'owner posant puis retirant la main
+sur le capteur. ⛔ **Jamais le scan** — démontré aveugle (8/8 vert pendant 55,5 % d'erreurs).
+
+| État | Lecture 1 | Lecture 2 | Lecture 3 |
+|---|---:|---:|---:|
+| **Départ** (pièce éclairée) | **620 lx** | **635 lx** | **647 lx** |
+| 🖐️ **Main posée** sur le capteur | **0 lx** | **0 lx** | **1 lx** |
+| **Main retirée** | **850 lx** | **860 lx** | **871 lx** |
+
+🎯 **LE RETOUR N'EST PAS IDENTIQUE AU DÉPART : +35 %** — et c'est le critère de l'AC, mot pour mot :
+*« une valeur rejouée reviendrait exacte »*. Elle ne revient pas exacte, donc **la valeur suit la
+pièce**, elle n'est pas régurgitée depuis un cache.
+**48 cycles, 0 erreur de toute cause** sur la fenêtre.
+
+✅ **ET LE TERRAIN A VALIDÉ UN CHOIX DE CONCEPTION** : `brut = 0` est arrivé **deux fois** sous la
+main, et il est publié comme une **valeur LÉGITIME** (obscurité), ⛔ pas comme une erreur de bornes.
+🔴 **Si je l'avais borné, la main de l'owner aurait fabriqué 2 erreurs sur 3.** C'est la raison pour
+laquelle `0 lx` n'entre dans aucun seau — et pourquoi la console distingue désormais *« un lux
+JAMAIS LU »* de *« 0 lx »* (corrigé en revue de code : elle imprimait `0` pour les deux).
+
+#### b) 🎯 AC2 + AC3 — SIX DÉBRANCHEMENTS PHYSIQUES, BUDGET ANNONCÉ, **0 BRIQUAGE**
+
+**Protocole** : débranchement **PHYSIQUE** du câble USB — le seul geste qui coupe réellement le rail
+(⛔ `reboot` et `--reset` **ne reproduisent pas** le défaut). **Budget annoncé d'avance : 6 cycles.**
+**Instrument : `touch` (`err_i2c`) dans les 60 s**, ⛔ **pas le scan**.
+
+| Grandeur | Résultat |
+|---|---|
+| Briquages | 🎯 **0 sur 6** |
+| Cycles **dégradés** | **2 sur 6** (contre **1/6** en `dn4-2`) |
+| Pic d'erreurs GT911 | **260 erreurs / 606 lectures = 42,9 %** |
+| Signature transitoire | 🎯 **REPRODUITE** : **+1 567 lectures, ZÉRO erreur nouvelle** entre le relevé précoce et T+60 s (`dn4-2` avait publié *+862 lectures, zéro erreur nouvelle*) |
+| **BH1750** pendant les 42,9 % | 🔴 **pas UNE erreur** |
+| **INA219** pendant les 42,9 % | 🔴 **pas UNE erreur** |
+| **VL6180X** pendant les 42,9 % | **4 `err_i2c` + 5 pertes de configuration**, **TOUTES réparées seules**, ⛔ **aucune valeur fausse publiée** |
+
+🎯 **LE DÉFAUT FRAPPE OÙ LA THÉORIE LE PRÉDISAIT.** Le VL6180X est **le seul des trois dont l'index
+de registre est sur 16 bits**, donc **le seul à faire des transferts multi-octets** — précisément le
+mode de défaillance que §13.17.1 désigne. ⛔ Ce n'est pas un hasard, et ça vaut mieux qu'un chiffre.
+
+⚠️ 🔴 **CE QUE CE RELEVÉ NE CONTIENT PAS, ET L'AC LE DEMANDAIT NOMMÉMENT : LE DÉLAI DE REPRISE.**
+AC3 exige *« et **le délai de reprise** »*. Il n'a **pas été chronométré** pendant la séance. On sait
+que la reprise a eu lieu (les 5 pertes de configuration du VL6180X sont **toutes** réparées) et
+qu'elle tient dans la fenêtre de 60 s, ⛔ **mais aucun chiffre ne peut être publié ici.**
+⇒ **PORTÉ AU T0 DE `dn4-4`**, avec les quatre compteurs manquants d'AC13.
+⛔ **Ne pas re-cocher AC3 de `dn4-3` sur ce relevé futur : il portera un AUTRE firmware.**
+
+⚠️ **ET LES CHIFFRES CI-DESSUS PORTENT LE FIRMWARE `fd959f2`**, ⛔ **pas celui d'après la revue de
+code.** Les correctifs de revue changent des chemins que cette campagne a exercés — notamment la
+reconfiguration après une perte, qui n'écrit plus sur une simple erreur de transport. ⇒ **la
+campagne est à REJOUER** sur le firmware corrigé, et c'est écrit ici pour que personne ne recopie
+ces lignes comme si elles portaient le nouveau binaire.
+
+---
+
 ### 13.19.6 🎯 X3 TRANCHÉ — **NON**, et l'ambiguïté a été levée **par la mesure**, ⛔ pas en reposant la question
 
 **La question a été posée à l'owner le 2026-08-20**, en distinguant explicitement — comme AC7
@@ -3794,6 +3864,111 @@ L'INSTRUMENT :**
    l'oscillateur du PCF85063A s'est arrêté, l'heure lue (`2000-01-01 01:48`) **ne vaut rien**, et la
    barre affiche **« --:-- HEURE NON POSÉE »** au lieu de mentir. AC13 exige *« juste OU dit
    honnêtement qu'elle ne l'est pas »* — **elle le dit.** `rtc set` la pose.
+
+### 13.19.14 🔴 LA REVUE DE CODE DU 2026-08-20 — 34 CONSTATS, ET LE PIRE POUVAIT PERDRE LA CONSOLE
+
+**Trois couches adversariales** (chasse à l'aveugle · parcours exhaustif des bornes · audit
+d'acceptance) sur `2992181..4724944`, `firmware/` seul. **Chaque constat a été re-vérifié au code
+avant d'être retenu**, et **trois ont été RÉFUTÉS par cette vérification** — ils sont écrits ici
+avec leur réfutation, parce qu'un constat de revue qui tombe est aussi instructif qu'un qui tient.
+
+#### a) 🔴 LES CINQ QUI CHANGENT LE COMPORTEMENT DU FIRMWARE
+
+| # | Le défaut | Ce qui l'a prouvé |
+|---|---|---|
+| **1** | 🔴 **`w2` : la racine de Newton entière NE TERMINE PAS.** `while (r != prev)` entre dans un cycle de période 2 pour toute variance de la forme `k²−1` | **Force brute : 446 valeurs piègent la boucle dans 1..199 999.** Cas atteignable : lux `{0,0,0,3,3}` (rideau fermé — l'owner a mesuré **2 lx** dans cette condition) donne `var = 1 560 000 = 1249²−1`, et `r` oscille **1248↔1249 pour toujours** ⇒ REPL à 100 %, console perdue, TWDT, et avec `PANIC_PRINT_HALT` c'est *« RESET physique obligatoire »*. **Introduit par `d856bc9`, ⛔ pas hérité** |
+| **2** | 🔴 **Un BH1750 dont la config échoue au boot n'est JAMAIS reconfiguré, et publie `0 lx` VIVANT à vie** | Trois maillons : `conformite_ok(LUM)` rendait **`true` en dur** ⇒ branche de réparation inatteignable · `dev` **jamais remis à `NULL`** ⇒ branche de ré-ouverture inatteignable · `config_us` **restait à 0** ⇒ la garde des 180 ms ne pouvait plus tirer. Et le log de boot **promettait le contraire** : *« la garde de conformite la reposera »* |
+| **3** | 🔴 **Une erreur de TRANSPORT était comptée et journalisée comme « CONFIGURATION PERDUE », et déclenchait des ÉCRITURES en régime** | Un seul NACK produisait `err_i2c++` **ET** `conformite++`, une **cause affirmée sans preuve** (l'ESD), et **2 à 4 écritures** sur le bus en train de se dégrader. ⚠️ **La campagne le confirme** : *« 4 `err_i2c` + 5 pertes de configuration »* sur le VL6180X à froid ⇒ **jusqu'à 5 séquences d'écriture réellement jouées**. ⛔ Contredisait trois textes écrits par cette même story |
+| **4** | 🔴 **Le σ de `w2` avait un biais de troncature du même ordre que son propre seuil** | `e_x2` tronqué **avant** le × 10⁶ ⇒ jusqu'à **10⁶ de variance jetée**, quand le seuil vaut `var = 10⁶` tout rond. Mesuré : σ 1,633 → **1,414** (−13 %) · 0,748 → **0,600** (−20 %) · 0,748 → **0,000** (−100 %). **Biais toujours vers « NE QUALIFIE PAS »** |
+| **5** | **Courant, puissance et gaz publiés SANS borne ni source** | AC10 les exigeait nommément. `04h`/`03h` sont des lectures **indépendantes** de celle du bus : un `CALIB` corrompu publiait `131 070 mW` sur un shunt **non câblé**, sans qu'aucun seau ne bouge |
+
+✅ **APRÈS CORRECTIF, VÉRIFIÉ NUMÉRIQUEMENT** : la racine est **exacte** (écart **0** contre `isqrt`
+sur 3 000 tirages jusqu'à 10¹²), **zéro** valeur ne boucle sur 300 000 testées, et l'erreur de σ
+tombe de −13/−20/−100 % à **~−0,05 %**.
+
+#### b) Les autres, par famille
+
+- **Deux seaux structurellement inatteignables** (`err_donnee` du BH1750, `err_bornes` du VL6180X) —
+  **et non déclarés**, alors que le patron de déclaration existait déjà pour `conformite`.
+- **Trois lectures non atomiques** : `env` prenait 2 (lux) et 4 (INA219) sections critiques là où le
+  cycle publie sous **une seule** ⇒ `« 411 lx (brut 500) »`. C'est le défaut **« CR `dn4-2` —
+  LECTURE ATOMIQUE »**, réintroduit pour le module neuf.
+- **Le W2 du lux ré-échantillonnait une valeur PÉRIMÉE** (la garde disait *« pas encore périmé »*,
+  ⛔ pas *« lu ce cycle-ci »*) — les quatre autres pistes non ⇒ **deux instruments différents pour
+  comparer des candidats**, ce que `dn_env.h` interdit explicitement.
+- **`gas_valid`/`heater_stable` ignorés** : `s_gaz` est notre **demande**, pas un état de mesure ⇒
+  le premier cycle après `capteurs gaz on` publiait **~12,9 MΩ** et le poussait dans W2, où il
+  fixait le min/max de toute la fenêtre.
+- **Un verrou mortel dans les réglages à chaud** : `bl auto pas 1` + `bl auto plancher 97` figeait le
+  duty à **99 %**, dans les deux sens, pour tous les lux — pendant que `bl auto` annonçait une
+  « course complète ».
+- **Trois « deux diagnostics dans une phrase »** : `env` accusait `dn_capt` quand la cause pouvait
+  être `dn_env_init()` · `gaz : chauffeur COUPE` s'affirmait aussi quand rien n'avait jamais été lu ·
+  `bl` imprimait *« sur 0 lx »* pour un lux **jamais lu**, alors que `0 lx` est une **valeur mesurée
+  légitime** sur ce capteur. ⛔ C'est la faute que *« TROIS ETATS, TROIS PHRASES »* venait d'éliminer.
+- **Le signe posé par une division entière** (pression brute) — le correctif existait **vingt lignes
+  plus haut**, et `dn_capteurs` l'avait **déjà payé** sur l'humidité (`« -5,-5 % »`).
+- **Arguments surnuméraires acceptés en silence** sur `bl auto …`, `env reset`, `w2 reset`.
+- **Bornage de blocage documenté faux** : *« 3 × 100 ms par capteur »* annoncé, **6 ×** réel pour le
+  VL6180X sur conformité perdue, **~12 ×** par cycle. ⚠️ Ce pire cas **n'a jamais été exercé** :
+  la famine DMA d'AC12 a été rejouée sur un bus **sain**.
+- **Un contrat d'ordre d'init faux dans le header** (*« APRÈS `dn_console_start()` »*) — 🎯 **décision
+  owner : le CODE fait autorité**, c'est le contrat écrit qui se corrige.
+
+#### c) ⚠️ LES TROIS CONSTATS QUE LA VÉRIFICATION A RÉFUTÉS
+
+1. ⛔ **« Division par zéro dans `dn_env_bl_loi()` »** — **INATTEIGNABLE** : si `span ≤ 0`, alors
+   soit `lux <= bas` soit `lux >= haut`, et **les deux retours anticipés attrapent le cas avant la
+   division**.
+2. ⛔ **« La course `bl <n>` ↔ loi auto ouvre une fenêtre de ~600 ms d'I²C »** — **FAUX d'un facteur
+   ~10⁵** : le bloc de rétroéclairage s'exécute **APRÈS** les lectures, la fenêtre fait quelques
+   **µs**. La course existe, elle ne pèse pas ça.
+3. ⛔ **« Le verdict de X2 repose sur des instruments biaisés »** — **les deux biais trouvés vont
+   DANS LE SENS du verdict rendu**, et **aucun candidat n'a été tranché sur σ** : la pression tombe
+   sur l'étendue (1 hPa) et le taux (1 %), le lux qualifie à 77-95 % de taux. ⇒ **X2 tient.**
+
+#### c bis) 🔴 UN DÉFAUT INTRODUIT **PAR LE CORRECTIF LUI-MÊME**, TROUVÉ AVANT LE FLASH
+
+⚠️ **Écrit ici parce que c'est exactement ce que §13.19.13 impose : conserver ce qui n'a pas marché,
+y compris mes propres erreurs de méthode.**
+
+Le premier jet du correctif du σ écrivait `(somme_carres * 1000000) / n` — **le produit d'abord**.
+Sur la piste **lux** (54 611 lx max, carré **2,98 × 10⁹**), `int64` déborde à **~3 092 échantillons**,
+soit **4,3 h** à 5 s par échantillon. 🔴 **Et `dn4-5` est un soak d'UNE SEMAINE** ⇒ le débordement
+était **certain**, pas théorique.
+
+| Piste | Valeur max | Carré | `n` avant débordement | Durée à 5 s |
+|---|---:|---:|---:|---:|
+| **lux (BH1750)** | 54 611 | 2 982 361 321 | **3 092** | 🔴 **4,3 h** |
+| pression (dixièmes) | 11 000 | 121 000 000 | 76 226 | 105,9 h |
+| gaz (kΩ) | 500 | 250 000 | 36 893 488 | 51 241 h |
+| température (dixièmes) | 850 | 722 500 | 12 765 912 | 17 730 h |
+
+✅ **Corrigé par un découpage QUOTIENT + RESTE**, qui garde la précision sans jamais former le grand
+produit : `E[x²]×10⁶ = (S2/n)×10⁶ + ((S2 mod n)×10⁶)/n`.
+**Marges vérifiées** : `(S2/n)×10⁶ ≤ 2,98e15` · `(S2 mod n)×10⁶ < n×10⁶ ≤ 4,3e15` (`n` est un
+`uint32`) · `moy_x1000² ≤ 2,98e15`. ⛔ **Aucun ne s'approche de 9,22e18.**
+🎯 **Vérifié sur un soak d'UNE SEMAINE simulé** (n = 120 960, lux aléatoires 0..54 611) : **erreur
++0,0000 %, aucun débordement**.
+
+🔴 **LA LEÇON, ET ELLE EST DÉSAGRÉABLE** : le correctif d'un défaut de débordement/troncature en a
+introduit un autre **de la même famille**, et il aurait été **invisible en séance** — il ne se
+déclenche qu'après 4,3 h de régime. ⛔ **Il n'a pas été trouvé par la revue, ni par le build (zéro
+warning), mais en CALCULANT les marges au moment de préparer le flash.** ⇒ *un correctif
+arithmétique se vérifie par ses BORNES, pas par ses cas de test.*
+
+---
+
+#### d) 🔴 CE QUE CETTE REVUE COÛTE, ET IL FAUT L'ÉCRIRE
+
+**Le firmware corrigé pèse **980 752 o** (+2 992 o sur `fd959f2`) et IL N'A JAMAIS TOURNÉ SUR LA CARTE.** Build
+**propre, zéro warning**, ⛔ **et c'est tout ce qu'on en sait.**
+⇒ **Les chiffres de §13.19.5bis et §13.19.12 portent `fd959f2`**, ⛔ pas ce binaire. Les correctifs
+changent des chemins que la campagne a exercés — notamment la reconfiguration après perte, qui
+**n'écrit plus** sur une simple erreur de transport. **⇒ SÉANCE CARTE DE RE-VALIDATION DUE**, et
+`dn4-3` ne peut pas passer `done` sans elle.
+
+---
 
 ### 13.19.13 ⚠️ CE QUI N'A PAS MARCHÉ DANS CETTE SÉANCE — y compris mes propres erreurs de méthode
 
