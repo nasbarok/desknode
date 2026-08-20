@@ -77,7 +77,10 @@ static bool s_gaz_demande = DN_CAPT_GAZ_DEFAUT;
 static int s_temp_dx = DN_CAPT_DX_ABSENT; /* dixièmes de °C */
 static int s_hum_dx = DN_CAPT_DX_ABSENT;  /* dixièmes de %RH */
 /* 🔴 dn4-3 : mesurée depuis dn2-1, JETÉE jusqu'ici. Voir dn_capteurs.h. */
-static int s_pression_dx = DN_CAPT_DX_ABSENT; /* dixièmes de hPa */
+static int s_pression_dx = DN_CAPT_DX_ABSENT;      /* dixièmes de hPa, CONVERTIS */
+static int s_pression_brut_dx = DN_CAPT_DX_ABSENT; /* dixièmes de l'unité DU DRIVER */
+static dn_capt_p_unite_t s_pression_unite = DN_CAPT_P_UNITE_INCONNUE;
+static bool s_pression_unite_dite;
 static int64_t s_lu_us = -1;
 static int64_t s_cadence_us = -1; /* écart mesuré entre les deux dernières */
 static int64_t s_cycle_us = -1;
@@ -245,6 +248,32 @@ int dn_capt_pression_dixiemes(void)
     int v = s_pression_dx;
     portEXIT_CRITICAL(&s_mux);
     return v;
+}
+
+int dn_capt_pression_brut_dixiemes(void)
+{
+    portENTER_CRITICAL(&s_mux);
+    int v = s_pression_brut_dx;
+    portEXIT_CRITICAL(&s_mux);
+    return v;
+}
+
+dn_capt_p_unite_t dn_capt_pression_unite(void)
+{
+    portENTER_CRITICAL(&s_mux);
+    dn_capt_p_unite_t u = s_pression_unite;
+    portEXIT_CRITICAL(&s_mux);
+    return u;
+}
+
+const char *dn_capt_pression_unite_nom(dn_capt_p_unite_t u)
+{
+    switch (u) {
+    case DN_CAPT_P_UNITE_HPA:       return "hPa (le driver tient sa promesse)";
+    case DN_CAPT_P_UNITE_PA:        return "Pa (l'etiquette du driver MENT)";
+    case DN_CAPT_P_UNITE_ABERRANTE: return "ABERRANTE — ni hPa ni Pa";
+    default:                        return "INCONNUE — aucune lecture";
+    }
 }
 
 int64_t dn_capt_age_us(void)
@@ -801,8 +830,12 @@ static bool config_verifier_et_reparer(dn_capt_faute_t faute_du_cycle)
     s_hum_dx = DN_CAPT_DX_ABSENT;
     /* ⚠️ La pression s'invalide AVEC les deux autres : elle vient du même
      * capteur, et un capteur qui a perdu sa configuration ne rend pas une
-     * pression plus fiable qu'une température. */
+     * pression plus fiable qu'une température.
+     * ⛔ L'UNITÉ, elle, ne se ré-interroge PAS : c'est une propriété du DRIVER,
+     *   pas de la lecture. La rendre INCONNUE ici ferait ré-annoncer le verdict
+     *   à chaque reconfiguration, et un log qui se répète cesse d'être lu. */
     s_pression_dx = DN_CAPT_DX_ABSENT;
+    s_pression_brut_dx = DN_CAPT_DX_ABSENT;
     s_lu_us = -1;
     portEXIT_CRITICAL(&s_mux);
     s_degrade = true;
@@ -1088,11 +1121,52 @@ static void tache_capteurs(void *arg)
          * qu'elle ne fait qu'instruire. ⇒ elle n'a donc PAS de seau à elle, et
          * si X2 la retient pour une case, il faudra lui en donner un.
          */
-        float p_hpa = d.barometric_pressure;
-        int p_dx = (p_hpa >= DN_CAPT_PRESSION_MIN_HPA &&
-                    p_hpa <= DN_CAPT_PRESSION_MAX_HPA)
-                       ? (int)lroundf(p_hpa * 10.0f)
-                       : DN_CAPT_DX_ABSENT;
+        float p_brut = d.barometric_pressure;
+        int p_brut_dx = (int)lroundf(p_brut * 10.0f);
+
+        /*
+         * 🔴 L'UNITÉ SE DÉTERMINE PAR LA MAGNITUDE, ET ELLE S'ANNONCE.
+         * ⛔ Pas de division par 100 « parce que c'est sûrement des Pa » : les
+         *    deux hypothèses ont des plages DISJOINTES (300..1100 contre
+         *    30 000..110 000), donc la mesure tranche seule, sans ambiguïté.
+         *    Si la valeur ne tombe dans NI l'une NI l'autre, on ne publie RIEN
+         *    et on le DIT — ⛔ jamais une conversion au jugé.
+         */
+        dn_capt_p_unite_t unite = DN_CAPT_P_UNITE_ABERRANTE;
+        int p_dx = DN_CAPT_DX_ABSENT;
+        if (p_brut >= DN_CAPT_PRESSION_MIN_HPA &&
+            p_brut <= DN_CAPT_PRESSION_MAX_HPA) {
+            unite = DN_CAPT_P_UNITE_HPA;
+            p_dx = p_brut_dx;
+        } else if (p_brut >= DN_CAPT_PRESSION_MIN_HPA * 100.0f &&
+                   p_brut <= DN_CAPT_PRESSION_MAX_HPA * 100.0f) {
+            unite = DN_CAPT_P_UNITE_PA;
+            /* Pa -> dixièmes de hPa : 101325 Pa => 10132 (1013,2 hPa) */
+            p_dx = (int)lroundf(p_brut / 10.0f);
+        }
+        if (!s_pression_unite_dite && unite != DN_CAPT_P_UNITE_INCONNUE) {
+            s_pression_unite_dite = true;
+            if (unite == DN_CAPT_P_UNITE_PA) {
+                ESP_LOGW(TAG,
+                         "pression : le driver annonce des HECTO-PASCALS "
+                         "(bme680.h:363) mais rend %.1f — c'est du PASCAL. "
+                         "L'etiquette MENT, la conversion est faite ici et elle "
+                         "est ANNONCEE. Un facteur 100 pris en silence est "
+                         "exactement ce qui a publie « 4 614,8 lx » pour 46 148.",
+                         p_brut);
+            } else if (unite == DN_CAPT_P_UNITE_ABERRANTE) {
+                ESP_LOGW(TAG,
+                         "pression : valeur BRUTE %.1f — ni des hPa (300..1100) "
+                         "ni des Pa (30000..110000). ⛔ RIEN n'est publie, et "
+                         "`capteurs` imprime la brute pour qu'on puisse la "
+                         "diagnostiquer au lieu de la deviner.",
+                         p_brut);
+            } else {
+                ESP_LOGI(TAG, "pression : unite HECTO-PASCAL confirmee par la "
+                              "magnitude (%.1f) — le driver tient sa promesse.",
+                         p_brut);
+            }
+        }
 
         if (t_dx < DN_CAPT_TEMP_MIN_DX || t_dx > DN_CAPT_TEMP_MAX_DX ||
             h_dx < DN_CAPT_HUM_MIN_DX || h_dx > DN_CAPT_HUM_MAX_DX) {
@@ -1127,6 +1201,8 @@ static void tache_capteurs(void *arg)
         s_temp_dx = t_dx;
         s_hum_dx = h_dx;
         s_pression_dx = p_dx;
+        s_pression_brut_dx = p_brut_dx;
+        s_pression_unite = unite;
         s_lu_us = maintenant;
         s_cycle_us = duree;
         s_cnt.lectures++;

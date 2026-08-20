@@ -228,6 +228,33 @@ const char *dn_capt_etat_nom(dn_capt_etat_t e);
 #define DN_CAPT_PRESSION_MIN_HPA 300.0f
 #define DN_CAPT_PRESSION_MAX_HPA 1100.0f
 
+/*
+ * 🔴 ET L'ÉTIQUETTE DU DRIVER MENT SUR L'UNITÉ — MESURÉ, PAS SUPPOSÉ.
+ *
+ * `bme680_data_t.barometric_pressure` est documenté *« barometric pressure in
+ * hecto-pascal »* (`bme680.h:363`). Or `bme680_compensate_pressure()`
+ * (`bme680.c:289-300`) est la formule flottante CANONIQUE de Bosch, qui rend des
+ * **PASCALS**. La première lecture est sortie HORS de [300, 1100] hPa, ce qui a
+ * ouvert la question.
+ * ⇒ ⛔ On ne corrige PAS en divisant par 100 « parce que c'est sûrement des Pa ».
+ *   On PUBLIE LA VALEUR BRUTE, on détermine l'unité PAR SA MAGNITUDE au premier
+ *   relevé valide, et on l'ANNONCE UNE FOIS dans le log. Une unité déduite en
+ *   silence est exactement ce qui a publié « 4 614,8 lx » pour 46 148.
+ */
+typedef enum {
+    DN_CAPT_P_UNITE_INCONNUE = 0, /* aucune lecture exploitable encore */
+    DN_CAPT_P_UNITE_HPA,          /* le driver tient sa promesse */
+    DN_CAPT_P_UNITE_PA,           /* l'étiquette ment, c'est du Pascal */
+    DN_CAPT_P_UNITE_ABERRANTE,    /* ni l'un ni l'autre — on ne publie RIEN */
+} dn_capt_p_unite_t;
+
+dn_capt_p_unite_t dn_capt_pression_unite(void);
+const char *dn_capt_pression_unite_nom(dn_capt_p_unite_t u);
+/* La valeur BRUTE rendue par le driver, en dixièmes de SON unité, sans aucune
+ * conversion ni borne. `DN_CAPT_DX_ABSENT` si jamais lue. ⛔ C'est l'instrument
+ * qui permet de dire « lue mais aberrante » plutôt que « aucune valeur ». */
+int dn_capt_pression_brut_dixiemes(void);
+
 /* Dernières valeurs VALIDES, en DIXIÈMES (233 = 23,3 °C · 471 = 47,1 %).
  * Entiers pour rester dans la doctrine du dépôt côté affichage ; le driver rend
  * des float, la conversion est faite ici, une fois.

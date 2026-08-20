@@ -5360,13 +5360,26 @@ static int cmd_capteurs(int argc, char **argv)
      * PAS de seau d'erreur a elle : hors plage physique (300..1100 hPa, Bosch),
      * elle devient ABSENTE toute seule, sans faire tomber T et RH. */
     int pr = dn_capt_pression_dixiemes();
+    int pr_brut = dn_capt_pression_brut_dixiemes();
+    dn_capt_p_unite_t p_u = dn_capt_pression_unite();
+    /* 🔴 TROIS ETATS, TROIS PHRASES. Le message d'origine disait « hors plage
+     * OU jamais lue » — DEUX DIAGNOSTICS OPPOSES DANS UNE SEULE PHRASE, la
+     * faute exacte que `tronquee`/`trop_longue` a deja coutee a ce depot. */
     if (pr != DN_CAPT_DX_ABSENT) {
-        printf("pression   : %d,%d hPa — MESUREE, PAS AFFICHEE. Candidate a la\n",
+        printf("pression   : %d,%d hPa — MESUREE, PAS AFFICHEE (candidate a la 6e\n",
                pr / 10, pr % 10);
-        printf("             6e case (X2), instrumentee par `w2` dans SES DEUX\n");
-        printf("             formatages possibles. Bornes 300..1100 hPa (Bosch).\n");
+        printf("             case, X2). brute driver %d,%d · unite %s\n",
+               pr_brut / 10, pr_brut % 10, dn_capt_pression_unite_nom(p_u));
+        printf("             Bornes 300..1100 hPa (Bosch). Instrumentee par `w2`\n");
+        printf("             dans SES DEUX formatages possibles.\n");
+    } else if (pr_brut != DN_CAPT_DX_ABSENT) {
+        printf("pression   : LUE mais NON PUBLIEE — brute driver %d,%d, unite %s\n",
+               pr_brut / 10, pr_brut % 10, dn_capt_pression_unite_nom(p_u));
+        printf("             ⛔ Elle ne tombe ni dans 300..1100 (hPa) ni dans\n");
+        printf("             30000..110000 (Pa). Rien n'est converti au juge.\n");
     } else {
-        printf("pression   : aucune valeur (hors plage 300..1100 hPa, ou jamais lue)\n");
+        printf("pression   : JAMAIS LUE — aucune lecture BME680 valide depuis le\n");
+        printf("             boot (ou depuis la derniere reconfiguration).\n");
     }
     /* 🔴 CR dn4-2 — LECTURE ATOMIQUE. Les deux appels independants laissaient
      * la console observer un etat A DEMI mis a jour (le chemin d'echec ecrit
