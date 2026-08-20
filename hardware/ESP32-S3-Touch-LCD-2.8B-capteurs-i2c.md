@@ -3365,3 +3365,326 @@ la question.** Aucune décision n'a été prise sur l'ambiguïté : elle a été
   d'une entrée flottante (**~900 mV**, stable et plausible) et le bruit de son shunt libre
   (**−10 à −50 µV**). ⛔ **Ce ne sont PAS des grandeurs d'alimentation**, et `env` le dit en toutes
   lettres pour que personne ne les lise comme telles.
+
+### 13.19.7 🎯 AC5 — LE RÉTROÉCLAIRAGE AUTOMATIQUE, ET **DEUX BORNES DÉPLACÉES PAR L'ŒIL**
+
+**Firmwares `60ba0a4` puis `d856bc9` puis `222c4f4`** — la loi est **commutable à chaud**, donc l'A/B
+s'est joué **dans un seul firmware à la fois**, ⛔ jamais par comparaison de deux binaires.
+
+#### a) 🔴 LA CONTRE-RÉACTION OPTIQUE EST EXCLUE — et le premier test ne valait rien
+
+| Condition | `bl 100` | `bl 0` | Verdict |
+|---|---|---|---|
+| **Pièce éclairée (~2 500 lx)** | 2 488 · 2 529 lx | 2 521 · 2 534 lx | ⚠️ **NON CONCLUANT** |
+| 🎯 **Pièce NOIRE (rideau fermé)** | **brut 0** · **brut 0** | **brut 0** · **brut 0** | ✅ **AUCUNE contre-réaction** |
+
+🔴 **LE PREMIER TEST A ÉTÉ PUBLIÉ PUIS RETIRÉ PAR SON PROPRE AUTEUR.** À 2 500 lx d'ambiante,
+l'écart `bl 100`↔`bl 0` (33 puis 5 lx) était **noyé dans une dérive ambiante de +46 lx sur la même
+fenêtre**, et de signe incohérent. ⇒ il excluait une contre-réaction **FORTE**, ⛔ **pas une faible**
+— alors qu'une contre-réaction ne serait dangereuse **QUE** près du plancher, en pièce sombre.
+✅ **Rejoué dans la condition où la réponse compte** : le capteur ne rend **pas un seul count**
+(1 count = 0,83 lx) alors que le rétroéclairage à 100 % serait la **seule** source de lumière.
+✅ **Et la photo de montage le confirme géométriquement** : le breakout GY-302 est **dressé, face
+tournée vers la pièce**, à l'opposé de la dalle.
+⇒ 🎯 **Le « il ne pompe pas » d'AC5 n'est pas qu'une observation : il a une CAUSE mesurée.**
+
+#### b) Le plancher — **3 % → 8 %**, par dichotomie, dans la condition où il s'applique
+
+| Duty | Constat owner, **rideau fermé** (capteur à **2 lx**) |
+|---|---|
+| **3 %** | 🔴 *« casiement plus lisible super sombre »* |
+| **10 %** | *« pas mal lisible (limite) »* rideau OUVERT · *« encore un peu trop lumineux »* rideau fermé |
+| **6 %** | *« oui toujours lisible, un poil trop sombre »* |
+| 🎯 **8 %** | ✅ ***« 8 % serait mieux »*** puis ***« oui 8 % c'est bien »*** |
+
+🔴 **LE 3 % DE `dn1-3` N'EST PAS INVALIDÉ, ET IL FAUT LE DIRE PRÉCISÉMENT.** Son AC7 l'avait mesuré
+comme *« le plancher LISIBLE »* — mais **sur le Living PCB et son label**, une image de fond
+contrastée. Rejoué sur le **dashboard à six cases**, du texte fin, il ne tient plus.
+⇒ **Un plancher de lisibilité est une propriété du COUPLE duty × contenu, ⛔ pas du duty seul.**
+C'est une correction **par ajout** : les deux chiffres sont vrais, sur deux contenus différents.
+
+⚠️ **ET LA CONDITION DE MESURE A DÛ ÊTRE CORRIGÉE EN COURS DE ROUTE** : la lisibilité avait d'abord
+été jugée **rideau OUVERT** (~1 500 lx : l'ambiante délave la dalle, « limite » y est sévère) alors
+que **le plancher ne s'applique QU'EN PIÈCE SOMBRE**. ⇒ la dichotomie a été **rejouée rideau fermé**.
+*Un seuil se mesure dans la condition où il s'applique, pas dans celle où l'on se trouve.*
+
+#### c) Le plafond — **400 → 1500 → 600 lx**, deux fois par l'œil
+
+| Étape | Plafond | Ce qui l'a déplacé |
+|---|---|---|
+| Livré | **400 lx** | UNE mesure (411 lx) |
+| Corrigé | **1500 lx** | la séance a relevé **2 lx** (rideau fermé) à **2 262 lx** (jour) dans la même pièce ⇒ à 400 lx, la loi **saturait à 100 % dès un éclairage artificiel modeste** |
+| 🎯 **Retenu** | **600 lx** | à 1 500, une pièce à **170 lx** ne recevait que **17 %** ⇒ constat owner *« un peu plus lumineux »*. À 600, la même pièce reçoit **32 %** ⇒ ✅ ***« c'est ça »*** |
+
+⚠️ 🔴 **UNE RÉPONSE OWNER A ÉTÉ RECONNUE AMBIGUË ET N'A PAS ÉTÉ TRANCHÉE AU JUGÉ** :
+*« ok pas mal pour être un peu plus »* — **plus RAPIDE** (le pas) et **plus LUMINEUX** (le plafond)
+se corrigent à **deux endroits opposés** de la loi. La question a été **reposée en distinguant les
+deux**, exactement comme pour X3. ⇒ réponse : **plus lumineux**.
+
+⚠️ **ET LE DIAGNOSTIC QUI A CONDUIT AU 1500 ÉTAIT LUI-MÊME FAUX AU DÉPART** : il s'appuyait sur un
+*« rideaux fermés = 1 296 lx, la loi ne modulera jamais »*. Le rideau **n'était pas encore fermé** :
+fermé, c'est **2 lx**. ⛔ **C'est l'owner qui l'a dit**, pas une déduction — et la conclusion (le
+plafond était trop haut) restait juste **pour une autre raison**.
+
+#### d) 🔴 LE PLANCHER N'ÉTAIT PAS RÉGLABLE À CHAUD, ET C'EST LA SÉANCE QUI L'A PROUVÉ NÉCESSAIRE
+
+Les bornes en **lux** étaient ajustables (`bl auto bornes`), le plancher en **%** était **figé à la
+compilation** — or **c'est précisément lui que l'œil a déplacé**. La règle *« l'arbitrage se tranche
+sur la dalle »* n'avait donc été appliquée **qu'à moitié**. ⇒ `bl auto plancher <n>` ajouté.
+*Un paramètre qu'on ne peut pas bouger en séance n'est pas arbitrable en séance.*
+
+#### e) Les deux écrivains sur LEDC — la garde **fonctionne et elle parle**
+
+```
+W (521743) dn_env: retroeclairage auto DESARME par « bl <n> » — deux ecrivains sur
+LEDC ne s'arbitrent pas tout seuls, et une commande ecrasee au cycle suivant
+serait un instrument qui ment.
+⚠️ l'asservissement automatique était ARMÉ : il vient d'être DÉSARMÉ par « bl <n> ».
+   Sinon la valeur que vous venez de poser aurait été écrasée au prochain cycle
+   (5 s), sans un mot. `bl auto on` pour le réarmer.
+```
+
+#### f) 🎯 LE CONSTAT OWNER, VERBATIM
+
+| Question | Réponse owner |
+|---|---|
+| Le plancher à 8 % dans le noir te va ? | ✅ **« oui »** |
+| La montée quand la lumière revient ? | **« ok pas mal »** (+ *« un peu plus lumineux »*, soldé en (c)) |
+| 🔴 **À lumière STABLE, la luminosité bouge-t-elle toute seule ?** | ✅ **« Non, elle est stable »** |
+| Le plafond à 600 lx ? | ✅ **« c'est ça »** |
+
+⇒ ✅ **AC5 EST SOLDÉ. La loi était écrite avant, elle a été déplacée deux fois par l'œil, et
+⛔ ÇA NE POMPE PAS** — avec une cause mesurée, pas seulement une observation.
+
+### 13.19.8 🎯 AC9 — « LA PIÈCE OU LA CARTE ? » À QUATRE CAPTEURS : **+2,1 °C**, et le biais d'étalonnage est RÉFUTÉ
+
+**Méthode `dn2-1` rejouée**, pression de vapeur (Magnus/Tetens, WMO), relevé simultané à `17:14:59`.
+🎯 **DEUX références au lieu d'une** — et ça change la force du verdict : deux sondes qui encadrent
+la pièce donnent le **bruit spatial**, donc la barre au-dessus de laquelle un écart signifie
+quelque chose.
+
+| Source | T | RH | `e` (pression de vapeur) |
+|---|---:|---:|---:|
+| **Station Lidl** (gauche) | 26,0 °C | 49 % | **16,431 hPa** |
+| **Épurateur Xiaomi** (droite) | 26,0 °C | 51 % | **17,102 hPa** |
+| **BME680** | **28,1 °C** | **44,5 %** | **16,880 hPa** |
+
+**Le même air à 28,1 °C devrait lire entre 43,3 % et 45,1 %RH.**
+🎯 **Le capteur lit 44,5 % — DANS l'encadrement**, à 0,6 pt du Xiaomi et 1,2 pt du Lidl.
+
+🔴 **ET LE TÉMOIN NÉGATIF EST RÉFUTÉ PAR LE MÊME CALCUL** : un capteur affecté d'un **biais
+d'hygrométrie**, mesurant le même air **sans s'échauffer**, aurait lu **~50 %**. Il lit 44,5 %, soit
+**5,5 points en dessous** — ce que **seule** une hausse de température explique.
+⇒ ✅ **AUTO-ÉCHAUFFEMENT : +2,1 °C**, contre **+1,9 °C** publié par `dn2-1` **à UN capteur**.
+**Écart 0,2 °C** ⇒ **trois composants de plus ne l'ont pas déplacé de façon détectable.**
+
+⚠️ **TROIS LIMITES DÉCLARÉES, ET LA TROISIÈME VA CONTRE MON PROPRE RÉSULTAT :**
+1. Sondes **non étalonnées** ; l'écart entre les deux références (**2 pts de RH, 0 °C**) donne le
+   bruit spatial. La justesse absolue n'est **pas** établie à mieux que ~±1 °C.
+2. `dn2-1` mesurait pièce à **24,0 °C**, ici **26,0 °C**. Conditions différentes.
+3. 🔴 **Le rétroéclairage était à 32 %** (asservi) au moment du relevé, alors que `dn2-1` mesurait
+   très probablement à **100 %**. **C'est une variable non contrôlée qui va dans le sens de RÉDUIRE
+   l'échauffement** ⇒ **le +2,1 °C est peut-être SOUS-ESTIMÉ.** *Une limite qui affaiblit son propre
+   résultat est la seule qui vaille la peine d'être écrite.*
+
+⚠️ ✅ **ET UNE INFÉRENCE DE L'AGENT A ÉTÉ CORRIGÉE PAR L'OWNER.** Sur la photo de montage
+(`install_01.jpg`), j'avais lu *« la carte est posée sur la grille d'aération de la tour »* et j'en
+avais tiré un **troisième terme** (« la pièce, la carte, ou le flux d'air du PC ? »). Réponse owner :
+*« le capteur est éloigné de la soufflerie »*. ⛔ **Sa connaissance du montage remplace ma déduction
+photographique.** ⚠️ *Une photo se lit, elle ne se déduit pas.*
+
+⚠️ **ET LA PIÈCE A DÉRIVÉ PENDANT LA SÉANCE** : les deux références sont passées de **26 à 27 °C**
+(*« rideau fermé ça bloque l'aération, la chaleur monte »*). Le relevé ci-dessus est **simultané**,
+donc il tient — mais **tout A/B thermique ultérieur exige un témoin négatif**, ce que §13.9 avait
+déjà payé pour apprendre.
+
+### 13.19.9 🎯 X2 TRANCHÉ — **AUCUNE 3ᵉ grandeur**, et les QUATRE candidats sont mesurés
+
+⚠️ **La story n'en listait que trois** (lux, ALS, pression). **L'owner en a proposé un quatrième en
+séance** — *« pas hPa mais au moins un statut de qualité de l'air, je fume dans la pièce, ça devrait
+être facile de tester »*. Il est instruit ici comme les autres.
+
+#### a) L'instrument : `w2`, le critère W2 mesuré **dans le firmware**
+
+Patron `FAN_RPM` de `dn4-6`, jugé sur la **valeur AFFICHÉE** : **étendue ≥ 5** · **taux de changement
+du TEXTE ≥ 10 %** · **σ ≥ 1**. Seuils **écrits avant le tir**, et la commande imprime ses références.
+
+🔴 **ÉCHANTILLONNÉ DANS LE FIRMWARE, ⛔ PAS DEPUIS WSL** : `tools/dn_console.py` **perd des lignes**
+(mesuré, deux captures entièrement vides le 2026-08-20), et **un taux de changement calculé sur un
+échantillonnage qui perd des points est faux d'un biais qu'on ne sait pas borner.**
+🔴 **QUATRE PISTES, DONT UN TÉMOIN DE CONTRÔLE** : X2 est un **choix entre candidats** — les comparer
+avec deux instruments différents ne prouverait rien. Et la **température**, grandeur **déjà affichée
+dans une case livrée**, dit ce que *« bouger assez »* vaut **sur cette carte, dans cette pièce**.
+
+#### b) Les résultats — **deux fenêtres**, et la seconde nuance la première
+
+| Piste | Fenêtre A (n=210, 17,5 min) | Fenêtre B (n=195, 16 min) |
+|---|---|---|
+| **lux (entier)** | **992 / 77 % / 148,76** ✅ QUALIFIE | **2 228 / 95 % / 568,14** ✅ QUALIFIE |
+| pression (hPa entier) | **1 / 1 % / 1,01** ⛔ | — |
+| pression (hPa dixième) | **4 / 7 % / 3,47** ⛔ | — |
+| **température [CONTRÔLE]** | **16 / 12 % / 5,04** ✅ | **9 / 7 % / 2,11** ⛔ |
+| gaz MOX (kΩ) | — | **781 / 38 % / 54,78** ✅ *(mais voir §13.19.10)* |
+
+🎯 **SUR LA FENÊTRE A, LE TÉMOIN DE CONTRÔLE REND LE VERDICT SOLIDE** : la **température** QUALIFIE
+sur **exactement la même fenêtre** où la pression échoue à **1 hPa d'étendue et 1 % de taux**.
+⇒ **la fenêtre n'est pas trop courte** : la pression échoue là où une vraie grandeur d'environnement
+réussit. **Ce n'est pas un artefact de durée, c'est une propriété de la grandeur.**
+
+⚠️ 🔴 **MAIS LA FENÊTRE B AFFAIBLIT CE VERDICT, ET IL FAUT LE DIRE** : sur B, **le témoin de contrôle
+NE QUALIFIE PLUS** (taux **7 %** < 10 %). ⇒ **le témoin est PRÈS DU SEUIL**, donc l'argument
+*« la fenêtre suffit »* est **moins solide** qu'il n'y paraissait sur A. ⛔ **Les deux fenêtres sont
+conservées et l'écart est nommé.** Ce qui reste hors de doute : la pression fait **1 hPa** là où la
+température en fait **1,6 °C** — un facteur qu'aucune marge de seuil ne rattrape.
+
+⚠️ 🔴 **ET W2 A UNE LIMITE QUE CETTE SÉANCE A RENDUE VISIBLE** : le **gaz QUALIFIE** (781 / 38 % /
+54,8) — **uniquement par son burn-in** (2 kΩ → 50 kΩ en 12 min, plus une excursion à 782 kΩ),
+alors que le stimulus fumée n'a produit **rien**. ⇒ **W2 mesure « ça bouge », ⛔ PAS « ça bouge pour
+une raison utile ». Une dérive qualifie aussi bien qu'un signal.** Le témoin de contrôle protège
+contre une fenêtre trop courte, **pas** contre une grandeur qui dérive sans informer.
+
+#### c) 🎯 LA DÉCISION OWNER
+
+**Verbatim de l'arbitrage** : ✅ **« AUCUNE — la case reste à deux ».**
+
+| Candidat | Sort | Motif **mesuré** |
+|---|---|---|
+| **Pression** | ⛔ éliminée | **1 hPa d'étendue en 17 min**, taux **1 %**. Et elle n'avait pourtant PAS le conflit de verdict — c'est la mesure qui la tue, pas la conception |
+| **ALS VL6180X** | ⛔ éliminé | réponse **strictement binaire** sur 7 points (§13.19.5) |
+| **Gaz / qualité d'air** | ⛔ éliminé | **aucune réponse à deux bouffées** dont une au contact ; `iaq_score` **inutilisable** (3 défauts lus au source) ; coûte **+0,5 °C / −1,4 pt de RH** sur les deux grandeurs de la même case (§13.19.10) |
+| **Lux BH1750** | ⛔ **non retenu, et ce n'est PAS un échec de qualification** | il **QUALIFIE largement** (jusqu'à **2 228 / 95 % / 568**). ⚠️ **C'est justement l'argument contre** : **10 à 70× la référence `FAN_RPM`** (13 / 55,2 % / 2,02) — un chiffre qui change **95 % du temps** entre 0 et 2 438 serait **agitant** dans une case. **W2 est un seuil PLANCHER, ⛔ pas un optimum** |
+
+🔴 **CE QUE LE REPLI COÛTE, ET IL FAUT L'ÉCRIRE (AC6 l'exige) :**
+**Le différenciateur « PC éteint » n'est PAS réparé par la grille.** `AMBIANCE` reste la seule case
+vivante quand la tour dort, avec ses deux grandeurs — **exactement comme avant `dn4-3`**.
+✅ **Il est réparé AILLEURS, et c'est mesuré** : **le rétroéclairage suit la pièce** (§13.19.7).
+**C'est une réponse locale, vivante PC éteint, et l'owner l'a vue.** ⛔ **Mais ce n'est pas une donnée
+affichée**, et la story doit le dire au lieu de le maquiller.
+
+✅ **CE QUE LE REPLI ÉPARGNE, ET CE N'EST PAS RIEN :**
+- ⛔ **`dn_ui.c` n'est PAS touché** : ni `k_desc[DN_UI_CASE_AMB]`, ni le `.n = 2` en dur de
+  `dn_ui_ambiance_maj()`, ni le verdict de validité. **Zéro risque sur la seule case vivante.**
+- ✅ **`AMBIANCE` garde jauge ET ligne secondaire en réserve** : à 3 grandeurs, `y_bas = 168 > 163`
+  les aurait fermées **définitivement**, ⛔ pas « pour l'instant ».
+- ✅ **Les trois dettes latentes de `dn4-6` restent DÉSARMÉES** : aucune bascule d'échelle
+  (`lx → klx`), aucune grandeur signée en `ENTIER`, aucun `widget grandeurs 5 3`.
+
+⚠️ **CONTRAINTE LÉGUÉE À `dn4-4`, énoncée par l'owner en séance** : *« dans tous les cas les infos
+iront dans le détail d'`AMBIANCE` »*. ⛔ **La page de détail est hors périmètre de `dn4-3`** — c'est
+`dn4-4`, et elle hérite donc de **lux, pression et gaz déjà lus, bornés et instrumentés**.
+
+### 13.19.10 ⛔ LE GAZ — le stimulus fumée ne produit RIEN, et l'`iaq_score` du composant est INUTILISABLE
+
+**A/B DÉCLARÉ** (`capteurs gaz on`), à la demande de l'owner. Rétroéclairage maintenu à **100 % fixe**
+pendant tout le test pour que la thermique ne bouge pas.
+
+| Phase | Gaz | T | RH | MOX |
+|---|---|---:|---:|---:|
+| **A** — ligne de base | coupé | **28,6 °C** *(×3 identiques)* | **44,9 %** | — |
+| **B** — chauffeur actif | **ACTIF** | **29,1 → 29,5 °C** | **43,5 → 41,9 %** | 2 358 → **56 234 Ω** |
+| **C** — témoin négatif | coupé | **29,5 → 28,8 °C** | 41,9 → **43,3 %** | — |
+
+✅ **Le coût du chauffeur se reproduit, et dans le bon sens** : **B−A brut = +0,5 °C / −1,4 pt de RH**,
+les deux grandeurs bougeant **en sens OPPOSÉS** comme §13.9 l'avait prédit puis mesuré.
+🔴 **⛔ MAIS CE CHIFFRE EST NON CORRIGÉ DE LA DÉRIVE, ET IL NE PEUT PAS L'ÊTRE** : entre A et C,
+**la pièce a pris +1 °C** (références owner 26 → 27 °C) **et** le rétroéclairage est passé de **32 %
+à 100 %** (le flash désarme l'auto). **Trop de variables ont bougé.** ⇒ la phase C montre une
+**réversibilité** (T redescend, RH remonte) mais **ne chiffre rien**.
+✅ **La valeur de référence reste le +0,3 °C / −2 pts de `dn2-1`**, corrigé de sa dérive. ⛔ **Les
+deux sont conservés et l'écart est nommé.**
+
+#### 🔴 LE STIMULUS FUMÉE — **DEUX tentatives, budget annoncé, ZÉRO réponse**
+
+| Tentative | Avant | Pendant | Verdict |
+|---|---:|---|---|
+| 1 — bouffée ambiante | 49 388 Ω (+20 Ω/s) | **51 100 Ω × 10 lectures**, puis 51 278 | ⛔ aucune chute |
+| 2 — **bouffée dirigée, au contact** | 51 278 Ω | **56 234 Ω × 10 lectures** | ⛔ aucune chute |
+
+Une résistance MOX **BAISSE** en présence de COV. Elle a **monté** dans les deux cas.
+
+**Quatre causes possibles, ⛔ AUCUNE tranchée :**
+1. La fumée n'atteint pas le capteur *(éliminée en partie : tentative 2 était au contact)*
+2. Le **burn-in** monte encore et masque une chute modeste
+3. 🔴 **LE RAPPORT CYCLIQUE** : le chauffeur ne tourne que **300 ms toutes les 5 000 ms = 6 %**. La
+   surface du MOX n'a peut-être pas le temps de s'équilibrer avec l'air. **C'est la MÊME cadence qui
+   atténue déjà l'auto-échauffement d'un facteur 10** (§13.9), et Bosch spécifie le gaz avec un
+   **profil de chauffe dédié**. ⇒ **hypothèse la plus forte, et elle est TESTABLE** : une cadence
+   gaz dédiée. ⛔ **C'est du code, hors périmètre de `dn4-3`.**
+4. Bouffée trop diffuse
+
+⚠️ **UNE FAUSSE ALERTE DE L'AGENT, LEVÉE PAR LA MESURE** : dix valeurs **rigoureusement identiques**
+(`56234 Ω`, `29,5 °C`, `41,9 %`) ont fait soupçonner **une tâche `dn_capt` morte**. ⛔ Discriminé au
+lieu d'être supposé : `age` **4 939 → 3 079 → 1 233 ms**, `lectures` **195 → 197 → 199**, cadence
+**5 001 / 5 001 / 5 000 ms**. ✅ **La tâche allait parfaitement** — et c'est une **non-régression
+forte gagnée par accident**, relevée **chauffeur gaz ACTIF et `dn_env` en régime**.
+
+#### 🔴 L'`iaq_score` DU COMPOSANT EST INUTILISABLE — trois défauts LUS AU SOURCE
+
+C'est une **invention maison** (« IAQ Rating Index » de Dr. Julie Riggs, iaquk.org.uk), ⛔ **pas du
+BSEC** de Bosch :
+
+| # | Fait | Ligne |
+|---|---|---|
+| 1 | Le header annonce **`0..500`** ; la formule somme 6,5 + 6,5 + 52 ⇒ **max réel 65** | `bme680.h:369` vs `bme680.c:737` |
+| 2 | 🔴 `else if (gas >= 13500 && gas > 9000)` — **le second test est IMPLIQUÉ par le premier**. L'intention était `>= 9000 && < 13500`. ⇒ **la bande 9 000..13 500 Ω traverse toute la cascade SANS QU'AUCUN SCORE SOIT ASSIGNÉ**, et `gas_score` garde une **valeur résiduelle** | `bme680.c:733` |
+| 3 | 🔴 Le score de température tombe à **0 au-dessus de 26 °C**. Or ce capteur lit **~28-29 °C à cause de son PROPRE auto-échauffement** (+2,1 °C mesuré) ⇒ **6,5 points perdus EN PERMANENCE par un artefact de MONTAGE**, pas par la qualité de l'air | `bme680.c:725` |
+
+⇒ ✅ **Ce que `dn4-3` livre : la RÉSISTANCE BRUTE en ohms**, avec l'`iaq_score` imprimé **à côté de
+ses trois défauts**, pour qu'il ne puisse pas être pris au sérieux par erreur.
+⛔ **ABSENT et non `0` quand le chauffeur est coupé** : zéro ohm serait une valeur **physique** (un
+court-circuit), donc **un mensonge plausible** — ce dépôt a déjà payé pour une sentinelle dans la
+plage utile (`-1` qui valait −0,1 °C).
+
+### 13.19.11 🔴 AC12 — **LA PRÉDICTION, ÉCRITE ET COMMITTÉE AVANT LA MESURE**
+
+> *« Une prédiction démentie est plus instructive qu'une prédiction tenue. »*
+> ⛔ **Rien de ce qui suit n'a été mesuré au moment où ces lignes sont committées**, à l'exception
+> de la taille du binaire, qui sort du build et est donc **déjà connue** — elle est donnée ici comme
+> **entrée du raisonnement**, ⛔ pas comme prédiction.
+
+**Firmware à mesurer : le HEAD de cette séance** (X2 ayant tranché « aucune case », `dn_ui.c` n'est
+pas touché ⇒ **c'est le firmware livré**).
+
+**Ce que `dn4-3` ajoute réellement au régime**, et c'est la base du raisonnement :
+
+| Capteur | Transactions I²C par cycle de 5 s |
+|---|---|
+| BH1750 | **1** (lecture nue 2 o) |
+| INA219 | **5** (conformité `05h` + bus + shunt + courant + puissance) |
+| VL6180X | **3** (conformité gain + conformité intégration + identité) |
+| **`dn_env` TOTAL** | **9** |
+| *rappel — BME680 seul* | *7* |
+
+⇒ **le nombre de transactions par cycle passe de 7 à 16 (× 2,3)**, mais leur **poids** est très
+différent : `dn_env_cycle()` a été **mesuré à ~2 300 µs**, contre **~26 000 µs** pour le cycle
+BME680 — dont la majeure partie est de l'**attente** dans la boucle « data ready » du composant.
+
+| Grandeur | T0 (`2992181`) | 🔮 **PRÉDICTION** | Raisonnement |
+|---|---:|---:|---|
+| Binaire | 956 128 o | **977 760 o** *(déjà connu du build)* | **+21 632 o** — trois drivers maison, `env`, `w2`, `bl auto`, la pression, le gaz. ⚠️ à comparer aux **+26 992 o** du seul BME680 en composant TIERS |
+| RAM interne libre | 92 307 o | **91 300 – 91 800 o** | 3 `i2c_master_bus_add_device` (~150-250 o chacun) + les statiques du module ⇒ **−500 à −1 000 o** |
+| PSRAM libre | 7 768 236 o | **7 768 236 o — INCHANGÉ** | ⛔ aucune allocation PSRAM ajoutée |
+| Tas LVGL utilisé | 20 500 o (34 %) | **20 500 o — INCHANGÉ** | ⛔ `dn_env` ne crée **aucun objet LVGL** (X2 : pas de 3ᵉ grandeur) |
+| Plus gros bloc / frag | 40 752 o / 2 % | **inchangés** | même raison |
+| `fps 15` | 37,40 Hz (+0,00 %) | **37,40 Hz, +0,00 %** | le pipeline d'affichage n'est pas touché |
+| Boot | 2 332 ms | **2 340 – 2 365 ms** | `dn_env_init()` ouvre 3 devices et écrit ~10 registres ⇒ **+10 à +30 ms** |
+| `nav ab 40` (n=80) | 334,6 ms | **334 ± 20 ms** *(= inchangé)* | ⚠️ le bruit est de **±16 ms** : tout verdict sous ~±20 ms **est du bruit** |
+| `flush` régime (esp. 4 ms) | 2,7 fl/cyc · 97 800 px/cyc | **inchangé à ±0,3 fl/cyc** | ⛔ `dn_env` ne pousse **rien** vers l'UI |
+| 🔴 **`dn_capt` CPU** | 🔴 **0,068 %** | 🔴 **0,08 – 0,12 %** | 0,068 % sur 5 000 ms ≈ **3,4 ms de CPU par cycle**. `dn_env` ajoute **2,3 ms de temps MURAL**, dont une part est de l'attente I²C ⇒ **la part CPU est inférieure à 2,3 ms**. Fourchette large **assumée** : c'est le chiffre le moins bien contraint de la table |
+| **cœur 0** | 3,249 % | **3,26 – 3,31 %** | `dn_capt` est le seul poste qui bouge |
+| **cœur 1** | 0,015 % | **inchangé** | rien n'est ajouté sur le cœur 1 |
+
+🔮 **PRÉDICTION SUR LA FAMINE DMA — la plus engageante, et la plus facile à démentir :**
+**NON REPRODUITE.** Motif chiffré : `dn_env` ajoute **9 transactions toutes les 5 s = 1,8/s**, contre
+un GT911 qui pole **~30×/s** ⇒ **+6 % de trafic I²C**. C'est **très en dessous** de ce que
+`i2c rafale` produit (des centaines de sondages/s) sans rien casser.
+🔴 **MAIS LA CONDITION QUI ROUVRE L'ENTRÉE EST RÉELLE ET ELLE EST NOMMÉE** : `dn4-2` **SONDAIT**,
+`dn4-3` **LIT EN RÉGIME**, en permanence, pour toujours. ⚠️ **`fps` est AVEUGLE à ce défaut**
+(37,45 Hz relevés *pendant que l'image défilait*) ⇒ **seul l'œil de l'owner tranche.**
+
+🔮 **PRÉDICTION SUR AC13** : les **sept** compteurs de `dn_capt_compteurs_t` restent à **0** sauf
+`lectures`, `touch`/`err_i2c` reste à **0 → 0** en couple encadrant, `config LUE (conforme)`, cadence
+**~5,00 s**, et les **trois compteurs de débordement de case à zéro**.
+⚠️ **Deux réserves honnêtes** : (a) un **démarrage à froid** peut faire monter `err_i2c` et
+`conformite` — c'est **attendu**, mesuré, et **ce n'est pas une régression** (§13.19.12) ; (b) le
+relevé se fait **après un `--reset`**, donc sur un **bus chaud**.
