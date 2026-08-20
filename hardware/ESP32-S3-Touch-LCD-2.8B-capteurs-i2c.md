@@ -2153,3 +2153,82 @@ WSL**, ⛔ **pas de l'agent réel sur la tour** — l'exclusivité `WSL ↔ COM3
 carte est attachée à WSL. **Même chemin de code** (même REPL, même `dn_link`, même `dn_ui`),
 ⛔ **pas le même émetteur.** Ce qui n'est pas mesuré ici, c'est le PC.
 
+---
+
+### 13.16.14 ✅ AC12 — les budgets, sur le firmware LIVRÉ et au BOOT PROPRE
+
+**`43e108f`, SHA lu au bandeau**, `porcelain` vérifié **VIDE avant** le flash.
+⚠️ **Le tas est relevé AU BOOT PROPRE, ⛔ pas après campagne** — un relevé post-campagne a déjà rendu
+**40 %** de fragmentation contre 2 % au boot, et *« un chiffre faux mais plausible est plus dangereux
+qu'un chiffre absurde ; celui-là était les deux »*.
+
+| Grandeur | **T0** `df5d23d`, 5 devices | **LIVRÉ** `43e108f`, 8 devices | Δ |
+|---|---:|---:|---:|
+| **Binaire** | 943 712 o | **950 800 o** | **+7 088 o (+0,75 %)** |
+| Partition libre | 78 % | **77 %** | −1 pt |
+| RAM interne libre | 92 219 o | **92 315 o** | **+96 o (+0,10 %)** |
+| PSRAM libre | 7 768 236 o | **7 768 236 o** | **0,00 %** |
+| Tas LVGL utilisé | 20 468 o (33 %) | **20 496 o (34 %)** | +28 o |
+| Plus gros bloc libre | 40 752 o | **40 752 o** | **0** |
+| Fragmentation | 3 % | **2 %** | −1 pt |
+| `fps 15` | 37,40 Hz, +0,00 % | **37,40 Hz, +0,00 %** | **0** |
+| Boot | 2 319 ms | **2 328 ms** (2 321 au suivant) | +9 ms (+0,39 %) |
+| `nav ab 40` (n=80) | 291,1 / 335,2 / 398,7 ms | **291,1 / 335,3 / 398,7 ms** | **+0,1 ms** |
+
+⚠️ **Le +0,1 ms de `nav ab` est du BRUIT** : la mesure porte **±16 ms sur n=40**, et tout verdict à
+moins de ~±20 ms n'en est pas un. ⇒ **Publié comme distribution (min/moy/max), ⛔ pas comme moyenne
+seule.**
+
+**Le coût se décompose exactement**, et c'est **le binaire SEUL** :
+
+| Commit | Ce qu'il ajoute | Coût |
+|---|---|---:|
+| `62e5f1d` | `i2c ecrire` · `i2c brut` · `i2c lire16` | **+5 232 o** |
+| `43e108f` | `i2c rafale` (l'instrument d'AC9) | **+1 856 o** |
+| | **total** | **+7 088 o** |
+
+*(Référence historique : la commande `i2c` complète avait coûté +4 400 o en `dn2-1`.)*
+
+#### ⛔ ZÉRO COÛT EN RÉGIME — et c'est mesuré, pas déduit
+
+**`cpu brut` encadrant une fenêtre CALME chronométrée de 30,2 s**, à 8 devices :
+
+| Tâche | % d'un cœur |
+|---|---:|
+| `taskLVGL` | 2,31 % |
+| `esp_timer` | 0,68 % |
+| `dn_rtc` | 0,17 % |
+| **`dn_capt`** | **0,09 %** |
+| `console_repl` | 0,05 % |
+| `dn_link` · `main` | 0,02 % chacun |
+| **⇒ cœur 0 occupé** | **3,31 %** |
+| **⇒ cœur 1 occupé** | **0,04 %** |
+
+⇒ **`dn_capt` à 0,09 % est le BME680 SEUL, inchangé.** Les trois nouveaux capteurs sont **sur le bus
+et qualifiés**, ⛔ **pas pilotés** : aucune tâche, aucun timer, aucune allocation. **Le périmètre est
+tenu, et le chiffre le prouve.**
+⚠️ **Un premier couple `cpu brut` a été écarté** parce qu'il encadrait `fps 15` **et** `nav ab 40` :
+il rendait 51,6 % sur le cœur 0, ce qui mesurait **la campagne**, pas le régime. **Dit plutôt que
+publié.**
+
+---
+
+### 13.16.15 ✅ AC13 — les gardes des marches du dessous restent vertes
+
+| Garde | Origine | Mesuré à 8 devices |
+|---|---|---|
+| **BME680 vivant** | `dn2-1` | ✅ `VIVANT` · `config LUE (conforme)` (`0x72=04 · 0x74=84 · 0x75=08`) · cadence **4 999 / 5 005 ms** · `err_i2c` **0** |
+| **RTC vivante** | `dn3-2` | ✅ `0x51` qualifiée **par lecture** · témoin anti-fantôme **`0xD7` vert** · ⚠️ `OS = 1` **attendu** après ~10 coupures USB (§13.15.3 : **aucune sauvegarde**), barre passée à **« --:-- HEURE NON POSÉE »** ⇒ **la garde a fonctionné**, heure reposée, `OS = 0` |
+| **Témoin v1** (agent `dn2-2` non modifié) | `dn2-2` / `dn4-1` | ✅ **6 trames v1 valides, 0 rejet de TOUTE cause**, case CPU à 100 % et les grandeurs non publiées marquées `--` |
+| **Péremption 3 s par métrique** | `dn2-2` | ✅ les **5 métriques** portent chacune **leur propre âge et leur propre état** (`pc`) ⇒ une source qui meurt **meurt SEULE** |
+| **« toute la case est la zone tactile »** | `dn1-4` / D12 | ✅ **re-prouvée sur la géométrie D12** : **15 taps sur zone / 18 appuis**, coordonnées publiées (§13.16.12) |
+| **Barre et MENU = zones mortes** | `dn1-4` / `dn3-1` / `dn3-2` | ✅ **3 appuis hors zone ⇒ 0 tap** — la garde se déclenche, et l'instrument le **dit** |
+| **D4 — aucun `nvs_*` en régime** | brief | ✅ **RE-VÉRIFIÉ PAR GREP** : toutes les écritures (`nvs_set_i32`, `nvs_commit`, `nvs_erase_all`) sont dans `set_i32()` et `dn_bootcfg_reset()`, **dont les SEULS appelants sont `dn_console.c`** (`set …` et `cfg reset`). Les lectures sont au boot. ⇒ **aucune écriture sur un chemin de régime** |
+| **Bandeau de boot** | — | ✅ **une seule ligne `E`** sur un boot sain : celle de l'ISR, **nommée et rattachée** (AC11). ⛔ Aucune nouvelle |
+| **Smoke owner 6/6** | — | ⏳ **dû** |
+
+⚠️ **CE QU'AC13 NE PEUT PAS DÉCLARER VERT** : le **démarrage à froid** (§13.16.10). Les gardes
+ci-dessus sont mesurées **sur un boot sain** ; trois démarrages à froid sur quatre n'en produisent
+pas un. ⇒ **La non-régression est établie EN RÉGIME, pas AU DÉMARRAGE**, et la distinction est écrite
+plutôt que gommée.
+
