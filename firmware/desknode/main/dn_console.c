@@ -5970,7 +5970,11 @@ static int cmd_env(int argc, char **argv)
         printf("              convertisseur (au moins 54612 lx), plus une mesure.\n");
         printf("              ⚠️ brut 0 est LEGITIME (obscurite) : la main posee a\n");
         printf("              mesure brut 2, pas 0. `donnee` ne compte que le 0\n");
-        printf("              lu dans les 180 ms d'une (re)configuration.\n");
+        printf("              lu dans les 180 ms d'une (re)configuration — ⛔ et\n");
+        printf("              ce seau reste donc a 0 SAUF si une configuration a\n");
+        printf("              echoue puis ete REPOSEE : tout appel a configurer()\n");
+        printf("              est suivi d'un `return`, la lecture suivante arrive\n");
+        printf("              5000 ms plus tard. DECLARE en revue de code.\n");
         printf("              Source : ROHM BH1750FVI-TR, plage 1-65535 lx,\n");
         printf("              lux = brut / 1,2 au MTreg par defaut (69).\n");
         printf("  ⛔ NE JAMAIS republier des lux DIVISES PAR DIX : (brut*10)/12\n");
@@ -6056,8 +6060,22 @@ static int cmd_env(int argc, char **argv)
         printf("     l'information. `i2c lire16 29 0016 1` pour la lire.\n");
     }
 
-    printf("\n⛔ AUCUN de ces trois capteurs n'alimente une case : X2 (la 6e case)\n");
-    printf("   n'est pas tranche. `env` est donc le SEUL endroit ou ils se lisent.\n");
+    /* 🔴 ETIQUETTE PERIMEE, CORRIGEE EN SEANCE CARTE LE 2026-08-20 : cette
+     * ligne affirmait « X2 n'est pas tranche » alors que X2 EST TRANCHE depuis
+     * la seance du meme jour — c'est meme le resultat central de la story. Une
+     * commande qui nie une decision owner est exactement l'etiquette qui ment
+     * que ce depot traque, et elle etait dans le module que la revue venait
+     * d'auditer. ⛔ Trouvee en LISANT LA SORTIE, pas le code. */
+    printf("\n⛔ AUCUN de ces trois capteurs n'alimente une case, et c'est une\n");
+    printf("   DECISION, pas un provisoire : X2 est TRANCHE — « AUCUNE 3e\n");
+    printf("   grandeur, la case AMBIANCE reste a deux » (decision owner du\n");
+    printf("   2026-08-20). Les QUATRE candidats ont ete mesures au MEME\n");
+    printf("   instrument (`w2`) : pression 1 hPa d'etendue en 17 min, ALS\n");
+    printf("   binaire, gaz sans reponse a deux bouffees, et le lux qualifie a\n");
+    printf("   10-70x la reference — ce qui est justement l'argument CONTRE\n");
+    printf("   (W2 est un seuil PLANCHER, pas un optimum).\n");
+    printf("   ⇒ `env` est donc le SEUL endroit ou ces trois se lisent, et le\n");
+    printf("     BH1750 a un SECOND emploi : il pilote le retroeclairage (`bl`).\n");
     return 0;
 }
 
