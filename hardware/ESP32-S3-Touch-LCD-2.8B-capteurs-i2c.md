@@ -4722,3 +4722,68 @@ et la story s'arrête »*. **Appliquer cette règle telle quelle serait une faut
 ⚠️ **Le périmètre change** : la question n'est plus *« jusqu'où porte-t-il ? »* mais
 ***« pourquoi son optique ne reçoit-elle rien ? »***. ⇒ **`[CC] bmad-correct-course`**, ⛔ pas une
 réécriture silencieuse du tableau.
+
+### 13.21.9 🔴 LE CANAL DE **RÉFÉRENCE** EST À ZÉRO — ça élimine toute l'optique, et **rouvre `XSHUT`**
+
+**Constat owner du 2026-08-21** : ⛔ **il n'y a AUCUN film de protection** sur la fenêtre du capteur.
+⇒ **la piste n°1 de §13.21.7 est FERMÉE par l'œil.** Question owner dans la foulée :
+*« c'est pas parce qu'il n'est pas branché entièrement ? »*
+
+**Lecture décisive, après un déclenchement :**
+
+| Canal | Registres | Lu |
+|---|---|---|
+| **RETOUR** (voit la cible) | `0x06C` · `0x074` · `0x07C` | `00 00 00 00` ×3 |
+| 🔴 **RÉFÉRENCE** (voit le VCSEL **EN INTERNE**) | `0x070` · `0x078` · `0x080` | **`00 00 00 00` ×3** |
+
+🎯 **POURQUOI LE CANAL DE RÉFÉRENCE TRANCHE** : il est **interne au boîtier** — il voit l'émetteur par
+un chemin optique qui **ne sort jamais du composant**. Il ne dépend ⛔ ni d'une cible, ⛔ ni de la
+propreté de la fenêtre, ⛔ ni de l'éclairage de la pièce. **Il compterait des photons capteur posé
+face contre la table.**
+
+⇒ **Référence = 0 ET retour = 0 ET convergence = 0 ⇒ LE MOTEUR DE MESURE NE DÉMARRE JAMAIS.**
+**Ce qui est ÉLIMINÉ, et ce n'est pas une opinion :**
+- ⛔ le film de protection (déjà écarté à l'œil — **et il n'aurait de toute façon pas mis le canal
+  INTERNE à zéro**) ;
+- ⛔ « pas de cible en vue » — une absence de cible **converge quand même** et rend un code d'erreur ;
+- ⛔ toute obstruction optique externe.
+
+#### 🔴 CE QUE ÇA ROUVRE : « `XSHUT` EST TIRÉ HAUT » N'A **JAMAIS ÉTÉ MESURÉ ÉLECTRIQUEMENT**
+
+Le module est un **`TOF050C-VL6180X`, 6 broches : `VIN · GND · SDA · SCL · INT · XSHUT`**, barrette
+soudée. **Quatre sont câblées.** `INT` et `XSHUT` ne le sont pas (§13.16.7, décision mesurée).
+
+- **`INT`** est une **SORTIE**. La laisser en l'air ⛔ **ne peut pas** empêcher le moteur de tourner.
+- **`XSHUT`** est **l'ENTRÉE D'ACTIVATION**.
+
+🔴 **ET VOICI LA FAILLE DANS LE VERDICT DE `dn4-2`** : §13.16.7 conclut *« `XSHUT` est TIRÉ HAUT sur ce
+breakout »* par un **RAISONNEMENT**, ⛔ pas par un voltmètre :
+
+> *« Preuve : la puce rend `B4` cinq fois sur cinq avec le fil RETIRÉ, alors que la datasheet ST est
+> formelle — `XSHUT` basse ou flottante ⇒ shutdown, pas d'acquittement. »*
+
+⚠️ **La déduction vaut ce que vaut sa prémisse**, et la prémisse traite « shutdown » comme **BINAIRE**.
+🔴 **L'instrument d'alors — « est-ce que ça acquitte en I²C ? » — ne pouvait PAS distinguer
+« pleinement activé » de « NUMÉRIQUE activé, ANALOGIQUE éteint ».**
+⇒ **Et c'est exactement l'état qu'on mesure aujourd'hui.** L'inférence n'était pas fausse au moment
+où elle a été faite : **elle était sous-déterminée, et rien ne le disait.**
+
+🎯 **`dn4-2` AVAIT ÉCRIT LE RÉSIDUEL, ET IL SE RÉALISE** :
+> *« Si le ToF devient un jour intermittent, **`XSHUT` est le premier suspect à re-nommer** — pas la
+> soudure. »*
+
+#### 🔴 PRÉDICTION, ÉCRITE ET COMMITTÉE **AVANT** LE GESTE OWNER
+
+| # | Prédiction | Ce qu'elle vaut si elle tombe |
+|---|---|---|
+| **Q1** | La tension sur `XSHUT` **n'est PAS un 3V3 franc** (flottante, ou nettement en dessous) | si elle est à **3,3 V franc**, ⛔ **`XSHUT` est EXONÉRÉ** et le suspect suivant devient le rail `VIN`/`AVDD_VCSEL` |
+| **Q2** | `XSHUT` tiré **franchement** à 3V3 ⇒ `REFERENCE_CONV_TIME` devient **non nul** et *New Sample Ready* apparaît | si **rien ne change**, ⛔ `XSHUT` est exonéré **par la mesure**, ⛔ pas par un raisonnement |
+
+⚠️ **L'ORDRE COMPTE, ET IL EST DICTÉ PAR LE RISQUE** : **Q1 D'ABORD** (voltmètre, **risque nul**), Q2
+seulement ensuite. ⛔ **Ne pas commencer par le fil** : §13.16.7 a mesuré qu'un fil `XSHUT` vers
+`3V3` a coïncidé avec **la mort du bus entier** (TCA9554 muet, panique haltée, console perdue).
+⚠️ **Le mécanisme n'a JAMAIS été isolé** — hypothèse dominante : un pin mal enfoncé **pontant `3V3`
+(rang 11) et `G` (rang 12)**, donc un **accident de câblage**, ⛔ pas `XSHUT` lui-même.
+⇒ **Si Q2 est joué : vérifier que le pin est À FOND et ne touche PAS la cavité `G` voisine.**
+✅ **Et si le bus remeurt de la même façon, ce sera la DEUXIÈME occurrence** — donc, pour la première
+fois, un mécanisme **isolable** au lieu d'une corrélation.
