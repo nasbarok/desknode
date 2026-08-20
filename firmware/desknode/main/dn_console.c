@@ -4505,12 +4505,23 @@ static int i2c_lire_brut(uint8_t addr, int n)
      * motif que 0xD0/0xF0 pour le BME680 ci-dessus. */
     if (addr == 0x23 && n == 2) {
         unsigned brut = ((unsigned)rx[0] << 8) | rx[1];
-        /* lux = brut / 1,2 au MTreg par defaut (69). Entiers uniquement :
-         * brut * 10 / 12, et le reste imprime pour ne pas cacher la troncature. */
-        unsigned lux10 = (brut * 10u) / 12u;
+        /* 🔴 CR dn4-2 (2026-08-20) — CETTE CONVERSION ETAIT FAUSSE D'UN FACTEUR 10,
+         * ET LE CHIFFRE ETAIT PLAUSIBLE, DONC PIRE QU'ABSURDE.
+         * `(brut * 10) / 12` EST DEJA la valeur en lux ENTIERS (c'est litteralement
+         * `brut / 1,2`) — elle etait ensuite imprimee comme des DIXIEMES. Mesure
+         * du 2026-08-20 : `brut 55 378` a ete publie « 4 614,8 lx » dans §13.16.8
+         * ET dans le README, alors que la vraie valeur est 46 148 lx. De meme
+         * 1,9 pour 19,2 et 2,3 pour 23,3.
+         * ⚠️ AC6 tient quand meme — le stimulus qualifie par le RAPPORT, et les
+         *    rapports etaient justes — mais « 4 614,8 lx sous une lampe de
+         *    telephone » est exactement le chiffre faux ET plausible que ce depot
+         *    dit plus dangereux qu'un chiffre absurde.
+         * ⇒ Pour des DIXIEMES il faut 100 au numerateur : lux x 10 = brut x 100/12.
+         *   Borne : brut <= 65 535 ⇒ 6 553 500, tient largement dans un unsigned. */
+        unsigned lux10 = (brut * 100u) / 12u;
         printf("  => BH1750 : brut %u => %u.%u lx (lux = brut / 1,2 au MTreg\n",
                brut, lux10 / 10u, lux10 % 10u);
-        printf("     par defaut de 69)\n");
+        printf("     par defaut de 69 ; le dixieme est TRONQUE, pas arrondi)\n");
         printf("  ⚠️ 0000 ne prouve PAS un capteur mort : c'est aussi ce que\n");
         printf("     rend une mesure PAS ENCORE PRETE (jusqu'a 180 ms) ou un\n");
         printf("     capteur en POWER DOWN. Le discriminant est le STIMULUS :\n");
