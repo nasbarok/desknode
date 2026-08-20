@@ -4056,6 +4056,134 @@ fondé sur l'**absence de réponse aux deux bouffées**, ⛔ pas sur son W2.
 
 ---
 
+### 13.19.16 🎯 LA SÉANCE OWNER — AC1, AC5, AC2/AC3 ET AC13 SOLDÉS, firmware `1b2adca`
+
+**Owner À LA CARTE.** Gestes physiques et constats à l'œil : Nasbarok. Commandes et relevés : agent.
+⚠️ **Les 5 cases PC étaient nécessairement mortes** (exclusivité WSL↔COM3) — dit ici comme à chaque
+séance, parce que le smoke porte dessus.
+
+#### a) 🎯 AC1 — LE STIMULUS, ET LE RETOUR N'EST PAS LE DÉPART
+
+Auto **DÉSARMÉ** pendant tout le test (⛔ pour que la dalle ne bouge pas et ne pollue pas la lecture).
+⚠️ **Lectures espacées de 5,5 s** : le capteur ne se rafraîchit qu'au cycle, trois appels rapprochés
+rendraient **trois fois la même mesure** — un piège d'instrument qui aurait fabriqué une fausse
+stabilité.
+
+| État | L1 | L2 | L3 |
+|---|---:|---:|---:|
+| **Départ** | **241 lx** (brut 290) | 240 (289) | 239 (287) |
+| 🖐️ **Main posée** | **0 lx** (brut 1) | 0 (1) | 0 (1) |
+| **Main retirée** | **210 lx** (brut 253) | 210 (252) | **209** (251) |
+
+🎯 **LE RETOUR N'EST PAS IDENTIQUE AU DÉPART : 239 → 209, soit −12,6 %.** *Une valeur rejouée serait
+revenue exacte.* La valeur change **dans les deux sens**. **155 lectures, 0 erreur de toute cause.**
+⚠️ **Le brut vaut 1 sous la main, pas 0** — le capteur mesure encore : c'est ce qui sépare une main
+d'un capteur mort. (Sur `fd959f2` le retour montait de +35 % ; ici il descend de −12,6 % parce que la
+pièce s'assombrissait — le départ dérivait déjà 241 → 239. **Le sens n'est pas le critère, l'écart
+l'est.**)
+
+#### b) 🎯 AC5 — LE CONSTAT OWNER, ET LA PREUVE QUE L'INSTRUMENT POUVAIT VOIR LE DÉFAUT
+
+Pièce à ~200 lx. Armement, puis descente **relevée** : **100 → 80 → 60 → 37 %**, puis **stable à
+37 %** sur quatre cycles pendant que le lux glisse 204 → 200 lx.
+
+**VERBATIM OWNER, sur les trois questions posées séparément :**
+1. *« la dalle s'est-elle assombrie ? »* → **« bof un peu oui »**
+2. *« 37 % est-il lisible ici ? »* → **« oui cca va »**
+3. *« est-ce que ça pompe ? »* → 🎯 **« nop rien image stable »**
+
+⚠️ **LE POINT 1 EST À GARDER TEL QUEL** : **63 points de duty** en moins n'ont produit qu'un
+*« bof un peu »* perçu. ⇒ **le duty LEDC n'est PAS linéaire en luminosité perçue**, et une loi
+linéaire en lux produit une réponse visuellement molle. ⛔ Ce n'est pas un défaut de l'AC — c'est
+une donnée pour qui voudra un jour courber la loi.
+
+🔴 **ET LA QUESTION QUE §13.19.7 LAISSAIT OUVERTE EST FERMÉE PAR LA MESURE : LA BOUCLE OPTIQUE NE SE
+FERME PAS, MÊME EN PIÈCE ÉCLAIRÉE.** Le constat *« ça ne pompe pas »* de la séance précédente avait
+été fait **dans le noir**, où `bl 100` et `bl 0` rendent tous deux `brut 0` ⇒ il ne prouvait rien.
+**A/B joué ici à ~180 lx, puis REJOUÉ DANS L'ORDRE INVERSE pour annuler la dérive de la pièce** :
+
+| Ordre | Bloc 1 (moyenne) | Bloc 2 (moyenne) | Écart `bl100 − bl0` |
+|---|---:|---:|---:|
+| `bl 0` puis `bl 100` | 186,0 lx | 183,3 lx | **−2,7 lx** |
+| `bl 100` puis `bl 0` | 177,3 lx | 174,0 lx | **+3,3 lx** |
+
+🎯 **LE SIGNE S'INVERSE AVEC L'ORDRE** — dans les deux cas c'est le **premier bloc** qui lit le plus
+haut, quelle que soit la luminosité de la dalle. ⇒ **la différence est entièrement expliquée par la
+dérive de la pièce (~3 lx par bloc de 33 s), et la contribution de la dalle est SOUS le bruit.**
+⇒ 🔴 **L'AUTO-POMPAGE EST PHYSIQUEMENT IMPOSSIBLE SUR CETTE CARTE : la boucle est OUVERTE.** Le
+*« nop rien image stable »* de l'owner est vrai, **et on sait maintenant POURQUOI** — ce n'est pas la
+bande morte qui l'empêche, c'est l'absence de contre-réaction.
+⚠️ **CE QUE ÇA CHANGE POUR LE DÉFAUT REPORTÉ** (bande morte inclusive, non hystérétique) : il reste
+**RÉEL et NON EXERCÉ**, mais il ne peut être déclenché que par un **éclairage EXTERNE** qui papillote
+de ~19 lx. ⛔ Pas par la dalle elle-même.
+
+#### c) 🎯 AC2 / AC3 — SIX DÉBRANCHEMENTS PHYSIQUES, BUDGET ANNONCÉ D'AVANCE, **0 BRIQUAGE**
+
+| Cycle | `dn_env` (3 capteurs) | GT911 | Verdict |
+|---|---|---|---|
+| 1 | 0 erreur, 15 cycles | 2 202 lect. / **0** | propre |
+| 2 | 0 erreur, cycles 3→10 couverts | 2 246 lect. / **0** | propre |
+| 3 | 0 erreur | **0** | propre |
+| 4 | 0 erreur, 32 cycles | 3 227 lect. / **0** | propre |
+| **5** | 0 erreur | 🔴 **1 erreur**, puis **+1 214 lectures SANS nouvelle** | **DÉGRADÉ** |
+| 6 | 0 erreur | 1 848 lect. / **0** | propre |
+
+🎯 **0 BRIQUAGE SUR 6.** **1 cycle dégradé sur 6**, et la **signature transitoire est reproduite** :
+l'erreur apparaît dans les premières secondes puis **le compteur se fige** pendant que les lectures
+continuent par milliers.
+
+🔴 **ÉCART AVEC LA CAMPAGNE `fd959f2`, ET IL NE S'ATTRIBUE PAS AUX CORRECTIFS.** Elle avait rendu
+**2 cycles dégradés sur 6, pic à 42,9 %** ; celle-ci **1 sur 6, pic à 1 erreur**. ⛔ **La condition
+diffère** : la carte tournait depuis la séance console, donc **elle était CHAUDE**, et le défaut est
+un **démarrage à FROID**. ⚠️ **Conclure « les correctifs ont amélioré le bus » serait une faute de
+lecture** — le firmware ne touche pas le GT911.
+
+⛔ **ET LE DÉLAI DE REPRISE N'EST TOUJOURS PAS CHRONOMÉTRÉ — L'INSTRUMENT N'A PAS LA RÉSOLUTION.**
+Le réattachement `usbipd` coûte **2,7 à 3,1 s**, et la carte a déjà **3 à 6 cycles** (15-30 s) quand
+la console redevient joignable. ⇒ **la fenêtre où la reprise se joue est passée avant qu'on puisse
+mesurer.** **AC3 reste PARTIEL sur ce point, et c'est écrit plutôt que contourné.**
+⇒ **Recette pour le mesurer un jour** : il faut un instrument **embarqué** (le firmware horodate
+lui-même sa première lecture valide par capteur et l'expose), ⛔ pas un poll depuis l'hôte.
+
+#### d) 🎯 AC13 — LE SMOKE OWNER
+
+**Verbatim, sur trois questions posées séparément :** les six cases s'affichent → **« oui »** · le
+toucher ouvre le détail et le retour revient → **« oui ok »** · l'heure → **« pas dh »**, précisé
+ensuite : la barre affiche **`--:--` / `HEURE NON POSÉE`**.
+
+🎯 **L'HEURE PASSE, ET C'EST LE BON COMPORTEMENT.** Le RTC a son **bit `OS` à 1** — l'oscillateur
+s'est arrêté, conséquence attendue de **six coupures d'alimentation d'affilée**. L'heure lue
+(`2000-01-01 00:05:10`) est déclarée **`⛔ NON AFFICHABLE`** par le driver, et la barre **AVOUE** au
+lieu de mentir. AC13 demande *« l'heure est juste **ou dit honnêtement qu'elle ne l'est pas** »*.
+✅ **La deuxième branche est exactement ce qui s'est produit.**
+
+#### e) ⚠️ DEUX DÉFAUTS D'INSTRUMENT DE L'AGENT, DANS CETTE SÉANCE, ET ILS SONT DE LA MÊME FAMILLE
+
+1. 🔴 **UN COMPTEUR D'ERREURS FABRIQUÉ À PARTIR DU NOM DU BUS.** Le harnais extrayait les erreurs par
+   `grep -oE "[0-9]+"` appliqué à la chaîne **`i2c 0`** — qui capture **le `2` de « i2c »** en plus du
+   `0`. Trois capteurs × (2+0) = **6**. J'ai publié *« débranchement 3/6 DÉGRADÉ, 6 erreurs »* et
+   j'en ai tiré *« ma prédiction est confirmée »*. **LES DEUX ÉTAIENT FAUX** : le cycle 3 est propre,
+   et la prédiction reste **NON TESTÉE**.
+   ⚠️ **Le tell que j'aurais dû voir immédiatement** : une valeur **exactement constante à 6** sur
+   **14 relevés**, présente dès la première seconde. **Un compteur d'erreurs qui n'évolue jamais
+   d'un iota n'est pas un compteur, c'est une constante.**
+2. **UN `bc` NOURRI DE VIDE.** `sed 's/.*conformite \([0-9]*\).*/\1/p'` matchait **aussi** les
+   lignes de TEXTE contenant le mot « conformite » (*« présence et conformite SEULEMENT »*), où
+   `[0-9]*` matche le **vide** ⇒ `bc` recevait `0++0` et rendait une erreur de syntaxe, colonne
+   affichée `?`.
+
+✅ **CORRIGÉ ET PROUVÉ PAR TÉMOIN POSITIF** (méthode `dn1-1`) : le harnais corrigé extrait **42 / 7 /
+3** d'une ligne d'erreurs **fabriquée**, ignore la ligne de texte, et rend **0** sur la vraie sortie.
+⛔ **Sans ce témoin, « 0 erreur » et « instrument aveugle » seraient indiscernables** — et c'est
+précisément ce qui venait de se produire.
+
+🔴 **LA LEÇON, ET ELLE VAUT AU-DELÀ DE CETTE SÉANCE** : la console de ce dépôt est **riche et
+rédigée pour un humain** — mots-clés répétés dans la prose, chiffres au milieu des phrases. **La
+gratter au `grep` fabrique des nombres plausibles.** ⇒ **tout harnais de scraping se prouve sur une
+ligne FABRIQUÉE avant d'être cru sur une ligne réelle.**
+
+---
+
 ### 13.19.13 ⚠️ CE QUI N'A PAS MARCHÉ DANS CETTE SÉANCE — y compris mes propres erreurs de méthode
 
 1. 🔴 **J'AI PUBLIÉ UN CRITÈRE DE VALIDITÉ, PUIS JE L'AI DÛ RÉTRACTER DEVANT L'OWNER.**
