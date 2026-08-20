@@ -5381,6 +5381,36 @@ static int cmd_capteurs(int argc, char **argv)
         printf("pression   : JAMAIS LUE — aucune lecture BME680 valide depuis le\n");
         printf("             boot (ou depuis la derniere reconfiguration).\n");
     }
+    /* 🔴 dn4-3 — LA RESISTANCE DE GAZ, sur DEMANDE OWNER. ⛔ CE N'EST PAS UN
+     * INDICE DE QUALITE D'AIR : c'est la resistance BRUTE du capteur MOX, qui
+     * BAISSE en presence de composes organiques volatils, et qui depend AUSSI
+     * de la temperature, de l'humidite et de l'historique du capteur. */
+    int g_ohms = dn_capt_gaz_ohms();
+    if (g_ohms != DN_CAPT_DX_ABSENT) {
+        printf("gaz (MOX)  : %d ohms (%d kOhm) — ⛔ RESISTANCE BRUTE, PAS un indice\n",
+               g_ohms, g_ohms / 1000);
+        printf("             de qualite d'air. Elle BAISSE quand des COV sont\n");
+        printf("             presents. Instrumentee par `w2`.\n");
+        printf("             iaq_score du composant : %d — ⛔ INUTILISABLE, TROIS\n",
+               dn_capt_iaq_brut());
+        printf("             defauts LUS AU SOURCE : (1) le header annonce 0..500,\n");
+        printf("             la formule somme 6,5+6,5+52 => MAX REEL 65 ;\n");
+        printf("             (2) `bme680.c:733` teste `gas>=13500 && gas>9000`, le\n");
+        printf("             second est IMPLIQUE par le premier => la bande\n");
+        printf("             9000..13500 ohms ne recoit AUCUN score et garde une\n");
+        printf("             valeur RESIDUELLE ; (3) le score de temperature tombe\n");
+        printf("             a 0 au-dessus de 26 C, or ce capteur lit ~28 C a cause\n");
+        printf("             de son PROPRE auto-echauffement (+2,1 C mesure) => 6,5\n");
+        printf("             points perdus par un artefact de MONTAGE.\n");
+        printf("             ⇒ un vrai IAQ demande BSEC (binaire proprietaire).\n");
+        printf("⚠️ LE CHAUFFEUR TOURNE : il coute +0,3 C et -2 points de RH sur les\n");
+        printf("   deux grandeurs que la case affiche (§13.9). `capteurs gaz off`.\n");
+    } else {
+        printf("gaz (MOX)  : chauffeur COUPE (defaut) — aucune resistance publiee.\n");
+        printf("             ⛔ ABSENT et non 0 : zero ohm serait une valeur\n");
+        printf("             PHYSIQUE (un court-circuit), donc un mensonge\n");
+        printf("             plausible. `capteurs gaz on` pour un A/B DECLARE.\n");
+    }
     /* 🔴 CR dn4-2 — LECTURE ATOMIQUE. Les deux appels independants laissaient
      * la console observer un etat A DEMI mis a jour (le chemin d'echec ecrit
      * `s_chip_id = 0` PUIS `s_id_lue = false`) et imprimer « chip id 0x00 …

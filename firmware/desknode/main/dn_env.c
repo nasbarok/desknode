@@ -908,6 +908,7 @@ static const char *k_w2_nom[DN_W2_NB] = {
     "pression (hPa entier)",
     "pression (hPa dixieme)",
     "temperature (dixieme) [CONTROLE]",
+    "gaz MOX (kOhm) [gaz on requis]",
 };
 
 const char *dn_w2_nom(dn_w2_id_t id)

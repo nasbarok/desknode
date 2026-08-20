@@ -255,6 +255,38 @@ const char *dn_capt_pression_unite_nom(dn_capt_p_unite_t u);
  * qui permet de dire « lue mais aberrante » plutôt que « aucune valeur ». */
 int dn_capt_pression_brut_dixiemes(void);
 
+/*
+ * 🔴 dn4-3 — LA RÉSISTANCE DE GAZ, EN OHMS. Publiée sur DEMANDE DE L'OWNER
+ * (2026-08-20 : *« pas hPa mais au moins un statut de qualité de l'air — je fume
+ * dans la pièce, ça devrait être facile de tester »*).
+ *
+ * ⛔ CE N'EST PAS UN INDICE DE QUALITÉ D'AIR, ET IL NE FAUT PAS L'AFFICHER COMME
+ *    TEL. Ce qu'on publie est la RÉSISTANCE BRUTE du capteur MOX, en ohms : elle
+ *    BAISSE quand des composés organiques volatils sont présents. Elle dépend
+ *    aussi de la température, de l'humidité et de l'historique du capteur.
+ *
+ * 🔴 ET L'`iaq_score` DU COMPOSANT EST INUTILISABLE — TROIS DÉFAUTS LUS AU SOURCE :
+ *  1. `bme680.h:369` l'annonce **0..500** ; la formule (`bme680.c:737`) somme
+ *     6,5 + 6,5 + 52 ⇒ **maximum réel 65**. Étiquette fausse.
+ *  2. `bme680.c:733` écrit `else if (gas >= 13500 && gas > 9000)` — le second
+ *     test est IMPLIQUÉ par le premier. L'intention était `>= 9000 && < 13500`.
+ *     ⇒ **la bande 9 000..13 500 Ω ne reçoit AUCUN score**, la cascade la
+ *     traverse sans rien assigner et `gas_score` garde une valeur RÉSIDUELLE.
+ *  3. Le score de température tombe à **0 au-dessus de 26 °C** (`bme680.c:725`).
+ *     Or notre capteur lit ~28 °C À CAUSE DE SON PROPRE AUTO-ÉCHAUFFEMENT
+ *     (+2,1 °C mesuré, §13.19.8) ⇒ **6,5 points perdus en permanence par un
+ *     artefact de montage**, pas par la qualité de l'air.
+ * ⇒ un vrai IAQ demande **BSEC** (binaire propriétaire de Bosch), ⛔ pas ceci.
+ *
+ * ⚠️ ET LE GAZ RESTE COUPÉ PAR DÉFAUT : sa plaque à 300 °C coûte **+0,3 °C et
+ *    −2 points de RH** (§13.9, A/B avec témoin négatif) sur les deux seules
+ *    grandeurs que la case affiche. `capteurs gaz on` pour un A/B DÉCLARÉ.
+ *
+ * `DN_CAPT_DX_ABSENT` si le gaz est coupé, ou si aucune lecture valide.
+ */
+int dn_capt_gaz_ohms(void);
+int dn_capt_iaq_brut(void); /* le score du composant, AVEC ses trois défauts */
+
 /* Dernières valeurs VALIDES, en DIXIÈMES (233 = 23,3 °C · 471 = 47,1 %).
  * Entiers pour rester dans la doctrine du dépôt côté affichage ; le driver rend
  * des float, la conversion est faite ici, une fois.

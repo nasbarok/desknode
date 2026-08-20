@@ -81,6 +81,10 @@ static int s_pression_dx = DN_CAPT_DX_ABSENT;      /* dixièmes de hPa, CONVERTI
 static int s_pression_brut_dx = DN_CAPT_DX_ABSENT; /* dixièmes de l'unité DU DRIVER */
 static dn_capt_p_unite_t s_pression_unite = DN_CAPT_P_UNITE_INCONNUE;
 static bool s_pression_unite_dite;
+/* 🔴 dn4-3 : la resistance MOX brute, en ohms. ⛔ PAS un indice de qualite
+ * d'air — voir le docblock de `dn_capt_gaz_ohms()`. */
+static int s_gaz_ohms = DN_CAPT_DX_ABSENT;
+static int s_iaq_brut = DN_CAPT_DX_ABSENT;
 static int64_t s_lu_us = -1;
 static int64_t s_cadence_us = -1; /* écart mesuré entre les deux dernières */
 static int64_t s_cycle_us = -1;
@@ -254,6 +258,22 @@ int dn_capt_pression_brut_dixiemes(void)
 {
     portENTER_CRITICAL(&s_mux);
     int v = s_pression_brut_dx;
+    portEXIT_CRITICAL(&s_mux);
+    return v;
+}
+
+int dn_capt_gaz_ohms(void)
+{
+    portENTER_CRITICAL(&s_mux);
+    int v = s_gaz_ohms;
+    portEXIT_CRITICAL(&s_mux);
+    return v;
+}
+
+int dn_capt_iaq_brut(void)
+{
+    portENTER_CRITICAL(&s_mux);
+    int v = s_iaq_brut;
     portEXIT_CRITICAL(&s_mux);
     return v;
 }
@@ -1202,6 +1222,15 @@ static void tache_capteurs(void *arg)
         s_hum_dx = h_dx;
         s_pression_dx = p_dx;
         s_pression_brut_dx = p_brut_dx;
+        /* ⚠️ Le composant ne remplit `gas_resistance` que si le chauffeur
+         * tourne. Gaz coupe ⇒ ABSENT, ⛔ pas 0 : zero ohm serait une
+         * valeur PHYSIQUE (un court-circuit), donc un mensonge plausible. */
+        /* ⚠️ `s_gaz` et NON `gaz_courant` : ce dernier a été lu en TÊTE de cycle,
+         * AVANT que la bascule demandée à chaud soit appliquée. L'utiliser ferait
+         * publier ABSENT pendant tout le cycle qui vient d'allumer le chauffeur —
+         * un trou d'un cycle qu'on lirait comme un capteur muet. */
+        s_gaz_ohms = s_gaz ? (int)lroundf(d.gas_resistance) : DN_CAPT_DX_ABSENT;
+        s_iaq_brut = s_gaz ? (int)d.iaq_score : DN_CAPT_DX_ABSENT;
         s_pression_unite = unite;
         s_lu_us = maintenant;
         s_cycle_us = duree;
@@ -1224,6 +1253,15 @@ static void tache_capteurs(void *arg)
             dn_w2_echantillon(DN_W2_PRESSION_DIX, p_dx);
         }
         dn_w2_echantillon(DN_W2_TEMPERATURE_DIX, t_dx);
+        /* ⚠️ Echantillonnee SEULEMENT quand le chauffeur tourne : sinon on
+         * compterait des absences comme des mesures, et l'instrument dirait
+         * « ca ne bouge pas » d'un capteur qui n'est pas allume. */
+        int g_ohms = dn_capt_gaz_ohms();
+        if (g_ohms != DN_CAPT_DX_ABSENT) {
+            /* En kilo-ohms : la resistance MOX va de ~5 000 a ~500 000 ohms, et
+             * W2 juge la valeur AFFICHEE — personne n'afficherait 6 chiffres. */
+            dn_w2_echantillon(DN_W2_GAZ_KOHM, g_ohms / 1000);
+        }
 
         pousser_ui();
     }

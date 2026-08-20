@@ -185,13 +185,20 @@ typedef struct {
  *     sur ce contenu-là.** Un plancher de lisibilité est une propriété du
  *     COUPLE duty × contenu, pas du duty seul.
  *
- * · LUX_HAUT : 400 -> 1500. Le 400 venait d'UNE mesure (411 lx). La séance en a
+ * · LUX_HAUT : 400 -> 1500 -> 600. Le 400 venait d'UNE mesure (411 lx). La séance en a
  *   relevé bien d'autres dans la même pièce : **2 lx rideau fermé** jusqu'à
  *   **2 262 lx** en journée. À 400 lx de plafond, la loi saturait à 100 % dès un
  *   éclairage artificiel modeste — elle *« ne modulait quasiment jamais »*.
  *   ⚠️ **Ce diagnostic-là a lui-même dû être corrigé** : il s'appuyait d'abord
  *   sur un « rideaux fermés = 1 296 lx » qui était en fait un rideau **pas
  *   encore fermé**. C'est l'owner qui l'a dit, ⛔ pas une déduction.
+ *   🔴 **PUIS 1500 -> 600, ENCORE PAR L'ŒIL** : à 1 500 lx de plafond, une pièce
+ *   éclairée à 170 lx ne recevait que **17 %**, et le constat owner a été
+ *   *« un peu plus lumineux »*. À 600 lx, la même pièce reçoit **32 %**, et le
+ *   constat est **« c'est ça »**. ⚠️ **Une réponse intermédiaire de l'owner était
+ *   AMBIGUË** (*« ok pas mal pour être un peu plus »*) — plus RAPIDE ou plus
+ *   LUMINEUX se corrigent à deux endroits opposés de la loi. ⛔ Elle n'a PAS été
+ *   tranchée au jugé : la question a été reposée en distinguant les deux.
  *
  * 🔴 ET LE PLANCHER EST DÉSORMAIS RÉGLABLE À CHAUD, parce que la séance a prouvé
  *    qu'il en avait besoin : j'avais rendu les bornes en LUX ajustables et laissé
@@ -201,7 +208,7 @@ typedef struct {
 #define DN_ENV_BL_PCT_MIN      8
 #define DN_ENV_BL_PCT_MAX      100
 #define DN_ENV_BL_LUX_BAS      20
-#define DN_ENV_BL_LUX_HAUT     1500
+#define DN_ENV_BL_LUX_HAUT     600
 #define DN_ENV_BL_HYST         3
 #define DN_ENV_BL_PAS_MAX      20
 #define DN_ENV_BL_AUTO_DEFAUT  false
@@ -316,6 +323,7 @@ typedef enum {
     DN_W2_PRESSION_ENT,     /* BME680, en hPa ENTIERS      (« 1013 hPa »)        */
     DN_W2_PRESSION_DIX,     /* BME680, en DIXIÈMES de hPa  (« 1013,2 hPa »)      */
     DN_W2_TEMPERATURE_DIX,  /* témoin de CONTRÔLE : une grandeur DÉJÀ affichée   */
+    DN_W2_GAZ_KOHM,         /* BME680 MOX, en kOhm — ⚠️ seulement `capteurs gaz on` */
     DN_W2_NB,
 } dn_w2_id_t;
 
