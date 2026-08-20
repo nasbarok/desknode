@@ -3688,3 +3688,164 @@ un GT911 qui pole **~30×/s** ⇒ **+6 % de trafic I²C**. C'est **très en dess
 ⚠️ **Deux réserves honnêtes** : (a) un **démarrage à froid** peut faire monter `err_i2c` et
 `conformite` — c'est **attendu**, mesuré, et **ce n'est pas une régression** (§13.19.12) ; (b) le
 relevé se fait **après un `--reset`**, donc sur un **bus chaud**.
+
+### 13.19.12 🎯 AC12 / AC13 — LES BUDGETS SUR LE FIRMWARE LIVRÉ, **CONFRONTÉS À LA PRÉDICTION**
+
+**Firmware `fd959f2`, SHA LU AU BANDEAU**, `porcelain` vérifié **VIDE avant le flash**, build refait
+après les commits. **La prédiction (§13.19.11) était committée avant le premier chiffre.**
+
+| Grandeur | T0 `2992181` | 🔮 prédit | **MESURÉ** | Verdict |
+|---|---:|---:|---:|---|
+| Binaire | 956 128 o | *(connu du build)* | **977 760 o** | **+21 632 o** — la **moitié** des +26 992 o du seul BME680 en composant tiers. Partition **77 % libre** |
+| RAM interne libre | 92 307 o | 91 300–91 800 | **91 631 o** | ✅ **TENUE** (−676 o) |
+| **PSRAM libre** | 7 768 236 o | **inchangée** | **7 768 008 o** | 🔴 **DÉMENTIE — −228 o** |
+| Tas LVGL utilisé | 20 500 o | inchangé | **20 472 o** | ✅ tenue (−28 o = le bruit d'allocation déjà vu au T0) |
+| Plus gros bloc | 40 752 o | inchangé | **40 752 o** | ✅ **TENUE, à l'octet** |
+| Fragmentation | 2 % | inchangée | **3 %** | ⚠️ +1 pt |
+| `fps 15` | 37,40 Hz | 37,40 Hz | **37,40 Hz (+0,00 %)** | ✅ **TENUE** |
+| **Boot** | 2 332 ms | **2 340–2 365** | **2 330 ms** | 🔴 **DÉMENTIE** |
+| `nav ab 40` (n=80) | 334,6 ms | 334 ± 20 | **334,5 ms** | ✅ **TENUE** (écart **0,1 ms**) |
+| flush/cycle (jeu figé, esp. 4 ms) | 2,7 | ±0,3 | **2,4** puis **2,6** | ✅ tenue, à la limite |
+| plus grande aire | 36 675 px | — | **36 675 px** | ✅ **identique** |
+| 🔴 **`dn_capt` CPU** | 🔴 **0,068 %** | 🔴 **0,08–0,12 %** | 🔴 **0,095 %** | ✅ 🎯 **TENUE** (**+40 %**) |
+| cœur 0 | 3,249 % | 3,26–3,31 % | **3,157 %** | 🔴 **DÉMENTIE, ET À L'ENVERS** |
+| cœur 1 | 0,015 % | inchangé | **0,029 %** | bruit |
+| **Famine DMA** | — | **NON reproduite** | **NON reproduite** | ✅ 🎯 **TENUE** |
+
+✅ **TEST DE RÉCONCILIATION PASSÉ** : somme des deltas **60 275 627** contre `fenêtre × 2` =
+**60 276 976** sur une fenêtre **mesurée à 30,138 s** ⇒ écart **−0,0045 pt** (seuil ±0,01).
+
+**BILAN : 7 prédictions tenues, 3 démenties** — et **les trois démenties sont les plus
+instructives.**
+
+#### 🔴 Démentie n°1 — le boot : **l'instrument s'arrête avant ce qu'on mesure**
+
+Prédit **+10 à +30 ms** parce que `dn_env_init()` ouvre 3 devices et écrit ~10 registres.
+Mesuré **2 330 ms**, soit **−2 ms**. La cause est **dans le log, en clair** :
+`prêt en 2330 ms depuis app_main` est imprimé à **`I (3006)`**, alors que `dn_env pret` arrive à
+**`I (3186)`**. ⇒ 🎯 **le chronomètre de boot s'arrête AVANT l'init des modules optionnels.**
+**AUCUN module optionnel ne peut faire bouger ce chiffre**, et j'ai prédit un delta sans vérifier où
+l'instrument s'arrête. ⚠️ *Corollaire pour les prochaines stories : « boot » ne mesure pas le boot,
+il mesure le boot du SOCLE.*
+
+#### 🔴 Démentie n°2 — le cœur 0 : **le bruit est 4× le signal**
+
+Prédit **3,26–3,31 %**. Mesuré **3,157 %** — **MOINS** qu'au T0 (3,249 %), alors que du travail a
+été **ajouté**. Cause : `taskLVGL` est passé de **2,270 % à 2,169 %** (**−0,10 pt**) d'une fenêtre à
+l'autre, ce qui **noie** le +0,027 pt de `dn_capt`.
+⇒ 🔴 **Le total du cœur 0 n'est PAS un instrument capable de voir cet ajout.** Seul **`dn_capt`
+isolé** le voit — et lui, il le voit très bien : **0,068 → 0,095 %, soit +40 %.**
+⚠️ *Un total qui contient un poste bruyant ne peut pas mesurer un poste discret.*
+
+#### 🔴 Démentie n°3 — la PSRAM : **228 o là où j'avais écrit « aucune allocation »**
+
+J'avais écrit *« ⛔ aucune allocation PSRAM ajoutée »*. Il y en a **228 o = exactement 76 o × 3
+devices I²C**. ⇒ **l'allocateur a placé les handles de device en PSRAM**, ce que je n'avais pas
+envisagé. ⚠️ **Cause plausible et arithmétiquement exacte, ⛔ NON VÉRIFIÉE** — je ne l'ai pas
+instrumentée, et je ne la présente donc pas comme établie.
+
+#### ✅ AC13 — les gardes des marches du dessous, PAR LA MESURE
+
+| Garde | Relevé sur `fd959f2` |
+|---|---|
+| `touch` couple encadrant | **0 → 0 erreur I²C** sur **12 196 lectures**, 6 appuis / 6 relâches *(les allers-retours de l'owner)* |
+| BME680 | `config LUE : 0x72=04 · 0x74=84 · 0x75=08 (conforme)` · cadence **5 004 ms** · `i2c 0 · donnee 0 · bornes 0` |
+| `dn_env` | **193 cycles**, dernier cycle **2 661 µs** · les **trois VIVANT** · `i2c 0 · donnee 0 · bornes 0 · conformite 0` |
+| Bandeau de boot | **UNE seule ligne W/E nouvelle** par rapport au T0, et c'est **la nôtre, délibérée** (l'unité de la pression). Les 9 autres sont **identiques** — vérifié par `diff` |
+| `descripteurs_auditer()` | **6 cases auditées, 0 trou** |
+| `fps 15` | **37,40 Hz** |
+| Géométrie de case | **Chevauchements détectés : 0** |
+| **D4** | ✅ `grep -cE "nvs_set\|nvs_commit\|esp_partition_write\|esp_flash_write"` sur `dn_env.c`/`.h` = **0** |
+| Config d'affichage | `num_fbs=1` · `bounce=7680` · `draw 480×128` · `vsync` · **inchangée** |
+
+⏳ **UNE LIMITE DÉCLARÉE SUR AC13** : `widget largeur` n'imprime **qu'un** des trois compteurs de
+géométrie (les chevauchements, à **0**). Les deux autres — *trop larges* et *débordements en
+hauteur* — **journalisent par `ESP_LOGW`**, et **aucune telle ligne n'est apparue** dans les captures
+de cette séance. ⛔ **C'est plus faible qu'une lecture directe, et je le dis** plutôt que d'écrire
+« les trois sont à zéro ».
+
+🎯 **LE SMOKE OWNER, VERBATIM**
+
+⚠️ **Rappel obligatoire** : pendant toute cette séance, **les 5 cases PC sont NÉCESSAIREMENT mortes**
+(exclusivité WSL ↔ COM3) — sauf sous injecteur ou sous `widget mock on`. ⛔ **Ce n'est pas un défaut.**
+
+| Question | Réponse owner |
+|---|---|
+| Sous régime réel (jeu figé), l'image saute-t-elle ? | ✅ **« image ok »** |
+| Les six cases sont-elles remplies ? | ✅ **« 6 case rempli »** ⚠️ *« mais n'avais pas l'air de bouger beaucoup »* |
+| L'heure ? | **« pas d'h »** ⇒ ✅ **comportement CORRECT** |
+| 🔴 Sous **dashboard vivant** (+36 % de pixels), quoi que ce soit d'anormal ? | ✅ **« rien d'anormal »** |
+| Ça bouge, cette fois ? | ✅ **« oui les 4 : gpu ram reseau et disque + temp »** |
+| Le toucher ouvre le détail, le retour revient ? | ✅ **« aller retours details ok »** |
+
+🎯 **DEUX OBSERVATIONS DE L'OWNER ONT CORRIGÉ L'AGENT, ET LA PREMIÈRE EST UNE TROUVAILLE SUR
+L'INSTRUMENT :**
+
+1. 🔴 ***« n'avait pas l'air de bouger beaucoup »*** — **il a raison, et c'est MON stimulus qui est
+   en cause.** Le jeu `reel` de `dn_injecteur.py` est un **dictionnaire de valeurs CONSTANTES** : il
+   envoie **45 fois les mêmes nombres**. Les cases se **remplissent** mais **ne changent jamais**.
+   ⇒ ⛔ **Un constat de VIVACITÉ ne peut PAS être obtenu avec ce jeu**, et ⚠️ **ça affaiblissait mon
+   verdict sur la famine DMA** : un dashboard figé salit moins de pixels qu'un dashboard vivant.
+   ✅ **Rejoué avec `widget mock on`** (4 mocks en rampe + `AMBIANCE` réelle) : **128 613 px/cycle et
+   3,5 flush/cycle**, contre 94 645 / 2,6 ⇒ **+36 % de pixels, +35 % de flushes**. **Et l'owner
+   confirme : « rien d'anormal ».** ⇒ **le verdict « famine non reproduite » est PLUS FORT qu'il ne
+   l'aurait été sans son observation.**
+2. ✅ ***« pas d'h »*** — **comportement correct et vérifié** : `rtc` rend **`bit OS = 1`**,
+   l'oscillateur du PCF85063A s'est arrêté, l'heure lue (`2000-01-01 01:48`) **ne vaut rien**, et la
+   barre affiche **« --:-- HEURE NON POSÉE »** au lieu de mentir. AC13 exige *« juste OU dit
+   honnêtement qu'elle ne l'est pas »* — **elle le dit.** `rtc set` la pose.
+
+### 13.19.13 ⚠️ CE QUI N'A PAS MARCHÉ DANS CETTE SÉANCE — y compris mes propres erreurs de méthode
+
+1. 🔴 **J'AI PUBLIÉ UN CRITÈRE DE VALIDITÉ, PUIS JE L'AI DÛ RÉTRACTER DEVANT L'OWNER.**
+   La latence `acceptation→label` a dérivé sur trois fenêtres (**86 → 138 → 220 ms**) avec des
+   pertes seq croissantes (1 → 4 → 5). J'en ai tiré, avec assurance, une règle : *« un relevé de
+   latence n'est recevable que si l'injecteur a placé 225/225 avec 0 perte seq »*. **La cinquième
+   fenêtre l'a démolie : 225/225, 0 perte seq, et latence 260 ms** — la plus haute de toutes.
+   ⇒ ⛔ **La corrélation sur quatre points était une COÏNCIDENCE.**
+   ✅ **Ce qui reste vrai, et c'est tout** : cette latence varie d'un **facteur 3** (86 à 260 ms) sur
+   **le même firmware**, sans que les compteurs de liaison en disent la cause. ⇒ **instrument NON
+   FIABLE pour un delta** tant que sa variance n'est pas isolée. **Au ledger.**
+   ⚠️ **Et l'hypothèse « fragmentation du tas LVGL » a été RÉFUTÉE dans le même geste** : `20 500 o /
+   40 752 / 2 %` **avant ET après** une fenêtre complète.
+
+2. 🔴 **J'AI FAILLI PUBLIER UNE MESURE DE CONTRE-RÉACTION OPTIQUE QUI NE VALAIT RIEN.** Le premier
+   A/B `bl 100`/`bl 0` a été fait à **2 500 lx d'ambiante**, où l'apport de la dalle est
+   nécessairement invisible — et la dérive ambiante (+46 lx) était **plus grande que l'effet
+   cherché**. ⇒ **il excluait une contre-réaction FORTE, pas une faible**, alors qu'elle ne serait
+   dangereuse **qu'en pièce sombre**. **Rejoué dans le noir**, il devient décisif.
+   ⚠️ *Un A/B doit se jouer dans la condition où sa réponse compte, pas dans celle où l'on est.*
+
+3. 🔴 **J'AI CONFONDU DEUX DIAGNOSTICS DANS UNE SEULE PHRASE, JUSTE APRÈS AVOIR CITÉ LA LEÇON QUI
+   L'INTERDIT.** Mon premier message de console pour la pression disait *« hors plage 300..1100 hPa,
+   OU jamais lue »* — c'est **exactement** la faute `tronquee`/`trop_longue` (CR 2026-08-17), et je
+   l'avais recopiée dans le commit précédent en la présentant comme une leçon acquise.
+   ✅ Corrigé : **trois états, trois phrases**, et la **valeur brute** est conservée pour pouvoir
+   diagnostiquer au lieu de deviner.
+
+4. ⚠️ **UNE FAUSSE ALERTE : j'ai soupçonné une tâche morte sur dix valeurs identiques.**
+   Discriminé au lieu d'être supposé (`age` **4 939 → 3 079 → 1 233 ms**, `lectures` **195 → 199**),
+   l'alerte était **fausse**. ✅ **Mais la lever a produit une non-régression forte** relevée
+   chauffeur gaz ACTIF et `dn_env` en régime. *Une alarme fausse levée par la mesure coûte moins
+   qu'une alarme vraie ignorée.*
+
+5. ⚠️ **J'AI LU UNE PHOTO COMME UNE MESURE.** De `install_01.jpg` j'ai tiré *« la carte est posée sur
+   la grille d'aération de la tour »* et j'en ai fait un **troisième terme** pour AC9. Réponse
+   owner : *« le capteur est éloigné de la soufflerie »*. ⛔ **Une photo se lit, elle ne se déduit
+   pas** — et l'owner voit le montage.
+
+6. ⚠️ **MON PREMIER `grep -c` SUR `managed_components/` A RENDU 82 CONTRE LES 103 ATTENDUS**, parce
+   que j'avais ajouté `--include=*.c --include=*.h` que la commande d'origine n'a pas.
+   ⇒ ⛔ **Ne jamais comparer deux comptes sans comparer leurs INSTRUMENTS.**
+   ✅ **Effet de bord utile** : l'écart a révélé que **21 des 103 sont dans de la documentation**, et
+   que le chiffre qui porte le risque est **82**.
+
+7. ⚠️ **UN ARTEFACT DE MON PROPRE `grep`** : `13500 ohms` apparaissait à chaque relevé de gaz — il
+   attrapait le **texte de l'avertissement IAQ**, pas une mesure. Repéré avant publication.
+
+8. ⚠️ **LE PLANCHER DU RÉTROÉCLAIRAGE N'ÉTAIT PAS RÉGLABLE À CHAUD.** J'avais rendu les bornes en
+   **lux** ajustables et laissé le plancher en **%** figé à la compilation — or **c'est précisément
+   lui que l'œil a déplacé**. J'avais appliqué *« l'arbitrage se tranche sur la dalle »* **à moitié**.
+
+9. ⚠️ **J'AI JUGÉ LE PLANCHER DE LISIBILITÉ DANS LA MAUVAISE CONDITION** (rideau ouvert, ~1 500 lx)
+   alors que **le plancher ne s'applique qu'en pièce sombre**. La dichotomie a dû être rejouée.

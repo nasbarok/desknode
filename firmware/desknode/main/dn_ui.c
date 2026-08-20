@@ -759,7 +759,14 @@ static int s_metrique;
  *
  * ── ✅ LA MESURE QUI FAIT FOI (session carte du 2026-08-16, firmware 0e7fe61) ──
  *
- *   Config de référence : num_fbs=1 · bounce_px=4800 · draw_lines=128 · poll
+ *   Config de référence DE CETTE MESURE : num_fbs=1 · bounce_px=4800 ·
+ *   draw_lines=128 · poll
+ *   ⚠️ dn4-3 (2026-08-20) : `bounce_px` VAUT 7680 DEPUIS dn4-6 (`dn_bootcfg.c:159`,
+ *      correction de la famine DMA). Le 4800 ci-dessus est la valeur DE LA SESSION
+ *      DU 2026-08-16, pas la config courante — il reste écrit parce que les chiffres
+ *      du tableau qui suit ont été relevés AVEC lui. ⛔ Ne pas le lire comme une
+ *      référence actuelle : un `grep 4800` dans `main/` faisait conclure à une
+ *      régression sur AC13 de dn4-3.
  *
  *   modèle     min      moy      max      n       tas LVGL utilisé
  *   ---------------------------------------------------------------
@@ -2945,7 +2952,11 @@ esp_err_t dn_ui_init(const dn_bootcfg_t *cfg, esp_err_t asset_err)
              * ⚠️ L'ÉTIQUETTE MENTAIT : elle disait « le bounce buffer est
              *    DISQUALIFIÉ (watchdog) — dn1-2 » alors que dn1-4 l'a
              *    RÉHABILITÉ et en fait le défaut de la carte
-             *    (DN_DEFAULT_BOUNCE_PX = 4800). Au-delà de la phrase, `bb_mode`
+             *    (DN_DEFAULT_BOUNCE_PX valait alors 4800 ; ⚠️ il vaut 7680
+             *    depuis dn4-6 — `dn_bootcfg.c:159` fait foi, et c'est la
+             *    correction de la famine DMA. Corrigé en dn4-3, 2026-08-20 :
+             *    un `grep 4800` dans `main/` faisait conclure à une
+             *    régression). Au-delà de la phrase, `bb_mode`
              *    n'est pas décoratif : il décide quel callback le portage
              *    enregistre (on_bounce_frame_finish au lieu de on_vsync,
              *    esp_lvgl_port_disp.c) — un piège armé pour la première mesure
