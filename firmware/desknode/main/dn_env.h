@@ -115,9 +115,23 @@ typedef enum {
 typedef struct {
     uint32_t lectures;   /* lectures VALIDES appliquées */
     uint32_t err_i2c;    /* le transport a échoué (NACK, bus occupé, timeout) */
-    uint32_t err_donnee; /* il répond, mais la donnée n'est pas exploitable */
+    uint32_t err_donnee; /* il répond, mais la donnée n'est pas exploitable.
+                          * 🔴 TOUJOURS 0 POUR LE BH1750, et c'est DÉCLARÉ
+                          * (revue de code 2026-08-20) : sa seule condition est
+                          * « 0 lu dans les 180 ms d'une (re)configuration », or
+                          * TOUT appel à `configurer()` est suivi d'un `return`
+                          * explicite — la lecture suivante arrive ≥ 5 000 ms
+                          * plus tard. ⛔ Hors de cette fenêtre, 0 lx est une
+                          * valeur LÉGITIME. Le seau reste pour le VL6180X
+                          * (identité qui répond mais n'est pas la bonne) et
+                          * l'INA219 (CNVR à 0). */
     uint32_t err_bornes; /* valeur hors plage physique — voir dn_env.c pour les
-                          * bornes ET LEUR SOURCE (datasheet), par capteur */
+                          * bornes ET LEUR SOURCE (datasheet), par capteur.
+                          * 🔴 TOUJOURS 0 POUR LE VL6180X, et c'est DÉCLARÉ
+                          * (revue de code 2026-08-20) : il ne publie AUCUNE
+                          * grandeur — on n'y lit que son identité — donc il n'a
+                          * rien à borner. ⛔ Un seau qui ne peut pas bouger sans
+                          * que ce soit écrit est un compteur décoratif (AC1). */
     uint32_t reprises;   /* transitions MUET -> VIVANT */
     uint32_t conformite; /* DÉTECTIONS d'une configuration perdue = la garde
                           * anti-fantôme. ⛔ Compte les détections, pas les
@@ -213,9 +227,42 @@ typedef struct {
 #define DN_ENV_BL_PAS_MAX      20
 #define DN_ENV_BL_AUTO_DEFAUT  false
 
+/* ── 🔴 LES BORNES PHYSIQUES DE L'INA219 — EXPORTÉES, ⛔ PAS RECOPIÉES.
+ * Corrigé en revue de code le 2026-08-20 : la console imprimait « bus 0..32760 »
+ * en DUR pendant que `dn_env.c` faisait respecter sa propre constante. Deux
+ * littéraux indépendants dérivent — et celui de la console était DÉJÀ faux.
+ * Sources : TI SBOS448G §8.5.1 (calibration) et §8.6.2 (registres), plus la
+ * sérigraphie du breakout CJMCU (shunt R100 = 0,1 Ω, 3,2 A).
+ *   · Bus      : champ 13 bits (15:3), LSB 4 mV ⇒ 8191 × 4 = 32 764 mV.
+ *                ⚠️ ⛔ PAS les 32 760 de la pleine échelle ARRONDIE de la fiche.
+ *   · Shunt    : signé, LSB 10 µV, PGA ÷8 ⇒ ±320 000 µV.
+ *   · Courant  : borné par le PGA, ⛔ pas par le registre (±3 276,7 mA serait
+ *                inatteignable, donc décoratif) : 320 mV / 0,1 Ω = ±3 200,0 mA,
+ *                soit ±32 000 DIXIÈMES de mA.
+ *   · Puissance: maximum PHYSIQUE 32,764 V × 3,200 A = 104 844 mW, ⛔ pas les
+ *                131 070 mW que le registre 16 bits pourrait porter. */
+#define DN_ENV_INA219_BUS_MAX_MV         32764
+#define DN_ENV_INA219_SHUNT_MAX_UV       320000
+#define DN_ENV_INA219_COURANT_MAX_DX_MA  32000
+#define DN_ENV_INA219_PUISSANCE_MAX_MW   104844
+
 /*
- * Ouvre les trois devices et pose leur configuration. NON FATALE, et à appeler
- * APRÈS `dn_console_start()` — même contrat que `dn_capteurs_init()`.
+ * Ouvre les trois devices et pose leur configuration. NON FATALE.
+ *
+ * 🔴 ORDRE D'APPEL — CORRIGÉ EN REVUE DE CODE LE 2026-08-20, PAR AJOUT.
+ *   ⛔ Ce docblock disait « à appeler APRÈS `dn_console_start()` — même contrat
+ *   que `dn_capteurs_init()` ». **LES DEUX MOITIÉS ÉTAIENT FAUSSES** : le boot
+ *   appelle `dn_capteurs_init()` en `desknode_main.c:331` et `dn_env_init()` en
+ *   `:348`, tous deux **AVANT** `dn_console_start()` (`:375`).
+ *   ✅ **L'ordre RÉEL fait autorité — décision owner du 2026-08-20** (*« on fait
+ *   confiance au code testé qui marche »*) : `dn_env_init()` s'appelle **APRÈS
+ *   `dn_display_init()`** (elle a besoin du bus I²C) et **APRÈS
+ *   `dn_capteurs_init()`** (c'est `dn_capt` qui la cadence), **AVANT**
+ *   `dn_console_start()`.
+ *   ⚠️ Ce qui compte vraiment, et qui EST tenu : **l'init est NON FATALE**, donc
+ *   la console démarre quoi qu'il arrive — c'est la propriété qu'AC2 visait.
+ *   ⛔ Un contrat que le boot dément est un instrument qui ment : il se corrige
+ *   ici, pas dans le boot.
  * ⚠️ Les devices sont ouverts UNE FOIS et GARDÉS. ⛔ Surtout pas le patron
  *   « ajouter/retirer à chaque lecture » de la console : ce serait ~5
  *   `i2c_master_bus_rm_device()` par cycle, et ce retrait A REFUSÉ POUR DE VRAI,
@@ -227,8 +274,23 @@ esp_err_t dn_env_init(void);
 
 /*
  * UN cycle de lecture des trois capteurs. Appelée par la tâche `dn_capt`.
- * ⛔ Ne bloque jamais plus de 3 × DN_ENV_I2C_TIMEOUT_MS par capteur, et ne
- *   contient AUCUN `vTaskDelay`.
+ * ⛔ Ne contient AUCUN `vTaskDelay`.
+ *
+ * 🔴 COÛT DE BLOCAGE — RECOMPTÉ EN REVUE DE CODE LE 2026-08-20.
+ *   ⛔ Ce docblock annonçait « jamais plus de 3 × DN_ENV_I2C_TIMEOUT_MS par
+ *   capteur » (300 ms). **C'ÉTAIT FAUX, et le site d'appel le recopiait.**
+ *   Compte RÉEL des transactions, pire cas, chacune bornée par
+ *   DN_ENV_I2C_TIMEOUT_MS :
+ *     · BH1750  : 1 lecture nue                              -> 1 ×
+ *     · INA219  : 1 conformité + 4 registres (BUS/SHUNT/I/P) -> 5 ×
+ *     · VL6180X : 2 conformité + 1 identité                  -> 3 ×
+ *       … et sur conformité PERDUE, + 4 écritures de reconfiguration -> 6 ×
+ *   ⇒ **pire cas par capteur : 6 × DN_ENV_I2C_TIMEOUT_MS**, et **pire cas par
+ *     cycle : ~12 ×**, soit ~1,2 s de la période de 5 s de `dn_capt`.
+ *   ⚠️ Ce pire cas ne se présente qu'à FROID (timeouts plutôt que NACK), sur le
+ *   bus que le dépôt nomme « le PREMIER AGRESSEUR CONNU » de la famine DMA, et
+ *   par-dessus un BME680 qui peut bloquer 1 500 ms. ⛔ **La famine DMA d'AC12 a
+ *   été rejouée sur un bus SAIN : ce pire cas n'a PAS été exercé.**
  */
 void dn_env_cycle(void);
 
@@ -251,8 +313,25 @@ int dn_env_lux_brut(void); /* le compte 16 bits nu, pour le diagnostic */
  *    module : `Vin+`/`Vin-` NE SONT PAS CÂBLÉS (README.md:916). Voir dn_env.c. */
 int dn_env_bus_mv(void);
 int dn_env_shunt_uv(void);
-int dn_env_courant_ma(void);
+/* 🔴 Le courant est publié en DIXIÈMES de mA, ⛔ pas en mA — CORRIGÉ EN REVUE DE
+ * CODE LE 2026-08-20. Le registre 04h porte `Current_LSB = 0,1 mA` : diviser par
+ * 10 dans le driver DÉTRUISAIT une précision que la source porte, et la
+ * troncature entière étant asymétrique autour de zéro, ±0,9 mA se lisait `0 mA`
+ * — sur un capteur dont le shunt libre vit précisément AUTOUR DE ZÉRO
+ * (`FF FB` = −50 µV mesuré, §13.19.6). ⇒ le transport garde les dixièmes,
+ * l'AFFICHAGE porte la précision (AC11). */
+int dn_env_courant_dixiemes_ma(void);
 int dn_env_puissance_mw(void);
+
+/* 🔴 LECTURES GROUPÉES — le cycle publie tout sous UN SEUL verrou, un lecteur qui
+ * prend deux ou quatre sections critiques peut donc imprimer un tuple qui
+ * n'a jamais existé (`411 lx (brut 500)`, une tension du cycle N avec un courant
+ * du cycle N+1). C'est le défaut « CR dn4-2 — LECTURE ATOMIQUE », réintroduit
+ * pour ce module et corrigé en revue de code le 2026-08-20.
+ * ⛔ Toute sortie qui affiche PLUSIEURS de ces grandeurs ENSEMBLE passe par ici. */
+void dn_env_lux_lire(int *lux, int *brut);
+void dn_env_alim_lire(int *bus_mv, int *shunt_uv, int *courant_dx_ma,
+                      int *puissance_mw);
 
 dn_env_etat_t dn_env_etat(dn_env_id_t id);
 const char *dn_env_etat_nom(dn_env_etat_t e);

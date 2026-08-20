@@ -286,6 +286,12 @@ int dn_capt_pression_brut_dixiemes(void);
  */
 int dn_capt_gaz_ohms(void);
 int dn_capt_iaq_brut(void); /* le score du composant, AVEC ses trois défauts */
+/* 🔴 TROIS ÉTATS, ⛔ PAS DEUX (revue de code 2026-08-20) : `dn_capt_gaz_ohms()`
+ * rend ABSENT quand le chauffeur est coupé, quand aucune lecture valide n'a
+ * jamais eu lieu, ET quand le chauffeur tourne sans être encore stable. Ce
+ * prédicat isole le troisième cas — sans lui, la console affirmait « chauffeur
+ * COUPE » à un opérateur qui venait de l'allumer. */
+bool dn_capt_gaz_en_attente(void);
 
 /* Dernières valeurs VALIDES, en DIXIÈMES (233 = 23,3 °C · 471 = 47,1 %).
  * Entiers pour rester dans la doctrine du dépôt côté affichage ; le driver rend

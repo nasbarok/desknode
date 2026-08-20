@@ -107,8 +107,9 @@ _Static_assert(DN_ENV_PERIODE_MS == DN_CAPT_PERIODE_MS,
  *     est donc ATTEIGNABLE et signale un écrêtage du PGA.
  */
 #define BH1750_BRUT_SATURE   0xFFFFu
-#define INA219_BUS_MAX_MV    32760
-#define INA219_SHUNT_MAX_UV  320000
+/* 🔴 LES BORNES VIVENT DANS `dn_env.h` — voir DN_ENV_INA219_*. Elles y ont été
+ * REMONTÉES en revue de code le 2026-08-20 : la console en recopiait une en dur
+ * (et se trompait). ⛔ Ne pas les redéfinir ici. */
 
 /* ── État ─────────────────────────────────────────────────────────────────── */
 
@@ -123,7 +124,12 @@ typedef struct {
     bool degrade;          /* une erreur est survenue depuis la dernière valide */
     bool a_deja_lu;
     int cycles_avant_reinit;
-    int64_t config_us;     /* instant de la dernière (re)configuration */
+    int64_t config_us;     /* instant de la dernière (re)configuration RÉUSSIE */
+    /* 🔴 AJOUTÉ EN REVUE DE CODE LE 2026-08-20 — voir `cycle_un()`. Sans ce
+     * drapeau, un capteur dont la configuration ÉCHOUE au boot n'est JAMAIS
+     * reconfiguré : `dev` n'est jamais remis à NULL, et la garde de conformité
+     * du BH1750 rend `CONF_OK` en dur. */
+    bool config_posee;
 } env_capteur_t;
 
 static env_capteur_t s_c[DN_ENV_NB];
@@ -132,7 +138,7 @@ static int s_lux = DN_ENV_ABSENT;
 static int s_lux_brut = DN_ENV_ABSENT;
 static int s_bus_mv = DN_ENV_ABSENT;
 static int s_shunt_uv = DN_ENV_ABSENT;
-static int s_courant_ma = DN_ENV_ABSENT;
+static int s_courant_dx_ma = DN_ENV_ABSENT; /* DIXIÈMES de mA, signés */
 static int s_puissance_mw = DN_ENV_ABSENT;
 
 static uint32_t s_cycles;
@@ -280,6 +286,9 @@ static esp_err_t ouvrir(dn_env_id_t id)
 static esp_err_t configurer(dn_env_id_t id)
 {
     esp_err_t e = ESP_OK;
+    /* 🔴 On DÉSARME d'abord : tant que cette séquence n'a pas abouti, la
+     * configuration N'EST PAS POSÉE, et `cycle_un()` doit la reposer. */
+    s_c[id].config_posee = false;
     switch (id) {
     case DN_ENV_LUM: {
         /* Deux opcodes, dans cet ordre, et RIEN d'autre : le BH1750 n'a pas de
@@ -320,6 +329,7 @@ static esp_err_t configurer(dn_env_id_t id)
     }
     if (e == ESP_OK) {
         s_c[id].config_us = esp_timer_get_time();
+        s_c[id].config_posee = true;
     }
     return e;
 }
@@ -348,36 +358,65 @@ static esp_err_t configurer(dn_env_id_t id)
  *   registre écrivable est le MTreg, et il est NON RELISIBLE. L'absence de
  *   témoin est DÉCLARÉE, ⛔ pas passée sous silence : `env` l'imprime.
  */
-static bool conformite_ok(dn_env_id_t id)
+/*
+ * 🔴 TRI-ÉTAT, ⛔ PAS UN BOOLÉEN — CORRIGÉ EN REVUE DE CODE LE 2026-08-20.
+ *
+ * Cette fonction rendait `false` AUSSI BIEN quand le registre portait la
+ * mauvaise valeur QUE quand la transaction I²C avait échoué. `cycle_un()` ne
+ * pouvait donc pas distinguer les deux, et **un seul NACK produisait** :
+ *   · `err_i2c++` ET `conformite++`  -> deux seaux pour UN événement ;
+ *   · un ESP_LOGW de 4 lignes affirmant « le composant a redemarre sous nos
+ *     pieds (alimentation parasite par les diodes ESD) » -> une CAUSE affirmée
+ *     sans la moindre preuve ;
+ *   · 2 (INA219) à 4 (VL6180X) ÉCRITURES de registre — au moment précis où le
+ *     bus se dégrade, et en contradiction directe avec le contrat déclaré vingt
+ *     lignes plus haut, avec le texte imprimé par `env`, et avec le README.
+ * ⚠️ Ce n'était pas théorique : la campagne de `dn4-3` a compté « 4 err_i2c +
+ *   5 pertes de configuration » sur le VL6180X à froid — donc jusqu'à CINQ
+ *   séquences d'écriture réellement jouées sur un bus dégradé.
+ * ⇒ Désormais : seule une VALEUR NON CONFORME conclut à un fantôme. Un défaut de
+ *   transport se compte en `err_i2c`, ne conclut RIEN, et n'écrit RIEN.
+ */
+typedef enum {
+    CONF_OK,        /* la configuration est là, relue et conforme */
+    CONF_PERDUE,    /* le composant répond, et il a perdu ses registres */
+    CONF_TRANSPORT, /* on n'a pas pu lui parler — ⛔ AUCUNE conclusion */
+} conf_t;
+
+static conf_t conformite_verifier(dn_env_id_t id)
 {
     uint8_t b[2];
     switch (id) {
     case DN_ENV_LUM:
-        return true; /* aucun témoin possible — DÉCLARÉ, voir `env` */
+        /* Aucun témoin possible — DÉCLARÉ, voir `env`. Le seul registre
+         * écrivable du BH1750 est le MTreg, et il est NON RELISIBLE. */
+        return CONF_OK;
 
     case DN_ENV_ALIM:
         if (lire_reg8(id, INA219_REG_CALIB, b, 2) != ESP_OK) {
             compter_i2c(id);
-            return false;
+            return CONF_TRANSPORT;
         }
-        return ((uint16_t)(b[0] << 8 | b[1])) == INA219_CALIB_VOULU;
+        return (((uint16_t)(b[0] << 8 | b[1])) == INA219_CALIB_VOULU)
+                   ? CONF_OK
+                   : CONF_PERDUE;
 
     case DN_ENV_TOF: {
         if (lire_reg16(id, VL_REG_ALS_GAIN, b, 1) != ESP_OK) {
             compter_i2c(id);
-            return false;
+            return CONF_TRANSPORT;
         }
         if (b[0] != VL_GAIN_VOULU) {
-            return false;
+            return CONF_PERDUE;
         }
         if (lire_reg16(id, VL_REG_ALS_INTEG_LO, b, 1) != ESP_OK) {
             compter_i2c(id);
-            return false;
+            return CONF_TRANSPORT;
         }
-        return b[0] == VL_INTEG_LO_VOULU;
+        return (b[0] == VL_INTEG_LO_VOULU) ? CONF_OK : CONF_PERDUE;
     }
     default:
-        return false;
+        return CONF_TRANSPORT;
     }
 }
 
@@ -424,6 +463,18 @@ static void lire_bh1750(void)
     s_lux_brut = (int)brut;
     portEXIT_CRITICAL(&s_mux);
     marquer_valide(id);
+
+    /* 🔴 W2 — ÉCHANTILLONNÉ ICI, DEPUIS UNE LECTURE FRAÎCHE, ⛔ PLUS DEPUIS
+     * `dn_env_cycle()` — CORRIGÉ EN REVUE DE CODE LE 2026-08-20.
+     * L'ancienne garde était `dn_env_etat(DN_ENV_LUM) == DN_ENV_VIVANT`, qui
+     * veut dire « pas encore périmé » (15 s = 3 cycles), ⛔ PAS « lu ce
+     * cycle-ci ». Une panne d'un ou deux cycles poussait donc la MÊME valeur
+     * deux fois de plus, comptées comme des NON-CHANGEMENTS : `n` gonflait et le
+     * taux baissait. Les quatre autres pistes (pression ×2, température, gaz)
+     * ne sont alimentées que depuis une lecture fraîche — et `dn_env.h` pose que
+     * « comparer le lux et la pression avec deux instruments différents ne
+     * prouverait rien ». ⇒ même instrument pour tout le monde, désormais. */
+    dn_w2_echantillon(DN_W2_LUX, lux);
 }
 
 static void lire_ina219(void)
@@ -446,8 +497,10 @@ static void lire_ina219(void)
         compter_bornes(id); /* OVF : le seul dépassement que la puce signale */
         return;
     }
+    /* ⛔ `bus_mv < 0` a été RETIRÉ (revue de code 2026-08-20) : l'expression est
+     * non signée et tient sur 15 bits, le test ne pouvait JAMAIS être vrai. */
     int bus_mv = (int)((bus_raw >> 3) * 4u);
-    if (bus_mv < 0 || bus_mv > INA219_BUS_MAX_MV) {
+    if (bus_mv > DN_ENV_INA219_BUS_MAX_MV) {
         compter_bornes(id);
         return;
     }
@@ -457,7 +510,7 @@ static void lire_ina219(void)
         return;
     }
     int shunt_uv = (int)(int16_t)(b[0] << 8 | b[1]) * 10;
-    if (shunt_uv > INA219_SHUNT_MAX_UV || shunt_uv < -INA219_SHUNT_MAX_UV) {
+    if (shunt_uv > DN_ENV_INA219_SHUNT_MAX_UV || shunt_uv < -DN_ENV_INA219_SHUNT_MAX_UV) {
         compter_bornes(id); /* écrêtage du PGA ÷8 (±320 mV) */
         return;
     }
@@ -466,19 +519,33 @@ static void lire_ina219(void)
         compter_i2c(id);
         return;
     }
-    /* Current_LSB = 0,1 mA ⇒ mA = brut / 10, en gardant le SIGNE. */
-    int courant_ma = (int)(int16_t)(b[0] << 8 | b[1]) / 10;
+    /* 🔴 Current_LSB = 0,1 mA ⇒ le registre PORTE DÉJÀ LES DIXIÈMES. ⛔ Ne pas
+     * diviser par 10 ici : c'était détruire dans le driver une précision que la
+     * source porte, avec une troncature ASYMÉTRIQUE autour de zéro (±0,9 mA se
+     * lisait `0 mA`) — sur un capteur dont le shunt libre vit précisément autour
+     * de zéro. Le transport garde les dixièmes, l'AFFICHAGE porte la précision. */
+    int courant_dx_ma = (int)(int16_t)(b[0] << 8 | b[1])
+                        * INA219_CURRENT_LSB_DIXIEME_MA;
+    if (courant_dx_ma > DN_ENV_INA219_COURANT_MAX_DX_MA ||
+        courant_dx_ma < -DN_ENV_INA219_COURANT_MAX_DX_MA) {
+        compter_bornes(id); /* au-delà de la pleine échelle du PGA ÷8 */
+        return;
+    }
 
     if (lire_reg8(id, INA219_REG_POWER, b, 2) != ESP_OK) {
         compter_i2c(id);
         return;
     }
     int puissance_mw = (int)(uint16_t)(b[0] << 8 | b[1]) * INA219_POWER_LSB_MW;
+    if (puissance_mw > DN_ENV_INA219_PUISSANCE_MAX_MW) {
+        compter_bornes(id); /* au-delà du maximum PHYSIQUE 32,764 V × 3,200 A */
+        return;
+    }
 
     portENTER_CRITICAL(&s_mux);
     s_bus_mv = bus_mv;
     s_shunt_uv = shunt_uv;
-    s_courant_ma = courant_ma;
+    s_courant_dx_ma = courant_dx_ma;
     s_puissance_mw = puissance_mw;
     portEXIT_CRITICAL(&s_mux);
     marquer_valide(id);
@@ -533,19 +600,63 @@ static void cycle_un(dn_env_id_t id, void (*lire)(void))
         return;
     }
 
+    /*
+     * 🔴 UNE CONFIGURATION QUI A ÉCHOUÉ DOIT ÊTRE REPOSÉE — AJOUTÉ EN REVUE DE
+     *   CODE LE 2026-08-20, ET C'EST LE DÉFAUT LE PLUS GRAVE QU'ELLE AIT TROUVÉ.
+     *
+     * `dn_env_init()` journalisait « configuration refusee au boot — ATTENDU a
+     * froid, LA GARDE DE CONFORMITE LA REPOSERA ». **Elle ne la reposait pas**,
+     * et pour le BH1750 elle ne le POUVAIT pas :
+     *   · `conformite_verifier(DN_ENV_LUM)` rend `CONF_OK` en dur (aucun
+     *     registre relisible) -> la branche de réparation ci-dessous lui est
+     *     structurellement inatteignable ;
+     *   · `s_c[id].dev` n'est JAMAIS remis à NULL -> la branche de ré-ouverture
+     *     ci-dessus lui est inatteignable aussi.
+     * ⇒ un BH1750 resté en power-down ACQUITTE et rend `00 00`. Et comme
+     *   `config_us` restait à 0, la garde des 180 ms ne pouvait plus tirer : le
+     *   zéro tombait dans le chemin normal et se publiait comme `0 lx` VIVANT,
+     *   à vie, sans qu'AUCUN compteur ne bouge — avec `bl auto on` clouant la
+     *   dalle au plancher en pleine lumière.
+     * ⚠️ Même état d'arrivée par un `i2c ecrire 23 00` tapé à la console.
+     */
+    if (!s_c[id].config_posee) {
+        if (--s_c[id].cycles_avant_reinit > 0) {
+            return;
+        }
+        s_c[id].cycles_avant_reinit = DN_ENV_REINIT_CYCLES;
+        if (configurer(id) != ESP_OK) {
+            compter_i2c(id);
+            return;
+        }
+        ESP_LOGI(TAG, "%s @ 0x%02X : configuration REPOSEE (elle avait echoue)",
+                 k_nom[id], k_addr[id]);
+        /* ⛔ Toujours pas de lecture dans le cycle qui vient de configurer. */
+        return;
+    }
+
     /* La garde anti-fantôme passe AVANT la valeur : croire une valeur d'un
      * capteur dont on n'a pas vérifié la configuration, c'est exactement le
      * troisième état de §13.10 — plausible et faux. */
-    if (!conformite_ok(id)) {
+    conf_t conf = conformite_verifier(id);
+    if (conf == CONF_TRANSPORT) {
+        /* ⛔ ON NE CONCLUT RIEN. `err_i2c` est déjà compté par la primitive ;
+         * affirmer ici une perte de configuration serait affirmer une CAUSE
+         * (l'alimentation parasite par les diodes ESD) sur la foi d'un simple
+         * NACK — et déclencher des écritures sur un bus déjà en train de se
+         * dégrader. Le capteur sera re-sondé au cycle suivant. */
+        return;
+    }
+    if (conf == CONF_PERDUE) {
         portENTER_CRITICAL(&s_mux);
         s_c[id].cnt.conformite++;
         portEXIT_CRITICAL(&s_mux);
         s_c[id].degrade = true;
         ESP_LOGW(TAG,
-                 "%s @ 0x%02X : CONFIGURATION PERDUE — le cycle est declare "
-                 "invalide et la configuration est reposee. Cause connue : le "
-                 "composant a redemarre sous nos pieds (alimentation parasite "
-                 "par les diodes ESD, §13.10).",
+                 "%s @ 0x%02X : CONFIGURATION PERDUE — le composant REPOND mais "
+                 "ses registres ne portent plus ce qu'on y a ecrit. Le cycle est "
+                 "declare invalide et la configuration est reposee. Cause "
+                 "connue : le composant a redemarre sous nos pieds (alimentation "
+                 "parasite par les diodes ESD, §13.10).",
                  k_nom[id], k_addr[id]);
         if (configurer(id) != ESP_OK) {
             compter_i2c(id);
@@ -573,15 +684,11 @@ void dn_env_cycle(void)
     s_duree_cycle_us = duree;
     portEXIT_CRITICAL(&s_mux);
 
-    /* W2 : on n'échantillonne QUE les valeurs valides. ⛔ Compter une absence
-     * comme un « changement de texte » gonflerait le taux d'un capteur MUET —
-     * l'instrument dirait « ça bouge » d'une case qui ne dit rien. */
-    if (dn_env_etat(DN_ENV_LUM) == DN_ENV_VIVANT) {
-        int lux = dn_env_lux();
-        if (lux != DN_ENV_ABSENT) {
-            dn_w2_echantillon(DN_W2_LUX, lux);
-        }
-    }
+    /* ⛔ L'ÉCHANTILLONNAGE W2 DU LUX A ÉTÉ DÉPLACÉ DANS `lire_bh1750()`, dans le
+     * chemin de succès — revue de code du 2026-08-20. Il vivait ici, gardé par
+     * `dn_env_etat(...) == DN_ENV_VIVANT`, ce qui veut dire « pas encore
+     * périmé », ⛔ PAS « lu ce cycle-ci » : une valeur périmée était rejouée
+     * jusqu'à deux fois de plus et comptée comme un NON-CHANGEMENT. */
 
     /* Le rétroéclairage est asservi APRÈS les lectures, dans le même cycle :
      * ⛔ pas de tâche de plus, ⛔ pas de `vTaskDelay`. */
@@ -603,8 +710,21 @@ void dn_env_cycle(void)
         } else {
             s_bl_muet_dit = false;
             int cible = dn_env_bl_loi(lux);
-            int courant = (s_bl_dernier_pct >= 0) ? s_bl_dernier_pct
-                                                  : dn_display_backlight_pct_state();
+            /* 🔴 `dn_display_backlight_pct_state()` rend `-1` quand LEDC n'est
+             * pas encore monté : c'est un ÉTAT, ⛔ pas un pourcentage. Le repli
+             * était appliqué SANS être re-testé, et `cible = courant + pas`
+             * pouvait donc se calculer contre une NON-VALEUR (revue de code du
+             * 2026-08-20). */
+            int courant = s_bl_dernier_pct;
+            if (courant < 0) {
+                courant = dn_display_backlight_pct_state();
+            }
+            if (courant < 0) {
+                /* LEDC pas encore monté : la discipline de boot dit que le duty
+                 * ne monte qu'après la première trame. On ne calcule rien. */
+                s_bl_dernier_lux = lux;
+                return;
+            }
             int ecart = cible - courant;
             if (ecart <= -DN_ENV_BL_HYST || ecart >= DN_ENV_BL_HYST) {
                 if (ecart > s_bl_pas) {
@@ -636,6 +756,7 @@ esp_err_t dn_env_init(void)
         s_c[i].a_deja_lu = false;
         s_c[i].cycles_avant_reinit = DN_ENV_REINIT_CYCLES;
         s_c[i].config_us = 0;
+        s_c[i].config_posee = false;
         memset(&s_c[i].cnt, 0, sizeof s_c[i].cnt);
     }
 
@@ -663,9 +784,10 @@ esp_err_t dn_env_init(void)
              * ~40 s (55,5 % d'erreurs mesurées sur le GT911) et se rétablit
              * SEUL. Le device reste ouvert, la configuration sera reposée par
              * la garde de conformité dès que le bus redevient sain. */
-            ESP_LOGW(TAG, "%s @ 0x%02X : configuration refusee au boot — "
-                          "ATTENDU a froid, la garde de conformite la reposera",
-                     k_nom[i], k_addr[i]);
+            ESP_LOGW(TAG, "%s @ 0x%02X : configuration refusee au boot — ATTENDU "
+                          "a froid, elle sera REPOSEE par `cycle_un()` dans %d s",
+                     k_nom[i], k_addr[i],
+                     (DN_ENV_REINIT_CYCLES * DN_ENV_PERIODE_MS) / 1000);
             compter_i2c((dn_env_id_t)i);
         }
         ouverts++;
@@ -703,8 +825,33 @@ int dn_env_lux(void) { LIRE_ATOMIQUE(s_lux); }
 int dn_env_lux_brut(void) { LIRE_ATOMIQUE(s_lux_brut); }
 int dn_env_bus_mv(void) { LIRE_ATOMIQUE(s_bus_mv); }
 int dn_env_shunt_uv(void) { LIRE_ATOMIQUE(s_shunt_uv); }
-int dn_env_courant_ma(void) { LIRE_ATOMIQUE(s_courant_ma); }
+int dn_env_courant_dixiemes_ma(void) { LIRE_ATOMIQUE(s_courant_dx_ma); }
 int dn_env_puissance_mw(void) { LIRE_ATOMIQUE(s_puissance_mw); }
+
+/* 🔴 LECTURES GROUPÉES — AJOUTÉES EN REVUE DE CODE LE 2026-08-20.
+ * Le cycle publie ces valeurs sous UN SEUL verrou ; les lire une par une prenait
+ * deux (lux) ou quatre (INA219) sections critiques, et pouvait donc imprimer un
+ * tuple qui n'a jamais existé — « 411 lx (brut 500) », ou une tension de bus du
+ * cycle N avec un courant du cycle N+1. C'est le défaut « CR dn4-2 — LECTURE
+ * ATOMIQUE », réintroduit pour ce module. */
+void dn_env_lux_lire(int *lux, int *brut)
+{
+    portENTER_CRITICAL(&s_mux);
+    if (lux)  { *lux = s_lux; }
+    if (brut) { *brut = s_lux_brut; }
+    portEXIT_CRITICAL(&s_mux);
+}
+
+void dn_env_alim_lire(int *bus_mv, int *shunt_uv, int *courant_dx_ma,
+                      int *puissance_mw)
+{
+    portENTER_CRITICAL(&s_mux);
+    if (bus_mv)        { *bus_mv = s_bus_mv; }
+    if (shunt_uv)      { *shunt_uv = s_shunt_uv; }
+    if (courant_dx_ma) { *courant_dx_ma = s_courant_dx_ma; }
+    if (puissance_mw)  { *puissance_mw = s_puissance_mw; }
+    portEXIT_CRITICAL(&s_mux);
+}
 
 dn_env_etat_t dn_env_etat(dn_env_id_t id)
 {
@@ -797,6 +944,12 @@ void dn_env_compteurs_reset(void)
     portENTER_CRITICAL(&s_mux);
     for (int i = 0; i < DN_ENV_NB; i++) {
         memset(&s_c[i].cnt, 0, sizeof s_c[i].cnt);
+        /* 🔴 `degrade` TOMBE AVEC LES COMPTEURS — corrigé en revue de code le
+         * 2026-08-20. Le laisser armé faisait compter `reprises = 1` sur un
+         * compteur fraîchement remis à zéro, à la première lecture valide :
+         * une reprise d'AVANT le reset attribuée à la fenêtre d'APRÈS, alors
+         * que la commande annonce « compteurs remis a zero ». */
+        s_c[i].degrade = false;
     }
     portEXIT_CRITICAL(&s_mux);
 }
@@ -843,9 +996,17 @@ void dn_env_bl_auto_set(bool on)
 {
     s_bl_auto = on;
     if (on) {
-        /* On repart de l'état RÉEL de la dalle, pas d'un souvenir : sinon le
-         * premier pas serait calculé contre une valeur périmée. */
-        s_bl_dernier_pct = dn_display_backlight_pct_state();
+        /* 🔴 CORRIGÉ EN REVUE DE CODE LE 2026-08-20 : cette fonction posait
+         * `s_bl_dernier_pct = dn_display_backlight_pct_state()`, ce qui ÉCRASAIT
+         * la sentinelle « la loi n'a encore RIEN appliqué ». `bl` prenait alors
+         * `dpct >= 0` pour « la loi a appliqué ça » et imprimait
+         * « applique : 100 % (sur 0 lx) » juste après un `bl auto on` — un duty
+         * que la loi n'avait jamais calculé, sur un lux jamais lu.
+         * ⛔ La sentinelle RESTE. La boucle repart de l'état RÉEL de la dalle
+         *   toute seule, par le repli de `dn_env_cycle()` : c'est le même effet,
+         *   sans le mensonge. */
+        s_bl_dernier_pct = -1;
+        s_bl_dernier_lux = DN_ENV_ABSENT;
         s_bl_muet_dit = false;
     }
 }
@@ -869,7 +1030,13 @@ esp_err_t dn_env_bl_bornes_set(int lux_bas, int lux_haut)
     if (lux_bas < 0 || lux_haut <= lux_bas) {
         return ESP_ERR_INVALID_ARG;
     }
-    if (lux_haut > 54612) { /* plafond physique du BH1750 au MTreg 69 */
+    /* 🔴 54 611, ⛔ PAS 54 612 — corrigé en revue de code le 2026-08-20. Le brut
+     * `0xFFFF` est REJETÉ comme saturation du convertisseur, donc le plus grand
+     * brut publiable est `0xFFFE`, soit `lux = (65534 × 10) / 12 = 54 611`.
+     * Accepter 54 612 rendait la branche `lux >= s_bl_lux_haut` INATTEIGNABLE :
+     * la loi ne pouvait alors jamais saturer à 100 %, silencieusement — et ce
+     * dépôt REFUSE, il n'écrête pas et il n'accepte pas une borne inerte. */
+    if (lux_haut > 54611) {
         return ESP_ERR_INVALID_ARG;
     }
     s_bl_lux_bas = lux_bas;
@@ -879,7 +1046,23 @@ esp_err_t dn_env_bl_bornes_set(int lux_bas, int lux_haut)
 
 esp_err_t dn_env_bl_pas_set(int pas)
 {
-    if (pas < 1 || pas > 100) {
+    /*
+     * 🔴 LE PAS NE PEUT PAS ÊTRE PLUS PETIT QUE LA BANDE MORTE — corrigé en
+     *   revue de code le 2026-08-20, et c'est un VERROU MORTEL qu'il retire.
+     *
+     * Avec `pas < DN_ENV_BL_HYST`, la boucle peut ENTRER (|écart| ≥ HYST) mais
+     * ne bouger que de `pas` points, ce qui laisse |écart| < HYST : elle se
+     * fige à mi-chemin, DANS LES DEUX SENS, pour TOUS les lux.
+     * Exemple mesuré au papier : `bl auto plancher 97` + `bl auto pas 1`, depuis
+     * 100 % — écart −3 ⇒ on entre, le limiteur ramène le mouvement à 1 ⇒ 99 %.
+     * Cycle suivant : écart −2 < 3 ⇒ GELÉ. En pleine lumière, écart +1 ⇒ GELÉ.
+     * Le duty se gare à 99 et ne bouge plus jamais, pendant que `bl auto`
+     * annonce une « course complète » qui ne peut pas s'achever.
+     * ⛔ Les deux setters validaient chacun dans son coin et ne se croisaient
+     *   jamais — c'est exactement l'inertie silencieuse que
+     *   `dn_env_bl_plancher_set()` refuse dix lignes plus bas.
+     */
+    if (pas < DN_ENV_BL_HYST || pas > 100) {
         return ESP_ERR_INVALID_ARG;
     }
     s_bl_pas = pas;

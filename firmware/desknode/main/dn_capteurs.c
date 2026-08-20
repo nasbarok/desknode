@@ -11,6 +11,7 @@
 #include "dn_env.h"
 
 #include <math.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -72,6 +73,12 @@ static uint16_t s_id_sig_publiee;
  * toutes les 60 s et un echec d'ouverture permanent noierait le transport. */
 static bool s_reprise_echec_dit;
 static bool s_gaz = DN_CAPT_GAZ_DEFAUT;
+/* 🔴 « le chauffeur tourne mais la mesure n'est pas encore utilisable » — un
+ * TROISIÈME état, ajouté en revue de code le 2026-08-20. Sans lui, `capteurs`
+ * affirmait « chauffeur COUPE (defaut) » pour toute valeur absente, y compris
+ * juste après un `capteurs gaz on` : l'inverse de ce que l'opérateur venait de
+ * commander, et rien pour distinguer les deux. */
+static bool s_gaz_attente;
 static bool s_gaz_demande = DN_CAPT_GAZ_DEFAUT;
 
 static int s_temp_dx = DN_CAPT_DX_ABSENT; /* dixièmes de °C */
@@ -81,6 +88,10 @@ static int s_pression_dx = DN_CAPT_DX_ABSENT;      /* dixièmes de hPa, CONVERTI
 static int s_pression_brut_dx = DN_CAPT_DX_ABSENT; /* dixièmes de l'unité DU DRIVER */
 static dn_capt_p_unite_t s_pression_unite = DN_CAPT_P_UNITE_INCONNUE;
 static bool s_pression_unite_dite;
+/* 🔴 Le verdict d'unité ABERRANTE se journalise UNE fois mais ⛔ NE VERROUILLE
+ * PAS `s_pression_unite_dite` — sinon une première lecture aberrante à froid
+ * empêchait à vie l'annonce de l'unité réelle (revue de code 2026-08-20). */
+static bool s_pression_aberrante_dite;
 /* 🔴 dn4-3 : la resistance MOX brute, en ohms. ⛔ PAS un indice de qualite
  * d'air — voir le docblock de `dn_capt_gaz_ohms()`. */
 static int s_gaz_ohms = DN_CAPT_DX_ABSENT;
@@ -266,6 +277,14 @@ int dn_capt_gaz_ohms(void)
 {
     portENTER_CRITICAL(&s_mux);
     int v = s_gaz_ohms;
+    portEXIT_CRITICAL(&s_mux);
+    return v;
+}
+
+bool dn_capt_gaz_en_attente(void)
+{
+    portENTER_CRITICAL(&s_mux);
+    bool v = s_gaz_attente;
     portEXIT_CRITICAL(&s_mux);
     return v;
 }
@@ -856,6 +875,16 @@ static bool config_verifier_et_reparer(dn_capt_faute_t faute_du_cycle)
      *   à chaque reconfiguration, et un log qui se répète cesse d'être lu. */
     s_pression_dx = DN_CAPT_DX_ABSENT;
     s_pression_brut_dx = DN_CAPT_DX_ABSENT;
+    /* 🔴 LE GAZ ET L'IAQ TOMBENT AUSSI — corrigé en revue de code le
+     * 2026-08-20. Ces deux champs, ajoutés par `dn4-3`, étaient les SEULS que
+     * cette fonction n'invalidait pas : `capteurs` imprimait « pression :
+     * JAMAIS LUE » juste à côté d'une résistance de gaz d'AVANT la
+     * reconfiguration, présentée comme courante. ⛔ Le préambule ci-dessus
+     * énonce la règle qu'ils enfreignaient : « La valeur est fausse dès
+     * l'instant où la config a disparu. » */
+    s_gaz_ohms = DN_CAPT_DX_ABSENT;
+    s_iaq_brut = DN_CAPT_DX_ABSENT;
+    s_gaz_attente = s_gaz;
     s_lu_us = -1;
     portEXIT_CRITICAL(&s_mux);
     s_degrade = true;
@@ -1089,7 +1118,14 @@ static void tache_capteurs(void *arg)
         }
 
         int64_t t0 = esp_timer_get_time();
-        bme680_data_t d;
+        /* 🔴 `= {0}` AJOUTÉ EN REVUE DE CODE LE 2026-08-20. `bme680_get_data()`
+         * ne remplit PAS tous les champs de score sur tous les chemins :
+         * `bme680_compute_iaq()` laisse `gas_score` non assigné dans la bande
+         * 9 000..13 500 Ω, et `humidity_score` non assigné dès que l'humidité
+         * sort de 10..90 (sa dernière branche teste l'impossible
+         * `adjusted_humi < 10 && adjusted_humi > 90`). ⇒ `d.iaq_score` pouvait
+         * porter du RÉSIDU DE PILE, et la console le rendait en `%d`. */
+        bme680_data_t d = {0};
         esp_err_t err = bme680_get_data(s_dev, &d);
         int64_t duree = esp_timer_get_time() - t0;
 
@@ -1142,7 +1178,20 @@ static void tache_capteurs(void *arg)
          * si X2 la retient pour une case, il faudra lui en donner un.
          */
         float p_brut = d.barometric_pressure;
-        int p_brut_dx = (int)lroundf(p_brut * 10.0f);
+        /* 🔴 GARDE AJOUTÉE EN REVUE DE CODE LE 2026-08-20 : `p_brut` n'est PAS
+         * borné ici (le test de plage vient plus bas), et sur débordement
+         * `lroundf` rend `LONG_MIN` — soit exactement `INT32_MIN`, soit
+         * `DN_CAPT_DX_ABSENT`. La brute aberrante devenait donc indistinguable
+         * de « jamais lue », et `capteurs` imprimait « JAMAIS LUE » pour une
+         * lecture QUI A EU LIEU : ça écrase la distinction à TROIS états que la
+         * console vient d'être écrite pour créer. ⇒ on borne à ±(sentinelle+1). */
+        int p_brut_dx;
+        if (!isfinite(p_brut) || p_brut * 10.0f >= 2147483647.0f ||
+            p_brut * 10.0f <= -2147483647.0f) {
+            p_brut_dx = (p_brut > 0.0f) ? INT32_MAX : (DN_CAPT_DX_ABSENT + 1);
+        } else {
+            p_brut_dx = (int)lroundf(p_brut * 10.0f);
+        }
 
         /*
          * 🔴 L'UNITÉ SE DÉTERMINE PAR LA MAGNITUDE, ET ELLE S'ANNONCE.
@@ -1164,8 +1213,25 @@ static void tache_capteurs(void *arg)
             /* Pa -> dixièmes de hPa : 101325 Pa => 10132 (1013,2 hPa) */
             p_dx = (int)lroundf(p_brut / 10.0f);
         }
-        if (!s_pression_unite_dite && unite != DN_CAPT_P_UNITE_INCONNUE) {
-            s_pression_unite_dite = true;
+        /* 🔴 CORRIGÉ EN REVUE DE CODE LE 2026-08-20, DEUX DÉFAUTS DANS UN TEST :
+         *   (1) `unite != DN_CAPT_P_UNITE_INCONNUE` était DU CODE MORT — `unite`
+         *       est initialisée à ABERRANTE et ne reçoit jamais qu'HPA ou PA ;
+         *   (2) le verdict se figeait sur la PREMIÈRE lecture, ABERRANTE
+         *       COMPRISE. Si la première conversion post-boot-à-froid rendait du
+         *       n'importe quoi, le firmware journalisait une fois « ni des hPa
+         *       ni des Pa » et n'annonçait JAMAIS l'unité correcte quand les
+         *       lectures se stabilisaient — alors que l'annonce unique EST le
+         *       livrable.
+         * ⇒ une valeur ABERRANTE se journalise (une fois, pour le diagnostic)
+         *   mais ⛔ NE VERROUILLE PAS le verdict : seule une unité RECONNUE le
+         *   fait. */
+        bool aberrante = (unite == DN_CAPT_P_UNITE_ABERRANTE);
+        if (!s_pression_unite_dite && !(aberrante && s_pression_aberrante_dite)) {
+            if (aberrante) {
+                s_pression_aberrante_dite = true;
+            } else {
+                s_pression_unite_dite = true;
+            }
             if (unite == DN_CAPT_P_UNITE_PA) {
                 ESP_LOGW(TAG,
                          "pression : le driver annonce des HECTO-PASCALS "
@@ -1229,8 +1295,19 @@ static void tache_capteurs(void *arg)
          * AVANT que la bascule demandée à chaud soit appliquée. L'utiliser ferait
          * publier ABSENT pendant tout le cycle qui vient d'allumer le chauffeur —
          * un trou d'un cycle qu'on lirait comme un capteur muet. */
-        s_gaz_ohms = s_gaz ? (int)lroundf(d.gas_resistance) : DN_CAPT_DX_ABSENT;
-        s_iaq_brut = s_gaz ? (int)d.iaq_score : DN_CAPT_DX_ABSENT;
+        /* 🔴 `gas_valid` ET `heater_stable`, ⛔ PAS SEULEMENT NOTRE PROPRE
+         * DEMANDE — corrigé en revue de code le 2026-08-20. `s_gaz` est le
+         * drapeau de ce que l'OPÉRATEUR a demandé, ⛔ pas un état de mesure. Le
+         * composant remplit `gas_valid` et `heater_stable` depuis les bits
+         * d'état de l'ADC, et ni l'un ni l'autre n'était lu : au premier cycle
+         * après `capteurs gaz on`, la plaque n'est pas à 300 °C, `adc_gas ≈ 0`,
+         * et la compensation rend ~12,9 MΩ. Ce chiffre était imprimé ET poussé
+         * dans W2, où il fixait le min/max de toute la fenêtre. */
+        bool gaz_utilisable = s_gaz && d.gas_valid && d.heater_stable;
+        s_gaz_ohms = gaz_utilisable ? (int)lroundf(d.gas_resistance)
+                                    : DN_CAPT_DX_ABSENT;
+        s_iaq_brut = gaz_utilisable ? (int)d.iaq_score : DN_CAPT_DX_ABSENT;
+        s_gaz_attente = s_gaz && !gaz_utilisable;
         s_pression_unite = unite;
         s_lu_us = maintenant;
         s_cycle_us = duree;
