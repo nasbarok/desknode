@@ -1894,10 +1894,14 @@ bas ⇒ 0x5D). Entrée ⚪ déjà ouverte au ledger sur ce conflit.
 > laissait croire**, et c'est une raison de plus de **laisser l'entrée de ledger OUVERTE**.
 > **Le constat** : l'I²C est un **BUS**. Les quatre capteurs (BME680 déjà soudé, plus BH1750, ToF et
 > INA219) partagent **`SDA = GPIO15` et `SCL = GPIO7`** (`dn_pins.h:31-32`), plus `3V3` et `GND`.
-> ⇒ **Brancher trois capteurs de plus coûte ZÉRO GPIO**, et **aucune broche des headers 2×12 n'est
-> consommée par cette story** — ni à droite, ni à gauche. Les deux points d'accès physiques au bus
-> (embase JST 4 points côté interrupteur, header 2×12 **GAUCHE**) n'exposent **aucune** de ces cinq
-> broches : ils portent `GND · 3V3 · SDA · SCL` et `SCL · SDA · 3V3 · G`.
+> ⇒ **Brancher trois capteurs de plus coûte ZÉRO GPIO**, et **aucune broche du header 2×12 n'est
+> consommée par cette story.** Les deux points d'accès physiques au bus (embase JST 4 points côté
+> interrupteur, **le** header 2×12) n'exposent **aucune** de ces cinq broches : ils portent
+> `GND · 3V3 · SDA · SCL` et `SCL · SDA · 3V3 · G`.
+> ⚠️ *Ce paragraphe disait « ni à droite, ni à gauche » et « header 2×12 **GAUCHE** » six lignes
+> après avoir réfuté l'existence de deux headers — corrigé par la revue de code du 2026-08-20. Le
+> vocabulaire GAUCHE/DROIT est celui de la doc constructeur, et c'est précisément celui que le
+> constat owner a réfuté : **il n'y en a qu'UN**.*
 > ⇒ **`dn4-2` ne peut pas tomber dans ce piège**, et c'est écrit **avant** que le fer ne chauffe.
 >
 > 🔴 **MAIS L'ENTRÉE DE LEDGER RESTE OUVERTE, ET SON STATUT « HYPOTHÈSE » EST CONSERVÉ.** Une parade
