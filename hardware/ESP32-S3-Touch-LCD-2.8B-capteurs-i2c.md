@@ -2847,3 +2847,521 @@ six part avec **55,5 % d'erreurs** pendant ~40 s. **La distinction est écrite p
 
 4. ⚠️ **La revue 3 couches avait laissé passer une étiquette qui ment sur trois** (§13.17.6 bis).
    Un `grep` d'une ligne l'a trouvée. **Une revue par lecture ne remplace pas un contrôle mécanique.**
+
+---
+
+## 13.19 — SÉANCE `dn4-3` « Exploiter les capteurs » (2026-08-20)
+
+> **Ce que cette section couvre** : la marche **P9.3**. Ce que les trois capteurs soudés en `dn4-2`
+> valent, et à quoi on les dépense. ⛔ **Elle ne réouvre PAS la cause de la dégradation du bus à
+> froid** (§13.17.1) : l'epic la garde **hors périmètre**, comme **contrainte de conception**.
+
+### 13.19.1 ✅ T0 — LE POINT DE DÉPART, PROUVÉ SUR `2992181`
+
+**Firmware `2992181`, SHA LU AU BANDEAU** (`I (665) app_init: App version: 2992181`),
+**`git status --porcelain` vérifié VIDE AVANT le flash**, build refait après. Compile time
+`Aug 20 2026 15:02:49`.
+
+⚠️ **Pourquoi ce T0 était nécessaire alors que « HEAD est fonctionnellement `8c928db` »** : la
+phrase est vraie *du code* (`8c928db..HEAD` = 423 insertions, **0 ligne** de `firmware/`), mais
+**un bandeau qui affiche `8c928db` ne prouve rien sur un dépôt à `2992181`**. Le T0 se relève sur
+le SHA qu'on va modifier, ⛔ pas sur son ancêtre fonctionnel. ✅ **Et la prédiction se vérifie** :
+le binaire fait **exactement 956 128 o**, au *même octet* que `8c928db`.
+
+**Configuration d'affichage de référence, relue au bandeau d'état** — ⛔ elle NE BOUGE PAS (AC13) :
+`num_fbs=1` · `bounce=7680 px` · `draw buffer 480 × 128 px en RAM interne DMA` · synchro `vsync` ·
+LVGL **ACTIF** · **6/6 cases** · rétroéclairage **100 %**.
+
+#### a) Budget statique et tas — **AU BOOT PROPRE**, ⛔ pas après campagne
+
+| Ressource | **T0 `2992181`** | `8c928db` (`dn4-2` §13.17.7) | Écart |
+|---|---:|---:|---|
+| Binaire | **956 128 o** | 956 128 o | **0** — partition **77 % libre** |
+| RAM interne libre | **92 307 o** | 92 275 o | +32 o (bruit d'allocation) |
+| PSRAM libre | **7 768 236 o** | 7 768 236 o | **0** |
+| Tas LVGL utilisé | **20 500 o (34 %)** | 20 500 o (34 %) | **0** — ⚠️ relevé par **`ui`**, ⛔ pas `mem` |
+| Plus gros bloc / fragmentation | **40 752 o / 2 %** | 40 752 o / 2 % | **0** |
+| Boot | **2 332 ms** depuis `app_main` | 2 332 ms | **0** |
+| `fps 15` | **37,40 Hz** (561 trames / 14 999 367 µs), écart **+0,00 %** | 37,40 Hz | **0** |
+| `nav ab 40` (n=80) | **334,6 ms** (281,1 / 396,4) | 334,2 ms (286,8 / 396,4) | **+0,4 ms** ⇒ **bruit** (±16 ms) |
+
+✅ **Non-fuite `nav ab 40`** : tas LVGL **20 500 → 20 472 o (−28 o)**, RAM interne **0**, PSRAM **0**.
+
+✅ **`descripteurs_auditer()` au boot : 6 cases auditées, 0 trou.** C'est la référence d'AC11.
+
+#### b) L'état du bus à huit devices
+
+- **Scan** : `0x20 · 0x23 · 0x29 · 0x40 · 0x51 · 0x5D · 0x6B · 0x77` — **8 stables, 0 instables en
+  38 ms**, **témoin positif VERT** (expander **et** tactile stables).
+- **`touch`** : IRQ 22 · **1 619 lectures** · **`err_i2c` = 0**.
+- **`capteurs`** : BME680 **VIVANT**, `config LUE : 0x72=04 · 0x74=84 · 0x75=08 (conforme)`,
+  cadence **4 999 ms MESURÉS** entre les deux dernières lectures valides, cycle **26 ms**,
+  erreurs **i2c 0 · donnee 0 · bornes 0**.
+
+⚠️ **Le boot de ce T0 était un reset RTS, ⛔ pas un démarrage à froid** : la dégradation §13.17.1
+**ne pouvait donc pas s'y présenter** (mesuré `dn4-2` : 0 échec sur 4 en `--reset`). ⇒ ce `err_i2c 0`
+qualifie **un bus chaud**, et rien d'autre. La tolérance à froid est l'objet d'AC3, ⛔ pas de ce T0.
+
+#### c) Le régime, avec son **espacement déclaré**
+
+**Stimulus** : `tools/dn_injecteur.py --jeu reel --secondes 45 --espacement 0.004` ⇒ **225 trames**.
+Compteurs remis à zéro **avant** (`flush reset`, `touch reset`, `pc reset`), **settle de 3,5 s**
+après la fin de l'injection **avant** la lecture (⚠️ `flush reset` ne vide pas la file en vol).
+
+| Grandeur | **T0 `2992181`** | Point de comparaison |
+|---|---:|---|
+| flush / cycle | **2,7** | 2,4 — §13.16.13, **firmware `dn4-2` AVANT correctifs** |
+| px / cycle | **97 800** | 87 196 — *idem* |
+| plus grande aire | **36 675 px** | 36 675 — *idem* ⇒ **l'unité de case n'a pas bougé** |
+| copie | **2 992 µs/flush** (pire **3 193**) | 2 979 — *idem* |
+| attente de synchro | **12 686 µs/flush** | — |
+| Liaison | **224/225 valides · 1 perte seq · 0 rejet de TOUTE cause** | 224/225, 1 perte, 0 rejet — *idem* |
+| Latence acceptation→label | **n=224 · min 29 · moy 86 · max 131 ms** | n=224 · 60 / 109 / 180 ms — *idem* |
+| `touch` encadrant | **1 265 lectures · 0 erreur I²C** | 1 026 lectures · 0 → 0 |
+
+🔴 **⛔ CES ÉCARTS NE SONT PAS DES DELTAS, ET IL FAUT LE DIRE** : la colonne de droite vient d'un
+**AUTRE SHA** (§13.16.13, séance `dn4-2` **avant** les correctifs de revue). *« Un delta entre deux
+SHA différents n'est pas un delta. »* ⇒ **la colonne de gauche EST la baseline de `dn4-3`**, et
+c'est contre **elle seule** qu'AC12 comparera le firmware livré.
+
+#### d) CPU en régime calme — **fenêtre chronométrée**, ⛔ pas `cpu N`
+
+**Méthode** : deux `cpu brut` encadrants ; la fenêtre est le **delta du champ `total`**, ⛔ pas une
+durée déduite d'une horloge de PC. **Fenêtre mesurée : 30 125 749 µs = 30,126 s.**
+⚠️ `cpu N` est **AVEUGLE au trafic** (il dort la fenêtre, **et le REPL EST le transport**).
+
+| Tâche | **T0 `2992181`** | Référence `dn4-2` (fenêtre 30,2 s) |
+|---|---:|---:|
+| `taskLVGL` | **2,270 %** | 2,31 % |
+| `esp_timer` | **0,700 %** | 0,68 % |
+| `dn_rtc` | **0,129 %** | 0,17 % |
+| 🔴 **`dn_capt`** | 🔴 **0,068 %** | 0,09 % |
+| `console_repl` | **0,059 %** | 0,05 % |
+| `dn_link` | **0,020 %** | — |
+| `main` | **0,018 %** | — |
+| **cœur 0** | **3,249 %** (IDLE0 96,751 %) | 3,31 % |
+| **cœur 1** | **0,015 %** (IDLE1 99,985 %) | 0,04 % |
+
+✅ **TEST DE RÉCONCILIATION PASSÉ** : somme des deltas de toutes les tâches **60 251 406** contre
+`fenêtre × 2` = **60 251 498** ⇒ **199,9997 %** pour 200 % attendus, écart **0,0003 pt** (seuil
+±0,01). ⛔ Sans ce test, une colonne peut être fausse d'un facteur 2 — c'est arrivé.
+
+🔴 **`dn_capt = 0,068 %`, ET C'EST LE BME680 SEUL.** Les trois nouveaux capteurs n'ont aujourd'hui
+**aucune tâche, aucun timer, aucune allocation**. ⇒ **C'est CE chiffre-là que `dn4-3` fait bouger,
+et c'est lui qu'AC12 doit prédire AVANT de le mesurer.**
+
+### 13.19.2 🔴 LES CRITÈRES D'ARBITRAGE DU DRIVER — écrits et horodatés **AVANT** d'ouvrir un source (`dn4-3`, 2026-08-20 **15:11 CEST**)
+
+> 🔴 **CETTE SECTION EST ÉCRITE AVANT TOUTE LECTURE DE CODE CANDIDAT ET AVANT TOUTE
+> INTERROGATION NEUVE DU REGISTRE.** C'est le patron **§13.6 ter**, et il existe pour une raison
+> précise : *des critères écrits après coup ne sont pas des critères, ce sont des justifications.*
+> ⚠️ **Ce qui était déjà connu** : la pré-lecture du registre faite au **cadrage** de la story
+> (2026-08-20, §6 de `dn4-3-exploiter-les-capteurs.md`). Elle est un **point de départ daté**,
+> ⛔ **pas un verdict**, et §13.19.3 la **rejoue**.
+
+#### Les critères, par ordre décroissant de pouvoir éliminatoire
+
+| # | Critère | Nature | Pourquoi il existe |
+|---|---|---|---|
+| **C1** | **Le composant accepte un `i2c_master_bus_handle_t` DÉJÀ CRÉÉ** | ⛔ **ÉLIMINATOIRE** | `dn_display` possède l'unique bus (`dn_display_i2c_bus()`). Un second `i2c_new_master_bus()` sur `I2C_NUM_0` rend `ESP_ERR_INVALID_STATE`. **A déjà éliminé 3 candidats sur 4** pour le BME680 (§13.6 ter) |
+| **C2** | **Aucune dépendance au driver I²C LEGACY** (`i2cdev`, `espressif/i2c_bus`) | ⛔ **ÉLIMINATOIRE** | conflit frontal avec `i2c_new_master_bus` — c'est C1 par un autre chemin |
+| **C3** | **ZÉRO `ESP_ERROR_CHECK` (ni `assert`, ni `abort()`) sur un chemin de LECTURE ou d'INIT** | ⛔ **ÉLIMINATOIRE**, sauf garde-fou reproduit | 🔴 C'est le défaut qui **briquait la carte** : `bme680.c:432` enveloppait une lecture I²C sur le chemin nominal ⇒ `abort()` ⇒ `PANIC_PRINT_HALT` ⇒ **console disparue**. Mesuré : **6 briquages sur 7 AVANT → 0 sur 6 APRÈS** la parade (⚠️ compte **non réconcilié** avec le 3/4 de `deferred-work.md:297` — les deux sont conservés). Un capteur au **contact intermittent** briquerait la carte **chez l'owner, sans console** |
+| **C4** | **Aucun blocage long sur le bus** — un appel qui dort > **200 ms** est un défaut, pas un détail | ⛔ **ÉLIMINATOIRE** au-delà de 1 s en régime | La lecture tourne dans une tâche cadencée à 5 s sur un bus que **le GT911 pole ~30×/s**, et **l'I²C est le PREMIER AGRESSEUR CONNU de la famine DMA** (§11.4, `bounce_px` 7 680, *« marge franchie, pas confortable »*). ⚠️ Un timeout **bloquant d'UNE SECONDE** par lecture (cas connu de `espressif/bh1750`) est à peser **contre le cycle de 5 s ET contre le bus dégradé à froid** |
+| **C5** | **Tolérance native à l'échec** : la fonction rend un `esp_err_t` que l'appelant peut ignorer, et le composant **ne garde pas d'état corrompu** après un échec | fort | §13.17.1 : à froid, **une transaction de donnée sur deux échoue pendant ~40 s**, et ça **se rétablit seul**. Un driver qui se verrouille au premier échec est inutilisable ici |
+| **C6** | **Pas d'appel à `i2c_master_bus_rm_device()`** sur un chemin atteignable | fort | 🔴 **MESURÉ SUR CETTE CARTE : ce retrait a REFUSÉ pour de vrai, 1 fois sur 13** (§13.17.3). Un `*_delete()` qui l'appelle est une bombe à retardement |
+| **C7** | **Dépendances transitives** : nombre, éditeur, **épinglabilité** | fort | `main/idf_component.yml` est **la seule autorité** (`dependencies.lock` et `managed_components/` sont **gitignorés**). Une transitive non épinglée est le défaut exact que la revue a corrigé sur `k0i05/esp_type_utils` |
+| **C8** | **Adoption et maintenance** : téléchargements, date de publication, licence | moyen | ⚠️ **11 téléchargements** (cas `tny-robotics/ina219-esp-idf`) ⇒ **lecture de source OBLIGATOIRE**, pas un rejet automatique. *« provided as-is, no further development »* n'est pas éliminatoire non plus : ce dépôt lit le source de toute façon |
+| **C9** | **Lisibilité** : combien de lignes de code étranger on adopte sans les relire | moyen | 🔴 **Le contre-poids honnête** : `dn_console.c` parle **déjà** aux trois capteurs en `i2c_master_transmit_receive` nu, retour testé, via `i2c_dev_ouvrir()` / `i2c_ecrire_nu()` / `i2c_lire_brut()` / `i2c_lire_registre16()`. **Pour le BH1750, le driver entier tient en TROIS transactions.** ⇒ **le driver maison n'est pas une paresse, c'est un candidat de plein droit** |
+| **C10** | **Coût binaire et RAM interne** une fois **RÉELLEMENT LIÉ** | moyen | ⚠️ **Piège déjà payé** : `k0i05/esp_bme680` au manifeste mais non appelé ⇒ **binaire INCHANGÉ**, et publier *« le composant coûte 0 o »* aurait été un mensonge. **Le coût ne se mesure qu'APRÈS l'appel** (il a valu **+26 992 o**). ⚠️ RAM interne libre au T0 : **92 307 o**, et la marge DMA est **déjà consommée** |
+
+#### 🔴 Ce qui, écrit d'avance, ferait **renverser** un verdict
+
+- Un composant retenu qui **ne compile pas** avec l'IDF v5.5.5 épinglée ⇒ retour au maison.
+- Un driver maison dont la **conversion** est fausse ou invérifiable ⇒ retour au composant.
+  ⚠️ **Précédent exact et récent** : `lux10 = (brut * 10) / 12` publiait **`4 614,8` pour `46 148`**,
+  et **c'est passé TROIS publications parce que le chiffre était PLAUSIBLE**.
+- Un coût binaire ou RAM interne **disproportionné une fois lié** (référence : **+26 992 o** pour
+  le BME680) ⇒ ré-arbitrage, et **le chiffre est publié**.
+
+#### 🔴 Le critère W2 — écrit ici aussi, parce qu'il se joue AVANT le tir (AC6)
+
+Toute grandeur candidate à une **case** qualifie sur la **valeur AFFICHÉE** (⛔ pas sur la source) :
+**étendue ≥ 5** · **taux de changement du TEXTE ≥ 10 %** · **σ ≥ 1**, sur un échantillonnage annoncé.
+Référence : `FAN_RPM` **13 / 55,2 % / 2,02** (n=959) **QUALIFIE** ; le témoin de contrôle
+`ASIC_POWER` **3 / 57,9 % / 0,75** **NE QUALIFIE PAS**.
+⚠️ **Un lux de bureau à éclairage stable est exactement le candidat qui peut échouer là.**
+⇒ **le mesurer, ⛔ pas le supposer.** *Une case morte est un défaut, même si la donnée est locale.*
+
+#### ⛔ Ce que ces critères NE tranchent PAS
+
+Ils arbitrent **tiers vs maison** (X5). Ils **ne disent rien** de **X4** — *où vit le code* :
+`dn_capteurs` généralisé **(A)** ou un module à côté **(B)**. **X4 se tranche en §13.19.4**, et les
+Dev Notes de la story posent la borne : *« une seule tâche qui lit tout est probablement plus sûre…
+⛔ ça se mesure, ça ne se suppose pas »*.
+
+### 13.19.3 ✅ LE REGISTRE, REJOUÉ (2026-08-20 15:12 CEST) — il a rendu **un candidat de plus** et **démenti un verdict**
+
+**Méthode** : `GET https://components.espressif.com/api/components?q=<mot>` puis
+`GET …/api/components/<ns>/<nom>` pour les versions, licences et **compteurs de téléchargement**
+(champ `downloads_total`, sommé sur toutes les versions).
+⚠️ **Les mots interrogés sont écrits** : `bh1750` · `ina219` · `vl6180` · `vl6180x` · `vl53` · `tof`
+· `proximity`. ⛔ Un relevé qui ne dit pas ce qu'il a cherché ne peut pas prouver une absence.
+
+#### BH1750 — **10 réponses**, dont **4 vrais pilotes**
+
+| Composant | Ver. | Publié | Licence | Dépendances | Téléch. | C1/C2 |
+|---|---|---|---|---|---:|---|
+| **`espressif/bh1750`** | **2.0.0** | 2025-09-23 | Apache-2.0 | **`idf >= 5.3` SEULE** | **7 147** | ✅ prend le bus |
+| `k0i05/esp_bh1750` | 1.2.7 | 2025-08-29 | MIT | `k0i05/esp_type_utils >= 0.0.1` — ⚠️ **NON épinglée** | 67 | ✅ prend le bus |
+| `esp-idf-lib/bh1750` | 1.1.7 | 2025-07-31 | BSD-3 | **`i2cdev`** + `esp_idf_lib_helpers` | — | ⛔ **C2** |
+| 🆕 **`achimpieters/esp32-bh1750`** | **1.0.1** | 2025-03-17 | MIT | `idf >= 5.0` seule | 36 | ⛔ **voir ci-dessous** |
+
+> 🆕 🔴 **CE QUATRIÈME CANDIDAT N'ÉTAIT PAS DANS LA PRÉ-LECTURE DU CADRAGE.** C'est exactement
+> pourquoi AC4 exige de **rejouer** le registre : *un relevé daté vaut comme point de départ, pas
+> comme verdict.* ⇒ **Et il est éliminé DEUX FOIS** : `#include <driver/i2c.h>` (**LEGACY**, C2) et
+> `bh1750_init_desc(i2c_dev_t*, uint8_t addr, i2c_port_t port, gpio_num_t sda, gpio_num_t scl)` —
+> **il configure les broches lui-même** (C1). ⚠️ Sa fiche au registre ne le dit **nulle part** :
+> il a fallu **ouvrir le source**.
+
+Également retournés, **non pilotes BH1750** et écartés sans arbitrage : `espressif/extended_vfs`,
+`espressif/esp32_azure_iot_kit` (agrégat, **target `esp32` seul**), `sensmonitor/smonitor-i2c`
+(⛔ `espressif/i2c_bus` ⇒ C2), `h-000-h/mini_tree`, `h-000-h/mini-tree`, `shaxzodahmedov/risaldash`.
+
+#### INA219 — **7 réponses**, dont **3 pilotes**
+
+| Composant | Ver. | Publié | Licence | Dépendances | Téléch. | C1/C2 |
+|---|---|---|---|---|---:|---|
+| **`tny-robotics/ina219-esp-idf`** | **1.0.0** | 2026-05-11 | MIT | **aucune** | **11** | ✅ prend le bus |
+| **`zorxx/ina219`** | **1.0.3** | 2026-07-04 | BSD-3-Clause | **aucune** | 24 | ✅ **voir la réfutation** |
+| `esp-idf-lib/ina219` | 1.0.7 | 2025-07-31 | BSD-3 | **`i2cdev`** | — | ⛔ **C2** |
+| `sensmonitor/smonitor-i2c` | 0.1.1 | 2026-07-27 | Apache-2.0 | **`espressif/i2c_bus`** | — | ⛔ **C2** |
+
+> 🔴 **RÉFUTATION D'UN VERDICT DU CADRAGE — `zorxx/ina219` N'EST PAS ÉLIMINATOIRE.**
+> §6 de la story le classait *« ⛔ ÉLIMINATOIRE — API `i2c_lowlevel_config{port, pin_sda, pin_scl}`
+> ⇒ **il crée son bus** »*. **Le source dit l'inverse**, et il le dit en commentaire
+> (`include/ina219/sys_esp.h:13-17`) :
+> *« If bus == NULL, port, pin_sda, and pin_scl will be used to initialize the I2C bus, otherwise
+> it's assumed that a previous call was made to i2c_new_master_bus »*.
+> `lib/esp-idf.c:47-68` : la création est **dans une branche `if (NULL == config->bus)`**, et le
+> chemin `bus != NULL` fait un simple `i2c_master_bus_add_device(*l->config.bus, …)`.
+> ⇒ ✅ **C1 SATISFAIT.** ⛔ **La pré-lecture avait lu la structure de config sans lire la branche.**
+> **C'est écrit ici, pas corrigé en silence** — et c'est le deuxième point que le rejeu a gagné.
+
+#### VL6180X — 🔴 **L'ABSENCE EST CONFIRMÉE, ET PAR UNE 404**
+
+| Requête | Réponse HTTP | Contenu |
+|---|---|---|
+| `q=vl6180` | **404** | `{"error":"ComponentNotFoundError","messages":["No component found"]}` |
+| `q=vl6180x` | **404** | *idem* |
+| `q=vl53` | 200 | `espp/vl53l` 1.1.8 · `rjrp44/vl53l5cx` 4.0.1 · `rjrp44/vl53l8cx` 4.0.1 · `grrtzm/v53l7cx-library` 1.0.6 · `saleca/vl53l1x_uld_esp_wrapper` 0.0.6 · `grrtzm/vl53l1x_library` 0.3.1 · `pkolt/vl53l0x` 1.0.0 — ⛔ **tous des VL53Lxx, puce DIFFÉRENTE** |
+| `q=tof` | 200 | rien de pertinent (`esp32-camera`, `radiolib`, `nlohmann-json`…) |
+
+⇒ ✅ **Le fait hérité TIENT : il n'existe AUCUN composant VL6180X au registre.**
+⛔ **Un driver maison est donc OBLIGATOIRE pour l'ALS**, quelle que soit la décision sur les deux
+autres. **Ce n'est pas une préférence, c'est le registre qui le dit.**
+
+### 13.19.4 🎯 X5 et X4 TRANCHÉS — **driver MAISON pour les trois**, **une seule tâche**, module séparé
+
+#### L'audit de source, candidat par candidat — ⛔ lu, pas récité
+
+| Candidat | Lignes (hors ex./tests) | **C3** `ESP_ERROR_CHECK`/`assert`/`abort` | **C4** blocage | **C6** `rm_device` | Verdict |
+|---|---:|---|---|---|---|
+| `espressif/bh1750` **2.0.0** | **105 + 136** | **1 `assert`** (`bh1750.c:46`) — ⚠️ **placé APRÈS le test `ret != ESP_OK`** d'`i2c_master_bus_add_device`, donc **inatteignable**. ✅ | 🔴 **`pdMS_TO_TICKS(1000)` sur `i2c_master_transmit` (`:24`) ET sur `i2c_master_receive` (`:99`)** — **UNE SECONDE bloquante par transaction** | ⚠️ `bh1750_delete` (`:55`) | ⚠️ **survit à C1-C3, achoppe sur C4** |
+| `k0i05/esp_bh1750` **1.2.7** | **397 + 217** | ✅ que des `ESP_RETURN_ON_ERROR` / `ESP_GOTO_ON_ERROR` — **ils RENDENT, ils n'abortent pas** | ⚠️ 500 ms + 🔴 **`vTaskDelay` DANS le chemin de lecture** (`:266`, `:274`, `:291`) et à l'init (`:179`, `:206`, `:235`) | 🔴 **`:241` (chemin d'ERREUR d'init, ATTEIGNABLE)** + `:382` | ⚠️ **+ `i2c_master_probe()` à l'init (`:182`)** — l'entrée de ledger sur les **faux positifs du sondage (1,744 % à 8 devices)** nomme `dn4-3` comme prochain porteur ; **+ transitive non épinglée** ; **+ même éditeur que le composant qui briquait la carte** |
+| 🆕 `achimpieters/esp32-bh1750` **1.0.1** | 94 + 68 | ✅ aucun | ✅ 100 ms | ✅ aucun | ⛔ **ÉLIMINÉ C1 + C2** (`driver/i2c.h` legacy, et il configure SDA/SCL) |
+| `tny-robotics/ina219-esp-idf` **1.0.0** | **193 + 255** | ✅ **ZÉRO** — vérifié par `grep` sur `ESP_ERROR_CHECK\|ESP_RETURN_ON\|abort(\|assert(\|ESP_GOTO_ON` | ✅ **100 ms** (`:49`, `:55`) | ⚠️ `ina219_delete` (`:191`) uniquement | ✅ **PROPRE** — le meilleur des cinq sur C3/C4 |
+| `zorxx/ina219` **1.0.3** | **279 + 241 + portage** | ✅ aucun | ✅ 50 ms (`ina219.c:21`) — ⚠️ mais `xSemaphoreTake(…, portMAX_DELAY)` (`esp-idf.c:149`) | ⚠️ dans `i2c_ll_deinit` | ✅ **C1 satisfait** (réfutation ci-dessus), 3 fichiers de portage à adopter |
+
+#### 🎯 X5 — **DRIVER MAISON POUR LES TROIS.** Le motif, critère par critère
+
+1. **C9 tranche presque seul, et le chiffre est vérifiable** : `dn_console.c` **parle DÉJÀ aux trois
+   capteurs**, en `i2c_master_transmit_receive` nu **avec retour testé** — `i2c_dev_ouvrir()`
+   (`:4329`), `i2c_lire_registre()` (`:4380`), `i2c_ecrire_nu()` (`:4484`), `i2c_lire_brut()`
+   (`:4566`), `i2c_lire_registre16()` (`:4772`). **Le protocole des trois est déjà écrit, exercé, et
+   qualifié SUR CETTE CARTE.** Pour le BH1750, le pilote entier tient en **trois transactions**.
+2. 🔴 **C3 + le ledger : prendre UN composant rouvre une obligation SANS MÉCANISME.**
+   `managed_components/` est **gitignoré**, l'audit des **103 `ESP_ERROR_CHECK`** est **manuel**, et
+   *« rien ne signale qu'une mise à jour ait introduit un `abort()` de plus »*. **Zéro composant
+   ajouté ⇒ le compte reste à 103 et l'obligation ne s'étend pas.** ⇒ **le garde-fou
+   « sonder AVANT d'appeler » n'a rien de neuf à protéger.**
+3. 🔴 **C4 élimine le mieux adopté.** `espressif/bh1750` — 7 147 téléchargements, Apache-2.0,
+   esp-bsp, **le candidat que l'adoption désignait** — bloque **1 000 ms par transaction**. Sur un
+   bus qui **se dégrade 40 s à froid** et dont l'I²C est **le premier agresseur connu de la famine
+   DMA** (marge *« franchie, pas confortable »*), **une seconde de blocage dans la tâche capteurs
+   est un coût qu'on ne sait pas encore payer.** ⚠️ **Ce n'est pas un défaut du composant** : 1 s est
+   un choix raisonnable ailleurs. **C'est une incompatibilité avec CETTE carte.**
+4. 🔴 **L'ALS force la main de toute façon** : **AUCUN composant VL6180X n'existe** (404). Prendre un
+   tiers pour BH1750 et INA219 laisserait **trois patrons d'erreur, trois politiques de timeout et
+   deux entrées de manifeste** pour **un seul module maison de toute manière obligatoire**.
+   ⇒ **l'homogénéité vaut plus que la mutualisation.**
+5. **C10 n'est pas un argument dans ce sens-ci, et il faut le dire** : le maison **coûtera** du
+   binaire lui aussi. La référence est **+26 992 o** pour le BME680 une fois lié ; le maison sera
+   **très en dessous**, mais ⛔ **le chiffre se relève APRÈS l'appel**, pas maintenant (AC12).
+
+⏳ **CE QUI RENVERSERAIT CE VERDICT, écrit d'avance** : une conversion maison fausse ou invérifiable
+(⚠️ précédent `lux10` : **`4 614,8` publié pour `46 148`**, *passé trois fois parce que plausible*)
+⇒ repli sur **`espressif/bh1750` 2.0.0**, dont la conversion `brut / 1.2` est **identique à la
+nôtre**, en acceptant son 1 000 ms. **C'est le plan B, il est nommé.**
+
+#### 🎯 X4 — **un module `dn_env` SÉPARÉ, mais cadencé par la tâche `dn_capt` EXISTANTE** (voie C)
+
+⛔ **Ni (A) ni (B) telles qu'écrites.** Les deux voies des Dev Notes portent chacune un défaut que
+la lecture du code rend concret :
+
+- **(A) généraliser `dn_capteurs`** ⇒ un `dn_capt_id_t` dans **toute** l'API (`dn_capt_etat`,
+  `dn_capt_compteurs`, `dn_capt_age_us`…), consommée par **quatre appelants**, et 🔴 **AC13 le dit
+  sans détour : « LA SEULE CASE VIVANTE AUJOURD'HUI EST `AMBIANCE`, ET LA VOIE (A) LA TRAVERSE »**.
+  On refactorerait le seul chemin qui marche, pour y ajouter des capteurs qui n'ont ni le même
+  protocole, ni le même garde-fou (celui-ci protège d'un **driver tiers** — les trois autres n'en
+  ont pas).
+- **(B) un second module AVEC SA TÂCHE** ⇒ **deux réveils** sur un bus que le GT911 pole ~30×/s.
+  Les Dev Notes posent que *« une seule tâche qui lit tout est probablement plus sûre »*, et AC4
+  exige alors **le couple encadrant `touch`/`err_i2c` sur LES DEUX VOIES DANS LE MÊME FIRMWARE**.
+
+✅ **(C) prend le meilleur des deux, et elle est possible parce que le code le permet** — vérifié,
+⛔ pas supposé : `dn_capteurs.c:1121-1129` montre que **la tâche `dn_capt` démarre MÊME si le BME680
+est injoignable** (`s_dev = NULL`, *« NON FATAL, et la tâche démarre QUAND MÊME »*).
+
+| Propriété | (A) | (B) | ✅ **(C)** |
+|---|---|---|---|
+| Nombre de tâches sur le bus | 1 | **2** | ✅ **1** |
+| API `dn_capt_*` modifiée | 🔴 **toute** | aucune | ✅ **aucune** |
+| Surface touchée sur la seule case vivante | 🔴 large | nulle | ✅ **UN appel ajouté** |
+| A/B deux-voies exigé par AC4 | non | 🔴 **oui** | ✅ **sans objet — il n'y a pas de 2ᵉ tâche** |
+| `dn_capteurs` reste « le module BME680 » (`dn_capteurs.h:8-10`) | ⛔ non | oui | ✅ **oui** |
+
+🔴 **ET LE POINT D'ACCROCHE EST CONTRAINT PAR LE CODE, PAS PAR LE GOÛT** : le corps de
+`tache_capteurs()` est **truffé de `continue`** sur chaque chemin d'erreur BME680
+(`dn_capteurs.c:952`, `:961`, `:1004`, `:1033`, `:1054`…). ⇒ ⛔ **un appel placé en FIN de boucle
+serait SAUTÉ à chaque erreur du BME680 — c'est-à-dire précisément pendant la dégradation à froid,
+le seul moment où la tolérance d'AC3 se mesure.**
+✅ **`dn_env_cycle()` s'appelle donc IMMÉDIATEMENT APRÈS `vTaskDelayUntil()`**, avant toute branche.
+Bénéfice second : la cadence des trois capteurs devient **déterministe**, indépendante du BME680 —
+qui, lui, peut bloquer **jusqu'à 1 500 ms**.
+
+⚠️ **LA LIMITE DE (C) EST DÉCLARÉE, PAS CACHÉE** : si `xTaskCreate` échoue,
+`dn_capteurs_init()` rend `ESP_ERR_NO_MEM` et **aucune tâche ne tourne** ⇒ **`dn_env` ne serait
+jamais cadencé**. ⛔ Il ne doit pas acquitter dans le vide (patron `dn_capteurs.c:1155-1170`).
+⇒ **`dn_env` compte ses cycles et la console affiche `JAMAIS CADENCE` tant qu'aucun n'est arrivé.**
+
+🔴 **UN FAIT DE CODE QUI INTERDIT DE RECOPIER LES HELPERS DE LA CONSOLE TELS QUELS** : `i2c_dev_ouvrir()`
+**ajoute un device TEMPORAIRE et le retire à chaque appel** — correct pour un REPL, ⛔ **inacceptable
+à 5 s en régime** : ce serait **~5 `i2c_master_bus_rm_device()` par cycle**, et ce retrait
+**a REFUSÉ pour de vrai, 1 fois sur 13, sur CETTE carte** (§13.17.3).
+✅ **`dn_env` ouvre ses devices UNE FOIS à l'init et les GARDE** — exactement le patron de `s_brut`
+dans `dn_capteurs.c:1100-1109`.
+
+### 13.19.5 🎯 LA QUALIFICATION DES TROIS À LA CONSOLE — **avant** la première ligne de driver (AC8, AC10)
+
+**Firmware `2992181`.** Toutes les valeurs ci-dessous sont des relevés `i2c` de la console,
+⛔ **aucune n'est recopiée d'une datasheet ou d'un article.**
+
+#### a) 🔴 L'ALS DU VL6180X NE MESURE PAS LA LUMIÈRE — et l'instrument le prouve en sept points
+
+Registres identifiés puis **écrits, relus, et confirmés conformes** :
+`0x0014` INT_CONFIG (reset `00` → imposé `20`) · `0x003F` ALS_GAIN (reset `06` → imposé `46`,
+gain **1,0×, le MINIMUM de la puce**) · `0x0040`/`0x0041` ALS_INTEGRATION (reset `00 00` → imposé
+`00 63`). Le déclenchement `0x0038 ← 01` rend bien `0x004F = 0x20`, soit **bits 5:3 = 4 = « new
+sample ready »** : ✅ **la chaîne de commande fonctionne, la mesure se déclenche et se signale.**
+
+**Le balayage de la période d'intégration, à gain constant 1,0× :**
+
+| Intégration | 1 ms | 2 ms | 3 ms | 5 ms | 10 ms | 20 ms | 50 ms | 100 ms |
+|---|---|---|---|---|---|---|---|---|
+| `RESULT__ALS_VAL` (`0x0050`) | `0000` | `0000` | **`FFFF`** | `FFFF` | `FFFF` | `FFFF` | `FFFF` | `FFFF` |
+
+🔴 **RÉPONSE STRICTEMENT BINAIRE.** Une intégration qui fonctionne rend une valeur **proportionnelle
+à la durée** ; celle-ci bascule d'un plancher à un plafond entre 2 et 3 ms. ⛔ **Ce n'est pas une
+saturation lumineuse** : à gain 1,0× et 100 ms, la pleine échelle est ~20 971 lx, et le BH1750
+mesurait **411 lx dans la même pièce au même instant**. C'est un **comparateur saturé**.
+
+⚠️ **CE QUE LE PREMIER RELEVÉ AVAIT FAIT CROIRE, ET QUI ÉTAIT FAUX** : `FFFF` à 100 ms **et** à
+10 ms avait été lu comme *« l'intégration n'agit pas »*. Le point à **1 ms**, qui rend `0000`, l'a
+**démenti** : le registre agit, il n'y a simplement **aucun point de fonctionnement**.
+🔴 *La conclusion la plus dangereuse de cette séance a été corrigée par UN point de mesure de plus.*
+
+**La cause est NOMMÉE, ⛔ pas devinée** : ST impose un **chargement de registres PRIVÉS**
+(*« SR03 settings »*) après `SYSTEM__FRESH_OUT_OF_RESET`, et sans lui la puce *« may not perform to
+specification »*. ⇒ **Recette de reprise, écrite pour la prochaine story qui en voudra** :
+1. Obtenir la séquence **depuis la datasheet ST ou AN4545**, ⛔ **jamais de mémoire ni d'un article**
+   — ⚠️ `st.com` était **injoignable depuis cette session** (`curl` → `http=000`), c'est ce qui a
+   arrêté la piste, ⛔ pas un jugement sur sa valeur.
+2. La jouer **une seule fois**, à l'init, quand `0x0016` vaut `01`.
+3. **Rejouer exactement le balayage ci-dessus** : le critère de succès est une réponse
+   **proportionnelle**, ⛔ pas « ça rend un nombre ».
+
+⇒ **X7 EST TRANCHÉ : l'ALS n'est PAS retenu comme seconde mesure de lumière dans `dn4-3`.**
+🔴 **AC8 se solde donc par un écart NON CHIFFRABLE**, avec sa cause nommée et sa recette.
+⚠️ **La décision owner du 2026-08-20** (*« ça permet d'avoir les deux et de les utiliser — meilleur
+étalonnage »*) **n'est pas contredite** : elle reste valable *le jour où le SR03 est chargé*. Ce qui
+est mesuré ici, c'est qu'**elle n'est pas réalisable aujourd'hui**, et pourquoi.
+
+#### b) 🎯 LA GARDE ANTI-FANTÔME DU VL6180X EXISTE — la piste `0x0016`, jamais vérifiée, **répond**
+
+| Étape | Mesure |
+|---|---|
+| Valeur au power-on | `0x0016` = **`01`** |
+| On impose | `0x0016 ← 00` |
+| Relecture | **`00`** |
+
+⇒ ✅ **Les TROIS propriétés du patron §13.15.4 sont tenues** : registre **inscriptible**,
+**relisible**, et **valeur de reset (`01`) ≠ valeur imposée (`00`)`**.
+**L'entrée « ⏳ piste JAMAIS VÉRIFIÉE » du dossier est SOLDÉE.**
+
+🔴 **MAIS LE MODULE LIVRÉ N'UTILISE PAS CE REGISTRE-LÀ, ET C'EST DÉLIBÉRÉ** : la valeur de
+`0x0016` est un **FAIT sur l'historique de la puce** (*a-t-elle été réinitialisée depuis son
+alimentation ?*). L'écraser en régime **détruirait l'information**, et la garde deviendrait de plus
+en plus faible à chaque cycle (imposer `00` sur un registre déjà à `00` ne discrimine rien).
+⇒ `dn_env` garde `0x003F` et `0x0041` — **même patron, valeurs de reset différentes, et ce sont
+aussi la configuration utile**.
+⚠️ **EFFET DE BORD DE CETTE SÉANCE, ÉCRIT POUR QUE PERSONNE NE S'Y TROMPE** : `0x0016` **vaut
+maintenant `00` sur cette carte**, et il ne repassera à `01` qu'à une **coupure d'alimentation du
+VL6180X** — ⛔ **pas** à un `--reset` ni à un `reboot` de l'ESP32. Un futur lecteur qui y verrait
+« déjà initialisé » se tromperait.
+
+#### c) 🎯 L'INA219 — le témoin FORT tient, et **un fait publié est RÉFUTÉ**
+
+| Registre | Lu | Attendu au dossier | Verdict |
+|---|---|---|---|
+| `00h` Configuration | **`39 9F`** | `39 9F` | ✅ conforme |
+| `05h` Calibration (reset) | **`00 00`** | `0000` | ✅ conforme |
+| `05h` après `← D7 A4` | **`D7 A4`** | — | ✅ **témoin FORT ÉPROUVÉ** |
+| `02h` Bus Voltage | **`07 0A`** ⇒ 225 × 4 mV = **900 mV**, CNVR=1, OVF=0 | — | 🆕 **jamais relevé** |
+| `01h` Shunt Voltage | 🔴 **`FF FB`** = **−50 µV** | 🔴 *« rend `00 00` — shunt libre »* (`README.md:916`, §3 de la story) | 🔴 **RÉFUTÉ** |
+
+> 🔴 **RÉFUTATION** : le shunt libre ne rend **PAS** `00 00`. Il rend **`FF FB`, soit −50 µV** — du
+> **bruit**, ce qui est **physiquement attendu** d'une entrée différentielle flottante, et **plus
+> honnête** qu'un zéro. ⛔ **Le fait publié n'est pas réécrit, il est daté et contredit ici.**
+> ⚠️ **Conséquence pratique, et elle est vicieuse** : `00 00` avait été proposé comme *contrôle* du
+> shunt libre. **Ce contrôle ne peut pas fonctionner** — il rendrait « anormal » l'état normal.
+
+🔴 **ET CE QUE L'INA219 MESURE AUJOURD'HUI EST DÉSORMAIS NOMMÉ, comme AC7 l'exige** : `Vin+`/`Vin−`
+n'étant pas câblés, **`02h` lit le potentiel d'une entrée FLOTTANTE** — 900 mV, une valeur stable et
+**parfaitement plausible**, qui n'est **l'alimentation de rien**. ⛔ **Ce n'est pas une mesure de
+consommation, et aucun chiffre de D5 ne peut en sortir.**
+⚠️ 🔴 **ET CE N'EST PAS UNE GARDE, IL FAUT L'ÉCRIRE** : un INA219 fantôme rendrait lui aussi des
+valeurs plausibles sur `01h`/`02h`. **Seul le `05h` discrimine.**
+
+#### d) Le BH1750 — il vit, et sa garde **n'existe pas**
+
+Séquence `0x01` (power on) puis `0x10` (continu, haute résolution), lecture nue 2 octets :
+**brut `01 EE` = 494 ⇒ 411 lx**. ✅
+⚠️ **Avant la séquence, il rendait `00 00`** — ⛔ ce qui ne prouvait **pas** un capteur mort : c'est
+aussi l'état *power-down* et *conversion pas prête*. **Le discriminant est le stimulus, et il
+demande un geste owner.**
+🔴 **Garde anti-fantôme : AUCUNE, et c'est DÉCLARÉ.** Le BH1750 n'expose **aucun registre relisible**
+— son unique registre écrivable est le `MTreg`, **non relisible**, et la piste a été **tentée et NON
+REPRODUITE**. ⇒ `dn_env` **le dit à la console** au lieu de faire semblant. ⛔ Le stimulus reste sa
+qualification la plus forte, mais **il ne peut pas être une garde de régime**.
+
+#### e) 🆕 UN FAIT NEUF SUR LES « 103 `ESP_ERROR_CHECK` » — **21 d'entre eux ne sont PAS du code**
+
+Audit rejoué le 2026-08-20 après `dn4-3`, `main/idf_component.yml` **vérifié intact**
+(`git diff --stat` vide), **aucun composant ajouté** :
+
+| Composant | Total (commande de la story) | **Dans du `.c`/`.h`** | Ailleurs |
+|---|---:|---:|---|
+| `espressif__esp_lvgl_port` | 55 | **52** | 3 (`README.md`) |
+| 🔴 **`k0i05__esp_bme680`** | **26** | 🔴 **26** | **0** |
+| `espressif__esp_lcd_st7701` | 14 | **3** | 11 (`README.md`) |
+| `espressif__esp_io_expander` | 3 | **0** | 3 (`README.md`) |
+| `esp_lcd_panel_io_additions` | 2 | **0** | 2 (`README.md`) |
+| `esp_io_expander_tca9554` | 1 | **1** | 0 |
+| `esp_lcd_touch_gt911` | 1 | **0** | 1 (`README.md`) |
+| `lvgl__lvgl` | 1 | **0** | 1 (`docs/…/*.rst`) |
+| **TOTAL** | **103** | **82** | **21** |
+
+✅ **Le total 103 est reproduit LIGNE À LIGNE** ⇒ le compte est **inchangé**, aucun composant tiers
+n'est entré (X5 : drivers maison).
+🆕 🔴 **Mais le chiffre qui porte le RISQUE DE BRIQUAGE est 82, pas 103** : les 21 autres sont dans
+des `README.md` et un `.rst` de documentation. ⇒ **la part du module OPTIONNEL passe de 26/103 =
+25 % à 26/82 = 32 %**, et **`k0i05__esp_bme680` est le SEUL composant dont les 26 occurrences sont
+TOUTES dans du code compilé.**
+⚠️ **Et l'écart s'est révélé par accident** : un premier passage avec `--include=*.c --include=*.h`
+a rendu **82** contre les 103 attendus. ⛔ **Ne jamais comparer deux comptes sans comparer leurs
+INSTRUMENTS** — celui de la story n'a pas de filtre d'extension, et rien ne le disait.
+
+#### f) 🎯 AC2 — le contrôle mécanique sur le code AJOUTÉ
+
+| Motif | `dn_env.c` | `dn_env.h` | Les 4 fichiers modifiés (lignes `+` du diff) |
+|---|---:|---:|---:|
+| `ESP_ERROR_CHECK` | 2 | 1 | 1 |
+| `abort(` · `assert(` · `ESP_GOTO_ON` | **0** | **0** | **0** |
+
+🔴 **LES QUATRE OCCURRENCES SONT DES COMMENTAIRES, ET DEUX D'ENTRE ELLES ÉNONCENT L'INTERDICTION
+ELLE-MÊME** — vérifié en imprimant **les lignes**, ⛔ pas en lisant un compte :
+`dn_env.c:5` (*« RÈGLE ABSOLUE DE CE FICHIER : ⛔ AUCUN `ESP_ERROR_CHECK` »*) · `dn_env.h:40`
+(*« le compte de 103 »*) · `CMakeLists.txt` (*« ce qui garde le compte de 103 à 103 »*).
+⇒ ✅ **ZÉRO `ESP_ERROR_CHECK` EXÉCUTABLE dans le code ajouté.**
+⚠️ *Un `grep -c` aurait publié « 4 » et fait échouer un AC qui passe.* C'est le même piège que le
+`grep -c` qui comptait sa propre ligne.
+
+✅ **D4 vérifié** : `grep -cE "nvs_|esp_partition_write|esp_flash_write"` sur `dn_env.c` = **0**.
+
+#### g) Coût binaire — **mesuré une fois LIÉ**, ⛔ pas au manifeste
+
+| | Binaire | Écart |
+|---|---:|---|
+| T0 `2992181` | **956 128 o** | — |
+| avec `dn_env` + `env` + `bl auto` | **970 080 o** | 🔴 **+13 952 o** |
+
+⚠️ **À mettre en regard du précédent** : le seul BME680 en **composant tiers** avait coûté
+**+26 992 o** une fois lié. ⇒ **trois drivers maison, une commande console et un asservissement
+coûtent la MOITIÉ d'un composant tiers pour un capteur.** ⛔ Ce n'est pas un argument général sur
+« maison vs tiers » : c'est le chiffre de CE cas, et il va dans le sens de l'arbitrage de §13.19.4.
+✅ Partition toujours **77 % libre**.
+
+### 13.19.6 🎯 X3 TRANCHÉ — **NON**, et l'ambiguïté a été levée **par la mesure**, ⛔ pas en reposant la question
+
+**La question a été posée à l'owner le 2026-08-20**, en distinguant explicitement — comme AC7
+l'exige, et parce que `dn4-2` s'y était trompé — *« l'INA219 sur le bus »* (les quatre capteurs en
+parallèle, état actuel) de *« l'INA219 EN SÉRIE, `Vin+`/`Vin−` soudées sur le rail qui alimente le
+module »*.
+
+**Réponse owner, verbatim** : *« non les l'ina219 est deja connecté avec les bon branchement »*.
+
+⚠️ **Cette réponse admet DEUX lectures**, et §13.6/AC7 interdisent de décider sur une réponse
+ambiguë : *(a)* « non [pas de fer], il est déjà bien câblé **sur le bus** » · *(b)* « ta prémisse
+est fausse, `Vin+`/`Vin−` **sont déjà** sur le rail ».
+🔴 **⛔ On ne repose PAS la question : on la MESURE.** Le dépôt a un instrument pour ça, et il est
+décisif.
+
+**L'A/B, et il est bâti pour être discriminant** : `bl 0` ↔ `bl 100` fait varier le courant du
+module de **plusieurs dizaines de mA** (le rétroéclairage d'une dalle 2,8"). À travers le shunt
+`R100` de **0,1 Ω**, 50 mA valent **5 mV = 500 LSB** de `01h` (LSB 10 µV).
+⇒ 🎯 **« Cet instrument PEUT-IL voir le défaut qu'il prétend exclure ? » — OUI, avec ~250× de
+marge.** *(La question de §14.1, posée avant de publier le chiffre.)*
+
+| Passe | `bl` | `01h` Shunt | en µV | `02h` Bus |
+|---|---:|---|---:|---|
+| 1 | **100 %** | `FF FF` | **−10** | `07 0A` ⇒ 900 mV |
+| 1 | **0 %** | `FF FE` | **−20** | `07 0A` ⇒ 900 mV |
+| 2 | **100 %** | `FF FD` | **−30** | `07 12` ⇒ 904 mV |
+| 2 | **0 %** | `FF FF` | **−10** | `07 12` ⇒ 904 mV |
+
+⚠️ **Ordre ALTERNÉ sur deux passes** (piège §14 n°14 : la première boucle paie son amorçage).
+
+🔴 **VERDICT : `Vin+`/`Vin−` NE SONT PAS EN SÉRIE SUR L'ALIMENTATION.** L'amplitude observée est de
+**1 à 3 LSB**, soit **10 à 30 µV = 0,1 à 0,3 mA**, et surtout **elle n'est PAS corrélée au
+rétroéclairage** : 100 % rend `FF FF` puis `FF FD`, 0 % rend `FF FE` puis `FF FF`. **C'est du
+bruit**, exactement ce qu'on attend d'une entrée différentielle flottante — et l'ordre de grandeur
+attendu s'il était en série (**~500 LSB**) est absent d'un facteur **~200**.
+La tension de bus, elle, reste à **900-904 mV** : ⛔ ni 3,3 V, ni 5 V.
+
+✅ **⇒ LA RÉPONSE DE L'OWNER SE LIT (a), ET ELLE EST EXACTE** : l'INA219 **est** correctement câblé
+— **sur le bus I²C** (`0x40`, 5/5, `00h` = `39 9F`). ⛔ **Ce n'est pas lui qui était ambigu, c'était
+la question.** Aucune décision n'a été prise sur l'ambiguïté : elle a été **levée par un A/B**.
+
+**Ce que la story doit donc écrire, et AC7 l'impose :**
+- ⛔ **Aucun geste de fer dans `dn4-3`.** Le montage fini et photographié n'est pas rouvert.
+- 🔴 **`dn4-5` DEVRA MESURER LA CONSOMMATION AUTREMENT**, et c'est écrit ici à sa place. L'epic le
+  prévoyait déjà : *« Si `dn4-3` a posé l'INA219 en série, le chiffre est déjà là ; sinon il faut le
+  mesurer autrement. »* ⇒ **le chiffre de D5 (alimentation permanente) n'existe toujours pas.**
+- ⏳ **ET L'OCCASION DU LEDGER RESTE OUVERTE, non prise** : la portée du **« Battery Power Control
+  Switch »** sur l'alimentation USB n'est **toujours pas documentée**. `dn4-2` avait l'occasion de
+  la mesurer et ne l'a pas fait ; `dn4-3` non plus, **et c'est écrit**. Un INA219 en série y
+  répondrait dans le même geste — **le jour où le fer ressortira**, pas avant.
+- ✅ **L'INA219 est lu EN RÉGIME quand même** (AC1), et **ce qu'il mesure est NOMMÉ** : le potentiel
+  d'une entrée flottante (**~900 mV**, stable et plausible) et le bruit de son shunt libre
+  (**−10 à −50 µV**). ⛔ **Ce ne sont PAS des grandeurs d'alimentation**, et `env` le dit en toutes
+  lettres pour que personne ne les lise comme telles.
