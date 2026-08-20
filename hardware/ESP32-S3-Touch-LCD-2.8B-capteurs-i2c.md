@@ -4529,3 +4529,196 @@ cycle** (BH1750 : 1 · VL6180X : 3), cycle **~1 140 µs**, bus à **7 devices**.
 4. ⚠️ **`dn4-3` avait écrit « `st.com` injoignable » sans instruire la cause**, et ce constat muet a
    **coûté une piste entière**. La cause tient en une ligne (`INTERNAL_ERROR` HTTP/2) et se
    contourne. ⛔ **Un blocage se NOMME, sinon il se re-subit.**
+
+---
+
+## 13.21 🔴 SÉANCE CARTE `dn4-7` (2026-08-21) — SR03 SE CHARGE, ET **CE N'ÉTAIT PAS LA CAUSE**
+
+> Firmwares : `98baeb4` puis `d75a5f6`, **SHA lus au bandeau** les deux fois. Arbre `porcelain`
+> **vide** avant chaque flash. Owner **absent de la boucle** : aucun geste physique dans cette passe.
+
+### 13.21.1 ✅ T0 — le point de départ
+
+| Instrument | Relevé |
+|---|---|
+| Bandeau | `App version: 98baeb4` puis `d75a5f6` — ⛔ **sans `-dirty`** |
+| `SPI Flash Size` | `16MB` (bootloader) |
+| `dn_env` | `2/3 devices ouverts`, INA219 `NON CADENCE` ✅ conforme au retrait |
+| **`touch` (l'instrument du bus)** | **874 lectures, `erreurs I2C 0`** ⇒ 🎯 **bus SAIN**, la fenêtre à froid n'est pas active |
+| VL6180X (`env`) | **VIVANT**, 7 lectures, `i2c 0 · donnee 0 · bornes 0 · conformite 0` |
+| Ligne `gpio_install_isr_service` | présente — ⚠️ **antérieure et attendue**, ⛔ pas une régression |
+
+⚠️ **Un reset RTS après `flash` n'est PAS un démarrage à froid** — §13.17 le dit : le geste qui
+reproduit la dégradation est le **débranchement PHYSIQUE**. Le bus sain ici ne contredit donc rien.
+
+### 13.21.2 🎯 SR03 SE CHARGE — ET C'EST PROUVÉ REGISTRE PAR REGISTRE
+
+`0x0016` valait **`0x01`** (puce fraîche) : la condition exacte qu'AC1 impose.
+
+| Bloc | Résultat |
+|---|---|
+| **38 écritures** | **0 en échec** |
+| **30 registres PRIVÉS** | 🎯 **tous relus EXACTEMENT comme écrits**, un par un |
+| **8 registres publics** | tous conformes, `0x002E` compris (auto-effaçant, voir §13.21.4) |
+
+⇒ ⛔ **« SR03 ne se charge pas » est RÉFUTÉ.** La séquence entre, tient, et se relit.
+
+### 13.21.3 🔴 ET LE BALAYAGE EST **IDENTIQUE AVANT ET APRÈS** — L'HYPOTHÈSE DE LA STORY TOMBE
+
+**A/B joué dans la MÊME séance, même firmware, même pièce, même lumière** — ⛔ pas une comparaison
+avec un relevé d'un autre jour :
+
+| Intégration | 1 ms | 2 ms | 3 ms | 5 ms | 10 ms | 20 ms | 50 ms | 100 ms |
+|---|---|---|---|---|---|---|---|---|
+| §13.19.5 (`dn4-3`) | `0000` | `0000` | `FFFF` | `FFFF` | `FFFF` | `FFFF` | `FFFF` | `FFFF` |
+| **AVANT SR03** (2026-08-21) | `0000` | `0000` | `0000` | `FFFF` | `FFFF` | `FFFF` | `FFFF` | `FFFF` |
+| **APRÈS SR03** (2026-08-21) | `0000` | `0000` | `0000` | `FFFF` | `FFFF` | `FFFF` | `FFFF` | `FFFF` |
+
+⇒ 🔴 **SR03 NE CHANGE RIEN À L'ALS.**
+
+**CE QUE ÇA DÉTRUIT** : l'hypothèse qui fondait toute la garde d'AC1 — *« l'ALS est binaire PARCE QUE
+SR03 manque, donc le télémètre a la même dépendance »* — est **RÉFUTÉE PAR LA MESURE**.
+⇒ ⛔ **Le balayage ALS ne qualifie PAS SR03** : il y est **insensible**. Une garde insensible à ce
+qu'elle prétend garder est une garde décorative, et Z1 ne peut pas se solder dessus.
+
+⚠️ **Détail qui compte et qui écarte une explication facile** : la colonne `attendu_ms` **suit**
+l'intégration demandée (2, 3, 3, 5, 11, 19, 49, 97 ms). **La puce HONORE la durée** ; c'est la
+**valeur** qui ne bouge pas. ⛔ Ce n'est donc pas « les écritures n'arrivent pas ».
+
+### 13.21.4 🔴 TROIS DÉFAUTS DE **MON** INSTRUMENT — dont un qui **fabriquait un taux de détection**
+
+⚠️ **Aucun des trois n'est de la carte. Les trois sont de moi.**
+
+**a) 🔴 LE PIRE — `tof range` COMPTAIT DES MESURES INEXISTANTES.**
+La branche de comptage testait `err == 0` **seul**. Or `err` est le code de la **dernière** mesure :
+quand l'attente **expire**, aucune mesure neuve n'a lieu et `err` vaut 0. Sortie **réellement
+imprimée** sur dix tirs qui n'avaient **jamais** abouti :
+
+```
+  1. mesure VALIDE (err = 0)  : 10 / 10
+  taux de detection           : 10/10 = 100,0 %
+  moyenne des VALIDES : 0,0 mm · ecart-type : 0,0 mm
+```
+
+…pendant que les dix lignes au-dessus disaient toutes `⚠️ PAS DE New Sample Ready` à **601 ms**.
+🎯 **Le tell était là, et c'est exactement celui du dépôt** : une valeur **exactement constante**
+(`0,0` / `0,0`). ⇒ **Correctif** : un **quatrième seau**, *« AUCUNE MESURE (pas de New Sample) »*.
+Un tir qui n'a pas signalé sa mesure **n'est pas une mesure à 0 mm** — il ne compte **nulle part**.
+
+**b) 🔴 J'AI DÉSACTIVÉ MOI-MÊME L'INTERRUPTION DE PORTÉE, EN L'ÉCRIVANT COMME UN CHOIX.**
+J'avais écarté les trois registres « Optional » de [AN] §9 en motivant : *« `0x0014 = 0x24`
+écraserait le `0x20` posé par `dn_env_configurer()`, dont le témoin de conformité dépend »*.
+⛔ **FAUX, et vérifiable en trois lignes** : `conformite_verifier()` relit **`0x003F` et `0x0041`**,
+**rien d'autre**. `0x0014` est **écrit** par `configurer()` mais **jamais relu** par la garde.
+**Conséquence, [DS] §6.2.12** : `0x014` porte `als_int_mode` en `[5:3]` et `range_int_mode` en `[2:0]`.
+
+| Valeur | `[5:3]` ALS | `[2:0]` PORTÉE |
+|---|---|---|
+| `0x20` (dn4-3) | `4` New sample ✅ | **`0` Disabled** 🔴 |
+| `0x24` ([AN] Optional) | `4` New sample ✅ | `4` New sample ✅ |
+
+⇒ **la puce ne pouvait PHYSIQUEMENT pas signaler sa mesure**, et j'ai failli conclure « le télémètre
+ne répond pas ». ⛔ **J'ai affirmé une dépendance qui n'existait pas dans le code que je venais de
+lire.**
+
+**c) ⚠️ UN FAUX ROUGE SUR UN COMPORTEMENT CONFORME.** `tof sr03` sortait
+*« 🔴 `0x002E` : écrit `0x01`, relu `0x00` — c'est un fantôme »*. [DS] **§6.2.29** :
+*« FW clears bit after operation carried out »*. ⇒ relire `0x00` est le **signal de SUCCÈS** : la
+recalibration VHV **a été menée à terme**. ⛔ Traiter un registre **auto-effaçant** comme s'il gardait
+sa valeur **fabrique un défaut** sur une puce correcte.
+
+⚠️ **Et la garde a suivi PAR EXTRACTION, ⛔ pas par exception** : `verif_sr03.py` a **correctement
+refusé** le nouveau `0x0014` (*« écart NON DÉCLARÉ »*), parce qu'il ne parsait que le bloc
+« Recommended ». Il extrait désormais **aussi** le bloc « Optional » du **même document** et vérifie
+la valeur contre lui. Témoins rejoués : valeur d'optionnel fausse ⇒ `exit 1` · optionnel retiré ⇒
+`exit 0` (en jouer moins est légitime) · arbre livré ⇒ `exit 0`.
+⚠️ **Mon premier test de ce témoin lisait `$?` APRÈS un `| tail`** — donc le code de `tail` : il
+annonçait `exit 0` sur un mutant qui échouait. **Rejoué sans le tuyau.**
+
+### 13.21.5 🔴 LE TÉLÉMÈTRE NE MESURE TOUJOURS PAS — ET LE TABLEAU CLINIQUE EST NET
+
+Avec `0x0014 = 0x24` **vérifié en place**, `tof range 10` :
+
+```
+  1. mesure VALIDE (err = 0)           : 0 / 10
+  2. la PUCE DIT qu'elle a echoue      : 0 / 10
+  · transport I2C en echec             : 0 / 10
+  · AUCUNE MESURE (pas de New Sample)  : 10 / 10
+```
+
+**Sondage MANUEL, registre par registre** (⛔ pas par la commande, pour ne pas dépendre d'un
+instrument que je venais de corriger) :
+
+| Registre | Lu | Ce que ça dit |
+|---|---|---|
+| `0x0018` SYSRANGE__START | écrit `01` → relu **`00`** | ✅ **le firmware a CONSOMMÉ le déclenchement** |
+| `0x0119` FIRMWARE__BOOTUP | `01` | ✅ le firmware de la puce a démarré |
+| `0x0014` INTERRUPT_CONFIG | `24` | ✅ l'interruption de portée est bien armée |
+| `0x004D` RANGE_STATUS | `01` | `device_ready` seul — ⛔ **aucun code d'erreur** |
+| `0x004F` INTERRUPT_STATUS | `00` | ⛔ jamais de *New Sample Ready* |
+| `0x0062` RANGE_VAL | `00` | — |
+| **`0x006C` RETURN_SIGNAL_COUNT** | **`00 00 00 00`** | 🔴 **zéro photon compté** |
+| **`0x0074` RETURN_AMB_COUNT** | **`00 00 00 00`** | 🔴 **zéro ambiant compté** |
+| **`0x007C` RETURN_CONV_TIME** | **`00 00 00 00`** | 🔴 **le moteur n'a JAMAIS convergé** |
+
+### 13.21.6 🎯 ET L'ALS DIT **« UNDERFLOW »** — ⛔ PAS « SATURÉ ». `dn4-3` AVAIT LU À L'ENVERS
+
+`RESULT__ALS_STATUS` (`0x004E`) = **`0x23`** ⇒ `[7:4] = 2`. [DS] **§6.2.38** :
+
+> `0000: No error` · `0001: Overflow error` · **`0002: Underflow error`**
+
+🔴 **La puce déclare un SOUS-FLUX**, c'est-à-dire **pas assez de lumière**.
+⇒ le `FFFF` de §13.19.5 **n'est PAS une saturation** : c'est une **valeur INVALIDE** accompagnée d'un
+drapeau d'erreur **que personne n'avait lu**. ⛔ **§13.19.5 concluait « comparateur saturé » — c'est
+à REPRENDRE** : le registre d'état dit l'inverse.
+
+**LE CROISEMENT QUI TRANCHE, MÊME INSTANT, MÊME CARTE, À QUELQUES CENTIMÈTRES :**
+
+| Capteur | Ce qu'il dit |
+|---|---|
+| **BH1750** `0x23` | **76 lx** — VIVANT, `i2c 0 · donnee 0 · bornes 0` |
+| **VL6180X** ALS `0x29` | **UNDERFLOW** — « pas assez de lumière » |
+
+⇒ 🔴 **LES DEUX CAPTEURS DE LUMIÈRE DE LA MÊME CARTE VOIENT DES CHOSES INCOMPATIBLES.**
+
+**FAISCEAU COHÉRENT** : côté **numérique**, le VL6180X est **parfait** (I²C, 38 écritures, 30 relectures
+privées exactes, firmware démarré, VHV recalibré). Côté **optique**, il ne reçoit **RIEN** : ALS en
+sous-flux, **zéro** signal, **zéro** ambiant, **zéro** convergence, et **aucun code d'erreur de portée**
+— ⚠️ **ce qui est logique : un émetteur qui ne tire pas ne produit ni mesure NI erreur.**
+
+### 13.21.7 ⏳ CE QUI RESTE À TRANCHER — **ET ÇA DEMANDE LES MAINS ET LES YEUX DE L'OWNER**
+
+Trois causes candidates, **⛔ aucune n'est départagée par la console** :
+
+1. 🎯 **UN FILM DE PROTECTION ENCORE SUR LA FENÊTRE DU CAPTEUR** — le plus fréquent sur ces
+   breakouts, et **le moins cher à vérifier** : ça se regarde en cinq secondes.
+   ⚠️ **Cohérent avec TOUT le tableau** : un cache opaque au proche-IR laisse le numérique intact et
+   met l'optique à zéro.
+2. ⚠️ **`AVDD_VCSEL` mal alimenté.** [DT0037] p. 2 : *« The VL6180X requires power to be applied to
+   **AVDD_VCSEL pin before or at the same time** as power is applied to AVDD »*. Le TOF050C a son
+   propre régulateur, et **ce dépôt n'a JAMAIS mesuré ce rail**. Un VCSEL non alimenté = laser muet,
+   sans erreur.
+3. ⚠️ **Module défectueux.**
+
+⛔ **AUCUNE mesure de portée, de cône, de répétabilité ou de lumière n'est recevable tant que ce
+point n'est pas tranché** — elles mesureraient toutes le même zéro.
+
+### 13.21.8 🔴 CE QUE LA SÉANCE FAIT À LA STORY — **c'est un `[CC]`, ⛔ pas une mise à jour**
+
+La story `dn4-7` prévoyait : *« si le balayage n'est pas proportionnel, Z1 se solde PAR LA NÉGATIVE
+et la story s'arrête »*. **Appliquer cette règle telle quelle serait une faute**, et voici pourquoi :
+
+| Ce que la story supposait | Ce que la mesure a établi |
+|---|---|
+| l'ALS est binaire **parce que** SR03 manque | ⛔ **RÉFUTÉ** — identique avant/après un SR03 prouvé chargé |
+| donc le balayage ALS **qualifie** SR03 | ⛔ **RÉFUTÉ** — il y est **insensible** |
+| donc « pas proportionnel » ⇒ « SR03 a échoué » | ⛔ **FAUX** : SR03 a **réussi**, registre par registre |
+| l'ALS `FFFF` = **saturation** | 🔴 la puce dit **UNDERFLOW** |
+
+⇒ **Z1 se scinde en deux, et les deux moitiés ont des réponses OPPOSÉES** :
+- *« La séquence SR03 se charge-t-elle ? »* → ✅ **OUI, prouvé.**
+- *« La puce se met-elle à mesurer ? »* → 🔴 **NON — et pour une cause qui n'a RIEN à voir avec SR03.**
+
+⚠️ **Le périmètre change** : la question n'est plus *« jusqu'où porte-t-il ? »* mais
+***« pourquoi son optique ne reçoit-elle rien ? »***. ⇒ **`[CC] bmad-correct-course`**, ⛔ pas une
+réécriture silencieuse du tableau.
