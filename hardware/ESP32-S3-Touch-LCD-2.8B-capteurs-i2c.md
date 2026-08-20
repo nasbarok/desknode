@@ -682,9 +682,13 @@ bascule sur le repli (qualification **par stimulus physique**, §AC6), avec l'é
   n'appelle, c'est le Trap n°2 sous une troisième forme. Le chiffre est donc **à relever après
   T5**, et ce fichier le dira alors.
 
-⚠️ **Ce que ce choix N'ENGAGE PAS** : les 3 capteurs de dn4-1. `k0i05` publie aussi `esp_bh1750`,
-mais BH1750/VL53L0X/INA219 se ré-arbitrent chacun sur le même critère 1. **Rien n'oblige à rester
-dans la même famille.**
+⚠️ **Ce que ce choix N'ENGAGE PAS** : les 3 capteurs de **`dn4-2`** (⚠️ *cette ligne écrivait
+« dn4-1 » et « VL53L0X » — deux étiquettes fausses, corrigées par la revue de code du 2026-08-20 :
+`dn4-1-tout-branche-tenue-h24` est `superseded`, et le module est un `TOF050C-VL6180X`*).
+`k0i05` publie aussi `esp_bh1750`, mais **BH1750 / TOF050C-VL6180X / INA219** se ré-arbitrent chacun
+sur le même critère 1. **Rien n'oblige à rester dans la même famille.**
+🔴 **Et l'arbitrage appartient à `dn4-3`, pas à `dn4-2`** : celle-ci les a **branchés et qualifiés**,
+elle n'en pilote aucun en régime.
 
 **Ce qui renverserait la décision** : une compensation T/H fausse ou invérifiable (⇒ repli sur le
 SensorAPI Bosch nu, transport-agnostique), un coût binaire disproportionné une fois lié, ou une
@@ -2464,3 +2468,382 @@ n'a pas vérifié.*
 de §13.16.2, **pris sur le fait une seconde fois**. ⇒ Le cycle est classé **« vivant, capture
 tronquée »**, ⛔ pas « HALTÉE » : **l'invite rendue prouve que le CPU tournait.**
 
+
+---
+
+## 13.17 🔴 SÉANCE POST-REVUE `dn4-2` (2026-08-20) — L'A/B DU GARDE-FOU, ET LE DÉFAUT À FROID ENFIN CARACTÉRISÉ
+
+> **Firmware `8c928db`**, SHA **LU AU BANDEAU** (`App version: 8c928db`), `git status --porcelain`
+> vérifié **VIDE AVANT le flash**. Séance conduite après la revue de code 3 couches du même jour
+> (45 constats, 38 correctifs appliqués en 7 commits).
+> ⚠️ **TOUS LES HORODATAGES DE CETTE SECTION SONT EN HEURE LOCALE `CEST` (UTC+2)**, celle que
+> l'owner lit sur sa montre. ⛔ Les relevés bruts de la séance ont d'abord été publiés en **UTC** —
+> l'owner a immédiatement relevé l'écart (*« 11h14 alors que ça a commencé vers 12h45 ? »*). Le
+> chiffre était juste et l'étiquette `UTC` était écrite, **mais un chiffre juste que le lecteur lit
+> faux est un chiffre faux** : c'est la classe de défaut de ce chapitre, appliquée à une unité de
+> temps. ⇒ **Règle** : dans une séance carte, horodater en **heure locale**, ou porter les deux.
+>
+> ⚠️ **Busid `3-7`, pas `3-1`.** Le skill `/desknode-board`, le `README.md` et six stories écrivent
+> `3-1` en dur. `tools/wsl-attach.sh` **relit le busid à chaque appel** — il l'avait prévu (*« le
+> figer dans le script serait un piège »*) — donc la séance n'en a pas souffert. ⛔ **Les recettes
+> écrites en dur, elles, sont fausses.**
+
+### 13.17.1 🎯 L'A/B DU DÉMARRAGE À FROID — 6 SUR 6, ET LE DÉFAUT EST ENFIN CARACTÉRISÉ
+
+**Protocole** : débranchement **physique** du câble USB (le seul geste qui coupe réellement le rail
+3V3 — ⛔ ni `reboot`, qui laisse le rail debout, ni le retrait de `VCC`, à cause de l'alimentation
+fantôme §13.10), attente ~3 s, rebranchement. **Geste owner**, six fois. Budget **annoncé à 6 et
+tenu**.
+
+| Cycle | Console | Identité **à froid** | GT911 | Verdict |
+|---|---|---|---|---|
+| **1** | ✅ vivante | ⛔ **NON LUE** | 🔴 **950 err / 1 713 lectures = 55,5 %** | dégradé, **rétabli SEUL** |
+| **2** | ✅ vivante | ✅ lue (`0x61`) | 0 / 455 | propre |
+| **3** | ✅ vivante | ✅ lue | 0 / 368 | propre |
+| **4** | ✅ vivante | ✅ lue | 0 / 490 | propre |
+| **5** | ✅ vivante | ✅ lue | 0 / 353 | propre |
+| **6** | ✅ vivante | ✅ lue | 0 / 659 | propre |
+
+🎯 **AVANT le correctif : 6 échecs sur 7, la plupart CARTE HALTÉE, sans console.**
+🎯 **APRÈS : 0 briquage sur 6, console vivante à chaque cycle.**
+
+🔴 **ET LE CYCLE 1 A LIVRÉ CE QUE ONZE TESTS À UNE VARIABLE N'AVAIENT JAMAIS ISOLÉ.**
+
+| Instrument, au cycle 1 | Ce qu'il a dit |
+|---|---|
+| **Scan `i2c`** | **8 stables, 0 instable**, témoin positif **vert**, 38 ms — le bus a l'air **PARFAIT** |
+| **`touch`** | **950 erreurs I²C sur 1 713 lectures** — **55,5 % d'échec** |
+
+> 🔴 **LE SCAN DIT QUE TOUT VA BIEN PENDANT QU'UNE TRANSACTION DE DONNÉE SUR DEUX ÉCHOUE.**
+> C'est la doctrine du dépôt — *« le scan DÉCOUVRE, seule une transaction de DONNÉE QUALIFIE »* —
+> démontrée dans sa forme la plus extrême, et **sur le tactile, pas sur le BME680**.
+
+**⇒ TROIS CONCLUSIONS QUI CHANGENT LE DOSSIER :**
+
+1. **Le démarrage à froid n'est PAS un défaut du BME680.** C'est une défaillance des transactions
+   **multi-octets à l'échelle du BUS**. Le BME680 n'en mourait que parce qu'il est le seul composant
+   dont les lectures passent par un `ESP_ERROR_CHECK` (dépendance tierce `k0i05__esp_bme680`).
+   Le GT911 encaissait déjà 55 % d'erreurs **sans que personne le regarde**.
+2. **Ce n'est PAS une soudure.** Le sondage d'adresse voit les huit devices, **5/5, à chaque passe**.
+   Un défaut de contact ne se comporte pas ainsi.
+3. 🔴 **LE DÉFAUT EST TRANSITOIRE ET AUTO-RÉTABLI.** Compteur GT911 : **950 à T0, 950 à T+35 s**,
+   alors que les lectures passaient de 2 606 à 3 468 — **+862 lectures, ZÉRO erreur nouvelle**. Les
+   950 erreurs se sont **toutes** produites dans les ~40 premières secondes.
+
+**Et la reprise a ramené le capteur, entièrement, sans intervention :**
+
+```
+T+~60 s   identite   : chip id 0x61 · variant 0x00 => BME680      (elle était « NON LUE »)
+T+~90 s   BME680 @ 0x77 : VIVANT — 24,5 C · 52,8 % · age 471 ms
+          config LUE : 0x72=04 · 0x74=84 · 0x75=08 (conforme)
+          compteurs  : 11 lectures · erreurs : i2c 0 · donnee 0 · bornes 0
+```
+
+⇒ **C'est exactement le chemin de reprise que la revue a corrigé** : il relève l'identité **d'abord**,
+et elle **décide** — avant, `ouvrir_driver()` partait sans aucune vérification et pouvait se faire
+briquer une minute après un boot réussi.
+
+⚠️ **CE QUE CET A/B NE PROUVE PAS** : la lecture d'identité **échoue toujours** à froid (1 cycle sur
+6). Le correctif empêche le **briquage**, ⛔ **il ne répare pas la cause** — et ça avait été écrit
+**AVANT** de mesurer, pas après. **La cause reste ouverte, et elle est désormais NOMMÉE : dégradation
+transitoire des transactions multi-octets sur tout le bus, ~40 s après un démarrage à froid.** ⇒ `dn4-3`.
+
+⚠️ **Le tri-état d'identité a servi dès le premier cycle**, et c'est sa raison d'être :
+```
+identite : ⛔ NON LUE — la transaction I2C a ECHOUE. Ce n'est PAS
+           « il a repondu 0x00 » : il n'a RIEN repondu.
+```
+Sous l'ancien code, cette situation **exacte** imprimait **« chip id 0x00 »** — une affirmation sur un
+capteur qui n'avait rien dit, qui envoie chercher un mauvais composant.
+
+### 13.17.2 ✅ LES CORRECTIFS DE LA REVUE, VÉRIFIÉS UN PAR UN SUR LA CARTE
+
+| Correctif | Vérification | Résultat |
+|---|---|---|
+| **Conversion lux ÷10** | `i2c brut 23 2` | `brut 1113` → **`927.5 lx`** (`1113 / 1,2` ✅). ⛔ **L'ancien code aurait imprimé `92,7 lx`** — et 92,7 lx est *aussi* plausible. C'est **pour ça** que le défaut a traversé trois publications |
+| **Garde d'adresse de `lire16`** | `i2c lire16 40 0000` | Sortie **NUE** : `0x40 reg16 0x0000 : 39`. ⛔ Avant : *« MODEL_ID = 0x39 = PAS un VL6180X … **REMONTÉE OWNER** »* — un faux verdict **qui escalade**, sur un device qui n'a jamais été un ToF |
+| **Garde d'adresse, contrôle positif** | `i2c lire16 29 0000` | **`B4`** + le verdict VL6180X — il sort **là où il doit** |
+| **Garde du `n` par défaut** | `i2c brut 23` | Rend `00` **et** dit *« l'interprétation n'est PAS faite, ne rien conclure »*. ⛔ Avant : un `00` **muet**, sans l'avertissement *« 0000 ne prouve PAS un capteur mort »* — c'est-à-dire **sans le discriminant de toute la procédure de stimulus** |
+| **Avertissement d'occupant** | `i2c ecrire 77 D0` (1 octet = pointeur de registre, **inoffensif**) | Le bloc sort **sur le chemin NOMINAL**. ⛔ Avant, il n'était imprimé **que si l'invocation était malformée** |
+| **Bornage `rafale` par adresse** | `i2c rafale 25000` | **25 000 ms demandés, 25 000 ms réels** — **0 ms de dépassement**, et la passe interrompue **exclue** du décompte |
+| **Retour de `rm_device` lu** | 13 lectures | 🔴 **LE REFUS S'EST PRODUIT** — voir §13.17.3 |
+
+### 13.17.3 🔴 `i2c_master_bus_rm_device()` REFUSE POUR DE VRAI — la carte tranche un désaccord entre deux couches de revue
+
+La couche **Edge Case Hunter** avait annoncé la course comme réelle ; la couche **Acceptance
+Auditor** avait conclu *« aucune fuite possible »* après avoir vérifié que l'appel était **présent**
+sur tous les chemins. **La carte donne raison à la première :**
+
+```
+⚠️ RETRAIT DU DEVICE REFUSE (ESP_ERR_INVALID_STATE) — un device FANTOME reste sur le
+   bus et deux allocations ont fui. Course connue avec le sondage du GT911 (~30/s).
+   ⛔ Le resultat ci-dessus reste VALIDE ; c'est le menage qui a rate.
+```
+
+**Mesure : 1 refus sur 13 lectures.** ⛔ **Non reproduit sur 12 essais consécutifs** ⇒ c'est un
+**événement rare et racé**, ⛔ **pas un taux**. Le mécanisme est lu dans l'IDF épinglé :
+`ESP_RETURN_ON_FALSE(atomic_load(&bus->status) > I2C_STATUS_START, ESP_ERR_INVALID_STATE, …)`
+(`esp_driver_i2c/i2c_master.c:1216`) — **et ce test précède la prise de `bus_lock_mux`**, alors que
+le GT911 sonde le même bus ~30 fois par seconde.
+
+🔴 **CE QUI COMPTE N'EST PAS LE TAUX, C'EST QU'AVANT CE CORRECTIF LA FUITE ÉTAIT TOTALEMENT
+SILENCIEUSE.** Le docblock promettait *« retiré sur TOUS les chemins de sortie »* et §13.6 quater en
+faisait le **critère éliminatoire n°2** : la promesse était tenue par l'**appel**, pas par la
+**vérification**. Personne n'aurait jamais su.
+
+### 13.17.4 🎯 AC6 REJOUÉ — le stimulus BH1750, avec les VRAIS lux
+
+| État | brut | lux | n |
+|---|---|---|---|
+| **départ** (témoin) | 1 113 | **927,5** | 3, identiques |
+| 🖐️ **main posée** | 2 | **1,6** | 3, identiques |
+| **main retirée** | 25 510 · 28 781 · 28 124 | **21 258 → 23 984** | 3, **VARIABLES** |
+
+**Rapport main posée / main retirée : ×580 à ×14 990.** Un faux positif de bus n'acquitte pas
+différemment selon qu'une main est posée dessus.
+
+⚠️ **DEUX CHOSES QUI NE SONT PAS MASQUÉES** :
+1. **Le retour n'est PAS identique au départ** — 23 984 contre 927,5 lx, soit **×25**. Le module est
+   sur fils volants : soit il a bougé pendant le geste, soit il reçoit une lumière directe qu'il ne
+   recevait pas au départ. ⛔ **Non tranché** — et ça ne change rien au verdict, qui porte sur le
+   **rapport**, pas sur les absolus.
+2. **Les trois lectures « main retirée » varient de 13 %.** Ce n'est **pas** un défaut : c'est de la
+   lumière ambiante avec quelqu'un qui bouge à côté. 🔴 **Une valeur qui VARIE est une preuve plus
+   forte qu'une constante** — une constante peut être rejouée par un chemin de code mort, pas ça.
+
+### 13.17.5 🎯 AC9 COMPLET — la cible RENDUE VISIBLE, et le relevé publié RÉFUTÉ
+
+🔴 **La moitié qui manquait au relevé du 2026-08-20 est faite, et elle a produit une réfutation.**
+
+**Rendre la cible visible** (exigence de l'AC, motif de ledger : *trois tours et 31 appuis perdus sur
+une jauge invisible*) : `widget piste 0xFF2020` — l'instrument dit lui-même *« seule RAM porte une
+jauge aujourd'hui : c'est la seule case où le changement se voit »*.
+✅ **Constat owner, verbatim** : *« oui barre rouge plein sur la case ram »*. ⛔ **L'œil de l'owner
+est l'instrument** — l'agent ne peut pas attester qu'une cible est visible.
+
+**Campagne de visée** (`touch trace 45000`) : **25 appuis · 25 relâches · 24 taps · 0 erreur I²C**
+sur 2 043 lectures.
+
+🔴 **LES COORDONNÉES RÉFUTENT LA BANDE PUBLIÉE.** Les neuf taps `RAM`, l'owner visant la barre rouge
+**qu'il voyait** :
+
+```
+(119,368) (38,357) (196,360) (136,362) (93,366) (153,371) (46,350) (133,362) (192,365)
+⇒ y = 350..371   ·   x = 38..196
+```
+
+**AC9 publie la bande jauge `RAM` à `y = 337..347`, `x = 22..223`.**
+⛔ **PAS UN SEUL des neuf appuis n'y est tombé** — tous **en dessous**, de **13 à 24 px**.
+
+⇒ **Deux lectures possibles, et la séance n'en tranche AUCUNE** : soit la formule publiée est
+fausse, soit la **piste** (le fond de la part NON remplie) n'est pas dessinée où la **bande** est
+calculée. ⚠️ **Une mesure qui contredit un verdict consigné ne se réécrit pas en silence** ⇒
+**`[CC]` `bmad-correct-course` proposé**, et les deux chiffres restent écrits côte à côte.
+
+✅ **CE QUI EST RE-PROUVÉ AU PASSAGE, ET QUI EST LE VRAI SUJET** : les **neuf** visées `RAM` sont
+devenues des **taps**. La garde *« toute la case est la zone tactile »* tient sur la géométrie **D12**,
+**avec ses coordonnées**. ⇒ Le résiduel 🟡 du ledger (`:347`) est **SOLDÉ pour de bon**.
+
+⚠️ L'appui **`(10, 33)`** n'a **rien déclenché** — marge haute du bouton RETOUR, entrée de ledger
+déjà ouverte, **re-observée**.
+
+**Campagne sous SATURATION** (`i2c rafale 25000`, l'owner appuie pendant) :
+
+| | `dn4-6` (réf.) | **2026-08-20** |
+|---|---|---|
+| Sondages | 119 392 / 20 s | **147 922 / 25 s** |
+| Cadence | 5 964 /s | **5 916 /s** |
+| Appuis · relâches | 18 · 18 | **38 · 38** |
+| **Taps** | ⏳ non publiés | ✅ **38 (dont 0 sur MENU)** |
+| **Erreurs I²C induites** | **0** | **0** |
+
+✅ **Constat owner, verbatim** : *« reactivité normal, tt est nickel »*.
+✅ **`0 tap sur MENU`** re-prouve la garde *« Barre et MENU = zones mortes »* sur D12.
+✅ Le compteur de **`taps`** vit dans **`nav`**, pas dans `touch` — c'est ce qui manquait au relevé
+précédent, et l'entrée de ledger créée le matin même est **soldée le jour même**.
+
+### 13.17.6 🔴 DEUX DÉFAUTS NEUFS, ET LE PREMIER EST DANS UN CORRECTIF DE LA REVUE
+
+#### (a) LE TÉMOIN POSITIF DE `i2c rafale` EST TROP STRICT — une garde qui ne peut JAMAIS être verte
+
+```
+temoin positif  : 0x20 vu 1300/1320 passes · 0x5D vu 1298/1320
+🔴 TEMOIN POSITIF EN ECHEC
+```
+
+La revue du 2026-08-20 a ajouté ce témoin parce que la rafale n'en avait aucun — un bus coincé
+publiait une « cadence » qui aurait été **une cadence de NACKs**. ✅ **Le besoin était réel.**
+⛔ **Mais il exige 100 % sur 1 320 passes, sur un instrument dont CE FICHIER documente déjà les faux
+négatifs** (§13.2 : *« 3 composants SOUDÉS ont raté une confirmation »*). ⇒ **Il ne peut structurellement
+jamais être vert sur une longue fenêtre.**
+
+🔴 **C'est exactement la faute que ce chapitre traque, commise dans un correctif écrit pour la
+corriger** : une garde qui se déclenche toujours est aussi inutile qu'une garde qui ne se déclenche
+jamais. ⇒ **Recette pour solder** : un **seuil**, calibré sur le taux ci-dessous, ⛔ pas 100 %.
+
+**ET IL A PRODUIT UNE DONNÉE QUE PERSONNE N'AVAIT :**
+
+| Témoin | Manqués | **Taux de faux NÉGATIF** |
+|---|---|---|
+| `0x20` TCA9554 | 20 / 1 320 | **1,52 %** |
+| `0x5D` GT911 | 22 / 1 320 | **1,67 %** |
+
+⇒ **Première mesure À L'ÉCHELLE du taux de faux négatifs de `i2c_master_probe()` sur cette carte.**
+Le dépôt n'avait jusqu'ici qu'un décompte anecdotique (*« 3 composants, une fois chacun »*). ⚠️ Et
+`timeouts : 0` sur les 147 922 sondages ⇒ **ces manques sont des NACKs, pas des expirations** : un
+device sain, soudé, refuse d'acquitter une fois sur soixante.
+
+#### (b) `dn_console.py` PERD DES LIGNES EN INVOCATION **SOLO**, pas seulement en lot
+
+L'entrée de ledger ouverte le matin limite le défaut au **mode lot**. **La séance l'a pris sur le
+fait en SOLO, trois fois** :
+- une capture de `i2c ecrire 77 D0` a rendu **10 lignes sur 14** — **4 lignes perdues** au milieu du
+  bloc d'avertissement, puis **6 captures identiques consécutives ont rendu les 14** ⇒ **1 perte sur 7** ;
+- la capture de `capteurs` du **cycle 1** est revenue **entièrement vide** alors que la console avait
+  rendu **écho ET invite** ;
+- idem au **cycle 6**.
+
+🔴 **CONSÉQUENCE MÉTHODOLOGIQUE, ET ELLE EST LOURDE** : la parade écrite (*« invocations SOLO +
+invariant vérifié »*) est **INSUFFISANTE**. ⛔ Une capture vide **ne prouve pas** une carte muette —
+aux cycles 1 et 6, l'invite rendue prouvait que le CPU tournait, et **re-sonder a rendu la sortie
+complète**. ⇒ **Toujours re-sonder avant de conclure au silence.**
+
+### 13.17.6 bis ⚠️ UNE TROISIÈME ÉTIQUETTE QUI MENT, QUE LA REVUE 3 COUCHES N'AVAIT PAS VUE
+
+La revue de code du 2026-08-20 en avait trouvé **deux** (§13.7 et §13.13.6). Un simple `grep` de
+vérification, en fin de séance, en a trouvé une **troisième** — et elle est **prospective**, donc du
+même genre que les deux autres :
+
+> §13.6 ter : *« Ce que ce choix N'ENGAGE PAS : les 3 capteurs de **dn4-1**. […] mais
+> BH1750/**VL53L0X**/INA219 se ré-arbitrent chacun sur le même critère 1. »*
+
+⇒ **Corrigée par ajout**, comme les deux autres.
+
+🔴 **CE QUE ÇA ENSEIGNE, ET C'EST LE POINT** : trois couches de revue adversariales, lancées en
+parallèle et sans contexte, ont trouvé **2 survivantes sur 3**. Le `grep` qui a trouvé la troisième
+tient en une ligne. ⇒ **Une revue par lecture ne remplace pas un contrôle mécanique exhaustif** ;
+les deux se complètent, et celui qui coûte le moins n'est pas celui qu'on croit.
+⚠️ **Recette, pour les prochaines** : après toute story qui renomme quoi que ce soit, passer
+`grep -rn '<ancien nom>'` sur **tout** le dépôt et **trier à la main** historique contre prospectif.
+
+### 13.17.7 ✅ AC12 — LES BUDGETS, SUR LE FIRMWARE RÉELLEMENT LIVRÉ ET AU BOOT PROPRE
+
+⚠️ **Ce relevé remplace celui de §13.16.14**, qui portait sur `43e108f` alors que le livrable était
+`3a7d938` puis `e931c31` — écart relevé par la revue de code.
+
+| Ressource | `1156eac` (dn4-6) | **`8c928db` (LIVRÉ)** | Δ |
+|---|---|---|---|
+| **Binaire** | 943 712 o | **956 128 o** | **+12 416 o (+1,32 %)** — partition **77 % libre** |
+| **RAM interne libre** | 92 315 o | **92 275 o** | **−40 o (−0,04 %)** |
+| **PSRAM libre** | 7 768 236 o | **7 768 236 o** | **0,00 %** |
+| **Tas LVGL utilisé** | 20 504 o (34 %) | **20 500 o (34 %)** | −4 o |
+| **Plus gros bloc** | 40 752 o | **40 752 o** | **0** |
+| **Fragmentation** | 2 % | **2 %** | **0** |
+| **`fps 15`** | 37,40 Hz | **37,40 Hz** (×2 fenêtres) | **+0,00 %** |
+| **Boot** | 2 321 ms | **2 332 ms** | +11 ms |
+| **`nav ab 40`** | 334,4 ms (291,1 / 396,7, n=80) | **334,2 ms (286,8 / 396,4, n=80)** | −0,2 ms |
+
+🎯 **LE « ZÉRO COÛT EN RÉGIME » EST MAINTENANT MESURÉ, PAS ASSERTÉ.** Le relevé précédent était pris
+**avant** le commit qui modifie `dn_capteurs.c` ; celui-ci porte sur le firmware qui contient **tous**
+les correctifs. **La RAM interne bouge de 40 octets et la PSRAM de zéro.**
+
+⚠️ **PIÈGE DE §13.16.14 REPRODUIT À L'IDENTIQUE, ET C'EST POUR ÇA QUE LE TAS EST RELEVÉ AU BOOT
+PROPRE** : après les campagnes, `nav` rendait **fragmentation 40 %, plus gros bloc 25 028 o** — contre
+**2 %** et **40 752 o** au boot propre. *« Un chiffre faux mais plausible est plus dangereux qu'un
+chiffre absurde — celui-là était les deux. »* **Le relevé ci-dessus a été pris AVANT toute campagne.**
+
+### 13.17.8 ✅ AC13 — les gardes restent vertes, et TROIS le sont désormais PAR LA MESURE
+
+| Garde | Mesuré le 2026-08-20 |
+|---|---|
+| **BME680 vivant** | ✅ `VIVANT` · `config LUE (conforme)` `0x72=04 · 0x74=84 · 0x75=08` · `err_i2c 0` — **et re-vivant APRÈS un démarrage à froid dégradé**, sans intervention |
+| **RTC vivante** | ✅ `0x51` **5/5** au scan · témoin anti-fantôme `0xD7` **relu** · ⚠️ `OS = 1` **attendu** après les 6 coupures physiques (§13.15.3 : aucune sauvegarde RTC), barre en « --:-- HEURE NON POSÉE » ⇒ **la garde a fonctionné** |
+| **« toute la case est la zone tactile »** | ✅ **re-prouvée sur D12 AVEC LES COORDONNÉES** — 9 visées `RAM` ⇒ 9 taps (§13.17.5) |
+| **Barre et MENU = zones mortes** | ✅ **`0 tap sur MENU` sur 38** |
+| **Bandeau de boot** | ✅ **une seule ligne `E`** : celle de l'ISR, **nommée et rattachée** (AC11). ⛔ **Aucune nouvelle** |
+| **Smoke owner 6/6** | ✅ constat owner sur le boot du firmware livré : grille affichée, six cases, rétroéclairage **allumé fixe**, rien d'anormal |
+
+
+### 13.17.9 ✅ AC8 — LE RÉGIME LONG À HUIT DEVICES, **CHRONOMÉTRÉ**
+
+⚠️ **Ce relevé remplace la fenêtre de 15 s de §13.16.10**, que la revue de code du 2026-08-20 a
+épinglée comme représentant **0,16 %** de la référence.
+
+**Couple encadrant, compteurs remis à zéro à T0 (`touch reset` + `capteurs reset`) :**
+
+| | T0 | T1 |
+|---|---|---|
+| Horloge **locale CEST** | **12:44:13** | **13:15:45** |
+| **Durée CHRONOMÉTRÉE** | — | 🔴 **31 min 32 s = 1 892 s** — ⛔ **pas déduite d'un compteur** |
+| GT911 — lectures | 0 | **53 652** |
+| GT911 — **erreurs I²C** | 0 | 🎯 **0** |
+| BME680 — lectures | 0 | **378** |
+| BME680 — erreurs (`i2c` / `donnee` / `bornes`) | 0 / 0 / 0 | 🎯 **0 / 0 / 0** |
+| BME680 — état | `VIVANT` | `VIVANT` · `config LUE (conforme)` `0x72=04 · 0x74=84 · 0x75=08` |
+| `fps 15` | 37,40 Hz | **37,40 Hz** (relevé en cours de régime) |
+
+**Contrôles dérivés, qui valident les compteurs entre eux :**
+- **Cadence BME680** : `1 892 s / 378 lectures` = **5,005 s** contre 5 000 ms nominaux. ✅ La cadence
+  en temps absolu (`vTaskDelayUntil`) tient sur une demi-heure.
+- **Cadence GT911** : `53 652 / 1 892` = **28,4 lectures/s** — cohérent avec le sondage ~30 Hz.
+- **Scan de contrôle** en fin de régime : **8 stables**, témoin positif vert.
+
+⚠️ **LE RÉGIME N'ÉTAIT PAS STRICTEMENT AU REPOS, ET C'EST ÉCRIT** : `appuis 1 · relâches 1`, avec
+**841 IRQ**. 🔴 **Le tap est ATTRIBUÉ, pas seulement constaté** : l'owner l'a revendiqué
+(*« oui c'est moi »*). ⛔ *« 1 appui, cause inconnue »* aurait ouvert une question ; *« 1 appui,
+l'owner »* la ferme. Un tap ne fabrique aucune erreur I²C, et le compteur est resté à 0.
+
+🔴 **CE QUE CE RELEVÉ NE PRÉTEND PAS ÊTRE, ET IL FAUT LE LIRE AVANT DE LE CITER.**
+
+| | Référence `dn2-1` | **Ce relevé** |
+|---|---|---|
+| Devices sur le bus | **5** | 🎯 **8** |
+| Lectures GT911 | **279 604** | **53 652** — soit **19,2 %** |
+| Erreurs I²C | **0** | 🎯 **0** |
+| Durée | *« ~2 h 45 »* | **31 min 32 s** |
+| **Nature de la durée** | ⛔ **DÉDUITE** (`279 604 / 30 Hz`) — une **estimation**, pas une mesure | ✅ **CHRONOMÉTRÉE** à l'horloge de l'hôte |
+
+⇒ **Le budget d'erreurs tient à 8 devices : 0 erreur sur 53 652 lectures.** ⛔ **Mais la fenêtre
+reste 5,2× plus courte que la référence en nombre de lectures, et c'est déclaré, pas arrondi.**
+✅ **En revanche, elle est CHRONOMÉTRÉE là où la référence était DÉDUITE** — c'est exactement ce
+qu'AC8 exigeait (*« la durée de régime est CHRONOMÉTRÉE, pas déduite du compteur ; les deux sont
+publiées séparément si elles divergent »*). **Sur ce point précis, ce relevé est meilleur que sa
+référence.**
+
+⚠️ **Le résultat des tirages (Y6) relu à la lumière du budget**, comme l'AC le demande : **aucune**
+erreur n'est apparue, donc **le suspect nommé d'avance — la résistance équivalente des tirages, qui
+passe de 2 à 4 jeux en parallèle, soit `+0,66 mA` à l'état bas contre une limite de 3 mA — n'a pas eu
+à être instruit.** Il reste nommé pour la prochaine fois.
+
+⚠️ **CE QUE CE RÉGIME NE COUVRE PAS** : il est tenu **à chaud**, après un boot sain. 🔴 **La
+non-régression est établie EN RÉGIME, ⛔ pas AU DÉMARRAGE À FROID** — §13.17.1 montre qu'un cycle sur
+six part avec **55,5 % d'erreurs** pendant ~40 s. **La distinction est écrite plutôt que gommée.**
+
+---
+
+## 13.18 ⚠️ CE QUI N'A PAS MARCHÉ DANS CETTE SÉANCE — y compris mes propres erreurs de méthode
+
+1. 🔴 **J'AI PUBLIÉ LES HORODATAGES EN `UTC` À QUELQU'UN QUI LIT `CEST`.** L'owner l'a relevé en une
+   phrase : *« 11h14 alors que ça a commencé vers 12h45 ? »*. Le chiffre était **juste**, l'étiquette
+   `UTC` était **écrite** — et le lecteur l'a quand même lu faux, parce qu'il lit sa montre.
+   ⇒ **Un chiffre juste que le lecteur lit faux est un chiffre faux.** C'est la thèse de ce chapitre
+   appliquée à une unité de temps, et c'est l'agent qui s'est fait prendre.
+   ✅ **Règle** : dans une séance carte, horodater en **heure locale**, ou porter **les deux**.
+
+2. ⚠️ **MON PROPRE `grep -c` M'A RENDU UN FAUX POSITIF**, à la fin de la séance : `ps aux | grep -cE
+   '[d]n_console|[i]df.py monitor'` a rendu **3** là où `lsof /dev/ttyACM0` et un `ps` non compté
+   rendaient **zéro** — le motif comptait la ligne de commande du sous-shell qui le portait.
+   ⛔ C'est **exactement** le piège déjà consigné (*« le hook a fabriqué un faux positif "2 processus
+   `idf.py monitor`" en faussant un `grep -c` »*), re-produit avec un autre outil.
+   ✅ **Vérifié avant de conclure** — un lecteur résiduel du port aurait corrompu toutes les captures
+   **en silence**. ⇒ **Un compte de processus se confirme par `lsof`/`fuser`, ⛔ jamais par `grep -c`.**
+
+3. ⚠️ **J'ai lancé le relevé de clôture d'AC8 en tâche de fond ET pris le relevé à la main**, ce qui
+   allait ouvrir **deux lecteurs simultanés** sur `/dev/ttyACM0`. Rattrapé avant l'ouverture — mais
+   c'est le défaut n°1 de la boucle de travail de ce dépôt (*« deux lecteurs ne s'excluent pas : ils
+   se volent les octets sans erreur »*), et je l'ai frôlé.
+   ✅ **Règle** : ⛔ **jamais de relevé série armé en tâche de fond** tant qu'une session interactive
+   peut toucher le même port.
+
+4. ⚠️ **La revue 3 couches avait laissé passer une étiquette qui ment sur trois** (§13.17.6 bis).
+   Un `grep` d'une ligne l'a trouvée. **Une revue par lecture ne remplace pas un contrôle mécanique.**
