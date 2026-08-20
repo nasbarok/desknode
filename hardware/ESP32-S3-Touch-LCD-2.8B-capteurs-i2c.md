@@ -1642,6 +1642,30 @@ modules) alors qu'elle portait sur le **shunt** (faire passer un courant à mesu
 device de plus sur le bus, qualifié par `i2c lire 40 00 2` → **`39 9F`**. **`dn4-3` décidera ce qu'il
 mesure.** ✅ *La réponse est écrite, même négative* — c'était l'exigence de la question n°2 du cadrage.
 
+> 🔴 **CORRIGÉ PAR AJOUT — 2026-08-20, correct-course. ⛔ « le bornier à vis reste NON SOUDÉ » décrit
+> l'INTENTION, PAS CE QUI A ÉTÉ FAIT.** La photo `2026-08-20_0116` de la **MÊME SÉANCE** montre
+> *« bornier vert **SOUDÉ** »* (§ Inventaire, l. 84), et le **constat owner du 2026-08-20 le
+> confirme : il EST soudé.** Deux lignes du même document se contredisaient ; ⛔ aucune n'est
+> effacée, et c'est l'œil de l'owner qui tranche.
+>
+> ⚠️ **CE QUE ÇA CHANGE, ET C'EST EN NOTRE FAVEUR** : `Vin+`/`Vin−` sont **accessibles par un
+> bornier à vis, SANS FER**. Remettre le shunt en service ne demande donc **aucune soudure** —
+> dénuder la ligne 5 V d'un câble USB-C, la couper, **visser les deux bouts**. **Réversible en
+> dévissant**, et ⛔ **sans toucher la carte** (dont le tracé d'alimentation n'est de toute façon
+> **pas établi** : §14.3 de `…-affichage.md` classe le connecteur batterie, le chargeur et la portée
+> de l'interrupteur ON/OFF en **hypothèse**).
+>
+> ⛔ **UNE CHOSE RESTE NON VÉRIFIÉE, ET ELLE NE SE SUPPOSE PAS** : que le bornier soit
+> **électriquement relié à `Vin+`/`Vin−`**. C'est le câblage standard des breakouts CJMCU, mais
+> **ce dépôt ne l'a JAMAIS mesuré** ⇒ **contrôle de continuité au multimètre** (patron `dn4-2` AC5)
+> avant de compter dessus.
+> ⛔ **Et `Vin+`/`Vin−` NE SONT PAS une alimentation** : y poser 5 V et la masse
+> **court-circuiterait le shunt de 0,1 Ω**. *« Le miroir tue »* — le piège est déjà nommé plus haut.
+>
+> 🔴 **ET L'HISTOIRE S'EST TERMINÉE AUTREMENT** : `dn4-3` a bien décidé « ce qu'il mesure » — la
+> réponse est **RIEN d'utile** — et le **correct-course du 2026-08-20 l'a SORTI DU RÉGIME**. Il
+> reste **soudé, ouvert, configuré au boot, et INERTE**. Voir `epics-desknode-v1.md`, entrée INA219.
+
 #### Le tableau ANTI-MIROIR de la guirlande, écrit avant le fer
 
 🔴 **Le BH1750 et le ToF ont `SDA`/`SCL` dans l'ordre INVERSE l'un de l'autre.** Câbler « en face »
