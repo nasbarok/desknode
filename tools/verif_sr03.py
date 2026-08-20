@@ -75,6 +75,14 @@ doc_prive = writes(mm.group(1))
 mr = re.search(r"//\s*Recommended\s*:\s*Public registers(.*?)Optional\s*:", sec, re.S)
 doc_public = writes(mr.group(1)) if mr else []
 
+# ⚠️ Et le bloc « Optional », qui est EXTRAIT LUI AUSSI depuis le 2026-08-21.
+# Motif : 0x0014 y vit, et il n'est PAS optionnel en pratique — sans lui
+# ([DS] §6.2.12, [2:0] range_int_mode = 0 = « Disabled ») le telemetre ne
+# signale JAMAIS sa mesure. Le firmware en joue UN SEUL des trois, et la garde
+# doit pouvoir le VERIFIER contre le document plutot que de l'excepter.
+mo = re.search(r"Optional\s*:\s*Public registers(.*?)(?:\Z|Revision history)", sec, re.S)
+doc_optional = writes(mo.group(1)) if mo else []
+
 # ── cote FIRMWARE ────────────────────────────────────────────────────────────
 src = pathlib.Path(SRC).read_text(encoding="utf-8")
 
@@ -108,8 +116,23 @@ else:
 
 # Le bloc public porte UN ECART VOULU et DECLARE (0x0040 16 bits).
 ecart_attendu = {0x0040}
+# Le firmware joue AUSSI 0x0014, pris dans le bloc « Optional » du MEME document.
+# Il n'est donc pas « non declare » — mais sa valeur doit correspondre AU DOCUMENT.
+d_opt = dict(doc_optional)
 d_map = dict(doc_public)
 f_map = dict(fw_public)
+
+print(f"[AN] optionnels : {len(doc_optional):2d}   dont joues par le firmware : "
+      + (", ".join(f"0x{r:04X}" for r in sorted(set(d_opt) & set(f_map))) or "aucun"))
+joues_opt = set(d_opt) & set(f_map)
+for r in sorted(joues_opt):
+    if d_opt[r] != f_map[r]:
+        ok = False
+        print(f"🔴 OPTIONNEL 0x{r:04X} : doc 0x{d_opt[r]:02X} / fw 0x{f_map[r]:02X}")
+    else:
+        print(f"✅ OPTIONNEL 0x{r:04X} = 0x{d_opt[r]:02X} — conforme au document")
+# Ce qui vient du bloc « Optional » n'est pas un ecart au bloc « Recommended ».
+ecart_attendu |= joues_opt
 diffs = {r for r in set(d_map) | set(f_map) if d_map.get(r) != f_map.get(r)}
 imprevus = diffs - ecart_attendu - {0x0041}
 if imprevus:

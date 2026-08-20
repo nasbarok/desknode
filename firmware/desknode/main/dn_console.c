@@ -5373,11 +5373,30 @@ static const tof_ecr_t k_sr03_prive[] = {
  *    reste conforme APRES le passage de SR03, ce qui n'aurait pas ete le cas en
  *    jouant [AN] a la lettre.
  *
- * ⛔ Le bloc « Optional » de [AN] §9 (0x001B, 0x003E, 0x0014) N'EST PAS JOUE :
- *    les deux premiers reglent des periodes d'INTER-MESURE du mode continu, que
- *    cette campagne n'utilise pas (elle tire coup par coup) ; le troisieme
- *    (0x0014 = 0x24) ECRASERAIT le 0x20 pose par `dn_env_configurer()`, dont le
- *    temoin de conformite depend. Choix ecrit, pas subi.
+ * 🔴 LE BLOC « Optional » DE [AN] §9 — ET J'AI EU FAUX SUR 0x0014, MESURE A
+ *    L'APPUI (2026-08-21, firmware 98baeb4).
+ *
+ *    Premiere version de ce fichier : les TROIS registres optionnels etaient
+ *    ecartes, au motif ecrit que « 0x0014 = 0x24 ECRASERAIT le 0x20 pose par
+ *    `dn_env_configurer()`, dont le temoin de conformite depend ».
+ *    ⛔ CE MOTIF ETAIT FAUX. `conformite_verifier()` (dn_env.c) relit 0x003F et
+ *      0x0041, et RIEN D'AUTRE : 0x0014 est ECRIT par `configurer()` mais
+ *      JAMAIS RELU par la garde. J'ai affirme une dependance qui n'existait pas
+ *      dans le code que je venais de lire.
+ *
+ *    ET CE N'ETAIT PAS SANS CONSEQUENCE — c'est ce qui a fait passer le
+ *    telemetre pour MORT. [DS] §6.2.12 : 0x014 porte als_int_mode en [5:3] et
+ *    range_int_mode en [2:0]. Le 0x20 de dn4-3 vaut donc :
+ *        [5:3] = 4  « New sample ready » pour l'ALS   ✅
+ *        [2:0] = 0  « Disabled »        pour la PORTEE 🔴
+ *    => l'interruption de portee etait DESACTIVEE, la puce ne pouvait
+ *       PHYSIQUEMENT pas signaler sa mesure, et les 10 premiers tirs ont tous
+ *       expire sur « PAS DE New Sample Ready » a 601 ms.
+ *    ⇒ 0x0014 = 0x24 EST DONC JOUE : [5:3]=4 (ALS) ET [2:0]=4 (portee).
+ *
+ * ⛔ Les deux AUTRES optionnels restent ecartes, et CE motif-la tient : 0x001B
+ *    et 0x003E reglent des periodes d'INTER-MESURE du MODE CONTINU, que cette
+ *    campagne n'utilise pas — elle tire coup par coup ([DS] §6.2.16, bit 1 = 0).
  */
 static const tof_ecr_t k_sr03_public[] = {
     {0x0011, 0x10}, /* [AN] polling de « New Sample ready » en fin de mesure   */
@@ -5387,7 +5406,23 @@ static const tof_ecr_t k_sr03_public[] = {
     {0x0040, 0x00}, /* 🔴 ECART DECLARE ci-dessus — [DS] §6.2.36, poids fort   */
     {0x0041, 0x63}, /* 🔴 ECART DECLARE ci-dessus — [DS] §6.2.36, poids faible */
     {0x002E, 0x01}, /* [AN] une calibration de temperature du telemetre        */
+    /* 🔴 [AN] §9 bloc « Optional » — LE SEUL DES TROIS QUI EST JOUE, et sans lui
+     * le telemetre ne signale JAMAIS sa mesure. Voir le pave ci-dessus. */
+    {0x0014, 0x24}, /* [DS] §6.2.12 : [5:3]=4 ALS + [2:0]=4 PORTEE, New sample  */
 };
+
+/* 🔴 REGISTRES AUTO-EFFAÇANTS — ILS NE SE RELISENT PAS, ET C'EST NORMAL.
+ * Les compter comme des ecarts fabriquerait un defaut sur un comportement
+ * CONFORME. C'est arrive : la premiere version de `tof sr03` a sorti un 🔴 sur
+ * 0x002E relu 0x00, alors que [DS] §6.2.29 ecrit noir sur blanc, pour
+ * sysrange__vhv_recalibrate : « FW clears bit after operation carried out ».
+ * ⇒ relire 0x00 est le signal de SUCCES : le firmware a mene la recalibration
+ *   VHV a son terme, et bit[1] (vhv_status) a 0 dit « FW has finished autoVHV ».
+ */
+static bool tof_reg_auto_effacant(uint16_t reg)
+{
+    return reg == 0x002Eu; /* SYSRANGE__VHV_RECALIBRATE, [DS] §6.2.29 */
+}
 
 /* ── Primitives 16 bits, sur un device DEJA ouvert ────────────────────────── */
 
@@ -5535,17 +5570,26 @@ static int tof_cmd_sr03(void)
     for (int i = 0; i < n_pub; i++) {
         uint8_t v = 0;
         esp_err_t e = tof_lire(dev, k_sr03_public[i].reg, &v, 1);
-        const bool ok = (e == ESP_OK && v == k_sr03_public[i].val);
+        const bool auto_eff = tof_reg_auto_effacant(k_sr03_public[i].reg);
+        /* ⛔ Un auto-effaçant ne se juge PAS sur l'egalite : il se juge sur le
+         * fait qu'il s'est EFFACE, ce qui prouve que l'operation a eu lieu. */
+        const bool ok = (e == ESP_OK) &&
+                        (auto_eff ? (v == 0x00) : (v == k_sr03_public[i].val));
         if (!ok) {
             pub_ko++;
         }
         printf("  %s 0x%04X : ecrit 0x%02X, relu ", ok ? "✅" : "🔴",
                k_sr03_public[i].reg, k_sr03_public[i].val);
         if (e == ESP_OK) {
-            printf("0x%02X\n", v);
+            printf("0x%02X", v);
         } else {
-            printf("ILLISIBLE (%s)\n", esp_err_to_name(e));
+            printf("ILLISIBLE (%s)", esp_err_to_name(e));
         }
+        if (auto_eff) {
+            printf("  (AUTO-EFFAÇANT, [DS] §6.2.29 : 0x00 = la recalibration"
+                   " VHV a ETE MENEE)");
+        }
+        printf("\n");
     }
 
     printf("\ntemoin des PRIVES (donnee BRUTE — ⛔ AUCUN verdict, non documentes) :\n");
@@ -5705,7 +5749,7 @@ static int tof_cmd_range(int n)
     /* ⚠️ `static` DELIBERE : 200 x uint32 = 800 o, et la tache console n'a pas
      * une pile a gaspiller. Le REPL est mono-thread, aucune reentrance. */
     static uint32_t vals[TOF_N_MAX];
-    uint32_t n_err_puce = 0, n_transport = 0;
+    uint32_t n_err_puce = 0, n_transport = 0, n_pas_pret = 0;
 
     for (int i = 0; i < n; i++) {
         esp_err_t e = tof_ecrire(dev, TOF_REG_INT_CLEAR, 0x07);
@@ -5736,7 +5780,19 @@ static int tof_cmd_range(int n)
         printf("%3d   %3u mm   0x%02X    %X    %5u  %3d  %s\n", i, v, st, err,
                retour, attendu,
                (ea == ESP_ERR_TIMEOUT) ? "⚠️ PAS DE New Sample Ready" : "ok");
-        if (err == 0) {
+        /* 🔴 CORRIGE LE 2026-08-21, ET C'ETAIT UN CHIFFRE FABRIQUE.
+         * Cette branche testait `err == 0` SEUL. Or `err` est le code d'erreur
+         * de la DERNIERE mesure : quand l'attente EXPIRE, aucune mesure neuve
+         * n'a eu lieu, `err` vaut donc 0, et la commande annonçait
+         * « 10/10 mesures VALIDES · taux de detection 100,0 % · moyenne 0,0 mm »
+         * sur DIX tirs qui n'avaient JAMAIS abouti. Un instrument qui compte des
+         * mesures inexistantes est pire qu'un instrument absent — c'est
+         * exactement la famille « la console fabrique des nombres plausibles ».
+         * ⇒ UNE MESURE QUI N'A PAS SIGNALE « New Sample Ready » N'EST PAS UNE
+         *   MESURE, quel que soit ce que rendent les registres de resultat. */
+        if (ea != ESP_OK) {
+            n_pas_pret++;
+        } else if (err == 0) {
             if (n_ok < TOF_N_MAX) {
                 vals[n_ok] = v;
             }
@@ -5758,11 +5814,23 @@ static int tof_cmd_range(int n)
     printf("     DANGEREUX (famille du fantome §13.10) — c'est l'owner qui tranche.\n");
     printf("  · transport I2C en echec            : %lu / %d\n",
            (unsigned long)n_transport, n);
+    printf("  · AUCUNE MESURE (pas de New Sample)  : %lu / %d\n",
+           (unsigned long)n_pas_pret, n);
 
+    if (n_pas_pret > 0) {
+        printf("\n🔴 %lu TIR(S) N'ONT JAMAIS ABOUTI — ⛔ ce ne sont PAS des mesures a\n",
+               (unsigned long)n_pas_pret);
+        printf("   0 mm, ce sont des NON-MESURES, et elles ne comptent NULLE PART.\n");
+        printf("   ⚠️ PREMIERE CHOSE A REGARDER : `tof etat`, registre 0x0014.\n");
+        printf("      [DS] §6.2.12 — [2:0] range_int_mode. S'il vaut 0, la portee\n");
+        printf("      est « Disabled » et la puce ne PEUT PAS signaler sa mesure.\n");
+        printf("      Il doit valoir 4 ⇒ 0x0014 = 0x24. `tof sr03` le pose.\n");
+    }
     if (n > 0) {
-        printf("\ntaux de detection : %lu/%d = %d,%d %%\n", (unsigned long)n_ok, n,
+        printf("\ntaux de detection : %lu/%d = %d,%d %%", (unsigned long)n_ok, n,
                (int)((n_ok * 100) / (uint32_t)n),
                (int)(((n_ok * 1000) / (uint32_t)n) % 10));
+        printf("   (denominateur = TIRS DEMANDES, ⛔ pas mesures abouties)\n");
     }
     if (n_ok > 0) {
         const uint32_t nb = (n_ok < TOF_N_MAX) ? n_ok : TOF_N_MAX;
