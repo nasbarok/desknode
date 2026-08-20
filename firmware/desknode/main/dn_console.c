@@ -5254,6 +5254,644 @@ static int cmd_i2c(int argc, char **argv)
     return 0;
 }
 
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════════
+ *  `tof` — L'INSTRUMENT DE dn4-7 (P9.3b). SR03, LE BALAYAGE, ET LA PORTEE.
+ * ══════════════════════════════════════════════════════════════════════════════
+ *
+ * 🔴 POURQUOI UN INSTRUMENT PLUTOT QUE ~40 COMMANDES TAPEES — le choix est
+ *    exige par AC1 « avec son motif », le voici :
+ *
+ *   1. La sequence fait 40 ecritures. Et ST ecrit (AN4545 §1.3, Note) :
+ *      « This procedure must be repeated if the VL6180X has been power cycled ».
+ *      Une campagne de portee, c'est des dizaines de cycles d'alimentation ⇒
+ *      des CENTAINES de lignes tapees, sur un bus dont §13.17.1 a MESURE qu'il
+ *      lache les transferts multi-octets a froid. L'instrument deviendrait la
+ *      premiere source d'erreur de la mesure.
+ *   2. `i2c ecrire16` NE REGLE PAS ça : il raccourcit chaque ligne, il n'en
+ *      supprime aucune. C'est la mauvaise granularite.
+ *   3. Une table DANS LE SOURCE porte sa citation et se relit en revue. Une
+ *      sequence tapee ne laisse aucune trace verifiable.
+ *   4. Elle reste HORS du chemin de regime : `dn_env` n'est pas touche tant que
+ *      T1 n'a pas reussi (Dev Notes de la story). Si T1 echoue, ce bloc part
+ *      d'un seul tenant.
+ *
+ * ⚠️ POURQUOI ICI ET PAS DANS UN MODULE NEUF : `i2c_dev_fermer()` porte le
+ *    correctif de revue dn4-2 sur la course avec le sondage GT911 (~30/s). Un
+ *    module separe devrait le dupliquer ⇒ deux sources de verite sur exactement
+ *    ce qui venait d'etre durci. On reutilise, on ne recopie pas.
+ *
+ * ── LES SOURCES, CITEES AVEC LEUR DATE (AC1) ─────────────────────────────────
+ *
+ *  [AN] AN4545 « VL6180X basic ranging application note », STMicroelectronics,
+ *       DocID026571 Rev 1, juin 2014, §9 « SR03 settings », p. 24-25.
+ *  [DS] VL6180X « Proximity and ambient light sensing (ALS) module », datasheet
+ *       STMicroelectronics, DocID026171 Rev 7, mars 2016.
+ *
+ * 🔴 PROVENANCE — ECRITE PARCE QU'ELLE N'EST PAS BANALE : `st.com` est
+ *    INJOIGNABLE depuis ce poste (deja constate en dn4-3). La cause est
+ *    maintenant NOMMEE : ce n'est pas une panne reseau — le handshake TLS
+ *    ABOUTIT, puis le serveur casse le flux (`HTTP/2 stream 1 was not closed
+ *    cleanly: INTERNAL_ERROR`), et en HTTP/1.1 force il expire sans un octet.
+ *    Le meme appel depuis Windows (hors WSL) expire aussi ⇒ ⛔ ce n'est PAS WSL.
+ *    Les deux documents viennent donc de MIROIRS, et leur identite est
+ *    VERIFIEE, pas supposee :
+ *      · [AN] telecharge DEUX FOIS depuis deux hebergeurs independants
+ *        (cdn.sparkfun.com et pololu.com) ⇒ sha256 IDENTIQUE
+ *        091291adc9812852e4206f4bf33a6a1646a51c1c9d92bf5c4b00d1ee5efabbab.
+ *        Metadonnees PDF : Author=STMICROELECTRONICS, Keywords porte « 026571 ».
+ *      · [DS] pololu.com, sha256 87e1b09668160d71…, Author=STMICROELECTRONICS,
+ *        Keywords porte « 026171 », 87 pages.
+ * ⚠️ ET UN PIEGE RENCONTRE, ECRIT POUR QU'IL NE SE REJOUE PAS : deux autres
+ *    URL Pololu rendaient un PDF ST authentique en HTTP 200… du VL53L0X. Le
+ *    code 200 et le nom de fichier MENTAIENT tous les deux ; seule la lecture
+ *    du titre l'a vu. C'est exactement la confusion que §13.16.7 avait deja
+ *    tranchee une fois.
+ */
+
+/* ── Registres [DS] §6.2 / Table 28, ⛔ AUCUN de memoire ────────────────────── */
+#define TOF_REG_MODEL_ID     0x0000u /* [DS] 6.2.1  — attendu 0xB4              */
+#define TOF_REG_INT_CONFIG   0x0014u /* [DS] 6.2.12 SYSTEM__INTERRUPT_CONFIG    */
+#define TOF_REG_INT_CLEAR    0x0015u /* [DS] 6.2.13 [2:0] b0 range b1 als b2 err*/
+#define TOF_REG_FRESH_RESET  0x0016u /* [DS] 6.2.14 — ⛔ LU, JAMAIS ECRIT       */
+#define TOF_REG_RANGE_START  0x0018u /* [DS] 6.2.16 b0 startstop b1 mode        */
+#define TOF_REG_MAX_CONV     0x001Cu /* [DS] 6.2.20 [5:0] 1..63 ms, reset 0x31  */
+#define TOF_REG_ALS_START    0x0038u /* [DS] 6.2.31                             */
+#define TOF_REG_ALS_GAIN     0x003Fu /* [DS] 6.2.35                             */
+#define TOF_REG_ALS_INTEG_HI 0x0040u /* [DS] 6.2.36 — registre 16 b, champ [8:0]*/
+#define TOF_REG_ALS_INTEG_LO 0x0041u
+#define TOF_REG_RANGE_STATUS 0x004Du /* [DS] 6.2.37 [7:4] code d'erreur         */
+#define TOF_REG_INT_STATUS   0x004Fu /* [DS] 6.2.39 [2:0] range, [5:3] als      */
+#define TOF_REG_ALS_VAL      0x0050u /* [DS] 6.2.40 — 16 bits                   */
+#define TOF_REG_RANGE_VAL    0x0062u /* [DS] 6.2.42 — 🔴 [7:0], UNITE mm        */
+#define TOF_REG_RANGE_RETURN_RATE 0x0066u /* [DS] 6.2.44 — 16 bits              */
+
+#define TOF_INT_NEW_SAMPLE   4u      /* [DS] 6.2.39 : « New Sample Ready »      */
+#define TOF_MODEL_ID_ATTENDU 0xB4u
+#define TOF_POLL_MS_MAX      600     /* borne de garde du sondage d'interruption*/
+#define TOF_N_MAX            200     /* borne haute de `tof range <n>`          */
+
+typedef struct {
+    uint16_t reg;
+    uint8_t  val;
+} tof_ecr_t;
+
+/*
+ * 🔴 [AN] §9, bloc « Mandatory : private registers » — RECOPIE VERBATIM,
+ *    dans l'ordre, 31 ecritures. ⛔ Aucune n'est documentee dans [DS] : ce sont
+ *    des registres PRIVES. C'est precisement pour ça qu'on ne peut pas les
+ *    deviner, et que leur absence est la cause candidate n°1 de la refutation
+ *    de l'ALS en §13.19.5.
+ */
+static const tof_ecr_t k_sr03_prive[] = {
+    {0x0207, 0x01}, {0x0208, 0x01}, {0x0096, 0x00}, {0x0097, 0xFD},
+    {0x00E3, 0x00}, {0x00E4, 0x04}, {0x00E5, 0x02}, {0x00E6, 0x01},
+    {0x00E7, 0x03}, {0x00F5, 0x02}, {0x00D9, 0x05}, {0x00DB, 0xCE},
+    {0x00DC, 0x03}, {0x00DD, 0xF8}, {0x009F, 0x00}, {0x00A3, 0x3C},
+    {0x00B7, 0x00}, {0x00BB, 0x3C}, {0x00B2, 0x09}, {0x00CA, 0x09},
+    {0x0198, 0x01}, {0x01B0, 0x17}, {0x01AD, 0x00}, {0x00FF, 0x05},
+    {0x0100, 0x05}, {0x0199, 0x05}, {0x01A6, 0x1B}, {0x01AC, 0x3E},
+    {0x01A7, 0x1F}, {0x0030, 0x00},
+};
+
+/*
+ * [AN] §9, bloc « Recommended : Public registers » — avec UN ECART, ET IL EST
+ * DECLARE ICI PLUTOT QUE JOUE EN SILENCE :
+ *
+ * 🔴 [AN] ecrit `WriteByte(0x0040, 0x63)` en commentant « Set ALS integration
+ *    time to 100ms ». Or [DS] §6.2.36 definit SYSALS__INTEGRATION_PERIOD comme
+ *    un registre de 16 BITS a l'offset 0x040, champ utile [8:0], « 1 code =
+ *    1 ms (0 = 1 ms). Recommended setting is 100 ms (0x63) ».
+ *    ⇒ 0x63 est la valeur du CHAMP, donc l'octet de POIDS FAIBLE (0x0041).
+ *      L'ecriture de [AN] pose 0x63 dans l'octet de POIDS FORT et deborde le
+ *      champ. Les deux documents ST se CONTREDISENT ; [DS] fait foi sur la
+ *      carte des registres.
+ * ✅ Consequence heureuse : dn4-3 avait deja ecrit 0x0040=0x00 / 0x0041=0x63.
+ *    C'est dn4-3 QUI A RAISON, et [AN] qui est bancal. ⛔ Ne pas inverser ce
+ *    verdict — et la garde anti-fantome de `dn_env` (qui relit 0x0041 == 0x63)
+ *    reste conforme APRES le passage de SR03, ce qui n'aurait pas ete le cas en
+ *    jouant [AN] a la lettre.
+ *
+ * ⛔ Le bloc « Optional » de [AN] §9 (0x001B, 0x003E, 0x0014) N'EST PAS JOUE :
+ *    les deux premiers reglent des periodes d'INTER-MESURE du mode continu, que
+ *    cette campagne n'utilise pas (elle tire coup par coup) ; le troisieme
+ *    (0x0014 = 0x24) ECRASERAIT le 0x20 pose par `dn_env_configurer()`, dont le
+ *    temoin de conformite depend. Choix ecrit, pas subi.
+ */
+static const tof_ecr_t k_sr03_public[] = {
+    {0x0011, 0x10}, /* [AN] polling de « New Sample ready » en fin de mesure   */
+    {0x010A, 0x30}, /* [AN] READOUT__AVERAGING_SAMPLE_PERIOD                   */
+    {0x003F, 0x46}, /* [AN] gains clair/sombre — IDENTIQUE a ce que dn4-3 pose */
+    {0x0031, 0xFF}, /* [AN] SYSRANGE__VHV_REPEAT_RATE                          */
+    {0x0040, 0x00}, /* 🔴 ECART DECLARE ci-dessus — [DS] §6.2.36, poids fort   */
+    {0x0041, 0x63}, /* 🔴 ECART DECLARE ci-dessus — [DS] §6.2.36, poids faible */
+    {0x002E, 0x01}, /* [AN] une calibration de temperature du telemetre        */
+};
+
+/* ── Primitives 16 bits, sur un device DEJA ouvert ────────────────────────── */
+
+static esp_err_t tof_lire(i2c_master_dev_handle_t dev, uint16_t reg, uint8_t *b,
+                          size_t n)
+{
+    const uint8_t idx[2] = {(uint8_t)(reg >> 8), (uint8_t)(reg & 0xFF)};
+    return i2c_master_transmit_receive(dev, idx, 2, b, n, 200);
+}
+
+static esp_err_t tof_ecrire(i2c_master_dev_handle_t dev, uint16_t reg, uint8_t v)
+{
+    const uint8_t o[3] = {(uint8_t)(reg >> 8), (uint8_t)(reg & 0xFF), v};
+    return i2c_master_transmit(dev, o, sizeof o, 200);
+}
+
+/* [DS] Table 12 « Range error codes » — le decodage, ⛔ pas un numero nu. */
+static const char *tof_erreur_nom(uint8_t code)
+{
+    switch (code) {
+    case 0x0: return "aucune erreur";
+    case 0x1: return "VCSEL Continuity Test";
+    case 0x2: return "VCSEL Watchdog Test";
+    case 0x3: return "VCSEL Watchdog";
+    case 0x4: return "PLL1 Lock";
+    case 0x5: return "PLL2 Lock";
+    case 0x6: return "Early Convergence Estimate";
+    case 0x7: return "Max Convergence (pas converge dans le budget 0x001C)";
+    case 0x8: return "No Target Ignore";
+    case 0xB: return "Max Signal To Noise Ratio";
+    case 0xC: return "Raw Ranging Algo Underflow (cible < 0)";
+    case 0xD: return "Range overflow — cible VUE mais > ~200 mm ([DS] Table 12)";
+    case 0xE: return "Raw Ranging Algo Overflow";
+    case 0xF: return "Range overflow — cible VUE mais > ~200 mm ([DS] Table 12)";
+    default:  return "code non documente par [DS]";
+    }
+}
+
+/* Sonde le registre d'interruption jusqu'a « New Sample Ready » ou expiration.
+ * ⚠️ Rend le temps reellement attendu : une mesure qui prend 400 ms n'est pas
+ *    la meme information qu'une mesure qui prend 8 ms, et la moyenne des deux
+ *    ne veut rien dire. */
+static esp_err_t tof_attendre(i2c_master_dev_handle_t dev, bool als,
+                              int *attendu_ms)
+{
+    const int64_t t0 = esp_timer_get_time();
+    for (;;) {
+        uint8_t s;
+        esp_err_t e = tof_lire(dev, TOF_REG_INT_STATUS, &s, 1);
+        if (e != ESP_OK) {
+            *attendu_ms = (int)((esp_timer_get_time() - t0) / 1000);
+            return e;
+        }
+        const uint8_t champ = als ? (uint8_t)((s >> 3) & 0x07u)
+                                  : (uint8_t)(s & 0x07u);
+        if (champ == TOF_INT_NEW_SAMPLE) {
+            *attendu_ms = (int)((esp_timer_get_time() - t0) / 1000);
+            return ESP_OK;
+        }
+        if (((esp_timer_get_time() - t0) / 1000) > TOF_POLL_MS_MAX) {
+            *attendu_ms = (int)((esp_timer_get_time() - t0) / 1000);
+            return ESP_ERR_TIMEOUT;
+        }
+        vTaskDelay(pdMS_TO_TICKS(2));
+    }
+}
+
+/* ── `tof sr03` — LE POINT D'ARRET DE dn4-7 ─────────────────────────────────── */
+static int tof_cmd_sr03(void)
+{
+    i2c_master_dev_handle_t dev = NULL;
+    if (i2c_dev_ouvrir(DN_VL6180X_ADDR, &dev) != ESP_OK) {
+        return 1;
+    }
+
+    uint8_t id = 0;
+    if (tof_lire(dev, TOF_REG_MODEL_ID, &id, 1) != ESP_OK) {
+        printf("🔴 pas de reponse a 0x%02X — RIEN n'a ete ecrit.\n", DN_VL6180X_ADDR);
+        i2c_dev_fermer(dev);
+        return 1;
+    }
+    if (id != TOF_MODEL_ID_ATTENDU) {
+        printf("🔴 MODEL_ID = 0x%02X, attendu 0x%02X. Ce n'est pas le VL6180X.\n",
+               id, TOF_MODEL_ID_ATTENDU);
+        printf("   ⛔ RIEN n'a ete ecrit : jouer SR03 sur une autre puce serait\n");
+        printf("      ecrire 37 registres au hasard chez un inconnu.\n");
+        i2c_dev_fermer(dev);
+        return 1;
+    }
+
+    /* ⛔ ON LIT 0x0016, ON NE L'ECRIT PAS. Sa valeur est un FAIT sur l'historique
+     * de la puce ; [AN] §1.3 etape 4 classe d'ailleurs son ecriture
+     * « (Optional) ». La lecture, elle, est l'etape 1 de la meme procedure. */
+    uint8_t fresh = 0xFF;
+    const esp_err_t e_fresh = tof_lire(dev, TOF_REG_FRESH_RESET, &fresh, 1);
+    printf("MODEL_ID 0x%02X ✅ · FRESH_OUT_OF_RESET = ", id);
+    if (e_fresh == ESP_OK) {
+        printf("0x%02X (%s)\n", fresh,
+               fresh == 0x01 ? "frais — SR03 est A JOUER"
+                             : "deja initialise depuis sa mise sous tension");
+    } else {
+        printf("ILLISIBLE (%s)\n", esp_err_to_name(e_fresh));
+    }
+    if (e_fresh == ESP_OK && fresh != 0x01) {
+        printf("⚠️ [AN] §1.3 : la sequence se joue APRES la mise sous tension, et\n");
+        printf("   « must be repeated if the VL6180X has been power cycled ». Ici\n");
+        printf("   0x0016 ne vaut pas 0x01 ⇒ elle a DEJA ete jouee, ou quelqu'un a\n");
+        printf("   ecrit ce registre. On la rejoue quand meme (elle est idempotente\n");
+        printf("   par construction : ce sont des ecritures de valeurs fixes), mais\n");
+        printf("   ⛔ le resultat ne prouve alors RIEN sur un demarrage a froid.\n");
+    }
+
+    printf("\n[AN] AN4545 DocID026571 Rev 1 (juin 2014) §9 — %d prives + %d publics\n",
+           (int)(sizeof k_sr03_prive / sizeof k_sr03_prive[0]),
+           (int)(sizeof k_sr03_public / sizeof k_sr03_public[0]));
+
+    int ko = 0;
+    int n_prive = (int)(sizeof k_sr03_prive / sizeof k_sr03_prive[0]);
+    for (int i = 0; i < n_prive; i++) {
+        esp_err_t e = tof_ecrire(dev, k_sr03_prive[i].reg, k_sr03_prive[i].val);
+        if (e != ESP_OK) {
+            ko++;
+            printf("  🔴 prive[%02d] 0x%04X <- 0x%02X  ECHEC : %s\n", i,
+                   k_sr03_prive[i].reg, k_sr03_prive[i].val, esp_err_to_name(e));
+        }
+    }
+    int n_pub = (int)(sizeof k_sr03_public / sizeof k_sr03_public[0]);
+    for (int i = 0; i < n_pub; i++) {
+        esp_err_t e = tof_ecrire(dev, k_sr03_public[i].reg, k_sr03_public[i].val);
+        if (e != ESP_OK) {
+            ko++;
+            printf("  🔴 public[%02d] 0x%04X <- 0x%02X  ECHEC : %s\n", i,
+                   k_sr03_public[i].reg, k_sr03_public[i].val, esp_err_to_name(e));
+        }
+    }
+    printf("%d ecriture(s), %d en ECHEC\n", n_prive + n_pub, ko);
+
+    /* 🔴 LA RELECTURE — et elle ne vaut QUE pour les registres PUBLICS.
+     * Les prives ne sont pas documentes : ST ne promet nulle part qu'ils se
+     * relisent, et un ecart de relecture sur l'un d'eux ne prouverait donc
+     * RIEN. On imprime ce qu'ils rendent comme une DONNEE, ⛔ pas comme un
+     * verdict. C'est le seul traitement honnete d'un registre non documente. */
+    printf("\nrelecture des PUBLICS (les seuls dont [DS] promette la carte) :\n");
+    int pub_ko = 0;
+    for (int i = 0; i < n_pub; i++) {
+        uint8_t v = 0;
+        esp_err_t e = tof_lire(dev, k_sr03_public[i].reg, &v, 1);
+        const bool ok = (e == ESP_OK && v == k_sr03_public[i].val);
+        if (!ok) {
+            pub_ko++;
+        }
+        printf("  %s 0x%04X : ecrit 0x%02X, relu ", ok ? "✅" : "🔴",
+               k_sr03_public[i].reg, k_sr03_public[i].val);
+        if (e == ESP_OK) {
+            printf("0x%02X\n", v);
+        } else {
+            printf("ILLISIBLE (%s)\n", esp_err_to_name(e));
+        }
+    }
+
+    printf("\ntemoin des PRIVES (donnee BRUTE — ⛔ AUCUN verdict, non documentes) :\n");
+    for (int i = 0; i < n_prive; i++) {
+        uint8_t v = 0;
+        if (tof_lire(dev, k_sr03_prive[i].reg, &v, 1) == ESP_OK) {
+            printf("  0x%04X ecrit 0x%02X relu 0x%02X%s", k_sr03_prive[i].reg,
+                   k_sr03_prive[i].val, v,
+                   ((i % 3) == 2) ? "\n" : "   ");
+        } else {
+            printf("  0x%04X ecrit 0x%02X relu  ??  %s", k_sr03_prive[i].reg,
+                   k_sr03_prive[i].val, ((i % 3) == 2) ? "\n" : "   ");
+        }
+    }
+    printf("\n");
+
+    i2c_dev_fermer(dev);
+
+    if (ko > 0) {
+        printf("\n🔴 %d ECRITURE(S) N'ONT PAS ABOUTI. ⛔ NE PAS CONCLURE que SR03\n", ko);
+        printf("   « ne marche pas » : §13.17.1 a MESURE que ce bus lache les\n");
+        printf("   transferts multi-octets dans les ~40 s d'un demarrage a froid,\n");
+        printf("   et le VL6180X est LE capteur qui en souffre le plus (seul index\n");
+        printf("   de registre sur 16 bits). ⇒ attendre, `env` pour lire err_i2c,\n");
+        printf("   puis rejouer. C'est le BUS ou SR03 : les distinguer est le\n");
+        printf("   travail, pas un detail.\n");
+        return 1;
+    }
+    if (pub_ko > 0) {
+        printf("\n🔴 %d registre(s) PUBLIC(S) ne se relisent pas conformes alors que\n",
+               pub_ko);
+        printf("   toutes les ecritures ont abouti. C'est un fantome (§13.10) ou une\n");
+        printf("   puce qui refuse le reglage, ⛔ pas un probleme de transport.\n");
+        return 1;
+    }
+    printf("\n✅ SR03 POSE ET RELU CONFORME. ⛔ Cela ne prouve PAS encore que la\n");
+    printf("   puce MESURE : AC1 exige la PROPORTIONNALITE. ⇒ `tof balayage`.\n");
+    return 0;
+}
+
+/* ── `tof als <ms>` — UNE mesure ALS a integration imposee ───────────────────── */
+static int tof_als_un(i2c_master_dev_handle_t dev, int ms, bool entete)
+{
+    /* [DS] §6.2.36 : « 1 code = 1 ms (0 = 1 ms) » ⇒ le code vaut ms - 1. */
+    const uint16_t code = (uint16_t)((ms > 0 ? ms : 1) - 1);
+    if (entete) {
+        printf("  ms  code    0x0050    decimal  attendu_ms  statut\n");
+    }
+    esp_err_t e = tof_ecrire(dev, TOF_REG_ALS_INTEG_HI, (uint8_t)(code >> 8));
+    if (e == ESP_OK) {
+        e = tof_ecrire(dev, TOF_REG_ALS_INTEG_LO, (uint8_t)(code & 0xFFu));
+    }
+    if (e == ESP_OK) {
+        e = tof_ecrire(dev, TOF_REG_INT_CLEAR, 0x07);
+    }
+    if (e == ESP_OK) {
+        e = tof_ecrire(dev, TOF_REG_ALS_START, 0x01);
+    }
+    if (e != ESP_OK) {
+        printf("%4d  %04X    --        --       --          ECRITURE KO (%s)\n",
+               ms, code, esp_err_to_name(e));
+        return 1;
+    }
+    int attendu = 0;
+    const esp_err_t ea = tof_attendre(dev, true, &attendu);
+    uint8_t b[2] = {0, 0};
+    const esp_err_t el = tof_lire(dev, TOF_REG_ALS_VAL, b, 2);
+    const uint16_t val = (uint16_t)((b[0] << 8) | b[1]);
+    tof_ecrire(dev, TOF_REG_INT_CLEAR, 0x07);
+
+    printf("%4d  %04X    %02X%02X      %5u    %4d       %s\n", ms, code, b[0],
+           b[1], val, attendu,
+           (el != ESP_OK)       ? "LECTURE KO"
+           : (ea == ESP_ERR_TIMEOUT) ? "⚠️ PAS DE New Sample Ready"
+           : (ea != ESP_OK)     ? "SONDAGE KO"
+                                : "ok");
+    return 0;
+}
+
+/* ── `tof balayage` — 🔴 LE CRITERE D'AC1, REJOUE A L'IDENTIQUE ─────────────── */
+static int tof_cmd_balayage(void)
+{
+    /* 🔴 LES HUIT POINTS DE §13.19.5, DANS LE MEME ORDRE. Le point a 1 ms est
+     * OBLIGATOIRE (AC1) : c'est lui qui a dementi la conclusion la plus
+     * dangereuse de dn4-3 (« l'integration n'agit pas »). */
+    static const int k_ms[] = {1, 2, 3, 5, 10, 20, 50, 100};
+
+    i2c_master_dev_handle_t dev = NULL;
+    if (i2c_dev_ouvrir(DN_VL6180X_ADDR, &dev) != ESP_OK) {
+        return 1;
+    }
+    uint8_t gain = 0;
+    if (tof_lire(dev, TOF_REG_ALS_GAIN, &gain, 1) != ESP_OK) {
+        printf("🔴 gain illisible — le balayage n'aurait pas de condition connue.\n");
+        i2c_dev_fermer(dev);
+        return 1;
+    }
+    printf("BALAYAGE D'INTEGRATION — rejeu a l'identique de §13.19.5\n");
+    printf("ALS_GAIN (0x003F) = 0x%02X %s\n", gain,
+           gain == 0x46 ? "(gain 1,0x — la condition de §13.19.5)"
+                        : "⚠️ ⛔ PAS 0x46 : la condition DIFFERE de §13.19.5");
+    printf("🔴 le critere n'est PAS « ça rend un nombre » : c'est que la reponse\n");
+    printf("   VARIE AVEC LA DUREE. Une colonne constante = comparateur sature.\n\n");
+
+    int ko = 0;
+    for (int i = 0; i < (int)(sizeof k_ms / sizeof k_ms[0]); i++) {
+        ko += tof_als_un(dev, k_ms[i], i == 0);
+    }
+    i2c_dev_fermer(dev);
+    printf("\n⚠️ VERDICT A LA MAIN, ⛔ pas par la console : comparer la colonne\n");
+    printf("   « decimal » a celle de §13.19.5 (0000 0000 FFFF FFFF FFFF FFFF\n");
+    printf("   FFFF FFFF). Si elle est encore binaire, SR03 n'a rien change et\n");
+    printf("   Z1 se solde PAR LA NEGATIVE — c'est un RESULTAT.\n");
+    return ko > 0 ? 1 : 0;
+}
+
+/* Racine entiere — ⛔ pas de <math.h> ajoute pour un seul appel, et l'ecart-type
+ * se rend en DIXIEMES de mm : `sqrt(variance x 100)` est exact a l'entier pres,
+ * ce qui est plus fin que le pas de quantification du capteur (1 mm). */
+static uint32_t tof_racine(uint32_t x)
+{
+    if (x == 0) {
+        return 0;
+    }
+    uint32_t r = x, p = 0;
+    while (r != p) {
+        p = r;
+        r = (r + x / r) / 2;
+    }
+    return r;
+}
+
+/* ── `tof range [n]` — LA PORTEE, AVEC SES TROIS ETATS (AC2/AC4) ───────────── */
+static int tof_cmd_range(int n)
+{
+    i2c_master_dev_handle_t dev = NULL;
+    if (i2c_dev_ouvrir(DN_VL6180X_ADDR, &dev) != ESP_OK) {
+        return 1;
+    }
+    uint8_t conv = 0;
+    tof_lire(dev, TOF_REG_MAX_CONV, &conv, 1);
+
+    printf("TELEMETRIE — n = %d, budget de convergence 0x001C = 0x%02X (%u ms)\n",
+           n, conv, (unsigned)(conv & 0x3Fu));
+    printf("🔴 PLAFOND STRUCTUREL : [DS] §6.2.42 definit RESULT__RANGE_VAL comme\n");
+    printf("   un champ [7:0] en MILLIMETRES ⇒ 255 mm est le MAXIMUM REPRESENTABLE.\n");
+    printf("   ⛔ Aucun reglage ne peut faire tenir 2 m dans un octet.\n");
+    printf("⚠️ ET LE PIEGE D'AC2 EST DOCUMENTE PAR ST : [DS] Table 12 erreur 16\n");
+    printf("   « Ranging_Filtered » ne sort QU'AVEC l'API ST (absente ici). Sans\n");
+    printf("   elle, une cible TRES REFLECHISSANTE entre 600 mm et 1,2 m peut\n");
+    printf("   rendre une valeur PROCHE ET PLAUSIBLE, sans aucun code d'erreur.\n");
+    printf("   ⇒ TOUJOURS croiser avec la distance MESUREE AU METRE.\n\n");
+
+    printf("  #   0x0062   status  err  retour  ms   lecture\n");
+
+    uint32_t somme = 0, n_ok = 0;
+    /* ⚠️ `static` DELIBERE : 200 x uint32 = 800 o, et la tache console n'a pas
+     * une pile a gaspiller. Le REPL est mono-thread, aucune reentrance. */
+    static uint32_t vals[TOF_N_MAX];
+    uint32_t n_err_puce = 0, n_transport = 0;
+
+    for (int i = 0; i < n; i++) {
+        esp_err_t e = tof_ecrire(dev, TOF_REG_INT_CLEAR, 0x07);
+        if (e == ESP_OK) {
+            e = tof_ecrire(dev, TOF_REG_RANGE_START, 0x01); /* [DS] 6.2.16 : coup par coup */
+        }
+        if (e != ESP_OK) {
+            n_transport++;
+            printf("%3d   --       --      --   --      --   DEMARRAGE KO (%s)\n",
+                   i, esp_err_to_name(e));
+            continue;
+        }
+        int attendu = 0;
+        const esp_err_t ea = tof_attendre(dev, false, &attendu);
+        uint8_t v = 0, st = 0, rr[2] = {0, 0};
+        const esp_err_t e1 = tof_lire(dev, TOF_REG_RANGE_VAL, &v, 1);
+        const esp_err_t e2 = tof_lire(dev, TOF_REG_RANGE_STATUS, &st, 1);
+        tof_lire(dev, TOF_REG_RANGE_RETURN_RATE, rr, 2);
+        tof_ecrire(dev, TOF_REG_INT_CLEAR, 0x07);
+
+        if (e1 != ESP_OK || e2 != ESP_OK) {
+            n_transport++;
+            printf("%3d   --       --      --   --      %3d  LECTURE KO\n", i, attendu);
+            continue;
+        }
+        const uint8_t err = (uint8_t)(st >> 4);
+        const uint16_t retour = (uint16_t)((rr[0] << 8) | rr[1]);
+        printf("%3d   %3u mm   0x%02X    %X    %5u  %3d  %s\n", i, v, st, err,
+               retour, attendu,
+               (ea == ESP_ERR_TIMEOUT) ? "⚠️ PAS DE New Sample Ready" : "ok");
+        if (err == 0) {
+            if (n_ok < TOF_N_MAX) {
+                vals[n_ok] = v;
+            }
+            n_ok++;
+            somme += v;
+        } else {
+            n_err_puce++;
+        }
+    }
+    i2c_dev_fermer(dev);
+
+    printf("\n🔴 LES TROIS ETATS D'AC2, ⛔ PAS DEUX :\n");
+    printf("  1. mesure VALIDE (err = 0)          : %lu / %d\n",
+           (unsigned long)n_ok, n);
+    printf("  2. la PUCE DIT qu'elle a echoue     : %lu / %d\n",
+           (unsigned long)n_err_puce, n);
+    printf("  3. valeur PLAUSIBLE MAIS FAUSSE     : ⛔ LA CONSOLE NE PEUT PAS LE\n");
+    printf("     DIRE. Il faut la distance PHYSIQUE au metre. C'est l'etat\n");
+    printf("     DANGEREUX (famille du fantome §13.10) — c'est l'owner qui tranche.\n");
+    printf("  · transport I2C en echec            : %lu / %d\n",
+           (unsigned long)n_transport, n);
+
+    if (n > 0) {
+        printf("\ntaux de detection : %lu/%d = %d,%d %%\n", (unsigned long)n_ok, n,
+               (int)((n_ok * 100) / (uint32_t)n),
+               (int)(((n_ok * 1000) / (uint32_t)n) % 10));
+    }
+    if (n_ok > 0) {
+        const uint32_t nb = (n_ok < TOF_N_MAX) ? n_ok : TOF_N_MAX;
+        const uint32_t moy10 = (somme * 10u) / n_ok;
+        /* ⛔ NE PAS diviser chaque terme par nb : la troncature entiere ferait
+         * disparaitre tout ecart inferieur a sqrt(nb) dixiemes, et publierait
+         * « ecart-type 0,0 mm » sur des valeurs qui bougent. On somme, PUIS on
+         * divise, sur 64 bits. */
+        uint64_t somme_carres = 0;
+        for (uint32_t i = 0; i < nb; i++) {
+            const int64_t d10 = (int64_t)(vals[i] * 10u) - (int64_t)moy10;
+            somme_carres += (uint64_t)(d10 * d10);
+        }
+        const uint32_t et10 = tof_racine((uint32_t)(somme_carres / nb));
+        printf("moyenne des VALIDES : %lu,%lu mm · ecart-type : %lu,%lu mm (n=%lu)\n",
+               (unsigned long)(moy10 / 10), (unsigned long)(moy10 % 10),
+               (unsigned long)(et10 / 10), (unsigned long)(et10 % 10),
+               (unsigned long)nb);
+        printf("⚠️ 🔴 UNE PORTEE ATTEINTE 1 FOIS SUR 5 N'EST PAS UNE PORTEE (AC4).\n");
+        printf("   C'est le TAUX ci-dessus qui est le livrable, ⛔ pas un maximum\n");
+        printf("   atteint une fois.\n");
+    } else {
+        printf("⛔ AUCUNE mesure valide : pas de moyenne, pas d'ecart-type. Publier\n");
+        printf("   une statistique sur zero echantillon fabriquerait un chiffre.\n");
+    }
+    return 0;
+}
+
+/* ── `tof etat` — CE QUE LA PUCE PORTE, SANS RIEN ECRIRE ────────────────────── */
+static int tof_cmd_etat(void)
+{
+    i2c_master_dev_handle_t dev = NULL;
+    if (i2c_dev_ouvrir(DN_VL6180X_ADDR, &dev) != ESP_OK) {
+        return 1;
+    }
+    static const struct {
+        uint16_t reg;
+        const char *nom;
+    } k_vue[] = {
+        {TOF_REG_MODEL_ID,     "MODEL_ID              (attendu B4)"},
+        {TOF_REG_INT_CONFIG,   "INT_CONFIG_GPIO       (dn4-3 pose 20)"},
+        {TOF_REG_FRESH_RESET,  "FRESH_OUT_OF_RESET    (01 = frais)"},
+        {TOF_REG_MAX_CONV,     "MAX_CONVERGENCE_TIME  (reset 31, [5:0] ms)"},
+        {TOF_REG_ALS_GAIN,     "ALS_ANALOGUE_GAIN     (dn4-3 pose 46)"},
+        {TOF_REG_ALS_INTEG_HI, "ALS_INTEGRATION hi    (attendu 00)"},
+        {TOF_REG_ALS_INTEG_LO, "ALS_INTEGRATION lo    (attendu 63)"},
+        {TOF_REG_RANGE_STATUS, "RANGE_STATUS          ([7:4] = erreur)"},
+        {TOF_REG_INT_STATUS,   "INTERRUPT_STATUS_GPIO"},
+        {TOF_REG_RANGE_VAL,    "RANGE_VAL             (mm, plafond 255)"},
+    };
+    printf("VL6180X @ 0x%02X — LECTURE SEULE, ⛔ aucune ecriture\n", DN_VL6180X_ADDR);
+    for (int i = 0; i < (int)(sizeof k_vue / sizeof k_vue[0]); i++) {
+        uint8_t v = 0;
+        const esp_err_t e = tof_lire(dev, k_vue[i].reg, &v, 1);
+        if (e == ESP_OK) {
+            printf("  0x%04X  %02X   %s\n", k_vue[i].reg, v, k_vue[i].nom);
+        } else {
+            printf("  0x%04X  --   %s  (%s)\n", k_vue[i].reg, k_vue[i].nom,
+                   esp_err_to_name(e));
+        }
+    }
+    uint8_t st = 0;
+    if (tof_lire(dev, TOF_REG_RANGE_STATUS, &st, 1) == ESP_OK) {
+        printf("dernier code d'erreur de portee : %X — %s\n", st >> 4,
+               tof_erreur_nom((uint8_t)(st >> 4)));
+    }
+    i2c_dev_fermer(dev);
+    return 0;
+}
+
+static void tof_usage(void)
+{
+    printf("usage : tof etat                 registres, LECTURE SEULE\n");
+    printf("        tof sr03                 joue [AN] AN4545 Rev 1 §9 (37 ecritures)\n");
+    printf("        tof balayage             rejeu de §13.19.5 — LE critere d'AC1\n");
+    printf("        tof als <ms=1..500>      une mesure ALS a integration imposee\n");
+    printf("        tof range [n=1..%d]     telemetrie + les TROIS etats\n", TOF_N_MAX);
+    printf("🔴 ORDRE IMPOSE PAR LA STORY : `sr03` PUIS `balayage`. Si le balayage\n");
+    printf("   n'est pas PROPORTIONNEL, Z1 se solde par la negative et dn4-7\n");
+    printf("   S'ARRETE — ⛔ on ne mesure pas une portee avec une puce non\n");
+    printf("   initialisee : elle rendrait des distances FAUSSES ET PLAUSIBLES.\n");
+    printf("⚠️ ⛔ NE RIEN MESURER DANS LES ~40 PREMIERES SECONDES d'un demarrage a\n");
+    printf("   FROID : §13.17.1 a mesure que le bus s'y degrade et que LE SCAN NE\n");
+    printf("   LE VOIT PAS. Une campagne lancee la mesurerait le BUS, pas le ToF.\n");
+}
+
+static int cmd_tof(int argc, char **argv)
+{
+    if (argc == 2 && strcmp(argv[1], "etat") == 0) {
+        return tof_cmd_etat();
+    }
+    if (argc == 2 && strcmp(argv[1], "sr03") == 0) {
+        return tof_cmd_sr03();
+    }
+    if (argc == 2 && strcmp(argv[1], "balayage") == 0) {
+        return tof_cmd_balayage();
+    }
+    if (argc == 3 && strcmp(argv[1], "als") == 0) {
+        char *fin = NULL;
+        const long ms = strtol(argv[2], &fin, 10);
+        if (!fin || *fin != '\0' || ms < 1 || ms > 500) {
+            printf("⛔ <ms> en DECIMAL, 1..500. [DS] §6.2.36 : champ [8:0], donc\n");
+            printf("   511 ms est la borne haute du registre ; on s'arrete a 500.\n");
+            return 1;
+        }
+        i2c_master_dev_handle_t dev = NULL;
+        if (i2c_dev_ouvrir(DN_VL6180X_ADDR, &dev) != ESP_OK) {
+            return 1;
+        }
+        const int r = tof_als_un(dev, (int)ms, true);
+        i2c_dev_fermer(dev);
+        return r;
+    }
+    if (argc >= 2 && strcmp(argv[1], "range") == 0) {
+        long n = 10;
+        if (argc == 3) {
+            char *fin = NULL;
+            n = strtol(argv[2], &fin, 10);
+            if (!fin || *fin != '\0' || n < 1 || n > TOF_N_MAX) {
+                printf("⛔ <n> en DECIMAL, 1..%d.\n", TOF_N_MAX);
+                return 1;
+            }
+        }
+        return tof_cmd_range((int)n);
+    }
+    tof_usage();
+    return argc == 1 ? 0 : 1;
+}
+
 /*
  * ── `capteurs` : l'ambiance, telle que la tâche l'a publiée (dn2-1) ──────────
  *
@@ -6271,6 +6909,17 @@ static const esp_console_cmd_t k_cmds[] = {
            "<addr> [n] | ecrire <addr> <o1..o8> | rafale <ms> — scan, "
            "transactions et saturation (dn2-1/dn4-2)",
            cmd_i2c),
+    /* ⚠️ INSCRITE ICI **ET** DANS LE « Jeu complet » DU README dans le MÊME
+     * geste — dn2-1 avait oublié `capteurs` au README, et « une commande qu'on
+     * ne trouve que depuis la carte n'est pas documentée ».
+     * 🔴 dn4-7 : instrument de QUALIFICATION, ⛔ hors du chemin de régime.
+     *    `dn_env` n'est pas touché tant que le balayage d'AC1 n'a pas prouvé la
+     *    PROPORTIONNALITÉ. */
+    DN_CMD("tof",
+           "tof | etat | sr03 | balayage | als <ms> | range [n] — VL6180X : "
+           "séquence SR03 (AN4545 Rev 1 §9), rejeu du balayage §13.19.5 et "
+           "télémétrie à trois états (dn4-7)",
+           cmd_tof),
     DN_CMD("pc",
            "pc | reset | $DN,<trame> — liaison PC : état, compteurs, injection "
            "(dn2-2)",
