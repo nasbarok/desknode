@@ -3970,6 +3970,92 @@ changent des chemins que la campagne a exercés — notamment la reconfiguration
 
 ---
 
+### 13.19.15 🎯 LA SÉANCE DE RE-VALIDATION APRÈS REVUE — firmware `1b2adca`, SHA LU AU BANDEAU
+
+⚠️ **SÉANCE PARTIELLE, ET LA LIMITE EST LA PREMIÈRE CHOSE ÉCRITE : L'OWNER N'ÉTAIT PAS À LA CARTE.**
+⇒ ⛔ **Aucun geste physique, aucun constat à l'œil.** Tout ce qui suit est **console seule**.
+**Ce qui reste DÛ, et qui ne peut PAS être coché sur cette séance** : AC1 (stimulus main posée),
+AC2/AC3 (les 6 débranchements physiques **et le délai de reprise**), AC5 (constat owner sur la
+dalle), AC13 (smoke owner). ⛔ **Ne pas lire les verts ci-dessous comme les soldant.**
+⚠️ Et **les 5 cases PC étaient nécessairement mortes** pendant toute la séance (exclusivité
+WSL↔COM3) — comme à chaque séance carte.
+
+**Chaîne : commits AVANT le flash** (`9f889bf` · `ed29bb4` · `37cbd99`), `porcelain` vérifié **VIDE**,
+build refait **après** les commits, SHA **lu au bandeau** (`app_init: App version`). Puis un
+correctif de séance (`1b2adca`), re-committé et re-flashé selon la même chaîne.
+
+#### a) 🎯 CE QUE LA CARTE A CONFIRMÉ
+
+| Vérification | Résultat |
+|---|---|
+| 🔴 **`w2` ne cloue plus le REPL** | **rend la main en 0,121 s**, colonne σ enfin peuplée (1,479 sur le lux) |
+| **Boot, les trois capteurs** | `dn_env pret — 3/3 devices ouverts` — aucune `configuration refusee`, donc **la branche de reprise n'a pas eu à jouer** |
+| **Aucune panique** | console vivante du premier boot, `6 cases auditees, 0 trou` |
+| **Courant en dixièmes** | `0,0 mA` — la décimale est là, le signe se pose |
+| **Bornes INA219 publiées** | `bus 0..32764 mV` (⛔ plus 32760) · `courant +-3200,0 mA` · `puissance 0..104844 mW` |
+| **`bl auto pas 1`** | 🎯 **REFUSÉ**, avec le mécanisme du gel expliqué |
+| **`bl auto bornes 0 54612`** | 🎯 **REFUSÉ** — 54611 est le plus grand lux publiable |
+| **`bl auto bornes 1 2 3`** | 🎯 **REFUSÉ** — argument surnuméraire |
+| **`bl auto on` sans lux appliqué** | 🎯 **« AUCUNE application depuis le boot »** — ⛔ plus « 100 % (sur 0 lx) » |
+| **La loi en régime** | **100 → 80 → 60 → 56 %** en 3 cycles, puis **STABLE** pendant que le lux dérive 322 → 314 lx |
+| **Pression** | porte enfin son **âge** (162 ms) ; unité **Pa** annoncée, conversion faite ici |
+| **Gaz, retour à l'état coupé** | propre après `capteurs gaz off` |
+| **`fps 15`** | **37,40 Hz, écart +0,00 %** — identique au T0 |
+
+#### b) Budgets sur `1b2adca` — ⚠️ tas relevé **AU BOOT PROPRE** (aucune navigation jouée)
+
+| Grandeur | `fd959f2` | **`1b2adca`** | Écart |
+|---|---:|---:|---|
+| Binaire | 977 760 o | **981 664 o** | **+3 904 o** — partition **77 % libre** |
+| RAM interne libre | 91 631 o | **91 575 o** | −56 o (bruit d'allocation) |
+| PSRAM libre | 7 768 008 o | **7 768 008 o** | ✅ **identique à l'octet** |
+| Tas LVGL utilisé | 20 472 o | **20 500 o** | +28 o (le même bruit qu'au T0, en sens inverse) |
+| Plus gros bloc | 40 752 o | **40 752 o** | ✅ **identique à l'octet** |
+| Fragmentation | 3 % | **2 %** | −1 pt |
+| `fps 15` | 37,40 Hz | **37,40 Hz** | ✅ **+0,00 %** |
+| Boot | 2 330 ms | **2 350 ms** | +20 ms |
+
+#### c) 🔴 CE QUE LA SÉANCE A TROUVÉ, ET QUE LA REVUE DE CODE AVAIT MANQUÉ
+
+**`env` NIAIT UNE DÉCISION OWNER.** Sa ligne de clôture imprimait *« X2 (la 6ᵉ case) **n'est pas
+tranché** »* — alors que **X2 EST TRANCHÉ** depuis la séance du même jour, et que c'est **le
+résultat central de la story** (*« AUCUNE 3ᵉ grandeur »*, décision owner).
+
+🔴 **LES TROIS COUCHES DE REVUE L'ONT MANQUÉE, ET LE MÉCANISME EST INSTRUCTIF** : elles ont lu
+**le code** et **les artefacts**, sur 2 285 lignes de diff — ⛔ **jamais la SORTIE de la commande**.
+Il a fallu **flasher et taper `env`** pour la voir.
+⇒ **LEÇON D'INSTRUMENT : une revue de code ne lit pas ce que le programme DIT.** Les étiquettes de
+sortie se relisent **À L'EXÉCUTION**, exactement comme les chiffres. ✅ Corrigé (`1b2adca`) et
+**vérifié à la sortie**, pas au source.
+
+#### d) 🔴 UNE PRÉMISSE DE MON PROPRE CORRECTIF, DÉMENTIE PAR LA CARTE
+
+Le message du commit `9f889bf` affirme : *« Au premier cycle après `capteurs gaz on` la plaque n'est
+pas à 300 °C et la compensation rend **~12,9 MΩ** — publié ET poussé dans W2 »*. **C'était une
+PRÉDICTION tirée de la lecture du source du composant, ⛔ pas une mesure.**
+
+**Mesuré sur la carte** : le premier cycle après `capteurs gaz on` publie **5 093 Ω**, et
+`gas_valid` **et** `heater_stable` sont **VRAIS immédiatement**. Puis la résistance grimpe :
+
+| cycle | +0 | +1 | +2 | +3 | +4 | +5 |
+|---|---:|---:|---:|---:|---:|---:|
+| **gaz (Ω)** | **5 093** | 13 673 | 16 365 | 18 929 | 21 259 | **24 468** |
+
+🔴 **CONCLUSION QUI VA CONTRE MON CORRECTIF : `heater_stable` dit « la plaque a atteint sa
+température », ⛔ PAS « le film MOX s'est stabilisé ».** Le **burn-in** décrit en §13.19.10
+(2 kΩ → 50 kΩ en 12 min) **traverse intégralement la garde** — les deux drapeaux sont verts pendant
+toute la montée.
+
+⇒ **Ce que le correctif fait vraiment** : il garde l'artefact `adc_gas ≈ 0` (une lecture invalide
+signalée par la puce), **qui ne s'est pas produit ici**. C'est une garde **défensive et correcte**,
+⛔ **mais elle ne répare PAS ce que §13.19.10 a mesuré.**
+⇒ **LA PISTE GAZ DE `w2` RESTE POLLUÉE PAR LE BURN-IN.** L'observation de §13.19.10 — *« le gaz
+qualifie UNIQUEMENT par son burn-in »* — **tient entièrement**, et le verdict X2 sur le gaz reste
+fondé sur l'**absence de réponse aux deux bouffées**, ⛔ pas sur son W2.
+⚠️ **Une garde correcte contre le mauvais mode de défaillance reste une garde qui ne protège pas.**
+
+---
+
 ### 13.19.13 ⚠️ CE QUI N'A PAS MARCHÉ DANS CETTE SÉANCE — y compris mes propres erreurs de méthode
 
 1. 🔴 **J'AI PUBLIÉ UN CRITÈRE DE VALIDITÉ, PUIS JE L'AI DÛ RÉTRACTER DEVANT L'OWNER.**
