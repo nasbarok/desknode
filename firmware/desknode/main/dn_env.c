@@ -539,6 +539,24 @@ static void lire_vl6180x(void)
 
 /* ── Le cycle ─────────────────────────────────────────────────────────────── */
 
+/*
+ * 🔴 LA LISTE DES CAPTEURS RÉELLEMENT CADENCÉS — UN SEUL ENDROIT.
+ * `dn_env_cycle()` et `dn_env_init()` doivent s'accorder : un capteur qu'on
+ * n'appelle pas dans le cycle ne doit pas non plus être ouvert ni configuré au
+ * boot, sinon le bandeau promet une reprise que rien ne viendra faire.
+ * ⛔ Ne pas dupliquer ce test : le faire diverger est précisément ce qui a
+ *   produit une étiquette menteuse le 2026-08-21.
+ */
+static bool cadence(dn_env_id_t id)
+{
+    /* DN_ENV_ALIM (INA219) : sorti du régime au correct-course du 2026-08-20,
+     * puis RETIRÉ PHYSIQUEMENT du bus par l'owner le 2026-08-21.
+     * ✅ Côté `dn_env_cycle()`, la garantie est encore plus forte : la fonction
+     *   `lire_ina219()` a été SUPPRIMÉE, donc le cadencer ne COMPILERAIT PAS.
+     *   Ce prédicat existe pour `dn_env_init()`, qui n'a pas cette protection. */
+    return id != DN_ENV_ALIM;
+}
+
 static void cycle_un(dn_env_id_t id, void (*lire)(void))
 {
     /* Backoff : device jamais ouvert, ou ouverture perdue. Une tentative par
@@ -638,8 +656,10 @@ void dn_env_cycle(void)
     int64_t t0 = esp_timer_get_time();
 
     cycle_un(DN_ENV_LUM, lire_bh1750);
-    /* ⛔ DN_ENV_ALIM (INA219) N'EST PLUS CADENCÉ — correct-course 2026-08-20.
-     * Le device reste ouvert et configuré, il n'est simplement plus lu. */
+    /* ⛔ DN_ENV_ALIM (INA219) n'est PAS cadencé, et la garantie est plus forte
+     * qu'un test : `lire_ina219()` N'EXISTE PLUS. Le cadencer ne compilerait
+     * pas. `cadence()` porte la même liste pour `dn_env_init()`, qui n'a pas
+     * cette protection-là. */
     cycle_un(DN_ENV_TOF, lire_vl6180x);
 
     int64_t duree = esp_timer_get_time() - t0;
@@ -736,6 +756,26 @@ esp_err_t dn_env_init(void)
 
     int ouverts = 0;
     for (int i = 0; i < DN_ENV_NB; i++) {
+        /* 🔴 UN CAPTEUR NON CADENCÉ NE S'OUVRE PAS, ET NE SE CONFIGURE PAS.
+         *
+         * Ajouté le 2026-08-21, après le RETRAIT PHYSIQUE de l'INA219 (owner).
+         * Sans ce test, l'init tentait d'ouvrir puis de configurer un composant
+         * qui n'est plus sur le bus : `configurer()` échouait, `compter_i2c()`
+         * posait un `err_i2c 1` définitif — et surtout le bandeau promettait
+         * « elle sera REPOSEE par `cycle_un()` dans 60 s ».
+         * ⛔ CETTE PROMESSE ÉTAIT FAUSSE : `cycle_un()` n'est plus appelée pour
+         *   DN_ENV_ALIM depuis le correct-course. RIEN ne l'aurait reposée.
+         * ⚠️ C'est EXACTEMENT le défaut corrigé sur le BH1750 en revue de code
+         *   le 2026-08-20 (« la garde de conformité la reposera » — elle ne le
+         *   pouvait pas), réintroduit par un AUTRE chemin quelques heures plus
+         *   tard. Un log qui promet une reprise doit être gardé par ce qui la
+         *   rend possible, pas par l'intention. */
+        if (!cadence((dn_env_id_t)i)) {
+            ESP_LOGI(TAG, "%s @ 0x%02X : NON CADENCE — ni ouvert ni configure. "
+                          "Voir `env` pour le motif.",
+                     k_nom[i], k_addr[i]);
+            continue;
+        }
         if (ouvrir((dn_env_id_t)i) != ESP_OK) {
             ESP_LOGW(TAG, "%s @ 0x%02X : ouverture refusee au boot — nouvelle "
                           "tentative dans %d s",

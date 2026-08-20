@@ -6256,8 +6256,8 @@ static const esp_console_cmd_t k_cmds[] = {
      * geste — dn2-1 avait oublié `capteurs` au README, et « une commande qu'on
      * ne trouve que depuis la carte n'est pas documentée ». */
     DN_CMD("env",
-           "env | reset — BH1750 / INA219 / VL6180X, les trois capteurs locaux "
-           "(dn4-3)",
+           "env | reset — BH1750 et VL6180X, les capteurs locaux CADENCES "
+           "(dn4-3). INA219 : RETIRE DU BUS le 2026-08-21, `env` dit pourquoi",
            cmd_env),
     DN_CMD("w2",
            "w2 | reset — le critere « une case doit BOUGER » mesure sur les "
