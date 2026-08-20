@@ -269,6 +269,10 @@ int64_t dn_capt_cadence_reelle_us(void);
 /* Identité RELEVÉE à l'init (0 si l'init n'a pas pu lire). Exposée pour que
  * `capteurs` puisse dire CE QU'IL A VU, sans re-solliciter le bus. */
 uint8_t dn_capt_chip_id(void);
+/* Vrai si la LECTURE de l'identite a abouti. ⛔ Ne dit RIEN de la valeur : elle
+ * separe « le capteur a repondu 0x00 » de « il n'a rien repondu », deux
+ * diagnostics OPPOSES qui vivaient dans la meme valeur avant dn4-2. */
+bool dn_capt_identite_lue(void);
 uint8_t dn_capt_variant(void);
 bool dn_capt_gaz_actif(void);
 

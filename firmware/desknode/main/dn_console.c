@@ -5049,11 +5049,22 @@ static int cmd_capteurs(int argc, char **argv)
     }
     printf("\n");
     uint8_t cid = dn_capt_chip_id();
-    printf("identite   : chip id 0x%02X · variant 0x%02X => %s\n", cid,
-           dn_capt_variant(),
-           cid != DN_BME680_CHIP_ID ? "PAS un BME680 — le cablage n'est pas en cause"
-           : dn_capt_variant() == DN_BME680_VARIANT_688 ? "BME688"
-                                                        : "BME680");
+    if (!dn_capt_identite_lue()) {
+        /* 🔴 dn4-2 : TROISIEME CAS. « chip id 0x00 » etait une AFFIRMATION SUR LE
+         * CAPTEUR alors qu'il n'avait rien dit — mesure du 2026-08-20, ou le
+         * bandeau annoncait 0x00 pendant que `i2c lire 77 D0` rendait 61. */
+        printf("identite   : ⛔ NON LUE — la transaction I2C a ECHOUE. Ce n'est PAS\n");
+        printf("             « il a repondu 0x00 » : il n'a RIEN repondu. Trancher\n");
+        printf("             par `i2c` puis `i2c lire %02X D0` (attendu 0x%02X).\n",
+               DN_BME680_ADDR, DN_BME680_CHIP_ID);
+    } else {
+        printf("identite   : chip id 0x%02X · variant 0x%02X => %s\n", cid,
+               dn_capt_variant(),
+               cid != DN_BME680_CHIP_ID
+                   ? "A REPONDU, mais ce n'est PAS un BME680"
+               : dn_capt_variant() == DN_BME680_VARIANT_688 ? "BME688"
+                                                            : "BME680");
+    }
     /* 🔴 LES REGISTRES RELUS, PAS LA CONFIG DEMANDEE. Cette ligne a MENTI le
      * 2026-08-17 : elle annonçait « FORCED · T/H 8x · P 1x · IIR 3 » pendant que
      * le capteur etait a 0x00 partout, remis a ses defauts par une coupure de son

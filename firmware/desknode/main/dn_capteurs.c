@@ -38,6 +38,17 @@ static portMUX_TYPE s_mux = portMUX_INITIALIZER_UNLOCKED;
 static bme680_handle_t s_dev;
 static uint8_t s_chip_id;
 static uint8_t s_variant;
+/* 🔴 dn4-2 (2026-08-20) — DEUX DIAGNOSTICS OPPOSES VIVAIENT DANS LA MEME VALEUR.
+ * `relever_identite()` ecrivait `s_chip_id = 0` quand la LECTURE ECHOUAIT, soit
+ * exactement ce qu'aurait rendu un capteur ayant REPONDU 0x00. Le message publie
+ * affirmait alors « chip id 0x00 » — c'est-a-dire une AFFIRMATION SUR LE CAPTEUR,
+ * alors que le capteur n'avait rien dit. Mesure du 2026-08-20 : le bandeau
+ * annoncait « identite INATTENDUE : chip id 0x00 » pendant que `i2c lire 77 D0`
+ * rendait `61` quelques secondes plus tard, scan a 8/8. ⇒ C'est la faute que ce
+ * depot a DEJA corrigee deux fois (tronquee/trop_longue en dn2-2, puis
+ * err_i2c/err_donnee DANS CE FICHIER au CR du 2026-08-17) — appliquee aux
+ * compteurs de REGIME, jamais a l'identification au BOOT. */
+static bool s_id_lue; /* la LECTURE a abouti (⛔ ne dit rien de la VALEUR) */
 static bool s_gaz = DN_CAPT_GAZ_DEFAUT;
 static bool s_gaz_demande = DN_CAPT_GAZ_DEFAUT;
 
@@ -297,6 +308,10 @@ bool dn_capt_config_conforme(void) { return s_conforme; }
 bool dn_capt_config_verdict_dispo(void) { return s_conf_dispo; }
 
 uint8_t dn_capt_chip_id(void) { return s_chip_id; }
+/* 🔴 dn4-2 : SANS CECI, `capteurs` continuerait d'imprimer « chip id 0x00 » sur
+ * une lecture ECHOUEE — le mensonge se serait DEPLACE du bandeau vers la console
+ * au lieu d'etre corrige. Rend FAUX quand la transaction n'a pas abouti. */
+bool dn_capt_identite_lue(void) { return s_id_lue; }
 uint8_t dn_capt_variant(void) { return s_variant; }
 
 bool dn_capt_gaz_actif(void)
@@ -389,12 +404,30 @@ static void relever_identite(i2c_master_bus_handle_t bus)
     uint8_t reg = DN_BME680_REG_CHIP_ID;
     if (i2c_master_transmit_receive(dev, &reg, 1, &s_chip_id, 1, 200) != ESP_OK) {
         s_chip_id = 0;
+        s_id_lue = false; /* ⛔ « pas lu » — surtout PAS « a repondu 0x00 » */
+    } else {
+        s_id_lue = true;
     }
     reg = DN_BME680_REG_VARIANT;
     if (i2c_master_transmit_receive(dev, &reg, 1, &s_variant, 1, 200) != ESP_OK) {
         s_variant = 0;
     }
     i2c_master_bus_rm_device(dev);
+}
+
+/* 🔴 LE GARDE-FOU QUI MANQUAIT, ET DONT L'INTENTION ETAIT DEJA ECRITE.
+ * Le docblock de `relever_identite()` dit « pourquoi AVANT bme680_init() » — mais
+ * son resultat ne DECIDAIT rien : `ouvrir_driver()` etait appele quoi qu'il
+ * arrive, et le composant TIERS `k0i05__esp_bme680` enveloppe ses lectures I2C
+ * dans `ESP_ERROR_CHECK` (bme680.c:433, chemin NOMINAL d'init). Un hoquet de bus
+ * y devenait donc un `abort()`, donc — avec CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT=y —
+ * un CPU HALTE, donc PLUS DE CONSOLE : l'outil de diagnostic disparaissait au
+ * moment precis ou il servait. Mesure du 2026-08-20 : 6 demarrages a froid rates
+ * sur 7 a huit devices, la plupart en carte haltee.
+ * ⚠️ Le sondage INFORMAIT ; il PROTEGE desormais. */
+static bool identite_est_bme680(void)
+{
+    return s_id_lue && s_chip_id == DN_BME680_CHIP_ID;
 }
 
 static void journaliser_identite(void)
@@ -404,14 +437,27 @@ static void journaliser_identite(void)
                        : s_chip_id == 0x60 ? "BME280 — PAS de gaz"
                        : s_chip_id == 0x58 ? "BMP280 — NI gaz NI humidite"
                                            : "INCONNU";
-    if (s_chip_id == DN_BME680_CHIP_ID) {
+    if (!s_id_lue) {
+        /* 🔴 TROISIEME CAS, AJOUTE EN dn4-2 : la LECTURE a echoue. ⛔ Ne RIEN
+         * affirmer sur le capteur — il n'a rien dit. Publier « chip id 0x00 »
+         * ici envoyait chercher un mauvais composant alors que le bus etait en
+         * cause, et le message se contredisait lui-meme en ajoutant « le cablage
+         * n'est pas en cause si le scan voit 0x77 ». */
+        ESP_LOGE(TAG,
+                 "identite NON LUE @ 0x%02X — la transaction I2C a ECHOUE. ⛔ Ce "
+                 "n'est PAS « le capteur a repondu 0x00 » : il n'a rien repondu. "
+                 "Verifier par `i2c` (l'adresse est-elle la ?) puis `i2c lire "
+                 "%02X D0` (repond-elle 0x%02X ?). Le driver ne sera PAS ouvert.",
+                 DN_BME680_ADDR, DN_BME680_ADDR, DN_BME680_CHIP_ID);
+    } else if (s_chip_id == DN_BME680_CHIP_ID) {
         ESP_LOGI(TAG, "identite : chip id 0x%02X, variant 0x%02X => %s @ 0x%02X",
                  s_chip_id, s_variant, quoi, DN_BME680_ADDR);
     } else {
         ESP_LOGE(TAG,
                  "identite INATTENDUE : chip id 0x%02X (attendu 0x%02X) => %s. "
-                 "Le cablage n'est PAS en cause si le scan `i2c` voit 0x%02X.",
-                 s_chip_id, DN_BME680_CHIP_ID, quoi, DN_BME680_ADDR);
+                 "Le capteur A REPONDU, mais ce n'est pas le bon composant. Le "
+                 "driver ne sera PAS ouvert.",
+                 s_chip_id, DN_BME680_CHIP_ID, quoi);
     }
 }
 
@@ -719,11 +765,19 @@ static void tache_capteurs(void *arg)
             if (--s_cycles_avant_reinit <= 0) {
                 s_cycles_avant_reinit = DN_CAPT_REINIT_CYCLES;
                 i2c_master_bus_handle_t bus = dn_display_i2c_bus();
-                if (bus && ouvrir_driver(bus)) {
+                /* 🔴 dn4-2 — L'ORDRE ETAIT INVERSE ICI, ET C'ETAIT PIRE QU'AU BOOT :
+                 * `ouvrir_driver()` etait appele AVANT `relever_identite()`, donc
+                 * le driver TIERS partait sans qu'AUCUNE verification ait eu lieu.
+                 * ⇒ Meme un boot reussi pouvait se faire briquer a la reprise
+                 * suivante, UNE MINUTE plus tard, par la meme perturbation.
+                 * L'identite se releve MAINTENANT d'abord, et elle DECIDE. */
+                if (bus) {
                     relever_identite(bus);
                     journaliser_identite();
-                    ESP_LOGW(TAG, "capteur REAPPARU — il ne repondait pas au boot. "
-                                  "La lecture reprend au cycle suivant.");
+                    if (identite_est_bme680() && ouvrir_driver(bus)) {
+                        ESP_LOGW(TAG, "capteur REAPPARU — il ne repondait pas au "
+                                      "boot. La lecture reprend au cycle suivant.");
+                    }
                 }
             }
             continue;
@@ -875,13 +929,22 @@ esp_err_t dn_capteurs_init(void)
         s_brut = NULL;
     }
 
-    if (!ouvrir_driver(bus)) {
+    /* 🔴 dn4-2 : LE DRIVER TIERS N'EST PLUS APPELE SUR UNE IDENTITE NON ETABLIE.
+     * `identite_est_bme680()` est FAUX aussi bien quand la lecture a echoue que
+     * quand un autre composant a repondu — dans les DEUX cas, ouvrir le driver
+     * revient a jouer a pile ou face avec un `abort()` (voir son docblock).
+     * ⚠️ Et le repli existe DEJA et il est propre : cases a « -- », nouvelle
+     * tentative toutes les minutes, `capteurs` qui explique. On l'emprunte. */
+    if (!identite_est_bme680() || !ouvrir_driver(bus)) {
         /* ⚠️ NON FATAL, et la tâche démarre QUAND MÊME : elle publiera « -- »
          * dans les cases, retentera l'ouverture toutes les minutes, et `capteurs`
          * dira pourquoi. Un capteur muet ne doit pas priver l'opérateur de l'outil
          * qui explique son silence. */
-        ESP_LOGE(TAG, "capteur INJOIGNABLE au boot — les cases afficheront « -- » et "
-                      "une nouvelle tentative aura lieu toutes les %d s",
+        ESP_LOGE(TAG, "capteur INJOIGNABLE au boot (%s) — les cases afficheront "
+                      "« -- » et une nouvelle tentative aura lieu toutes les %d s",
+                 !s_id_lue                ? "identite NON LUE"
+                 : s_chip_id != DN_BME680_CHIP_ID ? "identite INATTENDUE"
+                                          : "ouverture du driver refusee",
                  (DN_CAPT_REINIT_CYCLES * DN_CAPT_PERIODE_MS) / 1000);
         s_dev = NULL;
     } else {
