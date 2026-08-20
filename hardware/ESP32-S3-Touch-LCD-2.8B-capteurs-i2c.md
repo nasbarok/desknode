@@ -2232,3 +2232,83 @@ ci-dessus sont mesurées **sur un boot sain** ; trois démarrages à froid sur q
 pas un. ⇒ **La non-régression est établie EN RÉGIME, pas AU DÉMARRAGE**, et la distinction est écrite
 plutôt que gommée.
 
+---
+
+### 13.16.16 🔴 ÉLARGISSEMENT DE PÉRIMÈTRE ASSUMÉ — un capteur qui ne répond pas ne doit pas BRIQUER la carte
+
+⚠️ **`dn4-2` s'interdit explicitement de toucher `dn_capteurs.c`.** La mesure a rendu cette
+interdiction intenable : **6 démarrages à froid ratés sur 7** à huit devices, **la plupart en carte
+HALTÉE**, c'est-à-dire **sans console** — l'outil de diagnostic disparaissant au moment précis où il
+sert. **Décision owner en séance : on corrige, et on le mesure par un A/B avant/après DANS LA MÊME
+SÉANCE.** *(Un avant/après d'une seule séance vaut mieux que deux mesures séparées par un firmware.)*
+
+#### 🔴 LA CHAÎNE — trois maillons, établis par la mesure PUIS vérifiés dans le code
+
+| # | Défaut | Où |
+|---|---|---|
+| **1** | Une lecture I²C qui **ÉCHOUE** écrivait `s_chip_id = 0` — soit **exactement** ce qu'aurait rendu un capteur ayant **répondu** `0x00`. **Deux diagnostics opposés dans la même valeur.** | `dn_capteurs.c:390` |
+| **2** | Le message publiait alors *« identite INATTENDUE : chip id 0x00 »* — une **AFFIRMATION SUR LE CAPTEUR** alors qu'il n'avait rien dit. Et il **se contredisait lui-même** en ajoutant *« le câblage n'est PAS en cause si le scan voit 0x77 »* | `journaliser_identite()` |
+| **3** | `ouvrir_driver()` était appelé **QUOI QU'IL ARRIVE** ⇒ le composant **tiers** partait, et il enveloppe ses lectures I²C dans `ESP_ERROR_CHECK` (`bme680.c:433`, chemin **nominal**) ⇒ `abort()` ⇒ **CPU halté** | `dn_capteurs.c:878` |
+
+🔴 **ET LE CHEMIN DE REPRISE ÉTAIT PIRE : l'ordre y était INVERSÉ.**
+`if (bus && ouvrir_driver(bus)) { relever_identite(bus); … }` — **le driver tiers partait AVANT
+toute vérification**. ⇒ **Même un boot réussi pouvait se faire briquer à la reprise suivante, UNE
+MINUTE plus tard**, par la même perturbation.
+
+#### La preuve que le capteur n'était PAS en cause — relevée sur la carte DANS l'état fautif
+
+```
+i2c            -> 8 stable(s), 0 instable(s) en 39 ms, temoin positif OK
+i2c lire 77 D0 -> 61        i2c lire 77 F0     -> 00
+i2c lire 40 00 2 -> 39 9F   i2c lire16 29 0000 -> B4
+```
+
+⇒ **Le bus était PARFAITEMENT SAIN, les huit devices répondaient, BME680 compris**, pendant que le
+bandeau annonçait *« chip id 0x00 »*. ⛔ **L'instrument mentait, pas le matériel.**
+
+⚠️ **ET C'EST LA FAUTE QUE CE DÉPÔT A DÉJÀ CORRIGÉE DEUX FOIS** — `tronquee`/`trop_longue` en
+`dn2-2`, puis **`err_i2c`/`err_donnee` DANS CE FICHIER MÊME** au CR du 2026-08-17 (*« les deux
+tombaient dans `i2c`, et `donnee` ne pouvait pas quitter 0 »*). **La leçon avait été appliquée aux
+compteurs de RÉGIME, jamais à l'identification au BOOT.**
+⚠️ **Et le garde-fou d'AC7 (a) existait EN INTENTION** : le docblock de `relever_identite()` dit
+*« pourquoi AVANT `bme680_init()` »* — mais **son résultat ne DÉCIDAIT rien**. *Le sondage
+INFORMAIT ; il PROTÈGE désormais.*
+
+#### Le correctif — firmware `3a7d938`, SHA lu au bandeau, `porcelain` vide avant flash
+
+1. **`s_id_lue`** sépare *« la lecture a abouti »* de *« la valeur lue »* ;
+2. **`identite_est_bme680()`** est le garde-fou, et **les DEUX chemins** y passent ;
+3. la **reprise relève l'identité AVANT** d'ouvrir ;
+4. `journaliser_identite()` a un **troisième cas** — *« identite NON LUE »* — qui **n'affirme RIEN**
+   sur le capteur et donne les deux commandes qui tranchent ;
+5. **`capteurs` aussi** — sans quoi le mensonge se serait **déplacé** du bandeau vers la console.
+
+#### 🎯 L'A/B, sur le geste qui compte — le DÉMARRAGE À FROID
+
+| | **AVANT** `43e108f` | **APRÈS** `3a7d938` |
+|---|---:|---:|
+| Démarrages à froid | **7** | **3** |
+| 🔴 **HALTÉE** (carte briquée, console morte) | **6** | **0** |
+| ✅ Carte vivante et utilisable | 1 | **3** |
+| Capteur récupéré ensuite | — | ✅ **oui, PAR LA REPRISE** |
+
+**Constat owner, verbatim** : *« à chaque rebranchement j'ai bien le bon screen qui s'affiche (par
+contre ambiance n'est plus vivant ?) »* — ⇒ **exactement le comportement visé**, et l'owner a repéré
+lui-même la moitié qui reste.
+
+✅ **Et la reprise ramène le capteur, mesuré** : `identite : chip id 0x61 · variant 0x00 => BME680`,
+`11 lectures · 0 reprises · 0 reconfigurations`, `erreurs : i2c 0 · donnee 0 · bornes 0`.
+
+⚠️ **CE QUE LE CORRECTIF NE FAIT PAS, ET ÇA A ÉTÉ DIT AVANT DE MESURER** *(pour ne pas pouvoir
+déplacer la cible après)* : **la lecture d'identité échoue TOUJOURS au démarrage à froid.** La cause
+reste à comprendre ⇒ **`dn4-3`**. Le correctif transforme *« carte briquée, plus aucun diagnostic
+possible »* en *« capteur muet une minute, tout le reste marche »*. ⛔ **Et les 103
+`ESP_ERROR_CHECK` des dépendances épinglées restent là** : seul le chemin du BME680 est protégé.
+
+**Coût : +1 660 o de binaire** (950 800 → 952 448). ⛔ **Zéro en régime.**
+
+⚠️ **Un artefact de mesure s'est re-manifesté pendant cet A/B** : la capture du cycle 1 est revenue
+**vide** alors que la console avait rendu écho **et** invite — c'est le défaut de `dn_console.py`
+de §13.16.2, **pris sur le fait une seconde fois**. ⇒ Le cycle est classé **« vivant, capture
+tronquée »**, ⛔ pas « HALTÉE » : **l'invite rendue prouve que le CPU tournait.**
+
