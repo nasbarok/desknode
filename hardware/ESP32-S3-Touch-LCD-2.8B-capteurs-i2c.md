@@ -69,6 +69,23 @@ l'epic, le tracker, `dn_pins.h`, `i2c_nom_connu()` et six stories.
 | `2026-08-19_1720-bh1750-gy302-face-composants-serigraphie-v322.jpg` | 17:20:48 | **La face composants du BH1750** : sérigraphie **`BH1750`** et **`V322`** (révision de carte), la puce 6 broches, et le bloc de composants passifs côté barrette. ⚠️ **Les marquages de ces passifs NE SONT PAS LISIBLES** — voir l'encart Y6 ci-dessous |
 | `2026-08-19_1720-bh1750-gy302-face-broches-vcc-gnd-scl-sda-addr.jpg` | 17:20:58 | 🔴 **LE VERSO du BH1750, et c'est la photo qui compte** : sérigraphie `VCC · GND · SCL · SDA · **ADDR**` — **CINQ** broches, la cinquième étant **une entrée de sélection d'adresse**, pas un signal de bus. Sérigraphie `GY-302` / `V322` confirmée sur cette face aussi |
 
+🔴 **LES CINQ PHOTOS DE LA SÉANCE DE CÂBLAGE** — versées le **2026-08-20**, prises par l'owner
+entre **00:38:30 et 01:16:56** (EXIF). ⚠️ **Réduites à 2 600 px de côté long** (0,44 à 0,61 Mo au
+lieu de 10 à 13 Mo) : la sérigraphie y reste lisible, et les originaux restent chez l'owner. C'est
+un arbitrage assumé — 12 photos brutes auraient pesé **136 Mo** dans un dépôt qui en portait 12.
+
+| Fichier (`docs/cablage/`) | EXIF | Ce qu'elle ÉTABLIT |
+|---|---|---|
+| `2026-08-20_0038-derivation-premier-pin-deux-fils-soudes.jpg` | 00:38:30 | Le **geste** de la dérivation : deux fils soudés **sur l'arrière d'un même pin mâle**. C'est le pin qui fait la dérivation, et c'est ce qui remplace une plaque à pastilles (l'owner n'en a pas) |
+| `2026-08-20_0058-derivation-quatre-cables-en-cours.jpg` | 00:58:35 | Les **quatre câbles en cours** : on y compte les fils convergents de chaque faisceau |
+| `2026-08-20_0110-derivation-quatre-cables-finis-gaines.jpg` | 01:10:55 | Les **quatre câbles terminés et gainés**, pin mâle en bout. ⇒ **La topologie Y2 est PHOTOGRAPHIÉE** — exigence d'AC5 |
+| 🔴 `2026-08-20_0116-bh1750-et-ina219-barrettes-SOUDEES.jpg` | 01:16:53 | 🔴 **LA PREMIÈRE PHOTO D'UN ÉTAT SOUDÉ DU DÉPÔT.** BH1750 (`BH1750`, `V322`) barrette **5 broches SOUDÉE**, les cinq pastilles d'étain visibles ; INA219 barrette **6 broches SOUDÉE** **et bornier vert SOUDÉ**, sérigraphie `Vin- · Vin+ · Sda · Scl · Gnd · Vcc`, shunt `R100`, et les cavaliers **`I2C Address` `A1`/`A0`** |
+| 🔴 `2026-08-20_0116-ina219-et-tof050c-barrettes-SOUDEES.jpg` | 01:16:56 | Le **ToF soudé**, sérigraphie **`TOF050C-VL6180X`** lisible sur le bord, barrette **6 broches SOUDÉE**, et le boîtier optique noir. ⇒ **La réf est lisible SUR LA PHOTO DE L'ÉTAT SOUDÉ**, pas seulement sur celle du sachet |
+
+✅ **CE QUE CES CINQ PHOTOS FERMENT** : l'encart de cette section annonçait depuis le 2026-08-17
+qu'**aucune photo du dépôt ne documentait un état SOUDÉ**. **C'est fait.** ⛔ **Ce qui reste dû** :
+la photo du **montage final**, les trois modules branchés ensemble sur le bus.
+
 ✅ **LE VERSO DU BME680 EST SOLDÉ PAR CONSTAT OWNER, PAS PAR PHOTO** — 2026-08-19, verbatim :
 *« le verso c'est juste écrit `bme680` dessus (en plus elle fonctionne et est branchée) »*.
 Le legs **D2-1a** demandait *« recto ET verso »* parce qu'une face non regardée peut porter un pont
@@ -1812,4 +1829,288 @@ lieu de le lire.
 
 Bandeau de boot : **aucune ligne d'erreur nouvelle** sur les trois montages ; seule reste la ligne
 ISR d'AC11.
+
+---
+
+### 13.16.9 AC7 — le mode « capteur fantôme » instruit pour les trois, **une ligne par capteur**
+
+Rappel du mécanisme (§13.10) : `VCC` retiré, le composant reste **alimenté parasitement par les
+tirages du bus à travers ses diodes de protection ESD**. Assez pour **acquitter**, pas assez pour
+**tenir sa configuration** ⇒ un troisième état : **présent, bavard, `5/5`, valeurs fausses ET
+plausibles**. Le patron de parade (§13.15.4) **impose** une valeur au lieu d'en **constater** une —
+parce que le `Control_1` du RTC avait sa valeur de reset **égale** à celle du défaut, donc une garde
+*« verte pendant le défaut qu'elle prétend détecter »*.
+
+| Capteur | Verdict AC7 | Preuve |
+|---|---|---|
+| **INA219** `0x40` | ✅ **UN TÉMOIN EXISTE, ET IL EST FORT** — ⚠️ **la story le disait FAIBLE** | Registre **Calibration `05h`** : **inscriptible**, **relisible**, et sa **valeur de reset (`0000`) DIFFÈRE de la valeur imposée**. Vérifié : `00 00` relu **avant** d'écrire (journalisé), `D7 A4` imposé, `D7 A4` relu **deux fois**. Les **trois** propriétés de §13.15.4, que `Control_1` n'avait pas |
+| **VL6180X** `0x29` | ⏳ **UN TÉMOIN EXISTE PROBABLEMENT, ⛔ NON VÉRIFIÉ SUR LA CARTE** | ST expose **`SYSTEM__FRESH_OUT_OF_RESET` (`0x0016`)**, qui vaut **`0x01`** à la sortie de reset et que l'hôte est **censé** remettre à `0x00` — c'est un détecteur de redémarrage **prévu par le constructeur**. ⛔ **Non mesuré** : le ToF avait déjà été retiré du montage quand la question s'est posée. ⇒ **à vérifier en `dn4-3`**, avec la primitive `i2c lire16`/`i2c ecrire` qui existe désormais |
+| **BH1750** `0x23` | ⛔ **AUCUN TÉMOIN — écrit comme tel, pas contourné** | Il n'a **aucun registre inscriptible RELISIBLE**. Le seul écrivable est le **`MTreg`**, et il **n'est pas relisible** |
+
+#### 🔴 LA PISTE `MTreg` A ÉTÉ TENTÉE POUR LE BH1750, ET ELLE A ÉCHOUÉ — écrit pour que personne ne la retente à l'aveugle
+
+**L'idée** : le `MTreg` n'est pas relisible, mais il **change l'échelle de la mesure** (facteur
+`MTreg/69`). On pouvait donc l'**imposer** et **l'observer indirectement** — ce qui aurait satisfait
+le patron de §13.15.4 sans registre relisible.
+
+**Essai 1** (`MTreg` 69 → 254 → 69, deux lectures par état) :
+
+| État | Brut lus |
+|---|---|
+| référence (69) | 24 · 24 |
+| **imposé (254)** | 24 · 24 — **aucun changement** |
+| retour (69) | 🔴 **88** · 24 |
+
+⚠️ **`88 = 24 × 3,67`, et `254/69 = 3,681`.** Le facteur est **exact**. L'hypothèse formée sur le
+coup : les lectures ont **un cycle de retard** (le même phénomène que le BME680, `deferred-work`),
+et le `88` serait la mesure faite à `MTreg = 254` arrivée trop tard.
+
+**Essai 2, protocole corrigé** (4 à 6 lectures par état pour absorber le retard), **budget d'essais
+annoncé à UN essai supplémentaire** :
+
+| État | Brut lus |
+|---|---|
+| référence (69) | 23 · 23 · 23 · 23 |
+| **imposé (254)** | 23 · 23 · 23 · 23 · 23 · 23 |
+| retour (69) | 23 · 23 · 23 · 23 · 23 · 23 |
+
+⇒ 🔴 **NON REPRODUCTIBLE. Le `MTreg` n'a pas pris.** Le `88` isolé reste **INEXPLIQUÉ**.
+⛔ **Budget dépensé, on s'arrête** — *« se donner un budget d'essais et l'annoncer »*. Construire une
+conclusion sur une observation **unique et non reproduite** est exactement ce que ce dépôt refuse,
+et le facteur exact la rendait d'autant plus tentante.
+
+⏳ **Hypothèse NOMMÉE pour qui reprendra**, ⛔ non testée : les bibliothèques usuelles envoient
+`0x01` (power on) **puis** les deux octets de `MTreg` **puis** le mode. Ici le capteur était **déjà
+en mode continu** quand `MTreg` a été écrit. ⇒ **Essayer la séquence complète depuis le power-on
+avant de conclure que la piste est morte.**
+
+#### Ce qui est porté à `dn4-3`, et ce que cette story ne fait PAS
+
+⛔ **Cette story n'écrit AUCUNE garde de régime** — elle établit **ce qui est possible**. `dn4-3`
+écrira les gardes, et elle hérite de trois choses : un témoin **FORT** pour l'INA219 (utilisable
+tel quel), une **piste constructeur à vérifier** pour le VL6180X, et **aucun témoin** pour le
+BH1750, avec la piste `MTreg` documentée comme **tentée et non reproduite**.
+⛔ **Et l'injecteur `capteurs simuler` n'est PAS une parade** : *« il exerce le chemin de code,
+jamais le bus »*, et *« il ne peut pas découvrir un mode de panne qu'on n'a pas imaginé »*.
+
+---
+
+### 13.16.10 🎯 LE BUS À **HUIT** DEVICES — AC8, et le montage s'est fait EN TROIS TEMPS pour une raison
+
+**Firmware `43e108f`, SHA lu au bandeau.** ⚠️ **Le header n'a qu'UNE cavité `SCL` et UNE `SDA`**, et
+l'embase JST est prise par le BME680 ⇒ **un module à la fois en direct**. L'owner a fabriqué
+**quatre câbles de dérivation** (§13.0) : deux **Y à 3 sorties** pour `SDA` et `SCL`, deux **Y à 2**
+pour `3V3` et `GND` — `3V3` et `G` existant sur **les deux rangées**, deux sorties y suffisent.
+
+#### Les huit occupants, et l'absence de collision est CONSTATÉE
+
+| Passe (invocation SOLO) | Adresses `5/5` | Bilan | Invariant | Témoin |
+|---|---|---|---|---|
+| 1 | `0x20 0x23 0x29 0x40 0x51 0x5D 0x6B 0x77` | 8 st + 0 inst, 38 ms | ✅ | ✅ |
+| 2 | idem | 8 st + 0 inst, 37 ms | ✅ | ✅ |
+| 3 | idem | 8 st + 3 inst, 44 ms | ✅ | ✅ |
+| 4 | idem | 8 st + 1 inst, 39 ms | ✅ | ✅ |
+| 5 | idem | 8 st + 1 inst, 41 ms | ✅ | ✅ |
+
+⇒ **`0x20 · 0x23 · 0x29 · 0x40 · 0x51 · 0x5D · 0x6B · 0x77`** — les huit attendues, **aucune
+collision**, sur les cinq passes. Durée du scan : **37-44 ms** contre **27-32 ms à 5 devices**
+(≈ +4,5 ms par device ajouté, cohérent avec la re-sonde ×5).
+
+#### Les gardes à 8 devices
+
+| Garde | Mesuré |
+|---|---|
+| **`touch` encadrant** (scan complet entre les deux relevés) | **0 erreur I²C · 0 erreur I²C** |
+| BME680 | `chip id 0x61`, `config LUE (conforme)`, cadence **4 999 ms**, **0 erreur** |
+| `fps 15` | **37,40 Hz**, écart **−0,00 %** |
+| RTC | ⚠️ `OS = 1` **ATTENDU** — voir ci-dessous |
+| Bandeau de boot | **1 seule ligne `E`** : celle de l'ISR (AC11), **aucune nouvelle** |
+
+⚠️ **`OS = 1` N'EST PAS UNE RÉGRESSION, C'EST UNE GARDE QUI SE DÉCLENCHE.** §13.15.3 a mesuré que
+**cette carte n'a AUCUNE sauvegarde RTC**. Le montage en trois temps a demandé **une dizaine de
+coupures USB** ⇒ l'oscillateur s'est arrêté, l'heure lue est devenue `2000-01-01 00:00:43`, et
+**la barre a affiché « --:-- HEURE NON POSÉE »** au lieu d'une heure fausse. ⇒ **La garde de `dn3-2`
+est prouvée EN CONDITIONS RÉELLES**, ce qu'aucune séance n'avait fait. L'heure a été reposée
+(`rtc set`) : `FIABLE`, `OS = 0`, témoin `0xD7` vert.
+
+#### 🔴 L'INCIDENT DU MONTAGE — et pourquoi les trois temps ont sauvé la mesure
+
+**Premier essai, deux modules d'un coup** : le bus s'est dégradé. Symptômes capturés au bandeau —
+`dn_capt: identite INATTENDUE : chip id 0x00`, puis **un flot d'erreurs `GT911: I2C read error!`
+de 5 100 ms à 8 146 ms**, ~30 par seconde. Sur une occurrence, la carte a **paniqué et halté**
+(voir §13.16.11).
+
+🔑 **Mais le scan, lui, voyait `7/7` à `5/5`, témoin positif vert, en 36 ms.** ⇒ **Le bus n'était pas
+mort : il était INTERMITTENT.** Les sondages courts (9 bits) passaient à 100 % ; les **transactions
+longues** — lecture multi-octets du GT911, bloc d'étalonnage du BME680 — rataient. Sur cette
+occurrence : **58 erreurs I²C sur 1 479 lectures GT911 = 3,9 %.**
+
+**Puis, sur une fenêtre chronométrée de 15 s : 435 lectures, ZÉRO erreur.** ⇒ **La dégradation est
+TRANSITOIRE et se produit AU BOOT**, pas en régime.
+
+✅ **Non reproduit** : **trois redémarrages consécutifs** à 7 devices, comptés **en Python** (⛔ pas
+par `grep -c`, que le hook `rtk` a déjà faussé dans ce dépôt) ⇒ **0 `identite INATTENDUE`, 0 erreur
+GT911, 0 expander muet, 0 `abort()`, `chip id 0x61` sur les trois**.
+⇒ **1 échec sur 4 démarrages, non reproduit sur 3 essais.** ⛔ **Cause NON ISOLÉE.** Le plus
+plausible — et déclaré comme hypothèse — est **l'instant du branchement** (contacts qui s'établissent,
+appel de courant) plutôt que le régime.
+⚠️ **Et le montage en trois temps a permis de le dire** : deux modules d'un coup n'auraient jamais
+séparé « câblage d'un module » de « câble Y neuf ». **Le BH1750 seul par les Y a validé les Y**, puis
+le ToF a validé sa propre paire de pattes.
+⚠️ **L'hypothèse « pin qui ponte `3V3` et `G` sur la rangée A »** (§13.16.7) **ne s'est PAS
+reproduite** : l'INA219 a été ajouté **par ces cavités-là** et le boot est resté propre. ⇒ Elle
+reste **une hypothèse non confirmée**, et non une cause écartée.
+
+---
+
+### 13.16.11 🔴 UN CAPTEUR QUI RÉPOND MAL BRIQUE LA CARTE — le mode de panne que `dn2-2` croyait FERMÉ
+
+Sur la première occurrence de la dégradation, le bandeau s'est terminé par :
+
+```
+E dn_capt: identite INATTENDUE : chip id 0x00 (attendu 0x61) => INCONNU
+E bme680: bme680_i2c_read_word_from(164): bme680_i2c_read_word_from failed
+ESP_ERROR_CHECK failed: esp_err_t 0x103 (ESP_ERR_INVALID_STATE)
+  file: "./managed_components/k0i05__esp_bme680/bme680.c" line 432
+  func: bme680_get_cal_factors
+abort() was called at PC 0x4037c773 on core 0
+```
+
+⇒ **`abort()` ⇒ panique ⇒ CPU HALTÉ ⇒ plus de console du tout.** L'outil de diagnostic disparaît **au
+moment précis où il servirait**, et seule une modification du câblage physique fait sortir de là.
+
+🔴 **CE DÉPÔT S'ÉTAIT DONNÉ LA RÈGLE INVERSE, ET DEUX FOIS** — *« `ESP_ERROR_CHECK` est réservé au
+socle non optionnel »*, et le piège n°9 du skill : *« un module optionnel ne doit jamais pouvoir
+briquer la console »*, **corrigé en revue `dn2-2`** pour `dn_link_init()`.
+
+⚠️ **ET `dn_capteurs_init()` EST BIEN NON FATALE.** Le trou n'est pas dans le code du dépôt : il est
+dans la **dépendance tierce**, qui appelle `ESP_ERROR_CHECK` **en interne** — et `ESP_ERROR_CHECK`
+n'est pas une valeur de retour, c'est un `abort()`. **Aucun code applicatif ne peut le rattraper.**
+
+**Audit fait en séance** (`grep -c` sur `managed_components/`, 2026-08-20) :
+
+| Composant | `ESP_ERROR_CHECK` | Chemin |
+|---|---|---|
+| `espressif__esp_lvgl_port` | 55 | socle — toléré |
+| 🔴 **`k0i05__esp_bme680`** | **26** | 🔴 **module OPTIONNEL — interdit par la règle** |
+| `espressif__esp_lcd_st7701` | 14 | socle — toléré |
+| 5 autres | 8 | socle — toléré |
+| **TOTAL** | **103** | |
+
+Et la ligne fautive est **une lecture I²C enveloppée** :
+`ESP_ERROR_CHECK( bme680_i2c_read_word_from(handle, 0xe9, &…->par_T1) );` — ⇒ **n'importe quel hoquet
+du bus provoque un `abort()`**, sur le chemin **nominal** d'initialisation.
+
+🔴 **SECOND DÉFAUT, DISTINCT ET TOUT AUSSI RÉEL** : sur les occurrences **sans** panique,
+`dn_capteurs` a logué `identite INATTENDUE : chip id 0x00` puis **n'a JAMAIS retenté**. Le bus
+redevenait sain **cinq secondes plus tard**, et le capteur restait mort **jusqu'au reboot suivant**.
+⇒ **Une perturbation transitoire au boot tue le BME680 pour toute la session.**
+
+⇒ **Les deux sont portés au ledger, et ils mordront `dn4-3`** qui ajoutera des drivers.
+⛔ **Cette story ne les corrige pas** : elle n'a pas le droit de toucher `dn_capteurs.c`, et un
+correctif non mesuré serait pire que le défaut écrit.
+
+---
+
+### 13.16.12 🎯 AC9 SOLDÉ — le tactile sous saturation, à 8 devices
+
+**Deux campagnes de 20 s, la première étant le témoin sans lequel la seconde ne dit rien.**
+
+#### Campagne 1 — SANS rafale : ✅ et elle solde le résiduel 🟡 du ledger
+
+`touch trace 20000` : **18 appuis tracés · 15 taps sur zone · 3 hors zone · 0 erreur I²C**
+(cumulé : 49 appuis, 49 relâches, 4 949 lectures).
+
+**Coordonnées relevées sur la géométrie D12** — c'est ce que le ledger réclame depuis `dn4-6`
+(`:347`), où la campagne avait compté *36 appuis / 36 relâches / 0 erreur* **sans jamais relever les
+zones** :
+
+```
+(25, 20) (45, 32) (33, 21) (53, 13) (24, 30) (45, 48) (71, 25) (58, 30)
+(122,366) (134,138) (351,358) (360,512) (122,530) (347,522) (69,129) (211,154) (317,181) (129,374)
+```
+
+🔑 **Le geste se LIT dans les chiffres** : les huit premiers sont tous à **`x < 75` et `y < 60`**,
+c'est-à-dire la **flèche retour `←`** ; les autres sont dans les cases. ⇒ *ouvrir une case, revenir,
+recommencer*. Et l'instrument les compte **comme des taps sur zone**, ce qui est correct — la flèche
+est un contrôle, pas une marge. **Le résiduel est SOLDÉ.**
+
+#### Campagne 2 — AVEC rafale : ✅ AC7 (a) de `dn2-1` est REJOUÉ et il PASSE
+
+| Grandeur | Mesuré |
+|---|---|
+| Durée demandée / **réelle** | 20 000 / **20 018 ms** |
+| Passes complètes | **1 066** |
+| Sondages émis | **119 392** |
+| **Cadence** | **5 964 sondages/s** · 53 passes/s |
+| Timeouts | **0** |
+| **`touch` encadrant** | **18 appuis · 18 relâches · 🎯 0 ERREUR I²C** |
+
+✅ **CONSTAT OWNER, cité verbatim** — et c'est la moitié de la mesure, celle qu'aucun compteur ne
+donne : à la question *« délai ? appuis perdus ? différence ressentie entre les deux campagnes ? »*,
+la réponse est **« nn tt nickel »**.
+
+⇒ **D9 avait fermé la voie du fil ; la voie logicielle a répondu.** Le tactile encaisse
+**119 392 sondages en 20 s** sans perdre un appui ni compter une erreur.
+✅ **Et la cadence tient la charge** : **6 012 sondages/s à 5 devices → 5 964 à 8**, soit **−0,8 %**.
+
+#### 🔴 EFFET DE BORD MESURÉ : LE SCAN MENT **2,36 FOIS PLUS** À 8 DEVICES
+
+La rafale compte ses acquittements ; en soustrayant ceux des devices réels :
+
+| | **5 devices** | **8 devices** |
+|---|---:|---:|
+| Passes · sondages | 537 · 60 144 | 1 066 · 119 392 |
+| Acquittements | 3 110 | 10 461 |
+| Attendus des devices réels | 2 685 | 8 528 |
+| **Fantômes** | **425** | **1 933** |
+| Par passe | 0,79 | **1,81** |
+| **Taux par sondage d'adresse VIDE** | **0,740 %** | 🔴 **1,744 %** |
+
+⇒ 🔴 **Brancher trois capteurs de plus a MULTIPLIÉ PAR 2,36 le taux de faux positifs du sondage.**
+§13.2 savait que le scan ment ; **personne ne savait qu'il ment davantage à mesure qu'on charge le
+bus**. C'est un argument de plus, **chiffré**, pour la règle : *le scan DÉCOUVRE, seule une
+transaction de DONNÉE QUALIFIE*.
+⚠️ **1 933 est un PLANCHER** : le calcul suppose que les 8 devices réels ont acquitté à **chaque**
+passe ; §13.2 a mesuré des faux **négatifs** sur composants soudés.
+
+---
+
+### 13.16.13 ✅ AC10 SOLDÉ — la famine DMA NE se reproduit PAS, avec le premier agresseur en trois exemplaires
+
+**Stimulus rejoué dans les conditions EXACTES de `dn4-6`** : `tools/dn_injecteur.py --jeu reel
+--secondes 45 --espacement 0.004` ⇒ **225 trames émises en 45 s = 5 trames/s**, conjuguées au
+repeint de case.
+
+🔴 **LA MESURE EST UN CONSTAT OWNER, parce qu'aucun instrument ne compte ce défaut** — §11.4 écrit
+que **`fps` est AVEUGLE** : il rendait déjà **37,40 Hz** pendant que l'image sautait, en `dn4-6`.
+
+**Le symptôme a été cherché sous son nom, donné à l'owner AVANT** : *« l'image entière glisse d'un
+cran et se recale vers le bas, ensuite tous les chiffres clignotent une fois, et rebelote »*, **une
+fois par seconde**. Consigne explicite : *« si tu vois quelque chose que je n'ai pas décrit, dis-le
+tel que tu le vois, ne le fais pas rentrer dans mes mots »*.
+
+✅ **RÉPONSE OWNER, verbatim : « tt nickel ».** ⇒ **RIEN.**
+
+**Les instruments, en regard, et ils COLLENT aux références de `dn4-6`** :
+
+| Grandeur | `dn4-6` régime (b) | **`dn4-2`, 8 devices** |
+|---|---:|---:|
+| flush / cycle | 2,33 | **2,4** |
+| px / cycle | 85 575 | **87 196** |
+| plus grande aire | 36 675 | **36 675** |
+| copie µs/flush | 3 032 | **2 979** |
+| Liaison | 149/150, 1 perte seq, 0 rejet | **224/225, 1 perte seq, 0 rejet de TOUTE cause** |
+| Latence acceptation→label | — | **n=224 · min 60 · moy 109 · max 180 ms** |
+| `touch` encadrant | — | **0 erreur · 0 erreur** (1 026 lectures) |
+
+⇒ ✅ **`DN_DEFAULT_BOUNCE_PX` RESTE À 7 680.** Aucune montée vers 9 600 n'est nécessaire, et les
+**+19 200 o** de RAM interne que le pas suivant aurait coûtés ne sont pas dépensés.
+⇒ **L'entrée de ledger 🟠 `[→ dn4-2, IMPÉRATIF]` est SOLDÉE** : le stimulus est rejoué, avec le
+premier agresseur connu enfin présent **en trois exemplaires**, et il ne reproduit rien.
+
+⏳ **LA LIMITE EST DÉCLARÉE, comme AC10 l'exige** : l'injection venait de `dn_injecteur.py` **depuis
+WSL**, ⛔ **pas de l'agent réel sur la tour** — l'exclusivité `WSL ↔ COM3` l'interdit tant que la
+carte est attachée à WSL. **Même chemin de code** (même REPL, même `dn_link`, même `dn_ui`),
+⛔ **pas le même émetteur.** Ce qui n'est pas mesuré ici, c'est le PC.
 
