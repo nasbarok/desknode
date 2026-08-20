@@ -33,6 +33,7 @@
 #include "dn_asset.h"
 #include "dn_bootcfg.h"
 #include "dn_capteurs.h"
+#include "dn_env.h"
 #include "dn_console.h"
 #include "dn_display.h"
 #include "dn_link.h"
@@ -332,6 +333,23 @@ void app_main(void)
         ESP_LOGE(TAG, "⛔ capteurs ABSENTS (%s) — les cases TEMP./HUMIDITE "
                       "resteront « -- ». Le reste du firmware demarre normalement.",
                  esp_err_to_name(err_capt));
+    }
+
+    /* 8 bis (suite). Les TROIS capteurs d'environnement locaux (dn4-3) : BH1750,
+     * INA219, VL6180X. APRÈS dn_capteurs_init(), et c'est une DÉPENDANCE, pas un
+     * ordre arbitraire : dn_env n'a AUCUNE tâche à lui, il est cadencé par celle
+     * que dn_capteurs vient de créer (voie C, §13.19.4).
+     * ⚠️ L'ordre inverse serait sans conséquence — `dn_env_cycle()` se garde par
+     *    `s_init_faite` — mais l'écrire dans cet ordre dit la dépendance.
+     * 🔴 NON FATALE, comme les autres modules optionnels : avec
+     *    CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT=y, un abort donnerait « ni console ni
+     *    flash, RESET physique ». Trois capteurs de confort ne doivent pas
+     *    pouvoir briquer le seul outil de diagnostic. */
+    esp_err_t err_env = dn_env_init();
+    if (err_env != ESP_OK) {
+        ESP_LOGE(TAG, "⛔ dn_env DESARME (%s) — luminosite, tension et courant "
+                      "resteront muets. `env` dira pourquoi.",
+                 esp_err_to_name(err_env));
     }
 
     /* 8 ter. L'heure (dn3-2). APRÈS dn_display_init (étape 2) : le RTC est sur

@@ -1,0 +1,259 @@
+#pragma once
+/*
+ * dn_env — les TROIS capteurs d'environnement LOCAUX de DeskNode (dn4-3, P9.3).
+ *
+ *   · BH1750       @ 0x23 — luminosité de la pièce
+ *   · INA219       @ 0x40 — tension / courant / puissance
+ *   · TOF050C-VL6180X @ 0x29 — présence et conformité SEULEMENT (voir plus bas)
+ *
+ * ── 🔴 POURQUOI UN MODULE À CÔTÉ DE `dn_capteurs`, ET PAS `dn_capteurs` ÉTENDU
+ *
+ * X4 tranché en hardware/…-capteurs-i2c.md §13.19.4, voie (C). En deux phrases :
+ *  · `dn_capteurs` est le module BME680, PAR CONCEPTION ASSUMÉE (dn_capteurs.h:8-10)
+ *    et son API entière est mono-capteur. Le généraliser reviendrait à refactorer
+ *    la SEULE case vivante aujourd'hui — `AMBIANCE` — pour y ajouter trois
+ *    capteurs qui n'ont ni son protocole ni son garde-fou d'identité.
+ *  · Un second module AVEC SA TÂCHE mettrait DEUX réveils sur un bus que le GT911
+ *    pole déjà ~30×/s, sur une carte dont la marge DMA est « franchie, pas
+ *    confortable » et dont le bus se dégrade 40 s à froid.
+ *
+ * ⇒ Module séparé (API `dn_env_*`, état propre, seaux propres), mais **AUCUNE
+ *   TÂCHE** : `dn_env_cycle()` est appelée par la tâche `dn_capt` existante.
+ *
+ * 🔴 ET LE POINT D'ACCROCHE EST CONTRAINT PAR LE CODE, PAS PAR LE GOÛT : le corps
+ * de `tache_capteurs()` est truffé de `continue` sur chaque chemin d'erreur du
+ * BME680. Un appel en FIN de boucle serait SAUTÉ à chaque erreur — c'est-à-dire
+ * précisément pendant la dégradation à froid, le seul moment où la tolérance
+ * d'AC3 se mesure. ⇒ l'appel est IMMÉDIATEMENT APRÈS `vTaskDelayUntil()`.
+ *
+ * ⚠️ LA LIMITE DE CE CHOIX EST DÉCLARÉE, PAS CACHÉE : si `xTaskCreate` échoue
+ * dans `dn_capteurs_init()`, aucune tâche ne tourne et `dn_env` n'est JAMAIS
+ * cadencé. ⇒ il compte ses cycles, et `env` affiche « JAMAIS CADENCE » tant
+ * qu'aucun n'est arrivé. ⛔ Un module optionnel n'acquitte pas dans le vide.
+ *
+ * ── 🔴 DRIVERS MAISON POUR LES TROIS — arbitré, ⛔ pas préféré (§13.19.2/.4)
+ *
+ * Critères écrits et horodatés AVANT toute lecture de source (2026-08-20 15:11).
+ * Ce qui a tranché, dans l'ordre :
+ *  · `dn_console.c` parle DÉJÀ aux trois en `i2c_master_transmit_receive` nu avec
+ *    retour testé. Pour le BH1750, le pilote entier tient en TROIS transactions.
+ *  · Aucun composant tiers ⇒ le compte de 103 `ESP_ERROR_CHECK` dans
+ *    `managed_components/` (dont 26 dans un module OPTIONNEL) n'augmente pas, et
+ *    l'obligation de ré-audit — MANUELLE, sans mécanisme, sur un répertoire
+ *    GITIGNORÉ — ne s'étend pas.
+ *  · `espressif/bh1750` 2.0.0 (7 147 téléch., Apache-2.0, esp-bsp) — le candidat
+ *    que l'adoption désignait — bloque **1 000 ms par transaction**. Sur CETTE
+ *    carte, c'est disqualifiant. ⚠️ Ce n'est pas un défaut du composant.
+ *  · Il n'existe AUCUN composant VL6180X au registre (404 vérifié) ⇒ un driver
+ *    maison était de toute façon obligatoire pour ce capteur-là.
+ * ⏳ PLAN B NOMMÉ : si la conversion maison du BH1750 se révélait fausse, repli
+ *    sur `espressif/bh1750` 2.0.0 — sa conversion est `brut / 1.2`, la nôtre
+ *    aussi — en acceptant son 1 000 ms.
+ *
+ * ── ⛔ CE QUE CE MODULE NE FAIT PAS, ET POURQUOI
+ *
+ * 🔴 L'ALS DU VL6180X N'EST PAS EXPLOITÉ COMME MESURE DE LUMIÈRE. Qualifié à la
+ * console AVANT toute ligne de driver (AC8), il rend une réponse STRICTEMENT
+ * BINAIRE sur sept points d'intégration : 0x0000 à ≤ 2 ms, 0xFFFF à ≥ 3 ms, au
+ * gain minimal 1,0×. ⇒ ce n'est pas une intégration, c'est un comparateur saturé.
+ * La cause est nommée : ST impose un chargement de registres PRIVÉS (« SR03
+ * settings ») après SYSTEM__FRESH_OUT_OF_RESET, et ⛔ le dépôt interdit de
+ * recopier des adresses de registre de mémoire ou depuis un article.
+ * ⇒ le VL6180X est LU EN RÉGIME pour sa PRÉSENCE et sa CONFORMITÉ, rien d'autre.
+ * ⚠️ Détail complet et recette de reprise : §13.19.5.
+ */
+
+#include <stdbool.h>
+#include <stdint.h>
+#include "esp_err.h"
+
+/* ── Cadence et péremption ────────────────────────────────────────────────────
+ * ⚠️ La cadence N'EST PAS un réglage de ce module : elle est celle de la tâche
+ * qui l'appelle (`dn_capt`, DN_CAPT_PERIODE_MS = 5 000 ms). La constante ci-
+ * dessous ne SERT QU'À la péremption et au backoff, et un `_Static_assert` dans
+ * le .c la cloue à celle de dn_capteurs pour qu'elles ne puissent pas diverger. */
+#define DN_ENV_PERIODE_MS 5000
+
+/* 3 périodes — MÊME CONVENTION que dn_capteurs (15 s), ⛔ PAS les 3 s de dn_link. */
+#define DN_ENV_PEREMPTION_US (3LL * DN_ENV_PERIODE_MS * 1000)
+
+/* Une tentative de ré-ouverture par MINUTE quand un device est absent.
+ * ⛔ Ne pas sonder plus souvent : le GT911 pole déjà le bus ~30×/s, et
+ * `i2c_master_probe()` a un taux de FAUX POSITIFS mesuré à 1,744 % à 8 devices. */
+#define DN_ENV_REINIT_CYCLES 12
+
+/* Timeout par transaction. 100 ms = la valeur du plus propre des candidats tiers
+ * lus en §13.19.4, et ~1 000× la durée théorique d'une transaction de 3 octets à
+ * 400 kHz. ⛔ PAS 1 000 ms : ce module tourne dans la tâche qui porte AUSSI le
+ * BME680, et l'I²C est le PREMIER AGRESSEUR CONNU de la famine DMA (§11.4). */
+#define DN_ENV_I2C_TIMEOUT_MS 100
+
+/* 🔴 SENTINELLE « PAS DE VALEUR » — INT32_MIN, la MÊME que dn_capteurs.
+ * ⛔ Surtout PAS -1 : c'est une puissance négative parfaitement légitime sur
+ * l'INA219 (courant qui repart vers la source). La leçon est écrite en toutes
+ * lettres dans dn_capteurs.h:217, elle a coûté deux défauts de console. */
+#define DN_ENV_ABSENT INT32_MIN
+
+typedef enum {
+    DN_ENV_LUM = 0,  /* BH1750  @ 0x23 */
+    DN_ENV_ALIM,     /* INA219  @ 0x40 */
+    DN_ENV_TOF,      /* VL6180X @ 0x29 — présence/conformité seulement */
+    DN_ENV_NB,
+} dn_env_id_t;
+
+typedef enum {
+    DN_ENV_JAMAIS, /* aucune lecture valide depuis le boot */
+    DN_ENV_VIVANT, /* dernière lecture plus récente que la péremption */
+    DN_ENV_MUET,   /* la péremption est passée */
+} dn_env_etat_t;
+
+/* Les MÊMES seaux que dn_capteurs, au même vocabulaire — c'est délibéré : deux
+ * modules qui comptent la même chose sous deux noms sont deux instruments qu'on
+ * ne peut pas comparer. ⛔ Pas de `pousses_ratees` ici : dn_env ne pousse rien
+ * vers l'UI tant que X2 n'a pas tranché la 6ᵉ case (AC6). Un compteur qui ne
+ * peut pas bouger est un instrument qui ment. */
+typedef struct {
+    uint32_t lectures;   /* lectures VALIDES appliquées */
+    uint32_t err_i2c;    /* le transport a échoué (NACK, bus occupé, timeout) */
+    uint32_t err_donnee; /* il répond, mais la donnée n'est pas exploitable */
+    uint32_t err_bornes; /* valeur hors plage physique — voir dn_env.c pour les
+                          * bornes ET LEUR SOURCE (datasheet), par capteur */
+    uint32_t reprises;   /* transitions MUET -> VIVANT */
+    uint32_t conformite; /* DÉTECTIONS d'une configuration perdue = la garde
+                          * anti-fantôme. ⛔ Compte les détections, pas les
+                          * réparations. Toujours 0 pour le BH1750 : il n'a AUCUN
+                          * registre relisible, et cette absence est DÉCLARÉE. */
+} dn_env_compteurs_t;
+
+/*
+ * ── 🔴 LA LOI DU RÉTROÉCLAIRAGE AUTOMATIQUE (AC5 / X1) — ÉCRITE AVANT LA MESURE
+ *
+ * Entrée : le lux du BH1750. Sortie : `dn_display_backlight_pct()`.
+ * ⛔ JAMAIS `dn_display_backlight_ramp()` : son docblock dit qu'elle est un GESTE
+ *   D'OPÉRATEUR, et elle appelle `vTaskDelay` — une boucle périodique qui
+ *   l'appellerait ferait dormir la tâche qui porte AUSSI le BME680.
+ *
+ *   lux <= DN_ENV_BL_LUX_BAS   ->  DN_ENV_BL_PCT_MIN
+ *   lux >= DN_ENV_BL_LUX_HAUT  ->  DN_ENV_BL_PCT_MAX
+ *   entre les deux             ->  interpolation LINÉAIRE
+ *
+ * 🔴 LES QUATRE BORNES SONT ANCRÉES SUR DES MESURES DE CE DÉPÔT, ⛔ PAS SUR UNE
+ *    NORME RECOPIÉE — c'est la condition qu'AC5 pose (« aucun pct en dur non
+ *    motivé ») :
+ *
+ *  · PCT_MIN = 3 — 🎯 `dn1-3` AC7, CONSTAT OWNER : « 3 % = la limite. Le Living
+ *    PCB et le label s'y distinguent encore, TOUT JUSTE. C'est le plancher du
+ *    futur mode Ambient. » ⛔ En dessous, la dalle n'est plus lisible : ce n'est
+ *    pas une préférence, c'est un plancher mesuré à l'œil.
+ *  · PCT_MAX = 100 — l'état actuel au boot (desknode_main.c étape 7).
+ *  · LUX_BAS = 20 — au-dessous, on est déjà dans le noir utile : la main posée
+ *    sur le capteur a MESURÉ 1,6 lx (§13.17.4), très en dessous.
+ *  · LUX_HAUT = 400 — l'éclairage de bureau MESURÉ SUR CETTE CARTE le
+ *    2026-08-20 : brut 494 ⇒ 411 lx (§13.19.5). ⛔ Pas les « 500 lx » d'une
+ *    norme de poste de travail, que personne n'a mesurée ici.
+ *
+ * ⚠️ HYSTÉRÉSIS — c'est une BANDE MORTE, pas deux seuils : le duty ne bouge que
+ *    si l'écart au duty APPLIQUÉ atteint DN_ENV_BL_HYST points. 3 points = 31
+ *    crans LEDC sur 1 023, et c'est aussi la valeur du plancher lisible : en
+ *    dessous, l'œil ne peut pas voir la correction, donc la faire serait
+ *    dépenser des transactions pour rien.
+ *
+ * ⚠️ PAS MAXIMAL — la course complète (3 -> 100) prend 5 cycles = 25 s. C'est ce
+ *    qui remplace la rampe interdite : progressif, sans aucun `vTaskDelay`.
+ *    🔴 Et c'est le chiffre le plus susceptible d'être DÉMENTI par l'œil de
+ *    l'owner ⇒ il est RÉGLABLE À CHAUD (`bl auto pas <n>`), comme les bornes.
+ *
+ * ⚠️ CAPTEUR MUET : ⛔ le duty NE BOUGE PAS. On garde le dernier appliqué. Un
+ *    capteur silencieux ne doit ni éteindre l'écran ni le mettre à fond.
+ *
+ * 🔴 DÉSARMÉ PAR DÉFAUT, et c'est le repli pré-autorisé d'AC5 qui devient l'état
+ *    de départ : la discipline de boot (duty 0 à l'init, il ne monte qu'après la
+ *    première trame) reste INTOUCHÉE, et l'A/B se joue dans UN SEUL FIRMWARE.
+ */
+#define DN_ENV_BL_PCT_MIN      3
+#define DN_ENV_BL_PCT_MAX      100
+#define DN_ENV_BL_LUX_BAS      20
+#define DN_ENV_BL_LUX_HAUT     400
+#define DN_ENV_BL_HYST         3
+#define DN_ENV_BL_PAS_MAX      20
+#define DN_ENV_BL_AUTO_DEFAUT  false
+
+/*
+ * Ouvre les trois devices et pose leur configuration. NON FATALE, et à appeler
+ * APRÈS `dn_console_start()` — même contrat que `dn_capteurs_init()`.
+ * ⚠️ Les devices sont ouverts UNE FOIS et GARDÉS. ⛔ Surtout pas le patron
+ *   « ajouter/retirer à chaque lecture » de la console : ce serait ~5
+ *   `i2c_master_bus_rm_device()` par cycle, et ce retrait A REFUSÉ POUR DE VRAI,
+ *   1 fois sur 13, sur cette carte (§13.17.3).
+ * Rend toujours ESP_OK sauf si le bus lui-même est indisponible : un capteur
+ * absent au boot est un état NORMAL, retenté toutes les minutes.
+ */
+esp_err_t dn_env_init(void);
+
+/*
+ * UN cycle de lecture des trois capteurs. Appelée par la tâche `dn_capt`.
+ * ⛔ Ne bloque jamais plus de 3 × DN_ENV_I2C_TIMEOUT_MS par capteur, et ne
+ *   contient AUCUN `vTaskDelay`.
+ */
+void dn_env_cycle(void);
+
+/* ── Lecture de l'état publié ─────────────────────────────────────────────────
+ * Toutes ces fonctions rendent DN_ENV_ABSENT tant qu'aucune valeur valide n'a
+ * été publiée. ⛔ Le transport reste en ENTIERS : c'est l'AFFICHAGE qui porte la
+ * précision, jamais le fil. */
+
+/* BH1750 — lux ENTIERS (411 = 411 lx). Conversion : lux = brut / 1,2 au MTreg
+ * par défaut (69), dixième TRONQUÉ. ⛔ NE JAMAIS republier des « lux » divisés
+ * par dix : `lux10 = (brut * 10) / 12` EST déjà la valeur en lux entiers, et
+ * l'avoir imprimée comme des dixièmes a publié « 4 614,8 » pour 46 148, TROIS
+ * FOIS, parce que le chiffre était PLAUSIBLE. */
+int dn_env_lux(void);
+int dn_env_lux_brut(void); /* le compte 16 bits nu, pour le diagnostic */
+
+/* INA219 — la tension de BUS en mV, la tension de SHUNT en µV (SIGNÉE), le
+ * courant en mA (SIGNÉ) et la puissance en mW.
+ * 🔴 CE QU'ILS MESURENT AUJOURD'HUI EST NOMMÉ, et ce n'est PAS le rail du
+ *    module : `Vin+`/`Vin-` NE SONT PAS CÂBLÉS (README.md:916). Voir dn_env.c. */
+int dn_env_bus_mv(void);
+int dn_env_shunt_uv(void);
+int dn_env_courant_ma(void);
+int dn_env_puissance_mw(void);
+
+dn_env_etat_t dn_env_etat(dn_env_id_t id);
+const char *dn_env_etat_nom(dn_env_etat_t e);
+const char *dn_env_nom(dn_env_id_t id);
+uint8_t dn_env_adresse(dn_env_id_t id);
+bool dn_env_present(dn_env_id_t id); /* le device est OUVERT (≠ il répond) */
+
+/* Âge de la dernière lecture valide, en µs. -1 si jamais lue. */
+int64_t dn_env_age_us(dn_env_id_t id);
+
+/* Durée MESURÉE du dernier cycle complet (les trois capteurs), en µs. */
+int64_t dn_env_duree_cycle_us(void);
+
+/* Nombre de cycles reçus depuis le boot. 🔴 ZÉRO = « JAMAIS CADENCÉ » : la tâche
+ * `dn_capt` n'a pas démarré, et ce module ne peut RIEN dire. */
+uint32_t dn_env_cycles(void);
+
+void dn_env_compteurs(dn_env_id_t id, dn_env_compteurs_t *out);
+void dn_env_compteurs_reset(void);
+
+/* ── Rétroéclairage automatique (AC5) ─────────────────────────────────────────
+ * 🔴 `dn_display_backlight_pct()` n'a AUCUN VERROU et `s_backlight_pct` est un
+ * `int` nu. Les deux appelants d'aujourd'hui (boot, REPL) ne coexistent jamais ;
+ * l'auto en ajoute un TROISIÈME. ⇒ `bl <n>` et `bl ramp` DÉSARMENT l'auto et le
+ * DISENT, sinon un `bl 50` tapé en séance serait écrasé au cycle suivant SANS UN
+ * MOT, et le constat owner mesurerait la boucle en croyant mesurer la commande. */
+bool dn_env_bl_auto(void);
+void dn_env_bl_auto_set(bool on);
+/* Désarme l'auto SI elle était armée, et rend true dans ce cas — pour que
+ * l'appelant puisse le DIRE. */
+bool dn_env_bl_auto_desarmer(const char *par_qui);
+/* Réglages à chaud : la story exige que l'arbitrage se tranche SUR LA DALLE. */
+esp_err_t dn_env_bl_bornes_set(int lux_bas, int lux_haut);
+esp_err_t dn_env_bl_pas_set(int pas);
+void dn_env_bl_etat(int *lux_bas, int *lux_haut, int *pas, int *hyst,
+                    int *dernier_pct, int *dernier_lux);
+/* Le pct que la loi rendrait POUR CE LUX — exposé pour que la console puisse
+ * imprimer la loi sans l'appliquer. */
+int dn_env_bl_loi(int lux);

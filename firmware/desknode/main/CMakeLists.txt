@@ -13,6 +13,16 @@ idf_component_register(
         "dn_touch.c"
         "dn_link.c"
         "dn_capteurs.c"
+        # dn4-3 : les TROIS capteurs d'environnement locaux (BH1750, INA219,
+        # VL6180X). Drivers MAISON — X5 tranché en §13.19.4 après lecture du
+        # source des CINQ candidats du registre : le mieux adopté
+        # (`espressif/bh1750` 2.0.0) bloque 1 000 ms par transaction, et il
+        # n'existe AUCUN composant VL6180X (404 vérifié).
+        # ⛔ Rien à ajouter aux REQUIRES : il n'utilise que `driver`
+        #    (i2c_master), déjà listé. Aucune entrée au manifeste non plus :
+        #    c'est ce qui garde le compte de 103 `ESP_ERROR_CHECK` à 103.
+        # ⚠️ AUCUNE TÂCHE : il est cadencé par celle de dn_capteurs (voie C).
+        "dn_env.c"
         # dn3-2 : l'heure du module (PCF85063A @ 0x51). Driver MAISON — W1
         # tranché après lecture du source des deux composants du registre :
         # `waveshare/pcf85063a` masque le bit OS (`& 0x7F`, deux sites) et

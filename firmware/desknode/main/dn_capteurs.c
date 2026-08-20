@@ -8,6 +8,7 @@
  *    que les erreurs réfutées restent écrites avec leur réfutation.
  */
 #include "dn_capteurs.h"
+#include "dn_env.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -851,6 +852,23 @@ static void tache_capteurs(void *arg)
          * à un vTaskDelay qui ajouterait la durée de la mesure à chaque tour —
          * et la mesure dure des centaines de millisecondes. */
         vTaskDelayUntil(&reveil, pdMS_TO_TICKS(DN_CAPT_PERIODE_MS));
+
+        /*
+         * 🔴 dn4-3 (voie C, §13.19.4) — LES TROIS CAPTEURS D'ENVIRONNEMENT SONT
+         * CADENCÉS ICI, ET LA POSITION DE CET APPEL N'EST PAS UN DÉTAIL DE STYLE.
+         *
+         * Le reste de cette boucle est truffé de `continue` sur chaque chemin
+         * d'erreur du BME680. Un appel placé en FIN de corps serait donc SAUTÉ
+         * à chaque erreur — c'est-à-dire précisément pendant la dégradation du
+         * bus à froid (55,5 % d'erreurs mesurées, §13.17.1), le seul moment où
+         * la tolérance qu'on prétend livrer se mesure.
+         * ⇒ AVANT toute branche. La cadence de dn_env en devient DÉTERMINISTE,
+         *   indépendante d'un BME680 qui peut bloquer jusqu'à 1 500 ms.
+         *
+         * ⛔ dn_env ne crée AUCUNE tâche et ne contient AUCUN `vTaskDelay` : son
+         *   coût sur ce cycle est borné par ses timeouts I²C (100 ms).
+         */
+        dn_env_cycle();
 
         /* Bascule du gaz demandée à chaud (A/B de T9) : appliquée ICI, entre
          * deux cycles, jamais au milieu d'une conversion. */
