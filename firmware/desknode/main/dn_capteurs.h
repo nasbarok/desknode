@@ -4,7 +4,8 @@
  *
  * Aujourd'hui : UN capteur, le BME680 (température + humidité). Le nom est celui
  * de la FONCTION, pas de la puce — comme dn_touch, dn_link, dn_display — parce
- * que dn4-1 ajoutera BH1750, VL53L0X et INA219 sur le même bus. ⚠️ Il n'est pour
+ * que dn4-2 a ajouté BH1750, TOF050C-VL6180X et INA219 sur le même bus
+ * (⚠️ « dn4-1 » et « VL53L0X » étaient DEUX étiquettes fausses — cf. dn_pins.h). ⚠️ Il n'est pour
  * autant PAS généralisé d'avance : une abstraction écrite pour trois capteurs
  * qu'on n'a pas encore vus serait une supposition, pas une conception.
  *
@@ -273,7 +274,21 @@ uint8_t dn_capt_chip_id(void);
  * separe « le capteur a repondu 0x00 » de « il n'a rien repondu », deux
  * diagnostics OPPOSES qui vivaient dans la meme valeur avant dn4-2. */
 bool dn_capt_identite_lue(void);
+/* Vrai si une lecture d'identite a ete TENTEE. ⛔ FAUX ne veut pas dire « echec » :
+ * il veut dire qu'aucune transaction n'a eu lieu (bus absent, device refuse). Ce
+ * 3e etat manquait, et `capteurs` affirmait « la transaction a ECHOUE » sur une
+ * carte ou on n'avait rien demande (CR dn4-2). */
+bool dn_capt_identite_tentee(void);
 uint8_t dn_capt_variant(void);
+/* Vrai si le VARIANT a ete lu. ⛔ Indispensable : 0x00 est la valeur LEGITIME du
+ * BME680 (0x01 = BME688), donc la valeur seule ne peut pas porter l'echec — c'est
+ * le defaut que `dn_capt_identite_lue()` a corrige pour le chip id, et qui vivait
+ * encore deux lignes plus bas dans la meme fonction (CR dn4-2). */
+bool dn_capt_variant_lu(void);
+/* Lecture ATOMIQUE des quatre champs : les lire un par un laissait la console
+ * observer un etat a demi mis a jour. */
+void dn_capt_identite_snapshot(bool *tentee, bool *lue, uint8_t *chip,
+                               bool *var_lu, uint8_t *var);
 bool dn_capt_gaz_actif(void);
 
 /* Chauffage du gaz à chaud, pour l'A/B de T9. Prend effet au cycle suivant.

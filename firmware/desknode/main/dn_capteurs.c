@@ -49,6 +49,27 @@ static uint8_t s_variant;
  * err_i2c/err_donnee DANS CE FICHIER au CR du 2026-08-17) — appliquee aux
  * compteurs de REGIME, jamais a l'identification au BOOT. */
 static bool s_id_lue; /* la LECTURE a abouti (⛔ ne dit rien de la VALEUR) */
+/* 🔴 CR dn4-2 (2026-08-20) — TROIS ETATS, PAS DEUX, ET LE 3e MANQUAIT.
+ * `s_id_lue` seul ne distinguait pas « la transaction a ECHOUE » de « aucune
+ * lecture n'a ete TENTEE » (bus absent, ou `add_device` refuse). `capteurs`
+ * affirmait donc « la transaction I2C a ECHOUE » sur une carte ou aucune
+ * transaction n'avait eu lieu — le meme genre d'affirmation-sur-rien que le
+ * correctif d'origine venait de retirer du bandeau. */
+static bool s_id_tentee; /* une lecture a ete TENTEE dans le dernier releve */
+/* 🔴 CR dn4-2 — LE VARIANT GARDAIT LE DEFAUT QUE LE CHIP ID VENAIT DE PERDRE.
+ * `s_variant = 0` sur echec, alors que 0x00 est la valeur LEGITIME du BME680
+ * (0x01 = BME688). Un variant rate faisait donc imprimer « variant 0x00 =>
+ * BME680 » avec aplomb sur un octet jamais recu — et un BME688 au variant
+ * instable passait silencieusement pour un BME680. Deux lignes sous le
+ * correctif, dans la meme fonction. */
+static bool s_variant_lu;
+/* Signature du dernier verdict d'identite PUBLIE, pour ne le republier que
+ * quand il CHANGE : la reprise tourne toutes les 60 s et le REPL EST le
+ * transport PC. 0 = rien publie encore. */
+static uint16_t s_id_sig_publiee;
+/* Le 3e message de la REPRISE ne se dit qu'une fois : la reprise tourne
+ * toutes les 60 s et un echec d'ouverture permanent noierait le transport. */
+static bool s_reprise_echec_dit;
 static bool s_gaz = DN_CAPT_GAZ_DEFAUT;
 static bool s_gaz_demande = DN_CAPT_GAZ_DEFAUT;
 
@@ -312,7 +333,29 @@ uint8_t dn_capt_chip_id(void) { return s_chip_id; }
  * une lecture ECHOUEE — le mensonge se serait DEPLACE du bandeau vers la console
  * au lieu d'etre corrige. Rend FAUX quand la transaction n'a pas abouti. */
 bool dn_capt_identite_lue(void) { return s_id_lue; }
+/* 🔴 CR dn4-2 : le 3e etat. FAUX = aucune lecture n'a ete tentee. */
+bool dn_capt_identite_tentee(void) { return s_id_tentee; }
 uint8_t dn_capt_variant(void) { return s_variant; }
+/* 🔴 CR dn4-2 : FAUX = le variant n'a pas ete lu. ⛔ 0x00 est une valeur
+ * LEGITIME (BME680), donc la valeur seule ne peut pas porter l'echec. */
+bool dn_capt_variant_lu(void) { return s_variant_lu; }
+/* Lecture ATOMIQUE des quatre champs d'identite. ⚠️ Les lire un par un
+ * laissait la console observer un etat A DEMI mis a jour : le chemin
+ * d'echec ecrit `s_chip_id = 0` PUIS `s_id_lue = false`, et un `capteurs`
+ * qui atterrissait entre les deux imprimait « chip id 0x00 … A REPONDU,
+ * mais ce n'est PAS un BME680 » — la phrase exacte que ce correctif
+ * existe pour rendre impossible. */
+void dn_capt_identite_snapshot(bool *tentee, bool *lue, uint8_t *chip,
+                               bool *var_lu, uint8_t *var)
+{
+    portENTER_CRITICAL(&s_mux);
+    if (tentee) { *tentee = s_id_tentee; }
+    if (lue) { *lue = s_id_lue; }
+    if (chip) { *chip = s_chip_id; }
+    if (var_lu) { *var_lu = s_variant_lu; }
+    if (var) { *var = s_variant; }
+    portEXIT_CRITICAL(&s_mux);
+}
 
 bool dn_capt_gaz_actif(void)
 {
@@ -392,6 +435,30 @@ static bme680_config_t config_voulue(bool gaz)
  */
 static void relever_identite(i2c_master_bus_handle_t bus)
 {
+    /* 🔴 CR dn4-2 (2026-08-20) — L'INVALIDATION SE FAIT EN ENTREE, ET C'EST LE
+     * CORRECTIF QUI REND LE GARDE-FOU REEL.
+     * Les sorties anticipees (bus NULL, `add_device` refuse) laissaient DEBOUT le
+     * verdict du releve PRECEDENT. `identite_est_bme680()` le relisait alors comme
+     * s'il etait frais, et `ouvrir_driver()` partait sur une transaction QUI N'A
+     * JAMAIS EU LIEU — donc exactement le chemin d'`abort()` que le garde-fou
+     * pretend fermer. Scenario atteignable : boot OK (chip id 0x61) mais
+     * `ouvrir_driver()` echoue ⇒ s_dev NULL ; a la reprise 60 s plus tard,
+     * `add_device` echoue (heap interne) ⇒ retour sans aucune lecture, et le
+     * 0x61 du boot sert de laissez-passer.
+     * ⇒ Tant qu'une lecture n'a pas abouti DANS CET APPEL, il n'y a PAS
+     *   d'identite. La regle est la meme que pour la config relue dans le capteur
+     *   (§13.10) : on CONSTATE, on ne se souvient pas. */
+    portENTER_CRITICAL(&s_mux);
+    s_id_tentee = false;
+    s_id_lue = false;
+    s_chip_id = 0;
+    s_variant_lu = false;
+    s_variant = 0;
+    portEXIT_CRITICAL(&s_mux);
+
+    if (!bus) {
+        return; /* rien n'a ete TENTE — et `s_id_tentee` faux le dit exactement */
+    }
     i2c_device_config_t cfg = {
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,
         .device_address = DN_BME680_ADDR,
@@ -399,20 +466,48 @@ static void relever_identite(i2c_master_bus_handle_t bus)
     };
     i2c_master_dev_handle_t dev = NULL;
     if (i2c_master_bus_add_device(bus, &cfg, &dev) != ESP_OK) {
-        return;
+        return; /* idem : pas de transaction, donc pas d'identite */
     }
+
+    /* ⚠️ Les octets atterrissent dans des LOCALES, pas dans les statiques que la
+     * console lit : `&s_chip_id` en tampon RX laissait observer une identite a
+     * demi mise a jour pendant les 200 ms de la transaction. */
+    uint8_t chip = 0, variant = 0;
     uint8_t reg = DN_BME680_REG_CHIP_ID;
-    if (i2c_master_transmit_receive(dev, &reg, 1, &s_chip_id, 1, 200) != ESP_OK) {
-        s_chip_id = 0;
-        s_id_lue = false; /* ⛔ « pas lu » — surtout PAS « a repondu 0x00 » */
-    } else {
-        s_id_lue = true;
-    }
+    bool chip_ok =
+        (i2c_master_transmit_receive(dev, &reg, 1, &chip, 1, 200) == ESP_OK);
     reg = DN_BME680_REG_VARIANT;
-    if (i2c_master_transmit_receive(dev, &reg, 1, &s_variant, 1, 200) != ESP_OK) {
-        s_variant = 0;
+    bool var_ok =
+        (i2c_master_transmit_receive(dev, &reg, 1, &variant, 1, 200) == ESP_OK);
+
+    /* ⚠️ Le retour est LU : `i2c_master_bus_rm_device()` REFUSE tant que le bus
+     * est en transaction (`status <= I2C_STATUS_START`, esp_driver_i2c
+     * i2c_master.c:1216) — et ce test precede la prise du verrou de bus, alors
+     * que le GT911 le sonde ~30x/s. Un refus ne libere NI le device NI son entree
+     * de liste : c'est une fuite definitive et silencieuse. On la DIT. */
+    esp_err_t rm = i2c_master_bus_rm_device(dev);
+    if (rm != ESP_OK) {
+        ESP_LOGW(TAG,
+                 "retrait du device d'identite REFUSE (%s) — un device fantome "
+                 "reste sur le bus. ⚠️ Course connue avec le sondage du GT911 ; "
+                 "sans consequence immediate, mais elle FUIT.",
+                 esp_err_to_name(rm));
     }
-    i2c_master_bus_rm_device(dev);
+
+    portENTER_CRITICAL(&s_mux);
+    s_id_tentee = true;
+    s_id_lue = chip_ok;
+    s_chip_id = chip_ok ? chip : 0;
+    s_variant_lu = var_ok;
+    s_variant = var_ok ? variant : 0;
+    portEXIT_CRITICAL(&s_mux);
+}
+
+/* Signature du verdict d'identite, pour ne republier que ce qui CHANGE. */
+static uint16_t identite_signature(void)
+{
+    return (uint16_t)((s_id_tentee ? 0x400 : 0) | (s_id_lue ? 0x200 : 0) |
+                      (s_variant_lu ? 0x100 : 0) | s_chip_id);
 }
 
 /* 🔴 LE GARDE-FOU QUI MANQUAIT, ET DONT L'INTENTION ETAIT DEJA ECRITE.
@@ -433,11 +528,23 @@ static bool identite_est_bme680(void)
 static void journaliser_identite(void)
 {
     const char *quoi = s_chip_id == DN_BME680_CHIP_ID
-                           ? (s_variant == DN_BME680_VARIANT_688 ? "BME688" : "BME680")
+                           ? (!s_variant_lu ? "BME680 ou BME688 — variant NON LU"
+                              : s_variant == DN_BME680_VARIANT_688 ? "BME688"
+                                                                   : "BME680")
                        : s_chip_id == 0x60 ? "BME280 — PAS de gaz"
                        : s_chip_id == 0x58 ? "BMP280 — NI gaz NI humidite"
                                            : "INCONNU";
-    if (!s_id_lue) {
+    /* 🔴 CR dn4-2 : QUATRIEME CAS. « aucune lecture tentee » n'est pas « la
+     * lecture a echoue » — envoyer l'operateur verifier une adresse quand aucune
+     * transaction n'a eu lieu, c'est encore affirmer sur un capteur muet. */
+    if (!s_id_tentee) {
+        ESP_LOGE(TAG,
+                 "identite NON RELEVEE @ 0x%02X — ⛔ AUCUNE transaction n'a ete "
+                 "TENTEE (bus I2C absent, ou ouverture du device refusee). Ce "
+                 "n'est ni « il a repondu 0x00 » ni « il n'a pas repondu » : on "
+                 "n'a rien demande. Le driver ne sera PAS ouvert.",
+                 DN_BME680_ADDR);
+    } else if (!s_id_lue) {
         /* 🔴 TROISIEME CAS, AJOUTE EN dn4-2 : la LECTURE a echoue. ⛔ Ne RIEN
          * affirmer sur le capteur — il n'a rien dit. Publier « chip id 0x00 »
          * ici envoyait chercher un mauvais composant alors que le bus etait en
@@ -450,8 +557,19 @@ static void journaliser_identite(void)
                  "%02X D0` (repond-elle 0x%02X ?). Le driver ne sera PAS ouvert.",
                  DN_BME680_ADDR, DN_BME680_ADDR, DN_BME680_CHIP_ID);
     } else if (s_chip_id == DN_BME680_CHIP_ID) {
-        ESP_LOGI(TAG, "identite : chip id 0x%02X, variant 0x%02X => %s @ 0x%02X",
-                 s_chip_id, s_variant, quoi, DN_BME680_ADDR);
+        /* ⚠️ Le variant ne s'affirme que s'il a ete LU : 0x00 est la valeur
+         * legitime du BME680, donc un variant rate se lirait comme un verdict. */
+        if (s_variant_lu) {
+            ESP_LOGI(TAG, "identite : chip id 0x%02X, variant 0x%02X => %s @ 0x%02X",
+                     s_chip_id, s_variant, quoi, DN_BME680_ADDR);
+        } else {
+            ESP_LOGW(TAG,
+                     "identite : chip id 0x%02X @ 0x%02X, mais le VARIANT n'a PAS "
+                     "ete lu — ⛔ ne PAS conclure « BME680 » : 0x00 est sa valeur "
+                     "legitime, et un BME688 se lirait pareil. Trancher par "
+                     "`i2c lire %02X F0`.",
+                     s_chip_id, DN_BME680_ADDR, DN_BME680_ADDR);
+        }
     } else {
         ESP_LOGE(TAG,
                  "identite INATTENDUE : chip id 0x%02X (attendu 0x%02X) => %s. "
@@ -520,6 +638,15 @@ static bool lire_reference_config(void)
  * dise. */
 static bool ouvrir_driver(i2c_master_bus_handle_t bus)
 {
+    /* 🔴 CR dn4-2 — CEINTURE. Le 3e site d'appel passait `dn_display_i2c_bus()`
+     * SANS test NULL, et `bme680_init()` le recevait tel quel. Le refus se pose
+     * ici une fois pour les trois chemins. */
+    if (!bus) {
+        ESP_LOGE(TAG, "ouverture REFUSEE : le bus I2C n'existe pas "
+                      "(dn_display_init() n'a pas tourne). ⛔ Le driver tiers "
+                      "n'est PAS appele.");
+        return false;
+    }
     portENTER_CRITICAL(&s_mux);
     bool gaz = s_gaz;
     portEXIT_CRITICAL(&s_mux);
@@ -670,7 +797,34 @@ static bool config_verifier_et_reparer(dn_capt_faute_t faute_du_cycle)
          * dans le composant tiers, et n'a rien produit trois fois de suite. */
         return false;
     }
-    if (!ouvrir_driver(dn_display_i2c_bus())) {
+    /* 🔴 CR dn4-2 (2026-08-20) — LE TROISIEME CHEMIN, ET C'EST CELUI QUI TOURNE
+     * EN REGIME. Le garde-fou `identite_est_bme680()` n'etait pose que sur l'init
+     * et sur la reprise. CELUI-CI est appele depuis `tache_capteurs()` a chaque
+     * cycle de 5 s, et il se declenche EXACTEMENT dans le cas FANTOME (§13.10) :
+     * une puce qui acquitte mais a perdu ses registres — c'est-a-dire une puce
+     * dont l'alimentation est marginale. Y appeler `ouvrir_driver()` sans rien
+     * verifier revenait a jouer a pile ou face avec les 26 `ESP_ERROR_CHECK` de
+     * `k0i05__esp_bme680` (bme680.c:432-465) : un hoquet de bus y devient un
+     * `abort()`, donc — CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT=y — un CPU HALTE,
+     * donc PLUS DE CONSOLE, chez l'owner, en marche.
+     * ⛔ Et le bus n'etait pas teste NULL ici, alors qu'il l'est aux deux autres.
+     * ⚠️ Le releve d'identite coute 2 transactions I2C, uniquement sur ce chemin
+     *    DEGRADE, et il est borne par DN_CAPT_RECONF_ECHECS_MAX. */
+    i2c_master_bus_handle_t bus_rep = dn_display_i2c_bus();
+    relever_identite(bus_rep); /* invalide en entree : pas de verdict perime */
+    if (!identite_est_bme680()) {
+        journaliser_identite();
+        if (++s_reconf_echecs >= DN_CAPT_RECONF_ECHECS_MAX) {
+            ESP_LOGE(TAG,
+                     "reconfiguration ECHOUEE %d fois de suite — on CESSE "
+                     "d'insister. ⛔ L'identite n'est PAS etablie : le driver "
+                     "tiers n'a PAS ete appele, et c'est voulu (il briquerait la "
+                     "carte sur un `abort()` sans console).",
+                     s_reconf_echecs);
+        }
+        return false;
+    }
+    if (!ouvrir_driver(bus_rep)) {
         if (++s_reconf_echecs >= DN_CAPT_RECONF_ECHECS_MAX) {
             ESP_LOGE(TAG,
                      "reconfiguration ECHOUEE %d fois de suite — on CESSE d'insister "
@@ -771,12 +925,37 @@ static void tache_capteurs(void *arg)
                  * ⇒ Meme un boot reussi pouvait se faire briquer a la reprise
                  * suivante, UNE MINUTE plus tard, par la meme perturbation.
                  * L'identite se releve MAINTENANT d'abord, et elle DECIDE. */
-                if (bus) {
-                    relever_identite(bus);
+                relever_identite(bus); /* teste `bus` NULL lui-meme */
+                /* 🔴 CR dn4-2 — LE VERDICT NE SE REPUBLIE QUE QUAND IL CHANGE.
+                 * `journaliser_identite()` est sorti de la branche de succes en
+                 * dn4-2 : sur une carte sans capteur — ou apres un demarrage a
+                 * froid, que §13.16.16 dit rate a chaque fois — il injectait donc
+                 * son pave de 4 lignes TOUTES LES 60 s, indefiniment, DANS LE
+                 * TRANSPORT PC. ⛔ Le REPL EST le transport, et la fragilite du
+                 * pilote face aux lignes est deja au ledger. */
+                uint16_t sig = identite_signature();
+                if (sig != s_id_sig_publiee) {
+                    s_id_sig_publiee = sig;
                     journaliser_identite();
-                    if (identite_est_bme680() && ouvrir_driver(bus)) {
+                }
+                if (identite_est_bme680()) {
+                    if (ouvrir_driver(bus)) {
                         ESP_LOGW(TAG, "capteur REAPPARU — il ne repondait pas au "
                                       "boot. La lecture reprend au cycle suivant.");
+                        s_id_sig_publiee = 0; /* la prochaine anomalie se redira */
+                    } else if (!s_reprise_echec_dit) {
+                        /* 🔴 CR dn4-2 — LE 3e MESSAGE MANQUAIT ICI. Le chemin
+                         * d'init en a un (« ouverture du driver refusee ») ; la
+                         * reprise n'en avait pas, et un echec d'ouverture
+                         * PERMANENT s'y lisait comme un controle d'identite sain
+                         * suivi de silence. Dit UNE fois, pas toutes les minutes. */
+                        s_reprise_echec_dit = true;
+                        ESP_LOGE(TAG,
+                                 "identite BONNE (chip id 0x%02X) mais "
+                                 "`bme680_init()` REFUSE — ⛔ ce n'est PAS un "
+                                 "probleme d'identite ni de cablage. Les cases "
+                                 "restent a « -- ». Ce message ne se repetera pas.",
+                                 s_chip_id);
                     }
                 }
             }
