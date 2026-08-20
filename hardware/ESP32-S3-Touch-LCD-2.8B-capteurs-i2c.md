@@ -4262,3 +4262,270 @@ ligne FABRIQUÉE avant d'être cru sur une ligne réelle.**
 
 9. ⚠️ **J'AI JUGÉ LE PLANCHER DE LISIBILITÉ DANS LA MAUVAISE CONDITION** (rideau ouvert, ~1 500 lx)
    alors que **le plancher ne s'applique qu'en pièce sombre**. La dichotomie a dû être rejouée.
+
+---
+
+## 13.20 — SÉANCE `dn4-7` « Le ToF porte-t-il vraiment » (2026-08-21) — **P9.3b**
+
+> **Ce que cette marche instruit** : la portée RÉELLE du VL6180X, mesurée, contre une datasheet dont
+> une étiquette avait été prise pour une mesure en `dn4-3`. **D4 est rouverte sur ce point précis**
+> par décision owner. Le reste de D4 est intact.
+
+### 13.20.1 🎯 AC1 (a) — LA SOURCE EST OBTENUE, ET **`st.com` N'EST PAS « INJOIGNABLE »** : LA CAUSE EST NOMMÉE
+
+`dn4-3` avait arrêté la piste SR03 sur un constat brut : *« `st.com` injoignable, `curl` → `http=000` »*.
+Ce constat était **vrai mais muet** — il ne disait pas *pourquoi*, donc il ne pouvait pas être contourné.
+
+**Mesuré le 2026-08-21 :**
+
+| Chemin | Résultat |
+|---|---|
+| DNS `www.st.com` | ✅ résout (`104.126.37.179`, Akamai) |
+| Réseau générique (`example.com`) | ✅ `200` |
+| `https://www.st.com/…` en HTTP/2 | 🔴 **le TLS ABOUTIT**, puis `HTTP/2 stream 1 was not closed cleanly: INTERNAL_ERROR (err 2)` |
+| idem forcé en `--http1.1` | 🔴 expire à 60 s, **0 octet reçu** |
+| idem depuis **Windows** (`Invoke-WebRequest`, hors WSL) | 🔴 expire aussi |
+
+🔴 **CE N'EST DONC PAS WSL**, et ce n'est pas une panne de résolution : c'est **`st.com` qui refuse ce
+client**, après avoir accepté la poignée de main TLS. ⇒ le contournement n'est pas réseau, il est
+**documentaire** : passer par un miroir, et **prouver l'identité du fichier**.
+
+### 13.20.2 🔴 LE PIÈGE DU MIROIR — **UN `200` ET UN NOM DE FICHIER ONT MENTI TOUS LES DEUX**
+
+Deux URL plausibles ont rendu **HTTP 200** :
+
+| URL | Ce que ça rendait vraiment |
+|---|---|
+| `mouser.com/datasheet/2/389/vl6180x-1849942.pdf` | ⛔ **pas un PDF** — une page anti-bot JavaScript de 13 895 o |
+| `pololu.com/file/0J1187/VL6180X.pdf` | ⛔ un **vrai PDF ST**… du **VL53L0X** (titre : *« World's smallest Time-of-Flight ranging and gesture detection sensor »*) |
+| `pololu.com/file/0J1188/VL6180X-application-note.pdf` | ⛔ un **schéma de carte Pololu**, `Author: Pololu Corporation` |
+
+🎯 **C'est exactement la confusion que §13.16.7 avait déjà tranchée une fois** — et elle est revenue
+par la porte du nom de fichier. **Seule la lecture du titre et de l'auteur l'a vue.**
+⇒ ⛔ **Un code 200 ne qualifie pas un document. Un nom de fichier non plus.**
+
+### 13.20.3 ✅ LES DEUX DOCUMENTS ST, **IDENTIFIÉS ET CROISÉS**
+
+| Réf | Document | DocID | Rév / date | Empreinte `sha256` | Auteur PDF |
+|---|---|---|---|---|---|
+| **[AN]** | *VL6180X basic ranging application note* | `026571` | **Rev 1, juin 2014** | `091291adc9812852e4206f4bf33a6a1646a51c1c9d92bf5c4b00d1ee5efabbab` | `STMICROELECTRONICS` |
+| **[DS]** | *Proximity and ambient light sensing (ALS) module* | `026171` | **Rev 7, mars 2016** | `87e1b09668160d71…` | `STMICROELECTRONICS` |
+
+🎯 **[AN] a été téléchargé depuis DEUX hébergeurs indépendants** — `cdn.sparkfun.com` et `pololu.com` —
+et les deux copies ont la **même empreinte `sha256`**. ⇒ le fichier n'a pas été retouché en route.
+C'est ce croisement, ⛔ pas la confiance dans un hébergeur, qui rend la source recevable.
+
+⚠️ **[AN] existe en Rev 2 (juillet 2018)**, non obtenue (même blocage `st.com`). **Ce qui est joué ici
+est la Rev 1**, et c'est écrit tel quel. ⛔ Ne pas laisser croire que la dernière révision a été lue.
+
+⚠️ **[AN] se prévient lui-même**, p. 1 : *« Settings presented in this document are for test purpose
+only. Performance and reliability not guaranteed. »*
+
+### 13.20.4 🎯 LA PRÉMISSE DE LA STORY EST **CONFIRMÉE MOT POUR MOT** — l'owner avait raison
+
+[DS] §3.1, p. 27, verbatim :
+
+> *« The following table specifies ranging performance up to 100mm. **Ranging beyond 100mm is
+> possible with certain target reflectances and ambient conditions but not guaranteed.** »*
+
+⇒ **« possible » n'est pas « non ».** Le verdict de `dn4-3` (*« ne porte que 100 mm GARANTIS »*)
+citait correctement la garantie, mais **en tirait une portée**, ce que le texte ne dit pas.
+
+### 13.20.5 🔴 **LE PLAFOND STRUCTUREL — ET IL EST DANS LE REGISTRE, PAS DANS UNE ÉTIQUETTE**
+
+[DS] §6.2.42, p. 72 :
+
+```
+RESULT__RANGE_VAL     Address: 0x062     Type: R
+  [7:0]  result__range_val: Final range result value presented to the user for use. Unit is in mm.
+```
+
+🔴 **Le résultat de portée est un champ de 8 BITS, en MILLIMÈTRES.**
+⇒ **255 mm est le maximum REPRÉSENTABLE.** ⛔ **Aucun réglage optique, aucune cible, aucune
+convergence ne peut faire tenir 2 000 mm dans un octet.**
+
+⚠️ **Et c'est une nature différente de l'étiquette « 100 mm »** : « 100 mm » est une *garantie de
+performance*, qui se conteste par la mesure. **8 bits en mm est une propriété de la carte des
+registres**, qui ne se conteste pas — elle se lit. C'est pour ça qu'elle est recevable **sans carte**,
+là où la portée, elle, ⛔ ne l'est pas.
+
+⛔ **Aucun facteur d'échelle de portée n'est publié** dans les **trois** documents ST récupérés
+([DS], [AN], et **DT0037** *« VL6180X range and ambient light sensor quick setup guide »*, DocID026595).
+Le seul « scaler » de [DS] (§2.10.7) est celui de **l'ALS**, ⛔ pas de la télémétrie.
+
+### 13.20.6 🎯 **LE « TROISIÈME ÉTAT » D'AC2 EST DOCUMENTÉ PAR ST** — la valeur plausible et fausse
+
+[DS] **Table 12, « Range error codes »**, p. 27 :
+
+| Code | Nom ST | Texte ST |
+|---|---|---|
+| **13 / 15** | Range overflow | *« Range value out of range. This occurs when the target **is detected** by the device but is placed at a high distance (**> 200mm**) resulting in internal variable overflow. »* |
+| **16** | `Ranging_Filtered` | *« Distance filtered by **Wrap Around Filter (WAF)**. Occurs when a **high reflectance target** is detected **between 600mm to 1.2m**. »* |
+| **18** | `Data_Not_Ready` | — |
+
+> **1.** *« Errors 16 & 18 require VL6180X API. »*
+
+🔴 **LA PHRASE QUI COMPTE** : le filtre anti-repliement **n'existe QUE dans l'API ST**, qui **n'est pas
+embarquée ici** (driver MAISON, X5 tranché en §13.19.4). ⇒ **sans lui, une cible très réfléchissante
+entre 600 mm et 1,2 m peut rendre une valeur PROCHE, PLAUSIBLE, et SANS AUCUN code d'erreur.**
+
+⇒ **C'est précisément l'état n°3 que AC2 nomme comme le dangereux**, et il n'est pas hypothétique :
+**ST le décrit, avec sa plage.** ⛔ Une valeur de portée ne se croit **jamais** seule : elle se croise
+avec la distance **mesurée au mètre**.
+
+### 13.20.7 ⚠️ DEUX CORRECTIONS DE PROTOCOLE — écrites **avant** la carte, pas après
+
+**a) `42°` n'est PAS le cône de télémétrie.** [DS] §2.10.1 *« Field of view »* — **42 degrés (demi-angle)**
+— est dans le **chapitre 2.10 « Ambient light sensor (ALS) »**, et Table 20 le range sous
+*« ALS performance »*. ⛔ **C'est le champ de l'ALS.**
+
+**Le cône de TÉLÉMÉTRIE** est la divergence de l'émetteur, [DS] §2.9.3 :
+> *« Angle of divergent laser emission is **25° +/- 5°** … at 1/e² of the peak intensity. »*
+
+**b) `0x0040` : les DEUX documents ST se contredisent, et c'est [DS] qui fait foi.**
+
+| Source | Ce qu'elle dit |
+|---|---|
+| **[AN] §9** | `WriteByte(0x0040, 0x63);  // Set ALS integration time to 100ms` |
+| **[DS] §6.2.36** | `SYSALS__INTEGRATION_PERIOD`, offset `0x040`, registre **16 bits**, champ **`[8:0]`**, *« 1 code = 1 ms (0 = 1 ms). Recommended setting is 100 ms (0x63) »* |
+
+⇒ `0x63` est la valeur du **champ**, donc l'octet de **poids FAIBLE** (`0x0041`). L'écriture de [AN]
+pose `0x63` dans le poids **fort** et déborde le champ `[8:0]`.
+
+🎯 **CONSÉQUENCE À ÉCRIRE DANS LE BON SENS** : `dn4-3` avait posé `0x0040=0x00` / `0x0041=0x63`.
+**C'est `dn4-3` QUI A RAISON, et [AN] qui est bancal.** ⛔ **Ne pas inverser ce verdict.**
+✅ Effet utile : la garde anti-fantôme de `dn_env` (qui relit `0x0041 == 0x63`) **reste conforme après
+le passage de SR03** — ce qui n'aurait pas été le cas en jouant [AN] à la lettre.
+
+### 13.20.8 🎯 AC1 (b) — **LA DÉCISION D'INSTRUMENT, ET SON MOTIF**
+
+**Décision : poser l'instrument** (patron `dn4-2` AC4), **dans `dn_console.c`**, ⛔ pas ~37 commandes
+tapées, ⛔ pas un module neuf.
+
+| Option | Pourquoi elle est écartée |
+|---|---|
+| **~37 `i2c ecrire 29 <hi> <lo> <val>` à la main** | [AN] §1.3 : *« This procedure **must be repeated** if the VL6180X has been power cycled »*. Une campagne = des dizaines de cycles ⇒ **des CENTAINES de lignes tapées**, sur un bus dont §13.17.1 a mesuré qu'il lâche les transferts multi-octets à froid. **L'instrument deviendrait la première source d'erreur de la mesure.** |
+| **Poser `i2c ecrire16` d'abord** | Il raccourcit chaque ligne, **il n'en supprime aucune**. ⛔ **Mauvaise granularité.** |
+| **Un module `dn_tof.c` séparé** | Il devrait dupliquer `i2c_dev_fermer()`, qui **porte le correctif de revue `dn4-2`** sur la course avec le sondage GT911 (~30/s) ⇒ **deux sources de vérité sur exactement ce qui venait d'être durci.** |
+
+✅ **Retenu** : la table SR03 **dans le source**, où elle **porte sa citation** et **se relit en revue** —
+et **hors du chemin de régime** : `dn_env` n'est **pas** touché tant qu'AC1 n'a pas prouvé la
+proportionnalité.
+
+### 13.20.9 ✅ LA SÉQUENCE EST POSÉE — ET **PROUVÉE PAR EXTRACTION CROISÉE**, ⛔ pas relue à l'œil
+
+`tools/verif_sr03.py` **extrait la séquence des DEUX côtés** et les compare :
+- côté document : le texte de [AN] §9, via `pdftotext`
+- côté firmware : la table C `k_sr03_prive[]` / `k_sr03_public[]` de `dn_console.c`
+
+⛔ **Le harnais ne contient PAS la séquence** — il ne prouverait que sa cohérence avec lui-même.
+
+```
+[AN] prives  : 30   firmware : 30
+[AN] publics :  6   firmware :  7
+✅ BLOC PRIVE : les 30 ecritures sont IDENTIQUES, valeurs ET ordre
+✅ BLOC PUBLIC : conforme, hors l'ecart 0x0040/0x0041 DECLARE en commentaire
+```
+
+🎯 **ET LA GARDE A ÉTÉ VUE ROUGE** — quatre mutants, tous attrapés (`exit 1`) :
+
+| Mutant | Ce qui a été muté | Verdict |
+|---|---|---|
+| 1 | une **valeur** privée (`0x00DB` `0xCE`→`0xCF`) | 🔴 `[11] doc 0x00DB=0xCE  fw 0x00DB=0xCF` |
+| 2 | deux entrées **permutées** (l'ordre) | 🔴 `[04]` et `[05]` signalés |
+| 3 | un **public non déclaré** (`0x0031` `0xFF`→`0xFE`) | 🔴 `ecart(s) NON DECLARE(S) : 0x0031` |
+| 4 | une entrée **supprimée** | 🔴 `longueurs differentes : 30 vs 29` |
+
+⚠️ **Et il refuse le mauvais document** : pointé sur [DS] au lieu de [AN], il sort en `exit 2` sur
+l'empreinte — **la parade directe au piège de §13.20.2**.
+
+⚠️ **La séquence fait 30 privés, pas « ~30 »** — le compte est maintenant EXACT, et il est vérifié
+mécaniquement.
+
+### 13.20.10 🔴 AC7 — **LA PRÉDICTION, ÉCRITE ET COMMITTÉE AVANT LA MOINDRE MESURE**
+
+> *Une prédiction démentie est plus instructive qu'une prédiction tenue.* Ce qui suit est écrit
+> **avant** que la carte ait rendu un seul chiffre de portée.
+
+**Référence de départ** (état du dépôt, à re-mesurer en T0) : `dn_env` fait **4 transactions I²C par
+cycle** (BH1750 : 1 · VL6180X : 3), cycle **~1 140 µs**, bus à **7 devices**.
+
+**Ce qu'une lecture de distance EN RÉGIME ajouterait**, en coup par coup ([DS] §6.2.16) :
+
+| Geste | Transactions |
+|---|---|
+| `0x015 ← 0x07` (effacer l'interruption) | 1 |
+| `0x018 ← 0x01` (déclencher) | 1 |
+| sondage de `0x04F` jusqu'à *New Sample Ready* | **n, inconnu** |
+| `0x062` (valeur) + `0x04D` (statut) | 2 |
+| `0x015 ← 0x07` (ré-effacer) | 1 |
+
+**PRÉDICTIONS, chiffrées :**
+
+1. **P1 — transactions** : **5 fixes + n sondages**. Avec un sondage toutes les 2 ms et une
+   convergence de l'ordre de 10 ms, **n ≈ 5** ⇒ **~10 transactions**, soit `dn_env` qui passe de
+   **4 à ~14 par cycle** — un facteur **~3,5×**.
+2. **P2 — durée** : à ~285 µs la transaction (1 140 µs / 4), **~+2,9 ms** de transport ⇒ cycle
+   **~4,0 ms**. ⚠️ **Mais le terme dominant n'est PAS le transport, c'est l'ATTENTE** :
+   `SYSRANGE__MAX_CONVERGENCE_TIME` (`0x001C`) vaut **`0x31` = 49 ms** au reset ([DS] §6.2.20).
+   ⇒ **je prédis que la mesure démentira P2 par le haut**, et que le coût réel sera **dominé par la
+   convergence**, pas par l'I²C.
+3. **P3 — portée** : au vu de §13.20.5, **je prédis qu'aucune valeur valide ne dépassera 255 mm**, et
+   qu'au-delà de ~200 mm le code d'erreur **13/15 « Range overflow »** apparaîtra ([DS] Table 12).
+4. **P4 — cône** : divergence **25° ± 5°** ⇒ demi-angle **12,5°** ⇒ largeur vue à distance `d` :
+   `2 · d · tan(12,5°) = 0,443 · d`.
+   ⇒ **à 1 m je prédis une bande de ~44 cm** (bornes de la tolérance : **35 à 54 cm**).
+   ⚠️ **P4 est une prédiction OPTIQUE, et elle suppose que la puce VOIE à 1 m** — ce que P3 dit
+   improbable. ⇒ **le cône devra se mesurer à une distance où la détection EXISTE** (AC3 le dit déjà),
+   et la formule s'y applique à l'identique.
+5. **P5 — SR03** : je prédis que **les 37 écritures aboutiront** (le bus les porte déjà en régime) et
+   que **le balayage d'intégration deviendra proportionnel**. ⚠️ **Si P5 est démentie, Z1 se solde par
+   la négative et la story s'arrête** — et **c'est un résultat**, pas un échec.
+
+⛔ **Aucune de ces cinq prédictions n'est un résultat.** Elles sont là pour être confrontées.
+
+### 13.20.11 ✅ CE QUE LE FIRMWARE PORTE MAINTENANT — `tof`, et **rien dans le régime**
+
+| Commande | Ce qu'elle fait |
+|---|---|
+| `tof etat` | les registres, **LECTURE SEULE** — ⛔ aucune écriture |
+| `tof sr03` | joue [AN] §9 (30 privés + 7 publics), **relit**, et **distingue** ce qui se relit de ce qui ne se relit pas |
+| `tof balayage` | **rejeu à l'identique** de §13.19.5 — 1, 2, 3, 5, 10, 20, 50, 100 ms. **LE critère d'AC1** |
+| `tof als <ms>` | une mesure ALS à intégration imposée |
+| `tof range [n]` | télémétrie, **les trois états**, taux de détection, écart-type |
+
+**Deux choix de conception écrits, parce qu'ils sont contestables :**
+
+1. 🔴 **La relecture des registres PRIVÉS est imprimée comme une DONNÉE, ⛔ pas comme un verdict.**
+   ST ne les documente pas et ne promet nulle part qu'ils se relisent. **Un écart de relecture sur un
+   registre non documenté ne prouve rien** — le traiter comme un échec fabriquerait un défaut.
+   Seuls les **publics** concluent.
+2. 🔴 **`tof range` ne peut PAS trancher l'état n°3** et **le dit** : *« la console ne peut pas le
+   dire, il faut la distance PHYSIQUE au mètre »*. ⛔ Une console qui prétendrait valider une distance
+   sans référence externe serait exactement le fantôme de §13.10, en pire.
+
+⛔ **Ce qui N'A PAS été fait, et c'est délibéré** : `dn_env` n'est **pas** touché, `dn_ui.c` non plus
+(grille figée à six, X2). **La story l'exige tant que T1 n'a pas rendu son verdict.**
+
+### 13.20.12 ⚠️ CE QUI N'A PAS MARCHÉ DANS CETTE SÉANCE — y compris mes propres erreurs de méthode
+
+1. 🔴 **J'AI TÉLÉCHARGÉ ET FAILLI CROIRE DEUX DOCUMENTS DU MAUVAIS CAPTEUR.** Les URL
+   `pololu.com/file/0J1187/VL6180X.pdf` et `…/0J1188/VL6180X-application-note.pdf` portent
+   « VL6180X » **dans leur nom** et rendent des PDF valides en `200` — l'un est la datasheet du
+   **VL53L0X**, l'autre un schéma **Pololu**. Je les avais déjà rangés comme sources avant de lire
+   leur titre. ⇒ ⛔ **Vérifier l'identité AVANT de ranger, jamais après.** La garde `sha256` de
+   `verif_sr03.py` existe **à cause de cette erreur**.
+
+2. ⚠️ **J'AI ANNONCÉ « DEUX ÉCARTS AVEC CE QUE `dn4-3` AVAIT ÉCRIT » AVANT D'AVOIR LU §6.2.36.**
+   Sur `0x0040`, la lecture du registre a montré **l'inverse de ce que j'avais dit** : c'est `dn4-3`
+   qui est conforme et **[AN] qui est bancal**. ⛔ **Un écart entre deux sources n'est pas un défaut
+   de la carte tant qu'on n'a pas lu laquelle fait foi.**
+
+3. ⚠️ **`curl` a rendu `200` sur une page anti-bot de 13 895 o** que j'ai d'abord comptée comme un
+   PDF. Le `file` l'a démentie : `JavaScript source, ASCII text`. ⇒ ⛔ **le code HTTP ne qualifie pas
+   un contenu** — c'est la **signature `%PDF-`** qui l'a fait, et c'est elle qui a été mise dans la
+   boucle de sondage ensuite.
+
+4. ⚠️ **`dn4-3` avait écrit « `st.com` injoignable » sans instruire la cause**, et ce constat muet a
+   **coûté une piste entière**. La cause tient en une ligne (`INTERNAL_ERROR` HTTP/2) et se
+   contourne. ⛔ **Un blocage se NOMME, sinon il se re-subit.**
