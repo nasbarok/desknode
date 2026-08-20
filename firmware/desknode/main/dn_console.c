@@ -860,6 +860,7 @@ static void bl_usage(void)
     printf("        bl auto on|off      — asservissement au BH1750 (dn4-3, AC5)\n");
     printf("        bl auto bornes <lux_bas> <lux_haut>  — la loi, à chaud\n");
     printf("        bl auto pas <1..100>  — pas maximal par cycle de 5 s\n");
+    printf("        bl auto plancher <n>  — le %% en piece SOMBRE (constat oeil)\n");
 }
 
 /* 🔴 DEUX ÉCRIVAINS SUR LEDC, ET RIEN NE LES ARBITRAIT.
@@ -887,11 +888,11 @@ static void bl_auto_etat(void)
     printf("asservissement BH1750 : %s\n", dn_env_bl_auto() ? "ARMÉ" : "DÉSARMÉ");
     printf("  loi      : %d %% à <= %d lx · %d %% à >= %d lx · linéaire entre "
            "les deux\n",
-           DN_ENV_BL_PCT_MIN, lux_bas, DN_ENV_BL_PCT_MAX, lux_haut);
+           dn_env_bl_plancher(), lux_bas, DN_ENV_BL_PCT_MAX, lux_haut);
     printf("  garde    : bande morte %d pts · pas max %d pts par cycle de %d ms "
            "(course complète en %d cycles)\n",
            hyst, pas, DN_ENV_PERIODE_MS,
-           (DN_ENV_BL_PCT_MAX - DN_ENV_BL_PCT_MIN + pas - 1) / pas);
+           (DN_ENV_BL_PCT_MAX - dn_env_bl_plancher() + pas - 1) / pas);
     if (dpct < 0) {
         printf("  applique : AUCUNE application depuis le boot\n");
     } else {
@@ -938,6 +939,23 @@ static int cmd_bl(int argc, char **argv)
                 printf("refusé : bornes invalides. Il faut 0 <= bas < haut, et "
                        "haut <= 54612 lx (le plafond PHYSIQUE du BH1750 au MTreg "
                        "par défaut : 65535 / 1,2). Rien n'a été touché.\n");
+                return 1;
+            }
+            bl_auto_etat();
+            return 0;
+        }
+        if (strcmp(argv[2], "plancher") == 0) {
+            long pct = 0;
+            if (argc < 4 || !parse_entier(argv[3], &pct)) {
+                printf("usage : bl auto plancher <0..%d>\n",
+                       DN_ENV_BL_PCT_MAX - DN_ENV_BL_HYST);
+                return 1;
+            }
+            if (dn_env_bl_plancher_set((int)pct) != ESP_OK) {
+                printf("refusé : le plancher doit être dans [0, %d] — au-delà, "
+                       "la bande morte rendrait la loi INERTE sans le dire, ce "
+                       "qui est pire qu'un refus. Rien n'a été touché.\n",
+                       DN_ENV_BL_PCT_MAX - DN_ENV_BL_HYST);
                 return 1;
             }
             bl_auto_etat();
@@ -5336,6 +5354,20 @@ static int cmd_capteurs(int argc, char **argv)
         printf(" — aucune valeur courante");
     }
     printf("\n");
+    /* 🔴 dn4-3 — LA PRESSION, MESUREE DEPUIS dn2-1 ET JETEE JUSQU'ICI.
+     * Publiee pour que X2 (la 6e case) se tranche sur des chiffres et pas sur
+     * un pronostic. ⛔ Elle n'est PAS affichee dans une case, et elle n'a donc
+     * PAS de seau d'erreur a elle : hors plage physique (300..1100 hPa, Bosch),
+     * elle devient ABSENTE toute seule, sans faire tomber T et RH. */
+    int pr = dn_capt_pression_dixiemes();
+    if (pr != DN_CAPT_DX_ABSENT) {
+        printf("pression   : %d,%d hPa — MESUREE, PAS AFFICHEE. Candidate a la\n",
+               pr / 10, pr % 10);
+        printf("             6e case (X2), instrumentee par `w2` dans SES DEUX\n");
+        printf("             formatages possibles. Bornes 300..1100 hPa (Bosch).\n");
+    } else {
+        printf("pression   : aucune valeur (hors plage 300..1100 hPa, ou jamais lue)\n");
+    }
     /* 🔴 CR dn4-2 — LECTURE ATOMIQUE. Les deux appels independants laissaient
      * la console observer un etat A DEMI mis a jour (le chemin d'echec ecrit
      * `s_chip_id = 0` PUIS `s_id_lue = false`) et imprimer « chip id 0x00 …
@@ -5881,6 +5913,100 @@ static int cmd_env(int argc, char **argv)
     return 0;
 }
 
+/*
+ * `w2` — LE CRITÈRE « UNE CASE DE SIX DOIT BOUGER », MESURÉ (AC6).
+ *
+ * Patron `FAN_RPM` de dn4-6, jugé sur la valeur AFFICHÉE : étendue >= 5,
+ * taux de changement du TEXTE >= 10 %, sigma >= 1.
+ * ⛔ Ce n'est pas un avis sur la donnée, c'est un seuil écrit AVANT le tir.
+ */
+#define DN_W2_SEUIL_ETENDUE 5
+#define DN_W2_SEUIL_TAUX_PCT 10
+#define DN_W2_SEUIL_SIGMA_MILLI 1000 /* sigma >= 1,000 */
+
+static int cmd_w2(int argc, char **argv)
+{
+    if (argc >= 2 && strcmp(argv[1], "reset") == 0) {
+        dn_w2_reset();
+        printf("accumulateurs W2 remis a zero.\n");
+        return 0;
+    }
+    if (argc >= 2) {
+        printf("usage : w2 | w2 reset\n");
+        return 1;
+    }
+
+    printf("W2 — « une case de six doit BOUGER », juge sur la valeur AFFICHEE\n");
+    printf("seuils ECRITS AVANT le tir : etendue >= %d · taux de changement du\n",
+           DN_W2_SEUIL_ETENDUE);
+    printf("TEXTE >= %d %% · sigma >= 1,000\n", DN_W2_SEUIL_TAUX_PCT);
+    printf("reference dn4-6 : FAN_RPM 13 / 55,2 %% / 2,02 (n=959) QUALIFIE ·\n");
+    printf("                  ASIC_POWER 3 / 57,9 %% / 0,75 NE QUALIFIE PAS\n");
+    printf("⚠️ echantillonne DANS LE FIRMWARE, un point par cycle de %d ms :\n",
+           DN_ENV_PERIODE_MS);
+    printf("   `dn_console.py` PERD DES LIGNES, et un taux calcule sur un\n");
+    printf("   echantillonnage qui perd des points est faux d'un biais qu'on\n");
+    printf("   ne sait pas borner.\n");
+    printf("⛔ Seules les valeurs VALIDES sont echantillonnees : compter une\n");
+    printf("   absence comme un changement gonflerait le taux d'un capteur MUET.\n\n");
+
+    printf("%-34s %6s %8s %8s %9s %8s %8s  %s\n", "piste", "n", "min", "max",
+           "etendue", "taux %", "sigma", "verdict");
+    for (int i = 0; i < DN_W2_NB; i++) {
+        dn_w2_t w;
+        dn_w2_lire((dn_w2_id_t)i, &w);
+        if (w.n == 0) {
+            printf("%-34s %6d %8s %8s %9s %8s %8s  %s\n", dn_w2_nom((dn_w2_id_t)i),
+                   0, "-", "-", "-", "-", "-", "AUCUN ECHANTILLON");
+            continue;
+        }
+        int32_t etendue = w.max - w.min;
+        /* Taux sur les TRANSITIONS observees, donc n-1 : le premier echantillon
+         * n'a pas de precedent auquel se comparer. ⛔ Diviser par n gonflerait
+         * les petits echantillons. */
+        uint32_t transitions = (w.n > 1) ? (w.n - 1) : 1;
+        uint32_t taux = (w.changements * 100u) / transitions;
+        /* sigma en MILLIEMES, en entiers : variance = E[x²] - E[x]².
+         * ⛔ Aucun flottant : le depot les interdit sur le fil, et une racine
+         *    entiere par Newton suffit largement ici. */
+        int64_t moy_x1000 = (w.somme * 1000) / (int64_t)w.n;
+        int64_t e_x2 = w.somme_carres / (int64_t)w.n;
+        int64_t var_x1e6 = e_x2 * 1000000 - moy_x1000 * moy_x1000;
+        if (var_x1e6 < 0) {
+            var_x1e6 = 0; /* arrondi entier : la variance ne peut pas etre < 0 */
+        }
+        int64_t sigma_milli = 0;
+        if (var_x1e6 > 0) {
+            int64_t r = 1, prev = 0;
+            while (r != prev) { prev = r; r = (r + var_x1e6 / r) / 2; }
+            sigma_milli = r;
+        }
+        bool ok_e = etendue >= DN_W2_SEUIL_ETENDUE;
+        bool ok_t = taux >= (uint32_t)DN_W2_SEUIL_TAUX_PCT;
+        bool ok_s = sigma_milli >= DN_W2_SEUIL_SIGMA_MILLI;
+        char verdict[64];
+        if (ok_e && ok_t && ok_s) {
+            snprintf(verdict, sizeof verdict, "QUALIFIE");
+        } else {
+            snprintf(verdict, sizeof verdict, "NE QUALIFIE PAS (%s%s%s)",
+                     ok_e ? "" : "etendue ", ok_t ? "" : "taux ",
+                     ok_s ? "" : "sigma");
+        }
+        printf("%-34s %6lu %8ld %8ld %9ld %8lu %4lld,%03lld  %s\n",
+               dn_w2_nom((dn_w2_id_t)i), (unsigned long)w.n, (long)w.min,
+               (long)w.max, (long)etendue, (unsigned long)taux,
+               (long long)(sigma_milli / 1000), (long long)(sigma_milli % 1000),
+               verdict);
+    }
+    printf("\n⚠️ La duree de la fenetre est n x %d ms. Un verdict sur une fenetre\n",
+           DN_ENV_PERIODE_MS);
+    printf("   trop courte ne vaut rien : une pression atmospherique bouge sur\n");
+    printf("   des HEURES, un lux de bureau sur des SECONDES. ⛔ Comparer deux\n");
+    printf("   pistes exige la MEME fenetre, et c'est le cas ici : elles sont\n");
+    printf("   remises a zero ensemble par `w2 reset`.\n");
+    return 0;
+}
+
 static const esp_console_cmd_t k_cmds[] = {
     DN_CMD("scene",
            "affiche une mire : bits|nbits|rgb|red|green|blue|white|black|frame|gray|asset",
@@ -5919,14 +6045,15 @@ static const esp_console_cmd_t k_cmds[] = {
            cmd_recal),
     DN_CMD("bl",
            "bl [0..100|on|off|ramp <pct> [ms]|freq <hz>|auto on|off|auto bornes "
-           "<bas> <haut>|auto pas <n>] — rétroéclairage gradable et asservi "
-           "(dn1-3/dn4-3)",
+           "<bas> <haut>|auto pas <n>|auto plancher <n>] — rétroéclairage "
+           "gradable et asservi (dn1-3/dn4-3)",
            cmd_bl),
     DN_CMD("disp", "disp on|off — sortie d'affichage de la dalle (0x29/0x28)",
            cmd_disp),
     DN_CMD("dma", "relance la DMA du panneau (décalage permanent)", cmd_restart_dma),
     DN_CMD("capteurs",
-           "capteurs | reset | gaz on|off | simuler <cause> <n> — BME680 (dn2-1)",
+           "capteurs | reset | gaz on|off | simuler <cause> <n> — BME680 "
+           "(dn2-1) + la pression, mesuree et publiee par dn4-3",
            cmd_capteurs),
     /* ⚠️ INSCRITE ICI **ET** DANS LE « Jeu complet » DU README dans le MÊME
      * geste — dn2-1 avait oublié `capteurs` au README, et « une commande qu'on
@@ -5935,6 +6062,10 @@ static const esp_console_cmd_t k_cmds[] = {
            "env | reset — BH1750 / INA219 / VL6180X, les trois capteurs locaux "
            "(dn4-3)",
            cmd_env),
+    DN_CMD("w2",
+           "w2 | reset — le critere « une case doit BOUGER » mesure sur les "
+           "candidats de la 6e case (dn4-3/AC6)",
+           cmd_w2),
     /* ⚠️ INSCRITE ICI **ET** DANS LE « Jeu complet » DU README dans le même
      * geste — dn2-1 avait oublié `capteurs` au README. Les trois primitives
      * ajoutées en dn4-2 y sont entrées avec cette ligne. */

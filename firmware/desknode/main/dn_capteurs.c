@@ -76,6 +76,8 @@ static bool s_gaz_demande = DN_CAPT_GAZ_DEFAUT;
 
 static int s_temp_dx = DN_CAPT_DX_ABSENT; /* dixièmes de °C */
 static int s_hum_dx = DN_CAPT_DX_ABSENT;  /* dixièmes de %RH */
+/* 🔴 dn4-3 : mesurée depuis dn2-1, JETÉE jusqu'ici. Voir dn_capteurs.h. */
+static int s_pression_dx = DN_CAPT_DX_ABSENT; /* dixièmes de hPa */
 static int64_t s_lu_us = -1;
 static int64_t s_cadence_us = -1; /* écart mesuré entre les deux dernières */
 static int64_t s_cycle_us = -1;
@@ -233,6 +235,14 @@ int dn_capt_humidite_dixiemes(void)
 {
     portENTER_CRITICAL(&s_mux);
     int v = s_hum_dx;
+    portEXIT_CRITICAL(&s_mux);
+    return v;
+}
+
+int dn_capt_pression_dixiemes(void)
+{
+    portENTER_CRITICAL(&s_mux);
+    int v = s_pression_dx;
     portEXIT_CRITICAL(&s_mux);
     return v;
 }
@@ -789,6 +799,10 @@ static bool config_verifier_et_reparer(dn_capt_faute_t faute_du_cycle)
     s_cnt.reconfigs++;
     s_temp_dx = DN_CAPT_DX_ABSENT;
     s_hum_dx = DN_CAPT_DX_ABSENT;
+    /* ⚠️ La pression s'invalide AVEC les deux autres : elle vient du même
+     * capteur, et un capteur qui a perdu sa configuration ne rend pas une
+     * pression plus fiable qu'une température. */
+    s_pression_dx = DN_CAPT_DX_ABSENT;
     s_lu_us = -1;
     portEXIT_CRITICAL(&s_mux);
     s_degrade = true;
@@ -1056,6 +1070,30 @@ static void tache_capteurs(void *arg)
         int t_dx = (int)lroundf(d.air_temperature * 10.0f);
         int h_dx = (int)lroundf(d.relative_humidity * 10.0f);
 
+        /*
+         * 🔴 dn4-3 — LA PRESSION CESSE D'ÊTRE JETÉE (X2 / AC6).
+         *
+         * Le BME680 la mesure à chaque cycle (P 1x) et ce module la JETAIT depuis
+         * dn2-1, parce qu'aucun des six widgets du brief ne la portait. Le brief
+         * la nomme pourtant comme TROISIÈME candidat à la 6ᵉ case, et — à la
+         * différence du lux — elle vient du MÊME capteur que T et RH, donc elle
+         * n'a PAS le conflit de verdict unique de `dn_ui_ambiance_maj()`.
+         * ⚠️ Décision owner du 2026-08-20 : « mesure la pression d'abord, puis on
+         *    tranche ». Elle est donc PUBLIÉE et INSTRUMENTÉE, ⛔ pas affichée.
+         *
+         * BORNES ET LEUR SOURCE (AC10) : Bosch BME680, plage de mesure
+         * **300..1100 hPa**. ⛔ Hors plage, la pression seule devient ABSENTE —
+         * elle NE FAIT PAS tomber la lecture T/H. C'est délibéré : cette story
+         * ne doit pas pouvoir éteindre la seule case vivante pour une grandeur
+         * qu'elle ne fait qu'instruire. ⇒ elle n'a donc PAS de seau à elle, et
+         * si X2 la retient pour une case, il faudra lui en donner un.
+         */
+        float p_hpa = d.barometric_pressure;
+        int p_dx = (p_hpa >= DN_CAPT_PRESSION_MIN_HPA &&
+                    p_hpa <= DN_CAPT_PRESSION_MAX_HPA)
+                       ? (int)lroundf(p_hpa * 10.0f)
+                       : DN_CAPT_DX_ABSENT;
+
         if (t_dx < DN_CAPT_TEMP_MIN_DX || t_dx > DN_CAPT_TEMP_MAX_DX ||
             h_dx < DN_CAPT_HUM_MIN_DX || h_dx > DN_CAPT_HUM_MAX_DX) {
             s_degrade = true;
@@ -1088,6 +1126,7 @@ static void tache_capteurs(void *arg)
         s_cadence_us = (s_lu_us >= 0) ? (maintenant - s_lu_us) : -1;
         s_temp_dx = t_dx;
         s_hum_dx = h_dx;
+        s_pression_dx = p_dx;
         s_lu_us = maintenant;
         s_cycle_us = duree;
         s_cnt.lectures++;
@@ -1096,6 +1135,19 @@ static void tache_capteurs(void *arg)
             s_cnt.reprises++;
         }
         portEXIT_CRITICAL(&s_mux);
+
+        /* 🔴 W2 (AC6) — la pression est instrumentée DANS LES DEUX FORMATAGES
+         * qu'elle pourrait recevoir, parce que c'est justement la précision qui
+         * est en jeu (AC11 : ⛔ aucune décimale que la source ne porte).
+         * Et la TEMPÉRATURE sert de TÉMOIN DE CONTRÔLE : c'est une grandeur
+         * DÉJÀ AFFICHÉE dans une case livrée, donc son W2 dit ce que « bouger
+         * assez » vaut sur cette carte, dans cette pièce. ⛔ Sans témoin, un
+         * verdict W2 n'est qu'un nombre comparé à un seuil venu d'ailleurs. */
+        if (p_dx != DN_CAPT_DX_ABSENT) {
+            dn_w2_echantillon(DN_W2_PRESSION_ENT, (p_dx + 5) / 10);
+            dn_w2_echantillon(DN_W2_PRESSION_DIX, p_dx);
+        }
+        dn_w2_echantillon(DN_W2_TEMPERATURE_DIX, t_dx);
 
         pousser_ui();
     }

@@ -216,12 +216,30 @@ const char *dn_capt_etat_nom(dn_capt_etat_t e);
  */
 #define DN_CAPT_DX_ABSENT INT32_MIN
 
+/*
+ * 🔴 dn4-3 — LES BORNES DE LA PRESSION, ET LEUR SOURCE.
+ * Bosch BME680, plage de mesure **300..1100 hPa**. Sans bornes écrites, aucun
+ * seau ne pourrait rien comparer (AC1 : « un seau qui n'a rien à comparer est un
+ * compteur décoratif »).
+ * ⛔ Hors plage, SEULE la pression devient absente : T et RH restent publiées.
+ *    Une grandeur qu'on ne fait qu'INSTRUIRE ne doit pas pouvoir éteindre la
+ *    seule case vivante de la grille.
+ */
+#define DN_CAPT_PRESSION_MIN_HPA 300.0f
+#define DN_CAPT_PRESSION_MAX_HPA 1100.0f
+
 /* Dernières valeurs VALIDES, en DIXIÈMES (233 = 23,3 °C · 471 = 47,1 %).
  * Entiers pour rester dans la doctrine du dépôt côté affichage ; le driver rend
  * des float, la conversion est faite ici, une fois.
  * `DN_CAPT_DX_ABSENT` si aucune valeur valide n'est publiée. */
 int dn_capt_temperature_dixiemes(void);
 int dn_capt_humidite_dixiemes(void);
+
+/* 🔴 dn4-3 : la pression, en DIXIÈMES de hPa (10132 = 1013,2 hPa).
+ * Mesurée par le BME680 depuis dn2-1 et JETÉE jusqu'ici. Publiée pour que X2
+ * (la 6ᵉ case) se tranche sur des chiffres, ⛔ pas sur un pronostic.
+ * `DN_CAPT_DX_ABSENT` si hors plage physique ou si aucune lecture valide. */
+int dn_capt_pression_dixiemes(void);
 
 /* Âge de la dernière lecture valide en µs (esp_timer). -1 si jamais lue. */
 int64_t dn_capt_age_us(void);

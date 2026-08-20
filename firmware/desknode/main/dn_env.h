@@ -170,10 +170,38 @@ typedef struct {
  *    de départ : la discipline de boot (duty 0 à l'init, il ne monte qu'après la
  *    première trame) reste INTOUCHÉE, et l'A/B se joue dans UN SEUL FIRMWARE.
  */
-#define DN_ENV_BL_PCT_MIN      3
+/*
+ * 🔴 DEUX DE CES QUATRE BORNES ONT ÉTÉ DÉPLACÉES PAR L'ŒIL DE L'OWNER LE
+ *    2026-08-20, ET LEURS ANCIENNES VALEURS SONT CONSERVÉES ICI (§13.19.7).
+ *
+ * · PCT_MIN : 3 -> 8. Le 3 % venait d'AC7 de `dn1-3`, où il était le PLANCHER
+ *   LISIBLE — mais mesuré sur le **Living PCB et son label**, une image de fond
+ *   contrastée. Rejoué sur le **dashboard à six cases** (du texte fin), constat
+ *   owner : *« casiement plus lisible super sombre »*. La dichotomie 10 / 6 / 8,
+ *   conduite RIDEAU FERMÉ (capteur à 2 lx, la condition où le plancher
+ *   s'applique), a rendu : 10 % *« un peu trop lumineux »*, 6 % *« lisible, un
+ *   poil trop sombre »*, **8 % *« c'est bien »***.
+ *   ⇒ ⛔ **Le 3 % de `dn1-3` n'est PAS invalidé : il ne portait simplement pas
+ *     sur ce contenu-là.** Un plancher de lisibilité est une propriété du
+ *     COUPLE duty × contenu, pas du duty seul.
+ *
+ * · LUX_HAUT : 400 -> 1500. Le 400 venait d'UNE mesure (411 lx). La séance en a
+ *   relevé bien d'autres dans la même pièce : **2 lx rideau fermé** jusqu'à
+ *   **2 262 lx** en journée. À 400 lx de plafond, la loi saturait à 100 % dès un
+ *   éclairage artificiel modeste — elle *« ne modulait quasiment jamais »*.
+ *   ⚠️ **Ce diagnostic-là a lui-même dû être corrigé** : il s'appuyait d'abord
+ *   sur un « rideaux fermés = 1 296 lx » qui était en fait un rideau **pas
+ *   encore fermé**. C'est l'owner qui l'a dit, ⛔ pas une déduction.
+ *
+ * 🔴 ET LE PLANCHER EST DÉSORMAIS RÉGLABLE À CHAUD, parce que la séance a prouvé
+ *    qu'il en avait besoin : j'avais rendu les bornes en LUX ajustables et laissé
+ *    le plancher en % figé à la compilation — or c'est précisément lui que l'œil
+ *    a déplacé. *« L'arbitrage se tranche sur la dalle »* vaut pour les deux.
+ */
+#define DN_ENV_BL_PCT_MIN      8
 #define DN_ENV_BL_PCT_MAX      100
 #define DN_ENV_BL_LUX_BAS      20
-#define DN_ENV_BL_LUX_HAUT     400
+#define DN_ENV_BL_LUX_HAUT     1500
 #define DN_ENV_BL_HYST         3
 #define DN_ENV_BL_PAS_MAX      20
 #define DN_ENV_BL_AUTO_DEFAUT  false
@@ -252,8 +280,55 @@ bool dn_env_bl_auto_desarmer(const char *par_qui);
 /* Réglages à chaud : la story exige que l'arbitrage se tranche SUR LA DALLE. */
 esp_err_t dn_env_bl_bornes_set(int lux_bas, int lux_haut);
 esp_err_t dn_env_bl_pas_set(int pas);
+/* 🔴 Le plancher est réglable À CHAUD — voir le bloc de motifs ci-dessus : la
+ * séance du 2026-08-20 a prouvé que c'est LUI que l'œil déplace, pas les lux. */
+esp_err_t dn_env_bl_plancher_set(int pct);
+int dn_env_bl_plancher(void);
 void dn_env_bl_etat(int *lux_bas, int *lux_haut, int *pas, int *hyst,
                     int *dernier_pct, int *dernier_lux);
 /* Le pct que la loi rendrait POUR CE LUX — exposé pour que la console puisse
  * imprimer la loi sans l'appliquer. */
 int dn_env_bl_loi(int lux);
+
+/*
+ * ── 🔴 W2 — LE CRITÈRE « UNE CASE DE SIX DOIT BOUGER », MESURÉ DANS LE FIRMWARE
+ *
+ * Patron `FAN_RPM` de `dn4-6`, jugé sur la **valeur AFFICHÉE**, ⛔ jamais sur la
+ * source : **étendue >= 5** · **taux de changement du TEXTE >= 10 %** · **σ >= 1**.
+ * Référence : `FAN_RPM` 13 / 55,2 % / 2,02 (n=959) QUALIFIE ; son témoin de
+ * contrôle `ASIC_POWER` 3 / 57,9 % / 0,75 NE QUALIFIE PAS.
+ *
+ * ⚠️ POURQUOI DANS LE FIRMWARE ET PAS PAR ÉCHANTILLONNAGE DEPUIS WSL :
+ *   `tools/dn_console.py` PERD DES LIGNES (mesuré, y compris en invocation solo,
+ *   et deux captures ENTIÈREMENT VIDES le 2026-08-20). Un taux de changement
+ *   calculé sur un échantillonnage qui perd des points est **faux**, et faux
+ *   d'un biais qu'on ne sait pas borner. L'accumulateur, lui, voit TOUS les
+ *   cycles.
+ *
+ * 🔴 ET IL Y A QUATRE PISTES, PAS DEUX, PARCE QUE X2 EST UN CHOIX ENTRE DEUX
+ *    CANDIDATS : comparer le lux et la pression avec deux instruments différents
+ *    ne prouverait rien. Et pour la pression, la PRÉCISION est justement ce qui
+ *    est en jeu (AC11 : ⛔ aucune décimale que la source ne porte) ⇒ les deux
+ *    formatages sont accumulés SÉPARÉMENT, et le choix se fait sur les chiffres.
+ */
+typedef enum {
+    DN_W2_LUX = 0,          /* BH1750, en lux ENTIERS (sa seule précision utile) */
+    DN_W2_PRESSION_ENT,     /* BME680, en hPa ENTIERS      (« 1013 hPa »)        */
+    DN_W2_PRESSION_DIX,     /* BME680, en DIXIÈMES de hPa  (« 1013,2 hPa »)      */
+    DN_W2_TEMPERATURE_DIX,  /* témoin de CONTRÔLE : une grandeur DÉJÀ affichée   */
+    DN_W2_NB,
+} dn_w2_id_t;
+
+typedef struct {
+    uint32_t n;          /* échantillons */
+    int32_t min, max;    /* de la valeur AFFICHÉE */
+    uint32_t changements;/* nb d'échantillons dont le TEXTE diffère du précédent */
+    int64_t somme;
+    int64_t somme_carres;
+} dn_w2_t;
+
+/* Un échantillon de la valeur telle qu'elle SERAIT AFFICHÉE. */
+void dn_w2_echantillon(dn_w2_id_t id, int32_t valeur_affichee);
+void dn_w2_lire(dn_w2_id_t id, dn_w2_t *out);
+void dn_w2_reset(void);
+const char *dn_w2_nom(dn_w2_id_t id);

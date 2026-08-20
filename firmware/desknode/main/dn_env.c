@@ -144,6 +144,7 @@ static bool s_bl_auto = DN_ENV_BL_AUTO_DEFAUT;
 static int s_bl_lux_bas = DN_ENV_BL_LUX_BAS;
 static int s_bl_lux_haut = DN_ENV_BL_LUX_HAUT;
 static int s_bl_pas = DN_ENV_BL_PAS_MAX;
+static int s_bl_pct_min = DN_ENV_BL_PCT_MIN;
 static int s_bl_dernier_pct = -1;  /* -1 = la loi n'a encore rien appliqué */
 static int s_bl_dernier_lux = DN_ENV_ABSENT;
 static bool s_bl_muet_dit;         /* le « capteur muet » n'est journalisé qu'une fois */
@@ -572,6 +573,16 @@ void dn_env_cycle(void)
     s_duree_cycle_us = duree;
     portEXIT_CRITICAL(&s_mux);
 
+    /* W2 : on n'échantillonne QUE les valeurs valides. ⛔ Compter une absence
+     * comme un « changement de texte » gonflerait le taux d'un capteur MUET —
+     * l'instrument dirait « ça bouge » d'une case qui ne dit rien. */
+    if (dn_env_etat(DN_ENV_LUM) == DN_ENV_VIVANT) {
+        int lux = dn_env_lux();
+        if (lux != DN_ENV_ABSENT) {
+            dn_w2_echantillon(DN_W2_LUX, lux);
+        }
+    }
+
     /* Le rétroéclairage est asservi APRÈS les lectures, dans le même cycle :
      * ⛔ pas de tâche de plus, ⛔ pas de `vTaskDelay`. */
     if (s_bl_auto) {
@@ -671,7 +682,7 @@ esp_err_t dn_env_init(void)
              "%d%% a %d lx, bande morte %d pts, pas max %d pts/cycle. "
              "`bl auto on` pour l'armer.",
              DN_ENV_BL_AUTO_DEFAUT ? "ARME" : "DESARME",
-             DN_ENV_BL_PCT_MIN, DN_ENV_BL_LUX_BAS,
+             s_bl_pct_min, DN_ENV_BL_LUX_BAS,
              DN_ENV_BL_PCT_MAX, DN_ENV_BL_LUX_HAUT,
              DN_ENV_BL_HYST, DN_ENV_BL_PAS_MAX);
     return ESP_OK;
@@ -795,10 +806,10 @@ void dn_env_compteurs_reset(void)
 int dn_env_bl_loi(int lux)
 {
     if (lux == DN_ENV_ABSENT) {
-        return DN_ENV_BL_PCT_MIN;
+        return s_bl_pct_min;
     }
     if (lux <= s_bl_lux_bas) {
-        return DN_ENV_BL_PCT_MIN;
+        return s_bl_pct_min;
     }
     if (lux >= s_bl_lux_haut) {
         return DN_ENV_BL_PCT_MAX;
@@ -807,10 +818,24 @@ int dn_env_bl_loi(int lux)
      * dn_display (`(pct * 1023 + 50) / 100`), pour la même raison : AC7 de
      * dn1-3 cherchait le PLANCHER lisible, et une troncature l'aurait raté. */
     int span_lux = s_bl_lux_haut - s_bl_lux_bas;
-    int span_pct = DN_ENV_BL_PCT_MAX - DN_ENV_BL_PCT_MIN;
-    return DN_ENV_BL_PCT_MIN +
+    int span_pct = DN_ENV_BL_PCT_MAX - s_bl_pct_min;
+    return s_bl_pct_min +
            (((lux - s_bl_lux_bas) * span_pct) + span_lux / 2) / span_lux;
 }
+
+esp_err_t dn_env_bl_plancher_set(int pct)
+{
+    /* ⛔ Ce dépôt REFUSE, il n'écrête pas. La borne haute est DN_ENV_BL_PCT_MAX
+     * moins la bande morte : un plancher au ras du plafond rendrait la loi
+     * inerte SANS le dire, ce qui est pire qu'un refus. */
+    if (pct < 0 || pct > DN_ENV_BL_PCT_MAX - DN_ENV_BL_HYST) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    s_bl_pct_min = pct;
+    return ESP_OK;
+}
+
+int dn_env_bl_plancher(void) { return s_bl_pct_min; }
 
 bool dn_env_bl_auto(void) { return s_bl_auto; }
 
@@ -870,4 +895,72 @@ void dn_env_bl_etat(int *lux_bas, int *lux_haut, int *pas, int *hyst,
     if (hyst)        { *hyst = DN_ENV_BL_HYST; }
     if (dernier_pct) { *dernier_pct = s_bl_dernier_pct; }
     if (dernier_lux) { *dernier_lux = s_bl_dernier_lux; }
+}
+
+/* ── W2 — l'accumulateur du critère « une case doit bouger » ──────────────── */
+
+static dn_w2_t s_w2[DN_W2_NB];
+static int32_t s_w2_prec[DN_W2_NB];
+static bool s_w2_amorce[DN_W2_NB];
+
+static const char *k_w2_nom[DN_W2_NB] = {
+    "lux (entier)",
+    "pression (hPa entier)",
+    "pression (hPa dixieme)",
+    "temperature (dixieme) [CONTROLE]",
+};
+
+const char *dn_w2_nom(dn_w2_id_t id)
+{
+    return (id >= 0 && id < DN_W2_NB) ? k_w2_nom[id] : "?";
+}
+
+void dn_w2_echantillon(dn_w2_id_t id, int32_t v)
+{
+    if (id < 0 || id >= DN_W2_NB) {
+        return;
+    }
+    portENTER_CRITICAL(&s_mux);
+    dn_w2_t *w = &s_w2[id];
+    if (w->n == 0) {
+        w->min = w->max = v;
+    } else {
+        if (v < w->min) { w->min = v; }
+        if (v > w->max) { w->max = v; }
+        /* 🔴 « taux de changement du TEXTE » : deux valeurs identiques rendent
+         * le MÊME texte, donc ce n'est pas un changement. C'est bien la valeur
+         * AFFICHÉE qu'on compare, ⛔ pas la source. */
+        if (s_w2_amorce[id] && v != s_w2_prec[id]) {
+            w->changements++;
+        }
+    }
+    w->n++;
+    w->somme += v;
+    w->somme_carres += (int64_t)v * (int64_t)v;
+    s_w2_prec[id] = v;
+    s_w2_amorce[id] = true;
+    portEXIT_CRITICAL(&s_mux);
+}
+
+void dn_w2_lire(dn_w2_id_t id, dn_w2_t *out)
+{
+    if (!out) {
+        return;
+    }
+    if (id < 0 || id >= DN_W2_NB) {
+        memset(out, 0, sizeof *out);
+        return;
+    }
+    portENTER_CRITICAL(&s_mux);
+    *out = s_w2[id];
+    portEXIT_CRITICAL(&s_mux);
+}
+
+void dn_w2_reset(void)
+{
+    portENTER_CRITICAL(&s_mux);
+    memset(s_w2, 0, sizeof s_w2);
+    memset(s_w2_prec, 0, sizeof s_w2_prec);
+    memset(s_w2_amorce, 0, sizeof s_w2_amorce);
+    portEXIT_CRITICAL(&s_mux);
 }
