@@ -10,6 +10,7 @@
 #include "dn_asset.h"
 #include "dn_bootcfg.h"
 #include "dn_capteurs.h"
+#include "dn_env.h"
 #include "dn_display.h"
 #include "dn_link.h"
 #include "dn_measure.h"
@@ -856,6 +857,51 @@ static void bl_usage(void)
     printf("        bl on | off         — 100 %% / 0 %% (rétrocompat dn1-2)\n");
     printf("        bl ramp <0..100> [ms] — rampe douce (constat AC7)\n");
     printf("        bl freq <200..40000>  — fréquence PWM (le sifflement)\n");
+    printf("        bl auto on|off      — asservissement au BH1750 (dn4-3, AC5)\n");
+    printf("        bl auto bornes <lux_bas> <lux_haut>  — la loi, à chaud\n");
+    printf("        bl auto pas <1..100>  — pas maximal par cycle de 5 s\n");
+}
+
+/* 🔴 DEUX ÉCRIVAINS SUR LEDC, ET RIEN NE LES ARBITRAIT.
+ * `dn_display_backlight_pct()` n'a AUCUN verrou et `s_backlight_pct` est un `int`
+ * nu ; ses deux appelants d'origine (boot, REPL) ne coexistaient jamais. L'auto
+ * de dn4-3 en ajoute un TROISIÈME, périodique. Sans ce désarmement, un `bl 50`
+ * tapé en séance serait ÉCRASÉ au cycle suivant SANS UN MOT, et le constat owner
+ * mesurerait la boucle en croyant mesurer la commande. */
+static void bl_desarmer_si_besoin(const char *geste)
+{
+    if (dn_env_bl_auto_desarmer(geste)) {
+        printf("⚠️ l'asservissement automatique était ARMÉ : il vient d'être "
+               "DÉSARMÉ par « %s ».\n", geste);
+        printf("   Sinon la valeur que vous venez de poser aurait été écrasée "
+               "au prochain cycle (5 s), sans un mot.\n");
+        printf("   `bl auto on` pour le réarmer.\n");
+    }
+}
+
+/* Imprime l'état de l'asservissement. Appelé par `bl` nu ET par `bl auto`. */
+static void bl_auto_etat(void)
+{
+    int lux_bas = 0, lux_haut = 0, pas = 0, hyst = 0, dpct = 0, dlux = 0;
+    dn_env_bl_etat(&lux_bas, &lux_haut, &pas, &hyst, &dpct, &dlux);
+    printf("asservissement BH1750 : %s\n", dn_env_bl_auto() ? "ARMÉ" : "DÉSARMÉ");
+    printf("  loi      : %d %% à <= %d lx · %d %% à >= %d lx · linéaire entre "
+           "les deux\n",
+           DN_ENV_BL_PCT_MIN, lux_bas, DN_ENV_BL_PCT_MAX, lux_haut);
+    printf("  garde    : bande morte %d pts · pas max %d pts par cycle de %d ms "
+           "(course complète en %d cycles)\n",
+           hyst, pas, DN_ENV_PERIODE_MS,
+           (DN_ENV_BL_PCT_MAX - DN_ENV_BL_PCT_MIN + pas - 1) / pas);
+    if (dpct < 0) {
+        printf("  applique : AUCUNE application depuis le boot\n");
+    } else {
+        printf("  applique : %d %% (sur %d lx)\n", dpct,
+               (dlux == DN_ENV_ABSENT) ? 0 : dlux);
+    }
+    printf("  ⚠️ `bl <n>`, `bl on|off` et `bl ramp` DÉSARMENT l'auto et le "
+           "DISENT.\n");
+    printf("  ⛔ `bl ramp` est BLOQUANTE : elle n'est JAMAIS appelée par "
+           "l'asservissement.\n");
 }
 
 static int cmd_bl(int argc, char **argv)
@@ -869,6 +915,64 @@ static int cmd_bl(int argc, char **argv)
         printf("   `disp off` éteint la SORTIE de la dalle : dalle GRISE éclairée.\n");
         printf("   Les deux donnent « plus d'image », par deux mécanismes "
                "différents.\n");
+        bl_auto_etat();
+        return 0;
+    }
+
+    /* ── bl auto [on|off|bornes …|pas …] ── */
+    if (strcmp(argv[1], "auto") == 0) {
+        if (argc < 3) {
+            bl_auto_etat();
+            return 0;
+        }
+        if (strcmp(argv[2], "bornes") == 0) {
+            long bas = 0, haut = 0;
+            if (argc < 5 || !parse_entier(argv[3], &bas) ||
+                !parse_entier(argv[4], &haut)) {
+                printf("usage : bl auto bornes <lux_bas> <lux_haut>\n");
+                return 1;
+            }
+            esp_err_t e = dn_env_bl_bornes_set((int)bas, (int)haut);
+            if (e != ESP_OK) {
+                /* ⛔ Ce dépôt REFUSE, il n'écrête pas — et il explique. */
+                printf("refusé : bornes invalides. Il faut 0 <= bas < haut, et "
+                       "haut <= 54612 lx (le plafond PHYSIQUE du BH1750 au MTreg "
+                       "par défaut : 65535 / 1,2). Rien n'a été touché.\n");
+                return 1;
+            }
+            bl_auto_etat();
+            return 0;
+        }
+        if (strcmp(argv[2], "pas") == 0) {
+            long pas = 0;
+            if (argc < 4 || !parse_entier(argv[3], &pas)) {
+                printf("usage : bl auto pas <1..100>\n");
+                return 1;
+            }
+            if (dn_env_bl_pas_set((int)pas) != ESP_OK) {
+                printf("refusé : le pas doit être dans [1, 100] points. "
+                       "Rien n'a été touché.\n");
+                return 1;
+            }
+            bl_auto_etat();
+            return 0;
+        }
+        bool on_auto = false;
+        if (!parse_on_off(argv[2], &on_auto)) {
+            printf("« %s » n'est ni on, ni off — rien n'a été touché.\n", argv[2]);
+            bl_usage();
+            return 1;
+        }
+        if (on_auto && dn_env_etat(DN_ENV_LUM) != DN_ENV_VIVANT) {
+            /* ⚠️ On ARME quand même : refuser sur un capteur momentanément muet
+             * empêcherait d'armer pendant les 40 s de bus dégradé à froid. Mais
+             * on le DIT, sinon l'owner croirait la loi inerte. */
+            printf("⚠️ le BH1750 est « %s » : l'asservissement est ARMÉ mais le "
+                   "duty ne bougera qu'à la première lecture valide.\n",
+                   dn_env_etat_nom(dn_env_etat(DN_ENV_LUM)));
+        }
+        dn_env_bl_auto_set(on_auto);
+        bl_auto_etat();
         return 0;
     }
 
@@ -901,6 +1005,7 @@ static int cmd_bl(int argc, char **argv)
             printf("   pendant tout ce temps, sans commande pour l'interrompre.\n");
             return 1;
         }
+        bl_desarmer_si_besoin("bl ramp");
         int depart = dn_display_backlight_pct_state();
         printf("rampe %d %% -> %ld %% en %ld ms (la console ne répond pas "
                "pendant ce temps)…\n",
@@ -939,6 +1044,7 @@ static int cmd_bl(int argc, char **argv)
     /* ── bl on | off (rétrocompatibilité dn1-2) ── */
     bool on = false;
     if (parse_on_off(argv[1], &on)) {
+        bl_desarmer_si_besoin(on ? "bl on" : "bl off");
         esp_err_t err = dn_display_backlight(on);
         printf("rétroéclairage %s (%d %%) : %s\n", on ? "ON" : "OFF",
                dn_display_backlight_pct_state(), esp_err_to_name(err));
@@ -960,6 +1066,7 @@ static int cmd_bl(int argc, char **argv)
         printf("⚠️ %ld %% hors de [0, 100] — rien n'a été touché.\n", pct);
         return 1;
     }
+    bl_desarmer_si_besoin("bl <n>");
     esp_err_t err = dn_display_backlight_pct((int)pct);
     printf("rétroéclairage %ld %% : %s\n", pct, esp_err_to_name(err));
     if (err == ESP_OK && pct > 0 && pct <= 5) {
@@ -5607,6 +5714,173 @@ static int cmd_rtc(int argc, char **argv)
     return 0;
 }
 
+/*
+ * `env` — LES TROIS CAPTEURS D'ENVIRONNEMENT LOCAUX (dn4-3, AC1).
+ *
+ * ⚠️ Comme `capteurs`, elle NE DÉCLENCHE AUCUNE MESURE : elle lit ce que le
+ *    cycle a publié. Le seul chiffre qu'elle produit elle-même est l'âge.
+ * ⛔ Commande DÉDIÉE, et pas une extension de `capteurs` : celle-ci est le
+ *    module BME680 par conception assumée (dn_capteurs.h:8-10), et deux modules
+ *    sous une seule commande rendraient illisible lequel est muet.
+ */
+static void env_ligne_compteurs(dn_env_id_t id)
+{
+    dn_env_compteurs_t c;
+    dn_env_compteurs(id, &c);
+    printf("  compteurs : %lu lectures · %lu reprises\n",
+           (unsigned long)c.lectures, (unsigned long)c.reprises);
+    printf("  erreurs   : i2c %lu · donnee %lu · bornes %lu · conformite %lu\n",
+           (unsigned long)c.err_i2c, (unsigned long)c.err_donnee,
+           (unsigned long)c.err_bornes, (unsigned long)c.conformite);
+}
+
+static void env_entete(dn_env_id_t id, const char *valeurs)
+{
+    int64_t age = dn_env_age_us(id);
+    printf("\n%-7s @ 0x%02X : %s", dn_env_nom(id), dn_env_adresse(id),
+           dn_env_etat_nom(dn_env_etat(id)));
+    if (valeurs && valeurs[0]) {
+        printf(" — %s", valeurs);
+    }
+    if (age >= 0) {
+        printf(" · age %lld ms", (long long)(age / 1000));
+    } else {
+        printf(" · JAMAIS LU");
+    }
+    if (!dn_env_present(id)) {
+        printf(" · ⛔ DEVICE NON OUVERT");
+    }
+    printf("\n");
+}
+
+static int cmd_env(int argc, char **argv)
+{
+    if (argc >= 2 && strcmp(argv[1], "reset") == 0) {
+        dn_env_compteurs_reset();
+        printf("compteurs de dn_env remis a zero.\n");
+        return 0;
+    }
+    if (argc >= 2) {
+        printf("usage : env | env reset\n");
+        return 1;
+    }
+
+    uint32_t cycles = dn_env_cycles();
+    printf("capteurs d'environnement locaux (dn4-3) — AUCUNE tache propre :\n");
+    printf("ils sont cadences par la tache `dn_capt`, toutes les %d ms, et\n",
+           DN_ENV_PERIODE_MS);
+    printf("l'appel est place AVANT toute branche de sa boucle (sinon il serait\n");
+    printf("saute a chaque erreur du BME680 — voir §13.19.4).\n");
+    if (cycles == 0) {
+        printf("\n🔴 JAMAIS CADENCE : aucun cycle depuis le boot.\n");
+        printf("   La tache `dn_capt` n'a pas demarre — `capteurs` dira\n");
+        printf("   pourquoi (mode d'echec realiste : xTaskCreate, donc penurie\n");
+        printf("   de RAM interne). ⛔ Tout ce qui suit serait du vide.\n");
+    } else {
+        printf("cycles     : %lu · dernier cycle %lld us MESURES\n",
+               (unsigned long)cycles, (long long)dn_env_duree_cycle_us());
+    }
+    printf("peremption : %lld ms (3 cycles) — MEME convention que dn_capteurs,\n",
+           (long long)(DN_ENV_PEREMPTION_US / 1000));
+    printf("             ⛔ pas les 3 s de dn_link. timeout I2C %d ms.\n",
+           DN_ENV_I2C_TIMEOUT_MS);
+    printf("garde anti-fantome : UNE LECTURE par cycle, ⛔ AUCUNE ECRITURE en\n");
+    printf("             regime. La config est ecrite UNE FOIS a l'ouverture et\n");
+    printf("             RELUE ensuite : meme pouvoir discriminant qu'une\n");
+    printf("             ecriture (un fantome ne tient pas la valeur), sans\n");
+    printf("             ajouter un agresseur permanent sur le bus.\n");
+
+    /* ── BH1750 ── */
+    {
+        char v[64] = "";
+        int lux = dn_env_lux();
+        if (lux != DN_ENV_ABSENT) {
+            snprintf(v, sizeof v, "%d lx (brut %d)", lux, dn_env_lux_brut());
+        }
+        env_entete(DN_ENV_LUM, v);
+        env_ligne_compteurs(DN_ENV_LUM);
+        printf("  garde     : 🔴 AUCUNE, et c'est DECLARE. Le BH1750 n'a AUCUN\n");
+        printf("              registre relisible : son seul registre ecrivable\n");
+        printf("              est le MTreg, et il est NON RELISIBLE (piste\n");
+        printf("              tentee, NON REPRODUITE). Sa qualification la plus\n");
+        printf("              forte reste le STIMULUS (main posee), qui demande\n");
+        printf("              un geste owner : ⛔ ce n'est donc PAS une garde de\n");
+        printf("              regime. `conformite` reste a 0 A VIE ici.\n");
+        printf("  bornes    : 0xFFFF compte en `bornes` — c'est le PLAFOND du\n");
+        printf("              convertisseur (au moins 54612 lx), plus une mesure.\n");
+        printf("              ⚠️ brut 0 est LEGITIME (obscurite) : la main posee a\n");
+        printf("              mesure brut 2, pas 0. `donnee` ne compte que le 0\n");
+        printf("              lu dans les 180 ms d'une (re)configuration.\n");
+        printf("              Source : ROHM BH1750FVI-TR, plage 1-65535 lx,\n");
+        printf("              lux = brut / 1,2 au MTreg par defaut (69).\n");
+        printf("  ⛔ NE JAMAIS republier des lux DIVISES PAR DIX : (brut*10)/12\n");
+        printf("     EST deja la valeur en lux ENTIERS. L'imprimer comme des\n");
+        printf("     dixiemes a publie « 4 614,8 » pour 46 148, TROIS FOIS.\n");
+    }
+
+    /* ── INA219 ── */
+    {
+        char v[96] = "";
+        int mv = dn_env_bus_mv();
+        if (mv != DN_ENV_ABSENT) {
+            snprintf(v, sizeof v, "bus %d mV · shunt %d uV · %d mA · %d mW", mv,
+                     dn_env_shunt_uv(), dn_env_courant_ma(),
+                     dn_env_puissance_mw());
+        }
+        env_entete(DN_ENV_ALIM, v);
+        env_ligne_compteurs(DN_ENV_ALIM);
+        printf("  garde     : ✅ FORTE — 05h Calibration, valeur de reset 0x0000,\n");
+        printf("              imposee 0x1000, RELUE a chaque cycle. Les trois\n");
+        printf("              proprietes du patron sont tenues : inscriptible,\n");
+        printf("              relisible, reset != valeur imposee.\n");
+        printf("              ⚠️ 0x1000 n'est pas un nombre magique : c'est la\n");
+        printf("              VRAIE calibration du shunt R100 (0,1 ohm, 3,2 A) —\n");
+        printf("              Current_LSB 0,1 mA, Power_LSB 2 mW (SBOS448G 8.5.1).\n");
+        printf("  🔴 CE QU'IL MESURE N'EST PAS LE RAIL DU MODULE : `Vin+`/`Vin-`\n");
+        printf("     NE SONT PAS CABLES (README.md:916). Le shunt est LIBRE et il\n");
+        printf("     capte du BRUIT — mesure 0x01 = FF FB = -50 uV le 2026-08-20,\n");
+        printf("     ⛔ PAS `00 00` comme l'annoncait le README. La tension de bus\n");
+        printf("     lue est celle d'une entree FLOTTANTE, ⛔ pas une alimentation.\n");
+        printf("     ⇒ le poser EN SERIE est une QUESTION OWNER (X3, AC7), et\n");
+        printf("       elle demande un geste de fer sur un montage fini.\n");
+        printf("  bornes    : bus 0..%d mV (LSB 4 mV, BRNG=1) · le bit OVF est le\n",
+               32760);
+        printf("              SEUL depassement que la puce signale, il compte en\n");
+        printf("              `bornes` · shunt +-320000 uV (PGA/8). CNVR a 0\n");
+        printf("              compte en `donnee`. Source : TI SBOS448G 8.6.2.\n");
+    }
+
+    /* ── VL6180X ── */
+    {
+        env_entete(DN_ENV_TOF, "presence et conformite SEULEMENT");
+        env_ligne_compteurs(DN_ENV_TOF);
+        printf("  garde     : ✅ FORTE — 003F (gain, reset 0x06 -> impose 0x46) et\n");
+        printf("              0041 (integration, reset 0x00 -> impose 0x63),\n");
+        printf("              RELUS a chaque cycle. `lectures` compte les\n");
+        printf("              identites 0xB4 confirmees ; une autre valeur va en\n");
+        printf("              `donnee` (il repond, mais ce n'est pas lui).\n");
+        printf("  🔴 AUCUNE GRANDEUR PUBLIEE, et voici pourquoi (AC8) : son ALS\n");
+        printf("     rend une reponse STRICTEMENT BINAIRE — 0x0000 a <= 2 ms,\n");
+        printf("     0xFFFF a >= 3 ms d'integration, au gain MINIMAL 1,0x, sur\n");
+        printf("     SEPT points mesures a la console. Ce n'est pas une\n");
+        printf("     integration, c'est un comparateur sature.\n");
+        printf("     Cause nommee : ST impose un chargement de registres PRIVES\n");
+        printf("     (« SR03 settings ») apres SYSTEM__FRESH_OUT_OF_RESET, et le\n");
+        printf("     depot interdit de recopier des adresses de registre de\n");
+        printf("     memoire. Recette de reprise : hardware/…-capteurs-i2c.md\n");
+        printf("     §13.19.5.\n");
+        printf("  ⚠️ 0x0016 (FRESH_OUT_OF_RESET) est un TEMOIN VALIDE lui aussi\n");
+        printf("     (mesure : 0x01 au power-on, impose 0x00, relu 0x00) mais ce\n");
+        printf("     module N'Y TOUCHE PAS : sa valeur est un FAIT sur\n");
+        printf("     l'historique de la puce, et l'ecraser detruirait\n");
+        printf("     l'information. `i2c lire16 29 0016 1` pour la lire.\n");
+    }
+
+    printf("\n⛔ AUCUN de ces trois capteurs n'alimente une case : X2 (la 6e case)\n");
+    printf("   n'est pas tranche. `env` est donc le SEUL endroit ou ils se lisent.\n");
+    return 0;
+}
+
 static const esp_console_cmd_t k_cmds[] = {
     DN_CMD("scene",
            "affiche une mire : bits|nbits|rgb|red|green|blue|white|black|frame|gray|asset",
@@ -5643,7 +5917,10 @@ static const esp_console_cmd_t k_cmds[] = {
            cmd_nav),
     DN_CMD("recal", "recal <0..4> — recalage DMA N vsyncs après la bascule (AC5)",
            cmd_recal),
-    DN_CMD("bl", "bl [0..100|on|off|ramp <pct> [ms]] — rétroéclairage gradable",
+    DN_CMD("bl",
+           "bl [0..100|on|off|ramp <pct> [ms]|freq <hz>|auto on|off|auto bornes "
+           "<bas> <haut>|auto pas <n>] — rétroéclairage gradable et asservi "
+           "(dn1-3/dn4-3)",
            cmd_bl),
     DN_CMD("disp", "disp on|off — sortie d'affichage de la dalle (0x29/0x28)",
            cmd_disp),
@@ -5651,6 +5928,13 @@ static const esp_console_cmd_t k_cmds[] = {
     DN_CMD("capteurs",
            "capteurs | reset | gaz on|off | simuler <cause> <n> — BME680 (dn2-1)",
            cmd_capteurs),
+    /* ⚠️ INSCRITE ICI **ET** DANS LE « Jeu complet » DU README dans le MÊME
+     * geste — dn2-1 avait oublié `capteurs` au README, et « une commande qu'on
+     * ne trouve que depuis la carte n'est pas documentée ». */
+    DN_CMD("env",
+           "env | reset — BH1750 / INA219 / VL6180X, les trois capteurs locaux "
+           "(dn4-3)",
+           cmd_env),
     /* ⚠️ INSCRITE ICI **ET** DANS LE « Jeu complet » DU README dans le même
      * geste — dn2-1 avait oublié `capteurs` au README. Les trois primitives
      * ajoutées en dn4-2 y sont entrées avec cette ligne. */
