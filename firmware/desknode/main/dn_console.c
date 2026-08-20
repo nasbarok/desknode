@@ -893,11 +893,18 @@ static void bl_auto_etat(void)
            "(course complète en %d cycles)\n",
            hyst, pas, DN_ENV_PERIODE_MS,
            (DN_ENV_BL_PCT_MAX - dn_env_bl_plancher() + pas - 1) / pas);
+    /* 🔴 « jamais lu » et « noir complet » ne s'impriment PLUS à l'identique —
+     * corrigé en revue de code le 2026-08-20. `0 lx` est une valeur MESURÉE
+     * légitime sur ce capteur (la main posée a rendu `brut = 0` deux fois en
+     * séance, et c'est publié comme tel) : rendre la sentinelle d'absence par
+     * un `0` littéral affirmait l'obscurité totale là où rien n'avait été lu. */
     if (dpct < 0) {
         printf("  applique : AUCUNE application depuis le boot\n");
+    } else if (dlux == DN_ENV_ABSENT) {
+        printf("  applique : %d %% (sur un lux JAMAIS LU — ⛔ pas « 0 lx »)\n",
+               dpct);
     } else {
-        printf("  applique : %d %% (sur %d lx)\n", dpct,
-               (dlux == DN_ENV_ABSENT) ? 0 : dlux);
+        printf("  applique : %d %% (sur %d lx)\n", dpct, dlux);
     }
     printf("  ⚠️ `bl <n>`, `bl on|off` et `bl ramp` DÉSARMENT l'auto et le "
            "DISENT.\n");
@@ -928,7 +935,9 @@ static int cmd_bl(int argc, char **argv)
         }
         if (strcmp(argv[2], "bornes") == 0) {
             long bas = 0, haut = 0;
-            if (argc < 5 || !parse_entier(argv[3], &bas) ||
+            /* ⛔ `argc != 5`, PAS `argc < 5` — un token tapé de travers passait
+             * pour une commande réussie (revue de code 2026-08-20). */
+            if (argc != 5 || !parse_entier(argv[3], &bas) ||
                 !parse_entier(argv[4], &haut)) {
                 printf("usage : bl auto bornes <lux_bas> <lux_haut>\n");
                 return 1;
@@ -937,8 +946,11 @@ static int cmd_bl(int argc, char **argv)
             if (e != ESP_OK) {
                 /* ⛔ Ce dépôt REFUSE, il n'écrête pas — et il explique. */
                 printf("refusé : bornes invalides. Il faut 0 <= bas < haut, et "
-                       "haut <= 54612 lx (le plafond PHYSIQUE du BH1750 au MTreg "
-                       "par défaut : 65535 / 1,2). Rien n'a été touché.\n");
+                       "haut <= 54611 lx — le plus grand lux PUBLIABLE : 0xFFFF "
+                       "est rejeté comme saturation du convertisseur, donc le "
+                       "plus grand brut est 0xFFFE, soit 65534 / 1,2 = 54611. "
+                       "Au-delà, la loi ne pourrait JAMAIS saturer à 100 %%. "
+                       "Rien n'a été touché.\n");
                 return 1;
             }
             bl_auto_etat();
@@ -946,7 +958,7 @@ static int cmd_bl(int argc, char **argv)
         }
         if (strcmp(argv[2], "plancher") == 0) {
             long pct = 0;
-            if (argc < 4 || !parse_entier(argv[3], &pct)) {
+            if (argc != 4 || !parse_entier(argv[3], &pct)) {
                 printf("usage : bl auto plancher <0..%d>\n",
                        DN_ENV_BL_PCT_MAX - DN_ENV_BL_HYST);
                 return 1;
@@ -963,19 +975,32 @@ static int cmd_bl(int argc, char **argv)
         }
         if (strcmp(argv[2], "pas") == 0) {
             long pas = 0;
-            if (argc < 4 || !parse_entier(argv[3], &pas)) {
-                printf("usage : bl auto pas <1..100>\n");
+            if (argc != 4 || !parse_entier(argv[3], &pas)) {
+                printf("usage : bl auto pas <%d..100>\n", DN_ENV_BL_HYST);
                 return 1;
             }
             if (dn_env_bl_pas_set((int)pas) != ESP_OK) {
-                printf("refusé : le pas doit être dans [1, 100] points. "
-                       "Rien n'a été touché.\n");
+                /* 🔴 La borne basse est la BANDE MORTE, ⛔ pas 1 — corrigé en
+                 * revue de code le 2026-08-20 : un pas plus petit que la bande
+                 * morte fige la loi à mi-chemin, DANS LES DEUX SENS. */
+                printf("refusé : le pas doit être dans [%d, 100] points. Un pas "
+                       "PLUS PETIT que la bande morte (%d) figerait la loi à "
+                       "mi-chemin sans le dire : elle entrerait (écart >= %d) "
+                       "mais ne bougerait que de `pas`, laissant un écart < %d "
+                       "⇒ gelée, dans les deux sens, pour tous les lux. "
+                       "Rien n'a été touché.\n",
+                       DN_ENV_BL_HYST, DN_ENV_BL_HYST, DN_ENV_BL_HYST,
+                       DN_ENV_BL_HYST);
                 return 1;
             }
             bl_auto_etat();
             return 0;
         }
         bool on_auto = false;
+        if (argc != 3) {
+            printf("usage : bl auto on|off — rien n'a été touché.\n");
+            return 1;
+        }
         if (!parse_on_off(argv[2], &on_auto)) {
             printf("« %s » n'est ni on, ni off — rien n'a été touché.\n", argv[2]);
             bl_usage();
@@ -5362,19 +5387,35 @@ static int cmd_capteurs(int argc, char **argv)
     int pr = dn_capt_pression_dixiemes();
     int pr_brut = dn_capt_pression_brut_dixiemes();
     dn_capt_p_unite_t p_u = dn_capt_pression_unite();
+    /* 🔴 LE SIGNE SE POSE, IL NE SE DEDUIT PAS D'UNE DIVISION ENTIERE — elle
+     * tronque VERS ZERO — corrige en revue de code le 2026-08-20. Le patron
+     * correct est vingt lignes plus haut (temperature), et `dn_capteurs.c` a
+     * DEJA paye ce defaut sur l'humidite (« -5,-5 % »). La branche « LUE mais
+     * NON PUBLIEE » ci-dessous est PRECISEMENT celle des valeurs aberrantes,
+     * negatives comprises : elle imprimait « 0,-5 » ou « -1013,-2 ». */
+    int pr_m = pr < 0 ? -pr : pr;
+    int prb_m = pr_brut < 0 ? -pr_brut : pr_brut;
+    const char *pr_s = pr < 0 ? "-" : "";
+    const char *prb_s = pr_brut < 0 ? "-" : "";
+    /* 🔴 L'AGE, comme T et RH sur la ligne du dessus — la pression et le gaz
+     * s'imprimaient SANS age et SANS re-test de peremption : deux grandeurs du
+     * MEME capteur, dans la MEME sortie, avec des semantiques de fraicheur
+     * opposees et rien qui le dise. */
+    int64_t p_age = dn_capt_age_us();
     /* 🔴 TROIS ETATS, TROIS PHRASES. Le message d'origine disait « hors plage
      * OU jamais lue » — DEUX DIAGNOSTICS OPPOSES DANS UNE SEULE PHRASE, la
      * faute exacte que `tronquee`/`trop_longue` a deja coutee a ce depot. */
     if (pr != DN_CAPT_DX_ABSENT) {
-        printf("pression   : %d,%d hPa — MESUREE, PAS AFFICHEE (candidate a la 6e\n",
-               pr / 10, pr % 10);
-        printf("             case, X2). brute driver %d,%d · unite %s\n",
-               pr_brut / 10, pr_brut % 10, dn_capt_pression_unite_nom(p_u));
+        printf("pression   : %s%d,%d hPa — MESUREE, PAS AFFICHEE (candidate a la 6e\n",
+               pr_s, pr_m / 10, pr_m % 10);
+        printf("             case, X2). brute driver %s%d,%d · unite %s · age %lld ms\n",
+               prb_s, prb_m / 10, prb_m % 10, dn_capt_pression_unite_nom(p_u),
+               (long long)(p_age / 1000));
         printf("             Bornes 300..1100 hPa (Bosch). Instrumentee par `w2`\n");
         printf("             dans SES DEUX formatages possibles.\n");
     } else if (pr_brut != DN_CAPT_DX_ABSENT) {
-        printf("pression   : LUE mais NON PUBLIEE — brute driver %d,%d, unite %s\n",
-               pr_brut / 10, pr_brut % 10, dn_capt_pression_unite_nom(p_u));
+        printf("pression   : LUE mais NON PUBLIEE — brute driver %s%d,%d, unite %s\n",
+               prb_s, prb_m / 10, prb_m % 10, dn_capt_pression_unite_nom(p_u));
         printf("             ⛔ Elle ne tombe ni dans 300..1100 (hPa) ni dans\n");
         printf("             30000..110000 (Pa). Rien n'est converti au juge.\n");
     } else {
@@ -5405,6 +5446,24 @@ static int cmd_capteurs(int argc, char **argv)
         printf("             ⇒ un vrai IAQ demande BSEC (binaire proprietaire).\n");
         printf("⚠️ LE CHAUFFEUR TOURNE : il coute +0,3 C et -2 points de RH sur les\n");
         printf("   deux grandeurs que la case affiche (§13.9). `capteurs gaz off`.\n");
+    } else if (dn_capt_gaz_en_attente()) {
+        /* 🔴 LE TROISIEME ETAT — ajoute en revue de code le 2026-08-20. Ce bloc
+         * affirmait « chauffeur COUPE » pour TOUTE valeur absente, y compris
+         * juste apres un `capteurs gaz on` : l'inverse exact de ce que
+         * l'operateur venait de commander, sans aucun moyen de distinguer les
+         * deux. `s_gaz_ohms` est ABSENT dans TROIS cas — coupe, jamais lu, et
+         * « il chauffe mais la mesure n'est pas encore utilisable ». */
+        printf("gaz (MOX)  : ⏳ LE CHAUFFEUR TOURNE, mais la mesure n'est PAS encore\n");
+        printf("             utilisable : le composant rend `gas_valid` ou\n");
+        printf("             `heater_stable` a faux. ⛔ RIEN n'est publie, et rien\n");
+        printf("             n'entre dans `w2` — au premier cycle la plaque n'est\n");
+        printf("             pas a 300 C, `adc_gas` vaut ~0, et la compensation\n");
+        printf("             rend ~12,9 MOhm : un artefact qui fixerait le min/max\n");
+        printf("             de toute la fenetre W2.\n");
+    } else if (dn_capt_gaz_actif()) {
+        printf("gaz (MOX)  : chauffeur DEMANDE, mais AUCUNE lecture BME680 valide\n");
+        printf("             depuis le boot (ou depuis la derniere\n");
+        printf("             reconfiguration). ⛔ Ce n'est PAS « chauffeur coupe ».\n");
     } else {
         printf("gaz (MOX)  : chauffeur COUPE (defaut) — aucune resistance publiee.\n");
         printf("             ⛔ ABSENT et non 0 : zero ohm serait une valeur\n");
@@ -5830,13 +5889,17 @@ static void env_entete(dn_env_id_t id, const char *valeurs)
 
 static int cmd_env(int argc, char **argv)
 {
-    if (argc >= 2 && strcmp(argv[1], "reset") == 0) {
+    /* ⛔ `argc != 2`, PAS `argc >= 2` : `env reset extra` remettait les
+     * compteurs a zero en ignorant le token de trop (revue de code 2026-08-20). */
+    if (argc == 2 && strcmp(argv[1], "reset") == 0) {
         dn_env_compteurs_reset();
-        printf("compteurs de dn_env remis a zero.\n");
+        printf("compteurs de dn_env remis a zero (et l'etat `degrade` avec —\n");
+        printf("sinon la premiere lecture valide comptait une reprise d'AVANT\n");
+        printf("le reset dans la fenetre d'APRES).\n");
         return 0;
     }
     if (argc >= 2) {
-        printf("usage : env | env reset\n");
+        printf("usage : env | env reset — rien n'a ete touche.\n");
         return 1;
     }
 
@@ -5847,10 +5910,27 @@ static int cmd_env(int argc, char **argv)
     printf("l'appel est place AVANT toute branche de sa boucle (sinon il serait\n");
     printf("saute a chaque erreur du BME680 — voir §13.19.4).\n");
     if (cycles == 0) {
+        /* 🔴 DEUX CAUSES OPPOSEES, DEUX PHRASES — corrige en revue de code le
+         * 2026-08-20. Ce bloc accusait la tache `dn_capt` et renvoyait vers
+         * `capteurs`, qui aurait montre une tache en PARFAITE SANTE si la vraie
+         * cause etait l'echec de `dn_env_init()` (bus indisponible) : le cycle
+         * retourne alors tot sur `!s_init_faite` et n'incremente jamais
+         * `s_cycles`. C'est la faute meme que « TROIS ETATS, TROIS PHRASES »
+         * (cmd_capteurs) a ete ecrit pour eliminer. */
         printf("\n🔴 JAMAIS CADENCE : aucun cycle depuis le boot.\n");
-        printf("   La tache `dn_capt` n'a pas demarre — `capteurs` dira\n");
-        printf("   pourquoi (mode d'echec realiste : xTaskCreate, donc penurie\n");
-        printf("   de RAM interne). ⛔ Tout ce qui suit serait du vide.\n");
+        if (!dn_env_present(DN_ENV_LUM) && !dn_env_present(DN_ENV_ALIM) &&
+            !dn_env_present(DN_ENV_TOF)) {
+            printf("   AUCUN device n'est ouvert ⇒ `dn_env_init()` a echoue (bus\n");
+            printf("   I2C indisponible), OU les trois ouvertures ont ete\n");
+            printf("   refusees. ⛔ Ce n'est PAS un diagnostic sur `dn_capt` :\n");
+            printf("   le bandeau de boot porte la ligne `dn_env`.\n");
+        } else {
+            printf("   Des devices SONT ouverts, donc `dn_env_init()` a tourne :\n");
+            printf("   c'est la cadence qui manque ⇒ la tache `dn_capt` n'a pas\n");
+            printf("   demarre — `capteurs` dira pourquoi (mode d'echec\n");
+            printf("   realiste : xTaskCreate, donc penurie de RAM interne).\n");
+        }
+        printf("   ⛔ Tout ce qui suit serait du vide.\n");
     } else {
         printf("cycles     : %lu · dernier cycle %lld us MESURES\n",
                (unsigned long)cycles, (long long)dn_env_duree_cycle_us());
@@ -5868,9 +5948,14 @@ static int cmd_env(int argc, char **argv)
     /* ── BH1750 ── */
     {
         char v[64] = "";
-        int lux = dn_env_lux();
+        /* 🔴 LECTURE ATOMIQUE (CR dn4-2) — corrigee en revue de code le
+         * 2026-08-20 : deux appels separes prenaient DEUX sections critiques et
+         * pouvaient imprimer « 411 lx (brut 500) », un couple qui n'a jamais
+         * existe. Le cycle publie les deux sous UN seul verrou. */
+        int lux = DN_ENV_ABSENT, lux_brut = DN_ENV_ABSENT;
+        dn_env_lux_lire(&lux, &lux_brut);
         if (lux != DN_ENV_ABSENT) {
-            snprintf(v, sizeof v, "%d lx (brut %d)", lux, dn_env_lux_brut());
+            snprintf(v, sizeof v, "%d lx (brut %d)", lux, lux_brut);
         }
         env_entete(DN_ENV_LUM, v);
         env_ligne_compteurs(DN_ENV_LUM);
@@ -5895,12 +5980,21 @@ static int cmd_env(int argc, char **argv)
 
     /* ── INA219 ── */
     {
-        char v[96] = "";
-        int mv = dn_env_bus_mv();
+        char v[128] = "";
+        /* 🔴 LECTURE ATOMIQUE (CR dn4-2) : quatre appels separes prenaient
+         * QUATRE sections critiques — une tension du cycle N pouvait s'imprimer
+         * a cote d'un courant du cycle N+1 (revue de code 2026-08-20). */
+        int mv = DN_ENV_ABSENT, uv = 0, i_dx = 0, mw = 0;
+        dn_env_alim_lire(&mv, &uv, &i_dx, &mw);
         if (mv != DN_ENV_ABSENT) {
-            snprintf(v, sizeof v, "bus %d mV · shunt %d uV · %d mA · %d mW", mv,
-                     dn_env_shunt_uv(), dn_env_courant_ma(),
-                     dn_env_puissance_mw());
+            /* 🔴 Le courant est transporte en DIXIEMES de mA et c'est ICI que la
+             * precision s'affiche (AC11). ⛔ Le signe se pose, il ne se deduit
+             * pas d'une division entiere — elle tronque vers zero, et ce
+             * capteur vit AUTOUR DE ZERO. */
+            int i_m = i_dx < 0 ? -i_dx : i_dx;
+            snprintf(v, sizeof v,
+                     "bus %d mV · shunt %d uV · %s%d,%d mA · %d mW", mv, uv,
+                     i_dx < 0 ? "-" : "", i_m / 10, i_m % 10, mw);
         }
         env_entete(DN_ENV_ALIM, v);
         env_ligne_compteurs(DN_ENV_ALIM);
@@ -5918,11 +6012,22 @@ static int cmd_env(int argc, char **argv)
         printf("     lue est celle d'une entree FLOTTANTE, ⛔ pas une alimentation.\n");
         printf("     ⇒ le poser EN SERIE est une QUESTION OWNER (X3, AC7), et\n");
         printf("       elle demande un geste de fer sur un montage fini.\n");
-        printf("  bornes    : bus 0..%d mV (LSB 4 mV, BRNG=1) · le bit OVF est le\n",
-               32760);
-        printf("              SEUL depassement que la puce signale, il compte en\n");
-        printf("              `bornes` · shunt +-320000 uV (PGA/8). CNVR a 0\n");
-        printf("              compte en `donnee`. Source : TI SBOS448G 8.6.2.\n");
+        /* ⛔ Les bornes se LISENT aux constantes, elles ne se recopient pas en
+         * dur : deux litteraux independants derivent (revue de code 2026-08-20,
+         * et ce `32760` etait DEJA faux — le champ 13 bits donne 32764). */
+        printf("  bornes    : bus 0..%d mV (LSB 4 mV, BRNG=1 ; 13 bits ⇒ 8191 x\n",
+               DN_ENV_INA219_BUS_MAX_MV);
+        printf("              4 mV, ⛔ pas les 32760 de la pleine echelle\n");
+        printf("              ARRONDIE) · le bit OVF est le SEUL depassement que\n");
+        printf("              la puce signale, il compte en `bornes` · shunt\n");
+        printf("              +-%d uV (PGA/8) · courant +-%d,%d mA et puissance\n",
+               DN_ENV_INA219_SHUNT_MAX_UV, DN_ENV_INA219_COURANT_MAX_DX_MA / 10,
+               DN_ENV_INA219_COURANT_MAX_DX_MA % 10);
+        printf("              0..%d mW — POSEES EN REVUE DE CODE : elles\n",
+               DN_ENV_INA219_PUISSANCE_MAX_MW);
+        printf("              MANQUAIENT, et 04h/03h sont des lectures\n");
+        printf("              INDEPENDANTES de celle du bus. CNVR a 0 compte en\n");
+        printf("              `donnee`. Source : TI SBOS448G 8.5.1 et 8.6.2.\n");
     }
 
     /* ── VL6180X ── */
@@ -5969,13 +6074,16 @@ static int cmd_env(int argc, char **argv)
 
 static int cmd_w2(int argc, char **argv)
 {
-    if (argc >= 2 && strcmp(argv[1], "reset") == 0) {
+    /* ⛔ `argc != 2`, PAS `argc >= 2` : `w2 reset extra` remettait TOUTES les
+     * pistes a zero en ignorant le token de trop — et W2 est l'instrument qui
+     * tranche X2 (revue de code 2026-08-20). */
+    if (argc == 2 && strcmp(argv[1], "reset") == 0) {
         dn_w2_reset();
-        printf("accumulateurs W2 remis a zero.\n");
+        printf("accumulateurs W2 remis a zero (LES CINQ PISTES).\n");
         return 0;
     }
     if (argc >= 2) {
-        printf("usage : w2 | w2 reset\n");
+        printf("usage : w2 | w2 reset — rien n'a ete touche.\n");
         return 1;
     }
 
@@ -6011,17 +6119,64 @@ static int cmd_w2(int argc, char **argv)
         uint32_t taux = (w.changements * 100u) / transitions;
         /* sigma en MILLIEMES, en entiers : variance = E[x²] - E[x]².
          * ⛔ Aucun flottant : le depot les interdit sur le fil, et une racine
-         *    entiere par Newton suffit largement ici. */
-        int64_t moy_x1000 = (w.somme * 1000) / (int64_t)w.n;
-        int64_t e_x2 = w.somme_carres / (int64_t)w.n;
-        int64_t var_x1e6 = e_x2 * 1000000 - moy_x1000 * moy_x1000;
+         *    entiere par Newton suffit largement ici.
+         *
+         * 🔴 DEUX DEFAUTS CORRIGES EN REVUE DE CODE LE 2026-08-20 :
+         *
+         * (1) LA TRONCATURE ETAIT DU MEME ORDRE QUE LE SEUIL. `e_x2` etait
+         *     tronque de pres de 1 AVANT d'etre multiplie par 1e6 : jusqu'a 1e6
+         *     de variance jetee, alors que le seuil DN_W2_SEUIL_SIGMA_MILLI vaut
+         *     1000, soit var = 1e6 tout rond. Mesure au papier : sigma vrai
+         *     1,633 rendu 1,414 (-13 %) ; 0,748 rendu 0,600 (-20 %) ; 0,748
+         *     rendu 0,000 (-100 %). Le biais allait TOUJOURS vers « NE QUALIFIE
+         *     PAS ». ⇒ on multiplie AVANT de diviser. Le `if (var < 0)` d'avant
+         *     etait la trace de ce defaut, platree au lieu d'etre corrigee.
+         *     🔴 ET LE PREMIER JET DE CE CORRECTIF DEBORDAIT — trouve en
+         *     preparant la seance carte, AVANT le flash, ⛔ pas sur la carte.
+         *     Ecrire `(somme_carres * 1000000) / n` fait le PRODUIT D'ABORD :
+         *     sur la piste lux (54 611 max, carre 2,98e9), int64 deborde a
+         *     ~3 092 echantillons — soit **4,3 h** a 5 s, et `dn4-5` est un soak
+         *     d'UNE SEMAINE. ⇒ on scinde en QUOTIENT + RESTE, ce qui garde la
+         *     precision SANS jamais former le grand produit :
+         *         E[x²]x1e6 = (S2/n)*1e6 + ((S2%n)*1e6)/n
+         *     Marges : (S2/n)*1e6 <= 2,98e15 · (S2%n)*1e6 < n*1e6 <= 4,3e15
+         *     (n est un uint32) · moy_x1000² <= 2,98e15. ⛔ Aucun ne s'approche
+         *     de 9,22e18.
+         *
+         * (2) 🔴 LA RACINE NE TERMINAIT PAS. `while (r != prev)` sur une
+         *     iteration de Newton ENTIERE entre dans un cycle de periode 2
+         *     (a -> a+1 -> a -> …) pour toute valeur de la forme k²-1. Verifie
+         *     par force brute : 446 valeurs piegent la boucle dans 1..199999.
+         *     Cas ATTEIGNABLE : lux {0,0,0,3,3} (piece rideau ferme, l'owner a
+         *     mesure 2 lx) donne var = 1 560 000 = 1249²-1, et r oscille
+         *     1248 <-> 1249 POUR TOUJOURS. ⇒ la tache REPL part a 100 %, la
+         *     console est perdue, le TWDT tombe, et avec PANIC_PRINT_HALT c'est
+         *     « ni console ni flash, RESET physique obligatoire » — exactement
+         *     ce que ce module est ecrit pour empecher.
+         *     ⇒ `while (r < prev)`, le patron standard, + une borne d'iterations
+         *       comme ceinture. */
+        int64_t n64 = (int64_t)w.n;
+        int64_t moy_x1000 = (w.somme * 1000) / n64;
+        int64_t e_x2_x1e6 = (w.somme_carres / n64) * 1000000 +
+                            ((w.somme_carres % n64) * 1000000) / n64;
+        int64_t var_x1e6 = e_x2_x1e6 - moy_x1000 * moy_x1000;
         if (var_x1e6 < 0) {
-            var_x1e6 = 0; /* arrondi entier : la variance ne peut pas etre < 0 */
+            var_x1e6 = 0; /* arrondi entier residuel : la variance est >= 0 */
         }
         int64_t sigma_milli = 0;
         if (var_x1e6 > 0) {
-            int64_t r = 1, prev = 0;
-            while (r != prev) { prev = r; r = (r + var_x1e6 / r) / 2; }
+            int64_t r = var_x1e6, prev = 0;
+            /* Amorce : r = var, et on descend. La borne d'iterations est une
+             * CEINTURE — Newton converge en O(log n), 64 tours sont un plafond
+             * qu'aucune valeur d'int64 n'atteint. */
+            for (int garde = 0; garde < 64; garde++) {
+                prev = r;
+                r = (r + var_x1e6 / r) / 2;
+                if (r >= prev) {
+                    r = prev;
+                    break;
+                }
+            }
             sigma_milli = r;
         }
         bool ok_e = etendue >= DN_W2_SEUIL_ETENDUE;
