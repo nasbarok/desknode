@@ -82,9 +82,13 @@ un arbitrage assumé — 12 photos brutes auraient pesé **136 Mo** dans un dép
 | 🔴 `2026-08-20_0116-bh1750-et-ina219-barrettes-SOUDEES.jpg` | 01:16:53 | 🔴 **LA PREMIÈRE PHOTO D'UN ÉTAT SOUDÉ DU DÉPÔT.** BH1750 (`BH1750`, `V322`) barrette **5 broches SOUDÉE**, les cinq pastilles d'étain visibles ; INA219 barrette **6 broches SOUDÉE** **et bornier vert SOUDÉ**, sérigraphie `Vin- · Vin+ · Sda · Scl · Gnd · Vcc`, shunt `R100`, et les cavaliers **`I2C Address` `A1`/`A0`** |
 | 🔴 `2026-08-20_0116-ina219-et-tof050c-barrettes-SOUDEES.jpg` | 01:16:56 | Le **ToF soudé**, sérigraphie **`TOF050C-VL6180X`** lisible sur le bord, barrette **6 broches SOUDÉE**, et le boîtier optique noir. ⇒ **La réf est lisible SUR LA PHOTO DE L'ÉTAT SOUDÉ**, pas seulement sur celle du sachet |
 
-✅ **CE QUE CES CINQ PHOTOS FERMENT** : l'encart de cette section annonçait depuis le 2026-08-17
-qu'**aucune photo du dépôt ne documentait un état SOUDÉ**. **C'est fait.** ⛔ **Ce qui reste dû** :
-la photo du **montage final**, les trois modules branchés ensemble sur le bus.
+| 🔴 `2026-08-20_0951-montage-final-8-devices-grille-six-cases.jpg` | 09:51:16 | 🔴 **LE MONTAGE FINAL, ET L'ÉCRAN EST LISIBLE.** Le bandeau latéral `DESKNODE · LIVING PCB V0 — P1`, **les SIX cases** (`CPU` · `RÉSEAU` · `AMBIANCE` / `CPU` · `RAM` · `DISQUE`), les libellés `I2C` et `WIFI/BT`, `c.max`, et le bandeau **`MENU`**. Deux modules dans le cadre : le **BH1750** (bleu) et le **ToF** (noir, lucarne optique visible). ⚠️ La barre affiche **« HEURE NON POSÉE »** — **attendu** : §13.15.3, cette carte n'a **aucune sauvegarde RTC**, et l'A/B de démarrage à froid a coupé l'alimentation sept fois de plus. **La garde refuse une heure fausse ; elle fonctionne** |
+| `2026-08-20_0951-montage-final-en-main-les-quatre-modules.jpg` | 09:51:02 | Le **montage complet en main**, à l'échelle : la carte, ses **quatre modules** en étoile autour d'elle (BH1750, ToF, INA219, et le **BME680** au bout du câble tressé, toujours sur son embase JST), le câble USB, et le bureau derrière. ⇒ **C'est la photo qui montre que le bus a DEUX points d'entrée physiques** (embase JST pour le BME680, header 2×12 pour les trois nouveaux) |
+
+✅ **CE QUE CES SEPT PHOTOS FERMENT** : l'encart de cette section annonçait depuis le **2026-08-17**
+qu'**aucune photo du dépôt ne documentait un état SOUDÉ ni le montage final**. 🎯 **LES DEUX SONT
+FAITS.** ⇒ **AC1 et AC5 sont complets, et l'encart peut enfin être clos** — ce qu'il annonçait comme
+manquant ne l'est plus.
 
 ✅ **LE VERSO DU BME680 EST SOLDÉ PAR CONSTAT OWNER, PAS PAR PHOTO** — 2026-08-19, verbatim :
 *« le verso c'est juste écrit `bme680` dessus (en plus elle fonctionne et est branchée) »*.
@@ -119,8 +123,9 @@ sérigraphie.** C'est **l'instrument valide** — l'œil de l'owner, ⛔ jamais 
 > - ✅ **Les 3 autres breakouts SONT photographiés**, recto ET verso — 9 photos, table ci-dessus.
 >   Le legs **D2-1a** est **SOLDÉ**.
 > - ✅ **Le verso du BME680** est soldé **par constat owner**, pas par photo (encart ci-dessus).
-> - ⛔ **RESTE VRAI, ET C'EST DÛ DANS `dn4-2` MÊME** : **aucune photo du dépôt ne documente l'état
->   SOUDÉ des trois modules, ni le montage final à 8 devices.** C'est **AC5** qui les produit.
+> - ✅ **CLOS LE 2026-08-20** : l'état **SOUDÉ** (deux photos, 01:16) **et** le **montage final à
+>   8 devices** (deux photos, 09:51) sont versés. ⇒ **La demande ouverte depuis le 2026-08-17 est
+>   satisfaite**, et c'est bien `dn4-2` qui l'a produite, comme annoncé.
 > - ⛔ **RESTE VRAI AUSSI** : les quatre photos de dn2-1 restent antérieures à la soudure du BME680.
 > ⇒ **AC1 de `dn2-1` est SOLDÉ ; AC5 de `dn4-2` reste OUVERT.**
 
