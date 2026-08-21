@@ -1419,3 +1419,94 @@ toujours pas tenu pour l'agent. **Les deux restent au ledger.**
 - ⛔ **Le mécanisme de la perte de lignes à la capture** : non établi.
 - ⚠️ **`pertes_seq`** relevées et non expliquées : 1 · 0 · 0 · 0 · 3 · 6 selon les tirs. Sporadiques,
   toujours faibles. ⛔ Aucune n'est un rejet de protocole.
+
+
+---
+
+# 17. AC4 — LA QUALIFICATION W2 DES QUATRE GRANDEURS LHM (dn4-8, 2026-08-21)
+
+**Critère GELÉ et HORODATÉ le `2026-08-21T18:09:35Z`, committé en `c377d2c`, ⛔ AVANT que
+l'instrument n'existe.** Amendé le `18:25:17Z` (`5773e85`), ⛔ **avant le tir** lui aussi.
+
+## 17.1 🔴 LA CADENCE DE LHM EST DE 4,00 s — et elle a démoli mon critère
+
+Le critère gelé exigeait lui-même de la relever (*« ⛔ ne pas la supposer égale à 1 Hz »*) :
+
+| grandeur | changements | médiane | min | max | fréquence |
+|---|---:|---:|---:|---:|---:|
+| `cpu.degc` | 21 | **4,01 s** | 3,64 | 8,28 | 0,250 Hz |
+| `disk.extraction_moy` | 20 | **4,01 s** | 3,86 | 8,03 | 0,249 Hz |
+| `disk.cpu_noctua` | 22 | **4,00 s** | 3,86 | 4,20 | 0,250 Hz |
+| `disk.case_group` | 22 | **4,00 s** | 3,86 | 4,20 | 0,250 Hz |
+
+*(785 lectures à 10 Hz sur 90 s.)* 🔴 **Constante de la source, ⛔ pas du bruit** : quatre grandeurs
+indépendantes, même médiane à **0,01 s** près, et les `max` sont des **multiples** de la période.
+
+⇒ **CONSÉQUENCE ARITHMÉTIQUE** : à **1 Hz** d'échantillonnage, le taux de changement du texte est
+**plafonné à 1/4 = 25,0 %**. 🔴 **Or C2 était gelé à 25 % pour la °C — LE PLAFOND LUI-MÊME.**
+⛔ **Et mon motif était faux mot pour mot** : *« la résolution est 10× plus fine, le texte change
+bien plus souvent »*. **La résolution ne peut pas faire changer le texte plus souvent que la source
+ne se rafraîchit.** J'avais raisonné sur la résolution d'affichage **en ignorant la cadence** —
+alors que **mon propre §4 me disait de la relever.**
+✅ **C2 est devenu RELATIF au plafond mesuré** (≥ **60 % des OCCASIONS**), donc **indépendant de la
+cadence d'échantillonnage**. ⛔ **C1 et C3 n'ont pas bougé** : seul C2 était fautif.
+
+## 17.2 🎯 LE VERDICT — LES QUATRE QUALIFIENT
+
+**`n = 960` · 16 min à 1 Hz · 0 lecture en échec · TOUR AU REPOS.**
+CSV relu en lecture **stricte** : **7 colonnes vérifiées** sur les 960 lignes.
+
+| grandeur | plage | C1 étendue | C2 (% des occasions) | C3 σ | verdict |
+|---|---|---:|---:|---:|---|
+| `cpu.degc` | 39,0..44,0 °C | **5,00** ≥ 3,0 | **89,3 %** ≥ 60 | **0,86** ≥ 0,5 | ✅ |
+| `disk.extraction_moy` | 952..1034 tr/min | **82** ≥ 5 | **93,0 %** | **12,86** ≥ 1,0 | ✅ |
+| `disk.cpu_noctua` | 256..334 tr/min | **78** | **94,7 %** | **12,67** | ✅ |
+| `disk.case_group` | 835..890 tr/min | **55** | **92,2 %** | **10,06** | ✅ |
+
+⚠️ **Les quatre changent à 89-95 % des occasions où elles POUVAIENT changer** — c'est-à-dire
+quasiment à **chaque rafraîchissement de LHM**. ⛔ Ce ne sont pas des cases molles.
+
+## 17.3 🔴 UNE RÉSERVE ÉCRITE D'AVANCE QUI NE S'EST PAS RÉALISÉE — et la mesure dit pourquoi
+
+J'avais écrit, **avant le tir** : *« `disk.extraction_moy` est une grandeur DÉRIVÉE (moyenne de deux
+canaux). Une moyenne LISSE, donc son σ est structurellement plus bas que celui de ses composantes.
+Si elle échoue C3 en passant C1 et C2, ce n'est PAS une sonde morte. »*
+
+⛔ **ELLE N'A PAS ÉCHOUÉ, ET LA PRÉMISSE ÉTAIT FAUSSE ICI** :
+
+| | étendue | σ |
+|---|---:|---:|
+| `TOP_OUT` (`fan/0`) | 114 | **16,94** |
+| `REAR_OUT` (`fan/4`) | 55 | **9,07** |
+| **moyenne des deux** | 82 | **12,86** |
+
+**σ de la moyenne = 12,86** contre **moyenne des σ = 13,00** ⇒ ⛔ **elle ne lisse pas** (1 % d'écart).
+
+🎯 **ET LA CAUSE EST MESURÉE : `corrélation TOP_OUT ↔ REAR_OUT = 0,955`.** Moyenner ne réduit la
+variance que sur des signaux **INDÉPENDANTS** (facteur √2). Ces deux extracteurs sont pilotés par
+**la même source thermique** : ils bougent **ensemble**, donc la moyenne **préserve** le signal.
+✅ **ET ÇA VALIDE LA DISPOSITION D'AC5 par la mesure, ⛔ pas par le raisonnement** : moyenner ces
+deux-là **ne perd rien**, alors que l'alternative (publier deux canaux et abandonner `CASE_GROUP`)
+aurait rendu **deux ventilateurs physiques invisibles**.
+
+## 17.4 🔴 UN DÉFAUT D'INSTRUMENT, LE MIEN — une garde fausse D'UN CRAN
+
+`cadence_lhm()` refusait de conclure sous **2** changements. ⇒ avec **exactement 2**, elle calculait
+une « médiane » sur **UN SEUL intervalle** et la **publiait**. Vue passer en séance :
+*« intervalle median 4,17 s »* sur 2 changements, là où 785 lectures donnaient **4,00 s**.
+⛔ **Fausse d'un cran, et dans le sens dangereux : elle rendait un chiffre AU LIEU DE REFUSER.**
+⇒ corrigée à **≥ 5 changements** (4 intervalles). ✅ Le verdict a été **re-jugé avec la cadence
+robuste** (`--rejuger --periode-lhm 4.00`) : les pourcentages passent de 92-99 % à **89-95 %**, et
+⛔ **aucun verdict ne change** — mais **le chiffre publié repose désormais sur la mesure solide.**
+
+## 17.5 ⛔ CE QUE CE TIR NE PROUVE PAS
+
+- 🔴 **LA PHASE DE CHARGE N'EST PAS COUVERTE.** Décision owner : *« au repos oui on fera les autres
+  étalonnages plus tard que ça ne soit pas bloquant »*.
+  ⚠️ **L'asymétrie est ce qui rend ce tir acceptable** : une **qualification** au repos reste
+  **VALIDE** (ce qui bouge assez au repos bouge *a fortiori* sous charge) ; une **non-qualification**
+  aurait été **NON CONCLUANTE**. ⇒ **les quatre ayant qualifié, la réserve ne mord sur rien.**
+  ⛔ **L'étalonnage sous charge reste DÛ** — au ledger.
+- ⛔ **Le choix de la sonde de °C n'est pas rouvert** : `CPU Package` qualifie. `Core Max` existe et
+  dit autre chose ; le tester serait **un tir NEUF**, avec son critère à geler.
+- ⛔ **`FRONT_IN` n'est pas dans ce tableau, et il n'y sera jamais** : pas de fil tachymétrique.
