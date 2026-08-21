@@ -1,0 +1,71 @@
+====================================================================================
+dn4-8 / AC4 — QUALIFICATION W2 des quatre grandeurs LHM
+====================================================================================
+[w2] seuils GELES  degC : C1>=3.0 · C3>=0.5  (unite degC)
+[w2] seuils GELES  rpm  : C1>=5.0 · C3>=1.0  (unite tr/min)
+[w2] seuil GELE   C2   : >= 60.0 % des OCCASIONS (⛔ pas des echantillons) — amendement owner DATE du 2026-08-21 (5773e85)
+[w2] ⛔ AUCUNE CHARGE N'EST PROVOQUEE PAR CET INSTRUMENT. La phase de charge, s'il y en a une, est un GESTE OWNER.
+[w2] relevé de la cadence PROPRE de LHM (sur-echantillonnage 5.0 Hz, 40 s, LES QUATRE sondes)...
+  n = 181 lectures a 5.0 Hz
+  cpu.degc                 9 chgts | mediane  4.01 s | min  3.81 | max  8.07 | 0.249 Hz
+  disk.extraction_moy      8 chgts | mediane  4.03 s | min  3.94 | max  7.81 | 0.248 Hz
+  disk.cpu_noctua         10 chgts | mediane  4.00 s | min  3.83 | max  4.03 | 0.250 Hz
+  disk.case_group          9 chgts | mediane  4.01 s | min  3.83 | max  4.03 | 0.250 Hz
+[w2] cadence LHM MESUREE sur 4/4 sonde(s) : mediane des medianes 4.01 s (~0.25 Hz)
+[w2] 🔴 LHM RAFRAICHIT PLUS LENTEMENT QUE 1 Hz. ⛔ Echantillonner a 1 Hz DUPLIQUERAIT des valeurs et FABRIQUERAIT de la stabilite.
+[w2] tir : 16.0 min a 1 Hz (n vise = 960)
+[w2] ⚠️ CADENCE RECALEE (retard 3.17 s) — l'espacement reel n'est plus 1,00 s. Compte publie au bilan, et C2 utilisera l'espacement MESURE dans `t_s`.
+
+[w2] n=957 echantillon(s), 0 lecture(s) en echec, 1 recalage(s) de cadence
+
+====================================================================================
+VERDICT W2 — seuils GELES le 2026-08-21T18:09:35Z (commit c377d2c)
+====================================================================================
+[w2] espacement des echantillons MESURE dans `t_s` : 1.000 s (⛔ pas suppose)
+  cpu.degc               n=957   38.0..42.0 degC
+     C1 etendue      4.00 >= 3.0    OK
+     C2  90.6 % des OCCASIONS (238 occ., 216 chgt) >= 60.0 % OK
+        (soit 22.6 % des echantillons ; plafond atteignable 24.9 %)
+     C3 sigma        0.82 >= 0.5    OK
+     => ✅ QUALIFIE
+  disk.extraction_moy    n=957   927.0..981.0 tr/min
+     C1 etendue     54.00 >= 5.0    OK
+     C2  93.1 % des OCCASIONS (238 occ., 222 chgt) >= 60.0 % OK
+        (soit 23.2 % des echantillons ; plafond atteignable 24.9 %)
+     C3 sigma        9.50 >= 1.0    OK
+     => ✅ QUALIFIE
+  disk.cpu_noctua        n=957   226.0..286.0 tr/min
+     C1 etendue     60.00 >= 5.0    OK
+     C2  96.0 % des OCCASIONS (238 occ., 229 chgt) >= 60.0 % OK
+        (soit 24.0 % des echantillons ; plafond atteignable 24.9 %)
+     C3 sigma       11.84 >= 1.0    OK
+     => ✅ QUALIFIE
+  disk.case_group        n=957   816.0..857.0 tr/min
+     C1 etendue     41.00 >= 5.0    OK
+     C2  87.2 % des OCCASIONS (238 occ., 208 chgt) >= 60.0 % OK
+        (soit 21.8 % des echantillons ; plafond atteignable 24.9 %)
+     C3 sigma        6.29 >= 1.0    OK
+     => ✅ QUALIFIE
+
+------------------------------------------------------------------------------------
+σ PAR CANAL — LES SIX, y compris les deux que `extraction_moy` moyenne
+------------------------------------------------------------------------------------
+  cpu.degc               n=957   sigma    0.819 | etendue    4.000 (38.00..42.00)
+  disk.extraction_moy    n=957   sigma    9.503 | etendue   54.000 (927.00..981.00)
+  disk.cpu_noctua        n=957   sigma   11.841 | etendue   60.000 (226.00..286.00)
+  disk.case_group        n=957   sigma    6.286 | etendue   41.000 (816.00..857.00)
+  fan.top_out            n=957   sigma   14.226 | etendue   77.000 (603.00..680.00)
+  fan.rear_out           n=957   sigma    5.162 | etendue   32.000 (1250.00..1282.00)
+
+------------------------------------------------------------------------------------
+CORRELATIONS — `extraction_moy` contre les DEUX canaux qu'elle moyenne
+------------------------------------------------------------------------------------
+  extraction_moy ~ fan.top_out      r = 0.992
+  extraction_moy ~ fan.rear_out     r = 0.943
+  extraction_moy ~ cpu.degc         r = 0.449
+  extraction_moy ~ disk.cpu_noctua  r = 0.974
+  ⚠️ UN r ELEVE ENTRE `extraction_moy` ET SES PROPRES CANAUX EST ATTENDU — c'est leur moyenne. ⛔ Ce n'est PAS une decouverte, c'est un controle de coherence de l'instrument.
+
+⚠️ TIR AU REPOS — decision owner du 2026-08-21. La phase de CHARGE exigee par le critere N'EST PAS couverte.
+   ⛔ Une NON-qualification est donc NON CONCLUANTE (une session plate n'est pas une sonde morte).
+   ✅ Une QUALIFICATION, elle, reste VALIDE : ce qui bouge assez au repos bouge a fortiori sous charge.

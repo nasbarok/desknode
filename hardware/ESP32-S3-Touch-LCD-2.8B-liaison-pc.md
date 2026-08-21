@@ -1675,3 +1675,83 @@ comprise.
   instrumentés par compteurs et par `pc`. ⚠️ Le constat *« le fil porte 4, la dalle montre 3 et 1 »*
   reste celui de §16, ⛔ il n'a pas été refait.
 - ⛔ **La permanence de LHM n'est pas re-prouvée** : elle se prouve en **redémarrant la tour**.
+
+---
+
+# 19. 🎯 AC4 RE-TIRÉ APRÈS LA REVUE — LES QUATRE QUALIFIENT, ET CETTE FOIS C'EST DÉFENDABLE
+
+⚠️ **Ce tir REMPLACE celui de §17.** Pas parce que l'ancien avait tort sur le fond, mais parce
+que son instrument a changé : `affichee()` est passée de l'arrondi **banquier** au **demi-haut**
+pour appeler la quantification réelle du produit. La grille native du capteur Intel étant de
+**0,25 °C**, un échantillon sur deux tombait sur une égalité — et C2 est un taux de changement de
+**TEXTE**, la statistique la plus sensible qui soit à ces égalités.
+⛔ **Et `--rejuger` ne pouvait pas sauver §17** : `affichee()` s'applique à l'échantillonnage, donc
+le CSV portait des valeurs **déjà quantifiées par l'ancienne règle**.
+
+## 19.1 Le verdict
+
+| Grandeur | C1 étendue | **C2 % des occasions** | C3 σ | Verdict |
+|---|---|---|---|---|
+| `cpu.degc` | 4,00 ≥ 3,0 | **90,6 %** (238 occ., 216 chgt) | 0,82 ≥ 0,5 | ✅ **QUALIFIE** |
+| `disk.extraction_moy` | 54,0 ≥ 5,0 | **93,1 %** (238 occ., 222 chgt) | 9,50 ≥ 1,0 | ✅ **QUALIFIE** |
+| `disk.cpu_noctua` | 60,0 ≥ 5,0 | **96,0 %** (238 occ., 229 chgt) | 11,84 ≥ 1,0 | ✅ **QUALIFIE** |
+| `disk.case_group` | 41,0 ≥ 5,0 | **87,2 %** (238 occ., 208 chgt) | 6,29 ≥ 1,0 | ✅ **QUALIFIE** |
+
+Plancher C2 = **60,0 % des OCCASIONS** (amendement owner daté du 2026-08-21, `5773e85`).
+
+**Écart avec §17 — il n'est pas nul, et c'est l'information :**
+
+| | `cpu.degc` | `extraction_moy` | `cpu_noctua` | `case_group` |
+|---|---|---|---|---|
+| §17 (ancien arrondi) | 89,3 | 93,0 | 94,7 | 92,2 |
+| **§19 (arrondi du produit)** | **90,6** | **93,1** | **96,0** | **87,2** |
+| Δ | +1,3 | +0,1 | +1,3 | **−5,0** |
+
+🔴 **`case_group` bouge de 5 points.** Le changement d'arrondi n'était donc **pas cosmétique** —
+mais on reste très loin du plancher, dans les deux sens. ⚠️ **Ces deux séries ne sont pas
+strictement comparables** (sessions différentes, machine dans un autre état) : le Δ mesure
+l'arrondi **et** la session. ⛔ Ne pas l'attribuer entièrement à l'un ou à l'autre.
+
+## 19.2 Ce qui rend CE tir défendable, et que §17 n'avait pas
+
+| Propriété | §17 | **§19** |
+|---|---|---|
+| Cadence LHM | **tapée à la main** (`--rejuger --periode-lhm 4.00`) : `cadence_lhm()` rendait `None` à tous les coups, sa fenêtre de 12 s ne pouvant pas voir les 5 changements exigés à 4,00 s | 🎯 **MESURÉE par le tir qui juge** : **4,01 s** sur **4/4 sondes** (médiane des médianes, fenêtre 40 s) |
+| Espacement des échantillons | `periode_ech = 1.0` **codé en dur**, la colonne `t_s` jamais relue | 🎯 **MESURÉ dans `t_s` : 1,000 s** |
+| Dérive de cadence | aucun rattrapage : une lecture qui déborde enchaînait les itérations dos à dos **en silence** | **1 recalage COMPTÉ et PUBLIÉ** (retard 3,17 s) — ⚠️ le défaut s'est **réellement produit** |
+| Quantification | `round()` **banquier**, réimplémenté | 🎯 `dn_agent._dx` + l'arrondi firmware, **appelés** |
+| Seuils au bandeau | annonçait `C2>=25 %` / `C2>=10 %` — des seuils **périmés** | LIT les constantes : `C2 >= 60,0 % des OCCASIONS` |
+| σ par canal / corrélation | publiés en §17.3, produits par **aucun instrument commité** | 🎯 produits par `analyser()`, **les SIX canaux** |
+
+## 19.3 σ sur les SIX canaux, et les corrélations
+
+```
+cpu.degc            σ  0,819 | étendue  4,00  (38,00..42,00)
+disk.extraction_moy σ  9,503 | étendue 54,00  (927,00..981,00)
+disk.cpu_noctua     σ 11,841 | étendue 60,00  (226,00..286,00)
+disk.case_group     σ  6,286 | étendue 41,00  (816,00..857,00)
+fan.top_out         σ 14,226 | étendue 77,00  (603,00..680,00)   ← absent de §17.3
+fan.rear_out        σ  5,162 | étendue 32,00  (1250,00..1282,00) ← absent de §17.3
+
+extraction_moy ~ fan.top_out      r = 0,992
+extraction_moy ~ fan.rear_out     r = 0,943
+extraction_moy ~ cpu.degc         r = 0,449
+extraction_moy ~ disk.cpu_noctua  r = 0,974
+```
+
+⚠️ **Un `r` élevé entre `extraction_moy` et SES PROPRES canaux est ATTENDU — c'est leur moyenne.**
+⛔ Ce n'est pas une découverte, c'est un **contrôle de cohérence de l'instrument**, et il passe.
+⚠️ §17.3 citait `r = 0,955` : autre session, autre nombre, même forme. ⛔ Ne pas les confronter.
+
+## 19.4 ⛔ CE QUE CE TIR NE PROUVE PAS
+
+- ⛔ **TIR AU REPOS**, décision owner, comme §17. **La phase de CHARGE n'est pas couverte.**
+  L'asymétrie est ce qui le rend acceptable : une **qualification** au repos reste **valide** (ce
+  qui bouge assez au repos bouge a fortiori sous charge) ; c'est une **non**-qualification qui
+  aurait été non concluante. ⇒ **l'étalonnage sous charge reste DÛ, au ledger.**
+- ⛔ **AC2 reste MORT** : `mesure_lhm_dn48.py` a été corrigé (biais `_cpu_ms`, `murs` filtré) et
+  **n'a pas été re-tiré**. La *décision* keep-alive survivra très probablement ; **les nombres,
+  non**.
+- ✅ **Le CSV et le log sont ARCHIVÉS** — `mesures/dn4-8/`, avec leur provenance. C'est la leçon
+  directe de ce re-tir : celui de §17 n'était nulle part. ⚠️ Et sa provenance dit aussi ce qu'un
+  CSV **ne** sauve pas.
