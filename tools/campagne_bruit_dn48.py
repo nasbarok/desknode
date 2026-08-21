@@ -48,7 +48,56 @@ def trame(ver, seq, t, met, vals, ck_faux=False, sans_ck=False):
         "" if v is None else str(v) for v in vals)
     if sans_ck:
         return "$" + corps
-    return "$" + corps + "*" + ("00" if ck_faux else ck(corps))
+    if not ck_faux:
+        return "$" + corps + "*" + ck(corps)
+    # 🔴 GARDE ANTI-COLLISION (revue dn4-8, 2026-08-21). Le faux checksum etait
+    #    force a "00" EN DUR : quand le checksum REEL de la trame vaut lui-meme
+    #    00, la trame est VALIDE, aucun compteur ne bouge, et le cas « checksum
+    #    FAUX » est signale en ECHEC alors que le firmware a eu RAISON.
+    # ⚠️ Le jumeau `dn_injecteur.py:264-266` garde exactement cette collision avec
+    #    un repli "11". Deux outils du meme depot, sur le meme piege, un seul
+    #    protege : c'est la classe « garde scopee a un endroit ».
+    vrai = ck(corps)
+    return "$" + corps + "*" + ("11" if vrai == "00" else "00")
+
+
+def cases_pc(ligne):
+    """Decoupe une ligne `pc` de metrique en SES GRANDEURS, par POSITION.
+
+    🔴 MIROIR EXACT DU FORMAT DE `dn_console.c:2664` :
+         "  %-5s -> case %d %-9s %-12s"   puis, par grandeur,
+         " %d,%d %s"  ou  " -- (<unite> ATTENDUE, non publiee par la source)",
+         separees par " \u00b7", et une QUEUE "  \u00b7 age %lld ms \u00b7 seq %u".
+
+    ⚠️ ECRIT APRES UN ECHEC D'INSTRUMENT, LE 2026-08-21, SUR LA CARTE. La
+       premiere version faisait `ligne.split("->")[-1].split("\u00b7")` en supposant
+       que les valeurs suivaient la fleche. Elles ne suivent pas : il y a
+       `case <n> <NOM> <ETAT>` entre les deux. Resultat : les trois controles de
+       position ont ete declares EN ECHEC alors que la carte affichait
+       EXACTEMENT l'attendu. ⛔ Un instrument faux accuse le sujet sain.
+    ⚠️ La queue `age`/`seq` n'est PAS une grandeur : la garder decalerait tout
+       raisonnement sur « combien de grandeurs la ligne porte ».
+
+    Rend `None` si la ligne ne se parse pas — ⛔ JAMAIS un decoupage douteux
+    qu'un appelant prendrait pour un verdict.
+    """
+    m = re.search(r"->\s+case\s+-?\d+\s", ligne)
+    if not m:
+        return None
+    bouts = re.split(r"\s{2,}", ligne[m.end():].strip(), maxsplit=2)
+    if len(bouts) != 3:              # <NOM> <ETAT> <valeurs...>
+        return None
+    cases = [c.strip() for c in bouts[2].split("\u00b7")]
+    # ⛔ on JETTE la queue de diagnostic, on ne la compte pas comme grandeur
+    cases = [c for c in cases
+             if c and not c.startswith("age ") and not c.startswith("seq ")]
+    if not cases:
+        return None
+    # 🎯 VALIDATION : la 1re case DOIT ressembler a une grandeur. Sinon le
+    #    decoupage a rate et on le DIT, ⛔ on ne rend pas des chaines au hasard.
+    if not re.match(r"^(-?\d+,\d|--)", cases[0]):
+        return None
+    return cases
 
 
 def _extraire(txt):
@@ -133,6 +182,19 @@ def main():
          lambda s, t: trame(3, s, t, "cpu", [520], ck_faux=True), "checksum"),
         ("champ VIDE en position 0",
          lambda s, t: trame(3, s, t, "cpu", [None, 320, 880, 410]), "format"),
+        # 🔴 CE CAS MANQUAIT, ET C'EST UNE LIGNE DU TABLEAU D'AC7 (revue du
+        #    2026-08-21). La campagne portait DEUX cas « hors plafond » et AUCUN
+        #    « champ vide en position INTERNE », alors que story et doc annoncent
+        #    « 10 cas » couvrant cette ligne. Elle n'avait ete fermee que par une
+        #    LECTURE HUMAINE d'un dump `pc`, donc un re-tir aurait affiche 10/10
+        #    sans jamais l'eprouver.
+        # ⛔ ET SA FORME DE VERDICT EST DIFFERENTE : ici on attend qu'AUCUN
+        #    compteur ne bouge (la trame est ACCEPTEE) **ET** que la valeur
+        #    suivante ne soit PAS DECALEE. `ok = bouges == {attendu: 1}` ne peut
+        #    pas exprimer ca — d'ou `attendu = None` + un controle sur `pc`.
+        ("champ VIDE en position INTERNE (ACCEPTEE, suivante NON decalee)",
+         lambda s, t: trame(3, s, t, "disk", [4800, None, 8000, 14000]),
+         None),
     ]
 
     ser = dn_console.ouvrir(dn_console.DEFAULT_PORT, dn_console.DEFAULT_BAUD)
@@ -150,14 +212,55 @@ def main():
             apres = lire_compteurs(ser)
             delta = {k: apres[k] - avant[k] for k in COMPTEURS}
             bouges = {k: v for k, v in delta.items() if v}
-            ok = bouges == {attendu: 1}
             n = len(ligne)
             info = "%3d o" % n
-            if attendu == "trop longue":
-                info += "  (bande 72..124 : %s)" % ("oui" if 72 <= n <= 124 else "NON")
-            print("  [%s] %-52s -> %-11s %s %s"
-                  % ("OK " if ok else "\u2716\ufe0f ", nom, attendu, info,
-                     "" if ok else "  \u26d4 OBSERVE : %s" % (bouges or "AUCUN")))
+            detail = ""
+
+            if attendu is None:
+                # 🔴 CAS « ACCEPTEE » : aucun compteur ne doit bouger, ET la valeur
+                #    suivante ne doit PAS etre decalee. Le second membre se LIT sur
+                #    `pc` — un decalage ne fait bouger AUCUN compteur, donc les
+                #    compteurs seuls ne peuvent pas le voir. (revue 2026-08-21)
+                vue_cas = _cmd(ser, "pc")
+                mligne = re.search(r"^\s*disk\s+->.*$", vue_cas, re.M)
+                ligne_disk = mligne.group(0) if mligne else ""
+                # `dn_console` separe les grandeurs par « · » (dn_console.c:2684).
+                #   attendu : 480,0 Mo/s · -- (...) · 800,0 tr/min · 1400,0 tr/min
+                # ⚠️ ON DECOUPE PAR POSITION, ⛔ on ne cherche pas les nombres en
+                #    vrac : « la valeur suivante n'est pas decalee » est une
+                #    propriete de POSITION, et un `in` sur toute la ligne serait
+                #    vrai meme si la valeur avait glisse d'un cran.
+                cases = cases_pc(ligne_disk) or []
+                def _case(i):
+                    return cases[i] if i < len(cases) else ""
+                ok = ((not bouges) and len(cases) == 4
+                      and _case(0).startswith("480,0 Mo/s")
+                      and _case(1).startswith("--")
+                      and _case(2).startswith("800,0 tr/min")
+                      and _case(3).startswith("1400,0 tr/min"))
+                detail = ("  |  %s" % (ligne_disk.strip() or
+                                       "\u26d4 ligne `disk` INTROUVABLE dans `pc`"))
+                etiq = "ACCEPTEE"
+            else:
+                ok = bouges == {attendu: 1}
+                etiq = attendu
+                if attendu == "trop longue":
+                    # 🔴 LA BANDE EST DESORMAIS ASSERTEE, ⛔ PLUS DECORATIVE.
+                    #    L'en-tete promet qu'elle est « verifiee AVANT le tir » ;
+                    #    elle etait calculee APRES et n'entrait jamais dans `ok`.
+                    #    Un cas sorti de la bande mesurerait autre chose que son
+                    #    nom, et l'outil imprimait `NON` en concluant `[OK ]`.
+                    dans_bande = 72 <= n <= 124
+                    info += "  (bande 72..124 : %s)" % ("oui" if dans_bande else "NON")
+                    if not dans_bande:
+                        detail = ("  ⛔ HORS BANDE : ce cas ne mesure PAS ce que "
+                                  "son nom dit")
+                    ok = ok and dans_bande
+
+            print("  [%s] %-52s -> %-11s %s %s%s"
+                  % ("OK " if ok else "\u2716\ufe0f ", nom, etiq, info,
+                     "" if ok else "  \u26d4 OBSERVE : %s" % (bouges or "AUCUN"),
+                     detail))
             if not ok:
                 echecs.append(nom)
 
@@ -177,6 +280,67 @@ def main():
               % ("oui" if ok else "NON : delta=%s vivante=%s" % (delta, vivante)))
         if not ok:
             echecs.append("temoin v1")
+
+        # 🔴 LE TEMOIN v3 — AC5 L'EXIGEAIT, IL N'AVAIT JAMAIS ETE TIRE.
+        #    Ecrit le 2026-08-21 apres la revue de code. AC5 demandait que le
+        #    temoin v3 soit « soit RE-QUALIFIE, soit RETIRE explicitement, ⛔ jamais
+        #    laisse vert par inadvertance sur une semantique qui a change ». La
+        #    campagne ne portait qu'un temoin v1 ; la story ecrivait elle-meme, a
+        #    deux endroits, « re-qualifie PAR CONSTRUCTION, ⛔ pas encore par la
+        #    mesure ». La seance carte suivante ne l'a pas ajoute, et AC5 comme AC7
+        #    ont ete marques SOLDES.
+        #
+        # 🎯 CE QU'IL PROUVE, ET C'EST LA DECISION CENTRALE DE LA STORY :
+        #    un agent v3 **NON MODIFIE** (ere dn4-6) emet `cpu` a TROIS valeurs
+        #    [%, GHz, c.max] et `disk` a UNE [Mo/s]. Contre le firmware dn4-8 :
+        #      · la trame doit rester ACCEPTEE (⛔ aucun compteur ne bouge) ;
+        #      · le `c.max` doit atterrir en INDEX 2 ;
+        #      · l'index 3 (la °C) doit dire « -- ».
+        # ⛔ SI LA °C AVAIT ETE MISE EN INDEX 2 — l'ordre « naif » — le `c.max` d'un
+        #    agent v3 non modifie serait tombe DANS LA CASE TEMPERATURE, et AUCUN
+        #    COMPTEUR N'AURAIT BRONCHE. C'est precisement ce que la 4e voie evite,
+        #    et c'est CE tir qui le demontre au lieu de le raisonner.
+        for nom_t, met, vals, att in (
+                # 🔴 L'UNITE FAIT PARTIE DE L'ATTENDU, ⛔ PAS SEULEMENT LE NOMBRE.
+                #    Premiere version de ce temoin : `["52,0", "3,2", "88,0", "--"]`.
+                #    Elle etait AVEUGLE au defaut qu'elle pretend exclure — si la
+                #    °C etait en index 2, la dalle ecrirait « 88,0 degC » et
+                #    `startswith("88,0")` passerait quand meme. On aurait ecrit,
+                #    pour solder AC5, exactement la garde decorative que la revue
+                #    du 2026-08-21 a passe sa journee a retirer d'ailleurs.
+                # ⇒ unites reprises de `k_metriques[]` (dn_link.c:128 et :174).
+                ("TEMOIN v3 `cpu` a TROIS (agent dn4-6 NON MODIFIE)",
+                 "cpu", [520, 32, 880],
+                 ["52,0 %", "3,2 GHz", "88,0 %", "--"]),
+                ("TEMOIN v3 `disk` a UNE (agent dn4-6 NON MODIFIE)",
+                 "disk", [7085],
+                 ["708,5 Mo/s", "--", "--", "--"])):
+            print()
+            seq += 1
+            avant = lire_compteurs(ser)
+            _cmd(ser, "pc " + trame(3, seq, seq * 10, met, vals))
+            time.sleep(0.15)
+            apres = lire_compteurs(ser)
+            delta = {k: apres[k] - avant[k] for k in COMPTEURS}
+            vue = _cmd(ser, "pc")
+            m = re.search(r"^\s*%s\s+->.*$" % met, vue, re.M)
+            ligne = m.group(0) if m else ""
+            cases = cases_pc(ligne)
+            # ⚠️ CONTROLE PAR POSITION, ⛔ pas un `in` sur toute la ligne : « le
+            #    c.max n'a pas glisse » est une propriete de POSITION, et un test
+            #    en vrac serait vrai meme apres un decalage d'un cran.
+            # ⛔ Un decoupage rate rend `None` : c'est un ECHEC D'INSTRUMENT, et il
+            #    se dit comme tel, ⛔ pas comme un echec de la carte.
+            places = (cases is not None and len(cases) == len(att)
+                      and all(cases[i].startswith(a) for i, a in enumerate(att)))
+            ok = (not any(delta.values())) and places
+            print("  [%s] %s" % ("OK " if ok else "\u2716\ufe0f ", nom_t))
+            print("        attendu aux 4 positions : %s" % " | ".join(att))
+            print("        lu  : %s" % (ligne.strip() or
+                                        "\u26d4 ligne INTROUVABLE dans `pc`"))
+            if not ok:
+                print("        \u26d4 delta=%s  positions_ok=%s" % (delta, places))
+                echecs.append(nom_t)
     finally:
         try:
             ser.close()
