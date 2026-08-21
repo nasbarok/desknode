@@ -1,0 +1,253 @@
+r"""
+=============================================================================
+ thermique_ventilos_dn48.py -- AC3 : QUEL CANAL SUIT LA TEMPERATURE CPU ?
+=============================================================================
+
+ LE PROBLEME. LHM ne livre que `Fan #1`..`Fan #6`, et il n'existe AUCUNE table
+ pour cette carte : MS-7885 est absente de `Model.cs`, et les noms semantiques
+ du pilote Nuvoton (CPU FAN, PUMP, SYSFAN1-7) ne valent que pour la puce
+ NCT6687DR, pas pour notre NCT6792D. Le code de LHM le dit lui-meme a propos des
+ registres MSI : « Not sure of next 8, MSI won't provide info ».
+
+ L'IDEE. Le canal du ventirad est LE SEUL dont le PWM suit la TEMPERATURE CPU.
+ ⇒ on n'a rien a provoquer : on ENREGISTRE pendant que l'owner utilise sa
+   machine, et le canal asservi se designe par sa CORRELATION.
+
+ 🔴 ⛔ CE SCRIPT NE PROVOQUE RIEN, N'ECRIT RIEN, NE TOUCHE A RIEN.
+    Pas de charge CPU (refus owner explicite du 2026-08-21, et il a raison :
+    ce n'etait pas dans ce qu'il avait autorise), pas de PWM force, aucun
+    controle pris. Lecture seule, par /metrics -- l'interface retenue en AC2.
+    ⇒ Il exerce donc AUSSI cette interface en regime, ce qui servira a AC9.
+
+ -----------------------------------------------------------------------------
+ DEUX GARDES QUE CE DEPOT A DEJA PAYEES
+ -----------------------------------------------------------------------------
+ · DUREE BORNEE, et bornee EN DUR. ⛔ Jamais de boucle infinie lancee depuis
+   WSL : un harnais laisse tourner a survecu a sa session et a laisse des
+   dizaines de processus zombies. Ici le script s'arrete SEUL.
+ · SON PID EST ECRIT dans un fichier a cote du CSV, pour qu'on puisse l'arreter
+   sans le chercher.
+
+ -----------------------------------------------------------------------------
+ CE QUE L'ANALYSE REFUSE DE CONCLURE
+ -----------------------------------------------------------------------------
+ · Si la temperature CPU n'a pas assez BOUGE pendant l'enregistrement, une
+   correlation ne veut RIEN dire. Seuil ecrit d'avance : etendue >= 10 degC.
+   En dessous : « NON CONCLUANT », et ⛔ pas un classement quand meme.
+ · Si PLUSIEURS canaux correlent aussi fort, ca n'identifie PAS : sur MSI, un
+   SYS_FAN peut etre asservi a la source CPU. Le script le DIT au lieu de
+   designer le premier du classement.
+ · Une correlation n'est pas une causalite. Le verdict reste une PRESOMPTION,
+   a confirmer par un geste physique.
+
+ EMPLOI
+   python thermique_ventilos_dn48.py --heures 6 --periode 5
+   python thermique_ventilos_dn48.py --analyser <csv>
+=============================================================================
+"""
+
+import argparse
+import csv
+import http.client
+import math
+import os
+import re
+import sys
+import time
+
+HOTE, PORT = "localhost", 8085
+PUCE = "/lpc/nct6792d/0"
+CPU = "/intelcpu/0"
+
+# Ce qu'on enregistre. ⛔ Liste EXPLICITE : un enregistreur qui prend « tout »
+# produit un CSV qu'on ne sait plus relire six mois apres.
+COLONNES = (
+    [("cpu_pkg", CPU + "/temperature/10"), ("cpu_max", CPU + "/temperature/0"),
+     ("cpu_moy", CPU + "/temperature/1"), ("cpu_load", CPU + "/load/0"),
+     ("gpu_temp", "/gpu-amd/0/temperature/0"), ("gpu_fan", "/gpu-amd/0/fan/0")]
+    + [("fan%d" % i, "%s/fan/%d" % (PUCE, i)) for i in range(6)]
+    + [("pwm%d" % i, "%s/control/%d" % (PUCE, i)) for i in range(6)]
+)
+
+_LIGNE = re.compile(
+    r'^lhm_\S+\s+\{.*?"sensorId"="([^"]*)".*?"hardwareId"="([^"]*)".*?\}\s+(\S+)\s*$'
+)
+
+
+class Lecteur:
+    """/metrics en connexion PERSISTANTE -- l'interface retenue en AC2.
+    Se reconnecte UNE fois : ce chemin-la est aussi le detecteur « LHM absent »."""
+
+    def __init__(self):
+        self.c = None
+
+    def lire(self):
+        for dernier in (False, True):
+            try:
+                if self.c is None:
+                    self.c = http.client.HTTPConnection(HOTE, PORT, timeout=10.0)
+                self.c.request("GET", "/metrics", headers={"Connection": "keep-alive"})
+                rep = self.c.getresponse()
+                txt = rep.read().decode("utf-8", "replace")
+                if rep.will_close:
+                    self.c.close()
+                    self.c = None
+                t = {}
+                for l in txt.splitlines():
+                    if l.startswith("lhm_"):
+                        m = _LIGNE.match(l)
+                        if m:
+                            t[m.group(2) + m.group(1)] = float(m.group(3))
+                return t
+            except Exception:
+                try:
+                    if self.c:
+                        self.c.close()
+                except Exception:
+                    pass
+                self.c = None
+                if dernier:
+                    return None
+
+
+def enregistrer(heures, periode, chemin):
+    heures = min(heures, 12.0)          # ⛔ borne DURE, non negociable
+    fin = time.time() + heures * 3600.0
+    pid_f = chemin + ".pid"
+    with open(pid_f, "w") as f:
+        f.write(str(os.getpid()))
+    print("=== ENREGISTREUR THERMIQUE (lecture seule) ===")
+    print("  csv    : %s" % chemin)
+    print("  pid    : %d  (ecrit dans %s)" % (os.getpid(), pid_f))
+    print("  duree  : %.1f h, periode %.0f s -- ⛔ il s'arrete SEUL" % (heures, periode))
+    print("  ⛔ aucune charge provoquee, aucun controle pris, lecture seule.")
+    sys.stdout.flush()
+
+    lec = Lecteur()
+    n, absents = 0, 0
+    try:
+        with open(chemin, "w", newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            w.writerow(["t"] + [c for c, _ in COLONNES])
+            while time.time() < fin:
+                t0 = time.time()
+                tab = lec.lire()
+                if tab is None:
+                    absents += 1          # LHM absent : compte, ⛔ pas de ligne inventee
+                else:
+                    w.writerow(["%.1f" % t0] +
+                               ["" if tab.get(i) is None else "%.4f" % tab[i]
+                                for _, i in COLONNES])
+                    f.flush()
+                    n += 1
+                time.sleep(max(0.0, periode - (time.time() - t0)))
+    except KeyboardInterrupt:
+        print("  interrompu au clavier.")
+    finally:
+        try:
+            os.remove(pid_f)
+        except OSError:
+            pass
+        print("  %d echantillons ecrits, %d lectures ou LHM etait ABSENT." % (n, absents))
+
+
+def _pearson(xs, ys):
+    p = [(a, b) for a, b in zip(xs, ys) if a is not None and b is not None]
+    if len(p) < 10:
+        return None
+    mx = sum(a for a, _ in p) / len(p)
+    my = sum(b for _, b in p) / len(p)
+    sxy = sum((a - mx) * (b - my) for a, b in p)
+    sxx = sum((a - mx) ** 2 for a, _ in p)
+    syy = sum((b - my) ** 2 for _, b in p)
+    if sxx <= 0 or syy <= 0:
+        return None
+    return sxy / math.sqrt(sxx * syy)
+
+
+def analyser(chemin):
+    with open(chemin, encoding="utf-8") as f:
+        lignes = list(csv.DictReader(f))
+    if len(lignes) < 30:
+        print("⛔ %d echantillons : trop peu pour conclure quoi que ce soit." % len(lignes))
+        return
+
+    def col(nom):
+        out = []
+        for l in lignes:
+            v = l.get(nom, "")
+            out.append(float(v) if v not in ("", None) else None)
+        return out
+
+    cpu = col("cpu_pkg")
+    vus = [v for v in cpu if v is not None]
+    etendue = max(vus) - min(vus)
+    duree = (float(lignes[-1]["t"]) - float(lignes[0]["t"])) / 3600.0
+
+    print("=== ANALYSE ===")
+    print("  %d echantillons sur %.2f h" % (len(lignes), duree))
+    print("  temperature CPU : %.1f -> %.1f degC, ETENDUE %.1f degC"
+          % (min(vus), max(vus), etendue))
+    if etendue < 10.0:
+        print()
+        print("  🔴 NON CONCLUANT. Le seuil etait ECRIT D'AVANCE : etendue >= 10 degC.")
+        print("     Une correlation calculee sur un CPU qui n'a pas bouge ne mesure")
+        print("     que du bruit. ⛔ On ne publie PAS un classement quand meme.")
+        print("     ⇒ laisser tourner plus longtemps, ou pendant un usage plus charge.")
+        return
+
+    print()
+    print("  correlation du PWM de chaque canal avec la temperature CPU :")
+    scores = []
+    for i in range(6):
+        r = _pearson(cpu, col("pwm%d" % i))
+        rg = _pearson(col("gpu_temp"), col("pwm%d" % i))
+        scores.append((i, r, rg))
+        print("    control/%d : r(CPU) = %s   r(GPU) = %s"
+              % (i, "  n/a" if r is None else "%+.3f" % r,
+                 "  n/a" if rg is None else "%+.3f" % rg))
+
+    valides = [(i, r) for i, r, _ in scores if r is not None]
+    valides.sort(key=lambda x: -x[1])
+    print()
+    if not valides or valides[0][1] < 0.5:
+        print("  🔴 AUCUN canal ne suit franchement le CPU (meilleur r = %s)."
+              % ("n/a" if not valides else "%+.3f" % valides[0][1]))
+        print("     ⛔ Ne rien conclure. La courbe BIOS peut etre asservie a une")
+        print("        autre sonde (VRM, systeme), ou etre quasi plate.")
+        return
+    tete = [x for x in valides if x[1] >= valides[0][1] - 0.10]
+    if len(tete) > 1:
+        print("  🔴 %d canaux correlent a moins de 0,10 d'ecart : %s"
+              % (len(tete), ", ".join("control/%d (%+.3f)" % (i, r) for i, r in tete)))
+        print("     ⛔ CA N'IDENTIFIE PAS. Sur MSI, un SYS_FAN peut etre asservi a la")
+        print("        source CPU comme le CPU_FAN. Un geste physique reste necessaire.")
+    else:
+        i, r = valides[0]
+        print("  🎯 control/%d se detache (r = %+.3f), le suivant est a %+.3f."
+              % (i, r, valides[1][1] if len(valides) > 1 else float("nan")))
+        print("     ⚠️ PRESOMPTION, ⛔ pas une preuve : une correlation n'est pas une")
+        print("        causalite. A confirmer par un geste physique.")
+
+
+def main():
+    for f in (sys.stdout, sys.stderr):
+        try:
+            f.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--heures", type=float, default=6.0)
+    ap.add_argument("--periode", type=float, default=5.0)
+    ap.add_argument("--csv", default=r"C:\Users\naoua\AppData\Local\Temp\dn48_thermique.csv")
+    ap.add_argument("--analyser")
+    a = ap.parse_args()
+    if a.analyser:
+        analyser(a.analyser)
+    else:
+        enregistrer(a.heures, a.periode, a.csv)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
