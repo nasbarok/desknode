@@ -4851,3 +4851,61 @@ sans démonter reste `VIN`**, et au-delà c'est **interne au module**.
 🎯 **CONSÉQUENCE PRATIQUE, ET ELLE EST FRANCHE** : si `VIN` est bon, **il n'y a rien à recâbler** —
 le défaut est **dans le module**, et la question devient *« on en remplace un »*, ⛔ pas
 *« on ajoute un fil »*.
+
+### 13.21.11 🔴 **LA PUCE DIAGNOSTIQUE SON PROPRE LASER : « VCSEL Continuity Test »**
+
+**Lu sur une passe ENTIÈREMENT PROPRE** (reboot, attente hors fenêtre de boot, **une seule**
+commande, **les 10 registres lus sans un seul échec**, bus à **2 erreurs sur 2 392 lectures**) :
+
+| Registre | Lu | Décodage [DS] |
+|---|---|---|
+| `0x004D` RANGE_STATUS | **`0x11`** | `[7:4] = 1` ⇒ 🔴 **« VCSEL Continuity Test »** (Table 12) |
+| `0x004F` INTERRUPT_STATUS_GPIO | **`0x40`** | `[7:6] = 1` ⇒ 🔴 **« Laser Safety Error »** (§6.2.39) |
+| `0x0062` RANGE_VAL | **`0xFF`** | 255 — valeur de butée, ⛔ pas une distance |
+
+🎯 **CE N'EST PAS UN CHIFFRE QU'UN DÉFAUT DE BUS FABRIQUE** : c'est un **code d'erreur nommé**, issu
+de l'**auto-test du composant**, qui porte précisément sur la **continuité électrique du VCSEL**.
+**Lu proprement DEUX fois**, sur deux passes séparées par un reboot.
+
+⇒ **Ça converge avec tout le reste** (§13.21.5/.6/.9) : côté **numérique** la puce est parfaite, côté
+**émetteur** elle échoue son propre test de continuité. **C'est le seul suspect qui restait debout —
+et il n'est plus déduit par élimination, il est NOMMÉ PAR LA PUCE.**
+
+#### ⚠️ CE QUI N'EST **PAS** ENCORE PROUVÉ, ET IL FAUT L'ÉCRIRE
+
+🔴 **La confirmation sur un tir FRAIS N'A PAS ÉTÉ OBTENUE.** `tof range 5` a échoué **avant même de
+déclencher** — les cinq tirs sortent en `DEMARRAGE KO (ESP_ERR_INVALID_STATE)`, donc **aucune mesure
+neuve n'a eu lieu** et `0x004D` n'a **pas été rafraîchi**.
+⇒ ⛔ **`0x11` est un RÉSIDU d'une tentative antérieure**, ⛔ pas le produit d'un tir observé de bout
+en bout. **Corrélation forte, mécanisme non re-déclenché.** ⚠️ *C'est exactement la nuance que
+§13.16.7 avait dû écrire pour `XSHUT`, et elle vaut ici aussi.*
+
+### 13.21.12 🔴 **QUATRIÈME DÉFAUT D'INSTRUMENT — ET CELUI-LÀ A INVENTÉ UNE PANNE MATÉRIELLE**
+
+**J'ai annoncé à l'owner « le ToF est intermittent ». C'ÉTAIT FAUX.** A/B, **même capteur, même
+instant** :
+
+| Chemin | Résultat |
+|---|---|
+| **`dn_env`** — **handle PERSISTANT**, 3 transactions / 5 s | **22 lectures · `i2c 0` · `conformite 0`** |
+| **console `tof …` / `i2c lire16`** — **ouvre ET ferme un device À CHAQUE APPEL** | **2 réussites / 15** |
+
+⇒ 🔴 **LE DÉFAUT EST DANS MON CHEMIN D'ACCÈS, ⛔ PAS DANS LE CAPTEUR.** Le symptôme s'effondre sous
+la **répétition rapide** d'ajout/retrait de device — alors que `dn_env` tient déjà un handle
+permanent sur `0x29` — et **une commande isolée et espacée réussit**.
+⚠️ ⛔ **Le retrait de device n'est PAS en cause** : `RETRAIT DU DEVICE REFUSE` compté **0 fois sur
+15**. Le mécanisme exact **reste ouvert** ; ce qui est établi, c'est **l'A/B**.
+
+🔴 **C'est le PIRE des quatre défauts de cette séance.** Les trois premiers rendaient un **chiffre**
+faux ; celui-là a **fabriqué un récit de panne matérielle** — et je l'ai présenté à l'owner comme une
+observation, en le raccrochant au résiduel `XSHUT` de §13.16.7 qui **n'est donc PAS déclenché**.
+⇒ **RÈGLE** : ⛔ **avant de conclure « le capteur est intermittent », comparer AU CHEMIN D'ACCÈS
+STABLE qui tourne déjà à côté.** Ici il existait, il tournait, et il disait l'inverse.
+
+#### ⇒ LA SUITE EST UN CORRECTIF D'INSTRUMENT, ⛔ PAS UN AUTRE SONDAGE À L'AVEUGLE
+
+**`tof range` doit passer par le handle PERSISTANT de `dn_env`**, comme les lectures de régime qui,
+elles, ne ratent jamais. ⛔ **Tant que le déclenchement passe par un device ouvert/fermé à la
+volée, aucun tir frais ne sera observable de bout en bout** — et donc `0x11` restera un résidu.
+✅ **Et c'est la voie que les Dev Notes de la story prévoyaient déjà** (*« `dn_env.c` : y ajouter la
+séquence SR03 à l'init »*).
