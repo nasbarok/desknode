@@ -4967,3 +4967,59 @@ trop rapide, et **c'est la mesure qui le dit**.
 **écriture → lecture immédiate** sur ce device. Les tirs qui ont **attendu 601 ms** avant de lire
 **réussissent** ; ceux qui lisent **tout de suite après des écritures** **échouent**.
 ⇒ **à tester par un DÉLAI EXPLICITE entre écriture et lecture**, ⛔ pas par une nouvelle refonte.
+
+### 13.21.14 🎯 LA CADENCE DE SONDAGE ÉTAIT **UNE** CAUSE — ⛔ pas TOUTE la cause
+
+**Firmware `95d49cb`.** Prédiction écrite avant le flash : *« référence à battre = 4 `LECTURE KO`
+sur 8 »*.
+
+| | avant (`e162f56`) | après (`95d49cb`) |
+|---|---|---|
+| sondages par tir | ~300 (2 ms × 600 ms) | **~50** (5 ms × 250 ms) |
+| **`LECTURE KO`** | **4 / 8** | 🎯 **2 / 8** |
+
+⇒ **La piste « martelage du bus » est CONFIRMÉE À MOITIÉ** : diviser les transactions par six
+**divise les échecs par deux**. ⛔ **Mais elle ne les supprime pas** ⇒ **ce n'était pas toute la
+cause**, et le reste **demeure inexpliqué**. ✅ Écrit comme tel : une hypothèse à moitié vraie
+**reste à moitié fausse**.
+
+#### 🔴 ET UN FAIT NOUVEAU QUI AFFINE TOUT : **LE MOTEUR DÉMARRE VRAIMENT**
+
+Sur deux tirs, `RANGE_STATUS` = **`0x00`** — et `[0]` est `result__range_device_ready`, dont [DS]
+§6.2.38 dit : *« When 0, indicates **the device is busy** »*.
+
+⇒ 🎯 **La puce PASSE BIEN EN MESURE.** ⛔ Ce n'est donc PAS « elle ignore le déclenchement ».
+
+**LE TABLEAU COMPLET, SUR SIX TIRS PROPRES :**
+
+| Ce qu'on observe | Valeur |
+|---|---|
+| le déclenchement est consommé (`0x018` → `00`) | ✅ |
+| le composant passe **occupé** (`status` `0x00`) | ✅ |
+| *New Sample Ready* après **255 ms** (budget : **49 ms**) | 🔴 **JAMAIS** |
+| `RANGE_VAL` · taux de retour | **0** · **0** |
+| code d'erreur | 🔴 **0 — AUCUN** |
+| signal · ambiant · temps de convergence (§13.21.5) | **0** · **0** · **0** |
+| **canal de RÉFÉRENCE INTERNE** (§13.21.9) | 🔴 **0** |
+
+⇒ **La puce démarre une mesure, reste occupée, ne converge jamais, ne se plaint jamais, et ne
+compte AUCUN photon — ⛔ pas même sur son chemin optique INTERNE.**
+
+⚠️ **ET IL Y A UNE ANOMALIE DANS CETTE ANOMALIE, écrite pour la prochaine passe** : [DS] §6.2.20
+borne la mesure à `SYSRANGE__MAX_CONVERGENCE_TIME` = **49 ms** au reset, et [DS] Table 12 prévoit le
+code **7 « Max Convergence »** quand la limite est atteinte. **Ni l'abandon ni le code n'arrivent.**
+⇒ ⛔ **Ne pas conclure « émetteur mort » tant que ce point n'est pas instruit** : une puce qui
+n'abandonne pas au bout de son propre budget ne se comporte pas comme la datasheet le décrit, et
+**cette anomalie-là n'a pas de suspect nommé.**
+
+#### ⇒ CE QUE LA SÉANCE LAISSE
+
+✅ **Solide, mesuré et REPRODUIT** : SR03 se charge (38/38, quatre fois) · le balayage ALS est
+identique avant/après · **la télémétrie ne converge jamais, sans erreur, avec zéro photon des deux
+côtés**.
+🔴 **Non conclu** : *pourquoi*. Le « VCSEL Continuity Test » **ne se rejoue pas** (§13.21.13) et reste
+une **observation ouverte**.
+🔴 **Cinq défauts d'instrument** ont été trouvés et corrigés **dans cette seule séance**, dont un qui
+**fabriquait un taux de détection de 100 %** et un qui a **inventé une panne matérielle**.
+⏳ **T2 à T6 restent SUSPENDUS.** ⇒ **`[CC] bmad-correct-course`** : le périmètre n'est plus
+*« jusqu'où porte-t-il ? »* mais *« pourquoi ne converge-t-il jamais ? »*.
