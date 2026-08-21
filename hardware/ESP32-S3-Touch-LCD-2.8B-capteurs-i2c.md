@@ -5023,3 +5023,68 @@ une **observation ouverte**.
 **fabriquait un taux de détection de 100 %** et un qui a **inventé une panne matérielle**.
 ⏳ **T2 à T6 restent SUSPENDUS.** ⇒ **`[CC] bmad-correct-course`** : le périmètre n'est plus
 *« jusqu'où porte-t-il ? »* mais *« pourquoi ne converge-t-il jamais ? »*.
+
+### 13.21.15 🔴 **VERDICT — L'ÉTAGE ANALOGIQUE DU VL6180X EST MORT. LE NUMÉRIQUE, LUI, EST INTACT.**
+
+**Test de stimulus owner, protocole `dn4-2` (main puis lampe), avec le BH1750 en CONTRÔLE au même
+instant, sur la même carte, à quelques centimètres.**
+
+| Condition | **BH1750** (contrôle) | **VL6180X ALS** 1 ms | **VL6180X ALS** ≥ 5 ms |
+|---|---|---|---|
+| ambiant | 276 lx | — | `FFFF` |
+| 🖐 **main posée** | **5 lx** | `0000` | **`FFFF`** |
+| 🔦 **lampe de téléphone** | 🎯 **11 418 lx** | **`0000`** | **`FFFF`** |
+
+🔴 **L'ALS NE RÉAGIT PAS À UNE VARIATION DE LUMIÈRE DE ~2 280×** (5 lx → 11 418 lx).
+Sa sortie ne dépend **QUE de la durée d'intégration** : `0000` à 1 ms, `FFFF` dès 5 ms, **quelle que
+soit la lumière**. ⇒ **Ce n'est ni « pas de lumière » (on aurait un compte faible à 100 ms) ni « trop
+de lumière » (on aurait `FFFF` dès 1 ms). C'est un compteur qui accumule le TEMPS sans recevoir de
+signal photodiode.**
+
+⚠️ **LE PREMIER ESSAI DE LAMPE A ÉTÉ REJETÉ**, et c'est ce qui rend celui-ci recevable : le BH1750
+n'y lisait que **235 lx** — la lampe n'éclairait rien. **Un stimulus non prouvé ne produit pas un
+constat.** Rejoué avec les deux capteurs sous la lampe.
+
+#### 🎯 LA DÉDUCTION QUI FERME LE DOSSIER — et elle ÉLIMINE l'hypothèse d'alimentation
+
+[DS], table des broches :
+
+| Broche | Rôle |
+|---|---|
+| 10 **`AVDD`** | *« **Digital/analog** power supply 2.6 to 3.0 V »* |
+| 8 `AVDD_VCSEL` | *« VCSEL power supply »* |
+
+🔴 **Le RÉCEPTEUR et le CŒUR NUMÉRIQUE partagent le MÊME rail `AVDD`.** Or le numérique est
+**parfait** : I²C, 38 écritures, 30 registres privés relus exactement, `FIRMWARE__BOOTUP = 01`,
+recalibration VHV menée à terme.
+⇒ **`AVDD` est donc SAIN.** ⛔ **Un défaut d'alimentation ne peut PAS expliquer un récepteur mort
+avec un numérique intact** — les deux sont sur le même rail.
+⇒ 🔴 **LA PANNE EST DANS LA PUCE, ⛔ PAS DANS SON ALIMENTATION NI DANS SON CÂBLAGE.**
+
+**ET ÇA EXPLIQUE TOUT LE DOSSIER, D'UN SEUL MÉCANISME :**
+
+| Symptôme | Explication |
+|---|---|
+| ALS « binaire » depuis `dn4-3` (§13.19.5) | ⛔ **n'a JAMAIS eu de rapport avec SR03** — le récepteur ne reçoit rien |
+| télémétrie qui ne converge jamais | le FW attend des photons qui n'arrivent **jamais**, ni du retour ni de la **référence interne** |
+| **aucun code d'erreur** | le FW **n'atteint jamais** sa branche de terminaison (Finding 4 : abandon inopérant même à **1 ms** de budget) |
+| canal de **référence interne** à zéro | même cause : le récepteur ne compte rien, **même sur le chemin optique interne** |
+
+#### ⇒ CE QUE ÇA SOLDE, ET CE QUE ÇA ROUVRE
+
+🔴 **`dn4-3` avait nommé la MAUVAISE CAUSE** : *« ST impose un chargement de registres privés, et sans
+lui la puce may not perform to specification »* était une hypothèse **plausible et bien sourcée** —
+**mais fausse**. SR03 se charge parfaitement et **ne change rien**. ⛔ Ce n'était pas un défaut de
+raisonnement : c'était **une hypothèse non testée présentée comme une cause**, et il aura fallu
+`dn4-7` pour la tester.
+
+✅ **L'hypothèse OWNER — « l'émetteur / l'analogique » — ÉTAIT LA BONNE**, dans une forme plus large
+que celle qu'on lui donnait : ⛔ pas seulement le VCSEL, **tout l'étage analogique**.
+
+🎯 **ET LE NOM DU MODULE RÉPOND À AC6 PAR AVANCE** : **`TOF050C` = 50 cm**. Le plafond du registre
+étant **255 mm** (§13.20.5), 50 cm ne s'atteint qu'avec un **facteur d'échelle 2×**
+(2 × 255 = 510 mm ≈ 50 cm) — et le registre d'échelle `0x0096`/`0x0097` est **dans SR03**, posé à
+**1×** (`0x00`/`0xFD`). ⇒ **avec un module SAIN, la story tombe dans la bande « ~50 cm — réveil au
+GESTE »**, ⛔ ni le bouton sans contact, ⛔ ni la présence à 2 m.
+⚠️ **À VÉRIFIER PAR LA MESURE sur le module de remplacement**, ⛔ pas à écrire comme acquis : c'est
+une déduction depuis un nom commercial et une arithmétique de registre.
