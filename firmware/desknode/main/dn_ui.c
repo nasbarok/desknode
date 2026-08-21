@@ -2848,6 +2848,75 @@ static int desc_peuplees(int idx)
     return n;
 }
 
+/* 🔴 dn4-8 / DÉCISION OWNER DU 2026-08-21 (revue de code) — LA GARDE QUI
+ *    MANQUAIT. `desc_peuplees(DISQUE)` est passé de 1 à 4 quand les trois
+ *    `tr/min` ont été ajoutés au descripteur : la garde `n > pe` de
+ *    `dn_ui_set_case_grandeurs()` a donc CESSÉ DE TIRER, et `widget grandeurs
+ *    4 4` est devenu recevable — trois lignes `tr/min` visuellement IDENTIQUES,
+ *    sans préfixe, dont deux mentent par omission.
+ * ⛔ C'EST EXACTEMENT CE QUE `dn_ui_set_case_grandeurs` A ÉTÉ BÂTIE POUR
+ *    REFUSER, et c'est ce que `prefixe = "c.max"` existe pour empêcher côté CPU.
+ *    Le commentaire du descripteur DISQUE nomme lui-même le piège et lègue les
+ *    préfixes à `dn4-9` — mais il livrait le mécanisme qui rend l'état
+ *    atteignable DÈS AUJOURD'HUI.
+ * ⇒ Tant que `dn4-9` n'a pas posé les préfixes, l'override est REFUSÉ, avec son
+ *   motif. ⚠️ Il ne s'agit PAS de compter les entrées peuplées : elles le sont,
+ *   régulièrement. Il s'agit de savoir si deux d'entre elles seraient
+ *   INDISTINGUABLES À L'ŒIL — même unité, aucun préfixe pour les séparer.
+ *
+ * Rend l'indice de la SECONDE ligne d'un couple indistinct, ou -1 s'il n'y en a
+ * aucun dans les `n` premières grandeurs de `idx`. */
+static int desc_ligne_indistincte(int idx, int n)
+{
+    if (idx < 0 || idx >= DN_UI_METRIQUES) {
+        return -1;
+    }
+    if (n > DN_WIDGET_GRANDEURS_MAX) {
+        n = DN_WIDGET_GRANDEURS_MAX;
+    }
+    for (int a = 0; a < n; a++) {
+        for (int b = a + 1; b < n; b++) {
+            const char *ua = k_desc[idx].grandeurs[a].unite;
+            const char *ub = k_desc[idx].grandeurs[b].unite;
+            /* ⚠️ Deux unités absentes ne se ressemblent pas : une grandeur sans
+             * unité est déjà refusée ailleurs (`prec` non renseignée). On ne
+             * compare que des unités RÉELLES. */
+            if (!ua || !ub || strcmp(ua, ub) != 0) {
+                continue;
+            }
+            /* ✅ DEUX SÉPARATEURS, ⛔ PAS UN SEUL — et le second a été trouvé en
+             * écrivant cette garde : `RÉSEAU` livre DEUX lignes « Mb/s » SANS
+             * préfixe, distinguées par leurs ICÔNES (`LV_SYMBOL_DOWN` /
+             * `LV_SYMBOL_UP`), sur décision owner en séance carte du 2026-08-18.
+             * ⛔ Une garde qui n'aurait regardé que `prefixe` aurait donc refusé
+             *    la configuration LIVRÉE de `net` — casser le produit pour punir
+             *    un cas d'école. C'est la famille « garde scopée à un champ qui
+             *    épingle rouge ailleurs ». */
+            const char *pa = k_desc[idx].grandeurs[a].prefixe;
+            const char *pb = k_desc[idx].grandeurs[b].prefixe;
+            /* Un préfixe sépare — cas `cpu` : `%` nu en 0, `%` « c.max » en 2. */
+            if (pa && pb && strcmp(pa, pb) != 0) {
+                continue;
+            }
+            if ((pa == NULL) != (pb == NULL)) {
+                continue;
+            }
+            /* Une icône sépare aussi — cas `net` : ↓ et ↑ sur la même unité. */
+            const char *ia = k_desc[idx].grandeurs[a].icone;
+            const char *ib = k_desc[idx].grandeurs[b].icone;
+            if (ia && ib && strcmp(ia, ib) != 0) {
+                continue;
+            }
+            if ((ia == NULL) != (ib == NULL)) {
+                continue;
+            }
+            /* ⛔ Ni préfixe ni icône ne les sépare : deux lignes identiques. */
+            return b;
+        }
+    }
+    return -1;
+}
+
 static void descripteurs_auditer(void)
 {
     int trous = 0;
@@ -4815,6 +4884,22 @@ esp_err_t dn_ui_set_case_grandeurs(int idx, int n)
                  "(elles retomberaient au DIXIEME en silence, et l'audit AC9 ne "
                  "les voit pas).",
                  k_nom[idx], n, pe);
+        return ESP_ERR_INVALID_ARG;
+    }
+    /* 🔴 SECONDE GARDE — dn4-8, revue du 2026-08-21. Voir
+     * `desc_ligne_indistincte()` : peuplée n'est PAS la même chose que
+     * DISTINGUABLE. */
+    int flou = desc_ligne_indistincte(idx, n);
+    if (flou >= 0) {
+        ESP_LOGW(TAG,
+                 "widget grandeurs %s %d REFUSE : la ligne %d porterait l'unite "
+                 "\"%s\" DEJA presente sans prefixe qui l'en distingue — deux "
+                 "lignes identiques a l'oeil, dont une ment par omission. "
+                 "Les prefixes sont attendus de dn4-9 ; jusque-la, ⛔ pas "
+                 "d'affichage.",
+                 k_nom[idx], n, flou,
+                 k_desc[idx].grandeurs[flou].unite
+                     ? k_desc[idx].grandeurs[flou].unite : "?");
         return ESP_ERR_INVALID_ARG;
     }
     if (!lvgl_port_lock(2000)) {
