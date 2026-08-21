@@ -556,7 +556,24 @@ LHM_CHEMIN = "/metrics"
 #       maintenant les deux bornes.
 # ⚠️ CE N'EST PAS UNE PREUVE, C'EST UN DIMENSIONNEMENT. La duree reelle des
 #    lectures est MESUREE en regime et publiee au bilan (n, moyenne, MAX).
-LHM_TIMEOUT_S = 0.4
+# 🔴 PORTE DE 0,40 A 0,60 s LE 2026-08-21, **PAR LA MESURE EN SEANCE CARTE**,
+#    ⛔ pas par prudence. Ce que le regime reel a rendu, LHM DEBOUT :
+#      · duree MOYENNE          26,7 ms   (n=61, agent sur COM3, 60 s)
+#      · duree MAX              454,7 ms  -> **1 lecture COUPEE** par le plafond
+#      · un tir precedent       377,5 ms  -> 0 echec, mais 94 % du plafond
+#    ⚠️ LA QUEUE DE DISTRIBUTION EST BIEN AU-DELA DU p95 D'AC2 (16,5 ms). Le
+#       critere gele avait mesure `/metrics` avec un instrument DEDIE, qui ne
+#       faisait que ca ; l'agent, lui, lit LHM au milieu de cinq sources et de
+#       cinq ecritures serie. ⛔ Le p95 d'un instrument dedie ne predit pas la
+#       queue d'un regime charge — et c'est une lecon, pas un ajustement.
+#    ⇒ 0,60 s couvre le max observe (455 ms) avec 32 % de marge.
+# ✅ ET LA CONTRAINTE DE CADENCE TIENT TOUJOURS : la resynchronisation ne se
+#    declenche qu'au-dela d'UNE PERIODE ENTIERE de retard (1,00 s). A 0,60 s il
+#    reste 0,40 s aux cinq autres postes (15,1 ms mesures) et aux cinq ecritures.
+#    ⚠️ MESURE, ⛔ PAS SUPPOSE : le scenario « LHM absent » brule le budget ENTIER
+#       a CHAQUE cycle, et il a rendu **0 recalage de cadence** a 0,40 s. Le
+#       controle est REJOUE a 0,60 s — voir la seance.
+LHM_TIMEOUT_S = 0.6
 
 # ── LA TABLE DES SONDES — UNE CONFIGURATION DE *CETTE* TOUR ─────────────────
 # 🔴 DECISION OWNER DU 2026-08-21, VERBATIM : « on code comme ca de facon a plus
@@ -1854,12 +1871,28 @@ def _bilan(sortie, depart: float, seq: int, erreurs_envoi: int, rattrapages: int
                       file=sys.stderr)
                 # ⛔ UN MAX AU RAS DU TIMEOUT NE SORT PAS EN SILENCE : c'est le
                 #    signe que la lecture a ete COUPEE, pas qu'elle a fini.
+                # 🔴 CE MESSAGE DISAIT « le plafond a probablement COUPE une
+                #    lecture » MEME QUAND `echecs == 0` — c'est-a-dire quand les
+                #    donnees PROUVENT le contraire : une lecture coupee ECHOUE,
+                #    donc elle serait comptee. Corrige le 2026-08-21, en seance,
+                #    apres l'avoir vu imprimer sur un tir a 0 echec.
+                # ⛔ C'est la famille « une cause plausible imprimee par le
+                #    produit qui tourne » que dn4-7 a deja payee. Un message
+                #    d'alerte qui contredit son propre compteur est PIRE que pas
+                #    d'alerte : il envoie chercher un defaut qui n'existe pas.
                 if lhm.duree_max >= lhm.timeout_s * 0.9:
-                    print(f"[agent] 🔴 la lecture LHM la plus longue "
-                          f"({lhm.duree_max * 1000.0:.0f} ms) atteint 90 % du "
-                          f"timeout — le plafond a probablement COUPE une lecture. "
-                          f"⚠️ Le dimensionnement du timeout est a revoir, ⛔ pas a "
-                          f"supposer suffisant.", file=sys.stderr)
+                    if lhm.echecs:
+                        print(f"[agent] 🔴 le plafond a COUPE au moins une lecture "
+                              f"({lhm.echecs} echec(s), max {lhm.duree_max*1000.0:.0f} "
+                              f"ms pour un timeout de {lhm.timeout_s*1000.0:.0f} ms). "
+                              f"⚠️ Le dimensionnement est a revoir.", file=sys.stderr)
+                    else:
+                        print(f"[agent] ⚠️ la lecture LHM la plus longue "
+                              f"({lhm.duree_max*1000.0:.0f} ms) atteint "
+                              f"{lhm.duree_max/lhm.timeout_s*100.0:.0f} % du timeout, "
+                              f"mais AUCUNE n'a echoue : rien n'a ete coupe. "
+                              f"⛔ La marge est mince, et c'est ca l'information — "
+                              f"⛔ pas un incident.", file=sys.stderr)
             if lhm.reponses == 0:
                 print(f"[agent] ⚠️ LHM est reste INJOIGNABLE toute la session "
                       f"({lhm.motif}) — la °C CPU et les tr/min n'ont JAMAIS ete "
