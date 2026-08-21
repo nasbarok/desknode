@@ -27,7 +27,16 @@ import re
 import sys
 
 RACINE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-os.environ["DN_STUB_PSUTIL"] = "1"
+# ⚠️ Le stub n'est arme que si le VRAI psutil manque — sinon cet outil masquerait
+#    le vrai module dans son propre processus, y compris SUR LA TOUR ou il existe.
+#    (revue dn4-8, 2026-08-21 ; meme correctif que `verif_source_lhm_dn48.py`)
+try:
+    import psutil as _vrai_psutil  # noqa: F401
+    _AVEC_VRAI_PSUTIL = True
+except ImportError:
+    _AVEC_VRAI_PSUTIL = False
+if not _AVEC_VRAI_PSUTIL:
+    os.environ["DN_STUB_PSUTIL"] = "1"
 # \U0001f534 DEFAUT D'INSTRUMENT MESURE LE 2026-08-21, ET IL EST GENERAL A TOUT HARNAIS
 #    QUI IMPORTE LE PRODUIT : **PYTHON A SERVI UN BYTECODE PERIME**. Pendant un
 #    test de mutation (BORNES 1500 -> 1400 puis restauration), `agent/__pycache__/
@@ -52,7 +61,10 @@ for _p in (os.path.join(RACINE, "agent", "__pycache__"),
 _SRC_AGENT = os.path.join(RACINE, "agent", "dn_agent.py")
 _SHA_AGENT = hashlib.sha256(
     io.open(_SRC_AGENT, "rb").read()).hexdigest()[:16]
-sys.path.insert(0, os.path.join(RACINE, "tools", "stub_psutil"))
+# ⛔ chemin du stub prepend UNIQUEMENT s'il est arme : sinon il masquerait le vrai
+#    psutil ET leverait ImportError (le stub refuse de se charger sans la variable).
+if not _AVEC_VRAI_PSUTIL:
+    sys.path.insert(0, os.path.join(RACINE, "tools", "stub_psutil"))
 sys.path.insert(0, os.path.join(RACINE, "agent"))
 import dn_agent  # noqa: E402  -- LE PRODUIT
 
@@ -96,7 +108,46 @@ def k_metriques():
         nom, n, plaf = m.group(1), int(m.group(2)), m.group(3)
         vals = [int(x) for x in re.findall(r"(\d+)u", plaf)]
         out[nom] = (n, vals)
+
+    # 🔴 LA GARDE QUE LA DOCSTRING PROMETTAIT — ELLE N'EXISTAIT PAS.
+    #    Defaut trouve en revue (code review dn4-8, 2026-08-21) : le texte disait
+    #    « s'il ne retrouve pas exactement `DN_LINK_METRIQUES` entrees, IL
+    #    S'ARRETE », mais la fonction ne lisait JAMAIS cette constante et ne
+    #    comptait rien — elle rendait ce que `re.finditer` avait bien voulu
+    #    trouver. Le controle `sorted(fw) == sorted(ag)` ne rattrapait le cas que
+    #    par accident, parce que `BORNES` est complete ; si les DEUX tables
+    #    perdaient une metrique dans la meme edition — LE defaut pour lequel ce
+    #    miroir existe — l'outil aurait imprime « ✅ les deux tables concordent ».
+    # ⚠️ `DN_LINK_METRIQUES` est un membre d'ENUM (dn_link.h), ⛔ pas un `#define` :
+    #    on compte les membres de l'enumeration qui le precedent.
+    attendu = _n_metriques_enum()
+    if len(out) != attendu:
+        sys.exit(
+            "\u26d4 PARSEUR ARRETE : %d entree(s) extraite(s) de `k_metriques[]` "
+            "pour %d annoncee(s) par l'enum `DN_LINK_METRIQUES`.\n"
+            "   \u26d4 NE PAS CONCLURE SUR CE QUI A ETE LU : un parseur de C par "
+            "regex qui rate une entree ferait dire « tout concorde » a un arbre "
+            "incoherent.\n   entrees vues : %s"
+            % (len(out), attendu, sorted(out)))
     return out
+
+
+def _n_metriques_enum():
+    """Le nombre de metriques, COMPTE dans l'enum de `dn_link.h`.
+
+    ⛔ `DN_LINK_METRIQUES` n'est pas un `#define` : c'est le membre terminal de
+       l'enumeration `dn_link_metrique_t`. On compte donc les membres `DN_LINK_M_*`
+       qui le precedent, ⛔ on ne recopie pas 5 ici.
+    """
+    src = io.open(LINK_H, encoding="utf-8").read()
+    m = re.search(r"typedef\s+enum\s*\{(.*?)\}\s*dn_link_metrique_t\s*;",
+                  src, re.S)
+    if not m:
+        sys.exit("\u26d4 enum `dn_link_metrique_t` introuvable dans %s" % LINK_H)
+    membres = re.findall(r"\bDN_LINK_M_\w+", m.group(1))
+    if not membres:
+        sys.exit("\u26d4 aucun membre `DN_LINK_M_*` dans l'enum de %s" % LINK_H)
+    return len(membres)
 
 
 def main():
@@ -155,7 +206,17 @@ def main():
     dire(pire_r <= LIGNE_MAX, "pire cas ATTEIGNABLE <= DN_LINK_LIGNE_MAX",
          "%s = %d o (max %d, marge %d)" % (qui_r, pire_r, LIGNE_MAX,
                                            LIGNE_MAX - pire_r))
-    dire(pire_g <= LIGNE_MAX, "pire cas AU GABARIT <= DN_LINK_LIGNE_MAX",
+    # 🔴 UN INVARIANT SATISFAIT PAR RIEN N'EST PAS SATISFAIT (revue 2026-08-21).
+    #    La boucle du gabarit saute toute metrique avec `n < GRAND_MAX` ; si
+    #    AUCUNE n'atteint le plafond, `pire_g` reste 0 et `qui_g` reste `None`, et
+    #    ce controle imprimait « ✅ None = 0 o (max 71, marge 71) » — vert, sur un
+    #    ensemble VIDE. C'est l'invariant qui DIMENSIONNE `DN_LINK_LIGNE_MAX`.
+    dire(qui_g is not None,
+         "au moins UNE metrique atteint le gabarit (sinon rien n'est verifie)",
+         "%s" % (qui_g if qui_g else "\u26d4 AUCUNE : l'invariant ci-dessous ne "
+                                     "porterait sur RIEN"))
+    dire(qui_g is not None and pire_g <= LIGNE_MAX,
+         "pire cas AU GABARIT <= DN_LINK_LIGNE_MAX",
          "%s = %d o (max %d, marge %d)" % (qui_g, pire_g, LIGNE_MAX,
                                            LIGNE_MAX - pire_g))
     # \U0001f534 « UN COMPTEUR DECORATIF EST UN INSTRUMENT QUI MENT » : la bande

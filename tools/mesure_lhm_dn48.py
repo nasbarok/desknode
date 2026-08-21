@@ -173,6 +173,11 @@ _LIGNE = re.compile(
 )
 
 
+def _fini(x):
+    """`True` si `x` est un flottant FINI (⛔ ni NaN ni inf). Miroir du produit."""
+    return x == x and x not in (float("inf"), float("-inf"))
+
+
 def lire_metrics(get, ids):
     txt = get("/metrics")
     table = {}
@@ -180,8 +185,30 @@ def lire_metrics(get, ids):
         if not ligne.startswith("lhm_"):
             continue
         m = _LIGNE.match(ligne)
-        if m:
-            table[m.group(2) + m.group(1)] = float(m.group(3))
+        if not m:
+            continue
+        # 🔴 GARDE `_fini` AJOUTEE EN REVUE (code review dn4-8, 2026-08-21).
+        #    SANS ELLE, LES TROIS CANDIDATS N'ETAIENT PAS JUGES PAR LA MEME REGLE,
+        #    DANS L'A/B QUI A CHOISI L'INTERFACE. L'en-tete de ce fichier pose la
+        #    regle : « None = la source le DIT ; reste un ECHEC : une exception,
+        #    ou un compte de valeurs different du demande ».
+        #      · `lire_data_json` l'honore (`_delocaliser("-") -> None`)
+        #      · `lire_sensor`    l'honore (`None if v is None`)
+        #      · `lire_metrics`   faisait `float(...)` NU : un litteral `NaN`
+        #        rendait `nan`, `_juger` repondait « valeur non finie », donc
+        #        ECHEC, donc DISQUALIFIE.
+        #    ⇒ La MEME condition physique etait « sans valeur » pour deux
+        #      candidats et disqualifiante pour le troisieme : PLUS D'UNE VARIABLE
+        #      dans un A/B dont la sortie a ferme AC2.
+        # ⚠️ Et le produit (`dn_agent.SourceLhm`) A cette garde : l'instrument
+        #    etait donc PLUS STRICT que le code qu'il a certifie.
+        try:
+            v = float(m.group(3))
+        except ValueError:
+            continue                 # ligne illisible = capteur absent de la table
+        if not _fini(v):
+            continue                 # NaN/inf = « la source n'a pas de valeur »
+        table[m.group(2) + m.group(1)] = v
     return [table.get(i) for i in ids]
 
 
@@ -218,10 +245,22 @@ def batir_combos():
 
 
 # ============================================================================
+# 🔴 LE HANDLE EST CONSTRUIT **UNE FOIS**, HORS DES FENETRES MESUREES.
+#    Defaut trouve en revue (2026-08-21) : `_cpu_ms()` faisait
+#    `psutil.Process().cpu_times()`, donc un `Process()` NEUF a chaque appel —
+#    sous Windows un `OpenProcess` + `GetProcessTimes` pour `create_time()`. Pour
+#    l'appel de FIN (`c1`), cette construction tombe AVANT sa propre lecture,
+#    donc SON COUT ENTRE DANS LA FENETRE `c0 -> c1` et s'ajoute a CHAQUE tir.
+# ⛔ Et le verdict se joue contre des seuils ABSOLUS (C1 <= 3,0 ms ; les gagnants
+#    keep-alive etaient a 1,13-2,19 ms). Un biais additif constant deplace donc
+#    directement la ligne succes/echec, meme s'il s'annule dans les deltas A/B.
+import psutil as _psutil  # noqa: E402
+_MOI = _psutil.Process()
+
+
 def _cpu_ms():
     """CPU cumule du processus, en ms. ⛔ PAS cpu_percent : voir l'en-tete."""
-    import psutil
-    t = psutil.Process().cpu_times()
+    t = _MOI.cpu_times()
     return (t.user + t.system) * 1000.0
 
 
@@ -304,7 +343,16 @@ def campagne(n, lot, periode, jeter):
                 echecs[cle] += 1
                 causes[cle][cause] = causes[cle].get(cause, 0) + 1
             sans_val[cle] += sv
-            murs[cle].append(mur)
+            # 🔴 ⛔ LES TIRS EN ECHEC N'ENTRENT PLUS DANS `murs` (revue 2026-08-21).
+            #    C3/C4 sont « mur median » et « mur p95 » : les calculer sur un
+            #    MELANGE de succes et d'exceptions compare des durees qui ne
+            #    mesurent pas la meme chose — une exception peut sortir en 0,1 ms
+            #    (connexion refusee) et tirer la mediane vers le bas, ou en
+            #    plusieurs secondes (timeout) et la tirer vers le haut. Les deux
+            #    faussent, dans des sens opposes.
+            # ⚠️ Le compte d'echecs est deja publie separement : rien n'est perdu.
+            if bon:
+                murs[cle].append(mur)
             d = c1 - c0
             bloc_cpu[cle] += d
             lot_cpu[cle] += d
@@ -344,13 +392,29 @@ def campagne(n, lot, periode, jeter):
         cle = (etiq, jeu)
         if bloc_n[cle] == 0:
             continue
+        # ⛔ CONSEQUENCE DIRECTE DE `murs` FILTRE SUR LES SUCCES (revue 2026-08-21) :
+        #    un candidat qui echoue A TOUS LES TIRS n'a plus AUCUNE duree. On le
+        #    DIT — ⛔ on ne fabrique pas une mediane sur rien, et ⛔ on ne le fait
+        #    pas disparaitre du tableau, ce qui le ferait passer pour non teste.
+        if not murs[cle]:
+            print("  %-20s %-3s %6d | %8s  %8s  | %6s  %6s  | %5d %d   "
+                  "⛔ AUCUN TIR REUSSI : aucune duree n'est publiable"
+                  % (etiq, jeu, bloc_n[cle], "--", "--", "--", "--",
+                     sans_val[cle], echecs[cle]))
+            continue
         res[cle] = dict(cpu=bloc_cpu[cle] / bloc_n[cle], err=err(cle),
                         mur_md=statistics.median(murs[cle]), mur_p95=p95(murs[cle]),
-                        sv=sans_val[cle], ech=echecs[cle])
+                        sv=sans_val[cle], ech=echecs[cle], n_mur=len(murs[cle]))
         x = res[cle]
         print("  %-20s %-3s %6d | %8.3f  %8.3f  | %6.1f  %6.1f  | %5d %d"
               % (etiq, jeu, bloc_n[cle], x["cpu"], x["err"], x["mur_md"],
                  x["mur_p95"], x["sv"], x["ech"]))
+        # ⚠️ Les durees ne portent QUE sur les tirs reussis : le dire, sinon le
+        #    lecteur croit que `n` et le nombre de durees sont le meme nombre.
+        if len(murs[cle]) != bloc_n[cle]:
+            print("  %-20s %-3s   (durees sur %d tir(s) REUSSI(S) sur %d — les "
+                  "echecs sont exclus des medianes)"
+                  % ("", "", len(murs[cle]), bloc_n[cle]))
 
     if any(causes[k] for k in causes):
         print()

@@ -128,16 +128,53 @@ def main():
 
     print("[regime] agent : %d s sur %s ..." % (a.duree, a.port))
     t0 = time.time()
-    pr = subprocess.run([a.python, AGENT, "--serie", a.port,
-                         "--duree", str(a.duree)],
-                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        pr = subprocess.run([a.python, AGENT, "--serie", a.port,
+                             "--duree", str(a.duree)],
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            timeout=a.duree + 60)
+    except subprocess.TimeoutExpired:
+        print("\n\u2716\ufe0f  L'AGENT N'A PAS RENDU LA MAIN (%d s + 60 s de marge)."
+              % a.duree)
+        print("   \u26d4 NE PAS CONCLURE SUR AC8 : le tir n'a pas eu lieu.")
+        return 1
     mur = time.time() - t0
-    _ = mur  # duree murale de l'agent, gardee pour le journal
+
+    # 🔴 DEFAUT TROUVE EN REVUE (code review dn4-8, 2026-08-21) — ET C'EST LA
+    #    FAMILLE « subprocess rend 0 sans rien avoir fait », que ce depot a deja
+    #    payee. `pr.returncode` n'etait JAMAIS lu et `mur` etait jete (`_ = mur`).
+    #    Un agent qui meurt en 0,3 s — COM3 tenu par un autre processus, psutil
+    #    manquant sur le Python de la tour, traceback non rattrape — laissait
+    #    `avant` et `apres` IDENTIQUES, donc `bouges == {}`, donc l'outil imprimait
+    #    « ✅ AUCUN COMPTEUR DE REJET N'A MONTE ... le controle le plus discriminant
+    #    d'AC8 » et sortait 0. ⛔ SUR UN TIR OU AUCUN OCTET N'A CIRCULE.
+    # ⚠️ La garde de completude ne pouvait pas rattraper ca : le firmware imprime
+    #    les CINQ metriques inconditionnellement, meme sans avoir rien recu.
+    if pr.returncode != 0:
+        print("\n\u2716\ufe0f  L'AGENT S'EST TERMINE EN ECHEC (code %d)." % pr.returncode)
+        sys.stdout.write(pr.stderr.decode("utf-8", "replace"))
+        print("   \u26d4 NE PAS CONCLURE SUR AC8 : des compteurs qui ne bougent pas "
+              "apres un tir MORT ne prouvent rien.")
+        return 1
+    # 🎯 LA DUREE MURALE EST UN INSTRUMENT, ⛔ PAS UNE LIGNE DE JOURNAL. Un agent
+    #    qui rend la main bien avant sa duree demandee n'a pas emis ce qu'on croit.
+    print("[regime] l'agent a vecu %.1f s (demande : %d s)" % (mur, a.duree))
+    if mur < a.duree * 0.5:
+        print("\n\u2716\ufe0f  L'AGENT A VECU %.1f s POUR %d s DEMANDEES." % (mur, a.duree))
+        sys.stdout.write(pr.stderr.decode("utf-8", "replace"))
+        print("   \u26d4 NE PAS CONCLURE SUR AC8 : le tir est trop court pour porter "
+              "un verdict sur les compteurs de rejet.")
+        return 1
 
     # \U0001f534 LA COURSE CONTRE LA PEREMPTION COMMENCE ICI. 3 s, pas plus.
     t_reouv = time.time()
     ser = ouvrir(a.port)
     tirs = 0
+    # ⚠️ `vue` n'etait affectee QU'A L'INTERIEUR de la boucle, elle-meme dans le
+    #    `try` : si le `cmd(ser, "")` de reveil levait, le `finally` fermait le
+    #    port et `_extraire(vue)` partait en `NameError` — un plantage opaque a la
+    #    place d'un echec diagnosticable. (revue dn4-8, 2026-08-21)
+    vue = None
     try:
         cmd(ser, "")
         # 🔴 LA CAPTURE HOTE PERD DES LIGNES — c'est MESURE, pas suppose : le
@@ -163,6 +200,10 @@ def main():
     #    lues sont encore FRAICHES. Au-dela de 3,00 s elles ont perime et `pc`
     #    montrerait « -- » partout SANS QUE CE SOIT LE SUJET.
     delai = time.time() - t_reouv
+    if vue is None:
+        print("\n\u2716\ufe0f  AUCUNE CAPTURE N'A ETE OBTENUE apres l'arret de l'agent.")
+        print("   \u26d4 NE PAS CONCLURE SUR AC8 : il n'y a rien a comparer.")
+        return 1
     apres = _extraire(vue)
 
     print("\n" + "-" * 88)
@@ -175,6 +216,12 @@ def main():
           "%s" % (delai, "FRAIS" if delai < 3.0 else
                   "\u26d4 PERIME : ce releve ne vaut RIEN, refaire"))
     print("-" * 88)
+    # 🔴 CE VERDICT EST MAINTENANT GATANT (revue dn4-8, 2026-08-21). Il etait
+    #    IMPRIME puis IGNORE : `delai` ne resservait plus, et un run qui annoncait
+    #    lui-meme « ce releve ne vaut RIEN » sortait quand meme 0, avec la
+    #    conclusion ✅ d'AC8 quelques lignes plus bas. ⛔ Un instrument qui declare
+    #    sa propre mesure nulle et conclut quand meme est pire que pas d'instrument.
+    perime = delai >= 3.0
     # \u26a0\ufe0f SORTIE INTEGRALE, \u26d4 PAS FILTREE. Un filtre qui rate une ligne
     #    fait conclure « la metrique est absente » sur une metrique presente —
     #    et gratter au motif une console redigee pour un humain FABRIQUE des
@@ -212,6 +259,12 @@ def main():
         print("\u2716\ufe0f  DES COMPTEURS DE REJET ONT MONTE : %s" % bouges)
         print("   \u26d4 Une ABSENCE DE DONNEE N'EST PAS UNE ERREUR DE PROTOCOLE.")
         print("   C'est le controle le plus discriminant d'AC8, et il ECHOUE.")
+        return 1
+    if perime:
+        print("\u2716\ufe0f  RELEVE PERIME (%.2f s > 3,00 s) : les valeurs lues ont expire, "
+              "`pc` montre « -- » pour une raison qui N'EST PAS le sujet." % delai)
+        print("   \u26d4 LES COMPTEURS SONT PEUT-ETRE JUSTES, MAIS CE TIR NE LES PROUVE "
+              "PAS. Refaire.")
         return 1
     print("\u2705 AUCUN COMPTEUR DE REJET N'A MONTE (les six a zero de delta).")
     print("   \U0001f3af C'est le controle le plus discriminant d'AC8 : une absence de")
