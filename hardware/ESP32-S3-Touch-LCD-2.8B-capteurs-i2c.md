@@ -4909,3 +4909,61 @@ elles, ne ratent jamais. ⛔ **Tant que le déclenchement passe par un device ou
 volée, aucun tir frais ne sera observable de bout en bout** — et donc `0x11` restera un résidu.
 ✅ **Et c'est la voie que les Dev Notes de la story prévoyaient déjà** (*« `dn_env.c` : y ajouter la
 séquence SR03 à l'init »*).
+
+### 13.21.13 🔴 LE TIR FRAIS **NE REPRODUIT PAS** LE « VCSEL Continuity Test » — et mon correctif n'a PAS marché
+
+**Firmware `e162f56`** (les commandes `tof` passent par le handle persistant de `dn_env`),
+hors fenêtre de boot, bus à **0 erreur sur 2 085 lectures**.
+
+#### a) ⛔ LE VCSEL EST DISCULPÉ POUR L'INSTANT — l'erreur ne se rejoue pas
+
+Sur les tirs où **toutes** les transactions ont abouti :
+
+```
+  #   0x0062   status  err  retour  ms   lecture
+  1     0 mm   0x01    0        0  601  ⚠️ PAS DE New Sample Ready
+  3     0 mm   0x01    0        0  601  ⚠️ PAS DE New Sample Ready
+  5     0 mm   0x01    0        0  601  ⚠️ PAS DE New Sample Ready
+  7     0 mm   0x01    0        0  603  ⚠️ PAS DE New Sample Ready
+```
+
+🔴 **`status = 0x01`, ⛔ PAS `0x11`.** Le code d'erreur est **0**, pas 1.
+⇒ **Le « VCSEL Continuity Test » de §13.21.11 NE SE REPRODUIT PAS sur un tir frais.**
+⛔ **Il ne peut donc PAS être retenu comme diagnostic** — c'était bien un **résidu**, et §13.21.11
+avait raison de refuser de le conclure. ⚠️ **Ce qui l'a produit reste INEXPLIQUÉ**, et c'est écrit
+comme tel : une erreur lue proprement deux fois, qui ne se rejoue pas, **reste une observation
+ouverte** — ⛔ ni un diagnostic, ⛔ ni un artefact qu'on efface.
+
+#### b) ✅ CE QUI SE CONFIRME, LUI, POUR LA QUATRIÈME FOIS
+
+**Sur toute transaction propre, depuis le premier essai : la puce accepte le déclenchement et
+NE CONVERGE JAMAIS.** Pas de *New Sample Ready* après **600 ms** (budget de convergence : **49 ms**),
+`RANGE_VAL` = 0, taux de retour = 0, et §13.21.5 avait déjà mesuré signal / ambiant / temps de
+convergence **tous à zéro**, **canal de RÉFÉRENCE INTERNE compris** (§13.21.9).
+⇒ **C'est LE fait stable de cette séance**, et ⛔ **aucun code d'erreur ne l'accompagne**.
+
+#### c) 🔴 CINQUIÈME AVEU — MON CORRECTIF DE §13.21.12 N'A PAS RÉSOLU LE PROBLÈME
+
+Les lectures échouent encore, **et selon un motif qui n'est pas du hasard** :
+
+| Tir | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|---|---|
+| lecture | 🔴 KO | ✅ | 🔴 KO | ✅ | 🔴 KO | ✅ | 🔴 KO | ✅ |
+| `attendu_ms` | 1 | 601 | 1 | 601 | 2 | 601 | 1 | 603 |
+
+🎯 **ALTERNANCE PARFAITE**, et les échecs sont **immédiats** (1-2 ms), ⛔ pas des expirations.
+Même chose sur `tof sr03` : **les 38 écritures aboutissent**, et **les 8 relectures échouent toutes**
+en `ESP_ERR_INVALID_STATE`.
+
+⇒ 🔴 **J'AI SUR-ATTRIBUÉ L'A/B DE §13.21.12 AU HANDLE.** L'A/B lui-même est vrai — `dn_env` ne rate
+jamais, la console ratait — mais j'en ai tiré **une CAUSE** (« c'est l'ouverture/fermeture de
+device ») alors qu'il comparait **AUSSI deux cadences d'accès** radicalement différentes.
+**Le confondant n'était pas séparé.** Le correctif reste défendable, ⛔ mais sa justification était
+trop rapide, et **c'est la mesure qui le dit**.
+⚠️ **Ce qui reste ACQUIS de §13.21.12** : que « le ToF est intermittent » était **faux**, et que
+`dn_env` lit ce capteur **sans une seule erreur**. 🔴 **Ce qui TOMBE** : que la cause soit le handle.
+
+**Piste la plus probable, ⛔ NON VÉRIFIÉE, écrite pour la prochaine passe** : un enchaînement
+**écriture → lecture immédiate** sur ce device. Les tirs qui ont **attendu 601 ms** avant de lire
+**réussissent** ; ceux qui lisent **tout de suite après des écritures** **échouent**.
+⇒ **à tester par un DÉLAI EXPLICITE entre écriture et lecture**, ⛔ pas par une nouvelle refonte.
