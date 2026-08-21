@@ -42,6 +42,35 @@
  *    se dispute (§11.4). */
 #define DN_I2C_FREQ_HZ 400000
 
+/*
+ * 🔴 dn4-7 — LE VL6180X SEUL EST RALENTI, ET C'EST UNE HYPOTHÈSE À ÉPROUVER,
+ *    ⛔ PAS UN CORRECTIF ÉTABLI.
+ *
+ * Constat du 2026-08-21, bissection à UNE variable, câblage vérifié contre la
+ * sérigraphie :
+ *   · ToF DÉBRANCHÉ  : `touch` = 559 lectures, **0 erreur I²C**, boot en 2 338 ms
+ *   · ToF BRANCHÉ    : panique au boot (TCA9554 muet) — ⚠️ **INTERMITTENTE**,
+ *                      la carte repart si on insiste (constat owner)
+ * Et à l'ohmmètre, module isolé : ⛔ AUCUN court (`SDA`/`SCL` ↔ `GND` ouverts),
+ * `SDA`/`SCL` ↔ `VIN` = **10 kΩ**, soit EXACTEMENT la valeur mesurée en dn4-2
+ * quand il fonctionnait.
+ *
+ * MÉCANISME VISÉ : le TOF050C accepte `VIN` 3-5 V pour une puce à 2,8 V ⇒ il
+ * porte un ADAPTATEUR DE NIVEAU bidirectionnel, et les 10 kΩ mesurés sont ses
+ * tirages hauts. Un transistor d'adaptateur affaibli garde donc son tirage
+ * INTACT (l'ohmmètre ne voit rien) mais a des FRONTS LENTS : à 400 kHz le signal
+ * n'a pas le temps de s'établir ⇒ transactions corrompues ⇒ désynchronisation.
+ * ⚠️ Un cas de MOSFET d'adaptateur `SDA` endommagé est rapporté sur VL6180X
+ *    (element14), et un blocage `SDA` bas après une période de fonctionnement
+ *    est rapporté sur le VL53L0X — la puce sœur.
+ *
+ * ⛔ CE N'EST PAS PROUVÉ. Le critère de réussite est le TAUX DE BOOT RÉUSSI avec
+ *    le module branché, ⛔ pas « ça a marché une fois ».
+ * ⚠️ Et ⛔ ça n'expliquerait PAS l'analogique mort (ALS et télémétrie sont EN
+ *    AVAL de l'adaptateur, internes à la puce) : ce serait un SECOND défaut.
+ */
+#define DN_I2C_FREQ_TOF_HZ 100000
+
 /* ── Expander TCA9554 ────────────────────────────────────────────────────── */
 #define DN_TCA9554_ADDR 0x20
 

@@ -4493,8 +4493,12 @@ static esp_err_t i2c_dev_ouvrir(uint8_t addr, i2c_master_dev_handle_t *dev)
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,
         .device_address = addr,
         /* La frequence se pose PAR DEVICE (dn_pins.h) : on demande celle de nos
-         * autres devices, pas un defaut de composant tiers. */
-        .scl_speed_hz = DN_I2C_FREQ_HZ,
+         * autres devices, pas un defaut de composant tiers.
+         * 🔴 dn4-7 : SAUF le VL6180X, ralenti deliberement — sinon `i2c lire16 29`
+         * parlerait plus vite que `dn_env`, et les deux chemins ne mesureraient
+         * plus la meme chose. Motif complet dans dn_pins.h. */
+        .scl_speed_hz = (addr == DN_VL6180X_ADDR) ? DN_I2C_FREQ_TOF_HZ
+                                                  : DN_I2C_FREQ_HZ,
     };
     esp_err_t err = i2c_master_bus_add_device(bus, &cfg, dev);
     if (err != ESP_OK) {

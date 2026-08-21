@@ -281,10 +281,15 @@ static esp_err_t ouvrir(dn_env_id_t id)
     if (!bus) {
         return ESP_ERR_INVALID_STATE;
     }
+    /* 🔴 dn4-7 : le VL6180X est ouvert PLUS LENT que les autres — hypothèse de
+     * l'adaptateur de niveau affaibli, motif complet dans dn_pins.h. ⛔ Aucun
+     * autre device n'est ralenti : le GT911 est sondé ~30x/s et le bus est déjà
+     * « le PREMIER AGRESSEUR CONNU » de la famine DMA (§11.4). */
     const i2c_device_config_t cfg = {
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,
         .device_address = k_addr[id],
-        .scl_speed_hz = DN_I2C_FREQ_HZ,
+        .scl_speed_hz = (id == DN_ENV_TOF) ? DN_I2C_FREQ_TOF_HZ
+                                           : DN_I2C_FREQ_HZ,
     };
     i2c_master_dev_handle_t dev = NULL;
     esp_err_t e = i2c_master_bus_add_device(bus, &cfg, &dev);
