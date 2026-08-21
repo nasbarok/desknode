@@ -4787,3 +4787,67 @@ seulement ensuite. ⛔ **Ne pas commencer par le fil** : §13.16.7 a mesuré qu'
 ⇒ **Si Q2 est joué : vérifier que le pin est À FOND et ne touche PAS la cavité `G` voisine.**
 ✅ **Et si le bus remeurt de la même façon, ce sera la DEUXIÈME occurrence** — donc, pour la première
 fois, un mécanisme **isolable** au lieu d'une corrélation.
+
+### 13.21.10 🔴 **RÉTRACTATION — `XSHUT` EST EXONÉRÉ, ET `dn4-2` AVAIT RAISON**
+
+⛔ **Ce qui suit CONTREDIT §13.21.9, écrit une heure plus tôt. On ne le réécrit pas : on l'annule
+ici, avec son motif.** §13.21.9 accusait le verdict de `dn4-2` d'être *« sous-déterminé »*. **C'est
+MON accusation qui était fausse.**
+
+**Question owner** : *« XSHUT n'alimenterait pas le laser justement ? »* — elle mérite la machine
+d'états, ⛔ pas un « non ».
+
+**[DS] §2.2, Figure 9 — le diagramme d'états complet :**
+
+```
+  Power off ──AVDD on, GPIO0=0──> Hardware standby ──GPIO0=1──> MCU boot ──> Software standby
+                                  (EN RESET,                                  ├─ range_start ─> Range measurement ─done─┐
+                                   ⛔ NE REPOND PAS                           └─ als_start ───> ALS measurement ──done─┤
+                                   A L'I2C)                                   <───────────────────────────────────────┘
+```
+
+**DEUX FAITS QUI FERMENT LA QUESTION :**
+
+1. 🔴 **`XSHUT` N'ALIMENTE RIEN.** [DS] table des broches : `GPIO0/CE` est un **`Digital I/O`**, un
+   **signal logique**. L'alimentation du laser est une **BROCHE SÉPARÉE** : **broche 8 `AVDD_VCSEL`,
+   *« VCSEL power supply 2.6 to 3.0 V »***, avec sa propre masse (broche 9 `AVSS_VCSEL`).
+2. 🔴 **ET `XSHUT` FAIT DÉJÀ SON TRAVAIL — c'est PROUVÉ, pas supposé.** L'état où nous sommes
+   (**I²C qui répond** + **`FIRMWARE__BOOTUP` = `01`**) est *Software standby*. Or **le SEUL chemin
+   qui y mène passe par `GPIO0 = 1` puis `MCU boot`**. [DS] §2.2 est formel sur l'autre branche :
+   *« The device is held in reset until GPIO0 is de-asserted. Note that the device **will not
+   respond to I²C communication** in this mode. »*
+   ⇒ ⛔ **Il n'existe AUCUN état intermédiaire** « GPIO0 à moitié haut, analogique éteint » : le
+   diagramme n'a que **deux** transitions pilotées par GPIO0, et **les deux sont AVANT que l'I²C
+   fonctionne.**
+
+⇒ 🎯 **`XSHUT` EST EXONÉRÉ PAR LA MACHINE D'ÉTATS.** Et donc **le verdict de `dn4-2` était BON** :
+sa déduction *« la puce acquitte ⇒ `XSHUT` est haut »* est **exactement ce que le diagramme
+autorise**. ⛔ **Ma critique de §13.21.9 est RETIRÉE.**
+⚠️ **Ce que je maintiens de §13.21.9** : la distinction « inférence » / « mesure » reste juste **en
+général** — ⛔ mais elle ne s'appliquait pas ICI, parce que la datasheet interdit l'état
+intermédiaire que je supposais possible. **J'ai généralisé une bonne règle à un cas où elle ne
+mordait pas.**
+
+#### ⇒ ET C'EST `AVDD_VCSEL` QUE ÇA DÉSIGNE, PAR ÉLIMINATION ET PAR CONSTRUCTION
+
+⚠️ **LE POINT DÉCISIF** : la machine d'états de [DS] §2.2 **ne modélise QUE `AVDD`**. `AVDD_VCSEL`
+n'y apparaît **nulle part** — ST le suppose présent.
+⇒ 🔴 **UN `AVDD_VCSEL` ABSENT EST INVISIBLE À TOUT CE QU'ON PEUT LIRE EN I²C** : la puce démarre,
+répond, accepte `range_start`, retourne en *Software standby*… et n'a **rien** mesuré. **C'est
+mot pour mot le tableau de §13.21.5/.6/.9.**
+
+| Suspect | Verdict |
+|---|---|
+| Film de protection | ⛔ **ÉLIMINÉ** — constat owner, **et** le canal de référence est **interne** |
+| Absence de cible | ⛔ **ÉLIMINÉ** — une absence de cible **converge** et rend un code d'erreur |
+| `INT` non câblé | ⛔ **ÉLIMINÉ** — c'est une **SORTIE**, et [DS] écrit *« otherwise left unconnected »* |
+| `XSHUT` non câblé | ⛔ **ÉLIMINÉ** — machine d'états, ci-dessus |
+| 🔴 **`AVDD_VCSEL` non alimenté** | ⏳ **SEUL SUSPECT DEBOUT**, et **invisible en I²C par construction** |
+
+⚠️ **`AVDD_VCSEL` n'est PAS sorti sur la barrette 6 broches** (`VIN GND SDA SCL INT XSHUT`) : c'est
+une broche du **composant**, alimentée par le régulateur **du breakout**. ⇒ **ce qui est mesurable
+sans démonter reste `VIN`**, et au-delà c'est **interne au module**.
+
+🎯 **CONSÉQUENCE PRATIQUE, ET ELLE EST FRANCHE** : si `VIN` est bon, **il n'y a rien à recâbler** —
+le défaut est **dans le module**, et la question devient *« on en remplace un »*, ⛔ pas
+*« on ajoute un fil »*.
