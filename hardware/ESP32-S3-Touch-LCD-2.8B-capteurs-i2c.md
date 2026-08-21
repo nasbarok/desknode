@@ -5088,3 +5088,88 @@ que celle qu'on lui donnait : ⛔ pas seulement le VCSEL, **tout l'étage analog
 GESTE »**, ⛔ ni le bouton sans contact, ⛔ ni la présence à 2 m.
 ⚠️ **À VÉRIFIER PAR LA MESURE sur le module de remplacement**, ⛔ pas à écrire comme acquis : c'est
 une déduction depuis un nom commercial et une arithmétique de registre.
+
+### 13.21.16 🔴 SECOND DÉFAUT — **LE MODULE EMPÊCHE LA CARTE DE DÉMARRER**, et tout le reste est éliminé
+
+En fin de séance, le module cesse d'être seulement inutile : **il devient nuisible.** Symptôme :
+**écran noir, rétroéclairage allumé** = `dn_display_init()` échoue sur le TCA9554 sous
+`ESP_ERROR_CHECK` ⇒ panique ⇒ **CPU halté** ⇒ ⛔ **plus d'USB du tout** (piège n°8 du README).
+⚠️ **Le défaut est INTERMITTENT** — constat owner : *« ça n'échoue pas systématiquement, quand tu
+forces le redémarrage ça se relance »*.
+
+#### 🎯 LA BISSECTION, UNE SEULE VARIABLE, CÂBLAGE VÉRIFIÉ CONTRE LA SÉRIGRAPHIE
+
+| Bras | `touch` | Boot |
+|---|---|---|
+| **A — ToF DÉBRANCHÉ** (4 fils retirés) | **559 lectures, 0 erreur I²C** | ✅ **2 338 ms**, témoin positif vert |
+| **B — ToF REBRANCHÉ**, rangée B | — | 🔴 **panique**, reproduit |
+
+⚠️ **Les QUATRE fils sont retirés au bras A, ⛔ pas seulement `VIN`** : couper l'alimentation en
+laissant `SDA`/`SCL` recréerait le **capteur fantôme de §13.10** (alimentation parasite par les
+diodes ESD), et le bras « sans » ne prouverait rien.
+
+#### ⛔ QUATRE CAUSES ÉLIMINÉES — chacune par une mesure, ⛔ aucune par raisonnement
+
+| Cause | Comment elle est tombée |
+|---|---|
+| **Court-circuit** dans le module | 🔴 **ohmmètre, module ISOLÉ** : `SDA`↔`GND` et `SCL`↔`GND` **ouverts**, `VIN`↔`GND` **ouvert**, et `SDA`/`SCL`↔`VIN` = **10 kΩ** — ⚠️ **exactement la valeur mesurée en `dn4-2`** quand il fonctionnait |
+| **Erreur de câblage** | vérifié **fil par fil contre la sérigraphie** par l'owner, polarité `3V3`→`VIN` / `G`→`GND` |
+| **Vitesse I²C** (400 kHz) | ⛔ **test INVALIDE, voir ci-dessous** |
+| 🔴 **LE LOGICIEL** | **firmware du DÉBUT DE SÉANCE reflashé** — et **vérifié PAR SON CONTENU** |
+
+#### 🔴 LE TEST QUI FERME LA PISTE LOGICIELLE — proposé par l'OWNER
+
+Question owner : *« ça serait la config de boot pas bonne ? pourquoi ça marchait avant et plus
+maintenant si on regarde que le code ? »* — **légitime, et instruite plutôt qu'écartée.**
+
+**a) Le diff.** Sur toute la séance, **QUATRE fichiers** touchés : `dn_console.c`, `dn_env.c`/`.h`,
+`dn_pins.h`. ⇒ 🔴 **`dn_display.c`, `desknode_main.c` et `dn_touch.c` : ZÉRO modification** — or
+**c'est là que la panique se produit.** Le chemin de démarrage est **identique à l'octet près**.
+
+**b) Le déroulé, qui ne dépend d'aucune lecture de code.** Le firmware `95d49cb` a démarré des
+dizaines de fois avec le ToF branché **avant** le déplacement en rangée A, et panique **après**,
+**binaire inchangé**. ⇒ la seule variable est **un geste physique**.
+
+**c) Et le test direct** : les 4 fichiers ramenés à `fff4518`, rebuild, flash.
+🎯 **VÉRIFIÉ PAR LE CONTENU, ⛔ PAS PAR L'ÉTIQUETTE** : le bandeau affichait encore `8abed6c` **sans
+`-dirty`** (chaîne de version non régénérée — **un label menteur, exactement ce que ce chapitre
+traque**). Contrôle réel : **la commande `tof` est ABSENTE de `aide`** ⇒ c'est bien le code d'avant.
+⇒ **Résultat : panique identique.** ⛔ **LE LOGICIEL EST ÉLIMINÉ SANS DISCUSSION.**
+
+#### ⚠️ ET UN SIXIÈME DÉFAUT DE MÉTHODE — MON TEST DES 100 kHz NE POUVAIT RIEN MESURER
+
+J'ai fait flasher un firmware ralentissant le VL6180X à **100 kHz** (`8abed6c`) pour tester
+l'hypothèse de l'adaptateur de niveau. ⛔ **Ce test est INVALIDE PAR CONSTRUCTION** : la panique se
+produit dans `dn_display_init()`, **avant que `dn_env_init()` n'ouvre le device du ToF** — à cet
+instant le module **n'a aucun handle et donc aucune horloge**. Le réglage ne s'applique qu'à des
+transactions que le boot **n'atteint jamais**.
+🔴 **C'est le motif « la garde n'atteint jamais ce qu'elle prétend couvrir »**, et j'allais faire
+enchaîner **cinq cycles d'alimentation** à l'owner pour un chiffre sans signification.
+⇒ `DN_I2C_FREQ_TOF_HZ = 100 000` reste au dépôt mais **NON VALIDÉ**, et c'est écrit.
+
+#### 🎯 CE QUI RESTE, PAR ÉLIMINATION — et ce que dit l'art antérieur
+
+Défaut **intermittent**, **absent à l'ohmmètre**, **présent dès la mise sous tension**, ⛔ indépendant
+du logiciel et du câblage.
+
+⚠️ **Le `TOF050C` accepte `VIN` 3-5 V pour une puce à 2,8 V** ⇒ il porte forcément un **adaptateur de
+niveau bidirectionnel** sur `SDA`/`SCL`, et **les 10 kΩ mesurés sont ses tirages hauts**. Un
+transistor d'adaptateur affaibli garde son tirage **intact** — l'ohmmètre ne voit rien — mais conduit
+mal une fois **polarisé**. **Art antérieur** : un **MOSFET d'adaptateur `SDA` endommagé** est rapporté
+sur VL6180X (element14), et un **blocage `SDA` bas après une période de fonctionnement** sur le
+VL53L0X, la puce sœur.
+⛔ **HYPOTHÈSE, non prouvée** : la mesure qui la trancherait est la **tension sur `SDA`/`SCL` carte
+allumée et module branché** (~0 V au lieu de ~3,3 V). ⚠️ **Non faite** — arrêt de séance.
+
+#### 🔴 GARDE NOUVELLE — ⛔ NE PLUS RIEN ALIMENTER DEPUIS `3V3`/`G` DE LA **RANGÉE A**
+
+**DEUXIÈME occurrence** du même symptôme sur ces cavités (la 1ʳᵉ : §13.16.7, `dn4-2`).
+🎯 **Et cette fois il n'y a AUCUN fil `XSHUT`** ⇒ ⛔ **le soupçon que `dn4-2` portait sur `XSHUT` est
+RÉFUTÉ.** Ce sont **les cavités**, ou ce qu'on y branche. Le mécanisme reste inexpliqué — **deux
+occurrences suffisent à interdire l'emplacement sans attendre de le comprendre.**
+⚠️ **Et c'est cet épisode qui a précédé la dégradation du module** : il démarrait la carte
+normalement avant, plus après. **Corrélation temporelle forte, causalité NON établie.**
+
+⚠️ **MA FAUTE, ÉCRITE** : le risque de la rangée A était **consigné dans ce fichier depuis `dn4-2`**,
+et je ne l'ai rappelé à l'owner **qu'APRÈS** son essai — je le lui avais sorti pour le 5 V, ⛔ pas
+quand il a déplacé l'alimentation. **La garde existait, je ne l'ai pas jouée au bon moment.**
