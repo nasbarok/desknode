@@ -767,13 +767,27 @@ dans `tools/gen_font_dn.py` (`ENTETE_MODELE`), pas dans le `.h`.
 **absentes d'un clone** tant que `idf.py reconfigure` n'a pas tourné — c'est un fait à connaître
 avant toute distribution du binaire, pas un détail d'attribution.
 
-## L'agent PC (dn2-2 → dn4-1) — CINQ métriques de la tour, à ~1 Hz, par l'USB série
+## L'agent PC (dn2-2 → dn4-1 → dn4-8) — CINQ métriques de la tour, à ~1 Hz, par l'USB série
 
 Un seul fichier : `agent/dn_agent.py`. Il tourne sur le **Python Windows 3.13** de la
 tour, **sans élévation, sans driver, sans .NET**.
 ⛔ **Et c'est une FRONTIÈRE, pas une préférence (D8)** : le Ring0 / LibreHardwareMonitor —
 donc la **température CPU** et les **RPM ventilateurs** — sort du périmètre V1. C'est ce qui
 a fait de la 6ᵉ case un **DISQUE** et de la 2ᵉ grandeur du CPU une **fréquence**.
+
+🔴 **AMENDÉ LE 2026-08-21 PAR D13, ⛔ PAS EFFACÉ — ET LA MOITIÉ QUI COMPTE RESTE VRAIE.**
+`LibreHardwareMonitor` **rentre** dans le périmètre V1, **en service permanent sur la tour**
+(tâche planifiée `RunLevel = Highest` + driver noyau signé `PawnIO 2.2.0`, **prouvée par un
+redémarrage réel**), et l'agent **LIT** son serveur web local.
+⛔ **L'agent, lui, n'a toujours ni élévation, ni driver, ni .NET — il ne fait AUCUN Ring0.
+C'est exactement ce qui rend la chose acceptable.**
+⇒ Le fil porte désormais **`cpu` à QUATRE** (`%` · `GHz` · `c.max` · **`°C`**) et **`disk` à
+QUATRE** (`Mo/s` · **extraction moyenne** · **ventilo CPU** · **ventilo boîtier**).
+⚠️ **Ce que les CASES affichent ne change PAS ici** — c'est `dn4-9`, et la grille reste à SIX.
+⚠️ **ET LE COÛT EST ASSUMÉ, ⛔ PAS OUBLIÉ** : ces **quatre** grandeurs ne marchent que sur une
+machine où LHM est installé, élevé et permanent. Le critère owner de D8 (*« générique et libre
+de droits, réutilisable sur toutes les configs »*) **ne tient plus pour elles**. Les **onze
+autres, si**. ⇒ `sprint-change-proposal-2026-08-21.md` (D13) et `-21b.md`.
 
 ### Les cinq métriques et leurs sources (dn4-1, mesurées le 2026-08-18)
 
@@ -784,6 +798,28 @@ a fait de la 6ᵉ case un **DISQUE** et de la 2ᵉ grandeur du CPU une **fréque
 | **RAM** | % *(+ jauge)* | Go **totaux** | `psutil.virtual_memory` | aucun | 7,8 ms/tir |
 | **RÉSEAU** | Mb/s ↓ | Mb/s ↑ | `psutil.net_io_counters` (**deltas**) | aucun | 6,8 ms/tir |
 | **DISQUE** | **Mo/s** | — | `psutil.disk_io_counters` (**deltas**) | aucun | ~0 ms/tir |
+
+🔴 **CE QUE dn4-8 A AJOUTÉ AU FIL (2026-08-21) — ⛔ pas à l'écran :**
+
+| métrique | grandeur ajoutée | `SensorId` LHM | droits | provenance du mapping |
+|---|---|---|---|---|
+| **CPU** | **`°C`** (index **3**) | `/intelcpu/0/temperature/10` | 🔴 **LHM requis** | **MESURÉ** — « CPU Package », recoupé par le Super I/O `/lpc/nct6792d/0/temperature/0` (40,5 contre 41,0 : **1,2 %**). ⚠️ instantané **n = 1** |
+| **DISQUE** | **extraction moyenne** | `fan/0` + `fan/4` | 🔴 **LHM requis** | **MESURÉ** — jointure BIOS↔LHM par RPM, 2026-08-21 |
+| **DISQUE** | **ventilo CPU** | `/lpc/nct6792d/0/fan/1` | 🔴 **LHM requis** | **MESURÉ** — idem (`CPU_FAN1`, le ventirad Noctua) |
+| **DISQUE** | **ventilo boîtier** | `/lpc/nct6792d/0/fan/2` | 🔴 **LHM requis** | **MESURÉ** — idem. ⚠️ **UN tachy pour DEUX ventilateurs chaînés** |
+
+⚠️ **LA °C EST EN INDEX 3, ⛔ PAS EN INDEX 2, ET CE N'EST PAS UN DÉTAIL** : l'ordre du fil ne
+bouge pas sur 0..2, donc le **témoin de non-régression v3** (l'agent de `dn4-6`, non modifié)
+**reste valide**. En index 2, son `c.max` (350 dixièmes de %) s'afficherait **« 35,0 degC »**,
+et le plafond passant de 1000 à 1500, ⛔ **`rejets_bornes` ne broncherait même pas.**
+🔴 **Le témoin fabriquerait lui-même le chiffre faux et plausible qu'il existe pour exclure.**
+
+⛔ **ET UN VENTILATEUR NE SERA JAMAIS PUBLIABLE** : le **200 mm de façade** n'a **pas de fil
+tachymétrique** — `0 RPM` **DANS LE BIOS AUSSI**. **Il tourne, il ne le dit pas.** ⇒ c'est du
+**matériel**, ⛔ pas une limite logicielle, et aucune version future n'y changera rien.
+⚠️ **L'ordre naïf des canaux était FAUX sur les deux premiers** : `fan/0` est `CPU_FAN2`, ⛔ pas
+`CPU_FAN1`. Le coder naïvement aurait affiché « CPU » sur l'extraction haute. **C'est la capture
+BIOS de l'owner qui l'a attrapé**, ⛔ pas le raisonnement.
 
 🔴 **NVML est INAPPLICABLE sur cette tour** : `Win32_VideoController` rend **un seul**
 contrôleur, une **AMD Radeon RX 6800 XT**, et `pynvml` n'est pas installé. Le repli
@@ -824,6 +860,13 @@ $py = "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe"
 #  --temoin     imprime son propre coût CPU toutes les 10 s
 #  --duree 60   s'arrête proprement après 60 s (le témoin « arrêt propre » d'AC7)
 #  --stdout     trames à l'écran, sans carte (débogage)
+#  --lhm HOTE:PORT      ou joindre LibreHardwareMonitor (défaut 127.0.0.1:8085)
+#                       ⚠️ EXERCE les chemins d'échec ; ⛔ ne REMPLACE pas AC8, qui
+#                          exige le VRAI service coupé
+#  --lhm-timeout S      plafond de la lecture LHM (défaut 0,40 s)
+#                       🔴 C'est un BUDGET pour la lecture ENTIÈRE, ⛔ pas par tentative :
+#                          `_get()` retente UNE fois, et un plafond par tentative
+#                          doublait le pire cas (802 ms MESURÉES pour 400 posées)
 #  --ws URL     branche B (WiFi WebSocket) — ÉCARTÉE par la fourche, gardée pour une
 #               re-mesure ; sans firmware branche B en face, elle ne sert à rien
 ```

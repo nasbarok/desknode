@@ -2702,7 +2702,15 @@ héritée. On échangeait un legs chiffré complet contre une exigence qu'aucun 
 
 > 🔴 **AVERTISSEMENT DE LECTURE, ET IL VAUT POUR TOUTE LA §16 QUI PRÉCÈDE** : à partir de
 > dn4-1, **l'index 4 n'est plus `VENTILOS` mais `DISQUE`** (décision owner D8 du 2026-08-18 :
-> les RPM boîtier exigent le Ring0, qui sort du périmètre V1). ⛔ **Les mentions de
+> les RPM boîtier exigent le Ring0, qui sort du périmètre V1).
+> 🔴 **ANNOTÉ LE 2026-08-21 (dn4-8 / D13), ⛔ PAS RÉÉCRIT** : **le Ring0 est REVENU** dans le
+> périmètre V1, **par service tiers** (`LibreHardwareMonitor` en service permanent ; ⛔ l'agent
+> ne fait aucun Ring0 lui-même). ⇒ **les RPM boîtier et CPU sont sur le fil depuis `dn4-8`.**
+> ⛔ **MAIS L'INDEX 4 RESTE `DISQUE`, ET CE N'EST PAS UN OUBLI** : D13 est explicite —
+> *« D8 est amendée sur sa PORTÉE Ring0, ⛔ PAS sur son choix de case »*. La case n'est **pas**
+> rendue aux ventilateurs : les `tr/min` **s'y AJOUTENT** (`disk` porte quatre grandeurs).
+> ⇒ **la consigne de lecture ci-dessous ne change pas d'un iota.**
+> ⛔ **Les mentions de
 > `VENTILOS` en §15 et §16 NE SONT PAS RÉÉCRITES** : ce sont des relevés historiques, et
 > l'histoire d'un dépôt ne se falsifie pas. Lire « VENTILOS » comme « la case d'index 4 »
 > partout où un chiffre y est attaché — la géométrie (225 × 156, 35 100 px) et la position

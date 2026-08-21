@@ -601,6 +601,20 @@ marge** · **1,528 % d'un cœur** ❌ au-dessus de 1. dn2-2 publiait déjà les 
 ⚠️ **D8** : ce chiffre porte sur **l'AGENT SEUL** — et c'est légitime **parce qu'il n'y a rien
 d'autre**. Sous Ring0 il aurait fallu y ajouter le service LibreHardwareMonitor.
 
+🔴 **AMENDÉ LE 2026-08-21 (dn4-8 / D13), ⛔ PAS EFFACÉ — ET LA PHRASE S'EST RÉALISÉE.**
+*« Sous Ring0 il aurait fallu y ajouter le service LibreHardwareMonitor »* : **c'est exactement
+ce qui arrive.** LHM tourne en service permanent, et le *« parce qu'il n'y a rien d'autre »*
+**tombe**.
+⇒ **D13 tranche la lecture, et elle est obligatoire à écrire** : le critère n°4 du brief
+(`< 1 % CPU`) se mesure sur **l'AGENT SEUL** — ⛔ **LHM n'y entre pas** — **mais la charge totale
+de la tour, elle, AUGMENTE.**
+🔴 **DEUX CHIFFRES, PUBLIÉS SÉPARÉMENT, ⛔ JAMAIS ADDITIONNÉS EN SILENCE, ET ⛔ LE SECOND NE SE
+CACHE JAMAIS DERRIÈRE LE PREMIER.** C'est **AC9 de `dn4-8`**, et il n'est **pas** soldé.
+⚠️ **Et le chiffre ci-dessus est lui-même à re-lire** : **1,528 %** est un relevé `--stdout`,
+⛔ **pas** le transport. Sur `COM3` l'agent livré est à **2,421 % d'un cœur / 0,1513 % machine**
+— **+0,63 pt de coût propre au port**, qui n'existait dans aucun budget.
+⛔ **AC9 de `dn4-1` reste `PARTIAL`** : le brief ne dit pas laquelle des deux lectures il vise.
+
 ## 13.9 Les dépendances de l'agent, avec leur statut MESURÉ
 
 | dépendance | statut | pourquoi |
@@ -934,3 +948,230 @@ trames dans la seconde change :
 (b) qui ne déclare pas son espacement n'est comparable à rien.
 `tools/dn_injecteur.py --espacement` le rend explicite. Voir §18.0 du fichier
 d'affichage.
+
+
+---
+
+# 15. LE PROTOCOLE v3 À QUATRE PARTOUT — les sondes Ring0 arrivent sur le fil (dn4-8, P9.3c)
+
+**2026-08-21.** ⛔ **Séance WSL uniquement** : la carte n'a pas été touchée, `COM3` n'a pas été
+ouvert, rien n'a été flashé. Ce qui suit est du **code et de l'arithmétique**, ⛔ pas une mesure
+de la carte ni de la tour.
+
+## 15.1 Ce que D13 demandait, et le mur qu'elle a rencontré
+
+D13 (correct-course du 2026-08-21) rouvre le **Ring0 par service tiers** :
+`LibreHardwareMonitor` tourne en permanence sur la tour et l'agent **lit** ses valeurs.
+⛔ **L'agent ne fait aucun Ring0 lui-même** — c'est ce qui rend la chose acceptable.
+
+🔴 **LE MUR N'EST PAS L'OCTET, C'EST LA QUATRIÈME GRANDEUR.** `DN_LINK_GRANDEURS_MAX = 4`, et la
+disposition complète de D13 §4.4 en demandait **SIX** sur `disk` :
+`Mo/s` · `tr/min` moyen · **lecture** · **écriture** · ventilo boîtier · ventilo CPU.
+
+**Les quatre voies, pesées avec la disposition COMPLÈTE sur la table :**
+
+| voie | ce qu'elle coûte | verdict |
+|---|---|---|
+| **(a)** `disk` = `Mo/s` · moyen · boîtier · CPU | ⛔ la séparation **lecture/écriture** de §4.4 tombe | 🎯 **RETENUE**, amendée par la 4ᵉ voie |
+| **(b)** `disk` = `Mo/s` · lecture · écriture, ventilos **ailleurs** | ⚠️ **il y a un « ailleurs »** — `ram` et `net` ont **2 places libres chacune** sur les 4. ⛔ **Mais `k_pc[]` mappe métrique → CASE** : un ventilateur publié sous `ram` atterrirait dans la case RAM, que `dn4-9` ne pourrait jamais montrer comme un ventilateur | ⛔ **écartée**, et le motif est l'AFFICHAGE, pas le fil |
+| **(c)** monter `GRANDEURS_MAX` à 6 | pire cas au gabarit → **~89 o > 71** ⇒ `LIGNE_MAX` bouge ; `v[]`, `connue[]`, `max[]`, `unite[]` côté fil ; **et `dn_widget` a des tampons INDEXÉS SUR 4** (`txt[4][16]`, `brut[4]`) | ⛔ **écartée** : large, et ⛔ **rien ne l'exige** une fois (a)+(4ᵉ voie) posées |
+| **(d)** une 6ᵉ métrique `fan` | +1 trame/s (+20 % d'écho console), `k_pc[]`/`k_source[]`/`k_desc[]`/`k_nom[]`/`k_widget[]`/`cmd_widget` à renseigner, ⛔ **et pas de case libre** (`DN_UI_METRIQUES = 6`, la 6ᵉ est `AMBIANCE`/BME680) | ⛔ **écartée** |
+
+🎯 **LA 4ᵉ VOIE, DÉBLOQUÉE PAR UNE DÉCISION OWNER**, verbatim : *« oui clairement le détail
+connaîtra pour chaque case plus d'information »*. Si la **case** et le **détail** ont des
+**comptes différents**, ils peuvent avoir des **sélections différentes** :
+
+```
+fil    cpu = [ % · GHz · c.max · °C ]   <- ordre INCHANGÉ, témoin v3 INTACT
+case   montrera les indices [0, 1, 3]    -> % · GHz · °C   (ce que D13 demande)
+détail montrera les 4                    -> + c.max        (décision owner)
+```
+
+⇒ Les trois options gelées au cadrage sacrifiaient toujours l'une des trois contraintes.
+Celle-ci n'en sacrifie aucune. ⚠️ **Mais le mécanisme n'existe pas** — `detail_reparametrer()`
+lit `desc_n(idx)`, le compte de la **case** — ⇒ **legs explicite à `dn4-9`**.
+
+🔴 **CE QUI TOMBE, ET IL FAUT L'ÉCRIRE** : **la séparation lecture/écriture de D13 §4.4**.
+⛔ Ce n'est **pas** un arbitrage d'implémentation, c'est une **réduction de périmètre**.
+⇒ **portée à l'owner et au ledger**, ⛔ pas rognée en silence.
+
+⚠️ **Et « moyenne entrant/sortant » a été AMENDÉE PAR LA MESURE** : **il n'existe aucun flux
+entrant mesurable.** Le 200 mm de façade n'a pas de fil tachymétrique (`0 RPM` **dans le BIOS
+aussi**) et le ventilateur du bas est **chaîné** avec un extracteur sur un seul tachy. Une
+« moyenne entrante » serait calculée sur **rien**. ⇒ seule la **sortante** existe
+(`TOP_OUT` + `REAR_OUT`, deux canaux de même sens).
+
+## 15.2 L'ordre du fil — le piège qui casse un témoin **en silence**
+
+D13 veut que la case CPU montre `[%, GHz, °C]`. L'affichage lit les grandeurs **0..n-1 dans
+l'ordre** ⇒ naïvement, la °C devrait être l'**index 2**.
+
+🔴 **ET ALORS UN AGENT v3 NON MODIFIÉ MENT SANS QU'AUCUN COMPTEUR NE BOUGE.** L'agent de `dn4-6`
+envoie `…,cpu,52,32,350` ; le `350` (c.max, dixièmes de %) atterrirait en index 2, désormais
+`degC`, et `pc` imprimerait **« 35,0 degC »**. Le plafond passant de `1000` à `1500`,
+⛔ **`rejets_bornes` ne s'incrémenterait même pas.** **Le témoin de non-régression fabriquerait
+lui-même le chiffre faux et plausible qu'il existe pour exclure.**
+
+✅ **TRANCHÉ : la °C est en index 3, `c.max` reste en index 2.** L'ordre du fil **ne bouge pas**
+sur 0..2.
+⇒ **le témoin v3 est RE-QUALIFIÉ, ⛔ pas retiré** — il continue de porter exactement le même sens.
+⇒ **le témoin v1** (agent `dn2-2`, 6 champs, `cpu` seul) est **intact** : `rejets_version = 0`.
+⚠️ **À vérifier sur la carte en AC7** — ici c'est une propriété du code, ⛔ pas une mesure.
+
+## 15.3 Le pire cas recompté — la prédiction est **confirmée sur ses nombres et démentie sur sa conclusion**
+
+Instrument : **`tools/recompte_trame_dn48.py`**, qui construit la trame avec
+`dn_agent.trame()` — ⛔ pas en additionnant des longueurs à la main.
+
+| convention | cpu | gpu | disk | pire cas |
+|---|---:|---:|---:|---|
+| **plafonds RÉELS** | 54 o | 57 o | **64 o** | 🔴 **`disk` = 64 o** (marge 7) |
+| **gabarit** (4 × 1000000, convention `dn4-6`) | 66 o | 66 o | **67 o** | 🔴 **`disk` = 67 o** (marge 4) |
+
+✅ **L'INVARIANT TIENT** : `DN_LINK_LIGNE_MAX = 71` **ne bouge pas** · la bande *« ligne COMPLÈTE
+mais trop longue »* reste **72..124 = 53 octets**, donc **atteignable**, donc
+`rejets_trop_longue` reste un compteur qui compte · budget REPL **67 + « pc » + espace = 70 ≤ 124**.
+
+⛔ **CE QUI EST RÉFUTÉ** : la prédiction gelée annonçait *« le pire cas RESTE `gpu` = 66 o »*.
+**Faux.** C'est **`disk`**, des deux côtés de la convention. Et **la cause n'est pas celle que la
+prédiction nommait** : elle écrivait *« elle tombe si un plafond de ventilateur est posé à
+1 000 000 »*. Or les plafonds sont à **100 000** et le gabarit donne **quand même 67** — ce qui
+dépasse `gpu`, c'est que **« disk » compte un caractère de plus que « gpu »**. *Le nom de la
+métrique est dans la ligne.*
+
+🔴 **ET LA PRÉDICTION COMPARAIT DEUX CHOSES MESURÉES AUTREMENT** : elle chiffrait `disk` à ses
+plafonds **réels** (64) et `gpu` au **gabarit** (66), puis les rangeait dans la même colonne.
+⛔ C'est la doctrine *« à service rendu égal »* du dépôt, violée par le dépôt, **dans sa propre
+prédiction**. ⇒ les deux conventions sont désormais publiées **séparément**, et c'est le
+**gabarit** qui dimensionne la constante.
+
+## 15.4 🎯 La garde du miroir — elle se joue AVANT la séance carte, en une seconde
+
+`k_metriques[]` (firmware) et `BORNES` (agent) sont **recopiées**, ⛔ pas dérivées. Le dépôt
+l'assume et l'écrit. ⚠️ **Mais le seul témoin de la dérive était `rejets_bornes` qui monte côté
+CARTE** — donc **après** un build, un flash et une séance.
+
+⇒ `tools/recompte_trame_dn48.py` **compare les deux tables** (métriques, `n_grandeurs`, plafonds)
+et **recompte l'invariant**, en WSL, en une seconde.
+
+✅ **ET IL EST ÉPROUVÉ PAR MUTATION, ⛔ pas supposé** — trois mutants, trois rouges :
+
+| mutant | ce que la garde a dit |
+|---|---|
+| `BORNES["cpu"][3]` 1500 → **1400** | ✖️ *plafonds firmware ≠ plafonds agent* — `fw=[…,1500] ag=[…,1400]` |
+| `k_metriques[disk].n_grandeurs` 4 → **3** | ✖️ *n_grandeurs ≠ nb de plafonds déclarés* |
+| `DN_LINK_LIGNE_MAX` 71 → **63** | ✖️ *pire cas atteignable* (64 > 63) **et** *au gabarit* (67 > 63) |
+
+## 15.5 🔴 TROIS DÉFAUTS D'INSTRUMENT DE CETTE SÉANCE — les miens
+
+1. 🔴 **LE TIMEOUT ÉTAIT APPLIQUÉ PAR TENTATIVE, ET `_get()` EN FAIT DEUX.** Pire cas **mesuré :
+   802 ms pour un plafond posé à 400 ms**. ⇒ le motif écrit sur la constante (« 0,4 s laisse 0,6 s
+   aux cinq autres postes ») était **faux** : il en laissait 0,2.
+   ⚠️ **ET LE CONTRÔLE QUI PORTAIT DESSUS NE POUVAIT PAS LE VOIR** : il n'avait qu'une **borne
+   inférieure** (« la lecture a bien été coupée »), donc il épinglait **VERT** un dépassement du
+   **double**. ⇒ corrigé : budget **global** côté produit, **deux bornes** côté contrôle. Vérifié
+   après correctif : **401 ms** pour 400 posées.
+2. 🔴 **PYTHON A SERVI UN BYTECODE PÉRIMÉ.** Pendant le test de mutation,
+   `agent/__pycache__/dn_agent.cpython-312.pyc` rendait encore `1400` alors que le `.py` disait
+   `1500` : **l'outil a vérifié un fichier qui n'existait plus**, et a conclu ROUGE sur un arbre
+   SAIN. ⚠️ **Dans l'autre sens il aurait conclu VERT sur un arbre cassé.** ⇒ `dont_write_bytecode`,
+   purge du cache, **et surtout : les deux outils publient désormais l'empreinte SHA256 de la
+   source qu'ils ont réellement lue.** *Un instrument qui ne nomme pas son sujet ne prouve rien
+   sur ce sujet.*
+3. ⚠️ **La sonde de démarrage du harnais attendait une RÉPONSE, pas une ÉCOUTE** : en mode
+   « lent (2 s) » elle concluait *« le stub n'a pas démarré »* sur un stub parfaitement démarré —
+   **l'instrument mesurait la lenteur qu'il était censé mettre en place**. ⇒ `connect()` TCP nu.
+
+## 15.6 Ce qui est exercé, et ⛔ ce qui ne l'est pas
+
+**`tools/verif_source_lhm_dn48.py`** — il **importe et appelle** `agent/dn_agent.py`, ⛔ il ne le
+rejoue pas. Six scénarios, **tous verts** :
+
+| # | scénario | ce qu'il établit |
+|---|---|---|
+| 1 | lecture nominale | 5/5 sondes · `cpu` et `disk` à **4 grandeurs** · °C bien en **index 3** · `Mo/s` en position 0 · **pire trame réelle 56 o ≤ 71** |
+| 2 | une sonde **muette** | **champ vide** (`…,disk,18227,9795,,8615*1A`), la suivante **NON décalée**, absence **comptée**, ⛔ **pas** comptée en panne |
+| 3 | valeur **négative** | devient un **champ vide**, ⛔ **pas** un `0` écrêté, comptée sur **son** compteur |
+| 4 | lecture **lente** | coupée au **timeout** · panne **comptée et nommée** · 🎯 **`ram`/`net` intactes, `cpu` et `disk` survivent avec leurs grandeurs non-LHM** |
+| 5 | LHM **absent** puis qui **monte** | 🎯 **reprise sans redémarrer l'agent** · les échecs restent **comptés** |
+| 6 | LHM **arrêté en cours** | la °C devient un **champ vide** · ⛔ **aucune valeur figée n'a survécu** |
+
+Boucle complète, `--stdout --duree 4` contre le stub : **16 trames, 4,00 trames/s,
+0 erreur d'envoi, 🎯 0 recalage de cadence.**
+
+⛔ **CE QUE RIEN DE TOUT ÇA NE PROUVE, ET IL FAUT LE LIRE** :
+- ⛔ **aucune grandeur n'est qualifiée** (AC4) — le serveur en face est un **stub** qui rejoue une
+  capture **n = 1** ;
+- ⛔ **AC8 n'est pas soldé** : il exige le **VRAI** service coupé pendant que l'agent tourne ;
+- ⛔ **la carte n'a rien reçu** (AC7) ;
+- ⛔ **aucun coût n'est mesuré** (AC9) : les 1,7 ms / 3,1 ms relevés sont ceux d'un **stub local en
+  WSL**, ⛔ pas de LHM sur la tour.
+
+## 15.7 🔴 La lecture LHM est la PREMIÈRE du cycle, et **avant** `t = monotonic()`
+
+⛔ **Ce n'est pas cosmétique — c'est ce qui empêche un débit faux.** `net` et `disk` sont des
+**deltas de compteurs cumulés** divisés par `t_now − t_prev`. Placée **entre** `t` et les lectures
+`psutil`, la latence LHM entrerait dans la fenêtre **à une seule extrémité** : un tir à 400 ms (le
+timeout) sur un cycle nominal à 16 ms rendrait un Δt **sous-estimé de 0,38 s**, donc un **débit
+disque surestimé de ~38 %** — un chiffre **frais et faux**, la famille exacte que la
+resynchronisation de `dn2-2` existe pour empêcher.
+✅ **Placée AVANT `t`, sa latence est hors fenêtre des deux côtés** (elle décale `t` et les
+compteurs du même montant) et **s'annule**.
+
+## 15.8 Les dépendances de l'agent, RE-PUBLIÉES avec leur statut (dn4-8)
+
+| dépendance | statut | pourquoi |
+|---|---|---|
+| `psutil` **7.2.2** | ✅ déjà installée | CPU, RAM, réseau, disque |
+| `pyserial` | ✅ déjà installée | branche A (COM3) |
+| `websockets` | ✅ déjà installée | branche B, **écartée** par la fourche `dn2-2` |
+| `ctypes` + `atiadlxx.dll` | ✅ **stdlib + DLL du pilote** | GPU (% · °C · W · tr/min) |
+| 🆕 **`http.client`** | ✅ **STDLIB** | la lecture LHM. ⛔ **pas `requests`** : il fallait la **connexion** (keep-alive) |
+| 🆕 **`re`** | ✅ **STDLIB** | le parseur d'une ligne `/metrics` |
+| `pywin32` | ✅ présente, **NON UTILISÉE** en régime | — |
+| `pynvml` | ❌ absente | **inapplicable** : la tour est AMD |
+| **`dotnet`** | ✅ **PRÉSENT** (runtimes 6 et 7) | 🔴 **`dn2-2` disait le contraire — RÉFUTÉ le 2026-08-21.** ⚠️ La **conclusion** tient pour une autre raison : **pas de .NET 10**, donc le build `.NET Framework` de LHM reste le bon |
+
+⇒ ✅ **LA LIGNE « `dn4-1` N'AJOUTE AUCUNE DÉPENDANCE » EST CONFIRMÉE ET ÉTENDUE : `dn4-8` NON
+PLUS.** Les deux modules ajoutés sont la **stdlib**.
+⚠️ **MAIS UNE DÉPENDANCE D'UN AUTRE ORDRE APPARAÎT, ET ELLE N'EST PAS PYTHON** : ces grandeurs
+exigent **LibreHardwareMonitor installé, élevé et permanent sur la machine**. ⛔ Le critère owner
+de D8 (*« générique et libre de droits, réutilisable sur toutes les configs »*) **ne tient plus
+pour elles** — les onze autres grandeurs, si. **C'est un coût assumé, ⛔ pas un oubli.**
+
+## 15.9 La table des sondes — une **configuration**, avec sa **provenance**
+
+Décision owner : *« on code comme ça de façon à plus tard ajouter des menus de personnalisation
+et aussi changer les liens si mauvais »*. ⇒ `LHM_SONDES` vit **côté agent**, ⛔ jamais dans le
+firmware : c'est une propriété de **cette** tour.
+
+| clé | `SensorId` | provenance |
+|---|---|---|
+| `cpu.degc` | `/intelcpu/0/temperature/10` | **MESURÉ** (LHM 0.9.6, 2026-08-21) — « CPU Package », recoupé par le Super I/O `/lpc/nct6792d/0/temperature/0` (40,5 contre 41,0 : **1,2 %**). ⚠️ **instantané n = 1** |
+| `fan.top_out` | `/lpc/nct6792d/0/fan/0` | **MESURÉ** (jointure BIOS↔LHM par RPM, 2026-08-21) — `CPU_FAN2` |
+| `fan.cpu_noctua` | `/lpc/nct6792d/0/fan/1` | **MESURÉ** (idem) — `CPU_FAN1`, le ventirad |
+| `fan.case_group` | `/lpc/nct6792d/0/fan/2` | **MESURÉ** (idem) — ⚠️ **DEUX ventilateurs chaînés sur UN tachy** |
+| `fan.rear_out` | `/lpc/nct6792d/0/fan/4` | **MESURÉ** (idem) — 140 mm arrière |
+
+⛔ **`FRONT_IN` N'EST PAS DANS CETTE TABLE ET N'Y SERA JAMAIS** : pas de fil tachymétrique,
+`0 RPM` **dans le BIOS aussi**. ⚠️ Il tourne — **il ne le dit pas**. ⇒ `dn4-9`, qui doit *« nommer
+chaque ventilateur »*, a un ventilateur qu'elle **ne pourra jamais nommer**.
+
+## 15.10 Entrées au ledger, portées par `dn4-8` — ⛔ par AJOUT, jamais par effacement
+
+| # | Entrée | État | Condition de réouverture / de clôture |
+|---|---|---|---|
+| L1 | **Le démarrage automatique de l'AGENT** — 1ʳᵉ moitié du critère n°4 du brief (*« démarre avec la session »*) | 🔴 **NON TENUE** : l'agent est lancé à la main | ⛔ Hors périmètre `dn4-8`. ⚠️ **Ironie à écrire** : **LHM, lui, démarre tout seul depuis le 2026-08-21** — le service tiers tient le critère que le produit ne tient pas |
+| L2 | **L'unité du « < 1 % CPU »** | 🔴 **TOUJOURS NON TRANCHÉE** (AC9 de `dn4-1` = `PARTIAL`) | Le brief ne dit pas s'il vise **% d'un cœur** (❌ 2,421) ou **% machine** (✅ 0,1513). ⛔ Ne pas cocher le critère tant que l'unité n'est pas dite |
+| L3 | **Le `+0,26 pt` NON EXPLIQUÉ** de l'agent livré (`d5d3539`) | 🟠 ouvert | ⛔ Un delta non expliqué **se déclare**, il ne se lisse pas. AC9 de `dn4-8` doit l'attribuer poste par poste |
+| L4 | 🆕 **La règle « valeur négative ⇒ champ vide » ne vaut QUE pour les grandeurs LHM** | 🟠 **asymétrie ASSUMÉE et NOMMÉE** | Motif : « 0 tr/min » est une **vraie** valeur (fan-stop), donc un `-1` écrêté à 0 fabriquerait un mensonge **indistinguable**. Les autres grandeurs gardent l'écrêtage compté de `_dx()`. ⛔ **La question générale n'est pas tranchée** |
+| L5 | 🆕 **La séparation LECTURE / ÉCRITURE du disque** | 🔴 **HORS PÉRIMÈTRE V1** (`sprint-change-proposal-2026-08-21b.md`) | ⚠️ **Dette de PLACE, ⛔ pas de source** : `psutil.disk_io_counters()` la rend déjà, gratuitement. Rouvrir le jour où une place existe sur le fil — **précédent exact : le `tr/min` du GPU** |
+| L6 | 🆕 **`TOP_OUT` et `REAR_OUT` ne sont pas distinguables sur le fil** | 🔴 **fondus** dans la moyenne d'extraction | Rouvrir si `DN_LINK_GRANDEURS_MAX` bouge un jour. ⚠️ Les deux **canaux existent** et sont mesurés séparément **côté agent** — c'est la publication qui fusionne |
+| L7 | 🆕 **`FRONT_IN` (200 mm façade) ne sera JAMAIS publiable** | ⛔ **CLOS — matériel** | **Pas de fil tachymétrique**, `0 RPM` **dans le BIOS aussi**. ⛔ **Aucune condition de réouverture logicielle** : il faudrait changer le ventilateur. ⚠️ **Il tourne, il ne le dit pas** |
+| L8 | 🆕 **`CASE_GROUP` = UN tachy pour DEUX ventilateurs chaînés** | 🟠 **limite CONNUE et NOMMÉE** | **Si celui du bas s'arrête, rien ne le dira.** ⛔ Ne pas le rebaptiser d'un nom qui prétendrait le contraire |
+| L9 | 🆕 **Toute grandeur qui ne qualifiera pas au critère W2 (AC4)** mais dont la source est prouvée | ⏳ **en attente d'AC4** | ✅ **Repli PRÉ-AUTORISÉ** : elle est publiée quand même, et le fait est **transmis à `dn4-9` comme une réserve d'affichage**. ⛔ Une case qui ne bouge jamais est une case morte |
+
+⚠️ **`FAN_PCT` (« idx 15, 18 % »), cité par D13, N'EXISTE NULLE PART DANS LE CODE** — seul
+`_PM_FAN_RPM = 14` est implémenté, et le « 18 % » est un **instantané n = 1 jamais échantillonné**.
+⛔ **Ne pas le citer comme un acquis.**
+
