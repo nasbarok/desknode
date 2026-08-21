@@ -51,6 +51,15 @@ def _ck(corps):
     return f"{x:02X}"
 
 
+# 🔴 CE QUE CHAQUE MÉTRIQUE PUBLIAIT EN v2 — relevé sur `k_metriques[]` de
+#    dn4-1/dn4-6, ⛔ pas supposé. Sert au témoin de non-régression : une trame v2
+#    doit rester EXACTEMENT celle que l'agent de l'époque émettait, sinon le
+#    « témoin » mesure la modification et non la compatibilité.
+# ⚠️ Le plafond de version reste 2 valeurs (`dn_link.c` : `ver <= 2 && nv > 2`
+#    ⇒ rejet) : ce tableau ne fait que descendre EN DESSOUS quand c'est le cas.
+_V2_GRANDEURS = {"cpu": 2, "gpu": 2, "ram": 2, "net": 2, "disk": 1}
+
+
 def trame(seq, t_ms, metrique, valeurs, version=3):
     """v3. ⚠️ `None` = champ VIDE = « cette grandeur-là, je ne la connais pas »
     (W10 sur un fil positionnel). Les `None` de queue sont tronqués."""
@@ -59,7 +68,19 @@ def trame(seq, t_ms, metrique, valeurs, version=3):
         vs.pop()
     if version <= 2:
         # v1 ne connaît que `cpu` et 6 champs ; v2 plafonne à deux valeurs.
-        vs = vs[:1] if version == 1 else vs[:2]
+        # 🔴 LE LEVIER A/B A CHANGÉ DE STIMULUS SOUS NOS PIEDS — défaut trouvé en
+        #    revue (code review dn4-8, 2026-08-21). `--version 2` tronque à
+        #    `vs[:2]` ; avant dn4-8 la table `disk` ne portait QU'UNE valeur, donc
+        #    `--version 2` émettait `disk,999999`. Depuis que `disk` en porte
+        #    QUATRE, la même option émet `disk,999999,24390`.
+        # ⛔ CONSÉQUENCE : contre le firmware dn4-1 que ce levier vise (`disk`
+        #    `n_grandeurs = 1`), `nv = 2 > 1` ⇒ **`rejets_format`**. Les trames
+        #    `disk` qui étaient ACCEPTÉES avant sont maintenant REJETÉES — donc la
+        #    propriété « une seule variable change entre les deux tirs » ne tient
+        #    plus, et l'A/B ne compare plus ce qu'il croit.
+        # ⇒ En v1/v2 on ne tronque plus à l'aveugle : on borne CHAQUE métrique à
+        #   ce que cette version-là en publiait RÉELLEMENT.
+        vs = vs[:1] if version == 1 else vs[:_V2_GRANDEURS.get(metrique, 2)]
     corps = f"DN,{version},{seq},{t_ms},{metrique}," + ",".join(
         "" if v is None else str(v) for v in vs)
     return f"${corps}*{_ck(corps)}"

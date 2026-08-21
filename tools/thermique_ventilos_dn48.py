@@ -92,12 +92,31 @@ class Lecteur:
                 if rep.will_close:
                     self.c.close()
                     self.c = None
+                # 🔴 GARDE `_fini` + `try/float` AJOUTEES EN REVUE (2026-08-21).
+                #    `float(m.group(3))` etait NU : un litteral `NaN` passait dans
+                #    le CSV et empoisonnait min/max/etendue (imprimes `nan`), et
+                #    surtout `nan < 10.0` vaut **False** — donc la porte « NON
+                #    CONCLUANT » etait CONTOURNEE et les correlations tournaient
+                #    sur des donnees empoisonnees.
+                # ⛔ Et un `ValueError` sur une valeur malformee etait avale par
+                #    l'`except Exception` de reconnexion : apres la 2e tentative
+                #    la fonction rendait `None`, que l'enregistreur compte comme
+                #    « LHM etait ABSENT » — un diagnostic FAUX pour un serveur qui
+                #    a parfaitement repondu. Deux fautes contraires, meme ligne.
                 t = {}
                 for l in txt.splitlines():
-                    if l.startswith("lhm_"):
-                        m = _LIGNE.match(l)
-                        if m:
-                            t[m.group(2) + m.group(1)] = float(m.group(3))
+                    if not l.startswith("lhm_"):
+                        continue
+                    m = _LIGNE.match(l)
+                    if not m:
+                        continue
+                    try:
+                        val = float(m.group(3))
+                    except ValueError:
+                        continue          # ⛔ pas une panne : une valeur illisible
+                    if val != val or val in (float("inf"), float("-inf")):
+                        continue          # NaN / inf = « la source n'a pas ca »
+                    t[m.group(2) + m.group(1)] = val
                 return t
             except Exception:
                 try:
@@ -181,6 +200,22 @@ def analyser(chemin):
 
     cpu = col("cpu_pkg")
     vus = [v for v in cpu if v is not None]
+    # 🔴 GARDE AJOUTEE EN REVUE (2026-08-21) : une session ou
+    #    `/intelcpu/0/temperature/10` n'a JAMAIS ete expose (LHM non eleve tout du
+    #    long) ecrit une cellule vide a chaque ligne, PASSE le garde-fou
+    #    `len(lignes) < 30`, et mourait sur `max(vus)` en
+    #    `ValueError: max() arg is an empty sequence` — sans JAMAIS atteindre le
+    #    message « NON CONCLUANT » qui existe precisement pour ce cas.
+    # ⛔ Un instrument doit REFUSER DE CONCLURE, ⛔ pas planter : un plantage se lit
+    #    comme un bug d'outil, alors que l'information est « la sonde etait muette ».
+    if len(vus) < 2:
+        print("=== ANALYSE ===")
+        print("  🔴 NON CONCLUANT : %d echantillon(s) de `cpu_pkg` sur %d ligne(s)."
+              % (len(vus), len(lignes)))
+        print("     La sonde de temperature CPU n'a (quasiment) jamais rendu de")
+        print("     valeur — LHM non eleve pendant la session ? ⛔ NE PAS conclure")
+        print("     sur les ventilateurs : il n'y a pas de variable a correler.")
+        return
     etendue = max(vus) - min(vus)
     duree = (float(lignes[-1]["t"]) - float(lignes[0]["t"])) / 3600.0
 

@@ -107,12 +107,49 @@ def poser(canal, valeur):
 
 
 def tout_rendre():
-    """⛔ APPELE DANS UN `finally`. Rend la main au BIOS sur TOUS les canaux."""
-    print("  -- retour en automatique sur les %d canaux --" % len(CANAUX))
+    """⛔ APPELE DANS UN `finally`. Rend la main au BIOS sur TOUS les canaux.
+
+    🔴 CHAQUE CANAL EST RENDU DANS SON PROPRE `try` — DEFAUT TROUVE EN REVUE
+       (code review dn4-8, 2026-08-21). `poser()` descend dans `_post()` puis
+       `json.loads()`, aucun des deux n'etait garde. Si LHM meurt EN COURS DE RUN
+       — et c'est ce script qui pilote son API de controle pendant
+       `6 x (monte + repos)` secondes — la premiere exception avortait la boucle
+       ET LES CANAUX RESTANTS RESTAIENT EPINGLES A 100 %.
+    ⛔ L'en-tete promet « il ne laisse JAMAIS un canal sous controle logiciel ».
+       Un `finally` qui peut lever lui-meme ne tient pas cette promesse : c'est le
+       nettoyage lui-meme qu'il faut rendre increvable, ⛔ pas seulement l'appeler
+       au bon endroit.
+    ⚠️ Le compte imprime disait `len(CANAUX)` (= 1 avec `--canal`) alors que la
+       boucle restaure `_TOUS` (= 6) : un message qui contredit ce que le code a
+       fait, sur LA ligne que l'operateur lit pour croire la machine rendue.
+    """
+    print("  -- retour en automatique sur les %d canaux --" % len(_TOUS))
+    rates = []
     for k in _TOUS:
-        poser(k, "null")
+        try:
+            if not poser(k, "null"):
+                rates.append(k)
+        except Exception as e:                       # ⛔ on continue, TOUJOURS
+            rates.append(k)
+            print("  /!\\ canal %d : la remise en automatique a LEVE (%s: %s)"
+                  % (k, type(e).__name__, e))
+    if rates:
+        print("  /!\\ %d canal(aux) NON RENDUS par l'API : %s"
+              % (len(rates), ", ".join(str(k) for k in rates)))
     time.sleep(2)
-    _, ctl = lire_tout()
+    # 🔴 LE CONTROLE D'APRES-COUP EST LUI AUSSI GARDE : si LHM est mort, on ne
+    #    peut PAS conclure « aucun canal bloque » — on ne sait simplement RIEN, et
+    #    c'est ce qu'il faut dire. ⛔ Un instrument muet qui se tait vert est pire
+    #    qu'un instrument qui avoue son aveuglement.
+    try:
+        _, ctl = lire_tout()
+    except Exception as e:
+        print("  /!\\ IMPOSSIBLE DE RELIRE L'ETAT DES CANAUX (%s: %s)"
+              % (type(e).__name__, e))
+        print("      ⛔ NE PAS CONCLURE « la machine est rendue » : on ne sait pas.")
+        print("      ⇒ ouvrir LHM et remettre les controles en 'Default' A LA MAIN,")
+        print("         ou relancer avec --restaurer une fois LHM revenu.")
+        return
     bloques = [i for i, v in sorted(ctl.items()) if v is not None and v >= 99.0]
     if bloques:
         print("  /!\\ CANAUX ENCORE A 100 %% : %s" % ", ".join(bloques))
