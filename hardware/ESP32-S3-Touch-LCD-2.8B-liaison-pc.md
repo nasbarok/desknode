@@ -1175,3 +1175,247 @@ chaque ventilateur »*, a un ventilateur qu'elle **ne pourra jamais nommer**.
 `_PM_FAN_RPM = 14` est implémenté, et le « 18 % » est un **instantané n = 1 jamais échantillonné**.
 ⛔ **Ne pas le citer comme un acquis.**
 
+
+---
+
+# 16. SÉANCE CARTE DU 2026-08-21 — AC7, AC8 et AC9 (dn4-8, P9.3c)
+
+**SHA lu au bandeau : `App version: 4c3a3f7`** — ⛔ pas déduit du dépôt, **sans `-dirty`**,
+arbre `porcelain` **vide** au moment du flash. `SPI Flash Size : 16MB`.
+
+## 16.1 Baseline T0 — les gardes des marches du dessous
+
+| Instrument | Relevé | Verdict |
+|---|---|---|
+| `cfg` | `num_fbs=1 bounce_px=7680 draw_lines=128 draw_psram=0` | ✅ configuration de la mesure, écrite |
+| `pc` à froid | 0 valides · **les six compteurs de rejet à 0** | ✅ |
+| `touch` | 1290 lectures · **0 erreur I²C** | ✅ |
+| BME680 | 23,4 °C / 53,6 %, âge 497 ms · `config relue : 0x72=04 0x74=84 0x75=08` | ✅ |
+| `fps 15` | **37,40 Hz** mesuré = **37,40 Hz** théorique, écart **+0,00 %** | ✅ |
+| bandeau | ⚠️ `E gpio_install_isr_service` — **antérieure et attendue**, ⛔ pas nouvelle | ✅ |
+
+🎯 **ET L'AUDIT DE BOOT CONFIRME AC5 TOUT SEUL**, sans qu'on ait rien à lui demander :
+
+```
+k_desc[CPU]    : 3 grandeur(s) affichee(s), 4 PEUPLEE(S) — `widget grandeurs 0 4` est jouable
+k_desc[DISQUE] : 1 grandeur(s) affichee(s), 4 PEUPLEE(S) — `widget grandeurs 4 4` est jouable
+precision d'affichage : 6 cases auditees, 0 trou (AC9)
+```
+
+## 16.2 AC7 — les quatre grandeurs arrivent, et le trou ne décale rien
+
+**Par injection** (`tools/dn_injecteur.py`, jeux étendus) :
+
+| jeu | ce que `pc` a rendu |
+|---|---|
+| `reel` | `cpu 5,2 % · 3,2 GHz · 35,0 % · 41,0 degC` · `disk 0,2 Mo/s · 979,5 · 283,9 · 861,5 tr/min` |
+| `trou` | `cpu 54,0 % · -- (GHz) · 88,0 % · -- (degC)` · `disk 480,0 Mo/s · 1200,0 · -- (tr/min) · 1400,0` |
+
+🎯 **LE CONTRÔLE DISCRIMINANT** : dans le jeu `trou`, le champ vide est en position **interne** et
+**`1400,0` est resté en position 3**. ⛔ Un `strtok` aurait fusionné les `,,` et fait glisser la
+valeur d'un cran, **en silence**. Le parseur découpe le corps à la main, précisément pour ça.
+⚠️ Et `pc` boucle jusqu'au compte **DÉCLARÉ** par `k_metriques[]`, ⛔ pas jusqu'à ce que la trame a
+porté : c'est ce qui lui permet de dire *« attendue mais absente »* — un silence **très différent**
+de *« pas de grandeur là »*.
+
+**Campagne de bruit — 10 cas, chacun dans SON compteur ET LUI SEUL** (`tools/campagne_bruit_dn48.py`,
+diff avant/après sur les six compteurs) :
+
+| trame injectée | o | compteur touché |
+|---|---:|---|
+| version hors `[1..3]` | 27 | `rejets_version` |
+| `ver=1` à 7 champs | 31 | `rejets_format` |
+| `ver=2` à 9 champs | 39 | `rejets_format` |
+| plus de valeurs que `ram` n'en publie | 39 | `rejets_format` |
+| 🆕 **`cpu` degC 1600 > 1500** | 40 | **`rejets_bornes`** |
+| 🆕 **`disk` tr/min 999999 > 100000** | 47 | **`rejets_bornes`** |
+| ligne COMPLÈTE **dans la bande 72..124** | **78** | **`rejets_trop_longue`** |
+| ligne sans `*CK` | 24 | `rejets_tronquee` |
+| checksum faux | 27 | `rejets_checksum` |
+| 🆕 **champ vide en position 0** | 36 | `rejets_format` |
+
+✅ **TÉMOIN v1** (agent `dn2-2` **non modifié**, `$DN,1,42,123456,cpu,153*47`) : `rejets_version = 0`
+et la case CPU **VIVANTE**. ⇒ **l'extension reste additive.**
+🎯 **ET LA BANDE 72..124 EST CONFIRMÉE ATTEIGNABLE SUR LA CARTE** — mon recomptage n'était
+qu'arithmétique ; une ligne de 78 o l'a prouvée sur le silicium.
+
+**Régime réel, agent sur `COM3`** (⛔ pas seulement par injection) :
+
+```
+cpu  -> 50,7 % · 3,2 GHz · 58,6 % · 41,0 degC        · seq 96
+disk -> 0,0 Mo/s · 994,4 tr/min · 294,9 tr/min · 872,1 tr/min
+100 trames / 20 s = 4,97 trames/s · 0 erreur d'envoi · 0 recalage de cadence
+echo console : 246,5 o/s · 5,07 lignes/s
+latence acceptation->label : n=728 · min 4 ms · moy 167 ms · max 316 ms
+```
+
+### 🎯 CONSTAT OWNER, À L'ŒIL — la preuve qu'aucune console ne pouvait donner
+
+**Agent réel sur `COM3`, données réelles qui bougent, dalle regardée pendant le tir.**
+Question posée en trois points, réponse verbatim : *« 1 oui c'est ca pas la température · 2 oui 1
+seul ligne · 3 oui vivantes »*.
+
+| Contrôle | Attendu | Constaté |
+|---|---|---|
+| Case **CPU** | **TROIS** lignes (`%` · `GHz` · `c.max`), ⛔ **pas** la °C | ✅ *« pas la température »* |
+| Case **DISQUE** | **UNE** ligne (`Mo/s`), ⛔ pas les `tr/min` | ✅ *« 1 seule ligne »* |
+| Les six cases | **vivantes**, des chiffres qui bougent | ✅ *« vivantes »* |
+
+🔴 **C'EST LA CLÔTURE D'AC5, ET ELLE NE POUVAIT VENIR QUE DE L'ŒIL.** La console prouve ce
+qui circule **sur le fil** ; elle ne peut pas dire ce que la **dalle dessine**. Le fil porte
+QUATRE grandeurs sur `cpu` et sur `disk`, l'écran en montre **trois** et **une** — patron `gpu`
+exactement (`desc_peuplees = 4` pour `n_grandeurs = 3`).
+⛔ **`dn4-8` a le droit de mettre les grandeurs sur le fil, ⛔ pas à l'écran** : c'est `dn4-9`, et
+D13 impose l'ordre. Une 4ᵉ ligne sur CPU aurait été une **régression**, ⛔ pas une avance.
+⚠️ **Et c'est un constat SENSORIEL, donc il est de l'OWNER, ⛔ jamais de l'agent** — la règle du
+dépôt, et elle vaut ici plus qu'ailleurs : un compteur vsync tourne aussi écran noir.
+
+## 16.3 🔴 AC8 — les TROIS scénarios, sur le VRAI service
+
+⛔ **Aucun n'est simulé.** LHM a été réellement arrêté et relancé pendant que l'agent tournait.
+
+| # | scénario | ce que `pc` a rendu | pannes |
+|---|---|---|---|
+| **1** | LHM **jamais démarré** | `cpu … -- (degC ATTENDUE)` · `disk 0,6 Mo/s · -- · -- · --` | `lhm:TimeoutError=12` |
+| **2** | LHM **arrêté EN COURS** | `cpu 8,7 % · 1,2 GHz · 25,4 % · -- (degC ATTENDUE)` · `disk 0,2 Mo/s · -- · -- · --` | `lhm:TimeoutError=16` |
+| **3** | LHM **redémarré** | `cpu 14,3 % · 3,2 GHz · 28,8 % · 40,5 degC` · `disk 0,3 Mo/s · 984,2 · 288,7 · 862,9` | ✅ **REPRIS après 21 échecs** |
+
+🎯 **⛔ AUCUN COMPTEUR DE REJET N'A MONTÉ DANS LES TROIS.** C'est le contrôle le plus discriminant
+d'AC8, et il tient : **une absence de donnée n'est pas une erreur de protocole.**
+✅ Le message de panne est imprimé **UNE SEULE FOIS** par type, comme promis.
+✅ **La reprise se fait SANS redémarrer l'agent** — verbatim du bilan : *« source `lhm` a REPRIS
+après 21 échec(s) consécutif(s) — la connexion persistante s'est rétablie SANS redémarrer l'agent »*.
+✅ **Le `Mo/s` survit à chaque fois** : aucune case ne s'est éteinte. ⚠️ **La péremption de 3 s ne
+s'applique à AUCUNE case, et c'est DÉLIBÉRÉ** — aucune grandeur LHM n'est en position 0. C'était la
+décision d'AC5, et c'est elle qui empêche l'arrêt de LHM d'emporter le débit disque.
+
+### 🎯 LE CYCLE DE TRANSITION, CAPTURÉ — et il valide une décision de conception
+
+Au scénario 2, le bilan a rendu :
+
+```
+⚠️ ABSENCES LHM (LHM a REPONDU, sans cette valeur — champ VIDE sur le fil, ⛔ PAS une panne) :
+   cpu.degc=1 · fan.case_group=1 · fan.cpu_noctua=1 · fan.rear_out=1 · fan.top_out=1
+🔴 PANNES DE SOURCE : lhm:TimeoutError=16
+```
+
+⇒ **EXACTEMENT UN cycle** où LHM **a répondu** alors que son arbre de capteurs était **déjà
+démonté** : le serveur HTTP servait encore, les sondes non.
+🔴 **Sans la séparation `pannes` / `absences`, ce cycle-là aurait été INDISCERNABLE des 16
+timeouts.** La décision *« une absence n'est pas une panne — deux diagnostics contraires, deux
+compteurs »* avait été prise **sur un raisonnement** (le patron `tronquee`/`trop_longue`) ; elle a
+**payé au premier test réel**.
+
+## 16.4 🔴 SUR CETTE TOUR, UN PORT FERMÉ NE REFUSE PAS — IL PEND
+
+Mesuré pendant que LHM était coupé, `socket.create_connection` sur le Python de la tour :
+
+| cible | timeout posé | résultat, n=5 |
+|---|---|---|
+| `127.0.0.1:8085` | 2,0 s | **2016 / 2015 / 2009 / 2016 / 2013 ms** → `TimeoutError` |
+| `localhost:8085` | 4,0 s | **4019 / 4029 / 4024 ms** (deux adresses × 2 s) |
+
+⛔ **Aucun `ECONNREFUSED` rapide, jamais.** C'est l'inverse exact de WSL, où l'absence de LHM rend
+`ConnectionRefusedError` **instantanément** (mesuré au harnais d'exercice).
+⚠️ **La signature (drop plutôt que reject) évoque un pare-feu — ⛔ MAIS JE NE L'AI PAS TESTÉ, donc
+je ne le nomme pas comme cause.** Entrée au ledger.
+
+**Trois conséquences, toutes mesurées :**
+1. 🎯 **Le timeout EST le détecteur.** « LHM absent » ne peut pas se détecter plus vite que lui.
+2. L'agent brûle **~611 ms de chaque cycle** en attente quand LHM est coupé — ⚠️ mais c'est de
+   l'**attente d'E/S**, ⛔ pas du CPU : **`0 recalage de cadence`** mesuré, et le critère n°4 n'est
+   pas touché.
+3. ⚠️ **La prémisse écrite dans `_get()` est à demi fausse** : *« la seconde tentative existe pour
+   la connexion PÉRIMÉE, qui échoue IMMÉDIATEMENT »* vaut pour une connexion **réinitialisée par le
+   pair**, ⛔ **pas** pour un port fermé. Dans ce cas-là, la première tentative consomme tout le
+   budget et il n'y a pas de retry — ce qui **reste le comportement correct**.
+
+## 16.5 🔴 LE TIMEOUT DE 400 ms ÉTAIT TROP COURT — porté à 600 ms PAR LA MESURE
+
+| tir | LHM | moyenne | MAX | échecs |
+|---|---|---:|---:|---:|
+| régime réel (20 s) | debout | 43,8 ms | **377,5 ms** | 0 |
+| régime réel (12 s) | debout | 8,8 ms | 20,6 ms | 0 |
+| AC9 (60 s) | debout | 26,7 ms | 🔴 **454,7 ms** | 🔴 **1** |
+| **après correctif** (45 s) | debout | 20,4 ms | 434,6 ms | ✅ **0** |
+| **après correctif** (20 s) | **coupé** | 611,2 ms | 676,0 ms | 21 — ✅ **0 recalage** |
+
+🔴 **LA LEÇON N'EST PAS « J'AVAIS MIS TROP BAS », C'EST PLUS INSTRUCTIF** : le critère gelé d'AC2
+avait mesuré `/metrics` à **16,5 ms de mural p95**, avec un instrument **DÉDIÉ** qui ne faisait que
+ça. L'agent, lui, lit LHM **au milieu de cinq sources et de cinq écritures série**.
+⇒ **Le p95 d'un instrument dédié ne prédit pas la QUEUE d'un régime chargé.** ⛔ Ce n'est pas un
+ajustement de confort : c'est une classe d'erreur de dimensionnement.
+⚠️ **Et le budget n'est pas une garantie dure** : 676 ms observés pour 600 posées (**+13 %**) —
+granularité du timeout socket plus le test de budget restant. À savoir avant de le resserrer.
+
+## 16.6 AC9 — DEUX CHIFFRES, PUBLIÉS SÉPARÉMENT, ⛔ JAMAIS ADDITIONNÉS EN SILENCE
+
+**Méthode** : cumul `cpu_times()` rapporté au temps mural, ⛔ pas une fenêtre glissante.
+**16 cœurs logiques.** Agent sur **`COM3`** (⛔ pas `--stdout`).
+
+| # | quoi | % d'un cœur | % machine |
+|---|---|---:|---:|
+| **1** | **AGENT SEUL**, 60 s | **2,523** | **0,1577** |
+| **2** | 🔴 **LHM SEUL**, 60 s, aucun agent | **7,990** | **0,4994** |
+| — | LHM **pendant** l'agent | 7,839 | 0,4899 |
+
+✅ **LA PRÉDICTION D'AC2 TIENT** : elle annonçait **`[2,42 ; 2,66]` % d'un cœur**, la mesure donne
+**2,523**. Le delta contre l'agent livré (2,421) est de **+0,102 pt**, contre **+0,24** prédits —
+⚠️ **moins cher que prévu**, et il faut le dire dans ce sens-là.
+⚠️ **AVEC SA RÉSERVE** : le témoin cumulé **descendait encore** à 60 s (5,141 → 3,586 → 3,167 →
+2,810 → 2,686 → **2,523**). ⛔ Comparer un cumul de 60 s non convergé à une base d'une autre durée
+n'est pas « à service rendu égal ».
+
+🔴 **LE DELTA ATTRIBUABLE À LA LECTURE 1 Hz EST DE −0,151 pt, C'EST-À-DIRE NÉGATIF.** ⛔ Ça ne veut
+pas dire que l'agent rend LHM moins cher : **c'est sous la résolution de la mesure**.
+⇒ 🎯 **LA LECTURE DE L'AGENT N'AJOUTE RIEN DE MESURABLE À LHM.** Le coût de LHM est celui de **son
+propre échantillonnage**, qui tourne que quelqu'un lise ou non.
+
+🔴 **ET LHM COÛTE TROIS FOIS L'AGENT.** C'est exactement ce que D13 exigeait d'écrire :
+> *« Le critère n°4 se mesure sur l'AGENT SEUL — ⛔ LHM n'y entre pas, et il faut l'écrire : la
+> charge totale de la tour, elle, AUGMENTE. »*
+
+**Charge totale de la tour : ~10,5 % d'un cœur · ~0,65 % machine.** ⛔ Écrite ici **une fois**, en
+toutes lettres, ⛔ et jamais substituée au chiffre n°1.
+
+⛔ **LE CRITÈRE N°4 N'EST TOUJOURS PAS COCHÉ** : son **unité** n'est pas tranchée (AC9 de `dn4-1`
+= `PARTIAL`). En **% machine** l'agent tient (0,158 ✅) et même la tour entière (0,65 ✅) ; en
+**% d'un cœur** ni l'un (2,52 ❌) ni l'autre (10,5 ❌). ⚠️ Et *« démarre avec la session »* n'est
+toujours pas tenu pour l'agent. **Les deux restent au ledger.**
+
+## 16.7 🔴 QUATRE DÉFAUTS D'INSTRUMENT DE CETTE SÉANCE — LES MIENS
+
+1. 🔴 **UN TEST VERT SUR UN TEST QUI N'A JAMAIS EU LIEU.** J'avais mis
+   `-ErrorAction SilentlyContinue` sur `Stop-Process` — **la seule action dont dépendait tout
+   AC8 scénario 2**. LHM tourne **élevé**, mon PowerShell ne l'est pas ⇒ *« Accès refusé »*,
+   **avalé**. Le harnais a conclu *« aucun compteur de rejet n'a monté »* sur une coupure qui
+   n'avait pas eu lieu. ⇒ ⛔ **jamais de `SilentlyContinue` sur l'action mesurée**, et **la
+   coupure se VÉRIFIE FONCTIONNELLEMENT** (`/metrics` injoignable), ⛔ pas par le retour du kill.
+   ✅ Voie correcte trouvée : **`Stop-ScheduledTask`** (marche non élevé) / **`Start-ScheduledTask`**
+   (relance **élevé, sans invite UAC** — vérifié par la présence des 31 capteurs `/lpc/…`).
+2. 🔴 **UNE ABSENCE FABRIQUÉE PAR LA CAPTURE.** Un relevé a rendu **4 métriques sur 5** (`disk`
+   manquait), puis un autre **3 sur 5** (`cpu` et `gpu`). ⛔ **Ce n'était pas le firmware** :
+   `dn_link_vue()` ne peut PAS rendre `false` pour une métrique valide (`dn_link.c:539`) — et
+   ⛔ **ce n'était pas mon filtre non plus, testé à une variable**. C'est **la capture hôte qui perd
+   des lignes**, défaut **déjà mesuré** le 2026-08-20. ⚠️ Fait nouveau : elle perd **les PREMIÈRES**
+   lignes du bloc. ⛔ **Le mécanisme n'est pas établi, et je ne le nomme pas.**
+   ⇒ **L'instrument COMPTE désormais ce qu'il a capturé et REFUSE de conclure** en dessous de 5,
+   puis **relit** (jusqu'à 3 tirs, dans la fenêtre de péremption, le nombre de tirs **publié**).
+   🎯 **Et cette garde a mordu au tir suivant** — elle m'a empêché d'écrire « `cpu` absent ».
+3. 🔴 **UN MESSAGE DU PRODUIT QUI CONTREDISAIT SON PROPRE COMPTEUR.** Le bilan imprimait *« le
+   plafond a probablement COUPÉ une lecture »* **même avec `echecs == 0`** — c'est-à-dire quand les
+   données prouvent le contraire. ⛔ Famille *« une cause plausible imprimée par le produit qui
+   tourne »*, déjà payée en `dn4-7`. ⇒ corrigé : deux branches, selon `echecs`.
+4. ⚠️ **UN REGEX QUI COMPTAIT ZÉRO.** `'hardwareId..=../lpc/'` — `..` fait deux caractères là où
+   `"="` en fait trois ⇒ *« capteurs Super I/O : 0 »* sur une tour parfaitement saine. J'ai failli
+   en conclure que LHM était remonté **non élevé**. ⇒ ⛔ **ne jamais conclure d'un compteur à zéro
+   sans avoir prouvé que l'instrument sait compter autre chose que zéro.**
+
+## 16.8 Ce que la séance n'a PAS mesuré
+
+- ⛔ **AC4 — la qualification W2** : aucune des quatre grandeurs n'a prouvé qu'elle **BOUGE**.
+  ⚠️ Les valeurs vues ici sont des **instantanés**, ⛔ pas une session échantillonnée.
+- ⛔ **Le mécanisme du « port fermé qui pend »** : hypothèse pare-feu **non testée**.
+- ⛔ **Le mécanisme de la perte de lignes à la capture** : non établi.
+- ⚠️ **`pertes_seq`** relevées et non expliquées : 1 · 0 · 0 · 0 · 3 · 6 selon les tirs. Sporadiques,
+  toujours faibles. ⛔ Aucune n'est un rejet de protocole.
