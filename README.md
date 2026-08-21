@@ -789,6 +789,35 @@ machine où LHM est installé, élevé et permanent. Le critère owner de D8 (*�
 de droits, réutilisable sur toutes les configs »*) **ne tient plus pour elles**. Les **onze
 autres, si**. ⇒ `sprint-change-proposal-2026-08-21.md` (D13) et `-21b.md`.
 
+### 🔴 ORDRE DE DÉPLOIEMENT : **le firmware D'ABORD, l'agent ENSUITE**
+
+⛔ **Ce n'est pas une préférence de confort — l'ordre inverse fait DISPARAÎTRE deux cases.**
+Décision owner du **2026-08-21** (revue de code `dn4-8`) : on **documente l'ordre**, ⛔ on ne pose
+**pas** de garde de version — ce serait un changement de protocole, donc une story à part.
+
+L'agent vit sur la tour et le firmware se flashe séparément : **rien ne les synchronise**.
+Or `dn_link.c` **rejette la trame ENTIÈRE** si elle porte plus de valeurs que la métrique n'en
+publie (`nv > k_metriques[].n_grandeurs` ⇒ `rejets_format`) — doctrine **délibérée** : *« plus de
+valeurs que la métrique n'en PUBLIE est un défaut de format, ⛔ pas une donnée en trop qu'on
+jetterait en silence »*.
+
+⇒ **Agent `dn4-8` + firmware `dn4-6`** = les trames `cpu` (4 valeurs) et `disk` (4 valeurs) sont
+rejetées **en entier** : on ne perd pas seulement la °C et les tr/min, **on perd aussi le `%` CPU
+et le `Mo/s`**.
+
+🔴 **ET LE SYMPTÔME DÉPEND DE LHM, CE QUI LE REND DÉROUTANT :**
+
+| État de LHM | Ce que l'agent émet | Ce que la carte affiche |
+|---|---|---|
+| **arrêté** | `cpu` à 3, `disk` à 1 (les `None` de queue sont **tronqués**) | ✅ tout va bien |
+| **démarré** | `cpu` à 4, `disk` à 4 | 🔴 **deux cases sur cinq passent à « -- »** |
+
+⚠️ **Donc : « ça marchait, j'ai lancé LHM, deux cases sont mortes » ⇒ le firmware est en retard sur
+l'agent.** ⛔ Ne pas chercher du côté de LHM ni du câble : **reflasher**.
+⛔ Et rien dans la trame ne déclare « je porte plus que tu ne sais » — c'est précisément pourquoi
+l'ordre doit être **écrit**.
+
+
 ### Les cinq métriques et leurs sources (dn4-1, mesurées le 2026-08-18)
 
 | case | grandeur 0 | grandeur 1 | source | droits | coût mesuré |

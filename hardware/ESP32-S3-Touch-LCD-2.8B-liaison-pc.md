@@ -1107,14 +1107,50 @@ Boucle complète, `--stdout --duree 4` contre le stub : **16 trames, 4,00 trames
 - ⛔ **aucun coût n'est mesuré** (AC9) : les 1,7 ms / 3,1 ms relevés sont ceux d'un **stub local en
   WSL**, ⛔ pas de LHM sur la tour.
 
+## 15.6bis 🔴 ORDRE DE DÉPLOIEMENT — le firmware D'ABORD, l'agent ENSUITE
+
+⛔ **Ce n'est pas une préférence de confort — l'ordre inverse fait DISPARAÎTRE deux cases.**
+Décision owner du **2026-08-21** (revue de code `dn4-8`) : on **documente l'ordre**, ⛔ on ne pose
+**pas** de garde de version — ce serait un changement de protocole, donc une story à part.
+
+L'agent vit sur la tour et le firmware se flashe séparément : **rien ne les synchronise**.
+Or `dn_link.c` **rejette la trame ENTIÈRE** si elle porte plus de valeurs que la métrique n'en
+publie (`nv > k_metriques[].n_grandeurs` ⇒ `rejets_format`) — doctrine **délibérée** : *« plus de
+valeurs que la métrique n'en PUBLIE est un défaut de format, ⛔ pas une donnée en trop qu'on
+jetterait en silence »*.
+
+⇒ **Agent `dn4-8` + firmware `dn4-6`** = les trames `cpu` (4 valeurs) et `disk` (4 valeurs) sont
+rejetées **en entier** : on ne perd pas seulement la °C et les tr/min, **on perd aussi le `%` CPU
+et le `Mo/s`**.
+
+🔴 **ET LE SYMPTÔME DÉPEND DE LHM, CE QUI LE REND DÉROUTANT :**
+
+| État de LHM | Ce que l'agent émet | Ce que la carte affiche |
+|---|---|---|
+| **arrêté** | `cpu` à 3, `disk` à 1 (les `None` de queue sont **tronqués**) | ✅ tout va bien |
+| **démarré** | `cpu` à 4, `disk` à 4 | 🔴 **deux cases sur cinq passent à « -- »** |
+
+⚠️ **Donc : « ça marchait, j'ai lancé LHM, deux cases sont mortes » ⇒ le firmware est en retard sur
+l'agent.** ⛔ Ne pas chercher du côté de LHM ni du câble : **reflasher**.
+⛔ Et rien dans la trame ne déclare « je porte plus que tu ne sais » — c'est précisément pourquoi
+l'ordre doit être **écrit**.
+
+
+---
+
 ## 15.7 🔴 La lecture LHM est la PREMIÈRE du cycle, et **avant** `t = monotonic()`
 
 ⛔ **Ce n'est pas cosmétique — c'est ce qui empêche un débit faux.** `net` et `disk` sont des
 **deltas de compteurs cumulés** divisés par `t_now − t_prev`. Placée **entre** `t` et les lectures
-`psutil`, la latence LHM entrerait dans la fenêtre **à une seule extrémité** : un tir à 400 ms (le
-timeout) sur un cycle nominal à 16 ms rendrait un Δt **sous-estimé de 0,38 s**, donc un **débit
-disque surestimé de ~38 %** — un chiffre **frais et faux**, la famille exacte que la
+`psutil`, la latence LHM entrerait dans la fenêtre **à une seule extrémité** : un tir à **600 ms**
+(`LHM_TIMEOUT_S`) sur un cycle nominal à 16 ms rendrait un Δt **sous-estimé de 0,58 s**, donc un
+**débit disque surestimé de ~58 %** — un chiffre **frais et faux**, la famille exacte que la
 resynchronisation de `dn2-2` existe pour empêcher.
+> ⚠️ **Corrigé en revue de code le 2026-08-21.** Ce paragraphe disait « un tir à 400 ms (le timeout)
+> ⇒ 0,38 s ⇒ ~38 % » : un calcul **dérivé d'un plafond mort**, alors que §16.5 — plus bas dans ce
+> même document — porte le timeout à **600 ms par la mesure**. ⛔ C'est exactement la classe de
+> défaut qu'AC10 existe pour fermer, et elle s'était refermée à l'intérieur de la story elle-même.
+> 🎯 Le chiffre corrigé est **pire** que l'ancien : l'argument en sort renforcé, pas affaibli.
 ✅ **Placée AVANT `t`, sa latence est hors fenêtre des deux côtés** (elle décale `t` et les
 compteurs du même montant) et **s'annule**.
 
@@ -1510,3 +1546,132 @@ robuste** (`--rejuger --periode-lhm 4.00`) : les pourcentages passent de 92-99 %
 - ⛔ **Le choix de la sonde de °C n'est pas rouvert** : `CPU Package` qualifie. `Core Max` existe et
   dit autre chose ; le tester serait **un tir NEUF**, avec son critère à geler.
 - ⛔ **`FRONT_IN` n'est pas dans ce tableau, et il n'y sera jamais** : pas de fil tachymétrique.
+
+---
+
+# 18. 🔴 SÉANCE CARTE DU 2026-08-21 (soir) — APRÈS LA REVUE DE CODE : le témoin v3 est TIRÉ, AC7 et AC8 sont RE-MESURÉS
+
+⚠️ **Pourquoi cette séance existe, et c'est une règle de méthode, ⛔ pas un caprice.**
+La revue de code du 2026-08-21 a modifié **onze instruments**. Le skill de séance carte l'impose :
+*« quand une revue a changé un INSTRUMENT, les chiffres publiés sont MORTS — les re-relever EN
+PREMIER »*. AC7 et AC8 reposaient sur `campagne_bruit_dn48.py` et `regime_reel_dn48.py`, tous deux
+corrigés. ⇒ leurs verdicts de §16 sont **remplacés par ceux-ci**.
+
+## 18.0 Le firmware sous test — LU, ⛔ pas supposé
+
+| Fait | Valeur | D'où |
+|---|---|---|
+| `App version` | **`4c3a3f7`** | bandeau de boot, `dn_console.py --reset` |
+| `SPI Flash Size` | `16MB` | bootloader, avant `app_main` |
+| `cfg` (NVS = ACTIVE) | `num_fbs=1 bounce_px=7680 draw_lines=128 draw_psram=0 lvgl_core=0` | `cfg`, relevé avant campagne |
+
+🎯 **ET C'EST BIEN LE FIRMWARE DE `HEAD`** : `git diff 4c3a3f7..8f4cebc -- firmware/` est **VIDE**.
+⛔ **Aucun flash n'a eu lieu**, et il n'en fallait pas : les trois tirs exercent `dn_link.c` (parse
++ compteurs) et `dn_console.c` (`pc`), qu'aucun patch de revue ne touche. Le seul patch firmware de
+la revue est la garde `dn_ui.c` (`widget grandeurs`), **qui reste À VALIDER SUR CARTE** — elle
+demande un flash, donc un arbre propre, donc les commits.
+
+## 18.1 🎯 AC5 — LE TÉMOIN v3 EST TIRÉ. Il n'avait JAMAIS été exercé.
+
+AC5 exigeait que le témoin v3 soit *« soit **re-qualifié**, soit retiré explicitement … ⛔ jamais
+laissé vert par inadvertance sur une sémantique qui a changé »*. La campagne ne portait qu'un
+témoin **v1**, et la story écrivait elle-même, à deux endroits, *« re-qualifié PAR CONSTRUCTION,
+⛔ pas encore par la mesure »*. La séance carte du matin ne l'a pas ajouté, et **AC5 comme AC7 ont
+été marqués SOLDÉS**. La revue l'a relevé ; l'owner a rouvert AC5 ; le voici mesuré.
+
+**Ce qu'il prouve** : un agent v3 **NON MODIFIÉ** (ère `dn4-6`) émet `cpu` à TROIS valeurs et
+`disk` à UNE. Contre le firmware `dn4-8`, sa dernière valeur ne doit **pas glisser** dans la case
+qu'elle ne connaît pas.
+
+| Témoin | Trame injectée | `pc` LU sur la carte | Compteurs |
+|---|---|---|---|
+| **v3 `cpu` à TROIS** | `$DN,3,1012,10120,cpu,520,32,880*45` | `52,0 %` · `3,2 GHz` · **`88,0 %`** · `-- (degC ATTENDUE…)` | **0 delta** |
+| **v3 `disk` à UNE** | `$DN,3,1013,10130,disk,7085*3A` | `708,5 Mo/s` · `--` · `--` · `--` | **0 delta** |
+
+🔴 **LE `c.max` EST EN INDEX 2, ET LA CASE °C DIT `--`.** C'est exactement ce que la **4ᵉ voie** a
+acheté : avec l'ordre naïf (`°C` en index 2), le `88,0` d'un agent v3 non modifié serait tombé
+**dans la case température**, affiché `88,0 degC`, et **aucun compteur n'aurait bronché**.
+✅ **AC5 est re-qualifié PAR LA MESURE**, ⛔ plus par construction.
+
+⚠️ **Le témoin discrimine — vérifié par témoin positif avant le tir.** Le contrôle porte sur la
+**position ET l'unité** : l'ordre naïf (`88,0 degC` en position 2) est **REFUSÉ**, un décalage d'un
+cran est **REFUSÉ**, une ligne illisible est **REFUSÉE**. ⛔ Une première rédaction ne comparait que
+le **nombre** (`"88,0"`) : elle aurait épinglé VERT l'échange d'unité, c'est-à-dire exactement la
+garde décorative que la revue venait de retirer d'ailleurs.
+
+## 18.2 AC7 — la campagne repasse à **ONZE** cas, et la bande est ASSERTÉE
+
+`campagne_bruit_dn48.py` corrigé : **exit 0**, chaque cas dans **son** compteur et **lui seul**.
+
+| Ce qui a changé depuis §16.2 | Pourquoi |
+|---|---|
+| **+1 cas** : « champ VIDE en position **INTERNE** » | C'était une **ligne du tableau d'AC7** que la campagne ne testait pas — fermée seulement par une lecture humaine d'un dump. Elle a une forme de verdict **différente** (aucun compteur ne bouge **et** la suivante n'est pas décalée), que `ok = bouges == {attendu: 1}` ne pouvait pas exprimer. **Résultat : `480,0 Mo/s` · `--` · `800,0 tr/min` · `1400,0 tr/min`, 0 delta.** |
+| **bande 72..124 ASSERTÉE** | Elle était calculée **après** le tir et n'entrait jamais dans le verdict, alors que l'en-tête promettait « vérifiée AVANT le tir ». **Mesure : 78 o, dans la bande.** |
+| **anti-collision checksum** | Le faux CK était forcé à `"00"` : quand le CK réel vaut `00`, la trame est **valide** et le cas échouait à tort. Le jumeau `dn_injecteur.py` gardait déjà cette collision. |
+
+## 18.3 AC8 — le régime réel RE-TIRÉ, et cette fois l'instrument GATE
+
+`regime_reel_dn48.py` corrigé : il lit `pr.returncode`, borne le `subprocess`, **publie la durée
+murale** et **arrête** sur un relevé périmé. Le tir précédent n'était gaté par **rien** : un agent
+mort au démarrage aurait imprimé le même `✅`.
+
+| Contrôle | Relevé |
+|---|---|
+| durée murale de l'agent | **20,9 s** pour 20 s demandées (⇒ l'agent a bien vécu) |
+| `pc` relu après l'arrêt | **0,63 s** — **FRAIS** (péremption 3,00 s) |
+| capture | **COMPLÈTE, 5/5 métriques** |
+| **delta des six compteurs de rejet** | 🎯 **TOUS À ZÉRO** |
+| trames émises | 100 en 20,0 s (**4,99 trames/s**), 0 erreur d'envoi, **0 recalage de cadence** |
+| bruit console | 4 882 o / 103 lignes en 20,0 s = **243,7 o/s · 5,14 lignes/s** |
+| latence acceptation→label | n=102 · min 13 ms · **moy 192 ms** · max 276 ms |
+
+**Ce que `pc` montrait, avec des valeurs RÉELLES :**
+
+```
+cpu  -> 43,1 % · 3,2 GHz · 71,2 % · 41,8 degC
+disk -> 12,3 Mo/s · 971,0 tr/min · 273,9 tr/min · 845,0 tr/min
+```
+
+## 18.4 🎯 CE QUE CETTE SÉANCE VALIDE DES PATCHES DE REVUE, SUR LE MATÉRIEL RÉEL
+
+- **Vérification de famille `/metrics`** (le contrôle qui manquait, et qui justifiait d'avoir
+  éliminé `/data.json`) : **aucune ligne « famille inattendue », aucune ligne illisible**. Les
+  familles réelles de LHM 0.9.6 sur cette tour sont bien `lhm_cpu_temperature_celsius` et
+  `lhm_motherboard_fan_rpm`. ⛔ Testé contre le **vrai service**, plus seulement contre la fixture.
+- **Durée LHM incluant le parse** (`_chrono` déplacé) : **moyenne 24,1 ms, MAX 181,9 ms** pour un
+  timeout posé à **600 ms**, **0 échec**. ⚠️ ⛔ **NE PAS COMPARER** aux 26,7 / 454,7 ms de §16.5 :
+  ce n'est ni la même session ni le même instrument — celui-ci mesure **en plus** le parse.
+- **`dn_lhm_tour.ps1` durci** : le verdict exige désormais `/metrics` **et** zéro anomalie, et les
+  deux passent — `GET /metrics : HTTP 200 | 76 901 o | 38 ms` contre `/data.json` **495 ms**.
+- **Seau `non_publiees`** (grandeurs LHM lues mais non publiées) : **jamais déclenché**, la source
+  disque n'a pas failli de la session.
+
+## 18.5 🔴 UN DÉFAUT D'INSTRUMENT DE CETTE SÉANCE — LE MIEN, ET IL A ACCUSÉ UNE CARTE SAINE
+
+**Premier tir : TROIS cas déclarés EN ÉCHEC. La carte affichait EXACTEMENT l'attendu.**
+
+Le découpage de la ligne `pc` faisait `ligne.split("->")[-1].split("·")`, en supposant que les
+grandeurs suivent la flèche. **Elles ne la suivent pas** : le format réel est
+`"  %-5s -> case %d %-9s %-12s"` (`dn_console.c:2664`), donc `case 0 CPU  VIVANTE` s'intercale —
+et une **queue `· age … · seq …`** ferme la ligne sans être une grandeur.
+
+⛔ **Un instrument faux accuse le sujet sain.** C'est la même famille que les défauts que la revue
+venait de retirer, commise en écrivant le correctif.
+⇒ Le découpage est maintenant **un miroir explicite du format C**, il **jette** la queue de
+diagnostic, il **valide** que la première case ressemble à une grandeur, et il rend **`None`**
+plutôt qu'un découpage douteux — un échec de parsing se dit **comme un échec d'instrument**,
+⛔ jamais comme un échec de la carte. Éprouvé sur les **quatre** formes réelles, `jamais recue`
+comprise.
+
+## 18.6 ⛔ CE QUE CETTE SÉANCE NE PROUVE PAS
+
+- ⛔ **AC2 et AC4 restent MORTS.** `mesure_lhm_dn48.py` (biais `_cpu_ms`, `murs` filtré) et
+  `mesure_w2_dn48.py` (**`affichee()` : arrondi banquier → demi-haut**) ont été corrigés et **n'ont
+  pas été re-tirés**. ⚠️ Et `--rejuger` ne sauvera pas AC4 : le CSV stocke des valeurs **déjà
+  quantifiées par l'ancienne règle**. ⇒ **un tir NEUF de 16 min sur la tour est DÛ.**
+- ⛔ **La garde `dn_ui.c` (`widget grandeurs disk 4` doit être REFUSÉE) n'est PAS validée sur
+  carte** : elle exige un flash, donc un arbre propre, donc les commits.
+- ⛔ **Aucune observation à l'œil** n'a été demandée : les trois tirs sont intégralement
+  instrumentés par compteurs et par `pc`. ⚠️ Le constat *« le fil porte 4, la dalle montre 3 et 1 »*
+  reste celui de §16, ⛔ il n'a pas été refait.
+- ⛔ **La permanence de LHM n'est pas re-prouvée** : elle se prouve en **redémarrant la tour**.
