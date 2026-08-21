@@ -5329,7 +5329,18 @@ static int cmd_i2c(int argc, char **argv)
 
 #define TOF_INT_NEW_SAMPLE   4u      /* [DS] 6.2.39 : « New Sample Ready »      */
 #define TOF_MODEL_ID_ATTENDU 0xB4u
-#define TOF_POLL_MS_MAX      600     /* borne de garde du sondage d'interruption*/
+/*
+ * 🔴 REVU LE 2026-08-21 APRES MESURE — 600 ms A 2 ms DE PAS, C'ETAIT ~300
+ *    TRANSACTIONS PAR TIR, pour un budget de convergence de 49 ms ([DS] §6.2.20,
+ *    0x001C = 0x31 au reset). Douze fois le budget, et un martelage du bus qui
+ *    coincide EXACTEMENT avec le motif d'echec mesure : un tir sur deux echoue,
+ *    IMMEDIATEMENT (1-2 ms), et c'est TOUJOURS celui qui suit un sondage long.
+ * ⚠️ La piste est PLAUSIBLE, ⛔ PAS PROUVEE : ce changement est un ESSAI, et il
+ *    doit etre juge sur le taux d'echec AVANT/APRES, pas sur son bon sens.
+ *    AVANT (firmware e162f56) : 4 LECTURE KO sur 8 tirs.
+ */
+#define TOF_POLL_MS_MAX      250     /* 5x le budget de convergence, ⛔ plus 12x */
+#define TOF_POLL_PAS_MS      5       /* ⛔ plus 2 ms : ~50 sondages/tir, pas 300 */
 #define TOF_N_MAX            200     /* borne haute de `tof range <n>`          */
 
 typedef struct {
@@ -5516,7 +5527,7 @@ static esp_err_t tof_attendre(bool als, int *attendu_ms)
             *attendu_ms = (int)((esp_timer_get_time() - t0) / 1000);
             return ESP_ERR_TIMEOUT;
         }
-        vTaskDelay(pdMS_TO_TICKS(2));
+        vTaskDelay(pdMS_TO_TICKS(TOF_POLL_PAS_MS));
     }
 }
 
@@ -5784,6 +5795,12 @@ static int tof_cmd_range(int n)
                    i, esp_err_to_name(e));
             continue;
         }
+        /* ⚠️ Respiration APRES le declenchement, AVANT le premier sondage : la
+         * mesure ne peut pas etre prete en moins d'une convergence, donc sonder
+         * immediatement ne fait qu'ajouter des transactions inutiles sur le bus
+         * au moment le plus charge. ⛔ Ce n'est PAS une temporisation magique :
+         * elle est bornee par le budget de convergence, pas devinee. */
+        vTaskDelay(pdMS_TO_TICKS(TOF_POLL_PAS_MS));
         int attendu = 0;
         const esp_err_t ea = tof_attendre(false, &attendu);
         uint8_t v = 0, st = 0, rr[2] = {0, 0};
