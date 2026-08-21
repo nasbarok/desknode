@@ -220,6 +220,18 @@ static esp_err_t ecrire_reg8_16b(dn_env_id_t id, uint8_t reg, uint16_t val)
     return ecrire(id, o, sizeof o);
 }
 
+/* ── 🔴 Accès au ToF par le handle PERSISTANT — voir le pavé de dn_env.h ──── */
+
+esp_err_t dn_env_tof_lire(uint16_t reg, uint8_t *buf, size_t n)
+{
+    return lire_reg16(DN_ENV_TOF, reg, buf, n);
+}
+
+esp_err_t dn_env_tof_ecrire(uint16_t reg, uint8_t val)
+{
+    return ecrire_reg16(DN_ENV_TOF, reg, val);
+}
+
 /* ── Comptage ─────────────────────────────────────────────────────────────── */
 
 static void compter_i2c(dn_env_id_t id)

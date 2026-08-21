@@ -316,6 +316,26 @@ const char *dn_env_nom(dn_env_id_t id);
 uint8_t dn_env_adresse(dn_env_id_t id);
 bool dn_env_present(dn_env_id_t id); /* le device est OUVERT (≠ il répond) */
 
+/*
+ * ── 🔴 ACCÈS AU VL6180X PAR LE HANDLE **PERSISTANT** (dn4-7, 2026-08-21) ─────
+ *
+ * ⛔ NE PAS ouvrir un device à la volée pour parler au ToF. MESURÉ le
+ *    2026-08-21, A/B sur le MÊME capteur au MÊME instant :
+ *      · `dn_env` (ce handle-ci, ouvert une fois)      : 22 lectures, i2c 0
+ *      · console (ajout/retrait de device à CHAQUE appel) : 2 réussites / 15
+ *    ⇒ le chemin « ouvre-ferme » s'effondre sous la répétition rapide, et il a
+ *      FABRIQUÉ un diagnostic d'intermittence matérielle qui était faux
+ *      (§13.21.12). ⚠️ Le mécanisme exact reste OUVERT ; l'A/B, lui, est établi.
+ *
+ * ⚠️ ENTRELACEMENT : la tâche `dn_capt` lit ce même device toutes les 5 s. C'est
+ *    SANS DANGER pour une campagne de portée parce que `dn_env` ne fait que des
+ *    LECTURES sur le ToF — il n'écrit rien en régime, donc il ne peut ni
+ *    effacer une interruption (seul `0x015` le fait) ni changer un réglage.
+ *    ⛔ Si un jour `dn_env` se met à ÉCRIRE en régime, cette garantie tombe.
+ */
+esp_err_t dn_env_tof_lire(uint16_t reg, uint8_t *buf, size_t n);
+esp_err_t dn_env_tof_ecrire(uint16_t reg, uint8_t val);
+
 /* Âge de la dernière lecture valide, en µs. -1 si jamais lue. */
 int64_t dn_env_age_us(dn_env_id_t id);
 

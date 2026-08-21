@@ -5337,6 +5337,24 @@ typedef struct {
     uint8_t  val;
 } tof_ecr_t;
 
+/* ⛔ Ces commandes n'ouvrent PLUS de device : elles empruntent celui de
+ * `dn_env`. Elles doivent donc verifier qu'il EST ouvert — sinon toute lecture
+ * rendrait ESP_ERR_INVALID_STATE et on relirait un « capteur muet » qui n'est
+ * qu'un module pas encore initialise. */
+static bool tof_pret(void)
+{
+    if (dn_env_present(DN_ENV_TOF)) {
+        return true;
+    }
+    printf("🔴 le device VL6180X de `dn_env` n'est PAS OUVERT.\n");
+    printf("   ⛔ Ces commandes passent par SON handle persistant, et c'est\n");
+    printf("      DELIBERE : le chemin « ouvre-ferme » a fabrique un faux\n");
+    printf("      diagnostic d'intermittence (§13.21.12).\n");
+    printf("   ⚠️ Si `env` dit JAMAIS/MUET : `dn_env` retente UNE fois par\n");
+    printf("      minute. Attendre, ou `reboot`. ⛔ RIEN n'a ete tente ici.\n");
+    return false;
+}
+
 /*
  * 🔴 [AN] §9, bloc « Mandatory : private registers » — RECOPIE VERBATIM,
  *    dans l'ordre, 31 ecritures. ⛔ Aucune n'est documentee dans [DS] : ce sont
@@ -5426,17 +5444,30 @@ static bool tof_reg_auto_effacant(uint16_t reg)
 
 /* ── Primitives 16 bits, sur un device DEJA ouvert ────────────────────────── */
 
-static esp_err_t tof_lire(i2c_master_dev_handle_t dev, uint16_t reg, uint8_t *b,
-                          size_t n)
+/*
+ * 🔴 CORRIGE LE 2026-08-21 — CES DEUX PRIMITIVES OUVRAIENT UN DEVICE A LA VOLEE,
+ *    ET CE CHEMIN A FABRIQUE UN DIAGNOSTIC DE PANNE MATERIELLE QUI ETAIT FAUX.
+ *
+ * A/B mesure, MEME capteur, MEME instant (§13.21.12) :
+ *   · `dn_env`, handle PERSISTANT, 3 transactions / 5 s : 22 lectures, i2c 0
+ *   · console, ajout/retrait de device A CHAQUE APPEL   : 2 reussites / 15
+ * J'avais conclu « le ToF est intermittent » et je l'ai annonce a l'owner. FAUX :
+ * le capteur etait stable tout du long, c'est MON chemin d'acces qui s'effondrait
+ * sous la repetition rapide.
+ * ⚠️ Le retrait de device n'etait PAS en cause (« RETRAIT DU DEVICE REFUSE »
+ *    compte 0 fois sur 15) : le mecanisme exact RESTE OUVERT. Ce qui est etabli,
+ *    c'est l'A/B — et il suffit a choisir le chemin.
+ * ⇒ TOUT passe desormais par le handle de `dn_env`, celui qui ne rate jamais.
+ * ⛔ NE PAS reintroduire d'`i2c_dev_ouvrir()` ici.
+ */
+static esp_err_t tof_lire(uint16_t reg, uint8_t *b, size_t n)
 {
-    const uint8_t idx[2] = {(uint8_t)(reg >> 8), (uint8_t)(reg & 0xFF)};
-    return i2c_master_transmit_receive(dev, idx, 2, b, n, 200);
+    return dn_env_tof_lire(reg, b, n);
 }
 
-static esp_err_t tof_ecrire(i2c_master_dev_handle_t dev, uint16_t reg, uint8_t v)
+static esp_err_t tof_ecrire(uint16_t reg, uint8_t v)
 {
-    const uint8_t o[3] = {(uint8_t)(reg >> 8), (uint8_t)(reg & 0xFF), v};
-    return i2c_master_transmit(dev, o, sizeof o, 200);
+    return dn_env_tof_ecrire(reg, v);
 }
 
 /* [DS] Table 12 « Range error codes » — le decodage, ⛔ pas un numero nu. */
@@ -5465,13 +5496,12 @@ static const char *tof_erreur_nom(uint8_t code)
  * ⚠️ Rend le temps reellement attendu : une mesure qui prend 400 ms n'est pas
  *    la meme information qu'une mesure qui prend 8 ms, et la moyenne des deux
  *    ne veut rien dire. */
-static esp_err_t tof_attendre(i2c_master_dev_handle_t dev, bool als,
-                              int *attendu_ms)
+static esp_err_t tof_attendre(bool als, int *attendu_ms)
 {
     const int64_t t0 = esp_timer_get_time();
     for (;;) {
         uint8_t s;
-        esp_err_t e = tof_lire(dev, TOF_REG_INT_STATUS, &s, 1);
+        esp_err_t e = tof_lire(TOF_REG_INT_STATUS, &s, 1);
         if (e != ESP_OK) {
             *attendu_ms = (int)((esp_timer_get_time() - t0) / 1000);
             return e;
@@ -5493,15 +5523,13 @@ static esp_err_t tof_attendre(i2c_master_dev_handle_t dev, bool als,
 /* ── `tof sr03` — LE POINT D'ARRET DE dn4-7 ─────────────────────────────────── */
 static int tof_cmd_sr03(void)
 {
-    i2c_master_dev_handle_t dev = NULL;
-    if (i2c_dev_ouvrir(DN_VL6180X_ADDR, &dev) != ESP_OK) {
+    if (!tof_pret()) {
         return 1;
     }
 
     uint8_t id = 0;
-    if (tof_lire(dev, TOF_REG_MODEL_ID, &id, 1) != ESP_OK) {
+    if (tof_lire(TOF_REG_MODEL_ID, &id, 1) != ESP_OK) {
         printf("🔴 pas de reponse a 0x%02X — RIEN n'a ete ecrit.\n", DN_VL6180X_ADDR);
-        i2c_dev_fermer(dev);
         return 1;
     }
     if (id != TOF_MODEL_ID_ATTENDU) {
@@ -5509,7 +5537,6 @@ static int tof_cmd_sr03(void)
                id, TOF_MODEL_ID_ATTENDU);
         printf("   ⛔ RIEN n'a ete ecrit : jouer SR03 sur une autre puce serait\n");
         printf("      ecrire 37 registres au hasard chez un inconnu.\n");
-        i2c_dev_fermer(dev);
         return 1;
     }
 
@@ -5517,7 +5544,7 @@ static int tof_cmd_sr03(void)
      * de la puce ; [AN] §1.3 etape 4 classe d'ailleurs son ecriture
      * « (Optional) ». La lecture, elle, est l'etape 1 de la meme procedure. */
     uint8_t fresh = 0xFF;
-    const esp_err_t e_fresh = tof_lire(dev, TOF_REG_FRESH_RESET, &fresh, 1);
+    const esp_err_t e_fresh = tof_lire(TOF_REG_FRESH_RESET, &fresh, 1);
     printf("MODEL_ID 0x%02X ✅ · FRESH_OUT_OF_RESET = ", id);
     if (e_fresh == ESP_OK) {
         printf("0x%02X (%s)\n", fresh,
@@ -5542,7 +5569,7 @@ static int tof_cmd_sr03(void)
     int ko = 0;
     int n_prive = (int)(sizeof k_sr03_prive / sizeof k_sr03_prive[0]);
     for (int i = 0; i < n_prive; i++) {
-        esp_err_t e = tof_ecrire(dev, k_sr03_prive[i].reg, k_sr03_prive[i].val);
+        esp_err_t e = tof_ecrire(k_sr03_prive[i].reg, k_sr03_prive[i].val);
         if (e != ESP_OK) {
             ko++;
             printf("  🔴 prive[%02d] 0x%04X <- 0x%02X  ECHEC : %s\n", i,
@@ -5551,7 +5578,7 @@ static int tof_cmd_sr03(void)
     }
     int n_pub = (int)(sizeof k_sr03_public / sizeof k_sr03_public[0]);
     for (int i = 0; i < n_pub; i++) {
-        esp_err_t e = tof_ecrire(dev, k_sr03_public[i].reg, k_sr03_public[i].val);
+        esp_err_t e = tof_ecrire(k_sr03_public[i].reg, k_sr03_public[i].val);
         if (e != ESP_OK) {
             ko++;
             printf("  🔴 public[%02d] 0x%04X <- 0x%02X  ECHEC : %s\n", i,
@@ -5569,7 +5596,7 @@ static int tof_cmd_sr03(void)
     int pub_ko = 0;
     for (int i = 0; i < n_pub; i++) {
         uint8_t v = 0;
-        esp_err_t e = tof_lire(dev, k_sr03_public[i].reg, &v, 1);
+        esp_err_t e = tof_lire(k_sr03_public[i].reg, &v, 1);
         const bool auto_eff = tof_reg_auto_effacant(k_sr03_public[i].reg);
         /* ⛔ Un auto-effaçant ne se juge PAS sur l'egalite : il se juge sur le
          * fait qu'il s'est EFFACE, ce qui prouve que l'operation a eu lieu. */
@@ -5595,7 +5622,7 @@ static int tof_cmd_sr03(void)
     printf("\ntemoin des PRIVES (donnee BRUTE — ⛔ AUCUN verdict, non documentes) :\n");
     for (int i = 0; i < n_prive; i++) {
         uint8_t v = 0;
-        if (tof_lire(dev, k_sr03_prive[i].reg, &v, 1) == ESP_OK) {
+        if (tof_lire(k_sr03_prive[i].reg, &v, 1) == ESP_OK) {
             printf("  0x%04X ecrit 0x%02X relu 0x%02X%s", k_sr03_prive[i].reg,
                    k_sr03_prive[i].val, v,
                    ((i % 3) == 2) ? "\n" : "   ");
@@ -5606,7 +5633,6 @@ static int tof_cmd_sr03(void)
     }
     printf("\n");
 
-    i2c_dev_fermer(dev);
 
     if (ko > 0) {
         printf("\n🔴 %d ECRITURE(S) N'ONT PAS ABOUTI. ⛔ NE PAS CONCLURE que SR03\n", ko);
@@ -5631,22 +5657,22 @@ static int tof_cmd_sr03(void)
 }
 
 /* ── `tof als <ms>` — UNE mesure ALS a integration imposee ───────────────────── */
-static int tof_als_un(i2c_master_dev_handle_t dev, int ms, bool entete)
+static int tof_als_un(int ms, bool entete)
 {
     /* [DS] §6.2.36 : « 1 code = 1 ms (0 = 1 ms) » ⇒ le code vaut ms - 1. */
     const uint16_t code = (uint16_t)((ms > 0 ? ms : 1) - 1);
     if (entete) {
         printf("  ms  code    0x0050    decimal  attendu_ms  statut\n");
     }
-    esp_err_t e = tof_ecrire(dev, TOF_REG_ALS_INTEG_HI, (uint8_t)(code >> 8));
+    esp_err_t e = tof_ecrire(TOF_REG_ALS_INTEG_HI, (uint8_t)(code >> 8));
     if (e == ESP_OK) {
-        e = tof_ecrire(dev, TOF_REG_ALS_INTEG_LO, (uint8_t)(code & 0xFFu));
+        e = tof_ecrire(TOF_REG_ALS_INTEG_LO, (uint8_t)(code & 0xFFu));
     }
     if (e == ESP_OK) {
-        e = tof_ecrire(dev, TOF_REG_INT_CLEAR, 0x07);
+        e = tof_ecrire(TOF_REG_INT_CLEAR, 0x07);
     }
     if (e == ESP_OK) {
-        e = tof_ecrire(dev, TOF_REG_ALS_START, 0x01);
+        e = tof_ecrire(TOF_REG_ALS_START, 0x01);
     }
     if (e != ESP_OK) {
         printf("%4d  %04X    --        --       --          ECRITURE KO (%s)\n",
@@ -5654,11 +5680,11 @@ static int tof_als_un(i2c_master_dev_handle_t dev, int ms, bool entete)
         return 1;
     }
     int attendu = 0;
-    const esp_err_t ea = tof_attendre(dev, true, &attendu);
+    const esp_err_t ea = tof_attendre(true, &attendu);
     uint8_t b[2] = {0, 0};
-    const esp_err_t el = tof_lire(dev, TOF_REG_ALS_VAL, b, 2);
+    const esp_err_t el = tof_lire(TOF_REG_ALS_VAL, b, 2);
     const uint16_t val = (uint16_t)((b[0] << 8) | b[1]);
-    tof_ecrire(dev, TOF_REG_INT_CLEAR, 0x07);
+    tof_ecrire(TOF_REG_INT_CLEAR, 0x07);
 
     printf("%4d  %04X    %02X%02X      %5u    %4d       %s\n", ms, code, b[0],
            b[1], val, attendu,
@@ -5677,14 +5703,12 @@ static int tof_cmd_balayage(void)
      * dangereuse de dn4-3 (« l'integration n'agit pas »). */
     static const int k_ms[] = {1, 2, 3, 5, 10, 20, 50, 100};
 
-    i2c_master_dev_handle_t dev = NULL;
-    if (i2c_dev_ouvrir(DN_VL6180X_ADDR, &dev) != ESP_OK) {
+    if (!tof_pret()) {
         return 1;
     }
     uint8_t gain = 0;
-    if (tof_lire(dev, TOF_REG_ALS_GAIN, &gain, 1) != ESP_OK) {
+    if (tof_lire(TOF_REG_ALS_GAIN, &gain, 1) != ESP_OK) {
         printf("🔴 gain illisible — le balayage n'aurait pas de condition connue.\n");
-        i2c_dev_fermer(dev);
         return 1;
     }
     printf("BALAYAGE D'INTEGRATION — rejeu a l'identique de §13.19.5\n");
@@ -5696,9 +5720,8 @@ static int tof_cmd_balayage(void)
 
     int ko = 0;
     for (int i = 0; i < (int)(sizeof k_ms / sizeof k_ms[0]); i++) {
-        ko += tof_als_un(dev, k_ms[i], i == 0);
+        ko += tof_als_un(k_ms[i], i == 0);
     }
-    i2c_dev_fermer(dev);
     printf("\n⚠️ VERDICT A LA MAIN, ⛔ pas par la console : comparer la colonne\n");
     printf("   « decimal » a celle de §13.19.5 (0000 0000 FFFF FFFF FFFF FFFF\n");
     printf("   FFFF FFFF). Si elle est encore binaire, SR03 n'a rien change et\n");
@@ -5725,12 +5748,11 @@ static uint32_t tof_racine(uint32_t x)
 /* ── `tof range [n]` — LA PORTEE, AVEC SES TROIS ETATS (AC2/AC4) ───────────── */
 static int tof_cmd_range(int n)
 {
-    i2c_master_dev_handle_t dev = NULL;
-    if (i2c_dev_ouvrir(DN_VL6180X_ADDR, &dev) != ESP_OK) {
+    if (!tof_pret()) {
         return 1;
     }
     uint8_t conv = 0;
-    tof_lire(dev, TOF_REG_MAX_CONV, &conv, 1);
+    tof_lire(TOF_REG_MAX_CONV, &conv, 1);
 
     printf("TELEMETRIE — n = %d, budget de convergence 0x001C = 0x%02X (%u ms)\n",
            n, conv, (unsigned)(conv & 0x3Fu));
@@ -5752,9 +5774,9 @@ static int tof_cmd_range(int n)
     uint32_t n_err_puce = 0, n_transport = 0, n_pas_pret = 0;
 
     for (int i = 0; i < n; i++) {
-        esp_err_t e = tof_ecrire(dev, TOF_REG_INT_CLEAR, 0x07);
+        esp_err_t e = tof_ecrire(TOF_REG_INT_CLEAR, 0x07);
         if (e == ESP_OK) {
-            e = tof_ecrire(dev, TOF_REG_RANGE_START, 0x01); /* [DS] 6.2.16 : coup par coup */
+            e = tof_ecrire(TOF_REG_RANGE_START, 0x01); /* [DS] 6.2.16 : coup par coup */
         }
         if (e != ESP_OK) {
             n_transport++;
@@ -5763,12 +5785,12 @@ static int tof_cmd_range(int n)
             continue;
         }
         int attendu = 0;
-        const esp_err_t ea = tof_attendre(dev, false, &attendu);
+        const esp_err_t ea = tof_attendre(false, &attendu);
         uint8_t v = 0, st = 0, rr[2] = {0, 0};
-        const esp_err_t e1 = tof_lire(dev, TOF_REG_RANGE_VAL, &v, 1);
-        const esp_err_t e2 = tof_lire(dev, TOF_REG_RANGE_STATUS, &st, 1);
-        tof_lire(dev, TOF_REG_RANGE_RETURN_RATE, rr, 2);
-        tof_ecrire(dev, TOF_REG_INT_CLEAR, 0x07);
+        const esp_err_t e1 = tof_lire(TOF_REG_RANGE_VAL, &v, 1);
+        const esp_err_t e2 = tof_lire(TOF_REG_RANGE_STATUS, &st, 1);
+        tof_lire(TOF_REG_RANGE_RETURN_RATE, rr, 2);
+        tof_ecrire(TOF_REG_INT_CLEAR, 0x07);
 
         if (e1 != ESP_OK || e2 != ESP_OK) {
             n_transport++;
@@ -5802,7 +5824,6 @@ static int tof_cmd_range(int n)
             n_err_puce++;
         }
     }
-    i2c_dev_fermer(dev);
 
     printf("\n🔴 LES TROIS ETATS D'AC2, ⛔ PAS DEUX :\n");
     printf("  1. mesure VALIDE (err = 0)          : %lu / %d\n",
@@ -5862,8 +5883,7 @@ static int tof_cmd_range(int n)
 /* ── `tof etat` — CE QUE LA PUCE PORTE, SANS RIEN ECRIRE ────────────────────── */
 static int tof_cmd_etat(void)
 {
-    i2c_master_dev_handle_t dev = NULL;
-    if (i2c_dev_ouvrir(DN_VL6180X_ADDR, &dev) != ESP_OK) {
+    if (!tof_pret()) {
         return 1;
     }
     static const struct {
@@ -5884,7 +5904,7 @@ static int tof_cmd_etat(void)
     printf("VL6180X @ 0x%02X — LECTURE SEULE, ⛔ aucune ecriture\n", DN_VL6180X_ADDR);
     for (int i = 0; i < (int)(sizeof k_vue / sizeof k_vue[0]); i++) {
         uint8_t v = 0;
-        const esp_err_t e = tof_lire(dev, k_vue[i].reg, &v, 1);
+        const esp_err_t e = tof_lire(k_vue[i].reg, &v, 1);
         if (e == ESP_OK) {
             printf("  0x%04X  %02X   %s\n", k_vue[i].reg, v, k_vue[i].nom);
         } else {
@@ -5893,11 +5913,10 @@ static int tof_cmd_etat(void)
         }
     }
     uint8_t st = 0;
-    if (tof_lire(dev, TOF_REG_RANGE_STATUS, &st, 1) == ESP_OK) {
+    if (tof_lire(TOF_REG_RANGE_STATUS, &st, 1) == ESP_OK) {
         printf("dernier code d'erreur de portee : %X — %s\n", st >> 4,
                tof_erreur_nom((uint8_t)(st >> 4)));
     }
-    i2c_dev_fermer(dev);
     return 0;
 }
 
@@ -5936,12 +5955,10 @@ static int cmd_tof(int argc, char **argv)
             printf("   511 ms est la borne haute du registre ; on s'arrete a 500.\n");
             return 1;
         }
-        i2c_master_dev_handle_t dev = NULL;
-        if (i2c_dev_ouvrir(DN_VL6180X_ADDR, &dev) != ESP_OK) {
+        if (!tof_pret()) {
             return 1;
         }
-        const int r = tof_als_un(dev, (int)ms, true);
-        i2c_dev_fermer(dev);
+        const int r = tof_als_un((int)ms, true);
         return r;
     }
     if (argc >= 2 && strcmp(argv[1], "range") == 0) {
