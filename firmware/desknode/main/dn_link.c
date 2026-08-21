@@ -107,7 +107,26 @@ static const struct {
      *    s'apprête à ajouter une métrique » restent en place et restent bonnes,
      *    mais leur motif était FAUX : ⛔ ne pas ajouter une métrique pour leur
      *    donner raison. `DN_LINK_SAUT_MAX` est donc INCHANGÉ. */
-    [DN_LINK_M_CPU] = {"cpu", 3, {1000u, 1000u, 1000u}, {"%", "GHz", "%"}},
+    /* 🔴 dn4-8 / D13 : `cpu` passe à QUATRE — la °C CPU arrive, LUE depuis
+     *    LibreHardwareMonitor par l'agent (⛔ l'agent ne fait AUCUN Ring0 lui-même).
+     * 🔴 ELLE EST EN INDEX **3**, ⛔ PAS EN INDEX 2, ET C'EST LE CŒUR DE LA
+     *    DÉCISION. D13 veut que la CASE montre [%, GHz, °C] ; mettre la °C en
+     *    index 2 y suffirait — et ferait atterrir le `c.max` d'un agent v3 NON
+     *    MODIFIÉ (350 dixièmes de %) dans la case température, qui l'afficherait
+     *    « 35,0 degC ». ⚠️ Le plafond passant de 1000 à 1500, `rejets_bornes` NE
+     *    BRONCHERAIT MÊME PAS : un chiffre faux ET plausible, produit par le
+     *    TÉMOIN DE NON-RÉGRESSION lui-même.
+     * ✅ L'ORDRE DU FIL EST DONC INCHANGÉ SUR 0..2 — le témoin v3 (agent dn4-6 non
+     *    modifié) reste VALIDE, et le témoin v1 (agent dn2-2) aussi.
+     * ⇒ C'est la CASE qui sélectionnera [0, 1, 3] par une TABLE D'INDICES, et ce
+     *   mécanisme appartient à `dn4-9` (décision owner du 2026-08-21 : « le détail
+     *   connaîtra pour chaque case plus d'information »). ⛔ Sans lui, `dn4-9` ne
+     *   peut PAS afficher [%, GHz, °C] : `k_desc[]` lit les grandeurs 0..n-1 dans
+     *   l'ordre. **C'est écrit ici pour qu'elle ne le redécouvre pas.**
+     * ⚠️ Plafond 1500 dixièmes = 150,0 °C, le MÊME que la °C du GPU. Un CPU qui
+     *    dépasse a un problème qui n'est pas d'affichage. */
+    [DN_LINK_M_CPU] = {"cpu", 4, {1000u, 1000u, 1000u, 1500u},
+                       {"%", "GHz", "%", "degC"}},
     [DN_LINK_M_GPU] = {"gpu", 4, {1000u, 1500u, 10000u, 100000u},
                        {"%", "degC", "W", "tr/min"}},
     [DN_LINK_M_RAM] = {"ram", 2, {1000u, 40000u}, {"%", "Go"}},
@@ -118,7 +137,42 @@ static const struct {
      * 268,4 Mo/s), l'occupation 0,0 % (54,9 % du premier au dernier
      * échantillon, étendue NULLE au dixième de point). Une case de six doit
      * bouger. */
-    [DN_LINK_M_DISK] = {"disk", 1, {1000000u}, {"Mo/s"}},
+    /* 🔴 dn4-8 / D13 : `disk` passe à QUATRE — LE Mo/s RESTE EN POSITION 0, ET
+     *    CE N'EST PAS UN DÉTAIL D'ORDRE. Les trois grandeurs ajoutées viennent de
+     *    LHM ; le `Mo/s` vient de `psutil`. Une valeur PRINCIPALE absente fait que
+     *    la métrique n'est PAS ÉMISE (règle du champ vide, `dn_agent.py`) —
+     *    ⛔ mettre un ventilateur en position 0 ferait donc que **l'arrêt de LHM
+     *    emporterait le débit disque avec les ventilateurs**. Aucune grandeur LHM
+     *    ne va en position 0 d'une métrique qui survit sans LHM.
+     *
+     * 🔴 CE QUE D13 DEMANDAIT, ET CE QUI N'Y TIENT PAS. §4.4 réclamait SIX
+     *    grandeurs sur `disk` : Mo/s · tr/min moyen · lecture · écriture · ventilo
+     *    boîtier · ventilo CPU. `DN_LINK_GRANDEURS_MAX` en donne QUATRE.
+     *    ⇒ RETENU (décision owner du 2026-08-21) : Mo/s · extraction MOYENNE ·
+     *      `CPU_NOCTUA` · `CASE_GROUP`.
+     *    ⛔ CE QUI TOMBE, ET IL FAUT L'ÉCRIRE : **la séparation lecture/écriture
+     *      de D13 §4.4**. Ce n'est pas un rognage d'implémentation, c'est une
+     *      réduction de périmètre — elle est portée à l'owner et au ledger.
+     *
+     * ⚠️ « MOYENNE ENTRANT/SORTANT » ÉTAIT LA DEMANDE, ET LA MESURE L'A AMENDÉE :
+     *    **il n'existe AUCUN flux entrant mesurable.** Le 200 mm de façade n'a pas
+     *    de fil tachymétrique (0 RPM **dans le BIOS aussi**, capture owner du
+     *    2026-08-21) et le ventilateur du bas est CHAÎNÉ avec un extracteur sur un
+     *    seul tachy. Une « moyenne entrante » serait calculée sur RIEN.
+     *    ⇒ Seule la moyenne SORTANTE existe : `TOP_OUT` + `REAR_OUT`, deux canaux
+     *      de même sens.
+     *
+     * ⚠️ PLAFOND 100000 dixièmes = 10 000 tr/min, LE MÊME que le `tr/min` du GPU —
+     *    ⛔ pas 1000000. Le choix se voit dans l'invariant : à 1000000 le pire cas
+     *    atteignable passerait de 64 à 67 o (`dn_link.h`).
+     * ⚠️ ET LE `tr/min` EST UN ENTIER À L'AFFICHAGE (`DN_PREC_ENTIER`) : « 604,0
+     *    tr/min » inventerait une décimale que la source ne porte pas. Le FIL, lui,
+     *    reste en dixièmes — c'est l'affichage qui arrondit.
+     * ⚠️ `CASE_GROUP` = UN tachymètre pour DEUX ventilateurs chaînés. Si celui du
+     *    bas s'arrête, **rien ne le dira**. Le nom le dit honnêtement ; ⛔ ne pas le
+     *    rebaptiser « TOP » ou « BOTTOM ». */
+    [DN_LINK_M_DISK] = {"disk", 4, {1000000u, 100000u, 100000u, 100000u},
+                        {"Mo/s", "tr/min", "tr/min", "tr/min"}},
 };
 
 /* Le dernier état valide reçu, TOUTES MÉTRIQUES CONFONDUES — diagnostic global

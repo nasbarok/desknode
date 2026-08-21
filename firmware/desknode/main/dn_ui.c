@@ -198,7 +198,20 @@ static inline int ui_case_h(void)
  * masque pas, et c'est elle qui explique pourquoi quatre glyphes de ventilateur
  * restent embarqués. Motif du changement : les RPM boîtier et CPU passent par le
  * Super I/O de LibreHardwareMonitor (driver kernel + admin), et D8 sort le Ring0
- * du périmètre V1. Une case qui ne peut pas être alimentée n'est pas une case. */
+ * du périmètre V1. Une case qui ne peut pas être alimentée n'est pas une case.
+ * 🔴 AMENDÉ LE 2026-08-21 (dn4-8 / D13), ⛔ PAS EFFACÉ. **D13 rouvre le Ring0
+ *    dans le périmètre V1, par service tiers** : `LibreHardwareMonitor` tourne en
+ *    permanence sur la tour (tâche `RunLevel = Highest`, prouvée PAR REDÉMARRAGE
+ *    RÉEL le 2026-08-21) et l'agent LIT ses valeurs — ⛔ l'agent ne fait AUCUN
+ *    Ring0 lui-même, et c'est ce qui rend la chose acceptable.
+ *    ⇒ Le raisonnement ci-dessus TENAIT sous D8 ; sa PRÉMISSE a changé, pas sa
+ *      logique. Les RPM boîtier/CPU sont désormais alimentables — ils sont sur le
+ *      fil depuis dn4-8 (`k_metriques[disk]`), et la case le montrera en dn4-9.
+ * ⚠️ ET LE COÛT EST ASSUMÉ, ⛔ pas oublié : le critère owner de D8 (« générique et
+ *    libre de droits, réutilisable sur toutes les configs ») **NE TIENT PLUS pour
+ *    ces grandeurs**. Elles ne marchent que sur une machine où LHM est installé.
+ * ⛔ L'INDEX 4 RESTE `DISQUE` : D13 ne rend pas la case aux ventilateurs, elle
+ *    ajoute des grandeurs. Le renommer serait un changement d'affichage, ⇒ dn4-9. */
 #define DN_UI_CASE_DISQUE 4
 #define DN_UI_CASE_AMB 5
 
@@ -318,6 +331,19 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
          *    INATTEIGNABLE sans Ring0, et D8 sort le Ring0 du périmètre V1 :
          *    c'est la FRÉQUENCE qui prend la place, parce qu'elle est libre de
          *    droits ET qu'elle bouge (mesuré sur la tour : 1,2 à 3,2 GHz).
+         * 🔴 AMENDÉ LE 2026-08-21 (dn4-8 / D13), ⛔ PAS EFFACÉ. **« INATTEIGNABLE
+         *    sans Ring0 » reste VRAI ; c'est le Ring0 qui est revenu.** D13, sur
+         *    demande owner verbatim (« je ne veux pas max average mais la
+         *    température »), fait lire la °C par `LibreHardwareMonitor`. Sonde
+         *    retenue : `/intelcpu/0/temperature/10` (« CPU Package »), 41,0 °C au
+         *    relevé du 2026-08-21, ✅ recoupée par un chemin INDÉPENDANT — le Super
+         *    I/O `/lpc/nct6792d/0/temperature/0` à 40,5 °C, soit 1,2 % d'écart.
+         *    ⚠️ Ce recoupement est un INSTANTANÉ n = 1 : il conforte le mapping,
+         *       ⛔ il ne qualifie pas le mouvement (c'est AC4 de dn4-8).
+         * ⛔ ET LA FRÉQUENCE NE PART PAS. Elle a qualifié (1,2 à 3,2 GHz sur 960
+         *    échantillons) et elle est libre de droits : elle reste la grandeur 1.
+         *    La °C s'AJOUTE en index 3 du fil. ⇒ C'est `dn4-9` qui décidera ce que
+         *    la case montre, et D13 y demande [%, GHz, °C].
          * ⚠️ Pas de jauge : un % de CPU n'en avait déjà pas, et à n = 2 la
          *    géométrie ne laisserait plus de place à la secondaire (contrat
          *    écrit dans `dn_widget.h`). */
@@ -342,11 +368,38 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
          * ⚠️ Pas de jauge : un % de CPU n'en avait déjà pas, et à trois lignes
          *    la géométrie ne laisserait plus de place (contrat `dn_widget.h`).
          */
+        /*
+         * 🔴 dn4-8 / D13 : UNE **4ᵉ ENTRÉE PEUPLÉE**, ET `n_grandeurs` NE BOUGE PAS.
+         *    La °C CPU arrive sur le FIL (`k_metriques[cpu]` déclare 4) parce que
+         *    D13 rouvre le Ring0 par service tiers : `LibreHardwareMonitor` tourne
+         *    en permanence sur la tour et l'agent LIT ses valeurs.
+         * ⛔ MAIS `dn4-8` N'AFFICHE RIEN — c'est `dn4-9`, et D13 impose l'ordre.
+         *    Peupler l'entrée sans changer `n_grandeurs` est EXACTEMENT le patron
+         *    `gpu` (`desc_peuplees = 4` pour `n_grandeurs = 3`) : la grandeur est
+         *    déjà là le jour où la place existe, et `widget grandeurs 0 4` la rend
+         *    jouable à chaud pour l'arbitrage.
+         * ⚠️ LE MOTIF DE PEUPLER MAINTENANT EST MESURÉ, ⛔ pas cosmétique :
+         *    `dn_ui_set_case_grandeurs()` REFUSE un `n` au-delà de ce que le
+         *    descripteur peuple, précisément parce qu'une entrée non peuplée
+         *    retomberait au DIXIÈME par repli silencieux, et que l'audit de boot ne
+         *    parcourt que `n_grandeurs`. Une entrée vide serait donc un trou
+         *    INVISIBLE.
+         * 🔴 ET ELLE EST EN INDEX 3, ⛔ PAS EN INDEX 2 : mettre la °C en 2 ferait
+         *    afficher le `c.max` d'un agent v3 non modifié comme une température,
+         *    SANS qu'aucun compteur ne bronche. Le motif complet est dans
+         *    `dn_link.c`, sur `k_metriques[DN_LINK_M_CPU]`.
+         * ⚠️ LEGS À `dn4-9`, ÉCRIT ICI POUR QU'ELLE NE LE REDÉCOUVRE PAS : afficher
+         *    [%, GHz, °C] demande une **table d'indices** dans `k_desc[]`. Le
+         *    mécanisme actuel lit les grandeurs 0..n-1 **dans l'ordre** ; il n'y a
+         *    pas de sélection. ⇒ sans ce mécanisme, `widget grandeurs 0 4`
+         *    montrerait [%, GHz, c.max, °C], ⛔ pas ce que D13 demande.
+         */
         .n_grandeurs = 3,
         .indicateur = false,
         .grandeurs = {{.unite = "%", .prec = DN_PREC_DIXIEME},
                       {.unite = "GHz", .prec = DN_PREC_DIXIEME},
-                      {.unite = "%", .prefixe = "c.max", .prec = DN_PREC_DIXIEME}},
+                      {.unite = "%", .prefixe = "c.max", .prec = DN_PREC_DIXIEME},
+                      {.unite = "\xC2\xB0" "C", .prec = DN_PREC_DIXIEME}},
     },
     /*
      * ── LES TROIS NEUVES DE dn3-2 (W6, W10) ─────────────────────────────────
@@ -542,6 +595,13 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
          *
          * ── CE QUE LA CASE EST AUJOURD'HUI (D8, 2026-08-18) ──────────────────
          * 🔴 DISQUE. Le ventilateur sort du périmètre V1 avec le Ring0 (D8).
+         * 🔴 AMENDÉ LE 2026-08-21 (dn4-8 / D13), ⛔ PAS EFFACÉ : **le Ring0 rentre,
+         *    par service tiers, et les ventilateurs avec.** ⛔ MAIS LA CASE RESTE
+         *    `DISQUE` : les RPM ne la remplacent pas, ils s'y AJOUTENT sur le fil
+         *    (`k_metriques[disk]` = Mo/s · extraction moy. · CPU · boîtier).
+         *    Le `Mo/s` garde la position 0 — c'est la seule grandeur de cette
+         *    métrique qui survit à l'arrêt de LHM, et une position 0 absente fait
+         *    que la métrique n'est PAS émise du tout.
          *
          * ✅ ICÔNE : la DISQUETTE `save` (U+F0C7), DÉCISION OWNER du 2026-08-18.
          *    Et elle coûte ZÉRO glyphe — MESURÉ avec `codepoints_du_c()` du
@@ -573,9 +633,40 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
         .icone = DN_ICONE_SAVE,
         .titre = "DISQUE",
         .couleur = 0x35d6e8, /* cyan — PROVISOIRE, hérité de VENTILOS (legs dn3-3) */
+        /*
+         * 🔴 dn4-8 / D13 : **TROIS ENTRÉES PEUPLÉES DE PLUS**, et `n_grandeurs`
+         *    RESTE À UN. Le fil porte désormais [Mo/s · extraction MOYENNE ·
+         *    `CPU_NOCTUA` · `CASE_GROUP`] ; l'écran n'en montre toujours qu'une.
+         *    ⛔ `dn4-8` ne fait AUCUN affichage — c'est `dn4-9`.
+         * ✅ MAPPING MESURÉ le 2026-08-21, par JOINTURE BIOS↔LHM sur le RPM (les
+         *    quatre valeurs sont strictement croissantes des deux côtés, aucune
+         *    paire proche) : `fan/1`=`CPU_NOCTUA` · `fan/0`=`TOP_OUT` ·
+         *    `fan/2`=`CASE_GROUP` · `fan/4`=`REAR_OUT`.
+         *    🔴 L'ORDRE NAÏF ÉTAIT FAUX SUR LES DEUX PREMIERS : `fan/0` est
+         *      `CPU_FAN2`, ⛔ pas `CPU_FAN1` — le coder naïvement aurait affiché
+         *      « CPU » sur l'extraction haute. C'est la capture BIOS de l'owner qui
+         *      l'a attrapé, ⛔ pas le raisonnement.
+         * 🔴 `FRONT_IN` (200 mm façade) N'EST **JAMAIS** PUBLIABLE : il n'a pas de
+         *    fil tachymétrique, et il rend `0 RPM` **DANS LE BIOS AUSSI**. ⛔ Aucun
+         *    logiciel ne pourra le nommer — ⇒ `dn4-9`, qui doit « nommer chaque
+         *    ventilateur », a un ventilateur qu'elle ne pourra pas nommer.
+         * ⚠️ `tr/min` est `DN_PREC_ENTIER`, ⛔ pas `DIXIEME` : « 604,0 tr/min »
+         *    inventerait une décimale que la source ne porte pas.
+         * ⚠️ LEGS À `dn4-9`, ET C'EST UN PIÈGE CONNU DE CE DÉPÔT : les trois lignes
+         *    porteraient la MÊME unité « tr/min ». Trois lignes visuellement
+         *    identiques dont deux mentent par omission, c'est exactement ce que le
+         *    `prefixe = "c.max"` du CPU existe pour empêcher. ⛔ LES PRÉFIXES NE
+         *    SONT PAS POSÉS ICI : nommer les ventilateurs à l'écran est hors
+         *    périmètre de `dn4-8`, écrit noir sur blanc. ⇒ `dn4-9` DOIT les poser
+         *    avant d'afficher, et ⛔ le nom affiché ne dépasse JAMAIS ce qui est
+         *    établi (`CASE_GROUP` chaîne DEUX ventilateurs sur UN tachy).
+         */
         .n_grandeurs = 1,
         .indicateur = false,
-        .grandeurs = {{.unite = "Mo/s", .prec = DN_PREC_DIXIEME}},
+        .grandeurs = {{.unite = "Mo/s", .prec = DN_PREC_DIXIEME},
+                      {.unite = "tr/min", .prec = DN_PREC_ENTIER},
+                      {.unite = "tr/min", .prec = DN_PREC_ENTIER},
+                      {.unite = "tr/min", .prec = DN_PREC_ENTIER}},
     },
     [DN_UI_CASE_AMB] = {
         .icone = DN_ICONE_THERMOMETER_HALF,
@@ -977,6 +1068,11 @@ static uint8_t s_voile_opa = 90;
  *    protocole en `ver=2` (une trame v2 tombe aujourd'hui en `rejets_version`,
  *    comptée) ET d'étendre l'agent Windows — ⚠️ sachant que
  *    `DN_LINK_LIGNE_MAX = 63` et qu'une trame multi-métriques dépasse vite.
+ *    🔴 CORRIGÉ LE 2026-08-21 (dn4-8), ⛔ PAS EFFACÉ : `DN_LINK_LIGNE_MAX` vaut **71**
+ *    depuis dn4-6, ⛔ plus 63. ✅ L'ARGUMENT, LUI, TIENT — et il tient MIEUX : le pire cas
+ *    recompté caractère par caractère vaut **64 o** aux plafonds réels et **67 o** au
+ *    gabarit, sur `disk` à quatre grandeurs. ⚠️ Et le pire cas n'est plus `gpu` : c'est
+ *    `disk`, parce que son NOM compte un caractère de plus. *Le nom est dans la ligne.*
  *    L'epic assigne ce travail NOMMÉMENT à dn4-1 (« extension ADDITIVE du
  *    protocole `$DN` de dn2-2 — la story reste close »).
  *    ⇒ Ici, les trois cases vivent en mock DÉCLARÉ : régime SIMULEE, ambre,

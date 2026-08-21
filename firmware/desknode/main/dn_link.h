@@ -240,6 +240,44 @@
  *   compteur décoratif est un instrument qui ment.
  * ✅ Budget côté REPL : 66 + « pc » + espace = 69 ≤ 124. Aucune contrainte.
  */
+/*
+ * 🔴 dn4-8 : `cpu` ET `disk` PASSENT À QUATRE — ET LA PRÉDICTION EST DÉMENTIE
+ *    SUR SA CONCLUSION, PAS SUR SES NOMBRES. Recompté CARACTÈRE PAR CARACTÈRE le
+ *    2026-08-21 (`tools/recompte_trame_dn48.py`, qui construit la trame comme
+ *    l'agent la construit — ⛔ pas un comptage à la main) :
+ *
+ *      PLAFONDS RÉELS (ce qu'une trame peut atteindre sans être rejetée) :
+ *        cpu  54 o   « $DN,3,4294967295,4294967295,cpu,1000,1000,1000,1500*5A »
+ *        gpu  57 o   (inchangé)
+ *        net  50 o · ram 45 o
+ *        disk 64 o   « $DN,3,4294967295,4294967295,disk,1000000,100000,100000,100000*1C »
+ *        ⇒ PIRE CAS ATTEIGNABLE : **disk = 64 o**, marge 7.
+ *
+ *      GABARIT (la convention conservatrice de dn4-6 : QUATRE valeurs à 1000000) :
+ *        cpu 66 o · gpu 66 o · disk **67 o**
+ *        ⇒ PIRE CAS AU GABARIT : **disk = 67 o**, marge 4.
+ *
+ * ✅ CE QUI TIENT, ET C'EST L'INVARIANT : `DN_LINK_LIGNE_MAX` **NE BOUGE PAS**.
+ *    La bande « ligne COMPLÈTE mais trop longue » reste **72..124 = 53 octets**,
+ *    donc ATTEIGNABLE, donc `rejets_trop_longue` reste un compteur qui compte.
+ *    Budget REPL : 67 + « pc » + espace = 70 ≤ 124.
+ *
+ * ⛔ CE QUI EST RÉFUTÉ : la prédiction gelée de la story dn4-8 annonçait « le pire
+ *    cas RESTE `gpu` = 66 o ». **FAUX.** Le pire cas est désormais `disk`, des DEUX
+ *    côtés de la convention — et la cause n'est pas celle que la prédiction
+ *    nommait. Elle écrivait : « elle tombe si un plafond de ventilateur est posé
+ *    à 1 000 000 ». ⚠️ Or les plafonds de ventilateur sont à 100000, et le gabarit
+ *    donne **quand même** 67 : ce qui dépasse `gpu`, c'est que **« disk » compte UN
+ *    CARACTÈRE DE PLUS QUE « gpu »**. Le nom de la métrique est dans la ligne.
+ * 🔴 ET LA PRÉDICTION COMPARAIT DEUX CHOSES MESURÉES AUTREMENT : elle chiffrait
+ *    `disk` à ses plafonds RÉELS (64) et `gpu` au GABARIT (66), puis les rangeait
+ *    dans la même colonne. ⛔ C'est la doctrine « à service rendu égal » du dépôt,
+ *    violée par le dépôt, dans sa propre prédiction. ⇒ LES DEUX CONVENTIONS SONT
+ *    PUBLIÉES CI-DESSUS, séparément, pour que la prochaine extension n'ait pas à
+ *    deviner laquelle fait foi. **C'est le GABARIT qui dimensionne la constante.**
+ * ⚠️ Une 6ᵉ métrique dont le nom dépasserait 4 caractères ferait bouger ce chiffre
+ *    d'autant. L'invariant se recalcule, ⛔ pas seulement la valeur.
+ */
 #define DN_LINK_LIGNE_MAX 71
 /* Ce que le REPL délivre au parseur, MESURÉ (voir ci-dessus). Publié ici pour que
  * la bande « trop longue » se relise sans refaire la mesure. */

@@ -5,6 +5,16 @@ r"""dn_agent.py — l'agent PC de DeskNode : publie CINQ métriques de la tour �
 UN SEUL FICHIER, lancé à la main, SANS élévation, SANS driver, SANS .NET (D8 —
 et c'est une FRONTIÈRE, pas une préférence : Ring0 / LibreHardwareMonitor sortent
 du périmètre V1).
+🔴 AMENDÉ LE 2026-08-21 PAR **D13**, ⛔ PAS EFFACÉ — LE PÉRIMÈTRE A CHANGÉ.
+   `LibreHardwareMonitor` RENTRE dans le périmètre V1, **en service permanent sur
+   la tour**, et cet agent LIT ses valeurs par HTTP. ⛔ MAIS LA MOITIÉ DE LA PHRASE
+   QUI COMPTE RESTE VRAIE, ET C'EST ELLE QUI REND LA CHOSE ACCEPTABLE : **l'agent
+   n'a toujours ni élévation, ni driver, ni .NET** — il ne fait AUCUN Ring0. C'est
+   LHM qui le fait, et lui seul (tâche `RunLevel = Highest` + `PawnIO 2.2.0`).
+⚠️ LE COÛT EST ASSUMÉ, ⛔ PAS OUBLIÉ : le critère owner de D8 (« générique et libre
+   de droits, réutilisable sur toutes les configs ») NE TIENT PLUS pour la °C CPU
+   ni pour les tr/min de boîtier. Elles ne marchent que là où LHM est installé.
+   Les onze autres grandeurs, elles, restent libres de droits.
 Tourne sur le Python Windows 3.13.4 de la tour :
     python \\wsl.localhost\Ubuntu\home\nasbarok\projects\desknode\agent\dn_agent.py --stdout
 
@@ -40,15 +50,25 @@ le Gestionnaire des tâches (onglet Performance, « % temps processeur »).
    l'« exemple valide » du projet était la seule trame que le firmware REFUSE.
    Une grammaire recopiée dérive ; celle qui fait foi vit dans `dn_link.h`.
 
-    $DN,2,<seq>,<t_ms>,<metrique>,<v1>[,<v2>]*<CK>
+    $DN,3,<seq>,<t_ms>,<metrique>,<v1>[,<v2>[,<v3>[,<v4>]]]*<CK>
+
+  🔴 9ᵉ TEXTE PÉRIMÉ, TROUVÉ EN dn4-8 (⛔ il n'était PAS dans la liste des huit).
+     Ce résumé montrait encore la grammaire **v2** — deux valeurs — alors que le
+     fil est en v3 depuis dn4-6 (quatre) et que `cpu` en porte quatre depuis
+     dn4-8. ⚠️ Il est dans le fichier qui se déclare « document d'autorité côté
+     PC », six lignes sous un avertissement qui dit qu'une grammaire recopiée
+     dérive. **Elle avait dérivé.** Corrigé le 2026-08-21.
 
   <metrique>  cpu · gpu · ram · net · disk
-  <v1>,<v2>   ENTIERS, en DIXIÈMES de l'unité de la métrique. Pas de flottant sur
-              le fil (doctrine `parse_entier` du firmware).
-  <v2>        OPTIONNELLE, et son absence EST une donnée : « je connais v1, je ne
-              connais PAS v2 ». C'est le seul moyen honnête de publier un GPU dont
-              le % est lisible et la température non. ⛔ Pas de jeton « inconnu » :
-              `parse_u32_strict` refuse un champ vide, délibérément.
+  <v1>..<v4> ENTIERS, en DIXIÈMES de l'unité de la métrique. Pas de flottant sur
+              le fil (doctrine `parse_entier` du firmware). Combien la métrique en
+              publie est déclaré par `k_metriques[]` : cpu 4 · gpu 4 · ram 2 ·
+              net 2 · disk 4.
+  <v2>..<v4> OPTIONNELLES, et leur absence EST une donnée. ⛔ Pas de jeton
+              « inconnu », et la règle a DEUX bouts : une grandeur absente en
+              position INTERNE est un **champ VIDE** (`…,gpu,460,,530,6040*CK`) ;
+              en position 0, la métrique n'est PAS ÉMISE et sa case périme seule
+              en 3 s. Les `None` de QUEUE sont tronqués, pas rendus vides.
   *<CK>       XOR des octets entre '$' (exclu) et '*' (exclu), 2 hexa MAJUSCULES.
 
   Exemple :  $DN,1,42,123456,cpu,153*47      (v1, toujours acceptée)
@@ -69,6 +89,17 @@ le Gestionnaire des tâches (onglet Performance, « % temps processeur »).
         La fréquence remplace la TEMPÉRATURE que la maquette dessinait : la °C
         CPU exige le Ring0, que D8 sort du périmètre. Elle est libre de droits ET
         elle bouge (mesuré : 1,2 à 3,2 GHz sur 960 échantillons).
+        🔴 AMENDÉ LE 2026-08-21 (dn4-8 / D13), ⛔ PAS EFFACÉ : « la °C CPU exige le
+           Ring0 » reste VRAI — c'est le Ring0 qui est revenu, par service tiers.
+           ⇒ La °C ARRIVE, en grandeur 4 (`/intelcpu/0/temperature/10`, LHM).
+           ⛔ ET LA FRÉQUENCE NE PART PAS : elle a qualifié, elle est libre de
+           droits, elle reste la grandeur 2. Ce que la case montrera est `dn4-9`.
+        + 🔴 `max(cpu_percent(percpu=True))` (dn4-6, grandeur 3, « c.max »)
+        + 🔴 `SourceLhm` (dn4-8, grandeur 4, °C) — ⚠️ EN INDEX **3** DU FIL, ⛔ PAS 2 :
+             l'ordre des trois premières ne bouge pas, sinon le `c.max` d'un agent
+             v3 non modifié s'afficherait comme une température **sans qu'aucun
+             compteur ne bronche**. Le témoin de non-régression fabriquerait le
+             mensonge qu'il est censé exclure.
   gpu   atiadlxx.dll / ADL2_New_QueryPMLogData_Get, en ctypes, SANS élévation.
         🔴 LE CADRAGE ANNONÇAIT NVML : INAPPLICABLE, la tour est une AMD Radeon
            RX 6800 XT (Win32_VideoController : UN SEUL contrôleur, 0x73BF), et
@@ -101,6 +132,30 @@ le Gestionnaire des tâches (onglet Performance, « % temps processeur »).
         débit change de texte 93,3 % du temps (étendue 268,4 Mo/s) et
         l'occupation 0,0 % (54,9 %, étendue NULLE au dixième de point).
         Une case de six doit BOUGER.
+        🔴 dn4-8 / D13 : `disk` porte MAINTENANT TROIS `tr/min` DE PLUS, lus chez
+           LHM — extraction MOYENNE (`TOP_OUT`+`REAR_OUT`), `CPU_NOCTUA`,
+           `CASE_GROUP`. ⛔ Le `Mo/s` GARDE la position 0 : c'est la seule des
+           quatre qui survive à l'arrêt de LHM, et une position 0 absente fait que
+           la métrique n'est PAS émise du tout.
+        ⚠️ CE QUI TOMBE DE D13 §4.4 : la séparation LECTURE / ÉCRITURE. D13
+           demandait SIX grandeurs, `DN_LINK_GRANDEURS_MAX` en donne QUATRE.
+           ⇒ réduction de périmètre, portée à l'owner et au ledger — ⛔ pas un
+           rognage silencieux.
+  lhm   http.client -> GET /metrics sur 127.0.0.1:8085, connexion PERSISTANTE.
+        ⛔ AUCUNE DÉPENDANCE NOUVELLE : `http.client` et `re` sont la stdlib.
+        ✅ `/metrics` retenu PAR LA MESURE et par sa FORME (AC2, 3 campagnes) :
+           l'unité y vit dans la CLÉ (`lhm_motherboard_fan_rpm`), donc un
+           changement d'unité CHANGE LE NOM et SE VOIT. Dans `/data.json` elle vit
+           dans la chaîne (« 43,0 °C ») : un parseur qui retire le suffixe
+           accepterait « 110,0 °F » sans broncher.
+        🔴 ET LE VRAI RÉSULTAT D'AC2 N'EST PAS « QUELLE INTERFACE » : c'est que
+           **l'ouverture de connexion TCP dominait le coût**. Les trois candidats
+           échouent le seuil C1 en connexion neuve et passent LES QUATRE en
+           keep-alive. ⛔ Aucun seuil n'a bougé — l'implémentation était mauvaise.
+        ⚠️ WMI éliminé PAR SYMPTÔME : `root\LibreHardwareMonitor` N'EXISTE PAS et
+           `root\OpenHardwareMonitor` rend **0 instance** (issue #2143). 🔴 La
+           CLASSE, elle, existe : un harnais qui aurait vérifié « la classe est-elle
+           là ? » aurait conclu « WMI marche ».
 
 ── SORTIES ─────────────────────────────────────────────────────────────────────────────
   --stdout          : imprime les trames (témoin, mesure du coût, débogage)
@@ -130,6 +185,15 @@ n'était imprimé qu'en sortie `--duree`, donc perdu sur la plupart des sessions
 import argparse
 import sys
 import time
+
+# 🔴 dn4-8 / AC6 : DEUX MODULES DE LA **STDLIB**, ⛔ AUCUNE DEPENDANCE NOUVELLE.
+#    `http.client` (⛔ pas `requests`) parce qu'il expose la CONNEXION, donc le
+#    keep-alive — et l'A/B d'AC2 a montre que **l'ouverture de connexion TCP
+#    dominait le cout** : les trois candidats echouent le seuil C1 en connexion
+#    neuve (2,98 / 3,52 / 4,77 ms) et passent LES QUATRE seuils en keep-alive
+#    (1,84 / 2,19 / 1,13 ms). `urllib.request` ne garde pas la connexion.
+import http.client
+import re
 
 try:
     import psutil
@@ -184,12 +248,23 @@ _MEMCLK_MAX_MHZ = 20000
 #    silencieuse — elle se verrait en `rejets_bornes` qui monte côté firmware.
 #    ⇒ LES DEUX TABLES BOUGENT DANS LE MÊME GESTE. Si vous éditez celle-ci sans
 #      l'autre, la campagne de bruit d'AC7 le dira.
+# 🔴 dn4-8 / D13 : `cpu` ET `disk` PASSENT A QUATRE, ET LES DEUX TABLES BOUGENT
+#    DANS LE MEME GESTE (voir `k_metriques[]`, `main/dn_link.c`). Recompte
+#    caractere par caractere : pire cas ATTEIGNABLE `disk` = 64 o, pire cas au
+#    GABARIT `disk` = 67 o ⇒ `DN_LINK_LIGNE_MAX = 71` NE BOUGE PAS.
+# ⚠️ L'ORDRE DE `cpu` EST INCHANGE SUR 0..2 — la °C est en index **3**, ⛔ pas 2.
+#    Mettre la °C en 2 ferait afficher le `c.max` d'un agent v3 NON MODIFIE comme
+#    une temperature, et le plafond passant de 1000 a 1500, `rejets_bornes` ne
+#    broncherait meme pas. Le temoin de non-regression fabriquerait le mensonge.
+# ⛔ AUCUNE GRANDEUR LHM EN POSITION 0 : une valeur principale absente fait que la
+#    metrique n'est PAS emise. Le `Mo/s` de `disk` vient de `psutil` et survit a
+#    l'arret de LHM ; les trois `tr/min` sont en positions INTERNES, donc champ vide.
 BORNES = {
-    "cpu": [1000, 1000, 1000],            # % · GHz · % du cœur le plus chargé
+    "cpu": [1000, 1000, 1000, 1500],      # % · GHz · % (c.max) · °C  (LHM)
     "gpu": [1000, 1500, 10000, 100000],   # % · °C · W · tr/min
     "ram": [1000, 40000],                 # % · Go TOTAUX
     "net": [1000000, 1000000],            # Mb/s ↓ · Mb/s ↑
-    "disk": [1000000],                    # Mo/s
+    "disk": [1000000, 100000, 100000, 100000],  # Mo/s · extr.moy · CPU · boitier (LHM)
 }
 
 
@@ -455,6 +530,340 @@ class SourceGpuAdl:
 
 
 # ═════════════════════════════════════════════════════════════════════════════
+# LA SOURCE LHM — LES SONDES Ring0 DE LA TOUR, *LUES*, JAMAIS PRISES (D13)
+# ═════════════════════════════════════════════════════════════════════════════
+
+LHM_HOTE = "127.0.0.1"
+LHM_PORT = 8085          # defaut de LHM, VERIFIE sur la tour (`listenerPort`)
+LHM_CHEMIN = "/metrics"
+# 🔴 LE TIMEOUT EST POSE ICI, ET SON MOTIF EST CHIFFRE (AC6).
+#    · Mural p95 MESURE de `/metrics` en keep-alive, jeu A : **16,5 ms** (AC2,
+#      campagne 3, n=1000) ⇒ 0,4 s = **24x** la marge.
+#    · La resynchronisation de cadence se declenche quand un cycle a plus d'UNE
+#      PERIODE ENTIERE de retard (`prochain < maintenant`, boucle principale).
+#      Un plafond a 0,4 s laisse 0,6 s aux cinq autres postes et aux cinq
+#      ecritures serie ⇒ ⛔ une lecture LHM bloquee ne peut pas, A ELLE SEULE,
+#      declencher le recalage — lequel JETTE l'echantillon et re-amorce LES CINQ
+#      METRIQUES. 🎯 C'est le mecanisme le plus dangereux de cette story.
+# 🔴 ET CE MOTIF A ETE FAUX PENDANT UNE HEURE, LE 2026-08-21 : le timeout etait
+#    applique PAR TENTATIVE, et `_get()` en fait DEUX. Le pire cas reel etait donc
+#    **802 ms mesurees pour 400 ms posees** — la moitie de la marge annoncee.
+#    ⇒ Corrige : le budget est desormais celui de la lecture ENTIERE (`_get`).
+#    ⚠️ Le defaut n'a PAS ete trouve par le controle qui portait sur lui : celui-ci
+#       n'avait qu'une borne INFERIEURE (« la lecture a bien ete coupee »), donc il
+#       epinglait VERT un depassement du DOUBLE. **Un controle sans borne
+#       superieure ne peut pas voir le defaut qu'il pretend exclure.** Il porte
+#       maintenant les deux bornes.
+# ⚠️ CE N'EST PAS UNE PREUVE, C'EST UN DIMENSIONNEMENT. La duree reelle des
+#    lectures est MESUREE en regime et publiee au bilan (n, moyenne, MAX).
+LHM_TIMEOUT_S = 0.4
+
+# ── LA TABLE DES SONDES — UNE CONFIGURATION DE *CETTE* TOUR ─────────────────
+# 🔴 DECISION OWNER DU 2026-08-21, VERBATIM : « on code comme ca de facon a plus
+#    tard ajouter des menus de personnalisation et aussi changer les liens si
+#    mauvais ». ⇒ La correspondance `SensorId` → grandeur est une propriete de
+#    CETTE machine, ⛔ pas du produit. Elle vit donc COTE AGENT, jamais dans le
+#    firmware — c'est exactement le cout que D13 assume deja.
+# 🔴 TROIS EXIGENCES, pour que « configurable » ne devienne pas « etiquette qui
+#    ment » : (1) une TABLE, ⛔ pas des `if` ; (2) chaque entree porte sa
+#    **PROVENANCE** ; (3) ⛔ le nom ne depasse JAMAIS ce qui est etabli.
+# ⚠️ L'ORDRE NAIF ETAIT FAUX SUR LES DEUX PREMIERS CANAUX : `fan/0` est `CPU_FAN2`,
+#    ⛔ pas `CPU_FAN1`. Le coder naivement aurait affiche « CPU » sur l'extraction
+#    haute et « TOP » sur le ventirad. C'est la capture BIOS de l'owner qui l'a
+#    attrape, ⛔ pas le raisonnement de l'agent.
+# ⛔ `FRONT_IN` (200 mm facade, `fan/3` ou `fan/5`) N'EST PAS DANS CETTE TABLE ET
+#    N'Y SERA JAMAIS : il n'a pas de fil tachymetrique et rend `0 RPM` **DANS LE
+#    BIOS AUSSI**. Aucun logiciel ne pourra publier sa vitesse. ⚠️ Il tourne — il
+#    ne le dit pas. ⇒ A ECRIRE POUR dn4-9, qui doit « nommer chaque ventilateur ».
+# ⚠️ `CASE_GROUP` = UN tachymetre pour DEUX ventilateurs CHAINES. Si celui du bas
+#    s'arrete, RIEN NE LE DIRA. ⛔ Ne pas le rebaptiser « TOP » ni « BOTTOM ».
+LHM_SONDES = (
+    # (cle interne, identifiant LHM complet, PROVENANCE)
+    ("cpu.degc", "/intelcpu/0/temperature/10",
+     "MESURE (LHM 0.9.6, 2026-08-21) — « CPU Package », 41,0 degC ; recoupee par un "
+     "chemin INDEPENDANT, le Super I/O /lpc/nct6792d/0/temperature/0 a 40,5 degC "
+     "(1,2 %). ⚠️ instantane n=1 : conforte le mapping, ⛔ ne qualifie pas le mouvement"),
+    ("fan.top_out", "/lpc/nct6792d/0/fan/0",
+     "MESURE (jointure BIOS<->LHM par RPM, 2026-08-21) — en-tete CPU_FAN2, "
+     "extraction HAUTE. ⚠️ l'ordre naif en faisait CPU_FAN1 : REFUTE"),
+    ("fan.cpu_noctua", "/lpc/nct6792d/0/fan/1",
+     "MESURE (jointure BIOS<->LHM par RPM, 2026-08-21) — en-tete CPU_FAN1, "
+     "ventirad Noctua bi-ventilateur (repos 305, plafond 1112)"),
+    ("fan.case_group", "/lpc/nct6792d/0/fan/2",
+     "MESURE (jointure BIOS<->LHM par RPM, 2026-08-21) — en-tete SYS_FAN1, DEUX "
+     "ventilateurs chaines sur UN tachy"),
+    ("fan.rear_out", "/lpc/nct6792d/0/fan/4",
+     "MESURE (jointure BIOS<->LHM par RPM, 2026-08-21) — en-tete SYS_FAN3, "
+     "140 mm arriere, extraction"),
+)
+
+# Une ligne `/metrics` : `lhm_<famille> {..."sensorId"="/fan/0"...,
+# "hardwareId"="/lpc/nct6792d/0"...} 667.408447265625`
+# 🎯 L'IDENTIFIANT COMPLET EST `hardwareId + sensorId` — ⛔ pas `sensorId` seul,
+#    qui vaut `/fan/0` sur DEUX puces differentes (la carte-mere ET le GPU).
+# ✅ ET C'EST `/metrics` QUI EST RETENU, PAS `/data.json` : l'unite y vit dans la
+#    CLE (`lhm_motherboard_fan_rpm`), donc un changement d'unite CHANGE LE NOM et
+#    SE VOIT. Dans `/data.json` elle vit dans la chaine (« 43,0 °C ») : un parseur
+#    qui retire le suffixe accepterait « 110,0 °F » sans broncher. ⚠️ Ce depot a
+#    deja paye cette classe de defaut — le « 34,3 Go » contre « 31,9 » de dn4-1.
+_LHM_LIGNE = re.compile(
+    r'^lhm_\S+\s+\{.*?"sensorId"="([^"]*)".*?"hardwareId"="([^"]*)".*?\}\s+(\S+)\s*$')
+
+
+def _fini(x):
+    """`True` si `x` est un flottant FINI.
+
+    ⛔ `float("NaN")` de la stdlib **REUSSIT** et rend `nan` : un `try/except
+       ValueError` autour de `float()` NE VOIT PAS le NaN. Il se propagerait
+       jusqu'a un `int()` (qui leve) ou jusqu'au format — le « chiffre faux mais
+       plausible » que ce depot traque.
+    ⚠️ `x != x` attrape NaN ; `x - x != 0` attrape en plus ±inf.
+    ⚠️ Le serialiseur de LHM autorise les litteraux flottants nommes, et
+       `/metrics` remplace normalement une NaN par une ligne `# HELP … skipped`.
+       Ce test est la garde du cas ou il ne le ferait pas — ⛔ pas une hypothese.
+    """
+    return x == x and x - x == 0
+
+
+class SourceLhm:
+    """La °C CPU et les tr/min des ventilateurs, LUS chez LibreHardwareMonitor.
+
+    🔴 L'AGENT NE FAIT AUCUN Ring0 LUI-MEME, ET C'EST CE QUI REND LA CHOSE
+       ACCEPTABLE (D13). LHM tourne en service permanent sur la tour (tache
+       planifiee `RunLevel = Highest`, **prouvee par un redemarrage reel** le
+       2026-08-21) avec son driver noyau signe `PawnIO 2.2.0` ; cette classe se
+       contente de LIRE son serveur web local. ⛔ Aucun driver, aucune elevation,
+       aucun .NET du cote de l'agent.
+    ⚠️ LE COUT EST ASSUME, ⛔ PAS OUBLIE : ces grandeurs ne marchent que sur une
+       machine ou LHM est installe et configure ainsi. Le critere owner de D8
+       (« generique et libre de droits ») NE TIENT PLUS pour elles.
+
+    🔴 ELLE SUIT LE PATRON DE `SourceGpuAdl` SAUF SUR **UN** POINT, ET C'EST
+       DELIBERE. `SourceGpuAdl.__init__` qui echoue ⇒ `self.gpu = None`, source
+       desactivee POUR TOUTE LA SESSION — correct pour une **DLL** : si
+       `atiadlxx.dll` manque au demarrage, elle manquera aussi a la fin.
+       ⛔ FAUX POUR UN **SERVICE** : LHM peut demarrer apres l'agent, ou etre
+       arrete puis relance. Le scenario 3 d'AC8 exige explicitement la reprise
+       **sans redemarrer l'agent**. ⇒ Cette source ne se desactive JAMAIS : un
+       echec est un ETAT, ⛔ pas une condamnation, et chaque cycle retente.
+    🎯 LE CHEMIN DE RECONNEXION **EST** LE DETECTEUR « LHM ABSENT » D'AC8,
+       ⛔ pas un detail d'implementation.
+
+    ⛔ PAS DE JETON « INCONNU » — LA REGLE EXISTE ET ELLE EST TRANCHEE (W10) :
+       une grandeur absente en position INTERNE est un **champ VIDE** ; en
+       position 0, la metrique n'est PAS EMISE. Cette source rend donc
+       `float | None` par sonde, et **`None` EST UNE DONNEE**, ⛔ pas une panne.
+    ⚠️ Ce point a coute un defaut d'instrument en AC2 : le harnais comptait
+       « capteur sans valeur » en ECHEC, ce qui CONTREDISAIT son propre critere.
+    """
+
+    def __init__(self, hote=LHM_HOTE, port=LHM_PORT, timeout_s=LHM_TIMEOUT_S,
+                 verbeux=True):
+        self.hote = hote
+        self.port = port
+        self.timeout_s = timeout_s
+        self._c = None
+        self.motif = None          # le DERNIER symptome, republie au bilan
+        self.reponses = 0          # lectures REUSSIES
+        self.echecs = 0            # lectures qui ont LEVE
+        self._echecs_suite = 0
+        # 🔴 CHAQUE CAS SUR **SON** COMPTEUR, et une ABSENCE n'est pas une PANNE.
+        #    Les mettre dans le meme seau est exactement le defaut « tronquee /
+        #    trop longue » que le firmware a du dedoubler : deux diagnostics
+        #    CONTRAIRES (« LHM ne repond pas » / « LHM repond et dit qu'il n'a pas
+        #    cette valeur ») envoient chercher a deux endroits differents.
+        self.absences = {}
+        self.duree_n = 0
+        self.duree_somme = 0.0
+        self.duree_max = 0.0
+        # ⚠️ LA SONDE D'ANNONCE EST UNE VRAIE LECTURE, ET ELLE EST COMPTEE COMME
+        #    TELLE. ⛔ Pas un tir fantome hors compteurs : un instrument qui
+        #    s'exclut de ses propres chiffres ment sur la premiere seconde.
+        try:
+            vues = self.lire()
+            if verbeux:
+                connues = sum(1 for v in vues.values() if v is not None)
+                print("[agent] LHM : %s:%d%s — %d/%d sonde(s) avec valeur "
+                      "(timeout %.2f s, connexion PERSISTANTE)"
+                      % (self.hote, self.port, LHM_CHEMIN, connues, len(vues),
+                         self.timeout_s), file=sys.stderr)
+        except Exception as exc:
+            self.motif = "%s: %s" % (type(exc).__name__, exc)
+            if verbeux:
+                # ⛔ ON NE FERME PAS LA SOURCE. Voir la docstring : LHM est un
+                #    SERVICE, il peut monter apres nous. AC8 scenario 1.
+                print("[agent] ⚠️ LHM INJOIGNABLE au demarrage (%s) — la °C CPU et "
+                      "les tr/min diront « -- », les autres grandeurs continuent. "
+                      "⚠️ La source RESTE ARMEE : elle retente a chaque cycle et "
+                      "reprendra seule si LHM demarre." % self.motif,
+                      file=sys.stderr)
+
+    def _fermer_connexion(self):
+        if self._c is not None:
+            try:
+                self._c.close()
+            except Exception:
+                pass
+        self._c = None
+
+    def _chrono(self, dt):
+        self.duree_n += 1
+        self.duree_somme += dt
+        if dt > self.duree_max:
+            self.duree_max = dt
+
+    def _get(self):
+        """UNE requete `GET /metrics` sur une connexion PERSISTANTE.
+
+        Se reconnecte **UNE** fois si elle est tombee, puis leve.
+        🎯 C'est CE chemin qui detecte « LHM absent » (AC8), et c'est aussi lui
+           qui fait la reprise du scenario 3 — les deux sont le meme code.
+        ⚠️ `rep.read()` est TOUJOURS appele avant de rendre la main : une reponse
+           non drainee casse la connexion persistante au tir suivant.
+        """
+        # 🔴 LE TIMEOUT EST UN BUDGET POUR LA LECTURE **ENTIÈRE**, ⛔ PAS PAR
+        #    TENTATIVE — ET C'EST UN CORRECTIF, PAS UNE ÉLÉGANCE. Mesuré le
+        #    2026-08-21 par `tools/verif_source_lhm_dn48.py` scénario « lent » :
+        #    avec un timeout PAR TENTATIVE, une lecture a duré **802 ms pour un
+        #    plafond posé à 400 ms** — la reconnexion doublait le pire cas.
+        #    ⇒ Le motif écrit sur `LHM_TIMEOUT_S` (« 0,4 s laisse 0,6 s aux cinq
+        #      autres postes ») était donc **FAUX** : il en laissait 0,2.
+        # ✅ ET LA SECONDE TENTATIVE GARDE SON UTILITÉ. Elle existe pour la
+        #    connexion PÉRIMÉE (le serveur a fermé de son côté), qui échoue
+        #    IMMÉDIATEMENT — il reste alors presque tout le budget. Un serveur
+        #    trop LENT, lui, ne le sera pas moins au second essai : ⛔ ne pas le
+        #    retenter est le comportement correct, pas une perte.
+        fin = time.perf_counter() + self.timeout_s
+        for dernier in (False, True):
+            reste = fin - time.perf_counter()
+            if reste <= 0.0:
+                raise TimeoutError(
+                    "budget de lecture LHM epuise (%.0f ms)"
+                    % (self.timeout_s * 1000.0))
+            try:
+                if self._c is None:
+                    self._c = http.client.HTTPConnection(
+                        self.hote, self.port, timeout=reste)
+                self._c.request("GET", LHM_CHEMIN,
+                                headers={"Connection": "keep-alive"})
+                rep = self._c.getresponse()
+                corps = rep.read()
+                if rep.status != 200:
+                    raise IOError("HTTP %d sur %s" % (rep.status, LHM_CHEMIN))
+                if rep.will_close:
+                    self._fermer_connexion()
+                return corps.decode("utf-8", "replace")
+            except Exception:
+                self._fermer_connexion()
+                if dernier:
+                    raise
+
+    def lire(self):
+        """Rend `{cle: float | None}` — UNE entree par sonde, TOUJOURS.
+
+        ⛔ LEVE si LHM ne repond pas : c'est `_tenter()` qui en fera une panne
+           COMPTEE ET NOMMEE, une seule fois par type.
+        ⚠️ Rendre `None` pour une sonde n'est PAS lever : LHM a repondu et a dit
+           qu'il n'avait pas cette valeur. Les deux se comptent SEPAREMENT.
+        """
+        t0 = time.perf_counter()
+        try:
+            txt = self._get()
+        except Exception as exc:
+            self.echecs += 1
+            self._echecs_suite += 1
+            self.motif = "%s: %s" % (type(exc).__name__, exc)
+            raise
+        finally:
+            self._chrono(time.perf_counter() - t0)
+
+        table = {}
+        for ligne in txt.splitlines():
+            if not ligne.startswith("lhm_"):
+                continue
+            m = _LHM_LIGNE.match(ligne)
+            if not m:
+                continue
+            try:
+                v = float(m.group(3))
+            except ValueError:
+                continue
+            if not _fini(v):
+                continue
+            table[m.group(2) + m.group(1)] = v
+
+        vues = {}
+        for cle, ident, _prov in LHM_SONDES:
+            v = table.get(ident)
+            # 🔴 UNE VALEUR NEGATIVE DEVIENT « JE NE SAIS PAS », ⛔ PAS UN ZERO
+            #    ECRETE, ET LE MOTIF EST MESURE. `_dx()` ecrete a 0 et le COMPTE —
+            #    correct pour un % ou un Mo/s. Pour un tachymetre, « 0 tr/min » est
+            #    une **VRAIE valeur** (fan-stop), donc un -1 ecrete a 0 fabriquerait
+            #    « ventilateur a l'arret » : indistinguable de la verite a l'ecran.
+            #    ⚠️ Ce depot a DEJA failli conclure « FAN_RPM ne qualifie pas » sur
+            #       un instrument casse qui rendait 0. ⇒ W10 sait dire « je ne sais
+            #       pas » ; c'est la seule sortie honnete.
+            # ⚠️ ASYMETRIE ASSUMEE ET NOMMEE : la regle ne vaut QUE pour les
+            #    grandeurs LHM. Les autres gardent l'ecretage historique de `_dx()`.
+            #    La question generale est AU LEDGER, ⛔ pas tranchee ici.
+            if v is not None and v < 0:
+                self.absences[cle + ":negatif"] = \
+                    self.absences.get(cle + ":negatif", 0) + 1
+                v = None
+            elif v is None:
+                self.absences[cle] = self.absences.get(cle, 0) + 1
+            vues[cle] = v
+
+        self.reponses += 1
+        if self._echecs_suite:
+            print("[agent] ✅ source `lhm` a REPRIS apres %d echec(s) consecutif(s) "
+                  "— la connexion persistante s'est retablie SANS redemarrer "
+                  "l'agent." % self._echecs_suite, file=sys.stderr)
+            self._echecs_suite = 0
+        return vues
+
+    def extraction_moyenne(self, vues):
+        """La moyenne des DEUX canaux d'extraction — et elle **exige les deux**.
+
+        🔴 UNE MOYENNE CALCULEE SUR UN SEUL CANAL EST UN AUTRE NOMBRE SOUS LA
+           MEME ETIQUETTE. C'est la famille exacte du « 34,3 Go » contre « 31,9 » :
+           « le pire genre de mensonge, celui qui a l'air d'un arrondi ».
+           ⇒ Un canal manquant ⇒ `None` ⇒ champ VIDE. ⛔ Jamais l'autre canal seul.
+        ⚠️ LE COUT EST REEL ET NOMME : la grandeur derivee est PLUS FRAGILE que
+           ses composantes. Le cas se compte sur SON propre compteur, parce que
+           le fil, lui, ne peut pas distinguer « les deux absents » de « un seul ».
+        ⚠️ « MOYENNE ENTRANT/SORTANT » ETAIT LA DEMANDE OWNER, ET LA MESURE L'A
+           AMENDEE : **il n'existe AUCUN flux entrant mesurable** — le 200 mm de
+           facade n'a pas de tachy (0 RPM dans le BIOS aussi) et le ventilateur du
+           bas est CHAINE avec un extracteur sur un seul tachy. Une « moyenne
+           entrante » serait calculee sur RIEN. ⇒ Seule la SORTANTE existe.
+        """
+        a = vues.get("fan.top_out")
+        b = vues.get("fan.rear_out")
+        if a is None and b is None:
+            return None
+        if a is None or b is None:
+            self.absences["extraction_moy:un_seul_canal"] = \
+                self.absences.get("extraction_moy:un_seul_canal", 0) + 1
+            return None
+        return (a + b) / 2.0
+
+    def reamorcer(self):
+        """Apres un recalage de cadence : la connexion est JETEE, pas reutilisee.
+
+        ⚠️ `reamorcer()` n'est appelee qu'apres une SORTIE DE VEILLE, une
+           reconnexion ou un blocage d'envoi — precisement les instants ou une
+           socket TCP ouverte depuis des minutes est morte sans le dire. La
+           refermer ici fait payer la reconnexion AU TOUR SUIVANT, ⛔ pas un
+           timeout de 0,4 s au milieu du premier cycle d'apres-veille.
+        """
+        self._fermer_connexion()
+
+    def fermer(self):
+        self._fermer_connexion()
+
+
+# ═════════════════════════════════════════════════════════════════════════════
 # LE COLLECTEUR — CINQ MÉTRIQUES, UNE PHOTO PAR SECONDE
 # ═════════════════════════════════════════════════════════════════════════════
 
@@ -507,7 +916,8 @@ class Collecteur:
        recalage de cadence ou un hoquet d'ordonnanceur fausserait le débit.
     """
 
-    def __init__(self, verbeux=True):
+    def __init__(self, verbeux=True, lhm_hote=LHM_HOTE, lhm_port=LHM_PORT,
+                 lhm_timeout_s=LHM_TIMEOUT_S):
         self.ecretages = {}
         self.gpu = None
         self.gpu_motif = None
@@ -544,6 +954,18 @@ class Collecteur:
         # Pannes de source, comptées ET nommées. ⛔ Isoler une source sans
         # compter ses échecs remplacerait une mort bruyante par un silence.
         self.pannes = {}
+        # 🔴 dn4-8 / D13 : LA SOURCE LHM N'EST **JAMAIS** MISE À `None`, ⛔ et c'est
+        #    une divergence DÉLIBÉRÉE d'avec `SourceGpuAdl` ci-dessus. ADL est une
+        #    DLL : absente au démarrage, absente à la fin — la désactiver est
+        #    correct. LHM est un SERVICE : il peut monter APRÈS l'agent, ou être
+        #    arrêté puis relancé, et AC8 scénario 3 exige la reprise **sans
+        #    redémarrer l'agent**. ⇒ le constructeur est non fatal ET non
+        #    condamnatoire ; l'échec est un ÉTAT que chaque cycle retente.
+        # ⚠️ Le bilan ne peut donc pas tester `self.lhm is None` : il teste
+        #    `self.lhm.reponses == 0`, qui est le fait réel (« LHM n'a JAMAIS
+        #    répondu de toute la session »).
+        self.lhm = SourceLhm(hote=lhm_hote, port=lhm_port,
+                             timeout_s=lhm_timeout_s, verbeux=verbeux)
         psutil.cpu_percent(interval=None)  # amorçage : le 1er appel vaut 0.0
         # 🔴 ET `percpu=True` A SON PROPRE ÉTAT INTERNE — CORRECTIF DE REVUE DU
         #    2026-08-19. `psutil` garde DEUX derniers relevés séparés
@@ -603,6 +1025,16 @@ class Collecteur:
         _sur("cpu.percpu", lambda: psutil.cpu_percent(interval=None, percpu=True))
         self._d0 = _sur("disk", psutil.disk_io_counters)
         self._n0 = _sur("net", psutil.net_io_counters)
+        # 🔴 dn4-8 : LA CONNEXION LHM EST JETÉE ICI, **PAR `_sur()`** comme les
+        #    autres. Motif structurel, le même que celui écrit juste au-dessus :
+        #    `reamorcer()` n'est appelée qu'après une SORTIE DE VEILLE, une
+        #    reconnexion ou un blocage d'envoi — précisément les instants où une
+        #    socket TCP ouverte depuis des minutes est morte SANS LE DIRE. La
+        #    refermer ici fait payer la reconnexion au tour suivant, ⛔ pas un
+        #    timeout de 0,4 s au milieu du premier cycle d'après-veille.
+        # ⚠️ `_sur()` et pas un appel nu : ce chemin est le SEUL où une exception
+        #    tuerait l'agent ENTIER (la boucle ne rattrape que `KeyboardInterrupt`).
+        _sur("lhm", self.lhm.reamorcer)
         self._t0 = time.monotonic()
         self._nt0 = self._t0
         self._dt0 = self._t0
@@ -676,6 +1108,22 @@ class Collecteur:
            « PC éteint, une seule case sur six est vivante » ne se voit plus si
            les cinq meurent d'un coup pour une raison qui n'est pas le PC éteint.
         """
+        # 🔴 LA LECTURE LHM EST LA PREMIÈRE, ET ELLE EST **AVANT** `t = monotonic()`.
+        #    ⛔ CE N'EST PAS COSMÉTIQUE — C'EST CE QUI EMPÊCHE UN DÉBIT FAUX.
+        #    `net` et `disk` sont des DELTAS de compteurs cumulés divisés par
+        #    `t_now - t_prev`. Si la lecture LHM se plaçait ENTRE `t` et les
+        #    lectures `psutil`, sa latence entrerait dans la fenêtre **à une seule
+        #    extrémité** : un tir à 400 ms (le timeout) sur un cycle nominal à
+        #    16 ms rendrait un Δt sous-estimé de 0,38 s, donc **un débit disque
+        #    surestimé de ~38 %** — un chiffre FRAIS ET FAUX, la famille exacte que
+        #    la resynchronisation de dn2-2 existe pour empêcher.
+        # ✅ PLACÉE AVANT `t`, sa latence est hors fenêtre DES DEUX CÔTÉS (elle
+        #    décale `t` et les compteurs du même montant) et s'annule.
+        # ⚠️ `_tenter` : un LHM injoignable est une panne COMPTÉE ET NOMMÉE, une
+        #    seule fois par type. ⛔ Et elle n'emporte AUCUNE autre grandeur : les
+        #    valeurs LHM sont toutes en positions INTERNES.
+        lhm = self._tenter("lhm", self.lhm.lire)
+
         t = time.monotonic()
         e = self.ecretages
         out = []
@@ -732,12 +1180,24 @@ class Collecteur:
                                   lambda: psutil.cpu_percent(interval=None,
                                                              percpu=True))
             cmax = max(percpu) if percpu else None
+            # 🔴 dn4-8 / D13 : LA °C CPU, EN INDEX **3**. ⛔ Pas en index 2 —
+            #    l'ordre du fil ne bouge pas, sinon le `c.max` d'un agent v3 non
+            #    modifié s'afficherait comme une température sans qu'aucun
+            #    compteur ne bronche (motif complet dans `k_metriques[]`).
+            # ⚠️ `lhm` peut valoir `None` (LHM injoignable, panne déjà comptée) ou
+            #    porter `None` pour cette sonde (LHM répond et dit qu'il n'a pas
+            #    la valeur). LES DEUX donnent le MÊME champ vide sur le fil, et
+            #    c'est voulu : le fil n'a pas de jeton « inconnu ». La DIFFÉRENCE,
+            #    elle, se lit au bilan — `pannes` d'un côté, `absences` de l'autre.
+            degc = lhm.get("cpu.degc") if lhm else None
             out.append(("cpu", [
                 _dx(pct, BORNES["cpu"][0], e, "cpu.pct"),
                 _borner(ghz_dx, BORNES["cpu"][1], e, "cpu.ghz")
                 if ghz_dx is not None else None,
                 _dx(cmax, BORNES["cpu"][2], e, "cpu.cmax")
                 if cmax is not None else None,
+                _dx(degc, BORNES["cpu"][3], e, "cpu.degc")
+                if degc is not None else None,
             ]))
 
         # ── gpu : % + °C, et l'absence de °C est une DONNÉE (W10) ────────────
@@ -835,7 +1295,28 @@ class Collecteur:
             else:
                 mo_s = ((d1.read_bytes - self._d0.read_bytes) +
                         (d1.write_bytes - self._d0.write_bytes)) / 1e6 / dtd
-                out.append(("disk", [_dx(mo_s, BORNES["disk"][0], e, "disk")]))
+                # 🔴 dn4-8 / D13 : TROIS `tr/min` S'AJOUTENT, EN POSITIONS
+                #    INTERNES. Le `Mo/s` GARDE la position 0 parce qu'il est la
+                #    seule grandeur de cette métrique qui SURVIT à l'arrêt de LHM :
+                #    une valeur principale absente fait que la métrique n'est PAS
+                #    émise, donc un ventilateur en position 0 ferait disparaître le
+                #    débit disque avec les ventilateurs.
+                # ⚠️ CE QUI TOMBE DE D13 §4.4, ET IL FAUT L'ÉCRIRE : la séparation
+                #    LECTURE / ÉCRITURE. D13 demandait SIX grandeurs sur `disk`,
+                #    `DN_LINK_GRANDEURS_MAX` en donne QUATRE. ⇒ réduction de
+                #    périmètre portée à l'owner et au ledger, ⛔ pas un rognage.
+                extr = self.lhm.extraction_moyenne(lhm) if lhm else None
+                noctua = lhm.get("fan.cpu_noctua") if lhm else None
+                boitier = lhm.get("fan.case_group") if lhm else None
+                out.append(("disk", [
+                    _dx(mo_s, BORNES["disk"][0], e, "disk"),
+                    _dx(extr, BORNES["disk"][1], e, "disk.extraction")
+                    if extr is not None else None,
+                    _dx(noctua, BORNES["disk"][2], e, "disk.cpu_noctua")
+                    if noctua is not None else None,
+                    _dx(boitier, BORNES["disk"][3], e, "disk.case_group")
+                    if boitier is not None else None,
+                ]))
             self._d0, self._dt0 = d1, t
 
         self._t0 = t
@@ -844,6 +1325,11 @@ class Collecteur:
     def fermer(self):
         if self.gpu is not None:
             self.gpu.fermer()
+        # ⚠️ La source LHM n'est jamais `None` (voir `__init__`) : elle porte une
+        #    CONNEXION, et une socket non fermée survivrait au processus le temps
+        #    du TIME_WAIT. ⛔ Un `fermer()` incomplet est la moitié du patron.
+        if self.lhm is not None:
+            self.lhm.fermer()
 
 
 class LiaisonEnAttente(IOError):
@@ -1113,6 +1599,14 @@ def principal() -> int:
     sortie_grp.add_argument("--ws", metavar="URL", help="branche B : URL WebSocket (ex. ws://IP:80/dn)")
     ap.add_argument("--temoin", action="store_true",
                     help="coût CPU de l'agent lui-même sur stderr toutes les 10 s")
+    ap.add_argument("--lhm", metavar="HOTE:PORT", default=None,
+                    help="ou joindre LibreHardwareMonitor (defaut 127.0.0.1:8085). "
+                         "⚠️ EXERCE les chemins d'echec ; ⛔ ne remplace PAS AC8, "
+                         "qui exige le VRAI service coupe")
+    ap.add_argument("--lhm-timeout", type=float, default=LHM_TIMEOUT_S,
+                    metavar="S", help="timeout de lecture LHM en secondes "
+                                      "(defaut %.2f, motif chiffre dans le code)"
+                                      % LHM_TIMEOUT_S)
     ap.add_argument("--duree", type=int, default=0, metavar="S",
                     help="s'arrête PROPREMENT après S secondes (0 = infini) — "
                          "c'est le témoin « arrêt propre » d'AC7")
@@ -1144,7 +1638,20 @@ def principal() -> int:
 
     # Amorçage deux-temps (le 1er cpu_percent vaut 0.0) + ouverture de la source
     # GPU. ⚠️ NON FATALE : sans GPU, les quatre autres métriques vivent.
-    collecteur = Collecteur()
+    # ⚠️ `--lhm` est un point d'ENTREE d'exercice, ⛔ pas une option de confort :
+    #    sans lui, eprouver « lecture lente » ou « service muet » exigerait de
+    #    couper le VRAI LHM de la tour, donc un geste owner, pour un chemin de
+    #    code. ⛔ Il ne dispense de RIEN : AC8 se joue sur le vrai service.
+    lhm_hote, lhm_port = LHM_HOTE, LHM_PORT
+    if args.lhm:
+        bout = args.lhm.rsplit(":", 1)
+        lhm_hote = bout[0] or LHM_HOTE
+        if len(bout) == 2:
+            lhm_port = int(bout[1])
+        print("[agent] ⚠️ LHM pointe sur %s:%d par --lhm — ⛔ ce n'est PAS la "
+              "configuration de regime." % (lhm_hote, lhm_port), file=sys.stderr)
+    collecteur = Collecteur(lhm_hote=lhm_hote, lhm_port=lhm_port,
+                            lhm_timeout_s=args.lhm_timeout)
 
     depart = time.monotonic()
     seq = 0
@@ -1330,6 +1837,44 @@ def _bilan(sortie, depart: float, seq: int, erreurs_envoi: int, rattrapages: int
             print(f"[agent] ⚠️ source GPU restee INDISPONIBLE toute la session "
                   f"({collecteur.gpu_motif}) — aucune trame `gpu` emise",
                   file=sys.stderr)
+        # ── LHM (dn4-8) ──────────────────────────────────────────────────────
+        # 🔴 TROIS FAITS DISTINCTS, TROIS LIGNES — ⛔ jamais fondus en une.
+        #    « LHM n'a pas repondu » (panne), « LHM a repondu sans cette valeur »
+        #    (absence, W10) et « la lecture a coute X » sont trois diagnostics qui
+        #    envoient chercher a trois endroits differents. Les confondre est le
+        #    defaut « tronquee / trop longue » que le firmware a du dedoubler.
+        lhm = getattr(collecteur, "lhm", None)
+        if lhm is not None:
+            if lhm.duree_n:
+                moy = lhm.duree_somme / lhm.duree_n * 1000.0
+                print(f"[agent] LHM : {lhm.reponses} lecture(s) reussie(s), "
+                      f"{lhm.echecs} en echec — duree moyenne {moy:.1f} ms, "
+                      f"MAX {lhm.duree_max * 1000.0:.1f} ms "
+                      f"(timeout pose : {lhm.timeout_s * 1000.0:.0f} ms)",
+                      file=sys.stderr)
+                # ⛔ UN MAX AU RAS DU TIMEOUT NE SORT PAS EN SILENCE : c'est le
+                #    signe que la lecture a ete COUPEE, pas qu'elle a fini.
+                if lhm.duree_max >= lhm.timeout_s * 0.9:
+                    print(f"[agent] 🔴 la lecture LHM la plus longue "
+                          f"({lhm.duree_max * 1000.0:.0f} ms) atteint 90 % du "
+                          f"timeout — le plafond a probablement COUPE une lecture. "
+                          f"⚠️ Le dimensionnement du timeout est a revoir, ⛔ pas a "
+                          f"supposer suffisant.", file=sys.stderr)
+            if lhm.reponses == 0:
+                print(f"[agent] ⚠️ LHM est reste INJOIGNABLE toute la session "
+                      f"({lhm.motif}) — la °C CPU et les tr/min n'ont JAMAIS ete "
+                      f"publies. ⛔ Ce n'est pas « zero », c'est « inconnu » : le "
+                      f"fil porte un champ VIDE et la carte affiche « -- ».",
+                      file=sys.stderr)
+            if lhm.absences:
+                détail = " · ".join(f"{k}={v}" for k, v in
+                                    sorted(lhm.absences.items()))
+                print(f"[agent] ⚠️ ABSENCES LHM (LHM a REPONDU, sans cette "
+                      f"valeur — champ VIDE sur le fil, ⛔ PAS une panne) : "
+                      f"{détail}", file=sys.stderr)
+            elif lhm.reponses:
+                print("[agent] aucune absence LHM : les cinq sondes ont rendu une "
+                      "valeur a chaque lecture reussie", file=sys.stderr)
 
 
 if __name__ == "__main__":
