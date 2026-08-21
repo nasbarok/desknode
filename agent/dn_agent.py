@@ -189,9 +189,18 @@ import time
 # 🔴 dn4-8 / AC6 : DEUX MODULES DE LA **STDLIB**, ⛔ AUCUNE DEPENDANCE NOUVELLE.
 #    `http.client` (⛔ pas `requests`) parce qu'il expose la CONNEXION, donc le
 #    keep-alive — et l'A/B d'AC2 a montre que **l'ouverture de connexion TCP
-#    dominait le cout** : les trois candidats echouent le seuil C1 en connexion
-#    neuve (2,98 / 3,52 / 4,77 ms) et passent LES QUATRE seuils en keep-alive
-#    (1,84 / 2,19 / 1,13 ms). `urllib.request` ne garde pas la connexion.
+#    dominait le cout**.
+# 🔴 CHIFFRES REPRIS DE **LA CAMPAGNE 3**, LES DEUX COLONNES, ⛔ PLUS COUSUS.
+#    Corrige en revue (dn4-8, 2026-08-21) : ce texte citait le keep-alive de la
+#    campagne 3 (1,844 / 2,188 / 1,125) a cote d'un « neuve » pris dans la
+#    campagne **2** (2,984 / 3,516 / 4,766) — deux tirs differents presentes comme
+#    UN A/B. ⛔ L'A/B cite n'a jamais produit ces nombres-la ensemble, et c'est
+#    exactement le « a service rendu egal » que ce depot exige ailleurs.
+#      · connexion NEUVE     3,27 / 3,39 / 4,13 ms  -> C1 (3,0 ms) DEPASSE
+#      · keep-alive          1,84 / 2,19 / 1,13 ms  -> LES QUATRE seuils passes
+#    (ordre : /data.json · /metrics · /Sensor. Campagne 2, tout-neuf, avait rendu
+#     2,98 / 3,52 / 4,77 — meme conclusion, autre tir : ⛔ ne pas melanger.)
+#    `urllib.request` ne garde pas la connexion.
 import http.client
 import re
 
@@ -575,6 +584,12 @@ LHM_CHEMIN = "/metrics"
 #       controle est REJOUE a 0,60 s — voir la seance.
 LHM_TIMEOUT_S = 0.6
 
+# ⚠️ PLAFOND DE TAILLE DU CORPS `/metrics`. La capture reelle du 2026-08-21 fait
+#    75,1 Ko (253 lignes `lhm_`) ; 8 Mo laissent deux ordres de grandeur de marge
+#    et bornent le cas « flux sans fin » que le timeout NE PEUT PAS voir (chaque
+#    morceau arrivant a l'heure, aucune attente ne depasse jamais le budget).
+LHM_CORPS_MAX = 8 * 1024 * 1024
+
 # ── LA TABLE DES SONDES — UNE CONFIGURATION DE *CETTE* TOUR ─────────────────
 # 🔴 DECISION OWNER DU 2026-08-21, VERBATIM : « on code comme ca de facon a plus
 #    tard ajouter des menus de personnalisation et aussi changer les liens si
@@ -594,22 +609,25 @@ LHM_TIMEOUT_S = 0.6
 #    ne le dit pas. ⇒ A ECRIRE POUR dn4-9, qui doit « nommer chaque ventilateur ».
 # ⚠️ `CASE_GROUP` = UN tachymetre pour DEUX ventilateurs CHAINES. Si celui du bas
 #    s'arrete, RIEN NE LE DIRA. ⛔ Ne pas le rebaptiser « TOP » ni « BOTTOM ».
+# 🎯 4e COLONNE = LA FAMILLE `/metrics` ATTENDUE, ajoutee en revue (2026-08-21).
+#    C'est elle qui porte l'UNITE. Sans elle, la raison d'avoir choisi `/metrics`
+#    contre `/data.json` restait une intention ecrite, ⛔ jamais un controle.
 LHM_SONDES = (
-    # (cle interne, identifiant LHM complet, PROVENANCE)
-    ("cpu.degc", "/intelcpu/0/temperature/10",
+    # (cle interne, identifiant LHM complet, FAMILLE attendue, PROVENANCE)
+    ("cpu.degc", "/intelcpu/0/temperature/10", "lhm_cpu_temperature_celsius",
      "MESURE (LHM 0.9.6, 2026-08-21) — « CPU Package », 41,0 degC ; recoupee par un "
      "chemin INDEPENDANT, le Super I/O /lpc/nct6792d/0/temperature/0 a 40,5 degC "
      "(1,2 %). ⚠️ instantane n=1 : conforte le mapping, ⛔ ne qualifie pas le mouvement"),
-    ("fan.top_out", "/lpc/nct6792d/0/fan/0",
+    ("fan.top_out", "/lpc/nct6792d/0/fan/0", "lhm_motherboard_fan_rpm",
      "MESURE (jointure BIOS<->LHM par RPM, 2026-08-21) — en-tete CPU_FAN2, "
      "extraction HAUTE. ⚠️ l'ordre naif en faisait CPU_FAN1 : REFUTE"),
-    ("fan.cpu_noctua", "/lpc/nct6792d/0/fan/1",
+    ("fan.cpu_noctua", "/lpc/nct6792d/0/fan/1", "lhm_motherboard_fan_rpm",
      "MESURE (jointure BIOS<->LHM par RPM, 2026-08-21) — en-tete CPU_FAN1, "
      "ventirad Noctua bi-ventilateur (repos 305, plafond 1112)"),
-    ("fan.case_group", "/lpc/nct6792d/0/fan/2",
+    ("fan.case_group", "/lpc/nct6792d/0/fan/2", "lhm_motherboard_fan_rpm",
      "MESURE (jointure BIOS<->LHM par RPM, 2026-08-21) — en-tete SYS_FAN1, DEUX "
      "ventilateurs chaines sur UN tachy"),
-    ("fan.rear_out", "/lpc/nct6792d/0/fan/4",
+    ("fan.rear_out", "/lpc/nct6792d/0/fan/4", "lhm_motherboard_fan_rpm",
      "MESURE (jointure BIOS<->LHM par RPM, 2026-08-21) — en-tete SYS_FAN3, "
      "140 mm arriere, extraction"),
 )
@@ -623,8 +641,17 @@ LHM_SONDES = (
 #    SE VOIT. Dans `/data.json` elle vit dans la chaine (« 43,0 °C ») : un parseur
 #    qui retire le suffixe accepterait « 110,0 °F » sans broncher. ⚠️ Ce depot a
 #    deja paye cette classe de defaut — le « 34,3 Go » contre « 31,9 » de dn4-1.
+# 🔴 DEFAUT TROUVE EN REVUE (code review dn4-8, 2026-08-21) : LA PROPRIETE
+#    CI-DESSUS N'ETAIT PAS CODEE. La regex s'ecrivait `^lhm_\S+` — elle MATCHAIT
+#    le nom de famille et LE JETAIT, la cle etant `hardwareId + sensorId` seuls.
+#    Donc `lhm_cpu_temperature_fahrenheit` atterrissait dans la case °C sans que
+#    rien ne bronche : EXACTEMENT le defaut pour lequel `/data.json` a ete
+#    elimine, et pour lequel toute la campagne d'AC2 a ete payee.
+# ⇒ LA FAMILLE EST CAPTUREE (groupe 1) ET VERIFIEE contre celle que la sonde
+#   ATTEND (4e colonne de `LHM_SONDES`). Un renommage d'unite se voit MAINTENANT.
 _LHM_LIGNE = re.compile(
-    r'^lhm_\S+\s+\{.*?"sensorId"="([^"]*)".*?"hardwareId"="([^"]*)".*?\}\s+(\S+)\s*$')
+    r'^(lhm_\S+)\s+\{.*?"sensorId"="([^"]*)".*?"hardwareId"="([^"]*)".*?\}'
+    r'\s+(\S+)\s*$')
 
 
 def _fini(x):
@@ -672,6 +699,47 @@ class SourceLhm:
        `float | None` par sonde, et **`None` EST UNE DONNEE**, ⛔ pas une panne.
     ⚠️ Ce point a coute un defaut d'instrument en AC2 : le harnais comptait
        « capteur sans valeur » en ECHEC, ce qui CONTREDISAIT son propre critere.
+
+    ───────────────────────────────────────────────────────────────────────────
+    🔴 AC3 — GARDE DE COHERENCE PAR TIR : **DECISION, ET ELLE EST « OUI »**
+    ───────────────────────────────────────────────────────────────────────────
+    AC3 exigeait litteralement de *« decider si une garde equivalente est due
+    ici, et d'ECRIRE LE MOTIF DANS LES DEUX CAS »*. La revue du 2026-08-21 a
+    constate que la phrase n'apparaissait QU'UNE FOIS dans tout le depot : dans
+    l'AC lui-meme. AC3 etait donc marque solde sans que sa derniere exigence ait
+    ete honoree. 🔴 **AC3 A ETE ROUVERT PAR L'OWNER LE 2026-08-21.** Voici le
+    motif, qui manquait.
+
+    LE RISQUE EST REEL ET IL EST NOMME. `SourceGpuAdl` rejoue `_coherent()` a
+    CHAQUE tir parce que ses indices PMLog peuvent glisser d'un pilote a l'autre :
+    un decalage y publierait une tension comme une temperature. La question se
+    pose ICI AUSSI, et meme plus fort — c'est CETTE story qui a prouve que
+    l'ordre naif des canaux `/lpc/nct6792d/0/fan/N` etait FAUX sur les deux
+    premiers (`fan/0` = `CPU_FAN2`, ⛔ pas `CPU_FAN1`).
+
+    ⚠️ MAIS LE MECANISME DE DERIVE N'EST PAS LE MEME, ET C'EST CE QUI DECIDE :
+      · ADL adresse par **INDICE NUMERIQUE** dans une structure binaire. Un
+        indice qui glisse ne se voit PAS — d'ou le temoin de plage.
+      · LHM adresse par **CHAINE COMPLETE** (`hardwareId + sensorId`). Un capteur
+        qui disparait ou se renomme ne rend pas une AUTRE valeur : il ne rend
+        RIEN, et l'absence est deja COMPTEE ET NOMMEE, par sonde.
+    ⇒ La permutation silencieuse d'ADL n'a pas d'equivalent ici : pour qu'un
+      `fan/2` devienne le tachy d'un autre ventilateur, il faudrait que l'owner
+      RECABLE la tour. Ce n'est pas une derive logicielle, et aucune garde
+      logicielle ne l'attraperait.
+
+    🎯 CE QUI EST DONC POSE A LA PLACE, ET QUI COUVRE LE VRAI RISQUE : la
+       verification de **FAMILLE** (4e colonne de `LHM_SONDES`, voir `_LHM_LIGNE`).
+       Elle attrape ce qui, ici, PEUT effectivement changer sous nos pieds sans
+       prevenir : **l'UNITE**. Un `..._celsius` devenu `..._fahrenheit`, un
+       `..._rpm` devenu `..._percent` — meme identifiant, meme forme, autre
+       grandeur. C'est l'exact analogue de « publier une tension comme une
+       temperature », et c'est la seule forme que la derive prend sur `/metrics`.
+    ⛔ UNE GARDE DE PLAGE SUR LES RPM EST EXPLICITEMENT REFUSEE, avec motif :
+       les valeurs legales vont de 0 (fan-stop, une VRAIE valeur) au plafond, sans
+       trou. Une plage n'y separe rien — elle ne ferait qu'epingler VERT en
+       donnant l'illusion d'un controle. Ce depot a deja paye les gardes
+       decoratives.
     """
 
     def __init__(self, hote=LHM_HOTE, port=LHM_PORT, timeout_s=LHM_TIMEOUT_S,
@@ -690,6 +758,13 @@ class SourceLhm:
         #    CONTRAIRES (« LHM ne repond pas » / « LHM repond et dit qu'il n'a pas
         #    cette valeur ») envoient chercher a deux endroits differents.
         self.absences = {}
+        # 🔴 AJOUTES EN REVUE (2026-08-21) : un desaccord de FORMAT n'est ni une
+        #    panne ni une absence de capteur — c'est un TROISIEME etat, et sans
+        #    compteur il se deguisait en second.
+        self.lignes_lues = 0
+        self.lignes_illisibles = 0
+        self._illisibles_dit = False
+        self._familles_dites = set()
         self.duree_n = 0
         self.duree_somme = 0.0
         self.duree_max = 0.0
@@ -750,6 +825,32 @@ class SourceLhm:
         #    IMMÉDIATEMENT — il reste alors presque tout le budget. Un serveur
         #    trop LENT, lui, ne le sera pas moins au second essai : ⛔ ne pas le
         #    retenter est le comportement correct, pas une perte.
+        # 🔴 DEUX DEFAUTS TROUVES EN REVUE (code review dn4-8, 2026-08-21), ET LE
+        #    COMMENTAIRE CI-DESSUS AFFIRMAIT DEJA LE CONTRAIRE DU CODE :
+        #
+        #    (1) LE BUDGET N'EN ETAIT PAS UN. `reste` n'etait verifie QU'ENTRE les
+        #        deux tentatives ; a l'interieur d'une tentative, le timeout du
+        #        socket est un delai PAR `recv`, pas pour la lecture. Un serveur
+        #        qui sert le corps au GOUTTE-A-GOUTTE (75 Ko, 253 lignes `lhm_`)
+        #        remettait donc le chrono a zero a chaque paquet et courait SANS
+        #        BORNE. Le correctif de 802 ms n'avait ferme que la dimension
+        #        « deux tentatives », ⛔ pas celle-la.
+        #        ⇒ consequence : depassement d'UNE PERIODE ENTIERE, donc recalage
+        #          de cadence, donc echantillon JETE et les cinq metriques
+        #          re-amorcees — « le mecanisme le plus dangereux de cette story ».
+        #
+        #    (2) LE KEEP-ALIVE HERITAIT DU RELIQUAT. La connexion etait creee avec
+        #        `timeout=reste` A L'INTERIEUR de la boucle : si la 1re tentative
+        #        brulait le budget, la connexion RETENUE gardait quelques
+        #        millisecondes de timeout POUR TOUS LES CYCLES SUIVANTS, et rien
+        #        ne restaurait jamais `timeout_s`. Le scenario « lent » du harnais
+        #        ne pouvait pas le voir : les deux tentatives y echouent, donc
+        #        aucune connexion n'est conservee.
+        #
+        # ⇒ LE PLAFOND EST MAINTENANT APPLIQUE AVANT CHAQUE OPERATION BLOQUANTE,
+        #   avec le RESTE du budget — donc la lecture entiere est bornee par `fin`,
+        #   quel que soit le nombre de morceaux. Et la connexion nait TOUJOURS avec
+        #   `timeout_s`, jamais avec un reliquat.
         fin = time.perf_counter() + self.timeout_s
         for dernier in (False, True):
             reste = fin - time.perf_counter()
@@ -760,11 +861,12 @@ class SourceLhm:
             try:
                 if self._c is None:
                     self._c = http.client.HTTPConnection(
-                        self.hote, self.port, timeout=reste)
+                        self.hote, self.port, timeout=min(reste, self.timeout_s))
                 self._c.request("GET", LHM_CHEMIN,
                                 headers={"Connection": "keep-alive"})
+                self._borner_socket(fin)
                 rep = self._c.getresponse()
-                corps = rep.read()
+                corps = self._lire_corps(rep, fin)
                 if rep.status != 200:
                     raise IOError("HTTP %d sur %s" % (rep.status, LHM_CHEMIN))
                 if rep.will_close:
@@ -775,6 +877,53 @@ class SourceLhm:
                 if dernier:
                     raise
 
+    def _borner_socket(self, fin):
+        """Pose sur le socket le RESTE du budget. ⛔ Jamais `timeout_s` entier."""
+        reste = fin - time.perf_counter()
+        if reste <= 0.0:
+            raise TimeoutError("budget de lecture LHM epuise (%.0f ms)"
+                               % (self.timeout_s * 1000.0))
+        s = getattr(self._c, "sock", None)
+        if s is not None:
+            s.settimeout(reste)
+
+    def _lire_corps(self, rep, fin):
+        """Draine le corps PAR MORCEAUX, chaque attente bornee par le reste.
+
+        🔴 C'est ce qui transforme le plafond en BUDGET : `reste` decroit a
+           chaque tour, donc un serveur qui sert un octet a la fois ne peut pas
+           faire durer la lecture au-dela de `fin`. ⛔ Un `rep.read()` nu ne le
+           garantit pas — il fait N `recv`, chacun avec le plafond ENTIER.
+        ⚠️ Le corps est aussi BORNE EN TAILLE : `--lhm` laisse pointer l'agent sur
+           n'importe quel hote, et un flux sans fin remplirait la memoire sans
+           qu'aucun timeout ne se declenche (chaque morceau arrive a l'heure).
+        """
+        # 🔴 `read1`, ⛔ PAS `read` — ET C'EST LA MESURE QUI L'A IMPOSE. Avec
+        #    `rep.read(65536)`, le `BufferedReader` sous-jacent BOUCLE jusqu'a
+        #    remplir les 65536 octets : une seule iteration enchaine donc des
+        #    dizaines de `recv`, chacun avec le timeout pose AVANT la boucle, et
+        #    le plafond ne se represente qu'a l'iteration SUIVANTE.
+        #    Mesure au stub `--mode goutte --retard 0.05` (75 Ko en 40 morceaux) :
+        #    **1,71 s pour un budget de 0,60 s.** Borne, mais pas au budget.
+        # ✅ `read1(n)` rend ce qu'UN seul `recv` a donne, sans boucler : le
+        #    plafond est donc represente entre CHAQUE morceau, et la lecture
+        #    entiere est reellement bornee par `fin`.
+        # ⚠️ Repli sur `read` si `read1` manque : ⛔ on ne casse pas la lecture, mais
+        #    la borne redevient « au morceau pres » — et c'est ECRIT, pas tu.
+        lire_un = getattr(rep, "read1", None) or rep.read
+        morceaux, total = [], 0
+        while True:
+            self._borner_socket(fin)
+            bout = lire_un(65536)
+            if not bout:
+                break
+            total += len(bout)
+            morceaux.append(bout)
+            if total > LHM_CORPS_MAX:
+                raise IOError("corps /metrics au-dela de %d o — \u26d4 tronque, "
+                              "⛔ pas interprete" % LHM_CORPS_MAX)
+        return b"".join(morceaux)
+
     def lire(self):
         """Rend `{cle: float | None}` — UNE entree par sonde, TOUJOURS.
 
@@ -783,7 +932,21 @@ class SourceLhm:
         ⚠️ Rendre `None` pour une sonde n'est PAS lever : LHM a repondu et a dit
            qu'il n'avait pas cette valeur. Les deux se comptent SEPAREMENT.
         """
+        # 🔴 LE CHRONO COUVRE LA LECTURE **ET** LE PARSE (revue dn4-8, 2026-08-21).
+        #    Il ne couvrait que `_get()` : la passe regex sur 253 lignes / 75 Ko
+        #    tombait APRES le `finally`. Or `duree_moyenne`/`duree_max` sont
+        #    exactement ce qui justifie le dimensionnement a 0,60 s et les « 0,40 s
+        #    laisses aux cinq autres postes ». Sur une tour mieux equipee, le parse
+        #    grossit — et il etait invisible AU TIMEOUT COMME AU BILAN.
+        # ⚠️ Le budget de `_get()`, lui, reste celui du RESEAU : on ne coupe pas un
+        #    parse en cours. Ce qui change, c'est qu'on ne PRETEND plus l'ignorer.
         t0 = time.perf_counter()
+        try:
+            return self._lire(t0)
+        finally:
+            self._chrono(time.perf_counter() - t0)
+
+    def _lire(self, _t0):
         try:
             txt = self._get()
         except Exception as exc:
@@ -791,27 +954,69 @@ class SourceLhm:
             self._echecs_suite += 1
             self.motif = "%s: %s" % (type(exc).__name__, exc)
             raise
-        finally:
-            self._chrono(time.perf_counter() - t0)
 
+        # 🔴 LES LIGNES `lhm_` ILLISIBLES SONT COMPTEES, ⛔ PLUS JETEES EN SILENCE.
+        #    Defaut trouve en revue (2026-08-21) : `if not m: continue` sans
+        #    compteur. Une derive de format — ordre des labels inverse (Prometheus
+        #    ne le contractualise PAS), absence d'espace avant `{`, virgule
+        #    decimale — faisait echouer TOUTES les lignes, donc `table` vide, donc
+        #    les cinq sondes a `None`. Le bilan imprimait alors « ABSENCES LHM (LHM
+        #    a REPONDU, sans cette valeur — ⛔ PAS une panne) » et envoyait
+        #    l'operateur inspecter SES CAPTEURS alors que le fautif est LE PARSEUR.
+        # ⚠️ « Deux diagnostics CONTRAIRES qui envoient chercher a deux endroits
+        #    differents » — c'est la classe que ce depot a deja payee.
         table = {}
+        lues = illisibles = 0
         for ligne in txt.splitlines():
             if not ligne.startswith("lhm_"):
                 continue
+            lues += 1
             m = _LHM_LIGNE.match(ligne)
             if not m:
+                illisibles += 1
                 continue
             try:
-                v = float(m.group(3))
+                v = float(m.group(4))
             except ValueError:
+                illisibles += 1
                 continue
             if not _fini(v):
+                illisibles += 1
                 continue
-            table[m.group(2) + m.group(1)] = v
+            # ⚠️ On garde la FAMILLE a cote de la valeur : c'est elle qui porte
+            #    l'unite, et c'est elle qu'on va confronter a l'attendu.
+            table[m.group(3) + m.group(2)] = (m.group(1), v)
+        self.lignes_lues += lues
+        self.lignes_illisibles += illisibles
+        if illisibles and not self._illisibles_dit:
+            self._illisibles_dit = True
+            print("[agent] \u26a0\ufe0f %d ligne(s) `lhm_` sur %d ILLISIBLES par le parseur "
+                  "— \u26d4 CE N'EST PAS une absence de capteur, c'est un desaccord de "
+                  "FORMAT. Regarder /metrics, \u26d4 pas les sondes." % (illisibles, lues),
+                  file=sys.stderr)
 
         vues = {}
-        for cle, ident, _prov in LHM_SONDES:
-            v = table.get(ident)
+        for cle, ident, famille_attendue, _prov in LHM_SONDES:
+            trouve = table.get(ident)
+            v = None
+            if trouve is not None:
+                famille, v = trouve
+                # 🎯 LA VERIFICATION QUI FAIT TENIR LE CHOIX DE `/metrics`.
+                #    L'unite vit dans le nom de famille : si LHM renomme
+                #    `..._celsius` en `..._fahrenheit` (ou `..._rpm` en
+                #    `..._percent`), la valeur est REFUSEE et l'ecart est COMPTE
+                #    ET NOMME. ⛔ Jamais publiee sous l'ancienne etiquette.
+                if famille != famille_attendue:
+                    k = cle + ":famille_inattendue"
+                    self.absences[k] = self.absences.get(k, 0) + 1
+                    if k not in self._familles_dites:
+                        self._familles_dites.add(k)
+                        print("[agent] \U0001f534 `%s` : famille `%s` au lieu de `%s` — "
+                              "L'UNITE A CHANGE. Valeur REFUSEE, \u26d4 pas republiee "
+                              "sous l'ancienne etiquette." % (cle, famille,
+                                                              famille_attendue),
+                              file=sys.stderr)
+                    v = None
             # 🔴 UNE VALEUR NEGATIVE DEVIENT « JE NE SAIS PAS », ⛔ PAS UN ZERO
             #    ECRETE, ET LE MOTIF EST MESURE. `_dx()` ecrete a 0 et le COMPTE —
             #    correct pour un % ou un Mo/s. Pour un tachymetre, « 0 tr/min » est
@@ -827,7 +1032,11 @@ class SourceLhm:
                 self.absences[cle + ":negatif"] = \
                     self.absences.get(cle + ":negatif", 0) + 1
                 v = None
-            elif v is None:
+            elif trouve is None:
+                # ⚠️ SEULE UNE VRAIE ABSENCE compte ici. Une valeur refusee pour
+                #    famille inattendue a DEJA son compteur : la compter deux fois
+                #    ferait lire « le capteur n'a rien rendu » sur un capteur qui a
+                #    parfaitement rendu, sous une unite qui a change.
                 self.absences[cle] = self.absences.get(cle, 0) + 1
             vues[cle] = v
 
@@ -872,7 +1081,11 @@ class SourceLhm:
            reconnexion ou un blocage d'envoi — precisement les instants ou une
            socket TCP ouverte depuis des minutes est morte sans le dire. La
            refermer ici fait payer la reconnexion AU TOUR SUIVANT, ⛔ pas un
-           timeout de 0,4 s au milieu du premier cycle d'apres-veille.
+           timeout de `LHM_TIMEOUT_S` (0,60 s) au milieu du premier cycle
+           d'apres-veille.
+        ⚠️ Ce texte disait « 0,4 s » : valeur MORTE depuis que la mesure a porte
+           le plafond a 0,60 s. Corrige en revue (dn4-8, 2026-08-21) — c'est la
+           classe de defaut qu'AC10 existe pour fermer.
         """
         self._fermer_connexion()
 
@@ -936,6 +1149,13 @@ class Collecteur:
     def __init__(self, verbeux=True, lhm_hote=LHM_HOTE, lhm_port=LHM_PORT,
                  lhm_timeout_s=LHM_TIMEOUT_S):
         self.ecretages = {}
+        # 🔴 SEAU DEDIE (revue dn4-8, 2026-08-21) : « une grandeur LHM a ete LUE
+        #    mais N'A PAS ETE PUBLIEE parce que la position 0 de sa metrique
+        #    manquait ». ⛔ Ce n'est NI un ecretage (la valeur n'est pas deformee),
+        #    NI une absence LHM (LHM l'a bien rendue), NI une panne de source.
+        #    Les melanger enverrait chercher au mauvais endroit — la doctrine du
+        #    depot est « chaque cas sur SON compteur ».
+        self.non_publiees = {}
         self.gpu = None
         self.gpu_motif = None
         try:
@@ -1048,7 +1268,8 @@ class Collecteur:
         #    reconnexion ou un blocage d'envoi — précisément les instants où une
         #    socket TCP ouverte depuis des minutes est morte SANS LE DIRE. La
         #    refermer ici fait payer la reconnexion au tour suivant, ⛔ pas un
-        #    timeout de 0,4 s au milieu du premier cycle d'après-veille.
+        #    timeout de `LHM_TIMEOUT_S` (0,60 s) au milieu du premier cycle
+        #    d'après-veille. (« 0,4 s » ici était une valeur MORTE — revue 2026-08-21)
         # ⚠️ `_sur()` et pas un appel nu : ce chemin est le SEUL où une exception
         #    tuerait l'agent ENTIER (la boucle ne rattrape que `KeyboardInterrupt`).
         _sur("lhm", self.lhm.reamorcer)
@@ -1099,9 +1320,23 @@ class Collecteur:
         cle = f"{nom}:{genre}"
         self.pannes[cle] = self.pannes.get(cle, 0) + 1
         if self.pannes[cle] == 1:
-            print(f"[agent] ⚠️ source `{nom}` en ECHEC ({message}) — cette metrique "
-                  f"n'est plus emise, sa case dira « -- ». Les autres "
-                  f"continuent : une source morte meurt SEULE.", file=sys.stderr)
+            # 🔴 CE MESSAGE DISAIT « cette metrique n'est plus emise, sa case dira
+            #    « -- » ». C'EST LE CONTRAIRE DE CE QUE LA STORY A ACHETE, et il a
+            #    reellement ete imprime sur la tour pendant AC8 (revue dn4-8,
+            #    2026-08-21). La regle W10 est POSITIONNELLE : une grandeur absente
+            #    en position INTERNE devient un CHAMP VIDE et la metrique CONTINUE
+            #    d'etre emise — c'est exactement pourquoi le `Mo/s` garde la
+            #    position 0 et pourquoi aucune grandeur LHM n'y est admise.
+            # ⛔ `_panne()` ne connait pas la position de la grandeur perdue : elle
+            #    ne doit donc AFFIRMER NI L'UN NI L'AUTRE, et dire la regle.
+            # ⚠️ Famille dn4-7 : « une cause plausible imprimee par le produit qui
+            #    tourne ». Un message qui contredit le comportement reel envoie
+            #    chercher une panne d'affichage la ou il n'y a qu'un champ vide.
+            print(f"[agent] ⚠️ source `{nom}` en ECHEC ({message}) — la ou elle "
+                  f"remplissait une grandeur, le fil porte un CHAMP VIDE et la "
+                  f"ligne dit « -- » ; SI elle tenait la position 0, c'est la "
+                  f"metrique entiere qui n'est pas emise. Les autres continuent : "
+                  f"une source morte meurt SEULE.", file=sys.stderr)
         return None
 
     def photo(self):
@@ -1130,10 +1365,13 @@ class Collecteur:
         #    `net` et `disk` sont des DELTAS de compteurs cumulés divisés par
         #    `t_now - t_prev`. Si la lecture LHM se plaçait ENTRE `t` et les
         #    lectures `psutil`, sa latence entrerait dans la fenêtre **à une seule
-        #    extrémité** : un tir à 400 ms (le timeout) sur un cycle nominal à
-        #    16 ms rendrait un Δt sous-estimé de 0,38 s, donc **un débit disque
-        #    surestimé de ~38 %** — un chiffre FRAIS ET FAUX, la famille exacte que
+        #    extrémité** : un tir à 600 ms (`LHM_TIMEOUT_S`) sur un cycle nominal
+        #    à 16 ms rendrait un Δt sous-estimé de 0,58 s, donc **un débit disque
+        #    surestimé de ~58 %** — un chiffre FRAIS ET FAUX, la famille exacte que
         #    la resynchronisation de dn2-2 existe pour empêcher.
+        # ⚠️ CE CALCUL DISAIT « 400 ms ⇒ 0,38 s ⇒ ~38 % » : il était DÉRIVÉ d'un
+        #    plafond mort. Recalculé en revue (dn4-8, 2026-08-21) sur la valeur
+        #    réelle — et le chiffre corrigé est PIRE, ce qui renforce l'argument.
         # ✅ PLACÉE AVANT `t`, sa latence est hors fenêtre DES DEUX CÔTÉS (elle
         #    décale `t` et les compteurs du même montant) et s'annule.
         # ⚠️ `_tenter` : un LHM injoignable est une panne COMPTÉE ET NOMMÉE, une
@@ -1297,18 +1535,53 @@ class Collecteur:
         #    compteur avant de le publier.
 
         # ── disk : DÉBIT total en Mo/s (OCTETS — l'unité d'un disque) ────────
+        #
+        # 🔴 CE QUE CETTE STRUCTURE COÛTE, ET C'EST UNE DÉCISION OWNER DU
+        #    2026-08-21 (revue de code dn4-8) : **LES TROIS `tr/min` SONT OTAGES
+        #    DE `psutil.disk_io_counters()`.** Ils sont calculés DANS le `else:`
+        #    ci-dessous, donc trois chemins les font taire alors qu'ils n'ont RIEN
+        #    à voir avec le disque :
+        #      · `d1 is None` — un retour `None` DOCUMENTÉ de psutil ;
+        #      · un recul de compteur cumulé (disque retiré, reset de pilote) ;
+        #      · le premier cycle après chaque `reamorcer()` (`_d0 is None`).
+        # ⛔ CE N'EST PAS UN OUBLI, ET ON NE LE CORRIGE PAS : la règle « aucune
+        #    grandeur LHM en position 0 » INTERDIT de publier `disk` sans son
+        #    `Mo/s`. Publier les ventilos quand le débit manque violerait
+        #    exactement la propriété qu'AC5 a achetée. Le prix est donc assumé.
+        # ⚠️ LA STORY ARGUMENTE LE SENS INVERSE (« la mort de LHM ne doit pas
+        #    emporter le Mo/s ») et jamais celui-ci. Il est écrit ici pour que
+        #    personne ne le redécouvre en pensant avoir trouvé un bug.
+        # 🎯 CE QUI CHANGE : l'événement est désormais COMPTÉ ET NOMMÉ. Il était
+        #    SILENCIEUX, et le bilan pouvait imprimer « aucune absence LHM : les
+        #    cinq sondes ont rendu une valeur » pendant que trois ventilateurs
+        #    n'étaient pas publiés — vrai sur LHM, trompeur sur l'écran.
+        # ⛔ Même forme sur `cpu` : la °C est dans `if pct is not None:`, donc un
+        #    échec de `cpu_percent()` emporte aussi la température. Même motif,
+        #    même règle de position 0.
         d1 = self._tenter("disk", psutil.disk_io_counters)
+        if d1 is None and lhm:
+            self.non_publiees["disk:source_morte"] = \
+                self.non_publiees.get("disk:source_morte", 0) + 1
         if d1 is not None:
             dtd = max(t - self._dt0, 1e-6)
             if self._d0 is None:
-                pass
+                # ⚠️ Premier cycle (ou premier d'après-veille) : pas de delta, donc
+                #    pas de `Mo/s`, donc pas de trame `disk` — donc PAS DE VENTILOS.
+                #    Compté, ⛔ pas silencieux (décision owner, revue 2026-08-21).
+                if lhm:
+                    self.non_publiees["disk:amorcage"] = \
+                        self.non_publiees.get("disk:amorcage", 0) + 1
             elif (d1.read_bytes < self._d0.read_bytes or
                   d1.write_bytes < self._d0.write_bytes):
                 # ⚠️ Idem `net:recul` — par `_panne()`, pour que le PREMIER
                 #    événement soit dit sur stderr et pas seulement au bilan.
                 self._panne("disk", "recul",
                             "un compteur cumule a RECULE (disque retire ? reset de "
-                            "pilote ?) — rien n'est publie ce tour")
+                            "pilote ?) — rien n'est publie ce tour, ⛔ Y COMPRIS "
+                            "LES TROIS tr/min qui voyagent dans cette metrique")
+                if lhm:
+                    self.non_publiees["disk:recul"] = \
+                        self.non_publiees.get("disk:recul", 0) + 1
             else:
                 mo_s = ((d1.read_bytes - self._d0.read_bytes) +
                         (d1.write_bytes - self._d0.write_bytes)) / 1e6 / dtd
@@ -1659,14 +1932,55 @@ def principal() -> int:
     #    sans lui, eprouver « lecture lente » ou « service muet » exigerait de
     #    couper le VRAI LHM de la tour, donc un geste owner, pour un chemin de
     #    code. ⛔ Il ne dispense de RIEN : AC8 se joue sur le vrai service.
+    # 🔴 VALIDES EN REVUE (2026-08-21). Pour une option dont le motif ecrit est
+    #    « EXERCER les chemins d'echec », son PROPRE chemin d'echec etait un
+    #    traceback nu : `--lhm hote:abc` levait un `ValueError` non rattrape avant
+    #    meme la construction du `Collecteur`. Et `--lhm ::1` se decoupait en hote
+    #    `:` port `1` — une adresse IPv6 acceptee EN SILENCE sous une autre.
     lhm_hote, lhm_port = LHM_HOTE, LHM_PORT
     if args.lhm:
-        bout = args.lhm.rsplit(":", 1)
-        lhm_hote = bout[0] or LHM_HOTE
-        if len(bout) == 2:
-            lhm_port = int(bout[1])
+        brut = args.lhm.strip()
+        if brut.startswith("["):                       # [::1]:8085, forme RFC 3986
+            fin_crochet = brut.find("]")
+            if fin_crochet < 0:
+                ap.error("--lhm : crochet ouvrant sans fermant dans %r" % brut)
+            lhm_hote = brut[1:fin_crochet]
+            reste = brut[fin_crochet + 1:]
+            port_txt = reste[1:] if reste.startswith(":") else ""
+        elif brut.count(":") > 1:
+            # ⛔ IPv6 NU : ambigu par construction (`::1` = hote `:` + port `1` ?).
+            #    On REFUSE et on dit la forme attendue, ⛔ on ne devine pas.
+            ap.error("--lhm : adresse IPv6 nue ambigue (%r). Utiliser [%s]:PORT."
+                     % (brut, brut))
+        else:
+            hote_txt, _, port_txt = brut.partition(":")
+            lhm_hote = hote_txt or LHM_HOTE
+        if port_txt:
+            if not port_txt.isdigit():
+                ap.error("--lhm : port %r n'est pas un entier" % port_txt)
+            lhm_port = int(port_txt)
+            if not (1 <= lhm_port <= 65535):
+                ap.error("--lhm : port %d hors de 1..65535" % lhm_port)
+        if not lhm_hote:
+            ap.error("--lhm : hote vide dans %r" % brut)
         print("[agent] ⚠️ LHM pointe sur %s:%d par --lhm — ⛔ ce n'est PAS la "
               "configuration de regime." % (lhm_hote, lhm_port), file=sys.stderr)
+
+    # ⚠️ LE TIMEOUT EST BORNE DES DEUX COTES, ET LES DEUX BORNES ONT UN MOTIF.
+    #    0 (ou negatif) rendait `reste <= 0` des la premiere iteration : LHM
+    #    devenait definitivement illisible, mais compte comme un ECHEC DE LECTURE —
+    #    un diagnostic qui envoie regarder le service au lieu de la ligne de
+    #    commande. Et tout ce qui atteint PERIODE_S garantit le depassement de
+    #    cadence a CHAQUE cycle, donc le recalage, donc l'echantillon jete.
+    if args.lhm_timeout <= 0.0:
+        ap.error("--lhm-timeout doit etre > 0 (recu %.3f) : a 0 la source est "
+                 "illisible par construction, et ca se lirait comme une panne "
+                 "de LHM." % args.lhm_timeout)
+    if args.lhm_timeout >= PERIODE_S:
+        ap.error("--lhm-timeout = %.3f s >= la periode (%.3f s) : chaque cycle "
+                 "depasserait sa fenetre et armerait le recalage de cadence, qui "
+                 "JETTE l'echantillon et re-amorce les cinq metriques."
+                 % (args.lhm_timeout, PERIODE_S))
     collecteur = Collecteur(lhm_hote=lhm_hote, lhm_port=lhm_port,
                             lhm_timeout_s=args.lhm_timeout)
 
@@ -1829,6 +2143,16 @@ def _bilan(sortie, depart: float, seq: int, erreurs_envoi: int, rattrapages: int
         # ⛔ UN ÉCRÊTAGE NE SORT JAMAIS EN SILENCE. S'il y en a, la valeur
         #    affichée n'est plus la valeur mesurée — c'est une information, pas
         #    un détail d'implémentation.
+        if collecteur.non_publiees:
+            détail = " · ".join(f"{k}={v}" for k, v in
+                                sorted(collecteur.non_publiees.items()))
+            print(f"[agent] ⚠️ GRANDEURS LHM LUES MAIS NON PUBLIEES (la position 0 "
+                  f"de leur metrique manquait — ⛔ ce n'est PAS une absence LHM, "
+                  f"LHM les a rendues) : {détail}", file=sys.stderr)
+            print("[agent]    ⇒ les tr/min voyagent dans `disk` : sans `Mo/s`, la "
+                  "metrique n'est pas emise et les ventilos disent « -- ». "
+                  "⛔ Structurel et ASSUME (regle « aucune grandeur LHM en "
+                  "position 0 »), ⛔ pas un defaut.", file=sys.stderr)
         if collecteur.ecretages:
             détail = " · ".join(f"{k}={v}" for k, v in
                                 sorted(collecteur.ecretages.items()))
@@ -1845,8 +2169,9 @@ def _bilan(sortie, depart: float, seq: int, erreurs_envoi: int, rattrapages: int
         if collecteur.pannes:
             détail = " · ".join(f"{k}={v}" for k, v in
                                 sorted(collecteur.pannes.items()))
-            print(f"[agent] 🔴 PANNES DE SOURCE (metrique NON emise, case a « -- ») : "
-                  f"{détail}", file=sys.stderr)
+            print(f"[agent] 🔴 PANNES DE SOURCE (grandeur perdue ⇒ champ VIDE, "
+                  f"« -- » sur SA ligne ; metrique non emise SEULEMENT si la "
+                  f"position 0 manquait) : {détail}", file=sys.stderr)
         else:
             print("[agent] aucune panne de source : les cinq ont repondu a chaque cycle",
                   file=sys.stderr)
@@ -1886,6 +2211,26 @@ def _bilan(sortie, depart: float, seq: int, erreurs_envoi: int, rattrapages: int
                               f"({lhm.echecs} echec(s), max {lhm.duree_max*1000.0:.0f} "
                               f"ms pour un timeout de {lhm.timeout_s*1000.0:.0f} ms). "
                               f"⚠️ Le dimensionnement est a revoir.", file=sys.stderr)
+                    elif lhm.duree_max > lhm.timeout_s:
+                        # 🔴 TROISIEME BRANCHE, AJOUTEE EN REVUE (2026-08-21). Les
+                        #    deux precedentes supposaient `duree_max > timeout ⇒
+                        #    echecs > 0`. C'EST FAUX, et le meme correctif le
+                        #    prouve : le chrono couvre desormais le PARSE, qui n'est
+                        #    borne par aucun timeout. Une lecture peut donc REUSSIR
+                        #    au-dela du plafond.
+                        # ⛔ Sans cette branche, le bilan imprimait « atteint 333 %
+                        #    du timeout ... La marge est mince, ⛔ pas un incident » —
+                        #    arithmetiquement contradictoire, et il DETOURNAIT le
+                        #    lecteur du seul depassement reel. Meme famille que le
+                        #    message corrige trois lignes plus haut.
+                        print(f"[agent] 🔴 UNE LECTURE LHM A DEPASSE LE PLAFOND SANS "
+                              f"ECHOUER : {lhm.duree_max*1000.0:.0f} ms pour un timeout "
+                              f"de {lhm.timeout_s*1000.0:.0f} ms "
+                              f"({lhm.duree_max/lhm.timeout_s*100.0:.0f} %), "
+                              f"{lhm.echecs} echec(s). ⚠️ Le budget ne borne que le "
+                              f"RESEAU : ce depassement vient d'ailleurs (parse, "
+                              f"ordonnancement). ⛔ C'EST un incident — il mange la "
+                              f"cadence et arme le recalage.", file=sys.stderr)
                     else:
                         print(f"[agent] ⚠️ la lecture LHM la plus longue "
                               f"({lhm.duree_max*1000.0:.0f} ms) atteint "
@@ -1899,13 +2244,25 @@ def _bilan(sortie, depart: float, seq: int, erreurs_envoi: int, rattrapages: int
                       f"publies. ⛔ Ce n'est pas « zero », c'est « inconnu » : le "
                       f"fil porte un champ VIDE et la carte affiche « -- ».",
                       file=sys.stderr)
+            # 🔴 LE DESACCORD DE FORMAT SE DIT **AVANT** L'ABSENCE, ET IL LA
+            #    DISQUALIFIE. Ajoute en revue (2026-08-21) : sans lui, un parseur
+            #    en desaccord avec `/metrics` produisait cinq « absences » et
+            #    envoyait l'operateur inspecter SES CAPTEURS. ⛔ Deux diagnostics
+            #    contraires qui envoient chercher a deux endroits differents.
+            if lhm.lignes_illisibles:
+                print(f"[agent] 🔴 {lhm.lignes_illisibles} ligne(s) `lhm_` sur "
+                      f"{lhm.lignes_lues} n'ont PAS PU ETRE LUES par le parseur. "
+                      f"⛔ NE PAS LIRE LES « ABSENCES » CI-DESSOUS COMME DES "
+                      f"CAPTEURS MUETS : le format de /metrics et ce parseur ne "
+                      f"sont pas d'accord. Regarder /metrics EN PREMIER.",
+                      file=sys.stderr)
             if lhm.absences:
                 détail = " · ".join(f"{k}={v}" for k, v in
                                     sorted(lhm.absences.items()))
                 print(f"[agent] ⚠️ ABSENCES LHM (LHM a REPONDU, sans cette "
                       f"valeur — champ VIDE sur le fil, ⛔ PAS une panne) : "
                       f"{détail}", file=sys.stderr)
-            elif lhm.reponses:
+            elif lhm.reponses and not lhm.lignes_illisibles:
                 print("[agent] aucune absence LHM : les cinq sondes ont rendu une "
                       "valeur a chaque lecture reussie", file=sys.stderr)
 
