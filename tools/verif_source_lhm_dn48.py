@@ -29,12 +29,48 @@ import time
 
 RACINE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PORT = 8086
-LIGNE_MAX = 71          # miroir de `DN_LINK_LIGNE_MAX` (main/dn_link.h)
+
+_DN_LINK_H = os.path.join(RACINE, "firmware", "desknode", "main", "dn_link.h")
+
+
+def _constante_c(nom):
+    """🔴 LIT LA CONSTANTE DANS LE HEADER. ⛔ NE PAS LA RECOPIER ICI.
+
+    Defaut trouve en revue (code review dn4-8, 2026-08-21) : ce fichier portait
+    `LIGNE_MAX = 71  # miroir de DN_LINK_LIGNE_MAX`. Un miroir recopie A LA MAIN
+    est une garde qui continue de verifier l'ANCIENNE valeur apres que la vraie a
+    bouge — elle passe VERT sur un arbre ou la propriete est cassee. Son jumeau
+    `recompte_trame_dn48.py` lisait deja la source ; celui-ci ne le faisait pas.
+    """
+    import re
+    src = io.open(_DN_LINK_H, encoding="utf-8", errors="replace").read()
+    m = re.search(r"#define\s+%s\s+\(?\s*(\d+)" % re.escape(nom), src)
+    if not m:
+        raise RuntimeError(
+            "%s introuvable dans %s — ⛔ NE PAS RETOMBER SUR UNE VALEUR EN DUR : "
+            "l'instrument ne peut pas verifier ce qu'il ne sait pas lire."
+            % (nom, _DN_LINK_H))
+    return int(m.group(1))
 
 # 🔴 LE STUB `psutil` EST CHARGE ICI, ET IL CRIE. Sans lui, rien de tout ceci ne
 #    tourne en WSL. ⚠️ Il fabrique cpu/ram/net/disk : ⛔ aucun de ces nombres n'est
 #    une mesure, et c'est pour ca que ce fichier ne publie que des FORMES.
-os.environ["DN_STUB_PSUTIL"] = "1"
+# ⚠️ DEFAUT TROUVE EN REVUE (2026-08-21) : ceci etait pose INCONDITIONNELLEMENT,
+#    et `tools/stub_psutil` etait prepend a `sys.path`. Sur la tour — ou le VRAI
+#    psutil existe — cet outil masquait donc le vrai module par le stub, dans son
+#    propre processus. Or le stub sert justement a tourner LA OU psutil MANQUE.
+# ⇒ on n'arme le stub que si le vrai psutil est INTROUVABLE, et ON LE DIT.
+try:
+    import psutil as _vrai_psutil                    # noqa: F401
+    _AVEC_VRAI_PSUTIL = True
+except ImportError:
+    _AVEC_VRAI_PSUTIL = False
+if not _AVEC_VRAI_PSUTIL:
+    os.environ["DN_STUB_PSUTIL"] = "1"
+    print("[verif] ⚠️ psutil ABSENT ⇒ stub arme. ⛔ Aucun nombre cpu/ram/net/disk "
+          "n'est une mesure ici.")
+else:
+    print("[verif] psutil REEL present ⇒ stub ⛔ NON arme.")
 # \U0001f534 DEFAUT D'INSTRUMENT MESURE LE 2026-08-21, ET IL EST GENERAL A TOUT HARNAIS
 #    QUI IMPORTE LE PRODUIT : **PYTHON A SERVI UN BYTECODE PERIME**. Pendant un
 #    test de mutation (BORNES 1500 -> 1400 puis restauration), `agent/__pycache__/
@@ -59,9 +95,19 @@ for _p in (os.path.join(RACINE, "agent", "__pycache__"),
 _SRC_AGENT = os.path.join(RACINE, "agent", "dn_agent.py")
 _SHA_AGENT = hashlib.sha256(
     io.open(_SRC_AGENT, "rb").read()).hexdigest()[:16]
-sys.path.insert(0, os.path.join(RACINE, "tools", "stub_psutil"))
+# ⛔ LE CHEMIN DU STUB N'EST PREPEND QUE SI LE STUB EST ARME. Sinon il masquerait
+#    le vrai psutil ET leverait ImportError (le stub refuse de se charger sans
+#    `DN_STUB_PSUTIL=1`), ce qui ferait echouer l'outil sur la machine la MIEUX
+#    equipee — exactement a l'envers.
+if not _AVEC_VRAI_PSUTIL:
+    sys.path.insert(0, os.path.join(RACINE, "tools", "stub_psutil"))
 sys.path.insert(0, os.path.join(RACINE, "agent"))
 import dn_agent  # noqa: E402  -- LE PRODUIT, importe tel quel
+
+LIGNE_MAX = _constante_c("DN_LINK_LIGNE_MAX")
+GRANDEURS_MAX = _constante_c("DN_LINK_GRANDEURS_MAX")
+print("[verif] constantes LUES dans dn_link.h : LIGNE_MAX=%d GRANDEURS_MAX=%d"
+      % (LIGNE_MAX, GRANDEURS_MAX))
 
 ECHECS = []
 
@@ -118,7 +164,7 @@ def scenario_normal():
         src = source()
         vues = src.lire()
         verdict("les 5 sondes de LHM_SONDES sont rendues",
-                sorted(vues) == sorted(c for c, _, _ in dn_agent.LHM_SONDES),
+                sorted(vues) == sorted(c for c, _, _, _ in dn_agent.LHM_SONDES),
                 str(sorted(vues)))
         connues = {k: v for k, v in vues.items() if v is not None}
         verdict("5/5 portent une valeur (fixture reelle)", len(connues) == 5,
@@ -130,6 +176,11 @@ def scenario_normal():
 
         col = dn_agent.Collecteur(verbeux=False, lhm_hote="127.0.0.1",
                                   lhm_port=PORT)
+        # 🎯 LES DEUX VERITES-TERRAIN DE L'ORDRE, chacune reprise de SA source :
+        #    le `c.max` vient de psutil (le stub, deterministe), la °C vient de LHM
+        #    (le stub qui rejoue la fixture). ⛔ Aucune des deux n'est recopiee ici.
+        import psutil as psutil_du_stub
+        vues_lhm = source().lire()
         photo = col.photo()
         photo = col.photo()                   # 2e tour : les debits existent
         d = dict(photo)
@@ -137,10 +188,36 @@ def scenario_normal():
                 str(d["cpu"]))
         verdict("la trame `disk` porte QUATRE grandeurs", len(d["disk"]) == 4,
                 str(d["disk"]))
-        verdict("la °C CPU est en INDEX 3 (⛔ pas 2)",
-                d["cpu"][3] is not None and d["cpu"][2] is not None
-                and d["cpu"][2] <= 1000,
-                "index2(c.max)=%s  index3(degC)=%s" % (d["cpu"][2], d["cpu"][3]))
+        # 🔴 DEFAUT TROUVE EN REVUE (code review dn4-8, 2026-08-21), ET PROUVE
+        #    PAR MUTATION. Cette garde s'ecrivait :
+        #        d["cpu"][3] is not None and d["cpu"][2] is not None
+        #        and d["cpu"][2] <= 1000
+        #    Or `c.max` vaut 625 et la °C 410 : LES DEUX SONT <= 1000. En permutant
+        #    `_dx(cmax)` et `_dx(degc)` dans `dn_agent.py`, le harnais imprimait
+        #    « [OK ] la °C CPU est en INDEX 3 (⛔ pas 2)  index2(c.max)=410
+        #    index3(degC)=625 » — LA LIGNE DE DETAIL AFFIRMAIT ELLE-MEME LE MAUVAIS
+        #    MAPPING — et la suite sortait 0.
+        # ⛔ C'ETAIT LA SEULE GARDE AUTOMATISEE DE LA DECISION CENTRALE DE LA STORY
+        #    (la 4e voie, l'ordre `[%, GHz, c.max, °C]`, le temoin v3 intact).
+        # ⇒ ON NE COMPARE PLUS A UN PLAFOND : on compare aux DEUX VALEURS ATTENDUES,
+        #   chacune reprise de SA source, et le produit fait la quantification.
+        cmax_attendu = dn_agent._dx(
+            max(psutil_du_stub.cpu_percent(percpu=True)),
+            dn_agent.BORNES["cpu"][2], {}, "verif:c.max")
+        degc_attendu = dn_agent._dx(
+            vues_lhm["cpu.degc"], dn_agent.BORNES["cpu"][3], {}, "verif:degc")
+        # ⚠️ UNE GARDE QUI NE PEUT PAS DISCRIMINER DOIT LE DIRE. Si les deux
+        #    grandeurs tombaient par hasard sur la meme valeur, la permutation
+        #    redeviendrait invisible — et l'instrument se tairait vert.
+        verdict("les deux valeurs DIFFERENT (sinon la garde est aveugle)",
+                cmax_attendu != degc_attendu,
+                "c.max=%s degC=%s" % (cmax_attendu, degc_attendu))
+        verdict("`c.max` est en INDEX 2 (valeur EXACTE, ⛔ pas un plafond)",
+                d["cpu"][2] == cmax_attendu,
+                "index2=%s attendu=%s" % (d["cpu"][2], cmax_attendu))
+        verdict("la °C CPU est en INDEX 3 (valeur EXACTE, ⛔ pas 2)",
+                d["cpu"][3] == degc_attendu,
+                "index3=%s attendu=%s" % (d["cpu"][3], degc_attendu))
         verdict("le Mo/s garde la POSITION 0 de `disk`", d["disk"][0] is not None,
                 "v1=%s" % d["disk"][0])
         pire = 0
@@ -207,18 +284,37 @@ def scenario_lent():
     try:
         col = dn_agent.Collecteur(verbeux=False, lhm_hote="127.0.0.1",
                                   lhm_port=PORT, lhm_timeout_s=0.4)
+        # 🔴 ON CAPTURE stderr PENDANT LES DEUX CYCLES. Sans ca, l'assertion
+        #    « le message n'est imprime QU'UNE fois » ne peut RIEN observer : c'est
+        #    le defaut trouve en revue (code review dn4-8, 2026-08-21), ou elle
+        #    s'ecrivait `all(v >= 1 for v in col.pannes.values())` — vraie pour
+        #    TOUT etat possible du programme, y compris le dictionnaire VIDE, et
+        #    portant sur les COMPTEURS alors que son titre parle de L'IMPRESSION.
+        journal = io.StringIO()
+        vrai_stderr = sys.stderr
         t0 = time.perf_counter()
-        col.photo()
-        d = dict(col.photo())
+        try:
+            sys.stderr = journal
+            col.photo()
+            d = dict(col.photo())
+        finally:
+            sys.stderr = vrai_stderr
         dt = time.perf_counter() - t0
+        lignes_echec = [l for l in journal.getvalue().splitlines()
+                        if "`lhm` en ECHEC" in l]
         verdict("la lecture est COUPEE au timeout, ⛔ pas au retard du serveur",
                 dt < 1.2, "2 cycles en %.2f s (retard servi 2,00 s/tir ; "
                           "2 x budget = 0,80 s)" % dt)
         verdict("la panne est COMPTEE et NOMMEE",
                 any(k.startswith("lhm:") for k in col.pannes), str(col.pannes))
-        verdict("le message n'est imprime QU'UNE fois par type",
-                all(v >= 1 for v in col.pannes.values()),
+        # ⚠️ DEUX CYCLES ONT ECHOUE : le compteur doit dire 2, stderr doit dire 1.
+        #    C'est CETTE dissociation qui prouve l'anti-spam — ⛔ pas un `>= 1`.
+        verdict("les DEUX cycles sont comptes (⛔ pas un seul)",
+                sum(v for k, v in col.pannes.items() if k.startswith("lhm:")) == 2,
                 "compteur = %s" % col.pannes)
+        verdict("le message n'est imprime QU'UNE fois (stderr CAPTURE)",
+                len(lignes_echec) == 1,
+                "%d ligne(s) sur stderr pour 2 echecs" % len(lignes_echec))
         verdict("🎯 `cpu` SURVIT (3 grandeurs sur 4, la °C dit « -- »)",
                 "cpu" in d and d["cpu"][0] is not None and d["cpu"][3] is None,
                 str(d.get("cpu")))
@@ -253,7 +349,19 @@ def scenario_absent_puis_reprise():
             col.lhm is not None, "lhm.reponses = %d" % col.lhm.reponses)
     verdict("aucune trame ne porte de valeur LHM",
             d["cpu"][3] is None, str(d["cpu"]))
-    verdict("les 4 autres metriques vivent", len(d) >= 4, str(sorted(d)))
+    # 🔴 `len(d) >= 4` passait avec N'IMPORTE LESQUELLES 4 des 5 (revue dn4-8,
+    #    2026-08-21) : le run de controle avait DEJA `gpu` absent et l'assertion
+    #    restait verte. Elle ne discriminait donc rien — `disk` aurait pu
+    #    disparaitre a la place, elle serait restee verte aussi.
+    # ⛔ `gpu` EST EXCLU **PAR SON NOM ET AVEC SON MOTIF**, ⛔ pas par un compte
+    #    permissif : sans GPU AMD (WSL, ou toute machine sans `atiadlxx.dll`),
+    #    `SourceGpuAdl` se desactive POUR LA SESSION et la metrique n'est jamais
+    #    emise. C'est une propriete de LA MACHINE, ⛔ pas de LHM — donc hors sujet
+    #    ici, et il faut le DIRE plutot que de le laisser passer en silence.
+    print("     (gpu %s sur cette machine — exclu par son NOM du controle ci-dessous)"
+          % ("PRESENT" if "gpu" in d else "ABSENT"))
+    verdict("les metriques non-LHM vivent (NOMMEES, ⛔ pas comptees)",
+            {"cpu", "ram", "net", "disk"} <= set(d), str(sorted(d)))
     p = lancer_stub("normal")
     try:
         col.photo()
@@ -289,7 +397,10 @@ def scenario_arret_en_cours():
             d["cpu"][3] is None, str(d["cpu"]))
     verdict("⛔ AUCUNE valeur figee n'a survecu (pas la derniere connue)",
             d["cpu"][3] is None and d["disk"][1] is None, str(d["disk"]))
-    verdict("`ram`/`net`/`disk` continuent", len(d) >= 4, str(sorted(d)))
+    verdict("`ram`/`net`/`disk` continuent (NOMMEES, ⛔ pas comptees)",
+            {"ram", "net", "disk"} <= set(d)
+            and all(d[m][0] is not None for m in ("ram", "net", "disk")),
+            str(sorted(d)))
     col.fermer()
 
 
