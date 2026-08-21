@@ -37,12 +37,35 @@ A_DEPOSER=(
   "tools/dn_lhm_tour.ps1"
 )
 
+# 🔴 LE CONTENU DU LANCEUR EST UNE **SOURCE UNIQUE** (revue dn4-8, 2026-08-21).
+#    `--verifier` ne couvrait que `A_DEPOSER`, donc NI `PROVENANCE.txt` NI
+#    `poser-permanence.cmd` — ce dernier etant un lanceur AUTO-ELEVATEUR
+#    (`Start-Process -Verb RunAs`) pointant sur un chemin `%~dp0`. Une copie
+#    editee sur la tour passait donc « OK — aucun ecart », alors que la these
+#    meme de l'en-tete est « ⛔ NE PAS EDITER LES FICHIERS ICI ... l'ecart ne se
+#    verrait nulle part ». Sur un poste partage, c'est un vecteur d'elevation.
+# ⇒ Le texte vit ICI, il est ECRIT en mode depot et RECALCULE en mode verif.
+CMD_PERMANENCE='@echo off
+REM Pose la permanence LHM (tache planifiee au logon, RunLevel Highest).
+REM Se releve tout seul : une invite UAC va apparaitre, il faut l'\''ACCEPTER.
+REM L'\''autorite est le depot WSL - voir PROVENANCE.txt.
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+  "Start-Process powershell -Verb RunAs -ArgumentList '\''-NoProfile'\'','\''-ExecutionPolicy'\'','\''Bypass'\'','\''-NoExit'\'','\''-File'\'','\''%~dp0dn_lhm_tour.ps1'\'','\''-Permanence'\'','\''tache'\''"
+'
 VERIFIER=0
 CIBLE="$CIBLE_DEFAUT"
 for arg in "$@"; do
   case "$arg" in
     --verifier) VERIFIER=1 ;;
     -h|--help)  sed -n '2,30p' "${BASH_SOURCE[0]}"; exit 0 ;;
+    # ⛔ TOUT CE QUI COMMENCE PAR `-` EST REFUSE (revue dn4-8, 2026-08-21).
+    #    Le catch-all `*) CIBLE="$arg"` transformait n'importe quel drapeau mal
+    #    tape en REPERTOIRE CIBLE : `--verify` (au lieu de `--verifier`) creait un
+    #    dossier nomme « --verify » et y DEPOSAIT les fichiers, en annonçant un
+    #    deploiement reussi. Un outil qui obeit a une faute de frappe ment.
+    -*)         echo "  /!\ option inconnue : $arg" >&2
+                echo "      options : --verifier | -h | <repertoire cible>" >&2
+                exit 2 ;;
     *)          CIBLE="$arg" ;;
   esac
 done
@@ -93,7 +116,17 @@ for rel in "${A_DEPOSER[@]}"; do
   else echo "  /!\\ COPIE ABIMEE : $(basename "$rel")  depot=$hs  tour=$hd"; ecarts=$((ecarts+1)); fi
 done
 
-if [ "$VERIFIER" -eq 0 ]; then
+# 🔴 ON N'ECRIT PAS UNE PROVENANCE POUR UNE COPIE DECLAREE ABIMEE (revue dn4-8,
+#    2026-08-21). `PROVENANCE.txt` et `poser-permanence.cmd` etaient emis
+#    inconditionnellement, y compris apres la branche « COPIE ABIMEE » : le
+#    fichier revendiquait donc un SHA pour des fichiers que le meme run venait de
+#    declarer corrompus. ⛔ Une provenance qui certifie une copie cassee est pire
+#    qu'aucune provenance : elle la fait passer pour bonne.
+if [ "$VERIFIER" -eq 0 ] && [ "$ecarts" -ne 0 ]; then
+  echo "  ⛔ PROVENANCE **NON ECRITE** : $ecarts ecart(s) sur la copie."
+  echo "     Rien ne doit certifier une arborescence que ce run declare abimee."
+fi
+if [ "$VERIFIER" -eq 0 ] && [ "$ecarts" -eq 0 ]; then
   cat > "$CIBLE/PROVENANCE.txt" <<EOF
 Cette arborescence est une COPIE DE DEPLOIEMENT. ⛔ L'AUTORITE EST LE DEPOT.
 
@@ -117,15 +150,54 @@ EOF
   echo "  ecrit  : PROVENANCE.txt"
 
   # Raccourci self-elevant : le geste owner en un double-clic.
-  cat > "$CIBLE/poser-permanence.cmd" <<'EOF'
-@echo off
-REM Pose la permanence LHM (tache planifiee au logon, RunLevel Highest).
-REM Se releve tout seul : une invite UAC va apparaitre, il faut l'ACCEPTER.
-REM ⛔ L'autorite est le depot WSL — voir PROVENANCE.txt.
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-  "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-NoExit','-File','%~dp0dn_lhm_tour.ps1','-Permanence','tache'"
-EOF
-  echo "  ecrit  : poser-permanence.cmd  (self-elevant, double-clic)"
+  printf '%s' "$CMD_PERMANENCE" > "$CIBLE/poser-permanence.cmd"
+  # 🔴 CRLF, ET C'EST OBLIGATOIRE (revue dn4-8, 2026-08-21). Le heredoc ecrivait
+  #    des fins de ligne LF depuis WSL, alors que le fichier utilise une
+  #    CONTINUATION `^` que `cmd.exe` ne parse de façon fiable QUE contre CRLF.
+  #    En LF, le double-clic peut executer une ligne de commande TRONQUEE — et
+  #    c'est une commande qui se releve en UAC.
+  # ⚠️ On le fait avec `sed`, ⛔ pas `unix2dos` : cet outil n'est pas garanti
+  #    present, et un deploiement qui echoue faute d'un paquet optionnel serait
+  #    une dependance cachee.
+  sed -i 's/$/\r/' "$CIBLE/poser-permanence.cmd"
+  echo "  ecrit  : poser-permanence.cmd  (self-elevant, double-clic, CRLF)"
+fi
+
+# 🔴 LES DEUX FICHIERS **GENERES** SONT VERIFIES EUX AUSSI (revue 2026-08-21).
+if [ "$VERIFIER" -eq 1 ]; then
+  cmd_dst="$CIBLE/poser-permanence.cmd"
+  if [ ! -f "$cmd_dst" ]; then
+    echo "  MANQUE sur la tour : poser-permanence.cmd"; ecarts=$((ecarts+1))
+  else
+    # ⚠️ On compare APRES normalisation des fins de ligne : la copie deposee est
+    #    en CRLF (obligatoire pour la continuation `^` de cmd.exe), la reference
+    #    ci-dessus est en LF. Comparer les octets bruts crierait a chaque fois.
+    att="$(printf '%s' "$CMD_PERMANENCE" | sha256sum | cut -c1-16)"
+    vu="$(tr -d '\r' < "$cmd_dst" | sha256sum | cut -c1-16)"
+    if [ "$att" = "$vu" ]; then
+      echo "  identique : poser-permanence.cmd  ($vu)"
+    else
+      echo "  /!\ DIVERGE  : poser-permanence.cmd  attendu=$att  tour=$vu"
+      echo "      ⛔ C'est le lanceur AUTO-ELEVATEUR (UAC). Une divergence ici"
+      echo "         n'est pas cosmetique. Redeployer, ⛔ ne pas editer sur place."
+      ecarts=$((ecarts+1))
+    fi
+    if ! grep -q $'\r' "$cmd_dst"; then
+      echo "  /!\ poser-permanence.cmd est en LF : la continuation ^ de cmd.exe"
+      echo "      peut executer une ligne TRONQUEE. Redeployer."
+      ecarts=$((ecarts+1))
+    fi
+  fi
+  # ⚠️ `PROVENANCE.txt` porte un HORODATAGE : son contenu n'est PAS comparable a
+  #    l'octet, et le pretendre serait un faux controle. On verifie sa PRESENCE
+  #    et qu'il vient bien de cet outil — et ON DIT ce qui n'est pas verifie.
+  if [ ! -f "$CIBLE/PROVENANCE.txt" ]; then
+    echo "  MANQUE sur la tour : PROVENANCE.txt"; ecarts=$((ecarts+1))
+  elif ! grep -q "tools/deployer_tour.sh" "$CIBLE/PROVENANCE.txt"; then
+    echo "  /!\ PROVENANCE.txt ne vient pas de cet outil"; ecarts=$((ecarts+1))
+  else
+    echo "  present   : PROVENANCE.txt  (⛔ contenu NON compare : il est horodate)"
+  fi
 fi
 
 echo

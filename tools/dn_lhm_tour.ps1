@@ -72,6 +72,38 @@ param(
     [switch] $Json
 )
 
+# =============================================================================
+# (!) CE FICHIER EST EN **ASCII PUR**, ET CE N'EST PAS UN STYLE : C'EST UNE
+#     CONTRAINTE DE CORRECTION. Elle n'etait ecrite NULLE PART, et une revue l'a
+#     retrouvee en la cassant (code review dn4-8, 2026-08-21).
+#
+#     Windows PowerShell 5.1 lit un .ps1 UTF-8 SANS BOM comme de l'ANSI/CP1252.
+#     Un tiret cadratin U+2014 (octets E2 80 94) y devient la sequence a-euro-94,
+#     et 0x94 en CP1252 est le GUILLEMET FERMANT TYPOGRAPHIQUE - que PowerShell
+#     accepte comme DELIMITEUR DE CHAINE. Un seul tiret cadratin, meme DANS UN
+#     COMMENTAIRE, ouvre donc une chaine et fait s'effondrer tout le parsing en
+#     cascade : "parenthese fermante manquante", "accolade fermante manquante".
+#
+#     Verifie par la mesure : la version committee ne contient AUCUN octet > 127
+#     et parse sans erreur ; y ajouter des emoji, des guillemets francais et trois
+#     tirets cadratins a produit 8 erreurs de syntaxe.
+#
+# ==> NE JAMAIS INTRODUIRE AUCUN CARACTERE NON-ASCII ICI. Le controle tient en une
+#     ligne, et il vaut la peine d'etre rejoue apres toute edition :
+#       python3 -c "import io;t=io.open('tools/dn_lhm_tour.ps1',encoding='utf-8')\
+#                   .read();print([c for c in t if ord(c)>127] or 'ASCII pur')"
+#     (Les autres fichiers du depot n'ont PAS cette contrainte : elle vient du
+#      couple 'PowerShell 5.1' + 'UTF-8 sans BOM', pas du projet.)
+# =============================================================================
+
+# -Port DESYNCHRONISE LA TOUR DE L'AGENT, SANS QUE RIEN NE LE DISE (revue
+# dn4-8, 2026-08-21). Ce script ecrit `listenerPort` dans la config de LHM,
+# tandis que l'agent lit la CONSTANTE `LHM_PORT` de `agent/dn_agent.py`. Un
+# `-Poser -Port 9000` laisse donc une tour qui repond parfaitement et un agent
+# qui ne peut pas l'atteindre - les DEUX cotes se declarant normaux.
+# L'agent a bien `--lhm HOTE:PORT` pour suivre, mais encore faut-il le savoir.
+$AGENT_LHM_PORT = 8085   # miroir de LHM_PORT (agent/dn_agent.py)
+
 $ErrorActionPreference = 'Continue'
 $ProgressPreference = 'SilentlyContinue'
 
@@ -255,7 +287,29 @@ if ($Poser -and $exe) {
 
     Start-Process -FilePath $exe.FullName
     Dire "  LHM relance (il herite de l'elevation de CE processus)."
-    Start-Sleep -Seconds 8
+    # SCRUTATION BORNEE, PLUS D'ATTENTE FIXE (revue dn4-8, 2026-08-21).
+    # C'etait `Start-Sleep -Seconds 8` puis la sonde : un PREMIER lancement qui
+    # charge le pilote noyau peut depasser 8 s, et le script concluait alors
+    # "le serveur web ne repond pas ... impossible de conclure sur les sondes"
+    # SUR UNE INSTALLATION SAINE. Un instrument qui attend moins longtemps que le
+    # phenomene qu'il observe mesure sa propre impatience.
+    $limite = 45
+    $t0 = Get-Date
+    $vu = $false
+    while (((Get-Date) - $t0).TotalSeconds -lt $limite) {
+        try {
+            $s = (Invoke-WebRequest -Uri "http://localhost:$Port/metrics" `
+                    -UseBasicParsing -TimeoutSec 3).StatusCode
+            if ($s -eq 200) { $vu = $true; break }
+        } catch { }
+        Start-Sleep -Milliseconds 500
+    }
+    $ecoule = [math]::Round(((Get-Date) - $t0).TotalSeconds, 1)
+    if ($vu) {
+        Dire "  /metrics repond apres $ecoule s (scrutation, pas une attente fixe)."
+    } else {
+        Alerte "LHM relance mais /metrics reste muet apres $limite s"
+    }
 }
 
 # =============================================================================
@@ -429,13 +483,45 @@ catch {
 # 8. Verdict
 # =============================================================================
 Titre 'VERDICT'
+if ($Port -ne $AGENT_LHM_PORT) {
+    Alerte ("port $Port : l'agent lit LHM_PORT=$AGENT_LHM_PORT en dur. " +
+            "Lancer l'agent avec --lhm localhost:$Port, ou il ne trouvera RIEN.")
+}
+# DEUX DEFAUTS TROUVES EN REVUE (code review dn4-8, 2026-08-21) :
+#
+#   (1) /metrics N'ETAIT PAS DANS LE VERDICT. Il etait sonde (son statut atterrit
+#       dans `httpmetrics`) puis JAMAIS RELU : seul /data.json faisait foi. Or
+#       /metrics est la SEULE interface que `dn_agent.SourceLhm` utilise, et toute
+#       la campagne d'AC2 a servi a eliminer /data.json. Une config LHM ou
+#       /data.json repond 200 et /metrics 404 faisait donc imprimer "LA TOUR
+#       EXPOSE SES SONDES", sortir 0, et l'agent publiait des champs vides
+#       jusqu'a la fin des temps.
+#
+#   (2) $script:Anomalies N'ENTRAIT PAS DANS $pret. Une tour dont la tache n'est
+#       pas RunLevel Highest, ou qui porte encore le repli non eleve HKCU\...\Run
+#       - deux cas qui LEVENT une alerte - sortait 0 tant que LHM tournait elevee
+#       A CET INSTANT. C'est-a-dire : LA MACHINE QUI NE REVIENDRA PAS APRES UN
+#       REDEMARRAGE se declarait prete a tout appelant lisant le code de sortie.
 $pret = ($R['pawnio_etat'] -eq 'Running') -and ($R['superio'] -eq $true) -and
-        ($R['sondes_ventilateur'] -gt 0) -and ($R['httpdatajson'] -eq 200)
+        ($R['sondes_ventilateur'] -gt 0) -and ($R['httpdatajson'] -eq 200) -and
+        ($R['httpmetrics'] -eq 200) -and ($script:Anomalies.Count -eq 0)
 Note 'pret_pour_agent' $pret
 Note 'anomalies' $script:Anomalies
 
-if ($pret) { Dire "  LA TOUR EXPOSE SES SONDES : driver charge, Super I/O lu, ventilateurs vus, interface repond." }
-else { Dire "  LA TOUR N'EST PAS PRETE. Voir les /!\ ci-dessus." }
+if ($pret) { Dire "  LA TOUR EXPOSE SES SONDES : driver charge, Super I/O lu, ventilateurs vus, /data.json ET /metrics repondent, zero anomalie." }
+else {
+    Dire "  LA TOUR N'EST PAS PRETE. Voir les /!\ ci-dessus."
+    # On NOMME ce qui manque, on ne renvoie pas le lecteur chercher.
+    if ($R['httpmetrics'] -ne 200) {
+        Dire ("      /!\ /metrics repond " + $R['httpmetrics'] + " (attendu 200).")
+        Dire  "          C'est LA SEULE interface que l'agent utilise. Sans elle,"
+        Dire  "          l'agent publiera des champs VIDES sans jamais se plaindre."
+    }
+    if ($script:Anomalies.Count -gt 0) {
+        Dire ("      /!\ " + $script:Anomalies.Count + " anomalie(s) : la tour peut")
+        Dire  "          fonctionner MAINTENANT et ne pas revenir apres un redemarrage."
+    }
+}
 
 if (-not $R['tache_presente'] -and -not $R['cle_run']) {
     Dire "  (i) PERMANENCE NON POSEE : au prochain redemarrage, il n'y aura plus rien."
