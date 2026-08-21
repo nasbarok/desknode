@@ -6768,16 +6768,30 @@ static int cmd_env(int argc, char **argv)
         printf("              RELUS a chaque cycle. `lectures` compte les\n");
         printf("              identites 0xB4 confirmees ; une autre valeur va en\n");
         printf("              `donnee` (il repond, mais ce n'est pas lui).\n");
-        printf("  🔴 AUCUNE GRANDEUR PUBLIEE, et voici pourquoi (AC8) : son ALS\n");
-        printf("     rend une reponse STRICTEMENT BINAIRE — 0x0000 a <= 2 ms,\n");
-        printf("     0xFFFF a >= 3 ms d'integration, au gain MINIMAL 1,0x, sur\n");
-        printf("     SEPT points mesures a la console. Ce n'est pas une\n");
-        printf("     integration, c'est un comparateur sature.\n");
-        printf("     Cause nommee : ST impose un chargement de registres PRIVES\n");
-        printf("     (« SR03 settings ») apres SYSTEM__FRESH_OUT_OF_RESET, et le\n");
-        printf("     depot interdit de recopier des adresses de registre de\n");
-        printf("     memoire. Recette de reprise : hardware/…-capteurs-i2c.md\n");
-        printf("     §13.19.5.\n");
+        /* 🔴 CORRIGE LE 2026-08-21 — CE TEXTE AFFIRMAIT UNE CAUSE REFUTEE, ET
+         * IL LE FAISAIT DEPUIS LE PRODUIT QUI TOURNE. Il disait « comparateur
+         * sature » et « cause nommee : ST impose un chargement de registres
+         * PRIVES ». LES DEUX SONT FAUX, mesures a l'appui (§13.21) :
+         *   · SR03 SE CHARGE (38/38 ecritures, 30 registres prives relus
+         *     EXACTEMENT) et le balayage d'integration est IDENTIQUE avant et
+         *     apres ⇒ SR03 N'A JAMAIS ETE LA CAUSE ;
+         *   · et ce n'est pas une saturation : l'ALS ne bouge pas sur 2 280x de
+         *     lumiere (5 lx -> 11 418 lx, BH1750 en CONTROLE au meme instant) ni
+         *     sur 40x de gain. Sa sortie ne depend QUE de la duree
+         *     d'integration ⇒ un compteur sans signal photodiode.
+         * ⛔ Une etiquette qui affirme une cause fausse est PIRE qu'une absence
+         *    d'explication : elle envoie chercher au mauvais endroit. */
+        printf("  🔴 AUCUNE GRANDEUR PUBLIEE, et voici pourquoi (AC8) : CE\n");
+        printf("     COMPOSANT EST MORT COTE ANALOGIQUE. Son ALS ne reagit NI a\n");
+        printf("     2 280x de lumiere (5 lx -> 11 418 lx, BH1750 en CONTROLE au\n");
+        printf("     meme instant), NI a 40x de gain, NI a un cycle\n");
+        printf("     d'alimentation. Sa sortie ne depend QUE de la duree\n");
+        printf("     d'integration. Telemetrie : 0 sur 200 tirs, zero photon\n");
+        printf("     jusque sur le canal de REFERENCE INTERNE.\n");
+        printf("  ⛔ ET SR03 N'EST PAS LA CAUSE — ce texte l'a affirme jusqu'au\n");
+        printf("     2026-08-21, A TORT : la sequence SE CHARGE (38/38, les 30\n");
+        printf("     registres prives relus EXACTEMENT) et NE CHANGE RIEN.\n");
+        printf("     Dossier complet : hardware/…-capteurs-i2c.md §13.20-§13.21.\n");
         printf("  ⚠️ 0x0016 (FRESH_OUT_OF_RESET) est un TEMOIN VALIDE lui aussi\n");
         printf("     (mesure : 0x01 au power-on, impose 0x00, relu 0x00) mais ce\n");
         printf("     module N'Y TOUCHE PAS : sa valeur est un FAIT sur\n");

@@ -531,8 +531,11 @@ static void lire_bh1750(void)
  *   poser 5 V et la masse court-circuiterait le shunt de 0,1 Ω.
  */
 
-/* 🔴 Le VL6180X ne publie AUCUNE grandeur : son ALS rend une réponse binaire
- * sans le chargement de registres privés de ST (§13.19.5). Ce qu'on lit ici est
+/* 🔴 Le VL6180X ne publie AUCUNE grandeur — et la RAISON A CHANGÉ le 2026-08-21.
+ * ⛔ Ce commentaire disait « sans le chargement de registres privés de ST » :
+ *    c'était une CAUSE FAUSSE. SR03 se charge (38/38, 30 privés relus
+ *    exactement) et ne change RIEN. La vraie raison est que l'ÉTAGE ANALOGIQUE
+ *    DE CE COMPOSANT EST MORT (§13.21). Ce qu'on lit ici est
  * son IDENTITÉ — la seule chose qui le qualifie vraiment — et c'est ce qui rend
  * son état VIVANT ou MUET. ⚠️ Un module qui compterait des lectures sans rien
  * en tirer serait un instrument décoratif ; celui-ci répond à une question
