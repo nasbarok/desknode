@@ -93,12 +93,26 @@ def disk_io_counters():
     return _Cnt(_d[0])
 
 
+# 🔴 LE CPU DU STUB AVANCE, ET IL EST VISIBLEMENT FAUX (revue dn4-8, 2026-08-21).
+#    `cpu_times()` rendait `user = 0.01, system = 0.005` — FIXES POUR TOUJOURS.
+#    Tout instrument qui mesure du CPU sous ce stub rapportait donc une valeur
+#    EXACTEMENT CONSTANTE : c'est le tell documente de ce depot pour « instrument
+#    mort ». Pire, `mesure_lhm_dn48._cpu_ms()` en est un consommateur direct —
+#    chaque candidat aurait score 0,000 ms et PASSE C1/C2 sans rien mesurer.
+# ⇒ Deux propriedes : (1) ca AVANCE, donc un delta n'est jamais nul ; (2) la
+#   cadence est GROSSIERE ET RONDE (1 ms par appel), donc un lecteur attentif voit
+#   tout de suite que ce n'est pas une mesure. ⛔ Un faux plausible serait pire
+#   qu'un faux constant : il se ferait publier.
+_cpu = [0.0]
+
+
 class Process(object):
     def __init__(self, pid=None):
         pass
 
     def cpu_times(self):
+        _cpu[0] += 0.001          # 1 ms par appel — FABRIQUE, et ca se voit
         class _T(object):
-            user = 0.01
-            system = 0.005
+            user = _cpu[0] * (2.0 / 3.0)
+            system = _cpu[0] * (1.0 / 3.0)
         return _T()

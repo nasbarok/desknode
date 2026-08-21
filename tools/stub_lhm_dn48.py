@@ -109,6 +109,22 @@ class Poignee(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
         self.send_header("Content-Length", str(len(b)))
         self.end_headers()
+        # 🔴 MODE `goutte` — AJOUTE EN REVUE (code review dn4-8, 2026-08-21).
+        #    Le mode `lent` dort AVANT de composer et envoie le corps EN UN SEUL
+        #    `wfile.write` : il n'exerce donc que « retard puis reponse d'un coup »,
+        #    que le timeout du socket attrape sans peine. ⛔ AUCUN mode ne pouvait
+        #    produire la panne que le timeout RATAIT vraiment — un corps servi par
+        #    petits morceaux, chacun arrivant JUSTE avant l'echeance, qui remet le
+        #    chrono a zero a chaque paquet et fait courir la lecture sans borne.
+        # ⚠️ Un harnais qui ne sait pas produire le defaut ne peut pas prouver
+        #    qu'il est corrige : ce mode existe pour EPROUVER `_lire_corps()`.
+        if ETAT["mode"] == "goutte":
+            pas = max(1, len(b) // 40)
+            for i in range(0, len(b), pas):
+                self.wfile.write(b[i:i + pas])
+                self.wfile.flush()
+                time.sleep(ETAT["retard"])
+            return
         self.wfile.write(b)
 
 
@@ -117,7 +133,8 @@ def main():
     ap.add_argument("--port", type=int, default=8086,
                     help="⛔ PAS 8085 par defaut : ne jamais se substituer au vrai LHM")
     ap.add_argument("--mode", default="normal",
-                    choices=["normal", "lent", "muette", "negatif", "meurt"])
+                    choices=["normal", "lent", "muette", "negatif", "meurt",
+                             "goutte"])
     ap.add_argument("--retard", type=float, default=2.0)
     ap.add_argument("--sonde", default=None)
     ap.add_argument("--apres", type=int, default=3)
