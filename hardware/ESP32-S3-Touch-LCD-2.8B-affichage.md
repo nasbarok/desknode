@@ -4147,3 +4147,232 @@ est plus dangereux qu'un chiffre absurde* — celui-là était les deux à la fo
   **220 050**. Même famille que le « 156 px » en dur que dn4-6 a supprimé de
   `dn_console.c`. ⇒ **porté au ledger**, ⛔ pas corrigé en séance : changer le
   code aurait changé le SHA au milieu des relevés.
+
+---
+
+## 19. `dn4-9` (P9.3d) — LA **SÉLECTION** DEVIENT UNE PROPRIÉTÉ DU MODÈLE DE WIDGET
+
+> **Ce que cette section ajoute à §15 et §16, ⛔ sans les réécrire** : le modèle de widget de §15
+> décrit une case qui dessine ses grandeurs **`0..n-1` dans l'ordre**. C'était exact, et ça ne
+> l'est plus. `dn4-9` ajoute au modèle **une SÉLECTION D'INDICES** et **un SECOND COMPTE**.
+> ⚠️ **§0 EST INCHANGÉE** — aucune ligne de la configuration de référence n'a bougé : cette story
+> ne touche **ni la géométrie, ni la police, ni le pipeline**. Vérifié ligne à ligne, ⛔ pas au
+> jugé : c'est le point noir récurrent de ce fichier, relevé **trois stories de suite**.
+> ⛔ **AUCUN CHIFFRE MESURÉ ICI.** Cette section décrit un **mécanisme**. Les largeurs, le coût
+> RAM, le fps et la latence exigent la carte et sont **DUS** (voir §19.4).
+
+### 19.1 Ce qui change dans le TYPE, et pourquoi le rang cesse d'être l'index
+
+`dn_widget_desc_t` gagne deux champs :
+
+| champ | sens | défaut |
+|---|---|---|
+| `sel_p1[DN_WIDGET_GRANDEURS_MAX]` | `sel_p1[rang]` = index de grandeur **+ 1** — ce que la **CASE** dessine | tout à zéro ⇒ **IDENTITÉ** |
+| `n_detail` | ce que le **DÉTAIL** montre : les grandeurs `0..n_detail-1`, **dans l'ordre du fil** | `0` ⇒ « comme la case » |
+
+🔴 **L'INDICE ÉTAIT **TRIPLE** ET CONFONDU** : rang d'affichage = entrée de descripteur = slot
+d'état. La sélection découple **le premier** des deux autres, ⛔ **jamais les deux autres entre
+eux** : `grandeurs[g]` et `etat->txt[g]` décrivent **toujours** la même grandeur. C'est
+l'invariant qui rend le mécanisme sûr, et c'est pour lui que la traduction est faite **dans le
+module qui dessine** (`dn_widget_sel()`) plutôt qu'en permutant l'état chez l'appelant — permuter
+l'état aurait désaligné la case du détail, qui n'ont pas la même sélection.
+
+⚠️ **LE DÉCALAGE DE 1 EST LA CONVENTION DU DÉPÔT** (`DN_VAL_ABSENTE`,
+`DN_PREC_NON_RENSEIGNEE`, `k_pc[].idx_p1`), ⛔ pas une astuce locale. Sans lui, un `{0,0,0,0}`
+implicite signifierait *« les rangs 0 à 3 dessinent TOUS la grandeur 0 »* — quatre fois la même
+ligne, **en silence**, sur **cinq cases sur six**.
+
+### 19.2 🔴 LA MISE À JOUR N'EST PAS LA CONSTRUCTION — et c'est le piège du module
+
+`dn_widget_maj()` ⛔ **NE parcourt PAS `0..n-1`** : elle parcourt les **QUATRE** slots et filtre
+par `if (!w->valeur[i]) continue;`. **Le garde-fou est le POINTEUR, pas le compte.** Sa boucle
+porte donc bien un **rang**, et il faut lui appliquer **la même traduction** qu'à la création.
+Sans elle, la case aurait affiché la bonne grandeur à la construction puis **une autre dès la
+première mise à jour** — 5 fois par seconde, **sans un log**.
+
+⚠️ **Et il y avait un second bord au même piège, hors de ce module** : `build_dashboard()` passait
+une **copie** du descripteur (icône A/B + compte) tandis que `case_poser()` passait
+`&k_desc[idx]`, le descripteur **brut**. Deux descripteurs différents pour un même widget — ça
+marchait **par accident**, tant que rang = index. ⇒ **`desc_effectif()`** : une seule fabrique, les
+deux chemins la prennent.
+
+### 19.3 ⛔ CE QUE LA GÉOMÉTRIE N'AUTORISE TOUJOURS PAS
+
+Rien de §15 n'est amendé sur ce point, et il décide du périmètre :
+
+| lignes empilées | bas de la dernière | verdict |
+|---|---|---|
+| 2 | `48 + 1×40 + 35 = 123` | ✅ tient (`DISQUE` passe à deux) |
+| **3** | `48 + 2×40 + 35 = 163` | ✅ tient — **PILE** sur `DN_UI_CASE_H = 163` (D12) |
+| **4** | `48 + 3×40 + 35 = 203` | ⛔ **ENTIÈREMENT hors case** |
+
+⇒ ⛔ **Aucune case ne passe à quatre.** `CPU` reste à **trois lignes** ; ce qui change, c'est
+**LESQUELLES** (`[0, 1, 3]`). Le **DÉTAIL**, lui, a la place : **deux lignes de 35 px** dans un
+panneau de **97** (porté de 62 à 97 en `dn4-6`, les 35 px pris **au placeholder de courbe**, dont
+le bas reste à **370**).
+
+🔴 **ET LA LEÇON DE `dn4-6` VAUT ENCORE, MOT POUR MOT** : une règle de mise en page **dimensionnée
+sur UNE case et appliquée aux SIX est une extrapolation**. Trois par ligne, dimensionné sur `GPU`,
+avait fait déborder `CPU` de **74 px, clippés EN SILENCE par LVGL** — et **c'est l'œil de l'owner
+qui l'a vu**, ⛔ pas l'arithmétique. ⇒ Les largeurs de `dn4-9` se mesurent **sur les SIX cases**,
+⛔ pas sur les deux qu'elle modifie.
+
+### 19.4 🎯 LES LARGEURS, **MESURÉES SUR LA DALLE** LE 2026-08-22
+
+**Firmware `4c3a3f7`** (SHA **lu au bandeau**), `widget largeur`, police `dn_font_28`.
+⚠️ **Mesurées AVANT le flash de `dn4-9`**, et c'est légitime : `widget largeur` mesure une **chaîne
+libre** dans la police liée — elle ne dépend pas du descripteur. ✅ **Témoin de calibration** :
+`« c.max 100,0 % »` rend **197 px**, exactement le chiffre publié en `dn4-6`.
+
+🔴 **DEUX LARGEURS UTILES, ET AUCUNE N'EST CELLE DES COMMENTAIRES** :
+- **CASE : 201 px** (rendu par `widget largeur` lui-même).
+- **DÉTAIL : 432 px** — `widget detail` rend `panneau 460, x 14` ⇒ `460 − 2×14`.
+  ⛔ **Les « 446 px » des commentaires sont FAUX** : ils valent `460 − 2×7` et datent d'un `x`
+  antérieur. *Relire, ⛔ ne pas croire* — la story avait raison de l'exiger.
+
+| chaîne | px | contre | verdict |
+|---|---|---|---|
+| `c.max 100,0 %` | **197** | 201 | ✅ **témoin** — le chiffre de `dn4-6` est reproduit |
+| `10000 tr/min` (nu) | **183** | 201 | ✅ marge **18 px** |
+| `1358 tr/min` (réel) | 157 | 201 | ✅ |
+| `10000 rpm` (nu) | 154 | 201 | ✅ |
+| 🔴 `100000,0 Mo/s` | **206** | 201 | ⛔ **DÉBORDE — défaut LIVRÉ, jamais vu** |
+| `2999,9 Mo/s` | **167** | 201 | ✅ — ce que l'échelle armée rend |
+| `999,9 Mb/s` | 152 | 201 | ✅ (ancien seuil) |
+| `2999,9 Mb/s` | **168** | 201 | ✅ (seuil owner à 3000) |
+| `99999,9 Mb/s` | 186 | 201 | ✅ *(sans l'icône ↓ ; avec, `dn4-1` mesure 202)* |
+| ⛔ `extr.moy 10000 tr/min` | **315** | 201 | ⛔ **+114 px** |
+| ⛔ `extr 10000 tr/min` | 247 | 201 | ⛔ +46 |
+| ⛔ `ext 10000 tr/min` | 235 | 201 | ⛔ +34 |
+| ⛔ `ext 10000 rpm` | 206 | 201 | ⛔ +5 |
+| ⚠️ `EX 10000 rpm` | 200 | 201 | ✅ … pour **1 px** |
+
+⇒ 🔴 **AUCUN PRÉFIXE LISIBLE NE TIENT DANS LA CASE.** Il reste **18 px** après `10000 tr/min`,
+soit **moins d'un caractère**. ⛔ Ce n'est pas un libellé à raccourcir, c'est un **mur**.
+
+**Le DÉTAIL, à DEUX par ligne** (⚠️ **bornes BASSES** — voir le défaut d'instrument en §19.6) :
+
+| ligne | px | contre 432 | verdict |
+|---|---|---|---|
+| `100,0 % · 100,0 GHz` (CPU l1) | ≥ 292 | 432 | ✅ |
+| `c.max 100,0 % · 150,0 °C` (CPU l2) | ≥ 342 | 432 | ✅ |
+| `1000 W · 10000 tr/min` (GPU l2) | ≥ 338 | 432 | ✅ |
+| ⛔ `2999,9 Mo/s · extr.moy 10000 tr/min` | ≥ **530** | 432 | ⛔ **+98** |
+| ⛔ `100000,0 Mo/s · extr.moy 10000 tr/min` | ≥ 569 | 432 | ⛔ +137 |
+| ⛔ `ventirad 10000 tr/min · boitier 10000 tr/min` | ≥ **642** | 432 | ⛔ **+210** |
+| `10000 tr/min · 10000 tr/min` **NU** | 414 | 432 | ✅ … mais **indistinguables** ⛔ |
+| `ventirad 10000 rpm · boitier 10000 rpm` | ≥ 584 | 432 | ⛔ +152 |
+| `CPU 10000 rpm · BOIT 10000 rpm` | ≥ 504 | 432 | ⛔ +72 |
+
+⇒ 🔴 **« DEUX PAR LIGNE » EST MORT POUR `DISQUE`, QUELS QUE SOIENT LES LIBELLÉS.** Le budget pour
+**deux** préfixes est de `432 − 414 = **18 px**` — zéro caractère. ⛔ **Raccourcir ne sauve pas** :
+ce n'est pas le nom qui déborde, c'est la **règle de mise en page**.
+
+**Le DÉTAIL, à UNE par ligne** — la voie retenue :
+
+| ligne | px | contre 432 | marge |
+|---|---|---|---|
+| `2999,9 Mo/s` | 167 | 432 | **265** |
+| `extr.moy 10000 tr/min` | 315 | 432 | **117** |
+| `ventirad 10000 tr/min` | 309 | 432 | **123** |
+| `boitier 10000 tr/min` | 285 | 432 | **147** |
+
+✅ **Marge minimale 117 px, libellés français COMPLETS.**
+
+### 19.5 🔴 LES TROIS DÉCISIONS OWNER DU 2026-08-22, PRISES SUR CES CHIFFRES
+
+1. **« Pour les unités on ne dépasse pas 3 000, après on change l'affichage de l'unité M puis G. »**
+   ⇒ `net[0]`/`net[1]` : seuil **1000,0 → 3000,0 Mb/s**. `disk[0]` : **échelle ARMÉE**
+   (`3000,0 Mo/s → Go/s`), ce qui **AMENDE un legs explicite de `dn4-6`** (*« l'owner a nommé
+   RÉSEAU »*).
+   🎯 **Et la mesure lui donne raison** : `« 100000,0 Mo/s »` fait **206 px pour 201** — la
+   grandeur 0 de `DISQUE` **débordait déjà**, en silence, et **personne ne l'avait vu**.
+   ⚠️ **Exemption NOMMÉE, ⛔ pas silencieuse** : les quatre `tr/min` (plafond 10000) n'ont **aucun
+   préfixe M/G qui se lise** — `« 10,0 k tr/min »` serait **plus long** que `« 10000 tr/min »`.
+   Elles sont **listées par la gate** à chaque tir.
+2. **Le détail montre UNE grandeur par ligne quand deux ne tiennent pas.** ⇒ `detail_cols = 1` sur
+   `DISQUE`. **Facture : 43 px repris au placeholder de COURBE** (165 → **122 px**), bas inchangé
+   à 370. ⇒ **`dn4-4` dessinera dans 122 px.**
+3. **La case `DISQUE` ligne 2 porte un `tr/min` NU.** Le nom vit au **détail**, qui a la place.
+   ⇒ `prefixe_detail_seul` — et **les gardes jugent désormais chaque vue avec SES étiquettes**,
+   sinon une case qui n'affiche pas le préfixe serait jugée comme si elle l'affichait.
+
+### 19.6 ⚠️ UN DÉFAUT D'INSTRUMENT DE CETTE SÉANCE — LE MIEN
+
+🔴 **LE REPL DE LA CARTE MANGE LES OCTETS NON-ASCII.** `dn_console.py` envoie pourtant de l'UTF-8
+(`ser.write(…encode("utf-8"))`, vérifié dans la source) — c'est le côté carte qui filtre, en mode
+« dumb » (*« Your terminal application does not support escape sequences »*).
+**Symptôme** : `widget largeur "c.max 100,0 % · 150,0 °C"` s'échoue
+`« c.max 100,0 %      150,0 C »` — **le `·` ET le `°` ont disparu**.
+⇒ **Toutes les largeurs de lignes de DÉTAIL ci-dessus sont des BORNES BASSES.** Les largeurs de
+CASE, elles, sont **ASCII pures donc EXACTES**.
+⛔ **Ne pas « corriger » en ajoutant la largeur manquante au jugé** : ce serait fabriquer un nombre
+plausible. ✅ **L'instrument exact est `widget detail`**, qui relit le texte **réellement composé
+par le firmware** — il exige donc le flash.
+⚠️ **Et c'est le sens de la conclusion** : les bornes basses **suffisent à trancher** (642 ≥ 432
+est déjà un refus), ⛔ elles ne suffiraient **pas** à valider un cas serré.
+
+### 19.7 ⏳ CE QUI EST **DÛ** ET QUI EXIGE LE FLASH
+
+✅ **Les largeurs sont FAITES** (§19.4) — c'est ce que la séance du 2026-08-22 a soldé sans flash.
+⛔ **Ce qui reste ne peut pas s'obtenir autrement qu'en posant le firmware sur la dalle.**
+
+| à mesurer | instrument | pourquoi ça ne se calcule pas |
+|---|---|---|
+| le texte **réellement composé** par le détail, avec ses `·` | `widget detail` | ⚠️ le REPL mange les non-ASCII (§19.6) ⇒ les largeurs de détail sont des **bornes basses**. Seul le firmware compose la vraie chaîne |
+| que la case `CPU` dessine bien `[%, GHz, °C]` | `pc $DN,…` (témoin v3) + **l'œil** | ⛔ **ÉCHEC si « 88,0 °C » apparaît** — le `c.max` d'un agent v3 pris pour une température |
+| que `DISQUE` à deux ne déborde pas | **absence** de l'`ESP_LOGW` + compteur `débordements` | ✅ **déjà obtenu par l'override** le 2026-08-22 (`widget grandeurs 4 2` ⇒ **0 débordement**), ⏳ **à re-confirmer sur le descripteur livré** |
+| les **trois** compteurs de géométrie | `widget` **nu** (lecture pure, dn4-9) | ⛔ jamais additionnés : trois diagnostics distincts |
+| Δ`mem`, Δ`cpu brut`, Δ`fps`, Δ latence | `mem` · **`cpu brut`** · `fps 15` · `nav ab 40` | ⛔ **jamais `cpu N`** : `cmd_cpu` bloque le REPL, **et le REPL EST le transport PC** |
+| que les gardes REFUSENT ce qu'elles doivent | `widget grandeurs 4 3` / `4 4` / `3 2` | ⚠️ **l'attendu s'est INVERSÉ deux fois** — voir §19.9 |
+
+### 19.8 🔴 CE QUE LA SÉANCE A TROUVÉ SUR LA GARDE — ET ELLE DISCULPE `dn4-8`
+
+**`widget grandeurs 4 4` a été ACCEPTÉE** sur la carte, alors que le ledger de `dn4-8` l'annonce
+**REFUSÉE**. ⛔ **Ce n'est PAS une régression** : `desc_ligne_indistincte` **n'existe pas** dans le
+firmware installé — `git show 4c3a3f7:…/dn_ui.c | grep -c desc_ligne_indistincte` rend **0**,
+contre **3** à `cdfe88c`. La garde est arrivée par la **revue du 2026-08-21**, c'est-à-dire
+**après** le flash de `4c3a3f7`.
+⇒ 🔴 **La colonne « AVANT » du tableau d'AC6 n'est PAS observable sur cette carte** : aucun
+firmware qui refuse n'y a jamais été posé. Le ledger de `dn4-8` le disait
+(*« la garde n'est pas validée sur la carte — elle exige un FLASH »*) ; la séance le **confirme
+par la mesure**, et corrige un tableau qui présentait un état comme observable.
+
+✅ **Et l'override a rendu trois mesures que rien d'autre n'aurait données** :
+
+| commande | log | ce qui est PROUVÉ |
+|---|---|---|
+| `widget grandeurs 4 4` | `bas 203 > h=163` · **1 en HAUTEUR** | 🎯 le `203 > 163` est **mesuré**, ⛔ plus cité de `dn4-6` |
+| `widget grandeurs 4 3` | 0 débordement | 3 lignes tiennent — **pile** (`163 = 163`) |
+| `widget grandeurs 4 2` | 0 débordement | 🎯 **AC4 : `y_bas = 128 ≤ 163`**, par l'**absence** du log |
+
+### 19.9 ⚠️ L'ATTENDU DES GARDES A CHANGÉ **DEUX FOIS** — le lire avant de conclure
+
+| commande | `4c3a3f7` (installé) | `cdfe88c` (revue `dn4-8`) | après `dn4-9` |
+|---|---|---|---|
+| `widget grandeurs 4 4` | ✅ acceptée *(garde absente)* | ⛔ refusée | ⛔ **refusée** — la CASE montrerait 3 `tr/min` **nus** |
+| `widget grandeurs 4 3` | ✅ acceptée | ⛔ refusée | ⛔ **refusée** — 2 `tr/min` nus dans la case |
+| `widget grandeurs 4 2` | ✅ acceptée | ✅ acceptée | ✅ **acceptée** — `Mo/s` + un seul `tr/min` |
+| `widget grandeurs 3 2` (`net`) | ✅ acceptée | ✅ acceptée | ✅ **acceptée** — les icônes ↓/↑ séparent |
+
+🔴 **LE RENVERSEMENT DE `4 4` ET `4 3` EST UNE CONSÉQUENCE DIRECTE DE LA DÉCISION OWNER n°3**, et
+il est **VOULU** : puisque la case n'affiche **plus** les préfixes, deux `tr/min` y seraient
+**indistinguables à l'œil**. ⛔ Une garde qui les accepterait parce que le *descripteur* porte des
+préfixes jugerait un écran qui n'existe pas.
+⚠️ **C'est exactement pour ça que `desc_ligne_indistincte()` prend une VUE** — et c'est le
+correctif que la mesure du 2026-08-22 a rendu obligatoire.
+
+### 19.10 ⛔ CE QUE `dn4-9` NE TOUCHE PAS
+
+- ⛔ **La COURBE et le MIN/MAX restent des placeholders** — réponse **explicite** au legs de
+  `dn4-8` (*« `dn4-9` doit dire lequel elle comble, si elle en comble un »*) : **AUCUN**. Motif :
+  les deux demandent un **historique en RAM de session**, qui est le livrable de **`dn4-4`** (P9.4)
+  avec le budget des **< 300 ms** qu'il porte. Y ajouter un historique **sans** ce budget serait
+  aggraver la dette qu'on va payer.
+  ⛔ **Écrire « MIN 12 % · MAX 91 % » parce que le panneau a l'air vide** serait refaire le défaut
+  qu'on solde.
+- ⛔ **Ni `DN_WIDGET_GRANDEURS_MAX` ni `DN_LINK_GRANDEURS_MAX` ne bougent.**
+- ⛔ **La grille reste à SIX cases, et `DISQUE` garde son titre.** D13 amende D8 sur sa **portée
+  Ring0**, ⛔ pas sur son **choix de case**.
+- ⛔ **L'échelle haute de `DISQUE` (`Mo/s → Go/s`) n'est PAS armée** — mécanisme prêt depuis
+  `dn4-6`, legs explicite (*« l'owner a nommé RÉSEAU »*). Au ledger avec son chiffre.

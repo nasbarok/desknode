@@ -1755,3 +1755,172 @@ extraction_moy ~ disk.cpu_noctua  r = 0,974
 - ✅ **Le CSV et le log sont ARCHIVÉS** — `mesures/dn4-8/`, avec leur provenance. C'est la leçon
   directe de ce re-tir : celui de §17 n'était nulle part. ⚠️ Et sa provenance dit aussi ce qu'un
   CSV **ne** sauve pas.
+
+---
+
+# 20. `dn4-9` (P9.3d) — CE QUE L'ÉCRAN EN MONTRE
+
+**Story** : `dn4-9-cpu-prend-la-temperature-disque-prend-les-ventilos`.
+**Périmètre : AFFICHAGE PUR.** ⛔ **Aucune ligne d'agent, aucune de `dn_link`, aucune du
+protocole `$DN`.** Le fil est **servi** depuis `dn4-8` : `cpu = [% · GHz · c.max · °C]` et
+`disk = [Mo/s · extraction_moy · CPU_NOCTUA · CASE_GROUP]`.
+✅ **La preuve que le fil n'a pas bougé est `tools/recompte_trame_dn48.py`, qui reste VERT SANS
+AVOIR ÉTÉ MODIFIÉ** (exit 0, `agent/dn_agent.py sha256:95a4481904e2a530`).
+
+## 20.1 🔴 LE MAPPING BIOS ↔ LHM ↔ RPM — REMONTÉ ICI, IL N'EXISTAIT QUE DANS LA STORY
+
+⚠️ **C'est la SOURCE ÉCRITE des trois libellés de `DISQUE`.** Il vivait dans le fichier de story
+de `dn4-8` et nulle part ailleurs : un mapping qu'on ne retrouve que dans un artefact de sprint est
+un mapping qu'on re-déduira faux.
+
+**Quatre captures owner du 2026-08-21.** Le BIOS **nomme** les en-têtes **et** affiche leur RPM :
+le RPM est la **clé de jointure** avec les `fan/N` de LHM.
+
+| BIOS | RPM BIOS | LHM | RPM Windows | nom retenu | nommable à l'écran ? |
+|---|---|---|---|---|---|
+| `CPU 1` | ~305 | **`fan/1`** | 364 | **`CPU_NOCTUA`** | ✅ **oui, sans réserve** — libellé `ventirad` |
+| `CPU 2` | ~700 | **`fan/0`** | 784 | **`TOP_OUT`** | 🔴 **FONDU** dans `extraction_moy` ⇒ ⛔ pas seul |
+| `System 1` | 877 | **`fan/2`** | 930 | **`CASE_GROUP`** | ⚠️ **avec réserve** — libellé `boitier`, ⛔ jamais « TOP »/« BOTTOM » |
+| `System 2` | **0** | `fan/3` ou `fan/5` | **0** | **`FRONT_IN`** | ⛔ **JAMAIS, PAR AUCUN LOGICIEL** (L7, CLOS) |
+| `System 3` | 1305 | **`fan/4`** | 1358 | **`REAR_OUT`** | 🔴 **FONDU** ⇒ ⛔ pas seul |
+
+✅ **Jointure SANS AMBIGUÏTÉ** : quatre valeurs strictement croissantes de chaque côté, aucune
+paire proche (la plus serrée est à 1,25×).
+🔴 **L'ORDRE NAÏF ÉTAIT FAUX SUR LES DEUX PREMIERS** : `fan/0` est **`CPU_FAN2`**, ⛔ pas
+`CPU_FAN1`. Le coder naïvement aurait affiché **« CPU » sur l'extraction haute**. C'est **la
+capture BIOS de l'owner** qui l'a attrapé, ⛔ pas le raisonnement.
+
+## 20.2 Ce que la story change — les DEUX comptes et la sélection d'indices
+
+🔴 **LE MÉCANISME QUI MANQUAIT** : jusqu'à `dn4-9`, une case n'avait **qu'un nombre**
+(`n_grandeurs`) et l'affichage lisait les grandeurs `0..n-1` **dans l'ordre** — il n'y avait
+**aucune sélection**. Or D13 demande `[%, GHz, °C]` pour `CPU`, c'est-à-dire les grandeurs
+**0, 1 et 3**, et la place n'en autorise que **trois** (`48 + 3×40 + 35 = 203 > 163`, mesuré).
+
+| case | CASE dessine | DÉTAIL montre | changement |
+|---|---|---|---|
+| **CPU** | **3** — `[0, 1, 3]` = `%` · `GHz` · **`°C`** | **4** — `[0, 1, 2, 3]` | 🔴 `c.max` **descend au détail**, ⛔ n'est pas supprimé |
+| **GPU** | 3 — `[0, 1, 2]` | **4** — `[0, 1, 2, 3]` | ✅ le `tr/min` du GPU devient **visible pour la première fois depuis `dn4-6`** |
+| **RAM** | 1 — `[0]` | 1 | inchangée. ⚠️ **⛔ NE PAS lui donner sa grandeur 1 au détail** : elle part déjà en ligne secondaire, elle s'y afficherait DEUX FOIS |
+| **RÉSEAU** | 2 — `[0, 1]` | 2 | inchangée |
+| **DISQUE** | **2** — `[0, 1]` = `Mo/s` · **`extr.moy tr/min`** | **4** — `[0, 1, 2, 3]` | 🔴 de UNE à DEUX ; les trois **préfixes** posés |
+| **AMBIANCE** | 2 — `[0, 1]` | 2 | inchangée |
+
+**La forme retenue** : `sel_p1[]` (index **décalé de 1**, `0` = non déclaré ⇒ **identité**) +
+`n_detail` (`0` = « comme la case »). ⚠️ **Le décalage est la convention du dépôt**
+(`DN_VAL_ABSENTE`, `DN_PREC_NON_RENSEIGNEE`, `k_pc[].idx_p1`) : un descripteur qui ne déclare rien
+naît **ignorant**, et l'ignorance se lit « identité », c'est-à-dire le comportement d'avant
+`dn4-9` à l'octet près pour les CINQ cases sans sélection.
+⛔ **Il n'y a PAS de `sel_detail_p1[]`** : le détail montre `0..n_detail-1` **dans l'ordre du fil**
+— il n'a aucune raison de réordonner ce que la source publie, et un champ que personne n'utilise
+est un champ mort.
+
+## 20.3 🔴 LES TROIS VERROUS ÉTAIENT **EN SÉRIE** — en lever un seul ne donnait rien
+
+| # | Où | Ce qu'il faisait | Levé par |
+|---|---|---|---|
+| 1 | `detail_reparametrer()` | lisait `desc_n(idx)`, le compte de la **CASE** | `desc_n_detail(idx)` |
+| **2** | 🔴 **`dn_ui_pc_maj()`** | **bornait le FORMATAGE** par le compte de la case ⇒ **`s_wetat[CPU].txt[3]` n'était JAMAIS ÉCRIT** | borne = `desc_peuplees(idx)` |
+| 3 | `desc_n()` | **un seul** nombre par case | `case_grandeurs()` + `desc_n_detail()` |
+
+🎯 **LE N°2 EST CELUI QU'ON RATE.** Lever les n°1 et n°3 seuls aurait donné un détail affichant
+**`--` gris** à la place de la °C : **un défaut MUET à la place d'un défaut VISIBLE**, et le dev
+aurait conclu que le mécanisme marche.
+
+⚠️ **Et un QUATRIÈME point, qui n'était dans aucun artefact** : `build_dashboard()` passait à
+`dn_widget` une **copie** du descripteur pendant que `case_poser()` passait `&k_desc[idx]`, le
+descripteur **brut**. Tant que le rang valait l'index, les deux composaient la même chose. Avec une
+sélection, la case aurait affiché `[%, GHz, °C]` à la construction puis `[%, GHz, c.max]` **dès la
+première mise à jour** — 5 fois par seconde, **sans un log**, parce que le garde-fou de
+`dn_widget_maj()` est le **POINTEUR** `valeur[i]` et pas le compte. ⇒ **`desc_effectif()`** : une
+seule fabrique, les deux chemins la prennent.
+
+## 20.4 Les gardes — elles jugent **l'UNION**, ⛔ plus « les `n` premières »
+
+*Ce qui est affiché quelque part est jugé.* Le cas est **réel** : la case `CPU` = `[0, 1, 3]` ne
+contient **plus** le couple `%`/`%`, alors que le détail `[0, 1, 2, 3]` le contient.
+
+- **Invariant A** (audité au boot) : `sel_case ⊆ [0, n_detail)` ⇒ *la case montre un
+  sous-ensemble de ce que le détail montre*. C'est lui qui rend **l'union égale à la plage du
+  détail**, et donc les gardes exactes sans jamais fusionner deux listes.
+- **Invariant B** : les indices d'une case sont deux à deux **distincts**.
+- **Invariant C** : `sel_p1` est déclarée **entièrement ou pas du tout**.
+- `desc_ligne_indistincte()` juge `0..n_detail-1` — ⛔ plus le compte de la case.
+- `desc_peuplees()` **n'est plus la garde** : elle rend « la dernière peuplée **+ 1** », donc
+  comparer un COMPTE laissait passer une sélection **contenant un trou**. ⇒ `desc_indice_vide()`
+  juge **chaque indice**.
+- `dn_ui_set_case_grandeurs()` refuse aussi `n > n_detail` : la case dessinerait une grandeur que
+  la page censée l'**expliquer** ne montre pas.
+
+🔴 **ET L'AUDIT DE BOOT CESSE DE MENTIR.** Il annonçait *« `widget grandeurs 4 4` est jouable »*
+pour `DISQUE` alors que la garde de `dn4-8` la **REFUSAIT** (trois `tr/min` sans préfixe). ⚠️ Ce
+n'était pas une faute de `dn4-8` : la garde et l'audit ont été écrits à **deux moments
+différents**. C'était un défaut **LIVRÉ**. La ligne publie désormais les deux comptes, les deux
+listes, et **interroge les mêmes gardes** que le setter — ⛔ pas une copie de leur raisonnement.
+
+## 20.5 🔴 DEUX DÉFAUTS D'INSTRUMENT TROUVÉS AU CADRAGE — ⛔ pas à l'exécution
+
+1. **`widget detail` était PLUS PETIT que ce qu'il devait relire** : `128 o`
+   (`DN_WIDGET_TXT_MAX * 4 + 64`) contre **168 o** produits
+   (`4 * (DN_WIDGET_TXT_MAX + 24) + 8`), et `dn_ui_detail_label()` faisait
+   `snprintf(txt, txt_n, "%s", src)` **sans tester le retour**. À quatre grandeurs **avec
+   préfixes**, le pire cas dépasse : **le seul instrument capable de prouver qu'une ligne tient
+   aurait tronqué le texte qu'il prétend relire**, pendant que le produit, lui, va bien.
+   🎯 *« Un instrument faux accuse le sujet sain. »*
+   ⇒ **UNE constante** (`DN_UI_DETAIL_TXT_MAX`, `dn_ui.h`), les deux côtés la prennent, et la
+   troncature rend **`false`** avec un `ESP_LOGE` qui nomme les deux tailles.
+2. **`s_gr_force[]` avait CINQ lecteurs pour QUATRE annoncés** — `pousser_nolock()`, ajouté par la
+   revue du 2026-08-19 **dans le geste même** où l'énumération était présentée comme « faisant
+   partie de la garde ». C'est mot pour mot la dérive payée sur `s_nue_force[]`
+   (*« 1/6, 2/5, 3/5, 4/6, 5/5 : cinq numérotations pour une liste »*).
+   ⇒ `dn4-9` **ne renumérote pas, elle supprime le besoin de numéroter** : `s_gr_force[]` n'a plus
+   qu'**UN lecteur** (`case_grandeurs()`) et **UN écrivain** (`dn_ui_set_case_grandeurs()`), et
+   c'est un `grep -n s_gr_force dn_ui.c` qui le dit — **TROIS lignes de code**, ⛔ pas un compte
+   tenu à la main.
+
+## 20.6 La gate WSL — `tools/verif_selection_dn49.py`
+
+**Jouable sans carte, sans tour, sans LHM.** Elle fait ce que **ni le firmware ni l'œil** ne
+peuvent faire :
+
+- **M1 — LE MIROIR ÉCRAN ↔ FIL.** Le firmware n'a **aucun** accès à ce que l'agent publie : il ne
+  peut pas savoir qu'une case SÉLECTIONNE une grandeur que `k_metriques[]` ne porte pas. Cette
+  grandeur s'afficherait « -- » gris **À VIE**, et rien ne le dirait.
+- **M2 — LE MIROIR DES TAMPONS.** Producteur et instrument prennent-ils la même taille ? C'est une
+  propriété de **SOURCE** ; à l'exécution, le second tronque simplement en silence.
+- **M3 — LE PRÉ-VOL** des invariants A/B/C, de l'union distincte et des indices peuplés.
+  ⚠️ **DOUBLON ASSUMÉ** de `selections_auditer()` : deux lectures **indépendantes** de la même
+  table, l'une en Python sur le source, l'autre en C sur la structure compilée. ⛔ **Elle ne le
+  remplace pas** — il lit l'ÉTAT à l'exécution, elle lit la TABLE.
+
+⛔ **Elle ne calcule AUCUNE largeur.** Une largeur dépend des **glyphes** et du crénage, ⛔ pas
+d'un nombre de caractères. Elle **ÉMET** les commandes `widget largeur` à jouer sur la carte,
+construites depuis les descripteurs **et les plafonds RÉELS de `k_metriques[]`** — pour que la
+liste des lignes à mesurer ne puisse pas diverger de ce que le firmware dessine.
+⚠️ **Elle a attrapé son propre défaut au premier tir** : `k_desc[]` initialise par **champs
+désignés** et `k_metriques[]` **positionnellement**. Un parseur unique lisait **zéro** grandeur sur
+le fil et concluait que TOUTES les cases affichent du vide.
+
+## 20.7 ⛔ CE QUE CE FICHIER NE PROUVE PAS ENCORE
+
+- ⛔ **AUCUNE LARGEUR N'EST MESURÉE.** Elles exigent la carte (`widget largeur`, `widget detail`).
+  ⚠️ **Réserve écrite d'avance** : la ligne 1 du détail `DISQUE`
+  (`100000,0 Mo/s   ·   extr.moy 10000 tr/min`) devient **le pire cas de tout l'écran**, et il
+  n'est budgété **nulle part**. Les pires cas publiés culminent à **265 px** — sans préfixe et sans
+  un `Mo/s` à six chiffres. **Repli PRÉ-AUTORISÉ : raccourcir le libellé**, en gardant les
+  interdits de nommage.
+- ⛔ **AUCUN CONSTAT OWNER.** Les constats sensoriels sont l'**OWNER**, jamais l'agent.
+- ⛔ **AUCUNE MESURE DE COÛT** (`mem`, `cpu brut`, `fps`, `nav ab`) : elles exigent la carte.
+- ⛔ **La garde `dn_ui.c` de `dn4-8` n'est TOUJOURS pas validée sur la carte** — elle exige un
+  flash.
+
+## 20.8 Entrées au ledger portées par `dn4-9` — ⛔ par AJOUT
+
+| # | Entrée | État | Condition de réouverture / de clôture |
+|---|---|---|---|
+| L10 | 🆕 **L'échelle haute de `DISQUE` (`Mo/s → Go/s`) est PRÊTE mais NON ARMÉE** | 🟠 ouvert, **legs explicite** | Mécanisme livré en `dn4-6` ; *« l'owner a nommé RÉSEAU »*. ⚠️ **Le chiffre qui la rendra nécessaire** : `« 100000,0 Mo/s »` a la même forme que le `« ↓ 99999,9 Mb/s »` **mesuré à 202 px pour 201 utiles** |
+| L11 | 🆕 **`s_trop_larges` ne mesure QU'À LA CONSTRUCTION** | 🟠 **limite CONNUE** | Une valeur qui devient trop large **entre deux reconstructions** n'est vue par personne. ⛔ Hors périmètre `dn4-9`. Forcer le pire cas par `dn_injecteur.py --jeu pire`, qui reconstruit avec les plafonds |
+| L12 | 🆕 **L'`_Static_assert` manquant entre `DN_LINK_GRANDEURS_MAX` et `DN_WIDGET_GRANDEURS_MAX`** | 🟠 ouvert | Les deux valent 4, le découplage est **documenté et voulu**, mais `cpu` et `disk` sont **EXACTEMENT au plafond des deux côtés**. ⇒ **soit l'assertion, soit le motif écrit**. Le dépôt utilise `_Static_assert` ailleurs (`dn_env.c:29`) |
+| L13 | 🆕 **`brut[1..3]` n'est JAMAIS alimenté, et la jauge lit `brut[0]`** | 🟠 **nommé dans le code** | `brut[0]` = **grandeur 0 DU DESCRIPTEUR**, ⛔ pas « la première ligne affichée ». ⚠️ Aucune case livrée ne montrerait le défaut : `RAM` est la seule à `indicateur = true`, mono-grandeur, sélection identité — **exactement la configuration qui l'a laissé passer deux fois**. Rouvrir le jour où une case **à jauge** reçoit une sélection |
+| L14 | 🆕 **Le résiduel *« `pc` ne peut plus nommer QUEL ventilateur est muet »*** | ✅ **SOLDÉ le 2026-08-22** | Par `dn_ui_case_prefixe()`, consommé par `cmd_pc`. ⛔ **JAMAIS** en modifiant `k_metriques[].unite`, qui casserait les témoins v1 et v3 |
+| L15 | 🆕 **`widget grandeurs <c> <n>` sur une case À SÉLECTION ne reproduit PAS la case livrée** | 🟠 **comportement ÉCRIT, à connaître devant la carte** | Sur `CPU`, `widget grandeurs 0 3` montre `[%, GHz, c.max]`, ⛔ pas `[%, GHz, °C]` : l'override force **l'identité** (les `n` premières du DÉTAIL). C'est `widget grandeurs 0 0` qui rend la case à son descripteur. ⚠️ **Le compte du DÉTAIL n'a aucun override** : si l'arbitrage en demande un, c'est une sous-commande **à écrire et à nommer** |
