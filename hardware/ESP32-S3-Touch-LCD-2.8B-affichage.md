@@ -4595,3 +4595,61 @@ d'abord), l'**élimination** de la charge de pixels, et le constat qu'**aucun in
 - ⛔ **Le flash A/B sur `cdfe88c` n'est pas fait** — il ferme les derniers pourcents.
 - ⛔ **`num_fbs=2` n'est pas rejoué** : la config de référence est `num_fbs=1`, et §4bis décrit un
   défaut DIFFÉRENT à `num_fbs=2`. ⛔ Ne pas les confondre.
+
+---
+
+## 21. `dn4-9` / AC8 — LE CONSTAT OWNER À L'ŒIL, 2026-08-22, firmware `38c3b99`
+
+🔴 **CE SONT LES YEUX DE L'OWNER, ⛔ PAS UNE DÉDUCTION.** Chaque question posée **une par une**,
+sur données **RÉELLES** (agent sur la tour, LHM 5/5 sondes).
+⚠️ **ET L'OBSERVATION S'EST FAITE À TRAVERS UN DÉFAUT** : le sautillement de §20 était présent
+(il démarre vers 10 s de trafic). C'est un coût accepté explicitement, et il est dit ici parce
+qu'il **dégrade** toutes les réponses ci-dessous — ⛔ pas parce qu'il les invalide.
+
+| # | question | verdict owner |
+|---|---|---|
+| 1 | La 3ᵉ ligne de la case `CPU` se lit-elle comme une **température** ? | ✅ *« oui ça se lit bien comme une température »* |
+| 2 | La case `DISQUE` dit-elle **de quel ventilateur** il s'agit ? | 🔴 **NON** — *« on ne sait pas de quel ventilo il s'agit »* · ✅ *« oui `Mo/s` ok »* |
+| 3 | Détail `CPU` : les **quatre** tiennent en **deux** lignes ? | ✅ *« oui les 4 tiennent bien en 2 lignes »* |
+| 4 | 🎯 Détail `DISQUE` : les **trois `tr/min`** = trois ventilateurs **différents** ? | ✅ *« oui les 3 se distinguent bien »* |
+| 5 | LHM coupé : les trois disent **laquelle** manque ? Le `Mo/s` survit ? | ✅ *« yes c'est ok »* |
+| 6 | Lequel des trois veux-tu **dans la case** ? | ⏳ **REPORTÉ** — *« aucun, on travaillera sur cet affichage plus tard, on continue »* |
+| 7 | Les **cinq autres** cases ont-elles bougé ? | ✅ *« non ça a l'air good »* |
+| 8 | `0 tr/min` (arrêt) contre `--` (absent) se distinguent-ils ? | ✅ *« oui on les distingue bien »* |
+
+### 21.1 🔴 L'ÉCHEC DE LA Q2 — ET IL ÉTAIT ANNONCÉ
+
+**La case `DISQUE` ne dit pas de quel ventilateur elle parle.** ⛔ Ce n'est **pas** une surprise :
+c'est **exactement** le risque nommé quand l'owner a choisi l'option, verbatim de la proposition —
+*« Question 2 d'AC8 à ton œil : sauras-tu que c'est l'extraction sans que ce soit écrit ? »*.
+La mesure disait qu'aucun préfixe ne tenait (**315 px pour 201**, il reste **18 px**) ; l'œil dit
+maintenant que **s'en passer ne marche pas non plus**.
+
+⇒ 🎯 **LES DEUX LEVIERS ÉVIDENTS SONT ÉPUISÉS, ET IL EN RESTE UN QUI N'A PAS ÉTÉ EXPLORÉ** :
+**la LIGNE SECONDAIRE**. Elle est **libre** sur `DISQUE`, elle a **la place**
+(`y_bas = 128`, + secondaire = `148 ≤ 163`, et `widget` le confirme : `DISQUE  2  non  OUI`), et
+elle est en **`dn_font_14`** — donc **deux fois plus étroite** que la police des valeurs.
+⚠️ **Non mesurée** : la largeur en `dn_font_14` reste à relever par `widget largeur`. ⛔ Ne pas la
+supposer suffisante.
+⚠️ Et la contrainte d'honnêteté **survit** : le nom ne promet toujours pas plus que la tour ne
+mesure (⛔ « TOP »/« BOTTOM » pour `CASE_GROUP`, ⛔ « les ventilateurs » pour l'extraction).
+
+### 21.2 ⏳ LA Q6 EST REPORTÉE, ET ELLE PART AVEC LA Q2
+
+*« Aucun, on travaillera sur cet affichage plus tard »* — **décision owner du 2026-08-22**.
+⇒ La voie **(c1)** (`extraction_moy` en case) **reste en place par défaut**, ⛔ pas parce qu'elle a
+gagné un arbitrage, mais parce que **l'arbitrage est reporté**.
+🎯 **Et les deux questions n'en font qu'une** : tant que la case ne sait dire **de quoi** elle
+parle, choisir **lequel** des trois y mettre n'a pas de sens. ⇒ **à traiter ENSEMBLE**.
+
+### 21.3 ✅ CE QUE AC8 SOLDE, ET QUI NE SE MESURE PAR AUCUN CHIFFRE
+
+- **La sélection d'indices est LISIBLE** : la °C se lit comme une température dans une case qui
+  portait un `%` à cette place la veille (Q1).
+- 🎯 **LES TROIS PRÉFIXES FONT LEUR TRAVAIL** (Q4) — c'est **LA** question d'AC2, et elle passe.
+  Trois `tr/min` qui étaient **byte-identiques** sur le fil se lisent comme trois ventilateurs.
+- **W10 tient jusque dans le détail** (Q5) : le préfixe RESTE quand la valeur part.
+- **L4 tient à l'œil** (Q8) : `0 tr/min` (fan-stop, vraie valeur) et `--` (absent) ne se confondent
+  pas. ⚠️ La réserve écrite d'avance — *« un ventilateur réellement arrêté ressemblera à une
+  panne »* — **ne s'est PAS réalisée**.
+- **Zéro régression visible** sur les cinq autres cases (Q7), y compris la jauge de `RAM`.
