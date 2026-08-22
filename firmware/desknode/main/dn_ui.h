@@ -828,8 +828,15 @@ const char *dn_ui_case_unite(int idx, int grandeur);
  * 🔴 dn4-9 : `txt_n` DOIT valoir `DN_UI_DETAIL_TXT_MAX`. Si la copie tronque,
  *    la fonction `ESP_LOGE` en NOMMANT les deux tailles et rend `false` — ⛔ un
  *    instrument tronqué ne rend plus « true » avec un texte amputé. */
+/* 🔴 dn4-9 (2026-08-22) : `h` ET `h_parent` SONT AJOUTÉS, ET C'EST UN CORRECTIF
+ *    D'INSTRUMENT, ⛔ pas un confort. Cet accesseur ne rendait QUE la largeur —
+ *    il ne pouvait donc PAS voir le défaut qu'il prétend exclure dès que le
+ *    détail passe à QUATRE lignes : le label est posé à `y = 14` dans son
+ *    panneau, et 4 x 35 = 140 px de texte dans 140 px de panneau DÉBORDENT de
+ *    14 px, clippés EN SILENCE par LVGL. C'est la règle n°5 du dépôt, et elle
+ *    a déjà été payée six fois. */
 bool dn_ui_detail_label(char *txt, size_t txt_n, int *w, int *w_parent, int *x,
-                        bool *resolue);
+                        int *h, int *h_parent, int *y, bool *resolue);
 esp_err_t dn_ui_set_case_grandeurs(int idx, int n);
 esp_err_t dn_ui_bandes_valider(int barre_h, int menu_h);
 esp_err_t dn_ui_geom_valider(const dn_widget_geom_t *g);

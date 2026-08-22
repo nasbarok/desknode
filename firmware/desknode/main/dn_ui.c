@@ -2732,6 +2732,29 @@ static void detail_reparametrer(int idx)
              *    ⇒ On teste ce qu'on veut vraiment savoir : le parent a-t-il une
              *      largeur, et le label une position ? */
             bool geom_resolue = (wp > 0 && x >= 0 && utile > 0);
+            /* 🔴 dn4-9 : LA HAUTEUR AUSSI, ET ELLE MANQUAIT. Tant que le détail
+             *    tenait en DEUX lignes dans 97 px, personne ne pouvait déborder
+             *    en hauteur. À QUATRE lignes dans un panneau posé au pixel, si —
+             *    et LVGL clippe la dernière SANS UN MOT, exactement comme en
+             *    largeur. Une garde qui ne surveille qu'une dimension sur deux
+             *    donne l'illusion d'être couverte.
+             * ⚠️ MÊME condition `geom_resolue` : avant la passe de layout, la
+             *    hauteur du parent vaut 0 et la garde hurlerait à chaque
+             *    ouverture, sur un détail qui tient. */
+            {
+                lv_obj_t *pv = lv_obj_get_parent(s_det_valeur);
+                int hp = pv ? (int)lv_obj_get_height(pv) : 0;
+                int hl = (int)lv_obj_get_height(s_det_valeur);
+                int yl = (int)lv_obj_get_y(s_det_valeur);
+                if (geom_resolue && hp > 0 && yl >= 0 && yl + hl > hp) {
+                    ESP_LOGW(TAG,
+                             "detail « %s » : le bloc de valeurs DEBORDE EN "
+                             "HAUTEUR — label %d px pose a y = %d dans un "
+                             "panneau de %d px : il manque %d px. LVGL clippe la "
+                             "derniere ligne SANS un mot.",
+                             k_nom[idx], hl, yl, hp, yl + hl - hp);
+                }
+            }
             char ligne[sizeof(buf)];
             const char *deb = geom_resolue ? buf : NULL;
             int nl = 0;
@@ -4563,7 +4586,7 @@ const char *dn_ui_case_unite(int idx, int grandeur)
  *    conclure sinon.
  */
 bool dn_ui_detail_label(char *txt, size_t txt_n, int *w, int *w_parent, int *x,
-                        bool *resolue)
+                        int *h, int *h_parent, int *y, bool *resolue)
 {
     if (s_vue != DN_VUE_DETAIL || !s_det_valeur) {
         return false;
@@ -4594,9 +4617,21 @@ bool dn_ui_detail_label(char *txt, size_t txt_n, int *w, int *w_parent, int *x,
     }
     int wl = (int)lv_obj_get_width(s_det_valeur);
     int xl = (int)lv_obj_get_x(s_det_valeur);
+    int hl = (int)lv_obj_get_height(s_det_valeur);
+    int yl = (int)lv_obj_get_y(s_det_valeur);
     lv_obj_t *p = lv_obj_get_parent(s_det_valeur);
     int wp = p ? (int)lv_obj_get_width(p) : -1;
+    int hp = p ? (int)lv_obj_get_height(p) : -1;
     lvgl_port_unlock();
+    if (h) {
+        *h = hl;
+    }
+    if (h_parent) {
+        *h_parent = hp;
+    }
+    if (y) {
+        *y = yl;
+    }
     if (w) {
         *w = wl;
     }

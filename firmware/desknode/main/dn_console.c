@@ -3191,9 +3191,10 @@ static int cmd_widget(int argc, char **argv)
          *    SILENCE le texte qu'il prétend relire, et aurait accusé un produit
          *    sain. UNE seule définition, dans `dn_ui.h`. */
         char t[DN_UI_DETAIL_TXT_MAX] = {0};
-        int w = 0, wp = 0, x = 0;
+        int w = 0, wp = 0, x = 0, h = 0, hp = 0, y = 0;
         bool resolue = false;
-        if (!dn_ui_detail_label(t, sizeof(t), &w, &wp, &x, &resolue)) {
+        if (!dn_ui_detail_label(t, sizeof(t), &w, &wp, &x, &h, &hp, &y,
+                                &resolue)) {
             printf("le detail n'est PAS affiche (ou le verrou LVGL n'est pas "
                    "pris) — `nav open <idx>` d'abord.\n");
             printf("⛔ Repondre quand meme inventerait une geometrie.\n");
@@ -3202,6 +3203,20 @@ static int cmd_widget(int argc, char **argv)
         printf("GRANDE VALEUR du detail — RELUE des objets LVGL :\n");
         printf("  texte    : « %s »\n", t);
         printf("  largeur  : %d px   posee a x = %d\n", w, x);
+        /* 🔴 dn4-9 : LA HAUTEUR, ET ELLE MANQUAIT — a QUATRE lignes c'est ELLE
+         *    qui deborde, pas la largeur. Un instrument aveugle a une dimension
+         *    sur deux donne l'illusion d'etre couvert. */
+        printf("  hauteur  : %d px   posee a y = %d   (panneau %d px)\n", h, y,
+               hp);
+        if (hp > 0 && y >= 0) {
+            if (y + h > hp) {
+                printf("  ⛔ %d + %d = %d > %d : la DERNIERE LIGNE est CLIPPEE "
+                       "de %d px, SANS un mot.\n", y, h, y + h, hp, y + h - hp);
+            } else {
+                printf("  ✅ %d + %d = %d <= %d : le bloc TIENT en hauteur "
+                       "(marge %d px).\n", y, h, y + h, hp, hp - (y + h));
+            }
+        }
         if (!resolue) {
             /* ⛔ MEME GARDE QUE `detail_reparametrer` (1a31a9d) : sans elle,
              *    `wp = -1` faisait calculer `utile = -1 - 2x` et crier « LE
