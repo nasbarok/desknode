@@ -113,6 +113,36 @@ extern "C" {
 #define DN_WIDGET_SEC_MAX 40
 
 /*
+ * ── dn4-9 : LA SÉLECTION D'INDICES — « CE QUE LA CASE MONTRE » N'EST PLUS
+ *    « LES n PREMIÈRES » ────────────────────────────────────────────────────
+ *
+ * 🔴 LE PROBLÈME, MESURÉ : la case `CPU` doit montrer [%, GHz, °C], c'est-à-dire
+ *    les grandeurs **0, 1 et 3** du fil (D13, 2026-08-21). Le mécanisme d'avant
+ *    lisait `0..n-1` DANS L'ORDRE — il n'y avait AUCUNE sélection — et la place
+ *    ne permet pas d'en montrer quatre : 48 + 3x40 + 35 = **203 > 163** (D12),
+ *    mesuré en dn4-6. ⇒ ⛔ On ne peut pas « en ajouter une » ; il faut CHOISIR.
+ *
+ * ⚠️ LE DÉCALAGE DE 1 EST LA CONVENTION DU DÉPÔT, ⛔ PAS une astuce locale :
+ *    « sentinelle aveu d'ignorance à zéro » (`DN_VAL_ABSENTE`,
+ *    `DN_PREC_NON_RENSEIGNEE`, `k_pc[].idx_p1`). Un descripteur qui ne déclare
+ *    RIEN naît donc IGNORANT, et l'ignorance se lit « identité » — c'est-à-dire
+ *    le comportement d'avant dn4-9, à l'octet près, pour les CINQ cases qui
+ *    n'ont pas de sélection. ⛔ Sans le décalage, un `{0,0,0,0}` implicite
+ *    signifierait « rang 0, 1, 2, 3 dessinent TOUS la grandeur 0 » — quatre
+ *    fois la même ligne, en silence, sur cinq cases sur six.
+ *
+ * ⇒ Les macros ci-dessous rendent la table LISIBLE À L'ŒIL dans `k_desc[]` :
+ *      .sel_p1 = DN_SEL3(0, 1, 3)     ← la case dessine %, GHz, °C
+ *   ⛔ On n'écrit JAMAIS les valeurs décalées à la main.
+ */
+#define DN_SEL1(a)             {(uint8_t)((a) + 1)}
+#define DN_SEL2(a, b)          {(uint8_t)((a) + 1), (uint8_t)((b) + 1)}
+#define DN_SEL3(a, b, c)       {(uint8_t)((a) + 1), (uint8_t)((b) + 1), \
+                                (uint8_t)((c) + 1)}
+#define DN_SEL4(a, b, c, d)    {(uint8_t)((a) + 1), (uint8_t)((b) + 1), \
+                                (uint8_t)((c) + 1), (uint8_t)((d) + 1)}
+
+/*
  * ── LES TROIS RÉGIMES DE VALEUR, DANS LE TYPE ────────────────────────────────
  *
  * Ils ne vivent PAS dans des booléens épars. Un `bool valide` seul ne sait pas
@@ -192,6 +222,31 @@ typedef struct {
      *    préfixe cacherait l'existence même de la grandeur — ce que W10 interdit.
      */
     const char *prefixe;
+    /*
+     * ── dn4-9 : LE PRÉFIXE PEUT NE VIVRE QU'AU **DÉTAIL** ────────────────────
+     *
+     * 🔴 DÉCISION OWNER DU 2026-08-22, PRISE SUR DES LARGEURS MESURÉES SUR LA
+     *    DALLE (firmware `4c3a3f7`, `widget largeur`, `dn_font_28`) :
+     *      `10000 tr/min`            **183 px**   pour **201** utiles ✅
+     *      `extr.moy 10000 tr/min`   **315 px**   ⛔ déborde de **114 px**
+     *      `ext 10000 tr/min`        **235 px**   ⛔ déborde de 34
+     *      `EX 10000 rpm`            **200 px**   ✅ … pour **1 px** de marge
+     *    ⇒ **AUCUN préfixe lisible ne tient dans la CASE** : il reste 18 px,
+     *      soit moins d'un caractère. ⛔ Ce n'est pas un libellé à raccourcir,
+     *      c'est un mur.
+     *
+     * ✅ ET IL N'Y EST PAS NÉCESSAIRE : la case `DISQUE` ne montre **qu'UN**
+     *    `tr/min`. Un préfixe DÉSIGNE une grandeur parmi plusieurs de même
+     *    unité ; sans paire, il ne désigne rien. Le DÉTAIL, lui, en montre
+     *    **trois** — il en a besoin, et il a **432 px** (relus par
+     *    `widget detail`, ⛔ pas les 446 des commentaires).
+     *
+     * ⛔ CE DRAPEAU NE DISPENSE DE RIEN. `desc_ligne_indistincte()` juge
+     *    désormais **CHAQUE VUE AVEC SES PROPRES ÉTIQUETTES** : si la case
+     *    venait à montrer deux `tr/min` (par `widget grandeurs 4 3`), elle
+     *    serait **REFUSÉE**, et c'est le comportement voulu.
+     */
+    bool prefixe_detail_seul;
     dn_prec_t prec;     /* AC9 — ⛔ 0 = NON RENSEIGNÉE, journalisée */
     /*
      * ── L'ÉCHELLE HAUTE — CONSTAT OWNER EN SÉANCE, 2026-08-19 ────────────────
@@ -228,7 +283,101 @@ typedef struct {
     const char *icone;   /* icône de la case, en UTF-8 (dn_font.h). AC7 l'exige. */
     const char *titre;   /* « CPU », « AMBIANCE » — accentué, la police suit */
     uint32_t couleur;    /* 0xRRGGBB, accent. dn3-1 le PORTE ; dn3-3 l'exploite. */
-    uint8_t n_grandeurs; /* 1..DN_WIDGET_GRANDEURS_MAX */
+    uint8_t n_grandeurs; /* le compte de la CASE — 1..DN_WIDGET_GRANDEURS_MAX */
+    /*
+     * ── dn4-9 : CE QUE LA **CASE** MONTRE, PAR SES INDICES ───────────────────
+     *
+     * `sel_p1[rang]` = index de grandeur + 1. **Tout à zéro = IDENTITÉ**
+     * (rang r dessine la grandeur r), c'est-à-dire le comportement d'avant
+     * dn4-9. Voir les macros `DN_SELn()` et leur motif plus haut.
+     *
+     * 🔴 LE RANG ET L'INDEX CESSENT D'ÊTRE LE MÊME NOMBRE, et c'était un indice
+     *    **TRIPLE** jusqu'ici : rang d'affichage = entrée de descripteur = slot
+     *    d'état. La sélection découple le PREMIER des deux autres, ⛔ jamais les
+     *    deux autres entre eux : `grandeurs[g]` et `etat->txt[g]` décrivent
+     *    TOUJOURS la même grandeur. C'est l'invariant qui rend le mécanisme sûr,
+     *    et c'est pour lui que la traduction est faite ICI (dans le module qui
+     *    dessine) plutôt qu'en permutant l'état chez l'appelant — permuter
+     *    l'état aurait désaligné la case du détail, qui n'ont pas la même
+     *    sélection.
+     * ⇒ `dn_widget_sel()` est la SEULE traduction rang -> index. Elle est
+     *   appelée par `dn_widget_creer` ET par `dn_widget_maj` : si l'une des deux
+     *   l'oubliait, **la mise à jour recomposerait une autre grandeur que celle
+     *   qui a été créée** (le garde-fou de `maj` est le POINTEUR `valeur[i]`,
+     *   ⛔ pas le compte).
+     *
+     * ⛔ LA JAUGE NE SUIT PAS LE RANG, ET C'EST ÉCRIT : elle lit `etat->brut[0]`,
+     *    c'est-à-dire la **grandeur 0 DU DESCRIPTEUR**, ⛔ pas « la première
+     *    ligne affichée ». `brut[1..3]` n'est JAMAIS alimenté (voir le type
+     *    d'état). ⚠️ Aucune case livrée ne montrerait le défaut : `RAM` est la
+     *    SEULE à `indicateur = true` et sa sélection est l'identité — c'est
+     *    exactement la configuration qui a laissé passer le défaut de jauge
+     *    DEUX fois (dn3-1 puis dn4-1). ⇒ Le jour où une case à jauge reçoit une
+     *    sélection, il faudra décider ce que `brut[0]` désigne, et l'écrire.
+     */
+    uint8_t sel_p1[DN_WIDGET_GRANDEURS_MAX];
+    /*
+     * ── dn4-9 : CE QUE LE **DÉTAIL** MONTRE — LE SECOND COMPTE ───────────────
+     *
+     * 🔴 DÉCISION OWNER DU 2026-08-21, VERBATIM : *« oui clairement le détail
+     *    connaîtra pour chaque case plus d'information »*. Elle **AMENDE** une
+     *    intention qui était écrite noir sur blanc dans `dn_ui.c`
+     *    (`detail_reparametrer`) — l'amendement est daté là-bas, ⛔ pas effacé.
+     *
+     * `0` = **« comme la case »** (le défaut, et c'est le cas de `RAM`,
+     * `RÉSEAU` et `AMBIANCE`). Sinon : le détail montre les grandeurs
+     * **`0..n_detail-1` DANS L'ORDRE DU FIL**.
+     *
+     * ⛔ IL N'Y A PAS DE `sel_detail_p1[]`, ET C'EST DÉLIBÉRÉ. Le détail est la
+     *    page qui EXPLIQUE la case : il n'a aucune raison de réordonner ce que
+     *    la source publie, et un champ que personne n'utilise est un champ MORT
+     *    — le dépôt en a déjà payé (« ce qui n'est jamais appelé ne prouve
+     *    rien », leçon T4 de dn2-1). ⇒ La sélection existe pour la CASE, qui
+     *    n'a pas la place ; le détail, lui, a la place (deux lignes de 35 px).
+     *
+     * 🔴 INVARIANT A, AUDITÉ AU BOOT (⛔ pas supposé) : **tout index de `sel_p1`
+     *    est < `n_detail`**, c'est-à-dire *la case montre un sous-ensemble de ce
+     *    que le détail montre*. C'est ce qui rend « l'UNION des deux sélections »
+     *    — ce que les gardes jugent — égale à la liste du DÉTAIL, et donc
+     *    calculable sans jamais fusionner deux listes.
+     *
+     * ⚠️ CE MODULE NE DESSINE PAS LE DÉTAIL. `n_detail` vit ici parce que
+     *    « ce que la métrique EST » se lit sur UNE ligne de `k_desc[]` (c'est la
+     *    promesse du brief), ⛔ pas parce que `dn_widget` s'en sert : il l'ignore
+     *    complètement. Le détail est dessiné par `dn_ui.c`.
+     */
+    uint8_t n_detail;
+    /*
+     * ── dn4-9 : COMBIEN DE GRANDEURS PAR LIGNE, **AU DÉTAIL** ────────────────
+     *
+     * `0` = le défaut, **DEUX** par ligne (la règle posée par dn4-6).
+     * `1` = **UNE** par ligne — pour les cases dont deux ne tiennent pas.
+     *
+     * 🔴 DÉCISION OWNER DU 2026-08-22, SUR MESURE — utile du détail **432 px** :
+     *      `2999,9 Mo/s   ·   extr.moy 10000 tr/min`        **530 px** ⛔ +98
+     *      `ventirad 10000 tr/min · boitier 10000 tr/min`   **642 px** ⛔ +210
+     *      (bornes BASSES : le `·` n'a pas pu être injecté par le REPL)
+     *    ⇒ ⛔ **Deux par ligne est MORT pour `DISQUE`, quels que soient les
+     *      libellés** : même en les supprimant TOUS, la ligne 2 nue mesure
+     *      **414 px** — elle tiendrait, mais **deux `tr/min` sans étiquette
+     *      sont indistinguables**, ce que la garde refuse à juste titre.
+     *    ✅ **Une par ligne passe largement** : 315 · 309 · 285 px pour 432,
+     *      marge minimale **117 px**, libellés français **complets**.
+     *
+     * ⚠️ CE QUE ÇA COÛTE, ET C'EST UNE FACTURE POUR `dn4-4` : quatre lignes de
+     *    35 px demandent **140 px** de panneau contre **97**. Les **43 px** sont
+     *    repris au **placeholder de COURBE**, qui passe de 165 à 122 px de haut
+     *    — **son bas reste à 370**, et le panneau du bas ne bouge pas. Le
+     *    template garde ses **quatre panneaux** (addendum §1 : « on ne change
+     *    que les données, jamais la structure »).
+     *
+     * ⛔ CE N'EST PAS UNE RÈGLE QUI S'ADAPTE À CHAUD, ET C'EST DÉLIBÉRÉ : elle
+     *    se DÉCLARE, avec ses px mesurés, et c'est la **garde de largeur** de
+     *    `detail_reparametrer()` qui crie si la déclaration cesse de tenir.
+     *    Mesurer à chaque rafraîchissement rendrait au chemin le plus chaud
+     *    (5 Hz) le coût que dn4-6 vient d'en retirer.
+     */
+    uint8_t detail_cols;
     /*
      * ── LA JAUGE, ET LE CONTRAT GÉOMÉTRIQUE QU'ELLE IMPOSE (W5) ─────────────
      *
@@ -353,7 +502,18 @@ typedef struct {
      *    2026-08-18) : `case_poser` ne prend qu'un `brut0`, et l'indicateur ne
      *    porte que sur la grandeur 0 (voir `indicateur` ci-dessous). Le tableau
      *    est dimensionné pour N par cohérence avec `txt[]` et `valeur[]` — il
-     *    est PRÊT, pas mort, mais ne pas croire qu'il est alimenté. */
+     *    est PRÊT, pas mort, mais ne pas croire qu'il est alimenté.
+     * 🔴 dn4-9 LE RE-NOMME, PARCE QUE LA SÉLECTION LE REND PIÉGEUX : `brut[0]`
+     *    désigne la **grandeur 0 DU DESCRIPTEUR**, ⛔ jamais « la première ligne
+     *    affichée ». Depuis dn4-9 les deux peuvent différer (`CPU` dessine
+     *    [0, 1, 3] : son rang 2 est la grandeur 3). Si le rang 0 cessait un jour
+     *    de désigner la grandeur 0 sur une case À JAUGE, **la sémantique de la
+     *    jauge glisserait EN SILENCE**.
+     * ⚠️ ET AUCUNE CASE LIVRÉE NE LE MONTRERAIT : `RAM` est la seule à
+     *    `indicateur = true`, elle est mono-grandeur, et sa sélection est
+     *    l'identité. C'est EXACTEMENT la configuration qui a laissé passer le
+     *    défaut de jauge deux fois (dn3-1, puis dn4-1). ⇒ Nommé ici pour que la
+     *    prochaine story ne le redécouvre pas. */
     int32_t brut[DN_WIDGET_GRANDEURS_MAX];
     /* ⚠️ QUELLE unité s'applique à `txt[i]` — un bit par grandeur. Posé par
      *    celui qui a FORMATÉ (il seul connaît le nombre), lu par celui qui
@@ -443,6 +603,39 @@ void dn_widget_maj(const dn_widget_desc_t *desc, const dn_widget_etat_t *etat,
 
 /* Remet TOUS les pointeurs à NULL. À appeler aux trois sites de démontage. */
 void dn_widget_oublier(dn_widget_t *w);
+
+/*
+ * ── dn4-9 : LA TRADUCTION RANG -> INDEX DE GRANDEUR, EN UN SEUL ENDROIT ──────
+ *
+ * Rend l'index de grandeur dessiné au `rang` donné, ou **-1** si `rang` est hors
+ * bornes. Une entrée `sel_p1` nulle ⇒ IDENTITÉ (`rang`), le défaut.
+ *
+ * ⚠️ UNE ENTRÉE HORS BORNES RETOMBE SUR L'IDENTITÉ **SANS LOG ICI** : ce chemin
+ *    est parcouru jusqu'à 15 fois par seconde sous le verrou LVGL, et « une
+ *    garde qui crie au loup à chaque passage est pire que pas de garde ». Le
+ *    contrôle est fait UNE fois, au boot, par l'audit des descripteurs
+ *    (`dn_ui.c`), qui `ESP_LOGE` et NOMME la case fautive.
+ */
+int dn_widget_sel(const dn_widget_desc_t *d, int rang);
+
+/* Le compte du DÉTAIL — `n_detail`, ou `n_grandeurs` s'il vaut 0 (le défaut).
+ * ⛔ Il n'est PAS soumis à l'override `widget grandeurs`, qui ne déplace que la
+ *    CASE (dn4-9 / AC6). */
+int dn_widget_n_detail(const dn_widget_desc_t *d);
+
+/* Le nombre de grandeurs par ligne AU DÉTAIL — `detail_cols`, ou 2 par défaut. */
+int dn_widget_detail_cols(const dn_widget_desc_t *d);
+
+/*
+ * ── dn4-9 : L'ÉTIQUETTE EFFECTIVE D'UNE GRANDEUR, **PAR VUE** ────────────────
+ *
+ * Rend le préfixe réellement affiché dans la vue demandée, ou NULL.
+ * ⇒ `detail = false` (la CASE) rend NULL si `prefixe_detail_seul` est posé.
+ * 🎯 **Les gardes DOIVENT passer par ici**, sinon elles jugeraient une case
+ *    avec des étiquettes qu'elle n'affiche pas — et laisseraient passer deux
+ *    lignes identiques à l'œil.
+ */
+const char *dn_widget_prefixe(const dn_widget_desc_t *d, int g, bool detail);
 
 /* ── La PISTE de la jauge (le fond, la part NON remplie) ─────────────────────
  * Constat owner du 2026-08-18 : la piste sombre d'origine (`0x203040`) se lit

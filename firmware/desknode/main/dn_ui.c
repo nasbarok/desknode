@@ -211,7 +211,16 @@ static inline int ui_case_h(void)
  *    libre de droits, réutilisable sur toutes les configs ») **NE TIENT PLUS pour
  *    ces grandeurs**. Elles ne marchent que sur une machine où LHM est installé.
  * ⛔ L'INDEX 4 RESTE `DISQUE` : D13 ne rend pas la case aux ventilateurs, elle
- *    ajoute des grandeurs. Le renommer serait un changement d'affichage, ⇒ dn4-9. */
+ *    ajoute des grandeurs. Le renommer serait un changement d'affichage, ⇒ dn4-9.
+ * 🔴 dn4-9 RÉPOND : **NON**, LA CASE NE CHANGE PAS DE NOM (2026-08-22).
+ *    Motif, et il n'est pas de confort : D13 amende D8 **sur sa PORTÉE Ring0,
+ *    ⛔ PAS sur son choix de case** — c'est écrit dans D13 même, section
+ *    *« ✅ CE QUI NE CHANGE PAS »*, et repris par `brief.md:44-48` (*« Six
+ *    cases, pas davantage — inchangé. `DISQUE` reste la 6ᵉ case. »*).
+ *    ⚠️ Et le nom resterait JUSTE de toute façon : la grandeur 0 EST le débit
+ *       disque, et c'est elle que la case montre en premier. Renommer
+ *       « VENTILOS » une case dont la valeur principale est un Mo/s aurait
+ *       remplacé une imprécision par une fausseté. */
 #define DN_UI_CASE_DISQUE 4
 #define DN_UI_CASE_AMB 5
 
@@ -290,20 +299,48 @@ static bool case_est_widget(int idx)
  *    un `s_*` consulté par les lecteurs.
  * ⚠️ `0` = PAS D'OVERRIDE, et c'est cohérent : un descripteur à zéro grandeur
  *    n'a aucun sens, donc zéro ne peut pas être une valeur demandée.
- * ⛔ IL Y A **QUATRE** LECTEURS, et cette énumération FAIT PARTIE DE LA GARDE —
- *    même doctrine que W11, dont le compte avait divergé cinq fois :
- *      1/4  la boucle de `build_dashboard` (la copie locale du descripteur)
- *      2/4  `detail_reparametrer`
- *      3/4  `dn_ui_pc_maj`
- *      4/4  la table de `widget` (`dn_console.c`, `cmd_widget`) — ⚠️ AJOUTÉ PAR
- *           LA REVUE DE CODE DU 2026-08-19. Elle lisait `dn_ui_desc(i)->n_grandeurs`,
- *           c'est-à-dire le descripteur BRUT, et imprimait donc 3 pendant qu'un
- *           `widget grandeurs 1 4` en dessinait 4. **L'instrument qui sert à
- *           arbitrer le repli se désynchronisait du sujet de l'arbitrage** —
- *           exactement ce que cette énumération est censée empêcher, et elle
- *           l'a laissé passer parce qu'elle comptait TROIS.
- *    En oublier un afficherait N grandeurs et en formaterait un autre nombre.
- * ⇒ Le seul accès légitime hors de ce fichier est `dn_ui_case_grandeurs()`.
+ * 🔴 dn4-9 — L'ÉNUMÉRATION ÉTAIT **DÉJÀ FAUSSE, ET DEPUIS LE 2026-08-19** :
+ *    elle annonçait « QUATRE LECTEURS » et en listait quatre ; il y en avait
+ *    **CINQ**. Le cinquième est `pousser_nolock()`, ajouté par la revue de code
+ *    du 2026-08-19 — dans le geste même où cette énumération était présentée
+ *    comme « faisant partie de la garde ». C'est MOT POUR MOT la dérive que ce
+ *    dépôt a payée sur `s_nue_force[]` (« 1/6, 2/5, 3/5, 4/6, 5/5 : **cinq
+ *    numérotations pour une liste** »).
+ *
+ * ⇒ dn4-9 NE RENUMÉROTE PAS — ELLE SUPPRIME LE BESOIN DE NUMÉROTER.
+ *   Un compte tenu à la main dérive ; une PROPRIÉTÉ VÉRIFIABLE, non.
+ *
+ *   🎯 LA PROPRIÉTÉ : `s_gr_force[]` n'a que **DEUX accès dans tout le dépôt**,
+ *      et c'est un `grep -n s_gr_force dn_ui.c` qui le dit, ⛔ pas un compte :
+ *
+ *      | rôle    | fonction                     | ce qu'elle fait                |
+ *      |---------|------------------------------|--------------------------------|
+ *      | LECTURE | `case_grandeurs()`           | résout compte **et** indices   |
+ *      | ÉCRITURE| `dn_ui_set_case_grandeurs()` | pose l'override, reconstruit   |
+ *
+ *      (plus la déclaration ci-dessous. `grep` doit rendre TROIS lignes.)
+ *
+ *   ⇒ Tous les anciens « lecteurs » sont devenus des CONSOMMATEURS de
+ *     `case_grandeurs()` / `desc_n()`, qui ne peuvent plus diverger entre eux
+ *     puisqu'ils lisent la même fonction. La table des consommateurs, elle,
+ *     est INDICATIVE (elle aide à naviguer) et ⛔ ne fait plus partie de la
+ *     garde — c'est la propriété ci-dessus qui garde :
+ *
+ *      | # | consommateur              | via                  | ce qu'il en fait        |
+ *      |---|---------------------------|----------------------|-------------------------|
+ *      | 1 | `desc_effectif()`         | `case_grandeurs()`   | la copie remise à       |
+ *      |   |                           |                      | `dn_widget` (les DEUX   |
+ *      |   |                           |                      | chemins : creer ET maj) |
+ *      | 2 | `pousser_nolock()`        | `case_grandeurs()`   | remplit les slots       |
+ *      |   |                           |                      | SÉLECTIONNÉS            |
+ *      | 3 | `dn_ui_case_grandeurs()`  | `desc_n()`           | la console (`widget`)   |
+ *      | 4 | `dn_ui_set_case_grandeurs`| `desc_n()` indirect  | l'accusé de réception   |
+ *
+ * ⛔ ET `detail_reparametrer()` / `dn_ui_pc_maj()` N'EN SONT PLUS DES LECTEURS
+ *    DU TOUT — c'est la moitié du travail de dn4-9 (les verrous n°1 et n°2).
+ *    Voir `desc_n_detail()` et le motif écrit sur chacun.
+ *
+ * ⇒ Le seul accès légitime hors de ce fichier reste `dn_ui_case_grandeurs()`.
  */
 static uint8_t s_gr_force[DN_UI_METRIQUES];
 
@@ -393,8 +430,32 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
          *    mécanisme actuel lit les grandeurs 0..n-1 **dans l'ordre** ; il n'y a
          *    pas de sélection. ⇒ sans ce mécanisme, `widget grandeurs 0 4`
          *    montrerait [%, GHz, c.max, °C], ⛔ pas ce que D13 demande.
+         *    ✅ **HONORÉ LE 2026-08-22 par dn4-9** (`sel_p1`) — voir le bloc
+         *    suivant. ⚠️ Et la mise en garde reste EXACTE : `widget grandeurs 0 4`
+         *    montre bien [%, GHz, c.max, °C], parce que l'override force
+         *    l'identité. C'est le descripteur, ⛔ pas l'override, qui porte la
+         *    sélection.
+         */
+        /*
+         * 🔴 dn4-9 — LA CASE MONTRE [%, GHz, °C], ⛔ PAS [%, GHz, c.max].
+         *    C'est ce que D13 demande, et le LEGS ci-dessus l'annonçait :
+         *    « afficher [%, GHz, °C] demande une table d'indices ». La voilà.
+         * ⛔ ET LA PLACE N'A PAS BOUGÉ : trois lignes, ⛔ pas quatre
+         *    (`48 + 3x40 + 35 = 203 > 163`, mesuré en dn4-6). Ce qui change,
+         *    c'est LESQUELLES.
+         * ⛔ `c.max` N'EST PAS SUPPRIMÉ, et c'est délibéré : il a été ajouté SUR
+         *    UNE MESURE (n = 29, étendue 25,0..73,9 %, texte changé 28/28,
+         *    σ = 13,2) parce que sur 16 cœurs logiques un cœur saturé ne pèse
+         *    que ~6 % de moyenne. Le jeter re-fabriquerait le défaut que dn4-6
+         *    venait de corriger. ⇒ Il DESCEND AU DÉTAIL, qui a la place.
+         * ✅ `n_detail = 4` : décision owner du 2026-08-21, verbatim *« oui
+         *    clairement le détail connaîtra pour chaque case plus
+         *    d'information »*. 1 valeur principale + 3 secondaires, c'est le
+         *    HAUT de la fourchette du gabarit (`addendum.md:211`, ⛔ pas `:186`).
          */
         .n_grandeurs = 3,
+        .sel_p1 = DN_SEL3(0, 1, 3),
+        .n_detail = 4,
         .indicateur = false,
         .grandeurs = {{.unite = "%", .prec = DN_PREC_DIXIEME},
                       {.unite = "GHz", .prec = DN_PREC_DIXIEME},
@@ -495,8 +556,20 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
          *    le protocole : le jour où la place existe, la grandeur est déjà là.
          * ⇒ AU LEDGER : « `FAN_RPM` qualifie et n'a pas de place » — c'est une
          *   dette de PLACE, pas une question ouverte de source.
+         *
+         * 🔴 dn4-9 AMENDE LA CONCLUSION, ⛔ PAS LA MESURE. « Dette de PLACE »
+         *    reste VRAI — mais c'était la place **DE LA CASE** (`203 > 163`).
+         *    Le DÉTAIL, lui, a la place : deux lignes de 35 px dans un panneau
+         *    de 97. Et la décision owner du 2026-08-21 dit *« pour CHAQUE
+         *    case »*, ⛔ pas pour deux. ⇒ `n_detail = 4` : le `tr/min` du GPU
+         *    devient VISIBLE pour la première fois depuis dn4-6.
+         * ⛔ LA CASE RESTE À TROIS. Ne pas lui donner une 4ᵉ ligne.
+         * ⚠️ CONSÉQUENCE À MESURER (AC5) : la ligne 2 du détail GPU devient
+         *    « 350 W   ·   10000 tr/min » — elle entre dans les largeurs à
+         *    RELIRE par `widget largeur`, ⛔ pas à estimer.
          */
         .n_grandeurs = 3,
+        .n_detail = 4,
         .indicateur = false,
         .grandeurs = {{.unite = "%", .prec = DN_PREC_DIXIEME},
                       {.unite = "\xC2\xB0" "C", .prec = DN_PREC_DIXIEME},
@@ -570,10 +643,10 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
          *    Legs explicite, pas un oubli.
          */
         .grandeurs = {{.unite = "Mb/s", .icone = LV_SYMBOL_DOWN,
-                       .prec = DN_PREC_DIXIEME, .seuil_haut = 10000,
+                       .prec = DN_PREC_DIXIEME, .seuil_haut = 30000,
                        .diviseur_haut = 1000, .unite_haute = "Gb/s"},
                       {.unite = "Mb/s", .icone = LV_SYMBOL_UP,
-                       .prec = DN_PREC_DIXIEME, .seuil_haut = 10000,
+                       .prec = DN_PREC_DIXIEME, .seuil_haut = 30000,
                        .diviseur_haut = 1000, .unite_haute = "Gb/s"}},
     },
     [DN_UI_CASE_DISQUE] = {
@@ -634,6 +707,12 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
         .titre = "DISQUE",
         .couleur = 0x35d6e8, /* cyan — PROVISOIRE, hérité de VENTILOS (legs dn3-3) */
         /*
+         * ⚠️ AMENDÉ LE 2026-08-22 (dn4-9) : tout ce bloc décrit l'état de dn4-8
+         *    et il reste VRAI pour ce qu'il mesure (le mapping, `FRONT_IN`, la
+         *    précision). ⛔ Deux de ses affirmations ont CESSÉ de l'être, et la
+         *    story qui les périme le dit à leur suite, ⛔ elle ne les efface pas :
+         *    « `n_grandeurs` RESTE À UN » (il vaut **2**) et « LES PRÉFIXES NE
+         *    SONT PAS POSÉS ICI » (ils le sont — voir plus bas).
          * 🔴 dn4-8 / D13 : **TROIS ENTRÉES PEUPLÉES DE PLUS**, et `n_grandeurs`
          *    RESTE À UN. Le fil porte désormais [Mo/s · extraction MOYENNE ·
          *    `CPU_NOCTUA` · `CASE_GROUP`] ; l'écran n'en montre toujours qu'une.
@@ -660,13 +739,102 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
          *    périmètre de `dn4-8`, écrit noir sur blanc. ⇒ `dn4-9` DOIT les poser
          *    avant d'afficher, et ⛔ le nom affiché ne dépasse JAMAIS ce qui est
          *    établi (`CASE_GROUP` chaîne DEUX ventilateurs sur UN tachy).
+         *    ✅ **HONORÉ LE 2026-08-22 par dn4-9** — voir le bloc suivant.
          */
-        .n_grandeurs = 1,
+        /*
+         * 🔴 dn4-9 — LA CASE PASSE À **DEUX**, LE DÉTAIL À **QUATRE**, ET LES
+         *    TROIS PRÉFIXES SONT POSÉS. Le legs ci-dessus est HONORÉ, ⛔ pas
+         *    effacé : c'était bien à dn4-9 de les poser, et la garde
+         *    `desc_ligne_indistincte()` de dn4-8 REFUSAIT l'affichage jusque-là.
+         *    ⇒ **Poser les préfixes est ce qui DÉBLOQUE la garde**, ⛔ pas la
+         *      contourner.
+         *
+         * ✅ GÉOMÉTRIE : `y_bas = 48 + 2x40 = 128 <= 163` — deux grandeurs
+         *    tiennent sans rien forcer. ⚠️ Trois tiendraient aussi (bas de la
+         *    3ᵉ = 163, **pile**), ⛔ mais D13 demande DEUX, et une 3ᵉ ligne à
+         *    0 px de marge n'est pas un cadeau.
+         *
+         * 🎯 LAQUELLE DES TROIS `tr/min` EN CASE ? — VOIE (c1), l'indice **1**.
+         *    D13 écrit « `tr/min` **moyens** des ventilateurs » ; le fil ne porte
+         *    AUCUNE moyenne de tous les ventilateurs. `extraction_moy` est la
+         *    SEULE moyenne qui existe, et c'est un VRAI nombre : deux
+         *    extracteurs, même sens, même rôle.
+         *    ⛔ VOIE (c2) REFUSÉE — moyenner à la volée les trois. Le motif est
+         *      celui du correct-course lui-même : *« une moyenne de deux
+         *      extracteurs est un vrai nombre ; une moyenne "entrant/sortant"
+         *      n'en serait pas un »*. Moyenner un ventirad CPU avec des
+         *      ventilateurs de boîtier fabriquerait un nombre qui ne décrit rien,
+         *      et le firmware n'invente pas de valeurs.
+         *    ⛔ VOIE (c3) REFUSÉE — `CPU_NOCTUA` seul : ce n'est pas « moyen ».
+         *    ⚠️ LA QUESTION SE RE-POSE À L'ŒIL (AC8), quand les trois sont
+         *       visibles côte à côte au détail. Basculer, c'est UN indice dans
+         *       `sel_p1`, ⛔ pas un changement de mécanisme.
+         *
+         * 🔴 LES TROIS LIBELLÉS, ET CE QUE CHACUN A LE DROIT DE DIRE — bornés
+         *    par le mapping MESURÉ (jointure BIOS↔LHM sur le RPM, 4 captures
+         *    owner du 2026-08-21) :
+         *      idx 1  `extr.moy`  `fan/0`+`fan/4` — une MOYENNE de DEUX
+         *             extracteurs. ⛔ Pas « les ventilateurs » (il en manque
+         *             trois), ⛔ pas un nom de ventilateur unique.
+         *      idx 2  `ventirad`  `fan/1` = `CPU_FAN1` — ✅ nommable SANS
+         *             réserve. ⚠️ `fan/0` est `CPU_FAN2`, ⛔ PAS `CPU_FAN1` :
+         *             l'ordre naïf aurait affiché « CPU » sur l'extraction
+         *             haute, et c'est la capture BIOS de l'owner qui l'a
+         *             attrapé, ⛔ pas le raisonnement.
+         *      idx 3  `boitier`   `fan/2` = `SYS_FAN1` — un GROUPE de boîtier.
+         *             🔴 ⛔ JAMAIS « TOP » ni « BOTTOM » : UN tachy pour DEUX
+         *             ventilateurs CHAÎNÉS. **Si celui du bas s'arrête, RIEN ne
+         *             le dira.** (ledger L8)
+         *    ⛔ `FRONT_IN` (200 mm façade) n'apparaît NULLE PART : pas de fil
+         *      tachymétrique, `0 RPM` DANS LE BIOS AUSSI. Lui donner une ligne
+         *      — même un « -- » — serait INVENTER une source. *Il tourne, il ne
+         *      le dit pas.* (ledger L7, CLOS, matériel)
+         *    ⚠️ GLYPHES : les trois libellés sont en ASCII pur, sans accent ni
+         *       point médian — un caractère absent de `dn_font_28` serait dessiné
+         *       en carré vide, EN SILENCE. Le contrôle est `widget largeur`, qui
+         *       RELIT le texte posé.
+         *    ⚠️ LARGEUR : ⛔ AUCUNE de ces trois n'est validée par le calcul.
+         *       Elles se MESURENT sur les LIGNES ASSEMBLÉES (`widget largeur`),
+         *       ⛔ pas préfixe par préfixe — le détail met DEUX grandeurs par
+         *       ligne. Repli PRÉ-AUTORISÉ si ça dépasse : RACCOURCIR le libellé
+         *       (⛔ jamais tronquer, ⛔ jamais réduire la police), en gardant
+         *       l'interdit ci-dessus.
+         *
+         * 🔴 `0 tr/min` EST UNE VRAIE VALEUR (fan-stop), ⛔ JAMAIS remplacée par
+         *    « -- » : c'est le motif écrit du ledger L4. Seule l'ABSENCE donne
+         *    « <pfx> -- » — et le préfixe RESTE, parce que c'est lui qui dit
+         *    QUELLE grandeur manque (W10).
+         */
+        .n_grandeurs = 2,
+        .n_detail = 4,
+        /* 🔴 UNE grandeur par ligne au détail — DÉCISION OWNER DU 2026-08-22,
+         *    sur largeurs MESURÉES. Voir `detail_cols` dans `dn_widget.h`. */
+        .detail_cols = 1,
         .indicateur = false,
-        .grandeurs = {{.unite = "Mo/s", .prec = DN_PREC_DIXIEME},
-                      {.unite = "tr/min", .prec = DN_PREC_ENTIER},
-                      {.unite = "tr/min", .prec = DN_PREC_ENTIER},
-                      {.unite = "tr/min", .prec = DN_PREC_ENTIER}},
+        .grandeurs = {{.unite = "Mo/s", .prec = DN_PREC_DIXIEME,
+                       /* 🔴 ÉCHELLE HAUTE ARMÉE — DÉCISION OWNER DU 2026-08-22 :
+                        *    *« pour les unités on ne dépasse pas 3 000, après on
+                        *    change l'affichage de l'unité M puis G »*.
+                        * ⛔ ELLE AMENDE UN LEGS EXPLICITE de dn4-6 (*« l'owner a
+                        *    nommé RÉSEAU »*, mécanisme prêt mais NON ARMÉ) — et
+                        *    la mesure lui donne raison : `« 100000,0 Mo/s »`
+                        *    mesure **206 px pour 201 utiles**, c'est-à-dire que
+                        *    la grandeur 0 de cette case **DÉBORDE AUJOURD'HUI**,
+                        *    en silence, et que personne ne l'avait vu.
+                        *    ✅ Avec la bascule : `« 2999,9 Mo/s »` = **167 px**.
+                        * ⚠️ `seuil_haut` est en DIXIÈMES ⇒ 30000 = 3000,0 Mo/s. */
+                       .seuil_haut = 30000, .diviseur_haut = 1000,
+                       .unite_haute = "Go/s"},
+                      /* ⚠️ `prefixe_detail_seul` sur les TROIS : ils ne tiennent
+                       * PAS dans la case (MESURÉ : 315 px pour 201) et ils n'y
+                       * sont pas nécessaires (elle n'en montre qu'UN). Le motif
+                       * complet est sur le champ, dans `dn_widget.h`. */
+                      {.unite = "tr/min", .prefixe = "extr.moy",
+                       .prefixe_detail_seul = true, .prec = DN_PREC_ENTIER},
+                      {.unite = "tr/min", .prefixe = "ventirad",
+                       .prefixe_detail_seul = true, .prec = DN_PREC_ENTIER},
+                      {.unite = "tr/min", .prefixe = "boitier",
+                       .prefixe_detail_seul = true, .prec = DN_PREC_ENTIER}},
     },
     [DN_UI_CASE_AMB] = {
         .icone = DN_ICONE_THERMOMETER_HALF,
@@ -686,18 +854,112 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
  * C'est ce qui permet de mesurer la case nue et les six widgets DANS LE MÊME
  * FIRMWARE, ce qu'AC8 exige. */
 
-/* Le nombre de grandeurs EFFECTIF d'une case — override compris.
+/*
+ * ── dn4-9 : CE QUE LA **CASE** DESSINE — LE COMPTE **ET** LES INDICES ────────
+ *
+ * 🎯 LE SEUL LECTEUR DE `s_gr_force[]`. Voir la propriété vérifiable écrite au
+ *    -dessus de sa déclaration : `grep -n s_gr_force dn_ui.c` doit rendre TROIS
+ *    lignes (la déclaration, celle-ci, et le setter).
+ *
+ * `out` peut être NULL quand seul le compte intéresse (`desc_n()`).
+ *
+ * 🔴 CE QUE L'OVERRIDE `widget grandeurs <case> <n>` DEVIENT, ET C'EST ÉCRIT
+ *    UNE FOIS POUR TOUTES (dn4-9 / AC6) :
+ *    · il ne déplace **QUE LA CASE** — ⛔ plus le détail avec elle ;
+ *    · les `n` grandeurs montrées sont les **`n` PREMIÈRES DU DÉTAIL**,
+ *      c'est-à-dire `0..n-1`, ⛔ pas les `n` premières de la sélection de la
+ *      case. Motif : la liste du détail EST la liste complète et ordonnée de ce
+ *      que la case a à montrer ; l'override sert à voir « et si la case en
+ *      montrait N ? », et le N-uplet naturel d'une liste complète est son
+ *      préfixe. ⚠️ CONSÉQUENCE À CONNAÎTRE DEVANT LA CARTE : sur `CPU`,
+ *      `widget grandeurs 0 3` montre [%, GHz, c.max] et ⛔ PAS la sélection
+ *      livrée [%, GHz, °C] — c'est `widget grandeurs 0 0` qui rend la case à
+ *      son descripteur.
+ * ⛔ Le compte du DÉTAIL n'a AUCUN override à chaud. Si l'arbitrage en demande
+ *    un, c'est une sous-commande à écrire et à NOMMER, ⛔ pas un détournement
+ *    de celle-ci.
+ *
  * ⚠️ DÉFINI ICI, après `k_desc[]` : le placer près de `s_gr_force[]` le
- *    référençait avant sa définition. */
-static int desc_n(int idx)
+ *    référençait avant sa définition.
+ */
+static int case_grandeurs(int idx, uint8_t *out)
 {
     if (idx < 0 || idx >= DN_UI_METRIQUES) {
         return 0;
     }
-    return s_gr_force[idx] ? s_gr_force[idx] : k_desc[idx].n_grandeurs;
+    const dn_widget_desc_t *d = &k_desc[idx];
+    uint8_t force = s_gr_force[idx]; /* ← LE SEUL LECTEUR */
+    int n = force ? (int)force : (int)d->n_grandeurs;
+    if (n < 1) {
+        n = 1;
+    }
+    if (n > DN_WIDGET_GRANDEURS_MAX) {
+        n = DN_WIDGET_GRANDEURS_MAX;
+    }
+    if (out) {
+        for (int r = 0; r < n; r++) {
+            int g = force ? r : dn_widget_sel(d, r);
+            out[r] = (uint8_t)((g >= 0 && g < DN_WIDGET_GRANDEURS_MAX) ? g : r);
+        }
+    }
+    return n;
+}
+
+/* Le nombre de grandeurs EFFECTIF de la CASE — override compris. */
+static int desc_n(int idx) { return case_grandeurs(idx, NULL); }
+
+/*
+ * ── dn4-9 : LE SECOND COMPTE — CE QUE LE **DÉTAIL** MONTRE ───────────────────
+ *
+ * 🔴 C'EST LE VERROU N°3 DE LA STORY, ET IL SE LÈVE AVEC LES DEUX AUTRES.
+ *    Jusqu'ici il n'existait qu'UN nombre par case, et le détail lisait celui de
+ *    la case : la page qui explique la case ne pouvait rien dire de plus qu'elle.
+ *    **Décision owner du 2026-08-21**, verbatim : *« oui clairement le détail
+ *    connaîtra pour chaque case plus d'information »*.
+ *
+ * ⛔ AUCUN OVERRIDE ICI — voir `case_grandeurs()`.
+ * ⚠️ Les indices du détail sont `0..n-1` DANS L'ORDRE DU FIL : il n'y a pas de
+ *    `sel_detail_p1[]`, et le motif est dans `dn_widget.h` (un champ que
+ *    personne n'utilise est un champ MORT). ⇒ Là où une LISTE est attendue, une
+ *    PLAGE suffit — et c'est ce qui rend les gardes ci-dessous exactes.
+ */
+static int desc_n_detail(int idx)
+{
+    if (idx < 0 || idx >= DN_UI_METRIQUES) {
+        return 0;
+    }
+    int n = dn_widget_n_detail(&k_desc[idx]);
+    if (n < 1) {
+        n = 1;
+    }
+    if (n > DN_WIDGET_GRANDEURS_MAX) {
+        n = DN_WIDGET_GRANDEURS_MAX;
+    }
+    return n;
 }
 
 int dn_ui_case_grandeurs(int idx) { return desc_n(idx); }
+int dn_ui_detail_grandeurs(int idx) { return desc_n_detail(idx); }
+
+int dn_ui_case_indices(int idx, uint8_t *out, int out_n)
+{
+    if (!out || out_n < DN_WIDGET_GRANDEURS_MAX) {
+        return 0;
+    }
+    return case_grandeurs(idx, out);
+}
+
+const char *dn_ui_case_prefixe(int idx, int grandeur)
+{
+    if (idx < 0 || idx >= DN_UI_METRIQUES || grandeur < 0 ||
+        grandeur >= DN_WIDGET_GRANDEURS_MAX) {
+        return NULL;
+    }
+    /* ⚠️ `true` = l'étiquette de la vue DÉTAIL. C'est bien celle-là que `pc`
+     *    doit imprimer : son travail est de NOMMER quel ventilateur est muet, et
+     *    la case, elle, n'en nomme aucun (pas la place — MESURÉ). */
+    return dn_widget_prefixe(&k_desc[idx], grandeur, true);
+}
 
 
 
@@ -1018,6 +1280,46 @@ static bool s_demo_on;
  * métrique : le mécanisme sert à n'importe quelle icône, pas au ventilateur.
  */
 static const char *s_icone_alt[DN_UI_METRIQUES];
+
+/*
+ * ── dn4-9 : LA COPIE **EFFECTIVE** DU DESCRIPTEUR D'UNE CASE ─────────────────
+ *
+ * 🔴 ELLE EXISTE POUR FERMER UN TROU QUE LA SÉLECTION AURAIT OUVERT, ET QUI
+ *    N'AURAIT RIEN JOURNALISÉ.
+ *
+ *    Jusqu'ici, deux chemins parlaient à `dn_widget` avec des descripteurs
+ *    DIFFÉRENTS, et ça marchait par accident :
+ *      · `build_dashboard()` passait une COPIE (icône A/B + `desc_n()`) ;
+ *      · `case_poser()` passait `&k_desc[idx]`, le descripteur **BRUT**.
+ *    Tant que le rang valait l'index, `dn_widget_maj` composait la même chose
+ *    que `dn_widget_creer`. Avec une sélection, ⛔ NON : la case aurait affiché
+ *    [%, GHz, °C] à la construction puis [%, GHz, c.max] dès la première mise à
+ *    jour — 5 fois par seconde, **sans un log**, parce que le garde-fou de
+ *    `dn_widget_maj` est le POINTEUR `valeur[i]` et pas le compte.
+ * ⇒ UNE SEULE FABRIQUE, LES DEUX CHEMINS LA PRENNENT.
+ *
+ * ⚠️ Coût : une copie de descripteur (~160 o) sur la pile, 5 fois par seconde
+ *    au plus. `build_dashboard` la payait déjà par case ; c'est ce que coûte de
+ *    ne pas avoir deux vérités.
+ * ⚠️ Les rangs au-delà du compte gardent la déclaration du descripteur : ils ne
+ *    sont jamais lus (creer boucle jusqu'à `n`, maj filtre par pointeur), et les
+ *    remettre à zéro aurait été une seconde règle à tenir.
+ */
+static void desc_effectif(int idx, dn_widget_desc_t *out)
+{
+    *out = k_desc[idx];
+    if (s_icone_alt[idx]) {
+        out->icone = s_icone_alt[idx];
+    }
+    uint8_t sel[DN_WIDGET_GRANDEURS_MAX];
+    int n = case_grandeurs(idx, sel);
+    out->n_grandeurs = (uint8_t)n;
+    for (int r = 0; r < DN_WIDGET_GRANDEURS_MAX; r++) {
+        if (r < n) {
+            out->sel_p1[r] = (uint8_t)(sel[r] + 1);
+        }
+    }
+}
 
 static const struct {
     const char *nom;
@@ -1983,12 +2285,12 @@ static void build_dashboard(lv_obj_t *scr)
              * sans nommer aucune métrique : un `if (i == VENTILOS)` ici aurait
              * remis un cas spécial dans la boucle que dn2-1 a explicitement
              * refusé de ramifier. */
-            dn_widget_desc_t d = k_desc[i];
-            if (s_icone_alt[i]) {
-                d.icone = s_icone_alt[i];
-            }
-            /* LECTEUR 1/4 de l'override de grandeurs — voir `desc_n()`. */
-            d.n_grandeurs = (uint8_t)desc_n(i);
+            /* 🔴 dn4-9 : LA MÊME FABRIQUE QUE `case_poser()` — voir
+             *    `desc_effectif()`. Icône A/B, compte de case ET SÉLECTION y
+             *    sont résolus ensemble ; ⛔ ne jamais reconstruire la copie à la
+             *    main ici, c'est ce qui faisait diverger les deux chemins. */
+            dn_widget_desc_t d;
+            desc_effectif(i, &d);
             dn_widget_creer(scr, x, y, DN_UI_CASE_W, ui_case_h(), &d,
                             &s_wetat[i], on_case_clic, (void *)(intptr_t)i,
                             &s_wobj[i]);
@@ -2092,15 +2394,31 @@ static void build_detail(lv_obj_t *scr, int idx)
      *    le panneau du bas (385) NE BOUGE PAS. Le template reste UN template et
      *    garde ses quatre panneaux (addendum §1 : « on ne change que les
      *    données, jamais la structure »). Ce qui rétrécit est un cadre vide qui
-     *    ne dessine aucune courbe — l'historique arrive en dn4-4. */
+     *    ne dessine aucune courbe — l'historique arrive en dn4-4.
+     *
+     * 🔴 dn4-9 / DÉCISION OWNER DU 2026-08-22 : **97 -> 140 px, QUATRE LIGNES**.
+     *    `DISQUE` doit montrer ses quatre grandeurs UNE PAR LIGNE — deux par
+     *    ligne mesure **642 px pour 432 utiles** (`widget largeur`, firmware
+     *    `4c3a3f7`), et ⛔ aucun raccourcissement de libellé ne rattrape 210 px.
+     *    Une par ligne mesure 315 / 309 / 285 px : **117 px de marge minimale**,
+     *    libellés français COMPLETS.
+     * ⚠️ **ET C'EST UNE FACTURE POUR `dn4-4`, DITE ICI** : les **43 px** sont
+     *    repris AU MÊME ENDROIT, le placeholder de courbe, qui passe de 165 à
+     *    **122 px** de haut. Son BAS reste à **370**, le panneau du bas (385) ne
+     *    bouge toujours pas, et le template garde ses QUATRE panneaux.
+     *    ⇒ `dn4-4` dessinera sa courbe dans **122 px**, ⛔ pas 165. À ne pas
+     *      découvrir en la dessinant. */
     lv_obj_t *bloc_valeur =
-        panneau(scr, DN_UI_MARGE, 95, DN_LCD_H_RES - 2 * DN_UI_MARGE, 97);
+        panneau(scr, DN_UI_MARGE, 95, DN_LCD_H_RES - 2 * DN_UI_MARGE, 140);
     s_det_valeur = texte(bloc_valeur, "--", &dn_font_28, lv_color_white(), 14, 14);
 
     /* Placeholder de courbe : un cadre étiqueté, PAS une courbe. Les vraies
      * séries arrivent avec l'historique RAM-session (dn4-4). */
-    lv_obj_t *cadre = panneau(scr, DN_UI_MARGE, 205, DN_LCD_H_RES - 2 * DN_UI_MARGE,
-                              165);
+    /* ⚠️ 248 + 122 = 370 : le BAS est INCHANGÉ, comme en dn4-6. C'est
+     *    l'invariant du template, ⛔ pas une coïncidence — le vérifier à chaque
+     *    fois qu'on touche ces deux nombres. */
+    lv_obj_t *cadre = panneau(scr, DN_UI_MARGE, 248, DN_LCD_H_RES - 2 * DN_UI_MARGE,
+                              122);
     texte(cadre, "COURBE (dn4-4)", &dn_font_14,
           lv_color_hex(0x80a0b0), 12, 70);
 
@@ -2248,7 +2566,11 @@ static void detail_reparametrer(int idx)
      *    unité (« tr/min » = 6) + préfixe (« c.max » = 5) + espace, plus le
      *    séparateur « \u00a0·\u00a0 » entre deux. On prend large ET on VÉRIFIE.
      */
-    char buf[4 * (DN_WIDGET_TXT_MAX + 24) + 8];
+    /* 🔴 dn4-9 : LA TAILLE VIENT DE `dn_ui.h` — l'instrument (`widget detail`)
+     *    prend LA MÊME. Elle était écrite ici en dur et là-bas AUTREMENT
+     *    (128 o pour 168 produits) : l'instrument aurait tronqué en silence le
+     *    texte qu'il prétend relire. Voir `DN_UI_DETAIL_TXT_MAX`. */
+    char buf[DN_UI_DETAIL_TXT_MAX];
 
     if (s_det_valeur) {
         /* La MÊME règle que la tuile : régime ABSENT ⇒ « -- » grisé, jamais un
@@ -2294,11 +2616,30 @@ static void detail_reparametrer(int idx)
              *    c'est lui qui dit QUELLE grandeur manque (W10 jusque dans le
              *    détail — l'existence d'une grandeur ne se cache jamais).
              */
-            /* LECTEUR 2/4 de l'override de grandeurs — voir `desc_n()`. Lire
-             * `d->n_grandeurs` ici ferait detailler QUATRE grandeurs sur une
-             * case qui n'en DESSINE que trois : la page qui explique la case
-             * expliquerait autre chose que la case. */
-            int n = d ? desc_n(idx) : 1;
+            /*
+             * 🔴 VERROU N°1 DE dn4-9, LEVÉ — ET LE COMMENTAIRE D'ORIGINE EST
+             *    AMENDÉ, ⛔ PAS EFFACÉ. Il disait, et il avait raison AU MOMENT
+             *    où il a été écrit :
+             *      « LECTEUR 2/4 de l'override de grandeurs — voir `desc_n()`.
+             *        Lire `d->n_grandeurs` ici ferait detailler QUATRE grandeurs
+             *        sur une case qui n'en DESSINE que trois : la page qui
+             *        explique la case expliquerait autre chose que la case. »
+             *
+             * ⚠️ AMENDÉ LE 2026-08-22 (dn4-9), SUR DÉCISION OWNER DU 2026-08-21,
+             *    verbatim : *« oui clairement le détail connaîtra pour chaque
+             *    case plus d'information »*. La crainte reste JUSTE — un détail
+             *    qui montrerait n'importe quoi d'autre que la case serait un
+             *    mensonge d'interface — mais la réponse change : le détail
+             *    montre un SUR-ENSEMBLE de la case, ⛔ jamais autre chose.
+             *    L'invariant A (`sel_case` ⊆ `0..n_detail-1`) est AUDITÉ AU BOOT,
+             *    précisément pour que « sur-ensemble » ne soit pas une intention
+             *    mais une propriété.
+             * ⇒ Preuve par l'existant que le verrou coûtait quelque chose : le
+             *   `tr/min` du GPU circule depuis dn4-6 et n'était visible NI dans
+             *   la case NI dans le détail.
+             * ⛔ `desc_n(idx)` (le compte de la CASE) N'EST PLUS LU ICI.
+             */
+            int n = d ? desc_n_detail(idx) : 1;
             if (n < 1) {
                 n = 1;
             }
@@ -2307,10 +2648,20 @@ static void detail_reparametrer(int idx)
             }
             size_t p = 0;
             int ecrit = 0;
+            /* 🔴 dn4-9 : LE NOMBRE DE COLONNES EST UNE PROPRIÉTÉ **DE LA
+             *    CASE**, ⛔ plus une constante. `DISQUE` en demande UNE, sur
+             *    largeurs MESURÉES le 2026-08-22 (642 px pour 432 utiles à deux
+             *    par ligne). Voir `detail_cols` dans `dn_widget.h`.
+             * ⚠️ `i % cols == 0` généralise le `i % 2` de dn4-6 : à cols = 2 il
+             *    rend EXACTEMENT le même découpage, à cols = 1 il empile. */
+            int cols = dn_widget_detail_cols(d);
             for (int i = 0; i < n && p < sizeof(buf); i++) {
-                const char *sep = (i == 0) ? "" : ((i % 2) == 0 ? "\n" : "   ·   ");
+                const char *sep =
+                    (i == 0) ? "" : (((i % cols) == 0) ? "\n" : "   ·   ");
                 bool connue = e->txt[i][0] != '\0';
-                const char *px = d ? d->grandeurs[i].prefixe : NULL;
+                /* ⚠️ `true` = la vue DÉTAIL : c'est ICI que les préfixes
+                 *    `prefixe_detail_seul` s'affichent, et nulle part ailleurs. */
+                const char *px = dn_widget_prefixe(d, i, true);
                 /* 🔴 L'ÉCHELLE HAUTE VAUT ICI AUSSI. Sans ça, la tuile dirait
                  *    « ↓ 100,0 Gb/s » et le détail « 100,0 Mb/s » POUR LE MÊME
                  *    NOMBRE — deux vérités contradictoires à un tap d'écart,
@@ -2812,6 +3163,12 @@ esp_err_t dn_ui_set_nav_model(dn_nav_model_t m)
  * ⛔ ET ELLE PARCOURT `n_grandeurs`, PAS `GRANDEURS_MAX` : les entrées au-delà
  *    de ce que la case déclare ne sont jamais lues, et les signaler ferait
  *    hurler l'audit sur des champs qui n'existent pas.
+ * 🔴 AMENDÉ LE 2026-08-22 (dn4-9), ⛔ PAS EFFACÉ : elle parcourt désormais
+ *    **l'UNION des deux vues**, c'est-à-dire `0..desc_n_detail-1`. La raison
+ *    ci-dessus tient toujours (⛔ pas `GRANDEURS_MAX`), mais « ce que la case
+ *    déclare » n'est plus le bon périmètre : la °C du CPU est SÉLECTIONNÉE en
+ *    case et vit en index 3, hors des trois premières. Auditer `n_grandeurs`
+ *    l'aurait laissée passer avec une `prec` non renseignée.
  */
 /*
  * ── COMBIEN D'ENTRÉES `grandeurs[]` UN DESCRIPTEUR PEUPLE-T-IL RÉELLEMENT ? ───
@@ -2828,6 +3185,10 @@ esp_err_t dn_ui_set_nav_model(dn_nav_model_t m)
  *    `descripteurs_auditer()` ne les voit jamais, puisqu'elle parcourt
  *    `n_grandeurs`. **L'override pouvait fabriquer exactement le trou que
  *    l'audit d'AC9 prétend interdire.**
+ * 🔴 dn4-9 : LA GARDE NE COMPARE PLUS UN COMPTE — voir `desc_indice_vide()`.
+ *    `desc_peuplees()` rend « la DERNIÈRE peuplée + 1 », donc `n <= pe` laissait
+ *    passer une sélection contenant un TROU. Cette fonction-ci reste utile pour
+ *    PUBLIER le plafond au boot, ⛔ plus pour garder.
  * ⚠️ LE MARQUEUR EST `prec` : c'est le seul champ dont `DN_PREC_NON_RENSEIGNEE`
  *    vaut zéro ET signifie « personne n'a rempli cette entrée ». `unite` peut
  *    légitimement être NULL (une grandeur sans unité), `prefixe` presque
@@ -2848,6 +3209,37 @@ static int desc_peuplees(int idx)
     return n;
 }
 
+/*
+ * ── dn4-9 : LA GARDE JUGE LES **INDICES**, ⛔ PLUS UN COMPTE ─────────────────
+ *
+ * Rend le PREMIER index de `0..n-1` dont l'entrée de descripteur n'est pas
+ * peuplée, ou -1 s'il n'y en a aucun.
+ *
+ * 🔴 POURQUOI UN INDICE ET PLUS `n > desc_peuplees()` : `desc_peuplees()` rend
+ *    « la DERNIÈRE peuplée + 1 » — délibérément, pour qu'un trou au milieu reste
+ *    visible au lieu d'être compacté. Comparer `n` à ce nombre laisse donc
+ *    passer une sélection **contenant un trou** : elle retomberait au dixième
+ *    par repli silencieux, et l'audit de boot ne la verrait pas. La question
+ *    n'est plus « combien », c'est « chacun de ceux-là est-il peuplé ».
+ * ⚠️ Le marqueur est `prec` — le seul champ dont le zéro signifie « personne
+ *    n'a rempli cette entrée » (voir `desc_peuplees()`).
+ */
+static int desc_indice_vide(int idx, int n)
+{
+    if (idx < 0 || idx >= DN_UI_METRIQUES) {
+        return -1;
+    }
+    if (n > DN_WIDGET_GRANDEURS_MAX) {
+        n = DN_WIDGET_GRANDEURS_MAX;
+    }
+    for (int g = 0; g < n; g++) {
+        if (k_desc[idx].grandeurs[g].prec == DN_PREC_NON_RENSEIGNEE) {
+            return g;
+        }
+    }
+    return -1;
+}
+
 /* 🔴 dn4-8 / DÉCISION OWNER DU 2026-08-21 (revue de code) — LA GARDE QUI
  *    MANQUAIT. `desc_peuplees(DISQUE)` est passé de 1 à 4 quand les trois
  *    `tr/min` ont été ajoutés au descripteur : la garde `n > pe` de
@@ -2865,17 +3257,44 @@ static int desc_peuplees(int idx)
  *   INDISTINGUABLES À L'ŒIL — même unité, aucun préfixe pour les séparer.
  *
  * Rend l'indice de la SECONDE ligne d'un couple indistinct, ou -1 s'il n'y en a
- * aucun dans les `n` premières grandeurs de `idx`. */
-static int desc_ligne_indistincte(int idx, int n)
+ * aucun dans les `n` premières grandeurs de `idx`.
+ *
+ * 🔴 dn4-9 — CE QU'ELLE JUGE A CHANGÉ, ET C'EST L'**UNION** DES DEUX VUES.
+ *    AC6 : *« ce qui est affiché quelque part est jugé »*. Juger la seule CASE
+ *    laisserait le DÉTAIL hors garde, et le cas est RÉEL, ⛔ pas théorique : la
+ *    case `CPU` = [0, 1, 3] ne contient PLUS le couple `%`/`%` (0 et 2 ne
+ *    cohabitent plus), alors que le détail [0, 1, 2, 3] le contient.
+ *
+ * ✅ ET LA SIGNATURE N'A PAS BESOIN DE CHANGER, parce que l'union est une
+ *    **PLAGE** : invariant A (`sel_case` ⊆ `0..n_detail-1`, audité au boot) +
+ *    « le détail ne réordonne pas » ⇒ union = `0..desc_n_detail(idx)-1`.
+ *    ⇒ On l'appelle avec `n = desc_n_detail(idx)`, ⛔ jamais avec le compte de
+ *      la case. ⚠️ Le jour où le détail recevrait une sélection à lui, cette
+ *      fonction devrait prendre une LISTE — c'est écrit ici pour que ça ne se
+ *      découvre pas à l'exécution.
+ *
+ * ⚠️ PROPRIÉTÉ UTILE, ET ELLE EXPLIQUE POURQUOI IL Y A DEUX APPELANTS :
+ *    l'indistinction est une propriété de PAIRES, donc « union distincte » ⇒
+ *    « tout sous-ensemble distinct ». La garde de `dn_ui_set_case_grandeurs()`
+ *    ne peut donc tirer que si l'audit de boot a DÉJÀ tiré. Elle reste là parce
+ *    qu'un log de boot se rate, et qu'un refus au point d'usage porte son motif
+ *    là où l'opérateur le lit. ⛔ Ce n'est pas une redondance décorative : c'est
+ *    une seconde ligne dont le rapport à la première est ÉCRIT. */
+static int desc_ligne_indistincte(int idx, const uint8_t *sel, int n, bool detail)
 {
-    if (idx < 0 || idx >= DN_UI_METRIQUES) {
+    if (idx < 0 || idx >= DN_UI_METRIQUES || !sel) {
         return -1;
     }
     if (n > DN_WIDGET_GRANDEURS_MAX) {
         n = DN_WIDGET_GRANDEURS_MAX;
     }
-    for (int a = 0; a < n; a++) {
-        for (int b = a + 1; b < n; b++) {
+    for (int ra = 0; ra < n; ra++) {
+        for (int rb = ra + 1; rb < n; rb++) {
+            int a = sel[ra], b = sel[rb];
+            if (a < 0 || a >= DN_WIDGET_GRANDEURS_MAX || b < 0 ||
+                b >= DN_WIDGET_GRANDEURS_MAX) {
+                continue;
+            }
             const char *ua = k_desc[idx].grandeurs[a].unite;
             const char *ub = k_desc[idx].grandeurs[b].unite;
             /* ⚠️ Deux unités absentes ne se ressemblent pas : une grandeur sans
@@ -2892,8 +3311,13 @@ static int desc_ligne_indistincte(int idx, int n)
              *    la configuration LIVRÉE de `net` — casser le produit pour punir
              *    un cas d'école. C'est la famille « garde scopée à un champ qui
              *    épingle rouge ailleurs ». */
-            const char *pa = k_desc[idx].grandeurs[a].prefixe;
-            const char *pb = k_desc[idx].grandeurs[b].prefixe;
+            /* 🔴 dn4-9 : L'ÉTIQUETTE **DE LA VUE**, ⛔ pas le champ brut. Une
+             * case qui n'AFFICHE pas le préfixe (`prefixe_detail_seul`) doit
+             * être jugée SANS lui — sinon la garde tiendrait pour distinctes
+             * deux lignes que l'œil voit identiques. C'est exactement la classe
+             * de défaut « la garde n'atteint jamais ce qu'elle prétend couvrir ». */
+            const char *pa = dn_widget_prefixe(&k_desc[idx], a, detail);
+            const char *pb = dn_widget_prefixe(&k_desc[idx], b, detail);
             /* Un préfixe sépare — cas `cpu` : `%` nu en 0, `%` « c.max » en 2. */
             if (pa && pb && strcmp(pa, pb) != 0) {
                 continue;
@@ -2910,21 +3334,182 @@ static int desc_ligne_indistincte(int idx, int n)
             if ((ia == NULL) != (ib == NULL)) {
                 continue;
             }
-            /* ⛔ Ni préfixe ni icône ne les sépare : deux lignes identiques. */
+            /* ⛔ Ni préfixe ni icône ne les sépare : deux lignes identiques.
+             * ⚠️ On rend l'INDEX DE GRANDEUR, ⛔ pas le rang : c'est lui qui
+             *    désigne la ligne de `k_desc[]` à corriger. */
             return b;
         }
     }
     return -1;
 }
 
+/* Écrit « [0, 1, 3] » dans `out`. Un instrument qui ne dit pas QUELS indices
+ * n'aide pas à trancher entre « le mécanisme se trompe » et « le descripteur
+ * dit ça ». */
+static void indices_fmt(const uint8_t *sel, int n, char *out, size_t out_n)
+{
+    size_t p = 0;
+    int e = snprintf(out, out_n, "[");
+    p = (e > 0) ? (size_t)e : 0;
+    for (int r = 0; r < n && p + 1 < out_n; r++) {
+        e = snprintf(out + p, out_n - p, "%s%d", r ? ", " : "", (int)sel[r]);
+        if (e < 0 || (size_t)e >= out_n - p) {
+            break;
+        }
+        p += (size_t)e;
+    }
+    if (p + 1 < out_n) {
+        snprintf(out + p, out_n - p, "]");
+    }
+}
+
+/*
+ * ── dn4-9 : LES TROIS INVARIANTS DE LA SÉLECTION, AUDITÉS AU BOOT ────────────
+ *
+ * ⛔ Ils ne sont PAS vérifiables à la compilation (`sel_p1` est un tableau
+ *    d'octets, et `n_detail` un champ optionnel), et ⛔ pas non plus sur le
+ *    chemin chaud (15 passages/s sous le verrou LVGL : « une garde qui crie au
+ *    loup à chaque passage est pire que pas de garde »). ⇒ UNE fois, au boot,
+ *    en `ESP_LOGE`, avec la case NOMMÉE.
+ *
+ *   A. tout index de `sel_p1[0..n_case-1]` est < `n_detail`
+ *      ⇒ *la case montre un SOUS-ENSEMBLE de ce que le détail montre*. C'est
+ *        lui qui rend l'union égale à la plage du détail, et donc les gardes
+ *        exactes sans jamais fusionner deux listes.
+ *   B. les index de `sel_p1[0..n_case-1]` sont DEUX À DEUX DISTINCTS
+ *      ⇒ sans quoi la même grandeur s'afficherait deux fois dans une case, ce
+ *        qu'aucun compteur ne verrait (les deux lignes seraient « valides »).
+ *   C. `sel_p1` est déclaré POUR TOUS les rangs `0..n_case-1`, ou pour AUCUN
+ *      ⇒ une table à moitié remplie mélangerait sélection et identité, et le
+ *        mélange est indiscernable à la lecture du descripteur. (`n_case` est
+ *        ici celui du DESCRIPTEUR, ⛔ pas l'override — l'override force
+ *        l'identité, il ne lit pas la table.)
+ */
+static int selections_auditer(void)
+{
+    int fautes = 0;
+    for (int i = 0; i < DN_UI_METRIQUES; i++) {
+        const dn_widget_desc_t *d = &k_desc[i];
+        int nc = d->n_grandeurs;
+        if (nc > DN_WIDGET_GRANDEURS_MAX) {
+            nc = DN_WIDGET_GRANDEURS_MAX;
+        }
+        int nd = desc_n_detail(i);
+        int declares = 0;
+        for (int r = 0; r < nc; r++) {
+            if (d->sel_p1[r]) {
+                declares++;
+            }
+        }
+        if (declares != 0 && declares != nc) {
+            ESP_LOGE(TAG,
+                     "k_desc[%s] : sel_p1 declare %d rang(s) sur %d — une table "
+                     "A MOITIE remplie melange selection et identite, et le "
+                     "melange ne se lit PAS sur le descripteur. Declarer les %d "
+                     "rangs (DN_SEL%d(...)) ou aucun.",
+                     k_nom[i], declares, nc, nc, nc);
+            fautes++;
+        }
+        for (int r = 0; r < nc; r++) {
+            int g = dn_widget_sel(d, r);
+            if (d->sel_p1[r] && d->sel_p1[r] > DN_WIDGET_GRANDEURS_MAX) {
+                ESP_LOGE(TAG,
+                         "k_desc[%s] : sel_p1[%d] = %u HORS BORNES (max %d) — "
+                         "l'affichage retombe sur l'identite EN SILENCE.",
+                         k_nom[i], r, (unsigned)d->sel_p1[r],
+                         DN_WIDGET_GRANDEURS_MAX);
+                fautes++;
+                continue;
+            }
+            if (g >= nd) { /* invariant A */
+                ESP_LOGE(TAG,
+                         "k_desc[%s] : la CASE dessine la grandeur %d (rang %d) "
+                         "que le DETAIL n'explique pas (n_detail = %d). La page "
+                         "qui explique la case en montrerait MOINS qu'elle : "
+                         "invariant A viole.",
+                         k_nom[i], g, r, nd);
+                fautes++;
+            }
+            for (int r2 = r + 1; r2 < nc; r2++) { /* invariant B */
+                if (dn_widget_sel(d, r2) == g) {
+                    ESP_LOGE(TAG,
+                             "k_desc[%s] : les rangs %d et %d dessinent LA MEME "
+                             "grandeur %d — deux lignes identiques qu'aucun "
+                             "compteur ne verrait.",
+                             k_nom[i], r, r2, g);
+                    fautes++;
+                }
+            }
+        }
+    }
+    return fautes;
+}
+
+/* La plage `0..n-1`, matérialisée — le DÉTAIL ne réordonne pas (voir
+ * `desc_n_detail()`), mais la garde prend une LISTE : on la lui donne. */
+static int plage_indices(int n, uint8_t *out)
+{
+    if (n > DN_WIDGET_GRANDEURS_MAX) {
+        n = DN_WIDGET_GRANDEURS_MAX;
+    }
+    for (int g = 0; g < n; g++) {
+        out[g] = (uint8_t)g;
+    }
+    return n;
+}
+
+/*
+ * ── dn4-9 : LES DEUX VUES SONT JUGÉES, CHACUNE AVEC **SES** ÉTIQUETTES ───────
+ *
+ * Rend l'index de grandeur fautif, ou -1. `*vue_case` dit LAQUELLE des deux a
+ * tiré — sans ça, le message d'erreur enverrait corriger la mauvaise.
+ *
+ * 🔴 POURQUOI DEUX APPELS ET ⛔ PAS UNE UNION : depuis que `prefixe_detail_seul`
+ *    existe, une même paire de grandeurs peut être DISTINCTE au détail (elle y
+ *    porte ses préfixes) et INDISTINCTE dans la case (qui ne les affiche pas).
+ *    Juger « l'union » avec un seul jeu d'étiquettes ferait exactement l'erreur
+ *    que la garde existe pour empêcher — dans un sens ou dans l'autre.
+ * ⚠️ C'est un AMENDEMENT à ce qui était écrit plus haut dans cette story :
+ *    « l'union vaut la plage du détail » restait vrai pour les INDICES, ⛔ pas
+ *    pour les ÉTIQUETTES. Le décalage a été trouvé par la MESURE du 2026-08-22.
+ */
+static int desc_vues_indistinctes(int idx, int n_case_force, bool *vue_case)
+{
+    uint8_t sel[DN_WIDGET_GRANDEURS_MAX];
+    int nc;
+    if (n_case_force > 0) {
+        /* L'override force l'identité : les `n` premières du DÉTAIL. */
+        nc = plage_indices(n_case_force, sel);
+    } else {
+        nc = case_grandeurs(idx, sel);
+    }
+    int flou = desc_ligne_indistincte(idx, sel, nc, false);
+    if (flou >= 0) {
+        if (vue_case) {
+            *vue_case = true;
+        }
+        return flou;
+    }
+    uint8_t pl[DN_WIDGET_GRANDEURS_MAX];
+    int nd = plage_indices(desc_n_detail(idx), pl);
+    flou = desc_ligne_indistincte(idx, pl, nd, true);
+    if (vue_case) {
+        *vue_case = false;
+    }
+    return flou;
+}
+
 static void descripteurs_auditer(void)
 {
     int trous = 0;
     for (int i = 0; i < DN_UI_METRIQUES; i++) {
-        int n = k_desc[i].n_grandeurs;
-        if (n > DN_WIDGET_GRANDEURS_MAX) {
-            n = DN_WIDGET_GRANDEURS_MAX;
-        }
+        /* 🔴 dn4-9 : L'AUDIT PORTE SUR **L'UNION**, ⛔ PLUS SUR `n_grandeurs`.
+         *    Avant, une grandeur SÉLECTIONNÉE mais hors des `n_grandeurs`
+         *    premières (la °C du CPU, index 3, dans une case à trois lignes)
+         *    passait inapercue avec `prec` non renseignee — et retombait au
+         *    dixieme par repli silencieux. L'union vaut la plage du DETAIL
+         *    (invariant A), donc auditer `0..n_detail-1` couvre les deux vues. */
+        int n = desc_n_detail(i);
         for (int g = 0; g < n; g++) {
             if (k_desc[i].grandeurs[g].prec == DN_PREC_NON_RENSEIGNEE) {
                 ESP_LOGE(TAG,
@@ -2942,18 +3527,75 @@ static void descripteurs_auditer(void)
         ESP_LOGI(TAG, "precision d'affichage : %d cases auditees, 0 trou (AC9)",
                  DN_UI_METRIQUES);
     }
-    /* 🔴 ET CE QUE L'OVERRIDE PEUT ATTEINDRE — publié au boot (revue 2026-08-19).
-     *    L'audit ci-dessus ne parcourt QUE `n_grandeurs`, délibérément. Mais
-     *    `widget grandeurs <case> <n>` peut demander plus, et le plafond utile
-     *    n'est pas `GRANDEURS_MAX` : c'est le nombre d'entrées PEUPLÉES. Le
-     *    publier au boot évite d'avoir à le deviner devant la carte. */
+
+    int f_sel = selections_auditer();
+    if (f_sel == 0) {
+        ESP_LOGI(TAG,
+                 "selections : %d cases auditees, 0 faute (dn4-9 — invariants "
+                 "A/B/C)",
+                 DN_UI_METRIQUES);
+    }
+
+    /*
+     * 🔴 dn4-9 : L'AUDIT DE BOOT CESSAIT-IL DE MENTIR ? IL MENTAIT.
+     *    Il imprimait « `widget grandeurs %d %d` est jouable (AC4) » avec
+     *    `n = desc_peuplees()`, donc pour `DISQUE` : « `widget grandeurs 4 4`
+     *    est jouable » — alors que la garde `desc_ligne_indistincte()` de dn4-8
+     *    la REFUSAIT (trois `tr/min` sans préfixe). ⚠️ Ce n'était pas une faute
+     *    de dn4-8 : la garde et l'audit ont été écrits à deux moments
+     *    différents. C'était un défaut LIVRÉ, et dn4-9 est la story qui le
+     *    rencontre. ⛔ Pas les deux vérités dans la même console.
+     *
+     * ⇒ La ligne ne récite plus un plafond : elle publie ce que la case EST
+     *   (les deux comptes ET les deux listes d'indices) et ce que l'override
+     *   PEUT RÉELLEMENT atteindre — en interrogeant LES MÊMES gardes que
+     *   `dn_ui_set_case_grandeurs()`, ⛔ pas une copie de leur raisonnement.
+     *   Quand rien n'est jouable, elle dit POURQUOI.
+     */
     for (int i = 0; i < DN_UI_METRIQUES; i++) {
-        int pe = desc_peuplees(i);
-        if (pe > k_desc[i].n_grandeurs) {
+        uint8_t sel[DN_WIDGET_GRANDEURS_MAX];
+        int nc = case_grandeurs(i, sel);
+        int nd = desc_n_detail(i);
+        char sc[40], sd[40];
+        uint8_t plage[DN_WIDGET_GRANDEURS_MAX];
+        for (int g = 0; g < DN_WIDGET_GRANDEURS_MAX; g++) {
+            plage[g] = (uint8_t)g;
+        }
+        indices_fmt(sel, nc, sc, sizeof(sc));
+        indices_fmt(plage, nd, sd, sizeof(sd));
+
+        /* Le plus grand `n` que `dn_ui_set_case_grandeurs()` ACCEPTERAIT —
+         * ⚠️ interrogé EN REJOUANT LES MÊMES GARDES, ⛔ pas en recopiant leur
+         *    raisonnement. Et `n` par `n`, parce que depuis dn4-9 la garde
+         *    d'indistinction DÉPEND de `n` : la case à 2 est distincte là où la
+         *    même case à 3 ne l'est plus. */
+        bool vue_c = false;
+        int flou = desc_vues_indistinctes(i, 0, &vue_c);
+        int n_max = 0;
+        for (int n = 1; n <= nd; n++) {
+            if (desc_indice_vide(i, n) >= 0) {
+                break;
+            }
+            bool vc = false;
+            if (desc_vues_indistinctes(i, n, &vc) >= 0) {
+                break;
+            }
+            n_max = n;
+        }
+        if (n_max > 0) {
             ESP_LOGI(TAG,
-                     "k_desc[%s] : %d grandeur(s) affichee(s), %d PEUPLEE(S) — "
-                     "`widget grandeurs %d %d` est jouable (AC4).",
-                     k_nom[i], k_desc[i].n_grandeurs, pe, i, pe);
+                     "k_desc[%s] : case %d %s · detail %d %s · peuplees %d — "
+                     "`widget grandeurs %d <1..%d>` est jouable",
+                     k_nom[i], nc, sc, nd, sd, desc_peuplees(i), i, n_max);
+        } else {
+            int vide = desc_indice_vide(i, nd);
+            ESP_LOGI(TAG,
+                     "k_desc[%s] : case %d %s · detail %d %s · peuplees %d — "
+                     "⛔ AUCUN `widget grandeurs %d <n>` jouable : %s",
+                     k_nom[i], nc, sc, nd, sd, desc_peuplees(i), i,
+                     flou >= 0 ? "deux lignes seraient INDISTINGUABLES a l'oeil"
+                     : vide >= 0 ? "une entree du descripteur n'est pas peuplee"
+                                 : "le detail n'expose aucune grandeur");
         }
     }
 }
@@ -3402,7 +4044,14 @@ static void case_poser(int idx, dn_val_regime_t regime, const dn_valeurs_t *v,
          * `w->valeur[1]`, `w->jauge` et `w->badge` — des pointeurs que le
          * chemin « nue » ne renseigne jamais. */
         if (case_est_widget(idx)) {
-            dn_widget_maj(&k_desc[idx], e, &s_wobj[idx]);
+            /* 🔴 dn4-9 : ⛔ PLUS `&k_desc[idx]`. Cette ligne passait le
+             *    descripteur BRUT pendant que `build_dashboard` passait une
+             *    COPIE — sans sélection les deux composaient la même chose, avec
+             *    sélection la mise à jour aurait recomposé une AUTRE grandeur
+             *    que celle qui a été créée. Voir `desc_effectif()`. */
+            dn_widget_desc_t d;
+            desc_effectif(idx, &d);
+            dn_widget_maj(&d, e, &s_wobj[idx]);
         } else if (s_wobj[idx].valeur[0]) {
             /* Case NUE : un seul label, pas de modèle. Elle n'est alimentée par
              * personne aujourd'hui — ce chemin existe pour que « nue » reste une
@@ -3700,10 +4349,39 @@ bool dn_ui_pc_maj(dn_link_metrique_t m, const dn_link_vue_t *vue,
          *    elle est bornée ici par les DEUX comptes, et la secondaire lit le
          *    fil directement.
          */
-        /* LECTEUR 3/4 de l'override de grandeurs — voir `desc_n()`. */
+        /*
+         * 🔴 VERROU N°2 DE dn4-9, LEVÉ — ET C'EST LE POINT LE PLUS FACILE À
+         *    RATER DE TOUTE LA STORY. Ces trois lignes bornaient le FORMATAGE
+         *    par le compte de la CASE :
+         *      `if (dsc && desc_n(idx) < n_aff) { n_aff = desc_n(idx); }`
+         *    ⇒ pour `CPU`, `n_aff = min(4, 3) = 3` : la °C du fil (index 3)
+         *      n'était **JAMAIS écrite** dans `s_wetat[CPU].txt[3]`. Lever les
+         *      verrous n°1 et n°3 SEULS aurait donc donné un détail affichant
+         *      « -- » gris à la place de la température — **un défaut MUET à la
+         *      place d'un défaut VISIBLE**, et le dev aurait conclu que le
+         *      mécanisme marche.
+         *
+         * 🔴 CHANGEMENT DE CONTRAT, ET IL EST ÉCRIT DANS `dn_ui.h` (déclaration
+         *    de `dn_ui_pc_maj`) : l'état d'une case porte désormais **toutes les
+         *    grandeurs que son descripteur PEUPLE**, indépendamment de ce que la
+         *    case dessine. C'est la condition pour que deux vues (case et
+         *    détail) puissent en montrer des sous-ensembles différents.
+         *
+         * ⚠️ LA BORNE EST `desc_peuplees()`, ⛔ PAS `DN_WIDGET_GRANDEURS_MAX` :
+         *    formater au-delà des entrées peuplées ferait retomber le format au
+         *    DIXIÈME par repli silencieux (`prec` non renseignée), c'est-à-dire
+         *    inventer une décimale que la source ne porte pas. `RAM` le prouve :
+         *    elle reçoit DEUX valeurs du fil et n'en peuple QU'UNE — sa 2ᵉ part
+         *    en ligne secondaire, et elle ne doit pas être formatée ici.
+         * ✅ `case_poser()` écrit DÉJÀ les quatre slots (les non fournies à
+         *    vide) : rien d'autre n'était nécessaire.
+         */
         int n_aff = (int)vue->n;
-        if (dsc && desc_n(idx) < n_aff) {
-            n_aff = desc_n(idx);
+        if (dsc) {
+            int pe = desc_peuplees(idx);
+            if (pe < n_aff) {
+                n_aff = pe;
+            }
         }
         if (n_aff > DN_WIDGET_GRANDEURS_MAX) {
             n_aff = DN_WIDGET_GRANDEURS_MAX;
@@ -3895,7 +4573,24 @@ bool dn_ui_detail_label(char *txt, size_t txt_n, int *w, int *w_parent, int *x,
     }
     if (txt && txt_n) {
         const char *src = lv_label_get_text(s_det_valeur);
-        snprintf(txt, txt_n, "%s", src ? src : "");
+        /* 🔴 dn4-9 : LE RETOUR DE `snprintf` EST TESTÉ. Il ne l'était pas, et
+         *    l'appelant passait un tampon de 128 o pour un texte qui peut en
+         *    faire 168 : l'instrument aurait rendu `true` avec un texte AMPUTÉ,
+         *    et on aurait conclu « la ligne ne tient pas » sur un produit sain.
+         * ⛔ On rend `false` : un instrument qui ne peut pas lire ce qu'on lui
+         *    demande ne répond pas « à peu près ». */
+        int besoin = snprintf(txt, txt_n, "%s", src ? src : "");
+        if (besoin < 0 || (size_t)besoin >= txt_n) {
+            lvgl_port_unlock();
+            ESP_LOGE(TAG,
+                     "widget detail : TAMPON TROP COURT — %u octets fournis, %d "
+                     "necessaires. Le texte relu serait TRONQUE et l'instrument "
+                     "accuserait un produit sain. Passer DN_UI_DETAIL_TXT_MAX "
+                     "(%u).",
+                     (unsigned)txt_n, besoin + 1,
+                     (unsigned)DN_UI_DETAIL_TXT_MAX);
+            return false;
+        }
     }
     int wl = (int)lv_obj_get_width(s_det_valeur);
     int xl = (int)lv_obj_get_x(s_det_valeur);
@@ -4406,9 +5101,17 @@ static bool pousser_nolock(int idx)
      *    `widget grandeurs <case> <n>` doit se voir dans la poussée aussi,
      *    sinon la campagne mesure une autre géométrie que celle qu'on regarde.
      */
-    int n_pou = desc_n(idx);
+    /* 🔴 dn4-9 : ⛔ PLUS `0..n-1`, MAIS **LES SLOTS SÉLECTIONNÉS**. Remplir les
+     *    `n` premiers slots pendant que la case dessine [0, 1, 3] laisserait la
+     *    3ᵉ ligne à « -- » gris : l'instrument du régime (c) d'AC12 redessinerait
+     *    DEUX labels là où le régime réel en redessine TROIS, tout en prétendant
+     *    s'y comparer. C'est exactement le défaut que la revue du 2026-08-19 a
+     *    corrigé ici (`{t0, t1}` pour trois grandeurs), sous une autre forme. */
+    uint8_t sel_pou[DN_WIDGET_GRANDEURS_MAX];
+    int n_pou = case_grandeurs(idx, sel_pou);
     if (n_pou < 1) {
         n_pou = 1;
+        sel_pou[0] = 0;
     }
     if (n_pou > DN_WIDGET_GRANDEURS_MAX) {
         n_pou = DN_WIDGET_GRANDEURS_MAX;
@@ -4423,11 +5126,15 @@ static bool pousser_nolock(int idx)
      *    même nombre se dédoublonneraient ensemble et fausseraient le px/cycle. */
     static const unsigned k_mul[DN_WIDGET_GRANDEURS_MAX] = {1u, 7u, 13u, 21u};
     static const unsigned k_mul2[DN_WIDGET_GRANDEURS_MAX] = {1u, 3u, 9u, 7u};
-    for (int g = 0; g < n_pou; g++) {
-        snprintf(tb[g], sizeof(tb[g]), "%u,%u",
-                 (unsigned)((s_pousse_seq * k_mul[g]) % 100),
-                 (unsigned)((s_pousse_seq * k_mul2[g]) % 10));
-        tp[g] = tb[g];
+    for (int r = 0; r < n_pou; r++) {
+        int g = sel_pou[r];
+        /* ⚠️ Les multiplicateurs sont indexés par RANG : c'est le déphasage
+         *    ENTRE LIGNES AFFICHÉES qui compte pour la mesure, ⛔ pas l'index
+         *    de grandeur. Le texte, lui, va dans le slot de la GRANDEUR. */
+        snprintf(tb[r], sizeof(tb[r]), "%u,%u",
+                 (unsigned)((s_pousse_seq * k_mul[r]) % 100),
+                 (unsigned)((s_pousse_seq * k_mul2[r]) % 10));
+        tp[g] = tb[r];
     }
     /* 🔴 BRUT MIS À L'ÉCHELLE DE LA CASE — correctif de revue (2026-08-18).
      *    La valeur était figée à 800..1599 pour TOUTE case, quelle que soit la
@@ -4444,8 +5151,12 @@ static bool pousser_nolock(int idx)
                        ? (int32_t)(d_pou->ind_min + (s_pousse_seq * 37) % (uint32_t)(plage + 1))
                        : (int32_t)(DN_MOCK_MIN +
                                    (s_pousse_seq * 37) % (DN_MOCK_MAX - DN_MOCK_MIN));
-    dn_valeurs_t val = {.n = (uint8_t)n_pou};
-    for (int g = 0; g < n_pou; g++) {
+    /* ⚠️ `.n = MAX` : `case_poser()` borne sa copie par `v->n`, et les slots
+     *    NON sélectionnés doivent être remis à VIDE (« -- » gris), ⛔ pas
+     *    laissés au tour précédent. Un `.n = n_pou` aurait figé le dernier
+     *    chiffre connu des grandeurs non poussées. */
+    dn_valeurs_t val = {.n = (uint8_t)DN_WIDGET_GRANDEURS_MAX};
+    for (int g = 0; g < DN_WIDGET_GRANDEURS_MAX; g++) {
         val.txt[g] = tp[g];
     }
     case_poser(idx, DN_VAL_SIMULEE, &val, brut, "POUSSÉE de mesure (AC8)",
@@ -4872,32 +5583,59 @@ esp_err_t dn_ui_set_case_grandeurs(int idx, int n)
         n > DN_WIDGET_GRANDEURS_MAX) {
         return ESP_ERR_INVALID_ARG;
     }
-    /* 🔴 BORNÉ PAR CE QUE LE DESCRIPTEUR PEUPLE — voir `desc_peuplees()`.
-     * ⛔ Refuser plutôt que poser des lignes sans unité ni précision : un nombre
-     *    nu formaté au dixième par repli est exactement le mensonge d'interface
-     *    qu'AC9 ferme, et l'audit de boot ne peut pas le voir. */
-    int pe = desc_peuplees(idx);
-    if (n > pe) {
+    /*
+     * 🔴 dn4-9 / PREMIÈRE GARDE — L'OVERRIDE NE DÉPASSE PAS LE DÉTAIL.
+     *    L'override montre les `n` PREMIÈRES grandeurs du DÉTAIL (voir
+     *    `case_grandeurs()`). Au-delà de `n_detail`, il n'y a plus de liste :
+     *    la case dessinerait une grandeur que la page censée l'EXPLIQUER ne
+     *    montre pas — l'invariant A à l'envers, et à chaud.
+     * ⚠️ AUCUNE RÉGRESSION SUR LES SIX CASES LIVRÉES : `n_detail` y vaut
+     *    exactement `desc_peuplees()` pour chacune. Cette garde mord le jour où
+     *    ce ne sera plus vrai, ⛔ pas aujourd'hui.
+     */
+    if (n > desc_n_detail(idx)) {
         ESP_LOGW(TAG,
-                 "widget grandeurs %s %d REFUSE : le descripteur ne peuple que "
-                 "%d entree(s) — au-dela, les lignes n'ont ni unite ni precision "
-                 "(elles retomberaient au DIXIEME en silence, et l'audit AC9 ne "
-                 "les voit pas).",
-                 k_nom[idx], n, pe);
+                 "widget grandeurs %s %d REFUSE : le DETAIL n'expose que %d "
+                 "grandeur(s) — la case en dessinerait une que la page qui "
+                 "l'explique ne montre pas.",
+                 k_nom[idx], n, desc_n_detail(idx));
         return ESP_ERR_INVALID_ARG;
     }
-    /* 🔴 SECONDE GARDE — dn4-8, revue du 2026-08-21. Voir
-     * `desc_ligne_indistincte()` : peuplée n'est PAS la même chose que
-     * DISTINGUABLE. */
-    int flou = desc_ligne_indistincte(idx, n);
+    /* 🔴 SECONDE GARDE, dn4-9 : ⛔ PLUS `n > desc_peuplees(idx)`, MAIS **CHAQUE
+     *    INDICE**. Voir `desc_indice_vide()` — `desc_peuplees()` rend « la
+     *    dernière peuplée + 1 », donc comparer un COMPTE laissait passer une
+     *    sélection contenant un TROU : elle retomberait au dixième par repli
+     *    silencieux, et l'audit ne la verrait pas.
+     * ⛔ Refuser plutôt que poser des lignes sans unité ni précision : un nombre
+     *    nu formaté au dixième par repli est exactement le mensonge d'interface
+     *    qu'AC9 ferme. */
+    int vide = desc_indice_vide(idx, n);
+    if (vide >= 0) {
+        ESP_LOGW(TAG,
+                 "widget grandeurs %s %d REFUSE : la grandeur %d du descripteur "
+                 "n'est PAS peuplee (prec NON RENSEIGNEE) — sa ligne n'aurait ni "
+                 "unite ni precision et retomberait au DIXIEME en silence, la ou "
+                 "l'audit AC9 ne la voit pas. (peuplees : %d)",
+                 k_nom[idx], n, vide, desc_peuplees(idx));
+        return ESP_ERR_INVALID_ARG;
+    }
+    /* 🔴 TROISIÈME GARDE — dn4-8 (revue du 2026-08-21), RE-QUALIFIÉE PAR dn4-9
+     * SUR **L'UNION** des deux vues, ⛔ plus sur les `n` premières de la case :
+     * *ce qui est affiché quelque part est jugé*. L'union vaut la plage du
+     * DÉTAIL (invariant A) — voir `desc_ligne_indistincte()`, qui explique aussi
+     * pourquoi cette garde-ci ne peut tirer que si l'audit de boot a déjà tiré,
+     * et pourquoi elle reste là quand même. */
+    bool flou_case = false;
+    int flou = desc_vues_indistinctes(idx, n, &flou_case);
     if (flou >= 0) {
         ESP_LOGW(TAG,
-                 "widget grandeurs %s %d REFUSE : la ligne %d porterait l'unite "
-                 "\"%s\" DEJA presente sans prefixe qui l'en distingue — deux "
-                 "lignes identiques a l'oeil, dont une ment par omission. "
-                 "Les prefixes sont attendus de dn4-9 ; jusque-la, ⛔ pas "
-                 "d'affichage.",
-                 k_nom[idx], n, flou,
+                 "widget grandeurs %s %d REFUSE : dans la vue %s, la grandeur "
+                 "%d porterait l'unite \"%s\" DEJA presente sans prefixe ni "
+                 "icone QUI Y SOIT AFFICHE — deux lignes identiques a l'oeil, "
+                 "dont une ment par omission. ⚠️ Un prefixe marque "
+                 "`prefixe_detail_seul` ne compte PAS dans la CASE : il n'y est "
+                 "pas dessine. Corriger le DESCRIPTEUR, ⛔ pas la commande.",
+                 k_nom[idx], n, flou_case ? "CASE" : "DETAIL", flou,
                  k_desc[idx].grandeurs[flou].unite
                      ? k_desc[idx].grandeurs[flou].unite : "?");
         return ESP_ERR_INVALID_ARG;

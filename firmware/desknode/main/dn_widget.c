@@ -524,19 +524,78 @@ const char *dn_widget_unite(const dn_widget_desc_t *d,
  *    QUELLE grandeur manque, et taire le préfixe cacherait l'existence même de
  *    la grandeur, ce que W10 interdit explicitement.
  */
-static void composer(const dn_widget_desc_t *d, const dn_widget_etat_t *e, int i,
+/* 🔴 dn4-9 : `g` EST UN **INDEX DE GRANDEUR**, ⛔ PLUS UN RANG D'AFFICHAGE.
+ *    Les deux coïncidaient jusqu'ici ; la sélection les sépare. Le paramètre a
+ *    été RENOMMÉ (`i` -> `g`) exprès : un nom qui ment est ce qui fait écrire
+ *    `etat->txt[rang]` six mois plus tard. `grandeurs[g]` et `etat->txt[g]`
+ *    décrivent la MÊME grandeur — c'est l'invariant du mécanisme. */
+static void composer(const dn_widget_desc_t *d, const dn_widget_etat_t *e, int g,
                      char *out, size_t n)
 {
-    const char *ic = d->grandeurs[i].icone;
-    const char *px = d->grandeurs[i].prefixe;
-    if (!e || e->regime == DN_VAL_ABSENTE || e->txt[i][0] == '\0') {
+    if (g < 0 || g >= DN_WIDGET_GRANDEURS_MAX) {
+        snprintf(out, n, "--");
+        return;
+    }
+    const char *ic = d->grandeurs[g].icone;
+    /* 🔴 dn4-9 : `false` = la CASE. Un préfixe marqué `prefixe_detail_seul` n'y
+     *    est PAS affiché — il n'y tient pas (MESURÉ : 315 px pour 201) et il n'y
+     *    est pas nécessaire (une seule grandeur de cette unité y est montrée).
+     *    Voir `dn_widget_prefixe()`. */
+    const char *px = dn_widget_prefixe(d, g, false);
+    if (!e || e->regime == DN_VAL_ABSENTE || e->txt[g][0] == '\0') {
         snprintf(out, n, "%s%s%s%s--", ic ? ic : "", ic ? " " : "",
                  px ? px : "", px ? " " : "");
         return;
     }
-    const char *u = dn_widget_unite(d, e, i);
+    const char *u = dn_widget_unite(d, e, g);
     snprintf(out, n, "%s%s%s%s%s%s%s", ic ? ic : "", ic ? " " : "",
-             px ? px : "", px ? " " : "", e->txt[i], u ? " " : "", u ? u : "");
+             px ? px : "", px ? " " : "", e->txt[g], u ? " " : "", u ? u : "");
+}
+
+/*
+ * ── dn4-9 : LA SEULE TRADUCTION RANG -> INDEX ────────────────────────────────
+ * Voir `dn_widget.h` pour le motif et la convention du décalage de 1.
+ */
+int dn_widget_sel(const dn_widget_desc_t *d, int rang)
+{
+    if (!d || rang < 0 || rang >= DN_WIDGET_GRANDEURS_MAX) {
+        return -1;
+    }
+    uint8_t p1 = d->sel_p1[rang];
+    if (p1 == 0 || p1 > DN_WIDGET_GRANDEURS_MAX) {
+        /* 0 = non déclaré ⇒ identité (le défaut, cinq cases sur six).
+         * Hors bornes ⇒ identité AUSSI, et c'est l'audit de boot de `dn_ui.c`
+         * qui le NOMME : ici on est sur le chemin chaud (15 passages/s). */
+        return rang;
+    }
+    return (int)p1 - 1;
+}
+
+int dn_widget_n_detail(const dn_widget_desc_t *d)
+{
+    if (!d) {
+        return 0;
+    }
+    return d->n_detail ? (int)d->n_detail : (int)d->n_grandeurs;
+}
+
+int dn_widget_detail_cols(const dn_widget_desc_t *d)
+{
+    if (!d || d->detail_cols < 1) {
+        return 2; /* le défaut posé par dn4-6 */
+    }
+    return (d->detail_cols > 2) ? 2 : (int)d->detail_cols;
+}
+
+const char *dn_widget_prefixe(const dn_widget_desc_t *d, int g, bool detail)
+{
+    if (!d || g < 0 || g >= DN_WIDGET_GRANDEURS_MAX) {
+        return NULL;
+    }
+    if (!detail && d->grandeurs[g].prefixe_detail_seul) {
+        return NULL;
+    }
+    return d->grandeurs[g].prefixe;
 }
 
 /*
@@ -554,8 +613,12 @@ static void composer(const dn_widget_desc_t *d, const dn_widget_etat_t *e, int i
  *   rend la CONTRAINTE RÉELLE — « les deux plus la gouttière tiennent-ils dans
  *   les 201 px utiles ? » — au lieu d'en fabriquer une plus dure.
  */
-static void valeur_placer(lv_obj_t *lbl, int i, int n, int w, int fin_gauche,
-                          const dn_widget_desc_t *desc, int *fin_gauche_out)
+/* ⚠️ dn4-9 : `i` est le **RANG** (c'est lui qui décide la position), et `g`
+ *    l'index de grandeur — utilisé UNIQUEMENT par le log, pour qu'il envoie
+ *    chercher le défaut dans la bonne entrée de `k_desc[]`. */
+static void valeur_placer(lv_obj_t *lbl, int i, int g, int n, int w,
+                          int fin_gauche, const dn_widget_desc_t *desc,
+                          int *fin_gauche_out)
 {
     int ligne = 0, col = 0, cols = 1;
     place(s_geom.dispo, n, i, &ligne, &col, &cols);
@@ -616,11 +679,11 @@ static void valeur_placer(lv_obj_t *lbl, int i, int n, int w, int fin_gauche,
          *    gauche. Un log qui melange ses deux termes envoie chercher le
          *    defaut du mauvais cote. */
         ESP_LOGW(TAG,
-                 "« %s » grandeur %d : CHEVAUCHEMENT cote a cote — la colonne "
-                 "GAUCHE finit a %d px, et « %s » (%d px, calee a DROITE) "
-                 "commencerait a %d px : il manque %d px (gouttiere %d, utile "
-                 "%d px). LVGL clipperait SANS un mot.",
-                 desc && desc->titre ? desc->titre : "?", i, fin_gauche,
+                 "« %s » rang %d (grandeur %d) : CHEVAUCHEMENT cote a cote — "
+                 "la colonne GAUCHE finit a %d px, et « %s » (%d px, calee a "
+                 "DROITE) commencerait a %d px : il manque %d px (gouttiere %d, "
+                 "utile %d px). LVGL clipperait SANS un mot.",
+                 desc && desc->titre ? desc->titre : "?", i, g, fin_gauche,
                  lv_label_get_text(lbl), lw, x, fin_gauche + W_GOUTTIERE - x,
                  W_GOUTTIERE, dn_widget_largeur_utile(w));
         /* ⛔ On pose QUAND MÊME, à la place demandée : masquer la valeur ou la
@@ -692,12 +755,18 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
     int lh_val = (int)lv_font_get_line_height(font_val());
     int hors = 0, dernier_bas = 0;
     for (int i = 0; i < n; i++) {
-        composer(desc, etat, i, buf, sizeof(buf));
+        /* 🔴 dn4-9 : `i` est le RANG, `g` la GRANDEUR. Ils ne coïncident plus.
+         *    ⛔ La MÊME traduction doit être appliquée dans `dn_widget_maj`,
+         *    sans quoi la mise à jour recomposerait une autre grandeur que celle
+         *    qui vient d'être créée — et rien ne le dirait, parce que le
+         *    garde-fou de `maj` est le POINTEUR `valeur[i]`, pas le compte. */
+        int g = dn_widget_sel(desc, i);
+        composer(desc, etat, g, buf, sizeof(buf));
         out->valeur[i] = dn_widget_texte(
             out->racine, buf, font_val(),
             dn_val_regime_couleur(etat ? etat->regime : DN_VAL_ABSENTE), W_PAD,
             s_geom.val_y);
-        valeur_placer(out->valeur[i], i, n, w, fin_gauche, desc, &fin_gauche);
+        valeur_placer(out->valeur[i], i, g, n, w, fin_gauche, desc, &fin_gauche);
         /* 🔴 LA VALEUR QUI NE TIENT PAS EN HAUTEUR — voir `dn_widget.h`.
          *    Le bas de la BOÎTE, ⛔ pas le `y` posé : un texte posé à 128 dans
          *    une case de 156 « a l'air » dedans et déborde de 7 px. */
@@ -725,10 +794,11 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
             if (lw_val > utile) {
                 s_trop_larges++;
                 ESP_LOGW(TAG,
-                         "« %s » grandeur %d : TROP LARGE en colonne unique — "
-                         "« %s » mesure %d px pour %d utiles (case %d, marges "
-                         "2x%d) : il manque %d px. LVGL la CLIPPE sans un mot.",
-                         desc->titre ? desc->titre : "?", i, buf, lw_val, utile,
+                         "« %s » rang %d (grandeur %d) : TROP LARGE en colonne "
+                         "unique — « %s » mesure %d px pour %d utiles (case %d, "
+                         "marges 2x%d) : il manque %d px. LVGL la CLIPPE sans un "
+                         "mot.",
+                         desc->titre ? desc->titre : "?", i, g, buf, lw_val, utile,
                          w, W_PAD, lw_val - utile);
             }
         }
@@ -905,7 +975,15 @@ void dn_widget_maj(const dn_widget_desc_t *desc, const dn_widget_etat_t *etat,
         if (!w->valeur[i]) {
             continue;
         }
-        composer(desc, etat, i, buf, sizeof(buf));
+        /* 🔴 dn4-9 — LE POINT LE PLUS FACILE À RATER DE TOUT LE MÉCANISME.
+         *    Cette boucle ⛔ NE parcourt PAS `0..n-1` : elle parcourt les QUATRE
+         *    slots et filtre par le POINTEUR. Son `i` est donc un RANG (le slot
+         *    n'existe que si `dn_widget_creer` l'a créé), et il faut lui
+         *    appliquer LA MÊME traduction qu'à la création. Sans elle, la case
+         *    afficherait la bonne grandeur à la construction puis une AUTRE dès
+         *    la première mise à jour — 5 fois par seconde, sans un log. */
+        int g = dn_widget_sel(desc, i);
+        composer(desc, etat, g, buf, sizeof(buf));
         lv_label_set_text(w->valeur[i], buf);
         /* 🔴 LA POSITION SE RECALCULE À CHAQUE MISE À JOUR EN CÔTE À CÔTE, ET
          *    CE N'EST PAS UN LUXE : la colonne droite est calée à DROITE, donc
@@ -925,7 +1003,7 @@ void dn_widget_maj(const dn_widget_desc_t *desc, const dn_widget_etat_t *etat,
          *    colonne droite au mauvais endroit sans que rien ne le dise. On ne
          *    repositionne pas : ce qui a été POSÉ fait foi. */
         if (s_replacer && w->w > 0) {
-            valeur_placer(w->valeur[i], i, w->n ? w->n : 1, w->w, fin_gauche,
+            valeur_placer(w->valeur[i], i, g, w->n ? w->n : 1, w->w, fin_gauche,
                           desc, &fin_gauche);
         }
         /*
@@ -939,7 +1017,12 @@ void dn_widget_maj(const dn_widget_desc_t *desc, const dn_widget_etat_t *etat,
          * ⚠️ Aucun effet sur l'existant : CPU (n=1), AMBIANCE (les deux textes
          *    posés ensemble) et les mocks ne produisent jamais un seul texte vide.
          */
-        bool grandeur_vide = !etat || etat->txt[i][0] == '\0';
+        /* ⚠️ dn4-9 : `txt[g]`, ⛔ pas `txt[i]` — l'état est indexé par GRANDEUR.
+         *    Lire au rang aurait grisé la mauvaise ligne sur `CPU` : son rang 2
+         *    est la grandeur 3, et `txt[2]` (le `c.max`, qui reste alimenté)
+         *    n'est jamais vide ⇒ une °C absente se serait peinte en BLANC,
+         *    c'est-à-dire présentée comme une mesure. */
+        bool grandeur_vide = !etat || g < 0 || etat->txt[g][0] == '\0';
         lv_obj_set_style_text_color(
             w->valeur[i],
             grandeur_vide ? dn_val_regime_couleur(DN_VAL_ABSENTE) : c, 0);

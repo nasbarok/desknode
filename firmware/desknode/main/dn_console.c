@@ -2677,16 +2677,33 @@ static int cmd_pc(int argc, char **argv)
          *    precision d'AFFICHAGE du descripteur : la console est un
          *    instrument, elle montre ce qui circule SUR LE FIL. La precision de
          *    l'ecran vit dans `k_desc[]` et se lit par `widget`. */
+        /* 🔴 dn4-9 — LE PRÉFIXE D'ÉCRAN EST AJOUTÉ **EN PLUS**, ET ÇA SOLDE UN
+         *    RÉSIDUEL DE REVUE DE dn4-8 : *« `pc` ne peut plus nommer QUEL
+         *    ventilateur est muet »*. `disk` porte TROIS « tr/min »
+         *    byte-identiques dans `k_metriques[].unite`, donc LHM éteint la
+         *    console imprimait trois fois exactement la même ligne
+         *    « -- (tr/min ATTENDUE, non publiee par la source) ».
+         *    ⚠️ Et c'est cette console que `regime_reel_dn48.py` et
+         *       `campagne_bruit_dn48.py` LISENT.
+         * ⛔ JAMAIS EN TOUCHANT `k_metriques[].unite` : le fil est positionnel,
+         *    et le changer casserait les témoins de non-régression v1 et v3.
+         * ⚠️ Le commentaire ci-dessus dit que cette commande montre LE FIL, et
+         *    ça reste vrai : le préfixe est un nom d'ÉCRAN affiché à côté,
+         *    ⛔ pas une réécriture de l'unité du fil. Il vient de `k_desc[]` par
+         *    un accesseur, ⛔ pas d'une copie locale. */
         int ng = dn_link_metrique_grandeurs((dn_link_metrique_t)i);
         for (int g = 0; g < ng; g++) {
             const char *u = dn_link_metrique_unite((dn_link_metrique_t)i, g);
+            const char *px = (idx >= 0) ? dn_ui_case_prefixe(idx, g) : NULL;
             if (g > 0) {
                 printf(" ·");
             }
             if (g < (int)v.n && v.connue[g]) {
-                printf(" %d,%d %s", v.v[g] / 10, v.v[g] % 10, u ? u : "");
+                printf(" %s%s%d,%d %s", px ? px : "", px ? " " : "", v.v[g] / 10,
+                       v.v[g] % 10, u ? u : "");
             } else {
-                printf(" -- (%s ATTENDUE, non publiee par la source)", u ? u : "?");
+                printf(" %s%s-- (%s ATTENDUE, non publiee par la source)",
+                       px ? px : "", px ? " " : "", u ? u : "?");
             }
         }
         printf("  · age %lld ms · seq %u\n", (long long)(v.age_us / 1000),
@@ -2866,6 +2883,29 @@ static void colonnes(const char *s, int largeur)
     for (int i = cols; i < largeur; i++) {
         printf(" ");
     }
+}
+
+/*
+ * ── dn4-9 : LES INDICES QUE LA CASE DESSINE, RELUS ───────────────────────────
+ *
+ * 🔴 UN COMPTE NE SUFFIT PLUS. Depuis que la CASE et le DÉTAIL montrent des
+ *    sous-ensembles différents, « CPU : 3 grandeurs » ne dit pas LESQUELLES —
+ *    et c'est exactement la question qu'on vient poser à la console : la case
+ *    montre-t-elle [0, 1, 3] (ce que D13 demande) ou [0, 1, 2] (l'ancien
+ *    mécanisme) ? Les deux comptent TROIS.
+ * ⚠️ RELU de `dn_ui_case_indices()`, ⛔ jamais recomposé ici : la console a
+ *    déjà eu sa PROPRE copie d'une règle d'affichage, et elle imprimait
+ *    « Mb/s » sur une valeur convertie en Gb/s (revue 2026-08-19).
+ */
+static void widget_indices_imprimer(int idx)
+{
+    uint8_t sel[DN_WIDGET_GRANDEURS_MAX];
+    int n = dn_ui_case_indices(idx, sel, DN_WIDGET_GRANDEURS_MAX);
+    printf("[");
+    for (int r = 0; r < n; r++) {
+        printf("%s%d", r ? ", " : "", (int)sel[r]);
+    }
+    printf("]");
 }
 
 static int cmd_widget(int argc, char **argv)
@@ -3099,12 +3139,22 @@ static int cmd_widget(int argc, char **argv)
             idx < 0 || idx >= DN_UI_METRIQUES) {
             printf("usage : widget grandeurs <0..%d> <n>   (n = 0 rend la case a "
                    "son descripteur)\n", DN_UI_METRIQUES - 1);
+            /* 🔴 dn4-9 : LES **DEUX** COMPTES ET LES **DEUX** LISTES. Un seul
+             *    compte ne peut plus decrire une case depuis que la CASE et le
+             *    DETAIL montrent des sous-ensembles differents — et sans les
+             *    INDICES, on ne sait pas trancher entre « le mecanisme se
+             *    trompe » et « le descripteur dit ca ».
+             * ⚠️ `n` de `widget grandeurs` reste le compte de la CASE : il ne
+             *    deplace PLUS le detail avec elle (AC6). */
             for (int i = 0; i < DN_UI_METRIQUES; i++) {
                 const dn_widget_desc_t *dd = dn_ui_desc_brut(i);
                 printf("   %d ", i);
                 colonnes(dn_ui_metrique_nom(i), 10);
-                printf(" effectif %d  (descripteur %d)\n", dn_ui_case_grandeurs(i),
-                       dd ? dd->n_grandeurs : 0);
+                printf(" case %d ", dn_ui_case_grandeurs(i));
+                widget_indices_imprimer(i);
+                printf("  (descripteur %d) · detail %d [0..%d]\n",
+                       dd ? dd->n_grandeurs : 0, dn_ui_detail_grandeurs(i),
+                       dn_ui_detail_grandeurs(i) - 1);
             }
             printf("🔴 C'est le SEUL moyen de comparer le REPLI pre-autorise\n");
             printf("   (« GPU a trois ») aux trois voies SUR LA MEME DALLE et\n");
@@ -3116,8 +3166,10 @@ static int cmd_widget(int argc, char **argv)
             printf("refuse (%s) — RIEN n'a change\n", esp_err_to_name(e));
             return 1;
         }
-        printf("« %s » : %d grandeur(s) — SCENE RECONSTRUITE\n",
-               dn_ui_metrique_nom((int)idx), dn_ui_case_grandeurs((int)idx));
+        printf("« %s » : %d grandeur(s) ", dn_ui_metrique_nom((int)idx),
+               dn_ui_case_grandeurs((int)idx));
+        widget_indices_imprimer((int)idx);
+        printf(" — SCENE RECONSTRUITE\n");
         printf("  « ca ne tient pas » : %u chevauchement(s) · %u trop large(s) "
                "en colonne unique · %u en HAUTEUR\n",
                (unsigned)dn_widget_chevauchements(),
@@ -3134,7 +3186,11 @@ static int cmd_widget(int argc, char **argv)
          *    imprimait ici un `const char *` vers le tampon INTERNE du label,
          *    rendu APRES le deverrouillage, pendant que `detail_reparametrer()`
          *    le `lv_realloc` 5 fois par seconde en regime. */
-        char t[DN_WIDGET_TXT_MAX * 4 + 64] = {0};
+        /* 🔴 dn4-9 : ⛔ PLUS `DN_WIDGET_TXT_MAX * 4 + 64` (= 128 o). Le
+         *    producteur en écrit jusqu'à 168 : l'instrument tronquait EN
+         *    SILENCE le texte qu'il prétend relire, et aurait accusé un produit
+         *    sain. UNE seule définition, dans `dn_ui.h`. */
+        char t[DN_UI_DETAIL_TXT_MAX] = {0};
         int w = 0, wp = 0, x = 0;
         bool resolue = false;
         if (!dn_ui_detail_label(t, sizeof(t), &w, &wp, &x, &resolue)) {
@@ -4152,7 +4208,8 @@ static int cmd_widget(int argc, char **argv)
          *    plus bas que sa propre mise en garde. */
         colonnes(dn_val_regime_nom(dn_ui_regime(i)), 9);
         printf("%-9s", dn_ui_case_dessinee(i) ? "oui" : "NON");
-        /* 🔴 LECTEUR 4/4 DE L'OVERRIDE — voir l'énumération de `dn_ui.c`.
+        /* 🔴 CONSOMMATEUR DE `dn_ui_case_grandeurs()` — voir la propriété
+         *    vérifiable écrite au-dessus de `s_gr_force[]` dans `dn_ui.c`.
          *    Cette ligne lisait `d->n_grandeurs`, c'est-à-dire le descripteur
          *    BRUT : après `widget grandeurs 1 4` la case DESSINAIT 4 valeurs et
          *    la table en imprimait 3 ; après `widget grandeurs 0 1`, l'inverse,
@@ -4160,11 +4217,17 @@ static int cmd_widget(int argc, char **argv)
          *    repli se désynchronisait du sujet de l'arbitrage (revue 2026-08-19). */
         /* ⚠️ `d == NULL` = case NUE (override W11) : elle n'a qu'un `valeur[0]`,
          *    et lui demander N textes en inventerait N-1 en « -- ». */
-        int n = d ? dn_ui_case_grandeurs(i) : 1;
+        /* 🔴 dn4-9 : LA BOUCLE VA SUR LES **RANGS** ET LIT L'**INDICE** — sans
+         *    la traduction, la table imprimerait « c.max » pendant que la case
+         *    dessine une °C, c'est-à-dire l'instrument désynchronisé du sujet,
+         *    exactement le défaut corrigé ci-dessus sous une autre forme. */
+        uint8_t selw[DN_WIDGET_GRANDEURS_MAX] = {0, 1, 2, 3};
+        int n = d ? dn_ui_case_indices(i, selw, DN_WIDGET_GRANDEURS_MAX) : 1;
         if (n < 1) {
             n = 1;
         }
-        for (int g = 0; g < n; g++) {
+        for (int r = 0; r < n; r++) {
+            int g = (int)selw[r];
             const char *t = dn_ui_valeur_txt(i, g);
             /* 🔴 L'UNITE VIENT DE LA DEFINITION UNIQUE. Cette ligne relisait
              *    `d->grandeurs[g].unite` et imprimait donc « 100,0 Mb/s » pour
@@ -4176,8 +4239,36 @@ static int cmd_widget(int argc, char **argv)
             printf(" %s%s%s", (t && t[0]) ? t : "--", (t && t[0]) ? " " : "",
                    (t && t[0]) ? u : "");
         }
-        printf("\n");
+        /* Les DEUX comptes, sur la même ligne que la case qu'ils décrivent. */
+        printf("   | case ");
+        widget_indices_imprimer(i);
+        printf(" · detail %d\n", dn_ui_detail_grandeurs(i));
     }
+    /*
+     * ── dn4-9 : LES **TROIS** COMPTEURS DE GÉOMÉTRIE, SANS RIEN DÉTRUIRE ─────
+     *
+     * 🔴 « AVANT / APRÈS » N'ÉTAIT PAS EXÉCUTABLE, ET C'EST UN DÉFAUT
+     *    D'INSTRUMENT, ⛔ pas de protocole : `widget largeur` n'imprime que
+     *    `chevauchements` ; les TROIS ne sortaient que de `widget voie` et
+     *    `widget grandeurs <c> <n>`, **qui reconstruisent (~350 ms) et remettent
+     *    les compteurs à zéro juste avant** (`compteurs_geom_reset()`).
+     *    ⇒ Lire « avant » DÉTRUISAIT ce qu'on relève.
+     * ✅ Ici : lecture pure. `widget` nu ne reconstruit rien, ne remet rien à
+     *    zéro, et ne bloque pas le REPL — donc pas le transport PC.
+     * ⛔ LES TROIS NE S'ADDITIONNENT JAMAIS : ce sont trois diagnostics
+     *    distincts (côte à côte / colonne unique / hauteur).
+     * ⚠️ `trop larges` ne mesure QU'À LA CONSTRUCTION (`dn_widget.h`) : une
+     *    valeur qui devient trop large ENTRE deux reconstructions n'est vue par
+     *    personne. Forcer le pire cas par `dn_injecteur.py --jeu pire`, qui
+     *    reconstruit avec les plafonds.
+     */
+    printf("geometrie  : %u chevauchement(s) · %u trop large(s) en colonne "
+           "unique · %u en HAUTEUR\n",
+           (unsigned)dn_widget_chevauchements(),
+           (unsigned)dn_widget_trop_larges(),
+           (unsigned)dn_widget_debordements());
+    printf("             (cumul depuis le dernier `widget largeur reset` — "
+           "LECTURE PURE, rien n'a ete reconstruit ni remis a zero)\n");
     /*
      * 🔴 REJET DE SOUS-COMMANDE INCONNUE (revue 2026-08-18). Toute invocation
      *    mal tapee traversait TOUTES les branches jusqu'ici, imprimait ce dump

@@ -400,6 +400,24 @@ bool dn_ui_cpu_maj(int dixiemes, bool valide, bool *label_pose);
  *
  * `vue` porte l'état, les N grandeurs et leurs drapeaux `connue[]` (W10) : une grandeur
  * absente laisse la case RÉELLE et n'écrit « -- » que sur SA ligne.
+ *
+ * ── 🔴 dn4-9 : CHANGEMENT DE CONTRAT, ET IL S'ÉCRIT ICI ──────────────────────
+ *
+ * AVANT : cette fonction ne formatait que les `desc_n(idx)` premières grandeurs
+ *   — le compte de la **CASE**. ⇒ pour `CPU` (case à 3, fil à 4), la °C du fil
+ *   n'était **JAMAIS écrite** dans `s_wetat[CPU].txt[3]`.
+ * APRÈS : elle formate **toutes les grandeurs que le descripteur PEUPLE**,
+ *   bornées par ce que la trame porte. L'état d'une case n'est plus « ce que la
+ *   case dessine » mais **« ce que la métrique sait »** — c'est la condition
+ *   pour que la CASE et le DÉTAIL en montrent des sous-ensembles différents.
+ *
+ * ⚠️ CE QUE ÇA COÛTE, ET C'EST BORNÉ : au plus `DN_WIDGET_GRANDEURS_MAX`
+ *    formatages par trame au lieu de `n_grandeurs`, soit +1 pour `CPU` et
+ *    `GPU`, +3 pour `DISQUE`, 0 pour les trois autres. Mesuré en AC9.
+ * ⛔ LA BORNE N'EST PAS `DN_WIDGET_GRANDEURS_MAX` : formater au-delà des
+ *    entrées peuplées ferait retomber le format au DIXIÈME par repli silencieux
+ *    (`prec` non renseignée) — une décimale que la source ne porte pas. `RAM` le
+ *    prouve : deux valeurs sur le fil, UNE seule entrée peuplée.
  */
 bool dn_ui_pc_maj(dn_link_metrique_t m, const dn_link_vue_t *vue,
                   bool *label_pose);
@@ -560,6 +578,13 @@ bool dn_ui_est_widget(int idx);
 /* Le RÉGIME de la valeur d'une case, RELU de l'état réel. C'est ce que la
  * console imprime : jamais une constante, jamais une déduction. */
 dn_val_regime_t dn_ui_regime(int idx);
+/* 🔴 dn4-9 — CE QUE `grandeur` SIGNIFIE EST **TRANCHÉ ET ÉCRIT** : c'est un
+ *    **INDEX DE GRANDEUR** (l'entrée de `k_desc[].grandeurs[]` et le slot
+ *    d'état, qui sont le même nombre), ⛔ **PAS un rang d'affichage**.
+ *    Les deux coïncidaient avant dn4-9 ; depuis, `CPU` dessine [0, 1, 3] et son
+ *    rang 2 est la grandeur 3. ⇒ Un appelant qui veut « la 3ᵉ LIGNE de la case »
+ *    doit d'abord traduire par `dn_ui_case_indices()`. Vaut aussi pour
+ *    `dn_ui_case_unite()` et `dn_ui_case_prefixe()`. */
 const char *dn_ui_valeur_txt(int idx, int grandeur);
 /* La case est-elle DESSINÉE en ce moment ? (false en REBUILD vue détail : le
  * dashboard n'existe pas, l'état est conservé mais rien n'atteint la dalle.) */
@@ -738,11 +763,52 @@ esp_err_t dn_ui_set_voie(int barre_h, int menu_h, const dn_widget_geom_t *g);
  * FIRMWARE — le reflasher pour le montrer coûterait une observation owner.
  * ⚠️ RECONSTRUIT LA SCÈNE. */
 int dn_ui_case_grandeurs(int idx);
+
+/* ── dn4-9 : LE SECOND COMPTE, ET LES INDICES ────────────────────────────────
+ * `dn_ui_detail_grandeurs()` : ce que le DÉTAIL montre. ⛔ Pas d'override à
+ *   chaud (voir AC6 : `widget grandeurs` ne déplace plus que la CASE).
+ * `dn_ui_case_indices()` : la liste ORDONNÉE des index de grandeur que la case
+ *   DESSINE, override compris. `out` doit faire au moins
+ *   `DN_WIDGET_GRANDEURS_MAX`. Rend le compte, 0 si l'appel est invalide.
+ *   ⚠️ Les indices du DÉTAIL, eux, sont `0..dn_ui_detail_grandeurs()-1` DANS
+ *      L'ORDRE — il n'y a pas de sélection côté détail, et le motif est dans
+ *      `dn_widget.h`. ⛔ Ne pas inventer un accesseur qui rendrait une plage.
+ * `dn_ui_case_prefixe()` : le préfixe d'écran d'une grandeur (« c.max »,
+ *   « ventirad »…), ou NULL. 🔴 Il existe pour que `pc` puisse NOMMER quel
+ *   ventilateur est muet : la console imprime `dn_link_metrique_unite()`,
+ *   c'est-à-dire l'unité du FIL — et `disk` y porte TROIS « tr/min »
+ *   byte-identiques. ⛔ JAMAIS en modifiant `k_metriques[].unite`, qui casserait
+ *   les témoins de non-régression v1 et v3. */
+int dn_ui_detail_grandeurs(int idx);
+int dn_ui_case_indices(int idx, uint8_t *out, int out_n);
+const char *dn_ui_case_prefixe(int idx, int grandeur);
+
 /* L'unité RÉELLEMENT affichée, échelle haute comprise. ⛔ La console ne doit
  * PAS relire `desc->grandeurs[g].unite` : elle imprimait « Mb/s » sur une
  * valeur convertie en Gb/s, fausse d'un facteur mille, dans l'instrument
  * qui sert précisément à vérifier. */
 const char *dn_ui_case_unite(int idx, int grandeur);
+
+/*
+ * ── dn4-9 : LA TAILLE DU TEXTE DU DÉTAIL, **UNE SEULE DÉFINITION** ───────────
+ *
+ * 🔴 L'INSTRUMENT ÉTAIT PLUS PETIT QUE CE QU'IL DEVAIT RELIRE, ET IL AURAIT
+ *    MENTI EN SILENCE — relevé au cadrage de dn4-9, ⛔ pas à l'exécution :
+ *      · producteur (`detail_reparametrer`) : `4 * (TXT_MAX + 24) + 8` = 168 o,
+ *        avec un `ESP_LOGE` si ça tronque ;
+ *      · instrument (`cmd_widget`, `widget detail`) : `TXT_MAX * 4 + 64` = 128 o,
+ *        **AUCUNE garde**, et `dn_ui_detail_label()` faisait
+ *        `snprintf(txt, txt_n, "%s", src)` sans tester le retour.
+ *    ⇒ 128 < 168. À quatre grandeurs AVEC préfixes, le pire cas dépasse : le
+ *      seul instrument capable de PROUVER qu'une ligne tient aurait tronqué le
+ *      texte qu'il prétend relire, pendant que le produit, lui, va bien.
+ *    🎯 « Un instrument faux accuse le sujet sain. »
+ * ⇒ UNE constante, les DEUX côtés la prennent, et la troncature est AUDIBLE.
+ * ⚠️ Le `24` = préfixe + espace + unité + espace, au pire cas. Un préfixe plus
+ *    long que « ventirad » (8) + « tr/min » (6) + 2 espaces demande de le
+ *    relever ICI, ⛔ pas de rogner le texte.
+ */
+#define DN_UI_DETAIL_TXT_MAX (4 * (DN_WIDGET_TXT_MAX + 24) + 8)
 
 /* Ce que la GRANDE VALEUR du détail a réellement posé : son texte, sa largeur,
  * celle de son parent, son x. ⛔ Relu des objets LVGL, jamais recomposé — c'est
@@ -758,7 +824,10 @@ const char *dn_ui_case_unite(int idx, int grandeur);
  *    cours de construction, le parent est NULL et l'ancienne API rendait
  *    `w_parent = -1` ⇒ l'appelant calculait `utile = -1 - 2*x` et criait « LE
  *    TEXTE SORT DU PANNEAU ». ⛔ Ne rien conclure de la largeur si `resolue`
- *    est `false` — c'est la même garde que dans `detail_reparametrer`. */
+ *    est `false` — c'est la même garde que dans `detail_reparametrer`.
+ * 🔴 dn4-9 : `txt_n` DOIT valoir `DN_UI_DETAIL_TXT_MAX`. Si la copie tronque,
+ *    la fonction `ESP_LOGE` en NOMMANT les deux tailles et rend `false` — ⛔ un
+ *    instrument tronqué ne rend plus « true » avec un texte amputé. */
 bool dn_ui_detail_label(char *txt, size_t txt_n, int *w, int *w_parent, int *x,
                         bool *resolue);
 esp_err_t dn_ui_set_case_grandeurs(int idx, int n);
