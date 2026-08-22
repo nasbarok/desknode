@@ -1924,3 +1924,62 @@ le fil et concluait que TOUTES les cases affichent du vide.
 | L13 | 🆕 **`brut[1..3]` n'est JAMAIS alimenté, et la jauge lit `brut[0]`** | 🟠 **nommé dans le code** | `brut[0]` = **grandeur 0 DU DESCRIPTEUR**, ⛔ pas « la première ligne affichée ». ⚠️ Aucune case livrée ne montrerait le défaut : `RAM` est la seule à `indicateur = true`, mono-grandeur, sélection identité — **exactement la configuration qui l'a laissé passer deux fois**. Rouvrir le jour où une case **à jauge** reçoit une sélection |
 | L14 | 🆕 **Le résiduel *« `pc` ne peut plus nommer QUEL ventilateur est muet »*** | ✅ **SOLDÉ le 2026-08-22** | Par `dn_ui_case_prefixe()`, consommé par `cmd_pc`. ⛔ **JAMAIS** en modifiant `k_metriques[].unite`, qui casserait les témoins v1 et v3 |
 | L15 | 🆕 **`widget grandeurs <c> <n>` sur une case À SÉLECTION ne reproduit PAS la case livrée** | 🟠 **comportement ÉCRIT, à connaître devant la carte** | Sur `CPU`, `widget grandeurs 0 3` montre `[%, GHz, c.max]`, ⛔ pas `[%, GHz, °C]` : l'override force **l'identité** (les `n` premières du DÉTAIL). C'est `widget grandeurs 0 0` qui rend la case à son descripteur. ⚠️ **Le compte du DÉTAIL n'a aucun override** : si l'arbitrage en demande un, c'est une sous-commande **à écrire et à nommer** |
+
+
+## 20.9 🎯 CE QUE LA SÉANCE DU 2026-08-22 A SOLDÉ SUR LE FIL — firmware `38c3b99`
+
+### L14 EST SOLDÉ, ET PROUVÉ SUR LA CARTE
+
+Le résiduel de revue *« `pc` ne peut plus nommer QUEL ventilateur est muet »* est fermé. Relevé
+**sur la carte**, LHM absent (⛔ aucun agent ne tournait, trame injectée par `pc $DN,…`) :
+
+```
+disk -> case 4 DISQUE   100000,0 Mo/s · extr.moy 10000,0 tr/min ·
+                        ventirad 10000,0 tr/min · boitier 10000,0 tr/min
+```
+
+⚠️ **AVANT**, cette ligne rendait **trois entrées byte-identiques**
+`-- (tr/min ATTENDUE, non publiee par la source)`, parce que `cmd_pc` imprime
+`dn_link_metrique_unite()` — l'unité **DU FIL** — et que `disk` y porte trois `"tr/min"`.
+✅ Le préfixe est un **nom d'ÉCRAN affiché EN PLUS**, via `dn_ui_case_prefixe()`. ⛔ **JAMAIS** en
+touchant `k_metriques[].unite`, qui casserait les témoins v1 et v3.
+🎯 **Et c'est cette console que `regime_reel_dn48.py` et `campagne_bruit_dn48.py` LISENT.**
+
+⚠️ **`pc` imprime en DIXIÈMES** (`10000,0 tr/min`), l'écran en **ENTIER** (`10000 tr/min`) : la
+console montre le **FIL**, l'écran applique la **précision du descripteur**. ⛔ Ne pas lire la
+décimale de `pc` comme un défaut d'affichage.
+
+### ⚠️ DEUX PIÈGES D'INSTRUMENT DE CETTE SÉANCE, TOUS DEUX LES MIENS
+
+1. 🔴 **LA PÉREMPTION EST À 3 s, ET ELLE FABRIQUE DES FAUX `--`.** Une trame injectée puis relue
+   dans une **invocation suivante** de `dn_console.py` rend `ABSENTE` : la valeur a péri entre les
+   deux. ⛔ Un « `--` » n'est **pas** une preuve que l'affichage est cassé tant qu'on n'a pas montré
+   que la valeur était **encore vivante** au moment de la lecture. ⇒ trame et lecture **dans la
+   MÊME invocation**, et le dump long (`widget`) rate encore la fenêtre une fois sur deux.
+   ✅ Pour un état **soutenu**, `dn_injecteur.py --secondes N` puis lecture **immédiate** — mais
+   ⛔ pas en parallèle : le port est exclusif, et *« deux processus lisent `/dev/ttyACM0` sans
+   erreur et SE VOLENT LES OCTETS »*.
+2. 🔴 **PIÈGE N°10, PRIS EN FLAGRANT DÉLIT** : j'ai **recopié** un checksum au lieu d'utiliser celui
+   que je venais de calculer, et la trame est tombée en rejet. *« Une trame de test copiée d'une doc
+   peut être FAUSSE. »* ⇒ La commande qui calcule et la commande qui envoie doivent être **le même
+   geste** (`CK=$(python3 -c …)` puis `…*$CK`), ⛔ jamais deux étapes séparées par un copier-coller.
+
+### ⚠️ CE QUE `--jeu pire` N'EST PAS
+
+Il sert des valeurs **plausibles hautes**, ⛔ **pas les plafonds du protocole** : `3000 tr/min` là
+où `k_metriques[]` autorise **10000**, `5,7 GHz` là où le plafond est `100,0`. ⇒ **Il ne produit
+pas le pire cas de largeur.** Celui-là se mesure **séparément**, par `widget largeur` sur la chaîne
+construite depuis les plafonds — ce que `tools/verif_selection_dn49.py` **émet**.
+⛔ Conclure « ça tient » du seul injecteur serait valider un cas qu'on n'a pas joué.
+
+### 20.10 Entrées au ledger portées par la SÉANCE du 2026-08-22 — ⛔ par AJOUT
+
+| # | Entrée | État | Condition de réouverture / de clôture |
+|---|---|---|---|
+| L10 | **L'échelle haute de `DISQUE` (`Mo/s → Go/s`)** | ✅ **SOLDÉE le 2026-08-22** | **ARMÉE** sur décision owner (règle des 3000). 🎯 **Et elle réparait un défaut LIVRÉ que personne n'avait vu** : `« 100000,0 Mo/s »` = **206 px pour 201 utiles**, la grandeur 0 débordait déjà |
+| L14 | **`pc` ne nomme pas quel ventilateur est muet** | ✅ **SOLDÉ le 2026-08-22, PROUVÉ SUR CARTE** | `dn_ui_case_prefixe()` + `cmd_pc` |
+| L16 | 🆕 **La marge de hauteur du détail `DISQUE` est de ZÉRO pixel** | 🟠 **choix ASSUMÉ** | `14 + 4×35 = 154` dans un panneau de **154**. C'est le minimum EXACT, pris pour ne pas coûter un pixel de plus à `dn4-4`. ⛔ Une grandeur de plus, ou une police plus haute, et ça déborde — **la garde de hauteur le dira**, elle existe depuis cette séance |
+| L17 | 🆕 **`dn4-4` hérite d'un placeholder de courbe à 108 px, ⛔ pas 165** | 🔴 **facture DITE** | **57 px** repris, ⛔ pas 43 : mon arithmétique avait oublié le `y = 14` du label, et **c'est la carte qui l'a corrigée** une fois l'instrument capable de voir la hauteur. Le bas reste à **370** |
+| L18 | 🆕 **Deux prédictions d'AC9 sont INDÉCIDABLES faute de T0** | 🔴 **défaut de protocole, le mien** | Δ tas LVGL (`ui`) et Δ `cpu brut` : les deux instruments sont nommés dans la prédiction et **aucun n'a été relevé au T0**. ⇒ **Règle** : toute prédiction NOMME son instrument, et **le T0 de CET instrument se relève AVANT le premier tir**. ⛔ Une prédiction qu'on ne peut pas confronter ne coûte rien à celui qui l'écrit |
+| L19 | 🆕 **La colonne « AVANT » du tableau d'AC6 n'était pas observable** | ✅ **CLOS par la mesure** | `desc_ligne_indistincte` **n'existe pas** dans `4c3a3f7` (grep : 0, contre 3 à `cdfe88c`) : la garde est arrivée **après** le flash. ⛔ Ce n'était pas une régression, et ⛔ ce n'était pas non plus un état observable |
+| L20 | 🆕 **`--jeu pire` n'atteint PAS les plafonds du protocole** | 🟠 **limite NOMMÉE de l'instrument** | `3000 tr/min` pour un plafond à `10000`. ⛔ Il ne produit donc pas le pire cas de LARGEUR. Rouvrir si une story a besoin du plafond en régime soutenu ; jusque-là, `widget largeur` sur la chaîne des plafonds fait foi |

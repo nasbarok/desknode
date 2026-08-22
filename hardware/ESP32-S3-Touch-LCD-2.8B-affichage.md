@@ -4376,3 +4376,129 @@ correctif que la mesure du 2026-08-22 a rendu obligatoire.
   Ring0**, ⛔ pas sur son **choix de case**.
 - ⛔ **L'échelle haute de `DISQUE` (`Mo/s → Go/s`) n'est PAS armée** — mécanisme prêt depuis
   `dn4-6`, legs explicite (*« l'owner a nommé RÉSEAU »*). Au ledger avec son chiffre.
+
+### 19.11 🎯 SÉANCE CARTE DU 2026-08-22, **APRÈS FLASH** — firmware `38c3b99`
+
+**SHA lu au bandeau `App version: 38c3b99`**, ⛔ pas déduit du dépôt, sans `-dirty`, arbre
+`porcelain` **vide** au moment du flash. `SPI Flash Size : 16MB`.
+
+#### L'audit de boot, qui a cessé de mentir
+
+```
+selections : 6 cases auditees, 0 faute (dn4-9 — invariants A/B/C)
+precision d'affichage : 6 cases auditees, 0 trou (AC9)
+k_desc[CPU]      : case 3 [0, 1, 3] · detail 4 [0, 1, 2, 3] · peuplees 4 — `widget grandeurs 0 <1..4>` jouable
+k_desc[GPU]      : case 3 [0, 1, 2] · detail 4 [0, 1, 2, 3] · peuplees 4 — `widget grandeurs 1 <1..4>` jouable
+k_desc[RAM]      : case 1 [0]       · detail 1 [0]          · peuplees 1 — `widget grandeurs 2 <1..1>` jouable
+k_desc[RÉSEAU]   : case 2 [0, 1]    · detail 2 [0, 1]       · peuplees 2 — `widget grandeurs 3 <1..2>` jouable
+k_desc[DISQUE]   : case 2 [0, 1]    · detail 4 [0, 1, 2, 3] · peuplees 4 — `widget grandeurs 4 <1..2>` jouable
+k_desc[AMBIANCE] : case 2 [0, 1]    · detail 2 [0, 1]       · peuplees 2 — `widget grandeurs 5 <1..2>` jouable
+```
+
+⇒ Il annonce **`4 <1..2>`** pour `DISQUE`, ⛔ plus « `widget grandeurs 4 4` est jouable ». Et il le
+dit **en interrogeant les mêmes gardes** que le setter, ⛔ pas en recopiant leur raisonnement.
+
+#### AC6 — les gardes, SUR LA CARTE
+
+| commande | verdict | motif rendu par le firmware |
+|---|---|---|
+| `widget grandeurs 4 4` | ⛔ **REFUSÉE** | *« dans la vue **CASE**, la grandeur 2 porterait l'unité "tr/min" DÉJÀ présente sans préfixe ni icône **QUI Y SOIT AFFICHÉ** »* |
+| `widget grandeurs 4 3` | ⛔ **REFUSÉE** | idem |
+| `widget grandeurs 4 2` | ✅ **ACCEPTÉE** | `[0, 1]` · 0 chevauchement · 0 trop large · 0 en hauteur |
+| `widget grandeurs 3 2` (`net`) | ✅ **TOUJOURS ACCEPTÉE** | 🎯 **le témoin qui compte** — les icônes ↓/↑ séparent |
+
+🔴 **`4 4` et `4 3` sont REFUSÉES, ⛔ pas acceptées — et c'est CONTRAIRE à ce que la story d'AC6
+écrivait.** La décision owner du 2026-08-22 (`tr/min` **nu** dans la case) inverse l'attendu :
+puisque la case n'affiche plus les préfixes, deux `tr/min` y seraient indistinguables. Une garde
+qui les accepterait parce que le **descripteur** porte des préfixes jugerait **un écran qui
+n'existe pas**.
+
+#### AC5 — les SIX détails, largeur **ET** hauteur, sur le texte RÉELLEMENT composé
+
+Utile **432 px** en largeur, **154 px** en hauteur (label posé à `y = 14`).
+⚠️ Ces chiffres-là portent leurs `·` et leurs `°` : ils viennent du **firmware**, ⛔ pas du REPL.
+
+| case | texte relu | largeur | hauteur | marge |
+|---|---|---|---|---|
+| CPU | `100,0 % · 5,7 GHz` / **`c.max 100,0 % · 100,0 °C`** | 365 | 84 | 70 |
+| GPU | `100,0 % · 95,0 °C` / **`350 W · 3000 tr/min`** | 317 | 84 | 70 |
+| RAM | `99,9 %` | 89 | 49 | 105 |
+| RÉSEAU | **`100,0 Gb/s · 100,0 Gb/s`** | 346 | 49 | 105 |
+| **DISQUE** | **`100,0 Go/s` / `extr.moy … ` / `ventirad … ` / `boitier … `** | 296 | **154** | **0** |
+| AMBIANCE | `24,1 °C · 53,6 %` | 234 | 49 | 105 |
+
+✅ **Zéro `ESP_LOGW` de débordement**, largeur comme hauteur.
+🎯 **Le `c.max` du CPU et le `tr/min` du GPU sont VISIBLES pour la première fois.**
+🎯 **`100,0 Go/s` et `100,0 Gb/s`** : la règle des 3000 tourne sur la dalle.
+⚠️ **La marge de `DISQUE` est de 0 px en hauteur** — c'est le minimum EXACT, choisi pour ne pas
+prendre à `dn4-4` un pixel de plus. ⛔ Une grandeur de plus, ou une police plus haute, et ça
+déborde : la garde de hauteur le dira, elle existe maintenant.
+⚠️ **`--jeu pire` de l'injecteur n'est PAS le plafond du protocole** : il sert `3000 tr/min` là où
+`k_metriques[]` autorise `10000`. Le vrai pire cas a été mesuré **séparément**, par
+`widget largeur` : `extr.moy 10000 tr/min` = **315 px** ≤ 432. ⛔ Ne pas conclure du seul injecteur.
+
+#### AC3 — le témoin de non-régression v3, et le piège évité
+
+`pc $DN,3,<seq>,1000,cpu,520,32,880*<XOR recalculé>` — un agent **v3 NON MODIFIÉ**, `cpu` à
+**TROIS** valeurs, ⛔ sans °C :
+
+```
+CASE   :  0  CPU  WIDGET  RÉELLE   52,0 %  3,2 GHz  --   | case [0, 1, 3] · detail 4
+DÉTAIL :  « 52,0 %   ·   3,2 GHz \n c.max 88,0 %   ·   -- »
+```
+
+🎯 ⛔ **AUCUN « 88,0 °C ».** C'est **exactement** le chiffre faux mais plausible que l'index 3
+existe pour empêcher, et sur lequel **`rejets_bornes` n'aurait pas bronché** (plafond 1500 des deux
+côtés). Le `c.max` est **au détail**, la °C absente **dit `--`**.
+⚠️ **PIÈGE N°10 PRIS EN FLAGRANT DÉLIT, ET C'EST LE MIEN** : le premier tir a été **REJETÉ** parce
+que j'ai **recopié** un checksum au lieu d'utiliser celui que je venais de calculer. *« Une trame de
+test copiée peut être FAUSSE — recalculer le XOR avant d'accuser. »*
+⚠️ **Et la péremption est à 3 s** : lire la case après coup rend `ABSENTE`. La trame et la lecture
+doivent tenir dans la **même invocation**, et ça a demandé un essai. ⛔ Un « `--` » n'est pas une
+preuve d'échec tant qu'on n'a pas montré que la valeur était encore vivante.
+
+#### AC7 — la non-régression, MESURÉE
+
+| contrôle | T0 (`4c3a3f7`) | après (`38c3b99`) | verdict |
+|---|---|---|---|
+| PSRAM libre | 7 768 024 o | **7 768 024 o** | ✅ **0** |
+| RAM interne libre | 90 807 o | **90 127 o** | **−680 o** |
+| `fps 15` | 37,40 Hz (+0,00 %) | **37,40 Hz** (−0,00 %) | ✅ **0,00** |
+| `touch` erreurs I2C | 0 | **0** | ✅ |
+| les **trois** compteurs, après `--jeu pire` 12 s | — | **0 · 0 · 0** | ✅ en **LECTURE PURE** |
+| `RAM` jauge + secondaire | `OUI OUI` | **`OUI OUI`** | ✅ la case à risque n'a pas bougé |
+| `GPU` case | 3 | **3** | ✅ ⛔ pas quatre |
+| `nav ab 40` | *(pas de T0)* | **n=80, moy 335,8 ms** (281,2 / 400,9) | ✅ **pas de régression** |
+
+⚠️ **`nav ab` se juge contre les campagnes PUBLIÉES**, ⛔ pas contre un T0 : `dn1-4` **307,0** ·
+`dn3-1` **321,8** · `dn3-2` **349,1** · `dn4-1` **335,0** · `dn4-6` **333,8**. À **335,8**, c'est
+**+2,0 ms** sur la plus proche — dans l'étalement inter-campagnes. ⛔ **Et le critère n°3 du brief
+(< 300 ms) reste NON TENU** : c'est le budget de `dn4-4`, ⛔ pas celui de cette story.
+🔴 **LE PROTOCOLE DES TROIS COMPTEURS EST DÉSORMAIS EXÉCUTABLE**, et c'est un livrable :
+`widget largeur reset` → stimulus → **`widget` nu**, qui les rend **sans rien reconstruire ni
+remettre à zéro**. Avant, les lire DÉTRUISAIT ce qu'on relève.
+
+#### AC9 — la prédiction confrontée, ⛔ y compris là où elle n'est pas testable
+
+| # | prédiction (écrite le 2026-08-22 **avant le premier tir**) | mesure | verdict |
+|---|---|---|---|
+| 1 | Δ tas LVGL **−200 à −600 o** | — | 🔴 **NON TESTABLE — MA FAUTE** : la prédiction nomme `ui`/`lv_mem_monitor()`, et **je n'en ai pas relevé le T0**. Un instrument nommé dans une prédiction et jamais joué au T0 rend la prédiction indécidable |
+| 2 | Δ `cpu brut` **≤ +0,2 point** | — | 🔴 **NON TESTABLE — MA FAUTE** : `cpu brut` est un compteur CUMULÉ, il exige deux relevés, et **le T0 manque** |
+| 3 | Δ `fps` **0,0 ± 0,2 Hz** | **0,00 Hz** | ✅ **TENUE** |
+| 4 | Δ latence **+0 à +5 ms** | **+2,0 ms** vs `dn4-6` | ✅ **TENUE** |
+| 5 | Δ RAM interne libre **inchangée à ±2 ko** | **−680 o** | ✅ **TENUE** |
+| 6 | 🔴 **« `trop larges` sera ≥ 1 sur `DISQUE`, la ligne 1 du détail DÉBORDERA »** | **0 débordement** | 🎯 **DÉMENTIE — et c'est la plus instructive** |
+
+🎯 **POURQUOI LA N°6 EST DÉMENTIE, ET CE QUE ÇA APPREND.** Elle était **juste sur les faits et
+fausse sur la conclusion**. La ligne 1 du détail `DISQUE` **débordait bien** — 530 px pour 432,
+mesuré — et elle ne déborde plus **parce que DEUX décisions owner l'ont fait disparaître en tant
+que ligne** : la règle des 3000 (`100000,0 Mo/s` → `100,0 Go/s`) et une grandeur par ligne. ⛔ Le
+défaut n'a pas été « absorbé », il a été **supprimé**. ⚠️ Mon extrapolation
+(`nb_caractères × largeur_moyenne`, à partir d'un seul point) **avait raison par accident** : elle
+prédisait 40 caractères ⇒ débordement, et la mesure a donné 530 px. ⛔ **Ça ne la valide pas** —
+elle aurait tout aussi bien pu se tromper, et c'est pour ça qu'elle était écrite comme une
+PRÉDICTION et jamais comme un résultat.
+
+⚠️ **DEUX PRÉDICTIONS SUR SIX SONT INDÉCIDABLES PARCE QUE J'AI OUBLIÉ LEUR T0.** ⛔ Ce n'est pas un
+détail de protocole : une prédiction qu'on ne peut pas confronter ne coûte rien à celui qui
+l'écrit, et c'est exactement ce que l'exigence « prédire AVANT » sert à empêcher. ⇒ **au ledger.**
