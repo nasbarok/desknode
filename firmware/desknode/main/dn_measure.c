@@ -62,6 +62,73 @@ static const char *s_vsync_subs_nom[DN_VSYNC_SUBS_MAX];
 static size_t s_psram_avant;
 static size_t s_psram_apres;
 
+/*
+ * ─── dn4-10 : LE COMPTEUR DE GLISSEMENT DE TRAME ────────────────────────────
+ * La justification complete, les voies ECARTEES et la regle de concurrence
+ * sont dans dn_measure.h, au-dessus de `dn_bounce_stats_t`. Ici, seulement
+ * l'invariant qui doit tenir a la relecture :
+ *
+ *   PROPRIETAIRE UNIQUE PAR VARIABLE.
+ *     ecrites par l'ISR d'enroulement (`on_frame_buf_complete`) :
+ *        s_bnc_wraps, s_bnc_t_wrap_us
+ *     ecrites par l'ISR de vsync (`on_vsync`) :
+ *        tout le reste, Y COMPRIS la consommation de la RAZ.
+ *     ecrite par la tache console :
+ *        s_bnc_raz, et RIEN d'autre.
+ *   => aucun verrou, aucune section critique, sur un chemin qui tire
+ *      37,40 fois par seconde et dont on mesure justement le retard.
+ *
+ * ⛔ AUCUN ESP_LOGx ici : le port serie EST le transport de la mesure, et
+ *    journaliser depuis l'ISR a la frequence du defaut le FABRIQUERAIT.
+ */
+
+/* Bornes calculees depuis les timings de dn_pins.h. `#define` et non
+ * `static const` : constant-folded a la compilation, donc AUCUN acces memoire
+ * depuis l'ISR — la .rodata vit en flash, et l'ISR peut tourner cache coupe
+ * pendant une ecriture flash (stimulus `flash on`). */
+#define DN_HTOTAL_PX                                                          \
+    (DN_LCD_H_RES + DN_HSYNC_PULSE + DN_HSYNC_BACK_PORCH + DN_HSYNC_FRONT_PORCH)
+#define DN_VTOTAL_LI                                                          \
+    (DN_LCD_V_RES + DN_VSYNC_PULSE + DN_VSYNC_BACK_PORCH + DN_VSYNC_FRONT_PORCH)
+#define DN_US_POUR_LIGNES(n)                                                  \
+    ((uint32_t)(((uint64_t)DN_HTOTAL_PX * (uint64_t)(n) * 1000000ULL) /        \
+                (uint64_t)DN_PCLK_HZ))
+
+/* 620 x 690 / 16 MHz = 26 737 us */
+#define DN_PERIODE_US DN_US_POUR_LIGNES(DN_VTOTAL_LI)
+/* 620 x 20 / 16 MHz = 775 us — le budget REEL de l'ISR : VSYNC_END tombe a la
+ * FIN de l'impulsion, il ne reste que le back porch avant que le controleur ne
+ * redemande des pixels. */
+#define DN_BACK_PORCH_US DN_US_POUR_LIGNES(DN_VSYNC_BACK_PORCH)
+/* 620 x 50 / 16 MHz = 1 937 us — le VBlank ENTIER, le chiffre optimiste du
+ * commentaire d'Espressif. Publie a cote, ⛔ pas a la place. */
+#define DN_VBLANK_US DN_US_POUR_LIGNES(DN_VTOTAL_LI - DN_LCD_V_RES)
+
+/* ── ecrites par l'ISR d'enroulement UNIQUEMENT ── */
+static volatile uint32_t s_bnc_wraps;      /* monotone depuis le boot */
+static volatile uint32_t s_bnc_t_wrap_us;  /* horodatage du dernier enroulement */
+
+/* ── ecrites par l'ISR de vsync UNIQUEMENT ── */
+static volatile uint32_t s_bnc_wraps_vus;  /* valeur de s_bnc_wraps au vsync precedent */
+static volatile uint32_t s_bnc_base_wraps; /* references posees a la RAZ */
+static volatile uint32_t s_bnc_base_vsync;
+static volatile uint32_t s_bnc_t0_us;
+static volatile uint32_t s_bnc_t_vsync_us; /* horodatage du vsync precedent */
+static volatile bool s_bnc_arme;           /* un intervalle est-il mesurable ? */
+static volatile uint32_t s_bnc_manques;
+static volatile uint32_t s_bnc_doubles;
+static volatile uint32_t s_bnc_inter_n;
+static volatile uint32_t s_bnc_inter_min;
+static volatile uint32_t s_bnc_inter_max;
+static volatile uint64_t s_bnc_inter_somme;
+static volatile uint32_t s_bnc_ret_100;
+static volatile uint32_t s_bnc_ret_bp;
+static volatile uint32_t s_bnc_ret_vb;
+static volatile uint32_t s_bnc_ret_trame;
+
+/* ── ecrite par la tache console UNIQUEMENT ── */
+static volatile bool s_bnc_raz;
+
 static IRAM_ATTR bool on_vsync(esp_lcd_panel_handle_t panel,
                                const esp_lcd_rgb_panel_event_data_t *edata,
                                void *user_ctx)
@@ -70,6 +137,76 @@ static IRAM_ATTR bool on_vsync(esp_lcd_panel_handle_t panel,
     (void)edata;
     (void)user_ctx;
     s_vsync_count++;
+
+    /* ── dn4-10 : la gigue de CETTE ISR est le defaut qu'on cherche ────────
+     * Horodate EN PREMIER, avant tout autre travail : ce qu'on veut mesurer,
+     * c'est l'instant ou l'ISR a REELLEMENT pris la main — latence d'interruption
+     * comprise. Tout ce qu'on ferait avant s'ajouterait au chiffre.
+     * `esp_timer_get_time()` est en IRAM (CONFIG_ESP_TIMER_IN_IRAM=y, verifie
+     * dans sdkconfig le 2026-08-22) : appelable ici meme cache coupe. */
+    uint32_t t_us = (uint32_t)esp_timer_get_time();
+
+    if (s_bnc_raz) {
+        /* La RAZ est CONSOMMEE ICI, et nulle part ailleurs : c'est ce report
+         * qui rend la mise a zero sure sans verrou. La trame courante est
+         * ecartee — sa fenetre serait tronquee. */
+        s_bnc_raz = false;
+        s_bnc_base_wraps = s_bnc_wraps;
+        s_bnc_base_vsync = s_vsync_count;
+        s_bnc_wraps_vus = s_bnc_wraps;
+        s_bnc_t0_us = t_us;
+        s_bnc_t_vsync_us = t_us;
+        s_bnc_arme = false; /* pas d'intervalle a cheval sur la RAZ */
+        s_bnc_manques = 0;
+        s_bnc_doubles = 0;
+        s_bnc_inter_n = 0;
+        s_bnc_inter_min = 0;
+        s_bnc_inter_max = 0;
+        s_bnc_inter_somme = 0;
+        s_bnc_ret_100 = 0;
+        s_bnc_ret_bp = 0;
+        s_bnc_ret_vb = 0;
+        s_bnc_ret_trame = 0;
+    } else {
+        /* (a) comptabilite des enroulements : `wraps` doit suivre `trames` UN
+         *     pour UN. La soustraction non signee absorbe l'enroulement 32 bits. */
+        uint32_t w = s_bnc_wraps;
+        uint32_t n = w - s_bnc_wraps_vus;
+        s_bnc_wraps_vus = w;
+        if (n == 0) {
+            s_bnc_manques++;
+        } else if (n >= 2) {
+            s_bnc_doubles++;
+        }
+
+        /* (b) LA GIGUE. `fps` moyenne 561 trames et efface exactement ca. */
+        if (s_bnc_arme) {
+            uint32_t dt = t_us - s_bnc_t_vsync_us;
+            s_bnc_inter_n++;
+            if (s_bnc_inter_min == 0 || dt < s_bnc_inter_min) {
+                s_bnc_inter_min = dt;
+            }
+            if (dt > s_bnc_inter_max) {
+                s_bnc_inter_max = dt;
+            }
+            s_bnc_inter_somme += dt;
+            if (dt > DN_PERIODE_US + 100u) {
+                s_bnc_ret_100++;
+            }
+            if (dt > DN_PERIODE_US + DN_BACK_PORCH_US) {
+                s_bnc_ret_bp++;
+            }
+            if (dt > DN_PERIODE_US + DN_VBLANK_US) {
+                s_bnc_ret_vb++;
+            }
+            if (dt > 2u * DN_PERIODE_US) {
+                s_bnc_ret_trame++;
+            }
+        }
+        s_bnc_t_vsync_us = t_us;
+        s_bnc_arme = true;
+    }
+
     BaseType_t hp = pdFALSE;
     if (s_vsync_sem) {
         xSemaphoreGiveFromISR(s_vsync_sem, &hp);
@@ -101,6 +238,13 @@ static IRAM_ATTR bool on_frame_buf_complete(esp_lcd_panel_handle_t panel,
     (void)panel;
     (void)edata;
     (void)user_ctx;
+    /* dn4-10 : les DEUX SEULES variables que cette ISR-ci ecrit. En mode bounce
+     * buffer (`bounce_px != 0`, notre cas depuis le 2026-08-16) cet evenement
+     * tombe UNE FOIS PAR TRAME, a l'enroulement de `bounce_pos_px` — voir
+     * l'amendement du 2026-08-22 dans dn_measure.h. */
+    s_bnc_wraps++;
+    s_bnc_t_wrap_us = (uint32_t)esp_timer_get_time();
+
     BaseType_t hp = pdFALSE;
     if (s_fbdone_sem) {
         xSemaphoreGiveFromISR(s_fbdone_sem, &hp);
@@ -280,6 +424,42 @@ double dn_measure_fps(int seconds, uint32_t *out_frames, int64_t *out_elapsed_us
         return 0.0;
     }
     return (double)frames * 1000000.0 / (double)elapsed;
+}
+
+uint32_t dn_measure_periode_us(void) { return DN_PERIODE_US; }
+uint32_t dn_measure_back_porch_us(void) { return DN_BACK_PORCH_US; }
+uint32_t dn_measure_vblank_us(void) { return DN_VBLANK_US; }
+
+void dn_measure_bounce_reset(void)
+{
+    /* On ne touche AUCUN compteur ici — voir l'invariant en tete de fichier.
+     * L'ISR de vsync consomme le drapeau au prochain retour vertical. */
+    s_bnc_raz = true;
+}
+
+void dn_measure_bounce_get(dn_bounce_stats_t *out)
+{
+    if (!out) {
+        return;
+    }
+    /* Instantane NON ATOMIQUE, et c'est assume : les compteurs bougent
+     * 37,40 fois par seconde, une incoherence porterait sur UNE trame. La dire
+     * plutot que de prendre un verrou sur le chemin qu'on mesure. */
+    uint32_t t_us = (uint32_t)esp_timer_get_time();
+    out->trames = s_vsync_count - s_bnc_base_vsync;
+    out->wraps = s_bnc_wraps - s_bnc_base_wraps;
+    out->manques = s_bnc_manques;
+    out->doubles = s_bnc_doubles;
+    out->intervalles = s_bnc_inter_n;
+    out->inter_min_us = s_bnc_inter_min;
+    out->inter_max_us = s_bnc_inter_max;
+    out->inter_somme_us = s_bnc_inter_somme;
+    out->retards_100 = s_bnc_ret_100;
+    out->retards_bp = s_bnc_ret_bp;
+    out->retards_vb = s_bnc_ret_vb;
+    out->retards_trame = s_bnc_ret_trame;
+    out->fenetre_ms = (t_us - s_bnc_t0_us) / 1000u;
+    out->raz_en_attente = s_bnc_raz;
 }
 
 size_t dn_measure_psram_free(void)

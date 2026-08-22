@@ -130,6 +130,21 @@ bool dn_measure_vsync_wait(dn_vsync_sub_t sub, uint32_t timeout_ms);
  *    callback arrive d'un troisième endroit encore, l'enroulement de la
  *    préextraction ; le raisonnement ci-dessous ne change pas.)
  *
+ *    🔴 AMENDÉ LE 2026-08-22 (dn4-10), ⛔ PAS EFFACÉ. La parenthèse ci-dessus
+ *    dit « `bounce_px != 0`, PAS NOTRE DÉFAUT ». Elle était juste quand elle a
+ *    été écrite (`bounce_px` valait 0) ; elle est FAUSSE depuis le 2026-08-16 :
+ *    `bounce_px` vaut 7 680 et le mode bounce buffer est EXACTEMENT notre cas.
+ *    ⇒ Ce n'est donc PAS la branche `else` de `lcd_rgb_panel_eof_handler()`
+ *      qui nous appelle (celle qui tire à CHAQUE trans-EOF), mais
+ *      `lcd_rgb_panel_fill_bounce_buffer()` à l'ENROULEMENT de
+ *      `bounce_pos_px` (esp_lcd_panel_rgb.c:925-932, IDF v5.5.5).
+ *    ⇒ Conséquence MESURABLE, et c'est ce qui fonde le compteur de dn4-10 :
+ *      l'événement tombe **UNE FOIS PAR TRAME**, pas 40 fois. Un `wraps` qui
+ *      ne suivrait pas `trames` 1 pour 1 est donc un DÉFAUT, pas du bruit.
+ *    ⚠️ Et la citation d'Espressif « the buffer complete callback is not
+ *      reliable » appartient à la branche `else`, celle qui ne nous concerne
+ *      PLUS. On ne l'efface pas — elle redeviendrait vraie à `bounce_px = 0`.
+ *
  *    Autrement dit : ce rendez-vous est un AUTRE POINT DE PHASE dans la trame
  *    que le VSYNC, pas une garantie de liberté du tampon.
  *    ⇒ Le GAIN, lui, est réel et OBSERVÉ par l'owner (SYNC_FBDONE : escalier
@@ -161,3 +176,114 @@ void dn_measure_get_psram_note(size_t *avant, size_t *apres);
 /* Journalise le fps mesuré, le fps théorique, l'écart, et RÉÉCRIT le calcul —
  * la trace doit se suffire à elle-même (AC4). */
 void dn_measure_report_fps(const char *etiquette, int seconds);
+
+/*
+ * ═══════════════════════════════════════════════════════════════════════════
+ * dn4-10 — LE COMPTEUR DE GLISSEMENT DE TRAME (la « famine DMA » du bounce)
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * 🔴 POURQUOI IL EXISTE. Le défaut « l'image glisse d'un coup puis se recale »
+ *    en est à sa QUATRIÈME occurrence (2026-08-16 x2, 2026-08-19, 2026-08-22) et
+ *    AUCUN instrument de ce firmware ne sait le voir : `fps` rend 37,40 Hz
+ *    PENDANT que l'image saute, `flush` mesure le chemin de flush et pas le
+ *    panneau, `dn_recal` est inerte sous CONFIG_LCD_RGB_RESTART_IN_VSYNC=y.
+ *    dn4-6 a donc payé sa bissection en ONZE constats owner à l'œil, et la
+ *    séance dn4-9 en a payé CINQ de plus. Ce bloc existe pour arrêter de payer.
+ *
+ * 🔴 CE QUE LE DRIVER DIT DU MÉCANISME — LU, ⛔ PAS SUPPOSÉ.
+ *    esp_lcd_panel_rgb.c:1142-1148 (IDF v5.5.5), au-dessus de
+ *    `lcd_rgb_panel_try_restart_transmission()` :
+ *      « reset the GDMA channel every VBlank to stop permanent desyncs […]
+ *        if this interrupt is LATE ENOUGH, the display will SHIFT as the LCD
+ *        controller already read out the first data bytes, and resetting DMA
+ *        will re-send those. […] It's also not super-likely as this interrupt
+ *        has the entirety of the VBlank time to reset DMA. »
+ *    ⇒ Le glissement N'EST PAS un octet manquant : c'est L'ISR DE VSYNC_END QUI
+ *      ARRIVE TROP TARD. Elle a un budget, et ce budget se CALCULE.
+ *
+ * ⛔ CE QUI A ÉTÉ ÉCARTÉ, ET POURQUOI — pour qu'on ne le re-propose pas.
+ *    - `on_bounce_empty` : la story dn4-10 le désignait comme LE crochet. Il ne
+ *      peut PAS servir ici. `lcd_rgb_panel_fill_bounce_buffer()` ne l'appelle
+ *      que sous `if (unlikely(panel->num_fbs == 0))` (esp_lcd_panel_rgb.c:902).
+ *      Nous sommes à `num_fbs = 1` ⇒ il ne sera JAMAIS appelé. Et l'enregistrer
+ *      à `num_fbs = 0` reviendrait à REMPLACER la copie du driver par la nôtre,
+ *      pas à l'observer.
+ *    - L'interruption d'underrun MATÉRIELLE (`LCD_LL_EVENT_UNDERRUN`) :
+ *      définie pour l'ESP32-P4 SEULEMENT (hal/esp32p4/include/hal/lcd_ll.h:31).
+ *      L'ESP32-S3 ne l'a pas. Voie fermée, mesurée, ⛔ à ne pas rouvrir.
+ *    - `bb_eof_count < expect_eof_count`, la détection de famine du driver
+ *      lui-même : elle est compilée dans le `#else` de
+ *      CONFIG_LCD_RGB_RESTART_IN_VSYNC (esp_lcd_panel_rgb.c:1153-1166). Nous
+ *      sommes à `=y` ⇒ ce test N'EXISTE PAS dans notre binaire, et le compteur
+ *      qu'il consulte n'est jamais remis à zéro. Rien à lire de ce côté.
+ *
+ * 🎯 CE QUE CE COMPTEUR MESURE, ET POURQUOI `fps` NE POUVAIT PAS LE VOIR.
+ *    `fps` compte 561 vsync sur 15 s et DIVISE : la moyenne efface la gigue.
+ *    Or toute l'information est DANS la gigue. Ici on garde la DISTRIBUTION des
+ *    intervalles vsync→vsync, mesurés à l'entrée de l'ISR :
+ *      - période théorique : htotal x vtotal / pclk = 620 x 690 / 16 MHz
+ *      - budget de l'ISR   : le BACK PORCH vertical qui suit VSYNC_END, soit
+ *                            htotal x vbp / pclk = 620 x 20 / 16 MHz = 775 us.
+ *                            ⚠️ Le commentaire d'Espressif dit « the entirety
+ *                            of the VBlank » (1 937 us) ; c'est OPTIMISTE :
+ *                            VSYNC_END tombe à la FIN de l'impulsion, donc il
+ *                            ne reste que le back porch avant que le contrôleur
+ *                            ne redemande des pixels. Les deux seuils sont
+ *                            publiés — ⛔ on ne choisit pas à la place du
+ *                            lecteur.
+ *    Et en second observable, la comptabilité des enroulements :
+ *      - `wraps` doit valoir `trames`, UN pour UN (voir l'amendement plus haut).
+ *        `manques` = trames sans enroulement, `doubles` = trames à deux.
+ *
+ * ⚠️ CE QU'IL NE MESURE PAS, ET IL FAUT LE DIRE.
+ *    Un intervalle long PROUVE que l'ISR est arrivée tard ; il ne prouve pas
+ *    que l'œil a vu l'image glisser. La correspondance compteur <-> œil est un
+ *    RÉSULTAT À ÉTABLIR (AC2 de dn4-10), ⛔ pas une hypothèse de conception.
+ *    Et l'inverse vaut aussi : un compteur à zéro pendant que l'image saute
+ *    voudrait dire que l'instrument regarde le mauvais événement.
+ *
+ * ⚠️ SÛRETÉ DE CONCURRENCE — la règle tenue ici : CHAQUE variable mutable n'est
+ *    écrite QUE PAR UNE SEULE ISR. `s_bnc_wraps` / `s_bnc_t_wrap_us` par l'ISR
+ *    d'enroulement ; tout le reste par l'ISR de vsync. La remise à zéro
+ *    demandée depuis la console ne touche RIEN : elle pose un drapeau que l'ISR
+ *    de vsync consomme elle-même, au prochain retour vertical (<= 27 ms). Donc
+ *    ⛔ aucun verrou sur le chemin chaud — on mesure une famine, on ne va pas
+ *    la fabriquer.
+ *    Les horodatages sont en `uint32_t` de microsecondes (32 bits = lecture
+ *    atomique sur cette puce ; l'enroulement à 4 295 s se gère par la
+ *    soustraction non signée).
+ */
+typedef struct {
+    uint32_t trames;       /* vsync comptés dans la fenêtre */
+    uint32_t wraps;        /* enroulements `on_frame_buf_complete` dans la fenêtre */
+    uint32_t manques;      /* trames SANS enroulement */
+    uint32_t doubles;      /* trames à 2 enroulements ou plus */
+
+    uint32_t intervalles;  /* échantillons d'intervalle vsync -> vsync */
+    uint32_t inter_min_us;
+    uint32_t inter_max_us;
+    uint64_t inter_somme_us;
+
+    uint32_t retards_100;   /* intervalle > période +  100 us */
+    uint32_t retards_bp;    /* > période + back porch (775 us) — LE BUDGET */
+    uint32_t retards_vb;    /* > période + VBlank entier (1 937 us) */
+    uint32_t retards_trame; /* > 2 périodes — une trame ENTIÈRE de retard */
+
+    uint32_t fenetre_ms;    /* durée écoulée depuis la remise à zéro */
+    bool raz_en_attente;    /* la RAZ n'a pas encore été consommée par l'ISR */
+} dn_bounce_stats_t;
+
+/* Arme la remise à zéro. ⚠️ Elle prend effet AU PROCHAIN VSYNC (<= 27 ms), pas
+ * au retour de l'appel : c'est ce report qui rend la mise à zéro sûre sans
+ * verrou. `raz_en_attente` le dit à qui lit trop vite. */
+void dn_measure_bounce_reset(void);
+
+/* Instantané cohérent des compteurs. Appelable depuis une tâche uniquement. */
+void dn_measure_bounce_get(dn_bounce_stats_t *out);
+
+/* Les trois grandeurs de référence, en microsecondes, calculées depuis les
+ * timings de dn_pins.h — publiées pour que la sortie console se suffise à
+ * elle-même et qu'aucun seuil ne soit un nombre magique. */
+uint32_t dn_measure_periode_us(void);
+uint32_t dn_measure_back_porch_us(void);
+uint32_t dn_measure_vblank_us(void);

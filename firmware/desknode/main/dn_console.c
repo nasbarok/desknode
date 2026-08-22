@@ -1133,8 +1133,9 @@ static int cmd_bl(int argc, char **argv)
  */
 static void flush_usage(void)
 {
-    printf("usage : flush                   — compteurs\n");
+    printf("usage : flush                   — compteurs, glissement en tête\n");
     printf("        flush reset             — remet les compteurs à zéro\n");
+    printf("                                  (glissement dn4-10 compris)\n");
     printf("        flush sync off|vsync|fbdone — synchronisation du flush\n");
     printf("        flush path bitmap|direct    — par où la zone sale entre\n");
     printf("        flush full              — invalide TOUT l'écran (preuve "
@@ -1145,7 +1146,10 @@ static int cmd_flush(int argc, char **argv)
 {
     if (argc >= 2 && strcmp(argv[1], "reset") == 0) {
         dn_ui_reset_stats();
+        dn_measure_bounce_reset();
         printf("compteurs de flush remis à zéro.\n");
+        printf("compteurs de GLISSEMENT (dn4-10) armés : la remise à zéro est\n");
+        printf("   consommée par l'ISR au prochain vsync (<= 27 ms), pas ici.\n");
         return 0;
     }
     if (argc >= 2 && strcmp(argv[1], "full") == 0) {
@@ -1268,6 +1272,66 @@ static int cmd_flush(int argc, char **argv)
     } else if (argc >= 2) {
         flush_usage();
         return 1;
+    }
+
+    /* ─── dn4-10 : le glissement de trame, PUBLIE EN PREMIER ──────────────
+     * ⚠️ Place AVANT tout `return` de cette fonction, et c'est deliberé : le
+     *    rapport de flush sort tot quand `flushes == 0`, et l'instrument
+     *    serait alors MUET exactement dans le cas ou le chemin de flush est au
+     *    repos — c'est-a-dire le TEMOIN au repos d'AC1. Un instrument aveugle
+     *    a son propre cas de reference est le defaut que ce depot a deja paye. */
+    {
+        dn_bounce_stats_t b;
+        dn_measure_bounce_get(&b);
+        uint32_t per = dn_measure_periode_us();
+        uint32_t bp = dn_measure_back_porch_us();
+        uint32_t vb = dn_measure_vblank_us();
+        printf("─── glissement de trame (dn4-10) — fenêtre %lu ms ───\n",
+               (unsigned long)b.fenetre_ms);
+        if (b.raz_en_attente) {
+            printf("⚠️ remise à zéro ARMÉE mais PAS ENCORE CONSOMMÉE (aucun vsync\n");
+            printf("   depuis) : les chiffres ci-dessous sont ceux d'AVANT.\n");
+        }
+        printf("  trames (vsync)   : %lu · enroulements : %lu\n",
+               (unsigned long)b.trames, (unsigned long)b.wraps);
+        printf("  trames SANS enroulement : %lu · à deux ou plus : %lu\n",
+               (unsigned long)b.manques, (unsigned long)b.doubles);
+        if (b.intervalles == 0) {
+            printf("  aucun intervalle mesuré — rien à conclure.\n");
+        } else {
+            printf("  intervalle vsync→vsync : n=%lu · min %lu · moy %lu · "
+                   "MAX %lu us\n",
+                   (unsigned long)b.intervalles, (unsigned long)b.inter_min_us,
+                   (unsigned long)(b.inter_somme_us / b.intervalles),
+                   (unsigned long)b.inter_max_us);
+            printf("     (période théorique %lu us = %d x %d / %d Hz)\n",
+                   (unsigned long)per, DN_LCD_H_RES + DN_HSYNC_PULSE +
+                   DN_HSYNC_BACK_PORCH + DN_HSYNC_FRONT_PORCH,
+                   DN_LCD_V_RES + DN_VSYNC_PULSE + DN_VSYNC_BACK_PORCH +
+                   DN_VSYNC_FRONT_PORCH, DN_PCLK_HZ);
+            if (b.inter_max_us > per) {
+                printf("     retard PIRE observé : +%lu us sur la période\n",
+                       (unsigned long)(b.inter_max_us - per));
+            }
+            printf("  ISR en retard de plus de : +100 us %lu · +%lu us (back "
+                   "porch) %lu · +%lu us (VBlank) %lu · une trame %lu\n",
+                   (unsigned long)b.retards_100, (unsigned long)bp,
+                   (unsigned long)b.retards_bp, (unsigned long)vb,
+                   (unsigned long)b.retards_vb,
+                   (unsigned long)b.retards_trame);
+        }
+        printf("  ce que ça veut dire : le driver RGB remet la DMA à zéro à\n");
+        printf("     CHAQUE VBlank (RESTART_IN_VSYNC=y) et écrit lui-même que\n");
+        printf("     « si cette interruption est ASSEZ EN RETARD, l'image se\n");
+        printf("     DÉCALE » (esp_lcd_panel_rgb.c:1142-1148). Le budget réel\n");
+        printf("     est le back porch, %lu us — pas le VBlank entier (%lu us),\n",
+               (unsigned long)bp, (unsigned long)vb);
+        printf("     car VSYNC_END tombe à la FIN de l'impulsion.\n");
+        printf("  ⛔ un compteur à zéro ne prouve RIEN tant que le témoin ne\n");
+        printf("     l'a pas fait bouger, et la correspondance avec l'œil est\n");
+        printf("     un RÉSULTAT à établir, pas une hypothèse. ⛔ `fps` reste\n");
+        printf("     aveugle à ce défaut : il MOYENNE, et la gigue s'y efface.\n");
+        printf("────────────────────────────────────────────────────────────\n");
     }
 
     dn_flush_stats_t st;
@@ -7087,7 +7151,8 @@ static const esp_console_cmd_t k_cmds[] = {
     DN_CMD("flash", "flash on|off — stimulus d'écriture flash", cmd_flash),
     DN_CMD("ui", "ui [on|off] | ui label on|off | ui bg flash|psram — LVGL", cmd_ui),
     DN_CMD("flush",
-           "flush | reset | sync off|vsync|fbdone | path bitmap|direct | full",
+           "flush | reset | sync off|vsync|fbdone | path bitmap|direct | full — "
+           "chemin de flush, ET le compteur de GLISSEMENT de trame (dn4-10)",
            cmd_flush),
     DN_CMD("anim", "anim on [ms] | off — stimulus adverse LVGL (témoin de tearing)",
            cmd_anim),
