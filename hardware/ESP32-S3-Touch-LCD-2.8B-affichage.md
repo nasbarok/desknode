@@ -4502,3 +4502,96 @@ PRÉDICTION et jamais comme un résultat.
 ⚠️ **DEUX PRÉDICTIONS SUR SIX SONT INDÉCIDABLES PARCE QUE J'AI OUBLIÉ LEUR T0.** ⛔ Ce n'est pas un
 détail de protocole : une prédiction qu'on ne peut pas confronter ne coûte rien à celui qui
 l'écrit, et c'est exactement ce que l'exigence « prédire AVANT » sert à empêcher. ⇒ **au ledger.**
+
+---
+
+## 20. 🔴 LE SAUTILLEMENT SOUS TRAFIC PC — DOSSIER OUVERT LE 2026-08-22
+
+> ⛔ **CE N'EST PAS UN DÉFAUT DE `dn4-9`, ET C'EST PROUVÉ PAR A/B.** Il est consigné ici parce que
+> la séance de `dn4-9` l'a **rencontré**, **reproduit** et **caractérisé** — pas parce qu'elle l'a
+> causé. Il touche le **différenciateur du brief** (la liaison PC) **en usage normal**.
+
+### 20.1 Le symptôme, dans les mots de l'owner
+
+> *« l'image sautille, elle se décale chaque seconde de quelques mm vers le bas puis vers le haut »*
+> *« 10 sec les cases du haut, puis l'image se décale une fois, et au bout de 40 c'est aléatoire
+> mais ça commence à saturer, donc sautiller »*
+
+⚠️ **Deux précisions obtenues en le lui demandant, et elles décident du diagnostic** :
+1. **TOUTE l'image bouge, décor Living PCB et cadres compris** — ⛔ ce n'est **pas** du
+   repositionnement de label. L'hypothèse de `dn4-6` (*« `lv_obj_set_pos` 15 fois par seconde »*)
+   est donc **RÉFUTÉE comme cause de CE symptôme**, et son commentaire disait lui-même qu'elle
+   était *« une HYPOTHÈSE, pas une certitude »*.
+2. **Rien ne bougeait avant que le trafic démarre.** L'image est **stable** au repos.
+
+### 20.2 🎯 LA SIGNATURE TEMPORELLE — ce que le dépôt n'avait pas
+
+Sous `dn_injecteur.py --jeu reel` (5 trames/s, le régime de l'agent) :
+
+| t | ce qui se voit |
+|---|---|
+| **~10 s** | les cases **DU HAUT** |
+| puis | l'image se décale **UNE FOIS**, en entier |
+| **~40 s** | **aléatoire**, ça « sature » |
+
+🎯 **« D'abord le haut » N'EST PAS UN DÉTAIL** : le panneau RGB balaie **de haut en bas**. Un
+tampon qui se vide se voit donc **d'abord en haut de la trame**. ⚠️ C'est ce qui oriente vers la
+**famine du bounce buffer**, et pas vers le contenu dessiné.
+
+### 20.3 🔴 CE QUI EST ÉLIMINÉ — A/B SUR LA MÊME DALLE, LE MÊME FIRMWARE, LA MÊME TEMPÉRATURE
+
+⛔ **Pas de reflash, et c'est ce qui rend l'A/B propre** : `widget grandeurs` rejoue l'ANCIEN
+dashboard **dans le firmware courant** — c'est exactement ce pour quoi cette commande existe.
+
+| bras | dashboard | résultat à l'œil |
+|---|---|---|
+| **dn4-9** | `CPU [0,1,3]` · `DISQUE` à **2** | saute à **~10 s** |
+| **avant dn4-9** | `CPU [0,1,2]` (`widget grandeurs 0 3`) · `DISQUE` à **1** (`4 1`) | saute à **~10 s** |
+
+⇒ ⛔ **LA CHARGE DE PIXELS N'EST PAS EN CAUSE.** Un label de moins redessiné 5 fois par seconde ne
+change **ni le moment ni la nature** du symptôme.
+
+⚠️ **CE QUE CET A/B NE FERME PAS, ET IL FAUT LE DIRE** : les deux bras tournent sur du code
+`dn4-9`. Restent actifs le formatage élargi de `dn_ui_pc_maj()` (borné par `desc_peuplees()` au
+lieu de `desc_n()`) et la copie de descripteur de `case_poser()`. Une poignée de `snprintf` par
+seconde ne peut **pas plausiblement** déplacer une marge DMA — ⛔ **mais « plausiblement » n'est pas
+« mesuré »**. **Le seul test qui ferme les derniers pourcents est le flash de `cdfe88c`.**
+
+### 20.4 🔴 AUCUN INSTRUMENT DE CE FIRMWARE NE SAIT VOIR CE DÉFAUT
+
+C'est **le fait le plus important de ce dossier**, et il conditionne toute investigation future :
+
+| instrument | pourquoi il est aveugle |
+|---|---|
+| `fps N` | compte les **vsync**, et *« un compteur vsync tourne MÊME écran noir »*. Il rend **37,40 Hz** pendant que l'image saute |
+| `flush` | mesure le **chemin de flush** (aire, copie, attente), ⛔ **pas le remplissage du bounce buffer** |
+| `dn_recal` | **INERTE dans ce build** : `CONFIG_LCD_RGB_RESTART_IN_VSYNC=y` ⇒ le driver relance à chaque VBlank et **ne lit jamais** le bit posé |
+| `widget largeur` / `detail` | géométrie de texte — hors sujet |
+| `mem` | RAM interne 90 127 → 89 315 → **89 179 o** sur ~10 min de trafic. La baisse **DÉCÉLÈRE** ⇒ ça ressemble à une **stabilisation**, ⛔ pas à une fuite qui s'emballe. ⚠️ **Trois points ne sont pas une tendance** |
+
+⇒ 🎯 **L'ŒIL DE L'OWNER EST LE SEUL INSTRUMENT**, et c'est pour ça que ce défaut a pu vivre
+jusqu'ici sans être caractérisé. ⛔ **Toute investigation doit COMMENCER par se donner un
+instrument** — sans quoi elle mesurera autre chose et conclura de travers.
+**Piste** : `esp_lcd_rgb_panel` expose `on_bounce_empty` / `on_bounce_frame_finish`. Un compteur
+d'événements de bounce, publié par `flush` ou `fps`, rendrait le défaut **CHIFFRABLE**.
+⚠️ `dn_ui.c:3804` mentionne déjà `on_bounce_frame_finish` — **le crochet existe**, il n'est pas
+instrumenté.
+
+### 20.5 Ce que le dépôt savait déjà, et ce que cette séance ajoute
+
+**Savait** — ledger, `dn4-6` §18.9 : *« LA FAMINE DMA A UN TROISIÈME AGRESSEUR — L'USB — ET LA
+MARGE EST FRANCHIE, PAS CONFORTABLE. »*
+**Ajoute** : un **protocole de reproduction** (`dn_injecteur.py --jeu reel --secondes 120`), une
+**signature temporelle** (~10 s / décalage isolé / ~40 s aléatoire), la **localisation** (le haut
+d'abord), l'**élimination** de la charge de pixels, et le constat qu'**aucun instrument ne le voit**.
+
+### 20.6 ⛔ CE QUI N'EST PAS FAIT
+
+- ⛔ **La cause n'est PAS établie.** « Famine du bounce buffer » est une **HYPOTHÈSE** orientée par
+  le balayage haut→bas, ⛔ pas une mesure.
+- ⛔ **Le rôle de la TEMPÉRATURE n'est pas testé.** La carte tournait depuis ~1 h. *« Au bout de
+  40 s ça sature »* est compatible avec un effet thermique **comme** avec une simple montée en
+  régime. ⇒ un tir **à froid**, après les 40 s de garde du bus, reste dû.
+- ⛔ **Le flash A/B sur `cdfe88c` n'est pas fait** — il ferme les derniers pourcents.
+- ⛔ **`num_fbs=2` n'est pas rejoué** : la config de référence est `num_fbs=1`, et §4bis décrit un
+  défaut DIFFÉRENT à `num_fbs=2`. ⛔ Ne pas les confondre.
