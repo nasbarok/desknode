@@ -516,10 +516,26 @@ static int cmd_set(int argc, char **argv)
             if (refus) {
                 printf("refusé : %s\n", refus);
                 printf("  couple demandé : bounce_px=%d + draw_lines=%d\n", b, l);
-                printf("  soit %u o de RAM interne, pour %u o disponibles au\n",
-                       (unsigned)demande, (unsigned)dispo);
-                printf("  prochain boot (libre maintenant + ce que les tampons\n");
-                printf("  actuels rendront), marge de sécurité déduite.\n");
+                /*
+                 * 🔴 CORRIGÉ LE 2026-08-23 (dn4-10) : ce bloc disait « marge de
+                 *    sécurité DÉDUITE » alors qu'elle ne l'est PAS. `*dispo` rend
+                 *    `libre + rendu` BRUT (dn_bootcfg.c:552-558), et la garde
+                 *    compare `veut + DN_BUDGET_MARGE_O > peut` (l.560). Le lecteur
+                 *    voyait donc « 199 680 demandés pour 234 895 disponibles →
+                 *    REFUSÉ » et en concluait, légitimement, que la garde était
+                 *    cassée. Elle ne l'était pas : le message mentait. C'est
+                 *    exactement le « chiffre faux mais PLAUSIBLE » que ce dépôt
+                 *    traque — pire qu'un chiffre absurde, parce qu'on le croit.
+                 *    ⇒ On imprime désormais LA COMPARAISON RÉELLEMENT FAITE.
+                 */
+                printf("  soit %u o de RAM interne, + %u o de marge de sécurité\n",
+                       (unsigned)demande, (unsigned)dn_bootcfg_budget_marge_o());
+                printf("  = %u o à trouver, pour %u o disponibles au prochain\n",
+                       (unsigned)(demande + dn_bootcfg_budget_marge_o()), (unsigned)dispo);
+                printf("  boot (libre maintenant + ce que les tampons actuels\n");
+                printf("  rendront). ⚠️ Le chiffre « disponibles » est BRUT : la\n");
+                printf("  marge n'en est PAS retranchée, elle s'ajoute à la\n");
+                printf("  demande. C'est la ligne du dessus qui décide.\n");
                 printf("⚠️ Ce refus REMPLACE un brick : au-delà, c'est\n");
                 printf("   ESP_ERR_NO_MEM au boot, donc panique, donc CPU HALTÉ\n");
                 printf("   par CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT — et plus\n");

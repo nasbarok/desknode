@@ -123,4 +123,11 @@ size_t dn_bootcfg_cout_interne(int bounce_px, int draw_lines);
 const char *dn_bootcfg_budget_refus(int bounce_px, int draw_lines, size_t *demande,
                                     size_t *dispo);
 
+/* La marge de sécurité du budget RAM interne, en octets.
+ * ⚠️ Elle s'AJOUTE à la demande, elle n'est PAS retranchée du disponible que
+ *    `dn_bootcfg_budget_refus()` rend par `*dispo` — la comparaison faite est
+ *    `demande + marge > dispo`. Le message de la console le disait à l'envers
+ *    jusqu'au 2026-08-23 (dn4-10), et un refus légitime y ressemblait à un bug. */
+size_t dn_bootcfg_budget_marge_o(void);
+
 void dn_bootcfg_log(const dn_bootcfg_t *cfg);

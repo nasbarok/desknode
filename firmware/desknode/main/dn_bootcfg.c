@@ -537,6 +537,12 @@ size_t dn_bootcfg_cout_interne(int bounce_px, int draw_lines)
     return bounce + draw;
 }
 
+/* PUBLIÉE depuis dn4-10 : la console imprime la comparaison RÉELLEMENT faite
+ * (`veut + marge > peut`), et pour ça il lui faut la marge. Elle ne peut plus
+ * rester privée sans que le message ait à la deviner — c'est cette devinette
+ * qui avait produit le « marge de sécurité déduite » FAUX. */
+size_t dn_bootcfg_budget_marge_o(void) { return DN_BUDGET_MARGE_O; }
+
 const char *dn_bootcfg_budget_refus(int bounce_px, int draw_lines, size_t *demande,
                                     size_t *dispo)
 {
