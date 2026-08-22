@@ -288,10 +288,24 @@ typedef struct {
     uint32_t ph_min_us;
     uint32_t ph_max_us;
     uint64_t ph_somme_us;
-    uint32_t ph_1us;       /* écart au min > 1 µs   (~16 px) */
-    uint32_t ph_5us;       /* écart au min > 5 µs   (~80 px) */
-    uint32_t ph_ligne;     /* écart au min > 1 ligne */
-    uint32_t ph_10li;      /* écart au min > 10 lignes */
+    /* 🔴 LES SEUILS SE COMPTENT CONTRE LE **MAXIMUM**, ⛔ pas contre le minimum.
+     *    Corrigé le 2026-08-23, DANS LA SÉANCE, par la mesure :
+     *      repos  180 s : min 1915 · moy 1961 · MAX 1978  (étendue  63 µs)
+     *      trafic 180 s : min 1249 · moy 1955 · MAX 1990  (étendue 741 µs)
+     *    Le mode est EN HAUT, les écarts vont vers le BAS. Référencer au minimum
+     *    comptait 6 660 trames sur 6 725 sous trafic et 0 au repos : ça ne
+     *    discrimine rien. C'est la phase COURTE qui est le signal — un
+     *    enroulement EN RETARD (le remplissage qui décroche) la raccourcit.
+     * 🎯 Et le seuil n'est PAS arbitraire : `t_demi_us` est la durée
+     *    d'écoulement d'un DEMI-BOUNCE. Au-delà, la DMA a forcément lu un tampon
+     *    pas encore rempli — c'est le décalage que l'œil voit. */
+    uint32_t ph_10pc;      /* déficit sous le max > 10 % du demi-bounce */
+    uint32_t ph_25pc;      /* > 25 % */
+    uint32_t ph_50pc;      /* > 50 % */
+    uint32_t ph_100pc;     /* > 100 % — 🔴 LE SEUIL DE CORRUPTION */
+    uint32_t ph_deficit_max_us; /* le pire déficit observé */
+    uint32_t t_demi_us;    /* écoulement d'un demi-bounce, lu sur le panneau
+                            * RÉELLEMENT monté (⛔ pas sur la NVS) */
     uint32_t us_par_ligne; /* la durée d'une ligne, publiée pour que la sortie
                             * se suffise à elle-même */
 

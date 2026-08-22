@@ -1346,15 +1346,26 @@ static int cmd_flush(int argc, char **argv)
                    (unsigned long)b.ph_min_us,
                    (unsigned long)(b.ph_somme_us / b.ph_n),
                    (unsigned long)b.ph_max_us);
-            printf("     = LE RETARD ABSOLU de l'ISR de VSYNC_END. Écart PIRE au "
-                   "min : +%lu us, soit ~%lu PIXELS (1 px = 62,5 ns à %d Hz)\n",
-                   (unsigned long)(b.ph_max_us - b.ph_min_us),
-                   (unsigned long)((b.ph_max_us - b.ph_min_us) * 16u), DN_PCLK_HZ);
-            printf("     trames en retard de plus de : 1 us (~16 px) %lu · "
-                   "5 us (~80 px) %lu · 1 ligne (%lu us) %lu · 10 lignes %lu\n",
-                   (unsigned long)b.ph_1us, (unsigned long)b.ph_5us,
-                   (unsigned long)b.us_par_ligne, (unsigned long)b.ph_ligne,
-                   (unsigned long)b.ph_10li);
+            printf("     une phase COURTE = l'enroulement EN RETARD = le "
+                   "remplissage du bounce qui décroche.\n");
+            printf("     🔴 DÉFICIT PIRE sous le max : %lu us, pour un "
+                   "demi-bounce qui s'écoule en %lu us\n",
+                   (unsigned long)b.ph_deficit_max_us, (unsigned long)b.t_demi_us);
+            if (b.t_demi_us && b.ph_deficit_max_us > b.t_demi_us) {
+                printf("        ⇒ DÉPASSÉ de %lu us : la DMA a lu un tampon PAS "
+                       "ENCORE REMPLI. C'est le décalage visible.\n",
+                       (unsigned long)(b.ph_deficit_max_us - b.t_demi_us));
+            } else if (b.t_demi_us) {
+                printf("        ⇒ sous le seuil, il restait %lu us de marge "
+                       "(%lu %% du demi-bounce)\n",
+                       (unsigned long)(b.t_demi_us - b.ph_deficit_max_us),
+                       (unsigned long)((b.t_demi_us - b.ph_deficit_max_us) * 100u /
+                                       b.t_demi_us));
+            }
+            printf("     trames dont le déficit dépasse : 10 %% %lu · 25 %% %lu · "
+                   "50 %% %lu · 🔴 100 %% (CORRUPTION) %lu\n",
+                   (unsigned long)b.ph_10pc, (unsigned long)b.ph_25pc,
+                   (unsigned long)b.ph_50pc, (unsigned long)b.ph_100pc);
             printf("     ⚠️ PLANCHER : la microseconde, soit 16 px. ⛔ « 0 » ici ne "
                    "veut PAS dire « 0 pixel ».\n");
             printf("     ⚠️ L'horodatage de référence vient LUI AUSSI d'une ISR : "

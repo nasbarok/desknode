@@ -2,6 +2,7 @@
 
 #include <math.h>
 
+#include "dn_display.h"
 #include "dn_pins.h"
 #include "esp_attr.h"
 #include "esp_check.h"
@@ -171,10 +172,27 @@ static volatile uint32_t s_bnc_ph_n;
 static volatile uint32_t s_bnc_ph_min;
 static volatile uint32_t s_bnc_ph_max;
 static volatile uint64_t s_bnc_ph_somme;
-static volatile uint32_t s_bnc_ph_1us;   /* > min +  1 us  (~16 px) */
-static volatile uint32_t s_bnc_ph_5us;   /* > min +  5 us  (~80 px) */
-static volatile uint32_t s_bnc_ph_ligne; /* > min + 1 ligne (38,75 us) */
-static volatile uint32_t s_bnc_ph_10li;  /* > min + 10 lignes */
+/* 🔴 SEUILS REFERENCES AU **MAXIMUM**, ⛔ PLUS AU MINIMUM — corrige le
+ *    2026-08-23, dans la seance meme, par la MESURE :
+ *      repos    180 s : phase min 1915 · moy 1961 · MAX 1978   (etendue   63 us)
+ *      trafic   180 s : phase min 1249 · moy 1955 · MAX 1990   (etendue  741 us)
+ *    Le MODE est en HAUT et les ecarts vont vers le BAS. Referencer au minimum
+ *    comptait donc « presque toutes les trames » sous trafic et rien au repos :
+ *    un seau qui rend 6 660/6 725 ne discrimine rien. La phase COURTE est le
+ *    signal, parce que `phase = t_vsync - t_enroulement` : un enroulement en
+ *    RETARD (le remplissage qui decroche) RACCOURCIT la phase.
+ *
+ * 🎯 ET LE SEUIL QUI COMPTE N'EST PAS ARBITRAIRE : c'est la duree d'ecoulement
+ *    d'un DEMI-BOUNCE. Au-dela, la DMA a forcement lu un tampon pas encore
+ *    rempli. A `bounce_px = 7680` elle vaut 620 us — et le deficit mesure sous
+ *    trafic est de 741 us, soit 121 us AU-DELA. C'est le decalage que l'owner
+ *    voit. */
+static uint32_t s_bnc_t_demi_us;         /* ecoulement d'un demi-bounce, pose a l'attache */
+static volatile uint32_t s_bnc_ph_10pc;  /* deficit sous le max > 10 % du demi-bounce */
+static volatile uint32_t s_bnc_ph_25pc;  /* > 25 % */
+static volatile uint32_t s_bnc_ph_50pc;  /* > 50 % */
+static volatile uint32_t s_bnc_ph_100pc; /* > 100 % — 🔴 LE SEUIL DE CORRUPTION */
+static volatile uint32_t s_bnc_ph_deficit_max; /* le pire deficit, en us */
 static volatile uint32_t s_bnc_ph_ecarte; /* echantillons du degrossissage */
 
 /* ── ecrite par la tache console UNIQUEMENT ── */
@@ -222,10 +240,11 @@ static IRAM_ATTR bool on_vsync(esp_lcd_panel_handle_t panel,
         s_bnc_ph_min = 0;
         s_bnc_ph_max = 0;
         s_bnc_ph_somme = 0;
-        s_bnc_ph_1us = 0;
-        s_bnc_ph_5us = 0;
-        s_bnc_ph_ligne = 0;
-        s_bnc_ph_10li = 0;
+        s_bnc_ph_10pc = 0;
+        s_bnc_ph_25pc = 0;
+        s_bnc_ph_50pc = 0;
+        s_bnc_ph_100pc = 0;
+        s_bnc_ph_deficit_max = 0;
         s_bnc_ph_ecarte = 0;
     } else {
         /* (a) comptabilite des enroulements : `wraps` doit suivre `trames` UN
@@ -247,7 +266,11 @@ static IRAM_ATTR bool on_vsync(esp_lcd_panel_handle_t panel,
             uint32_t ph = t_us - s_bnc_t_wrap_us;
             if (ph < 2u * DN_PERIODE_US) { /* borne de sanite : jamais > 2 trames */
                 if (s_bnc_ph_n < DN_PHASE_DEGROSSI) {
-                    /* Degrossissage : on etablit le minimum, on ne compte pas. */
+                    /* Degrossissage : on etablit le MAXIMUM (la phase « a
+                     * l'heure »), on ne compte pas. */
+                    if (ph > s_bnc_ph_max) {
+                        s_bnc_ph_max = ph;
+                    }
                     if (s_bnc_ph_n == 0 || ph < s_bnc_ph_min) {
                         s_bnc_ph_min = ph;
                     }
@@ -262,18 +285,26 @@ static IRAM_ATTR bool on_vsync(esp_lcd_panel_handle_t panel,
                     }
                     s_bnc_ph_somme += ph;
                     s_bnc_ph_n++;
-                    uint32_t ecart = ph - s_bnc_ph_min;
-                    if (ecart > 1u) {
-                        s_bnc_ph_1us++;
+                    /* LE DEFICIT : de combien cette trame est-elle EN DESSOUS de
+                     * la phase a l'heure. Zero si elle est au-dessus. */
+                    uint32_t deficit = (ph < s_bnc_ph_max) ? (s_bnc_ph_max - ph) : 0u;
+                    if (deficit > s_bnc_ph_deficit_max) {
+                        s_bnc_ph_deficit_max = deficit;
                     }
-                    if (ecart > 5u) {
-                        s_bnc_ph_5us++;
-                    }
-                    if (ecart > DN_US_PAR_LIGNE) {
-                        s_bnc_ph_ligne++;
-                    }
-                    if (ecart > 10u * DN_US_PAR_LIGNE) {
-                        s_bnc_ph_10li++;
+                    uint32_t d = s_bnc_t_demi_us;
+                    if (d > 0u) {
+                        if (deficit * 10u > d) {
+                            s_bnc_ph_10pc++;
+                        }
+                        if (deficit * 4u > d) {
+                            s_bnc_ph_25pc++;
+                        }
+                        if (deficit * 2u > d) {
+                            s_bnc_ph_50pc++;
+                        }
+                        if (deficit > d) {
+                            s_bnc_ph_100pc++;
+                        }
                     }
                 }
             }
@@ -470,6 +501,16 @@ esp_err_t dn_measure_attach(esp_lcd_panel_handle_t panel)
     ESP_RETURN_ON_ERROR(
         esp_lcd_rgb_panel_register_event_callbacks(panel, &cbs, NULL), TAG,
         "branchement du callback vsync refusé");
+    /* dn4-10 : la duree d'ecoulement d'un DEMI-BOUNCE, posee une fois. C'est le
+     * seuil au-dela duquel la DMA a forcement lu un tampon pas encore rempli.
+     * Lue depuis le panneau REELLEMENT monte, ⛔ pas depuis la NVS : un `set`
+     * sans `reboot` ne change pas le materiel. */
+    s_bnc_t_demi_us = DN_US_POUR_LIGNES(dn_display_bounce_px() / DN_LCD_H_RES);
+    ESP_LOGI(TAG,
+             "dn4-10 : seuil de corruption = %lu us (ecoulement d'un demi-bounce "
+             "de %u px, soit %u ligne(s))",
+             (unsigned long)s_bnc_t_demi_us, (unsigned)dn_display_bounce_px(),
+             (unsigned)(dn_display_bounce_px() / DN_LCD_H_RES));
     ESP_LOGI(TAG, "compteur vsync branché (ISR en IRAM, compteur en RAM interne)");
     ESP_LOGI(TAG,
              "  ⚠️ enregistrement EXCLUSIF : il vient d'écraser tout callback "
@@ -563,10 +604,12 @@ void dn_measure_bounce_get(dn_bounce_stats_t *out)
     out->ph_min_us = s_bnc_ph_min;
     out->ph_max_us = s_bnc_ph_max;
     out->ph_somme_us = s_bnc_ph_somme;
-    out->ph_1us = s_bnc_ph_1us;
-    out->ph_5us = s_bnc_ph_5us;
-    out->ph_ligne = s_bnc_ph_ligne;
-    out->ph_10li = s_bnc_ph_10li;
+    out->ph_10pc = s_bnc_ph_10pc;
+    out->ph_25pc = s_bnc_ph_25pc;
+    out->ph_50pc = s_bnc_ph_50pc;
+    out->ph_100pc = s_bnc_ph_100pc;
+    out->ph_deficit_max_us = s_bnc_ph_deficit_max;
+    out->t_demi_us = s_bnc_t_demi_us;
     out->us_par_ligne = DN_US_PAR_LIGNE;
     out->fenetre_ms = (t_us - s_bnc_t0_us) / 1000u;
     out->raz_en_attente = s_bnc_raz;
