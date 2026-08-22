@@ -1336,6 +1336,30 @@ static int cmd_flush(int argc, char **argv)
                    (unsigned long)b.retards_vb,
                    (unsigned long)b.retards_trame);
         }
+        if (b.ph_n == 0) {
+            printf("  phase enroulement→vsync : aucun échantillon compté (%lu "
+                   "écartés au dégrossissage)\n", (unsigned long)b.ph_ecarte);
+        } else {
+            printf("  🎯 phase enroulement→VSYNC_END : n=%lu (+%lu dégrossis) · "
+                   "min %lu · moy %lu · MAX %lu us\n",
+                   (unsigned long)b.ph_n, (unsigned long)b.ph_ecarte,
+                   (unsigned long)b.ph_min_us,
+                   (unsigned long)(b.ph_somme_us / b.ph_n),
+                   (unsigned long)b.ph_max_us);
+            printf("     = LE RETARD ABSOLU de l'ISR de VSYNC_END. Écart PIRE au "
+                   "min : +%lu us, soit ~%lu PIXELS (1 px = 62,5 ns à %d Hz)\n",
+                   (unsigned long)(b.ph_max_us - b.ph_min_us),
+                   (unsigned long)((b.ph_max_us - b.ph_min_us) * 16u), DN_PCLK_HZ);
+            printf("     trames en retard de plus de : 1 us (~16 px) %lu · "
+                   "5 us (~80 px) %lu · 1 ligne (%lu us) %lu · 10 lignes %lu\n",
+                   (unsigned long)b.ph_1us, (unsigned long)b.ph_5us,
+                   (unsigned long)b.us_par_ligne, (unsigned long)b.ph_ligne,
+                   (unsigned long)b.ph_10li);
+            printf("     ⚠️ PLANCHER : la microseconde, soit 16 px. ⛔ « 0 » ici ne "
+                   "veut PAS dire « 0 pixel ».\n");
+            printf("     ⚠️ L'horodatage de référence vient LUI AUSSI d'une ISR : "
+                   "un retard COMMUN aux deux s'annule et reste invisible.\n");
+        }
         printf("  ce que ça veut dire : le driver RGB remet la DMA à zéro à\n");
         printf("     CHAQUE VBlank (RESTART_IN_VSYNC=y) et écrit lui-même que\n");
         printf("     « si cette interruption est ASSEZ EN RETARD, l'image se\n");

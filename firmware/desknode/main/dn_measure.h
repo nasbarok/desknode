@@ -269,6 +269,32 @@ typedef struct {
     uint32_t retards_vb;    /* > période + VBlank entier (1 937 us) */
     uint32_t retards_trame; /* > 2 périodes — une trame ENTIÈRE de retard */
 
+    /* ── dn4-10, DEUXIÈME PASSE : LA PHASE `enroulement -> VSYNC_END` ─────────
+     * 🔴 Ajoutée le 2026-08-23 parce que l'ŒIL A PRIS LES COMPTEURS CI-DESSUS EN
+     *    DÉFAUT : sous l'agent RÉEL, 180 s, `manques = 0` et gigue max +16 µs,
+     *    pendant que l'owner voyait « quelques pixels vers le bas, ça s'abaisse
+     *    puis revient, quasiment toutes les secondes ».
+     * 🎯 L'échelle vient de sa phrase : à 16 MHz, UN PIXEL DURE 62,5 ns, donc les
+     *    seuils ci-dessus (100 µs = 1 600 px) ne pouvaient PAS voir « quelques
+     *    pixels ». La phase mesure le retard ABSOLU de l'ISR de VSYNC_END, pas sa
+     *    gigue relative — et c'est ce retard-là que le driver rend responsable du
+     *    décalage.
+     * ⚠️ Plancher de l'instrument : la MICROSECONDE, soit 16 pixels.
+     *    ⛔ « 0 dépassement » ne veut donc PAS dire « 0 pixel ».
+     * ⚠️ Les seuils se comptent contre le MINIMUM de la fenêtre (la phase « à
+     *    l'heure »), et les `ph_ecarte` premières trames servent à l'établir. */
+    uint32_t ph_n;         /* échantillons COMPTÉS (dégrossissage exclu) */
+    uint32_t ph_ecarte;    /* échantillons du dégrossissage, ⛔ non comptés */
+    uint32_t ph_min_us;
+    uint32_t ph_max_us;
+    uint64_t ph_somme_us;
+    uint32_t ph_1us;       /* écart au min > 1 µs   (~16 px) */
+    uint32_t ph_5us;       /* écart au min > 5 µs   (~80 px) */
+    uint32_t ph_ligne;     /* écart au min > 1 ligne */
+    uint32_t ph_10li;      /* écart au min > 10 lignes */
+    uint32_t us_par_ligne; /* la durée d'une ligne, publiée pour que la sortie
+                            * se suffise à elle-même */
+
     uint32_t fenetre_ms;    /* durée écoulée depuis la remise à zéro */
     bool raz_en_attente;    /* la RAZ n'a pas encore été consommée par l'ISR */
 } dn_bounce_stats_t;

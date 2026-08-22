@@ -126,6 +126,57 @@ static volatile uint32_t s_bnc_ret_bp;
 static volatile uint32_t s_bnc_ret_vb;
 static volatile uint32_t s_bnc_ret_trame;
 
+/* ── dn4-10, DEUXIEME PASSE — LA PHASE, ecrite par l'ISR de vsync UNIQUEMENT ──
+ *
+ * 🔴 POURQUOI ELLE EXISTE : la premiere passe a ete PRISE EN DEFAUT PAR L'OEIL,
+ *    le 2026-08-23. Sous l'agent REEL, 180 s, `bounce_px = 7680` : les compteurs
+ *    rendaient `manques = 0` et une gigue vsync->vsync de +16 us AU PIRE, pendant
+ *    que l'owner voyait « un glissement de quelques pixels vers le BAS, ca
+ *    s'abaisse puis revient, quasiment toutes les secondes ». C'est la DEUXIEME
+ *    issue prevue par AC2 : compteur a zero, oeil qui voit => l'instrument ne
+ *    regardait pas le bon evenement. On ne l'efface pas, on lui en ajoute un.
+ *
+ * 🔴 CE QUE LA DESCRIPTION DE L'OWNER A APPRIS, et qui fixe l'echelle :
+ *    « quelques pixels » — pas une ligne, pas une trame. A pclk = 16 MHz,
+ *    UN PIXEL DURE 62,5 ns. Les seuils de la premiere passe (100 us, 775 us)
+ *    sont donc TROIS ORDRES DE GRANDEUR trop gros : 100 us = 1 600 pixels.
+ *    Un compteur qui ne se declenche qu'a 1 600 pixels de retard ne pouvait pas
+ *    voir un decalage de quelques-uns. Il ne mentait pas — il ne regardait pas.
+ *
+ * 🎯 CE QU'ON MESURE MAINTENANT : la PHASE `enroulement -> VSYNC_END`.
+ *    L'enroulement de `bounce_pos_px` tombe a un point FIXE du balayage (la DMA
+ *    avance a cadence materielle, elle ne derive pas). Le VSYNC_END, lui, est
+ *    servi par une ISR qui PEUT etre retardee. L'ecart entre les deux est donc
+ *    le RETARD ABSOLU de l'ISR de VSYNC_END, a un offset constant pres — et
+ *    c'est exactement la grandeur que le driver rend responsable du decalage.
+ *
+ * ⚠️ CE QUE CETTE MESURE NE SAIT PAS FAIRE, et il faut le lire avant de conclure :
+ *    - l'horodatage de l'enroulement vient LUI AUSSI d'une ISR (le trans-EOF).
+ *      Un retard COMMUN aux deux s'annule et reste invisible. Les deux ISR sont
+ *      sur le meme coeur au meme niveau de priorite, donc elles ne se preemptent
+ *      pas ; mais un tiers qui les retarderait ENSEMBLE passerait au travers.
+ *    - la resolution est la MICROSECONDE (`esp_timer`), soit 16 pixels. Un
+ *      decalage de moins de 16 px reste sous le plancher de l'instrument.
+ *      ⛔ Donc « 0 depassement » ne veut PAS dire « 0 pixel ».
+ *
+ * ⚠️ REFERENCE AUTO-CALIBREE, ⛔ AUCUN NOMBRE MAGIQUE : les seuils se comptent
+ *    par rapport au MINIMUM observe dans la fenetre — la phase « a l'heure ».
+ *    Les 32 premieres trames servent a l'etablir et ne sont PAS comptees ; sans
+ *    ce degrossissage, un minimum encore haut ferait passer les premiers
+ *    echantillons pour des retards. Le nombre de trames ecartees est PUBLIE. */
+#define DN_PHASE_DEGROSSI 32u
+/* 1 px = 1/16 MHz = 62,5 ns ; 1 ligne = htotal px = 620/16 MHz = 38,75 us. */
+#define DN_US_PAR_LIGNE DN_US_POUR_LIGNES(1)
+static volatile uint32_t s_bnc_ph_n;
+static volatile uint32_t s_bnc_ph_min;
+static volatile uint32_t s_bnc_ph_max;
+static volatile uint64_t s_bnc_ph_somme;
+static volatile uint32_t s_bnc_ph_1us;   /* > min +  1 us  (~16 px) */
+static volatile uint32_t s_bnc_ph_5us;   /* > min +  5 us  (~80 px) */
+static volatile uint32_t s_bnc_ph_ligne; /* > min + 1 ligne (38,75 us) */
+static volatile uint32_t s_bnc_ph_10li;  /* > min + 10 lignes */
+static volatile uint32_t s_bnc_ph_ecarte; /* echantillons du degrossissage */
+
 /* ── ecrite par la tache console UNIQUEMENT ── */
 static volatile bool s_bnc_raz;
 
@@ -167,6 +218,15 @@ static IRAM_ATTR bool on_vsync(esp_lcd_panel_handle_t panel,
         s_bnc_ret_bp = 0;
         s_bnc_ret_vb = 0;
         s_bnc_ret_trame = 0;
+        s_bnc_ph_n = 0;
+        s_bnc_ph_min = 0;
+        s_bnc_ph_max = 0;
+        s_bnc_ph_somme = 0;
+        s_bnc_ph_1us = 0;
+        s_bnc_ph_5us = 0;
+        s_bnc_ph_ligne = 0;
+        s_bnc_ph_10li = 0;
+        s_bnc_ph_ecarte = 0;
     } else {
         /* (a) comptabilite des enroulements : `wraps` doit suivre `trames` UN
          *     pour UN. La soustraction non signee absorbe l'enroulement 32 bits. */
@@ -177,6 +237,46 @@ static IRAM_ATTR bool on_vsync(esp_lcd_panel_handle_t panel,
             s_bnc_manques++;
         } else if (n >= 2) {
             s_bnc_doubles++;
+        }
+
+        /* (a bis) LA PHASE — le retard ABSOLU de CETTE ISR. Seulement quand un
+         * enroulement a bien eu lieu dans la trame : sinon l'horodatage de
+         * reference appartient a une trame anterieure et la phase mesurerait
+         * une periode entiere de plus. */
+        if (n >= 1) {
+            uint32_t ph = t_us - s_bnc_t_wrap_us;
+            if (ph < 2u * DN_PERIODE_US) { /* borne de sanite : jamais > 2 trames */
+                if (s_bnc_ph_n < DN_PHASE_DEGROSSI) {
+                    /* Degrossissage : on etablit le minimum, on ne compte pas. */
+                    if (s_bnc_ph_n == 0 || ph < s_bnc_ph_min) {
+                        s_bnc_ph_min = ph;
+                    }
+                    s_bnc_ph_n++;
+                    s_bnc_ph_ecarte++;
+                } else {
+                    if (ph < s_bnc_ph_min) {
+                        s_bnc_ph_min = ph;
+                    }
+                    if (ph > s_bnc_ph_max) {
+                        s_bnc_ph_max = ph;
+                    }
+                    s_bnc_ph_somme += ph;
+                    s_bnc_ph_n++;
+                    uint32_t ecart = ph - s_bnc_ph_min;
+                    if (ecart > 1u) {
+                        s_bnc_ph_1us++;
+                    }
+                    if (ecart > 5u) {
+                        s_bnc_ph_5us++;
+                    }
+                    if (ecart > DN_US_PAR_LIGNE) {
+                        s_bnc_ph_ligne++;
+                    }
+                    if (ecart > 10u * DN_US_PAR_LIGNE) {
+                        s_bnc_ph_10li++;
+                    }
+                }
+            }
         }
 
         /* (b) LA GIGUE. `fps` moyenne 561 trames et efface exactement ca. */
@@ -458,6 +558,16 @@ void dn_measure_bounce_get(dn_bounce_stats_t *out)
     out->retards_bp = s_bnc_ret_bp;
     out->retards_vb = s_bnc_ret_vb;
     out->retards_trame = s_bnc_ret_trame;
+    out->ph_n = s_bnc_ph_n > s_bnc_ph_ecarte ? s_bnc_ph_n - s_bnc_ph_ecarte : 0;
+    out->ph_ecarte = s_bnc_ph_ecarte;
+    out->ph_min_us = s_bnc_ph_min;
+    out->ph_max_us = s_bnc_ph_max;
+    out->ph_somme_us = s_bnc_ph_somme;
+    out->ph_1us = s_bnc_ph_1us;
+    out->ph_5us = s_bnc_ph_5us;
+    out->ph_ligne = s_bnc_ph_ligne;
+    out->ph_10li = s_bnc_ph_10li;
+    out->us_par_ligne = DN_US_PAR_LIGNE;
     out->fenetre_ms = (t_us - s_bnc_t0_us) / 1000u;
     out->raz_en_attente = s_bnc_raz;
 }
