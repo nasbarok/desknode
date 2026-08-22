@@ -2402,23 +2402,36 @@ static void build_detail(lv_obj_t *scr, int idx)
      *    `4c3a3f7`), et ⛔ aucun raccourcissement de libellé ne rattrape 210 px.
      *    Une par ligne mesure 315 / 309 / 285 px : **117 px de marge minimale**,
      *    libellés français COMPLETS.
-     * ⚠️ **ET C'EST UNE FACTURE POUR `dn4-4`, DITE ICI** : les **43 px** sont
+     * 🔴 **154 px, ⛔ PAS 140 — ET C'EST UN CHIFFRE RELU, PAS CALCULÉ.**
+     *    La première version posait **140** = 4 x 35, et elle **OUBLIAIT LE
+     *    `y = 14` DU LABEL**. La carte l'a dit, mot pour mot :
+     *      `hauteur : 140 px posee a y = 14 (panneau 140 px)`
+     *      `⛔ 14 + 140 = 154 > 140 : la DERNIERE LIGNE est CLIPPEE de 14 px`
+     *    ⚠️ **Et elle ne l'a dit QUE parce que l'instrument venait d'être
+     *       corrigé** : `widget detail` ne rendait que la LARGEUR, il ne pouvait
+     *       pas voir la dimension qui déborde. C'est la règle n°5 du dépôt.
+     *    ⇒ `14` (haut) + `140` (quatre lignes) = **154**. ⛔ Pas de marge basse :
+     *      on prend le MINIMUM, parce que chaque pixel est pris à `dn4-4`.
+     *
+     * ⚠️ **ET C'EST UNE FACTURE POUR `dn4-4`, DITE ICI** : les **57 px** sont
      *    repris AU MÊME ENDROIT, le placeholder de courbe, qui passe de 165 à
-     *    **122 px** de haut. Son BAS reste à **370**, le panneau du bas (385) ne
+     *    **108 px** de haut. Son BAS reste à **370**, le panneau du bas (385) ne
      *    bouge toujours pas, et le template garde ses QUATRE panneaux.
-     *    ⇒ `dn4-4` dessinera sa courbe dans **122 px**, ⛔ pas 165. À ne pas
+     *    ⇒ `dn4-4` dessinera sa courbe dans **108 px**, ⛔ pas 165. À ne pas
      *      découvrir en la dessinant. */
     lv_obj_t *bloc_valeur =
-        panneau(scr, DN_UI_MARGE, 95, DN_LCD_H_RES - 2 * DN_UI_MARGE, 140);
+        panneau(scr, DN_UI_MARGE, 95, DN_LCD_H_RES - 2 * DN_UI_MARGE, 154);
     s_det_valeur = texte(bloc_valeur, "--", &dn_font_28, lv_color_white(), 14, 14);
 
     /* Placeholder de courbe : un cadre étiqueté, PAS une courbe. Les vraies
      * séries arrivent avec l'historique RAM-session (dn4-4). */
-    /* ⚠️ 248 + 122 = 370 : le BAS est INCHANGÉ, comme en dn4-6. C'est
+    /* ⚠️ 262 + 108 = 370 : le BAS est INCHANGÉ, comme en dn4-6. C'est
      *    l'invariant du template, ⛔ pas une coïncidence — le vérifier à chaque
-     *    fois qu'on touche ces deux nombres. */
-    lv_obj_t *cadre = panneau(scr, DN_UI_MARGE, 248, DN_LCD_H_RES - 2 * DN_UI_MARGE,
-                              122);
+     *    fois qu'on touche ces deux nombres.
+     *    ⚠️ Et l'écart au bloc de valeurs reste 13 px : 95 + 154 = 249, + 13 =
+     *       262. Le même que celui de dn4-6 (192 + 13 = 205). */
+    lv_obj_t *cadre = panneau(scr, DN_UI_MARGE, 262, DN_LCD_H_RES - 2 * DN_UI_MARGE,
+                              108);
     texte(cadre, "COURBE (dn4-4)", &dn_font_14,
           lv_color_hex(0x80a0b0), 12, 70);
 
