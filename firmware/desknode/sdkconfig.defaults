@@ -122,7 +122,59 @@ CONFIG_LCD_RGB_ISR_IRAM_SAFE=n
 #    (ligne 464/472) sait poser. Le redémarrage a déjà lieu à chaque VBlank tout
 #    seul. Tout « le `dma` a remis l'image » relevé SOUS cette configuration
 #    crédite la commande d'un travail qu'elle n'a pas fait.
-CONFIG_LCD_RGB_RESTART_IN_VSYNC=y
+#
+# ═══════════════════════════════════════════════════════════════════════════
+# 🔴 BRANCHE D'ESSAI DU 2026-08-23 — LE SYMBOLE PASSE A `n`
+#    ⛔ TOUT CE QUI PRECEDE RESTE VRAI ET N'EST PAS EFFACE : c'est le motif de
+#       `y`, et il etait juste EN dn1-2. Ce qui a change, c'est le contexte.
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# 🔴 CE QUE L'ENQUETE A ETABLI (investigations/glissement-dma-restart-in-vsync) :
+#    LE GLISSEMENT DE TRAME N'EST PAS LA FAMINE, C'EST SON RATTRAPAGE.
+#    Espressif l'ecrit au-dessus de `lcd_rgb_panel_try_restart_transmission()`
+#    (esp_lcd_panel_rgb.c:1142-1148) :
+#      « this fix can lead to SINGLE-FRAME DESYNCS itself : if this interrupt is
+#        LATE ENOUGH, the display will SHIFT as the LCD controller already read
+#        out the first data bytes, and resetting DMA will RE-SEND those. »
+#    A `y`, ce reset est joue INCONDITIONNELLEMENT ~37,4 fois par seconde =>
+#    37,4 occasions de glisser par seconde. dn4-10 a mesure 0,79 a 0,94
+#    corruption/s sous agent reel, et l'owner voit « quelques pixels vers le bas,
+#    ca s'abaisse puis revient, quasiment toutes les secondes ».
+#
+# 🔴 POURQUOI LES CINQ LEVIERS DE dn4-10 ONT ECHOUE : ils visaient TOUS la
+#    famine (`bounce_px` sur 3 crans, `draw_lines`, `ISR_IRAM_SAFE`, `bandes`,
+#    `groupe`). AUCUN ne touchait au rattrapage. Ils ne POUVAIENT pas suffire.
+#
+# 🎯 A `n`, la branche `#else` est tout autre chose (esp_lcd_panel_rgb.c:1153) :
+#      - reset SEULEMENT si `need_restart` (recalage demande) OU si
+#        `bb_eof_count < expect_eof_count`, c'est-a-dire FAMINE AVEREE ;
+#      - et `bb_eof_count` y est enfin REMIS A ZERO. A `y` il ne l'est jamais et
+#        le test est compile HORS du binaire : le driver ne SAIT pas s'il y a
+#        famine, il reset « au cas ou ».
+#    => moins de resets, et chacun justifie.
+#
+# ⚠️ LE MOTIF DE `y` A DISPARU AVEC `num_fbs = 2`. Il a ete retenu en dn1-2 pour
+#    un decrochage au DEMARRAGE, dans un monde a DEUX framebuffers. Depuis le
+#    2026-08-15 il n'y en a plus qu'UN, et le dossier ecrit lui-meme « il n'y a
+#    plus de bascule, donc plus rien a perdre » (affichage.md:487).
+#    Trois faits DEJA AU DEPOT, jamais rapproches :
+#      1. affichage.md:599 — a `n`, le decalage au boot se corrige par UN SEUL
+#         appel, « remet l'image en place d'un coup ». Pas un blocage.
+#      2. affichage.md:541 — `n` + recalage evenementiel a DEJA tourne en dn1-3 :
+#         « cadrage CORRECT — le defaut que `y` corrigeait N'EST PAS REVENU »,
+#         9 recalages, 1 vsync suffit.
+#      3. affichage.md:551 — son seul cout, « l'image reste decalee DEPUIS LA
+#         BASCULE », est indexe sur une bascule qui n'existe plus.
+#
+# ✅ ET LA COMMANDE `dma` REDEVIENT OPERANTE — le paragraphe ci-dessus qui la
+#    declare inoperante redevient FAUX a `n`, et c'est voulu : c'est le filet de
+#    recuperation si le recalage de boot ratait.
+#
+# ⚠️ CE QUI RESTE A PROUVER, ET C'EST POURQUOI ON PARLE D'UNE BRANCHE D'ESSAI :
+#    `n` n'a JAMAIS ete mesure a `num_fbs = 1`. L'A/B qui l'avait ecarte datait
+#    de dn1-2, a deux framebuffers. Si l'image sort decalee en permanence et que
+#    le recalage de boot ne la rattrape pas => revenir a `y`, et le dire.
+CONFIG_LCD_RGB_RESTART_IN_VSYNC=n
 
 # ── Mesure ───────────────────────────────────────────────────────────────────
 # Défaut IDF = 100 Hz, soit un tick de 10 ms — plus grossier que la période

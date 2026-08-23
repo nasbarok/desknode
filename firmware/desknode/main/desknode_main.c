@@ -329,6 +329,54 @@ void app_main(void)
     ESP_LOGI(TAG, "prêt en %lld ms depuis app_main",
              (long long)((esp_timer_get_time() - t_boot) / 1000));
 
+    /*
+     * ─── RECALAGE D'AMORÇAGE (2026-08-23, branche d'essai RESTART_IN_VSYNC=n) ──
+     *
+     * 🔴 SANS CE BLOC, L'IMAGE SORT DÉCALÉE EN PERMANENCE. C'est mesuré, et
+     *    c'est le seul défaut que `CONFIG_LCD_RGB_RESTART_IN_VSYNC=y` corrigeait
+     *    réellement : un décrochage de la DMA AU DÉMARRAGE — « l'image sort avec
+     *    les bonnes couleurs mais coupée en deux, la partie de droite revenant
+     *    sur la gauche » (affichage.md:595-598).
+     *
+     * ✅ ET IL SE CORRIGE PAR UN SEUL APPEL, c'est déjà prouvé : « dans cette
+     *    configuration `RESTART_IN_VSYNC=n`, un appel manuel à
+     *    `esp_lcd_rgb_panel_restart()` remet l'image en place D'UN COUP »
+     *    (affichage.md:598-601). `dn_recal` sait le déclencher sur comptage de
+     *    vsync, et dn1-3 a mesuré que **1 vsync suffit** (affichage.md:541).
+     *
+     * ⚠️ POURQUOI ICI, ET PAS DANS `dn_display_init()` : `dn_recal_arm()` réveille
+     *    une tâche qui compte des VSYNC. Elle a besoin que le panneau TOURNE et
+     *    que l'abonnement vsync de `dn_recal_init()` (étape 7) soit posé. On est
+     *    donc au premier endroit où c'est vrai. ⛔ Le mettre plus tôt armerait
+     *    dans le vide, sans que rien ne le dise.
+     *
+     * ⚠️ POURQUOI IL NE PASSE PAS PAR `dn_display_present()` COMME LES AUTRES :
+     *    ce chemin-là garde l'armement derrière `num_fbs > 1` (dn_display.c:708),
+     *    et nous sommes à UN framebuffer. Le recalage de bascule n'a plus lieu
+     *    d'être ; celui d'AMORÇAGE, si. Ce sont deux besoins différents qui
+     *    partagent un mécanisme — ⛔ ne pas « unifier » sans relire ceci.
+     *
+     * ⛔ CE QUE CE BLOC NE FAIT PAS : il ne rejoue rien. UN amorçage, une fois.
+     *    Si l'image reste décalée, le filet est la commande console `dma`, qui
+     *    REDEVIENT opérante à `n` — et `recal` publie les compteurs.
+     */
+    if (dn_recal_get_vsyncs() > 0) {
+        dn_recal_arm();
+        ESP_LOGI(TAG,
+                 "recalage d'AMORÇAGE armé (%d vsync) — RESTART_IN_VSYNC=n, la "
+                 "DMA n'est plus relancée à chaque VBlank",
+                 dn_recal_get_vsyncs());
+        ESP_LOGI(TAG,
+                 "  ⚠️ si l'image sort DÉCALÉE malgré ça : `recal` pour les "
+                 "compteurs, `dma` pour recaler à la main (opérante à `n`).");
+    } else {
+        /* ⛔ Un amorçage silencieusement désactivé livrerait une image décalée
+         *    en permanence sans que rien ne dise pourquoi. */
+        ESP_LOGE(TAG,
+                 "🔴 recalage d'AMORÇAGE DÉSACTIVÉ (`recal 0`) alors que "
+                 "RESTART_IN_VSYNC=n : l'image VA sortir décalée. `recal 1`.");
+    }
+
     /* 8. La liaison PC (dn2-2). APRÈS dn_ui_init : sa tâche pousse l'état vers
      * les cinq cases PC par dn_ui_pc_maj(), qui prend le verrou LVGL elle-même
      * (⚠️ corrigé en revue 2026-08-18 : `dn_ui_cpu_maj` n'est plus appelée). Le
