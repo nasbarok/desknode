@@ -5432,7 +5432,10 @@ const char *dn_ui_valeur_txt(int idx, int grandeur)
  * Elles ne s'appliquent qu'aux objets CRÉÉS ensuite : LVGL a déjà résolu le
  * style des objets existants. On reconstruit donc la scène, et la console le
  * DIT — un réglage qui « ne fait rien » sans l'annoncer est la classe de défaut
- * que `dma` (inerte dans ce build) a values au dépôt. */
+ * que `dma` (inerte dans ce build) a values au dépôt.
+ * 🔴 AMENDE LE 2026-08-24 : « (inerte dans ce build) » est PERIME — `dma` est
+ *    OPERANTE depuis `4734d07` (RESTART_IN_VSYNC=n). ⛔ La lecon citee, elle,
+ *    reste exacte : c'est bien ce defaut-la qui a coute au depot. */
 esp_err_t dn_ui_set_voile_opa(uint8_t opa)
 {
     if (!lvgl_port_lock(2000)) {
@@ -5498,7 +5501,9 @@ esp_err_t dn_ui_set_icone_alt(int idx, int n)
 /* La piste de la jauge — même contrat que `dn_ui_set_case_opa` : le style est
  * résolu à la CRÉATION des objets, donc on reconstruit la scène, et la console
  * le DIT. Un réglage qui « ne fait rien » sans l'annoncer est la classe de
- * défaut que `dma` (inerte dans ce build) a coûtée au dépôt. */
+ * défaut que `dma` (inerte dans ce build) a coûtée au dépôt.
+ * 🔴 AMENDE LE 2026-08-24 : « (inerte dans ce build) » est PERIME — `dma` est
+ *    OPERANTE depuis `4734d07`. La lecon citee reste exacte. */
 esp_err_t dn_ui_set_piste(uint32_t rgb)
 {
     if (!lvgl_port_lock(2000)) {

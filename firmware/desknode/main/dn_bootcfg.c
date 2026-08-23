@@ -26,6 +26,12 @@ static const char *TAG = "dn_cfg";
  *                   Le double tampon est IMPOSSIBLE sur cette puce tant que
  *                   CONFIG_LCD_RGB_RESTART_IN_VSYNC est activé — et il l'est,
  *                   parce que sans lui l'image reste décalée en permanence.
+ *                   🔴 AMENDE LE 2026-08-24 : « ET IL L'EST » EST FAUX depuis
+ *                   `4734d07` — le symbole vaut `n`. ⛔ Le raisonnement au-dessus
+ *                   RESTE VRAI et n'est pas efface : c'est bien pourquoi `num_fbs`
+ *                   est reste a 1 quand `y` etait livre. ⚠️ Ce qui n'est PAS
+ *                   retabli pour autant : `num_fbs = 2` n'a pas ete re-mesure a
+ *                   `n`, donc rien n'autorise a le rouvrir sans mesure.
  *                   Mécanisme : RGB_LCD_NEEDS_SEPARATE_RESTART_LINK vaut 1 sur
  *                   S3, `dma_restart_link` est soudé à `dma_fb_links[0]` une
  *                   seule fois à l'init (esp_lcd_panel_rgb.c:1135) et jamais
@@ -179,13 +185,31 @@ static const char *TAG = "dn_cfg";
  *
  *      bounce_px   demi-bounce   dépassement du seuil   ce que l'owner voit
  *        7 680      16 lignes         +720 us           « petite ligne »
- *      → 9 600      20 lignes         +182 us           « bien mieux, plus stable »
+ *      → 9 600      20 lignes      +176 a +182 us       « bien mieux, plus stable »
  *       15 360      32 lignes         +221 us           « pire, une bande qui
  *                                                         couvre les % »
  *
  *    ⇒ **9 600 est le minimum sur les DEUX instruments à la fois.**
  *
- * ⚠️ COÛT, MESURÉ EN dn4-10 : −7 024 o de RAM interne, et **ZÉRO** ailleurs —
+ * 🔴 AMENDE LE 2026-08-24 (revue de code 3 couches, dn4-10) — DEUX CHIFFRES DE CE
+ *    BLOC ETAIENT A REPRENDRE. ⛔ Le texte d'origine n'est pas efface.
+ *    1. LE DEPASSEMENT A 9 600 EST UNE FOURCHETTE. La source
+ *       (investigations/glissement-dma-restart-in-vsync-investigation.md:159)
+ *       publie 951-957 us, soit +176 A +182 us, sur DEUX fenetres. Ce fichier
+ *       avait retenu 182, affichage.md 176, le ledger 176 — chacun une borne
+ *       differente, EN SILENCE. La table ci-dessus porte desormais la fourchette.
+ *    2. 🔴 « −7 024 o » EST 656 o SOUS LE MINIMUM QUE L'ALLOCATION EXIGE.
+ *       `dn_bootcfg_cout_interne()` (l.565-568 de ce fichier) calcule
+ *       `bounce = bounce_px * 2u * 2u` ⇒ Δ = (9 600 − 7 680) × 4 = 7 680 o.
+ *       Confirme par le driver (bb_size = bounce_px * bpp / 8, x2 tampons) ET par
+ *       le commentaire de la l.156 ci-dessus (« +11 520 o … contre +19 200 pour
+ *       9 600 » ⇒ 19 200 − 11 520 = 7 680). ⛔ Un releve brut de tas libre ne peut
+ *       pas rendre MOINS que ce que les tampons occupent. ⚠️ L'origine du 7 024
+ *       est introuvable : §20.7.17 atteste que les releves bruts ne sont consignes
+ *       dans AUCUN des deux depots. ⇒ Chiffre a retenir : le theorique, −7 680 o.
+ *
+ * ⚠️ COÛT, MESURÉ EN dn4-10 : −7 024 o de RAM interne (⚠️ voir l'amendement
+ *    ci-dessus : le minimum arithmetique est 7 680 o), et **ZÉRO** ailleurs —
  *    `fps 15` reste à 37,40 Hz (+0,00 %), le boot ne bouge pas de façon
  *    discriminante, `nav ab 40` fait −0,3 ms sur n=80.
  *

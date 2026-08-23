@@ -35,16 +35,29 @@ C'est la seule chose à lire si on ne lit qu'une chose.
 > livrait 128. C'est le défaut que la §4 avait DÉJÀ produit en dn1-3, au même
 > endroit et sur la même table — corrigé par la revue de code dn1-4.
 
+> 🔴 **AMENDEMENT DU 2026-08-24 — DEUX LIGNES DE CETTE TABLE ÉTAIENT FAUSSES.**
+> Relevé par la **deuxième revue de code 3 couches** (plage `c9ac2c1..0f63827`, story `dn4-10`).
+> `bounce_px` était resté à **7 680** (faux depuis `1adf259`) et `RESTART_IN_VSYNC` à **`y`**
+> (faux depuis `4734d07`). Les deux sont corrigés ci-dessous, **par annotation dans la colonne
+> de droite** — la valeur de gauche porte l'état COURANT, comme le veut cette table.
+>
+> ⛔ **ET C'EST LA TROISIÈME FOIS QUE §0 EST PRISE EN DÉFAUT** : `bounce_px` était resté à 4 800
+> jusqu'à la revue du 2026-08-19 (l'encart ci-dessus le raconte), la revue du 2026-08-23 avait
+> classé le grief « sans objet » en écrivant que `bounce_px` n'avait pas changé — **il venait de
+> changer** — et le voici de nouveau. AC8 de `dn4-10` nomme §0 « le point noir récurrent, relevé
+> par la revue trois stories de suite ». ⚠️ **Le réflexe qui manque n'est pas de relire §0 : c'est
+> de la modifier DANS LE MÊME COMMIT que le `#define` ou le symbole Kconfig.**
+
 | | | justifié par |
 |---|---|---|
 | `num_fbs` | **1** | le double tampon est **réparé** (§4 ter) mais n'apporte **rien de mesuré** : il ne corrige ni le déchirement (c'est la synchro qui le fait) ni l'artefact §10.5, et coûte 614 400 o + une branche Kconfig |
-| **`bounce_px`** | **7 680 px (16 lignes)** ⬅️ *change le 2026-08-16 (0 → 4 800), puis le **2026-08-19** (4 800 → **7 680**, `dn4-6`, §18.9 — 4 800 est l'état qui GLISSE sous trafic USB + repeint). ⚠️ Cette ligne est restée à 4 800 jusqu'à la revue de code du 2026-08-19, dans le tableau qui **fait autorité** — et ~8 autres sites de ce fichier récitent encore `bounce_px=4800` dans des relevés HISTORIQUES, ce qui est correct **pour eux** : ils datent d'avant. ⛔ Ne les corriger nulle part ailleurs qu'ici sans changer aussi le SHA du relevé.* | la DMA du panneau lit désormais un tampon en **RAM interne** au lieu d'aller chercher la PSRAM : c'est ce qui supprime **à la fois** le défilement sous I²C **et** l'artefact §10.5 (§11.4). Coût : 2 × 9 600 o de RAM interne, **rien au repos** et +1,1 point de CPU en redessin, fps **inchangé** — le vrai prix est **+160 ms de latence** (§11.5) |
+| **`bounce_px`** | **9 600 px (20 lignes)** ⬅️ *change le 2026-08-16 (0 → 4 800), puis le **2026-08-19** (4 800 → **7 680**, `dn4-6`, §18.9 — 4 800 est l'état qui GLISSE sous trafic USB + repeint). ⚠️ Cette ligne est restée à 4 800 jusqu'à la revue de code du 2026-08-19, dans le tableau qui **fait autorité** — et ~8 autres sites de ce fichier récitent encore `bounce_px=4800` dans des relevés HISTORIQUES, ce qui est correct **pour eux** : ils datent d'avant. ⛔ Ne les corriger nulle part ailleurs qu'ici sans changer aussi le SHA du relevé.* 🔴 ***PUIS LE 2026-08-24 (7 680 → 9 600, `1adf259`, §20bis.6)*** : l'arbitrage a CHANGÉ DE NATURE avec `RESTART_IN_VSYNC=n`. Une famine ne décale plus toute l'image, elle salit le demi-bounce en cours — on n'optimise donc plus « éviter la famine » mais « borner la SURFACE du dégât ». **9 600 est le minimum sur les DEUX instruments à la fois** (dépassement du seuil ET œil de l'owner) ; 15 360 est **pire** (« une bande qui couvre les % »). ⚠️ **Le dépassement publié est une FOURCHETTE, +176 à +182 µs** (deux fenêtres) — ⛔ ne pas en citer une seule borne. ⚠️ **ET CETTE VALEUR N'A PLUS DE FILET AU BOOT** : le repli de `dn_display.c:359` ne s'arme que si `bounce_px != défaut`, or 9 600 **EST** le défaut désormais. Voir `dn4-10`, décision owner du 2026-08-24.* | la DMA du panneau lit désormais un tampon en **RAM interne** au lieu d'aller chercher la PSRAM : c'est ce qui supprime **à la fois** le défilement sous I²C **et** l'artefact §10.5 (§11.4). Coût : 2 × 9 600 o de RAM interne, **rien au repos** et +1,1 point de CPU en redessin, fps **inchangé** — le vrai prix est **+160 ms de latence** (§11.5) |
 | **`LCD_RGB_ISR_IRAM_SAFE`** | **`n`** ⬅️ *change le 2026-08-16* | **effet propre nul** sur le défilement (branche enfin jouée, §5.3) — mais avec `y` le bounce buffer **panique** au boot. Il est conservé à `n` comme *condition* du bounce, pas pour lui-même |
 | Rendu LVGL | **PARTIEL** | à 128 lignes, un plein écran demande **5 flushes** (§11.7). ⚠️ Le « 10 flushes et ~176 ms » de §10.3 valait à 64 lignes, et son attente a été **corrigée à 267 ms** par la mesure de §11.5 : elle supposait un rendu négligeable, ce que le dashboard n'est pas |
 | **Draw buffer** | **480 × 128 px (122 880 o), RAM interne DMA** ⬅️ *change le 2026-08-16* | décision owner pendant le dev : 128 lignes récupèrent **120 des 160 ms** que le bounce coûte, contre +61 440 o de RAM interne. Le levier **sature** à 128 — 160 lignes ne donnent plus rien (§11.5). A/B à aire identique : la PSRAM reste **1,70× plus lente** (§10.3) |
 | **Mode de lecture tactile** | **`poll`** ⬅️ *nouveau le 2026-08-16* | verdict AC2 (§11.3). `event` est pourtant **moins cher** (0,5 % contre 0,8 %) : il est écarté sur un symptôme de ROBUSTESSE, pas de coût — `ui off` ne coupe pas le tactile en `event`, l'INT ne bat pas au repos, et l'appui « collé » n'a pas de garde native. Le +0,3 point de CPU est le prix assumé |
 | Synchro du flush | **`vsync`** | témoin positif établi : en `off` l'œil **voit** le déchirement, en `vsync` il disparaît (§10.4) |
-| `RESTART_IN_VSYNC` | **`y`** (livré) | `n` n'est requis que par la branche d'essai du double tampon (§4 ter) |
+| `RESTART_IN_VSYNC` | **`n`** (livré) ⬅️ *change le **2026-08-24** (`y` → `n`, `4734d07`, §20bis)* | 🔴 ***LE MOTIF DE `y` EST TOMBÉ, ET C'EST `y` QUI FABRIQUAIT LE GLISSEMENT.*** À `y`, `lcd_rgb_panel_try_restart_transmission()` est joué **inconditionnellement ~37,4 fois/s**, et Espressif écrit au-dessus (`esp_lcd_panel_rgb.c:1142-1148`) que ce reset « *can lead to single-frame desyncs itself* ». ⇒ **le glissement n'était pas la famine, c'était SON RATTRAPAGE.** À `n`, le reset n'a lieu que sur `need_restart` ou famine AVÉRÉE, et `bb_eof_count` y est enfin remis à zéro. ⚠️ Le motif d'origine de `y` (décrochage au DÉMARRAGE) est traité par un **recalage d'amorçage** armé une fois dans `app_main` (`desknode_main.c:363`). ⛔ **ET CE RECALAGE EST UN ONE-SHOT** : les deux autres appelants de `dn_recal_arm()` sont inatteignables à `num_fbs = 1`. La parade automatique au décalage PERMANENT que `y` fournissait n'a pas d'équivalent livré — décision owner du 2026-08-24 : la brancher sur la famine avérée. ✅ Effet de bord voulu : **la commande `dma` redevient opérante**. |
 | Rétroéclairage | **LEDC 10 bits @ 24 kHz** | 5 kHz **siffle** à duty bas, mesuré à l'oreille (§10.6) |
 | Cœur de la tâche LVGL | **0** | sans effet mesuré sur l'artefact §10.5 ; retenu par cohérence avec le reste du pipeline |
 | Fond | **flash `mmap`** | la copie PSRAM coûte 614 400 o et ne change rien de mesuré (§10.5, ligne 2) |
@@ -275,8 +288,8 @@ Chaque ligne y porte sa raison. Récapitulatif :
 | `CONFIG_SPIRAM` | **n** | **y** | pas de PSRAM, pas de framebuffer de 614 400 o |
 | `CONFIG_SPIRAM_MODE_OCT` | QUAD | **OCT** | le module ESP32-S3R8 embarque de la PSRAM octale ; en quad elle n'est pas détectée |
 | `CONFIG_SPIRAM_SPEED_80M` | 40M | **80M** | à 40 MHz le refill DMA ne suit pas les 23,0 Mo/s permanents |
-| `CONFIG_LCD_RGB_RESTART_IN_VSYNC` | n | **y** | **mesuré nécessaire** — voir §5.1 · ⚠️ rend la commande `dma` inopérante, voir §5.1 |
-| `CONFIG_LCD_RGB_ISR_IRAM_SAFE` | n | **y** | **conservé par précaution, effet propre NON mesuré** (coût nul) — voir §5.3 |
+| `CONFIG_LCD_RGB_RESTART_IN_VSYNC` | n | **n** | 🔴 **AMENDÉ LE 2026-08-24** (revue de code 3 couches, `dn4-10`) : **la colonne disait `y`.** Le symbole est passé à **`n`** le 2026-08-24 (`4734d07`) : à `y` le reset DMA inconditionnel ~37,4 fois/s **fabriquait** le glissement (§20bis). ✅ Et la commande `dma` **redevient opérante** — la mise en garde d'origine, conservée ici, ne vaut plus que pour l'historique : *« mesuré nécessaire — voir §5.1 · ⚠️ rend la commande `dma` inopérante »* |
+| `CONFIG_LCD_RGB_ISR_IRAM_SAFE` | n | **n** | 🔴 **AMENDÉ LE 2026-08-24** (revue de code 3 couches, `dn4-10`) : **la colonne disait `y`, et c'était faux DEPUIS PLUS LONGTEMPS** — écart préexistant, sans rapport avec ce commit. `sdkconfig.defaults:101` porte `=n` et §0 aussi ; cette table était la seule à dire `y`. ⛔ Avec `y`, le bounce buffer **panique au boot** : c'est la raison du `n`, pas une précaution. Texte d'origine conservé : *« conservé par précaution, effet propre NON mesuré (coût nul) — voir §5.3 »* |
 | `CONFIG_SPIRAM_XIP_FROM_PSRAM` | n | **n** | **RÉFUTÉ par la mesure** : défilement identique avec et sans — voir §5.3 |
 | `CONFIG_FREERTOS_HZ` | 100 | **1000** | un tick de 10 ms est plus grossier qu'une trame (26,7 ms) |
 | `CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS` | n | **y** | arme `vTaskGetRunTimeStats()` : c'est l'instrument de **charge CPU** exigé par AC6 (commande `cpu`) |
@@ -965,6 +978,12 @@ mesurés **séparément** parce qu'ils n'ont pas le même goulot :
 | `CONFIG_SPIRAM_XIP_FROM_PSRAM=y` | défilement sous stimulus flash **identique** ; coûte 342 876 o de PSRAM |
 | `bounce_buffer_size_px=19200` + `ISR_IRAM_SAFE=y` | **`rst:0x8 (TG1WDT_SYS_RST)`**, « PRO CPU has been reset by WDT » |
 | `bounce_buffer_size_px=19200` + `ISR_IRAM_SAFE=n` | défilement, puis décalage **vertical** permanent que `restart()` ne rattrape pas |
+
+> 🔴 **AMENDÉ LE 2026-08-24** (revue de code 3 couches, `dn4-10`) : **cette table décrit un monde à `num_fbs = 2` et `RESTART_IN_VSYNC=y`.** Elle reste juste POUR SA DATE
+> et n'est pas retouchée. ⛔ Mais ne pas la lire comme un verdict sur la configuration livrée : depuis le
+> 2026-08-24 le produit tourne à **UN** framebuffer et **`RESTART_IN_VSYNC=n`**, régime dans lequel ni la
+> conclusion sur `restart()` ni celle sur le décalage permanent n'ont été rejouées. Voir **§20bis**.
+
 | Mire de bits en **16 bandes verticales** de 30 px | illisible sur 2,8" ; a produit une lecture réfutée dans la minute par le blanc plein |
 | Stimulus de déchirement par **bascule noir/blanc** plein écran | « l'écran clignote violemment » — le papillotement **masque** le déchirement cherché |
 
@@ -4565,7 +4584,7 @@ C'est **le fait le plus important de ce dossier**, et il conditionne toute inves
 |---|---|
 | `fps N` | compte les **vsync**, et *« un compteur vsync tourne MÊME écran noir »*. Il rend **37,40 Hz** pendant que l'image saute |
 | `flush` | mesure le **chemin de flush** (aire, copie, attente), ⛔ **pas le remplissage du bounce buffer** |
-| `dn_recal` | **INERTE dans ce build** : `CONFIG_LCD_RGB_RESTART_IN_VSYNC=y` ⇒ le driver relance à chaque VBlank et **ne lit jamais** le bit posé |
+| `dn_recal` | ~~**INERTE dans ce build**~~ → 🔴 **AMENDÉ LE 2026-08-24** (revue de code 3 couches, `dn4-10`) : **il ne l'est PLUS.** Le texte d'origine — *« INERTE dans ce build : `CONFIG_LCD_RGB_RESTART_IN_VSYNC=y` ⇒ le driver relance à chaque VBlank et ne lit jamais le bit posé »* — est vrai **pour sa date**. Depuis `4734d07` le symbole vaut **`n`**, le bit `need_restart` **est consulté**, et `dn_recal` est devenu **porteur de l'image droite au boot** (`desknode_main.c:363`). ⛔ Il reste un **one-shot** : aucune parade automatique au décalage permanent |
 | `widget largeur` / `detail` | géométrie de texte — hors sujet |
 | `mem` | RAM interne 90 127 → 89 315 → **89 179 o** sur ~10 min de trafic. La baisse **DÉCÉLÈRE** ⇒ ça ressemble à une **stabilisation**, ⛔ pas à une fuite qui s'emballe. ⚠️ **Trois points ne sont pas une tendance** |
 
@@ -4634,6 +4653,17 @@ d'abord), l'**élimination** de la charge de pixels, et le constat qu'**aucun in
 | **`on_bounce_empty`** | 🔴 appelé **UNIQUEMENT** sous `if (unlikely(panel->num_fbs == 0))`. Nous sommes à **`num_fbs = 1`** ⇒ il **ne sera jamais appelé**. Et l'activer voudrait dire **REMPLACER** la copie du driver, ⛔ pas l'observer | `esp_lcd_panel_rgb.c:899-906` |
 | **L'interruption d'underrun MATÉRIELLE** | `LCD_LL_EVENT_UNDERRUN` n'est définie que pour l'**ESP32-P4**. Le **S3 ne l'a pas** — et le driver n'en ferait qu'un `ESP_EARLY_LOGE` | `hal/esp32p4/include/hal/lcd_ll.h:31` · `esp_lcd_panel_rgb.c:1255` |
 | **La détection de famine du driver** | `bb_eof_count < expect_eof_count` est dans le **`#else`** de `CONFIG_LCD_RGB_RESTART_IN_VSYNC`. Nous sommes à **`=y`** ⇒ 🔴 **ce test n'existe pas dans notre binaire**, et son compteur n'y est jamais remis à zéro | `esp_lcd_panel_rgb.c:1153-1166` |
+
+> 🔴 **AMENDEMENT DU 2026-08-24 — LA TROISIÈME VOIE EST ROUVERTE, ET C'EST CETTE SECTION QUI LE DIT MAL.**
+> Relevé par la deuxième revue de code 3 couches. §20.7.1 s'intitule « TROIS VOIES FERMÉES … ⛔ ne pas les
+> rouvrir », et la troisième ligne ci-dessus repose entièrement sur « **Nous sommes à `=y`** ». **Nous n'y
+> sommes plus** depuis `4734d07` : à `n`, le test `bb_eof_count < expect_eof_count` **existe dans le binaire**
+> et le compteur **est** remis à zéro — c'est écrit en **§20bis.2**, ajoutée par le même commit que cette
+> contradiction. ⇒ **La détection de famine du driver n'est plus une voie fermée.**
+> ✅ Les DEUX premières lignes (`on_bounce_empty` jamais appelé à `num_fbs = 1`, et l'underrun matériel absent
+> du S3) **restent justes** — c'est précisément pourquoi cette section méritait une annotation plutôt qu'une
+> réécriture : le lecteur envoyé ici par le bloc REPRISE doit savoir laquelle des trois est tombée.
+
 
 #### 20.7.2 🎯 LE MÉCANISME, ÉCRIT PAR LE DRIVER LUI-MÊME
 
@@ -4962,7 +4992,7 @@ Recherche exhaustive menée sur les deux dépôts, toutes branches, arbre propre
 |---|---:|---:|---:|
 | aire par flush | 36 675 px | **6 746 px** | −82 % |
 | pixels par **CYCLE** | 73 350 | **31 948** | −56 % |
-| copie par flush | 3 059 µs | **350 µs** | ÷ 8,7 |
+| copie par flush | 3 069 µs | **350 µs** | ÷ 8,7 | ⬅️ 🔴 *disait **3 059** ; corrigé le 2026-08-24 (revue de code). Les deux autres occurrences du même chiffre, `:4960` et `:5006`, disaient **3 069** — dont une insérée par le MÊME commit, onze lignes plus bas.*
 | **déficit de phase PIRE** | 961 µs | **145 µs** | seuil **620 µs** |
 | **corruptions par seconde** | 0,329 | **0,008** | ÷ 41 |
 | et — | | **0 sur 200 s** | constat owner : *« plus rien, image stable et propre »* |
@@ -4978,7 +5008,7 @@ monopolise davantage la PSRAM, retarde davantage l'ISR de vsync, donc **gonfle d
 référence**. ⇒ **le biais joue EN FAVEUR de la bascule.** L'écart publié est un **plafond du gain**.
 
 ⚠️ **ET `0,329 /s` EST LE CHIFFRE LE PLUS FLATTEUR DU DOSSIER — À L'ENVERS.** C'est **la plus basse
-des huit mesures publiées de ce même régime** : 0,710 · 0,936 · 0,962 · 0,710 (§20.7.11) · 0,786 ·
+des **NEUF** mesures publiées de ce même régime** (⬅️ 🔴 *disait « huit » et en énumérait neuf ; corrigé le 2026-08-24, revue de code*) : 0,710 · 0,936 · 0,962 · 0,710 (§20.7.11) · 0,786 ·
 0,341 · 0,841 · 0,872 (§20.7.15) · 0,725 (§20.7.16, 29 CORR / 40 s). ⇒ **la bascule est SOUS-VENDUE.**
 Avec la moyenne réelle du régime, le rapport serait de l'ordre de **÷ 100**, pas ÷ 41.
 
@@ -4992,7 +5022,14 @@ Avec la moyenne réelle du régime, le rapport serait de l'ordre de **÷ 100**, 
    620** — contre un effet mesuré de **×3,1 à ×6,6** sur le déficit. Retirer 32 µs ne déplace rien.
 3. **La conclusion survit à la dispersion que ce dossier a lui-même chiffrée** (×3,7 à config
    identique, §20.7.6 ; ×14 à 9 600, §20.7.11) : même en appliquant ×14 à `0,008`, on reste à
-   **0,112 /s**, soit **6× sous le plancher** jamais atteint en `groupe ON`.
+   **0,112 /s**, soit ~~**6× sous le plancher** jamais atteint en `groupe ON`~~ ⬅️ 🔴 **CORRIGÉ LE
+   2026-08-24 (revue de code) : LE « 6× » N'EXISTE QUE SI ON JETTE LES DEUX MESURES LES PLUS BASSES
+   DE LA LISTE QUE CETTE SECTION VIENT DE PUBLIER.** Les deux plus basses valeurs `groupe ON` sont
+   **0,341** et **0,329** ⇒ `0,341 / 0,112 = 3,04` et `0,329 / 0,112 = 2,94`. **La marge réelle est
+   SOUS 3×**, ⛔ pas 6×. ⚠️ L'argument n°3 tient toujours — la conclusion survit à la dispersion —
+   mais avec **moins de la moitié** de la marge annoncée, et c'est le genre d'écart qui décide si
+   on rejoue ou non. ⛔ C'est aussi l'ironie de la section : elle a été écrite POUR déclarer la
+   provenance de ses chiffres, et elle a sur-vendu le sien.
 
 ✅ **PREUVE POSITIVE QU'UNE CAMPAGNE LONGUE A BIEN EU LIEU** (⛔ elle n'est simplement pas consignée) :
 le firmware n'imprime qu'un **compte entier** (`dn_console.c`, `ph_100pc`) — les taux sont des
@@ -5171,6 +5208,15 @@ Depuis le 2026-08-15 il n'y en a plus qu'un, et §4bis écrit *« il n'y a plus 
    par `dn_recal_arm()` **directement**, ⛔ pas par `dn_display_present()` qui garde l'armement derrière `num_fbs > 1`.
    ⚠️ Et si `recal` vaut 0, c'est journalisé en **ERREUR** plutôt que de livrer une image décalée sans explication.
 3. **`DN_DEFAULT_BOUNCE_PX` 7 680 → 9 600** — l'optimum du **nouvel** arbitrage (§20bis.6).
+   🔴 **AMENDÉ LE 2026-08-24 (revue de code 3 couches) — CE POINT N'ATTEINT PAS TOUTES LES CARTES.**
+   C'est un **défaut compilé**, ⛔ pas un réglage poussé. `dn_bootcfg_load()` amorce
+   `out->bounce_px = DN_DEFAULT_BOUNCE_PX` puis **l'écrase depuis la NVS** dès que `bounce_px_refus(v)`
+   rend `NULL` (`dn_bootcfg.c:352`, `:375-382`) — et **7 680 passe toutes les clauses**
+   (`≤ 38 400` ✓, `307 200 % 7 680 == 0` ✓, `7 680 % 480 == 0` ✓). ⇒ **toute carte sur laquelle
+   `set bounce 7680` a été tapé garde 7 680 après reflash**, sans que rien ne le signale.
+   ⚠️ **Le correctif de ce point est donc CONDITIONNEL à une NVS vierge ou réinitialisée**, et ça n'était
+   écrit nulle part. ⛔ La vérification qui tranche reste le **TRIPLET** `cfg` + `widget` + bandeau de
+   boot — `cfg` dit la NVS, et c'est elle qui gagne.
 
 ### 20bis.5 🎯 LA PREUVE EST UNE DISSOCIATION, ⛔ PAS UN ACCORD
 
@@ -5194,10 +5240,33 @@ dégât**, et **deux effets s'opposent** : un tampon plus gros **laisse plus de 
 | `bounce_px` | demi-bounce | seuil | déficit pire | **dépassement** | constat owner |
 |---:|---:|---:|---:|---:|---|
 | 7 680 | 16 lignes | 620 µs | 1 340 µs | **+720 µs** | *« plus de glissement, petite ligne »* |
-| 🎯 **9 600** | 20 lignes | 775 µs | 951 µs | **+176 µs** | 🎯 *« bien mieux, plus stable »* |
+| 🎯 **9 600** | 20 lignes | 775 µs | 951-957 µs | **+176 à +182 µs** | 🎯 *« bien mieux, plus stable »* |
 | 15 360 | 32 lignes | 1 240 µs | 1 461 µs | **+221 µs** | *« pire, une bande qui clignote couvre les % »* |
 
-**Coût de 9 600**, mesuré en `dn4-10` : **−7 024 o** de RAM interne, et **ZÉRO** ailleurs — `fps 15` reste à
+> 🔴 **AMENDEMENT DU 2026-08-24 — DEUX CHIFFRES DE CETTE SECTION ÉTAIENT À REPRENDRE.**
+> Relevé par la deuxième revue de code 3 couches (`dn4-10`).
+>
+> 1. **Le dépassement à 9 600 est une FOURCHETTE, ⛔ pas une valeur.** La source
+>    (`investigations/glissement-dma-restart-in-vsync-investigation.md:159`) publie **951-957 µs**, soit
+>    **+176 à +182 µs** sur deux fenêtres. Ce fichier avait retenu **+176**, `dn_bootcfg.c:182` **+182**,
+>    le ledger **+176** — **chacun une borne différente, en silence**. ⚠️ Et ce fichier avait retenu **la
+>    plus flatteuse** : l'écart affiché avec le +221 de 15 360 en dépendait. La ligne du tableau porte
+>    désormais la fourchette. ✅ Les deux autres rangées, elles, sont arithmétiquement justes des deux côtés
+>    (`1 340 − 620 = 720`, `1 461 − 1 240 = 221`) — **seule la rangée 9 600 divergeait**, celle que le
+>    changement existe pour justifier.
+>
+> 2. 🔴 **« −7 024 o » est 656 o SOUS le minimum que l'allocation exige.** La fonction de coût du dépôt
+>    lui-même (`dn_bootcfg_cout_interne()`, `dn_bootcfg.c:565-568`) calcule `bounce = bounce_px * 2 * 2`
+>    ⇒ Δ = `(9 600 − 7 680) × 4` = **7 680 o**. Confirmé par le driver (`bb_size = bounce_px × bpp / 8`,
+>    ×2 tampons, `esp_lcd_panel_rgb.c:310` et `:196-201`) **et** par le commentaire préexistant de
+>    `dn_bootcfg.c:156` (*« +11 520 o … contre +19 200 pour 9 600 »* ⇒ `19 200 − 11 520 = 7 680`).
+>    ⛔ **Un relevé brut de tas libre ne peut pas rendre MOINS que ce que les tampons occupent.**
+>    ⚠️ L'origine du 7 024 est **introuvable** : §20.7.17 atteste elle-même que les relevés bruts ne sont
+>    consignés dans **aucun** des deux dépôts. ⇒ **Le chiffre à retenir est le théorique, −7 680 o**, et
+>    le relevé qui disait 7 024 est à refaire à la prochaine séance s'il compte.
+
+**Coût de 9 600**, mesuré en `dn4-10` : **−7 024 o** de RAM interne (⚠️ **voir l'amendement ci-dessus :
+le minimum arithmétique est 7 680 o**), et **ZÉRO** ailleurs — `fps 15` reste à
 **37,40 Hz (+0,00 %)**, boot non discriminant, `nav ab 40` **−0,3 ms** sur n=80.
 
 ### 20bis.7 ⚠️ LE VERDICT DE LA GARDE DE BUDGET DÉPEND DE L'INSTANT

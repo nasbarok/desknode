@@ -748,7 +748,9 @@ void dn_ui_geom_bandes_defaut(int *barre_h, int *menu_h);
  * ⚠️ Enveloppe de `dn_widget_set_geom()` : elle prend le verrou et RECONSTRUIT.
  *    Appeler `dn_widget_set_geom()` nu changerait le réglage sans redessiner —
  *    « un réglage qui ne fait rien sans l'annoncer » est la classe de défaut
- *    que `dma` (inerte dans ce build) a coûtée au dépôt. */
+ *    que `dma` (inerte dans ce build) a coûtée au dépôt.
+ * 🔴 AMENDE LE 2026-08-24 : « (inerte dans ce build) » est PERIME — `dma` est
+ *    OPERANTE depuis `4734d07`. La lecon citee reste exacte. */
 esp_err_t dn_ui_set_widget_geom(const dn_widget_geom_t *g);
 
 /* Les DEUX ensemble, en UN seul `build_scene()`. 🔴 Enchaîner les deux setters

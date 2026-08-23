@@ -732,6 +732,15 @@ int64_t dn_display_present(void)
  *         if (panel->flags.need_restart) { ... }
  *     #endif
  *
+ * 🔴 AMENDE LE 2026-08-24 (revue de code 3 couches, dn4-10) — TOUT LE PARAGRAPHE
+ *    QUI SUIT EST PERIME, ⛔ IL N'EST PAS EFFACE. Le sdkconfig pose desormais
+ *    CONFIG_LCD_RGB_RESTART_IN_VSYNC=`n` (`4734d07`) : le bit `need_restart` EST
+ *    consulte, et cette fonction est OPERANTE. ✅ Le corps, lui, est correctement
+ *    garde par `#if` (l.753) et n'a jamais eu besoin d'etre corrige — c'etait la
+ *    PROSE seule qui mentait. ⚠️ Et l'avertissement de tracabilite ci-dessous
+ *    s'inverse : sous la configuration livree, « la commande `dma` a corrige le
+ *    decalage » redevient une attribution LEGITIME.
+ *
  * Or le sdkconfig retenu pose CONFIG_LCD_RGB_RESTART_IN_VSYNC=y : la DMA est
  * déjà relancée à CHAQUE VBlank, et le seul bit que la commande `dma` sait
  * poser n'est jamais consulté. L'appel ne ferait donc rien, et renverrait

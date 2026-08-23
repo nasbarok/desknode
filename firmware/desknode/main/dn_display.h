@@ -167,6 +167,11 @@ int64_t dn_display_present(void);
 /*
  * Relance la DMA du panneau (parade au décalage permanent quand elle décroche).
  *
+ * 🔴 AMENDE LE 2026-08-24 : « CE QUI EST LE CAS DU SDKCONFIG RETENU » EST FAUX.
+ *    Le symbole vaut `n` depuis `4734d07` ⇒ cette fonction est OPERANTE et rend
+ *    ESP_OK apres avoir pose `need_restart`. ⛔ Le texte d'origine reste : il
+ *    decrit exactement ce qui se passe si quelqu'un rebascule a `y`.
+ *
  * ⚠️ RENVOIE ESP_ERR_NOT_SUPPORTED — SANS RIEN FAIRE — quand le firmware est
  *    bâti avec CONFIG_LCD_RGB_RESTART_IN_VSYNC=y, ce qui est le cas du
  *    sdkconfig retenu. Le bit posé par esp_lcd_rgb_panel_restart() n'est alors

@@ -34,7 +34,13 @@ static void recal_task(void *arg)
     (void)arg;
     while (1) {
         /* Attente indéfinie : la tâche ne consomme rien tant qu'aucune bascule
-         * n'a lieu. À un seul framebuffer, elle dort pour toujours. */
+         * n'a lieu. À un seul framebuffer, elle dort pour toujours.
+         * 🔴 AMENDE LE 2026-08-24 : « ELLE DORT POUR TOUJOURS » EST FAUX. A un
+         *    seul framebuffer elle est desormais reveillee UNE FOIS, au boot,
+         *    par `desknode_main.c:364` — c'est le recalage d'AMORCAGE qui
+         *    remplace ce que `RESTART_IN_VSYNC=y` faisait. ⛔ UNE fois, et pas
+         *    davantage : apres quoi elle se rendort effectivement pour
+         *    toujours, faute d'autre appelant atteignable. */
         if (xSemaphoreTake(s_arm_sem, portMAX_DELAY) != pdTRUE) {
             continue;
         }

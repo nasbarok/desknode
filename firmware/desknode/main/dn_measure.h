@@ -187,6 +187,10 @@ void dn_measure_report_fps(const char *etiquette, int seconds);
  *    AUCUN instrument de ce firmware ne sait le voir : `fps` rend 37,40 Hz
  *    PENDANT que l'image saute, `flush` mesure le chemin de flush et pas le
  *    panneau, `dn_recal` est inerte sous CONFIG_LCD_RGB_RESTART_IN_VSYNC=y.
+ *    🔴 AMENDE LE 2026-08-24 : cette derniere clause est PERIMEE — le symbole
+ *    vaut `n` depuis `4734d07` et `dn_recal` n'est plus inerte. ⛔ Le constat
+ *    d'ensemble, lui, TIENT : aucun instrument du firmware ne voit le
+ *    glissement, et c'est toujours la raison d'etre de ce bloc.
  *    dn4-6 a donc payé sa bissection en ONZE constats owner à l'œil, et la
  *    séance dn4-9 en a payé CINQ de plus. Ce bloc existe pour arrêter de payer.
  *

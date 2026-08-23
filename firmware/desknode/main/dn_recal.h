@@ -32,6 +32,18 @@
  *    complete callback is not reliable ». Il peut être OBSERVÉ à titre de
  *    comparaison, il ne peut pas être le VERROU. Détail : dn_measure.h.
  *
+ * 🔴 AMENDE LE 2026-08-24 (revue de code 3 couches, dn4-10) — « INERTE SOUS LA
+ *    CONFIGURATION LIVREE » EST FAUX, ET C'EST UN RENVERSEMENT COMPLET.
+ *    La configuration livree EST `n` depuis `4734d07`. `dn_recal` n'est plus une
+ *    branche d'essai : il est devenu PORTEUR DE L'IMAGE DROITE AU BOOT — sans
+ *    l'armement de `desknode_main.c:363`, l'image sort decalee en permanence.
+ *    ⛔ MAIS C'EST UN ONE-SHOT : les deux autres appelants de `dn_recal_arm()`
+ *    sont inatteignables a `num_fbs = 1` (`dn_display.c:715` sous `num_fbs > 1`,
+ *    `dn_ui.c:1671` sous `s_direct_mode`). ⇒ aucune parade automatique au
+ *    decalage PERMANENT. Decision owner du 2026-08-24 : la brancher sur la
+ *    famine averee. ⛔ Le paragraphe ci-dessous n'est pas efface : il dit
+ *    pourquoi le module a dormi jusqu'ici.
+ *
  * ⚠️ INERTE SOUS LA CONFIGURATION LIVRÉE. `esp_lcd_rgb_panel_restart()` ne fait
  *    que poser `need_restart`, un bit que le driver ne LIT PAS quand
  *    CONFIG_LCD_RGB_RESTART_IN_VSYNC=y. Mesurer AC5 impose donc une BRANCHE
