@@ -4598,6 +4598,231 @@ d'abord), l'**élimination** de la charge de pixels, et le constat qu'**aucun in
 
 ---
 
+### 20.7 🎯 `dn4-10`, 2026-08-23 — LE DOSSIER PASSE DE « CARACTÉRISÉ » À **« CHIFFRÉ »**
+
+> ⛔ **AJOUT.** §20.1 à §20.6 restent **justes pour leur date** et ne sont pas retouchés. Ce qui
+> suit les **complète** et, sur deux points, les **corrige** — les corrections sont signalées.
+
+**Firmwares** : `24f3891` → `f07177c` → `256a49e` → **`3cc7412`**, SHA **lus au bandeau**.
+
+#### 20.7.1 ⛔ TROIS VOIES FERMÉES PAR LA LECTURE DU DRIVER — ne pas les rouvrir
+
+| voie | pourquoi elle est fermée | référence, IDF **v5.5.5** |
+|---|---|---|
+| **`on_bounce_empty`** | 🔴 appelé **UNIQUEMENT** sous `if (unlikely(panel->num_fbs == 0))`. Nous sommes à **`num_fbs = 1`** ⇒ il **ne sera jamais appelé**. Et l'activer voudrait dire **REMPLACER** la copie du driver, ⛔ pas l'observer | `esp_lcd_panel_rgb.c:899-906` |
+| **L'interruption d'underrun MATÉRIELLE** | `LCD_LL_EVENT_UNDERRUN` n'est définie que pour l'**ESP32-P4**. Le **S3 ne l'a pas** — et le driver n'en ferait qu'un `ESP_EARLY_LOGE` | `hal/esp32p4/include/hal/lcd_ll.h:31` · `esp_lcd_panel_rgb.c:1255` |
+| **La détection de famine du driver** | `bb_eof_count < expect_eof_count` est dans le **`#else`** de `CONFIG_LCD_RGB_RESTART_IN_VSYNC`. Nous sommes à **`=y`** ⇒ 🔴 **ce test n'existe pas dans notre binaire**, et son compteur n'y est jamais remis à zéro | `esp_lcd_panel_rgb.c:1153-1166` |
+
+#### 20.7.2 🎯 LE MÉCANISME, ÉCRIT PAR LE DRIVER LUI-MÊME
+
+> *« reset the GDMA channel every VBlank to stop permanent desyncs […] **if this interrupt is LATE
+> ENOUGH, the display will SHIFT** as the LCD controller already read out the first data bytes, and
+> resetting DMA will **re-send those**. »* — `esp_lcd_panel_rgb.c:1142-1148`
+
+⇒ Le glissement **n'est pas un octet manquant** : c'est le **rattrapage au VBlank** d'un remplissage
+qui a décroché. Et l'owner l'a décrit **exactement** : *« ça s'abaisse puis revient »* — les octets
+**renvoyés** décalent l'image **vers le bas** de leur propre nombre, sur **une** trame.
+
+#### 20.7.3 🎯 POURQUOI `fps` EST AVEUGLE — la réponse, enfin
+
+§11.4, §18.9 et la séance du 2026-08-22 le **constatent** trois fois sans l'expliquer.
+🔴 **`fps` MOYENNE** : 561 trames sur 15 s, et la division **efface la gigue**. Toute l'information
+est **dans la gigue**, et personne ne l'avait regardée. ⛔ Ce n'est donc pas un défaut de `fps` : il
+compte des vsync, et il les compte juste.
+
+#### 20.7.4 🔴 L'INSTRUMENT — ET IL A FALLU DEUX PASSES, L'ŒIL AYANT PRIS LA PREMIÈRE EN DÉFAUT
+
+**Passe 1 — la comptabilité des enroulements** (`manques` / `doubles`).
+✅ **Témoin PROUVÉ** par `flash on` (l'ISR de remplissage est **masquée** pendant l'effacement de
+secteur, `ISR_IRAM_SAFE=n`) : **1 037 trames sans enroulement sur 1 041**, contre **0** au repos.
+⚠️ **Et ça ferme la question ouverte de §5.3** : la combinaison `bounce_px ≠ 0` + stimulus flash,
+marquée *« JAMAIS JOUÉE »*, est **jouée** — elle est **catastrophique** pour le bounce.
+
+🔴 **PUIS L'ŒIL A DIT NON.** Agent **RÉEL**, 180 s, `bounce_px = 7 680` : `manques = 0`, gigue max
+**+16 µs** — pendant que l'owner voyait *« un glissement de quelques pixels vers le BAS, ça s'abaisse
+puis revient, quasiment toutes les secondes »*.
+
+**Passe 2 — LA PHASE `enroulement → VSYNC_END`.** C'est sa phrase qui l'a produite :
+
+| ce qu'il a dit | ce que ça a appris |
+|---|---|
+| **« quelques pixels »** | 🔴 à 16 MHz **1 pixel = 62,5 ns**. Les seuils de la passe 1 (100 µs, 775 µs) valent **1 600** et **12 400 pixels**. Le compteur ne mentait pas — **il ne regardait pas** |
+| **« toutes les secondes »** | l'agent pousse **une rafale par seconde** ⇒ défaut **synchrone de la rafale** |
+| **« s'abaisse puis revient »** | mot pour mot le mécanisme du driver ci-dessus |
+
+🎯 **`phase = t_vsync − t_enroulement`.** L'enroulement tombe à un point **fixe** du balayage (la DMA
+avance à cadence matérielle) ; le `VSYNC_END` est servi par une **ISR qui peut être retardée**.
+⇒ **Une phase COURTE = un enroulement EN RETARD = le remplissage du bounce qui décroche.**
+
+⚠️ **Et les seuils de la passe 2 ont dû être corrigés eux aussi, dans la séance** : référencés au
+**minimum**, ils comptaient **6 660 trames sur 6 725** sous trafic et **0** au repos. Le **mode est
+en HAUT** ; les écarts vont **vers le bas**. Re-référencés au **MAXIMUM**.
+
+🎯 **LE SEUIL N'EST PAS UN NOMBRE MAGIQUE** : c'est l'écoulement d'un **DEMI-BOUNCE**, lu sur le
+panneau **réellement monté** et **annoncé par le firmware au boot**.
+
+| `bounce_px` | lignes | **écoulement d'un demi-bounce** |
+|---:|---:|---:|
+| 7 680 | 16 | **620 µs** |
+| 9 600 | 20 | **775 µs** |
+
+⚠️ **DEUX ANGLES MORTS, ÉCRITS À CÔTÉ DU CHIFFRE** : plancher à la **microseconde** (16 px) ⇒ ⛔ « 0 »
+ne veut pas dire « 0 pixel » ; et l'horodatage de référence vient **lui aussi** d'une ISR ⇒ un retard
+**commun aux deux** s'annule et reste invisible.
+
+#### 20.7.5 🎯 CE QUE LA PHASE MESURE — trois régimes, fenêtres de 180 s IDENTIQUES
+
+| régime | phase min | moy | MAX | **déficit pire** | 🔴 CORRUPTION |
+|---|---:|---:|---:|---:|---:|
+| **repos, zéro trafic** | 1 915 | 1 961 | 1 978 | **63 µs** | **0** |
+| injecteur 5 tr/s | 1 249 | 1 955 | 1 990 | **741 µs** | ~128 |
+| **agent RÉEL de la tour** | 1 248 | 1 943 | 2 010 | **762 µs** | — |
+
+🔴 **Facteur 12 entre repos et trafic**, là où `manques`, la gigue vsync **et** `fps` sont **tous à
+zéro**. ✅ **Contrôle** : l'injecteur, ⛔ **sans aucune manipulation USB**, rend le même chiffre que
+l'agent ⇒ le déficit n'est **pas** un artefact du detach/attach.
+
+🎯 **ET LA CORRÉLATION AVEC L'ŒIL EST QUANTITATIVE** :
+
+| config | compteur | mots de l'owner |
+|---|---|---|
+| 7 680 | **0,71 corruption/s** | *« quasiment toutes les secondes »* |
+| 9 600 | **0,195 corruption/s** | *« un peu mieux, toutes les 2-3 secondes »* |
+| repos | **0** | image stable |
+
+⚠️ **Et son *« c'est bon 10 s, ensuite ça tombe »* est une donnée, pas un détail** : le défaut vient
+**par RAFALES**. C'est ce qui rend une **fenêtre unique NON DISCRIMINANTE** — dispersion **×3,7**
+mesurée à config identique (0,195 à 0,72 /s à `9 600`).
+
+#### 20.7.6 Le balayage de `bounce_px` — fenêtres de 90 s identiques
+
+| `bounce_px` | lignes | RAM interne libre | `manques` / 3 386 |
+|---:|---:|---:|---:|
+| 480 | 1 | 119 303 o | **477** (14,1 %) |
+| 960 | 2 | 117 387 o | **103** |
+| 1 920 | 4 | 113 543 o | **95** |
+| 3 840 | 8 | 105 835 o | **81** |
+| **7 680** | 16 | 89 019 o | **0** |
+| **9 600** | 20 | 82 215 o | **0** |
+
+🎯 **Genou de `manques` entre 3 840 et 7 680.** ✅ **La loi `4v` est vérifiée à ≤ 28 o** sur trois pas
+consécutifs (−1 916 / −3 844 / −7 708 contre −1 920 / −3 840 / −7 680).
+🔴 **Les deux observables ne mesurent pas la même chose** : `manques` bouge dès 3 840 ; la **phase**
+tombe **à 7 680**, là où `manques` reste à 0. **Deux régimes, deux compteurs.**
+
+✅ **Corrélation œil à `bounce 480`** : `manques = 290 / 4 873` **et** l'owner voit *« ça a glissé »*
+— dans la **même** fenêtre.
+
+#### 20.7.7 🔴 LE PLAFOND DE `bounce_px` — CARTOGRAPHIÉ SANS UN SEUL REBOOT
+
+La garde de budget s'exécute **avant toute écriture NVS** ⇒ l'échelle se sonde **sans risque**.
+
+| `bounce_px` | coût RAM | `demande + 48 Ko` vs **234 895 o** | verdict |
+|---:|---:|---:|---|
+| 38 400 | 276 480 o | 325 632 | ⛔ refusé |
+| 30 720 | 245 760 o | 294 912 | ⛔ refusé |
+| 19 200 | 199 680 o | 248 832 | ⛔ refusé |
+| **15 360** | 184 320 o | 233 472 | ✅ **accepté — à 1 423 OCTETS près** |
+| 9 600 | 161 280 o | 210 432 | ✅ (24 463 o de marge) |
+| 7 680 | 153 600 o | 202 752 | ✅ courant |
+
+🔴 **L'échelle de la marge n'a plus que DEUX crans**, et le second passe à **1 423 o** — `dn4-9` vient
+d'en prendre **680**. ⛔ **15 360 n'a PAS été éprouvé au boot** : §4bis dit qu'il ne démarrerait pas,
+la garde dit qu'il tient de justesse, et **se tromper coûte un reset physique**. **Contradiction
+CONSIGNÉE, ⛔ pas tranchée.**
+
+#### 20.7.8 🔴 UN DÉFAUT DE LA GARDE DE BUDGET, TROUVÉ ET CORRIGÉ (`f07177c`)
+
+Le message annonçait *« pour 234 895 o disponibles […] marge de sécurité **déduite** »* **et
+refusait 199 680**. La marge n'est **pas** déduite du disponible : elle **s'ajoute à la demande**
+(`veut + DN_BUDGET_MARGE_O > peut`, `dn_bootcfg.c:560`). ⇒ **un refus légitime ressemblait à un bug**
+— et « la garde est cassée, on passe outre » mène droit au **CPU halté**. La console imprime
+désormais **la comparaison réellement faite**.
+
+#### 20.7.9 🔴 `draw_lines` — LE LEVIER CHIFFRÉ **VERS LE BAS** POUR LA PREMIÈRE FOIS
+
+§11.5 dit *« le levier `draw_lines` SATURE à 128 »*. ⚠️ **C'est vrai VERS LE HAUT** (160 ne donne
+rien) ; **vers le bas, personne n'avait chiffré** :
+
+| | `(7 680, **128**)` | `(7 680, **80**)` |
+|---|---:|---:|
+| RAM interne libre | 89 019 o | **135 507 o** (**+46 488 o**, théorie +46 080) |
+| `nav ab 40` moy, n=80 | **336,8 ms** | 🔴 **409,6 ms (+72,8 ms, +21,6 %)** |
+| flush / cycle sous `nav` | 4,8 | **7,8** |
+| plus grande aire | 61 440 px = 128 lignes, **SATURÉ** | 38 400 px = 80 lignes, **SATURÉ** |
+
+⇒ La zone sale **dépasse le tampon dans les deux configs** ; le rétrécir **multiplie les flushes**.
+⛔ **Voie REJETÉE** : 46 488 o (6,6× ce que coûte `9 600`) pour **+21,6 %** de latence, alors que le
+budget de `dn4-4` est à **300 ms** et qu'on est déjà à 336.
+
+#### 20.7.11 🔴 L'A/B RÉPÉTÉ `7 680` vs `9 600` — « TAPIS ROULANT », ET LA PREUVE EST MÉCANISTE
+
+⚠️ **D'abord un aveu de méthode** : sur **UNE** fenêtre de 180 s (130 contre 128) j'avais conclu
+*« 9 600 n'améliore rien »*. **C'était faux, et c'est l'ŒIL de l'owner qui l'a corrigé**, pas la
+mesure. ⛔ **Une fenêtre ne discrimine pas ce défaut** — cause nommée par l'owner lui-même :
+*« c'est bon 10 s, ensuite ça tombe »*, **c'est par RAFALES**.
+
+**9 fenêtres, bras alternés, même stimulus** :
+
+| | n | taux min | **moyenne** | taux max | dispersion |
+|---|---:|---:|---:|---:|---:|
+| **7 680** | 4 | 0,710 | **0,83 corruption/s** | 0,962 | ×1,35 |
+| **9 600** | 5 | 0,058 | **0,44 corruption/s** | 0,830 | **×14** |
+| **repos** | 1 | — | **0** | — | — |
+
+✅ **Confirmé indépendamment par l'œil** : *« quasiment toutes les secondes »* (7 680) → *« un peu
+mieux, toutes les 2-3 s »* (9 600).
+⛔ **Mais les distributions SE CHEVAUCHENT** : la pire fenêtre à 9 600 (**0,830 /s**) tombe en plein
+dans la plage de 7 680. ⇒ **sur une fenêtre isolée, on ne peut pas dire quelle config on regarde.**
+
+🔴 **LA PREUVE MÉCANISTE — le rapport `déficit / seuil` NE BOUGE PAS** :
+
+| `bounce_px` | seuil | déficits observés | **rapport** |
+|---:|---:|---|---:|
+| 7 680 | 620 µs | 722 · 723 · 831 · 949 | **1,16 → 1,53** |
+| 9 600 | 775 µs | 904 · 942 · 951 · 1 054 · 1 311 | **1,17 → 1,69** |
+
+🎯 **Le déficit croît avec le tampon, dans la même proportion que le seuil** — et c'est vrai **par
+construction** : ce qui prend du retard, **c'est le remplissage lui-même**, et un tampon 25 % plus
+gros met 25 % plus de temps à se remplir. ⇒ ⛔ **Agrandir `bounce_px` NE PEUT PAS améliorer le
+dépassement RELATIF.** Il réduit seulement le **nombre d'ISR** (40 → 32 par trame), donc la
+**probabilité** qu'une soit bloquée : facteur ~2 sur la **fréquence**, **rien** sur la **sévérité**.
+
+⇒ 🔴 **Le vrai levier n'est PAS la marge : c'est de réduire le RETARD DU REMPLISSAGE.**
+⚠️ **Un point perdu, déclaré** : la bascule vers 9 600 de la paire 2 a **échoué** (reboot /
+ré-attachement) ; le point est **écarté**, ⛔ pas remplacé. L'A/B est **3 contre 2**.
+
+#### 20.7.12 ✅ LE CHEMIN DU BRICK EST FERMÉ — filet de sécurité au boot
+
+`ESP_ERROR_CHECK(dn_display_init(&cfg))` (`desknode_main.c:186`) transformait un `ESP_ERR_NO_MEM`
+sur les bounce buffers en **panique ⇒ CPU HALTÉ ⇒ plus de console ⇒ valeur fautive relue à CHAQUE
+boot**, jusqu'au reflash — et *« une panique haltée ne se flashe pas non plus »*.
+
+🔴 **Et la garde de `set` ne suffisait pas, elle le dit elle-même** : elle protège **au moment du
+`set`**, contre la RAM libre **de ce binaire-là**. Une valeur déjà en NVS **survit à un binaire qui
+grossit**. ⇒ le jour où le budget bascule, c'est un **boot ordinaire** qui brique la carte, **sans
+qu'aucun `set` n'ait été tapé**. Ce n'est donc pas un filet « au cas où » : c'est la fermeture d'un
+chemin **qui s'ouvre tout seul avec le temps**.
+
+✅ **Désormais** : une **seule** tentative de repli sur le défaut, **bruyante** (`ESP_LOGE`), et
+`desknode_main` **persiste** le repli en NVS pour que le boot suivant soit propre.
+✅ `s_bounce_px` est posé depuis `rgb_cfg`, ⛔ plus depuis `cfg` : après un repli les deux
+diffèrent, et annoncer la valeur **demandée** serait un chiffre faux mais plausible.
+⛔ **CE QU'IL NE COUVRE PAS** : un `assert()` ou une panique levée **ailleurs** — typiquement
+`esp_lvgl_port` sous `CONFIG_LCD_RGB_ISR_IRAM_SAFE=y`. ⚠️ ⛔ **Ne pas le lire comme « le boot ne
+peut plus paniquer ».**
+
+#### 20.7.10 Ce que la séance N'A PAS fait
+
+- ⛔ **`ISR_IRAM_SAFE = y` n'a PAS été éprouvé** : §0 dit qu'il **panique au boot**, une panique
+  **halte le CPU**, et seul un **reset physique** en sort. **Décision owner, à prévenir AVANT.**
+- ⛔ **`pclk` / fps** : non mesuré, touche le critère du brief.
+- ⛔ **La réduction de l'aire invalidée** : la mesure montre que l'aire **sature le tampon**, mais le
+  gain de `widget bandes` (§16.7) n'a **pas** été re-chiffré ici.
+- ⚠️ **`cpu brut` à 9 600 n'est pas comparable au T0** (8 s d'uptime contre 110 s) ⇒ ⛔ **aucun Δ
+  publié** plutôt qu'un Δ faux.
+- ⚠️ **Deux témoins owner PERDUS** : la fenêtre était lancée **avant** la demande. Corrigé en séance.
+
 ## 21. `dn4-9` / AC8 — LE CONSTAT OWNER À L'ŒIL, 2026-08-22, firmware `38c3b99`
 
 🔴 **CE SONT LES YEUX DE L'OWNER, ⛔ PAS UNE DÉDUCTION.** Chaque question posée **une par une**,
