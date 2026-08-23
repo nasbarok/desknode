@@ -4605,6 +4605,28 @@ d'abord), l'**élimination** de la charge de pixels, et le constat qu'**aucun in
 
 **Firmwares** : `24f3891` → `f07177c` → `256a49e` → **`3cc7412`**, SHA **lus au bandeau**.
 
+> ### 🧭 INDEX DE §20.7 — ⚠️ LA NUMÉROTATION N'EST PAS L'ORDRE DE LECTURE
+>
+> 🔴 **§20.7.10 est physiquement EN FIN DE SECTION, après §20.7.20.** Ce n'est pas une coquille :
+> chaque insertion successive a pris §20.7.10 comme point d'ancrage et s'est glissée **avant** elle.
+> ⛔ **On ne renumérote PAS** — des renvois pointent déjà sur ces numéros, et la règle du fichier est
+> *« par AJOUT, jamais par effacement »*. On répare **l'index**, ⛔ pas les étiquettes.
+>
+> **Ordre PHYSIQUE réel : 1 → 9, puis 11 → 20, puis 10.**
+> **Nombre de sous-sections : 20** (⚠️ la File List de la story a écrit « 10 » puis « 14 » : **les
+> deux étaient faux**, et le compte est ici la seule source à jour).
+>
+> | | |
+> |---|---|
+> | **1-3** | ce que la lecture du driver a fermé, et pourquoi `fps` est aveugle |
+> | **4-6** | l'instrument, en deux passes, et ce qu'il mesure |
+> | **7-9** | le plafond de `bounce_px`, le défaut de la garde, `draw_lines` |
+> | **11-14** | l'A/B répété, le filet de brick, `15 360`, `ISR_IRAM_SAFE` |
+> | **15-17** | le nombre de grandeurs, `widget groupe`, la campagne 180 s |
+> | **18-20** | l'injecteur qui ment, les trois modes, les deux signatures visuelles |
+> | **10** *(en fin)* | ⚠️ « ce que la séance n'a pas fait » — **partiellement contredite depuis**, voir son propre encart |
+> | **§20bis** | 🎯 **LE CORRECTIF** — c'est là qu'est la conclusion du dossier |
+
 #### 20.7.1 ⛔ TROIS VOIES FERMÉES PAR LA LECTURE DU DRIVER — ne pas les rouvrir
 
 | voie | pourquoi elle est fermée | référence, IDF **v5.5.5** |
@@ -5076,6 +5098,20 @@ seconde, un défaut de dessin d'un défaut de DMA. ⛔ Avant cette séance, les 
 « l'image sautille ».
 
 #### 20.7.10 Ce que la séance N'A PAS fait
+
+> ⚠️ **AMENDÉE LE 2026-08-23, ⛔ PAS RÉÉCRITE — ET ELLE EST CONTREDITE SUR UN POINT.**
+> Cette sous-section a été écrite **avant** §20.7.15 à §20.7.20, qui se trouvent pourtant **au-dessus**
+> d'elle (voir l'index en tête de §20.7). Une de ses affirmations est **tombée depuis** :
+>
+> - 🔴 *« le gain de `widget bandes` (§16.7) n'a **pas** été re-chiffré ici »* ⇒ **FAUX** :
+>   **§20.7.16 le chiffre**, et il le mesure **AGGRAVANT** — aire 39 120 px, déficit **1 335 µs**,
+>   soit **plus du double du seuil**. ⇒ ⛔ la voie est **éliminée par la mesure**, pas « non chiffrée ».
+> - ⚠️ *« `ISR_IRAM_SAFE` non éprouvé »* reste **vrai au sens strict** (aucun flash), mais §20.7.14
+>   l'a **fermé par LECTURE** — ce qui est un résultat, pas une lacune.
+> - ⚠️ *« `pclk`/fps non mesuré »* et *« `cpu brut` non comparable »* restent **vrais**.
+>
+> ⛔ Le texte d'origine est conservé tel quel ci-dessous : il dit ce qu'on savait à l'instant où il a
+> été écrit, et c'est ça qui a de la valeur.
 
 - ⛔ **`ISR_IRAM_SAFE = y` n'a PAS été éprouvé** : §0 dit qu'il **panique au boot**, une panique
   **halte le CPU**, et seul un **reset physique** en sort. **Décision owner, à prévenir AVANT.**
