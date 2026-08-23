@@ -4812,6 +4812,60 @@ diffèrent, et annoncer la valeur **demandée** serait un chiffre faux mais plau
 `esp_lvgl_port` sous `CONFIG_LCD_RGB_ISR_IRAM_SAFE=y`. ⚠️ ⛔ **Ne pas le lire comme « le boot ne
 peut plus paniquer ».**
 
+#### 20.7.13 🎯 `bounce_px = 15 360` **DÉMARRE** — §4bis est RÉFUTÉ pour cette valeur
+
+> ⛔ **AMENDEMENT DE §4bis, ⛔ PAS EFFACEMENT.** §4bis écrit : *« des valeurs que
+> `bounce_px_refus()` ACCEPTE (**15 360**, 19 200, 30 720, 38 400) ne démarreraient PAS »*.
+> **Éprouvé le 2026-08-23, filet de sécurité en place : 15 360 DÉMARRE.**
+
+`boot 2 385 ms` · `fps 15` = **37,40 Hz, écart +0,00 %** · **aucun repli, aucune panique** ·
+RAM interne libre **58 859 o**. La garde auto-calibrée avait **raison** ; §4bis reposait sur un
+raisonnement d'avant `dn_bootcfg_budget_refus()`.
+⚠️ **Portée EXACTE de la réfutation** : elle vaut pour **15 360 SEULEMENT**. 19 200 / 30 720 /
+38 400 sont **refusés par la garde** et restent **non éprouvés**.
+
+🔴 **Et ça ne sert à rien** — c'est le troisième cran, et il **confirme le tapis roulant** :
+
+| `bounce_px` | ISR/trame | seuil | déficit pire | **rapport** | taux moyen | RAM libre |
+|---:|---:|---:|---:|---:|---:|---:|
+| 7 680 | 40 | 620 µs | 722–949 | **1,16–1,53** | **0,83 /s** | 90 451 o |
+| 9 600 | 32 | 775 µs | 904–1 311 | **1,17–1,69** | **0,44 /s** | 81 451 o |
+| **15 360** | 20 | 1 240 µs | 1 646 | **1,33** | **0,79 /s** | **58 859 o** |
+
+🎯 **Le rapport `déficit/seuil` est INVARIANT sur un facteur 2 de `bounce_px`**, et le taux ne
+décroît même pas de façon monotone (0,83 → 0,44 → 0,79). ⇒ 🔴 **« Remonter la marge » N'EST PAS UNE
+RÉPONSE**, et c'est désormais établi sur **trois** crans, avec une **explication mécaniste**.
+
+#### 20.7.14 🔴 `ISR_IRAM_SAFE = y` — VOIE FERMÉE **PAR LECTURE**, sans un seul flash
+
+§0 constate qu'à `y` *« le bounce PANIQUE au boot »* **sans dire pourquoi**. La raison est
+**structurelle**, et **le driver l'écrit lui-même**, à la ligne exacte du `memcpy` de remplissage
+(`esp_lcd_panel_rgb.c:911-913`) :
+
+> *« Note: if the frame buffer is behind a cache, and the cache is disabled, **crash would happen
+> here** when auto write back happens »*
+
+Le raisonnement se referme en trois faits **lus** :
+
+| # | fait | où |
+|---|---|---|
+| 1 | Notre framebuffer est **derrière le cache** : `.flags.fb_in_psram = 1` | `dn_display.c:295` |
+| 2 | À `ISR_IRAM_SAFE=y`, la DMA est allouée `.flags.isr_cache_safe = true` ⇒ **son ISR tourne CACHE COUPÉ** | `esp_lcd_panel_rgb.c:995-997` |
+| 3 | Or **c'est cette ISR-là** qui fait le `memcpy` **depuis la PSRAM** | `esp_lcd_panel_rgb.c:911` |
+
+⇒ 🔴 **Les deux mécanismes s'annulent PAR CONSTRUCTION** : `ISR_IRAM_SAFE` existe pour survivre au
+cache coupé ; le bounce existe pour recopier **depuis** la PSRAM, ce qui **exige** le cache.
+⚠️ Et **le driver ne refuse PAS la combinaison** (aucun `ESP_RETURN_ON_FALSE` ne l'attrape) —
+⇒ elle échoue **à l'exécution**, ⛔ pas à la création. C'est exactement le profil d'une panique au
+boot, puisque `lcd_rgb_panel_start_transmission()` **pré-remplit les deux tampons au démarrage**.
+
+⛔ **La seule échappatoire serait `fb_in_psram = 0`** — un framebuffer de **614 400 o** en RAM
+interne, quand il en reste **~90 000**. **Impossible**, d'un facteur 6,8.
+
+✅ **VOIE ÉLIMINÉE, ⛔ SANS L'AVOIR JOUÉE.** Aucun flash, aucun risque de reset physique.
+⚠️ ⛔ **Ne pas la rouvrir** sans avoir d'abord sorti le framebuffer de la PSRAM — ce qui est un
+autre produit.
+
 #### 20.7.10 Ce que la séance N'A PAS fait
 
 - ⛔ **`ISR_IRAM_SAFE = y` n'a PAS été éprouvé** : §0 dit qu'il **panique au boot**, une panique
