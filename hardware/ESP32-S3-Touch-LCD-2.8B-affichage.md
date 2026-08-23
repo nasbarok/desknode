@@ -4994,6 +4994,87 @@ MAINTENANT, puis attendre >= 3 cycles de source avant `flush` »*) et dans la **
 tableaux, qui prouve *a posteriori* que la RAZ a bien été jouée entre les bras. **Un rejeu se ferait à
 l'aveugle.** ⇒ à écrire.
 
+#### 20.7.18 🔴 L'INJECTEUR MENT SUR LE DESSIN — facteur **108** mesuré
+
+⚠️ **Constat déclencheur, et il vient de l'OWNER, ⛔ pas de la mesure** :
+> *« à part la temp les valeurs ne bougent pas, normal ? »*
+
+**Oui.** `dn_injecteur.py`, table `"reel"`, émet des valeurs **FIXES** (`cpu: [52, 32, 350, 410]`,
+`gpu: [0, 460, 500, 5980]`…), mesurées les 19 et 21 août et **rejouées telles quelles**. Le mot
+« reel » veut dire *« des valeurs réalistes »*, ⛔ pas *« des valeurs qui varient »*. Seule
+**AMBIANCE** bouge — c'est le BME680 **local**, cadencé toutes les 5 s.
+
+🔴 **CONSÉQUENCE, MESURÉE** : les cases ne changeant pas, **le dessin ne se déclenche presque pas**.
+Le même firmware, la même config, le même bounce :
+
+| stimulus | corruption/s |
+|---|---:|
+| `dn_injecteur.py --jeu reel` | **0,005 /s** |
+| **agent RÉEL de la tour** | **0,54 /s** |
+
+⇒ **facteur 108.** ⛔ **Tout chiffre où le DESSIN est la variable se mesure sous AGENT RÉEL.**
+⚠️ Au **nominal** les deux stimuli coïncidaient (déficit 741 vs 762 µs) — parce que **le groupage
+dominait tout**. Retirez le groupage, et l'écart se démasque. **C'est pour ça que le piège n'a pas
+été vu plus tôt**, et pourquoi il faut le nommer ici.
+
+#### 20.7.19 🔴 LES TROIS MODES D'INVALIDATION, ÉPROUVÉS SOUS AGENT RÉEL — ET LE RETOUR AU GROUPÉ
+
+Chaque ligne : 180 s d'agent RÉEL, même compteur, même `bounce_px = 7 680`, **l'œil de l'owner à
+chaque fenêtre**.
+
+| mode | taux | déficit pire | **ce que l'owner voit** |
+|---|---:|---:|---|
+| **`on`** (groupé, **le défaut**) | **0,94 /s** (173) | 744 µs | décalage · **aucun artefact** |
+| `off` (fin) | **0,54 /s** (100) | 772 µs | décalage · **restes de chiffres + bande de fond** |
+| `union` | **0,97 /s** (180, puis 179) | 1 337 µs | décalage · **micro-rectangles** |
+| `off` + cases **opaques** | 0,86 /s (159) | 715 µs | artefacts **réduits** · **« ligne verte »** |
+
+🔴 **DÉCISION OWNER, 2026-08-23 : RETOUR À `s_groupage = true`.** On ne livre pas une régression
+visuelle **certaine** contre **−42 %** sur un défaut qui reste visible de toute façon.
+✅ **Contrôle final** : `ae91c60`, groupé, agent réel 124 s ⇒ **0,79 /s**, cohérent avec le départ.
+
+##### Ce que ces quatre lignes ont appris, et qui ne se reperd pas
+
+1. 🎯 **LE GROUPAGE N'EST PAS QU'UNE AFFAIRE D'AIRE : C'EST UNE ATOMICITÉ.**
+   Une case = **UNE** zone sale = **UN** flush, et le flush **attend un vsync**. En fin, la même
+   mise à jour fait **4,7** flushes au lieu de 2,0 ⇒ la case s'affiche en **plusieurs trames**, et
+   l'œil voit l'état intermédiaire. ⛔ **Ni `dn3-1` ni `dn3-2` ne l'avaient nommé** — ils ne
+   parlaient que de pixels et de temps mural.
+2. ⚠️ **LA TRANSPARENCE EST *UNE* DES CAUSES DES ARTEFACTS, PAS LA SEULE** : cases opaques
+   (`opa 255`, `voile 0`) ⇒ artefacts **« réduits »**, ⛔ **pas supprimés**.
+3. 🎯 **`union` A ÉTÉ RÉFUTÉ POUR UNE RAISON INSTRUCTIVE** : il calcule l'union des zones **avant
+   ET après** écriture. Quand les valeurs ne bougent pas (injecteur), avant == après ⇒ zone
+   minimale. Sous agent réel, **les textes changent de largeur** ⇒ l'union s'élargit à chaque mise
+   à jour. **Le mécanisme même du mode le rend sensible au stimulus.**
+
+#### 20.7.20 🎯 DEUX SIGNATURES VISUELLES QUI DISTINGUENT LES DEUX DÉFAUTS
+
+**Constats owner du 2026-08-23, verbatim, et ce qu'ils désignent :**
+
+| ce qu'il voit | ce que ça désigne |
+|---|---|
+| *« restes de chiffres superposés »*, *« bande de fond mal repeinte »*, *« micro-rectangle »* | **artefact d'INVALIDATION** — une zone salie trop petite. ⇒ n'apparaît qu'en `off` / `union` |
+| 🎯 *« une **ligne verte** à la place, lors du décalage »* | 🔴 **LE GLISSEMENT LUI-MÊME, AU NIVEAU DE L'OCTET** |
+| 🎯 *« parfois ça **reste** dans un état glissé […] ensuite ça reglisse »* | 🔴 **LE RATTRAPAGE DU DRIVER QUI ÉCHOUE** |
+
+🎯 **POURQUOI VERTE — et ce n'est pas une couleur au hasard.** Le framebuffer est en **RGB565** : le
+rouge occupe les bits 11-15, le **vert les bits 5-10** — donc **À CHEVAL sur les deux octets** d'un
+pixel — et le bleu les bits 0-4. Un décalage du flux DMA d'un nombre **IMPAIR d'octets** recombine
+le poids fort d'un pixel avec le poids faible du suivant : les bits qui survivent le mieux à cette
+recombinaison sont ceux du **vert**. ⇒ **La ligne verte est la signature d'un décalage SUB-PIXEL**,
+et elle confirme le mécanisme du driver (*« resetting DMA will **re-send those** »*) **au niveau de
+l'octet**, ⛔ pas seulement de la trame.
+
+🎯 **ET LE « ÇA RESTE GLISSÉ » EST DANS LE TEXTE DU DRIVER.** `esp_lcd_panel_rgb.c:1142-1148` :
+*« reset the GDMA channel every VBlank **to stop permanent desyncs from happening** […] the
+single-frame desync this leads to is **preferable to the permanent desync** that could otherwise
+happen »*. ⇒ L'owner vient d'observer **le rattrapage qui échoue** : le cas que `RESTART_IN_VSYNC`
+est précisément censé prévenir. ⛔ **Non expliqué à ce jour**, et c'est une piste ouverte.
+
+⚠️ **UTILITÉ IMMÉDIATE DE CES DEUX SIGNATURES** : elles permettent de **distinguer à l'œil**, en une
+seconde, un défaut de dessin d'un défaut de DMA. ⛔ Avant cette séance, les deux se disaient
+« l'image sautille ».
+
 #### 20.7.10 Ce que la séance N'A PAS fait
 
 - ⛔ **`ISR_IRAM_SAFE = y` n'a PAS été éprouvé** : §0 dit qu'il **panique au boot**, une panique
