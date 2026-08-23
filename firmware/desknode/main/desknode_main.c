@@ -185,6 +185,43 @@ void app_main(void)
     /* 2. Pipeline d'affichage, rétroéclairage encore éteint (duty LEDC = 0). */
     ESP_ERROR_CHECK(dn_display_init(&cfg));
 
+    /*
+     * ─── LE REPLI DE BOUNCE SE PERSISTE, SINON IL SE REJOUE À CHAQUE BOOT ────
+     * (dn4-10, 2026-08-23)
+     *
+     * `dn_display_init()` sait désormais REPLIER sur le `bounce_px` par défaut
+     * quand la valeur de la NVS ne s'alloue pas (voir le filet, dn_display.c).
+     * Sans ce bloc-ci, la carte démarrerait — mais la valeur fautive resterait
+     * en NVS et le repli se rejouerait indéfiniment, avec un `cfg` qui
+     * annoncerait une chose et un matériel qui en porterait une autre.
+     *
+     * ⚠️ On écrit en NVS PARCE QUE le boot vient de prouver, par la mesure, que
+     *    la valeur ne tient pas. Ce n'est pas une préférence, c'est un CONSTAT.
+     * ⛔ Et un échec d'écriture n'est PAS fatal : la carte tourne, on le dit,
+     *    et le repli se rejouera au boot suivant — bruyamment.
+     */
+    if (dn_display_bounce_px() != (size_t)cfg.bounce_px) {
+        ESP_LOGE(TAG,
+                 "🔴 REPLI DE BOUNCE AU BOOT : la NVS demandait %d px, le "
+                 "matériel porte %u px. La valeur demandée NE S'ALLOUE PAS dans "
+                 "ce binaire.",
+                 cfg.bounce_px, (unsigned)dn_display_bounce_px());
+        esp_err_t err_nvs = dn_bootcfg_set_bounce_px((int)dn_display_bounce_px());
+        if (err_nvs == ESP_OK) {
+            ESP_LOGW(TAG,
+                     "   ✅ NVS corrigée à %u px : le prochain boot sera propre. "
+                     "⚠️ La valeur demandée est PERDUE — c'est voulu, elle "
+                     "briquait la carte.",
+                     (unsigned)dn_display_bounce_px());
+        } else {
+            ESP_LOGE(TAG,
+                     "   ⚠️ NVS NON corrigée (%s) : le repli se REJOUERA au "
+                     "prochain boot. La carte tourne, mais `cfg` mentira sur la "
+                     "config de boot tant que ce n'est pas réglé à la main.",
+                     esp_err_to_name(err_nvs));
+        }
+    }
+
     /* 3. L'asset. Un échec ici n'est PAS fatal : LVGL affichera le panneau
      *    « ASSET ABSENT » avec la raison exacte du refus, jamais un écran noir
      *    silencieux. On garde le verdict pour le lui passer. */

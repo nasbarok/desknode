@@ -543,6 +543,12 @@ size_t dn_bootcfg_cout_interne(int bounce_px, int draw_lines)
  * qui avait produit le « marge de sécurité déduite » FAUX. */
 size_t dn_bootcfg_budget_marge_o(void) { return DN_BUDGET_MARGE_O; }
 
+/* PUBLIÉE depuis dn4-10 : `dn_display.c` en a besoin pour son FILET DE
+ * SÉCURITÉ au boot — replier sur le défaut quand la valeur de la NVS ne
+ * s'alloue pas. Sans accessseur il aurait fallu recopier le nombre, et un
+ * nombre recopié finit toujours par diverger de son original. */
+int dn_bootcfg_defaut_bounce_px(void) { return DN_DEFAULT_BOUNCE_PX; }
+
 const char *dn_bootcfg_budget_refus(int bounce_px, int draw_lines, size_t *demande,
                                     size_t *dispo)
 {

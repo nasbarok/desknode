@@ -130,4 +130,9 @@ const char *dn_bootcfg_budget_refus(int bounce_px, int draw_lines, size_t *deman
  *    jusqu'au 2026-08-23 (dn4-10), et un refus légitime y ressemblait à un bug. */
 size_t dn_bootcfg_budget_marge_o(void);
 
+/* La valeur de `bounce_px` par défaut, en pixels. Publiée pour le filet de
+ * sécurité au boot de `dn_display.c` (dn4-10) : c'est la valeur sur laquelle il
+ * REPLIE quand celle de la NVS ne s'alloue pas. */
+int dn_bootcfg_defaut_bounce_px(void);
+
 void dn_bootcfg_log(const dn_bootcfg_t *cfg);

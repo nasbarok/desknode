@@ -2,6 +2,7 @@
 
 #include "sdkconfig.h" /* CONFIG_LCD_RGB_RESTART_IN_VSYNC, lu par dn_display_restart() */
 
+#include "dn_bootcfg.h"
 #include "dn_measure.h"
 #include "dn_pins.h"
 #include "dn_recal.h"
@@ -284,7 +285,7 @@ static esp_err_t panel_bring_up(const dn_bootcfg_t *cfg)
         .data_width = 16,
         .bits_per_pixel = 16,
         .num_fbs = cfg->num_fbs,
-        .bounce_buffer_size_px = (size_t)cfg->bounce_px,
+        .bounce_buffer_size_px = (size_t)cfg->bounce_px, /* ⚠️ peut REPLIER, voir plus bas */
         .dma_burst_size = 64,
         .hsync_gpio_num = DN_PIN_HSYNC,
         .vsync_gpio_num = DN_PIN_VSYNC,
@@ -322,8 +323,63 @@ static esp_err_t panel_bring_up(const dn_bootcfg_t *cfg)
     };
 
     size_t psram_avant = dn_measure_psram_free();
-    ESP_RETURN_ON_ERROR(esp_lcd_new_panel_st7701(s_panel_io, &dev_cfg, &s_panel),
-                        TAG, "création du panneau ST7701 refusée");
+
+    /*
+     * ─── FILET DE SÉCURITÉ AU BOOT (dn4-10, 2026-08-23) ──────────────────────
+     *
+     * 🔴 CE QU'IL REMPLACE, ET POURQUOI IL N'EST PAS DU CONFORT.
+     *    C'est ICI que les deux bounce buffers sont alloués, en RAM interne
+     *    DMA. Une allocation refusée rendait `ESP_ERR_NO_MEM` jusqu'à
+     *    `ESP_ERROR_CHECK(dn_display_init(&cfg))` (desknode_main.c) — donc
+     *    PANIQUE, donc CPU HALTÉ par CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT, donc
+     *    plus AUCUNE console pour annuler la valeur fautive... qui est en NVS
+     *    et sera relue AU BOOT SUIVANT. Une boucle de brick, dont seul un reset
+     *    physique + un reflash sortent (`Write timeout` jusque sur
+     *    `esptool.py flash_id`).
+     *
+     * ⚠️ LA GARDE DE `set` NE SUFFIT PAS, ET ELLE LE DIT ELLE-MÊME :
+     *    `dn_bootcfg_budget_refus()` protège AU MOMENT DU `set`, contre la RAM
+     *    libre DE CE BINAIRE-LÀ. Une valeur déjà en NVS survit à un binaire qui
+     *    grossit — et `dn4-9` vient d'en prendre 680 o. Le jour où le budget
+     *    bascule, c'est un boot ORDINAIRE qui brique la carte, sans qu'aucun
+     *    `set` n'ait été tapé.
+     *
+     * 🎯 CE QU'IL FAIT : une SEULE tentative de repli sur la valeur par défaut,
+     *    bruyante, et seulement si la valeur demandée n'était PAS déjà celle-là.
+     *    ⛔ Il ne masque rien : le refus est journalisé en ERREUR, et
+     *    `desknode_main` persiste le repli en NVS pour que le boot suivant soit
+     *    propre. Un repli SILENCIEUX serait pire que la panique.
+     *
+     * ⛔ CE QU'IL NE COUVRE PAS : un `assert()` ou une panique levée AILLEURS
+     *    (par exemple `esp_lvgl_port` sous CONFIG_LCD_RGB_ISR_IRAM_SAFE=y).
+     *    Ce filet-ci ne rattrape qu'un CODE D'ERREUR rendu par la création du
+     *    panneau. ⚠️ Ne pas le lire comme « le boot ne peut plus paniquer ».
+     */
+    esp_err_t err_panneau = esp_lcd_new_panel_st7701(s_panel_io, &dev_cfg, &s_panel);
+    if (err_panneau != ESP_OK && rgb_cfg.bounce_buffer_size_px != (size_t)dn_bootcfg_defaut_bounce_px()) {
+        ESP_LOGE(TAG,
+                 "🔴 création du panneau REFUSÉE (%s) avec bounce_px=%u — REPLI "
+                 "sur le défaut %d px pour que la carte DÉMARRE.",
+                 esp_err_to_name(err_panneau),
+                 (unsigned)rgb_cfg.bounce_buffer_size_px,
+                 dn_bootcfg_defaut_bounce_px());
+        ESP_LOGE(TAG,
+                 "   ⚠️ SANS CE REPLI : panique, CPU HALTÉ, plus de console, et "
+                 "la valeur fautive relue À CHAQUE BOOT jusqu'au reflash.");
+        ESP_LOGE(TAG,
+                 "   ⇒ la valeur %u px NE TIENT PAS dans ce binaire. `cfg` dira "
+                 "ce qui est ACTIF ; la NVS est corrigée par desknode_main.",
+                 (unsigned)rgb_cfg.bounce_buffer_size_px);
+        rgb_cfg.bounce_buffer_size_px = (size_t)dn_bootcfg_defaut_bounce_px();
+        s_panel = NULL;
+        err_panneau = esp_lcd_new_panel_st7701(s_panel_io, &dev_cfg, &s_panel);
+        /* ⚠️ `cfg` est `const` — c'est `rgb_cfg.bounce_buffer_size_px`, déjà
+         * corrigé ci-dessus, qui fait foi pour la suite. `s_bounce_px` est posé
+         * DEPUIS LUI, ⛔ jamais depuis `cfg->bounce_px` : un instrument qui
+         * annoncerait la valeur DEMANDÉE après un repli serait exactement le
+         * chiffre faux mais plausible que ce dépôt traque. */
+    }
+    ESP_RETURN_ON_ERROR(err_panneau, TAG, "création du panneau ST7701 refusée");
 
 #if DN_SEND_SWRESET
     ESP_RETURN_ON_ERROR(esp_lcd_panel_reset(s_panel), TAG, "reset du panneau refusé");
@@ -360,7 +416,9 @@ static esp_err_t panel_bring_up(const dn_bootcfg_t *cfg)
     size_t psram_apres = dn_measure_psram_free();
 
     s_num_fbs = cfg->num_fbs;
-    s_bounce_px = (size_t)cfg->bounce_px;
+    /* 🔴 DEPUIS `rgb_cfg`, ⛔ PAS depuis `cfg` : après un repli, les deux
+     * diffèrent, et c'est `rgb_cfg` qui dit ce que le matériel porte. */
+    s_bounce_px = rgb_cfg.bounce_buffer_size_px;
     void *fb0 = NULL, *fb1 = NULL, *fb2 = NULL;
     esp_err_t err;
     if (s_num_fbs >= 3) {
