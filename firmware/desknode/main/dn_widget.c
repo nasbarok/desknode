@@ -429,8 +429,60 @@ static uint8_t s_opa = LV_OPA_70;
  * ✅ LA BRANCHE GROUPÉE RESTE VIVANTE ET REJOUABLE À CHAUD : `widget groupe on`.
  *    C'est ce qui a permis cet A/B SANS REFLASHER, et c'est ce qui permettra le
  *    prochain. ⛔ Ne pas la supprimer.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴 ET LE DÉFAUT REVIENT À `true` LE 2026-08-23 — L'AGENT RÉEL A RÉFUTÉ LA
+ *    BASCULE. ⛔ TOUT CE QUI PRÉCÈDE RESTE, C'EST L'HISTOIRE DU DOSSIER.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * 🔴 CE QUI ÉTAIT FAUX, ET POURQUOI. Les chiffres du bloc ci-dessus (« / 41 »,
+ *    « 0 sur 200 s », « stable et propre ») ont TOUS été pris sous
+ *    `dn_injecteur.py --jeu reel` — dont la table émet des valeurs **FIXES**.
+ *    Les cases ne changeaient donc quasiment pas ⇒ presque pas de dessin.
+ *    ⚠️ C'est L'OWNER qui l'a vu, en regardant la dalle : « à part la temp les
+ *      valeurs ne bougent pas, normal ? ». ⛔ Pas la mesure.
+ *
+ * 🎯 SOUS AGENT RÉEL DE LA TOUR — 180 s, même compteur, même bounce, l'œil de
+ *    l'owner à chaque fenêtre :
+ *
+ *      mode                  taux           déficit pire   ce que l'owner voit
+ *      `on`   (groupé)       0,94 /s (173)     744 us      AUCUN artefact
+ *      `off`  (fin)          0,54 /s (100)     772 us      restes de chiffres
+ *                                                          + bande de fond
+ *      `union`               0,97 /s (180)   1 337 us      micro-rectangles
+ *      `off` + cases opaques 0,86 /s (159)     715 us      artefacts RÉDUITS,
+ *                                                          « ligne verte » au
+ *                                                          moment du décalage
+ *
+ *    ⇒ Le gain réel du fin est **−42 %**, ⛔ PAS « / 41 », ⛔ PAS une suppression.
+ *      L'injecteur sous-estimait la charge de dessin d'un facteur mesuré à 108.
+ *
+ * ⛔ ET IL COÛTE UN DÉFAUT VISUEL. Les artefacts DISPARAISSENT en `groupe on` :
+ *    causalité établie par A/B à chaud, ⛔ pas supposée. Décision owner du
+ *    2026-08-23 : on ne livre pas une régression visuelle certaine contre −42 %
+ *    sur un défaut qui reste visible de toute façon.
+ *
+ * 🎯 CE QUE LA SÉANCE A QUAND MÊME ÉTABLI, ET QUI NE SE REPERD PAS :
+ *    - LE GROUPAGE N'EST PAS QU'UNE AFFAIRE D'AIRE, C'EST UNE **ATOMICITÉ**.
+ *      Une case = UNE zone = UN flush, et le flush attend un vsync. En fin,
+ *      4,7 flushes au lieu de 2,0 ⇒ la case s'affiche en PLUSIEURS trames et
+ *      l'œil voit l'état intermédiaire. Ni dn3-1 ni dn3-2 ne l'avaient nommé.
+ *    - LA TRANSPARENCE EST **UNE** DES CAUSES des artefacts, pas la seule :
+ *      cases opaques ⇒ artefacts « réduits », ⛔ pas supprimés.
+ *    - 🎯 LA « LIGNE VERTE » EST UNE SIGNATURE, ⛔ PAS UN DÉTAIL. En RGB565 le
+ *      vert occupe les bits 5-10, donc À CHEVAL sur les deux octets d'un pixel :
+ *      un décalage du flux DMA d'un nombre IMPAIR d'octets recombine le poids
+ *      fort d'un pixel avec le poids faible du suivant ⇒ dominante VERTE.
+ *      ⇒ Elle confirme le mécanisme du driver AU NIVEAU DE L'OCTET, et elle
+ *        distingue à l'œil le GLISSEMENT (ligne verte) d'un artefact
+ *        d'invalidation (restes de dessin).
+ *
+ * ✅ LES TROIS MODES RESTENT VIVANTS ET REJOUABLES À CHAUD :
+ *    `widget groupe on|off|union`. C'est ce qui a permis TOUS les A/B de cette
+ *    séance sans reflasher. ⛔ Ne pas les supprimer — un mode effacé, c'est une
+ *    mesure qu'il faudra refaire.
  */
-static bool s_groupage = false;
+static bool s_groupage = true;
 
 /*
  * ─── dn4-10, TROISIÈME MODE : `union` ───────────────────────────────────────

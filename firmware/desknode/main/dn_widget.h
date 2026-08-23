@@ -683,6 +683,17 @@ uint32_t dn_widget_piste(void);
  *      flushes au lieu de 2,0 ⇒ la case s'affiche en PLUSIEURS trames et l'œil
  *      voit l'état intermédiaire. ⇒ D'où le TROISIÈME mode, `union`, plus bas.
  *
+ * 🔴 **ÉPILOGUE DU 2026-08-23 — LE DÉFAUT EST REVENU À `true`.** Décision owner,
+ *    après que les trois modes ont été éprouvés sous agent RÉEL avec son œil :
+ *      `on` 0,94 /s, AUCUN artefact · `off` 0,54 /s, artefacts ·
+ *      `union` 0,97 /s, micro-rectangles · `off`+opaque 0,86 /s, artefacts réduits.
+ *    ⇒ On ne livre pas une régression visuelle CERTAINE contre −42 % sur un
+ *      défaut qui reste visible de toute façon.
+ *    ⚠️ **CET EN-TÊTE DIT DONC `true`, ET LE CODE AUSSI** — c'est vérifiable en
+ *      trois secondes par `widget`, qui lit les drapeaux à chaud et connaît
+ *      désormais LES TROIS modes. ⛔ Ne pas laisser diverger : c'est le défaut
+ *      qu'AC9 de dn3-2 a payé, et qui a déjà récidivé DEUX FOIS ici.
+ *
  * ⛔ ET C'EST EXACTEMENT LE PIÈGE QUE LE PARAGRAPHE CI-DESSUS DÉCRIT, RÉCIDIVÉ EN
  *    SENS INVERSE : du 2026-08-23 12h12 (`c9ac2c1`) au 2026-08-23, cet en-tête a
  *    annoncé `true` pendant que le code valait `false`. Qui rejouait l'A/B en
