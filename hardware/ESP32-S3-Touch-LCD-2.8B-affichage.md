@@ -4866,6 +4866,63 @@ interne, quand il en reste **~90 000**. **Impossible**, d'un facteur 6,8.
 ⚠️ ⛔ **Ne pas la rouvrir** sans avoir d'abord sorti le framebuffer de la PSRAM — ce qui est un
 autre produit.
 
+#### 20.7.15 🔴 LE NOMBRE DE GRANDEURS N'Y EST POUR RIEN — C'EST L'AIRE
+
+**Question de l'owner, verbatim** : *« on va ajouter valeur par valeur dans les cases et voir ce qui
+fait déconner, ou si on doit baisser le nb de données affichées »*.
+
+**Balayage : 10 fenêtres de 180 s, DEUX passes en ordre INVERSÉ**, trafic **identique** (injecteur
+`--jeu reel`), seul le **dessin** varie. L'inversion sépare l'effet de la dérive.
+
+| config | grandeurs | **aire / flush** | passe 1 | passe 2 | **moyenne** |
+|---|---:|---:|---:|---:|---:|
+| **A. 6 cases NUES** | 0 | **3 456 px** | 0,000 | 0,000 | **0,000 /s** |
+| B. 1 par case | 6 | 36 810 | 0,692 | 0,880 | 0,786 |
+| C. CPU 2 · GPU 2 | 8 | 36 811 | 0,210 | 0,471 | 0,341 |
+| D. CPU 3 · GPU 3 | 10 | 36 808 | 0,868 | 0,814 | 0,841 |
+| E. **nominal** | 13 | 36 810 | 0,847 | 0,897 | **0,872** |
+
+🔴 **1. L'AIRE EST CONSTANTE À ±4 PIXELS** de 6 à 13 grandeurs (36 808 → 36 812).
+⇒ **ajouter des valeurs ne change RIEN à ce qui est repeint.** Le firmware le dit lui-même :
+`invalidation : GROUPEE (1 zone englobante par widget)` — dès qu'**une** valeur change, **la case
+entière** est invalidée.
+
+🔴 **2. LE TAUX NE SUIT PAS** : 0,786 → 0,341 → 0,841 → 0,872. **Désordonné**, et l'écart entre les
+deux passes d'une même config (C : 0,210 vs 0,471, **×2,2**) **dépasse** l'écart entre configs.
+⇒ ⛔ **bruit, pas effet.**
+
+🎯 **3. CASES NUES = ZÉRO CORRUPTION, DEUX FOIS, SOUS LE MÊME TRAFIC.** Aire 3 456 px, déficit pire
+**296 / 534 µs** — **sous le seuil de 620**.
+
+⇒ 🔴 **RÉPONSE À L'OWNER : ⛔ « baisser le nombre de données affichées » NE SERVIRA À RIEN.**
+Le coupable n'est pas le nombre de valeurs, c'est **l'AIRE REPEINTE** — **×10,7** entre nue et
+pleine.
+
+#### 20.7.16 🎯 `widget groupe off` — LE LEVIER, ET IL EST GRATUIT
+
+Scan rapide des leviers d'aire, **40 s par config** (⚠️ l'aire est une moyenne instantanée, elle se
+lit vite ; le **taux**, lui, exige 180 s — voir §20.7.17) :
+
+| config | aire/flush | **px / CYCLE** | fl/cyc | **copie moy** | copie pire | CORR (40 s) | déficit |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| **NOMINAL** (`groupe on`) | 36 675 | **73 350** | 2,0 | **3 069 µs** | 3 975 | 29 | 721 |
+| 🎯 **`groupe OFF`** | **6 758** | **31 948** | 4,7 | **350 µs** | **751** | **0** | **233** |
+| `bandes on` | 39 120 | 142 873 | 3,7 | 3 028 | 7 093 | 39 | **1 335** |
+| `groupe off` + `bandes on` | 54 810 | 89 889 | 1,6 | 4 676 | 6 061 | 0 | 182 |
+| `replacer off` | 36 675 | 75 202 | 2,1 | 3 046 | 4 012 | 0 | 419 |
+
+🎯 **`groupe off`** : aire **−82 %** · px par **cycle** **−56 %** · **copie divisée par 8,8**
+(3 069 → 350 µs, pire 3 975 → 751) · déficit pire **721 → 233 µs**, soit **SOUS le seuil de 620,
+avec 62 % de marge**.
+⚠️ `fl/cyc` monte de 2,0 à **4,7** — plus de flushes, mais **chacun 8,8× moins cher** : le bilan par
+cycle est **divisé par 2,3**.
+
+⚠️ **ET DEUX VOIES SONT ÉCARTÉES PAR LA MÊME MESURE** :
+- 🔴 **`bandes on` AGGRAVE** : aire 39 120 px, déficit **1 335 µs** — plus du DOUBLE du seuil.
+  §16.7 annonçait un *« gain SOUS CONDITION »* : **la condition n'est pas remplie dans ce régime**.
+  ⛔ Ne plus le proposer sans relire §16.7 **et** re-mesurer.
+- **`replacer off`** : **aucun effet** sur l'aire (36 675 px, identique au nominal).
+
 #### 20.7.10 Ce que la séance N'A PAS fait
 
 - ⛔ **`ISR_IRAM_SAFE = y` n'a PAS été éprouvé** : §0 dit qu'il **panique au boot**, une panique

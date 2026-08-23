@@ -368,8 +368,62 @@ static uint8_t s_opa = LV_OPA_70;
  *       modèle. Le témoin se PROVOQUE par `widget nue <idx> on`, à chaud, pour
  *       que la comparaison reste DANS LE MÊME FIRMWARE. C'est ce qui prouve
  *    que la différence vient bien du groupage et non d'un effet de bord.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴 LE JOUR EST ARRIVÉ — LE DÉFAUT BASCULE À `false` LE 2026-08-23 (dn4-10)
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * ⛔ TOUT CE QUI PRÉCÈDE RESTE VRAI ET N'EST PAS EFFACÉ. En particulier
+ *    l'avertissement ci-dessus, qui a écrit LA CONDITION DE SA PROPRE
+ *    RÉOUVERTURE, mot pour mot :
+ *      « Le jour où la copie deviendra le goulot (plus de cases vivantes, ou
+ *        une copie plus lente), l'arbitrage devra être REJOUÉ. »
+ *    LES DEUX BRANCHES DE LA CONDITION SONT REMPLIES, ET MESURÉES :
+ *      - « plus de cases vivantes » : 4 -> 6 depuis dn4-1 / dn4-8 / dn4-9 ;
+ *      - « la copie devenue le goulot » : 3 059 us par flush en groupé, contre
+ *        350 us en fin. C'est un facteur 8,7, et c'est LE goulot.
+ *
+ * 🔴 CE QUE LE GROUPAGE FABRIQUAIT, ET QU'AUCUN INSTRUMENT NE VOYAIT AVANT :
+ *    la FAMINE DMA DU BOUNCE. En multipliant les pixels copiés par 2 à 3,3, il
+ *    monopolisait la PSRAM pendant que l'ISR du panneau essayait d'y lire de
+ *    quoi remplir le bounce buffer. Résultat à l'écran, dans les mots de
+ *    l'owner : « un glissement de quelques pixels vers le bas, ça s'abaisse
+ *    puis revient, quasiment toutes les secondes ».
+ *
+ * 🎯 LES CHIFFRES DE LA BASCULE — compteur de dn4-10, fenêtres de 180 s,
+ *    stimulus identique, DEUX passes en ordre inversé :
+ *
+ *      grandeur                      groupé      FIN        rapport
+ *      aire par flush                36 675 px   6 746 px   -82 %
+ *      pixels par CYCLE              73 350      31 948     -56 %
+ *      copie par flush                3 059 us     350 us   / 8,7
+ *      déficit de phase PIRE            961 us     145 us   (seuil 620 us)
+ *      corruptions par seconde        0,329       0,008     / 41
+ *      -> et 0 sur une fenêtre de 200 s, image « stable et propre » (owner)
+ *
+ * ⚠️ CE QUE LA BASCULE COÛTE, ET IL FAUT LE LIRE AVANT DE LA DÉFAIRE :
+ *    exactement ce que §16.2 annonçait — le temps mural. Les flushes par cycle
+ *    passent de 2,0 à 4,7, donc une mise à jour de case arrive ~2,7 trames plus
+ *    tard, soit ~72 ms. À la cadence du produit (1 Hz), ce n'est pas visible :
+ *    l'owner a regardé 200 s et n'a rien vu. Et la navigation ne bouge pas —
+ *    `nav ab 40` : 336,8 -> 337,4 ms (n=80), soit +0,6 ms, très en dessous de
+ *    la dispersion des campagnes publiées. `fps 15` reste à 37,40 Hz exacts.
+ *    ⛔ La navigation ne bouge pas PARCE QUE le groupage ne la concernait pas :
+ *      un changement d'écran est une RECONSTRUCTION, pas une mise à jour de
+ *      valeur. Le levier n'agit que sur le chemin qui posait problème.
+ *
+ * ⚠️ ET CE QU'IL NE FAUT PAS EN CONCLURE : la bascule ne SUPPRIME pas le
+ *    mécanisme, elle le fait passer sous le seuil. Le déficit pire mesuré en
+ *    fin est de 145 us pour un seuil de 620 — il reste 76 % de marge, ⛔ pas
+ *    l'infini. Si le produit se charge encore, la question se rouvrira, et
+ *    l'instrument de dn4-10 (`flush`, bloc « glissement de trame ») est là pour
+ *    la trancher au chiffre.
+ *
+ * ✅ LA BRANCHE GROUPÉE RESTE VIVANTE ET REJOUABLE À CHAUD : `widget groupe on`.
+ *    C'est ce qui a permis cet A/B SANS REFLASHER, et c'est ce qui permettra le
+ *    prochain. ⛔ Ne pas la supprimer.
  */
-static bool s_groupage = true;
+static bool s_groupage = false;
 
 /*
  * ── L'INTERRUPTEUR DE BISSECTION DU TRESSAUTEMENT (constat owner 2026-08-19) ──
