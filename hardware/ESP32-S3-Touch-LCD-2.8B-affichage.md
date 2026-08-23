@@ -5090,6 +5090,98 @@ seconde, un défaut de dessin d'un défaut de DMA. ⛔ Avant cette séance, les 
   publié** plutôt qu'un Δ faux.
 - ⚠️ **Deux témoins owner PERDUS** : la fenêtre était lancée **avant** la demande. Corrigé en séance.
 
+## 20bis. 🎯 LE GLISSEMENT EST CORRIGÉ — `RESTART_IN_VSYNC=n` (2026-08-23)
+
+> ⛔ **AJOUT.** §20.1 à §20.7 restent **justes pour leur date**. Ce bloc **résout** le dossier qu'elles ouvraient.
+> Enquête complète : `cockpit:…/investigations/glissement-dma-restart-in-vsync-investigation.md`.
+
+### 20bis.1 🔴 LE RENVERSEMENT — le glissement n'était pas la famine, c'était SON RATTRAPAGE
+
+Espressif l'écrit au-dessus de `lcd_rgb_panel_try_restart_transmission()` (`esp_lcd_panel_rgb.c:1142-1148`) :
+
+> *« reset the GDMA channel every VBlank […] **this fix can lead to single-frame desyncs itself** : **if this interrupt
+> is late enough, the display will shift** as the LCD controller already read out the first data bytes, and **resetting
+> DMA will re-send those**. »*
+
+À **`y`**, ce reset est joué **INCONDITIONNELLEMENT ~37,4 fois par seconde** ⇒ **37,4 occasions de glisser par
+seconde**. ⇒ 🔴 **Les cinq leviers éliminés par §20.7 visaient TOUS la famine. Aucun ne touchait au rattrapage. Ils ne
+POUVAIENT pas suffire.**
+
+### 20bis.2 Les deux branches, et pourquoi `y` est le pire des deux mondes
+
+| | `=y` *(jusqu'au 2026-08-23)* | **`=n`** |
+|---|---|---|
+| reset DMA | **inconditionnel, chaque VBlank** | sur `need_restart` **ou** famine avérée |
+| `bb_eof_count` | ⛔ **jamais remis à zéro**, test **compilé hors du binaire** | mesuré et remis à zéro |
+| ce que le driver **sait** | rien — il reset « au cas où » | **s'il y a famine** |
+| commande console `dma` | **inopérante** | ✅ **opérante** |
+
+### 20bis.3 Pourquoi `y` n'avait plus lieu d'être — trois faits déjà au dossier
+
+`y` a été retenu en `dn1-2` contre un **décrochage au DÉMARRAGE**, dans un monde à **`num_fbs = 2`**.
+Depuis le 2026-08-15 il n'y en a plus qu'un, et §4bis écrit *« il n'y a plus de bascule, donc plus rien à perdre »*.
+
+1. **§5.3 (l.595-601)** — à `n`, le décalage au boot **se corrige par UN SEUL appel** : *« remet l'image en place d'un
+   coup »*. ⛔ Pas un blocage.
+2. **§4ter (l.536-541)** — `n` + recalage événementiel **a DÉJÀ tourné en `dn1-3`** : *« cadrage **correct** — le
+   défaut que `y` corrigeait **n'est pas revenu** »*, 9 recalages, **1 vsync suffit**.
+3. **(l.549-553)** — son seul coût, *« l'image reste décalée **depuis la bascule** »*, est **indexé sur une bascule qui
+   n'existe plus**.
+
+### 20bis.4 ✅ LE CORRECTIF LIVRÉ — firmware `1adf259`
+
+1. **`CONFIG_LCD_RGB_RESTART_IN_VSYNC=n`** dans les **deux** `sdkconfig` (le motif de `y` est **annoté**, ⛔ pas effacé).
+2. **Un RECALAGE D'AMORÇAGE** unique en fin de `app_main` — ⛔ **sans lui l'image sort décalée en permanence**. Il passe
+   par `dn_recal_arm()` **directement**, ⛔ pas par `dn_display_present()` qui garde l'armement derrière `num_fbs > 1`.
+   ⚠️ Et si `recal` vaut 0, c'est journalisé en **ERREUR** plutôt que de livrer une image décalée sans explication.
+3. **`DN_DEFAULT_BOUNCE_PX` 7 680 → 9 600** — l'optimum du **nouvel** arbitrage (§20bis.6).
+
+### 20bis.5 🎯 LA PREUVE EST UNE DISSOCIATION, ⛔ PAS UN ACCORD
+
+| | image au boot | glissement (œil) | compteur de phase |
+|---|---|---|---|
+| avant (`y`, 7 680) | ✅ droite | **~1/s**, *« ça descend et remonte »* | 143-173 corruptions / 180 s |
+| **après (`n` + amorçage)** | ✅ **« droite et centrée »** | ⛔ **« plus de glissement ! »** | **143 / 186 s — INCHANGÉ** |
+
+🔴 **Le compteur n'a PAS bougé, et c'est ça la preuve.** Il mesure le **déficit de phase**, donc la **famine** — que ce
+changement ne touche pas. Ce qui a disparu, c'est le **rattrapage**.
+⚠️ **Et ça révèle une limite de l'instrument de `dn4-10`** : il n'a **jamais** mesuré le glissement. Il mesurait la
+famine, bon proxy **uniquement parce que `y` transformait chaque famine en décalage**. À `n` le proxy est **cassé** :
+c'est le **DÉPASSEMENT du seuil** qui suit l'œil, ⛔ pas le compte.
+
+### 20bis.6 🎯 À `n`, `bounce_px` A UN OPTIMUM — et c'est 9 600
+
+⛔ **L'arbitrage a changé.** À `y` on cherchait à **éviter** la famine (§20.7.11 a montré que c'était vain). À `n`, la
+famine ne décale plus l'image : elle **salit les lignes du demi-bounce en cours**. ⇒ on optimise **la SURFACE du
+dégât**, et **deux effets s'opposent** : un tampon plus gros **laisse plus de temps** mais **rate plus large**.
+
+| `bounce_px` | demi-bounce | seuil | déficit pire | **dépassement** | constat owner |
+|---:|---:|---:|---:|---:|---|
+| 7 680 | 16 lignes | 620 µs | 1 340 µs | **+720 µs** | *« plus de glissement, petite ligne »* |
+| 🎯 **9 600** | 20 lignes | 775 µs | 951 µs | **+176 µs** | 🎯 *« bien mieux, plus stable »* |
+| 15 360 | 32 lignes | 1 240 µs | 1 461 µs | **+221 µs** | *« pire, une bande qui clignote couvre les % »* |
+
+**Coût de 9 600**, mesuré en `dn4-10` : **−7 024 o** de RAM interne, et **ZÉRO** ailleurs — `fps 15` reste à
+**37,40 Hz (+0,00 %)**, boot non discriminant, `nav ab 40` **−0,3 ms** sur n=80.
+
+### 20bis.7 ⚠️ LE VERDICT DE LA GARDE DE BUDGET DÉPEND DE L'INSTANT
+
+Deux `set bounce 15360` **consécutifs**, même binaire : le premier **REFUSÉ** (tas chargé), le second **ACCEPTÉ** (tas
+frais après reboot). `dn_bootcfg_budget_refus()` mesure la RAM libre **à l'instant de l'appel**.
+⇒ ⛔ **Un verdict de la garde n'est PAS une propriété stable du binaire.**
+🎯 **Et c'est la réalisation exacte de la prédiction de §20.7.7** : *« le second cran passe à 1 423 octets près, il ne
+passera plus dès que le binaire grossira »*. Le binaire a grossi ; le cran s'est fermé — **par intermittence**.
+
+### 20bis.8 ⛔ CE QUI RESTE, ET QUI N'EST PAS RÉSOLU
+
+- **Un résiduel** — *« il reste un tout petit peu »* : quelques lignes du demi-bounce, de la **famine pure**.
+- 🔴 ***« Parfois ça reste glissé »*** : **non revu** sur quatre fenêtres de 180 s, mais ⛔ **PAS prouvé absent** —
+  l'owner ne l'observait déjà que *« parfois »*, et **le compteur ne sait pas mesurer une DURÉE** (il compte des
+  trames, pas des états). ⇒ à trancher par l'usage prolongé, ou par un instrument de durée.
+- ⛔ **Le nombre de resets réellement joués par le driver reste inobservable** : à `n` il relance en interne sans passer
+  par `need_restart`, donc `recal` compte **1** (l'amorçage) et rien d'autre.
+- ⚠️ **Quatre fenêtres de 180 s ne valent pas une journée d'usage.**
+
 ## 21. `dn4-9` / AC8 — LE CONSTAT OWNER À L'ŒIL, 2026-08-22, firmware `38c3b99`
 
 🔴 **CE SONT LES YEUX DE L'OWNER, ⛔ PAS UNE DÉDUCTION.** Chaque question posée **une par une**,
