@@ -156,7 +156,45 @@ static const char *TAG = "dn_cfg";
  * ⛔ Ce n'est PAS gratuit : §11.5 impute au bounce buffer +160 ms de latence.
  *    Le relevé avant/après est en §18 du fichier d'affichage.
  */
-#define DN_DEFAULT_BOUNCE_PX 7680
+/*
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴 7 680 → 9 600 LE 2026-08-23 — L'OPTIMUM EST MESURÉ, ⛔ PAS CHOISI
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * ⛔ Le motif de 7 680 (juste au-dessus / §18.9) RESTE VRAI et n'est pas effacé :
+ *    il a été posé le 2026-08-19 contre la troisième occurrence de la famine.
+ *
+ * 🔴 CE QUI A CHANGÉ : `CONFIG_LCD_RGB_RESTART_IN_VSYNC` est passé à `n`
+ *    (2026-08-23). La DMA n'est plus remise à zéro à chaque VBlank, donc une
+ *    famine ne DÉCALE plus toute l'image — elle salit les lignes du demi-bounce
+ *    en cours. ⇒ **L'ARBITRAGE N'EST PLUS LE MÊME** : ce qu'on optimise n'est
+ *    plus « éviter la famine » mais « limiter la SURFACE du dégât quand elle
+ *    arrive ».
+ *
+ * 🎯 ET IL Y A UN OPTIMUM, PARCE QUE LES DEUX EFFETS S'OPPOSENT :
+ *      - un tampon PLUS GROS laisse plus de temps au remplissage (le seuil monte) ;
+ *      - mais quand ça rate quand même, c'est un demi-bounce ENTIER qui est
+ *        faux — donc PLUS DE LIGNES.
+ *    Mesuré sous AGENT RÉEL, 180 s, œil de l'owner à chaque fenêtre :
+ *
+ *      bounce_px   demi-bounce   dépassement du seuil   ce que l'owner voit
+ *        7 680      16 lignes         +720 us           « petite ligne »
+ *      → 9 600      20 lignes         +182 us           « bien mieux, plus stable »
+ *       15 360      32 lignes         +221 us           « pire, une bande qui
+ *                                                         couvre les % »
+ *
+ *    ⇒ **9 600 est le minimum sur les DEUX instruments à la fois.**
+ *
+ * ⚠️ COÛT, MESURÉ EN dn4-10 : −7 024 o de RAM interne, et **ZÉRO** ailleurs —
+ *    `fps 15` reste à 37,40 Hz (+0,00 %), le boot ne bouge pas de façon
+ *    discriminante, `nav ab 40` fait −0,3 ms sur n=80.
+ *
+ * ⛔ ET LE CRAN SUIVANT EST FERMÉ, PAS SEULEMENT MAUVAIS : `15 360` a été refusé
+ *    par `dn_bootcfg_budget_refus()` le 2026-08-23 quand le tas était chargé,
+ *    puis accepté sur un tas frais. ⚠️ Le verdict de la garde DÉPEND DONC DE
+ *    L'INSTANT où on la consulte — à ne pas lire comme une propriété stable.
+ */
+#define DN_DEFAULT_BOUNCE_PX 9600
 /*
  * ── draw_lines : 64 -> 128, décision owner du 2026-08-16 ─────────────────────
  *
