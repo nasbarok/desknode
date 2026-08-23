@@ -603,6 +603,9 @@ bool dn_ui_case_dessinee(int idx);
 /* A/B d'AC8 : bascule le groupage d'invalidation. C'est `dn_ui` qui prend le
  * verrou, jamais l'appelant — `dn_widget_*` EXIGE qu'il soit déjà pris. */
 esp_err_t dn_ui_set_groupage(bool on);
+/* dn4-10 : le TROISIÈME mode d'invalidation — une seule zone, bornée aux
+ * valeurs. ⛔ Exclusif des deux autres, garanti par le setter. */
+esp_err_t dn_ui_set_groupe_union(void);
 
 /* Dimensions d'une case du dashboard, en px. Une zone GROUPÉE vaut exactement
  * `w * h` pixels sales. Relu, pas récité. */

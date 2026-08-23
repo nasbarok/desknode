@@ -5536,6 +5536,22 @@ esp_err_t dn_ui_set_groupage(bool on)
         return ESP_ERR_TIMEOUT;
     }
     dn_widget_set_groupage(on);
+    /* dn4-10 : `on` et `off` EXCLUENT `union`. Les trois modes sont exclusifs,
+     * et c'est ce setter-ci qui le garantit — un appelant ne doit pas pouvoir
+     * fabriquer un état « groupé ET union » qui ne veut rien dire. */
+    dn_widget_set_groupe_union(false);
+    lvgl_port_unlock();
+    return ESP_OK;
+}
+
+/* dn4-10 — le TROISIÈME mode. Même contrat de verrou que ci-dessus. */
+esp_err_t dn_ui_set_groupe_union(void)
+{
+    if (!lvgl_port_lock(1000)) {
+        return ESP_ERR_TIMEOUT;
+    }
+    dn_widget_set_groupage(false);
+    dn_widget_set_groupe_union(true);
     lvgl_port_unlock();
     return ESP_OK;
 }

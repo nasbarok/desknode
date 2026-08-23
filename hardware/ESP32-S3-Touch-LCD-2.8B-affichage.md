@@ -4923,6 +4923,77 @@ cycle est **divisé par 2,3**.
   ⛔ Ne plus le proposer sans relire §16.7 **et** re-mesurer.
 - **`replacer off`** : **aucun effet** sur l'aire (36 675 px, identique au nominal).
 
+#### 20.7.17 🔴 LA CAMPAGNE 180 s DE LA BASCULE — ET SA PROVENANCE, QUI EST UN DÉFAUT
+
+⚠️ **SECTION ÉCRITE LE 2026-08-23, APRÈS COUP, POUR COMBLER UN RENVOI MORT.** §20.7.16 renvoyait à
+« §20.7.17 » depuis `c9ac2c1` alors que **cette section n'avait jamais été écrite**. Elle est donc
+rédigée ici **à partir des seules sources qui existaient** — et il faut savoir lesquelles.
+
+🔴 **PROVENANCE, ET C'EST LE POINT LE PLUS IMPORTANT DE CETTE SECTION.** Les chiffres ci-dessous ne
+viennent **PAS** d'un relevé consigné. Ils viennent de **deux endroits, et de deux seulement** : le
+commentaire de `firmware/desknode/main/dn_widget.c` (au-dessus de `s_groupage`) et le **message du
+commit `c9ac2c1`**. ⛔ **Les relevés bruts n'existent nulle part** — ni durée réelle de fenêtre, ni
+`n`, ni comptes entiers, ni `ph_max`, ni `aire cumulée`, alors que `flush` **imprime tout cela**.
+Recherche exhaustive menée sur les deux dépôts, toutes branches, arbre propre : rien.
+
+| grandeur | `groupe ON` | `groupe OFF` | rapport |
+|---|---:|---:|---:|
+| aire par flush | 36 675 px | **6 746 px** | −82 % |
+| pixels par **CYCLE** | 73 350 | **31 948** | −56 % |
+| copie par flush | 3 059 µs | **350 µs** | ÷ 8,7 |
+| **déficit de phase PIRE** | 961 µs | **145 µs** | seuil **620 µs** |
+| **corruptions par seconde** | 0,329 | **0,008** | ÷ 41 |
+| et — | | **0 sur 200 s** | constat owner : *« plus rien, image stable et propre »* |
+
+Annoncé comme : *« fenêtres de 180 s, stimulus identique, DEUX passes en ordre inversé »*.
+
+### ⛔ CE QU'IL FAUT LIRE AVANT DE SE SERVIR DE CES CHIFFRES
+
+🔴 **`÷ 41` ET `÷ 6,6` SONT DES MAJORANTS, ⛔ PAS DES MESURES.** L'instrument de `dn4-10` compare
+chaque phase à `s_bnc_ph_max`, un **maximum à cliquet** qui ne redescend jamais dans une fenêtre
+(`dn_measure.c:283-290`). Le bras `groupe ON` copie **3 069 µs** par flush contre **350** : il
+monopolise davantage la PSRAM, retarde davantage l'ISR de vsync, donc **gonfle davantage sa propre
+référence**. ⇒ **le biais joue EN FAVEUR de la bascule.** L'écart publié est un **plafond du gain**.
+
+⚠️ **ET `0,329 /s` EST LE CHIFFRE LE PLUS FLATTEUR DU DOSSIER — À L'ENVERS.** C'est **la plus basse
+des huit mesures publiées de ce même régime** : 0,710 · 0,936 · 0,962 · 0,710 (§20.7.11) · 0,786 ·
+0,341 · 0,841 · 0,872 (§20.7.15) · 0,725 (§20.7.16, 29 CORR / 40 s). ⇒ **la bascule est SOUS-VENDUE.**
+Avec la moyenne réelle du régime, le rapport serait de l'ordre de **÷ 100**, pas ÷ 41.
+
+✅ **CE QUI, MALGRÉ TOUT, TIENT — ET POURQUOI.** Trois raisons indépendantes :
+
+1. **Un instrument qui ne sait que SUR-compter ne peut pas fabriquer un ZÉRO.** `deficit = ph_max − ph`
+   avec `ph_max ≥ ph_nominal` **toujours** ⇒ le biais est de signe non négatif. Le bras de la bascule
+   rend **0**.
+2. **L'amplitude du biais est BORNÉE PAR UNE MESURE DÉJÀ PUBLIÉE ICI** : §20.7.5 donne `ph_max` de
+   **1 978 µs** (repos) à **2 010 µs** (pire trafic) — **32 µs d'écart total, soit 5,2 % du seuil de
+   620** — contre un effet mesuré de **×3,1 à ×6,6** sur le déficit. Retirer 32 µs ne déplace rien.
+3. **La conclusion survit à la dispersion que ce dossier a lui-même chiffrée** (×3,7 à config
+   identique, §20.7.6 ; ×14 à 9 600, §20.7.11) : même en appliquant ×14 à `0,008`, on reste à
+   **0,112 /s**, soit **6× sous le plancher** jamais atteint en `groupe ON`.
+
+✅ **PREUVE POSITIVE QU'UNE CAMPAGNE LONGUE A BIEN EU LIEU** (⛔ elle n'est simplement pas consignée) :
+le firmware n'imprime qu'un **compte entier** (`dn_console.c`, `ph_100pc`) — les taux sont des
+divisions faites après coup. Sur 40 s, la plus petite valeur non nulle possible est **1/40 = 0,025 /s**.
+Publier **0,008 /s** exige donc **≥ ~118 s** d'observation.
+
+### 🔴 CE QUI RESTE À RELEVER — L'INSTRUMENT L'IMPRIME DÉJÀ, IL SUFFIT DE LE LIRE
+
+| à relever | pourquoi | où |
+|---|---|---|
+| **`ph_max` du bras `groupe OFF`** | **le chiffre qui fermerait le dossier du cliquet** : s'il vaut ~1 978 µs ou plus, la référence a été correctement établie et le zéro est inattaquable | `flush`, bloc glissement |
+| `doubles` | contrôle direct du défaut `n >= 1` (déduit nul à `7 680` via `manques = 0`, jamais relevé) | `flush` |
+| **`cpu brut`** à uptime comparable | §16.2 mesure que le groupage **COÛTE +2,52 pt de CPU** : la bascule devrait en **rendre** — jamais vérifié | `cpu brut` |
+| Δ RAM interne, Δ boot | exigés par AC6 de `dn4-10`, absents pour cette bascule | `mem`, bandeau |
+| **la question 5 d'AC7 — *« l'image est-elle toujours DROITE ? »*** | la bascule change ce que LVGL invalide ; AC7 dit « ⛔ AUCUN COMPTEUR NE REMPLACE CET AC » | l'œil de l'owner |
+| le comportement sous **`touch mode event`** | ⚠️ **seul angle mort connu de la bascule** : ce mode met en pause le timer de lecture de l'indev, la fenêtre d'accumulation des zones passe de ~34 ms à ~1 s, et 4 rafales × 13 zones = **52 > `LV_INV_BUF_SIZE` (32)** ⇒ LVGL substituerait **l'écran entier** (307 200 px). ⛔ Ce n'est **pas** le régime livré (le défaut est POLL), mais ce n'est pas rien | `flush` : `aire/flush` et `max_px` |
+
+⚠️ **LE PROTOCOLE A/B N'EST PUBLIÉ VERBATIM NULLE PART** — ni ici, ni dans la story, ni dans le commit.
+Il n'existe que dans un `printf` du firmware (`widget groupe on|off` imprime *« `flush reset`
+MAINTENANT, puis attendre >= 3 cycles de source avant `flush` »*) et dans la **non-monotonie** des
+tableaux, qui prouve *a posteriori* que la RAZ a bien été jouée entre les bras. **Un rejeu se ferait à
+l'aveugle.** ⇒ à écrire.
+
 #### 20.7.10 Ce que la séance N'A PAS fait
 
 - ⛔ **`ISR_IRAM_SAFE = y` n'a PAS été éprouvé** : §0 dit qu'il **panique au boot**, une panique
@@ -4930,6 +5001,10 @@ cycle est **divisé par 2,3**.
 - ⛔ **`pclk` / fps** : non mesuré, touche le critère du brief.
 - ⛔ **La réduction de l'aire invalidée** : la mesure montre que l'aire **sature le tampon**, mais le
   gain de `widget bandes` (§16.7) n'a **pas** été re-chiffré ici.
+  🔴 **AMENDÉ LE 2026-08-23 — CETTE PUCE EST FAUSSE DEPUIS `c9ac2c1`, ⛔ ELLE N'EST PAS EFFACÉE.**
+  Le même commit qui a écrit cette section a inséré **§20.7.15** et **§20.7.16** juste au-dessus, qui
+  chiffrent la réduction de l'aire — et qui **RÉFUTENT `widget bandes`** (aire 39 120 px, déficit
+  **1 335 µs**, plus du double du seuil). Le levier réel est **`widget groupe off`**, ⛔ pas `bandes`.
 - ⚠️ **`cpu brut` à 9 600 n'est pas comparable au T0** (8 s d'uptime contre 110 s) ⇒ ⛔ **aucun Δ
   publié** plutôt qu'un Δ faux.
 - ⚠️ **Deux témoins owner PERDUS** : la fenêtre était lancée **avant** la demande. Corrigé en séance.

@@ -65,6 +65,13 @@
 #include "esp_log.h"
 
 #include "fonts/dn_font.h"
+/* dn4-10 : pour `lv_obj_get_ext_draw_size()`. ⚠️ EN-TÊTE PRIVÉ DE LVGL, inclus
+ * en connaissance de cause — la fonction était publique en 9.1 (voir le mapping
+ * `lv_api_map_v9_1.h:73`) et a été déplacée en 9.2. La DEVINER serait pire :
+ * sans elle, une ombre ou une bordure déborderait de la zone unie et laisserait
+ * exactement la trace qu'on cherche à supprimer. Si LVGL la déplace encore, la
+ * compilation CASSERA — c'est le comportement voulu, ⛔ pas un silence. */
+#include "core/lv_obj_draw_private.h"
 
 static const char *TAG = "dn_widget";
 
@@ -424,6 +431,90 @@ static uint8_t s_opa = LV_OPA_70;
  *    prochain. ⛔ Ne pas la supprimer.
  */
 static bool s_groupage = false;
+
+/*
+ * ─── dn4-10, TROISIÈME MODE : `union` ───────────────────────────────────────
+ *
+ * 🔴 POURQUOI IL EXISTE. La bascule `groupé -> fin` a divisé l'aire par 5,4 et
+ *    le glissement par 1,7 sous agent RÉEL (0,94 -> 0,54 corruption/s), mais
+ *    elle a INTRODUIT des artefacts que l'owner voit : « restes de chiffres
+ *    superposés » ET « bande de fond mal repeinte », sur les DEUX cases du
+ *    haut — CPU et GPU, les seules à trois grandeurs.
+ *
+ * 🎯 CE QUE LE GROUPAGE APPORTAIT ET QUE PERSONNE N'AVAIT NOMMÉ : L'ATOMICITÉ.
+ *    Une case = UNE zone sale = UN flush, et le flush est synchronisé au vsync.
+ *    En fin, la même mise à jour fait 4,7 flushes au lieu de 2,0 : la case
+ *    s'affiche donc en PLUSIEURS trames, et l'oeil voit l'état intermédiaire —
+ *    d'anciens chiffres à côté des nouveaux, un fond pas encore recomposé.
+ *    ⛔ Ce n'est donc PAS un résidu à corriger, c'est le PRIX de la finesse.
+ *
+ * ⇒ Le mode `union` garde l'ATOMICITÉ (une seule zone, donc un seul flush) mais
+ *   ne salit QUE la bande réellement occupée par les valeurs, au lieu du
+ *   conteneur entier (36 675 px mesurés).
+ *
+ * ⚠️ LE PIÈGE, ET IL EST DANS L'API : `lv_obj_invalidate_area()` tronque à
+ *    l'objet mais ⛔ N'AJOUTE PAS `ext_draw_size`, contrairement à
+ *    `lv_obj_invalidate()` (lv_obj_pos.c:1104-1109). Une ombre ou une bordure
+ *    déborderait donc de la zone et laisserait exactement la trace qu'on veut
+ *    supprimer. ⇒ on ajoute l'extension de CHAQUE label, à la main.
+ *
+ * ⚠️ ET ON UNIT AVANT **ET** APRÈS L'ÉCRITURE : un texte qui RACCOURCIT libère
+ *    de la place, et cette place-là n'est dans aucune des coordonnées d'après.
+ *
+ * ⛔ AUCUN DES TROIS MODES N'EST SUPPRIMÉ : `widget groupe on|off|union` reste
+ *    rejouable À CHAUD. C'est ce qui a permis tous les A/B de cette séance sans
+ *    reflasher, et c'est ce qui permettra le prochain.
+ */
+static bool s_groupe_union = false;
+
+void dn_widget_set_groupe_union(bool on) { s_groupe_union = on; }
+bool dn_widget_groupe_union(void) { return s_groupe_union; }
+
+/* Étend `zone` pour couvrir `o`, extension de dessin comprise. `vide` est mis à
+ * false dès qu'un objet a été pris en compte. ⛔ Ne PAS remplacer par
+ * `lv_area_join` sans les `ext` : voir le piège ci-dessus. */
+static void zone_prendre(lv_area_t *zone, bool *vide, lv_obj_t *o)
+{
+    if (!o || lv_obj_has_flag(o, LV_OBJ_FLAG_HIDDEN)) {
+        return;
+    }
+    lv_area_t a;
+    lv_obj_get_coords(o, &a);
+    /* ⚠️ L'EXTENSION DE DESSIN EST OBLIGATOIRE, et c'est le piège de l'API :
+     *    `lv_obj_invalidate()` l'ajoute (lv_obj_pos.c:1104-1109),
+     *    `lv_obj_invalidate_area()` ⛔ NE L'AJOUTE PAS. Une ombre ou une bordure
+     *    déborderait donc de la zone et laisserait EXACTEMENT la trace qu'on
+     *    cherche à supprimer.
+     * ⚠️ `lv_obj_get_ext_draw_size()` vit dans `core/lv_obj_draw_private.h`
+     *    depuis LVGL 9.2 (elle était publique en 9.1 — voir le mapping de
+     *    compatibilité `lv_api_map_v9_1.h:73`). On l'inclut en connaissance de
+     *    cause : la DEVINER serait pire. Si un jour LVGL la déplace encore, la
+     *    compilation CASSERA — c'est le comportement voulu, ⛔ pas un silence. */
+    int32_t ext = lv_obj_get_ext_draw_size(o);
+    a.x1 -= ext;
+    a.y1 -= ext;
+    a.x2 += ext;
+    a.y2 += ext;
+    if (*vide) {
+        *zone = a;
+        *vide = false;
+        return;
+    }
+    /* Union à la main : `lv_area_join()` est privée elle aussi, et pour un
+     * min/max sur quatre entiers la dépendance ne se justifie pas. */
+    if (a.x1 < zone->x1) {
+        zone->x1 = a.x1;
+    }
+    if (a.y1 < zone->y1) {
+        zone->y1 = a.y1;
+    }
+    if (a.x2 > zone->x2) {
+        zone->x2 = a.x2;
+    }
+    if (a.y2 > zone->y2) {
+        zone->y2 = a.y2;
+    }
+}
 
 /*
  * ── L'INTERRUPTEUR DE BISSECTION DU TRESSAUTEMENT (constat owner 2026-08-19) ──
@@ -1012,7 +1103,18 @@ void dn_widget_maj(const dn_widget_desc_t *desc, const dn_widget_etat_t *etat,
     }
 
     lv_display_t *disp = lv_display_get_default();
-    bool grouper = s_groupage && disp != NULL;
+    /* dn4-10 : `union` coupe l'invalidation comme `on` — la différence est
+     * UNIQUEMENT dans la zone qu'on salit à la sortie. */
+    bool grouper = (s_groupage || s_groupe_union) && disp != NULL;
+    lv_area_t zone_union;
+    bool zone_vide = true;
+    if (grouper && s_groupe_union) {
+        /* AVANT écriture : un texte qui raccourcit libère de la place, et cette
+         * place n'est dans AUCUNE coordonnée d'après. */
+        for (int i = 0; i < DN_WIDGET_GRANDEURS_MAX; i++) {
+            zone_prendre(&zone_union, &zone_vide, w->valeur[i]);
+        }
+    }
     if (grouper) {
         /* ⚠️ De cette ligne jusqu'au rétablissement, AUCUNE invalidation n'est
          *    enregistrée. On ne fait donc RIEN d'autre que d'écrire les enfants
@@ -1119,8 +1221,26 @@ void dn_widget_maj(const dn_widget_desc_t *desc, const dn_widget_etat_t *etat,
 
     if (grouper) {
         lv_display_enable_invalidation(disp, true);
-        /* UNE seule zone sale : le conteneur entier. C'est la branche B d'AC8. */
-        lv_obj_invalidate(w->racine);
+        if (s_groupe_union) {
+            /* APRÈS écriture : la zone d'arrivée des mêmes labels. */
+            for (int i = 0; i < DN_WIDGET_GRANDEURS_MAX; i++) {
+                zone_prendre(&zone_union, &zone_vide, w->valeur[i]);
+            }
+        }
+        if (s_groupe_union && !zone_vide) {
+            /* UNE seule zone sale — donc UN seul flush, donc l'atomicité — mais
+             * bornée aux valeurs au lieu du conteneur entier.
+             * ⚠️ `lv_obj_invalidate_area` TRONQUE à `racine` : si un label
+             *    débordait de son conteneur, la partie dehors ne serait pas
+             *    reprise. Elle ne le peut pas ici (les labels sont ses enfants
+             *    et le conteneur ne rogne pas), mais ⛔ ne pas l'oublier si la
+             *    géométrie change un jour. */
+            lv_obj_invalidate_area(w->racine, &zone_union);
+        } else {
+            /* UNE seule zone sale : le conteneur entier. C'est la branche B
+             * d'AC8 — et le repli quand l'union est vide (aucun label). */
+            lv_obj_invalidate(w->racine);
+        }
     }
 }
 

@@ -655,6 +655,43 @@ uint32_t dn_widget_piste(void);
  *    rejouait la campagne en croyant partir de la branche fine mesurait DEUX
  *    FOIS la même branche. Relevé en revue de code.
  *
+ * 🔴 **AMENDEMENT DU 2026-08-23 — LE PARAGRAPHE CI-DESSUS EST PÉRIMÉ, ⛔ IL N'EST
+ *    PAS EFFACÉ (il est l'histoire du défaut, et c'est lui qui a nommé le piège).**
+ *    LE DÉFAUT COMPILÉ EST `false` DEPUIS `c9ac2c1` (dn4-10) : le groupage
+ *    FABRIQUAIT la famine DMA du bounce buffer, et le désactiver a supprimé le
+ *    sautillement (0,329 -> 0,008 corruption/s, puis ZÉRO sur 200 s, constat owner
+ *    « plus rien, image stable et propre »). Voir `dn_widget.c` juste au-dessus de
+ *    `s_groupage`, et `affichage.md` §20.7.15 à §20.7.17.
+ *
+ * 🔴 **RE-AMENDÉ LE 2026-08-23, PAR LA CARTE — LES DEUX CHIFFRES CI-DESSUS SONT
+ *    CEUX DE L'INJECTEUR, ET L'AGENT RÉEL LES RÉFUTE.** ⛔ Le paragraphe reste,
+ *    il dit ce qu'on croyait et sur quelle base.
+ *      - `--jeu reel` de l'injecteur émet des valeurs **FIXES** (`dn_injecteur.py`,
+ *        table « reel »). Les cases ne changent donc quasiment pas ⇒ presque pas
+ *        de dessin. C'est l'OWNER qui l'a vu : « à part la temp les valeurs ne
+ *        bougent pas, normal ? »
+ *      - Sous **agent RÉEL de la tour**, 180 s, même compteur, même bounce :
+ *          `groupe on`  : 173 corruptions / 184 s = **0,94 /s**
+ *          `groupe off` : 100 corruptions / 185 s = **0,54 /s**
+ *        ⇒ le gain réel est **−42 %**, ⛔ PAS « ÷41 », ⛔ PAS une suppression.
+ *      - Et `groupe off` **INTRODUIT DES ARTEFACTS VISIBLES** : « restes de
+ *        chiffres superposés » ET « bande de fond mal repeinte », sur CPU et GPU.
+ *        Ils **disparaissent** en `groupe on` ⇒ causalité établie par A/B à chaud.
+ *    🎯 **CE QUE ÇA A APPRIS, ET QUE NI dn3-1 NI dn3-2 N'AVAIENT NOMMÉ** : le
+ *      groupage n'est pas qu'une affaire d'aire, c'est une **ATOMICITÉ**. Une
+ *      case = UNE zone = UN flush, et le flush attend un vsync. En fin, 4,7
+ *      flushes au lieu de 2,0 ⇒ la case s'affiche en PLUSIEURS trames et l'œil
+ *      voit l'état intermédiaire. ⇒ D'où le TROISIÈME mode, `union`, plus bas.
+ *
+ * ⛔ ET C'EST EXACTEMENT LE PIÈGE QUE LE PARAGRAPHE CI-DESSUS DÉCRIT, RÉCIDIVÉ EN
+ *    SENS INVERSE : du 2026-08-23 12h12 (`c9ac2c1`) au 2026-08-23, cet en-tête a
+ *    annoncé `true` pendant que le code valait `false`. Qui rejouait l'A/B en
+ *    croyant partir de la branche groupée mesurait DEUX FOIS la branche fine.
+ *    Relevé par l'investigation `dn4-10-bascule-groupage`, ⛔ MANQUÉ par la revue
+ *    de code 3 couches qui l'avait pourtant cherché ailleurs.
+ *    ⚠️ LA SEULE SOURCE DE VÉRITÉ À CHAUD RESTE `dn_widget_groupage()`, que la
+ *    console lit dynamiquement — ⛔ jamais cet en-tête.
+ *
  * `false` : chaque enfant modifié produit SA zone sale. LVGL NE FUSIONNE
  *   PAS — mesuré en dn2-1 : deux cases côte à côte dans la MÊME bande de 128
  *   lignes du draw buffer coûtent 2,0 flushes, pas 1,0. Un widget à N enfants
@@ -671,6 +708,32 @@ uint32_t dn_widget_piste(void);
  */
 void dn_widget_set_groupage(bool on);
 bool dn_widget_groupage(void);
+
+/*
+ * dn4-10 — TROISIÈME MODE D'INVALIDATION : `union`.
+ *
+ * 🎯 Il existe parce que la bascule `groupé -> fin` a divisé l'aire par 5,4 et
+ *    le glissement par 1,7 (mesuré sous agent RÉEL : 0,94 -> 0,54 corruption/s)
+ *    MAIS a introduit des artefacts VISIBLES : « restes de chiffres superposés »
+ *    et « bande de fond mal repeinte », sur CPU et GPU — les deux seules cases
+ *    à trois grandeurs. Constat owner, 2026-08-23.
+ *
+ * 🔴 CE QUE LE GROUPAGE APPORTAIT ET QUE NI dn3-1 NI dn3-2 N'AVAIENT NOMMÉ :
+ *    L'ATOMICITÉ. Une case = UNE zone = UN flush, et le flush attend un vsync.
+ *    En fin, la même mise à jour fait 4,7 flushes au lieu de 2,0 : la case
+ *    s'affiche en PLUSIEURS trames et l'œil voit l'état intermédiaire.
+ *    ⇒ Les artefacts ne sont pas un bug à corriger, c'est le PRIX de la finesse.
+ *
+ * ⇒ `union` garde l'atomicité (UNE zone) mais ne salit que la bande des
+ *   valeurs, au lieu du conteneur entier.
+ *
+ * ⚠️ ⛔ NON MESURÉ À L'ÉCRITURE. C'est une TROISIÈME BRANCHE, posée pour être
+ *    éprouvée à chaud contre les deux autres — ⛔ pas un correctif annoncé.
+ *    Tant que la carte n'a pas parlé, `on` reste la référence et `off` le fix
+ *    en cours d'instruction.
+ */
+void dn_widget_set_groupe_union(bool on);
+bool dn_widget_groupe_union(void);
 
 /*
  * ── AC9/W8 : L'OPACITÉ DES CASES — A/B JOUÉ, ET L'OWNER A TRANCHÉ ────────────

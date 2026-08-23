@@ -3026,9 +3026,28 @@ static void widget_indices_imprimer(int idx)
 static int cmd_widget(int argc, char **argv)
 {
     if (argc == 3 && strcmp(argv[1], "groupe") == 0) {
+        /* dn4-10 : TROISIÈME mode. `union` gagne l'atomicité du groupé (UNE
+         * zone sale, donc UN flush) sans salir le conteneur entier. ⛔ Il est
+         * posé pour être ÉPROUVÉ à chaud, pas annoncé comme un correctif. */
+        if (strcmp(argv[2], "union") == 0) {
+            if (dn_ui_set_groupe_union() != ESP_OK) {
+                printf("verrou LVGL non pris — RIEN n'a change\n");
+                return 1;
+            }
+            printf("invalidation : UNION — 1 zone sale par widget, bornee aux "
+                   "VALEURS\n");
+            printf("   atomicite du groupe (1 zone = 1 flush = pas d'etat\n");
+            printf("   intermediaire visible), aire du fin.\n");
+            printf("⚠️ NON MESURE a l'ecriture : c'est une TROISIEME branche a\n");
+            printf("   eprouver contre `on` et `off`, pas un correctif annonce.\n");
+            printf("⚠️ `flush reset` MAINTENANT, puis attendre >= 3 cycles de "
+                   "source\n");
+            printf("   avant `flush` : sinon la mesure melange les branches.\n");
+            return 0;
+        }
         bool on;
         if (!parse_on_off(argv[2], &on)) {
-            printf("usage : widget groupe on|off\n");
+            printf("usage : widget groupe on|off|union\n");
             return 1;
         }
         /* ⚠️ PASSE PAR `dn_ui`, QUI PREND LE VERROU (revue 2026-08-18).
@@ -4139,7 +4158,7 @@ static int cmd_widget(int argc, char **argv)
         return 0;
     }
     if (argc != 1) {
-        printf("usage : widget | groupe on|off | opa <0..255> | voile <0..255>\n");
+        printf("usage : widget | groupe on|off|union | opa <0..255> | voile <0..255>\n");
         printf("        | piste <0xRRGGBB>  (fond de la jauge)\n");
         printf("        | mock on|off | demo on|off [n] | pousser <idx>\n");
         printf("        | icone <case> <0..%d>  (A/B de glyphe sur une case, W4)\n",
@@ -7273,7 +7292,7 @@ static const esp_console_cmd_t k_cmds[] = {
      * geste : dn2-1 avait oublié `capteurs` dans le README, et une commande
      * qu'on ne trouve que depuis la carte n'est pas documentée. */
     DN_CMD("widget",
-           "widget | groupe on|off | opa <n> | voile <n> | mock on|off | demo "
+           "widget | groupe on|off|union | opa <n> | voile <n> | mock on|off | demo "
            "on|off [n] | pousser <n> | oublier <n> | rafale | nue <n> on|off | "
            "barre 1hz|minute | bandes on|off | icone <case> <n> | piste "
            "<0xRRGGBB> | voie defaut|avantd12|a|b|c|c2|repli | grandeurs <case> "
