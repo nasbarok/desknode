@@ -4224,9 +4224,18 @@ static int cmd_widget(int argc, char **argv)
             printf("                  ne se corrigent pas par le meme levier.\n");
         }
     }
+    /* 🔴 CORRIGÉ LE 2026-08-23 : cette ligne ne connaissait que DEUX modes et
+     *    annonçait « FINE » pendant qu'`union` tournait — relevé par l'owner sur
+     *    la sortie même du test. C'est la RÉCIDIVE EXACTE du défaut que dn3-2
+     *    AC9 a payé (la doc et le code qui disent deux valeurs différentes),
+     *    commise ici en ajoutant un troisième mode sans toucher à la source de
+     *    vérité. ⇒ Elle lit désormais LES DEUX drapeaux, dans l'ordre
+     *    d'exclusivité que `dn_ui_set_groupe_union()` garantit. */
     printf("invalidation : %s\n",
-           dn_widget_groupage() ? "GROUPEE (1 zone englobante par widget)"
-                                : "FINE (N zones, LVGL decide)");
+           dn_widget_groupe_union()
+               ? "UNION (1 zone par widget, bornee aux VALEURS)"
+               : dn_widget_groupage() ? "GROUPEE (1 zone englobante par widget)"
+                                      : "FINE (N zones, LVGL decide)");
     printf("opacite      : cases %u/255 · voile %u/255\n", dn_widget_opa(),
            dn_ui_voile_opa());
     printf("piste jauge  : 0x%06X   (le fond de la barre, part NON remplie —\n",
