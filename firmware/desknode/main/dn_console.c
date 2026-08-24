@@ -5046,10 +5046,20 @@ static int i2c_ecrire_nu(uint8_t addr, const uint8_t *o, int n)
             printf("      BOUGE PLUS — mesure du 2026-08-24 : 211, 211, 211.\n");
             printf("      C'est pire qu'un zero : ça passe pour une mesure.\n");
         } else {
-            printf("   ⚠️ Apres lui, `i2c brut %02X 2` rendra 00 00 — le registre\n",
+            /* 🔴 SEANCE DU 2026-08-24, 2e REFUTATION DANS LA MEME HEURE — LE RESET
+             * N'EST PAS ACCEPTE EN POWER DOWN (datasheet ROHM). Mesure : capteur
+             * eteint + `i2c ecrire 23 07` -> la lecture rend TOUJOURS 209, figee.
+             * Capteur ALIMENTE + 0x07 -> 00 00. La puce ACQUITTE dans les deux
+             * cas : l'acquittement ne dit RIEN de l'obeissance, ce que la ligne
+             * « acquitte ne veut pas dire a obei » annonçait deja. */
+            printf("   ⚠️ Apres lui, `i2c brut %02X 2` rendra 00 00 — MAIS SEULEMENT\n",
                    DN_BH1750_ADDR);
-            printf("      de donnee est VIDE, ce qui se lit comme un CAPTEUR MORT\n");
-            printf("      alors qu'il est seulement remis a zero.\n");
+            printf("      SI LE CAPTEUR EST ALIMENTE : le reset n'est PAS accepte\n");
+            printf("      en power down (datasheet ROHM), et la puce ACQUITTE quand\n");
+            printf("      meme. Mesure du 2026-08-24 : eteint + 0x07 -> 209 figee ;\n");
+            printf("      alimente + 0x07 -> 00 00.\n");
+            printf("      ⇒ En cas de doute : `i2c ecrire %02X 01` D'ABORD.\n",
+                   DN_BH1750_ADDR);
         }
         printf("   ⇒ Pour le rallumer : `i2c ecrire %02X 01` puis `i2c ecrire %02X 10`.\n",
                DN_BH1750_ADDR, DN_BH1750_ADDR);
