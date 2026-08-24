@@ -312,6 +312,33 @@ typedef struct {
 } dn_courbe_borne_t;
 
 static const dn_courbe_borne_t k_courbe_borne[DN_UI_METRIQUES] = {
+    /*
+     * 🔴 **TOUS LES POURCENTAGES SONT BORNÉS — DÉCISION OWNER DU 2026-08-24**,
+     *    ET ELLE VIENT D'UN CONSTAT À L'ŒIL, ⛔ pas d'une théorie.
+     *
+     *    L'owner a relevé : *« en fait c'est parce que la courbe de cpu et gpu
+     *    sont les mêmes ! »*. Le harnais y était pour beaucoup (il émettait des
+     *    sinusoïdes partout), **mais il a révélé une propriété réelle** :
+     *    🔴 **L'AUTO-CALAGE EFFACE L'AMPLITUDE.** Chaque série est normalisée à
+     *    sa propre étendue, donc elle **remplit la boîte** — un `CPU` qui
+     *    oscille entre 44,8 % et 45,2 % rend la MÊME vague qu'un `GPU` qui va
+     *    de 4 % à 95 %. Deux machines très différentes, un seul dessin.
+     *
+     * ⇒ Sur une grandeur **BORNÉE PAR CONSTRUCTION** (un pourcentage), l'échelle
+     *   fixe est **plus juste**, ⛔ pas seulement plus jolie : une charge à 12 %
+     *   se lit BASSE, et deux courbes deviennent COMPARABLES ENTRE PAGES.
+     *
+     * ⛔ **`RÉSEAU` ET `DISQUE` RESTENT AUTO-CALÉS**, et c'est délibéré : un
+     *    DÉBIT n'a **aucun plafond connu du firmware** — c'est écrit noir sur
+     *    blanc dans leurs descripteurs (*« `ind_max` devrait valoir la capacité
+     *    du lien, que le firmware ne connaît pas »*). Les borner à un plafond
+     *    INVENTÉ serait pire que de les auto-caler : ce serait publier une
+     *    échelle que rien ne mesure.
+     * ⚠️ `AMBIANCE` reste auto-calée aussi : une température n'a pas de « 100 % ».
+     * ⚠️ Les bornes sont en DIXIÈMES, comme le fil. `1000` = 100,0 %.
+     */
+    [DN_UI_CASE_CPU] = {.actif = true, .min = 0, .max = 1000},
+    [DN_UI_CASE_GPU] = {.actif = true, .min = 0, .max = 1000},
     [DN_UI_CASE_RAM] = {.actif = true, .min = 0, .max = 1000},
 };
 
