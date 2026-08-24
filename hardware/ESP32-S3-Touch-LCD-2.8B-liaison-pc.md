@@ -2265,3 +2265,26 @@ LHM, il n'est pas re-tiré, et c'est écrit.
 ⛔ **CE QUI RESTE OUVERT SUR AC9** : le **critère n°4 du brief** (« < 1 % ») n'est toujours pas coché
 — **son unité n'est pas tranchée**. À `0,1480 % machine` il passe largement ; à `2,367 % d'un cœur`,
 non. ⚠️ **C'est une décision owner, ⛔ pas une lecture.**
+
+### 23.9 🎯 L'UNITÉ EST TRANCHÉE — DÉCISION OWNER DU 2026-08-24 : **% DE LA MACHINE**
+
+Ce fichier écrivait lui-même *« le brief ne tranche pas laquelle il vise »*. **C'est tranché**, et
+c'est énoncé **dans le brief** (critère n°4), là où l'entrée de ledger l'exigeait.
+
+| lecture | mesuré (`COM3`, agent réel, 180 s, 2026-08-24) | verdict au critère « < 1 % » |
+|---|---:|---|
+| 🎯 **% de la MACHINE** *(retenu)* | **0,1480 %** | ✅ **PASSE**, avec **6,8× de marge** |
+| % d'UN cœur | 2,367 % | ❌ (⛔ n'est plus le critère) |
+
+✅ **LE CRITÈRE N°4 DU BRIEF EST COCHÉ.** Le titre d'AC9 (« SOUS 1 % ») cesse d'être une annonce non
+démontrée. ⇒ **AC9 est SOLDÉ dans ses deux chiffres et dans son critère.**
+
+⚠️ **LA CONSÉQUENCE, ÉCRITE AVANT QU'ON LA DÉCOUVRE** : le % machine **dépend du nombre de cœurs**.
+À `2,367 % d'un cœur`, le critère tient **dès 3 cœurs logiques** (2,367 / 3 = 0,79 %) et
+**ÉCHOUERAIT À 2** (1,18 %). **La tour en a 16.** ⛔ Ce n'est pas une objection à la décision —
+c'est ce qu'il faut savoir avant de promettre le critère **sur une autre machine**.
+
+⚠️ **ET ÇA SOLDE UNE SECONDE ENTRÉE DE LEDGER** : celle du « +0,26 pt d'isolation des sources »
+disait *« si le critère vise le cœur, ce +0,26 pt compte ; s'il vise la machine, il est dans le
+bruit »*. ⇒ **Il est dans le bruit.** Son A/B sur tour au repos n'est plus requis **pour ce
+critère-là** — il reste dû si on veut **attribuer** le coût, ce qui est une autre question.
