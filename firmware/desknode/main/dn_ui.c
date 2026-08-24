@@ -2754,11 +2754,32 @@ static void detail_reparametrer(int idx)
              * ⛔ Une garde qui crie au loup à chaque ouverture est PIRE que pas
              *    de garde : elle apprend à ignorer ses propres messages, et
              *    c'est la famille du « compteur décoratif » que ce dépôt traque.
-             * ⚠️ RIEN N'EST PERDU : `detail_reparametrer` est rejouée à CHAQUE
+             * ⚠️ ~~RIEN N'EST PERDU : `detail_reparametrer` est rejouée à CHAQUE
              *    mise à jour de la case affichée (5 fois par seconde en régime),
-             *    donc le premier passage avec une géométrie résolue vérifie. Et
-             *    quand aucune source ne parle, la ligne vaut « -- » — qui ne peut
-             *    pas déborder.
+             *    donc le premier passage avec une géométrie résolue vérifie.~~
+             * 🔴 **AMENDÉ LE 2026-08-24 (`[CC]`, séance carte) — ⛔ PAS EFFACÉ.
+             *    CETTE PHRASE ÉTAIT FAUSSE, ET C'EST ELLE QUI FAISAIT CROIRE QUE
+             *    LA GARDE TOURNAIT.** `detail_reparametrer()` n'a **QU'UN SEUL
+             *    APPELANT** : `build_detail()`, invoqué uniquement à la
+             *    CONSTRUCTION de la vue. ⛔ **Aucun chemin de mise à jour de
+             *    données ne l'appelle** — donc « le premier passage avec une
+             *    géométrie résolue » N'A JAMAIS LIEU tant que la vue reste
+             *    ouverte, et ce contrôle de largeur ne s'exécute QU'UNE FOIS, à
+             *    l'ouverture, quand la géométrie n'est justement pas résolue.
+             *    ⇒ **La garde est aujourd'hui DÉCORATIVE** — exactement la
+             *    famille que le commentaire trois lignes plus haut dénonce.
+             * ⚠️ MESURÉ EN SÉANCE : le fil portait `111,0 / 222,0 Mb/s` (trame
+             *    ACCEPTÉE, `seq 84`, `age 102 ms`) pendant que la dalle affichait
+             *    toujours `985,0 / 48,0` — les valeurs de l'OUVERTURE.
+             *    ✅ La PÉREMPTION, elle, passe (retour à « -- ») : AC7 de `dn2-2`
+             *    tient. C'est le rafraîchissement des VALEURS qui manque.
+             * ⇒ **PORTÉ PAR `dn4-4`** (prérequis P1) : sa courbe est une SÉRIE
+             *    TEMPORELLE, elle ne peut pas vivre sur une vue qui ne se met pas
+             *    à jour. ⛔ Ne pas corriger ici au jugé : c'est un changement de
+             *    cadence sur le chemin le plus chaud de la vue détail.
+             *    Détail : `hardware/…-liaison-pc.md` §21.5.
+             * ✅ CE QUI RESTE VRAI : quand aucune source ne parle, la ligne vaut
+             *    « -- » — qui ne peut pas déborder.
              * ⛔ NE PAS « corriger » par un `lv_obj_update_layout()` ici : il
              *    forcerait une passe de layout complète 5 fois par seconde, sur
              *    le chemin le plus chaud de la vue détail, pour un contrôle qui
