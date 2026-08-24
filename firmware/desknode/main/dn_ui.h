@@ -495,8 +495,14 @@ bool dn_ui_detail_courbe_rect(int *x, int *y, int *w, int *h, int *w_cadre,
  * chaque série. ⛔ Relues des objets, pas recalculées : c'est le seul moyen de
  * savoir OÙ une série est dessinée dans les 92 px, et donc si deux séries se
  * SUPERPOSENT. `*n_series` vaut 0, 1 ou 2. */
+/* 🔴 dn4-13 / AC4.3 — `*pose0` / `*pose1` disent si l'axe a ÉTÉ POSÉ pour la
+ * page courante. ⛔ Sans eux, « pas posé » sortait en `0 .. 0`, indiscernable
+ * d'une plage réelle nulle — et pire : les drapeaux survivaient à une transition
+ * de page, donc `widget courbe` publiait `0 .. 1000` (la plage bornée du CPU)
+ * sous le titre `RÉSEAU`. Chemin NOMINAL, pas exotique. */
 bool dn_ui_detail_courbe_axes(int *y0_min, int *y0_max, int *y1_min, int *y1_max,
-                              uint32_t *coul0, uint32_t *coul1, int *n_series);
+                              uint32_t *coul0, uint32_t *coul1, int *n_series,
+                              bool *pose0, bool *pose1);
 
 /*
  * dn4-4 / AC4.3 — LE TÉMOIN NÉGATIF de la garde de hauteur du détail.

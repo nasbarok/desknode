@@ -3517,22 +3517,48 @@ static int cmd_widget(int argc, char **argv)
             bool gmes = dn_ui_garde_hauteur(&np, &ncris, &ghp, &ghl, &gyl, &gres);
             {
             int a0=0,b0=0,a1=0,b1=0,ns=0; uint32_t c0=0,c1=0;
-            if (dn_ui_detail_courbe_axes(&a0,&b0,&a1,&b1,&c0,&c1,&ns)) {
+            bool p0=false, p1=false;
+            if (dn_ui_detail_courbe_axes(&a0,&b0,&a1,&b1,&c0,&c1,&ns,&p0,&p1)) {
                 printf("  ── les SERIES et leurs PLAGES Y (⛔ pas recalculees) ──\n");
                 printf("     series : %d\n", ns);
-                printf("     axe PRIMAIRE   : %ld .. %ld (dixiemes) · couleur 0x%06lX\n",
-                       (long)a0, (long)b0, (unsigned long)c0);
+                /* 🔴 dn4-13 / AC4.3 — « PAS POSE » EST UNE REPONSE, ⛔ pas `0..0`.
+                 *    Temoin : boot → `nav open 0` (CPU borne) → `nav open 3`
+                 *    AVANT toute trame `net` ⇒ cette ligne ne doit PAS imprimer
+                 *    `0 .. 1000` sous le titre RESEAU. */
+                if (p0) {
+                    printf("     axe PRIMAIRE   : %ld .. %ld (dixiemes) · couleur 0x%06lX\n",
+                           (long)a0, (long)b0, (unsigned long)c0);
+                } else {
+                    printf("     axe PRIMAIRE   : ⛔ PAS POSE (aucun point reel sur"
+                           " cette page) · couleur 0x%06lX\n", (unsigned long)c0);
+                }
                 if (ns == 2) {
-                    printf("     axe SECONDAIRE : %ld .. %ld (dixiemes) · couleur 0x%06lX\n",
-                           (long)a1, (long)b1, (unsigned long)c1);
-                    /* 🔴 DEUX AXES AUTO-CALES CENTRENT CHACUN LEUR SERIE. Deux
-                     *    series PLATES se retrouvent donc AU MEME ENDROIT dans
-                     *    les 92 px — indiscernables MALGRE deux couleurs. */
-                    long e0 = (long)b0 - a0, e1 = (long)b1 - a1;
-                    printf("     etendue : primaire %ld · secondaire %ld\n", e0, e1);
-                    printf("     🔴 DEUX AXES AUTO-CALES CENTRENT CHACUN LEUR SERIE :\n");
-                    printf("        si les DEUX sont plates, elles se SUPERPOSENT\n");
-                    printf("        dans les 92 px, ⛔ malgre deux couleurs.\n");
+                    if (p1) {
+                        printf("     axe SECONDAIRE : %ld .. %ld (dixiemes) · couleur 0x%06lX\n",
+                               (long)a1, (long)b1, (unsigned long)c1);
+                    } else {
+                        printf("     axe SECONDAIRE : ⛔ PAS POSE · couleur 0x%06lX\n",
+                               (unsigned long)c1);
+                    }
+                }
+                if (ns == 2 && p0 && p1) {
+                    if (a0 == a1 && b0 == b1) {
+                        printf("     ✅ ECHELLE COMMUNE : les deux axes portent la MEME\n");
+                        printf("        plage — decision owner n°5 du 2026-08-24. ⚠️ Le\n");
+                        printf("        prix est ACQUIS : la petite serie s'ecrase en\n");
+                        printf("        trait plat en bas de boite, et ce n'est PAS un\n");
+                        printf("        defaut a corriger.\n");
+                    }
+                    else {
+                        /* 🔴 DEUX AXES AUTO-CALES CENTRENT CHACUN LEUR SERIE. Deux
+                         *    series PLATES se retrouvent donc AU MEME ENDROIT dans
+                         *    les 92 px — indiscernables MALGRE deux couleurs. */
+                        long e0 = (long)b0 - a0, e1 = (long)b1 - a1;
+                        printf("     etendue : primaire %ld · secondaire %ld\n", e0, e1);
+                        printf("     🔴 DEUX AXES AUTO-CALES CENTRENT CHACUN LEUR SERIE :\n");
+                        printf("        si les DEUX sont plates, elles se SUPERPOSENT\n");
+                        printf("        dans les 92 px, ⛔ malgre deux couleurs.\n");
+                    }
                 }
             }
         }

@@ -3031,6 +3031,82 @@ static void hist_fmt(char *out, size_t n, int32_t dixiemes, int idx, int g)
  *    pas en cause, et le prouver a demandé de RELIRE la série (l'instrument,
  *    lui, récitait le descripteur).
  */
+/*
+ * 🔴 dn4-13 / AC4.1 — **DÉCISION OWNER N°5 DU 2026-08-24 : `RÉSEAU` PASSE À
+ *    L'ÉCHELLE COMMUNE.** ⛔ ELLE NE SE RE-LITIGE PAS.
+ *
+ * Les deux séries (descendant, montant) partagent TOUTE LA HAUTEUR et LA MÊME
+ * plage, calculée sur les deux. Le partage en demi-hauteurs est DÉSARMÉ pour
+ * cette page.
+ * ⚠️ **LE PRIX A ÉTÉ ÉNONCÉ ET RETENU PAR L'OWNER** : quand le descendant fait
+ *    985 Mb/s et le montant 5, le montant s'écrase en TRAIT PLAT EN BAS DE
+ *    BOÎTE. ⛔ Ce n'est **pas** un défaut à corriger — c'est la vérité brute du
+ *    rapport entre les deux débits, et c'est ce qui a été demandé.
+ * ⛔ Ne s'applique QU'À `RÉSEAU`. `AMBIANCE` porte deux unités DIFFÉRENTES
+ *    (°C et %) : une échelle commune y serait un non-sens arithmétique, ⛔ pas
+ *    une vérité brute.
+ */
+static bool courbe_echelle_commune(int idx)
+{
+    return idx == DN_UI_CASE_RESEAU;
+}
+
+/* La marge de respiration, identique quelle que soit l'origine de la plage.
+ * ⚠️ `mn == mx` (série plate) : on ouvre de ±1 dixième, sinon `lv_chart` divise
+ *    par une plage nulle et la ligne part au bord. */
+static void plage_marger(int32_t *mn, int32_t *mx)
+{
+    if (*mn == *mx) {
+        *mn -= 1;
+        *mx += 1;
+        return;
+    }
+    int32_t marge = (*mx - *mn) / 10;
+    if (marge < 1) {
+        marge = 1;
+    }
+    *mn -= marge;
+    *mx += marge;
+}
+
+/* Pose la plage SUR L'AXE **et** dans l'ombre que `dn_ui_detail_courbe_axes()`
+ * relit. Les deux ne peuvent pas diverger : il n'y a qu'un chemin. */
+static void courbe_axe_poser(lv_chart_axis_t axe, int32_t mn, int32_t mx)
+{
+    lv_chart_set_range(s_det_courbe, axe, mn, mx);
+    int k = (axe == LV_CHART_AXIS_PRIMARY_Y) ? 0 : 1;
+    s_axe_min[k] = mn;
+    s_axe_max[k] = mx;
+    s_axe_pose[k] = true;
+}
+
+/* La plage COMMUNE aux deux séries — l'union de leurs min/max RÉELS.
+ * Rend `false` si AUCUNE des deux ne porte de point réel : ⛔ pas de plage
+ * inventée, même en échelle commune. */
+static bool courbe_plage_commune(int s0, int s1, int32_t *mn, int32_t *mx)
+{
+    int32_t a0 = 0, b0 = 0, a1 = 0, b1 = 0;
+    bool o0 = (s0 >= 0) && dn_hist_minmax(s0, &a0, &b0);
+    bool o1 = (s1 >= 0) && dn_hist_minmax(s1, &a1, &b1);
+    if (!o0 && !o1) {
+        return false;
+    }
+    if (!o0) {
+        a0 = a1;
+        b0 = b1;
+    } else if (o1) {
+        if (a1 < a0) {
+            a0 = a1;
+        }
+        if (b1 > b0) {
+            b0 = b1;
+        }
+    }
+    *mn = a0;
+    *mx = b0;
+    return true;
+}
+
 static void courbe_serie_regler(int serie, lv_chart_series_t *ser,
                                 lv_chart_axis_t axe, int moitie, int idx)
 {
@@ -3044,29 +3120,14 @@ static void courbe_serie_regler(int serie, lv_chart_series_t *ser,
      *    un cadre sans échelle. C'est le contraire de l'auto-calage, où
      *    « aucune donnée » veut dire « aucune plage possible ». */
     if (idx >= 0 && idx < DN_UI_METRIQUES && k_courbe_borne[idx].actif) {
-        lv_chart_set_range(s_det_courbe, axe, k_courbe_borne[idx].min,
-                           k_courbe_borne[idx].max);
-        int k = (axe == LV_CHART_AXIS_PRIMARY_Y) ? 0 : 1;
-        s_axe_min[k] = k_courbe_borne[idx].min;
-        s_axe_max[k] = k_courbe_borne[idx].max;
-        s_axe_pose[k] = true;
+        courbe_axe_poser(axe, k_courbe_borne[idx].min, k_courbe_borne[idx].max);
         return;
     }
     int32_t mn = 0, mx = 0;
     if (!dn_hist_minmax(serie, &mn, &mx)) {
         return; /* ⛔ que des trous : AUCUNE plage inventée */
     }
-    if (mn == mx) {
-        mn -= 1;
-        mx += 1;
-    } else {
-        int32_t marge = (mx - mn) / 10;
-        if (marge < 1) {
-            marge = 1;
-        }
-        mn -= marge;
-        mx += marge;
-    }
+    plage_marger(&mn, &mx);
     if (moitie >= 0) {
         /* ⚠️ On ÉLARGIT la plage du côté opposé : la série garde son échelle
          *    RÉELLE (une variation de 0,2 °C reste une variation de 0,2 °C sur
@@ -3079,11 +3140,7 @@ static void courbe_serie_regler(int serie, lv_chart_series_t *ser,
             mx += etendue; /* les données occupent la MOITIÉ BASSE */
         }
     }
-    lv_chart_set_range(s_det_courbe, axe, mn, mx);
-    int k = (axe == LV_CHART_AXIS_PRIMARY_Y) ? 0 : 1;
-    s_axe_min[k] = mn;
-    s_axe_max[k] = mx;
-    s_axe_pose[k] = true;
+    courbe_axe_poser(axe, mn, mx);
 }
 
 /*
@@ -3097,6 +3154,20 @@ static void courbe_reparametrer(int idx)
     if (!s_det_courbe || !s_det_serie0 || !s_det_serie1) {
         return;
     }
+    /*
+     * 🔴 dn4-13 / AC4.3 — LES DEUX DRAPEAUX REPARTENT DE **FAUX**, EN TÊTE.
+     *    `s_axe_pose[0]` n'était remis à faux que dans `build_detail()`, donc il
+     *    SURVIVAIT à une transition de page. Chemin exact du défaut, et il est
+     *    NOMINAL : boot → `nav open 0` (CPU, borné 0..1000, drapeau posé) →
+     *    `nav open 3` AVANT toute trame `net` (auto-calé, `dn_hist_minmax()`
+     *    rend `false`, `courbe_serie_regler()` sort SANS RIEN ÉCRIRE) ⇒
+     *    `widget courbe` imprimait `0 .. 1000` sous le titre `RÉSEAU`, c'est-à-
+     *    dire la plage de la page PRÉCÉDENTE présentée comme celle-ci.
+     * ⛔ « Pas posé » ne doit pas être indiscernable d'une plage réelle : c'est
+     *    la règle que ce fichier écrit vingt lignes plus bas et qu'il violait ici.
+     */
+    s_axe_pose[0] = false;
+    s_axe_pose[1] = false;
     int s0 = -1, s1 = -1;
     int n = dn_hist_series_de_case(idx, &s0, &s1);
 
@@ -3133,18 +3204,56 @@ static void courbe_reparametrer(int idx)
         lv_chart_hide_series(s_det_courbe, s_det_serie1, true);
     }
 
-    /* Une seule courbe ⇒ elle prend toute la hauteur (`-1`). Deux ⇒ chacune sa
-     * moitié, sinon deux séries plates se superposent. */
-    /* Une borne fixe occupe toute la hauteur : la partager en deux moitiés
-     * annulerait précisément ce qu'elle apporte (lire le niveau ABSOLU). */
-    bool bornee = (idx >= 0 && idx < DN_UI_METRIQUES && k_courbe_borne[idx].actif);
-    courbe_serie_regler(s0, s_det_serie0, LV_CHART_AXIS_PRIMARY_Y,
-                        (n == 2 && !bornee) ? 0 : -1, idx);
-    if (n == 2) {
-        courbe_serie_regler(s1, s_det_serie1, LV_CHART_AXIS_SECONDARY_Y,
-                            bornee ? -1 : 1, idx);
+    /*
+     * ── QUELLE ÉCHELLE, ET QUI PARTAGE QUOI ─────────────────────────────────
+     *
+     * 🔴 dn4-13 / AC4.1 — `RÉSEAU` : **ÉCHELLE COMMUNE** (décision owner n°5).
+     *    Les deux séries reçoivent LA MÊME plage, calculée sur les DEUX, et
+     *    chacune occupe toute la hauteur.
+     *
+     * 🔴 dn4-13 / AC4.2 — AILLEURS, LE PARTAGE EN MOITIÉS EST DÉCIDÉ **PAR LES
+     *    DONNÉES**, ⛔ PLUS PAR LA TABLE `k_s1[]`.
+     *    `n == 2` dit seulement que la page PEUT porter deux courbes. Il
+     *    cantonnait la série 0 à une demi-hauteur même quand la série 1 était
+     *    100 % TROUS — c'est-à-dire qu'une source muette écrasait de moitié
+     *    l'amplitude de la source VIVANTE, sans qu'aucun pixel ne dise pourquoi.
+     *    Le partage n'a de sens que si les DEUX ont réellement quelque chose à
+     *    montrer : c'est `dn_hist_reels()` qui le sait, pas le descripteur.
+     *
+     * 🔴 dn4-13 / AC8.2 — LA BRANCHE `bornee` DU CAS `n == 2` EST **RETIRÉE**.
+     *    Elle était MORTE : `k_courbe_borne` n'est actif que sur CPU/GPU/RAM et
+     *    `k_s1[]` n'est peuplé que sur RÉSEAU/AMBIANCE — les deux ensembles sont
+     *    DISJOINTS, donc `n == 2 && bornee` n'a jamais pu être vrai. La décision
+     *    n°5 la rend encore plus morte. ⛔ La laisser aurait fait croire que le
+     *    cas « deux séries sur une échelle bornée » est traité. Il ne l'est pas,
+     *    et le jour où il se présentera il faudra le DÉCIDER, pas le déduire
+     *    d'une branche jamais exécutée. `courbe_serie_regler()` continue, elle,
+     *    d'honorer la borne sur les pages mono-courbe : rien n'est perdu.
+     */
+    bool commune = (n == 2 && courbe_echelle_commune(idx));
+    if (commune) {
+        int32_t mn = 0, mx = 0;
+        if (courbe_plage_commune(s0, s1, &mn, &mx)) {
+            plage_marger(&mn, &mx);
+            lv_chart_set_x_start_point(s_det_courbe, s_det_serie0,
+                                       dn_hist_debut(s0));
+            lv_chart_set_x_start_point(s_det_courbe, s_det_serie1,
+                                       dn_hist_debut(s1));
+            courbe_axe_poser(LV_CHART_AXIS_PRIMARY_Y, mn, mx);
+            courbe_axe_poser(LV_CHART_AXIS_SECONDARY_Y, mn, mx);
+        }
+        /* ⛔ Aucune des deux n'a de réel ⇒ les drapeaux restent FAUX. « Pas de
+         *    plage » se dit, il ne se remplace pas par la plage d'avant. */
     } else {
-        s_axe_pose[1] = false;
+        /* Le partage n'a lieu que si les DEUX séries portent du réel. */
+        bool deux_vivantes = (n == 2 && s0 >= 0 && s1 >= 0 &&
+                              dn_hist_reels(s0) > 0 && dn_hist_reels(s1) > 0);
+        courbe_serie_regler(s0, s_det_serie0, LV_CHART_AXIS_PRIMARY_Y,
+                            deux_vivantes ? 0 : -1, idx);
+        if (n == 2) {
+            courbe_serie_regler(s1, s_det_serie1, LV_CHART_AXIS_SECONDARY_Y,
+                                deux_vivantes ? 1 : -1, idx);
+        }
     }
     lv_chart_refresh(s_det_courbe);
     /*
@@ -3164,6 +3273,67 @@ static void courbe_reparametrer(int idx)
     if (cadre) {
         lv_obj_invalidate(cadre);
     }
+}
+
+/*
+ * 🔴 dn4-13 / AC4.4 — DE QUELLE SÉRIE LE `MIN/MAX` PARLE-T-IL ?
+ *
+ * Le défaut : `hs1` était récupéré ligne 3591 **puis jamais relu**. Sur
+ * `RÉSEAU`, deux séries dans la MÊME unité (`Mb/s`), rien ne distinguait un
+ * min/max du descendant d'un min/max des deux. Le lecteur voyait
+ * « MIN 5,2 Mb/s · MAX 985,0 Mb/s » sans savoir de quoi.
+ *
+ * ⚠️ LE LIBELLÉ EST **DÉRIVÉ DU DESCRIPTEUR**, ⛔ pas écrit en dur : deux
+ *    endroits qui nomment la même grandeur finissent par diverger, et ce dépôt
+ *    l'a déjà payé (`ui_case_origine()`, `dn_val_regime_couleur()`).
+ * ⚠️ ⛔ AUCUN symbole FontAwesome ici : cette ligne vit dans `dn_font_14`, et un
+ *    glyphe absent serait dessiné en carré vide EN SILENCE. Les chevrons de la
+ *    ligne de valeurs, eux, sont en `dn_font_28` où ils sont vérifiés présents.
+ */
+static void minmax_porte(char *out, size_t n, int idx, int nser, bool commune)
+{
+    if (nser < 2) {
+        out[0] = '\0'; /* une seule courbe : il n'y a rien à distinguer */
+        return;
+    }
+    if (commune) {
+        snprintf(out, n, " (les DEUX courbes)");
+        return;
+    }
+    const dn_widget_desc_t *d = case_est_widget(idx) ? &k_desc[idx] : NULL;
+    const char *u = d ? d->grandeurs[0].unite : NULL;
+    if (u && *u) {
+        snprintf(out, n, " (la courbe en %s)", u);
+    } else {
+        snprintf(out, n, " (la 1re courbe)");
+    }
+}
+
+/* L'union des min/max LONGS de deux séries — le pendant de `courbe_plage_commune`
+ * pour la fenêtre de 24 h. ⛔ Si aucune des deux n'a de seau réel, `false` : la
+ * page écrit « -- », elle n'invente pas de plage. */
+static bool minmax_long_union(int s0, int s1, int32_t *mn, int32_t *mx)
+{
+    int32_t a0 = 0, b0 = 0, a1 = 0, b1 = 0;
+    bool o0 = (s0 >= 0) && dn_hist_minmax_long(s0, &a0, &b0);
+    bool o1 = (s1 >= 0) && dn_hist_minmax_long(s1, &a1, &b1);
+    if (!o0 && !o1) {
+        return false;
+    }
+    if (!o0) {
+        a0 = a1;
+        b0 = b1;
+    } else if (o1) {
+        if (a1 < a0) {
+            a0 = a1;
+        }
+        if (b1 > b0) {
+            b0 = b1;
+        }
+    }
+    *mn = a0;
+    *mx = b0;
+    return true;
 }
 
 static void detail_reparametrer(int idx)
@@ -3338,10 +3508,33 @@ static void detail_reparametrer(int idx)
                     snprintf(ico, sizeof(ico), "%s%s", ic ? ic : "",
                              ic ? " " : "");
                 }
-                ecrit = snprintf(buf + p, sizeof(buf) - p, "%s%s%s%s%s%s%s",
-                                 sep, ico, px ? px : "", px ? " " : "",
+                /*
+                 * 🔴 dn4-13 / AC4.5 — LA TEMPÉRATURE D'`AMBIANCE` PORTE ENFIN SON
+                 *    MARQUEUR DE COULEUR.
+                 *    La balise n'était écrite que `if (ic && cc)`, et
+                 *    `k_desc[AMBIANCE].grandeurs[0]` n'a PAS d'icône : l'humidité
+                 *    avait sa goutte cyan, la température n'avait RIEN. Sur une
+                 *    page à deux courbes, une seule des deux était rattachable à
+                 *    sa ligne — ce qui rendait la couleur de l'autre indevinable.
+                 * ⇒ Quand la grandeur a une couleur de courbe MAIS pas d'icône,
+                 *   c'est **LE SEGMENT ENTIER** (préfixe + valeur + unité) qui
+                 *   prend la couleur.
+                 * ⛔ ON N'AJOUTE PAS UN GLYPHE : la largeur de cette ligne est
+                 *    MESURÉE et bornée (garde de débordement ci-dessous), et un
+                 *    codepoint absent de `dn_font_28` serait dessiné en carré
+                 *    vide EN SILENCE. Une couleur ne coûte aucun pixel.
+                 */
+                bool seg_colore = (cc != 0u) && (ic == NULL);
+                char ouvre[12] = "", ferme[2] = "";
+                if (seg_colore) {
+                    snprintf(ouvre, sizeof(ouvre), "#%06lX ", (unsigned long)cc);
+                    ferme[0] = '#';
+                    ferme[1] = '\0';
+                }
+                ecrit = snprintf(buf + p, sizeof(buf) - p, "%s%s%s%s%s%s%s%s%s",
+                                 sep, ico, ouvre, px ? px : "", px ? " " : "",
                                  connue ? e->txt[i] : "--", u ? " " : "",
-                                 u ? u : "");
+                                 u ? u : "", ferme);
                 if (ecrit < 0 || (size_t)ecrit >= sizeof(buf) - p) {
                     /* ⛔ LA TRONCATURE EST AUDIBLE, JAMAIS SUBIE. Elle est
                      * impossible avec le dimensionnement ci-dessus ; ce log
@@ -3580,9 +3773,14 @@ static void detail_reparametrer(int idx)
         } else {
             snprintf(fen, sizeof(fen), "%lu s", (unsigned long)cs);
         }
+        int nser = dn_hist_series_de_case(idx, NULL, NULL);
+        char porte[40];
+        minmax_porte(porte, sizeof(porte), idx, nser,
+                     courbe_echelle_commune(idx));
         snprintf(buf, sizeof(buf),
-                 "source : %s\nétat   : %s\nrégime : %s\nMIN/MAX sur : %s",
-                 nom_source(idx), etat, dn_val_regime_nom(e->regime), fen);
+                 "source : %s\nétat   : %s\nrégime : %s\nMIN/MAX%s sur : %s",
+                 nom_source(idx), etat, dn_val_regime_nom(e->regime), porte,
+                 fen);
         lv_label_set_text(s_det_sec, buf);
     }
 
@@ -3607,7 +3805,15 @@ static void detail_reparametrer(int idx)
          *    *« pourrait-on systématiquement avoir le min max sur 24 h +
          *    quelques minutes de graphe ? »* — les deux coexistent donc
          *    délibérément, et la ligne d'état DIT laquelle est laquelle. */
-        if (hs0 >= 0 && dn_hist_minmax_long(hs0, &mn, &mx)) {
+        /* 🔴 dn4-13 / AC4.4 — EN ÉCHELLE COMMUNE, LE `MIN/MAX` PORTE SUR LES
+         *    **DEUX** SÉRIES : c'est ce que « échelle commune » veut dire, et
+         *    publier celui de la seule descendante sous un axe partagé serait
+         *    une troisième vérité pour un seul dessin. `hs1` était récupéré
+         *    puis JAMAIS RELU — il l'est. */
+        bool mm_ok = courbe_echelle_commune(idx)
+                         ? minmax_long_union(hs0, hs1, &mn, &mx)
+                         : (hs0 >= 0 && dn_hist_minmax_long(hs0, &mn, &mx));
+        if (mm_ok) {
             char a[DN_WIDGET_TXT_MAX + 12], b[DN_WIDGET_TXT_MAX + 12];
             hist_fmt(a, sizeof(a), mn, idx, 0);
             hist_fmt(b, sizeof(b), mx, idx, 0);
@@ -5819,7 +6025,8 @@ int dn_ui_detail_panh(void)
 }
 
 bool dn_ui_detail_courbe_axes(int *y0_min, int *y0_max, int *y1_min, int *y1_max,
-                              uint32_t *coul0, uint32_t *coul1, int *n_series)
+                              uint32_t *coul0, uint32_t *coul1, int *n_series,
+                              bool *pose0, bool *pose1)
 {
     /*
      * 🔴 dn4-13 / AC1.1 — LE VERROU EST PRIS AVANT DE LIRE L'OBJET, ET RENDU SUR
@@ -5842,6 +6049,14 @@ bool dn_ui_detail_courbe_axes(int *y0_min, int *y0_max, int *y1_min, int *y1_max
         lvgl_port_unlock();
         return false;
     }
+    /*
+     * 🔴 dn4-13 / AC4.3 — LE DRAPEAU SORT, ⛔ IL N'EST PLUS AVALÉ EN `0`.
+     *    « Axe pas posé » rendait `0 .. 0`, INDISCERNABLE d'une plage réelle
+     *    nulle. L'appelant reçoit maintenant l'information elle-même, et c'est
+     *    à lui d'écrire « pas posé » — ⛔ jamais « zéro », règle du fichier.
+     */
+    if (pose0) { *pose0 = s_axe_pose[0]; }
+    if (pose1) { *pose1 = s_axe_pose[1]; }
     if (y0_min) { *y0_min = s_axe_pose[0] ? s_axe_min[0] : 0; }
     if (y0_max) { *y0_max = s_axe_pose[0] ? s_axe_max[0] : 0; }
     if (y1_min) { *y1_min = s_axe_pose[1] ? s_axe_min[1] : 0; }
