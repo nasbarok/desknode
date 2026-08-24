@@ -3742,7 +3742,42 @@ static bool nav_appliquer(int cible, int64_t t_clic)
         }
         s_demo_on = false;
         if (vue == DN_VUE_DETAIL) {
+            /*
+             * 🔴 **DÉTAIL → DÉTAIL : L'ÉCRAN NE CHANGE PAS, DONC PERSONNE NE
+             *    L'INVALIDE — CONSTAT OWNER DU 2026-08-24.**
+             *    Verbatim : *« la transition n'efface pas la cpu pour gpu »*,
+             *    puis, après un premier correctif partiel : *« non pas pour gpu
+             *    apres cpu … le reste est propre »*.
+             *
+             * ⚠️ LA CAUSE : `lv_screen_load()` sur l'écran **DÉJÀ ACTIF** est un
+             *    **no-op** — il n'invalide RIEN. Sur `dashboard → détail` et
+             *    `détail → dashboard`, l'écran CHANGE et LVGL repeint tout ;
+             *    c'est pourquoi « le reste est propre ». Mais `détail → détail`
+             *    (`nav open <autre>`) ne repeint QUE ce que les objets
+             *    invalident eux-mêmes — et un `lv_chart` au fond TRANSPARENT
+             *    laisse sa ligne précédente sous un repeint partiel en bandes.
+             * ⇒ On invalide **l'écran entier**, parce qu'un CHANGEMENT DE PAGE
+             *   *est* un repeint de page. ⛔ Invalider le seul cadre ne
+             *   suffisait pas : c'est ce que faisait la version précédente, et
+             *   l'œil l'a vu.
+             *
+             * ⚠️ COÛT, ET IL EST BORNÉ : cette branche ne s'exécute QUE sur
+             *    `détail → détail`. ⛔ `nav ab` alterne détail↔dashboard, donc
+             *    l'écran change à chaque fois : **les latences publiées ne sont
+             *    pas affectées**, et ce n'est pas une façon de les embellir.
+             * ⚠️ ET LE DOIGT NE PRODUIT PAS CETTE TRANSITION : depuis la dalle
+             *    on repasse toujours par le dashboard. `détail → détail` n'est
+             *    atteignable qu'à la console (`nav open`) — c'est-à-dire par les
+             *    HARNAIS DE MESURE. Le défaut était donc réel mais **invisible à
+             *    l'usage**, et c'est un harnais qui l'a exposé. ⛔ Ce n'est pas
+             *    une raison de le laisser : un instrument qui salit l'écran
+             *    fausse le prochain constat à l'œil.
+             */
+            bool meme_ecran = (lv_screen_active() == s_scr_detail);
             detail_reparametrer(idx);
+            if (meme_ecran) {
+                lv_obj_invalidate(s_scr_detail);
+            }
             lv_screen_load(s_scr_detail);
         } else {
             lv_screen_load(s_scr_dash);

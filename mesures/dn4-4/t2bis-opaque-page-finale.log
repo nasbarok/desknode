@@ -1,0 +1,42 @@
+
+===== widget opa 255 =====
+widget opa 255
+opacite des CASES = 255/255 (100 %) — SCENE RECONSTRUITE
+⚠️ la reconstruction a RETIRE le stimulus `anim` et la demo,
+   et elle remet la vue au dashboard. Re-armer si besoin.
+⚠️ Reperes : 255 = LV_OPA_COVER (opaque, supprime le re-blit du
+   fond) · 178 = LV_OPA_70 (l'etat des lieux) · 127 = LV_OPA_50.
+desknode> 
+===== widget voile 0 =====
+widget voile 0
+opacite du VOILE = 0/255 (0 %) — SCENE RECONSTRUITE
+⚠️ la reconstruction a RETIRE le stimulus `anim` et la demo,
+   et elle remet la vue au dashboard. Re-armer si besoin.
+⚠️ Reperes : 255 = LV_OPA_COVER (opaque, supprime le re-blit du
+   fond) · 178 = LV_OPA_70 (l'etat des lieux) · 127 = LV_OPA_50.
+desknode> 
+===== touch reset =====
+touch reset
+compteurs tactiles, latences et compteurs UI remis a zero.
+desknode> 
+===== nav ab 20 =====
+nav ab 20
+20 allers-retours en modele « screens »…
+⚠️ NE PAS TOUCHER LA DALLE pendant la serie.
+I (214361) desknode: up 210 s — vsync=7907 — flush=1142 cycles=367 — PSRAM libre 7767988 o
+--- non-fuite (AC4) ---------------------------------------
+  tas LVGL    21560 -> 21076 o   (delta -484 o)  <- LE tas des ecrans
+  RAM interne 74071 -> 74071 o   (delta 0 o)
+  PSRAM       7767988 -> 7767988 o   (delta 0 o)
+  ⚠️ SEUL le delta du tas LVGL prouve quoi que ce soit ici : les
+     objets LVGL vivent dans un pool STATIQUE en .bss, invisible
+     pour la RAM interne et la PSRAM.
+tas LVGL (LV_MEM_SIZE_KILOBYTES = 64 Ko, STATIQUE en .bss) :
+  total 61764 o · utilisé 21104 o (35 %) · libre 40660 o
+  plus gros bloc libre 22852 o · fragmentation 44 %
+⚠️ ces octets-là sont réservés au LINK : ils n'apparaissent PAS dans
+   l'avant/après de `mem`. C'est le seul endroit où ils se voient.
+  transitions REELLES : 40 (demandees : 40)
+  latence : n=40 min 238127 us · moy 271823 us · max 313418 us
+-----------------------------------------------------------
+desknode> 

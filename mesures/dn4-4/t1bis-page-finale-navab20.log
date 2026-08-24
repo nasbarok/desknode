@@ -1,0 +1,27 @@
+
+===== touch reset =====
+touch reset
+compteurs tactiles, latences et compteurs UI remis a zero.
+desknode> 
+===== nav ab 20 =====
+nav ab 20
+20 allers-retours en modele « screens »…
+⚠️ NE PAS TOUCHER LA DALLE pendant la serie.
+I (174306) desknode: up 170 s — vsync=6409 — flush=815 cycles=295 — PSRAM libre 7767988 o
+I (184353) desknode: up 180 s — vsync=6784 — flush=963 cycles=326 — PSRAM libre 7767988 o
+--- non-fuite (AC4) ---------------------------------------
+  tas LVGL    20976 -> 20920 o   (delta -56 o)  <- LE tas des ecrans
+  RAM interne 73847 -> 73847 o   (delta 0 o)
+  PSRAM       7767988 -> 7767988 o   (delta 0 o)
+  ⚠️ SEUL le delta du tas LVGL prouve quoi que ce soit ici : les
+     objets LVGL vivent dans un pool STATIQUE en .bss, invisible
+     pour la RAM interne et la PSRAM.
+tas LVGL (LV_MEM_SIZE_KILOBYTES = 64 Ko, STATIQUE en .bss) :
+  total 62024 o · utilisé 20920 o (34 %) · libre 41104 o
+  plus gros bloc libre 39556 o · fragmentation 4 %
+⚠️ ces octets-là sont réservés au LINK : ils n'apparaissent PAS dans
+   l'avant/après de `mem`. C'est le seul endroit où ils se voient.
+  transitions REELLES : 40 (demandees : 40)
+  latence : n=40 min 171382 us · moy 337584 us · max 400949 us
+-----------------------------------------------------------
+desknode> 
