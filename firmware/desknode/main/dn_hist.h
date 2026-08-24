@@ -71,6 +71,26 @@
  *    `lv_chart` SAUTE au tracé. Un `0` dessinerait une chute à zéro là où la
  *    source s'est simplement tue — le mensonge d'interface que `dn2-2` a chassé
  *    du dashboard, transposé au temps.
+ *
+ *    🔴 **dn4-13 / AC10 — LA RÈGLE EST SCINDÉE (décision owner n°3).**
+ *    ⚠️ Elle était VRAIE et **INCOMPLÈTE** : prise à la lettre, elle condamnait
+ *       le PALIER d'`AMBIANCE`, qui est LÉGITIME.
+ *
+ *      ┌─ source MORTE ou PÉRIMÉE ⇒ **TROU** — règle INCHANGÉE ;
+ *      └─ source **LENTE** ⇒ **PALIER LÉGITIME**, ⛔ pas un trou : la valeur est
+ *         TOUJOURS VALIDE, elle n'a simplement pas été rafraîchie.
+ *
+ *    LES CADENCES QUI LE PROUVENT : `DN_CAPT_PERIODE_MS` = **5 000 ms**
+ *    (BME680, 0,2 Hz) contre une horloge d'échantillonnage à **1 Hz**, et une
+ *    péremption capteur à `DN_CAPT_PEREMPTION_US` = **3 cycles = 15 s**. ⇒ Entre deux lectures, la
+ *    valeur reste valide pour 4 échantillons sur 5 : un **palier de 5 points**.
+ *    À 15 s sans lecture, le capteur PÉRIME, le régime passe `ABSENTE`, et le
+ *    trou revient — la règle du haut reprend la main, telle quelle.
+ *
+ *    ⛔ **AUCUN CHANGEMENT DE DESSIN**, et le motif du refus est écrit : creuser
+ *    le trou donnerait **24 points isolés sans ligne** sur 120, `lv_chart`
+ *    cassant la polyligne sur `LV_CHART_POINT_NONE`. On rendrait ILLISIBLE une
+ *    page pour honorer la lettre d'une règle dont l'esprit est déjà respecté.
  * 2. **UNE VALEUR `SIMULÉE` N'ENTRE PAS.** Un mock armé produit des **TROUS**,
  *    ⛔ pas des points. C'est la règle W10/AC5 de `dn4-1` portée au temps : une
  *    série présentée comme réelle ne contient que du réel. ⚠️ Et c'est

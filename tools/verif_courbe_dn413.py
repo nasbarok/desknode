@@ -521,6 +521,57 @@ def i_borne_option2_declaree(S):
     return True, "marque dans `dn_ui.h` ET imprime par la console"
 
 
+# 🔴 dn4-13 / AC10.4 — LES FORMULATIONS QUI INTERDISENT DE RÉPÉTER UNE VALEUR.
+#    Chacune doit être QUALIFIÉE : soit elle nomme la source MORTE/PÉRIMÉE (elle
+#    est alors scopée, et la règle est inchangée), soit elle nomme l'EXCEPTION du
+#    palier. ⛔ Une interdiction nue condamnerait le palier d'`AMBIANCE`, qui est
+#    LÉGITIME — et c'est la décision owner n°3.
+RE_INTERDIT_PALIER = re.compile(
+    r"derni[eè]re valeur connue"
+    r"|stabilit[ée] qui n'a pas [ée]t[ée] mesur[ée]e"
+    r"|g[eè]lerait"
+    r"|jamais une interpolation", re.I)
+RE_QUALIFIE = re.compile(
+    r"\bMORTE\b|\bmorte\b|\bmeurt\b|P[ÉE]RIM[ÉE]E|perim|"
+    r"PALIER|palier|AC10|LENTE|lente|efface", re.I)
+
+
+def i_regle_du_trou_scindee(S):
+    """AC10.1..AC10.4 — la règle est scindée, et AUCUNE formulation n'interdit
+    le palier sans nommer soit la source morte, soit l'exception."""
+    for cle, nom in (("ui_brut", "dn_ui.c"), ("histh_brut", "dn_hist.h")):
+        t = S[cle]
+        if "AC10" not in t:
+            return False, "%s ne porte pas la règle scindée" % nom
+        if "PALIER" not in t.upper():
+            return False, "%s ne nomme pas le PALIER" % nom
+    # les cadences réelles, ⛔ pas « c'est lent »
+    for cle, nom in (("ui_brut", "dn_ui.c"), ("histh_brut", "dn_hist.h")):
+        t = S[cle]
+        for jeton in ("DN_CAPT_PERIODE_MS", "5 000", "1 Hz", "15 s"):
+            if jeton not in t:
+                return False, "%s : la cadence « %s » n'est pas écrite" % (nom, jeton)
+    # le motif du REFUS de changer le dessin
+    if "24 points isolés" not in S["histh_brut"]:
+        return False, "dn_hist.h n'écrit pas le motif du refus (24 points isolés)"
+    if "LV_CHART_POINT_NONE" not in S["histh_brut"]:
+        return False, "le motif ne nomme pas la cause (`LV_CHART_POINT_NONE`)"
+    # ── AC10.4 : le balayage ────────────────────────────────────────────────
+    nus = []
+    for cle, nom in (("ui_brut", "dn_ui.c"), ("histh_brut", "dn_hist.h"),
+                     ("hist_brut", "dn_hist.c")):
+        lignes = S[cle].split("\n")
+        for i, l in enumerate(lignes):
+            if not RE_INTERDIT_PALIER.search(l):
+                continue
+            fenetre = "\n".join(lignes[max(0, i - 25):i + 26])
+            if not RE_QUALIFIE.search(fenetre):
+                nus.append("%s:%d" % (nom, i + 1))
+    if nus:
+        return False, "interdiction NUE du palier : %s" % ", ".join(nus)
+    return True, "règle scindée, cadences écrites, 0 interdiction nue"
+
+
 INVARIANTS = [  # (libelle, invariant, [(fichier, avant, apres), ...])
     ("AC4.3 `s_axe_pose[0..1]` remis a FAUX en tete", i_axe_pose_remis,
      [("ui", "    s_axe_pose[0] = false;\n    s_axe_pose[1] = false;\n\n"
@@ -597,6 +648,17 @@ INVARIANTS = [  # (libelle, invariant, [(fichier, avant, apres), ...])
      i_borne_option2_declaree,
      [("cons", "Il se RE-TIRE (dn4-13 / AC11.1)", "On le garde"),
       ("uih", "**139,5 ms**", "un chiffre")]),
+    ("AC10 la regle du trou est SCINDEE, 0 interdiction nue",
+     i_regle_du_trou_scindee,
+     [("histh", "24 points isolés", "quelques points"),
+      ("ui", "DN_CAPT_PERIODE_MS` = **5 000 ms**", "un capteur lent"),
+      # ⛔ LA MUTATION DOIT POSER L'INTERDICTION **LOIN** DE TOUTE
+      #    QUALIFICATION. La première version déplaçait la ligne de trois lignes,
+      #    et le mot « MORTE » restait dans la fenêtre de ±25 : la gate ne
+      #    rougissait pas — À RAISON. C'était le témoin qui était faux.
+      ("ui", 'static const char *TAG = "dn_ui";',
+       'static const char *TAG = "dn_ui";\n'
+       '/* on garde toujours la derniere valeur connue */')]),
     ("AC6.5 `widget detpan` borne a 167, derive de 262-95",
      i_detpan_borne,
      [("ui", "#define DET_PANH_MAX (262 - 95)", "#define DET_PANH_MAX 167"),

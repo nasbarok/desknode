@@ -4905,6 +4905,40 @@ static void descripteurs_auditer(void)
  * ⛔ ⛔ NE JAMAIS remplacer un trou par un `0` ni par la dernière valeur connue :
  *    l'un dessine une chute à zéro qui n'a pas eu lieu, l'autre dessine une
  *    stabilité qui n'a pas été mesurée. Les deux sont des mensonges de courbe.
+ *
+ * ══ 🔴 dn4-13 / AC10 — LA RÈGLE EST **SCINDÉE** (décision owner n°3) ════════
+ *
+ * ⚠️ LA PHRASE CI-DESSUS EST VRAIE, ET ELLE ÉTAIT **INCOMPLÈTE**. Prise à la
+ *    lettre, elle condamnait le PALIER d'`AMBIANCE` — et le palier est LÉGITIME.
+ *    Il fallait donc distinguer deux choses que « ne jamais répéter la dernière
+ *    valeur » confondait :
+ *
+ *   ┌─ SOURCE MORTE ou PÉRIMÉE ⇒ **TROU**. Règle INCHANGÉE. La valeur n'a plus
+ *   │  cours : la répéter dessinerait une stabilité qui n'a pas été mesurée.
+ *   │
+ *   └─ SOURCE **LENTE** ⇒ **PALIER LÉGITIME**, ⛔ pas un trou. La valeur est
+ *      TOUJOURS VALIDE, elle n'a simplement pas été rafraîchie.
+ *
+ * LES CADENCES RÉELLES, QUI FONT QUE LE PALIER N'EST PAS UN MENSONGE :
+ *   · le BME680 d'`AMBIANCE` est lu toutes les `DN_CAPT_PERIODE_MS` = **5 000 ms**
+ *     (0,2 Hz) — voir `dn_capteurs.h` ;
+ *   · l'horloge d'échantillonnage de l'historique tourne à **1 Hz** ;
+ *   · la péremption capteur est `DN_CAPT_PEREMPTION_US` = **3 cycles = 15 s**.
+ *   ⇒ Entre deux lectures du capteur, la valeur reste VALIDE pendant 4 des 5
+ *     échantillons. Le régime de la case reste `RÉELLE`, l'échantillonneur pose
+ *     donc 5 fois la même valeur : **un palier de 5 points**. À 15 s sans
+ *     lecture, le capteur PÉRIME, le régime passe `ABSENTE`, et l'anneau creuse
+ *     un TROU — la règle du haut reprend la main, telle quelle.
+ *
+ * 🔴 ⛔ **AUCUN CHANGEMENT DE DESSIN, ET LE MOTIF DU REFUS EST ÉCRIT.** Creuser
+ *    un trou entre deux lectures du BME680 donnerait, sur les 120 points de la
+ *    courbe, **24 points isolés sans aucune ligne** : `lv_chart` CASSE la
+ *    polyligne sur `LV_CHART_POINT_NONE`. On remplacerait une courbe honnête
+ *    par un nuage de 24 pixels — c'est-à-dire qu'on rendrait ILLISIBLE une page
+ *    pour honorer la lettre d'une règle dont l'esprit est déjà respecté.
+ * ⚠️ CE QUI EST INTERDIT RESTE INTERDIT : répéter une valeur d'une source MORTE
+ *    ou PÉRIMÉE. Le palier ne vient pas d'une répétition décidée ici — il vient
+ *    de ce que la source DIT ENCORE la même chose, et qu'elle a le droit.
  * ⚠️ COÛT : ~~7~~ **8** écritures d'`int32_t` par seconde (chiffre corrigé le
  *    2026-08-24, revue de code : 6 séries 0 + les 2 séries 1 de `RÉSEAU` et
  *    d'`AMBIANCE`), sous le verrou LVGL que le
