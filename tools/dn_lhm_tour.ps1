@@ -102,7 +102,26 @@ param(
 # `-Poser -Port 9000` laisse donc une tour qui repond parfaitement et un agent
 # qui ne peut pas l'atteindre - les DEUX cotes se declarant normaux.
 # L'agent a bien `--lhm HOTE:PORT` pour suivre, mais encore faut-il le savoir.
-$AGENT_LHM_PORT = 8085   # miroir de LHM_PORT (agent/dn_agent.py)
+# 2e REVUE (2026-08-24) : UN MIROIR RECOPIE A LA MAIN ETAIT INTRODUIT DANS LE
+# DELTA MEME QUI EN RETIRAIT DEUX. `verif_source_lhm_dn48.py` supprimait
+# `LIGNE_MAX = 71  # miroir` avec ce motif : "un miroir recopie A LA MAIN est une
+# garde qui continue de verifier l'ANCIENNE valeur apres que la vraie a bouge -
+# elle passe VERT sur un arbre ou la propriete est cassee" ; et
+# `mesure_w2_dn48.py` faisait de meme pour les cinq identifiants de sonde. Le
+# meme delta posait ensuite `$AGENT_LHM_PORT = 8085   # miroir de LHM_PORT`.
+# Consequence : `LHM_PORT` a 8086 et une tour correcte -> alerte + exit 1 ;
+# symetriquement, une tour restee sur 8085 face a un agent passe a 8086 ne levait
+# RIEN. Aucun test ne comparait les deux valeurs.
+# ==> ON LIT LA CONSTANTE DANS LE PRODUIT. Repli EXPLICITE et DIT si le fichier
+#     est introuvable (ce script tourne aussi depuis une copie deployee sur la
+#     tour, ou `agent/` peut ne pas etre a cote).
+$AGENT_LHM_PORT = $null
+$_agentPy = Join-Path (Split-Path -Parent $PSScriptRoot) 'agent\dn_agent.py'
+if (Test-Path $_agentPy) {
+    $_m = Select-String -Path $_agentPy -Pattern '^LHM_PORT\s*=\s*(\d+)' |
+          Select-Object -First 1
+    if ($_m) { $AGENT_LHM_PORT = [int]$_m.Matches[0].Groups[1].Value }
+}
 
 $ErrorActionPreference = 'Continue'
 $ProgressPreference = 'SilentlyContinue'
@@ -114,12 +133,20 @@ $NOM_TACHE  = 'LibreHardwareMonitor'   # (!) le nom EXACT que StartupManager che
 $CLE_RUN    = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
 
 $R = [ordered]@{}      # le rapport machine
-$script:Anomalies = @()
+$script:Anomalies = @()   # journal COMPLET, publie tel quel dans le JSON
+$script:Bloquantes = @()  # ce qui CONDAMNE la tour - c'est LUI qui entre dans $pret
 
 function Dire([string]$m) { if (-not $Json) { Write-Host $m } }
 function Titre([string]$m) { Dire ''; Dire ("=== " + $m + " ===") }
 function Note([string]$cle, $val) { $R[$cle] = $val }
-function Alerte([string]$m) { $script:Anomalies += $m; Dire ("  /!\ " + $m) }
+# `Alerte`    = constat qui CONDAMNE la tour (permanence, driver, sondes).
+# `Signaler`  = information a connaitre, qui ne condamne RIEN (prerequis
+#               d'installation absent mais sans effet, port non standard, bruit
+#               Defender). 2e revue, 2026-08-24 : les deux etaient confondus.
+function Alerte([string]$m) {
+    $script:Anomalies += $m; $script:Bloquantes += $m; Dire ("  /!\ " + $m)
+}
+function Signaler([string]$m) { $script:Anomalies += $m; Dire ("  (i) " + $m) }
 
 # (!) LHM rend ses valeurs en chaines LOCALISEES ("43,0 degC" avec le signe degre
 #     en UTF-8). Ce script est souvent pilote DEPUIS WSL, et le signe degre s'y
@@ -164,12 +191,15 @@ Titre 'PREREQUIS'
 $winget = (Get-Command winget -ErrorAction SilentlyContinue)
 Note 'winget' $(if ($winget) { $winget.Source } else { $null })
 Dire ("  winget            : " + $(if ($winget) { $winget.Source } else { 'ABSENT' }))
-if (-not $winget) { Alerte "winget est ABSENT : -Poser ne pourra pas installer." }
+# 2e revue : PREREQUIS D'INSTALLATION, PAS un constat de permanence. Frequent
+# sur Server / LTSC / profil sans App Installer, et SANS EFFET si LHM est deja la.
+if (-not $winget) { Signaler "winget est ABSENT : -Poser ne pourra pas installer (sans effet si LHM est deja installe)." }
 
 $ndp = Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full' -ErrorAction SilentlyContinue
 Note 'net_framework' $(if ($ndp) { $ndp.Version } else { $null })
 Dire ("  .NET Framework    : " + $(if ($ndp) { $ndp.Version } else { 'ABSENT' }))
-if (-not $ndp) { Alerte "Pas de .NET Framework v4 : le build LHM retenu ne tournerait pas." }
+# 2e revue : prerequis, sans effet si LHM TOURNE DEJA - ce que le verdict verifie par ailleurs.
+if (-not $ndp) { Signaler "Pas de .NET Framework v4 au registre : le build LHM retenu ne tournerait pas (sans effet s'il tourne deja)." }
 
 # (!) On regarde .NET 10 SEULEMENT pour dire quel build serait viable -- le build
 #     retenu est celui du Framework, et il ne depend pas de `dotnet`.
@@ -197,7 +227,8 @@ function Test-PaquetInstalle([string]$id) {
 if ($Poser) {
     Titre 'POSE'
     if (-not $estEleve) {
-        Alerte "-Poser demande sans elevation : PawnIO est un driver noyau, il declenchera une invite UAC."
+        # 2e revue : ce texte ANNONCE une invite UAC a venir. Ce n'est pas un defaut de la tour.
+        Signaler "-Poser demande sans elevation : PawnIO est un driver noyau, il declenchera une invite UAC."
     }
     foreach ($id in @($PKG_PAWNIO, $PKG_LHM)) {
         if (Test-PaquetInstalle $id) {
@@ -294,9 +325,17 @@ if ($Poser -and $exe) {
     # SUR UNE INSTALLATION SAINE. Un instrument qui attend moins longtemps que le
     # phenomene qu'il observe mesure sa propre impatience.
     $limite = 45
-    $t0 = Get-Date
+    # 2e revue (2026-08-24) : CETTE BOUCLE SE CHRONOMETRAIT SUR L'HORLOGE MURALE,
+    # dans un chemin `-Poser` execute AU LOGON - le moment ou Windows
+    # resynchronise typiquement l'heure. Un recul rend `TotalSeconds` negatif et
+    # la boucle tourne bien au-dela de 45 s (avec un `$ecoule` NEGATIF imprime) ;
+    # un saut en avant la coupe court et leve "le serveur reste muet apres 45 s"
+    # sur une installation SAINE - ce qui, meme avec les deux seaux d'alertes,
+    # produit un diagnostic faux. Le fichier utilisait deja un Stopwatch vingt
+    # lignes plus bas : la regle existait, elle n'etait pas appliquee ici.
+    $chrono = [Diagnostics.Stopwatch]::StartNew()
     $vu = $false
-    while (((Get-Date) - $t0).TotalSeconds -lt $limite) {
+    while ($chrono.Elapsed.TotalSeconds -lt $limite) {
         try {
             $s = (Invoke-WebRequest -Uri "http://localhost:$Port/metrics" `
                     -UseBasicParsing -TimeoutSec 3).StatusCode
@@ -304,7 +343,7 @@ if ($Poser -and $exe) {
         } catch { }
         Start-Sleep -Milliseconds 500
     }
-    $ecoule = [math]::Round(((Get-Date) - $t0).TotalSeconds, 1)
+    $ecoule = [math]::Round($chrono.Elapsed.TotalSeconds, 1)
     if ($vu) {
         Dire "  /metrics repond apres $ecoule s (scrutation, pas une attente fixe)."
     } else {
@@ -470,7 +509,11 @@ try {
     Note 'defender_detections_1h' $det.Count
     Dire ("  detections (1 h)  : " + $det.Count)
     if ($det.Count -gt 0) {
-        Alerte "Defender a detecte quelque chose dans la derniere heure : verifier que le driver n'est pas en quarantaine."
+        # 2e revue : DECLENCHE PAR N'IMPORTE QUELLE detection Defender, y compris
+        # totalement etrangere a PawnIO/LHM. A verifier, mais ca ne condamne pas
+        # une tour dont le driver est charge et les sondes lues - ce que le verdict
+        # etablit par ailleurs.
+        Signaler "Defender a detecte quelque chose dans la derniere heure : verifier que le driver n'est pas en quarantaine."
         foreach ($d in $det) { Dire ("    " + $d.InitialDetectionTime + " : " + ($d.Resources -join ', ')) }
     }
 }
@@ -483,9 +526,19 @@ catch {
 # 8. Verdict
 # =============================================================================
 Titre 'VERDICT'
-if ($Port -ne $AGENT_LHM_PORT) {
-    Alerte ("port $Port : l'agent lit LHM_PORT=$AGENT_LHM_PORT en dur. " +
-            "Lancer l'agent avec --lhm localhost:$Port, ou il ne trouvera RIEN.")
+# 2e revue (2026-08-24) : `-Port` EST UN PARAMETRE DOCUMENTE DE CE SCRIPT.
+# L'utiliser rendait le verdict ROUGE et sortait 1 sur une tour parfaitement
+# provisionnee, alors que l'alerte donne elle-meme la parade. C'est une
+# INFORMATION. En revanche, ne pas avoir PU lire la constante du produit est un
+# vrai trou de controle : la, on ne sait rien, et ca se dit.
+if ($null -eq $AGENT_LHM_PORT) {
+    Signaler ("LHM_PORT n'a pas pu etre lu dans agent/dn_agent.py : le port de la " +
+              "tour n'est compare A RIEN. Lancer ce script depuis le depot pour " +
+              "que la comparaison ait lieu.")
+}
+elseif ($Port -ne $AGENT_LHM_PORT) {
+    Signaler ("port $Port : l'agent lit LHM_PORT=$AGENT_LHM_PORT. " +
+              "Lancer l'agent avec --lhm localhost:$Port, ou il ne trouvera RIEN.")
 }
 # DEUX DEFAUTS TROUVES EN REVUE (code review dn4-8, 2026-08-21) :
 #
@@ -502,9 +555,24 @@ if ($Port -ne $AGENT_LHM_PORT) {
 #       - deux cas qui LEVENT une alerte - sortait 0 tant que LHM tournait elevee
 #       A CET INSTANT. C'est-a-dire : LA MACHINE QUI NE REVIENDRA PAS APRES UN
 #       REDEMARRAGE se declarait prete a tout appelant lisant le code de sortie.
+#   (3) 2e REVUE (2026-08-24) : $pret CONJOIGNAIT **TOUTES** LES ANOMALIES, ET
+#       UNE TOUR PARFAITEMENT PROVISIONNEE SORTAIT 1. `Alerte` alimente un seul
+#       seau, qui melange des PREREQUIS D'INSTALLATION et des CONSTATS DE
+#       PERMANENCE - or seuls les seconds justifient la conjonction que le
+#       commentaire ci-dessus argumente. Cas mesures :
+#         - `-Port` different de 8085 : configuration SUPPORTEE, dont l'alerte
+#           donne elle-meme la parade (`--lhm localhost:PORT`). Utiliser un
+#           parametre documente du script rendait le verdict ROUGE.
+#         - `winget` absent : frequent sur Server, images LTSC, profil sans App
+#           Installer. Sans effet si LHM est deja installe.
+#         - .NET Framework v4 absent du registre : sans effet si LHM tourne deja.
+#         - une detection Defender DANS LA DERNIERE HEURE : sans rapport avec
+#           l'exposition des sondes.
+#       ==> DEUX SEAUX. `$script:Bloquantes` condamne la tour ; `$script:Anomalies`
+#           reste le journal COMPLET, publie tel quel dans le JSON.
 $pret = ($R['pawnio_etat'] -eq 'Running') -and ($R['superio'] -eq $true) -and
         ($R['sondes_ventilateur'] -gt 0) -and ($R['httpdatajson'] -eq 200) -and
-        ($R['httpmetrics'] -eq 200) -and ($script:Anomalies.Count -eq 0)
+        ($R['httpmetrics'] -eq 200) -and ($script:Bloquantes.Count -eq 0)
 Note 'pret_pour_agent' $pret
 Note 'anomalies' $script:Anomalies
 

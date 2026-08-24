@@ -90,6 +90,31 @@ fi
 
 [ "$VERIFIER" -eq 0 ] && mkdir -p "$CIBLE"
 
+# 🔴 CONTROLE ASCII-PUR — 2e REVUE (2026-08-24). LA CONTRAINTE ETAIT ECRITE,
+#    LOAD-BEARING, ET **RIEN NE LA JOUAIT**. PowerShell 5.1 lit un `.ps1` UTF-8
+#    SANS BOM comme de l'ANSI : un tiret cadratin y devient un guillemet
+#    typographique fermant, que PowerShell accepte comme DELIMITEUR DE CHAINE.
+#    Trois de ces tirets dans des commentaires ont produit 8 erreurs de syntaxe
+#    en cascade (MESURE le 2026-08-21). Le delta a documente la contrainte et
+#    fourni la commande de verification — mais aucun fichier du depot ne
+#    l'executait. Un octet > 127 SE DEPLOYAIT DONC VERT (« OK - aucun ecart ») et
+#    n'echouait qu'au parse, sur la tour, APRES l'invite UAC.
+# ⚠️ CE SCRIPT EST LE SEUL OUTIL QUI EXPEDIE CE FICHIER : le controle a un sens
+#    ICI, ⛔ pas dans un commentaire que personne n'execute.
+verifier_ascii() {
+  f="$1"
+  n="$(LC_ALL=C grep -c '[^ -~	]' "$f" 2>/dev/null || true)"
+  [ -z "$n" ] && n=0
+  if [ "$n" -ne 0 ]; then
+    echo "  /!\\ $(basename "$f") CONTIENT $n LIGNE(S) NON-ASCII."
+    echo "      ⛔ PowerShell 5.1 lira ce fichier en ANSI : le parse s'effondre."
+    echo "      ⇒ Corriger EN ASCII PUR dans le depot, ⛔ pas sur la tour."
+    LC_ALL=C grep -n '[^ -~	]' "$f" | head -5 | sed 's/^/         /'
+    return 1
+  fi
+  return 0
+}
+
 ecarts=0
 for rel in "${A_DEPOSER[@]}"; do
   src="$RACINE/$rel"
@@ -97,6 +122,15 @@ for rel in "${A_DEPOSER[@]}"; do
   if [ ! -f "$src" ]; then
     echo "  /!\\ ABSENT du depot : $rel"; ecarts=$((ecarts+1)); continue
   fi
+  # 🔴 LE CONTROLE ASCII PORTE SUR LA SOURCE, ET IL BLOQUE LE DEPOT. Un `.ps1`
+  #    non-ASCII ne doit PAS atteindre la tour : il y echouerait au parse, apres
+  #    l'invite UAC, avec un message qui n'a aucun rapport avec la cause.
+  case "$rel" in
+    *.ps1)
+      if ! verifier_ascii "$src"; then
+        ecarts=$((ecarts+1)); continue
+      fi ;;
+  esac
   hs="$(sha256sum "$src" | cut -c1-16)"
   if [ "$VERIFIER" -eq 1 ]; then
     if [ ! -f "$dst" ]; then
@@ -125,6 +159,21 @@ done
 if [ "$VERIFIER" -eq 0 ] && [ "$ecarts" -ne 0 ]; then
   echo "  ⛔ PROVENANCE **NON ECRITE** : $ecarts ecart(s) sur la copie."
   echo "     Rien ne doit certifier une arborescence que ce run declare abimee."
+  # 🔴 2e REVUE (2026-08-24) — LA BRANCHE TRAITAIT L'ECRITURE, ⛔ PAS LA
+  #    SUPPRESSION. `PROVENANCE.txt` et `poser-permanence.cmd` de la passe
+  #    PRECEDENTE restaient intacts sur la tour : le `.cmd` auto-elevateur
+  #    continuait de pointer `%~dp0dn_lhm_tour.ps1` — sur la copie CORROMPUE — et
+  #    un `--verifier` ulterieur imprimait « present : PROVENANCE.txt » et
+  #    « identique : poser-permanence.cmd ». La these du correctif (« une
+  #    provenance qui certifie une copie cassee est pire qu'aucune provenance :
+  #    elle la fait passer pour bonne ») n'etait donc PAS tenue.
+  # ⇒ ON RETIRE LES DEUX. Une tour sans provenance se voit ; une tour avec une
+  #   provenance perimee, non.
+  for perime in "$CIBLE/PROVENANCE.txt" "$CIBLE/poser-permanence.cmd"; do
+    if [ -f "$perime" ]; then
+      rm -f "$perime" && echo "     retire (perime) : $(basename "$perime")"
+    fi
+  done
 fi
 if [ "$VERIFIER" -eq 0 ] && [ "$ecarts" -eq 0 ]; then
   cat > "$CIBLE/PROVENANCE.txt" <<EOF
@@ -182,9 +231,18 @@ if [ "$VERIFIER" -eq 1 ]; then
       echo "         n'est pas cosmetique. Redeployer, ⛔ ne pas editer sur place."
       ecarts=$((ecarts+1))
     fi
-    if ! grep -q $'\r' "$cmd_dst"; then
-      echo "  /!\ poser-permanence.cmd est en LF : la continuation ^ de cmd.exe"
-      echo "      peut executer une ligne TRONQUEE. Redeployer."
+    # 🔴 2e REVUE (2026-08-24) — `grep -q $'\r'` teste qu'AU MOINS UN `\r`
+    #    existe. Un `.cmd` PARTIELLEMENT converti (une seule ligne en CRLF, la
+    #    ligne de continuation `^` en LF) passait le test **et** l'empreinte
+    #    (`tr -d '\r'` normalise tout) : c'est precisement la troncature que ce
+    #    controle pretend exclure, sur un lanceur qui se releve en UAC.
+    # ⇒ ON COMPTE : TOUTES les lignes non vides doivent finir par CR.
+    tot=$(grep -c '' "$cmd_dst" 2>/dev/null || echo 0)
+    avec_cr=$(grep -c $'\r$' "$cmd_dst" 2>/dev/null || echo 0)
+    if [ "$tot" -eq 0 ] || [ "$avec_cr" -ne "$tot" ]; then
+      echo "  /!\ poser-permanence.cmd : $avec_cr/$tot ligne(s) en CRLF."
+      echo "      ⛔ Une conversion PARTIELLE suffit a tronquer une continuation ^"
+      echo "         de cmd.exe. Redeployer, ⛔ ne pas corriger sur place."
       ecarts=$((ecarts+1))
     fi
   fi
