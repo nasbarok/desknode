@@ -3561,8 +3561,19 @@ static void detail_reparametrer(int idx)
          *    16 + 3 x 20 = 76 px pour un `MIN/MAX` posé à 130 : la quatrième
          *    tient (96 < 130). */
         char fen[24];
-        uint32_t cs = dn_hist_couverture_s();
-        if (cs >= 3600) {
+        /* 🔴 dn4-13 / AC2.2 — LA COUVERTURE EST CELLE DE **LA SÉRIE TRACÉE**, et
+         *    c'est `hs0` : c'est sur elle que `MIN/MAX` ci-dessous est calculé.
+         *    Publier une fenêtre globale à côté d'un MIN/MAX de série ferait
+         *    lire l'un pour l'autre. */
+        int cser = -1;
+        dn_hist_series_de_case(idx, &cser, NULL);
+        uint32_t cs = cser >= 0 ? dn_hist_couverture_s(cser) : 0;
+        if (cs == 0) {
+            /* ⛔ ⛔ « 0 s » se lirait comme une mesure. Aucun seau n'a vu de réel :
+             *    la fenêtre n'existe pas, elle ne vaut pas zéro. Et cette ligne
+             *    doit s'accorder avec le « MIN -- · MAX -- » posé juste dessous. */
+            snprintf(fen, sizeof(fen), "-- (aucun réel)");
+        } else if (cs >= 3600) {
             snprintf(fen, sizeof(fen), "%lu h", (unsigned long)(cs / 3600));
         } else if (cs >= 60) {
             snprintf(fen, sizeof(fen), "%lu min", (unsigned long)(cs / 60));
@@ -4766,6 +4777,16 @@ esp_err_t dn_ui_init(const dn_bootcfg_t *cfg, esp_err_t asset_err)
      */
     lv_display_add_event_cb(s_disp, bandes_event_cb, LV_EVENT_INVALIDATE_AREA,
                             NULL);
+    /* 🔴 dn4-13 / AC2.3 — `dn_hist_init()` PASSE **AVANT** `build_scene()`.
+     *    Elle était appelée 26 lignes plus bas, donc APRÈS une reconstruction
+     *    qui reparamètre déjà la courbe : `courbe_reparametrer()` lisait
+     *    `s_pts[][]` à l'état `.bss`, c'est-à-dire 120 ZÉROS que
+     *    `dn_hist_minmax()` comptait comme RÉELS. `dn_hist.h` déclare pourtant
+     *    qu'un trou vaut `INT32_MAX` et JAMAIS zéro : l'état `.bss` de ce module
+     *    n'est pas neutre, il est MENTEUR. Les gardes `s_pret` posées sur les six
+     *    lecteurs ferment la même porte par l'autre bout — ⛔ on garde les deux,
+     *    l'ordre correct ET le garde, parce que l'ordre se re-casse en silence. */
+    dn_hist_init();
     build_scene();
     s_timer = lv_timer_create(label_tick, 1000, NULL);
     /*
@@ -4792,7 +4813,9 @@ esp_err_t dn_ui_init(const dn_bootcfg_t *cfg, esp_err_t asset_err)
      *    de session » serait un mot vide et chaque ouverture naîtrait sur une
      *    courbe vierge.
      */
-    dn_hist_init();
+    /* ⚠️ `dn_hist_init()` a été jouée PLUS HAUT, avant `build_scene()` — voir le
+     *    motif là-bas (dn4-13 / AC2.3). Ne PAS la rappeler ici : elle remettrait
+     *    à zéro un anneau que `build_scene()` vient déjà de lire. */
     s_hist_timer = lv_timer_create(hist_tick, DN_HIST_PERIODE_MS, NULL);
     lvgl_port_unlock();
 

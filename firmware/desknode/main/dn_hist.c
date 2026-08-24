@@ -30,9 +30,19 @@ static int32_t s_smin[DN_HIST_N_SERIES][DN_HIST_SEAUX];
 static int32_t s_smax[DN_HIST_N_SERIES][DN_HIST_SEAUX];
 static bool s_svu[DN_HIST_N_SERIES][DN_HIST_SEAUX];
 static int s_seau_courant = -1;
-/* ⚠️ Combien de seaux DISTINCTS ont été ouverts — borné à 24. C'est LUI qui
- *    donne la couverture réelle, ⛔ pas une constante. */
-static uint32_t s_seaux_ouverts;
+/*
+ * 🔴 dn4-13 / AC2.2 — `s_seaux_ouverts` A ÉTÉ SUPPRIMÉ, ET SON COMMENTAIRE AVEC.
+ *    Il portait : « C'est LUI qui donne la couverture réelle, ⛔ pas une
+ *    constante ». C'ÉTAIT FAUX DEUX FOIS.
+ *    1. Il n'était JAMAIS LU (3 écritures, 0 lecture — revue du 2026-08-24) :
+ *       il ne donnait donc rien du tout.
+ *    2. Même branché, il n'aurait pas donné « la couverture réelle » : il compte
+ *       les seaux TRAVERSÉS PAR L'HORLOGE, qu'ils aient vu du réel ou non.
+ *       C'est de l'UPTIME déguisé en observation — exactement le mensonge que
+ *       `dn_hist.h` interdit trois paragraphes plus haut.
+ *    ⇒ La couverture se lit désormais sur `s_svu[]`, le seul tableau qui sache
+ *      qu'un seau A VU DU RÉEL. Voir `dn_hist_couverture_s()`.
+ */
 
 void dn_hist_init(void)
 {
@@ -48,7 +58,6 @@ void dn_hist_init(void)
         }
     }
     s_seau_courant = -1;
-    s_seaux_ouverts = 0;
     s_pret = true;
 }
 
@@ -64,9 +73,6 @@ static void seau_suivre(void)
     s_seau_courant = b;
     for (int s = 0; s < DN_HIST_N_SERIES; s++) {
         s_svu[s][b] = false;
-    }
-    if (s_seaux_ouverts < DN_HIST_SEAUX) {
-        s_seaux_ouverts++;
     }
 }
 
@@ -111,8 +117,8 @@ void dn_hist_poser(int serie, int32_t dixiemes, bool connue)
 
 bool dn_hist_minmax_long(int serie, int32_t *min, int32_t *max)
 {
-    if (serie < 0 || serie >= DN_HIST_N_SERIES) {
-        return false;
+    if (!s_pret || serie < 0 || serie >= DN_HIST_N_SERIES) {
+        return false; /* dn4-13 / AC2.3 — voir `dn_hist_points()` */
     }
     bool vu = false;
     int32_t mn = 0, mx = 0;
@@ -136,22 +142,70 @@ bool dn_hist_minmax_long(int serie, int32_t *min, int32_t *max)
     return true;
 }
 
-uint32_t dn_hist_couverture_s(void)
+uint32_t dn_hist_couverture_s(int serie)
 {
-    /* 🔴 CE QUI A VRAIMENT ÉTÉ OBSERVÉ, ⛔ PAS `24 x 3600`. L'uptime borne la
-     *    couverture tant qu'on n'a pas fait un tour complet des seaux ; au-delà,
-     *    c'est la fenêtre glissante de 24 h. */
+    /*
+     * 🔴 dn4-13 / AC2.2 — CE QUI A ÉTÉ **OBSERVÉ**, ⛔ PLUS L'UPTIME.
+     *
+     * ⚠️ LA VERSION PRÉCÉDENTE RENDAIT `min(uptime, 24 h)` SOUS UN COMMENTAIRE
+     *    QUI PROMETTAIT « CE QUI A VRAIMENT ÉTÉ OBSERVÉ ». Le témoin qui le
+     *    démontre est trivial et n'avait jamais été tiré : carte allumée > 1 h,
+     *    AUCUNE source PC branchée ⇒ la page annonçait « MIN/MAX sur : 1 h »
+     *    juste à côté de « MIN -- · MAX -- ». Une fenêtre d'observation d'une
+     *    heure sur ZÉRO observation.
+     *
+     * ⇒ La couverture est celle des SEAUX QUI PORTENT DU RÉEL, et elle est
+     *   **PAR SÉRIE** : deux séries de la même page peuvent avoir commencé à
+     *   des instants différents (`RÉSEAU` ↓ et ↑ arrivent ensemble, mais
+     *   `AMBIANCE` T et H peuvent diverger si un capteur se tait).
+     *
+     * Calcul : l'âge, en seaux, du PLUS ANCIEN seau qui a vu du réel, plus le
+     * temps déjà écoulé dans le seau courant. Borné par l'uptime — sinon un
+     * seau ouvert il y a 40 s annoncerait « 1 h » par le seul fait d'être le
+     * seau d'une heure.
+     * ⛔ Aucun seau réel ⇒ **0**, ⛔ jamais l'uptime.
+     */
+    if (!s_pret || serie < 0 || serie >= DN_HIST_N_SERIES) {
+        return 0;
+    }
     int64_t up_s = esp_timer_get_time() / 1000000;
-    uint32_t plafond = (uint32_t)DN_HIST_SEAUX * DN_HIST_SEAU_S;
     if (up_s < 0) {
         return 0;
     }
-    return (uint32_t)up_s < plafond ? (uint32_t)up_s : plafond;
+    int cur = (int)((up_s / DN_HIST_SEAU_S) % DN_HIST_SEAUX);
+    int age_max = -1;
+    for (int b = 0; b < DN_HIST_SEAUX; b++) {
+        if (!s_svu[serie][b]) {
+            continue;
+        }
+        int age = (cur - b + DN_HIST_SEAUX) % DN_HIST_SEAUX;
+        if (age > age_max) {
+            age_max = age;
+        }
+    }
+    if (age_max < 0) {
+        return 0;
+    }
+    uint32_t couv = (uint32_t)age_max * (uint32_t)DN_HIST_SEAU_S +
+                    (uint32_t)(up_s % DN_HIST_SEAU_S);
+    return (uint32_t)up_s < couv ? (uint32_t)up_s : couv;
 }
 
 int32_t *dn_hist_points(int serie)
 {
-    if (serie < 0 || serie >= DN_HIST_N_SERIES) {
+    /*
+     * 🔴 dn4-13 / AC2.3 — `s_pret` GARDE LES SIX LECTEURS, ⛔ PLUS LE SEUL
+     *    ÉCRIVAIN.
+     *    Avant init, `s_pts[][]` est le `.bss`, donc ZÉRO — et zéro est une
+     *    VALEUR. `dn_hist_minmax()` comptait ces 120 zéros comme RÉELS et
+     *    rendait une plage `0..0` que `dn_hist.h:18-19` déclare interdite ;
+     *    `lv_chart` aurait tracé une ligne plate à zéro sur deux minutes de
+     *    données qui n'existent pas. Le trou se code `INT32_MAX`, ⛔ pas 0 :
+     *    l'état `.bss` n'est donc PAS un état neutre, c'est un état MENTEUR.
+     * ⚠️ Et ce n'était pas théorique : `dn_hist_init()` était appelée APRÈS
+     *    `build_scene()`, qui reparamètre déjà la courbe. Corrigé aussi.
+     */
+    if (!s_pret || serie < 0 || serie >= DN_HIST_N_SERIES) {
         return NULL;
     }
     return s_pts[serie];
@@ -159,7 +213,10 @@ int32_t *dn_hist_points(int serie)
 
 uint32_t dn_hist_debut(int serie)
 {
-    if (serie < 0 || serie >= DN_HIST_N_SERIES) {
+    /* dn4-13 / AC2.3 — voir `dn_hist_points()`. Le `0` rendu ici n'est pas un
+     * verdict : c'est un index, et il est INEXPLOITABLE sans le tableau, que
+     * `dn_hist_points()` refuse au même instant. */
+    if (!s_pret || serie < 0 || serie >= DN_HIST_N_SERIES) {
         return 0;
     }
     return s_w[serie];
@@ -167,8 +224,8 @@ uint32_t dn_hist_debut(int serie)
 
 bool dn_hist_minmax(int serie, int32_t *min, int32_t *max)
 {
-    if (serie < 0 || serie >= DN_HIST_N_SERIES) {
-        return false;
+    if (!s_pret || serie < 0 || serie >= DN_HIST_N_SERIES) {
+        return false; /* dn4-13 / AC2.3 — ⛔ « pas de plage », ⛔ pas `0..0` */
     }
     bool vu = false;
     int32_t mn = 0, mx = 0;
@@ -199,7 +256,10 @@ bool dn_hist_minmax(int serie, int32_t *min, int32_t *max)
 
 int dn_hist_reels(int serie)
 {
-    if (serie < 0 || serie >= DN_HIST_N_SERIES) {
+    /* dn4-13 / AC2.3 — avant init, « 0 point réel » est la VÉRITÉ, et c'est
+     * aussi ce que ce garde rend. Il est là quand même : sans lui, la boucle
+     * ci-dessous lirait 120 zéros du `.bss` et en compterait 120 RÉELS. */
+    if (!s_pret || serie < 0 || serie >= DN_HIST_N_SERIES) {
         return 0;
     }
     int n = 0;
@@ -245,4 +305,31 @@ int dn_hist_series_de_case(int case_idx, int *s0, int *s1)
     return k_s1[case_idx] >= 0 ? 2 : 1;
 }
 
-size_t dn_hist_octets(void) { return sizeof(s_pts); }
+/*
+ * 🔴 dn4-13 / AC2.1 — LE COÛT **RÉEL** DU MODULE, ⛔ PLUS `sizeof(s_pts)` SEUL.
+ *
+ * L'ancienne version rendait 3 840 o — les points, et rien d'autre — alors que
+ * le module en occupe ~5 600. Sous-déclaration de ~32 %, ET C'ÉTAIT
+ * L'INSTRUMENT CENSÉ SOLDER AC5.6 : le chiffre qu'on confrontait à la
+ * prédiction n'était pas le chiffre du module.
+ * ⚠️ On ne l'écrit pas « de tête » : chaque terme est un `sizeof` du symbole
+ *    réel, donc il suit automatiquement `DN_HIST_N_SERIES` et `DN_HIST_SEAUX`.
+ *    C'est la seule forme qui ne puisse pas périmer en silence — les trois
+ *    chiffres publiés (1 344 / 1 536 / 1 728) ont tous péri de l'être.
+ * ⚠️ `s_pret` et `s_seau_courant` sont comptés : ils sont du `.bss` du module.
+ *    Le compilateur peut les aligner ou les fusionner autrement — la confrontation
+ *    au `.map` (gate `verif_hist_dn413.py`) est là pour dire l'écart, pas pour
+ *    être contournée.
+ */
+size_t dn_hist_octets_detail(size_t *points, size_t *seaux, size_t *index)
+{
+    size_t p = sizeof(s_pts);
+    size_t b = sizeof(s_smin) + sizeof(s_smax) + sizeof(s_svu);
+    size_t i = sizeof(s_w) + sizeof(s_pret) + sizeof(s_seau_courant);
+    if (points) { *points = p; }
+    if (seaux) { *seaux = b; }
+    if (index) { *index = i; }
+    return p + b + i;
+}
+
+size_t dn_hist_octets(void) { return dn_hist_octets_detail(NULL, NULL, NULL); }

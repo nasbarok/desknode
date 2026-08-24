@@ -20,7 +20,12 @@
  * |                        |             | ⇒ **1,0/s par métrique**).           |
  * | octets par point       | **4**       | `int32_t` — **imposé** par           |
  * |                        |             | `lv_chart_set_series_ext_y_array()`  |
- * | **TOTAL**              | **3 840 o** | 8 x 120 x 4 (7 -> 8 : `RÉSEAU` montant)|
+ * | points seuls           | **3 840 o** | 8 x 120 x 4 (7 -> 8 : `RÉSEAU` montant)|
+ * | **TOTAL `.bss` MODULE**| **~5 609 o**| + seaux 1 728 + index. 🔴 C'est CE      |
+ * |                        |             | total que `dn_hist_octets()` rend      |
+ * |                        |             | DEPUIS dn4-13 ; la ligne du dessus n'a |
+ * |                        |             | jamais été le coût du module, et c'est |
+ * |                        |             | le défaut qu'AC2.1 solde.              |
  * | où il vit              | **`.bss`**  | voir ci-dessous                      |
  * |                        | **interne** |                                      |
  *
@@ -168,9 +173,15 @@ uint32_t dn_hist_debut(int serie);
  * ne porte de valeur réelle. */
 bool dn_hist_minmax_long(int serie, int32_t *min, int32_t *max);
 
-/* La durée RÉELLEMENT couverte par les seaux, en secondes. ⛔ Ce n'est pas
- * `24 x 3600` par principe : c'est ce qui a vraiment été observé. */
-uint32_t dn_hist_couverture_s(void);
+/* La durée RÉELLEMENT couverte par les seaux DE CETTE SÉRIE, en secondes.
+ * ⛔ Ce n'est pas `24 x 3600` par principe, ⛔ et ce n'est PAS l'uptime.
+ * 🔴 dn4-13 / AC2.2 — jusqu'au 2026-08-25 elle rendait `min(uptime, 24 h)` sous
+ *    un commentaire qui promettait l'inverse. Carte allumée 1 h sans source PC,
+ *    la page annonçait « MIN/MAX sur : 1 h » à côté de « MIN -- · MAX -- ».
+ *    Elle compte désormais les seaux qui ONT VU DU RÉEL, et rend **0** quand il
+ *    n'y en a aucun. Elle prend une SÉRIE : deux séries d'une même page peuvent
+ *    avoir commencé à des instants différents. */
+uint32_t dn_hist_couverture_s(int serie);
 
 /* Le MIN/MAX de la série, **sur les seuls points réels**. Rend `false` si la
  * série ne contient QUE des trous — auquel cas la page doit dire « -- », ⛔ pas
@@ -185,9 +196,13 @@ int dn_hist_reels(int serie);
  * Rend le nombre de séries (1, ou **2 pour AMBIANCE**). */
 int dn_hist_series_de_case(int case_idx, int *s0, int *s1);
 
-/* Le coût, en octets, du stockage des points — pour que `mem` puisse être
- * confronté à la prédiction au lieu d'être commenté. */
+/* Le coût `.bss` **RÉEL** du module, en octets — points **+ seaux + index**.
+ * 🔴 dn4-13 / AC2.1 — elle rendait `sizeof(s_pts)` SEUL (3 840 o) pour un module
+ *    qui en occupe ~5 600 : ~32 % de sous-déclaration, sur l'instrument même qui
+ *    devait solder AC5.6. Le détail sort par `dn_hist_octets_detail()` pour que
+ *    `hist` publie les trois termes, ⛔ pas un total invérifiable. */
 size_t dn_hist_octets(void);
+size_t dn_hist_octets_detail(size_t *points, size_t *seaux, size_t *index);
 
 #ifdef __cplusplus
 }

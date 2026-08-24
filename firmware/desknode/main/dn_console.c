@@ -7779,10 +7779,14 @@ static int cmd_w2(int argc, char **argv)
  *    commentaire disait « ~~les 3 360 o~~ », chiffre de **7 series sans seaux**.
  *    Le module pese aujourd'hui **~5 609 o** : 3 840 (points, 8 x 120 x 4)
  *    + 768 (`s_smin`) + 768 (`s_smax`) + 192 (`s_svu`) + 32 (`s_w`) + 9.
- * 🔴 ⚠️ ET `dn_hist_octets()` NE REND QUE `sizeof(s_pts)` = **3 840 o** : ce que
- *    cette commande imprime SOUS-DECLARE le cout de **~1 769 o (~32 %)**.
- *    ⛔ Ne pas conclure « le cout est de X » depuis cette ligne seule tant que
- *    `dn_hist_octets()` n'a pas ete corrigee — correctif porte par `dn4-13`.
+ * 🔴 ~~ET `dn_hist_octets()` NE REND QUE `sizeof(s_pts)` = 3 840 o : ce que cette
+ *    commande imprime SOUS-DECLARE le cout de ~1 769 o (~32 %)~~ — **CORRIGE LE
+ *    2026-08-25, dn4-13 / AC2.1**. Le bloc est CONSERVE BARRE : il dit pourquoi
+ *    tout chiffre de cout publie AVANT cette date vaut 3 840 et pas 5 609, et
+ *    c'est ce qui rend le releve d'AC5.6 non comparable au releve d'aujourd'hui.
+ * ⚠️ LES TROIS TERMES SONT IMPRIMES SEPAREMENT. Un total seul ne se confronte pas
+ *    au `.map` : c'est en voyant « points 3 840 / seaux 1 728 / index 41 » qu'on
+ *    peut dire LEQUEL a bouge quand le total bouge.
  */
 static int cmd_hist(int argc, char **argv)
 {
@@ -7793,8 +7797,21 @@ static int cmd_hist(int argc, char **argv)
         "RESEAU ^",
     };
     printf("historique de session (dn4-4) — EN RAM, ⛔ AUCUNE ecriture NVS/flash (D4)\n");
-    printf("  %d series x %d points x 4 o = %u o, en .bss INTERNE\n",
-           DN_HIST_N_SERIES, DN_HIST_N_POINTS, (unsigned)dn_hist_octets());
+    {
+        size_t hp = 0, hb = 0, hi = 0;
+        size_t tot = dn_hist_octets_detail(&hp, &hb, &hi);
+        printf("  cout .bss REEL du module : %u o\n", (unsigned)tot);
+        printf("     points %d x %d x 4 = %u o\n", DN_HIST_N_SERIES,
+               DN_HIST_N_POINTS, (unsigned)hp);
+        printf("     seaux  s_smin + s_smax + s_svu = %u o\n", (unsigned)hb);
+        printf("     index  s_w + s_pret + s_seau_courant = %u o\n", (unsigned)hi);
+        printf("  ⚠️ CE TOTAL EST CELUI DU MODULE, ⛔ plus `sizeof(s_pts)` seul.\n");
+        printf("     Jusqu'au 2026-08-25 cette ligne imprimait %u o : tout cout\n",
+               (unsigned)hp);
+        printf("     publie AVANT cette date sous-declare de %u o (%u %%).\n",
+               (unsigned)(tot - hp),
+               (unsigned)((tot - hp) * 100u / (tot ? tot : 1u)));
+    }
     printf("  cadence : %d ms — une HORLOGE, ⛔ pas la cadence des trames\n",
            DN_HIST_PERIODE_MS);
     printf("  profondeur : %d points a 1 Hz = %d s de session\n",
@@ -7803,26 +7820,24 @@ static int cmd_hist(int argc, char **argv)
      *    elle, « MIN/MAX sur 24 h » serait une etiquette, ⛔ pas une mesure —
      *    et la carte ne survit pas a un reboot (D4 : aucune ecriture NVS). */
     {
-        uint32_t cs = dn_hist_couverture_s();
-        printf("  fenetre LONGUE : %lu seau(x) d'1 h, couverture REELLE %lu s",
-               (unsigned long)DN_HIST_SEAUX, (unsigned long)cs);
-        if (cs >= 3600) {
-            printf(" (%lu h)\n", (unsigned long)(cs / 3600));
-        } else if (cs >= 60) {
-            printf(" (%lu min)\n", (unsigned long)(cs / 60));
-        } else {
-            printf("\n");
-        }
+        printf("  fenetre LONGUE : %lu seau(x) d'1 h — couverture **PAR SERIE**\n",
+               (unsigned long)DN_HIST_SEAUX);
+        printf("  🔴 dn4-13 / AC2.2 : la couverture n'est PLUS l'uptime. Jusqu'au\n");
+        printf("     2026-08-25 elle rendait min(uptime, 24 h) — carte allumee 1 h\n");
+        printf("     SANS source PC, la page annoncait « MIN/MAX sur : 1 h » a cote\n");
+        printf("     de « MIN -- · MAX -- ». Elle compte desormais les seaux QUI ONT\n");
+        printf("     VU DU REEL, et rend 0 quand il n'y en a aucun.\n");
         printf("  ⛔ « 24 h » N'EST VRAI QUE SI LA CARTE A TOURNE 24 h : D4\n");
         printf("     interdit toute ecriture flash/NVS, donc ceci NE SURVIT PAS\n");
         printf("     a un reboot. La page affiche la fenetre REELLE, pas 24 h.\n");
     }
-    printf("\n  serie         reels  trous    min(2min)  max(2min)   min(long)  max(long)\n");
+    printf("\n  serie         reels  trous  couv(s)   min(2min)  max(2min)   min(long)  max(long)\n");
     for (int i = 0; i < DN_HIST_N_SERIES; i++) {
         int r = dn_hist_reels(i);
         int32_t mn = 0, mx = 0, lm = 0, lx = 0;
         bool lok = dn_hist_minmax_long(i, &lm, &lx);
-        printf("   %-12s %5d  %5d", k_nom[i], r, DN_HIST_N_POINTS - r);
+        printf("   %-12s %5d  %5d  %7lu", k_nom[i], r, DN_HIST_N_POINTS - r,
+               (unsigned long)dn_hist_couverture_s(i));
         (void)lok;
         if (dn_hist_minmax(i, &mn, &mx)) {
             /* ⚠️ EN DIXIEMES, ET C'EST DIT : cet instrument ne connait ni les
