@@ -3344,7 +3344,14 @@ static int cmd_widget(int argc, char **argv)
         /* 🔴 LE TEXTE EST COPIE SOUS LE VERROU — revue du 2026-08-19. On
          *    imprimait ici un `const char *` vers le tampon INTERNE du label,
          *    rendu APRES le deverrouillage, pendant que `detail_reparametrer()`
-         *    le `lv_realloc` 5 fois par seconde en regime. */
+         *    le `lv_realloc` ~~5 fois par seconde~~ en regime.
+         * 🔴 CHIFFRE CORRIGE LE 2026-08-24 (dn4-4/AC3), SUR MESURE — ⛔ PAS
+         *    EFFACE : 100 trames acceptees ⇒ 100 poussees en 20,5 s, soit
+         *    5,0 poussees/s TOUTES METRIQUES, donc **1,0/s par metrique**.
+         *    `detail_reparametrer()` ne sert QUE la metrique affichee ⇒ ~1 Hz,
+         *    plafond 4 Hz (periode de `tache_lien`, 250 ms).
+         * ⚠️ La copie reste NECESSAIRE : a 1 Hz comme a 5 Hz le tampon est
+         *    reallouable sous le nez d'un lecteur hors verrou. */
         /* 🔴 dn4-9 : ⛔ PLUS `DN_WIDGET_TXT_MAX * 4 + 64` (= 128 o). Le
          *    producteur en écrit jusqu'à 168 : l'instrument tronquait EN
          *    SILENCE le texte qu'il prétend relire, et aurait accusé un produit

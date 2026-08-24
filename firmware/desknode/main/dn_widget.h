@@ -543,7 +543,9 @@ typedef struct {
      *    secondaire se journalise là où elle a lieu (dans `dn_widget_maj`, quand
      *    un texte arrive sur un `sec` qui n'existe pas), ⛔ pas à la construction
      *    d'une case qui n'en demandait aucun. Sans ce verrou le message sortirait
-     *    à la cadence des mises à jour, soit 5 fois par seconde en régime — et un
+     *    à la cadence des mises à jour, soit 5 fois par seconde en régime
+     *    (MESURÉ le 2026-08-24, dn4-4/AC3 : 5,0/s pour les CINQ métriques ;
+     *    `detail_reparametrer()`, elle, tourne à 1,0/s) — et un
      *    log en rafale sur le port qui EST le transport n'est pas un instrument,
      *    c'est une charge. */
     bool sec_perdue_dite;
@@ -611,7 +613,8 @@ void dn_widget_oublier(dn_widget_t *w);
  * bornes. Une entrée `sel_p1` nulle ⇒ IDENTITÉ (`rang`), le défaut.
  *
  * ⚠️ UNE ENTRÉE HORS BORNES RETOMBE SUR L'IDENTITÉ **SANS LOG ICI** : ce chemin
- *    est parcouru jusqu'à 15 fois par seconde sous le verrou LVGL, et « une
+ *    est parcouru jusqu'à 15 fois par seconde sous le verrou LVGL (COHÉRENT
+ *    avec la cadence mesurée le 2026-08-24 : 5,0 poussées/s x ~3 grandeurs), et « une
  *    garde qui crie au loup à chaque passage est pire que pas de garde ». Le
  *    contrôle est fait UNE fois, au boot, par l'audit des descripteurs
  *    (`dn_ui.c`), qui `ESP_LOGE` et NOMME la case fautive.

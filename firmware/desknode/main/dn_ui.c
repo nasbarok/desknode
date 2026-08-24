@@ -1299,6 +1299,9 @@ static const char *s_icone_alt[DN_UI_METRIQUES];
  * ⇒ UNE SEULE FABRIQUE, LES DEUX CHEMINS LA PRENNENT.
  *
  * ⚠️ Coût : une copie de descripteur (~160 o) sur la pile, 5 fois par seconde
+ *    — cadence MESURÉE le 2026-08-24 (dn4-4/AC3) : 5,0 poussées/s pour les CINQ
+ *    métriques. ⛔ Ne pas la confondre avec `detail_reparametrer()`, qui ne sert
+ *    QUE la métrique affichée et tourne donc à 1,0/s.
  *    au plus. `build_dashboard` la payait déjà par case ; c'est ce que coûte de
  *    ne pas avoir deux vérités.
  * ⚠️ Les rangs au-delà du compte gardent la déclaration du descripteur : ils ne
@@ -2757,33 +2760,60 @@ static void detail_reparametrer(int idx)
              * ⚠️ ~~RIEN N'EST PERDU : `detail_reparametrer` est rejouée à CHAQUE
              *    mise à jour de la case affichée (5 fois par seconde en régime),
              *    donc le premier passage avec une géométrie résolue vérifie.~~
-             * 🔴 **AMENDÉ LE 2026-08-24 (`[CC]`, séance carte) — ⛔ PAS EFFACÉ.
-             *    CETTE PHRASE ÉTAIT FAUSSE, ET C'EST ELLE QUI FAISAIT CROIRE QUE
-             *    LA GARDE TOURNAIT.** `detail_reparametrer()` n'a **QU'UN SEUL
-             *    APPELANT** : `build_detail()`, invoqué uniquement à la
-             *    CONSTRUCTION de la vue. ⛔ **Aucun chemin de mise à jour de
-             *    données ne l'appelle** — donc « le premier passage avec une
-             *    géométrie résolue » N'A JAMAIS LIEU tant que la vue reste
-             *    ouverte, et ce contrôle de largeur ne s'exécute QU'UNE FOIS, à
-             *    l'ouverture, quand la géométrie n'est justement pas résolue.
-             *    ⇒ **La garde est aujourd'hui DÉCORATIVE** — exactement la
-             *    famille que le commentaire trois lignes plus haut dénonce.
-             * ⚠️ MESURÉ EN SÉANCE : le fil portait `111,0 / 222,0 Mb/s` (trame
-             *    ACCEPTÉE, `seq 84`, `age 102 ms`) pendant que la dalle affichait
-             *    toujours `985,0 / 48,0` — les valeurs de l'OUVERTURE.
-             *    ✅ La PÉREMPTION, elle, passe (retour à « -- ») : AC7 de `dn2-2`
-             *    tient. C'est le rafraîchissement des VALEURS qui manque.
-             * ⇒ **PORTÉ PAR `dn4-4`** (prérequis P1) : sa courbe est une SÉRIE
-             *    TEMPORELLE, elle ne peut pas vivre sur une vue qui ne se met pas
-             *    à jour. ⛔ Ne pas corriger ici au jugé : c'est un changement de
-             *    cadence sur le chemin le plus chaud de la vue détail.
-             *    Détail : `hardware/…-liaison-pc.md` §21.5.
-             * ✅ CE QUI RESTE VRAI : quand aucune source ne parle, la ligne vaut
-             *    « -- » — qui ne peut pas déborder.
+             * ⚠️ ~~AMENDÉ LE 2026-08-24 (`[CC]`, séance carte) : « `detail_
+             *    reparametrer()` n'a QU'UN SEUL APPELANT, `build_detail()` …
+             *    aucun chemin de mise à jour de données ne l'appelle … la garde
+             *    est DÉCORATIVE ».~~
+             *
+             * 🔴 **CE DÉPÔT A DONC ÉCRIT DEUX AFFIRMATIONS OPPOSÉES ICI MÊME, ET
+             *    LES DEUX ÉTAIENT FAUSSES. RÉ-AMENDÉ LE 2026-08-24 PAR `dn4-4`
+             *    (AC1/AC3), SUR MESURE — ⛔ RIEN N'EST EFFACÉ.**
+             *
+             * ── CE QUE LA LECTURE DIT ────────────────────────────────────────
+             *    `detail_reparametrer()` a **TROIS** sites d'appel, ⛔ pas un :
+             *      · `dn_ui.c` `build_detail()`   — CONSTRUCTION de la vue
+             *      · `dn_ui.c` `nav_appliquer()`  — TRANSITION
+             *      · `dn_ui.c` `case_poser()`     — 🔴 **MISE À JOUR DE DONNÉES**,
+             *        posé par `030f0566` le 2026-08-17, sous `s_vue ==
+             *        DN_VUE_DETAIL && s_metrique == idx`.
+             *    ⇒ La phrase « aucun chemin de mise à jour ne l'appelle » était
+             *      réfutable par `grep -n detail_reparametrer dn_ui.c`.
+             *
+             * ── CE QUE LA CARTE DIT (2026-08-24, firmware `d379c0d`) ─────────
+             *    ✅ **LA PROPAGATION MARCHE.** Détail ouvert sur `RÉSEAU`, six
+             *       trames à valeurs CHANGEANTES, `seq` croissant, checksum
+             *       RECALCULÉ : `widget detail` a relu **les six textes, dans
+             *       l'ordre**. Témoins négatifs verts aussi — péremption (retour
+             *       à « -- »), mock (régime SIMULÉE), et **croisé** (détail sur
+             *       `CPU` immobile pendant que `net` bouge).
+             *    ⇒ Le symptôme de §21.5 vient du **HARNAIS**, ⛔ pas du firmware :
+             *      à `seq` FIGÉ, cinq trames de valeurs différentes laissent la
+             *      dalle sur la première et `doublons` monte de 4
+             *      (`dn_link.c` : « rejouer un seq n'est pas une donnée »).
+             *
+             * ── LA CADENCE, MESURÉE ET NON PLUS RÉCITÉE ─────────────────────
+             *    🔴 **CE N'EST PAS 5 Hz.** Mesuré : 100 trames acceptées ⇒ **100
+             *       poussées** en **20,5 s**, soit **5,0 poussées/s TOUTES
+             *       MÉTRIQUES CONFONDUES** — donc **1,0/s PAR MÉTRIQUE**.
+             *       `detail_reparametrer()` ne tourne que pour la métrique
+             *       AFFICHÉE ⇒ **~1 fois par seconde en régime**, et **4 fois par
+             *       seconde au PLAFOND** (période de `tache_lien`, 250 ms).
+             *    ⚠️ Les « 5 fois par seconde » du reste du fichier restent JUSTES :
+             *       ils décrivent le chemin `case_poser`/`dn_widget_maj`, parcouru
+             *       pour les CINQ métriques. ⛔ Ne pas les confondre avec celui-ci.
+             *
+             * ✅ **CONSÉQUENCE POUR CETTE GARDE-CI** : elle EST rejouée sur la vue
+             *    ouverte, donc le « premier passage avec une géométrie résolue »
+             *    A BIEN LIEU — ⛔ elle n'est PAS décorative. Le seul reproche qui
+             *    tienne est qu'aucun **témoin négatif** ne l'a jamais fait crier :
+             *    c'est ce que `dn4-4`/AC4 doit produire. *Une garde qu'aucun test
+             *    n'a vue crier n'est pas prouvée — mais elle n'est pas morte.*
+             * ✅ CE QUI RESTE VRAI DEPUIS L'ORIGINE : quand aucune source ne parle,
+             *    la ligne vaut « -- » — qui ne peut pas déborder.
              * ⛔ NE PAS « corriger » par un `lv_obj_update_layout()` ici : il
-             *    forcerait une passe de layout complète 5 fois par seconde, sur
-             *    le chemin le plus chaud de la vue détail, pour un contrôle qui
-             *    se fera de toute façon 200 ms plus tard.
+             *    forcerait une passe de layout complète **1 fois par seconde** (et
+             *    jusqu'à 4) sur le chemin le plus chaud de la vue détail, pour un
+             *    contrôle qui se fera de toute façon au tour suivant.
              */
             /* ⚠️ LA CONDITION PORTE SUR `wp` ET `x`, ⛔ PAS SUR `utile`. Un
              *    premier correctif testait `utile > 0` — et
@@ -3239,7 +3269,8 @@ esp_err_t dn_ui_set_nav_model(dn_nav_model_t m)
  *    dn4-6 — donc invisible à l'œil, et c'est précisément ce qui en fait un
  *    piège : le jour où une grandeur sera ajoutée sans sa précision, elle
  *    affichera « 604,0 tr/min » et personne ne saura que c'était un oubli.
- * ⚠️ ICI ET PAS DANS `fmt_grandeur()` : le formatage tourne 5 fois par seconde,
+ * ⚠️ ICI ET PAS DANS `fmt_grandeur()` : le formatage tourne 5 fois par seconde
+ *    (cadence MESURÉE le 2026-08-24, dn4-4/AC3 — le chemin des CINQ métriques),
  *    un log par appel noierait la console — et une console noyée est une console
  *    qu'on cesse de lire.
  * ⚠️ NON FATALE, comme l'audit du mock juste en dessous : un affichage trop
@@ -4205,7 +4236,8 @@ static void fmt_dixiemes(char *out, size_t n, int dixiemes)
  * ⚠️ `NON_RENSEIGNEE` retombe sur le DIXIÈME, c'est-à-dire sur le comportement
  *    d'AVANT dn4-6 — et l'oubli est dit ailleurs, une fois, par l'audit de
  *    descripteurs du boot (`descripteurs_auditer`). Le journaliser ICI le
- *    répéterait 5 fois par seconde et noierait la console.
+ *    répéterait 5 fois par seconde (cadence MESURÉE le 2026-08-24, dn4-4/AC3 :
+ *    le chemin des CINQ métriques) et noierait la console.
  */
 static void fmt_grandeur(char *out, size_t n, int dixiemes, dn_prec_t prec)
 {
@@ -4631,10 +4663,22 @@ const char *dn_ui_case_unite(int idx, int grandeur)
  *    La fonction rendait `lv_label_get_text()`, c'est-à-dire un pointeur vers le
  *    tampon INTERNE du label, **après** avoir relâché le verrou. L'appelant
  *    l'imprimait ensuite hors verrou, pendant que `detail_reparametrer()` tourne
- *    5 fois par seconde en régime et appelle `lv_label_set_text()` — qui
+ *    ~~5 fois par seconde en régime~~ et appelle `lv_label_set_text()` — qui
  *    `lv_realloc` ce tampon. Fenêtre étroite, mais sur le chemin EXACT où
  *    l'instrument sert : détail ouvert **et** injecteur actif, la configuration
  *    du constat owner de §18.4.
+ * 🔴 **LE CHIFFRE EST CORRIGÉ LE 2026-08-24 (`dn4-4`/AC3), SUR MESURE — ⛔ PAS
+ *    EFFACÉ. C'ÉTAIT L'OCCURRENCE QUE LE `[CC]` DU 2026-08-24 N'AVAIT PAS VUE**,
+ *    et elle disait l'INVERSE de celle qu'il avait amendée, à 1 900 lignes
+ *    d'écart, dans le même fichier.
+ *    Mesuré : 100 trames acceptées ⇒ 100 poussées en 20,5 s = **5,0 poussées/s
+ *    TOUTES MÉTRIQUES CONFONDUES**, donc **1,0/s par métrique**.
+ *    `detail_reparametrer()` ne s'exécute que pour la métrique AFFICHÉE
+ *    (`s_metrique == idx`) ⇒ **~1 fois par seconde**, plafond **4/s** (période de
+ *    `tache_lien`, 250 ms). ⛔ Jamais 5.
+ * ⚠️ LA CONCLUSION DE CE BLOC NE CHANGE PAS : à 1 Hz comme à 5 Hz, le tampon EST
+ *    réalloué sous le nez d'un lecteur hors verrou. La copie reste nécessaire —
+ *    ⛔ un chiffre faux qui soutient une conclusion juste reste un chiffre faux.
  * ⛔ Un instrument qui lit de la mémoire réallouée pour dire « le texte n'est pas
  *    celui qu'on croit » ne prouve plus rien.
  *

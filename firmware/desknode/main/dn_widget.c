@@ -1189,7 +1189,10 @@ void dn_widget_maj(const dn_widget_desc_t *desc, const dn_widget_etat_t *etat,
          *    n'existe que si `dn_widget_creer` l'a créé), et il faut lui
          *    appliquer LA MÊME traduction qu'à la création. Sans elle, la case
          *    afficherait la bonne grandeur à la construction puis une AUTRE dès
-         *    la première mise à jour — 5 fois par seconde, sans un log. */
+         *    la première mise à jour — 5 fois par seconde, sans un log.
+         * ⚠️ Cadence MESURÉE le 2026-08-24 (dn4-4/AC3) : 5,0 poussées/s pour les
+         *    CINQ métriques. ⛔ Ne pas la transposer à `detail_reparametrer()`,
+         *    qui ne sert QUE la métrique affichée et tourne à 1,0/s. */
         int g = dn_widget_sel(desc, i);
         composer(desc, etat, g, buf, sizeof(buf));
         lv_label_set_text(w->valeur[i], buf);
@@ -1254,7 +1257,8 @@ void dn_widget_maj(const dn_widget_desc_t *desc, const dn_widget_etat_t *etat,
          *    case dont la géométrie n'a pas gardé la ligne disparaissait sans un
          *    mot — la panne muette que le log de `dn_widget_creer` existe pour
          *    fermer, déplacée d'un cran. ⚠️ UNE SEULE FOIS par widget : en régime
-         *    ce chemin est parcouru 5 fois par seconde, et le port série EST le
+         *    ce chemin est parcouru 5 fois par seconde (cadence MESURÉE le
+         *    2026-08-24, dn4-4/AC3 — les CINQ métriques), et le port série EST le
          *    transport. */
         w->sec_perdue_dite = true;
         ESP_LOGW(TAG,

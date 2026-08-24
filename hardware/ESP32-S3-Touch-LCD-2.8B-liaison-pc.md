@@ -2069,15 +2069,120 @@ largeur **315 px** pour 432 utiles · hauteur **`14 + 140 = 154 ≤ 154`, MARGE 
 Les deux portent sur la **vue DÉTAIL**, livrée par **`dn4-9`, qui est `done`**. ⛔ Son dossier n'est
 pas réécrit en silence.
 
-1. 🔴 **LE DÉTAIL NE PROPAGE PAS LES CHANGEMENTS DE VALEUR TANT QU'IL EST OUVERT.** MESURÉ : le fil
+1. ~~🔴 **LE DÉTAIL NE PROPAGE PAS LES CHANGEMENTS DE VALEUR TANT QU'IL EST OUVERT.** MESURÉ : le fil
    portait `111,0 / 222,0 Mb/s` (**accepté**, `seq 84`, `age 102 ms`) pendant que le détail affichait
    toujours **`985,0 / 48,0`** — les valeurs de l'**OUVERTURE**. Tenu sur 15 injections / ~1,5 s,
-   donc bien au-delà du tick à 5 Hz. ✅ **La PÉREMPTION, elle, passe** (retour à `--`) : AC7 de
-   `dn2-2` tient. ⚠️ Mais une page de détail ouverte sur une métrique vivante **affiche des valeurs
-   périmées sans le dire**.
+   donc bien au-delà du tick à 5 Hz.~~ ✅ **La PÉREMPTION, elle, passe** (retour à `--`) : AC7 de
+   `dn2-2` tient.
+
+   🔴 **AMENDÉ LE 2026-08-24 PAR `dn4-4` (AC1) — ⛔ PAS EFFACÉ. LE CONSTAT EST RÉFUTÉ, ET LA CAUSE
+   PUBLIÉE L'EST DEUX FOIS.** Voir **§21.6**. En un mot : le SYMPTÔME était réel, mais il vient de
+   ce harnais-ci, ⛔ pas du firmware — et l'explication qui en a été tirée (« `detail_reparametrer()`
+   n'a qu'un seul appelant ») était fausse **par simple `grep`**.
 2. ⚠️ **MARGE ZÉRO EN HAUTEUR sur le pire cas `DISQUE`** : `14 + 140 = 154 ≤ 154`. L'arithmétique et
    l'œil **CONCORDENT** (*« sur la limite mais ça rentre »*). ⛔ Ce n'est **pas** une régression de
    `dn4-8` : les icônes s'insèrent DANS la ligne, elles n'en ajoutent aucune.
+
+### 21.6 🔴 `dn4-4` / AC1 — LE CONSTAT n°1 DE §21.5 EST RÉFUTÉ **PAR LA MESURE**, ET SA CAUSE PUBLIÉE L'EST **PAR LECTURE**
+
+**Firmware sous test : `d379c0d`, SHA LU AU BANDEAU** (`App version: d379c0d`).
+⚠️ **ET C'EST FONCTIONNELLEMENT LE BINAIRE DE §21.5** : entre `e85107e` (la séance) et `d379c0d`,
+`git diff -- firmware/` ne rend **qu'un commentaire** dans `dn_ui.c` — **zéro ligne de code**.
+⛔ Le firmware n'est donc pas une variable entre les deux observations.
+
+#### a. La cause publiée est fausse, et ça se vérifie en une commande
+
+Le `[CC]` du 2026-08-24 écrit que `detail_reparametrer()` *« n'a **qu'UN SEUL appelant** —
+`build_detail()` … **aucun chemin de mise à jour de données ne l'appelle** »*.
+`grep -n detail_reparametrer firmware/desknode/main/dn_ui.c` rend **TROIS** sites d'appel :
+
+| # | Fonction | Nature | Posé par |
+|---|---|---|---|
+| 1 | `build_detail()` | construction de la vue | — |
+| 2 | `nav_appliquer()`, branche `DN_NAV_SCREENS` | transition | — |
+| 3 | 🔴 **`case_poser()`** | 🔴 **MISE À JOUR DE DONNÉES** | 🔴 **`030f0566`, 2026-08-17 18:45** |
+
+#### b. La propagation MARCHE — témoin POSITIF, six trames, dans l'ordre
+
+Protocole (`tools/diag_p1_dn44.py`), **écrit avant d'être exécuté**, et construit pour **ne pas
+pouvoir fabriquer le faux positif de l'injecteur** (dont les jeux portent des valeurs FIXES) :
+valeurs qui **changent** à chaque trame · `seq` **incrémenté** · checksum **recalculé** · injection
+**continue** (péremption 3 s) · lecture par **`widget detail`** (relecture des objets LVGL).
+
+| `seq` | ce que le fil portait | ce que la DALLE portait |
+|---|---|---|
+| 300 | `111,0 / 222,0` | `111,0 Mb/s · 222,0 Mb/s` |
+| 301 | `333,0 / 333,0` | `333,0 Mb/s · 333,0 Mb/s` |
+| 302 | `555,0 / 444,0` | `555,0 Mb/s · 444,0 Mb/s` |
+| 303 | `777,0 / 555,0` | `777,0 Mb/s · 555,0 Mb/s` |
+| 304 | `999,0 / 666,0` | `999,0 Mb/s · 666,0 Mb/s` |
+| 305 | `1221,0 / 777,0` | `1221,0 Mb/s · 777,0 Mb/s` |
+
+⇒ **6 sur 6, dans l'ordre, la page restant OUVERTE.** ⛔ Aucune reconstruction de vue.
+
+#### c. 🔴 LE SYMPTÔME EST REPRODUIT À VOLONTÉ — PAR LE HARNAIS, ET LE COMPTEUR LE DIT
+
+Témoin **négatif** : cinq trames à **`seq` FIGÉ (316)**, dont les **valeurs changent à chaque tour**.
+
+```
+tour 1/5 · seq FIGÉ 316 · fil « 999,0 / 111,0 »   dalle « 999,0 Mb/s · 111,0 Mb/s »
+tour 2/5 · seq FIGÉ 316 · fil « 888,0 / 210,9 »   dalle « 999,0 Mb/s · 111,0 Mb/s »
+tour 3/5 · seq FIGÉ 316 · fil « 777,0 / 310,8 »   dalle « 999,0 Mb/s · 111,0 Mb/s »
+tour 4/5 · seq FIGÉ 316 · fil « 666,0 / 410,7 »   dalle « 999,0 Mb/s · 111,0 Mb/s »
+tour 5/5 · seq FIGÉ 316 · fil « 555,0 / 510,6 »   dalle « 999,0 Mb/s · 111,0 Mb/s »
+doublons : 1 -> 5 (+4) · textes DISTINCTS sur la dalle : 1
+```
+
+C'est `dn_link.c` (*« rejouer un seq n'est pas une donnée »*) : la trame est comptée en **`doublons`**
+et **la valeur n'entre pas**. Une propagation qui MARCHE rend alors **exactement** l'écran de §21.5.
+⚠️ **Et §21.4 dit déjà que ce harnais-là perdait des lignes** : l'injection de §21 tournait à
+**~100× la cadence nominale** avec **890 `pertes seq`**.
+
+⛔ **CE QUE §21.6 NE PROUVE PAS** : que le `seq` était figé *ce jour-là*. La fenêtre brute de §21.5
+n'a pas été capturée — seul le récit subsiste. Ce qui est prouvé, c'est que **le firmware propage**
+et qu'**un harnais suffit à produire le symptôme**. La cause exacte de ce tir-là reste **indécidable**,
+et c'est dit plutôt que comblé.
+
+#### d. Les trois autres témoins d'AC2 (`tools/temoins_ac2_dn44.py`)
+
+| Témoin | Résultat |
+|---|---|
+| **PÉREMPTION** — injection coupée 4,0 s | ✅ retour à `--` (**AC7 de `dn2-2` NE RÉGRESSE PAS**) |
+| **MOCK** — `widget mock on` | ✅ régime **`SIMULÉE`** relu dans la table de `widget`, valeur qui **VARIE** (`845` → `705`) |
+| **CROISÉ** — détail sur `CPU`, `net` qui bouge 3 fois | ✅ le détail de `CPU` **NE BOUGE PAS** (`50,0 % · 3,0 GHz | c.max 50,0 % · 40,0 °C`, identique) |
+
+#### e. 🔴 LA CADENCE, MESURÉE — ⛔ « 5 FOIS PAR SECONDE » ÉTAIT FAUX POUR LE DÉTAIL
+
+| Grandeur | Relevé |
+|---|---|
+| trames acceptées sur la fenêtre | **100** |
+| poussées avec label posé (`latence acceptation->label`, `n`) | **100** |
+| durée de la fenêtre | **20,5 s** |
+| ⇒ **cadence, TOUTES métriques** | **5,0 poussées/s** |
+| ⇒ **cadence PAR métrique** | **1,0 poussée/s** |
+| plafond structurel (`tache_lien`, `vTaskDelayUntil` 250 ms) | **4 poussées/s** |
+
+⇒ `detail_reparametrer()` ne sert **que la métrique affichée** (`s_metrique == idx`) : elle tourne
+**~1 fois par seconde en régime**, **jamais 5**. Les « 5 fois par seconde » du reste du firmware
+décrivent le chemin `case_poser`/`dn_widget_maj`, parcouru pour les **CINQ** métriques : **ils sont
+justes**, et ils sont désormais **datés de cette mesure**.
+
+✅ **CONSÉQUENCE** : la garde de largeur/hauteur de `detail_reparametrer()` **EST rejouée** sur la vue
+ouverte — ⛔ elle n'est **pas** décorative, contrairement à ce que le `[CC]` a conclu. Le seul
+reproche qui tienne est qu'**aucun témoin négatif ne l'a jamais fait crier** : c'est le travail
+d'AC4.
+
+#### f. 🔴 DEUX DÉFAUTS DE CADRAGE DE `dn4-4`, TROUVÉS EN L'EXÉCUTANT
+
+1. **`nav ab 40` ne rend pas `n = 40`, il rend `n = 80`.** `nav ab <n>` fait `n` **allers-retours**
+   et chronomètre les **deux** sens. Le protocole des trois points publiés est **`nav ab 20`** —
+   **le firmware l'imprime lui-même** (`nav model` : *« comparer proprement : `touch reset` puis
+   `nav ab 20` »*). ⇒ les deux ont été tirés, et ils **concordent à 0,8 ms**.
+2. **`widget mock` n'est pas l'instrument de G3.** Sans `on|off` cette sous-commande imprime son
+   usage et rend `0x1`. L'état du mock est publié par **`widget` nu** (ligne `mock : ARME|COUPE`,
+   plus la colonne `regime` par case).
+
+---
 
 ---
 
