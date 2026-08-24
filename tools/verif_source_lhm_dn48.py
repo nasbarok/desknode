@@ -44,7 +44,16 @@ def _constante_c(nom):
     """
     import re
     src = io.open(_DN_LINK_H, encoding="utf-8", errors="replace").read()
-    m = re.search(r"#define\s+%s\s+\(?\s*(\d+)" % re.escape(nom), src)
+    # 🔴 2e REVUE (2026-08-24) — LA REGEX N'ETAIT NI ANCREE NI FERMEE :
+    #    `re.search(r"#define\s+%s\s+\(?\s*(\d+)")` sans `^` ni `re.M`, donc LA
+    #    PREMIERE OCCURRENCE DU FICHIER GAGNE, **commentaire compris** ; et
+    #    `(\d+)` apres `\(?` lisait `64` dans `#define X (64 + 7)`. `dn_link.h`
+    #    mentionne `DN_LINK_LIGNE_MAX` six fois AVANT son `#define` : la garde
+    #    etait correcte AUJOURD'HUI et silencieusement fausse le jour ou une de
+    #    ces lignes citerait la directive. ⛔ C'est la classe meme que le
+    #    correctif nomme (« passe VERT sur un arbre ou la propriete est cassee »).
+    # ⇒ MEME MOTIF QUE SON JUMEAU `recompte_trame_dn48.py:86`, au caractere pres.
+    m = re.search(r"^#define\s+%s\s+(\d+)\s*$" % re.escape(nom), src, re.M)
     if not m:
         raise RuntimeError(
             "%s introuvable dans %s — ⛔ NE PAS RETOMBER SUR UNE VALEUR EN DUR : "
@@ -62,7 +71,12 @@ def _constante_c(nom):
 # ⇒ on n'arme le stub que si le vrai psutil est INTROUVABLE, et ON LE DIT.
 try:
     import psutil as _vrai_psutil                    # noqa: F401
-    _AVEC_VRAI_PSUTIL = True
+    # 🔴 2e REVUE (2026-08-24) : UN IMPORT QUI REUSSIT NE PROUVE PAS LE VRAI
+    #    MODULE. Lance de la maniere DOCUMENTEE (`PYTHONPATH=tools/stub_psutil`),
+    #    le stub satisfait l'import et cet outil se croyait sur la tour — donc il
+    #    prenait la branche AFFAIBLIE de la garde d'ordre la ou l'egalite EXACTE
+    #    etait justement possible. ⇒ on lit le MARQUEUR du stub.
+    _AVEC_VRAI_PSUTIL = not getattr(_vrai_psutil, "DN_EST_STUB", False)
 except ImportError:
     _AVEC_VRAI_PSUTIL = False
 if not _AVEC_VRAI_PSUTIL:
@@ -108,6 +122,25 @@ LIGNE_MAX = _constante_c("DN_LINK_LIGNE_MAX")
 GRANDEURS_MAX = _constante_c("DN_LINK_GRANDEURS_MAX")
 print("[verif] constantes LUES dans dn_link.h : LIGNE_MAX=%d GRANDEURS_MAX=%d"
       % (LIGNE_MAX, GRANDEURS_MAX))
+
+# 🔴 2e REVUE (2026-08-24) — `GRANDEURS_MAX` ETAIT LU, IMPRIME, ET N'ENTRAIT DANS
+#    **AUCUNE** ASSERTION. Dans un fichier dont le correctif du jour est « ne plus
+#    recopier une constante a la main », faire lire une constante pour ne rien en
+#    verifier ajoute une APPARENCE de controle. ⇒ elle borne desormais ce que le
+#    produit publie : aucune metrique ne peut porter plus de grandeurs que le fil
+#    n'en accepte, et c'est LE mur de cette story (« le mur n'est pas l'octet,
+#    c'est DN_LINK_GRANDEURS_MAX »).
+_TROP = {m: n for m, n in
+         ((m, len(dn_agent.BORNES[m])) for m in dn_agent.BORNES)
+         if n > GRANDEURS_MAX}
+if _TROP:
+    raise SystemExit(
+        "\u26d4 %d metrique(s) declarent PLUS de grandeurs que "
+        "DN_LINK_GRANDEURS_MAX=%d : %s. Le firmware REJETTERAIT la trame entiere "
+        "(`nv > n_grandeurs`), et aucun compteur ne dirait pourquoi."
+        % (len(_TROP), GRANDEURS_MAX, _TROP))
+print("[verif] \u2705 les %d metriques du produit tiennent dans GRANDEURS_MAX=%d"
+      % (len(dn_agent.BORNES), GRANDEURS_MAX))
 
 ECHECS = []
 
@@ -180,6 +213,24 @@ def scenario_normal():
         #    le `c.max` vient de psutil (le stub, deterministe), la °C vient de LHM
         #    (le stub qui rejoue la fixture). ⛔ Aucune des deux n'est recopiee ici.
         import psutil as psutil_du_stub
+        # 🔴 2e REVUE (2026-08-24) — DEUX CORRECTIFS DU MEME COMMIT S'ANNULAIENT,
+        #    ET LA GARDE NE POUVAIT PLUS PASSER SUR LA TOUR :
+        #      (A) le stub n'est plus arme quand le VRAI psutil existe (correct) ;
+        #      (B) le plafond tolerant `<= 1000` est devenu une EGALITE EXACTE.
+        #    Sur la tour, `psutil_du_stub` EST donc le vrai psutil — la variable
+        #    ment sur son contenu — et `cpu_percent(interval=None)` mesure LA
+        #    FENETRE DEPUIS LE DERNIER APPEL. L'appel du harnais et les deux
+        #    `col.photo()` sont TROIS fenetres differentes, et l'appel du harnais
+        #    CONSOMME l'intervalle du sujet. L'egalite y est fausse presque surement.
+        # ⇒ LA GARDE SE SCINDE EN DEUX, chacune valide LA OU elle est probante :
+        #    - sous STUB (valeurs deterministes) : egalite EXACTE, c'est elle qui
+        #      attrape la permutation `_dx(cmax)` <-> `_dx(degc)` ;
+        #    - sur PSUTIL REEL : l'egalite est ABANDONNEE et remplacee par une
+        #      propriete qui, elle, ne depend pas de la fenetre — la °C vient de
+        #      LHM (deterministe ici, c'est le stub qui la sert) et doit se
+        #      retrouver EXACTEMENT en index 3, tandis que l'index 2 doit en
+        #      DIFFERER. ⛔ On ne rend PAS un verdict qu'on ne peut pas etayer.
+        _EXACT = not _AVEC_VRAI_PSUTIL
         vues_lhm = source().lire()
         photo = col.photo()
         photo = col.photo()                   # 2e tour : les debits existent
@@ -209,12 +260,23 @@ def scenario_normal():
         # ⚠️ UNE GARDE QUI NE PEUT PAS DISCRIMINER DOIT LE DIRE. Si les deux
         #    grandeurs tombaient par hasard sur la meme valeur, la permutation
         #    redeviendrait invisible — et l'instrument se tairait vert.
-        verdict("les deux valeurs DIFFERENT (sinon la garde est aveugle)",
+        verdict("les deux valeurs DIFFERENT (sinon la garde est aveugle)"
+                + ("" if _EXACT else " [psutil REEL]"),
                 cmax_attendu != degc_attendu,
                 "c.max=%s degC=%s" % (cmax_attendu, degc_attendu))
-        verdict("`c.max` est en INDEX 2 (valeur EXACTE, ⛔ pas un plafond)",
-                d["cpu"][2] == cmax_attendu,
-                "index2=%s attendu=%s" % (d["cpu"][2], cmax_attendu))
+        if _EXACT:
+            verdict("`c.max` est en INDEX 2 (valeur EXACTE, ⛔ pas un plafond)",
+                    d["cpu"][2] == cmax_attendu,
+                    "index2=%s attendu=%s" % (d["cpu"][2], cmax_attendu))
+        else:
+            # ⚠️ psutil REEL : `cpu_percent` mesure une fenetre, donc l'egalite
+            #    exacte n'est pas etayable. Ce qui reste PROBANT et suffit a
+            #    attraper la permutation : l'index 2 ne doit PAS porter la °C.
+            verdict("`c.max` est en INDEX 2 (psutil REEL : ⛔ pas d'egalite "
+                    "exacte, on verifie qu'il NE porte PAS la °C)",
+                    d["cpu"][2] is not None and d["cpu"][2] != degc_attendu,
+                    "index2=%s degC=%s (c.max instantane=%s, fenetres "
+                    "differentes)" % (d["cpu"][2], degc_attendu, cmax_attendu))
         verdict("la °C CPU est en INDEX 3 (valeur EXACTE, ⛔ pas 2)",
                 d["cpu"][3] == degc_attendu,
                 "index3=%s attendu=%s" % (d["cpu"][3], degc_attendu))
@@ -404,6 +466,118 @@ def scenario_arret_en_cours():
     col.fermer()
 
 
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🔴 QUATRE SCENARIOS AJOUTES EN 2e REVUE (2026-08-24). ILS FERMENT UN TROU
+#    NOMME PAR LA REVUE : les trois comportements livres le 2026-08-21 — la
+#    verification de FAMILLE, le compteur de lignes ILLISIBLES, et le bornage par
+#    morceau de `_lire_corps()` — n'etaient exerces par AUCUN des six scenarios.
+#    PROUVE PAR MUTATION : avec `if False and famille != famille_attendue` et un
+#    `return rep.read()` en tete de `_lire_corps`, ce fichier imprimait
+#    « ✅ tous les controles passent ». Les chiffres publies au tableau des 38
+#    patches (« REFUSE et COMPTE par sonde », « 253/253 lignes illisibles »)
+#    venaient d'une mutation NON COMMITTEE, donc NON REJOUABLE.
+# ⚠️ Le mode `goutte`, ajoute le 2026-08-21 « pour EPROUVER `_lire_corps()` »,
+#    n'avait AUCUN appelant dans tout le depot.
+# ═══════════════════════════════════════════════════════════════════════════
+def scenario_famille():
+    print("\n== 7. L'UNITE CHANGE COTE LHM — valeur REFUSEE, et ⛔ PAS une absence ==")
+    p = lancer_stub("famille")
+    try:
+        src = source()
+        vues = src.lire()
+        verdict("les 5 sondes sont REFUSEES (famille inattendue)",
+                all(v is None for v in vues.values()), str(vues))
+        verdict("elles sont dans le seau `familles`, ⛔ PAS dans `absences`",
+                len(src.familles) == 5 and not src.absences,
+                "familles=%s absences=%s" % (sorted(src.familles), sorted(src.absences)))
+        # 🎯 LE CONTROLE QUI DISCRIMINE : les lignes se parsent PARFAITEMENT.
+        #    Si `lignes_illisibles` montait, on serait sur un desaccord de FORMAT
+        #    (3e etat), ⛔ pas sur un changement d'UNITE (4e etat).
+        verdict("⛔ AUCUNE ligne illisible : c'est bien le 4e etat, pas le 3e",
+                src.lignes_illisibles == 0 and src.lignes_lues > 0,
+                "lues=%d illisibles=%d" % (src.lignes_lues, src.lignes_illisibles))
+        src.fermer()
+    finally:
+        tuer(p)
+
+
+def scenario_doublon():
+    print("\n== 8. DEUX FAMILLES POUR LA MEME SONDE — ⛔ pas de tirage au sort ==")
+    p = lancer_stub("doublon")
+    try:
+        src = source()
+        vues = src.lire()
+        verdict("la sonde en conflit est REFUSEE (⛔ pas « dernier arrive gagne »)",
+                vues.get("cpu.degc") is None, "cpu.degc=%s" % vues.get("cpu.degc"))
+        verdict("le conflit est COMPTE sur SON compteur", bool(src.doublons),
+                "doublons=%s" % sorted(src.doublons))
+        verdict("les 4 tr/min, elles, restent LUES", 
+                all(vues.get(k) is not None for k in
+                    ("fan.top_out", "fan.cpu_noctua", "fan.case_group", "fan.rear_out")),
+                str(vues))
+        src.fermer()
+    finally:
+        tuer(p)
+
+
+def scenario_vide():
+    print("\n== 9. 200 SANS UNE SEULE LIGNE `lhm_` — c'est une PANNE, ⛔ pas 5 absences ==")
+    p = lancer_stub("vide")
+    try:
+        src = source()
+        leve = None
+        try:
+            src.lire()
+        except Exception as exc:
+            leve = exc
+        # 🔴 AVANT CORRECTIF : `lues = 0`, `illisibles = 0`, `table = {}` ⇒ les cinq
+        #    sondes tombaient dans `absences` ⇒ le bilan imprimait « LHM a REPONDU,
+        #    sans cette valeur » et envoyait inspecter LES CAPTEURS. Mot pour mot le
+        #    diagnostic CONTRAIRE de celui que le patch existe pour supprimer.
+        verdict("la lecture LEVE (⇒ panne COMPTEE ET NOMMEE par `_tenter`)",
+                leve is not None, "leve=%r" % (leve,))
+        verdict("⛔ AUCUNE absence n'a ete fabriquee", not src.absences,
+                "absences=%s" % sorted(src.absences))
+        src.fermer()
+    finally:
+        tuer(p)
+
+
+def scenario_willclose():
+    print("\n== 10. REPONSE `will_close` — LE BUDGET DOIT TENIR QUAND MEME ==")
+    # 🔴 CE SCENARIO A TROUVE UN VRAI DEFAUT (2026-08-24). CPython fait
+    #    `if response.will_close: self.close()` dans `getresponse()`, ce qui met
+    #    `HTTPConnection.sock` a None : `_borner_socket` devenait un NO-OP MUET et
+    #    chaque `recv` retrouvait le plafond ENTIER.
+    #    MESURE, arbre mute : 0,902 s pour 0,600 s de budget (**150 %**).
+    #    MESURE, arbre corrige : 0,601 s (**100 %**).
+    #    ⚠️ TOUS les autres modes du stub posent HTTP/1.1 + Content-Length : aucun
+    #       ne pouvait produire cet etat.
+    budget = 0.600
+    p = lancer_stub("willclose", retard=budget * 0.5)
+    try:
+        src = source(timeout_s=budget)
+        t0 = time.perf_counter()
+        try:
+            src.lire()
+        except Exception:
+            pass
+        d = time.perf_counter() - t0
+        # ⚠️ 1,3x et ⛔ pas 1,0 : la marge couvre l'ordonnancement, ⛔ pas un 2e
+        #    `recv` a plafond plein (qui donnerait >= 1,5x).
+        verdict("la lecture tient dans le budget malgre `will_close`",
+                d <= budget * 1.3,
+                "%.3f s pour %.3f s de budget (%.0f %%)"
+                % (d, budget, 100.0 * d / budget))
+        verdict("⛔ aucun bornage impossible (la socket a bien ete capturee)",
+                src.bornages_impossibles == 0,
+                "bornages_impossibles=%d" % src.bornages_impossibles)
+        src.fermer()
+    finally:
+        tuer(p)
+
+
 def main():
     for f in (sys.stdout, sys.stderr):
         try:
@@ -421,6 +595,10 @@ def main():
     scenario_lent()
     scenario_absent_puis_reprise()
     scenario_arret_en_cours()
+    scenario_famille()
+    scenario_doublon()
+    scenario_vide()
+    scenario_willclose()
     print("\n" + "=" * 76)
     if ECHECS:
         print("\u2716\ufe0f  %d CONTROLE(S) EN ECHEC : %s" % (len(ECHECS), ECHECS))

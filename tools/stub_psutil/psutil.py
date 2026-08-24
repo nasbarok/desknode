@@ -103,6 +103,13 @@ def disk_io_counters():
 #   cadence est GROSSIERE ET RONDE (1 ms par appel), donc un lecteur attentif voit
 #   tout de suite que ce n'est pas une mesure. ⛔ Un faux plausible serait pire
 #   qu'un faux constant : il se ferait publier.
+# 🔴 MARQUEUR EXPLICITE (2e revue, 2026-08-24). Un outil qui doit savoir s'il
+#    parle au vrai psutil ne peut pas le deduire d'un `import` qui REUSSIT :
+#    quand ce stub est sur le `PYTHONPATH` — c'est-a-dire dans la commande
+#    DOCUMENTEE — l'import reussit et l'outil se croit sur la tour.
+#    ⛔ Pas d'heuristique sur `__file__` : un marqueur, qui se lit.
+DN_EST_STUB = True
+
 _cpu = [0.0]
 
 
@@ -111,7 +118,20 @@ class Process(object):
         pass
 
     def cpu_times(self):
-        _cpu[0] += 0.001          # 1 ms par appel — FABRIQUE, et ca se voit
+        # 🔴 2e REVUE (2026-08-24) — LE CORRECTIF PRECEDENT NE FERMAIT PAS LE
+        #    DEFAUT QU'IL NOMMAIT. Son commentaire disait « chaque candidat aurait
+        #    score 0,000 ms et PASSE C1/C2 sans rien mesurer ». Avec `+= 0.001`,
+        #    `c1 - c0` valait **1,000000 ms A CHAQUE TIR, SANS AUCUNE VARIANCE** —
+        #    toujours le tell d'un instrument mort (« une valeur exactement
+        #    constante ») que ce depot documente, et toujours <= 3,0 ms (C1) et
+        #    <= 8,0 ms (C2) : LES DEUX CRITERES PASSAIENT ENCORE. Le correctif
+        #    traitait la LISIBILITE du faux, ⛔ pas le VERDICT.
+        # ⇒ LE STUB REND UN COUT **AU-DELA DE TOUS LES SEUILS**. Un verdict W2
+        #   tire sous stub est ainsi DISQUALIFIE PAR CONSTRUCTION, ⛔ jamais
+        #   « qualifie » par un instrument qui ne mesure rien. C'est la seule
+        #   sortie honnete : un stub ne peut pas produire un cout, il peut
+        #   seulement refuser d'en inventer un.
+        _cpu[0] += 1.0            # 1 s par appel — HORS DE TOUT SEUIL, DELIBEREMENT
         class _T(object):
             user = _cpu[0] * (2.0 / 3.0)
             system = _cpu[0] * (1.0 / 3.0)
