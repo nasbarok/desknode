@@ -83,8 +83,7 @@ un arbitrage assumé — 12 photos brutes auraient pesé **136 Mo** dans un dép
 | `2026-08-20_0110-derivation-quatre-cables-finis-gaines.jpg` | 01:10:55 | Les **quatre câbles terminés et gainés**, pin mâle en bout. ⇒ **La topologie Y2 est PHOTOGRAPHIÉE** — exigence d'AC5 |
 | 🔴 `2026-08-20_0116-bh1750-et-ina219-barrettes-SOUDEES.jpg` | 01:16:53 | 🔴 **LA PREMIÈRE PHOTO D'UN ÉTAT SOUDÉ DU DÉPÔT.** BH1750 (`BH1750`, `V322`) barrette **5 broches SOUDÉE**, les cinq pastilles d'étain visibles ; INA219 barrette **6 broches SOUDÉE** **et bornier vert SOUDÉ**, sérigraphie `Vin- · Vin+ · Sda · Scl · Gnd · Vcc`, shunt `R100`, et les cavaliers **`I2C Address` `A1`/`A0`** |
 | 🔴 `2026-08-20_0116-ina219-et-tof050c-barrettes-SOUDEES.jpg` | 01:16:56 | Le **ToF soudé**, sérigraphie **`TOF050C-VL6180X`** lisible sur le bord, barrette **6 broches SOUDÉE**, et le boîtier optique noir. ⇒ **La réf est lisible SUR LA PHOTO DE L'ÉTAT SOUDÉ**, pas seulement sur celle du sachet |
-| 🔴 **LE MONTAGE FINAL — deux photos, 09:51** | EXIF | Ce qu'elles ÉTABLISSENT *(en-tête ajouté par la revue du 2026-08-20 : `e931c31` avait inséré ces deux lignes APRÈS une ligne vide, ce qui les laissait ORPHELINES — une table sans en-tête ne rend pas comme un tableau)* |
-|---|---|---|
+| 🔴 **LE MONTAGE FINAL — deux photos, 09:51** | EXIF | Ce qu'elles ÉTABLISSENT *(sous-titre ajouté par la revue du 2026-08-20 : `e931c31` avait inséré ces deux lignes APRÈS une ligne vide, ce qui les laissait ORPHELINES. ⚠️ **Le correctif avait posé un `\|---\|---\|---\|` sous ce sous-titre — retiré le 2026-08-24** : en GFM la ligne de délimitation n'est reconnue qu'**immédiatement après l'en-tête**, donc au milieu d'un corps de table elle rendait trois cellules `---`. La suppression de la ligne vide suffisait.)* |
 | 🔴 `2026-08-20_0951-montage-final-8-devices-grille-six-cases.jpg` | 09:51:16 | 🔴 **LE MONTAGE FINAL, ET L'ÉCRAN EST LISIBLE.** Le bandeau latéral `DESKNODE · LIVING PCB V0 — P1`, **les SIX cases** (`CPU` · `RÉSEAU` · `AMBIANCE` / `CPU` · `RAM` · `DISQUE`), les libellés `I2C` et `WIFI/BT`, `c.max`, et le bandeau **`MENU`**. Deux modules dans le cadre : le **BH1750** (bleu) et le **ToF** (noir, lucarne optique visible). ⚠️ La barre affiche **« HEURE NON POSÉE »** — **attendu** : §13.15.3, cette carte n'a **aucune sauvegarde RTC**, et l'A/B de démarrage à froid a coupé l'alimentation sept fois de plus. **La garde refuse une heure fausse ; elle fonctionne** |
 | `2026-08-20_0951-montage-final-en-main-les-quatre-modules.jpg` | 09:51:02 | Le **montage complet en main**, à l'échelle : la carte, ses **quatre modules** en étoile autour d'elle (BH1750, ToF, INA219, et le **BME680** au bout du câble tressé, toujours sur son embase JST), le câble USB, et le bureau derrière. ⇒ **C'est la photo qui montre que le bus a DEUX points d'entrée physiques** (embase JST pour le BME680, header 2×12 pour les trois nouveaux) |
 
@@ -119,7 +118,15 @@ sérigraphie.** C'est **l'instrument valide** — l'œil de l'owner, ⛔ jamais 
 > | **INA219 (CJMCU)** | **10,09 kΩ** | **10,08 kΩ** | 10 kΩ |
 >
 > ⇒ **`+2` jeux de tirages, PAS `+3`** : on passe de **2 à 4**, pas de 2 à 5.
-> `10k ∥ 10k = 5 kΩ` ⇒ **+0,66 mA** à l'état bas, contre une limite I²C de **3 mA**. **Large.**
+> `10k ∥ 10k = 5 kΩ` ⇒ **l'ajout coûte `+0,66 mA`** à l'état bas, sur un budget I²C de **3 mA**
+> **dont la consommation de départ n'est pas mesurée.**
+> ⚠️ *Ce verdict disait **« Large »** jusqu'à la revue du **2026-08-24**, ce qui comparait un
+> **INCRÉMENT** à une **limite ABSOLUE** — or la limite de 3 mA porte sur le courant **total** que
+> chaque device encaisse à l'état bas, et la contribution des **deux jeux préexistants** (carte +
+> BME680) est inconnue, comme la ligne suivante le dit elle-même. **Y6 demandait un TOTAL, la réponse
+> publiait un DELTA.** ⇒ Le `+0,66 mA` reste juste ; c'est la **conclusion** qui outrepassait la
+> mesure. **Décision owner du 2026-08-24 : reformuler plutôt que ressortir l'ohmmètre** — l'écart est
+> déclaré, il n'est pas fermé.*
 > ⛔ **CE QUE CETTE MESURE NE COUVRE PAS** : elle est prise **côté MODULES**, pas côté **CARTE**.
 > La mesure carte n'a pas été faite — instrument inadéquat, dit par l'owner (*« je ne peux pas
 > prendre les données avec le multimètre »*) — ⇒ **écrit plutôt que bâclé.**
@@ -299,13 +306,13 @@ Scan stable (`5/5`), reproduit sur ~20 passes :
 >
 > | Adresse | Composant | Qualifié par | Depuis |
 > |---|---|---|---|
-> | **`0x20`** | TCA9554 — expander | témoin positif du scan | dn1-2 |
+> | **`0x20`** | TCA9554 — expander | témoin positif du scan **+ transactions du pilote `esp_io_expander`** (LCD_RST/TP_RST/LCD_CS) | dn1-2 |
 > | **`0x23`** | **BH1750 (GY-302)** — luminosité | 🔴 **STIMULUS** — il n'a **aucun** registre | **dn4-2** |
 > | **`0x29`** | **TOF050C-VL6180X** — distance | `lire16 0000` → **`B4`**, 5/5 | **dn4-2** |
 > | **`0x40`** | **INA219 (CJMCU)** — tension/courant | `lire 00 2` → **`39 9F`**, 5/5 | **dn4-2** |
 > | **`0x51`** | PCF85063**A** — RTC | lecture + témoin anti-fantôme `0xD7` | dn2-1 / dn3-2 |
 > | **`0x5D`** | GT911 — tactile | témoin positif du scan · `lire16 5D 8140 4` → `"911"` | dn1-4 |
-> | **`0x6B`** | QMI8658 — IMU | scan (**hors V1**, non piloté) | dn2-1 |
+> | **`0x6B`** | QMI8658 — IMU | scan (**hors V1**, non piloté) — ⚠️ **LA SEULE EXCEPTION À LA PHRASE D'INTRO** : elle n'est PAS qualifiée par une transaction de donnée, faute de pilote. *(Écart relevé le 2026-08-24 : le préambule disait « tous qualifiés par une transaction, ⛔ jamais par le scan » dans une section dont l'amendement dit qu'« une liste qui en oublie la moitié est exactement l'instrument qui ment ».)* | dn2-1 |
 > | **`0x77`** | BME680 | `lire 77 D0` → `61` | dn2-1 |
 >
 > ✅ **Aucune collision d'adresses — CONSTATÉE, pas supposée.**
@@ -1952,7 +1959,12 @@ fonctionne** — exactement le faux négatif que la story avait armé d'avance e
 > DIVISÉS PAR DIX, ET C'EST LA CLASSE DE DÉFAUT QUE CE CHAPITRE TRAQUE.**
 > `dn_console.c` calculait `lux10 = (brut * 10) / 12`, ce qui **EST déjà la valeur en lux entiers**
 > (`brut / 1,2`), puis l'imprimait comme des **dixièmes**. Publié ici et dans le `README.md` :
-> `1,9` pour **19,2** · `2,3` pour **23,3** · **`4 614,8` pour `46 148`**.
+> `1,9` pour **19,1** · `2,3` pour **23,3** · **`4 614,8` pour `46 148`**.
+> ⚠️ *Cette ligne écrivait **`19,2`** jusqu'à la revue du **2026-08-24** — un chiffre que la formule
+> corrigée **ne peut pas produire** : `(23 × 100) / 12 = 191` ⇒ le firmware imprime **`19.1`**, la
+> table ci-dessous publie **19,1**, et l'encart dit lui-même deux lignes plus bas que le dixième est
+> **tronqué, pas arrondi**. `19,2` est l'**arrondi** de 19,166… Le cas jumeau `2,3 → 23,3` est exact,
+> donc la contradiction ne se voyait que sur le seul des deux exemples où troncature ≠ arrondi.*
 > ⚠️ **AC6 tient, et ce n'est pas une concession** : le stimulus qualifie par le **RAPPORT** — main
 > posée → main retirée → lampe — et **les rapports étaient justes**. Le verdict « le BH1750 répond
 > à une main » n'est pas touché.
@@ -1965,8 +1977,12 @@ fonctionne** — exactement le faux négatif que la story avait armé d'avance e
 1. **Le retour n'est pas identique au départ** (23,3 contre 19,1 lx). Une valeur **rejouée** serait
    revenue **exacte**. Une vraie pièce dérive.
 2. **La lampe lève l'ambiguïté du `00 00`** : masqué, le capteur rend `00 00`, ce qui est **aussi**
-   ce que rend une mesure pas prête. Le masquage seul était donc **faible**. **4 615 lx ne peut
+   ce que rend une mesure pas prête. Le masquage seul était donc **faible**. **46 148 lx ne peut
    venir que de la lumière.**
+   ⚠️ *Cette phrase a gardé l'ancienne valeur **`4 615`** jusqu'à la revue de code du **2026-08-24**,
+   quatre lignes sous l'encart qui déclarait avoir tout recalculé, et alors que le point **1**
+   ci-dessus avait bien été repris. **C'est la phrase qui PORTE la preuve** — donc le pire endroit
+   où l'oublier. Le `grep` de §13.17.6 bis est exactement ce qui l'aurait trouvée.*
 
 🔴 **POURQUOI LE BH1750 EST LE MIEUX QUALIFIÉ DES TROIS, ET PAS LE MOINS BIEN.** L'INA219 et le
 VL6180X rendent chacun **un octet constant** (`39 9F`, `B4`) — un faux positif de bus peut acquitter
@@ -2387,6 +2403,13 @@ publié.**
 | **Bandeau de boot** | — | ✅ **une seule ligne `E`** sur un boot sain : celle de l'ISR, **nommée et rattachée** (AC11). ⛔ Aucune nouvelle |
 | **Smoke owner 6/6** | — | ✅ **FAIT** — constat owner du 2026-08-20, verbatim : *« reste ok »*. ⚠️ *Transcrit ici par la revue de code du 2026-08-20 : le constat avait eu lieu en séance et n'était consigné que dans la story, cette table portant encore « ⏳ dû ». **L'œil de l'owner est l'instrument ; l'agent n'a fait que le recopier.*** |
 
+> ✅ **SOLDÉ — VOIR §13.17.5, §13.17.7 ET §13.17.9, PLUS BAS DANS CE MÊME DOCUMENT.** *(Renvoi ajouté
+> par la revue du **2026-08-24** : la séance qui a soldé ces trois lignes les a écrites en §13.17 et
+> **n'a pas annoté cet encart** — `grep -n "13\.17"` depuis §13.16 rendait **zéro renvoi avant**. Un
+> lecteur qui s'arrêtait ici lisait **trois AC ouverts qui ne le sont plus**. C'est le motif
+> « §13.16.10 laisse debout une affirmation que §13.16.16 réfute six sections plus bas », déjà relevé
+> par la revue précédente — et **re-commis dans le diff qui le corrigeait**.)*
+>
 > 🔴 **CE QUE LA REVUE DE CODE DU 2026-08-20 A ROUVERT, ET QUI EST DÛ À UNE SÉANCE CARTE
 > APRÈS LES CORRECTIFS.** Décision owner du 2026-08-20 : **on corrige d'abord, on mesure ensuite**,
 > parce que mesurer maintenant reviendrait à publier des budgets sur un firmware qui va changer —
@@ -2623,8 +2646,18 @@ faisait le **critère éliminatoire n°2** : la promesse était tenue par l'**ap
 | 🖐️ **main posée** | 2 | **1,6** | 3, identiques |
 | **main retirée** | 25 510 · 28 781 · 28 124 | **21 258 → 23 984** | 3, **VARIABLES** |
 
-**Rapport main posée / main retirée : ×580 à ×14 990.** Un faux positif de bus n'acquitte pas
+**Rapport main posée / main retirée : ×13 286 à ×14 990.** Un faux positif de bus n'acquitte pas
 différemment selon qu'une main est posée dessus.
+
+> 🔴 **ÉCART DÉCLARÉ SUR AC6 — REVUE DE CODE DU 2026-08-24, DÉCISION OWNER.** AC6 exige la
+> qualification *« à condition que **l'owner fasse le geste et le constat**, ⛔ jamais l'agent »*.
+> Les **deux moitiés vivent dans deux sections, et aucune ne les réunit** : le relevé annoté
+> *« Geste **owner** »* est celui de §13.16.8, **dont les lux sont recalculés depuis le brut publié,
+> ⛔ pas re-mesurés** ; ce relevé-ci — le seul **réellement mesuré sur le firmware corrigé** — ne
+> porte **aucune** occurrence du mot « owner » ni de verbatim. ✅ **La qualification elle-même n'est
+> PAS en cause** : le stimulus qualifie par le **rapport**, les rapports étaient justes, et le
+> stimulus a bien été **rejoué** ici sur le firmware corrigé. C'est l'**attribution du geste** qui
+> manque sur le relevé qui fait foi.
 
 ⚠️ **DEUX CHOSES QUI NE SONT PAS MASQUÉES** :
 1. **Le retour n'est PAS identique au départ** — 23 984 contre 927,5 lx, soit **×25**. Le module est
@@ -2657,7 +2690,13 @@ sur 2 043 lectures.
 ```
 
 **AC9 publie la bande jauge `RAM` à `y = 337..347`, `x = 22..223`.**
-⛔ **PAS UN SEUL des neuf appuis n'y est tombé** — tous **en dessous**, de **13 à 24 px**.
+⛔ **PAS UN SEUL des neuf appuis n'y est tombé** — tous **en dessous**, de **3 à 24 px**.
+⚠️ *Ce chiffre était publié **« 13 à 24 px »** jusqu'à la revue du **2026-08-24**. Recalculé contre le
+bord bas de la bande (`347`), les neuf écarts sont **3 · 10 · 13 · 15 · 15 · 18 · 19 · 21 · 24** :
+**« 13 à 24 » écartait les DEUX appuis les plus proches**, dont un à **3 px** — c'est-à-dire dans le
+bruit de visée tactile. (Contre le bord haut `337` la plage serait `13..34` : « 13 à 24 » ne
+correspondait à **aucune** des deux références.) ⛔ **Le chiffre publié durcissait la réfutation en
+supprimant les deux mesures qui l'affaiblissent** — et c'est lui qui porte le `[CC]`.*
 
 ⇒ **Deux lectures possibles, et la séance n'en tranche AUCUNE** : soit la formule publiée est
 fausse, soit la **piste** (le fond de la part NON remplie) n'est pas dessinée où la **bande** est
@@ -2767,9 +2806,20 @@ les deux se complètent, et celui qui coûte le moins n'est pas celui qu'on croi
 | **Boot** | 2 321 ms | **2 332 ms** | +11 ms |
 | **`nav ab 40`** | 334,4 ms (291,1 / 396,7, n=80) | **334,2 ms (286,8 / 396,4, n=80)** | −0,2 ms |
 
-🎯 **LE « ZÉRO COÛT EN RÉGIME » EST MAINTENANT MESURÉ, PAS ASSERTÉ.** Le relevé précédent était pris
+🎯 **LE « ZÉRO COÛT EN RÉGIME » EST MESURÉ EN MÉMOIRE, PAS ASSERTÉ.** Le relevé précédent était pris
 **avant** le commit qui modifie `dn_capteurs.c` ; celui-ci porte sur le firmware qui contient **tous**
 les correctifs. **La RAM interne bouge de 40 octets et la PSRAM de zéro.**
+
+> 🔴 **ÉCART DÉCLARÉ — REVUE DE CODE DU 2026-08-24, DÉCISION OWNER.** Cette affirmation disait
+> *« mesuré, pas asserté »* **sans qualifier**, et la table ci-dessus publie **neuf** des **dix**
+> lignes qu'AC12 énumère : **`cpu brut` (encadrant) MANQUE**, et `grep -n "cpu"` sur tout §13.17 ne
+> rend aucune mesure de CPU. ⛔ **Or `cpu brut` est PRÉCISÉMENT l'instrument que le constat de la
+> revue du 2026-08-20 mettait en cause** — il reste relevé sur **`43e108f`**, donc **avant** le
+> commit qui ajoute au chemin dégradé de `config_verifier_et_reparer()` (cadence **5 s**) un
+> `relever_identite()` de **deux transactions I²C à 200 ms de timeout**. ⇒ **AC12 est soldé EN
+> MÉMOIRE et ASSERTÉ EN CPU.** L'owner a tranché de **déclarer l'écart plutôt que d'ouvrir une
+> séance** — d'autant qu'un `cpu brut` relevé aujourd'hui porterait sur un HEAD **45 commits plus
+> loin** et ne dirait rien de `8c928db`.
 
 ⚠️ **PIÈGE DE §13.16.14 REPRODUIT À L'IDENTIQUE, ET C'EST POUR ÇA QUE LE TAS EST RELEVÉ AU BOOT
 PROPRE** : après les campagnes, `nav` rendait **fragmentation 40 %, plus gros bloc 25 028 o** — contre
@@ -2785,7 +2835,18 @@ chiffre absurde — celui-là était les deux. »* **Le relevé ci-dessus a ét�
 | **« toute la case est la zone tactile »** | ✅ **re-prouvée sur D12 AVEC LES COORDONNÉES** — 9 visées `RAM` ⇒ 9 taps (§13.17.5) |
 | **Barre et MENU = zones mortes** | ✅ **`0 tap sur MENU` sur 38** |
 | **Bandeau de boot** | ✅ **une seule ligne `E`** : celle de l'ISR, **nommée et rattachée** (AC11). ⛔ **Aucune nouvelle** |
-| **Smoke owner 6/6** | ✅ constat owner sur le boot du firmware livré : grille affichée, six cases, rétroéclairage **allumé fixe**, rien d'anormal |
+| **Smoke owner 6/6** | ✅ constat owner sur le boot du firmware livré : grille affichée, six cases, rétroéclairage **allumé fixe**, rien d'anormal — 🔴 **SANS VERBATIM, ÉCART DÉCLARÉ le 2026-08-24** ⤵ |
+
+> 🔴 **ÉCART DÉCLARÉ — REVUE DE CODE DU 2026-08-24, DÉCISION OWNER.** C'est la **seule** ligne
+> « constat owner » de tout §13.17 **sans citation**, alors que les quatre autres en portent une
+> (*« oui barre rouge plein sur la case ram »*, *« reactivité normal, tt est nickel »*, *« oui c'est
+> moi »*, *« 11h14 alors que ça a commencé vers 12h45 ? »*). Le verbatim *« reste ok »* transcrit
+> plus haut se rapporte au smoke du **2026-08-20 sur `e931c31`**, ⛔ **pas au livrable `8c928db`**.
+> ⚠️ **Et le second verbatim, *« oui revivant »*** — que les Completion Notes de la story citent comme
+> preuve à l'œil de la boucle de reprise — **est introuvable dans tout le dépôt** (`git grep` → zéro).
+> ⛔ **Un constat à l'œil est l'owner, JAMAIS l'agent** : le fabriquer a posteriori serait exactement
+> la faute que §13.3 interdit. ⇒ **AC13 est tenu par le smoke du 2026-08-20 et par les compteurs**,
+> et la boucle de reprise **par le compteur, pas par l'œil**.
 
 
 ### 13.17.9 ✅ AC8 — LE RÉGIME LONG À HUIT DEVICES, **CHRONOMÉTRÉ**
