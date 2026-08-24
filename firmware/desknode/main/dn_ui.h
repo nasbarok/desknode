@@ -500,6 +500,13 @@ bool dn_ui_detail_courbe_rect(int *x, int *y, int *w, int *h, int *w_cadre,
  * ⛔ Hors plage ⇒ `ESP_ERR_INVALID_ARG`, ⛔ jamais un écrêtage silencieux.
  * ⚠️ RECONSTRUIT la scène.
  */
+/* dn4-4 / AC7 — LA BORNE HAUTE DE « L'OPTION N°2 » DU LEDGER (*ne pas invalider
+ * le fond à la transition*), non essayée depuis `dn3-2`. `off` RETIRE le fond :
+ * c'est le MEILLEUR CAS que l'option pourrait atteindre. ⛔ Pas un mode de
+ * production. ⚠️ RECONSTRUIT la scène. */
+esp_err_t dn_ui_set_fond(bool on);
+bool dn_ui_fond(void);
+
 esp_err_t dn_ui_set_detail_panh(int h);
 int dn_ui_detail_panh(void);
 

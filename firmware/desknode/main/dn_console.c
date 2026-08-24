@@ -3557,6 +3557,32 @@ static int cmd_widget(int argc, char **argv)
      *    (14 + 140 = 154 <= 154, marge ZERO), donc aucune donnee reelle ne peut
      *    la declencher. « La garde existe » n'est pas « la garde marche ».
      */
+    /* ── dn4-4 / AC7 : `widget fond on|off` — LA BORNE HAUTE DE L'OPTION N°2 ── */
+    if (argc == 3 && strcmp(argv[1], "fond") == 0) {
+        bool on;
+        if (!parse_on_off(argv[2], &on)) {
+            printf("usage : widget fond on|off   (actuel : %s)\n",
+                   dn_ui_fond() ? "on" : "off");
+            return 1;
+        }
+        if (dn_ui_set_fond(on) != ESP_OK) {
+            printf("refuse : verrou LVGL non pris — ⛔ RIEN n'a change.\n");
+            return 1;
+        }
+        printf("fond %s — SCENE RECONSTRUITE.\n", on ? "POSE" : "RETIRE");
+        printf("🔴 INSTRUMENT DE BISSECTION (AC7), ⛔ PAS UN REGLAGE.\n");
+        printf("   En modele SCREENS, `fond_poser()` pose une `lv_image` de\n");
+        printf("   480x640 RGB565 (614 400 o) sur CHACUN des deux ecrans, et\n");
+        printf("   `lv_screen_load()` invalide tout — alors que LE FOND EST\n");
+        printf("   IDENTIQUE d'un ecran a l'autre. « L'option n°2 » du ledger\n");
+        printf("   consisterait a ne pas le repayer.\n");
+        printf("   ⇒ `off` mesure LE MEILLEUR CAS que cette option pourrait\n");
+        printf("     atteindre. Si le meilleur cas ne gagne rien, l'option est\n");
+        printf("     MORTE — et elle meurt AVEC SON CHIFFRE.\n");
+        printf("⚠️ Protocole : `touch reset` puis `nav ab 20`, dalle non touchee.\n");
+        return 0;
+    }
+
     if (argc == 3 && strcmp(argv[1], "detpan") == 0) {
         long h = 0;
         if (!parse_entier(argv[2], &h)) {
@@ -4387,7 +4413,8 @@ static int cmd_widget(int argc, char **argv)
         printf("        | largeur [<texte>|reset] | detail | replacer on|off\n"
            "        | jauge [<case>]   (dn4-4/AC9 : le rectangle REEL de la barre)\n"
            "        | courbe           (dn4-4/AC4 : la place REELLE de la courbe)\n"
-           "        | detpan <0|40..200>  (dn4-4/AC4.3 : TEMOIN NEGATIF de la garde)\n");
+           "        | detpan <0|40..200>  (dn4-4/AC4.3 : TEMOIN NEGATIF de la garde)\n"
+           "        | fond on|off      (dn4-4/AC7 : borne haute de « l'option n°2 »)\n");
         return 1;
     }
 

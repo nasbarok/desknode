@@ -1895,6 +1895,46 @@ static void bar_set_x(void *var, int32_t v)
  * `build_scene()` sans changement de comportement : les deux vues de dn1-4 se
  * dessinent PAR-DESSUS ce fond, qui reste l'image de dn1-2. L'esthétique des
  * cases n'est pas un sujet de cette story (dn3-1 la portera). */
+/*
+ * 🔴 dn4-4 / AC7 — « OPTION N°2 » DU LEDGER : *ne pas invalider le fond à la
+ *    transition*. DÉCLARÉE **NON ESSAYÉE** PAR `dn3-2` (`affichage.md` §16.8),
+ *    RÉASSIGNÉE À `dn4-4` PAR LE CORRECT-COURSE DU 2026-08-18.
+ *
+ * ⚠️ CE DRAPEAU N'EST PAS L'OPTION : C'EST SA **BORNE HAUTE**.
+ *    En modèle `SCREENS`, `fond_poser()` pose une `lv_image` du Living PCB sur
+ *    **CHACUN** des deux écrans (480 x 640 RGB565 = **614 400 o**), et
+ *    `lv_screen_load()` invalide tout — alors que **le fond est identique d'un
+ *    écran à l'autre**. L'option consisterait à ne pas le repayer.
+ * ⇒ AVANT d'ingénierer un partage (couche partagée, conteneurs masqués…), on
+ *   mesure **ce que le fond coûte À LA TRANSITION, tout court** : `widget fond
+ *   off` le retire complètement. C'est le MEILLEUR CAS que l'option pourrait
+ *   atteindre. **Si le meilleur cas ne gagne rien, l'option est morte — et elle
+ *   meurt AVEC SON CHIFFRE**, ⛔ pas sur une intuition. C'est exactement ce
+ *   qu'AC7.3 exige, et ce que `dn3-2` n'avait pas fait.
+ * ⚠️ UNE SEULE VARIABLE : le fond, et rien d'autre. Le noir de l'écran reste
+ *    posé, la géométrie ne bouge pas, les six cases sont identiques.
+ * ⛔ `off` N'EST PAS UN MODE DE PRODUCTION : la maquette normative porte le
+ *    Living PCB. C'est un instrument de bissection, comme `widget replacer`.
+ */
+static bool s_fond_on = true;
+
+/* `build_scene()` vit plus bas — même motif que les autres bascules à
+ * verrou (`dn_ui_set_voie`, `dn_ui_set_detail_panh`). */
+static void build_scene(void);
+
+esp_err_t dn_ui_set_fond(bool on)
+{
+    if (!lvgl_port_lock(2000)) {
+        return ESP_ERR_TIMEOUT;
+    }
+    s_fond_on = on;
+    build_scene();
+    lvgl_port_unlock();
+    return ESP_OK;
+}
+
+bool dn_ui_fond(void) { return s_fond_on; }
+
 static void fond_poser(lv_obj_t *scr)
 {
     lv_obj_set_style_bg_color(scr, lv_color_black(), 0);
@@ -1905,8 +1945,12 @@ static void fond_poser(lv_obj_t *scr)
     lv_obj_set_scrollbar_mode(scr, LV_SCROLLBAR_MODE_OFF);
     lv_obj_clear_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
 
-    const uint16_t *px = s_bg_psram ? (const uint16_t *)s_bg_psram
-                                    : dn_asset_pixels();
+    /* ⚠️ `s_fond_on == false` ⇒ le fond N'EST PAS POSÉ, et l'écran reste NOIR.
+     *    ⛔ Ce n'est pas « l'image a échoué » : c'est l'instrument d'AC7. Les
+     *    deux cas se distinguent au `widget` / `disp`, ⛔ pas à l'œil. */
+    const uint16_t *px = !s_fond_on ? NULL
+                         : s_bg_psram ? (const uint16_t *)s_bg_psram
+                                      : dn_asset_pixels();
     if (px) {
         s_bg_dsc.header.magic = LV_IMAGE_HEADER_MAGIC;
         /* RGB565 NATIF, NON COMPRESSÉ : le format du framebuffer et celui de

@@ -1,0 +1,39 @@
+
+===== widget detpan 0 =====
+ widget detpan 0
+panneau de valeurs du detail = 154 px — SCENE RECONSTRUITE.
+🔴 TEMOIN NEGATIF (AC4.3) : ouvrir DISQUE au PIRE CAS
+   (`dn_injecteur.py --jeu pire`, puis `nav open 4`). Le bloc
+   mesure 14 + 140 = 154 px : sous 154, la garde DOIT emettre
+   « le bloc de valeurs DEBORDE EN HAUTEUR ». Si elle se TAIT,
+   c'est LA GARDE qui est cassee, ⛔ pas le stimulus.
+⚠️ `widget detpan 0` remet le produit. Le cadre de courbe (262)
+   et le panneau du bas (385) n'ont PAS bouge : ce stimulus casse
+   l'AJUSTEMENT, ⛔ pas le template.
+desknode> 
+===== touch reset =====
+touch reset
+compteurs tactiles, latences et compteurs UI remis a zero.
+desknode> 
+===== nav ab 20 =====
+nav ab 20
+20 allers-retours en modele « screens »…
+⚠️ NE PAS TOUCHER LA DALLE pendant la serie.
+I (164164) desknode: up 160 s — vsync=6031 — flush=473 cycles=229 — PSRAM libre 7767988 o
+I (174210) desknode: up 170 s — vsync=6406 — flush=625 cycles=260 — PSRAM libre 7767988 o
+--- non-fuite (AC4) ---------------------------------------
+  tas LVGL    21336 -> 21320 o   (delta -16 o)  <- LE tas des ecrans
+  RAM interne 76379 -> 76379 o   (delta 0 o)
+  PSRAM       7767988 -> 7767988 o   (delta 0 o)
+  ⚠️ SEUL le delta du tas LVGL prouve quoi que ce soit ici : les
+     objets LVGL vivent dans un pool STATIQUE en .bss, invisible
+     pour la RAM interne et la PSRAM.
+tas LVGL (LV_MEM_SIZE_KILOBYTES = 64 Ko, STATIQUE en .bss) :
+  total 61516 o · utilisé 21320 o (35 %) · libre 40196 o
+  plus gros bloc libre 23336 o · fragmentation 42 %
+⚠️ ces octets-là sont réservés au LINK : ils n'apparaissent PAS dans
+   l'avant/après de `mem`. C'est le seul endroit où ils se voient.
+  transitions REELLES : 40 (demandees : 40)
+  latence : n=40 min 160273 us · moy 333690 us · max 420160 us
+-----------------------------------------------------------
+desknode> 
