@@ -200,6 +200,20 @@ import time
 #      · keep-alive          1,84 / 2,19 / 1,13 ms  -> LES QUATRE seuils passes
 #    (ordre : /data.json · /metrics · /Sensor. Campagne 2, tout-neuf, avait rendu
 #     2,98 / 3,52 / 4,77 — meme conclusion, autre tir : ⛔ ne pas melanger.)
+#
+# 🔴🔴 CES SIX NOMBRES SONT **MORTS** — 2e revue, 2026-08-24. ⛔ NE PAS LES CITER.
+#    La story dn4-8 declare elle-meme AC2 MORT : l'instrument de mesure a ete
+#    CORRIGE apres le tir (`_cpu_ms`, filtrage de `murs` sur les seuls succes),
+#    et la regle du depot est « quand une revue a change un INSTRUMENT, les
+#    chiffres publies sont MORTS ». Ils ont pourtant ete CORRIGES ET REPUBLIES
+#    ici, dans le meme intervalle de commits qui les declarait morts — la classe
+#    exacte que la revue venait de fermer trois commits plus tot.
+# ✅ CE QUI SURVIT, ET C'EST TOUT : **LA DECISION**. `/metrics` en connexion
+#    PERSISTANTE, `http.client` pour le keep-alive, WMI elimine PAR SYMPTOME
+#    (`root\LibreHardwareMonitor` n'existe pas ; `root\OpenHardwareMonitor` rend
+#    0 instance). Le CLASSEMENT tient ; les MILLISECONDES, non.
+# ⚠️ Aucun re-tir d'AC2 n'a eu lieu. Tant qu'il n'a pas eu lieu, ces nombres sont
+#    des reperes historiques dates, ⛔ pas des mesures opposables.
 #    `urllib.request` ne garde pas la connexion.
 import http.client
 import re
@@ -575,6 +589,12 @@ LHM_CHEMIN = "/metrics"
 #       faisait que ca ; l'agent, lui, lit LHM au milieu de cinq sources et de
 #       cinq ecritures serie. ⛔ Le p95 d'un instrument dedie ne predit pas la
 #       queue d'un regime charge — et c'est une lecon, pas un ajustement.
+#    🔴 2e REVUE (2026-08-24) : **LE « 16,5 ms » EST UN NOMBRE MORT D'AC2** (voir
+#       le bloc en tete de fichier). ⛔ IL NE JUSTIFIE PLUS RIEN. Ce qui dimensionne
+#       `LHM_TIMEOUT_S`, ce sont les TROIS mesures de REGIME ci-dessus (26,7 ms
+#       moyen, 454,7 ms max, 377,5 ms sur un tir precedent) — elles, elles ont ete
+#       prises sur l'agent, sur COM3, et elles suffisent. Le 16,5 ms n'est garde
+#       que pour dire ce qu'un instrument dedie NE predit PAS.
 #    ⇒ 0,60 s couvre le max observe (455 ms) avec 32 % de marge.
 # ✅ ET LA CONTRAINTE DE CADENCE TIENT TOUJOURS : la resynchronisation ne se
 #    declenche qu'au-dela d'UNE PERIODE ENTIERE de retard (1,00 s). A 0,60 s il
