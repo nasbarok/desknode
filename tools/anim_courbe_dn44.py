@@ -37,25 +37,52 @@ def trame(seq, t_ms, metrique, valeurs):
 
 
 def jeu(t):
-    """Des formes DIFFÉRENTES par métrique — ⛔ pas la même sinusoïde partout :
-    six courbes identiques ne prouveraient pas que chaque page lit SA série."""
+    """
+    🔴 UNE FORME DIFFÉRENTE PAR MÉTRIQUE — ET C'EST UN CORRECTIF D'INSTRUMENT,
+       ⛔ PAS UNE COQUETTERIE.
+
+    ⚠️ LA PREMIÈRE VERSION ÉMETTAIT DES SINUSOÏDES POUR TOUT LE MONDE. Comme
+       l'échelle du graphe s'AUTO-CALE sur les données, chaque série remplissait
+       la boîte : **toutes les pages rendaient la MÊME VAGUE**, quelles que
+       soient leurs amplitudes réelles. Constat owner du 2026-08-24, verbatim :
+       *« en fait c'est parce que la courbe de cpu et gpu sont les mêmes ! »*
+       ⇒ **LE HARNAIS FABRIQUAIT LA RESSEMBLANCE QU'IL SERVAIT À TESTER.**
+       C'est la faute que ce dépôt reproche déjà à `dn_injecteur.py` (« valeurs
+       FIXES »), d'un cran plus subtile : des valeurs qui CHANGENT ne suffisent
+       pas, il faut qu'elles changent **DIFFÉREMMENT**.
+
+    ⇒ Chaque métrique reçoit une forme RECONNAISSABLE À L'ŒIL : dent de scie,
+      créneau, rampe, sinus, marches. Si deux pages rendent la même courbe
+      maintenant, **c'est le firmware qui lit la mauvaise série**, ⛔ plus le
+      signal qui se ressemble.
+    """
+    # dent de scie descendante — reconnaissable entre toutes
+    scie = 1.0 - (t % 12.0) / 12.0
+    # créneau : deux niveaux francs, ⛔ aucune pente
+    creneau = 1.0 if (t % 16.0) < 8.0 else 0.0
+    # rampe montante lente, remise à zéro
+    rampe = (t % 25.0) / 25.0
+    # marches d'escalier — cinq paliers
+    marches = math.floor((t % 20.0) / 4.0) / 4.0
+    # sinus, gardé pour UNE seule métrique
+    sinus = 0.5 + 0.5 * math.sin(t / 7.0)
     return {
-        # cpu : %, GHz, c.max %, °C
-        "cpu": (500 + 400 * math.sin(t / 6.0), 30 + 25 * math.sin(t / 9.0),
-                600 + 350 * math.sin(t / 5.0), 450 + 200 * math.sin(t / 11.0)),
-        # gpu : %, °C, W, tr/min
-        "gpu": (400 + 550 * math.sin(t / 8.0 + 1), 600 + 250 * math.sin(t / 13.0),
-                1500 + 1200 * math.sin(t / 7.0), 15000 + 8000 * math.sin(t / 10.0)),
-        # ram : %, total Go
-        "ram": (450 + 400 * math.sin(t / 12.0), 342),
-        # net : desc Mb/s, mont Mb/s — une DENT DE SCIE, ⛔ pas une sinusoïde :
-        #       c'est la forme la plus lisible pour juger « la courbe bouge ».
-        "net": (100 + 9000 * ((t % 20) / 20.0), 5000 - 4500 * ((t % 14) / 14.0)),
-        # disk : Mo/s + trois tr/min
-        "disk": (2000 + 18000 * abs(math.sin(t / 9.0)),
-                 12000 + 8000 * math.sin(t / 6.0),
-                 8000 + 4000 * math.sin(t / 8.0),
-                 9000 + 5000 * math.sin(t / 10.0)),
+        # cpu : DENT DE SCIE (%, GHz, c.max %, °C)
+        "cpu": (100 + 850 * scie, 20 + 35 * scie, 200 + 700 * scie,
+                350 + 450 * scie),
+        # gpu : CRÉNEAU — ⛔ impossible à confondre avec une dent de scie
+        "gpu": (150 + 800 * creneau, 400 + 500 * creneau,
+                800 + 2000 * creneau, 8000 + 14000 * creneau),
+        # ram : RAMPE (et son échelle est BORNÉE 0..100 %, donc la rampe se lit
+        #       en NIVEAU ABSOLU, ce qui est tout l'intérêt de la borne)
+        "ram": (50 + 900 * rampe, 342),
+        # net : descendant en MARCHES, montant en SINUS — les DEUX courbes de la
+        #       page doivent être discernables l'une de l'autre, pas seulement
+        #       des autres pages.
+        "net": (100 + 25000 * marches, 200 + 12000 * sinus),
+        # disk : SINUS lent + trois ventilateurs en marches décalées
+        "disk": (2000 + 18000 * sinus, 4000 + 16000 * marches,
+                 6000 + 10000 * (1.0 - marches), 5000 + 12000 * scie),
     }
 
 

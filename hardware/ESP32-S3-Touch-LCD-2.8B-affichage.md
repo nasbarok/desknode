@@ -5707,3 +5707,91 @@ observée serait exactement le mensonge d'interface que `dn2-2` a chassé du das
 ⚠️ **Et elle vit dans le bloc d'état (police 14), ⛔ pas collée au `MIN/MAX`** :
 `« MIN 100,0 % · MAX 100,0 % (24 h) »` mesure **~496 px pour 432 utiles** en `dn_font_28` — elle
 **déborderait**, et la story interdit de réduire la police.
+
+### 22.10 🎯 AC8 — LE CONSTAT AU **DOIGT**, ET C'EST L'OWNER QUI A CORRIGÉ LE PROTOCOLE
+
+⚠️ **LE PROTOCOLE DES QUATRE PREMIÈRES PASSES ÉTAIT FAUX, ET C'EST L'OWNER QUI L'A DIT.**
+Verbatim : *« non au contraire tu me fais tourné et moi je regarde si avec le doigts c'est ok »*.
+
+Je faisais défiler les pages **depuis la console** (`nav open`). Or `nav open <autre>` produit une
+transition **`détail → détail`** que **le doigt ne peut pas produire** : depuis la dalle, on repasse
+**toujours** par le dashboard. ⇒ Les quatre premières fenêtres faisaient regarder un chemin qui
+n'existe pas à l'usage — et **c'est ce chemin-là qui portait le défaut de repeint** (§22.11).
+
+✅ **Protocole retenu** : injection **continue**, ⛔ **aucune** navigation depuis la console, **l'owner
+pilote au doigt**. Validité prouvée par les compteurs : **26 appuis, 26 relâches, 0 erreur I²C**.
+
+#### a. 🔴 LA LATENCE AU DOIGT — ET `nav ab` LA SOUS-ESTIME
+
+| Instrument | ce qu'il mesure | n | min | **moy** | max |
+|---|---|---|---|---|---|
+| `nav ab 20` | `dn_ui_nav_open()` → écran flushé | 40 | 171,4 ms | **337,6 ms** | 400,9 ms |
+| 🔴 **`touch` (le DOIGT)** | **tap → écran flushé** | **26** | 284,9 ms | **361,8 ms** | 432,1 ms |
+
+🔴 **`nav ab` SOUS-ESTIME DE ~24 ms CE QUE L'OWNER RESSENT.** L'écart est la chaîne tactile
+(scrutation GT911 + anti-rebond) que `nav ab` **court-circuite** en appelant la navigation
+directement. ⚠️ Comparaison de **deux instruments** sur **deux échantillons** : l'écart est indicatif,
+⛔ pas un A/B.
+⇒ **Conséquence pour le budget** : en opaque, `nav ab` rend **271,8 ms** — mais **au doigt cela
+ferait ~296 ms**. La marge sous les 300 ms serait de **~4 ms**, ⛔ pas de 28.
+
+#### b. Les verbatims de la passe au doigt
+
+| # | Point | Verbatim owner |
+|---|---|---|
+| 1 | la courbe de la page quittée s'effface ? | ✅ *« oui tt est bon »* |
+| 2 | CPU/GPU distincts ? | 🎯 *« en fait c'est parce que la courbe de cpu et gpu sont les mêmes ! sinon couleur bien diff »* |
+| 3 | `RÉSEAU` deux courbes + chevrons colorés | ✅ *« ok »* |
+| 4 | `RAM` (rose, échelle bornée) | ✅ *« tres bien »* |
+| 5 | la ligne `MIN/MAX sur : …` | ✅ *« ok »* |
+| 6 | **latence ressentie** | ✅ 🎯 *« franchement ca repond tres bien »* |
+
+#### c. 🔴 LE CONSTAT n°2 EST UN **DÉFAUT DE MON HARNAIS**, LE TROISIÈME DE LA SÉANCE
+
+`tools/anim_courbe_dn44.py` émettait **des sinusoïdes pour toutes les métriques**. Comme l'échelle du
+graphe **s'auto-cale**, chaque série **remplit la boîte** : toutes les pages rendaient **la même
+vague**, quelles que soient leurs amplitudes réelles.
+⇒ 🔴 **LE HARNAIS FABRIQUAIT LA RESSEMBLANCE QU'IL SERVAIT À TESTER.**
+
+⚠️ **C'est la faute que ce dépôt reproche déjà à `dn_injecteur.py`** (*« valeurs FIXES »*), **d'un cran
+plus subtile** : des valeurs qui **changent** ne suffisent pas, il faut qu'elles changent
+**DIFFÉREMMENT**. Corrigé : une forme **reconnaissable à l'œil** par métrique —
+
+| Métrique | forme | relevé à `t = 0, 3, 6, 9, 12 s` (grandeur 0, dixièmes) |
+|---|---|---|
+| `CPU` | **dent de scie** | 950 · 737 · 525 · 312 · 950 |
+| `GPU` | **créneau** | 950 · 950 · 950 · 150 · 150 |
+| `RAM` | **rampe** | 50 · 158 · 266 · 374 · 482 |
+| `RÉSEAU` | **marches** (↓) + **sinus** (↑) | 100 · 100 · 6 350 · 12 600 · 18 850 |
+| `DISQUE` | **sinus** | 11 000 · 14 740 · 17 803 · 19 636 · 19 907 |
+
+⇒ Si deux pages rendent la même courbe **maintenant**, c'est le **firmware** qui lit la mauvaise
+série, ⛔ plus le signal qui se ressemble.
+
+#### d. ⚠️ ET UNE PROPRIÉTÉ RÉELLE QUE CE DÉFAUT A RÉVÉLÉE
+
+L'auto-calage **efface l'information d'amplitude** : deux séries d'amplitudes très différentes
+rendent la **même hauteur de vague**. C'est exactement le motif pour lequel l'owner a demandé de
+**borner `RAM` à 0..100 %** — et ça vaut **aussi** pour les pourcentages de `CPU` et `GPU`.
+⛔ **Non fait sans décision** : la question est posée, ⛔ pas tranchée par l'agent.
+
+### 22.11 LE DÉFAUT DE REPEINT — `détail → détail` N'INVALIDAIT RIEN
+
+Constat owner, en deux temps : *« la transition n'efface pas la cpu pour gpu »*, puis — après un
+premier correctif **insuffisant** — *« non pas pour gpu apres cpu … le reste est propre »*.
+
+🎯 **C'est la seconde formulation qui donne la cause** : « le reste est propre ».
+`lv_screen_load()` sur l'écran **DÉJÀ ACTIF** est un **no-op** : il n'invalide **rien**. Sur
+`dashboard → détail` et `détail → dashboard`, l'écran **change** et LVGL repeint tout — d'où « le
+reste est propre ». Mais `détail → détail` ne repeint que ce que les objets invalident **eux-mêmes**,
+et un `lv_chart` au fond **transparent** laisse sa ligne précédente sous un repeint partiel en bandes.
+
+⛔ **MON PREMIER CORRECTIF (invalider le CADRE) NE SUFFISAIT PAS, ET C'EST L'ŒIL QUI L'A DIT.**
+On invalide désormais **l'écran entier** : un changement de page **est** un repeint de page.
+
+⚠️ **COÛT BORNÉ** : `nav ab` alterne détail↔dashboard, donc l'écran change à chaque fois ⇒ **les
+latences publiées ne sont pas affectées**, et ce n'est pas une façon de les embellir.
+⚠️ **Et le doigt ne produit pas cette transition** : elle n'est atteignable qu'à la console, donc
+**par les harnais de mesure**. Le défaut était réel mais **invisible à l'usage** — ⛔ ce n'est pas une
+raison de le laisser : *un instrument qui salit l'écran fausse le prochain constat à l'œil*, et c'est
+exactement ce qui est arrivé **deux fois**.
