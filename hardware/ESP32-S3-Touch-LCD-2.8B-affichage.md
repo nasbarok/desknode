@@ -5795,3 +5795,51 @@ latences publiées ne sont pas affectées**, et ce n'est pas une façon de les e
 **par les harnais de mesure**. Le défaut était réel mais **invisible à l'usage** — ⛔ ce n'est pas une
 raison de le laisser : *un instrument qui salit l'écran fausse le prochain constat à l'œil*, et c'est
 exactement ce qui est arrivé **deux fois**.
+
+### 22.12 🎯 AC9.3 — LA VISÉE, ET CE QU'ELLE APPREND SUR **LA MÉTHODE**
+
+**2026-08-24.** Cible rendue visible (`widget piste 0xFF2020`, `RAM` sans donnée ⇒ **barre rouge sur
+toute sa longueur**), owner visant **la barre** et non le centre de la case, retour par la flèche
+entre chaque visée. `touch trace 90000`, capture dans `mesures/dn4-4/visee-jauge-ram-2026-08-24.log`.
+
+⚠️ **9 visées enregistrées** (18 appuis = 9 `RAM` + 9 `RETOUR`) pour **10 annoncées** par l'owner :
+la 10ᵉ est probablement tombée **après** la fenêtre de 90 s. ⛔ Elle n'est pas inventée — on compte
+ce qui est enregistré.
+
+```
+(153,336) (75,338) (208,349) (161,357) (100,351) (55,354) (135,345) (207,354) (211,363)
+```
+
+| | relevé | cible **RELUE DE LVGL** |
+|---|---|---|
+| **x** | `55..211` — **9/9 DEDANS** ✅ | `23..223` (201 px) |
+| **y** | `336..363` · moyenne **349,7** · **σ = 8,8 px** | `338..347` (**10 px**), centre 342,5 |
+| biais moyen | **+7,2 px** · erreur-type 2,9 ⇒ **2,5 σ** | — |
+| 🔴 **dispersion / hauteur de cible** | 🔴 **1,8×** (2 σ = 17,6 px contre 10 px) | — |
+
+#### 🔴 LE RÉSULTAT PRINCIPAL EST UNE LIMITE DE LA MÉTHODE, ⛔ PAS UN CHIFFRE
+
+**AC9.3 demande de confirmer une bande de 10 px par une visée au doigt.** Or la **dispersion du
+doigt vaut 1,8× la hauteur de la cible**. ⇒ **Une visée à 9 taps NE PEUT PAS, STRUCTURELLEMENT,
+valider une bande de 10 px** : l'instrument n'a pas la résolution de l'arbitrage qu'on lui demande.
+⚠️ C'est le même piège que le dépôt traque ailleurs (*« un critère de preuve peut être satisfait par
+l'état MORT »*), sous une autre forme : **un critère de preuve peut aussi être HORS DE PORTÉE de
+l'instrument qui doit le satisfaire.** ⛔ On ne coche pas en espérant que 2/9 suffisent.
+
+#### CE QUE LA VISÉE RÈGLE QUAND MÊME
+
+- ✅ **`x` est confirmé sans ambiguïté** : 9/9 dans une bande de 201 px.
+- ✅ **L'écart systématique de 13-24 px du 2026-08-20 N'EST PAS REPRODUIT.** Il valait alors
+  `y = 350..371` ; il vaut aujourd'hui `336..363`, biais **+7,2 px**. ⇒ Cohérent avec §22.3 : la
+  bande d'août avait été relevée sous une **géométrie différente** (`widget val` est commutable à
+  chaud et **RAM-only**).
+- ✅ **La formule reste la lecture retenue**, mais elle l'est **par la relecture de l'objet**
+  (`widget jauge`, écart de **1 px** expliqué par la bordure), ⛔ **pas par la visée**.
+
+#### ⛔ CE QUE §22.12 NE PROUVE PAS
+
+Que les **+7,2 px** soient un vrai biais de visée (le centroïde de contact du doigt tombe sous le
+point visé sur une ligne fine) **ou du bruit**. À `n = 9` et `σ = 8,8`, on est à **2,5 σ** : à la
+limite de la signification. **Indécidable en l'état**, et dit comme tel.
+⇒ **Ce qu'il faudrait pour trancher** : une cible **plus haute** (la barre fait 10 px), ou **n ≫ 9**.
+Aucun des deux n'est dans le périmètre de `dn4-4`.

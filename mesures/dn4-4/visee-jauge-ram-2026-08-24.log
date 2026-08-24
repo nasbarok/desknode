@@ -1,0 +1,52 @@
+
+===== touch trace 90000 =====
+touch trace 90000
+trace pendant 90000 ms — TOUCHER MAINTENANT.
+APPUI = contact detecte · TAP = zone activee (au RELACHEMENT)
+I (24160) desknode: up 20 s — vsync=793 — flush=19 cycles=8 — PSRAM libre 7767988 o
+I (34162) desknode: up 30 s — vsync=1167 — flush=21 cycles=10 — PSRAM libre 7767988 o
+  APPUI   1 · (153, 336) · brut (153, 336)
+        -> TAP sur RAM
+  APPUI   2 · ( 60,  32) · brut ( 60,  32)
+        -> TAP sur RETOUR
+  APPUI   3 · ( 75, 338) · brut ( 75, 338)
+        -> TAP sur RAM
+  APPUI   4 · (105,  25) · brut (105,  25)
+        -> TAP sur RETOUR
+I (44164) desknode: up 40 s — vsync=1541 — flush=44 cycles=17 — PSRAM libre 7767988 o
+  APPUI   5 · (208, 349) · brut (208, 349)
+        -> TAP sur RAM
+  APPUI   6 · ( 87,  51) · brut ( 87,  51)
+        -> TAP sur RETOUR
+  APPUI   7 · (161, 357) · brut (161, 357)
+        -> TAP sur RAM
+  APPUI   8 · ( 87,  25) · brut ( 87,  25)
+        -> TAP sur RETOUR
+  APPUI   9 · (100, 351) · brut (100, 351)
+        -> TAP sur RAM
+  APPUI  10 · ( 69,  33) · brut ( 69,  33)
+        -> TAP sur RETOUR
+  APPUI  11 · ( 55, 354) · brut ( 55, 354)
+        -> TAP sur RAM
+  APPUI  12 · ( 50,  30) · brut ( 50,  30)
+        -> TAP sur RETOUR
+  APPUI  13 · (135, 345) · brut (135, 345)
+        -> TAP sur RAM
+  APPUI  14 · ( 63,  21) · brut ( 63,  21)
+        -> TAP sur RETOUR
+I (54203) desknode: up 50 s — vsync=1917 — flush=96 cycles=32 — PSRAM libre 7767988 o
+  APPUI  15 · (207, 354) · brut (207, 354)
+        -> TAP sur RAM
+  APPUI  16 · ( 83,  41) · brut ( 83,  41)
+        -> TAP sur RETOUR
+  APPUI  17 · (211, 363) · brut (211, 363)
+        -> TAP sur RAM
+  APPUI  18 · ( 83,  32) · brut ( 83,  32)
+        -> TAP sur RETOUR
+I (64205) desknode: up 60 s — vsync=2291 — flush=123 cycles=40 — PSRAM libre 7767988 o
+I (74207) desknode: up 70 s — vsync=2665 — flush=125 cycles=42 — PSRAM libre 7767988 o
+I (84208) desknode: up 80 s — vsync=3039 — flush=127 cycles=44 — PSRAM libre 7767988 o
+I (94209) desknode: up 90 s — vsync=3413 — flush=129 cycles=46 — PSRAM libre 7767988 o
+I (104211) desknode: up 100 s — vsync=3787 — flush=131 cycles=48 — PSRAM libre 7767988 o
+fin de trace : 18 appui(s), 18 tap(s) sur zone.
+desknode> 
