@@ -174,10 +174,14 @@ def i_echelle_commune(ui, hist):
         return False, "elle n'est pas CONSULTEE par `courbe_reparametrer`"
     if "courbe_plage_commune" not in (rb or ""):
         return False, "aucune plage commune n'est calculee"
-    # les deux axes reçoivent la MÊME plage
-    if rb.count("courbe_axe_poser(LV_CHART_AXIS_PRIMARY_Y, mn, mx)") != 1 or \
-       rb.count("courbe_axe_poser(LV_CHART_AXIS_SECONDARY_Y, mn, mx)") != 1:
+    # les deux axes reçoivent la MÊME plage : une seule paire de variables
+    if "a0 = a1 = mn;" not in rb or "b0 = b1 = mx;" not in rb:
         return False, "les deux axes ne recoivent pas la MEME plage"
+    if "p0 = p1 = true;" not in rb:
+        return False, "les deux drapeaux ne sont pas poses ensemble"
+    if "courbe_axe_poser(LV_CHART_AXIS_PRIMARY_Y, a0, b0)" not in rb or \
+       "courbe_axe_poser(LV_CHART_AXIS_SECONDARY_Y, a1, b1)" not in rb:
+        return False, "la pose n'utilise pas les plages calculees"
     return True, "RESEAU seul, deux axes, une plage"
 
 
@@ -188,8 +192,10 @@ def i_bornee_retiree(ui, hist):
         return False, "fonction introuvable"
     if "k_courbe_borne" in b or re.search(r"\bbornee\b", b):
         return False, "`bornee` / `k_courbe_borne` survit dans la fonction"
-    sb = corps(ui, "static void courbe_serie_regler(")
-    if "k_courbe_borne" not in (sb or ""):
+    sb = corps(ui, "static bool courbe_serie_plage(")
+    if sb is None:
+        return False, "`courbe_serie_plage` introuvable"
+    if "k_courbe_borne" not in sb:
         return False, "la borne a disparu AUSSI des pages mono-courbe (regression)"
     return True, "retiree ici, CONSERVEE la ou elle sert"
 
@@ -244,10 +250,112 @@ def i_pas_de_symbole_en_font14(ui, hist):
     return True, "aucun glyphe FontAwesome dans la ligne d'etat"
 
 
+def i_invalidation_conditionnee(ui, hist):
+    """AC5.1 — l'invalidation est conditionnée au CHANGEMENT, et la condition
+    se joue AVANT le premier appel LVGL.
+
+    🔴 L'ORDRE EST LE CŒUR DU CORRECTIF. En LVGL 9, `lv_chart_set_range()`,
+       `_set_series_color()`, `_set_x_start_point()` et `_hide_series()`
+       invalident TOUTES l'objet. Poser d'abord puis « décider si on
+       rafraîchit » aurait payé le redessin qu'on cherche à éviter — le
+       correctif aurait été DÉCORATIF. Cette gate le vérifie par les POSITIONS,
+       ⛔ pas par la présence du `memcmp`."""
+    b = corps(ui, "static void courbe_reparametrer(int idx)")
+    if b is None:
+        return False, "fonction introuvable"
+    i_cmp = b.find("memcmp(&sig, &s_courbe_sig")
+    if i_cmp < 0:
+        return False, "aucune comparaison de signature"
+    if "return;" not in b[i_cmp:i_cmp + 200]:
+        return False, "la comparaison ne COURT-CIRCUITE pas"
+    premiers = [b.find(x) for x in ("lv_chart_set_range", "lv_chart_set_series_color",
+                                    "lv_chart_set_x_start_point",
+                                    "lv_chart_hide_series",
+                                    "lv_chart_set_series_ext_y_array",
+                                    "lv_chart_refresh", "lv_obj_invalidate",
+                                    "courbe_axe_poser")]
+    premiers = [x for x in premiers if x >= 0]
+    if not premiers:
+        return False, "aucun appel LVGL : la fonction ne dessine plus rien ?"
+    if min(premiers) < i_cmp:
+        return False, "un appel LVGL PRECEDE la comparaison (correctif decoratif)"
+    return True, "court-circuit avant les %d appels LVGL" % len(premiers)
+
+
+def i_signature_couvre_les_donnees(ui, hist):
+    """AC5.1 — la signature contient `debut`, seul témoin d'une écriture.
+
+    ⚠️ Elle ne hache PAS les 120 points. C'est légitime SEULEMENT parce que les
+       deux seuls écrivains de `s_pts[][]` avancent `s_w[]` à chaque écriture.
+       Cette gate vérifie les DEUX bouts : `deb0`/`deb1` dans la signature ICI,
+       et dans `dn_hist.c` qu'aucune écriture de `s_pts` n'oublie d'avancer
+       `s_w`. ⛔ Sans le second, le premier serait une supposition."""
+    b = corps(ui, "static void courbe_reparametrer(int idx)")
+    if b is None:
+        return False, "fonction introuvable"
+    for champ in ("sig.deb0", "sig.deb1", "sig.idx", "sig.a0", "sig.p0",
+                  "sig.coul0", "sig.chart"):
+        if champ not in b:
+            return False, "la signature n'inclut pas `%s`" % champ
+    # ⛔ Le CHAMP ne suffit pas : il doit VENIR de l'historique. Un `sig.deb0 = 0`
+    #    porterait le nom sans porter l'information — une signature decorative.
+    for champ in ("deb0", "deb1"):
+        m = re.search(r"sig\.%s\s*=\s*([^;]*);" % champ, b)
+        if not m or "dn_hist_debut" not in m.group(1):
+            return False, "`sig.%s` ne vient pas de `dn_hist_debut()`" % champ
+    if "memset(&sig, 0, sizeof(sig))" not in b:
+        return False, "le bourrage n'est pas remis a zero avant le memcmp"
+    # l'autre bout : toute ecriture de s_pts avance s_w
+    ecritures = re.findall(r"s_pts\[[^\]]+\]\[s_w\[[^\]]+\]\]\s*=", hist)
+    avances = re.findall(r"s_w\[[^\]]+\]\s*=\s*\(s_w\[[^\]]+\]\s*\+\s*1u?\)", hist)
+    if not ecritures:
+        return False, "aucune ecriture de `s_pts` trouvee dans dn_hist.c"
+    if len(avances) < len(ecritures):
+        return False, ("%d ecriture(s) de `s_pts` pour %d avance(s) de `s_w` : "
+                       "une ecriture peut passer sous le radar"
+                       % (len(ecritures), len(avances)))
+    return True, "%d ecriture(s), %d avance(s) de `s_w`" % (len(ecritures),
+                                                            len(avances))
+
+
+def i_compteurs_du_gain(ui, hist):
+    """AC5.3 — le gain se CHIFFRE, et le compteur est REMISABLE À ZÉRO.
+    ⛔ Un compteur cumulatif ne peut pas servir de témoin rejouable : c'est la
+       leçon que `s_gardeh_cris` a coûtée à `dn4-4`."""
+    b = corps(ui, "static void courbe_reparametrer(int idx)")
+    if "s_courbe_appels++" not in (b or ""):
+        return False, "les demandes ne sont pas comptees"
+    if "s_courbe_redessins++" not in (b or ""):
+        return False, "les redessins reels ne sont pas comptes"
+    i_a = b.find("s_courbe_appels++")
+    i_cmp = b.find("memcmp(&sig, &s_courbe_sig")
+    i_r = b.find("s_courbe_redessins++")
+    if not (i_a < i_cmp < i_r):
+        return False, "les deux compteurs ne sont pas de part et d'autre du test"
+    r = corps(ui, "void dn_ui_reset_compteurs(void)")
+    if "s_courbe_appels = 0" not in (r or "") or \
+       "s_courbe_redessins = 0" not in (r or ""):
+        return False, "les compteurs ne sont pas remis a zero (temoin non rejouable)"
+    return True, "comptes de part et d'autre, et remisables"
+
+
+def i_ironie_levee(ui, hist):
+    """AC5.2 — l'ironie de `dn_hist.h` est LEVÉE PAR ÉCRIT, ⛔ pas effacée."""
+    brut, _ = lire(os.path.join(MAIN, "dn_hist.h"))
+    if "le plus chaud de la vue détail" not in brut:
+        return False, "le paragraphe d'origine a ete EFFACE (ce depot n'efface pas)"
+    if "dn4-13" not in brut or "L'IRONIE" not in brut:
+        return False, "l'ironie n'est pas nommee et datee dans `dn_hist.h`"
+    if "courbe_reparametrer" not in brut:
+        return False, "le paragraphe ne nomme pas le chemin qui dessinait"
+    return True, "paragraphe CONSERVE et amende"
+
+
 INVARIANTS = [
     ("AC4.3 `s_axe_pose[0..1]` remis a FAUX en tete", i_axe_pose_remis,
-     [("    s_axe_pose[0] = false;\n    s_axe_pose[1] = false;\n"
-       "    int s0 = -1, s1 = -1;", "    int s0 = -1, s1 = -1;")]),
+     [("    s_axe_pose[0] = false;\n    s_axe_pose[1] = false;\n\n"
+       "    /* La série 0 : SON tableau, SA couleur",
+       "\n    /* La série 0 : SON tableau, SA couleur")]),
     ("AC4.3 les drapeaux SORTENT de `..._courbe_axes`", i_axes_exposent,
      [("if (pose0) { *pose0 = s_axe_pose[0]; }", "if (pose0) { *pose0 = true; }")]),
     ("AC4.2 le partage est decide par les DONNEES", i_partage_par_les_donnees,
@@ -256,8 +364,8 @@ INVARIANTS = [
     ("AC4.1 echelle commune : RESEAU, et lui seul", i_echelle_commune,
      [("return idx == DN_UI_CASE_RESEAU;",
        "return idx == DN_UI_CASE_RESEAU || idx == DN_UI_CASE_AMB;"),
-      ("courbe_axe_poser(LV_CHART_AXIS_SECONDARY_Y, mn, mx);",
-       "courbe_axe_poser(LV_CHART_AXIS_SECONDARY_Y, mn, mx + 1);")]),
+      ("            a0 = a1 = mn;\n            b0 = b1 = mx;",
+       "            a0 = mn;\n            b0 = mx;")]),
     ("AC8.2 la branche morte `bornee` a disparu", i_bornee_retiree,
      [("bool commune = (n == 2 && courbe_echelle_commune(idx));",
        "bool bornee = k_courbe_borne[idx].actif;\n"
@@ -272,6 +380,21 @@ INVARIANTS = [
        "bool seg_colore = false;")]),
     ("⛔ aucun LV_SYMBOL_* dans le libelle en font 14",
      i_pas_de_symbole_en_font14, []),
+    ("AC5.1 l'invalidation est CONDITIONNEE, et testee AVANT",
+     i_invalidation_conditionnee,
+     [("if (s_courbe_sig_valide && memcmp(&sig, &s_courbe_sig, sizeof(sig)) == 0) {",
+       "if (false) {"),
+      ("    s_courbe_appels++;\n",
+       "    s_courbe_appels++;\n    lv_chart_refresh(s_det_courbe);\n")]),
+    ("AC5.1 la signature couvre les DONNEES (les 2 bouts)",
+     i_signature_couvre_les_donnees,
+     [("sig.deb0 = (s0 >= 0) ? dn_hist_debut(s0) : 0u;", "sig.deb0 = 0u;"),
+      ("memset(&sig, 0, sizeof(sig));", "")]),
+    ("AC5.3 le gain se CHIFFRE, et le compteur se remet a zero",
+     i_compteurs_du_gain,
+     [("    s_courbe_redessins++;\n", ""),
+      ("    s_courbe_appels = 0;\n", "")]),
+    ("AC5.2 l'ironie de dn_hist.h est LEVEE PAR ECRIT", i_ironie_levee, []),
 ]
 
 

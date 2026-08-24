@@ -3107,40 +3107,48 @@ static bool courbe_plage_commune(int s0, int s1, int32_t *mn, int32_t *mx)
     return true;
 }
 
-static void courbe_serie_regler(int serie, lv_chart_series_t *ser,
-                                lv_chart_axis_t axe, int moitie, int idx)
+/*
+ * 🔴 dn4-13 / AC5.1 — LA PLAGE SE **CALCULE** SANS TOUCHER LVGL.
+ *    C'est ce qui rend l'invalidation conditionnable : tant qu'on ne sait pas ce
+ *    qu'on VA poser, on ne peut pas savoir si ça change quelque chose. La
+ *    fonction est donc PURE (elle ne lit que l'historique), et la pose est
+ *    séparée. ⛔ En LVGL 9, `lv_chart_set_range()` / `_set_series_color()` /
+ *    `_set_x_start_point()` INVALIDENT elles-mêmes : les appeler « pour voir »
+ *    aurait payé le redessin qu'on cherche justement à éviter.
+ */
+static bool courbe_serie_plage(int serie, int moitie, int idx, int32_t *mn,
+                               int32_t *mx)
 {
-    if (!s_det_courbe || !ser || serie < 0) {
-        return;
+    if (serie < 0) {
+        return false;
     }
-    lv_chart_set_x_start_point(s_det_courbe, ser, dn_hist_debut(serie));
     /* 🔴 UNE ÉCHELLE BORNÉE COURT-CIRCUITE L'AUTO-CALAGE — voir
      *    `k_courbe_borne`. ⚠️ ET ELLE S'APPLIQUE MÊME QUAND LA SÉRIE N'A QUE DES
      *    TROUS : une `RAM` sans donnée doit montrer un axe 0..100 % VIDE, ⛔ pas
      *    un cadre sans échelle. C'est le contraire de l'auto-calage, où
      *    « aucune donnée » veut dire « aucune plage possible ». */
     if (idx >= 0 && idx < DN_UI_METRIQUES && k_courbe_borne[idx].actif) {
-        courbe_axe_poser(axe, k_courbe_borne[idx].min, k_courbe_borne[idx].max);
-        return;
+        *mn = k_courbe_borne[idx].min;
+        *mx = k_courbe_borne[idx].max;
+        return true;
     }
-    int32_t mn = 0, mx = 0;
-    if (!dn_hist_minmax(serie, &mn, &mx)) {
-        return; /* ⛔ que des trous : AUCUNE plage inventée */
+    if (!dn_hist_minmax(serie, mn, mx)) {
+        return false; /* ⛔ que des trous : AUCUNE plage inventée */
     }
-    plage_marger(&mn, &mx);
+    plage_marger(mn, mx);
     if (moitie >= 0) {
         /* ⚠️ On ÉLARGIT la plage du côté opposé : la série garde son échelle
          *    RÉELLE (une variation de 0,2 °C reste une variation de 0,2 °C sur
          *    la moitié qui lui revient), elle est seulement CANTONNÉE. ⛔ Ne pas
          *    « écraser » la série de moitié : ce serait mentir sur l'amplitude. */
-        int32_t etendue = mx - mn;
+        int32_t etendue = *mx - *mn;
         if (moitie == 0) {
-            mn -= etendue; /* les données occupent la MOITIÉ HAUTE */
+            *mn -= etendue; /* les données occupent la MOITIÉ HAUTE */
         } else {
-            mx += etendue; /* les données occupent la MOITIÉ BASSE */
+            *mx += etendue; /* les données occupent la MOITIÉ BASSE */
         }
     }
-    courbe_axe_poser(axe, mn, mx);
+    return true;
 }
 
 /*
@@ -3149,60 +3157,72 @@ static void courbe_serie_regler(int serie, lv_chart_series_t *ser,
  *    QU'UNE FOIS : tout ce qui dépend de la métrique affichée doit être
  *    (re)posé ICI, à chaque transition. Voir le bloc de `build_detail`.
  */
+/*
+ * ── dn4-13 / AC5 : LE DESSIN QUITTE LE CHEMIN LE PLUS CHAUD ─────────────────
+ *
+ * 🔴 L'IRONIE QUE CE DÉPÔT ÉCRIVAIT LUI-MÊME, ET QU'ON LÈVE ICI.
+ *    `dn_hist.h` justifiait de NE PAS brancher l'échantillonnage sur
+ *    `case_poser` au motif que *« ce chemin est le plus chaud de la vue
+ *    détail »* — pendant que **le DESSIN y était** :
+ *      `case_poser()` → `detail_reparametrer()` → `courbe_reparametrer()`.
+ *    Autrement dit : on refusait d'y écrire 8 `int32_t`, et on y invalidait
+ *    460 x 108 px. Jusqu'à **5 fois par seconde**, y compris sur une série
+ *    **100 % TROUS** — c'est-à-dire pour redessiner exactement rien.
+ *
+ * ⇒ **L'INVALIDATION EST CONDITIONNÉE AU CHANGEMENT**, exactement comme la barre
+ *   heure/date le fait déjà (`dn_ui_heure_maj` : *« L'INVALIDATION EST
+ *   CONDITIONNÉE AU CHANGEMENT DE TEXTE, ET C'EST TOUT LE MÉCANISME »*).
+ *
+ * ⚠️ ET LA CONDITION SE JOUE **AVANT** LE PREMIER APPEL LVGL, ⛔ pas après.
+ *    En LVGL 9, `lv_chart_set_range()`, `_set_series_color()`,
+ *    `_set_x_start_point()` et `_hide_series()` invalident TOUTES l'objet.
+ *    Poser d'abord puis « décider si on rafraîchit » aurait payé le redessin
+ *    qu'on cherche à éviter — le correctif aurait été décoratif.
+ *
+ * 🔴 LA SIGNATURE EST **SUFFISANTE**, ET VOICI POURQUOI. Le seul terme qui
+ *    inquiète est le CONTENU des points, qu'on ne hache pas. Or `dn_hist_poser()`
+ *    et `dn_hist_rattraper()` sont les DEUX seuls écrivains de `s_pts[][]`, et
+ *    tous deux AVANCENT `s_w[]` à chaque écriture. `dn_hist_debut()` rend
+ *    `s_w[]`. ⇒ « le tableau a changé » ⟺ « `debut` a changé ». Aucune écriture
+ *    ne peut passer sous le radar sans violer cet invariant, et c'est
+ *    `verif_hist_dn413.py` qui le tient (il compte les positions parcourues).
+ * ⚠️ Le POINTEUR du chart entre dans la signature : une reconstruction de scène
+ *    crée de nouveaux objets, et l'ancien état ne dit rien du nouveau.
+ */
+typedef struct {
+    const void *chart;
+    const void *ser0;
+    const void *ser1;
+    int idx;
+    int n;
+    int s0;
+    int s1;
+    uint32_t deb0;
+    uint32_t deb1;
+    int32_t a0, b0, a1, b1;
+    uint8_t p0, p1;
+    uint32_t coul0, coul1;
+} dn_courbe_sig_t;
+
+static dn_courbe_sig_t s_courbe_sig;
+static bool s_courbe_sig_valide;
+/* 🔴 LE GAIN SE MESURE, ⛔ il ne se raconte pas (AC5.3). Deux compteurs : combien
+ *    de fois on nous a demandé de reparamétrer, et combien de fois ça a
+ *    réellement produit un redessin. Leur RAPPORT est le chiffre d'AC5. */
+static uint32_t s_courbe_appels;
+static uint32_t s_courbe_redessins;
+
 static void courbe_reparametrer(int idx)
 {
     if (!s_det_courbe || !s_det_serie0 || !s_det_serie1) {
         return;
     }
-    /*
-     * 🔴 dn4-13 / AC4.3 — LES DEUX DRAPEAUX REPARTENT DE **FAUX**, EN TÊTE.
-     *    `s_axe_pose[0]` n'était remis à faux que dans `build_detail()`, donc il
-     *    SURVIVAIT à une transition de page. Chemin exact du défaut, et il est
-     *    NOMINAL : boot → `nav open 0` (CPU, borné 0..1000, drapeau posé) →
-     *    `nav open 3` AVANT toute trame `net` (auto-calé, `dn_hist_minmax()`
-     *    rend `false`, `courbe_serie_regler()` sort SANS RIEN ÉCRIRE) ⇒
-     *    `widget courbe` imprimait `0 .. 1000` sous le titre `RÉSEAU`, c'est-à-
-     *    dire la plage de la page PRÉCÉDENTE présentée comme celle-ci.
-     * ⛔ « Pas posé » ne doit pas être indiscernable d'une plage réelle : c'est
-     *    la règle que ce fichier écrit vingt lignes plus bas et qu'il violait ici.
-     */
-    s_axe_pose[0] = false;
-    s_axe_pose[1] = false;
+    s_courbe_appels++;
+
+    /* ── 1) CE QU'ON VA POSER — CALCUL PUR, ⛔ AUCUN APPEL LVGL ────────────── */
     int s0 = -1, s1 = -1;
     int n = dn_hist_series_de_case(idx, &s0, &s1);
-
-    /* La série 0 : SON tableau, SA couleur — celles de LA PAGE COURANTE. */
-    if (s0 >= 0) {
-        lv_chart_set_series_ext_y_array(s_det_courbe, s_det_serie0,
-                                        dn_hist_points(s0));
-        lv_chart_set_series_color(s_det_courbe, s_det_serie0,
-                                  lv_color_hex(case_est_widget(idx)
-                                                   ? k_desc[idx].couleur
-                                                   : 0x808080));
-        lv_chart_hide_series(s_det_courbe, s_det_serie0, false);
-    } else {
-        lv_chart_hide_series(s_det_courbe, s_det_serie0, true);
-    }
-
-    /* 🔴 La série 1 n'existe que sur ~~`AMBIANCE`~~ **`AMBIANCE` ET `RÉSEAU`**
-     *    (addendum §1 exception 1, + demande owner du 2026-08-24 — phrase
-     *    corrigée le 2026-08-24 par la revue de code, qui l'a trouvée restée à
-     *    UNE page). Sur les **quatre** autres pages elle est **MASQUÉE**,
-     *    ⛔ pas « pointée sur rien » : une série laissée sur le tableau de la
-     *    page précédente dessinerait les données d'une AUTRE métrique sous le
-     *    titre de celle-ci. */
-    if (n == 2 && s1 >= 0) {
-        lv_chart_set_series_ext_y_array(s_det_courbe, s_det_serie1,
-                                        dn_hist_points(s1));
-        /* ⚠️ LA COULEUR DE LA 2ᵉ SÉRIE DÉPEND DE LA PAGE depuis que `RÉSEAU` en
-         *    porte une : une constante ferait porter au MONTANT du réseau la
-         *    couleur de l'HUMIDITÉ. */
-        lv_chart_set_series_color(s_det_courbe, s_det_serie1,
-                                  lv_color_hex(courbe_couleur1(idx)));
-        lv_chart_hide_series(s_det_courbe, s_det_serie1, false);
-    } else {
-        lv_chart_hide_series(s_det_courbe, s_det_serie1, true);
-    }
+    bool aff1 = (n == 2 && s1 >= 0);
 
     /*
      * ── QUELLE ÉCHELLE, ET QUI PARTAGE QUOI ─────────────────────────────────
@@ -3227,34 +3247,123 @@ static void courbe_reparametrer(int idx)
      *    n°5 la rend encore plus morte. ⛔ La laisser aurait fait croire que le
      *    cas « deux séries sur une échelle bornée » est traité. Il ne l'est pas,
      *    et le jour où il se présentera il faudra le DÉCIDER, pas le déduire
-     *    d'une branche jamais exécutée. `courbe_serie_regler()` continue, elle,
+     *    d'une branche jamais exécutée. `courbe_serie_plage()` continue, elle,
      *    d'honorer la borne sur les pages mono-courbe : rien n'est perdu.
      */
     bool commune = (n == 2 && courbe_echelle_commune(idx));
+    int32_t a0 = 0, b0 = 0, a1 = 0, b1 = 0;
+    bool p0 = false, p1 = false;
     if (commune) {
         int32_t mn = 0, mx = 0;
         if (courbe_plage_commune(s0, s1, &mn, &mx)) {
             plage_marger(&mn, &mx);
-            lv_chart_set_x_start_point(s_det_courbe, s_det_serie0,
-                                       dn_hist_debut(s0));
-            lv_chart_set_x_start_point(s_det_courbe, s_det_serie1,
-                                       dn_hist_debut(s1));
-            courbe_axe_poser(LV_CHART_AXIS_PRIMARY_Y, mn, mx);
-            courbe_axe_poser(LV_CHART_AXIS_SECONDARY_Y, mn, mx);
+            a0 = a1 = mn;
+            b0 = b1 = mx;
+            p0 = p1 = true;
         }
         /* ⛔ Aucune des deux n'a de réel ⇒ les drapeaux restent FAUX. « Pas de
          *    plage » se dit, il ne se remplace pas par la plage d'avant. */
     } else {
-        /* Le partage n'a lieu que si les DEUX séries portent du réel. */
         bool deux_vivantes = (n == 2 && s0 >= 0 && s1 >= 0 &&
                               dn_hist_reels(s0) > 0 && dn_hist_reels(s1) > 0);
-        courbe_serie_regler(s0, s_det_serie0, LV_CHART_AXIS_PRIMARY_Y,
-                            deux_vivantes ? 0 : -1, idx);
-        if (n == 2) {
-            courbe_serie_regler(s1, s_det_serie1, LV_CHART_AXIS_SECONDARY_Y,
-                                deux_vivantes ? 1 : -1, idx);
+        p0 = courbe_serie_plage(s0, deux_vivantes ? 0 : -1, idx, &a0, &b0);
+        if (aff1) {
+            p1 = courbe_serie_plage(s1, deux_vivantes ? 1 : -1, idx, &a1, &b1);
         }
     }
+    uint32_t coul0 = case_est_widget(idx) ? k_desc[idx].couleur : 0x808080u;
+    uint32_t coul1 = courbe_couleur1(idx);
+
+    /* ── 2) EST-CE QUE ÇA CHANGE QUELQUE CHOSE ? ──────────────────────────── */
+    dn_courbe_sig_t sig;
+    /* ⚠️ `memset` AVANT d'affecter, ⛔ pas `= {0}` : la comparaison est un
+     *    `memcmp`, donc le BOURRAGE de la structure doit être déterministe.
+     *    Un octet de padding indéterminé rendrait la comparaison aléatoire —
+     *    un correctif de performance qui marcherait « parfois ». */
+    memset(&sig, 0, sizeof(sig));
+    sig.chart = s_det_courbe;
+    sig.ser0 = s_det_serie0;
+    sig.ser1 = s_det_serie1;
+    sig.idx = idx;
+    sig.n = n;
+    sig.s0 = s0;
+    sig.s1 = s1;
+    sig.deb0 = (s0 >= 0) ? dn_hist_debut(s0) : 0u;
+    sig.deb1 = aff1 ? dn_hist_debut(s1) : 0u;
+    sig.a0 = a0;
+    sig.b0 = b0;
+    sig.a1 = a1;
+    sig.b1 = b1;
+    sig.p0 = p0 ? 1u : 0u;
+    sig.p1 = p1 ? 1u : 0u;
+    sig.coul0 = coul0;
+    sig.coul1 = coul1;
+    if (s_courbe_sig_valide && memcmp(&sig, &s_courbe_sig, sizeof(sig)) == 0) {
+        return; /* 🔴 RIEN n'a changé : ⛔ AUCUN appel LVGL, AUCUNE invalidation */
+    }
+    s_courbe_sig = sig;
+    s_courbe_sig_valide = true;
+    s_courbe_redessins++;
+
+    /* ── 3) LA POSE ───────────────────────────────────────────────────────── */
+    /*
+     * 🔴 dn4-13 / AC4.3 — LES DEUX DRAPEAUX REPARTENT DE **FAUX**, AVANT TOUTE
+     *    POSE. `s_axe_pose[0]` n'était remis à faux que dans `build_detail()`,
+     *    donc il SURVIVAIT à une transition de page. Chemin exact du défaut, et
+     *    il est NOMINAL : boot → `nav open 0` (CPU, borné 0..1000, drapeau posé)
+     *    → `nav open 3` AVANT toute trame `net` (auto-calé, `dn_hist_minmax()`
+     *    rend `false`, aucune plage n'est calculée) ⇒ `widget courbe` imprimait
+     *    `0 .. 1000` sous le titre `RÉSEAU`, c'est-à-dire la plage de la page
+     *    PRÉCÉDENTE présentée comme celle-ci.
+     * ⛔ « Pas posé » ne doit pas être indiscernable d'une plage réelle nulle.
+     * ⚠️ La remise à faux est ICI et ⛔ PAS en tête de fonction : sur un
+     *    court-circuit, l'ombre doit rester d'accord avec ce qui est POSÉ à
+     *    l'écran. La vider sans rien reposer ferait mentir `widget courbe` dans
+     *    l'autre sens.
+     */
+    s_axe_pose[0] = false;
+    s_axe_pose[1] = false;
+
+    /* La série 0 : SON tableau, SA couleur — celles de LA PAGE COURANTE. */
+    if (s0 >= 0) {
+        lv_chart_set_series_ext_y_array(s_det_courbe, s_det_serie0,
+                                        dn_hist_points(s0));
+        lv_chart_set_series_color(s_det_courbe, s_det_serie0,
+                                  lv_color_hex(coul0));
+        lv_chart_set_x_start_point(s_det_courbe, s_det_serie0, sig.deb0);
+        lv_chart_hide_series(s_det_courbe, s_det_serie0, false);
+    } else {
+        lv_chart_hide_series(s_det_courbe, s_det_serie0, true);
+    }
+
+    /* 🔴 La série 1 n'existe que sur ~~`AMBIANCE`~~ **`AMBIANCE` ET `RÉSEAU`**
+     *    (addendum §1 exception 1, + demande owner du 2026-08-24 — phrase
+     *    corrigée le 2026-08-24 par la revue de code, qui l'a trouvée restée à
+     *    UNE page). Sur les **quatre** autres pages elle est **MASQUÉE**,
+     *    ⛔ pas « pointée sur rien » : une série laissée sur le tableau de la
+     *    page précédente dessinerait les données d'une AUTRE métrique sous le
+     *    titre de celle-ci. */
+    if (aff1) {
+        lv_chart_set_series_ext_y_array(s_det_courbe, s_det_serie1,
+                                        dn_hist_points(s1));
+        /* ⚠️ LA COULEUR DE LA 2ᵉ SÉRIE DÉPEND DE LA PAGE depuis que `RÉSEAU` en
+         *    porte une : une constante ferait porter au MONTANT du réseau la
+         *    couleur de l'HUMIDITÉ. */
+        lv_chart_set_series_color(s_det_courbe, s_det_serie1,
+                                  lv_color_hex(coul1));
+        lv_chart_set_x_start_point(s_det_courbe, s_det_serie1, sig.deb1);
+        lv_chart_hide_series(s_det_courbe, s_det_serie1, false);
+    } else {
+        lv_chart_hide_series(s_det_courbe, s_det_serie1, true);
+    }
+
+    if (p0) {
+        courbe_axe_poser(LV_CHART_AXIS_PRIMARY_Y, a0, b0);
+    }
+    if (p1) {
+        courbe_axe_poser(LV_CHART_AXIS_SECONDARY_Y, a1, b1);
+    }
+
     lv_chart_refresh(s_det_courbe);
     /*
      * 🔴 **LE CADRE ENTIER EST INVALIDÉ, ET C'EST UN CORRECTIF DE CONSTAT OWNER
@@ -3268,11 +3377,20 @@ static void courbe_reparametrer(int idx)
      * ⇒ On invalide **le panneau**, pas le chart : c'est lui qui porte le fond
      *   qui doit être repeint SOUS la courbe. ⛔ Invalider le chart seul ne
      *   suffit pas, et c'est exactement ce que faisait la version précédente.
+     * ⚠️ ET C'EST PRÉCISÉMENT CE QUI COÛTE : 460 x 108 px. C'est pour LUI que la
+     *    condition ci-dessus existe.
      */
     lv_obj_t *cadre = lv_obj_get_parent(s_det_courbe);
     if (cadre) {
         lv_obj_invalidate(cadre);
     }
+}
+
+/* dn4-13 / AC5.3 — ce que le conditionnement a réellement économisé. */
+void dn_ui_courbe_compteurs(uint32_t *appels, uint32_t *redessins)
+{
+    if (appels) { *appels = s_courbe_appels; }
+    if (redessins) { *redessins = s_courbe_redessins; }
 }
 
 /*
@@ -4129,6 +4247,10 @@ void dn_ui_reset_compteurs(void)
     s_nav_count = 0;
     s_async_refus = 0;
     s_dernier_tap = DN_UI_ZONE_AUCUNE;
+    /* dn4-13 / AC5.3 — ⛔ un compteur CUMULATIF ne peut pas servir de témoin
+     * rejouable : c'est la leçon que `s_gardeh_cris` a coûtée à `dn4-4`. */
+    s_courbe_appels = 0;
+    s_courbe_redessins = 0;
 }
 
 /*

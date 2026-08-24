@@ -3562,6 +3562,28 @@ static int cmd_widget(int argc, char **argv)
                 }
             }
         }
+        {
+            /* 🔴 dn4-13 / AC5.3 — LE GAIN SE CHIFFRE ICI, ⛔ il ne se raconte pas.
+             *    L'invalidation du cadre (460 x 108 px) tournait
+             *    INCONDITIONNELLEMENT, jusqu'a 5 fois par seconde, y compris sur
+             *    une serie 100 % TROUS. ⚠️ Les deux compteurs sont CUMULATIFS
+             *    depuis le dernier `touch reset` : pour mesurer un regime, on
+             *    remet a zero, on laisse tourner, on relit. */
+            uint32_t ca = 0, cr = 0;
+            dn_ui_courbe_compteurs(&ca, &cr);
+            printf("  ── le DESSIN sur le chemin chaud (dn4-13 / AC5) ──\n");
+            printf("     reparametrages demandes : %lu · REDESSINS reels : %lu\n",
+                   (unsigned long)ca, (unsigned long)cr);
+            if (ca > 0) {
+                printf("     ⇒ %lu %% des demandes N'ONT PRODUIT AUCUN appel LVGL\n",
+                       (unsigned long)((ca - cr) * 100u / ca));
+            } else {
+                printf("     (aucune demande depuis le dernier `touch reset`)\n");
+            }
+            printf("     ⚠️ CUMULATIFS depuis `touch reset` (⛔ c'est bien LUI qui\n");
+            printf("        remet les compteurs UI a zero, ⛔ pas `widget`).\n");
+            printf("        regime : remettre a zero, laisser tourner, relire.\n");
+        }
         printf("  ── la GARDE DE HAUTEUR, ce qu'ELLE a vu au dernier passage ──\n");
             printf("     passages : %lu   cris : %lu\n", (unsigned long)np,
                    (unsigned long)ncris);

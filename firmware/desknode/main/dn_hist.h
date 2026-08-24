@@ -81,6 +81,18 @@
  *    ⇒ C'est aussi pourquoi l'alimentation N'EST PAS branchée sur `case_poser` :
  *      ce chemin est « le plus chaud de la vue détail » et sa cadence VARIE.
  *      **Écart assumé avec la lettre de T6, avec son motif.**
+ *
+ * 🔴 **L'IRONIE DE CE PARAGRAPHE, RELEVÉE PAR LA REVUE DU 2026-08-24 ET LEVÉE LE
+ *    2026-08-25 (`dn4-13` / AC5.2).** Il refusait d'écrire HUIT `int32_t` sur
+ *    `case_poser` au motif que c'est le chemin le plus chaud — pendant que **le
+ *    DESSIN y était** : `case_poser()` → `detail_reparametrer()` →
+ *    `courbe_reparametrer()`, qui invalidait **460 x 108 px** jusqu'à cinq fois
+ *    par seconde, y compris sur une série **100 % trous**.
+ *    ⇒ `courbe_reparametrer()` CONDITIONNE désormais son invalidation au
+ *      CHANGEMENT, comme la barre heure/date. Le paragraphe ci-dessus reste
+ *      VRAI (la cadence de `case_poser` varie toujours, et c'est bien la raison
+ *      de l'horloge), mais il ne peut plus se lire comme si le chemin chaud
+ *      était protégé : il ne l'était pas.
  */
 #pragma once
 

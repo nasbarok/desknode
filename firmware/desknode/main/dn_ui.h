@@ -287,6 +287,13 @@ uint32_t dn_ui_async_refus(void);
  * modèle précédent sous la bannière du nouveau. */
 void dn_ui_reset_compteurs(void);
 
+/* 🔴 dn4-13 / AC5.3 — COMBIEN DE FOIS ON A DEMANDÉ DE REPARAMÉTRER LA COURBE, ET
+ * COMBIEN DE FOIS ÇA A PRODUIT UN REDESSIN. Leur RAPPORT est le chiffre d'AC5 :
+ * l'invalidation du cadre (460 x 108 px) tournait INCONDITIONNELLEMENT, jusqu'à
+ * 5 fois par seconde, y compris sur une série 100 % trous. ⛔ « C'est mieux »
+ * sans ces deux nombres ne vaut rien. Remis à zéro par `dn_ui_reset_compteurs()`. */
+void dn_ui_courbe_compteurs(uint32_t *appels, uint32_t *redessins);
+
 /* Octets UTILISÉS du tas LVGL — le SEUL instrument qui voit une fuite d'objets
  * LVGL. La RAM interne et la PSRAM n'en disent rien : ce tas est un pool
  * STATIQUE en .bss (LV_MEM_ADR=0). 0 = verrou non pris, pas « rien d'utilisé ». */
