@@ -491,6 +491,18 @@ bool dn_ui_widget_jauge_rect(int idx, int *x, int *y, int *w, int *h,
 bool dn_ui_detail_courbe_rect(int *x, int *y, int *w, int *h, int *w_cadre,
                               int *h_cadre, bool *existe, bool *resolue);
 
+/*
+ * dn4-4 / AC4.3 — LE TÉMOIN NÉGATIF de la garde de hauteur du détail.
+ * ⚠️ Au pire cas LIVRÉ le bloc tient EXACTEMENT (`14 + 140 = 154 ≤ 154`) : il
+ *    n'existe donc AUCUN stimulus naturel qui fasse crier cette garde. Sans un
+ *    tel stimulus, « la garde existe » n'est pas « la garde marche ».
+ * `h = 0` rend le panneau à sa valeur de produit (154) ; 40..200 sinon.
+ * ⛔ Hors plage ⇒ `ESP_ERR_INVALID_ARG`, ⛔ jamais un écrêtage silencieux.
+ * ⚠️ RECONSTRUIT la scène.
+ */
+esp_err_t dn_ui_set_detail_panh(int h);
+int dn_ui_detail_panh(void);
+
 /* ── LA CASE « AMBIANCE » : DEUX GRANDEURS DANS UNE CASE (D6, dn3-1) ──────────
  * Jusqu'à dn2-1 c'étaient DEUX cases (TEMP. idx 4, HUMIDITÉ idx 5). D6 les
  * fusionne en UNE case bi-grandeurs (idx 5) et libère idx 4 pour VENTILOS.

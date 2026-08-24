@@ -3522,6 +3522,41 @@ static int cmd_widget(int argc, char **argv)
         return 0;
     }
 
+    /*
+     * ── dn4-4 / AC4.3 : `widget detpan <h>` — LE TEMOIN NEGATIF DE LA GARDE ──
+     * 🔴 ⛔ CE N'EST PAS UN REGLAGE. C'est le seul stimulus qui fasse CRIER la
+     *    garde de hauteur du detail : au pire cas LIVRE le bloc tient EXACTEMENT
+     *    (14 + 140 = 154 <= 154, marge ZERO), donc aucune donnee reelle ne peut
+     *    la declencher. « La garde existe » n'est pas « la garde marche ».
+     */
+    if (argc == 3 && strcmp(argv[1], "detpan") == 0) {
+        long h = 0;
+        if (!parse_entier(argv[2], &h)) {
+            printf("usage : widget detpan <0|40..200>   (actuel : %d px)\n",
+                   dn_ui_detail_panh());
+            return 1;
+        }
+        esp_err_t e = dn_ui_set_detail_panh((int)h);
+        if (e != ESP_OK) {
+            printf("refuse : %s — ⛔ RIEN n'a change.\n", esp_err_to_name(e));
+            printf("  `0` rend le panneau a sa valeur de produit (154 px).\n");
+            printf("  ⛔ Hors plage, on REFUSE : un ecretage silencieux ferait\n");
+            printf("     mesurer une hauteur qu'on n'a pas demandee.\n");
+            return 1;
+        }
+        printf("panneau de valeurs du detail = %d px — SCENE RECONSTRUITE.\n",
+               dn_ui_detail_panh());
+        printf("🔴 TEMOIN NEGATIF (AC4.3) : ouvrir DISQUE au PIRE CAS\n");
+        printf("   (`dn_injecteur.py --jeu pire`, puis `nav open 4`). Le bloc\n");
+        printf("   mesure 14 + 140 = 154 px : sous 154, la garde DOIT emettre\n");
+        printf("   « le bloc de valeurs DEBORDE EN HAUTEUR ». Si elle se TAIT,\n");
+        printf("   c'est LA GARDE qui est cassee, ⛔ pas le stimulus.\n");
+        printf("⚠️ `widget detpan 0` remet le produit. Le cadre de courbe (262)\n");
+        printf("   et le panneau du bas (385) n'ont PAS bouge : ce stimulus casse\n");
+        printf("   l'AJUSTEMENT, ⛔ pas le template.\n");
+        return 0;
+    }
+
     if (argc == 3 && strcmp(argv[1], "replacer") == 0) {
         bool on;
         if (!parse_on_off(argv[2], &on)) {
@@ -4323,7 +4358,8 @@ static int cmd_widget(int argc, char **argv)
         printf("      dn4-6 — les instruments (ne reconstruisent PAS) :\n");
         printf("        | largeur [<texte>|reset] | detail | replacer on|off\n"
            "        | jauge [<case>]   (dn4-4/AC9 : le rectangle REEL de la barre)\n"
-           "        | courbe           (dn4-4/AC4 : la place REELLE de la courbe)\n");
+           "        | courbe           (dn4-4/AC4 : la place REELLE de la courbe)\n"
+           "        | detpan <0|40..200>  (dn4-4/AC4.3 : TEMOIN NEGATIF de la garde)\n");
         return 1;
     }
 

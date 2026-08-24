@@ -1200,6 +1200,28 @@ static lv_obj_t *s_scr_detail;
 static lv_obj_t *s_det_titre, *s_det_valeur, *s_det_minmax, *s_det_sec;
 /* 🔴 dn4-4 : LA COURBE. `s_det_serie1` n'est NON NULL que sur `AMBIANCE` —
  *    la seule page à DEUX courbes (addendum §1, exception 1). */
+/*
+ * 🔴 dn4-4 / AC4.3 — LE TÉMOIN NÉGATIF DE LA GARDE DE HAUTEUR, ET IL RESTE DANS
+ *    LE FIRMWARE.
+ *
+ * ⚠️ **UNE GARDE QU'AUCUN TEST N'A VUE CRIER N'EST PAS PROUVÉE.** La garde de
+ *    hauteur de `detail_reparametrer()` existe depuis `dn4-9` et n'a JAMAIS
+ *    journalisé : au pire cas livré (`DISQUE`, 4 grandeurs aux plafonds) le
+ *    bloc tient EXACTEMENT — `14 + 140 = 154 ≤ 154`, marge ZÉRO. Il n'existait
+ *    donc aucun stimulus atteignable qui la fasse parler.
+ * ⇒ `widget detpan <h>` rétrécit le panneau de valeurs À CHAUD. À `153`, le même
+ *   bloc mesure `154 > 153` et la garde **DOIT** crier. Si elle se tait, c'est
+ *   elle qui est cassée, ⛔ pas le stimulus.
+ * ⛔ IL NE QUITTE PAS LE FIRMWARE — même doctrine que `widget nue` et
+ *    `widget demo <n>` : sortir le témoin négatif du produit obligerait à
+ *    comparer deux firmwares, et ce dépôt refuse ça depuis `dn3-2`.
+ * ⚠️ `0` = valeur du produit (154). Le cadre de courbe (`y = 262`) et le panneau
+ *    du bas (`385`) NE BOUGENT PAS : le stimulus casse l'AJUSTEMENT, ⛔ pas le
+ *    template — sinon il mesurerait autre chose que ce qu'il prétend.
+ */
+#define DET_PANH_DEFAUT 154
+static int s_det_panh; /* 0 = DET_PANH_DEFAUT */
+
 static lv_obj_t *s_det_courbe;
 static lv_chart_series_t *s_det_serie0, *s_det_serie1;
 
@@ -2481,8 +2503,10 @@ static void build_detail(lv_obj_t *scr, int idx)
      *    bouge toujours pas, et le template garde ses QUATRE panneaux.
      *    ⇒ `dn4-4` dessinera sa courbe dans **108 px**, ⛔ pas 165. À ne pas
      *      découvrir en la dessinant. */
+    /* ⚠️ `154`, SAUF SI LE TÉMOIN NÉGATIF D'AC4.3 EST ARMÉ — voir `s_det_panh`. */
     lv_obj_t *bloc_valeur =
-        panneau(scr, DN_UI_MARGE, 95, DN_LCD_H_RES - 2 * DN_UI_MARGE, 154);
+        panneau(scr, DN_UI_MARGE, 95, DN_LCD_H_RES - 2 * DN_UI_MARGE,
+                s_det_panh > 0 ? s_det_panh : DET_PANH_DEFAUT);
     s_det_valeur = texte(bloc_valeur, "--", &dn_font_28, lv_color_white(), 14, 14);
 
     /* Placeholder de courbe : un cadre étiqueté, PAS une courbe. Les vraies
@@ -5173,6 +5197,33 @@ bool dn_ui_widget_jauge_rect(int idx, int *x, int *y, int *w, int *h,
         *resolue = (a.x2 > a.x1 && a.y2 > a.y1 && a.x1 >= 0 && a.y1 >= 0);
     }
     return true;
+}
+
+/*
+ * dn4-4 / AC4.3 — arme (ou désarme) le témoin négatif de la garde de hauteur.
+ * ⚠️ RECONSTRUIT la vue détail : l'appelant DOIT l'annoncer (le REPL bloque le
+ *    temps du `build_scene()`, et sur la branche A le REPL EST le transport PC).
+ * ⛔ Bornée et REFUSÉE hors plage, ⛔ jamais écrêtée — même contrat que
+ *    `widget opa`/`widget voile` : un écrêtage silencieux ferait mesurer une
+ *    hauteur qu'on n'a pas demandée.
+ */
+esp_err_t dn_ui_set_detail_panh(int h)
+{
+    if (h != 0 && (h < 40 || h > 200)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (!lvgl_port_lock(2000)) {
+        return ESP_ERR_TIMEOUT;
+    }
+    s_det_panh = h;
+    build_scene();
+    lvgl_port_unlock();
+    return ESP_OK;
+}
+
+int dn_ui_detail_panh(void)
+{
+    return s_det_panh > 0 ? s_det_panh : DET_PANH_DEFAUT;
 }
 
 /* dn4-4 / AC4 — voir `dn_ui.h`. On relit le rectangle de la courbE **et** celui
