@@ -2156,3 +2156,55 @@ prétend fermer se ferme des DEUX côtés, ou il n'est pas fermé.**
   nominale). 🎯 **Le DELTA du tir, lui, est `0`** — et c'est le seul chiffre opposable.
 - **AC9 reste ROUVERT** : aucun re-tir de coût n'a eu lieu.
 - **AC2 reste MORT**, et l'**étalonnage sous charge d'AC4** reste dû.
+
+---
+
+## 23. 🔴 AC9 RE-TIRÉ — LA PRÉDICTION, ÉCRITE ET COMMITTÉE **AVANT** LA MESURE
+
+⛔ **Ce bloc est committé AVANT que l'agent ne tourne.** AC9 : *« La prédiction s'écrit ET SE
+COMMITTE AVANT la mesure. »* Si le commit suivant portait déjà le résultat, il n'y aurait pas de
+prédiction, il y aurait une justification.
+
+### 23.1 Pourquoi un re-tir
+
+Le chiffre n°1 de §16.6 (**2,523 % d'un cœur / 0,1577 % machine**) a été mesuré au SHA `4c3a3f7`.
+Depuis, `agent/dn_agent.py` a changé de **+474/−42**, et le delta tombe **dans le chemin par cycle**.
+La 2ᵉ revue l'a déclaré **MORT** (décision owner D1 du 2026-08-24).
+✅ **Le chiffre n°2 (LHM seul, 7,990 % / 0,4994 %) n'est PAS re-tiré** : ce delta ne touche pas LHM.
+
+### 23.2 Ce qui s'est ajouté au chemin par cycle, et ce que ça devrait coûter
+
+| Ajout | Fréquence | Coût unitaire attendu |
+|---|---|---|
+| `read1()` + `_borner_socket()` **par morceau** (`perf_counter` + `settimeout`) | ~2/cycle (75 Ko / 64 Ko) | µs |
+| `_borner_socket()` **avant `request()`** (2ᵉ revue) | 1/cycle | µs |
+| `_chrono` couvre le parse | comptabilité seule | ~0 |
+| regex à **4 groupes** | **253 lignes/s** | ns/ligne |
+| 2 compteurs (`lues`, `illisibles`) | **253/s** | ns |
+| **`dict.get` de détection de doublon** (2ᵉ revue) | **253/s** | ~50 ns ⇒ **~13 µs/s ≈ 0,0013 %** |
+| garde `lues == 0` · `_lhm_rendu` | 1 et 4/cycle | ns |
+| vérification de famille | 5/s | ns |
+
+⇒ **Le poste le plus lourd de tous est estimé à 0,0013 % d'un cœur.** L'ensemble reste **deux ordres
+de grandeur sous la résolution** de la mesure.
+
+### 23.3 🎯 LA PRÉDICTION
+
+> **À 60 s de cumul, sur `COM3`, 16 cœurs logiques :**
+> **`[2,35 ; 2,75] % d'un cœur`** et **`[0,147 ; 0,172] % machine`**
+> — c'est-à-dire **INDISCERNABLE de 2,523**.
+
+**Ce qui la démentirait, et il faudrait alors CHERCHER, ⛔ pas accepter** : une valeur **> 2,75**
+signalerait un coût que le tableau ci-dessus n'a pas vu.
+
+### 23.4 ⛔ LES DEUX PIÈGES DE COMPARAISON, NOMMÉS AVANT LE TIR
+
+1. 🔴 **LE TÉMOIN N'AVAIT PAS CONVERGÉ À 60 s.** §16.6 le dit : `5,141 → 3,586 → 3,167 → 2,810 →
+   2,686 → 2,523`. ⇒ **la comparaison se fait au MÊME rang de la série**, ⛔ pas entre un 60 s et un
+   180 s. La série complète est publiée, pas seulement son dernier point.
+2. ⛔ **JAMAIS un chiffre `--stdout` contre un chiffre `COM3`** : le port coûte **+0,63 pt** en
+   propre. Le tir se fait sur `COM3`, comme §16.6.
+
+⚠️ **ET CE QUE CE TIR NE MESURERA PAS** : la tour n'est pas au repos contrôlé. Une charge de fond
+différente de celle du 2026-08-21 déplace le mural, donc le rapport. C'est une **réserve**, ⛔ pas une
+excuse — elle est écrite avant, pas après.
