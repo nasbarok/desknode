@@ -29,7 +29,21 @@ static bool s_pret;
 static int32_t s_smin[DN_HIST_N_SERIES][DN_HIST_SEAUX];
 static int32_t s_smax[DN_HIST_N_SERIES][DN_HIST_SEAUX];
 static bool s_svu[DN_HIST_N_SERIES][DN_HIST_SEAUX];
-static int s_seau_courant = -1;
+/*
+ * 🔴 dn4-13 / AC3.2 — L'INDEX DU SEAU EST **ABSOLU**, ⛔ PLUS L'INDEX D'ANNEAU.
+ *    `seau_suivre()` comparait `b == s_seau_courant` sur un index modulo 24. Deux
+ *    conséquences, toutes deux mesurées :
+ *    · SAUT. Passer de l'heure 3 à l'heure 6 (une pause, une horloge qui
+ *      remonte, un `ui off` long) ne vidait QUE le seau 6 : les seaux 4 et 5
+ *      gardaient leurs valeurs DU TOUR PRÉCÉDENT DE 24 h, et la fenêtre ne
+ *      glissait plus — elle redevenait « depuis le boot », ce que `dn_hist.h`
+ *      interdit explicitement.
+ *    · IDENTITÉ FAUSSE. Au bout de 24 h, l'heure 27 a le MÊME index d'anneau
+ *      que l'heure 3 : `b == s_seau_courant` répondait « même seau » sur deux
+ *      instants distants d'une journée, et le vidage n'avait jamais lieu.
+ *    L'index absolu ne peut faire ni l'un ni l'autre : il est monotone.
+ */
+static int64_t s_seau_abs = -1;
 /*
  * 🔴 dn4-13 / AC2.2 — `s_seaux_ouverts` A ÉTÉ SUPPRIMÉ, ET SON COMMENTAIRE AVEC.
  *    Il portait : « C'est LUI qui donne la couverture réelle, ⛔ pas une
@@ -44,6 +58,17 @@ static int s_seau_courant = -1;
  *      qu'un seau A VU DU RÉEL. Voir `dn_hist_couverture_s()`.
  */
 
+/*
+ * 🔴 dn4-13 / AC3.1 — L'HORODATAGE DU DERNIER ÉCHANTILLONNAGE, EN TEMPS **RÉEL**.
+ * ⚠️ `esp_timer_get_time()`, ⛔ PAS le tick LVGL : `lvgl_port_pause()` arrête le
+ *    tick, donc un `ui off` de 60 s est INVISIBLE pour LVGL — c'est précisément
+ *    ce qui permettait à la courbe de recoller les deux bords de la pause. Le
+ *    seul temps qui ne ment pas ici est celui de la puce.
+ */
+static int64_t s_tick_us = -1;
+static uint32_t s_rattr_evts;  /* combien de fois on a comblé */
+static uint32_t s_rattr_trous; /* combien de points de trou comblés en tout */
+
 void dn_hist_init(void)
 {
     for (int s = 0; s < DN_HIST_N_SERIES; s++) {
@@ -57,23 +82,104 @@ void dn_hist_init(void)
             s_svu[s][b] = false;
         }
     }
-    s_seau_courant = -1;
+    s_seau_abs = -1;
+    s_tick_us = -1;
+    s_rattr_evts = 0;
+    s_rattr_trous = 0;
     s_pret = true;
 }
 
 /* Ouvre (et VIDE) le seau de l'heure courante quand on y entre. ⛔ Sans ce
- * vidage, la fenêtre ne glisserait pas : elle deviendrait « depuis le boot ». */
+ * vidage, la fenêtre ne glisserait pas : elle deviendrait « depuis le boot ».
+ *
+ * 🔴 dn4-13 / AC3.2 — **TOUS** LES SEAUX TRAVERSÉS SONT VIDÉS, ⛔ PLUS SEULEMENT
+ *    CELUI D'ARRIVÉE. Entre deux appels il peut s'écouler plus d'une heure — un
+ *    `ui off` long, une carte qui dort, un échantillonneur arrêté. Les seaux
+ *    sautés gardaient alors les valeurs du TOUR PRÉCÉDENT DE 24 h : la fenêtre
+ *    « glissante » recollait un morceau d'avant-hier au milieu d'aujourd'hui,
+ *    et rien ne le disait. */
 static void seau_suivre(void)
 {
     int64_t up_s = esp_timer_get_time() / 1000000;
-    int b = (int)((up_s / DN_HIST_SEAU_S) % DN_HIST_SEAUX);
-    if (b == s_seau_courant) {
+    if (up_s < 0) {
         return;
     }
-    s_seau_courant = b;
-    for (int s = 0; s < DN_HIST_N_SERIES; s++) {
-        s_svu[s][b] = false;
+    int64_t abs_b = up_s / DN_HIST_SEAU_S;
+    if (abs_b == s_seau_abs) {
+        return;
     }
+    /* Combien de seaux ENTRÉS depuis le dernier passage. Au premier appel, un
+     * seul (celui où l'on naît). Borné à 24 : au-delà, tout l'anneau est neuf. */
+    int64_t entres = (s_seau_abs < 0) ? 1 : (abs_b - s_seau_abs);
+    if (entres > DN_HIST_SEAUX) {
+        entres = DN_HIST_SEAUX;
+    }
+    if (entres < 1) {
+        entres = 1; /* horloge qui recule : on ne réécrit rien en arrière */
+    }
+    for (int64_t k = 0; k < entres; k++) {
+        int b = (int)((abs_b - k) % DN_HIST_SEAUX);
+        for (int s = 0; s < DN_HIST_N_SERIES; s++) {
+            s_svu[s][b] = false;
+        }
+    }
+    s_seau_abs = abs_b;
+}
+
+/*
+ * 🔴 dn4-13 / AC3.1 — L'ANNEAU RATTRAPE LE TEMPS QU'IL N'A PAS ÉCHANTILLONNÉ,
+ *    EN CREUSANT DES TROUS.
+ *
+ * LE DÉFAUT, TEL QU'IL SE PRODUISAIT : `ui off` met LVGL en pause, donc
+ * `hist_tick` ne tourne plus, donc l'anneau n'avance plus. Au `ui on`, le point
+ * suivant s'écrivait **JUSTE À CÔTÉ** du dernier point d'avant la pause.
+ * `lv_chart` reliait alors deux instants séparés de 60 s par un segment qui, à
+ * l'écran, en vaut UNE. ⛔ La courbe ne mentait pas sur la valeur : elle mentait
+ * sur la DURÉE — et `dn_hist.h` écrit lui-même que c'est *« un mensonge plus
+ * difficile à voir »*.
+ *
+ * ⚠️ ON NE COMBLE QU'AU-DELÀ D'UNE PÉRIODE ENTIÈRE DE RETARD. Un timer à 1 Hz
+ *    qui tire à 1 040 ms est le régime NORMAL ; creuser un trou à chaque gigue
+ *    fabriquerait une courbe en pointillés sur une carte parfaitement saine.
+ * ⚠️ BORNÉ À `DN_HIST_N_POINTS` : au-delà, tout l'anneau est du trou de toute
+ *    façon, et boucler 86 400 fois sous le verrou LVGL serait pire que le mal.
+ *
+ * Rend le nombre de points de trou comblés (0 en régime).
+ */
+int dn_hist_rattraper(void)
+{
+    if (!s_pret) {
+        return 0;
+    }
+    int64_t now = esp_timer_get_time();
+    if (s_tick_us < 0 || now < s_tick_us) {
+        s_tick_us = now;
+        return 0;
+    }
+    int64_t dt_ms = (now - s_tick_us) / 1000;
+    s_tick_us = now;
+    int64_t manques = dt_ms / DN_HIST_PERIODE_MS - 1;
+    if (manques <= 0) {
+        return 0;
+    }
+    if (manques > DN_HIST_N_POINTS) {
+        manques = DN_HIST_N_POINTS;
+    }
+    for (int64_t k = 0; k < manques; k++) {
+        for (int s = 0; s < DN_HIST_N_SERIES; s++) {
+            s_pts[s][s_w[s]] = DN_HIST_TROU;
+            s_w[s] = (s_w[s] + 1u) % DN_HIST_N_POINTS;
+        }
+    }
+    s_rattr_evts++;
+    s_rattr_trous += (uint32_t)manques;
+    return (int)manques;
+}
+
+void dn_hist_rattrapages(uint32_t *evenements, uint32_t *trous)
+{
+    if (evenements) { *evenements = s_rattr_evts; }
+    if (trous) { *trous = s_rattr_trous; }
 }
 
 void dn_hist_poser(int serie, int32_t dixiemes, bool connue)
@@ -97,10 +203,10 @@ void dn_hist_poser(int serie, int32_t dixiemes, bool connue)
     /* ⚠️ LE SEAU NE REÇOIT QUE DU RÉEL, comme l'anneau. Un trou n'abaisse aucun
      *    minimum et ne relève aucun maximum : il n'existe simplement pas. */
     seau_suivre();
-    if (!connue || s_seau_courant < 0) {
+    if (!connue || s_seau_abs < 0) {
         return;
     }
-    int b = s_seau_courant;
+    int b = (int)(s_seau_abs % DN_HIST_SEAUX);
     if (!s_svu[serie][b]) {
         s_smin[serie][b] = dixiemes;
         s_smax[serie][b] = dixiemes;
@@ -325,7 +431,8 @@ size_t dn_hist_octets_detail(size_t *points, size_t *seaux, size_t *index)
 {
     size_t p = sizeof(s_pts);
     size_t b = sizeof(s_smin) + sizeof(s_smax) + sizeof(s_svu);
-    size_t i = sizeof(s_w) + sizeof(s_pret) + sizeof(s_seau_courant);
+    size_t i = sizeof(s_w) + sizeof(s_pret) + sizeof(s_seau_abs) +
+               sizeof(s_tick_us) + sizeof(s_rattr_evts) + sizeof(s_rattr_trous);
     if (points) { *points = p; }
     if (seaux) { *seaux = b; }
     if (index) { *index = i; }

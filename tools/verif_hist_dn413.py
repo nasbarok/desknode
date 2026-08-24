@@ -203,20 +203,28 @@ def bloc_cout(lib):
         ctrl(False, "le `.map` du build est présent",
              "⛔ absent — lancer `idf.py build` avant cette gate")
         return
-    attendus = ["s_pts", "s_smin", "s_smax", "s_svu", "s_w", "s_pret",
-                "s_seau_courant"]
-    manquants = [s for s in attendus if s not in sym]
-    ctrl(not manquants, "les 7 symboles de `dn_hist` sont dans le `.map`",
+    noyau = ["s_pts", "s_smin", "s_smax", "s_svu", "s_w", "s_pret"]
+    manquants = [s for s in noyau if s not in sym]
+    ctrl(not manquants, "les symboles de stockage sont dans le `.map`",
          "manquants : %s" % (manquants or "aucun"))
     ctrl("s_seaux_ouverts" not in sym,
          "`s_seaux_ouverts` a DISPARU du `.map` (AC2.2)",
          "supprimé, pas seulement débranché")
-    somme = sum(sym.get(s, 0) for s in attendus)
-    print("     `.map` : " + " · ".join("%s %d" % (s, sym.get(s, 0))
-                                        for s in attendus))
+    ctrl("s_seau_courant" not in sym and "s_seau_abs" in sym,
+         "l'index de seau est ABSOLU dans le binaire (AC3.2)",
+         "`s_seau_abs` %d o" % sym.get("s_seau_abs", 0))
+    somme = sum(sym.values())
+    print("     `.map` (%d symboles) : " % len(sym) +
+          " · ".join("%s %d" % (k, v) for k, v in sorted(sym.items())))
     ctrl(somme == tot,
-         "le coût déclaré == le coût du `.map`",
+         "le coût déclaré == LA SOMME DE **TOUS** les symboles du `.map`",
          "declare %d o, map %d o, ecart %+d o" % (tot, somme, tot - somme))
+    print("     ⚠️ On somme TOUT ce que l'éditeur de liens a placé pour")
+    print("        `dn_hist.c.obj`, ⛔ pas une liste écrite à la main : une")
+    print("        statique ajoutée et oubliée dans `dn_hist_octets_detail()`")
+    print("        fait ROUGIR cette ligne, et c'est le seul moyen que le")
+    print("        chiffre ne re-périme pas en silence comme les trois")
+    print("        précédents (1 344 / 1 536 / 1 728).")
 
 
 def bloc_avant_init(source, lib_ref):
@@ -328,6 +336,136 @@ def bloc_couverture(source):
          "le défaut d'AC2.2 est REPRODUIT, donc la gate le voit")
 
 
+def bloc_axe_temps(source):
+    print("\n── AC3.1 — L'AXE DES TEMPS NE SE COMPRIME PAS APRÈS UN `ui off` ───")
+    lib, err = construire(source, "axe")
+    if lib is None:
+        ctrl(False, "la coquille compile", err[:200])
+        return
+    lib.dn_hist_init()
+    lib.dn_hist_rattraper.restype = ctypes.c_int
+    for t in range(0, 6):
+        horloge(lib, t)
+        lib.dn_hist_rattraper()
+        lib.dn_hist_poser(0, 100 + t, True)
+    avant = lib.dn_hist_debut(0)
+    ctrl(lib.dn_hist_reels(0) == 6, "6 s d'échantillonnage ⇒ 6 points réels",
+         "position d'écriture = %d" % avant)
+
+    # ── LA PAUSE : 60 s pendant lesquelles LVGL est arrêté ──────────────────
+    # Dernier échantillon à t = 5 s ; reprise à t = 66 s. Les secondes 6..65
+    # n'ont PAS été échantillonnées : 60 trous, puis l'échantillon de reprise.
+    horloge(lib, 66)
+    comble = lib.dn_hist_rattraper()
+    ctrl(comble == 60,
+         "pause t=5 s -> t=66 s ⇒ les 60 s non échantillonnées sont COMBLÉES",
+         "comblé %d (secondes 6..65)" % comble)
+    lib.dn_hist_poser(0, 999, True)
+    pts = lib.dn_hist_points(0)
+    ctrl(lib.dn_hist_reels(0) == 7, "7 points réels, pas 7 points COLLÉS",
+         "%d réels sur 120" % lib.dn_hist_reels(0))
+    ecart = (lib.dn_hist_debut(0) - avant) % N_POINTS
+    ctrl(ecart == 61,
+         "l'anneau a avancé de 61 positions (60 trous + la reprise)",
+         "%d positions — ⛔ la courbe ne recolle PAS les deux bords" % ecart)
+    re_, rt = ctypes.c_uint32(0), ctypes.c_uint32(0)
+    lib.dn_hist_rattrapages(ctypes.byref(re_), ctypes.byref(rt))
+    ctrl(re_.value == 1 and rt.value == 60,
+         "le rattrapage est COMPTÉ et publiable par `hist`",
+         "%d coupure(s), %d trou(s)" % (re_.value, rt.value))
+
+    # ── LA GIGUE N'EST PAS UNE COUPURE ─────────────────────────────────────
+    lib.dn_hist_init()
+    horloge(lib, 0)
+    lib.dn_hist_rattraper()
+    for ms in (1040, 2080, 3150, 4200):
+        ctypes.c_int64.in_dll(lib, "dn_test_horloge_us").value = ms * 1000
+        ctrl(lib.dn_hist_rattraper() == 0,
+             "gigue de timer à t=%d ms ⇒ AUCUN trou creusé" % ms,
+             "⛔ une courbe en pointillés sur une carte saine")
+
+    # ── TÉMOIN NÉGATIF : sans rattrapage, les deux bords se recollent ───────
+    print("\n     🔴 TÉMOIN NÉGATIF — `dn_hist_rattraper()` neutralisée")
+    i = source.find("int dn_hist_rattraper(void)")
+    j = source.find("\n}\n", i)
+    mut = source[:i] + "int dn_hist_rattraper(void)\n{\n    return 0;\n}\n" + \
+        source[j + 3:]
+    libm, err = construire(mut, "sansrattr")
+    if libm is None:
+        ctrl(False, "le mutant compile", err[:300])
+        return
+    libm.dn_hist_rattraper.restype = ctypes.c_int
+    libm.dn_hist_init()
+    for t in range(0, 6):
+        horloge(libm, t)
+        libm.dn_hist_rattraper()
+        libm.dn_hist_poser(0, 100 + t, True)
+    a = libm.dn_hist_debut(0)
+    horloge(libm, 66)
+    libm.dn_hist_rattraper()
+    libm.dn_hist_poser(0, 999, True)
+    d = (libm.dn_hist_debut(0) - a) % N_POINTS
+    ctrl(d == 1,
+         "sans rattrapage, 60 s de pause avancent l'anneau d'UNE case",
+         "le défaut est REPRODUIT : 60 s dessinées comme 1 s")
+
+
+def bloc_seaux(source):
+    print("\n── AC3.2 — `seau_suivre()` NE SAUTE PLUS DE SEAUX ─────────────────")
+    lib, err = construire(source, "seaux")
+    if lib is None:
+        ctrl(False, "la coquille compile", err[:200])
+        return
+
+    def scenario(l):
+        """3 heures alimentées, puis un saut à l'heure absolue 25.
+
+        L'heure 25 a le MÊME index d'anneau que l'heure 1 : c'est le cas où un
+        index modulo 24 répond « même seau » sur deux instants distants d'un
+        jour entier."""
+        l.dn_hist_init()
+        for h, v in ((0, 500), (1, 100), (2, 900)):
+            horloge(l, h * SEAU_S + 10)
+            l.dn_hist_poser(0, v, True)
+        horloge(l, 25 * SEAU_S + 10)
+        l.dn_hist_poser(0, 700, True)
+        return minmax(l, 0, longue=True)
+
+    ok, mn, mx = scenario(lib)
+    ctrl(ok and mn == 700 and mx == 900,
+         "après le saut, la fenêtre ne garde que 900 (h=2) et 700 (h=25)",
+         "%d..%d" % (mn, mx))
+    ctrl(mn != 500,
+         "le 500 de l'heure 0, VIEUX DE 25 h, a été vidé par la traversée",
+         "⛔ sinon un minimum d'il y a 25 h vit dans une fenêtre de 24 h")
+    ctrl(mn != 100,
+         "le 100 de l'heure 1 a été vidé lui aussi (seau ré-atteint)",
+         "l'heure 25 retombe sur l'index d'anneau de l'heure 1")
+
+    # ── TÉMOIN NÉGATIF : l'ancienne version, index d'anneau, arrivée seule ──
+    print("\n     🔴 TÉMOIN NÉGATIF — l'ancien `seau_suivre()` est remis")
+    ancien = """
+    int64_t up_s = esp_timer_get_time() / 1000000;
+    int b = (int)((up_s / DN_HIST_SEAU_S) % DN_HIST_SEAUX);
+    if (b == (int)(s_seau_abs % DN_HIST_SEAUX) && s_seau_abs >= 0) { return; }
+    s_seau_abs = up_s / DN_HIST_SEAU_S;
+    for (int s = 0; s < DN_HIST_N_SERIES; s++) { s_svu[s][b] = false; }
+}
+"""
+    i = source.find("static void seau_suivre(void)")
+    j = source.find("\n}\n", i)
+    mut = source[:i] + "static void seau_suivre(void)\n{" + ancien + \
+        source[j + 3:]
+    libm, err = construire(mut, "seausaut")
+    if libm is None:
+        ctrl(False, "le mutant compile", err[:300])
+        return
+    ok, mn, mx = scenario(libm)
+    ctrl(ok and mn == 500,
+         "l'ancienne version garde le 500 de l'heure 0, vieux de 25 h",
+         "%d..%d — le défaut d'AC3.2 est REPRODUIT" % (mn, mx))
+
+
 def main():
     src, sha_c = lire(DN_HIST_C)
     _, sha_h = lire(DN_HIST_H)
@@ -355,10 +493,13 @@ def main():
     bloc_cout(lib)
     bloc_avant_init(src, lib)
     bloc_couverture(src)
+    bloc_axe_temps(src)
+    bloc_seaux(src)
 
     print("\n" + "=" * 78)
-    print("⚠️ CE QUE CETTE GATE NE SOLDE PAS : le témoin d'AC2.2 sur la CARTE")
-    print("   (allumée > 1 h sans source PC, l'œil sur la page), et le `.map`")
+    print("⚠️ CE QUE CETTE GATE NE SOLDE PAS : les témoins CARTE — AC2.2")
+    print("   (allumée > 1 h sans source PC) et AC3.3 (`ui off` >= 60 s, le")
+    print("   verdict à l'œil ET par `hist`) —, et le `.map`")
     print("   qu'elle lit est celui du DERNIER `idf.py build` — pas du binaire")
     print("   flashé. Le SHA au bandeau reste la seule preuve de ce qui tourne.")
     if ko_total[0] == 0:

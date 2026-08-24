@@ -4522,6 +4522,21 @@ static void descripteurs_auditer(void)
 static void hist_tick(lv_timer_t *t)
 {
     (void)t;
+    /* 🔴 dn4-13 / AC3.1 — LE TEMPS NON ÉCHANTILLONNÉ EST COMBLÉ **AVANT** LES
+     *    POSES DE CE TICK. `ui off` met LVGL en pause : ce timer ne tourne plus,
+     *    l'anneau n'avance plus, et au `ui on` le point suivant s'écrivait JUSTE
+     *    À CÔTÉ de celui d'avant la pause. La courbe reliait alors 60 s par un
+     *    segment qui en vaut UNE à l'écran.
+     * ⚠️ L'ordre compte : rattraper APRÈS aurait poussé l'échantillon frais dans
+     *    le passé, derrière les trous. */
+    int comble = dn_hist_rattraper();
+    if (comble > 0) {
+        ESP_LOGW(TAG,
+                 "historique : %d seconde(s) non échantillonnée(s) comblées en "
+                 "TROUS (pause `ui off` ou préemption longue) — la courbe ne "
+                 "reliera PAS les deux bords de la coupure",
+                 comble);
+    }
     for (int c = 0; c < DN_UI_METRIQUES; c++) {
         int s0 = -1, s1 = -1;
         int n = dn_hist_series_de_case(c, &s0, &s1);

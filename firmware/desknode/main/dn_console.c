@@ -7814,6 +7814,23 @@ static int cmd_hist(int argc, char **argv)
     }
     printf("  cadence : %d ms — une HORLOGE, ⛔ pas la cadence des trames\n",
            DN_HIST_PERIODE_MS);
+    {
+        /* 🔴 dn4-13 / AC3.1 — LE RATTRAPAGE SE DIT. Un comblement silencieux
+         *    serait une reparation invisible, donc invérifiable : c'est ce
+         *    compteur qui rend le temoin d'AC3.3 (`ui off` >= 60 s) LISIBLE
+         *    autrement qu'a l'oeil. */
+        uint32_t re = 0, rt = 0;
+        dn_hist_rattrapages(&re, &rt);
+        printf("  rattrapage : %lu coupure(s), %lu point(s) de trou comble(s)\n",
+               (unsigned long)re, (unsigned long)rt);
+        if (re == 0) {
+            printf("     (aucune coupure depuis l'init — regime nominal)\n");
+        } else {
+            printf("     ⇒ l'anneau a AVANCE pendant la pause : la courbe ne relie\n");
+            printf("       PAS les deux bords. ⛔ Sans ca, 60 s de `ui off` se\n");
+            printf("       dessinaient comme UNE seconde.\n");
+        }
+    }
     printf("  profondeur : %d points a 1 Hz = %d s de session\n",
            DN_HIST_N_POINTS, DN_HIST_N_POINTS * DN_HIST_PERIODE_MS / 1000);
     /* 🔴 LA FENETRE LONGUE EST PUBLIEE AVEC SA COUVERTURE **REELLE**. Sans

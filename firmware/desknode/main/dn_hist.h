@@ -122,6 +122,23 @@ typedef enum {
 
 void dn_hist_init(void);
 
+/*
+ * 🔴 dn4-13 / AC3.1 — À APPELER **UNE FOIS PAR TICK D'HORLOGE, AVANT LES POSES**.
+ * Comble de TROUS les périodes de 1 Hz qui n'ont PAS été échantillonnées (un
+ * `ui off`, une pause LVGL, une tâche préemptée longtemps). Sans elle, l'anneau
+ * recolle les deux bords de la pause et `lv_chart` relie deux instants distants
+ * par un segment qui vaut UNE seconde à l'écran : un mensonge sur la DURÉE,
+ * ⛔ pas sur la valeur — donc plus difficile à voir.
+ * ⚠️ Elle lit `esp_timer_get_time()`, ⛔ PAS le tick LVGL : `lvgl_port_pause()`
+ *    arrête le tick, donc la pause est INVISIBLE pour LVGL. Rend le nombre de
+ *    points comblés (0 en régime : une gigue de timer n'est pas une coupure).
+ */
+int dn_hist_rattraper(void);
+
+/* Ce que le rattrapage a fait depuis l'init — pour que `hist` le DISE. Un
+ * comblement silencieux serait une réparation invisible, donc invérifiable. */
+void dn_hist_rattrapages(uint32_t *evenements, uint32_t *trous);
+
 /* Pose UN échantillon. `connue == false` ⇒ **TROU**, ⛔ pas zéro.
  * ⚠️ `dixiemes` est la valeur DU FIL, en dixièmes — ⛔ pas l'unité affichée
  *    (`brut[0]`, lui, est en unités affichées pour la jauge : les confondre
