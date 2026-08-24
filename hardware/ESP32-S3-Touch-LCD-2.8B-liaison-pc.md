@@ -1565,7 +1565,15 @@ corrigés. ⇒ leurs verdicts de §16 sont **remplacés par ceux-ci**.
 | `SPI Flash Size` | `16MB` | bootloader, avant `app_main` |
 | `cfg` (NVS = ACTIVE) | `num_fbs=1 bounce_px=7680 draw_lines=128 draw_psram=0 lvgl_core=0` | `cfg`, relevé avant campagne |
 
-🎯 **ET C'EST BIEN LE FIRMWARE DE `HEAD`** : `git diff 4c3a3f7..8f4cebc -- firmware/` est **VIDE**.
+~~🎯 **ET C'EST BIEN LE FIRMWARE DE `HEAD`**~~ — 🔴 **AMENDÉ LE 2026-08-24 (2ᵉ revue de code),
+⛔ PAS EFFACÉ. LA CONCLUSION ÉTAIT FAUSSE AU MOMENT OÙ ELLE A ÉTÉ ÉCRITE.**
+`git diff 4c3a3f7..8f4cebc -- firmware/` est bien **VIDE** (re-vérifié) — mais `8f4cebc` est la base
+**D'AVANT** la revue, ⛔ pas `HEAD`. À l'heure de cette séance, le commit `75f8afc` (« D3 — la garde
+refusait des lignes NON PEUPLÉES », **+85 lignes dans `dn_ui.c`**) était **déjà dans l'intervalle** :
+l'arbre différait donc du firmware que la carte portait.
+✅ **CE QUI TIENT, ET C'EST ÉCRIT DEUX LIGNES PLUS BAS** : les trois tirs exercent `dn_link.c` et
+`dn_console.c`, qu'aucun patch de revue ne touche. **Le raisonnement était bon ; c'est la phrase de
+conclusion qui était fausse** — et c'est elle qu'un lecteur reprend.
 ⛔ **Aucun flash n'a eu lieu**, et il n'en fallait pas : les trois tirs exercent `dn_link.c` (parse
 + compteurs) et `dn_console.c` (`pc`), qu'aucun patch de revue ne touche. Le seul patch firmware de
 la revue est la garde `dn_ui.c` (`widget grandeurs`), **qui reste À VALIDER SUR CARTE** — elle
