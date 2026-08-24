@@ -95,9 +95,41 @@ def cases_pc(ligne):
         return None
     # 🎯 VALIDATION : la 1re case DOIT ressembler a une grandeur. Sinon le
     #    decoupage a rate et on le DIT, ⛔ on ne rend pas des chaines au hasard.
-    if not re.match(r"^(-?\d+,\d|--)", cases[0]):
+    # 🔴 2e REVUE (2026-08-24) : `re.match` ANCRE AU DEBUT, donc cette validation
+    #    aurait rendu `None` D'EMBLEE le jour ou une grandeur d'INDEX 0 recevrait
+    #    un prefixe d'ecran. ⇒ on cherche le motif OU QU'IL SOIT dans la case.
+    if not _VALEUR.search(cases[0]):
         return None
     return cases
+
+
+# 🔴 LE PREFIXE D'ECRAN N'EXISTAIT PAS QUAND CE FICHIER A ETE ECRIT — ET IL A
+#    CASSE LES DEUX TEMOINS v3 (2e revue, 2026-08-24). `dn4-9` a pose les
+#    prefixes (`extr.moy` / `ventirad` / `boitier` sur `disk`, `c.max` sur `cpu`)
+#    et `dn_console.c:2843` les IMPRIME :
+#        printf(" %s%s%d,%d %s", px ? px : "", px ? " " : "", ...)
+#    avec `px = dn_ui_case_prefixe(idx, g)`, qui passe `detail = true` et rend
+#    donc AUSSI les `prefixe_detail_seul`. Les assertions comparaient le NOMBRE
+#    NU (`startswith("800,0 tr/min")`) : les deux temoins v3 et le cas AC7
+#    « champ VIDE en position INTERNE » sortaient ✖️ SUR UNE CARTE QUI AFFICHAIT
+#    EXACTEMENT L'ATTENDU. ⛔ Un instrument faux accuse le sujet sain — le defaut
+#    meme que le commit `1d0227c` dit fermer.
+# ⚠️ `dn_console.c:2822` NOMMAIT deja ce fichier comme lecteur de la console.
+_VALEUR = re.compile(r"(-?\d+,\d|--)")
+
+
+def _prefixe(case):
+    """La partie AVANT la valeur — `""` s'il n'y en a pas. ⛔ Jamais `None`."""
+    m = _VALEUR.search(case or "")
+    return (case[:m.start()].strip() if m else "")
+
+
+def _valeur(case):
+    """La case SANS son prefixe d'ecran. ⛔ Rend `None` si rien ne ressemble a
+    une grandeur : un decoupage rate est un ECHEC D'INSTRUMENT, pas un verdict.
+    """
+    m = _VALEUR.search(case or "")
+    return case[m.start():] if m else None
 
 
 def _extraire(txt):
@@ -131,8 +163,41 @@ def autotest():
         sys.exit("\u26d4 AUTO-TEST : le parseur a rendu quelque chose sur une "
                  "sortie SANS ligne `rejets` — il ne peut pas voir le defaut "
                  "qu'il pretend exclure.")
-    print("  [OK ] auto-test du parseur : il lit une ligne FABRIQUEE, et il LEVE "
-          "quand la ligne manque")
+    # 🔴 2e REVUE (2026-08-24) — LE DECOUPAGE DES CASES SE PROUVE AUSSI, ET SUR
+    #    LE FORMAT **DE HEAD**, PREFIXES COMPRIS. C'est ce controle qui manquait :
+    #    `dn4-9` a ajoute les prefixes d'ecran a `pc`, les assertions comparaient
+    #    le nombre nu, et les deux temoins v3 sortaient ✖️ sur une carte SAINE.
+    #    Ces deux lignes sont FABRIQUEES au format que `dn_console.c` produit a
+    #    HEAD — ⛔ pas relevees sur la carte, pour que l'auto-test tourne partout.
+    for etiq, ligne, att_px, att_v in (
+        ("disk", "  disk  -> case 4 DISQUE    VIVANTE      480,0 Mo/s \u00b7 "
+                 "extr.moy -- (tr/min ATTENDUE, non publiee par la source) \u00b7 "
+                 "ventirad 800,0 tr/min \u00b7 boitier 1400,0 tr/min  \u00b7 age 12 ms "
+                 "\u00b7 seq 7",
+         ["", "extr.moy", "ventirad", "boitier"],
+         ["480,0 Mo/s", "--", "800,0 tr/min", "1400,0 tr/min"]),
+        ("cpu", "  cpu   -> case 0 CPU       VIVANTE      52,0 % \u00b7 3,2 GHz \u00b7 "
+                "c.max 88,0 % \u00b7 -- (\u00b0C ATTENDUE, non publiee par la source)"
+                "  \u00b7 age 12 ms \u00b7 seq 8",
+         ["", "", "c.max", ""],
+         ["52,0 %", "3,2 GHz", "88,0 %", "--"]),
+    ):
+        cs = cases_pc(ligne)
+        if cs is None or len(cs) != 4:
+            sys.exit("\u26d4 AUTO-TEST : `cases_pc` ne decoupe pas la ligne `%s` du "
+                     "format de HEAD (rendu : %r)" % (etiq, cs))
+        px = [_prefixe(c) for c in cs]
+        vl = [_valeur(c) for c in cs]
+        if px != att_px:
+            sys.exit("\u26d4 AUTO-TEST : prefixes `%s` = %r, attendu %r" % (etiq, px, att_px))
+        if any(v is None or not v.startswith(a) for v, a in zip(vl, att_v)):
+            sys.exit("\u26d4 AUTO-TEST : valeurs `%s` = %r, attendu %r" % (etiq, vl, att_v))
+    # ⛔ ET IL DOIT REFUSER un decoupage douteux, sinon il rendrait des chaines au
+    #    hasard qu'un appelant prendrait pour un verdict.
+    if cases_pc("  cpu   -> case 0 CPU  VIVANTE  rien qui ressemble a une valeur") is not None:
+        sys.exit("\u26d4 AUTO-TEST : `cases_pc` a accepte une ligne SANS grandeur.")
+    print("  [OK ] auto-test du parseur : il lit une ligne FABRIQUEE, il separe "
+          "PREFIXE et VALEUR au format de HEAD, et il LEVE quand la ligne manque")
 
 
 def _cmd(ser, c):
@@ -233,11 +298,25 @@ def main():
                 cases = cases_pc(ligne_disk) or []
                 def _case(i):
                     return cases[i] if i < len(cases) else ""
+                # ⚠️ ON COMPARE LA VALEUR **SANS** LE PREFIXE D'ECRAN, et on
+                #    verifie le prefixe SEPAREMENT : les deux sont de
+                #    l'information, et les melanger a fait sortir ✖️ sur une
+                #    carte saine (2e revue). ⛔ `_valeur` rend `None` si le
+                #    decoupage rate — un `startswith` sur `None` leverait, donc
+                #    on le teste.
+                _v = [_valeur(_case(i)) for i in range(4)]
+                _px = [_prefixe(_case(i)) for i in range(4)]
                 ok = ((not bouges) and len(cases) == 4
-                      and _case(0).startswith("480,0 Mo/s")
-                      and _case(1).startswith("--")
-                      and _case(2).startswith("800,0 tr/min")
-                      and _case(3).startswith("1400,0 tr/min"))
+                      and all(x is not None for x in _v)
+                      and _v[0].startswith("480,0 Mo/s")
+                      and _v[1].startswith("--")
+                      and _v[2].startswith("800,0 tr/min")
+                      and _v[3].startswith("1400,0 tr/min")
+                      # 🎯 LE PREFIXE EST UNE PROPRIETE A PART ENTIERE : c'est lui
+                      #    qui NOMME quel ventilateur est muet (dn4-9). Un
+                      #    prefixe qui glisserait d'un cran serait un defaut, et
+                      #    sans ce controle il passerait inapercu.
+                      and _px[1:] == ["extr.moy", "ventirad", "boitier"])
                 detail = ("  |  %s" % (ligne_disk.strip() or
                                        "\u26d4 ligne `disk` INTROUVABLE dans `pc`"))
                 etiq = "ACCEPTEE"
@@ -300,7 +379,7 @@ def main():
         #    agent v3 non modifie serait tombe DANS LA CASE TEMPERATURE, et AUCUN
         #    COMPTEUR N'AURAIT BRONCHE. C'est precisement ce que la 4e voie evite,
         #    et c'est CE tir qui le demontre au lieu de le raisonner.
-        for nom_t, met, vals, att in (
+        for nom_t, met, vals, att, att_px in (
                 # 🔴 L'UNITE FAIT PARTIE DE L'ATTENDU, ⛔ PAS SEULEMENT LE NOMBRE.
                 #    Premiere version de ce temoin : `["52,0", "3,2", "88,0", "--"]`.
                 #    Elle etait AVEUGLE au defaut qu'elle pretend exclure — si la
@@ -309,12 +388,17 @@ def main():
                 #    pour solder AC5, exactement la garde decorative que la revue
                 #    du 2026-08-21 a passe sa journee a retirer d'ailleurs.
                 # ⇒ unites reprises de `k_metriques[]` (dn_link.c:128 et :174).
+                # ⚠️ 4e COLONNE AJOUTEE EN 2e REVUE : LES PREFIXES D'ECRAN
+                #    ATTENDUS, position par position (`dn4-9`). ⛔ Les ignorer
+                #    faisait sortir ces deux temoins en ECHEC sur une carte saine.
                 ("TEMOIN v3 `cpu` a TROIS (agent dn4-6 NON MODIFIE)",
                  "cpu", [520, 32, 880],
-                 ["52,0 %", "3,2 GHz", "88,0 %", "--"]),
+                 ["52,0 %", "3,2 GHz", "88,0 %", "--"],
+                 ["", "", "c.max", ""]),
                 ("TEMOIN v3 `disk` a UNE (agent dn4-6 NON MODIFIE)",
                  "disk", [7085],
-                 ["708,5 Mo/s", "--", "--", "--"])):
+                 ["708,5 Mo/s", "--", "--", "--"],
+                 ["", "extr.moy", "ventirad", "boitier"])):
             print()
             seq += 1
             avant = lire_compteurs(ser)
@@ -331,11 +415,20 @@ def main():
             #    en vrac serait vrai meme apres un decalage d'un cran.
             # ⛔ Un decoupage rate rend `None` : c'est un ECHEC D'INSTRUMENT, et il
             #    se dit comme tel, ⛔ pas comme un echec de la carte.
+            # ⚠️ VALEUR ET PREFIXE SONT COMPARES SEPAREMENT (2e revue). Le
+            #    prefixe est ce qui NOMME le ventilateur muet : un glissement d'un
+            #    cran s'y verrait, et nulle part ailleurs.
+            vals = [_valeur(c) for c in (cases or [])]
+            pxs = [_prefixe(c) for c in (cases or [])]
             places = (cases is not None and len(cases) == len(att)
-                      and all(cases[i].startswith(a) for i, a in enumerate(att)))
+                      and all(v is not None for v in vals)
+                      and all(vals[i].startswith(a) for i, a in enumerate(att))
+                      and pxs == att_px)
             ok = (not any(delta.values())) and places
             print("  [%s] %s" % ("OK " if ok else "\u2716\ufe0f ", nom_t))
-            print("        attendu aux 4 positions : %s" % " | ".join(att))
+            print("        attendu aux 4 positions : %s"
+                  % " | ".join(("%s %s" % (px, a)).strip()
+                               for px, a in zip(att_px, att)))
             print("        lu  : %s" % (ligne.strip() or
                                         "\u26d4 ligne INTROUVABLE dans `pc`"))
             if not ok:
