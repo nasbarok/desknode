@@ -455,7 +455,8 @@ int dn_hist_series_de_case(int case_idx, int *s0, int *s1)
  *    réel, donc il suit automatiquement `DN_HIST_N_SERIES` et `DN_HIST_SEAUX`.
  *    C'est la seule forme qui ne puisse pas périmer en silence — les trois
  *    chiffres publiés (1 344 / 1 536 / 1 728) ont tous péri de l'être.
- * ⚠️ `s_pret` et `s_seau_courant` sont comptés : ils sont du `.bss` du module.
+ * ⚠️ `s_pret`, `s_seau_abs`, `s_ecrits` et les horodatages sont comptés : ils sont
+ *    du `.bss` du module, au même titre que les points.
  *    Le compilateur peut les aligner ou les fusionner autrement — la confrontation
  *    au `.map` (gate `verif_hist_dn413.py`) est là pour dire l'écart, pas pour
  *    être contournée.

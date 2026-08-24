@@ -7912,7 +7912,8 @@ static int cmd_hist(int argc, char **argv)
         printf("     points %d x %d x 4 = %u o\n", DN_HIST_N_SERIES,
                DN_HIST_N_POINTS, (unsigned)hp);
         printf("     seaux  s_smin + s_smax + s_svu = %u o\n", (unsigned)hb);
-        printf("     index  s_w + s_pret + s_seau_courant = %u o\n", (unsigned)hi);
+        printf("     index  s_w + s_ecrits + s_pret + s_seau_abs + horodatage\n");
+        printf("            + 2 compteurs de rattrapage = %u o\n", (unsigned)hi);
         printf("  ⚠️ CE TOTAL EST CELUI DU MODULE, ⛔ plus `sizeof(s_pts)` seul.\n");
         printf("     Jusqu'au 2026-08-25 cette ligne imprimait %u o : tout cout\n",
                (unsigned)hp);
