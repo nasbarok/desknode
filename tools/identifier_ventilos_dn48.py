@@ -129,6 +129,17 @@ def tout_rendre():
         try:
             if not poser(k, "null"):
                 rates.append(k)
+        except KeyboardInterrupt:
+            # 🔴 2e REVUE (2026-08-24) — `except Exception` NE RATTRAPE PAS
+            #    `KeyboardInterrupt`. Or ce `finally` tourne DEJA apres un premier
+            #    Ctrl-C, et un SECOND Ctrl-C est le geste le PLUS probable quand
+            #    les ventilateurs hurlent : il abandonnait les canaux restants a
+            #    100 %, alors que l'en-tete promet « il ne laisse JAMAIS un canal
+            #    sous controle logiciel ». On l'attrape, on FINIT la boucle, et on
+            #    le dit. ⛔ Le materiel passe avant l'interruption.
+            rates.append(k)
+            print("  /!\\ Ctrl-C PENDANT LA REMISE EN AUTOMATIQUE — canal %d non "
+                  "rendu. \u26d4 On CONTINUE quand meme : la machine passe avant." % k)
         except Exception as e:                       # ⛔ on continue, TOUJOURS
             rates.append(k)
             print("  /!\\ canal %d : la remise en automatique a LEVE (%s: %s)"
@@ -149,14 +160,31 @@ def tout_rendre():
         print("      ⛔ NE PAS CONCLURE « la machine est rendue » : on ne sait pas.")
         print("      ⇒ ouvrir LHM et remettre les controles en 'Default' A LA MAIN,")
         print("         ou relancer avec --restaurer une fois LHM revenu.")
-        return
+        return False
+    # 🔴 2e REVUE (2026-08-24) — LA BOUCLE ITERAIT `ctl`, ⛔ PAS `_TOUS`. Le
+    #    correctif precedent n'avait ferme que le cas « `lire_tout()` LEVE ». Un
+    #    `ctl` VIDE (arbre sans noeuds `Control`, LHM relance NON ELEVE, `PUCE`
+    #    renommee) ou des `Value` illisibles (`x = None`) donnaient une liste vide
+    #    ⇒ « OK : aucun canal bloque a 100 % » — LA LIGNE SUR LAQUELLE L'OPERATEUR
+    #    CROIT LA MACHINE RENDUE — alors que les six canaux peuvent etre epingles.
+    # ⇒ ON EXIGE D'AVOIR LU **TOUS** LES CANAUX AVANT DE RASSURER.
+    manquants = [k for k in _TOUS if ctl.get(k) is None]
     bloques = [i for i, v in sorted(ctl.items()) if v is not None and v >= 99.0]
     if bloques:
-        print("  /!\\ CANAUX ENCORE A 100 %% : %s" % ", ".join(bloques))
+        print("  /!\\ CANAUX ENCORE A 100 %% : %s"
+              % ", ".join(str(b) for b in bloques))
         print("      ⛔ NE PAS LAISSER LA MACHINE AINSI. Relancer avec --restaurer,")
         print("         ou ouvrir LHM et remettre les controles en 'Default'.")
-    else:
-        print("  OK : aucun canal bloque a 100 %.")
+        return False
+    if manquants:
+        print("  /!\\ %d/%d CANAL(AUX) N'ONT PAS PU ETRE RELUS : %s"
+              % (len(manquants), len(_TOUS),
+                 ", ".join(str(k) for k in manquants)))
+        print("      \u26d4 NE PAS CONCLURE « aucun canal bloque » : on ne sait PAS.")
+        print("      \u21d2 ouvrir LHM et verifier que les controles sont en 'Default'.")
+        return False
+    print("  OK : aucun canal bloque a 100 %% (les %d relus)." % len(_TOUS))
+    return not rates
 
 
 def main():
@@ -176,8 +204,14 @@ def main():
     a = ap.parse_args()
 
     if a.restaurer:
-        tout_rendre()
-        return 0
+        # 🔴 2e REVUE (2026-08-24) : `main()` rendait **0 INCONDITIONNELLEMENT**,
+        #    y compris apres avoir imprime « /!\\ 6 canal(aux) NON RENDUS ». Tout
+        #    appelant (script, `&&`, journal de seance) lisait « succes » sur une
+        #    tour dont les six ventilateurs sont bloques a 100 %. C'est la famille
+        #    « subprocess rend 0 sans rien avoir fait » que ce MEME delta venait de
+        #    fermer dans `regime_reel_dn48.py` — la doctrine n'avait pas ete
+        #    appliquee aux deux instruments.
+        return 0 if tout_rendre() else 1
 
     print("=== AC3 -- IDENTIFICATION DES CANAUX PAR STIMULUS / REPONSE ===")
     print("  ⛔ uniquement VERS LE HAUT · retour automatique dans un `finally`")
@@ -229,7 +263,15 @@ def main():
 
     finally:
         print()
-        tout_rendre()
+        rendu = tout_rendre()
+
+    if not rendu:
+        print("\n\u2716\ufe0f  LA MACHINE N'EST PAS RENDUE — \u26d4 NE PAS PUBLIER DE "
+              "SYNTHESE SUR UNE TOUR DONT LES VENTILATEURS SONT SOUS CONTROLE "
+              "LOGICIEL.")
+        print("   \u21d2 relancer avec --restaurer, ou remettre les controles en "
+              "'Default' dans LHM.")
+        return 1
 
     print("\n=== SYNTHESE -- ⛔ ce que la MESURE dit, pas une identite ===")
     print("  %-12s %s" % ("canal", "lecture(s) qui ont bouge"))

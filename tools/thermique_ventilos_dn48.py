@@ -74,6 +74,19 @@ _LIGNE = re.compile(
 )
 
 
+
+def _fini(x):
+    """`True` si `x` est un reel utilisable. ⛔ NaN et inf n'en sont pas.
+
+    🔴 UN SEUL ENDROIT (2e revue, 2026-08-24). La regle etait ecrite EN LIGNE
+       dans `Lecteur.lire()` et NULLE PART dans `analyser()` — d'ou le
+       contournement `nan < 10.0 -> False` reste ouvert sur le chemin
+       `--analyser`. La recopier une 2e fois aurait reproduit la classe de defaut
+       que ce depot retire ailleurs (« un miroir recopie A LA MAIN »).
+    """
+    return x == x and x not in (float("inf"), float("-inf"))
+
+
 class Lecteur:
     """/metrics en connexion PERSISTANTE -- l'interface retenue en AC2.
     Se reconnecte UNE fois : ce chemin-la est aussi le detecteur « LHM absent »."""
@@ -114,7 +127,7 @@ class Lecteur:
                         val = float(m.group(3))
                     except ValueError:
                         continue          # ⛔ pas une panne : une valeur illisible
-                    if val != val or val in (float("inf"), float("-inf")):
+                    if not _fini(val):
                         continue          # NaN / inf = « la source n'a pas ca »
                     t[m.group(2) + m.group(1)] = val
                 return t
@@ -192,10 +205,30 @@ def analyser(chemin):
         return
 
     def col(nom):
+        # 🔴 2e REVUE (2026-08-24) — LE CONTOURNEMENT `nan < 10.0 -> False` ETAIT
+        #    RESTE OUVERT SUR LE CHEMIN D'ANALYSE. La garde `try/float` + `_fini`
+        #    n'avait ete posee que dans `Lecteur.lire()` (L'ACQUISITION), avec ce
+        #    motif exact : « `nan < 10.0` vaut False — donc la porte NON CONCLUANT
+        #    etait CONTOURNEE et les correlations tournaient sur des donnees
+        #    empoisonnees ». Or `--analyser <csv>` relit N'IMPORTE QUEL CSV, y
+        #    compris ceux enregistres AVANT ce correctif, et faisait `float(v)` nu.
+        #    Consequence mesuree : `etendue = nan` ⇒ `nan < 10.0` False ⇒ porte
+        #    « NON CONCLUANT » franchie ⇒ `_pearson` rend `nan` ⇒
+        #    `valides[0][1] < 0.5` False ⇒ porte « AUCUN canal » franchie ⇒
+        #    « 🎯 control/N se detache (r = nan) », sur un tri par cle `nan`.
+        # ⇒ UNE VALEUR NON FINIE EST UNE ABSENCE, comme a l'acquisition.
         out = []
         for l in lignes:
             v = l.get(nom, "")
-            out.append(float(v) if v not in ("", None) else None)
+            if v in ("", None):
+                out.append(None)
+                continue
+            try:
+                x = float(v)
+            except (TypeError, ValueError):
+                out.append(None)
+                continue
+            out.append(x if _fini(x) else None)
         return out
 
     cpu = col("cpu_pkg")

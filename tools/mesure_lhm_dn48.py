@@ -222,7 +222,19 @@ def lire_sensor(get, ids):
     for i in ids:
         d = json.loads(get("/Sensor?action=Get&id=" + urllib.parse.quote(i, safe="/")))
         v = d.get("value")
-        out.append(None if v is None else float(v))
+        # 🔴 2e REVUE (2026-08-24) — CE CANDIDAT N'AVAIT PAS LA GARDE `_fini`, ET
+        #    LE COMMENTAIRE AFFIRMAIT LE CONTRAIRE (« `lire_sensor` l'honore
+        #    (`None if v is None`) »). Ce n'est vrai que pour un `null` JSON :
+        #    `json.loads` de la stdlib accepte les litteraux **`NaN` / `Infinity`
+        #    NON QUOTES** par defaut — verifie : `json.loads('{"value": NaN}')`
+        #    rend `{'value': nan}` — et `float(v)` les laisse passer intacts.
+        #    `_juger` rendait alors `False, "valeur non finie"` ⇒ **DISQUALIFIE**,
+        #    la ou les candidats 1 et 2 comptent la meme condition physique en
+        #    « sans valeur ». ⛔ L'A/B avait de nouveau PLUS D'UNE VARIABLE.
+        # ⚠️ Meme regle que `_delocaliser` du candidat 1, qui rend `None` sur
+        #    « NaN degC » parce que son motif de nombre n'y trouve aucun chiffre.
+        x = None if v is None else float(v)
+        out.append(x if (x is None or _fini(x)) else None)
     return out
 
 
@@ -254,8 +266,21 @@ def batir_combos():
 # ⛔ Et le verdict se joue contre des seuils ABSOLUS (C1 <= 3,0 ms ; les gagnants
 #    keep-alive etaient a 1,13-2,19 ms). Un biais additif constant deplace donc
 #    directement la ligne succes/echec, meme s'il s'annule dans les deltas A/B.
-import psutil as _psutil  # noqa: E402
-_MOI = _psutil.Process()
+# 🔴 2e REVUE (2026-08-24) — HISSER L'IMPORT AU NIVEAU MODULE A TUE LE CHEMIN DE
+#    DIAGNOSTIC. `main()` porte toujours un
+#    `try: import psutil / except ImportError: print("psutil manquant : pip
+#    install --user psutil") ; return 2` — devenu INATTEIGNABLE, puisque le module
+#    meurt a l'import. MESURE : `python3 tools/mesure_lhm_dn48.py --sonder` rendait
+#    `ModuleNotFoundError` nu et `exit 1` au lieu du message qui dit quoi faire.
+# ⇒ L'ECHEC EST RATTRAPE ICI, ET IL PORTE SON REMEDE. `_MOI = None` fait echouer
+#   `_cpu_ms()` de facon EXPLICITE si quelqu'un l'appelle quand meme.
+try:
+    import psutil as _psutil  # noqa: E402
+    _MOI = _psutil.Process()
+    _PSUTIL_MOTIF = None
+except ImportError as _exc:                                        # noqa: E402
+    _psutil, _MOI = None, None
+    _PSUTIL_MOTIF = str(_exc)
 
 
 def _cpu_ms():
@@ -351,12 +376,16 @@ def campagne(n, lot, periode, jeter):
             #    plusieurs secondes (timeout) et la tirer vers le haut. Les deux
             #    faussent, dans des sens opposes.
             # ⚠️ Le compte d'echecs est deja publie separement : rien n'est perdu.
+            # 🔴 2e REVUE (2026-08-24) : LE **CPU** EST FILTRE SUR LES SUCCES
+            #    LUI AUSSI. Le motif ci-dessus vaut a l'identique — et le CPU
+            #    porte C1 et C2, qui sont des seuils ABSOLUS. Voir le bloc de
+            #    commentaire de `err()`.
+            d = c1 - c0
             if bon:
                 murs[cle].append(mur)
-            d = c1 - c0
-            bloc_cpu[cle] += d
-            lot_cpu[cle] += d
-            bloc_n[cle] += 1
+                bloc_cpu[cle] += d
+                lot_cpu[cle] += d
+                bloc_n[cle] += 1
             if bloc_n[cle] % lot == 0:
                 lots_cpu[cle].append(lot_cpu[cle] / lot)
                 lot_cpu[cle] = 0.0
@@ -380,6 +409,19 @@ def campagne(n, lot, periode, jeter):
     def err(cle):
         t = bloc_cpu[cle] / 15.625
         return (t ** 0.5) * 15.625 / bloc_n[cle] if t > 0 and bloc_n[cle] else float("nan")
+
+    # 🔴 2e REVUE (2026-08-24) — LE FILTRAGE N'AVAIT ETE APPLIQUE QU'AUX DUREES.
+    #    Le motif ecrit pour `murs` — « une exception peut sortir en 0,1 ms
+    #    (connexion refusee) ... ou en plusieurs secondes (timeout) ... Les deux
+    #    faussent » — vaut IDENTIQUEMENT pour le CPU : un `ConnectionRefusedError`
+    #    coute quasi zero CPU et tire la moyenne vers le bas. Or
+    #    `res[cle]["cpu"] = bloc_cpu[cle] / bloc_n[cle]` divisait par TOUS les
+    #    tirs pendant que `mur_md`/`mur_p95` ne portaient que sur les reussis —
+    #    deux statistiques sur deux populations, imprimees sous une seule colonne
+    #    `n`. Un candidat qui echoue 40 % des tirs voyait son CPU divise par ~1,7
+    #    et passait C1 (<= 3,0 ms, seuil ABSOLU) alors que ses tirs REUSSIS
+    #    coutaient 4,5 ms.
+    # ⚠️ La note ajoutee en 1re revue ne parlait que des durees : elle est etendue.
 
     print()
     print("=== RESULTATS ===")
@@ -476,10 +518,12 @@ def main():
     ap.add_argument("--periode", type=float, default=1.0)
     ap.add_argument("--jeter", type=int, default=5)
     a = ap.parse_args()
-    try:
-        import psutil  # noqa: F401
-    except ImportError:
-        print("psutil manquant : pip install --user psutil (l'instrument en depend, pas l'agent)")
+    # 🔴 2e REVUE (2026-08-24) : ON LIT LE MOTIF CAPTURE A L'IMPORT DU MODULE.
+    #    Le `try/import` local etait du CODE MORT depuis que l'import a ete hisse
+    #    en tete de fichier — le module mourait AVANT d'arriver ici.
+    if _PSUTIL_MOTIF is not None:
+        print("psutil manquant : pip install --user psutil (l'instrument en depend, "
+              "\u26d4 pas l'agent) [%s]" % _PSUTIL_MOTIF)
         return 2
     sonder() if a.sonder else campagne(a.n, a.lot, a.periode, a.jeter)
     return 0
