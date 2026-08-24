@@ -2098,15 +2098,31 @@ def principal() -> int:
                 ap.error("--lhm : crochet ouvrant sans fermant dans %r" % brut)
             lhm_hote = brut[1:fin_crochet]
             reste = brut[fin_crochet + 1:]
+            # 🔴 2e REVUE (2026-08-24) : `reste[1:] if reste.startswith(":") else ""`
+            #    JETAIT EN SILENCE tout ce qui suit `]` sans commencer par `:`.
+            #    `--lhm "[::1]xyz:9000"` rendait `port_txt = ""` donc le port PAR
+            #    DEFAUT, et l'agent imprimait « LHM pointe sur ::1:8085 » pendant que
+            #    l'operateur croyait avoir pose 9000. Le meme bloc refuse pourtant le
+            #    crochet non ferme, l'IPv6 nu, le port non numerique et l'hote vide :
+            #    la queue residuelle etait le SEUL cas sans branche.
+            if reste and not reste.startswith(":"):
+                ap.error("--lhm : caracteres inattendus apres `]` dans %r "
+                         "(%r). Forme attendue : [ADRESSE]:PORT." % (brut, reste))
             port_txt = reste[1:] if reste.startswith(":") else ""
+            if reste == ":":
+                ap.error("--lhm : `:` sans port dans %r" % brut)
         elif brut.count(":") > 1:
             # ⛔ IPv6 NU : ambigu par construction (`::1` = hote `:` + port `1` ?).
             #    On REFUSE et on dit la forme attendue, ⛔ on ne devine pas.
             ap.error("--lhm : adresse IPv6 nue ambigue (%r). Utiliser [%s]:PORT."
                      % (brut, brut))
         else:
-            hote_txt, _, port_txt = brut.partition(":")
+            hote_txt, sep, port_txt = brut.partition(":")
             lhm_hote = hote_txt or LHM_HOTE
+            # ⚠️ MEME DEFAUT, AUTRE BRANCHE (2e revue) : `--lhm "hote:"` donnait
+            #    `port_txt = ""` donc le port PAR DEFAUT, en silence.
+            if sep and not port_txt:
+                ap.error("--lhm : `:` sans port dans %r" % brut)
         if port_txt:
             if not port_txt.isdigit():
                 ap.error("--lhm : port %r n'est pas un entier" % port_txt)
@@ -2124,6 +2140,22 @@ def principal() -> int:
     #    un diagnostic qui envoie regarder le service au lieu de la ligne de
     #    commande. Et tout ce qui atteint PERIODE_S garantit le depassement de
     #    cadence a CHAQUE cycle, donc le recalage, donc l'echantillon jete.
+    # 🔴 2e REVUE (2026-08-24) — `nan` PASSAIT LES DEUX BORNES, MESURE :
+    #    `nan <= 0.0` vaut False ET `nan >= 1.0` vaut False. `argparse type=float`
+    #    l'accepte. La suite posait `settimeout(nan)` qui leve `ValueError`,
+    #    rattrapee par le `except Exception` de `_get` ⇒ LHM en panne PERMANENTE
+    #    avec `motif = "ValueError: Invalid value NaN…"` — precisement le
+    #    diagnostic « qui envoie regarder le service au lieu de la ligne de
+    #    commande » que ces bornes existent pour empecher.
+    # ⚠️ `inf`, lui, etait bien rattrape par `>= PERIODE_S`. ⛔ Une comparaison
+    #    d'ordre ne borne PAS un NaN : il faut le tester pour lui-meme.
+    if not _fini(args.lhm_timeout):
+        ap.error("--lhm-timeout doit etre un nombre FINI (recu %r). ⛔ `nan` PASSE "
+                 "LES DEUX BORNES ci-dessous (`nan <= 0` et `nan >= PERIODE_S` sont "
+                 "FAUX tous les deux) et finit en panne LHM permanente, avec un "
+                 "motif qui accuse le service. `inf` est refuse ici aussi, pour que "
+                 "le motif dise la LIGNE DE COMMANDE et pas la periode."
+                 % args.lhm_timeout)
     if args.lhm_timeout <= 0.0:
         ap.error("--lhm-timeout doit etre > 0 (recu %.3f) : a 0 la source est "
                  "illisible par construction, et ca se lirait comme une panne "
