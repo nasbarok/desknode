@@ -59,6 +59,39 @@ typedef struct {
 #define DN_BOUNCE_PX_MAX (DN_LCD_TOTAL_PX / 8) /* 38 400 px = 76 800 o/tampon */
 
 /*
+ * ─── LE PLANCHER DU FILET DE BOOT (dn4-10, decision owner du 2026-08-24) ─────
+ *
+ * 🔴 POURQUOI IL EXISTE. Le filet de `dn_display.c` ne s'armait QUE si la valeur
+ *    demandee differait du defaut. Or `DN_DEFAULT_BOUNCE_PX` est passe a 9 600
+ *    le 2026-08-23 (`1adf259`) et la NVS de la carte porte 9 600 : la condition
+ *    devenait FAUSSE, donc AUCUN repli, donc panique -> CPU halte -> brick.
+ *    ⚠️ AVANT ce changement, cette meme NVS ETAIT protegee — le defaut a monte
+ *    d'un cran et a emporte le filet avec lui, en silence.
+ *    Releve par la 2e revue de code 3 couches du 2026-08-24.
+ *
+ * 🎯 CE QUE LE PLANCHER GARANTIT : il y a TOUJOURS une marche SOUS la valeur
+ *    demandee, y compris quand celle-ci EST le defaut.
+ *
+ * ⛔ POURQUOI 4 800 ET PAS AUTRE CHOSE — le choix se justifie, il ne se devine
+ *    pas :
+ *      1. C'est une valeur LEGALE : 4 800 = 480 x 10 lignes, et
+ *         307 200 % 4 800 == 0. Les douze admissibles sont enumerees en §18.9.
+ *      2. C'est la derniere marche SOUS 7 680 : « aucune n'est admissible entre
+ *         4 800 et 7 680 » (README, dn4-6). Descendre plus bas serait gratuit.
+ *      3. 🔴 ELLE DEMARRE, ET CE N'EST PAS UNE SUPPOSITION : c'etait le defaut
+ *         du produit du 2026-08-16 au 2026-08-19, sur des jours de mesure.
+ *      4. Elle coute 19 200 o de RAM interne contre 38 400 pour 9 600 — la
+ *         MOITIE. Un filet dont la cible coute presque autant que ce qui vient
+ *         d'echouer ne rattrape rien.
+ *
+ * ⚠️ ET ELLE A UN DEFAUT CONNU, ASSUME : 4 800 est l'etat qui GLISSE sous trafic
+ *    serie + repeint (famine DMA, §18.9). ⛔ Le filet ne promet PAS une belle
+ *    image : il promet UNE CARTE QUI DEMARRE ET UNE CONSOLE JOIGNABLE. Une
+ *    image qui saute se corrige a la console ; un CPU halte, non.
+ */
+#define DN_BOUNCE_PX_PLANCHER 4800
+
+/*
  * BORNES du draw buffer LVGL — mêmes raisons que le bounce buffer, mêmes dégâts
  * si on les oublie : la RAM interne est la ressource rare, et un échec
  * d'allocation au boot passe par ESP_ERROR_CHECK, donc par la panique, donc par

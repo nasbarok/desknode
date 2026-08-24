@@ -355,22 +355,85 @@ static esp_err_t panel_bring_up(const dn_bootcfg_t *cfg)
      *    Ce filet-ci ne rattrape qu'un CODE D'ERREUR rendu par la création du
      *    panneau. ⚠️ Ne pas le lire comme « le boot ne peut plus paniquer ».
      */
+    /*
+     * ═══════════════════════════════════════════════════════════════════════
+     * 🔴 LE FILET EST REFAIT LE 2026-08-24 — DÉCISION OWNER, 2ᵉ REVUE DE CODE
+     * ═══════════════════════════════════════════════════════════════════════
+     *
+     * ⛔ DEUX DÉFAUTS SONT CORRIGÉS ICI, ET LE TEXTE CI-DESSUS RESTE :
+     *
+     * 1. 🔴 IL NE S'ARMAIT PAS POUR LA VALEUR EFFECTIVEMENT LIVRÉE. La garde
+     *    était `bounce_buffer_size_px != défaut`. Or `DN_DEFAULT_BOUNCE_PX` est
+     *    passé à 9 600 le 2026-08-23 et la NVS de la carte porte 9 600 ⇒ la
+     *    condition devenait FAUSSE ⇒ aucun repli ⇒ panique ⇒ CPU halté ⇒ brick,
+     *    avec la valeur relue à chaque boot. ⚠️ AVANT ce changement, cette même
+     *    NVS ÉTAIT protégée : remonter le défaut d'un cran a emporté le filet
+     *    avec lui, EN SILENCE. ⇒ On descend désormais une ÉCHELLE, et il y a
+     *    toujours une marche SOUS la valeur demandée — `DN_BOUNCE_PX_PLANCHER`.
+     *
+     * 2. 🔴 IL JOURNALISAIT UNE AFFIRMATION FAUSSE SUR N'IMPORTE QUELLE ERREUR.
+     *    « la valeur %u px NE TIENT PAS dans ce binaire » est un diagnostic
+     *    d'ALLOCATION. Sur `ESP_ERR_INVALID_ARG`, `ESP_ERR_NOT_FOUND`,
+     *    `ESP_ERR_INVALID_STATE`… c'était faux, et le firmware DÉTRUISAIT quand
+     *    même le réglage de l'opérateur (`desknode_main.c` persiste le repli).
+     *    ⇒ Le repli ne s'arme plus que sur `ESP_ERR_NO_MEM`. Tout autre code
+     *    remonte tel quel, avec un log qui dit que ce n'est PAS l'allocation.
+     *    ⚠️ C'est la moitié NON AMBIGUË de la décision owner n°4. ⛔ Sa moitié
+     *    ambiguë — FAUT-IL réécrire la NVS après un repli ? — reste OUVERTE et
+     *    n'est PAS tranchée ici : `desknode_main.c` persiste toujours.
+     *
+     * ⚠️ CE QUE LE PLANCHER COÛTE, ET IL FAUT LE SAVOIR AVANT DE TRANCHER n°4 :
+     *    si l'échelle descend jusqu'à 4 800, `desknode_main.c` écrira 4 800 en
+     *    NVS et la carte restera sur une valeur au DÉFAUT VISIBLE CONNU (elle
+     *    glisse, §18.9) jusqu'à ce qu'un humain la remonte. C'est délibéré —
+     *    une image qui saute se corrige à la console, un CPU halté non — mais
+     *    ⛔ ce n'est PAS neutre, et n°4 se décide avec ça sous les yeux.
+     *
+     * ⛔ CE QUE CE FILET NE COUVRE TOUJOURS PAS : une panique levée AILLEURS
+     *    (voir le paragraphe d'origine ci-dessus). Inchangé.
+     */
+    const int px_demande = (int)rgb_cfg.bounce_buffer_size_px;
+    const int echelle[] = { dn_bootcfg_defaut_bounce_px(), DN_BOUNCE_PX_PLANCHER };
+
     esp_err_t err_panneau = esp_lcd_new_panel_st7701(s_panel_io, &dev_cfg, &s_panel);
-    if (err_panneau != ESP_OK && rgb_cfg.bounce_buffer_size_px != (size_t)dn_bootcfg_defaut_bounce_px()) {
+
+    if (err_panneau != ESP_OK && err_panneau != ESP_ERR_NO_MEM) {
+        /* ⛔ Ce n'est PAS un problème d'allocation : le repli ne peut rien pour
+         *    ça, et prétendre le contraire détruirait un réglage sain. */
         ESP_LOGE(TAG,
-                 "🔴 création du panneau REFUSÉE (%s) avec bounce_px=%u — REPLI "
-                 "sur le défaut %d px pour que la carte DÉMARRE.",
-                 esp_err_to_name(err_panneau),
-                 (unsigned)rgb_cfg.bounce_buffer_size_px,
-                 dn_bootcfg_defaut_bounce_px());
+                 "🔴 création du panneau REFUSÉE : %s — ⛔ ce n'est PAS un "
+                 "manque de RAM, donc AUCUN repli n'est tenté et bounce_px=%d "
+                 "est CONSERVÉ. Le boot va s'arrêter ici.",
+                 esp_err_to_name(err_panneau), px_demande);
+    }
+
+    for (size_t i = 0; err_panneau == ESP_ERR_NO_MEM && i < sizeof(echelle) / sizeof(echelle[0]); i++) {
+        if (echelle[i] <= 0 || echelle[i] >= (int)rgb_cfg.bounce_buffer_size_px) {
+            /* Marche inutile : elle ne descend pas. Le plancher rattrape le cas
+             * où la valeur demandée EST déjà le défaut — c'est tout son objet. */
+            continue;
+        }
+        ESP_LOGE(TAG,
+                 "🔴 création du panneau REFUSÉE (ESP_ERR_NO_MEM) avec "
+                 "bounce_px=%u — REPLI sur %d px pour que la carte DÉMARRE.",
+                 (unsigned)rgb_cfg.bounce_buffer_size_px, echelle[i]);
         ESP_LOGE(TAG,
                  "   ⚠️ SANS CE REPLI : panique, CPU HALTÉ, plus de console, et "
                  "la valeur fautive relue À CHAQUE BOOT jusqu'au reflash.");
         ESP_LOGE(TAG,
-                 "   ⇒ la valeur %u px NE TIENT PAS dans ce binaire. `cfg` dira "
-                 "ce qui est ACTIF ; la NVS est corrigée par desknode_main.",
+                 "   ⇒ la valeur %u px NE TIENT PAS dans ce binaire (l'erreur "
+                 "EST ESP_ERR_NO_MEM, ⛔ pas un code générique). `cfg` dira ce "
+                 "qui est ACTIF ; la NVS est corrigée par desknode_main.",
                  (unsigned)rgb_cfg.bounce_buffer_size_px);
-        rgb_cfg.bounce_buffer_size_px = (size_t)dn_bootcfg_defaut_bounce_px();
+        if (echelle[i] == DN_BOUNCE_PX_PLANCHER) {
+            ESP_LOGE(TAG,
+                     "   🔴 C'EST LE PLANCHER, et il a un DÉFAUT VISIBLE CONNU : "
+                     "à %d px l'image GLISSE sous trafic série + repeint (§18.9). "
+                     "La carte démarre et la console répond — ⛔ ne pas laisser "
+                     "le produit ici, remonter `set bounce` dès que possible.",
+                     DN_BOUNCE_PX_PLANCHER);
+        }
+        rgb_cfg.bounce_buffer_size_px = (size_t)echelle[i];
         s_panel = NULL;
         err_panneau = esp_lcd_new_panel_st7701(s_panel_io, &dev_cfg, &s_panel);
         /* ⚠️ `cfg` est `const` — c'est `rgb_cfg.bounce_buffer_size_px`, déjà
@@ -378,6 +441,17 @@ static esp_err_t panel_bring_up(const dn_bootcfg_t *cfg)
          * DEPUIS LUI, ⛔ jamais depuis `cfg->bounce_px` : un instrument qui
          * annoncerait la valeur DEMANDÉE après un repli serait exactement le
          * chiffre faux mais plausible que ce dépôt traque. */
+    }
+
+    if (err_panneau == ESP_ERR_NO_MEM) {
+        /* ⛔ L'échelle est épuisée. On le DIT, plutôt que de laisser
+         *    `ESP_RETURN_ON_ERROR` rendre une panique muette sur ce point. */
+        ESP_LOGE(TAG,
+                 "🔴 ÉCHELLE DE REPLI ÉPUISÉE : ni %d ni %d px ne s'allouent. "
+                 "Ce n'est plus un réglage fautif, c'est le BINAIRE qui ne tient "
+                 "plus en RAM interne. ⇒ le boot va paniquer ; la sortie est un "
+                 "reflash, ⛔ pas un `cfg reset`.",
+                 dn_bootcfg_defaut_bounce_px(), DN_BOUNCE_PX_PLANCHER);
     }
     ESP_RETURN_ON_ERROR(err_panneau, TAG, "création du panneau ST7701 refusée");
 
