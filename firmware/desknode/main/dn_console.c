@@ -7768,7 +7768,8 @@ static int cmd_hist(int argc, char **argv)
     (void)argc;
     (void)argv;
     static const char *k_nom[DN_HIST_N_SERIES] = {
-        "CPU", "GPU", "RAM", "RESEAU", "DISQUE", "AMBIANCE T", "AMBIANCE RH",
+        "CPU", "GPU", "RAM", "RESEAU v", "DISQUE", "AMBIANCE T", "AMBIANCE RH",
+        "RESEAU ^",
     };
     printf("historique de session (dn4-4) — EN RAM, ⛔ AUCUNE ecriture NVS/flash (D4)\n");
     printf("  %d series x %d points x 4 o = %u o, en .bss INTERNE\n",

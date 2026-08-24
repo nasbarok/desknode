@@ -8,7 +8,8 @@
  *
  * | Choix                  | Valeur      | Motif                               |
  * |------------------------|-------------|-------------------------------------|
- * | séries                 | **7**       | une par page (6) + la 2ᵉ d'`AMBIANCE`|
+ * | séries                 | **8**       | une par page (6) + la 2ᵉ d'`AMBIANCE`|
+ *                        |             | + la 2ᵉ de `RÉSEAU` (owner 2026-08-24)|
  * |                        |             | (addendum §1, exception 1 : la seule |
  * |                        |             | page à DEUX courbes)                 |
  * | points par série       | **120**     | à 1 Hz ⇒ **2 minutes** de session    |
@@ -19,7 +20,7 @@
  * |                        |             | ⇒ **1,0/s par métrique**).           |
  * | octets par point       | **4**       | `int32_t` — **imposé** par           |
  * |                        |             | `lv_chart_set_series_ext_y_array()`  |
- * | **TOTAL**              | **3 360 o** | 7 x 120 x 4                          |
+ * | **TOTAL**              | **3 840 o** | 8 x 120 x 4 (7 -> 8 : `RÉSEAU` montant)|
  * | où il vit              | **`.bss`**  | voir ci-dessous                      |
  * |                        | **interne** |                                      |
  *
@@ -73,7 +74,7 @@
 extern "C" {
 #endif
 
-#define DN_HIST_N_SERIES 7
+#define DN_HIST_N_SERIES 8
 #define DN_HIST_N_POINTS 120
 #define DN_HIST_PERIODE_MS 1000
 
@@ -91,6 +92,12 @@ typedef enum {
     DN_HIST_S_DISK,
     DN_HIST_S_AMB_T, /* AMBIANCE — température */
     DN_HIST_S_AMB_H, /* AMBIANCE — humidité : LA SECONDE COURBE (addendum §1) */
+    /* 🔴 DEMANDE OWNER DU 2026-08-24 : *« pour network ajouter le upload aussi
+     *    en 2e courbe d'une autre couleur »*. `RÉSEAU` devient donc la SECONDE
+     *    page à deux courbes — l'addendum §1 n'en prévoyait qu'une (`AMBIANCE`).
+     *    ⚠️ AJOUTÉE EN FIN D'ÉNUMÉRATION, ⛔ pas insérée après `DN_HIST_S_NET` :
+     *       renuméroter aurait décalé `k_s0[]`/`k_s1[]` en silence. */
+    DN_HIST_S_NET_UP,
 } dn_hist_serie_t;
 
 void dn_hist_init(void);
@@ -132,7 +139,7 @@ uint32_t dn_hist_debut(int serie);
  *      page l'affiche. ⛔ Écrire « 24 h » sur douze minutes de données serait
  *      exactement le mensonge d'interface que ce dépôt chasse depuis `dn2-2`.
  *
- * Coût : 7 x 24 x 2 x 4 o = **1 344 o**, en `.bss` interne, comme les points.
+ * Coût : 8 x 24 x 2 x 4 o = **1 536 o**, en `.bss` interne, comme les points.
  */
 #define DN_HIST_SEAUX 24
 #define DN_HIST_SEAU_S 3600

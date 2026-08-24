@@ -2,6 +2,7 @@
 
 #include <inttypes.h>
 #include <stdio.h>
+#include <ctype.h>
 #include <string.h>
 #include <strings.h>
 
@@ -181,7 +182,7 @@ static inline void ui_case_origine(int i, int *x, int *y)
 #define DET_COURBE_H (108 - 2 * DET_COURBE_Y)
 /* ⚠️ La 2ᵉ série (humidité d'`AMBIANCE`) — nommée ICI et lue par l'instrument,
  *    ⛔ pas écrite deux fois. */
-#define DET_COURBE_COUL1 0x35d6e8
+
 
 #define DN_UI_RETOUR_W 120
 #define DN_UI_RETOUR_H 60
@@ -265,6 +266,55 @@ static inline void ui_case_origine(int i, int *x, int *y)
 #define DN_UI_CASE_DISQUE 4
 #define DN_UI_CASE_AMB 5
 
+/*
+ * ── dn4-4 : LA **SECONDE** COURBE ET SA COULEUR, PAR PAGE ────────────────────
+ *
+ * ⚠️ ELLE ÉTAIT UNE CONSTANTE UNIQUE (`0x35d6e8`) tant qu'`AMBIANCE` était la
+ *    seule page à deux courbes. Depuis que `RÉSEAU` en porte deux aussi
+ *    (demande owner du 2026-08-24), une constante ferait porter au **montant**
+ *    du réseau la couleur de l'**humidité**. ⇒ Une entrée par page.
+ * 🔴 `RÉSEAU` : les deux couleurs sont **CELLES DES CHEVRONS** — demande owner
+ *    verbatim, *« mettre ces 2 couleurs au couleurs des chevrons »*. Le
+ *    descendant est VERT (grandeur 0, donc `k_desc[RÉSEAU].couleur`), le montant
+ *    est BLEU. ⛔ Les deux vivent donc à DEUX endroits différents et doivent
+ *    rester d'accord : voir `chevron_couleur()`.
+ */
+#define DET_COURBE_COUL_HUM 0x67e8f9 /* AMBIANCE — humidité */
+#define DET_COURBE_COUL_NETUP 0x60a5fa /* RÉSEAU — MONTANT (chevron ^) */
+
+static uint32_t courbe_couleur1(int idx)
+{
+    return idx == DN_UI_CASE_RESEAU ? DET_COURBE_COUL_NETUP : DET_COURBE_COUL_HUM;
+}
+
+/*
+ * ── dn4-4 / DEMANDE OWNER : UNE ÉCHELLE **BORNÉE**, ⛔ PAS AUTO-CALÉE ────────
+ *
+ * Verbatim : *« ram … borner min max toujours a min 0 max (max de la ram
+ * installé) »*.
+ *
+ * 🔴 ET C'EST PLUS JUSTE QUE L'AUTO-CALAGE, ⛔ pas seulement un goût. Sur une
+ *    grandeur BORNÉE PAR CONSTRUCTION (un pourcentage d'une capacité installée),
+ *    l'auto-calage **exagère** : une RAM qui oscille entre 44,8 % et 45,2 %
+ *    remplirait toute la hauteur et se lirait comme une machine qui saccade.
+ *    Bornée à 0..100 %, la même courbe est une ligne quasi plate — **ce qu'elle
+ *    est réellement**.
+ * ⚠️ ⛔ NE PAS GÉNÉRALISER AUX AUTRES SANS DÉCISION : `RÉSEAU` et `DISQUE` n'ont
+ *    PAS de plafond connu du firmware (`ind_max` n'a aucun sens pour un débit —
+ *    c'est écrit dans leurs descripteurs), et les borner à un plafond inventé
+ *    serait pire que de les auto-caler.
+ * ⚠️ La borne est en DIXIÈMES, comme le fil. `1000` = 100,0 %.
+ */
+typedef struct {
+    bool actif;
+    int32_t min;
+    int32_t max;
+} dn_courbe_borne_t;
+
+static const dn_courbe_borne_t k_courbe_borne[DN_UI_METRIQUES] = {
+    [DN_UI_CASE_RAM] = {.actif = true, .min = 0, .max = 1000},
+};
+
 static const char *const k_nom[DN_UI_METRIQUES] = {
     "CPU", "GPU", "RAM", "RÉSEAU", "DISQUE", "AMBIANCE",
 };
@@ -326,6 +376,8 @@ static bool case_est_widget(int idx)
     return idx >= 0 && idx < DN_UI_METRIQUES && k_widget[idx] &&
            !s_nue_force[idx];
 }
+
+
 
 /*
  * ── dn4-6 / AC4 : LE NOMBRE DE GRANDEURS D'UNE CASE, RÉGLABLE À CHAUD ────────
@@ -439,7 +491,10 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
     [DN_UI_CASE_CPU] = {
         .icone = DN_ICONE_MICROCHIP,
         .titre = "CPU",
-        .couleur = 0x9b6cff, /* violet */
+        .couleur = 0xa855f7, /* VIOLET FRANC — dn4-4, 2026-08-24 (2e passe) :
+                              * l'owner voyait `CPU` et `GPU` « casiement la meme
+                              * couleur ». `0x9b6cff` tirait sur le bleu, donc vers
+                              * le cyan de `GPU`. On s'en ECARTE vers le magenta. */
         /* 🔴 D10 (dn4-1) : DEUX grandeurs — % et fréquence. ⚠️ La TEMPÉRATURE
          *    CPU que la maquette de l'addendum §1 dessinait (« CPU 54°C ») est
          *    INATTEIGNABLE sans Ring0, et D8 sort le Ring0 du périmètre V1 :
@@ -564,7 +619,8 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
          * d'oeil, qui est le seul usage réel d'une icône de 28 px. */
         .icone = DN_ICONE_DESKTOP,
         .titre = "GPU",
-        .couleur = 0x35d6e8, /* cyan — famille « données PC » */
+        .couleur = 0x22d3ee, /* CYAN — `GPU` garde le cyan, mais la FAMILLE est
+                              * morte : il n'est plus partagé (dn4-4, 2026-08-24). */
         /*
          * 🔴 D10 (dn4-1) : DEUX grandeurs, et LA GRANDEUR 0 CHANGE DE NATURE —
          *    elle était la TEMPÉRATURE (le mock rampait de 38 à 72 « °C »), elle
@@ -656,8 +712,11 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
     [DN_UI_CASE_RAM] = {
         .icone = DN_ICONE_MEMORY,
         .titre = "RAM",
-        .couleur = 0x4ade80, /* VERT — dn4-4, 2026-08-24 : elle partageait le violet
-                              * de `CPU`. Voir le bloc « SIX COULEURS ». */
+        .couleur = 0xf472b6, /* ROSE — dn4-4, 2026-08-24 (2e passe). Le vert de la
+                              * 1re passe faisait « vert sur vert » a l'oeil owner :
+                              * le Living PCB est VERT, et une jauge verte sur un
+                              * PCB vert disparait. ⛔ Une couleur ne se choisit pas
+                              * dans le vide : elle se choisit CONTRE un fond. */
         /*
          * 🔴 UNE SEULE GRANDEUR, ET C'EST LE PIÈGE N°1 DU MODÈLE QUI L'IMPOSE.
          *    L'addendum §1 demande « violet + JAUGE » ET une donnée secondaire
@@ -680,8 +739,10 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
     [DN_UI_CASE_RESEAU] = {
         .icone = DN_ICONE_NETWORK_WIRED,
         .titre = "RÉSEAU",
-        .couleur = 0x60a5fa, /* BLEU — dn4-4, 2026-08-24 : elle partageait le cyan
-                              * de `GPU` et de `DISQUE`. */
+        .couleur = 0x4ade80, /* VERT — dn4-4, 2026-08-24 (2e passe) : c'est la
+                              * couleur du CHEVRON DESCENDANT, et la courbe du
+                              * descendant porte LA MEME (demande owner : « mettre
+                              * ces 2 couleurs au couleurs des chevrons »). */
         /* Pas de jauge : un débit n'a pas de plein. `ind_max` devrait valoir la
          * capacité du lien, que le firmware ne connaît pas — une jauge dont
          * l'échelle est inventée est un mensonge d'interface silencieux. */
@@ -784,9 +845,9 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
          */
         .icone = DN_ICONE_SAVE,
         .titre = "DISQUE",
-        .couleur = 0xf472b6, /* ROSE — dn4-4, 2026-08-24. ✅ Et ça SOLDE le « PROVISOIRE,
-                              * hérité de VENTILOS (legs dn3-3) » qui traînait ici :
-                              * `DISQUE` a enfin une couleur À ELLE. */
+        .couleur = 0xf87171, /* ROUGE — dn4-4, 2026-08-24 (2e passe ; le rose est
+                              * passe a `RAM`). ✅ Et ça SOLDE le « PROVISOIRE, hérité
+                              * de VENTILOS (legs dn3-3) » qui traînait ici. */
         /*
          * ⚠️ AMENDÉ LE 2026-08-22 (dn4-9) : tout ce bloc décrit l'état de dn4-8
          *    et il reste VRAI pour ce qu'il mesure (le mapping, `FRONT_IN`, la
@@ -928,6 +989,37 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
                        .prec = DN_PREC_DIXIEME}},
     },
 };
+
+/*
+ * 🔴 LA COULEUR D'UNE GRANDEUR **DANS LE TEXTE**, ET ELLE DOIT ÊTRE LA MÊME QUE
+ *    CELLE DE SA COURBE — demande owner du 2026-08-24 : *« mettre ces 2 couleurs
+ *    au couleurs des chevrons »*.
+ * ⚠️ **DEUX ENDROITS DOIVENT RESTER D'ACCORD** : la couleur de la SÉRIE
+ *    (`k_desc[].couleur` pour la 0, `courbe_couleur1()` pour la 1) et celle du
+ *    CHEVRON. ⇒ Le chevron LIT les mêmes sources, il ne redéclare rien.
+ *    ⛔ Recopier une valeur ici serait exactement la divergence que
+ *      `ui_case_origine()` et `dn_val_regime_couleur()` ont déjà coûtée à ce
+ *      dépôt.
+ * ⚠️ Rend `0` quand la grandeur n'a pas de couleur propre : l'appelant n'écrit
+ *    alors AUCUNE balise et la ligne garde la couleur du RÉGIME.
+ */
+static uint32_t chevron_couleur(int idx, int g)
+{
+    if (idx < 0 || idx >= DN_UI_METRIQUES || !case_est_widget(idx)) {
+        return 0;
+    }
+    int s0 = -1, s1 = -1;
+    if (dn_hist_series_de_case(idx, &s0, &s1) != 2) {
+        return 0; /* une seule courbe ⇒ rien à distinguer */
+    }
+    if (g == 0) {
+        return k_desc[idx].couleur;
+    }
+    if (g == 1) {
+        return courbe_couleur1(idx);
+    }
+    return 0;
+}
 
 /* 🔴 dn3-2 : LES SIX DESCRIPTEURS EXISTENT. Une case n'est plus NUE par absence
  * de descripteur, mais parce que `s_nue_force[]` le demande (W11) — le témoin
@@ -2622,6 +2714,10 @@ static void build_detail(lv_obj_t *scr, int idx)
         panneau(scr, DN_UI_MARGE, 95, DN_LCD_H_RES - 2 * DN_UI_MARGE,
                 s_det_panh > 0 ? s_det_panh : DET_PANH_DEFAUT);
     s_det_valeur = texte(bloc_valeur, "--", &dn_font_28, lv_color_white(), 14, 14);
+    /* dn4-4 : les chevrons `RÉSEAU` portent la couleur de LEUR courbe — voir
+     * `chevron_couleur()`. ⛔ Sans ceci, « #4ADE80 » s'afficherait EN TOUTES
+     * LETTRES sur la dalle. */
+    lv_label_set_recolor(s_det_valeur, true);
 
     /* Placeholder de courbe : un cadre étiqueté, PAS une courbe. Les vraies
      * séries arrivent avec l'historique RAM-session (dn4-4). */
@@ -2707,7 +2803,7 @@ static void build_detail(lv_obj_t *scr, int idx)
     s_det_serie0 = lv_chart_add_series(s_det_courbe, lv_color_hex(0x808080),
                                        LV_CHART_AXIS_PRIMARY_Y);
     s_det_serie1 = lv_chart_add_series(s_det_courbe,
-                                       lv_color_hex(DET_COURBE_COUL1),
+                                       lv_color_hex(DET_COURBE_COUL_HUM),
                                        LV_CHART_AXIS_SECONDARY_Y);
 
     /* Données secondaires et MIN/MAX, sur un seul aplat de bas de page — c'est
@@ -2888,12 +2984,26 @@ static void hist_fmt(char *out, size_t n, int32_t dixiemes, int idx, int g)
  *    lui, récitait le descripteur).
  */
 static void courbe_serie_regler(int serie, lv_chart_series_t *ser,
-                                lv_chart_axis_t axe, int moitie)
+                                lv_chart_axis_t axe, int moitie, int idx)
 {
     if (!s_det_courbe || !ser || serie < 0) {
         return;
     }
     lv_chart_set_x_start_point(s_det_courbe, ser, dn_hist_debut(serie));
+    /* 🔴 UNE ÉCHELLE BORNÉE COURT-CIRCUITE L'AUTO-CALAGE — voir
+     *    `k_courbe_borne`. ⚠️ ET ELLE S'APPLIQUE MÊME QUAND LA SÉRIE N'A QUE DES
+     *    TROUS : une `RAM` sans donnée doit montrer un axe 0..100 % VIDE, ⛔ pas
+     *    un cadre sans échelle. C'est le contraire de l'auto-calage, où
+     *    « aucune donnée » veut dire « aucune plage possible ». */
+    if (idx >= 0 && idx < DN_UI_METRIQUES && k_courbe_borne[idx].actif) {
+        lv_chart_set_range(s_det_courbe, axe, k_courbe_borne[idx].min,
+                           k_courbe_borne[idx].max);
+        int k = (axe == LV_CHART_AXIS_PRIMARY_Y) ? 0 : 1;
+        s_axe_min[k] = k_courbe_borne[idx].min;
+        s_axe_max[k] = k_courbe_borne[idx].max;
+        s_axe_pose[k] = true;
+        return;
+    }
     int32_t mn = 0, mx = 0;
     if (!dn_hist_minmax(serie, &mn, &mx)) {
         return; /* ⛔ que des trous : AUCUNE plage inventée */
@@ -2962,6 +3072,11 @@ static void courbe_reparametrer(int idx)
     if (n == 2 && s1 >= 0) {
         lv_chart_set_series_ext_y_array(s_det_courbe, s_det_serie1,
                                         dn_hist_points(s1));
+        /* ⚠️ LA COULEUR DE LA 2ᵉ SÉRIE DÉPEND DE LA PAGE depuis que `RÉSEAU` en
+         *    porte une : une constante ferait porter au MONTANT du réseau la
+         *    couleur de l'HUMIDITÉ. */
+        lv_chart_set_series_color(s_det_courbe, s_det_serie1,
+                                  lv_color_hex(courbe_couleur1(idx)));
         lv_chart_hide_series(s_det_courbe, s_det_serie1, false);
     } else {
         lv_chart_hide_series(s_det_courbe, s_det_serie1, true);
@@ -2969,14 +3084,35 @@ static void courbe_reparametrer(int idx)
 
     /* Une seule courbe ⇒ elle prend toute la hauteur (`-1`). Deux ⇒ chacune sa
      * moitié, sinon deux séries plates se superposent. */
+    /* Une borne fixe occupe toute la hauteur : la partager en deux moitiés
+     * annulerait précisément ce qu'elle apporte (lire le niveau ABSOLU). */
+    bool bornee = (idx >= 0 && idx < DN_UI_METRIQUES && k_courbe_borne[idx].actif);
     courbe_serie_regler(s0, s_det_serie0, LV_CHART_AXIS_PRIMARY_Y,
-                        n == 2 ? 0 : -1);
+                        (n == 2 && !bornee) ? 0 : -1, idx);
     if (n == 2) {
-        courbe_serie_regler(s1, s_det_serie1, LV_CHART_AXIS_SECONDARY_Y, 1);
+        courbe_serie_regler(s1, s_det_serie1, LV_CHART_AXIS_SECONDARY_Y,
+                            bornee ? -1 : 1, idx);
     } else {
         s_axe_pose[1] = false;
     }
     lv_chart_refresh(s_det_courbe);
+    /*
+     * 🔴 **LE CADRE ENTIER EST INVALIDÉ, ET C'EST UN CORRECTIF DE CONSTAT OWNER
+     *    (2026-08-24)** : *« et meme bande graphe la transition n'efface pas la
+     *    cpu pour gpu »* — la courbe de la page QUITTÉE restait visible sur la
+     *    suivante.
+     * ⚠️ LA CAUSE : le fond du chart est TRANSPARENT (`LV_OPA_TRANSP`, posé pour
+     *    laisser voir le Living PCB). `lv_chart_refresh()` n'invalide que le
+     *    chart ; sur un repeint PARTIEL en bandes (5 bandes de 128 lignes,
+     *    `dn1-4`), les pixels de l'ancienne ligne ne sont pas tous réécrits.
+     * ⇒ On invalide **le panneau**, pas le chart : c'est lui qui porte le fond
+     *   qui doit être repeint SOUS la courbe. ⛔ Invalider le chart seul ne
+     *   suffit pas, et c'est exactement ce que faisait la version précédente.
+     */
+    lv_obj_t *cadre = lv_obj_get_parent(s_det_courbe);
+    if (cadre) {
+        lv_obj_invalidate(cadre);
+    }
 }
 
 static void detail_reparametrer(int idx)
@@ -3129,9 +3265,30 @@ static void detail_reparametrer(int idx)
                  *    mensonge d'interface que dn4-1 a chassé du détail une
                  *    première fois (la valeur en dur « 21,4 °C »). */
                 const char *u = connue ? dn_widget_unite(d, e, i) : NULL;
-                ecrit = snprintf(buf + p, sizeof(buf) - p, "%s%s%s%s%s%s%s%s",
-                                 sep, ic ? ic : "", ic ? " " : "",
-                                 px ? px : "", px ? " " : "",
+                /*
+                 * 🔴 LE CHEVRON PORTE LA COULEUR DE **SA** COURBE — demande
+                 *    owner du 2026-08-24. Syntaxe de recoloration en ligne de
+                 *    LVGL : `#RRGGBB texte#`, activée par
+                 *    `lv_label_set_recolor()` sur `s_det_valeur`.
+                 * ⚠️ **SEULEMENT EN RÉGIME `RÉELLE`.** Sous `SIMULÉE` (ambre) ou
+                 *    `ABSENTE` (gris), la ligne entière doit garder la couleur
+                 *    du RÉGIME : colorier le chevran là affaiblirait le seul
+                 *    signal qui dit « ce chiffre est fabriqué ». ⛔ L'esthétique
+                 *    ne passe pas devant l'honnêteté d'affichage.
+                 */
+                uint32_t cc = (e->regime == DN_VAL_REELLE)
+                                  ? chevron_couleur(idx, i)
+                                  : 0u;
+                char ico[40];
+                if (ic && cc) {
+                    snprintf(ico, sizeof(ico), "#%06lX %s# ",
+                             (unsigned long)cc, ic);
+                } else {
+                    snprintf(ico, sizeof(ico), "%s%s", ic ? ic : "",
+                             ic ? " " : "");
+                }
+                ecrit = snprintf(buf + p, sizeof(buf) - p, "%s%s%s%s%s%s%s",
+                                 sep, ico, px ? px : "", px ? " " : "",
                                  connue ? e->txt[i] : "--", u ? " " : "",
                                  u ? u : "");
                 if (ecrit < 0 || (size_t)ecrit >= sizeof(buf) - p) {
@@ -3282,13 +3439,46 @@ static void detail_reparametrer(int idx)
                 }
                 memcpy(ligne, deb, len);
                 ligne[len] = '\0';
-                int lw = dn_widget_largeur(ligne, &dn_font_28);
+                /*
+                 * 🔴 **LA GARDE MESURE LE TEXTE **SANS** SES BALISES DE
+                 *    RECOLORATION.** `#RRGGBB ` et le `#` de fermeture ne sont
+                 *    PAS dessinés par LVGL, mais `lv_text_get_size()` les
+                 *    compterait : la garde aurait crié « ça déborde de 120 px »
+                 *    sur une ligne qui tient. Un instrument qui mesure sa propre
+                 *    syntaxe est un faux positif fabriqué — la famille exacte
+                 *    que `geom_resolue` avait déjà fermée ici.
+                 * ⚠️ On retire `#` suivi de 6 hexa + l'espace, et les `#` isolés.
+                 */
+                char nu[sizeof(ligne)];
+                {
+                    size_t o = 0;
+                    for (size_t q = 0; ligne[q] && o + 1 < sizeof(nu); q++) {
+                        if (ligne[q] == '#') {
+                            /* balise ouvrante « #RRGGBB » (+ l'espace) ? */
+                            size_t r = 1;
+                            while (r <= 6 && isxdigit((unsigned char)ligne[q + r])) {
+                                r++;
+                            }
+                            if (r == 7) {
+                                q += 6;
+                                if (ligne[q + 1] == ' ') {
+                                    q++;
+                                }
+                                continue;
+                            }
+                            continue; /* « # » de fermeture */
+                        }
+                        nu[o++] = ligne[q];
+                    }
+                    nu[o] = '\0';
+                }
+                int lw = dn_widget_largeur(nu, &dn_font_28);
                 if (lw > utile) {
                     ESP_LOGW(TAG,
                              "detail « %s » ligne %d : « %s » mesure %d px pour "
                              "%d utiles (panneau %d, x %d) — elle DEBORDE de %d px "
                              "et LVGL la CLIPPE sans un mot.",
-                             k_nom[idx], nl, ligne, lw, utile, wp, x, lw - utile);
+                             k_nom[idx], nl, nu, lw, utile, wp, x, lw - utile);
                 }
                 nl++;
                 deb = fin ? fin + 1 : NULL;

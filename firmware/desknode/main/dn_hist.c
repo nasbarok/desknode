@@ -224,7 +224,13 @@ int dn_hist_series_de_case(int case_idx, int *s0, int *s1)
      *    ⛔ Ne pas généraliser : empiler quatre séries d'unités différentes sur
      *    une échelle commune n'aurait aucun sens (`DISQUE` porte `Mo/s` ET trois
      *    `tr/min` ; `CPU` porte `%`, `GHz`, `%` et `°C`). */
-    static const int8_t k_s1[6] = {-1, -1, -1, -1, -1, DN_HIST_S_AMB_H};
+    /* 🔴 DEUX pages portent une seconde courbe depuis le 2026-08-24 :
+     *    `RÉSEAU` (descendant + MONTANT, demande owner) et `AMBIANCE`
+     *    (température + humidité, addendum §1). ⛔ Ne pas généraliser aux
+     *    autres : empiler des unités différentes sur une échelle commune n'a
+     *    aucun sens (`DISQUE` porte `Mo/s` ET trois `tr/min`). */
+    static const int8_t k_s1[6] = {-1, -1, -1, DN_HIST_S_NET_UP, -1,
+                                   DN_HIST_S_AMB_H};
 
     if (case_idx < 0 || case_idx >= 6) {
         if (s0) { *s0 = -1; }
