@@ -503,6 +503,14 @@ bool dn_ui_detail_courbe_rect(int *x, int *y, int *w, int *h, int *w_cadre,
 esp_err_t dn_ui_set_detail_panh(int h);
 int dn_ui_detail_panh(void);
 
+/* dn4-4 / AC4.3 — CE QUE LA GARDE DE HAUTEUR A VU AU DERNIER PASSAGE.
+ * ⛔ Une garde qui se tait peut se taire pour TROIS raisons : elle n'est pas
+ *    atteinte, `geom_resolue` la coupe, ou sa condition est fausse. Sans ces
+ *    compteurs on les confond — et ce dépôt a déjà paye ça (« un test peut être
+ *    VERT sans ATTEINDRE la garde qu'il prétend couvrir »). */
+void dn_ui_garde_hauteur(uint32_t *passages, uint32_t *cris, int *hp, int *hl,
+                         int *yl, bool *resolue);
+
 /* ── LA CASE « AMBIANCE » : DEUX GRANDEURS DANS UNE CASE (D6, dn3-1) ──────────
  * Jusqu'à dn2-1 c'étaient DEUX cases (TEMP. idx 4, HUMIDITÉ idx 5). D6 les
  * fusionne en UNE case bi-grandeurs (idx 5) et libère idx 4 pour VENTILOS.

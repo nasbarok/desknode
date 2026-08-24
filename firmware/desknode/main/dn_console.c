@@ -3501,6 +3501,34 @@ static int cmd_widget(int argc, char **argv)
                x + w - 1, w, y, y + h - 1, h);
         printf("  cadre  : %d x %d px\n", wc, hc);
         printf("  ⚠️ bornes INCLUSIVES cote LVGL — le +1 est fait ici.\n");
+        /* 🔴 CE QUE LA GARDE A VU, ⛔ PAS CE QUE L'INSTRUMENT RELIT APRES COUP.
+         *    C'est toute la difference : l'instrument tourne dans la tache
+         *    console, APRES une passe de layout ; la garde tourne DANS
+         *    `detail_reparametrer`, juste apres `lv_label_set_text`. */
+        {
+            uint32_t np = 0, ncris = 0;
+            int ghp = 0, ghl = 0, gyl = 0;
+            bool gres = false;
+            dn_ui_garde_hauteur(&np, &ncris, &ghp, &ghl, &gyl, &gres);
+            printf("  ── la GARDE DE HAUTEUR, ce qu'ELLE a vu au dernier passage ──\n");
+            printf("     passages : %lu   cris : %lu\n", (unsigned long)np,
+                   (unsigned long)ncris);
+            printf("     geom_resolue = %s · panneau %d · label %d pose a y = %d\n",
+                   gres ? "true" : "false", ghp, ghl, gyl);
+            if (np == 0) {
+                printf("     🔴 ZERO PASSAGE : la garde n'est pas ATTEINTE.\n");
+            } else if (!gres) {
+                printf("     🔴 `geom_resolue` FAUX : la garde est atteinte mais\n");
+                printf("        elle se COUPE elle-meme.\n");
+            } else if (ghl + gyl > ghp && ncris == 0) {
+                printf("     🔴 CONDITION VRAIE ET AUCUN CRI : la garde est CASSEE.\n");
+            } else if (ncris == 0) {
+                printf("     ✅ silence LEGITIME : %d + %d = %d <= %d.\n", gyl,
+                       ghl, gyl + ghl, ghp);
+            } else {
+                printf("     ✅ elle a CRIE — le temoin negatif est concluant.\n");
+            }
+        }
         /* 🔴 L'INVARIANT DU TEMPLATE, VERIFIE ET NON RECITE. Le bas du cadre est
          *    a 370 depuis dn4-6 (205+165) puis dn4-9 (262+108), et le panneau du
          *    bas est a 385. `dn_ui.c` demande de LE VERIFIER a chaque fois qu'on

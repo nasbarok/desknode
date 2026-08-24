@@ -1222,6 +1222,27 @@ static lv_obj_t *s_det_titre, *s_det_valeur, *s_det_minmax, *s_det_sec;
 #define DET_PANH_DEFAUT 154
 static int s_det_panh; /* 0 = DET_PANH_DEFAUT */
 
+/*
+ * 🔴 dn4-4 / AC4.3 — LA GARDE DE HAUTEUR EST **AUDITABLE**, ⛔ PLUS SEULEMENT
+ *    BAVARDE.
+ *
+ * ⚠️ POURQUOI. Le témoin négatif (`widget detpan 153`) a été armé, le pire cas
+ *    `DISQUE` injecté, `widget detail` a confirmé `14 + 140 = 154 > 153` — et
+ *    **la garde est restée MUETTE**. Sans ces compteurs, on ne peut pas
+ *    distinguer trois causes : (a) la garde n'est pas ATTEINTE, (b) elle est
+ *    atteinte mais `geom_resolue` la coupe, (c) elle est atteinte et sa
+ *    condition est fausse parce qu'elle lit une géométrie PÉRIMÉE.
+ * ⛔ Ce dépôt a déjà payé exactement ça : *« un test peut être VERT sans
+ *    ATTEINDRE la garde qu'il prétend couvrir »*. On ne devine pas — on compte.
+ * ⚠️ Ce sont les valeurs DU DERNIER PASSAGE, telles que la garde les a vues —
+ *    ⛔ pas telles qu'un instrument extérieur les relit après coup, ce qui est
+ *    précisément la différence qu'on cherche.
+ */
+static uint32_t s_gardeh_n;     /* passages dans le bloc de garde */
+static uint32_t s_gardeh_cris;  /* fois où elle a émis */
+static int s_gardeh_hp, s_gardeh_hl, s_gardeh_yl;
+static bool s_gardeh_resolue;
+
 static lv_obj_t *s_det_courbe;
 static lv_chart_series_t *s_det_serie0, *s_det_serie1;
 
@@ -3052,7 +3073,14 @@ static void detail_reparametrer(int idx)
                 int hp = pv ? (int)lv_obj_get_height(pv) : 0;
                 int hl = (int)lv_obj_get_height(s_det_valeur);
                 int yl = (int)lv_obj_get_y(s_det_valeur);
+                /* 🔴 ON CONSIGNE AVANT DE JUGER — voir `s_gardeh_n`. */
+                s_gardeh_n++;
+                s_gardeh_hp = hp;
+                s_gardeh_hl = hl;
+                s_gardeh_yl = yl;
+                s_gardeh_resolue = geom_resolue;
                 if (geom_resolue && hp > 0 && yl >= 0 && yl + hl > hp) {
+                    s_gardeh_cris++;
                     ESP_LOGW(TAG,
                              "detail « %s » : le bloc de valeurs DEBORDE EN "
                              "HAUTEUR — label %d px pose a y = %d dans un "
@@ -5197,6 +5225,19 @@ bool dn_ui_widget_jauge_rect(int idx, int *x, int *y, int *w, int *h,
         *resolue = (a.x2 > a.x1 && a.y2 > a.y1 && a.x1 >= 0 && a.y1 >= 0);
     }
     return true;
+}
+
+/* dn4-4 / AC4.3 — ce que la garde de hauteur a VU au dernier passage. Voir
+ * `s_gardeh_n` pour le motif : on ne devine pas pourquoi une garde se tait. */
+void dn_ui_garde_hauteur(uint32_t *passages, uint32_t *cris, int *hp, int *hl,
+                         int *yl, bool *resolue)
+{
+    if (passages) { *passages = s_gardeh_n; }
+    if (cris) { *cris = s_gardeh_cris; }
+    if (hp) { *hp = s_gardeh_hp; }
+    if (hl) { *hl = s_gardeh_hl; }
+    if (yl) { *yl = s_gardeh_yl; }
+    if (resolue) { *resolue = s_gardeh_resolue; }
 }
 
 /*
