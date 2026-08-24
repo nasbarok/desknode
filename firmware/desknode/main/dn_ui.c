@@ -3266,8 +3266,31 @@ static void detail_reparametrer(int idx)
         const char *etat = etat_source(idx);
         /* TROIS lignes, toutes RELUES de l'état réel : la source, son état, le
          * régime de la valeur. Aucune n'est une constante d'affichage. */
-        snprintf(buf, sizeof(buf), "source : %s\nétat   : %s\nrégime : %s",
-                 nom_source(idx), etat, dn_val_regime_nom(e->regime));
+        /* 🔴 QUATRIÈME LIGNE : LA FENÊTRE QUE `MIN/MAX` COUVRE **RÉELLEMENT**.
+         *    ⛔ ON N'ÉCRIT JAMAIS « 24 h » SUR DOUZE MINUTES DE DONNÉES. D4
+         *    interdit toute écriture flash/NVS, donc l'historique **ne survit
+         *    pas à un reboot** : « 24 h » n'est vrai que si la carte a tourné
+         *    24 h. Écrire la fenêtre nominale au lieu de la fenêtre observée
+         *    serait exactement le mensonge d'interface que `dn2-2` a chassé du
+         *    dashboard — un chiffre qui a l'air d'une mesure et n'en est pas.
+         * ⚠️ Elle vit ICI (police 14, panneau large), ⛔ pas collée au MIN/MAX :
+         *    « MIN 100,0 % · MAX 100,0 % (24 h) » mesure ~496 px pour 432
+         *    utiles en `dn_font_28` — elle DÉBORDERAIT, et la story interdit de
+         *    réduire la police. Les trois lignes existantes montent à
+         *    16 + 3 x 20 = 76 px pour un `MIN/MAX` posé à 130 : la quatrième
+         *    tient (96 < 130). */
+        char fen[24];
+        uint32_t cs = dn_hist_couverture_s();
+        if (cs >= 3600) {
+            snprintf(fen, sizeof(fen), "%lu h", (unsigned long)(cs / 3600));
+        } else if (cs >= 60) {
+            snprintf(fen, sizeof(fen), "%lu min", (unsigned long)(cs / 60));
+        } else {
+            snprintf(fen, sizeof(fen), "%lu s", (unsigned long)cs);
+        }
+        snprintf(buf, sizeof(buf),
+                 "source : %s\nétat   : %s\nrégime : %s\nMIN/MAX sur : %s",
+                 nom_source(idx), etat, dn_val_regime_nom(e->regime), fen);
         lv_label_set_text(s_det_sec, buf);
     }
 
@@ -3287,7 +3310,12 @@ static void detail_reparametrer(int idx)
         int hs0 = -1, hs1 = -1;
         dn_hist_series_de_case(idx, &hs0, &hs1);
         int32_t mn = 0, mx = 0;
-        if (hs0 >= 0 && dn_hist_minmax(hs0, &mn, &mx)) {
+        /* 🔴 DEMANDE OWNER DU 2026-08-24 : `MIN/MAX` COUVRE LA FENÊTRE **LONGUE**
+         *    (jusqu'à 24 h), ⛔ plus les 2 minutes de la courbe. Verbatim :
+         *    *« pourrait-on systématiquement avoir le min max sur 24 h +
+         *    quelques minutes de graphe ? »* — les deux coexistent donc
+         *    délibérément, et la ligne d'état DIT laquelle est laquelle. */
+        if (hs0 >= 0 && dn_hist_minmax_long(hs0, &mn, &mx)) {
             char a[DN_WIDGET_TXT_MAX + 12], b[DN_WIDGET_TXT_MAX + 12];
             hist_fmt(a, sizeof(a), mn, idx, 0);
             hist_fmt(b, sizeof(b), mx, idx, 0);

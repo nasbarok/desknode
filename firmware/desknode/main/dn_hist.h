@@ -109,6 +109,42 @@ int32_t *dn_hist_points(int serie);
  * ⚠️ C'est ainsi qu'un ANNEAU se rend sans être recopié à chaque tour. */
 uint32_t dn_hist_debut(int serie);
 
+/*
+ * ── dn4-4 / DEMANDE OWNER DU 2026-08-24 : LE MIN/MAX **LONG** ────────────────
+ *
+ * Verbatim : *« pourrait-on systématiquement avoir le min max sur 24 h +
+ * quelques minutes de graphe ? »*
+ *
+ * ⚠️ **CE N'EST PAS LE MIN/MAX DE LA COURBE.** La courbe montre 120 points à
+ *    1 Hz = **2 minutes** ; ce MIN/MAX-ci couvre jusqu'à **24 heures**. Les deux
+ *    coexistent délibérément, et c'est exactement ce que l'owner a demandé.
+ *
+ * ⚠️ **24 SEAUX D'UNE HEURE, EN ANNEAU** — ⛔ pas un min/max « depuis le boot ».
+ *    Un min/max cumulé depuis le démarrage ne s'oublie JAMAIS : un pic à 100 %
+ *    survenu il y a trois jours serait encore affiché comme le maximum, sur une
+ *    page qui prétend parler des 24 dernières heures. Le seau d'une heure qu'on
+ *    ré-atteint est **remis à vide**, donc la fenêtre GLISSE.
+ *
+ * 🔴 **LA LIMITE, ET ELLE EST DITE À L'ÉCRAN, ⛔ PAS SEULEMENT ICI** : D4
+ *    interdit toute écriture flash/NVS en régime, donc **ceci ne survit pas à un
+ *    reboot**. « 24 h » n'est vrai QUE si la carte a tourné 24 h.
+ *    ⇒ `dn_hist_couverture_s()` rend la fenêtre **RÉELLEMENT** couverte, et la
+ *      page l'affiche. ⛔ Écrire « 24 h » sur douze minutes de données serait
+ *      exactement le mensonge d'interface que ce dépôt chasse depuis `dn2-2`.
+ *
+ * Coût : 7 x 24 x 2 x 4 o = **1 344 o**, en `.bss` interne, comme les points.
+ */
+#define DN_HIST_SEAUX 24
+#define DN_HIST_SEAU_S 3600
+
+/* Le MIN/MAX sur la fenêtre LONGUE (jusqu'à 24 h). Rend `false` si aucun seau
+ * ne porte de valeur réelle. */
+bool dn_hist_minmax_long(int serie, int32_t *min, int32_t *max);
+
+/* La durée RÉELLEMENT couverte par les seaux, en secondes. ⛔ Ce n'est pas
+ * `24 x 3600` par principe : c'est ce qui a vraiment été observé. */
+uint32_t dn_hist_couverture_s(void);
+
 /* Le MIN/MAX de la série, **sur les seuls points réels**. Rend `false` si la
  * série ne contient QUE des trous — auquel cas la page doit dire « -- », ⛔ pas
  * inventer une plage. */

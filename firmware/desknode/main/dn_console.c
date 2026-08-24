@@ -7777,21 +7777,48 @@ static int cmd_hist(int argc, char **argv)
            DN_HIST_PERIODE_MS);
     printf("  profondeur : %d points a 1 Hz = %d s de session\n",
            DN_HIST_N_POINTS, DN_HIST_N_POINTS * DN_HIST_PERIODE_MS / 1000);
-    printf("\n  serie         reels  trous       min        max\n");
+    /* 🔴 LA FENETRE LONGUE EST PUBLIEE AVEC SA COUVERTURE **REELLE**. Sans
+     *    elle, « MIN/MAX sur 24 h » serait une etiquette, ⛔ pas une mesure —
+     *    et la carte ne survit pas a un reboot (D4 : aucune ecriture NVS). */
+    {
+        uint32_t cs = dn_hist_couverture_s();
+        printf("  fenetre LONGUE : %lu seau(x) d'1 h, couverture REELLE %lu s",
+               (unsigned long)DN_HIST_SEAUX, (unsigned long)cs);
+        if (cs >= 3600) {
+            printf(" (%lu h)\n", (unsigned long)(cs / 3600));
+        } else if (cs >= 60) {
+            printf(" (%lu min)\n", (unsigned long)(cs / 60));
+        } else {
+            printf("\n");
+        }
+        printf("  ⛔ « 24 h » N'EST VRAI QUE SI LA CARTE A TOURNE 24 h : D4\n");
+        printf("     interdit toute ecriture flash/NVS, donc ceci NE SURVIT PAS\n");
+        printf("     a un reboot. La page affiche la fenetre REELLE, pas 24 h.\n");
+    }
+    printf("\n  serie         reels  trous    min(2min)  max(2min)   min(long)  max(long)\n");
     for (int i = 0; i < DN_HIST_N_SERIES; i++) {
         int r = dn_hist_reels(i);
-        int32_t mn = 0, mx = 0;
+        int32_t mn = 0, mx = 0, lm = 0, lx = 0;
+        bool lok = dn_hist_minmax_long(i, &lm, &lx);
         printf("   %-12s %5d  %5d", k_nom[i], r, DN_HIST_N_POINTS - r);
+        (void)lok;
         if (dn_hist_minmax(i, &mn, &mx)) {
             /* ⚠️ EN DIXIEMES, ET C'EST DIT : cet instrument ne connait ni les
              *    unites ni les echelles hautes — c'est la PAGE qui les porte.
              *    Publier « 1000 » sans dire « dixiemes » aurait fabrique un
              *    facteur 10 dans un dossier de mesure. */
-            printf("  %8ld   %8ld  (dixiemes)\n", (long)mn, (long)mx);
+            printf("  %9ld  %9ld", (long)mn, (long)mx);
         } else {
-            printf("        --         --   (QUE DES TROUS)\n");
+            printf("         --         --");
+        }
+        if (lok) {
+            printf("  %9ld  %9ld\n", (long)lm, (long)lx);
+        } else {
+            printf("         --         --\n");
         }
     }
+    printf("  (toutes les valeurs en DIXIEMES — cet instrument ne connait ni\n");
+    printf("   les unites ni les echelles hautes, c'est la PAGE qui les porte)\n");
     printf("\n⛔ UN TROU N'EST PAS UN ZERO. Une valeur absente, perimee, ou\n");
     printf("   SIMULEE (mock, `widget pousser`) n'entre PAS dans une serie\n");
     printf("   presentee comme reelle : elle y creuse un trou, que `lv_chart`\n");

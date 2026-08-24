@@ -4,6 +4,7 @@
 
 #include <string.h>
 
+#include "esp_timer.h"
 #include "lvgl.h"
 
 /* 🔴 ON N'A PAS RECOPIÉ LA SENTINELLE DE LVGL « au cas où » : ON L'ASSERTE.
@@ -24,6 +25,15 @@ static uint32_t s_w[DN_HIST_N_SERIES];
 
 static bool s_pret;
 
+/* Les 24 seaux d'une heure — voir `dn_hist.h` pour le motif de l'anneau. */
+static int32_t s_smin[DN_HIST_N_SERIES][DN_HIST_SEAUX];
+static int32_t s_smax[DN_HIST_N_SERIES][DN_HIST_SEAUX];
+static bool s_svu[DN_HIST_N_SERIES][DN_HIST_SEAUX];
+static int s_seau_courant = -1;
+/* ⚠️ Combien de seaux DISTINCTS ont été ouverts — borné à 24. C'est LUI qui
+ *    donne la couverture réelle, ⛔ pas une constante. */
+static uint32_t s_seaux_ouverts;
+
 void dn_hist_init(void)
 {
     for (int s = 0; s < DN_HIST_N_SERIES; s++) {
@@ -32,7 +42,32 @@ void dn_hist_init(void)
         }
         s_w[s] = 0;
     }
+    for (int s = 0; s < DN_HIST_N_SERIES; s++) {
+        for (int b = 0; b < DN_HIST_SEAUX; b++) {
+            s_svu[s][b] = false;
+        }
+    }
+    s_seau_courant = -1;
+    s_seaux_ouverts = 0;
     s_pret = true;
+}
+
+/* Ouvre (et VIDE) le seau de l'heure courante quand on y entre. ⛔ Sans ce
+ * vidage, la fenêtre ne glisserait pas : elle deviendrait « depuis le boot ». */
+static void seau_suivre(void)
+{
+    int64_t up_s = esp_timer_get_time() / 1000000;
+    int b = (int)((up_s / DN_HIST_SEAU_S) % DN_HIST_SEAUX);
+    if (b == s_seau_courant) {
+        return;
+    }
+    s_seau_courant = b;
+    for (int s = 0; s < DN_HIST_N_SERIES; s++) {
+        s_svu[s][b] = false;
+    }
+    if (s_seaux_ouverts < DN_HIST_SEAUX) {
+        s_seaux_ouverts++;
+    }
 }
 
 void dn_hist_poser(int serie, int32_t dixiemes, bool connue)
@@ -52,6 +87,66 @@ void dn_hist_poser(int serie, int32_t dixiemes, bool connue)
     }
     s_pts[serie][s_w[serie]] = connue ? dixiemes : DN_HIST_TROU;
     s_w[serie] = (s_w[serie] + 1u) % DN_HIST_N_POINTS;
+
+    /* ⚠️ LE SEAU NE REÇOIT QUE DU RÉEL, comme l'anneau. Un trou n'abaisse aucun
+     *    minimum et ne relève aucun maximum : il n'existe simplement pas. */
+    seau_suivre();
+    if (!connue || s_seau_courant < 0) {
+        return;
+    }
+    int b = s_seau_courant;
+    if (!s_svu[serie][b]) {
+        s_smin[serie][b] = dixiemes;
+        s_smax[serie][b] = dixiemes;
+        s_svu[serie][b] = true;
+    } else {
+        if (dixiemes < s_smin[serie][b]) {
+            s_smin[serie][b] = dixiemes;
+        }
+        if (dixiemes > s_smax[serie][b]) {
+            s_smax[serie][b] = dixiemes;
+        }
+    }
+}
+
+bool dn_hist_minmax_long(int serie, int32_t *min, int32_t *max)
+{
+    if (serie < 0 || serie >= DN_HIST_N_SERIES) {
+        return false;
+    }
+    bool vu = false;
+    int32_t mn = 0, mx = 0;
+    for (int b = 0; b < DN_HIST_SEAUX; b++) {
+        if (!s_svu[serie][b]) {
+            continue;
+        }
+        if (!vu || s_smin[serie][b] < mn) {
+            mn = s_smin[serie][b];
+        }
+        if (!vu || s_smax[serie][b] > mx) {
+            mx = s_smax[serie][b];
+        }
+        vu = true;
+    }
+    if (!vu) {
+        return false; /* ⛔ « pas de plage », ⛔ pas « 0..0 » */
+    }
+    if (min) { *min = mn; }
+    if (max) { *max = mx; }
+    return true;
+}
+
+uint32_t dn_hist_couverture_s(void)
+{
+    /* 🔴 CE QUI A VRAIMENT ÉTÉ OBSERVÉ, ⛔ PAS `24 x 3600`. L'uptime borne la
+     *    couverture tant qu'on n'a pas fait un tour complet des seaux ; au-delà,
+     *    c'est la fenêtre glissante de 24 h. */
+    int64_t up_s = esp_timer_get_time() / 1000000;
+    uint32_t plafond = (uint32_t)DN_HIST_SEAUX * DN_HIST_SEAU_S;
+    if (up_s < 0) {
+        return 0;
+    }
+    return (uint32_t)up_s < plafond ? (uint32_t)up_s : plafond;
 }
 
 int32_t *dn_hist_points(int serie)
