@@ -522,7 +522,11 @@ int dn_ui_detail_panh(void);
  *    atteinte, `geom_resolue` la coupe, ou sa condition est fausse. Sans ces
  *    compteurs on les confond — et ce dépôt a déjà paye ça (« un test peut être
  *    VERT sans ATTEINDRE la garde qu'il prétend couvrir »). */
-void dn_ui_garde_hauteur(uint32_t *passages, uint32_t *cris, int *hp, int *hl,
+/* 🔴 dn4-13 / AC1.2 — rend `false` si le verrou LVGL n'a pas été pris (sorties
+ * remises à zéro). Les six champs sont écrits par la tâche LVGL : sans verrou le
+ * tuple pouvait MÉLANGER DEUX PASSAGES, et le verdict de `widget courbe` compare
+ * justement trois de ces six nombres entre eux. */
+bool dn_ui_garde_hauteur(uint32_t *passages, uint32_t *cris, int *hp, int *hl,
                          int *yl, bool *resolue);
 
 /* ── LA CASE « AMBIANCE » : DEUX GRANDEURS DANS UNE CASE (D6, dn3-1) ──────────
@@ -613,8 +617,12 @@ bool dn_ui_bandes(void);
  * vidés, jamais laissés indéterminés). */
 bool dn_ui_barre_txt(char *heure, size_t n_heure, char *date, size_t n_date);
 /* ⚠️ Tient compte de `s_active` : après `ui off` / `scene` / `tear`, les labels
- * existent mais rien n'atteint la dalle. Annoncer « dessinée » mentirait. */
-bool dn_ui_barre_dessinee(void);
+ * existent mais rien n'atteint la dalle. Annoncer « dessinée » mentirait.
+ * 🔴 dn4-13 / AC1 — TROIS RÉPONSES, PAS DEUX. Le retour dit « J'AI PU MESURER »
+ *    (verrou LVGL pris) ; la réponse elle-même sort par `*dessinee`. Rendre
+ *    `false` sur un verrou non pris aurait publié « PAS dessinée », un verdict
+ *    fabriqué — la famille de défauts que cette story solde. */
+bool dn_ui_barre_dessinee(bool *dessinee);
 
 /* ── Le modèle de widget (dn3-1, généralisé en dn3-2) ─────────────────────────
  * Descripteur d'une case, ou NULL si la case est NUE.

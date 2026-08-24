@@ -5716,16 +5716,41 @@ bool dn_ui_widget_jauge_rect(int idx, int *x, int *y, int *w, int *h,
 }
 
 /* dn4-4 / AC4.3 — ce que la garde de hauteur a VU au dernier passage. Voir
- * `s_gardeh_n` pour le motif : on ne devine pas pourquoi une garde se tait. */
-void dn_ui_garde_hauteur(uint32_t *passages, uint32_t *cris, int *hp, int *hl,
+ * `s_gardeh_n` pour le motif : on ne devine pas pourquoi une garde se tait.
+ *
+ * 🔴 dn4-13 / AC1.2 — LES SIX CHAMPS SORTENT SOUS UN SEUL VERROU, ET LA FONCTION
+ *    DIT SI ELLE A MESURÉ.
+ *    Aucun `lv_*` ici : les six sont des statiques du fichier. Mais ils sont
+ *    ÉCRITS par `detail_reparametrer()` dans la tâche LVGL et LUS par la tâche
+ *    console — sans verrou, le tuple rendu pouvait MÉLANGER DEUX PASSAGES :
+ *    `passages`/`cris` d'après l'écriture, `hp`/`hl`/`yl` d'avant. Le verdict de
+ *    `dn_console.c` compare `ghl + gyl` à `ghp` : trois nombres de deux passages
+ *    différents produisent une comparaison qui n'a JAMAIS eu lieu — un « ✅
+ *    silence LEGITIME » ou un « 🔴 garde CASSEE » fabriqués. Le motif n'était pas
+ *    écrit ; il l'est, et le verrou est pris, parce qu'un motif ne répare pas un
+ *    tuple déchiré : il l'excuse.
+ * ⛔ Verrou non pris ⇒ `false`, sorties laissées à ZÉRO **et l'appelant DOIT le
+ *    dire** — « pas mesuré », ⛔ jamais « zéro passage ». */
+bool dn_ui_garde_hauteur(uint32_t *passages, uint32_t *cris, int *hp, int *hl,
                          int *yl, bool *resolue)
 {
+    if (passages) { *passages = 0; }
+    if (cris) { *cris = 0; }
+    if (hp) { *hp = 0; }
+    if (hl) { *hl = 0; }
+    if (yl) { *yl = 0; }
+    if (resolue) { *resolue = false; }
+    if (!lvgl_port_lock(1000)) {
+        return false;
+    }
     if (passages) { *passages = s_gardeh_n; }
     if (cris) { *cris = s_gardeh_cris; }
     if (hp) { *hp = s_gardeh_hp; }
     if (hl) { *hl = s_gardeh_hl; }
     if (yl) { *yl = s_gardeh_yl; }
     if (resolue) { *resolue = s_gardeh_resolue; }
+    lvgl_port_unlock();
+    return true;
 }
 
 /*
@@ -5758,7 +5783,25 @@ int dn_ui_detail_panh(void)
 bool dn_ui_detail_courbe_axes(int *y0_min, int *y0_max, int *y1_min, int *y1_max,
                               uint32_t *coul0, uint32_t *coul1, int *n_series)
 {
+    /*
+     * 🔴 dn4-13 / AC1.1 — LE VERROU EST PRIS AVANT DE LIRE L'OBJET, ET RENDU SUR
+     *    TOUS LES CHEMINS DE SORTIE.
+     *    `lv_chart_get_series_color()` déréférence `s_det_courbe` ET
+     *    `s_det_serie0/1`. Cette fonction tourne dans la tâche CONSOLE ; la tâche
+     *    LVGL peut détruire les trois entre deux de ses instructions — `nav open`,
+     *    `scene`, `tear`, ou le `build_scene()` que `dn_ui_set_detail_panh()`
+     *    déclenche pour le témoin négatif d'AC4.3. L'instrument lisait donc une
+     *    série potentiellement libérée POUR PUBLIER UNE COULEUR : le pire cas
+     *    n'est pas la panique, c'est la couleur plausible.
+     * ⛔ ÉCHEC DU VERROU ⇒ `false` = « PAS MESURÉ », ⛔ jamais « zéro ». C'est la
+     *    règle que `dn_ui.c` écrit déjà vingt lignes plus haut et que CETTE
+     *    fonction violait — corrigé le 2026-08-25 (revue du 2026-08-24).
+     */
+    if (!lvgl_port_lock(1000)) {
+        return false;
+    }
     if (s_vue != DN_VUE_DETAIL || !s_det_courbe) {
+        lvgl_port_unlock();
         return false;
     }
     if (y0_min) { *y0_min = s_axe_pose[0] ? s_axe_min[0] : 0; }
@@ -5789,6 +5832,7 @@ bool dn_ui_detail_courbe_axes(int *y0_min, int *y0_max, int *y1_min, int *y1_max
         n = dn_hist_series_de_case(s_metrique, &s0, &s1);
         *n_series = n;
     }
+    lvgl_port_unlock();
     return true;
 }
 
@@ -6025,7 +6069,7 @@ bool dn_ui_barre_txt(char *heure, size_t n_heure, char *date, size_t n_date)
     return true;
 }
 
-bool dn_ui_barre_dessinee(void)
+bool dn_ui_barre_dessinee(bool *dessinee)
 {
     /* RELU de l'état réel, pas récité : les labels peuvent être NULL entre un
      * démontage et la reconstruction, et `s_active` peut être faux.
@@ -6035,11 +6079,31 @@ bool dn_ui_barre_dessinee(void)
      *    répondait « DESSINEE » pendant que l'écran de détail était sur la
      *    dalle — quand le MÊME état visuel répond « PAS dessinee » en REBUILD.
      *    Un instrument dont la réponse dépend du mode de nav et pas de ce qu'on
-     *    voit ne mesure pas ce qu'il annonce. */
-    if (s_barre_heure == NULL || s_barre_date == NULL || !s_active) {
+     *    voit ne mesure pas ce qu'il annonce.
+     * 🔴 dn4-13 / AC1.1+AC1.3 — LE VERROU, ET LA TROISIÈME RÉPONSE.
+     *    `lv_screen_active()` lit `disp->act_scr`, que la tâche LVGL réécrit à
+     *    chaque `lv_screen_load()`. La lecture se faisait depuis la tâche console,
+     *    sans verrou, PENDANT la transition qu'elle prétend décrire.
+     *    ⛔ Et le verrou seul ne suffisait pas : `bool` n'a que deux réponses, or
+     *    il en faut TROIS — dessinée, pas dessinée, PAS MESURÉE. Rendre `false`
+     *    sur un verrou non pris aurait fabriqué « PAS dessinee », c'est-à-dire un
+     *    verdict, exactement le défaut qu'AC1 solde. La valeur passe donc dans
+     *    `*dessinee` et le retour porte « j'ai pu mesurer ». */
+    if (dessinee) {
+        *dessinee = false;
+    }
+    if (!lvgl_port_lock(200)) {
         return false;
     }
-    return s_scr_dash != NULL && lv_screen_active() == s_scr_dash;
+    bool vu = false;
+    if (s_barre_heure != NULL && s_barre_date != NULL && s_active) {
+        vu = (s_scr_dash != NULL && lv_screen_active() == s_scr_dash);
+    }
+    lvgl_port_unlock();
+    if (dessinee) {
+        *dessinee = vu;
+    }
+    return true;
 }
 
 /*

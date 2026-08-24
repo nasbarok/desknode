@@ -3509,7 +3509,12 @@ static int cmd_widget(int argc, char **argv)
             uint32_t np = 0, ncris = 0;
             int ghp = 0, ghl = 0, gyl = 0;
             bool gres = false;
-            dn_ui_garde_hauteur(&np, &ncris, &ghp, &ghl, &gyl, &gres);
+            /* 🔴 dn4-13 / AC1.2 — « PAS MESURE » EST UNE TROISIEME REPONSE.
+             *    Sans ce booleen, un verrou non pris rendait six zeros, et le
+             *    bloc de verdict plus bas les lisait comme « ZERO PASSAGE : la
+             *    garde n'est pas ATTEINTE » — un diagnostic FABRIQUE, sur une
+             *    garde qui pouvait avoir crie trois fois. */
+            bool gmes = dn_ui_garde_hauteur(&np, &ncris, &ghp, &ghl, &gyl, &gres);
             {
             int a0=0,b0=0,a1=0,b1=0,ns=0; uint32_t c0=0,c1=0;
             if (dn_ui_detail_courbe_axes(&a0,&b0,&a1,&b1,&c0,&c1,&ns)) {
@@ -3536,7 +3541,10 @@ static int cmd_widget(int argc, char **argv)
                    (unsigned long)ncris);
             printf("     geom_resolue = %s · panneau %d · label %d pose a y = %d\n",
                    gres ? "true" : "false", ghp, ghl, gyl);
-            if (np == 0) {
+            if (!gmes) {
+                printf("     ⛔ VERROU LVGL NON PRIS — « pas mesure », ⛔ pas\n");
+                printf("        « zero passage ». AUCUN verdict ici.\n");
+            } else if (np == 0) {
                 printf("     🔴 ZERO PASSAGE : la garde n'est pas ATTEINTE.\n");
             } else if (!gres) {
                 printf("     🔴 `geom_resolue` FAUX : la garde est atteinte mais\n");
@@ -7371,11 +7379,16 @@ static int cmd_rtc(int argc, char **argv)
     printf("             WiFi en dn2-2. Reduire cette pile demandera CE chiffre.\n");
     char bh[24] = "?", bd[32] = "?";
     dn_ui_barre_txt(bh, sizeof(bh), bd, sizeof(bd));
+    /* 🔴 dn4-13 / AC1 — TROIS ETATS. Un verrou non pris n'est PAS « pas
+     *    dessinee » : c'est « je n'ai pas pu regarder ». */
+    bool bdess = false;
+    bool bdess_mesuree = dn_ui_barre_dessinee(&bdess);
     printf("barre      : %s · « %s » / « %s » · %s\n",
            dn_ui_barre_secondes() ? "HH:MM:SS (1 Hz)" : "HH:MM (au changement de minute)",
            bh, bd,
-           dn_ui_barre_dessinee() ? "DESSINEE"
-                                  : "PAS dessinee (ui off / scene / tear / vue detail)");
+           !bdess_mesuree ? "PAS MESUREE (verrou LVGL non pris)"
+                          : (bdess ? "DESSINEE"
+                                   : "PAS dessinee (ui off / scene / tear / vue detail)"));
     printf("epoque     : %d..%d — CHOIX du driver, pas de la puce : le PCF85063A\n",
            DN_RTC_ANNEE_BASE, DN_RTC_ANNEE_BASE + 99);
     printf("             porte l'annee sur 0..99 et n'a AUCUN bit de siecle.\n");
