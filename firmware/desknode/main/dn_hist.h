@@ -221,6 +221,15 @@ bool dn_hist_minmax(int serie, int32_t *min, int32_t *max);
  * permet de dire « la courbe est vide » sans le deviner. */
 int dn_hist_reels(int serie);
 
+/* 🔴 dn4-13 / AC6.3 — combien de positions ont été **écrites au moins une fois**
+ * (saturant à `DN_HIST_N_POINTS`). ⛔ SANS ELLE, « jamais écrit » et « TROU »
+ * sont le même octet : l'init remplit l'anneau de `DN_HIST_TROU`, donc à
+ * t = 10 s `hist` annonçait « reels 10 · trous 110 » pour 110 cases JAMAIS
+ * ATTEINTES. Un trou est une seconde où la source s'est tue — c'est une
+ * information ; une case jamais atteinte n'en est pas une.
+ * ⚠️ À 1 Hz, ce nombre EST la fenêtre courte réelle, en secondes. */
+int dn_hist_ecrits(int serie);
+
 /* La série tracée par la page `case`, et sa seconde série s'il y en a une.
  * Rend le nombre de séries (1, ou **2 pour AMBIANCE**). */
 int dn_hist_series_de_case(int case_idx, int *s0, int *s1);

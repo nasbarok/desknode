@@ -25,6 +25,22 @@ static uint32_t s_w[DN_HIST_N_SERIES];
 
 static bool s_pret;
 
+/*
+ * 🔴 dn4-13 / AC6.3 — COMBIEN DE POSITIONS ONT ÉTÉ **ÉCRITES UNE FOIS**, par
+ *    série (saturant à `DN_HIST_N_POINTS`).
+ *
+ * ⚠️ SANS LUI, « JAMAIS ÉCRIT » ET « TROU » SONT LE MÊME OCTET. `dn_hist_init()`
+ *    remplit l'anneau de `DN_HIST_TROU` : à t = 10 s, `hist` affichait donc
+ *    *« reels 10 · trous 110 »* alors que **110 cases n'avaient jamais été
+ *    atteintes**. Ce ne sont pas des trous — un trou est une SECONDE OÙ LA
+ *    SOURCE S'EST TUE, et c'est une information ; une case jamais atteinte n'en
+ *    est pas une. L'en-tête de la commande revendiquait pourtant exactement
+ *    cette distinction.
+ * ⚠️ Et ce compteur donne AUSSI la fenêtre courte réelle : `n` positions écrites
+ *    à 1 Hz = `n` secondes, ⛔ pas « 2 min » par principe.
+ */
+static uint32_t s_ecrits[DN_HIST_N_SERIES];
+
 /* Les 24 seaux d'une heure — voir `dn_hist.h` pour le motif de l'anneau. */
 static int32_t s_smin[DN_HIST_N_SERIES][DN_HIST_SEAUX];
 static int32_t s_smax[DN_HIST_N_SERIES][DN_HIST_SEAUX];
@@ -76,6 +92,7 @@ void dn_hist_init(void)
             s_pts[s][i] = DN_HIST_TROU;
         }
         s_w[s] = 0;
+        s_ecrits[s] = 0;
     }
     for (int s = 0; s < DN_HIST_N_SERIES; s++) {
         for (int b = 0; b < DN_HIST_SEAUX; b++) {
@@ -169,6 +186,9 @@ int dn_hist_rattraper(void)
         for (int s = 0; s < DN_HIST_N_SERIES; s++) {
             s_pts[s][s_w[s]] = DN_HIST_TROU;
             s_w[s] = (s_w[s] + 1u) % DN_HIST_N_POINTS;
+            if (s_ecrits[s] < DN_HIST_N_POINTS) {
+                s_ecrits[s]++;
+            }
         }
     }
     s_rattr_evts++;
@@ -199,6 +219,9 @@ void dn_hist_poser(int serie, int32_t dixiemes, bool connue)
     }
     s_pts[serie][s_w[serie]] = connue ? dixiemes : DN_HIST_TROU;
     s_w[serie] = (s_w[serie] + 1u) % DN_HIST_N_POINTS;
+    if (s_ecrits[serie] < DN_HIST_N_POINTS) {
+        s_ecrits[serie]++;
+    }
 
     /* ⚠️ LE SEAU NE REÇOIT QUE DU RÉEL, comme l'anneau. Un trou n'abaisse aucun
      *    minimum et ne relève aucun maximum : il n'existe simplement pas. */
@@ -360,6 +383,16 @@ bool dn_hist_minmax(int serie, int32_t *min, int32_t *max)
     return true;
 }
 
+int dn_hist_ecrits(int serie)
+{
+    /* dn4-13 / AC6.3 — même garde `s_pret` que les autres lecteurs : avant
+     * l'init, « 0 position écrite » est la vérité, et c'est ce qu'on rend. */
+    if (!s_pret || serie < 0 || serie >= DN_HIST_N_SERIES) {
+        return 0;
+    }
+    return (int)s_ecrits[serie];
+}
+
 int dn_hist_reels(int serie)
 {
     /* dn4-13 / AC2.3 — avant init, « 0 point réel » est la VÉRITÉ, et c'est
@@ -431,8 +464,9 @@ size_t dn_hist_octets_detail(size_t *points, size_t *seaux, size_t *index)
 {
     size_t p = sizeof(s_pts);
     size_t b = sizeof(s_smin) + sizeof(s_smax) + sizeof(s_svu);
-    size_t i = sizeof(s_w) + sizeof(s_pret) + sizeof(s_seau_abs) +
-               sizeof(s_tick_us) + sizeof(s_rattr_evts) + sizeof(s_rattr_trous);
+    size_t i = sizeof(s_w) + sizeof(s_ecrits) + sizeof(s_pret) +
+               sizeof(s_seau_abs) + sizeof(s_tick_us) + sizeof(s_rattr_evts) +
+               sizeof(s_rattr_trous);
     if (points) { *points = p; }
     if (seaux) { *seaux = b; }
     if (index) { *index = i; }

@@ -466,6 +466,82 @@ def bloc_seaux(source):
          "%d..%d — le défaut d'AC3.2 est REPRODUIT" % (mn, mx))
 
 
+def bloc_ecrits(source):
+    print("\n── AC6.3 — « JAMAIS ÉCRIT » N'EST PAS « TROU » ────────────────────")
+    lib, err = construire(source, "ecrits")
+    if lib is None:
+        ctrl(False, "la coquille compile", err[:200])
+        return
+    lib.dn_hist_ecrits.restype = ctypes.c_int
+    lib.dn_hist_ecrits.argtypes = [ctypes.c_int]
+    lib.dn_hist_rattraper.restype = ctypes.c_int
+    lib.dn_hist_init()
+    ctrl(lib.dn_hist_ecrits(0) == 0, "après l'init, 0 position écrite",
+         "l'anneau est plein de TROUS, mais aucun n'a été VÉCU")
+    for t in range(10):
+        horloge(lib, t)
+        lib.dn_hist_poser(0, 500 + t, True)
+    e, r = lib.dn_hist_ecrits(0), lib.dn_hist_reels(0)
+    ctrl(e == 10 and r == 10,
+         "à t = 10 s : 10 écrites, 10 réelles, 0 trou",
+         "⛔ l'ancienne table publiait « trous 110 » ici")
+    ctrl(N_POINTS - e == 110, "…et 110 positions JAMAIS ATTEINTES",
+         "colonne `jamais`, ⛔ pas colonne `trous`")
+    for t in range(10, 15):
+        horloge(lib, t)
+        lib.dn_hist_poser(0, 0, False)  # la source se tait : VRAIS trous
+    e, r = lib.dn_hist_ecrits(0), lib.dn_hist_reels(0)
+    ctrl(e == 15 and r == 10 and (e - r) == 5,
+         "5 s de source muette ⇒ 5 VRAIS trous, `jamais` inchangé",
+         "ecrits %d · reels %d · trous %d · jamais %d" % (e, r, e - r,
+                                                          N_POINTS - e))
+    # Le rattrapage écrit AUSSI : sinon `jamais` ne descendrait pas pendant une
+    # pause, et une coupure de 25 s se lirait comme 25 s « jamais atteintes ».
+    # ⚠️ IL FAUT L'ARMER : au tout premier appel, `s_tick_us` vaut -1 et la
+    #    fonction se contente d'horodater. Sans cet appel d'amorçage, le contrôle
+    #    ci-dessous passerait sur `n == 0` — un VERT SUR ZÉRO ÉVÉNEMENT, et c'est
+    #    précisément la famille de vacuité que cette story solde.
+    horloge(lib, 14)
+    lib.dn_hist_rattraper()
+    horloge(lib, 40)
+    n = lib.dn_hist_rattraper()
+    ctrl(n > 0, "le rattrapage a bien été ATTEINT par ce scénario",
+         "%d trou(s) comblé(s) — ⛔ un vert sur n == 0 ne prouverait rien" % n)
+    ctrl(lib.dn_hist_ecrits(0) == 15 + n,
+         "le RATTRAPAGE compte comme des positions écrites",
+         "ecrits = 15 + %d = %d" % (n, lib.dn_hist_ecrits(0)))
+    # saturation
+    lib.dn_hist_init()
+    for t in range(0, 200):
+        horloge(lib, t)
+        lib.dn_hist_poser(0, 700, True)
+    ctrl(lib.dn_hist_ecrits(0) == N_POINTS,
+         "après un tour complet, `ecrits` SATURE à 120",
+         "⛔ pas 200 : il compte des POSITIONS, pas des écritures")
+
+    # ── TÉMOIN NÉGATIF : on retire l'incrément, on RECOMPILE, on RAPPELLE ───
+    print("\n     🔴 TÉMOIN NÉGATIF — l'incrément retiré, RECOMPILÉ, RAPPELÉ")
+    motif = ("    if (s_ecrits[serie] < DN_HIST_N_POINTS) {\n"
+             "        s_ecrits[serie]++;\n    }\n")
+    if motif not in source:
+        ctrl(False, "le motif d'incrément est trouvable", "mutation impossible")
+        return
+    libm, err = construire(source.replace(motif, "", 1), "sansecrits")
+    if libm is None:
+        ctrl(False, "le mutant compile", err[:300])
+        return
+    libm.dn_hist_ecrits.restype = ctypes.c_int
+    libm.dn_hist_ecrits.argtypes = [ctypes.c_int]
+    libm.dn_hist_init()
+    for t in range(10):
+        horloge(libm, t)
+        libm.dn_hist_poser(0, 500 + t, True)
+    em, rm = libm.dn_hist_ecrits(0), libm.dn_hist_reels(0)
+    ctrl(em == 0 and rm == 10,
+         "sans l'incrément : 10 réelles pour 0 « écrite »",
+         "⇒ `jamais` dirait 120 sur un anneau où 10 cases vivent")
+
+
 def main():
     src, sha_c = lire(DN_HIST_C)
     _, sha_h = lire(DN_HIST_H)
@@ -495,6 +571,7 @@ def main():
     bloc_couverture(src)
     bloc_axe_temps(src)
     bloc_seaux(src)
+    bloc_ecrits(src)
 
     print("\n" + "=" * 78)
     print("⚠️ CE QUE CETTE GATE NE SOLDE PAS : les témoins CARTE — AC2.2")

@@ -527,6 +527,11 @@ bool dn_ui_detail_courbe_axes(int *y0_min, int *y0_max, int *y1_min, int *y1_max
 esp_err_t dn_ui_set_fond(bool on);
 bool dn_ui_fond(void);
 
+/* 🔴 dn4-13 / AC6.5 — BORNÉ À **167** (= 262 − 95), ⛔ plus 200. Au-delà, le bloc
+ * de valeurs CHEVAUCHE le cadre de courbe — et la garde de hauteur NE LE VOIT
+ * PAS (elle compare le label à SON panneau, pas le panneau à son voisin) : elle
+ * concluait « ✅ silence LÉGITIME » sur un écran cassé. ⚠️ Remet AUSSI les
+ * compteurs de la garde à zéro : c'est ce qui rend le témoin négatif REJOUABLE. */
 esp_err_t dn_ui_set_detail_panh(int h);
 int dn_ui_detail_panh(void);
 
@@ -539,8 +544,14 @@ int dn_ui_detail_panh(void);
  * remises à zéro). Les six champs sont écrits par la tâche LVGL : sans verrou le
  * tuple pouvait MÉLANGER DEUX PASSAGES, et le verdict de `widget courbe` compare
  * justement trois de ces six nombres entre eux. */
+/* 🔴 dn4-13 / AC6.1 — `*cri_dernier` = la garde a-t-elle crié AU DERNIER
+ * PASSAGE. ⛔ `*cris` est CUMULATIF et ne peut pas trancher : après un retour au
+ * produit, il faisait annoncer « ✅ elle a CRIÉ » sur une garde MUETTE, et il
+ * rendait la branche « la garde est CASSÉE » INJOIGNABLE dès le premier cri.
+ * Les compteurs sont remis à zéro par `dn_ui_set_detail_panh()` — un témoin se
+ * remet à zéro, ou il n'est pas un témoin. */
 bool dn_ui_garde_hauteur(uint32_t *passages, uint32_t *cris, int *hp, int *hl,
-                         int *yl, bool *resolue);
+                         int *yl, bool *resolue, bool *cri_dernier);
 
 /* ── LA CASE « AMBIANCE » : DEUX GRANDEURS DANS UNE CASE (D6, dn3-1) ──────────
  * Jusqu'à dn2-1 c'étaient DEUX cases (TEMP. idx 4, HUMIDITÉ idx 5). D6 les

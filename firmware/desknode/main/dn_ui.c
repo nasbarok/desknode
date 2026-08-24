@@ -25,6 +25,17 @@
 #include "esp_log.h"
 #include "esp_lvgl_port.h"
 #include "esp_timer.h"
+/*
+ * 🔴 dn4-13 / AC6.2 — L'EN-TÊTE **PRIVÉ** DU CHART, ET SON MOTIF.
+ *    `lv_chart_series_t::hidden` n'a AUCUN getter public en LVGL 9. Sans lui,
+ *    « combien de séries sont VISIBLES ? » ne peut être répondu qu'en récitant
+ *    la table qui a servi à les masquer — c'est-à-dire en répondant à la
+ *    question par la question. `dn_widget.c` fait déjà exactement ce choix pour
+ *    `lv_obj_get_ext_draw_size()` (`core/lv_obj_draw_private.h`), avec le même
+ *    motif écrit. ⚠️ Le prix : ce champ peut bouger d'une version de LVGL à
+ *    l'autre. Il est LU, jamais écrit, et un seul site le lit.
+ */
+#include "widgets/chart/lv_chart_private.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -1402,6 +1413,11 @@ static lv_obj_t *s_det_titre, *s_det_valeur, *s_det_minmax, *s_det_sec;
  *    template — sinon il mesurerait autre chose que ce qu'il prétend.
  */
 #define DET_PANH_DEFAUT 154
+/* 🔴 dn4-13 / AC6.5 — `262` (haut du cadre de courbe) − `95` (haut du panneau de
+ * valeurs) : au-delà, le bloc de valeurs CHEVAUCHE le cadre. Les deux nombres
+ * sont posés dans `build_detail()`, et l'invariant `262 + h_cadre == 370` est
+ * déjà vérifié par `widget courbe`. */
+#define DET_PANH_MAX (262 - 95)
 static int s_det_panh; /* 0 = DET_PANH_DEFAUT */
 
 /*
@@ -1424,6 +1440,21 @@ static uint32_t s_gardeh_n;     /* passages dans le bloc de garde */
 static uint32_t s_gardeh_cris;  /* fois où elle a émis */
 static int s_gardeh_hp, s_gardeh_hl, s_gardeh_yl;
 static bool s_gardeh_resolue;
+/*
+ * 🔴 dn4-13 / AC6.1 — LE CRI **DU DERNIER PASSAGE**, ⛔ PAS LE TOTAL DE SESSION.
+ *
+ * `s_gardeh_cris` est CUMULATIF, et la console l'utilisait pour trancher. Deux
+ * conséquences MESURÉES par la revue du 2026-08-24 :
+ *   · après un retour au produit, elle imprimait encore *« ✅ elle a CRIÉ »* sur
+ *     une garde parfaitement MUETTE ⇒ le témoin négatif n'était **pas
+ *     rejouable**, il ne valait qu'une seule fois par boot ;
+ *   · la branche *« 🔴 la garde est CASSÉE »* (condition vraie ET aucun cri)
+ *     devenait **INJOIGNABLE dès le premier cri**, puisque `ncris > 0` pour
+ *     toujours.
+ * ⇒ Un témoin se remet à zéro, ou il n'est pas un témoin. Les compteurs sont
+ *   remis par `dn_ui_set_detail_panh()`, ET le verdict porte sur CE booléen-ci.
+ */
+static bool s_gardeh_cri;
 
 static lv_obj_t *s_det_courbe;
 static lv_chart_series_t *s_det_serie0, *s_det_serie1;
@@ -3780,8 +3811,10 @@ static void detail_reparametrer(int idx)
                 s_gardeh_hl = hl;
                 s_gardeh_yl = yl;
                 s_gardeh_resolue = geom_resolue;
+                s_gardeh_cri = false;
                 if (geom_resolue && hp > 0 && yl >= 0 && yl + hl > hp) {
                     s_gardeh_cris++;
+                    s_gardeh_cri = true;
                     ESP_LOGW(TAG,
                              "detail « %s » : le bloc de valeurs DEBORDE EN "
                              "HAUTEUR — label %d px pose a y = %d dans un "
@@ -6098,7 +6131,7 @@ bool dn_ui_widget_jauge_rect(int idx, int *x, int *y, int *w, int *h,
  * ⛔ Verrou non pris ⇒ `false`, sorties laissées à ZÉRO **et l'appelant DOIT le
  *    dire** — « pas mesuré », ⛔ jamais « zéro passage ». */
 bool dn_ui_garde_hauteur(uint32_t *passages, uint32_t *cris, int *hp, int *hl,
-                         int *yl, bool *resolue)
+                         int *yl, bool *resolue, bool *cri_dernier)
 {
     if (passages) { *passages = 0; }
     if (cris) { *cris = 0; }
@@ -6106,6 +6139,7 @@ bool dn_ui_garde_hauteur(uint32_t *passages, uint32_t *cris, int *hp, int *hl,
     if (hl) { *hl = 0; }
     if (yl) { *yl = 0; }
     if (resolue) { *resolue = false; }
+    if (cri_dernier) { *cri_dernier = false; }
     if (!lvgl_port_lock(1000)) {
         return false;
     }
@@ -6115,6 +6149,7 @@ bool dn_ui_garde_hauteur(uint32_t *passages, uint32_t *cris, int *hp, int *hl,
     if (hl) { *hl = s_gardeh_hl; }
     if (yl) { *yl = s_gardeh_yl; }
     if (resolue) { *resolue = s_gardeh_resolue; }
+    if (cri_dernier) { *cri_dernier = s_gardeh_cri; }
     lvgl_port_unlock();
     return true;
 }
@@ -6129,13 +6164,43 @@ bool dn_ui_garde_hauteur(uint32_t *passages, uint32_t *cris, int *hp, int *hl,
  */
 esp_err_t dn_ui_set_detail_panh(int h)
 {
-    if (h != 0 && (h < 40 || h > 200)) {
+    /*
+     * 🔴 dn4-13 / AC6.5 — LA BORNE HAUTE PASSE DE 200 À **167**, ET C'EST UNE
+     *    BORNE DE GÉOMÉTRIE, ⛔ PAS UN GOÛT.
+     *    Le panneau de valeurs est posé à **y = 95** (`build_detail`), le cadre
+     *    de courbe à **y = 262**. Au-delà de `262 − 95 = 167`, le bloc de valeurs
+     *    CHEVAUCHE le cadre : à 200, `95 + 200 = 295 > 262`.
+     * ⛔ ET LA GARDE DE HAUTEUR NE LE VOIT PAS : elle compare le LABEL à SON
+     *    panneau, pas le panneau à SON VOISIN. Elle concluait donc
+     *    *« ✅ silence LÉGITIME »* sur un écran CASSÉ — un instrument qui déclare
+     *    sain ce qu'il a lui-même provoqué. C'est exactement la famille de
+     *    défauts que cette story solde ; on ferme par la BORNE, parce qu'un
+     *    stimulus qui casse l'écran ne mesure plus la garde, il mesure autre chose.
+     * ⚠️ 154 (le produit) et 167 laissent 13 px de marge au témoin négatif : la
+     *    garde reste DÉCLENCHABLE, ⛔ on n'a pas fermé le témoin en fermant le
+     *    débordement. `widget detpan 40` reste le témoin par le BAS.
+     * ⛔ REFUSÉ hors plage, ⛔ jamais écrêté — même contrat que `widget opa` :
+     *    un écrêtage silencieux ferait mesurer une hauteur qu'on n'a pas demandée.
+     */
+    if (h != 0 && (h < 40 || h > DET_PANH_MAX)) {
         return ESP_ERR_INVALID_ARG;
     }
     if (!lvgl_port_lock(2000)) {
         return ESP_ERR_TIMEOUT;
     }
     s_det_panh = h;
+    /* 🔴 dn4-13 / AC6.1 — LES COMPTEURS DE LA GARDE REPARTENT DE ZÉRO À CHAQUE
+     *    ARMEMENT (et à chaque DÉSARMEMENT). C'est ce qui rend le témoin
+     *    négatif REJOUABLE : arme ⇒ elle crie · retour au produit ⇒ elle se tait
+     *    ET la console peut le DIRE. Sans cette remise, un seul cri suffisait à
+     *    faire annoncer « ✅ elle a CRIÉ » pour le reste de la session. */
+    s_gardeh_n = 0;
+    s_gardeh_cris = 0;
+    s_gardeh_cri = false;
+    s_gardeh_hp = 0;
+    s_gardeh_hl = 0;
+    s_gardeh_yl = 0;
+    s_gardeh_resolue = false;
     build_scene();
     lvgl_port_unlock();
     return ESP_OK;
@@ -6200,11 +6265,32 @@ bool dn_ui_detail_courbe_axes(int *y0_min, int *y0_max, int *y1_min, int *y1_max
         lv_color_t c = lv_chart_get_series_color(s_det_courbe, s_det_serie1);
         *coul1 = ((uint32_t)c.red << 16) | ((uint32_t)c.green << 8) | c.blue;
     }
-    /* ⚠️ « Combien de séries » = combien sont VISIBLES, ⛔ pas combien existent :
-     *    les deux existent toujours depuis le correctif. */
+    /*
+     * ⚠️ « Combien de séries » = combien sont VISIBLES, ⛔ pas combien existent :
+     *    les deux existent toujours depuis le correctif.
+     *
+     * 🔴 dn4-13 / AC6.2 — ET C'EST DÉSORMAIS **LU DE L'OBJET**, ⛔ PLUS RÉCITÉ.
+     *    Ces trois lignes appelaient `dn_hist_series_de_case()` — c'est-à-dire
+     *    LA TABLE, c'est-à-dire LA DEMANDE — juste sous un commentaire qui se
+     *    félicitait d'avoir corrigé exactement ça pour la COULEUR. Un instrument
+     *    qui récite la demande ne peut pas voir le défaut qu'on lui fait
+     *    chercher : si `lv_chart_hide_series()` échouait, ou si la série 1
+     *    restait visible sur une page mono-courbe (le défaut que le masquage
+     *    existe pour empêcher), `widget courbe` aurait répondu « 1 série » en
+     *    montrant deux lignes.
+     * ⚠️ `hidden` vit dans `widgets/chart/lv_chart_private.h`. On l'inclut, comme
+     *    `dn_widget.c` inclut déjà `core/lv_obj_draw_private.h` et pour la même
+     *    raison : l'API publique n'expose aucun getter, et l'alternative — une
+     *    ombre écrite une ligne après l'appel — serait encore une récitation.
+     */
     if (n_series) {
-        int n = 0, s0 = -1, s1 = -1;
-        n = dn_hist_series_de_case(s_metrique, &s0, &s1);
+        int n = 0;
+        if (s_det_serie0 && !s_det_serie0->hidden) {
+            n++;
+        }
+        if (s_det_serie1 && !s_det_serie1->hidden) {
+            n++;
+        }
         *n_series = n;
     }
     lvgl_port_unlock();

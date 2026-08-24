@@ -3456,10 +3456,29 @@ static int cmd_widget(int argc, char **argv)
         printf("  rectangle : x = %d..%d  (%d px)\n", x, x + w - 1, w);
         printf("              y = %d..%d  (%d px)\n", y, y + h - 1, h);
         printf("  ⚠️ bornes INCLUSIVES cote LVGL — le +1 est fait ici.\n");
-        printf("  ── la MEME bande, telle que la FORMULE la calcule ──\n");
-        {
+        /*
+         * 🔴 dn4-13 / AC6.4 — LA FORMULE DE CASE EST **REFUSEE** POUR LA DEMO.
+         *    `widget jauge 6` vise `s_demo`, qui n'est PAS une case du tableau
+         *    de bord : `dn_ui_case_rect(6, ...)` rend la SENTINELLE
+         *    `x = -1, y = -1 (0x0)`. La version precedente l'imprimait telle
+         *    quelle, puis calculait « ecart : dx = x - (-1) » — un ecart
+         *    FABRIQUE contre une sentinelle, DANS LE BLOC DONT TOUT LE PROPOS
+         *    EST DE TRANCHER UN DESACCORD DE COORDONNEES.
+         * ⛔ Un instrument ne compare pas a une valeur qui veut dire
+         *    « je ne sais pas ». Il le DIT.
+         */
+        if (idx >= DN_UI_METRIQUES) {
+            printf("  ── la formule de case : ⛔ SANS OBJET POUR LA DEMO ──\n");
+            printf("     `widget jauge %ld` vise `s_demo`, qui n'est PAS une case\n",
+                   idx);
+            printf("     du tableau de bord : elle n'a AUCUNE origine calculee.\n");
+            printf("     ⛔ Aucun « ecart » n'est publie ici — il serait calcule\n");
+            printf("        contre la sentinelle -1 de `dn_ui_case_rect()`,\n");
+            printf("        c'est-a-dire FABRIQUE.\n");
+        } else {
             int case_x = 0, case_y = 0, case_w = 0, case_h = 0;
             dn_ui_case_rect((int)idx, &case_x, &case_y, &case_w, &case_h);
+            printf("  ── la MEME bande, telle que la FORMULE la calcule ──\n");
             printf("     case  : x = %d  y = %d  (%dx%d)\n", case_x, case_y,
                    case_w, case_h);
             printf("     ecart : dx = %d px   dy = %d px\n", x - case_x,
@@ -3514,7 +3533,9 @@ static int cmd_widget(int argc, char **argv)
              *    bloc de verdict plus bas les lisait comme « ZERO PASSAGE : la
              *    garde n'est pas ATTEINTE » — un diagnostic FABRIQUE, sur une
              *    garde qui pouvait avoir crie trois fois. */
-            bool gmes = dn_ui_garde_hauteur(&np, &ncris, &ghp, &ghl, &gyl, &gres);
+            bool gcri = false;
+            bool gmes = dn_ui_garde_hauteur(&np, &ncris, &ghp, &ghl, &gyl, &gres,
+                                            &gcri);
             {
             int a0=0,b0=0,a1=0,b1=0,ns=0; uint32_t c0=0,c1=0;
             bool p0=false, p1=false;
@@ -3597,14 +3618,29 @@ static int cmd_widget(int argc, char **argv)
             } else if (!gres) {
                 printf("     🔴 `geom_resolue` FAUX : la garde est atteinte mais\n");
                 printf("        elle se COUPE elle-meme.\n");
-            } else if (ghl + gyl > ghp && ncris == 0) {
-                printf("     🔴 CONDITION VRAIE ET AUCUN CRI : la garde est CASSEE.\n");
-            } else if (ncris == 0) {
-                printf("     ✅ silence LEGITIME : %d + %d = %d <= %d.\n", gyl,
-                       ghl, gyl + ghl, ghp);
+            } else if (ghl + gyl > ghp && !gcri) {
+                printf("     🔴 CONDITION VRAIE ET AUCUN CRI AU DERNIER PASSAGE :\n");
+                printf("        la garde est CASSEE.\n");
+            } else if (!gcri) {
+                printf("     ✅ silence LEGITIME au DERNIER passage : %d + %d = %d <= %d.\n",
+                       gyl, ghl, gyl + ghl, ghp);
+                if (ncris > 0) {
+                    printf("        (elle avait crie %lu fois depuis le dernier\n",
+                           (unsigned long)ncris);
+                    printf("         `widget detpan` — ⛔ ce total NE TRANCHE PAS)\n");
+                }
             } else {
-                printf("     ✅ elle a CRIE — le temoin negatif est concluant.\n");
+                printf("     ✅ elle a CRIE AU DERNIER PASSAGE — le temoin negatif\n");
+                printf("        est concluant (%lu cri(s) sur %lu passage(s)).\n",
+                       (unsigned long)ncris, (unsigned long)np);
             }
+            /* 🔴 dn4-13 / AC6.1 — LE VERDICT PORTE SUR LE **DERNIER PASSAGE**.
+             *    `ncris` est CUMULATIF : apres un retour au produit il faisait
+             *    imprimer « ✅ elle a CRIE » sur une garde MUETTE, et il rendait
+             *    la branche « la garde est CASSEE » INJOIGNABLE des le premier
+             *    cri. Il reste PUBLIE (il dit combien de fois), ⛔ il ne tranche
+             *    plus. Et `widget detpan` remet les compteurs a zero : c'est ce
+             *    qui rend le temoin negatif REJOUABLE dans la seance. */
         }
         /* 🔴 L'INVARIANT DU TEMPLATE, VERIFIE ET NON RECITE. Le bas du cadre est
          *    a 370 depuis dn4-6 (205+165) puis dn4-9 (262+108), et le panneau du
@@ -3663,7 +3699,7 @@ static int cmd_widget(int argc, char **argv)
     if (argc == 3 && strcmp(argv[1], "detpan") == 0) {
         long h = 0;
         if (!parse_entier(argv[2], &h)) {
-            printf("usage : widget detpan <0|40..200>   (actuel : %d px)\n",
+            printf("usage : widget detpan <0|40..167>   (actuel : %d px)\n",
                    dn_ui_detail_panh());
             return 1;
         }
@@ -3685,6 +3721,16 @@ static int cmd_widget(int argc, char **argv)
         printf("⚠️ `widget detpan 0` remet le produit. Le cadre de courbe (262)\n");
         printf("   et le panneau du bas (385) n'ont PAS bouge : ce stimulus casse\n");
         printf("   l'AJUSTEMENT, ⛔ pas le template.\n");
+        printf("🔴 dn4-13 / AC6.5 — LA BORNE HAUTE EST 167 (= 262 - 95), ⛔ plus\n");
+        printf("   200. Au-dela, le bloc CHEVAUCHE le cadre de courbe (95 + 200\n");
+        printf("   = 295 > 262) — ET LA GARDE NE LE VOIT PAS : elle compare le\n");
+        printf("   label a SON panneau, pas le panneau a son voisin. Elle\n");
+        printf("   concluait « ✅ silence LEGITIME » sur un ecran CASSE.\n");
+        printf("🔴 dn4-13 / AC6.1 — cette commande REMET LES COMPTEURS DE LA GARDE\n");
+        printf("   A ZERO. C'est ce qui rend le temoin negatif REJOUABLE : arme\n");
+        printf("   ⇒ elle crie · `detpan 0` ⇒ elle se tait ET la console le DIT.\n");
+        printf("   Sans ca, un seul cri suffisait a faire annoncer « elle a CRIE »\n");
+        printf("   pour le reste de la session.\n");
         return 0;
     }
 
@@ -4490,7 +4536,7 @@ static int cmd_widget(int argc, char **argv)
         printf("        | largeur [<texte>|reset] | detail | replacer on|off\n"
            "        | jauge [<case>]   (dn4-4/AC9 : le rectangle REEL de la barre)\n"
            "        | courbe           (dn4-4/AC4 : la place REELLE de la courbe)\n"
-           "        | detpan <0|40..200>  (dn4-4/AC4.3 : TEMOIN NEGATIF de la garde)\n"
+           "        | detpan <0|40..167>  (dn4-4/AC4.3 : TEMOIN NEGATIF de la garde)\n"
            "        | fond on|off      (dn4-4/AC7 : borne haute de « l'option n°2 »)\n");
         return 1;
     }
@@ -7896,12 +7942,27 @@ static int cmd_hist(int argc, char **argv)
         printf("     interdit toute ecriture flash/NVS, donc ceci NE SURVIT PAS\n");
         printf("     a un reboot. La page affiche la fenetre REELLE, pas 24 h.\n");
     }
-    printf("\n  serie         reels  trous  couv(s)   min(2min)  max(2min)   min(long)  max(long)\n");
+    /*
+     * 🔴 dn4-13 / AC6.3 — « JAMAIS ECRIT » N'EST PAS « TROU », ET LES DEUX
+     *    COLONNES EXISTENT MAINTENANT.
+     *    Cette table imprimait « reels 10 · trous 110 » a t = 10 s, alors que
+     *    110 cases N'AVAIENT JAMAIS ETE ATTEINTES. Un trou est une SECONDE OU LA
+     *    SOURCE S'EST TUE — c'est une information ; une case jamais atteinte
+     *    n'en est pas une. L'en-tete de cette commande revendiquait pourtant
+     *    exactement cette distinction, deux ecrans plus haut.
+     * 🔴 ET L'ETIQUETTE `min(2min)` ETAIT DU MEME BOIS : la fenetre courte ne
+     *    vaut 2 min QUE si 120 positions ont ete ecrites. Elle est desormais
+     *    `min(court)`, et la colonne `ecrits` DIT combien de secondes elle
+     *    couvre reellement (1 position = 1 s, l'horloge est a 1 Hz).
+     */
+    printf("\n  serie        ecrits reels trous jamais couv(s)  min(court) max(court)  min(long) max(long)\n");
     for (int i = 0; i < DN_HIST_N_SERIES; i++) {
         int r = dn_hist_reels(i);
+        int ec = dn_hist_ecrits(i);
         int32_t mn = 0, mx = 0, lm = 0, lx = 0;
         bool lok = dn_hist_minmax_long(i, &lm, &lx);
-        printf("   %-12s %5d  %5d  %7lu", k_nom[i], r, DN_HIST_N_POINTS - r,
+        printf("   %-12s %5d %5d %5d %6d %7lu", k_nom[i], ec, r, ec - r,
+               DN_HIST_N_POINTS - ec,
                (unsigned long)dn_hist_couverture_s(i));
         (void)lok;
         if (dn_hist_minmax(i, &mn, &mx)) {
@@ -7921,6 +7982,11 @@ static int cmd_hist(int argc, char **argv)
     }
     printf("  (toutes les valeurs en DIXIEMES — cet instrument ne connait ni\n");
     printf("   les unites ni les echelles hautes, c'est la PAGE qui les porte)\n");
+    printf("  🔴 `trous` = positions ECRITES dont la source s'etait tue.\n");
+    printf("     `jamais` = positions JAMAIS ATTEINTES depuis l'init — ⛔ ce ne\n");
+    printf("     sont PAS des trous, et les compter comme tels a fait publier\n");
+    printf("     « trous 110 » a t = 10 s. `min(court)` porte donc sur `ecrits`\n");
+    printf("     secondes, ⛔ pas sur « 2 min » par principe.\n");
     printf("\n⛔ UN TROU N'EST PAS UN ZERO. Une valeur absente, perimee, ou\n");
     printf("   SIMULEE (mock, `widget pousser`) n'entre PAS dans une serie\n");
     printf("   presentee comme reelle : elle y creuse un trou, que `lv_chart`\n");
