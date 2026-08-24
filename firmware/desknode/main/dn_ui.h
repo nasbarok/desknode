@@ -809,11 +809,16 @@ const char *dn_ui_case_unite(int idx, int grandeur);
  *      texte qu'il prétend relire, pendant que le produit, lui, va bien.
  *    🎯 « Un instrument faux accuse le sujet sain. »
  * ⇒ UNE constante, les DEUX côtés la prennent, et la troncature est AUDIBLE.
- * ⚠️ Le `24` = préfixe + espace + unité + espace, au pire cas. Un préfixe plus
- *    long que « ventirad » (8) + « tr/min » (6) + 2 espaces demande de le
- *    relever ICI, ⛔ pas de rogner le texte.
+ * ⚠️ Le `28` = icône + espace + préfixe + espace + unité + espace, au pire cas.
+ *    Un préfixe plus long que « ventirad » (8) + « tr/min » (6) + 3 espaces +
+ *    une icône (3 o UTF-8) demande de le relever ICI, ⛔ pas de rogner le texte.
+ * 🔴 PORTÉ DE 24 À 28 EN 2e REVUE (2026-08-24), AVEC LE MOTIF : la vue DÉTAIL
+ *    dessine désormais l'ICÔNE (décision owner). Un glyphe `LV_SYMBOL_*` pèse
+ *    **3 octets UTF-8** et son espace 1 : +4 par grandeur, +16 au total.
+ *    ⛔ Ne PAS laisser la troncature « se voir au log » ici : le log existe pour
+ *      l'imprévu, ⛔ pas pour un dépassement qu'on sait poser à l'avance.
  */
-#define DN_UI_DETAIL_TXT_MAX (4 * (DN_WIDGET_TXT_MAX + 24) + 8)
+#define DN_UI_DETAIL_TXT_MAX (4 * (DN_WIDGET_TXT_MAX + 28) + 8)
 
 /* Ce que la GRANDE VALEUR du détail a réellement posé : son texte, sa largeur,
  * celle de son parent, son x. ⛔ Relu des objets LVGL, jamais recomposé — c'est

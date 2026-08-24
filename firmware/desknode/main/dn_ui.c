@@ -2675,6 +2675,32 @@ static void detail_reparametrer(int idx)
                 /* ⚠️ `true` = la vue DÉTAIL : c'est ICI que les préfixes
                  *    `prefixe_detail_seul` s'affichent, et nulle part ailleurs. */
                 const char *px = dn_widget_prefixe(d, i, true);
+                /* 🔴 dn4-8 / 2e REVUE (2026-08-24), DÉCISION OWNER — L'ICÔNE SE
+                 *    DESSINE ICI AUSSI, ET C'EST UN DÉFAUT D'AFFICHAGE QUI EST
+                 *    CORRIGÉ, ⛔ pas une décoration.
+                 *
+                 *    `desc_ligne_indistincte()` juge le préfixe **PAR LA VUE**
+                 *    (`dn_widget_prefixe(…, detail)`) depuis dn4-9, avec ce motif
+                 *    écrit : « sinon la garde tiendrait pour distinctes deux
+                 *    lignes que l'œil voit identiques ». Le même raisonnement
+                 *    n'avait PAS été appliqué à l'icône : elle était lue sur le
+                 *    champ BRUT (`k_desc[idx].grandeurs[].icone`), alors que la
+                 *    composition du détail ne la dessinait NULLE PART.
+                 *
+                 *    ⇒ `RÉSEAU` (deux « Mb/s », aucun préfixe, séparées UNIQUEMENT
+                 *      par `LV_SYMBOL_DOWN`/`UP` — décision owner du 2026-08-18)
+                 *      affichait en détail « 985,0 Mb/s   ·   48,0 Mb/s » : ⛔ RIEN
+                 *      ne disait laquelle est la descendante. La garde laissait
+                 *      passer, parce qu'elle regardait un champ que la vue
+                 *      n'utilisait pas. C'était la configuration LIVRÉE.
+                 *
+                 * ⚠️ ET ÇA CONTREDISAIT UNE DÉCISION OWNER DÉJÀ PRISE en dn4-8 :
+                 *    « la vue DÉTAIL doit connaître PLUS que la case ». Ici elle
+                 *    en montrait MOINS.
+                 * ✅ Aucun descripteur n'est touché : c'est la VUE qui rattrape
+                 *    ce que la garde supposait déjà d'elle. Miroir exact de
+                 *    `composer()` (`dn_widget.c`), qui est la vue CASE. */
+                const char *ic = d->grandeurs[i].icone;
                 /* 🔴 L'ÉCHELLE HAUTE VAUT ICI AUSSI. Sans ça, la tuile dirait
                  *    « ↓ 100,0 Gb/s » et le détail « 100,0 Mb/s » POUR LE MÊME
                  *    NOMBRE — deux vérités contradictoires à un tap d'écart,
@@ -2682,7 +2708,8 @@ static void detail_reparametrer(int idx)
                  *    mensonge d'interface que dn4-1 a chassé du détail une
                  *    première fois (la valeur en dur « 21,4 °C »). */
                 const char *u = connue ? dn_widget_unite(d, e, i) : NULL;
-                ecrit = snprintf(buf + p, sizeof(buf) - p, "%s%s%s%s%s%s", sep,
+                ecrit = snprintf(buf + p, sizeof(buf) - p, "%s%s%s%s%s%s%s%s",
+                                 sep, ic ? ic : "", ic ? " " : "",
                                  px ? px : "", px ? " " : "",
                                  connue ? e->txt[i] : "--", u ? " " : "",
                                  u ? u : "");
