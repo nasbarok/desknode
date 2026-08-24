@@ -399,6 +399,42 @@ static uint8_t s_gr_force[DN_UI_METRIQUES];
  * découvrirait non branché (leçon T4 de dn2-1 : ce qui n'est jamais appelé ne
  * prouve rien).
  */
+/*
+ * ═══ dn4-4 — SIX COULEURS DISTINCTES, DÉCISION OWNER DU 2026-08-24 ═══════════
+ *
+ * 🔴 **C'EST UN ÉCART DE PÉRIMÈTRE, ASSUMÉ ET DÉCLARÉ.** La story `dn4-4` écrit
+ *    `⛔ Ne change aucun k_desc[]`. L'owner l'a levé **explicitement**, après
+ *    avoir été averti que ça demandait un correct-course.
+ *
+ * ⚠️ **LE CONSTAT QUI L'A DÉCLENCHÉ EST UNE OBSERVATION À L'ŒIL**, ⛔ pas une
+ *    mesure : après le correctif des séries, l'owner a répondu *« non, même
+ *    couleur pour chaque écran »*. Relevé sur les six pages, couleur **relue de
+ *    la série** : violet · cyan · violet · cyan · cyan · orange.
+ *    ⇒ **TROIS couleurs pour SIX pages** — le cyan sur trois d'entre elles.
+ *      La couleur **n'identifiait pas la page**.
+ *
+ * ✅ **ET CE N'ÉTAIT PAS UN DÉFAUT DE `dn4-4`** : le code le disait lui-même,
+ *    *« cyan — famille "données PC" »*. C'était une couleur de **FAMILLE**,
+ *    posée en `dn3-1`, et parfaitement défendable tant que rien ne la portait
+ *    sur toute la largeur d'un écran. **La courbe l'a rendue voyante.**
+ *
+ * ⚠️ CE CHAMP PILOTE **TROIS** CHOSES, ET ELLES CHANGENT TOUTES LES TROIS :
+ *    l'**icône** de la case (`dn_widget.c`), l'**indicateur de jauge** (RAM
+ *    seule), et la **courbe** du détail. C'est voulu : une métrique, une
+ *    couleur, partout. ⛔ Ne pas en découpler une sans le dire.
+ *
+ * 🔴 **PROXIMITÉ NOMMÉE, ⛔ PAS CORRIGÉE EN SILENCE** : `AMBIANCE` reste
+ *    `0xff9640`, et l'ambre du régime **SIMULÉE** vaut `0xffb020` — 26 points
+ *    de vert et 32 de bleu d'écart. Sur la page à deux courbes, une courbe
+ *    RÉELLE en orange peut se lire comme « simulée ». ✅ Ce qui limite le
+ *    risque : le régime est porté par **la couleur du TEXTE de valeur** et par
+ *    le badge, ⛔ pas par la courbe. ⇒ Laissé tel quel **parce que l'identité
+ *    orange d'`AMBIANCE` date de `dn3-1`** et qu'on ne la change pas au jugé :
+ *    **l'œil owner arbitre**, comme pour la piste de jauge.
+ *
+ * ⚠️ L'humidité d'`AMBIANCE` garde le cyan `0x35d6e8`, celui de `GPU`. Aucune
+ *    ambiguïté possible : on ne voit **jamais** deux pages à la fois.
+ */
 static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
     [DN_UI_CASE_CPU] = {
         .icone = DN_ICONE_MICROCHIP,
@@ -620,7 +656,8 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
     [DN_UI_CASE_RAM] = {
         .icone = DN_ICONE_MEMORY,
         .titre = "RAM",
-        .couleur = 0x9b6cff, /* violet */
+        .couleur = 0x4ade80, /* VERT — dn4-4, 2026-08-24 : elle partageait le violet
+                              * de `CPU`. Voir le bloc « SIX COULEURS ». */
         /*
          * 🔴 UNE SEULE GRANDEUR, ET C'EST LE PIÈGE N°1 DU MODÈLE QUI L'IMPOSE.
          *    L'addendum §1 demande « violet + JAUGE » ET une donnée secondaire
@@ -643,7 +680,8 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
     [DN_UI_CASE_RESEAU] = {
         .icone = DN_ICONE_NETWORK_WIRED,
         .titre = "RÉSEAU",
-        .couleur = 0x35d6e8, /* cyan */
+        .couleur = 0x60a5fa, /* BLEU — dn4-4, 2026-08-24 : elle partageait le cyan
+                              * de `GPU` et de `DISQUE`. */
         /* Pas de jauge : un débit n'a pas de plein. `ind_max` devrait valoir la
          * capacité du lien, que le firmware ne connaît pas — une jauge dont
          * l'échelle est inventée est un mensonge d'interface silencieux. */
@@ -746,7 +784,9 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
          */
         .icone = DN_ICONE_SAVE,
         .titre = "DISQUE",
-        .couleur = 0x35d6e8, /* cyan — PROVISOIRE, hérité de VENTILOS (legs dn3-3) */
+        .couleur = 0xf472b6, /* ROSE — dn4-4, 2026-08-24. ✅ Et ça SOLDE le « PROVISOIRE,
+                              * hérité de VENTILOS (legs dn3-3) » qui traînait ici :
+                              * `DISQUE` a enfin une couleur À ELLE. */
         /*
          * ⚠️ AMENDÉ LE 2026-08-22 (dn4-9) : tout ce bloc décrit l'état de dn4-8
          *    et il reste VRAI pour ce qu'il mesure (le mapping, `FRONT_IN`, la
