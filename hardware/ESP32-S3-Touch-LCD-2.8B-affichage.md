@@ -5441,3 +5441,157 @@ observé — et qu'**aucune coordonnée tactile ne doit plus être publiée comm
 
 ✅ **Ce qui n'est PAS en cause et ne se re-teste pas** : *« toute la case est la zone tactile »* tient
 sur la géométrie **D12** — les 9 visées sont bien devenues **9 taps**.
+
+### 22.4 🎯 AC7 — LA LATENCE **AVEC LA COURBE**, ET « L'OPTION N°2 » ENFIN CHIFFRÉE
+
+Firmware **`d71dc1b`** puis descendants, SHA **lus au bandeau**, `porcelain` vide avant chaque flash.
+Protocole identique à T0 : **`touch reset` puis `nav ab 20`** (**n = 40**), dalle **non touchée**,
+`taps` pendant la série = **0**, `transitions RÉELLES = 40 (demandées 40)` à chaque tir.
+
+#### a. Le prix de la courbe, seul
+
+| Point | n | min | **moy** | max | tas LVGL | frag. |
+|---|---|---|---|---|---|---|
+| **T0** — page **sans** courbe | 40 | 287,3 | **335,6 ms** | 400,8 | 20 692 o | **3 %** |
+| **T1** — page **avec** sa courbe | 40 | 160,3 | **333,7 ms** | 420,2 | 21 320 o | 🔴 **42 %** |
+
+⇒ **Δ = −1,9 ms (0,6 %)** pour une étendue **intra-série de 260 ms**.
+🎯 **LE COÛT DE LA COURBE N'EST PAS MESURABLE PAR CET INSTRUMENT À `n = 40`.** ⛔ Ce n'est **pas**
+« la courbe est gratuite » : c'est « elle est sous le bruit de la mesure ».
+
+⚠️ **CE QUE LA COURBE COÛTE VRAIMENT SE VOIT AILLEURS** : **+628 o** de tas LVGL, et surtout la
+**fragmentation du pool passe de 3 % à 42 %** (plus gros bloc libre : 40 476 → 23 336 o). C'était la
+partie **NON PRÉDITE** d'AC5.6 — et elle est le vrai prix, ⛔ pas les millisecondes.
+
+#### b. 🔴 LE CARRÉ 2×2 — ET « L'OPTION N°2 » N'EST PAS CE QUE LE LEDGER CROYAIT
+
+« L'option n°2 » (*ne pas invalider le fond à la transition*) traînait **NON ESSAYÉE** depuis
+`dn3-2`. Elle vise le fait qu'en modèle `SCREENS`, `fond_poser()` pose une `lv_image` de
+480 × 640 RGB565 (**614 400 o**) sur **chacun** des deux écrans, et que `lv_screen_load()` invalide
+tout — **alors que le fond est identique d'un écran à l'autre**.
+
+⛔ **ON NE L'A PAS ESSAYÉE À L'AVEUGLE : ON A D'ABORD MESURÉ SA BORNE HAUTE.** `widget fond off`
+retire le fond ⇒ c'est le **meilleur cas** que l'option pourrait atteindre. Puis, les panneaux étant
+**semi-transparents** (`opa 178`, `voile 90`), on a séparé la deuxième cause. **Quatre coins, une
+seule variable à la fois** :
+
+| | `opa 178 / voile 90` — **LE PRODUIT** | `opa 255 / voile 0` — opaque |
+|---|---|---|
+| **fond POSÉ** | 🔴 **333,7 ms** (160,3 / 420,2) | **240,5 ms** (186,8 / 310,9) |
+| **fond RETIRÉ** | **194,2 ms** (138,3 / 245,2) | **176,3 ms** (132,8 / 216,7) |
+
+| Effet isolé | Valeur |
+|---|---|
+| le **fond**, à opacité produit | **−139,5 ms** (−41,8 %) |
+| le **fond**, à panneaux opaques | −64,2 ms |
+| l'**alpha**, fond posé | **−93,2 ms** (−27,9 %) |
+| l'**alpha**, fond retiré | −17,9 ms |
+| **les deux ensemble** | **−157,4 ms (−47,2 %)** |
+
+🔴 **IL Y A UNE FORTE INTERACTION, ET ELLE CHANGE LA CONCLUSION DU LEDGER.**
+`139,5 + 93,2 = 232,7`, mais les deux ensemble ne rendent que **157,4** : l'interaction vaut
+**−75,3 ms**. L'alpha ne coûte cher **que parce qu'il y a un fond à mélanger**, et le fond ne coûte
+cher **que parce qu'il faut le mélanger**.
+
+⇒ 🔴 **« NE PAS INVALIDER LE FOND » NE PEUT PAS S'OBTENIR PAR UN PARTAGE D'OBJET** (couche
+partagée, conteneurs masqués, `lv_layer_bottom()`…) **TANT QUE LES PANNEAUX SONT SEMI-TRANSPARENTS** :
+quel que soit le propriétaire de l'image, **le fond doit être relu SOUS chaque panneau** à chaque
+recomposition. ⛔ **Ce ne sont pas deux leviers indépendants : c'est UN SEUL MÉCANISME**, et le
+ledger le décrivait comme un problème de propriété d'objet.
+
+#### c. ⛔ CE QUE §22.4 NE PROUVE PAS
+
+- Que **139,5 ms sont récupérables**. C'est une **borne haute**, obtenue en retirant le fond —
+  ⛔ pas en le partageant. Le gain d'une implémentation réelle est **entre 0 et 139,5 ms**, et il
+  n'a **pas** été mesuré parce que le carré 2×2 montre qu'il n'y a **pas** d'implémentation qui
+  garde l'alpha ET évite la recomposition.
+- Que la courbe est gratuite. Elle est **sous le bruit** en millisecondes, et **chère en
+  fragmentation** (3 % → 42 %).
+- ⚠️ `widget fond off` et `widget opa 255 / voile 0` **ne sont pas des états de production** :
+  la maquette normative porte le Living PCB **derrière des panneaux translucides**. Les faire passer
+  en opaque est **une décision OWNER d'esthétique**, ⛔ pas un arbitrage d'agent.
+
+### 22.5 AC5 — LE COÛT DE L'HISTORIQUE, PRÉDIT PUIS MESURÉ
+
+| | valeur |
+|---|---|
+| RAM interne libre — **T0**, avant | **81 171 o** |
+| RAM interne libre — après | **77 659 o** |
+| **Δ MESURÉ** | **−3 512 o** |
+| **PRÉDICTION écrite AVANT le code** (`dn_hist.h`) | **−3 400 à −3 500 o** |
+| **ÉCART** | 🔴 **−12 o hors de la borne haute (0,34 %)** |
+
+⇒ **La prédiction était légèrement OPTIMISTE, et c'est écrit tel quel.** Les 3 360 o de points +
+120 o de `s_dx[]` + les index de l'anneau + les pointeurs de la courbe. ⛔ On ne réécrit pas la
+prédiction pour qu'elle tombe juste.
+
+**Δ tas LVGL : +628 o**, et il était **explicitement NON PRÉDIT** (c'est le coût des objets
+`lv_chart`) — cf. la leçon **L18** : *une prédiction qu'on ne peut pas confronter ne coûte rien à
+celui qui l'écrit.* Ce qui **n'avait pas été anticipé du tout**, c'est la **fragmentation** : 3 % → 42 %.
+
+**L'historique ne ment pas, et ça se lit** (`hist`, aucune source PC branchée) :
+
+```
+   CPU / GPU / RAM / RESEAU / DISQUE :  0 reels · 120 TROUS  (aucune source)
+   AMBIANCE T                        :  6 reels · 114 trous  ·  300 .. 300 (dixiemes)
+   AMBIANCE RH                       :  6 reels · 114 trous  ·  326 .. 327
+```
+
+⇒ **Le trou n'est pas un zéro**, et les cinq séries PC le disent au lieu de dessiner une chute à zéro.
+
+### 22.6 🎯 AC4.3 — LA GARDE DE HAUTEUR CRIE, ET DEUX DÉFAUTS D'INSTRUMENT ONT FAILLI FAIRE CONCLURE L'INVERSE
+
+⚠️ **LA PRÉMISSE D'AC4.3 ÉTAIT FAUSSE.** La story écrit : *« la garde ne tourne qu'à la construction,
+quand `geom_resolue` est faux — donc jamais »*. **Mesuré : `geom_resolue == true` sur le chemin de
+mise à jour.** La garde **s'exécute**. Ce qui restait vrai, c'est qu'**aucun témoin ne l'avait
+jamais fait crier** — et qu'aucun n'était atteignable, le pire cas livré tenant **exactement**
+(`14 + 140 = 154 ≤ 154`, marge ZÉRO).
+
+`widget detpan <h>` rétrécit le panneau à chaud. **Témoin positif ET négatif, même pire cas `DISQUE`** :
+
+| panneau | passages | **cris** | `geom_resolue` | verdict |
+|---|---|---|---|---|
+| **154 px** (le produit) | 12 | **0** | **true** | ✅ silence **légitime** |
+| **153 px** (témoin négatif) | 21 | **8** | **true** | 🔴 **elle CRIE** |
+
+Sur le fil, texte complet :
+```
+W dn_ui: detail « DISQUE » : le bloc de valeurs DEBORDE EN HAUTEUR — label 140 px
+pose a y = 14 dans un panneau de 153 px : il manque 1 px. LVGL clippe la derniere
+ligne SANS un mot.
+```
+
+#### 🔴 DEUX DÉFAUTS D'INSTRUMENT — LES MIENS — ET ILS SONT DE LA MÊME FAMILLE
+
+1. **Mon premier tir ouvrait le détail APRÈS la fin de l'injection.** La garde n'a alors que
+   **2 passages** (construction + transition), tous deux à `geom_resolue = false`, `panneau 0`,
+   `label 0` à `y = -1`. J'aurais conclu *« la garde se coupe elle-même »*. C'est le **piège n°3 du
+   dépôt à la lettre** — *une vue qui périme en 3 s exige une injection CONTINUE* — **repayé**.
+2. 🔴 **`dn_console.envoyer()` fait un `reset_input_buffer()` AVANT CHAQUE COMMANDE** : tout
+   `ESP_LOG` émis **entre** deux commandes est **DÉTRUIT**. Le compteur interne disait **8 cris**
+   pendant que ma capture rendait **0 message** — la figure exacte du *« compteur décoratif »*,
+   **mais à l'envers** : le compteur était honnête et c'était **le harnais** qui était aveugle.
+   ⇒ La parade (**drainer** le flux au lieu de dormir) est désormais **écrite dans
+   `tools/dn_console.py`**, avec son motif. ⛔ Le `reset_input_buffer()` n'est **pas** retiré : il
+   garantit que la sortie rendue appartient bien à **la** commande envoyée.
+
+✅ **Ce qui rend le diagnostic possible** : la garde est **auditable** (`dn_ui_garde_hauteur()`,
+imprimée par `widget courbe`). Une garde qui se tait peut se taire pour **trois** raisons — pas
+atteinte, `geom_resolue` faux, condition fausse — et sans compteurs **on les confond**.
+
+### 22.7 AC4 — LA PLACE DE LA COURBE, RELUE (⛔ pas calculée)
+
+```
+COURBE du detail — RELUE des coordonnees LVGL :
+  courbe : x = 23..458 (436 px)   y = 271..362 (92 px)
+  cadre  : 460 x 108 px
+  bas du cadre de courbe : 262 + 108 = 370   ✅ INCHANGE (370)
+  ecart au panneau du bas (385) : 15 px
+```
+
+✅ **L'INVARIANT DU TEMPLATE TIENT — `dn4-4` NE L'A PAS RÉÉCRIT.** Le bas du cadre reste à **370**,
+le panneau du bas à **385**, et le template garde ses **QUATRE panneaux** (addendum §1).
+⚠️ Et il n'est plus vérifié par un **commentaire qui demande de le vérifier** : `widget courbe` le
+**contrôle** et le **DIT** s'il change.
+⛔ **La police n'a pas été réduite et aucun texte n'a été rogné** : la courbe tient dans les
+**108 px** que `dn4-9` lui avait facturés, ⛔ pas 165.

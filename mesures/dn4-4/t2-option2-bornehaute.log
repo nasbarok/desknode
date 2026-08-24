@@ -1,0 +1,41 @@
+
+===== widget fond off =====
+widget fond off
+fond RETIRE — SCENE RECONSTRUITE.
+🔴 INSTRUMENT DE BISSECTION (AC7), ⛔ PAS UN REGLAGE.
+   En modele SCREENS, `fond_poser()` pose une `lv_image` de
+   480x640 RGB565 (614 400 o) sur CHACUN des deux ecrans, et
+   `lv_screen_load()` invalide tout — alors que LE FOND EST
+   IDENTIQUE d'un ecran a l'autre. « L'option n°2 » du ledger
+   consisterait a ne pas le repayer.
+   ⇒ `off` mesure LE MEILLEUR CAS que cette option pourrait
+     atteindre. Si le meilleur cas ne gagne rien, l'option est
+     MORTE — et elle meurt AVEC SON CHIFFRE.
+⚠️ Protocole : `touch reset` puis `nav ab 20`, dalle non touchee.
+desknode> 
+===== touch reset =====
+touch reset
+compteurs tactiles, latences et compteurs UI remis a zero.
+desknode>
+===== nav ab 20 =====
+nav ab 20
+20 allers-retours en modele « screens »…
+⚠️ NE PAS TOUCHER LA DALLE pendant la serie.
+W (8273) dn_capt: pression : le driver annonce des HECTO-PASCALS (bme680.h:363) mais rend 99742.6 — c'est du PASCAL. L'etiquette MENT, la conversion est faite ici et elle est ANNONCEE. Un facteur 100 pris en silence est exactement ce qui a publie « 4 614,8 lx » pour 46 148.
+I (14180) desknode: up 10 s — vsync=420 — flush=208 cycles=42 — PSRAM libre 7767988 o
+--- non-fuite (AC4) ---------------------------------------
+  tas LVGL    21440 -> 21436 o   (delta -4 o)  <- LE tas des ecrans
+  RAM interne 77819 -> 77599 o   (delta 220 o)
+  PSRAM       7767988 -> 7767988 o   (delta 0 o)
+  ⚠️ SEUL le delta du tas LVGL prouve quoi que ce soit ici : les
+     objets LVGL vivent dans un pool STATIQUE en .bss, invisible
+     pour la RAM interne et la PSRAM.
+tas LVGL (LV_MEM_SIZE_KILOBYTES = 64 Ko, STATIQUE en .bss) :
+  total 61844 o · utilisé 21436 o (35 %) · libre 40408 o
+  plus gros bloc libre 23632 o · fragmentation 42 %
+⚠️ ces octets-là sont réservés au LINK : ils n'apparaissent PAS dans
+   l'avant/après de `mem`. C'est le seul endroit où ils se voient.
+  transitions REELLES : 40 (demandees : 40)
+  latence : n=40 min 138290 us · moy 194158 us · max 245203 us
+-----------------------------------------------------------
+desknode> 
