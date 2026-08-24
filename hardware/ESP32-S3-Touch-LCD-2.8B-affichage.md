@@ -5342,3 +5342,102 @@ parle, choisir **lequel** des trois y mettre n'a pas de sens. ⇒ **à traiter E
   pas. ⚠️ La réserve écrite d'avance — *« un ventilateur réellement arrêté ressemblera à une
   panne »* — **ne s'est PAS réalisée**.
 - **Zéro régression visible** sur les cinq autres cases (Q7), y compris la jauge de `RAM`.
+
+---
+
+## 22. 🎯 `dn4-4` (P9.4) — LA BASELINE `=n`, ET LA BANDE TACTILE DE LA JAUGE `RAM` TRANCHÉE
+
+**Séance du 2026-08-24.** Firmware **`d379c0d`** pour la baseline, **`49be42b`** pour la mesure de
+bande — **SHA lus au bandeau**, `git status --porcelain` vérifié **vide avant chaque flash**.
+
+### 22.1 🔴 T0 — LA MESURE QUE `dn4-10` AVAIT ACTÉE COMME SAUTÉE
+
+`dn4-10` a livré `CONFIG_LCD_RGB_RESTART_IN_VSYNC=n` + `DN_DEFAULT_BOUNCE_PX = 9 600` **sans jamais
+tirer `nav ab` sous ce régime** — sa décision (c) l'acte explicitement. **C'est fait.**
+
+`cfg` : `num_fbs=1 bounce_px=9600 draw_lines=128 draw_psram=0 lvgl_core=0`.
+`fps 15` : **37,40 Hz** mesuré = théorique (**+0,00 %**). Poussée **GROUPÉE**.
+
+| Commande | n | min | **moy** | max | Δ tas LVGL | Δ RAM | Δ PSRAM |
+|---|---|---|---|---|---|---|---|
+| **`nav ab 20`** — le protocole des 3 points publiés | 40 | 287,3 ms | **335,6 ms** | 400,8 ms | −28 o | 0 | 0 |
+| `nav ab 40` — contre-vérification | 80 | 280,9 ms | **336,5 ms** | 400,9 ms | −28 o | 0 | 0 |
+
+**Les deux concordent à 0,8 ms (0,25 %).** `flush/cyc` = **4,84**, stable sur les **trois** fenêtres
+(Δ150 flush / Δ31 cycles à chaque fois) — cohérent avec les **5 bandes** de 128 lignes (640 ÷ 128).
+Tas LVGL : 20 692 / 62 040 o (34 %), plus gros bloc libre 40 476 o, **fragmentation 3 %**.
+
+🔴 **CE QUE CE CHIFFRE DIT DU CRITÈRE N°3 DU BRIEF** : la page de détail **SANS AUCUNE COURBE** coûte
+déjà **335,6 ms**, soit **+35,6 ms au-dessus du budget de 300 ms**. Le critère est en défaut **avant**
+que `dn4-4` ajoute quoi que ce soit.
+
+⚠️ **⛔ NE PAS LIRE CE TABLEAU COMME UN A/B AVEC LES TROIS POINTS PUBLIÉS** (307,0 / 321,8 / 349,1 ms).
+**DEUX variables ont bougé, pas une** : le régime d'affichage (`=y`/7 680 → `=n`/9 600) **et** le
+contenu de la page (`dn4-6`, `dn4-8` et `dn4-9` ont tous ajouté du contenu au détail depuis).
+Aucune attribution n'est tirable de la comparaison.
+
+### 22.2 ⚠️ UN DÉFAUT DE PROTOCOLE PUBLIÉ : `nav ab 40` NE REND PAS `n = 40`
+
+`nav ab <n>` fait **`n` allers-retours** et chronomètre **les deux sens** ⇒ `n = 2 x` la valeur
+passée. Le protocole des trois points publiés (tous à `n = 40`) est donc **`nav ab 20`**, et **le
+firmware l'imprime lui-même** dans l'aide de `nav model` : *« comparer proprement : `touch reset`
+puis `nav ab 20` »*. ⇒ Les deux ont été tirés ici, et ils concordent.
+
+### 22.3 🎯 LA BANDE TACTILE DE LA JAUGE `RAM` — TRANCHÉE PAR LECTURE, PUIS PAR L'OBJET
+
+**Le désaccord, tel qu'il était publié :**
+
+| Source | `x` | `y` | Nature |
+|---|---|---|---|
+| `dn4-1` | — | `340..350` | calculé, **déjà déclaré périmé** (`CASE_H` 156 → 163) |
+| `dn4-2` | `22..223` | `337..347` | **calculé** |
+| Visée du 2026-08-20, cible visible (`widget piste 0xFF2020`), **9 taps** | `38..196` ✅ | 🔴 **`350..371`** | **mesuré au doigt** |
+
+⚠️ **NI L'UNE NI L'AUTRE N'AVAIT ÉTÉ RELUE DE L'OBJET LVGL.** D'où l'instrument
+**`widget jauge [<case>]`** (`dn_ui_widget_jauge_rect()`), qui demande à LVGL **où il a vraiment posé
+la barre**, en coordonnées écran — exactement comme `widget detail` relit le texte du label.
+
+**Le tracé RÉEL, relu :**
+
+```
+JAUGE de la case 2 (RAM) — RELUE des coordonnees LVGL :
+  rectangle : x = 23..223  (201 px)
+              y = 338..347  (10 px)
+     case  : x = 10  y = 243  (225x163)     ecart : dx = 13 px   dy = 95 px
+```
+
+#### a. L'écart formule ↔ tracé est de **1 px**, et il est EXPLIQUÉ
+
+La formule donne `x = 10 + W_PAD(12) = 22` et `y = 243 + y_bas(88) + 6 = 337`. Le tracé rend **23** et
+**338**. Le pixel vient de `lv_obj_set_style_border_width(o, 1, 0)` sur la **racine de case**
+(`dn_widget.c`) : LVGL positionne les enfants dans la **zone de contenu**, à 1 px à l'intérieur du
+bord. ⇒ **La formule de `dn4-2` était juste**, à ce pixel près.
+
+#### b. 🔴 LES 13-24 px NE SONT DONC NI UNE FORMULE FAUSSE NI UNE PISTE DESSINÉE AILLEURS
+
+**Ils viennent de ce que la bande DÉPEND D'UNE GÉOMÉTRIE COMMUTABLE À CHAUD.** Démontré en deux
+commandes, sur la même carte, dans la même minute :
+
+| `val_y` | rectangle relu de LVGL | les 9 taps du 2026-08-20 |
+|---|---|---|
+| **48** (défaut) | `y = 338..347` | ⛔ aucun |
+| 🔴 **66** | 🔴 **`y = 356..365`** | 🎯 **`350..371` — la bande tombe EN PLEIN DEDANS** |
+
+`widget val <y> <pas>` est un instrument de `dn4-6`, **commutable à chaud** et **RAM-only** (il ne
+survit pas au reboot, `cfg` ne le porte pas). ⚠️ Effet de bord observé au passage : à `val_y = 66`,
+`CPU` et `GPU` **débordent** et LVGL les clippe — **la garde de `dn_widget.c` a crié**, comme prévu.
+
+⇒ ✅ **LA LECTURE RETENUE : LA FORMULE.** La coordonnée publiée par `dn4-2` était **la photographie
+d'UNE géométrie**, publiée comme un invariant. ⛔ **La correction n'est pas un patch de coordonnée —
+c'est de supprimer la récitation.** L'origine des cases n'a désormais qu'**une seule fabrique**
+(`ui_case_origine()`), prise par la boucle de construction **et** par l'instrument, et
+`widget jauge` rend la bande **re-lisible à tout instant**.
+
+#### c. ⛔ CE QUE §22.3 NE PROUVE PAS
+
+Que `val_y` valait **66 ce jour-là**. L'override est RAM-only et la séance du 2026-08-20 ne l'a pas
+capturé. Ce qui est prouvé, c'est que **le mécanisme suffit**, au pixel près, à produire l'écart
+observé — et qu'**aucune coordonnée tactile ne doit plus être publiée comme une constante**.
+
+✅ **Ce qui n'est PAS en cause et ne se re-teste pas** : *« toute la case est la zone tactile »* tient
+sur la géométrie **D12** — les 9 visées sont bien devenues **9 taps**.
