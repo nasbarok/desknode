@@ -1,0 +1,67 @@
+=== CAMPAGNE ===
+  n=1000 tirs par combinaison · lots de 50 · periode 1.00 s · 12 combinaisons
+  5 premiers tours JETES (amorcage : TCP, JIT, 1er sondage LHM)
+  ORDRE ALTERNE : la rotation avance d'un cran a chaque tour.
+  ... tour 100/1005
+  ... tour 200/1005
+  ... tour 300/1005
+  ... tour 400/1005
+  ... tour 500/1005
+  ... tour 600/1005
+  ... tour 700/1005
+  ... tour 800/1005
+  ... tour 900/1005
+  ... tour 1000/1005
+  campagne finie en 1043 s
+  /!\ 4 tour(s) ont DEPASSE la periode : cadence non tenue, et c'est ecrit.
+
+=== RESULTATS ===
+  candidat/transport   jeu      n |   CPU/tir    err +- |  mur md mur p95 | s.val echecs
+  --------------------------------------------------------------------------------------------------------
+  data.json/neuf       A     1000 |    2.984     0.216  |   27.7    35.5  |     0 0
+  data.json/neuf       B     1000 |    3.016     0.217  |   24.6    35.2  |     1 0
+  data.json/keepalive  A     1000 |    2.047     0.179  |    5.9    12.4  |     0 0
+  data.json/keepalive  B     1000 |    1.906     0.173  |    6.2    12.0  |     4 0
+  metrics/neuf         A     1000 |    3.703     0.241  |   40.9    75.1  |     0 0
+  metrics/neuf         B      997 |    4.028     0.251  |   39.7    69.5  |     0 3
+  metrics/keepalive    A     1000 |    2.562     0.200  |   24.5    53.2  |     0 0
+  metrics/keepalive    B     1000 |    2.812     0.210  |   24.0    51.9  |     0 0
+  sensor_xN/neuf       A     1000 |    4.781     0.273  |   40.1    57.0  |     0 0
+  sensor_xN/neuf       B     1000 |   11.500     0.424  |   92.9   124.9  |     2 0
+  sensor_xN/keepalive  A     1000 |    1.141     0.134  |    1.7     2.7  |     0 0
+  sensor_xN/keepalive  B     1000 |    2.562     0.200  |    4.2     6.7  |     4 0
+
+=== CAUSES DES ECHECS -- ⛔ un echec sans sa cause n'est pas un resultat ===
+  metrics/neuf         B   x3    TimeoutError: timed out
+
+=== A/B DU TRANSPORT -- une seule variable ===
+  data.json  jeu A : neuf  2.984 -> keepalive  2.047  (gain +0.938 ms, erreur combinee 0.280)
+  data.json  jeu B : neuf  3.016 -> keepalive  1.906  (gain +1.109 ms, erreur combinee 0.277)
+  metrics    jeu A : neuf  3.703 -> keepalive  2.562  (gain +1.141 ms, erreur combinee 0.313)
+  metrics    jeu B : neuf  4.028 -> keepalive  2.812  (gain +1.215 ms, erreur combinee 0.327)
+  sensor_xN  jeu A : neuf  4.781 -> keepalive  1.141  (gain +3.641 ms, erreur combinee 0.304)
+  sensor_xN  jeu B : neuf 11.500 -> keepalive  2.562  (gain +8.938 ms, erreur combinee 0.469)
+
+=== VERDICT CONTRE LE CRITERE GELE (831f619) ===
+  ⛔ Seuils RELUS, ⛔ pas rejuges. ⛔ « sans valeur » n'est PAS un echec.
+  data.json/keepalive  C1 CPU jeu A <= 3,0       2.047  OK
+  data.json/keepalive  C2 CPU jeu B <= 8,0       1.906  OK
+  data.json/keepalive  C3 mur md A  <= 100       5.926  OK
+  data.json/keepalive  C4 mur p95 A <= 250      12.404  OK
+  data.json/neuf       C1 CPU jeu A <= 3,0       2.984  OK   ⛔ NON DISCRIMINANT (ecart 0.02 < erreur 0.22)
+  data.json/neuf       C2 CPU jeu B <= 8,0       3.016  OK
+  data.json/neuf       C3 mur md A  <= 100      27.658  OK
+  data.json/neuf       C4 mur p95 A <= 250      35.474  OK
+  metrics/keepalive    C1 CPU jeu A <= 3,0       2.562  OK
+  metrics/keepalive    C2 CPU jeu B <= 8,0       2.812  OK
+  metrics/keepalive    C3 mur md A  <= 100      24.481  OK
+  metrics/keepalive    C4 mur p95 A <= 250      53.200  OK
+  metrics/neuf         : DISQUALIFIE -- 0+3 tir(s) en ECHEC (⛔ pas 'sans valeur')
+  sensor_xN/keepalive  C1 CPU jeu A <= 3,0       1.141  OK
+  sensor_xN/keepalive  C2 CPU jeu B <= 8,0       2.562  OK
+  sensor_xN/keepalive  C3 mur md A  <= 100       1.669  OK
+  sensor_xN/keepalive  C4 mur p95 A <= 250       2.671  OK
+  sensor_xN/neuf       C1 CPU jeu A <= 3,0       4.781  DEPASSE
+  sensor_xN/neuf       C2 CPU jeu B <= 8,0      11.500  DEPASSE
+  sensor_xN/neuf       C3 mur md A  <= 100      40.089  OK
+  sensor_xN/neuf       C4 mur p95 A <= 250      57.022  OK
