@@ -1066,9 +1066,52 @@ class SourceLhm:
                 continue
             # ⚠️ On garde la FAMILLE a cote de la valeur : c'est elle qui porte
             #    l'unite, et c'est elle qu'on va confronter a l'attendu.
-            table[m.group(3) + m.group(2)] = (m.group(1), v)
+            ident = m.group(3) + m.group(2)
+            # 🔴 2e REVUE (2026-08-24) : « DERNIER ARRIVE GAGNE » EST UN VERDICT
+            #    QUI DEPEND DE L'ORDRE DES LIGNES — et ce fichier ecrit lui-meme
+            #    que Prometheus ne le contractualise PAS. Si /metrics publie
+            #    `..._celsius` ET `..._fahrenheit` pour la meme sonde (forme exacte
+            #    d'un renommage d'unite en cours de deploiement, donc LE cas que la
+            #    verification de famille existe pour attraper), la valeur retenue
+            #    etait tiree au sort par l'ordre du corps.
+            # ⇒ ⛔ ON NE TRANCHE PAS : la cle devient CONFLICTUELLE, la valeur est
+            #    refusee, et le cas est COMPTE ET NOMME. Une ambiguite se dit,
+            #    elle ne se resout pas au hasard.
+            precedent = table.get(ident)
+            if precedent is not None and precedent[0] != m.group(1):
+                table[ident] = (None, None)
+                self.doublons[ident] = self.doublons.get(ident, 0) + 1
+                if ident not in self._doublons_dits:
+                    self._doublons_dits.add(ident)
+                    print("[agent] \U0001f534 `%s` : DEUX familles pour la meme sonde "
+                          "(`%s` et `%s`) — \u26d4 valeur REFUSEE, le fil ne tranche pas "
+                          "un conflit d'unite au hasard." % (ident, precedent[0],
+                                                             m.group(1)),
+                          file=sys.stderr)
+                continue
+            if precedent is not None and precedent[0] is None:
+                continue                      # cle deja marquee conflictuelle
+            table[ident] = (m.group(1), v)
         self.lignes_lues += lues
         self.lignes_illisibles += illisibles
+        # 🔴 2e REVUE (2026-08-24) — `lues == 0` REPRODUISAIT LE DIAGNOSTIC QUE CE
+        #    BLOC EXISTE POUR SUPPRIMER. Le compteur `lignes_illisibles` n'est arme
+        #    que pour des lignes qui commencent DEJA par `lhm_` : un /metrics qui
+        #    repond **200 avec un corps sans une seule ligne `lhm_`** (corps vide,
+        #    page d'erreur, mauvais endpoint, ou PREFIXE DE FAMILLE RENOMME — la
+        #    derive meme qu'on traque) donnait `lues = 0`, `illisibles = 0`,
+        #    `table = {}` ⇒ les cinq sondes tombaient dans `absences` ⇒ le bilan
+        #    imprimait « LHM a REPONDU, sans cette valeur » et envoyait l'operateur
+        #    inspecter SES CAPTEURS. Mot pour mot le diagnostic contraire.
+        # ⇒ C'est une PANNE DE SOURCE, pas une absence : on LEVE, et `_tenter()`
+        #   la compte et la nomme UNE fois. ⛔ Une reponse 200 qui ne porte aucune
+        #   donnee du domaine attendu n'est pas une reponse.
+        if lues == 0:
+            raise IOError(
+                "/metrics a repondu 200 mais ne porte AUCUNE ligne `lhm_` "
+                "(%d ligne(s) recues) — \u26d4 CE N'EST PAS une absence de capteur : "
+                "mauvais endpoint, corps vide, ou prefixe de famille renomme."
+                % len(txt.splitlines()))
         if illisibles and not self._illisibles_dit:
             self._illisibles_dit = True
             print("[agent] \u26a0\ufe0f %d ligne(s) `lhm_` sur %d ILLISIBLES par le parseur "
@@ -1088,8 +1131,18 @@ class SourceLhm:
                 #    `..._percent`), la valeur est REFUSEE et l'ecart est COMPTE
                 #    ET NOMME. ⛔ Jamais publiee sous l'ancienne etiquette.
                 if famille != famille_attendue:
-                    k = cle + ":famille_inattendue"
-                    self.absences[k] = self.absences.get(k, 0) + 1
+                    # 🔴 2e REVUE (2026-08-24) : SON PROPRE SEAU. C'etait
+                    #    `absences[cle + ":famille_inattendue"]`, donc imprime au
+                    #    bilan sous « ABSENCES LHM (LHM a REPONDU, SANS cette
+                    #    valeur) » — faux : LHM A RENDU la valeur, sous une AUTRE
+                    #    unite. Le message dedie ne sort qu'UNE fois sur stderr ;
+                    #    le bilan, lui, est l'artefact DURABLE, et il envoyait
+                    #    inspecter un capteur parfaitement sain.
+                    # ⚠️ Le meme delta creait `Collecteur.non_publiees` pour le 3e
+                    #    etat en invoquant « chaque cas sur SON compteur », et
+                    #    rangeait le 4e dans `absences` par suffixe de cle.
+                    self.familles[cle] = self.familles.get(cle, 0) + 1
+                    k = cle
                     if k not in self._familles_dites:
                         self._familles_dites.add(k)
                         print("[agent] \U0001f534 `%s` : famille `%s` au lieu de `%s` — "
@@ -1459,6 +1512,24 @@ class Collecteur:
         #    seule fois par type. ⛔ Et elle n'emporte AUCUNE autre grandeur : les
         #    valeurs LHM sont toutes en positions INTERNES.
         lhm = self._tenter("lhm", self.lhm.lire)
+        # 🔴 2e REVUE (2026-08-24) — `if lhm:` ETAIT VRAI MEME QUAND LES CINQ
+        #    VALEURS SONT `None`, ET LE BILAN EN TIRAIT UNE AFFIRMATION FAUSSE.
+        #    `SourceLhm.lire()` rend TOUJOURS un dict de cinq cles ; `_tenter()`
+        #    ne traite en panne qu'un **tuple** entierement `None`
+        #    (`isinstance(valeur, tuple)`), ⛔ pas un dict. Donc sur une tour ou
+        #    LHM tourne SANS elevation ou sans PawnIO — pas de Super I/O, les
+        #    quatre `/lpc/nct6792d/0/fan/N` absentes de /metrics — le seau
+        #    `non_publiees` se remplissait quand meme, et le bilan imprimait
+        #    « ⛔ ce n'est PAS une absence LHM, LHM les a rendues » DIX LIGNES
+        #    au-dessus du bloc ABSENCES qui disait correctement l'inverse.
+        #    Deux diagnostics contraires dans la meme sortie, et le neuf est le faux.
+        # ⇒ LE PREDICAT PORTE SUR CE QUI A REELLEMENT ETE RENDU, ⛔ pas sur le fait
+        #   que LHM ait repondu. Par METRIQUE, parce que « non publiee » n'a de sens
+        #   que pour les grandeurs que CETTE metrique aurait portees.
+        _lhm_rendu = (lambda *cles: bool(lhm) and any(
+            lhm.get(c) is not None for c in cles))
+        lhm_disk = _lhm_rendu("fan.top_out", "fan.rear_out", "fan.cpu_noctua",
+                              "fan.case_group")
 
         t = time.monotonic()
         e = self.ecretages
@@ -1640,7 +1711,7 @@ class Collecteur:
         #    échec de `cpu_percent()` emporte aussi la température. Même motif,
         #    même règle de position 0.
         d1 = self._tenter("disk", psutil.disk_io_counters)
-        if d1 is None and lhm:
+        if d1 is None and lhm_disk:
             self.non_publiees["disk:source_morte"] = \
                 self.non_publiees.get("disk:source_morte", 0) + 1
         if d1 is not None:
@@ -1649,7 +1720,7 @@ class Collecteur:
                 # ⚠️ Premier cycle (ou premier d'après-veille) : pas de delta, donc
                 #    pas de `Mo/s`, donc pas de trame `disk` — donc PAS DE VENTILOS.
                 #    Compté, ⛔ pas silencieux (décision owner, revue 2026-08-21).
-                if lhm:
+                if lhm_disk:
                     self.non_publiees["disk:amorcage"] = \
                         self.non_publiees.get("disk:amorcage", 0) + 1
             elif (d1.read_bytes < self._d0.read_bytes or
@@ -1660,7 +1731,7 @@ class Collecteur:
                             "un compteur cumule a RECULE (disque retire ? reset de "
                             "pilote ?) — rien n'est publie ce tour, ⛔ Y COMPRIS "
                             "LES TROIS tr/min qui voyagent dans cette metrique")
-                if lhm:
+                if lhm_disk:
                     self.non_publiees["disk:recul"] = \
                         self.non_publiees.get("disk:recul", 0) + 1
             else:
@@ -2354,13 +2425,44 @@ def _bilan(sortie, depart: float, seq: int, erreurs_envoi: int, rattrapages: int
                       f"CAPTEURS MUETS : le format de /metrics et ce parseur ne "
                       f"sont pas d'accord. Regarder /metrics EN PREMIER.",
                       file=sys.stderr)
+            # 🔴 2e REVUE (2026-08-24) — TROIS ETATS QUITTENT LE SEAU DES
+            #    ABSENCES, PARCE QU'AUCUN N'EST UNE ABSENCE. La doctrine du depot
+            #    est « chaque cas sur SON compteur » ; l'en-tete « LHM a REPONDU,
+            #    SANS cette valeur » envoie inspecter un capteur, et c'etait faux
+            #    pour les trois. Chacun se dit AVANT les absences, et les
+            #    DISQUALIFIE — comme le desaccord de format juste au-dessus.
+            if lhm.familles:
+                détail = " · ".join(f"{k}={v}" for k, v in
+                                    sorted(lhm.familles.items()))
+                print(f"[agent] 🔴 UNITE CHANGEE COTE LHM (la valeur A ETE RENDUE, "
+                      f"sous une AUTRE famille — REFUSEE, ⛔ jamais republiee sous "
+                      f"l'ancienne etiquette) : {détail}. ⛔ NE PAS INSPECTER LES "
+                      f"CAPTEURS : regarder la configuration d'unites de LHM.",
+                      file=sys.stderr)
+            if lhm.doublons:
+                détail = " · ".join(f"{k}={v}" for k, v in
+                                    sorted(lhm.doublons.items()))
+                print(f"[agent] 🔴 CONFLIT D'UNITE DANS /metrics (deux familles pour "
+                      f"la MEME sonde — valeur REFUSEE, ⛔ pas tranchee au hasard "
+                      f"par l'ordre des lignes) : {détail}", file=sys.stderr)
+            if lhm.bornages_impossibles:
+                print(f"[agent] 🔴 {lhm.bornages_impossibles} lecture(s) LHM N'ONT PAS "
+                      f"PU ETRE BORNEES (aucune socket joignable). ⛔ Sur celles-la le "
+                      f"budget de {lhm.timeout_s*1000.0:.0f} ms n'a PAS ete applique : "
+                      f"un depassement de `duree_max` vient de LA, ⛔ pas du parse.",
+                      file=sys.stderr)
             if lhm.absences:
                 détail = " · ".join(f"{k}={v}" for k, v in
                                     sorted(lhm.absences.items()))
                 print(f"[agent] ⚠️ ABSENCES LHM (LHM a REPONDU, sans cette "
                       f"valeur — champ VIDE sur le fil, ⛔ PAS une panne) : "
                       f"{détail}", file=sys.stderr)
-            elif lhm.reponses and not lhm.lignes_illisibles:
+            elif (lhm.reponses and not lhm.lignes_illisibles
+                  and not lhm.familles and not lhm.doublons):
+                # ⚠️ 2e REVUE : les trois nouveaux seaux DISQUALIFIENT aussi cette
+                #    phrase. Sans eux, « aucune absence LHM : les cinq sondes ont
+                #    rendu une valeur » pouvait s'imprimer pendant qu'une unite
+                #    avait change sous nos pieds.
                 print("[agent] aucune absence LHM : les cinq sondes ont rendu une "
                       "valeur a chaque lecture reussie", file=sys.stderr)
 
