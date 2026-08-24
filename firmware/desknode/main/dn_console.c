@@ -3683,6 +3683,20 @@ static int cmd_widget(int argc, char **argv)
             return 1;
         }
         printf("fond %s — SCENE RECONSTRUITE.\n", on ? "POSE" : "RETIRE");
+        printf("🔴 dn4-13 / AC9 — `off` LAISSE DESORMAIS L'ECRAN **VRAIMENT NOIR**.\n");
+        printf("   Jusqu'au 2026-08-25, `fond_poser()` ecrasait deux etats l'un\n");
+        printf("   sur l'autre : `off` tombait dans la branche `ASSET ABSENT` et\n");
+        printf("   peignait un ecran ROUGE 0x7f0000 AVEC DEUX LABELS. Le\n");
+        printf("   commentaire promettait pourtant « l'ecran reste NOIR ».\n");
+        printf("   ⇒ TROIS etats : `off` = noir nu · `on` + asset absent =\n");
+        printf("     panneau ASSET ABSENT (la vraie panne de dn1-2, CONSERVEE) ·\n");
+        printf("     `on` + asset = image + voile.\n");
+        printf("🔴 CONSEQUENCE SUR UN CHIFFRE DEJA PUBLIE : la borne haute de\n");
+        printf("   « l'option n°2 » (139,5 ms) a ete relevee contre un\n");
+        printf("   remplissage plat + DEUX LABELS, alors qu'AC7 de dn4-4\n");
+        printf("   promettait « UNE SEULE VARIABLE : le fond, et rien d'autre ».\n");
+        printf("   ⛔ Ce chiffre N'EST PAS COMPARABLE a ce que cette commande\n");
+        printf("      mesure maintenant. Il se RE-TIRE (dn4-13 / AC11.1).\n");
         printf("🔴 INSTRUMENT DE BISSECTION (AC7), ⛔ PAS UN REGLAGE.\n");
         printf("   En modele SCREENS, `fond_poser()` pose une `lv_image` de\n");
         printf("   480x640 RGB565 (614 400 o) sur CHACUN des deux ecrans, et\n");

@@ -523,7 +523,12 @@ bool dn_ui_detail_courbe_axes(int *y0_min, int *y0_max, int *y1_min, int *y1_max
 /* dn4-4 / AC7 — LA BORNE HAUTE DE « L'OPTION N°2 » DU LEDGER (*ne pas invalider
  * le fond à la transition*), non essayée depuis `dn3-2`. `off` RETIRE le fond :
  * c'est le MEILLEUR CAS que l'option pourrait atteindre. ⛔ Pas un mode de
- * production. ⚠️ RECONSTRUIT la scène. */
+ * production. ⚠️ RECONSTRUIT la scène.
+ * 🔴 dn4-13 / AC9 — `off` LAISSE L'ÉCRAN **VRAIMENT NOIR** (décision owner n°2).
+ *    Il tombait dans la branche `ASSET ABSENT` et peignait un fond ROUGE avec
+ *    deux labels ⇒ les **139,5 ms** publiées comme borne haute mesuraient un
+ *    remplissage plat **+ deux labels**, ⛔ pas « le fond et rien d'autre ».
+ *    Le chiffre se RE-TIRE avec cet instrument-ci (AC11.1). */
 esp_err_t dn_ui_set_fond(bool on);
 bool dn_ui_fond(void);
 

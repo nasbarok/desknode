@@ -477,6 +477,50 @@ def i_connue_un_seul_predicat(S):
     return True, "un predicat, deux surfaces"
 
 
+def i_fond_trois_etats(S):
+    """AC9 — `fond_poser()` a TROIS états, et `fond off` ne pose RIEN.
+
+    ⛔ Le contrôle porte sur l'ORDRE : la sortie anticipée doit précéder le
+       calcul de `px`, sinon les deux cas restent écrasés l'un sur l'autre —
+       c'était exactement le défaut (`px = !s_fond_on ? NULL : …`)."""
+    ui = S["ui"]
+    b = corps(ui, "static void fond_poser(lv_obj_t *scr)")
+    if b is None:
+        return False, "`fond_poser` introuvable"
+    if "!s_fond_on ? NULL" in b:
+        return False, "les deux etats sont encore ECRASES l'un sur l'autre"
+    i_sortie = b.find("if (!s_fond_on) {")
+    if i_sortie < 0:
+        return False, "aucune sortie anticipee sur `fond off`"
+    if "return;" not in b[i_sortie:i_sortie + 120]:
+        return False, "la branche `fond off` ne SORT pas"
+    i_px = b.find("const uint16_t *px")
+    if i_px < 0 or i_px < i_sortie:
+        return False, "`px` est calcule AVANT la sortie : les etats restent lies"
+    i_noir = b.find("lv_color_black()")
+    if i_noir < 0 or i_noir > i_sortie:
+        return False, "le noir n'est pas pose AVANT la sortie"
+    if "ASSET ABSENT" not in S["ui_str"]:
+        return False, "le panneau ASSET ABSENT a disparu (decision n°2 violee)"
+    return True, "noir → sortie → px → 2 branches"
+
+
+def i_borne_option2_declaree(S):
+    """AC9.4 — le chiffre publié (139,5 ms) est DÉCLARÉ non comparable.
+
+    ⛔ Corriger le code sans marquer le chiffre laisserait un nombre juste-en-
+       apparence circuler dans le dossier. Ce dépôt a déjà payé ça (le −3 512 o
+       d'AC5.6)."""
+    ok_h = "139,5" in S["uih_brut"] or "139.5" in S["uih_brut"]
+    ok_c = "139,5" in S["cons_brut"] or "139.5" in S["cons_brut"]
+    if not (ok_h and ok_c):
+        return False, ("le chiffre n'est pas marque des deux cotes "
+                       "(dn_ui.h %s, dn_console.c %s)" % (ok_h, ok_c))
+    if "RE-TIRE" not in S["cons_brut"].upper().replace("É", "E"):
+        return False, "la console ne dit pas que le chiffre se RE-TIRE"
+    return True, "marque dans `dn_ui.h` ET imprime par la console"
+
+
 INVARIANTS = [  # (libelle, invariant, [(fichier, avant, apres), ...])
     ("AC4.3 `s_axe_pose[0..1]` remis a FAUX en tete", i_axe_pose_remis,
      [("ui", "    s_axe_pose[0] = false;\n    s_axe_pose[1] = false;\n\n"
@@ -544,6 +588,15 @@ INVARIANTS = [  # (libelle, invariant, [(fichier, avant, apres), ...])
        "connues[i] = ok && (int)vue->n > i && vue->connue[i];"),
       ("ui", "            if (connues[i]) {\n                haute[i] = fmt_echelle(",
        "            if (vue->connue[i]) {\n                haute[i] = fmt_echelle(")]),
+    ("AC9 `fond_poser()` a TROIS etats, `off` ne pose RIEN",
+     i_fond_trois_etats,
+     [("ui", "    if (!s_fond_on) {\n        return; /* état 1", "    if (false) {\n        return; /* état 1"),
+      ("ui", 'lv_label_set_text(t, "ASSET ABSENT");',
+       'lv_label_set_text(t, "rien");')]),
+    ("AC9.4 les 139,5 ms sont DECLAREES non comparables",
+     i_borne_option2_declaree,
+     [("cons", "Il se RE-TIRE (dn4-13 / AC11.1)", "On le garde"),
+      ("uih", "**139,5 ms**", "un chiffre")]),
     ("AC6.5 `widget detpan` borne a 167, derive de 262-95",
      i_detpan_borne,
      [("ui", "#define DET_PANH_MAX (262 - 95)", "#define DET_PANH_MAX 167"),
@@ -570,6 +623,7 @@ def contexte(bruts):
         "cons_brut": bruts["cons"],
         "cons": decommenter(bruts["cons"]),
         "cons_str": decommenter(bruts["cons"], chaines=True),
+        "uih_brut": bruts["uih"],
     }
 
 

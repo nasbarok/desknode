@@ -2164,12 +2164,40 @@ static void fond_poser(lv_obj_t *scr)
     lv_obj_set_scrollbar_mode(scr, LV_SCROLLBAR_MODE_OFF);
     lv_obj_clear_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
 
-    /* ⚠️ `s_fond_on == false` ⇒ le fond N'EST PAS POSÉ, et l'écran reste NOIR.
-     *    ⛔ Ce n'est pas « l'image a échoué » : c'est l'instrument d'AC7. Les
-     *    deux cas se distinguent au `widget` / `disp`, ⛔ pas à l'œil. */
-    const uint16_t *px = !s_fond_on ? NULL
-                         : s_bg_psram ? (const uint16_t *)s_bg_psram
-                                      : dn_asset_pixels();
+    /*
+     * ══ 🔴 dn4-13 / AC9 — **TROIS ÉTATS**, ⛔ PLUS DEUX (décision owner n°2) ══
+     *
+     * ⚠️ CE COMMENTAIRE PROMETTAIT DÉJÀ CE QUI SUIT, ET IL ÉTAIT FAUX :
+     *    *« `s_fond_on == false` ⇒ le fond N'EST PAS POSÉ, et l'écran reste
+     *    NOIR. ⛔ Ce n'est pas "l'image a échoué" : c'est l'instrument d'AC7. »*
+     *    Le code écrivait `px = !s_fond_on ? NULL : …`, c'est-à-dire qu'il
+     *    ÉCRASAIT les deux cas l'un sur l'autre : `widget fond off` tombait dans
+     *    la branche `ASSET ABSENT` et peignait un écran **ROUGE 0x7f0000 avec
+     *    deux labels**. ⛔ Pas noir. ⛔ Pas « rien d'autre ».
+     *
+     * 🔴 ET CE N'EST PAS QU'UN DÉFAUT D'AFFICHAGE : C'EST UN DÉFAUT DE MESURE.
+     *    AC7 de `dn4-4` promettait *« UNE SEULE VARIABLE : le fond, et rien
+     *    d'autre »*. La borne haute de « l'option n°2 » du ledger — **139,5 ms**
+     *    — a donc été relevée contre un remplissage plat **+ deux labels**, ⛔ pas
+     *    contre un écran vide. Le chiffre mesure autre chose que ce qu'il
+     *    annonce. ⇒ **AC11 le re-tire avec CET instrument-ci.**
+     *
+     * LES TROIS ÉTATS, ET CE QUE CHACUN SIGNIFIE :
+     *   1. `fond off`            ⇒ écran VRAIMENT NOIR, **rien de posé**.
+     *                              C'est l'INSTRUMENT, et son seul intérêt est
+     *                              de ne rien coûter d'autre que le remplissage.
+     *   2. `fond on` + `px NULL` ⇒ panneau `ASSET ABSENT` — **LA VRAIE PANNE DE
+     *                              `dn1-2`, CONSERVÉE**. Une partition d'assets
+     *                              corrompue doit rester CRIANTE.
+     *   3. `fond on` + `px`      ⇒ image + voile : le produit.
+     * ⛔ Confondre 1 et 2, c'est faire dire « ton asset est mort » à un
+     *    opérateur qui vient de taper `fond off`.
+     */
+    if (!s_fond_on) {
+        return; /* état 1 — le noir posé ci-dessus, ET RIEN D'AUTRE */
+    }
+    const uint16_t *px = s_bg_psram ? (const uint16_t *)s_bg_psram
+                                    : dn_asset_pixels();
     if (px) {
         s_bg_dsc.header.magic = LV_IMAGE_HEADER_MAGIC;
         /* RGB565 NATIF, NON COMPRESSÉ : le format du framebuffer et celui de
@@ -2231,6 +2259,9 @@ static void fond_poser(lv_obj_t *scr)
          * panneau-là aurait été effacé sans bruit, et une partition d'assets
          * corrompue aurait produit un écran noir silencieux — exactement ce que
          * dn_asset.h promet de ne jamais faire. On le REDESSINE donc en LVGL.
+         * 🔴 dn4-13 / AC9.1 — **ÉTAT 2, ET LUI SEUL.** Ce panneau est la VRAIE
+         *    panne, et la décision owner n°2 le CONSERVE explicitement. Il n'est
+         *    plus atteignable par `widget fond off`, qui sort au-dessus.
          */
         lv_obj_set_style_bg_color(scr, lv_color_hex(0x7f0000), 0);
         lv_obj_t *t = lv_label_create(scr);
