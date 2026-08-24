@@ -491,6 +491,13 @@ bool dn_ui_widget_jauge_rect(int idx, int *x, int *y, int *w, int *h,
 bool dn_ui_detail_courbe_rect(int *x, int *y, int *w, int *h, int *w_cadre,
                               int *h_cadre, bool *existe, bool *resolue);
 
+/* dn4-4 — LES PLAGES Y RÉELLEMENT APPLIQUÉES AUX DEUX AXES, et la couleur de
+ * chaque série. ⛔ Relues des objets, pas recalculées : c'est le seul moyen de
+ * savoir OÙ une série est dessinée dans les 92 px, et donc si deux séries se
+ * SUPERPOSENT. `*n_series` vaut 0, 1 ou 2. */
+bool dn_ui_detail_courbe_axes(int *y0_min, int *y0_max, int *y1_min, int *y1_max,
+                              uint32_t *coul0, uint32_t *coul1, int *n_series);
+
 /*
  * dn4-4 / AC4.3 — LE TÉMOIN NÉGATIF de la garde de hauteur du détail.
  * ⚠️ Au pire cas LIVRÉ le bloc tient EXACTEMENT (`14 + 140 = 154 ≤ 154`) : il

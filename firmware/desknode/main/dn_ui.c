@@ -179,6 +179,9 @@ static inline void ui_case_origine(int i, int *x, int *y)
 #define DET_COURBE_Y 8
 #define DET_COURBE_W (DN_LCD_H_RES - 2 * DN_UI_MARGE - 2 * DET_COURBE_X)
 #define DET_COURBE_H (108 - 2 * DET_COURBE_Y)
+/* ⚠️ La 2ᵉ série (humidité d'`AMBIANCE`) — nommée ICI et lue par l'instrument,
+ *    ⛔ pas écrite deux fois. */
+#define DET_COURBE_COUL1 0x35d6e8
 
 #define DN_UI_RETOUR_W 120
 #define DN_UI_RETOUR_H 60
@@ -1245,6 +1248,12 @@ static bool s_gardeh_resolue;
 
 static lv_obj_t *s_det_courbe;
 static lv_chart_series_t *s_det_serie0, *s_det_serie1;
+/* dn4-4 — voir `dn_ui.h`. ⚠️ On mémorise les plages APPLIQUÉES plutôt que de
+ * les relire de `lv_chart` : l'API v9 n'expose pas de getter de plage, et
+ * recalculer la formule ici la dupliquerait — exactement le défaut que
+ * `ui_case_origine()` vient de fermer. */
+static int32_t s_axe_min[2], s_axe_max[2];
+static bool s_axe_pose[2];
 
 /*
  * ── LA BARRE HEURE/DATE (dn3-2) — DEUX POINTEURS NUS DE PLUS ─────────────────
@@ -2627,6 +2636,8 @@ static void build_detail(lv_obj_t *scr, int idx)
     int n_series = dn_hist_series_de_case(idx, &s0, &s1);
     s_det_serie0 = NULL;
     s_det_serie1 = NULL;
+    s_axe_pose[0] = false;
+    s_axe_pose[1] = false;
     if (s0 >= 0) {
         s_det_serie0 = lv_chart_add_series(s_det_courbe,
                                            lv_color_hex(k_desc[idx].couleur),
@@ -2639,7 +2650,7 @@ static void build_detail(lv_obj_t *scr, int idx)
          *    les empiler sur une échelle commune écraserait l'une des deux et
          *    ferait lire une variation qui n'existe pas. C'est la même règle qui
          *    interdit d'empiler les quatre grandeurs de `DISQUE`. */
-        s_det_serie1 = lv_chart_add_series(s_det_courbe, lv_color_hex(0x35d6e8),
+        s_det_serie1 = lv_chart_add_series(s_det_courbe, lv_color_hex(DET_COURBE_COUL1),
                                            LV_CHART_AXIS_SECONDARY_Y);
         lv_chart_set_series_ext_y_array(s_det_courbe, s_det_serie1,
                                         dn_hist_points(s1));
@@ -2827,6 +2838,10 @@ static void courbe_serie_regler(int serie, lv_chart_series_t *ser,
         mx += marge;
     }
     lv_chart_set_range(s_det_courbe, axe, mn, mx);
+    int k = (axe == LV_CHART_AXIS_PRIMARY_Y) ? 0 : 1;
+    s_axe_min[k] = mn;
+    s_axe_max[k] = mx;
+    s_axe_pose[k] = true;
 }
 
 static void courbe_reparametrer(int idx)
@@ -5309,6 +5324,24 @@ esp_err_t dn_ui_set_detail_panh(int h)
 int dn_ui_detail_panh(void)
 {
     return s_det_panh > 0 ? s_det_panh : DET_PANH_DEFAUT;
+}
+
+bool dn_ui_detail_courbe_axes(int *y0_min, int *y0_max, int *y1_min, int *y1_max,
+                              uint32_t *coul0, uint32_t *coul1, int *n_series)
+{
+    if (s_vue != DN_VUE_DETAIL || !s_det_courbe) {
+        return false;
+    }
+    if (y0_min) { *y0_min = s_axe_pose[0] ? s_axe_min[0] : 0; }
+    if (y0_max) { *y0_max = s_axe_pose[0] ? s_axe_max[0] : 0; }
+    if (y1_min) { *y1_min = s_axe_pose[1] ? s_axe_min[1] : 0; }
+    if (y1_max) { *y1_max = s_axe_pose[1] ? s_axe_max[1] : 0; }
+    if (coul0) {
+        *coul0 = case_est_widget(s_metrique) ? k_desc[s_metrique].couleur : 0;
+    }
+    if (coul1) { *coul1 = DET_COURBE_COUL1; }
+    if (n_series) { *n_series = s_det_serie1 ? 2 : (s_det_serie0 ? 1 : 0); }
+    return true;
 }
 
 /* dn4-4 / AC4 — voir `dn_ui.h`. On relit le rectangle de la courbE **et** celui

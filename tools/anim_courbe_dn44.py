@@ -65,6 +65,10 @@ def main():
     p.add_argument("--baud", type=int, default=115200)
     p.add_argument("--secondes", type=float, default=180)
     p.add_argument("--seq0", type=int, default=10000)
+    p.add_argument("--pages", default="",
+                   help="indices de page a faire DEFILER, ex. 0,1,2,3,4,5")
+    p.add_argument("--par-page", type=float, default=22.0,
+                   help="secondes par page (la fenetre d'observation owner)")
     a = p.parse_args()
 
     ser = dn_console.ouvrir(a.port, a.baud)
@@ -73,10 +77,28 @@ def main():
     n = 0
     try:
         dn_console.reveiller(ser)
+        pages = [int(x) for x in a.pages.split(",") if x.strip() != ""]
+        if pages:
+            # ⚠️ LE MEME PORT SERT A L'INJECTION ET A LA NAVIGATION. Les separer
+            #    obligerait a `--force`, dont l'outil dit lui-meme que « les
+            #    octets se partagent : mesures tronquees » — une trame `pc`
+            #    coupee en deux tomberait en `rejets_tronquee` et creuserait un
+            #    trou dans l'historique PENDANT l'observation. ⛔ Un seul
+            #    proprietaire du port.
+            a.secondes = len(pages) * a.par_page
+        page_i = -1
         print(f"injection CONTINUE a 1 Hz pendant {a.secondes:.0f} s "
               f"(⛔ ne pas fermer cette fenetre pendant l'observation)")
         while time.time() - t0 < a.secondes:
             t = time.time() - t0
+            if pages:
+                k = min(int(t // a.par_page), len(pages) - 1)
+                if k != page_i:
+                    page_i = k
+                    ser.write((f"nav open {pages[k]}\n").encode("ascii"))
+                    ser.flush()
+                    print(f"  [{t:6.1f} s] page {pages[k]}")
+                    time.sleep(0.3)
             for m, vs in jeu(t).items():
                 ligne = trame(seq, int(t * 1000), m, vs)
                 seq += 1

@@ -3510,7 +3510,28 @@ static int cmd_widget(int argc, char **argv)
             int ghp = 0, ghl = 0, gyl = 0;
             bool gres = false;
             dn_ui_garde_hauteur(&np, &ncris, &ghp, &ghl, &gyl, &gres);
-            printf("  ── la GARDE DE HAUTEUR, ce qu'ELLE a vu au dernier passage ──\n");
+            {
+            int a0=0,b0=0,a1=0,b1=0,ns=0; uint32_t c0=0,c1=0;
+            if (dn_ui_detail_courbe_axes(&a0,&b0,&a1,&b1,&c0,&c1,&ns)) {
+                printf("  ── les SERIES et leurs PLAGES Y (⛔ pas recalculees) ──\n");
+                printf("     series : %d\n", ns);
+                printf("     axe PRIMAIRE   : %ld .. %ld (dixiemes) · couleur 0x%06lX\n",
+                       (long)a0, (long)b0, (unsigned long)c0);
+                if (ns == 2) {
+                    printf("     axe SECONDAIRE : %ld .. %ld (dixiemes) · couleur 0x%06lX\n",
+                           (long)a1, (long)b1, (unsigned long)c1);
+                    /* 🔴 DEUX AXES AUTO-CALES CENTRENT CHACUN LEUR SERIE. Deux
+                     *    series PLATES se retrouvent donc AU MEME ENDROIT dans
+                     *    les 92 px — indiscernables MALGRE deux couleurs. */
+                    long e0 = (long)b0 - a0, e1 = (long)b1 - a1;
+                    printf("     etendue : primaire %ld · secondaire %ld\n", e0, e1);
+                    printf("     🔴 DEUX AXES AUTO-CALES CENTRENT CHACUN LEUR SERIE :\n");
+                    printf("        si les DEUX sont plates, elles se SUPERPOSENT\n");
+                    printf("        dans les 92 px, ⛔ malgre deux couleurs.\n");
+                }
+            }
+        }
+        printf("  ── la GARDE DE HAUTEUR, ce qu'ELLE a vu au dernier passage ──\n");
             printf("     passages : %lu   cris : %lu\n", (unsigned long)np,
                    (unsigned long)ncris);
             printf("     geom_resolue = %s · panneau %d · label %d pose a y = %d\n",
