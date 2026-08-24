@@ -2288,3 +2288,71 @@ c'est ce qu'il faut savoir avant de promettre le critère **sur une autre machin
 disait *« si le critère vise le cœur, ce +0,26 pt compte ; s'il vise la machine, il est dans le
 bruit »*. ⇒ **Il est dans le bruit.** Son A/B sur tour au repos n'est plus requis **pour ce
 critère-là** — il reste dû si on veut **attribuer** le coût, ce qui est une autre question.
+
+---
+
+## 24. 🎯 AC2 RE-TIRÉ — LE CLASSEMENT EST RENVERSÉ, ET LA DÉCISION EST RECONDUITE **AVEC** LE CHIFFRE
+
+Campagne du 2026-08-24 sur la tour : `n = 1000` par combinaison, **12 combinaisons**, **ordre
+alterné** (`combos[r:] + combos[:r]`), 5 tirs jetés. Critère gelé `831f619` **vérifié non dérivé**.
+Log et provenance : `mesures/dn4-8/ac2-retir-2026-08-24.log`.
+
+| candidat / transport | CPU/tir | mur md | mur p95 | s.val | échecs |
+|---|---:|---:|---:|---:|---:|
+| `data.json` / keep-alive | 2,047 | 5,9 | 12,4 | 0 | 0 |
+| 🎯 **`metrics` / keep-alive** *(retenu)* | **2,562** | **24,5** | **53,2** | **0** | 0 |
+| `sensor_xN` / keep-alive | **1,141** | **1,7** | **2,7** | 0 | 0 |
+| `data.json` / neuf | 2,984 | 27,7 | 35,5 | 0 | 0 |
+| `metrics` / neuf | 3,703 | 40,9 | 75,1 | 0 | 🔴 **3 — DISQUALIFIÉ** |
+| `sensor_xN` / neuf | 4,781 | 40,1 | 57,0 | 0 | C1 **et** C2 **DÉPASSÉS** |
+
+🔴 **`/metrics` EN KEEP-ALIVE EST LE PLUS CHER DES TROIS KEEP-ALIVE, SUR LES QUATRE COLONNES.**
+`sensor_xN` le bat **2,2× en CPU**, **14,7× en mural médian**, **19,9× en p95**.
+⛔ **Ce chiffre n'est pas lissé, et il n'est pas effacé.**
+
+### 24.1 🎯 DÉCISION OWNER DU 2026-08-24 : **ON GARDE `/metrics`**
+
+**Motif, et il n'est disponible que depuis aujourd'hui** : l'unité du critère venait d'être tranchée
+en **% MACHINE** (§23.9). À cette échelle, le gain d'un basculement vaut **1,42 ms/s ≈ 0,14 % d'un
+cœur ≈ 0,0089 % machine** — l'agent passerait de `0,148` à `~0,139 %`. **Invisible sur un budget de
+1 %.**
+
+**Et trois motifs du choix d'origine ne sont PAS mesurés par cette campagne** :
+
+1. **`s.val = 0` sur les DEUX jeux** — `/metrics` est le **seul candidat** à avoir rendu une valeur
+   **à chaque tir** (`data.json` et `sensor_xN` en ont manqué 4 chacun sur le jeu B) ;
+2. **unités de base, `InvariantCulture`** — ⚠️ `/data.json` rend `Value` **formaté selon la
+   culture**, et la tour est **en français** : le dépôt a déjà éliminé `Get-Counter` pour cette
+   raison exacte ;
+3. **UNE seule requête quel que soit `N`** — `sensor_xN` est un **POST par sonde**, et il monte de
+   `1,141` à `2,562` ms de 3 à 8 sondes.
+
+⇒ **Les comparer sur le seul coût serait comparer à service INÉGAL.**
+
+### 24.2 ⛔ CE QUI RESTE VRAI, ET QUI N'EST PAS EFFACÉ PAR LA DÉCISION
+
+🔴 **Sur la QUEUE, l'écart est de 20×** (p95 `53,2` contre `2,7` ms). Or c'est **exactement la
+queue** qui a forcé `LHM_TIMEOUT_S` de 0,40 à 0,60 s — §16.5 : *« LA QUEUE DE DISTRIBUTION EST BIEN
+AU-DELÀ DU p95 D'AC2 »* — et **§23.7 relève une durée LHM moyenne à 53,0 ms dans l'agent, non
+expliquée**.
+⇒ 🎯 **Si la queue redevient un sujet, le chiffre est DÉJÀ MESURÉ, et il pointe vers `/Sensor`.**
+
+⚠️ **Signal conservé** : `metrics/neuf` est **DISQUALIFIÉ** sur 3 `TimeoutError`. C'est l'autre
+transport, ⛔ pas celui retenu — **mais c'est la même source.**
+
+### 24.3 ⛔ CE QUE CETTE CAMPAGNE NE MESURE PAS
+
+- **La tour n'est pas au repos contrôlé** : LHM tourne, l'agent non, et il n'y a **aucun témoin de
+  charge de fond**. Un écart de 20× est trop gros pour être du bruit, ⛔ mais il n'est pas
+  proprement **attribué**.
+- **Ni la culture, ni la montée en `N` au-delà de 8** — c'est-à-dire précisément les deux motifs qui
+  ont fait choisir `/metrics`.
+
+### 24.4 AC4 — L'ÉTALONNAGE SOUS CHARGE EST **REPORTÉ PAR L'OWNER**
+
+Verbatim du 2026-08-24 : *« je ferai des tests de charges plus tard »*.
+⇒ ⛔ **Ce n'est ni un oubli ni un blocage : c'est un ÉCART DÉCLARÉ.** `dn4-8` se ferme avec lui.
+✅ **Une qualification au repos reste VALIDE** — c'est une **NON**-qualification qui aurait été non
+concluante, et les quatre grandeurs qualifient.
+⚠️ **Et il pèse un refus owner antérieur** : *« non pas de tests comme ça sur le pc »*. ⛔ **Ce tir
+ne se lance pas sans demande explicite.**
