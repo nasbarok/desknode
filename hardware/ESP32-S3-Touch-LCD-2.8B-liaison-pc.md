@@ -2208,3 +2208,60 @@ signalerait un coût que le tableau ci-dessus n'a pas vu.
 ⚠️ **ET CE QUE CE TIR NE MESURERA PAS** : la tour n'est pas au repos contrôlé. Une charge de fond
 différente de celle du 2026-08-21 déplace le mural, donc le rapport. C'est une **réserve**, ⛔ pas une
 excuse — elle est écrite avant, pas après.
+
+### 23.5 🎯 LE RÉSULTAT — prédiction TENUE, **par la borne basse**
+
+Agent **RÉEL** sur `COM3`, `--temoin`, 180 s, firmware `d379c0d`, 16 cœurs logiques.
+
+| | Prédit (committé `9297fd4`, **avant** le tir) | Mesuré à 60 s | Verdict |
+|---|---|---:|---|
+| % d'un cœur | `[2,35 ; 2,75]` | **2,367** | ✅ dedans — **marge 0,017 pt** |
+| % machine | `[0,147 ; 0,172]` | **0,1480** | ✅ dedans — **marge 0,001 pt** |
+
+⚠️ **DANS LE BON SENS** : la prédiction annonçait *« indiscernable de 2,523 »*. La mesure est **plus
+BASSE**, et elle frôle la borne posée par prudence. **Le raisonnement a vu juste sur l'ordre de
+grandeur, ⛔ pas sur le signe.**
+
+### 23.6 🔴 LA BAISSE EST À **TOUS LES RANGS**, ⛔ pas sur un point
+
+| rang | 10 s | 20 s | 30 s | 40 s | 50 s | **60 s** |
+|---|---:|---:|---:|---:|---:|---:|
+| §16.6 (`4c3a3f7`) | 5,141 | 3,586 | 3,167 | 2,810 | 2,686 | **2,523** |
+| **ce tir (`9297fd4`)** | 4,348 | 3,431 | 2,859 | 2,692 | 2,497 | **2,367** |
+| Δ | −0,793 | −0,155 | −0,308 | −0,118 | −0,189 | **−0,156** |
+
+⇒ 🎯 **L'HYPOTHÈSE « LES +474/−42 ONT ALOURDI L'AGENT » EST RÉFUTÉE** : il est moins cher aux six
+rangs. C'est la comparaison **au même rang** qu'AC9 exige, et elle est faite.
+
+⛔ **CE QUE CE TIR NE TRANCHE PAS** : un décalage **uniforme** s'explique aussi bien par un agent
+réellement plus léger que par une **charge de fond différente**. ⛔ Pas de témoin de contrôle. La
+réserve était écrite AVANT le tir (§23.4), elle tient — **c'est une réserve, pas une excuse**.
+
+⚠️ **LA SÉRIE N'A TOUJOURS PAS CONVERGÉ** : 180 s ⇒ **2,065 %** (`0,1291 %` machine), et elle
+descend encore. ⛔ Ne comparer que des rangs identiques.
+
+### 23.7 ⚠️ UN FAIT QUE CE TIR NE S'EXPLIQUE PAS — et qu'il ne faut pas expliquer au jugé
+
+```
+LHM : 181 lecture(s) reussie(s), 0 en echec — duree moyenne 53,0 ms, MAX 424,3 ms
+```
+
+§18.4 donnait **24,1 ms de moyenne / 181,9 ms max**. C'est **2,2× plus lent en MURAL**, pendant que
+le **CPU BAISSE**. Les deux ensemble pointent vers de l'**ATTENTE** (I/O), ⛔ pas du calcul — attendre
+ne consomme pas de CPU.
+⛔ **MAIS CE N'EST PAS AFFIRMÉ** : deux sessions, deux jours, charge de tour non contrôlée, et §18.4
+écrit elle-même *« ⛔ NE PAS COMPARER … ce n'est ni la même session ni le même instrument »*.
+🎯 **Le max reste sous le plafond** (424,3 ms pour 600 posées) et **0 lecture en échec** : le
+dimensionnement de `LHM_TIMEOUT_S` tient. **⇒ AU LEDGER, pas conclu ici.**
+
+### 23.8 Le reste du bilan, propre
+
+**900 trames** émises (5,00/s), **0 erreur d'envoi**, **0 recalage de cadence**, **0 écrêtage**,
+**5/5 sondes LHM** avec valeur, **0 lecture en échec**, **aucune absence LHM**.
+✅ **Le chiffre n°2 (LHM seul, 7,990 % / 0,4994 %) reste celui de §16.6** — ce delta ne touche pas
+LHM, il n'est pas re-tiré, et c'est écrit.
+🎯 **LHM coûte donc toujours ~3,4× l'agent**, et D13 exigeait que ce soit dit.
+
+⛔ **CE QUI RESTE OUVERT SUR AC9** : le **critère n°4 du brief** (« < 1 % ») n'est toujours pas coché
+— **son unité n'est pas tranchée**. À `0,1480 % machine` il passe largement ; à `2,367 % d'un cœur`,
+non. ⚠️ **C'est une décision owner, ⛔ pas une lecture.**
