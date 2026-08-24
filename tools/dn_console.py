@@ -167,6 +167,28 @@ def nettoyer(texte, commande):
 
 
 def envoyer(ser, commande, timeout, attendre_invite=True):
+    # 🔴 PIÈGE D'INSTRUMENT MESURÉ LE 2026-08-24 (dn4-4/AC4.3) — À LIRE AVANT DE
+    #    CHERCHER UN `ESP_LOG` AVEC CET OUTIL.
+    #
+    #    Le `reset_input_buffer()` ci-dessous JETTE tout ce que la carte a émis
+    #    ENTRE deux commandes. Les logs asynchrones (ceux des tâches `dn_link`,
+    #    LVGL, `dn_rtc`…) ne sont donc capturés QUE s'ils tombent PENDANT
+    #    l'exécution d'une commande — la fenêtre où `lire_jusqu_invite()` lit.
+    #
+    #    ⇒ Un harnais qui envoie une commande, DORT, puis envoie la suivante ne
+    #      verra JAMAIS le log émis pendant son sommeil. Il conclura « la garde
+    #      est muette » sur une garde qui a crié six fois. **C'est arrivé**, et
+    #      ça a coûté un aller-retour de diagnostic entier :
+    #      la garde de hauteur du détail comptait 8 déclenchements pendant que
+    #      ce chemin-ci rendait 0 message.
+    #
+    #    ⛔ NE PAS retirer le `reset_input_buffer()` : il est ce qui garantit que
+    #      la sortie rendue appartient bien à LA commande envoyée (sinon un
+    #      reliquat de la précédente se ferait passer pour la réponse).
+    #    ✅ LA PARADE, côté appelant : écrire soi-même sur le port et DRAINER le
+    #      flux (`ser.read(ser.in_waiting)` en boucle) pendant la fenêtre
+    #      d'observation, au lieu de dormir. Voir la fonction `drainer()` des
+    #      harnais de dn4-4.
     ser.reset_input_buffer()
     ser.write((commande + "\n").encode("utf-8"))
     ser.flush()
