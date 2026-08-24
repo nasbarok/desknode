@@ -5031,9 +5031,26 @@ static int i2c_ecrire_nu(uint8_t addr, const uint8_t *o, int n)
     if (addr == DN_BH1750_ADDR && n >= 1 && (o[0] == 0x00 || o[0] == 0x07)) {
         printf("🔴 CET OCTET EST DESTRUCTEUR SUR LE BH1750 : 0x%02X = %s.\n",
                o[0], o[0] == 0x00 ? "POWER DOWN" : "RESET du registre de donnee");
-        printf("   ⚠️ Apres lui, `i2c brut %02X 2` rendra 00 00 — ce qui se lit\n",
-               DN_BH1750_ADDR);
-        printf("      comme un CAPTEUR MORT alors qu'il est seulement eteint.\n");
+        /* 🔴 SEANCE CARTE DU 2026-08-24 — CE TEXTE DISAIT « rendra 00 00 », ET LA
+         * CARTE L'A REFUTE. Le POWER DOWN n'efface PAS le registre de donnee :
+         * seul 0x07 le fait. Mesure : apres `i2c lire 23 00`, trois lectures
+         * consecutives ont rendu 211, 211, 211 — la DERNIERE MESURE, FIGEE — puis
+         * 250, 280, 389 apres rallumage. ⇒ Le symptome n'est pas un zero, c'est
+         * une VALEUR PLAUSIBLE QUI NE BOUGE PLUS, ce qui est BIEN PIRE : elle
+         * passe pour une mesure. */
+        if (o[0] == 0x00) {
+            printf("   ⚠️ Apres lui, `i2c brut %02X 2` NE rendra PAS 00 00 : le\n",
+                   DN_BH1750_ADDR);
+            printf("      registre de donnee GARDE la derniere mesure (seul 0x07\n");
+            printf("      le vide). ⛔ Tu liras donc une VALEUR PLAUSIBLE QUI NE\n");
+            printf("      BOUGE PLUS — mesure du 2026-08-24 : 211, 211, 211.\n");
+            printf("      C'est pire qu'un zero : ça passe pour une mesure.\n");
+        } else {
+            printf("   ⚠️ Apres lui, `i2c brut %02X 2` rendra 00 00 — le registre\n",
+                   DN_BH1750_ADDR);
+            printf("      de donnee est VIDE, ce qui se lit comme un CAPTEUR MORT\n");
+            printf("      alors qu'il est seulement remis a zero.\n");
+        }
         printf("   ⇒ Pour le rallumer : `i2c ecrire %02X 01` puis `i2c ecrire %02X 10`.\n",
                DN_BH1750_ADDR, DN_BH1750_ADDR);
         printf("   ⚠️ L'ecriture est FAITE QUAND MEME — console de diagnostic.\n");
@@ -5229,10 +5246,27 @@ static int i2c_lire_brut(uint8_t addr, int n)
         printf("        MTreg modifie (0x40..0x7F) la decale de x2,2 a /3,7.\n");
         printf("        ⛔ La commande ne conserve AUCUN etat entre invocations :\n");
         printf("           elle ne peut pas le savoir. C'est a toi de le savoir.\n");
-        printf("  ⚠️ 0000 ne prouve PAS un capteur mort : c'est aussi ce que\n");
-        printf("     rend une mesure PAS ENCORE PRETE (jusqu'a 180 ms) ou un\n");
-        printf("     capteur en POWER DOWN. Le discriminant est le STIMULUS :\n");
-        printf("     une valeur qui CHANGE quand on masque le capteur.\n");
+        /* 🔴 SEANCE CARTE DU 2026-08-24 — LA TROISIEME CAUSE ETAIT FAUSSE, ET LE
+         * CRITERE DE PREUVE DU DOSSIER TOMBE AVEC ELLE.
+         * Ce bloc citait « un capteur en POWER DOWN » comme cause d'un 0000 :
+         * MESURE, C'EST FAUX. Le power down (0x00) ne vide PAS le registre de
+         * donnee — seul le reset (0x07) le fait. Un capteur eteint rend donc la
+         * DERNIERE MESURE, FIGEE (211, 211, 211 en seance), c'est-a-dire une
+         * valeur PLAUSIBLE. ⛔ CONSEQUENCE LOURDE : le critere de preuve de
+         * §13.16.8 — « 3 lectures, identiques » — NE DISCRIMINE PAS. Il est
+         * satisfait par un capteur eteint, et aussi par un bus qui lit des uns
+         * (voir la garde FFFF ci-dessous). Le seul discriminant est une valeur
+         * qui CHANGE. */
+        printf("  ⚠️ 0000 ne prouve PAS un capteur mort : c'est aussi ce que rend\n");
+        printf("     une mesure PAS ENCORE PRETE (jusqu'a 180 ms), ou un registre\n");
+        printf("     VIDE par un reset 0x07, ou un capteur jamais demarre.\n");
+        printf("  🔴 ET L'INVERSE EST PIRE : un capteur en POWER DOWN ne rend PAS\n");
+        printf("     00 00 — il rend la DERNIERE MESURE, FIGEE (mesure du\n");
+        printf("     2026-08-24 : 211, 211, 211). ⛔ « TROIS LECTURES IDENTIQUES »\n");
+        printf("     N'EST DONC PAS UNE PREUVE DE VIE : un capteur eteint la\n");
+        printf("     satisfait, un bus qui lit des uns aussi.\n");
+        printf("     ⇒ Le SEUL discriminant est une valeur qui CHANGE quand on\n");
+        printf("        masque le capteur ou qu'on l'eclaire.\n");
         /* 🔴 CR dn4-2 du 2026-08-24 — LE POLE BAS ETAIT GARDE EN SIX LIGNES, LE
          * POLE HAUT PAS DU TOUT. `FFFF` est ce que rend un bus qui lit des UNS
          * (SDA relache, module debranche a chaud), et il sort « 54612.5 lx » AVEC
