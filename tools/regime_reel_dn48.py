@@ -39,6 +39,36 @@ RACINE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 AGENT = os.path.join(RACINE, "agent", "dn_agent.py")
 
 COMPTEURS = ("tronquee", "trop longue", "checksum", "version", "format", "bornes")
+
+# 🔴 2e REVUE (2026-08-24) — LA LIGNE `trames :` EST CE QUI PROUVE LA RECEPTION,
+#    ET ELLE N'ETAIT PAS LUE. Cet instrument ne lisait que `rejets :` et
+#    concluait `bouges == {} ⇒ ✅ AUCUN COMPTEUR DE REJET N'A MONTE`, presente
+#    comme « le controle le plus discriminant d'AC8 ». Or ce verdict est
+#    SATISFAIT PAR L'ETAT MORT : une carte qui n'a RIEN RECU rend exactement
+#    zero rejet. Les gardes existantes (`returncode`, `timeout`, duree murale,
+#    `vue is None`, peremption) prouvent que l'AGENT A VECU, ⛔ pas que la CARTE
+#    A ACCEPTE. Et AC7 le dit lui-meme : « n trames emises ne prouve que n
+#    ecritures, pas n acceptations. »
+# 🎯 Le firmware publie le chiffre qui tranche UNE LIGNE AU-DESSUS de celle qui
+#    etait lue (`dn_console.c:2860`) :
+#      trames     : %u valides · %u doublons · %u pertes seq · %u resynchros...
+_LIGNE_TRAMES = re.compile(
+    r"^trames\s*:\s*(\d+)\s+valides\s*\u00b7\s*(\d+)\s+doublons\s*\u00b7\s*"
+    r"(\d+)\s+pertes seq\s*\u00b7\s*(\d+)\s+resynchros", re.M)
+_TRAMES = ("valides", "doublons", "pertes seq", "resynchros")
+
+
+def _extraire_trames(txt):
+    """Rend les quatre compteurs de RECEPTION. ⛔ LEVE si la ligne manque —
+    ⛔ REFUS DE RENDRE DES ZEROS : c'est exactement le zero qu'on cherche a
+    distinguer d'une carte muette."""
+    m = _LIGNE_TRAMES.search(txt)
+    if not m:
+        raise RuntimeError(
+            "ligne `trames :` introuvable dans la sortie de `pc`. \u26d4 SANS ELLE, "
+            "« aucun rejet » ne prouve RIEN : une carte qui n'a rien recu rend "
+            "zero rejet elle aussi.")
+    return dict(zip(_TRAMES, (int(g) for g in m.groups())))
 _LIGNE_REJ = re.compile(
     r"^rejets\s*:\s*tronquee\s+(\d+)\s*\u00b7\s*trop longue\s+(\d+)\s*\u00b7\s*"
     r"checksum\s+(\d+)\s*\u00b7\s*version\s+(\d+)\s*\u00b7\s*format\s+(\d+)\s*"
@@ -89,7 +119,7 @@ def cmd(ser, commande, timeout=5.0):
     ser.reset_input_buffer()
     ser.write((commande + "\n").encode("ascii"))
     ser.flush()
-    fin = time.time() + timeout
+    fin = time.monotonic() + timeout
     buf = b""
     while time.time() < fin:
         buf += ser.read(4096)
@@ -121,13 +151,15 @@ def main():
         cmd(ser, "")                       # reveil
         avant_txt = cmd(ser, "pc")
         avant = _extraire(avant_txt)
+        avant_tr = _extraire_trames(avant_txt)
         print("[regime] compteurs de rejet AVANT : %s" % avant)
+        print("[regime] compteurs de RECEPTION AVANT : %s" % avant_tr)
     finally:
         ser.close()
     time.sleep(0.4)                        # laisser Windows relacher le port
 
     print("[regime] agent : %d s sur %s ..." % (a.duree, a.port))
-    t0 = time.time()
+    t0 = time.monotonic()
     try:
         pr = subprocess.run([a.python, AGENT, "--serie", a.port,
                              "--duree", str(a.duree)],
@@ -138,7 +170,7 @@ def main():
               % a.duree)
         print("   \u26d4 NE PAS CONCLURE SUR AC8 : le tir n'a pas eu lieu.")
         return 1
-    mur = time.time() - t0
+    mur = time.monotonic() - t0
 
     # 🔴 DEFAUT TROUVE EN REVUE (code review dn4-8, 2026-08-21) — ET C'EST LA
     #    FAMILLE « subprocess rend 0 sans rien avoir fait », que ce depot a deja
@@ -167,7 +199,7 @@ def main():
         return 1
 
     # \U0001f534 LA COURSE CONTRE LA PEREMPTION COMMENCE ICI. 3 s, pas plus.
-    t_reouv = time.time()
+    t_reouv = time.monotonic()
     ser = ouvrir(a.port)
     tirs = 0
     # ⚠️ `vue` n'etait affectee QU'A L'INTERIEUR de la boucle, elle-meme dans le
@@ -199,12 +231,27 @@ def main():
     # ⚠️ LE DELAI EST MESURE, ⛔ pas suppose : c'est lui qui dit si les valeurs
     #    lues sont encore FRAICHES. Au-dela de 3,00 s elles ont perime et `pc`
     #    montrerait « -- » partout SANS QUE CE SOIT LE SUJET.
-    delai = time.time() - t_reouv
+    delai = time.monotonic() - t_reouv
     if vue is None:
         print("\n\u2716\ufe0f  AUCUNE CAPTURE N'A ETE OBTENUE apres l'arret de l'agent.")
         print("   \u26d4 NE PAS CONCLURE SUR AC8 : il n'y a rien a comparer.")
         return 1
-    apres = _extraire(vue)
+    # 🔴 2e REVUE (2026-08-24) : `_extraire` etait appele AVANT le controle de
+    #    completude, et `main()` n'a pas de `try`. Une `vue` amputee de la ligne
+    #    `rejets :` — ou entierement vide, cas que CE FICHIER documente comme
+    #    MESURE (« deux captures de `dn_console.py` revenues ENTIEREMENT VIDES »)
+    #    — produisait un TRACEBACK NU a la place du message « c'est la CAPTURE
+    #    qui a perdu des lignes. Refaire le tir. » qui existe cinq lignes plus bas.
+    #    ⛔ Meme classe que le `NameError` que le correctif `vue = None` venait de
+    #    fermer : « un plantage opaque a la place d'un echec diagnosticable ».
+    try:
+        apres = _extraire(vue)
+        apres_tr = _extraire_trames(vue)
+    except RuntimeError as exc:
+        print("\n\u2716\ufe0f  CAPTURE INEXPLOITABLE : %s" % exc)
+        print("   \u26d4 NE PAS CONCLURE SUR AC8. \u21d2 c'est la CAPTURE qui a perdu "
+              "des lignes. Refaire le tir.")
+        return 1
 
     print("\n" + "-" * 88)
     print("BILAN DE L'AGENT (stderr) :")
@@ -266,9 +313,27 @@ def main():
         print("   \u26d4 LES COMPTEURS SONT PEUT-ETRE JUSTES, MAIS CE TIR NE LES PROUVE "
               "PAS. Refaire.")
         return 1
-    print("\u2705 AUCUN COMPTEUR DE REJET N'A MONTE (les six a zero de delta).")
+    # 🔴 2e REVUE (2026-08-24) — LA GARDE QUI MANQUAIT. « Zero rejet » est
+    #    satisfait A L'IDENTIQUE par une carte qui n'a RIEN RECU. Avant de
+    #    publier le verdict d'AC8, on exige donc que la carte ait ACCEPTE des
+    #    trames pendant le tir. ⛔ C'est ce qui separe « la carte a tout accepte »
+    #    de « la carte etait muette ».
+    d_tr = {k: apres_tr[k] - avant_tr[k] for k in _TRAMES}
+    print("\ncompteurs de RECEPTION (delta) : %s" % d_tr)
+    if d_tr["valides"] <= 0:
+        print("\n\u2716\ufe0f  LA CARTE N'A ACCEPTE AUCUNE TRAME PENDANT LE TIR "
+              "(delta `valides` = %d)." % d_tr["valides"])
+        print("   \u26d4 « aucun rejet » NE PROUVE RIEN ICI : une carte muette rend "
+              "zero rejet elle aussi.")
+        print("   \u26a0\ufe0f  AC7 le dit : « n trames emises ne prouve que n ECRITURES, "
+              "\u26d4 pas n ACCEPTATIONS ». Refaire le tir.")
+        return 1
+    print("\n\u2705 AUCUN COMPTEUR DE REJET N'A MONTE (les six a zero de delta), ET "
+          "LA CARTE A ACCEPTE %d TRAME(S)." % d_tr["valides"])
     print("   \U0001f3af C'est le controle le plus discriminant d'AC8 : une absence de")
     print("   donnee se dit par un CHAMP VIDE, \u26d4 jamais par un rejet.")
+    print("   \u26d4 Et il n'est plus satisfiable par l'etat MORT : sans trame "
+          "acceptee, ce tir ECHOUE au lieu de conclure.")
     return 0
 
 
