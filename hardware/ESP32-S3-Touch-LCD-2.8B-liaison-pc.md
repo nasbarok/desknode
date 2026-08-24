@@ -1991,3 +1991,90 @@ construite depuis les plafonds — ce que `tools/verif_selection_dn49.py` **éme
 | L18 | 🆕 **Deux prédictions d'AC9 sont INDÉCIDABLES faute de T0** | 🔴 **défaut de protocole, le mien** | Δ tas LVGL (`ui`) et Δ `cpu brut` : les deux instruments sont nommés dans la prédiction et **aucun n'a été relevé au T0**. ⇒ **Règle** : toute prédiction NOMME son instrument, et **le T0 de CET instrument se relève AVANT le premier tir**. ⛔ Une prédiction qu'on ne peut pas confronter ne coûte rien à celui qui l'écrit |
 | L19 | 🆕 **La colonne « AVANT » du tableau d'AC6 n'était pas observable** | ✅ **CLOS par la mesure** | `desc_ligne_indistincte` **n'existe pas** dans `4c3a3f7` (grep : 0, contre 3 à `cdfe88c`) : la garde est arrivée **après** le flash. ⛔ Ce n'était pas une régression, et ⛔ ce n'était pas non plus un état observable |
 | L20 | 🆕 **`--jeu pire` n'atteint PAS les plafonds du protocole** | 🟠 **limite NOMMÉE de l'instrument** | `3000 tr/min` pour un plafond à `10000`. ⛔ Il ne produit donc pas le pire cas de LARGEUR. Rouvrir si une story a besoin du plafond en régime soutenu ; jusque-là, `widget largeur` sur la chaîne des plafonds fait foi |
+
+---
+
+## 21. 🎯 SÉANCE CARTE DU 2026-08-24 — les décisions D3 et D4 de la 2ᵉ revue, VALIDÉES SUR LE MATÉRIEL
+
+**Firmware `e85107e`**, SHA **LU AU BANDEAU** (`App version: e85107e`), ⛔ pas déduit du dépôt.
+`git status --porcelain` **vérifié VIDE avant le flash** — 12 commits posés d'abord, un par sujet.
+Build : **0 avertissement, 0 erreur**, `desknode.bin` 0xf6fa0 o (76 % libre).
+
+### 21.1 Ce que la séance valide
+
+| Tir | Instrument | Résultat |
+|---|---|---|
+| **D3** — icônes en vue DÉTAIL | **constat owner à l'œil** | ✅ *« oui les flèches ok »* · *« pas de débordement »* |
+| **D3 bis** — pire cas du tampon (`DISQUE` à 4 grandeurs, aux plafonds) | **constat owner à l'œil** | ✅ *« boitier 10000 tr/min est sur la limite mais ça rentre, pas de débordement sur les côtés, bien centré »* |
+| **D4** — la garde refuse l'override 4-4 | console, avec **témoin positif** | ✅ `widget grandeurs 4 2` **ACCEPTÉ** · `widget grandeurs 4 4` **REFUSÉ (`ESP_ERR_INVALID_ARG`), « RIEN n'a changé »** |
+
+🎯 **Le motif rendu par la carte est EXACTEMENT celui prédit** :
+> *« dans la vue CASE, la grandeur 2 porterait l'unité "tr/min" DÉJÀ présente sans préfixe ni icône
+> QUI Y SOIT AFFICHÉ — deux lignes identiques à l'œil, dont une ment par omission. ⚠️ Un préfixe
+> marqué `prefixe_detail_seul` ne compte PAS dans la CASE : il n'y est pas dessiné. »*
+
+⇒ **RÉFUTATION MESURÉE** : l'Acceptance Auditor de la 2ᵉ revue concluait que *« l'override 4-4 est
+DÉBLOQUÉ »*. **FAUX**, et la carte le dit. Le constat avait déjà été réfuté par lecture le matin ;
+il l'est désormais **par le matériel**.
+
+### 21.2 Le texte composé, relu des objets LVGL — ⛔ pas déduit du code
+
+`RÉSEAU`, deux grandeurs, **les icônes sont dans la chaîne**, chacune devant SA valeur :
+
+```
+« EF 81 B8  985,0 Mb/s   ·   EF 81 B7  48,0 Mb/s »
+   LV_SYMBOL_DOWN            LV_SYMBOL_UP
+```
+largeur **416 px** pour 446 utiles ⇒ tient.
+
+`DISQUE`, quatre grandeurs **aux plafonds du protocole** (`1000000,100000,100000,100000`) :
+
+```
+100,0 Go/s
+extr.moy 10000 tr/min
+ventirad 10000 tr/min
+boitier 10000 tr/min
+```
+largeur **315 px** pour 432 utiles · hauteur **`14 + 140 = 154 ≤ 154`, MARGE ZÉRO** ·
+**0 log `TAMPON TROP COURT`** (le texte pèse ~75 o pour 184 disponibles) ·
+**0 `rejets_bornes`** alors que l'injection était AUX plafonds — ils sont donc bien **atteignables**.
+
+### 21.3 🔴 DEUX DÉFAUTS D'INSTRUMENT DE CETTE SÉANCE — les miens, et ils ont coûté une observation owner
+
+1. 🔴 **UNE OBSERVATION OWNER GÂCHÉE : j'ai fait regarder un état PÉRIMÉ.** `detail_reparametrer()`
+   porte un court-circuit — `if (e->regime == DN_VAL_ABSENTE || e->txt[0][0] == '\0') → buf = "--"` —
+   et ma boucle patchée est dans le `else`. Entre l'injection et la lecture de l'owner, la
+   péremption (3 s) était passée : l'écran montrait **un seul `--`**, sans icône ni découpage.
+   Le constat *« pas de flèche »* était **JUSTE**, et il **ne testait pas le correctif**.
+   ⇒ **Une vue qui périme en 3 s exige une injection CONTINUE pendant l'observation.** La fenêtre
+   se prépare AVANT de demander les yeux.
+2. 🔴 **UNE TRAME MODIFIÉE SANS RECALCULER LE CHECKSUM.** J'ai passé `seq 1 → 5` en gardant `*4A` ;
+   le vrai était `*4E`. Elle est tombée en `rejets_checksum`, et j'ai conclu deux fois sur un tir
+   qui n'avait rien mesuré. ⚠️ **C'est le piège n°10 du skill, à la lettre.** ⇒ le checksum se
+   GÉNÈRE, ⛔ il ne se tape pas.
+
+### 21.4 ⛔ CE QUE CETTE SÉANCE NE PROUVE PAS
+
+- **`890 pertes seq` et `1 rejets_checksum` sont des ARTEFACTS DU HARNAIS**, ⛔ pas des mesures de la
+  liaison : l'injection tournait à **~100× la cadence nominale** (le REPL en série, pas 1 Hz), et
+  `dn_console.py` est documenté comme perdant des lignes à ce régime. **Aucun taux de perte ne peut
+  être publié depuis cette séance.**
+- Le **parse PowerShell** de `dn_lhm_tour.ps1` et `deployer_tour.sh --verifier` exigent la TOUR :
+  ⛔ non joués ici.
+- **`campagne_bruit_dn48.py` et `regime_reel_dn48.py` n'ont PAS été rejoués** — leurs instruments ont
+  changé en 2ᵉ revue, donc **§18.2 et §18.3 restent MORTES**. C'est le reste de `dn4-8`.
+
+### 21.5 🔴 DEUX CONSTATS QUI SORTENT DU PÉRIMÈTRE `dn4-8` — ils appellent un `[CC]`
+
+Les deux portent sur la **vue DÉTAIL**, livrée par **`dn4-9`, qui est `done`**. ⛔ Son dossier n'est
+pas réécrit en silence.
+
+1. 🔴 **LE DÉTAIL NE PROPAGE PAS LES CHANGEMENTS DE VALEUR TANT QU'IL EST OUVERT.** MESURÉ : le fil
+   portait `111,0 / 222,0 Mb/s` (**accepté**, `seq 84`, `age 102 ms`) pendant que le détail affichait
+   toujours **`985,0 / 48,0`** — les valeurs de l'**OUVERTURE**. Tenu sur 15 injections / ~1,5 s,
+   donc bien au-delà du tick à 5 Hz. ✅ **La PÉREMPTION, elle, passe** (retour à `--`) : AC7 de
+   `dn2-2` tient. ⚠️ Mais une page de détail ouverte sur une métrique vivante **affiche des valeurs
+   périmées sans le dire**.
+2. ⚠️ **MARGE ZÉRO EN HAUTEUR sur le pire cas `DISQUE`** : `14 + 140 = 154 ≤ 154`. L'arithmétique et
+   l'œil **CONCORDENT** (*« sur la limite mais ça rentre »*). ⛔ Ce n'est **pas** une régression de
+   `dn4-8` : les icônes s'insèrent DANS la ligne, elles n'en ajoutent aucune.
