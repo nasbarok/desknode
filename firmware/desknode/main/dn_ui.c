@@ -2632,29 +2632,43 @@ static void build_detail(lv_obj_t *scr, int idx)
     lv_obj_set_style_line_color(s_det_courbe, lv_color_hex(0x33404a),
                                 LV_PART_MAIN);
 
-    int s0 = -1, s1 = -1;
-    int n_series = dn_hist_series_de_case(idx, &s0, &s1);
-    s_det_serie0 = NULL;
-    s_det_serie1 = NULL;
+    /*
+     * 🔴 **LES DEUX SÉRIES SONT CRÉÉES ICI, TOUJOURS — ET C'EST UN CORRECTIF DE
+     *    CONSTAT OWNER (2026-08-24), ⛔ PAS UNE PRÉCAUTION.**
+     *
+     * ⚠️ CE QUE LA PREMIÈRE VERSION FAISAIT, ET POURQUOI C'ÉTAIT FAUX :
+     *    elle créait `1` ou `2` séries **selon la page passée à `build_detail`**.
+     *    Or **en modèle `SCREENS` — le modèle LIVRÉ — `build_detail()` n'est
+     *    appelée QU'UNE FOIS**, à la construction de la scène : `nav_appliquer`
+     *    ne fait ensuite que `detail_reparametrer()` + `lv_screen_load()`.
+     *    ⇒ Les séries restaient **figées sur la première page construite**, avec
+     *      DEUX conséquences visibles :
+     *        · `AMBIANCE` n'avait **qu'UNE courbe** — la seconde n'était jamais
+     *          créée si la scène était née sur une autre page ;
+     *        · la courbe portait **la couleur de la MAUVAISE métrique** sur
+     *          cinq pages sur six.
+     *    🔴 **C'EST L'ŒIL DE L'OWNER QUI L'A TROUVÉ** (« de la même couleur ?
+     *       sinon non »), ⛔ aucune de mes mesures. AC8 justifie son existence
+     *       exactement là.
+     * ⇒ On crée les DEUX, une fois pour toutes, et c'est
+     *   `courbe_reparametrer()` qui les **RECONFIGURE À CHAQUE TRANSITION** :
+     *   tableau externe, couleur, et masquage de la seconde sur les pages
+     *   mono-courbe. ⛔ Ne jamais refaire dépendre la CONSTRUCTION de la page.
+     * ⚠️ Coût : une série de plus dans le pool LVGL, MASQUÉE sur 5 pages sur 6.
+     *    `lv_chart_hide_series` ne la dessine pas — elle ne coûte que son
+     *    descripteur.
+     * ⚠️ La couleur posée ici est un GRIS NEUTRE : elle sera écrasée par
+     *    `courbe_reparametrer()` avant le premier dessin. ⛔ Ne pas y mettre
+     *    `k_desc[idx].couleur` — ce serait rétablir la dépendance à la page
+     *    qu'on vient précisément de couper.
+     */
     s_axe_pose[0] = false;
     s_axe_pose[1] = false;
-    if (s0 >= 0) {
-        s_det_serie0 = lv_chart_add_series(s_det_courbe,
-                                           lv_color_hex(k_desc[idx].couleur),
-                                           LV_CHART_AXIS_PRIMARY_Y);
-        lv_chart_set_series_ext_y_array(s_det_courbe, s_det_serie0,
-                                        dn_hist_points(s0));
-    }
-    if (n_series == 2 && s1 >= 0) {
-        /* 🔴 DEUX UNITÉS ⇒ DEUX AXES. `AMBIANCE` porte des °C **et** des % :
-         *    les empiler sur une échelle commune écraserait l'une des deux et
-         *    ferait lire une variation qui n'existe pas. C'est la même règle qui
-         *    interdit d'empiler les quatre grandeurs de `DISQUE`. */
-        s_det_serie1 = lv_chart_add_series(s_det_courbe, lv_color_hex(DET_COURBE_COUL1),
-                                           LV_CHART_AXIS_SECONDARY_Y);
-        lv_chart_set_series_ext_y_array(s_det_courbe, s_det_serie1,
-                                        dn_hist_points(s1));
-    }
+    s_det_serie0 = lv_chart_add_series(s_det_courbe, lv_color_hex(0x808080),
+                                       LV_CHART_AXIS_PRIMARY_Y);
+    s_det_serie1 = lv_chart_add_series(s_det_courbe,
+                                       lv_color_hex(DET_COURBE_COUL1),
+                                       LV_CHART_AXIS_SECONDARY_Y);
 
     /* Données secondaires et MIN/MAX, sur un seul aplat de bas de page — c'est
      * celui-là que l'owner a signalé comme illisible le 2026-08-16. */
@@ -2844,15 +2858,51 @@ static void courbe_serie_regler(int serie, lv_chart_series_t *ser,
     s_axe_pose[k] = true;
 }
 
+/*
+ * 🔴 LA COURBE SUIT LA **PAGE**, ⛔ PAS SEULEMENT L'ANNEAU — correctif du constat
+ *    owner du 2026-08-24. En modèle `SCREENS`, `build_detail()` ne tourne
+ *    QU'UNE FOIS : tout ce qui dépend de la métrique affichée doit être
+ *    (re)posé ICI, à chaque transition. Voir le bloc de `build_detail`.
+ */
 static void courbe_reparametrer(int idx)
 {
-    if (!s_det_courbe) {
+    if (!s_det_courbe || !s_det_serie0 || !s_det_serie1) {
         return;
     }
     int s0 = -1, s1 = -1;
-    dn_hist_series_de_case(idx, &s0, &s1);
+    int n = dn_hist_series_de_case(idx, &s0, &s1);
+
+    /* La série 0 : SON tableau, SA couleur — celles de LA PAGE COURANTE. */
+    if (s0 >= 0) {
+        lv_chart_set_series_ext_y_array(s_det_courbe, s_det_serie0,
+                                        dn_hist_points(s0));
+        lv_chart_set_series_color(s_det_courbe, s_det_serie0,
+                                  lv_color_hex(case_est_widget(idx)
+                                                   ? k_desc[idx].couleur
+                                                   : 0x808080));
+        lv_chart_hide_series(s_det_courbe, s_det_serie0, false);
+    } else {
+        lv_chart_hide_series(s_det_courbe, s_det_serie0, true);
+    }
+
+    /* 🔴 La série 1 n'existe QUE sur `AMBIANCE` (addendum §1, exception 1). Sur
+     *    les cinq autres pages elle est **MASQUÉE**, ⛔ pas « pointée sur rien » :
+     *    une série laissée sur le tableau de la page précédente dessinerait les
+     *    données d'une AUTRE métrique sous le titre de celle-ci. */
+    if (n == 2 && s1 >= 0) {
+        lv_chart_set_series_ext_y_array(s_det_courbe, s_det_serie1,
+                                        dn_hist_points(s1));
+        lv_chart_hide_series(s_det_courbe, s_det_serie1, false);
+    } else {
+        lv_chart_hide_series(s_det_courbe, s_det_serie1, true);
+    }
+
     courbe_serie_regler(s0, s_det_serie0, LV_CHART_AXIS_PRIMARY_Y);
-    courbe_serie_regler(s1, s_det_serie1, LV_CHART_AXIS_SECONDARY_Y);
+    if (n == 2) {
+        courbe_serie_regler(s1, s_det_serie1, LV_CHART_AXIS_SECONDARY_Y);
+    } else {
+        s_axe_pose[1] = false;
+    }
     lv_chart_refresh(s_det_courbe);
 }
 
@@ -5336,11 +5386,30 @@ bool dn_ui_detail_courbe_axes(int *y0_min, int *y0_max, int *y1_min, int *y1_max
     if (y0_max) { *y0_max = s_axe_pose[0] ? s_axe_max[0] : 0; }
     if (y1_min) { *y1_min = s_axe_pose[1] ? s_axe_min[1] : 0; }
     if (y1_max) { *y1_max = s_axe_pose[1] ? s_axe_max[1] : 0; }
+    /*
+     * 🔴 **LA COULEUR EST RELUE DE LA SÉRIE, ⛔ PLUS RÉCITÉE DU DESCRIPTEUR.**
+     *    La première version faisait `k_desc[s_metrique].couleur` : elle a
+     *    annoncé « orange » sur une ligne qui était **violette**, parce que la
+     *    série gardait la couleur de la page où la scène était née. Un
+     *    instrument qui récite la DEMANDE au lieu de lire ce qui est POSÉ ne
+     *    peut pas voir le défaut qu'on lui fait chercher — c'est la famille que
+     *    ce dépôt traque, et je l'ai reproduite ici. Corrigé le 2026-08-24.
+     */
     if (coul0) {
-        *coul0 = case_est_widget(s_metrique) ? k_desc[s_metrique].couleur : 0;
+        lv_color_t c = lv_chart_get_series_color(s_det_courbe, s_det_serie0);
+        *coul0 = ((uint32_t)c.red << 16) | ((uint32_t)c.green << 8) | c.blue;
     }
-    if (coul1) { *coul1 = DET_COURBE_COUL1; }
-    if (n_series) { *n_series = s_det_serie1 ? 2 : (s_det_serie0 ? 1 : 0); }
+    if (coul1) {
+        lv_color_t c = lv_chart_get_series_color(s_det_courbe, s_det_serie1);
+        *coul1 = ((uint32_t)c.red << 16) | ((uint32_t)c.green << 8) | c.blue;
+    }
+    /* ⚠️ « Combien de séries » = combien sont VISIBLES, ⛔ pas combien existent :
+     *    les deux existent toujours depuis le correctif. */
+    if (n_series) {
+        int n = 0, s0 = -1, s1 = -1;
+        n = dn_hist_series_de_case(s_metrique, &s0, &s1);
+        *n_series = n;
+    }
     return true;
 }
 
