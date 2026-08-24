@@ -2829,8 +2829,26 @@ static void hist_fmt(char *out, size_t n, int32_t dixiemes, int idx, int g)
  * ⚠️ `mn == mx` (série plate) : on ouvre de ±1 dixième, sinon `lv_chart` divise
  *    par une plage nulle et la ligne part au bord.
  */
+/*
+ * `moitie` : `-1` = toute la hauteur · `0` = MOITIÉ HAUTE · `1` = MOITIÉ BASSE.
+ *
+ * 🔴 POURQUOI LE PARTAGE EN DEUX EXISTE — CONSTAT OWNER DU 2026-08-24.
+ *    Sur `AMBIANCE`, la température varie de **0,2 °C** et l'humidité de
+ *    **0,3 %** sur deux minutes : les deux séries sont **PLATES**. Deux axes
+ *    auto-calés **CENTRENT CHACUN LEUR SÉRIE** ⇒ deux lignes plates se
+ *    retrouvent **au même endroit** dans les 92 px, **indiscernables MALGRÉ
+ *    deux couleurs**. C'est ce que l'œil a signalé (*« de la même couleur ?
+ *    sinon non »*) — et deux couleurs différentes ne le réparent pas, parce que
+ *    l'une est **dessinée par-dessus l'autre**.
+ * ⇒ Chaque axe reçoit **la moitié** de la hauteur. Deux séries d'unités
+ *   DIFFÉRENTES n'ont de toute façon aucune raison de partager une échelle :
+ *   les séparer n'est pas un artifice, c'est ce que l'honnêteté demandait déjà.
+ * ⛔ Ne pas « régler » ce défaut en changeant une couleur : la couleur n'était
+ *    pas en cause, et le prouver a demandé de RELIRE la série (l'instrument,
+ *    lui, récitait le descripteur).
+ */
 static void courbe_serie_regler(int serie, lv_chart_series_t *ser,
-                                lv_chart_axis_t axe)
+                                lv_chart_axis_t axe, int moitie)
 {
     if (!s_det_courbe || !ser || serie < 0) {
         return;
@@ -2850,6 +2868,18 @@ static void courbe_serie_regler(int serie, lv_chart_series_t *ser,
         }
         mn -= marge;
         mx += marge;
+    }
+    if (moitie >= 0) {
+        /* ⚠️ On ÉLARGIT la plage du côté opposé : la série garde son échelle
+         *    RÉELLE (une variation de 0,2 °C reste une variation de 0,2 °C sur
+         *    la moitié qui lui revient), elle est seulement CANTONNÉE. ⛔ Ne pas
+         *    « écraser » la série de moitié : ce serait mentir sur l'amplitude. */
+        int32_t etendue = mx - mn;
+        if (moitie == 0) {
+            mn -= etendue; /* les données occupent la MOITIÉ HAUTE */
+        } else {
+            mx += etendue; /* les données occupent la MOITIÉ BASSE */
+        }
     }
     lv_chart_set_range(s_det_courbe, axe, mn, mx);
     int k = (axe == LV_CHART_AXIS_PRIMARY_Y) ? 0 : 1;
@@ -2897,9 +2927,12 @@ static void courbe_reparametrer(int idx)
         lv_chart_hide_series(s_det_courbe, s_det_serie1, true);
     }
 
-    courbe_serie_regler(s0, s_det_serie0, LV_CHART_AXIS_PRIMARY_Y);
+    /* Une seule courbe ⇒ elle prend toute la hauteur (`-1`). Deux ⇒ chacune sa
+     * moitié, sinon deux séries plates se superposent. */
+    courbe_serie_regler(s0, s_det_serie0, LV_CHART_AXIS_PRIMARY_Y,
+                        n == 2 ? 0 : -1);
     if (n == 2) {
-        courbe_serie_regler(s1, s_det_serie1, LV_CHART_AXIS_SECONDARY_Y);
+        courbe_serie_regler(s1, s_det_serie1, LV_CHART_AXIS_SECONDARY_Y, 1);
     } else {
         s_axe_pose[1] = false;
     }
