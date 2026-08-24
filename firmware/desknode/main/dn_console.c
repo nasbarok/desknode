@@ -3410,6 +3410,66 @@ static int cmd_widget(int argc, char **argv)
         return 0;
     }
 
+    /*
+     * ── dn4-4 / AC9 : `widget jauge [<case>]` — LE RECTANGLE RÉEL, RELU ──────
+     *
+     * 🔴 IL TRANCHE UN DÉSACCORD PUBLIÉ, ⛔ il ne l'arbitre pas au jugé.
+     *    `dn4-2` publie la bande tactile de la jauge `RAM` à `y = 337..347` /
+     *    `x = 22..223` — CALCULÉE. La visée du 2026-08-20, cible RENDUE VISIBLE
+     *    (`widget piste 0xFF2020`), a produit 9 taps à `y = 350..371` : aucun
+     *    dans la bande publiée. Ni l'une ni l'autre n'avait été relue de l'objet.
+     * ⇒ Cette commande imprime, côte à côte, LA FORMULE et CE QUE LVGL A POSÉ.
+     *   Quand les deux coïncident, c'est la VISÉE qui est en cause ; quand elles
+     *   divergent, c'est la formule. ⛔ Aucun autre chiffre ne tranche.
+     */
+    if ((argc == 2 || argc == 3) && strcmp(argv[1], "jauge") == 0) {
+        long idx = 2; /* RAM — la case du desaccord publie */
+        if (argc == 3 && (!parse_entier(argv[2], &idx) || idx < 0 ||
+                          idx > DN_UI_METRIQUES)) {
+            printf("usage : widget jauge [<0..%d>]   (defaut 2 = RAM)\n",
+                   DN_UI_METRIQUES);
+            return 1;
+        }
+        int x = 0, y = 0, w = 0, h = 0;
+        bool existe = false, resolue = false;
+        if (!dn_ui_widget_jauge_rect((int)idx, &x, &y, &w, &h, &existe,
+                                     &resolue)) {
+            if (!existe) {
+                printf("case %ld (%s) : AUCUNE JAUGE construite.\n", idx,
+                       dn_ui_metrique_nom((int)idx));
+                printf("⛔ Ce n'est pas « 0,0 » : c'est « rien a mesurer ».\n");
+                printf("   `widget` dit quelles cases en portent une.\n");
+            } else {
+                printf("verrou LVGL non pris — ⛔ « pas mesure », pas « zero ».\n");
+            }
+            return 1;
+        }
+        printf("JAUGE de la case %ld (%s) — RELUE des coordonnees LVGL :\n", idx,
+               dn_ui_metrique_nom((int)idx));
+        if (!resolue) {
+            printf("  ⏳ GEOMETRIE NON RESOLUE (x=%d y=%d w=%d h=%d).\n", x, y, w,
+                   h);
+            printf("  ⛔ AUCUN verdict ici : relancer apres un cycle d'affichage.\n");
+            return 0;
+        }
+        printf("  rectangle : x = %d..%d  (%d px)\n", x, x + w - 1, w);
+        printf("              y = %d..%d  (%d px)\n", y, y + h - 1, h);
+        printf("  ⚠️ bornes INCLUSIVES cote LVGL — le +1 est fait ici.\n");
+        printf("  ── la MEME bande, telle que la FORMULE la calcule ──\n");
+        {
+            int case_x = 0, case_y = 0, case_w = 0, case_h = 0;
+            dn_ui_case_rect((int)idx, &case_x, &case_y, &case_w, &case_h);
+            printf("     case  : x = %d  y = %d  (%dx%d)\n", case_x, case_y,
+                   case_w, case_h);
+            printf("     ecart : dx = %d px   dy = %d px\n", x - case_x,
+                   y - case_y);
+        }
+        printf("  🔴 C'EST CE RECTANGLE-CI QU'IL FAUT VISER, ⛔ pas un chiffre\n");
+        printf("     publie. `widget piste 0xFF2020` le rend VISIBLE, puis\n");
+        printf("     `touch trace` compare la visee au tir.\n");
+        return 0;
+    }
+
     if (argc == 3 && strcmp(argv[1], "replacer") == 0) {
         bool on;
         if (!parse_on_off(argv[2], &on)) {
@@ -4209,7 +4269,8 @@ static int cmd_widget(int argc, char **argv)
         printf("        | police 14|28                          ⚠️ RECONSTRUIT\n");
         printf("        | grille <barre> <menu>                 ⚠️ RECONSTRUIT\n");
         printf("      dn4-6 — les instruments (ne reconstruisent PAS) :\n");
-        printf("        | largeur [<texte>|reset] | detail | replacer on|off\n");
+        printf("        | largeur [<texte>|reset] | detail | replacer on|off\n"
+           "        | jauge [<case>]   (dn4-4/AC9 : le rectangle REEL de la barre)\n");
         return 1;
     }
 

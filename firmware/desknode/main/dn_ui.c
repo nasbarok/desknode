@@ -140,6 +140,30 @@ static inline int ui_case_h(void)
     return (ui_grille_h() - 2 * DN_UI_MARGE - 2 * DN_UI_GAP) / 3;
 }
 
+/*
+ * ── dn4-4 / AC9 : L'ORIGINE D'UNE CASE, EN **UN SEUL** ENDROIT ───────────────
+ *
+ * 🔴 ELLE ÉTAIT ÉCRITE DANS `build_dashboard()` ET NULLE PART AILLEURS — donc
+ *    toute publication de coordonnée tactile la RÉCITAIT. `dn4-2` a ainsi publié
+ *    la bande de la jauge `RAM` à `y = 337..347` sans qu'aucun instrument ne
+ *    puisse la confronter à ce que LVGL avait posé. ⇒ Extraite ici, appelée par
+ *    la boucle de construction ET par l'instrument, pour qu'elles ne puissent
+ *    plus diverger. ⛔ Ne pas la recopier ailleurs.
+ * ⚠️ `ui_case_h()` est CALCULÉE (l'override de bandes la déplace) : cette
+ *    fonction n'est donc PAS une constante, et c'est voulu.
+ */
+static inline void ui_case_origine(int i, int *x, int *y)
+{
+    int col = i % 2;
+    int ligne = i / 2;
+    if (x) {
+        *x = DN_UI_MARGE + col * (DN_UI_CASE_W + DN_UI_GAP);
+    }
+    if (y) {
+        *y = ui_grille_y() + DN_UI_MARGE + ligne * (ui_case_h() + DN_UI_GAP);
+    }
+}
+
 /* Zone tactile du retour : généreuse par exigence d'AC4 (« pas juste le
  * glyphe »). 120x60 dans le coin haut-gauche, soit 24 fois l'aire du chevron. */
 #define DN_UI_RETOUR_W 120
@@ -2273,10 +2297,11 @@ static void build_dashboard(lv_obj_t *scr)
      * une métrique ne redessine pas l'UI ».
      */
     for (int i = 0; i < DN_UI_METRIQUES; i++) {
-        int col = i % 2;
-        int ligne = i / 2;
-        int x = DN_UI_MARGE + col * (DN_UI_CASE_W + DN_UI_GAP);
-        int y = ui_grille_y() + DN_UI_MARGE + ligne * (ui_case_h() + DN_UI_GAP);
+        /* 🔴 dn4-4 : L'ORIGINE VIENT DE `ui_case_origine()`, ⛔ plus d'une
+         *    expression écrite ici. C'est la même que l'instrument `widget
+         *    jauge` publie — sans quoi l'instrument mesurerait sa propre copie. */
+        int x = 0, y = 0;
+        ui_case_origine(i, &x, &y);
 
         /* LECTEUR 4/7 de l'override W11. ⚠️ LA BOUCLE RESTE UNE BOUCLE : le
          * branchement porte sur la FORME de la case (widget ou nue) et sur rien
@@ -4783,6 +4808,58 @@ bool dn_ui_widget_pointeurs(int idx, int *n_grandeurs, bool *jauge, bool *sec)
     return true;
 }
 
+/* dn4-4 / AC9 — voir `dn_ui.h` pour le motif : on RELIT le rectangle que LVGL a
+ * réellement posé, ⛔ on ne recalcule pas la formule qui est justement en cause. */
+bool dn_ui_widget_jauge_rect(int idx, int *x, int *y, int *w, int *h,
+                             bool *existe, bool *resolue)
+{
+    if (existe) {
+        *existe = false;
+    }
+    if (resolue) {
+        *resolue = false;
+    }
+    const dn_widget_t *o = NULL;
+    if (idx >= 0 && idx < DN_UI_METRIQUES) {
+        o = &s_wobj[idx];
+    } else if (idx == DN_UI_METRIQUES) {
+        o = &s_demo;
+    }
+    if (!o || !o->racine || !o->jauge) {
+        return false;
+    }
+    if (!lvgl_port_lock(1000)) {
+        return false; /* ⛔ « pas mesuré », ⛔ pas « zéro » */
+    }
+    lv_area_t a;
+    lv_obj_get_coords(o->jauge, &a);
+    lvgl_port_unlock();
+    if (existe) {
+        *existe = true;
+    }
+    /* ⚠️ BORNES INCLUSIVES : `+1` sur les deux dimensions. Sans lui la barre de
+     *    10 px se publierait à 9, et l'écart de 13 px qu'on instruit serait
+     *    confondu avec une erreur d'arrondi de l'instrument lui-même. */
+    if (x) {
+        *x = a.x1;
+    }
+    if (y) {
+        *y = a.y1;
+    }
+    if (w) {
+        *w = a.x2 - a.x1 + 1;
+    }
+    if (h) {
+        *h = a.y2 - a.y1 + 1;
+    }
+    /* Une géométrie non résolue rend des coordonnées nulles ou négatives — même
+     * piège que `w_parent = -1` sur le label du détail. On le DIT. */
+    if (resolue) {
+        *resolue = (a.x2 > a.x1 && a.y2 > a.y1 && a.x1 >= 0 && a.y1 >= 0);
+    }
+    return true;
+}
+
 /*
  * ── LA VARIANTE MULTI-GRANDEURS (D6) — UNE CASE, DEUX GRANDEURS ──────────────
  *
@@ -5651,6 +5728,26 @@ esp_err_t dn_ui_set_groupe_union(void)
     dn_widget_set_groupe_union(true);
     lvgl_port_unlock();
     return ESP_OK;
+}
+
+/* dn4-4 / AC9 — LE rectangle d'une case, origine comprise, depuis LA fabrique.
+ * ⛔ Ne pas confondre avec `dn_ui_case_dim()`, qui ne rend que les dimensions. */
+void dn_ui_case_rect(int idx, int *x, int *y, int *w, int *h)
+{
+    if (idx < 0 || idx >= DN_UI_METRIQUES) {
+        if (x) { *x = -1; }
+        if (y) { *y = -1; }
+        if (w) { *w = 0; }
+        if (h) { *h = 0; }
+        return;
+    }
+    ui_case_origine(idx, x, y);
+    if (w) {
+        *w = DN_UI_CASE_W;
+    }
+    if (h) {
+        *h = ui_case_h();
+    }
 }
 
 /* La géométrie d'une case, pour que la console cesse de réciter « 225x156 =

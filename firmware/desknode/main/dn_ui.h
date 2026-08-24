@@ -449,6 +449,36 @@ int dn_ui_mocks_actifs(void);
  */
 bool dn_ui_widget_pointeurs(int idx, int *n_grandeurs, bool *jauge, bool *sec);
 
+/*
+ * ── dn4-4 / AC9 : LE RECTANGLE RÉEL DE LA JAUGE, RELU DE L'OBJET LVGL ────────
+ *
+ * 🔴 POURQUOI CETTE FONCTION EXISTE. `dn4-2` a publié la bande tactile de la
+ *    jauge `RAM` à `y = 337..347` / `x = 22..223` — un chiffre CALCULÉ depuis la
+ *    formule (`ui_grille_y() + MARGE + ligne x (case_h + GAP)`, puis
+ *    `y_bas + 6` côté `dn_widget.c`). La campagne de visée du 2026-08-20, cible
+ *    RENDUE VISIBLE (`widget piste 0xFF2020`), a produit **9 taps à
+ *    `y = 350..371`** : ⛔ AUCUN dans la bande publiée, tous 13 à 24 px DESSOUS.
+ *    ⇒ Deux lectures s'opposaient, et **aucune n'était relue de l'objet**.
+ *
+ * ⛔ CE QU'ON NE FAIT PAS : corriger la bande au jugé. Un décalage « corrigé »
+ *    de 13 px sans savoir LEQUEL des deux nombres est faux déplacerait
+ *    simplement l'erreur.
+ * ✅ CE QU'ON FAIT : on demande à LVGL **où il a VRAIMENT posé la barre**, en
+ *    coordonnées ÉCRAN, exactement comme `dn_ui_detail_label()` relit le texte du
+ *    label au lieu de le recomposer. C'est le seul chiffre qui tranche.
+ *
+ * ⚠️ `lv_obj_get_coords()` rend des bornes **INCLUSIVES** : la hauteur est
+ *    `y2 - y1 + 1`. Le dépôt a déjà payé ce `+1` une fois (voir `dn_ui_flush`).
+ * ⚠️ La géométrie n'est exploitable qu'APRÈS une passe de layout. `*resolue`
+ *    dit si elle l'est ; l'appelant refuse de conclure sinon — même contrat que
+ *    `dn_ui_detail_label()`.
+ *
+ * Rend `false` si l'index est hors bornes, si la case n'est pas construite, si
+ * elle n'a PAS de jauge (`*existe = false`), ou si le verrou LVGL n'est pas pris.
+ */
+bool dn_ui_widget_jauge_rect(int idx, int *x, int *y, int *w, int *h,
+                             bool *existe, bool *resolue);
+
 /* ── LA CASE « AMBIANCE » : DEUX GRANDEURS DANS UNE CASE (D6, dn3-1) ──────────
  * Jusqu'à dn2-1 c'étaient DEUX cases (TEMP. idx 4, HUMIDITÉ idx 5). D6 les
  * fusionne en UNE case bi-grandeurs (idx 5) et libère idx 4 pour VENTILOS.
@@ -741,6 +771,13 @@ esp_err_t dn_ui_set_case_opa(uint8_t opa);
  * Bornes RELUES du contenu, ⛔ pas rondes : barre ≥ 53 (heure `dn_font_28` à
  * y = 18), MENU ≥ 49 (`dn_font_28` à y = 14) ou 0 = pas de bandeau. */
 esp_err_t dn_ui_set_bandes(int barre_h, int menu_h);
+/* dn4-4 / AC9 — le rectangle COMPLET d'une case (origine + dimensions), rendu
+ * par LA fabrique que `build_dashboard()` utilise elle-même. ⛔ Toute
+ * coordonnée tactile publiée doit venir d'ici, jamais d'une expression recopiée :
+ * c'est ainsi que la bande de la jauge `RAM` a pu etre publiee sans etre
+ * confrontable. Hors bornes ⇒ `x = y = -1`, `w = h = 0`. */
+void dn_ui_case_rect(int idx, int *x, int *y, int *w, int *h);
+
 void dn_ui_geom_bandes(int *barre_h, int *menu_h, int *grille_h, int *case_h);
 void dn_ui_geom_bandes_defaut(int *barre_h, int *menu_h);
 
