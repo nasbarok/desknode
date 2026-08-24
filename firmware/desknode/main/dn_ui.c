@@ -5717,6 +5717,39 @@ bool dn_ui_pc_maj(dn_link_metrique_t m, const dn_link_vue_t *vue,
     bool ok = (vue->etat == DN_LINK_VIVANTE) && vue->n > 0 && vue->v[0] >= 0;
     int32_t brut0 = 0;
 
+    /*
+     * 🔴 dn4-13 / AC8.1 — **UNE SEULE DÉFINITION DE « CONNUE », LUE PAR LES TROIS
+     *    SURFACES.** ⛔ C'est la moitié qui manquait, et elle n'était pas neutre.
+     *
+     * LE DÉFAUT, TEL QU'IL ÉTAIT : le test `vue->v[i] >= 0` ne s'appliquait
+     * qu'à `dx_connue[]` — c'est-à-dire à l'HISTORIQUE. Le tableau `txt[]`, lui,
+     * était formaté sur le seul `vue->connue[i]`. Le jour où une valeur négative
+     * arrive :
+     *   · la TUILE affiche « −3,0 °C » (elle a formaté) ;
+     *   · la COURBE creuse un TROU (l'historique a refusé) ;
+     *   · `MIN/MAX` dit « -- » (il lit l'historique).
+     * ⇒ **Trois surfaces, deux vérités, dans le même écran.** Et personne ne
+     *   pourrait dire laquelle a raison, parce que rien ne dirait qu'elles
+     *   divergent.
+     *
+     * ⚠️ EST-CE ATTEIGNABLE AUJOURD'HUI ? Le fil ne peut PAS porter de négatif :
+     *    `parse_u32_strict()` remplit un `uint32_t`. Mais `dn_ui_cpu_maj()` pose
+     *    délibérément `-1` (« pas de valeur »), et c'est une fonction PUBLIQUE.
+     *    ⇒ La garde n'est donc PAS morte, contrairement à ce qu'un `grep` du
+     *      parseur laisserait croire — elle était seulement INCOMPLÈTE.
+     *
+     * 🔴 CE QUE `< 0` VEUT DIRE ICI, ET LE PIÈGE QUE ÇA POSE POUR PLUS TARD :
+     *    `-1` est la SENTINELLE « inconnu » du firmware, ⛔ pas une valeur basse.
+     *    Le jour où le protocole portera des grandeurs SIGNÉES (une température
+     *    extérieure sous zéro, par exemple), cette convention devient ambiguë et
+     *    il faudra un drapeau séparé — ⛔ pas un signe. C'est écrit ici pour que
+     *    ce ne soit pas redécouvert par un écran qui ment.
+     */
+    bool connues[DN_WIDGET_GRANDEURS_MAX];
+    for (int i = 0; i < DN_WIDGET_GRANDEURS_MAX; i++) {
+        connues[i] = ok && (int)vue->n > i && vue->connue[i] && vue->v[i] >= 0;
+    }
+
     if (ok) {
         brut0 = vue->v[0] / 10; /* la jauge travaille en UNITÉS AFFICHÉES */
 
@@ -5774,7 +5807,9 @@ bool dn_ui_pc_maj(dn_link_metrique_t m, const dn_link_vue_t *vue,
             n_aff = DN_WIDGET_GRANDEURS_MAX;
         }
         for (int i = 0; i < n_aff; i++) {
-            if (vue->connue[i]) {
+            /* dn4-13 / AC8.1 — `connues[]`, ⛔ plus `vue->connue[i]` seul : la
+             * tuile et l'historique lisent désormais LE MÊME prédicat. */
+            if (connues[i]) {
                 haute[i] = fmt_echelle(txt[i], sizeof(txt[i]), vue->v[i], dsc, i);
             }
         }
@@ -5825,7 +5860,7 @@ bool dn_ui_pc_maj(dn_link_metrique_t m, const dn_link_vue_t *vue,
              *    U+2193/U+2191 : celles-ci sont HORS latin-1 et le glyphe absent
              *    serait dessiné EN SILENCE. Les deux codepoints FontAwesome ont
              *    été VÉRIFIÉS présents dans les `.c` de police. */
-            if (vue->n > 1 && vue->connue[1]) {
+            if (connues[1]) { /* dn4-13 / AC8.1 — le MÊME prédicat */
                 char a[DN_WIDGET_TXT_MAX], b[DN_WIDGET_TXT_MAX];
                 fmt_dixiemes(a, sizeof(a), vue->v[0]);
                 fmt_dixiemes(b, sizeof(b), vue->v[1]);
@@ -5854,10 +5889,11 @@ bool dn_ui_pc_maj(dn_link_metrique_t m, const dn_link_vue_t *vue,
          * ⚠️ `ok` PORTE LA VIVACITÉ DE LA MÉTRIQUE : une source MORTE ne fournit
          *    aucun point, elle fournit un TROU. Sans ce `ok &&`, l'historique
          *    continuerait d'enregistrer la dernière valeur connue pendant que la
-         *    case, elle, affiche honnêtement « -- ». Deux vérités pour un écran. */
-        bool connue = ok && vue->n > i && vue->connue[i] && vue->v[i] >= 0;
-        val.dx_connue[i] = connue;
-        val.dx[i] = connue ? vue->v[i] : 0;
+         *    case, elle, affiche honnêtement « -- ». Deux vérités pour un écran.
+         * 🔴 dn4-13 / AC8.1 — le prédicat est CALCULÉ UNE FOIS, en tête, et la
+         *    tuile lit le même. Il était recopié ici ET absent là-bas. */
+        val.dx_connue[i] = connues[i];
+        val.dx[i] = connues[i] ? vue->v[i] : 0;
     }
     case_poser(idx, ok ? DN_VAL_REELLE : DN_VAL_ABSENTE, &val, brut0, sec,
                label_pose);

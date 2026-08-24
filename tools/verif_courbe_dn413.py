@@ -447,6 +447,36 @@ def i_detpan_borne(S):
     return True, "167 derive, applique, ET annonce par la console"
 
 
+def i_connue_un_seul_predicat(S):
+    """AC8.1 — « connue » est défini UNE FOIS et lu par la tuile ET l'historique.
+
+    ⛔ Le défaut n'était pas que la garde soit morte — elle ne l'est pas
+       (`dn_ui_cpu_maj()` pose `-1`). Le défaut est qu'elle ne s'appliquait qu'à
+       UNE des deux surfaces : la tuile aurait affiché « −3,0 °C » pendant que la
+       courbe creusait un trou et que MIN/MAX disait « -- »."""
+    ui = S["ui"]
+    b = corps(ui, "bool dn_ui_pc_maj(")
+    if b is None:
+        return False, "`dn_ui_pc_maj` introuvable"
+    if "bool connues[DN_WIDGET_GRANDEURS_MAX];" not in b:
+        return False, "aucun predicat unique `connues[]`"
+    m = re.search(r"connues\[i\]\s*=\s*([^;]*);", b)
+    if not m or "vue->v[i] >= 0" not in m.group(1):
+        return False, "le predicat ne porte pas le test `>= 0`"
+    # la tuile lit `connues[]`, ⛔ plus `vue->connue[i]` nu
+    tuile = re.search(r"for \(int i = 0; i < n_aff; i\+\+\) \{(.*?)\n        \}",
+                      b, re.S)
+    if not tuile:
+        return False, "boucle de formatage de la tuile introuvable"
+    if "connues[i]" not in tuile.group(1):
+        return False, "la TUILE ne lit pas le predicat commun"
+    if "vue->connue[i]" in tuile.group(1):
+        return False, "la TUILE lit encore `vue->connue[i]` nu"
+    if "val.dx_connue[i] = connues[i];" not in b:
+        return False, "l'HISTORIQUE ne lit pas le predicat commun"
+    return True, "un predicat, deux surfaces"
+
+
 INVARIANTS = [  # (libelle, invariant, [(fichier, avant, apres), ...])
     ("AC4.3 `s_axe_pose[0..1]` remis a FAUX en tete", i_axe_pose_remis,
      [("ui", "    s_axe_pose[0] = false;\n    s_axe_pose[1] = false;\n\n"
@@ -508,6 +538,12 @@ INVARIANTS = [  # (libelle, invariant, [(fichier, avant, apres), ...])
     ("AC6.4 `widget jauge` refuse la formule pour la demo",
      i_jauge_demo_refuse,
      [("cons", "        if (idx >= DN_UI_METRIQUES) {\n", "        if (false) {\n")]),
+    ("AC8.1 « connue » : UN predicat, lu par la tuile ET l'historique",
+     i_connue_un_seul_predicat,
+     [("ui", "connues[i] = ok && (int)vue->n > i && vue->connue[i] && vue->v[i] >= 0;",
+       "connues[i] = ok && (int)vue->n > i && vue->connue[i];"),
+      ("ui", "            if (connues[i]) {\n                haute[i] = fmt_echelle(",
+       "            if (vue->connue[i]) {\n                haute[i] = fmt_echelle(")]),
     ("AC6.5 `widget detpan` borne a 167, derive de 262-95",
      i_detpan_borne,
      [("ui", "#define DET_PANH_MAX (262 - 95)", "#define DET_PANH_MAX 167"),
