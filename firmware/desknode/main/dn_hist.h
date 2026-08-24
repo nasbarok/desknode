@@ -26,6 +26,17 @@
  *
  * ⚠️ **PRÉDICTION, À CONFRONTER AU RELEVÉ (AC5.6)** : Δ RAM interne libre
  *    ≈ **−3 400 à −3 500 o** (les 3 360 o de points + les index et compteurs).
+ * 🔴 **⛔ CETTE PRÉDICTION N'EST PAS RÉÉCRITE — ON NE RÉÉCRIT PAS UNE PRÉDICTION
+ *    POUR QU'ELLE TOMBE JUSTE.** Elle était JUSTE quand elle a été écrite :
+ *    `DN_HIST_N_SERIES` valait alors **7** (7 x 120 x 4 = 3 360 o) et **les 24
+ *    seaux n'existaient pas encore**. Le relevé qui la confronte dans
+ *    `affichage.md` §22.5 (**−3 512 o**) date du MÊME état (commit `8cf16a9`).
+ * 🔴 **DEPUIS, LE MODULE A GROSSI DE ~2 200 o ET LE RELEVÉ N'A PAS ÉTÉ REFAIT** :
+ *    `ffff6d2` a ajouté les seaux (+1 512 o à 7 séries), `08d4d2b` la 8ᵉ série
+ *    `DN_HIST_S_NET_UP` (+700 o). Le `.bss` réel du module vaut aujourd'hui
+ *    **~5 609 o** (3 840 points + 768 s_smin + 768 s_smax + 192 s_svu + 32 s_w
+ *    + 9). ⇒ **AC5.6 EST À RE-TIRER SUR LE FIRMWARE LIVRÉ** — écart déclaré,
+ *    porté par `dn4-13`. [Revue de code du 2026-08-24]
  *    Δ tas LVGL : **NON PRÉDIT** — c'est le coût des objets `lv_chart`, et une
  *    prédiction sans instrument ne coûte rien à celui qui l'écrit (leçon L18).
  *
@@ -35,10 +46,12 @@
  *      `lv_chart_set_series_ext_y_array()` existe précisément pour que les
  *      points **ne soient PAS copiés dedans** : les y mettre annulerait le seul
  *      bénéfice de l'API choisie.
- *    · ⛔ **pas la PSRAM** — 3 360 o ne la justifient pas, et le rendu du chart
- *      relit ces octets à CHAQUE redessin. La PSRAM est le goulot MESURÉ de ce
- *      dépôt (~23 Mo/s en continu) ; y poser une donnée relue en boucle serait
- *      payer une latence pour économiser 3 Ko sur 81 Ko libres.
+ *    · ⛔ **pas la PSRAM** — ~~3 360 o~~ **3 840 o** (chiffre corrigé le
+ *      2026-08-24, revue de code : 8 séries, ⛔ plus 7) ne la justifient pas, et
+ *      le rendu du chart relit ces octets à CHAQUE redessin. La PSRAM est le
+ *      goulot MESURÉ de ce dépôt (~23 Mo/s en continu) ; y poser une donnée
+ *      relue en boucle serait payer une latence pour économiser ~~3 Ko~~
+ *      **5,6 Ko** (points + seaux) sur 81 Ko libres.
  *
  * ══ CE QUE L'HISTORIQUE NE FAIT PAS ════════════════════════════════════════
  *
@@ -82,7 +95,9 @@ extern "C" {
  *    `dn_hist.c`. On ne la recopie pas « au cas où » : on l'ASSERTE. */
 #define DN_HIST_TROU INT32_MAX
 
-/* Les sept séries. ⚠️ L'ORDRE EST UN CONTRAT : `dn_hist_serie_de_case()` en
+/* Les **HUIT** séries (~~sept~~ — corrigé le 2026-08-24, revue de code : la 8ᵉ
+ * est `DN_HIST_S_NET_UP`, ajoutée par `08d4d2b`).
+ * ⚠️ L'ORDRE EST UN CONTRAT : `dn_hist_serie_de_case()` en
  *    dépend, et l'audit de `dn_hist_init()` le vérifie. */
 typedef enum {
     DN_HIST_S_CPU = 0,
@@ -139,7 +154,12 @@ uint32_t dn_hist_debut(int serie);
  *      page l'affiche. ⛔ Écrire « 24 h » sur douze minutes de données serait
  *      exactement le mensonge d'interface que ce dépôt chasse depuis `dn2-2`.
  *
- * Coût : 8 x 24 x 2 x 4 o = **1 536 o**, en `.bss` interne, comme les points.
+ * Coût : ~~8 x 24 x 2 x 4 o = 1 536 o~~ ⇒ **1 728 o** — chiffre corrigé le
+ * 2026-08-24 (revue de code) : `s_smin` 768 + `s_smax` 768 **+ `s_svu[8][24]`
+ * = 192 o**, le drapeau « ce seau a vu du réel », que la formule à deux
+ * tableaux ne comptait pas. En `.bss` interne, comme les points.
+ * ⚠️ `affichage.md` §22.9 publiait `7 x 24 x 2 x 4 = 1 344 o` : **deux fautes
+ *    cumulées** (7 séries au lieu de 8, et `s_svu` oublié). Amendé là-bas aussi.
  */
 #define DN_HIST_SEAUX 24
 #define DN_HIST_SEAU_S 3600

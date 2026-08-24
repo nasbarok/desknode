@@ -4207,7 +4207,15 @@ ligne, **en silence**, sur **cinq cases sur six**.
 par `if (!w->valeur[i]) continue;`. **Le garde-fou est le POINTEUR, pas le compte.** Sa boucle
 porte donc bien un **rang**, et il faut lui appliquer **la même traduction** qu'à la création.
 Sans elle, la case aurait affiché la bonne grandeur à la construction puis **une autre dès la
-première mise à jour** — 5 fois par seconde, **sans un log**.
+première mise à jour** — ~~5 fois par seconde~~, **sans un log**.
+
+> 🔴 **CHIFFRE ANNOTÉ LE 2026-08-24 (`dn4-4` / AC3, 2ᵉ passe — revue de code), SUR MESURE,
+> ⛔ PAS EFFACÉ** : la cadence de poussée a été mesurée (100 trames acceptées ⇒ 100 poussées
+> en 20,5 s) = **5,0 poussées/s TOUTES MÉTRIQUES CONFONDUES**, donc **1,0/s PAR MÉTRIQUE**.
+> Le « 5 fois par seconde » ci-dessus vaut donc pour le chemin `case_poser()` **vu de tout
+> le tableau de bord** ; pour **UNE** case, **c'est ~1 Hz**. ⚠️ Le premier balayage d'AC3
+> n'avait couvert que `firmware/` — ce site vivait dans `hardware/`, que le `grep` de l'AC
+> nomme pourtant explicitement. [Source : `liaison-pc.md` §21.6]
 
 ⚠️ **Et il y avait un second bord au même piège, hors de ce module** : `build_dashboard()` passait
 une **copie** du descripteur (icône A/B + compte) tandis que `case_poser()` passait
@@ -4567,8 +4575,16 @@ dashboard **dans le firmware courant** — c'est exactement ce pour quoi cette c
 | **dn4-9** | `CPU [0,1,3]` · `DISQUE` à **2** | saute à **~10 s** |
 | **avant dn4-9** | `CPU [0,1,2]` (`widget grandeurs 0 3`) · `DISQUE` à **1** (`4 1`) | saute à **~10 s** |
 
-⇒ ⛔ **LA CHARGE DE PIXELS N'EST PAS EN CAUSE.** Un label de moins redessiné 5 fois par seconde ne
-change **ni le moment ni la nature** du symptôme.
+⇒ ⛔ **LA CHARGE DE PIXELS N'EST PAS EN CAUSE.** Un label de moins redessiné ~~5 fois par seconde~~
+ne change **ni le moment ni la nature** du symptôme.
+
+> 🔴 **CHIFFRE ANNOTÉ LE 2026-08-24 (`dn4-4` / AC3, 2ᵉ passe — revue de code), SUR MESURE,
+> ⛔ PAS EFFACÉ** : la cadence de poussée a été mesurée (100 trames acceptées ⇒ 100 poussées
+> en 20,5 s) = **5,0 poussées/s TOUTES MÉTRIQUES CONFONDUES**, donc **1,0/s PAR MÉTRIQUE**.
+> Le « 5 fois par seconde » ci-dessus vaut donc pour le chemin `case_poser()` **vu de tout
+> le tableau de bord** ; pour **UNE** case, **c'est ~1 Hz**. ⚠️ Le premier balayage d'AC3
+> n'avait couvert que `firmware/` — ce site vivait dans `hardware/`, que le `grep` de l'AC
+> nomme pourtant explicitement. [Source : `liaison-pc.md` §21.6]
 
 ⚠️ **CE QUE CET A/B NE FERME PAS, ET IL FAUT LE DIRE** : les deux bras tournent sur du code
 `dn4-9`. Restent actifs le formatage élargi de `dn_ui_pc_maj()` (borné par `desc_peuplees()` au
@@ -5444,6 +5460,18 @@ sur la géométrie **D12** — les 9 visées sont bien devenues **9 taps**.
 
 ### 22.4 🎯 AC7 — LA LATENCE **AVEC LA COURBE**, ET « L'OPTION N°2 » ENFIN CHIFFRÉE
 
+> 🔴 **SECTION MARQUÉE LE 2026-08-24 PAR LA REVUE DE CODE — LIRE AVANT D'EN CITER UN CHIFFRE.**
+> Le carré 2×2 ci-dessous décrit l'**ÉTAT T1** du firmware (page **pas encore finale**), et
+> **deux de ses quatre coins n'ont AUCUNE capture** dans `mesures/dn4-4/` (`240,5` et `176,3`).
+> `brief.md:178-179` publie **un autre carré** pour les deux mêmes cellules (`337,6` et `271,8`,
+> tirés de `t1bis`/`t2bis`, page finale) — d'où un **coût de la courbe publié avec DEUX SIGNES
+> OPPOSÉS** : `−1,9 ms` ici, `+2,0 ms` au brief.
+> 🎯 **DÉCISION OWNER DU 2026-08-24** : cette section **reste** comme relevé de l'état T1 ; **le
+> carré du brief est RE-TIRÉ ENTIÈREMENT sur le firmware livré** (4 coins, 4 logs, un seul état),
+> avec un `widget fond off` corrigé (il posait l'écran de panne « ASSET ABSENT » au lieu d'un noir).
+> ⇒ **Porté par `dn4-13`.** ⛔ Jusque-là, ne pas citer ces chiffres comme ceux du produit.
+
+
 Firmware **`d71dc1b`** puis descendants, SHA **lus au bandeau**, `porcelain` vide avant chaque flash.
 Protocole identique à T0 : **`touch reset` puis `nav ab 20`** (**n = 40**), dalle **non touchée**,
 `taps` pendant la série = **0**, `transitions RÉELLES = 40 (demandées 40)` à chaque tir.
@@ -5498,6 +5526,29 @@ partagée, conteneurs masqués, `lv_layer_bottom()`…) **TANT QUE LES PANNEAUX 
 quel que soit le propriétaire de l'image, **le fond doit être relu SOUS chaque panneau** à chaque
 recomposition. ⛔ **Ce ne sont pas deux leviers indépendants : c'est UN SEUL MÉCANISME**, et le
 ledger le décrivait comme un problème de propriété d'objet.
+
+#### b bis. AC7.6 — `flush/cyc` PAR POINT, ET POURQUOI LE CRITÈRE RESTE INÉVALUABLE
+
+⚠️ **Écrit le 2026-08-24 par la revue de code.** La story déclarait *« `flush/cyc` relevé à T0
+(4,84) mais PAS re-relevé par point — écart déclaré »*. **Il EST re-relevable**, depuis les
+compteurs bruts des logs livrés — les voici, recalculés :
+
+| Point | Δ flush | Δ cycles | **`flush/cyc`** | log |
+|---|---|---|---|---|
+| **T0** — sans courbe | 1 004 − 854 = **150** | 225 − 194 = **31** | **4,84** | `t0-navab20-2026-08-24.log` |
+| **T1** — avec la courbe | 625 − 473 = **152** | 260 − 229 = **31** | **4,90** | `t1-avec-courbe-navab20.log` |
+| **T1bis** — page finale | 963 − 815 = **148** | 326 − 295 = **31** | **4,77** | `t1bis-page-finale-navab20.log` |
+
+**Δ cycles vaut 31 sur les trois fenêtres** — les trois sont donc comparables en durée.
+Cohérent avec les **5 bandes** de 128 lignes (640 ÷ 128) : `flush/cyc` tourne autour de 4,8.
+
+🔴 **MAIS LE CRITÈRE D'AC7.6 RESTE INÉVALUABLE, ET C'EST UN ÉCART PLUS HONNÊTE QUE CELUI QUI ÉTAIT
+DÉCLARÉ.** L'AC demande `flush/cyc` *« stable à **±0,04 entre deux passes du MÊME cas** »*. Or
+T0, T1 et T1bis sont **trois cas DIFFÉRENTS** : leur écart (étendue **0,13**) est le **signal**,
+⛔ pas le bruit. **Aucun cas n'a été tiré deux fois** ⇒ la tolérance ne peut être ni vérifiée ni
+démentie. ⚠️ **Ce n'est donc pas « le chiffre manque » mais « le chiffre existe et son critère de
+stabilité n'a pas d'instrument »** — il faudrait une passe répétée du même cas.
+⇒ Écart **réduit, ⛔ pas supprimé**. La passe répétée est portée par `dn4-13`.
 
 #### c. ⛔ CE QUE §22.4 NE PROUVE PAS
 
@@ -5690,8 +5741,27 @@ graphe ? »* ⇒ **Extension de périmètre**, acceptée par décision owner.
 
 **24 seaux d'une heure, en anneau** — ⛔ **pas** un min/max « depuis le boot » : un pic survenu il y
 a trois jours serait encore affiché comme le maximum d'une page qui prétend parler des 24 dernières
-heures. Le seau qu'on ré-atteint est **vidé**, donc la fenêtre **glisse**. Coût : **7 × 24 × 2 × 4 =
-1 344 o** en `.bss` interne.
+heures. Le seau qu'on ré-atteint est **vidé**, donc la fenêtre **glisse**. Coût : ~~**7 × 24 × 2 × 4 =
+1 344 o**~~ **1 728 o** en `.bss` interne.
+
+> 🔴 **CHIFFRE CORRIGÉ LE 2026-08-24 (revue de code) — ⛔ PAS EFFACÉ. Il portait DEUX fautes
+> cumulées**, et c'est la troisième valeur publiée pour la même grandeur :
+>
+> | Publication | Formule | Valeur |
+> |---|---|---|
+> | ~~ici, §22.9~~ | `7 × 24 × 2 × 4` | ~~1 344 o~~ |
+> | ~~`dn_hist.h`~~ | `8 × 24 × 2 × 4` | ~~1 536 o~~ |
+> | ✅ **le code** (`dn_hist.c:29-31`) | `8×24×4 + 8×24×4 + 8×24×1` | **1 728 o** |
+>
+> ① **7 séries au lieu de 8** — `08d4d2b` a ajouté `DN_HIST_S_NET_UP` après cette section.
+> ② **`s_svu[8][24]` (192 o) n'était compté nulle part** : c'est le drapeau *« ce seau a vu du
+> réel »*, sans lequel un seau vide serait indiscernable d'un seau à zéro. La formule « × 2 »
+> ne compte que `s_smin` et `s_smax`.
+>
+> ⚠️ **Et ce n'est pas le seul chiffre de l'historique qui a vieilli** : le coût total du module
+> vaut **~5 609 o** (3 840 points + 1 728 seaux + 32 `s_w` + 9), là où §22.5 publie un Δ mesuré de
+> **−3 512 o** — relevé sur un firmware à **7 séries SANS seaux** (commit `8cf16a9`, antérieur à
+> `ffff6d2` et `08d4d2b`). **AC5.6 est à re-tirer sur le firmware livré** ⇒ `dn4-13`.
 
 🔴 **LA LIMITE EST DITE À L'ÉCRAN, ⛔ PAS SEULEMENT DANS LE CODE.** D4 interdit toute écriture
 flash/NVS en régime ⇒ **ceci ne survit pas à un reboot**. « 24 h » n'est vrai QUE si la carte a

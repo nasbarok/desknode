@@ -220,10 +220,13 @@ int dn_hist_series_de_case(int case_idx, int *s0, int *s1)
         DN_HIST_S_CPU, DN_HIST_S_GPU, DN_HIST_S_RAM,
         DN_HIST_S_NET, DN_HIST_S_DISK, DN_HIST_S_AMB_T,
     };
-    /* 🔴 `AMBIANCE` EST LA SEULE PAGE À DEUX COURBES — addendum §1, exception 1.
-     *    ⛔ Ne pas généraliser : empiler quatre séries d'unités différentes sur
-     *    une échelle commune n'aurait aucun sens (`DISQUE` porte `Mo/s` ET trois
-     *    `tr/min` ; `CPU` porte `%`, `GHz`, `%` et `°C`). */
+    /* 🔴 ~~`AMBIANCE` EST LA SEULE PAGE À DEUX COURBES~~ — addendum §1,
+     *    exception 1. **PÉRIMÉ LE 2026-08-24** (demande owner : `RÉSEAU` en
+     *    porte deux aussi). ⛔ Bloc conservé BARRÉ, ⛔ pas effacé — il dit d'où
+     *    vient la règle. Le bloc ci-dessous est celui qui fait foi.
+     *    ⚠️ Constat de la revue de code du 2026-08-24 : ce bloc était resté
+     *       DEBOUT au-dessus de celui qui le corrige, donc un lecteur pressé
+     *       repartait avec l'affirmation fausse. */
     /* 🔴 DEUX pages portent une seconde courbe depuis le 2026-08-24 :
      *    `RÉSEAU` (descendant + MONTANT, demande owner) et `AMBIANCE`
      *    (température + humidité, addendum §1). ⛔ Ne pas généraliser aux

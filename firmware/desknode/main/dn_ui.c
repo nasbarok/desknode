@@ -2794,7 +2794,8 @@ static void build_detail(lv_obj_t *scr, int idx)
      * 🔴 ET LES POINTS NE SONT PAS COPIÉS DANS LE POOL LVGL :
      *    `lv_chart_set_series_ext_y_array()` fait pointer la série sur le
      *    tableau de `dn_hist`. Le pool est STATIQUE et petit (64 Ko, 20 692 o
-     *    déjà pris) ; y verser 7 x 120 points l'aurait épuisé pour rien.
+     *    déjà pris) ; y verser ~~7~~ **8** x 120 points (chiffre corrigé le
+     *    2026-08-24, revue de code) l'aurait épuisé pour rien.
      */
     s_det_courbe = lv_chart_create(cadre);
     lv_obj_remove_flag(s_det_courbe, LV_OBJ_FLAG_CLICKABLE);
@@ -3112,10 +3113,13 @@ static void courbe_reparametrer(int idx)
         lv_chart_hide_series(s_det_courbe, s_det_serie0, true);
     }
 
-    /* 🔴 La série 1 n'existe QUE sur `AMBIANCE` (addendum §1, exception 1). Sur
-     *    les cinq autres pages elle est **MASQUÉE**, ⛔ pas « pointée sur rien » :
-     *    une série laissée sur le tableau de la page précédente dessinerait les
-     *    données d'une AUTRE métrique sous le titre de celle-ci. */
+    /* 🔴 La série 1 n'existe que sur ~~`AMBIANCE`~~ **`AMBIANCE` ET `RÉSEAU`**
+     *    (addendum §1 exception 1, + demande owner du 2026-08-24 — phrase
+     *    corrigée le 2026-08-24 par la revue de code, qui l'a trouvée restée à
+     *    UNE page). Sur les **quatre** autres pages elle est **MASQUÉE**,
+     *    ⛔ pas « pointée sur rien » : une série laissée sur le tableau de la
+     *    page précédente dessinerait les données d'une AUTRE métrique sous le
+     *    titre de celle-ci. */
     if (n == 2 && s1 >= 0) {
         lv_chart_set_series_ext_y_array(s_det_courbe, s_det_serie1,
                                         dn_hist_points(s1));
@@ -4498,7 +4502,9 @@ static void descripteurs_auditer(void)
  * ⛔ ⛔ NE JAMAIS remplacer un trou par un `0` ni par la dernière valeur connue :
  *    l'un dessine une chute à zéro qui n'a pas eu lieu, l'autre dessine une
  *    stabilité qui n'a pas été mesurée. Les deux sont des mensonges de courbe.
- * ⚠️ COÛT : 7 écritures d'`int32_t` par seconde, sous le verrou LVGL que le
+ * ⚠️ COÛT : ~~7~~ **8** écritures d'`int32_t` par seconde (chiffre corrigé le
+ *    2026-08-24, revue de code : 6 séries 0 + les 2 séries 1 de `RÉSEAU` et
+ *    d'`AMBIANCE`), sous le verrou LVGL que le
  *    timer détient déjà. ⛔ Aucun dessin ici — le redessin de la page ouverte est
  *    fait par `courbe_reparametrer()`, et lui seul.
  */

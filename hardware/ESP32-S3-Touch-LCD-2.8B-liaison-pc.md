@@ -1839,8 +1839,16 @@ aurait conclu que le mécanisme marche.
 `dn_widget` une **copie** du descripteur pendant que `case_poser()` passait `&k_desc[idx]`, le
 descripteur **brut**. Tant que le rang valait l'index, les deux composaient la même chose. Avec une
 sélection, la case aurait affiché `[%, GHz, °C]` à la construction puis `[%, GHz, c.max]` **dès la
-première mise à jour** — 5 fois par seconde, **sans un log**, parce que le garde-fou de
-`dn_widget_maj()` est le **POINTEUR** `valeur[i]` et pas le compte. ⇒ **`desc_effectif()`** : une
+première mise à jour** — ~~5 fois par seconde~~, **sans un log**, parce que le garde-fou de
+`dn_widget_maj()` est le **POINTEUR** `valeur[i]` et pas le compte.
+
+> 🔴 **CHIFFRE ANNOTÉ LE 2026-08-24 (`dn4-4` / AC3, 2ᵉ passe — revue de code), SUR MESURE,
+> ⛔ PAS EFFACÉ** : la cadence de poussée a été mesurée (100 trames acceptées ⇒ 100 poussées
+> en 20,5 s) = **5,0 poussées/s TOUTES MÉTRIQUES CONFONDUES**, donc **1,0/s PAR MÉTRIQUE**.
+> Le « 5 fois par seconde » ci-dessus vaut donc pour le chemin `case_poser()` **vu de tout
+> le tableau de bord** ; pour **UNE** case, **c'est ~1 Hz**. ⚠️ Le premier balayage d'AC3
+> n'avait couvert que `firmware/` — ce site vivait dans `hardware/`, que le `grep` de l'AC
+> nomme pourtant explicitement. [Source : `liaison-pc.md` §21.6] ⇒ **`desc_effectif()`** : une
 seule fabrique, les deux chemins la prennent.
 
 ## 20.4 Les gardes — elles jugent **l'UNION**, ⛔ plus « les `n` premières »
@@ -2166,6 +2174,15 @@ et c'est dit plutôt que comblé.
 **~1 fois par seconde en régime**, **jamais 5**. Les « 5 fois par seconde » du reste du firmware
 décrivent le chemin `case_poser`/`dn_widget_maj`, parcouru pour les **CINQ** métriques : **ils sont
 justes**, et ils sont désormais **datés de cette mesure**.
+
+> 🔴 **AMENDÉ LE 2026-08-24 (2ᵉ passe, revue de code) — CETTE PHRASE DISAIT « DU RESTE DU
+> FIRMWARE », ET C'EST PRÉCISÉMENT L'ANGLE MORT QU'ELLE A LAISSÉ OUVERT.** Le premier balayage
+> d'AC3 n'a couvert que `firmware/` ; le `grep` que l'AC prescrit porte sur **`firmware/ hardware/`**.
+> Trois occurrences vivaient dans le **dossier de mesure** et n'ont été annotées qu'à la revue :
+> `affichage.md:4210`, `affichage.md:4578`, `liaison-pc.md:1842`. ⇒ **Le balayage couvre désormais
+> `firmware/` ET `hardware/`**, et le `grep` de l'AC rend **zéro occurrence non annotée**.
+> ⚠️ Leçon : *un critère mécanique ne vaut que si on le joue sur le périmètre qu'il nomme, pas sur
+> celui qu'on a sous la main.*
 
 ✅ **CONSÉQUENCE** : la garde de largeur/hauteur de `detail_reparametrer()` **EST rejouée** sur la vue
 ouverte — ⛔ elle n'est **pas** décorative, contrairement à ce que le `[CC]` a conclu. Le seul

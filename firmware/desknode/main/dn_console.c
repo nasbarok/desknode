@@ -7759,9 +7759,17 @@ static int cmd_w2(int argc, char **argv)
  *    remplie » sans qu'on sache combien de ses points sont reels est
  *    exactement le genre de dessin auquel ce depot ne fait pas confiance :
  *    `reels` / `trous` sont donc COMPTES, par serie.
- * ⚠️ LE COUT EN RAM SE LIT ICI **ET** DANS `mem`. Les 3 360 o vivent en `.bss`
+ * ⚠️ LE COUT EN RAM SE LIT ICI **ET** DANS `mem`. Ces octets vivent en `.bss`
  *    interne : ils apparaissent donc bien dans « RAM interne libre », ⛔ pas dans
  *    le tas LVGL (qui, lui, ne voit QUE les objets `lv_chart`).
+ * 🔴 CHIFFRE CORRIGE LE 2026-08-24 (revue de code) — ⛔ PAS EFFACE : le
+ *    commentaire disait « ~~les 3 360 o~~ », chiffre de **7 series sans seaux**.
+ *    Le module pese aujourd'hui **~5 609 o** : 3 840 (points, 8 x 120 x 4)
+ *    + 768 (`s_smin`) + 768 (`s_smax`) + 192 (`s_svu`) + 32 (`s_w`) + 9.
+ * 🔴 ⚠️ ET `dn_hist_octets()` NE REND QUE `sizeof(s_pts)` = **3 840 o** : ce que
+ *    cette commande imprime SOUS-DECLARE le cout de **~1 769 o (~32 %)**.
+ *    ⛔ Ne pas conclure « le cout est de X » depuis cette ligne seule tant que
+ *    `dn_hist_octets()` n'a pas ete corrigee — correctif porte par `dn4-13`.
  */
 static int cmd_hist(int argc, char **argv)
 {
