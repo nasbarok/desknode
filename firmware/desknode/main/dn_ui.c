@@ -743,6 +743,26 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
                               * couleur du CHEVRON DESCENDANT, et la courbe du
                               * descendant porte LA MEME (demande owner : « mettre
                               * ces 2 couleurs au couleurs des chevrons »). */
+        /*
+         * 🔴 UNE GRANDEUR PAR LIGNE AU DÉTAIL — MESURÉ LE 2026-08-24, ⛔ PAS
+         *    CHOISI. À deux par ligne, le pire cas de LARGEUR déborde :
+         *
+         *      « ↓ 2999,9 Mb/s   ·   ↑ 2999,8 Mb/s » = **460 px pour 432
+         *      utiles** ⇒ **28 px CLIPPÉS**, et la garde de largeur l'a CRIÉ
+         *      quatre fois de suite sur le fil.
+         *
+         * ⚠️ **ET LE PIRE CAS N'EST PAS LE PLAFOND DU PROTOCOLE.** Au-delà de
+         *    `seuil_haut = 30000` l'échelle haute RACCOURCIT le texte
+         *    (« 100,0 Gb/s », 412 px) : le pire cas est **juste EN DESSOUS du
+         *    seuil**. C'est pour ça que personne ne l'avait vu — `--jeu pire`
+         *    vise le PLAFOND, et le plafond est plus COURT.
+         *    ⇒ Corollaire à retenir : **sur une grandeur à échelle haute, le
+         *      « pire cas » de largeur n'est jamais le maximum.**
+         * ✅ Le panneau fait 154 px = QUATRE lignes de 35 : deux lignes tiennent
+         *    avec 84 px de marge. ⛔ Ni police réduite, ni texte rogné.
+         * ⚠️ Même remède que `DISQUE`, pour le même motif, mesuré de la même
+         *    façon (`widget detail`). */
+        .detail_cols = 1,
         /* Pas de jauge : un débit n'a pas de plein. `ind_max` devrait valoir la
          * capacité du lien, que le firmware ne connaît pas — une jauge dont
          * l'échelle est inventée est un mensonge d'interface silencieux. */
