@@ -144,6 +144,8 @@ static int s_faute_restants;
 #define DN_CAPT_RECONF_ECHECS_MAX 3
 static int s_reconf_echecs;
 
+static void invalider_identite(void); /* def. plus bas — voir CR du 2026-08-24 */
+
 /*
  * 🔴 CR 2026-08-17 — UNE INIT RATÉE ÉTAIT DÉFINITIVE, ET C'EST LE CAS NORMAL.
  *
@@ -480,7 +482,9 @@ static bme680_config_t config_voulue(bool gaz)
         /* IIR sur 3 échantillons : lisse le bruit de conversion sans retarder
          * une vraie variation d'ambiance. ⚠️ Ce n'est PAS le « lissage » que le
          * brief demande (moyenne d'affichage) — celui-là reste explicitement
-         * absent, comme en dn2-2, et se solde en dn4-1. */
+         * absent, comme en dn2-2, et se solde en dn4-3. (⚠️ CR du 2026-08-24 :
+         * cette ligne disait « dn4-1 », qui est `superseded` depuis le
+         * 2026-08-18 — etiquette prospective sur une story morte.) */
         .iir_filter = BME680_IIR_FILTER_3,
         .standby_time = BME680_STANDBY_TIME_NONE, /* sans objet en FORCED */
         /* La pression n'est PAS au dashboard (brief : six widgets figés). On ne
@@ -527,15 +531,20 @@ static void relever_identite(i2c_master_bus_handle_t bus)
      * ⇒ Tant qu'une lecture n'a pas abouti DANS CET APPEL, il n'y a PAS
      *   d'identite. La regle est la meme que pour la config relue dans le capteur
      *   (§13.10) : on CONSTATE, on ne se souvient pas. */
-    portENTER_CRITICAL(&s_mux);
-    s_id_tentee = false;
-    s_id_lue = false;
-    s_chip_id = 0;
-    s_variant_lu = false;
-    s_variant = 0;
-    portEXIT_CRITICAL(&s_mux);
-
+    /* 🔴 CR dn4-2 du 2026-08-24 — L'INVALIDATION ETAIT FAITE EN ENTREE, DONC
+     * OBSERVABLE PENDANT 400 ms. Le snapshot atomique ferme l'etat « a demi
+     * ecrit » ; il ne fermait PAS l'etat « deliberement efface », qui durait le
+     * temps des deux transactions (2 x 200 ms) et se rouvrait toutes les 60 s
+     * (reprise) ou toutes les 5 s (chemin degrade), pendant que le REPL tourne en
+     * permanence. Taper `capteurs` dans la fenetre imprimait « AUCUNE transaction
+     * n'a ete TENTEE (bus I2C absent, ou ouverture du device refusee) » SUR UNE
+     * CARTE DONT LE BUS EST PRESENT et dont le device vient d'etre ouvert —
+     * la meme classe d'affirmation-sur-rien que le tri-etat existe pour supprimer.
+     * ⇒ L'invalidation descend sur les SORTIES ANTICIPEES. Le garde-fou est
+     *   intact (aucun chemin ne sort en laissant un verdict PERIME), et il n'y a
+     *   plus d'etat intermediaire visible : soit l'ancien verdict, soit le neuf. */
     if (!bus) {
+        invalider_identite();
         return; /* rien n'a ete TENTE — et `s_id_tentee` faux le dit exactement */
     }
     i2c_device_config_t cfg = {
@@ -545,6 +554,7 @@ static void relever_identite(i2c_master_bus_handle_t bus)
     };
     i2c_master_dev_handle_t dev = NULL;
     if (i2c_master_bus_add_device(bus, &cfg, &dev) != ESP_OK) {
+        invalider_identite();
         return; /* idem : pas de transaction, donc pas d'identite */
     }
 
@@ -582,11 +592,42 @@ static void relever_identite(i2c_master_bus_handle_t bus)
     portEXIT_CRITICAL(&s_mux);
 }
 
-/* Signature du verdict d'identite, pour ne republier que ce qui CHANGE. */
+/* Efface le verdict d'identite. ⛔ Appelee sur les SORTIES ANTICIPEES de
+ * `relever_identite()` uniquement — jamais en entree : voir le CR du 2026-08-24
+ * dans cette fonction. */
+static void invalider_identite(void)
+{
+    portENTER_CRITICAL(&s_mux);
+    s_id_tentee = false;
+    s_id_lue = false;
+    s_chip_id = 0;
+    s_variant_lu = false;
+    s_variant = 0;
+    portEXIT_CRITICAL(&s_mux);
+}
+
+/* Signature du verdict d'identite, pour ne republier que ce qui CHANGE.
+ * ⚠️ CR dn4-2 du 2026-08-24 — DEUX DEFAUTS CORRIGES ICI.
+ * (1) ELLE IGNORAIT LA VALEUR DU VARIANT. Elle agregeait `s_variant_lu` (le
+ *     BOOLEEN « on a lu ») et jamais `s_variant` (la VALEUR) : une bascule
+ *     BME680 <-> BME688 (0x00 -> 0x01) rendait donc la MEME signature et n'etait
+ *     JAMAIS republiee — alors que c'est exactement l'ambiguite pour laquelle
+ *     `s_variant_lu` a ete introduit, deux lignes plus haut, dans le meme commit.
+ * (2) LA SENTINELLE ET UNE SIGNATURE LEGITIME COLLISIONNAIENT. La fonction
+ *     rendait 0 quand tentee=false, lue=false, variant_lu=false, chip_id=0 —
+ *     c'est-a-dire l'etat « aucune transaction tentee » — or 0 est AUSSI la
+ *     valeur de remise a zero apres une reprise reussie. Consequence : apres une
+ *     reprise, une rechute en « bus absent / device refuse » donnait
+ *     `sig == s_id_sig_publiee == 0` et `journaliser_identite()` n'etait JAMAIS
+ *     appele : le 4e cas ajoute par ce meme correctif etait MUET sur le chemin de
+ *     reprise, dans le scenario qu'il decrit.
+ * ⇒ Le bit 0x8000 est TOUJOURS pose : aucune signature reelle ne vaut plus 0,
+ *   donc 0 redevient une sentinelle sans ambiguite. */
 static uint16_t identite_signature(void)
 {
-    return (uint16_t)((s_id_tentee ? 0x400 : 0) | (s_id_lue ? 0x200 : 0) |
-                      (s_variant_lu ? 0x100 : 0) | s_chip_id);
+    return (uint16_t)(0x8000 | (s_id_tentee ? 0x4000 : 0) |
+                      (s_id_lue ? 0x2000 : 0) | (s_variant_lu ? 0x1000 : 0) |
+                      ((uint16_t)(s_variant & 0x0F) << 8) | s_chip_id);
 }
 
 /* 🔴 LE GARDE-FOU QUI MANQUAIT, ET DONT L'INTENTION ETAIT DEJA ECRITE.
@@ -910,7 +951,20 @@ static bool config_verifier_et_reparer(dn_capt_faute_t faute_du_cycle)
     i2c_master_bus_handle_t bus_rep = dn_display_i2c_bus();
     relever_identite(bus_rep); /* invalide en entree : pas de verdict perime */
     if (!identite_est_bme680()) {
-        journaliser_identite();
+        /* 🔴 CR dn4-2 du 2026-08-24 — CE CHEMIN N'AVAIT PAS RECU L'ANTI-INONDATION
+         * QUE LE CHEMIN A 60 s A RECUE, ET IL EST 6x PLUS RAPIDE. Il appelait
+         * `journaliser_identite()` EN DIRECT, sans passer par la signature. Or
+         * DN_CAPT_RECONF_ECHECS_MAX compte des echecs CONSECUTIFS et se remet a 0
+         * a tout cycle conforme : sur un capteur FANTOME INTERMITTENT (§13.10) —
+         * un cycle bon, un cycle perdu, en alternance — la butee ne se ferme
+         * JAMAIS, et le pave multi-lignes partait toutes les 10 s indefiniment
+         * DANS LE REPL, QUI EST LE TRANSPORT PC. Le correctif avait juge ce meme
+         * pave intolerable a 60 s sur l'autre chemin. */
+        uint16_t sig_deg = identite_signature();
+        if (sig_deg != s_id_sig_publiee) {
+            s_id_sig_publiee = sig_deg;
+            journaliser_identite();
+        }
         if (++s_reconf_echecs >= DN_CAPT_RECONF_ECHECS_MAX) {
             ESP_LOGE(TAG,
                      "reconfiguration ECHOUEE %d fois de suite — on CESSE "
@@ -1057,6 +1111,16 @@ static void tache_capteurs(void *arg)
                         ESP_LOGW(TAG, "capteur REAPPARU — il ne repondait pas au "
                                       "boot. La lecture reprend au cycle suivant.");
                         s_id_sig_publiee = 0; /* la prochaine anomalie se redira */
+                        /* 🔴 CR dn4-2 du 2026-08-24 — CE REARMEMENT MANQUAIT, ALORS
+                         * QUE SON JUMEAU DE LA LIGNE AU-DESSUS EXISTAIT. Aucune
+                         * ecriture `= false` n'existait dans le fichier => apres une
+                         * PREMIERE recuperation, tout refus PERMANENT ulterieur de
+                         * `bme680_init()` etait definitivement SILENCIEUX. C'est
+                         * exactement le trou (« un echec d'ouverture PERMANENT s'y
+                         * lisait comme un controle d'identite sain suivi de
+                         * silence ») que le bloc ci-dessous a ete ecrit pour
+                         * boucher — et qui se rouvrait des la 2e panne. */
+                        s_reprise_echec_dit = false;
                     } else if (!s_reprise_echec_dit) {
                         /* 🔴 CR dn4-2 — LE 3e MESSAGE MANQUAIT ICI. Le chemin
                          * d'init en a un (« ouverture du driver refusee ») ; la
@@ -1382,7 +1446,16 @@ esp_err_t dn_capteurs_init(void)
          * qui explique son silence. */
         ESP_LOGE(TAG, "capteur INJOIGNABLE au boot (%s) — les cases afficheront "
                       "« -- » et une nouvelle tentative aura lieu toutes les %d s",
-                 !s_id_lue                ? "identite NON LUE"
+                 /* 🔴 CR dn4-2 du 2026-08-24 — CE SELECTEUR N'AVAIT QUE TROIS CAS
+                  * ALORS QUE `journaliser_identite()` EN A QUATRE. Quand
+                  * `i2c_master_bus_add_device` echoue — le scenario que le
+                  * correctif nomme lui-meme — `journaliser_identite()` imprimait
+                  * correctement « AUCUNE transaction n'a ete TENTEE », puis cet
+                  * ESP_LOGE imprimait « identite NON LUE » trois lignes plus bas,
+                  * SUR LE MEME BOOT : deux affirmations contradictoires, dont une
+                  * est celle que le correctif existe pour supprimer. */
+                 !s_id_tentee             ? "AUCUNE transaction TENTEE"
+                 : !s_id_lue              ? "identite NON LUE"
                  : s_chip_id != DN_BME680_CHIP_ID ? "identite INATTENDUE"
                                           : "ouverture du driver refusee",
                  (DN_CAPT_REINIT_CYCLES * DN_CAPT_PERIODE_MS) / 1000);

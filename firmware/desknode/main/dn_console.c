@@ -1,5 +1,6 @@
 #include "dn_console.h"
 
+#include <ctype.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <stdint.h>
@@ -115,12 +116,36 @@ static bool parse_entier(const char *texte, long *out)
  *    — leçon `touch int` (revue dn1-4), qui écrêtait sans le dire puis imprimait
  *    un verdict FAUX.
  */
-static bool parse_adresse_i2c(const char *texte, uint8_t *out)
+/* ⚠️ CR dn4-2 du 2026-08-24 — LA BANNIERE INTERDISAIT « 0x », LES PARSEURS
+ * L'ACCEPTAIENT EN SILENCE. `strtol(..., 16)` avale le prefixe `0x`, l'espace
+ * initial et le `+` ; la revue du 2026-08-20 avait rendu la banniere PLUS
+ * categorique et n'avait touche AUCUN parseur. Critere n°4 d'AC4 : « bornes
+ * annoncees ET TENUES ». Ce filtre les tient — un seul endroit, les quatre
+ * sous-commandes le partagent. */
+static bool parse_hex_strict(const char *texte, long *out)
 {
+    if (texte[0] == '\0') {
+        return false;
+    }
+    for (const char *c = texte; *c; c++) {
+        if (!isxdigit((unsigned char)*c)) {
+            return false; /* refuse « 0x… », l'espace initial, « + » et « - » */
+        }
+    }
     char *fin = NULL;
     errno = 0;
     long v = strtol(texte, &fin, 16);
     if (fin == texte || *fin != '\0' || errno == ERANGE) {
+        return false;
+    }
+    *out = v;
+    return true;
+}
+
+static bool parse_adresse_i2c(const char *texte, uint8_t *out)
+{
+    long v = 0;
+    if (!parse_hex_strict(texte, &v)) {
         return false;
     }
     if (v < 0x08 || v > 0x77) {
@@ -4639,7 +4664,7 @@ static int cmd_wifi(int argc, char **argv)
  * passe de la session a produit un `probe device timeout` — une adresse jamais
  * sondée, comptée nulle part, dans une liste qui se lisait comme exhaustive. */
 #define DN_I2C_SCAN_TIMEOUT_MS 50
-/* Un bus sain en porte 4 ; 16 laisse la place aux 4 capteurs de dn4-1 et à leurs
+/* Un bus sain en porte 4 ; 16 laisse la place aux 4 capteurs de dn4-2 et à leurs
  * surprises. Au-delà, ce n'est plus un bus chargé, c'est un bus qui acquitte
  * n'importe quoi — et la commande le DIT au lieu de tronquer en silence. */
 #define DN_I2C_SCAN_MAX_TROUVES 16
@@ -4650,7 +4675,12 @@ static int cmd_wifi(int argc, char **argv)
  * SAIN, celui ou tout acquitte tout de suite. Le pire cas reel, lui, se calcule :
  * 112 sondages × 50 ms de timeout, plus 16 candidats × 4 confirmations — soit
  * ~9 s pendant lesquelles le REPL, donc LE TRANSPORT PC (branche A), n'ingere
- * plus rien. C'est exactement le defaut de `cpu N` trouve en validation dn2-2,
+ * plus rien. ⚠️ CR dn4-2 du 2026-08-24 : ~9 s est le pire cas AVANT ce budget.
+ * APRES lui, le pire cas est ~2 500 ms (decouverte, BORNEE) + jusqu'a 16 × 4 ×
+ * 50 ms = 3 200 ms (confirmation, HORS budget) ≈ 5,7 s — et il n'est donc PAS
+ * « borne par DN_I2C_SCAN_BUDGET_MS », contrairement a ce que le README et
+ * §13.6 ont publie jusqu'a cette date. Le budget borne la DECOUVERTE, pas la
+ * commande. C'est exactement le defaut de `cpu N` trouve en validation dn2-2,
  * a une echelle pire.
  * ⇒ Un budget est pose, et son DEPASSEMENT S'IMPRIME. Un scan tronque qui se
  *   tairait serait un instrument qui ment par omission — la faute meme que le
@@ -4666,11 +4696,15 @@ static const char *i2c_nom_connu(uint8_t addr)
         return "GT911 — tactile                             [temoin]";
     case DN_GT911_ADDR_BACKUP:
         return "GT911 — adresse de REPLI (INT haut au reset)";
-    case 0x51:
+    case DN_RTC_ADDR:
         return "PCF85063A — RTC, PILOTEE par dn_rtc (dn3-2)";
-    case 0x6A:
+    /* ⚠️ CR dn4-2 du 2026-08-24 : 0x6A et 0x6B rendaient le MEME nom, alors que
+     * le depot a TRANCHE 0x6B par la mesure. Un device reel a 0x6A aurait donc
+     * ete nomme faux — et ce switch est ce que le scan affiche. */
     case 0x6B:
-        return "QMI8658 — IMU (hors V1)";
+        return "QMI8658 — IMU (hors V1) — L'ADRESSE MESUREE";
+    case 0x6A:
+        return "0x6A — ⚠️ PAS l'IMU : celle-ci est MESUREE a 0x6B. Adresse INCONNUE";
     case DN_BME680_ADDR:
         return "BME680 — temperature/humidite (dn2-1) — L'ADRESSE MESUREE";
     /* 🔴 0x76 EST L'AUTRE ADRESSE POSSIBLE DU BME680, ET C'EST AUSSI CELLE DU
@@ -4716,15 +4750,21 @@ static const char *i2c_nom_connu(uint8_t addr)
 
 /* Lecture registre : ajoute un device TEMPORAIRE, lit, le retire.
  * ⚠️ PREMIER `i2c_master_bus_add_device()` DU DÉPÔT — le TCA9554 et le GT911
- *    passent tous deux par leur composant, qui le fait en interne. Le device est
- *    retiré sur TOUS les chemins de sortie : en laisser fuir un à chaque appel
- *    épuiserait la table du bus, et l'échec arriverait bien plus tard, ailleurs,
- *    sans rapport visible avec cette commande. */
+ *    passent tous deux par leur composant, qui le fait en interne. Le RETRAIT
+ *    est TENTE sur tous les chemins de sortie : en laisser fuir un à chaque
+ *    appel épuiserait la table du bus, et l'échec arriverait bien plus tard,
+ *    ailleurs, sans rapport visible avec cette commande.
+ * 🔴 CR dn4-2 du 2026-08-24 — « SE RETIRE » ETAIT FAUX, ET LA CARTE L'A PROUVE
+ *    (1 refus sur 13, §13.17.3). `i2c_master_bus_rm_device` peut REFUSER, et
+ *    l'IDF place son `ESP_RETURN_ON_FALSE(status > I2C_STATUS_START)` AVANT le
+ *    `SLIST_REMOVE` (esp_driver_i2c/i2c_master.c:1216) : le device reste alors
+ *    dans `device_list`. ⇒ On TENTE et on DIT quand ça rate. ⛔ On ne promet pas. */
 /* Ouverture du device TEMPORAIRE, factorisee en dn4-2 : les QUATRE primitives
  * (`lire`, `lire16`, `ecrire`, `brut`) partagent exactement ce geste, et le
  * dupliquer trois fois de plus multiplierait par quatre les chemins de sortie
  * ou un device peut FUIR. Rend ESP_OK et pose *dev, ou imprime son refus.
- * ⛔ Le device se retire sur TOUS les chemins de sortie de l'appelant. */
+ * ⛔ Le retrait est TENTE sur tous les chemins de sortie de l'appelant — et
+ *    ANNONCE quand il echoue (CR du 2026-08-24 : il peut echouer pour de vrai). */
 static esp_err_t i2c_dev_ouvrir(uint8_t addr, i2c_master_dev_handle_t *dev)
 {
     *dev = NULL;
@@ -4767,7 +4807,14 @@ static esp_err_t i2c_dev_ouvrir(uint8_t addr, i2c_master_dev_handle_t *dev)
  * mauvaise carte le handle FUIT definitivement et en SILENCE.
  * ⚠️ Le docblock promettait « retire sur TOUS les chemins de sortie » et §13.6
  *    quater en fait le critere eliminatoire n°2 : la promesse etait tenue par
- *    l'APPEL, pas par la VERIFICATION. Elle l'est maintenant par les deux. */
+ *    l'APPEL, pas par la VERIFICATION.
+ * 🔴 CR du 2026-08-24 — ELLE N'EST TENUE PAR AUCUN DES DEUX, ET LE COMMENTAIRE
+ *    PRECEDENT (« elle l'est maintenant par les deux ») ETAIT FAUX. Cette
+ *    fonction DIT la fuite ; elle ne la REPARE pas, et elle rend `void`, donc
+ *    l'appelant ne peut meme pas retenter. ⚠️ La condition qui provoque le refus
+ *    (`bus->status <= I2C_STATUS_START`) est TRANSITOIRE : une reprise bornee
+ *    l'eliminerait. Entree au ledger — le meme defaut vit sur QUATRE autres
+ *    sites non verifies (dn_capteurs.c, dn_rtc.c x3). */
 static void i2c_dev_fermer(i2c_master_dev_handle_t dev)
 {
     esp_err_t rm = i2c_master_bus_rm_device(dev);
@@ -4775,13 +4822,58 @@ static void i2c_dev_fermer(i2c_master_dev_handle_t dev)
         printf("⚠️ RETRAIT DU DEVICE REFUSE (%s) — un device FANTOME reste sur le\n",
                esp_err_to_name(rm));
         printf("   bus et deux allocations ont fui. Course connue avec le sondage\n");
-        printf("   du GT911 (~30/s). ⛔ Le resultat ci-dessus reste VALIDE ; c'est\n");
+        printf("   du GT911 (~30/s). ⛔ Le resultat de la commande — imprime\n");
+        printf("   JUSTE APRES ce bloc, pas avant — reste VALIDE ; c'est\n");
         printf("   le menage qui a rate. Un `reboot` remet la table du bus a plat.\n");
     }
 }
 
+static bool i2c_addr_est_occupee_par_le_firmware(uint8_t addr); /* def. plus bas */
+static void i2c_dire_la_cause(esp_err_t err);                  /* def. plus bas */
+
 static int i2c_lire_registre(uint8_t addr, uint8_t reg, int n)
 {
+    /* 🔴 CR dn4-2 du 2026-08-24 — ELLE ECRIT AVANT DE LIRE, ET C'ETAIT LA SEULE
+     * DES QUATRE PRIMITIVES A NE TESTER AUCUNE ADRESSE.
+     * `transmit_receive(dev, &reg, 1, ...)` emet l'octet d'index SUR LE FIL. Sur
+     * un composant SANS registre, cet octet est une COMMANDE :
+     *   - `i2c lire 23 00` = POWER DOWN du BH1750, `23 07` = RESET. La sortie est
+     *     STRICTEMENT identique a une lecture reussie, et le `i2c brut 23 2`
+     *     suivant rend 00 00 => on declare mort un capteur VIVANT. C'est le faux
+     *     negatif qui envoie au fer, et le fer est IRREVERSIBLE.
+     *   - sur un occupant du firmware, elle DOUBLE le pilote — meme risque que
+     *     `i2c ecrire`, qui lui avertissait deja.
+     *   - sur le VL6180X, l'index est sur 16 BITS : un index d'UN octet est une
+     *     violation de protocole dont l'echec RESSEMBLE a une mauvaise soudure.
+     * ⚠️ On NE BLOQUE PAS : c'est une console de diagnostic, et interdire une
+     *    adresse serait retirer un instrument. On NOMME le risque AVANT de le
+     *    prendre — la regle du depot est « ecrit, jamais masque ». */
+    if (addr == DN_BH1750_ADDR) {
+        printf("🔴 0x%02X N'A AUCUN REGISTRE : l'octet 0x%02X part comme un\n",
+               addr, reg);
+        printf("   OPCODE, pas comme un index. `i2c lire` le PILOTE au lieu de le\n");
+        printf("   lire (00 = power down, 07 = reset), et la sortie ressemble a\n");
+        printf("   une lecture reussie.\n");
+        printf("   ⇒ UTILISER `i2c brut %02X 2`.\n", DN_BH1750_ADDR);
+        if (reg == 0x00 || reg == 0x07) {
+            printf("   ⛔ CET OCTET-LA VIENT D'ETEINDRE OU DE RESETTER LE CAPTEUR :\n");
+            printf("      `i2c ecrire %02X 01` puis `i2c ecrire %02X 10` le\n",
+                   DN_BH1750_ADDR, DN_BH1750_ADDR);
+            printf("      rallument. ⛔ NE PAS conclure « capteur mort » ici.\n");
+        }
+    } else if (i2c_addr_est_occupee_par_le_firmware(addr)) {
+        printf("🔴 0x%02X EST PILOTE PAR LE FIRMWARE : %s\n", addr,
+               i2c_nom_connu(addr));
+        printf("   ⚠️ `i2c lire` ECRIT l'octet d'index 0x%02X avant de lire — ce\n", reg);
+        printf("      n'est PAS une lecture passive. Meme risque que `i2c ecrire`\n");
+        printf("      sur cette adresse.\n");
+    } else if (addr == DN_VL6180X_ADDR) {
+        printf("⚠️ 0x%02X indexe ses registres sur 16 BITS : un index d'UN octet\n",
+               addr);
+        printf("   est une violation de protocole, et son echec RESSEMBLE a une\n");
+        printf("   mauvaise soudure. ⇒ UTILISER `i2c lire16 %02X 00%02X`.\n",
+               addr, reg);
+    }
     i2c_master_dev_handle_t dev = NULL;
     if (i2c_dev_ouvrir(addr, &dev) != ESP_OK) {
         return 1;
@@ -4793,8 +4885,7 @@ static int i2c_lire_registre(uint8_t addr, uint8_t reg, int n)
     if (err != ESP_OK) {
         printf("lecture 0x%02X reg 0x%02X : ECHEC (%s)\n", addr, reg,
                esp_err_to_name(err));
-        printf("  un NACK ici veut dire que le composant ne repond PLUS, meme si\n");
-        printf("  le scan l'a vu — contact intermittent, ou adresse partagee.\n");
+        i2c_dire_la_cause(err);
         return 1;
     }
     printf("0x%02X reg 0x%02X :", addr, reg);
@@ -4805,14 +4896,21 @@ static int i2c_lire_registre(uint8_t addr, uint8_t reg, int n)
     /* Les deux registres d'identite que dn2-1 doit lire, interpretes ICI : les
      * relire de tete a chaque session est exactement la ou naissent les erreurs
      * de transcription. */
-    if (reg == 0xD0 && n >= 1) {
+    /* 🔴 CR dn4-2 du 2026-08-24 — LE VERDICT EST DESORMAIS GARDE PAR L'ADRESSE.
+     * Il ne tenait qu'a `reg`, donc `i2c lire 29 D0` / `40 D0` / `51 F0`
+     * imprimaient « ce n'est pas un BME/BMP » ou « variant 0x00 = BME680 » sur un
+     * composant qui n'a JAMAIS ete un BME — un verdict faux ET plausible, qui
+     * escalade. ⚠️ Le commentaire de `lire16` enumerait les fonctions qui testent
+     * l'adresse et OUBLIAIT celle-ci : c'est la « gate scopee a UNE fonction »
+     * que ce depot a deja nommee. */
+    if (addr == DN_BME680_ADDR && reg == 0xD0 && n >= 1) {
         const char *quoi = rx[0] == 0x61   ? "BME680 ou BME688 (0xF0 tranche)"
                            : rx[0] == 0x60 ? "BME280 — PAS de gaz"
                            : rx[0] == 0x58 ? "BMP280 — NI gaz NI humidite"
                                            : "INCONNU — ce n'est pas un BME/BMP";
         printf("  => chip id 0x%02X = %s\n", rx[0], quoi);
     }
-    if (reg == 0xF0 && n >= 1) {
+    if (addr == DN_BME680_ADDR && reg == 0xF0 && n >= 1) {
         printf("  => variant 0x%02X = %s\n", rx[0],
                rx[0] == 0x00   ? "BME680"
                : rx[0] == 0x01 ? "BME688"
@@ -4880,12 +4978,66 @@ static int i2c_lire_registre(uint8_t addr, uint8_t reg, int n)
  *    regle du depot est « ecrit, jamais masque ». */
 static bool i2c_addr_est_occupee_par_le_firmware(uint8_t addr)
 {
+    /* ⚠️ CR dn4-2 du 2026-08-24 — DN_GT911_ADDR_BACKUP MANQUAIT. `i2c_nom_connu`
+     * porte 0x14 (« adresse de REPLI, INT haut au reset ») et le scan le traite a
+     * EGALITE avec 0x5D ; cette garde, elle, l'ignorait. Sur une carte partie en
+     * repli, `i2c ecrire 14 ...` ecrivait dans le controleur tactile PILOTE sans
+     * un mot, la ou 0x5D imprime sept lignes. La consultation de la table etait
+     * INCOMPLETE, alors que le commentaire du correctif disait le contraire. */
     return addr == DN_TCA9554_ADDR || addr == DN_GT911_ADDR ||
+           addr == DN_GT911_ADDR_BACKUP ||
            addr == DN_RTC_ADDR || addr == DN_BME680_ADDR;
+}
+
+/* ⚠️ CR dn4-2 du 2026-08-24 — TIMEOUT ET NACK NE SE CONFONDENT PLUS DANS AUCUN
+ * DES QUATRE LECTEURS. La triage avait ete posee dans `i2c_ecrire_nu` SEULEMENT,
+ * en ecrivant que les confondre « envoyait chercher la SOUDURE alors que le bus
+ * etait simplement occupe — et la soudure est irreversible ». Trois fonctions du
+ * meme fichier gardaient le defaut nomme : `i2c lire` affirmait « un NACK ici »
+ * INCONDITIONNELLEMENT, `i2c brut` ne disait RIEN, et `lire16` ne donnait que le
+ * conseil XSHUT. ⚠️ Et la probabilite du timeout MONTE avec dn4-2 :
+ * `config_verifier_et_reparer()` ajoute deux transactions a 200 ms sur le chemin
+ * degrade, a la cadence de 5 s. */
+static void i2c_dire_la_cause(esp_err_t err)
+{
+    if (err == ESP_ERR_TIMEOUT) {
+        printf("  ⛔ TIMEOUT, pas un NACK : le verrou du bus n'a pas ete obtenu —\n");
+        printf("     la tache capteurs (5 s), la RTC ou le GT911 (~30/s) le\n");
+        printf("     tenaient. RIEN n'est parti sur le fil.\n");
+        printf("     ⇒ NE PAS accuser la soudure. Reessayer.\n");
+    } else if (err == ESP_ERR_NOT_FOUND) {
+        printf("  un NACK : le composant n'a pas acquitte son ADRESSE. Le scan\n");
+        printf("  peut l'avoir vu et le composant ne plus repondre — contact\n");
+        printf("  intermittent, ou adresse partagee.\n");
+    } else {
+        printf("  ⚠️ cause NON CLASSEE ici — lire le code d'erreur tel quel,\n");
+        printf("     ⛔ ne rien conclure sur le composant NI sur la soudure.\n");
+    }
 }
 
 static int i2c_ecrire_nu(uint8_t addr, const uint8_t *o, int n)
 {
+    /* 🔴 CR dn4-2 du 2026-08-24 — L'AVERTISSEMENT DESTRUCTEUR N'AVAIT JAMAIS
+     * QUITTE LA BRANCHE MALFORMEE, ET UN COMMENTAIRE DE CORRECTIF AFFIRMAIT LE
+     * CONTRAIRE. Le bloc « ELLE PEUT CASSER UN COMPOSANT SAIN » vit dans le
+     * `if (n < 1 || n > 8)` de `cmd_i2c` : il ne sort donc QUE si la commande est
+     * MAL FORMEE. Ce qui avait ete ajoute sur le chemin nominal est l'autre
+     * avertissement, celui des occupants du firmware — gate sur {20, 5D, 51, 77},
+     * qui EXCLUT 0x23. Resultat : `i2c ecrire 23 00`, l'exemple exact que le
+     * docblock donne comme destructeur, s'executait SANS UN MOT.
+     * ⚠️ La verification carte de §13.17.2 avait ete faite avec `i2c ecrire 77 D0`,
+     *    une adresse DANS la liste : elle confirmait la branche neuve, pas la
+     *    promesse du commit. */
+    if (addr == DN_BH1750_ADDR && n >= 1 && (o[0] == 0x00 || o[0] == 0x07)) {
+        printf("🔴 CET OCTET EST DESTRUCTEUR SUR LE BH1750 : 0x%02X = %s.\n",
+               o[0], o[0] == 0x00 ? "POWER DOWN" : "RESET du registre de donnee");
+        printf("   ⚠️ Apres lui, `i2c brut %02X 2` rendra 00 00 — ce qui se lit\n",
+               DN_BH1750_ADDR);
+        printf("      comme un CAPTEUR MORT alors qu'il est seulement eteint.\n");
+        printf("   ⇒ Pour le rallumer : `i2c ecrire %02X 01` puis `i2c ecrire %02X 10`.\n",
+               DN_BH1750_ADDR, DN_BH1750_ADDR);
+        printf("   ⚠️ L'ecriture est FAITE QUAND MEME — console de diagnostic.\n");
+    }
     if (i2c_addr_est_occupee_par_le_firmware(addr)) {
         printf("🔴 0x%02X EST PILOTE PAR LE FIRMWARE : %s\n", addr,
                i2c_nom_connu(addr));
@@ -4896,13 +5048,23 @@ static int i2c_ecrire_nu(uint8_t addr, const uint8_t *o, int n)
         printf("      TP_RST et LCD_CS (ecran noir + tactile mort jusqu'au\n");
         printf("      reboot) ; 0x%02X est la RTC dont dn3-2 depend.\n",
                DN_RTC_ADDR);
-        printf("   ⚠️ L'ecriture est FAITE QUAND MEME — c'est une console de\n");
-        printf("      diagnostic, pas un garde-barriere. Mais si l'ecran meurt\n");
-        printf("      dans les secondes qui suivent, C'EST CETTE COMMANDE.\n");
+        printf("   ⚠️ On NE BLOQUE PAS — console de diagnostic, pas\n");
+        printf("      garde-barriere.\n");
     }
     i2c_master_dev_handle_t dev = NULL;
     if (i2c_dev_ouvrir(addr, &dev) != ESP_OK) {
         return 1;
+    }
+    /* ⚠️ CR dn4-2 du 2026-08-24 — « L'ECRITURE EST FAITE QUAND MEME » ET « C'EST
+     * CETTE COMMANDE » ETAIENT IMPRIMES AVANT MEME QUE L'OUVERTURE SOIT TENTEE.
+     * Si `i2c_master_bus_add_device` refuse (tas interne epuise), la console avait
+     * deja impute a cette commande une ecriture qui n'a JAMAIS eu lieu — soit
+     * exactement la mauvaise attribution que ce bloc existe pour rendre possible.
+     * ⇒ L'imputation ne sort qu'une fois le device REELLEMENT ouvert. */
+    if (i2c_addr_est_occupee_par_le_firmware(addr)) {
+        printf("   ⚠️ L'ecriture PART MAINTENANT sur une adresse pilotee : si\n");
+        printf("      l'ecran ou le tactile meurent dans les secondes qui\n");
+        printf("      suivent, C'EST CETTE COMMANDE.\n");
     }
     esp_err_t err = i2c_master_transmit(dev, o, (size_t)n, 200);
     i2c_dev_fermer(dev);
@@ -4920,39 +5082,71 @@ static int i2c_ecrire_nu(uint8_t addr, const uint8_t *o, int n)
 
     if (err != ESP_OK) {
         printf("ECHEC : %s\n", esp_err_to_name(err));
-        /* ⚠️ CR dn4-2 : les causes ne se confondent plus. Nommer un NACK sur un
-         * timeout de verrou envoyait chercher la SOUDURE alors que le bus etait
-         * simplement occupe — et la soudure est irreversible. */
-        if (err == ESP_ERR_TIMEOUT) {
-            printf("  ⛔ TIMEOUT, pas un NACK : le verrou du bus n'a pas ete\n");
-            printf("     obtenu — la tache capteurs (5 s), la RTC ou le GT911\n");
-            printf("     (~30/s) le tenaient. RIEN n'est parti sur le fil.\n");
-            printf("     ⇒ NE PAS accuser la soudure. Reessayer.\n");
-        } else if (err == ESP_ERR_NOT_FOUND) {
-            printf("  un NACK ici veut dire que le composant n'a pas acquitte son\n");
-            printf("  ADRESSE — pas que l'octet etait mauvais. Le scan peut l'avoir\n");
-            printf("  vu et le composant ne plus repondre : contact intermittent.\n");
-        } else {
-            printf("  ⚠️ cause NON CLASSEE ici — lire le code d'erreur tel quel,\n");
-            printf("     ⛔ ne rien conclure sur le composant.\n");
-        }
+        /* ⚠️ CR dn4-2 : les causes ne se confondent plus — et depuis le
+         * 2026-08-24 la triage est FACTORISEE, donc les QUATRE lecteurs en
+         * beneficient, pas ce seul chemin. */
+        i2c_dire_la_cause(err);
         return 1;
     }
     printf("  => ACQUITTE. ⚠️ « acquitte » ne veut pas dire « a obei » : rien\n");
     printf("     ne relit ce qui vient d'etre ecrit. Seule la LECTURE qui suit\n");
     printf("     (ou un stimulus physique) le prouve.\n");
     if (addr == DN_BH1750_ADDR && n == 1) {
+        /* 🔴 CR dn4-2 du 2026-08-24 — LA TABLE IGNORAIT LE MODE2 ET LE MTreg, ET
+         * L'AVERTISSEMENT DES 180 ms NE COUVRAIT QUE DEUX OPCODES SUR QUATRE.
+         * Datasheet ROHM BH1750FVI : lux = brut / 1,2 x (69 / MTreg), et ENCORE
+         * DIVISE PAR 2 en H-resolution Mode2. Or `i2c brut` applique
+         * `brut x 100 / 12` INCONDITIONNELLEMENT. Deux familles d'opcodes
+         * tombaient dans « NON REPERTORIE », donc SANS avertissement :
+         *   - 0x11 / 0x21 (Mode2)            => valeur imprimee x2 TROP HAUTE ;
+         *   - 0x40..0x47 et 0x60..0x7F (MTreg 31..254) => x2,2 a /3,7.
+         * ⚠️ Et le pire etait le bloc des 180 ms, garde sur `0x10 || 0x20` : 0x11
+         *    et 0x21 ont EXACTEMENT le meme temps d'integration et ne le
+         *    declenchaient pas => `i2c ecrire 23 11` puis `i2c brut 23 2` dans le
+         *    meme lot rend 00 00 => « capteur mort ». C'est le faux negatif que ce
+         *    bloc existe pour empecher, atteignable a UN CARACTERE de l'opcode
+         *    nominal. */
+        bool h_res = (o[0] == 0x10 || o[0] == 0x11 ||
+                      o[0] == 0x20 || o[0] == 0x21);
+        bool mode2 = (o[0] == 0x11 || o[0] == 0x21);
+        bool mtreg = ((o[0] & 0xE0) == 0x40) || ((o[0] & 0xE0) == 0x60);
         const char *quoi = o[0] == 0x00   ? "POWER DOWN"
                            : o[0] == 0x01 ? "POWER ON (attend une commande)"
                            : o[0] == 0x07 ? "RESET du registre de donnee"
                            : o[0] == 0x10 ? "mesure CONTINUE haute resolution "
                                             "(1 lx) — 120 ms typiques, JUSQU'A "
                                             "180 ms"
+                           : o[0] == 0x11 ? "mesure CONTINUE haute resolution "
+                                            "MODE2 (0,5 lx) — 120 ms typiques, "
+                                            "JUSQU'A 180 ms"
+                           : o[0] == 0x13 ? "mesure CONTINUE basse resolution "
+                                            "(4 lx) — 16 ms typiques"
                            : o[0] == 0x20 ? "mesure ONE-SHOT haute resolution — "
                                             "120 ms typiques, JUSQU'A 180 ms"
+                           : o[0] == 0x21 ? "mesure ONE-SHOT haute resolution "
+                                            "MODE2 (0,5 lx) — 120 ms typiques, "
+                                            "JUSQU'A 180 ms"
+                           : o[0] == 0x23 ? "mesure ONE-SHOT basse resolution "
+                                            "(4 lx) — 16 ms typiques"
+                           : mtreg        ? "CHANGEMENT DE MTreg (temps de mesure)"
                                           : "opcode NON REPERTORIE ici";
         printf("  => BH1750, opcode 0x%02X = %s\n", o[0], quoi);
-        if (o[0] == 0x10 || o[0] == 0x20) {
+        if (mode2) {
+            printf("  🔴 MODE2 : la resolution passe a 0,5 lx, donc la vraie\n");
+            printf("     conversion est `brut / 1,2 / 2`. ⛔ `i2c brut %02X 2`\n",
+                   DN_BH1750_ADDR);
+            printf("     N'EN SAIT RIEN et publiera une valeur DEUX FOIS TROP\n");
+            printf("     HAUTE — la diviser par 2 a la main.\n");
+        }
+        if (mtreg) {
+            printf("  🔴 MTreg MODIFIE : la conversion est `brut / 1,2 x (69 /\n");
+            printf("     MTreg)`, MTreg allant de 31 a 254. ⛔ `i2c brut %02X 2`\n",
+                   DN_BH1750_ADDR);
+            printf("     suppose TOUJOURS 69 et se trompera de x2,2 a /3,7.\n");
+            printf("     ⇒ Revenir au defaut avant toute mesure publiee : 0x07\n");
+            printf("        (reset) puis 0x01 puis 0x10.\n");
+        }
+        if (h_res) {
             printf("  🔴 NE PAS enchainer `i2c brut 23 2` DANS LE MEME LOT : le\n");
             printf("     pilote envoie le lot en quelques DIZAINES de ms, la\n");
             printf("     mesure en demande jusqu'a 180. La lecture rendrait 00 00\n");
@@ -4978,6 +5172,7 @@ static int i2c_lire_brut(uint8_t addr, int n)
     if (err != ESP_OK) {
         printf("lecture BRUTE 0x%02X (%d o) : ECHEC (%s)\n", addr, n,
                esp_err_to_name(err));
+        i2c_dire_la_cause(err);
         return 1;
     }
     printf("0x%02X brut (%d o, SANS index) :", addr, n);
@@ -5006,7 +5201,13 @@ static int i2c_lire_brut(uint8_t addr, int n)
          * `brut / 1,2`) — elle etait ensuite imprimee comme des DIXIEMES. Mesure
          * du 2026-08-20 : `brut 55 378` a ete publie « 4 614,8 lx » dans §13.16.8
          * ET dans le README, alors que la vraie valeur est 46 148 lx. De meme
-         * 1,9 pour 19,2 et 2,3 pour 23,3.
+         * 1,9 pour 19,1 et 2,3 pour 23,3.
+         * ⚠️ CR du 2026-08-24 : ce commentaire ecrivait « 19,2 », que l'expression
+         *    ci-dessous NE PEUT PAS produire — (23 x 100) / 12 = 191 => « 19.1 ».
+         *    19,2 est l'ARRONDI de 19,166..., et la ligne imprimee dit elle-meme
+         *    que le dixieme est TRONQUE. Meme classe de defaut que celle que ce
+         *    bloc corrige : un commentaire qui decrit une sortie que son
+         *    expression ne produit pas.
          * ⚠️ AC6 tient quand meme — le stimulus qualifie par le RAPPORT, et les
          *    rapports etaient justes — mais « 4 614,8 lx sous une lampe de
          *    telephone » est exactement le chiffre faux ET plausible que ce depot
@@ -5017,10 +5218,39 @@ static int i2c_lire_brut(uint8_t addr, int n)
         printf("  => BH1750 : brut %u => %u.%u lx (lux = brut / 1,2 au MTreg\n",
                brut, lux10 / 10u, lux10 % 10u);
         printf("     par defaut de 69 ; le dixieme est TRONQUE, pas arrondi)\n");
+        /* 🔴 CR dn4-2 du 2026-08-24 — LA LIGNE CI-DESSUS EST UNE HYPOTHESE, PAS UNE
+         * MESURE INCONDITIONNELLE, ET ELLE N'EN ANNONCAIT QU'UNE SUR DEUX.
+         * Aucun etat n'est conserve entre `i2c ecrire 23 <opcode>` et `i2c brut
+         * 23 2` — et la doc IMPOSE justement deux invocations separees. La
+         * commande ne PEUT donc pas savoir dans quel mode le capteur est. On
+         * nomme les deux hypotheses au lieu d'en taire une. */
+        printf("     ⚠️ SUPPOSE H-resolution Mode1 (0x10/0x20) ET MTreg = 69.\n");
+        printf("        En MODE2 (0x11/0x21) la vraie valeur est la MOITIE ;\n");
+        printf("        MTreg modifie (0x40..0x7F) la decale de x2,2 a /3,7.\n");
+        printf("        ⛔ La commande ne conserve AUCUN etat entre invocations :\n");
+        printf("           elle ne peut pas le savoir. C'est a toi de le savoir.\n");
         printf("  ⚠️ 0000 ne prouve PAS un capteur mort : c'est aussi ce que\n");
         printf("     rend une mesure PAS ENCORE PRETE (jusqu'a 180 ms) ou un\n");
         printf("     capteur en POWER DOWN. Le discriminant est le STIMULUS :\n");
         printf("     une valeur qui CHANGE quand on masque le capteur.\n");
+        /* 🔴 CR dn4-2 du 2026-08-24 — LE POLE BAS ETAIT GARDE EN SIX LIGNES, LE
+         * POLE HAUT PAS DU TOUT. `FFFF` est ce que rend un bus qui lit des UNS
+         * (SDA relache, module debranche a chaud), et il sort « 54612.5 lx » AVEC
+         * UN DIXIEME : trois lectures consecutives IDENTIQUES, ce qui satisfait
+         * LITTERALEMENT le critere de preuve du dossier (« 3, identiques »,
+         * §13.16.8) et se lit comme du plein soleil. Le pole haut est atteignable
+         * pour de vrai : la lampe de telephone a deja mesure 55 378, soit 84 % de
+         * l'echelle. */
+        if (brut == 0xFFFFu) {
+            printf("  🔴 FFFF EST LE PLAFOND DE L'ECHELLE, ET C'EST AUSSI CE QUE\n");
+            printf("     REND UN BUS QUI LIT DES UNS (SDA relache, module\n");
+            printf("     debranche). ⛔ NE PAS lire « plein soleil » : la valeur\n");
+            printf("     ci-dessus serait IDENTIQUE a chaque lecture, donc le\n");
+            printf("     critere « 3 lectures identiques » ne discrimine PAS ici.\n");
+            printf("     ⇒ Le discriminant reste le STIMULUS : masquer le capteur\n");
+            printf("        DOIT faire chuter la valeur. Si elle reste FFFF, c'est\n");
+            printf("        le BUS, pas la lumiere.\n");
+        }
     }
     return 0;
 }
@@ -5105,8 +5335,24 @@ static int i2c_rafale(int duree_ms)
      * longtemps. ⚠️ La passe interrompue est COMPTEE COMME PARTIELLE, pas comme
      * complete : une passe tronquee qui compterait pour une entiere fausserait
      * la cadence, et une cadence fausse est le nombre qu'AC9 publie. */
+    /* 🔴 CR dn4-2 du 2026-08-24 — LE TEMOIN COMPTAIT LA PASSE TRONQUEE AU
+     * NUMERATEUR ET L'EXCLUAIT DU DENOMINATEUR. `vus_tca`/`vus_gt911`
+     * s'incrementaient DANS la boucle d'adresses, donc aussi pendant la passe
+     * interrompue, alors que `passes++` etait saute par le `break`. Le temoin
+     * pouvait donc imprimer « 0x20 vu 1301/1300 » — numerateur > denominateur —
+     * et `vus_tca < passes` devenait faux, ce qui MASQUAIT un manque par temoin
+     * sur la fenetre. Verifiable sur le releve publie : 147 922 = 1320 x 112 + 82,
+     * et la passe tronquee a balaye 0x08..0x59, qui CONTIENT 0x20 mais PAS 0x5D
+     * => les deux taux de faux negatifs de §13.17.6 reposaient sur des bases
+     * differentes. Le commentaire du correctif avait traite ce cas pour la
+     * CADENCE et pas pour les deux compteurs ajoutes dans le meme commit.
+     * ⇒ On accumule par passe, et on ne COMMET que si la passe est COMPLETE.
+     * ⛔ Distinct du defaut deja declare (« le temoin exige 100 % ») : ici c'est
+     *   le DECOMPTE, pas le seuil. */
     bool coupe_en_passe = false;
     while (esp_timer_get_time() < fin) {
+        bool vu_tca_passe = false;
+        bool vu_gt911_passe = false;
         for (uint8_t a = 0x08; a <= 0x77; a++) {
             if (esp_timer_get_time() >= fin) {
                 coupe_en_passe = true;
@@ -5117,9 +5363,13 @@ static int i2c_rafale(int duree_ms)
             if (e == ESP_OK) {
                 acquits++;
                 if (a == DN_TCA9554_ADDR) {
-                    vus_tca++;
-                } else if (a == DN_GT911_ADDR) {
-                    vus_gt911++;
+                    vu_tca_passe = true;
+                    /* ⚠️ CR du 2026-08-24 — le temoin ignorait DN_GT911_ADDR_BACKUP
+                     * alors que le scan voisin le traite a EGALITE. Sur une carte
+                     * partie INT haut, il rendait 0/N et declarait « AUCUNE
+                     * conclusion d'AC9 recevable » SUR UN BUS PARFAITEMENT SAIN. */
+                } else if (a == DN_GT911_ADDR || a == DN_GT911_ADDR_BACKUP) {
+                    vu_gt911_passe = true;
                 }
             } else if (e == ESP_ERR_TIMEOUT) {
                 timeouts++;
@@ -5127,6 +5377,12 @@ static int i2c_rafale(int duree_ms)
         }
         if (coupe_en_passe) {
             break;
+        }
+        if (vu_tca_passe) {
+            vus_tca++;
+        }
+        if (vu_gt911_passe) {
+            vus_gt911++;
         }
         passes++;
     }
@@ -5149,6 +5405,9 @@ static int i2c_rafale(int duree_ms)
         printf("  ⚠️  derniere passe INTERROMPUE par la butee — elle n'est PAS\n");
         printf("     comptee dans « passes completes ». C'est voulu : une passe\n");
         printf("     tronquee comptee entiere fausserait la CADENCE.\n");
+        printf("     ⇒ Ses acquittements ne comptent PAS non plus dans le temoin\n");
+        printf("        ci-dessous (CR du 2026-08-24 : ils y comptaient, ce qui\n");
+        printf("        pouvait rendre un temoin a 1301/1300 et masquer un manque).\n");
     }
     /* Le temoin positif se lit AVANT toute conclusion, comme pour le scan. */
     printf("  temoin positif  : 0x%02X vu %lu/%lu passes · 0x%02X vu %lu/%lu\n",
@@ -5187,9 +5446,17 @@ static int i2c_lire_registre16(uint8_t addr, uint16_t reg, int n)
                esp_err_to_name(err));
         /* 🔴 CR dn4-2 — LE CONSEIL EST GARDE PAR L'ADRESSE. Il partait pour
          * N'IMPORTE QUELLE adresse, et conseillait donc « verifier XSHUT » a
-         * propos d'un INA219. `i2c ecrire` et `i2c brut` testent tous deux
-         * `addr == 0x23` ; `lire16` etait la seule a ne rien tester. */
-        if (addr == DN_VL6180X_ADDR) {
+         * propos d'un INA219.
+         * ⚠️ CR du 2026-08-24 — CE COMMENTAIRE ENUMERAIT FAUX. Il disait
+         *    « `i2c ecrire` et `i2c brut` testent tous deux addr == 0x23 ;
+         *    lire16 etait la seule a ne rien tester » : il OUBLIAIT
+         *    `i2c_lire_registre`, qui ne testait rien NON PLUS — et c'est
+         *    justement la plus dangereuse, puisqu'elle ECRIT un octet d'index.
+         *    Les quatre testent desormais l'adresse.
+         * ⚠️ Et le conseil XSHUT partait aussi sur un TIMEOUT de verrou : la
+         *    cause est nommee AVANT, par le helper commun. */
+        i2c_dire_la_cause(err);
+        if (addr == DN_VL6180X_ADDR && err != ESP_ERR_TIMEOUT) {
             printf("  ⚠️ AVANT d'accuser la soudure : sur un VL6180X, `XSHUT` bas ou\n");
             printf("     FLOTTANT laisse la puce en SHUTDOWN — elle N'ACQUITTE PAS,\n");
             printf("     et c'est le symptome EXACT d'une mauvaise soudure.\n");
@@ -5233,11 +5500,10 @@ static int cmd_i2c(int argc, char **argv)
             printf("0x78-0x7F sont RESERVEES par la specification I2C)\n");
             return 1;
         }
-        char *fin = NULL;
-        errno = 0;
-        long r = strtol(argv[3], &fin, 16);
-        if (fin == argv[3] || *fin != '\0' || errno == ERANGE || r < 0 || r > 0xFF) {
-            printf("registre « %s » refuse : hexa, entre 00 et FF\n", argv[3]);
+        long r = 0;
+        if (!parse_hex_strict(argv[3], &r) || r < 0 || r > 0xFF) {
+            printf("registre « %s » refuse : hexa SANS « 0x », entre 00 et FF\n",
+                   argv[3]);
             return 1;
         }
         reg = (uint8_t)r;
@@ -5264,12 +5530,10 @@ static int cmd_i2c(int argc, char **argv)
             printf("0x78-0x7F sont RESERVEES par la specification I2C)\n");
             return 1;
         }
-        char *fin = NULL;
-        errno = 0;
-        long r = strtol(argv[3], &fin, 16);
-        if (fin == argv[3] || *fin != '\0' || errno == ERANGE || r < 0 ||
-            r > 0xFFFF) {
-            printf("registre « %s » refuse : hexa, entre 0000 et FFFF\n", argv[3]);
+        long r = 0;
+        if (!parse_hex_strict(argv[3], &r) || r < 0 || r > 0xFFFF) {
+            printf("registre « %s » refuse : hexa SANS « 0x », entre 0000 et FFFF\n",
+                   argv[3]);
             return 1;
         }
         long n = 1;
@@ -5324,13 +5588,10 @@ static int cmd_i2c(int argc, char **argv)
         }
         uint8_t o[8] = {0};
         for (int i = 0; i < n; i++) {
-            char *fin = NULL;
-            errno = 0;
-            long v = strtol(argv[3 + i], &fin, 16);
-            if (fin == argv[3 + i] || *fin != '\0' || errno == ERANGE || v < 0 ||
-                v > 0xFF) {
-                printf("octet n°%d « %s » refuse : hexa, entre 00 et FF\n", i + 1,
-                       argv[3 + i]);
+            long v = 0;
+            if (!parse_hex_strict(argv[3 + i], &v) || v < 0 || v > 0xFF) {
+                printf("octet n°%d « %s » refuse : hexa SANS « 0x », entre 00 et FF\n",
+                       i + 1, argv[3 + i]);
                 printf("⛔ RIEN N'A ETE ENVOYE — la commande refuse AVANT d'ecrire,\n");
                 printf("   parce qu'une ecriture partielle sur un capteur laisse\n");
                 printf("   un etat qu'on ne sait pas nommer.\n");
@@ -5368,10 +5629,13 @@ static int cmd_i2c(int argc, char **argv)
         printf("        i2c brut   <addr>                  [n=1..16]  SANS index\n");
         printf("        i2c ecrire <addr> <o1> [o2..o8]               SANS lecture\n");
         printf("        i2c rafale <ms=1000..30000>        saturation du bus (AC9)\n");
-        printf("⚠️ ADRESSES, REGISTRES et OCTETS en HEXA, sans « 0x ».\n");
-    printf("⛔ mais `n` et `ms` sont en DECIMAL — CR dn4-2 : la banniere disait\n");
-    printf("   « tout est en HEXA », et `i2c brut 23 12` lit 12 octets, pas 18.\n");
-    printf("   Les deux lectures tombant dans les bornes, RIEN ne le signalait.\n");
+        printf("⚠️ ADRESSES, REGISTRES et OCTETS en HEXA, sans « 0x » — et\n");
+        printf("   les parseurs le REFUSENT desormais (CR du 2026-08-24 : ils\n");
+        printf("   l'acceptaient en silence sous une banniere qui l'interdit).\n");
+        printf("⛔ mais `n` et `ms` sont en DECIMAL — CR dn4-2 : la banniere\n");
+        printf("   disait « tout est en HEXA », et `i2c brut 23 12` lit 12\n");
+        printf("   octets, pas 18. Les deux lectures tombant dans les bornes,\n");
+        printf("   RIEN ne le signalait.\n");
         printf("🔴 le scan DECOUVRE, seule une transaction de DONNEE QUALIFIE.\n");
         return 1;
     }
@@ -7272,8 +7536,10 @@ static const esp_console_cmd_t k_cmds[] = {
            "candidats de la 6e case (dn4-3/AC6)",
            cmd_w2),
     /* ⚠️ INSCRITE ICI **ET** DANS LE « Jeu complet » DU README dans le même
-     * geste — dn2-1 avait oublié `capteurs` au README. Les trois primitives
-     * ajoutées en dn4-2 y sont entrées avec cette ligne. */
+     * geste — dn2-1 avait oublié `capteurs` au README. Les QUATRE sous-commandes
+     * ajoutées en dn4-2 (`lire16`, `brut`, `ecrire` + `rafale`) y sont entrées
+     * avec cette ligne. ⚠️ CR du 2026-08-24 : ce commentaire disait « les trois
+     * primitives » — 4e site du compte périmé « TROIS pour QUATRE ». */
     DN_CMD("i2c",
            "i2c | lire <addr> <reg> [n] | lire16 <addr> <reg16> [n] | brut "
            "<addr> [n] | ecrire <addr> <o1..o8> | rafale <ms> — scan, "
