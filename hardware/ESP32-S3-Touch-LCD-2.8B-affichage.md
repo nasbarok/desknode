@@ -5595,3 +5595,115 @@ le panneau du bas à **385**, et le template garde ses **QUATRE panneaux** (adde
 **contrôle** et le **DIT** s'il change.
 ⛔ **La police n'a pas été réduite et aucun texte n'a été rogné** : la courbe tient dans les
 **108 px** que `dn4-9` lui avait facturés, ⛔ pas 165.
+
+### 22.8 🔴 AC8 — LE CONSTAT OWNER À L'ŒIL, ET IL A TROUVÉ CE QU'AUCUN CHIFFRE NE VOYAIT
+
+**Séance du 2026-08-24.** Fenêtre **préparée AVANT de demander les yeux**, injection **CONTINUE**
+à 1 Hz sur les cinq métriques PC (`tools/anim_courbe_dn44.py`), six pages défilant **22 s chacune**.
+⚠️ **`dn_injecteur.py` NE POUVAIT PAS SERVIR** : ses jeux portent des valeurs **FIXES**, la courbe
+aurait été une **ligne droite** — indiscernable d'une courbe qui ne se met pas à jour.
+
+**Validité de la fenêtre, prouvée par l'historique** (⛔ pas supposée) : 104-105 points **réels** sur
+120 pour CPU/RAM/RÉSEAU/DISQUE, **120/120 sans un trou** pour `AMBIANCE`. ⚠️ `GPU` n'en a eu que
+**80** — la perte de lignes du REPL série sous injection soutenue (§21.4), ⛔ pas un défaut du
+firmware : l'historique a correctement creusé des **trous** au lieu d'inventer des valeurs.
+
+#### a. 1ʳᵉ passe — les verbatims
+
+| Question | Verbatim owner |
+|---|---|
+| la courbe bouge-t-elle ? | *« oui »* |
+| `AMBIANCE` porte-t-elle deux courbes ? | 🔴 *« de la même couleur ? sinon non »* |
+| lisible dans 92 px ? | ✅ *« lisibile »* |
+| apparition par morceau ? | 🔴 *« oui au changement de page les petit morceau deja reecris transité sur la page suivant qui elle changé d'echelle et continuer d'ecrir la courbe du coup on a eu des point tillé a la fin »* |
+| demande | *« aussi les courbes comence a secrire en ouvrant le detail ou pourrais syystematiquement avoir le min max sur 24h + quelques minutes de graphe ? »* |
+
+#### b. 🔴 CE QUE L'ŒIL A TROUVÉ, ET QUE `nav ab` NE POUVAIT PAS VOIR
+
+**`widget courbe` a rendu `series : 1` sur `AMBIANCE`.** ⇒ **Il n'y avait qu'UNE courbe.** L'owner
+n'en a pas vu deux **parce qu'il n'y en avait qu'une**.
+
+**La cause, lue dans `nav_appliquer`** : en modèle `SCREENS` — **le modèle livré** — `build_detail()`
+n'est appelée **QU'UNE FOIS**, à la construction de la scène ; toute transition suivante ne fait que
+`detail_reparametrer()` + `lv_screen_load()`. Les séries, créées **dans** `build_detail`, restaient
+donc **figées sur la première page construite**. Deux conséquences :
+
+1. `AMBIANCE` n'avait **qu'une** courbe dès que la scène naissait ailleurs ;
+2. 🔴 **la courbe portait la couleur de la MAUVAISE métrique sur cinq pages sur six.**
+
+🔴 **ET L'INSTRUMENT MENTAIT, DE LA FAMILLE EXACTE QUE CE DÉPÔT TRAQUE** :
+`dn_ui_detail_courbe_axes()` **calculait** la couleur depuis `k_desc[s_metrique].couleur` — **la
+demande** — au lieu de la **lire** de la série. Il annonçait « orange » sur une ligne **violette**.
+⇒ Corrigé : il lit `lv_chart_get_series_color()`.
+
+🎯 **`nav ab` rendait 333,7 ms VERTS sur une page dont la courbe était de la mauvaise couleur et
+dont la seconde série n'existait pas. LE CHIFFRE NE VOYAIT RIEN. AC8 vient de payer son existence.**
+
+#### c. Le pointillé au changement de page — ⛔ pas créé par la courbe, RÉVÉLÉ par elle
+
+Le verbatim décrit **l'apparition par bandes déjà mesurée en `dn1-4`** : 5 flushes de 61 440 px
+(480 × 128), `640 ÷ 128 = 5` bandes, *chacune attendant sa trame ; vsync synchronise chaque bande,
+**rien** ne synchronise le cycle*. La courbe ne la crée pas — **une ligne fine dont l'échelle change
+d'une page à l'autre laisse des fragments qui ne se raccordent pas**, et le résultat se lit comme un
+pointillé. ⇒ **Le régime d'affichage appartient à `dn4-10`** : déclaré, ⛔ pas maquillé.
+
+#### d. 2ᵉ passe, après correctif — les verbatims
+
+| Question | Verbatim owner |
+|---|---|
+| `AMBIANCE` a-t-elle deux courbes ? | ✅ *« oui ambiance a bien 2 courbe orange et bleu »* |
+| les couleurs changent-elles d'une page à l'autre ? | 🔴 *« non meme couleur pour chaques ecrans.. »* |
+
+**Relevé sur les six pages, couleur RELUE de la série** : violet · cyan · violet · cyan · cyan ·
+orange ⇒ **TROIS couleurs pour SIX pages**, le cyan sur **trois** d'entre elles.
+✅ **Et ce n'était PAS un défaut de `dn4-4`** : le code le disait lui-même, *« cyan — famille
+"données PC" »*. Une couleur de **FAMILLE**, posée en `dn3-1`, défendable tant que rien ne la portait
+sur toute la largeur d'un écran. **La courbe l'a rendue voyante.**
+
+⇒ 🔴 **DÉCISION OWNER DU 2026-08-24, ÉCART DE PÉRIMÈTRE ASSUMÉ** : la story écrit
+`⛔ Ne change aucun k_desc[]` ; l'owner l'a **levé explicitement, après avoir été averti** que cela
+demandait un correct-course. **Six couleurs distinctes**, relues sur la carte :
+
+| Page | avant | après |
+|---|---|---|
+| CPU | violet `0x9B6CFF` | inchangé |
+| GPU | cyan `0x35D6E8` | inchangé |
+| **RAM** | violet (= CPU) | **vert `0x4ADE80`** |
+| **RÉSEAU** | cyan (= GPU/DISQUE) | **bleu `0x60A5FA`** |
+| **DISQUE** | cyan | **rose `0xF472B6`** ✅ solde le *« PROVISOIRE, hérité de VENTILOS (legs dn3-3) »* |
+| AMBIANCE | orange `0xFF9640` | inchangé **+** cyan pour l'humidité |
+
+⚠️ **Ce champ pilote TROIS choses et elles changent toutes les trois** : l'icône de la case,
+l'indicateur de jauge (`RAM` seule) et la courbe. C'est **voulu** — une métrique, une couleur,
+partout. **Le dashboard change donc aussi.**
+
+🔴 **PROXIMITÉ NOMMÉE, ⛔ PAS CORRIGÉE EN SILENCE** : `AMBIANCE` reste `0xff9640` et l'ambre du
+régime **SIMULÉE** vaut `0xffb020` — 26 points de vert, 32 de bleu d'écart. Une courbe **RÉELLE** en
+orange peut se lire « simulée ». ✅ Ce qui limite le risque : le régime est porté par la couleur du
+**TEXTE de valeur** et par le **badge**, ⛔ pas par la courbe. Laissé tel quel **parce que l'identité
+orange d'`AMBIANCE` date de `dn3-1`** : ⛔ on ne la change pas au jugé, **l'œil owner arbitre**.
+
+### 22.9 DEMANDE OWNER — LE `MIN/MAX` SUR 24 h, ET SA LIMITE DITE À L'ÉCRAN
+
+Verbatim : *« pourrait-on systématiquement avoir le min max sur 24 h + quelques minutes de
+graphe ? »* ⇒ **Extension de périmètre**, acceptée par décision owner.
+
+**24 seaux d'une heure, en anneau** — ⛔ **pas** un min/max « depuis le boot » : un pic survenu il y
+a trois jours serait encore affiché comme le maximum d'une page qui prétend parler des 24 dernières
+heures. Le seau qu'on ré-atteint est **vidé**, donc la fenêtre **glisse**. Coût : **7 × 24 × 2 × 4 =
+1 344 o** en `.bss` interne.
+
+🔴 **LA LIMITE EST DITE À L'ÉCRAN, ⛔ PAS SEULEMENT DANS LE CODE.** D4 interdit toute écriture
+flash/NVS en régime ⇒ **ceci ne survit pas à un reboot**. « 24 h » n'est vrai QUE si la carte a
+tourné 24 h. La page affiche donc **`MIN/MAX sur : <fenêtre RÉELLE>`**. Relevé sur la carte :
+
+```
+fenetre LONGUE : 24 seau(x) d'1 h, couverture REELLE 168 s (2 min)
+```
+
+⇒ **Elle affiche « 2 min », ⛔ pas « 24 h ».** Écrire la fenêtre nominale au lieu de la fenêtre
+observée serait exactement le mensonge d'interface que `dn2-2` a chassé du dashboard.
+
+⚠️ **Et elle vit dans le bloc d'état (police 14), ⛔ pas collée au `MIN/MAX`** :
+`« MIN 100,0 % · MAX 100,0 % (24 h) »` mesure **~496 px pour 432 utiles** en `dn_font_28` — elle
+**déborderait**, et la story interdit de réduire la police.
