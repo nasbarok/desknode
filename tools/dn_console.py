@@ -166,6 +166,33 @@ def nettoyer(texte, commande):
     return "\n".join(lignes).strip("\n")
 
 
+def drainer(ser, jusqu_a, pas=0.02):
+    """Vide le flux série JUSQU'À l'instant `jusqu_a` (temps absolu `time.time()`).
+
+    🔴 ⛔ CE N'EST PAS UN `sleep()`, ET CE N'EST PAS UN `reset_input_buffer()`.
+       · Dormir laisse le tampon d'entrée se remplir ; plein, il finit par
+         BLOQUER L'ÉMETTEUR côté carte, et l'injection perd sa cadence — donc
+         l'axe des temps de l'historique ment sur la durée.
+       · `reset_input_buffer()` JETTE les logs asynchrones. La garde de hauteur
+         a déjà « compté 8 déclenchements pendant que ce chemin-ci rendait 0
+         message » (voir `envoyer()`).
+       ⇒ On LIT et on jette au fil de l'eau : le tampon reste vide, la carte
+         n'est jamais bloquée, et rien n'est jeté en bloc.
+
+    Rend le nombre d'octets drainés — ⛔ pas `None` : un drainage qui ne draine
+    RIEN pendant 22 s dit quelque chose (la carte est muette, ou le port est
+    volé par un second lecteur), et un harnais doit pouvoir le publier.
+    """
+    n = 0
+    while time.time() < jusqu_a:
+        w = ser.in_waiting
+        if w:
+            n += len(ser.read(w))
+        else:
+            time.sleep(pas)
+    return n
+
+
 def envoyer(ser, commande, timeout, attendre_invite=True):
     # 🔴 PIÈGE D'INSTRUMENT MESURÉ LE 2026-08-24 (dn4-4/AC4.3) — À LIRE AVANT DE
     #    CHERCHER UN `ESP_LOG` AVEC CET OUTIL.
@@ -187,8 +214,14 @@ def envoyer(ser, commande, timeout, attendre_invite=True):
     #      reliquat de la précédente se ferait passer pour la réponse).
     #    ✅ LA PARADE, côté appelant : écrire soi-même sur le port et DRAINER le
     #      flux (`ser.read(ser.in_waiting)` en boucle) pendant la fenêtre
-    #      d'observation, au lieu de dormir. Voir la fonction `drainer()` des
-    #      harnais de dn4-4.
+    #      d'observation, au lieu de dormir. ⇒ `drainer()`, juste au-dessus.
+    #    🔴 dn4-13 / AC7.4 — CETTE PHRASE RENVOYAIT À « la fonction `drainer()` des
+    #      harnais de dn4-4 ». **ELLE N'EXISTAIT NULLE PART** : le drainage était
+    #      INLINÉ dans `anim_courbe_dn44.py`, et un lecteur qui suivait le renvoi
+    #      cherchait une fonction fantôme. Elle est désormais ÉCRITE ICI, et le
+    #      harnais l'APPELLE — ⛔ on n'a pas corrigé la phrase, on a créé ce
+    #      qu'elle promettait. Une référence à du code inexistant est de la même
+    #      famille que `widget reset` : un instrument qui nomme ce qui n'est pas.
     ser.reset_input_buffer()
     ser.write((commande + "\n").encode("utf-8"))
     ser.flush()

@@ -61,10 +61,74 @@ def trame_net(seq, t_ms, descente_dx, montee_dx):
 _TXT = re.compile(r"texte\s*:\s*«\s*(.*?)\s*»", re.S)
 
 
+# 🔴 dn4-13 / AC7.2 — LA SENTINELLE EST NOMMÉE, ET ELLE NE VAUT PLUS `-1` NU.
+#    `_entier()` rendait `-1` quand la regex ne trouvait rien. Deux `-1` entraient
+#    ensuite dans `dbl_apres - dbl_avant` : **`-1 - (-1) = 0`**, imprimé
+#    « doublons +0 » — un ZÉRO FABRIQUÉ, indiscernable d'une vraie absence de
+#    doublon, ET QUI PILOTAIT UN VERDICT (`dbl_apres > dbl_avant`).
+#    ⇒ La sentinelle se teste AVANT toute soustraction publiée.
+NON_RELU_INT = -1
+NON_RELU = "<NON RELU>"
+
+
 def _entier(sortie, nom):
-    """Relit un compteur de `pc` — ⛔ jamais une estimation."""
+    """Relit un compteur de `pc` — ⛔ jamais une estimation.
+
+    Rend `NON_RELU_INT` si la ligne n'a pas été trouvée. ⛔ Ce nombre N'ENTRE
+    JAMAIS dans une soustraction publiée : voir `delta_compteur()`."""
     m = re.search(r"(\d+)\s+" + re.escape(nom), sortie)
-    return int(m.group(1)) if m else -1
+    return int(m.group(1)) if m else NON_RELU_INT
+
+
+def delta_compteur(avant, apres):
+    """L'écart entre deux relevés, ou `None` si l'un des deux n'a pas été LU.
+
+    ⛔ `None`, ⛔ pas `0` : « je n'ai pas lu » et « rien n'a bougé » sont deux
+       choses, et les confondre a déjà fait publier « doublons +0 »."""
+    if avant == NON_RELU_INT or apres == NON_RELU_INT:
+        return None
+    return apres - avant
+
+
+def verdict_phase1(lignes):
+    """(figes, ok) — la dalle a-t-elle SUIVI les trames ?
+
+    ⛔ Une lecture ratée est un ÉCHEC, ⛔ pas un « pas de changement » : deux
+       `NON_RELU` consécutifs se comparaient égaux et comptaient un figement...
+       ou, pire selon l'ordre, disparaissaient du décompte. Ici, la moindre
+       sentinelle invalide la phase entière."""
+    # ⛔ LA GARDE EST **DANS LA FONCTION**, ⛔ pas seulement dans l'argparse.
+    #    Sinon le refus de `--tours < 2` ne serait qu'une politesse d'interface :
+    #    un futur appelant (ou ce témoin négatif) pourrait obtenir un ✅ sur un
+    #    échantillon unique. La propriété testée est « la dalle CHANGE d'un tour
+    #    à l'autre » — elle n'a aucun sens sous deux tours.
+    if len(lignes) < 2:
+        return 0, False
+    if any(relu == NON_RELU for _, _, relu in lignes):
+        return -1, False
+    figes = 0
+    precedent = None
+    for _seq, _att, relu in lignes:
+        if relu == precedent:
+            figes += 1
+        precedent = relu
+    return figes, figes == 0
+
+
+def verdict_phase2(textes, dbl_avant, dbl_apres):
+    """(distincts, delta, ok) — à `seq` FIGÉ, la dalle DOIT rester sur un texte
+    pendant que `doublons` monte.
+
+    ⛔ Une sentinelle dans `textes` invalide : `{NON_RELU}` a un cardinal de 1,
+       donc « un seul texte distinct » — la figure ATTENDUE, obtenue sans avoir
+       rien lu. C'est le même piège que le témoin croisé d'AC2, à un instrument
+       de distance."""
+    if not textes or any(t == NON_RELU for t in textes):
+        return 0, None, False
+    delta = delta_compteur(dbl_avant, dbl_apres)
+    if delta is None:
+        return len(set(textes)), None, False
+    return len(set(textes)), delta, (len(set(textes)) == 1 and delta > 0)
 
 
 def _compteurs(sortie):
@@ -81,18 +145,101 @@ def _compteurs(sortie):
 
 def texte_detail(sortie):
     m = _TXT.search(sortie)
-    return m.group(1).replace("\n", " | ") if m else "<NON RELU>"
+    return m.group(1).replace("\n", " | ") if m else NON_RELU
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# LE TÉMOIN NÉGATIF — ⛔ SANS CARTE, ET IL DOIT VOIR ROUGE
+# ═══════════════════════════════════════════════════════════════════════════
+def temoin_negatif():
+    """dn4-13 / AC7.5 — les verdicts de `diag_p1` sont éprouvés HORS CARTE.
+
+    🔴 Les trois lignes qui comptent sont les trois premières : elles rejouent
+       les trois façons dont ce script rendait un verdict SUR DU VIDE."""
+    N = NON_RELU
+    L = lambda *t: [(200 + i, "x", v) for i, v in enumerate(t)]
+    cas = [
+        ("PHASE 1 · ZÉRO tour (l'ancien `--tours 0`)",
+         lambda: verdict_phase1([])[1], False),
+        ("PHASE 1 · UN seul tour (l'ancien `--tours 1`)",
+         lambda: verdict_phase1(L("123,4"))[1], False),
+        ("PHASE 1 · une lecture RATÉE au milieu",
+         lambda: verdict_phase1(L("1,0", N, "3,0"))[1], False),
+        ("PHASE 1 · deux lectures RATÉES d'affilée",
+         lambda: verdict_phase1(L(N, N))[1], False),
+        ("PHASE 1 · la dalle FIGE sur un tour",
+         lambda: verdict_phase1(L("1,0", "1,0", "3,0"))[1], False),
+        ("PHASE 1 · cas SAIN (3 textes distincts)",
+         lambda: verdict_phase1(L("1,0", "2,0", "3,0"))[1], True),
+        ("PHASE 2 · sentinelle ⇒ « 1 texte distinct » FABRIQUÉ",
+         lambda: verdict_phase2([N, N, N], 10, 14)[2], False),
+        ("PHASE 2 · les DEUX compteurs non lus (`-1 - (-1) = 0`)",
+         lambda: verdict_phase2(["a", "a"], NON_RELU_INT, NON_RELU_INT)[2], False),
+        ("PHASE 2 · un seul compteur non lu",
+         lambda: verdict_phase2(["a", "a"], 10, NON_RELU_INT)[2], False),
+        ("PHASE 2 · doublons N'A PAS monté",
+         lambda: verdict_phase2(["a", "a"], 10, 10)[2], False),
+        ("PHASE 2 · la dalle a SUIVI (pas la figure attendue)",
+         lambda: verdict_phase2(["a", "b"], 10, 14)[2], False),
+        ("PHASE 2 · cas SAIN", lambda: verdict_phase2(["a", "a"], 10, 14)[2], True),
+        ("DELTA · non lu ⇒ `None`, ⛔ pas `0`",
+         lambda: delta_compteur(NON_RELU_INT, NON_RELU_INT), None),
+        ("DELTA · lu ⇒ la vraie différence",
+         lambda: delta_compteur(10, 14), 4),
+    ]
+    print("=" * 72)
+    print("dn4-13 / AC7.5 — TÉMOIN NÉGATIF de `diag_p1_dn44.py` (SANS CARTE)")
+    print("=" * 72)
+    ko = 0
+    for nom, f, attendu in cas:
+        obtenu = f()
+        ok = (obtenu == attendu)
+        ko += 0 if ok else 1
+        print("  %s  %-50s attendu %-5s obtenu %s"
+              % ("✅" if ok else "🔴", nom, attendu, obtenu))
+    print("=" * 72)
+    if ko:
+        print("⛔ %d cas sur %d ne se comportent pas comme annoncé." % (ko, len(cas)))
+        return 1
+    print("✅ %d cas — aucun verdict ne peut plus naître d'une lecture ratée,\n"
+          "   d'une soustraction de sentinelles, ni de zéro échantillon." % len(cas))
+    return 0
 
 
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--port", default="/dev/ttyACM0")
     p.add_argument("--baud", type=int, default=115200)
-    p.add_argument("--tours", type=int, default=6)
+    p.add_argument("--tours", type=int, default=6,
+                   help="au moins 2 — voir le refus ci-dessous")
     p.add_argument("--seq0", type=int, default=200)
     p.add_argument("--pause", type=float, default=0.6,
                    help="entre l'injection et la relecture (>= 0,25 s, < 3 s)")
+    p.add_argument("--temoin-negatif", action="store_true",
+                   help="éprouve les VERDICTS hors carte, et exige de les voir "
+                        "rougir (dn4-13 / AC7.5)")
     a = p.parse_args()
+
+    if a.temoin_negatif:
+        return temoin_negatif()
+
+    # 🔴 dn4-13 / AC7.2 — `--tours` EST BORNÉ À >= 2, ET C'EST UNE GARDE DE
+    #    VACUITÉ, ⛔ pas un confort d'usage.
+    #    · `--tours 0` : la boucle ne tourne pas, `lignes` est vide, `fige`
+    #      vaut 0 ⇒ le script imprimait « ✅ LA DALLE A SUIVI LES 0 TRAMES »
+    #      et rendait **0**. UN VERT SUR ZÉRO ÉCHANTILLON.
+    #    · `--tours 1` : un seul texte, `precedent` vaut `None`, donc aucun
+    #      figement possible ⇒ vert sur un échantillon UNIQUE, alors que la
+    #      propriété testée est « la dalle CHANGE d'un tour à l'autre » : elle
+    #      n'a pas de sens sous deux tours.
+    #    ⇒ On REFUSE, ⛔ on n'écrête pas : un écrêtage silencieux ferait publier
+    #      un verdict sur un protocole que personne n'a demandé.
+    if a.tours < 2:
+        print("refuse : --tours doit valoir au moins 2. La propriete testee est\n"
+              "  « la dalle CHANGE d'un tour a l'autre » : sous deux tours elle\n"
+              "  n'a aucun sens, et le script rendait un ✅ VERT SUR ZERO (ou UN)\n"
+              "  echantillon. ⛔ Un vert sur rien est pire qu'un rouge.")
+        return 2
 
     if not (0.25 <= a.pause < 3.0):
         print("refuse : --pause doit tenir dans [0,25 ; 3,0[ — sous 0,25 s la "
@@ -169,10 +316,13 @@ def main():
                   f"{d/10:.1f} / {u/10:.1f} »".replace(".", ","))
             print(f"      dalle relue : « {relu} »")
         dbl_apres = _entier(cmd("pc"), "doublons")
-        distincts = len({r for _, _, r in neg})
+        distincts, delta, phase2_ok = verdict_phase2(
+            [r for _, _, r in neg], dbl_avant, dbl_apres)
+        # ⛔ LE DELTA NE S'IMPRIME QUE S'IL A ÉTÉ LU. « +0 » sur deux sentinelles
+        #    est un zéro FABRIQUÉ, et il pilotait un verdict.
+        d_txt = ("+%d" % delta) if delta is not None else "NON LU (⛔ pas « +0 »)"
         print(f"  doublons : {dbl_avant} -> {dbl_apres} "
-              f"(+{dbl_apres - dbl_avant}) · textes DISTINCTS sur la dalle : "
-              f"{distincts}")
+              f"({d_txt}) · textes DISTINCTS sur la dalle : {distincts}")
 
         print("--- COMPTEURS APRÈS ---------------------------------------------")
         apres = cmd("pc")
@@ -181,16 +331,20 @@ def main():
         print("=" * 72)
         print("SYNTHÈSE — le fil, tour par tour, et ce que la DALLE portait")
         print("=" * 72)
-        fige = 0
         precedent = None
         for seq, attendu, relu in lignes:
             bouge = "" if relu == precedent else "CHANGE"
-            if relu == precedent:
-                fige += 1
             print(f"  seq {seq:>4}  fil « {attendu:<20} »  dalle « {relu} »  {bouge}")
             precedent = relu
         print()
-        if fige:
+        fige, phase1_ok = verdict_phase1(lignes)
+        if fige < 0:
+            print("🔴 UNE RELECTURE AU MOINS A ECHOUE (« %s ») : ⛔ AUCUN VERDICT.\n"
+                  "   Une lecture ratee n'est pas « pas de changement » — deux\n"
+                  "   sentinelles se comparent EGALES, et ce script aurait conclu\n"
+                  "   sur du vide." % NON_RELU)
+            return 1
+        if not phase1_ok:
             print(f"🔴 LA DALLE EST RESTÉE FIGÉE sur {fige} tour(s) : LE DÉFAUT SE "
                   f"REPRODUIT. Lire les compteurs ci-dessus pour nommer la cause.")
             return 1
@@ -198,18 +352,18 @@ def main():
               "défaut NE se reproduit PAS\n   sous un protocole à `seq` "
               "croissant et valeurs changeantes.".format(len(lignes)))
         print()
-        if distincts == 1 and dbl_apres > dbl_avant:
+        if phase2_ok:
             print("🔴 PHASE 2 — À `seq` FIGÉ, LA DALLE EST RESTÉE SUR UN SEUL "
                   "TEXTE pendant que\n   `doublons` montait de "
-                  f"{dbl_apres - dbl_avant}. LE SYMPTÔME DU 2026-08-24 EST "
+                  f"{delta}. LE SYMPTÔME DU 2026-08-24 EST "
                   "REPRODUIT\n   À VOLONTÉ, ET SA CAUSE EST LE HARNAIS, ⛔ PAS "
                   "LE FIRMWARE.")
             print("   ⇒ AC1 se solde sur sa SECONDE forme, avec son compteur.")
             return 0
         print("⚠️ PHASE 2 N'A PAS RENDU LA FIGURE ATTENDUE "
-              f"(textes distincts = {distincts}, doublons "
-              f"+{dbl_apres - dbl_avant}) :\n   ⛔ NE PAS CONCLURE — relire les "
-              "compteurs avant d'écrire quoi que ce soit.")
+              f"(textes distincts = {distincts}, doublons {d_txt}) :\n"
+              "   ⛔ NE PAS CONCLURE — relire les compteurs avant d'écrire quoi "
+              "que ce soit.")
         return 3
     finally:
         ser.close()
