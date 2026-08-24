@@ -39,6 +39,7 @@ idf_component_register(
         #    dont le générateur est en stdlib Python pure.
         #    Régénération : `python3 tools/gen_font_dn.py` (voir README).
         "dn_widget.c"
+        "dn_hist.c"
         "fonts/dn_font_14.c"
         "fonts/dn_font_28.c"
     INCLUDE_DIRS "."

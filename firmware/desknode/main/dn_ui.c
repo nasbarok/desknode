@@ -14,6 +14,7 @@
 #include "dn_recal.h"
 #include "dn_rtc.h"
 #include "dn_touch.h"
+#include "dn_hist.h"
 #include "dn_widget.h"
 #include "fonts/dn_font.h"
 #include "esp_cache.h"
@@ -166,6 +167,19 @@ static inline void ui_case_origine(int i, int *x, int *y)
 
 /* Zone tactile du retour : généreuse par exigence d'AC4 (« pas juste le
  * glyphe »). 120x60 dans le coin haut-gauche, soit 24 fois l'aire du chevron. */
+/*
+ * 🔴 dn4-4 — LA GÉOMÉTRIE DE LA COURBE, DANS SON CADRE DE 108 px.
+ * ⚠️ CE SONT DES CHIFFRES DE DEMANDE, ⛔ PAS DES CHIFFRES PUBLIABLES : ce que la
+ *    courbe OCCUPE réellement se relit avec `widget courbe`. La leçon est celle
+ *    de la bande de la jauge `RAM` (§22.3) — une coordonnée calculée qu'aucun
+ *    instrument ne peut confronter finit par être récitée.
+ * ⚠️ `108 - 2 x 8 = 92` de haut, `460 - 2 x 12 = 436` de large.
+ */
+#define DET_COURBE_X 12
+#define DET_COURBE_Y 8
+#define DET_COURBE_W (DN_LCD_H_RES - 2 * DN_UI_MARGE - 2 * DET_COURBE_X)
+#define DET_COURBE_H (108 - 2 * DET_COURBE_Y)
+
 #define DN_UI_RETOUR_W 120
 #define DN_UI_RETOUR_H 60
 
@@ -1080,6 +1094,7 @@ static lv_obj_t *s_label_dash;
 static lv_obj_t *s_label_det;
 static lv_obj_t *s_bar;
 static lv_timer_t *s_timer;
+static lv_timer_t *s_hist_timer; /* dn4-4 : l'horloge de l'historique, 1 Hz */
 static lv_image_dsc_t s_bg_dsc;
 static uint16_t *s_bg_psram;      /* copie PSRAM du fond, NULL si mmap flash */
 static esp_err_t s_asset_err = ESP_OK;
@@ -1183,6 +1198,10 @@ static lv_obj_t *s_scr_detail;
  * En REBUILD ils sont recréés à chaque transition et ces pointeurs ne servent
  * qu'à ne pas les chercher dans l'arbre. */
 static lv_obj_t *s_det_titre, *s_det_valeur, *s_det_minmax, *s_det_sec;
+/* 🔴 dn4-4 : LA COURBE. `s_det_serie1` n'est NON NULL que sur `AMBIANCE` —
+ *    la seule page à DEUX courbes (addendum §1, exception 1). */
+static lv_obj_t *s_det_courbe;
+static lv_chart_series_t *s_det_serie0, *s_det_serie1;
 
 /*
  * ── LA BARRE HEURE/DATE (dn3-2) — DEUX POINTEURS NUS DE PLUS ─────────────────
@@ -1278,6 +1297,16 @@ static bool s_barre_secondes;
  * Écrits sous le verrou LVGL, lus sous le même verrou (build_dashboard).
  */
 static dn_widget_etat_t s_wetat[DN_UI_METRIQUES];
+/*
+ * 🔴 dn4-4 / AC5 — LA DERNIÈRE VALEUR NUMÉRIQUE VUE, PAR CASE ET PAR GRANDEUR.
+ *
+ * ⚠️ CE N'EST PAS L'HISTORIQUE : c'est le POINT COURANT que l'échantillonneur à
+ *    1 Hz vient lire. L'historique, lui, vit dans `dn_hist` — bornée, chiffrée,
+ *    et alimentée par une HORLOGE, ⛔ pas par la cadence des trames.
+ * ⚠️ En `.bss` : 6 x 4 x (4 + 1) o = 120 o. Négligeable, et DIT plutôt que tu.
+ */
+static int32_t s_dx[DN_UI_METRIQUES][DN_WIDGET_GRANDEURS_MAX];
+static bool s_dx_connue[DN_UI_METRIQUES][DN_WIDGET_GRANDEURS_MAX];
 static dn_widget_t s_wobj[DN_UI_METRIQUES];
 
 /*
@@ -2377,6 +2406,11 @@ static void build_dashboard(lv_obj_t *scr)
  * de reconstruire.
  */
 static void detail_reparametrer(int idx);
+/* dn4-4 : `hist_fmt()` (juste au-dessus de `detail_reparametrer`) formate un
+ * nombre de l'historique avec LA MÊME règle d'échelle que la case. La définition
+ * vit près de `dn_ui_pc_maj`, son seul autre appelant. */
+static bool fmt_echelle(char *out, size_t n, int dixiemes,
+                        const dn_widget_desc_t *d, int i);
 
 static void build_detail(lv_obj_t *scr, int idx)
 {
@@ -2460,8 +2494,67 @@ static void build_detail(lv_obj_t *scr, int idx)
      *       262. Le même que celui de dn4-6 (192 + 13 = 205). */
     lv_obj_t *cadre = panneau(scr, DN_UI_MARGE, 262, DN_LCD_H_RES - 2 * DN_UI_MARGE,
                               108);
-    texte(cadre, "COURBE (dn4-4)", &dn_font_14,
-          lv_color_hex(0x80a0b0), 12, 70);
+    /*
+     * 🔴 dn4-4 — LA COURBE. Le `texte("COURBE (dn4-4)")` a disparu : c'était un
+     *    cadre ÉTIQUETÉ, ⛔ pas une courbe.
+     *
+     * ⚠️ **LA GÉOMÉTRIE EST PRISE AU MINIMUM, ET ELLE SE RELIT** : le cadre fait
+     *    108 px (facture posée par `dn4-9`, cf. le bloc du bloc de valeurs), et
+     *    le tracé ne recalcule RIEN — `widget courbe` relit le rectangle que
+     *    LVGL a posé, comme `widget jauge` le fait pour la barre. ⛔ Aucune
+     *    hauteur de courbe n'est publiée sans avoir été relue.
+     * ⚠️ `262 + 108 = 370` : LE BAS EST INCHANGÉ, et le panneau du bas (385) ne
+     *    bouge pas. **L'INVARIANT DU TEMPLATE TIENT — `dn4-4` NE L'A PAS RÉÉCRIT.**
+     *    Le template garde ses QUATRE panneaux (addendum §1).
+     *
+     * 🔴 `lv_chart`, ⛔ PAS UN TRACÉ MAISON AU `lv_canvas` : `LV_USE_CHART=y` est
+     *    déjà compilé, et réécrire un rendu de polyligne serait ajouter un
+     *    chemin de dessin non testé sur la page dont on mesure la latence.
+     * 🔴 ET LES POINTS NE SONT PAS COPIÉS DANS LE POOL LVGL :
+     *    `lv_chart_set_series_ext_y_array()` fait pointer la série sur le
+     *    tableau de `dn_hist`. Le pool est STATIQUE et petit (64 Ko, 20 692 o
+     *    déjà pris) ; y verser 7 x 120 points l'aurait épuisé pour rien.
+     */
+    s_det_courbe = lv_chart_create(cadre);
+    lv_obj_remove_flag(s_det_courbe, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_remove_flag(s_det_courbe, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_pos(s_det_courbe, DET_COURBE_X, DET_COURBE_Y);
+    lv_obj_set_size(s_det_courbe, DET_COURBE_W, DET_COURBE_H);
+    lv_chart_set_type(s_det_courbe, LV_CHART_TYPE_LINE);
+    lv_chart_set_point_count(s_det_courbe, DN_HIST_N_POINTS);
+    /* ⚠️ PAS DE POINT DESSINÉ : à 120 points dans 436 px, un marqueur tous les
+     *    3,6 px ferait une ligne épaisse illisible — et il coûterait 120 cercles
+     *    à chaque redessin, sur la page dont on mesure la latence. */
+    lv_obj_set_style_size(s_det_courbe, 0, 0, LV_PART_INDICATOR);
+    lv_obj_set_style_line_width(s_det_courbe, 2, LV_PART_ITEMS);
+    lv_obj_set_style_bg_opa(s_det_courbe, LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_border_width(s_det_courbe, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(s_det_courbe, 0, LV_PART_MAIN);
+    lv_chart_set_div_line_count(s_det_courbe, 3, 0);
+    lv_obj_set_style_line_color(s_det_courbe, lv_color_hex(0x33404a),
+                                LV_PART_MAIN);
+
+    int s0 = -1, s1 = -1;
+    int n_series = dn_hist_series_de_case(idx, &s0, &s1);
+    s_det_serie0 = NULL;
+    s_det_serie1 = NULL;
+    if (s0 >= 0) {
+        s_det_serie0 = lv_chart_add_series(s_det_courbe,
+                                           lv_color_hex(k_desc[idx].couleur),
+                                           LV_CHART_AXIS_PRIMARY_Y);
+        lv_chart_set_series_ext_y_array(s_det_courbe, s_det_serie0,
+                                        dn_hist_points(s0));
+    }
+    if (n_series == 2 && s1 >= 0) {
+        /* 🔴 DEUX UNITÉS ⇒ DEUX AXES. `AMBIANCE` porte des °C **et** des % :
+         *    les empiler sur une échelle commune écraserait l'une des deux et
+         *    ferait lire une variation qui n'existe pas. C'est la même règle qui
+         *    interdit d'empiler les quatre grandeurs de `DISQUE`. */
+        s_det_serie1 = lv_chart_add_series(s_det_courbe, lv_color_hex(0x35d6e8),
+                                           LV_CHART_AXIS_SECONDARY_Y);
+        lv_chart_set_series_ext_y_array(s_det_courbe, s_det_serie1,
+                                        dn_hist_points(s1));
+    }
 
     /* Données secondaires et MIN/MAX, sur un seul aplat de bas de page — c'est
      * celui-là que l'owner a signalé comme illisible le 2026-08-16. */
@@ -2584,6 +2677,79 @@ static const char *nom_source(int idx)
         return "AUCUNE — pas encore branchée";
     }
     return k_source[idx].nom;
+}
+
+/*
+ * ── dn4-4 : UN NOMBRE DE L'HISTORIQUE, FORMATÉ COMME LA CASE LE FERAIT ───────
+ *
+ * ⚠️ L'ÉCHELLE HAUTE SE RECALCULE POUR **CE** NOMBRE-LÀ, ⛔ elle ne se copie pas
+ *    de l'état courant. Un `MIN` de 900 Mb/s à côté d'un courant de 5 Gb/s doit
+ *    porter « Mb/s », pas « Gb/s » — sinon la ligne ment d'un facteur 1 000, et
+ *    elle ment SOUS la courbe qui, elle, dit vrai. C'est exactement le motif de
+ *    `echelle_haute[]` : ⛔ on ne déduit jamais une unité d'un autre nombre.
+ */
+static void hist_fmt(char *out, size_t n, int32_t dixiemes, int idx, int g)
+{
+    const dn_widget_desc_t *d = case_est_widget(idx) ? &k_desc[idx] : NULL;
+    char v[DN_WIDGET_TXT_MAX];
+    /* Un état LOCAL, dont le seul champ lu est `echelle_haute[g]` : c'est le
+     * contrat de `dn_widget_unite()`, et le lui passer explicitement évite de
+     * dupliquer ici la règle « quelle unité pour quel nombre ». */
+    dn_widget_etat_t tmp = {0};
+    tmp.echelle_haute[g] = fmt_echelle(v, sizeof(v), (int)dixiemes, d, g);
+    const char *u = d ? dn_widget_unite(d, &tmp, g) : NULL;
+    snprintf(out, n, "%s%s%s", v, (u && *u) ? " " : "", u ? u : "");
+}
+
+/*
+ * ── dn4-4 : LA COURBE SUIT L'ANNEAU ─────────────────────────────────────────
+ *
+ * 🔴 L'ANNEAU N'EST PAS RECOPIÉ. `lv_chart_set_x_start_point()` dit à LVGL où
+ *    commence le point le plus ANCIEN dans un tableau linéaire ; recopier
+ *    l'anneau à chaque tick aurait coûté 480 o de `memcpy` par seconde et par
+ *    série, pour rien. C'est pour ça que l'API externe a été choisie.
+ * ⚠️ L'ÉCHELLE Y EST RECALCULÉE SUR LES POINTS RÉELS. Une plage figée écraserait
+ *    une variation de 2 % dans un axe 0..100 — la courbe existerait sans rien
+ *    montrer. ⛔ Et une série qui n'a QUE des trous ne fixe aucune plage : on ne
+ *    dessine rien plutôt que d'inventer un axe.
+ * ⚠️ `mn == mx` (série plate) : on ouvre de ±1 dixième, sinon `lv_chart` divise
+ *    par une plage nulle et la ligne part au bord.
+ */
+static void courbe_serie_regler(int serie, lv_chart_series_t *ser,
+                                lv_chart_axis_t axe)
+{
+    if (!s_det_courbe || !ser || serie < 0) {
+        return;
+    }
+    lv_chart_set_x_start_point(s_det_courbe, ser, dn_hist_debut(serie));
+    int32_t mn = 0, mx = 0;
+    if (!dn_hist_minmax(serie, &mn, &mx)) {
+        return; /* ⛔ que des trous : AUCUNE plage inventée */
+    }
+    if (mn == mx) {
+        mn -= 1;
+        mx += 1;
+    } else {
+        int32_t marge = (mx - mn) / 10;
+        if (marge < 1) {
+            marge = 1;
+        }
+        mn -= marge;
+        mx += marge;
+    }
+    lv_chart_set_range(s_det_courbe, axe, mn, mx);
+}
+
+static void courbe_reparametrer(int idx)
+{
+    if (!s_det_courbe) {
+        return;
+    }
+    int s0 = -1, s1 = -1;
+    dn_hist_series_de_case(idx, &s0, &s1);
+    courbe_serie_regler(s0, s_det_serie0, LV_CHART_AXIS_PRIMARY_Y);
+    courbe_serie_regler(s1, s_det_serie1, LV_CHART_AXIS_SECONDARY_Y);
+    lv_chart_refresh(s_det_courbe);
 }
 
 static void detail_reparametrer(int idx)
@@ -2911,9 +3077,34 @@ static void detail_reparametrer(int idx)
         lv_label_set_text(s_det_sec, buf);
     }
 
+    /*
+     * 🔴 dn4-4 / AC5.5 — `MIN`/`MAX` VIENNENT DE L'HISTORIQUE, LA **MÊME** SOURCE
+     *    QUE LA COURBE. Ils affichaient `"MIN --   ·   MAX --"` **EN DUR**, avec
+     *    ce motif : *« AUCUN historique n'existe. Y remettre "MIN 12 % - MAX
+     *    91 %" parce que "le panneau a l'air vide" serait refaire le défaut
+     *    qu'on solde. »* L'historique existe maintenant, et il est **le même
+     *    tableau** que la série tracée : la ligne ne peut donc pas contredire la
+     *    courbe qui est juste au-dessus.
+     * ⚠️ **`--` RESTE LA RÉPONSE QUAND LA SÉRIE N'A QUE DES TROUS.**
+     *    `dn_hist_minmax()` rend `false` dans ce cas — ⛔ il ne rend PAS
+     *    « 0..0 ». Une plage inventée serait exactement le défaut d'origine.
+     */
     if (s_det_minmax) {
-        lv_label_set_text(s_det_minmax, "MIN --   ·   MAX --");
+        int hs0 = -1, hs1 = -1;
+        dn_hist_series_de_case(idx, &hs0, &hs1);
+        int32_t mn = 0, mx = 0;
+        if (hs0 >= 0 && dn_hist_minmax(hs0, &mn, &mx)) {
+            char a[DN_WIDGET_TXT_MAX + 12], b[DN_WIDGET_TXT_MAX + 12];
+            hist_fmt(a, sizeof(a), mn, idx, 0);
+            hist_fmt(b, sizeof(b), mx, idx, 0);
+            snprintf(buf, sizeof(buf), "MIN %s   ·   MAX %s", a, b);
+            lv_label_set_text(s_det_minmax, buf);
+        } else {
+            lv_label_set_text(s_det_minmax, "MIN --   ·   MAX --");
+        }
     }
+
+    courbe_reparametrer(idx);
 }
 
 /* ── build_scene : reconstruit la VUE COURANTE ────────────────────────────── */
@@ -2950,6 +3141,13 @@ static void build_scene(void)
     s_det_titre = NULL;
     s_det_valeur = NULL;
     s_det_minmax = NULL;
+    /* 🔴 dn4-4 : LES POINTEURS DE LA COURBE MEURENT AVEC LA SCÈNE, comme
+     *    les autres. Un `lv_chart_series_t *` survivant à son écran ferait
+     *    écrire `lv_chart_set_x_start_point()` dans de la mémoire libérée —
+     *    à 1 Hz, en tâche de fond, sans qu'aucun écran ne le montre. */
+    s_det_courbe = NULL;
+    s_det_serie0 = NULL;
+    s_det_serie1 = NULL;
     s_det_sec = NULL;
     /* SITE 1/3 — la barre heure/date (dn3-2). ⚠️ La tâche `dn_rtc` pousse à
      * 2 Hz : un pointeur laissé non-NULL ici survivrait à son label et elle
@@ -3086,6 +3284,13 @@ static bool nav_appliquer(int cible, int64_t t_clic)
         s_det_titre = NULL;
         s_det_valeur = NULL;
         s_det_minmax = NULL;
+    /* 🔴 dn4-4 : LES POINTEURS DE LA COURBE MEURENT AVEC LA SCÈNE, comme
+     *    les autres. Un `lv_chart_series_t *` survivant à son écran ferait
+     *    écrire `lv_chart_set_x_start_point()` dans de la mémoire libérée —
+     *    à 1 Hz, en tâche de fond, sans qu'aucun écran ne le montre. */
+    s_det_courbe = NULL;
+    s_det_serie0 = NULL;
+    s_det_serie1 = NULL;
         s_det_sec = NULL;
         /* SITE 2/3 — la barre heure/date (dn3-2). `lv_obj_clean` vient de
          * DÉTRUIRE ses deux labels avec tout l'écran. */
@@ -3268,6 +3473,13 @@ esp_err_t dn_ui_set_nav_model(dn_nav_model_t m)
         s_det_titre = NULL;
         s_det_valeur = NULL;
         s_det_minmax = NULL;
+    /* 🔴 dn4-4 : LES POINTEURS DE LA COURBE MEURENT AVEC LA SCÈNE, comme
+     *    les autres. Un `lv_chart_series_t *` survivant à son écran ferait
+     *    écrire `lv_chart_set_x_start_point()` dans de la mémoire libérée —
+     *    à 1 Hz, en tâche de fond, sans qu'aucun écran ne le montre. */
+    s_det_courbe = NULL;
+    s_det_serie0 = NULL;
+    s_det_serie1 = NULL;
         s_det_sec = NULL;
         /* SITE 3/3 — la barre heure/date (dn3-2). Les DEUX racines viennent
          * d'être détruites ; ses labels vivaient sur celle du dashboard. */
@@ -3740,6 +3952,47 @@ static void descripteurs_auditer(void)
     }
 }
 
+/*
+ * ── dn4-4 / AC5 : L'ÉCHANTILLONNEUR — UN POINT PAR SÉRIE, PAR SECONDE ───────
+ *
+ * 🔴 IL LIT LE **RÉGIME**, ET C'EST CE QUI REND LA RÈGLE STRUCTURELLE PLUTÔT
+ *    QUE DISCIPLINAIRE. Une case `SIMULÉE` (mock armé, `widget pousser`) ou
+ *    `ABSENTE` (source morte, péremption) ne pose **pas** de point : elle pose un
+ *    **TROU**. ⇒ Une série présentée comme réelle ne peut pas contenir du
+ *    fabriqué, même si un futur appelant l'oublie — c'est la règle W10/AC5 de
+ *    `dn4-1` portée au temps.
+ * ⛔ ⛔ NE JAMAIS remplacer un trou par un `0` ni par la dernière valeur connue :
+ *    l'un dessine une chute à zéro qui n'a pas eu lieu, l'autre dessine une
+ *    stabilité qui n'a pas été mesurée. Les deux sont des mensonges de courbe.
+ * ⚠️ COÛT : 7 écritures d'`int32_t` par seconde, sous le verrou LVGL que le
+ *    timer détient déjà. ⛔ Aucun dessin ici — le redessin de la page ouverte est
+ *    fait par `courbe_reparametrer()`, et lui seul.
+ */
+static void hist_tick(lv_timer_t *t)
+{
+    (void)t;
+    for (int c = 0; c < DN_UI_METRIQUES; c++) {
+        int s0 = -1, s1 = -1;
+        int n = dn_hist_series_de_case(c, &s0, &s1);
+        /* ⚠️ LE RÉGIME EST CELUI DE LA CASE, ⛔ pas celui du fil : c'est lui qui
+         *    porte le mock, et c'est lui que l'écran montre. Les deux doivent
+         *    raconter la même histoire. */
+        bool reelle = (s_wetat[c].regime == DN_VAL_REELLE);
+        if (s0 >= 0) {
+            dn_hist_poser(s0, s_dx[c][0], reelle && s_dx_connue[c][0]);
+        }
+        if (n == 2 && s1 >= 0) {
+            dn_hist_poser(s1, s_dx[c][1], reelle && s_dx_connue[c][1]);
+        }
+    }
+    /* La page ouverte suit l'anneau dans le MÊME tick — sinon la courbe
+     * n'avancerait qu'à la prochaine trame, c'est-à-dire jamais si la source
+     * s'est tue, et le trou ne se VERRAIT pas. */
+    if (s_vue == DN_VUE_DETAIL) {
+        courbe_reparametrer(s_metrique);
+    }
+}
+
 esp_err_t dn_ui_init(const dn_bootcfg_t *cfg, esp_err_t asset_err)
 {
     ESP_RETURN_ON_FALSE(cfg, ESP_ERR_INVALID_ARG, TAG, "cfg NULL");
@@ -3975,6 +4228,32 @@ esp_err_t dn_ui_init(const dn_bootcfg_t *cfg, esp_err_t asset_err)
                             NULL);
     build_scene();
     s_timer = lv_timer_create(label_tick, 1000, NULL);
+    /*
+     * 🔴 dn4-4 / AC5.3 — L'HISTORIQUE EST ALIMENTÉ **EN PERMANENCE**, PAR UNE
+     *    HORLOGE, ET IL DÉMARRE ICI.
+     *
+     * ⚠️ **ÉCART ASSUMÉ AVEC LA LETTRE DE LA STORY, ET SON MOTIF.** T6 écrit
+     *    « anneau alimenté depuis `case_poser` ». On ne le fait PAS, pour deux
+     *    raisons MESURÉES :
+     *    1. `case_poser` est *« le chemin le plus chaud de la vue détail »* —
+     *       `dn_ui.c` interdit explicitement d'y ajouter du coût, et AC2 le
+     *       redit. L'échantillonnage n'a rien à y faire.
+     *    2. 🔴 **SA CADENCE VARIE** : 1,0 poussée/s par métrique sous l'agent
+     *       réel (mesuré le 2026-08-24), mais jusqu'à 4/s sous un injecteur
+     *       rapide, et **0/s quand la source se tait** (`pousser_metrique` ne
+     *       pousse qu'au changement de `seq` ou d'état). Un anneau alimenté là
+     *       aurait un axe des temps qui s'étire et se contracte selon
+     *       l'émetteur — et il **gèlerait** au lieu de creuser un trou quand la
+     *       source meurt. La courbe mentirait sur la DURÉE, pas sur la valeur :
+     *       un mensonge plus difficile à voir.
+     *    ⇒ Une horloge à 1 Hz échantillonne l'état COURANT des six cases,
+     *      qu'une trame soit arrivée ou non. Source morte ⇒ **TROU**.
+     * ✅ ET ELLE TOURNE QUELLE QUE SOIT LA PAGE OUVERTE : sans ça, « historique
+     *    de session » serait un mot vide et chaque ouverture naîtrait sur une
+     *    courbe vierge.
+     */
+    dn_hist_init();
+    s_hist_timer = lv_timer_create(hist_tick, DN_HIST_PERIODE_MS, NULL);
     lvgl_port_unlock();
 
     s_int_apres = dn_measure_internal_free();
@@ -4134,8 +4413,27 @@ typedef struct {
     /* ⚠️ QUELLE unité s'applique — posé par celui qui a FORMATÉ, parce qu'il
      *    est le seul à connaître le NOMBRE. Le lire du texte serait deviner. */
     bool haute[DN_WIDGET_GRANDEURS_MAX];
+    /*
+     * 🔴 dn4-4 : LA VALEUR **NUMÉRIQUE**, EN DIXIÈMES — ET C'EST UN CHAMP NEUF,
+     *    ⛔ PAS UN DÉTOURNEMENT DE `brut[]`.
+     *    `dn_widget_etat_t.brut[0]` existe déjà, mais il porte l'**unité
+     *    AFFICHÉE** (`vue->v[0] / 10`) parce que la jauge travaille comme ça.
+     *    Y ranger des dixièmes multiplierait la jauge par 10 en silence ; en
+     *    lire des dixièmes diviserait la courbe par 10 tout aussi silencieusement.
+     *    ⇒ Deux unités, deux champs. C'est le même motif que `echelle_haute[]` :
+     *      **on ne déduit jamais une unité d'un nombre.**
+     * ⚠️ ET ON NE PEUT PAS LA RETROUVER DEPUIS `txt[]` : « 100,0 » ne dit pas
+     *    s'il s'agit de `Mo/s` ou de `Go/s` (échelle haute), et re-parser un
+     *    texte formaté pour en refaire un nombre est exactement l'aller-retour
+     *    que ce dépôt refuse.
+     * ⚠️ `dx_connue[i] == false` ⇒ **la grandeur est ABSENTE**, ⛔ pas « zéro ».
+     *    C'est W10 porté au domaine numérique.
+     */
+    int32_t dx[DN_WIDGET_GRANDEURS_MAX];
+    bool dx_connue[DN_WIDGET_GRANDEURS_MAX];
     uint8_t n;
 } dn_valeurs_t;
+
 
 /*
  * ── POSER L'ÉTAT D'UNE CASE ──────────────────────────────────────────────────
@@ -4169,6 +4467,15 @@ static void case_poser(int idx, dn_val_regime_t regime, const dn_valeurs_t *v,
          *    nombre exprimé en Mb/s — un mensonge d'une unité entière, et
          *    invisible. Même motif que le texte, remis à vide juste au-dessus. */
         e->echelle_haute[i] = (v && i < v->n) ? v->haute[i] : false;
+        /* 🔴 dn4-4 : MÊME RÈGLE QUE LE TEXTE, ET POUR LE MÊME MOTIF. Une valeur
+         *    non fournie REMET le drapeau à faux : un `dx` qui survivrait à sa
+         *    source ferait entrer dans l'historique, une seconde plus tard, un
+         *    chiffre que plus personne ne publie — et la courbe le dessinerait
+         *    comme du réel. C'est le mensonge de `dn2-2`, décalé dans le temps.
+         * ⛔ Ne jamais remplacer ce `false` par un `0` : zéro est une VALEUR. */
+        bool c = (v && i < v->n) ? v->dx_connue[i] : false;
+        s_dx_connue[idx][i] = c;
+        s_dx[idx][i] = c ? v->dx[i] : 0;
     }
     e->brut[0] = brut0;
     snprintf(e->secondaire, sizeof(e->secondaire), "%s", sec ? sec : "");
@@ -4604,6 +4911,14 @@ bool dn_ui_pc_maj(dn_link_metrique_t m, const dn_link_vue_t *vue,
     for (int i = 0; i < DN_WIDGET_GRANDEURS_MAX; i++) {
         val.txt[i] = txt[i];
         val.haute[i] = haute[i];
+        /* 🔴 dn4-4 : LA VALEUR DU FIL, EN DIXIÈMES, TELLE QUELLE.
+         * ⚠️ `ok` PORTE LA VIVACITÉ DE LA MÉTRIQUE : une source MORTE ne fournit
+         *    aucun point, elle fournit un TROU. Sans ce `ok &&`, l'historique
+         *    continuerait d'enregistrer la dernière valeur connue pendant que la
+         *    case, elle, affiche honnêtement « -- ». Deux vérités pour un écran. */
+        bool connue = ok && vue->n > i && vue->connue[i] && vue->v[i] >= 0;
+        val.dx_connue[i] = connue;
+        val.dx[i] = connue ? vue->v[i] : 0;
     }
     case_poser(idx, ok ? DN_VAL_REELLE : DN_VAL_ABSENTE, &val, brut0, sec,
                label_pose);
@@ -4860,6 +5175,46 @@ bool dn_ui_widget_jauge_rect(int idx, int *x, int *y, int *w, int *h,
     return true;
 }
 
+/* dn4-4 / AC4 — voir `dn_ui.h`. On relit le rectangle de la courbE **et** celui
+ * de son cadre : c'est le second qui dit la place DISPONIBLE, et c'est lui que
+ * `dn4-9` a facturé à 108 px. */
+bool dn_ui_detail_courbe_rect(int *x, int *y, int *w, int *h, int *w_cadre,
+                              int *h_cadre, bool *existe, bool *resolue)
+{
+    if (existe) {
+        *existe = false;
+    }
+    if (resolue) {
+        *resolue = false;
+    }
+    if (s_vue != DN_VUE_DETAIL || !s_det_courbe) {
+        return false;
+    }
+    if (!lvgl_port_lock(1000)) {
+        return false; /* ⛔ « pas mesuré », ⛔ pas « zéro » */
+    }
+    lv_area_t a;
+    lv_obj_get_coords(s_det_courbe, &a);
+    lv_obj_t *cadre = lv_obj_get_parent(s_det_courbe);
+    int cw = cadre ? (int)lv_obj_get_width(cadre) : -1;
+    int ch = cadre ? (int)lv_obj_get_height(cadre) : -1;
+    lvgl_port_unlock();
+    if (existe) {
+        *existe = true;
+    }
+    /* ⚠️ BORNES INCLUSIVES — même `+1` que pour la jauge. */
+    if (x) { *x = a.x1; }
+    if (y) { *y = a.y1; }
+    if (w) { *w = a.x2 - a.x1 + 1; }
+    if (h) { *h = a.y2 - a.y1 + 1; }
+    if (w_cadre) { *w_cadre = cw; }
+    if (h_cadre) { *h_cadre = ch; }
+    if (resolue) {
+        *resolue = (a.x2 > a.x1 && a.y2 > a.y1 && cw > 0 && ch > 0);
+    }
+    return true;
+}
+
 /*
  * ── LA VARIANTE MULTI-GRANDEURS (D6) — UNE CASE, DEUX GRANDEURS ──────────────
  *
@@ -4925,7 +5280,14 @@ bool dn_ui_ambiance_maj(int temp_dixiemes, int hum_dixiemes, bool valide,
     /* Un seul appel, donc un seul verrou, donc une seule trame : le motif de
      * `case_vive_poser` est désormais tenu par la STRUCTURE et non par la
      * discipline de l'appelant. */
-    dn_valeurs_t val = {.txt = {t_txt, h_txt}, .n = 2};
+    /* 🔴 dn4-4 : `AMBIANCE` EST LA SEULE PAGE À DEUX COURBES (addendum §1,
+     *    exception 1) — donc la SEULE case dont les DEUX grandeurs alimentent
+     *    l'historique. `ok` est déjà le ET des deux : un capteur qui rend une
+     *    grandeur aberrante n'est pas à moitié crédible, et sa courbe non plus. */
+    dn_valeurs_t val = {.txt = {t_txt, h_txt},
+                        .dx = {temp_dixiemes, hum_dixiemes},
+                        .dx_connue = {ok, ok},
+                        .n = 2};
     case_poser(DN_UI_CASE_AMB, ok ? DN_VAL_REELLE : DN_VAL_ABSENTE, &val, 0, NULL,
                label_pose);
     lvgl_port_unlock();

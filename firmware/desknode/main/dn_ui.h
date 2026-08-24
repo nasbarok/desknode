@@ -479,6 +479,18 @@ bool dn_ui_widget_pointeurs(int idx, int *n_grandeurs, bool *jauge, bool *sec);
 bool dn_ui_widget_jauge_rect(int idx, int *x, int *y, int *w, int *h,
                              bool *existe, bool *resolue);
 
+/*
+ * dn4-4 / AC4 — LE RECTANGLE RÉEL DE LA COURBE, dans son cadre de 108 px.
+ * ⛔ MÊME DOCTRINE QUE `dn_ui_widget_jauge_rect()` : la hauteur dont la courbe
+ *    DISPOSE ne se calcule pas de tête, elle se RELIT. `dn4-9` a payé exactement
+ *    ça sur le bloc de valeurs — son arithmétique avait oublié le `y = 14` du
+ *    label, et c'est la carte qui l'a corrigée une fois l'instrument capable de
+ *    voir la hauteur.
+ * `*existe` = la courbe est construite ; `*resolue` = la géométrie l'est.
+ */
+bool dn_ui_detail_courbe_rect(int *x, int *y, int *w, int *h, int *w_cadre,
+                              int *h_cadre, bool *existe, bool *resolue);
+
 /* ── LA CASE « AMBIANCE » : DEUX GRANDEURS DANS UNE CASE (D6, dn3-1) ──────────
  * Jusqu'à dn2-1 c'étaient DEUX cases (TEMP. idx 4, HUMIDITÉ idx 5). D6 les
  * fusionne en UNE case bi-grandeurs (idx 5) et libère idx 4 pour VENTILOS.

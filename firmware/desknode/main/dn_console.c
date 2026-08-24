@@ -22,6 +22,7 @@
 #include "dn_stimulus.h"
 #include "dn_touch.h"
 #include "fonts/dn_font.h"
+#include "dn_hist.h"
 #include "dn_ui.h"
 #include "dn_wifi.h"
 #include "driver/i2c_master.h"
@@ -3470,6 +3471,57 @@ static int cmd_widget(int argc, char **argv)
         return 0;
     }
 
+    /*
+     * ── dn4-4 / AC4 : `widget courbe` — LA PLACE DONT LA COURBE DISPOSE ──────
+     * ⛔ ELLE NE SE CALCULE PAS. `dn4-9` a payé exactement ce piege sur le bloc
+     *    de valeurs : son arithmetique avait oublie le `y = 14` du label, et
+     *    c'est la CARTE qui l'a corrigee une fois l'instrument capable de voir
+     *    la HAUTEUR. Un instrument aveugle a une dimension sur deux donne
+     *    l'illusion d'etre couvert.
+     */
+    if (argc == 2 && strcmp(argv[1], "courbe") == 0) {
+        int x = 0, y = 0, w = 0, h = 0, wc = 0, hc = 0;
+        bool existe = false, resolue = false;
+        if (!dn_ui_detail_courbe_rect(&x, &y, &w, &h, &wc, &hc, &existe,
+                                      &resolue)) {
+            printf("aucune courbe a mesurer : le detail n'est pas affiche, ou\n");
+            printf("le verrou LVGL n'est pas pris. `nav open <idx>` d'abord.\n");
+            printf("⛔ Repondre quand meme inventerait une geometrie.\n");
+            return 1;
+        }
+        printf("COURBE du detail « %s » — RELUE des coordonnees LVGL :\n",
+               dn_ui_metrique_nom(dn_ui_metrique()));
+        if (!resolue) {
+            printf("  ⏳ GEOMETRIE NON RESOLUE (x=%d y=%d w=%d h=%d cadre %dx%d).\n",
+                   x, y, w, h, wc, hc);
+            printf("  ⛔ AUCUN verdict : relancer apres un cycle d'affichage.\n");
+            return 0;
+        }
+        printf("  courbe : x = %d..%d (%d px)   y = %d..%d (%d px)\n", x,
+               x + w - 1, w, y, y + h - 1, h);
+        printf("  cadre  : %d x %d px\n", wc, hc);
+        printf("  ⚠️ bornes INCLUSIVES cote LVGL — le +1 est fait ici.\n");
+        /* 🔴 L'INVARIANT DU TEMPLATE, VERIFIE ET NON RECITE. Le bas du cadre est
+         *    a 370 depuis dn4-6 (205+165) puis dn4-9 (262+108), et le panneau du
+         *    bas est a 385. `dn_ui.c` demande de LE VERIFIER a chaque fois qu'on
+         *    touche ces deux nombres — voila l'instrument qui le fait. */
+        {
+            int bas_cadre = 262 + hc;
+            printf("  ── l'invariant du template ──\n");
+            printf("     bas du cadre de courbe : 262 + %d = %d", hc, bas_cadre);
+            if (bas_cadre == 370) {
+                printf("   ✅ INCHANGE (370)\n");
+            } else {
+                printf("   🔴 A CHANGE (attendu 370)\n");
+                printf("     ⇒ Le DIRE et REECRIRE l'invariant, ⛔ pas le casser\n");
+                printf("       en silence. Le panneau du bas est a 385.\n");
+            }
+            printf("     ecart au panneau du bas (385) : %d px\n",
+                   385 - bas_cadre);
+        }
+        return 0;
+    }
+
     if (argc == 3 && strcmp(argv[1], "replacer") == 0) {
         bool on;
         if (!parse_on_off(argv[2], &on)) {
@@ -4270,7 +4322,8 @@ static int cmd_widget(int argc, char **argv)
         printf("        | grille <barre> <menu>                 ⚠️ RECONSTRUIT\n");
         printf("      dn4-6 — les instruments (ne reconstruisent PAS) :\n");
         printf("        | largeur [<texte>|reset] | detail | replacer on|off\n"
-           "        | jauge [<case>]   (dn4-4/AC9 : le rectangle REEL de la barre)\n");
+           "        | jauge [<case>]   (dn4-4/AC9 : le rectangle REEL de la barre)\n"
+           "        | courbe           (dn4-4/AC4 : la place REELLE de la courbe)\n");
         return 1;
     }
 
@@ -7587,6 +7640,53 @@ static int cmd_w2(int argc, char **argv)
     return 0;
 }
 
+/*
+ * ── dn4-4 / AC5.6 : `hist` — LE COUT DE L'HISTORIQUE, ET SON HONNETETE ───────
+ *
+ * 🔴 IL PUBLIE LES TROUS AUTANT QUE LES POINTS. Une courbe qui « a l'air
+ *    remplie » sans qu'on sache combien de ses points sont reels est
+ *    exactement le genre de dessin auquel ce depot ne fait pas confiance :
+ *    `reels` / `trous` sont donc COMPTES, par serie.
+ * ⚠️ LE COUT EN RAM SE LIT ICI **ET** DANS `mem`. Les 3 360 o vivent en `.bss`
+ *    interne : ils apparaissent donc bien dans « RAM interne libre », ⛔ pas dans
+ *    le tas LVGL (qui, lui, ne voit QUE les objets `lv_chart`).
+ */
+static int cmd_hist(int argc, char **argv)
+{
+    (void)argc;
+    (void)argv;
+    static const char *k_nom[DN_HIST_N_SERIES] = {
+        "CPU", "GPU", "RAM", "RESEAU", "DISQUE", "AMBIANCE T", "AMBIANCE RH",
+    };
+    printf("historique de session (dn4-4) — EN RAM, ⛔ AUCUNE ecriture NVS/flash (D4)\n");
+    printf("  %d series x %d points x 4 o = %u o, en .bss INTERNE\n",
+           DN_HIST_N_SERIES, DN_HIST_N_POINTS, (unsigned)dn_hist_octets());
+    printf("  cadence : %d ms — une HORLOGE, ⛔ pas la cadence des trames\n",
+           DN_HIST_PERIODE_MS);
+    printf("  profondeur : %d points a 1 Hz = %d s de session\n",
+           DN_HIST_N_POINTS, DN_HIST_N_POINTS * DN_HIST_PERIODE_MS / 1000);
+    printf("\n  serie         reels  trous       min        max\n");
+    for (int i = 0; i < DN_HIST_N_SERIES; i++) {
+        int r = dn_hist_reels(i);
+        int32_t mn = 0, mx = 0;
+        printf("   %-12s %5d  %5d", k_nom[i], r, DN_HIST_N_POINTS - r);
+        if (dn_hist_minmax(i, &mn, &mx)) {
+            /* ⚠️ EN DIXIEMES, ET C'EST DIT : cet instrument ne connait ni les
+             *    unites ni les echelles hautes — c'est la PAGE qui les porte.
+             *    Publier « 1000 » sans dire « dixiemes » aurait fabrique un
+             *    facteur 10 dans un dossier de mesure. */
+            printf("  %8ld   %8ld  (dixiemes)\n", (long)mn, (long)mx);
+        } else {
+            printf("        --         --   (QUE DES TROUS)\n");
+        }
+    }
+    printf("\n⛔ UN TROU N'EST PAS UN ZERO. Une valeur absente, perimee, ou\n");
+    printf("   SIMULEE (mock, `widget pousser`) n'entre PAS dans une serie\n");
+    printf("   presentee comme reelle : elle y creuse un trou, que `lv_chart`\n");
+    printf("   SAUTE au trace. C'est la regle W10/AC5 de dn4-1, portee au temps.\n");
+    return 0;
+}
+
 static const esp_console_cmd_t k_cmds[] = {
     DN_CMD("scene",
            "affiche une mire : bits|nbits|rgb|red|green|blue|white|black|frame|gray|asset",
@@ -7675,6 +7775,13 @@ static const esp_console_cmd_t k_cmds[] = {
     DN_CMD("wifi", "wifi [info] | on <ssid> <mdp> | off | ws on|off — branche B "
                    "(dn2-2)",
            cmd_wifi),
+    /* ⚠️ INSCRITE ICI **ET** DANS LE README dans le même geste — dn2-1 avait
+     * oublié `capteurs` au README, et une commande qu'on ne trouve que depuis
+     * la carte n'est pas documentée. */
+    DN_CMD("hist",
+           "historique de session (dn4-4) : coût RAM, points réels et TROUS par "
+           "série",
+           cmd_hist),
     /* ⚠️ INSCRITE ICI **ET** DANS LE « Jeu complet » DU README dans le même
      * geste : dn2-1 avait oublié `capteurs` dans le README, et une commande
      * qu'on ne trouve que depuis la carte n'est pas documentée. */
