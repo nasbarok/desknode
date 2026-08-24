@@ -3601,9 +3601,9 @@ static int cmd_widget(int argc, char **argv)
             } else {
                 printf("     (aucune demande depuis le dernier `touch reset`)\n");
             }
-            printf("     ⚠️ CUMULATIFS depuis `touch reset` (⛔ c'est bien LUI qui\n");
-            printf("        remet les compteurs UI a zero, ⛔ pas `widget`).\n");
-            printf("        regime : remettre a zero, laisser tourner, relire.\n");
+            printf("     ⚠️ CUMULATIFS. Pour mesurer un REGIME : `touch reset`,\n");
+            printf("        laisser tourner, relire. ⛔ C'est bien `touch reset`\n");
+            printf("        qui remet les compteurs UI a zero, ⛔ pas `widget`.\n");
         }
         printf("  ── la GARDE DE HAUTEUR, ce qu'ELLE a vu au dernier passage ──\n");
             printf("     passages : %lu   cris : %lu\n", (unsigned long)np,
