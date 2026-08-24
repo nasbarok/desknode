@@ -121,13 +121,37 @@ class Lhm(object):
                     #    chose. (revue dn4-8, 2026-08-21)
                     att = _FAMILLE_ATTENDUE.get(ident)
                     if att is not None and m.group(1) != att:
-                        raise RuntimeError(
+                        # 🔴 2e REVUE (2026-08-24) — « SESSION JETEE » NE JETAIT
+                        #    RIEN. Ce `raise` est A L'INTERIEUR du `try` de la
+                        #    boucle de reconnexion `for dernier in (False, True)`:
+                        #    il etait donc (a) rattrape par l'`except Exception`
+                        #    ci-dessous, la connexion fermee, LA LECTURE RETENTEE ;
+                        #    puis (b) au 2e passage il remontait dans
+                        #    `except Exception as exc: pannes += 1`, qui n'imprime
+                        #    que `type(exc).__name__` — LE TEXTE QUI PORTE LE
+                        #    DIAGNOSTIC ETAIT JETE — et la session CONTINUAIT
+                        #    jusqu'au bout, puis publiait un verdict W2 sur la
+                        #    moitie d'avant le renommage. A partir du 2e evenement,
+                        #    `if pannes == 1` faisait qu'il ne s'imprimait plus RIEN.
+                        # ⇒ EXCEPTION DEDIEE : elle traverse la reconnexion ET la
+                        #   boucle de tir, et elle ABORTE. Une session dont l'unite
+                        #   a change en cours de route n'est pas une session.
+                        raise UniteChangee(
                             "⛔ SESSION JETEE : `%s` arrive en famille `%s` au "
                             "lieu de `%s` — L'UNITE A CHANGE. Un verdict W2 sur "
                             "cette grandeur porterait sur autre chose."
                             % (ident, m.group(1), att))
                     t[ident] = v
                 return t
+            except UniteChangee:
+                # ⛔ ON NE RETENTE PAS : rien ne se repare en relisant.
+                try:
+                    if self.c:
+                        self.c.close()
+                except Exception:
+                    pass
+                self.c = None
+                raise
             except Exception:
                 try:
                     if self.c:
@@ -137,6 +161,17 @@ class Lhm(object):
                 self.c = None
                 if dernier:
                     raise
+
+
+
+class UniteChangee(Exception):
+    """L'unite d'une sonde a change EN COURS DE SESSION.
+
+    ⛔ CE N'EST PAS UNE PANNE DE LECTURE, et ca ne se retente pas : les
+       echantillons d'avant et d'apres ne mesurent pas la meme chose. Exception
+       DEDIEE pour qu'elle traverse la boucle de reconnexion sans etre avalee —
+       defaut trouve en 2e revue, 2026-08-24.
+    """
 
 
 # 🔴 LE PRODUIT EST IMPORTE, ⛔ SA QUANTIFICATION N'EST PLUS RECOPIEE.
@@ -182,7 +217,7 @@ FAN_REAR = _PAR_CLE["fan.rear_out"][0]
 _FAMILLE_ATTENDUE = {ident: fam for ident, fam in _PAR_CLE.values()}
 
 
-def affichee(v, precision):
+def affichee(v, precision, borne=None):
     """La valeur telle que la DALLE l'ecrirait. ⛔ C'est elle qu'on juge.
 
     Chaine COMPLETE et REELLE : `dn_agent._dx()` (reel -> dixiemes entiers, ce qui
@@ -191,8 +226,23 @@ def affichee(v, precision):
     """
     if v is None:
         return None
-    # dixiemes entiers, EXACTEMENT comme l'agent les met sur le fil
-    mag = dn_agent._dx(v, 10 ** 9, {}, "w2")
+    # 🔴 2e REVUE (2026-08-24) — DEUX ETAPES DU PRODUIT ETAIENT COURT-CIRCUITEES,
+    #    ET L'INSTRUMENT ACCUSAIT UNE SONDE QUE LE PRODUIT AVAIT BIEN CLASSEE.
+    #  (a) LE SIGNE. `_dx()` ECRETE un negatif a **0** et le compte. Mais le
+    #      produit, lui, transforme d'abord une valeur LHM negative en `None`
+    #      (`dn_agent._lire()`, compteur `:negatif`) — donc la dalle ecrit « -- ».
+    #      Un tachymetre a -1 (cas assez reel pour que le stub ait un
+    #      `--mode negatif` DEDIE) faisait enregistrer `0.0` par l'instrument : une
+    #      serie de zeros constants ecrase sigma (C3) et le taux (C2) ⇒ 🔴 NE
+    #      QUALIFIE PAS, sur une sonde qui disait honnetement « je ne sais pas ».
+    #  (b) LE PLAFOND. `10 ** 9` au lieu des `BORNES` de la metrique, alors que le
+    #      firmware REJETTE au-dela (`rejets_bornes`) : l'instrument jugeait une
+    #      valeur que la dalle n'ecrirait jamais.
+    # ⛔ La docstring promet « la valeur telle que la DALLE l'ecrirait » : elle est
+    #    tenue, ou elle est fausse.
+    if v < 0:
+        return None
+    mag = dn_agent._dx(v, borne if borne is not None else 10 ** 9, {}, "w2")
     if precision == "dixieme":
         return mag / 10.0
     # ⚠️ firmware `fmt_grandeur()` en precision ENTIERE : (mag + 5) / 10,
@@ -206,13 +256,19 @@ def echantillon(t):
     # ⚠️ MEME REGLE QUE L'AGENT : la moyenne EXIGE LES DEUX canaux. Une moyenne
     #    sur un seul est un AUTRE nombre sous la meme etiquette.
     moy = (top + rear) / 2.0 if (top is not None and rear is not None) else None
+    # ⚠️ LES PLAFONDS VIENNENT DU PRODUIT (`dn_agent.BORNES`), ⛔ pas d'un
+    #    `10 ** 9` qui laisserait passer ce que le firmware REJETTE. Indices :
+    #    `cpu[3]` = la °C ; `disk[1..3]` = extraction / noctua / boitier.
+    _b = dn_agent.BORNES
     return {
-        "cpu.degc": affichee(t.get(TEMP_CPU), "dixieme"),
-        "disk.extraction_moy": affichee(moy, "entier"),
-        "disk.cpu_noctua": affichee(t.get(FAN_NOCTUA), "entier"),
-        "disk.case_group": affichee(t.get(FAN_CASE), "entier"),
-        "fan.top_out": affichee(top, "entier"),
-        "fan.rear_out": affichee(rear, "entier"),
+        "cpu.degc": affichee(t.get(TEMP_CPU), "dixieme", _b["cpu"][3]),
+        "disk.extraction_moy": affichee(moy, "entier", _b["disk"][1]),
+        "disk.cpu_noctua": affichee(t.get(FAN_NOCTUA), "entier", _b["disk"][2]),
+        "disk.case_group": affichee(t.get(FAN_CASE), "entier", _b["disk"][3]),
+        # ⚠️ `top`/`rear` ne sont PAS publies tels quels sur le fil (seule leur
+        #    moyenne l'est) : ils gardent donc le plafond de la grandeur derivee.
+        "fan.top_out": affichee(top, "entier", _b["disk"][1]),
+        "fan.rear_out": affichee(rear, "entier", _b["disk"][1]),
     }
 
 
@@ -275,10 +331,24 @@ def cadence_lhm(lhm, secondes=40.0, periode=0.2, toutes=True):
             medianes.append((k, med_k))
             print("  %-22s %3d chgts | mediane %5.2f s | min %5.2f | max %5.2f | %.3f Hz"
                   % (k, len(ch), med_k, min(ec), max(ec), 1.0 / med_k))
-        if not medianes:
-            print("[w2] ⚠️ AUCUNE des %d sondes n'a rendu 5 changements en %.0f s : "
-                  "CADENCE NON DETERMINEE. ⛔ Ne pas conclure « LHM est fige », et "
-                  "⛔ ne pas publier de plafond." % (len(cles), secondes))
+        # 🔴 2e REVUE (2026-08-24) — « LES QUATRE, OU RIEN » N'ETAIT TOUJOURS PAS
+        #    APPLIQUE. Le commentaire au-dessus de ce bloc dit mot pour mot « UNE
+        #    SEULE SONDE NE SUFFIT PAS A ETABLIR UNE CADENCE … Les quatre, ou
+        #    rien », et le commentaire de revue du 2026-08-21 affirmait l'avoir
+        #    corrige. Le code ecrivait `if not medianes:` — c'est-a-dire AU MOINS
+        #    UNE. PawnIO decharge pendant la fenetre ⇒ les trois `tr/min` ne
+        #    changent jamais ⇒ seule `cpu.degc` qualifie ⇒ SA cadence devient le
+        #    DENOMINATEUR DE C2 POUR LES QUATRE GRANDEURS. Et le garde-fou
+        #    « les sondes ne s'accordent pas » ne peut pas tirer non plus
+        #    (`len(vals) > 1` est faux).
+        if len(medianes) < len(cles):
+            muettes = sorted(set(cles) - {k for k, _ in medianes})
+            print("[w2] ⚠️ %d/%d sonde(s) seulement ont rendu 5 changements en "
+                  "%.0f s (muettes : %s) : CADENCE NON DETERMINEE. ⛔ Ne pas "
+                  "conclure « LHM est fige », ⛔ ne pas publier de plafond, et "
+                  "⛔ SURTOUT ne pas faire de la cadence d'UNE sonde le "
+                  "denominateur de C2 pour LES QUATRE."
+                  % (len(medianes), len(cles), secondes, ", ".join(muettes)))
             return None
         vals = [m for _, m in medianes]
         med = statistics.median(vals)
@@ -289,8 +359,21 @@ def cadence_lhm(lhm, secondes=40.0, periode=0.2, toutes=True):
                   "(%.2f..%.2f s, mediane %.2f s). ⛔ Le denominateur de C2 est "
                   "donc INCERTAIN, et c'est publie AVEC le verdict."
                   % (min(vals), max(vals), med))
+        # 🔴 PLEINE PRECISION — 2e REVUE (2026-08-24), ET LE TROU EST MESURE.
+        #    La cadence n'etait imprimee QU'ARRONDIE a 2 decimales, et le CSV ne
+        #    la porte pas : `--rejuger` ne pouvait donc PAS reproduire un verdict
+        #    publie. Constate en re-jugeant le tir de §19 avec `--periode-lhm 4.01`
+        #    (la valeur LUE dans le log) : `disk.cpu_noctua` rendait **96,1 %**
+        #    contre **96,0 %** publie. Les deux formules donnent pourtant
+        #    exactement 96,0554 % sur ces donnees — l'ecart venait UNIQUEMENT de
+        #    l'ARRONDI de l'entree qu'on relit.
+        # ⛔ Un instrument dont on ne peut pas rejouer le verdict publie n'est pas
+        #    reproductible, meme s'il est juste.
         print("[w2] cadence LHM MESUREE sur %d/%d sonde(s) : mediane des medianes "
               "%.2f s (~%.2f Hz)" % (len(medianes), len(cles), med, 1.0 / med))
+        print("[w2] \U0001f3af CADENCE A REPORTER TELLE QUELLE dans `--periode-lhm` "
+              "pour rejouer CE verdict : %.9f  (\u26d4 pas la valeur arrondie "
+              "ci-dessus)" % med)
         if med > 1.05:
             print("[w2] 🔴 LHM RAFRAICHIT PLUS LENTEMENT QUE 1 Hz. ⛔ Echantillonner "
                   "a 1 Hz DUPLIQUERAIT des valeurs et FABRIQUERAIT de la stabilite.")
@@ -313,6 +396,8 @@ def cadence_lhm(lhm, secondes=40.0, periode=0.2, toutes=True):
     med = statistics.median(ecarts)
     print("[w2] cadence LHM MESUREE : %d changement(s) en %.0f s, intervalle "
           "median %.2f s (~%.2f Hz)" % (len(chg), secondes, med, 1.0 / med))
+    print("[w2] \U0001f3af CADENCE A REPORTER TELLE QUELLE dans `--periode-lhm` : "
+          "%.9f  (\u26d4 pas la valeur arrondie ci-dessus)" % med)
     if med > 1.05:
         print("[w2] \U0001f534 LHM RAFRAICHIT PLUS LENTEMENT QUE 1 Hz. ⛔ Echantillonner "
               "a 1 Hz DUPLIQUERAIT des valeurs et FABRIQUERAIT de la stabilite : "
@@ -320,9 +405,26 @@ def cadence_lhm(lhm, secondes=40.0, periode=0.2, toutes=True):
     return med
 
 
-def juger(nom, famille, vals, periode_lhm=None, periode_ech=1.0):
+def juger(nom, famille, vals, periode_lhm=None, periode_ech=None, n_lignes=None):
     """⚠️ `periode_lhm` est la cadence MESUREE de la source. Sans elle, C2 ne peut
-    pas etre juge : on ne connait pas le nombre d'OCCASIONS."""
+    pas etre juge : on ne connait pas le nombre d'OCCASIONS.
+
+    🔴 `n_lignes` AJOUTE EN 2e REVUE (2026-08-24) — SANS LUI, C2 POUVAIT DEPASSER
+       100 % ET QUALIFIER QUAND MEME. `occasions` se calculait
+       `(len(v) - 1) * periode_ech / periode_lhm` ou `v` est la liste des valeurs
+       **PRESENTES**, ⛔ pas le nombre de lignes : des qu'une sonde est absente sur
+       une partie de la session, le denominateur retrecit pendant que `chg` reste
+       compte A TRAVERS LES TROUS. MESURE sur le CSV reel avec `cpu.degc` videe une
+       ligne sur deux :
+           C2 181.2 % des OCCASIONS (119 occ., 216 chgt) >= 60.0 % OK
+              (soit 45.2 % des echantillons ; plafond atteignable 24.9 %)
+           => ✅ QUALIFIE
+       Trois nombres impossibles cote a cote, et un verdict vert sur une grandeur
+       qui change a 45 % de ses occasions REELLES, donc SOUS le seuil.
+    ⇒ La duree observee vient du nombre de LIGNES de la session, ⛔ pas du nombre
+      de valeurs presentes. Et un `pct_occ > 100` est desormais IMPOSSIBLE par
+      construction : s'il survient, c'est un DEFAUT D'INSTRUMENT et il se DIT.
+    """
     c1min, c3min, unite, _prec = SEUILS[famille]
     v = [x for x in vals if x is not None]
     if len(v) < 2:
@@ -336,11 +438,30 @@ def juger(nom, famille, vals, periode_lhm=None, periode_ech=1.0):
     #    est la duree observee divisee par la periode de rafraichissement de LHM.
     # ⛔ SANS CADENCE MESUREE, C2 N'EST PAS JUGEABLE — et on le DIT, on ne retombe
     #    pas sur un seuil absolu qui mesurerait notre echantillonnage.
-    if periode_lhm and periode_lhm > 0:
-        occasions = (len(v) - 1) * periode_ech / periode_lhm
+    # ⚠️ LES **DEUX** CADENCES SONT REQUISES (2e revue) : celle de LHM ET
+    #    l'espacement MESURE des echantillons. Il manquait la seconde.
+    if periode_lhm and periode_lhm > 0 and periode_ech and periode_ech > 0:
+        # 🔴 LA DUREE OBSERVEE EST CELLE DE LA SESSION, ⛔ pas celle des valeurs
+        #    presentes. `n_lignes` par defaut retombe sur `len(vals)` — la liste
+        #    COMPLETE, trous compris — donc jamais sur `len(v)`.
+        etendue_n = (n_lignes if n_lignes is not None else len(vals))
+        occasions = max(etendue_n - 1, 0) * periode_ech / periode_lhm
         pct_occ = 100.0 * chg / occasions if occasions > 0 else 0.0
         c2 = pct_occ >= C2_OCCASIONS_MIN
+        # ⛔ UN TAUX D'OCCASIONS > 100 % EST ARITHMETIQUEMENT IMPOSSIBLE : il y
+        #    aurait plus de changements que d'occasions de changer. S'il apparait,
+        #    c'est l'INSTRUMENT qui est faux, ⛔ pas la sonde qui est excellente.
+        #    On refuse de juger plutot que de publier un verdict impossible.
+        if pct_occ > 100.0 + 1e-9:
+            print("  %-22s ⛔ C2 IMPOSSIBLE : %.1f %% des occasions (%.0f occ., "
+                  "%d chgt) — un taux > 100 %% signale un DEFAUT D'INSTRUMENT "
+                  "(trous dans la serie ?), \u26d4 PAS une sonde exceptionnelle. "
+                  "NON JUGEABLE." % (nom, pct_occ, occasions, chg))
+            c2 = None
     else:
+        if periode_lhm and periode_lhm > 0 and not periode_ech:
+            print("  %-22s ⛔ C2 NON JUGEABLE : espacement des echantillons NON "
+                  "MESURE. \u26d4 On ne retombe PAS sur 1,0 s suppose." % nom)
         occasions, pct_occ, c2 = None, None, None
     c1, c3 = etendue >= c1min, sigma >= c3min
     # 🔴 `ok` valait `bool(c1) and bool(None) and bool(c3)` = **False** quand C2
@@ -427,8 +548,16 @@ def analyser(lignes, periode_lhm=None):
                   "compte. Un `periode_ech` code en dur aurait fausse le verdict.")
     res = {}
     for nom, fam in GRANDEURS:
+        # 🔴 2e REVUE (2026-08-24) : `pe if pe else 1.0` REINTRODUISAIT LE 1.0 EN
+        #    DUR QUE LE MESSAGE VENAIT D'INTERDIRE. Quand `periode_mesuree()` rend
+        #    `None`, l'outil imprimait « ⛔ ESPACEMENT NON MESURABLE — C2 ne sera
+        #    pas juge », puis appelait `juger` avec 1.0, et `juger` ne conditionnait
+        #    C2 qu'a `periode_lhm` : **C2 etait donc juge sur un espacement SUPPOSE**
+        #    — exactement le defaut que la docstring de `periode_mesuree` dit fermer.
+        # ⇒ ON PASSE `None`, ET `juger` REFUSE DE JUGER C2. Une annonce et un
+        #   comportement qui se contredisent, c'est l'annonce qui ment.
         res[nom] = juger(nom, fam, [l[nom] for l in lignes], periode_lhm,
-                         pe if pe else 1.0)
+                         periode_ech=pe, n_lignes=len(lignes))
 
     # 🔴 σ PAR CANAL SUR **LES SIX**, ET LA CORRELATION — ajoutes en revue
     #    (2026-08-21). §17.3 publiait un σ par canal et un `r = 0,955` presentes
@@ -486,6 +615,42 @@ def relire_csv(chemin):
     return lignes
 
 
+def _sortie(res):
+    """Traduit le verdict W2 en CODE DE SORTIE. ⛔ Il n'y en avait AUCUN.
+
+    🔴 2e REVUE (2026-08-24) — CET INSTRUMENT NE POUVAIT PAS ECHOUER, ET LA STORY
+       CITAIT SON `exit 0` COMME UN CONTROLE D'AC4. `analyser()` construisait
+       `res[nom] = juger(...)` et le RENDAIT ; `main()` le JETAIT et faisait
+       `return 0` sur les trois branches. La revue du 2026-08-21 avait patche
+       `juger()` pour rendre `None` sur « NON JUGEABLE » — mais PERSONNE NE LISAIT
+       LE VERDICT. `exit 0` etait satisfait par : les quatre grandeurs en echec ·
+       C2 non jugeable sur les quatre · `n = 2` · un CSV de deux lignes.
+    ⚠️ Les quatre autres instruments du meme lot rendent bien 1 sur echec
+       (`campagne_bruit:353`, `verif_source:427`, `recompte_trame:234`,
+       `regime_reel:283`). La correction avait oublie celui dont la sortie PORTE
+       le verdict d'AC4.
+    ⛔ ET « NON JUGEABLE » N'EST NI UN SUCCES NI UN ECHEC — c'est la doctrine
+       ecrite dans `juger()`. Il sort donc en **2**, ⛔ pas en 0 : un tir qui ne
+       peut pas juger ne prouve pas un AC.
+    """
+    if not res:
+        print("\n\u2716\ufe0f  AUCUNE GRANDEUR JUGEE — \u26d4 ce tir ne prouve rien.")
+        return 2
+    echecs = sorted(k for k, v in res.items() if v is False)
+    indecis = sorted(k for k, v in res.items() if v is None)
+    if echecs:
+        print("\n\u2716\ufe0f  %d GRANDEUR(S) NE QUALIFIENT PAS : %s"
+              % (len(echecs), ", ".join(echecs)))
+        return 1
+    if indecis:
+        print("\n\u26a0\ufe0f  %d GRANDEUR(S) NON JUGEABLE(S) : %s"
+              % (len(indecis), ", ".join(indecis)))
+        print("   \u26d4 NI succes NI echec — mais ce tir ne solde PAS AC4.")
+        return 2
+    print("\n\u2705 LES %d GRANDEURS QUALIFIENT." % len(res))
+    return 0
+
+
 def main():
     for f in (sys.stdout, sys.stderr):
         try:
@@ -513,14 +678,18 @@ def main():
             print("[w2] periode LHM FOURNIE : %.2f s (⚠️ mesuree ailleurs, ⛔ pas "
                   "supposee) => plafond atteignable %.1f %% a 1 Hz"
                   % (a.periode_lhm, 100.0 / a.periode_lhm))
-        analyser(relire_csv(a.rejuger), a.periode_lhm or None)
-        return 0
+        return _sortie(analyser(relire_csv(a.rejuger), a.periode_lhm or None))
 
     if a.cadence:
         print("=" * 84)
         print("CADENCE PROPRE DE LHM — \u26d4 mesuree, PAS supposee")
         print("=" * 84)
-        cadence_lhm(Lhm(), secondes=a.cadence, periode=0.1, toutes=True)
+        med = cadence_lhm(Lhm(), secondes=a.cadence, periode=0.1, toutes=True)
+        # ⚠️ `--cadence` MESURE : si la cadence n'est pas determinee, il n'y a rien
+        #    a publier, et ⛔ ca ne se dit pas par `exit 0`.
+        if med is None:
+            print("\n\u2716\ufe0f  CADENCE NON DETERMINEE — \u26d4 rien a publier.")
+            return 2
         return 0
 
     print("=" * 84)
@@ -579,6 +748,15 @@ def main():
                           "C2 utilisera l'espacement MESURE dans `t_s`." % retard)
             try:
                 e = echantillon(lhm.lire())
+            except UniteChangee as exc:
+                # 🔴 LA SESSION EST JETEE POUR DE BON, ET LE MOTIF EST IMPRIME
+                #    EN ENTIER — c'est lui qui dit QUELLE famille a change.
+                print("\n\u2716\ufe0f  %s" % exc)
+                print("   \u26d4 AUCUN VERDICT W2 N'EST PUBLIE : la moitie d'avant le "
+                      "renommage porterait sur une AUTRE grandeur.")
+                if f:
+                    f.close()
+                return 1
             except Exception as exc:
                 pannes += 1
                 if pannes == 1:
@@ -606,14 +784,14 @@ def main():
     if len(lignes) < 900:
         print("[w2] \u26a0\ufe0f n < 900 : le critere gele annoncait n >= 900. ⛔ Le verdict "
               "ci-dessous vaut pour CE n, et il est publie avec.")
-    analyser(lignes, periode)
+    res = analyser(lignes, periode)
     print("\n\u26a0\ufe0f TIR AU REPOS — decision owner du 2026-08-21. La phase de CHARGE "
           "exigee par le critere N'EST PAS couverte.")
     print("   \u26d4 Une NON-qualification est donc NON CONCLUANTE (une session plate "
           "n'est pas une sonde morte).")
     print("   \u2705 Une QUALIFICATION, elle, reste VALIDE : ce qui bouge assez au repos "
           "bouge a fortiori sous charge.")
-    return 0
+    return _sortie(res)
 
 
 if __name__ == "__main__":
