@@ -119,9 +119,18 @@ def cmd(ser, commande, timeout=5.0):
     ser.reset_input_buffer()
     ser.write((commande + "\n").encode("ascii"))
     ser.flush()
+    # 🔴 LES DEUX HORLOGES DOIVENT ETRE LA MEME. Regression introduite le
+    #    2026-08-24 en convertissant `time.time()` -> `time.monotonic()` : `fin`
+    #    avait ete converti, ⛔ PAS la comparaison. `monotonic()` rend l'uptime
+    #    (~2e5) et `time()` l'epoch (~1,7e9), donc `time.time() < fin` etait FAUX
+    #    IMMEDIATEMENT : la boucle ne tournait JAMAIS, `buf` restait vide, et
+    #    l'instrument levait « ligne `rejets :` introuvable » SUR UNE CARTE QUI
+    #    REPOND PARFAITEMENT. ⛔ Un instrument faux accuse le sujet sain.
+    # ⚠️ CAUSE DE LA FAUTE : la conversion a ete faite sur une liste `grep`
+    #    TRONQUEE — elle annoncait 6 occurrences et n'en listait que 5.
     fin = time.monotonic() + timeout
     buf = b""
-    while time.time() < fin:
+    while time.monotonic() < fin:
         buf += ser.read(4096)
         if b"desknode>" in buf:
             break
@@ -150,8 +159,20 @@ def main():
     try:
         cmd(ser, "")                       # reveil
         avant_txt = cmd(ser, "pc")
-        avant = _extraire(avant_txt)
-        avant_tr = _extraire_trames(avant_txt)
+        # ⚠️ LA BASELINE AUSSI (2026-08-24, 2e passe). Le correctif de revue avait
+        #    protege l'extraction d'APRES et oublie celle d'AVANT : un traceback nu
+        #    sortait encore, a la place du message qui dit quoi faire. Le defaut
+        #    qu'on pretend fermer se ferme des DEUX cotes, ou il n'est pas ferme.
+        try:
+            avant = _extraire(avant_txt)
+            avant_tr = _extraire_trames(avant_txt)
+        except RuntimeError as exc:
+            print("\n\u2716\ufe0f  LECTURE DE BASELINE INEXPLOITABLE : %s" % exc)
+            print("   \u26d4 NE PAS CONCLURE : sans compteurs AVANT, aucun delta n'est "
+                  "calculable.")
+            print("   \u21d2 la carte repond-elle ? `dn_console.py \"pc\"`. Sinon, "
+                  "refaire le tir.")
+            return 1
         print("[regime] compteurs de rejet AVANT : %s" % avant)
         print("[regime] compteurs de RECEPTION AVANT : %s" % avant_tr)
     finally:

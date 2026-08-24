@@ -2078,3 +2078,81 @@ pas réécrit en silence.
 2. ⚠️ **MARGE ZÉRO EN HAUTEUR sur le pire cas `DISQUE`** : `14 + 140 = 154 ≤ 154`. L'arithmétique et
    l'œil **CONCORDENT** (*« sur la limite mais ça rentre »*). ⛔ Ce n'est **pas** une régression de
    `dn4-8` : les icônes s'insèrent DANS la ligne, elles n'en ajoutent aucune.
+
+---
+
+## 22. 🎯 SÉANCE DU 2026-08-24 (suite) — §18.2 ET §18.3 SONT RÉGÉNÉRÉES
+
+Les deux campagnes de séance avaient été **déclarées MORTES** par la 2ᵉ revue : leurs instruments
+avaient changé. ⛔ On ne republie pas un chiffre produit par un instrument qui n'existe plus.
+**Firmware `d379c0d`**, SHA **lu au bandeau**, `porcelain` vérifié vide avant le flash.
+
+### 22.1 AC7 — la campagne de bruit, REJOUÉE : **14 contrôles, exit 0**
+
+🎯 **CE QUE CE TIR PROUVE, ET QUI N'AVAIT JAMAIS PU L'ÊTRE** : les **DEUX TÉMOINS v3** — ceux qui
+soldent AC5 — **passent**. Avant les correctifs de la 2ᵉ revue ils sortaient ✖️ **sur une carte
+saine**, parce que `dn4-9` avait posé les préfixes d'écran et qu'aucun instrument de `dn4-8` ne
+savait les lire.
+
+| Contrôle | Compteur touché |
+|---|---|
+| version hors `[1..3]` | `version` (27 o) |
+| `ver=1` à 7 champs · `ver=2` à 9 champs · plus de valeurs que la métrique | `format` (31 / 39 / 39 o) |
+| °C hors plafond (1600 > 1500) · `tr/min` hors plafond (999999 > 100000) | `bornes` (40 / 47 o) |
+| ligne complète dans la bande **72..124** | `trop longue` (**78 o**, bande confirmée ATTEIGNABLE) |
+| ligne sans `*CK` · checksum faux · champ vide en position 0 | `tronquee` / `checksum` / `format` |
+| **champ vide en position INTERNE** | ✅ **ACCEPTÉE**, valeur suivante NON décalée |
+| **TÉMOIN v1** · **TÉMOIN v3 `cpu`** · **TÉMOIN v3 `disk`** | ✅ **les trois VERTS** |
+
+⇒ **11 cas de bruit** + témoin v1 + 2 témoins v3 = **14**. ⚠️ Le « 10 cas » publié en trois endroits
+du dossier était **faux** ; corrigé par la 2ᵉ revue, **confirmé par le recompte de ce tir**.
+
+### 22.2 AC8 — le régime réel, REJOUÉ : le ✅ est désormais MÉRITÉ
+
+Agent **RÉEL** sur `COM3`, 20 s, puis `pc` relu **dans la péremption**.
+
+```
+compteurs de RECEPTION (delta) : {'valides': 100, 'doublons': 0, 'pertes seq': 0, 'resynchros': 1}
+✅ AUCUN COMPTEUR DE REJET N'A MONTE (les six a zero de delta), ET LA CARTE A ACCEPTE 100 TRAME(S).
+```
+
+🔴 **C'EST LA DIFFÉRENCE AVEC §18.3** : l'ancien instrument concluait ✅ **sans jamais vérifier que la
+carte avait reçu quoi que ce soit** — un critère satisfait par l'état MORT. Il lit désormais la ligne
+`trames : … valides`, publiée **une ligne au-dessus** de celle qu'il lisait, et **ÉCHOUE** si le delta
+est nul.
+
+**Les quatre grandeurs LHM sont VIVANTES sur le fil, avec leurs préfixes d'écran :**
+
+| Métrique | Ce que la dalle porte |
+|---|---|
+| `cpu` | `40,9 %` · `3,2 GHz` · **`c.max 48,6 %`** · **`45,0 degC`** |
+| `disk` | `0,1 Mo/s` · **`extr.moy 1098,5`** · **`ventirad 393,7`** · **`boitier 946,9 tr/min`** |
+
+Latence acceptation→label : **n=104 · min 54 ms · moy 199 ms · max 265 ms**.
+
+### 22.3 🔴 UNE RÉGRESSION QUE J'AI INTRODUITE EN 2ᵉ REVUE, ET QUE SEULE LA CARTE A TROUVÉE
+
+Le premier tir de `regime_reel_dn48.py` est sorti en **traceback**, sur une carte qui répondait
+parfaitement.
+
+**Cause** : le correctif de revue convertissait `time.time()` → `time.monotonic()`. Il avait converti
+`fin = time.monotonic() + timeout` et **PAS** la comparaison `while time.time() < fin`.
+`monotonic()` rend l'uptime (~2·10⁵), `time()` rend l'epoch (~1,7·10⁹) : la condition était **fausse
+immédiatement**, la boucle de lecture **ne tournait jamais**, `buf` restait vide.
+⇒ **`cmd()` était cassée sur toute la ligne**, et l'instrument accusait le sujet sain — la faute même
+que le patch prétendait corriger.
+
+⚠️ **CAUSE DE LA FAUTE, ET ELLE EST INSTRUCTIVE** : la conversion a été faite sur une liste `grep`
+**TRONQUÉE** — elle annonçait **6 occurrences et n'en listait que 5**. ⛔ **Compter les occurrences
+sans intermédiaire qui résume.**
+
+**Second défaut trouvé du même coup** : le correctif de revue protégeait l'extraction d'**APRÈS** et
+avait oublié celle d'**AVANT**. Un traceback nu sortait encore sur la baseline. ⇒ **un défaut qu'on
+prétend fermer se ferme des DEUX côtés, ou il n'est pas fermé.**
+
+### 22.4 ⛔ CE QUE CETTE SÉANCE NE PROUVE TOUJOURS PAS
+
+- **`969 pertes seq` en CUMULÉ** est un artefact des injections manuelles de §21 (~100× la cadence
+  nominale). 🎯 **Le DELTA du tir, lui, est `0`** — et c'est le seul chiffre opposable.
+- **AC9 reste ROUVERT** : aucun re-tir de coût n'a eu lieu.
+- **AC2 reste MORT**, et l'**étalonnage sous charge d'AC4** reste dû.
