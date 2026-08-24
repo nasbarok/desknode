@@ -765,6 +765,24 @@ class SourceLhm:
         self.lignes_illisibles = 0
         self._illisibles_dit = False
         self._familles_dites = set()
+        # 🔴 AJOUTES EN 2e REVUE (2026-08-24) — CHACUN FERME UN ETAT QUI SE
+        #    DEGUISAIT EN UN AUTRE :
+        #  - `familles` : LHM A RENDU la valeur, sous une AUTRE unite. C'est un
+        #    QUATRIEME etat, et il etait range dans `absences`, donc imprime sous
+        #    « LHM a REPONDU, SANS cette valeur » — qui envoie inspecter le
+        #    capteur alors que le fautif est la config d'unites de LHM.
+        #  - `doublons` : deux lignes `lhm_` de familles DIFFERENTES sur la meme
+        #    cle. Le dernier arrive gagnait, sans compteur — donc le verdict
+        #    dependait de l'ORDRE des lignes, que ce fichier declare lui-meme non
+        #    contractualise par Prometheus. C'est la forme exacte d'un renommage
+        #    d'unite EN COURS DE DEPLOIEMENT, c'est-a-dire le cas meme que la
+        #    verification de famille existe pour attraper.
+        #  - `bornages_impossibles` : voir `_borner_socket()`.
+        self.familles = {}
+        self.doublons = {}
+        self._doublons_dits = set()
+        self.bornages_impossibles = 0
+        self._bornage_dit = False
         self.duree_n = 0
         self.duree_somme = 0.0
         self.duree_max = 0.0
@@ -849,8 +867,22 @@ class SourceLhm:
         #
         # ⇒ LE PLAFOND EST MAINTENANT APPLIQUE AVANT CHAQUE OPERATION BLOQUANTE,
         #   avec le RESTE du budget — donc la lecture entiere est bornee par `fin`,
-        #   quel que soit le nombre de morceaux. Et la connexion nait TOUJOURS avec
-        #   `timeout_s`, jamais avec un reliquat.
+        #   quel que soit le nombre de morceaux.
+        #
+        # 🔴 CORRECTIF DE 2e REVUE (2026-08-24), ET LE COMMENTAIRE PRECEDENT ETAIT
+        #    FAUX. Il affirmait « la connexion nait TOUJOURS avec `timeout_s`,
+        #    jamais avec un reliquat ». Vrai pour une connexion NEUVE ; FAUX pour la
+        #    connexion RETENUE, qui est le chemin NOMINAL :
+        #      - `_borner_socket(fin)` etait appele APRES `request()`, donc l'envoi
+        #        du cycle N+1 tournait sous le reliquat laisse par la fin de lecture
+        #        du cycle N. MESURE : 0,0994 s puis 0,5034 s au lieu de 0,600.
+        #      - rien ne restaurait jamais `timeout_s` sur la socket conservee.
+        #    ⇒ on borne DES QUE la socket existe, donc AVANT `request()` aussi. Sur
+        #    une connexion neuve c'est un no-op (la socket n'existe pas encore) ;
+        #    sur une connexion retenue c'est precisement le trou qu'on ferme.
+        # ⚠️ `timeout=min(reste, self.timeout_s)` est CONSERVE et c'est VOULU : la
+        #    2e tentative ne doit pas depasser `fin`. Ce qui etait faux, c'etait la
+        #    PHRASE, ⛔ pas le calcul. Elle est corrigee, pas le code.
         fin = time.perf_counter() + self.timeout_s
         for dernier in (False, True):
             reste = fin - time.perf_counter()
@@ -862,11 +894,31 @@ class SourceLhm:
                 if self._c is None:
                     self._c = http.client.HTTPConnection(
                         self.hote, self.port, timeout=min(reste, self.timeout_s))
+                # 🔴 AVANT L'ENVOI : sur une connexion RETENUE la socket existe
+                #    deja et porte le reliquat du cycle precedent (defaut (2)).
+                #    ⚠️ `exiger=False` — sur une connexion NEUVE il n'y a pas encore
+                #    de socket, et c'est normal.
+                self._borner_socket(fin, exiger=False)
                 self._c.request("GET", LHM_CHEMIN,
                                 headers={"Connection": "keep-alive"})
                 self._borner_socket(fin)
+                # 🔴 LA SOCKET SE CAPTURE **AVANT** `getresponse()`, ET C'EST LE
+                #    CORRECTIF LE PLUS IMPORTANT DE CETTE PASSE. Defaut trouve en
+                #    2e revue (2026-08-24), MESURE : CPython fait
+                #    `if response.will_close: self.close()` dans `getresponse()`,
+                #    ce qui met `HTTPConnection.sock` a **None**. `_borner_socket`
+                #    lisait `getattr(self._c, "sock", None)` et devenait donc un
+                #    NO-OP SILENCIEUX pour toute la lecture : chaque `recv` gardait
+                #    le plafond ENTIER pose avant `getresponse()`.
+                #    ⇒ HTTP/1.1 keep-alive : 0,601 s pour 0,600 de budget.
+                #    ⇒ HTTP/1.0 `will_close` : **1,102 s, soit 184 % du budget**.
+                #    Or 1,102 s > `PERIODE_S` = 1,0 s : c'est exactement le
+                #    « depassement d'UNE PERIODE ENTIERE » que ce bloc existe pour
+                #    empecher, et aucun mode du stub ne le produisait
+                #    (`stub_lhm_dn48.py` pose `HTTP/1.1` + `Content-Length`).
+                sock = getattr(self._c, "sock", None)
                 rep = self._c.getresponse()
-                corps = self._lire_corps(rep, fin)
+                corps = self._lire_corps(rep, fin, sock)
                 if rep.status != 200:
                     raise IOError("HTTP %d sur %s" % (rep.status, LHM_CHEMIN))
                 if rep.will_close:
@@ -877,17 +929,46 @@ class SourceLhm:
                 if dernier:
                     raise
 
-    def _borner_socket(self, fin):
-        """Pose sur le socket le RESTE du budget. ⛔ Jamais `timeout_s` entier."""
+    def _borner_socket(self, fin, sock=None, exiger=True):
+        """Pose sur le socket le RESTE du budget. ⛔ Jamais `timeout_s` entier.
+
+        🔴 `sock` EXPLICITE (2e revue, 2026-08-24). `getattr(self._c, "sock")`
+           rend `None` des que `getresponse()` a ferme la connexion sur une
+           reponse `will_close` — le bornage devenait alors un NO-OP MUET et le
+           budget etait depasse de 184 % (MESURE). L'appelant capture donc la
+           socket AVANT `getresponse()` et nous la passe.
+        ⚠️ ⛔ UN BORNAGE IMPOSSIBLE NE SE TAIT PLUS. Si aucune socket n'est
+           joignable, la lecture n'est plus bornee : c'est un DEFAUT
+           D'INSTRUMENT, il se compte et se dit une fois — ⛔ il ne se devine pas
+           a posteriori sur un `duree_max` inexplique.
+        """
         reste = fin - time.perf_counter()
         if reste <= 0.0:
             raise TimeoutError("budget de lecture LHM epuise (%.0f ms)"
                                % (self.timeout_s * 1000.0))
-        s = getattr(self._c, "sock", None)
+        s = sock if sock is not None else getattr(self._c, "sock", None)
         if s is not None:
             s.settimeout(reste)
+            return
+        # ⚠️ `exiger=False` : AVANT `request()` sur une connexion NEUVE, la socket
+        #    n'existe PAS ENCORE (`HTTPConnection` se connecte paresseusement) —
+        #    c'est un etat SAIN, et le `timeout=` du constructeur couvre le
+        #    `connect()`. ⛔ Compter ce cas fabriquerait une alerte sur un chemin
+        #    normal : DEFAUT INTRODUIT PUIS CORRIGE le 2026-08-24, attrape par un
+        #    smoke test qui a vu « 8 bornages impossibles » sur un simple
+        #    ConnectionRefused. Une alarme qui accuse un etat sain est pire que
+        #    pas d'alarme.
+        if not exiger:
+            return
+        self.bornages_impossibles += 1
+        if not self._bornage_dit:
+            self._bornage_dit = True
+            print("[agent] \U0001f534 BORNAGE LHM IMPOSSIBLE : aucune socket joignable "
+                  "— la lecture n'est PAS bornee par le budget de %.0f ms. \u26d4 Un "
+                  "`duree_max` au-dela du plafond viendra de LA, ⛔ pas du parse."
+                  % (self.timeout_s * 1000.0), file=sys.stderr)
 
-    def _lire_corps(self, rep, fin):
+    def _lire_corps(self, rep, fin, sock=None):
         """Draine le corps PAR MORCEAUX, chaque attente bornee par le reste.
 
         🔴 C'est ce qui transforme le plafond en BUDGET : `reste` decroit a
@@ -913,7 +994,7 @@ class SourceLhm:
         lire_un = getattr(rep, "read1", None) or rep.read
         morceaux, total = [], 0
         while True:
-            self._borner_socket(fin)
+            self._borner_socket(fin, sock)
             bout = lire_un(65536)
             if not bout:
                 break
@@ -2205,13 +2286,30 @@ def _bilan(sortie, depart: float, seq: int, erreurs_envoi: int, rattrapages: int
                 #    produit qui tourne » que dn4-7 a deja payee. Un message
                 #    d'alerte qui contredit son propre compteur est PIRE que pas
                 #    d'alerte : il envoie chercher un defaut qui n'existe pas.
+                # 🔴 2e REVUE (2026-08-24) — LA 3e BRANCHE ETAIT UN `elif` DE
+                #    `if lhm.echecs:`, DONC MASQUEE DES QU'IL EXISTAIT **UN SEUL**
+                #    ECHEC. Or son motif — « le chrono couvre desormais le PARSE,
+                #    donc une lecture peut REUSSIR au-dela du plafond » — est
+                #    INDEPENDANT du nombre de timeouts reseau. Session a 1 timeout
+                #    (0,60 s) + 1 lecture reussie a 1,20 s : la branche 1 imprimait
+                #    « le plafond a COUPE au moins une lecture (max 1200 ms pour un
+                #    timeout de 600 ms) » — le plafond a coupe a 600, ⛔ pas a 1200,
+                #    et le message envoyait revoir le DIMENSIONNEMENT RESEAU alors
+                #    que le depassement venait du parse.
+                # ⚠️ ET `duree_max` EST UN MAX SUR LES REUSSITES **ET** LES ECHECS
+                #    CONFONDUS (`_chrono` est appele dans le `finally` de `lire()`).
+                #    Rien ne permettait de savoir de laquelle il venait — donc on ne
+                #    l'affirme plus : les deux constats sont DISJOINTS et cumulables.
                 if lhm.duree_max >= lhm.timeout_s * 0.9:
                     if lhm.echecs:
                         print(f"[agent] 🔴 le plafond a COUPE au moins une lecture "
-                              f"({lhm.echecs} echec(s), max {lhm.duree_max*1000.0:.0f} "
-                              f"ms pour un timeout de {lhm.timeout_s*1000.0:.0f} ms). "
-                              f"⚠️ Le dimensionnement est a revoir.", file=sys.stderr)
-                    elif lhm.duree_max > lhm.timeout_s:
+                              f"({lhm.echecs} echec(s), timeout "
+                              f"{lhm.timeout_s*1000.0:.0f} ms). ⚠️ Le dimensionnement "
+                              f"est a revoir. ⛔ `duree_max` "
+                              f"({lhm.duree_max*1000.0:.0f} ms) est un MAX sur les "
+                              f"reussites ET les echecs : il ne dit PAS a quel "
+                              f"instant la coupe a eu lieu.", file=sys.stderr)
+                    if lhm.duree_max > lhm.timeout_s:
                         # 🔴 TROISIEME BRANCHE, AJOUTEE EN REVUE (2026-08-21). Les
                         #    deux precedentes supposaient `duree_max > timeout ⇒
                         #    echecs > 0`. C'EST FAUX, et le meme correctif le
@@ -2231,7 +2329,7 @@ def _bilan(sortie, depart: float, seq: int, erreurs_envoi: int, rattrapages: int
                               f"RESEAU : ce depassement vient d'ailleurs (parse, "
                               f"ordonnancement). ⛔ C'EST un incident — il mange la "
                               f"cadence et arme le recalage.", file=sys.stderr)
-                    else:
+                    elif not lhm.echecs:
                         print(f"[agent] ⚠️ la lecture LHM la plus longue "
                               f"({lhm.duree_max*1000.0:.0f} ms) atteint "
                               f"{lhm.duree_max/lhm.timeout_s*100.0:.0f} % du timeout, "
