@@ -1950,6 +1950,15 @@ fonctionne** — exactement le faux négatif que la story avait armé d'avance e
 | **départ** | — | 23 | **19,1 lx** | 3, identiques |
 | **masqué** | main posée sur le capteur | 0 | **0,0 lx** | 3, identiques |
 | **retiré** | main retirée | 28 | **23,3 lx** | 3, identiques |
+
+> 🔴 **LA COLONNE « 3, IDENTIQUES » N'EST PAS UNE PREUVE DE VIE — RÉFUTÉE PAR LA MESURE LE
+> 2026-08-24, VOIR §13.22.4.** Un BH1750 **éteint** rend la **dernière mesure, FIGÉE** (mesuré :
+> `211 · 211 · 211`), parce que le power down **ne vide pas** le registre de données ; et un bus qui
+> lit des uns rend `FFFF` **trois fois**. ⇒ Le critère est satisfait par **deux états morts**.
+> ⚠️ **Ce qui sauve CE relevé-ci**, c'est qu'il ne repose pas sur la colonne : il repose sur le
+> **RAPPORT** entre trois états (`19,1 → 0,0 → 23,3`), et **une valeur qui change sous stimulus est
+> le seul discriminant valide**. Le verdict d'AC6 **tient donc**, ⛔ mais pas par l'argument que
+> cette colonne suggère.
 | **éclairé** | 🔦 lampe du téléphone | **55 378** | 🎯 **46 148,3 lx** | 3 (46 058,3 puis 46 148,3 ×2) |
 
 ⇒ **Quatre décades, dans les DEUX sens, sous le geste de l'owner.**
@@ -2642,7 +2651,7 @@ faisait le **critère éliminatoire n°2** : la promesse était tenue par l'**ap
 
 | État | brut | lux | n |
 |---|---|---|---|
-| **départ** (témoin) | 1 113 | **927,5** | 3, identiques |
+| **départ** (témoin) | 1 113 | **927,5** | 3, identiques (⚠️ *voir l'encart de §13.16.8 : « 3, identiques » n'est pas une preuve de vie — réfuté le 2026-08-24*) |
 | 🖐️ **main posée** | 2 | **1,6** | 3, identiques |
 | **main retirée** | 25 510 · 28 781 · 28 124 | **21 258 → 23 984** | 3, **VARIABLES** |
 
@@ -2835,7 +2844,7 @@ chiffre absurde — celui-là était les deux. »* **Le relevé ci-dessus a ét�
 | **« toute la case est la zone tactile »** | ✅ **re-prouvée sur D12 AVEC LES COORDONNÉES** — 9 visées `RAM` ⇒ 9 taps (§13.17.5) |
 | **Barre et MENU = zones mortes** | ✅ **`0 tap sur MENU` sur 38** |
 | **Bandeau de boot** | ✅ **une seule ligne `E`** : celle de l'ISR, **nommée et rattachée** (AC11). ⛔ **Aucune nouvelle** |
-| **Smoke owner 6/6** | ✅ constat owner sur le boot du firmware livré : grille affichée, six cases, rétroéclairage **allumé fixe**, rien d'anormal — 🔴 **SANS VERBATIM, ÉCART DÉCLARÉ le 2026-08-24** ⤵ |
+| **Smoke owner 6/6** | ✅ constat owner sur le boot du firmware livré : grille affichée, six cases, rétroéclairage **allumé fixe**, rien d'anormal — ⚠️ **SANS VERBATIM** (écart déclaré le 2026-08-24 matin) → ✅ **UN CONSTAT OWNER A ÉTÉ RECUEILLI LE SOIR MÊME sur `8a1dac9`, après TROIS flashs — voir §13.22.6.** ⛔ Recueilli **par question fermée**, donc toujours **pas un verbatim libre** ⤵ |
 
 > 🔴 **ÉCART DÉCLARÉ — REVUE DE CODE DU 2026-08-24, DÉCISION OWNER.** C'est la **seule** ligne
 > « constat owner » de tout §13.17 **sans citation**, alors que les quatre autres en portent une
@@ -5234,3 +5243,114 @@ normalement avant, plus après. **Corrélation temporelle forte, causalité NON 
 ⚠️ **MA FAUTE, ÉCRITE** : le risque de la rangée A était **consigné dans ce fichier depuis `dn4-2`**,
 et je ne l'ai rappelé à l'owner **qu'APRÈS** son essai — je le lui avais sorti pour le 5 V, ⛔ pas
 quand il a déplacé l'alimentation. **La garde existait, je ne l'ai pas jouée au bon moment.**
+
+---
+
+## 13.22 🔴 SÉANCE CARTE `dn4-2` (2026-08-24) — L'EXERCICE DES 34 CORRECTIFS, ET **DEUX RÉFUTATIONS DANS LA MÊME HEURE**
+
+> **Contexte.** La 2ᵉ revue de code 3 couches du 2026-08-24 a porté sur `e931c31..c1a9167` — le
+> delta des correctifs produits par la revue du 2026-08-20, **que personne n'avait relu**. Elle a
+> rendu **41 constats**, tous corrigés (`f94753e`, `3021f8b`). Cette séance les **exerce**.
+>
+> ⛔ **CE N'EST PAS UN REJEU DE `dn4-2`, ET C'EST IMPOSSIBLE.** Des trois capteurs que la story a
+> qualifiés, **l'INA219 est retiré du bus** (`cc-ina219`) et **le VL6180X est mort** (`dn4-7`,
+> `blocked`). **Seul le BH1750 survit** — constat owner du 2026-08-24. Les 7 correctifs hauts
+> portent tous sur le BH1750 ou sur des gardes génériques : c'est ce qui rend la séance jouable.
+>
+> **Firmwares** : `3021f8b` → `2db3c78` → `8a1dac9`, **SHA lu au bandeau à chaque flash**,
+> `git status --porcelain` vérifié **vide avant chaque flash**. Bus à **6 devices**.
+
+### 13.22.1 Les sept gestes — ce que la carte a répondu
+
+| # | Geste | Attendu | Mesuré |
+|---|---|---|---|
+| 1 | `i2c lire 23 00` | la garde crie | ✅ elle crie — et la dernière ligne reste `0x23 reg 0x00 : 00`, **d'apparence parfaitement réussie**. C'est *tout* ce qui sortait avant |
+| 2 | `i2c brut 23 2` | le bloc d'hypothèses | ✅ `SUPPOSE Mode1 ET MTreg 69` à chaque lecture · `168 × 100 / 12 = 1400` ⇒ **`140.0`** ✓ |
+| 3 | `i2c ecrire 23 11` | Mode2 **+** 180 ms | ✅ **les deux**. Avant : *« opcode NON REPERTORIE »*, **zéro** avertissement |
+| 4 | `i2c lire 6B D0` | plus de verdict BME | ✅ `0x6B reg 0xD0 : 00` **et rien d'autre** |
+| 5 | `i2c ecrire 23 00` | avertissement **avant** l'écriture | ✅ il précède `0x23 <- 00` |
+| 6 | `i2c lire16 0x29 0000` | refusé | ✅ `adresse « 0x29 » refusee` |
+| 6b | `i2c lire 77 D0` (**témoin positif**) | l'usage légitime intact | ✅ garde d'occupant + `61` + `chip id 0x61 = BME680` — la garde d'adresse **n'a pas cassé** le verdict là où il est juste |
+| 7 | `i2c rafale` | `vus ≤ passes` | ✅ `518/524` et `1298/1308` — l'ancien code pouvait rendre `1301/1300` |
+
+### 13.22.2 Le facteur 2 du Mode2 — **prouvé, pas affirmé**
+
+| Mode | brut | moyenne |
+|---|---|---|
+| **Mode2** (`0x11`) | `482` · `550` | **516** |
+| **Mode1** (`0x10`) | `287` · `281` | **284** |
+
+⇒ **×1,82** pour un ×2 théorique, sous une lumière **non contrôlée et qui dérivait** (elle est
+passée de `250` à `389` en trois lectures plus tôt dans la séance). ✅ Le facteur 2 est établi ;
+⛔ l'écart à 2,00 n'est **pas** mesuré, il est attribué à la dérive — **non isolé**.
+
+### 13.22.3 🔴 LE RE-RELEVÉ QU'IMPOSAIT LA RÈGLE « INSTRUMENT MODIFIÉ ⇒ CHIFFRES MORTS »
+
+Le témoin de `i2c rafale` comptait la passe tronquée au **numérateur** et l'excluait du
+**dénominateur** ⇒ **les deux taux de faux négatifs publiés par AC9 sont morts.**
+
+| | publié §13.17.6 (**mort**) | re-mesuré 2026-08-24, 25 s |
+|---|---|---|
+| `0x20` TCA9554 | 1,52 % (20/1320) | **0,76 %** (10/1308) |
+| `0x5D` GT911 | 1,67 % (22/1320) | **0,31 %** (4/1308) |
+| cadence | 5 916 sondages/s | **5 862** sondages/s |
+| fenêtre 10 s (contrôle) | — | `0x20` **1,15 %** (6/524) · `0x5D` **0,57 %** (3/524) |
+
+⛔ **CE N'EST PAS UNE CORRECTION DES ANCIENS CHIFFRES, C'EST UNE MESURE NEUVE.** Le bus est passé
+de **8 à 6 devices** et le firmware n'est pas le même : les deux séries **ne sont pas comparables**.
+**Les deux restent écrites.** ⚠️ Le témoin « en échec » (il exige 100 %) s'affiche toujours — c'est
+le défaut **déjà déclaré** le 2026-08-20, ⛔ pas un constat neuf.
+
+### 13.22.4 🔴 LE CONSTAT NEUF — **UN BH1750 ÉTEINT NE REND PAS `00 00`**
+
+| État | trois lectures consécutives |
+|---|---|
+| **éteint** (`i2c lire 23 00`) | `211` · `211` · `211` — **FIGÉ** |
+| **rallumé** (`01` puis `10`) | `250` · `280` · `389` — **dérive** |
+
+Le registre de données **n'est pas vidé** par le power down. ⇒ **Le symptôme d'un capteur éteint
+est une VALEUR PLAUSIBLE QUI NE BOUGE PLUS**, ce qui est **pire qu'un zéro** : ça passe pour une
+mesure.
+
+> 🔴 **ET ÇA CASSE LE CRITÈRE DE PREUVE DE §13.16.8.** Ce critère est *« 3 lectures, identiques »*.
+> Il est **satisfait par un capteur éteint** — et aussi par un **bus qui lit des uns** (la garde
+> `FFFF` posée la veille décrit déjà ce second cas). ⇒ **« TROIS LECTURES IDENTIQUES » N'EST PAS
+> UNE PREUVE DE VIE, dans aucun des deux sens.** Le seul discriminant est une valeur qui **CHANGE**
+> sous stimulus. ⚠️ Et l'inverse n'est pas vrai non plus : trois lectures identiques sous une
+> lumière **stable** sont normales — mesuré dans cette même séance (`207` × 3, capteur vivant).
+
+### 13.22.5 ⚠️ DEUX RÉFUTATIONS DE MES PROPRES CORRECTIFS, DANS LA MÊME HEURE
+
+1. **L'avertissement destructeur, écrit le matin même**, affirmait *« après lui, `i2c brut 23 2`
+   rendra `00 00` »*. **Mesuré faux** (§13.22.4). Corrigé — `2db3c78`.
+2. **La correction de (1) en a écrit une seconde, non mesurée** : *« le reset `0x07`, lui, rend
+   `00 00` »*. **Mesuré faux aussi.**
+
+| Condition | `i2c ecrire 23 07` | lecture après |
+|---|---|---|
+| capteur **éteint** | **ignoré** — datasheet ROHM : le reset **n'est pas accepté** en power down | `209`, **figé** |
+| capteur **alimenté** | accepté | **`00 00`** |
+
+⚠️ **La puce ACQUITTE dans les deux cas** — ce que la ligne *« acquitte ne veut pas dire a obei »*
+annonçait déjà deux lignes plus bas, sans que je l'applique à mon propre texte. Corrigé — `8a1dac9`.
+
+> 🎯 **LA LEÇON DE MÉTHODE, ÉCRITE PARCE QU'ELLE VAUT AU-DELÀ DE CE TEXTE : UNE CORRECTION N'EST PAS
+> UNE MESURE.** En corrigeant une affirmation non mesurée, j'en ai écrit une seconde, non mesurée,
+> **dans le même geste**. Elle était **plausible** (*« reset ⇒ registre vide »*) et elle était
+> **fausse**. Les deux n'ont été trouvées que **parce que le geste a été joué sur la carte**.
+
+### 13.22.6 Non-régression, et l'état où la séance laisse la carte
+
+- **Boot propre** sur les trois firmwares : `prêt en 2 348 / 2 349 / 2 350 ms`, aucune panique,
+  `BME680 pret @ 0x77`, `dn_env pret — 2/3 devices ouverts`, asset **CRC32 `0x0F027C7D` vérifié**.
+- ✅ **Constat owner sur `8a1dac9`** (2026-08-24, après **trois** flashs et **cinq** cycles
+  d'extinction du luxmètre) : **grille complète, six cases, rétroéclairage fixe, rien d'anormal.**
+  ⚠️ **Recueilli par question fermée, ⛔ pas un verbatim libre** — c'est bien l'œil de l'owner sur le
+  livrable, et c'est ce qui manquait à AC13 ; ce n'est pas une citation.
+- **Capteur restauré** : `01` + `10`, et les deux lecteurs s'accordent — console `209`,
+  `dn_env` `174 lx (brut 209)`.
+- ⚠️ **Transitoire observé et expliqué** : juste après un reset, `env` a publié `0 lx (brut 0)`
+  pendant que la console lisait `207`. C'est le registre attrapé **entre le reset et la conversion
+  suivante** — exactement le cas *« mesure pas encore prête »* dont l'instrument avertit. ⛔ Pas un
+  défaut ; produit **involontairement**, et gardé ici parce qu'il **valide l'avertissement**.
+
