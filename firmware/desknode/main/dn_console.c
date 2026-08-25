@@ -2104,6 +2104,7 @@ static void nav_usage(void)
     printf("        nav open <0..%d>            ouvre le detail d'une metrique\n",
            DN_UI_METRIQUES - 1);
     printf("        nav back                   retour au dashboard\n");
+    printf("        nav menu                   ouvre la vue MENU (dn3-3)\n");
     printf("        nav model rebuild|screens  MODELE de navigation (A/B d'AC4)\n");
     printf("        nav ab <n>                 n allers-retours, chronometres\n");
 }
@@ -2117,6 +2118,16 @@ static int cmd_nav(int argc, char **argv)
         }
         printf(" · modele « %s » · %" PRIu32 " transitions depuis le boot\n",
                dn_nav_model_name(dn_ui_get_nav_model()), dn_ui_nav_count());
+        /* 🔴 dn3-3 : LES TRANSITIONS PROVOQUEES PAR LA VEILLE SONT NOMMEES.
+         *    Elles SONT dans le total (elles sont reelles) mais elles ne
+         *    naissent d'aucun geste et leur chronometre n'est pas arme. Les
+         *    laisser anonymes aurait fait grossir un denominateur avec des
+         *    transitions d'origine HORLOGE, sans que rien ne le dise. */
+        if (dn_ui_nav_veille_count() > 0) {
+            printf("   dont %" PRIu32 " provoquee(s) par LA VEILLE (retour auto au"
+                   " dashboard,\n", dn_ui_nav_veille_count());
+            printf("   AC3.5) — comptees, mais SANS chronometre.\n");
+        }
         printf("taps sur zone : %" PRIu32 " (dont %" PRIu32
                " sur MENU) · derniere zone touchee : %s\n",
                dn_ui_taps(), dn_ui_menu_taps(),
@@ -2156,6 +2167,24 @@ static int cmd_nav(int argc, char **argv)
             return 1;
         }
         printf("detail « %s » ouvert.\n", dn_ui_metrique_nom((int)idx));
+        return 0;
+    }
+
+    if (strcmp(argv[1], "menu") == 0) {
+        if (nav_bloque_par_pause("nav menu")) {
+            return 1;
+        }
+        esp_err_t err = dn_ui_nav_menu();
+        if (err == ESP_ERR_INVALID_STATE) {
+            printf("rien a faire : le MENU est DEJA affiche.\n");
+            printf("(aucune transition, aucun chronometre arme)\n");
+            return 0;
+        }
+        if (err != ESP_OK) {
+            printf("refuse : %s\n", esp_err_to_name(err));
+            return 1;
+        }
+        printf("vue MENU ouverte.\n");
         return 0;
     }
 
@@ -8026,6 +8055,566 @@ static int cmd_hist(int argc, char **argv)
     return 0;
 }
 
+/*
+ * ══ dn3-3 : LA FAMILLE `veille` ═════════════════════════════════════════════
+ *
+ * Elle PILOTE la veille (les deux réglages, les deux bascules) ET elle la
+ * MESURE (les deux latences, le délai, les compteurs, la preuve de layout).
+ * ⛔ Le dépôt REFUSE et EXPLIQUE, il n'écrête pas en silence : `veille delai 7`
+ *    est un refus chiffré, ⛔ jamais un arrondi vers 5.
+ */
+
+/* Le recompte de la partition `assets` (AC1.4). ⚠️ RELU des constantes du
+ * firmware, ⛔ pas recopié depuis la story : un chiffre récité ne se confronte
+ * à rien. */
+#define VEILLE_ASSETS_PART_O 0x100000u /* partitions.csv : `assets`, 1 MiB */
+
+static void veille_usage(void)
+{
+    printf("usage : veille                       etat, compteurs, diagnostics\n");
+    printf("        veille on | off              ARME / DESARME (persiste en NVS)\n");
+    printf("        veille delai <1|3|5|10>      le delai, en MINUTES (persiste)\n");
+    printf("        veille now                   bascule en Ambient MAINTENANT\n");
+    printf("        veille wake                  reveille MAINTENANT (origine console)\n");
+    printf("        veille lat                   les DEUX latences de reveil (AC4)\n");
+    printf("        veille geom                  la preuve que le layout NE BOUGE PAS\n");
+    printf("        veille assets                le recompte de la partition (AC1.4)\n");
+    printf("        veille reset                 compteurs ET latences a zero\n");
+    printf("  --- leviers A/B, a chaud, ⛔ NON persistes (ce sont des instruments) ---\n");
+    printf("        veille pct <%d..%d>            retroeclairage d'Ambient\n",
+           DN_VEILLE_PCT_MIN, DN_VEILLE_PCT_MAX);
+    printf("        veille voile <0..255>        opacite du voile en Ambient\n");
+    printf("        veille gris <reel|simule|absent> <rrggbb>\n");
+    printf("        veille accents <0..100>      desaturation des accents (0=teinte, 100=gris)\n");
+}
+
+static void veille_imprimer_etat(void)
+{
+    dn_veille_compteurs_t c;
+    if (!dn_ui_veille_compteurs(&c)) {
+        /* 🔴 « PAS MESURE », ⛔ JAMAIS « ZERO ». Ces champs sont ecrits par la
+         *    tache LVGL ; imprimer des zeros sur un verrou non pris ferait
+         *    publier « 0 bascule » pour « on n'a pas pu lire ». */
+        printf("⛔ PAS MESURE : le verrou LVGL n'a pas ete pris en 500 ms.\n");
+        printf("   ⛔ Ne rien conclure de cette absence — ce n'est PAS « zero ».\n");
+        return;
+    }
+
+    printf("mode : %s · veille %s · delai %d min (%lu ms)\n",
+           dn_veille_mode_nom(c.mode), c.armee ? "ARMEE" : "DESARMEE",
+           dn_veille_cran_min(c.cran), (unsigned long)c.delai_ms);
+    printf("inactivite : %lu ms (max vue depuis le reset : %lu ms)\n",
+           (unsigned long)c.inactivite_ms, (unsigned long)c.inactivite_max_ms);
+    printf("bascules -> Ambient : %lu · reveils : %lu · dernier reveil par : %s\n",
+           (unsigned long)c.bascules, (unsigned long)c.reveils,
+           dn_veille_origine_nom(c.origine));
+    printf("secondes OBSERVEES : %lu (⚠️ ⛔ PAS l'uptime : le tick 1 Hz ne bat\n",
+           (unsigned long)c.secondes_vues);
+    printf("   pas pendant `ui off`, donc la veille y est AVEUGLE)\n");
+    printf("rebases d'horloge a `ui on` : %lu · bascules ANNULEES (async refusee) : %lu\n",
+           (unsigned long)c.rebases, (unsigned long)c.annulations);
+    /* 🔴 LE COUT DE LA PERSISTANCE EST PUBLIE, PARCE QU'IL EST PAYE DANS LA
+     *    TACHE LVGL au tap MENU : une ecriture flash coupe le cache, la tache
+     *    de rendu STALLE, ce sont des trames perdues. ⛔ Ni une raison de ne pas
+     *    persister, ni une raison de le taire. */
+    if (dn_veille_persist_n() > 0) {
+        printf("derniere ecriture NVS : %lu us (%lu au total)\n",
+               (unsigned long)dn_veille_persist_us(),
+               (unsigned long)dn_veille_persist_n());
+        printf("   ⚠️ payee DANS LA TACHE LVGL quand elle vient d'un tap MENU :\n");
+        printf("   le cache flash est coupe pendant ce temps-la.\n");
+    } else {
+        printf("aucune ecriture NVS depuis le boot (les deux reglages sont ceux\n");
+        printf("   qui ont ete relus au demarrage).\n");
+    }
+    printf("taps CONSOMMES par un reveil : %lu · taps de reglage dans le MENU : %lu\n",
+           (unsigned long)dn_touch_consommes(),
+           (unsigned long)dn_ui_menu_reglages());
+    printf("transitions provoquees PAR LA VEILLE : %lu (dans `nav`, mais SANS\n",
+           (unsigned long)dn_ui_nav_veille_count());
+    printf("   chronometre : elles ne naissent d'aucun geste)\n");
+
+    /*
+     * 🔴 LE DIAGNOSTIC D'APPUI FANTOME (AC8.2).
+     *    Si le GT911 verrouille un `PRESSED` fantome,
+     *    `lv_display_get_inactive_time()` reste collee a ~0 et la veille ne
+     *    tombe JAMAIS, EN SILENCE. Ce n'est pas theorique : le bus se degrade
+     *    ~40 s au demarrage a froid avec 55,5 % d'erreurs GT911, et LE SCAN NE
+     *    LE VOIT PAS — l'instrument est `touch` / `err_i2c`.
+     */
+    if (dn_veille_soupcon_appui_fantome()) {
+        printf("\n🔴 SOUPCON D'APPUI FANTOME — LA VEILLE NE TOMBE PAS, ET VOICI POURQUOI\n");
+        printf("   La veille est ARMEE, %lu s ont ete OBSERVEES (soit plus que le\n",
+               (unsigned long)c.secondes_vues);
+        printf("   delai + %d s de marge), AUCUNE bascule n'a eu lieu, et\n",
+               DN_VEILLE_MARGE_SOUPCON_S);
+        printf("   l'inactivite MAXIMALE vue est restee a %lu ms, SOUS les %lu ms\n",
+               (unsigned long)c.inactivite_max_ms, (unsigned long)c.delai_ms);
+        printf("   du delai. Un doigt POSE remet l'horloge a zero en permanence —\n");
+        printf("   et LVGL la remet a zero TANT QUE l'etat est PRESSED, ⛔ pas\n");
+        printf("   seulement au front.\n");
+        printf("   ⇒ INSTRUMENT : `touch` (err_i2c, appuis, relaches). ⛔ PAS le\n");
+        printf("     scan I2C, qui ne voit pas cette degradation-la.\n");
+    } else if (c.armee && c.bascules == 0) {
+        printf("\n(aucune bascule pour l'instant — l'inactivite max vue est %lu ms\n",
+               (unsigned long)c.inactivite_max_ms);
+        printf(" pour un delai de %lu ms : rien d'anormal a ce stade)\n",
+               (unsigned long)c.delai_ms);
+    }
+
+    printf("\n⚠️ PROTOCOLE DE LA GATE `menu_taps` (AC5.6) — A LIRE AVANT DE LA TIRER\n");
+    printf("   Le bandeau MENU n'existe QUE sur le dashboard : une fois la vue\n");
+    printf("   MENU ouverte, les appuis suivants au meme endroit ne tombent sur\n");
+    {
+        /* ⚠️ LES BORNES SONT **RELUES** DE LA FABRIQUE DE GEOMETRIE, ⛔ jamais
+         *    recitees depuis une constante : `widget voie` deplace les deux
+         *    bandes a chaud, et une bande recitee aurait envoye l'owner appuyer
+         *    a cote pendant que la console affirmait le contraire. C'est la
+         *    lecon de la bande de jauge `RAM` (§22.3). */
+        int bh = 0, mh = 0, gh = 0, ch = 0;
+        dn_ui_geom_bandes(&bh, &mh, &gh, &ch);
+        (void)gh;
+        (void)ch;
+        if (mh > 0) {
+            printf("   AUCUNE zone. La serie est donc 8 ALLERS-RETOURS : appui dans\n");
+            printf("   la bande y = %d..%d, puis `←` (ou `nav back`), huit fois.\n",
+                   DN_LCD_V_RES - mh, DN_LCD_V_RES - 1);
+            printf("   ⛔ Huit appuis d'affilee rendraient 1, ⛔ pas 8 — et ce ne\n");
+            printf("     serait PAS une zone morte.\n");
+        } else {
+            /* 🔴 AC5.8 — LA VOIE (a) REND LE MENU INJOIGNABLE, ET ON LE DIT. */
+            printf("   🔴 `menu_h = 0` : LE BANDEAU N'EST PAS DESSINE DU TOUT. La\n");
+            printf("     gate d'AC5.6 est INTIRABLE dans cette configuration, et\n");
+            printf("     les deux reglages sont INATTEIGNABLES AU DOIGT.\n");
+            printf("     `veille …` reste le seul acces. `widget voie` pour revenir.\n");
+        }
+        printf("   TEMOIN NEGATIF : >= 5 appuis dans la BARRE DU HAUT (y = 0..%d)\n",
+               bh - 1);
+        printf("   doivent rendre 0 tap — elle, elle reste morte.\n");
+    }
+}
+
+static void veille_imprimer_latences(void)
+{
+    uint32_t n = 0, a = 0, b = 0, c = 0, d = 0, e = 0, f = 0;
+    if (!dn_ui_veille_latences(&n, &a, &b, &c, &d, &e, &f)) {
+        printf("⛔ PAS MESURE : verrou LVGL non pris. ⛔ Ce n'est PAS « zero ».\n");
+        return;
+    }
+    printf("LES DEUX LATENCES DE REVEIL — ⛔ JAMAIS UNE MOYENNE DES DEUX\n");
+    printf("  t1 = contact -> RETROECLAIRAGE remonte (« l'ecran s'allume »)\n");
+    printf("  t2 = contact -> PALETTE Actif complete posee\n");
+    if (n == 0) {
+        printf("\n  aucun reveil AU DOIGT depuis le reset ⇒ RIEN A PUBLIER.\n");
+        printf("  ⛔ « 0 us » serait un chiffre ; « pas d'echantillon » n'en est\n");
+        printf("     pas un. Toucher la dalle en Ambient, puis relire.\n");
+        return;
+    }
+    printf("\n  n = %lu reveils AU DOIGT\n", (unsigned long)n);
+    printf("  t1 : min %lu us · med %lu us · max %lu us\n", (unsigned long)a,
+           (unsigned long)b, (unsigned long)c);
+    printf("  t2 : min %lu us · med %lu us · max %lu us\n", (unsigned long)d,
+           (unsigned long)e, (unsigned long)f);
+    printf("\n⚠️ CE QUE t1 N'INCLUT PAS, ET IL FAUT LE DIRE : l'origine du\n");
+    printf("   chronometre est l'instant ou le `read_cb` VOIT le front, ⛔ pas\n");
+    printf("   l'instant du contact PHYSIQUE. Le trajet GT911 -> IRQ -> reveil de\n");
+    printf("   la tache LVGL -> transaction I2C est EN AMONT et n'est pas\n");
+    printf("   instrumente. Publier t1 comme « latence au doigt » sans cette\n");
+    printf("   phrase fabriquerait un chiffre plus flatteur que le vecu.\n");
+    printf("⚠️ SEULS LES REVEILS AU DOIGT entrent ici. Un `veille wake` tape au\n");
+    printf("   clavier n'a pas le meme chemin d'entree ; il est ENREGISTRE mais\n");
+    printf("   EXCLU de la statistique, ⛔ pas jete en silence.\n");
+    printf("⛔ NE PAS CONFONDRE AVEC LE CRITERE BRIEF « < 300 ms », qui porte sur\n");
+    printf("   la NAVIGATION et qui est DEJA NON COCHE (337,6 ms au `nav ab`,\n");
+    printf("   361,8 ms au doigt — dn4-4, decision owner du 2026-08-24).\n");
+}
+
+static void veille_imprimer_geom(void)
+{
+    /*
+     * 🔴 AC1.3 — LE LAYOUT EST STRICTEMENT IDENTIQUE, ET C'EST CHIFFRE.
+     *    ⛔ Pas un constat a l'oeil : on imprime les quatre nombres de chacune
+     *    des six cases DANS LES DEUX MODES, plus un condense FNV-1a des 28
+     *    nombres. Deux modes qui rendent le meme condense n'ont pas bouge d'un
+     *    pixel.
+     */
+    uint32_t h = 0;
+    if (!dn_ui_geom_signature(&h)) {
+        printf("⛔ PAS MESURE : verrou LVGL non pris.\n");
+        return;
+    }
+    printf("GEOMETRIE — mode courant : %s\n",
+           dn_veille_mode_nom(dn_veille_mode()));
+    printf("  case  x    y    w    h\n");
+    for (int i = 0; i < DN_UI_METRIQUES; i++) {
+        int x = 0, y = 0, w = 0, ht = 0;
+        dn_ui_case_rect(i, &x, &y, &w, &ht);
+        printf("   %-9s %4d %4d %4d %4d\n", dn_ui_metrique_nom(i), x, y, w, ht);
+    }
+    int bh = 0, mh = 0, gh = 0, ch = 0;
+    dn_ui_geom_bandes(&bh, &mh, &gh, &ch);
+    printf("  bandes : barre %d · menu %d · grille %d · case %d\n", bh, mh, gh,
+           ch);
+    printf("  SIGNATURE FNV-1a des 28 nombres : 0x%08lX\n", (unsigned long)h);
+    printf("\n⚠️ LA PREUVE SE FAIT EN **DEUX** RELEVES : `veille geom`, puis\n");
+    printf("   `veille now`, puis `veille geom` a nouveau. Les deux signatures\n");
+    printf("   DOIVENT etre identiques. ⛔ Un seul releve ne prouve rien.\n");
+    printf("⚠️ FNV-1a et ⛔ pas une somme : une somme aurait rendu le MEME\n");
+    printf("   condense pour une case deplacee de +1 en x et -1 en y.\n");
+}
+
+static void veille_imprimer_assets(void)
+{
+    /*
+     * 🔴 AC1.4 — LE RECOMPTE, PUBLIE PAR LE FIRMWARE LUI-MEME.
+     *    ⛔ Ne pas se contenter de citer le ledger : il ecrivait « trois
+     *    declinaisons ne tiennent pas », et LE VRAI CHIFFRE COMMENCE A « DEUX ».
+     */
+    unsigned part = VEILLE_ASSETS_PART_O;
+    unsigned asset = (unsigned)DN_FB_BYTES + 16u; /* + la bande-annonce */
+    printf("POURQUOI AMBIENT N'AJOUTE PAS UN SEUL OCTET D'ASSET (AC1)\n");
+    printf("  partition `assets`        = %u o (0x%X, partitions.csv)\n", part,
+           part);
+    printf("  Living PCB v0 + pied      = %u o (%u px x 2 + 16 o)\n", asset,
+           (unsigned)(DN_FB_BYTES / 2));
+    printf("  libre                     = %u o\n", part - asset);
+    printf("  une 2e declinaison coute  = %u o  >  %u o libres  ⇒ ❌\n", asset,
+           part - asset);
+    printf("  DEUX declinaisons         = %u o  >  %u o  ⇒ ❌ (depassement %u o)\n",
+           2u * asset, part, 2u * asset - part);
+    printf("  TROIS declinaisons        = %u o  >  %u o  ⇒ ❌ (facteur %u,%02u)\n",
+           3u * asset, part, (3u * asset) / part,
+           (((3u * asset) * 100u) / part) % 100u);
+    printf("\n  ⚠️ LE CHIFFRE « DEUX » DE LA STORY EST FAUX DE 16 o : elle ecrit\n");
+    printf("     1 228 816 (UN seul pied pour deux assets) alors qu'elle compte\n");
+    printf("     bien TROIS pieds pour trois (1 843 248). Chaque asset porte SA\n");
+    printf("     bande-annonce ⇒ deux coutent %u o. Le verdict ne change pas,\n",
+           2u * asset);
+    printf("     mais un chiffre publie se relit.\n");
+    printf("\n  ⚠️ ET `dn_asset` NE GERE QU'UN SEUL ASSET : offset fixe, une magie,\n");
+    printf("     un CRC (`dn_asset.h`). Meme si la place existait, il faudrait le\n");
+    printf("     generaliser.\n");
+    printf("  ⇒ VOIE RETENUE : (b) UNE SEULE IMAGE + transformation a l'affichage.\n");
+    printf("    1. l'arithmetique ci-dessus elimine (a) et (c) SANS MESURE ;\n");
+    printf("    2. le voile translucide EXISTE DEJA et fait exactement ca ;\n");
+    printf("    3. la partition ne bouge pas ⇒ AUCUN risque de brick au reflash.\n");
+    printf("  ⛔ `partitions.csv` est INCHANGE (AC1.1) — `git diff --stat` le dit.\n");
+    printf("  🔴 ECART DECLARE : le commentaire de `partitions.csv` annonce que\n");
+    printf("     « la marge accueille les 3 declinaisons de dn3-3 ». C'EST FAUX,\n");
+    printf("     et ce recompte le prouve. ⛔ Il n'est PAS corrige ici : AC1.1\n");
+    printf("     exige que le fichier n'apparaisse pas au `git diff --stat`.\n");
+    printf("     Le verbatim est au dossier, pour `dn4-16`.\n");
+}
+
+/*
+ * 🔴 QUELLES PAIRES D'ACCENTS LE TAUX COURANT CONFOND — **CALCULE**, ⛔ PAS RECITE.
+ *
+ * Ce n'est pas une precaution theorique : a 100 % (gris PUR) le cyan de `GPU`
+ * (0x22d3ee) et le rose de `RAM` (0xf472b6) rendent TOUS LES DEUX la luminance
+ * 160/255. Les six couleurs que l'owner vient d'arbitrer en dn4-4 puis dn4-13
+ * redeviendraient CINQ en veille — le piege n°6 de dn3-3 applique aux accents.
+ * ⇒ Le defaut est 95 : l'ecart chromatique minimal des SEPT accents (les six
+ *   cases + l'humidite d'AMBIANCE) y remonte a 7/255, invisible a l'oeil, et
+ *   l'information est gardee.
+ * ⛔ La console ne recite AUCUN de ces nombres : elle relit les couleurs des
+ *   descripteurs et APPELLE `dn_widget_desaturer()`, la meme fonction que
+ *   l'ecran. Un rapport calcule sur une copie de la formule mesurerait l'accord
+ *   de la copie avec elle-meme.
+ */
+static void veille_accents_collisions(void)
+{
+    int pct = dn_widget_accent_amb();
+    uint32_t c[DN_UI_METRIQUES];
+    int idx[DN_UI_METRIQUES];
+    int n = 0;
+    for (int i = 0; i < DN_UI_METRIQUES; i++) {
+        /* ⚠️ LA COULEUR EST RELUE DU DESCRIPTEUR (`dn_ui_desc`), ⛔ pas recopiee
+         *    ici. `dn_ui_desc()` rend NULL pour une case rendue NUE — elle n'a
+         *    pas d'accent, elle ne participe donc pas au compte. */
+        const dn_widget_desc_t *d = dn_ui_desc(i);
+        if (d) {
+            idx[n] = i;
+            c[n] = dn_widget_desaturer(d->couleur, pct);
+            n++;
+        }
+    }
+    int paires = 0;
+    for (int i = 0; i < n; i++) {
+        for (int j = i + 1; j < n; j++) {
+            if (c[i] == c[j]) {
+                if (paires == 0) {
+                    printf("🔴 A %d %%, DES ACCENTS SE CONFONDENT :\n", pct);
+                }
+                paires++;
+                printf("   « %s » et « %s » rendent tous deux %06lX\n",
+                       dn_ui_metrique_nom(idx[i]), dn_ui_metrique_nom(idx[j]),
+                       (unsigned long)c[i]);
+            }
+        }
+    }
+    if (paires == 0) {
+        printf("✅ a %d %%, les %d accents de case restent DISTINCTS deux a deux.\n",
+               pct, n);
+    } else {
+        printf("   ⇒ `veille accents 95` les separe (ecart chromatique 7/255,\n");
+        printf("     invisible a l'oeil). ⛔ Rendre deux choses indiscernables est\n");
+        printf("     le defaut que ce depot a deja paye le 2026-08-18.\n");
+    }
+    printf("⚠️ La luminance est celle d'ITU-R BT.601 (77/150/29). Le motif est\n");
+    printf("   PERCEPTUEL (le vert pese 59 %%, le bleu 11 %%), ⛔ PAS « la moyenne\n");
+    printf("   confondrait des couleurs » : MESURE, les deux mappings confondent\n");
+    printf("   UNE paire chacun, simplement pas la meme.\n");
+}
+
+static int cmd_veille(int argc, char **argv)
+{
+    if (argc < 2) {
+        veille_imprimer_etat();
+        printf("\n");
+        veille_usage();
+        return 0;
+    }
+
+    if (strcmp(argv[1], "on") == 0 || strcmp(argv[1], "off") == 0) {
+        if (argc != 2) {
+            printf("usage : veille on | veille off\n");
+            return 1;
+        }
+        bool on = (strcmp(argv[1], "on") == 0);
+        esp_err_t err = dn_ui_veille_set_armee(on, DN_VEILLE_ORIG_CONSOLE);
+        printf("veille %s.\n", on ? "ARMEE" : "DESARMEE");
+        if (!on) {
+            printf("⇒ la bascule vers Ambient n'arrivera PLUS. Si on dormait, on\n");
+            printf("  vient d'etre REVEILLE : un ecran gris qu'aucune bascule ne\n");
+            printf("  peut plus lever serait un mensonge d'interface.\n");
+        }
+        if (err != ESP_OK) {
+            /* ⛔ NE JAMAIS ANNONCER « ENREGISTRE » SUR UN ECHEC NVS. */
+            printf("⚠️ ECRITURE NVS REFUSEE (%s) : le reglage s'applique A CHAUD\n",
+                   esp_err_to_name(err));
+            printf("   mais NE SURVIVRA PAS au reboot.\n");
+            return 1;
+        }
+        return 0;
+    }
+
+    if (strcmp(argv[1], "delai") == 0) {
+        long m = 0;
+        if (argc != 3 || !parse_entier(argv[2], &m)) {
+            printf("usage : veille delai <1|3|5|10>   (en MINUTES)\n");
+            return 1;
+        }
+        int idx = dn_veille_cran_index((int)m);
+        if (idx < 0) {
+            /* ⛔ REFUSER ET EXPLIQUER, ⛔ pas ecreter vers le cran voisin. */
+            printf("refuse : %ld min n'est pas un cran. Les QUATRE crans sont :",
+                   m);
+            for (int i = 0; i < DN_VEILLE_CRANS; i++) {
+                printf(" %d", dn_veille_cran_min(i));
+            }
+            printf(" min.\n");
+            printf("(decision owner du 2026-08-25 — quatre crans discrets, ⛔ pas\n");
+            printf(" de valeur libre. Un arrondi silencieux vers le cran voisin\n");
+            printf(" ferait mesurer un delai que personne n'a demande.)\n");
+            return 1;
+        }
+        esp_err_t err = dn_ui_veille_set_cran(idx);
+        printf("delai : %d min (%lu ms).\n", dn_veille_cran_min(idx),
+               (unsigned long)dn_veille_delai_ms());
+        printf("⚠️ la detection est cadencee a 1 Hz (`label_tick`) : l'ecart\n");
+        printf("   MESURE entre le dernier contact et la bascule tombe donc dans\n");
+        printf("   [%d ; %d] s, ⛔ pas « environ %d min ».\n",
+               dn_veille_cran_min(idx) * 60, dn_veille_cran_min(idx) * 60 + 1,
+               dn_veille_cran_min(idx));
+        if (err != ESP_OK) {
+            printf("⚠️ ECRITURE NVS REFUSEE (%s) : ne survivra pas au reboot.\n",
+                   esp_err_to_name(err));
+            return 1;
+        }
+        return 0;
+    }
+
+    if (strcmp(argv[1], "now") == 0) {
+        if (argc != 2) {
+            printf("usage : veille now\n");
+            return 1;
+        }
+        esp_err_t err = dn_ui_veille_dormir();
+        if (err == ESP_ERR_INVALID_STATE) {
+            if (dn_veille_mode() == DN_VEILLE_AMBIENT) {
+                printf("rien a faire : on est DEJA en Ambient.\n");
+            } else {
+                printf("refuse : la veille est DESARMEE (`veille on` d'abord).\n");
+                printf("⛔ On ne contourne pas le reglage de l'utilisateur.\n");
+            }
+            return 0;
+        }
+        if (err != ESP_OK) {
+            printf("refuse : %s\n", esp_err_to_name(err));
+            return 1;
+        }
+        printf("Ambient. Le retroeclairage est a %d %%, le voile a %u.\n",
+               dn_veille_pct(), (unsigned)dn_ui_veille_voile());
+        printf("⚠️ LES DONNEES RESTENT VIVANTES : `hist` continue d'echantillonner,\n");
+        printf("   l'heure avance, les six cases changent. Veille ≠ fige.\n");
+        return 0;
+    }
+
+    if (strcmp(argv[1], "wake") == 0) {
+        if (argc != 2) {
+            printf("usage : veille wake\n");
+            return 1;
+        }
+        esp_err_t err = dn_ui_veille_reveiller(DN_VEILLE_ORIG_CONSOLE);
+        if (err == ESP_ERR_INVALID_STATE) {
+            printf("rien a faire : on est DEJA en Actif.\n");
+            return 0;
+        }
+        if (err != ESP_OK) {
+            printf("refuse : %s\n", esp_err_to_name(err));
+            return 1;
+        }
+        printf("Actif.\n");
+        printf("⚠️ CET ECHANTILLON EST EXCLU de la statistique de `veille lat` :\n");
+        printf("   il n'a pas le chemin d'entree du DOIGT. Il est enregistre et\n");
+        printf("   compte, ⛔ pas jete en silence.\n");
+        return 0;
+    }
+
+    if (strcmp(argv[1], "lat") == 0) {
+        veille_imprimer_latences();
+        return 0;
+    }
+
+    if (strcmp(argv[1], "geom") == 0) {
+        veille_imprimer_geom();
+        return 0;
+    }
+
+    if (strcmp(argv[1], "assets") == 0) {
+        veille_imprimer_assets();
+        return 0;
+    }
+
+    if (strcmp(argv[1], "reset") == 0) {
+        if (argc != 2) {
+            printf("usage : veille reset\n");
+            return 1;
+        }
+        dn_ui_veille_latences_reset();
+        dn_veille_reset();
+        printf("compteurs et latences a ZERO.\n");
+        printf("⛔ Les deux REGLAGES ne sont pas touches : ce sont des reglages,\n");
+        printf("   pas des mesures. Le MODE non plus — le remettre a ACTIF ici\n");
+        printf("   ferait diverger l'etat annonce de l'ecran reel.\n");
+        return 0;
+    }
+
+    if (strcmp(argv[1], "pct") == 0) {
+        long v = 0;
+        if (argc != 3 || !parse_entier(argv[2], &v)) {
+            printf("usage : veille pct <%d..%d>\n", DN_VEILLE_PCT_MIN,
+                   DN_VEILLE_PCT_MAX);
+            return 1;
+        }
+        if (dn_ui_veille_set_pct((int)v) != ESP_OK) {
+            printf("refuse : %ld hors [%d ; %d].\n", v, DN_VEILLE_PCT_MIN,
+                   DN_VEILLE_PCT_MAX);
+            printf("  %d %% est le plancher de LISIBILITE mesure en dn1-3/AC7\n",
+                   DN_VEILLE_PCT_MIN);
+            printf("  (« le Living PCB et le label s'y distinguent encore, TOUT\n");
+            printf("  JUSTE »). ⛔ Ne pas confondre avec `DN_ENV_BL_PCT_MIN = %d`,\n",
+                   DN_ENV_BL_PCT_MIN);
+            printf("  qui est le plancher de la LOI d'asservissement au lux —\n");
+            printf("  un autre chiffre pour un autre usage.\n");
+            return 1;
+        }
+        printf("retroeclairage d'Ambient : %d %%%s\n", dn_veille_pct(),
+               dn_veille_mode() == DN_VEILLE_AMBIENT ? " (applique MAINTENANT)"
+                                                     : " (a la prochaine veille)");
+        return 0;
+    }
+
+    if (strcmp(argv[1], "voile") == 0) {
+        long v = 0;
+        if (argc != 3 || !parse_entier(argv[2], &v) || v < 0 || v > 255) {
+            printf("usage : veille voile <0..255>   (defaut Ambient : %u ;\n",
+                   (unsigned)dn_ui_veille_voile());
+            printf("        defaut ACTIF : %u, constat owner du 2026-08-17)\n",
+                   (unsigned)dn_ui_voile_opa());
+            return 1;
+        }
+        dn_ui_veille_set_voile((uint8_t)v);
+        printf("voile d'Ambient : %ld%s\n", v,
+               dn_veille_mode() == DN_VEILLE_AMBIENT ? " (applique MAINTENANT)"
+                                                     : " (a la prochaine veille)");
+        printf("⛔ AUCUNE reconstruction de scene : les voiles sont RETENUS, on\n");
+        printf("   n'ecrit que leur style. C'est ce qui rend cet A/B jouable sans\n");
+        printf("   payer 307-322 ms par essai.\n");
+        return 0;
+    }
+
+    if (strcmp(argv[1], "gris") == 0) {
+        long rgb = 0;
+        int reg = -1;
+        if (argc == 4) {
+            if (strcmp(argv[2], "reel") == 0) {
+                reg = DN_VAL_REELLE;
+            } else if (strcmp(argv[2], "simule") == 0) {
+                reg = DN_VAL_SIMULEE;
+            } else if (strcmp(argv[2], "absent") == 0) {
+                reg = DN_VAL_ABSENTE;
+            }
+        }
+        if (reg < 0 || !parse_hex_strict(argv[3], &rgb) || rgb < 0 ||
+            rgb > 0xFFFFFF) {
+            printf("usage : veille gris <reel|simule|absent> <rrggbb>\n");
+            printf("  actuels : reel %06lX · simule %06lX · absent %06lX\n",
+                   (unsigned long)dn_widget_gris_amb(DN_VAL_REELLE),
+                   (unsigned long)dn_widget_gris_amb(DN_VAL_SIMULEE),
+                   (unsigned long)dn_widget_gris_amb(DN_VAL_ABSENTE));
+            printf("🔴 ILS SONT TROIS, ET C'EST LE PIEGE NOMME D'AVANCE :\n");
+            printf("   `W_COL_ABSENTE = 9a9a9a` est tentant et GRATUIT. S'en\n");
+            printf("   servir pour les valeurs REELLES en Ambient rendrait\n");
+            printf("   « vivant » indiscernable de « mort » — exactement le\n");
+            printf("   defaut du 2026-08-18 (SIMULEE indiscernable d'ABSENTE),\n");
+            printf("   qui avait demande une revue de code pour etre vu.\n");
+            return 1;
+        }
+        dn_ui_veille_set_gris(reg, (uint32_t)rgb);
+        printf("gris d'Ambient « %s » : %06lX%s\n", argv[2], (unsigned long)rgb,
+               dn_veille_mode() == DN_VEILLE_AMBIENT ? " (applique MAINTENANT)"
+                                                     : "");
+        return 0;
+    }
+
+    if (strcmp(argv[1], "accents") == 0) {
+        long v = 0;
+        if (argc != 3 || !parse_entier(argv[2], &v)) {
+            printf("usage : veille accents <0..100>   (actuel : %d)\n",
+                   dn_widget_accent_amb());
+            printf("  0   = teinte INTACTE (l'accent reste l'identite de la case)\n");
+            printf("  100 = gris PUR (« un etat nuance de gris », owner 2026-08-25)\n");
+            veille_accents_collisions();
+            return 1;
+        }
+        if (dn_ui_veille_set_accent((int)v) != ESP_OK) {
+            printf("refuse : %ld hors [0 ; 100].\n", v);
+            return 1;
+        }
+        printf("desaturation des accents en Ambient : %d %%%s\n",
+               dn_widget_accent_amb(),
+               dn_veille_mode() == DN_VEILLE_AMBIENT ? " (applique MAINTENANT)"
+                                                     : "");
+        veille_accents_collisions();
+        return 0;
+    }
+
+    printf("sous-commande « %s » inconnue.\n", argv[1]);
+    veille_usage();
+    return 1;
+}
+
 static const esp_console_cmd_t k_cmds[] = {
     DN_CMD("scene",
            "affiche une mire : bits|nbits|rgb|red|green|blue|white|black|frame|gray|asset",
@@ -8040,6 +8629,11 @@ static const esp_console_cmd_t k_cmds[] = {
     DN_CMD("set", "set fbs | bounce | lines | drawmem | core <-1|0|1>",
            cmd_set),
     DN_CMD("reboot", "redémarre pour appliquer un `set`", cmd_reboot),
+    /* dn3-3 : la VEILLE (`Ambient`) — pilotage ET mesure. */
+    DN_CMD("veille",
+           "veille | on|off | delai <1|3|5|10> | now | wake | lat | geom | "
+           "assets | reset | pct | voile | gris | accents — la VEILLE (dn3-3)",
+           cmd_veille),
     DN_CMD("tear", "tear on|vsync|sync|both|flip|off — déchirement BRUT (dn1-2)",
            cmd_tear),
     DN_CMD("flash", "flash on|off — stimulus d'écriture flash", cmd_flash),

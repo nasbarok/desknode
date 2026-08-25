@@ -681,8 +681,166 @@ lv_obj_t *dn_widget_texte(lv_obj_t *parent, const char *s, const lv_font_t *font
     return l;
 }
 
+/*
+ * ── dn3-3 : LE MODE D'AMBIANCE, ET LES TROIS TONS D'AMBIENT ─────────────────
+ *
+ * Motif complet dans `dn_widget.h`. En deux lignes : `W_COL_ABSENTE` recyclé
+ * pour les valeurs RÉELLES en veille rendrait « vivant » indiscernable de
+ * « mort » — le défaut du 2026-08-18, qui avait demandé une revue pour être vu.
+ *
+ * ⚠️ VALEURS D'AMORÇAGE POUR L'A/B D'AC9.3, ⛔ pas des couleurs tranchées.
+ *    Elles sont choisies pour être ORDONNÉES EN LUMINANCE et séparées, ce que
+ *    `tools/verif_veille_dn33.py` VÉRIFIE — l'œil de l'owner tranchera ensuite
+ *    la teinte, et la valeur retenue se gravera ici avec son constat.
+ *      RÉELLE  0xc8c8c8 : gris clair, nettement au-dessus des deux autres.
+ *      SIMULÉE 0x9a8a5a : gris AMBRÉ — la teinte du régime survit, désaturée.
+ *      ABSENTE 0x5a5a5a : gris sombre, nettement SOUS le vivant.
+ */
+static bool s_ambient;
+static uint32_t s_gris_amb[DN_VAL_REGIME_COUNT] = {
+    [DN_VAL_ABSENTE] = 0x5a5a5a,
+    [DN_VAL_REELLE] = 0xc8c8c8,
+    [DN_VAL_SIMULEE] = 0x9a8a5a,
+};
+
+void dn_widget_set_ambient(bool on) { s_ambient = on; }
+bool dn_widget_ambient(void) { return s_ambient; }
+
+bool dn_widget_set_gris_amb(int regime, uint32_t rgb)
+{
+    if (regime < 0 || regime >= DN_VAL_REGIME_COUNT) {
+        return false;
+    }
+    s_gris_amb[regime] = rgb & 0xFFFFFFu;
+    return true;
+}
+
+uint32_t dn_widget_gris_amb(int regime)
+{
+    if (regime < 0 || regime >= DN_VAL_REGIME_COUNT) {
+        return 0;
+    }
+    return s_gris_amb[regime];
+}
+
+/*
+ * ── dn3-3 : L'ACCENT SELON LE MODE ──────────────────────────────────────────
+ * Motif complet dans `dn_widget.h`. Défaut 100 % = gris pur, c'est l'intention
+ * owner verbatim du 2026-08-25 (« un état nuance de gris ») ; AC9.4 laisse
+ * l'œil le descendre.
+ */
+/*
+ * 🔴 DÉFAUT **95**, ET C'EST UNE MESURE, ⛔ PAS UN NOMBRE ROND.
+ *    À 100 % (gris PUR), DEUX ACCENTS SE CONFONDENT EXACTEMENT : le cyan de
+ *    `GPU` (0x22d3ee) et le rose de `RAM` (0xf472b6) rendent TOUS LES DEUX
+ *    la luminance 160/255. Mesuré, ⛔ pas supposé.
+ *    ⇒ Les six couleurs que l'owner vient d'arbitrer en dn4-4 puis dn4-13
+ *      redeviendraient CINQ en veille — c'est-à-dire le piège n°6 de cette
+ *      story (« rendre deux choses indiscernables ») appliqué aux accents.
+ *    ⇒ À 95 %, l'écart chromatique minimal remonte à 7/255 et les SEPT accents
+ *      (les six cases + l'humidité d'`AMBIANCE`) redeviennent distincts. 7/255
+ *      de teinte résiduelle ne se voit pas : ça reste « un état nuance de gris »
+ *      au sens de la demande owner du 2026-08-25, sans détruire d'information.
+ * ⚠️ `veille accents 100` reste disponible et RESTE le gris pur — la console DIT
+ *    quelle paire il confond, calculé à l'exécution. AC9.4 tranche à l'œil.
+ */
+static int s_accent_amb_pct = 95;
+
+bool dn_widget_set_accent_amb(int pct)
+{
+    if (pct < 0 || pct > 100) {
+        return false;
+    }
+    s_accent_amb_pct = pct;
+    return true;
+}
+
+int dn_widget_accent_amb(void) { return s_accent_amb_pct; }
+
+/*
+ * 🔴 L'ARITHMÉTIQUE EST **SÉPARÉE** DE LVGL, ET C'EST DÉLIBÉRÉ.
+ *    Cette fonction ne prend ni ne rend de `lv_color_t` : elle est donc
+ *    EXTRACTIBLE ET APPELABLE sur l'hôte par `tools/verif_veille_dn33.py`, qui
+ *    la sort de CE fichier et la compile telle quelle. Si elle mélangeait du
+ *    LVGL, la gate devrait fournir une coquille de `lv_color_hex` — et
+ *    validerait alors un accord avec sa propre coquille.
+ * ⛔ NE PAS la fusionner dans `dn_widget_accent_couleur()` : la gate cesserait
+ *    de pouvoir l'exécuter et redeviendrait décorative.
+ */
+uint32_t dn_widget_desaturer(uint32_t rgb, int pct)
+{
+    if (pct <= 0) {
+        return rgb & 0xFFFFFFu;
+    }
+    if (pct > 100) {
+        pct = 100;
+    }
+    uint32_t r = (rgb >> 16) & 0xFFu, g = (rgb >> 8) & 0xFFu, b = rgb & 0xFFu;
+    /*
+     * ⚠️ ITU-R BT.601 (77/150/29 sur 256), ⛔ pas une moyenne des trois canaux —
+     *    et le motif N'EST PAS « la moyenne confondrait des couleurs » : MESURÉ
+     *    LE 2026-08-25, les deux mappings confondent EXACTEMENT UNE PAIRE
+     *    chacun, simplement pas la même (BT.601 : `GPU`/`RAM`, tous deux à 160 ;
+     *    moyenne : `CPU`/humidité d'`AMBIANCE`, tous deux à 166).
+     *    ⇒ Le vrai motif est PERCEPTUEL : BT.601 pondère les canaux comme l'œil
+     *      les voit (le vert compte pour 59 %, le bleu pour 11 %), une moyenne
+     *      non. Un gris « juste » est celui qui garde la clarté RELATIVE des six
+     *      accents, ⛔ pas celui qui maximise le nombre de valeurs distinctes.
+     * 🔴 UNE PREMIÈRE VERSION DE CE COMMENTAIRE AFFIRMAIT L'INVERSE, en citant
+     *    précisément la paire que BT.601 confond LUI-MÊME. Elle a été corrigée
+     *    par la mesure avant d'être publiée — un motif faux dans un commentaire
+     *    est un défaut au même titre qu'un chiffre faux.
+     */
+    uint32_t y = (r * 77u + g * 150u + b * 29u) >> 8;
+    if (y > 255u) {
+        y = 255u;
+    }
+    uint32_t k = (uint32_t)pct;
+    /* Mélange linéaire vers le gris de luminance. L'arrondi est fait en entier
+     * (`+ 50`) : sans lui, 100 % ne rendrait pas exactement `y` sur les canaux
+     * les plus sombres, et le « gris pur » du défaut aurait gardé une teinte
+     * résiduelle invisible en console mais présente à l'écran. */
+    uint32_t rr = (r * (100u - k) + y * k + 50u) / 100u;
+    uint32_t gg = (g * (100u - k) + y * k + 50u) / 100u;
+    uint32_t bb = (b * (100u - k) + y * k + 50u) / 100u;
+    return (rr << 16) | (gg << 8) | bb;
+}
+
+lv_color_t dn_widget_accent_couleur(uint32_t rgb)
+{
+    return lv_color_hex(
+        dn_widget_desaturer(rgb, s_ambient ? s_accent_amb_pct : 0));
+}
+
+void dn_widget_repeindre_accents(const dn_widget_desc_t *desc, dn_widget_t *w)
+{
+    if (!desc || !w) {
+        return;
+    }
+    lv_color_t c = dn_widget_accent_couleur(desc->couleur);
+    if (w->icone) {
+        lv_obj_set_style_text_color(w->icone, c, 0);
+    }
+    if (w->jauge) {
+        lv_obj_set_style_bg_color(w->jauge, c, LV_PART_INDICATOR);
+    }
+}
+
 lv_color_t dn_val_regime_couleur(dn_val_regime_t r)
 {
+    /* ⚠️ LE MODE EST TESTÉ D'ABORD, MAIS LES TROIS RÉGIMES RESTENT TROIS DANS
+     *    LES DEUX MODES. Un `if (ambient) return gris_unique;` aurait été plus
+     *    court d'une ligne et aurait REFAIT le défaut du 2026-08-18. */
+    if (s_ambient) {
+        switch (r) {
+        case DN_VAL_REELLE:
+            return lv_color_hex(s_gris_amb[DN_VAL_REELLE]);
+        case DN_VAL_SIMULEE:
+            return lv_color_hex(s_gris_amb[DN_VAL_SIMULEE]);
+        default:
+            return lv_color_hex(s_gris_amb[DN_VAL_ABSENTE]);
+        }
+    }
     switch (r) {
     case DN_VAL_REELLE:
         return lv_color_hex(W_COL_REELLE);
@@ -908,8 +1066,14 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
          * champ mort que dn3-3 découvrirait non branché.
          * ⚠️ dn4-6 / AC3 : en en-tête COMPACT elle descend en `dn_font_14`, et
          *    c'est LA décision owner de l'A/B — pas un réglage de dev. */
-        dn_widget_texte(out->racine, desc->icone, font_entete(),
-                        lv_color_hex(desc->couleur), tx, entete_y_icone());
+        /* 🔴 dn3-3 : RETENUE (pour l'A/B à chaud d'AC9.4) et posée avec la
+         *    couleur DU MODE COURANT, ⛔ pas `lv_color_hex(desc->couleur)` en
+         *    dur. Une reconstruction PENDANT la veille (`widget opa`, `nav
+         *    model`…) aurait sinon reposé les six accents en COULEURS sur un
+         *    module endormi, sans qu'aucune bascule n'ait eu lieu. */
+        out->icone = dn_widget_texte(out->racine, desc->icone, font_entete(),
+                                     dn_widget_accent_couleur(desc->couleur),
+                                     tx, entete_y_icone());
         tx += (s_geom.entete == DN_ENTETE_COMPACT) ? W_ICONE_AV_14 : W_ICONE_AV_28;
     }
     dn_widget_texte(out->racine, desc->titre, &dn_font_14,
@@ -1079,7 +1243,10 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
         lv_bar_set_range(out->jauge, desc->ind_min, desc->ind_max);
         lv_obj_set_style_bg_color(out->jauge, lv_color_hex(s_piste), 0);
         lv_obj_set_style_bg_opa(out->jauge, LV_OPA_COVER, 0);
-        lv_obj_set_style_bg_color(out->jauge, lv_color_hex(desc->couleur),
+        /* dn3-3 : même règle que l'icône — la couleur DU MODE, ⛔ pas la
+         * couleur brute du descripteur. */
+        lv_obj_set_style_bg_color(out->jauge,
+                                  dn_widget_accent_couleur(desc->couleur),
                                   LV_PART_INDICATOR);
         lv_obj_set_style_bg_opa(out->jauge, LV_OPA_COVER, LV_PART_INDICATOR);
         lv_bar_set_value(out->jauge, etat ? etat->brut[0] : desc->ind_min,

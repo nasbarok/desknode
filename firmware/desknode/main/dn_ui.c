@@ -2,6 +2,8 @@
 
 #include <inttypes.h>
 #include <stdio.h>
+/* dn3-3 : `qsort` pour les médianes de latence de réveil (AC4.3). */
+#include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
 #include <strings.h>
@@ -9,6 +11,10 @@
 #include "dn_asset.h"
 #include "dn_capteurs.h"
 #include "dn_display.h"
+/* dn3-3 : UNIQUEMENT pour `dn_env_bl_auto_desarmer()` — la veille est le 4ᵉ
+ * écrivain de LEDC et doit s'arbitrer avec le 3ᵉ. ⛔ Rien d'autre de `dn_env`
+ * n'est utilisé ici, et la loi d'asservissement n'est pas touchée. */
+#include "dn_env.h"
 #include "dn_link.h"
 #include "dn_measure.h"
 #include "dn_pins.h"
@@ -16,6 +22,7 @@
 #include "dn_rtc.h"
 #include "dn_touch.h"
 #include "dn_hist.h"
+#include "dn_veille.h"
 #include "dn_widget.h"
 #include "fonts/dn_font.h"
 #include "esp_cache.h"
@@ -797,10 +804,21 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
          * ⚠️ Cette couleur est lue à TROIS endroits qui doivent rester d'accord :
          *    la tuile du dashboard, la SÉRIE 0 de la courbe, et le CHEVRON ↓.
          *    Les trois la LISENT ici — ⛔ aucun ne la recopie. */
-        .couleur = 0x3b82f6, /* VERT — dn4-4, 2026-08-24 (2e passe) : c'est la
-                              * couleur du CHEVRON DESCENDANT, et la courbe du
-                              * descendant porte LA MEME (demande owner : « mettre
-                              * ces 2 couleurs au couleurs des chevrons »). */
+        .couleur = 0x3b82f6, /* BLEU VIF — c'est la couleur du CHEVRON
+                              * DESCENDANT, et la courbe du descendant porte LA
+                              * MEME (demande owner : « mettre ces 2 couleurs au
+                              * couleurs des chevrons »).
+                              * 🔴 CORRIGÉ LE 2026-08-25 (dn3-3 / AC10.1) : ce
+                              *    commentaire disait « VERT » sur `0x3b82f6`,
+                              *    QUI EST UN BLEU. Le vert (`0x4ade80`) était la
+                              *    1ʳᵉ passe de dn4-4 ; le constat owner de
+                              *    dn4-13 (« ne se voit pas bien » sur un PCB
+                              *    VERT) l'a remplacé par ce bleu, et le bloc de
+                              *    tête juste au-dessus a été amendé — l'inline,
+                              *    lui, avait raté l'amendement.
+                              * ⛔ Ne pas réécrire le bloc de tête : il est JUSTE,
+                              *    il dit déjà « BLEU VIF depuis le 2026-08-25 ».
+                              *    C'était le seul écart, et il est ici. */
         /*
          * 🔴 UNE GRANDEUR PAR LIGNE AU DÉTAIL — MESURÉ LE 2026-08-24, ⛔ PAS
          *    CHOISI. À deux par ligne, le pire cas de LARGEUR déborde :
@@ -1278,6 +1296,11 @@ const char *dn_ui_vue_name(dn_ui_vue_t v)
         return "dashboard";
     case DN_VUE_DETAIL:
         return "detail";
+    case DN_VUE_MENU:
+        /* dn3-3 : la 3ᵉ vue. ⚠️ RELU de l'énumération, jamais récité ailleurs —
+         * `nav` imprime ceci, et une étiquette qui ment est un défaut à part
+         * entière. */
+        return "menu";
     default:
         return "?";
     }
@@ -1420,10 +1443,27 @@ static int s_metrique;
  */
 static dn_nav_model_t s_nav = DN_NAV_SCREENS;
 static volatile uint32_t s_nav_count;
+/* 🔴 dn3-3 : LES TRANSITIONS PROVOQUÉES PAR LA VEILLE SONT COMPTÉES À PART.
+ *    Le retour automatique au dashboard (AC3.5) EST une transition, donc elle
+ *    entre dans `s_nav_count` — mais elle n'est provoquée par AUCUN geste. La
+ *    publier sans la distinguer aurait fait grossir le dénominateur de la
+ *    latence d'AC5 avec des transitions dont l'origine est une horloge, et rien
+ *    dans la sortie n'aurait permis de s'en apercevoir. `nav` les nomme.
+ * ⚠️ Et leur chronomètre n'est PAS armé — voir `s_nav_veille`. */
+static bool s_nav_veille;
+static uint32_t s_nav_veille_count;
 /* Modèle SCREENS : les deux racines vivent en permanence. NULL en REBUILD — et
  * c'est ce qui distingue les deux modèles à l'oeil dans `ui`. */
 static lv_obj_t *s_scr_dash;
 static lv_obj_t *s_scr_detail;
+/* 🔴 dn3-3 : LA TROISIÈME RACINE, et elle a un COÛT qu'il faut MESURER, ⛔ pas
+ *    supposer. La fragmentation du tas LVGL suit une tendance à trois points
+ *    (15-19 % -> 22 % -> 28 %) et une racine de plus la pousse. ⚠️ LE CRITÈRE
+ *    EST **LE PLUS GROS BLOC LIBRE** (44 164 o sur 44 596 au dernier relevé),
+ *    ⛔ pas le pourcentage : un tas à 28 % de fragmentation qui garde un bloc
+ *    de 44 Ko construit une scène ; un tas à 10 % dont le plus gros bloc fait
+ *    2 Ko ne la construit pas. `dn_ui_log_mem()` publie les deux. */
+static lv_obj_t *s_scr_menu;
 /* Les labels du détail que le modèle SCREENS RÉÉCRIT au lieu de reconstruire.
  * En REBUILD ils sont recréés à chaque transition et ces pointeurs ne servent
  * qu'à ne pas les chercher dans l'arbre. */
@@ -1710,6 +1750,49 @@ static const struct {
  * et aura besoin de rejouer l'arbitrage sans reflasher.
  */
 static uint8_t s_voile_opa = 90;
+
+/*
+ * ── dn3-3 : L'OPACITÉ DU VOILE **EN AMBIENT**, ET LES VOILES VIVANTS ────────
+ *
+ * 🔴 `dn_ui_set_voile_opa()` RECONSTRUIT LA SCÈNE (307-322 ms verrou tenu) : le
+ *    style d'un objet LVGL déjà créé est résolu, et le setter historique
+ *    reconstruit plutôt que de mentir. C'est acceptable pour un réglage
+ *    d'opérateur ; ça ne l'est PAS pour un réveil, dont AC4.2 chronomètre les
+ *    deux temps.
+ * ⇒ On RETIENT les objets voile, et la bascule Actif/Ambient ne fait qu'écrire
+ *   leur `bg_opa`. Aucun objet détruit, aucun arbre reconstruit.
+ *
+ * ⚠️ IL Y EN A PLUSIEURS, ET C'EST LE MODÈLE `SCREENS` QUI L'IMPOSE : chaque
+ *    racine porte son propre fond, donc son propre voile — deux aujourd'hui,
+ *    TROIS avec la vue MENU de cette story. Un pointeur unique aurait laissé
+ *    l'écran non chargé à l'opacité de l'autre mode, et le défaut ne se serait
+ *    vu qu'en NAVIGUANT depuis la veille.
+ * ⚠️ `s_voiles_n` est remis à zéro AUX MÊMES SITES que les autres pointeurs
+ *    (les trois démontages + la reconstruction) : un voile mort dans ce tableau
+ *    ferait écrire `lv_obj_set_style_bg_opa()` dans de la mémoire libérée, à la
+ *    première bascule de veille. C'est le use-after-free que la revue dn1-3 a
+ *    trouvé, appliqué à un décor.
+ */
+#define DN_UI_VOILES_MAX 4
+static lv_obj_t *s_voiles[DN_UI_VOILES_MAX];
+static int s_voiles_n;
+
+/*
+ * L'opacité du voile EN AMBIENT. ⚠️ VALEUR D'AMORÇAGE POUR L'A/B D'AC9.2,
+ * ⛔ pas une valeur tranchée : le défaut Actif est 90 (constat owner du
+ * 2026-08-17, « à 35 % le PCB respire mieux »), et Ambient doit assombrir SANS
+ * effacer le Living PCB, qui est l'identité visuelle du produit. 170 est le
+ * point de départ du balayage vers le haut ; l'œil tranche en séance.
+ */
+static uint8_t s_voile_opa_amb = 170;
+
+/* L'opacité QUI S'APPLIQUE, relue du mode — ⛔ jamais récitée depuis l'une des
+ * deux constantes au point d'usage. Même discipline que `ui_menu_h()` : une
+ * expression qui a l'air d'une constante finit par être recopiée. */
+static inline uint8_t ui_voile_opa_courante(void)
+{
+    return dn_veille_mode() == DN_VEILLE_AMBIENT ? s_voile_opa_amb : s_voile_opa;
+}
 
 /* ── Le mock (AC3, GÉNÉRALISÉ EN dn3-2 / W5) — forme ANNONCÉE, pas devinée ───
  *
@@ -2101,6 +2184,11 @@ static lv_obj_t *label_courant(void)
 
 static void mock_tick_nolock(void);
 
+/* dn3-3 : le tick de veille vit plus bas, près des bascules — même motif que
+ * `build_scene` et `detail_reparametrer`, déclarées avant leur corps. */
+static void veille_tick_nolock(void);
+static bool veille_contact_cb(int x, int y);
+
 static void label_tick(lv_timer_t *t)
 {
     (void)t;
@@ -2121,6 +2209,23 @@ static void label_tick(lv_timer_t *t)
      *    détail — un « affichage figé » fabriqué par l'instrumentation.
      */
     mock_tick_nolock();
+
+    /*
+     * 🔴 dn3-3 — LA VEILLE BAT ICI, ET ⛔ AUCUNE TÂCHE NEUVE N'EST CRÉÉE.
+     *    Cette horloge 1 Hz existe déjà, dans la tâche LVGL, sous son verrou :
+     *    c'est exactement ce qu'il faut pour lire `lv_display_get_inactive_time()`
+     *    et décider. Une tâche dédiée aurait coûté une pile, un handle et un
+     *    point de défaillance de plus au boot — pour rien (même arbitrage que le
+     *    mock ci-dessus).
+     * ⚠️ LA GRANULARITÉ DE LA DÉTECTION EST DONC DE **1 s**, et c'est ce qui
+     *    fixe la fenêtre attendue d'AC3.3 : au cran 1 min, l'écart entre le
+     *    dernier contact et la bascule tombe dans [60 ; 61] s, ⛔ pas
+     *    « environ une minute ».
+     * ⚠️ AVANT le retour anticipé ci-dessous (label vivant masqué / NULL) : la
+     *    mettre après aurait fait une veille qui cesse de tomber dès qu'on
+     *    masque le label de debug. Même piège que le mock, deux lignes plus haut.
+     */
+    veille_tick_nolock();
 
     lv_obj_t *s_label = label_courant();
     if (!s_label) {
@@ -2287,7 +2392,27 @@ static void fond_poser(lv_obj_t *scr)
         lv_obj_clear_flag(voile, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_clear_flag(voile, LV_OBJ_FLAG_CLICKABLE);
         lv_obj_set_style_bg_color(voile, lv_color_black(), 0);
-        lv_obj_set_style_bg_opa(voile, s_voile_opa, 0);
+        /* 🔴 dn3-3 : L'OPACITÉ POSÉE EST CELLE DU MODE COURANT, ⛔ pas `s_voile_opa`
+         *    en dur. Une reconstruction PENDANT la veille (`widget opa`, `nav
+         *    model`, `ui bg psram`…) reposait sinon le voile d'Actif sur un
+         *    module endormi : l'écran serait remonté en clair tout seul, sans
+         *    qu'aucune bascule n'ait eu lieu et sans qu'aucun compteur ne le
+         *    dise. C'est la classe de défaut « l'ombre suit la réalité » que ce
+         *    fichier corrige déjà pour `anim` et pour la démo. */
+        lv_obj_set_style_bg_opa(voile, ui_voile_opa_courante(), 0);
+        /* Retenu pour que la bascule de veille n'ait pas à reconstruire — voir
+         * le bloc `s_voiles[]`. Le débordement est IMPOSSIBLE aujourd'hui (3
+         * racines au plus) mais il est gardé quand même : le jour où une 4ᵉ vue
+         * naîtra, un dépassement silencieux ferait un voile orphelin qui ne
+         * suivrait plus le mode, et ça ne se verrait qu'à l'œil. */
+        if (s_voiles_n < DN_UI_VOILES_MAX) {
+            s_voiles[s_voiles_n++] = voile;
+        } else {
+            ESP_LOGW(TAG,
+                     "plus de %d voiles vivants : celui-ci ne suivra PAS les "
+                     "bascules de veille (il restera a l'opacite posee).",
+                     DN_UI_VOILES_MAX);
+        }
     } else {
         /*
          * ── LE PANNEAU « ASSET ABSENT » SURVIT À L'INTÉGRATION (AC1) ─────────
@@ -2450,6 +2575,16 @@ static uint32_t s_clic_seq;
  * une zone tactile morte, et c'est la preuve d'AC3 qui ment. */
 static volatile uint32_t s_async_refus;
 
+/*
+ * 🔴 dn3-3 — LA 3ᵉ CIBLE. L'encodage des cibles est `0 = dashboard`,
+ *    `1..DN_UI_METRIQUES = détail de la métrique cible-1`. Le MENU prend la
+ *    valeur JUSTE APRÈS, DÉRIVÉE de `DN_UI_METRIQUES` et ⛔ pas écrite « 7 » en
+ *    dur : le jour où une 7ᵉ métrique naîtra, un 7 littéral aurait fait ouvrir
+ *    le MENU sur un tap de case, en silence. Le champ est un octet
+ *    (`cible & 0xFF`), il y a donc de la place.
+ */
+#define DN_NAV_CIBLE_MENU (DN_UI_METRIQUES + 1)
+
 /* Paramètre d'async : ((slot+1) << 8) | cible. Jamais NULL, ce qui garde
  * l'encodage lisible dans un log et distinguable d'un paramètre oublié. */
 static void *nav_param(int cible, int64_t t_clic)
@@ -2462,7 +2597,8 @@ static void *nav_param(int cible, int64_t t_clic)
 static void nav_async(void *param)
 {
     uintptr_t p = (uintptr_t)param;
-    /* Encodage de la cible : 0 = retour au dashboard, 1..6 = métrique p-1. */
+    /* Encodage de la cible : 0 = retour au dashboard, 1..6 = métrique p-1,
+     * `DN_NAV_CIBLE_MENU` = la vue MENU (dn3-3). */
     int cible = (int)(p & 0xFF);
     int slot = (int)((p >> 8) & 0xFF) - 1;
     int64_t t_clic = (slot >= 0 && slot < DN_NAV_PENDING) ? s_clic_ts[slot]
@@ -2497,7 +2633,57 @@ static void on_retour_clic(lv_event_t *e)
 }
 
 /*
+ * ── dn3-3 : LE BANDEAU MENU EST UNE PORTE, ET VOICI SON CALLBACK ────────────
+ *
+ * ⚠️ IL NE MARQUE PAS `s_dernier_tap`/`s_taps` DIFFÉREMMENT DES AUTRES ZONES :
+ *    un tap sur le MENU est un tap sur une zone, point. `s_menu_taps` s'y
+ *    ajoute parce que c'est LUI la preuve positive d'AC5.5-5.6, celle que
+ *    `touch trace` confronte aux appuis relevés dans la bande y = 589..639.
+ * ⚠️ LE TAP DE RÉVEIL N'ARRIVE JAMAIS ICI : il est CONSOMMÉ en amont, dans le
+ *    `read_cb` (D-7). Sans cela, chaque réveil au bas de l'écran aurait gonflé
+ *    `menu_taps`, et la gate d'AC5.6 aurait mesuré la veille en croyant mesurer
+ *    la porte.
+ */
+static void on_menu_clic(lv_event_t *e)
+{
+    (void)e;
+    int64_t t_clic = esp_timer_get_time();
+    /* Même discipline que les deux autres zones : le retour de `lv_async_call`
+     * est TESTÉ. Sur file pleine, un compteur qui monterait quand même ferait
+     * passer une porte refusée pour une porte ouverte. */
+    if (lv_async_call(nav_async, nav_param(DN_NAV_CIBLE_MENU, t_clic)) !=
+        LV_RESULT_OK) {
+        s_async_refus++;
+        return;
+    }
+    s_dernier_tap = DN_UI_ZONE_MENU;
+    s_taps++;
+    s_menu_taps++;
+}
+
+/*
  * ── LE BANDEAU MENU : W3 EST TRANCHÉ — IL N'EST PLUS ACTIONNABLE (dn3-2) ─────
+ *
+ * 🔴 AMENDÉ LE 2026-08-25 (dn3-3), ⛔ PAS EFFACÉ. Ce qui suit est L'HISTOIRE DE
+ *    LA DÉCISION, et elle explique pourquoi la porte s'ouvre ICI et pas en
+ *    dn3-2. Le motif de W3 était : *« aucune destination ne lui est spécifiée —
+ *    ni dans le brief, ni dans l'addendum §1, ni dans l'epic. Il n'y a AUCUNE
+ *    spec à appliquer. »* C'était EXACT à sa date.
+ *    ⇒ **MAINTENANT SI** : la décision owner du 2026-08-25 (D-4/D-5) crée le
+ *      MENU et lui donne son contenu — deux réglages, veille ON/OFF et délai
+ *      1/3/5/10 min. Le bandeau cesse d'être un no-op non pas parce qu'on a
+ *      changé d'avis sur le no-op, mais parce que la spec qui manquait EXISTE.
+ *    ⚠️ Ce que W3 gardait de vrai et qui reste vrai : ⛔ toujours pas de
+ *      callback VIDE. Le callback ci-dessus NAVIGUE ; s'il ne faisait rien, la
+ *      zone deviendrait `act_obj`, avalerait le CLICKED, et ce serait le pire
+ *      des trois états (voir plus bas dans ce même bloc).
+ *
+ * ⚠️ CE QUE ÇA PÉRIME, ET QUI EST RE-TIRÉ SUR LA CARTE PAR AC5.6 : les deux
+ *    relevés « MENU = zone morte, 0 tap » (dn3-2 / AC5-AC6, 16 appuis ; dn4-6,
+ *    ledger :576, 3 appuis). Ils décrivaient fidèlement leur firmware ; ils
+ *    décrivent l'INVERSE de celui-ci.
+ *
+ * ── CE QUI SUIT EST L'ÉTAT dn3-2, CONSERVÉ COMME HISTORIQUE ─────────────────
  *
  * HISTORIQUE, conservé parce qu'il explique la forme actuelle : dn1-4 le
  * DESSINAIT comme une 7e zone tactile, cliquable, dont le tap n'écrivait qu'un
@@ -2528,7 +2714,287 @@ static void on_retour_clic(lv_event_t *e)
  *    rien ; laissé en place, il ne peut plus monter, et `nav` le dit.
  *    La preuve POSITIVE, elle, vient de `touch trace` : un appui dans la bande
  *    y = 580..640 s'imprime avec ses coordonnées et SANS zone attribuée.
+ *
+ * ── FIN DE L'HISTORIQUE dn3-2 ───────────────────────────────────────────────
+ * 🔴 CE QUI PRÉCÈDE DÉCRIT LE FIRMWARE **JUSQU'AU 2026-08-25**, ET RIEN
+ *    D'AUTRE. Depuis dn3-3 : `on_menu_clic` EXISTE (juste au-dessus de ce
+ *    bloc), le bandeau reçoit un callback NON NUL, `s_menu_taps` MONTE, et
+ *    `dn_ui_zone_nom(DN_UI_ZONE_MENU)` rend « MENU » et non plus « MENU (zone
+ *    morte — W3) ». ⛔ Ne pas lire les quatre lignes ci-dessus au présent : la
+ *    seule chose qu'elles décrivent encore est POURQUOI la porte n'existait pas.
  */
+
+/*
+ * ══ dn3-3 : LA VUE MENU, ET LES DEUX RÉGLAGES DE LA VEILLE ══════════════════
+ *
+ * ⚠️ EXACTEMENT DEUX RÉGLAGES, ET RIEN D'AUTRE (D-5 / AC6.6). Pas de
+ *    luminosité, pas de diagnostic, pas de reboot, pas de version. Toute 3ᵉ
+ *    entrée est un correct-course, ⛔ pas une décision de dev.
+ *
+ * ⚠️ LES CIBLES FONT 210 x 66 px. Le ledger porte « une cible de 10 px ne se
+ *    vise pas » : on ne refait pas ça sur un écran de 2,8".
+ */
+
+/* Le panneau de contenu : pleine largeur moins les deux marges. */
+#define MENU_PAN_X DN_UI_MARGE
+#define MENU_PAN_W (DN_LCD_H_RES - 2 * DN_UI_MARGE) /* 460 */
+#define MENU_ENTETE_H 80
+#define MENU_Y_VEILLE 90
+#define MENU_H_VEILLE 120
+#define MENU_Y_DELAI 225
+#define MENU_H_DELAI 200
+#define MENU_Y_ETAT 440
+#define MENU_H_ETAT 110
+/* Les sélecteurs. Deux colonnes de 210, séparées de 14, dans 460 utiles :
+ * 14 + 210 + 14 + 210 = 448 <= 460. ⚠️ CALCULÉ, ⛔ pas ajusté à l'œil. */
+#define MENU_SEL_W 210
+#define MENU_SEL_H 66
+#define MENU_SEL_X0 14
+#define MENU_SEL_X1 (MENU_SEL_X0 + MENU_SEL_W + 14)
+#define MENU_SEL_Y0 38
+#define MENU_SEL_Y1 (MENU_SEL_Y0 + MENU_SEL_H + 12)
+/* Le glyphe de sélection vit à x FIXE, le libellé aussi : un `LV_SYMBOL_OK`
+ * concaténé au texte aurait DÉPLACÉ le libellé selon qu'il est choisi ou non,
+ * et l'œil aurait lu ce déplacement comme un défaut de calage. */
+#define MENU_CHK_X 12
+#define MENU_LBL_X 56
+
+/* Les couleurs du MENU. ⚠️ Reprises de celles que le fichier utilise déjà pour
+ * les mêmes rôles (titre `0xa0d8ff`, bordure `0x50c0ff`, secondaire `0xc0d8e8`)
+ * — ⛔ pas une 4ᵉ palette inventée ici. */
+#define MENU_COL_CHOISI 0xffffff
+#define MENU_COL_LIBRE 0xc0d8e8
+#define MENU_COL_GRISE 0x5a5f6a
+#define MENU_COL_BORD_CHOISI 0x50c0ff
+#define MENU_COL_BORD_LIBRE 0x2a3a4a
+
+typedef struct {
+    lv_obj_t *zone; /* le conteneur cliquable */
+    lv_obj_t *chk;  /* le LV_SYMBOL_OK, vide quand non choisi */
+    lv_obj_t *lbl;  /* le libellé */
+} menu_sel_t;
+
+static menu_sel_t s_menu_on, s_menu_off;
+static menu_sel_t s_menu_cran[DN_VEILLE_CRANS];
+static lv_obj_t *s_menu_etat;
+
+/*
+ * 🔴 LES TAPS DE RÉGLAGE SONT COMPTÉS À PART, ET C'EST DÉLIBÉRÉ.
+ *    Ils ne montent NI dans `s_menu_taps` — qui compte les taps sur le BANDEAU
+ *    et sert de preuve à AC5.5/AC5.6 — NI dans `s_taps`/`s_dernier_tap`, qui
+ *    nomment les zones du DASHBOARD. Les mélanger aurait fait monter la preuve
+ *    de la porte à chaque réglage, et la gate d'AC5.6 aurait mesuré les
+ *    réglages en croyant mesurer la porte.
+ */
+static uint32_t s_menu_reglages;
+
+static void menu_oublier(void)
+{
+    memset(&s_menu_on, 0, sizeof(s_menu_on));
+    memset(&s_menu_off, 0, sizeof(s_menu_off));
+    memset(s_menu_cran, 0, sizeof(s_menu_cran));
+    s_menu_etat = NULL;
+}
+
+/* Le repeint de la veille (plus bas — il vit près des bascules). */
+static void veille_peindre_nolock(void);
+static void menu_reparametrer(void);
+
+static void menu_sel_peindre(menu_sel_t *s, bool choisi, bool actif)
+{
+    if (!s->zone || !s->chk || !s->lbl) {
+        return;
+    }
+    lv_label_set_text(s->chk, choisi ? LV_SYMBOL_OK : "");
+    uint32_t c = !actif ? MENU_COL_GRISE
+                        : (choisi ? MENU_COL_CHOISI : MENU_COL_LIBRE);
+    lv_obj_set_style_text_color(s->lbl, lv_color_hex(c), 0);
+    lv_obj_set_style_text_color(s->chk, lv_color_hex(c), 0);
+    lv_obj_set_style_border_color(
+        s->zone, lv_color_hex((choisi && actif) ? MENU_COL_BORD_CHOISI
+                                                : MENU_COL_BORD_LIBRE),
+        0);
+    /*
+     * 🔴 AC6.4 — QUAND LA VEILLE EST OFF, LES QUATRE CRANS CESSENT D'ÊTRE DES
+     *    ZONES. On leur RETIRE `LV_OBJ_FLAG_CLICKABLE`, on ne se contente pas de
+     *    les griser : « un réglage qui accepte un tap sans effet est le no-op
+     *    que W3 a supprimé, réintroduit ».
+     * ⚠️ ET C'EST BIEN LE **DRAPEAU** QU'ON RETIRE, ⛔ PAS LE HANDLER. La zone
+     *    garde son callback ; sans le drapeau, LVGL ne la choisit pas comme
+     *    `act_obj` et le tap remonte au panneau, qui n'est pas cliquable non
+     *    plus — donc il ne se passe rien, et rien ne l'avale. L'état que W3
+     *    interdit est l'INVERSE (drapeau SANS handler) : ⛔ ne pas « corriger »
+     *    ceci en repassant un callback NULL, ça exigerait de reconstruire les
+     *    zones à chaque bascule ON/OFF, c'est-à-dire une reconstruction de scène
+     *    (307-322 ms) dans un callback d'événement — le use-after-free de dn1-3.
+     */
+    if (actif) {
+        lv_obj_add_flag(s->zone, LV_OBJ_FLAG_CLICKABLE);
+    } else {
+        lv_obj_clear_flag(s->zone, LV_OBJ_FLAG_CLICKABLE);
+    }
+}
+
+static void menu_reparametrer(void)
+{
+    if (!s_menu_on.zone) {
+        /* Le MENU n'est pas construit (modèle REBUILD, autre vue). Ses réglages
+         * seront relus à sa prochaine construction : rien n'est perdu. */
+        return;
+    }
+    bool armee = dn_veille_armee();
+    int cran = dn_veille_cran();
+
+    menu_sel_peindre(&s_menu_on, armee, true);
+    menu_sel_peindre(&s_menu_off, !armee, true);
+    for (int i = 0; i < DN_VEILLE_CRANS; i++) {
+        menu_sel_peindre(&s_menu_cran[i], armee && i == cran, armee);
+    }
+
+    if (s_menu_etat) {
+        char buf[192];
+        dn_veille_compteurs_t c;
+        dn_veille_compteurs(&c);
+        /* ⚠️ TOUT EST RELU DE L'ÉTAT, ⛔ rien n'est récité : c'est le même
+         *    principe que `s_voile_opa`, que la console RELIT au lieu de citer
+         *    une constante. */
+        snprintf(buf, sizeof(buf),
+                 "mode %s  ·  %lu veille(s)  ·  %lu reveil(s)\n"
+                 "delai %d min  ·  inactivite %lu s\n"
+                 "le tap qui reveille est CONSOMME : il rallume,\n"
+                 "il n'ouvre pas de page.",
+                 dn_veille_mode_nom(c.mode), (unsigned long)c.bascules,
+                 (unsigned long)c.reveils, dn_veille_cran_min(c.cran),
+                 (unsigned long)(c.inactivite_ms / 1000u));
+        lv_label_set_text(s_menu_etat, buf);
+    }
+}
+
+/* Applique les réglages SANS prendre le verrou (l'appelant l'a déjà). */
+static esp_err_t veille_armee_appliquer_nolock(bool on, dn_veille_origine_t o)
+{
+    esp_err_t err = dn_veille_set_armee(on);
+    if (!on) {
+        /*
+         * 🔴 DÉSARMER PENDANT QU'ON DORT DOIT RÉVEILLER. Sans ça, `veille off`
+         *    en Ambient laisserait l'écran gris et sombre POUR TOUJOURS — la
+         *    bascule de sortie n'arrivant plus jamais — pendant que la console
+         *    annoncerait « veille DESARMEE ». L'état annoncé et l'écran
+         *    divergeraient, et c'est exactement ce que ce dépôt appelle un
+         *    mensonge d'interface.
+         */
+        if (dn_veille_reveiller(o)) {
+            veille_peindre_nolock();
+        }
+    }
+    menu_reparametrer();
+    return err;
+}
+
+static esp_err_t veille_cran_appliquer_nolock(int idx)
+{
+    esp_err_t err = dn_veille_set_cran(idx);
+    menu_reparametrer();
+    return err;
+}
+
+/* ── Les callbacks du MENU ───────────────────────────────────────────────── */
+
+static void on_menu_veille_clic(lv_event_t *e)
+{
+    bool on = (bool)(intptr_t)lv_event_get_user_data(e);
+    s_menu_reglages++;
+    /*
+     * ⚠️ ⛔ AUCUNE RECONSTRUCTION ICI, ET C'EST LA RAISON POUR LAQUELLE LES
+     *    ZONES DE CRAN SONT CRÉÉES UNE FOIS PUIS SIMPLEMENT DÉ-CLIQUABILISÉES.
+     *    On tourne DANS l'envoi d'événement LVGL, sur un objet qui appartient à
+     *    l'arbre : `build_scene()` détruirait l'objet en train de recevoir son
+     *    propre événement. C'est le use-after-free trouvé en revue de dn1-3, et
+     *    la parade du fichier est `lv_async_call` — mais ici on n'en a même pas
+     *    besoin, parce qu'on ne détruit RIEN.
+     */
+    veille_armee_appliquer_nolock(on, DN_VEILLE_ORIG_MENU);
+}
+
+static void on_menu_cran_clic(lv_event_t *e)
+{
+    int idx = (int)(intptr_t)lv_event_get_user_data(e);
+    s_menu_reglages++;
+    veille_cran_appliquer_nolock(idx);
+}
+
+/* ── La construction ─────────────────────────────────────────────────────── */
+
+static menu_sel_t menu_sel_creer(lv_obj_t *parent, int x, int y,
+                                 const char *libelle, lv_event_cb_t cb,
+                                 void *user)
+{
+    menu_sel_t s = {0};
+    s.zone = zone_creer(parent, x, y, MENU_SEL_W, MENU_SEL_H, cb, user);
+    s.chk = texte(s.zone, "", &dn_font_28, lv_color_white(), MENU_CHK_X, 16);
+    s.lbl = texte(s.zone, libelle, &dn_font_28, lv_color_white(), MENU_LBL_X, 16);
+    return s;
+}
+
+static void build_menu(lv_obj_t *scr)
+{
+    menu_oublier();
+    fond_poser(scr);
+
+    /*
+     * ── L'EN-TÊTE : LE MÊME RETOUR QUE LA PAGE DE DÉTAIL (AC5.7) ────────────
+     * Même glyphe (`LV_SYMBOL_LEFT`), même rectangle (120 x 60 en 10,10), même
+     * callback (`on_retour_clic`). ⛔ Deux affordances de retour différentes sur
+     * un module de 2,8" serait une régression d'UX gratuite — et l'utilisateur
+     * apprendrait DEUX gestes pour une seule idée.
+     */
+    lv_obj_t *entete = panneau(scr, 0, 0, DN_LCD_H_RES, MENU_ENTETE_H);
+    lv_obj_t *retour = zone_creer(entete, DN_UI_MARGE, DN_UI_MARGE,
+                                  DN_UI_RETOUR_W, DN_UI_RETOUR_H,
+                                  on_retour_clic, NULL);
+    texte(retour, LV_SYMBOL_LEFT, &dn_font_28, lv_color_white(), 16, 14);
+    texte(entete, "MENU", &dn_font_28, lv_color_hex(0xa0d8ff),
+          DN_UI_MARGE + DN_UI_RETOUR_W + 20, 24);
+
+    /* ── Réglage 1 : la veille, ON / OFF ─────────────────────────────────── */
+    lv_obj_t *p1 = panneau(scr, MENU_PAN_X, MENU_Y_VEILLE, MENU_PAN_W,
+                           MENU_H_VEILLE);
+    texte(p1, "VEILLE", &dn_font_14, lv_color_hex(0xa0d8ff), MENU_SEL_X0, 10);
+    s_menu_on = menu_sel_creer(p1, MENU_SEL_X0, MENU_SEL_Y0, "ON",
+                               on_menu_veille_clic, (void *)(intptr_t)1);
+    s_menu_off = menu_sel_creer(p1, MENU_SEL_X1, MENU_SEL_Y0, "OFF",
+                                on_menu_veille_clic, (void *)(intptr_t)0);
+
+    /* ── Réglage 2 : le délai, quatre crans ──────────────────────────────── */
+    lv_obj_t *p2 = panneau(scr, MENU_PAN_X, MENU_Y_DELAI, MENU_PAN_W,
+                           MENU_H_DELAI);
+    texte(p2, "DELAI AVANT VEILLE", &dn_font_14, lv_color_hex(0xa0d8ff),
+          MENU_SEL_X0, 10);
+    for (int i = 0; i < DN_VEILLE_CRANS; i++) {
+        char lib[16];
+        /* ⚠️ LE LIBELLÉ EST RELU DE LA TABLE DES CRANS (`dn_veille_cran_min`),
+         *    ⛔ jamais écrit « 1 min / 3 min / 5 min / 10 min » ici. Deux
+         *    endroits qui énoncent les mêmes quatre nombres finissent par
+         *    diverger, et c'est l'écran qui aurait menti. */
+        snprintf(lib, sizeof(lib), "%d min", dn_veille_cran_min(i));
+        s_menu_cran[i] = menu_sel_creer(
+            p2, (i % 2) ? MENU_SEL_X1 : MENU_SEL_X0,
+            (i / 2) ? MENU_SEL_Y1 : MENU_SEL_Y0, lib, on_menu_cran_clic,
+            (void *)(intptr_t)i);
+    }
+
+    /* ── L'état, en clair ────────────────────────────────────────────────── */
+    lv_obj_t *p3 = panneau(scr, MENU_PAN_X, MENU_Y_ETAT, MENU_PAN_W,
+                           MENU_H_ETAT);
+    s_menu_etat = texte(p3, "", &dn_font_14, lv_color_hex(MENU_COL_LIBRE),
+                        MENU_SEL_X0, 10);
+
+    /* ⛔ PAS DE BANDEAU `MENU` SUR LA VUE MENU : on y EST. Le redessiner
+     *    donnerait une porte qui mène là où on se trouve déjà — le no-op sous
+     *    une autre forme. */
+
+    menu_reparametrer();
+}
 
 /* ── La barre heure/date (dn3-2) ──────────────────────────────────────────── */
 
@@ -2763,10 +3229,30 @@ static void build_dashboard(lv_obj_t *scr)
      *    console en DIT. La voie (a) supprime la barre MENU de la maquette :
      *    elle doit la supprimer pour de bon. */
     if (ui_menu_h() > 0) {
+        /* 🔴 dn3-3 : LE CALLBACK EST **NON NUL**, ET LA ZONE REDEVIENT UNE
+         *    ZONE. Par le contrat de `dn_widget_zone_creer` (« CLICKABLE est
+         *    CONDITIONNÉ au callback »), le bandeau retrouve
+         *    `LV_OBJ_FLAG_CLICKABLE`. ⛔ Surtout pas un callback VIDE : une zone
+         *    cliquable sans handler devient `act_obj`, avale le CLICKED et c'est
+         *    le pire des trois états — le motif complet est au-dessus de
+         *    `on_menu_clic`. Celui-ci NAVIGUE. */
         lv_obj_t *menu = zone_creer(scr, 0, DN_LCD_V_RES - ui_menu_h(),
-                                    DN_LCD_H_RES, ui_menu_h(), NULL, NULL);
-        texte(menu, "MENU", &dn_font_28, lv_color_hex(0x9a9a9a), DN_UI_MARGE + 6,
-              14);
+                                    DN_LCD_H_RES, ui_menu_h(), on_menu_clic,
+                                    NULL);
+        /* ⚠️ LE CHEVRON REVIENT AVEC LA PORTE. dn3-2 l'avait RETIRÉ parce qu'« un
+         *    glyphe de menu est une AFFORDANCE, et la garder ferait annoncer une
+         *    action qui n'existe pas ». L'action existe : le retirer MAINTENANT
+         *    serait le défaut symétrique — une porte qui ne dit pas qu'elle en
+         *    est une. `LV_SYMBOL_SETTINGS` (0xF013) est VÉRIFIÉ PRÉSENT dans les
+         *    deux `.c` de police produits (`codepoints_du_c()`, AC6.5) : delta
+         *    police = 0 octet.
+         * ⚠️ Le texte est plus CLAIR qu'en dn3-2 (`0xc0d8e8` au lieu de
+         *    `0x9a9a9a`) : `0x9a9a9a` est EXACTEMENT `W_COL_ABSENTE`, la couleur
+         *    que ce dépôt réserve à « aucune source ». Un bandeau ACTIONNABLE
+         *    peint dans la couleur de l'absence aurait été un troisième signal
+         *    contradictoire. */
+        texte(menu, LV_SYMBOL_SETTINGS "  MENU", &dn_font_28,
+              lv_color_hex(0xc0d8e8), DN_UI_MARGE + 6, 14);
     }
 
     label_poser(scr, &s_label_dash);
@@ -4124,6 +4610,16 @@ static void build_scene(void)
      * écrirait dans de la mémoire libérée dès la trame suivante. */
     s_barre_heure = NULL;
     s_barre_date = NULL;
+    /* 🔴 dn3-3 — LES VOILES MEURENT AVEC LEUR ÉCRAN, COMME LES AUTRES POINTEURS.
+     *    Un voile laissé dans `s_voiles[]` après la destruction de sa racine
+     *    ferait écrire `lv_obj_set_style_bg_opa()` dans de la mémoire libérée à
+     *    la première bascule de veille — et cette bascule tombe TOUTE SEULE,
+     *    des minutes plus tard, sans geste d'opérateur pour la relier à la
+     *    reconstruction qui l'a armée. C'est le use-after-free de la revue
+     *    dn1-3, avec le pire délai de diagnostic possible. */
+    s_voiles_n = 0;
+    /* dn3-3 : idem pour les sélecteurs du MENU. */
+    menu_oublier();
     /* ⚠️ TOUTES les cases vivantes, pas seulement CPU : un pointeur oublié ici
      * survivrait à son label et la tâche capteur écrirait dans du vide libéré. */
     for (int i = 0; i < DN_UI_METRIQUES; i++) {
@@ -4156,9 +4652,17 @@ static void build_scene(void)
         lv_obj_t *sortant = lv_screen_active();
         s_scr_dash = lv_obj_create(NULL);
         build_dashboard(s_scr_dash); /* remplit s_label_dash */
+        lv_obj_t *ancien_menu = s_scr_menu;
         s_scr_detail = lv_obj_create(NULL);
         build_detail(s_scr_detail, s_metrique); /* remplit s_label_det */
-        lv_screen_load(s_vue == DN_VUE_DETAIL ? s_scr_detail : s_scr_dash);
+        /* dn3-3 : la 3ᵉ racine, construite AVEC les deux autres — même motif que
+         * celui écrit plus haut pour la paire : une racine reconstruite seule
+         * blitterait l'ancienne source de fond, et l'A/B mesurerait deux choses. */
+        s_scr_menu = lv_obj_create(NULL);
+        build_menu(s_scr_menu);
+        lv_screen_load(s_vue == DN_VUE_DETAIL   ? s_scr_detail
+                       : s_vue == DN_VUE_MENU   ? s_scr_menu
+                                                : s_scr_dash);
         /* Supprimés APRÈS le chargement du nouvel écran : supprimer l'écran
          * actif avant d'en charger un autre laisserait LVGL sans écran courant
          * le temps d'une instruction. */
@@ -4168,8 +4672,16 @@ static void build_scene(void)
         if (ancien_det) {
             lv_obj_delete(ancien_det);
         }
+        if (ancien_menu) {
+            lv_obj_delete(ancien_menu);
+        }
+        /* ⚠️ LA LISTE DES « PAS LUI » S'ALLONGE AVEC LA 3ᵉ RACINE, et l'oublier
+         *    aurait détruit l'écran MENU qu'on vient de construire dès que le
+         *    sortant se trouvait être lui. C'est la FUITE symétrique de celle
+         *    trouvée en revue dn1-4, par l'autre bout. */
         if (sortant && sortant != ancien_dash && sortant != ancien_det &&
-            sortant != s_scr_dash && sortant != s_scr_detail) {
+            sortant != ancien_menu && sortant != s_scr_dash &&
+            sortant != s_scr_detail && sortant != s_scr_menu) {
             lv_obj_delete(sortant);
         }
         return;
@@ -4180,6 +4692,8 @@ static void build_scene(void)
     lv_obj_clean(scr);
     if (s_vue == DN_VUE_DETAIL) {
         build_detail(scr, s_metrique);
+    } else if (s_vue == DN_VUE_MENU) {
+        build_menu(scr);
     } else {
         build_dashboard(scr);
     }
@@ -4195,8 +4709,33 @@ static void build_scene(void)
  */
 static bool nav_appliquer(int cible, int64_t t_clic)
 {
-    dn_ui_vue_t vue = cible == 0 ? DN_VUE_DASHBOARD : DN_VUE_DETAIL;
-    int idx = cible == 0 ? s_metrique : cible - 1;
+    /* 🔴 dn3-3 : TROIS VUES, DONC TROIS BRANCHES — ⛔ plus un ternaire binaire.
+     *    Laisser `cible != 0 ? DETAIL : DASHBOARD` aurait fait ouvrir le DÉTAIL
+     *    DE LA MÉTRIQUE 6 (qui n'existe pas) sur un tap MENU : `idx = 7 - 1 = 6`,
+     *    hors des six descripteurs, sans un log. */
+    dn_ui_vue_t vue;
+    int idx;
+    if (cible == 0) {
+        vue = DN_VUE_DASHBOARD;
+        idx = s_metrique;
+    } else if (cible == DN_NAV_CIBLE_MENU) {
+        vue = DN_VUE_MENU;
+        /* ⚠️ LA MÉTRIQUE COURANTE EST CONSERVÉE : le MENU n'en désigne aucune,
+         *    et la remettre à 0 ferait revenir le `←` du détail sur `CPU` après
+         *    un aller-retour par le MENU. */
+        idx = s_metrique;
+    } else {
+        vue = DN_VUE_DETAIL;
+        idx = cible - 1;
+        if (idx < 0 || idx >= DN_UI_METRIQUES) {
+            /* Ne peut venir que d'un encodage corrompu. On REFUSE en le disant,
+             * ⛔ on n'écrête pas vers une métrique voisine : un détail ouvert
+             * sur la mauvaise case est un mensonge d'interface silencieux. */
+            ESP_LOGE(TAG, "nav : cible %d hors bornes — transition REFUSEE.",
+                     cible);
+            return false;
+        }
+    }
 
     /* Rien à faire : on DÉSARME plutôt que de laisser un chronomètre en vol.
      * Un double tap sur la même case empilerait deux transitions ; la seconde
@@ -4214,7 +4753,11 @@ static bool nav_appliquer(int cible, int64_t t_clic)
     s_vue = vue;
     s_metrique = idx;
 
-    if (s_nav == DN_NAV_SCREENS && s_scr_dash && s_scr_detail) {
+    /* ⚠️ LES **TROIS** RACINES SONT EXIGÉES (dn3-3). Avec deux seulement, un
+     *    `nav menu` en modèle SCREENS serait tombé dans la branche REBUILD et
+     *    aurait fait `lv_obj_clean()` sur une racine PERMANENTE — c'est-à-dire
+     *    détruit l'arbre du dashboard en laissant `s_scr_dash` le désigner. */
+    if (s_nav == DN_NAV_SCREENS && s_scr_dash && s_scr_detail && s_scr_menu) {
         /*
          * ⚠️ LE STIMULUS ADVERSE NE SURVIT PAS À UNE BASCULE D'ÉCRAN, et l'ombre
          *    doit le dire. En modèle SCREENS, rien n'est détruit : la barre
@@ -4277,6 +4820,15 @@ static bool nav_appliquer(int cible, int64_t t_clic)
                 lv_obj_invalidate(s_scr_detail);
             }
             lv_screen_load(s_scr_detail);
+        } else if (vue == DN_VUE_MENU) {
+            /* 🔴 dn3-3 : LE MENU EST **REPARAMÉTRÉ** AVANT D'ÊTRE CHARGÉ. Ses
+             *    six sélecteurs affichent l'état des deux réglages ; charger
+             *    l'écran sans les relire montrerait l'état d'AVANT le dernier
+             *    `veille delai` tapé à la console — un écran de réglages qui
+             *    ment sur les réglages. En modèle SCREENS rien n'est
+             *    reconstruit, donc PERSONNE ne le ferait à notre place. */
+            menu_reparametrer();
+            lv_screen_load(s_scr_menu);
         } else {
             lv_screen_load(s_scr_dash);
         }
@@ -4314,6 +4866,16 @@ static bool nav_appliquer(int cible, int64_t t_clic)
          * DÉTRUIRE ses deux labels avec tout l'écran. */
         s_barre_heure = NULL;
         s_barre_date = NULL;
+        /* 🔴 dn3-3 — LES VOILES MEURENT AVEC LEUR ÉCRAN, COMME LES AUTRES POINTEURS.
+         *    Un voile laissé dans `s_voiles[]` après la destruction de sa racine
+         *    ferait écrire `lv_obj_set_style_bg_opa()` dans de la mémoire libérée à
+         *    la première bascule de veille — et cette bascule tombe TOUTE SEULE,
+         *    des minutes plus tard, sans geste d'opérateur pour la relier à la
+         *    reconstruction qui l'a armée. C'est le use-after-free de la revue
+         *    dn1-3, avec le pire délai de diagnostic possible. */
+        s_voiles_n = 0;
+        /* dn3-3 : idem pour les sélecteurs du MENU. */
+        menu_oublier();
         for (int i = 0; i < DN_UI_METRIQUES; i++) {
             dn_widget_oublier(&s_wobj[i]);
         }
@@ -4340,6 +4902,8 @@ static bool nav_appliquer(int cible, int64_t t_clic)
         s_anim_on = false;
         if (vue == DN_VUE_DETAIL) {
             build_detail(scr, idx);
+        } else if (vue == DN_VUE_MENU) {
+            build_menu(scr);
         } else {
             build_dashboard(scr);
         }
@@ -4347,8 +4911,14 @@ static bool nav_appliquer(int cible, int64_t t_clic)
 
     s_nav_count++;
     /* Le chronomètre est armé ICI, la nouvelle vue étant posée : le prochain
-     * cycle de rafraîchissement est CELUI de la transition. Voir dn_touch.h. */
-    dn_touch_latence_arm(t_clic);
+     * cycle de rafraîchissement est CELUI de la transition. Voir dn_touch.h.
+     * 🔴 dn3-3 : ⛔ SAUF POUR UNE TRANSITION PROVOQUÉE PAR LA VEILLE. Elle ne
+     *    naît d'aucun geste : l'armer aurait injecté, dans le min/moy/max publié
+     *    par AC5, des échantillons dont l'origine est une horloge — et personne
+     *    n'aurait pu les distinguer des taps. */
+    if (!s_nav_veille) {
+        dn_touch_latence_arm(t_clic);
+    }
     return true;
 }
 
@@ -4361,7 +4931,13 @@ uint32_t dn_ui_taps(void) { return s_taps; }
 const char *dn_ui_zone_nom(int zone)
 {
     if (zone == DN_UI_ZONE_MENU) {
-        return "MENU (zone morte — W3)";
+        /* 🔴 dn3-3 : ⛔ PLUS « MENU (zone morte — W3) ». Le bandeau a une
+         *    destination depuis la décision owner du 2026-08-25 (D-4) : il est
+         *    CLIQUABLE, il ouvre `DN_VUE_MENU`, et `dn_ui_menu_taps()` monte.
+         *    Garder l'ancienne étiquette aurait fait décrire à `touch trace`
+         *    l'INVERSE du produit qu'il instrumente — la 3ᵉ publication d'un
+         *    même chiffre faux, celle qui se paie le plus cher. */
+        return "MENU";
     }
     if (zone == DN_UI_ZONE_RETOUR) {
         return "RETOUR";
@@ -4405,6 +4981,25 @@ void dn_ui_reset_compteurs(void)
  *    « détail ouvert » et `nav ab` comptait une itération pour un écran qui
  *    n'avait pas changé, ce qui décalait le dénominateur de la latence d'AC5.
  */
+/*
+ * 🔴 dn3-3 / AC4.5 — LE CHEMIN CONSOLE NE DOIT PAS S'ENDORMIR SOUS L'OPÉRATEUR.
+ *
+ * `nav open` / `nav back` / `nav menu` ne passent PAS par l'indev : LVGL ne voit
+ * aucun contact, donc `lv_display_get_inactive_time()` continue de croître
+ * pendant toute une campagne au clavier. Sans cet appel, une série de 20
+ * allers-retours au cran 1 min bascule en Ambient AU MILIEU du relevé — et le
+ * relevé mesure alors la VEILLE en croyant mesurer la NAVIGATION.
+ * ⚠️ `lv_display_trigger_activity(NULL)` est le seul moyen prévu par LVGL de
+ *    dire « il s'est passé quelque chose » depuis un chemin sans doigt
+ *    (`lv_display.h:588`). `NULL` = l'afficheur par défaut, le seul de cette
+ *    carte, et c'est aussi celui que lit le tick.
+ * ⚠️ APPELÉ SOUS LE VERROU, comme tout accès à l'état LVGL depuis le REPL.
+ */
+static void nav_activite_console(void)
+{
+    lv_display_trigger_activity(NULL);
+}
+
 esp_err_t dn_ui_nav_open(int idx)
 {
     if (idx < 0 || idx >= DN_UI_METRIQUES) {
@@ -4413,6 +5008,7 @@ esp_err_t dn_ui_nav_open(int idx)
     if (!lvgl_port_lock(1000)) {
         return ESP_ERR_TIMEOUT;
     }
+    nav_activite_console();
     bool fait = nav_appliquer(idx + 1, esp_timer_get_time());
     lvgl_port_unlock();
     return fait ? ESP_OK : ESP_ERR_INVALID_STATE;
@@ -4423,7 +5019,19 @@ esp_err_t dn_ui_nav_back(void)
     if (!lvgl_port_lock(1000)) {
         return ESP_ERR_TIMEOUT;
     }
+    nav_activite_console();
     bool fait = nav_appliquer(0, esp_timer_get_time());
+    lvgl_port_unlock();
+    return fait ? ESP_OK : ESP_ERR_INVALID_STATE;
+}
+
+esp_err_t dn_ui_nav_menu(void)
+{
+    if (!lvgl_port_lock(1000)) {
+        return ESP_ERR_TIMEOUT;
+    }
+    nav_activite_console();
+    bool fait = nav_appliquer(DN_NAV_CIBLE_MENU, esp_timer_get_time());
     lvgl_port_unlock();
     return fait ? ESP_OK : ESP_ERR_INVALID_STATE;
 }
@@ -4460,6 +5068,13 @@ esp_err_t dn_ui_set_nav_model(dn_nav_model_t m)
         if (s_scr_detail) {
             lv_obj_delete(s_scr_detail);
             s_scr_detail = NULL;
+        }
+        /* dn3-3 : la 3ᵉ racine part avec les deux autres. L'oublier ici aurait
+         * laissé `s_scr_menu` désigner un arbre détruit, et le prochain
+         * `nav menu` en modèle SCREENS l'aurait chargé. */
+        if (s_scr_menu) {
+            lv_obj_delete(s_scr_menu);
+            s_scr_menu = NULL;
         }
         /*
          * 🔴 TROISIÈME SITE DE DÉMONTAGE (AC1). Il ne remettait RIEN à NULL.
@@ -4520,6 +5135,16 @@ esp_err_t dn_ui_set_nav_model(dn_nav_model_t m)
          * d'être détruites ; ses labels vivaient sur celle du dashboard. */
         s_barre_heure = NULL;
         s_barre_date = NULL;
+        /* 🔴 dn3-3 — LES VOILES MEURENT AVEC LEUR ÉCRAN, COMME LES AUTRES POINTEURS.
+         *    Un voile laissé dans `s_voiles[]` après la destruction de sa racine
+         *    ferait écrire `lv_obj_set_style_bg_opa()` dans de la mémoire libérée à
+         *    la première bascule de veille — et cette bascule tombe TOUTE SEULE,
+         *    des minutes plus tard, sans geste d'opérateur pour la relier à la
+         *    reconstruction qui l'a armée. C'est le use-after-free de la revue
+         *    dn1-3, avec le pire délai de diagnostic possible. */
+        s_voiles_n = 0;
+        /* dn3-3 : idem pour les sélecteurs du MENU. */
+        menu_oublier();
         s_label_dash = NULL;
         s_label_det = NULL;
         s_bar = NULL;
@@ -5330,7 +5955,22 @@ esp_err_t dn_ui_init(const dn_bootcfg_t *cfg, esp_err_t asset_err)
      *    lecteurs ferment la même porte par l'autre bout — ⛔ on garde les deux,
      *    l'ordre correct ET le garde, parce que l'ordre se re-casse en silence. */
     dn_hist_init();
+    /* 🔴 dn3-3 : LES DEUX RÉGLAGES SONT RELUS **AVANT** `build_scene()`. La vue
+     *    MENU affiche l'état des deux crans dès sa construction ; les charger
+     *    après aurait posé un MENU montrant les DÉFAUTS D'USINE sur une carte
+     *    dont la NVS dit autre chose — un écran de réglages qui ment sur les
+     *    réglages, au premier affichage. C'est le même ordre que celui que
+     *    `dn_hist_init()` a coûté à dn4-13 pour être découvert. */
+    dn_veille_init();
     build_scene();
+    /*
+     * 🔴 dn3-3 : LE FRONT D'APPUI EST BRANCHÉ ICI (D-7).
+     * ⚠️ AVANT `dn_touch_attach_lvgl()`, qui est appelée par `app_main` APRÈS
+     *    nous : `dn_touch_set_contact_cb()` ne fait que ranger un pointeur, donc
+     *    l'ordre est sûr — et le brancher ici garde le branchement là où la
+     *    veille est montée, plutôt que dispersé dans `app_main`.
+     */
+    dn_touch_set_contact_cb(veille_contact_cb);
     s_timer = lv_timer_create(label_tick, 1000, NULL);
     /*
      * 🔴 dn4-4 / AC5.3 — L'HISTORIQUE EST ALIMENTÉ **EN PERMANENCE**, PAR UNE
@@ -5555,6 +6195,12 @@ typedef struct {
  * texte se pose sans erreur — mais rien n'atteint la dalle. Chronométrer cette
  * poussée, c'était mesurer un geste qui n'a pas eu lieu.
  */
+/* dn3-3 : `case_appliquer()` vit juste en dessous — même motif que les autres
+ * fonctions de ce fichier déclarées avant leur corps (`build_scene`,
+ * `detail_reparametrer`) : l'ordre de lecture suit le sens de la LOGIQUE, pas
+ * les contraintes du compilateur. */
+static bool case_appliquer(int idx);
+
 static void case_poser(int idx, dn_val_regime_t regime, const dn_valeurs_t *v,
                        int32_t brut0, const char *sec, bool *pose)
 {
@@ -5591,6 +6237,42 @@ static void case_poser(int idx, dn_val_regime_t regime, const dn_valeurs_t *v,
      * « écran non chargé » qu'AC6 exige de ne pas planter. En REBUILD vue
      * détail, `racine` est NULL, l'état conservé sera posé à la prochaine
      * (re)construction : rien n'est perdu, rien n'est touché. */
+    if (case_appliquer(idx) && pose) {
+        *pose = s_active;
+    }
+
+    /*
+     * 🔴 LE DÉTAIL SUIT, ET C'EST LA MOITIÉ D'AC5 QUE L'ENTRÉE DE LEDGER NE
+     *    DEMANDAIT PAS. Corriger `build_detail` et `detail_reparametrer` rend le
+     *    détail honnête À SON OUVERTURE. Mais si la source meurt PENDANT que le
+     *    détail est affiché, l'écran garderait le dernier chiffre connu sans
+     *    dire que la source est morte — c'est-à-dire exactement le mensonge
+     *    qu'on solde, décalé dans le temps au lieu de l'être dans l'espace.
+     *    On rafraîchit donc le détail affiché, sous le MÊME verrou.
+     */
+    if (s_vue == DN_VUE_DETAIL && s_metrique == idx) {
+        detail_reparametrer(idx);
+    }
+}
+
+/*
+ * ── dn3-3 : POSER L'ÉTAT D'UNE CASE SUR SES OBJETS — **UNE SEULE DÉFINITION** ─
+ *
+ * 🔴 EXTRAITE DE `case_poser()` SANS CHANGEMENT DE COMPORTEMENT, et c'est ce
+ *    qui rend l'Ambient possible SANS RECONSTRUCTION : la veille a besoin de
+ *    REPEINDRE les six cases (les couleurs de régime sont conscientes du mode
+ *    depuis dn3-3) sans rien réécrire de `s_wetat[]`. Recopier ce bloc dans un
+ *    `case_repeindre()` aurait créé la DEUXIÈME convention de couleur que
+ *    `dn_val_regime_couleur()` existe pour interdire — le défaut du 2026-08-18,
+ *    remis en place par la porte d'à côté.
+ *
+ * ⚠️ Rend `true` si les objets existaient (donc si quelque chose a été posé),
+ *    `false` sinon — c'est ce booléen qui alimente le `*pose` de `case_poser`.
+ * ⚠️ VERROU LVGL DÉJÀ PRIS PAR L'APPELANT.
+ */
+static bool case_appliquer(int idx)
+{
+    const dn_widget_etat_t *e = &s_wetat[idx];
     if (s_wobj[idx].racine) {
         /* LECTEUR 6/7 de l'override W11. 🔴 Celui-ci est le plus dangereux à
          * oublier : appeler `dn_widget_maj` sur une case DESSINÉE nue lirait
@@ -5622,26 +6304,555 @@ static void case_poser(int idx, dn_val_regime_t regime, const dn_valeurs_t *v,
              *    La convention vit dans `dn_val_regime_couleur()` et nulle part
              *    ailleurs — la dupliquer ici est ce qui avait produit l'écart. */
             lv_obj_set_style_text_color(s_wobj[idx].valeur[0],
-                                        dn_val_regime_couleur(regime), 0);
+                                        dn_val_regime_couleur(e->regime), 0);
         }
-        if (pose) {
-            *pose = s_active;
+        return true;
+    }
+    /* Modèle REBUILD en vue détail (ou MENU) : le dashboard n'existe pas.
+     * L'état est conservé dans `s_wetat[]` et sera posé à la (re)construction
+     * suivante — rien n'est perdu, rien n'est touché. */
+    return false;
+}
+
+/*
+ * ══ dn3-3 : LA VEILLE — LE TRAVAIL VISUEL ═══════════════════════════════════
+ *
+ * `dn_veille` tient l'état et décide ; ici on FAIT. Les deux sont séparés parce
+ * que c'est ce qui rend `dn_veille.c` compilable et appelable sur l'hôte par
+ * `tools/verif_veille_dn33.py`.
+ *
+ * 🔴 LE CHEMIN RETENU NE RECONSTRUIT PAS LA SCÈNE, ET C'EST TOUT L'ENJEU.
+ *    `build_scene()` coûte 307-322 ms VERROU TENU (mesuré dn3-1), sur un budget
+ *    de transition DÉJÀ non coché (337,6 ms au `nav ab`, 361,8 ms AU DOIGT,
+ *    dn4-4, décision owner du 2026-08-24). Un réveil bâti dessus aurait ajouté
+ *    ~320 ms à un budget déjà raté, PAR CONSTRUCTION.
+ *    ⇒ Le repeint ci-dessous n'écrit que des STYLES et des TEXTES sur des objets
+ *      qui existent déjà : les six cases par le MÊME `case_appliquer()` que la
+ *      mise à jour normale, les voiles par leur pointeur retenu, les accents par
+ *      `dn_widget_repeindre_accents()`. Aucun objet détruit, aucun créé.
+ * ⚠️ CE QUE ÇA NE COUVRE PAS, ET C'EST ÉCRIT : la vue DÉTAIL est repeinte par
+ *    `detail_reparametrer()`, qui est le chemin normal de sa mise à jour ; la
+ *    vue MENU par `menu_reparametrer()`. Aucune des deux ne reconstruit non plus.
+ */
+
+/* ── Le rétroéclairage : le QUATRIÈME écrivain de LEDC ───────────────────── */
+
+/*
+ * 🔴 IL Y EN A QUATRE, ET AUCUN VERROU NE LES ARBITRE.
+ *    `dn_display_backlight_pct()` n'a AUCUN verrou et `s_backlight_pct` est un
+ *    `int` nu (`dn_env.h:352-357` le dit en toutes lettres).
+ *      1. le boot (100 %, une fois)   2. le REPL (`bl …`, à la main)
+ *      3. l'asservissement BH1750 (toutes les 5 s)   4. 🆕 LA VEILLE
+ * ⚠️ `bl auto` est `false` PAR DÉFAUT — donc LE DÉFAUT NE RÉVÈLE PAS LE BUG. Il
+ *    apparaît dès qu'on arme l'auto, CINQ SECONDES plus tard, sans un mot : la
+ *    luminosité d'Ambient serait écrasée et l'owner conclurait « la veille ne
+ *    marche pas ». C'est pour ça qu'AC2.6 exige le témoin AVEC `bl auto on`.
+ */
+static int s_bl_avant_veille = -1; /* -1 = aucune veille en cours */
+
+static void veille_bl_descendre(void)
+{
+    /* On MÉMORISE l'état RÉEL, relu du module, ⛔ pas une valeur supposée : si
+     * l'opérateur avait posé `bl 40` avant que la veille tombe, le réveil doit
+     * rendre 40, pas 100. */
+    s_bl_avant_veille = dn_display_backlight_pct_state();
+    if (dn_env_bl_auto_desarmer("veille")) {
+        ESP_LOGW(TAG,
+                 "l'asservissement `bl auto` etait ARME : la VEILLE vient de le "
+                 "DESARMER. Sinon la luminosite d'Ambient aurait ete ecrasee au "
+                 "prochain cycle (5 s), SANS UN MOT, et « la veille ne marche "
+                 "pas » aurait ete le diagnostic. `bl auto on` pour le rearmer.");
+    }
+    esp_err_t err = dn_display_backlight_pct(dn_veille_pct());
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "veille : retroeclairage a %d %% REFUSE (%s) — l'ecran "
+                      "reste a sa luminosite precedente.",
+                 dn_veille_pct(), esp_err_to_name(err));
+    }
+}
+
+static void veille_bl_remonter(void)
+{
+    if (s_bl_avant_veille < 0) {
+        return;
+    }
+    /*
+     * 🔴 ON NE PIÉTINE PAS UN GESTE D'OPÉRATEUR — ET ON LE DIT.
+     *    Si quelqu'un a tapé `bl <n>` PENDANT la veille, l'état courant n'est
+     *    plus celui que la veille a posé. Restaurer aveuglément
+     *    `s_bl_avant_veille` écraserait sa commande AU PREMIER DOIGT, sans un
+     *    mot — c'est exactement le défaut du 4ᵉ écrivain de LEDC, retourné :
+     *    ce n'est plus l'asservissement qui écrase la veille, c'est la veille
+     *    qui écrase la console.
+     * ⚠️ `veille pct` reste le levier PRÉVU pendant la veille : lui pose la même
+     *    valeur que la veille et ne déclenche donc pas cette garde.
+     */
+    int courant = dn_display_backlight_pct_state();
+    if (courant != dn_veille_pct()) {
+        ESP_LOGW(TAG,
+                 "reveil : le retroeclairage vaut %d %% alors que la veille "
+                 "l'avait pose a %d %% — quelqu'un l'a change PENDANT la "
+                 "veille. On le LAISSE tel quel plutot que d'ecraser ce geste "
+                 "(il aurait ete rendu a %d %% sans un mot). `bl %d` pour "
+                 "revenir a l'etat d'avant la veille.",
+                 courant, dn_veille_pct(), s_bl_avant_veille,
+                 s_bl_avant_veille);
+        s_bl_avant_veille = -1;
+        return;
+    }
+    (void)dn_display_backlight_pct(s_bl_avant_veille);
+    s_bl_avant_veille = -1;
+}
+
+/* ── Le repeint, SANS reconstruction ─────────────────────────────────────── */
+
+static void veille_peindre_nolock(void)
+{
+    bool amb = (dn_veille_mode() == DN_VEILLE_AMBIENT);
+    dn_widget_set_ambient(amb);
+
+    /* Les voiles : un par racine vivante. ⛔ On n'appelle PAS
+     * `dn_ui_set_voile_opa()`, qui reconstruit la scène. */
+    uint8_t opa = ui_voile_opa_courante();
+    for (int i = 0; i < s_voiles_n; i++) {
+        if (s_voiles[i]) {
+            lv_obj_set_style_bg_opa(s_voiles[i], opa, 0);
         }
     }
 
-    /*
-     * 🔴 LE DÉTAIL SUIT, ET C'EST LA MOITIÉ D'AC5 QUE L'ENTRÉE DE LEDGER NE
-     *    DEMANDAIT PAS. Corriger `build_detail` et `detail_reparametrer` rend le
-     *    détail honnête À SON OUVERTURE. Mais si la source meurt PENDANT que le
-     *    détail est affiché, l'écran garderait le dernier chiffre connu sans
-     *    dire que la source est morte — c'est-à-dire exactement le mensonge
-     *    qu'on solde, décalé dans le temps au lieu de l'être dans l'espace.
-     *    On rafraîchit donc le détail affiché, sous le MÊME verrou.
-     */
-    if (s_vue == DN_VUE_DETAIL && s_metrique == idx) {
-        detail_reparametrer(idx);
+    /* Les six cases, par LE MÊME chemin que la mise à jour normale. */
+    for (int i = 0; i < DN_UI_METRIQUES; i++) {
+        (void)case_appliquer(i);
+        if (case_est_widget(i)) {
+            dn_widget_desc_t d;
+            desc_effectif(i, &d);
+            dn_widget_repeindre_accents(&d, &s_wobj[i]);
+        }
+    }
+
+    /* La page ouverte, quelle qu'elle soit. */
+    if (s_vue == DN_VUE_DETAIL) {
+        detail_reparametrer(s_metrique);
+    } else if (s_vue == DN_VUE_MENU) {
+        menu_reparametrer();
     }
 }
+
+/* ── Les latences du réveil (AC4.2, AC4.3) ───────────────────────────────── */
+
+/*
+ * 🔴 DEUX LATENCES DISTINCTES, ⛔ JAMAIS UNE MOYENNE DES DEUX.
+ *   t₁ = contact -> rétroéclairage remonté. C'est ce que l'œil appelle
+ *        « l'écran s'allume ».
+ *   t₂ = contact -> palette Actif complète posée.
+ * ⚠️ CE QUE t₁ N'INCLUT PAS, ET IL FAUT LE DIRE : l'origine du chronomètre est
+ *    l'instant où le `read_cb` VOIT le front, ⛔ pas l'instant du contact
+ *    physique. Le trajet GT911 -> IRQ -> réveil de la tâche LVGL -> transaction
+ *    I²C est EN AMONT et n'est pas instrumenté ici. Publier t₁ comme « latence
+ *    au doigt » sans cette phrase fabriquerait un chiffre plus flatteur que le
+ *    vécu.
+ * ⚠️ SEULS LES RÉVEILS AU **DOIGT** ENTRENT DANS LA STATISTIQUE PUBLIÉE. Un
+ *    `veille wake` tapé au clavier n'a pas le même chemin d'entrée ; les
+ *    mélanger aurait dilué exactement ce qu'AC4.3 demande de mesurer. Les
+ *    échantillons console sont COMPTÉS et EXCLUS, ⛔ pas jetés en silence.
+ */
+#define DN_VEILLE_LAT_N 32
+typedef struct {
+    uint32_t t1_us;
+    uint32_t t2_us;
+    dn_veille_origine_t origine;
+} veille_lat_t;
+static veille_lat_t s_lat[DN_VEILLE_LAT_N];
+static uint32_t s_lat_w;     /* prochain slot d'écriture */
+static uint32_t s_lat_ecrits; /* total écrit depuis le reset (peut dépasser N) */
+
+static void veille_lat_pousser(uint32_t t1, uint32_t t2, dn_veille_origine_t o)
+{
+    s_lat[s_lat_w % DN_VEILLE_LAT_N] = (veille_lat_t){t1, t2, o};
+    s_lat_w++;
+    s_lat_ecrits++;
+}
+
+static int cmp_u32(const void *a, const void *b)
+{
+    uint32_t x = *(const uint32_t *)a, y = *(const uint32_t *)b;
+    return (x > y) - (x < y);
+}
+
+/* ── Les deux bascules ───────────────────────────────────────────────────── */
+
+/* Réveil. Verrou DÉJÀ PRIS. Rend `true` si l'état a réellement changé. */
+static bool veille_reveil_nolock(dn_veille_origine_t origine, int64_t t0)
+{
+    if (dn_veille_mode() != DN_VEILLE_AMBIENT) {
+        return false;
+    }
+    /* 🔴 TEMPS 1 : LE RÉTROÉCLAIRAGE D'ABORD, ET RIEN D'AUTRE AVANT LUI.
+     *    C'est le seul geste qui compte pour l'œil dans les 50 premières
+     *    millisecondes ; le faire après le repeint l'aurait retardé de tout le
+     *    coût de la palette pour zéro bénéfice. */
+    veille_bl_remonter();
+    uint32_t t1 = (uint32_t)(esp_timer_get_time() - t0);
+
+    if (!dn_veille_reveiller(origine)) {
+        /* Ne peut arriver que sur une course : quelqu'un a réveillé entre le
+         * test du haut et ici. On a déjà remonté la lumière, donc rien à
+         * défaire — mais on ne compte PAS un réveil de plus. */
+        return false;
+    }
+
+    /* TEMPS 2 : la palette. */
+    veille_peindre_nolock();
+    uint32_t t2 = (uint32_t)(esp_timer_get_time() - t0);
+
+    veille_lat_pousser(t1, t2, origine);
+    return true;
+}
+
+/*
+ * 🔴 AC3.6 — LA BASCULE VERS AMBIENT PASSE PAR `lv_async_call`, ⛔ JAMAIS
+ *    DIRECTEMENT DEPUIS LE CALLBACK DE TIMER.
+ *
+ *    `label_tick` tourne DANS `lv_timer_handler`, qui est en train de parcourir
+ *    sa liste de timers. Si AC3.5 nous fait retourner au dashboard depuis une
+ *    page de détail, `nav_appliquer()` fait un `lv_obj_clean()` (modèle REBUILD)
+ *    — c'est-à-dire qu'il DÉTRUIT l'arbre pendant que LVGL le parcourt. C'est le
+ *    même use-after-free que celui trouvé en revue de dn1-3, et la parade du
+ *    fichier est déjà écrite (voir le bloc au-dessus de `nav_appliquer`).
+ */
+static void veille_dormir_async(void *param)
+{
+    (void)param;
+    /*
+     * 🔴 AC3.5 — SI ON EST SUR UNE PAGE DE DÉTAIL (OU LE MENU), LA VEILLE
+     *    RETOURNE AU DASHBOARD D'ABORD.
+     *    Motif : Ambient est le VISAGE DE REPOS H24 du module. Laisser une page
+     *    de détail ouverte huit heures figerait le module sur une métrique
+     *    choisie par hasard — et le critère n°1 du brief (« en Ambient la
+     *    majorité du temps ») décrirait alors un écran de détail grisé, ⛔ pas
+     *    le dashboard. C'est une DÉCISION DE CONCEPTION, elle est écrite ici, et
+     *    elle se confirme au constat owner d'AC9.6.
+     */
+    if (s_vue != DN_VUE_DASHBOARD) {
+        /* ⚠️ LE CHRONOMÈTRE DE NAVIGATION N'EST **PAS** ARMÉ POUR CETTE
+         *    TRANSITION-LÀ : elle n'est provoquée par AUCUN geste. L'armer
+         *    aurait injecté, dans le min/moy/max publié par AC5, des
+         *    échantillons dont l'origine est une horloge — et personne n'aurait
+         *    pu les distinguer des taps. */
+        s_nav_veille = true;
+        (void)nav_appliquer(0, esp_timer_get_time());
+        s_nav_veille = false;
+        s_nav_veille_count++;
+    }
+    veille_bl_descendre();
+    veille_peindre_nolock();
+}
+
+/* Appelé par `label_tick`, verrou déjà pris, DANS la tâche LVGL. */
+static void veille_tick_nolock(void)
+{
+    uint32_t inact = lv_display_get_inactive_time(NULL);
+    if (dn_veille_tick(inact) != DN_VEILLE_ACTION_DORMIR) {
+        return;
+    }
+    if (lv_async_call(veille_dormir_async, NULL) != LV_RESULT_OK) {
+        /* ⛔ NE PAS BASCULER QUAND MÊME : l'état annoncerait AMBIENT sur un
+         *    écran resté en couleurs. `dn_veille` compte l'annulation et le
+         *    journalise. */
+        dn_veille_annuler_bascule();
+    }
+}
+
+/* Le front d'appui — c'est ici que D-7 s'applique. */
+static bool veille_contact_cb(int x, int y)
+{
+    (void)x;
+    (void)y;
+    if (dn_veille_mode() != DN_VEILLE_AMBIENT) {
+        /* ⛔ PAS DE CONSOMMATION HORS VEILLE : consommer un contact en Actif
+         *    tuerait la navigation au doigt, et ça ne se serait vu qu'à l'œil. */
+        return false;
+    }
+    int64_t t0 = esp_timer_get_time();
+    (void)veille_reveil_nolock(DN_VEILLE_ORIG_DOIGT, t0);
+    /*
+     * 🔴 CONSOMMÉ — DÉCISION OWNER DU 2026-08-25 (D-7). Le tap qui lève la
+     *    veille RÉVEILLE, il n'ouvre PAS le détail. Motif retenu : en Ambient
+     *    l'écran est sombre et gris ; on ne vise pas une case qu'on ne lit pas.
+     *    Ouvrir une page de détail sur un tap de réveil, c'est naviguer à
+     *    l'aveugle. ✅ Ça ferme la question laissée ouverte par dn1-4.
+     * ⚠️ Le contact consommé est COMPTÉ (`dn_touch_consommes()`) : sans ce
+     *    compteur, « l'écran s'allume et rien ne bouge » serait indiscernable
+     *    d'un tap qui n'a pas pris — et c'est exactement la perception qu'AC9.5
+     *    fait vérifier à l'œil.
+     */
+    return true;
+}
+
+/* ── L'API publique ──────────────────────────────────────────────────────── */
+
+esp_err_t dn_ui_veille_dormir(void)
+{
+    if (dn_veille_mode() == DN_VEILLE_AMBIENT) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (!lvgl_port_lock(2000)) {
+        return ESP_ERR_TIMEOUT;
+    }
+    /* ⚠️ On force l'état par le module, PUIS on fait le travail — et on passe
+     *    par le MÊME `veille_dormir_async` que la bascule automatique, pour que
+     *    le geste d'opérateur et l'horloge produisent le MÊME écran. Deux
+     *    chemins d'entrée qui divergeraient rendraient `veille now` inutile
+     *    comme instrument. Ici on est hors contexte d'événement (tâche REPL,
+     *    verrou pris), donc l'appel direct est sûr.
+     * ⚠️ ⛔ PAS `dn_veille_tick()` : il incrémenterait `secondes_vues`, l'uptime
+     *    OBSERVÉ qui conditionne le diagnostic d'appui fantôme. Un geste
+     *    d'opérateur ne doit pas faire avancer une horloge d'observation. */
+    if (!dn_veille_forcer_dormir()) {
+        /* La veille est DÉSARMÉE : le module a refusé, et c'est le comportement
+         * juste. ⛔ On ne contourne pas le réglage de l'utilisateur. */
+        lvgl_port_unlock();
+        return ESP_ERR_INVALID_STATE;
+    }
+    veille_dormir_async(NULL);
+    lvgl_port_unlock();
+    return ESP_OK;
+}
+
+esp_err_t dn_ui_veille_reveiller(dn_veille_origine_t origine)
+{
+    if (dn_veille_mode() != DN_VEILLE_AMBIENT) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (!lvgl_port_lock(2000)) {
+        return ESP_ERR_TIMEOUT;
+    }
+    int64_t t0 = esp_timer_get_time();
+    bool fait = veille_reveil_nolock(origine, t0);
+    lvgl_port_unlock();
+    return fait ? ESP_OK : ESP_ERR_INVALID_STATE;
+}
+
+bool dn_ui_veille_compteurs(dn_veille_compteurs_t *out)
+{
+    if (!out) {
+        return false;
+    }
+    /* 🔴 SOUS VERROU, ET `false` SI LE VERROU N'A PAS ÉTÉ PRIS (AC8.4) — ⛔
+     *    JAMAIS « ZÉRO ». Ces champs sont écrits par la tâche LVGL ; rendre des
+     *    zéros sur un verrou non pris ferait publier « 0 bascule » pour « pas
+     *    mesuré ». Même contrat que `dn_ui_courbe_compteurs()`. */
+    if (!lvgl_port_lock(500)) {
+        return false;
+    }
+    dn_veille_compteurs(out);
+    lvgl_port_unlock();
+    return true;
+}
+
+bool dn_ui_veille_latences(uint32_t *n, uint32_t *t1_min, uint32_t *t1_med,
+                           uint32_t *t1_max, uint32_t *t2_min, uint32_t *t2_med,
+                           uint32_t *t2_max)
+{
+    if (!lvgl_port_lock(500)) {
+        return false;
+    }
+    uint32_t a1[DN_VEILLE_LAT_N], a2[DN_VEILLE_LAT_N];
+    uint32_t k = 0;
+    uint32_t dispo = s_lat_ecrits < DN_VEILLE_LAT_N ? s_lat_ecrits
+                                                    : DN_VEILLE_LAT_N;
+    for (uint32_t i = 0; i < dispo; i++) {
+        /* ⚠️ SEUL LE DOIGT (voir le bloc de motifs au-dessus du ring). */
+        if (s_lat[i].origine != DN_VEILLE_ORIG_DOIGT) {
+            continue;
+        }
+        a1[k] = s_lat[i].t1_us;
+        a2[k] = s_lat[i].t2_us;
+        k++;
+    }
+    lvgl_port_unlock();
+
+    if (n) {
+        *n = k;
+    }
+    if (k == 0) {
+        /* ⛔ « Pas d'échantillon » n'est pas « zéro microseconde ». */
+        if (t1_min) { *t1_min = 0; }
+        if (t1_med) { *t1_med = 0; }
+        if (t1_max) { *t1_max = 0; }
+        if (t2_min) { *t2_min = 0; }
+        if (t2_med) { *t2_med = 0; }
+        if (t2_max) { *t2_max = 0; }
+        return true;
+    }
+    qsort(a1, k, sizeof(a1[0]), cmp_u32);
+    qsort(a2, k, sizeof(a2[0]), cmp_u32);
+    if (t1_min) { *t1_min = a1[0]; }
+    if (t1_med) { *t1_med = a1[k / 2]; }
+    if (t1_max) { *t1_max = a1[k - 1]; }
+    if (t2_min) { *t2_min = a2[0]; }
+    if (t2_med) { *t2_med = a2[k / 2]; }
+    if (t2_max) { *t2_max = a2[k - 1]; }
+    return true;
+}
+
+void dn_ui_veille_latences_reset(void)
+{
+    if (!lvgl_port_lock(500)) {
+        return;
+    }
+    memset(s_lat, 0, sizeof(s_lat));
+    s_lat_w = 0;
+    s_lat_ecrits = 0;
+    s_nav_veille_count = 0;
+    s_menu_reglages = 0;
+    lvgl_port_unlock();
+}
+
+esp_err_t dn_ui_veille_set_armee(bool on, dn_veille_origine_t origine)
+{
+    if (!lvgl_port_lock(2000)) {
+        return ESP_ERR_TIMEOUT;
+    }
+    esp_err_t err = veille_armee_appliquer_nolock(on, origine);
+    lvgl_port_unlock();
+    return err;
+}
+
+esp_err_t dn_ui_veille_set_cran(int idx)
+{
+    if (idx < 0 || idx >= DN_VEILLE_CRANS) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (!lvgl_port_lock(2000)) {
+        return ESP_ERR_TIMEOUT;
+    }
+    esp_err_t err = veille_cran_appliquer_nolock(idx);
+    lvgl_port_unlock();
+    return err;
+}
+
+esp_err_t dn_ui_veille_set_pct(int pct)
+{
+    esp_err_t err = dn_veille_set_pct(pct);
+    if (err != ESP_OK) {
+        return err;
+    }
+    /* Effet IMMÉDIAT si on dort déjà — sinon l'A/B d'AC9.1 exigerait
+     * d'attendre la prochaine bascule pour voir chaque valeur, et le balayage
+     * 3 -> 20 coûterait vingt délais. */
+    if (dn_veille_mode() == DN_VEILLE_AMBIENT) {
+        (void)dn_display_backlight_pct(dn_veille_pct());
+    }
+    return ESP_OK;
+}
+
+esp_err_t dn_ui_veille_set_voile(uint8_t opa)
+{
+    if (!lvgl_port_lock(2000)) {
+        return ESP_ERR_TIMEOUT;
+    }
+    s_voile_opa_amb = opa;
+    /* ⛔ PAS de `build_scene()` : les voiles sont retenus, on écrit leur style.
+     *    C'est ce qui rend l'A/B d'AC9.2 jouable sans payer 320 ms par essai. */
+    if (dn_veille_mode() == DN_VEILLE_AMBIENT) {
+        for (int i = 0; i < s_voiles_n; i++) {
+            if (s_voiles[i]) {
+                lv_obj_set_style_bg_opa(s_voiles[i], opa, 0);
+            }
+        }
+    }
+    lvgl_port_unlock();
+    return ESP_OK;
+}
+
+uint8_t dn_ui_veille_voile(void) { return s_voile_opa_amb; }
+
+esp_err_t dn_ui_veille_set_gris(int regime, uint32_t rgb)
+{
+    if (!dn_widget_set_gris_amb(regime, rgb)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (!lvgl_port_lock(2000)) {
+        return ESP_ERR_TIMEOUT;
+    }
+    if (dn_veille_mode() == DN_VEILLE_AMBIENT) {
+        veille_peindre_nolock();
+    }
+    lvgl_port_unlock();
+    return ESP_OK;
+}
+
+esp_err_t dn_ui_veille_set_accent(int pct)
+{
+    if (!dn_widget_set_accent_amb(pct)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (!lvgl_port_lock(2000)) {
+        return ESP_ERR_TIMEOUT;
+    }
+    if (dn_veille_mode() == DN_VEILLE_AMBIENT) {
+        veille_peindre_nolock();
+    }
+    lvgl_port_unlock();
+    return ESP_OK;
+}
+
+uint32_t dn_ui_menu_reglages(void) { return s_menu_reglages; }
+uint32_t dn_ui_nav_veille_count(void) { return s_nav_veille_count; }
+
+/*
+ * 🔴 AC1.3 — LA PREUVE CHIFFRÉE QUE LE LAYOUT NE BOUGE PAS D'UN PIXEL.
+ *
+ * ⛔ CE N'EST PAS UN CONSTAT À L'ŒIL. On condense les QUATRE nombres de chacune
+ *    des six cases (`dn_ui_case_rect`) et le triplet de bandes
+ *    (`dn_ui_geom_bandes`) en un seul entier. Deux modes qui rendent le même
+ *    condensé n'ont rien déplacé.
+ * ⚠️ FNV-1a 32 bits, ⛔ pas une somme : une somme aurait rendu le MÊME condensé
+ *    pour une case déplacée de +1 en x et -1 en y — c'est-à-dire précisément le
+ *    genre de déplacement qu'on cherche à exclure.
+ * ⚠️ LES NOMBRES SONT RELUS DES FABRIQUES, ⛔ pas recalculés ici : un condensé
+ *    calculé sur une copie de la formule aurait mesuré l'accord de la copie avec
+ *    elle-même. C'est la leçon de la bande de jauge `RAM` (§22.3).
+ */
+bool dn_ui_geom_signature(uint32_t *hash)
+{
+    if (!hash) {
+        return false;
+    }
+    if (!lvgl_port_lock(500)) {
+        return false;
+    }
+    uint32_t h = 2166136261u; /* FNV offset basis */
+    int vals[6 * 4 + 4];
+    int k = 0;
+    for (int i = 0; i < DN_UI_METRIQUES; i++) {
+        int x = 0, y = 0, w = 0, ht = 0;
+        dn_ui_case_rect(i, &x, &y, &w, &ht);
+        vals[k++] = x;
+        vals[k++] = y;
+        vals[k++] = w;
+        vals[k++] = ht;
+    }
+    int bh = 0, mh = 0, gh = 0, ch = 0;
+    dn_ui_geom_bandes(&bh, &mh, &gh, &ch);
+    vals[k++] = bh;
+    vals[k++] = mh;
+    vals[k++] = gh;
+    vals[k++] = ch;
+    lvgl_port_unlock();
+
+    for (int i = 0; i < k; i++) {
+        uint32_t v = (uint32_t)vals[i];
+        for (int b = 0; b < 4; b++) {
+            h ^= (v >> (8 * b)) & 0xFFu;
+            h *= 16777619u;
+        }
+    }
+    *hash = h;
+    return true;
+}
+
 
 /*
  * ── LE FORMATAGE DES DIXIÈMES, EN UN SEUL ENDROIT ───────────────────────────
@@ -8133,6 +9344,32 @@ esp_err_t dn_ui_resume(void)
     esp_err_t err = lvgl_port_resume();
     if (err == ESP_OK) {
         s_active = true;
+        /*
+         * 🔴 dn3-3 / AC8.5 — L'HORLOGE D'INACTIVITÉ EST **REBASÉE**, ET LA
+         *    CONSOLE LE DIT.
+         *    `dn_ui_pause()` suspend la tâche LVGL, donc `label_tick` ne tourne
+         *    plus et la veille est AVEUGLE pendant tout `ui off` — mais
+         *    `lv_tick` continue, donc `lv_display_get_inactive_time()` continue
+         *    de CROÎTRE. À `ui on`, une coupure plus longue que le délai ferait
+         *    basculer en Ambient INSTANTANÉMENT, et l'opérateur lirait ça comme
+         *    un bug de bascule.
+         *    ⚠️ Ce n'est pas hypothétique : dn4-13 a mesuré un `ui off` de 135 s,
+         *      c'est-à-dire plus du double du cran le plus court.
+         *    ⛔ UN REBASE SILENCIEUX EST INTERDIT : il masquerait le seul cas où
+         *      l'inactivité MESURÉE n'est pas l'inactivité VÉCUE.
+         *      `dn_veille_note_rebase()` le compte et le journalise ; `veille`
+         *      publie le compteur.
+         */
+        if (lvgl_port_lock(1000)) {
+            lv_display_trigger_activity(NULL);
+            lvgl_port_unlock();
+            dn_veille_note_rebase();
+        } else {
+            ESP_LOGW(TAG,
+                     "reprise : verrou LVGL non pris, l'horloge d'inactivite "
+                     "N'A PAS ete rebasee — une bascule en Ambient peut tomber "
+                     "immediatement. ⛔ Ne pas la lire comme un bug de bascule.");
+        }
         /* Le framebuffer a pu être réécrit pendant la pause (c'est même le seul
          * intérêt de la pause). On redessine tout, sinon LVGL croirait l'écran
          * conforme à son arbre d'objets et ne réparerait jamais. */

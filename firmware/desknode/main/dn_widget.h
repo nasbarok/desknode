@@ -173,7 +173,91 @@ const char *dn_val_regime_nom(dn_val_regime_t r);
  * de l'instrument d'AC8. Un chiffre inventé s'affichait donc dans le gris que ce
  * dépôt réserve à « aucune source », pendant que la console annonçait SIMULEE.
  * AC3 exige trois régimes DISTINGUÉS : la convention ne doit exister qu'ICI. */
+/*
+ * 🔴 dn3-3 — ELLE EST DÉSORMAIS CONSCIENTE DU MODE, ET C'EST LE SEUL CHEMIN
+ *    CONNU VERS UN AMBIENT QUI NE COÛTE PAS UNE RECONSTRUCTION.
+ *
+ *    `build_scene()` coûte 307-322 ms VERROU TENU (mesuré dn3-1). Un Ambient
+ *    bâti sur les setters visuels du fichier donnerait un réveil à ~350 ms PAR
+ *    CONSTRUCTION, sur un budget de transition DÉJÀ non coché (337,6 / 361,8 ms,
+ *    dn4-4). Cette fonction-ci, elle, est relue à CHAQUE `dn_widget_maj()` :
+ *    changer le mode grise les six cases sans détruire un seul objet.
+ *
+ * ⛔ LA CONVENTION RESTE ICI ET NULLE PART AILLEURS. Ajouter un second endroit
+ *    qui décide d'une couleur de régime est EXACTEMENT le défaut du 2026-08-18
+ *    (SIMULÉE indiscernable d'ABSENTE), et le mode en doublerait la surface.
+ */
 lv_color_t dn_val_regime_couleur(dn_val_regime_t r);
+
+/*
+ * ── dn3-3 : LE MODE D'AMBIANCE ──────────────────────────────────────────────
+ * ⚠️ Un simple drapeau : ce module ne connaît NI la veille, NI son horloge, NI
+ *    la NVS. C'est `dn_ui` qui le pose, sous le verrou LVGL, et qui repeint
+ *    ensuite. `dn_widget` ne dépend pas de `dn_veille`, et c'est voulu — le
+ *    sens de la dépendance est ce qui garde les deux testables séparément.
+ */
+void dn_widget_set_ambient(bool on);
+bool dn_widget_ambient(void);
+
+/*
+ * ── LES TROIS GRIS D'AMBIENT, ET POURQUOI ILS SONT TROIS ────────────────────
+ *
+ * 🔴 LE PIÈGE, NOMMÉ D'AVANCE : `W_COL_ABSENTE = 0x9a9a9a` est tentant et
+ *    GRATUIT. S'en servir pour les valeurs RÉELLES en Ambient recréerait
+ *    EXACTEMENT le défaut du 2026-08-18 — « vivant » rendu indiscernable de
+ *    « mort » — qui avait demandé une revue de code pour être vu.
+ *    ⇒ Ambient a ses PROPRES trois tons, et ils sont DISTINCTS entre eux.
+ *
+ * ⚠️ `SIMULÉE` GARDE UNE TEINTE, ET C'EST DÉLIBÉRÉ. « Quasi-monochrome » n'est
+ *    pas « monochrome » : un gris ambré désaturé porte encore le signal « ce
+ *    chiffre est inventé », qu'un gris neutre effacerait. AC9.4 laisse
+ *    explicitement l'œil arbitrer entre gris uniforme et teinte désaturée — les
+ *    trois tons sont donc RÉGLABLES À CHAUD (`veille gris`), et la valeur
+ *    retenue se gravera ici AVEC SON MOTIF.
+ *
+ * `regime` est un `dn_val_regime_t`. Rend `false` si l'index est hors bornes.
+ */
+bool dn_widget_set_gris_amb(int regime, uint32_t rgb);
+uint32_t dn_widget_gris_amb(int regime);
+
+/*
+ * ── dn3-3 : L'ACCENT D'UNE CASE SELON LE MODE — **UNE SEULE DÉFINITION** ────
+ *
+ * L'accent (icône + indicateur de jauge) porte `k_desc[].couleur`, c'est-à-dire
+ * les SIX couleurs que l'owner vient d'arbitrer en dn4-4 puis dn4-13. Cette
+ * story ⛔ NE LES REFAIT PAS : elle décide seulement ce qu'elles deviennent EN
+ * VEILLE.
+ *
+ * En Ambient, la couleur est mélangée vers son propre GRIS DE LUMINANCE, à un
+ * taux réglable à chaud (`veille accents <0..100>`) :
+ *   0   = teinte INTACTE (l'accent reste l'identité de la case)
+ *   100 = gris pur (« état nuance de gris », la lettre de la demande owner)
+ * 🔴 DÉFAUT **95**, ET C'EST UNE MESURE. À 100 % le cyan de `GPU` et le rose de
+ *    `RAM` rendent LA MÊME luminance (160/255) : les six accents arbitrés par
+ *    l'owner en dn4-4/dn4-13 redeviendraient CINQ en veille. À 95 %, l'écart
+ *    chromatique minimal des SEPT accents remonte à 7/255 — invisible à l'œil,
+ *    et l'information est gardée. Le détail est dans `dn_veille`… non : dans
+ *    `dn_widget.c`, à l'endroit exact où le défaut est posé.
+ * ⚠️ `veille accents 100` reste disponible ET la console DIT quelle paire il
+ *    confond, calculé à l'exécution. AC9.4 tranche à l'œil.
+ * ⚠️ La luminance est celle d'ITU-R BT.601 (77/150/29 sur 256). Le motif est
+ *    PERCEPTUEL (le vert pèse 59 %, le bleu 11 %), ⛔ pas « la moyenne
+ *    confondrait des couleurs » : mesuré, les deux mappings confondent une paire
+ *    chacun, simplement pas la même.
+ */
+/*
+ * L'arithmétique SEULE, sans LVGL : `rgb` mélangé vers son gris de luminance à
+ * `pct` %. Exposée séparément parce que c'est elle que la gate hôte EXTRAIT DU
+ * `.c` ET APPELLE — une gate qui rejouerait ce calcul au lieu de l'appeler
+ * serait décorative.
+ */
+uint32_t dn_widget_desaturer(uint32_t rgb, int pct);
+lv_color_t dn_widget_accent_couleur(uint32_t rgb);
+bool dn_widget_set_accent_amb(int pct);
+int dn_widget_accent_amb(void);
+
+/* ⚠️ `dn_widget_repeindre_accents()` est déclarée PLUS BAS, après la définition
+ *    de `dn_widget_desc_t` et de `dn_widget_t` — elle les prend en paramètres. */
 
 /*
  * ── dn4-6 / AC9 : LA PRÉCISION EST UNE PROPRIÉTÉ DE LA GRANDEUR ──────────────
@@ -529,6 +613,13 @@ typedef struct {
     lv_obj_t *racine; /* le conteneur CLIQUABLE — c'est lui la zone tactile */
     lv_obj_t *valeur[DN_WIDGET_GRANDEURS_MAX];
     lv_obj_t *jauge;  /* NULL si le descripteur n'a pas d'indicateur */
+    /* 🔴 dn3-3 : L'ICÔNE EST RETENUE, ET C'EST CE QUI REND L'A/B D'AC9.4
+     *    POSSIBLE **À CHAUD**. Sans ce pointeur, arbitrer « accents gris ou
+     *    teinte désaturée conservée ? » aurait coûté un reflash par essai — et
+     *    « un A/B qui exigerait trois reflashs coûterait trois observations à
+     *    l'owner pour un rendement qui baisse » est la règle écrite de ce
+     *    fichier. NULL si le descripteur n'a pas d'icône. */
+    lv_obj_t *icone;
     lv_obj_t *sec;    /* NULL si aucune donnée secondaire n'est prévue */
     lv_obj_t *badge;  /* la marque « SIMULÉ », créée mais masquée si non simulé */
     /* ⚠️ dn4-6 : `n` et `w` sont MÉMORISÉS À LA CONSTRUCTION, ⛔ pas relus du
@@ -605,6 +696,12 @@ void dn_widget_maj(const dn_widget_desc_t *desc, const dn_widget_etat_t *etat,
 
 /* Remet TOUS les pointeurs à NULL. À appeler aux trois sites de démontage. */
 void dn_widget_oublier(dn_widget_t *w);
+/*
+ * Repeint les ACCENTS de `w` selon le mode courant, SANS RECONSTRUIRE.
+ * ⚠️ VERROU LVGL DÉJÀ PRIS PAR L'APPELANT. No-op sûr si les pointeurs sont NULL
+ *    (modèle REBUILD en vue détail : le dashboard n'existe pas).
+ */
+void dn_widget_repeindre_accents(const dn_widget_desc_t *desc, dn_widget_t *w);
 
 /*
  * ── dn4-9 : LA TRADUCTION RANG -> INDEX DE GRANDEUR, EN UN SEUL ENDROIT ──────

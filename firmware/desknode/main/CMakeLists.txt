@@ -40,6 +40,14 @@ idf_component_register(
         #    Régénération : `python3 tools/gen_font_dn.py` (voir README).
         "dn_widget.c"
         "dn_hist.c"
+        # dn3-3 : la VEILLE (`Ambient`) — état, délai, compteurs, persistance.
+        # ⛔ Rien à ajouter aux REQUIRES : il n'utilise que `nvs_flash` (déjà
+        #    listé) et `esp_timer` (déjà listé). ⚠️ Il ne touche NI LVGL, NI la
+        #    dalle, NI le rétroéclairage — et c'est ce qui le rend compilable et
+        #    APPELABLE sur l'hôte par `tools/verif_veille_dn33.py`, sans carte.
+        #    ⛔ Ne pas y ajouter d'appel à `dn_ui`/`dn_display` : la gate
+        #    cesserait de pouvoir l'exécuter, et redeviendrait décorative.
+        "dn_veille.c"
         "fonts/dn_font_14.c"
         "fonts/dn_font_28.c"
     INCLUDE_DIRS "."

@@ -122,6 +122,43 @@ esp_err_t dn_touch_init(void);
  */
 esp_err_t dn_touch_attach_lvgl(lv_display_t *disp);
 
+/*
+ * ── dn3-3 : LE FRONT D'APPUI, ET LE DROIT DE LE **CONSOMMER** ───────────────
+ *
+ * Appelé sur le FRONT (relâché -> appuyé), DANS la tâche LVGL, sous son verrou,
+ * depuis le `read_cb`. `x`/`y` sont les coordonnées déjà orientées, celles que
+ * LVGL recevrait.
+ *
+ * 🔴 RENDRE `true` CONSOMME LE CONTACT — c'est le mécanisme de D-7 (décision
+ *    owner du 2026-08-25) : le tap qui lève la veille RÉVEILLE, il **n'ouvre
+ *    pas** le détail. Motif : en Ambient l'écran est sombre et gris, on ne vise
+ *    pas une case qu'on ne lit pas, et « une cible de 10 px ne se vise pas si
+ *    elle est INVISIBLE » est déjà au ledger.
+ *
+ * ⚠️ LA CONSOMMATION DURE JUSQU'AU RELÂCHEMENT, ⛔ pas un seul cycle. Rendre
+ *    RELÂCHÉ une fois puis PRESSÉ au cycle suivant armerait `act_obj` EN COURS
+ *    de geste, et le relâchement produirait un CLICKED — donc l'ouverture d'un
+ *    détail que personne n'a demandé, exactement ce que la consommation existe
+ *    pour empêcher. C'est la même mécanique que le correctif de `dn_touch_drain()`
+ *    en revue dn1-4.
+ *
+ * ⚠️ ET L'HORLOGE D'INACTIVITÉ EST TENUE À JOUR PENDANT TOUT LE CONTACT
+ *    CONSOMMÉ. LVGL ne rafraîchit `last_activity_time` que si l'état lu est
+ *    `PRESSED` (`lv_indev.c:266-268`) : présenter RELÂCHÉ sans compenser
+ *    laisserait l'inactivité grossir **DOIGT POSÉ SUR LA DALLE**, et le module
+ *    se rendormirait sous le doigt qui vient de le réveiller.
+ *
+ * ⛔ NE PAS y faire de travail long : on est dans le chemin de lecture de
+ *    l'indev, sous le verrou LVGL.
+ */
+typedef bool (*dn_touch_contact_cb_t)(int x, int y);
+void dn_touch_set_contact_cb(dn_touch_contact_cb_t cb);
+/* Contacts CONSOMMÉS depuis le boot. C'est la preuve POSITIVE que le tap de
+ * réveil n'a pas été perdu : sans ce compteur, « l'écran s'allume et rien ne
+ * bouge » serait indiscernable d'un tap qui n'a pas pris. Remis à zéro par
+ * `touch reset`. */
+uint32_t dn_touch_consommes(void);
+
 bool dn_touch_ready(void);
 
 /* Adresse à laquelle le GT911 a RÉPONDU (0 s'il n'a jamais répondu). */

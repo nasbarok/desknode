@@ -99,6 +99,23 @@ static esp_lcd_panel_io_handle_t s_io;
 static esp_lcd_touch_handle_t s_tp;
 static lv_indev_t *s_indev;
 
+/*
+ * ── dn3-3 : LE CONTACT CONSOMMÉ (D-7) ───────────────────────────────────────
+ * Contrat complet dans `dn_touch.h`. `s_consommer` LATCHE jusqu'au relâchement :
+ * consommer un seul cycle armerait `act_obj` au cycle suivant, en plein geste,
+ * et le relâchement ouvrirait un détail — précisément ce que D-7 interdit.
+ */
+static dn_touch_contact_cb_t s_contact_cb;
+static bool s_consommer;
+static uint32_t s_consommes;
+/* Même patron de RÉFÉRENCE que les autres compteurs de ce fichier : `touch
+ * reset` décale la base, il n'efface pas l'accumulateur — ⛔ un compteur
+ * cumulatif ne tranche pas, et une base permet de rejouer un témoin. */
+static uint32_t s_base_consommes;
+
+void dn_touch_set_contact_cb(dn_touch_contact_cb_t cb) { s_contact_cb = cb; }
+uint32_t dn_touch_consommes(void) { return s_consommes - s_base_consommes; }
+
 static uint8_t s_addr;       /* adresse à laquelle il a RÉPONDU (0 = jamais) */
 static uint8_t s_addr_visee; /* adresse que la séquence visait */
 static uint8_t s_addr_avant; /* adresse vue AVANT notre séquence (0 = muet) */
@@ -290,6 +307,17 @@ static void dn_touch_read(lv_indev_t *indev, lv_indev_data_t *data)
          * ouvrirait un écran de détail. Répéter l'état ne fabrique rien.
          */
         data->state = s_appuye ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
+        /* 🔴 dn3-3 : LE VERROU DE CONSOMMATION TIENT AUSSI SUR CE CHEMIN.
+         *    Répéter l'état PRÉCÉDENT signifie répéter `PRESSED` — donc armer
+         *    `act_obj` en plein contact consommé, et ouvrir un détail au
+         *    relâchement. Une erreur I²C est justement ce qui arrive le plus
+         *    souvent au démarrage à froid (55,5 % d'erreurs GT911 sur ~40 s,
+         *    et le scan ne le voit pas) : c'est le pire moment pour laisser
+         *    fuir un tap de réveil. */
+        if (s_consommer) {
+            lv_display_trigger_activity(NULL);
+            data->state = LV_INDEV_STATE_RELEASED;
+        }
         data->point.x = (int32_t)s_x;
         data->point.y = (int32_t)s_y;
         return;
@@ -316,6 +344,25 @@ static void dn_touch_read(lv_indev_t *indev, lv_indev_data_t *data)
         if (!s_appuye) {
             s_appuye = true;
             s_appuis++;
+            /* LE FRONT. Le callback décide s'il CONSOMME ce contact (D-7). */
+            if (s_contact_cb && s_contact_cb((int)pts[0].x, (int)pts[0].y)) {
+                s_consommer = true;
+                s_consommes++;
+            }
+        }
+        if (s_consommer) {
+            /*
+             * ⚠️ ON PRÉSENTE RELÂCHÉ, DONC LVGL NE RAFRAÎCHIT PLUS L'HORLOGE
+             *    D'INACTIVITÉ (`lv_indev.c:266-268` ne le fait que sur
+             *    `PRESSED`). Sans la ligne ci-dessous, l'inactivité grossirait
+             *    DOIGT POSÉ et le module se rendormirait sous le doigt qui
+             *    vient de le réveiller — une panne qui se serait vue à l'œil
+             *    sans qu'aucun compteur ne l'explique.
+             * ⚠️ `NULL` = l'afficheur par défaut, le seul de cette carte ; c'est
+             *    aussi ce que lit `lv_display_get_inactive_time(NULL)`.
+             */
+            lv_display_trigger_activity(NULL);
+            data->state = LV_INDEV_STATE_RELEASED;
         }
     } else {
         data->point.x = (int32_t)s_x;
@@ -325,6 +372,8 @@ static void dn_touch_read(lv_indev_t *indev, lv_indev_data_t *data)
             s_appuye = false;
             s_relaches++;
         }
+        /* Le relâchement RÉEL lève le verrou de consommation, et lui seul. */
+        s_consommer = false;
     }
 }
 
@@ -798,6 +847,7 @@ void dn_touch_reset_stats(void)
     s_base_appuis = s_appuis;
     s_base_relaches = s_relaches;
     s_base_err_i2c = s_err_i2c;
+    s_base_consommes = s_consommes;
 }
 
 dn_touch_mode_t dn_touch_get_mode(void) { return s_mode; }

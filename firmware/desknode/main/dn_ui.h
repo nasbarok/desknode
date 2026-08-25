@@ -74,6 +74,11 @@
  * fait), donc pas de cycle. Passer les 7 champs en scalaires aurait donné une
  * signature à huit paramètres, où une inversion jour/mois serait silencieuse. */
 #include "dn_rtc.h"
+/* dn3-3 : `dn_veille_origine_t` et `dn_veille_compteurs_t` apparaissent dans les
+ * signatures ci-dessous. ⚠️ `dn_veille.h` n'inclut RIEN de LVGL ni de dn_ui :
+ * la dépendance ne va que dans ce sens, et c'est ce qui garde `dn_veille.c`
+ * compilable sur l'hôte. */
+#include "dn_veille.h"
 #include "dn_widget.h"
 #include "esp_err.h"
 #include "lvgl.h"
@@ -196,9 +201,23 @@ typedef struct {
  *    portrait) : celles de dn_ui.c sont DÉRIVÉES et consignées comme
  *    PROVISOIRES. dn3-2 fera foi.
  */
+/*
+ * 🔴 dn3-3 — LA TROISIÈME VUE. `DN_VUE_MENU` est la destination que W3
+ *    reprochait au bandeau `MENU` de ne pas avoir : *« aucune destination ne lui
+ *    est spécifiée — ni dans le brief, ni dans l'addendum §1, ni dans l'epic »*.
+ *    **Maintenant si**, et c'est la décision owner du 2026-08-25 (D-4).
+ * ⚠️ ELLE EST PORTÉE PAR LES **DEUX** MODÈLES DE NAVIGATION. Un modèle qui n'en
+ *    saurait rien ferait mentir `nav model`, dont le dépôt garde les deux
+ *    branches précisément parce qu'« une élimination sans son témoin n'est pas
+ *    une élimination ».
+ * ⚠️ AJOUTÉE **AVANT** `DN_VUE_COUNT` et **APRÈS** les deux existantes : les
+ *    valeurs de `DASHBOARD` et `DETAIL` ne bougent pas, donc aucun relevé
+ *    publié ne change de sens rétroactivement.
+ */
 typedef enum {
     DN_VUE_DASHBOARD = 0,
     DN_VUE_DETAIL,
+    DN_VUE_MENU,
     DN_VUE_COUNT,
 } dn_ui_vue_t;
 
@@ -264,15 +283,26 @@ int dn_ui_dernier_tap(void);
 uint32_t dn_ui_taps(void);
 const char *dn_ui_zone_nom(int zone);
 /* Taps sur le bandeau MENU.
- * 🔴 STRUCTURELLEMENT ZÉRO DEPUIS dn3-2, ET C'EST LE RÉSULTAT DE W3 — pas une
- *    panne. Le bandeau n'a plus de callback, donc `dn_widget_zone_creer` ne lui
- *    pose plus LV_OBJ_FLAG_CLICKABLE : ce n'est plus une zone, et aucun site
- *    n'incrémente ce compteur. Il reste exposé parce qu'un `touch trace` doit
- *    pouvoir montrer le ZÉRO plutôt que de ne rien dire.
- * ⛔ NE PAS le lire comme « le no-op est un CHOIX » : le no-op — un bouton qui
- *    prend le tap et ne fait rien — est précisément la forme que W3 a
- *    SUPPRIMÉE. La preuve de la zone morte est faite par `touch trace`
- *    (16 appuis, 0 tap, AC5/AC6), pas par ce compteur. */
+ * 🔴 dn3-3 — IL MONTE. Ce docblock affirmait QUATRE FOIS le contraire
+ *    (« STRUCTURELLEMENT ZÉRO DEPUIS dn3-2 », « aucun site n'incrémente ce
+ *    compteur », « il ne peut plus monter »), et c'était juste tant que le
+ *    bandeau n'avait pas de destination. La décision owner du 2026-08-25 (D-4)
+ *    lui en donne une : `DN_VUE_MENU`. Le bandeau reçoit donc un callback NON
+ *    NUL, `dn_widget_zone_creer` lui repose `LV_OBJ_FLAG_CLICKABLE`, et ce
+ *    compteur redevient la preuve POSITIVE que la porte s'ouvre.
+ * ⛔ CE DOCBLOC A ÉTÉ RÉÉCRIT, ⛔ PAS LAISSÉ PÉRIMER : « une étiquette qui ment
+ *    est un défaut à part entière » (`dn_widget.h:165`), et un contrat d'en-tête
+ *    qui décrit l'inverse du produit est la forme la plus durable de ce défaut.
+ * ⚠️ CE QUE LE PASSÉ GARDE DE VRAI : les deux relevés « 16 appuis, 0 tap »
+ *    (dn3-2 / AC5-AC6) et « 3 appuis hors zone, 0 tap » (dn4-6, ledger :576)
+ *    décrivaient FIDÈLEMENT le firmware de leur date. Ils sont PÉRIMÉS par
+ *    cette story, ⛔ pas faux rétroactivement — et dn3-3 / AC5.6 les re-tire sur
+ *    la carte plutôt que de les laisser décrire l'inverse du produit.
+ * ⚠️ UN TAP DE RÉVEIL N'EST **PAS** UN TAP DE MENU : il est CONSOMMÉ en amont
+ *    (D-7, `dn_touch_set_contact_cb`) et n'atteint jamais ce compteur. C'est
+ *    `dn_touch_consommes()` qui le porte. Confondre les deux ferait monter
+ *    `menu_taps` sur des réveils, et la gate d'AC5.6 mesurerait la veille en
+ *    croyant mesurer la porte. */
 uint32_t dn_ui_menu_taps(void);
 /* Taps REFUSÉS par LVGL (lv_async_call sur file pleine ou tas saturé). Un tap
  * refusé n'est pas compté dans dn_ui_taps() : sans ce tri, `touch trace`
@@ -314,6 +344,84 @@ size_t dn_ui_lvgl_used(void);
  *    détail, et ce nombre sert de dénominateur à la moyenne publiée par AC5. */
 esp_err_t dn_ui_nav_open(int idx);
 esp_err_t dn_ui_nav_back(void);
+/* dn3-3 : la 3ᵉ destination. Même contrat que les deux ci-dessus, y compris le
+ * `ESP_ERR_INVALID_STATE` quand le MENU est déjà affiché. */
+esp_err_t dn_ui_nav_menu(void);
+
+/*
+ * ══ dn3-3 : LA VEILLE, CÔTÉ AFFICHAGE ═══════════════════════════════════════
+ *
+ * `dn_veille` tient l'ÉTAT et DÉCIDE ; ces fonctions-ci FONT le travail — verrou
+ * LVGL, repeint, rétroéclairage. Le partage est ce qui rend `dn_veille.c`
+ * compilable et appelable sur l'hôte par `tools/verif_veille_dn33.py`.
+ */
+
+/* Bascule vers Ambient MAINTENANT (geste d'opérateur ou du MENU).
+ * `ESP_ERR_INVALID_STATE` = on y était déjà : rien n'a changé, ⛔ ne pas
+ * l'annoncer comme une bascule. */
+esp_err_t dn_ui_veille_dormir(void);
+
+/*
+ * Réveil. `ESP_ERR_INVALID_STATE` = on était déjà en Actif.
+ * ⚠️ EN DEUX TEMPS, ET LES DEUX SONT CHRONOMÉTRÉS (AC4.2) :
+ *   t₁ = le rétroéclairage remonte — c'est ce que l'œil appelle « l'écran
+ *        s'allume ». Fait SYNCHRONEMENT, avant toute écriture LVGL.
+ *   t₂ = la palette Actif complète est posée.
+ * ⛔ NE JAMAIS PUBLIER UNE MOYENNE DES DEUX : le critère brief « < 300 ms »
+ *    porte sur la NAVIGATION et il est DÉJÀ non coché (337,6 / 361,8 ms,
+ *    dn4-4) ; mélanger les trois fabriquerait un chiffre invérifiable.
+ */
+esp_err_t dn_ui_veille_reveiller(dn_veille_origine_t origine);
+
+/*
+ * Les deux latences, en µs, sur les N derniers réveils.
+ * Rend `false` si le verrou n'a pas été pris ⇒ « pas mesuré », ⛔ jamais
+ * « zéro ». Même contrat que `dn_ui_courbe_compteurs()`.
+ * `n` = nombre d'échantillons retenus (0 si aucun réveil depuis le reset).
+ */
+bool dn_ui_veille_latences(uint32_t *n, uint32_t *t1_min, uint32_t *t1_med,
+                           uint32_t *t1_max, uint32_t *t2_min, uint32_t *t2_med,
+                           uint32_t *t2_max);
+
+/* Les compteurs de `dn_veille`, LUS SOUS VERROU (AC8.4) : ils sont écrits par la
+ * tâche LVGL. `false` = verrou non pris ⇒ « pas mesuré ». */
+bool dn_ui_veille_compteurs(dn_veille_compteurs_t *out);
+
+/* Les deux réglages, appliqués À CHAUD et persistés. Passent par ici plutôt que
+ * par `dn_veille` directement pour que l'écran suive : désarmer la veille
+ * pendant qu'on dort doit RÉVEILLER, sinon l'état annoncé et l'écran divergent. */
+esp_err_t dn_ui_veille_set_armee(bool on, dn_veille_origine_t origine);
+esp_err_t dn_ui_veille_set_cran(int idx);
+
+/* ── Les leviers d'AC9, à chaud (⛔ non persistés — ce sont des instruments) ── */
+esp_err_t dn_ui_veille_set_pct(int pct);
+/* L'opacité du voile EN AMBIENT. ⛔ Ne reconstruit PAS la scène : le voile est
+ * retenu, on n'écrit que son style. */
+esp_err_t dn_ui_veille_set_voile(uint8_t opa);
+uint8_t dn_ui_veille_voile(void);
+/* Un des trois gris d'Ambient. Repeint immédiatement si on est en Ambient. */
+esp_err_t dn_ui_veille_set_gris(int regime, uint32_t rgb);
+/* Le taux de désaturation des ACCENTS en Ambient, 0..100 (A/B d'AC9.4). */
+esp_err_t dn_ui_veille_set_accent(int pct);
+/* Vide le ring de latences ET les deux compteurs de contexte. ⛔ Un compteur
+ * cumulatif ne tranche pas : le dépôt a déjà payé ça sur `*cris` en dn4-13. */
+void dn_ui_veille_latences_reset(void);
+/* Taps de RÉGLAGE dans le MENU. ⛔ Distinct de `dn_ui_menu_taps()`, qui compte
+ * les taps sur le BANDEAU et sert de preuve à AC5.5/AC5.6. */
+uint32_t dn_ui_menu_reglages(void);
+/* Transitions provoquées par la VEILLE (retour auto au dashboard, AC3.5). Elles
+ * sont dans `dn_ui_nav_count()` — elles sont réelles — mais leur chronomètre
+ * n'est PAS armé, et ce compteur permet de les retrancher d'un dénominateur. */
+uint32_t dn_ui_nav_veille_count(void);
+
+/*
+ * 🔴 AC1.3 — LA PREUVE QUE LE LAYOUT EST STRICTEMENT IDENTIQUE, CHIFFRÉE.
+ * Rend dans `hash` un condensé des quatre nombres de chacune des six cases ET
+ * du triplet de bandes. ⛔ Ce n'est PAS un constat à l'œil : deux modes qui
+ * rendent le même condensé n'ont pas bougé d'un pixel, et `veille geom` les
+ * imprime CÔTE À CÔTE. `false` si le verrou n'a pas été pris.
+ */
+bool dn_ui_geom_signature(uint32_t *hash);
 
 /*
  * Monte LVGL sur le socle. `asset_err` est le verdict de `dn_asset_init()` :
