@@ -6423,7 +6423,7 @@ disponible, et la console **DIT quelle paire il confond, calculé à l'exécutio
 
 ⚠️ **`veille accents` est un A/B à chaud** : c'est AC9.4 qui tranche à l'œil.
 
-## 24.5 ✅ CE QUE LA GATE HÔTE PROUVE — 91 CONTRÔLES, SANS CARTE NI TOUR
+## 24.5 ✅ CE QUE LA GATE HÔTE PROUVE — 119 CONTRÔLES, SANS CARTE NI TOUR
 
 `tools/verif_veille_dn33.py`. ⛔ **Elle ne relit pas du source** : elle **COMPILE
 `dn_veille.c` en entier et l'APPELLE**, et elle **EXTRAIT VERBATIM**
@@ -6667,22 +6667,64 @@ ordre, mais **ce cas-là n'a pas été tiré** : il demande un doigt.
 a deux. »** ⇒ Le constat de §24.4, calculé par le firmware lui-même, sur les
 couleurs relues des descripteurs. C'est ce qui a fait passer le défaut à 95.
 
-## 24.8 ⏳ CE QUI RESTE — ⛔ RIEN DE TOUT CELA N'EST MESURÉ
+## 24.8 ✅ AC4 — LES DEUX LATENCES DE RÉVEIL, MESURÉES AU DOIGT
 
-| # | À mesurer | Instrument prêt |
-|---|---|---|
-| AC2.1 | une case change en Ambient sur 60 s, critère `W2` (étendue ≥ 5, changement de TEXTE ≥ 10 %, σ ≥ 1) — **sous agent réel**, ⛔ pas `dn_injecteur.py` | `w2` |
-| AC2.4 | **PC éteint** : `AMBIANCE` réelle, les cinq autres `ABSENTE` en `--` | `pc`, `veille` |
-| AC4.2-4.3 | **t₁ et t₂**, min/médiane/max, **n ≥ 20 réveils AU DOIGT** | `veille lat` |
-| AC4.4 / AC9.5 | le tap consommé **se voit-il**, ou l'œil croit-il son tap PERDU ? ⛔ **PAS** l'arbitrage de D-7, qui est tranchée | `veille`, `touch` |
-| AC5.6 | **8 allers-retours** bande MENU ⇒ **8 taps** · **≥ 5 appuis** barre du haut ⇒ **0 tap** | `touch trace`, `nav` |
-| AC5.7 / AC6 | le MENU au doigt : cibles 210 × 66 visables ? crans grisés quand OFF ? `←` au bon endroit ? | — |
-| AC7.3 | la moitié **MENU** de la persistance (la moitié console est soldée en §24.7.7) | MENU + `veille` |
-| AC9.1-9.4, 9.6-9.8 | les constats owner à l'œil, **et la nuit** | `veille pct/voile/gris/accents` |
-| — | coût de l'écriture NVS **depuis un tap MENU** (§24.7.11 ne mesure que la voie REPL) | `veille` |
+Campagne du 2026-08-25, firmware `dfa8204`, **10 réveils AU DOIGT en 169 s**.
+⚠️ Le geste est à l'owner, la cadence à l'agent : le script rebascule en Ambient
+dès qu'un réveil est constaté. ⛔ **Les deux latences sont chronométrées DANS le
+firmware** — un chronométrage depuis l'hôte aurait ajouté sa latence série à des
+valeurs de l'ordre de la centaine de microsecondes.
 
-⚠️ **CHAQUE CHIFFRE NOMMERA SON SHA, LU AU BANDEAU `App version`**, ⛔ pas déduit
-du dépôt, et `git status --porcelain` **vide avant le flash**.
+| | min | **médiane** | max | cible |
+|---|---:|---:|---:|---:|
+| **t₁** — contact → rétroéclairage remonté | 86 µs | **107 µs** | 178 µs | **< 50 ms** ✅ |
+| **t₂** — contact → palette Actif posée | 25 213 µs | **25 454 µs** | 25 804 µs | budgétée |
+
+🎯 **t₁ médian = 0,107 ms, soit 467× SOUS la cible** — et même le pire cas
+(178 µs) reste 280× dessous. C'est le bénéfice direct du réveil EN DEUX TEMPS :
+le rétroéclairage remonte avant toute écriture LVGL.
+
+🎯 **t₂ médian = 25,5 ms, dispersion 591 µs.** Il est **SOUS une période de
+trame** (26,737 ms) : le repeint lui-même ne coûte presque rien, c'est l'attente
+de synchro qui domine. ⇒ **À comparer aux 307-322 ms qu'aurait coûté une
+reconstruction de scène : le chemin sans rebuild paie 12× moins.**
+
+⛔ **CES DEUX CHIFFRES NE SE MÉLANGENT NI ENTRE EUX NI AVEC LE CRITÈRE BRIEF.**
+Le « < 300 ms » du brief porte sur la NAVIGATION et il est DÉJÀ non coché
+(337,6 ms au `nav ab`, 361,8 ms au doigt, `dn4-4`). Trois chiffres, trois
+questions.
+
+⚠️ **CE QUE t₁ N'INCLUT PAS, ET C'EST DIT PAR L'INSTRUMENT LUI-MÊME** : l'origine
+du chronomètre est l'instant où le `read_cb` VOIT le front, ⛔ pas l'instant du
+contact physique. Le trajet GT911 → IRQ → réveil de la tâche LVGL → transaction
+I²C est **en amont et non instrumenté**.
+
+### ✅ D-7 — LE TAP DE RÉVEIL EST BIEN CONSOMMÉ, ET C'EST MESURÉ
+
+| compteur | valeur |
+|---|---:|
+| contacts **CONSOMMÉS** en Ambient | **12** |
+| réveils produits | **10** |
+| taps attribués à une **zone** | **2** |
+| taps sur **MENU** | **0** |
+
+⇒ Si les taps de réveil fuyaient vers les zones, on en compterait une douzaine.
+**Aucun n'a ouvert de page.** Les 2 taps de zone ont eu lieu **après** un réveil,
+donc en mode Actif, et le dernier a touché `RETOUR` — c'est de la navigation
+normale.
+⚠️ **12 consommations pour 10 réveils** : deux contacts sont tombés sur la course
+« déjà réveillé ». Le code la prévoit (`dn_veille_reveiller()` rend `false`) et
+compte quand même la consommation — c'est correct : le contact **a** été
+consommé, il n'a simplement pas produit de réveil.
+
+### ⚠️ ÉCART DÉCLARÉ — n = 10, ET AC4.3 EN DEMANDE 20
+
+Décision owner du 2026-08-25 : *« 20 reveils c'est beaucoup mais ok pour une
+10aines »*. ⛔ **AC4.3 n'est donc PAS satisfait à la lettre.** Ce qui est publié
+ci-dessus vaut pour **n = 10**, et la dispersion observée (t₁ de 86 à 178 µs,
+t₂ de 25,2 à 25,8 ms) est assez serrée pour que dix échantillons soient
+informatifs — mais ⛔ ce n'est pas la même chose que vingt, et personne ne doit
+lire ce tableau comme si ça l'était.
 
 ## 24.9 🔴 FAIT MATÉRIEL — **AUCUN GRIS N'EST NEUTRE SUR CETTE DALLE**
 
@@ -6744,7 +6786,80 @@ rampe, donc il prend puis rend l'avance à chaque pas »*.
 sur la dalle : *« enfin propre — blanc sur noir, lisible »*. La tuile est
 délimitée par sa **bordure**, ⛔ pas par son remplissage.
 
-## 24.10 ⛔ CE QUE §24 NE PROUVERA PAS, MÊME APRÈS LA SÉANCE
+## 24.10 🔴 L'INJECTION CONSOLE EST UN MAUVAIS TÉMOIN — MESURÉ, PAS SUPPOSÉ
+
+Constat owner du 2026-08-25 pendant la veille : *« les valeurs pop juste et
+entre 2 ya rien […] la courbe est pleine de pointillés »*.
+
+⚠️ **LA PREMIÈRE RÉACTION AURAIT ÉTÉ D'ACCUSER L'AFFICHAGE. LES CHIFFRES DISENT
+L'INVERSE.** Injection de 90 s, cinq métriques, cadence visée 1,32 poussée/s par
+métrique (donc **plus rapide que l'agent réel**, mesuré à 1,0/s en `dn4-4`) :
+
+| | valeur |
+|---|---:|
+| trames **émises** par l'injecteur | **595** |
+| trames **valides** vues par la carte (`pc`) | **234** |
+| **pertes de séquence** | **746** |
+| rejets — tronquée / trop longue / checksum / version / format / bornes | **0 partout** |
+
+🔴 **ZÉRO REJET** : les trames ne sont pas refusées, elles **n'arrivent pas**.
+`net` et `disk` ont leur dernière trame acceptée à **seq 79 et 80** — elles ont
+cessé de passer après ~12 s. L'injecteur **sature le REPL**.
+
+✅ **ET LE TÉMOIN QUI TRANCHE EST DANS LE MÊME RELEVÉ** : `AMBIANCE`, la seule
+source **réellement** vivante (le BME680, qui ne passe PAS par le lien série),
+affiche **120 réels / 0 trou** sur 120 s — **pendant la veille** :
+
+| série | réels | trous |
+|---|---:|---:|
+| `AMBIANCE T` / `AMBIANCE RH` | **120** | **0** |
+| CPU | 76 | 44 |
+| GPU | 38 | 82 |
+| RAM | 42 | 78 |
+| RÉSEAU | 18 | 102 |
+| DISQUE | 19 | 101 |
+
+⇒ **Les pointillés viennent du harnais, pas de l'affichage.** ⛔ Ne pas accuser
+le code testé avant d'avoir éprouvé le harnais.
+
+### ⚠️ ET SUR LE FOND : NON, IL NE FAUT PAS LISSER
+
+`dn_hist` échantillonne l'état COURANT à 1 Hz, et **une source qui se tait creuse
+un TROU** — délibérément. Le code le dit : *« la courbe mentirait sur la DURÉE,
+pas sur la valeur : un mensonge plus difficile à voir »*. Lisser reviendrait à
+dessiner des points que personne n'a publiés. `AMBIANCE` montre qu'une vraie
+source n'en produit aucun.
+
+⇒ **AC2.1 (le critère W2 chiffré) EXIGE L'AGENT RÉEL.** ⛔ L'injection console
+ne peut pas s'y substituer, et ce relevé-ci en est la démonstration chiffrée.
+
+## 24.11 ⏳ CE QUI RESTE
+
+✅ **CE QUI A ÉTÉ SOLDÉ PAR L'ŒIL LE 2026-08-25**, et qui ne figure donc plus
+ci-dessous : **AC9.1** (*« la luminosité de la veille est bien »* ⇒ **10 %**
+gravés avec leur constat) · **AC9.2-9.3** (le rendu noir et blanc, *« enfin
+propre — blanc sur noir, lisible »*) · **AC9.4** (les accents sont MASQUÉS en
+Ambient, la question de leur désaturation est sans objet sur les cases) ·
+**AC4.1-4.2** et **D-7** (§24.8).
+
+⛔ **RIEN DE CE QUI SUIT N'EST MESURÉ.**
+
+| # | À mesurer | Instrument prêt |
+|---|---|---|
+| AC2.1 | une case change en Ambient sur 60 s, critère `W2` (étendue ≥ 5, changement de TEXTE ≥ 10 %, σ ≥ 1) — **sous agent réel**, ⛔ pas `dn_injecteur.py` | `w2` |
+| AC2.4 | **PC éteint** : `AMBIANCE` réelle, les cinq autres `ABSENTE` en `--` | `pc`, `veille` |
+| AC4.4 / AC9.5 | le tap consommé **se voit-il**, ou l'œil croit-il son tap PERDU ? ⛔ **PAS** l'arbitrage de D-7, qui est tranchée | `veille`, `touch` |
+| AC5.6 | **8 allers-retours** bande MENU ⇒ **8 taps** · **≥ 5 appuis** barre du haut ⇒ **0 tap** | `touch trace`, `nav` |
+| AC5.7 / AC6 | le MENU au doigt : cibles 210 × 66 visables ? crans grisés quand OFF ? `←` au bon endroit ? | — |
+| AC7.3 | la moitié **MENU** de la persistance (la moitié console est soldée en §24.7.7) | MENU + `veille` |
+| AC9.6-9.8 | le retour au dashboard depuis un détail, le MENU au doigt, **et la nuit** | — |
+| AC2.1 | le critère **W2 chiffré**, sous **agent réel** — ⛔ l'injection console ne suffit pas (voir §24.10) | `w2` |
+| — | coût de l'écriture NVS **depuis un tap MENU** (§24.7.11 ne mesure que la voie REPL) | `veille` |
+
+⚠️ **CHAQUE CHIFFRE NOMMERA SON SHA, LU AU BANDEAU `App version`**, ⛔ pas déduit
+du dépôt, et `git status --porcelain` **vide avant le flash**.
+
+## 24.12 ⛔ CE QUE §24 NE PROUVERA PAS, MÊME APRÈS LA SÉANCE
 
 - **La tenue 7 jours H24.** C'est `dn4-5`. `dn3-3`/AC9.8 prouve **une nuit**, et
   rien de plus. ⛔ Ne pas extrapoler d'une nuit à une semaine.
