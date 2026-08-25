@@ -1,0 +1,340 @@
+# dn4-13 / SEANCE DE VALIDATION DES CORRECTIFS DE REVUE — 2026-08-25
+# firmware : 0ba9fc7 (SHA LU AU BANDEAU au boot, arbre desknode PROPRE)
+#            ⚠️ c'est le firmware POSTERIEUR aux chiffres de §23 (`7b375c3`) :
+#            cette seance existe pour qu'il ne reste pas non mesure.
+# protocole : lectures console ENCHAINEES EN UN SEUL GESTE, dans l'ordre du
+#             fichier, carte laissee en configuration PRODUIT a la fin.
+#             ⛔ NI `nav ab`, NI `touch` : ce fichier ne porte AUCUNE latence.
+# source    : MUETTE — le port serie est EXCLUSIF (liaison-pc.md §13), donc
+#             l'agent de la tour ne peut pas coexister avec ces lectures.
+#             Seule `AMBIANCE` porte du reel (BME680, capteur embarque).
+# config    : num_fbs=1 bounce_px=9600 draw_lines=128 draw_psram=0 lvgl_core=0
+# ⚠️ Les blocs A3 et A3b (les pauses `ui off`) sont EN FIN DE FICHIER : ils
+#    viennent de DEUX AUTRES gestes, avec leurs propres horodatages. Ils ne
+#    sont pas melanges a celui-ci.
+
+##### A2 — LE COUT ET LA COUVERTURE #####
+
+$ hist
+historique de session (dn4-4) — EN RAM, ⛔ AUCUNE ecriture NVS/flash (D4)
+  cout .bss REEL du module : 5657 o
+     points 8 x 120 x 4 = 3840 o
+     seaux  s_smin + s_smax + s_svu = 1728 o
+     index  s_w + s_ecrits + s_pret + s_seau_abs + horodatage
+            + 2 compteurs de rattrapage = 89 o
+  ⚠️ CE TOTAL EST CELUI DU MODULE, ⛔ plus `sizeof(s_pts)` seul.
+     Jusqu'au 2026-08-25 cette ligne imprimait 3840 o : tout cout
+     publie AVANT cette date sous-declare de 1817 o (32 %).
+  cadence : 1000 ms — une HORLOGE, ⛔ pas la cadence des trames
+  rattrapage : 10 coupure(s), 172 point(s) de trou comble(s)
+     ⇒ l'anneau a AVANCE pendant la pause : la courbe ne relie
+       PAS les deux bords. ⛔ Sans ca, 60 s de `ui off` se
+       dessinaient comme UNE seconde.
+  profondeur : 120 points a 1 Hz = 120 s de session
+  fenetre LONGUE : 24 seau(x) d'1 h — couverture **PAR SERIE**
+  🔴 dn4-13 / AC2.2 : la couverture n'est PLUS l'uptime. Jusqu'au
+     2026-08-25 elle rendait min(uptime, 24 h) — carte allumee 1 h
+     SANS source PC, la page annoncait « MIN/MAX sur : 1 h » a cote
+     de « MIN -- · MAX -- ». Elle compte desormais les seaux QUI ONT
+     VU DU REEL, et rend 0 quand il n'y en a aucun.
+  ⛔ « 24 h » N'EST VRAI QUE SI LA CARTE A TOURNE 24 h : D4
+     interdit toute ecriture flash/NVS, donc ceci NE SURVIT PAS
+     a un reboot. La page affiche la fenetre REELLE, pas 24 h.
+
+  serie        ecrits reels trous jamais couv(s)  min(court) max(court)  min(long) max(long)
+   CPU            120     0   120      0       0         --         --         --         --
+   GPU            120     0   120      0       0         --         --         --         --
+   RAM            120     0   120      0       0         --         --         --         --
+   RESEAU v       120     0   120      0       0         --         --         --         --
+   DISQUE         120     0   120      0       0         --         --         --         --
+   AMBIANCE T     120   120     0      0     618        253        254        251        255
+   AMBIANCE RH    120   120     0      0     618        474        475        471        484
+   RESEAU ^       120     0   120      0       0         --         --         --         --
+  (toutes les valeurs en DIXIEMES — cet instrument ne connait ni
+   les unites ni les echelles hautes, c'est la PAGE qui les porte)
+  🔴 `trous` = positions ECRITES dont la source s'etait tue.
+     `jamais` = positions JAMAIS ATTEINTES depuis l'init — ⛔ ce ne
+     sont PAS des trous, et les compter comme tels a fait publier
+     « trous 110 » a t = 10 s. `min(court)` porte donc sur `ecrits`
+     secondes, ⛔ pas sur « 2 min » par principe.
+
+⛔ UN TROU N'EST PAS UN ZERO. Une valeur absente, perimee, ou
+   SIMULEE (mock, `widget pousser`) n'entre PAS dans une serie
+   presentee comme reelle : elle y creuse un trou, que `lv_chart`
+   SAUTE au trace. C'est la regle W10/AC5 de dn4-1, portee au temps.
+
+##### A4 — LES BORNES DE widget detpan (40..167) #####
+--- detpan 39 ---
+
+$ widget detpan 39
+refuse : ESP_ERR_INVALID_ARG — ⛔ RIEN n'a change.
+  `0` rend le panneau a sa valeur de produit (154 px).
+  ⛔ Hors plage, on REFUSE : un ecretage silencieux ferait
+     mesurer une hauteur qu'on n'a pas demandee.
+Command returned non-zero error code: 0x1 (ERROR)
+--- detpan 40 ---
+
+$ widget detpan 40
+panneau de valeurs du detail = 40 px — SCENE RECONSTRUITE.
+🔴 TEMOIN NEGATIF (AC4.3) : ouvrir DISQUE au PIRE CAS
+   (`dn_injecteur.py --jeu pire`, puis `nav open 4`). Le bloc
+   mesure 14 + 140 = 154 px : sous 154, la garde DOIT emettre
+   « le bloc de valeurs DEBORDE EN HAUTEUR ». Si elle se TAIT,
+   c'est LA GARDE qui est cassee, ⛔ pas le stimulus.
+⚠️ `widget detpan 0` remet le produit. Le cadre de courbe (262)
+   et le panneau du bas (385) n'ont PAS bouge : ce stimulus casse
+   l'AJUSTEMENT, ⛔ pas le template.
+🔴 dn4-13 / AC6.5 — LA BORNE HAUTE EST 167 (= 262 - 95), ⛔ plus
+   200. Au-dela, le bloc CHEVAUCHE le cadre de courbe (95 + 200
+   = 295 > 262) — ET LA GARDE NE LE VOIT PAS : elle compare le
+   label a SON panneau, pas le panneau a son voisin. Elle
+   concluait « ✅ silence LEGITIME » sur un ecran CASSE.
+🔴 dn4-13 / AC6.1 — cette commande REMET LES COMPTEURS DE LA GARDE
+   A ZERO. C'est ce qui rend le temoin negatif REJOUABLE : arme
+   ⇒ elle crie · `detpan 0` ⇒ elle se tait ET la console le DIT.
+   Sans ca, un seul cri suffisait a faire annoncer « elle a CRIE »
+   pour le reste de la session.
+--- detpan 167 ---
+
+$ widget detpan 167
+panneau de valeurs du detail = 167 px — SCENE RECONSTRUITE.
+🔴 TEMOIN NEGATIF (AC4.3) : ouvrir DISQUE au PIRE CAS
+   (`dn_injecteur.py --jeu pire`, puis `nav open 4`). Le bloc
+   mesure 14 + 140 = 154 px : sous 154, la garde DOIT emettre
+   « le bloc de valeurs DEBORDE EN HAUTEUR ». Si elle se TAIT,
+   c'est LA GARDE qui est cassee, ⛔ pas le stimulus.
+⚠️ `widget detpan 0` remet le produit. Le cadre de courbe (262)
+   et le panneau du bas (385) n'ont PAS bouge : ce stimulus casse
+   l'AJUSTEMENT, ⛔ pas le template.
+🔴 dn4-13 / AC6.5 — LA BORNE HAUTE EST 167 (= 262 - 95), ⛔ plus
+   200. Au-dela, le bloc CHEVAUCHE le cadre de courbe (95 + 200
+   = 295 > 262) — ET LA GARDE NE LE VOIT PAS : elle compare le
+   label a SON panneau, pas le panneau a son voisin. Elle
+   concluait « ✅ silence LEGITIME » sur un ecran CASSE.
+🔴 dn4-13 / AC6.1 — cette commande REMET LES COMPTEURS DE LA GARDE
+   A ZERO. C'est ce qui rend le temoin negatif REJOUABLE : arme
+   ⇒ elle crie · `detpan 0` ⇒ elle se tait ET la console le DIT.
+   Sans ca, un seul cri suffisait a faire annoncer « elle a CRIE »
+   pour le reste de la session.
+--- detpan 168 ---
+
+$ widget detpan 168
+refuse : ESP_ERR_INVALID_ARG — ⛔ RIEN n'a change.
+  `0` rend le panneau a sa valeur de produit (154 px).
+  ⛔ Hors plage, on REFUSE : un ecretage silencieux ferait
+     mesurer une hauteur qu'on n'a pas demandee.
+Command returned non-zero error code: 0x1 (ERROR)
+--- detpan 200 ---
+
+$ widget detpan 200
+refuse : ESP_ERR_INVALID_ARG — ⛔ RIEN n'a change.
+  `0` rend le panneau a sa valeur de produit (154 px).
+  ⛔ Hors plage, on REFUSE : un ecretage silencieux ferait
+     mesurer une hauteur qu'on n'a pas demandee.
+Command returned non-zero error code: 0x1 (ERROR)
+
+$ widget detpan 0
+panneau de valeurs du detail = 154 px — SCENE RECONSTRUITE.
+🔴 TEMOIN NEGATIF (AC4.3) : ouvrir DISQUE au PIRE CAS
+   (`dn_injecteur.py --jeu pire`, puis `nav open 4`). Le bloc
+   mesure 14 + 140 = 154 px : sous 154, la garde DOIT emettre
+   « le bloc de valeurs DEBORDE EN HAUTEUR ». Si elle se TAIT,
+   c'est LA GARDE qui est cassee, ⛔ pas le stimulus.
+⚠️ `widget detpan 0` remet le produit. Le cadre de courbe (262)
+   et le panneau du bas (385) n'ont PAS bouge : ce stimulus casse
+   l'AJUSTEMENT, ⛔ pas le template.
+🔴 dn4-13 / AC6.5 — LA BORNE HAUTE EST 167 (= 262 - 95), ⛔ plus
+   200. Au-dela, le bloc CHEVAUCHE le cadre de courbe (95 + 200
+   = 295 > 262) — ET LA GARDE NE LE VOIT PAS : elle compare le
+   label a SON panneau, pas le panneau a son voisin. Elle
+   concluait « ✅ silence LEGITIME » sur un ecran CASSE.
+🔴 dn4-13 / AC6.1 — cette commande REMET LES COMPTEURS DE LA GARDE
+   A ZERO. C'est ce qui rend le temoin negatif REJOUABLE : arme
+   ⇒ elle crie · `detpan 0` ⇒ elle se tait ET la console le DIT.
+   Sans ca, un seul cri suffisait a faire annoncer « elle a CRIE »
+   pour le reste de la session.
+
+##### A5/A6 — RECONSTRUCTION DE SCENE PUIS RELECTURE DE LA COURBE #####
+
+$ nav model rebuild
+modele « rebuild » — la vue est revenue au dashboard (les deux modeles
+ne tiennent pas leur etat au meme endroit).
+⚠️ comparer proprement : `touch reset` puis `nav ab 20`, sans
+   toucher la dalle pendant la serie.
+arbitrage AC4, re-mesure le 2026-08-16 dans CETTE config :
+   screens 307,0 ms moy (285,0/320,8) · tas 15 216 o
+   rebuild 346,9 ms moy (300,8/374,2) · tas 12 184 o
+   => screens gagne 39,9 ms (11,5 %) pour +3 032 o de tas.
+
+$ nav open 5
+rien a faire : le detail « AMBIANCE » est DEJA affiche.
+(aucune transition, aucun chronometre arme)
+
+$ widget detpan 160
+panneau de valeurs du detail = 160 px — SCENE RECONSTRUITE.
+🔴 TEMOIN NEGATIF (AC4.3) : ouvrir DISQUE au PIRE CAS
+   (`dn_injecteur.py --jeu pire`, puis `nav open 4`). Le bloc
+   mesure 14 + 140 = 154 px : sous 154, la garde DOIT emettre
+   « le bloc de valeurs DEBORDE EN HAUTEUR ». Si elle se TAIT,
+   c'est LA GARDE qui est cassee, ⛔ pas le stimulus.
+⚠️ `widget detpan 0` remet le produit. Le cadre de courbe (262)
+   et le panneau du bas (385) n'ont PAS bouge : ce stimulus casse
+   l'AJUSTEMENT, ⛔ pas le template.
+🔴 dn4-13 / AC6.5 — LA BORNE HAUTE EST 167 (= 262 - 95), ⛔ plus
+   200. Au-dela, le bloc CHEVAUCHE le cadre de courbe (95 + 200
+   = 295 > 262) — ET LA GARDE NE LE VOIT PAS : elle compare le
+   label a SON panneau, pas le panneau a son voisin. Elle
+   concluait « ✅ silence LEGITIME » sur un ecran CASSE.
+🔴 dn4-13 / AC6.1 — cette commande REMET LES COMPTEURS DE LA GARDE
+   A ZERO. C'est ce qui rend le temoin negatif REJOUABLE : arme
+   ⇒ elle crie · `detpan 0` ⇒ elle se tait ET la console le DIT.
+   Sans ca, un seul cri suffisait a faire annoncer « elle a CRIE »
+   pour le reste de la session.
+
+$ widget courbe
+COURBE du detail « AMBIANCE » — RELUE des coordonnees LVGL :
+  courbe : x = 23..458 (436 px)   y = 271..362 (92 px)
+  cadre  : 460 x 108 px
+  ⚠️ bornes INCLUSIVES cote LVGL — le +1 est fait ici.
+  ── les SERIES et leurs PLAGES Y (⛔ pas recalculees) ──
+     series : 2
+     axe PRIMAIRE   : 249 .. 255 (dixiemes) · couleur 0xFF9640
+     axe SECONDAIRE : 473 .. 479 (dixiemes) · couleur 0x67E8F9
+     etendue : primaire 6 · secondaire 6
+     🔴 DEUX AXES AUTO-CALES CENTRENT CHACUN LEUR SERIE :
+        si les DEUX sont plates, elles se SUPERPOSENT
+        dans les 92 px, ⛔ malgre deux couleurs.
+  ── le DESSIN sur le chemin chaud (dn4-13 / AC5) ──
+     reparametrages demandes : 344 · REDESSINS reels : 316
+     ⇒ 8 % des demandes N'ONT PRODUIT AUCUN appel LVGL
+     ⚠️ CUMULATIFS. Pour mesurer un REGIME : `touch reset`,
+        laisser tourner, relire. ⛔ C'est bien `touch reset`
+        qui remet les compteurs UI a zero, ⛔ pas `widget`.
+  ── la GARDE DE HAUTEUR, ce qu'ELLE a vu au dernier passage ──
+     passages : 1   cris : 0
+     geom_resolue = false · panneau 0 · label 0 pose a y = -1
+     🔴 `geom_resolue` FAUX : la garde est atteinte mais
+        elle se COUPE elle-meme.
+  ── l'invariant du template ──
+     bas du cadre de courbe : 262 + 108 = 370   ✅ INCHANGE (370)
+     ecart au panneau du bas (385) : 15 px
+
+##### RETOUR EN CONFIGURATION PRODUIT #####
+
+$ widget detpan 0
+panneau de valeurs du detail = 154 px — SCENE RECONSTRUITE.
+🔴 TEMOIN NEGATIF (AC4.3) : ouvrir DISQUE au PIRE CAS
+   (`dn_injecteur.py --jeu pire`, puis `nav open 4`). Le bloc
+   mesure 14 + 140 = 154 px : sous 154, la garde DOIT emettre
+   « le bloc de valeurs DEBORDE EN HAUTEUR ». Si elle se TAIT,
+   c'est LA GARDE qui est cassee, ⛔ pas le stimulus.
+⚠️ `widget detpan 0` remet le produit. Le cadre de courbe (262)
+   et le panneau du bas (385) n'ont PAS bouge : ce stimulus casse
+   l'AJUSTEMENT, ⛔ pas le template.
+🔴 dn4-13 / AC6.5 — LA BORNE HAUTE EST 167 (= 262 - 95), ⛔ plus
+   200. Au-dela, le bloc CHEVAUCHE le cadre de courbe (95 + 200
+   = 295 > 262) — ET LA GARDE NE LE VOIT PAS : elle compare le
+   label a SON panneau, pas le panneau a son voisin. Elle
+   concluait « ✅ silence LEGITIME » sur un ecran CASSE.
+🔴 dn4-13 / AC6.1 — cette commande REMET LES COMPTEURS DE LA GARDE
+   A ZERO. C'est ce qui rend le temoin negatif REJOUABLE : arme
+   ⇒ elle crie · `detpan 0` ⇒ elle se tait ET la console le DIT.
+   Sans ca, un seul cri suffisait a faire annoncer « elle a CRIE »
+   pour le reste de la session.
+
+$ nav model screens
+I (620982) dn_ui: modèle de navigation : « screens »
+modele « screens » — la vue est revenue au dashboard (les deux modeles
+ne tiennent pas leur etat au meme endroit).
+⚠️ comparer proprement : `touch reset` puis `nav ab 20`, sans
+   toucher la dalle pendant la serie.
+arbitrage AC4, re-mesure le 2026-08-16 dans CETTE config :
+   screens 307,0 ms moy (285,0/320,8) · tas 15 216 o
+   rebuild 346,9 ms moy (300,8/374,2) · tas 12 184 o
+   => screens gagne 39,9 ms (11,5 %) pour +3 032 o de tas.
+
+$ nav back
+rien a faire : le dashboard est DEJA affiche.
+(aucune transition, aucun chronometre arme)
+
+$ cfg
+config de boot (NVS) : num_fbs=1 bounce_px=9600 draw_lines=128 draw_psram=0 lvgl_core=0
+config ACTIVE        : num_fbs=1 bounce_px=9600 draw_lines=128 draw_psram=0 lvgl_core=0
+⚠️ un `set` ne prend effet qu'au `reboot` : les framebuffers sont
+   alloués une fois, au démarrage. C'est voulu — réallouer à chaud
+   laisserait une PSRAM fragmentée et fausserait la mesure suivante.
+`cfg reset` efface la config NVS et rend les défauts au prochain boot.
+
+##############################################################
+##### A3 — GESTE SEPARE : ui off de 135 s (epoch 1787652675 -> 1787652810)
+##### ⚠️ la lecture APRES est PREMATUREE : le rattrapage LVGL n'avait
+#####    pas encore tire. Le compteur est relu dans le bloc A3b, et il
+#####    y vaut 9/143 — soit +1 coupure et +135 trous. C'EST LE RELEVE
+#####    QUI TRANCHE : 135 > 120, l'ancien code aurait ECRETE a 120.
+##############################################################
+########## A3 — AVANT (nav open 0 puis hist) ##########
+
+$ nav open 0
+detail « CPU » ouvert.
+     index  s_w + s_ecrits + s_pret + s_seau_abs + horodatage
+            + 2 compteurs de rattrapage = 89 o
+  rattrapage : 8 coupure(s), 8 point(s) de trou comble(s)
+  serie        ecrits reels trous jamais couv(s)  min(court) max(court)  min(long) max(long)
+   CPU            120     0   120      0       0         --         --         --         --
+   AMBIANCE T     120   120     0      0     150        254        255        254        255
+     « trous 110 » a t = 10 s. `min(court)` porte donc sur `ecrits`
+########## ui off ##########
+
+$ ui off
+LVGL mis en PAUSE.
+L'écran garde ce que LVGL y avait laissé, et `scene`/`tear`
+peuvent désormais écrire dans le framebuffer (chemin de dn1-2,
+celui dont AC5 a besoin pour les scènes alternées).
+1787652675
+1787652810
+########## ui on ##########
+
+$ ui on
+LVGL repris (redessin complet demandé).
+########## A3 — APRES ##########
+     index  s_w + s_ecrits + s_pret + s_seau_abs + horodatage
+            + 2 compteurs de rattrapage = 89 o
+  rattrapage : 8 coupure(s), 8 point(s) de trou comble(s)
+  serie        ecrits reels trous jamais couv(s)  min(court) max(court)  min(long) max(long)
+   CPU            120     0   120      0       0         --         --         --         --
+   AMBIANCE T     120   120     0      0     285        254        255        254        255
+   SIMULEE (mock, `widget pousser`) n'entre PAS dans une serie
+
+##############################################################
+##### A3b — GESTE SEPARE : test discriminant, ~31 s de ui off
+##### Question : hist_tick tourne-t-il pendant ui off ? Injection d'une
+##### trame cpu PENDANT la pause. Reponse : CPU reste a reels 0 et le
+##### compteur reste fige a 9/143 pendant TOUTE la pause, puis saute a
+##### 10/172 a la reprise. ⇒ le timer s'arrete bien, et la premisse
+##### d'AC3 (dn_ui.c:5046) est JUSTE.
+##############################################################
+===== ETAT AVANT (ui ON) =====
+            + 2 compteurs de rattrapage = 89 o
+  rattrapage : 9 coupure(s), 143 point(s) de trou comble(s)
+   CPU            120     0   120      0       0         --         --         --         --
+===== ui off =====
+peuvent désormais écrire dans le framebuffer (chemin de dn1-2,
+celui dont AC5 a besoin pour les scènes alternées).
+===== injection PENDANT la pause =====
+
+$ pc $DN,1,900,500000,cpu,432*78
+
+===== hist PENDANT la pause (ui toujours OFF) =====
+            + 2 compteurs de rattrapage = 89 o
+  rattrapage : 9 coupure(s), 143 point(s) de trou comble(s)
+   CPU            120     0   120      0       0         --         --         --         --
+===== hist +20 s PLUS TARD, toujours OFF =====
+            + 2 compteurs de rattrapage = 89 o
+  rattrapage : 9 coupure(s), 143 point(s) de trou comble(s)
+   CPU            120     0   120      0       0         --         --         --         --
+===== ui on =====
+LVGL repris (redessin complet demandé).
+===== hist APRES reprise =====
+            + 2 compteurs de rattrapage = 89 o
+  rattrapage : 10 coupure(s), 172 point(s) de trou comble(s)
+   CPU            120     0   120      0       0         --         --         --         --

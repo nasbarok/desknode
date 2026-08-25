@@ -6194,6 +6194,12 @@ périmètre sur `k_desc[]`, **levé explicitement par l'owner** :
 - 🔴 **Que les chiffres de §23.10 et le verdict d'AC3.3 soient CAPTURÉS.** Ils ne
   le sont pas, et la seule capture `hist` livrée les CONTREDIT — autre boot. Voir
   l'encadré de §23.10. *(revue de code du 2026-08-25)*
+- ✅ **RÉSOLU LE 2026-08-25 — que le firmware LIVRÉ soit celui qui a été MESURÉ.**
+  Les correctifs de la revue avaient rendu le code POSTÉRIEUR à §23.1 → §23.10.
+  Une séance de validation a été tirée sur `0ba9fc7`, SHA **lu au bandeau** : voir
+  **§23.11**, capture `mesures/dn4-13/validation-revue-0ba9fc7-2026-08-25.log`.
+  ⚠️ Les chiffres de **latence** de §23.2 restent ceux de `7b375c3` — §23.11 ne
+  re-tire **aucune** latence, et le dit.
 - 🔴 **Que le 47 % d'AC5.3 ait été mesuré sous AGENT RÉEL.** Il a été poussé par
   `tools/anim_courbe_dn44.py`, un injecteur à formes synthétiques, et aucune
   capture ne le porte. Voir l'encadré de §23.4. *(idem)*
@@ -6241,3 +6247,62 @@ par un second chemin que celui du compteur de rattrapage.
 > décoche pas. Quiconque relit ces deux verdicts doit savoir qu'aucun fichier du
 > dépôt ne les porte.
 > 🔗 Même traitement que la capture T0 d'AC12.5, absente et déclarée.
+
+## 23.11 ✅ SÉANCE DE VALIDATION DES CORRECTIFS DE REVUE — firmware `0ba9fc7`
+
+🔴 **POURQUOI CETTE SÉANCE EXISTE.** La revue de code du 2026-08-25 a produit 18
+correctifs, dont quatre qui touchent le **firmware**. Le code de l'arbre est donc
+devenu **postérieur à tous les chiffres de §23.1 → §23.10**, qui portent `7b375c3`.
+C'est **exactement l'écart mesuré/livré que `dn4-13` existe pour solder** — `dn4-4`
+avait mesuré `aa99fa2` et livré `df634d1`. On ne le recrée pas en silence.
+
+**Capture : `mesures/dn4-13/validation-revue-0ba9fc7-2026-08-25.log`** (340 l.).
+SHA **LU AU BANDEAU** (`I (679) app_init: App version: 0ba9fc7`), `git status
+--porcelain` **VIDE** avant le flash, `SPI Flash Size : 16MB`, PSRAM 8 Mo trouvée,
+`app_main` atteint. Config active : `num_fbs=1 bounce_px=9600 draw_lines=128`.
+
+| # | Ce qu'on vérifie | Résultat |
+|---|---|---|
+| A2 | le coût de `dn_hist` n'a pas bougé | ✅ **`5 657 o`**, `index 89 o` — **identique à `7b375c3`** : les correctifs n'ont ajouté **aucune statique**, et §23.5 reste valide |
+| A3 | 🔴 le compteur publie **l'observation**, pas le plafond | ✅ `ui off` de **135 s** ⇒ **`+1 coupure, +135 trous`**. L'ancien code écrêtait à `DN_HIST_N_POINTS` **avant** de compter ⇒ il aurait imprimé **120**. Second tir à ~31 s ⇒ **`+29`** : deux coupures de durées différentes sont **DISCERNABLES** |
+| A4 | les bornes de `widget detpan` | ✅ `39` **REFUSÉ** · `40` accepté · `167` accepté · `168` **REFUSÉ** · `200` **REFUSÉ**. Refus explicite (`0x1`), ⛔ pas d'écrêtage silencieux |
+| A5 | la courbe survit à une reconstruction de scène | ✅ modèle **`rebuild`** + `nav open 5` + `widget detpan 160` (qui rejoue `build_scene()`) ⇒ `series : 2`, **axes POSÉS** (`249..255` / `473..479`), ⛔ **aucun `PAS POSE`** |
+| A6 | le ratio d'AC5 ne peut plus déborder | ✅ `344 demandes · 316 redessins ⇒ 8 %`. Aucun `⛔ PAS MESURE` ⇒ le verrou a été pris |
+| B1 | 👁️ **constat owner** — le boot | ✅ *« asset plein écran, rétroéclairage fixe, rien d'anormal »* |
+| B2 | 👁️ **constat owner** — la courbe après reconstruction | ✅ *« la courbe est dessinée, deux couleurs, rien d'anormal »* — 🔴 **c'est la SEULE preuve du correctif de cache** : la console peut dire « posé » sans qu'un pixel soit arrivé |
+
+### 🔴 CE QUE LA SÉANCE A TROUVÉ ET QUI N'ÉTAIT PAS AU PROGRAMME
+
+**L'HORLOGE D'ÉCHANTILLONNAGE DÉRIVE PENDANT LA PHASE DE BOOT, ET PERSONNE NE LE
+SAVAIT.** `hist_tick` est un `lv_timer` à `DN_HIST_PERIODE_MS = 1000` — et un timer
+LVGL **ne rattrape pas** : il tire à 1 000 ms **plus** le temps de rendu. Mesuré :
+**~21 tirs en 27 s** au boot, soit ~1 290 ms par tir, dont le déficit accumulé
+franchit 2 000 ms environ **un tir sur 3,5** ⇒ **6 trous creusés**.
+
+- ⛔ **CE N'EST PAS UNE RÉGRESSION** : la dérive existait déjà. L'ancien code
+  **jetait le reste infra-période** et publiait *« 0 coupure — régime nominal »*.
+  C'est le correctif qui la rend VISIBLE.
+- ✅ **ET ELLE EST TRANSITOIRE** : **8** événements dans les ~90 premières secondes,
+  puis **AUCUN** en régime établi — vérifié sur plusieurs minutes de
+  reconstructions, navigations et changements de panneau (`10 coupure(s), 172
+  trou(s)` inchangé du début à la fin du bloc final).
+- ⚠️ **CONSÉQUENCE SUR UNE PHRASE DU DÉPÔT** : `dn_hist.h` écrit qu'« à 1 Hz, ce
+  nombre EST la fenêtre courte réelle, en secondes ». Pendant le boot, les
+  positions écrites ne valaient **pas** des secondes. C'est le comblement qui
+  rétablit la correspondance.
+
+### ⚠️ UNE ERREUR DE MÉTHODE COMMISE DANS CETTE SÉANCE, ÉCRITE PLUTÔT QUE TUE
+
+La première lecture d'A3 rendait `8 coupure(s), 8 trou(s)` **après** la pause de
+135 s — donc « le correctif ne compte rien ». **C'ÉTAIT LA LECTURE QUI ÉTAIT
+PRÉMATURÉE** : le `lv_timer` de rattrapage n'avait pas encore tiré au moment du
+`hist`, et le bloc suivant l'a retrouvé à `9/143`. Le délai mesuré est **> 1 s et
+< 3 s** après `ui on`.
+🔴 **Et j'ai enchaîné une seconde erreur sur la première** : j'ai conclu que
+« l'échantillonnage a continué pendant l'`ui off` » et mis en doute la prémisse
+d'AC3, à partir d'un `trous 0` qui n'était que la même lecture prématurée. Le test
+discriminant (injection d'une trame `cpu` **pendant** la pause) a tranché
+l'inverse : **`CPU` reste à `reels 0`** et le compteur reste **figé** pendant toute
+la pause. ⇒ **`ui off` arrête bien `hist_tick`, et `dn_ui.c:5046` disait vrai.**
+⇒ *Un instrument asynchrone se relit APRÈS son échéance, sinon on mesure sa
+latence en croyant mesurer son verdict.*
