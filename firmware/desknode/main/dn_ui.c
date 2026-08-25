@@ -6446,6 +6446,16 @@ static void veille_peindre_nolock(void)
             dn_widget_repeindre_accents(&d, &s_wobj[i]);
         }
         (void)case_appliquer(i);
+        /* 🔴 LA GARDE DE TENUE PASSE **EN DERNIER**, une fois les textes
+         *    recomposés et la police reposée. L'appeler plus haut lui ferait
+         *    mesurer le texte D'AVANT — défaut trouvé sur la carte le
+         *    2026-08-25, elle accusait une valeur d'être trop large alors
+         *    qu'elle venait de perdre son unité. */
+        if (case_est_widget(i)) {
+            dn_widget_desc_t d2;
+            desc_effectif(i, &d2);
+            dn_widget_controler_tenue(&d2, &s_wobj[i]);
+        }
     }
 
     /* La page ouverte, quelle qu'elle soit. */

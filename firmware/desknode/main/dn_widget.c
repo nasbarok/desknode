@@ -149,12 +149,26 @@ static bool s_amb_jauge = true;
  *    ⛔ ne jamais les utiliser pour du texte d'interface. En Ambient il n'y a
  *    plus de texte d'interface — c'est précisément ce qui les rend légitimes.
  */
+/*
+ * 🔴 LA POLICE DU MODE **ACTIF**, ET ELLE EXISTE SÉPARÉMENT POUR UNE RAISON.
+ *    `dn_widget_geom()` est lue en LECTURE-MODIFICATION-ÉCRITURE (`widget
+ *    dispo`, `widget replacer`…). Si elle rendait la police d'AMBIENT, un
+ *    `widget dispo empile` tapé PENDANT la veille graverait `dn_font_33` comme
+ *    override PERMANENT — et les titres perdraient leurs accents au retour en
+ *    Actif, EN SILENCE, parce que les polices de veille n'ont pas le latin-1.
+ * ⛔ Ne jamais fusionner ces deux fonctions.
+ */
+static const lv_font_t *font_val_actif(void)
+{
+    return s_geom.font_val ? s_geom.font_val : &dn_font_28;
+}
+
 static const lv_font_t *font_val(void)
 {
     if (s_ambient) {
         return s_amb_unite ? &dn_font_33 : &dn_font_56;
     }
-    return s_geom.font_val ? s_geom.font_val : &dn_font_28;
+    return font_val_actif();
 }
 
 /*
@@ -250,7 +264,35 @@ void dn_widget_geom(dn_widget_geom_t *out)
 {
     if (out) {
         *out = s_geom;
-        out->font_val = font_val(); /* ⛔ jamais NULL vers l'extérieur */
+        /* 🔴 LA POLICE **D'ACTIF**, ⛔ PAS `font_val()` (correctif dn3-3).
+         *    Cette fonction est lue en LECTURE-MODIFICATION-ÉCRITURE : rendre
+         *    la police d'Ambient ferait graver `dn_font_33` comme override
+         *    permanent au premier `widget dispo` tapé pendant la veille, et les
+         *    titres perdraient leurs accents EN SILENCE au retour en Actif.
+         * ⚠️ Pour savoir ce qui S'APPLIQUE réellement, c'est
+         *    `dn_widget_geom_appliquee()` — et elle, on ne la réécrit pas. */
+        out->font_val = font_val_actif(); /* ⛔ jamais NULL vers l'extérieur */
+    }
+}
+
+/*
+ * 🔴 CE QUI S'APPLIQUE VRAIMENT — ⛔ EN LECTURE SEULE, ET C'EST LE POINT.
+ *
+ *    `dn_widget_geom()` rend l'OVERRIDE, parce qu'elle est relue puis réécrite.
+ *    Celle-ci rend ce que le rendu utilise à cet instant, mode compris. La
+ *    console imprime CELLE-CI : jusqu'au 2026-08-25 elle publiait `val_y 48 ·
+ *    val_pas 40` pendant qu'Ambient appliquait 26 / 47 — une étiquette qui ment,
+ *    et c'est exactement la classe de défaut que ce dépôt traque.
+ * ⛔ NE JAMAIS la passer à `dn_widget_set_geom()` : elle graverait les valeurs
+ *    d'Ambient comme override permanent.
+ */
+void dn_widget_geom_appliquee(dn_widget_geom_t *out)
+{
+    if (out) {
+        *out = s_geom;
+        out->val_y = val_y_courant();
+        out->val_pas = val_pas_courant();
+        out->font_val = font_val();
     }
 }
 
@@ -949,6 +991,68 @@ void dn_widget_veille_appliquer(const dn_widget_desc_t *desc, dn_widget_t *w)
             lv_obj_add_flag(w->jauge, LV_OBJ_FLAG_HIDDEN);
         } else {
             lv_obj_clear_flag(w->jauge, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+
+}
+
+
+
+/*
+ * ── dn3-3 : LA GARDE DE TENUE, REJOUÉE APRÈS UNE BASCULE DE MODE ────────────
+ *
+ * 🔴 POURQUOI ELLE EXISTE. La garde d'origine ne tourne qu'à la CRÉATION — son
+ *    coût (un `lv_text_get_size()` par grandeur) l'interdit dans le chemin
+ *    chaud, qui passe 15 fois par seconde. Or la veille CHANGE LA POLICE SANS
+ *    RECONSTRUIRE : sans ce rappel, un débordement d'Ambient serait **MUET**,
+ *    et « 0 en HAUTEUR » se lirait comme une preuve alors que la garde n'aurait
+ *    simplement jamais tourné.
+ *
+ * 🔴 ET ELLE S'APPELLE **APRÈS** `dn_widget_maj()`, ⛔ JAMAIS AVANT.
+ *    Première version : elle tournait dans `dn_widget_veille_appliquer()`,
+ *    c'est-à-dire AVANT la recomposition des textes. Elle mesurait donc le
+ *    texte D'AVANT et publiait un verdict sur l'état D'APRÈS — sur `veille
+ *    unite off` elle a accusé « 4,4 Mb/s » de faire 243 px alors que la valeur
+ *    venait de perdre son « Mb/s ». Un instrument qui mesure l'ancien état et
+ *    conclut sur le nouveau est exactement la classe de défaut que ce dépôt
+ *    traque, et il l'a trouvé sur la carte le 2026-08-25.
+ *
+ * ⚠️ UNE FOIS PAR BASCULE, ⛔ pas 15 fois par seconde.
+ */
+void dn_widget_controler_tenue(const dn_widget_desc_t *desc, dn_widget_t *w)
+{
+    if (!w || !w->racine) {
+        return;
+    }
+    int h = lv_obj_get_height(w->racine);
+    int lignes = dn_widget_lignes(s_geom.dispo, w->n);
+    int lh = (int)lv_font_get_line_height(font_val());
+    int bas = val_y_courant() + (lignes > 0 ? lignes - 1 : 0) * val_pas_courant()
+              + lh;
+    if (h > 0 && bas > h) {
+        s_debordements++;
+        ESP_LOGW(TAG,
+                 "« %s » : la bascule de mode fait DEBORDER la case — bas %d > "
+                 "h=%d (%d ligne(s) x pas %d, police lh %d, val_y %d). LVGL "
+                 "CLIPPE sans un mot : la case montrera moins qu'elle ne "
+                 "declare. ⇒ `veille unite on` remet la police a 33 px.",
+                 desc && desc->titre ? desc->titre : "?", bas, h, lignes,
+                 val_pas_courant(), lh, val_y_courant());
+    }
+    for (int i = 0; i < DN_WIDGET_GRANDEURS_MAX; i++) {
+        if (!w->valeur[i]) {
+            continue;
+        }
+        int lw = dn_widget_largeur(lv_label_get_text(w->valeur[i]), font_val());
+        int utile = dn_widget_largeur_utile(w->w);
+        if (lw > utile) {
+            s_trop_larges++;
+            ESP_LOGW(TAG,
+                     "« %s » rang %d : la bascule de mode le rend TROP LARGE — "
+                     "« %s » mesure %d px pour %d utiles, il manque %d px. LVGL "
+                     "le CLIPPE sans un mot.",
+                     desc && desc->titre ? desc->titre : "?", i,
+                     lv_label_get_text(w->valeur[i]), lw, utile, lw - utile);
         }
     }
 }

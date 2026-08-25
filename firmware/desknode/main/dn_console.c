@@ -4615,17 +4615,36 @@ static int cmd_widget(int argc, char **argv)
          *    tant que personne ne touchait aux bandes, et FAUX a la premiere
          *    bascule de voie. C'est exactement le motif que dn4-1 corrige trois
          *    fois ailleurs. */
+        /* 🔴 dn3-3 : LA GEOMETRIE **APPLIQUEE**, ⛔ PLUS L'OVERRIDE.
+         *    Jusqu'au 2026-08-25 cette ligne imprimait `val_y 48 · val_pas 40`
+         *    PENDANT que la veille appliquait 26 / 47 — une etiquette qui ment,
+         *    trouvee en preparant la fenetre d'observation de l'owner.
+         * ⛔ `dn_widget_geom_appliquee()` est en LECTURE SEULE : ne jamais la
+         *    repasser a `dn_widget_set_geom()`, elle graverait les valeurs
+         *    d'Ambient comme override permanent. */
         dn_widget_geom_t g;
-        dn_widget_geom(&g);
+        dn_widget_geom_appliquee(&g);
         int bh = 0, mh = 0, gh = 0, ch = 0;
         dn_ui_geom_bandes(&bh, &mh, &gh, &ch);
         int cw0 = 0;
         dn_ui_case_dim(&cw0, NULL);
         printf("geometrie    : barre %d · menu %d · grille %d · case %dx%d\n", bh,
                mh, gh, cw0, ch);
-        printf("               val_y %d · val_pas %d (interligne %d px) · %s · %s\n",
+        printf("               val_y %d · val_pas %d (interligne %d px) · %s · %s"
+               "%s\n",
                g.val_y, g.val_pas, g.val_pas - (int)lv_font_get_line_height(g.font_val),
-               dn_widget_dispo_nom(g.dispo), dn_widget_entete_nom(g.entete));
+               dn_widget_dispo_nom(g.dispo), dn_widget_entete_nom(g.entete),
+               dn_veille_mode() == DN_VEILLE_AMBIENT
+                   ? "  ⚠️ VALEURS D'AMBIENT (police de veille)" : "");
+        /* ⚠️ HAUTEUR DE LIGNE, ⛔ pas « taille de police » : `dn_font_33` a une
+         *    line height de 36. Confondre les deux ferait chercher une police
+         *    « 36 px » qui n'existe pas. */
+        printf("               valeur : interligne %d px%s\n",
+               (int)lv_font_get_line_height(g.font_val),
+               dn_veille_mode() == DN_VEILLE_AMBIENT
+                   ? (dn_widget_amb_unite() ? " (veille, AVEC unite)"
+                                            : " (veille, SANS unite)")
+                   : " (actif)");
         printf("               « ca ne tient pas » DETECTES : %u en LARGEUR "
                "(chevauchement) · %u en HAUTEUR (debordement)\n",
                (unsigned)dn_widget_chevauchements(),

@@ -718,6 +718,18 @@ void dn_widget_repeindre_accents(const dn_widget_desc_t *desc, dn_widget_t *w);
  */
 void dn_widget_veille_appliquer(const dn_widget_desc_t *desc, dn_widget_t *w);
 
+/*
+ * Rejoue la garde « ça ne tient pas » après une bascule de mode.
+ * 🔴 À APPELER **APRÈS** `dn_widget_maj()`, ⛔ JAMAIS AVANT : avant, elle
+ *    mesurerait le texte D'AVANT et conclurait sur l'état D'APRÈS. Trouvé sur
+ *    la carte le 2026-08-25 — elle accusait « 4,4 Mb/s » de déborder alors que
+ *    la valeur venait de perdre son unité.
+ * ⚠️ Elle existe parce que la garde d'origine ne tourne qu'à la CRÉATION (son
+ *    coût l'interdit dans le chemin chaud) et que la veille change la police
+ *    SANS reconstruire : sans elle, un débordement d'Ambient serait MUET.
+ */
+void dn_widget_controler_tenue(const dn_widget_desc_t *desc, dn_widget_t *w);
+
 /* Les deux leviers A/B d'Ambient, à chaud. ⚠️ `unite` CHOISIT LA POLICE : avec
  * unité on plafonne à 33 px (mesuré), sans unité on monte à 56. */
 void dn_widget_set_amb_unite(bool on);
@@ -969,6 +981,16 @@ typedef struct {
 } dn_widget_geom_t;
 
 void dn_widget_geom(dn_widget_geom_t *out);       /* l'état COURANT, relu */
+/*
+ * 🔴 CE QUI S'APPLIQUE VRAIMENT, mode compris — ⛔ EN LECTURE SEULE.
+ * `dn_widget_geom()` rend l'OVERRIDE (elle est relue puis réécrite) ; celle-ci
+ * rend ce que le rendu utilise à cet instant. La console imprime CELLE-CI.
+ * ⛔ NE JAMAIS la passer à `dn_widget_set_geom()` : elle graverait les valeurs
+ *    d'Ambient comme override permanent, et les titres perdraient leurs accents
+ *    au retour en Actif (les polices de veille n'ont pas le latin-1).
+ */
+void dn_widget_geom_appliquee(dn_widget_geom_t *out);
+
 void dn_widget_geom_defaut(dn_widget_geom_t *out); /* les `#define`, jamais récités */
 void dn_widget_set_geom(const dn_widget_geom_t *g);
 
