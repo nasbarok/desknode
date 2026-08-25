@@ -1623,7 +1623,7 @@ portrait). Tout ce qui suit est **dérivé** pour que dn1-4 ait des zones à
 |---|---|---|
 | Barre heure/date | 480 × 70, en (0, 0) | **non** — zone morte |
 | Grille 2 × 3 | cases **225 × 156**, marge 10, gouttière 10, à partir de y = 80 | **oui, la case ENTIÈRE** |
-| Bandeau MENU | 480 × 60, en (0, 580) | **oui** — no-op consigné |
+| Bandeau MENU | 480 × 60, en (0, 580) | **oui** — no-op consigné · 🔴 **PÉRIMÉ 2× :** géométrie **480 × 51 en (0, 589)** depuis D12 (2026-08-19) · **zone morte** de `dn3-2` à `dn3-3`, puis **VRAIE PORTE** vers `DN_VUE_MENU` depuis le 2026-08-25 |
 | Retour `←` (détail) | **120 × 60** en (10, 10) | **oui** — 24 fois l'aire du chevron |
 
 **Les deux drapeaux qui font que « toute la case » est vrai** :
@@ -3843,6 +3843,7 @@ fois l'estimation, qui ne comptait que `txt[][]` et `brut[]` : il faut y ajouter
   « la case nue mesure quasiment pareil dans les deux branches »), **« barre et
   MENU = zones mortes / 0 tap »**, et la colonne **`dn_capteurs`** de la table de
   non-régression.
+  🔴 **`dn3-3` (2026-08-25) SUPPRIME LA MOITIÉ `MENU` DE CETTE GARDE** : le bandeau est devenu une porte. Ce qui reste à tenir est **« la BARRE est une zone morte »**, et AC5.6 le re-tire comme **témoin négatif**.
 - **La voie (b)** — la 3ᵉ police n'est pas générée ; son verdict de lisibilité
   reste inaccessible.
 - **`FAN_RPM`** — qualifié, sans place. **Dette de PLACE, ⛔ pas question
@@ -4115,6 +4116,9 @@ seulement contrôlée contre un relevé publié : elle est **contrôlée par l'u
 ✅ **« Barre et MENU = zones mortes » (dn1-4 AC3 / dn3-1 AC4 / dn3-2 AC5)** :
 **16 appuis, 0 tap**, avec leurs `y` qui disent où ils sont tombés. ⛔ Ce n'est
 plus « l'owner n'a rien signalé », c'est seize coordonnées hors zone, comptées.
+
+> 🔴 **PÉRIMÉ LE 2026-08-25 PAR `dn3-3`** — le bandeau `MENU` a désormais une DESTINATION (`DN_VUE_MENU`, décision owner D-4), il est CLIQUABLE et `dn_ui_menu_taps()` **monte**. Le relevé ci-dessus décrivait fidèlement le firmware de SA date ; il décrit l'**inverse** de celui-ci. ⛔ Il n'est ni effacé ni réécrit — c'est un relevé, pas une opinion. La **barre du haut**, elle, reste morte, et c'est le témoin négatif d'AC5.6.
+
 ✅ **0 erreur I²C** sur la campagne.
 
 ⚠️ **UN FAIT QUE SEULE LA TRACE POUVAIT DONNER** : l'appui n°8, à **`y = 9`**, n'a
@@ -6306,3 +6310,213 @@ l'inverse : **`CPU` reste à `reels 0`** et le compteur reste **figé** pendant 
 la pause. ⇒ **`ui off` arrête bien `hist_tick`, et `dn_ui.c:5046` disait vrai.**
 ⇒ *Un instrument asynchrone se relit APRÈS son échéance, sinon on mesure sa
 latence en croyant mesurer son verdict.*
+
+---
+
+# §24. 🎯 `dn3-3` (P8) — LA VEILLE DEVIENT UN CONTRAT, ET LE BANDEAU `MENU` UNE PORTE
+
+> ⚠️ **CETTE SECTION EST OUVERTE LE 2026-08-25 ET ELLE N'EST PAS FINIE.**
+> Elle contient, à cette date, **UNIQUEMENT ce qui est prouvé SANS CARTE** :
+> arithmétique, gate hôte, vérification de police, et les décisions de conception
+> avec leur motif. **Aucune latence, aucun délai mesuré, aucun constat à l'œil**
+> n'y figure — ils appartiennent à la séance carte, et §24.7 dit exactement ce
+> qu'elle doit remplir. ⛔ **Ne rien lire ici comme une mesure sur la dalle.**
+
+## 24.1 ✅ AC1.4 — LE RECOMPTE DE LA PARTITION, ET IL COMMENCE À « DEUX »
+
+Le ledger (`deferred-work.md:1620`) écrivait *« trois déclinaisons ne tiennent
+pas »*. **Le vrai chiffre commence à DEUX** :
+
+| Poste | Octets | Source |
+|---|---:|---|
+| Partition `assets` | **1 048 576** | `partitions.csv`, `0x100000` |
+| Living PCB v0 + son pied | **614 416** | `DN_FB_BYTES` (480 × 640 × 2) + `DN_ASSET_TRAILER_LEN` (16) |
+| Libre | **434 160** | différence |
+| Une **2ᵉ** déclinaison | **614 416** | > 434 160 libres ⇒ ❌ il manque **180 256 o** |
+| **DEUX** déclinaisons | **1 228 832** | > 1 048 576 ⇒ ❌ |
+| **TROIS** déclinaisons | **1 843 248** | facteur **1,75** ⇒ ❌ |
+
+🔴 **LA STORY SE TROMPE DE 16 OCTETS SUR « DEUX »** : elle écrit `1 228 816`,
+c'est-à-dire **UN SEUL pied pour deux assets**, alors qu'elle en compte bien
+**trois pour trois** (`1 843 248`, exact). Chaque asset porte **sa** bande-annonce
+(magie `DNASSET1` + longueur + CRC32). Le verdict ne change pas — les deux
+chiffres dépassent — mais **un chiffre publié se relit**.
+
+⚠️ **ET `dn_asset` NE GÈRE QU'UN SEUL ASSET** : offset fixe, une magie, un CRC
+(`dn_asset.h:24-48`). Même si la place existait, il faudrait le généraliser.
+
+⇒ **VOIE RETENUE : (b) — UNE SEULE IMAGE + transformation à l'affichage.**
+(1) l'arithmétique ci-dessus élimine (a) et (c) **sans mesure** ; (2) le voile
+translucide **existe déjà** et fait exactement ça ; (3) la partition ne bouge pas,
+donc **aucun risque de brick au reflash**.
+✅ `partitions.csv` est **INCHANGÉ** — `git diff --stat` ne le montre pas, et la
+gate hôte le **vérifie** (`veille assets` le publie aussi depuis la carte).
+
+🔴 **UN ÉCART DE VÉRITÉ EST DÉCLARÉ, ⛔ PAS CORRIGÉ** : le commentaire de
+`partitions.csv` annonce que *« la marge accueille les 3 déclinaisons de
+dn3-3 »*. **C'EST FAUX**, et le recompte ci-dessus le prouve. Il n'est **pas**
+corrigé ici parce qu'AC1.1 exige que le fichier n'apparaisse **pas** au
+`git diff --stat` — les deux exigences sont incompatibles, et c'est la preuve
+mécanique qui l'emporte. **Le verbatim est en §24.6, pour `dn4-16`.**
+
+## 24.2 ✅ LE CHEMIN D'AMBIENT — CE QU'IL RECONSTRUIT (RIEN) ET CE QU'IL LAISSE
+
+`build_scene()` coûte **307-322 ms verrou tenu** (mesuré `dn3-1`), sur un budget
+de transition **déjà non coché** (337,6 ms au `nav ab`, **361,8 ms AU DOIGT**,
+`dn4-4`, décision owner du 2026-08-24). Un Ambient bâti sur les setters visuels
+du fichier aurait donné un réveil à ~350 ms **par construction**.
+
+| Levier | Chemin retenu | Reconstruit ? |
+|---|---|---|
+| Couleur des VALEURS | `dn_val_regime_couleur()` rendue **consciente du mode** — relue à chaque `dn_widget_maj()` | **non** |
+| Les six cases | `case_appliquer()`, **extraite de `case_poser()` sans changement de comportement** | **non** |
+| Voile | objets **RETENUS** (`s_voiles[]`), on n'écrit que `bg_opa` | **non** |
+| Accents (icône + jauge) | `dn_widget_repeindre_accents()` sur pointeurs retenus | **non** |
+| Rétroéclairage | `dn_display_backlight_pct()` — LEDC, **avant** toute écriture LVGL | **non** |
+| Page de détail / MENU ouverts | `detail_reparametrer()` / `menu_reparametrer()`, leurs chemins normaux | **non** |
+
+⇒ **AUCUN objet n'est détruit ni créé sur une bascule de veille.** C'est ce qui
+fait que **t₂ n'est PAS `t₁ + 320 ms`** — mais ⚠️ **t₁ et t₂ RESTENT À MESURER
+SUR LA CARTE** (§24.7). ⛔ Rien ici n'autorise à annoncer un chiffre.
+
+⚠️ **CE QUE ÇA NE COUVRE PAS, ET C'EST ÉCRIT** : les aplats des cases
+(`dn_widget_set_opa`) ne sont **pas** touchés en Ambient — leur setter
+reconstruit. Le voile et le rétroéclairage portent l'assombrissement.
+
+## 24.3 ✅ LES TROIS GRIS, ET LE PIÈGE QU'ILS ÉVITENT
+
+`W_COL_ABSENTE = 0x9a9a9a` était **tentant et gratuit** pour les valeurs
+d'Ambient. S'en servir aurait recréé **exactement** le défaut du 2026-08-18
+(SIMULÉE indiscernable d'ABSENTE), qui avait demandé une revue de code pour être
+vu. Ambient a donc **ses propres trois tons**, et la gate hôte vérifie qu'ils
+sont **distincts et séparés en luminance dans les DEUX modes** :
+
+| Régime | Actif | luminance | Ambient | luminance |
+|---|---|---:|---|---:|
+| RÉELLE | `0xffffff` | 255 | `0xc8c8c8` | 200 |
+| SIMULÉE | `0xffb020` | 183 | `0x9a8a5a` | 137 |
+| ABSENTE | `0x9a9a9a` | 154 | `0x5a5a5a` | 90 |
+
+Écart minimal : **29** en Actif, **47** en Ambient (critère de gate : ≥ 24/255).
+
+## 24.4 🔴 LES ACCENTS — UN MOTIF FAUX CORRIGÉ **PAR LA MESURE, AVANT PUBLICATION**
+
+Le commentaire initial de `dn_widget_desaturer()` affirmait qu'une **moyenne**
+des trois canaux confondrait le cyan de `GPU` et le rose de `RAM`, et que
+**BT.601** les séparait. **C'ÉTAIT L'INVERSE.** Mesuré le 2026-08-25 :
+
+| Mapping | Gris distincts sur 7 | Paire confondue |
+|---|---:|---|
+| **BT.601** (77/150/29) | **6** | `GPU` cyan `22d3ee` ↔ `RAM` rose `f472b6`, **tous deux 160** |
+| Moyenne des 3 canaux | **6** | `CPU` violet `a855f7` ↔ humidité `AMBIANCE` `35d6e8`, **tous deux 166** |
+
+⇒ **Les deux mappings perdent exactement une paire**, simplement pas la même.
+Le vrai motif de BT.601 est **perceptuel** (le vert pèse 59 %, le bleu 11 %), ⛔
+pas « la moyenne confondrait ».
+
+🔴 **CONSÉQUENCE SUR LE PRODUIT, ET ELLE EST TRANCHÉE PAR LA MESURE** : le défaut
+de `veille accents` passe de **100 % à 95 %**. À 95 %, l'écart chromatique minimal
+des **sept** accents remonte à **7/255** — invisible à l'œil, donc toujours « un
+état nuance de gris » au sens de la demande owner — et **les six identités
+arbitrées en `dn4-4`/`dn4-13` survivent à la veille**. `veille accents 100` reste
+disponible, et la console **DIT quelle paire il confond, calculé à l'exécution**.
+
+⚠️ **`veille accents` est un A/B à chaud** : c'est AC9.4 qui tranche à l'œil.
+
+## 24.5 ✅ CE QUE LA GATE HÔTE PROUVE — 84 CONTRÔLES, SANS CARTE NI TOUR
+
+`tools/verif_veille_dn33.py`. ⛔ **Elle ne relit pas du source** : elle **COMPILE
+`dn_veille.c` en entier et l'APPELLE**, et elle **EXTRAIT VERBATIM**
+`dn_widget_desaturer()` de `dn_widget.c` pour la compiler et l'appeler aussi.
+
+**Les quatre mutants, COMPILÉS ET EXÉCUTÉS**, chacun vu rougir :
+
+| Mutation | Défaut qu'elle fait revenir |
+|---|---|
+| `>=` → `>` dans la garde de bascule | le cran 1 min basculerait à **61 s** au lieu de 60 — la fenêtre publiée serait fausse d'une seconde entière |
+| `v == 0 \|\| v == 1` → `if (1)` | un `42` corrompu en NVS passerait pour un « ON » **délibéré**, **sans un avertissement** |
+| suppression de la condition d'observation | l'alerte d'appui fantôme **crierait au loup dès le 1ᵉʳ tick**, c'est-à-dire quand tout est normal |
+| — (témoin) | fonction `dn_widget_desaturer` introuvable ⇒ **la gate échoue bruyamment**, ⛔ elle ne devient pas verte sur du vide |
+
+Ce qu'elle établit aussi : les quatre crans **1/3/5/10** et le **refus** de `7`
+(⛔ pas d'écrêtage) · les défauts d'usine **ON / 3 min** · l'aller-retour NVS et
+les **deux** replis journalisés · l'annulation de bascule **retranchée** du
+compteur · `veille reset` qui **ne touche ni les réglages ni le mode** ·
+`partitions.csv` **inchangé** · les étiquettes réparées (AC5.4, AC10.1) ·
+`lv_async_call` sur la bascule · le contact **consommé et latché**, chemin
+d'erreur I²C compris · les **trois** racines exigées en modèle `SCREENS`.
+
+✅ **AC6.5 — DELTA POLICE = 0 OCTET, VÉRIFIÉ DANS LE `.c` PRODUIT.**
+`codepoints_du_c()` sur `dn_font_14.c` et `dn_font_28.c` : `LV_SYMBOL_OK`
+(`0xF00C`), `LV_SYMBOL_LEFT` (`0xF053`) et `LV_SYMBOL_SETTINGS` (`0xF013`) sont
+**présents dans les deux**. ⚠️ **Témoin négatif** : `0xF863` (`fan`) est
+**ABSENT** — c'est le glyphe qu'un test de bornes avait cru présent en `dn3-1`.
+⇒ Aucune police n'est régénérée.
+
+## 24.6 📋 LE VERBATIM POUR `dn4-16` — CE QUE CETTE STORY PÉRIME
+
+⛔ **`dn3-3` ne réécrit PAS le ledger.** Elle fournit le texte.
+
+**(1) Les trois entrées « palette Actif → dn3-3 » sont PÉRIMÉES** :
+`deferred-work.md:79-83`, `:598-604`, `:1701-1705`, plus l'addendum §1 (*« teinte
+exacte tranchée en dn3-3 »*).
+**Raison** : `dn4-4` a fait une 2ᵉ passe de palette le 2026-08-24 **par décision
+owner explicite**, puis `dn4-13` l'a corrigée à l'œil le 2026-08-25. Les six
+couleurs sont **posées, distinctes et motivées** dans `dn_ui.c`. `dn3-3` n'a
+inventé **qu'une** palette : celle d'**Ambient**.
+
+**(2) `deferred-work.md:1620-1626` sous-compte le conflit d'assets** : il écrit
+« trois déclinaisons ne tiennent pas ». **Deux ne tiennent déjà pas** (1 228 832 o
+contre 1 048 576). Voir §24.1.
+
+**(3) 🆕 ENTRÉE À CRÉER — le commentaire de `partitions.csv` MENT** : il annonce
+*« la marge accueille les 3 déclinaisons de dn3-3 »*. Faux, prouvé en §24.1. ⛔ Non
+corrigé par `dn3-3` : AC1.1 exige que ce fichier n'apparaisse pas au
+`git diff --stat`, et une preuve mécanique l'emporte sur un commentaire.
+
+**(4) Les deux gates « MENU = zone morte / 0 tap » sont PÉRIMÉES À MOITIÉ** —
+`dn3-2`/AC5-AC6 (16 appuis) et `dn4-6` (ledger `:576`, 3 appuis). Les cinq sites
+de `hardware/` qui les publient portent désormais leur marque de péremption. Ce
+qui reste vrai et re-tiré comme **témoin négatif** : **la barre du haut est une
+zone morte**.
+
+**(5) ✅ FERMÉE — `deferred-work.md:1257-1261`** (*« le tap de réveil Ambient→Actif
+est-il CONSOMMÉ, ou ouvre-t-il aussi le détail ? »*, ouverte depuis `dn1-4`).
+**Tranchée par l'owner le 2026-08-25 (D-7) : CONSOMMÉ.** Implémentée dans
+`dn_touch.c` (verrou de consommation latché jusqu'au relâchement, chemin d'erreur
+I²C compris) et vérifiée par la gate.
+
+## 24.7 ⏳ CE QUI RESTE À LA SÉANCE CARTE — ⛔ RIEN DE TOUT CELA N'EST MESURÉ
+
+| # | À mesurer | Instrument prêt |
+|---|---|---|
+| AC2.1 | une case change en Ambient sur 60 s, critère `W2` (étendue ≥ 5, changement de TEXTE ≥ 10 %, σ ≥ 1) — **sous agent réel**, ⛔ pas `dn_injecteur.py` | `w2` |
+| AC2.2 | `hist` publie **60 points ± 1** après 60 s de veille | `hist` |
+| AC2.4 | **PC éteint** : `AMBIANCE` réelle, les cinq autres `ABSENTE` en `--` | `pc`, `veille` |
+| AC2.5-2.6 | **témoin négatif** : `bl auto on` **puis** entrée en veille ⇒ la console DIT le désarmement | log `dn_veille`/`dn_env` |
+| AC3.3 | cran **1 min** : écart dernier contact → bascule dans **[60 ; 61] s**, relevé **3 fois** | `veille` |
+| AC3.4 | `veille off` puis **5 min** d'observation ⇒ **0 bascule** | `veille` |
+| AC4.2-4.3 | **t₁ et t₂**, min/médiane/max, **n ≥ 20 réveils AU DOIGT** | `veille lat` |
+| AC5.6 | **8 allers-retours** bande MENU ⇒ **8 taps** · **≥ 5 appuis** barre du haut ⇒ **0 tap** | `touch trace`, `nav` |
+| AC1.3 | **deux** relevés `veille geom` (Actif puis Ambient) ⇒ **même signature** | `veille geom` |
+| AC9.1-9.8 | les huit constats owner à l'œil | `veille pct/voile/gris/accents` |
+| T5 | tas LVGL avec la **3ᵉ** racine — critère = **le plus gros bloc libre** (44 164 o au dernier relevé), ⛔ pas le pourcentage | `ui`, `nav` |
+| — | **coût de l'écriture NVS depuis un tap MENU** (cache flash coupé dans la tâche de rendu) | `veille` |
+
+⚠️ **CHAQUE CHIFFRE NOMMERA SON SHA, LU AU BANDEAU `App version`**, ⛔ pas déduit
+du dépôt, et `git status --porcelain` **vide avant le flash**.
+
+## 24.8 ⛔ CE QUE §24 NE PROUVERA PAS, MÊME APRÈS LA SÉANCE
+
+- **La tenue 7 jours H24.** C'est `dn4-5`. `dn3-3`/AC9.8 prouve **une nuit**, et
+  rien de plus. ⛔ Ne pas extrapoler d'une nuit à une semaine.
+- **L'appui fantôme RÉEL.** Le diagnostic est **armé et éprouvé sur mutant**, il
+  n'a **pas été provoqué** sur la carte. Un GT911 réellement collé n'a pas été
+  observé — on sait seulement que s'il l'était, la console le **dirait**.
+- **La consommation électrique en Ambient.** Le rétroéclairage baisse, donc elle
+  baisse — ⛔ mais **de combien n'est pas mesuré**, et aucun instrument de ce
+  dépôt ne le mesure (l'INA219 a été retiré du bus).
+- **Le coût réel de l'écriture NVS.** La gate hôte le chronomètre sur une horloge
+  **simulée** : elle ne dit **rien** du cache flash de l'ESP32-S3.
+- **Que le voile suffise à toutes les luminosités de pièce.** L'A/B d'AC9.2 se
+  fait dans **une** pièce, à **un** moment.

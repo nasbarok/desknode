@@ -2407,7 +2407,7 @@ publié.**
 | **Témoin v1** (agent `dn2-2` non modifié) | `dn2-2` / `dn4-1` | ✅ **6 trames v1 valides, 0 rejet de TOUTE cause**, case CPU à 100 % et les grandeurs non publiées marquées `--` |
 | **Péremption 3 s par métrique** | `dn2-2` | ✅ les **5 métriques** portent chacune **leur propre âge et leur propre état** (`pc`) ⇒ une source qui meurt **meurt SEULE** |
 | **« toute la case est la zone tactile »** | `dn1-4` / D12 | ✅ **re-prouvée sur la géométrie D12** : **15 taps sur zone / 18 appuis**, coordonnées publiées (§13.16.12) |
-| **Barre et MENU = zones mortes** | `dn1-4` / `dn3-1` / `dn3-2` | ✅ **3 appuis hors zone ⇒ 0 tap** — la garde se déclenche, et l'instrument le **dit** |
+| **Barre et MENU = zones mortes** 🔴 *(PÉRIMÉE À MOITIÉ le 2026-08-25 par `dn3-3` : le bandeau `MENU` est devenu une VRAIE PORTE vers `DN_VUE_MENU` et son compteur MONTE. Ce relevé décrit fidèlement le firmware de sa date — ⛔ il n'est ni effacé ni réécrit. Ce qui reste à tenir est « la BARRE est une zone morte », re-tiré par `dn3-3`/AC5.6 comme témoin négatif.)* | `dn1-4` / `dn3-1` / `dn3-2` | ✅ **3 appuis hors zone ⇒ 0 tap** — la garde se déclenche, et l'instrument le **dit** |
 | **D4 — aucun `nvs_*` en régime** | brief | ✅ **RE-VÉRIFIÉ PAR GREP** : toutes les écritures (`nvs_set_i32`, `nvs_commit`, `nvs_erase_all`) sont dans `set_i32()` et `dn_bootcfg_reset()`, **dont les SEULS appelants sont `dn_console.c`** (`set …` et `cfg reset`). Les lectures sont au boot. ⇒ **aucune écriture sur un chemin de régime** |
 | **Bandeau de boot** | — | ✅ **une seule ligne `E`** sur un boot sain : celle de l'ISR, **nommée et rattachée** (AC11). ⛔ Aucune nouvelle |
 | **Smoke owner 6/6** | — | ✅ **FAIT** — constat owner du 2026-08-20, verbatim : *« reste ok »*. ⚠️ *Transcrit ici par la revue de code du 2026-08-20 : le constat avait eu lieu en séance et n'était consigné que dans la story, cette table portant encore « ⏳ dû ». **L'œil de l'owner est l'instrument ; l'agent n'a fait que le recopier.*** |
@@ -2731,6 +2731,9 @@ déjà ouverte, **re-observée**.
 
 ✅ **Constat owner, verbatim** : *« reactivité normal, tt est nickel »*.
 ✅ **`0 tap sur MENU`** re-prouve la garde *« Barre et MENU = zones mortes »* sur D12.
+
+> 🔴 **PÉRIMÉ LE 2026-08-25 PAR `dn3-3`** — le bandeau `MENU` a désormais une DESTINATION (`DN_VUE_MENU`, décision owner D-4), il est CLIQUABLE et `dn_ui_menu_taps()` **monte**. Le relevé ci-dessus décrivait fidèlement le firmware de SA date ; il décrit l'**inverse** de celui-ci. ⛔ Il n'est ni effacé ni réécrit — c'est un relevé, pas une opinion. La **barre du haut**, elle, reste morte, et c'est le témoin négatif d'AC5.6.
+
 ✅ Le compteur de **`taps`** vit dans **`nav`**, pas dans `touch` — c'est ce qui manquait au relevé
 précédent, et l'entrée de ledger créée le matin même est **soldée le jour même**.
 
@@ -2842,7 +2845,7 @@ chiffre absurde — celui-là était les deux. »* **Le relevé ci-dessus a ét�
 | **BME680 vivant** | ✅ `VIVANT` · `config LUE (conforme)` `0x72=04 · 0x74=84 · 0x75=08` · `err_i2c 0` — **et re-vivant APRÈS un démarrage à froid dégradé**, sans intervention |
 | **RTC vivante** | ✅ `0x51` **5/5** au scan · témoin anti-fantôme `0xD7` **relu** · ⚠️ `OS = 1` **attendu** après les 6 coupures physiques (§13.15.3 : aucune sauvegarde RTC), barre en « --:-- HEURE NON POSÉE » ⇒ **la garde a fonctionné** |
 | **« toute la case est la zone tactile »** | ✅ **re-prouvée sur D12 AVEC LES COORDONNÉES** — 9 visées `RAM` ⇒ 9 taps (§13.17.5) |
-| **Barre et MENU = zones mortes** | ✅ **`0 tap sur MENU` sur 38** |
+| **Barre et MENU = zones mortes** 🔴 *(PÉRIMÉE À MOITIÉ le 2026-08-25 par `dn3-3` : le bandeau `MENU` est devenu une VRAIE PORTE vers `DN_VUE_MENU` et son compteur MONTE. Ce relevé décrit fidèlement le firmware de sa date — ⛔ il n'est ni effacé ni réécrit. Ce qui reste à tenir est « la BARRE est une zone morte », re-tiré par `dn3-3`/AC5.6 comme témoin négatif.)* | ✅ **`0 tap sur MENU` sur 38** |
 | **Bandeau de boot** | ✅ **une seule ligne `E`** : celle de l'ISR, **nommée et rattachée** (AC11). ⛔ **Aucune nouvelle** |
 | **Smoke owner 6/6** | ✅ constat owner sur le boot du firmware livré : grille affichée, six cases, rétroéclairage **allumé fixe**, rien d'anormal — ⚠️ **SANS VERBATIM** (écart déclaré le 2026-08-24 matin) → ✅ **UN CONSTAT OWNER A ÉTÉ RECUEILLI LE SOIR MÊME sur `8a1dac9`, après TROIS flashs — voir §13.22.6.** ⛔ Recueilli **par question fermée**, donc toujours **pas un verbatim libre** ⤵ |
 
