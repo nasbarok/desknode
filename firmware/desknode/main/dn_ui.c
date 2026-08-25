@@ -2200,6 +2200,8 @@ static void mock_tick_nolock(void);
  * `build_scene` et `detail_reparametrer`, déclarées avant leur corps. */
 static void veille_tick_nolock(void);
 static bool veille_contact_cb(int x, int y);
+/* dn3-3 : réapplique l'identité du mode après TOUTE reconstruction. */
+static void scene_identite_appliquer(void);
 
 static void label_tick(lv_timer_t *t)
 {
@@ -4696,6 +4698,7 @@ static void build_scene(void)
             sortant != s_scr_detail && sortant != s_scr_menu) {
             lv_obj_delete(sortant);
         }
+        scene_identite_appliquer();
         return;
     }
 
@@ -4709,6 +4712,7 @@ static void build_scene(void)
     } else {
         build_dashboard(scr);
     }
+    scene_identite_appliquer();
 }
 
 /* ── Navigation : le travail ──────────────────────────────────────────────── */
@@ -4928,6 +4932,12 @@ static bool nav_appliquer(int cible, int64_t t_clic)
      *    naît d'aucun geste : l'armer aurait injecté, dans le min/moy/max publié
      *    par AC5, des échantillons dont l'origine est une horloge — et personne
      *    n'aurait pu les distinguer des taps. */
+    /* 🔴 ET APRÈS UNE TRANSITION AUSSI : en modèle REBUILD, `nav_appliquer`
+     *    RECONSTRUIT l'écran (`lv_obj_clean` + `build_*`), donc il efface
+     *    l'identité d'Ambient exactement comme `build_scene`. En SCREENS rien
+     *    n'est reconstruit et l'appel est un no-op — on le fait quand même, pour
+     *    que l'invariant ne dépende pas du modèle. */
+    scene_identite_appliquer();
     if (!s_nav_veille) {
         dn_touch_latence_arm(t_clic);
     }
@@ -6418,6 +6428,34 @@ static void veille_bl_remonter(void)
 
 /* ── Le repeint, SANS reconstruction ─────────────────────────────────────── */
 
+/*
+ * 🔴 TOUTE RECONSTRUCTION DE SCÈNE EFFACE L'IDENTITÉ D'AMBIENT — TROUVÉ SUR LA
+ *    CARTE LE 2026-08-25, ET C'ÉTAIT INVISIBLE À TOUT SAUF À L'ŒIL.
+ *
+ *    `dn_widget_creer()` repose `aplat()`, c'est-à-dire l'aplat d'**ACTIF**
+ *    (translucide, 178). Elle recrée aussi le titre et l'icône DÉMASQUÉS, et
+ *    pose la police de la valeur à la construction. ⇒ Après un `widget fond`,
+ *    un `widget opa`, un `nav model`, un `ui bg psram` — ou n'importe quel
+ *    setter qui reconstruit — la scène REDEVIENT visuellement Actif pendant que
+ *    `dn_veille` continue d'annoncer AMBIENT.
+ *    Symptôme mesuré : `aplat de case : opa 178` en plein mode AMBIENT, donc le
+ *    Living PCB qui transparaît à travers les six cases.
+ *
+ * ⚠️ C'EST LA MÊME CLASSE DE DÉFAUT QUE « L'OMBRE SUIT LA RÉALITÉ » que ce
+ *    fichier corrige déjà pour `anim` et pour la démo — sauf qu'ici c'est
+ *    l'inverse : l'ÉTAT est juste et c'est l'ÉCRAN qui décroche.
+ * ⛔ Ne pas la faire appeler par `dn_widget_creer()` : `dn_widget` ne connaît
+ *    pas la veille, et lui apprendre inverserait le sens de la dépendance qui
+ *    garde les deux modules testables séparément.
+ */
+static void scene_identite_appliquer(void)
+{
+    if (dn_veille_mode() != DN_VEILLE_AMBIENT) {
+        return; /* en Actif, la construction pose déjà la bonne identité */
+    }
+    veille_peindre_nolock();
+}
+
 static void veille_peindre_nolock(void)
 {
     bool amb = (dn_veille_mode() == DN_VEILLE_AMBIENT);
@@ -6463,6 +6501,41 @@ static void veille_peindre_nolock(void)
         detail_reparametrer(s_metrique);
     } else if (s_vue == DN_VUE_MENU) {
         menu_reparametrer();
+    }
+
+    /*
+     * 🔴 ON INVALIDE L'ÉCRAN ENTIER — TROUVÉ SUR LA CARTE LE 2026-08-25, ET
+     *    C'ÉTAIT **LE** DÉFAUT QUE L'ŒIL VOYAIT.
+     *
+     *    Constat owner : *« au lieu d'un noir/gris sombre c'est un vert »*,
+     *    alors que tous les instruments annonçaient un voile NOIR OPAQUE et des
+     *    cases OPAQUES — et le disaient VRAI : c'est bien ce que portait l'arbre
+     *    LVGL. Le fond restait vert parce que **personne ne le REPEIGNAIT** :
+     *    les labels s'invalident eux-mêmes quand leur texte change (d'où des
+     *    chiffres qui bougent sur un fond figé), mais le fond, lui, n'appartient
+     *    à aucun objet qui change.
+     *
+     * 🔬 LA BISSECTION QUI L'A ÉTABLI, en trois témoins :
+     *      1. `veille fond` — voile opa 255 noir, aplat 255, écran actif = la
+     *         bonne racine, voile au-dessus de l'image. Tout JUSTE.
+     *      2. `widget fond off` — l'image RETIRÉE de l'arbre, et l'écran reste
+     *         VERT : le vert ne venait donc plus d'aucun objet vivant.
+     *      3. `ui off` + `scene black` — noir plein écrit DIRECTEMENT dans le
+     *         framebuffer, hors LVGL ⇒ **NOIR à l'œil**. La chaîne
+     *         framebuffer → dalle est saine ; c'est l'invalidation qui manquait.
+     *
+     * ⚠️ CE FICHIER PORTAIT DÉJÀ CE CORRECTIF, ÉCRIT PAR dn4-4 POUR LE CAS
+     *    `détail → détail` : *« on invalide l'écran entier, parce qu'un
+     *    CHANGEMENT DE PAGE *est* un repeint de page ; invalider le seul cadre
+     *    ne suffisait pas, et l'œil l'a vu »*. **Une bascule de MODE est un
+     *    changement de page**, et elle méritait la même ligne.
+     * ⚠️ COÛT, ET IL EST BORNÉ : cette invalidation ne tourne qu'aux bascules de
+     *    veille et aux réglages A/B — ⛔ jamais dans le chemin chaud. Elle ne
+     *    touche donc AUCUNE des latences publiées par AC5.
+     */
+    lv_obj_t *act = lv_screen_active();
+    if (act) {
+        lv_obj_invalidate(act);
     }
 }
 
@@ -6819,6 +6892,110 @@ esp_err_t dn_ui_veille_set_voile(uint8_t opa)
 
 uint8_t dn_ui_veille_voile(void) { return s_voile_opa_amb; }
 
+/*
+ * 🔴 CE QUI EST **RÉELLEMENT POSÉ SUR LES OBJETS**, ⛔ PAS CE QUE LES VARIABLES
+ *    ANNONCENT.
+ *
+ *    Constat owner du 2026-08-25 : *« au lieu d'un noir/gris sombre c'est un
+ *    vert »* — le Living PCB reste visible alors que `veille now` annonce « le
+ *    voile a 255 ». L'une des deux affirmations est fausse, et aucune variable
+ *    ne peut trancher : il faut RELIRE LVGL.
+ * ⚠️ Même discipline que `dn_ui_widget_pointeurs()` : on relit ce qui a été
+ *    posé, jamais ce qu'on a demandé. Un écart entre les deux EST le défaut.
+ */
+bool dn_ui_veille_voiles_etat(int *n, uint8_t *opas, uint32_t *couls,
+                              int max, uint8_t *case_opa, uint32_t *case_coul)
+{
+    if (!lvgl_port_lock(500)) {
+        return false;
+    }
+    if (n) {
+        *n = s_voiles_n;
+    }
+    for (int i = 0; i < s_voiles_n && i < max; i++) {
+        if (!s_voiles[i]) {
+            if (opas) { opas[i] = 0; }
+            if (couls) { couls[i] = 0xFFFFFFFFu; } /* sentinelle « pointeur NUL » */
+            continue;
+        }
+        if (opas) {
+            opas[i] = lv_obj_get_style_bg_opa(s_voiles[i], 0);
+        }
+        if (couls) {
+            lv_color_t c = lv_obj_get_style_bg_color(s_voiles[i], 0);
+            couls[i] = ((uint32_t)c.red << 16) | ((uint32_t)c.green << 8) | c.blue;
+        }
+    }
+    /* L'aplat de la PREMIÈRE case vivante — le fond sur lequel la valeur est
+     * posée. C'est LUI que l'œil appelle « le fond de la tuile ». */
+    if (case_opa) { *case_opa = 0; }
+    if (case_coul) { *case_coul = 0xFFFFFFFFu; }
+    for (int i = 0; i < DN_UI_METRIQUES; i++) {
+        if (!s_wobj[i].racine) {
+            continue;
+        }
+        if (case_opa) {
+            *case_opa = lv_obj_get_style_bg_opa(s_wobj[i].racine, 0);
+        }
+        if (case_coul) {
+            lv_color_t c = lv_obj_get_style_bg_color(s_wobj[i].racine, 0);
+            *case_coul = ((uint32_t)c.red << 16) | ((uint32_t)c.green << 8) | c.blue;
+        }
+        break;
+    }
+    lvgl_port_unlock();
+    return true;
+}
+
+/*
+ * 🔴 L'ÉCRAN QUE LA DALLE DESSINE VRAIMENT, ET SES ENFANTS.
+ *
+ *    Constat owner du 2026-08-25 : le fond reste VERT alors que LVGL déclare un
+ *    voile NOIR OPAQUE **et** un aplat de case OPAQUE, redessin complet forcé.
+ *    Les deux affirmations ne peuvent pas être vraies en même temps — sauf si
+ *    ce qu'on MESURE n'est pas ce qui est AFFICHÉ.
+ *
+ * ⚠️ LE SOUPÇON EST NOMMÉ, ET IL A UN PRÉCÉDENT DANS CE FICHIER : la revue de
+ *    dn1-4 a trouvé que « l'écran sortant n'est pas toujours l'une des racines »
+ *    — au boot c'est celui de `lv_display_create`, en revenant de REBUILD c'est
+ *    celui qu'a créé `dn_ui_set_nav_model`. Un tel écran ORPHELIN porterait son
+ *    propre voile, **absent de `s_voiles[]`**, donc jamais poussé à 255.
+ * ⇒ On imprime QUI est l'écran actif et CE QU'IL PORTE, relu de LVGL.
+ */
+bool dn_ui_veille_ecran_actif(int *qui, int *n_enfants, int *opas, int *w, int *h,
+                              int max)
+{
+    if (!lvgl_port_lock(500)) {
+        return false;
+    }
+    lv_obj_t *act = lv_screen_active();
+    if (qui) {
+        *qui = act == s_scr_dash     ? 0
+               : act == s_scr_detail ? 1
+               : act == s_scr_menu   ? 2
+               : act == NULL         ? -2
+                                     : -1; /* -1 = ORPHELIN */
+    }
+    int nc = act ? (int)lv_obj_get_child_count(act) : 0;
+    if (n_enfants) {
+        *n_enfants = nc;
+    }
+    for (int i = 0; i < nc && i < max; i++) {
+        lv_obj_t *c = lv_obj_get_child(act, (int32_t)i);
+        if (opas) {
+            opas[i] = c ? (int)lv_obj_get_style_bg_opa(c, 0) : -1;
+        }
+        if (w) {
+            w[i] = c ? (int)lv_obj_get_width(c) : -1;
+        }
+        if (h) {
+            h[i] = c ? (int)lv_obj_get_height(c) : -1;
+        }
+    }
+    lvgl_port_unlock();
+    return true;
+}
+
 esp_err_t dn_ui_veille_set_gris(int regime, uint32_t rgb)
 {
     if (!dn_widget_set_gris_amb(regime, rgb)) {
@@ -6865,6 +7042,17 @@ static esp_err_t veille_levier(void (*poser)(bool), bool on)
      *    masquages et la police d'Ambient ne s'appliquent que si le mode l'est).
      *    Ne repeindre qu'en Ambient aurait laissé croire, à l'œil, que le
      *    levier « ne fait rien » quand on le règle depuis le mode Actif. */
+    veille_peindre_nolock();
+    lvgl_port_unlock();
+    return ESP_OK;
+}
+
+esp_err_t dn_ui_veille_set_case_bg(uint32_t rgb)
+{
+    if (!lvgl_port_lock(2000)) {
+        return ESP_ERR_TIMEOUT;
+    }
+    dn_widget_set_amb_case_bg(rgb);
     veille_peindre_nolock();
     lvgl_port_unlock();
     return ESP_OK;

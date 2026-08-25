@@ -399,6 +399,27 @@ esp_err_t dn_ui_veille_set_pct(int pct);
  * retenu, on n'écrit que son style. */
 esp_err_t dn_ui_veille_set_voile(uint8_t opa);
 uint8_t dn_ui_veille_voile(void);
+/*
+ * 🔴 CE QUI EST RÉELLEMENT POSÉ SUR LES OBJETS LVGL, ⛔ pas ce que les variables
+ * annoncent. Né du constat owner du 2026-08-25 (« au lieu d'un noir/gris sombre
+ * c'est un vert ») : `veille now` annonçait « voile a 255 » pendant que le
+ * Living PCB restait visible. Une variable ne peut pas trancher ça.
+ * `false` = verrou non pris ⇒ « pas mesuré », ⛔ jamais « zéro ».
+ */
+bool dn_ui_veille_voiles_etat(int *n, uint8_t *opas, uint32_t *couls,
+                              int max, uint8_t *case_opa, uint32_t *case_coul);
+
+/*
+ * 🔴 QUI est l'écran ACTIF, et ce qu'il porte — relu de LVGL.
+ * `*qui` : 0 = dashboard · 1 = détail · 2 = MENU · **-1 = ORPHELIN** (aucune des
+ * trois racines) · -2 = aucun écran actif.
+ * ⚠️ Un écran ORPHELIN porterait son propre voile, ABSENT de `s_voiles[]`, donc
+ *    jamais poussé à 255 par la veille — ce qui expliquerait un fond resté vert
+ *    pendant que les instruments annoncent du noir opaque. Le précédent existe :
+ *    revue dn1-4, « l'écran sortant n'est pas toujours l'une des racines ».
+ */
+bool dn_ui_veille_ecran_actif(int *qui, int *n_enfants, int *opas, int *w,
+                              int *h, int max);
 /* Un des trois gris d'Ambient. Repeint immédiatement si on est en Ambient. */
 esp_err_t dn_ui_veille_set_gris(int regime, uint32_t rgb);
 /* Le taux de désaturation des ACCENTS en Ambient, 0..100 (A/B d'AC9.4). */
@@ -409,6 +430,7 @@ esp_err_t dn_ui_veille_set_accent(int pct);
  *    plafonne à 33 px, sans elle on monte à 56 — les deux tailles sont MESURÉES
  *    contre les 201 px utiles d'une case, ⛔ pas choisies rond.
  */
+esp_err_t dn_ui_veille_set_case_bg(uint32_t rgb);
 esp_err_t dn_ui_veille_set_unite(bool on);
 esp_err_t dn_ui_veille_set_jauge(bool on);
 /* Vide le ring de latences ET les deux compteurs de contexte. ⛔ Un compteur

@@ -8098,6 +8098,7 @@ static void veille_usage(void)
     printf("        veille lat                   les DEUX latences de reveil (AC4)\n");
     printf("        veille geom                  la preuve que le layout NE BOUGE PAS\n");
     printf("        veille assets                le recompte de la partition (AC1.4)\n");
+    printf("        veille fond                  voiles et aplats RELUS DES OBJETS LVGL\n");
     printf("        veille reset                 compteurs ET latences a zero\n");
     printf("  --- leviers A/B, a chaud, ⛔ NON persistes (ce sont des instruments) ---\n");
     printf("        veille pct <%d..%d>            retroeclairage d'Ambient\n",
@@ -8108,6 +8109,7 @@ static void veille_usage(void)
     printf("        veille unite on|off          l'unite reste-t-elle ? ⚠️ CHOISIT LA POLICE\n");
     printf("                                     (on ⇒ 33 px · off ⇒ 56 px, tailles MESUREES)\n");
     printf("        veille jauge on|off          la barre de remplissage en veille\n");
+    printf("        veille case <rrggbb>         l'aplat de case en Ambient\n");
 }
 
 static void veille_imprimer_etat(void)
@@ -8414,6 +8416,59 @@ static void veille_accents_collisions(void)
     printf("   UNE paire chacun, simplement pas la meme.\n");
 }
 
+/*
+ * 🔴 UN GRIS N'EST PAS NEUTRE EN RGB565, ET LA CONSOLE LE DIT.
+ *
+ *    Le canal VERT porte 6 bits, le rouge et le bleu 5. Un `R = G = B` ne
+ *    survit donc pas a la quantification : `0x1E1E1E` sort en R24 G28 B24,
+ *    soit +4 de vert sur le canal que l'oeil pese a 59 %. Constat owner du
+ *    2026-08-25 : « les 6 cases sont pleines en VERT sur fond noir ».
+ * ⛔ ON AVERTIT, ON NE REFUSE PAS et ⛔ on n'arrondit pas en silence : c'est un
+ *    instrument d'A/B, l'owner doit voir la couleur qu'il tape et savoir
+ *    qu'elle tirera.
+ */
+static void veille_dire_si_pas_neutre(uint32_t rgb)
+{
+    int r8 = (int)((rgb >> 16) & 0xFF);
+    int g8 = (int)((rgb >> 8) & 0xFF);
+    int b8 = (int)(rgb & 0xFF);
+    if (r8 != g8 || g8 != b8) {
+        return; /* ce n'est pas un gris : la question ne se pose pas */
+    }
+    int r5 = r8 >> 3, g6 = g8 >> 2;
+    int R = (r5 << 3) | (r5 >> 2);
+    int G = (g6 << 2) | (g6 >> 4);
+    int d = G - R;
+    if (d >= -1 && d <= 1) {
+        printf("✅ %06lX est RGB565-NEUTRE (rendu R%d G%d B%d, ecart %+d).\n",
+               (unsigned long)rgb, R, G, R, d);
+        return;
+    }
+    printf("🔴 %06lX N'EST PAS RGB565-NEUTRE : il sortira R%d G%d B%d, soit un\n",
+           (unsigned long)rgb, R, G, R);
+    printf("   ecart de %+d sur le VERT — le canal que l'oeil pese a 59 %%.\n", d);
+    printf("   En RGB565 le vert a 6 bits, le rouge et le bleu 5 : un gris\n");
+    printf("   R=G=B ne survit pas a la quantification.\n");
+    /* Le voisin neutre le plus proche, CALCULE — ⛔ pas une table recitee. */
+    for (int k = 1; k <= 8; k++) {
+        for (int sgn = -1; sgn <= 1; sgn += 2) {
+            int v = r8 + sgn * k;
+            if (v < 0 || v > 255) {
+                continue;
+            }
+            int vr = v >> 3, vg = v >> 2;
+            int VR = (vr << 3) | (vr >> 2);
+            int VG = (vg << 2) | (vg >> 4);
+            if (VG - VR >= -1 && VG - VR <= 1) {
+                printf("   ⇒ le neutre le plus proche est %02X%02X%02X "
+                       "(ecart %+d).\n", v, v, v, VG - VR);
+                return;
+            }
+        }
+    }
+    (void)b8;
+}
+
 static int cmd_veille(int argc, char **argv)
 {
     if (argc < 2) {
@@ -8539,6 +8594,71 @@ static int cmd_veille(int argc, char **argv)
         return 0;
     }
 
+    if (strcmp(argv[1], "fond") == 0) {
+        /* 🔴 CE QUI EST POSE SUR LES OBJETS, ⛔ PAS CE QUE LES VARIABLES DISENT.
+         *    Constat owner du 2026-08-25 : « au lieu d'un noir/gris sombre c'est
+         *    un vert ». `veille now` annoncait « voile a 255 » pendant que le
+         *    Living PCB restait visible — une variable ne peut pas trancher. */
+        int nv = 0;
+        uint8_t opas[8] = {0};
+        uint32_t couls[8] = {0};
+        uint8_t copa = 0;
+        uint32_t ccoul = 0;
+        if (!dn_ui_veille_voiles_etat(&nv, opas, couls, 8, &copa, &ccoul)) {
+            printf("⛔ PAS MESURE : verrou LVGL non pris.\n");
+            return 1;
+        }
+        printf("LE FOND, RELU DES OBJETS LVGL — ⛔ pas des variables\n");
+        printf("  mode : %s\n", dn_veille_mode_nom(dn_veille_mode()));
+        printf("  voiles VIVANTS : %d\n", nv);
+        if (nv == 0) {
+            printf("  🔴 AUCUN VOILE RETENU : la bascule de veille n'a RIEN a\n");
+            printf("     ecrire, et le Living PCB reste visible quoi que\n");
+            printf("     `veille` annonce. C'est LE defaut a chercher.\n");
+        }
+        for (int i = 0; i < nv && i < 8; i++) {
+            printf("    voile %d : opa %3u · couleur %06lX%s\n", i,
+                   (unsigned)opas[i], (unsigned long)couls[i],
+                   couls[i] == 0xFFFFFFFFu ? "  🔴 POINTEUR NUL" : "");
+        }
+        printf("  aplat de case : opa %u · couleur %06lX\n", (unsigned)copa,
+               (unsigned long)ccoul);
+        printf("  ce que les VARIABLES annoncent : voile Ambient %u · voile "
+               "Actif %u\n",
+               (unsigned)dn_ui_veille_voile(), (unsigned)dn_ui_voile_opa());
+        printf("⚠️ UN ECART entre les deux blocs EST le defaut. Les objets font\n");
+        printf("   foi : c'est eux que la dalle dessine.\n");
+
+        /* 🔴 …ENCORE FAUT-IL MESURER LE BON ECRAN. */
+        int qui = -9, nc = 0;
+        int op[12] = {0}, lw[12] = {0}, lh[12] = {0};
+        if (dn_ui_veille_ecran_actif(&qui, &nc, op, lw, lh, 12)) {
+            static const char *k_qui[] = {"dashboard", "detail", "MENU"};
+            printf("\nL'ECRAN ACTIF — celui que la dalle dessine VRAIMENT\n");
+            if (qui >= 0 && qui <= 2) {
+                printf("  c'est la racine « %s » ✅\n", k_qui[qui]);
+            } else if (qui == -2) {
+                printf("  🔴 AUCUN ECRAN ACTIF.\n");
+            } else {
+                printf("  🔴 **ORPHELIN** — ce n'est AUCUNE des trois racines !\n");
+                printf("     Son voile n'est donc PAS dans `s_voiles[]`, donc la\n");
+                printf("     veille ne le pousse JAMAIS a 255 : le Living PCB\n");
+                printf("     reste visible pendant que tout annonce du noir.\n");
+                printf("     ⚠️ Precedent connu : revue dn1-4, « l'ecran sortant\n");
+                printf("     n'est pas toujours l'une des racines ».\n");
+            }
+            printf("  %d enfant(s) — opacite de fond et taille, RELUES :\n", nc);
+            for (int i = 0; i < nc && i < 12; i++) {
+                printf("    #%d : opa %3d · %d x %d%s\n", i, op[i], lw[i], lh[i],
+                       (lw[i] == DN_LCD_H_RES && lh[i] == DN_LCD_V_RES)
+                           ? "  <- plein ecran" : "");
+            }
+        } else {
+            printf("\n⛔ ECRAN ACTIF : PAS MESURE (verrou non pris).\n");
+        }
+        return 0;
+    }
+
     if (strcmp(argv[1], "assets") == 0) {
         veille_imprimer_assets();
         return 0;
@@ -8630,9 +8750,33 @@ static int cmd_veille(int argc, char **argv)
             return 1;
         }
         dn_ui_veille_set_gris(reg, (uint32_t)rgb);
+        veille_dire_si_pas_neutre((uint32_t)rgb);
         printf("gris d'Ambient « %s » : %06lX%s\n", argv[2], (unsigned long)rgb,
                dn_veille_mode() == DN_VEILLE_AMBIENT ? " (applique MAINTENANT)"
                                                      : "");
+        return 0;
+    }
+
+    if (strcmp(argv[1], "case") == 0) {
+        long rgb = 0;
+        if (argc != 3 || !parse_hex_strict(argv[2], &rgb) || rgb < 0 ||
+            rgb > 0xFFFFFF) {
+            printf("usage : veille case <rrggbb>   (actuel : %06lX)\n",
+                   (unsigned long)dn_widget_amb_case_bg());
+            printf("🔬 INSTRUMENT DE BISSECTION avant d'etre un reglage :\n");
+            printf("   constat owner du 2026-08-25 « les 6 cases sont pleines en\n");
+            printf("   VERT sur fond noir », alors que l'instrument lit\n");
+            printf("   `opa 255 · couleur 1E1E1E` sur la racine de chaque case.\n");
+            printf("   ⛔ Un GRIS ne peut pas devenir vert (R=G=B est invariant\n");
+            printf("   par permutation de canaux) ⇒ ce qui est MESURE n'est pas\n");
+            printf("   ce qui est DESSINE. Poser une couleur FRANCHE tranche.\n");
+            return 1;
+        }
+        dn_ui_veille_set_case_bg((uint32_t)rgb);
+        veille_dire_si_pas_neutre((uint32_t)rgb);
+        printf("aplat de case en Ambient : %06lX%s\n", (unsigned long)rgb,
+               dn_veille_mode() == DN_VEILLE_AMBIENT ? " (applique MAINTENANT)"
+                                                     : " (a la prochaine veille)");
         return 0;
     }
 

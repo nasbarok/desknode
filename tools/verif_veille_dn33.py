@@ -669,6 +669,48 @@ def bloc_gris():
              "%s : ecart de luminance minimal >= 24/255" % etiq,
              "min %d (luminances %s)" % (ecart, ls))
 
+    # ══════════════════════════════════════════════════════════════════════
+    # 🔴 LES GRIS D'AMBIENT DOIVENT ETRE **RGB565-NEUTRES** — CONSTAT OWNER 2026-08-25
+    #
+    #    « les 6 cases sont pleines en VERT sur fond noir », alors que
+    #    l'instrument lisait `couleur 1E1E1E` sur l'objet et disait VRAI. En
+    #    RGB565 le canal VERT porte 6 bits, le rouge et le bleu 5 : un gris
+    #    R=G=B ne survit pas a la quantification. `0x1E1E1E` sort en R24 G28 B24
+    #    — +4 de vert sur le canal que l'oeil pese a 59 %.
+    # ⛔ Cette garde existe pour que ca ne puisse pas revenir EN SILENCE : rien
+    #    dans un build, ni dans une relecture de source, ne l'aurait vu. Il a
+    #    fallu la dalle, et un test au ROUGE PUR pour ecarter le rendu.
+    # ══════════════════════════════════════════════════════════════════════
+    def rgb565(v8):
+        r5, g6 = v8 >> 3, v8 >> 2
+        return ((r5 << 3) | (r5 >> 2), (g6 << 2) | (g6 >> 4))
+
+    for cle, val in sorted(amb.items()):
+        r8, g8, b8 = (val >> 16) & 0xFF, (val >> 8) & 0xFF, val & 0xFF
+        if not (r8 == g8 == b8):
+            continue  # pas un gris : la question ne se pose pas
+        R, G = rgb565(r8)
+        ctrl(-1 <= G - R <= 1,
+             "Ambient %s (%06X) est RGB565-NEUTRE"
+             % (cle.replace("DN_VAL_", ""), val),
+             "rendu R%d G%d B%d, ecart vert %+d" % (R, G, R, G - R))
+
+    m = re.search(r"#define W_AMB_CASE_BG 0x([0-9a-fA-F]{6})", src)
+    if ctrl(m is not None, "`W_AMB_CASE_BG` est relu du source"):
+        v = int(m.group(1), 16)
+        R, G = rgb565((v >> 16) & 0xFF)
+        ctrl(-1 <= G - R <= 1,
+             "l'aplat de case (%06X) est RGB565-NEUTRE" % v,
+             "rendu R%d G%d B%d, ecart %+d — ⛔ `1E` sortait a +4"
+             % (R, G, R, G - R))
+
+    # ⚠️ LE TEMOIN : la valeur d'origine DOIT echouer au meme critere. Une garde
+    #    qu'on n'a pas vue rejeter quelque chose ne prouve rien.
+    R, G = rgb565(0x1E)
+    ctrl(G - R > 1,
+         "TEMOIN : `1E1E1E` — la valeur d'origine — ECHOUE au critere",
+         "rendu R%d G%d B%d, ecart vert %+d" % (R, G, R, G - R))
+
     # 🔴 LE PIÈGE : le gris du VIVANT ne doit PAS être celui de l'ABSENCE.
     ctrl(amb["DN_VAL_REELLE"] != actif["DN_VAL_ABSENTE"],
          "le VIVANT en Ambient ≠ `W_COL_ABSENTE` (0x9a9a9a)",

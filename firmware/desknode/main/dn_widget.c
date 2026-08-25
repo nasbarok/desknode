@@ -818,9 +818,11 @@ bool dn_widget_amb_unite(void) { return s_amb_unite; }
 void dn_widget_set_amb_jauge(bool on) { s_amb_jauge = on; }
 bool dn_widget_amb_jauge(void) { return s_amb_jauge; }
 static uint32_t s_gris_amb[DN_VAL_REGIME_COUNT] = {
-    [DN_VAL_ABSENTE] = 0x565656,
+    /* 🔴 `0x58` et ⛔ PAS `0x56` : RGB565-NEUTRE (ecart vert -1 au lieu de +3). */
+    [DN_VAL_ABSENTE] = 0x585858,
     [DN_VAL_REELLE] = 0xffffff,
-    [DN_VAL_SIMULEE] = 0xa0a0a0,
+    /* `0xa4` et ⛔ pas `0xa0` : RGB565-neutre (+1 au lieu de -3). */
+    [DN_VAL_SIMULEE] = 0xa4a4a4,
 };
 
 void dn_widget_set_ambient(bool on) { s_ambient = on; }
@@ -943,8 +945,52 @@ lv_color_t dn_widget_accent_couleur(uint32_t rgb)
  *    serait le seul élément coloré d'un écran monochrome, donc le premier que
  *    l'œil accroche — exactement l'inverse de ce qu'on veut en veille.
  */
-#define W_AMB_CASE_BG 0x1e1e1e
+/* 🔴 `0x20` et ⛔ PAS `0x1e` : RGB565-NEUTRE (ecart vert -1 au lieu de +4).
+ *    Voir le bloc « LES GRIS NE SONT PAS NEUTRES EN RGB565 » ci-dessous. */
+#define W_AMB_CASE_BG 0x202020
 #define W_AMB_CASE_BORD 0x3a3a3a
+
+/*
+ * ══ 🔴 LES GRIS NE SONT PAS NEUTRES EN RGB565 — MESURÉ SUR LA DALLE ═════════
+ *
+ * CONSTAT OWNER DU 2026-08-25, verbatim : *« les 6 cases sont pleines en VERT
+ * sur fond noir »* — alors que l'instrument lisait `opa 255 · couleur 1E1E1E`
+ * sur la racine de chaque case, et disait VRAI.
+ *
+ * 🔬 CE QUI L'A TRANCHÉ : poser du ROUGE PUR sur l'aplat. Les cases sont
+ *    devenues rouges ⇒ le style atteint bien le rendu ⇒ `1E1E1E` ÉTAIT posé,
+ *    et c'est LUI qui s'affiche vert.
+ *
+ * 🎯 LA CAUSE EST ARITHMÉTIQUE, ⛔ PAS UN BUG DE RENDU. En RGB565 le canal VERT
+ *    porte **6 bits** quand le rouge et le bleu n'en portent que **5**. Un gris
+ *    `R = G = B` ne survit donc pas à la quantification :
+ *
+ *      0x1E1E1E -> r=3  g=7   -> R 24  G 28  B 24   ecart vert **+4**
+ *      0x565656 -> r=10 g=21  -> R 82  G 85  B 82   ecart vert **+3**
+ *      0xFFFFFF -> r=31 g=63  -> R255  G255  B255   ecart **0**
+ *
+ * ⚠️ ET L'ŒIL AMPLIFIE PRÉCISÉMENT CET ÉCART-LÀ : la luminance BT.601 pèse le
+ *    vert à **59 %**. Un résidu de +4/255 sur le canal le plus visible, dans les
+ *    noirs profonds et à rétroéclairage réduit, ne se voit pas « un peu » : il
+ *    se voit VERT.
+ *
+ * ⇒ TOUT GRIS D'AMBIENT SE CHOISIT PARMI LES VALEURS **RGB565-NEUTRES**
+ *   (|G8 - R8| <= 1). `tools/verif_veille_dn33.py` le VÉRIFIE, et
+ *   `veille gris` / `veille case` AVERTISSENT quand la valeur demandée ne l'est
+ *   pas — ⛔ sans la refuser : c'est un instrument d'A/B, pas un garde-fou.
+ * ⛔ NE PAS « arrondir au plus proche » en silence : l'owner doit voir la
+ *    couleur qu'il tape, et savoir qu'elle tirera.
+ */
+/* 🔴 RÉGLABLE À CHAUD — né du constat owner du 2026-08-25 : « les 6 cases sont
+ *    pleines en VERT sur fond noir », alors que l'instrument lit `opa 255 ·
+ *    couleur 1E1E1E` sur la racine de chaque case. Un GRIS ne peut pas devenir
+ *    vert (R=G=B est invariant par permutation de canaux) ⇒ ce qui est MESURÉ
+ *    n'est pas ce qui est DESSINÉ, et il faut une couleur FRANCHE pour trancher.
+ * ⚠️ C'est un instrument de bissection AVANT d'être un réglage. */
+static uint32_t s_amb_case_bg = W_AMB_CASE_BG;
+
+void dn_widget_set_amb_case_bg(uint32_t rgb) { s_amb_case_bg = rgb & 0xFFFFFFu; }
+uint32_t dn_widget_amb_case_bg(void) { return s_amb_case_bg; }
 
 void dn_widget_veille_appliquer(const dn_widget_desc_t *desc, dn_widget_t *w)
 {
@@ -953,7 +999,7 @@ void dn_widget_veille_appliquer(const dn_widget_desc_t *desc, dn_widget_t *w)
         return;
     }
     if (s_ambient) {
-        lv_obj_set_style_bg_color(w->racine, lv_color_hex(W_AMB_CASE_BG), 0);
+        lv_obj_set_style_bg_color(w->racine, lv_color_hex(s_amb_case_bg), 0);
         lv_obj_set_style_bg_opa(w->racine, LV_OPA_COVER, 0);
         lv_obj_set_style_border_color(w->racine, lv_color_hex(W_AMB_CASE_BORD),
                                       0);

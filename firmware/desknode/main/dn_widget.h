@@ -735,6 +735,11 @@ void dn_widget_controler_tenue(const dn_widget_desc_t *desc, dn_widget_t *w);
 void dn_widget_set_amb_unite(bool on);
 bool dn_widget_amb_unite(void);
 void dn_widget_set_amb_jauge(bool on);
+/* La couleur de l'aplat de case EN AMBIENT, à chaud. Instrument de bissection
+ * avant d'être un réglage : le constat owner du 2026-08-25 (« les 6 cases sont
+ * pleines en VERT ») contredit ce que l'instrument lit sur l'objet. */
+void dn_widget_set_amb_case_bg(uint32_t rgb);
+uint32_t dn_widget_amb_case_bg(void);
 bool dn_widget_amb_jauge(void);
 
 /*
