@@ -755,6 +755,29 @@ def bloc_verite():
     ctrl("lv_display_trigger_activity(NULL)" in tc,
          "…et pendant un contact CONSOMME (sinon on se rendort doigt pose)")
 
+    # 🔴 DEFAUT TROUVE **SUR LA CARTE** LE 2026-08-25, ET EPINGLE ICI POUR QU'IL
+    #    NE REVIENNE PAS EN SILENCE.
+    #    `veille wake` imprimait « Actif. » et le module RETOMBAIT en Ambient au
+    #    tick suivant : l'horloge d'inactivite de LVGL ne se remet a zero que sur
+    #    un `PRESSED`, donc la garde retrouvait aussitot `inactivite >= delai`.
+    #    La console ANNONCAIT un etat qui ne tenait pas une seconde.
+    #    ⇒ Le rebase doit vivre DANS le chemin de reveil, ⛔ pas seulement dans
+    #      `nav_activite_console()` : sinon il ne couvre que la navigation.
+    m = re.search(r"static bool veille_reveil_nolock\(.*?\n\}", ui, re.S)
+    if ctrl(m is not None, "`veille_reveil_nolock()` est trouvable"):
+        corps = m.group(0)
+        ctrl("lv_display_trigger_activity(NULL)" in corps,
+             "UN REVEIL REPART D'UN DELAI NEUF — quelle que soit l'origine",
+             "⛔ sinon `veille wake` se fait re-endormir au tick suivant")
+        # ⚠️ ET **APRES** le changement d'etat : avant, il rebaserait l'horloge
+        #    meme quand le reveil n'a pas eu lieu (course), donc repousserait une
+        #    bascule legitime sans qu'aucun compteur ne le dise.
+        i_rev = corps.find("dn_veille_reveiller(origine)")
+        i_act = corps.find("lv_display_trigger_activity(NULL)")
+        ctrl(i_rev >= 0 and i_act > i_rev,
+             "…et le rebase vient APRES `dn_veille_reveiller()`",
+             "avant, il repousserait une bascule legitime sur une course")
+
     # AC3.6 — la bascule passe par lv_async_call.
     ctrl("lv_async_call(veille_dormir_async" in ui,
          "AC3.6 : la bascule Actif->Ambient passe par `lv_async_call`",

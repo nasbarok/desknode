@@ -6501,6 +6501,29 @@ static bool veille_reveil_nolock(dn_veille_origine_t origine, int64_t t0)
         return false;
     }
 
+    /*
+     * 🔴 UN RÉVEIL REPART D'UN DÉLAI NEUF — TROUVÉ **SUR LA CARTE** LE 2026-08-25.
+     *
+     *    Symptôme mesuré : `veille wake` imprimait « Actif. » et le module
+     *    RETOMBAIT en Ambient au tick suivant, une seconde plus tard. L'horloge
+     *    d'inactivité de LVGL n'avait pas bougé — elle ne se remet à zéro que sur
+     *    un `PRESSED` (`lv_indev.c:266-268`) — donc la garde retrouvait
+     *    immédiatement `inactivite >= delai` et re-basculait.
+     *    ⇒ La console ANNONÇAIT un état qui ne tenait pas une seconde. C'est
+     *      exactement l'étiquette qui ment que ce dépôt traque, et c'est le même
+     *      défaut qu'AC4.5 ferme pour `nav` — je ne l'avais fermé QUE pour `nav`.
+     *
+     * ⚠️ POUR TOUTES LES ORIGINES, ⛔ pas seulement la console. Au DOIGT,
+     *    `dn_touch` le fait déjà pour le contact consommé : le refaire ici est
+     *    redondant et gratuit. En échange, l'invariant devient LOCAL et vrai
+     *    quel que soit l'appelant — « un réveil repart d'un délai neuf » — au
+     *    lieu de dépendre de ce que fait le chemin d'entrée.
+     * ⚠️ ET IL EST **APRÈS** `dn_veille_reveiller()` : le poser avant aurait
+     *    rebasé l'horloge même quand le réveil n'a pas eu lieu (course), donc
+     *    repoussé une bascule légitime sans qu'aucun compteur ne le dise.
+     */
+    lv_display_trigger_activity(NULL);
+
     /* TEMPS 2 : la palette. */
     veille_peindre_nolock();
     uint32_t t2 = (uint32_t)(esp_timer_get_time() - t0);
