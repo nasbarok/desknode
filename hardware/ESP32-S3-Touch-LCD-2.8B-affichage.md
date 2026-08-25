@@ -6316,11 +6316,11 @@ latence en croyant mesurer son verdict.*
 # §24. 🎯 `dn3-3` (P8) — LA VEILLE DEVIENT UN CONTRAT, ET LE BANDEAU `MENU` UNE PORTE
 
 > ⚠️ **CETTE SECTION EST OUVERTE LE 2026-08-25 ET ELLE N'EST PAS FINIE.**
-> Elle contient, à cette date, **UNIQUEMENT ce qui est prouvé SANS CARTE** :
-> arithmétique, gate hôte, vérification de police, et les décisions de conception
-> avec leur motif. **Aucune latence, aucun délai mesuré, aucun constat à l'œil**
-> n'y figure — ils appartiennent à la séance carte, et §24.7 dit exactement ce
-> qu'elle doit remplir. ⛔ **Ne rien lire ici comme une mesure sur la dalle.**
+> §24.1-24.6 sont prouvés **SANS CARTE**. **§24.7 est la SÉANCE CARTE, partie
+> SANS ŒIL** — 12 relevés tirés à la console sur le firmware `e0af1c6`, SHA lu au
+> bandeau. **§24.8 dit ce qui reste**, et il reste tout ce qui demande l'œil :
+> les **20 réveils chronométrés**, les **deux gates tactiles**, les **8 constats
+> d'AC9** et la **nuit**. ⛔ **Aucune latence t₁/t₂ n'est publiée à ce jour.**
 
 ## 24.1 ✅ AC1.4 — LE RECOMPTE DE LA PARTITION, ET IL COMMENCE À « DEUX »
 
@@ -6423,7 +6423,7 @@ disponible, et la console **DIT quelle paire il confond, calculé à l'exécutio
 
 ⚠️ **`veille accents` est un A/B à chaud** : c'est AC9.4 qui tranche à l'œil.
 
-## 24.5 ✅ CE QUE LA GATE HÔTE PROUVE — 84 CONTRÔLES, SANS CARTE NI TOUR
+## 24.5 ✅ CE QUE LA GATE HÔTE PROUVE — 91 CONTRÔLES, SANS CARTE NI TOUR
 
 `tools/verif_veille_dn33.py`. ⛔ **Elle ne relit pas du source** : elle **COMPILE
 `dn_veille.c` en entier et l'APPELLE**, et elle **EXTRAIT VERBATIM**
@@ -6445,6 +6445,17 @@ compteur · `veille reset` qui **ne touche ni les réglages ni le mode** ·
 `partitions.csv` **inchangé** · les étiquettes réparées (AC5.4, AC10.1) ·
 `lv_async_call` sur la bascule · le contact **consommé et latché**, chemin
 d'erreur I²C compris · les **trois** racines exigées en modèle `SCREENS`.
+
+🔴 **+7 CONTRÔLES AJOUTÉS *PENDANT* LA SÉANCE**, et c'est le point : les deux
+défauts de §24.7.9 ont été trouvés **sur la carte**, pas par la gate. Chacun est
+désormais épinglé — le rebase de réveil **et sa place dans la fonction** (avant
+`dn_veille_reveiller()`, il repousserait une bascule légitime sur une course),
+l'écart **latché** et son témoin qui prouve que le tick écrase bien
+`inactivite_ms` **sans toucher au latch**.
+⚠️ **Ce témoin-là a ROUGI à sa première écriture, et pour la bonne raison** : il
+tickait au-dessus du délai, donc le tick **re-basculait** et le témoin mesurait
+sa propre bascule. Corrigé à 30 000 ms. Une gate qu'on n'a pas vue rougir pour
+une raison qu'on comprend ne prouve rien.
 
 ✅ **AC6.5 — DELTA POLICE = 0 OCTET, VÉRIFIÉ DANS LE `.c` PRODUIT.**
 `codepoints_du_c()` sur `dn_font_14.c` et `dn_font_28.c` : `LV_SYMBOL_OK`
@@ -6486,27 +6497,194 @@ est-il CONSOMMÉ, ou ouvre-t-il aussi le détail ? »*, ouverte depuis `dn1-4`).
 `dn_touch.c` (verrou de consommation latché jusqu'au relâchement, chemin d'erreur
 I²C compris) et vérifiée par la gate.
 
-## 24.7 ⏳ CE QUI RESTE À LA SÉANCE CARTE — ⛔ RIEN DE TOUT CELA N'EST MESURÉ
+## 24.7 ✅ LA SÉANCE CARTE — PARTIE SANS ŒIL, 2026-08-25, firmware `e0af1c6`
+
+⚠️ **CHAQUE CHIFFRE CI-DESSOUS PORTE SON SHA, LU AU BANDEAU `App version`**, et
+`git status --porcelain` était **vide** avant chaque flash. La séance a traversé
+trois firmwares — `bcf1d38`, puis `c204f4a`, puis `e0af1c6` — **et les deux
+reflashs sont eux-mêmes des résultats** : voir §24.7.9.
+
+### 24.7.1 ✅ AC1.3 — LE LAYOUT NE BOUGE PAS D'UN PIXEL, ET C'EST CHIFFRÉ
+
+| Mode | Signature FNV-1a des 28 nombres |
+|---|---|
+| `ACTIF` | **`0xE6887D29`** |
+| `AMBIENT` (après `veille now`) | **`0xE6887D29`** |
+
+Les six cases rendent les mêmes quatre nombres (`CPU` 10,70,225,163 · `GPU`
+245,70 · `RAM` 10,243 · `RÉSEAU` 245,243 · `DISQUE` 10,416 · `AMBIANCE` 245,416)
+et le triplet de bandes est identique (**barre 60 · menu 51 · grille 529 ·
+case 163** — la géométrie D12). ⛔ Ce n'est pas un constat à l'œil.
+
+### 24.7.2 ✅ AC3.3 — LE DÉLAI MESURÉ EST CELUI ANNONCÉ, TROIS FOIS
+
+Cran **1 min**, écart **dernier contact → bascule**, latché par le tick qui a
+basculé :
+
+| # | Écart | Δ au délai | Verdict |
+|---|---:|---:|---|
+| 1 | **60 520 ms** | +520 ms | ✅ dans [60 000 ; 61 000] |
+| 2 | **60 635 ms** | +635 ms | ✅ |
+| 3 | **60 275 ms** | +275 ms | ✅ |
+
+Dispersion **360 ms**, cohérente avec un tick 1 Hz. ⚠️ **Le seuil est APPLIQUÉ
+PAR L'INSTRUMENT**, pas laissé au lecteur : `veille` imprime le verdict ✅/🔴
+ligne par ligne.
+
+### 24.7.3 ✅ AC3.4 — LA VEILLE DÉSARMÉE NE TOMBE JAMAIS
+
+Cran armé à **1 min**, `veille off`, **300 secondes OBSERVÉES** :
+inactivité montée à **390 370 ms — soit 6,5× le délai** — **0 bascule**, mode
+resté `ACTIF`, `ecarts contact->bascule : AUCUN ECHANTILLON`.
+⛔ « Aucun échantillon », pas « 0 ms ».
+
+### 24.7.4 ✅ AC2.2 — LES DONNÉES RESTENT VIVANTES EN VEILLE
+
+Série `AMBIANCE T`, avant l'entrée en veille puis 60 s plus tard, **module resté
+en `AMBIENT` tout du long** :
+
+| | écrits | réels | trous | couverture |
+|---|---:|---:|---:|---:|
+| à l'entrée | 16 | 10 | 6 | 18 s |
+| +60 s | **76** | **70** | 6 | **78 s** |
+| **Δ** | **+60** | **+60** | **0** | **+60 s** |
+
+⇒ **60 points ± 0**, tous **RÉELS**, **aucun trou creusé**. Le critère demandait
+60 ± 1. `dn_hist` ne s'arrête pas en veille.
+
+### 24.7.5 ✅ AC2.5 / AC2.6 — LE 4ᵉ ÉCRIVAIN DE LEDC, AVEC SON TÉMOIN
+
+`bl auto on` **puis** entrée en veille ⇒ la console le DIT **deux fois** :
+
+```
+W dn_env: retroeclairage auto DESARME par « veille » — deux ecrivains sur LEDC
+          ne s'arbitrent pas tout seuls...
+W dn_ui : l'asservissement `bl auto` etait ARME : la VEILLE vient de le DESARMER.
+          ... `bl auto on` pour le rearmer.
+```
+
+⚠️ Le témoin est **NÉGATIF au sens fort** : `bl auto` est `false` par défaut,
+donc **le défaut ne révèle pas le bug**. Il fallait l'armer pour le voir.
+
+### 24.7.6 ✅ AC8.5 — `ui off` DE 75 s NE FABRIQUE PAS UNE FAUSSE BASCULE
+
+`ui off` pendant **75 s** (le délai vaut 60 s), puis `ui on` :
+
+- le rebase est **fait, COMPTÉ (`rebases : 1`) et DIT** — le message nomme la
+  cause et la conséquence ;
+- **mode `ACTIF`**, **`bascules : 0`** ;
+- inactivité repartie à **2 440 ms**.
+
+⚠️ **Sans le rebase, l'inactivité aurait valu ~78 000 ms** contre 60 000 de
+délai : la bascule serait tombée **au premier tick**, et ça se serait lu comme
+un bug de bascule.
+
+### 24.7.7 ✅ AC5.2 / AC7.3 — LA 3ᵉ VUE ET LA PERSISTANCE
+
+- `nav menu` puis `nav back` jouent dans **les DEUX modèles** ; `nav` publie
+  `vue : menu · modele « screens »` **et** `vue : menu · modele « rebuild »`.
+- **`5 min` + `ON`** réglés à la console, **reboot**, relus au bandeau :
+  `dn_veille: veille ON · delai 5 min (300000 ms)`. ⚠️ Le défaut d'usine est
+  **3 min** : c'est donc bien la NVS qui parle, ⛔ pas le défaut.
+
+### 24.7.8 🎯 T5 — LE TAS LVGL, ET LE CRITÈRE DE T5 VALIDÉ DE FAÇON SPECTACULAIRE
+
+Mesuré sur **DEUX firmwares** — la baseline `1f7a4bb` (pré-`dn3-3`) a été
+reflashée exprès, parce qu'un delta sans son « avant » n'est pas un delta :
+
+| Firmware | Modèle | utilisé | **plus gros bloc libre** | fragmentation |
+|---|---|---:|---:|---:|
+| `1f7a4bb` | `screens` (2 racines) | 21 440 o (35 %) | **39 544 o** | 3 % |
+| `1f7a4bb` | `rebuild` (1 écran) | 17 816 o (29 %) | **39 544 o** | 12 % |
+| `e0af1c6` | `screens` (3 racines) | 28 088 o (46 %) | **31 992 o** | 4 % |
+| `e0af1c6` | `rebuild` (1 écran) | 17 860 o (29 %) | **31 992 o** | 29 % |
+
+**Ce que `dn3-3` coûte, ATTRIBUÉ :** **+6 648 o** de tas utilisé en `screens`
+(la 3ᵉ racine MENU) et **−7 552 o de plus gros bloc libre** (−19,1 %).
+Il reste **31 992 o**, soit ~**4,8×** le coût d'une racine MENU.
+
+🔴 **ET VOICI POURQUOI T5 EXIGEAIT LE PLUS GROS BLOC ET PAS LE POURCENTAGE.**
+Sur `e0af1c6`, passer de `screens` à `rebuild` fait bondir la fragmentation
+**de 4 % à 29 % — un facteur 7 — pendant que le plus gros bloc libre ne bouge
+PAS D'UN OCTET** (31 992 dans les deux cas). Le pourcentage aurait crié à la
+régression là où la capacité réelle à allouer est strictement identique.
+
+⚠️ **ET IL DIT AUTRE CHOSE, QU'ON N'ALLAIT PAS CHERCHER** : le plus gros bloc est
+le MÊME dans les deux modèles, **y compris en `rebuild` où aucune racine MENU ne
+vit**. Il est donc fixé par le **PIC D'ALLOCATION AU BOOT** — `build_scene()`
+tourne en `screens` (le défaut) et crée les trois racines — ⛔ pas par le modèle
+courant. Libérer les racines ne rend pas le bloc.
+
+### 24.7.9 🔴 DEUX DÉFAUTS TROUVÉS **PAR LA SÉANCE**, ET C'EST ELLE QUI LES A TROUVÉS
+
+**(1) `veille wake` s'annulait tout seul** (`bcf1d38` → corrigé en `c204f4a`).
+La console imprimait « Actif. » et le module **retombait en Ambient au tick
+suivant**. Cause : l'horloge d'inactivité de LVGL ne se remet à zéro que sur un
+`PRESSED` (`lv_indev.c:266-268`) ; un réveil venu de la console ne passe pas par
+l'indev, donc la garde retrouvait aussitôt `inactivite >= delai`.
+⇒ **C'était EXACTEMENT le défaut qu'AC4.5 ferme pour `nav`, et il n'avait été
+fermé QUE pour `nav`.** Le rebase vit désormais dans le chemin de réveil, donc
+sur **toutes** les origines.
+⚠️ **C'était aussi un bloquant de mesure** : sans t₀ franc, les trois relevés
+d'AC3.3 n'étaient pas tirables au clavier.
+
+**(2) AC3.3 n'avait AUCUN INSTRUMENT** (`c204f4a` → `e0af1c6`).
+Le critère demande la fenêtre **[délai ; délai + 1 s]**. ⛔ Aucun sondage depuis
+l'hôte ne peut la trancher : la latence série et le pas d'interrogation ajoutent
+leur **propre seconde** à une fenêtre qui n'en fait qu'une — on aurait publié la
+dispersion de l'**instrument** en croyant publier celle du produit. Et
+`s_inactivite_ms` ne pouvait pas servir : le tick continue en Ambient et
+l'**écrase** à la seconde suivante.
+⇒ Un anneau de quatre écarts **latchés au moment exact où la garde cède**. Une
+bascule **annulée** retire son échantillon.
+
+### 24.7.10 ✅ CE QUE LES INSTRUMENTS DISENT QUAND ILS N'ONT RIEN
+
+- `veille lat` sans réveil au doigt : **« aucun réveil AU DOIGT ⇒ RIEN À
+  PUBLIER »**, ⛔ pas « 0 µs ».
+- `ecarts contact->bascule` sans bascule : **« AUCUN ECHANTILLON »**, ⛔ pas 0 ms.
+- `dn_ui_veille_compteurs()` sur verrou non pris rendrait **« ⛔ PAS MESURE »** —
+  non déclenché en séance, la garde n'est donc **pas éprouvée sur la carte**.
+
+### 24.7.11 ⓘ LE COÛT DE LA PERSISTANCE, MESURÉ
+
+Deux écritures NVS chronométrées : **1 391 µs** et **2 904 µs**.
+À comparer à **26,7 ms** de période de trame (37,40 Hz) : le pire des deux vaut
+**11 % d'une trame**. ⚠️ **Mesuré depuis la tâche REPL.** Au tap MENU la même
+écriture est payée **dans la tâche LVGL** — le chiffre devrait être du même
+ordre, mais **ce cas-là n'a pas été tiré** : il demande un doigt.
+
+### 24.7.12 ✅ LA COLLISION D'ACCENTS, CONFIRMÉE SUR LA CARTE
+
+`veille accents 100` sur la dalle :
+
+```
+🔴 A 100 %, DES ACCENTS SE CONFONDENT :
+   « GPU » et « RAM » rendent tous deux A0A0A0
+```
+
+`veille accents 95` : **« ✅ a 95 %, les 6 accents de case restent DISTINCTS deux
+a deux. »** ⇒ Le constat de §24.4, calculé par le firmware lui-même, sur les
+couleurs relues des descripteurs. C'est ce qui a fait passer le défaut à 95.
+
+## 24.8 ⏳ CE QUI RESTE — ⛔ RIEN DE TOUT CELA N'EST MESURÉ
 
 | # | À mesurer | Instrument prêt |
 |---|---|---|
 | AC2.1 | une case change en Ambient sur 60 s, critère `W2` (étendue ≥ 5, changement de TEXTE ≥ 10 %, σ ≥ 1) — **sous agent réel**, ⛔ pas `dn_injecteur.py` | `w2` |
-| AC2.2 | `hist` publie **60 points ± 1** après 60 s de veille | `hist` |
 | AC2.4 | **PC éteint** : `AMBIANCE` réelle, les cinq autres `ABSENTE` en `--` | `pc`, `veille` |
-| AC2.5-2.6 | **témoin négatif** : `bl auto on` **puis** entrée en veille ⇒ la console DIT le désarmement | log `dn_veille`/`dn_env` |
-| AC3.3 | cran **1 min** : écart dernier contact → bascule dans **[60 ; 61] s**, relevé **3 fois** | `veille` |
-| AC3.4 | `veille off` puis **5 min** d'observation ⇒ **0 bascule** | `veille` |
 | AC4.2-4.3 | **t₁ et t₂**, min/médiane/max, **n ≥ 20 réveils AU DOIGT** | `veille lat` |
+| AC4.4 / AC9.5 | le tap consommé **se voit-il**, ou l'œil croit-il son tap PERDU ? ⛔ **PAS** l'arbitrage de D-7, qui est tranchée | `veille`, `touch` |
 | AC5.6 | **8 allers-retours** bande MENU ⇒ **8 taps** · **≥ 5 appuis** barre du haut ⇒ **0 tap** | `touch trace`, `nav` |
-| AC1.3 | **deux** relevés `veille geom` (Actif puis Ambient) ⇒ **même signature** | `veille geom` |
-| AC9.1-9.8 | les huit constats owner à l'œil | `veille pct/voile/gris/accents` |
-| T5 | tas LVGL avec la **3ᵉ** racine — critère = **le plus gros bloc libre** (44 164 o au dernier relevé), ⛔ pas le pourcentage | `ui`, `nav` |
-| — | **coût de l'écriture NVS depuis un tap MENU** (cache flash coupé dans la tâche de rendu) | `veille` |
+| AC5.7 / AC6 | le MENU au doigt : cibles 210 × 66 visables ? crans grisés quand OFF ? `←` au bon endroit ? | — |
+| AC7.3 | la moitié **MENU** de la persistance (la moitié console est soldée en §24.7.7) | MENU + `veille` |
+| AC9.1-9.4, 9.6-9.8 | les constats owner à l'œil, **et la nuit** | `veille pct/voile/gris/accents` |
+| — | coût de l'écriture NVS **depuis un tap MENU** (§24.7.11 ne mesure que la voie REPL) | `veille` |
 
 ⚠️ **CHAQUE CHIFFRE NOMMERA SON SHA, LU AU BANDEAU `App version`**, ⛔ pas déduit
 du dépôt, et `git status --porcelain` **vide avant le flash**.
 
-## 24.8 ⛔ CE QUE §24 NE PROUVERA PAS, MÊME APRÈS LA SÉANCE
+## 24.9 ⛔ CE QUE §24 NE PROUVERA PAS, MÊME APRÈS LA SÉANCE
 
 - **La tenue 7 jours H24.** C'est `dn4-5`. `dn3-3`/AC9.8 prouve **une nuit**, et
   rien de plus. ⛔ Ne pas extrapoler d'une nuit à une semaine.
