@@ -230,23 +230,61 @@ def i_minmax_nomme_sa_serie(S):
 
 
 def i_marqueur_temperature(S):
-    ui = S["ui"]
-    """AC4.5 — une grandeur qui a une couleur de courbe MAIS pas d'icône porte
-    quand même sa couleur."""
-    d = corps(ui, "static void detail_reparametrer(int idx)")
-    if d is None:
-        return False, "fonction introuvable"
-    if "seg_colore" not in d:
-        return False, "aucun marqueur pour la grandeur sans icone"
-    m = re.search(r"seg_colore\s*=\s*([^;]*);", d)
+    """AC4.5 — INVARIANT **STRUCTUREL** : sur une page à DEUX courbes, chaque
+    grandeur tracée PORTE UNE ICÔNE.
+
+    🔴 CET INVARIANT A REMPLACÉ LE PRÉCÉDENT, ET LA RAISON EST UN CONSTAT OWNER.
+       La première version recolorait LE SEGMENT ENTIER quand une grandeur avait
+       une couleur de courbe sans icône. Ça marchait, la gate le prouvait — et
+       **l'owner n'en a pas voulu** (2026-08-25) : *« remettre le texte blanc
+       avec l'icône temp devant le chiffre »*. Le correctif n'était pas dans le
+       rendu, il était dans le DESCRIPTEUR.
+    ⇒ On ne vérifie plus une branche conditionnelle : on vérifie que la
+      situation qui la rendait nécessaire NE PEUT PLUS EXISTER. Une grandeur
+      sans icône sur une page à deux courbes n'a AUCUN moyen de porter sa
+      couleur — c'est ça, le défaut, et il se ferme dans `k_desc[]`."""
+    ui = S["ui_str"]   # ⚠️ chaînes CONSERVÉES : les icônes sont des littéraux
+    # les pages à deux courbes viennent de `k_s1[]`, dans dn_hist.c
+    hist = S["hist"]
+    m = re.search(r"k_s1\[6\]\s*=\s*\{([^}]*)\}", hist, re.S)
     if not m:
-        return False, "condition introuvable"
-    cond = m.group(1)
-    if "cc" not in cond or "ic" not in cond:
-        return False, "la condition ne croise pas couleur ET icone : %s" % cond
-    if "ouvre" not in d or "ferme" not in d:
-        return False, "la balise n'est pas emise"
-    return True, "segment entier recolore quand `cc && !ic`"
+        return False, "`k_s1[]` introuvable dans dn_hist.c"
+    entrees = [x.strip() for x in m.group(1).split(",") if x.strip()]
+    deux = [i for i, e in enumerate(entrees) if not e.startswith("-")]
+    if not deux:
+        return False, "aucune page a deux courbes : `k_s1[]` est vide ?"
+    # ⇒ pour chacune, les grandeurs 0 et 1 de `k_desc[]` doivent avoir `.icone`
+    noms = {3: "DN_UI_CASE_RESEAU", 5: "DN_UI_CASE_AMB"}
+    manque = []
+    for idx in deux:
+        cle = noms.get(idx)
+        if cle is None:
+            manque.append("case %d (nom inconnu de la gate)" % idx)
+            continue
+        i = ui.find("[%s] = {" % cle)
+        if i < 0:
+            return False, "descripteur %s introuvable" % cle
+        j = ui.find(".grandeurs", i)
+        k = ui.find("}},", j)
+        if j < 0 or k < 0:
+            return False, "grandeurs de %s introuvables" % cle
+        bloc = ui[j:k + 3]
+        # deux entrées `{...}` : chacune doit porter `.icone`
+        parts = re.findall(r"\{([^{}]*)\}", bloc)
+        if len(parts) < 2:
+            return False, "%s n'expose pas deux grandeurs" % cle
+        for g in (0, 1):
+            if ".icone" not in parts[g]:
+                manque.append("%s grandeur %d" % (cle, g))
+    if manque:
+        return False, "sans icone, donc sans couleur possible : %s" % ", ".join(manque)
+    # et le rendu colore bien l'icone quand la couleur existe
+    d = corps(S["ui"], "static void detail_reparametrer(int idx)")
+    if d is None or 'if (ic && cc)' not in d:
+        return False, "le rendu ne colore pas l'icone"
+    if "seg_colore" in (d or ""):
+        return False, "le recolorage du SEGMENT survit (l'owner l'a refuse)"
+    return True, "%d page(s) a 2 courbes, 2 icones chacune" % len(deux)
 
 
 def i_pas_de_symbole_en_font14(S):
@@ -598,8 +636,15 @@ INVARIANTS = [  # (libelle, invariant, [(fichier, avant, apres), ...])
       ("ui", "if (nser < 2) {", "if (nser < 0) {")]),
     ("AC4.5 la temperature d'AMBIANCE porte sa couleur",
      i_marqueur_temperature,
-     [("ui", "bool seg_colore = (cc != 0u) && (ic == NULL);",
-       "bool seg_colore = false;")]),
+     # ⛔ LA MUTATION CIBLE LA GRANDEUR, ⛔ PAS LA CASE. `DN_ICONE_THERMOMETER_HALF`
+     #    apparait DEUX FOIS dans le descripteur d'AMBIANCE : au niveau de la CASE
+     #    (`.icone` du widget) et au niveau de la GRANDEUR 0. La premiere version
+     #    de ce temoin retirait la premiere occurrence — celle de la case — et la
+     #    gate restait verte A RAISON. Le motif porte donc son ancre.
+     [("ui", '"C", .icone = DN_ICONE_THERMOMETER_HALF,', '"C",'),
+      ("ui", ".unite = \"Mb/s\", .icone = LV_SYMBOL_UP,",
+       ".unite = \"Mb/s\","),
+      ("ui", "if (ic && cc) {", "if (false) {")]),
     ("⛔ aucun LV_SYMBOL_* dans le libelle en font 14",
      i_pas_de_symbole_en_font14, []),
     ("AC5.1 l'invalidation est CONDITIONNEE, et testee AVANT",

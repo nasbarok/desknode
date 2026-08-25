@@ -286,12 +286,27 @@ static inline void ui_case_origine(int i, int *x, int *y)
  *    du réseau la couleur de l'**humidité**. ⇒ Une entrée par page.
  * 🔴 `RÉSEAU` : les deux couleurs sont **CELLES DES CHEVRONS** — demande owner
  *    verbatim, *« mettre ces 2 couleurs au couleurs des chevrons »*. Le
- *    descendant est VERT (grandeur 0, donc `k_desc[RÉSEAU].couleur`), le montant
- *    est BLEU. ⛔ Les deux vivent donc à DEUX endroits différents et doivent
- *    rester d'accord : voir `chevron_couleur()`.
+ *    descendant est ~~VERT~~ **BLEU VIF** (grandeur 0, donc
+ *    `k_desc[RÉSEAU].couleur`), le montant ~~BLEU~~ **CYAN** — teintes changées
+ *    le 2026-08-25 sur constat œil, voir juste en dessous. ⛔ Les deux vivent à
+ *    DEUX endroits différents et doivent rester d'accord : `chevron_couleur()`.
  */
 #define DET_COURBE_COUL_HUM 0x67e8f9 /* AMBIANCE — humidité */
-#define DET_COURBE_COUL_NETUP 0x60a5fa /* RÉSEAU — MONTANT (chevron ^) */
+/*
+ * 🔴 dn4-13, CONSTAT OWNER À L'ŒIL DU 2026-08-25, ET DÉCISION PRISE DANS LA
+ *    FOULÉE — verbatim : *« réseau le vert ça ne se voit pas bien donc plutôt
+ *    bleu et flèche aussi »*.
+ *    Le descendant était **VERT `0x4ade80`** : mal lisible sur le Living PCB.
+ *    ⇒ descendant **BLEU VIF `0x3b82f6`**, montant **CYAN `0x22d3ee`**.
+ * ⛔ LES DEUX ONT DÛ BOUGER, ET C'EST LA RAISON : le montant portait DÉJÀ
+ *    `0x60a5fa`, un bleu clair. Passer le descendant au bleu sans déplacer le
+ *    montant aurait donné DEUX BLEUS sur la seule page où les deux courbes
+ *    partagent la MÊME échelle (décision n°5) — c'est-à-dire là où la couleur
+ *    est le SEUL discriminant restant. Choix owner : bleu vif / cyan.
+ * ⚠️ La flèche suit AUTOMATIQUEMENT : `chevron_couleur()` LIT ces deux sources,
+ *    il ne redéclare rien. C'est ce qui rend « et flèche aussi » gratuit.
+ */
+#define DET_COURBE_COUL_NETUP 0x22d3ee /* RÉSEAU — MONTANT (chevron ^) — cyan */
 
 static uint32_t courbe_couleur1(int idx)
 {
@@ -777,7 +792,12 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
     [DN_UI_CASE_RESEAU] = {
         .icone = DN_ICONE_NETWORK_WIRED,
         .titre = "RÉSEAU",
-        .couleur = 0x4ade80, /* VERT — dn4-4, 2026-08-24 (2e passe) : c'est la
+        /* 🔴 BLEU VIF depuis le 2026-08-25 — constat owner à l'œil (dn4-13) :
+         * ~~`0x4ade80` vert~~ « ça ne se voit pas bien » sur le Living PCB.
+         * ⚠️ Cette couleur est lue à TROIS endroits qui doivent rester d'accord :
+         *    la tuile du dashboard, la SÉRIE 0 de la courbe, et le CHEVRON ↓.
+         *    Les trois la LISENT ici — ⛔ aucun ne la recopie. */
+        .couleur = 0x3b82f6, /* VERT — dn4-4, 2026-08-24 (2e passe) : c'est la
                               * couleur du CHEVRON DESCENDANT, et la courbe du
                               * descendant porte LA MEME (demande owner : « mettre
                               * ces 2 couleurs au couleurs des chevrons »). */
@@ -1042,7 +1062,24 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
         .couleur = 0xff9640, /* orange */
         .n_grandeurs = 2,    /* D6 — DANS LE MODÈLE, pas rustiné après */
         .indicateur = false,
-        .grandeurs = {{.unite = "\xC2\xB0" "C", .prec = DN_PREC_DIXIEME},
+        /* 🔴 dn4-13 / AC4.5 — L'ICÔNE THERMOMÈTRE, POSÉE SUR LA GRANDEUR 0 LE
+         *    2026-08-25, PAR CONSTAT OWNER À L'ŒIL. Verbatim : *« mettre l'icône
+         *    temp plutôt et remettre blanc »*.
+         *    ⚠️ MA PREMIÈRE VERSION COLORAIT LE SEGMENT ENTIER (préfixe + valeur
+         *       + unité) faute d'icône — ça marchait, et **l'owner n'en a pas
+         *       voulu** : il veut le TEXTE BLANC et un MARQUEUR devant le
+         *       chiffre. C'est la solution que j'avais écartée « pour ne pas
+         *       toucher la largeur », et la largeur se MESURE, elle ne se
+         *       redoute pas.
+         *    ⇒ Le chemin `if (ic && cc)` existant colore alors l'ICÔNE et elle
+         *      seule : la température reçoit l'ORANGE de sa propre courbe
+         *      (`k_desc[AMB].couleur`), l'humidité garde sa goutte cyan, et les
+         *      deux chiffres restent BLANCS.
+         *    ⚠️ ÉCART DE PÉRIMÈTRE, LEVÉ EXPLICITEMENT par l'owner : la story
+         *       écrit « ⛔ N'ajoute aucune fonctionnalité ». Un descripteur
+         *       modifié sur constat œil est un CORRECTIF, et il est consigné. */
+        .grandeurs = {{.unite = "\xC2\xB0" "C", .icone = DN_ICONE_THERMOMETER_HALF,
+                       .prec = DN_PREC_DIXIEME},
                       {.unite = "%", .icone = DN_ICONE_TINT,
                        .prec = DN_PREC_DIXIEME}},
     },
@@ -2824,8 +2861,10 @@ static void build_detail(lv_obj_t *scr, int idx)
                 s_det_panh > 0 ? s_det_panh : DET_PANH_DEFAUT);
     s_det_valeur = texte(bloc_valeur, "--", &dn_font_28, lv_color_white(), 14, 14);
     /* dn4-4 : les chevrons `RÉSEAU` portent la couleur de LEUR courbe — voir
-     * `chevron_couleur()`. ⛔ Sans ceci, « #4ADE80 » s'afficherait EN TOUTES
-     * LETTRES sur la dalle. */
+     * `chevron_couleur()`. ⛔ Sans ceci, la balise s'afficherait EN TOUTES
+     * LETTRES sur la dalle (« #3B82F6 … »).
+     * 🔴 dn4-13 : et depuis le 2026-08-25 elle porte AUSSI l'icône thermomètre
+     *    d'`AMBIANCE`, dans l'orange de sa courbe — le texte, lui, reste BLANC. */
     lv_label_set_recolor(s_det_valeur, true);
 
     /* Placeholder de courbe : un cadre étiqueté, PAS une courbe. Les vraies
@@ -3689,32 +3728,26 @@ static void detail_reparametrer(int idx)
                              ic ? " " : "");
                 }
                 /*
-                 * 🔴 dn4-13 / AC4.5 — LA TEMPÉRATURE D'`AMBIANCE` PORTE ENFIN SON
-                 *    MARQUEUR DE COULEUR.
-                 *    La balise n'était écrite que `if (ic && cc)`, et
-                 *    `k_desc[AMBIANCE].grandeurs[0]` n'a PAS d'icône : l'humidité
-                 *    avait sa goutte cyan, la température n'avait RIEN. Sur une
-                 *    page à deux courbes, une seule des deux était rattachable à
-                 *    sa ligne — ce qui rendait la couleur de l'autre indevinable.
-                 * ⇒ Quand la grandeur a une couleur de courbe MAIS pas d'icône,
-                 *   c'est **LE SEGMENT ENTIER** (préfixe + valeur + unité) qui
-                 *   prend la couleur.
-                 * ⛔ ON N'AJOUTE PAS UN GLYPHE : la largeur de cette ligne est
-                 *    MESURÉE et bornée (garde de débordement ci-dessous), et un
-                 *    codepoint absent de `dn_font_28` serait dessiné en carré
-                 *    vide EN SILENCE. Une couleur ne coûte aucun pixel.
+                 * 🔴 dn4-13 / AC4.5 — LE MARQUEUR EST **L'ICÔNE**, ET LE TEXTE
+                 *    RESTE BLANC. Décision owner du 2026-08-25, à l'œil.
+                 *
+                 * ⚠️ MA PREMIÈRE VERSION RECOLORAIT LE SEGMENT ENTIER quand une
+                 *    grandeur avait une couleur de courbe SANS icône. Elle
+                 *    fonctionnait — l'owner l'a vue et **n'en a pas voulu** :
+                 *    *« remettre le texte blanc avec l'icône temp devant le
+                 *    chiffre »*. Le correctif n'était donc pas ici, il était
+                 *    dans le DESCRIPTEUR : `k_desc[AMBIANCE].grandeurs[0]` a
+                 *    reçu son thermomètre.
+                 * ⇒ Ce bloc redevient simple, et l'invariant qui le protège est
+                 *   désormais STRUCTUREL, ⛔ plus conditionnel : **sur une page à
+                 *   deux courbes, toute grandeur tracée DOIT porter une icône**,
+                 *   sinon elle n'a aucun moyen de porter sa couleur. C'est
+                 *   `verif_courbe_dn413.py` qui le tient, sur `k_desc[]`.
                  */
-                bool seg_colore = (cc != 0u) && (ic == NULL);
-                char ouvre[12] = "", ferme[2] = "";
-                if (seg_colore) {
-                    snprintf(ouvre, sizeof(ouvre), "#%06lX ", (unsigned long)cc);
-                    ferme[0] = '#';
-                    ferme[1] = '\0';
-                }
-                ecrit = snprintf(buf + p, sizeof(buf) - p, "%s%s%s%s%s%s%s%s%s",
-                                 sep, ico, ouvre, px ? px : "", px ? " " : "",
+                ecrit = snprintf(buf + p, sizeof(buf) - p, "%s%s%s%s%s%s%s",
+                                 sep, ico, px ? px : "", px ? " " : "",
                                  connue ? e->txt[i] : "--", u ? " " : "",
-                                 u ? u : "", ferme);
+                                 u ? u : "");
                 if (ecrit < 0 || (size_t)ecrit >= sizeof(buf) - p) {
                     /* ⛔ LA TRONCATURE EST AUDIBLE, JAMAIS SUBIE. Elle est
                      * impossible avec le dimensionnement ci-dessus ; ce log
