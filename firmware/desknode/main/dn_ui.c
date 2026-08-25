@@ -1784,7 +1784,19 @@ static int s_voiles_n;
  * effacer le Living PCB, qui est l'identité visuelle du produit. 170 est le
  * point de départ du balayage vers le haut ; l'œil tranche en séance.
  */
-static uint8_t s_voile_opa_amb = 170;
+/*
+ * 🔴 DÉCISION OWNER DU 2026-08-25 : **255**, C'EST-À-DIRE LE NOIR PLEIN.
+ *    Verbatim : *« blanc sur fond noir et sur fond gris foncé »*. Le Living PCB
+ *    disparaît donc COMPLÈTEMENT en veille.
+ * ⚠️ CE N'EST PAS UNE CONTRADICTION AVEC dn3-1/W9 (« le PCB est l'identité
+ *    visuelle du produit, on l'atténue, on ne l'efface pas ») : cette règle-là
+ *    porte sur le mode ACTIF, où le voile reste à 90. En veille, l'owner
+ *    demande explicitement le noir — et c'est LE fond sur lequel le blanc des
+ *    chiffres ressort le mieux.
+ * ⚠️ ⛔ AUCUN OCTET D'ASSET N'EST AJOUTÉ POUR ÇA (AC1.1) : c'est le voile qui
+ *    existe déjà, poussé à l'opacité maximale. La voie (b) tient.
+ */
+static uint8_t s_voile_opa_amb = 255;
 
 /* L'opacité QUI S'APPLIQUE, relue du mode — ⛔ jamais récitée depuis l'une des
  * deux constantes au point d'usage. Même discipline que `ui_menu_h()` : une
@@ -6422,12 +6434,18 @@ static void veille_peindre_nolock(void)
 
     /* Les six cases, par LE MÊME chemin que la mise à jour normale. */
     for (int i = 0; i < DN_UI_METRIQUES; i++) {
-        (void)case_appliquer(i);
         if (case_est_widget(i)) {
             dn_widget_desc_t d;
             desc_effectif(i, &d);
+            /* ⚠️ L'ORDRE COMPTE : l'identité du mode (masquages, aplat) D'ABORD,
+             *    puis `case_appliquer()` qui repose textes, police et positions
+             *    par le chemin NORMAL de la mise à jour. L'inverse laisserait le
+             *    badge démasqué par `veille_appliquer` après que `maj` a décidé
+             *    de le cacher. */
+            dn_widget_veille_appliquer(&d, &s_wobj[i]);
             dn_widget_repeindre_accents(&d, &s_wobj[i]);
         }
+        (void)case_appliquer(i);
     }
 
     /* La page ouverte, quelle qu'elle soit. */
@@ -6819,6 +6837,37 @@ esp_err_t dn_ui_veille_set_accent(int pct)
     }
     lvgl_port_unlock();
     return ESP_OK;
+}
+
+/*
+ * Les deux leviers d'identité d'Ambient. ⛔ AUCUNE reconstruction : on repeint
+ * par le chemin normal. C'est ce qui rend l'A/B jouable sans payer 307-322 ms —
+ * et sans coûter une observation owner par essai.
+ */
+static esp_err_t veille_levier(void (*poser)(bool), bool on)
+{
+    if (!lvgl_port_lock(2000)) {
+        return ESP_ERR_TIMEOUT;
+    }
+    poser(on);
+    /* ⚠️ On repeint MÊME EN ACTIF : le réglage doit être en place quand la
+     *    veille tombera, et un repeint en Actif est un no-op visuel (les
+     *    masquages et la police d'Ambient ne s'appliquent que si le mode l'est).
+     *    Ne repeindre qu'en Ambient aurait laissé croire, à l'œil, que le
+     *    levier « ne fait rien » quand on le règle depuis le mode Actif. */
+    veille_peindre_nolock();
+    lvgl_port_unlock();
+    return ESP_OK;
+}
+
+esp_err_t dn_ui_veille_set_unite(bool on)
+{
+    return veille_levier(dn_widget_set_amb_unite, on);
+}
+
+esp_err_t dn_ui_veille_set_jauge(bool on)
+{
+    return veille_levier(dn_widget_set_amb_jauge, on);
 }
 
 uint32_t dn_ui_menu_reglages(void) { return s_menu_reglages; }

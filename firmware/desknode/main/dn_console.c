@@ -8086,6 +8086,9 @@ static void veille_usage(void)
     printf("        veille voile <0..255>        opacite du voile en Ambient\n");
     printf("        veille gris <reel|simule|absent> <rrggbb>\n");
     printf("        veille accents <0..100>      desaturation des accents (0=teinte, 100=gris)\n");
+    printf("        veille unite on|off          l'unite reste-t-elle ? ⚠️ CHOISIT LA POLICE\n");
+    printf("                                     (on ⇒ 33 px · off ⇒ 56 px, tailles MESUREES)\n");
+    printf("        veille jauge on|off          la barre de remplissage en veille\n");
 }
 
 static void veille_imprimer_etat(void)
@@ -8611,6 +8614,40 @@ static int cmd_veille(int argc, char **argv)
         printf("gris d'Ambient « %s » : %06lX%s\n", argv[2], (unsigned long)rgb,
                dn_veille_mode() == DN_VEILLE_AMBIENT ? " (applique MAINTENANT)"
                                                      : "");
+        return 0;
+    }
+
+    if (strcmp(argv[1], "unite") == 0 || strcmp(argv[1], "jauge") == 0) {
+        bool jauge = (strcmp(argv[1], "jauge") == 0);
+        if (argc != 3 ||
+            (strcmp(argv[2], "on") != 0 && strcmp(argv[2], "off") != 0)) {
+            printf("usage : veille %s on|off   (actuel : %s)\n", argv[1],
+                   (jauge ? dn_widget_amb_jauge() : dn_widget_amb_unite())
+                       ? "on" : "off");
+            if (!jauge) {
+                printf("🔴 `unite` NE CHOISIT PAS QU'UN TEXTE, IL CHOISIT LA POLICE.\n");
+                printf("   MESURE sur cette carte (`widget largeur`, case de\n");
+                printf("   225 px dont 201 utiles) :\n");
+                printf("     on  ⇒ pire cas « 2999,9 Mb/s » 168 px ⇒ police 33 px\n");
+                printf("     off ⇒ pire cas « 2999,9 »       90 px ⇒ police 56 px\n");
+                printf("   ⛔ Ces tailles sont MESUREES, pas choisies rond : au-dela\n");
+                printf("     LVGL clipperait au parent SANS UN MOT.\n");
+            }
+            return 1;
+        }
+        bool on = (strcmp(argv[2], "on") == 0);
+        esp_err_t err = jauge ? dn_ui_veille_set_jauge(on)
+                              : dn_ui_veille_set_unite(on);
+        if (err != ESP_OK) {
+            printf("refuse : %s\n", esp_err_to_name(err));
+            return 1;
+        }
+        printf("veille %s : %s%s\n", argv[1], on ? "ON" : "OFF",
+               dn_veille_mode() == DN_VEILLE_AMBIENT ? " (applique MAINTENANT)"
+                                                     : " (a la prochaine veille)");
+        if (!jauge) {
+            printf("⇒ police de veille : %d px\n", on ? 33 : 56);
+        }
         return 0;
     }
 

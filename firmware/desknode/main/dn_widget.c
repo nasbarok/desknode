@@ -109,9 +109,73 @@ static dn_widget_geom_t s_geom = {
  *    constante d'initialiseur portable ici, et surtout un `NULL` explicite rend
  *    lisible « personne n'a choisi » au lieu de figer un pointeur dans un
  *    statique que la console imprimerait comme un réglage. */
+/*
+ * ══ dn3-3 : L'IDENTITÉ VISUELLE D'AMBIENT — DÉCISION OWNER DU 2026-08-25 ═════
+ *
+ * Verbatim : *« je veux que tout passe en nuance de noir blanc, titre et icônes
+ * disparaissent, chiffres agrandis, et blanc sur fond noir et sur fond gris
+ * foncé »*.
+ *
+ * ⇒ En Ambient la case ne porte plus QUE ses valeurs : le titre, l'icône, le
+ *   badge « SIMULÉ » et le PRÉFIXE de grandeur disparaissent, l'aplat passe au
+ *   gris très foncé OPAQUE sur un écran noir, et la valeur monte d'une police.
+ *
+ * 🔴 LE PRÉFIXE COMPTE AUTANT QUE LE TITRE, ET C'EST LUI QUI DÉBLOQUE LA TAILLE.
+ *    Mesuré sur la carte (`widget largeur`, case de 225 px dont 201 utiles) :
+ *      · « c.max 100,0 % » = 197 px  ⇒ plafond 28,6 px : AUCUN agrandissement
+ *      · « 2999,9 Mb/s »   = 168 px  ⇒ plafond 33,5 px  (avec l'unité)
+ *      · « 2999,9 »        =  90 px  ⇒ plafond 62,5 px  (sans l'unité)
+ *    ⇒ Tant que le préfixe reste, « chiffres agrandis » est ARITHMÉTIQUEMENT
+ *      IMPOSSIBLE. Le retirer — ce que la demande owner implique — fait passer
+ *      le plafond de 28,6 à 33,5 px.
+ * ⚠️ Et « LVGL clippe au parent SANS un mot » : ⛔ ne pas remonter ces tailles
+ *    sans re-mesurer, le débordement serait MUET.
+ */
+static bool s_ambient;
+/* L'unité reste-t-elle affichée ? ⚠️ CE DRAPEAU CHOISIT LA POLICE : avec unité
+ * on plafonne à 33 px, sans unité on monte à 56. A/B à chaud (`veille unite`) —
+ * l'œil tranche sur la dalle, ⛔ pas un reflash par essai. */
+static bool s_amb_unite = true;
+/* La jauge survit-elle à la veille ? Constat owner attendu (`veille jauge`). */
+static bool s_amb_jauge = true;
+
+/*
+ * 🔴 LA POLICE DE LA VALEUR EST CONSCIENTE DU MODE, ET ELLE DÉPEND DE L'UNITÉ.
+ * ⚠️ En Ambient elle IGNORE `s_geom.font_val` (l'override d'opérateur) : les
+ *    deux polices de veille sont les seules dont la taille a été MESURÉE contre
+ *    la largeur utile. Laisser l'override passer aurait permis de poser une
+ *    police dont personne n'a vérifié qu'elle tient.
+ * ⚠️ Les polices de veille ne portent NI accents NI symboles (plage réduite) :
+ *    ⛔ ne jamais les utiliser pour du texte d'interface. En Ambient il n'y a
+ *    plus de texte d'interface — c'est précisément ce qui les rend légitimes.
+ */
 static const lv_font_t *font_val(void)
 {
+    if (s_ambient) {
+        return s_amb_unite ? &dn_font_33 : &dn_font_56;
+    }
     return s_geom.font_val ? s_geom.font_val : &dn_font_28;
+}
+
+/*
+ * Le `y` de la première valeur et le pas entre lignes, CONSCIENTS DU MODE.
+ * En Ambient le titre et l'icône ont disparu : la valeur remonte occuper la
+ * place libérée, et le pas suit la hauteur de ligne RELUE de la police
+ * (⛔ pas une constante recopiée — changer de police sans changer le pas
+ * ferait chevaucher deux grandeurs, et LVGL ne dirait rien).
+ */
+#define W_AMB_VAL_Y 26
+static int val_y_courant(void)
+{
+    return s_ambient ? W_AMB_VAL_Y : s_geom.val_y;
+}
+
+static int val_pas_courant(void)
+{
+    if (!s_ambient) {
+        return s_geom.val_pas;
+    }
+    return (int)lv_font_get_line_height(font_val()) + 6;
 }
 
 static const lv_font_t *font_entete(void)
@@ -692,15 +756,29 @@ lv_obj_t *dn_widget_texte(lv_obj_t *parent, const char *s, const lv_font_t *font
  *    Elles sont choisies pour être ORDONNÉES EN LUMINANCE et séparées, ce que
  *    `tools/verif_veille_dn33.py` VÉRIFIE — l'œil de l'owner tranchera ensuite
  *    la teinte, et la valeur retenue se gravera ici avec son constat.
- *      RÉELLE  0xc8c8c8 : gris clair, nettement au-dessus des deux autres.
- *      SIMULÉE 0x9a8a5a : gris AMBRÉ — la teinte du régime survit, désaturée.
- *      ABSENTE 0x5a5a5a : gris sombre, nettement SOUS le vivant.
+ *      RÉELLE  0xffffff : BLANC. Décision owner du 2026-08-25, verbatim —
+ *                         « blanc sur fond noir et sur fond gris foncé ».
+ *      SIMULÉE 0xa0a0a0 : gris moyen. ⛔ PLUS de teinte ambrée : l'owner a
+ *                         demandé « TOUT en nuances de noir et blanc », et une
+ *                         seule tache de couleur sur un écran monochrome est le
+ *                         premier point que l'œil accroche.
+ *      ABSENTE 0x565656 : gris sombre, nettement SOUS le vivant.
+ * 🔴 LES TROIS RESTENT DISTINCTS, ET C'EST NON NÉGOCIABLE. Luminances 255 /
+ *    160 / 86 : écarts de 95 et 74 pour un seuil de gate à 24. Un Ambient
+ *    « tout blanc » aurait rendu SIMULÉE indiscernable de RÉELLE — le défaut
+ *    du 2026-08-18, remis en place par la porte du monochrome.
+ * ⚠️ ET LE BADGE « SIMULÉ » EST MASQUÉ EN AMBIENT : le gris est donc le SEUL
+ *    signal qui distingue un chiffre inventé d'une mesure. Raison de plus pour
+ *    ne pas les rapprocher.
  */
-static bool s_ambient;
+void dn_widget_set_amb_unite(bool on) { s_amb_unite = on; }
+bool dn_widget_amb_unite(void) { return s_amb_unite; }
+void dn_widget_set_amb_jauge(bool on) { s_amb_jauge = on; }
+bool dn_widget_amb_jauge(void) { return s_amb_jauge; }
 static uint32_t s_gris_amb[DN_VAL_REGIME_COUNT] = {
-    [DN_VAL_ABSENTE] = 0x5a5a5a,
-    [DN_VAL_REELLE] = 0xc8c8c8,
-    [DN_VAL_SIMULEE] = 0x9a8a5a,
+    [DN_VAL_ABSENTE] = 0x565656,
+    [DN_VAL_REELLE] = 0xffffff,
+    [DN_VAL_SIMULEE] = 0xa0a0a0,
 };
 
 void dn_widget_set_ambient(bool on) { s_ambient = on; }
@@ -812,6 +890,69 @@ lv_color_t dn_widget_accent_couleur(uint32_t rgb)
         dn_widget_desaturer(rgb, s_ambient ? s_accent_amb_pct : 0));
 }
 
+/*
+ * ── dn3-3 : L'APLAT DE LA CASE EN AMBIENT ───────────────────────────────────
+ * Gris TRÈS foncé, OPAQUE, sur un écran que le voile a passé au noir.
+ * ⚠️ OPAQUE et pas translucide : en Actif l'aplat laisse voir le Living PCB
+ *    (c'est l'identité du produit) ; en veille l'owner demande explicitement
+ *    « blanc sur fond noir et sur fond gris foncé » — laisser le PCB
+ *    transparaître donnerait un gris SALE au lieu d'un gris franc.
+ * ⚠️ La bordure descend elle aussi : à `W_COL_BORDURE` (bleu clair) elle
+ *    serait le seul élément coloré d'un écran monochrome, donc le premier que
+ *    l'œil accroche — exactement l'inverse de ce qu'on veut en veille.
+ */
+#define W_AMB_CASE_BG 0x1e1e1e
+#define W_AMB_CASE_BORD 0x3a3a3a
+
+void dn_widget_veille_appliquer(const dn_widget_desc_t *desc, dn_widget_t *w)
+{
+    (void)desc;
+    if (!w || !w->racine) {
+        return;
+    }
+    if (s_ambient) {
+        lv_obj_set_style_bg_color(w->racine, lv_color_hex(W_AMB_CASE_BG), 0);
+        lv_obj_set_style_bg_opa(w->racine, LV_OPA_COVER, 0);
+        lv_obj_set_style_border_color(w->racine, lv_color_hex(W_AMB_CASE_BORD),
+                                      0);
+    } else {
+        /* ⛔ ON REPASSE PAR `aplat()`, ⛔ on ne recopie pas ses trois lignes :
+         *    c'est LA définition de l'aplat, et la dupliquer ici ferait diverger
+         *    le retour d'Ambient de la construction normale au premier
+         *    `widget opa`. */
+        aplat(w->racine);
+    }
+
+    /* Titre, icône et badge DISPARAISSENT en Ambient (décision owner). */
+    lv_obj_t *const masquables[] = {w->titre, w->icone, w->badge};
+    for (unsigned i = 0; i < sizeof(masquables) / sizeof(masquables[0]); i++) {
+        if (!masquables[i]) {
+            continue;
+        }
+        if (s_ambient) {
+            lv_obj_add_flag(masquables[i], LV_OBJ_FLAG_HIDDEN);
+        } else {
+            lv_obj_clear_flag(masquables[i], LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+    /* ⚠️ LE BADGE EST UN CAS À PART AU RETOUR : il n'est visible que si la case
+     *    est SIMULÉE. Le démasquer inconditionnellement ici afficherait
+     *    « SIMULÉ » sur une case réelle. On le laisse à `dn_widget_maj()`, qui
+     *    est le seul à connaître le régime — d'où le re-masquage immédiat. */
+    if (!s_ambient && w->badge) {
+        lv_obj_add_flag(w->badge, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    if (w->jauge) {
+        /* La jauge survit à la veille SI l'owner le veut (`veille jauge`). */
+        if (s_ambient && !s_amb_jauge) {
+            lv_obj_add_flag(w->jauge, LV_OBJ_FLAG_HIDDEN);
+        } else {
+            lv_obj_clear_flag(w->jauge, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+}
+
 void dn_widget_repeindre_accents(const dn_widget_desc_t *desc, dn_widget_t *w)
 {
     if (!desc || !w) {
@@ -889,6 +1030,24 @@ static void composer(const dn_widget_desc_t *d, const dn_widget_etat_t *e, int g
 {
     if (g < 0 || g >= DN_WIDGET_GRANDEURS_MAX) {
         snprintf(out, n, "--");
+        return;
+    }
+    /*
+     * 🔴 dn3-3 — EN AMBIENT, LA CASE NE PORTE PLUS QUE SA VALEUR.
+     *    Ni icône, ni PRÉFIXE de grandeur : décision owner du 2026-08-25
+     *    (« titre et icônes disparaissent, chiffres agrandis »). Le préfixe
+     *    n'est pas un détail cosmétique — c'est LUI qui plafonnait
+     *    l'agrandissement à +2 % (« c.max 100,0 % » = 197 px pour 201 utiles).
+     * ⚠️ L'ABSENCE reste « -- », ⛔ jamais vide : une case vide se lit
+     *    « l'écran est mort », un « -- » se lit « la source ne dit rien ».
+     */
+    if (s_ambient) {
+        const char *ua = s_amb_unite ? dn_widget_unite(d, e, g) : NULL;
+        if (!e || e->regime == DN_VAL_ABSENTE || e->txt[g][0] == '\0') {
+            snprintf(out, n, "--");
+        } else {
+            snprintf(out, n, "%s%s%s", e->txt[g], ua ? " " : "", ua ? ua : "");
+        }
         return;
     }
     const char *ic = d->grandeurs[g].icone;
@@ -977,7 +1136,7 @@ static void valeur_placer(lv_obj_t *lbl, int i, int g, int n, int w,
 {
     int ligne = 0, col = 0, cols = 1;
     place(s_geom.dispo, n, i, &ligne, &col, &cols);
-    int y = s_geom.val_y + ligne * s_geom.val_pas;
+    int y = val_y_courant() + ligne * val_pas_courant();
 
     /*
      * 🔴 ON NE REPOSE LA POSITION QUE SI ELLE CHANGE — CONSTAT OWNER DU
@@ -1076,8 +1235,10 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
                                      tx, entete_y_icone());
         tx += (s_geom.entete == DN_ENTETE_COMPACT) ? W_ICONE_AV_14 : W_ICONE_AV_28;
     }
-    dn_widget_texte(out->racine, desc->titre, &dn_font_14,
-                    lv_color_hex(W_COL_TITRE), tx, entete_y_titre());
+    /* 🔴 dn3-3 : RETENU, pour pouvoir DISPARAÎTRE en Ambient sans reconstruire
+     *    la scène (307-322 ms verrou tenu). Même motif que `out->icone`. */
+    out->titre = dn_widget_texte(out->racine, desc->titre, &dn_font_14,
+                                 lv_color_hex(W_COL_TITRE), tx, entete_y_titre());
 
     /* Le badge de régime — CRÉÉ TOUJOURS, masqué quand il ne s'applique pas.
      * Le créer à la demande obligerait `dn_widget_maj` à construire des objets
@@ -1126,14 +1287,14 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
         out->valeur[i] = dn_widget_texte(
             out->racine, buf, font_val(),
             dn_val_regime_couleur(etat ? etat->regime : DN_VAL_ABSENTE), W_PAD,
-            s_geom.val_y);
+            val_y_courant());
         valeur_placer(out->valeur[i], i, g, n, w, fin_gauche, desc, &fin_gauche);
         /* 🔴 LA VALEUR QUI NE TIENT PAS EN HAUTEUR — voir `dn_widget.h`.
          *    Le bas de la BOÎTE, ⛔ pas le `y` posé : un texte posé à 128 dans
          *    une case de 156 « a l'air » dedans et déborde de 7 px. */
         int ligne = 0, col = 0, cols = 1;
         place(s_geom.dispo, n, i, &ligne, &col, &cols);
-        int bas = s_geom.val_y + ligne * s_geom.val_pas + lh_val;
+        int bas = val_y_courant() + ligne * val_pas_courant() + lh_val;
         if (bas > h) {
             hors++;
             dernier_bas = bas;
@@ -1172,8 +1333,8 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
                  "LVGL les CLIPPE sans un mot : la case en montre moins qu'elle "
                  "n'en declare.",
                  desc->titre ? desc->titre : "?", hors, n, dernier_bas, h,
-                 dn_widget_lignes(s_geom.dispo, n), s_geom.val_pas, lh_val,
-                 s_geom.val_y, dn_widget_dispo_nom(s_geom.dispo));
+                 dn_widget_lignes(s_geom.dispo, n), val_pas_courant(), lh_val,
+                 val_y_courant(), dn_widget_dispo_nom(s_geom.dispo));
     }
 
     /* 🔴 `y_bas` SE CALCULE SUR LES LIGNES, PAS SUR LES GRANDEURS. En côte à
@@ -1181,7 +1342,7 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
      *    ferait abandonner une jauge qui a la place, ou en poser une qui ne l'a
      *    pas. C'est le même nombre qui gouverne la jauge et la secondaire. */
     int n_lignes = dn_widget_lignes(s_geom.dispo, n);
-    int y_bas = s_geom.val_y + n_lignes * s_geom.val_pas;
+    int y_bas = val_y_courant() + n_lignes * val_pas_courant();
     /*
      * 🔴 dn4-1 / W5 : LE `&& n == 1` A ÉTÉ RETIRÉ. Il faisait disparaître la
      *    jauge d'un descripteur bi-grandeurs SANS ERREUR NI LOG, alors que
@@ -1362,6 +1523,14 @@ void dn_widget_maj(const dn_widget_desc_t *desc, const dn_widget_etat_t *etat,
          *    qui ne sert QUE la métrique affichée et tourne à 1,0/s. */
         int g = dn_widget_sel(desc, i);
         composer(desc, etat, g, buf, sizeof(buf));
+        /* 🔴 dn3-3 : LA POLICE EST REPOSÉE SI LE MODE L'A CHANGÉE. Elle n'est
+         *    fixée qu'À LA CRÉATION, et la veille en change (28 -> 33 ou 56).
+         * ⚠️ CONDITIONNÉ À L'ÉCART, ⛔ pas écrit à chaque passage : ce chemin
+         *    tourne 5 fois par seconde en régime (mesuré le 2026-08-24), et
+         *    `lv_obj_set_style_text_font` invalide le label à chaque appel. */
+        if (lv_obj_get_style_text_font(w->valeur[i], 0) != font_val()) {
+            lv_obj_set_style_text_font(w->valeur[i], font_val(), 0);
+        }
         lv_label_set_text(w->valeur[i], buf);
         /* 🔴 LA POSITION SE RECALCULE À CHAQUE MISE À JOUR EN CÔTE À CÔTE, ET
          *    CE N'EST PAS UN LUXE : la colonne droite est calée à DROITE, donc

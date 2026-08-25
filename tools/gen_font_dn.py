@@ -137,6 +137,39 @@ ICONES = {
 
 TAILLES = (14, 28)
 
+# ── dn3-3 : LES DEUX POLICES DE LA VEILLE ────────────────────────────────────
+#
+# 🔴 PLAGE RÉDUITE, ET C'EST CE QUI REND L'AGRANDISSEMENT ABORDABLE.
+#    En Ambient, le titre, l'icône et le libellé de grandeur DISPARAISSENT
+#    (décision owner du 2026-08-25) : il ne reste QUE des valeurs. Ces polices
+#    n'ont donc besoin ni des accents latin-1, ni de la puce, ni d'UN SEUL des
+#    61 symboles LVGL ni des icônes FontAwesome — c'est-à-dire de rien de ce qui
+#    coûte cher. `0x20-0x7F` couvre chiffres, unités et le « -- » de l'absence ;
+#    `0xB0` est le signe degré.
+# ⚠️ ⛔ NE PAS y rajouter la plage latin-1 « au cas où » : à 56 px chaque glyphe
+#    coûte QUATRE fois ce qu'il coûte à 28, et 164 codepoints jamais dessinés
+#    tripleraient la facture pour rien.
+# 🔴 ET L'ABSENCE D'UN GLYPHE EST SILENCIEUSE À L'ÉCRAN : si une valeur venait à
+#    porter un caractère hors de cette plage, LVGL ne dessinerait RIEN et ne se
+#    plaindrait pas. C'est pourquoi `verifier()` tourne aussi sur ces deux-là,
+#    avec le degré comme témoin.
+PLAGE_VEILLE = "0x20-0x7F,0xB0"
+
+# 🔴 LES DEUX TAILLES SONT **MESURÉES**, ⛔ PAS CHOISIES ROND.
+#    Relevé sur la carte le 2026-08-25 avec `widget largeur`, sur une case de
+#    225 px dont **201 sont utiles** :
+#      · avec l'unité, le pire cas est « 2999,9 Mb/s » = 168 px à 28 px
+#        ⇒ plafond 28 x 201/168 = 33,5 px  ⇒ **33**
+#      · sans l'unité, le pire cas est « 2999,9 » = 90 px à 28 px
+#        ⇒ plafond 28 x 201/90 = 62,5 px, ramené à **56** pour garder
+#          10 % de marge (une valeur à 5 chiffres + décimale n'est pas le
+#          pire cas absolu, c'est le pire cas OBSERVÉ).
+#    ⚠️ Le pire cas THÉORIQUE de la table du firmware est « c.max 100,0 % »
+#       = 197 px — mais il porte un LIBELLÉ, et les libellés disparaissent en
+#       Ambient. C'est ce qui débloque l'agrandissement, et c'est pour ça que
+#       le chiffre retenu est 168 et non 197.
+TAILLES_VEILLE = (33, 56)
+
 # ── LES DEUX TÉMOINS QUI SONT RECOPIÉS, ET C'EST DÉLIBÉRÉ ────────────────────
 # Tout le reste de ce script REFUSE de recopier la liste amont, et c'est juste.
 # Mais UN TÉMOIN TIRÉ DE LA CHOSE QU'IL TÉMOIGNE N'EST PAS UN TÉMOIN : `verifier`
@@ -187,7 +220,7 @@ def symboles_amont():
     return uniq
 
 
-def generer(taille, plage, icones, kerning, sortie):
+def generer(taille, plage, icones, kerning, sortie, symboles=True):
     """Appelle le générateur AMONT, avec la plage FontAwesome étendue.
 
     Le générateur amont ne sait pas ajouter de codepoints FontAwesome : sa liste
@@ -206,7 +239,7 @@ def generer(taille, plage, icones, kerning, sortie):
         if c not in vus:
             vus.add(c)
             fusion.append(c)
-    syms = fusion
+    syms = fusion if symboles else []
     cmd = [
         "lv_font_conv",
         "--no-compress", "--no-prefilter",            # amont:48 (compressed=False)
@@ -220,8 +253,18 @@ def generer(taille, plage, icones, kerning, sortie):
         #    déplacement du dépôt.
         "--font", "Montserrat-Medium.ttf",
         "-r", plage,
-        "--font", "FontAwesome5-Solid+Brands+Regular.woff",
-        "-r", ",".join(str(c) for c in syms),         # amont:70
+    ]
+    # 🔴 dn3-3 : LA SECONDE FONTE N'EST AJOUTÉE QUE SI ON LUI DEMANDE DES
+    #    SYMBOLES. Passer `-r ""` à `lv_font_conv` sur un `--font` sans
+    #    codepoint est une erreur ; et surtout, embarquer FontAwesome dans une
+    #    police de VEILLE qui ne dessine que des chiffres ferait payer 61
+    #    glyphes jamais affichés — à 56 px, quatre fois le prix du 28.
+    if syms:
+        cmd += [
+            "--font", "FontAwesome5-Solid+Brands+Regular.woff",
+            "-r", ",".join(str(c) for c in syms),     # amont:70
+        ]
+    cmd += [
         "--format", "lvgl",                           # amont:70
         "-o", os.path.abspath(sortie),
         "--force-fast-kern-format",                   # amont:73
@@ -323,8 +366,19 @@ def codepoints_du_c(src, chemin):
     return couverts, n_cmaps
 
 
-def verifier(chemin, syms, plage_a_temoins):
-    """RELIT le `.c` produit. Une génération « réussie » ne prouve rien."""
+def verifier(chemin, syms, plage_a_temoins, attend_symboles=True):
+    """RELIT le `.c` produit. Une génération « réussie » ne prouve rien.
+
+    🔴 `attend_symboles=False` est réservé aux polices de VEILLE (dn3-3), qui ne
+       portent DÉLIBÉRÉMENT aucun `LV_SYMBOL_*` : en Ambient le titre, l'icône et
+       le libellé disparaissent, il ne reste que des valeurs.
+    ⛔ CE N'EST PAS UN AFFAIBLISSEMENT DE LA GARDE, ET IL NE FAUT PAS QU'IL LE
+       DEVIENNE : le drapeau dit « cette police n'est pas censée en porter »,
+       il ne dit pas « ne vérifie pas ». La preuve : on EXIGE alors l'INVERSE —
+       que les deux témoins soient ABSENTS. Une police de veille qui les
+       porterait aurait embarqué FontAwesome sans qu'on le veuille, donc payé
+       61 glyphes jamais dessinés — à 56 px, quatre fois le prix du 28.
+    """
     src = open(chemin, encoding="utf-8", errors="replace").read()
     couverts, n_cmaps = codepoints_du_c(src, chemin)
     manques = []
@@ -336,9 +390,17 @@ def verifier(chemin, syms, plage_a_temoins):
             manques.append("témoin « %s » (U+%04X)" % (ch, ord(ch)))
     # ⚠️ LES DEUX TÉMOINS QUI NE VIENNENT PAS DE L'AMONT — voir SYMBOLES_TEMOINS.
     for nom, cp in sorted(SYMBOLES_TEMOINS.items()):
-        if cp not in couverts:
+        present = cp in couverts
+        if attend_symboles and not present:
             manques.append("témoin INDÉPENDANT %s (U+%04X) — le bandeau MENU ou "
                            "le chevron de retour disparaîtrait EN SILENCE" % (nom, cp))
+        if not attend_symboles and present:
+            # 🔴 LE CONTRÔLE INVERSE, ET IL A AUTANT DE VALEUR : une police de
+            #    veille qui porte un symbole a embarqué FontAwesome par accident.
+            manques.append("témoin %s (U+%04X) PRÉSENT dans une police de VEILLE "
+                           "— FontAwesome a été embarqué par accident, et à cette "
+                           "taille il coûte cher pour des glyphes jamais dessinés"
+                           % (nom, cp))
     if manques:
         sys.exit("ÉCHEC de vérification sur %s :\n  - %s"
                  % (chemin, "\n  - ".join(manques)))
@@ -449,8 +511,24 @@ def main():
               % (t, d["_glyphes"], d["_total"], n, len(syms), len(temoins)))
         # Le nom LVGL généré est `dn_font_<taille>` (dérivé du -o) : le `.h`
         # ci-dessous le déclare tel quel.
+
+    # ── dn3-3 : LES DEUX POLICES DE LA VEILLE ────────────────────────────────
+    # ⚠️ Le témoin accentué N'A PAS DE SENS ici : ces polices ne portent PAS le
+    #    latin-1, délibérément. Le témoin est le DEGRÉ, seul caractère hors
+    #    ASCII qu'une valeur puisse porter (« 61,0 °C »).
+    for t in TAILLES_VEILLE:
+        out = os.path.join(SORTIE, "dn_font_%d.c" % t)
+        syms = generer(t, PLAGE_VEILLE, {}, not args.sans_kerning, out,
+                       symboles=False)
+        n = verifier(out, syms, "°", attend_symboles=False)
+        d = octets_police(out)
+        total += d["_total"]
+        print("dn_font_%d.c : %d glyphes · %d o de données de police · VEILLE "
+              "(plage réduite %s, ⛔ aucun symbole) · témoin ° vérifié"
+              % (t, d["_glyphes"], d["_total"], PLAGE_VEILLE))
+
     ecrire_entete()
-    print("dn_font.h : réécrit · TOTAL %d o de données de police (les deux "
+    print("dn_font.h : réécrit · TOTAL %d o de données de police (les QUATRE "
           "tailles). ⚠️ PLANCHER : le coût qui fait foi est le delta de BINAIRE."
           % total)
 
@@ -608,6 +686,32 @@ extern "C" {
 /* ASCII + latin-1 complet + puce + %(n_syms)d symboles + %(n_icones)d icônes. */
 LV_FONT_DECLARE(dn_font_14)
 LV_FONT_DECLARE(dn_font_28)
+
+/*
+ * ── dn3-3 : LES DEUX POLICES DE LA VEILLE ────────────────────────────────────
+ *
+ * 🔴 PLAGE RÉDUITE `0x20-0x7F,0xB0` — ⛔ NI accents latin-1, NI puce, NI aucun
+ *    des 61 symboles LVGL, NI aucune icône FontAwesome. En Ambient le titre,
+ *    l'icône et le libellé de grandeur DISPARAISSENT (décision owner du
+ *    2026-08-25) : il ne reste que des valeurs, donc des chiffres, des unités,
+ *    le « -- » de l'absence et le signe degré.
+ * ⛔ NE JAMAIS s'en servir pour du texte d'interface : un accent, une puce ou un
+ *    `LV_SYMBOL_*` n'y est PAS, et LVGL ne dessinerait RIEN — sans un mot.
+ *    `dn_font_14` / `dn_font_28` restent les polices de l'interface.
+ *
+ * 🔴 LES DEUX TAILLES SONT MESURÉES SUR LA CARTE, ⛔ PAS CHOISIES ROND
+ *    (`widget largeur`, 2026-08-25, case de 225 px dont 201 utiles) :
+ *      · `dn_font_33` — AVEC l'unité. Pire cas « 2999,9 Mb/s » = 168 px à
+ *        28 px ⇒ plafond 33,5 px.
+ *      · `dn_font_56` — SANS l'unité. Pire cas « 2999,9 » = 90 px à 28 px
+ *        ⇒ plafond 62,5 px, ramené à 56 pour garder ~10 %% de marge.
+ *    ⚠️ Le pire cas THÉORIQUE de la table du firmware est « c.max 100,0 %% » =
+ *       197 px, ce qui plafonnerait à 28,6 px — mais il porte un LIBELLÉ, et
+ *       les libellés disparaissent en Ambient. C'est CE fait qui débloque
+ *       l'agrandissement.
+ */
+LV_FONT_DECLARE(dn_font_33)
+LV_FONT_DECLARE(dn_font_56)
 
 /* Les icônes, en UTF-8 prêt à concaténer dans un littéral de chaîne.
  * GÉNÉRÉES depuis le même dictionnaire que la police : une macro ne peut pas

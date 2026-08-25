@@ -50,6 +50,16 @@ idf_component_register(
         "dn_veille.c"
         "fonts/dn_font_14.c"
         "fonts/dn_font_28.c"
+        # 🔴 dn3-3 : LES DEUX POLICES DE LA VEILLE, plage RÉDUITE (0x20-0x7F,0xB0).
+        #    En Ambient le titre, l'icône et le libellé disparaissent : il ne
+        #    reste que des valeurs, donc NI accents NI symboles NI FontAwesome —
+        #    et c'est ce qui rend l'agrandissement abordable (97 glyphes au lieu
+        #    de 261). ⚠️ Les DEUX tailles sont MESURÉES contre la largeur utile
+        #    d'une case (201 px) : 33 px AVEC l'unité, 56 px SANS.
+        #    ⛔ Ne jamais s'en servir pour du texte d'interface : un accent
+        #       manquant ne produit AUCUNE erreur, juste un blanc.
+        "fonts/dn_font_33.c"
+        "fonts/dn_font_56.c"
     INCLUDE_DIRS "."
     REQUIRES
         driver

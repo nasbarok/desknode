@@ -620,6 +620,10 @@ typedef struct {
      *    l'owner pour un rendement qui baisse » est la règle écrite de ce
      *    fichier. NULL si le descripteur n'a pas d'icône. */
     lv_obj_t *icone;
+    /* 🔴 dn3-3 : RETENU pour la même raison que l'icône — en Ambient le titre
+     *    DISPARAÎT (décision owner du 2026-08-25), et le masquer sans pointeur
+     *    aurait exigé une reconstruction de scène à chaque bascule de veille. */
+    lv_obj_t *titre;
     lv_obj_t *sec;    /* NULL si aucune donnée secondaire n'est prévue */
     lv_obj_t *badge;  /* la marque « SIMULÉ », créée mais masquée si non simulé */
     /* ⚠️ dn4-6 : `n` et `w` sont MÉMORISÉS À LA CONSTRUCTION, ⛔ pas relus du
@@ -702,6 +706,24 @@ void dn_widget_oublier(dn_widget_t *w);
  *    (modèle REBUILD en vue détail : le dashboard n'existe pas).
  */
 void dn_widget_repeindre_accents(const dn_widget_desc_t *desc, dn_widget_t *w);
+
+/*
+ * ── dn3-3 : APPLIQUER L'IDENTITÉ DU MODE À UNE CASE, SANS RECONSTRUIRE ───────
+ *
+ * Masque/démasque le titre, l'icône, le badge et la jauge, et repeint l'aplat.
+ * ⚠️ VERROU LVGL DÉJÀ PRIS. No-op sûr si `w->racine` est NULL.
+ * ⛔ Elle ne touche NI aux textes NI aux positions : c'est `dn_widget_maj()` qui
+ *    les repose, par le chemin NORMAL de la mise à jour. Deux fonctions qui
+ *    repositionneraient les mêmes labels finiraient par diverger.
+ */
+void dn_widget_veille_appliquer(const dn_widget_desc_t *desc, dn_widget_t *w);
+
+/* Les deux leviers A/B d'Ambient, à chaud. ⚠️ `unite` CHOISIT LA POLICE : avec
+ * unité on plafonne à 33 px (mesuré), sans unité on monte à 56. */
+void dn_widget_set_amb_unite(bool on);
+bool dn_widget_amb_unite(void);
+void dn_widget_set_amb_jauge(bool on);
+bool dn_widget_amb_jauge(void);
 
 /*
  * ── dn4-9 : LA TRADUCTION RANG -> INDEX DE GRANDEUR, EN UN SEUL ENDROIT ──────

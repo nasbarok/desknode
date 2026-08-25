@@ -78,6 +78,32 @@ extern "C" {
 LV_FONT_DECLARE(dn_font_14)
 LV_FONT_DECLARE(dn_font_28)
 
+/*
+ * ── dn3-3 : LES DEUX POLICES DE LA VEILLE ────────────────────────────────────
+ *
+ * 🔴 PLAGE RÉDUITE `0x20-0x7F,0xB0` — ⛔ NI accents latin-1, NI puce, NI aucun
+ *    des 61 symboles LVGL, NI aucune icône FontAwesome. En Ambient le titre,
+ *    l'icône et le libellé de grandeur DISPARAISSENT (décision owner du
+ *    2026-08-25) : il ne reste que des valeurs, donc des chiffres, des unités,
+ *    le « -- » de l'absence et le signe degré.
+ * ⛔ NE JAMAIS s'en servir pour du texte d'interface : un accent, une puce ou un
+ *    `LV_SYMBOL_*` n'y est PAS, et LVGL ne dessinerait RIEN — sans un mot.
+ *    `dn_font_14` / `dn_font_28` restent les polices de l'interface.
+ *
+ * 🔴 LES DEUX TAILLES SONT MESURÉES SUR LA CARTE, ⛔ PAS CHOISIES ROND
+ *    (`widget largeur`, 2026-08-25, case de 225 px dont 201 utiles) :
+ *      · `dn_font_33` — AVEC l'unité. Pire cas « 2999,9 Mb/s » = 168 px à
+ *        28 px ⇒ plafond 33,5 px.
+ *      · `dn_font_56` — SANS l'unité. Pire cas « 2999,9 » = 90 px à 28 px
+ *        ⇒ plafond 62,5 px, ramené à 56 pour garder ~10 % de marge.
+ *    ⚠️ Le pire cas THÉORIQUE de la table du firmware est « c.max 100,0 % » =
+ *       197 px, ce qui plafonnerait à 28,6 px — mais il porte un LIBELLÉ, et
+ *       les libellés disparaissent en Ambient. C'est CE fait qui débloque
+ *       l'agrandissement.
+ */
+LV_FONT_DECLARE(dn_font_33)
+LV_FONT_DECLARE(dn_font_56)
+
 /* Les icônes, en UTF-8 prêt à concaténer dans un littéral de chaîne.
  * GÉNÉRÉES depuis le même dictionnaire que la police : une macro ne peut pas
  * pointer un codepoint que la police n'aurait pas. */

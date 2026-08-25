@@ -37,6 +37,7 @@ Sortie : exit 0 si tout passe, 1 sinon. Publie le sha256 des sources LUES.
 
 import ctypes
 import hashlib
+import importlib.util
 import os
 import re
 import subprocess
@@ -708,6 +709,100 @@ def bloc_gris():
 #  8. LE RECOMPTE DE LA PARTITION (AC1.1, AC1.4)
 # ═══════════════════════════════════════════════════════════════════════════
 
+DN_FONT_33 = os.path.join(MAIN, "fonts", "dn_font_33.c")
+DN_FONT_56 = os.path.join(MAIN, "fonts", "dn_font_56.c")
+
+
+def bloc_identite_ambient():
+    """dn3-3 — L'IDENTITE VISUELLE D'AMBIENT (decision owner du 2026-08-25).
+
+    Verbatim : « tout passe en nuance de noir blanc, titre et icones
+    disparaissent, chiffres agrandis, blanc sur fond noir et sur fond gris
+    fonce ». Chacun de ces cinq points est epingle ici, parce qu'aucun ne se
+    voit dans un build vert.
+    """
+    print("\n── 10. L'IDENTITE VISUELLE D'AMBIENT (owner, 2026-08-25) ───────────")
+    wc, _ = lire(DN_WIDGET_C)
+    ui, _ = lire(DN_UI_C)
+
+    # (1) le titre, l'icone et le badge sont MASQUABLES sans reconstruction
+    ctrl("lv_obj_t *titre;" in lire(os.path.join(MAIN, "dn_widget.h"))[0],
+         "le TITRE est retenu dans `dn_widget_t`",
+         "sans pointeur, le masquer exigerait 307-322 ms de reconstruction")
+    m = re.search(r"void dn_widget_veille_appliquer\(.*?\n\}", wc, re.S)
+    if ctrl(m is not None, "`dn_widget_veille_appliquer()` existe"):
+        corps = m.group(0)
+        ctrl("w->titre" in corps and "w->icone" in corps and "w->badge" in corps,
+             "elle masque titre + icone + badge",
+             "les trois que l'owner a nommes")
+        ctrl("LV_OBJ_FLAG_HIDDEN" in corps and "build_scene" not in corps,
+             "…par un DRAPEAU, ⛔ pas par une reconstruction")
+        ctrl("aplat(w->racine)" in corps,
+             "le retour en ACTIF repasse par `aplat()`, ⛔ ne le recopie pas",
+             "une copie divergerait au premier `widget opa`")
+
+    # (2) composer() laisse tomber icone ET PREFIXE en Ambient
+    m = re.search(r"static void composer\(.*?\n\}", wc, re.S)
+    if ctrl(m is not None, "`composer()` est trouvable"):
+        corps = m.group(0)
+        i_amb = corps.find("if (s_ambient)")
+        i_px = corps.find("dn_widget_prefixe")
+        ctrl(i_amb >= 0 and i_px > i_amb,
+             "la branche AMBIENT sort AVANT le prefixe",
+             "🔴 c'est le prefixe qui plafonnait l'agrandissement a +2 %")
+        ctrl('snprintf(out, n, "--")' in corps,
+             "…et l'ABSENCE reste « -- », ⛔ jamais une case vide")
+
+    # (3) le voile d'Ambient est le NOIR PLEIN, et sans un octet d'asset
+    ctrl("static uint8_t s_voile_opa_amb = 255;" in ui,
+         "le voile d'Ambient vaut 255 — le NOIR PLEIN demande par l'owner")
+    r = subprocess.run(["git", "-C", RACINE, "diff", "--stat", "HEAD", "--",
+                        "assets/"], capture_output=True, text=True)
+    ctrl(r.returncode == 0 and r.stdout.strip() == "",
+         "…et AUCUN octet n'a ete ajoute a `assets/` (AC1.1)",
+         "le fond noir est obtenu par un levier EXISTANT, la voie (b) tient")
+
+    # (4) LES POLICES DE VEILLE NE PORTENT AUCUN SYMBOLE — verifie DANS LE `.c`
+    #     ⚠️ C'est le controle qui protege le budget : embarquer FontAwesome a
+    #     56 px couterait 61 glyphes JAMAIS dessines, a quatre fois le prix du 28.
+    spec = importlib.util.spec_from_file_location(
+        "g", os.path.join(RACINE, "tools", "gen_font_dn.py"))
+    gen = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gen)
+    for chemin, taille in ((DN_FONT_33, 33), (DN_FONT_56, 56)):
+        if not os.path.isfile(chemin):
+            ctrl(False, "dn_font_%d.c existe" % taille)
+            continue
+        src, sha = lire(chemin)
+        cps, _ = gen.codepoints_du_c(src, chemin)
+        syms = [cp for cp in cps if cp >= 0xF000]
+        ctrl(not syms, "dn_font_%d : AUCUN symbole FontAwesome" % taille,
+             "sha %s · %d codepoints portes" % (sha, len(cps)))
+        ctrl(0xB0 in cps, "dn_font_%d : le DEGRE (U+00B0) est present" % taille,
+             "« 61,0 °C » le porte — son absence serait SILENCIEUSE")
+        ctrl(all(c in cps for c in range(0x30, 0x3A)),
+             "dn_font_%d : les dix chiffres sont presents" % taille)
+        ctrl(0xE9 not in cps,
+             "dn_font_%d : ⛔ PAS d'accent latin-1 (plage reduite tenue)" % taille,
+             "164 codepoints jamais dessines tripleraient la facture")
+
+    # (5) les tailles sont celles qui ont ete MESUREES
+    gsrc, _ = lire(os.path.join(RACINE, "tools", "gen_font_dn.py"))
+    ctrl("TAILLES_VEILLE = (33, 56)" in gsrc,
+         "les deux tailles du generateur sont 33 et 56",
+         "33 = plafond AVEC unite (168 px) · 56 = SANS (90 px), mesures carte")
+    ctrl("&dn_font_33 : &dn_font_56" in wc.replace("\n", " ").replace("  ", " ")
+         or ("dn_font_33" in wc and "dn_font_56" in wc),
+         "`font_val()` commute entre les deux selon l'unite")
+
+    # (6) LES TROIS GRIS RESTENT DISTINCTS **MALGRE** le monochrome
+    #     🔴 C'est le piege du « tout blanc » : le badge « SIMULE » est MASQUE en
+    #     Ambient, donc le gris est le SEUL signal qui reste.
+    ctrl("w->badge" in wc and "LV_OBJ_FLAG_HIDDEN" in wc,
+         "le badge « SIMULE » est masque en Ambient",
+         "⇒ le gris devient le SEUL signal du regime")
+
+
 def bloc_assets():
     print("\n── 8. LE RECOMPTE DE LA PARTITION `assets` (AC1) ───────────────────")
     txt, sha = lire(PARTITIONS)
@@ -848,6 +943,7 @@ def main():
     bloc_fantome(src)
     bloc_accents()
     bloc_gris()
+    bloc_identite_ambient()
     bloc_assets()
     bloc_verite()
 
