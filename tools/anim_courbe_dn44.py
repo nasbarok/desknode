@@ -151,6 +151,9 @@ def _series_du_jeu(duree=120, pas=1.0):
 SEUIL_FORME = 0.08  # 8 % d'écart moyen : en deçà, deux courbes se confondent
 
 
+SECONDES_MIN = 5.0  # plancher d'une fenetre d'observation utile
+
+
 def temoin_negatif():
     """dn4-13 / AC7.5 — les FORMES sont éprouvées, et le seuil est vu MORDRE.
 
@@ -160,6 +163,13 @@ def temoin_negatif():
     print("dn4-13 / AC7.5 — TÉMOIN NÉGATIF de `anim_courbe_dn44.py` (SANS CARTE)")
     print("=" * 72)
     ko = 0
+    # 🔴 REVUE DU 2026-08-25 — LE TÉMOIN PUBLIE COMBIEN DE CAS IL A JOUÉS.
+    #    `verif_harnais_dn413.py` ne lisait que le code de sortie et l'absence de
+    #    `🔴` : un témoin VIDÉ de tous ses cas sortait en 0, sans rouge, et la
+    #    gate en tirait [OK]. Deux des trois harnais publiaient déjà leur compte ;
+    #    celui-ci ne le publiait PAS, donc son témoin était INVÉRIFIABLE — et
+    #    l'ancienne gate le déclarait vert quand même.
+    n = 0
     series = _series_du_jeu()
     noms = sorted(series)
     print("  %d séries échantillonnées sur 120 s à 1 Hz." % len(noms))
@@ -170,6 +180,7 @@ def temoin_negatif():
         e = _ecart_de_forme(series[a], series[b])
         ok = e >= SEUIL_FORME
         ko += 0 if ok else 1
+        n += 1
         print("  %s  MÊME PAGE %-10s vs %-10s écart de forme %.3f (seuil %.2f)"
               % ("✅" if ok else "🔴", a, b, e, SEUIL_FORME))
 
@@ -177,6 +188,7 @@ def temoin_negatif():
     e = _ecart_de_forme(series["net[1]"], series["disk[0]"])
     ok = e >= SEUIL_FORME
     ko += 0 if ok else 1
+    n += 1
     print("  %s  net[1] vs disk[0] — LA PAIRE D'AC7.3 : écart %.3f"
           % ("✅" if ok else "🔴", e))
     print("       (les deux portaient le MÊME sinus, et les deux sont auto-calées)")
@@ -188,6 +200,7 @@ def temoin_negatif():
             e = _ecart_de_forme(series[g0[i]], series[g0[j]])
             ok = e >= SEUIL_FORME
             ko += 0 if ok else 1
+            n += 1
             print("  %s  ENTRE PAGES %-10s vs %-10s écart %.3f"
                   % ("✅" if ok else "🔴", g0[i], g0[j], e))
 
@@ -202,6 +215,7 @@ def temoin_negatif():
     e = _ecart_de_forme(net1, disk0_avant)
     ok = e < SEUIL_FORME
     ko += 0 if ok else 1
+    n += 1
     print("  %s  ANCIEN disk[0] (sinus) vs net[1] (sinus) ⇒ écart %.3f < %.2f"
           % ("✅" if ok else "🔴", e, SEUIL_FORME))
     print("       ⇒ le contrôle AURAIT ROUGI sur le jeu livré par dn4-4 : il")
@@ -218,14 +232,16 @@ def temoin_negatif():
         obtenu = _trames_acceptees(entree)
         ok = (obtenu == attendu)
         ko += 0 if ok else 1
+        n += 1
         print("  %s  %-38s attendu %-6s obtenu %s"
               % ("✅" if ok else "🔴", libelle, attendu, obtenu))
 
     print("=" * 72)
     if ko:
-        print("⛔ %d contrôle(s) en échec." % ko)
+        print("⛔ %d contrôle(s) en échec sur %d cas." % (ko, n))
         return 1
-    print("✅ tout passe — aucune paire de séries ne se confond, ET le contrôle")
+    print("✅ %d cas — tout passe : aucune paire de séries ne se confond, ET le" % n)
+    print("   contrôle")
     print("   a été VU voir le défaut sur le jeu d'AVANT le correctif.")
     print("⚠️ CE QUE CE TÉMOIN NE PROUVE PAS : que la carte dessine ces formes.")
     print("   Il prouve que le HARNAIS ne fabrique plus la ressemblance qu'il")
@@ -292,6 +308,28 @@ def main():
             #    trou dans l'historique PENDANT l'observation. ⛔ Un seul
             #    proprietaire du port.
             a.secondes = len(pages) * a.par_page
+        # 🔴 REVUE DU 2026-08-25 — UNE FENETRE D'OBSERVATION VIDE EST REFUSEE.
+        #    `--par-page 0` (idem negatif, idem `--secondes 0`) mettait
+        #    `a.secondes` a 0 : la boucle d'injection ne tournait AUCUNE
+        #    iteration, l'outil imprimait « injection CONTINUE a 1 Hz pendant
+        #    0 s » puis « fini — 0 trames ECRITES, 0 ACCEPTEES » et RENDAIT 0.
+        #    L'owner etait invite a une fenetre d'observation qui n'avait pas eu
+        #    lieu, et le harnais la declarait accomplie.
+        #    ⛔ C'est le meme motif que la borne `--tours >= 2` qu'AC7.2 exige
+        #      pour `diag_p1` — et que `verif_harnais_dn413.py` verifie — qui
+        #      manquait ici. Le garde `int(t // a.par_page)` qui aurait leve
+        #      `ZeroDivisionError` n'etait JAMAIS atteint, la boucle etant vide.
+        if a.par_page <= 0:
+            print(f"⛔ REFUSE : --par-page vaut {a.par_page}, il faut > 0 — "
+                  f"sinon la fenetre d'observation est VIDE et le harnais la "
+                  f"declare accomplie.")
+            return 2
+        if a.secondes < SECONDES_MIN:
+            print(f"⛔ REFUSE : la fenetre vaut {a.secondes:.1f} s, il en faut "
+                  f"au moins {SECONDES_MIN:.0f} — en dessous, l'injection ne "
+                  f"produit pas assez de points pour qu'un oeil ou un compteur "
+                  f"puisse conclure.")
+            return 2
         acc_debut = _trames_acceptees(dn_console.envoyer(ser, "pc", 20)["sortie"])
         page_i = -1
         print(f"injection CONTINUE a 1 Hz pendant {a.secondes:.0f} s "
@@ -331,7 +369,27 @@ def main():
             # 🔴 dn4-13 / AC7.4 — LA BOUCLE INLINE EST REMPLACEE PAR
             #    `dn_console.drainer()`, LA FONCTION QUE `dn_console.py`
             #    PROMETTAIT DEPUIS dn4-4 SANS QU'ELLE EXISTE.
-            dn_console.drainer(ser, t0 + t + 1.0)
+            # 🔴 REVUE DU 2026-08-25 — L'ECHEANCE EST RECALCULEE **ICI**,
+            #    ⛔ PLUS DERIVEE D'UN `t` PERIME.
+            #    `t` est mesure en tete de boucle ; entre les deux il y a DEUX
+            #    allers-retours console (`nav open` puis `nav`, timeouts 10 s) et
+            #    `len(jeu(t)) x 40 ms` d'ecritures — et `nav open` declenche un
+            #    `build_scene()` que le depot chiffre lui-meme a 307-322 ms
+            #    VERROU TENU, REPL bloque. Des que le travail depassait 1,0 s,
+            #    `t0 + t + 1.0` etait DEJA ECOULE : la boucle de `drainer()` ne
+            #    tournait pas une seule fois ⇒ ZERO drainage, ZERO pacing, et
+            #    precisement sur la seconde qui produit le plus de sortie carte —
+            #    le scenario que `drainer()` existe pour empecher.
+            # ⚠️ ET SON RETOUR EST PUBLIE : `drainer()` rend un compteur d'octets
+            #    « pour qu'un harnais puisse le publier », et son UNIQUE appelant
+            #    jetait la valeur. Rien ne distinguait « 1 s de silence » de
+            #    « fenetre deja ecoulee, 0 s de drainage ».
+            retard = (time.time() - t0) - t
+            octets = dn_console.drainer(ser, time.time() + 1.0)
+            if retard > 1.0:
+                print(f"  [{t:6.1f} s] ⚠️ le tour a pris {retard:.1f} s (> 1,0 s) : "
+                      f"la cadence 1 Hz N'EST PAS TENUE sur ce tour "
+                      f"· {octets} o draines")
         # 🔴 dn4-13 / AC7.3 — `n` COMPTE LES **ACCEPTATIONS**, ⛔ PLUS LES
         #    ECRITURES. Une trame ecrite sur le port n'est pas une trame acceptee
         #    par `dn_link` : elle peut tomber en `rejets_checksum`,

@@ -542,6 +542,99 @@ def bloc_ecrits(source):
          "⇒ `jamais` dirait 120 sur un anneau où 10 cases vivent")
 
 
+def bloc_revue_2026_08_25(source):
+    """🔴 LES TROIS DÉFAUTS QUE LA REVUE DE CODE DU 2026-08-25 A MESURÉS.
+
+    Ils vivaient TOUS LES TROIS sous une gate verte : celle-ci vérifiait les
+    invariants d'AC3.1 sur des `dt` de ~1 040 ms et sur une pause de 60 s —
+    jamais au-delà de 121 s, donc l'écrêtage n'était jamais exercé ; et jamais
+    sans écrivain, donc le gel des seaux ne pouvait pas apparaître.
+    """
+    print("\n── REVUE 2026-08-25 — PLAFOND, PLANCHER, ET VIEILLISSEMENT ────────")
+    lib, err = construire(source, "revue")
+    if lib is None:
+        ctrl(False, "la coquille compile", err[:200])
+        return
+    lib.dn_hist_rattraper.restype = ctypes.c_int
+    lib.dn_hist_couverture_s.restype = ctypes.c_uint32
+
+    # ── A) LE COMPTEUR PUBLIE L'OBSERVATION, ⛔ PAS LE PLAFOND ──────────────
+    releves = {}
+    for pause in (600, 3600):
+        lib.dn_hist_init()
+        horloge(lib, 0)
+        lib.dn_hist_rattraper()
+        lib.dn_hist_poser(0, 100, True)
+        horloge(lib, pause + 1)
+        releves[pause] = lib.dn_hist_rattraper()
+    ctrl(releves[600] == 600,
+         "`ui off` de 10 min ⇒ le compteur publie 600, ⛔ pas 120",
+         "obtenu %d" % releves[600])
+    ctrl(releves[3600] == 3600,
+         "`ui off` d'1 h ⇒ le compteur publie 3600, ⛔ pas 120",
+         "obtenu %d" % releves[3600])
+    ctrl(releves[600] != releves[3600],
+         "deux coupures d'un facteur 6 sont DISCERNABLES",
+         "600 vs 3600 — avant le correctif : 120 et 120, MÊME PHRASE")
+
+    # ── B) LE RESTE INFRA-PÉRIODE S'ACCUMULE, ⛔ IL NE SE JETTE PAS ─────────
+    lib.dn_hist_init()
+    horloge(lib, 0)
+    lib.dn_hist_rattraper()
+    creuses = 0
+    for k in range(1, 9):  # une horloge à 1 500 ms par tick
+        ctypes.c_int64.in_dll(lib, "dn_test_horloge_us").value = int(k * 1500 * 1000)
+        creuses += lib.dn_hist_rattraper()
+    ctrl(creuses == 4,
+         "horloge à 1 500 ms/tick sur 12 s ⇒ 4 secondes manquantes VUES",
+         "%d creusée(s) — avant le correctif : 0, INDÉFINIMENT" % creuses)
+
+    # ── C) LES SEAUX VIEILLISSENT POUR LES LECTEURS, SANS ÉCRIVAIN ─────────
+    def apres_pause(bib, heures):
+        bib.dn_hist_init()
+        horloge(bib, 300)
+        for v in (500, 506):
+            bib.dn_hist_poser(0, v, True)
+        vif = minmax(bib, 0, longue=True)
+        horloge(bib, 300 + heures * 3600)   # ⛔ AUCUN `poser` : plus d'écrivain
+        return vif, minmax(bib, 0, longue=True), bib.dn_hist_couverture_s(0)
+
+    vif, gele, couv = apres_pause(lib, 25)
+    ctrl(vif[0] and vif[1] == 500,
+         "à chaud, le MIN/MAX long voit bien la valeur posée", "min = %d" % vif[1])
+    ctrl(not gele[0],
+         "après 25 h d'`ui off`, le MIN/MAX long rend FAUX",
+         "⛔ pas le minimum du TOUR PRÉCÉDENT de 24 h (obtenu ok=%s, min=%d)"
+         % (gele[0], gele[1]))
+    ctrl(couv == 0,
+         "après 25 h d'`ui off`, la couverture rend 0",
+         "obtenu %d s — avant le correctif : 3900 s sur ZÉRO observation" % couv)
+
+    # ── TÉMOIN NÉGATIF : on RÉTABLIT l'ancien calcul d'âge ──────────────────
+    print("\n     🔴 TÉMOIN NÉGATIF — l'âge redevient celui d'un seau GELÉ")
+    i = source.find("static int seau_age(int b)")
+    j = source.find("\n}\n", i)
+    if i < 0 or j < 0:
+        ctrl(False, "le mutant trouve `seau_age()`", "introuvable")
+        return
+    mut = (source[:i] + "static int seau_age(int b)\n{\n"
+           "    if (s_seau_abs < 0) { return -1; }\n"
+           "    return (int)(((s_seau_abs - b) % DN_HIST_SEAUX"
+           " + DN_HIST_SEAUX) % DN_HIST_SEAUX);\n}\n" + source[j + 3:])
+    libm, err = construire(mut, "gele")
+    if libm is None:
+        ctrl(False, "le mutant compile", err[:300])
+        return
+    libm.dn_hist_couverture_s.restype = ctypes.c_uint32
+    _, gm, cm = apres_pause(libm, 25)
+    ctrl(gm[0] and gm[1] == 500,
+         "MUTÉ ⇒ le MIN/MAX long REPUBLIE la valeur vieille de 25 h",
+         "le défaut est REPRODUIT : min = %d" % gm[1])
+    ctrl(cm > 0,
+         "MUTÉ ⇒ la couverture repart de zéro sur du vide",
+         "%d s annoncées sans un seul échantillon dans la fenêtre" % cm)
+
+
 def main():
     src, sha_c = lire(DN_HIST_C)
     _, sha_h = lire(DN_HIST_H)
@@ -570,6 +663,7 @@ def main():
     bloc_avant_init(src, lib)
     bloc_couverture(src)
     bloc_axe_temps(src)
+    bloc_revue_2026_08_25(src)
     bloc_seaux(src)
     bloc_ecrits(src)
 

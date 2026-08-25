@@ -142,6 +142,85 @@ def declarations_publiques(entete_code):
 RE_LV = re.compile(r"\blv_[a-z0-9_]+\s*\(")
 RE_APPEL = re.compile(r"\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(")
 
+# 🔴 REVUE DU 2026-08-25 — UN OBJET LVGL SE TOUCHE AUSSI PAR DÉRÉFÉRENCE.
+#    `RE_LV` ne voyait que l'APPEL `lv_xxx(`. Or `dn_ui.c` lit `s_det_serie0->hidden`
+#    — un champ de `lv_chart_private.h`, donc un objet LVGL — SANS aucun `lv_*()`.
+#    Mutation jouée à la revue : retirer le verrou ET les deux
+#    `lv_chart_get_series_color()` en laissant les `->hidden` ⇒ la gate rendait
+#    `exit 0`, et la fonction n'était même pas NOMMÉE. Le motif « lire un champ
+#    privé plutôt qu'appeler un getter » venait d'être introduit par `dn4-13` :
+#    il est donc appelé à se reproduire.
+RE_LV_PTR_DECL = re.compile(r"\blv_[a-z0-9_]+_t\s*\*\s*([a-zA-Z_][a-zA-Z0-9_]*)")
+
+
+def pointeurs_lvgl(code):
+    """Les identifiants déclarés `lv_xxx_t *` quelque part dans le source."""
+    return set(RE_LV_PTR_DECL.findall(code))
+
+
+def acces_lvgl(corps, noms_lvgl):
+    """Positions de CHAQUE accès à un objet LVGL — appel `lv_*(` ET `ptr->`."""
+    pos = [m.start() for m in RE_LV.finditer(corps)]
+    if noms_lvgl:
+        rx = re.compile(r"\b(" + "|".join(sorted(re.escape(n) for n in noms_lvgl))
+                        + r")\s*->")
+        pos += [m.start() for m in rx.finditer(corps)]
+    return sorted(pos)
+
+
+def verrou_defauts(corps, noms_lvgl):
+    """🔴 CE QUE LA **PRÉSENCE** DE `lvgl_port_lock` NE PROUVE PAS.
+
+    La gate coupait la branche sur `if "lvgl_port_lock" in corps` — un test de
+    SOUS-CHAÎNE. Trois mutations survivaient, toutes jouées à la revue du
+    2026-08-25 :
+      · lire `lv_screen_active()` AVANT le verrou      ⇒ 0 faute (défaut d'AC1.1)
+      · `(void)lvgl_port_lock(1000);` au lieu du test  ⇒ vert   (défaut d'AC1.2)
+      · retirer le `lvgl_port_unlock()` d'un `return`  ⇒ exit 0 (verrou FUITÉ,
+        et un verrou fuité GÈLE LA TÂCHE LVGL ENTIÈRE — panne muette)
+    ⚠️ LIMITE DÉCLARÉE : le test (a) reconnaît la forme directe
+       `if (!lvgl_port_lock(...))`. La forme `bool ok = lvgl_port_lock(...);`
+       suivie d'un `if (!ok)` plus loin n'est PAS reconnue — elle n'existe pas
+       dans ce dépôt aujourd'hui, et la gate le DIT plutôt que de le taire.
+    """
+    d = []
+    locks = [m.start() for m in re.finditer(r"\blvgl_port_lock\s*\(", corps)]
+    if not locks:
+        return d
+
+    # (a) le RETOUR du verrou est-il TESTÉ ?
+    if not re.search(r"if\s*\(\s*!?\s*lvgl_port_lock\s*\(", corps):
+        d.append("retour de `lvgl_port_lock` IGNORÉ — un échec de verrou "
+                 "poursuit et déréférence quand même")
+
+    # (b) un objet LVGL touché AVANT la première prise ?
+    for p in acces_lvgl(corps, noms_lvgl):
+        if p < locks[0]:
+            d.append("objet LVGL touché AVANT `lvgl_port_lock` — "
+                     "« LE VERROU EST PRIS AVANT DE LIRE L'OBJET » (AC1.1)")
+            break
+
+    # (c) une sortie VERROU TENU ? Les `return` de la garde d'échec sont exempts.
+    exempts = [(m.start(1), m.end(1)) for m in re.finditer(
+        r"if\s*\(\s*!\s*lvgl_port_lock\s*\([^()]*\)\s*\)\s*"
+        r"(\{[^{}]*\}|[^;{}]*;)", corps)]
+    evts = [(m.start(), "L") for m in re.finditer(r"\blvgl_port_lock\s*\(", corps)]
+    evts += [(m.start(), "U") for m in re.finditer(r"\blvgl_port_unlock\s*\(", corps)]
+    evts += [(m.start(), "R") for m in re.finditer(r"\breturn\b", corps)]
+    prof = 0
+    for p, k in sorted(evts):
+        if k == "L":
+            prof += 1
+        elif k == "U":
+            prof -= 1
+        elif prof > 0 and not any(a <= p < b for a, b in exempts):
+            d.append("`return` atteint VERROU TENU — la tâche LVGL gèle "
+                     "(libération sur TOUS les chemins de sortie, AC1.1)")
+            break
+    if prof > 0:
+        d.append("fin de fonction VERROU TENU (%d prise(s) non libérée(s))" % prof)
+    return d
+
 
 def chemin_vers_lvgl(nom, fonctions, vus=None):
     """Le premier chemin `nom -> ... -> lv_xxx()` qui ne rencontre AUCUN verrou.
@@ -211,6 +290,11 @@ def auditer(src_brut, hdr_brut, bavard=True):
     brut_lignes = src_brut.split("\n")
 
     fautes, exemptees, protegees, verrou_hors_lvgl = [], [], [], []
+    # 🔴 REVUE 2026-08-25 — CE QUI ÉTAIT ÉCARTÉ EN SILENCE EST DÉSORMAIS COMPTÉ.
+    #    71 des 111 publiques tombaient dans un `continue` muet, sans être même
+    #    nommées — alors que la gate se félicitait de nommer les 5 autres.
+    sans_lvgl = []
+    noms_lvgl = pointeurs_lvgl(code)
     for nom in sorted(publiques):
         if nom not in fonctions:
             continue  # définie ailleurs (dn_widget.c, etc.)
@@ -220,6 +304,14 @@ def auditer(src_brut, hdr_brut, bavard=True):
         chemin = chemin_vers_lvgl(nom, fonctions)
         if chemin is None:
             if "lvgl_port_lock" not in corps:
+                # ⚠️ Pas de verrou et aucun chemin vers `lv_*()`. MAIS elle peut
+                #    quand même toucher un objet LVGL PAR DÉRÉFÉRENCE.
+                if acces_lvgl(corps, noms_lvgl):
+                    fautes.append((nom, ligne,
+                                   "%s [déréférence d'objet LVGL, SANS verrou "
+                                   "et sans appel `lv_*()`]" % nom, None))
+                else:
+                    sans_lvgl.append((nom, ligne))
                 continue
             # Elle verrouille. Mais protège-t-elle un OBJET LVGL, ou autre chose ?
             # On le tranche en RETIRANT le verrou dans une copie de travail : si
@@ -230,6 +322,10 @@ def auditer(src_brut, hdr_brut, bavard=True):
             fin = ligne + corps.count("\n")
             if chemin_vers_lvgl(nom, sans):
                 protegees.append((nom, ligne, fin))
+                # 🔴 Elle VERROUILLE. Mais le verrou est-il pris AVANT l'objet,
+                #    son retour TESTÉ, et libéré sur TOUS les chemins ?
+                for defaut in verrou_defauts(corps, noms_lvgl):
+                    fautes.append((nom, ligne, "%s [%s]" % (nom, defaut), None))
             else:
                 verrou_hors_lvgl.append((nom, ligne))
             continue
@@ -238,7 +334,8 @@ def auditer(src_brut, hdr_brut, bavard=True):
             exemptees.append((nom, ligne, motif))
         else:
             fautes.append((nom, ligne, chemin, motif))
-    return (fautes, exemptees, protegees, verrou_hors_lvgl, publiques, fonctions)
+    return (fautes, exemptees, protegees, verrou_hors_lvgl, publiques,
+            fonctions, sans_lvgl)
 
 
 def temoin_negatif(src_brut, hdr_brut):
@@ -249,7 +346,8 @@ def temoin_negatif(src_brut, hdr_brut):
        M2 vider le motif d'une exemption existante    ⇒ la gate doit la voir
     """
     print("\n── TÉMOIN NÉGATIF — on retire les protections une par une ─────────")
-    _, exemptees, protegees, hors, _, _ = auditer(src_brut, hdr_brut, bavard=False)
+    _, exemptees, protegees, hors, _, _, _ = auditer(src_brut, hdr_brut,
+                                                     bavard=False)
     lignes = src_brut.split("\n")
     n_mut = 0
 
@@ -270,7 +368,7 @@ def temoin_negatif(src_brut, hdr_brut):
         for i in cibles:
             mut[i] = mut[i].replace("lvgl_port_lock", "verrou_neutralise")
         cible = cibles[0]
-        fautes, _, _, _, _, _ = auditer("\n".join(mut), hdr_brut, bavard=False)
+        fautes, _, _, _, _, _, _ = auditer("\n".join(mut), hdr_brut, bavard=False)
         n_mut += 1
         ctrl(any(f[0] == nom for f in fautes),
              "M1 sans verrou, `%s` ROUGIT" % nom,
@@ -289,7 +387,7 @@ def temoin_negatif(src_brut, hdr_brut):
         for i in range(cible, ligne - 1):
             mut[i] = " *" if JETON_EXEMPT not in mut[i] else \
                 mut[i][:mut[i].find(JETON_EXEMPT) + len(JETON_EXEMPT)]
-        fautes, _, _, _, _, _ = auditer("\n".join(mut), hdr_brut, bavard=False)
+        fautes, _, _, _, _, _, _ = auditer("\n".join(mut), hdr_brut, bavard=False)
         n_mut += 1
         ctrl(any(f[0] == nom for f in fautes),
              "M2 motif vidé, `%s` ROUGIT" % nom, "ligne %d" % (cible + 1))
@@ -330,7 +428,7 @@ def temoin_exemption(src_brut, hdr_brut, protegees):
         base[i] = base[i].replace("lvgl_port_lock", "verrou_neutralise")
 
     def rouge(mut):
-        fautes, _, _, _, _, _ = auditer("\n".join(mut), hdr_brut, bavard=False)
+        fautes, _, _, _, _, _, _ = auditer("\n".join(mut), hdr_brut, bavard=False)
         return any(f[0] == nom for f in fautes)
 
     ctrl(rouge(base), "M3-A verrou retiré, sans exemption ⇒ ROUGE", nom)
@@ -345,6 +443,61 @@ def temoin_exemption(src_brut, hdr_brut, protegees):
     c = list(base)
     c.insert(ligne - 1, "/* %s court */" % JETON_EXEMPT)
     ctrl(rouge(c), "M3-C jeton SANS motif suffisant ⇒ ROUGE", "5 c. < %d" % MOTIF_MIN)
+    return temoin_negatif_m4(src_brut, hdr_brut, cible)
+
+
+def temoin_negatif_m4(src_brut, hdr_brut, cible):
+    """🔴 M4 — CE QUE LA **PRÉSENCE** DU VERROU NE PROUVAIT PAS.
+
+    Ajouté par la revue de code du 2026-08-25. Les trois premières mutations
+    sont EXACTEMENT celles que la revue a jouées à la main et qui SURVIVAIENT :
+    la gate coupait sa branche sur `if "lvgl_port_lock" in corps`, un test de
+    SOUS-CHAÎNE, donc l'ordre, le retour et la libération n'étaient jamais vus.
+    ⛔ Sans ces quatre témoins, les contrôles ajoutés le 2026-08-25 seraient
+       eux-mêmes DÉCORATIFS — c'est la famille que `dn4-13` solde.
+    """
+    print("\n── TÉMOIN NÉGATIF M4 — portée, ordre, libération, déréférence ─────")
+    if cible is None:
+        ctrl(False, "M4 a trouvé sa fonction cible", "aucune")
+        return 0
+    nom, ligne, fin = cible
+    lignes = src_brut.split("\n")
+    haut, bas = ligne - 1, min(fin + 1, len(lignes))
+
+    def rouge(mut):
+        fautes, _, _, _, _, _, _ = auditer("\n".join(mut), hdr_brut, bavard=False)
+        return any(f[0] == nom for f in fautes)
+
+    def muter(remplacements, inserer=None):
+        m = list(lignes)
+        for i in range(haut, bas):
+            for a, b in remplacements:
+                m[i] = m[i].replace(a, b)
+        if inserer:
+            for i in range(haut, bas):
+                if "lvgl_port_lock" in m[i]:
+                    m.insert(i, inserer)
+                    break
+        return m
+
+    # M4-A — l'objet est LU AVANT la prise du verrou (le défaut d'AC1.1).
+    ctrl(rouge(muter([], inserer="    lv_obj_invalidate(s_det_courbe);")),
+         "M4-A objet LVGL lu AVANT le verrou ⇒ ROUGE", nom)
+
+    # M4-B — le RETOUR du verrou n'est plus testé (le défaut d'AC1.2).
+    ctrl(rouge(muter([("if (!lvgl_port_lock", "if (0 && !lvgl_port_lock")])),
+         "M4-B retour de `lvgl_port_lock` IGNORÉ ⇒ ROUGE", nom)
+
+    # M4-C — le verrou FUITE sur un chemin de sortie : la tâche LVGL gèle.
+    ctrl(rouge(muter([("lvgl_port_unlock();", "/* fuite */")])),
+         "M4-C `return` atteint VERROU TENU ⇒ ROUGE", nom)
+
+    # M4-D — plus aucun appel `lv_*()`, plus de verrou, mais un `->` sur un
+    #        objet LVGL : c'est le motif que `dn4-13` vient d'introduire.
+    ctrl(rouge(muter([("lvgl_port_lock", "verrou_neutralise"),
+                      ("lv_chart_get_series_color(", "zero_couleur(")])),
+         "M4-D déréférence `ptr->` sans verrou ni `lv_*()` ⇒ ROUGE", nom)
+    return 4
     return 3
 
 
@@ -358,7 +511,7 @@ def main():
     print("  dn_ui.h sha256[:16] = %s" % sha_h)
 
     (fautes, exemptees, protegees, hors_lvgl, publiques,
-     fonctions) = auditer(src, hdr)
+     fonctions, sans_lvgl) = auditer(src, hdr)
     definies = [n for n in publiques if n in fonctions]
     print("\n  %d fonctions publiques déclarées dans dn_ui.h, %d définies ici."
           % (len(publiques), len(definies)))
@@ -374,6 +527,27 @@ def main():
     print("        NOMMÉES plutôt que passées sous silence :")
     for nom, ligne in hors_lvgl:
         print("        · %-34s dn_ui.c:%d" % (nom, ligne))
+
+    print("\n── ÉCARTÉES : NI VERROU, NI OBJET LVGL ────────────────────────────")
+    print("     🔴 REVUE 2026-08-25 — ELLES SONT COMPTÉES, ⛔ PLUS AVALÉES.")
+    print("        Elles tombaient dans un `continue` MUET : ni verrou, ni appel")
+    print("        `lv_*()`, ni déréférence d'objet LVGL. La gate en écartait la")
+    print("        MAJORITÉ sans les nommer, pendant qu'elle se félicitait de")
+    print("        nommer les %d « hors périmètre ». Un audit qui ne dit pas ce" % len(hors_lvgl))
+    print("        qu'il n'a PAS regardé ne se relit pas.")
+    print("     %d publique(s) écartée(s) : %s"
+          % (len(sans_lvgl), ", ".join(n for n, _ in sans_lvgl[:8])
+             + (" …" if len(sans_lvgl) > 8 else "")))
+    # ⛔ AUCUNE PUBLIQUE NE DOIT DISPARAÎTRE DU COMPTE : le total des quatre
+    #    familles + les non-définies-ici doit retomber sur les déclarations.
+    vues = (len(fautes) + len(exemptees) + len(protegees) + len(hors_lvgl)
+            + len(sans_lvgl))
+    ailleurs = sum(1 for n in publiques
+                   if n not in fonctions or fonctions[n][2])
+    ctrl(vues + ailleurs >= len(publiques),
+         "AUCUNE publique ne disparaît du compte",
+         "%d classées + %d définies ailleurs ⇒ %d déclarées"
+         % (vues, ailleurs, len(publiques)))
 
     print("\n── EXEMPTIONS MOTIVÉES ────────────────────────────────────────────")
     if not exemptees:
@@ -391,8 +565,13 @@ def main():
     ctrl(not fautes, "ZÉRO publique touche LVGL sans verrou",
          "%d faute(s)" % len(fautes))
 
-    if "--temoin-negatif" in sys.argv:
-        temoin_negatif(src, hdr)
+    # 🔴 REVUE 2026-08-25 — LE TÉMOIN NÉGATIF N'EST PLUS OPTIONNEL.
+    #    Il était derrière `if "--temoin-negatif" in sys.argv`, et `grep` sur
+    #    TOUT le dépôt montrait qu'AUCUN runner ne passait le drapeau : en
+    #    invocation nominale cette gate publiait UN SEUL contrôle, et ce contrôle
+    #    n'avait JAMAIS été vu rougir. C'est la définition d'AC7.5 (« une gate
+    #    qu'aucun test n'a vue échouer est décorative ») appliquée à AC1.3.
+    temoin_negatif(src, hdr)
 
     print("\n" + "=" * 78)
     if ko_total[0] == 0:

@@ -109,13 +109,71 @@ def code_des_outils():
     return "\n".join(morceaux)
 
 
+CAS_MIN = 3  # plancher : un témoin qui joue moins que ça ne prouve rien
+
+
+def verdict_temoin(returncode, stdout):
+    """🔴 LE VERDICT D'UN TÉMOIN NÉGATIF, EN FONCTION PURE ET TESTABLE.
+
+    LE DÉFAUT, TEL QU'IL A ÉTÉ MESURÉ LE 2026-08-25 : le verdict était
+    `returncode == 0 and not rouges`. Une copie de `temoins_ac2_dn44.py` mutée
+    avec `cas = []` sortait en 0, sans un seul `🔴`, en imprimant « ✅ 0 cas — les
+    4 verdicts refusent la sentinelle AVANT de comparer » — et cette gate en
+    tirait **[OK]**. La branche `"(aucune sortie)"` était même écrite en toutes
+    lettres et se serait imprimée À CÔTÉ d'un [OK].
+    ⇒ C'est AC7.5 (« une gate qu'aucun test n'a vue échouer est décorative »)
+      retourné contre la gate qui GARDE les témoins négatifs. Et la parade
+      existait déjà dans le dépôt (`verif_courbe_dn413.py` porte un
+      `ctrl(n_mut >= 18, …)`) : elle n'avait simplement pas été portée ici.
+
+    ⚠️ Le seul signal d'échec lu était le caractère `🔴` : un harnais qui
+       échouerait en imprimant `⛔` et en rendant 0 passait aussi. On lit
+       désormais LE COMPTE PUBLIÉ, et on exige un plancher.
+    """
+    lignes = [l for l in stdout.split("\n") if l.strip()]
+    # ⚠️ TROIS FORMES de verdict d'échec, ⛔ pas une seule. Le test ne lisait que
+    #    `🔴` : un harnais qui échoue en imprimant « ⛔ N contrôle(s) en échec »
+    #    et qui rend 0 passait. Trouvé par le témoin négatif de cette garde,
+    #    pendant son écriture.
+    # ⛔ ET ON NE CHERCHE PAS `⛔` NU : les trois harnais l'emploient dans leur
+    #    PROSE (« ⛔ pas de zéro échantillon »). Un signal trop large rend rouge
+    #    un harnais sain — deux faux positifs mesurés avant ce resserrage.
+    rouges = [l for l in lignes
+              if "🔴" in l or "[KO" in l
+              or re.search(r"⛔\s*\d+\s*(contrôle|controle|ÉCHEC|ECHEC)", l)]
+    cas = [int(m) for m in re.findall(r"(\d+)\s+cas\b", stdout)]
+    n = max(cas) if cas else 0
+    resume = lignes[-1][:60] if lignes else "(aucune sortie)"
+    if returncode != 0:
+        return False, "exit %d · %s" % (returncode, resume)
+    if rouges:
+        return False, "%d ligne(s) d'échec (🔴/⛔/[KO]) · %s" % (len(rouges), resume)
+    if not cas:
+        return False, ("⛔ AUCUN COMPTE DE CAS PUBLIÉ — impossible de savoir si "
+                       "le témoin a joué quoi que ce soit · %s" % resume)
+    if n < CAS_MIN:
+        return False, ("⛔ %d cas joué(s) < %d — un témoin qui ne joue (presque) "
+                       "rien rend VERT SUR DU VIDE · %s" % (n, CAS_MIN, resume))
+    return True, "exit 0 · %d cas joués · %s" % (n, resume)
+
+
 def code_du_firmware():
-    """Le source C du firmware — pour reconnaître un nom de fonction EMBARQUÉE."""
+    """Le source C du firmware — pour reconnaître un nom de fonction EMBARQUÉE.
+
+    🔴 REVUE DU 2026-08-25 — LES COMMENTAIRES SONT RETIRÉS.
+       Ce dépôt cite MASSIVEMENT des noms de fonctions dans ses commentaires C.
+       En gardant les commentaires, un renvoi vers une fonction qui n'existe QUE
+       dans un commentaire de `dn_ui.c` était déclaré « embarquée, citée à
+       raison » — c'est-à-dire exactement le défaut d'origine (`drainer()` promis
+       et inexistant) RECONSTITUÉ PAR SA PROPRE PARADE.
+    """
     d = os.path.join(RACINE, "firmware", "desknode", "main")
     morceaux = []
     for f in sorted(os.listdir(d)):
         if f.endswith(".c") or f.endswith(".h"):
             txt, _ = lire(os.path.join(d, f))
+            txt = re.sub(r"/\*.*?\*/", " ", txt, flags=re.S)
+            txt = re.sub(r"//[^\n]*", " ", txt)
             morceaux.append(txt)
     return "\n".join(morceaux)
 
@@ -128,6 +186,12 @@ HORS_PERIMETRE = {
     "in_waiting", "encode", "decode", "print", "int", "len", "set", "range",
     # firmware / console de la carte
     "esp_restart", "lv_chart_set_x_start_point", "lv_chart_refresh",
+    # 🔴 REVUE 2026-08-25 — CITATIONS ABRÉGÉES D'API TIERCE, rendues visibles par
+    #    le passage de la sous-chaîne à la frontière de mot. Elles étaient déjà
+    #    là ; elles passaient par accident (`_hide_series` est une sous-chaîne de
+    #    `lv_chart_hide_series`). ⇒ Déclarées, ⛔ pas re-cachées.
+    "_set_x_start_point", "_hide_series", "_set_series_color", "connect",
+    "nom",
     "lv_obj_invalidate", "lv_label_set_text", "case_poser",
     "detail_reparametrer", "courbe_reparametrer", "build_scene",
     "dn_hist_poser", "dn_hist_minmax", "dn_hist_series_de_case",
@@ -186,7 +250,18 @@ def bloc_fantomes():
                 continue
             if re.search(r"\b" + re.escape(nom) + r"\s*\(", code_py):
                 continue  # (b) appelé quelque part dans nos outils
-            if nom in code_c:
+            # 🔴 REVUE DU 2026-08-25 — FRONTIÈRE DE MOT + PARENTHÈSE, comme (b)
+            #    juste au-dessus. Le test était `nom in code_c` : une SOUS-CHAÎNE.
+            #    Mesuré : les renvois `poser`, `suivre`, `marger`, `fmt` étaient
+            #    TOUS acceptés comme existants — ils passaient par sous-chaîne de
+            #    `dn_hist_poser`, `seau_suivre`, `plage_marger`, `hist_fmt`.
+            #    ⚠️ Écrits SANS parenthèses ici À DESSEIN : les citer sous la
+            #    forme avec parenthèses ferait de ce commentaire même une
+            #    fabrique de fantômes — le chasseur se prendrait dans son propre
+            #    filet. ⚠️ C'EST ARRIVÉ pendant l'écriture de ce correctif, et la
+            #    gate l'a attrapé : c'est son meilleur témoin.
+            #    L'asymétrie tenait en DEUX LIGNES CONSÉCUTIVES.
+            if re.search(r"\b" + re.escape(nom) + r"\s*\(", code_c):
                 continue  # (c) fonction du firmware, citée à raison
             fantomes.append((f, nom))
     for f, nom in fantomes:
@@ -238,16 +313,40 @@ def bloc_temoins():
         chemin = os.path.join(TOOLS, h)
         r = subprocess.run([sys.executable, chemin, "--temoin-negatif"],
                            capture_output=True, text=True)
-        lignes = [l for l in r.stdout.split("\n") if l.strip()]
-        rouges = [l for l in lignes if "🔴" in l]
-        resume = lignes[-1][:60] if lignes else "(aucune sortie)"
-        ctrl(r.returncode == 0 and not rouges, "témoin négatif : %s" % h,
-             "exit %d · %s" % (r.returncode, resume))
+        ok, detail = verdict_temoin(r.returncode, r.stdout)
+        rouges = [l for l in r.stdout.split("\n") if "🔴" in l]
+        ctrl(ok, "témoin négatif : %s" % h, detail)
         if r.returncode != 0 or rouges:
             for l in rouges[:6]:
                 print("        " + l.strip())
             if r.stderr.strip():
                 print("        stderr : " + r.stderr.strip()[:200])
+
+    # 🔴 REVUE DU 2026-08-25 — LA GARDE CI-DESSUS EST ELLE-MÊME VUE ROUGIR.
+    #    ⛔ Une gate qu'aucun test n'a vue échouer est décorative (AC7.5), et la
+    #    garde qu'on vient d'ajouter n'échapperait pas à la règle. On appelle
+    #    `verdict_temoin()` — la fonction PURE, extraite exprès — sur des sorties
+    #    FABRIQUÉES, ⛔ on ne rejoue pas un harnais.
+    print("\n── TÉMOIN NÉGATIF DE LA GARDE ELLE-MÊME (AC7.5 appliqué à la gate) ─")
+    cas_gate = [
+        ("harnais VIDÉ de ses cas (`cas = []`)",
+         0, "✅ 0 cas — les 4 verdicts refusent la sentinelle\n", False),
+        ("harnais MUET (drapeau avalé, aucune sortie)",
+         0, "", False),
+        ("harnais qui échoue en `⛔` mais rend 0",
+         0, "⛔ 2 controle(s) en echec sur 5 cas.\n", False),
+        ("harnais SAIN (%d cas ≥ %d)" % (CAS_MIN + 1, CAS_MIN),
+         0, "✅ %d cas — tout passe\n" % (CAS_MIN + 1), True),
+        ("harnais qui ROUGIT (🔴)",
+         0, "🔴 un contrôle est tombé\n✅ 9 cas\n", False),
+        ("harnais qui sort en ERREUR",
+         2, "✅ 9 cas — tout passe\n", False),
+    ]
+    for libelle, rc, sortie, attendu in cas_gate:
+        obtenu, _ = verdict_temoin(rc, sortie)
+        ctrl(obtenu == attendu, "garde : %s ⇒ %s" % (libelle,
+             "VERT" if attendu else "ROUGE"),
+             "obtenu %s" % ("VERT" if obtenu else "ROUGE"))
 
 
 def bloc_sentinelles():
