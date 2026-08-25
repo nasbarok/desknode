@@ -1100,13 +1100,34 @@ static dn_w2_t s_w2[DN_W2_NB];
 static int32_t s_w2_prec[DN_W2_NB];
 static bool s_w2_amorce[DN_W2_NB];
 
+/*
+ * ⚠️ LE NOM PORTE LA CADENCE (`@5s`, `@1s`). Depuis `dn3-3` elles diffèrent, et
+ *    un tableau qui aligne des taux de cadences différentes SANS le dire serait
+ *    exactement l'étiquette qui ment que ce dépôt traite comme un défaut.
+ *    `dn_w2_cadence_ms()` fait foi ; la gate vérifie que les deux CONCORDENT.
+ */
 static const char *k_w2_nom[DN_W2_NB] = {
-    "lux (entier)",
-    "pression (hPa entier)",
-    "pression (hPa dixieme)",
-    "temperature (dixieme) [CONTROLE]",
-    "gaz MOX (kOhm) [gaz on requis]",
+    "lux (entier) @5s",
+    "pression (hPa entier) @5s",
+    "pression (hPa dixieme) @5s",
+    "temperature (dixieme) @5s [CONTROLE]",
+    "gaz MOX (kOhm) @5s [gaz on requis]",
+    "CPU % (dixieme) @1s [AMBIENT seul]",
 };
+
+static const uint32_t k_w2_cadence_ms[DN_W2_NB] = {
+    DN_ENV_PERIODE_MS,      /* lux           */
+    DN_ENV_PERIODE_MS,      /* pression ent  */
+    DN_ENV_PERIODE_MS,      /* pression dix  */
+    DN_ENV_PERIODE_MS,      /* temperature   */
+    DN_ENV_PERIODE_MS,      /* gaz MOX       */
+    DN_W2_CADENCE_CPU_MS,   /* CPU — dn3-3/AC2.1, cadence du `hist_tick` 1 Hz */
+};
+
+uint32_t dn_w2_cadence_ms(dn_w2_id_t id)
+{
+    return (id >= 0 && id < DN_W2_NB) ? k_w2_cadence_ms[id] : 0;
+}
 
 const char *dn_w2_nom(dn_w2_id_t id)
 {
@@ -1137,6 +1158,24 @@ void dn_w2_echantillon(dn_w2_id_t id, int32_t v)
     w->somme_carres += (int64_t)v * (int64_t)v;
     s_w2_prec[id] = v;
     s_w2_amorce[id] = true;
+    portEXIT_CRITICAL(&s_mux);
+}
+
+/* Contrat, motifs et piège d'idempotence : voir `dn_env.h`. */
+void dn_w2_desamorcer(dn_w2_id_t id)
+{
+    if (id < 0 || id >= DN_W2_NB) {
+        return;
+    }
+    portENTER_CRITICAL(&s_mux);
+    /* ⚠️ IDEMPOTENTE — ⛔ ne compter une rupture QUE si une chaîne existait.
+     *    Appelée à chaque tick hors Ambient, elle serait sinon appelée des
+     *    dizaines de milliers de fois par nuit et le dénominateur du taux
+     *    (`n - 1 - ruptures`) partirait sous zéro. */
+    if (s_w2_amorce[id]) {
+        s_w2_amorce[id] = false;
+        s_w2[id].ruptures++;
+    }
     portEXIT_CRITICAL(&s_mux);
 }
 

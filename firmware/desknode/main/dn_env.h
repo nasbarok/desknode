@@ -388,18 +388,65 @@ int dn_env_bl_loi(int lux);
  *   d'un biais qu'on ne sait pas borner. L'accumulateur, lui, voit TOUS les
  *   cycles.
  *
- * 🔴 ET IL Y A QUATRE PISTES, PAS DEUX, PARCE QUE X2 EST UN CHOIX ENTRE DEUX
+ * 🔴 ET IL Y A PLUSIEURS PISTES, PAS DEUX, PARCE QUE X2 EST UN CHOIX ENTRE DEUX
  *    CANDIDATS : comparer le lux et la pression avec deux instruments différents
  *    ne prouverait rien. Et pour la pression, la PRÉCISION est justement ce qui
  *    est en jeu (AC11 : ⛔ aucune décimale que la source ne porte) ⇒ les deux
  *    formatages sont accumulés SÉPARÉMENT, et le choix se fait sur les chiffres.
+ * ⚠️ CE BLOC A DIT « QUATRE PISTES » JUSQU'AU 2026-08-25 ALORS QU'IL Y EN AVAIT
+ *    CINQ (le gaz MOX est arrivé après), et six depuis `dn3-3`. ⛔ On ne grave
+ *    plus le compte dans la prose : `DN_W2_NB` fait foi.
+ *
+ * 🔴 LA CADENCE EST **PAR PISTE** DEPUIS `dn3-3`, ⛔ PLUS GLOBALE.
+ *    Les cinq pistes capteurs battent à `DN_ENV_PERIODE_MS` (5 s) ; la piste
+ *    `DN_W2_CPU_DIX` bat à `DN_W2_CADENCE_CPU_MS` (1 s). ⇒ **la fenêtre d'une
+ *    piste vaut n × SA cadence**, et deux taux de cadences différentes ne se
+ *    comparent pas sans le dire. `dn_w2_cadence_ms()` la publie.
  */
+
+/* La cadence de la piste CPU : le tick 1 Hz de `dn_ui.c` (`hist_tick`). */
+#define DN_W2_CADENCE_CPU_MS 1000
 typedef enum {
     DN_W2_LUX = 0,          /* BH1750, en lux ENTIERS (sa seule précision utile) */
     DN_W2_PRESSION_ENT,     /* BME680, en hPa ENTIERS      (« 1013 hPa »)        */
     DN_W2_PRESSION_DIX,     /* BME680, en DIXIÈMES de hPa  (« 1013,2 hPa »)      */
     DN_W2_TEMPERATURE_DIX,  /* témoin de CONTRÔLE : une grandeur DÉJÀ affichée   */
     DN_W2_GAZ_KOHM,         /* BME680 MOX, en kOhm — ⚠️ seulement `capteurs gaz on` */
+    /*
+     * 🔴 dn3-3 / AC2.1 — LA SIXIÈME PISTE, ET LA SEULE QUI PORTE UNE CASE
+     *    NOURRIE PAR LE PC. Elle existe parce que **AC2.1 N'AVAIT AUCUN
+     *    INSTRUMENT** : la story et `hardware/` §24.13 nommaient `w2`, alors que
+     *    ses cinq appelants étaient TOUS des capteurs locaux. Constat du
+     *    2026-08-25, relu dans le source.
+     *
+     * Valeur échantillonnée : `s_dx[CPU][0]`, c'est-à-dire **le nombre que le
+     * texte montre** — la grandeur 0 de `CPU` est déclarée `DN_PREC_DIXIEME`,
+     * donc le dixième EST l'affichage. ⛔ Jamais la source.
+     *
+     * 🔴 TROIS DÉCISIONS DE CONCEPTION, ET CHACUNE A SON MOTIF ÉCRIT :
+     *
+     * 1. **1 Hz, ⛔ pas 5 s.** AC2.1 juge sur **60 s**. À 5 s ça ne fait que
+     *    **12 échantillons, donc 11 transitions** — et le seuil de taux vaut
+     *    **10 %** quand le PAS du dénominateur vaut **9,1 %** : un seuil plus
+     *    fin que le pas de son dénominateur n'est pas tranchable. À 1 Hz :
+     *    60 échantillons, 59 transitions, pas de **1,7 %**.
+     *
+     * 2. **AMBIENT SEULEMENT.** AC2.1 dit « en Ambient ». Or pendant un tir sous
+     *    agent réel **il n'y a PAS de console** (branche A : le REPL EST le
+     *    transport PC), donc ⛔ **aucun `w2 reset` ne peut délimiter la fenêtre
+     *    depuis l'extérieur**. En n'accumulant qu'en Ambient, la piste est
+     *    self-délimitée : tout échantillon qu'elle porte est un échantillon
+     *    d'Ambient, quelle que soit l'heure de lecture.
+     *    ⚠️ Conséquence à dire : cette piste **ne peut pas** servir à comparer
+     *    Actif et Ambient. Ce n'est pas ce qu'AC2.1 demande.
+     *
+     * 3. **LES ÉPISODES SONT SÉPARÉS PAR UNE RUPTURE.** La veille tombe et se
+     *    lève des dizaines de fois par nuit ; concaténer les épisodes ferait
+     *    compter comme « changement de texte » un saut qui n'est qu'une reprise.
+     *    ⇒ `dn_w2_desamorcer()` à chaque sortie d'Ambient (et sur toute valeur
+     *    invalide), et les ruptures sont **RETIRÉES DU DÉNOMINATEUR**.
+     */
+    DN_W2_CPU_DIX,
     DN_W2_NB,
 } dn_w2_id_t;
 
@@ -407,12 +454,37 @@ typedef struct {
     uint32_t n;          /* échantillons */
     int32_t min, max;    /* de la valeur AFFICHÉE */
     uint32_t changements;/* nb d'échantillons dont le TEXTE diffère du précédent */
+    /*
+     * 🔴 dn3-3 — CHAÎNES BRISÉES : fin d'un épisode Ambient, ou valeur invalide.
+     * L'échantillon qui SUIT une rupture n'a **pas de prédécesseur légitime** :
+     * il ne peut donc être ni un changement, ni une transition. ⇒ le
+     * dénominateur du taux vaut `n - 1 - ruptures`, ⛔ pas `n - 1`.
+     * ⚠️ Sans ce retrait, le biais irait TOUJOURS vers « NE QUALIFIE PAS »
+     *    (dénominateur gonflé) — c'est-à-dire vers le même sens que les deux
+     *    défauts de troncature corrigés le 2026-08-20.
+     */
+    uint32_t ruptures;
     int64_t somme;
     int64_t somme_carres;
 } dn_w2_t;
 
 /* Un échantillon de la valeur telle qu'elle SERAIT AFFICHÉE. */
 void dn_w2_echantillon(dn_w2_id_t id, int32_t valeur_affichee);
+
+/*
+ * 🔴 BRISE LA CHAÎNE : l'échantillon SUIVANT n'aura pas de prédécesseur.
+ * Appelée à chaque sortie d'Ambient et sur toute valeur invalide. ⛔ Elle ne
+ * jette AUCUN échantillon déjà pris — elle empêche seulement d'inventer une
+ * transition entre deux instants que rien ne relie.
+ * ⚠️ IDEMPOTENTE : deux appels d'affilée ne comptent qu'UNE rupture. Sinon un
+ *    module en Actif pendant huit heures gonflerait `ruptures` de 28 800 et
+ *    rendrait le dénominateur négatif.
+ */
+void dn_w2_desamorcer(dn_w2_id_t id);
+
+/* La cadence de CETTE piste, en ms. ⛔ Elle n'est plus globale : voir le bloc
+ * de tête. La fenêtre d'une piste vaut `n × dn_w2_cadence_ms(id)`. */
+uint32_t dn_w2_cadence_ms(dn_w2_id_t id);
 void dn_w2_lire(dn_w2_id_t id, dn_w2_t *out);
 void dn_w2_reset(void);
 const char *dn_w2_nom(dn_w2_id_t id);

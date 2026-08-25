@@ -638,6 +638,235 @@ def bloc_anneau_contexte(src):
              "le latch du delai est bien la ligne que A eprouve")
 
 
+# ════════════════════════════════════════════════════════════════════════════
+#  4 ter. LA 6e PISTE W2 SUR LA CASE `CPU` (dn3-3 / AC2.1)
+#
+#  AC2.1 N'AVAIT AUCUN INSTRUMENT : `dn_w2_echantillon()` avait cinq appelants,
+#  TOUS des capteurs locaux. Cette piste-ci porte une case NOURRIE PAR LE PC.
+#  ⛔ ET W2 N'AVAIT JAMAIS ETE GATE DU TOUT — aucun `verif_*.py` ne le touchait.
+#  Le bloc EXTRAIT VERBATIM l'accumulateur de `dn_env.c` et l'APPELLE.
+# ════════════════════════════════════════════════════════════════════════════
+
+DN_ENV_C = os.path.join(MAIN, "dn_env.c")
+DN_ENV_H = os.path.join(MAIN, "dn_env.h")
+DN_CONSOLE_C = os.path.join(MAIN, "dn_console.c")
+
+RE_W2_BLOC = re.compile(
+    r"static dn_w2_t s_w2\[DN_W2_NB\];.*?\nvoid dn_w2_reset\(void\)\n\{.*?\n\}\n",
+    re.S)
+RE_W2_ENUM = re.compile(r"typedef enum \{\s*\n\s*DN_W2_LUX.*?\} dn_w2_id_t;", re.S)
+RE_W2_STRUCT = re.compile(r"typedef struct \{\s*\n\s*uint32_t n;.*?\} dn_w2_t;", re.S)
+
+SHIM_W2 = """
+#include <stdint.h>
+#include <stdbool.h>
+#include <string.h>
+typedef int portMUX_TYPE;
+#define portMUX_INITIALIZER_UNLOCKED 0
+#define portENTER_CRITICAL(m) ((void)(m))
+#define portEXIT_CRITICAL(m)  ((void)(m))
+static portMUX_TYPE s_mux = portMUX_INITIALIZER_UNLOCKED;
+"""
+
+
+def _w2_construire(bloc_c, enum_c, struct_c, per_ms, cpu_ms, etiquette):
+    """Compile L'ACCUMULATEUR EXTRAIT (ou une MUTATION) et rend le handle."""
+    d = tmpdir()
+    txt = (SHIM_W2
+           + "#define DN_ENV_PERIODE_MS %d\n" % per_ms
+           + "#define DN_W2_CADENCE_CPU_MS %d\n" % cpu_ms
+           + enum_c + "\n" + struct_c + "\n" + bloc_c + "\n")
+    with open(os.path.join(d, "w2.c"), "w", encoding="utf-8") as f:
+        f.write(txt)
+    so = os.path.join(d, "libw2.so")
+    r = subprocess.run(["cc", "-shared", "-fPIC", "-O0", "-o", so,
+                        os.path.join(d, "w2.c")], capture_output=True, text=True)
+    if r.returncode != 0:
+        print("ÉCHEC DE COMPILATION (%s) :\n%s" % (etiquette, r.stderr[:1500]))
+        return None
+    lib = ctypes.CDLL(so)
+    lib.dn_w2_echantillon.argtypes = [ctypes.c_int, ctypes.c_int32]
+    lib.dn_w2_desamorcer.argtypes = [ctypes.c_int]
+    lib.dn_w2_cadence_ms.restype = ctypes.c_uint32
+    lib.dn_w2_cadence_ms.argtypes = [ctypes.c_int]
+    lib.dn_w2_nom.restype = ctypes.c_char_p
+    lib.dn_w2_nom.argtypes = [ctypes.c_int]
+    return lib
+
+
+class W2(ctypes.Structure):
+    _fields_ = [("n", ctypes.c_uint32),
+                ("mn", ctypes.c_int32), ("mx", ctypes.c_int32),
+                ("changements", ctypes.c_uint32),
+                ("ruptures", ctypes.c_uint32),
+                ("somme", ctypes.c_int64),
+                ("somme_carres", ctypes.c_int64)]
+
+
+def _w2_lire(lib, i):
+    w = W2()
+    lib.dn_w2_lire(ctypes.c_int(i), ctypes.byref(w))
+    return w
+
+
+def bloc_w2_cpu():
+    print("\n── 4 ter. LA 6e PISTE W2 SUR `CPU` (AC2.1) ─────────────────────")
+    ec, sha_c = lire(DN_ENV_C)
+    eh, sha_h = lire(DN_ENV_H)
+    mb = RE_W2_BLOC.search(ec)
+    me = RE_W2_ENUM.search(eh)
+    ms = RE_W2_STRUCT.search(eh)
+    if not ctrl(mb is not None and me is not None and ms is not None,
+                "l'accumulateur W2 est EXTRAIT de dn_env.c/.h",
+                "dn_env.c sha %s · dn_env.h sha %s" % (sha_c, sha_h)):
+        print("        ⛔ Extraction impossible : cette gate ne couvre PLUS rien.")
+        print("           ⛔ Ne pas la neutraliser — la reparer.")
+        return
+
+    mper = re.search(r"#define DN_ENV_PERIODE_MS\s+(\d+)", eh)
+    mcpu = re.search(r"#define DN_W2_CADENCE_CPU_MS\s+(\d+)", eh)
+    if not ctrl(mper is not None and mcpu is not None,
+                "les DEUX cadences sont RELUES de l'en-tete",
+                "⛔ jamais recopiees dans la gate"):
+        return
+    per_ms, cpu_ms = int(mper.group(1)), int(mcpu.group(1))
+    ctrl(cpu_ms == 1000,
+         "la cadence CPU vaut 1 000 ms, ⛔ pas %d" % per_ms,
+         "a 5 s, 60 s ne font que 12 echantillons ⇒ 11 transitions, et le PAS "
+         "du denominateur (9,1 %) DEPASSE le seuil de taux (10 %)")
+
+    bloc, enum_c, struct_c = mb.group(0), me.group(0), ms.group(0)
+    lib = _w2_construire(bloc, enum_c, struct_c, per_ms, cpu_ms, "nominal")
+    if not ctrl(lib is not None, "il compile tel quel sur l'hote"):
+        return
+
+    NB = enum_c.count(",") and None
+    ctrl("DN_W2_CPU_DIX" in enum_c, "la piste `DN_W2_CPU_DIX` EXISTE")
+    idx_cpu = 5
+
+    # ── A. LE TEXTE, PAS LA SOURCE ──────────────────────────────────────────
+    lib.dn_w2_reset()
+    for v in (421, 421, 421):
+        lib.dn_w2_echantillon(idx_cpu, v)
+    w = _w2_lire(lib, idx_cpu)
+    ctrl(w.n == 3 and w.changements == 0,
+         "A : trois valeurs IDENTIQUES ⇒ 0 changement",
+         "n=%d chg=%d — deux valeurs egales rendent le MEME texte" % (w.n, w.changements))
+
+    lib.dn_w2_reset()
+    for v in (421, 422, 422, 430):
+        lib.dn_w2_echantillon(idx_cpu, v)
+    w = _w2_lire(lib, idx_cpu)
+    ctrl(w.n == 4 and w.changements == 2 and w.mn == 421 and w.mx == 430,
+         "A : les changements de TEXTE sont comptes, et min/max suivent",
+         "n=%d chg=%d min=%d max=%d" % (w.n, w.changements, w.mn, w.mx))
+
+    # ── B. LA RUPTURE DE CHAINE ─────────────────────────────────────────────
+    lib.dn_w2_reset()
+    lib.dn_w2_echantillon(idx_cpu, 400)
+    lib.dn_w2_desamorcer(idx_cpu)      # sortie d'Ambient
+    lib.dn_w2_echantillon(idx_cpu, 900)  # reprise : valeur TRES differente
+    w = _w2_lire(lib, idx_cpu)
+    ctrl(w.changements == 0,
+         "🔴 B : l'echantillon qui SUIT une rupture n'est PAS un changement",
+         "400 → [rupture] → 900 : rien ne relie ces deux instants (chg=%d)" % w.changements)
+    ctrl(w.ruptures == 1, "B : la rupture est COMPTEE", "ruptures=%d" % w.ruptures)
+    ctrl(w.n == 2, "B : ⛔ aucun echantillon n'est JETE", "n=%d" % w.n)
+
+    # ── C. L'IDEMPOTENCE — LE PIEGE QUI RENDRAIT LE DENOMINATEUR NEGATIF ────
+    lib.dn_w2_reset()
+    lib.dn_w2_echantillon(idx_cpu, 400)
+    for _ in range(50):
+        lib.dn_w2_desamorcer(idx_cpu)   # 50 ticks hors Ambient
+    lib.dn_w2_echantillon(idx_cpu, 500)
+    w = _w2_lire(lib, idx_cpu)
+    ctrl(w.ruptures == 1,
+         "🔴 C : 50 desamorcages d'affilee ne comptent QU'UNE rupture",
+         "ruptures=%d — sans l'idempotence, une nuit en Actif en compterait "
+         "des dizaines de milliers et n-1-ruptures partirait SOUS ZERO" % w.ruptures)
+
+    lib.dn_w2_reset()
+    lib.dn_w2_desamorcer(idx_cpu)       # rupture AVANT tout echantillon
+    w = _w2_lire(lib, idx_cpu)
+    ctrl(w.ruptures == 0,
+         "C : rompre une chaine INEXISTANTE ne compte rien", "ruptures=%d" % w.ruptures)
+
+    # ── D. `reset` REMET TOUT, RUPTURES COMPRISES ──────────────────────────
+    lib.dn_w2_reset()
+    lib.dn_w2_echantillon(idx_cpu, 1)
+    lib.dn_w2_desamorcer(idx_cpu)
+    lib.dn_w2_reset()
+    w = _w2_lire(lib, idx_cpu)
+    ctrl(w.n == 0 and w.changements == 0 and w.ruptures == 0,
+         "D : `w2 reset` remet n, changements ET ruptures a zero")
+
+    # ── E. LE NOM NE MENT PAS SUR SA CADENCE ────────────────────────────────
+    #    Les deux sont LUS DU PRODUIT et confrontes : c'est une gate d'ETIQUETTE.
+    ok = True
+    detail = []
+    for i in range(6):
+        nom = lib.dn_w2_nom(i).decode("utf-8", "replace")
+        cad = lib.dn_w2_cadence_ms(i)
+        attendu = "@%ds" % (cad // 1000)
+        if attendu not in nom:
+            ok = False
+        detail.append("%s=%dms" % (attendu, cad))
+    ctrl(ok, "🔴 E : le NOM de chaque piste porte SA cadence, et elles CONCORDENT",
+         " · ".join(detail) + " — un tableau qui aligne des taux de cadences "
+         "differentes sans le dire est une etiquette qui ment")
+
+    # ── F. LE SITE D'ECHANTILLONNAGE EST UNIQUE, ET GARDE PAR AMBIENT ──────
+    ui, _ = lire(DN_UI_C)
+    n_sites = ui.count("dn_w2_echantillon(DN_W2_CPU_DIX")
+    ctrl(n_sites == 1,
+         "F : UN SEUL site echantillonne la piste CPU",
+         "%d site(s) — deux sites doubleraient la cadence en silence" % n_sites)
+    ctrl(re.search(r"dn_veille_mode\(\) == DN_VEILLE_AMBIENT[^;]*?\n?[^;]*?"
+                   r"dn_w2_echantillon\(DN_W2_CPU_DIX", ui, re.S) is not None,
+         "F : il est GARDE par `dn_veille_mode() == DN_VEILLE_AMBIENT`",
+         "AC2.1 dit « en Ambient » — et sous agent reel il n'y a plus de "
+         "console pour delimiter la fenetre")
+    ctrl("dn_w2_desamorcer(DN_W2_CPU_DIX)" in ui,
+         "F : …et la chaine est BRISEE hors Ambient / sur valeur invalide")
+
+    # ── G. LE DENOMINATEUR RETIRE LES RUPTURES, DANS LA CONSOLE ────────────
+    cons, _ = lire(DN_CONSOLE_C)
+    ctrl("uint32_t hors = 1u + w.ruptures;" in cons,
+         "G : la console retire les ruptures du denominateur",
+         "sinon le taux serait dilue, TOUJOURS vers « NE QUALIFIE PAS »")
+    ctrl("w.n - hors" in cons, "G : …et le taux vaut chg / (n - 1 - ruptures)")
+
+    # ── H. LES DEUX MUTANTS, COMPILES ET VUS ROUGIR ────────────────────────
+    m1 = bloc.replace("if (s_w2_amorce[id] && v != s_w2_prec[id]) {",
+                      "if (v != s_w2_prec[id]) {")
+    ctrl(m1 != bloc, "H : la mutation 1 (garde d'amorcage retiree) s'applique")
+    lm = _w2_construire(m1, enum_c, struct_c, per_ms, cpu_ms, "mutant sans amorce")
+    if lm is not None:
+        lm.dn_w2_reset()
+        lm.dn_w2_echantillon(idx_cpu, 400)
+        lm.dn_w2_desamorcer(idx_cpu)
+        lm.dn_w2_echantillon(idx_cpu, 900)
+        wm = _w2_lire(lm, idx_cpu)
+        ctrl(wm.changements == 1,
+             "H : MUTANT 1 — le controle B ROUGIT",
+             "la rupture serait comptee comme un changement (chg=%d)" % wm.changements)
+
+    m2 = bloc.replace("    if (s_w2_amorce[id]) {\n        s_w2_amorce[id] = false;\n"
+                      "        s_w2[id].ruptures++;\n    }",
+                      "    s_w2_amorce[id] = false;\n    s_w2[id].ruptures++;")
+    ctrl(m2 != bloc, "H : la mutation 2 (idempotence retiree) s'applique")
+    lm2 = _w2_construire(m2, enum_c, struct_c, per_ms, cpu_ms, "mutant non idempotent")
+    if lm2 is not None:
+        lm2.dn_w2_reset()
+        lm2.dn_w2_echantillon(idx_cpu, 400)
+        for _ in range(50):
+            lm2.dn_w2_desamorcer(idx_cpu)
+        wm2 = _w2_lire(lm2, idx_cpu)
+        ctrl(wm2.ruptures == 50,
+             "H : MUTANT 2 — le controle C ROUGIT",
+             "50 ruptures pour UNE sortie d'Ambient (ruptures=%d)" % wm2.ruptures)
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 #  5. LE SOUPÇON D'APPUI FANTÔME (AC8.2) — et son MUTANT
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1149,6 +1378,7 @@ def main():
     bloc_nvs(src)
     bloc_tick(src)
     bloc_anneau_contexte(src)
+    bloc_w2_cpu()
     bloc_fantome(src)
     bloc_accents()
     bloc_gris()

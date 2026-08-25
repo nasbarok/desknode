@@ -7820,29 +7820,51 @@ static int cmd_w2(int argc, char **argv)
     printf("TEXTE >= %d %% · sigma >= 1,000\n", DN_W2_SEUIL_TAUX_PCT);
     printf("reference dn4-6 : FAN_RPM 13 / 55,2 %% / 2,02 (n=959) QUALIFIE ·\n");
     printf("                  ASIC_POWER 3 / 57,9 %% / 0,75 NE QUALIFIE PAS\n");
-    printf("⚠️ echantillonne DANS LE FIRMWARE, un point par cycle de %d ms :\n",
-           DN_ENV_PERIODE_MS);
+    printf("⚠️ echantillonne DANS LE FIRMWARE. 🔴 LA CADENCE EST **PAR PISTE**\n");
+    printf("   DEPUIS dn3-3, ⛔ PLUS GLOBALE : les cinq pistes capteurs battent a\n");
+    printf("   %d ms, la piste CPU a %d ms. Chaque nom la porte (`@5s`, `@1s`).\n",
+           DN_ENV_PERIODE_MS, DN_W2_CADENCE_CPU_MS);
+    printf("   ⛔ LA FENETRE D'UNE PISTE VAUT n x SA CADENCE : ⛔ ne pas comparer\n");
+    printf("      deux taux de cadences differentes sans le dire.\n");
     printf("   `dn_console.py` PERD DES LIGNES, et un taux calcule sur un\n");
     printf("   echantillonnage qui perd des points est faux d'un biais qu'on\n");
     printf("   ne sait pas borner.\n");
     printf("⛔ Seules les valeurs VALIDES sont echantillonnees : compter une\n");
-    printf("   absence comme un changement gonflerait le taux d'un capteur MUET.\n\n");
+    printf("   absence comme un changement gonflerait le taux d'un capteur MUET.\n");
+    printf("⚠️ `rup` = CHAINES BRISEES (sortie d'Ambient, ou valeur invalide).\n");
+    printf("   L'echantillon qui SUIT une rupture n'a pas de predecesseur\n");
+    printf("   legitime : les ruptures sont RETIREES DU DENOMINATEUR du taux,\n");
+    printf("   qui vaut donc n - 1 - rup. ⛔ Sans ce retrait le biais irait\n");
+    printf("   TOUJOURS vers « NE QUALIFIE PAS ».\n");
+    printf("🔴 dn3-3 / AC2.1 : la piste CPU n'accumule QU'EN AMBIENT, donc tout\n");
+    printf("   echantillon qu'elle porte EST un echantillon d'Ambient — sous\n");
+    printf("   agent reel il n'y a plus de console pour delimiter la fenetre.\n");
+    printf("   AC2.1 demande 60 s : c'est n >= %d sur cette piste.\n\n",
+           (int)(60000 / DN_W2_CADENCE_CPU_MS));
 
-    printf("%-34s %6s %8s %8s %9s %8s %8s  %s\n", "piste", "n", "min", "max",
-           "etendue", "taux %", "sigma", "verdict");
+    printf("%-38s %6s %5s %8s %8s %9s %8s %8s  %s\n", "piste", "n", "rup",
+           "min", "max", "etendue", "taux %", "sigma", "verdict");
     for (int i = 0; i < DN_W2_NB; i++) {
         dn_w2_t w;
         dn_w2_lire((dn_w2_id_t)i, &w);
         if (w.n == 0) {
-            printf("%-34s %6d %8s %8s %9s %8s %8s  %s\n", dn_w2_nom((dn_w2_id_t)i),
-                   0, "-", "-", "-", "-", "-", "AUCUN ECHANTILLON");
+            printf("%-38s %6d %5s %8s %8s %9s %8s %8s  %s\n",
+                   dn_w2_nom((dn_w2_id_t)i), 0, "-", "-", "-", "-", "-", "-",
+                   "AUCUN ECHANTILLON");
             continue;
         }
         int32_t etendue = w.max - w.min;
         /* Taux sur les TRANSITIONS observees, donc n-1 : le premier echantillon
          * n'a pas de precedent auquel se comparer. ⛔ Diviser par n gonflerait
-         * les petits echantillons. */
-        uint32_t transitions = (w.n > 1) ? (w.n - 1) : 1;
+         * les petits echantillons.
+         * 🔴 dn3-3 — ET ON RETIRE LES RUPTURES. Une chaine brisee (sortie
+         *    d'Ambient, valeur invalide) laisse un echantillon SANS predecesseur
+         *    legitime : il n'est ni un changement, ni une transition. Le laisser
+         *    au denominateur diluerait le taux, TOUJOURS vers « NE QUALIFIE
+         *    PAS » — le meme sens que les deux troncatures corrigees le
+         *    2026-08-20. */
+        uint32_t hors = 1u + w.ruptures;
+        uint32_t transitions = (w.n > hors) ? (w.n - hors) : 1u;
         uint32_t taux = (w.changements * 100u) / transitions;
         /* sigma en MILLIEMES, en entiers : variance = E[x²] - E[x]².
          * ⛔ Aucun flottant : le depot les interdit sur le fil, et une racine
@@ -7917,8 +7939,9 @@ static int cmd_w2(int argc, char **argv)
                      ok_e ? "" : "etendue ", ok_t ? "" : "taux ",
                      ok_s ? "" : "sigma");
         }
-        printf("%-34s %6lu %8ld %8ld %9ld %8lu %4lld,%03lld  %s\n",
-               dn_w2_nom((dn_w2_id_t)i), (unsigned long)w.n, (long)w.min,
+        printf("%-38s %6lu %5lu %8ld %8ld %9ld %8lu %4lld,%03lld  %s\n",
+               dn_w2_nom((dn_w2_id_t)i), (unsigned long)w.n,
+               (unsigned long)w.ruptures, (long)w.min,
                (long)w.max, (long)etendue, (unsigned long)taux,
                (long long)(sigma_milli / 1000), (long long)(sigma_milli % 1000),
                verdict);

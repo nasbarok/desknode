@@ -5746,6 +5746,30 @@ static void hist_tick(lv_timer_t *t)
         if (n == 2 && s1 >= 0) {
             dn_hist_poser(s1, s_dx[c][1], reelle && s_dx_connue[c][1]);
         }
+        /*
+         * 🔴 dn3-3 / AC2.1 — LA PISTE W2 DE LA CASE `CPU`, ÉCHANTILLONNÉE ICI ET
+         *    NULLE PART AILLEURS.
+         * ⚠️ ICI parce que c'est le seul endroit qui tient À LA FOIS la valeur
+         *    AFFICHÉE (`s_dx[c][0]`, au dixième — c'est la précision déclarée de
+         *    la grandeur 0 de `CPU`) ET son régime. Un échantillonnage depuis
+         *    `dn_link` prendrait la SOURCE, ce qu'AC2.1 interdit en toutes
+         *    lettres.
+         * ⚠️ AMBIENT SEULEMENT, et hors Ambient on BRISE LA CHAÎNE : sous agent
+         *    réel il n'y a plus de console (le REPL est le transport PC), donc
+         *    aucun `w2 reset` ne peut délimiter la fenêtre depuis l'extérieur.
+         *    La piste se délimite elle-même. Motifs complets dans `dn_env.h`.
+         */
+        if (c == DN_UI_CASE_CPU) {
+            if (dn_veille_mode() == DN_VEILLE_AMBIENT && reelle &&
+                s_dx_connue[c][0]) {
+                dn_w2_echantillon(DN_W2_CPU_DIX, s_dx[c][0]);
+            } else {
+                /* ⛔ Une valeur ABSENTE n'est pas un changement de texte : la
+                 *    compter gonflerait le taux d'une case MUETTE. Même règle
+                 *    que pour les cinq pistes capteurs. */
+                dn_w2_desamorcer(DN_W2_CPU_DIX);
+            }
+        }
     }
     /* La page ouverte suit l'anneau dans le MÊME tick — sinon la courbe
      * n'avancerait qu'à la prochaine trame, c'est-à-dire jamais si la source
