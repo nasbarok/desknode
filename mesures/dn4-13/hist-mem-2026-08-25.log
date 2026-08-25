@@ -1,6 +1,14 @@
 # dn4-13 / T11 — seance du 2026-08-25
 # firmware : 7b375c3 (SHA LU AU BANDEAU au boot, arbre propre)
-# protocole : touch reset + nav ab 20 (n=40), dalle NON TOUCHEE
+# protocole : `hist` puis `mem`, releves A LA SUITE dans le meme boot,
+#             uptime 947 s au relevé. ⛔ NI `nav ab`, NI `touch` : cette
+#             capture ne porte AUCUNE latence.
+# .map       : celui du binaire FLASHE (7b375c3), confronte hors carte
+# 🔴 CORRIGE LE 2026-08-25 (revue de code) : cet en-tete portait le
+#    protocole des COINS du carre (`touch reset + nav ab 20 (n=40), dalle
+#    NON TOUCHEE`), copie-colle — un protocole qui n'est pas le sien, sur
+#    une capture qui ne contient ni `nav ab` ni `touch`. La File List
+#    promet « SHA + protocole + contrainte de source en tete de chacune ».
 # source : MUETTE — le port est EXCLUSIF (liaison-pc.md 13)
 
 ===== hist =====

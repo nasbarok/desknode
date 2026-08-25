@@ -5944,10 +5944,25 @@ borne ce que ces nombres décrivent — **une page dont les cases sont éteintes
 
 ## 23.2 🔴 LE CARRÉ 2×2, RE-TIRÉ ENTIÈREMENT
 
-Protocole **identique à §22.4**, pour être comparable : `touch reset` +
-`flush reset` implicite, puis **`nav ab 20`** (**n = 40**), dalle **NON TOUCHÉE**.
+Protocole **identique à §22.4**, pour être comparable : `touch reset`, puis
+**`nav ab 20`** (**n = 40**), dalle **NON TOUCHÉE**.
 **`transitions RÉELLES = 40 (demandées 40)` aux CINQ tirs**, `taps` = **0**,
-**0 synchro expirée** à chaque passe.
+et **0 synchro expirée NOUVELLE par passe**.
+
+> 🔴 **CORRIGÉ PAR LA REVUE DE CODE DU 2026-08-25 — ⛔ PAS EFFACÉ.**
+> Cette ligne annonçait **« 0 synchro expirée »** et un **« `flush reset`
+> implicite »**. Les deux étaient FAUX, et les captures livrées le montrent :
+> chacun des cinq `*-navab20-*.log` porte **`⚠️ 5 synchro(s) EXPIRÉE(S)`** dans
+> son bloc `flush AVANT` **et** dans son bloc `APRÈS` — dont le texte avertit
+> lui-même qu'*« une comparaison A/B qui les inclut compare partiellement "rien"
+> à "rien" »*. Le compteur vaut **5 des deux côtés** : le « 0 » était un **Δ
+> dérivé d'un cumul jamais remis à zéro**. Et le `flush reset` n'a pas eu lieu —
+> les flushes cumulent sans discontinuité sur toute la séance (1930 → 2132 →
+> 2149 → 2352 → 2369 → 2571 → 2588 → 2804 → 2821 → 3034).
+> ⇒ **Le chiffre était juste, la PHRASE était fausse.** C'est la famille n°2 des
+> Dev Notes, et aucune des 7 gates ne relit un libellé.
+> ⚠️ La même phrase est reprise dans `brief.md` et dans le ledger : les deux
+> portent le même correctif, à la même date.
 
 🔴 **CHAQUE CHIFFRE CI-DESSOUS EST DANS `mesures/dn4-13/*.log`**, et le log porte
 en tête le SHA, le protocole et la contrainte de source. ⛔ **Le chiffre publié et
@@ -6026,6 +6041,28 @@ que *« ce chemin est le plus chaud de la vue détail »*. L'ironie est levée.
 | source **MUETTE** | 30 | 30 | **0 %** |
 | source **VIVE** (150 trames, 5 métriques à 1 Hz) | 62 | 33 | **47 %** |
 
+> 🔴 **QUI POUSSAIT ? `tools/anim_courbe_dn44.py` — NOMMÉ ICI LE 2026-08-25,
+> SUR DÉCISION OWNER, À L'ISSUE DE LA REVUE DE CODE.**
+> Cette ligne disait *« source VIVE (150 trames, 5 métriques à 1 Hz) »* **sans
+> nommer l'instrument**, alors que le `Debug Log` de la story déclare que
+> *« L'AGENT RÉEL SUR LA TOUR N'A PAS ALIMENTÉ LES MESURES, ET C'EST
+> PHYSIQUE »* (le port série est exclusif).
+> ⚠️ **CE QUE ÇA COÛTE, ÉCRIT PLUTÔT QUE TAIT** : `anim_courbe_dn44.py` est un
+> **injecteur à formes synthétiques**, ⛔ pas l'agent réel — et le tableau de
+> prérequis d'AC11 pose que *« tout chiffre où LE DESSIN est la variable se
+> mesure sous agent réel, et c'est exactement le cas d'**AC5** »*, `dn4-10`
+> ayant mesuré un **facteur 108** d'écart sur le dessin entre injecteur et
+> agent réel. ⇒ **Le 47 % décrit ce que le conditionnement économise SOUS CET
+> INJECTEUR-LÀ**, ⛔ pas sous l'agent de la tour.
+> ⛔ **ET AUCUNE CAPTURE NE LE PORTE** : les 6 fichiers de `mesures/dn4-13/`
+> sont les cinq coins et le `hist`/`mem` — aucun relevé `widget courbe`.
+> ⚠️ **La revue du 2026-08-25 a par ailleurs trouvé DEUX défauts dans cet
+> injecteur** : sa fenêtre de drainage utilisait un horodatage périmé et
+> pouvait être **déjà écoulée** (zéro drainage, cadence 1 Hz perdue en
+> silence), et `--par-page 0` était accepté, rendant une fenêtre
+> d'observation **vide** annoncée comme accomplie. Les deux sont corrigés —
+> mais ⛔ **après** ce relevé.
+
 ⚠️ **LES TROIS NOMBRES DE LA LIGNE « VIVE » VIENNENT DU MÊME TIR**, et c'est dit
 parce que ça a failli ne pas être le cas : un premier tir avait rendu `60 / 31`
 (48 %), un second `62 / 33` (47 %). Mélanger le compte de l'un au pourcentage de
@@ -6061,7 +6098,17 @@ deux décrivaient un module à 7 séries SANS seaux**. Le module en porte huit e
 gagné ses 24 seaux depuis : il pèse **5 657 o**, soit **~2 200 o de plus** que ce
 qui avait été prédit. ⛔ *On ne réécrit pas une prédiction pour qu'elle tombe
 juste* — elle était juste à son époque, et c'est la story qui a grossi.
-RAM interne libre au relevé : **74 487 o**.
+RAM interne libre au relevé : **74 503 o** (`mesures/dn4-13/hist-mem-2026-08-25.log:54`).
+
+> 🔴 **CORRIGÉ PAR LA REVUE DU 2026-08-25.** Cette ligne citait **74 487 o**, un
+> chiffre qui ne vient PAS de la capture dont parle cette section : il vient de
+> `t3-sans-fond-navab20-2026-08-25.log:62`, **un autre coin du carré**. La règle
+> du « MÊME geste » posée en §23.2 vaut aussi pour les octets.
+> ⛔ **ET LE `mem` « AVANT/APRÈS » D'AC11.3 N'A PAS ÉTÉ JOUÉ** : la capture ne
+> contient qu'**un seul** bloc `mem`. Ce qui a été fait à la place — la
+> triangulation par **trois** instruments indépendants (carte, `.map`, hôte),
+> écart **+0 o** — est *meilleur* que ce que l'AC décrivait, mais ⛔ **ce n'est
+> pas ce que l'AC décrivait**, et AC5.6 est soldé sur celui-là.
 
 ## 23.6 ✅ AC2 — LES QUATRE TÉMOINS, AVEC LE CROISÉ VU ROUGIR D'ABORD
 
@@ -6144,6 +6191,12 @@ périmètre sur `k_desc[]`, **levé explicitement par l'owner** :
 - **Que le nombre AU DOIGT ait été re-tiré.** Les **361,8 ms** de `dn4-4` datent de
   `aa99fa2` et **n'ont pas été rejouées** — il faut `touch trace` et l'owner.
 - **Que « > 1 h sans source PC » ait été joué** pour AC2.2. Voir §23.10.
+- 🔴 **Que les chiffres de §23.10 et le verdict d'AC3.3 soient CAPTURÉS.** Ils ne
+  le sont pas, et la seule capture `hist` livrée les CONTREDIT — autre boot. Voir
+  l'encadré de §23.10. *(revue de code du 2026-08-25)*
+- 🔴 **Que le 47 % d'AC5.3 ait été mesuré sous AGENT RÉEL.** Il a été poussé par
+  `tools/anim_courbe_dn44.py`, un injecteur à formes synthétiques, et aucune
+  capture ne le porte. Voir l'encadré de §23.4. *(idem)*
 
 ## 23.10 ⚠️ AC2.2 — L'ÉCART DE MÉTHODE, DÉCLARÉ AVANT D'ÊTRE COMMIS
 
@@ -6164,3 +6217,27 @@ chiffres.
 *Recoupement indépendant, non cherché* : `AMBIANCE` affiche `ecrits 120 · trous 65`
 — les **65 trous sont exactement la pause de 65 s** d'AC3.3, visible dans l'anneau
 par un second chemin que celui du compteur de rattrapage.
+
+> 🔴 **ABSENCE DE CAPTURE — DÉCLARÉE LE 2026-08-25 SUR DÉCISION OWNER, À
+> L'ISSUE DE LA REVUE DE CODE. ⛔ ELLE N'EST PAS COMBLÉE.**
+>
+> **Les chiffres de cette section (§23.10) et le verdict d'AC3.3 viennent d'un
+> relevé qui N'A PAS ÉTÉ CAPTURÉ, et d'un BOOT DIFFÉRENT des six captures
+> livrées.** La seule capture `hist` du dossier les contredit terme à terme :
+>
+> | Publié ici / coché en T3 | `mesures/dn4-13/hist-mem-2026-08-25.log` |
+> |---|---|
+> | `couv 0` (GPU/RAM) vs `couv 364` (six autres), uptime **370 s** | `couv 947` pour **les huit**, uptime **947 s** |
+> | `AMBIANCE : ecrits 120 · trous 65` | `AMBIANCE T : ecrits 120 · reels 120 · trous 0` |
+> | T3/AC3.3 : *« 1 coupure, 65 trous comblés »* | `rattrapage : 0 coupure(s), 0 point(s) de trou comble(s)` |
+>
+> `grep 364` sur tout `mesures/dn4-13/` ⇒ **aucune capture**.
+>
+> ⚠️ **C'est §23.2 qui pose la règle enfreinte ici** : *« le chiffre publié et le
+> log livré viennent du MÊME geste — c'est ce que `dn4-4` n'avait pas fait »*.
+> La story énonce la leçon et la répète.
+> ⇒ **AC2.2 et AC3.3 restent soldés sur des relevés VUS À LA CONSOLE mais NON
+> CAPTURÉS.** L'owner a tranché : on **déclare**, ⛔ on ne re-tire pas et on ne
+> décoche pas. Quiconque relit ces deux verdicts doit savoir qu'aucun fichier du
+> dépôt ne les porte.
+> 🔗 Même traitement que la capture T0 d'AC12.5, absente et déclarée.
