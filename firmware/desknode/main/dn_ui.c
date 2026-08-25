@@ -3487,11 +3487,33 @@ static void courbe_reparametrer(int idx)
     }
 }
 
-/* dn4-13 / AC5.3 — ce que le conditionnement a réellement économisé. */
-void dn_ui_courbe_compteurs(uint32_t *appels, uint32_t *redessins)
+/*
+ * dn4-13 / AC5.3 — ce que le conditionnement a réellement économisé.
+ *
+ * 🔴 REVUE DU 2026-08-25 — LES DEUX COMPTEURS SE LISENT SOUS VERROU, ET LE
+ *    RATIO NE PEUT PLUS DÉBORDER.
+ * LE DÉFAUT : deux lectures SÉQUENTIELLES de statiques écrites par la tâche
+ * LVGL, sans verrou. Si un redessin s'intercalait entre les deux, on lisait
+ * `ca = 3` puis `cr = 4`, et la console calculait `(ca - cr) * 100u / ca` en
+ * NON SIGNÉ ⇒ `(0xFFFFFFFF × 100) mod 2³² / 3` = **1 431 655 732 %** imprimé.
+ * La fenêtre est exactement celle où `ca == cr` — début de session, ouverture
+ * de page — donc SANS coussin de demandes déjà sautées. Et c'est LE CHIFFRE-
+ * TITRE D'AC5.
+ * ⚠️ C'était le jumeau non verrouillé de `dn_ui_garde_hauteur()`, dont AC1.2
+ *    dit précisément que « trois nombres de deux passages différents produisent
+ *    une comparaison qui n'a JAMAIS eu lieu » : le même diff recréait à côté le
+ *    défaut qu'il soldait.
+ * ⇒ Sur échec du verrou : **false** ⇒ « pas mesuré », ⛔ jamais « zéro ».
+ */
+bool dn_ui_courbe_compteurs(uint32_t *appels, uint32_t *redessins)
 {
+    if (!lvgl_port_lock(1000)) {
+        return false;
+    }
     if (appels) { *appels = s_courbe_appels; }
     if (redessins) { *redessins = s_courbe_redessins; }
+    lvgl_port_unlock();
+    return true;
 }
 
 /*
@@ -4081,6 +4103,19 @@ static void build_scene(void)
      *    écrire `lv_chart_set_x_start_point()` dans de la mémoire libérée —
      *    à 1 Hz, en tâche de fond, sans qu'aucun écran ne le montre. */
     s_det_courbe = NULL;
+    /* 🔴 dn4-13 / REVUE 2026-08-25 — LE CACHE DE SIGNATURE MEURT AVEC SES
+     *    POINTEURS. `s_courbe_sig_valide` n'était JAMAIS remis à faux (3 seules
+     *    occurrences : déclaration, lecture, écriture `true`). En modèle
+     *    REBUILD, `lv_obj_clean()` libère AVANT que `build_detail()` réalloue —
+     *    mêmes tailles, même ordre, pool TLSF statique ⇒ COLLISION D'ADRESSES,
+     *    `memcmp == 0`, et `courbe_reparametrer()` sortait SANS UN SEUL APPEL
+     *    LVGL : chart neuf sans `set_series_ext_y_array`, sans couleur, sans
+     *    `hide_series`, `s_axe_pose[]` restés faux ⇒ COURBE VIDE et
+     *    `widget courbe` publiant « ⛔ PAS POSE » sur un historique plein.
+     *    ⚠️ La branche SCREENS n'était saine que PAR ACCIDENT (elle détruit
+     *    l'ancien APRÈS avoir créé le nouveau). L'invariant n'était écrit
+     *    qu'en prose. */
+    s_courbe_sig_valide = false;
     s_det_serie0 = NULL;
     s_det_serie1 = NULL;
     s_det_sec = NULL;
@@ -4259,6 +4294,19 @@ static bool nav_appliquer(int cible, int64_t t_clic)
      *    écrire `lv_chart_set_x_start_point()` dans de la mémoire libérée —
      *    à 1 Hz, en tâche de fond, sans qu'aucun écran ne le montre. */
     s_det_courbe = NULL;
+    /* 🔴 dn4-13 / REVUE 2026-08-25 — LE CACHE DE SIGNATURE MEURT AVEC SES
+     *    POINTEURS. `s_courbe_sig_valide` n'était JAMAIS remis à faux (3 seules
+     *    occurrences : déclaration, lecture, écriture `true`). En modèle
+     *    REBUILD, `lv_obj_clean()` libère AVANT que `build_detail()` réalloue —
+     *    mêmes tailles, même ordre, pool TLSF statique ⇒ COLLISION D'ADRESSES,
+     *    `memcmp == 0`, et `courbe_reparametrer()` sortait SANS UN SEUL APPEL
+     *    LVGL : chart neuf sans `set_series_ext_y_array`, sans couleur, sans
+     *    `hide_series`, `s_axe_pose[]` restés faux ⇒ COURBE VIDE et
+     *    `widget courbe` publiant « ⛔ PAS POSE » sur un historique plein.
+     *    ⚠️ La branche SCREENS n'était saine que PAR ACCIDENT (elle détruit
+     *    l'ancien APRÈS avoir créé le nouveau). L'invariant n'était écrit
+     *    qu'en prose. */
+    s_courbe_sig_valide = false;
     s_det_serie0 = NULL;
     s_det_serie1 = NULL;
         s_det_sec = NULL;
@@ -4452,6 +4500,19 @@ esp_err_t dn_ui_set_nav_model(dn_nav_model_t m)
      *    écrire `lv_chart_set_x_start_point()` dans de la mémoire libérée —
      *    à 1 Hz, en tâche de fond, sans qu'aucun écran ne le montre. */
     s_det_courbe = NULL;
+    /* 🔴 dn4-13 / REVUE 2026-08-25 — LE CACHE DE SIGNATURE MEURT AVEC SES
+     *    POINTEURS. `s_courbe_sig_valide` n'était JAMAIS remis à faux (3 seules
+     *    occurrences : déclaration, lecture, écriture `true`). En modèle
+     *    REBUILD, `lv_obj_clean()` libère AVANT que `build_detail()` réalloue —
+     *    mêmes tailles, même ordre, pool TLSF statique ⇒ COLLISION D'ADRESSES,
+     *    `memcmp == 0`, et `courbe_reparametrer()` sortait SANS UN SEUL APPEL
+     *    LVGL : chart neuf sans `set_series_ext_y_array`, sans couleur, sans
+     *    `hide_series`, `s_axe_pose[]` restés faux ⇒ COURBE VIDE et
+     *    `widget courbe` publiant « ⛔ PAS POSE » sur un historique plein.
+     *    ⚠️ La branche SCREENS n'était saine que PAR ACCIDENT (elle détruit
+     *    l'ancien APRÈS avoir créé le nouveau). L'invariant n'était écrit
+     *    qu'en prose. */
+    s_courbe_sig_valide = false;
     s_det_serie0 = NULL;
     s_det_serie1 = NULL;
         s_det_sec = NULL;
@@ -4990,11 +5051,19 @@ static void hist_tick(lv_timer_t *t)
      *    le passé, derrière les trous. */
     int comble = dn_hist_rattraper();
     if (comble > 0) {
+        /* 🔴 dn4-13 / REVUE 2026-08-25 — `dn_hist_rattraper()` rend désormais
+         *    l'OBSERVATION (les secondes réellement non échantillonnées), et
+         *    l'anneau n'en porte que `DN_HIST_N_POINTS` au plus. Publier le
+         *    seul nombre comblé rendait 10 min et 1 h INDISCERNABLES. */
+        int creuses = (comble > DN_HIST_N_POINTS) ? DN_HIST_N_POINTS : comble;
         ESP_LOGW(TAG,
-                 "historique : %d seconde(s) non échantillonnée(s) comblées en "
-                 "TROUS (pause `ui off` ou préemption longue) — la courbe ne "
-                 "reliera PAS les deux bords de la coupure",
-                 comble);
+                 "historique : %d seconde(s) NON ÉCHANTILLONNÉE(S) (pause `ui "
+                 "off` ou préemption longue) — %d position(s) creusée(s) en "
+                 "TROUS%s ; la courbe ne reliera PAS les deux bords de la "
+                 "coupure",
+                 comble, creuses,
+                 (comble > creuses) ? " (l'anneau est PLEIN de trous : la "
+                                      "coupure DÉPASSE la fenêtre courte)" : "");
     }
     for (int c = 0; c < DN_UI_METRIQUES; c++) {
         int s0 = -1, s1 = -1;

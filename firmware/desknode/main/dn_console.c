@@ -3591,15 +3591,26 @@ static int cmd_widget(int argc, char **argv)
              *    depuis le dernier `touch reset` : pour mesurer un regime, on
              *    remet a zero, on laisse tourner, on relit. */
             uint32_t ca = 0, cr = 0;
-            dn_ui_courbe_compteurs(&ca, &cr);
+            bool cok = dn_ui_courbe_compteurs(&ca, &cr);
             printf("  ── le DESSIN sur le chemin chaud (dn4-13 / AC5) ──\n");
+            if (!cok) {
+                printf("     ⛔ PAS MESURE — verrou LVGL non pris en 1000 ms.\n");
+                printf("        (⛔ ce n'est PAS « zero » : ne rien publier d'ici.)\n");
+            } else {
             printf("     reparametrages demandes : %lu · REDESSINS reels : %lu\n",
                    (unsigned long)ca, (unsigned long)cr);
-            if (ca > 0) {
+            /* 🔴 REVUE 2026-08-25 — `cr > ca` DEBORDAIT EN NON SIGNE et
+             *    imprimait « 1431655732 % ». Les deux compteurs se lisent
+             *    desormais sous verrou, donc le cas ne doit plus survenir : s'il
+             *    survient, on le DIT, ⛔ on ne fabrique pas un pourcentage. */
+            if (cr > ca) {
+                printf("     ⛔ INCOHERENT : redessins > demandes — ⛔ aucun ratio publie.\n");
+            } else if (ca > 0) {
                 printf("     ⇒ %lu %% des demandes N'ONT PRODUIT AUCUN appel LVGL\n",
                        (unsigned long)((ca - cr) * 100u / ca));
             } else {
                 printf("     (aucune demande depuis le dernier `touch reset`)\n");
+            }
             }
             printf("     ⚠️ CUMULATIFS. Pour mesurer un REGIME : `touch reset`,\n");
             printf("        laisser tourner, relire. ⛔ C'est bien `touch reset`\n");
@@ -7885,15 +7896,21 @@ static int cmd_w2(int argc, char **argv)
  *    le tas LVGL (qui, lui, ne voit QUE les objets `lv_chart`).
  * 🔴 CHIFFRE CORRIGE LE 2026-08-24 (revue de code) — ⛔ PAS EFFACE : le
  *    commentaire disait « ~~les 3 360 o~~ », chiffre de **7 series sans seaux**.
- *    Le module pese aujourd'hui **~5 609 o** : 3 840 (points, 8 x 120 x 4)
- *    + 768 (`s_smin`) + 768 (`s_smax`) + 192 (`s_svu`) + 32 (`s_w`) + 9.
+ *    Le module pese aujourd'hui **5 657 o** : 3 840 (points, 8 x 120 x 4)
+ *    + 768 (`s_smin`) + 768 (`s_smax`) + 192 (`s_svu`) + **89** (`s_w`,
+ *    `s_ecrits`, `s_pret`, `s_seau_abs`, l'horodatage et les DEUX compteurs de
+ *    rattrapage).
+ * 🔴 CORRIGE UNE SECONDE FOIS LE 2026-08-25 (revue de code) : ce bloc publiait
+ *    **~5 609 o** et un exemple **« index 41 »** pendant que la commande qu'il
+ *    documente imprimait `5657 o` et `index … = 89 o`. Le total etait juste, le
+ *    LIBELLE etait faux — et aucune des 7 gates ne relit un libelle.
  * 🔴 ~~ET `dn_hist_octets()` NE REND QUE `sizeof(s_pts)` = 3 840 o : ce que cette
- *    commande imprime SOUS-DECLARE le cout de ~1 769 o (~32 %)~~ — **CORRIGE LE
+ *    commande imprime SOUS-DECLARE le cout de ~1 817 o (~32 %)~~ — **CORRIGE LE
  *    2026-08-25, dn4-13 / AC2.1**. Le bloc est CONSERVE BARRE : il dit pourquoi
- *    tout chiffre de cout publie AVANT cette date vaut 3 840 et pas 5 609, et
+ *    tout chiffre de cout publie AVANT cette date vaut 3 840 et pas 5 657, et
  *    c'est ce qui rend le releve d'AC5.6 non comparable au releve d'aujourd'hui.
  * ⚠️ LES TROIS TERMES SONT IMPRIMES SEPAREMENT. Un total seul ne se confronte pas
- *    au `.map` : c'est en voyant « points 3 840 / seaux 1 728 / index 41 » qu'on
+ *    au `.map` : c'est en voyant « points 3 840 / seaux 1 728 / index 89 » qu'on
  *    peut dire LEQUEL a bouge quand le total bouge.
  */
 static int cmd_hist(int argc, char **argv)

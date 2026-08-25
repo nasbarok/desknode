@@ -292,7 +292,10 @@ void dn_ui_reset_compteurs(void);
  * l'invalidation du cadre (460 x 108 px) tournait INCONDITIONNELLEMENT, jusqu'à
  * 5 fois par seconde, y compris sur une série 100 % trous. ⛔ « C'est mieux »
  * sans ces deux nombres ne vaut rien. Remis à zéro par `dn_ui_reset_compteurs()`. */
-void dn_ui_courbe_compteurs(uint32_t *appels, uint32_t *redessins);
+/* dn4-13 / AC5.3 · REVUE 2026-08-25 — lit les deux compteurs SOUS VERROU.
+ * Rend **false** si le verrou n'a pas été pris ⇒ « pas mesuré », ⛔ pas « zéro » :
+ * l'appelant NE DOIT PAS publier de ratio dans ce cas. */
+bool dn_ui_courbe_compteurs(uint32_t *appels, uint32_t *redessins);
 
 /* Octets UTILISÉS du tas LVGL — le SEUL instrument qui voit une fuite d'objets
  * LVGL. La RAM interne et la PSRAM n'en disent rien : ce tas est un pool
