@@ -7092,7 +7092,7 @@ et **D-7** (§24.11.5) · **AC9.5 / AC9.6** (§24.11.6) · **AC3.3 re-tirée**
 
 | # | À mesurer | Instrument | Pourquoi ce n'est pas encore fait |
 |---|---|---|---|
-| **AC2.1** | une case change en Ambient sur 60 s, critère `W2` (étendue ≥ 5, changement de **TEXTE** ≥ 10 %, σ ≥ 1) **sous agent réel** | `w2` | l'agent n'est pas déployé sur la tour ; il exige `COM3` côté Windows ⇒ **plus de console** |
+| **AC2.1** | une case change en Ambient sur 60 s, critère `W2` (étendue ≥ 5, changement de **TEXTE** ≥ 10 %, σ ≥ 1) **sous agent réel** | 🔴 **AUCUN — voir ci-dessous** | l'agent n'est pas déployé ; il exige `COM3` côté Windows ⇒ **plus de console**. ⛔ **Et même déployé, rien ne mesurerait AC2.1.** |
 | **AC2.4** | les cinq métriques PC **périment** et passent `--` quand les trames s'arrêtent, `AMBIANCE` restant **réelle** | `pc`, `veille` | ⚠️ **se tire AVEC AC2.1** : sans trames préalables, les cases sont `ABSENTE` **par défaut** et ne prouvent aucune péremption |
 | **AC9.8** | **une nuit** en Ambient, relevée au matin (compteurs, `veille`, `hist`, heure) | `veille`, `hist` | demande une nuit |
 
@@ -7101,6 +7101,41 @@ dans **WSL sur la tour**. Éteindre le PC supprime l'instrument. L'alimentation
 USB de la carte, elle, **survit à l'extinction** (constat owner du 2026-08-25) —
 donc un relevé PC éteint est possible, mais **À L'ŒIL uniquement**, et il faut
 l'écrire comme tel.
+
+### 24.13.1 🔴 AC2.1 N'A **PAS** D'INSTRUMENT — ET CE DOSSIER LE DISAIT FAUX
+
+⚠️ **Cette table nommait `w2` comme instrument d'AC2.1, et la story aussi. C'EST
+FAUX**, et ça a été relu **dans le source**, ⛔ pas supposé :
+
+```
+dn_w2_echantillon() — CINQ appelants, TOUS des capteurs LOCAUX
+  dn_env.c:503        DN_W2_LUX              (BH1750)
+  dn_capteurs.c:1393  DN_W2_PRESSION_ENT     (BME680)
+  dn_capteurs.c:1394  DN_W2_PRESSION_DIX     (BME680)
+  dn_capteurs.c:1396  DN_W2_TEMPERATURE_DIX  (BME680, témoin de contrôle)
+  dn_capteurs.c:1404  DN_W2_GAZ_KOHM         (BME680 MOX)
+```
+
+⛔ **`CPU`, `GPU`, `RAM`, `RÉSEAU` et `DISQUE` ne sont échantillonnés NULLE PART**
+(`dn_env.h:398-403`). ⇒ Le critère W2 **ne peut pas être calculé** sur une case
+nourrie par le PC.
+
+⛔ **ET ÇA NE SE CONTOURNE PAS À LA CONSOLE** : en branche A, **le REPL EST le
+transport PC**. Pendant qu'un agent réel alimente les cases, il tient `COM3` et
+**il n'y a plus de console**. C'est précisément le motif pour lequel `w2`
+échantillonne **dans le firmware**.
+⛔ **`hist` ne peut pas servir non plus** : il stocke la **valeur**, ⛔ pas le
+**texte** — le « taux de changement du TEXTE » lui est inaccessible.
+
+⇒ **DÉCISION À PRENDRE AVANT TOUT TIR D'AGENT** : ajouter une **6ᵉ piste W2 sur
+la valeur AFFICHÉE d'une case PC** (dans le firmware, avec ses contrôles de gate
+et son mutant), ou **déclarer AC2.1 non tenable** et l'écrire.
+⚠️ **Sans cette décision, une nuit entière d'agent réel ne produira PAS AC2.1** :
+elle produira des cases qui bougent, **sans le chiffre qui les juge**.
+⚠️ Si la piste est ajoutée, **sa cadence doit être dite** : les cinq existantes
+sont à **5 s** (« la fenêtre fait n × 5 s »), donc 60 s n'en font que **12** —
+mince pour σ et pour un taux. Une piste à 1 Hz donnerait 60 points mais **ne
+serait plus comparable aux autres lignes du même tableau**.
 
 ⚠️ **CHAQUE CHIFFRE NOMMERA SON SHA, LU AU BANDEAU `App version`**, ⛔ pas déduit
 du dépôt, et `git status --porcelain` **vide avant le flash**.
