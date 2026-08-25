@@ -6423,11 +6423,13 @@ disponible, et la console **DIT quelle paire il confond, calculé à l'exécutio
 
 ⚠️ **`veille accents` est un A/B à chaud** : c'est AC9.4 qui tranche à l'œil.
 
-## 24.5 ✅ CE QUE LA GATE HÔTE PROUVE — 139 CONTRÔLES, SANS CARTE NI TOUR
+## 24.5 ✅ CE QUE LA GATE HÔTE PROUVE — 162 CONTRÔLES, SANS CARTE NI TOUR
 
-⚠️ **CHIFFRE À JOUR AU 2026-08-25 (soir)** : 119 → **139 OK / 0 KO**, après les
-**+20 contrôles** et les **2 mutants** du bloc « 4 bis » (§24.12.4). Le nombre de
-mutants passe donc de **quatre** à **six**.
+⚠️ **CHIFFRE À JOUR AU 2026-08-25 (soir)** : 119 → **139** (bloc « 4 bis »,
+§24.12.4, +2 mutants) → **162 OK / 0 KO** (bloc « 4 ter », la 6ᵉ piste W2,
+§24.13.1, +2 mutants). Le nombre de mutants passe de **quatre** à **huit**.
+🔴 **ET LE BLOC « 4 ter » COMBLE UN TROU PLUS ANCIEN QUE `dn3-3` : W2 n'avait
+JAMAIS été gaté** — aucun `verif_*.py` du dépôt ne le touchait.
 
 `tools/verif_veille_dn33.py`. ⛔ **Elle ne relit pas du source** : elle **COMPILE
 `dn_veille.c` en entier et l'APPELLE**, et elle **EXTRAIT VERBATIM**
@@ -7092,7 +7094,7 @@ et **D-7** (§24.11.5) · **AC9.5 / AC9.6** (§24.11.6) · **AC3.3 re-tirée**
 
 | # | À mesurer | Instrument | Pourquoi ce n'est pas encore fait |
 |---|---|---|---|
-| **AC2.1** | une case change en Ambient sur 60 s, critère `W2` (étendue ≥ 5, changement de **TEXTE** ≥ 10 %, σ ≥ 1) **sous agent réel** | 🔴 **AUCUN — voir ci-dessous** | l'agent n'est pas déployé ; il exige `COM3` côté Windows ⇒ **plus de console**. ⛔ **Et même déployé, rien ne mesurerait AC2.1.** |
+| **AC2.1** | une case change en Ambient sur 60 s, critère `W2` (étendue ≥ 5, changement de **TEXTE** ≥ 10 %, σ ≥ 1) **sous agent réel** | ✅ `w2`, piste **`CPU % (dixieme) @1s [AMBIENT seul]`** — voir §24.13.1 | l'agent n'est **pas déployé** sur la tour ; il exige `COM3` côté Windows ⇒ **plus de console**. ⚠️ L'instrument, lui, **accumule tout seul** : c'est pour ça qu'il est dans le firmware. |
 | **AC2.4** | les cinq métriques PC **périment** et passent `--` quand les trames s'arrêtent, `AMBIANCE` restant **réelle** | `pc`, `veille` | ⚠️ **se tire AVEC AC2.1** : sans trames préalables, les cases sont `ABSENTE` **par défaut** et ne prouvent aucune péremption |
 | **AC9.8** | **une nuit** en Ambient, relevée au matin (compteurs, `veille`, `hist`, heure) | `veille`, `hist` | demande une nuit |
 
@@ -7102,9 +7104,11 @@ USB de la carte, elle, **survit à l'extinction** (constat owner du 2026-08-25) 
 donc un relevé PC éteint est possible, mais **À L'ŒIL uniquement**, et il faut
 l'écrire comme tel.
 
-### 24.13.1 🔴 AC2.1 N'A **PAS** D'INSTRUMENT — ET CE DOSSIER LE DISAIT FAUX
+### 24.13.1 ✅ AC2.1 A MAINTENANT UN INSTRUMENT — LA 6ᵉ PISTE W2, SUR `CPU`
 
-⚠️ **Cette table nommait `w2` comme instrument d'AC2.1, et la story aussi. C'EST
+#### Le constat qui l'a rendue nécessaire
+
+⚠️ **Cette table nommait `w2` comme instrument d'AC2.1, et la story aussi. C'ÉTAIT
 FAUX**, et ça a été relu **dans le source**, ⛔ pas supposé :
 
 ```
@@ -7116,26 +7120,63 @@ dn_w2_echantillon() — CINQ appelants, TOUS des capteurs LOCAUX
   dn_capteurs.c:1404  DN_W2_GAZ_KOHM         (BME680 MOX)
 ```
 
-⛔ **`CPU`, `GPU`, `RAM`, `RÉSEAU` et `DISQUE` ne sont échantillonnés NULLE PART**
-(`dn_env.h:398-403`). ⇒ Le critère W2 **ne peut pas être calculé** sur une case
-nourrie par le PC.
+⛔ **`CPU`, `GPU`, `RAM`, `RÉSEAU` et `DISQUE` n'étaient échantillonnés NULLE
+PART** ⇒ AC2.1 était **non mesurable depuis son écriture**, et deux artefacts le
+publiaient comme prêt. **Décision owner du 2026-08-25 : ajouter la piste.**
 
-⛔ **ET ÇA NE SE CONTOURNE PAS À LA CONSOLE** : en branche A, **le REPL EST le
-transport PC**. Pendant qu'un agent réel alimente les cases, il tient `COM3` et
-**il n'y a plus de console**. C'est précisément le motif pour lequel `w2`
-échantillonne **dans le firmware**.
-⛔ **`hist` ne peut pas servir non plus** : il stocke la **valeur**, ⛔ pas le
-**texte** — le « taux de changement du TEXTE » lui est inaccessible.
+#### Ce qui a été ajouté — `DN_W2_CPU_DIX` (firmware `3188152`)
 
-⇒ **DÉCISION À PRENDRE AVANT TOUT TIR D'AGENT** : ajouter une **6ᵉ piste W2 sur
-la valeur AFFICHÉE d'une case PC** (dans le firmware, avec ses contrôles de gate
-et son mutant), ou **déclarer AC2.1 non tenable** et l'écrire.
-⚠️ **Sans cette décision, une nuit entière d'agent réel ne produira PAS AC2.1** :
-elle produira des cases qui bougent, **sans le chiffre qui les juge**.
-⚠️ Si la piste est ajoutée, **sa cadence doit être dite** : les cinq existantes
-sont à **5 s** (« la fenêtre fait n × 5 s »), donc 60 s n'en font que **12** —
-mince pour σ et pour un taux. Une piste à 1 Hz donnerait 60 points mais **ne
-serait plus comparable aux autres lignes du même tableau**.
+Échantillonne **`s_dx[CPU][0]`** dans le `hist_tick` de `dn_ui.c` — **le seul
+endroit qui tient À LA FOIS la valeur AFFICHÉE et son régime**. La grandeur 0 de
+`CPU` est déclarée `DN_PREC_DIXIEME`, donc **le dixième EST l'affichage**.
+⛔ Un échantillonnage depuis `dn_link` prendrait la **SOURCE**, ce qu'AC2.1
+interdit en toutes lettres.
+
+**Trois décisions de conception, chacune avec son motif MESURÉ :**
+
+| # | Décision | Motif |
+|---|---|---|
+| 1 | **1 Hz**, ⛔ pas 5 s | à 5 s, les 60 s d'AC2.1 ne font que **12 échantillons ⇒ 11 transitions**, et le **PAS du dénominateur vaut 9,1 %** quand le **SEUIL de taux vaut 10 %**. ⛔ Un seuil plus fin que le pas de son dénominateur n'est pas tranchable. À 1 Hz : 60 échantillons, 59 transitions, pas de **1,7 %** |
+| 2 | **AMBIENT seulement** | sous agent réel **il n'y a PAS de console** (branche A : le REPL est le transport PC) ⇒ ⛔ **aucun `w2 reset` ne peut délimiter la fenêtre depuis l'extérieur**. La piste **se délimite elle-même** : tout échantillon qu'elle porte EST un échantillon d'Ambient. AC2.1 demande 60 s ⇒ **n ≥ 60** |
+| 3 | **Rupture de chaîne entre épisodes** | la veille tombe et se lève des dizaines de fois par nuit ; concaténer les épisodes compterait comme « changement de texte » un saut qui n'est qu'une reprise. ⇒ `dn_w2_desamorcer()`, **idempotente**, et les ruptures sont **RETIRÉES DU DÉNOMINATEUR** (⛔ sans ce retrait, le biais irait **toujours** vers « NE QUALIFIE PAS ») |
+
+🔴 **LA CADENCE DEVIENT PAR PISTE, ⛔ PLUS GLOBALE.** Chaque nom la porte
+(`@5s`, `@1s`), `dn_w2_cadence_ms()` la publie, et **la gate vérifie que le nom
+et la cadence CONCORDENT** — un tableau qui aligne des taux de cadences
+différentes sans le dire serait une étiquette qui ment.
+
+#### ✅ LE TÉMOIN DE CÂBLAGE, SUR LA CARTE (`3188152`)
+
+⚠️ **CE N'EST PAS AC2.1**, et c'est écrit ici pour qu'on ne le lise jamais comme
+tel : les valeurs viennent de **l'injection console**, que §24.10 a démontrée
+**mauvais témoin** — et elles ont été choisies **artificiellement sautillantes**.
+Ce témoin prouve **que l'instrument est câblé**, ⛔ rien sur le produit.
+
+| Relevé | Valeur | Ce qu'il prouve |
+|---|---|---|
+| une trame, puis **8 s de silence** | **n = 3, rup = 1** | une trame vaut **3 000 ms** de validité ⇒ **3 échantillons à 1 Hz**, puis la péremption **brise la chaîne**. Exactement le contrat |
+| 8 trames étalées sur **18 s** | **n = 18** · `secondes OBSERVEES` = **18** | **un échantillon par seconde de temps réel**, 1:1 |
+| — | étendue **508** · taux **41 %** · σ **163,3** ⇒ QUALIFIE | l'arithmétique du verdict tourne |
+
+🔴 **ET UN VERDICT D'AGENT A ÉTÉ ÉCRIT PUIS RÉFUTÉ PAR LA MESURE, DANS LA MÊME
+SÉANCE.** Un premier tir avait donné `n = 2` là où on attendait ~25, avec
+`secondes OBSERVEES : 1` — j'en ai conclu que **le trafic console affamait la
+tâche LVGL**. ⛔ **C'ÉTAIT FAUX.** Le chronométrage du tir a montré que la rafale
+d'injections durait **1 seconde**, ⛔ pas 25 : le tick avait donc battu
+**exactement le bon nombre de fois**. ⚠️ **Un chiffre JUSTE sous un verdict
+FAUX** — et il a suffi de mesurer la durée réelle pour le renverser.
+⇒ **Le contre-témoin est publié** : 18 s réelles ⇒ 18 ticks ⇒ 18 échantillons.
+
+⚠️ `31 pertes seq · 3 reprises` au compteur `pc` : artefact des **seq fabriqués à
+la main** entre les tirs, ⛔ pas un défaut de liaison.
+
+#### ⛔ CE QUE CETTE PISTE NE FERA JAMAIS
+
+- **Comparer Actif et Ambient** : elle n'accumule qu'en Ambient, par conception.
+- **Juger une autre case** : `GPU`, `RAM`, `RÉSEAU`, `DISQUE` restent
+  non-échantillonnés. AC2.1 dit « **une** case » ; c'est `CPU`.
+- **Se substituer à l'agent réel** : ⛔ l'injection console reste un mauvais
+  témoin (§24.10). AC2.1 exige `./tools/deployer_tour.sh` + LHM.
 
 ⚠️ **CHAQUE CHIFFRE NOMMERA SON SHA, LU AU BANDEAU `App version`**, ⛔ pas déduit
 du dépôt, et `git status --porcelain` **vide avant le flash**.
