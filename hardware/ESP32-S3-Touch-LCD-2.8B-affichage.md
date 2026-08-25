@@ -5913,3 +5913,254 @@ point visé sur une ligne fine) **ou du bruit**. À `n = 9` et `σ = 8,8`, on es
 limite de la signification. **Indécidable en l'état**, et dit comme tel.
 ⇒ **Ce qu'il faudrait pour trancher** : une cible **plus haute** (la barre fait 10 px), ou **n ≫ 9**.
 Aucun des deux n'est dans le périmètre de `dn4-4`.
+
+---
+
+# §23. 🎯 `dn4-13` (P9.4b) — LES INSTRUMENTS SONT RÉPARÉS, ET LES QUATRE ÉCARTS SONT RE-MESURÉS
+
+> **Séance du 2026-08-25.** Firmware **`7b375c3`**, **SHA LU AU BANDEAU**,
+> `git status --porcelain` **vérifié VIDE avant chaque flash**.
+> ⛔ **UN SEUL ÉTAT DE FIRMWARE PORTE TOUS LES CHIFFRES DE CETTE SECTION.** C'est la
+> règle qu'AC11.1 impose, et c'est exactement celle que `dn4-4` avait violée
+> (`aa99fa2` mesuré, `df634d1` livré). Le carré 2×2 a d'ailleurs été tiré **DEUX
+> FOIS** ici : une première sur `820f1d5`, puis **RE-TIRÉ ENTIÈREMENT** sur
+> `7b375c3` quand les constats œil de l'owner ont changé le binaire. ⛔ Les
+> chiffres de `820f1d5` ne sont **pas** publiés.
+
+## 23.1 ⚠️ LA CONTRAINTE DE TRANSPORT, DITE AVANT LES CHIFFRES
+
+**La source est MUETTE pendant toutes les mesures de latence**, et ce n'est pas un
+choix de confort : `liaison-pc.md` §13 le mesure — *« Une campagne de mesure ne
+peut PAS tourner pendant que l'agent tient le port. Campagne et agent ALTERNENT,
+ils ne coexistent pas. »* Or **tous** les relevés ci-dessous se lisent **à travers
+la console** (`nav ab`, `widget courbe`, `hist`, `mem`, `touch reset`).
+
+⇒ 🔴 **LE PRÉREQUIS « L'AGENT RÉEL SUR LA TOUR » D'AC11 EST INSATISFIABLE POUR CES
+RELEVÉS-LÀ**, et `dn4-4` ne l'avait pas satisfait non plus (§22.4 est console
+seule). L'agent réel a servi à ce pour quoi il est indispensable : **l'œil de
+l'owner**, où aucune console ne lit rien.
+⛔ Ce n'est pas une excuse : c'est une propriété du transport branche A, et elle
+borne ce que ces nombres décrivent — **une page dont les cases sont éteintes**.
+
+## 23.2 🔴 LE CARRÉ 2×2, RE-TIRÉ ENTIÈREMENT
+
+Protocole **identique à §22.4**, pour être comparable : `touch reset` +
+`flush reset` implicite, puis **`nav ab 20`** (**n = 40**), dalle **NON TOUCHÉE**.
+**`transitions RÉELLES = 40 (demandées 40)` aux CINQ tirs**, `taps` = **0**,
+**0 synchro expirée** à chaque passe.
+
+🔴 **CHAQUE CHIFFRE CI-DESSOUS EST DANS `mesures/dn4-13/*.log`**, et le log porte
+en tête le SHA, le protocole et la contrainte de source. ⛔ **Le chiffre publié et
+le log livré viennent du MÊME geste** — c'est ce que `dn4-4` n'avait pas fait pour
+deux de ses quatre coins.
+
+| | `opa 178 / voile 90` — **LE PRODUIT** | `opa 255 / voile 0` — opaque |
+|---|---|---|
+| **fond POSÉ** | 🔴 **335,8 ms** (289,1 / 400,8) | **253,0 ms** (213,6 / 310,1) |
+| **fond RETIRÉ** | **193,9 ms** (140,2 / 244,8) | **167,3 ms** (137,0 / 215,3) |
+
+| Effet isolé | Valeur |
+|---|---|
+| le **fond**, à opacité produit | **−141,9 ms** (−42,3 %) |
+| le **fond**, à panneaux opaques | −85,7 ms |
+| l'**alpha**, fond posé | **−82,8 ms** (−24,7 %) |
+| l'**alpha**, fond retiré | −26,6 ms |
+| **les deux ensemble** | **−168,5 ms (−50,2 %)** |
+| 🔴 **INTERACTION** | **−56,2 ms** (224,7 attendus, 168,5 obtenus) |
+
+🔴 **LA CONCLUSION DE §22.4 TIENT, ET ELLE TIENT SUR UN INSTRUMENT CORRIGÉ.**
+L'interaction reste **forte** (−56,2 ms ici, −75,3 en T1) ⇒ *« ne pas invalider le
+fond »* **ne peut toujours PAS s'obtenir par un partage d'objet tant que les
+panneaux sont semi-transparents**. ⛔ **Un seul mécanisme, pas deux leviers.**
+
+⚠️ **CE QUI A CHANGÉ DEPUIS §22.4, ET POURQUOI ON NE PEUT PAS COMPARER COIN À COIN :**
+le coin `fond RETIRÉ` de §22.4 (**194,2 ms**) a été mesuré avec un `fond_poser()`
+qui posait en réalité **l'écran de panne `ASSET ABSENT`** — un remplissage plat
+**+ deux labels** — alors qu'AC7 promettait *« UNE SEULE VARIABLE : le fond, et
+rien d'autre »*. Il est corrigé (§23.5). Les deux carrés concordent en
+**structure**, ⛔ pas nécessairement au dixième de milliseconde.
+
+## 23.3 🔴 AC7.6 — LE CRITÈRE DEVIENT ÉVALUABLE, **ET IL NE TIENT PAS**
+
+`dn4-4` déclarait le critère **INÉVALUABLE** : la tolérance `±0,04` porte sur
+*« deux passes du MÊME cas »*, et **aucun cas n'avait été tiré deux fois**. Le
+coin **PRODUIT a donc été tiré DEUX FOIS**, à l'identique :
+
+| Passe | Δ flush | Δ cycles | **`flush/cyc`** | latence moyenne |
+|---|---|---|---|---|
+| **t1** — produit | 202 | 42 | **4,8095** | 335,8 ms |
+| **t1bis** — produit, **RÉPÉTÉ** | 203 | 43 | **4,7209** | 336,7 ms |
+| | | | 🔴 **\|Δ\| = 0,0886** | Δ = 0,9 ms |
+
+🔴 **LA TOLÉRANCE ±0,04 NE TIENT PAS : l'écart vaut 0,0886, soit 2,2× la
+tolérance.** Le critère est désormais **ÉVALUABLE**, et il est **EN DÉFAUT**.
+
+⚠️ **ET J'ALLAIS PUBLIER L'INVERSE. C'EST LE POINT LE PLUS IMPORTANT DE §23.**
+Un **premier** tir du même protocole, **sans capture**, avait rendu `202/42` aux
+DEUX passes — `|Δ| = 0,0000`, un accord parfait, et j'avais écrit *« ✅ la
+tolérance tient »*. C'est en re-tirant **pour produire les logs manquants** (AC12.5)
+que le désaccord est apparu.
+⇒ 🔴 **DEUX PAIRES DE PASSES DU MÊME CAS, SUR LE MÊME BINAIRE, DONNENT DEUX
+VERDICTS OPPOSÉS.** La conclusion n'est donc pas *« flush/cyc est instable »* ni
+*« il est stable »* : c'est que **±0,04 est plus serré que la dispersion propre de
+l'instrument**, et qu'**une seule paire de passes ne peut pas trancher ce critère**.
+⛔ *Un critère de preuve peut être hors de portée de l'instrument censé le
+satisfaire* — la même leçon qu'AC9.3 avait payée sur la visée du doigt (§22.12).
+
+**Ce qu'il faudrait pour trancher** : `k` paires de passes, et une tolérance
+dérivée de la dispersion **mesurée**, ⛔ pas posée a priori. Versé au ledger.
+
+⚠️ L'instrument **n'est pas bloqué** : les autres coins rendent **4,8095 · 4,0755 ·
+4,0189**. Et l'écart entre « fond posé » (~4,8) et « fond retiré » (~4,0) est un
+**signal**, ⛔ pas du bruit — moins de bandes à repeindre sans image de fond.
+
+## 23.4 ✅ AC5 — CE QUE LE CONDITIONNEMENT ÉCONOMISE, CHIFFRÉ, ET OÙ IL N'ÉCONOMISE RIEN
+
+`courbe_reparametrer()` invalidait **460 × 108 px** *inconditionnellement*, jusqu'à
+cinq fois par seconde, **y compris sur une série 100 % trous** — pendant que
+`dn_hist.h` justifiait de ne pas mettre l'échantillonnage sur `case_poser` au motif
+que *« ce chemin est le plus chaud de la vue détail »*. L'ironie est levée.
+
+| Régime, détail `RÉSEAU` ouvert, 30 s | demandes | redessins | évité |
+|---|---|---|---|
+| source **MUETTE** | 30 | 30 | **0 %** |
+| source **VIVE** (150 trames, 5 métriques à 1 Hz) | 62 | 33 | **47 %** |
+
+⚠️ **LES TROIS NOMBRES DE LA LIGNE « VIVE » VIENNENT DU MÊME TIR**, et c'est dit
+parce que ça a failli ne pas être le cas : un premier tir avait rendu `60 / 31`
+(48 %), un second `62 / 33` (47 %). Mélanger le compte de l'un au pourcentage de
+l'autre aurait produit un chiffre **juste-en-apparence**. C'est le tir n°2 qui est
+publié, **celui qui porte aussi la mesure d'aire ci-dessous**.
+
+- **29 invalidations de 49 680 px évitées en 30 s**, soit **1 440 720 px** —
+  l'équivalent de **39 %** de l'aire réellement poussée (3 671 418 px).
+- ⚠️ **CE N'EST PAS « 39 % DE TEMPS GAGNÉ ».** L'aire évitée est une **BORNE
+  HAUTE** : LVGL fusionne les zones sales, donc une invalidation de plus n'ajoute
+  pas toujours son aire. **Le chiffre solide est le COMPTE.**
+- 🔴 **ET LE GAIN EST NUL EN SOURCE MUETTE, DIT ICI PLUTÔT QU'OMIS** : l'horloge
+  1 Hz fait avancer l'anneau à chaque tick, donc la signature change et le
+  redessin est **DÛ**. Le mécanisme n'économise que ce qui est *inutile*.
+
+## 23.5 ✅ AC5.6 — LE COÛT DE `dn_hist`, PAR TROIS INSTRUMENTS INDÉPENDANTS
+
+| Instrument | Valeur |
+|---|---|
+| `dn_hist_octets_detail()` sur la carte (`hist`) | **5 657 o** |
+| Somme de **TOUS** les symboles `dn_hist.c.obj` du **`.map`** | **5 657 o** |
+| `sizeof` recalculé sur l'hôte par `verif_hist_dn413.py` | **5 657 o** |
+| **écart** | **+0 o** |
+
+Décomposition : **points 3 840** (8 × 120 × 4) · **seaux 1 728**
+(`s_smin` + `s_smax` + `s_svu`) · **index 89**.
+🔴 `dn_hist_octets()` rendait `sizeof(s_pts)` **SEUL** = 3 840 o :
+**sous-déclaration de 1 817 o (32 %)**, sur l'instrument même censé solder AC5.6.
+
+⚠️ **LA PRÉDICTION N'EST PAS RÉÉCRITE, ON ÉCRIT L'ÉCART.** `dn_hist.h` prédisait
+**−3 400 à −3 500 o**, et le relevé `−3 512 o` de §22.5 la confrontait — **les
+deux décrivaient un module à 7 séries SANS seaux**. Le module en porte huit et a
+gagné ses 24 seaux depuis : il pèse **5 657 o**, soit **~2 200 o de plus** que ce
+qui avait été prédit. ⛔ *On ne réécrit pas une prédiction pour qu'elle tombe
+juste* — elle était juste à son époque, et c'est la story qui a grossi.
+RAM interne libre au relevé : **74 487 o**.
+
+## 23.6 ✅ AC2 — LES QUATRE TÉMOINS, AVEC LE CROISÉ VU ROUGIR D'ABORD
+
+Le témoin **CROISÉ** de `dn4-4` rendait **VERT SUR DEUX LECTURES RATÉES** :
+`texte()` rend `"<NON RELU>"` en repli, et le verdict était
+`avant == apres and avant.strip() != "--"` ⇒ **`True and True`**.
+⚠️ Et c'est **la garde que le dossier de `dn4-4` célébrait** (*« le témoin croisé
+n'est valide que si l'avant n'est pas `--` »*) : elle attrapait le `--`, **pas** la
+sentinelle.
+
+- 🔴 **Le témoin a d'abord été VU ROUGIR** sur **5 entrées** (deux sentinelles, une
+  seule, deux `--`, une page qui bouge) — `--temoin-negatif`, **19 cas au total**.
+- ✅ Puis les **quatre témoins sont VERTS sur la carte** : POSITIF (3 textes dans
+  l'ordre) · PÉREMPTION (retour à `--` après 4 s) · MOCK (régime `SIMULÉE`,
+  valeur qui VARIE) · CROISÉ (le détail CPU ne bouge pas pendant que `net` bouge).
+
+## 23.7 ✅ AC4.3 — LE TÉMOIN DE GARDE EST **REJOUABLE**
+
+`s_gardeh_cris` est CUMULATIF, et la console tranchait dessus : après un retour au
+produit, elle imprimait encore *« ✅ elle a CRIÉ »* sur une garde **muette**, et la
+branche *« 🔴 la garde est CASSÉE »* devenait **injoignable dès le premier cri**.
+
+| État | panneau | label / y | `cris` | Verdict de la console |
+|---|---|---|---|---|
+| PRODUIT (154) | 154 | 140 @ 14 | **0** | ✅ silence LÉGITIME — `14+140 = 154 ≤ 154`, **marge zéro** |
+| ARMÉ (153) | 153 | 140 @ 14 | **2** | ✅ **elle a CRIÉ au dernier passage** |
+| RETOUR PRODUIT | 154 | 140 @ 14 | **0** | ✅ silence LÉGITIME |
+
+⇒ **Rejoué trois fois dans la séance**, sur le firmware livré. `widget detpan`
+remet les compteurs à zéro : **un témoin se remet à zéro, ou il n'est pas un témoin.**
+
+## 23.8 ✅ CE QUE L'ŒIL A VU, ET LES DEUX CORRECTIONS QU'IL A DEMANDÉES
+
+**Constats validés** (2 fenêtres d'observation, « prêt ? » demandé et OUI attendu
+avant chacune, injection continue pendant toute l'observation) :
+
+- ✅ **`RÉSEAU` : deux courbes DISTINCTES sur une échelle commune** (décision n°5).
+- ✅ 🎯 **LE PRIX DE LA DÉCISION N°5 EST VU ET ASSUMÉ** : à **985 Mb/s ↓ contre
+  5 Mb/s ↑**, le montant **s'écrase en trait plat en bas de boîte**. ⛔ Ce n'est
+  **pas** un défaut à corriger — c'est la vérité brute du rapport entre les débits.
+- ✅ **`widget fond off` laisse l'écran VRAIMENT NOIR sur les DEUX écrans** —
+  dashboard **et** détail. ⛔ Aucun texte, aucun rouge.
+
+**Deux corrections demandées par l'œil, et faites dans la séance** — écart de
+périmètre sur `k_desc[]`, **levé explicitement par l'owner** :
+
+1. *« réseau le vert ça ne se voit pas bien donc plutôt bleu et flèche aussi »*
+   ⇒ descendant **BLEU VIF `0x3b82f6`** (était vert `0x4ade80`), montant **CYAN
+   `0x22d3ee`** (était bleu clair `0x60a5fa`).
+   ⛔ **LES DEUX ONT DÛ BOUGER, ET C'EST LA DÉCISION N°5 QUI L'IMPOSE** : sur la
+   seule page où les deux courbes partagent la MÊME échelle, **la couleur est le
+   seul discriminant restant**. Deux bleus l'auraient annulé.
+   ✅ *« et flèche aussi »* est **gratuit** : `chevron_couleur()` **LIT** ces deux
+   sources, il ne les recopie pas.
+2. *« remettre le texte blanc avec l'icône temp devant le chiffre »*
+   ⇒ `k_desc[AMBIANCE].grandeurs[0].icone = DN_ICONE_THERMOMETER_HALF`, colorée en
+   **ORANGE** (la couleur de sa propre courbe), **texte BLANC**.
+   🔴 **MON CORRECTIF D'AC4.5 MARCHAIT, ET L'OWNER N'EN A PAS VOULU.** Je
+   recolorais **le segment entier** faute d'icône — j'avais écarté l'icône *« pour
+   ne pas toucher la largeur »*. **La largeur se MESURE, elle ne se redoute pas** :
+   après ajout, `widget` compte **0 chevauchement · 0 trop large · 0 en hauteur**,
+   et la garde de largeur du détail **ne crie pas**.
+   ⚠️ L'owner avait d'abord dit *« rouge »*, puis a tranché **orange** une fois la
+   conséquence montrée : `DISQUE` est **déjà** rouge, et deux cases rouges se
+   toucheraient sur le dashboard.
+
+## 23.9 ⛔ CE QUE §23 NE PROUVE PAS
+
+- **Que la page coûte 336,7 ms EN USAGE RÉEL.** Toutes les latences sont mesurées
+  **source muette**, cases éteintes (§23.1). Une page vivante dessine **plus**.
+- **Que le coût de la courbe vaut +0,7 ms.** Ce chiffre (336,3 ms de moyenne des
+  deux passes capturées — 335,8 et 336,7 — contre les **335,6 ms** de T0) **CROISE DEUX BINAIRES** — T0 est de
+  `dn4-4`/`aa99fa2`, et `dn4-13` a changé le chemin de dessin. Il est publié
+  **une seule fois, avec un seul signe**, et cette phrase est le prix de la
+  comparaison. ⇒ **Le vrai coût de la courbe reste dans la FRAGMENTATION** :
+  **3 % → 45 %** (42 % en `dn4-4`), plus gros bloc libre 40 476 → ~22 000 o.
+- **Que la fragmentation à 45 % soit STABLE.** Elle n'a été relevée qu'après des
+  séries de transitions, jamais suivie dans le temps. Le tas LVGL est un pool
+  **statique en `.bss`** : ⛔ ni `mem` ni la PSRAM n'en disent rien. *(ledger)*
+- **Que le nombre AU DOIGT ait été re-tiré.** Les **361,8 ms** de `dn4-4` datent de
+  `aa99fa2` et **n'ont pas été rejouées** — il faut `touch trace` et l'owner.
+- **Que « > 1 h sans source PC » ait été joué** pour AC2.2. Voir §23.10.
+
+## 23.10 ⚠️ AC2.2 — L'ÉCART DE MÉTHODE, DÉCLARÉ AVANT D'ÊTRE COMMIS
+
+L'AC écrit *« carte allumée > 1 h »*. **On a tiré à 370 s**, et le témoin est
+**plus fort que le protocole demandé** — pour une raison qui n'avait pas été
+anticipée : dans **le même relevé**, à **uptime identique**,
+
+- `GPU` et `RAM` — **les deux seules séries jamais alimentées** — rendent
+  `couv(s) = **0**` ;
+- les six autres rendent `couv(s) = **364**`.
+
+⇒ **La discrimination est prouvée par la COEXISTENCE, ⛔ pas par un seuil de
+temps.** L'ancienne version aurait rendu **370 pour les huit**.
+⛔ **Le « > 1 h » n'a PAS été joué, et AC2.2 est coché sur CE témoin-ci**, pas sur
+celui que l'AC décrivait. Écrit ici pour que personne ne lise l'heure dans ces
+chiffres.
+
+*Recoupement indépendant, non cherché* : `AMBIANCE` affiche `ecrits 120 · trous 65`
+— les **65 trous sont exactement la pause de 65 s** d'AC3.3, visible dans l'anneau
+par un second chemin que celui du compteur de rattrapage.

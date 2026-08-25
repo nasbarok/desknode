@@ -1,0 +1,58 @@
+# dn4-13 / T11 — seance du 2026-08-25
+# firmware : 7b375c3 (SHA LU AU BANDEAU au boot, arbre propre)
+# protocole : touch reset + nav ab 20 (n=40), dalle NON TOUCHEE
+# source : MUETTE — le port est EXCLUSIF (liaison-pc.md 13)
+
+===== hist =====
+historique de session (dn4-4) — EN RAM, ⛔ AUCUNE ecriture NVS/flash (D4)
+  cout .bss REEL du module : 5657 o
+     points 8 x 120 x 4 = 3840 o
+     seaux  s_smin + s_smax + s_svu = 1728 o
+     index  s_w + s_ecrits + s_pret + s_seau_abs + horodatage
+            + 2 compteurs de rattrapage = 89 o
+  ⚠️ CE TOTAL EST CELUI DU MODULE, ⛔ plus `sizeof(s_pts)` seul.
+     Jusqu'au 2026-08-25 cette ligne imprimait 3840 o : tout cout
+     publie AVANT cette date sous-declare de 1817 o (32 %).
+  cadence : 1000 ms — une HORLOGE, ⛔ pas la cadence des trames
+  rattrapage : 0 coupure(s), 0 point(s) de trou comble(s)
+     (aucune coupure depuis l'init — regime nominal)
+  profondeur : 120 points a 1 Hz = 120 s de session
+  fenetre LONGUE : 24 seau(x) d'1 h — couverture **PAR SERIE**
+  🔴 dn4-13 / AC2.2 : la couverture n'est PLUS l'uptime. Jusqu'au
+     2026-08-25 elle rendait min(uptime, 24 h) — carte allumee 1 h
+     SANS source PC, la page annoncait « MIN/MAX sur : 1 h » a cote
+     de « MIN -- · MAX -- ». Elle compte desormais les seaux QUI ONT
+     VU DU REEL, et rend 0 quand il n'y en a aucun.
+  ⛔ « 24 h » N'EST VRAI QUE SI LA CARTE A TOURNE 24 h : D4
+     interdit toute ecriture flash/NVS, donc ceci NE SURVIT PAS
+     a un reboot. La page affiche la fenetre REELLE, pas 24 h.
+
+  serie        ecrits reels trous jamais couv(s)  min(court) max(court)  min(long) max(long)
+   CPU            120     0   120      0     947         --         --        160        949
+   GPU            120     0   120      0     947         --         --        150        950
+   RAM            120     0   120      0     947         --         --         50        743
+   RESEAU v       120     0   120      0     947         --         --        100      25100
+   DISQUE         120     0   120      0     947         --         --       2000     999999
+   AMBIANCE T     120   120     0      0     947        235        235        234        236
+   AMBIANCE RH    120   120     0      0     947        442        444        441        444
+   RESEAU ^       120     0   120      0     947         --         --       1111      12198
+  (toutes les valeurs en DIXIEMES — cet instrument ne connait ni
+   les unites ni les echelles hautes, c'est la PAGE qui les porte)
+  🔴 `trous` = positions ECRITES dont la source s'etait tue.
+     `jamais` = positions JAMAIS ATTEINTES depuis l'init — ⛔ ce ne
+     sont PAS des trous, et les compter comme tels a fait publier
+     « trous 110 » a t = 10 s. `min(court)` porte donc sur `ecrits`
+     secondes, ⛔ pas sur « 2 min » par principe.
+
+⛔ UN TROU N'EST PAS UN ZERO. Une valeur absente, perimee, ou
+   SIMULEE (mock, `widget pousser`) n'entre PAS dans une serie
+   presentee comme reelle : elle y creuse un trou, que `lv_chart`
+   SAUTE au trace. C'est la regle W10/AC5 de dn4-1, portee au temps.
+
+===== mem =====
+PSRAM libre maintenant : 7767988 o
+RAM interne libre      : 74503 o
+PSRAM avant framebuffers : 8384992 o
+PSRAM après framebuffers : 7770232 o
+=> consommée par 1 framebuffer(s) : 614760 o (théorie : 614400 o)
+bounce buffer : 9600 px (alloué en RAM INTERNE, pas en PSRAM)

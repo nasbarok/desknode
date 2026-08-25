@@ -1,0 +1,159 @@
+# dn4-13 / T11 — seance du 2026-08-25
+# firmware : 7b375c3 (SHA LU AU BANDEAU au boot, arbre propre)
+# protocole : touch reset + nav ab 20 (n=40), dalle NON TOUCHEE
+# source : MUETTE — le port est EXCLUSIF (liaison-pc.md 13)
+
+# COIN : t3-sans-fond  (fond off · opa 178 · voile 90)
+
+===== flush AVANT =====
+─── glissement de trame (dn4-10) — fenêtre 900902 ms ───
+  trames (vsync)   : 33611 · enroulements : 33610
+  trames SANS enroulement : 1 · à deux ou plus : 0
+  intervalle vsync→vsync : n=33610 · min 26243 · moy 26737 · MAX 27232 us
+     (période théorique 26737 us = 620 x 690 / 16000000 Hz)
+     retard PIRE observé : +495 us sur la période
+  ISR en retard de plus de : +100 us 2 · +775 us (back porch) 0 · +1937 us (VBlank) 0 · une trame 0
+  🎯 phase enroulement→VSYNC_END : n=33578 (+32 dégrossis) · min 1404 · moy 2254 · MAX 2288 us
+     une phase COURTE = l'enroulement EN RETARD = le remplissage du bounce qui décroche.
+     🔴 DÉFICIT PIRE sous le max : 867 us, pour un demi-bounce qui s'écoule en 775 us
+        ⇒ DÉPASSÉ de 92 us : la DMA a lu un tampon PAS ENCORE REMPLI. C'est le décalage visible.
+     trames dont le déficit dépasse : 10 % 881 · 25 % 18 · 50 % 14 · 🔴 100 % (CORRUPTION) 4
+     ⚠️ PLANCHER : la microseconde, soit 16 px. ⛔ « 0 » ici ne veut PAS dire « 0 pixel ».
+     ⚠️ L'horodatage de référence vient LUI AUSSI d'une ISR : un retard COMMUN aux deux s'annule et reste invisible.
+  ce que ça veut dire : le driver RGB remet la DMA à zéro à
+     CHAQUE VBlank (RESTART_IN_VSYNC=y) et écrit lui-même que
+     « si cette interruption est ASSEZ EN RETARD, l'image se
+     DÉCALE » (esp_lcd_panel_rgb.c:1142-1148). Le budget réel
+     est le back porch, 775 us — pas le VBlank entier (1937 us),
+     car VSYNC_END tombe à la FIN de l'impulsion.
+  ⛔ un compteur à zéro ne prouve RIEN tant que le témoin ne
+     l'a pas fait bouger, et la correspondance avec l'œil est
+     un RÉSULTAT à établir, pas une hypothèse. ⛔ `fps` reste
+     aveugle à ce défaut : il MOYENNE, et la gigue s'y efface.
+────────────────────────────────────────────────────────────
+rendu : PARTIEL · synchro : vsync · chemin : bitmap
+draw buffer : 480 x 128 px (122880 o) en RAM interne DMA
+flushes            : 2588
+cycles de redessin : 946
+aire cumulée       : 141896978 px
+  => 54828 px par flush en moyenne (écran plein = 307200 px, soit 17.85 %)
+  => 149996 px et 2.7 flush(es) par CYCLE de redessin
+     (le CYCLE est l'unité qui compte : c'est ce qu'une mise à
+      jour du label coûte réellement, flushes multiples inclus.)
+plus grande aire   : 61440 px
+copie              : 11597297 us cumulés, 4481 us/flush en moyenne, 6390 us au pire
+attente de synchro : 34137682 us cumulés, 13190 us/flush en moyenne
+   (comptée À PART de la copie : sinon « le flush coûte 27 ms » se
+    lirait comme un problème de bande passante alors que c'est la
+    synchro qui attend sa trame — 26,7 ms de période.)
+⚠️ 5 synchro(s) EXPIRÉE(S) : pour ces flushes-là, le mode
+   annoncé n'a PAS été appliqué. Toute comparaison A/B qui les
+   inclut compare partiellement « rien » à « rien ».
+rappel : redessiner l'écran ENTIER coûte 36,8 ms de memcpy PSRAM (§5.4),
+   pour 26,7 ms de période de trame — 1,4x TROP LENT. Les zones
+   sales ne sont pas une élégance, c'est la seule voie qui tient.
+
+===== nav ab 20 =====
+20 allers-retours en modele « screens »…
+⚠️ NE PAS TOUCHER LA DALLE pendant la serie.
+I (904998) desknode: up 900 s — vsync=33738 — flush=2641 cycles=959 — PSRAM libre 7767988 o
+--- non-fuite (AC4) ---------------------------------------
+  tas LVGL    21428 -> 20928 o   (delta -500 o)  <- LE tas des ecrans
+  RAM interne 74487 -> 74487 o   (delta 0 o)
+  PSRAM       7767988 -> 7767988 o   (delta 0 o)
+  ⚠️ SEUL le delta du tas LVGL prouve quoi que ce soit ici : les
+     objets LVGL vivent dans un pool STATIQUE en .bss, invisible
+     pour la RAM interne et la PSRAM.
+tas LVGL (LV_MEM_SIZE_KILOBYTES = 64 Ko, STATIQUE en .bss) :
+  total 61344 o · utilisé 20928 o (35 %) · libre 40416 o
+  plus gros bloc libre 22676 o · fragmentation 44 %
+⚠️ ces octets-là sont réservés au LINK : ils n'apparaissent PAS dans
+   l'avant/après de `mem`. C'est le seul endroit où ils se voient.
+  transitions REELLES : 40 (demandees : 40)
+  latence : n=40 min 140153 us · moy 193909 us · max 244839 us
+-----------------------------------------------------------
+
+===== flush APRES =====
+─── glissement de trame (dn4-10) — fenêtre 913563 ms ───
+  trames (vsync)   : 34084 · enroulements : 34084
+  trames SANS enroulement : 1 · à deux ou plus : 0
+  intervalle vsync→vsync : n=34083 · min 26243 · moy 26737 · MAX 27232 us
+     (période théorique 26737 us = 620 x 690 / 16000000 Hz)
+     retard PIRE observé : +495 us sur la période
+  ISR en retard de plus de : +100 us 2 · +775 us (back porch) 0 · +1937 us (VBlank) 0 · une trame 0
+  🎯 phase enroulement→VSYNC_END : n=34051 (+32 dégrossis) · min 1404 · moy 2254 · MAX 2288 us
+     une phase COURTE = l'enroulement EN RETARD = le remplissage du bounce qui décroche.
+     🔴 DÉFICIT PIRE sous le max : 867 us, pour un demi-bounce qui s'écoule en 775 us
+        ⇒ DÉPASSÉ de 92 us : la DMA a lu un tampon PAS ENCORE REMPLI. C'est le décalage visible.
+     trames dont le déficit dépasse : 10 % 913 · 25 % 20 · 50 % 15 · 🔴 100 % (CORRUPTION) 4
+     ⚠️ PLANCHER : la microseconde, soit 16 px. ⛔ « 0 » ici ne veut PAS dire « 0 pixel ».
+     ⚠️ L'horodatage de référence vient LUI AUSSI d'une ISR : un retard COMMUN aux deux s'annule et reste invisible.
+  ce que ça veut dire : le driver RGB remet la DMA à zéro à
+     CHAQUE VBlank (RESTART_IN_VSYNC=y) et écrit lui-même que
+     « si cette interruption est ASSEZ EN RETARD, l'image se
+     DÉCALE » (esp_lcd_panel_rgb.c:1142-1148). Le budget réel
+     est le back porch, 775 us — pas le VBlank entier (1937 us),
+     car VSYNC_END tombe à la FIN de l'impulsion.
+  ⛔ un compteur à zéro ne prouve RIEN tant que le témoin ne
+     l'a pas fait bouger, et la correspondance avec l'œil est
+     un RÉSULTAT à établir, pas une hypothèse. ⛔ `fps` reste
+     aveugle à ce défaut : il MOYENNE, et la gigue s'y efface.
+────────────────────────────────────────────────────────────
+rendu : PARTIEL · synchro : vsync · chemin : bitmap
+draw buffer : 480 x 128 px (122880 o) en RAM interne DMA
+flushes            : 2804
+cycles de redessin : 999
+aire cumulée       : 154823078 px
+  => 55215 px par flush en moyenne (écran plein = 307200 px, soit 17.97 %)
+  => 154978 px et 2.8 flush(es) par CYCLE de redessin
+     (le CYCLE est l'unité qui compte : c'est ce qu'une mise à
+      jour du label coûte réellement, flushes multiples inclus.)
+plus grande aire   : 61440 px
+copie              : 12657969 us cumulés, 4514 us/flush en moyenne, 6390 us au pire
+attente de synchro : 37192985 us cumulés, 13264 us/flush en moyenne
+   (comptée À PART de la copie : sinon « le flush coûte 27 ms » se
+    lirait comme un problème de bande passante alors que c'est la
+    synchro qui attend sa trame — 26,7 ms de période.)
+⚠️ 5 synchro(s) EXPIRÉE(S) : pour ces flushes-là, le mode
+   annoncé n'a PAS été appliqué. Toute comparaison A/B qui les
+   inclut compare partiellement « rien » à « rien ».
+rappel : redessiner l'écran ENTIER coûte 36,8 ms de memcpy PSRAM (§5.4),
+   pour 26,7 ms de période de trame — 1,4x TROP LENT. Les zones
+   sales ne sont pas une élégance, c'est la seule voie qui tient.
+
+===== touch =====
+GT911 : PRET
+  adresse REELLE 0x5D (visee 0x5D)
+  probe AVANT reset : REPOND DEJA a 0x5D
+     => TP_RST n'est PAS maintenu bas quand l'expander le laisse
+        en entree : le GT911 sort de reset seul a la mise sous
+        tension. La story attendait l'inverse — MESURE le
+        2026-08-16. La sequence reste utile : elle rend l'adresse
+        DETERMINISTE. Le temoin de causalite est `touch addr`.
+  probe APRES reset : ESP_OK
+  sequence : INT bas, TP_RST 150 ms bas / 50 ms de repos (expander bit1)
+  identite : « 911 » fw 0x1060 · config v93 · 5 point(s) max
+  resolution CONFIGUREE dans le GT911 : 480 x 640  (dalle 480 x 640)
+  INT declenche sur : front DESCENDANT (registre 0x804D bits 1-0 = 1)
+  mode de lecture : poll · axes swap=0 mirror_x=0 mirror_y=0
+  TP_INT = GPIO16, niveau instantane 1
+compteurs :
+  IRQ 0 · lectures 205 · appuis 0 · relaches 0 · erreurs I2C 0
+  dernier point : (353, 224)  brut (353, 224)  etat relache
+latence tap -> ecran flushe (AC5) :
+  n=40 · min 140153 us · moy 193909 us · max 244839 us · dernier 225113 us
+  soit min 140.2 ms · moy 193.9 ms · max 244.8 ms
+  ⚠️ BORNES DE LA MESURE : du clic LVGL a la fin du dernier flush
+     du cycle. N'INCLUT PAS le delai doigt -> lecture (jusqu'a
+     33 ms en polling) ni le flush -> photon (jusqu'a 26,7 ms).
+usage : touch                      etat, config lue, compteurs
+        touch reset                remet les compteurs a zero
+        touch mode event|poll      mode de lecture de l'indev
+        touch axes <swap> <mx> <my>  0|1 chacun (orientation)
+        touch trace [ms]           imprime chaque appui + sa zone
+        touch int [ms]             temoin PHYSIQUE de TP_INT
+        touch addr                 PREUVE CAUSALE : INT haut/bas
+                                   -> adresse latchee 0x14/0x5D
+        touch delais <bas> <haut>  delais de la sequence de reset
+                                   (1..2000 ms) ; `touch addr` pour
+                                   les APPLIQUER en rejouant
