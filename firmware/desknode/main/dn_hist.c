@@ -144,6 +144,50 @@ static void seau_suivre(void)
 }
 
 /*
+ * 🔴 dn4-13 / REVUE DE CODE DU 2026-08-25 — UN SEAU QUI N'A PAS ÉTÉ VIEILLI
+ *    MENT SUR SON ÂGE, ET LA FENÊTRE DE 24 h CESSE DE GLISSER.
+ *
+ * LE DÉFAUT, TEL QU'IL A ÉTÉ MESURÉ : `seau_suivre()` n'est atteignable que par
+ * l'ÉCRIVAIN (`dn_hist_poser()`). Sous `ui off`, `lvgl_port_stop()` arrête le
+ * `hist_tick` ⇒ plus aucune pose ⇒ les seaux GÈLENT — pendant que les lecteurs,
+ * eux, lisent une horloge FRAÎCHE. Reproduit en compilant ce fichier sur l'hôte :
+ * après 25 h d'`ui off`, `hist` publiait `couv(s) 3900` et `min(long) 500` pour
+ * une observation vieille de VINGT-CINQ HEURES, dans une structure dont
+ * `dn_hist.h` promet que « le seau qu'on ré-atteint est remis à vide, donc la
+ * fenêtre GLISSE ». C'est AC2.2 retourné : la couverture ne surestime plus la
+ * fenêtre, elle SOUS-ESTIME L'ÂGE.
+ *
+ * ⛔ LA PARADE N'EST **PAS** D'APPELER `seau_suivre()` DEPUIS UN LECTEUR.
+ *    Elle mute `s_svu[][]`, et les lecteurs tournent sur la tâche CONSOLE
+ *    pendant que l'écrivain tourne sur la tâche LVGL : ce serait une COURSE.
+ * ⇒ La correction est EN LECTURE SEULE. L'âge d'un seau se compte depuis
+ *   l'horloge FRAÎCHE (`abs_now`), ⛔ pas depuis `s_seau_abs` GELÉ. `gap` est le
+ *   nombre de seaux écoulés SANS écrivain ; un seau dont l'âge atteint 24 est
+ *   HORS FENÊTRE et ne compte plus — ni pour la couverture, ni pour le MIN/MAX
+ *   long. L'écrivain, lui, continue de vider pour de bon au prochain passage.
+ *
+ * Rend l'âge en seaux (0 = seau courant), ou **-1** si le seau est hors fenêtre
+ * — ⛔ « pas dans la fenêtre », ⛔ jamais « âge zéro ».
+ */
+static int seau_age(int b)
+{
+    if (s_seau_abs < 0) {
+        return -1;
+    }
+    int64_t up_s = esp_timer_get_time() / 1000000;
+    if (up_s < 0) {
+        return -1;
+    }
+    int64_t gap = up_s / DN_HIST_SEAU_S - s_seau_abs;
+    if (gap < 0) {
+        gap = 0; /* horloge qui recule : on ne rajeunit rien */
+    }
+    int64_t a = ((s_seau_abs - b) % DN_HIST_SEAUX + DN_HIST_SEAUX) % DN_HIST_SEAUX;
+    int64_t age = gap + a;
+    return (age >= DN_HIST_SEAUX) ? -1 : (int)age;
+}
+
+/*
  * 🔴 dn4-13 / AC3.1 — L'ANNEAU RATTRAPE LE TEMPS QU'IL N'A PAS ÉCHANTILLONNÉ,
  *    EN CREUSANT DES TROUS.
  *
@@ -174,15 +218,48 @@ int dn_hist_rattraper(void)
         return 0;
     }
     int64_t dt_ms = (now - s_tick_us) / 1000;
-    s_tick_us = now;
-    int64_t manques = dt_ms / DN_HIST_PERIODE_MS - 1;
+    /*
+     * 🔴 dn4-13 / REVUE DU 2026-08-25 — LE RESTE INFRA-PÉRIODE S'ACCUMULE,
+     *    ⛔ IL NE SE JETTE PAS.
+     * `s_tick_us = now` ré-armait l'horloge AVANT le test, donc l'erreur plus
+     * petite qu'une période était perdue à chaque appel. MESURÉ : une horloge à
+     * 1 500 ms par tick creusait ZÉRO trou INDÉFINIMENT (`1500/1000 − 1 = 0`),
+     * `hist` publiait « 0 coupure, 0 trou — régime nominal », et
+     * `dn_hist_ecrits()` — dont l'en-tête dit « à 1 Hz, ce nombre EST la fenêtre
+     * courte réelle, en secondes » — comptait 6 positions comme 6 SECONDES pour
+     * 7,5 s réelles. Tout `dt` dans [1000 ; 1999] ms était invisible ⇒ l'axe des
+     * temps se comprimait sans borne ni témoin : la classe de mensonge exacte
+     * qu'AC3.1 dit clore, JUSTE SOUS SON SEUIL.
+     */
+    int64_t ticks = dt_ms / DN_HIST_PERIODE_MS;
+    if (ticks < 0) {
+        ticks = 0;
+    }
+    s_tick_us += ticks * (int64_t)DN_HIST_PERIODE_MS * 1000;
+    /* ⚠️ LES SEAUX VIEILLISSENT AUSSI PENDANT LA COUPURE. `seau_suivre()` n'est
+     *    atteignable que par l'écrivain, et il n'y en a plus sous `ui off` ; ce
+     *    passage-ci tourne sur LA MÊME TÂCHE que `dn_hist_poser()` (le
+     *    `hist_tick` de `dn_ui.c`), donc l'appeler ici n'ouvre AUCUNE course. */
+    seau_suivre();
+    int64_t manques = ticks - 1;
     if (manques <= 0) {
         return 0;
     }
-    if (manques > DN_HIST_N_POINTS) {
-        manques = DN_HIST_N_POINTS;
+    /*
+     * 🔴 dn4-13 / REVUE DU 2026-08-25 — ON PUBLIE L'OBSERVATION, ⛔ PAS LE PLAFOND.
+     * L'écrêtage à `DN_HIST_N_POINTS` était appliqué AVANT le compteur : un
+     * `ui off` de 10 min et un de 1 h publiaient EXACTEMENT la même phrase
+     * (« 120 trous »), rendant deux coupures d'un facteur 30 INDISCERNABLES —
+     * alors qu'AC3.1 crée ce compteur en écrivant qu'« un comblement silencieux
+     * serait une réparation invisible, donc invérifiable ». Il était visible et
+     * FAUX. L'anneau ne peut évidemment pas porter plus de 120 trous : c'est le
+     * REMPLISSAGE qui est borné, ⛔ pas le COMPTEUR.
+     */
+    int64_t combles = manques;
+    if (combles > DN_HIST_N_POINTS) {
+        combles = DN_HIST_N_POINTS;
     }
-    for (int64_t k = 0; k < manques; k++) {
+    for (int64_t k = 0; k < combles; k++) {
         for (int s = 0; s < DN_HIST_N_SERIES; s++) {
             s_pts[s][s_w[s]] = DN_HIST_TROU;
             s_w[s] = (s_w[s] + 1u) % DN_HIST_N_POINTS;
@@ -192,8 +269,8 @@ int dn_hist_rattraper(void)
         }
     }
     s_rattr_evts++;
-    s_rattr_trous += (uint32_t)manques;
-    return (int)manques;
+    s_rattr_trous += (uint32_t)manques; /* l'OBSERVATION, ⛔ pas `combles` */
+    return (int)manques;                /* idem — l'appelant borne pour le LOG */
 }
 
 void dn_hist_rattrapages(uint32_t *evenements, uint32_t *trous)
@@ -255,6 +332,13 @@ bool dn_hist_minmax_long(int serie, int32_t *min, int32_t *max)
         if (!s_svu[serie][b]) {
             continue;
         }
+        /* 🔴 dn4-13 / REVUE 2026-08-25 — UN SEAU HORS FENÊTRE NE PÈSE PLUS SUR
+         *    LE MIN/MAX. Sans ce test, un `ui off` de 25 h republiait le minimum
+         *    du TOUR PRÉCÉDENT de 24 h : l'écrivain seul vide les seaux, et il
+         *    ne tourne pas pendant la pause. */
+        if (seau_age(b) < 0) {
+            continue;
+        }
         if (!vu || s_smin[serie][b] < mn) {
             mn = s_smin[serie][b];
         }
@@ -301,15 +385,18 @@ uint32_t dn_hist_couverture_s(int serie)
     if (up_s < 0) {
         return 0;
     }
-    int cur = (int)((up_s / DN_HIST_SEAU_S) % DN_HIST_SEAUX);
+    /* 🔴 dn4-13 / REVUE 2026-08-25 — l'âge vient de `seau_age()`, qui compte
+     *    depuis l'horloge FRAÎCHE. L'ancien calcul dérivait l'âge d'un `cur`
+     *    frais confronté à des seaux GELÉS : sous `ui off`, il rendait 0 pour un
+     *    seau vieux de 25 h. Voir le motif au-dessus de `seau_age()`. */
     int age_max = -1;
     for (int b = 0; b < DN_HIST_SEAUX; b++) {
         if (!s_svu[serie][b]) {
             continue;
         }
-        int age = (cur - b + DN_HIST_SEAUX) % DN_HIST_SEAUX;
+        int age = seau_age(b);
         if (age > age_max) {
-            age_max = age;
+            age_max = age; /* `seau_age()` rend -1 hors fenêtre ⇒ jamais retenu */
         }
     }
     if (age_max < 0) {

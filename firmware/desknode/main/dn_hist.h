@@ -21,7 +21,7 @@
  * | octets par point       | **4**       | `int32_t` — **imposé** par           |
  * |                        |             | `lv_chart_set_series_ext_y_array()`  |
  * | points seuls           | **3 840 o** | 8 x 120 x 4 (7 -> 8 : `RÉSEAU` montant)|
- * | **TOTAL `.bss` MODULE**| **~5 609 o**| + seaux 1 728 + index. 🔴 C'est CE      |
+ * | **TOTAL `.bss` MODULE**| **5 657 o** | + seaux 1 728 + index **89**. 🔴 C'est CE|
  * |                        |             | total que `dn_hist_octets()` rend      |
  * |                        |             | DEPUIS dn4-13 ; la ligne du dessus n'a |
  * |                        |             | jamais été le coût du module, et c'est |
@@ -39,9 +39,17 @@
  * 🔴 **DEPUIS, LE MODULE A GROSSI DE ~2 200 o ET LE RELEVÉ N'A PAS ÉTÉ REFAIT** :
  *    `ffff6d2` a ajouté les seaux (+1 512 o à 7 séries), `08d4d2b` la 8ᵉ série
  *    `DN_HIST_S_NET_UP` (+700 o). Le `.bss` réel du module vaut aujourd'hui
- *    **~5 609 o** (3 840 points + 768 s_smin + 768 s_smax + 192 s_svu + 32 s_w
- *    + 9). ⇒ **AC5.6 EST À RE-TIRER SUR LE FIRMWARE LIVRÉ** — écart déclaré,
- *    porté par `dn4-13`. [Revue de code du 2026-08-24]
+ *    **5 657 o** (3 840 points + 768 s_smin + 768 s_smax + 192 s_svu + **89**
+ *    d'index et de compteurs). ✅ **AC5.6 A ÉTÉ RE-TIRÉ sur le firmware livré**
+ *    (`7b375c3`, 2026-08-25) : **5 657 o par TROIS instruments** — la carte, le
+ *    `.map` et l'hôte — **écart +0 o**. Voir `affichage.md` §23.5.
+ * 🔴 ⚠️ **CE BLOC A ÉTÉ CORRIGÉ LE 2026-08-25 PAR LA REVUE DE CODE** : il
+ *    publiait encore **~5 609 o** et un **« index 41 »**, chiffres d'un état où
+ *    `s_ecrits`, `s_seau_abs`, l'horodatage et les deux compteurs de rattrapage
+ *    n'existaient pas — pendant que la MÊME commande `hist` imprimait `5657 o`
+ *    et `index … = 89 o`. `verif_hist_dn413.py` comparait le total au `.map` et
+ *    **ne relisait aucun LIBELLÉ** : la gate restait verte sous la phrase fausse.
+ *    ⇒ **Une gate peut tenir un CHIFFRE juste sous une PHRASE fausse.**
  *    Δ tas LVGL : **NON PRÉDIT** — c'est le coût des objets `lv_chart`, et une
  *    prédiction sans instrument ne coûte rien à celui qui l'écrit (leçon L18).
  *
