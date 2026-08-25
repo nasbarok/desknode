@@ -8148,8 +8148,11 @@ static void veille_imprimer_etat(void)
         printf("   ⚠️ payee DANS LA TACHE LVGL quand elle vient d'un tap MENU :\n");
         printf("   le cache flash est coupe pendant ce temps-la.\n");
     } else {
-        printf("aucune ecriture NVS depuis le boot (les deux reglages sont ceux\n");
-        printf("   qui ont ete relus au demarrage).\n");
+        /* ⚠️ « depuis le boot » etait FAUX des qu'un `veille reset` avait eu
+         *    lieu : il remet ce compteur a zero (AC8.3). L'etiquette nomme
+         *    donc les DEUX origines possibles. */
+        printf("aucune ecriture NVS depuis le boot ou le dernier `veille reset`\n");
+        printf("   (les deux reglages sont ceux qui etaient deja en vigueur).\n");
     }
     /* 🔴 AC3.3 — L'ECART DERNIER CONTACT -> BASCULE, LATCHE PAR LE TICK QUI A
      *    BASCULE. ⛔ Un sondage depuis l'hote ne peut PAS l'etablir : sa propre
@@ -8160,15 +8163,35 @@ static void veille_imprimer_etat(void)
             printf("ecarts contact->bascule : AUCUN ECHANTILLON\n");
             printf("   ⛔ « pas mesure », ⛔ PAS « 0 ms ».\n");
         } else {
-            printf("ecarts contact->bascule (le plus recent d'abord), pour un "
-                   "delai de %lu ms :\n",
-                   (unsigned long)c.delai_ms);
+            /* 🔴 CHAQUE ECHANTILLON EST JUGE CONTRE LE DELAI QUI ETAIT ARME
+             *    QUAND IL A ETE LATCHE, ⛔ JAMAIS CONTRE LE DELAI COURANT.
+             *    DEFAUT MESURE SUR LA CARTE LE 2026-08-25 : 60 400 ms latches a
+             *    1 min s'affichaient « 🔴 HORS » apres un passage a 10 min. */
+            printf("ecarts contact->bascule (le plus recent d'abord) :\n");
             for (uint32_t i = 0; i < ne; i++) {
                 uint32_t e = dn_veille_bascule_ecart_ms((int)i);
-                long d = (long)e - (long)c.delai_ms;
-                bool dans = (e >= c.delai_ms && e < c.delai_ms + 1000u);
-                printf("   #%lu  %8lu ms  (delai %+ld ms)  %s\n",
-                       (unsigned long)i + 1u, (unsigned long)e, d,
+                uint32_t dl = dn_veille_bascule_delai_ms((int)i);
+                if (!dn_veille_bascule_jugeable((int)i)) {
+                    /* ⛔ ENREGISTRE, EXCLU, ET DIT — jamais jete en silence, et
+                     *    surtout jamais marque en rouge : la bascule est
+                     *    CORRECTE, c'est la fenetre qui ne s'applique pas. */
+                    printf("   #%lu  %8lu ms  (delai arme %lu ms)  ⚪ NON "
+                           "JUGEABLE\n",
+                           (unsigned long)i + 1u, (unsigned long)e,
+                           (unsigned long)dl);
+                    printf("        1er tick apres armement / changement de "
+                           "cran / `veille reset` :\n");
+                    printf("        la garde n'avait JAMAIS vu d'etat sous le "
+                           "seuil. La bascule est CORRECTE,\n");
+                    printf("        mais [delai ; delai+1 s] ne s'y applique "
+                           "pas. ⛔ Ce n'est PAS un defaut.\n");
+                    continue;
+                }
+                long d = (long)e - (long)dl;
+                bool dans = (e >= dl && e < dl + 1000u);
+                printf("   #%lu  %8lu ms  (delai arme %lu ms, %+ld ms)  %s\n",
+                       (unsigned long)i + 1u, (unsigned long)e,
+                       (unsigned long)dl, d,
                        dans ? "✅ dans [delai ; delai+1 s]"
                             : "🔴 HORS de [delai ; delai+1 s]");
             }
@@ -8684,6 +8707,13 @@ static int cmd_veille(int argc, char **argv)
         }
         dn_ui_veille_latences_reset();
         dn_veille_reset();
+        /* 🔴 AC8.3 — CE COMPTEUR-LA SURVIVAIT AU RESET, ET LA SORTIE SE
+         *    CONTREDISAIT : « reveils 0 » a cote de « taps CONSOMMES par un
+         *    reveil : 1 », dans le meme bloc. Mesure le 2026-08-25.
+         * ⛔ Surtout pas `dn_touch_reset_stats()` : il zeroterait aussi IRQ,
+         *    lectures, appuis, relachements et erreurs I2C, que `touch`
+         *    publie et que `veille` ne publie pas. */
+        dn_touch_consommes_rebaser();
         printf("compteurs et latences a ZERO.\n");
         printf("⛔ Les deux REGLAGES ne sont pas touches : ce sont des reglages,\n");
         printf("   pas des mesures. Le MODE non plus — le remettre a ACTIF ici\n");

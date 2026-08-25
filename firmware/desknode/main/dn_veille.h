@@ -222,6 +222,37 @@ uint32_t dn_veille_bascule_ecart_ms(int rang);
 uint32_t dn_veille_bascule_ecarts_n(void);
 
 /*
+ * 🔴 UN ÉCART NU NE SE JUGE PAS — DÉFAUT MESURÉ SUR LA CARTE LE 2026-08-25.
+ *
+ * La console comparait chaque écart au délai **en vigueur À LA LECTURE**. Un
+ * écart de 60 400 ms, latché alors que le cran était à 1 min, s'affichait donc
+ * « 🔴 HORS de [délai ; délai+1 s] » dès que le cran passait à 10 min entre la
+ * bascule et le `veille`. ⇒ **Une étiquette qui ment, sur l'instrument qui
+ * SOLDE AC3.3** — et le dépôt tient qu'une étiquette fausse est un défaut au
+ * même titre qu'un chiffre faux (`dn_widget.h`).
+ *
+ * ⇒ `dn_veille_bascule_delai_ms(rang)` rend LE DÉLAI QUI ÉTAIT ARMÉ quand
+ *   l'échantillon a été latché. C'est contre CELUI-LÀ qu'il se juge.
+ */
+uint32_t dn_veille_bascule_delai_ms(int rang);
+
+/*
+ * 🔴 ET CERTAINS ÉCHANTILLONS NE SE JUGENT PAS DU TOUT.
+ *
+ * Armer la veille — ou baisser le cran, ou faire `veille reset` — alors que
+ * l'inactivité DÉPASSE DÉJÀ le délai fait basculer au tout premier tick, qui
+ * latche l'inactivité VRAIE : **178 270 ms relevés en séance pour un cran de
+ * 1 min**. La bascule est CORRECTE ; c'est la fenêtre [délai ; délai+1 s] qui
+ * ne s'applique pas, faute d'avoir jamais vu d'état SOUS le seuil.
+ *
+ * Rend `false` pour ces échantillons-là. L'appelant DOIT les afficher comme
+ * ENREGISTRÉS ET EXCLUS, avec le motif — ⛔ jamais les jeter en silence, et
+ * ⛔ surtout jamais leur coller un 🔴 sur un comportement correct. C'est le
+ * même contrat que `veille lat`, qui exclut les réveils console en le disant.
+ */
+bool dn_veille_bascule_jugeable(int rang);
+
+/*
  * 🔴 TOUT SE REMET À ZÉRO — ⛔ un compteur CUMULATIF ne tranche pas. Le dépôt a
  *    déjà payé cette leçon sur `s_gardeh_cris` (dn4-4) puis sur `*cris`
  *    (dn4-13). ⛔ Ne remet PAS à zéro les deux RÉGLAGES : ce sont des réglages,

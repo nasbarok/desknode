@@ -840,6 +840,12 @@ void dn_touch_get_stats(dn_touch_stats_t *out)
 
 uint32_t dn_touch_err_i2c(void) { return s_err_i2c - s_base_err_i2c; }
 
+/* Voir le contrat, et le défaut qu'il corrige, dans `dn_touch.h`. */
+void dn_touch_consommes_rebaser(void)
+{
+    s_base_consommes = s_consommes;
+}
+
 void dn_touch_reset_stats(void)
 {
     s_base_irq = s_irq;

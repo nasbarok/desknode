@@ -159,6 +159,24 @@ void dn_touch_set_contact_cb(dn_touch_contact_cb_t cb);
  * `touch reset`. */
 uint32_t dn_touch_consommes(void);
 
+/*
+ * 🔴 REBASE CE SEUL COMPTEUR — POUR `veille reset`, ET POUR LUI SEUL.
+ *
+ * LE DÉFAUT CORRIGÉ, MESURÉ LE 2026-08-25 : `veille` publie ce compteur, mais
+ * `veille reset` ne le touchait pas. La sortie affichait donc, DANS LE MÊME
+ * BLOC, « bascules 0 · réveils 0 · dernier réveil : aucun » **et** « taps
+ * CONSOMMÉS par un réveil : 1 » — un compteur remis à zéro à côté d'un
+ * compteur cumulatif. AC8.3 le dit en toutes lettres : *« Tous les compteurs
+ * se remettent à zéro par `veille reset`. ⛔ Un compteur cumulatif ne
+ * tranche pas »*.
+ *
+ * ⛔ NE PAS appeler `dn_touch_reset_stats()` depuis `veille` : il zéroterait
+ *    AUSSI IRQ, lectures, appuis, relâchements et erreurs I²C — que `veille` ne
+ *    publie pas et que `touch` publie. Ce serait échanger un mensonge contre
+ *    un autre.
+ */
+void dn_touch_consommes_rebaser(void);
+
 bool dn_touch_ready(void);
 
 /* Adresse à laquelle le GT911 a RÉPONDU (0 s'il n'a jamais répondu). */

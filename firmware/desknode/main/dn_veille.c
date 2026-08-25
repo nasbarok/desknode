@@ -117,6 +117,33 @@ static uint32_t s_secondes_vues;
  */
 #define DN_VEILLE_BASCULES_GARDEES 4
 static uint32_t s_inact_bascule_ms[DN_VEILLE_BASCULES_GARDEES];
+/*
+ * 🔴 SÉANCE DU 2026-08-25 — L'ÉCART SEUL NE SE JUGE PAS, ET LA CONSOLE LE
+ *    JUGEAIT QUAND MÊME.
+ * LE DÉFAUT, MESURÉ SUR LA CARTE : `dn_console.c` comparait chaque écart latché
+ * au délai **en vigueur À LA LECTURE**. Un écart de 60 400 ms, parfaitement
+ * dans [60 000 ; 61 000] au moment du latch, s'affichait « 🔴 HORS » dès que le
+ * cran passait à 10 min entre la bascule et le `veille`. ⇒ Une étiquette qui
+ * ment, sur l'instrument même qui SOLDE AC3.3.
+ * ⇒ Chaque échantillon porte maintenant LE DÉLAI QUI ÉTAIT ARMÉ QUAND IL A ÉTÉ
+ *   LATCHÉ, et le jugement se fait contre CELUI-LÀ, ⛔ jamais contre le courant.
+ */
+static uint32_t s_inact_bascule_delai_ms[DN_VEILLE_BASCULES_GARDEES];
+/*
+ * 🔴 ET CERTAINS ÉCHANTILLONS NE SONT PAS JUGEABLES DU TOUT — MESURÉ AUSSI.
+ * Si la garde est armée (ou le cran abaissé, ou les compteurs remis à zéro)
+ * ALORS QUE l'inactivité dépasse DÉJÀ le délai, le tout premier tick bascule
+ * immédiatement et latche l'inactivité VRAIE — **178 270 ms relevés en séance
+ * pour un cran de 1 min**. La bascule est CORRECTE ; c'est la fenêtre
+ * [délai ; délai+1 s] qui ne s'applique pas, faute d'avoir JAMAIS vu d'état
+ * SOUS le seuil.
+ * ⇒ On garde l'échantillon et on DIT qu'il n'est pas jugeable — même contrat
+ *   que `veille lat`, qui ENREGISTRE les réveils console et les EXCLUT de la
+ *   statistique, ⛔ sans les jeter en silence.
+ */
+static bool s_inact_bascule_jugeable[DN_VEILLE_BASCULES_GARDEES];
+/* La garde a-t-elle vu au moins un tick SOUS le seuil depuis son armement ? */
+static bool s_garde_amorcee;
 static uint32_t s_inact_bascule_w;
 static dn_veille_origine_t s_origine = DN_VEILLE_ORIG_AUCUNE;
 
@@ -258,6 +285,11 @@ bool dn_veille_armee(void) { return s_armee; }
 esp_err_t dn_veille_set_armee(bool on)
 {
     s_armee = on;
+    /* ⚠️ ARMER DÉSAMORCE LA GARDE : l'inactivité peut DÉJÀ dépasser le délai, et
+     *    le premier tick basculerait alors sans que la garde ait jamais vu
+     *    d'état sous le seuil. L'écart serait latché — et il ne serait pas
+     *    jugeable. Voir `s_inact_bascule_jugeable`. */
+    s_garde_amorcee = false;
     return nvs_ecrire_i32(DN_KEY_ARMEE, on ? 1 : 0);
 }
 
@@ -270,6 +302,10 @@ esp_err_t dn_veille_set_cran(int idx)
         return ESP_ERR_INVALID_ARG;
     }
     s_cran = idx;
+    /* ⚠️ MÊME MOTIF QU'À L'ARMEMENT : baisser le cran sous l'inactivité courante
+     *    fait basculer au tick suivant, et cet écart-là ne se juge pas contre
+     *    [délai ; délai+1 s]. */
+    s_garde_amorcee = false;
     return nvs_ecrire_i32(DN_KEY_CRAN, idx);
 }
 
@@ -315,8 +351,19 @@ dn_veille_action_t dn_veille_tick(uint32_t inactivite_ms)
         s_inactivite_max_ms = inactivite_ms;
     }
 
-    if (!dn_veille_doit_dormir(s_armee, s_mode, inactivite_ms,
-                               dn_veille_delai_ms())) {
+    uint32_t delai = dn_veille_delai_ms();
+    if (!dn_veille_doit_dormir(s_armee, s_mode, inactivite_ms, delai)) {
+        /*
+         * 🎯 L'AMORÇAGE DE LA GARDE — LE SEUL ENDROIT QUI PEUT L'ÉTABLIR.
+         * Un tick ARMÉ, en ACTIF, et SOUS le seuil : à partir de maintenant, un
+         * franchissement est un VRAI franchissement, et son écart se juge
+         * contre [délai ; délai+1 s]. Sans cet état, on ne saurait pas
+         * distinguer « la veille est tombée au bout du délai » de « la veille
+         * est tombée au premier tick parce qu'on venait de l'armer ».
+         */
+        if (s_armee && s_mode == DN_VEILLE_ACTIF && inactivite_ms < delai) {
+            s_garde_amorcee = true;
+        }
         return DN_VEILLE_ACTION_RIEN;
     }
 
@@ -325,10 +372,18 @@ dn_veille_action_t dn_veille_tick(uint32_t inactivite_ms)
      * quoi la console annoncerait AMBIENT sur un écran resté en couleurs. */
     s_mode = DN_VEILLE_AMBIENT;
     s_bascules++;
-    /* L'écart d'AC3.3, LATCHÉ à l'instant exact où la garde a cédé. */
-    s_inact_bascule_ms[s_inact_bascule_w % DN_VEILLE_BASCULES_GARDEES] =
-        inactivite_ms;
+    /* L'écart d'AC3.3, LATCHÉ à l'instant exact où la garde a cédé — AVEC LE
+     * DÉLAI QUI ÉTAIT ARMÉ À CET INSTANT, et avec le fait de savoir s'il est
+     * jugeable. ⛔ Un écart nu ne se juge pas : voir `s_inact_bascule_delai_ms`. */
+    {
+        uint32_t i = s_inact_bascule_w % DN_VEILLE_BASCULES_GARDEES;
+        s_inact_bascule_ms[i] = inactivite_ms;
+        s_inact_bascule_delai_ms[i] = delai;
+        s_inact_bascule_jugeable[i] = s_garde_amorcee;
+    }
     s_inact_bascule_w++;
+    /* La garde se re-amorcera au premier tick sous le seuil après le réveil. */
+    s_garde_amorcee = false;
     return DN_VEILLE_ACTION_DORMIR;
 }
 
@@ -367,7 +422,15 @@ void dn_veille_annuler_bascule(void)
      *    correspond à aucun changement d'écran. */
     if (s_inact_bascule_w > 0) {
         s_inact_bascule_w--;
-        s_inact_bascule_ms[s_inact_bascule_w % DN_VEILLE_BASCULES_GARDEES] = 0;
+        uint32_t i = s_inact_bascule_w % DN_VEILLE_BASCULES_GARDEES;
+        bool etait_jugeable = s_inact_bascule_jugeable[i];
+        s_inact_bascule_ms[i] = 0;
+        s_inact_bascule_delai_ms[i] = 0;
+        s_inact_bascule_jugeable[i] = false;
+        /* ⚠️ LA GARDE REPREND SON ÉTAT D'AVANT LA BASCULE ANNULÉE. Sans ça, la
+         *    tentative suivante serait marquée « non jugeable » alors qu'elle
+         *    l'est : une annulation n'est PAS un ré-armement. */
+        s_garde_amorcee = etait_jugeable;
     }
     s_annulations++;
     ESP_LOGW(TAG,
@@ -431,6 +494,28 @@ uint32_t dn_veille_bascule_ecart_ms(int rang)
     return s_inact_bascule_ms[i];
 }
 
+uint32_t dn_veille_bascule_delai_ms(int rang)
+{
+    if (rang < 0 || rang >= DN_VEILLE_BASCULES_GARDEES ||
+        (uint32_t)rang >= s_inact_bascule_w) {
+        return 0; /* ⛔ « pas d'échantillon », l'appelant DOIT le distinguer */
+    }
+    uint32_t i = (s_inact_bascule_w - 1u - (uint32_t)rang) %
+                 DN_VEILLE_BASCULES_GARDEES;
+    return s_inact_bascule_delai_ms[i];
+}
+
+bool dn_veille_bascule_jugeable(int rang)
+{
+    if (rang < 0 || rang >= DN_VEILLE_BASCULES_GARDEES ||
+        (uint32_t)rang >= s_inact_bascule_w) {
+        return false;
+    }
+    uint32_t i = (s_inact_bascule_w - 1u - (uint32_t)rang) %
+                 DN_VEILLE_BASCULES_GARDEES;
+    return s_inact_bascule_jugeable[i];
+}
+
 uint32_t dn_veille_bascule_ecarts_n(void)
 {
     return s_inact_bascule_w < DN_VEILLE_BASCULES_GARDEES
@@ -449,7 +534,20 @@ void dn_veille_reset(void)
     s_secondes_vues = 0;
     s_origine = DN_VEILLE_ORIG_AUCUNE;
     memset(s_inact_bascule_ms, 0, sizeof(s_inact_bascule_ms));
+    memset(s_inact_bascule_delai_ms, 0, sizeof(s_inact_bascule_delai_ms));
+    memset(s_inact_bascule_jugeable, 0, sizeof(s_inact_bascule_jugeable));
     s_inact_bascule_w = 0;
+    /* ⚠️ REMETTRE LES COMPTEURS À ZÉRO DÉSAMORCE LA GARDE : l'inactivité, elle,
+     *    n'est pas remise à zéro (c'est LVGL qui la tient, et aucun contact n'a
+     *    eu lieu). Le premier tick d'après peut donc basculer aussitôt, et cet
+     *    écart-là n'est pas jugeable. MESURÉ : 178 270 ms pour un cran de 1 min. */
+    s_garde_amorcee = false;
+    /* 🔴 AC8.3 — « TOUS les compteurs se remettent à zéro par `veille reset` ».
+     *    `s_persist_n` y échappait : la sortie mélangeait alors des compteurs
+     *    remis à zéro et un compteur CUMULATIF, et le dépôt a déjà payé
+     *    exactement ça sur `*cris` en dn4-13. */
+    s_persist_us = 0;
+    s_persist_n = 0;
     /* ⛔ `s_armee`, `s_cran`, `s_mode` et `s_pct` NE SONT PAS TOUCHÉS : ce sont
      *    des réglages et un état, pas des mesures. Remettre le mode à ACTIF ici
      *    ferait diverger l'état annoncé de l'écran réel. */

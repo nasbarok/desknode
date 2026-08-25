@@ -486,6 +486,158 @@ def bloc_tick(src):
          "le remettre a ACTIF ferait diverger l'etat annonce de l'ecran")
 
 
+# ════════════════════════════════════════════════════════════════════════════
+#  4 bis. L'ANNEAU PORTE SON CONTEXTE — DEFAUT MESURE SUR LA CARTE LE 2026-08-25
+#
+#  La console jugeait chaque ecart latche contre le delai EN VIGUEUR A LA
+#  LECTURE. Un ecart de 60 400 ms, latche a 1 min, s'affichait « HORS de
+#  [delai ; delai+1 s] » des que le cran passait a 10 min. ⇒ Une etiquette qui
+#  ment, sur l'instrument qui SOLDE AC3.3.
+#  Et un second cas, mesure lui aussi : armer / baisser le cran / `veille reset`
+#  alors que l'inactivite DEPASSE DEJA le delai fait basculer au premier tick,
+#  qui latche l'inactivite VRAIE — 178 270 ms pour un cran de 1 min. La bascule
+#  est CORRECTE ; la fenetre ne s'y applique pas.
+# ════════════════════════════════════════════════════════════════════════════
+
+def _anneau_neuf(s, etiq, cran=0, on=1):
+    l = api_veille(construire_veille(s, etiq))
+    if l is None:
+        return None
+    l.t_nvs_reset()
+    l.t_nvs_poser(b"veille_dly", cran)
+    l.t_nvs_poser(b"veille_on", on)
+    l.dn_veille_init()
+    l.dn_veille_bascule_ecart_ms.restype = ctypes.c_uint32
+    l.dn_veille_bascule_ecart_ms.argtypes = [ctypes.c_int]
+    l.dn_veille_bascule_delai_ms.restype = ctypes.c_uint32
+    l.dn_veille_bascule_delai_ms.argtypes = [ctypes.c_int]
+    l.dn_veille_bascule_jugeable.restype = ctypes.c_bool
+    l.dn_veille_bascule_jugeable.argtypes = [ctypes.c_int]
+    l.dn_veille_bascule_ecarts_n.restype = ctypes.c_uint32
+    l.dn_veille_persist_n.restype = ctypes.c_uint32
+    return l
+
+
+def bloc_anneau_contexte(src):
+    print("\n── 4 bis. L'ANNEAU PORTE SON CONTEXTE (defaut mesure) ─────────────")
+
+    # ── A. LE DELAI EST LATCHE **AVEC** L'ECHANTILLON ────────────────────────
+    lib = _anneau_neuf(src, "A / delai latche")
+    if lib is None:
+        return
+    lib.dn_veille_tick(1000)        # SOUS le seuil ⇒ la garde s'AMORCE
+    lib.dn_veille_tick(60000)       # franchit ⇒ latch
+    ctrl(lib.dn_veille_bascule_ecarts_n() == 1, "A : un echantillon latche")
+    ctrl(lib.dn_veille_bascule_delai_ms(0) == 60000,
+         "A : le DELAI ARME est latche avec l'ecart",
+         "sans lui, l'echantillon ne se juge contre rien")
+    ctrl(lib.dn_veille_bascule_jugeable(0) is True,
+         "A : un franchissement AMORCE est JUGEABLE")
+    lib.dn_veille_set_cran(3)       # 10 min
+    ctrl(lib.dn_veille_delai_ms() == 600000, "A : le cran COURANT a bien change")
+    ctrl(lib.dn_veille_bascule_delai_ms(0) == 60000,
+         "🔴 A : l'echantillon garde SON delai — ⛔ PAS le courant",
+         "C'EST LE DEFAUT : 60 400 ms latches a 1 min etaient affiches HORS "
+         "apres passage a 10 min")
+
+    # ── B. LE PREMIER TICK APRES ARMEMENT N'EST PAS JUGEABLE ────────────────
+    lib = _anneau_neuf(src, "B / arme tard", on=0)
+    if lib is None:
+        return
+    lib.dn_veille_tick(300000)      # inactivite deja 5x le delai, mais DESARMEE
+    lib.dn_veille_set_armee(True)
+    lib.dn_veille_tick(301000)      # 1er tick arme ⇒ bascule IMMEDIATE
+    ctrl(lib.dn_veille_bascule_ecarts_n() == 1, "B : la bascule a bien eu lieu")
+    ctrl(lib.dn_veille_bascule_ecart_ms(0) == 301000,
+         "B : l'ecart latche est l'inactivite VRAIE",
+         "⛔ pas le delai : la bascule est correcte, elle n'est pas 'a l'heure'")
+    ctrl(lib.dn_veille_bascule_jugeable(0) is False,
+         "🔴 B : …et il est NON JUGEABLE",
+         "178 270 ms releves en seance pour un cran de 1 min — un 🔴 sur ce "
+         "cas accuserait un comportement CORRECT")
+
+    # ── C. CHANGER DE CRAN DESAMORCE ────────────────────────────────────────
+    lib = _anneau_neuf(src, "C / cran baisse")
+    if lib is None:
+        return
+    lib.dn_veille_tick(1000)        # amorce sur le cran 1 min
+    lib.dn_veille_set_cran(3)       # 10 min ⇒ DESAMORCE
+    lib.dn_veille_tick(600000)      # franchit le NOUVEAU seuil, sans re-amorcage
+    ctrl(lib.dn_veille_bascule_jugeable(0) is False,
+         "C : changer de cran DESAMORCE la garde")
+
+    # ── D. …ET UN TICK SOUS LE NOUVEAU SEUIL LA RE-AMORCE ───────────────────
+    lib = _anneau_neuf(src, "D / re-amorcage")
+    if lib is None:
+        return
+    lib.dn_veille_tick(1000)
+    lib.dn_veille_set_cran(3)
+    lib.dn_veille_tick(500000)      # SOUS 600 000 ⇒ RE-AMORCE
+    lib.dn_veille_tick(600000)
+    ctrl(lib.dn_veille_bascule_jugeable(0) is True,
+         "D : un tick SOUS le nouveau seuil RE-AMORCE la garde",
+         "⛔ le desamorcage n'est pas definitif, sinon plus rien ne serait jugeable")
+
+    # ── E. AC8.3 : `veille reset` remet AUSSI le compteur NVS a zero ────────
+    lib = _anneau_neuf(src, "E / reset AC8.3")
+    if lib is None:
+        return
+    lib.dn_veille_set_cran(2)       # 5 min — une ECRITURE NVS
+    ctrl(lib.dn_veille_persist_n() >= 1, "E : une ecriture NVS est COMPTEE")
+    lib.dn_veille_reset()
+    ctrl(lib.dn_veille_persist_n() == 0,
+         "🔴 E : AC8.3 — `veille reset` remet AUSSI ce compteur a zero",
+         "il y echappait : la sortie melangeait compteurs remis a zero et "
+         "compteur CUMULATIF, ce que le depot a deja paye sur `*cris` (dn4-13)")
+    lib.dn_veille_tick(600000)      # 600 000 > 300 000 ⇒ bascule immediate
+    ctrl(lib.dn_veille_bascule_jugeable(0) is False,
+         "E : …et `veille reset` DESAMORCE la garde",
+         "l'inactivite, elle, n'est PAS remise a zero : c'est LVGL qui la tient")
+
+    # ── F. UNE ANNULATION N'EST PAS UN RE-ARMEMENT ──────────────────────────
+    lib = _anneau_neuf(src, "F / annulation")
+    if lib is None:
+        return
+    lib.dn_veille_tick(1000)
+    lib.dn_veille_tick(60000)
+    ctrl(lib.dn_veille_bascule_jugeable(0) is True, "F : la bascule est jugeable")
+    lib.dn_veille_annuler_bascule()
+    ctrl(lib.dn_veille_bascule_ecarts_n() == 0,
+         "F : l'annulation RETIRE l'echantillon — et son contexte avec")
+    lib.dn_veille_tick(61000)       # re-bascule
+    ctrl(lib.dn_veille_bascule_jugeable(0) is True,
+         "F : la garde REPREND son amorcage apres une annulation",
+         "⛔ une annulation n'est pas un re-armement : sans ca, la tentative "
+         "suivante serait marquee non jugeable a tort")
+
+    # ── G. LES DEUX MUTANTS, COMPILES ET VUS ROUGIR ─────────────────────────
+    # ⚠️ Un test peut etre VERT sans ATTEINDRE la ligne qu'il pretend couvrir.
+    #    On MUTE le produit et on exige que le verdict BASCULE.
+    mut1 = src.replace("s_inact_bascule_jugeable[i] = s_garde_amorcee;",
+                       "s_inact_bascule_jugeable[i] = true;")
+    ctrl(mut1 != src, "G : la mutation 1 (jugeable toujours vrai) s'applique",
+         "⛔ une mutation qui ne s'applique pas ne prouve RIEN")
+    libm = _anneau_neuf(mut1, "mutant jugeable=true", on=0)
+    if libm is not None:
+        libm.dn_veille_tick(300000)
+        libm.dn_veille_set_armee(True)
+        libm.dn_veille_tick(301000)
+        ctrl(libm.dn_veille_bascule_jugeable(0) is True,
+             "G : MUTANT 1 — le controle B ROUGIT",
+             "un mutant survivant voudrait dire que B n'atteint pas la ligne")
+
+    mut2 = src.replace("s_inact_bascule_delai_ms[i] = delai;",
+                       "s_inact_bascule_delai_ms[i] = 0;")
+    ctrl(mut2 != src, "G : la mutation 2 (delai non latche) s'applique")
+    libm2 = _anneau_neuf(mut2, "mutant delai=0")
+    if libm2 is not None:
+        libm2.dn_veille_tick(1000)
+        libm2.dn_veille_tick(60000)
+        ctrl(libm2.dn_veille_bascule_delai_ms(0) != 60000,
+             "G : MUTANT 2 — le controle A ROUGIT",
+             "le latch du delai est bien la ligne que A eprouve")
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 #  5. LE SOUPÇON D'APPUI FANTÔME (AC8.2) — et son MUTANT
 # ═══════════════════════════════════════════════════════════════════════════
@@ -996,6 +1148,7 @@ def main():
     bloc_crans(src)
     bloc_nvs(src)
     bloc_tick(src)
+    bloc_anneau_contexte(src)
     bloc_fantome(src)
     bloc_accents()
     bloc_gris()
