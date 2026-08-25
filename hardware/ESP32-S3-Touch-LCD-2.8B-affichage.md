@@ -6423,7 +6423,11 @@ disponible, et la console **DIT quelle paire il confond, calculé à l'exécutio
 
 ⚠️ **`veille accents` est un A/B à chaud** : c'est AC9.4 qui tranche à l'œil.
 
-## 24.5 ✅ CE QUE LA GATE HÔTE PROUVE — 119 CONTRÔLES, SANS CARTE NI TOUR
+## 24.5 ✅ CE QUE LA GATE HÔTE PROUVE — 139 CONTRÔLES, SANS CARTE NI TOUR
+
+⚠️ **CHIFFRE À JOUR AU 2026-08-25 (soir)** : 119 → **139 OK / 0 KO**, après les
+**+20 contrôles** et les **2 mutants** du bloc « 4 bis » (§24.12.4). Le nombre de
+mutants passe donc de **quatre** à **six**.
 
 `tools/verif_veille_dn33.py`. ⛔ **Elle ne relit pas du source** : elle **COMPILE
 `dn_veille.c` en entier et l'APPELLE**, et elle **EXTRAIT VERBATIM**
@@ -6833,33 +6837,275 @@ source n'en produit aucun.
 ⇒ **AC2.1 (le critère W2 chiffré) EXIGE L'AGENT RÉEL.** ⛔ L'injection console
 ne peut pas s'y substituer, et ce relevé-ci en est la démonstration chiffrée.
 
-## 24.11 ⏳ CE QUI RESTE
+## 24.11 ✅ LA SÉANCE DU 2026-08-25 (SOIR) — L'ŒIL ET LE DOIGT, firmware `6144064`
 
-✅ **CE QUI A ÉTÉ SOLDÉ PAR L'ŒIL LE 2026-08-25**, et qui ne figure donc plus
-ci-dessous : **AC9.1** (*« la luminosité de la veille est bien »* ⇒ **10 %**
-gravés avec leur constat) · **AC9.2-9.3** (le rendu noir et blanc, *« enfin
-propre — blanc sur noir, lisible »*) · **AC9.4** (les accents sont MASQUÉS en
-Ambient, la question de leur désaturation est sans objet sur les cases) ·
-**AC4.1-4.2** et **D-7** (§24.8).
+⚠️ **SHA LU AU BANDEAU `App version`**, `git status --porcelain` **vide** avant
+le flash. **Tout chiffre de cette section porte `6144064`** — ⛔ pas `dfa8204`,
+sur lequel §24.7 et §24.8 ont été tirées.
+
+### 24.11.1 ✅ AC5.6 — LES DEUX GATES TACTILES, RE-TIRÉES ET SOLDÉES
+
+| Phase | Geste owner | Relevé | Verdict |
+|---|---|---|---|
+| **positive** | **8 allers-retours** : appui bande MENU (`y = 624..639`) → `←` (`y = 22..56`) | `fin de trace : 21 appui(s), 16 tap(s) sur zone` · `nav` ⇒ **16 taps, dont 8 sur MENU** | ✅ le bandeau n'est plus une zone morte |
+| **négative** | **5 appuis** barre du haut, **sur le dashboard** (`x = 122..221`, `y = 22..37`) | **0 tap attribué** | ✅ elle, elle reste morte |
+
+🎯 **LA TRACE DONNE MIEUX QUE CE QUE LE PROTOCOLE DEMANDAIT.** Les appuis sur
+`←` (`y = 22..56`) et ceux du témoin négatif (`y = 22..37`) tombent **dans la
+même bande physique de la dalle**. Le même endroit est **vivant sur la vue MENU**
+et **mort sur le dashboard**. C'est plus fort que deux fenêtres séparées : ça
+exclut « on a rendu tout l'écran cliquable » **par la géométrie**, ⛔ pas
+seulement par le compte.
+
+⇒ **LES DEUX GATES QUE CETTE STORY PÉRIMAIT SONT RE-TIRÉES** : `dn3-2`/AC5-AC6
+(*« 16 appuis, 0 tap »*) et le ledger `:576` (*« barre et MENU = zones mortes »*).
+⛔ Elles ne décrivent plus le produit.
+
+⚠️ **UN PIÈGE D'INSTRUMENT RENCONTRÉ, ET LE DÉPÔT A EU RAISON DE REFUSER.**
+`touch trace 150000` a été **refusé** (« entre 1000 et 120000 ms ») : le premier
+tir a donc mesuré **zéro**. ⚠️ `nav` et `touch` ont été relus **avant** de
+relancer, et ils étaient bien restés à 0 — sans cette vérification, des appuis
+égarés auraient pollué le compte. ⛔ Un refus chiffré vaut mieux qu'un écrêtage
+silencieux : à 120 s tacites, la fenêtre aurait menti de 30 s.
+
+### 24.11.2 ✅ AC6 / AC9.7 — LE MENU AU DOIGT, PAR CONSTAT OWNER
+
+| AC | Question posée | Verbatim / verdict |
+|---|---|---|
+| **AC6.1-6.2** | les deux réglages sont-ils là ? | ✅ oui |
+| **AC6.3** | l'état courant se lit-il **sans interaction** ? | ✅ *« les 2 réglages, état lisible »* — veille `ON` et le cran `10 min` ressortaient sans rien toucher |
+| **AC9.7** | les crans se visent-ils au doigt (210 × 66) ? | ✅ *« les cibles sont confortables »* |
+| **AC5.7** | le `←` est-il au même endroit qu'au détail ? | ✅ 8 allers-retours l'ont exercé (§24.11.1) — même rectangle `120 × 60` en `(10, 10)`, même glyphe |
+| **cohérence** | le MENU suit-il un changement venu **d'ailleurs** ? | ✅ `veille off` tapé **au console** ⇒ *« crans grisés tout seuls »*, sans aucun geste |
+
+🎯 **UN CONSTAT OWNER PLUS FORT QUE L'AC** : à `OFF`, *« y'a pas de cran actif »*.
+AC6.3 demandait que le réglage courant soit visible ; le produit va plus loin en
+ne laissant **rien faire semblant d'être sélectionné** quand le réglage est sans
+objet. ⚠️ Corollaire à dire : **le délai en vigueur n'est pas lisible au MENU
+quand la veille est OFF**. Il le redevient au `ON`, avec sa valeur persistée.
+
+### 24.11.3 🔴 AC6.4 — LES CRANS SONT **DÉ-CLIQUABILISÉS**, ET C'EST CHIFFRÉ
+
+⛔ Le constat à l'œil ne suffisait pas : *« rien ne bouge »* est aussi ce que
+produit un tap **accepté puis sans effet visible**. Trois témoins ont été relus
+après **3 appuis sur le cran `1 min`, veille `OFF`** :
+
+| Témoin | Valeur | Ce qu'il exclut |
+|---|---|---|
+| délai | **300 000 ms** (5 min), inchangé | le réglage n'a pas bougé |
+| écritures NVS | **1** — le seul `OFF` | aucun tap n'a écrit |
+| 🎯 **taps de réglage MENU** | **1**, ⛔ pas 4 | les 3 appuis **n'ont même pas été enregistrés comme des taps de réglage** |
+
+⇒ Le troisième est le seul qui distingue **dé-cliquabilisé** de **grisé mais
+cliquable** — c'est-à-dire le no-op que W3 avait supprimé, réintroduit.
+
+### 24.11.4 ✅ AC7.3 — LA MOITIÉ **MENU** DE LA PERSISTANCE, ENFIN TIRÉE
+
+Seule la voie console était soldée (§24.7.7). Réglage posé **au doigt** :
+
+| Étape | Relevé |
+|---|---|
+| posé au MENU | `veille ARMEE · delai 5 min (300000 ms)` · **2 taps de réglage** · 3 écritures NVS (dernière : **3 088 µs**) |
+| après `reboot` (`App version: 6144064`) | `veille ARMEE · delai 5 min (300000 ms)` — **identique** |
+| 🎯 preuve supplémentaire | *« aucune écriture NVS depuis le boot ou le dernier `veille reset` »* ⇒ les valeurs sont **RELUES** de la NVS, ⛔ pas ré-écrites au démarrage |
+
+✅ **Le coût de l'écriture NVS PAR LA VOIE MENU est mesuré** — c'était un écart
+déclaré de §24.7.11, qui ne chiffrait que la voie REPL : **2 364 à 3 088 µs**,
+payés **dans la tâche LVGL**, cache flash coupé pendant ce temps.
+
+### 24.11.5 🎯 AC4.3 — **20 RÉVEILS AU DOIGT** : L'ÉCART DÉCLARÉ EST FERMÉ
+
+`tools/campagne_reveils.py 20 420` — **20 réveils en 104 s**, firmware `6144064`.
+
+| Latence | min | **médiane** | max | Cible |
+|---|---|---|---|---|
+| **t₁** contact → rétroéclairage remonté | 90 µs | **110 µs** | **192 µs** | AC4.2 < 50 ms ⇒ **260× sous, AU PIRE CAS** |
+| **t₂** contact → palette Actif complète | 24 795 µs | **25 244 µs** | 25 606 µs | budgetée — **12× moins** qu'une reconstruction (307-322 ms) |
+
+✅ **AC4.3 est satisfait À LA LETTRE** (n ≥ 20). L'écart déclaré du 2026-08-25
+(*« n = 10, le critère en demande 20 »*) **est fermé**.
+⚠️ **CE QUE t₁ N'INCLUT TOUJOURS PAS** : l'origine du chronomètre est l'instant
+où le `read_cb` **voit** le front, ⛔ pas le contact physique. Le trajet
+GT911 → IRQ → réveil de la tâche LVGL → transaction I²C reste **hors mesure**.
+
+🎯 **ET D-7 EST PROUVÉE BIEN MIEUX QU'AVANT** : **20 taps consommés pour
+20 réveils** (1:1), **0 tap sur zone, 0 sur MENU, 0 transition**. ⛔ Aucun tap de
+réveil n'a ouvert quoi que ce soit.
+⚠️ Le précédent chiffre publié (« 12 consommés / 2 taps de zone ») était
+**CUMULATIF** — voir §24.12.3. Celui-ci est relatif à son `veille reset`.
+⚠️ `bascules 19 · réveils 20` **n'est pas un écart** : la carte était **déjà en
+Ambient** quand le script a remis les compteurs à zéro, donc le 1ᵉʳ réveil n'a pas
+de bascule comptée devant lui.
+
+### 24.11.6 ✅ AC9.5 / AC9.6 — LES DEUX CONSTATS OWNER QUI RESTAIENT
+
+| AC | Question | Verbatim owner | Conséquence |
+|---|---|---|---|
+| **AC9.6** | la veille ramène au dashboard depuis un détail : normal, ou perte ? | *« page veille dashboard direct c'est nickel »* | ✅ **la décision de conception d'AC3.5 est CONFIRMÉE PAR L'ŒIL**, ⛔ pas par un argument d'agent |
+| **AC9.5** | le tap de réveil consommé se voit-il, ou se lit-il comme PERDU ? | *« ça a pris — c'est net »* | ✅ **aucun accusé visuel de réveil n'est nécessaire**. D-7 ne pose pas de problème de perception |
+
+### 24.11.7 ✅ AC3.3 — RE-TIRÉE SUR `6144064`, ET ELLE A VALIDÉ LE CORRECTIF
+
+Trois échantillons **jugeables**, cran `1 min`, réveils par `veille wake` :
+
+```
+#1  60 495 ms  (delai arme 60000 ms, +495 ms)  ✅ dans [delai ; delai+1 s]
+#2  60 450 ms  (delai arme 60000 ms, +450 ms)  ✅ dans [delai ; delai+1 s]
+#3  60 800 ms  (delai arme 60000 ms, +800 ms)  ✅ dans [delai ; delai+1 s]
+#4  79 730 ms  (delai arme 60000 ms)           ⚪ NON JUGEABLE
+```
+
+Dispersion des trois : **350 ms**, tous dans `[60 000 ; 61 000]`.
+Le `#4` est le **plus ancien** : au moment de l'armement, l'inactivité valait
+déjà **79 s** — la bascule est tombée au premier tick. Elle est **correcte** ;
+c'est la fenêtre qui ne s'y applique pas. Voir §24.12.2.
+
+🎯 **LE TÉMOIN DU CORRECTIF, SUR LA CARTE** : le cran a ensuite été passé à
+**10 min (600 000 ms)**, et les trois échantillons portent **toujours
+`delai arme 60000 ms`** et **toujours ✅**.
+⛔ **Sur `dfa8204`, les trois seraient passés 🔴 HORS d'un coup** — AC3.3 aurait
+publié un rouge sur trois mesures justes.
+
+### 24.11.8 ⚠️ UNE ANOMALIE OBSERVÉE, CHIFFRÉE, ET **NON REPRODUITE** — ⛔ AUCUNE CAUSE N'EST NOMMÉE
+
+Pendant la première séance d'AC5.6 (firmware `dfa8204`), `dn_ui` a émis en
+continu *« historique : 1 seconde(s) NON ÉCHANTILLONNÉE(S) … préemption longue »*
+pendant **~280 s**, y compris **100 s après le dernier contact**.
+
+| Condition | Trous | Instrument |
+|---|---|---|
+| boot frais, rien touché | **3 / 60 s** (5 %) | `--listen 60` |
+| 14 transitions **console** (`nav menu`/`nav back`) | **0 / 60 s** | `--listen 60` |
+| `touch trace` 30 s **sans doigt** | **0** | trace |
+| **10 appuis au doigt, sans navigation** (barre morte) | **0 / 75 s** | `--listen 75` |
+| ⚠️ **séance AC5.6 : doigt + navigation** | **~6 trous / 15 s (≈40 %)**, sur ~280 s | trace + `--listen` |
+
+⇒ Un taux de 40 % signifie que le `lv_timer` à 1 Hz tirait réellement toutes les
+**~1,7 s**. ⚠️ Et **la dalle allait bien pendant ce temps** : `vsync` à
+**37,4-37,5 Hz**, soit le nominal — c'est la **tâche LVGL** qui était en retard,
+⛔ pas le pipeline d'affichage.
+
+⛔ **QUATRE CAUSES SONT ÉLIMINÉES PAR LA MESURE** (navigation seule, trace seule,
+contact seul, uptime), **et aucune cause n'est établie**. Le régime est ensuite
+retombé à **5 coupures sur ~1 100 s (0,4 %)** malgré doigt, navigation et cycles
+de veille. ⛔ **Ne pas inventer de cause. Ne pas la déclarer résolue.**
+⚠️ **CE QUI MANQUE POUR TRANCHER, ET QUI N'A PAS ÉTÉ RELEVÉ À TEMPS** : `touch`
+(donc `erreurs I2C`) **pendant** l'épisode. Le dépôt sait que le bus se dégrade
+à froid à 55,5 % d'erreurs GT911 **sans que le scan le voie** — si l'épisode se
+reproduit, **lire `touch` AVANT toute autre chose**.
+⚠️ **Ce que ça rend fragile** : §24.7.4 publie *« AC2.2 : +60 réels, 0 trou »*
+sur `e0af1c6`. Ce chiffre reste vrai **pour son binaire et son régime**, mais il
+ne dit rien de ce régime-là.
+
+## 24.12 🔴 TROIS DÉFAUTS D'INSTRUMENT TROUVÉS PAR CETTE SÉANCE — ET TOUS TROIS SOLDAIENT UN AC
+
+⚠️ Aucun n'était visible à la gate hôte (119 contrôles verts), et aucun n'était
+visible à l'œil. **Ils se sont vus en LISANT une sortie de console qui se
+contredisait elle-même.**
+
+### 24.12.1 🔴 L'ANNEAU D'ÉCARTS ÉTAIT JUGÉ CONTRE LE DÉLAI **COURANT** (AC3.3)
+
+`dn_console.c` comparait chaque écart latché à `c.delai_ms`, **le délai en
+vigueur À LA LECTURE**, alors que `dn_veille.c` ne stockait **que l'écart**.
+
+**Relevé sur la carte** : un écart de **60 400 ms**, latché alors que le cran
+était à **1 min** — donc parfaitement dans `[60 000 ; 61 000]` — s'est affiché
+**🔴 HORS de [delai ; delai+1 s]** dès que le cran est passé à 10 min entre la
+bascule et le `veille`.
+
+⇒ **Une étiquette qui ment, sur l'instrument même qui SOLDE AC3.3** — et le
+dépôt tient qu'une étiquette fausse est un défaut au même titre qu'un chiffre
+faux (`dn_widget.h`).
+**Correctif** : chaque échantillon latche **le délai qui était armé**, et se juge
+contre celui-là. Témoin sur la carte en §24.11.7.
+
+### 24.12.2 🔴 CERTAINS ÉCHANTILLONS NE SE JUGENT PAS — ET ILS ÉTAIENT MARQUÉS ROUGE
+
+Armer la veille — ou baisser le cran, ou faire `veille reset` — **alors que
+l'inactivité dépasse déjà le délai** fait basculer au tout premier tick, qui
+latche l'inactivité **VRAIE**. **Relevé : 178 270 ms pour un cran de 1 min**,
+puis **79 730 ms** lors de la re-tire d'AC3.3.
+
+La bascule est **CORRECTE** : la garde a cédé parce que la condition était
+remplie. C'est la fenêtre `[délai ; délai+1 s]` qui **ne s'y applique pas**,
+faute d'avoir jamais vu d'état **sous** le seuil.
+
+⇒ **Correctif** : `s_garde_amorcee`. Un échantillon non amorcé est **ENREGISTRÉ
+et DIT NON JUGEABLE**, avec son motif — même contrat que `veille lat`, qui exclut
+les réveils console **en le disant**, ⛔ sans les jeter en silence.
+⚠️ **Une annulation de bascule RESTAURE l'amorçage** : elle n'est pas un
+ré-armement. Sans ça, la tentative suivante serait marquée non jugeable à tort.
+
+### 24.12.3 🔴 `veille reset` LAISSAIT DEUX COMPTEURS CUMULATIFS (AC8.3)
+
+AC8.3 dit en toutes lettres : *« Tous les compteurs se remettent à zéro par
+`veille reset`. ⛔ Un compteur cumulatif ne tranche pas »*. **Deux y échappaient**,
+et la sortie **se contredisait dans le même bloc** :
+
+```
+bascules -> Ambient : 0 · reveils : 0 · dernier reveil par : aucun
+taps CONSOMMES par un reveil : 1          <-- par QUEL reveil ?
+```
+
+| Compteur | Était remis à zéro par | Conséquence |
+|---|---|---|
+| `dn_touch_consommes()` | `touch reset` **seulement** | le « 12 consommés » publié pour D-7 était **cumulatif** |
+| `dn_veille_persist_n/us` | **rien** | « N au total » survivait, et *« aucune écriture depuis le boot »* devenait faux après un reset |
+
+⇒ **Correctif** : `veille reset` appelle `dn_touch_consommes_rebaser()` — une
+fonction **dédiée**, ⛔ **surtout pas** `dn_touch_reset_stats()`, qui zéroterait
+aussi IRQ / lectures / appuis / relâchements / erreurs I²C, que `touch` publie et
+que `veille` ne publie pas : ce serait échanger un mensonge contre un autre.
+L'étiquette nomme désormais **les deux origines** possibles.
+
+**TÉMOIN SUR LA CARTE** (`6144064`, un tap au doigt puis `veille reset`) :
+
+| | mode | bascules | réveils | taps consommés |
+|---|---|---|---|---|
+| **avant** | ACTIF | 4 | 4 (dernier : **doigt**) | **1** |
+| **après** | ACTIF | **0** | **0** (aucun) | **0** |
+
+### 24.12.4 ✅ CE QUE LA GATE HÔTE ÉPROUVE DÉSORMAIS — **139 OK / 0 KO**
+
+`tools/verif_veille_dn33.py` : **+20 contrôles** (bloc « 4 bis »), qui
+**compilent et appellent** `dn_veille.c`, ⛔ ne rejouent pas sa logique.
+
+- le délai est latché **avec** l'échantillon, et **survit à un changement de cran** ;
+- un franchissement **amorcé** est jugeable, le **premier tick après armement** ne l'est pas ;
+- **changer de cran désamorce**, et un tick **sous le nouveau seuil ré-amorce** ;
+- `veille reset` remet `persist_n` à zéro **et** désamorce ;
+- **une annulation n'est pas un ré-armement**.
+
+🎯 **DEUX MUTANTS COMPILÉS, EXÉCUTÉS, ET VUS ROUGIR** — « jugeable toujours
+vrai » et « délai non latché ». ⚠️ Un test peut être VERT **sans atteindre** la
+ligne qu'il prétend couvrir : un mutant survivant l'aurait dit.
+
+## 24.13 ⏳ CE QUI RESTE
+
+✅ **SOLDÉ DEPUIS LA RÉDACTION DE CETTE LISTE** : **AC5.6** (§24.11.1) ·
+**AC5.7 / AC6 / AC9.7** (§24.11.2) · **AC6.4 chiffré** (§24.11.3) · **AC7.3
+moitié MENU** et le coût NVS de la voie MENU (§24.11.4) · **AC4.3 à la lettre**
+et **D-7** (§24.11.5) · **AC9.5 / AC9.6** (§24.11.6) · **AC3.3 re-tirée**
+(§24.11.7).
 
 ⛔ **RIEN DE CE QUI SUIT N'EST MESURÉ.**
 
-| # | À mesurer | Instrument prêt |
-|---|---|---|
-| AC2.1 | une case change en Ambient sur 60 s, critère `W2` (étendue ≥ 5, changement de TEXTE ≥ 10 %, σ ≥ 1) — **sous agent réel**, ⛔ pas `dn_injecteur.py` | `w2` |
-| AC2.4 | **PC éteint** : `AMBIANCE` réelle, les cinq autres `ABSENTE` en `--` | `pc`, `veille` |
-| AC4.4 / AC9.5 | le tap consommé **se voit-il**, ou l'œil croit-il son tap PERDU ? ⛔ **PAS** l'arbitrage de D-7, qui est tranchée | `veille`, `touch` |
-| AC5.6 | **8 allers-retours** bande MENU ⇒ **8 taps** · **≥ 5 appuis** barre du haut ⇒ **0 tap** | `touch trace`, `nav` |
-| AC5.7 / AC6 | le MENU au doigt : cibles 210 × 66 visables ? crans grisés quand OFF ? `←` au bon endroit ? | — |
-| AC7.3 | la moitié **MENU** de la persistance (la moitié console est soldée en §24.7.7) | MENU + `veille` |
-| AC9.6-9.8 | le retour au dashboard depuis un détail, le MENU au doigt, **et la nuit** | — |
-| AC2.1 | le critère **W2 chiffré**, sous **agent réel** — ⛔ l'injection console ne suffit pas (voir §24.10) | `w2` |
-| — | coût de l'écriture NVS **depuis un tap MENU** (§24.7.11 ne mesure que la voie REPL) | `veille` |
+| # | À mesurer | Instrument | Pourquoi ce n'est pas encore fait |
+|---|---|---|---|
+| **AC2.1** | une case change en Ambient sur 60 s, critère `W2` (étendue ≥ 5, changement de **TEXTE** ≥ 10 %, σ ≥ 1) **sous agent réel** | `w2` | l'agent n'est pas déployé sur la tour ; il exige `COM3` côté Windows ⇒ **plus de console** |
+| **AC2.4** | les cinq métriques PC **périment** et passent `--` quand les trames s'arrêtent, `AMBIANCE` restant **réelle** | `pc`, `veille` | ⚠️ **se tire AVEC AC2.1** : sans trames préalables, les cases sont `ABSENTE` **par défaut** et ne prouvent aucune péremption |
+| **AC9.8** | **une nuit** en Ambient, relevée au matin (compteurs, `veille`, `hist`, heure) | `veille`, `hist` | demande une nuit |
+
+⚠️ **AC2.4 NE SE TIRE PAS « PC ÉTEINT » DEPUIS CETTE SÉANCE** : la console vit
+dans **WSL sur la tour**. Éteindre le PC supprime l'instrument. L'alimentation
+USB de la carte, elle, **survit à l'extinction** (constat owner du 2026-08-25) —
+donc un relevé PC éteint est possible, mais **À L'ŒIL uniquement**, et il faut
+l'écrire comme tel.
 
 ⚠️ **CHAQUE CHIFFRE NOMMERA SON SHA, LU AU BANDEAU `App version`**, ⛔ pas déduit
 du dépôt, et `git status --porcelain` **vide avant le flash**.
 
-## 24.12 ⛔ CE QUE §24 NE PROUVERA PAS, MÊME APRÈS LA SÉANCE
+## 24.14 ⛔ CE QUE §24 NE PROUVERA PAS, MÊME APRÈS LA SÉANCE
 
 - **La tenue 7 jours H24.** C'est `dn4-5`. `dn3-3`/AC9.8 prouve **une nuit**, et
   rien de plus. ⛔ Ne pas extrapoler d'une nuit à une semaine.
@@ -6873,3 +7119,12 @@ du dépôt, et `git status --porcelain` **vide avant le flash**.
   **simulée** : elle ne dit **rien** du cache flash de l'ESP32-S3.
 - **Que le voile suffise à toutes les luminosités de pièce.** L'A/B d'AC9.2 se
   fait dans **une** pièce, à **un** moment.
+- 🔴 **LA CAUSE DE L'ANOMALIE DE §24.11.8.** Un régime à **40 % de secondes non
+  échantillonnées**, tenu ~280 s, a été **observé et chiffré** ; quatre causes
+  candidates sont **éliminées par la mesure** et **aucune n'est établie**. Il
+  n'a pas été reproduit sur ~1 100 s de fonctionnement ensuite. ⛔ §24 ne dit
+  **pas** qu'il est corrigé, ⛔ ni qu'il ne reviendra pas. Le relevé qui
+  manquerait pour trancher est nommé : **`touch` / `err_i2c` PENDANT l'épisode**.
+- **Que les constats owner de §24.11.2 valent sur `dfa8204`.** Ils ont été pris
+  sur **`6144064`**. Le correctif de §24.12 ne touche **ni le rendu du MENU ni
+  le dispatch des zones** — mais c'est un **raisonnement**, ⛔ pas une mesure.
