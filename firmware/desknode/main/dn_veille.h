@@ -203,6 +203,25 @@ typedef struct {
 void dn_veille_compteurs(dn_veille_compteurs_t *out);
 
 /*
+ * 🔴 L'INSTRUMENT D'AC3.3 : L'ÉCART **DERNIER CONTACT → BASCULE**, LATCHÉ PAR LE
+ *    TICK QUI A BASCULÉ.
+ *
+ * ⛔ AUCUN SONDAGE DEPUIS L'HÔTE NE PEUT L'ÉTABLIR : la latence série et le pas
+ *    d'interrogation ajoutent leur propre seconde, et on publierait la
+ *    dispersion de l'INSTRUMENT en croyant publier celle du produit. AC3.3
+ *    demande la fenêtre [délai ; délai + 1 s] — elle n'est pas tranchable
+ *    autrement que depuis l'intérieur.
+ * ⚠️ `rang` 0 = la bascule la PLUS RÉCENTE. Rend **0** quand il n'y a pas
+ *    d'échantillon à ce rang : l'appelant DOIT distinguer « pas mesuré » de
+ *    « zéro milliseconde ». `dn_veille_bascule_ecarts_n()` donne le nombre
+ *    d'échantillons réellement disponibles.
+ * ⚠️ Une bascule ANNULÉE (async refusée) RETIRE son échantillon : elle n'a pas
+ *    eu lieu, son écart n'est donc pas un écart de bascule.
+ */
+uint32_t dn_veille_bascule_ecart_ms(int rang);
+uint32_t dn_veille_bascule_ecarts_n(void);
+
+/*
  * 🔴 TOUT SE REMET À ZÉRO — ⛔ un compteur CUMULATIF ne tranche pas. Le dépôt a
  *    déjà payé cette leçon sur `s_gardeh_cris` (dn4-4) puis sur `*cris`
  *    (dn4-13). ⛔ Ne remet PAS à zéro les deux RÉGLAGES : ce sont des réglages,

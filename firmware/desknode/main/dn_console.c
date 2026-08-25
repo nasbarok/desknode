@@ -8127,6 +8127,32 @@ static void veille_imprimer_etat(void)
         printf("aucune ecriture NVS depuis le boot (les deux reglages sont ceux\n");
         printf("   qui ont ete relus au demarrage).\n");
     }
+    /* 🔴 AC3.3 — L'ECART DERNIER CONTACT -> BASCULE, LATCHE PAR LE TICK QUI A
+     *    BASCULE. ⛔ Un sondage depuis l'hote ne peut PAS l'etablir : sa propre
+     *    latence ajouterait une seconde a une fenetre qui n'en fait qu'une. */
+    {
+        uint32_t ne = dn_veille_bascule_ecarts_n();
+        if (ne == 0) {
+            printf("ecarts contact->bascule : AUCUN ECHANTILLON\n");
+            printf("   ⛔ « pas mesure », ⛔ PAS « 0 ms ».\n");
+        } else {
+            printf("ecarts contact->bascule (le plus recent d'abord), pour un "
+                   "delai de %lu ms :\n",
+                   (unsigned long)c.delai_ms);
+            for (uint32_t i = 0; i < ne; i++) {
+                uint32_t e = dn_veille_bascule_ecart_ms((int)i);
+                long d = (long)e - (long)c.delai_ms;
+                bool dans = (e >= c.delai_ms && e < c.delai_ms + 1000u);
+                printf("   #%lu  %8lu ms  (delai %+ld ms)  %s\n",
+                       (unsigned long)i + 1u, (unsigned long)e, d,
+                       dans ? "✅ dans [delai ; delai+1 s]"
+                            : "🔴 HORS de [delai ; delai+1 s]");
+            }
+            printf("   ⚠️ la fenetre fait UNE seconde parce que la detection est\n");
+            printf("   cadencee a 1 Hz (`label_tick`). ⛔ Ce n'est pas « environ\n");
+            printf("   le delai » : c'est [delai ; delai+1 s], et c'est verifie.\n");
+        }
+    }
     printf("taps CONSOMMES par un reveil : %lu · taps de reglage dans le MENU : %lu\n",
            (unsigned long)dn_touch_consommes(),
            (unsigned long)dn_ui_menu_reglages());

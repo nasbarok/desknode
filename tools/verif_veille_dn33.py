@@ -443,6 +443,36 @@ def bloc_tick(src):
     ctrl(c.inactivite_max_ms == 120000,
          "l'inactivite MAXIMALE est retenue", "%d ms" % c.inactivite_max_ms)
 
+    # 🔴 AC3.3 — L'ECART EST **LATCHE**, ⛔ PAS RELU DE `s_inactivite_ms` (que le
+    #    tick ECRASE a la seconde suivante, veille ou pas). C'est ce latch qui
+    #    rend la fenetre [delai ; delai+1 s] tranchable — un sondage depuis
+    #    l'hote y ajouterait sa propre seconde.
+    lib.dn_veille_bascule_ecart_ms.restype = ctypes.c_uint32
+    lib.dn_veille_bascule_ecart_ms.argtypes = [ctypes.c_int]
+    lib.dn_veille_bascule_ecarts_n.restype = ctypes.c_uint32
+    ctrl(lib.dn_veille_bascule_ecarts_n() == 1,
+         "AC3.3 : UN echantillon d'ecart apres la bascule annulee",
+         "la 2e a ete ANNULEE, donc son echantillon est RETIRE")
+    ctrl(lib.dn_veille_bascule_ecart_ms(0) == 60000,
+         "…et il vaut 60 000 ms, la valeur du tick QUI A BASCULE",
+         "⛔ pas la valeur courante, que les ticks suivants ecrasent")
+    ctrl(lib.dn_veille_bascule_ecart_ms(3) == 0 and
+         lib.dn_veille_bascule_ecart_ms(-1) == 0,
+         "hors bornes ⇒ 0, et l'appelant DOIT le lire « pas mesure »")
+
+    # 🔴 LE TEMOIN : chaque tick ECRASE `inactivite_ms`, JAMAIS le latch.
+    #    C'est exactement pourquoi le latch existe, et on le PROUVE plutot que
+    #    de l'affirmer.
+    # ⚠️ 30 000 ms et ⛔ PAS une grande valeur : au-dessus du delai le tick
+    #    RE-BASCULERAIT et pousserait un NOUVEL echantillon — le temoin
+    #    mesurerait alors sa propre bascule. (Premiere version de ce controle :
+    #    999 000 ms, et il a rougi pour cette raison exacte.)
+    lib.dn_veille_tick(30000)
+    lib.dn_veille_compteurs(ctypes.byref(c))
+    ctrl(c.inactivite_ms == 30000 and lib.dn_veille_bascule_ecart_ms(0) == 60000,
+         "TEMOIN : `inactivite_ms` a bouge, l'ecart LATCHE n'a PAS bouge",
+         "30 000 vs 60 000 — sans le latch, AC3.3 publierait la valeur courante")
+
     # `veille reset` ne touche NI les réglages NI le mode.
     lib.dn_veille_tick(120000)
     lib.dn_veille_reset()

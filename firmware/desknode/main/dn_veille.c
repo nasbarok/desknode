@@ -100,6 +100,24 @@ static uint32_t s_reveils;
 static uint32_t s_rebases;
 static uint32_t s_annulations;
 static uint32_t s_secondes_vues;
+/*
+ * 🔴 L'INSTRUMENT D'AC3.3, ET IL N'EXISTAIT PAS — TROUVÉ EN SÉANCE LE 2026-08-25.
+ *
+ *    AC3.3 demande « l'écart entre le dernier contact et la bascule », dans la
+ *    fenêtre **[délai ; délai + 1 s]**. ⛔ AUCUN SONDAGE DEPUIS L'HÔTE NE PEUT
+ *    L'ÉTABLIR : la latence série et le pas d'interrogation ajoutent leur propre
+ *    seconde, et on publierait une dispersion d'INSTRUMENT en croyant publier
+ *    celle du produit. Le seul endroit qui connaît le chiffre exact est le tick
+ *    qui bascule.
+ * ⚠️ `s_inactivite_ms` NE PEUT PAS SERVIR : le tick continue de tourner en
+ *    Ambient et l'ÉCRASE à la seconde suivante. Il faut un champ qui LATCHE.
+ * ⚠️ UN ANNEAU DE QUATRE, parce qu'AC3.3 exige **trois** relevés : les lire un
+ *    par un obligerait à réveiller entre chaque, et un `veille reset` entre
+ *    deux relevés effacerait le précédent. Les trois se lisent d'un coup.
+ */
+#define DN_VEILLE_BASCULES_GARDEES 4
+static uint32_t s_inact_bascule_ms[DN_VEILLE_BASCULES_GARDEES];
+static uint32_t s_inact_bascule_w;
 static dn_veille_origine_t s_origine = DN_VEILLE_ORIG_AUCUNE;
 
 /*
@@ -302,6 +320,10 @@ dn_veille_action_t dn_veille_tick(uint32_t inactivite_ms)
      * quoi la console annoncerait AMBIENT sur un écran resté en couleurs. */
     s_mode = DN_VEILLE_AMBIENT;
     s_bascules++;
+    /* L'écart d'AC3.3, LATCHÉ à l'instant exact où la garde a cédé. */
+    s_inact_bascule_ms[s_inact_bascule_w % DN_VEILLE_BASCULES_GARDEES] =
+        inactivite_ms;
+    s_inact_bascule_w++;
     return DN_VEILLE_ACTION_DORMIR;
 }
 
@@ -333,6 +355,14 @@ void dn_veille_annuler_bascule(void)
     s_mode = DN_VEILLE_ACTIF;
     if (s_bascules > 0) {
         s_bascules--;
+    }
+    /* ⚠️ ET L'ÉCHANTILLON D'AC3.3 EST RETIRÉ AVEC ELLE : une bascule ANNULÉE
+     *    n'a pas eu lieu, son écart n'est donc pas un écart de bascule. Le
+     *    laisser aurait mis, dans les trois relevés publiés, une mesure qui ne
+     *    correspond à aucun changement d'écran. */
+    if (s_inact_bascule_w > 0) {
+        s_inact_bascule_w--;
+        s_inact_bascule_ms[s_inact_bascule_w % DN_VEILLE_BASCULES_GARDEES] = 0;
     }
     s_annulations++;
     ESP_LOGW(TAG,
@@ -384,6 +414,25 @@ void dn_veille_compteurs(dn_veille_compteurs_t *out)
     out->origine = s_origine;
 }
 
+uint32_t dn_veille_bascule_ecart_ms(int rang)
+{
+    if (rang < 0 || rang >= DN_VEILLE_BASCULES_GARDEES ||
+        (uint32_t)rang >= s_inact_bascule_w) {
+        return 0; /* ⛔ « pas d'échantillon », l'appelant DOIT le distinguer */
+    }
+    /* rang 0 = la PLUS RÉCENTE. */
+    uint32_t i = (s_inact_bascule_w - 1u - (uint32_t)rang) %
+                 DN_VEILLE_BASCULES_GARDEES;
+    return s_inact_bascule_ms[i];
+}
+
+uint32_t dn_veille_bascule_ecarts_n(void)
+{
+    return s_inact_bascule_w < DN_VEILLE_BASCULES_GARDEES
+               ? s_inact_bascule_w
+               : DN_VEILLE_BASCULES_GARDEES;
+}
+
 void dn_veille_reset(void)
 {
     s_inactivite_ms = 0;
@@ -394,6 +443,8 @@ void dn_veille_reset(void)
     s_annulations = 0;
     s_secondes_vues = 0;
     s_origine = DN_VEILLE_ORIG_AUCUNE;
+    memset(s_inact_bascule_ms, 0, sizeof(s_inact_bascule_ms));
+    s_inact_bascule_w = 0;
     /* ⛔ `s_armee`, `s_cran`, `s_mode` et `s_pct` NE SONT PAS TOUCHÉS : ce sont
      *    des réglages et un état, pas des mesures. Remettre le mode à ACTIF ici
      *    ferait diverger l'état annoncé de l'écran réel. */
