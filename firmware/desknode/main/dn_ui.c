@@ -1778,6 +1778,21 @@ static lv_obj_t *s_voiles[DN_UI_VOILES_MAX];
 static int s_voiles_n;
 
 /*
+ * 🔴 dn3-3 : LE BANDEAU `MENU` EST RETENU POUR POUVOIR DISPARAÎTRE EN VEILLE.
+ *    Constat owner du 2026-08-25 : *« le menu ne devrait pas être affiché sur
+ *    la veille »*. Et il a raison au-delà du goût : Ambient est le visage de
+ *    REPOS du module, or `MENU` est une AFFORDANCE — elle annonce une action à
+ *    quelqu'un qui ne regarde pas. Pire, en veille le tap de réveil est
+ *    CONSOMMÉ (D-7) : le bandeau promettrait donc une porte qui, au premier
+ *    doigt, ne s'ouvre pas.
+ * ⚠️ LE MASQUER NE GÊNE PAS LE RÉVEIL : le contact est intercepté en amont, par
+ *    `veille_contact_cb` dans le `read_cb`, avant toute attribution de zone.
+ * ⛔ Remis à NULL aux MÊMES sites que les voiles : un pointeur survivant à son
+ *    écran ferait masquer de la mémoire libérée à la bascule suivante.
+ */
+static lv_obj_t *s_menu_bandeau;
+
+/*
  * L'opacité du voile EN AMBIENT. ⚠️ VALEUR D'AMORÇAGE POUR L'A/B D'AC9.2,
  * ⛔ pas une valeur tranchée : le défaut Actif est 90 (constat owner du
  * 2026-08-17, « à 35 % le PCB respire mieux »), et Ambient doit assombrir SANS
@@ -3253,6 +3268,7 @@ static void build_dashboard(lv_obj_t *scr)
         lv_obj_t *menu = zone_creer(scr, 0, DN_LCD_V_RES - ui_menu_h(),
                                     DN_LCD_H_RES, ui_menu_h(), on_menu_clic,
                                     NULL);
+        s_menu_bandeau = menu; /* retenu : il DISPARAÎT en veille (owner) */
         /* ⚠️ LE CHEVRON REVIENT AVEC LA PORTE. dn3-2 l'avait RETIRÉ parce qu'« un
          *    glyphe de menu est une AFFORDANCE, et la garder ferait annoncer une
          *    action qui n'existe pas ». L'action existe : le retirer MAINTENANT
@@ -4632,6 +4648,7 @@ static void build_scene(void)
      *    reconstruction qui l'a armée. C'est le use-after-free de la revue
      *    dn1-3, avec le pire délai de diagnostic possible. */
     s_voiles_n = 0;
+    s_menu_bandeau = NULL;
     /* dn3-3 : idem pour les sélecteurs du MENU. */
     menu_oublier();
     /* ⚠️ TOUTES les cases vivantes, pas seulement CPU : un pointeur oublié ici
@@ -4890,6 +4907,8 @@ static bool nav_appliquer(int cible, int64_t t_clic)
          *    reconstruction qui l'a armée. C'est le use-after-free de la revue
          *    dn1-3, avec le pire délai de diagnostic possible. */
         s_voiles_n = 0;
+        s_menu_bandeau = NULL;
+    s_menu_bandeau = NULL;
         /* dn3-3 : idem pour les sélecteurs du MENU. */
         menu_oublier();
         for (int i = 0; i < DN_UI_METRIQUES; i++) {
@@ -5165,6 +5184,8 @@ esp_err_t dn_ui_set_nav_model(dn_nav_model_t m)
          *    reconstruction qui l'a armée. C'est le use-after-free de la revue
          *    dn1-3, avec le pire délai de diagnostic possible. */
         s_voiles_n = 0;
+        s_menu_bandeau = NULL;
+    s_menu_bandeau = NULL;
         /* dn3-3 : idem pour les sélecteurs du MENU. */
         menu_oublier();
         s_label_dash = NULL;
@@ -6496,6 +6517,25 @@ static void veille_peindre_nolock(void)
         }
     }
 
+    /*
+     * 🔴 LE BANDEAU `MENU` DISPARAÎT EN VEILLE — CONSTAT OWNER DU 2026-08-25.
+     *    Verbatim : *« le menu ne devrait pas être affiché sur la veille »*.
+     *    Motif au-delà du goût : c'est une AFFORDANCE, et en veille le tap de
+     *    réveil est CONSOMMÉ (D-7) — le bandeau promettrait donc une porte qui
+     *    ne s'ouvre pas au premier doigt. C'est le même raisonnement que W3, qui
+     *    avait retiré le chevron d'un bandeau non actionnable.
+     * ⚠️ LA BARRE DU HAUT, ELLE, RESTE : elle porte l'HEURE, et AC2.3 exige
+     *    qu'elle continue d'avancer en veille. ⛔ Ce n'est pas une affordance,
+     *    c'est de la donnée.
+     */
+    if (s_menu_bandeau) {
+        if (amb) {
+            lv_obj_add_flag(s_menu_bandeau, LV_OBJ_FLAG_HIDDEN);
+        } else {
+            lv_obj_clear_flag(s_menu_bandeau, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+
     /* La page ouverte, quelle qu'elle soit. */
     if (s_vue == DN_VUE_DETAIL) {
         detail_reparametrer(s_metrique);
@@ -6983,7 +7023,20 @@ bool dn_ui_veille_ecran_actif(int *qui, int *n_enfants, int *opas, int *w, int *
     for (int i = 0; i < nc && i < max; i++) {
         lv_obj_t *c = lv_obj_get_child(act, (int32_t)i);
         if (opas) {
-            opas[i] = c ? (int)lv_obj_get_style_bg_opa(c, 0) : -1;
+            /* 🔴 L'OPACITÉ NE DIT RIEN DU MASQUAGE : un objet `HIDDEN` reste
+             *    enfant de son parent et garde son style. L'instrument ne
+             *    pouvait donc PAS vérifier ce qu'il prétendait — il listait le
+             *    bandeau MENU masqué exactement comme un bandeau visible.
+             * ⇒ On encode le masquage dans le signe : `-1 - opa` si HIDDEN.
+             *    ⛔ Pas un champ de plus : le lecteur DOIT tomber sur une valeur
+             *    qui ne peut pas passer pour une opacité. */
+            if (!c) {
+                opas[i] = -1000;
+            } else if (lv_obj_has_flag(c, LV_OBJ_FLAG_HIDDEN)) {
+                opas[i] = -1 - (int)lv_obj_get_style_bg_opa(c, 0);
+            } else {
+                opas[i] = (int)lv_obj_get_style_bg_opa(c, 0);
+            }
         }
         if (w) {
             w[i] = c ? (int)lv_obj_get_width(c) : -1;

@@ -121,9 +121,14 @@ static uint32_t s_inact_bascule_w;
 static dn_veille_origine_t s_origine = DN_VEILLE_ORIG_AUCUNE;
 
 /*
- * Le rétroéclairage d'Ambient. ⚠️ VALEUR D'AMORÇAGE, ⛔ PAS UNE VALEUR
- * TRANCHÉE : AC9.1 la fait balayer de 3 à 20 sur la dalle et l'œil décide.
- * 10 % est choisi pour DÉMARRER LE BALAYAGE, sur deux bornes mesurées :
+ * Le rétroéclairage d'Ambient.
+ * ✅ **AC9.1 EST TRANCHÉ — CONSTAT OWNER DU 2026-08-25 SUR LA DALLE** :
+ *    *« la luminosité de la veille est bien »*. La valeur reste **10 %**, et
+ *    ce n'est plus une valeur d'amorçage : c'est un constat.
+ * ⚠️ Elle reste réglable à chaud (`veille pct`) — un constat owner n'est pas un
+ *    verrou, et le prochain qui la déplacera devra le faire à l'œil, comme
+ *    celui-ci.
+ * Les deux bornes qui l'encadraient, et qui restent vraies :
  *   - 3 % est le plancher de LISIBILITÉ de dn1-3 / AC7 (« le Living PCB et le
  *     label s'y distinguent encore, TOUT JUSTE ») — donc trop bas pour un état
  *     de repos qu'on doit pouvoir consulter d'un coup d'œil ;

@@ -8649,9 +8649,22 @@ static int cmd_veille(int argc, char **argv)
             }
             printf("  %d enfant(s) — opacite de fond et taille, RELUES :\n", nc);
             for (int i = 0; i < nc && i < 12; i++) {
-                printf("    #%d : opa %3d · %d x %d%s\n", i, op[i], lw[i], lh[i],
-                       (lw[i] == DN_LCD_H_RES && lh[i] == DN_LCD_V_RES)
-                           ? "  <- plein ecran" : "");
+                /* ⚠️ Un objet MASQUE reste enfant et garde son style : sans
+                 *    cette distinction, l'instrument listait un bandeau MENU
+                 *    masque exactement comme un bandeau visible. */
+                if (op[i] <= -1000) {
+                    printf("    #%d : 🔴 POINTEUR NUL\n", i);
+                } else if (op[i] < 0) {
+                    printf("    #%d : opa %3d · %d x %d  🚫 MASQUE (HIDDEN)%s\n",
+                           i, -1 - op[i], lw[i], lh[i],
+                           (lw[i] == DN_LCD_H_RES && lh[i] == DN_LCD_V_RES)
+                               ? "  <- plein ecran" : "");
+                } else {
+                    printf("    #%d : opa %3d · %d x %d%s\n", i, op[i], lw[i],
+                           lh[i],
+                           (lw[i] == DN_LCD_H_RES && lh[i] == DN_LCD_V_RES)
+                               ? "  <- plein ecran" : "");
+                }
             }
         } else {
             printf("\n⛔ ECRAN ACTIF : PAS MESURE (verrou non pris).\n");
