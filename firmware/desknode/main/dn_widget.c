@@ -945,9 +945,35 @@ lv_color_t dn_widget_accent_couleur(uint32_t rgb)
  *    serait le seul élément coloré d'un écran monochrome, donc le premier que
  *    l'œil accroche — exactement l'inverse de ce qu'on veut en veille.
  */
-/* 🔴 `0x20` et ⛔ PAS `0x1e` : RGB565-NEUTRE (ecart vert -1 au lieu de +4).
- *    Voir le bloc « LES GRIS NE SONT PAS NEUTRES EN RGB565 » ci-dessous. */
-#define W_AMB_CASE_BG 0x202020
+/*
+ * 🔴 **NOIR PUR**, ET C'EST UN CONSTAT OWNER SUR LA DALLE — ⛔ PAS UN CHOIX.
+ *
+ *    L'aplat est passé par TROIS valeurs avant celle-ci, et les deux premières
+ *    ont été REJETÉES PAR L'ŒIL :
+ *      `1E1E1E` ⇒ « les 6 cases sont pleines en VERT sur fond noir »
+ *      `202020` ⇒ « vert plus foncé »   (pourtant |G8-R8| = 1)
+ *      `000000` ⇒ ✅ « enfin propre — blanc sur noir, lisible »
+ *
+ * 🎯 CE QUE ÇA A APPRIS, ET QUI VAUT AU-DELÀ DE CETTE STORY : sur CETTE dalle,
+ *    en RGB565, **AUCUN GRIS N'EST NEUTRE**. `scene gray`, écrite DIRECTEMENT
+ *    dans le framebuffer (donc hors de tout code d'interface), le montre :
+ *    constat owner du 2026-08-25, *« vert vers les tons sombres, violet vers le
+ *    milieu et les tons clairs »* — ce que `dn_mire` annonce déjà comme le
+ *    comportement NORMAL du RGB565 (le vert a 6 bits, le rouge et le bleu 5 :
+ *    il prend puis rend son avance à chaque pas de la rampe).
+ *
+ * ⛔ LE CRITÈRE « |G8 - R8| <= 1 » NE SUFFIT DONC PAS, ET IL A ÉTÉ ESSAYÉ :
+ *    `202020` le satisfait et tire quand même. Les SEULES valeurs vraiment
+ *    neutres sont les extrémités — le noir (0,0,0) et le blanc (255,255,255).
+ * ⇒ Un APLAT PLEIN d'Ambient se prend donc dans ces deux-là, et c'est le noir.
+ *    La tuile est délimitée par sa BORDURE, pas par son remplissage.
+ * ⚠️ CE QUI RESTE TEINTÉ, ET C'EST ASSUMÉ : les gris de TEXTE (`SIMULÉE`,
+ *    `ABSENTE`) tirent aussi. Mais un trait fin ne teinte pas comme une surface
+ *    pleine, et le constat owner sur ce rendu-ci est « lisible ». ⛔ Les
+ *    ramener au blanc rendrait les trois régimes indiscernables — le défaut du
+ *    2026-08-18. On garde les trois niveaux, et on DIT que c'est un compromis.
+ */
+#define W_AMB_CASE_BG 0x000000
 #define W_AMB_CASE_BORD 0x3a3a3a
 
 /*

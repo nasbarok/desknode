@@ -699,17 +699,31 @@ def bloc_gris():
     if ctrl(m is not None, "`W_AMB_CASE_BG` est relu du source"):
         v = int(m.group(1), 16)
         R, G = rgb565((v >> 16) & 0xFF)
-        ctrl(-1 <= G - R <= 1,
-             "l'aplat de case (%06X) est RGB565-NEUTRE" % v,
-             "rendu R%d G%d B%d, ecart %+d — ⛔ `1E` sortait a +4"
-             % (R, G, R, G - R))
+        # 🔴 POUR UN APLAT **PLEIN**, LE CRITERE EST **L'EGALITE STRICTE**, ⛔ PAS
+        #    « |G-R| <= 1 » — ET C'EST L'OEIL QUI L'A IMPOSE.
+        #    `202020` satisfait le critere a +/-1 et l'owner l'a quand meme vu
+        #    « vert plus fonce » (2026-08-25). Sur cette dalle, `scene gray`
+        #    montre que la rampe entiere tire — vert dans les sombres, violet
+        #    dans les clairs. Les SEULES valeurs vraiment neutres sont les
+        #    extremites : le noir et le blanc.
+        # ⛔ Ne pas relacher ce critere : trois valeurs ont ete essayees SUR LA
+        #    DALLE avant qu'il tienne.
+        ctrl(G == R,
+             "l'aplat de case (%06X) est EXACTEMENT neutre" % v,
+             "rendu R%d G%d B%d — `1E` sortait a +4, `20` a -1 et tirait ENCORE"
+             % (R, G, R))
 
     # ⚠️ LE TEMOIN : la valeur d'origine DOIT echouer au meme critere. Une garde
     #    qu'on n'a pas vue rejeter quelque chose ne prouve rien.
     R, G = rgb565(0x1E)
     ctrl(G - R > 1,
-         "TEMOIN : `1E1E1E` — la valeur d'origine — ECHOUE au critere",
-         "rendu R%d G%d B%d, ecart vert %+d" % (R, G, R, G - R))
+         "TEMOIN 1 : `1E1E1E` — 1re valeur essayee — ECHOUE",
+         "rendu R%d G%d B%d, ecart vert %+d ⇒ vu VERT a l'oeil" % (R, G, R, G - R))
+    R, G = rgb565(0x20)
+    ctrl(G != R,
+         "TEMOIN 2 : `202020` — 2e valeur essayee — ECHOUE AUSSI",
+         "rendu R%d G%d B%d ⇒ vu « vert plus fonce » : le critere a +/-1 ne "
+         "suffisait PAS" % (R, G, R))
 
     # 🔴 LE PIÈGE : le gris du VIVANT ne doit PAS être celui de l'ABSENCE.
     ctrl(amb["DN_VAL_REELLE"] != actif["DN_VAL_ABSENTE"],

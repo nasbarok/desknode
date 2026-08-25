@@ -6684,7 +6684,67 @@ couleurs relues des descripteurs. C'est ce qui a fait passer le défaut à 95.
 ⚠️ **CHAQUE CHIFFRE NOMMERA SON SHA, LU AU BANDEAU `App version`**, ⛔ pas déduit
 du dépôt, et `git status --porcelain` **vide avant le flash**.
 
-## 24.9 ⛔ CE QUE §24 NE PROUVERA PAS, MÊME APRÈS LA SÉANCE
+## 24.9 🔴 FAIT MATÉRIEL — **AUCUN GRIS N'EST NEUTRE SUR CETTE DALLE**
+
+⚠️ **CE FAIT DÉPASSE `dn3-3`.** Il vaut pour toute couleur posée sur ce module,
+et il a coûté quatre allers-retours avec l'œil de l'owner avant d'être nommé.
+
+### Le symptôme
+
+Constat owner du 2026-08-25, sur le premier rendu d'Ambient :
+*« les 6 cases sont pleines en VERT sur fond noir »* — pendant que l'instrument
+lisait `opa 255 · couleur 1E1E1E` sur la racine de chaque case, **et disait
+vrai**.
+
+### La bissection, en cinq témoins
+
+| # | Test | Résultat | Ce qu'il élimine |
+|---|---|---|---|
+| 1 | `veille fond` | voile opa 255 noir, aplat 255, écran actif = la bonne racine, voile **au-dessus** de l'image | l'arbre LVGL est correct |
+| 2 | `widget fond off` | image **retirée** de l'arbre ⇒ **toujours vert** | le Living PCB n'est pas la source |
+| 3 | `ui off` + `scene black` | noir plein écrit **directement dans le framebuffer** ⇒ **NOIR à l'œil** | la chaîne framebuffer → dalle est **saine** |
+| 4 | `veille case FF0000` | les cases deviennent **ROUGES** | le style **atteint** le rendu ⇒ `1E1E1E` était bien posé |
+| 5 | `bl 100` | **toujours vert** à pleine lumière | ce n'est pas un effet de bas rétroéclairage |
+
+### La cause, et elle est intrinsèque au RGB565
+
+Le canal **vert porte 6 bits**, le rouge et le bleu **5**. Un gris `R = G = B` ne
+survit donc pas à la quantification :
+
+```
+0x1E1E1E -> r5=3  g6=7   -> R 24  G 28  B 24    ecart vert  +4
+0x202020 -> r5=4  g6=8   -> R 33  G 32  B 33    ecart vert  -1
+0x000000 ->                 R  0  G  0  B  0    ecart vert   0
+0xFFFFFF ->                 R255  G255  B255    ecart vert   0
+```
+
+✅ **CONFIRMÉ HORS DE TOUT CODE D'INTERFACE** : `scene gray`, écrite directement
+dans le framebuffer, rend — constat owner — *« vert vers les tons sombres,
+violet vers le milieu et les tons clairs »*. C'est exactement ce que `dn_mire`
+annonce déjà comme **normal** : *« le vert avance deux fois plus vite dans la
+rampe, donc il prend puis rend l'avance à chaque pas »*.
+
+### 🔴 CE QUI A ÉTÉ APPRIS, ET QUI SE PAIE SI ON L'OUBLIE
+
+1. **Le critère `|G8 − R8| ≤ 1` NE SUFFIT PAS**, et il a été essayé :
+   `0x202020` le satisfait, et l'œil l'a quand même rejeté (*« vert plus
+   foncé »*). ⛔ Ne pas relâcher la gate vers ce critère-là.
+2. **Les seules valeurs vraiment neutres sont les extrémités** : le noir et le
+   blanc. ⇒ Un **aplat plein** d'Ambient se prend dans ces deux-là.
+3. **Une surface pleine teinte, un trait fin beaucoup moins.** Les gris de
+   TEXTE (`SIMULÉE` `A4A4A4`, `ABSENTE` `585858`) tirent aussi — c'est **assumé
+   et déclaré** : les ramener au blanc rendrait les trois régimes
+   indiscernables, c'est-à-dire le défaut du 2026-08-18.
+4. ⚠️ **AUCUN INSTRUMENT LOGICIEL N'AURAIT TROUVÉ ÇA.** Le build était vert, la
+   gate hôte à 112 contrôles était verte, et les quatre instruments de l'écran
+   disaient tous la vérité. **Il a fallu la dalle, et un test au ROUGE PUR pour
+   écarter le rendu.**
+
+⇒ **Valeur retenue pour l'aplat de case en Ambient : `0x000000`.** Constat owner
+sur la dalle : *« enfin propre — blanc sur noir, lisible »*. La tuile est
+délimitée par sa **bordure**, ⛔ pas par son remplissage.
+
+## 24.10 ⛔ CE QUE §24 NE PROUVERA PAS, MÊME APRÈS LA SÉANCE
 
 - **La tenue 7 jours H24.** C'est `dn4-5`. `dn3-3`/AC9.8 prouve **une nuit**, et
   rien de plus. ⛔ Ne pas extrapoler d'une nuit à une semaine.
