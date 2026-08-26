@@ -7302,7 +7302,8 @@ l'enveloppe et publie le Δ des trois compteurs.
 
 ## 25.2 bis ✅ AC2.2 **TIRÉ SUR LA CARTE** LE 2026-08-26 — ET LA CARTE A TROUVÉ UN DÉFAUT D'INSTRUMENT
 
-**Firmware `dn4-5`, flashé et vérifié** (`desknode.bin` 1 151 120 o, hash confirmé).
+**Firmware `dn4-5`, flashé et vérifié** — `desknode.bin` **1 151 120 o**, hash confirmé, **SHA `afee371`**.
+⚠️ *« Une mesure porte la date de son binaire »* : tous les chiffres de cette sous-section sont pris sur **ce** binaire, et sur aucun autre.
 
 ### Le tir décisif — et le régime est CONFIRMÉ AVANT, ⛔ pas supposé
 
