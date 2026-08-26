@@ -5202,11 +5202,24 @@ visuelle **certaine** contre **−42 %** sur un défaut qui reste visible de tou
    > mesuré sur un mode **qui perdait des pixels**, puis déclaré « voie morte » sur cette base.
    >
    > ⚠️ **ET L'ATOMICITÉ, SEULE RAISON D'ÊTRE DU MODE, N'AVAIT JAMAIS EXISTÉ** : l'auto-réparation
-   > différée des labels (`LV_EVENT_UPDATE_LAYOUT_COMPLETED`, `lv_label.c:1354`) tombait **après**
-   > le rétablissement de l'invalidation ⇒ chaque label ajoutait **une zone sale de plus**.
+   > différée des labels tombait **après** le rétablissement de l'invalidation ⇒ chaque label
+   > ajoutait **une zone sale de plus**.
+   > 🔍 **LA CHAÎNE, RELUE LIGNE À LIGNE DANS LVGL 9.5.0 VENDORISÉ le 2026-08-27** — ⛔ et la
+   > citation d'origine (« `lv_label.c:1354` ») désignait **la fin de la chaîne, pas son crochet**,
+   > donc elle n'était pas vérifiable telle quelle : `lv_label_mark_need_refr_text()` (`:1059`)
+   > abonne `update_layout_completed_cb` au **display** sur `LV_EVENT_UPDATE_LAYOUT_COMPLETED`
+   > (**`:1071`**) ; ce callback (**`:1075-1085`**) se **désabonne** puis appelle
+   > `lv_label_refr_text()`, qui finit par `lv_obj_invalidate()` (**`:1354`**).
+   > ✅ Le désabonnement est ce qui rend le correctif propre : le label ne se répare pas une
+   > seconde fois après coup — sa zone est prise **une fois**, dans la fenêtre coupée.
    >
    > ✅ **CORRIGÉ DANS `12016bd`** : tous les enfants écrits entrent dans l'union, et
    > `lv_obj_update_layout()` est appelé **avant** le rétablissement de l'invalidation.
+   > ⚠️ **ET SON COÛT EST DÉCLARÉ, ⛔ PAS SUPPOSÉ NÉGLIGEABLE** : cette fonction ne travaille pas
+   > sur le widget, elle **remonte à l'ÉCRAN** (`lv_obj_pos.c:390`) et boucle tant que
+   > `scr_layout_inv` est posé. Par lecture, le premier widget de la salve fait le travail et
+   > éteint le drapeau, les suivants ne paient que l'envoi de l'événement — ⛔ **mais c'est une
+   > hypothèse de lecture, pas une mesure.**
    > ⛔ **LE `0,97 /s` EST À REPRENDRE SUR LA CARTE**, sous agent RÉEL. ⚠️ Le verdict « voie morte »
    > n'est **ni confirmé ni infirmé** — il n'a jamais été éprouvé sur un mode qui marchait.
    > ⛔ Ça **ne rouvre pas** la décision owner du 2026-08-23 : le mode livré reste `on`.

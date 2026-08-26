@@ -1854,15 +1854,39 @@ void dn_widget_maj(const dn_widget_desc_t *desc, const dn_widget_etat_t *etat,
              *    voyait jamais la nouvelle largeur. La mesure de 0,97 /s est
              *    réelle ; l'explication qu'on lui a attachée, non.
              * ⚠️ ET L'ATOMICITÉ N'AVAIT JAMAIS EXISTÉ : l'auto-réparation
-             *    différée des labels (`LV_EVENT_UPDATE_LAYOUT_COMPLETED`,
-             *    lv_label.c:1354) tombait APRÈS le rétablissement de
+             *    différée des labels tombait APRÈS le rétablissement de
              *    l'invalidation ⇒ chaque label ajoutait UNE zone sale de plus,
              *    c'est-à-dire exactement ce que le mode existe pour supprimer.
+             *    🔍 LE MÉCANISME, RELU LIGNE À LIGNE DANS LVGL 9.5.0 VENDORISÉ
+             *    (2026-08-27) — ⛔ et la citation d'origine (« lv_label.c:1354 »)
+             *    désignait la FIN de la chaîne, pas son crochet, donc elle
+             *    n'était pas vérifiable telle quelle. La chaîne complète :
+             *      `lv_label_mark_need_refr_text()` (lv_label.c:1059) abonne
+             *      `update_layout_completed_cb` au DISPLAY sur
+             *      `LV_EVENT_UPDATE_LAYOUT_COMPLETED` (**:1071**) ; ce callback
+             *      (**:1075-1085**) se DÉSABONNE puis appelle
+             *      `lv_label_refr_text()`, qui finit par `lv_obj_invalidate()`
+             *      (**:1354**). C'est cette dernière invalidation qui arrivait
+             *      trop tard.
              * 🎯 LE CORRECTIF, ET IL FERME LES DEUX : on force la géométrie ICI,
              *    ⛔ AVANT de rétablir l'invalidation. Les invalidations que
              *    `lv_obj_update_layout` déclenche sont donc AVALÉES comme les
              *    autres, la seconde passe lit enfin les NOUVELLES coordonnées,
              *    et il ne reste bien qu'UNE zone sale à la sortie.
+             *    ✅ Et le désabonnement du callback (`:1081`) garantit que le
+             *    label ne se réparera PAS une seconde fois après coup : sa zone
+             *    est prise ici, une fois, et c'est tout.
+             *
+             * ⚠️ CE QUE CET APPEL COÛTE, ET ⛔ ON NE LE SUPPOSE PAS NÉGLIGEABLE.
+             *    `lv_obj_update_layout()` ne travaille PAS sur `w->racine` : il
+             *    remonte à l'ÉCRAN (`lv_obj_get_screen`, lv_obj_pos.c:390) et
+             *    boucle tant que `scr_layout_inv` est posé. En pratique le
+             *    premier widget de la salve fait le travail et éteint le
+             *    drapeau ; les suivants ne paient plus que l'ENVOI DE
+             *    L'ÉVÉNEMENT display. ⛔ Mais c'est UNE HYPOTHÈSE DE LECTURE :
+             *    ce mode n'est PAS le régime livré (`on` l'est), et son coût
+             *    réel est à MESURER sur la carte en même temps que son taux —
+             *    le `0,97 /s` de §20.7.19 est de toute façon à reprendre.
              */
             lv_obj_update_layout(w->racine);
             zone_widget_prendre(w, &zone_union, &zone_vide);
