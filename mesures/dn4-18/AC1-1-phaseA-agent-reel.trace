@@ -1,0 +1,1681 @@
+
+--- 2026-08-26 13:39:13.759  PORT OUVERT (COM3) (0 o) ---
+
+--- 2026-08-26 13:39:13.760  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:13.760  DRAIN (2 o) ---
+c 
+--- 2026-08-26 13:39:13.760  DRAIN (2 o) ---
+$D
+--- 2026-08-26 13:39:14.762  DRAIN (326 o) ---
+N,3,1,1032,cpu,118,32,250,433*54
+desknode> pc $DN,3,2,1032,gpu,50,470,510,5950*62
+desknode> pc $DN,3,3,1032,ram,487,319*74
+desknode> pc $DN,3,4,1032,net,0,0*72
+desknode> pc $DN,3,5,1032,disk,6,10573,3583,9136*1F
+desknode> I (474367) desknode: up 470 s — vsync=17627 — flush=2232 cycles=957 — PSRAM libre 7768084 o
+
+--- 2026-08-26 13:39:14.763  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:14.763  DRAIN (3 o) ---
+c $
+--- 2026-08-26 13:39:14.764  DRAIN (4 o) ---
+DN,3
+--- 2026-08-26 13:39:14.765  DRAIN (14 o) ---
+,6,2037,cpu,93
+--- 2026-08-26 13:39:15.745  DRAIN (210 o) ---
+,22,268,433*6D
+desknode> pc $DN,3,7,2037,gpu,40,470,510,5960*63
+desknode> pc $DN,3,8,2037,ram,487,319*79
+desknode> pc $DN,3,9,2037,net,1,0*78
+desknode> pc $DN,3,10,2037,disk,0,10573,3583,9136*2B
+desknode> 
+--- 2026-08-26 13:39:15.746  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:15.746  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:39:16.757  DRAIN (236 o) ---
+ $DN,3,11,3020,cpu,108,32,191,433*6B
+desknode> pc $DN,3,12,3020,gpu,150,480,510,5950*6C
+desknode> pc $DN,3,13,3020,ram,487,319*44
+desknode> pc $DN,3,14,3020,net,1,1*42
+desknode> pc $DN,3,15,3020,disk,2,10573,3583,9136*2B
+desknode> 
+--- 2026-08-26 13:39:16.757  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:16.757  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:39:16.757  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:39:17.748  DRAIN (233 o) ---
+$DN,3,16,4032,cpu,84,32,172,435*56
+desknode> pc $DN,3,17,4032,gpu,50,480,510,5960*5F
+desknode> pc $DN,3,18,4032,ram,487,319*4B
+desknode> pc $DN,3,19,4032,net,4,7*48
+desknode> pc $DN,3,20,4032,disk,1,10573,3583,9136*2A
+desknode> 
+--- 2026-08-26 13:39:17.749  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:17.749  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:39:17.749  DRAIN (3 o) ---
+ $D
+--- 2026-08-26 13:39:18.760  DRAIN (234 o) ---
+N,3,21,5023,cpu,103,32,356,435*69
+desknode> pc $DN,3,22,5023,gpu,50,470,510,5970*56
+desknode> pc $DN,3,23,5023,ram,487,319*42
+desknode> pc $DN,3,24,5023,net,60,32*43
+desknode> pc $DN,3,25,5023,disk,3,10532,3573,9116*24
+desknode> 
+--- 2026-08-26 13:39:18.760  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:18.760  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:39:18.760  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:39:18.761  DRAIN (1 o) ---
+D
+--- 2026-08-26 13:39:19.753  DRAIN (233 o) ---
+N,3,26,6035,cpu,68,31,141,435*51
+desknode> pc $DN,3,27,6035,gpu,120,480,510,5970*6E
+desknode> pc $DN,3,28,6035,ram,487,319*4D
+desknode> pc $DN,3,29,6035,net,4,21*7A
+desknode> pc $DN,3,30,6035,disk,2,10532,3573,9116*25
+desknode> 
+--- 2026-08-26 13:39:19.753  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:19.754  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:39:19.754  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:39:19.754  DRAIN (2 o) ---
+$D
+--- 2026-08-26 13:39:20.761  DRAIN (231 o) ---
+N,3,31,7028,cpu,97,28,200,435*54
+desknode> pc $DN,3,32,7028,gpu,60,470,510,5970*5D
+desknode> pc $DN,3,33,7028,ram,487,319*4A
+desknode> pc $DN,3,34,7028,net,1,1*4C
+desknode> pc $DN,3,35,7028,disk,2,10532,3573,9116*2D
+desknode> 
+--- 2026-08-26 13:39:20.761  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:20.761  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:39:20.761  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:39:20.762  DRAIN (2 o) ---
+$D
+--- 2026-08-26 13:39:21.750  DRAIN (231 o) ---
+N,3,36,8036,cpu,87,29,172,430*50
+desknode> pc $DN,3,37,8036,gpu,80,480,510,5960*58
+desknode> pc $DN,3,38,8036,ram,487,319*41
+desknode> pc $DN,3,39,8036,net,0,1*40
+desknode> pc $DN,3,40,8036,disk,3,10532,3573,9116*2E
+desknode> 
+--- 2026-08-26 13:39:21.750  DRAIN (3 o) ---
+pc 
+--- 2026-08-26 13:39:21.750  DRAIN (2 o) ---
+$D
+--- 2026-08-26 13:39:21.751  DRAIN (2 o) ---
+N,
+--- 2026-08-26 13:39:21.751  DRAIN (1 o) ---
+3
+--- 2026-08-26 13:39:22.758  DRAIN (228 o) ---
+,41,9024,cpu,82,32,188,430*58
+desknode> pc $DN,3,42,9024,gpu,60,480,510,5970*57
+desknode> pc $DN,3,43,9024,ram,487,319*4F
+desknode> pc $DN,3,44,9024,net,4,8*45
+desknode> pc $DN,3,45,9024,disk,0,10594,3601,9165*24
+desknode> 
+--- 2026-08-26 13:39:22.758  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:22.758  DRAIN (2 o) ---
+c 
+--- 2026-08-26 13:39:22.758  DRAIN (1 o) ---
+$
+--- 2026-08-26 13:39:22.759  DRAIN (2 o) ---
+DN
+--- 2026-08-26 13:39:23.763  DRAIN (236 o) ---
+,3,46,10033,cpu,77,32,156,430*68
+desknode> pc $DN,3,47,10033,gpu,100,470,510,5970*54
+desknode> pc $DN,3,48,10033,ram,487,319*7A
+desknode> pc $DN,3,49,10033,net,0,1*7B
+desknode> pc $DN,3,50,10033,disk,6,10594,3601,9165*18
+desknode> 
+--- 2026-08-26 13:39:23.763  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:23.763  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:39:23.764  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:39:23.764  DRAIN (2 o) ---
+$D
+--- 2026-08-26 13:39:24.761  DRAIN (336 o) ---
+N,3,51,11038,cpu,73,23,172,430*66
+desknode> pc $DN,3,52,11038,gpu,140,470,510,5970*5E
+desknode> pc $DN,3,53,11038,ram,487,319*7A
+desknode> pc $DN,3,54,11038,net,0,0*7C
+desknode> pc $DN,3,55,11038,disk,2,10594,3601,9165*13
+desknode> I (484368) desknode: up 480 s — vsync=18002 — flush=2284 cycles=979 — PSRAM libre 7768084 o
+
+--- 2026-08-26 13:39:24.761  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:24.761  DRAIN (2 o) ---
+c 
+--- 2026-08-26 13:39:24.761  DRAIN (1 o) ---
+$
+--- 2026-08-26 13:39:24.762  DRAIN (2 o) ---
+DN
+--- 2026-08-26 13:39:25.758  DRAIN (236 o) ---
+,3,56,12036,cpu,86,19,221,433*69
+desknode> pc $DN,3,57,12036,gpu,100,470,510,5980*5D
+desknode> pc $DN,3,58,12036,ram,487,319*7C
+desknode> pc $DN,3,59,12036,net,0,0*7C
+desknode> pc $DN,3,60,12036,disk,1,10594,3601,9165*1B
+desknode> 
+--- 2026-08-26 13:39:25.758  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:25.758  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:39:25.758  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:39:25.759  DRAIN (2 o) ---
+$D
+--- 2026-08-26 13:39:26.753  DRAIN (237 o) ---
+N,3,61,13033,cpu,73,18,211,433*61
+desknode> pc $DN,3,62,13033,gpu,50,470,510,5970*64
+desknode> pc $DN,3,63,13033,ram,487,319*70
+desknode> pc $DN,3,64,13033,net,2,1*75
+desknode> pc $DN,3,65,13033,disk,10,10332,3417,9085*2A
+desknode> 
+--- 2026-08-26 13:39:26.753  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:26.753  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:39:26.754  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:39:26.754  DRAIN (1 o) ---
+D
+--- 2026-08-26 13:39:27.754  DRAIN (237 o) ---
+N,3,66,14028,cpu,119,29,219,433*5C
+desknode> pc $DN,3,67,14028,gpu,60,470,510,5970*6F
+desknode> pc $DN,3,68,14028,ram,487,319*76
+desknode> pc $DN,3,69,14028,net,2,2*76
+desknode> pc $DN,3,70,14028,disk,2,10332,3417,9085*10
+desknode> 
+--- 2026-08-26 13:39:27.754  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:27.755  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:39:27.755  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:39:28.756  DRAIN (237 o) ---
+DN,3,71,15029,cpu,57,28,138,433*60
+desknode> pc $DN,3,72,15029,gpu,40,480,510,5980*69
+desknode> pc $DN,3,73,15029,ram,487,319*7C
+desknode> pc $DN,3,74,15029,net,0,0*7A
+desknode> pc $DN,3,75,15029,disk,0,10332,3417,9085*17
+desknode> 
+--- 2026-08-26 13:39:28.756  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:28.756  DRAIN (2 o) ---
+c 
+--- 2026-08-26 13:39:28.757  DRAIN (2 o) ---
+$D
+--- 2026-08-26 13:39:29.766  DRAIN (239 o) ---
+N,3,76,16031,cpu,114,32,288,430*5B
+desknode> pc $DN,3,77,16031,gpu,60,480,510,5980*64
+desknode> pc $DN,3,78,16031,ram,488,319*72
+desknode> pc $DN,3,79,16031,net,27,52*7F
+desknode> pc $DN,3,80,16031,disk,5,10332,3417,9085*12
+desknode> 
+--- 2026-08-26 13:39:29.766  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:30.759  DRAIN (240 o) ---
+c $DN,3,81,17041,cpu,68,29,200,430*65
+desknode> pc $DN,3,82,17041,gpu,70,470,510,5990*67
+desknode> pc $DN,3,83,17041,ram,488,319*70
+desknode> pc $DN,3,84,17041,net,1,0*78
+desknode> pc $DN,3,85,17041,disk,0,10290,3387,9042*18
+desknode> 
+--- 2026-08-26 13:39:30.759  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:30.759  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:39:30.759  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:39:30.760  DRAIN (2 o) ---
+DN
+--- 2026-08-26 13:39:31.757  DRAIN (235 o) ---
+,3,86,18034,cpu,60,29,219,430*6F
+desknode> pc $DN,3,87,18034,gpu,40,480,510,5990*63
+desknode> pc $DN,3,88,18034,ram,488,319*76
+desknode> pc $DN,3,89,18034,net,0,0*79
+desknode> pc $DN,3,90,18034,disk,0,10290,3387,9042*11
+desknode> 
+--- 2026-08-26 13:39:31.757  DRAIN (2 o) ---
+pc
+--- 2026-08-26 13:39:31.758  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:39:31.758  DRAIN (1 o) ---
+D
+--- 2026-08-26 13:39:31.758  DRAIN (2 o) ---
+N,
+--- 2026-08-26 13:39:32.763  DRAIN (235 o) ---
+3,91,19032,cpu,78,25,250,430*66
+desknode> pc $DN,3,92,19032,gpu,100,480,510,5990*55
+desknode> pc $DN,3,93,19032,ram,488,319*7B
+desknode> pc $DN,3,94,19032,net,0,0*72
+desknode> pc $DN,3,95,19032,disk,0,10290,3387,9042*13
+desknode> 
+--- 2026-08-26 13:39:32.763  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:32.763  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:39:32.764  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:39:32.764  DRAIN (2 o) ---
+$D
+--- 2026-08-26 13:39:33.755  DRAIN (237 o) ---
+N,3,96,20038,cpu,99,25,221,433*6B
+desknode> pc $DN,3,97,20038,gpu,40,480,510,5980*64
+desknode> pc $DN,3,98,20038,ram,487,319*7F
+desknode> pc $DN,3,99,20038,net,0,0*7F
+desknode> pc $DN,3,100,20038,disk,2,10290,3387,9042*2C
+desknode> 
+--- 2026-08-26 13:39:33.755  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:33.755  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:39:34.765  DRAIN (345 o) ---
+ $DN,3,101,21030,cpu,100,28,250,433*67
+desknode> pc $DN,3,102,21030,gpu,30,480,510,5980*57
+desknode> pc $DN,3,103,21030,ram,488,319*4A
+desknode> pc $DN,3,104,21030,net,1,1*43
+desknode> pc $DN,3,105,21030,disk,2,10305,3389,9012*26
+desknode> I (494369) desknode: up 490 s — vsync=18376 — flush=2336 cycles=1001 — PSRAM libre 7768084 o
+
+--- 2026-08-26 13:39:34.766  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:34.766  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:39:34.766  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:39:34.766  DRAIN (1 o) ---
+D
+--- 2026-08-26 13:39:35.765  DRAIN (241 o) ---
+N,3,106,22040,cpu,54,26,141,433*59
+desknode> pc $DN,3,107,22040,gpu,90,470,510,5980*53
+desknode> pc $DN,3,108,22040,ram,488,319*45
+desknode> pc $DN,3,109,22040,net,0,0*4A
+desknode> pc $DN,3,110,22040,disk,0,10305,3389,9012*24
+desknode> 
+--- 2026-08-26 13:39:35.765  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:35.766  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:39:35.766  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:39:36.757  DRAIN (242 o) ---
+DN,3,111,23040,cpu,94,32,239,433*5B
+desknode> pc $DN,3,112,23040,gpu,30,470,510,5990*5D
+desknode> pc $DN,3,113,23040,ram,488,319*4E
+desknode> pc $DN,3,114,23040,net,0,1*46
+desknode> pc $DN,3,115,23040,disk,4,10305,3389,9012*24
+desknode> 
+--- 2026-08-26 13:39:36.757  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:36.757  DRAIN (2 o) ---
+c 
+--- 2026-08-26 13:39:36.758  DRAIN (1 o) ---
+$
+--- 2026-08-26 13:39:36.758  DRAIN (2 o) ---
+DN
+--- 2026-08-26 13:39:37.755  DRAIN (272 o) ---
+,3,116,24032,cpu,76,28,235,428*5F
+desknode> pc $DN,3,117,24032,gpu,30,470,510,5980*5B
+desknode> pc $DN,3,118,24032,ram,488,319*47
+desknode> pc $DN,desknode> 3,119,24032,net,0,0*48
+Unrecognized command
+desknode> pc $DN,3,120,24032,disk,2,10305,3389,9012*26
+desknode> 
+--- 2026-08-26 13:39:37.756  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:37.756  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:39:37.756  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:39:38.762  DRAIN (242 o) ---
+DN,3,121,25030,cpu,65,22,197,428*5B
+desknode> pc $DN,3,122,25030,gpu,40,480,510,5990*57
+desknode> pc $DN,3,123,25030,ram,488,319*4C
+desknode> pc $DN,3,124,25030,net,0,0*45
+desknode> pc $DN,3,125,25030,disk,1,10311,3393,9071*28
+desknode> 
+--- 2026-08-26 13:39:38.763  DRAIN (2 o) ---
+pc
+--- 2026-08-26 13:39:38.763  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:39:38.763  DRAIN (1 o) ---
+D
+--- 2026-08-26 13:39:38.763  DRAIN (2 o) ---
+N,
+--- 2026-08-26 13:39:39.759  DRAIN (239 o) ---
+3,126,26037,cpu,75,31,172,428*50
+desknode> pc $DN,3,127,26037,gpu,40,470,510,5990*59
+desknode> pc $DN,3,128,26037,ram,488,319*43
+desknode> pc $DN,3,129,26037,net,0,0*4C
+desknode> pc $DN,3,130,26037,disk,0,10311,3393,9071*29
+desknode> 
+--- 2026-08-26 13:39:39.759  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:39.759  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:39:39.760  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:39:39.760  DRAIN (2 o) ---
+$D
+--- 2026-08-26 13:39:40.762  DRAIN (241 o) ---
+N,3,131,27034,cpu,67,26,239,428*5D
+desknode> pc $DN,3,132,27034,gpu,40,470,510,5990*5F
+desknode> pc $DN,3,133,27034,ram,488,319*4B
+desknode> pc $DN,3,134,27034,net,0,1*43
+desknode> pc $DN,3,135,27034,disk,2,10311,3393,9071*2C
+desknode> 
+--- 2026-08-26 13:39:40.762  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:40.762  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:39:40.762  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:39:40.763  DRAIN (2 o) ---
+$D
+--- 2026-08-26 13:39:41.763  DRAIN (241 o) ---
+N,3,136,28037,cpu,70,15,191,428*51
+desknode> pc $DN,3,137,28037,gpu,70,480,510,5990*5A
+desknode> pc $DN,3,138,28037,ram,488,319*4C
+desknode> pc $DN,3,139,28037,net,1,1*43
+desknode> pc $DN,3,140,28037,disk,2,10311,3393,9071*22
+desknode> 
+--- 2026-08-26 13:39:41.763  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:41.764  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:39:41.764  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:39:41.764  DRAIN (2 o) ---
+$D
+--- 2026-08-26 13:39:42.761  DRAIN (241 o) ---
+N,3,141,29038,cpu,65,31,250,428*53
+desknode> pc $DN,3,142,29038,gpu,20,470,510,5990*5C
+desknode> pc $DN,3,143,29038,ram,488,319*4E
+desknode> pc $DN,3,144,29038,net,0,0*47
+desknode> pc $DN,3,145,29038,disk,2,10304,3390,9024*2E
+desknode> 
+--- 2026-08-26 13:39:42.762  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:42.762  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:39:42.762  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:39:43.757  DRAIN (242 o) ---
+DN,3,146,30036,cpu,81,31,217,428*5B
+desknode> pc $DN,3,147,30036,gpu,70,470,510,5990*5A
+desknode> pc $DN,3,148,30036,ram,488,319*43
+desknode> pc $DN,3,149,30036,net,1,1*4C
+desknode> pc $DN,3,150,30036,disk,1,10304,3390,9024*2F
+desknode> 
+--- 2026-08-26 13:39:43.757  DRAIN (2 o) ---
+pc
+--- 2026-08-26 13:39:43.758  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:39:43.758  DRAIN (3 o) ---
+DN,
+--- 2026-08-26 13:39:43.759  DRAIN (2 o) ---
+3,
+--- 2026-08-26 13:39:44.763  DRAIN (337 o) ---
+151,31032,cpu,65,12,203,428*56
+desknode> pc $DN,3,152,31032,gpu,60,470,510,6000*59
+desknode> pc $DN,3,153,31032,ram,488,319*4C
+desknode> pc $DN,3,154,31032,net,1,2*46
+desknode> pc $DN,3,155,31032,disk,2,10304,3390,9024*2C
+desknode> I (504371) desknode: up 500 s — vsync=18750 — flush=2387 cycles=1023 — PSRAM libre 7768084 o
+
+--- 2026-08-26 13:39:44.763  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:44.763  DRAIN (2 o) ---
+c 
+--- 2026-08-26 13:39:44.764  DRAIN (1 o) ---
+$
+--- 2026-08-26 13:39:45.756  DRAIN (242 o) ---
+DN,3,156,32038,cpu,64,25,169,428*52
+desknode> pc $DN,3,157,32038,gpu,60,470,510,5990*56
+desknode> pc $DN,3,158,32038,ram,488,319*4E
+desknode> pc $DN,3,159,32038,net,0,0*41
+desknode> pc $DN,3,160,32038,disk,1,10304,3390,9024*20
+desknode> 
+--- 2026-08-26 13:39:45.757  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:45.757  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:39:45.757  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:39:46.753  DRAIN (242 o) ---
+DN,3,161,33032,cpu,59,32,188,428*5A
+desknode> pc $DN,3,162,33032,gpu,20,480,510,5990*50
+desknode> pc $DN,3,163,33032,ram,488,319*4D
+desknode> pc $DN,3,164,33032,net,0,0*44
+desknode> pc $DN,3,165,33032,disk,0,10302,3390,9036*2A
+desknode> 
+--- 2026-08-26 13:39:46.754  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:46.754  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:39:46.754  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:39:46.754  DRAIN (2 o) ---
+DN
+--- 2026-08-26 13:39:47.762  DRAIN (240 o) ---
+,3,166,34028,cpu,74,31,185,428*50
+desknode> pc $DN,3,167,34028,gpu,60,470,510,5990*52
+desknode> pc $DN,3,168,34028,ram,488,319*4A
+desknode> pc $DN,3,169,34028,net,0,1*44
+desknode> pc $DN,3,170,34028,disk,2,10302,3390,9036*20
+desknode> 
+--- 2026-08-26 13:39:47.762  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:47.762  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:39:47.762  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:39:48.755  DRAIN (243 o) ---
+$DN,3,171,35037,cpu,60,32,167,428*53
+desknode> pc $DN,3,172,35037,gpu,20,480,510,6010*50
+desknode> pc $DN,3,173,35037,ram,488,319*4F
+desknode> pc $DN,3,174,35037,net,0,0*46
+desknode> pc $DN,3,175,35037,disk,0,10302,3390,9036*28
+desknode> 
+--- 2026-08-26 13:39:48.756  DRAIN (2 o) ---
+pc
+--- 2026-08-26 13:39:48.756  DRAIN (3 o) ---
+ $D
+--- 2026-08-26 13:39:48.756  DRAIN (1 o) ---
+N
+--- 2026-08-26 13:39:49.755  DRAIN (241 o) ---
+,3,176,36030,cpu,71,32,229,425*54
+desknode> pc $DN,3,177,36030,gpu,110,470,510,6010*6C
+desknode> pc $DN,3,178,36030,ram,488,319*40
+desknode> pc $DN,3,179,36030,net,1,2*4C
+desknode> pc $DN,3,180,36030,disk,1,10302,3390,9036*27
+desknode> 
+--- 2026-08-26 13:39:49.756  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:49.756  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:39:49.756  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:39:49.756  DRAIN (2 o) ---
+DN
+--- 2026-08-26 13:39:50.753  DRAIN (241 o) ---
+,3,181,37030,cpu,118,32,271,425*6E
+desknode> pc $DN,3,182,37030,gpu,40,470,510,6000*52
+desknode> pc $DN,3,183,37030,ram,488,319*45
+desknode> pc $DN,3,184,37030,net,2,2*4C
+desknode> pc $DN,3,185,37030,disk,0,10304,3388,9030*2B
+desknode> 
+--- 2026-08-26 13:39:50.753  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:50.754  DRAIN (2 o) ---
+c 
+--- 2026-08-26 13:39:50.754  DRAIN (2 o) ---
+$D
+--- 2026-08-26 13:39:51.762  DRAIN (242 o) ---
+N,3,186,38028,cpu,102,32,200,425*62
+desknode> pc $DN,3,187,38028,gpu,40,470,510,6000*51
+desknode> pc $DN,3,188,38028,ram,488,319*48
+desknode> pc $DN,3,189,38028,net,0,0*47
+desknode> pc $DN,3,190,38028,disk,4,10304,3388,9030*2D
+desknode> 
+--- 2026-08-26 13:39:51.762  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:51.762  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:39:51.763  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:39:51.763  DRAIN (1 o) ---
+D
+--- 2026-08-26 13:39:52.756  DRAIN (241 o) ---
+N,3,191,39037,cpu,57,23,203,425*59
+desknode> pc $DN,3,192,39037,gpu,40,470,510,6000*5A
+desknode> pc $DN,3,193,39037,ram,488,319*4D
+desknode> pc $DN,3,194,39037,net,0,0*44
+desknode> pc $DN,3,195,39037,disk,2,10304,3388,9030*21
+desknode> 
+--- 2026-08-26 13:39:52.756  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:52.757  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:39:52.757  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:39:52.757  DRAIN (2 o) ---
+DN
+--- 2026-08-26 13:39:53.763  DRAIN (241 o) ---
+,3,196,40031,cpu,92,22,243,430*5E
+desknode> pc $DN,3,197,40031,gpu,110,470,510,6000*63
+desknode> pc $DN,3,198,40031,ram,488,319*4E
+desknode> pc $DN,3,199,40031,net,0,1*40
+desknode> pc $DN,3,200,40031,disk,6,10304,3388,9030*22
+desknode> 
+--- 2026-08-26 13:39:53.764  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:53.764  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:39:53.764  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:39:54.751  DRAIN (342 o) ---
+DN,3,201,41038,cpu,90,28,315,430*51
+desknode> pc $DN,3,202,41038,gpu,50,470,510,5990*52
+desknode> pc $DN,3,203,41038,ram,488,319*47
+desknode> pc $DN,3,204,41038,net,1,0*4F
+desknode> pc $DN,3,205,41038,disk,2,10310,3389,9039*26
+desknode> I (514373) desknode: up 510 s — vsync=19124 — flush=2439 cycles=1045 — PSRAM libre 7768084 o
+
+--- 2026-08-26 13:39:54.751  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:54.752  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:39:54.752  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:39:55.759  DRAIN (245 o) ---
+DN,3,206,42026,cpu,116,32,250,430*6E
+desknode> pc $DN,3,207,42026,gpu,70,470,510,5990*59
+desknode> pc $DN,3,208,42026,ram,488,319*40
+desknode> pc $DN,3,209,42026,net,29,55*44
+desknode> pc $DN,3,210,42026,disk,0,10310,3389,9039*2C
+desknode> 
+--- 2026-08-26 13:39:55.760  DRAIN (2 o) ---
+pc
+--- 2026-08-26 13:39:55.760  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:39:55.761  DRAIN (2 o) ---
+DN
+--- 2026-08-26 13:39:55.761  DRAIN (3 o) ---
+,3,
+--- 2026-08-26 13:39:56.760  DRAIN (238 o) ---
+211,43034,cpu,111,28,271,430*65
+desknode> pc $DN,3,212,43034,gpu,30,470,510,5980*5A
+desknode> pc $DN,3,213,43034,ram,488,319*48
+desknode> pc $DN,3,214,43034,net,0,0*41
+desknode> pc $DN,3,215,43034,disk,3,10310,3389,9039*28
+desknode> 
+--- 2026-08-26 13:39:56.761  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:56.761  DRAIN (3 o) ---
+c $
+--- 2026-08-26 13:39:56.762  DRAIN (2 o) ---
+DN
+--- 2026-08-26 13:39:56.762  DRAIN (3 o) ---
+,3,
+--- 2026-08-26 13:39:57.758  DRAIN (237 o) ---
+216,44035,cpu,78,25,234,430*56
+desknode> pc $DN,3,217,44035,gpu,40,480,510,5980*51
+desknode> pc $DN,3,218,44035,ram,487,319*4A
+desknode> pc $DN,3,219,44035,net,1,1*4A
+desknode> pc $DN,3,220,44035,disk,0,10310,3389,9039*2B
+desknode> 
+--- 2026-08-26 13:39:57.758  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:57.759  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:39:57.759  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:39:57.759  DRAIN (2 o) ---
+$D
+--- 2026-08-26 13:39:58.755  DRAIN (241 o) ---
+N,3,221,45033,cpu,82,21,292,430*58
+desknode> pc $DN,3,222,45033,gpu,40,470,510,5980*5F
+desknode> pc $DN,3,223,45033,ram,487,319*45
+desknode> pc $DN,3,224,45033,net,0,0*43
+desknode> pc $DN,3,225,45033,disk,0,10295,3383,9057*27
+desknode> 
+--- 2026-08-26 13:39:58.756  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:58.756  DRAIN (2 o) ---
+c 
+--- 2026-08-26 13:39:58.756  DRAIN (2 o) ---
+$D
+--- 2026-08-26 13:39:59.762  DRAIN (241 o) ---
+N,3,226,46030,cpu,54,19,203,430*57
+desknode> pc $DN,3,227,46030,gpu,50,470,510,5980*5B
+desknode> pc $DN,3,228,46030,ram,487,319*4E
+desknode> pc $DN,3,229,46030,net,0,0*4E
+desknode> pc $DN,3,230,46030,disk,2,10295,3383,9057*21
+desknode> 
+--- 2026-08-26 13:39:59.763  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:39:59.763  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:40:00.760  DRAIN (244 o) ---
+ $DN,3,231,47037,cpu,92,32,250,430*52
+desknode> pc $DN,3,232,47037,gpu,50,470,510,5980*59
+desknode> pc $DN,3,233,47037,ram,487,319*42
+desknode> pc $DN,3,234,47037,net,3,3*44
+desknode> pc $DN,3,235,47037,disk,7,10295,3383,9057*27
+desknode> 
+--- 2026-08-26 13:40:00.760  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:40:00.760  DRAIN (2 o) ---
+c 
+--- 2026-08-26 13:40:00.761  DRAIN (2 o) ---
+$D
+--- 2026-08-26 13:40:00.761  DRAIN (2 o) ---
+N,
+--- 2026-08-26 13:40:01.757  DRAIN (240 o) ---
+3,236,48035,cpu,83,25,219,425*57
+desknode> pc $DN,3,237,48035,gpu,120,480,510,5980*68
+desknode> pc $DN,3,238,48035,ram,487,319*44
+desknode> pc $DN,3,239,48035,net,0,0*44
+desknode> pc $DN,3,240,48035,disk,2,10295,3383,9057*2D
+desknode> 
+--- 2026-08-26 13:40:01.757  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:40:01.758  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:40:01.758  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:40:01.758  DRAIN (2 o) ---
+$D
+--- 2026-08-26 13:40:02.760  DRAIN (241 o) ---
+N,3,241,49032,cpu,74,32,288,425*57
+desknode> pc $DN,3,242,49032,gpu,80,470,510,5970*57
+desknode> pc $DN,3,243,49032,ram,487,319*4E
+desknode> pc $DN,3,244,49032,net,0,0*48
+desknode> pc $DN,3,245,49032,disk,0,10309,3387,9036*2B
+desknode> 
+--- 2026-08-26 13:40:02.760  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:40:02.760  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:40:02.761  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:40:03.764  DRAIN (243 o) ---
+$DN,3,246,50035,cpu,69,29,141,425*5F
+desknode> pc $DN,3,247,50035,gpu,40,470,510,5980*5E
+desknode> pc $DN,3,248,50035,ram,487,319*4A
+desknode> pc $DN,3,249,50035,net,0,0*4A
+desknode> pc $DN,3,250,50035,disk,1,10309,3387,9036*21
+desknode> 
+--- 2026-08-26 13:40:03.764  DRAIN (2 o) ---
+pc
+--- 2026-08-26 13:40:03.765  DRAIN (3 o) ---
+ $D
+--- 2026-08-26 13:40:03.765  DRAIN (3 o) ---
+N,3
+--- 2026-08-26 13:40:03.766  DRAIN (3 o) ---
+,25
+--- 2026-08-26 13:40:04.755  DRAIN (336 o) ---
+1,51039,cpu,60,32,156,425*51
+desknode> pc $DN,3,252,51039,gpu,110,470,510,5980*63
+desknode> pc $DN,3,253,51039,ram,487,319*4D
+desknode> pc $DN,3,254,51039,net,0,0*4B
+desknode> pc $DN,3,255,51039,disk,2,10309,3387,9036*2A
+desknode> I (524375) desknode: up 520 s — vsync=19498 — flush=2492 cycles=1067 — PSRAM libre 7768084 o
+
+--- 2026-08-26 13:40:04.756  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:40:04.756  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:40:04.756  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:40:05.766  DRAIN (244 o) ---
+$DN,3,256,52030,cpu,82,21,203,430*55
+desknode> pc $DN,3,257,52030,gpu,130,470,510,5970*61
+desknode> pc $DN,3,258,52030,ram,487,319*4C
+desknode> pc $DN,3,259,52030,net,0,0*4C
+desknode> pc $DN,3,260,52030,disk,0,10309,3387,9036*24
+desknode> 
+--- 2026-08-26 13:40:05.766  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:40:05.767  DRAIN (2 o) ---
+c 
+--- 2026-08-26 13:40:05.767  DRAIN (1 o) ---
+$
+--- 2026-08-26 13:40:05.767  DRAIN (2 o) ---
+DN
+--- 2026-08-26 13:40:06.760  DRAIN (240 o) ---
+,3,261,53041,cpu,83,16,229,430*5B
+desknode> pc $DN,3,262,53041,gpu,40,470,510,5980*59
+desknode> pc $DN,3,263,53041,ram,487,319*43
+desknode> pc $DN,3,264,53041,net,0,0*45
+desknode> pc $DN,3,265,53041,disk,2,10283,3391,9042*23
+desknode> 
+--- 2026-08-26 13:40:06.761  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:40:06.761  DRAIN (2 o) ---
+c 
+--- 2026-08-26 13:40:06.761  DRAIN (1 o) ---
+$
+--- 2026-08-26 13:40:07.760  DRAIN (242 o) ---
+DN,3,266,54035,cpu,60,29,203,430*51
+desknode> pc $DN,3,267,54035,gpu,40,480,510,5980*57
+desknode> pc $DN,3,268,54035,ram,487,319*4C
+desknode> pc $DN,3,269,54035,net,0,0*4C
+desknode> pc $DN,3,270,54035,disk,1,10283,3391,9042*20
+desknode> 
+--- 2026-08-26 13:40:07.761  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:40:07.761  DRAIN (2 o) ---
+c 
+--- 2026-08-26 13:40:08.755  DRAIN (243 o) ---
+$DN,3,271,55035,cpu,61,15,162,430*5C
+desknode> pc $DN,3,272,55035,gpu,20,480,500,5980*55
+desknode> pc $DN,3,273,55035,ram,486,319*46
+desknode> pc $DN,3,274,55035,net,0,0*41
+desknode> pc $DN,3,275,55035,disk,0,10283,3391,9042*25
+desknode> 
+--- 2026-08-26 13:40:08.755  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:40:08.755  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:40:08.756  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:40:08.756  DRAIN (1 o) ---
+$
+--- 2026-08-26 13:40:09.763  DRAIN (242 o) ---
+DN,3,276,56030,cpu,82,29,203,420*5A
+desknode> pc $DN,3,277,56030,gpu,10,470,500,5970*55
+desknode> pc $DN,3,278,56030,ram,486,319*4B
+desknode> pc $DN,3,279,56030,net,0,0*4A
+desknode> pc $DN,3,280,56030,disk,0,10283,3391,9042*29
+desknode> 
+--- 2026-08-26 13:40:09.763  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:40:09.763  DRAIN (2 o) ---
+c 
+--- 2026-08-26 13:40:09.763  DRAIN (1 o) ---
+$
+--- 2026-08-26 13:40:09.764  DRAIN (2 o) ---
+DN
+--- 2026-08-26 13:40:10.767  DRAIN (240 o) ---
+,3,281,57038,cpu,69,21,235,420*53
+desknode> pc $DN,3,282,57038,gpu,50,470,510,5970*53
+desknode> pc $DN,3,283,57038,ram,486,319*46
+desknode> pc $DN,3,284,57038,net,3,5*47
+desknode> pc $DN,3,285,57038,disk,1,10304,3388,9056*27
+desknode> 
+--- 2026-08-26 13:40:10.768  DRAIN (3 o) ---
+pc 
+--- 2026-08-26 13:40:10.768  DRAIN (3 o) ---
+$DN
+--- 2026-08-26 13:40:10.769  DRAIN (2 o) ---
+,3
+--- 2026-08-26 13:40:10.769  DRAIN (3 o) ---
+,28
+--- 2026-08-26 13:40:11.757  DRAIN (235 o) ---
+6,58042,cpu,54,32,188,420*5F
+desknode> pc $DN,3,287,58042,gpu,10,470,510,5970*50
+desknode> pc $DN,3,288,58042,ram,486,319*4F
+desknode> pc $DN,3,289,58042,net,0,0*4E
+desknode> pc $DN,3,290,58042,disk,1,10304,3388,9056*21
+desknode> 
+--- 2026-08-26 13:40:11.757  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:40:11.757  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:40:11.758  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:40:12.753  DRAIN (243 o) ---
+$DN,3,291,59032,cpu,66,21,172,420*59
+desknode> pc $DN,3,292,59032,gpu,50,480,510,5990*57
+desknode> pc $DN,3,293,59032,ram,486,319*43
+desknode> pc $DN,3,294,59032,net,0,0*44
+desknode> pc $DN,3,295,59032,disk,0,10304,3388,9056*23
+desknode> 
+--- 2026-08-26 13:40:12.754  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:40:12.754  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:40:12.754  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:40:13.754  PORT PERDU — backoff 0.5 s (echecs_envoi=1) : WriteFile failed (PermissionError(13, 'Le périphérique ne reconnaît pas la commande.', None, 22)) (0 o) ---
+
+--- 2026-08-26 13:40:14.747  OUVERTURE REFUSEE — backoff 0.5 s (echecs_ouverture=1) : could not open port 'COM3': FileNotFoundError(2, 'Le fichier spécifié est introuvable.', None, 2) (0 o) ---
+
+--- 2026-08-26 13:40:15.756  OUVERTURE REFUSEE — backoff 1.0 s (echecs_ouverture=2) : could not open port 'COM3': FileNotFoundError(2, 'Le fichier spécifié est introuvable.', None, 2) (0 o) ---
+
+--- 2026-08-26 13:40:16.764  OUVERTURE REFUSEE — backoff 2.0 s (echecs_ouverture=3) : could not open port 'COM3': FileNotFoundError(2, 'Le fichier spécifié est introuvable.', None, 2) (0 o) ---
+
+--- 2026-08-26 13:40:19.758  OUVERTURE REFUSEE — backoff 4.0 s (echecs_ouverture=4) : could not open port 'COM3': FileNotFoundError(2, 'Le fichier spécifié est introuvable.', None, 2) (0 o) ---
+
+--- 2026-08-26 13:40:24.759  PORT OUVERT (COM3) (0 o) ---
+
+--- 2026-08-26 13:40:25.753  DRAIN (4354 o) ---
+I (4116) dn_cli: console sur USB-Serial/JTAG
+
+Type 'help' to get the list of commands.
+Use UP/DOWN arrows to navigate through command history.
+Press TAB when typing command name to auto-complete.
+
+Your terminal application does not support escape sequences.
+
+Line editing and history features are disabled.
+
+On Windows, try using Windows Terminal or Putty instead.
+desknode> N,3,356,72033,cpu,118,
+32,286,430*68
+Unrecognized command
+desknode> pc $DN,── DeskNode P7 — console de mesure ──
+3,357,72  scene   affiche une mire : bits|nbits|rgb|red|green|blue|white|black|frame|gray|asset
+033,gpu,40,470,510,5960*56
+desknode> pc $DN,3,358,72033,ram,488,319*  fps     mesure le fps sur N secondes (>= 10) et le confronte à la théorie
+43
+desknode> pc $DN,3,359,72033,net,1,2*4F
+desknode> pc $DN,3,360,72033,disk,  mem     PSRAM et RAM interne, avant/après framebuffers
+1,10289,3387,9026*2D
+desknode>   cpu     cpu [secondes] | cpu brut — charge processeur (AC6)
+  bw      bande passante mesurée des 3 chemins de copie
+  cfg     cfg | cfg reset — config de boot (NVS), active, ou effacée
+  set     set fbs | bounce | lines | drawmem | core <-1|0|1>
+  reboot  redémarre pour appliquer un `set`
+  veille  veille | on|off | delai <1|3|5|10> | now | wake | lat | geom | assets | reset | pct | voile | gris | accents — la VEILLE (dn3-3)
+  tear    tear on|vsync|sync|both|flip|off — déchirement BRUT (dn1-2)
+  flash   flash on|off — stimulus d'écriture flash
+  ui      ui [on|off] | ui label on|off | ui bg flash|psram — LVGL
+  flush   flush | reset | sync off|vsync|fbdone | path bitmap|direct | full — chemin de flush, ET le compteur de GLISSEMENT de trame (dn4-10)
+  anim    anim on [ms] | off — stimulus adverse LVGL (témoin de tearing)
+  touch   touch | reset | mode | axes | trace | int | addr | delais — GT911 (dn1-4)
+  nav     nav | open <n> | back | model | ab <n> — navigation (dn1-4)
+  recal   recal <0..4> — recalage DMA N vsyncs après la bascule (AC5)
+  bl      bl [0..100|on|off|ramp <pct> [ms]|freq <hz>|auto on|off|auto bornes <bas> <haut>|auto pas <n>|auto plancher <n>] — rétroéclairage gradable et asservi (dn1-3/dn4-3)
+  disp    disp on|off — sortie d'affichage de la dalle (0x29/0x28)
+  dma     relance la DMA du panneau (décalage permanent)
+  capteurs capteurs | reset | gaz on|off | simuler <cause> <n> — BME680 (dn2-1) + la pression, mesuree et publiee par dn4-3
+  env     env | reset — BH1750 et VL6180X, les capteurs locaux CADENCES (dn4-3). INA219 : RETIRE DU BUS le 2026-08-21, `env` dit pourquoi
+  w2      w2 | reset — le critere « une case doit BOUGER » mesure sur les candidats de la 6e case (dn4-3/AC6)
+  i2c     i2c | lire <addr> <reg> [n] | lire16 <addr> <reg16> [n] | brut <addr> [n] | ecrire <addr> <o1..o8> | rafale <ms> — scan, transactions et saturation (dn2-1/dn4-2)
+  tof     tof | etat | sr03 | balayage | als <ms> | range [n] — VL6180X : séquence SR03 (AN4545 Rev 1 §9), rejeu du balayage §13.19.5 et télémétrie à trois états (dn4-7)
+  pc      pc | reset | $DN,<trame> — liaison PC : état, compteurs, injection (dn2-2)
+  wifi    wifi [info] | on <ssid> <mdp> | off | ws on|off — branche B (dn2-2)
+  hist    historique de session (dn4-4) : coût RAM, points réels et TROUS par série
+  widget  widget | groupe on|off|union | opa <n> | voile <n> | mock on|off | demo on|off [n] | pousser <n> | oublier <n> | rafale | nue <n> on|off | barre 1hz|minute | bandes on|off | icone <case> <n> | piste <0xRRGGBB> | voie defaut|avantd12|a|b|c|c2|repli | grandeurs <case> <n> | dispo empile|cote|mixte | entete normal|compact | val <y> <pas> | police 14|28 | grille <barre> <menu> | largeur [texte|reset] | detail | replacer on|off — modèle de case (dn3-1/dn3-2/dn4-1/dn4-6)
+  rtc     rtc | set <AAAA-MM-JJ> <HH:MM[:SS]> | reset — horloge PCF85063A (dn3-2)
+  aide    cette aide
+
+état : num_fbs=1 bounce=9600 px · rétroéclairage 100 % · LVGL ACTIF
+       draw buffer 480 x 128 px en RAM interne DMA · synchro flush « vsync »
+       tactile GT911 @ 0x5D · lecture « poll » · vue « dashboard »
+       widgets : 6/6 cases · invalidation « groupée » · opa cases 178, voile 90
+       barre : « --:--  HEURE NON POSÉE » · HH:MM (au chgt de minute) · horloge NON FIABLE (OS=1)
+
+
+--- 2026-08-26 13:40:25.754  DRAIN (5 o) ---
+pc $D
+--- 2026-08-26 13:40:25.754  DRAIN (2 o) ---
+N,
+--- 2026-08-26 13:40:25.754  DRAIN (2 o) ---
+3,
+--- 2026-08-26 13:40:25.755  DRAIN (2 o) ---
+36
+--- 2026-08-26 13:40:26.758  DRAIN (235 o) ---
+1,73028,cpu,87,32,235,430*58
+desknode> pc $DN,3,362,73028,gpu,20,480,510,5970*53
+desknode> pc $DN,3,363,73028,ram,488,319*40
+desknode> pc $DN,3,364,73028,net,0,0*49
+desknode> pc $DN,3,365,73028,disk,5,10307,3389,9038*21
+desknode> 
+--- 2026-08-26 13:40:26.758  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:40:26.759  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:40:27.753  DRAIN (244 o) ---
+ $DN,3,366,74033,cpu,69,21,172,430*50
+desknode> pc $DN,3,367,74033,gpu,20,480,510,5960*5A
+desknode> pc $DN,3,368,74033,ram,488,319*46
+desknode> pc $DN,3,369,74033,net,0,0*49
+desknode> pc $DN,3,370,74033,disk,0,10307,3389,9038*2D
+desknode> 
+--- 2026-08-26 13:40:27.754  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:40:27.754  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:40:28.756  DRAIN (244 o) ---
+ $DN,3,371,75028,cpu,51,32,185,430*5C
+desknode> pc $DN,3,372,75028,gpu,40,470,510,5960*5C
+desknode> pc $DN,3,373,75028,ram,487,319*48
+desknode> pc $DN,3,374,75028,net,0,0*4E
+desknode> pc $DN,3,375,75028,disk,0,10307,3389,9038*23
+desknode> 
+--- 2026-08-26 13:40:28.757  DRAIN (2 o) ---
+pc
+--- 2026-08-26 13:40:28.757  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:40:28.757  DRAIN (2 o) ---
+$D
+--- 2026-08-26 13:40:29.766  DRAIN (521 o) ---
+N,3,376,76031,cpu,54,15,141,428*51
+desknode> pc $DN,3,377,76031,gpu,20,470,510,5970*55
+desknode> pc $DN,3,378,76031,ram,487,319*48
+desknode> pc $DN,3,379,76031,net,0,0*48
+desknode> pc $DN,3,380,76031,disk,2,10307,3389,9038*20
+desknode> W (8374) dn_capt: pression : le driver annonce des HECTO-PASCALS (bme680.h:363) mais rend 99951.7 — c'est du PASCAL. L'etiquette MENT, la conversion est faite ici et elle est ANNONCEE. Un facteur 100 pris en silence est exactement ce qui a publie « 4 614,8 lx » pour 46 148.
+
+--- 2026-08-26 13:40:29.767  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:40:29.767  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:40:29.767  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:40:29.767  DRAIN (2 o) ---
+DN
+--- 2026-08-26 13:40:30.755  DRAIN (241 o) ---
+,3,381,77041,cpu,74,15,297,428*55
+desknode> pc $DN,3,382,77041,gpu,100,470,510,5970*6A
+desknode> pc $DN,3,383,77041,ram,487,319*4A
+desknode> pc $DN,3,384,77041,net,0,0*4C
+desknode> pc $DN,3,385,77041,disk,1,10308,3388,9050*20
+desknode> 
+--- 2026-08-26 13:40:30.756  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:40:30.756  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:40:30.756  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:40:31.769  DRAIN (243 o) ---
+$DN,3,386,78030,cpu,66,32,188,428*50
+desknode> pc $DN,3,387,78030,gpu,50,480,510,5960*5C
+desknode> pc $DN,3,388,78030,ram,487,319*48
+desknode> pc $DN,3,389,78030,net,0,0*48
+desknode> pc $DN,3,390,78030,disk,0,10308,3388,9050*2C
+desknode> 
+--- 2026-08-26 13:40:31.769  DRAIN (2 o) ---
+pc
+--- 2026-08-26 13:40:31.770  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:40:31.770  DRAIN (3 o) ---
+DN,
+--- 2026-08-26 13:40:31.770  DRAIN (3 o) ---
+3,3
+--- 2026-08-26 13:40:32.763  DRAIN (236 o) ---
+91,79044,cpu,61,32,214,428*55
+desknode> pc $DN,3,392,79044,gpu,40,470,510,5960*54
+desknode> pc $DN,3,393,79044,ram,487,319*40
+desknode> pc $DN,3,394,79044,net,0,0*46
+desknode> pc $DN,3,395,79044,disk,2,10308,3388,9050*29
+desknode> 
+--- 2026-08-26 13:40:32.763  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:40:32.764  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:40:32.764  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:40:33.757  DRAIN (242 o) ---
+DN,3,396,80038,cpu,72,26,156,425*50
+desknode> pc $DN,3,397,80038,gpu,50,480,510,5960*52
+desknode> pc $DN,3,398,80038,ram,487,319*46
+desknode> pc $DN,3,399,80038,net,0,0*46
+desknode> pc $DN,3,400,80038,disk,1,10308,3388,9050*2C
+desknode> 
+--- 2026-08-26 13:40:33.758  DRAIN (2 o) ---
+pc
+--- 2026-08-26 13:40:33.758  DRAIN (3 o) ---
+ $D
+--- 2026-08-26 13:40:33.758  DRAIN (2 o) ---
+N,
+--- 2026-08-26 13:40:33.759  DRAIN (1 o) ---
+3
+--- 2026-08-26 13:40:34.766  PORT PERDU — backoff 0.5 s (echecs_envoi=1) : WriteFile failed (PermissionError(13, 'Le périphérique ne reconnaît pas la commande.', None, 22)) (0 o) ---
+
+--- 2026-08-26 13:40:35.751  OUVERTURE REFUSEE — backoff 0.5 s (echecs_ouverture=1) : could not open port 'COM3': FileNotFoundError(2, 'Le fichier spécifié est introuvable.', None, 2) (0 o) ---
+
+--- 2026-08-26 13:40:36.760  OUVERTURE REFUSEE — backoff 1.0 s (echecs_ouverture=2) : could not open port 'COM3': FileNotFoundError(2, 'Le fichier spécifié est introuvable.', None, 2) (0 o) ---
+
+--- 2026-08-26 13:40:38.751  OUVERTURE REFUSEE — backoff 2.0 s (echecs_ouverture=3) : could not open port 'COM3': FileNotFoundError(2, 'Le fichier spécifié est introuvable.', None, 2) (0 o) ---
+
+--- 2026-08-26 13:40:41.762  OUVERTURE REFUSEE — backoff 4.0 s (echecs_ouverture=4) : could not open port 'COM3': FileNotFoundError(2, 'Le fichier spécifié est introuvable.', None, 2) (0 o) ---
+
+--- 2026-08-26 13:40:46.757  PORT OUVERT (COM3) (0 o) ---
+
+--- 2026-08-26 13:40:47.765  DRAIN (4344 o) ---
+I (4116) dn_cli: console sur USB-Serial/JTAG
+
+Type 'help' to get the list of commands.
+Use UP/DOWN arrows to navigate through command history.
+Press TAB when typing command name to auto-complete.
+
+Your terminal application does not support escape sequences.
+
+Line editing and history features are disabled.
+
+On Windows, try using Windows Terminal or Putty instead.
+desknode> 4031,cpu,73,25,219,433*59
+Unrecognized command
+desknode> pc $DN,3,467,94031,gpu,50,480,510,5930*53
+desknode> pc 
+$── DeskNode P7 — console de mesure ──
+  scene   affiche une mire : bits|nbits|rgb|red|green|blue|white|black|frame|gray|asset
+DN,  fps     mesure le fps sur N secondes (>= 10) et le confronte à la théorie
+3,468,94031,ram,488,319*4  mem     PSRAM et RAM interne, avant/après framebuffers
+D
+desknode> pc $DN,3,469  cpu     cpu [secondes] | cpu brut — charge processeur (AC6)
+,94031,net,0,0  bw      bande passante mesurée des 3 chemins de copie
+*42
+desknode> pc $DN,3,470,94031,disk,2,10  cfg     cfg | cfg reset — config de boot (NVS), active, ou effacée
+306,3389,9044*2E
+desknode>   set     set fbs | bounce | lines | drawmem | core <-1|0|1>
+  reboot  redémarre pour appliquer un `set`
+  veille  veille | on|off | delai <1|3|5|10> | now | wake | lat | geom | assets | reset | pct | voile | gris | accents — la VEILLE (dn3-3)
+  tear    tear on|vsync|sync|both|flip|off — déchirement BRUT (dn1-2)
+  flash   flash on|off — stimulus d'écriture flash
+  ui      ui [on|off] | ui label on|off | ui bg flash|psram — LVGL
+  flush   flush | reset | sync off|vsync|fbdone | path bitmap|direct | full — chemin de flush, ET le compteur de GLISSEMENT de trame (dn4-10)
+  anim    anim on [ms] | off — stimulus adverse LVGL (témoin de tearing)
+  touch   touch | reset | mode | axes | trace | int | addr | delais — GT911 (dn1-4)
+  nav     nav | open <n> | back | model | ab <n> — navigation (dn1-4)
+  recal   recal <0..4> — recalage DMA N vsyncs après la bascule (AC5)
+  bl      bl [0..100|on|off|ramp <pct> [ms]|freq <hz>|auto on|off|auto bornes <bas> <haut>|auto pas <n>|auto plancher <n>] — rétroéclairage gradable et asservi (dn1-3/dn4-3)
+  disp    disp on|off — sortie d'affichage de la dalle (0x29/0x28)
+  dma     relance la DMA du panneau (décalage permanent)
+  capteurs capteurs | reset | gaz on|off | simuler <cause> <n> — BME680 (dn2-1) + la pression, mesuree et publiee par dn4-3
+  env     env | reset — BH1750 et VL6180X, les capteurs locaux CADENCES (dn4-3). INA219 : RETIRE DU BUS le 2026-08-21, `env` dit pourquoi
+  w2      w2 | reset — le critere « une case doit BOUGER » mesure sur les candidats de la 6e case (dn4-3/AC6)
+  i2c     i2c | lire <addr> <reg> [n] | lire16 <addr> <reg16> [n] | brut <addr> [n] | ecrire <addr> <o1..o8> | rafale <ms> — scan, transactions et saturation (dn2-1/dn4-2)
+  tof     tof | etat | sr03 | balayage | als <ms> | range [n] — VL6180X : séquence SR03 (AN4545 Rev 1 §9), rejeu du balayage §13.19.5 et télémétrie à trois états (dn4-7)
+  pc      pc | reset | $DN,<trame> — liaison PC : état, compteurs, injection (dn2-2)
+  wifi    wifi [info] | on <ssid> <mdp> | off | ws on|off — branche B (dn2-2)
+  hist    historique de session (dn4-4) : coût RAM, points réels et TROUS par série
+  widget  widget | groupe on|off|union | opa <n> | voile <n> | mock on|off | demo on|off [n] | pousser <n> | oublier <n> | rafale | nue <n> on|off | barre 1hz|minute | bandes on|off | icone <case> <n> | piste <0xRRGGBB> | voie defaut|avantd12|a|b|c|c2|repli | grandeurs <case> <n> | dispo empile|cote|mixte | entete normal|compact | val <y> <pas> | police 14|28 | grille <barre> <menu> | largeur [texte|reset] | detail | replacer on|off — modèle de case (dn3-1/dn3-2/dn4-1/dn4-6)
+  rtc     rtc | set <AAAA-MM-JJ> <HH:MM[:SS]> | reset — horloge PCF85063A (dn3-2)
+  aide    cette aide
+
+état : num_fbs=1 bounce=9600 px · rétroéclairage 100 % · LVGL ACTIF
+       draw buffer 480 x 128 px en RAM interne DMA · synchro flush « vsync »
+       tactile GT911 @ 0x5D · lecture « poll » · vue « dashboard »
+       widgets : 6/6 cases · invalidation « groupée » · opa cases 178, voile 90
+       barre : « --:--  HEURE NON POSÉE » · HH:MM (au chgt de minute) · horloge NON FIABLE (OS=1)
+
+
+--- 2026-08-26 13:40:47.766  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:40:47.766  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:40:47.766  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:40:47.766  DRAIN (2 o) ---
+DN
+--- 2026-08-26 13:40:48.749  DRAIN (240 o) ---
+,3,471,95040,cpu,71,32,246,433*56
+desknode> pc $DN,3,472,95040,gpu,40,470,510,5950*58
+desknode> pc $DN,3,473,95040,ram,488,319*40
+desknode> pc $DN,3,474,95040,net,0,0*49
+desknode> pc $DN,3,475,95040,disk,0,10306,3389,9044*2E
+desknode> 
+--- 2026-08-26 13:40:48.749  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:40:48.750  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:40:48.750  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:40:49.763  DRAIN (243 o) ---
+$DN,3,476,96024,cpu,58,32,188,433*5A
+desknode> pc $DN,3,477,96024,gpu,10,470,510,5960*5A
+desknode> pc $DN,3,478,96024,ram,488,319*4A
+desknode> pc $DN,3,479,96024,net,0,0*45
+desknode> pc $DN,3,480,96024,disk,1,10306,3389,9044*24
+desknode> 
+--- 2026-08-26 13:40:49.763  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:40:49.763  DRAIN (2 o) ---
+c 
+--- 2026-08-26 13:40:49.764  DRAIN (3 o) ---
+$DN
+--- 2026-08-26 13:40:49.764  DRAIN (3 o) ---
+,3,
+--- 2026-08-26 13:40:50.757  DRAIN (237 o) ---
+481,97038,cpu,72,16,261,433*54
+desknode> pc $DN,3,482,97038,gpu,60,470,510,5960*5B
+desknode> pc $DN,3,483,97038,ram,487,319*4D
+desknode> pc $DN,3,484,97038,net,0,0*4B
+desknode> pc $DN,3,485,97038,disk,0,10306,3387,9045*23
+desknode> 
+--- 2026-08-26 13:40:50.757  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:40:50.757  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:40:51.751  DRAIN (524 o) ---
+ $DN,3,486,98032,cpu,94,32,219,433*57
+desknode> pc $DN,3,487,98032,gpu,50,480,510,5950*54
+desknode> pc $DN,3,488,98032,ram,487,319*43
+desknode> pc $DN,3,489,98032,net,0,0*43
+desknode> pc $DN,3,490,98032,disk,3,10306,3387,9045*21
+desknode> W (8375) dn_capt: pression : le driver annonce des HECTO-PASCALS (bme680.h:363) mais rend 99959.1 — c'est du PASCAL. L'etiquette MENT, la conversion est faite ici et elle est ANNONCEE. Un facteur 100 pris en silence est exactement ce qui a publie « 4 614,8 lx » pour 46 148.
+
+--- 2026-08-26 13:40:51.751  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:40:51.752  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:40:51.752  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:40:52.751  DRAIN (242 o) ---
+DN,3,491,99026,cpu,77,32,164,433*51
+desknode> pc $DN,3,492,99026,gpu,70,470,510,5950*59
+desknode> pc $DN,3,493,99026,ram,486,319*4C
+desknode> pc $DN,3,494,99026,net,0,0*4B
+desknode> pc $DN,3,495,99026,disk,1,10306,3387,9045*22
+desknode> 
+--- 2026-08-26 13:40:52.751  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:40:52.751  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:40:52.751  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:40:52.752  DRAIN (2 o) ---
+$D
+--- 2026-08-26 13:40:53.758  DRAIN (247 o) ---
+N,3,496,100026,cpu,55,25,174,428*6A
+desknode> pc $DN,3,497,100026,gpu,40,470,510,5960*6D
+desknode> pc $DN,3,498,100026,ram,487,319*77
+desknode> pc $DN,3,499,100026,net,0,0*77
+desknode> pc $DN,3,500,100026,disk,16,10306,3387,9045*28
+desknode> 
+--- 2026-08-26 13:40:53.758  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:40:53.758  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:40:53.758  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:40:54.755  DRAIN (248 o) ---
+DN,3,501,101033,cpu,82,25,203,428*69
+desknode> pc $DN,3,502,101033,gpu,50,480,510,5960*6B
+desknode> pc $DN,3,503,101033,ram,487,319*71
+desknode> pc $DN,3,504,101033,net,0,0*77
+desknode> pc $DN,3,505,101033,disk,13,10308,3385,9042*26
+desknode> 
+--- 2026-08-26 13:40:54.755  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:40:54.755  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:40:54.756  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:40:55.761  DRAIN (248 o) ---
+$DN,3,506,102030,cpu,83,32,221,428*69
+desknode> pc $DN,3,507,102030,gpu,40,480,510,5970*6E
+desknode> pc $DN,3,508,102030,ram,486,319*7B
+desknode> pc $DN,3,509,102030,net,0,0*7A
+desknode> pc $DN,3,510,102030,disk,1,10308,3385,9042*11
+desknode> 
+--- 2026-08-26 13:40:55.761  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:40:55.762  DRAIN (2 o) ---
+c 
+--- 2026-08-26 13:40:55.762  DRAIN (2 o) ---
+$D
+--- 2026-08-26 13:40:55.762  DRAIN (2 o) ---
+N,
+--- 2026-08-26 13:40:56.768  DRAIN (245 o) ---
+3,511,103036,cpu,76,21,188,428*60
+desknode> pc $DN,3,512,103036,gpu,100,470,510,5970*57
+desknode> pc $DN,3,513,103036,ram,486,319*76
+desknode> pc $DN,3,514,103036,net,0,0*71
+desknode> pc $DN,3,515,103036,disk,0,10308,3385,9042*12
+desknode> 
+--- 2026-08-26 13:40:56.768  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:40:56.768  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:40:56.769  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:40:56.769  DRAIN (1 o) ---
+D
+--- 2026-08-26 13:40:57.776  DRAIN (338 o) ---
+N,3,516,104043,cpu,69,13,217,428*68
+desknode> pc $DN,3,517,104043,gpu,20,470,510,5970*64
+desknode> pc $DN,3,518,104043,ram,486,319*78
+desknode> pc $DN,3,519,104043,net,0,0*79
+desknode> pc $DN,3,520,104043,disk,0,10308,3385,9042*11
+desknode> I (14446) desknode: up 10 s — vsync=426 — flush=65 cycles=26 — PSRAM libre 7768084 o
+
+--- 2026-08-26 13:40:57.776  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:40:57.776  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:40:57.776  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:40:57.777  DRAIN (2 o) ---
+$D
+--- 2026-08-26 13:40:58.770  PORT PERDU — backoff 0.5 s (echecs_envoi=1) : WriteFile failed (PermissionError(13, 'Le périphérique ne reconnaît pas la commande.', None, 22)) (0 o) ---
+
+--- 2026-08-26 13:40:59.748  OUVERTURE REFUSEE — backoff 0.5 s (echecs_ouverture=1) : could not open port 'COM3': FileNotFoundError(2, 'Le fichier spécifié est introuvable.', None, 2) (0 o) ---
+
+--- 2026-08-26 13:41:00.767  OUVERTURE REFUSEE — backoff 1.0 s (echecs_ouverture=2) : could not open port 'COM3': FileNotFoundError(2, 'Le fichier spécifié est introuvable.', None, 2) (0 o) ---
+
+--- 2026-08-26 13:41:02.766  OUVERTURE REFUSEE — backoff 2.0 s (echecs_ouverture=3) : could not open port 'COM3': FileNotFoundError(2, 'Le fichier spécifié est introuvable.', None, 2) (0 o) ---
+
+--- 2026-08-26 13:41:05.758  OUVERTURE REFUSEE — backoff 4.0 s (echecs_ouverture=4) : could not open port 'COM3': FileNotFoundError(2, 'Le fichier spécifié est introuvable.', None, 2) (0 o) ---
+
+--- 2026-08-26 13:41:10.752  PORT OUVERT (COM3) (0 o) ---
+
+--- 2026-08-26 13:41:11.760  DRAIN (3379 o) ---
+I (711) desknode: ──── socle ─────────E (3061) gpio: gpio_install_isr_service(534): GPIO isr service already installed
+I (3064) dn_touch: indev LVGL branché — mode « poll »
+I (3064) dn_mes: dn4-10 : seuil de corruption = 775 us (ecoulement d'un demi-bounce de 9600 px, soit 20 ligne(s))
+I (3065) dn_mes: compteur vsync branché (ISR en IRAM, compteur en RAM interne)
+I (3065) dn_mes:   ⚠️ enregistrement EXCLUSIF : il vient d'écraser tout callback posé avant lui (esp_lcd rgb ASSIGNE, ne fusionne pas). C'est voulu — voir le commentaire au-dessus.
+I (3066) dn_mes: abonnement vsync #1 : « recal »
+I (3066) dn_recal: recalage sur événement ACTIF : 1 vsync(s) après chaque bascule (RESTART_IN_VSYNC=n, le bit `need_restart` est bien consulté).
+I (3167) dn_mes: témoin vsync : 4 trames en 100 ms — le compteur est vivant
+I (3167) desknode: rétroéclairage à 100 % (GPIO6 en LEDC 10 bits @ 24000 Hz). ⚠️ il ne clignote pas : le clignotement était le signe de vie de P0, ce n'est plus un symptôme valide depuis P1.
+I (3168) desknode: prêt en 2467 ms depuis app_main
+I (3168) desknode: recalage d'AMORÇAGE armé (1 vsync) — RESTART_IN_VSYNC=n, la DMA n'est plus relancée à chaque VBlank
+I (3169) desknode:   ⚠️ si l'image sort DÉCALÉE malgré ça : `recal` pour les compteurs, `dma` pour recaler à la main (opérante à `n`).
+I (3170) dn_capt: identite : chip id 0x61, variant 0x00 => BME680 @ 0x77
+I (3297) bme680: bme680_setup_heater_profiles: rh_reg_data 111 | gw_reg_data 146
+I (3343) dn_capt: config relue dans le capteur : 0x72=04 0x74=84 0x75=08
+I (3344) dn_capt: BME680 pret @ 0x77 — FORCED, T/H 8x, P 1x, IIR 3, gaz coupe, cadence 5000 ms, peremption 15000 ms
+I (3344) dn_capt:   (gaz coupe DELIBEREMENT : sa plaque a 300 C chaufferait le die qui porte le thermometre, pour une donnee hors des 6 widgets du brief. A/B jouable a chaud : `capteurs gaz on`)
+I (3346) dn_env: INA219 @ 0x40 : NON CADENCE — ni ouvert ni configure. Voir `env` pour le motif.
+W (3347) dn_env: VL6180X @ 0x29 : configuration refusee au boot — ATTENDU a froid, elle sera REPOSEE par `cycle_un()` dans 60 s
+I (3347) dn_env: dn_env pret — 2/3 devices ouverts, cadence 5000 ms (portee par la tache dn_capt), peremption 15000 ms, timeout I2C 100 ms
+I (3348) dn_env:   retroeclairage auto : DESARME par defaut — la loi est 8% a 20 lx, 100% a 600 lx, bande morte 3 pts, pas max 20 pts/cycle. `bl auto on` pour l'armer.
+I (3349) dn_rtc: PCF85063A @ 0x51 — Control_1 = 0x00 : tourne, format 24 h, quartz 7 pF
+W (3350) dn_rtc:   ⚠️ CAP_SEL n'est PAS verifie : rien sur cette carte ne dit quel quartz est soude. Un mauvais reglage se paie en DERIVE, pas en panne. Laisse tel quel, consigne comme INCONNU.
+W (3351) dn_rtc: 🔴 temoin RELU AVANT ecriture = 0x00 (attendu 0xD7) : la puce a PERDU SON ALIMENTATION depuis le dernier boot — OU ce firmware n'a JAMAIS tourne sur cette carte (premier boot apres flash : 0x03 vaut alors ce qu'il veut). DEUX causes indiscernables, meme consequence : l'heure portee ne vaut rien. OS tranche, pas ce temoin.
+I (3353) dn_rtc: temoin anti-fantome pose en 0x03 = 0xD7 (relu)
+W (3354) dn_rtc: 🔴 OS = 1 — l'oscillateur s'est ARRETE : l'heure lue (2000-01-01 00:00:03) N'EST PAS FIABLE. La barre affichera « --:-- HEURE NON POSEE ». `rtc set` pour la poser.
+
+--- 2026-08-26 13:41:11.787  DRAIN (4 o) ---
+[5n
+--- 2026-08-26 13:41:12.752  DRAIN (4355 o) ---
+I (4071) dn_cli: console sur USB-Serial/JTAG
+
+Type 'help' to get the list of commands.
+Use UP/DOWN arrows to navigate through command history.
+Press TAB when typing command name to auto-complete.
+
+Your terminal application does not support escape sequences.
+
+Line editing and history features are disabled.
+
+On Windows, try using Windows Terminal or Putty instead.
+
+desknode> ,587,118026,gpu,30,480── DeskNode P7 — console de mesure ──
+,510,598  scene   affiche une mire : bits|nbits|rgb|red|green|blue|white|black|frame|gray|asset
+0  fps     mesure le fps sur N secondes (>= 10) et le confronte à la théorie
+*62
+Unrecognized command
+  mem     PSRAM et RAM interne, avant/après framebuffers
+desknode> pc $DN,3,588,118026,ram,488  cpu     cpu [secondes] | cpu brut — charge processeur (AC6)
+,319*71
+desknode> pc  bw      bande passante mesurée des 3 chemins de copie
+   cfg     cfg | cfg reset — config de boot (NVS), active, ou effacée
+$DN,3,589,118026,ne  set     set fbs | bounce | lines | drawmem | core <-1|0|1>
+t  reboot  redémarre pour appliquer un `set`
+,  veille  veille | on|off | delai <1|3|5|10> | now | wake | lat | geom | assets | reset | pct | voile | gris | accents — la VEILLE (dn3-3)
+0,0*7E  tear    tear on|vsync|sync|both|flip|off — déchirement BRUT (dn1-2)
+
+  flash   flash on|off — stimulus d'écriture flash
+desknode> pc  ui      ui [on|off] | ui label on|off | ui bg flash|psram — LVGL
+ $DN,  flush   flush | reset | sync off|vsync|fbdone | path bitmap|direct | full — chemin de flush, ET le compteur de GLISSEMENT de trame (dn4-10)
+3,590,118026,disk,0,1  anim    anim on [ms] | off — stimulus adverse LVGL (témoin de tearing)
+0292,3390,9042*12
+desknode> pc $  touch   touch | reset | mode | axes | trace | int | addr | delais — GT911 (dn1-4)
+D  nav     nav | open <n> | back | model | ab <n> — navigation (dn1-4)
+N,3,591,119062,cp  recal   recal <0..4> — recalage DMA N vsyncs après la bascule (AC5)
+u,95,31,194,428*63
+desknode>   bl      bl [0..100|on|off|ramp <pct> [ms]|freq <hz>|auto on|off|auto bornes <bas> <haut>|auto pas <n>|auto plancher <n>] — rétroéclairage gradable et asservi (dn1-3/dn4-3)
+  disp    disp on|off — sortie d'affichage de la dalle (0x29/0x28)
+  dma     relance la DMA du panneau (décalage permanent)
+  capteurs capteurs | reset | gaz on|off | simuler <cause> <n> — BME680 (dn2-1) + la pression, mesuree et publiee par dn4-3
+  env     env | reset — BH1750 et VL6180X, les capteurs locaux CADENCES (dn4-3). INA219 : RETIRE DU BUS le 2026-08-21, `env` dit pourquoi
+  w2      w2 | reset — le critere « une case doit BOUGER » mesure sur les candidats de la 6e case (dn4-3/AC6)
+  i2c     i2c | lire <addr> <reg> [n] | lire16 <addr> <reg16> [n] | brut <addr> [n] | ecrire <addr> <o1..o8> | rafale <ms> — scan, transactions et saturation (dn2-1/dn4-2)
+  tof     tof | etat | sr03 | balayage | als <ms> | range [n] — VL6180X : séquence SR03 (AN4545 Rev 1 §9), rejeu du balayage §13.19.5 et télémétrie à trois états (dn4-7)
+  pc      pc | reset | $DN,<trame> — liaison PC : état, compteurs, injection (dn2-2)
+  wifi    wifi [info] | on <ssid> <mdp> | off | ws on|off — branche B (dn2-2)
+  hist    historique de session (dn4-4) : coût RAM, points réels et TROUS par série
+  widget  widget | groupe on|off|union | opa <n> | voile <n> | mock on|off | demo on|off [n] | pousser <n> | oublier <n> | rafale | nue <n> on|off | barre 1hz|minute | bandes on|off | icone <case> <n> | piste <0xRRGGBB> | voie defaut|avantd12|a|b|c|c2|repli | grandeurs <case> <n> | dispo empile|cote|mixte | entete normal|compact | val <y> <pas> | police 14|28 | grille <barre> <menu> | largeur [texte|reset] | detail | replacer on|off — modèle de case (dn3-1/dn3-2/dn4-1/dn4-6)
+  rtc     rtc | set <AAAA-MM-JJ> <HH:MM[:SS]> | reset — horloge PCF85063A (dn3-2)
+  aide    cette aide
+
+état : num_fbs=1 bounce=9600 px · rétroéclairage 100 % · LVGL ACTIF
+       draw buffer 480 x 128 px en RAM interne DMA · synchro flush « vsync »
+       tactile GT911 @ 0x5D · lecture « poll » · vue « dashboard »
+       widgets : 6/6 cases · invalidation « groupée » · opa cases 178, voile 90
+       barre : « --:--  HEURE NON POSÉE » · HH:MM (au chgt de minute) · horloge NON FIABLE (OS=1)
+
+
+--- 2026-08-26 13:41:12.752  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:41:12.752  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:41:12.752  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:41:12.753  DRAIN (1 o) ---
+D
+--- 2026-08-26 13:41:13.757  DRAIN (246 o) ---
+N,3,596,120027,cpu,42,12,145,435*64
+desknode> pc $DN,3,597,120027,gpu,90,480,510,5980*63
+desknode> pc $DN,3,598,120027,ram,488,319*7A
+desknode> pc $DN,3,599,120027,net,1,1*75
+desknode> pc $DN,3,600,120027,disk,0,10292,3390,9042*12
+desknode> 
+--- 2026-08-26 13:41:13.757  DRAIN (2 o) ---
+pc
+--- 2026-08-26 13:41:13.757  DRAIN (4 o) ---
+ $DN
+--- 2026-08-26 13:41:13.758  DRAIN (3 o) ---
+,3,
+--- 2026-08-26 13:41:13.758  DRAIN (3 o) ---
+601
+--- 2026-08-26 13:41:14.763  DRAIN (239 o) ---
+,121032,cpu,64,23,191,435*63
+desknode> pc $DN,3,602,121032,gpu,50,480,510,5970*6A
+desknode> pc $DN,3,603,121032,ram,488,319*7E
+desknode> pc $DN,3,604,121032,net,0,0*77
+desknode> pc $DN,3,605,121032,disk,5,10283,3387,9053*11
+desknode> 
+--- 2026-08-26 13:41:14.763  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:41:14.763  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:41:15.758  DRAIN (249 o) ---
+ $DN,3,606,122038,cpu,83,32,235,435*69
+desknode> pc $DN,3,607,122038,gpu,80,480,510,5970*6B
+desknode> pc $DN,3,608,122038,ram,487,319*73
+desknode> pc $DN,3,609,122038,net,0,0*73
+desknode> pc $DN,3,610,122038,disk,1,10283,3387,9053*18
+desknode> 
+--- 2026-08-26 13:41:15.759  DRAIN (2 o) ---
+pc
+--- 2026-08-26 13:41:15.759  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:41:16.754  DRAIN (247 o) ---
+DN,3,611,123033,cpu,77,31,234,435*6C
+desknode> pc $DN,3,612,123033,gpu,80,470,510,5980*65
+desknode> pc $DN,3,613,123033,ram,487,319*73
+desknode> pc $DN,3,614,123033,net,0,0*75
+desknode> pc $DN,3,615,123033,disk,0,10283,3387,9053*16
+desknode> 
+--- 2026-08-26 13:41:16.755  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:41:16.755  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:41:16.755  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:41:17.766  DRAIN (528 o) ---
+$DN,3,616,124029,cpu,52,28,188,430*69
+desknode> pc $DN,3,617,124029,gpu,50,480,510,5980*6E
+desknode> pc $DN,3,618,124029,ram,487,319*74
+desknode> pc W (8372) dn_capt: pression : le driver annonce des HECTO-PASCALS (bme680.h:363) mais rend 99957.2 — c'est du PASCAL. L'etiquette MENT, la conversion est faite ici et elle est ANNONCEE. Un facteur 100 pris en silence est exactement ce qui a publie « 4 614,8 lx » pour 46 148.
+$DN,3,619,124029,net,0,0*74
+desknode> pc $DN,3,620,124029,disk,0,10283,3387,9053*1C
+desknode> 
+--- 2026-08-26 13:41:17.766  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:41:17.766  DRAIN (2 o) ---
+c 
+--- 2026-08-26 13:41:17.767  DRAIN (2 o) ---
+$D
+--- 2026-08-26 13:41:17.767  DRAIN (1 o) ---
+N
+--- 2026-08-26 13:41:18.754  DRAIN (245 o) ---
+,3,621,125041,cpu,42,28,141,430*66
+desknode> pc $DN,3,622,125041,gpu,20,480,510,5970*6F
+desknode> pc $DN,3,623,125041,ram,487,319*73
+desknode> pc $DN,3,624,125041,net,0,0*75
+desknode> pc $DN,3,625,125041,disk,7,10309,3385,9017*10
+desknode> 
+--- 2026-08-26 13:41:18.754  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:41:18.754  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:41:18.755  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:41:19.757  DRAIN (247 o) ---
+DN,3,626,126029,cpu,64,28,188,430*6D
+desknode> pc $DN,3,627,126029,gpu,50,480,510,5990*6E
+desknode> pc $DN,3,628,126029,ram,487,319*75
+desknode> pc $DN,3,629,126029,net,0,0*75
+desknode> pc $DN,3,630,126029,disk,0,10309,3385,9017*1E
+desknode> 
+--- 2026-08-26 13:41:19.757  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:41:19.758  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:41:19.758  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:41:19.758  DRAIN (2 o) ---
+DN
+--- 2026-08-26 13:41:20.763  DRAIN (245 o) ---
+,3,631,127032,cpu,54,32,219,430*63
+desknode> pc $DN,3,632,127032,gpu,50,470,510,5980*6F
+desknode> pc $DN,3,633,127032,ram,487,319*74
+desknode> pc $DN,3,634,127032,net,0,0*72
+desknode> pc $DN,3,635,127032,disk,0,10309,3385,9017*10
+desknode> 
+--- 2026-08-26 13:41:20.763  DRAIN (2 o) ---
+pc
+--- 2026-08-26 13:41:20.764  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:41:20.764  DRAIN (4 o) ---
+$DN,
+--- 2026-08-26 13:41:20.765  DRAIN (2 o) ---
+3,
+--- 2026-08-26 13:41:21.762  DRAIN (242 o) ---
+636,128038,cpu,75,22,188,420*69
+desknode> pc $DN,3,637,128038,gpu,50,470,510,5980*6F
+desknode> pc $DN,3,638,128038,ram,487,319*7A
+desknode> pc $DN,3,639,128038,net,0,0*7A
+desknode> pc $DN,3,640,128038,disk,3,10309,3385,9017*14
+desknode> 
+--- 2026-08-26 13:41:21.762  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:41:21.762  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:41:21.763  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:41:21.763  DRAIN (2 o) ---
+DN
+--- 2026-08-26 13:41:22.754  DRAIN (338 o) ---
+,3,641,129037,cpu,52,32,164,420*61
+desknode> pc $DN,3,642,129037,gpu,120,470,510,5970*5A
+desknode> pc $DN,3,643,129037,ram,487,319*78
+desknode> pc $DN,3,644,129037,net,1,1*7E
+desknode> pc $DN,3,645,129037,disk,1,10298,3390,9039*1C
+desknode> I (14215) desknode: up 10 s — vsync=417 — flush=66 cycles=24 — PSRAM libre 7768084 o
+
+--- 2026-08-26 13:41:22.754  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:41:22.754  DRAIN (2 o) ---
+c 
+--- 2026-08-26 13:41:22.755  DRAIN (2 o) ---
+$D
+--- 2026-08-26 13:41:23.745  DRAIN (247 o) ---
+N,3,646,130029,cpu,54,25,172,420*66
+desknode> pc $DN,3,647,130029,gpu,90,480,510,5980*62
+desknode> pc $DN,3,648,130029,ram,487,319*74
+desknode> pc $DN,3,649,130029,net,2,1*77
+desknode> pc $DN,3,650,130029,disk,11,10298,3390,9039*2E
+desknode> 
+--- 2026-08-26 13:41:23.746  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:41:23.746  DRAIN (2 o) ---
+c 
+--- 2026-08-26 13:41:23.746  DRAIN (1 o) ---
+$
+--- 2026-08-26 13:41:24.768  DRAIN (248 o) ---
+DN,3,651,131020,cpu,114,12,250,420*5A
+desknode> pc $DN,3,652,131020,gpu,10,480,510,5970*69
+desknode> pc $DN,3,653,131020,ram,487,319*76
+desknode> pc $DN,3,654,131020,net,0,0*70
+desknode> pc $DN,3,655,131020,disk,1,10298,3390,9039*12
+desknode> 
+--- 2026-08-26 13:41:24.768  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:41:24.769  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:41:24.769  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:41:24.769  DRAIN (4 o) ---
+$DN,
+--- 2026-08-26 13:41:25.766  DRAIN (244 o) ---
+3,656,132043,cpu,81,32,188,425*67
+desknode> pc $DN,3,657,132043,gpu,60,470,510,5970*62
+desknode> pc $DN,3,658,132043,ram,487,319*7B
+desknode> pc $DN,3,659,132043,net,0,1*7A
+desknode> pc $DN,3,660,132043,disk,1,10298,3390,9039*12
+desknode> 
+--- 2026-08-26 13:41:25.766  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:41:25.766  DRAIN (2 o) ---
+c 
+--- 2026-08-26 13:41:25.767  DRAIN (1 o) ---
+$
+--- 2026-08-26 13:41:25.767  DRAIN (2 o) ---
+DN
+--- 2026-08-26 13:41:26.759  DRAIN (245 o) ---
+,3,661,133041,cpu,91,21,284,425*6C
+desknode> pc $DN,3,662,133041,gpu,70,480,510,5970*69
+desknode> pc $DN,3,663,133041,ram,487,319*70
+desknode> pc $DN,3,664,133041,net,0,0*76
+desknode> pc $DN,3,665,133041,disk,7,10294,3393,9023*16
+desknode> 
+--- 2026-08-26 13:41:26.760  DRAIN (2 o) ---
+pc
+--- 2026-08-26 13:41:26.760  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:41:26.760  DRAIN (2 o) ---
+DN
+--- 2026-08-26 13:41:26.760  DRAIN (1 o) ---
+,
+--- 2026-08-26 13:41:27.750  DRAIN (244 o) ---
+3,666,134034,cpu,67,23,191,425*62
+desknode> pc $DN,3,667,134034,gpu,40,470,510,5970*65
+desknode> pc $DN,3,668,134034,ram,487,319*7E
+desknode> pc $DN,3,669,134034,net,0,0*7E
+desknode> pc $DN,3,670,134034,disk,0,10294,3393,9023*10
+desknode> 
+--- 2026-08-26 13:41:27.751  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:41:27.751  DRAIN (2 o) ---
+c 
+--- 2026-08-26 13:41:28.748  DRAIN (248 o) ---
+$DN,3,671,135025,cpu,69,32,194,425*6E
+desknode> pc $DN,3,672,135025,gpu,20,480,510,5970*69
+desknode> pc $DN,3,673,135025,ram,487,319*75
+desknode> pc $DN,3,674,135025,net,2,1*70
+desknode> pc $DN,3,675,135025,disk,0,10294,3393,9023*14
+desknode> 
+--- 2026-08-26 13:41:28.748  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:41:28.749  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:41:28.749  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:41:29.766  DRAIN (248 o) ---
+$DN,3,676,136023,cpu,55,32,149,425*63
+desknode> pc $DN,3,677,136023,gpu,70,470,510,5970*63
+desknode> pc $DN,3,678,136023,ram,487,319*7B
+desknode> pc $DN,3,679,136023,net,0,0*7B
+desknode> pc $DN,3,680,136023,disk,2,10294,3393,9023*19
+desknode> 
+--- 2026-08-26 13:41:29.766  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:41:29.766  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:41:29.766  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:41:29.767  DRAIN (2 o) ---
+DN
+--- 2026-08-26 13:41:30.754  DRAIN (247 o) ---
+,3,681,137041,cpu,87,21,261,425*6A
+desknode> pc $DN,3,682,137041,gpu,70,480,510,5970*63
+desknode> pc $DN,3,683,137041,ram,487,319*7A
+desknode> pc $DN,3,684,137041,net,28,52*71
+desknode> pc $DN,3,685,137041,disk,0,10298,3386,9038*19
+desknode> 
+--- 2026-08-26 13:41:30.754  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:41:30.754  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:41:30.755  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:41:31.752  DRAIN (248 o) ---
+$DN,3,686,138029,cpu,65,32,162,425*62
+desknode> pc $DN,3,687,138029,gpu,30,480,510,5970*63
+desknode> pc $DN,3,688,138029,ram,487,319*70
+desknode> pc $DN,3,689,138029,net,2,1*73
+desknode> pc $DN,3,690,138029,disk,0,10298,3386,9038*1C
+desknode> 
+--- 2026-08-26 13:41:31.752  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:41:31.753  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:41:31.753  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:41:32.746  DRAIN (341 o) ---
+$DN,3,691,139027,cpu,71,29,203,425*60
+desknode> pc $DN,3,692,139027,gpu,60,480,510,5990*63
+desknode> pc $DN,3,693,139027,ram,487,319*75
+desknode> pc $DN,3,694,139027,net,0,0*73
+desknode> pc $DN,3,695,139027,disk,0,10298,3386,9038*16
+desknode> I (24216) desknode: up 20 s — vsync=791 — flush=118 cycles=44 — PSRAM libre 7768084 o
+
+--- 2026-08-26 13:41:32.746  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:41:32.746  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:41:32.746  DRAIN (1 o) ---
+ 
+--- 2026-08-26 13:41:32.746  DRAIN (1 o) ---
+$
+--- 2026-08-26 13:41:33.755  DRAIN (247 o) ---
+DN,3,696,140021,cpu,92,26,188,428*60
+desknode> pc $DN,3,697,140021,gpu,50,470,510,5980*63
+desknode> pc $DN,3,698,140021,ram,487,319*76
+desknode> pc $DN,3,699,140021,net,1,1*76
+desknode> pc $DN,3,700,140021,disk,1,10298,3386,9038*12
+desknode> 
+--- 2026-08-26 13:41:33.755  DRAIN (2 o) ---
+pc
+--- 2026-08-26 13:41:33.755  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:41:33.756  DRAIN (3 o) ---
+DN,
+--- 2026-08-26 13:41:33.756  DRAIN (3 o) ---
+3,7
+--- 2026-08-26 13:41:34.756  DRAIN (242 o) ---
+01,141030,cpu,142,32,297,428*5A
+desknode> pc $DN,3,702,141030,gpu,60,470,510,5980*6C
+desknode> pc $DN,3,703,141030,ram,487,319*74
+desknode> pc $DN,3,704,141030,net,1,1*72
+desknode> pc $DN,3,705,141030,disk,1,10310,3383,9038*12
+desknode> 
+--- 2026-08-26 13:41:34.756  DRAIN (2 o) ---
+pc
+--- 2026-08-26 13:41:34.756  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:41:34.757  DRAIN (3 o) ---
+DN,
+--- 2026-08-26 13:41:34.757  DRAIN (2 o) ---
+3,
+--- 2026-08-26 13:41:35.750  DRAIN (243 o) ---
+706,142031,cpu,104,22,281,428*5B
+desknode> pc $DN,3,707,142031,gpu,50,470,510,5980*68
+desknode> pc $DN,3,708,142031,ram,487,319*7D
+desknode> pc $DN,3,709,142031,net,0,0*7D
+desknode> pc $DN,3,710,142031,disk,3,10310,3383,9038*16
+desknode> 
+--- 2026-08-26 13:41:35.750  DRAIN (1 o) ---
+p
+--- 2026-08-26 13:41:35.751  DRAIN (1 o) ---
+c
+--- 2026-08-26 13:41:35.751  DRAIN (2 o) ---
+ $
+--- 2026-08-26 13:41:35.802  DRAIN (249 o) ---
+DN,3,711,143025,cpu,177,32,333,428*54
+desknode> pc $DN,3,712,143025,gpu,140,480,510,5970*58
+desknode> pc $DN,3,713,143025,ram,487,319*73
+desknode> pc $DN,3,714,143025,net,1,1*75
+desknode> pc $DN,3,715,143025,disk,4,10310,3383,9038*10
+desknode> 
+--- 2026-08-26 13:41:35.802  PORT FERME (arret de l'agent) (0 o) ---

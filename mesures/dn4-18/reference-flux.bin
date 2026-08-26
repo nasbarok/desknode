@@ -1,0 +1,155 @@
+N depuis le dernier boot — OU ce firmware n'a JAMAIS tourne sur cette carte (premier boot apres flash : 0x03 vaut alors ce qu'il veut). DEUX causes indiscernables, meme consequence : l'heure portee ne vaut rien. OS tranche, pas ce temoin.
+I (3308) dn_rtc: temoin anti-fantome pose en 0x03 = 0xD7 (relu)
+W (3309) dn_rtc: 🔴 OS = 1 — l'oscillateur s'est ARRETE : l'heure lue (2000-01-01 00:00:03) N'EST PAS FIABLE. La barre affichera « --:-- HEURE NON POSEE ». `rtc set` pour la poser.
+[5nI (4026) dn_cli: console sur USB-Serial/JTAG
+
+Type 'help' to get the list of commands.
+Use UP/DOWN arrows to navigate through command history.
+Press TAB when typing command name to auto-complete.
+
+Your terminal application does not support escape sequences.
+
+Line editing and history features are disabled.
+
+On Windows, try using Windows Terminal or Putty instead.
+desknode> 
+── DeskNode P7 — console de mesure ──
+  scene   affiche une mire : bits|nbits|rgb|red|green|blue|white|black|frame|gray|asset
+  fps     mesure le fps sur N secondes (>= 10) et le confronte à la théorie
+  mem     PSRAM et RAM interne, avant/après framebuffers
+  cpu     cpu [secondes] | cpu brut — charge processeur (AC6)
+  bw      bande passante mesurée des 3 chemins de copie
+  cfg     cfg | cfg reset — config de boot (NVS), active, ou effacée
+  set     set fbs | bounce | lines | drawmem | core <-1|0|1>
+  reboot  redémarre pour appliquer un `set`
+  veille  veille | on|off | delai <1|3|5|10> | now | wake | lat | geom | assets | reset | pct | voile | gris | accents — la VEILLE (dn3-3)
+  tear    tear on|vsync|sync|both|flip|off — déchirement BRUT (dn1-2)
+  flash   flash on|off — stimulus d'écriture flash
+  ui      ui [on|off] | ui label on|off | ui bg flash|psram — LVGL
+  flush   flush | reset | sync off|vsync|fbdone | path bitmap|direct | full — chemin de flush, ET le compteur de GLISSEMENT de trame (dn4-10)
+  anim    anim on [ms] | off — stimulus adverse LVGL (témoin de tearing)
+  touch   touch | reset | mode | axes | trace | int | addr | delais — GT911 (dn1-4)
+  nav     nav | open <n> | back | model | ab <n> — navigation (dn1-4)
+  recal   recal <0..4> — recalage DMA N vsyncs après la bascule (AC5)
+  bl      bl [0..100|on|off|ramp <pct> [ms]|freq <hz>|auto on|off|auto bornes <bas> <haut>|auto pas <n>|auto plancher <n>] — rétroéclairage gradable et asservi (dn1-3/dn4-3)
+  disp    disp on|off — sortie d'affichage de la dalle (0x29/0x28)
+  dma     relance la DMA du panneau (décalage permanent)
+  capteurs capteurs | reset | gaz on|off | simuler <cause> <n> — BME680 (dn2-1) + la pression, mesuree et publiee par dn4-3
+  env     env | reset — BH1750 et VL6180X, les capteurs locaux CADENCES (dn4-3). INA219 : RETIRE DU BUS le 2026-08-21, `env` dit pourquoi
+  w2      w2 | reset — le critere « une case doit BOUGER » mesure sur les candidats de la 6e case (dn4-3/AC6)
+  i2c     i2c | lire <addr> <reg> [n] | lire16 <addr> <reg16> [n] | brut <addr> [n] | ecrire <addr> <o1..o8> | rafale <ms> — scan, transactions et saturation (dn2-1/dn4-2)
+  tof     tof | etat | sr03 | balayage | als <ms> | range [n] — VL6180X : séquence SR03 (AN4545 Rev 1 §9), rejeu du balayage §13.19.5 et télémétrie à trois états (dn4-7)
+  pc      pc | reset | $DN,<trame> — liaison PC : état, compteurs, injection (dn2-2)
+  wifi    wifi [info] | on <ssid> <mdp> | off | ws on|off — branche B (dn2-2)
+  hist    historique de session (dn4-4) : coût RAM, points réels et TROUS par série
+  widget  widget | groupe on|off|union | opa <n> | voile <n> | mock on|off | demo on|off [n] | pousser <n> | oublier <n> | rafale | nue <n> on|off | barre 1hz|minute | bandes on|off | icone <case> <n> | piste <0xRRGGBB> | voie defaut|avantd12|a|b|c|c2|repli | grandeurs <case> <n> | dispo empile|cote|mixte | entete normal|compact | val <y> <pas> | police 14|28 | grille <barre> <menu> | largeur [texte|reset] | detail | replacer on|off — modèle de case (dn3-1/dn3-2/dn4-1/dn4-6)
+  rtc     rtc | set <AAAA-MM-JJ> <HH:MM[:SS]> | reset — horloge PCF85063A (dn3-2)
+  aide    cette aide
+
+état : num_fbs=1 bounce=9600 px · rétroéclairage 100 % · LVGL ACTIF
+       draw buffer 480 x 128 px en RAM interne DMA · synchro flush « vsync »
+       tactile GT911 @ 0x5D · lecture « poll » · vue « dashboard »
+       widgets : 6/6 cases · invalidation « groupée » · opa cases 178, voile 90
+       barre : « --:--  HEURE NON POSÉE » · HH:MM (au chgt de minute) · horloge NON FIABLE (OS=1)
+desknode> pc $DN,3,2,1032,gpu,50,470,510,5950*62
+desknode> pc $DN,3,3,1032,ram,487,319*74
+desknode> pc $DN,3,4,1032,net,0,0*72
+desknode> pc $DN,3,5,1032,disk,6,10573,3583,9136*1F
+desknode> I (474367) desknode: up 470 s — vsync=17627 — flush=2232 cycles=957 — PSRAM libre 7768084 o
+pc $DN,3,6,2037,cpu,93,22,268,433*6D
+desknode> pc $DN,3,7,2037,gpu,40,470,510,5960*63
+desknode> pc $DN,3,8,2037,ram,487,319*79
+desknode> pc $DN,3,9,2037,net,1,0*78
+desknode> pc $DN,3,10,2037,disk,0,10573,3583,9136*2B
+desknode> pc $DN,3,11,3020,cpu,108,32,191,433*6B
+desknode> pc $DN,3,12,3020,gpu,150,480,510,5950*6C
+desknode> pc $DN,3,13,3020,ram,487,319*44
+desknode> pc $DN,3,14,3020,net,1,1*42
+desknode> pc $DN,3,15,3020,disk,2,10573,3583,9136*2B
+desknode> pc $DN,3,16,4032,cpu,84,32,172,435*56
+desknode> pc $DN,3,17,4032,gpu,50,480,510,5960*5F
+desknode> pc $DN,3,18,4032,ram,487,319*4B
+desknode> pc $DN,3,19,4032,net,4,7*48
+desknode> pc $DN,3,20,4032,disk,1,10573,3583,9136*2A
+desknode> pc $DN,3,21,5023,cpu,103,32,356,435*69
+desknode> pc $DN,3,22,5023,gpu,50,470,510,5970*56
+desknode> pc $DN,3,23,5023,ram,487,319*42
+desknode> pc $DN,3,24,5023,net,60,32*43
+desknode> pc $DN,3,25,5023,disk,3,10532,3573,9116*24
+desknode> pc $DN,3,26,6035,cpu,68,31,141,435*51
+desknode> pc $DN,3,27,6035,gpu,120,480,510,5970*6E
+desknode> pc $DN,3,28,6035,ram,487,319*4D
+desknode> pc $DN,3,29,6035,ne
+rtc set 2026-08-26 13:47:32
+I (135659) dn_rtc: heure posee : 2026-08-26 13:47:32 (jsem 3) — OS retombe a 0
+heure posee : 2026-08-26 13:47:32 — etat FIABLE
+   (les 7 registres ont ete RELUS et COMPARES a l'ecriture ;
+    la seconde affichee est celle que la PUCE porte.)
+OS est retombe a 0 : la barre passe de « --:-- HEURE NON POSEE »
+a l'heure reelle.
+desknode> 
+rtc
+horloge PCF85063A @ 0x51 : FIABLE
+lue        : 2026-08-26 13:47:33 (jour de semaine 3) — AFFICHABLE
+age        : 283 ms (peremption 1500 ms, en temps absolu)
+bit OS     : 0 — ✅ l'oscillateur n'a pas decroche depuis la derniere pose
+retention  : 0x00 relu AU BOOT (attendu 0xD7) ⇒ 🔴 ELLE A PERDU SON
+             ALIMENTATION depuis le dernier demarrage — l'heure
+             qu'elle portait est morte avec.
+             📌 MESURE DU 2026-08-18 : cette carte N'A AUCUNE
+             SAUVEGARDE. Coupure USB de 30 s ⇒ OS=1 et
+             2000-01-01 00:00:54. D5 (« pas de batterie ») ne
+             disait rien d'une cellule de backup du RTC : il n'y
+             en a pas. `rtc set` apres chaque coupure secteur.
+temoin     : 0xD7 en 0x03 (attendu 0xD7) — ✅ pas de redemarrage EN COURS DE ROUTE (verdict RUNTIME)
+Control_1  : 0x00 a l'init, 0x00 maintenant
+             STOP=0 · format 24 h · quartz 7 pF
+             ⚠️ CAP_SEL n'est PAS verifie : rien sur cette carte ne dit
+                quel quartz est soude. Mauvais reglage = DERIVE, pas panne.
+registres 0x00..0x11 (RELUS a l'instant) :
+  00 00 00 D7 33 47 13 26 03 08 26 80 80 80 80 80 00 18 
+compteurs  : 266 lectures · 0 reprises · 1 poses
+erreurs    : i2c 0 · bcd 0
+             i2c = elle ne repond plus · bcd = elle repond mais rend
+             un quartet > 9. DEUX diagnostics opposes, deux seaux
+             (lecon dn2-2 : les confondre envoie chercher la panne du
+             cote du cablage, qu'on vient de prouver bon).
+rejets     : bascule 0 · poussee perdue 0
+             🔴 DEUX SEAUX AJOUTES EN REVUE (2026-08-18). Avant, la
+             BASCULE — la seconde a tourne entre le burst et sa
+             relecture, « ni erreur ni donnee » — tombait dans `bcd`
+             et faisait chercher un quartet > 9 sur une puce SAINE.
+             POUSSEE PERDUE = le verrou LVGL n'a pas ete pris, la
+             barre garde son texte ; sans ce compteur une barre
+             figee par contention etait indiscernable d'une barre
+             a jour. Les deux sont NORMAUX en petit nombre.
+etats      : OS vu 265 fois · temoin perdu 0 fois
+pile tache : 2508 o libres sur 4096 (high-water mark RELU)
+             ⚠️ RAM INTERNE — la ressource meme qui a tue la branche
+             WiFi en dn2-2. Reduire cette pile demandera CE chiffre.
+barre      : HH:MM (au changement de minute) · « 13:47 » / « MER. 26 AOÛT » · DESSINEE
+epoque     : 2000..2099 — CHOIX du driver, pas de la puce : le PCF85063A
+             porte l'annee sur 0..99 et n'a AUCUN bit de siecle.
+desknode> Command returned non-zero error code: 0x1 (ERROR)
+desknode> pc $DN,3,2,1032,gpu,50,470,510,5950*62
+desknode> pc $DN,3,3,1032,ram,487,319*74
+desknode> pc $DN,3,4,1032,net,0,0*72
+desknode> pc $DN,3,5,1032,disk,6,10573,3583,9136*1F
+desknode> I (474367) desknode: up 470 s — vsync=17627 — flush=2232 cycles=957 — PSRAM libre 7768084 o
+pc $DN,3,6,2037,cpu,93,22,268,433*6D
+desknode> pc $DN,3,7,2037,gpu,40,470,510,5960*63
+desknode> pc $DN,3,8Command returned non-zero error code: 0x1 (ERROR)
+
+rtc set 2026-08-26 13:47:32
+I (135659) dn_rtc: heure posee : 2026-08-26 13:47:32 (jsem 3) — OS retombe a 0
+heure posee : 2026-08-26 13:47:32 — etat FIABLE
+   (les 7 registres ont ete RELUS et COMPARES a l'ecriture ;
+    la seconde affichee est celle que la PUCE porte.)
+OS est retombe a 0 : la barre passe de « --:-- HEURE NON POSEE »
+a l'heure reelle.
+desknode> 
+rtc
+horloge PCF85063A @ 0x51 : FIABLE
+lue        : 2026-08-26 13:47:33 (jour de semaine 3) — AFFICHABLE
+age        : 283 ms (peremption 1500 ms, en temps absolu)
+bit OS     : 0 — ✅ l'oscillateur n'a pas decroche 
