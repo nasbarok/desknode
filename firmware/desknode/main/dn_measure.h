@@ -220,6 +220,13 @@ void dn_measure_report_fps(const char *etiquette, int seconds);
  *      CONFIG_LCD_RGB_RESTART_IN_VSYNC (esp_lcd_panel_rgb.c:1153-1166). Nous
  *      sommes à `=y` ⇒ ce test N'EXISTE PAS dans notre binaire, et le compteur
  *      qu'il consulte n'est jamais remis à zéro. Rien à lire de ce côté.
+ *      🔴 AMENDÉ LE 2026-08-27 : « NOUS SOMMES À `=y` » EST PÉRIMÉ — le symbole
+ *      vaut `n` depuis `4734d07`, donc cette détection EST dans le binaire et
+ *      le driver relance la DMA lui-même sur famine avérée
+ *      (esp_lcd_panel_rgb.c:1153-1163). ⛔ Ce n'est PAS une voie à instrumenter
+ *      pour autant : elle utilise le MÊME bit que `dn_recal`, et le trou réel
+ *      (« la relance ÉCHOUE parfois, et ça DURE ») demande une mesure de DURÉE
+ *      qui est le sujet de `dn4-12`, ⛔ pas de celle-ci.
  *
  * 🎯 CE QUE CE COMPTEUR MESURE, ET POURQUOI `fps` NE POUVAIT PAS LE VOIR.
  *    `fps` compte 561 vsync sur 15 s et DIVISE : la moyenne efface la gigue.
@@ -286,11 +293,41 @@ typedef struct {
      * ⚠️ Plancher de l'instrument : la MICROSECONDE, soit 16 pixels.
      *    ⛔ « 0 dépassement » ne veut donc PAS dire « 0 pixel ».
      * ⚠️ Les seuils se comptent contre le MINIMUM de la fenêtre (la phase « à
-     *    l'heure »), et les `ph_ecarte` premières trames servent à l'établir. */
+     *    l'heure »), et les `ph_ecarte` premières trames servent à l'établir.
+     * 🔴 AMENDÉ LE 2026-08-27 (revue de code) — ⛔ CETTE LIGNE EST FAUSSE DEPUIS
+     *    LE 2026-08-23, et elle vivait à SIX LIGNES du bloc qui la corrige
+     *    (« LES SEUILS SE COMPTENT CONTRE LE MAXIMUM », juste en dessous).
+     *    `3cc7412` avait corrigé un commentaire sur deux. ⛔ On annote, on
+     *    n'efface pas. Ce qui est vrai : la référence est le MAXIMUM des
+     *    `ph_ecarte` trames de dégrossissage, et elle est FIGÉE (`ph_ref_us`). */
     uint32_t ph_n;         /* échantillons COMPTÉS (dégrossissage exclu) */
     uint32_t ph_ecarte;    /* échantillons du dégrossissage, ⛔ non comptés */
+    /*
+     * 🔴 LES TROIS FAÇONS DONT L'INSTRUMENT JETTE UN ÉCHANTILLON — publiées
+     *    depuis le 2026-08-27 (revue de code). Aucune n'était comptée nulle
+     *    part, et c'est le pire des trois défauts de comptage : la console ne
+     *    pouvait pas distinguer « aucun retard » de « des retards que je ne
+     *    sais pas mesurer ».
+     *  - `ph_rejete`  : phase >= 2 périodes ⇒ hors borne de sanité. ⛔ C'est
+     *                   EXACTEMENT le glissement recherché qui tombe là.
+     *  - `ph_doubles_ecartes` : trame à DEUX enroulements ou plus. Avant, elles
+     *                   alimentaient la phase contre le SECOND enroulement ⇒
+     *                   phase très courte ⇒ déficit maximal ⇒ une corruption
+     *                   FABRIQUÉE par la comptabilité.
+     *  - `ph_dechire` : la paire (`wraps`, `t_wrap`) a été lue incohérente —
+     *                   l'ISR d'enroulement a préempté celle de vsync. Voir
+     *                   l'invariant de concurrence dans dn_measure.c.
+     * ⛔ UN « 0 » SUR LES QUATRE SEUILS NE VAUT QUE SI CES TROIS-LÀ SONT À ZÉRO.
+     */
+    uint32_t ph_rejete;
+    uint32_t ph_doubles_ecartes;
+    uint32_t ph_dechire;
     uint32_t ph_min_us;
     uint32_t ph_max_us;
+    /* La référence des déficits, FIGÉE à la fin du dégrossissage (2026-08-27).
+     * ⚠️ `ph_max_us > ph_ref_us` ⇒ le dégrossissage a raté la phase « à
+     *    l'heure » et les déficits sont SOUS-comptés. La console le dit. */
+    uint32_t ph_ref_us;
     uint64_t ph_somme_us;
     /* 🔴 LES SEUILS SE COMPTENT CONTRE LE **MAXIMUM**, ⛔ pas contre le minimum.
      *    Corrigé le 2026-08-23, DANS LA SÉANCE, par la mesure :
@@ -310,8 +347,16 @@ typedef struct {
     uint32_t ph_deficit_max_us; /* le pire déficit observé */
     uint32_t t_demi_us;    /* écoulement d'un demi-bounce, lu sur le panneau
                             * RÉELLEMENT monté (⛔ pas sur la NVS) */
-    uint32_t us_par_ligne; /* la durée d'une ligne, publiée pour que la sortie
-                            * se suffise à elle-même */
+    /* ⚠️ « publiée pour que la sortie se suffise à elle-même » était FAUX
+     *    jusqu'au 2026-08-27 : ce champ était rempli et AUCUN `printf` de
+     *    dn_console.c ne l'imprimait — un champ mort, documenté comme publié.
+     *    Il l'est désormais, dans le bloc de phase de `flush`. */
+    uint32_t us_par_ligne; /* la durée d'une ligne, ARRONDIE à la µs (38,75 → 39) */
+    /* La période de trame en NANOSECONDES, donc EXACTE (62,5 ns par pixel).
+     * `dn_measure_periode_us()` l'arrondit ; la console imprime les deux, parce
+     * que la troncature entière d'avant le 2026-08-27 fabriquait un « retard
+     * PIRE observé : +1 µs » sur une trame parfaitement à l'heure. */
+    uint32_t periode_ns;
 
     /*
      * 🔴 dn4-5 / AC1.2 — CE CHAMP REBOUCLAIT, ET IL DIT SUR QUELLE DURÉE TOUT
@@ -343,6 +388,20 @@ typedef struct {
     uint32_t fenetre_ms_32; /* la même fenêtre, calculée à l'ancienne (32 bits) */
     bool fenetre_deborde;   /* ⚠️ la fenêtre dépasse 71,58 min : `fenetre_ms_32` MENT */
     bool raz_en_attente;    /* la RAZ n'a pas encore été consommée par l'ISR */
+    /*
+     * 🔴 2026-08-27 (revue de code) — L'EN-TÊTE PROMETTAIT « INSTANTANÉ
+     *    COHÉRENT » PENDANT QUE LE `.c` DÉCLARAIT « NON ATOMIQUE, ET C'EST
+     *    ASSUMÉ ». Deux textes normatifs en désaccord, sur la fonction qui
+     *    produit TOUS les chiffres de la séance. Et l'excuse du `.c` (« une
+     *    incohérence porterait sur UNE trame ») était fausse pour les deux
+     *    sommes 64 bits : lues en deux mots sur un CPU 32 bits, une retenue
+     *    entre les deux les décale de 2^32 µs.
+     * ⇒ La lecture est désormais GARDÉE (encadrement par `s_bnc_raz_gen` +
+     *   double lecture des sommes, côté tâche uniquement, ⛔ aucun verrou sur
+     *   le chemin chaud). Ce drapeau dit quand la garde n'a pas convergé —
+     *   auquel cas le bloc reste imprimé mais il est ÉTIQUETÉ.
+     */
+    bool lecture_dechiree;
 } dn_bounce_stats_t;
 
 /* Arme la remise à zéro. ⚠️ Elle prend effet AU PROCHAIN VSYNC (<= 27 ms), pas
@@ -350,7 +409,12 @@ typedef struct {
  * verrou. `raz_en_attente` le dit à qui lit trop vite. */
 void dn_measure_bounce_reset(void);
 
-/* Instantané cohérent des compteurs. Appelable depuis une tâche uniquement. */
+/* Instantané des compteurs. Appelable depuis une TÂCHE uniquement.
+ * ⚠️ « Cohérent » sans réserve était FAUX (revue du 2026-08-27) : voir
+ *    `lecture_dechiree` ci-dessus. Ce qui est garanti : chaque champ 32 bits
+ *    est lu d'un seul accès ; les deux sommes 64 bits et la paire
+ *    (compteur, base) sont protégées par une garde côté lecteur, et l'échec de
+ *    cette garde est PUBLIÉ au lieu d'être tu. */
 void dn_measure_bounce_get(dn_bounce_stats_t *out);
 
 /* Les trois grandeurs de référence, en microsecondes, calculées depuis les

@@ -1258,7 +1258,13 @@ static int cmd_flush(int argc, char **argv)
         }
         dn_ui_set_sync(m);
         dn_ui_reset_stats();
-        printf("synchro du flush : %s (compteurs remis à zéro)\n",
+        /* 🔴 2026-08-27 (revue de code) — `dn_measure_bounce_reset()` MANQUAIT.
+         *    `flush sync` remettait à zéro les stats de flush et PAS celles du
+         *    glissement : le `flush` suivant imprimait DEUX FENÊTRES DIFFÉRENTES
+         *    CÔTE À CÔTE, sans le dire. Même défaut sur `flush path`. */
+        dn_measure_bounce_reset();
+        printf("synchro du flush : %s (compteurs remis à zéro, GLISSEMENT "
+               "compris)\n",
                dn_flush_sync_name(m));
         if (!dn_ui_active()) {
             /* Revue : accepté mais différé — le dire, sinon le réglage semble agir. */
@@ -1290,7 +1296,9 @@ static int cmd_flush(int argc, char **argv)
             return 1;
         }
         dn_ui_reset_stats();
-        printf("chemin du flush : %s (compteurs remis à zéro)\n",
+        dn_measure_bounce_reset(); /* voir le correctif de `flush sync` ci-dessus */
+        printf("chemin du flush : %s (compteurs remis à zéro, GLISSEMENT "
+               "compris)\n",
                dn_flush_path_name(p));
         if (dn_ui_direct_mode()) {
             /* Revue : en mode direct le chemin n'est JAMAIS lu — l'explication
@@ -1321,7 +1329,19 @@ static int cmd_flush(int argc, char **argv)
      *    rapport de flush sort tot quand `flushes == 0`, et l'instrument
      *    serait alors MUET exactement dans le cas ou le chemin de flush est au
      *    repos — c'est-a-dire le TEMOIN au repos d'AC1. Un instrument aveugle
-     *    a son propre cas de reference est le defaut que ce depot a deja paye. */
+     *    a son propre cas de reference est le defaut que ce depot a deja paye.
+     * 🔴 CORRIGE LE 2026-08-27 (revue de code) — « AVANT TOUT `return` DE CETTE
+     *    FONCTION » ETAIT FAUX, ET C'EST UN COMMENTAIRE QUI MENTAIT SUR SON
+     *    PROPRE FICHIER. QUATRE sous-commandes rendent la main AVANT d'arriver
+     *    ici : `flush reset`, `flush sync`, `flush path` et le refus de
+     *    `flush full`. Ce bloc n'est donc atteint que par `flush` NU et par le
+     *    chemin nominal de `flush full`.
+     *    ⇒ CE QUI EST VRAI : il est place avant le `return` du RAPPORT, donc
+     *      avant la sortie anticipee sur `flushes == 0` — ce qui suffit a tenir
+     *      la raison d'etre ci-dessus. Et les deux sous-commandes qui remettaient
+     *      les stats de flush a zero SANS toucher au glissement (`sync`, `path`)
+     *      appellent desormais `dn_measure_bounce_reset()`, sinon le `flush`
+     *      suivant collait deux fenetres differentes l'une a cote de l'autre. */
     {
         dn_bounce_stats_t b;
         dn_measure_bounce_get(&b);
@@ -1373,6 +1393,15 @@ static int cmd_flush(int argc, char **argv)
             printf("⚠️ remise à zéro ARMÉE mais PAS ENCORE CONSOMMÉE (aucun vsync\n");
             printf("   depuis) : les chiffres ci-dessous sont ceux d'AVANT.\n");
         }
+        if (b.lecture_dechiree) {
+            /* 🔴 2026-08-27 : la garde de lecture n'a pas convergé en trois
+             *    essais. Avant elle, ce cas sortait un `trames ≈ 4,29 x 10^9`
+             *    sans un mot (RAZ consommée entre le compteur et sa base) ou
+             *    une somme décalée de 2^32 µs. On le DIT. */
+            printf("🔴 LECTURE DÉCHIRÉE : une remise à zéro ou une retenue 64\n");
+            printf("   bits est tombée pendant la copie, 3 essais n'ont pas\n");
+            printf("   convergé. ⛔ NE RIEN CONCLURE de ce bloc — retaper `flush`.\n");
+        }
         printf("  trames (vsync)   : %lu · enroulements : %lu\n",
                (unsigned long)b.trames, (unsigned long)b.wraps);
         printf("  trames SANS enroulement : %lu · à deux ou plus : %lu\n",
@@ -1385,11 +1414,19 @@ static int cmd_flush(int argc, char **argv)
                    (unsigned long)b.intervalles, (unsigned long)b.inter_min_us,
                    (unsigned long)(b.inter_somme_us / b.intervalles),
                    (unsigned long)b.inter_max_us);
-            printf("     (période théorique %lu us = %d x %d / %d Hz)\n",
-                   (unsigned long)per, DN_LCD_H_RES + DN_HSYNC_PULSE +
+            printf("     (période théorique %lu,%03lu us = %d x %d / %d Hz)\n",
+                   (unsigned long)(b.periode_ns / 1000u),
+                   (unsigned long)(b.periode_ns % 1000u),
+                   DN_LCD_H_RES + DN_HSYNC_PULSE +
                    DN_HSYNC_BACK_PORCH + DN_HSYNC_FRONT_PORCH,
                    DN_LCD_V_RES + DN_VSYNC_PULSE + DN_VSYNC_BACK_PORCH +
                    DN_VSYNC_FRONT_PORCH, DN_PCLK_HZ);
+            /* 🔴 2026-08-27 : la période était TRONQUÉE (26 737 au lieu de
+             *    26 737,5), et la ligne « retard PIRE observé : +1 us »
+             *    ci-dessous sortait donc SUR UNE TRAME PARFAITEMENT À L'HEURE —
+             *    à comparer aux « +16 us » publiés comme résultat au repos. Elle
+             *    est arrondie au plus proche, et la valeur EXACTE est imprimée
+             *    en ns juste au-dessus. */
             if (b.inter_max_us > per) {
                 printf("     retard PIRE observé : +%lu us sur la période\n",
                        (unsigned long)(b.inter_max_us - per));
@@ -1401,19 +1438,59 @@ static int cmd_flush(int argc, char **argv)
                    (unsigned long)b.retards_vb,
                    (unsigned long)b.retards_trame);
         }
+        /* ─── LES ÉCHANTILLONS QUE L'INSTRUMENT A JETÉS ────────────────────
+         * 🔴 PUBLIÉS DEPUIS LE 2026-08-27 (revue de code). Aucun des trois
+         *    n'était compté nulle part, et le premier est le plus grave : la
+         *    borne de sanité écarte EXACTEMENT le glissement recherché.
+         * ⛔ UN « 0 » SUR LES QUATRE SEUILS NE VAUT QUE SI CES TROIS-LÀ SONT À
+         *    ZÉRO. Sinon la bonne lecture n'est pas « pas de corruption », c'est
+         *    « des retards trop gros, trop doubles ou trop déchirés pour moi ». */
+        if (b.ph_rejete || b.ph_doubles_ecartes || b.ph_dechire) {
+            printf("  🔴 ÉCHANTILLONS DE PHASE JETÉS : %lu hors borne de sanité "
+                   "(>= 2 périodes) · %lu trames à 2+ enroulements · %lu paires "
+                   "(wraps,t_wrap) déchirées\n",
+                   (unsigned long)b.ph_rejete,
+                   (unsigned long)b.ph_doubles_ecartes,
+                   (unsigned long)b.ph_dechire);
+            if (b.ph_rejete) {
+                printf("     ⛔ les « hors borne » SONT LES PIRES RETARDS : un "
+                       "zéro plus bas ne veut pas dire « aucune corruption ».\n");
+            }
+        }
         if (b.ph_n == 0) {
             printf("  phase enroulement→vsync : aucun échantillon compté (%lu "
                    "écartés au dégrossissage)\n", (unsigned long)b.ph_ecarte);
         } else {
-            printf("  🎯 phase enroulement→VSYNC_END : n=%lu (+%lu dégrossis) · "
-                   "min %lu · moy %lu · MAX %lu us\n",
-                   (unsigned long)b.ph_n, (unsigned long)b.ph_ecarte,
+            printf("  🎯 phase enroulement→VSYNC_END : n=%lu · min %lu · moy %lu "
+                   "· MAX %lu us   (+%lu trames de dégrossissage, ⛔ HORS de ces "
+                   "trois statistiques)\n",
+                   (unsigned long)b.ph_n,
                    (unsigned long)b.ph_min_us,
                    (unsigned long)(b.ph_somme_us / b.ph_n),
-                   (unsigned long)b.ph_max_us);
+                   (unsigned long)b.ph_max_us, (unsigned long)b.ph_ecarte);
+            /* 🔴 2026-08-27 : `min`/`MAX` intégraient les 32 trames de
+             *    dégrossissage, `moy` non — et la ligne présentait les trois
+             *    comme issues du même `n`. Les chiffres publiés en §20.7.5
+             *    (`min 1915 · moy 1961 · MAX 1978`) mélangeaient donc deux
+             *    échantillons. Les trois portent désormais sur la MÊME
+             *    population, et le dégrossissage est annoncé à part. */
             printf("     une phase COURTE = l'enroulement EN RETARD = le "
                    "remplissage du bounce qui décroche.\n");
-            printf("     🔴 DÉFICIT PIRE sous le max : %lu us, pour un "
+            printf("     référence des déficits (FIGÉE après dégrossissage) : "
+                   "%lu us · 1 ligne = %lu us\n",
+                   (unsigned long)b.ph_ref_us, (unsigned long)b.us_par_ligne);
+            if (b.ph_max_us > b.ph_ref_us) {
+                /* La contre-épreuve de la référence figée : si la population
+                 * comptée dépasse la référence, le dégrossissage a été pris
+                 * dans un régime déjà dégradé et les déficits sont SOUS-comptés. */
+                printf("     ⚠️ MAX (%lu) > référence (%lu) : le dégrossissage a "
+                       "raté la phase « à l'heure » ⇒ les déficits ci-dessous "
+                       "sont SOUS-comptés de %lu us. Refaire `flush reset` au "
+                       "REPOS avant de conclure.\n",
+                       (unsigned long)b.ph_max_us, (unsigned long)b.ph_ref_us,
+                       (unsigned long)(b.ph_max_us - b.ph_ref_us));
+            }
+            printf("     🔴 DÉFICIT PIRE sous la référence : %lu us, pour un "
                    "demi-bounce qui s'écoule en %lu us\n",
                    (unsigned long)b.ph_deficit_max_us, (unsigned long)b.t_demi_us);
             if (b.t_demi_us && b.ph_deficit_max_us > b.t_demi_us) {
@@ -1427,15 +1504,51 @@ static int cmd_flush(int argc, char **argv)
                        (unsigned long)((b.t_demi_us - b.ph_deficit_max_us) * 100u /
                                        b.t_demi_us));
             }
-            printf("     trames dont le déficit dépasse : 10 %% %lu · 25 %% %lu · "
-                   "50 %% %lu · 🔴 100 %% (CORRUPTION) %lu\n",
-                   (unsigned long)b.ph_10pc, (unsigned long)b.ph_25pc,
-                   (unsigned long)b.ph_50pc, (unsigned long)b.ph_100pc);
+            if (b.t_demi_us == 0u) {
+                /* 🔴 LE COMPTEUR DÉCORATIF, FERMÉ LE 2026-08-27. À
+                 *    `bounce_px < 480` (0 compris, et 0 est LÉGAL), le
+                 *    demi-bounce vaut 0 us, l'ISR saute tout le bloc de seuils,
+                 *    et cette ligne imprimait « 🔴 100 % (CORRUPTION) 0 » :
+                 *    quatre zéros qui se lisent « aucune corruption » alors que
+                 *    RIEN n'a été mesuré. On refuse la ligne au lieu de la
+                 *    remplir de zéros. */
+                printf("     🔴 SEUILS DÉSARMÉS : bounce_px < %d px ⇒ "
+                       "demi-bounce = 0 us ⇒ les quatre compteurs de déficit "
+                       "N'ONT RIEN MESURÉ. ⛔ Aucun chiffre n'est publié ici : "
+                       "un zéro se lirait « aucune corruption ».\n",
+                       DN_LCD_H_RES);
+                printf("        ⇒ `set bounce %d` puis `reboot` pour réarmer.\n",
+                       dn_bootcfg_defaut_bounce_px());
+            } else {
+                printf("     trames dont le déficit dépasse : 10 %% %lu · 25 %% %lu · "
+                       "50 %% %lu · 🔴 100 %% (CORRUPTION) %lu\n",
+                       (unsigned long)b.ph_10pc, (unsigned long)b.ph_25pc,
+                       (unsigned long)b.ph_50pc, (unsigned long)b.ph_100pc);
+                /* 🔴 2026-08-27 : ces quatre seaux sont EMBOÎTÉS, et la sortie
+                 *    les présentait comme des paliers distincts. Un déficit
+                 *    > 100 % incrémente aussi 50, 25 et 10 % : un lecteur qui
+                 *    sommait les quatre comptait les pires JUSQU'À QUATRE FOIS. */
+                printf("     ⛔ CUMULS EMBOÎTÉS, ⛔ pas des paliers disjoints : "
+                       "un déficit > 100 %% compte dans LES QUATRE. Ne pas les "
+                       "sommer.\n");
+            }
             printf("     ⚠️ PLANCHER : la microseconde, soit 16 px. ⛔ « 0 » ici ne "
                    "veut PAS dire « 0 pixel ».\n");
             printf("     ⚠️ L'horodatage de référence vient LUI AUSSI d'une ISR : "
                    "un retard COMMUN aux deux s'annule et reste invisible.\n");
         }
+        /*
+         * 🔴 CORRIGÉ LE 2026-08-27 (revue de code) — CES LIGNES SORTAIENT
+         *    INCONDITIONNELLEMENT, ET ELLES SONT FAUSSES DEPUIS `4734d07`.
+         *    Vérifié : aucune directive `#if` n'encadrait ce bloc, ce n'était
+         *    donc pas une branche compilée mais un `printf` qui sortait à tous
+         *    les coups. ⛔ Et ce n'est pas un commentaire de code : c'est LA
+         *    SORTIE DE L'INSTRUMENT, celui dont on lit les corruptions. Un
+         *    opérateur qui mesure lisait une explication décrivant LA
+         *    CONFIGURATION OPPOSÉE à celle qu'il exécutait — troisième récidive
+         *    de la classe de défaut que dn3-2 AC9 a payée.
+         */
+#if CONFIG_LCD_RGB_RESTART_IN_VSYNC
         printf("  ce que ça veut dire : le driver RGB remet la DMA à zéro à\n");
         printf("     CHAQUE VBlank (RESTART_IN_VSYNC=y) et écrit lui-même que\n");
         printf("     « si cette interruption est ASSEZ EN RETARD, l'image se\n");
@@ -1443,6 +1556,22 @@ static int cmd_flush(int argc, char **argv)
         printf("     est le back porch, %lu us — pas le VBlank entier (%lu us),\n",
                (unsigned long)bp, (unsigned long)vb);
         printf("     car VSYNC_END tombe à la FIN de l'impulsion.\n");
+#else
+        printf("  ce que ça veut dire : RESTART_IN_VSYNC=**n** dans CE binaire.\n");
+        printf("     Le driver ne remet PLUS la DMA à zéro à chaque VBlank — et\n");
+        printf("     c'est ce reset-là, quand l'ISR était en retard, qui\n");
+        printf("     DÉCALAIT l'image (esp_lcd_panel_rgb.c:1142-1148). Le\n");
+        printf("     glissement périodique est fermé par là (`4734d07`).\n");
+        printf("     ⛔ CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT :\n");
+        printf("     à `n` c'est le DÉPASSEMENT du seuil qui suit l'œil, pas le\n");
+        printf("     compte. Le budget de l'ISR reste le back porch, %lu us —\n",
+               (unsigned long)bp);
+        printf("     pas le VBlank entier (%lu us), car VSYNC_END tombe à la FIN\n",
+               (unsigned long)vb);
+        printf("     de l'impulsion.\n");
+        printf("     ⚠️ le driver garde SA propre relance sur famine avérée\n");
+        printf("     (esp_lcd_panel_rgb.c:1153-1163), compilée dans ce binaire.\n");
+#endif
         printf("  ⛔ un compteur à zéro ne prouve RIEN tant que le témoin ne\n");
         printf("     l'a pas fait bouger, et la correspondance avec l'œil est\n");
         printf("     un RÉSULTAT à établir, pas une hypothèse. ⛔ `fps` reste\n");
@@ -2411,11 +2540,20 @@ static int cmd_recal(int argc, char **argv)
                "retour : %s\n",
                (unsigned long)dn_recal_count(), (unsigned long)dn_recal_rate(),
                esp_err_to_name((esp_err_t)dn_recal_last_err()));
+        /* 🔴 CORRIGÉ LE 2026-08-27 (revue de code) — CETTE LIGNE SE
+         *    CONTREDISAIT AVEC CELLE JUSTE AU-DESSUS. Elle affirmait « jamais
+         *    d'armement » à `num_fbs = 1`, deux lignes sous « recalages joués :
+         *    1 ». Or `desknode_main.c` arme PRÉCISÉMENT à `num_fbs = 1` depuis
+         *    `4734d07` : c'est le recalage d'AMORÇAGE, et sans lui l'image sort
+         *    décalée en permanence. ⚠️ Aggravant : le log de boot envoie
+         *    explicitement l'opérateur sur cette commande. */
         printf("  num_fbs actif : %d%s\n", dn_display_num_fbs(),
                dn_display_num_fbs() > 1
-                   ? ""
-                   : " — à UN framebuffer il n'y a pas de bascule, donc jamais "
-                     "d'armement");
+                   ? " — le recalage de BASCULE est actif"
+                   : " — pas de bascule, donc pas de recalage de bascule ; mais "
+                     "le recalage d'AMORÇAGE est armé UNE FOIS au boot par "
+                     "desknode_main (⛔ un one-shot, aucune parade automatique "
+                     "ensuite)");
 #if CONFIG_LCD_RGB_RESTART_IN_VSYNC
         printf("⚠️ INERTE dans ce build : CONFIG_LCD_RGB_RESTART_IN_VSYNC=y, le\n");
         printf("   bit posé par esp_lcd_rgb_panel_restart() n'est JAMAIS lu\n");
@@ -9281,7 +9419,15 @@ void dn_console_banner(void)
     printf("       widgets : %d/%d cases · invalidation « %s » · opa cases %u, "
            "voile %u\n",
            n_widgets, DN_UI_METRIQUES,
-           dn_widget_groupage() ? "groupée" : "fine", dn_widget_opa(),
+           /* 🔴 CORRIGÉ LE 2026-08-27 (revue) — le bandeau annonçait « fine »
+            *    sous `widget groupe union`. Le diff de `c9ac2c1` avait corrigé
+            *    UN des deux lecteurs du mode (l'autre est dans `cmd_widget`) et
+            *    laissé celui-ci. Grep sur tout l'arbre : exactement deux sites.
+            *    ⛔ Et le commentaire posé juste au-dessus de ce bandeau écrit
+            *    « chaque chiffre ici vient de la fonction qui détient l'état ». */
+           dn_widget_groupe_union() ? "union"
+                                    : dn_widget_groupage() ? "groupée" : "fine",
+           dn_widget_opa(),
            dn_ui_voile_opa());
     /* La barre heure/date (dn3-2) — RELUE, comme tout le reste de ce bandeau.
      * ⚠️ On imprime l'ÉTAT DE L'HORLOGE, pas seulement le texte : « --:-- » sans

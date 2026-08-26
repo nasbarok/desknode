@@ -2,6 +2,7 @@
 
 #include <math.h>
 
+#include "dn_bootcfg.h"
 #include "dn_display.h"
 #include "dn_pins.h"
 #include "esp_attr.h"
@@ -76,8 +77,33 @@ static size_t s_psram_apres;
  *        tout le reste, Y COMPRIS la consommation de la RAZ.
  *     ecrite par la tache console :
  *        s_bnc_raz, et RIEN d'autre.
+ *     ecrite par la TACHE DE BOOT, une fois, AVANT tout enregistrement de
+ *     callback (donc avant que la moindre ISR ne puisse la lire) :
+ *        s_bnc_t_demi_us      <-- 🔴 AJOUTEE LE 2026-08-27 : elle etait
+ *        PARTAGEE tache -> ISR, NON `volatile`, et ne figurait dans AUCUN
+ *        des trois jeux ci-dessus. L'enumeration se disait exhaustive.
  *   => aucun verrou, aucune section critique, sur un chemin qui tire
  *      37,40 fois par seconde et dont on mesure justement le retard.
+ *
+ * 🔴 CE QUE CET INVARIANT NE GARANTIT PAS, ET C'EST VERIFIE PAR LECTURE DE
+ *    L'IDF LE 2026-08-27 (revue de code). Le fichier affirmait ailleurs que
+ *    « les deux ISR sont sur le meme coeur au meme niveau de priorite, donc
+ *    elles ne se preemptent pas ». C'EST UNE HYPOTHESE, PAS UN FAIT :
+ *      - `on_vsync` <- `rgb_lcd_default_isr_handler` (esp_lcd_panel_rgb.c:1247),
+ *        interruption du peripherique LCD, allouee :362 avec
+ *        `LCD_RGB_INTR_ALLOC_FLAGS | ESP_INTR_FLAG_SHARED | ESP_INTR_FLAG_LOWMED` ;
+ *      - `on_frame_buf_complete` <- `lcd_rgb_panel_eof_handler` (:948), callback
+ *        GDMA enregistre :1029, dont l'ISR est allouee dans gdma.c:962 avec
+ *        `ESP_INTR_FLAG_INTRDISABLED | ESP_INTR_FLAG_LOWMED | ESP_INTR_FLAG_SHARED`.
+ *    `ESP_INTR_FLAG_LOWMED` couvre les NIVEAUX 1, 2 ET 3, et l'allocateur prend
+ *    le vecteur libre le mieux place (intr_alloc.c:395-425). RIEN, dans aucun
+ *    des deux pilotes, n'impose aux deux le MEME niveau. A niveaux differents,
+ *    l'ISR d'enroulement PEUT preempter celle de vsync.
+ *    ⇒ La seule paire exposee est (s_bnc_wraps, s_bnc_t_wrap_us), ecrite en
+ *      deux stores et lue en deux temps. Elle est desormais protegee par une
+ *      GARDE DE DECHIRURE dans `on_vsync` (relecture de `s_bnc_wraps` apres
+ *      l'horodatage), et les echantillons jetes sont comptes (`ph_dechire`).
+ *      ⛔ Toujours aucun verrou : on mesure une famine, on ne la fabrique pas.
  *
  * ⛔ AUCUN ESP_LOGx ici : le port serie EST le transport de la mesure, et
  *    journaliser depuis l'ISR a la frequence du defaut le FABRIQUERAIT.
@@ -91,12 +117,27 @@ static size_t s_psram_apres;
     (DN_LCD_H_RES + DN_HSYNC_PULSE + DN_HSYNC_BACK_PORCH + DN_HSYNC_FRONT_PORCH)
 #define DN_VTOTAL_LI                                                          \
     (DN_LCD_V_RES + DN_VSYNC_PULSE + DN_VSYNC_BACK_PORCH + DN_VSYNC_FRONT_PORCH)
-#define DN_US_POUR_LIGNES(n)                                                  \
-    ((uint32_t)(((uint64_t)DN_HTOTAL_PX * (uint64_t)(n) * 1000000ULL) /        \
+/* 🔴 CORRIGE LE 2026-08-27 (revue de code, constat « troncature entiere ») —
+ *    ⛔ CE N'ETAIT PAS UN ARRONDI SANS CONSEQUENCE, C'ETAIT UN COMPTEUR QUI
+ *    FABRIQUAIT DU RETARD. `620 x n / 16` n'est entier que si `n = 0 [4]` :
+ *    la periode valait 26 737 us au lieu de 26 737,5 => `flush` imprimait
+ *    « retard PIRE observe : +1 us » SUR UNE TRAME PARFAITEMENT A L'HEURE,
+ *    a comparer aux « +16 us » publies comme resultat au repos. Et
+ *    `t_demi_us` etait sous-estime de ~2 % pour bounce_px = 480, 960, 2400 et
+ *    4800 — dont DEUX des six points du balayage de §20.7.6, donc un
+ *    SUR-COMPTAGE des franchissements precisement la.
+ * ⇒ On calcule en NANOSECONDES (exact : 62,5 ns par pixel a 16 MHz, donc
+ *   tout multiple de 2 pixels tombe juste) et on arrondit AU PLUS PROCHE pour
+ *   la vue en microsecondes. La valeur exacte reste publiee a cote, en ns :
+ *   la sortie console dit desormais 26 737,500 us, ⛔ pas 26 737. */
+#define DN_NS_POUR_LIGNES(n)                                                  \
+    ((uint32_t)(((uint64_t)DN_HTOTAL_PX * (uint64_t)(n) * 1000000000ULL) /     \
                 (uint64_t)DN_PCLK_HZ))
+#define DN_US_POUR_LIGNES(n) ((uint32_t)((DN_NS_POUR_LIGNES(n) + 500u) / 1000u))
 
-/* 620 x 690 / 16 MHz = 26 737 us */
+/* 620 x 690 / 16 MHz = 26 737,5 us — arrondi a 26 738, exact en ns. */
 #define DN_PERIODE_US DN_US_POUR_LIGNES(DN_VTOTAL_LI)
+#define DN_PERIODE_NS DN_NS_POUR_LIGNES(DN_VTOTAL_LI)
 /* 620 x 20 / 16 MHz = 775 us — le budget REEL de l'ISR : VSYNC_END tombe a la
  * FIN de l'impulsion, il ne reste que le back porch avant que le controleur ne
  * redemande des pixels. */
@@ -162,6 +203,11 @@ static volatile uint32_t s_bnc_ret_trame;
  *      Un retard COMMUN aux deux s'annule et reste invisible. Les deux ISR sont
  *      sur le meme coeur au meme niveau de priorite, donc elles ne se preemptent
  *      pas ; mais un tiers qui les retarderait ENSEMBLE passerait au travers.
+ *      🔴 AMENDE LE 2026-08-27 : « AU MEME NIVEAU DE PRIORITE » N'EST PAS
+ *      GARANTI — les deux sources sont allouees en `ESP_INTR_FLAG_LOWMED`
+ *      (niveaux 1|2|3) sans contrainte d'egalite. Detail et references exactes
+ *      dans l'invariant en tete de fichier. La preemption est desormais
+ *      DETECTEE, ⛔ plus supposee absente.
  *    - la resolution est la MICROSECONDE (`esp_timer`), soit 16 pixels. Un
  *      decalage de moins de 16 px reste sous le plancher de l'instrument.
  *      ⛔ Donc « 0 depassement » ne veut PAS dire « 0 pixel ».
@@ -170,7 +216,16 @@ static volatile uint32_t s_bnc_ret_trame;
  *    par rapport au MINIMUM observe dans la fenetre — la phase « a l'heure ».
  *    Les 32 premieres trames servent a l'etablir et ne sont PAS comptees ; sans
  *    ce degrossissage, un minimum encore haut ferait passer les premiers
- *    echantillons pour des retards. Le nombre de trames ecartees est PUBLIE. */
+ *    echantillons pour des retards. Le nombre de trames ecartees est PUBLIE.
+ * 🔴 AMENDE LE 2026-08-27 (revue de code) — ⛔ « PAR RAPPORT AU MINIMUM » EST
+ *    FAUX DEPUIS LE 2026-08-23, ET CE PARAGRAPHE LE DISAIT ENCORE A SIX LIGNES
+ *    DE SON PROPRE CORRECTIF (le bloc « SEUILS REFERENCES AU MAXIMUM » juste
+ *    en dessous). `3cc7412` avait corrige UN commentaire sur DEUX. C'est
+ *    litteralement le defaut « doc et code en desaccord » que dn3-2 AC9 a paye.
+ *    ⛔ ON ANNOTE, ON N'EFFACE PAS : ce texte reste pour dire ce qu'on croyait.
+ * ⇒ CE QUI EST VRAI AUJOURD'HUI : les seuils se comptent contre une REFERENCE
+ *   FIGEE, egale au MAXIMUM des trames de degrossissage — ⛔ ni le minimum, ni
+ *   un maximum glissant. Voir `s_bnc_ph_ref_us`. */
 #define DN_PHASE_DEGROSSI 32u
 /* 1 px = 1/16 MHz = 62,5 ns ; 1 ligne = htotal px = 620/16 MHz = 38,75 us. */
 #define DN_US_PAR_LIGNE DN_US_POUR_LIGNES(1)
@@ -193,8 +248,47 @@ static volatile uint64_t s_bnc_ph_somme;
  *    rempli. A `bounce_px = 7680` elle vaut 620 us — et le deficit mesure sous
  *    trafic est de 741 us, soit 121 us AU-DELA. C'est le decalage que l'owner
  *    voit. */
-static uint32_t s_bnc_t_demi_us;         /* ecoulement d'un demi-bounce, pose a l'attache */
-static volatile uint32_t s_bnc_ph_10pc;  /* deficit sous le max > 10 % du demi-bounce */
+/* 🔴 `volatile` DEPUIS LE 2026-08-27 (revue) — ⛔ ELLE NE L'ETAIT PAS, ET ELLE
+ *    EST PARTAGEE TACHE -> ISR. Elle est ecrite UNE FOIS par `dn_measure_attach()`
+ *    (tache de boot) et lue a CHAQUE trame par l'ISR de vsync. Sans `volatile`
+ *    le compilateur avait le droit de la garder en registre ; et elle
+ *    n'apparaissait dans AUCUN des trois jeux de l'invariant en tete de fichier.
+ *    ⇒ elle y est nommee desormais : ECRITE PAR LA TACHE DE BOOT, AVANT que le
+ *    moindre callback ne soit enregistre — voir `dn_measure_attach()`. */
+static volatile uint32_t s_bnc_t_demi_us; /* ecoulement d'un demi-bounce, pose a l'attache */
+
+/* 🔴 LA REFERENCE DE PHASE EST FIGEE, ⛔ CE N'EST PLUS UN MAXIMUM GLISSANT —
+ *    corrige le 2026-08-27 (revue de code, constat « reference a cliquet »).
+ *    AVANT : `s_bnc_ph_max` etait mis a jour avec l'echantillon COURANT puis
+ *    servait de reference au deficit de CE MEME echantillon, et ne redescendait
+ *    JAMAIS. Consequences MESURABLES sur les chiffres deja publies :
+ *      - UN SEUL retard ponctuel (la borne de sanite en laisse passer jusqu'a
+ *        27 x la phase nominale) saturait « CORRUPTION » a 37,4/s pour TOUT LE
+ *        RESTE de la fenetre ;
+ *      - le meme jeu de valeurs dans l'ORDRE INVERSE rendait un `ph_100pc`
+ *        DIFFERENT — un instrument qui depend de l'ordre n'est pas un instrument ;
+ *      - et le protocole A/B qui a justifie la bascule du groupage ne remet pas
+ *        les compteurs a zero entre les bras : le bras 1 fixait la reference, le
+ *        bras 2 en HERITAIT.
+ * ⇒ La reference est desormais le maximum des `DN_PHASE_DEGROSSI` trames de
+ *   degrossissage, POSE UNE FOIS puis FIGE jusqu'a la prochaine RAZ.
+ * ⚠️ CE QUE CA COUTE, ET IL FAUT LE SAVOIR : la reference se decide sur 32
+ *    trames, soit ~0,86 s. Si le degrossissage tombe dans un regime DEJA
+ *    degrade, la reference est trop BASSE et les deficits sont SOUS-comptes.
+ *    C'est pourquoi `ph_max` (le maximum sur la population COMPTEE) est publie
+ *    A COTE : `ph_max > ph_ref` est le signe que le degrossissage a rate la
+ *    phase « a l'heure », et la console le DIT. */
+static volatile uint32_t s_bnc_ph_ref_us;   /* reference FIGEE apres degrossissage */
+static volatile uint32_t s_bnc_ph_ref_seed; /* maximum vu PENDANT le degrossissage */
+/* 🔴 LES ECHANTILLONS QUE L'INSTRUMENT JETTE SONT DESORMAIS COMPTES — c'est le
+ *    constat le plus court de la revue et le plus embarrassant : la borne de
+ *    sanite (`ph >= 2 x DN_PERIODE_US`) ecarte EXACTEMENT le glissement recherche
+ *    et ne l'incrementait NULLE PART. La console ne pouvait donc pas distinguer
+ *    « aucun retard » de « des retards trop gros pour l'instrument ». */
+static volatile uint32_t s_bnc_ph_rejete;   /* hors borne de sanite — LES PIRES */
+static volatile uint32_t s_bnc_ph_doubles_ec; /* trames a >= 2 enroulements, ecartees */
+static volatile uint32_t s_bnc_ph_dechire;  /* paire (wraps, t_wrap) lue DECHIREE */
+static volatile uint32_t s_bnc_ph_10pc;  /* deficit sous la reference > 10 % du demi-bounce */
 static volatile uint32_t s_bnc_ph_25pc;  /* > 25 % */
 static volatile uint32_t s_bnc_ph_50pc;  /* > 50 % */
 static volatile uint32_t s_bnc_ph_100pc; /* > 100 % — 🔴 LE SEUIL DE CORRUPTION */
@@ -297,6 +391,11 @@ static IRAM_ATTR bool on_vsync(esp_lcd_panel_handle_t panel,
         s_bnc_ph_100pc = 0;
         s_bnc_ph_deficit_max = 0;
         s_bnc_ph_ecarte = 0;
+        s_bnc_ph_ref_us = 0;
+        s_bnc_ph_ref_seed = 0;
+        s_bnc_ph_rejete = 0;
+        s_bnc_ph_doubles_ec = 0;
+        s_bnc_ph_dechire = 0;
     } else {
         /* (a) comptabilite des enroulements : `wraps` doit suivre `trames` UN
          *     pour UN. La soustraction non signee absorbe l'enroulement 32 bits. */
@@ -313,22 +412,63 @@ static IRAM_ATTR bool on_vsync(esp_lcd_panel_handle_t panel,
          * enroulement a bien eu lieu dans la trame : sinon l'horodatage de
          * reference appartient a une trame anterieure et la phase mesurerait
          * une periode entiere de plus. */
-        if (n >= 1) {
-            uint32_t ph = t_us - s_bnc_t_wrap_us;
-            if (ph < 2u * DN_PERIODE_US) { /* borne de sanite : jamais > 2 trames */
-                if (s_bnc_ph_n < DN_PHASE_DEGROSSI) {
-                    /* Degrossissage : on etablit le MAXIMUM (la phase « a
-                     * l'heure »), on ne compte pas. */
-                    if (ph > s_bnc_ph_max) {
-                        s_bnc_ph_max = ph;
+        /* 🔴 `n == 1`, ⛔ PLUS `n >= 1` — corrige le 2026-08-27 (revue).
+         *    A DEUX enroulements dans la trame, `s_bnc_t_wrap_us` est celui du
+         *    SECOND : la phase mesuree est tres courte, donc le deficit est
+         *    MAXIMAL, donc `ph_100pc++`. Une corruption FABRIQUEE par la
+         *    comptabilite. Ces trames sont desormais ECARTEES et COMPTEES
+         *    (`ph_doubles_ec`), en regard de `doubles` qui existait deja mais
+         *    qu'aucune sortie ne croisait avec la phase. */
+        if (n == 1) {
+            /* ⚠️ GARDE DE DECHIRURE SUR LA PAIRE (wraps, t_wrap) — posee le
+             *    2026-08-27 apres verification PAR LECTURE de l'IDF. L'invariant
+             *    du fichier disait « les deux ISR sont sur le meme coeur au meme
+             *    niveau de priorite, donc elles ne se preemptent pas » : cette
+             *    affirmation N'EST PAS GARANTIE PAR CONSTRUCTION. `on_vsync` est
+             *    servi par `rgb_lcd_default_isr_handler` (esp_lcd_panel_rgb.c:1247,
+             *    alloue :362 avec `ESP_INTR_FLAG_LOWMED | ESP_INTR_FLAG_SHARED`)
+             *    et `on_frame_buf_complete` par `lcd_rgb_panel_eof_handler`
+             *    (:948, callback GDMA enregistre :1029, alloue dans gdma.c:962
+             *    avec les MEMES drapeaux). `ESP_INTR_FLAG_LOWMED` = niveaux
+             *    1|2|3, et l'allocateur choisit le vecteur LIBRE le mieux place
+             *    (intr_alloc.c:395-425) : RIEN n'impose aux deux le meme niveau.
+             *    A niveaux differents, l'ISR d'enroulement PEUT preempter celle
+             *    de vsync entre les deux stores l.373-374 — et on lirait alors
+             *    l'horodatage d'un enroulement avec le compte d'un autre.
+             * ⇒ On relit `s_bnc_wraps` APRES l'horodatage. S'il a bouge, la
+             *   paire est incoherente : on jette l'echantillon et ON LE COMPTE.
+             *   Cout : deux chargements et une comparaison, 37,40 fois par
+             *   seconde. ⛔ On ne prend pas de verrou sur le chemin qu'on mesure. */
+            uint32_t tw = s_bnc_t_wrap_us;
+            uint32_t w2 = s_bnc_wraps;
+            if (w2 != w) {
+                s_bnc_ph_dechire++;
+            } else {
+                uint32_t ph = t_us - tw;
+                if (ph >= 2u * DN_PERIODE_US) {
+                    /* 🔴 LA BORNE DE SANITE ECARTE EXACTEMENT LE GLISSEMENT
+                     *    RECHERCHE — et jusqu'au 2026-08-27 elle le jetait SANS
+                     *    RIEN INCREMENTER. Un « 0 » de la console pouvait donc
+                     *    vouloir dire « aucun retard » OU « des retards trop gros
+                     *    pour l'instrument », sans qu'on puisse les distinguer. */
+                    s_bnc_ph_rejete++;
+                } else if (s_bnc_ph_ecarte < DN_PHASE_DEGROSSI) {
+                    /* Degrossissage : on etablit la REFERENCE (la phase « a
+                     * l'heure »), on ne compte pas. ⛔ Et on ne touche NI
+                     * `ph_min` NI `ph_max` : ces deux-la portent desormais sur
+                     * LA MEME population que `moy`, ce qui n'etait pas le cas
+                     * avant le 2026-08-27 (les 32 trames de degrossissage
+                     * entraient dans min/MAX mais pas dans somme/n, et la ligne
+                     * console presentait les trois comme issues du meme `n`). */
+                    if (ph > s_bnc_ph_ref_seed) {
+                        s_bnc_ph_ref_seed = ph;
                     }
-                    if (s_bnc_ph_n == 0 || ph < s_bnc_ph_min) {
-                        s_bnc_ph_min = ph;
-                    }
-                    s_bnc_ph_n++;
                     s_bnc_ph_ecarte++;
+                    if (s_bnc_ph_ecarte == DN_PHASE_DEGROSSI) {
+                        s_bnc_ph_ref_us = s_bnc_ph_ref_seed; /* FIGEE ici, et plus touchee */
+                    }
                 } else {
-                    if (ph < s_bnc_ph_min) {
+                    if (s_bnc_ph_n == 0 || ph < s_bnc_ph_min) {
                         s_bnc_ph_min = ph;
                     }
                     if (ph > s_bnc_ph_max) {
@@ -337,13 +477,19 @@ static IRAM_ATTR bool on_vsync(esp_lcd_panel_handle_t panel,
                     s_bnc_ph_somme += ph;
                     s_bnc_ph_n++;
                     /* LE DEFICIT : de combien cette trame est-elle EN DESSOUS de
-                     * la phase a l'heure. Zero si elle est au-dessus. */
-                    uint32_t deficit = (ph < s_bnc_ph_max) ? (s_bnc_ph_max - ph) : 0u;
+                     * la phase a l'heure. Zero si elle est au-dessus.
+                     * ⛔ Contre la REFERENCE FIGEE, plus contre un max courant. */
+                    uint32_t ref = s_bnc_ph_ref_us;
+                    uint32_t deficit = (ph < ref) ? (ref - ph) : 0u;
                     if (deficit > s_bnc_ph_deficit_max) {
                         s_bnc_ph_deficit_max = deficit;
                     }
                     uint32_t d = s_bnc_t_demi_us;
                     if (d > 0u) {
+                        /* ⚠️ LES QUATRE SEAUX SONT EMBOITES, ⛔ PAS DISJOINTS :
+                         *    un deficit > 100 % incremente AUSSI 50, 25 et 10 %.
+                         *    La console le dit desormais — un lecteur qui les
+                         *    sommait comptait les pires JUSQU'A QUATRE FOIS. */
                         if (deficit * 10u > d) {
                             s_bnc_ph_10pc++;
                         }
@@ -359,6 +505,8 @@ static IRAM_ATTR bool on_vsync(esp_lcd_panel_handle_t panel,
                     }
                 }
             }
+        } else if (n >= 2) {
+            s_bnc_ph_doubles_ec++;
         }
 
         /* (b) LA GIGUE. `fps` moyenne 561 trames et efface exactement ca. */
@@ -549,19 +697,47 @@ esp_err_t dn_measure_attach(esp_lcd_panel_handle_t panel)
      *    du vide — exactement le genre de défaut silencieux que dn1-2 a payé
      *    cher. D'où le contrôle actif ci-dessous, au boot.
      */
-    ESP_RETURN_ON_ERROR(
-        esp_lcd_rgb_panel_register_event_callbacks(panel, &cbs, NULL), TAG,
-        "branchement du callback vsync refusé");
     /* dn4-10 : la duree d'ecoulement d'un DEMI-BOUNCE, posee une fois. C'est le
      * seuil au-dela duquel la DMA a forcement lu un tampon pas encore rempli.
      * Lue depuis le panneau REELLEMENT monte, ⛔ pas depuis la NVS : un `set`
-     * sans `reboot` ne change pas le materiel. */
+     * sans `reboot` ne change pas le materiel.
+     * 🔴 POSEE **AVANT** L'ENREGISTREMENT DES CALLBACKS — corrige le 2026-08-27
+     *    (revue de code). Elle etait posee APRES. Or le panneau BALAIE DEJA
+     *    quand `dn_measure_attach()` s'execute (desknode_main.c, etape 5, la
+     *    dalle tourne depuis l'etape 2) : toute trame qui tombait entre
+     *    l'enregistrement et cette affectation etait traitee avec `d == 0`,
+     *    donc SANS AUCUN SEUIL, EN SILENCE. Deux lignes inversees, et la
+     *    fenetre disparait : quand la premiere ISR arrive, le seuil est deja la. */
     s_bnc_t_demi_us = DN_US_POUR_LIGNES(dn_display_bounce_px() / DN_LCD_H_RES);
+    ESP_RETURN_ON_ERROR(
+        esp_lcd_rgb_panel_register_event_callbacks(panel, &cbs, NULL), TAG,
+        "branchement du callback vsync refusé");
     ESP_LOGI(TAG,
              "dn4-10 : seuil de corruption = %lu us (ecoulement d'un demi-bounce "
              "de %u px, soit %u ligne(s))",
              (unsigned long)s_bnc_t_demi_us, (unsigned)dn_display_bounce_px(),
              (unsigned)(dn_display_bounce_px() / DN_LCD_H_RES));
+    if (s_bnc_t_demi_us == 0u) {
+        /* 🔴 LE COMPTEUR DECORATIF QUE CE DEPOT TRAQUE — ferme le 2026-08-27.
+         *    `bounce_px = 0` est une valeur LEGALE (`bounce_px_refus()` l'accepte,
+         *    dn_bootcfg.c : `v != 0 && ...`), et tout `bounce_px < 480` donne
+         *    `0 / 480 = 0` donc `t_demi_us = 0` donc l'ISR saute TOUT le bloc de
+         *    seuils (`if (d > 0u)`). Les quatre compteurs restaient a zero et la
+         *    console imprimait « 🔴 100 % (CORRUPTION) 0 » : quatre zeros qui se
+         *    lisent « aucune corruption » alors que RIEN n'a ete mesure.
+         *    ⇒ On le CRIE au boot, et `flush` refuse desormais d'imprimer la
+         *      ligne des quatre seuils dans cet etat. */
+        ESP_LOGE(TAG,
+                 "🔴 SEUILS DE CORRUPTION DESARMES : bounce_px=%u px (< %d px = "
+                 "une ligne) ⇒ demi-bounce = 0 us ⇒ les quatre compteurs de "
+                 "deficit NE MESURENT RIEN.",
+                 (unsigned)dn_display_bounce_px(), DN_LCD_H_RES);
+        ESP_LOGE(TAG,
+                 "   ⛔ Un « 0 » de `flush` ne voudra PAS dire « aucune "
+                 "corruption » : il voudra dire « aucune mesure ». `set bounce "
+                 "%d` puis `reboot` pour rearmer l'instrument.",
+                 dn_bootcfg_defaut_bounce_px());
+    }
     ESP_LOGI(TAG, "compteur vsync branché (ISR en IRAM, compteur en RAM interne)");
     ESP_LOGI(TAG,
              "  ⚠️ enregistrement EXCLUSIF : il vient d'écraser tout callback "
@@ -640,41 +816,113 @@ void dn_measure_bounce_get(dn_bounce_stats_t *out)
     if (!out) {
         return;
     }
-    /* Instantane NON ATOMIQUE, et c'est assume : les compteurs bougent
-     * 37,40 fois par seconde, une incoherence porterait sur UNE trame. La dire
-     * plutot que de prendre un verrou sur le chemin qu'on mesure. */
-    /* UNE SEULE lecture d'horloge, deux vues : la vue 64 bits (juste) et la vue
-     * 32 bits (celle de l'instrument d'avant dn4-5, publiee comme
-     * contre-epreuve). Les derivees d'une meme lecture, elles sont forcement
-     * coherentes entre elles — deux appels ne le seraient pas. */
-    int64_t maintenant = esp_timer_get_time();
-    uint32_t t_us = (uint32_t)maintenant;
-    out->trames = s_vsync_count - s_bnc_base_vsync;
-    out->wraps = s_bnc_wraps - s_bnc_base_wraps;
-    out->manques = s_bnc_manques;
-    out->doubles = s_bnc_doubles;
-    out->intervalles = s_bnc_inter_n;
-    out->inter_min_us = s_bnc_inter_min;
-    out->inter_max_us = s_bnc_inter_max;
-    out->inter_somme_us = s_bnc_inter_somme;
-    out->retards_100 = s_bnc_ret_100;
-    out->retards_bp = s_bnc_ret_bp;
-    out->retards_vb = s_bnc_ret_vb;
-    out->retards_trame = s_bnc_ret_trame;
-    out->ph_n = s_bnc_ph_n > s_bnc_ph_ecarte ? s_bnc_ph_n - s_bnc_ph_ecarte : 0;
-    out->ph_ecarte = s_bnc_ph_ecarte;
-    out->ph_min_us = s_bnc_ph_min;
-    out->ph_max_us = s_bnc_ph_max;
-    out->ph_somme_us = s_bnc_ph_somme;
-    out->ph_10pc = s_bnc_ph_10pc;
-    out->ph_25pc = s_bnc_ph_25pc;
-    out->ph_50pc = s_bnc_ph_50pc;
-    out->ph_100pc = s_bnc_ph_100pc;
-    out->ph_deficit_max_us = s_bnc_ph_deficit_max;
-    out->t_demi_us = s_bnc_t_demi_us;
-    out->us_par_ligne = DN_US_PAR_LIGNE;
+    /*
+     * 🔴 L'INSTANTANE EST DESORMAIS GARDE — corrige le 2026-08-27 (revue de code).
+     *
+     * ⛔ CE QUI ETAIT ECRIT ICI, ET QUI ETAIT FAUX : « une incoherence porterait
+     *    sur UNE trame ». C'est vrai des compteurs 32 bits ; ce l'est PAS des
+     *    deux sommes 64 bits, lues en DEUX MOTS sur un CPU 32 bits. Une retenue
+     *    qui tombe entre les deux mots decale la somme de 2^32 us — pas d'une
+     *    trame. Franchissement a ~71 min pour `inter_somme` (elle cumule ~26 738
+     *    us par trame a 37,40 trames/s) et ~16 h pour `ph_somme`. Et l'en-tete
+     *    promettait « Instantane coherent » pendant que ce commentaire-ci
+     *    declarait le contraire : DEUX TEXTES NORMATIFS EN DESACCORD.
+     *
+     * ⛔ ET UN SECOND CHEMIN, PIRE PARCE QU'IL SORT UN CHIFFRE ABSURDE : si l'ISR
+     *    consomme la RAZ ENTRE le chargement de `s_vsync_count` et celui de
+     *    `s_bnc_base_vsync`, la base devient PLUS GRANDE que le compte et la
+     *    soustraction non signee rend ~4,29 x 10^9 trames. Il suffisait de taper
+     *    `flush` dans les <= 27 ms qui suivent `flush reset`.
+     *
+     * 🎯 LA PARADE, ET ELLE NE PREND AUCUN VERROU : `s_bnc_raz_gen` (pose par
+     *    dn4-5) est deja incremente a CHAQUE RAZ consommee. On l'encadre — un
+     *    seqlock de pauvre, cote lecteur seulement. Si la generation a bouge
+     *    pendant la copie, on recommence ; au-dela de trois essais on PUBLIE LE
+     *    DRAPEAU plutot que de boucler sur le chemin qu'on mesure. Les deux
+     *    sommes 64 bits sont lues deux fois et comparees : elles ne peuvent pas
+     *    se dechirer IDENTIQUEMENT deux fois de suite (la retenue de bit 32 tombe
+     *    une fois par 71 min, la relecture est a quelques ns).
+     * ⛔ TOUT EST DU COTE DE LA TACHE CONSOLE. L'ISR n'a pas gagne une seule
+     *    instruction, et l'invariant « aucun verrou sur le chemin chaud » tient.
+     */
+    int64_t maintenant = 0;
+    uint32_t t_us = 0;
+    uint32_t gen = 0, gen_fin = 0;
+    bool sommes_stables = true;
+    for (int essai = 0; essai < 3; essai++) {
+        sommes_stables = true;
+        gen = s_bnc_raz_gen;
+        /* UNE SEULE lecture d'horloge, deux vues : la vue 64 bits (juste) et la
+         * vue 32 bits (celle de l'instrument d'avant dn4-5, publiee comme
+         * contre-epreuve). Les derivees d'une meme lecture, elles sont forcement
+         * coherentes entre elles — deux appels ne le seraient pas. */
+        maintenant = esp_timer_get_time();
+        t_us = (uint32_t)maintenant;
+        uint32_t base_vsync = s_bnc_base_vsync;
+        uint32_t base_wraps = s_bnc_base_wraps;
+        out->trames = s_vsync_count - base_vsync;
+        out->wraps = s_bnc_wraps - base_wraps;
+        out->manques = s_bnc_manques;
+        out->doubles = s_bnc_doubles;
+        out->intervalles = s_bnc_inter_n;
+        out->inter_min_us = s_bnc_inter_min;
+        out->inter_max_us = s_bnc_inter_max;
+        {
+            uint64_t a = s_bnc_inter_somme;
+            uint64_t b = s_bnc_inter_somme;
+            if (a != b) {
+                sommes_stables = false;
+            }
+            out->inter_somme_us = b;
+        }
+        out->retards_100 = s_bnc_ret_100;
+        out->retards_bp = s_bnc_ret_bp;
+        out->retards_vb = s_bnc_ret_vb;
+        out->retards_trame = s_bnc_ret_trame;
+        /* 🔴 `ph_n` EST DESORMAIS LE COMPTE DIRECT DES ECHANTILLONS COMPTES.
+         *    Avant le 2026-08-27, `s_bnc_ph_n` cumulait degrossissage ET
+         *    population comptee, et on soustrayait ici. Les deux compteurs sont
+         *    maintenant DISJOINTS dans l'ISR : plus de soustraction, plus de
+         *    plancher a zero pour rattraper une soustraction qui pourrait passer
+         *    sous zero pendant une RAZ. */
+        out->ph_n = s_bnc_ph_n;
+        out->ph_ecarte = s_bnc_ph_ecarte;
+        out->ph_rejete = s_bnc_ph_rejete;
+        out->ph_doubles_ecartes = s_bnc_ph_doubles_ec;
+        out->ph_dechire = s_bnc_ph_dechire;
+        out->ph_min_us = s_bnc_ph_min;
+        out->ph_max_us = s_bnc_ph_max;
+        out->ph_ref_us = s_bnc_ph_ref_us;
+        {
+            uint64_t a = s_bnc_ph_somme;
+            uint64_t b = s_bnc_ph_somme;
+            if (a != b) {
+                sommes_stables = false;
+            }
+            out->ph_somme_us = b;
+        }
+        out->ph_10pc = s_bnc_ph_10pc;
+        out->ph_25pc = s_bnc_ph_25pc;
+        out->ph_50pc = s_bnc_ph_50pc;
+        out->ph_100pc = s_bnc_ph_100pc;
+        out->ph_deficit_max_us = s_bnc_ph_deficit_max;
+        out->t_demi_us = s_bnc_t_demi_us;
+        out->us_par_ligne = DN_US_PAR_LIGNE;
+        out->periode_ns = DN_PERIODE_NS;
+        gen_fin = s_bnc_raz_gen;
+        if (gen == gen_fin && sommes_stables) {
+            break;
+        }
+    }
+    /* ⛔ ON NE TAIT PAS L'ECHEC : trois essais qui n'ont pas convergé veulent
+     *    dire que la RAZ est tombee en plein dedans, ou qu'une somme se dechire
+     *    a repetition. Le bloc reste imprime — mais il est ETIQUETE. */
+    out->lecture_dechiree = (gen != gen_fin) || !sommes_stables;
     /* ── dn4-5 / AC1.2 : LA FENETRE, RECONSTRUITE SUR 64 BITS ───────────── */
-    uint32_t gen = s_bnc_raz_gen;
+    /* ⚠️ C'est la generation la PLUS RECENTE qui fait foi ici : si la boucle
+     *    ci-dessus n'a pas converge, `gen_fin` est la seule valeur dont on
+     *    sache qu'elle a ete lue APRES la copie. */
+    gen = gen_fin;
     if (gen != s_bnc_raz_gen_vu) {
         /* Une origine NEUVE a ete posee par l'ISR depuis notre derniere
          * lecture : on la releve sur 64 bits, ancree sur l'ARMEMENT. */
