@@ -1609,6 +1609,23 @@ MESURE :** l'agent, lancé par la tâche au logon à **15:01:48**, a interrogé 
 et **posé l'heure 3 s plus tard** ⇒ `OS` retombe à **0** bien avant qu'un humain puisse taper `rtc`.
 ✅ **C'est la ligne `pose demandee (OS=1)` du journal qui EST la preuve** — elle ne demande rien à
 préparer, et c'est le chemin que le ledger avait nommé d'avance.
+
+⚠️ **CE QUE CETTE PREUVE EST, ET CE QU'ELLE N'EST PAS — précisé par la revue du 2026-08-26.**
+La ligne `pose demandee (OS=1)` est **dérivée de la réponse `rtc` RÉELLE de la carte**, parsée par
+`LecteurHorloge._etat_depuis` : ⛔ ce n'est **pas** une récitation de ce que l'agent a écrit.
+🔴 **Mais AUCUNE capture brute de cette réponse n'existe** : `mesures/dn4-18/AC1-3-rtc-apres-extinction-tour.log`
+est horodaté **15:12:37**, soit **onze minutes APRÈS** la pose, et il lit donc `bit OS : 0`.
+⇒ **T3.2 disait « `bit OS` + `retention` lus AVANT tout reset ». C'est littéralement vrai pour
+`retention` seul** : `bit OS` n'a jamais été lu par une commande `rtc` avant la pose, et les octets
+de la carte pour cet instant-là **ne sont pas au dépôt**. La substitution était **enregistrée
+d'avance**, et les trois instruments corroborants tiennent — ⛔ mais AC7.5 (*« un chiffre publié sans
+sa capture n'est pas recevable »*) n'est pas satisfait **à la lettre** sur ce point précis.
+⇒ ✅ **CE QU'IL FAUDRAIT, ET C'EST GRATUIT** : armer `--tracer-console` **avant** l'extinction
+suivante — la tâche au logon ne porte pas cette option. La réponse `rtc` entière, `retention`
+compris, serait alors capturée en travers du redémarrage.
+⚠️ **Et le recoupement `etats` est LÂCHE, on l'écrit** : `OS vu 103 fois` à 2 Hz vaut **51,5 s**,
+contre les **55 s** déduits de `boot 15:00:56 → pose 15:01:51` — **6,4 % d'écart**. Ça **concorde en
+ordre de grandeur**, ⛔ ça ne « recoupe » pas au sens strict.
 ✅ **ET `retention` A ÉTÉ RELU, LUI AUSSI — SANS REDÉMARRAGE SUPPLÉMENTAIRE.** Il est **latché en
 RAM depuis le boot** et reste donc lisible tant que l'ESP32 n'a pas redémarré. Contrôle préalable :
 `up 680 s` à **15:12:16** ⇒ boot à **15:00:56**, soit **exactement** celui d'après le rallumage, et
@@ -1640,6 +1657,81 @@ ensemble.**
 ---
 
 ## 13.16 🔴 SÉANCE `dn4-2` (2026-08-19) — T0, ET L'INSTRUMENT RÉPARÉ **AVANT** LE FER
+
+
+#### 13.15.7.10 🔴 CE QUE LA REVUE DE CODE DU 2026-08-26 A CORRIGÉ DANS LE MÉCANISME
+
+> Trois défauts de lecture d'état, trouvés en revue 3 couches sur `2b7e505..d7d65fd`, **fermés et
+> chacun doté de son témoin** (`tools/verif_reprise_horloge_dn418.py`, scènes **10, 11, 12**).
+> ⛔ Chaque témoin a été **VU CRIER** sur le code d'origine avant d'être cru vert.
+
+##### 🔴 (a) L'AGENT INVERSAIT UN INVARIANT QUE LE FIRMWARE PROTÈGE EXPLICITEMENT
+
+`dn_rtc_etat()` fait un **contrôle de péremption AVANT** de regarder `OS`, et son commentaire
+(`dn_rtc.c:470`) dit pourquoi, mot pour mot :
+
+> *« L'ORDRE COMPTE : la péremption d'abord, OS ensuite. **Une puce muette dont la dernière lecture
+> disait OS=0 ne doit pas passer pour fiable.** »*
+
+⚠️ **Mais `dn_rtc_os()` (`dn_rtc.c:616`) — qui alimente la ligne `bit OS` de la réponse `rtc` — rend
+le dernier bit LU *sans aucun contrôle de péremption*.** Et l'agent traitait les lignes de la
+réponse **indépendamment, la dernière gagnant** :
+
+| ce que le driver dit (ligne 1) | ce que `bit OS` dit (ligne 4) | ce que l'agent retenait |
+|---|---|---|
+| `MUETTE` | `0` (bit caché, périmé) | 🔴 **`OS0`** — « tout va bien » sur une puce morte |
+| `JAMAIS LUE` | `1` (`s_os = true` au boot, `dn_rtc.c:31`) | 🔴 **`OS1`** |
+
+⇒ **les deux sont nommément interdits par AC3.2** : *« il répond » n'est pas « il dit vrai »*, et
+l'absence d'information n'est **ni** l'un **ni** l'autre. Et le premier cas est **le mode de panne
+du capteur fantôme**, transposé sur l'horloge.
+🔴 **CONSÉQUENCE MESURÉE** (scène 10, sur le code d'origine) : état publié `OS0`, **et une pose
+tirée sur un bus mort** — parce que l'écart d'AC6 se mesurait alors sur la valeur `lue` **GELÉE**,
+qui dérive de 1 s/s et franchit le seuil de 120 s toute seule.
+✅ **CORRECTIF** : le bit `OS` ne peut plus que **CORROBORER** un verdict que le driver a déjà
+déclaré recevable. Sur `MUETTE`, `JAMAIS LUE`, `NON ARMEE` — ou sur un libellé que l'agent ne
+reconnaît pas — **l'ancre est gardée**.
+
+##### 🔴 (b) L'HEURE ÉTAIT PRISE SANS SA RECEVABILITÉ, IMPRIMÉE SUR LA MÊME LIGNE
+
+`dn_console.c:7432` accole délibérément `— AFFICHABLE` / `— ⛔ NON AFFICHABLE` à la valeur, avec ce
+commentaire : *« imprimer l'heure sans lui, c'est exactement le mensonge que la barre a interdiction
+de commettre »*. L'agent ne lisait que les 19 octets de date.
+✅ **CORRECTIF** : la valeur et son verdict sont pris **ensemble** ; l'écart d'AC6 ne se mesure
+**jamais** sur une valeur que la carte déclare irrecevable.
+
+##### 🔴 (c) `NON ARMEE` ÉTAIT VERROUILLÉ POUR LA VIE DU PROCESSUS — **décision owner**
+
+`NON ARMEE` n'est ⛔ **pas** une propriété de la carte : c'est une **condition de boot**
+(`dn_console.c:7419-7421` — bus absent au boot, `Control_1` illisible, ou `xTaskCreate` échoué),
+sur un bus dont **ce dossier même** a mesuré qu'il **se dégrade ~40 s à froid**.
+L'agent **avalait** le signal de reprise de liaison et ne redemandait plus **jamais** : la seule
+sortie devenait le **bandeau de boot**, canal mesuré à **9/10** (et **0/2** quand c'est l'agent qui
+redémarre) et sur lequel §13.15.7.3 écrit *« ⛔ rien ne s'appuie dessus »*.
+⇒ séquence : **boot à froid désarme → l'agent latche → la carte redémarre ARMÉE avec `OS=1` → le
+bandeau est le 1 sur 10 manqué → la barre reste `--:--` POUR LA VIE DE L'AGENT.**
+✅ **CORRECTIF (décision owner du 2026-08-26)** : l'agent **re-sonde UNE FOIS PAR REPRISE DE
+LIAISON** (AC4.2), ⛔ jamais en boucle — ni à la période de 600 s, ni sur aucun autre motif — et le
+**plancher de 30 s** borne le coût exactement comme pour tout autre état (AC4.3).
+
+##### 🔴 (d) L'ANTI-RAFALE NE COUVRAIT QUE LES REFUS
+
+Une pose **acceptée** remettait `echecs_consecutifs` à 0 : l'escalade `60·120·240 …` ne s'armait
+**jamais** sur le chemin du succès. Une carte qui **reperd** l'heure après chaque pose rejouait donc
+`rtc` + `rtc set` toutes les **~31 s, indéfiniment**.
+**Mesuré** (scène 12, 600 s simulées) : **18 poses** sans le correctif, **5** avec.
+⚠️ Ça restait **sous** le plafond publié de **99 o/s** (§13.15.7.1) — ⛔ **mais un régime PERMANENT
+n'est pas un transitoire**, et le fil **EST** le transport des cinq métriques.
+✅ **CORRECTIF** : des poses **réussies rapprochées** (< 600 s) escaladent le **même palier** que les
+refus, et le bilan les publie comme un **fait distinct** — ⛔ ni une réussite ordinaire, ni un refus.
+
+##### ✅ CE QUE LES TÉMOINS DISENT MAINTENANT
+
+| témoin | avant | après |
+|---|---|---|
+| `verif_reprise` | 9 scènes, ⛔ aucune ne visitait `MUETTE` ni `JAMAIS LUE` | **12 scènes** |
+| `verif_miroir` | sens 2 **jamais vu crier**, et **vert sur une table VIDE** | 2 sens, **3 échecs provoqués**, garde de discriminance |
+| `verif_decoupe` | invariant de découpe | inchangé — **il tient** (10 114 positions, octet par octet, 200 tirages) |
 
 ### 13.16.1 T0 — le point de départ, prouvé sur `df5d23d` (SHA **LU AU BANDEAU**)
 

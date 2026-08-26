@@ -715,7 +715,7 @@ la machine à le dire autrement**.
 |---|---:|---:|---|
 | trames émises | 1 500 | **3 000** | **5,00 /s** dans les deux cas |
 | erreurs d'envoi · recalages · écrêtages | 0 · 0 · 0 | **0 · 0 · 0** | |
-| **refus signalés par le firmware** | **aucun** | **aucun** | 🔴 *« n trames émises » prouvait n ÉCRITURES ; ceci prouve n **ACCEPTATIONS*** |
+| **refus signalés par le firmware** | **aucun** | **aucun** | 🔴 *« n trames émises » prouvait n ÉCRITURES ; ceci prouve n **ACCEPTATIONS***. ⚠️ **Portée RESTREINTE par la revue du 2026-08-26** — voir §26.6 : depuis `dn4-18` le marqueur compte AUSSI les commandes console (`rtc set`), et le bilan publie désormais la **décomposition** |
 | **écho console (AC2)** | 228,7 o/s · **5,11 lignes/s** | 232,0 o/s · **5,11 lignes/s** | **PLAFOND** : inclut le battement 10 s et tout `ESP_LOGx` |
 | **coût agent (AC9)** | 1,984 % d'un cœur · 0,124 % machine | **2,161 %** · **0,135 %** | |
 
@@ -3028,9 +3028,10 @@ c'est-à-dire **le même état de charge**.
 - ⛔ **Il ne solde toujours PAS l'entrée « +0,26 pt » du ledger.** §25.17 a nommé ce qu'il faut :
   un A/B **à charge de tour contrôlée**, avec **n > 1 par branche**. Ce tir en serait un
   **troisième candidat non départagé**. **Pas d'A/B ⇒ pas d'attribution.**
-- ⚠️ **Le tir §25-identique reste à prendre** (logon, tour au calme, WSL éteint). Il est **gratuit
-  au prochain allumage de la tour** — le même où se solde la lecture `rtc` d'après extinction
-  (`…-capteurs-i2c.md` §13.15.7.9).
+- ✅ **Le tir §25-identique A ÉTÉ PRIS LE MÊME JOUR — voir §26.5 juste dessous.** ⚠️ *Cette ligne
+  disait « reste à prendre » jusqu'à la revue du 2026-08-26 : elle avait été écrite AVANT le tir et
+  laissée debout APRÈS. Un lecteur qui s'arrêtait à §26.4 lisait donc le contraire de §26.5.*
+  La lecture `rtc` d'après extinction est elle aussi soldée (`…-capteurs-i2c.md` §13.15.7.9).
 
 ### 26.5 🔴 LE TIR §25-IDENTIQUE — PRIS LE MÊME JOUR, ET **MA PRÉDICTION EST RATÉE PAR LE BAS**
 
@@ -3039,8 +3040,23 @@ La tour a été **éteinte puis rallumée** le 2026-08-26 à ~15:00. Le tir manq
 `15:01:48`, régime `tache au logon (avant-plan)`), **tour fraîchement démarrée**, `--temoin`,
 16 cœurs, SHA déposé **`15bba7a`**.
 ⚠️ **UNE RÉSERVE, ÉCRITE ET DATÉE** : **WSL a démarré à `15:02:14`**, soit **+26 s**. Les rangs 10
-et 20 s sont donc WSL éteint, **⛔ les suivants non**. Et **LHM était INJOIGNABLE au démarrage**
-(2 échecs, puis reprise) ⇒ la **réserve n°2 de §25.4 s'applique ici**, contrairement à §25.18.
+et 20 s sont donc WSL éteint, **⛔ les suivants non**.
+🔴 **CORRIGÉ PAR LA REVUE DE CODE DU 2026-08-26 — CE PARAGRAPHE AFFIRMAIT L'INVERSE DE §25.18.2 SUR
+UN CAS IDENTIQUE.** Il disait : *« LHM était INJOIGNABLE au démarrage (2 échecs, puis reprise) ⇒ la
+réserve n°2 de §25.4 s'applique ici, contrairement à §25.18 »*. **Les deux moitiés sont fausses :**
+- la **réserve n°2** (`§25.4`) porte sur *« LHM n'est pas VIVANT au moment du tir »* — son cas
+  mesuré était **0 réussie, 24 en échec**, toutes coupées au timeout ;
+- ici le bilan de **cette session-là** rend **`467 lecture(s) reussie(s), 2 en echec — moyenne
+  14,5 ms`** (`AC1-3-AC8-journal-apres-extinction-tour.log`, session de 468 s). **LHM était
+  VIVANT** ;
+- et c'est **exactement le motif de §25.18.2** (*« injoignable au démarrage … puis a REPRIS »*), qui
+  en concluait — correctement — que la réserve **ne s'applique pas**. Il n'y a donc **aucun
+  contraste** avec §25.18 : il y a **identité**.
+⇒ ✅ **VERDICT RECTIFIÉ : la réserve n°2 NE S'APPLIQUE PAS à ce tir.**
+⚠️ **ET UN INCIDENT DE CETTE MÊME SESSION N'ÉTAIT PAS REPORTÉ ICI, ALORS QUE SES CHIFFRES DE COÛT
+LE SONT** : `🔴 UNE LECTURE LHM A DEPASSE LE PLAFOND SANS ECHOUER : 616 ms pour un timeout de
+600 ms`. ⛔ C'est **un incident** — il mange la cadence — et il figure dans la capture d'où sortent
+les chiffres publiés plus bas. Il est **versé ici, pas expliqué** : cause non établie.
 📄 Capture : `mesures/dn4-18/AC1-3-AC8-journal-apres-extinction-tour.log`
 
 **Série complète (rangs 10 → 440 s, % d'un cœur), 44 points :**
@@ -3053,7 +3069,7 @@ et 20 s sont donc WSL éteint, **⛔ les suivants non**. Et **LHM était INJOIGN
 |---|---:|---:|---:|
 | 60 s | **2,367** | `0,1479 %` | **6,8×** |
 | 180 s | **1,423** | `0,0890 %` | **11,2×** |
-| **plateau 300-440 s** | **1,213 – 1,237** (bande **0,024 pt**) | `~0,0767 %` | **13,0×** |
+| **plateau 300-440 s** | **1,213 – 1,237** (moyenne **1,2251**, bande **0,024 pt**) | `0,0766 %` | **13,1×** |
 
 #### 🔴 LA PRÉDICTION, ET SON VERDICT — LES DEUX RANGS NE DISENT PAS LA MÊME CHOSE
 
@@ -3119,10 +3135,72 @@ C'était la seule moitié de la prédiction qui portait un chiffre **absolu** :
 | rang | % machine | marge |
 |---|---:|---:|
 | 60 s | `0,1479 %` | **6,8×** |
-| **plateau (300-440 s)** | `0,0767 %` | **13,0×** |
+| **plateau (300-440 s)** | `0,0766 %` | **13,1×** |
+
+⚠️ *Les deux valeurs de plateau ont été **recalculées par la revue du 2026-08-26** : la moyenne des
+**15 points publiés** (300 → 440 s) vaut **1,2251 %** d'un cœur, soit **0,0766 %** machine et
+**13,1×** de marge — ⛔ pas `1,228` / `0,0767 %` / `13,0×`. L'écart est cosmétique ; la règle ne
+l'est pas : un chiffre publié se recalcule depuis la série qui l'accompagne.*
 
 ⇒ ✅ **LE CRITÈRE N°4 RESTE COCHÉ**, et **plus largement que jamais** — sur le régime que le brief
 décrit, **mesuré après une extinction et un rallumage réels de la tour**.
 ⛔ **Et ça ne solde toujours pas l'entrée « +0,26 pt »** : il n'y a **toujours pas d'A/B à charge
 contrôlée**. **Pas d'A/B ⇒ pas d'attribution.**
 
+
+---
+
+### 🔴 26.7 CE QUE LA REVUE DE CODE DU 2026-08-26 A CORRIGÉ SUR CE CHEMIN
+
+> Revue 3 couches sur `2b7e505..d7d65fd`. Ce paragraphe ne raconte pas la revue : il consigne
+> **ce qui a changé dans le comportement décrit par ce dossier**, pour que la §26 ne survive pas
+> à sa propre correction. Binaire des vérifications : **`d7d65fd`+correctifs**, 2026-08-26.
+
+#### 26.7.1 🔴 `refus_firmware` NE COMPTE PLUS « DES TRAMES », ET IL NE LE POUVAIT DÉJÀ PLUS
+
+Le marqueur `non-zero error code` est rendu par le **REPL**, pour **toute** commande console sortie
+non nulle. Jusqu'à `dn4-18`, l'agent n'envoyait que des `pc …` : *« n refus = n trames refusées »*
+était **vrai**. Depuis, il envoie aussi `rtc` et `rtc set`, et `cmd_rtc` **sort à 1 sur quatre
+chemins de refus** (`dn_console.c:7352-7390`). ⇒ le bilan annonçait **« N trame(s) REFUSÉE(S) par le
+firmware »** alors que **zéro trame** l'avait été.
+
+**Mesuré** sur le harnais de la story (400 cycles, réponses `rtc` = `OS1`, `rtc set` = refus réel) :
+
+```
+refus_firmware = 3   poses_refusees = 3   commandes_console = 6   trames refusées = 0
+```
+
+✅ **Correctif** : le bilan publie désormais **« N commande(s) console REFUSÉE(S) »** *et* sa
+**décomposition** — `dont N pose(s) d'horloge ⇒ M imputable(s) aux trames pc`.
+🔴 **ELLE EST EXACTE, ⛔ PAS APPROCHÉE** : `rtc` nu sort à **0** sur tous ses chemins, donc seul un
+`rtc set` **refusé** ajoute un marqueur ; et chaque pose refusée est comptée à part, **sur le
+verdict ANCRÉ de la carte**, ⛔ pas sur le marqueur du REPL. Un décompte **négatif** (marqueurs
+perdus pendant un aveuglement de backoff) est **dit**, et le total devient alors un **plancher**.
+⚠️ Le tableau de §25.13 porte la même restriction, et `README.md` aussi.
+
+#### 26.7.2 ⚠️ LE COÛT DE `--tracer-console` ÉTAIT SOUS-ESTIMÉ D'UN FACTEUR ~1,7
+
+Annoncé : *« ~275 o/s, ~1 Mo/h »* — c'était le débit d'**écho seul**, qui oublie l'**en-tête
+horodaté** (~50 o) écrit à **chaque drain**, donc ~5 fois par seconde. **Mesuré sur les captures que
+cette story a livrées** :
+
+| capture | taille | durée | débit | dont en-têtes |
+|---|---:|---:|---:|---:|
+| `AC7-4-temoin-negatif.trace` | 86 312 o | 193,0 s | **447 o/s** | **45 %** |
+| `AC1-1-phaseA-agent-reel.trace` | 67 853 o | 142,0 s | **478 o/s** | **37 %** |
+| `AC7-temoin-positif.trace` | 137 791 o | 260,0 s | **530 o/s** | **35 %** |
+
+⇒ **447 à 530 o/s, soit 1,6 à 1,9 Mo/h**. Sur les **7 jours** de `dn4-5` : **~270 à 320 Mo**, ⛔ sans
+aucune rotation. ⛔ **Ne pas l'armer sur un soak.**
+✅ Et l'option **échoue désormais À L'ANALYSE** si le chemin n'est pas inscriptible : une capture qui
+échoue en silence est une **fenêtre d'observation perdue**, et `_tracer()` avale par conception
+toute panne d'écriture.
+
+#### 26.7.3 ⚠️ LA SONDE COMPOSE MAINTENANT COMME LE MÉCANISME
+
+`tools/sonde_horloge_dn418.py poser` composait depuis `localtime(time.time())` — **tronqué**, biais
+dans `[−1 s, 0]` — alors que le mécanisme **arrondit** (`t + 0,5`), biais centré dans `[−0,5 ; +0,5]`.
+⇒ **un instrument qui ne compose pas comme le produit ne mesure plus le produit.**
+⚠️ **Les chiffres publiés en §13.15.7.5** (`−0,4 s` WSL, `−0,2 s` tour) ont été pris **avec la
+composition tronquante** : ils bornent donc le **pire** cas, et le seuil de `≤ 2 s` d'AC1.2 tient
+**à plus forte raison**. ⛔ Ils ne sont pas rejoués ici — ils sont **datés de leur variante**.

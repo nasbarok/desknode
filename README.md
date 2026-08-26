@@ -926,6 +926,19 @@ $py = "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe"
 #  --temoin     imprime son propre coût CPU toutes les 10 s
 #  --duree 60   s'arrête proprement après 60 s (le témoin « arrêt propre » d'AC7)
 #  --stdout     trames à l'écran, sans carte (débogage)
+#  --stop-si F  s'arrête proprement dès que le FICHIER F apparaît — le seul
+#               arrêt propre possible sans console (agent détaché, dn4-17)
+#  --tracer-console F   capture BRUTE et HORODATÉE de tout ce que l'agent draine
+#               sur le fil (⛔ QU'AVEC --serie). C'est l'instrument de dn4-18 :
+#               c'est lui qui a répondu « le bandeau de boot atteint-il l'agent,
+#               oui ou non ». ⚠️ MESURÉ sur les captures livrées : **447 à
+#               530 o/s, soit 1,6 à 1,9 Mo/h** (35 à 45 % du fichier sont les
+#               en-têtes horodatés, écrits à chaque drain, ~5 fois par seconde).
+#               ⛔ NE PAS le laisser armé sur un soak : 7 jours ≈ 270 à 320 Mo,
+#               sans aucune rotation.
+#               ⚠️ Il doit être armé AVANT l'extinction de la tour si on veut
+#               capturer la réponse `rtc` ENTIÈRE au rallumage : la tâche au
+#               logon ne porte pas cette option.
 #  --lhm HOTE:PORT      ou joindre LibreHardwareMonitor (défaut 127.0.0.1:8085)
 #                       ⚠️ EXERCE les chemins d'échec ; ⛔ ne REMPLACE pas AC8, qui
 #                          exige le VRAI service coupé
@@ -978,6 +991,14 @@ $py = "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe"
 - **Le bilan de fin sort dans TOUS les cas, Ctrl+C compris** : trames émises, erreurs
   d'envoi, **recalages de cadence**, bruit d'écho console, et les **refus signalés par le
   firmware** — « n trames émises » ne prouve que n écritures, pas n acceptations.
+  ⚠️ **Corrigé par la revue de code du 2026-08-26** : depuis `dn4-18` l'agent envoie aussi
+  des commandes console (`rtc`, `rtc set`), et le marqueur `non-zero error code` que ce
+  compteur ramasse est rendu par le REPL pour **toute** commande sortie non nulle — ⛔ pas
+  seulement pour une trame `pc`. Le bilan annonçait donc « N **trame(s)** REFUSÉE(S) »
+  quand **zéro trame** l'avait été. Il publie désormais **« N commande(s) console
+  refusée(s) »** et **sa décomposition** (`dont N poses d'horloge ⇒ M imputables aux
+  trames`), exacte parce que `rtc` nu sort toujours à 0 et que chaque pose refusée est
+  comptée à part, sur le **verdict ancré de la carte** et non sur le marqueur du REPL.
 
 - **Protocole** : `$DN,3,<seq>,<t_ms>,<metrique>,<v1>[,<v2>[,<v3>[,<v4>]]]*<CK>` — ⛔ **l'autorité est `main/dn_link.h`**, ce README renvoie et ne redéfinit pas. ⚠️ **Corrigé par la revue de code du 2026-08-19** : cette ligne publiait encore la **v2** alors que `dn4-6` livre `DN_LINK_PROTO_VERSION = 3` (`NB_CHAMPS_MAX` 7 → 9, `DN_LINK_LIGNE_MAX` 63 → **71**), en extension **ADDITIVE**. Un champ VIDE en position interne = « cette grandeur-là, je ne l'ai pas » (W10) ; un champ vide en **position 0** est refusé. **v1 reste acceptée** (`$DN,1,…,cpu,…`, 6 champs), et l'agent de dn2-2 **non modifié** fait toujours vivre la case CPU : c'est le témoin de non-régression, et il passe **8/8 avec `rejets_version` = 0**. Envoyé en `pc $DN,…` au
   REPL — l'agent parle le dialecte de la console. Autorité : `dn_link.h` et
