@@ -3465,3 +3465,26 @@ c'est LE MÊME CODE**, et c'était très exactement l'argument qui a fait choisi
 GATE**, sur la capture réelle des 960 échantillons : le mutant « pas de vidage à la reprise »
 republie **19 au lieu du brut 32**, c'est-à-dire *la valeur d'AVANT la coupure*. ⛔ La carte n'a rien
 à ajouter à ça : c'est le même code, et l'œil ne saurait pas distinguer 19 de 32 sur un écran.
+
+### 27.10 ✅ AC4.4 — LE CONSTAT OWNER, À L'ŒIL, LE 2026-08-27
+
+A/B joué **sans reflasher**, grâce à `--lissage on|off` : le module a tourné en `on` (régime livré),
+puis en `off` (valeurs brutes), l'owner regardant l'écran.
+
+> 🔴 **VERBATIM OWNER** : *« c'est bien lissé et transparent de l'écriture disque : ok »*
+
+⇒ **AC4.4 EST SATISFAIT POUR `DISQUE Mo/s`.** Le lissage **ne masque pas** l'activité disque : elle
+reste lisible à l'écran. ⛔ L'AC prévoyait qu'un lissage aplatissant un pic visible soit **refusé
+quel que soit son chiffre** — ce n'est pas le cas, et c'est l'œil qui le dit, ⛔ pas la table.
+
+⚠️ **CE QUI RESTE OUVERT, ET NE SERA PAS REFERMÉ EN DOUCE** : **`CPU %`**. Il n'a **pas** été tranché
+dans cette séance. Il reste ce qu'il est depuis `dn4-1` : *« À DISCUTER »*.
+⛔ **Il n'est PAS lissé aujourd'hui**, et il ne le sera pas tant que personne ne l'aura tranché.
+Rappel du dilemme, intact : le critère écrit le classerait *LISSER* (**62,9 %** de sa plage), et
+§13.7 a **délibérément refusé** de le suivre — *« elle saute beaucoup mais c'est la vérité de la
+machine, et un CPU lissé ment sur les pics »*.
+
+⚠️ **ET UNE OBSERVATION DE PÉRIMÈTRE, DE L'OWNER** : *« c'est un ticket un peu en roue libre »*.
+Elle est notée ici parce qu'elle est **juste** : `dn4-5` a absorbé, en une séance, l'audit de
+rebouclage, l'instrument du gel, la boîte noire, le lissage et sa séance carte. ⛔ **Les sujets
+disque de l'owner ne sont PAS de cette story** et n'y entrent pas.
