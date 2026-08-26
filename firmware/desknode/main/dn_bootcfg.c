@@ -417,16 +417,36 @@ esp_err_t dn_bootcfg_load(dn_bootcfg_t *out)
              *    symétrique. On le REND AUDIBLE, et il se corrige par
              *    `cfg reset` (vérifié : rend bien 7 680) ou `set bounce 7680`.
              */
-            if (v > 0 && v < DN_DEFAULT_BOUNCE_PX) {
+            /*
+             * 🔴 DEUX SEUILS DEPUIS LE 2026-08-27, ⛔ PLUS UN SEUL — revue de
+             *    code. Le test etait `v < DN_DEFAULT_BOUNCE_PX` : remonter le
+             *    defaut a 9 600 a fait tomber 7 680 dans une alerte de
+             *    GLISSEMENT, alors que 7 680 est fonctionnel et seulement
+             *    sous-optimal. La justification complete est dans dn_bootcfg.h,
+             *    au-dessus de `DN_BOUNCE_PX_ALERTE`.
+             */
+            if (v > 0 && v < DN_BOUNCE_PX_ALERTE) {
                 ESP_LOGW(TAG,
-                         "bounce_px=%ld vient de la NVS et est SOUS le defaut "
-                         "mesure sur (%d px = %d lignes).",
-                         (long)v, DN_DEFAULT_BOUNCE_PX,
-                         DN_DEFAULT_BOUNCE_PX / DN_LCD_H_RES);
+                         "bounce_px=%ld vient de la NVS et est SOUS le seuil "
+                         "MESURE SUR (%d px = %d lignes).",
+                         (long)v, DN_BOUNCE_PX_ALERTE,
+                         DN_BOUNCE_PX_ALERTE / DN_LCD_H_RES);
                 ESP_LOGW(TAG,
-                         "  ⚠️ C'est la valeur sous laquelle l'image GLISSE d'un "
-                         "cran sous trafic serie + repeint (famine DMA, §18.9). "
+                         "  🔴 C'est la zone ou l'image GLISSE d'un cran sous "
+                         "trafic serie + repeint (famine DMA, §18.9). "
                          "`cfg reset` ou `set bounce %d` pour revenir au defaut.",
+                         DN_DEFAULT_BOUNCE_PX);
+            } else if (v > 0 && v < DN_DEFAULT_BOUNCE_PX) {
+                ESP_LOGW(TAG,
+                         "bounce_px=%ld vient de la NVS : FONCTIONNEL (>= %d px, "
+                         "le seuil mesure sur) mais SOUS l'optimum mesure de "
+                         "%d px.",
+                         (long)v, DN_BOUNCE_PX_ALERTE, DN_DEFAULT_BOUNCE_PX);
+                ESP_LOGW(TAG,
+                         "  ⚠️ Ce n'est PAS une alerte de defaut, c'est une "
+                         "alerte de reglage : `set bounce %d` gagne la marge "
+                         "mesuree en §20bis.6. ⛔ Ne PAS monter au-dela — 15 360 "
+                         "est PIRE (constat owner : une bande sur les %%).",
                          DN_DEFAULT_BOUNCE_PX);
             }
         } else {

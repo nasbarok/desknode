@@ -68,7 +68,29 @@ esp_err_t dn_recal_init(esp_lcd_panel_handle_t panel);
 
 /* Signale qu'une bascule de framebuffer vient d'aboutir. Appelée depuis
  * dn_display_present(), et SEULEMENT quand num_fbs > 1 : à un seul framebuffer
- * il n'y a pas de bascule, donc rien à recaler. Ne bloque pas. */
+ * il n'y a pas de bascule, donc rien à recaler. Ne bloque pas.
+ *
+ * 🔴 CONTRAT AMENDÉ LE 2026-08-27 (revue de code) — ⛔ LA PHRASE CI-DESSUS
+ *    INTERDISAIT CE QUE LE DÉPÔT FAIT DÉJÀ. `desknode_main.c` appelle cette
+ *    fonction à `num_fbs = 1` ET HORS de `dn_display_present()`, depuis
+ *    `4734d07` : c'est le recalage d'AMORÇAGE, et sans lui l'image sort décalée
+ *    en permanence sous `RESTART_IN_VSYNC=n`. Le bloc appelant l'expliquait très
+ *    bien — mais du côté de l'APPELANT, pendant que l'en-tête de la fonction
+ *    appelée continuait de l'interdire. ⛔ On annote, on n'efface pas.
+ *
+ * 🎯 LE CONTRAT RÉEL, ET IL A DEUX APPELANTS LÉGITIMES :
+ *    (a) RECALAGE DE BASCULE — `dn_display_present()` (dn_display.c), sous
+ *        `num_fbs > 1`. C'est le cas d'origine.
+ *    (b) RECALAGE D'AMORÇAGE — `desknode_main.c`, UNE FOIS au boot, à
+ *        `num_fbs = 1`, après que le panneau tourne et que l'abonnement vsync
+ *        de `dn_recal_init()` soit posé. ⛔ UN one-shot : rien ne le rejoue.
+ *    Les deux partagent le mécanisme et ⛔ PAS le besoin — ne pas « unifier »
+ *    sans relire le bloc de `desknode_main.c`.
+ *
+ * ⚠️ CE QUE ÇA LAISSE OUVERT, ET C'EST DÉCLARÉ : à `num_fbs = 1` il n'existe
+ *    AUCUNE parade automatique au décalage PERMANENT après le boot. Le filet
+ *    est manuel (`dma` à la console). Mesurer la DURÉE d'un décalage est le
+ *    sujet de `dn4-12` ; le ré-armement automatique s'y branchera. */
 void dn_recal_arm(void);
 
 /* 0 désactive. Renvoie ESP_ERR_INVALID_ARG hors de [0, DN_RECAL_VSYNCS_MAX]. */

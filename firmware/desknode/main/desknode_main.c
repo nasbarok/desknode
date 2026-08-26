@@ -393,9 +393,13 @@ void app_main(void)
      *
      * ⚠️ POURQUOI ICI, ET PAS DANS `dn_display_init()` : `dn_recal_arm()` réveille
      *    une tâche qui compte des VSYNC. Elle a besoin que le panneau TOURNE et
-     *    que l'abonnement vsync de `dn_recal_init()` (étape 7) soit posé. On est
-     *    donc au premier endroit où c'est vrai. ⛔ Le mettre plus tôt armerait
-     *    dans le vide, sans que rien ne le dise.
+     *    que l'abonnement vsync de `dn_recal_init()` (étape 5, `:330`) soit posé.
+     *    ⚠️ CORRIGÉ LE 2026-08-27 (revue) : ce commentaire citait « étape 7 »,
+     *    qui est le RÉTROÉCLAIRAGE (`:363`). Le raisonnement était juste, la
+     *    référence était fausse — et c'est elle qu'un relecteur va vérifier.
+     *    (`dn_display.c:708`, cité plus bas, est exact.)
+     *    On est donc au premier endroit où c'est vrai. ⛔ Le mettre plus tôt
+     *    armerait dans le vide, sans que rien ne le dise.
      *
      * ⚠️ POURQUOI IL NE PASSE PAS PAR `dn_display_present()` COMME LES AUTRES :
      *    ce chemin-là garde l'armement derrière `num_fbs > 1` (dn_display.c:708),
@@ -407,6 +411,27 @@ void app_main(void)
      *    Si l'image reste décalée, le filet est la commande console `dma`, qui
      *    REDEVIENT opérante à `n` — et `recal` publie les compteurs.
      */
+    /*
+     * 🔴 LE GARDE-FOU ÉTAIT UNE BRANCHE MORTE, ET SON MESSAGE ACCUSAIT UNE CAUSE
+     *    IMPOSSIBLE — corrigé le 2026-08-27 (revue de code).
+     *    `dn_recal_get_vsyncs()` rend `s_vsyncs`, un `static` initialisé à
+     *    `DN_RECAL_VSYNCS_DEFAUT = 1` (dn_recal.c:18), JAMAIS restauré depuis la
+     *    NVS (`grep nvs dn_recal.c` : vide), et dont l'unique mutateur
+     *    `dn_recal_set_vsyncs()` n'a qu'un appelant : la console — qui démarre à
+     *    l'étape 9, plus de 90 lignes APRÈS ce test. ⇒ le `else` NE POUVAIT
+     *    JAMAIS s'exécuter, et son `ESP_LOGE` désignait `recal 0`, un état que
+     *    le boot ne peut pas atteindre. ⛔ C'est le piège n°3 des Dev Notes —
+     *    « un témoin qui ne pouvait rendre que sa valeur de succès » — reposé à
+     *    l'identique.
+     * ⇒ L'assertion statique dit ce que le test suppose ; le test reste comme
+     *   filet si quelqu'un change le défaut ; et le SYMÉTRIQUE NON TRAITÉ est
+     *   désormais DIT : `recal 0` ne survit pas au reboot, donc un opérateur qui
+     *   le tape puis redémarre RÉCUPÈRE le recalage sans aucune trace.
+     */
+    _Static_assert(DN_RECAL_VSYNCS_DEFAUT > 0,
+                   "le recalage d'AMORÇAGE est la seule chose qui redresse "
+                   "l'image au boot à RESTART_IN_VSYNC=n : un défaut à 0 la "
+                   "livrerait décalée, en silence");
     if (dn_recal_get_vsyncs() > 0) {
         dn_recal_arm();
         ESP_LOGI(TAG,
@@ -416,12 +441,20 @@ void app_main(void)
         ESP_LOGI(TAG,
                  "  ⚠️ si l'image sort DÉCALÉE malgré ça : `recal` pour les "
                  "compteurs, `dma` pour recaler à la main (opérante à `n`).");
+        ESP_LOGI(TAG,
+                 "  ⚠️ `recal N` n'est PAS persisté en NVS : un `recal 0` tapé à "
+                 "la console est perdu au reboot, et cet armement revient SANS "
+                 "trace. ⛔ Le réglage ne survit pas, le comportement si.");
     } else {
-        /* ⛔ Un amorçage silencieusement désactivé livrerait une image décalée
-         *    en permanence sans que rien ne dise pourquoi. */
+        /* ⛔ Branche défensive, INATTEIGNABLE au boot aujourd'hui (voir
+         *    l'assertion ci-dessus). Elle ne s'ouvrirait que si le défaut
+         *    compilé passait à 0 — auquel cas l'image sortirait décalée en
+         *    permanence, et il faut que quelque chose le dise. */
         ESP_LOGE(TAG,
-                 "🔴 recalage d'AMORÇAGE DÉSACTIVÉ (`recal 0`) alors que "
-                 "RESTART_IN_VSYNC=n : l'image VA sortir décalée. `recal 1`.");
+                 "🔴 recalage d'AMORÇAGE DÉSACTIVÉ (défaut compilé à 0) alors "
+                 "que RESTART_IN_VSYNC=n : l'image VA sortir décalée. ⛔ Ce "
+                 "n'est PAS `recal 0` — ce réglage-là n'est pas persisté et "
+                 "n'atteint pas le boot. C'est DN_RECAL_VSYNCS_DEFAUT.");
     }
 
     /* 8. La liaison PC (dn2-2). APRÈS dn_ui_init : sa tâche pousse l'état vers

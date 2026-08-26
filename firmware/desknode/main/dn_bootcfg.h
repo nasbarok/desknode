@@ -92,6 +92,34 @@ typedef struct {
 #define DN_BOUNCE_PX_PLANCHER 4800
 
 /*
+ * ─── LE SEUIL D'ALERTE AU BOOT, DECOUPLE DU DEFAUT (revue du 2026-08-27) ─────
+ *
+ * 🔴 CE QU'IL CORRIGE. La garde de lecture NVS s'ecrivait
+ *    `if (v > 0 && v < DN_DEFAULT_BOUNCE_PX)` et journalisait « *c'est la valeur
+ *    sous laquelle l'image GLISSE d'un cran sous trafic serie + repeint* ».
+ *    Remonter le defaut a 9 600 le 2026-08-23 a fait tomber **7 680 dedans** :
+ *    toute carte configuree avant ce commit criait A CHAQUE BOOT une alerte de
+ *    GLISSEMENT pour une valeur que le MEME commit mesure comme fonctionnelle
+ *    (« petite ligne », dn_bootcfg.c) et que le MEME fichier appelle « la plus
+ *    petite valeur LEGITIME qui tienne ». UN SEUIL UNIQUE PORTAIT DEUX SENS :
+ *    4 800 (reellement dangereux) et 7 680 (seulement sous-optimal) recevaient
+ *    le meme message.
+ *
+ * 🎯 CE QUI EST VRAI, ET C'EST MESURE :
+ *      - SOUS 7 680  : l'image GLISSE sous trafic serie + repeint (§18.9). Ce
+ *                      fut le defaut du produit jusqu'au 2026-08-19, et c'est
+ *                      pour ca qu'il a ete quitte.
+ *      - 7 680       : fonctionnel, mais SOUS l'optimum mesure a
+ *                      `RESTART_IN_VSYNC=n` (§20bis.6). Ce n'est pas une alerte
+ *                      de defaut, c'est une alerte de reglage.
+ *      - 9 600       : l'optimum mesure, et le defaut depuis `1adf259`.
+ *                      ⛔ 15 360 est PIRE (« une bande qui couvre les % »).
+ * ⇒ Deux seuils, deux messages. Et ce seuil-ci ne bouge PAS quand le defaut
+ *   bouge : c'est tout l'objet du decouplage.
+ */
+#define DN_BOUNCE_PX_ALERTE 7680
+
+/*
  * BORNES du draw buffer LVGL — mêmes raisons que le bounce buffer, mêmes dégâts
  * si on les oublie : la RAM interne est la ressource rare, et un échec
  * d'allocation au boot passe par ESP_ERROR_CHECK, donc par la panique, donc par
