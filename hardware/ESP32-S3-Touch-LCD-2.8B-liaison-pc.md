@@ -2630,3 +2630,214 @@ erreurs d'envoi, recalages, bruit d'écho, refus firmware). Sans le drapeau, la 
 Un agent permanent qui tourne **des semaines sans redémarrer** peut dépasser le plafond — à
 ~1,2 Mo/jour, il atteint 5 Mo en **~4 jours**. ⛔ C'est **assumé**, ⛔ pas ignoré : l'agent redémarre
 à chaque logon, et le débit mesuré dit de combien on dépasse si ce n'est pas le cas.
+
+---
+
+### 25.10 🔴 LE RÉSULTAT — **LA PRÉDICTION EST RATÉE, PAR LE BAS, AUX DEUX RANGS**
+
+Tir du **2026-08-26**, agent **RÉEL** sur `COM3`, `--temoin`, **lancé par la tâche au logon**,
+**WSL éteint**, 16 cœurs, SHA déposé **`f614b8f`**.
+Capture brute : `mesures/dn4-17/AC5-AC6-constat-apres-logon.txt`.
+
+| | prédit (committé `74c63db`, **avant** le tir) | **mesuré** | verdict |
+|---|---|---:|---|
+| % d'un cœur à **60 s** | `[2,20 ; 2,70]` | **2,057** | ❌ **HORS BANDE**, −0,143 pt sous la borne basse |
+| % machine à **60 s** | `[0,1375 ; 0,1688]` | **0,1285** | ❌ hors bande |
+| % d'un cœur à **180 s** | `[1,90 ; 2,30]` | **1,805** | ❌ **HORS BANDE**, −0,095 pt |
+| % machine à **180 s** | `[0,1188 ; 0,1438]` | **0,1128** | ❌ hors bande |
+
+🔴 **ET UN DÉFAUT DE LA PRÉDICTION ELLE-MÊME, QU'IL FAUT ÉCRIRE.** §25.3 ne nommait qu'**UNE**
+réfutation : *« une valeur **> 2,70** signalerait un coût que le tableau n'a pas vu »*. **Le critère
+de réfutation était UNILATÉRAL** — il ne disait rien d'un dépassement par le bas, et c'est
+précisément ce qui est arrivé. ⛔ Une prédiction qui ne peut être démentie que d'un côté est une
+demi-prédiction. *(Et §23.5 avait déjà noté le même biais de signe : « le raisonnement a vu juste
+sur l'ordre de grandeur, ⛔ pas sur le signe ».)*
+
+### 25.11 🔴 LA BAISSE EST À **TOUS LES RANGS** — troisième tir consécutif qui descend
+
+> 🔴 **AMENDÉ PAR §25.17, LE MÊME JOUR.** Un tir de CONTRÔLE a été joué quelques heures plus
+> tard, **même binaire, même méthode**, et il rend **+0,390 pt** au rang 60 s. ⇒ **La dispersion de
+> l'instrument entre deux tirs du même jour est PLUS GRANDE que l'écart contre §23.** Le tableau
+> ci-dessous reste exact ; ⛔ **sa lecture « l'agent descend » n'est PAS soutenue.**
+
+| rang | §16.6 (`4c3a3f7`) | §23 (`9297fd4`) | 🆕 **`dn4-17` (`f614b8f`)** | Δ vs §23 |
+|---|---:|---:|---:|---:|
+| 10 s | 5,141 | 4,348 | **3,119** | −1,229 |
+| 20 s | 3,586 | 3,431 | **2,263** | −1,168 |
+| 30 s | 3,167 | 2,859 | **2,173** | −0,686 |
+| 40 s | 2,810 | 2,692 | **2,147** | −0,545 |
+| 50 s | 2,686 | 2,497 | **2,030** | −0,467 |
+| **60 s** | 2,523 | 2,367 | **2,057** | **−0,310** |
+| **180 s** | — | 2,065 | **1,805** | **−0,260** |
+
+Série complète du tir : `3,119 · 2,263 · 2,173 · 2,147 · 2,030 · 2,057 · 1,964 · 1,894 · 1,874 ·
+1,859 · 1,832 · 1,797 · 1,803 · 1,785 · 1,791 · 1,787 · 1,801 · 1,805 · 1,817` (rangs 10→190 s).
+⚠️ **Elle a CONVERGÉ cette fois** : au-delà de 120 s elle oscille dans `[1,785 ; 1,817]`, soit une
+bande de **0,032 pt**. §23 disait *« elle descend encore »* à 180 s.
+
+⛔ **CE QUE CE TIR NE TRANCHE PAS, ET C'EST LE MÊME AVEU QU'EN §23.6** : un décalage à tous les
+rangs s'explique aussi bien par un agent réellement moins cher que par une **charge de fond
+différente**. ⛔ **Pas de témoin de contrôle.** La réserve « la tour n'est pas au repos contrôlé »
+(§25.4-4) était écrite avant le tir ; elle tient, et elle suffit à expliquer l'écart.
+⚠️ **Une piste NOMMÉE mais NON mesurée** : `LHM` a répondu en **8,1 ms de moyenne** ce jour-là,
+contre **53,0 ms** en §23 et **24,1 ms** en §18.4. Le service est **6,5× plus rapide** qu'au tir de
+référence. ⛔ **Ce n'est pas une explication** — la cadence est absolue (`prochain += PERIODE_S`),
+donc une lecture plus rapide ne raccourcit pas le mural. C'est **un fait à côté du chiffre**, versé
+tel quel.
+
+### 25.12 ✅ LE RÉGIME EST **PROUVÉ**, ET IL EST **COMPARABLE** — les deux réserves qui comptaient sont levées
+
+**AC6.6 — le process mesuré EST celui que la tâche a lancé, prouvé par la chaîne de PID :**
+
+```
+[0] PID=16344  python.exe   <- père 9492
+      "…\Python313\python.exe" "H:\dev\projets\desknode\dn_agent.py" --serie COM3 --stop-si … --temoin
+[1] PID=9492   cmd.exe      <- père 1516      ^^^ C'EST L'ENGINE DE LA TÂCHE
+[2] PID=1516   svchost.exe  <- père 1144
+EnginePID de la tâche = 9492
+```
+
+⇒ ⛔ **Ce n'est pas un agent lancé à la main depuis `H:` qu'on appellerait « le régime livré »** :
+le `cmd.exe` père de `python.exe` **EST** le moteur de la tâche planifiée, `état=Running`,
+`RunLevel=Limited`, `LastRunTime=2026-08-26 09:54:54`.
+
+| réserve écrite **avant** le tir (§25.4) | ce que le tir en dit |
+|---|---|
+| **WSL doit être éteint** | ✅ `wsl -l --running` ⇒ *« Aucune distribution en cours d'exécution »* |
+| 🔴 **LHM doit être vivant, sinon ⛔ non opposable à 2,367** | ✅ **LEVÉE** — `LHM : 1 processus`, `HTTP 200 (75 841 o)`, et le bilan dit **988 lectures réussies / 1 en échec**, moyenne **8,1 ms**. §23 avait 181 / 0. **Le chiffre EST opposable.** |
+| ⚠️ **le firmware n'est pas le même et il PARLE** | ⚠️ **TIENT** — écho drainé **275,6 o/s · 5,21 lignes/s** sur 989 s. ⛔ §23 ne publie pas son propre débit d'écho : **la comparaison de ce poste-là est impossible**, et c'est une limite de la référence, pas de ce tir |
+| ⚠️ la tour n'est pas au repos contrôlé | ⚠️ **TIENT** — et c'est l'explication la plus économique de la baisse à tous les rangs |
+
+**Le bilan de fin du run mesuré** (989,0 s, arrêt propre par drapeau) :
+`4 945 trames émises (5,00 trames/s) · 0 erreur d'envoi · 0 recalage de cadence · aucun refus
+firmware · aucun écrêtage`. ⚠️ `1` lecture LHM à **606,4 ms** pour un plafond de 600 ms (101 %) —
+incident déjà nommé en §18. Absences LHM : `cpu.degc=2 · fan.case_group=3 · fan.cpu_noctua=3 ·
+fan.rear_out=3 · fan.top_out=3` sur 989 cycles.
+
+### 25.13 🎯 LE VERDICT DU CRITÈRE N°4 — **LES DEUX MOITIÉS SONT COCHÉES**
+
+| moitié du critère n°4 | verdict |
+|---|---|
+| *« l'agent démarre avec la session »* | ✅ **TENUE** — témoin par un **logoff/logon RÉEL**, ⛔ pas par `Start-ScheduledTask`. La case CPU est revenue **seule**, WSL éteint |
+| *« < 1 % CPU »* (unité **% machine**, décision owner 2026-08-24) | ✅ **TENUE** — **0,1285 %** au rang 60 s (**7,8× de marge**), **0,1128 %** à 180 s (**8,9×**) |
+
+⚠️ **La conséquence de §23.9 se réécrit avec le nouveau chiffre** : à `2,057 % d'un cœur`, le critère
+tient **dès 3 cœurs logiques** (0,686 %) et **échouerait à 2** (1,03 %). **La tour en a 16.**
+
+### 25.14 ⛔ CE TIR NE SOLDE **TOUJOURS PAS** L'ENTRÉE « +0,26 pt »
+
+Rien n'a changé au raisonnement de §25.5 : **aucun A/B**, tour non au repos, et le régime a bougé
+sur **quatre** axes à la fois. ⛔ **PAS D'A/B ⇒ PAS D'ATTRIBUTION.** L'entrée reste ouverte.
+⚠️ **Et ce tir en RAJOUTE** : il montre une baisse de **−0,310 pt** au rang 60 s sans plus
+d'explication que le +0,26 pt n'en avait. **Deux écarts non attribués, même méthode manquante.**
+
+### 25.15 🔴 UN DÉFAUT TROUVÉ PAR **L'ŒIL DE L'OWNER**, qu'aucune gate ne voyait
+
+Au logon, la tâche a ouvert **une fenêtre console visible**, et elle **y est restée** : relevé
+`MainWindowHandle=65826` sur le `cmd.exe` de la tâche, **812 s après le logon**. L'action était
+`cmd.exe /c "…dn-agent.bat" run …`, et Task Scheduler en `LogonType Interactive` **montre** cette
+console. ⛔ Un agent **permanent** qui laisse une fenêtre ouverte 24 h/24 est un défaut du produit.
+⚠️ **Aucun instrument de cette story ne pouvait le voir** : le compte de process, l'état du port et
+la chaîne de PID sont tous **vrais** avec la fenêtre ouverte. C'est l'œil qui l'a trouvé.
+
+✅ **CORRIGÉ ET PROUVÉ** : l'action passe par `powershell.exe -WindowStyle Hidden -File … tache`,
+qui appelle le `.bat` — le quoting délicat reste **dans PowerShell**, et la console est cachée pour
+**tout l'arbre**. Vérifié mécaniquement après re-pose :
+
+```
+[0] PID=20132  python.exe      MainWindowHandle=0
+[1] PID=19324  cmd.exe         MainWindowHandle=0
+[2] PID=24608  powershell.exe  MainWindowHandle=0
+--- fenêtres console visibles dans la session : AUCUNE ---
+```
+
+⚠️ **CE QUE ÇA LAISSE OUVERT, ET ON LE DIT** : le chiffre de §25.10 a été pris avec **l'ancienne
+action** (fenêtre visible). La chaîne gagne un maillon `powershell.exe` **inactif**, qui ⛔ **ne peut
+pas** entrer dans un `psutil.Process()` mesurant l'agent **sur lui-même** — mais *« un chiffre ne se
+transporte pas d'un régime à l'autre »*. ✅ **La vérification est GRATUITE et AUTOMATIQUE** :
+`--temoin` est **permanent** dans le régime livré, donc **le prochain logon réécrit la série
+entière** dans `dn-agent.log`. Il suffira de comparer **aux mêmes rangs**.
+
+### 25.16 ✅ AC5.1 — **UN FLASH RÉEL, APRÈS LA POSE DE LA TÂCHE**
+
+C'est le seul risque de régression que la story portait : *un agent qui redémarre seul tient `COM3`
+et bloque le flash de `dn3-3`/`dn4-10`.* Joué **tâche posée ET agent vivant** :
+
+| étape | mesure |
+|---|---|
+| `rendre-port.sh --vers-flash` | **8,5 s** — l'agent est arrêté **proprement** (bilan de 989 s écrit) et la carte passe à WSL |
+| `esptool chip_id` depuis WSL | **1,03 s** — `MAC a0:f2:62:e3:d7:f4` |
+| `verify_flash 0x10000` | 🎯 **`verify OK (digest matched)`** — la carte portait **exactement** `build/desknode.bin` |
+| `write_flash 0x10000` | ✅ **1 144 160 o écrits**, 604 614 compressés, **5,8 s à 1 573,5 kbit/s**, *« Hash of data verified »* |
+| `rendre-port.sh --vers-agent` | **7,1 s** — le port revient à l'agent |
+
+🔴 **POURQUOI `esptool` ET ⛔ PAS `idf.py flash`** : `idf.py` **reconstruit** d'abord, et un rebuild
+ré-embarque le SHA courant dans `App version` — ce qui **changerait le firmware de `dn3-3`** (dont
+les mesures nomment `6144064`). Le `verify_flash` **préalable** prouve que les octets écrits sont
+**ceux déjà en place** : le flash est réel et son effet sur la carte est **nul**.
+
+⚠️ **UNE FRICTION MESURÉE, QUI PÈSE SUR LA FOURCHE DE §25.7** : `--after watchdog_reset` **fait
+tomber l'attachement WSL** (la puce ré-énumère l'USB — `wsl-attach.sh` le documente). Il faut donc
+**re-jouer `wsl-attach.sh` après chaque esptool**. ⛔ **La branche Windows-only n'a pas ce coût** :
+le même reset côté Windows a rendu `COM3` tout seul. ⚠️ Et les deux `esptool` **ne sont pas la même
+version** : **v4.12.0** dans WSL (ESP-IDF 5.5) contre **v5.3.1** côté Windows.
+
+
+---
+
+### 25.17 🔴 LE TIR DE CONTRÔLE RENVERSE LA LECTURE — **l'écart contre §23 est DANS LE BRUIT DE L'INSTRUMENT**
+
+§25.11 disait, comme §23.6 avant lui : *« ⛔ pas de témoin de contrôle »*. **Il y en a un
+maintenant**, et il a été joué **le même jour**, sur **le même binaire déposé** (`f614b8f`), avec la
+**même méthode** (agent réel, `COM3`, `--temoin`, tâche planifiée, cumul rapporté au mural).
+La seule chose qui change entre les deux, c'est **l'état de la tour** : le tir de régime a eu lieu
+**juste après le logon, WSL éteint, rien d'autre en marche** ; le contrôle pendant une **session de
+travail active** (WSL, éditeur, agent de dev).
+
+| rang | tir de RÉGIME (logon, tour au calme) | tir de CONTRÔLE (même jour, tour occupée) | **Δ** |
+|---|---:|---:|---:|
+| 60 s | **2,057** | **2,447** | **+0,390** |
+| 180 s | **1,805** | **2,144** | **+0,339** |
+
+**Mis en regard des écarts qu'on interprétait :**
+
+| écart | valeur | ce qu'on en disait |
+|---|---:|---|
+| `dn4-17` − §23, rang 60 s | **−0,310** | « la baisse est à tous les rangs » |
+| `dn4-17` − §23, rang 180 s | **−0,260** | idem |
+| 🔴 **dispersion du MÊME jour, rang 60 s** | **+0,390** | — |
+| 🔴 **dispersion du MÊME jour, rang 180 s** | **+0,339** | — |
+
+🎯 **CONCLUSION, ET ELLE PORTE SUR TROIS TIRS EN ARRIÈRE** : **la dispersion de l'instrument est
+PLUS GRANDE que tous les Δ inter-sessions que ce dossier a publiés.** ⇒ ⛔ **Aucun des trois écarts
+(§16.6 → §23 → `dn4-17`) ne peut être lu comme « l'agent a changé de coût ».** Ils sont compatibles
+avec **un seul et même agent** mesuré sur **une tour dont la charge n'est pas contrôlée** — ce que
+les deux dossiers écrivaient déjà en réserve, **sans jamais pouvoir le chiffrer**.
+✅ **§23.6 avait posé la bonne question** (*« un décalage uniforme s'explique aussi bien par une
+charge de fond différente »*) et concluait quand même à *« l'hypothèse est RÉFUTÉE »*. **Avec ce
+chiffre, ⛔ cette réfutation-là ne tient plus non plus** : elle reposait sur un Δ plus petit que le
+bruit.
+
+⚠️ **ET ÇA CHANGE LA LECTURE DE MA PROPRE PRÉDICTION.** Le tir de contrôle, à **2,447**, tombe
+**DANS** la bande `[2,20 ; 2,70]` de §25.3. ⇒ **La prédiction n'était pas fausse sur l'agent : elle
+était fausse sur la TOUR.** ⛔ Ça ne la sauve pas — une prédiction qui ne dit pas dans quel état de
+charge elle vaut n'est pas tranchable — mais ça nomme **ce qu'il faut réparer dans la méthode**, et
+ce n'est pas le code de l'agent.
+
+🔴 **CE QUE ÇA IMPOSE AU PROCHAIN QUI PUBLIERA UN COÛT D'AGENT** :
+1. ⛔ **Ne plus publier un Δ inter-session sous ~0,4 pt** au rang 60 s comme s'il signifiait quelque
+   chose. **La résolution de la méthode est de cet ordre**, elle est maintenant **mesurée**.
+2. ✅ **Un tir SE DOUBLE d'un contrôle** joué dans un état de charge différent, ⛔ pas d'une réserve
+   écrite en prose. Le coût est de trois minutes.
+3. ✅ **Le tir de régime se prend juste après le logon**, tour au calme : c'est le seul état
+   **reproductible** de cette machine, et c'est aussi **le régime réel** de l'agent permanent.
+4. ⛔ **L'entrée « +0,26 pt » du ledger est, elle aussi, sous ce bruit.** ⚠️ Ça ne la solde toujours
+   pas — *« pas d'A/B ⇒ pas d'attribution »* — mais ça **change ce qu'il faut faire** : ⛔ ce n'est
+   pas un A/B avant/après commit qu'il faut, c'est un A/B **à charge de tour contrôlée**, et il faut
+   **n > 1 par branche**.
+
+⚠️ **CE QUE CE CONTRÔLE NE DIT PAS** : il **ne mesure pas** l'effet du correctif de fenêtre de
+§25.15 (le contrôle porte la nouvelle action, le tir de régime l'ancienne). **Deux variables ont
+bougé ensemble** — la fenêtre ET la charge. ⛔ Il ne prouve donc **rien** sur la fenêtre ; il prouve
+que **la charge domine**. La vérification du correctif reste **gratuite et automatique** au prochain
+logon (§25.15).

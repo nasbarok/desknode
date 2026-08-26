@@ -49,7 +49,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet('etat', 'prevol', 'lancer', 'stop', 'permanence', 'retirer')]
+    [ValidateSet('etat', 'prevol', 'lancer', 'tache', 'stop', 'permanence', 'retirer')]
     [string]$Action = 'etat',
 
     [string]$Serie = 'COM3',
@@ -308,6 +308,24 @@ switch ($Action) {
 }
 
 # --------------------------------------------------------------------------
+# TACHE = ce que la tache planifiee appelle. Elle n'existe QUE pour que le
+# quoting reste DANS PowerShell, ou il est controlable.
+# !!! ET POUR QUE LA FENETRE CONSOLE DISPARAISSE. MESURE le 2026-08-26 :
+#     avec `cmd.exe` en action directe, la tache ouvre une fenetre console
+#     qui reste a l'ecran TOUT LE TEMPS DU RUN (MainWindowHandle=65826
+#     releve sur le cmd.exe de la tache, 812 s apres le logon). Un agent
+#     PERMANENT qui laisse une fenetre ouverte 24 h/24 est un defaut du
+#     produit, pas un detail. L'action passe donc par
+#     `powershell -WindowStyle Hidden`, qui cache la console de TOUT l'arbre.
+# -- La chaine de PID reste lisible - elle gagne juste un maillon :
+#     engine -> powershell.exe -> cmd.exe (le .bat) -> python.exe
+'tache' {
+    $tem = $(if ($Temoin) { '-Temoin' } else { '' })
+    & $env:ComSpec /c ('"' + $BAT + '" run ' + $Serie + ' ' + $Duree + ' ' + $tem)
+    exit $LASTEXITCODE
+}
+
+# --------------------------------------------------------------------------
 'stop' {
     Titre 'STOP'
     $i = Get-Instances
@@ -398,14 +416,21 @@ switch ($Action) {
     #     qui tourne. Cout : une lecture psutil toutes les 10 s, et ~1,2 Mo
     #     de journal par jour - la rotation est dimensionnee pour.
     $tem = $(if ($Temoin) { '-Temoin' } else { '' })
-    $cible = '/c ""' + $BAT + '" run ' + $Serie + ' ' + $Duree + ' ' + $tem + '"'
+    # !!! L'ACTION EST `powershell -WindowStyle Hidden`, - PLUS `cmd.exe` NU.
+    #     Motif MESURE ci-dessus (action 'tache') : en action directe, cmd.exe
+    #     laisse une fenetre console OUVERTE tout le temps du run.
+    #     Bonus : tout le quoting delicat vit dans le .ps1, l'action ne porte
+    #     qu'UN chemin entre guillemets.
+    $ps1 = Join-Path $RACINE 'dn_agent_tour.ps1'
+    $cible = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' +
+             $ps1 + '" tache -Serie ' + $Serie + ' -Duree ' + $Duree + ' ' + $tem
     # !!! PAS `$action` : ce script a un PARAMETRE `$Action` avec un
     #     ValidateSet, et les variables PowerShell sont INSENSIBLES A LA
     #     CASSE. `$action = New-ScheduledTaskAction ...` declenchait donc le
     #     ValidateSet du parametre et la pose echouait avec un message qui
     #     parlait de MSFT_TaskExecAction - un diagnostic qui envoie regarder
     #     la tache alors que la faute est un nom de variable. MESURE ici.
-    $acte = New-ScheduledTaskAction -Execute $env:ComSpec -Argument $cible -WorkingDirectory $RACINE
+    $acte = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $cible -WorkingDirectory $RACINE
     $trigger = New-ScheduledTaskTrigger -AtLogOn -User $moi
     # =====================================================================
     # !!! `-RunLevel Limited`, ET C'EST **VOULU**.        (dn4-17 / AC5.2)
@@ -432,7 +457,7 @@ switch ($Action) {
     $t = Get-ScheduledTask -TaskName $NOM_TACHE -ErrorAction SilentlyContinue
     if (-not $t) { Stop2 "la tache n'a PAS ete posee."; exit 9 }
     Dire ("tache '" + $NOM_TACHE + "' POSEE | RunLevel=" + $t.Principal.RunLevel + " | etat=" + $t.State)
-    Dire ("  cible : " + $env:ComSpec + " " + ($t.Actions | Select-Object -First 1).Arguments)
+    Dire ("  cible : " + ($t.Actions | Select-Object -First 1).Execute + " " + ($t.Actions | Select-Object -First 1).Arguments)
     if ("$($t.Principal.RunLevel)" -ne 'Limited') {
         Stop2 "RunLevel n'est PAS Limited : c'est un DEFAUT ici (voir le bloc AC5.2 ci-dessus)."
         exit 9

@@ -1,0 +1,101 @@
+########## CONSTAT dn4-17 - 2026-08-26T09:57:55+02:00 ##########
+
+=== WSL - est-il ETEINT ? ===
+Aucune distribution en cours d'exÚcution.
+
+
+
+=== LA TACHE ===
+  etat=Running  RunLevel=Limited
+  cible : C:\WINDOWS\system32\cmd.exe /c ""H:\dev\projets\desknode\dn-agent.bat" run COM3 0 -Temoin"
+  LastRunTime=08/26/2026 09:54:54  LastTaskResult=267009
+  EN COURS - EnginePID=9492
+
+=== ON ATTEND QUE L AGENT AIT 190 s DE VIE (le rang 180 s doit exister) ===
+  PID=16344  age=156 s
+  PID=16344  age=171 s
+  PID=16344  age=186 s
+  PID=16344  age=201 s
+
+=== LA CHAINE DE PID - AC6.6 : le process mesure est-il celui que LA TACHE a lance ? ===
+  [0] PID=16344  python.exe  <- pere 9492
+       "C:\Users\naoua\AppData\Local\Programs\Python\Python313\python.exe"  "H:\dev\projets\desknode\dn_agent.py" --serie COM3 --stop-si H:\dev\projets\desknode\dn-agent.stop --temoin 
+  [1] PID=9492  cmd.exe  <- pere 1516
+       "C:\WINDOWS\system32\cmd.exe" /c ""H:\dev\projets\desknode\dn-agent.bat" run COM3 0 -Temoin"
+       ^^^ C'EST L ENGINE DE LA TACHE
+  [2] PID=1516  svchost.exe  <- pere 1144
+  [3] PID=1144  services.exe  <- pere 1072
+  [4] PID=1072  wininit.exe  <- pere 900
+  EnginePID de la tache = 9492
+
+=== LE REGIME ===
+  coeurs logiques : 16
+  ports serie : COM3
+  LHM : 1 processus
+  LHM HTTP : 200 (75841 o)
+  --- PROVENANCE.txt ---
+  Cette arborescence est une COPIE DE DEPLOIEMENT. â>" L'AUTORITE EST LE DEPOT.
+  
+    depot   : ~/projects/desknode  (WSL Ubuntu)
+    HEAD    : f614b8f
+    depose  : 2026-08-26T09:26:08+02:00
+    par     : tools/deployer_tour.sh
+  
+  â>" NE PAS EDITER LES FICHIERS ICI. Le prochain deploiement les ecrase, et l'ecart
+  --- marqueur de lancement ---
+  lance   : 2026-08-26T09:55:22+02:00
+  regime  : tache au logon (avant-plan)
+  python  : C:\Users\naoua\AppData\Local\Programs\Python\Python313\python.exe
+  agent   : H:\dev\projets\desknode\dn_agent.py
+  args    : --serie COM3 --stop-si H:\dev\projets\desknode\dn-agent.stop --temoin
+  coeurs  : 16
+
+=== LA SERIE DU TEMOIN - AC6.2 : tous les rangs, pas seulement le dernier ===
+  [agent] GPU : AMD Radeon RX 6800 XT via ADL PMLog (adaptateur 0) â?" temoin de mapping BUS_LANES=16 CLK_MEMCLK=1990 MHz
+  [agent] tÃ©moin coÃ»t cumulÃ© : 0.312 s CPU / 10.0 s mur = 3.119 % d'un cÅ"ur (0.1949 % machine) â?" seq=50
+  [agent] tÃ©moin coÃ»t cumulÃ© : 0.453 s CPU / 20.0 s mur = 2.263 % d'un cÅ"ur (0.1414 % machine) â?" seq=100
+  [agent] tÃ©moin coÃ»t cumulÃ© : 0.656 s CPU / 30.2 s mur = 2.173 % d'un cÅ"ur (0.1358 % machine) â?" seq=150
+  [agent] tÃ©moin coÃ»t cumulÃ© : 0.859 s CPU / 40.0 s mur = 2.147 % d'un cÅ"ur (0.1342 % machine) â?" seq=200
+  [agent] tÃ©moin coÃ»t cumulÃ© : 1.016 s CPU / 50.0 s mur = 2.030 % d'un cÅ"ur (0.1269 % machine) â?" seq=250
+  [agent] tÃ©moin coÃ»t cumulÃ© : 1.234 s CPU / 60.0 s mur = 2.057 % d'un cÅ"ur (0.1285 % machine) â?" seq=300
+  [agent] tÃ©moin coÃ»t cumulÃ© : 1.375 s CPU / 70.0 s mur = 1.964 % d'un cÅ"ur (0.1227 % machine) â?" seq=350
+  [agent] tÃ©moin coÃ»t cumulÃ© : 1.516 s CPU / 80.0 s mur = 1.894 % d'un cÅ"ur (0.1184 % machine) â?" seq=400
+  [agent] tÃ©moin coÃ»t cumulÃ© : 1.688 s CPU / 90.0 s mur = 1.874 % d'un cÅ"ur (0.1171 % machine) â?" seq=450
+  [agent] tÃ©moin coÃ»t cumulÃ© : 1.859 s CPU / 100.0 s mur = 1.859 % d'un cÅ"ur (0.1162 % machine) â?" seq=500
+  [agent] tÃ©moin coÃ»t cumulÃ© : 2.016 s CPU / 110.0 s mur = 1.832 % d'un cÅ"ur (0.1145 % machine) â?" seq=550
+  [agent] tÃ©moin coÃ»t cumulÃ© : 2.156 s CPU / 120.0 s mur = 1.797 % d'un cÅ"ur (0.1123 % machine) â?" seq=600
+  [agent] tÃ©moin coÃ»t cumulÃ© : 2.344 s CPU / 130.0 s mur = 1.803 % d'un cÅ"ur (0.1127 % machine) â?" seq=650
+  [agent] tÃ©moin coÃ»t cumulÃ© : 2.500 s CPU / 140.0 s mur = 1.785 % d'un cÅ"ur (0.1116 % machine) â?" seq=700
+  [agent] tÃ©moin coÃ»t cumulÃ© : 2.688 s CPU / 150.1 s mur = 1.791 % d'un cÅ"ur (0.1119 % machine) â?" seq=750
+  [agent] tÃ©moin coÃ»t cumulÃ© : 2.859 s CPU / 160.0 s mur = 1.787 % d'un cÅ"ur (0.1117 % machine) â?" seq=800
+  [agent] tÃ©moin coÃ»t cumulÃ© : 3.062 s CPU / 170.0 s mur = 1.801 % d'un cÅ"ur (0.1126 % machine) â?" seq=850
+  [agent] tÃ©moin coÃ»t cumulÃ© : 3.250 s CPU / 180.0 s mur = 1.805 % d'un cÅ"ur (0.1128 % machine) â?" seq=900
+  [agent] tÃ©moin coÃ»t cumulÃ© : 3.453 s CPU / 190.0 s mur = 1.817 % d'un cÅ"ur (0.1136 % machine) â?" seq=950
+
+=== LE JOURNAL, FIN ===
+  taille : 3079 o
+  [agent] GPU : AMD Radeon RX 6800 XT via ADL PMLog (adaptateur 0) â?" temoin de mapping BUS_LANES=16 CLK_MEMCLK=1990 MHz
+  [agent] âs ï¸? LHM INJOIGNABLE au demarrage (TimeoutError: budget de lecture LHM epuise (600 ms)) â?" la Â°C CPU et les tr/min diront Â« -- Â», les autres grandeurs continuent. âs ï¸? La source RESTE ARMEE : elle retente a chaque cycle et reprendra seule si LHM demarre.
+  [agent] âs ï¸? source `lhm` en ECHEC (/metrics a repondu 200 mais ne porte AUCUNE ligne `lhm_` (242 ligne(s) recues) â?" â>" CE N'EST PAS une absence de capteur : mauvais endpoint, corps vide, ou prefixe de famille renomme.) â?" la ou elle remplissait une grandeur, le fil porte un CHAMP VIDE et la ligne dit Â« -- Â» ; SI elle tenait la position 0, c'est la metrique entiere qui n'est pas emise. Les autres continuent : une source morte meurt SEULE.
+  [agent] âo. source `lhm` a REPRIS apres 1 echec(s) consecutif(s) â?" la connexion persistante s'est retablie SANS redemarrer l'agent.
+  [agent] tÃ©moin coÃ»t cumulÃ© : 0.312 s CPU / 10.0 s mur = 3.119 % d'un cÅ"ur (0.1949 % machine) â?" seq=50
+  [agent] tÃ©moin coÃ»t cumulÃ© : 0.453 s CPU / 20.0 s mur = 2.263 % d'un cÅ"ur (0.1414 % machine) â?" seq=100
+  [agent] tÃ©moin coÃ»t cumulÃ© : 0.656 s CPU / 30.2 s mur = 2.173 % d'un cÅ"ur (0.1358 % machine) â?" seq=150
+  [agent] tÃ©moin coÃ»t cumulÃ© : 0.859 s CPU / 40.0 s mur = 2.147 % d'un cÅ"ur (0.1342 % machine) â?" seq=200
+  [agent] tÃ©moin coÃ»t cumulÃ© : 1.016 s CPU / 50.0 s mur = 2.030 % d'un cÅ"ur (0.1269 % machine) â?" seq=250
+  [agent] tÃ©moin coÃ»t cumulÃ© : 1.234 s CPU / 60.0 s mur = 2.057 % d'un cÅ"ur (0.1285 % machine) â?" seq=300
+  [agent] tÃ©moin coÃ»t cumulÃ© : 1.375 s CPU / 70.0 s mur = 1.964 % d'un cÅ"ur (0.1227 % machine) â?" seq=350
+  [agent] tÃ©moin coÃ»t cumulÃ© : 1.516 s CPU / 80.0 s mur = 1.894 % d'un cÅ"ur (0.1184 % machine) â?" seq=400
+  [agent] tÃ©moin coÃ»t cumulÃ© : 1.688 s CPU / 90.0 s mur = 1.874 % d'un cÅ"ur (0.1171 % machine) â?" seq=450
+  [agent] tÃ©moin coÃ»t cumulÃ© : 1.859 s CPU / 100.0 s mur = 1.859 % d'un cÅ"ur (0.1162 % machine) â?" seq=500
+  [agent] tÃ©moin coÃ»t cumulÃ© : 2.016 s CPU / 110.0 s mur = 1.832 % d'un cÅ"ur (0.1145 % machine) â?" seq=550
+  [agent] tÃ©moin coÃ»t cumulÃ© : 2.156 s CPU / 120.0 s mur = 1.797 % d'un cÅ"ur (0.1123 % machine) â?" seq=600
+  [agent] tÃ©moin coÃ»t cumulÃ© : 2.344 s CPU / 130.0 s mur = 1.803 % d'un cÅ"ur (0.1127 % machine) â?" seq=650
+  [agent] tÃ©moin coÃ»t cumulÃ© : 2.500 s CPU / 140.0 s mur = 1.785 % d'un cÅ"ur (0.1116 % machine) â?" seq=700
+  [agent] tÃ©moin coÃ»t cumulÃ© : 2.688 s CPU / 150.1 s mur = 1.791 % d'un cÅ"ur (0.1119 % machine) â?" seq=750
+  [agent] tÃ©moin coÃ»t cumulÃ© : 2.859 s CPU / 160.0 s mur = 1.787 % d'un cÅ"ur (0.1117 % machine) â?" seq=800
+  [agent] tÃ©moin coÃ»t cumulÃ© : 3.062 s CPU / 170.0 s mur = 1.801 % d'un cÅ"ur (0.1126 % machine) â?" seq=850
+  [agent] tÃ©moin coÃ»t cumulÃ© : 3.250 s CPU / 180.0 s mur = 1.805 % d'un cÅ"ur (0.1128 % machine) â?" seq=900
+  [agent] tÃ©moin coÃ»t cumulÃ© : 3.453 s CPU / 190.0 s mur = 1.817 % d'un cÅ"ur (0.1136 % machine) â?" seq=950
+
+########## FIN DU CONSTAT ##########
