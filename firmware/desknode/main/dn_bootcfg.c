@@ -16,6 +16,13 @@ static const char *TAG = "dn_cfg";
 #define DN_KEY_DRAW_LINES "draw_lines"
 #define DN_KEY_DRAW_PSRAM "draw_psram"
 #define DN_KEY_LVGL_CORE "lvgl_core"
+/* ── Le TEMOIN DE REPLI (decision owner du 2026-08-27) ──────────────────────
+ * ⚠️ Les cles NVS sont bornees a 15 caracteres : ces trois-la tiennent.
+ * ⛔ Elles ne sont PAS de la configuration de boot : `dn_bootcfg_load()` ne les
+ *    lit pas, et `bootcfg_t` ne les porte pas. Ce sont des TRACES. */
+#define DN_KEY_REPLI_DEM "repli_dem"
+#define DN_KEY_REPLI_RET "repli_ret"
+#define DN_KEY_REPLI_N   "repli_n"
 
 /*
  * Défauts = LA CONFIGURATION DE RÉFÉRENCE retenue par la story dn1-2, pour
@@ -561,8 +568,102 @@ esp_err_t dn_bootcfg_set_lvgl_core(int core)
     return set_i32(DN_KEY_LVGL_CORE, core);
 }
 
+/* ── LE TEMOIN DE REPLI ─────────────────────────────────────────────────────
+ * La justification complete est dans dn_bootcfg.h, au-dessus de
+ * `dn_bootcfg_repli_t`. Ici, seulement ce qui doit tenir a la relecture :
+ *   - le temoin est ECRIT depuis `desknode_main`, au boot, une seule tache ;
+ *   - il est LU depuis la console ;
+ *   - il n'entre JAMAIS dans `dn_bootcfg_t` : ce n'est pas de la config, et le
+ *     confondre avec de la config le ferait appliquer au lieu d'etre lu. */
+void dn_bootcfg_get_repli(dn_bootcfg_repli_t *out)
+{
+    if (!out) {
+        return;
+    }
+    out->present = false;
+    out->demande_px = 0;
+    out->retenu_px = 0;
+    out->occurrences = 0;
+
+    nvs_handle_t h;
+    if (open_nvs(NVS_READONLY, &h) != ESP_OK) {
+        return;
+    }
+    int32_t n = 0;
+    if (nvs_get_i32(h, DN_KEY_REPLI_N, &n) == ESP_OK && n > 0) {
+        int32_t v = 0;
+        out->present = true;
+        out->occurrences = (int)n;
+        if (nvs_get_i32(h, DN_KEY_REPLI_DEM, &v) == ESP_OK) {
+            out->demande_px = (int)v;
+        }
+        if (nvs_get_i32(h, DN_KEY_REPLI_RET, &v) == ESP_OK) {
+            out->retenu_px = (int)v;
+        }
+    }
+    nvs_close(h);
+}
+
+esp_err_t dn_bootcfg_note_repli(int demande_px, int retenu_px)
+{
+    nvs_handle_t h;
+    esp_err_t err = nvs_open(DN_NVS_NAMESPACE, NVS_READWRITE, &h);
+    if (err != ESP_OK) {
+        return err;
+    }
+    int32_t n = 0;
+    /* ⚠️ Une cle absente rend ESP_ERR_NVS_NOT_FOUND et laisse `n` a 0 : c'est
+     *    le premier repli. ⛔ On ne traite pas cette erreur comme un echec. */
+    (void)nvs_get_i32(h, DN_KEY_REPLI_N, &n);
+    if (n < 0) {
+        n = 0;
+    }
+    err = nvs_set_i32(h, DN_KEY_REPLI_DEM, (int32_t)demande_px);
+    if (err == ESP_OK) {
+        err = nvs_set_i32(h, DN_KEY_REPLI_RET, (int32_t)retenu_px);
+    }
+    if (err == ESP_OK) {
+        err = nvs_set_i32(h, DN_KEY_REPLI_N, n + 1);
+    }
+    if (err == ESP_OK) {
+        err = nvs_commit(h);
+    }
+    nvs_close(h);
+    return err;
+}
+
+esp_err_t dn_bootcfg_clear_repli(void)
+{
+    nvs_handle_t h;
+    esp_err_t err = nvs_open(DN_NVS_NAMESPACE, NVS_READWRITE, &h);
+    if (err != ESP_OK) {
+        return err;
+    }
+    /* ⚠️ Effacer une cle absente rend ESP_ERR_NVS_NOT_FOUND : ce n'est PAS une
+     *    erreur ici, c'est le cas nominal quand il n'y a rien a effacer. */
+    (void)nvs_erase_key(h, DN_KEY_REPLI_DEM);
+    (void)nvs_erase_key(h, DN_KEY_REPLI_RET);
+    (void)nvs_erase_key(h, DN_KEY_REPLI_N);
+    err = nvs_commit(h);
+    nvs_close(h);
+    return err;
+}
+
 esp_err_t dn_bootcfg_reset(void)
 {
+    /*
+     * 🔴 LE TEMOIN DE REPLI SURVIT A `cfg reset` — ET C'EST DELIBERE
+     *    (decision owner du 2026-08-27). `nvs_erase_all()` l'emportait avec le
+     *    reste. Or `cfg reset` est PRECISEMENT ce qu'on tape pour sortir d'une
+     *    valeur fautive : c'est le moment ou l'on a le PLUS besoin de savoir
+     *    qu'un repli a eu lieu, et lequel. ⇒ on le releve, on efface, on le
+     *    repose. Il ne s'efface que par `cfg repli clear`.
+     * ⚠️ Si la repose echoue, on le DIT : perdre la trace en silence serait
+     *    exactement le defaut que ce temoin existe pour fermer.
+     */
+    dn_bootcfg_repli_t t;
+    dn_bootcfg_get_repli(&t);
+
     nvs_handle_t h;
     esp_err_t err = nvs_open(DN_NVS_NAMESPACE, NVS_READWRITE, &h);
     if (err != ESP_OK) {
@@ -573,6 +674,26 @@ esp_err_t dn_bootcfg_reset(void)
         err = nvs_commit(h);
     }
     nvs_close(h);
+    if (err == ESP_OK && t.present) {
+        esp_err_t err_t = ESP_OK;
+        for (int i = 0; i < t.occurrences && err_t == ESP_OK; i++) {
+            err_t = dn_bootcfg_note_repli(t.demande_px, t.retenu_px);
+        }
+        if (err_t == ESP_OK) {
+            ESP_LOGW(TAG,
+                     "cfg reset : le TEMOIN DE REPLI est CONSERVE (%d repli(s), "
+                     "%d px demandes -> %d px retenus). `cfg repli clear` pour "
+                     "l'effacer.",
+                     t.occurrences, t.demande_px, t.retenu_px);
+        } else {
+            ESP_LOGE(TAG,
+                     "🔴 cfg reset : le TEMOIN DE REPLI a ete PERDU (%s). Il "
+                     "disait : %d repli(s), %d px demandes -> %d px retenus. "
+                     "⛔ Cette ligne de log est desormais la seule trace.",
+                     esp_err_to_name(err_t), t.occurrences, t.demande_px,
+                     t.retenu_px);
+        }
+    }
     return err;
 }
 

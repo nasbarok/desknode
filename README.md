@@ -210,7 +210,8 @@ idf.py -p /dev/ttyACM0 flash monitor               # quitter le moniteur : Ctrl+
 - la **console est interactive** : taper `aide` dans le moniteur liste les commandes. Jeu complet :
   `scene`, `fps`, `bw`, `mem`, `cpu`, `cfg`, `set`, `tear`, `flash`, `ui`, `flush`, `anim`,
   `touch`, `nav`, `recal`, `bl`, `disp`, `dma`, `i2c` (`lire` · **`lire16`** · **`brut`** · **`ecrire`** · **`rafale`**), `capteurs`, **`env`**, **`tof`** (`etat` · `sr03` · `balayage` · `als` · `range`), **`w2`**, `pc`, `wifi`, `widget`, **`hist`**, `rtc`, **`veille`**, `reboot`, `aide`. `cfg reset` rend
-  les défauts au prochain boot. **C'est `aide` qui fait foi**, pas cette liste. Les commandes de
+  les défauts au prochain boot, et **`cfg repli [clear]`** lit (ou efface) le
+  **témoin de repli de bounce** — ⛔ le seul geste qui l'efface. **C'est `aide` qui fait foi**, pas cette liste. Les commandes de
   dn1-3 et dn1-4 :
 
   | Commande | Ce qu'elle sert |
@@ -487,12 +488,42 @@ $B  = '\\wsl.localhost\Ubuntu\home\nasbarok\projects\desknode\firmware\desknode\
 > ⚠️ **Décision owner du 2026-08-24** : armer le repli sur `ESP_ERR_NO_MEM`
 > quelle que soit l'égalité, vers un plancher codé en dur. **⛔ Non implémenté
 > à la date de ce paragraphe.**
+> ✅ **IMPLÉMENTÉ DEPUIS — `1db68bf`, le 2026-08-24.** ⛔ Cette ligne « non
+> implémenté » n'est pas effacée : elle date le moment où on l'a écrite.
+> `dn_display.c` descend désormais une **ÉCHELLE** `{ défaut,
+> DN_BOUNCE_PX_PLANCHER = 4 800 }` et saute toute marche qui ne descend pas ⇒
+> **il y a toujours une marche SOUS la valeur demandée, y compris quand elle EST
+> le défaut** — qui était très exactement le trou. Et le repli ne s'arme que sur
+> `ESP_ERR_NO_MEM` avéré : tout autre code remonte tel quel, **le réglage est
+> CONSERVÉ**, et le log dit que ce n'est pas l'allocation.
 >
 > ⚠️ Et **`cfg reset` / l'effacement NVS sont le SEUL chemin** par lequel 9 600
 > atteint une carte déjà configurée : `dn_bootcfg_load()` écrase le défaut
 > compilé dès que la NVS porte une valeur admissible, et **7 680 en est une**.
 > Une carte sur laquelle `set bounce 7680` a été tapé **garde 7 680 après
 > reflash**, sans que rien ne le signale.
+> ✅ **CORRIGÉ LE 2026-08-27 — ÇA SE SIGNALE MAINTENANT, ET EN DEUX TONS.**
+> Le seuil d'alerte du boot était collé à `DN_DEFAULT_BOUNCE_PX` : le monter à
+> 9 600 a fait tomber **7 680 dans une alerte de GLISSEMENT**, pour une valeur
+> qui est seulement **sous-optimale**. Un seuil unique portait deux sens.
+> ⇒ `DN_BOUNCE_PX_ALERTE = 7 680`, **découplé du défaut** : sous 7 680 le boot
+> crie un **DÉFAUT** (l'image glisse, §18.9) ; entre 7 680 et le défaut il
+> signale un **RÉGLAGE** (fonctionnel, sous l'optimum de §20bis.6).
+>
+> 🔴 **ET UN REPLI NE DÉTRUIT PLUS UN RÉGLAGE EN SILENCE — décision owner du
+> 2026-08-27.** Quand le filet replie, le firmware réécrit la NVS (sinon le
+> repli se rejoue à chaque boot et `cfg` ment) : **le réglage de l'opérateur est
+> donc PERDU**, et jusqu'ici la seule trace était une ligne de log qui défile.
+> ⇒ un **TÉMOIN DE REPLI** est désormais posé en NVS (valeur demandée, valeur
+> retenue, nombre d'occurrences). **`cfg` nu le crie** tant qu'il est là,
+> **`cfg repli`** en donne le détail, et **il SURVIT à `cfg reset`** —
+> délibérément, puisque `cfg reset` est précisément ce qu'on tape pour sortir
+> d'une valeur fautive. Seul **`cfg repli clear`** l'efface, et c'est un geste
+> explicite. ⚠️ Le témoin date du 2026-08-27 : **les replis d'avant n'ont laissé
+> qu'une ligne de log**, et « aucun repli noté » ne veut donc pas dire
+> « aucun repli ».
+> ⚠️ Le repli peut atterrir sur le **PLANCHER (4 800 px)**, une valeur au
+> **défaut visible CONNU** — la console le dit explicitement dans ce cas.
 >
 > 🔴 **CE PARAGRAPHE DISAIT `bounce_px = 4800`, ET C'ÉTAIT DEVENU DANGEREUX**
 > (revue de code du 2026-08-19). `dn4-6` a porté `DN_DEFAULT_BOUNCE_PX` à

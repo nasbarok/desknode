@@ -457,10 +457,62 @@ static int cmd_cfg(int argc, char **argv)
             return 1;
         }
         printf("config NVS effacée. `reboot` pour repartir sur les défauts.\n");
+        printf("⚠️ le TÉMOIN DE REPLI, lui, est CONSERVÉ — délibérément : "
+               "`cfg reset`\n");
+        printf("   est précisément ce qu'on tape pour sortir d'une valeur "
+               "fautive.\n");
+        printf("   `cfg repli clear` pour l'effacer, et c'est le SEUL geste "
+               "qui l'efface.\n");
+        return 0;
+    }
+    /*
+     * 🔴 `cfg repli` — LE TÉMOIN DE REPLI, décision owner du 2026-08-27.
+     *    Le filet de boot DÉTRUIT le réglage de l'opérateur quand la valeur ne
+     *    s'alloue pas. C'est voulu. ⛔ Mais jusqu'ici il le détruisait EN
+     *    SILENCE : la seule trace était une ligne de log qui défile, et il
+     *    n'existait AUCUNE clé interrogeable après coup.
+     */
+    if (argc >= 2 && strcmp(argv[1], "repli") == 0) {
+        if (argc >= 3 && strcmp(argv[2], "clear") == 0) {
+            esp_err_t err = dn_bootcfg_clear_repli();
+            if (err != ESP_OK) {
+                printf("effacement du témoin refusé : %s\n",
+                       esp_err_to_name(err));
+                return 1;
+            }
+            printf("témoin de repli EFFACÉ.\n");
+            return 0;
+        }
+        dn_bootcfg_repli_t t;
+        dn_bootcfg_get_repli(&t);
+        if (!t.present) {
+            printf("aucun repli de bounce noté depuis le dernier effacement.\n");
+            printf("⛔ Ça ne veut PAS dire qu'il n'y en a jamais eu : le témoin "
+                   "date du 2026-08-27,\n");
+            printf("   les replis d'avant n'ont laissé qu'une ligne de log.\n");
+            return 0;
+        }
+        printf("🔴 REPLI DE BOUNCE SURVENU — %d fois depuis le dernier "
+               "effacement\n", t.occurrences);
+        printf("   la NVS demandait  : %d px  ⛔ CETTE VALEUR EST PERDUE\n",
+               t.demande_px);
+        printf("   le filet a retenu : %d px\n", t.retenu_px);
+        if (t.retenu_px == DN_BOUNCE_PX_PLANCHER) {
+            printf("   🔴 C'EST LE PLANCHER, et il a un DÉFAUT VISIBLE CONNU : "
+                   "à %d px\n", DN_BOUNCE_PX_PLANCHER);
+            printf("      l'image GLISSE sous trafic série + repeint (§18.9). "
+                   "⛔ Ne pas laisser\n");
+            printf("      le produit ici — `set bounce %d` puis `reboot`.\n",
+                   dn_bootcfg_defaut_bounce_px());
+        }
+        printf("⚠️ Le témoin SURVIT à `cfg reset`. `cfg repli clear` pour "
+               "l'effacer,\n");
+        printf("   et c'est un geste EXPLICITE : personne ne l'efface par "
+               "effet de bord.\n");
         return 0;
     }
     if (argc >= 2) {
-        printf("usage : cfg | cfg reset\n");
+        printf("usage : cfg | cfg reset | cfg repli [clear]\n");
         return 1;
     }
     dn_bootcfg_t cfg;
@@ -478,6 +530,20 @@ static int cmd_cfg(int argc, char **argv)
     printf("   alloués une fois, au démarrage. C'est voulu — réallouer à chaud\n");
     printf("   laisserait une PSRAM fragmentée et fausserait la mesure suivante.\n");
     printf("`cfg reset` efface la config NVS et rend les défauts au prochain boot.\n");
+    /* 🔴 LE TÉMOIN SORT ICI, DANS `cfg` NU — ⛔ pas seulement dans un
+     *    sous-verbe qu'il faut connaître. Un témoin qu'il faut savoir demander
+     *    ne prévient personne : c'est exactement le silence qu'il ferme. */
+    {
+        dn_bootcfg_repli_t t;
+        dn_bootcfg_get_repli(&t);
+        if (t.present) {
+            printf("\n🔴 UN REPLI DE BOUNCE A EU LIEU (%d fois) : la NVS "
+                   "demandait %d px, le filet a retenu %d px.\n",
+                   t.occurrences, t.demande_px, t.retenu_px);
+            printf("   ⛔ La valeur demandée est PERDUE. `cfg repli` pour le "
+                   "détail, `cfg repli clear` pour effacer le témoin.\n");
+        }
+    }
     return 0;
 }
 
@@ -9227,7 +9293,9 @@ static const esp_console_cmd_t k_cmds[] = {
     DN_CMD("mem", "PSRAM et RAM interne, avant/après framebuffers", cmd_mem),
     DN_CMD("cpu", "cpu [secondes] | cpu brut — charge processeur (AC6)", cmd_cpu),
     DN_CMD("bw", "bande passante mesurée des 3 chemins de copie", cmd_bw),
-    DN_CMD("cfg", "cfg | cfg reset — config de boot (NVS), active, ou effacée",
+    DN_CMD("cfg",
+           "cfg | cfg reset | cfg repli [clear] — config de boot (NVS), "
+           "active, effacée, ou le TÉMOIN DE REPLI",
            cmd_cfg),
     DN_CMD("set", "set fbs | bounce | lines | drawmem | core <-1|0|1>",
            cmd_set),

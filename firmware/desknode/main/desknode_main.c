@@ -253,13 +253,39 @@ void app_main(void)
                  "matériel porte %u px. La valeur demandée NE S'ALLOUE PAS dans "
                  "ce binaire.",
                  cfg.bounce_px, (unsigned)dn_display_bounce_px());
+        /*
+         * 🔴 LE TÉMOIN EST POSÉ **AVANT** LA RÉÉCRITURE — décision owner du
+         *    2026-08-27, et l'ordre n'est pas un détail : après la réécriture,
+         *    `cfg.bounce_px` est toujours en RAM mais la NVS ne porte plus la
+         *    valeur demandée. Si l'écriture du témoin échouait APRÈS, on aurait
+         *    détruit le réglage ET perdu sa trace. Dans cet ordre-ci, le pire
+         *    cas est un témoin sans réécriture — le repli se rejoue au boot
+         *    suivant, bruyamment, ce qui est le comportement d'avant.
+         * ⛔ CE QUE ÇA CHANGE, ET C'EST TOUT CE QUE ÇA CHANGE : le réglage de
+         *    l'opérateur est toujours DÉTRUIT (c'est voulu, il briquait la
+         *    carte), mais il n'est plus détruit EN SILENCE. `cfg` le crie tant
+         *    que le témoin est là, et il survit à `cfg reset`.
+         */
+        esp_err_t err_t = dn_bootcfg_note_repli(cfg.bounce_px,
+                                                (int)dn_display_bounce_px());
+        if (err_t != ESP_OK) {
+            ESP_LOGE(TAG,
+                     "   🔴 TÉMOIN DE REPLI NON ÉCRIT (%s) : la valeur demandée "
+                     "va être perdue SANS TRACE INTERROGEABLE. ⛔ Cette ligne "
+                     "de log est la seule qui restera.",
+                     esp_err_to_name(err_t));
+        }
         esp_err_t err_nvs = dn_bootcfg_set_bounce_px((int)dn_display_bounce_px());
         if (err_nvs == ESP_OK) {
             ESP_LOGW(TAG,
                      "   ✅ NVS corrigée à %u px : le prochain boot sera propre. "
-                     "⚠️ La valeur demandée est PERDUE — c'est voulu, elle "
-                     "briquait la carte.",
-                     (unsigned)dn_display_bounce_px());
+                     "⚠️ La valeur demandée (%d px) est PERDUE — c'est voulu, "
+                     "elle briquait la carte. %s",
+                     (unsigned)dn_display_bounce_px(), cfg.bounce_px,
+                     err_t == ESP_OK
+                         ? "✅ Le TÉMOIN DE REPLI est posé : `cfg` le dira, et "
+                           "il survit à `cfg reset`."
+                         : "🔴 SANS TÉMOIN.");
         } else {
             ESP_LOGE(TAG,
                      "   ⚠️ NVS NON corrigée (%s) : le repli se REJOUERA au "

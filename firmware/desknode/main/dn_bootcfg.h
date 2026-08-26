@@ -158,6 +158,47 @@ esp_err_t dn_bootcfg_set_lvgl_core(int core);
 esp_err_t dn_bootcfg_reset(void);
 
 /*
+ * ─── LE TEMOIN DE REPLI (decision owner du 2026-08-27) ──────────────────────
+ *
+ * 🔴 LE DEFAUT QU'IL FERME, ET IL ETAIT DECLARE DEPUIS LA 1re REVUE DE CODE.
+ *    Quand le filet de `dn_display.c` replie, `desknode_main.c` REECRIT la NVS
+ *    avec la valeur retenue. C'est voulu — sans ca le repli se rejoue a chaque
+ *    boot et `cfg` ment. ⛔ MAIS le reglage de l'operateur etait alors DETRUIT
+ *    POUR TOUJOURS, avec pour seule trace une ligne de log qui defile. Il
+ *    n'existait AUCUNE cle NVS interrogeable apres coup : trois jours plus
+ *    tard, personne ne pouvait dire qu'un repli avait eu lieu.
+ * ⚠️ ET C'EST DEVENU PLUS MORDANT LE 2026-08-24 : avec l'ECHELLE, le repli peut
+ *    atterrir sur `DN_BOUNCE_PX_PLANCHER = 4 800`, une valeur au DEFAUT VISIBLE
+ *    CONNU (l'image glisse, §18.9). La carte demarre, l'image saute, et rien
+ *    n'explique pourquoi.
+ *
+ * 🎯 DECISION OWNER, 2026-08-27 : ON GARDE LA PERSISTANCE, ET ON POSE LE
+ *    TEMOIN. Le reglage n'est plus detruit EN SILENCE : il est detruit ET
+ *    TRACE. `cfg` lit le temoin et le CRIE tant qu'il est la.
+ *
+ * ⛔ IL SURVIT A `cfg reset` — DELIBEREMENT. `cfg reset` est precisement ce
+ *    qu'on tape pour sortir d'une valeur fautive, c'est-a-dire le moment ou on
+ *    a le PLUS besoin de savoir qu'un repli a eu lieu. Il ne s'efface que par
+ *    un geste EXPLICITE : `cfg repli clear`.
+ */
+typedef struct {
+    bool present;     /* un repli a ete note en NVS */
+    int demande_px;   /* la valeur que l'operateur avait posee, et qui est PERDUE */
+    int retenu_px;    /* celle que le filet a retenue a sa place */
+    int occurrences;  /* combien de replis ont ete notes depuis le dernier clear */
+} dn_bootcfg_repli_t;
+
+/* Note un repli. Appelee par `desknode_main` AVANT de reecrire `bounce_px`.
+ * ⛔ Ne remplace PAS la persistance : elle la rend interrogeable. */
+esp_err_t dn_bootcfg_note_repli(int demande_px, int retenu_px);
+
+/* Lit le temoin. `out->present == false` si aucun repli n'a ete note. */
+void dn_bootcfg_get_repli(dn_bootcfg_repli_t *out);
+
+/* Efface le temoin. ⛔ GESTE EXPLICITE UNIQUEMENT — voir ci-dessus. */
+esp_err_t dn_bootcfg_clear_repli(void);
+
+/*
  * ── LE BUDGET COMBINÉ, ET POURQUOI IL A FALLU L'AJOUTER (revue dn1-4) ────────
  *
  * `bounce_px` et `draw_lines` mangent la MÊME RAM interne, et leurs deux bornes
