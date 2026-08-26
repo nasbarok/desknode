@@ -340,6 +340,15 @@ DN_H_ETATS = {
 DN_H_ANCRE_RTC = b"horloge PCF85063A @ 0x"   # dn_console.c — reponse de `rtc`
 DN_H_ANCRE_BARRE = b"\xc2\xb7 horloge "      # « · horloge » — bandeau de boot
 DN_H_ANCRE_OS = b"bit OS     : "             # dn_console.c — le bit, en clair
+# 🔴 LA RECEVABILITE DE L'HEURE LUE, IMPRIMEE SUR LA MEME LIGNE QU'ELLE
+#    (correctif de revue 2026-08-26). `dn_console.c:7432` accole deliberement
+#    « — AFFICHABLE » / « — ⛔ NON AFFICHABLE » a la valeur, et son commentaire
+#    dit pourquoi : « imprimer l'heure sans lui, c'est exactement le mensonge
+#    que la barre a interdiction de commettre ». ⛔ Prendre la valeur en jetant
+#    son verdict, c'est commettre ce mensonge sur l'AUTRE surface de rendu.
+# ⚠️ « AFFICHABLE » est un SOUS-MOT de « NON AFFICHABLE » : ⛔ on ne teste QUE
+#    la forme negative, jamais la positive.
+DN_H_NON_AFFICHABLE = b"NON AFFICHABLE"
 DN_H_ANCRE_LUE = b"lue        : "            # dn_console.c — l'heure de la carte
 # Les quatre verdicts de `rtc set`, VERBATIM (`dn_console.c`, cmd_rtc).
 DN_H_POSE_OK = b"heure posee : "
@@ -1951,6 +1960,16 @@ class LecteurHorloge:
 
     def __init__(self):
         self._tampon = b""
+        # 🔴 L'ANCRE — LE VERDICT DU DRIVER POUR LA REPONSE EN COURS (correctif
+        #    de revue 2026-08-26). Voir la source 4 : le bit `OS` imprime en
+        #    clair vient de `dn_rtc_os()`, qui rend le dernier bit LU **sans
+        #    controle de peremption** (dn_rtc.c:616). Il ne peut donc que
+        #    CORROBORER ce que le driver a deja declare recevable — ⛔ jamais le
+        #    contredire.
+        self._ancre = None           # None | OS0 | OS1 | MUET | NON_ARMEE | INCONNU
+        # ⚠️ UNE LIGNE TROP LONGUE NE COMPTE QU'UNE FOIS, quel que soit le
+        #    nombre de `read()` sur lesquels elle s'etale (correctif de revue).
+        self._en_troncature = False
         # ── ce que la carte a DIT ────────────────────────────────────────────
         self.etat = "INCONNU"        # INCONNU | OS0 | OS1 | MUET | NON_ARMEE
         self.etat_texte = None       # le littéral firmware, VERBATIM
@@ -1958,6 +1977,7 @@ class LecteurHorloge:
         self.etats_lus = 0
         # ── l'heure de la carte, pour AC6 (elle vient de la MÊME réponse) ────
         self.lue_texte = None
+        self.lue_affichable = None   # ⛔ la carte declare-t-elle sa valeur RECEVABLE ?
         self.lue_naif = None         # secondes naïves (⛔ pas un epoch)
         self.lue_instant = None      # time.monotonic()
         self.lue_ecart_s = None      # carte − tour, en secondes
@@ -1970,6 +1990,9 @@ class LecteurHorloge:
         # ── santé de l'instrument lui-même ───────────────────────────────────
         self.lignes_vues = 0
         self.lignes_tronquees = 0
+        # ⚠️ Le fil s'est rompu : le fragment de ligne en cours est JETE, ⛔ pas
+        #    recolle au premier octet du flux suivant. Publie au bilan.
+        self.ruptures = 0
 
     # ------------------------------------------------------------------ flux
     def alimenter(self, octets: bytes) -> None:
@@ -1981,15 +2004,26 @@ class LecteurHorloge:
                 break
             ligne, self._tampon = self._tampon[:i], self._tampon[i + 1:]
             self.lignes_vues += 1
+            # ⚠️ La ligne trop longue est FINIE : le prochain depassement sera
+            #    une AUTRE ligne (correctif de revue 2026-08-26).
+            self._en_troncature = False
             # ⚠️ CRLF MESURÉ SUR LE FLUX RÉEL (471/471) — ⛔ pas supposé.
             self._ligne(ligne.rstrip(b"\r"))
-        if len(self._tampon) > DN_H_LIGNE_MAX:
+        if len(self._tampon) > DN_H_LIGNE_MAX and not self._en_troncature:
             # ⛔ BORNÉ. On garde la QUEUE : c'est là que se trouvent l'état et
             #    l'heure sur les lignes qui nous intéressent (elles finissent
             #    par eux). ⚠️ Et une troncature ne sort JAMAIS en silence : le
             #    bilan la publie.
             self._tampon = self._tampon[-DN_H_LIGNE_MAX:]
             self.lignes_tronquees += 1
+            # 🔴 UNE FOIS PAR LIGNE, ⛔ PAS UNE FOIS PAR `read()`. Le compteur
+            #    s'incrementait a CHAQUE appel en depassement : une seule ligne
+            #    de 1 200 o arrivee 5 o a la fois en comptait ~176, et le bilan
+            #    les annoncait comme « N ligne(s) TRONQUEE(S) ». Un compteur
+            #    doit compter ce que sa phrase dit qu'il compte.
+            self._en_troncature = True
+        elif len(self._tampon) > DN_H_LIGNE_MAX:
+            self._tampon = self._tampon[-DN_H_LIGNE_MAX:]
 
     # ----------------------------------------------------------------- ligne
     def _ligne(self, ligne: bytes) -> None:
@@ -2006,7 +2040,18 @@ class LecteurHorloge:
         """
         etat = DN_H_ETATS.get(brut.strip())
         if etat is None:
-            return               # ⛔ texte non reconnu ⇒ on ne change RIEN
+            # ⛔ TEXTE NON RECONNU ⇒ ON NE CHANGE RIEN — mais l'ancre RETIENT
+            #    qu'une source ancree a parle sans etre comprise. Sinon la
+            #    source 4 comblerait le trou avec un bit non peremptionne, et
+            #    un libelle firmware retouche redeviendrait INVISIBLE : c'est
+            #    exactement le mode de panne que la gate miroir existe pour
+            #    fermer, et il ne doit pas se rouvrir par en dessous.
+            self._ancre = "INCONNU"
+            return
+        # 🔴 CETTE METHODE N'EST APPELEE QUE PAR LES SOURCES ANCREES (1, 2, 3).
+        #    La source 4 la contourne — c'est precisement pourquoi l'ancre est
+        #    posee ICI et lue LA-BAS.
+        self._ancre = etat
         self.etat = etat
         self.etat_texte = brut.strip().decode("utf-8", "replace")
         self.etat_instant = time.monotonic()
@@ -2042,8 +2087,27 @@ class LecteurHorloge:
                 self._poser_etat(ligne[j + len(DN_H_POSE_ETAT):])
                 return
         # Source 4 — le bit lui-même : « bit OS     : 0|1 — … »
+        # 🔴 CORRECTIF DE REVUE 2026-08-26 — ⛔ ELLE NE PEUT PLUS ECRASER LE
+        #    VERDICT ANCRE DE LA MEME REPONSE, ET LE FIRMWARE DIT POURQUOI.
+        #    `dn_rtc_etat()` fait un controle de PEREMPTION avant de regarder
+        #    `OS`, et son commentaire (dn_rtc.c:470) est explicite : « l'ordre
+        #    compte : la peremption d'abord, OS ensuite. UNE PUCE MUETTE DONT
+        #    LA DERNIERE LECTURE DISAIT OS=0 NE DOIT PAS PASSER POUR FIABLE ».
+        #    Mais `dn_rtc_os()` (dn_rtc.c:616), qui alimente CETTE ligne, rend
+        #    le bit CACHE **sans aucun controle de peremption**.
+        # ⇒ traiter les lignes independamment, la derniere gagnant, INVERSAIT
+        #   cet invariant cote agent :
+        #     · `MUETTE`    devenait `OS0` — « tout va bien » sur une puce morte,
+        #       et l'ecart d'AC6 se mesurait alors sur une valeur GELEE, qui
+        #       derive de 1 s/s ⇒ pose parasite au bout du seuil ;
+        #     · `JAMAIS LUE` devenait `OS1` (`s_os = true` au boot, dn_rtc.c:31).
+        #   Les deux sont nommement interdits par AC3.2 : « il repond » n'est
+        #   pas « il dit vrai », et l'absence d'information n'est ni l'un ni
+        #   l'autre. ⇒ LE BIT NE PEUT QUE CORROBORER UN VERDICT DEJA RECEVABLE.
         i = ligne.find(DN_H_ANCRE_OS)
         if i >= 0:
+            if self._ancre not in (None, "OS0", "OS1"):
+                return           # ⛔ MUET / NON_ARMEE / INCONNU : on GARDE l'ancre
             c = ligne[i + len(DN_H_ANCRE_OS):i + len(DN_H_ANCRE_OS) + 1]
             if c == b"1":
                 self.etat, self.etat_texte = "OS1", "bit OS = 1"
@@ -2081,6 +2145,11 @@ class LecteurHorloge:
         t = time.time()
         lt = time.localtime(t)
         self.lue_texte = txt
+        # 🔴 LA VALEUR ET SA RECEVABILITE SONT PRISES ENSEMBLE (correctif de
+        #    revue 2026-08-26). Le firmware les imprime sur la MEME ligne, et
+        #    exprès. En jetant le suffixe, l'agent comparait a l'horloge de la
+        #    tour une heure que la carte declarait elle-meme NON AFFICHABLE.
+        self.lue_affichable = DN_H_NON_AFFICHABLE not in ligne
         self.heures_lues += 1
         self.lue_naif = _secondes_naives(a, mo, j, h, mi, s)
         self.lue_instant = time.monotonic()
@@ -2110,6 +2179,25 @@ class LecteurHorloge:
             if motif in ligne:
                 self.verdict = ("REFUS", motif.decode("ascii"))
                 return
+
+    def rupture(self) -> None:
+        """Le fil s'est rompu (fermeture / reouverture du port).
+
+        🔴 CORRECTIF DE REVUE 2026-08-26, ET LE DEBRANCHEMENT EST LE SUJET MEME
+           D'AC7. `LecteurHorloge` vit sur `SortieSerie`, ⛔ pas sur la
+           connexion : il SURVIVAIT donc a la fermeture avec, dans son tampon,
+           le fragment de la ligne coupee en vol. Au rebranchement ce fragment
+           etait RECOLLE au premier octet du nouveau flux, fabriquant une ligne
+           que ni le firmware ni la capture n'ont jamais emise.
+        ⚠️ L'ancre et la fenetre de verdict tombent avec lui : ils decrivaient
+           une reponse dont la fin n'arrivera jamais.
+        """
+        if self._tampon or self._ancre is not None:
+            self.ruptures += 1
+        self._tampon = b""
+        self._en_troncature = False
+        self._ancre = None
+        self.verdict = None
 
     def armer_verdict(self) -> None:
         """Ouvre une fenêtre d'attente de verdict (appelé JUSTE avant `rtc set`)."""
@@ -2239,6 +2327,13 @@ class SortieSerie:
             pass
 
     def _ouvrir(self):
+        # 🔴 dn4-18, correctif de revue 2026-08-26 — LE FRAGMENT DE LIGNE COUPE
+        #    EN VOL EST JETE ICI, ⛔ pas recolle au flux suivant. Le lecteur vit
+        #    sur la sortie, pas sur la connexion : sans ça, un debranchement au
+        #    milieu d'une ligne fabriquait, au rebranchement, une ligne que ni
+        #    le firmware ni la capture n'ont jamais emise. ⚠️ Le debranchement
+        #    EST le sujet d'AC7 : ce chemin est le plus emprunte de la story.
+        self.horloge.rupture()
         # ⚠️ CROYANCE §7.3 CORRIGÉE PAR LA MESURE (dn2-2, 2026-08-16) : « ouvrir ne
         # reset pas la carte » était vrai DEPUIS LINUX (dn_console.py ne touche ni
         # dtr ni rts). Sous WINDOWS, pyserial pose DTR/RTS à l'ouverture et les
@@ -2561,6 +2656,18 @@ class ReprisHorloge:
         self.motifs_refus = {}
         self.motifs_pose = {}             # pourquoi on a posé : OS=1 / ecart
         self.echecs_consecutifs = 0
+        # 🔴 CORRECTIF DE REVUE 2026-08-26 — L'ANTI-RAFALE NE COUVRAIT QUE LES
+        #    REFUS. Une pose ACCEPTEE remettait `echecs_consecutifs` a 0, donc
+        #    l'escalade 60·120·240 ne s'armait JAMAIS sur le chemin du succes :
+        #    une carte qui REPERD l'heure apres chaque pose (oscillateur qui
+        #    redecroche — `CAP_SEL` est consigne INCONNU depuis dn3-2) rejouait
+        #    `rtc` + `rtc set` toutes les ~31 s INDEFINIMENT, a ~89 o/s de bruit
+        #    console permanent, avec deux lignes de stderr par tour.
+        # ⚠️ Ca restait SOUS le plafond publie (99 o/s, capteurs-i2c.md §13.15.7.1)
+        #    — ⛔ mais un regime PERMANENT n'est pas un transitoire, et le fil
+        #    EST le transport des cinq metriques.
+        self.poses_rapprochees = 0
+        self._derniere_pose_ok = None     # monotonic
         self.prochaine_pose = 0.0         # monotonic
         self._pose_en_cours = None        # monotonic de l'envoi
         self.derniere_pose_texte = None
@@ -2630,7 +2737,25 @@ class ReprisHorloge:
             # ⛔ LE PLANCHER RESTE, MÊME APRÈS UN SUCCÈS : c'est lui qui borne
             #    le pire cas chiffré d'AC4.3. Un succès n'autorise pas une
             #    rafale de succès.
-            self.prochaine_pose = maintenant + DN_H_PLANCHER_S
+            # 🔴 ET IL NE SUFFIT PAS (correctif de revue 2026-08-26) : le
+            #    plancher borne le DEBIT, ⛔ pas la DUREE. Des poses acceptees
+            #    qui se REPETENT sont le signe que la carte reperd l'heure —
+            #    une panne, ⛔ pas un regime — et elles doivent escalader comme
+            #    un refus. Sinon l'agent tourne a ~31 s pour toujours.
+            if (self._derniere_pose_ok is not None
+                    and maintenant - self._derniere_pose_ok < DN_H_PERIODE_S):
+                self.poses_rapprochees += 1
+                delai = min(DN_H_BACKOFF_S * (2 ** (self.poses_rapprochees - 1)),
+                            DN_H_BACKOFF_MAX_S)
+                self.prochaine_pose = maintenant + delai
+                self._dire("⚠️  horloge : %d pose(s) REUSSIE(S) RAPPROCHEE(S) — la "
+                           "carte REPERD l'heure apres chaque pose. ⛔ Ce n'est "
+                           "PAS un refus. Prochaine tentative dans %.0f s"
+                           % (self.poses_rapprochees, delai))
+            else:
+                self.poses_rapprochees = 0
+                self.prochaine_pose = maintenant + DN_H_PLANCHER_S
+            self._derniere_pose_ok = maintenant
             self.verifier_apres_pose = True
             self._dire("✅ horloge : heure POSEE et VERIFIEE par la carte — %s" % v[1])
         else:
@@ -2666,11 +2791,26 @@ class ReprisHorloge:
         if self._pose_en_cours is not None:
             return               # ⛔ on n'interroge pas pendant qu'on attend un verdict
         lect = self.sortie.horloge
-        if lect.etat == "NON_ARMEE":
-            # ✅ AC3.3 — ÉTAT TERMINAL. Le device I2C n'existe pas : il n'y a
-            #    RIEN à poser, et la barre dit déjà « --:-- », « et c'est
-            #    CORRECT ». ⛔ On ne réessaie JAMAIS en boucle là-dessus.
-            self.sortie.reprise_liaison = False
+        if lect.etat == "NON_ARMEE" and not self.sortie.reprise_liaison:
+            # ✅ AC3.3 — ÉTAT TERMINAL **EN RÉGIME**. Le device I2C n'existe
+            #    pas : il n'y a RIEN à poser, et la barre dit déjà « --:-- »,
+            #    « et c'est CORRECT ». ⛔ On ne réessaie JAMAIS **en boucle**
+            #    là-dessus : ni à la période de 600 s, ni à aucun autre motif.
+            # 🔴 MAIS « TERMINAL » N'EST PAS « DEFINITIF » — CORRECTIF DE REVUE
+            #    2026-08-26, **decision owner**. `NON ARMEE` n'est ⛔ pas une
+            #    propriete de la carte : c'est une CONDITION DE BOOT
+            #    (dn_console.c:7419-7421 — bus absent au boot, `Control_1`
+            #    illisible, ou `xTaskCreate` echoue), sur un bus dont ce depot a
+            #    MESURE qu'il se degrade ~40 s a froid.
+            #    En AVALANT `reprise_liaison`, l'agent ne redemandait plus
+            #    JAMAIS : la seule sortie devenait le bandeau de boot — canal
+            #    mesure a **9/10** (et **0/2** quand c'est l'agent qui
+            #    redemarre) et sur lequel AC2.2 ecrit « ⛔ rien ne s'appuie
+            #    dessus ». ⇒ une carte redevenue ARMEE laissait la barre a
+            #    « --:-- » POUR LA VIE DE L'AGENT.
+            # ⇒ ON RE-SONDE **UNE FOIS PAR REPRISE DE LIAISON** (AC4.2), ⛔ pas
+            #   en boucle, et le plancher de 30 s ci-dessous borne le cout
+            #   exactement comme pour tout autre etat (AC4.3).
             return
         motif = None
         if self.sortie.reprise_liaison:
@@ -2731,7 +2871,13 @@ class ReprisHorloge:
         self._heures_a_la_pose = lect.heures_lues
         self.prochaine_pose = max(self.prochaine_pose,
                                   maintenant + DN_H_PLANCHER_S)
-        self.motifs_pose[motif] = self.motifs_pose.get(motif, 0) + 1
+        # ⚠️ CLE NORMALISEE (correctif de revue 2026-08-26) : le motif d'ecart
+        #    porte SA VALEUR dans son texte, donc chaque pose creait une CLE
+        #    NEUVE. Sur un soak de 7 jours (dn4-5) le dictionnaire — et la ligne
+        #    de bilan qui l'imprime — croissaient sans borne. Le detail chiffre
+        #    reste visible : il est dans le journal, ligne par ligne.
+        cle = "ecart" if motif.startswith("ecart") else motif
+        self.motifs_pose[cle] = self.motifs_pose.get(cle, 0) + 1
         self.derniere_pose_texte = cmd
         self._pose_en_cours = maintenant
         self._dire("⏱️  horloge : pose demandee (%s) — « %s »" % (motif, cmd))
@@ -2751,7 +2897,14 @@ class ReprisHorloge:
         # ⚠️ On ne compare QUE sur une lecture FRAÎCHE, et ⛔ jamais sur un
         #    état non fiable (comparer l'heure d'une carte qui dit `OS=1` n'a
         #    aucun sens : elle vaut 2000-01-01).
+        # ⚠️ ET ⛔ JAMAIS SUR UNE VALEUR QUE LA CARTE DECLARE IRRECEVABLE
+        #    (correctif de revue 2026-08-26) : `dn_console.c:7432` accole
+        #    « ⛔ NON AFFICHABLE » a l'heure quand `dn_rtc_lire()` a rendu faux.
+        #    La prendre quand meme, c'est comparer une valeur GELEE a l'horloge
+        #    de la tour — donc un ecart qui derive de 1 s/s et franchit le seuil
+        #    tout seul.
         if (lect.etat == "OS0" and lect.lue_ecart_s is not None
+                and lect.lue_affichable
                 and lect.heures_lues > self._heures_a_la_pose):
             if lect.lue_instant is not None and (
                     lect.etat_instant is None
@@ -2811,8 +2964,17 @@ def principal() -> int:
                     help="s'arrête PROPREMENT dès que FICHIER apparaît — le "
                          "seul arrêt propre possible sans console")
     # 🔬 dn4-18 (2026-08-26) — INSTRUMENT, ⛔ PAS UN RÉGIME.
-    # ⚠️ Il fait grossir un fichier d'environ 275 o/s (le débit d'écho mesuré
-    #    en régime), soit ~1 Mo/h. ⛔ Ne pas le laisser armé sur un soak.
+    # 🔴 COÛT CORRIGÉ PAR LA REVUE DU 2026-08-26, ET MESURÉ SUR LES CAPTURES
+    #    LIVRÉES — ⛔ plus déduit du débit d'écho. Le chiffre annoncé ici était
+    #    « ~275 o/s, ~1 Mo/h » : c'était le débit d'écho SEUL, qui oublie
+    #    l'en-tête horodaté (~50 o) écrit à CHAQUE drain, donc ~5 fois par
+    #    seconde. Mesuré sur `mesures/dn4-18/` :
+    #      · AC7-4-temoin-negatif.trace   86 312 o / 193,0 s = 447 o/s (45 % d'en-têtes)
+    #      · AC1-1-phaseA-agent-reel.trace 67 853 o / 142,0 s = 478 o/s (37 %)
+    #      · AC7-temoin-positif.trace     137 791 o / 260,0 s = 530 o/s (35 %)
+    # ⇒ **447 à 530 o/s, soit 1,6 à 1,9 Mo/h** — ~1,7× ce qui était annoncé.
+    #   Sur les 7 jours de dn4-5 : **~270 à 320 Mo**, ⛔ sans aucune rotation.
+    # ⛔ Ne pas le laisser armé sur un soak.
     ap.add_argument("--tracer-console", metavar="FICHIER", default=None,
                     type=_chemin_non_vide,
                     help="capture BRUTE et HORODATEE de tout ce que l'agent "
@@ -2831,6 +2993,21 @@ def principal() -> int:
     #    (`--serie ""`, `--stop-si ""`, `--lhm "hote:"`). Il n'y a de FIL que
     #    sur la branche série : sur stdout et sur WebSocket, l'absence de canal
     #    console est un ÉTAT DÉCLARÉ, ⛔ jamais un silence.
+    # 🔴 dn4-18, correctif de revue 2026-08-26 — ON ECHOUE **A L'ANALYSE**, ⛔
+    #    PAS EN SILENCE PENDANT TOUTE LA SESSION. `_tracer()` avale toute panne
+    #    d'ecriture, et c'est VOULU (« un instrument qui casse ce qu'il observe
+    #    n'est pas un instrument ») — mais un chemin invalide, un disque plein
+    #    ou un droit manquant rendait alors un fichier VIDE sans un mot, et la
+    #    fenetre d'observation etait perdue. C'est le motif deja paye trois fois
+    #    dans ce fichier (`--serie ""`, `--stop-si ""`, `--lhm "hote:"`).
+    if args.tracer_console is not None:
+        try:
+            with open(args.tracer_console, "ab"):
+                pass
+        except OSError as exc:
+            ap.error("--tracer-console %r n'est PAS inscriptible (%s). ⛔ Une "
+                     "capture qui echoue en silence est une fenetre "
+                     "d'observation PERDUE." % (args.tracer_console, exc))
     if args.tracer_console is not None and args.serie is None:
         ap.error("--tracer-console n'a de sens QU'AVEC --serie : il capture ce "
                  "que l'agent draine sur le FIL de la console, et ni --stdout "
@@ -3258,13 +3435,35 @@ def _bilan(sortie, depart: float, seq: int, erreurs_envoi: int, rattrapages: int
               file=sys.stderr)
         # Le firmware a-t-il ACCEPTÉ ce qu'on lui a envoyé ? « n trames émises » ne
         # l'a jamais dit — seul ce compteur distingue un envoi d'une acceptation.
+        # 🔴 dn4-18, CORRECTIF DE REVUE 2026-08-26 — CE COMPTEUR NE DIT PLUS
+        #    « TRAMES », ET IL NE LE PEUT PLUS. Le marqueur `non-zero error
+        #    code` est rendu par le REPL pour TOUTE commande console qui sort
+        #    non nulle. Jusqu'a dn4-18 l'agent n'envoyait que des `pc …`, donc
+        #    « n refus = n trames refusees » etait VRAI. Depuis, il envoie aussi
+        #    `rtc` et `rtc set`, et `cmd_rtc` sort a 1 sur QUATRE chemins de
+        #    refus (dn_console.c:7352-7390). ⇒ le bilan annoncait « N trame(s)
+        #    REFUSEE(S) » alors que ZERO trame avait ete refusee.
+        # ✅ LA DECOMPOSITION EST EXACTE, ⛔ pas approchee : `rtc` nu rend 0 sur
+        #    tous ses chemins, donc seul un `rtc set` REFUSE ajoute un marqueur,
+        #    et chacun est deja compte a part par `poses_refusees` — lu, lui, sur
+        #    le VERDICT ANCRE de la carte et non sur le marqueur du REPL.
+        refus_horloge = horloge.poses_refusees if horloge is not None else 0
         if sortie.refus_firmware:
-            print(f"[agent] 🔴 {sortie.refus_firmware} trame(s) REFUSÉE(S) par le "
-                  f"firmware (le compteur dit pourquoi : `pc` sur la console)",
+            reste = sortie.refus_firmware - refus_horloge
+            print(f"[agent] 🔴 {sortie.refus_firmware} commande(s) console REFUSÉE(S) "
+                  f"par le firmware (marqueur `non-zero error code` sur le fil)",
                   file=sys.stderr)
+            print(f"[agent]    ⇒ dont {refus_horloge} pose(s) d'horloge ⇒ "
+                  f"{reste} imputable(s) aux trames `pc`. ⛔ « n trames émises » "
+                  f"ne prouve que n ÉCRITURES, pas n acceptations.",
+                  file=sys.stderr)
+            if reste < 0:
+                print("[agent]    ⚠️ DÉCOMPTE NÉGATIF : des marqueurs ont été "
+                      "perdus (drain manqué pendant un backoff). ⛔ Le total "
+                      "ci-dessus est un PLANCHER, pas un compte.", file=sys.stderr)
         else:
-            print("[agent] aucun refus signalé par le firmware sur le fil",
-                  file=sys.stderr)
+            print("[agent] aucun refus de commande console signalé par le firmware "
+                  "sur le fil (ni trame `pc`, ni pose d'horloge)", file=sys.stderr)
         # ⚠️ dn4-18 — LA SANTÉ DE L'INSTRUMENT LUI-MÊME. Une troncature de ligne
         #    ne sort JAMAIS en silence : elle voudrait dire que le tampon borné
         #    a jeté du texte, donc qu'un état a PU être manqué.
@@ -3344,16 +3543,31 @@ def _bilan(sortie, depart: float, seq: int, erreurs_envoi: int, rattrapages: int
             else:
                 print("[agent] horloge : aucun refus de pose signale par la carte",
                       file=sys.stderr)
+            # 🔴 CORRECTIF DE REVUE 2026-08-26 — CES DEUX-LA SE TAISAIENT A
+            #    ZERO, VINGT LIGNES SOUS LE COMMENTAIRE QUI L'INTERDIT (AC5.2).
+            #    « Un paragraphe absent est indiscernable d'un mecanisme MORT »
+            #    vaut pour eux comme pour les trois autres lignes du bloc.
             if horloge.erreurs_canal:
                 print(f"[agent] 🔴 horloge : {horloge.erreurs_canal} echec(s) du "
                       f"CANAL de commande console (⛔ distinct d'un refus : la "
                       f"carte n'a peut-etre jamais recu la commande)",
                       file=sys.stderr)
-            if sortie.commandes_console or sortie.commandes_echouees:
-                print(f"[agent] horloge : {sortie.commandes_console} commande(s) "
-                      f"console emise(s), {sortie.commandes_echouees} en echec "
-                      f"— ⛔ HORS `trames_emises` (le debit publie ci-dessus "
-                      f"decrit les trames, et rien d'autre)", file=sys.stderr)
+            else:
+                print("[agent] horloge : aucun echec du CANAL de commande console",
+                      file=sys.stderr)
+            print(f"[agent] horloge : {sortie.commandes_console} commande(s) "
+                  f"console emise(s), {sortie.commandes_echouees} en echec "
+                  f"— ⛔ HORS `trames_emises` (le debit publie ci-dessus "
+                  f"decrit les trames, et rien d'autre)", file=sys.stderr)
+            if horloge.poses_rapprochees:
+                print(f"[agent] 🔴 horloge : {horloge.poses_rapprochees} pose(s) "
+                      f"REUSSIE(S) RAPPROCHEE(S) — la carte a REPERDU l'heure "
+                      f"apres une pose acceptee. ⛔ Ce n'est pas un refus, et "
+                      f"l'escalade a ete armee dessus.", file=sys.stderr)
+            if lect.ruptures:
+                print(f"[agent] horloge : {lect.ruptures} rupture(s) de fil — "
+                      f"le fragment de ligne en vol a ete JETE, ⛔ pas recolle "
+                      f"au flux suivant", file=sys.stderr)
     if collecteur is not None:
         # ⛔ UN ÉCRÊTAGE NE SORT JAMAIS EN SILENCE. S'il y en a, la valeur
         #    affichée n'est plus la valeur mesurée — c'est une information, pas

@@ -267,9 +267,21 @@ def verbe_poser(args, cap):
     con = _ouvrir(args.port)
     try:
         t_avant, lt_avant = _horloge()
+        # 🔴 LA SONDE COMPOSE COMME LE MECANISME, ⛔ PAS AUTREMENT — CORRECTIF
+        #    DE REVUE 2026-08-26. Elle composait depuis `localtime(time.time())`,
+        #    donc TRONQUE : biais systematiquement dans [-1 s, 0]. Le mecanisme,
+        #    lui, arrondit (`dn_agent.py`, `ReprisHorloge._poser` : `t + 0,5`),
+        #    biais CENTRE dans [-0,5 s, +0,5 s].
+        # ⇒ un instrument qui ne compose pas comme le produit ne mesure plus le
+        #   produit : tout rejeu de `sonde … poser` pour verifier le seuil de
+        #   « ≤ 2 s » d'AC1.2 aurait caracterise la variante TRONQUANTE.
+        # ⚠️ Les chiffres publies au dossier (-0,4 s WSL, -0,2 s tour) ont ete
+        #    pris AVANT ce correctif, avec la composition tronquante — ils
+        #    bornent donc le PIRE cas, et le seuil tient a plus forte raison.
+        lt_pose = time.localtime(t_avant + 0.5)
         cmd = "rtc set %04d-%02d-%02d %02d:%02d:%02d" % (
-            lt_avant.tm_year, lt_avant.tm_mon, lt_avant.tm_mday,
-            lt_avant.tm_hour, lt_avant.tm_min, lt_avant.tm_sec)
+            lt_pose.tm_year, lt_pose.tm_mon, lt_pose.tm_mday,
+            lt_pose.tm_hour, lt_pose.tm_min, lt_pose.tm_sec)
         brut, vue, duree = _envoyer(con, cmd, args.timeout)
         t_apres, lt_apres = _horloge()
     finally:

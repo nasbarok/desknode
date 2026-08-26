@@ -87,6 +87,42 @@ def a_l_heure(reponse, decalage_s=0):
                   b"lue        : " + txt.encode("ascii"), reponse)
 
 
+def reponse_muette():
+    """La carte NE REPOND PLUS, et le firmware le DIT — mais `bit OS` reste a 0.
+
+    🔴 C'EST LE DEFAUT TROUVE EN REVUE LE 2026-08-26. `dn_rtc_etat()` fait un
+       controle de PEREMPTION avant de regarder `OS` (dn_rtc.c:458-472, et son
+       commentaire dit pourquoi : « une puce MUETTE dont la derniere lecture
+       disait OS=0 ne doit pas passer pour fiable »). Mais `dn_rtc_os()`, qui
+       alimente la ligne `bit OS`, rend le bit CACHE **sans ce controle**.
+    ⚠️ FABRICATION BORNEE A DEUX CHAMPS d'une reponse REELLE, et c'est dit :
+       l'en-tete d'etat et le verdict de recevabilite. Tout le reste — la mise
+       en page, la ligne `bit OS     : 0`, l'invite — vient du fil.
+    """
+    r = reponse_os0()
+    r = r.replace(b"horloge PCF85063A @ 0x51 : FIABLE",
+                  b"horloge PCF85063A @ 0x51 : MUETTE", 1)
+    r = r.replace(b"\xe2\x80\x94 AFFICHABLE",
+                  b"\xe2\x80\x94 \xe2\x9b\x94 NON AFFICHABLE "
+                  b"(la barre ne la montrera pas)", 1)
+    return r
+
+
+def reponse_jamais_lue():
+    """Armee, mais AUCUNE lecture valide depuis le boot — et `s_os = true`.
+
+    🔴 `s_os` vaut `true` a l'initialisation (dn_rtc.c:31, « pessimiste au
+       boot »), donc la ligne `bit OS` dit **1** alors que le driver dit
+       « JAMAIS LUE ». AC3.2 interdit de lire ca comme `OS1` autant que comme
+       `OS0` : « ce serait une boucle de pose sur une carte qui n'a peut-etre
+       pas d'horloge ».
+    ⚠️ FABRICATION BORNEE A UN CHAMP : l'en-tete d'etat.
+    """
+    return reponse_os1().replace(
+        b"horloge PCF85063A @ 0x51 : NON FIABLE (OS=1)",
+        b"horloge PCF85063A @ 0x51 : JAMAIS LUE", 1)
+
+
 REFUS_FIRMWARE = (b"\xf0\x9f\x94\xb4 ECRITURE REFUSEE ou OS RESTE A 1 "
                   b"\xe2\x80\x94 la pose n'a PAS pris.\r\n"
                   b"Command returned non-zero error code: 0x103 (ESP_FAIL)\r\n"
@@ -188,6 +224,74 @@ class Scene:
                 self.repondre(table[cle])
 
 
+def scene_10_muette_nest_pas_fiable():
+    """🔴 REVUE 2026-08-26 — une carte MUETTE ne peut PAS passer pour FIABLE."""
+    s = Scene()
+    s.sortie.reprise_liaison = True
+    s.cycle()
+    s.repondre(reponse_muette())
+    s.cycle()
+    lect = s.sortie.horloge
+    ok = _dire(lect.etat == "MUET",
+               "etat lu « %s » (attendu MUET — ⛔ la ligne `bit OS : 0` ne doit "
+               "PAS ecraser le verdict du driver)" % lect.etat)
+    ok &= _dire(lect.lue_affichable is False,
+                "⇒ l'heure est lue avec sa RECEVABILITE : affichable=%s"
+                % lect.lue_affichable)
+    for _ in range(40):
+        s.cycle(avance_s=30.0)
+    ok &= _dire(s.horloge.poses_tentees == 0,
+                "⇒ 0 pose en 20 min (%d) — ⛔ l'ecart d'AC6 ne se mesure PAS "
+                "sur une valeur GELEE que la carte declare irrecevable"
+                % s.horloge.poses_tentees)
+    return ok
+
+
+def scene_11_jamais_lue_reste_inconnu():
+    """🔴 REVUE 2026-08-26 — `JAMAIS LUE` reste INCONNU (AC3.2), ⛔ pas OS1."""
+    s = Scene()
+    s.sortie.reprise_liaison = True
+    s.cycle()
+    s.repondre(reponse_jamais_lue())
+    s.cycle()
+    lect = s.sortie.horloge
+    ok = _dire(lect.etat == "INCONNU",
+               "etat lu « %s » (attendu INCONNU — `s_os = true` au boot fait "
+               "dire « bit OS : 1 » a une puce jamais lue)" % lect.etat)
+    for _ in range(40):
+        s.cycle(avance_s=30.0)
+    ok &= _dire(s.horloge.poses_tentees == 0,
+                "⇒ 0 pose en 20 min (%d) — ⛔ « INCONNU » n'est NI OS0 NI OS1"
+                % s.horloge.poses_tentees)
+    return ok
+
+
+def scene_12_poses_reussies_rapprochees():
+    """🔴 REVUE 2026-08-26 — des poses ACCEPTEES qui se repetent ESCALADENT.
+
+    L'anti-rafale ne couvrait que les REFUS : un succes remettait
+    `echecs_consecutifs` a 0, donc une carte qui REPERD l'heure apres chaque
+    pose rejouait `rtc` + `rtc set` toutes les ~31 s INDEFINIMENT.
+    """
+    s = Scene()
+    s.sortie.reprise_liaison = True
+    table = {"rtc": reponse_os1(), "rtc set": reponse_pose_ok()}
+    for _ in range(300):
+        s.cycle_repondeur(table, avance_s=2.0)   # 600 s
+    ok = _dire(s.horloge.poses_reussies >= 2,
+               "%d pose(s) REUSSIE(S) — la carte reperd l'heure a chaque fois"
+               % s.horloge.poses_reussies)
+    ok &= _dire(s.horloge.poses_rapprochees >= 1,
+                "⇒ %d pose(s) rapprochee(s) DETECTEE(S) — l'escalade est armee "
+                "sur le chemin du SUCCES, ⛔ pas seulement sur le refus"
+                % s.horloge.poses_rapprochees)
+    ok &= _dire(s.horloge.poses_reussies <= 6,
+                "⇒ et le nombre de poses reste BORNE sur 600 s (%d) : sans "
+                "escalade, le plancher de 30 s en aurait autorise ~19"
+                % s.horloge.poses_reussies)
+    return ok
+
+
 def _dire(ok, texte):
     print("  %s %s" % ("✅" if ok else "🔴", texte))
     return ok
@@ -244,7 +348,27 @@ def scene_2_fiable_pas_de_pose():
 
 
 def scene_3_non_armee_terminal():
-    """AC3.3 — `NON ARMEE` est TERMINAL : ⛔ jamais de boucle de réessai."""
+    """AC3.3 + AC4.2 — `NON ARMEE` est TERMINAL **EN REGIME**, ⛔ pas DEFINITIF.
+
+    🔴 CE TEMOIN A ETE REECRIT LE 2026-08-26 (revue de code, DECISION OWNER).
+       Il epinglait « 0 commande console de plus apres 50 reprises et 50 min »,
+       c'est-a-dire qu'il CONFIRMAIT le defaut au lieu de l'interroger :
+       `_interroger` avalait `reprise_liaison` et ne redemandait plus JAMAIS.
+       Or `NON ARMEE` n'est ⛔ pas une propriete de la carte, c'est une
+       CONDITION DE BOOT (dn_console.c:7419-7421), sur un bus dont ce depot a
+       mesure qu'il se degrade ~40 s a froid : une carte redevenue ARMEE
+       laissait la barre a « --:-- » POUR LA VIE DE L'AGENT, la seule sortie
+       etant le bandeau de boot — canal mesure a 9/10, et 0/2 quand c'est
+       l'agent qui redemarre.
+
+    ⇒ LE CONTRAT TIENT DESORMAIS EN TROIS MOITIES, ET LE TEMOIN LES PROUVE :
+      a) ⛔ JAMAIS EN BOUCLE — sans reprise de liaison, la periode de 600 s ne
+         doit RIEN declencher, meme apres des heures ;
+      b) ✅ UNE FOIS PAR REPRISE DE LIAISON (AC4.2) ;
+      c) ⛔ ET LE PLANCHER BORNE QUAND MEME (AC4.3) : un port qui bat ne peut
+         pas transformer (b) en rafale ;
+      d) ⛔ et dans tous les cas AUCUNE pose : il n'y a rien a poser.
+    """
     s = Scene()
     s.sortie.reprise_liaison = True
     s.cycle()
@@ -252,14 +376,37 @@ def scene_3_non_armee_terminal():
     s.cycle()
     ok = _dire(s.sortie.horloge.etat == "NON_ARMEE",
                "etat lu « %s »" % s.sortie.horloge.etat)
+
+    # a) ⛔ JAMAIS EN BOUCLE : 50 minutes SANS reprise de liaison.
     avant = len(s.commandes())
     for _ in range(50):
-        s.sortie.reprise_liaison = True      # le port bat : 50 reprises !
-        s.cycle(avance_s=60.0)               # et 50 minutes passent
+        s.cycle(avance_s=60.0)
     ok &= _dire(len(s.commandes()) == avant,
-                "⇒ 0 commande console de plus apres 50 reprises et 50 min (%d)"
+                "⇒ (a) 0 commande console en 50 min SANS reprise de liaison "
+                "(%d) — la periode de 600 s ne redeclenche RIEN"
                 % (len(s.commandes()) - avant))
-    ok &= _dire(s.horloge.poses_tentees == 0, "⇒ 0 pose tentee")
+
+    # b) ✅ MAIS CHAQUE REPRISE DE LIAISON RE-SONDE, UNE FOIS.
+    avant = len(s.commandes())
+    for _ in range(5):
+        s.sortie.reprise_liaison = True
+        s.cycle(avance_s=60.0)
+    ok &= _dire(len(s.commandes()) - avant == 5,
+                "⇒ (b) 5 reprises de liaison ⇒ 5 interrogations (%d) — une "
+                "carte redevenue ARMEE est donc RETROUVEE" % (len(s.commandes()) - avant))
+
+    # c) ⛔ ET LE PLANCHER BORNE : un port qui bat ne fait pas une rafale.
+    avant = len(s.commandes())
+    for _ in range(20):
+        s.sortie.reprise_liaison = True
+        s.cycle(avance_s=1.0)
+    ok &= _dire(len(s.commandes()) - avant <= 1,
+                "⇒ (c) 20 reprises en 20 s ⇒ %d interrogation (plancher 30 s)"
+                % (len(s.commandes()) - avant))
+
+    # d) ⛔ ET TOUJOURS AUCUNE POSE : il n'y a rien a poser.
+    ok &= _dire(s.horloge.poses_tentees == 0,
+                "⇒ (d) 0 pose tentee (%d)" % s.horloge.poses_tentees)
     return ok
 
 
@@ -410,13 +557,18 @@ def scene_9_pas_de_canal():
 SCENES = [
     ("1 — la carte a perdu l'heure, l'agent la repose  (AC4.1/4.2/4.5)", scene_1_perte_puis_pose),
     ("2 — carte FIABLE et a l'heure ⇒ AUCUNE pose      (AC4.6)", scene_2_fiable_pas_de_pose),
-    ("3 — NON ARMEE est TERMINAL                       (AC3.3)", scene_3_non_armee_terminal),
+    ("3 — NON ARMEE : terminal EN REGIME, pas DEFINITIF (AC3.3+AC4.2)", scene_3_non_armee_terminal),
     ("4 — INCONNU n'est ni OS0 ni OS1                  (AC3.2)", scene_4_inconnu_ne_pose_pas),
     ("5 — un refus en boucle ne noie pas le fil        (AC4.3)", scene_5_anti_rafale),
     ("6 — le trou ETE/HIVER                            (AC6)", scene_6_ete_hiver),
     ("7 — le plancher borne le port qui bat            (AC4.3)", scene_7_plancher),
     ("8 — « sans reponse » est un 3e seau              (AC5.1)", scene_8_sans_reponse),
     ("9 — pas de canal console = etat DECLARE          (AC2.4)", scene_9_pas_de_canal),
+    # 🔴 TROIS SCENES AJOUTEES PAR LA REVUE DE CODE DU 2026-08-26 — elles
+    #    couvrent les etats que les neuf premieres ne visitaient PAS.
+    ("10 — MUETTE ne passe PAS pour FIABLE             (AC3.2)", scene_10_muette_nest_pas_fiable),
+    ("11 — JAMAIS LUE reste INCONNU                    (AC3.2)", scene_11_jamais_lue_reste_inconnu),
+    ("12 — poses REUSSIES rapprochees ⇒ ESCALADE       (AC4.3)", scene_12_poses_reussies_rapprochees),
 ]
 
 
@@ -458,7 +610,7 @@ def main():
         tout &= bool(fn())
     print()
     if tout:
-        print("✅ LES NEUF SCENES TIENNENT.")
+        print("✅ LES %d SCENES TIENNENT." % len(SCENES))
         return 0
     print("🔴 AU MOINS UNE SCENE A ECHOUE.")
     return 1

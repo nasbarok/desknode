@@ -79,7 +79,8 @@ def sens_agent_vers_firmware(src, injecter=None):
     for brut in dn_agent.DN_H_ETATS:
         a_verifier.append(("etat", brut))
     for nom in ("DN_H_ANCRE_RTC", "DN_H_ANCRE_BARRE", "DN_H_ANCRE_OS",
-                "DN_H_ANCRE_LUE", "DN_H_POSE_OK", "DN_H_POSE_ETAT"):
+                "DN_H_ANCRE_LUE", "DN_H_POSE_OK", "DN_H_POSE_ETAT",
+                "DN_H_NON_AFFICHABLE"):
         a_verifier.append((nom, getattr(dn_agent, nom)))
     for motif in dn_agent.DN_H_POSE_REFUS:
         a_verifier.append(("DN_H_POSE_REFUS", motif))
@@ -100,8 +101,15 @@ def sens_agent_vers_firmware(src, injecter=None):
     return ok
 
 
-def sens_firmware_vers_agent(src):
-    """2/2 — chaque état que le FIRMWARE peut rendre est CONNU de l'agent."""
+def sens_firmware_vers_agent(src, injecter=None, vider=False):
+    """2/2 — chaque état que le FIRMWARE peut rendre est CONNU de l'agent.
+
+    ⛔ `injecter` / `vider` ne servent QU'À `--montrer-l-echec` : ils simulent
+       respectivement un état AJOUTÉ au firmware et une table devenue
+       ILLISIBLE. Correctif de revue 2026-08-26 : ce sens-ci était le seul des
+       deux à n'avoir JAMAIS été vu crier, alors que la docstring le présente
+       comme « celui qu'une gate naïve oublie ».
+    """
     corps = None
     for p, t in src.items():
         if b"dn_rtc_etat_nom" in t:
@@ -117,7 +125,24 @@ def sens_firmware_vers_agent(src):
               "la liste des etats du firmware. ⛔ Un miroir qui ne voit qu'un "
               "cote n'est pas un miroir.")
         return False
+    if vider:
+        corps = "const char *dn_rtc_etat_nom(dn_rtc_etat_t e) { return k_noms[e];"
     rendus = set(re.findall(r'return\s+"([^"]*)"\s*;', corps)) - DEFAUT_NON_ETAT
+    if injecter is not None:
+        rendus.add(injecter)
+    # 🔴 GARDE DE DISCRIMINANCE — CORRECTIF DE REVUE 2026-08-26. Sans elle, une
+    #    réécriture de `dn_rtc_etat_nom()` en TABLE (`return k_noms[e];`) rendait
+    #    `rendus` VIDE, donc `inconnus` vide, donc la gate imprimait
+    #    « ✅ les 0 etats du firmware sont TOUS connus » et retournait VRAI.
+    #    Une gate qui passe sur du VIDE ne prouve rien — c'est le même défaut
+    #    que `temoin_decoupe` ferme déjà par son `exige = {...}`.
+    if len(rendus) < 4:
+        print("  🔴 SEULEMENT %d etat(s) EXTRAIT(S) de `dn_rtc_etat_nom()` "
+              "(minimum attendu : 4)." % len(rendus))
+        print("      ⇒ la gate ne lit PLUS la table du firmware — elle passerait "
+              "sur du VIDE. ⛔ Un miroir qui ne reflete rien n'est pas vert, il "
+              "est AVEUGLE.")
+        return False
     connus = {k.decode("utf-8") for k in dn_agent.DN_H_ETATS}
     print("  firmware rend : %s" % ", ".join(sorted(repr(x) for x in rendus)))
     print("  agent connait : %s" % ", ".join(sorted(repr(x) for x in connus)))
@@ -142,16 +167,37 @@ def main():
         return 1
 
     if montrer:
-        print("=== ⛔ ECHEC PROVOQUE — on injecte un litteral VOLONTAIREMENT FAUX ===")
+        # 🔴 TROIS ECHECS PROVOQUES, ⛔ PAS UN. Correctif de revue 2026-08-26 :
+        #    seul le sens 1 etait mis a l'epreuve, alors que le sens 2 est celui
+        #    que la docstring presente comme le plus precieux.
+        echecs = []
+
+        print("=== 1/3 ⛔ SENS 1 — on injecte un litteral VOLONTAIREMENT FAUX ===")
         print("    (c'est ce que ferait un libelle firmware retouche d'un accent)")
         faux = b"horloge PCF85063A @ 0X"      # X majuscule : une seule lettre
-        ok = sens_agent_vers_firmware(src, injecter=faux)
+        echecs.append(("sens 1, une seule lettre de difference",
+                       sens_agent_vers_firmware(src, injecter=faux)))
         print()
-        if ok:
-            print("🔴 LA GATE N'A PAS CRIE ALORS QU'ON A INJECTE UN FAUX LITTERAL.")
+
+        print("=== 2/3 ⛔ SENS 2 — le firmware GAGNE un etat que l'agent ignore ===")
+        print("    (c'est ce que ferait un `DN_RTC_...` ajoute a l'enum)")
+        echecs.append(("sens 2, etat firmware inconnu de l'agent",
+                       sens_firmware_vers_agent(src, injecter="ARRETEE PAR L'HOTE")))
+        print()
+
+        print("=== 3/3 ⛔ SENS 2 — la table devient ILLISIBLE (passage en k_noms[]) ===")
+        print("    (la gate doit CRIER, ⛔ pas annoncer « 0 etats, tous connus »)")
+        echecs.append(("sens 2, table vide",
+                       sens_firmware_vers_agent(src, vider=True)))
+        print()
+
+        muettes = [nom for nom, ok in echecs if ok]
+        if muettes:
+            for nom in muettes:
+                print("🔴 LA GATE N'A PAS CRIE : %s" % nom)
             print("   ⛔ Une gate qui ne peut pas echouer ne prouve rien.")
             return 1
-        print("✅ LA GATE A CRIE sur UNE SEULE lettre de difference.")
+        print("✅ LA GATE A CRIE SUR LES TROIS — les DEUX sens sont discriminants.")
         print("   Elle peut donc etre crue quand elle est verte.")
         return 0
 
