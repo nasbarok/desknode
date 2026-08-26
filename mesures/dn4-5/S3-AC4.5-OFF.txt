@@ -1,0 +1,50 @@
+
+===== flush =====
+ flush
+─── glissement de trame (dn4-10) — fenêtre 2310563 ms ───
+  trames (vsync)   : 86329 · enroulements : 86329
+  trames SANS enroulement : 0 · à deux ou plus : 0
+  intervalle vsync→vsync : n=86328 · min 26565 · moy 26737 · MAX 26910 us
+     (période théorique 26737 us = 620 x 690 / 16000000 Hz)
+     retard PIRE observé : +173 us sur la période
+  ISR en retard de plus de : +100 us 2 · +775 us (back porch) 0 · +1937 us (VBlank) 0 · une trame 0
+  🎯 phase enroulement→VSYNC_END : n=86297 (+32 dégrossis) · min 1533 · moy 2255 · MAX 2317 us
+     une phase COURTE = l'enroulement EN RETARD = le remplissage du bounce qui décroche.
+     🔴 DÉFICIT PIRE sous le max : 784 us, pour un demi-bounce qui s'écoule en 775 us
+        ⇒ DÉPASSÉ de 9 us : la DMA a lu un tampon PAS ENCORE REMPLI. C'est le décalage visible.
+     trames dont le déficit dépasse : 10 % 2060 · 25 % 5 · 50 % 3 · 🔴 100 % (CORRUPTION) 1
+     ⚠️ PLANCHER : la microseconde, soit 16 px. ⛔ « 0 » ici ne veut PAS dire « 0 pixel ».
+     ⚠️ L'horodatage de référence vient LUI AUSSI d'une ISR : un retard COMMUN aux deux s'annule et reste invisible.
+  ce que ça veut dire : le driver RGB remet la DMA à zéro à
+     CHAQUE VBlank (RESTART_IN_VSYNC=y) et écrit lui-même que
+     « si cette interruption est ASSEZ EN RETARD, l'image se
+     DÉCALE » (esp_lcd_panel_rgb.c:1142-1148). Le budget réel
+     est le back porch, 775 us — pas le VBlank entier (1937 us),
+     car VSYNC_END tombe à la FIN de l'impulsion.
+  ⛔ un compteur à zéro ne prouve RIEN tant que le témoin ne
+     l'a pas fait bouger, et la correspondance avec l'œil est
+     un RÉSULTAT à établir, pas une hypothèse. ⛔ `fps` reste
+     aveugle à ce défaut : il MOYENNE, et la gigue s'y efface.
+────────────────────────────────────────────────────────────
+rendu : PARTIEL · synchro : vsync · chemin : bitmap
+draw buffer : 480 x 128 px (122880 o) en RAM interne DMA
+flushes            : 11284
+cycles de redessin : 4828
+aire cumulée       : 412735008 px
+  => 36577 px par flush en moyenne (écran plein = 307200 px, soit 11.91 %)
+  => 85487 px et 2.3 flush(es) par CYCLE de redessin
+     (le CYCLE est l'unité qui compte : c'est ce qu'une mise à
+      jour du label coûte réellement, flushes multiples inclus.)
+plus grande aire   : 61440 px
+copie              : 33427691 us cumulés, 2962 us/flush en moyenne, 6502 us au pire
+attente de synchro : 178650373 us cumulés, 15832 us/flush en moyenne
+   (comptée À PART de la copie : sinon « le flush coûte 27 ms » se
+    lirait comme un problème de bande passante alors que c'est la
+    synchro qui attend sa trame — 26,7 ms de période.)
+⚠️ 5 synchro(s) EXPIRÉE(S) : pour ces flushes-là, le mode
+   annoncé n'a PAS été appliqué. Toute comparaison A/B qui les
+   inclut compare partiellement « rien » à « rien ».
+rappel : redessiner l'écran ENTIER coûte 36,8 ms de memcpy PSRAM (§5.4),
+   pour 26,7 ms de période de trame — 1,4x TROP LENT. Les zones
+   sales ne sont pas une élégance, c'est la seule voie qui tient.
+desknode> 

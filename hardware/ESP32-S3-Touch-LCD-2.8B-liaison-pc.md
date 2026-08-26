@@ -3394,3 +3394,38 @@ mais *« très largement sous »* n'est pas *« mesuré »*, et **AC4.6 reste d�
 
 ⏳ **CE QUI RESTE DE AC4.5 EST SUR LA CARTE** : **Δ px par cycle** et **Δ latence
 acceptation→label**. Les deux se relèvent au firmware (`flush reset`, `nav ab`), donc en séance.
+
+### 27.8 ✅ AC4.5 — LE Δ px DU LISSAGE EST **SOUS LE BRUIT**, ET C'EST UN TIR DE CONTRÔLE QUI LE DIT
+
+**Séance carte du 2026-08-27.** Trois tirs de **120 s d'agent**, encadrés par deux lectures de
+`flush`, fenêtres à **419 ms près** (127 096 / 126 851 / 127 270 ms).
+
+| tir | fenêtre | flushes | cycles | aire cumulée | px/s | px/cycle |
+|---|---:|---:|---:|---:|---:|---:|
+| `--lissage off` **#1** | 127 096 ms | 623 | **267** | 22 842 724 | 179 728 | 85 553 |
+| **`--lissage on`** | 126 851 ms | 629 | **269** | 23 062 624 | 181 808 | 85 734 |
+| `--lissage off` **#2** | 127 270 ms | 626 | **271** | 22 920 474 | 180 093 | 84 577 |
+
+🎯 **LA VALEUR `on` EST ENCADRÉE PAR LES DEUX `off`** — sur `cycles` (267 · **269** · 271) comme sur
+`px/cycle` (85 553 · **85 734** · 84 577).
+
+| grandeur | dispersion `off`↔`off` | écart `on`↔`off` | verdict |
+|---|---:|---:|---|
+| flushes | 0,48 % | 0,48 à 0,96 % | 🔴 **du même ordre** |
+| **cycles** | **1,50 %** | 0,74 % | 🔴 **SOUS la dispersion** |
+| aire cumulée | 0,34 % | 0,62 à 0,96 % | 🔴 du même ordre |
+| px/s | 0,20 % | 0,95 à 1,16 % | ⚠️ du même ordre |
+
+⇒ **AC4.5, PART « Δ px » : L'EFFET DU LISSAGE N'EST PAS DISTINGUABLE DE ZÉRO.**
+⛔ **Aucun Δ n'est publié comme un effet** — *« un seuil plus fin que le pas de son dénominateur
+n'est pas tranchable »*, et ici le pas, c'est la dispersion de l'instrument.
+
+⚠️ **ET C'EST UNE BONNE NOUVELLE, PAS UN ÉCHEC DE MESURE** : le lissage **ne coûte rien au dessin**.
+C'était attendu en y réfléchissant, et il vaut mieux l'écrire que de le découvrir : **le lissage
+change les VALEURS, pas la CADENCE**. L'agent envoie toujours 5 trames/s, le firmware les traite
+toutes, et une moyenne glissante sur 3 échantillons **ne rend presque jamais deux fois le même
+texte** — le label change donc à peu près aussi souvent qu'avant.
+
+⛔ **CE QUE CES TROIS TIRS NE DISENT PAS** : la dispersion est estimée sur **DEUX** tirs `off`. C'est
+assez pour dire « l'écart `on` est dedans », ⛔ pas pour publier une dispersion. Un effet réel mais
+**inférieur à ~1,5 %** resterait invisible ici.
