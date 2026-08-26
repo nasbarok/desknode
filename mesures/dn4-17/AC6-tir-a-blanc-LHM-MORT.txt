@@ -1,0 +1,22 @@
+[agent] GPU : AMD Radeon RX 6800 XT via ADL PMLog (adaptateur 0) — temoin de mapping BUS_LANES=16 CLK_MEMCLK=1982 MHz
+[agent] ⚠️ LHM INJOIGNABLE au demarrage (TimeoutError: budget de lecture LHM epuise (600 ms)) — la °C CPU et les tr/min diront « -- », les autres grandeurs continuent. ⚠️ La source RESTE ARMEE : elle retente a chaque cycle et reprendra seule si LHM demarre.
+[agent] ⚠️ source `lhm` en ECHEC (budget de lecture LHM epuise (600 ms)) — la ou elle remplissait une grandeur, le fil porte un CHAMP VIDE et la ligne dit « -- » ; SI elle tenait la position 0, c'est la metrique entiere qui n'est pas emise. Les autres continuent : une source morte meurt SEULE.
+[agent] témoin coût cumulé : 0.422 s CPU / 10.6 s mur = 3.968 % d'un cœur (0.2480 % machine) — seq=50
+[agent] témoin coût cumulé : 0.578 s CPU / 20.6 s mur = 2.802 % d'un cœur (0.1751 % machine) — seq=100
+[agent] témoin coût cumulé : 0.734 s CPU / 30.6 s mur = 2.397 % d'un cœur (0.1498 % machine) — seq=150
+[agent] témoin coût cumulé : 0.828 s CPU / 40.6 s mur = 2.039 % d'un cœur (0.1274 % machine) — seq=200
+[agent] témoin coût cumulé : 1.016 s CPU / 50.6 s mur = 2.006 % d'un cœur (0.1254 % machine) — seq=250
+[agent] témoin coût cumulé : 1.172 s CPU / 60.6 s mur = 1.933 % d'un cœur (0.1208 % machine) — seq=300
+[agent] témoin coût cumulé : 1.281 s CPU / 70.7 s mur = 1.813 % d'un cœur (0.1133 % machine) — seq=350
+[agent] témoin coût cumulé : 1.406 s CPU / 80.6 s mur = 1.744 % d'un cœur (0.1090 % machine) — seq=400
+[agent] témoin coût cumulé : 1.516 s CPU / 90.6 s mur = 1.672 % d'un cœur (0.1045 % machine) — seq=450
+[agent] arrêt demandé (drapeau H:\dev\projets\desknode\dn-agent.stop)
+[agent] arrêt après 96.6 s — 480 trames émises (4.97 trames/s), 0 erreurs d'envoi, 0 recalages de cadence
+[agent] écho console draîné : 22753 o, 493 lignes en 96.6 s = 235.5 o/s, 5.10 lignes/s (PLAFOND du bruit console : inclut le battement 10 s et tout ESP_LOGx)
+[agent] aucun refus signalé par le firmware sur le fil
+[agent] aucun ecretage : toute valeur emise est la valeur mesuree
+[agent] 🔴 PANNES DE SOURCE (grandeur perdue ⇒ champ VIDE, « -- » sur SA ligne ; metrique non emise SEULEMENT si la position 0 manquait) : lhm:TimeoutError=96
+[agent] LHM : 0 lecture(s) reussie(s), 97 en echec — duree moyenne 610.0 ms, MAX 674.3 ms (timeout pose : 600 ms)
+[agent] 🔴 le plafond a COUPE au moins une lecture (97 echec(s), timeout 600 ms). ⚠️ Le dimensionnement est a revoir. ⛔ `duree_max` (674 ms) est un MAX sur les reussites ET les echecs : il ne dit PAS a quel instant la coupe a eu lieu.
+[agent] 🔴 UNE LECTURE LHM A DEPASSE LE PLAFOND SANS ECHOUER : 674 ms pour un timeout de 600 ms (112 %), 97 echec(s). ⚠️ Le budget ne borne que le RESEAU : ce depassement vient d'ailleurs (parse, ordonnancement). ⛔ C'EST un incident — il mange la cadence et arme le recalage.
+[agent] ⚠️ LHM est reste INJOIGNABLE toute la session (TimeoutError: budget de lecture LHM epuise (600 ms)) — la °C CPU et les tr/min n'ont JAMAIS ete publies. ⛔ Ce n'est pas « zero », c'est « inconnu » : le fil porte un champ VIDE et la carte affiche « -- ».

@@ -1,0 +1,33 @@
+=============================================================================
+  dn4-17 — CE QU'IL RESTE A FAIRE, ET C'EST UN GESTE OWNER
+=============================================================================
+Tout est pose. La tache "DeskNode agent" est enregistree au logon, en
+RunLevel Limited (donc SANS invite UAC). Le port COM3 est cote Windows.
+L'agent est ARRETE : c'est la tache qui doit le relancer, pas moi.
+
+APRES AVOIR ROUVERT VOTRE SESSION :
+
+  1. Ne lancez PAS WSL. Il doit rester eteint : c'est la moitie du temoin.
+
+  2. Regardez la dalle. La case CPU doit revivre toute seule, sans que
+     vous ayez rien lance.
+
+  3. Double-cliquez :   H:\dev\projets\desknode\constat-apres-logon.cmd
+     Il ne change RIEN. Il attend ~3 min que l'agent ait de quoi mesurer,
+     puis il ecrit tout dans constat-apres-logon.txt, a cote.
+     Laissez la fenetre ouverte jusqu'a "FINI".
+
+  4. Double-cliquez :   H:\dev\projets\desknode\dn-agent.bat
+     Il doit dire "DEJA LANCE ... Aucun second process ne sera cree".
+     C'est le temoin anti-doublon dans le regime livre.
+
+  5. Relancez WSL et Claude Code : je lirai le rapport.
+
+CE QUI RESTE APRES CA : un flash de dn3-3 ou dn4-10, pour prouver que la
+tache au logon ne bloque plus la boucle de flash. Le geste est :
+     cd ~/projects/desknode && ./tools/rendre-port.sh --vers-flash
+puis le flash habituel, puis  ./tools/rendre-port.sh --vers-agent
+
+SI QUELQUE CHOSE COINCE : la tache se retire, et c'est verifie.
+     H:\dev\projets\desknode\dn-agent.bat retirer
+=============================================================================
