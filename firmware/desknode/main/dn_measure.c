@@ -114,6 +114,12 @@ static volatile uint32_t s_bnc_wraps_vus;  /* valeur de s_bnc_wraps au vsync pre
 static volatile uint32_t s_bnc_base_wraps; /* references posees a la RAZ */
 static volatile uint32_t s_bnc_base_vsync;
 static volatile uint32_t s_bnc_t0_us;
+/* dn4-5 / AC1.2 : +1 a CHAQUE RAZ CONSOMMEE. Il vit dans la branche RAZ,
+ * donc il ne coute RIEN sur les 37,40 trames/s du regime normal. C'est lui
+ * qui dit a la tache console qu'une NOUVELLE origine a ete posee — se fier
+ * a un changement de VALEUR de s_bnc_t0_us raterait le cas (improbable mais
+ * pas impossible) de deux RAZ separees d'exactement 2^32 us. */
+static volatile uint32_t s_bnc_raz_gen;
 static volatile uint32_t s_bnc_t_vsync_us; /* horodatage du vsync precedent */
 static volatile bool s_bnc_arme;           /* un intervalle est-il mesurable ? */
 static volatile uint32_t s_bnc_manques;
@@ -198,6 +204,50 @@ static volatile uint32_t s_bnc_ph_ecarte; /* echantillons du degrossissage */
 /* ── ecrite par la tache console UNIQUEMENT ── */
 static volatile bool s_bnc_raz;
 
+/* ── dn4-5 / AC1.2 : LA FENETRE PASSE EN BASE 64 BITS ───────────────────────
+ *
+ * 🔴 LE DEFAUT QU'ON FERME, ET POURQUOI C'EST LE PIRE DES CINQ.
+ *    `fenetre_ms` valait `(t_us - s_bnc_t0_us) / 1000`, DEUX `uint32_t` en us.
+ *    La soustraction non signee absorbe UN enroulement, pas deux : au-dela de
+ *    2^32 us = 4 294,967 s = 71,58 min, la fenetre publiee repart de zero, SANS
+ *    UN MOT et A EXIT 0. Sur les 604 800 s d'un soak de 7 jours, cela fait
+ *    140 rebouclages.
+ *
+ * ⚠️ ET LE MOTIF DE GRAVITE DU CADRAGE DE dn4-5 EST FAUX — verifie au `grep`
+ *    sur les deux depots le 2026-08-26. Il annoncait « c'est LE DENOMINATEUR
+ *    des taux que flush publie ». Elle ne l'est pas : dans dn_console.c les
+ *    taux se divisent par `intervalles`, `ph_n` et `t_demi_us`, jamais par
+ *    elle, et aucun outil de tools/ ni de agent/ ne la lit. Le defaut reste
+ *    entier, mais sa gravite est AILLEURS : `fenetre_ms` est le SEUL chiffre
+ *    qui dise sur quelle duree les compteurs du bloc ont ete cumules, et c'est
+ *    un HUMAIN qui fait la division. Fausse, elle ne rend rien d'absurde — elle
+ *    rend le bloc entier inexploitable en ayant l'air correct.
+ *
+ * ⛔ ON NE MET AUCUN VERROU ET ON NE TOUCHE PAS AU CHEMIN CHAUD DE L'ISR.
+ *    « On mesure une famine, on ne va pas la fabriquer. » L'origine continue
+ *    d'etre posee par l'ISR de vsync en 32 bits — un store aligne, un seul
+ *    acces. Ce qu'on ajoute est ENTIEREMENT du cote de la tache console :
+ *    `dn_measure_bounce_reset()` et `dn_measure_bounce_get()` sont toutes deux
+ *    appelees depuis le REPL, donc ces trois variables ont UN SEUL ECRIVAIN ET
+ *    UN SEUL LECTEUR, qui sont la meme tache. L'invariant du fichier tient.
+ *
+ * 🎯 L'ANCRE DE RECONSTRUCTION EST L'INSTANT D'ARMEMENT, ⛔ PAS L'INSTANT
+ *    COURANT — et c'est la seule subtilite du correctif. L'ISR consomme la RAZ
+ *    au vsync suivant, soit au plus 26,7 ms apres l'armement : les bits hauts
+ *    de l'origine sont donc ceux de l'armement, ou ceux de l'armement + 1 si un
+ *    enroulement 32 bits tombe entre les deux. Ancrer sur l'instant courant
+ *    serait faux des que personne ne relit pendant 71,6 min — c'est-a-dire
+ *    EXACTEMENT le regime d'un soak, ou l'on pose une RAZ puis on ne revient
+ *    que des jours plus tard.
+ *
+ * ⚠️ AU BOOT LES TROIS VALENT 0, ET C'EST JUSTE : `esp_timer` part de 0 et
+ *    `s_bnc_t0_us` vaut 0 tant qu'aucune RAZ n'a eu lieu. La fenetre initiale
+ *    est donc l'uptime — ce qu'elle a toujours ete.
+ */
+static int64_t s_bnc_arme_us64;   /* instant d'ARMEMENT de la derniere RAZ */
+static int64_t s_bnc_t0_us64;     /* origine EFFECTIVE, reconstruite sur 64 bits */
+static uint32_t s_bnc_raz_gen_vu; /* generation de RAZ deja reconstruite */
+
 static IRAM_ATTR bool on_vsync(esp_lcd_panel_handle_t panel,
                                const esp_lcd_rgb_panel_event_data_t *edata,
                                void *user_ctx)
@@ -220,6 +270,7 @@ static IRAM_ATTR bool on_vsync(esp_lcd_panel_handle_t panel,
          * qui rend la mise a zero sure sans verrou. La trame courante est
          * ecartee — sa fenetre serait tronquee. */
         s_bnc_raz = false;
+        s_bnc_raz_gen++; /* dn4-5/AC1.2 : une origine NEUVE vient d'etre posee */
         s_bnc_base_wraps = s_bnc_wraps;
         s_bnc_base_vsync = s_vsync_count;
         s_bnc_wraps_vus = s_bnc_wraps;
@@ -575,6 +626,12 @@ void dn_measure_bounce_reset(void)
 {
     /* On ne touche AUCUN compteur ici — voir l'invariant en tete de fichier.
      * L'ISR de vsync consomme le drapeau au prochain retour vertical. */
+    /* ⚠️ L'ANCRE EST POSEE AVANT LE DRAPEAU, et l'ordre compte (dn4-5/AC1.2) :
+     *    dans l'autre sens, l'ISR pourrait consommer la RAZ avant que l'ancre
+     *    n'existe, et la reconstruction 64 bits s'appuierait sur l'ancre de la
+     *    RAZ PRECEDENTE — soit une fenetre fausse d'un multiple de 71,58 min,
+     *    c'est-a-dire le defaut qu'on est en train de fermer. */
+    s_bnc_arme_us64 = esp_timer_get_time();
     s_bnc_raz = true;
 }
 
@@ -586,7 +643,12 @@ void dn_measure_bounce_get(dn_bounce_stats_t *out)
     /* Instantane NON ATOMIQUE, et c'est assume : les compteurs bougent
      * 37,40 fois par seconde, une incoherence porterait sur UNE trame. La dire
      * plutot que de prendre un verrou sur le chemin qu'on mesure. */
-    uint32_t t_us = (uint32_t)esp_timer_get_time();
+    /* UNE SEULE lecture d'horloge, deux vues : la vue 64 bits (juste) et la vue
+     * 32 bits (celle de l'instrument d'avant dn4-5, publiee comme
+     * contre-epreuve). Les derivees d'une meme lecture, elles sont forcement
+     * coherentes entre elles — deux appels ne le seraient pas. */
+    int64_t maintenant = esp_timer_get_time();
+    uint32_t t_us = (uint32_t)maintenant;
     out->trames = s_vsync_count - s_bnc_base_vsync;
     out->wraps = s_bnc_wraps - s_bnc_base_wraps;
     out->manques = s_bnc_manques;
@@ -611,7 +673,33 @@ void dn_measure_bounce_get(dn_bounce_stats_t *out)
     out->ph_deficit_max_us = s_bnc_ph_deficit_max;
     out->t_demi_us = s_bnc_t_demi_us;
     out->us_par_ligne = DN_US_PAR_LIGNE;
-    out->fenetre_ms = (t_us - s_bnc_t0_us) / 1000u;
+    /* ── dn4-5 / AC1.2 : LA FENETRE, RECONSTRUITE SUR 64 BITS ───────────── */
+    uint32_t gen = s_bnc_raz_gen;
+    if (gen != s_bnc_raz_gen_vu) {
+        /* Une origine NEUVE a ete posee par l'ISR depuis notre derniere
+         * lecture : on la releve sur 64 bits, ancree sur l'ARMEMENT. */
+        s_bnc_raz_gen_vu = gen;
+        int64_t cand = (s_bnc_arme_us64 & ~0xFFFFFFFFLL) | (int64_t)s_bnc_t0_us;
+        if (cand < s_bnc_arme_us64) {
+            /* l'ISR a franchi l'enroulement 32 bits entre l'armement et la
+             * consommation : les bits hauts sont ceux de l'armement + 1. */
+            cand += 0x100000000LL;
+        }
+        s_bnc_t0_us64 = cand;
+    }
+    int64_t fen_us = maintenant - s_bnc_t0_us64;
+    if (fen_us < 0) {
+        /* Injoignable par construction ; on ne publie pas un negatif plutot que
+         * de le convertir en un enorme non signe. */
+        fen_us = 0;
+    }
+    out->fenetre_ms = (uint64_t)fen_us / 1000u;
+    /* LE CRI, ET IL PORTE SA PROPRE CONTRE-EPREUVE : au-dela de 2^32 us
+     * l'instrument d'avant dn4-5 publiait une fenetre fausse modulo 71,58 min.
+     * On publie CE QU'IL AURAIT DIT a cote de la valeur juste, pour que la
+     * sortie se suffise a elle-meme et que l'ecart soit LU, pas deduit. */
+    out->fenetre_deborde = (fen_us >= 4294967296LL);
+    out->fenetre_ms_32 = (t_us - s_bnc_t0_us) / 1000u;
     out->raz_en_attente = s_bnc_raz;
 }
 

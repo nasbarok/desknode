@@ -1,0 +1,6 @@
+
+===== (écoute) =====
+I (14094) desknode: up 10 s — vsync=414 — flush=14 cycles=6 — PSRAM libre 7768048 o — mural 13 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+W (17178) dn_ui: historique : 1 seconde(s) NON ÉCHANTILLONNÉE(S) (pause `ui off` ou préemption longue) — 1 position(s) creusée(s) en TROUS ; la courbe ne reliera PAS les deux bords de la coupure
+I (24097) desknode: up 20 s — vsync=789 — flush=16 cycles=8 — PSRAM libre 7768048 o — mural 23 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (34100) desknode: up 30 s — vsync=1163 — flush=18 cycles=10 — PSRAM libre 7768048 o — mural 33 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)

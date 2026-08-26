@@ -1,0 +1,4 @@
+PYTHON DE LA TOUR : 3.13.4
+cout MEDIAN d'un appel a Lisseur.appliquer() : 5.24 us
+  n = 200000 appels x 5 series ; etendue des series : 1.20 us
+  a 1 Hz ⇒ travail ajoute 5.24 us/s = 0.000524 % d'un coeur

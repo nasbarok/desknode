@@ -1,0 +1,36 @@
+==============================================================================
+dn4-5 / AC3.2 — LE CUMUL AMBIENT NE MENT PAS, ET ON L'A VU CRIER
+==============================================================================
+
+sources LUES : dn_veille.c 1ff51785d730e0a0 · dn_veille.h ba5435b9b4eb0c43
+
+── 1. LE PRODUIT COMPILE ET REPOND ───────────────────────────────
+  [OK ] dn_veille.c COMPILE ET CHARGE                            cc -O0
+  [OK ] le cumul ACTIF est juste                                 360 s attendus, 360 publies
+  [OK ] le cumul AMBIENT est juste                               23240 s attendus, 23240 publies
+  [OK ] actif + ambient == temps mural ECOULE                    23600 s == 23600 s — ⛔ aucune seconde ne se perd
+  [OK ] le seuil « majorite du temps » est TRANCHABLE            Ambient = 98 % sur ce scenario
+
+── 2. LE CAS QUI COMPTE : LIRE EN PLEIN EPISODE AMBIENT ──────────
+  [OK ] six jours d'Ambient SANS bascule sont comptes            518400 s attendus, 518400 publies
+  [OK ] et les 10 s d'Actif d'avant ne sont pas perdues          10 s
+
+── 3. LE CONTROLE DE SOURCE — SUR TOUT LE FICHIER ────────────────
+  [OK ] `veille_poser_mode()` existe                             
+  [OK ] ⛔ AUCUNE ecriture de `s_mode` hors du poseur             2 ecriture(s) : 1 initialiseur + 1 dans le poseur
+  [OK ] et le poseur ECRIT bien le mode                          ⛔ un poseur qui n'ecrit rien passerait le controle precedent
+  [OK ] `dn_veille_cumul()` existe                               
+  [OK ] ⛔ le cumul n'utilise PAS le compteur de ticks            le tick a des trous DOCUMENTES (`ui off`, `veille now`)
+  [OK ] le cumul lit bien l'horloge MURALE                       int64, aucun enroulement avant ~292 000 ans
+
+── 4. LES TEMOINS NEGATIFS — ON DOIT LES VOIR ROUGIR ─────────────
+  [OK ] mutant « A. » : la mutation s'applique                   1 occurrence
+  [OK ] mutant « A. » : compile                                  
+  [OK ] mutant « A. » : VU ROUGIR                                l'intervalle en cours est oublie — publie 3240 s d'Ambient au lieu de 23240
+  [OK ] mutant « B. » : la mutation s'applique                   1 occurrence
+  [OK ] mutant « B. » : compile                                  
+  [OK ] mutant « B. » : VU ROUGIR                                le cumul compte des TICKS au lieu du temps — publie 20000 s d'Ambient au lieu de 23240
+
+==============================================================================
+BILAN : 19 OK, 0 KO
+==============================================================================

@@ -93,6 +93,33 @@ static bool s_armee = DN_VEILLE_ARMEE_DEFAUT;
 static int s_cran = DN_VEILLE_CRAN_DEFAUT;
 static dn_veille_mode_t s_mode = DN_VEILLE_ACTIF;
 
+/*
+ * ─── dn4-5 / AC3.2 : LE TEMPS PASSÉ DANS CHAQUE MODE ────────────────────────
+ *
+ * 🔴 POURQUOI CE CUMUL EXISTE, ET POURQUOI IL NE COMPTE PAS DES TICKS.
+ *    Le brief exige « en Ambient LA MAJORITÉ DU TEMPS », donc **> 50 %** est un
+ *    SEUIL, ⛔ pas une figure de style — et il n'existait AUCUN cumul pour le
+ *    trancher. La tentation était de compter les ticks (`s_secondes_vues`) :
+ *    ⛔ C'EST FAUX, et le dépôt le dit lui-même. `dn_ui.c` documente qu'un
+ *    `veille now` d'opérateur passe DÉLIBÉRÉMENT à côté de `dn_veille_tick()`
+ *    (« un geste d'opérateur ne doit pas faire avancer une horloge
+ *    d'observation »). Un dénominateur en ticks aurait donc des TROUS, et sur
+ *    7 jours il rendrait un pourcentage plausible et faux.
+ *
+ * 🎯 ON CUMULE DONC DU TEMPS MURAL, pris sur `esp_timer_get_time()` (int64,
+ *    aucun enroulement avant ~292 000 ans — voir l'audit de dn4-5/AC1.1). Le
+ *    cumul est exact QUEL QUE SOIT le chemin qui change le mode, parce que
+ *    TOUS passent par `veille_poser_mode()` : c'est la seule écriture de
+ *    `s_mode` du fichier, et c'est vérifié par gate.
+ *
+ * ⛔ EN RAM, ET RIEN QU'EN RAM (D4). Une semaine H24 est très exactement le
+ *    régime où une écriture périodique se paierait — mesuré : sous écriture
+ *    flash, « l'image défile ». Le cumul ne survit donc pas au reboot, et c'est
+ *    VOULU : un reboot casse la fenêtre du soak de toute façon (AC3.6).
+ */
+static int64_t s_cumul_us[2];  /* [DN_VEILLE_ACTIF], [DN_VEILLE_AMBIENT] */
+static int64_t s_t_mode_us;    /* instant d'entrée dans le mode COURANT */
+
 static uint32_t s_inactivite_ms;
 static uint32_t s_inactivite_max_ms;
 static uint32_t s_bascules;
@@ -100,6 +127,37 @@ static uint32_t s_reveils;
 static uint32_t s_rebases;
 static uint32_t s_annulations;
 static uint32_t s_secondes_vues;
+
+static void veille_poser_mode(dn_veille_mode_t m)
+{
+    int64_t now = esp_timer_get_time();
+    int idx = (s_mode == DN_VEILLE_AMBIENT) ? 1 : 0;
+    if (now > s_t_mode_us) {
+        s_cumul_us[idx] += now - s_t_mode_us;
+    }
+    s_t_mode_us = now;
+    s_mode = m;
+}
+
+void dn_veille_cumul(int64_t *out_actif_us, int64_t *out_ambient_us)
+{
+    /* ⚠️ ON AJOUTE L'INTERVALLE EN COURS. Sans lui, un module en Ambient depuis
+     *    six jours publierait le cumul de la DERNIÈRE BASCULE et rendrait « 0 %
+     *    d'Ambient » — le pire cas possible : faux, plausible, et dans le sens
+     *    qui fait échouer un critère qui est en réalité tenu. */
+    int64_t c[2] = {s_cumul_us[0], s_cumul_us[1]};
+    int64_t now = esp_timer_get_time();
+    int idx = (s_mode == DN_VEILLE_AMBIENT) ? 1 : 0;
+    if (now > s_t_mode_us) {
+        c[idx] += now - s_t_mode_us;
+    }
+    if (out_actif_us) {
+        *out_actif_us = c[0];
+    }
+    if (out_ambient_us) {
+        *out_ambient_us = c[1];
+    }
+}
 /*
  * 🔴 L'INSTRUMENT D'AC3.3, ET IL N'EXISTAIT PAS — TROUVÉ EN SÉANCE LE 2026-08-25.
  *
@@ -370,7 +428,7 @@ dn_veille_action_t dn_veille_tick(uint32_t inactivite_ms)
     /* L'état bascule ICI, et l'appelant fait le travail visuel ensuite. S'il
      * n'y parvient pas, il DOIT appeler `dn_veille_annuler_bascule()` — sans
      * quoi la console annoncerait AMBIENT sur un écran resté en couleurs. */
-    s_mode = DN_VEILLE_AMBIENT;
+    veille_poser_mode(DN_VEILLE_AMBIENT);
     s_bascules++;
     /* L'écart d'AC3.3, LATCHÉ à l'instant exact où la garde a cédé — AVEC LE
      * DÉLAI QUI ÉTAIT ARMÉ À CET INSTANT, et avec le fait de savoir s'il est
@@ -402,7 +460,7 @@ bool dn_veille_forcer_dormir(void)
     if (!s_armee || s_mode != DN_VEILLE_ACTIF) {
         return false;
     }
-    s_mode = DN_VEILLE_AMBIENT;
+    veille_poser_mode(DN_VEILLE_AMBIENT);
     s_bascules++;
     return true;
 }
@@ -412,7 +470,7 @@ void dn_veille_annuler_bascule(void)
     if (s_mode != DN_VEILLE_AMBIENT) {
         return;
     }
-    s_mode = DN_VEILLE_ACTIF;
+    veille_poser_mode(DN_VEILLE_ACTIF);
     if (s_bascules > 0) {
         s_bascules--;
     }
@@ -444,7 +502,7 @@ bool dn_veille_reveiller(dn_veille_origine_t origine)
     if (s_mode != DN_VEILLE_AMBIENT) {
         return false;
     }
-    s_mode = DN_VEILLE_ACTIF;
+    veille_poser_mode(DN_VEILLE_ACTIF);
     s_reveils++;
     s_origine = origine;
     return true;

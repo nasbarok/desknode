@@ -56,6 +56,49 @@
 
 static const char *TAG = "desknode";
 
+/*
+ * ─── dn4-5 / AC1.5 : POURQUOI LA CARTE A DÉMARRÉ ────────────────────────────
+ *
+ * 🔴 CE QUI MANQUAIT. `esp_reset_reason()` n'était appelé NULLE PART dans
+ *    `firmware/desknode/main/` (grep du 2026-08-26 : 0 occurrence) — sur une
+ *    story dont le verdict est « 0 reboot non commandé ». Un uptime qui repart
+ *    à zéro sans dire pourquoi ne se distingue pas d'un débranchement, d'une
+ *    panique, ni d'un watchdog : les trois se ressemblent trait pour trait dans
+ *    le journal, et le soak de 7 jours n'a que ce journal pour boîte noire
+ *    (CONFIG_ESP_COREDUMP_ENABLE_TO_NONE=y — aucun post-mortem).
+ *
+ * ⚠️ CE QUE CET INSTRUMENT NE PEUT PAS VOIR, et il faut le savoir en lisant :
+ *    avec CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT=y une panique HALTE la puce au
+ *    lieu de redémarrer. Elle ne produit donc JAMAIS de `ESP_RST_PANIC` au boot
+ *    suivant — puisqu'il n'y a pas de boot suivant. `ESP_RST_PANIC` ne se verra
+ *    que si quelqu'un débranche après coup, et le reset sera alors `POWERON`.
+ *    ⇒ la panique haltée se détecte par l'ABSENCE de battement, ⛔ pas ici.
+ *    De même, un TWDT ne redémarre rien dans ce build
+ *    (CONFIG_ESP_TASK_WDT_PANIC non posé) : `ESP_RST_TASK_WDT` restera muet.
+ */
+static const char *raison_reset_clair(esp_reset_reason_t r)
+{
+    switch (r) {
+    case ESP_RST_POWERON:  return "POWERON (mise sous tension / débranchement)";
+    case ESP_RST_EXT:      return "EXT (broche de reset externe)";
+    case ESP_RST_SW:       return "SW (esp_restart — commande `reboot`)";
+    case ESP_RST_PANIC:    return "PANIC (exception) ⚠️ inattendu : PANIC_PRINT_HALT=y HALTE";
+    case ESP_RST_INT_WDT:  return "INT_WDT (watchdog d'interruption, 800 ms)";
+    case ESP_RST_TASK_WDT: return "TASK_WDT ⚠️ inattendu : TASK_WDT_PANIC non posé";
+    case ESP_RST_WDT:      return "WDT (autre watchdog)";
+    case ESP_RST_DEEPSLEEP:return "DEEPSLEEP (réveil de sommeil profond)";
+    case ESP_RST_BROWNOUT: return "BROWNOUT 🔴 CHUTE D'ALIMENTATION";
+    case ESP_RST_SDIO:     return "SDIO";
+    case ESP_RST_USB:      return "USB (reset par le périphérique USB — replug/JTAG)";
+    case ESP_RST_JTAG:     return "JTAG";
+    case ESP_RST_EFUSE:    return "EFUSE (erreur d'eFuse)";
+    case ESP_RST_PWR_GLITCH: return "PWR_GLITCH 🔴 GLITCH D'ALIMENTATION";
+    case ESP_RST_CPU_LOCKUP: return "CPU_LOCKUP";
+    case ESP_RST_UNKNOWN:  return "UNKNOWN (le chip ne sait pas)";
+    default:               return "??? (valeur non couverte par ce firmware)";
+    }
+}
+
 static void log_socle(void)
 {
     /*
@@ -85,6 +128,10 @@ static void log_socle(void)
     uint32_t flash_size = 0;
     esp_err_t err = esp_flash_get_physical_size(NULL, &flash_size);
     ESP_LOGI(TAG, "──── socle ────────────────────────────────────────────");
+    /* dn4-5 / AC1.5 — EN PREMIER, parce que c'est la seule ligne qui explique
+     * pourquoi ce bandeau est en train d'être réimprimé. */
+    ESP_LOGI(TAG, "mesuré : raison du démarrage = %s",
+             raison_reset_clair(esp_reset_reason()));
     if (err == ESP_OK) {
         ESP_LOGI(TAG, "mesuré : flash physique %" PRIu32 " o (%.0f MB)",
                  flash_size, (double)flash_size / (1024.0 * 1024.0));
@@ -474,16 +521,43 @@ void app_main(void)
      * la cadence du label (AC2) à une source INDÉPENDANTE de LVGL. Deux horloges
      * qui disent la même chose valent mieux qu'une qui se cite elle-même.
      */
+    /*
+     * ─── dn4-5 / AC1.4 : `up` N'EST PAS L'UPTIME, ET ÇA SE VOIT MAINTENANT ───
+     *
+     * 🔴 CE QUE `s` COMPTE VRAIMENT : des TOURS DE BOUCLE × 10, ⛔ pas des
+     *    secondes murales. `vTaskDelay()` est un délai RELATIF — il garantit
+     *    « au moins 10 000 ms », jamais « exactement ». Tout retard de
+     *    planification, toute préemption longue, tout blocage de la tâche
+     *    s'AJOUTE au temps réel sans que `s` en sache rien, et l'écart
+     *    s'ACCUMULE : il ne se rattrape jamais.
+     *
+     * ⚠️ ANODIN SUR 45 s DE CAMPAGNE, PAS SUR 604 800 s. Et `up` est très
+     *    exactement le chiffre que le critère n°1 du brief exige (« une semaine
+     *    H24 sans reboot »). On publie donc l'horloge murale À CÔTÉ, ⛔ pas à
+     *    la place : c'est l'ÉCART entre les deux qui est le signal — il mesure
+     *    la famine de planification cumulée de la tâche `app_main`.
+     *
+     * ⛔ LA CADENCE DE 10 s EST INCHANGÉE, et le format de la ligne n'est
+     *    ENRICHI QU'EN QUEUE : la recette « carte muette » du README a sa durée
+     *    d'écoute calibrée sur 10 s (< 12 s = faux positif), et tout parseur qui
+     *    ancre sur le préfixe `up N s — vsync=…` continue de fonctionner.
+     */
     uint32_t s = 0;
+    const char *raison = raison_reset_clair(esp_reset_reason());
     while (1) {
         vTaskDelay(pdMS_TO_TICKS(10000));
         s += 10;
         dn_flush_stats_t st;
         dn_ui_get_stats(&st);
+        /* int64 : `esp_timer_get_time()` ne déborde qu'après ~292 000 ans. */
+        int64_t mural_s = esp_timer_get_time() / 1000000;
+        long long ecart = (long long)mural_s - (long long)s;
         ESP_LOGI(TAG,
                  "up %" PRIu32 " s — vsync=%" PRIu32 " — flush=%" PRIu32
-                 " cycles=%" PRIu32 " — PSRAM libre %u o",
+                 " cycles=%" PRIu32 " — PSRAM libre %u o — mural %lld s "
+                 "(écart %+lld s) — reset: %s",
                  s, dn_measure_vsync_count(), st.flushes, st.cycles,
-                 (unsigned)dn_measure_psram_free());
+                 (unsigned)dn_measure_psram_free(), (long long)mural_s, ecart,
+                 raison);
     }
 }

@@ -3204,3 +3204,193 @@ dans `[−1 s, 0]` — alors que le mécanisme **arrondit** (`t + 0,5`), biais c
 ⚠️ **Les chiffres publiés en §13.15.7.5** (`−0,4 s` WSL, `−0,2 s` tour) ont été pris **avec la
 composition tronquante** : ils bornent donc le **pire** cas, et le seuil de `≤ 2 s` d'AC1.2 tient
 **à plus forte raison**. ⛔ Ils ne sont pas rejoués ici — ils sont **datés de leur variante**.
+
+---
+
+## 27. 🎯 `dn4-5` / AC4.1 — LES 8 GRANDEURS SANS CHIFFRE DE SAUT EN ONT UN (2026-08-26)
+
+> **Protocole** : identique à §13.7 — **960 échantillons consécutifs à 1 Hz, côté PC**, saut = écart
+> entre deux échantillons consécutifs **à la résolution AFFICHÉE**.
+> 🎯 **ET LA RÉSOLUTION EST LUE DANS LE FIRMWARE, ⛔ PAS RECOPIÉE** : `tools/mesure_lissage_dn45.py`
+> parse `k_desc[]` de `dn_ui.c`. `W` et les quatre `tr/min` sont `DN_PREC_ENTIER`, tout le reste est
+> `DN_PREC_DIXIEME`. Juger le brut mesurerait un bruit que l'écran ne montrera **jamais**.
+> ⛔ **L'outil n'a pas rejoué les sources** : il **importe `dn_agent`** et appelle
+> `Collecteur.photo()` — la fonction même qui alimente le fil.
+> **Capture brute** : `mesures/dn4-5/T3-AC4.1-lissage-960.csv` (961 lignes, **0 rupture**).
+
+### 27.1 LA TABLE — 16 grandeurs, dont **8 mesurées pour la première fois**
+
+| grandeur | unité | min | max | saut méd. | saut p95 | saut max | % chg | **pas** | verdict |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---|
+| `cpu.0` | % | 4,1 | 49,8 | 2,1 | 9,2 | 29,6 | 99,2 % | 457 | 📎 §13.7 **À DISCUTER** |
+| `cpu.1` | GHz | 1,2 | 3,2 | 0,1 | 2,0 | 2,0 | 53,4 % | 20 | 📎 §13.7 **LISSER** |
+| **`cpu.2`** | **% c.max** | 9,4 | 95,3 | 5,0 | **18,8** | 46,4 | 98,2 % | **859** | 🆕 **NE PAS LISSER** (21,9 %) |
+| **`cpu.3`** | **°C (LHM)** | 40,8 | 47,5 | 0,0 | **0,5** | 4,3 | 18,0 % | **67** | 🆕 **NE PAS LISSER** (7,5 %) |
+| **`gpu.0`** | % | 0,0 | 41,0 | 3,0 | 9,0 | 37,0 | 90,3 % | 410 | 🔶 **NE PAS LISSER** (22,0 %) |
+| `gpu.1` | °C | 44,0 | 46,0 | 0,0 | 1,0 | 1,0 | 24,4 % | 20 | 📎 §13.7 **NE PAS LISSER** |
+| **`gpu.2`** | **W** | 51,0 | 54,0 | 0,0 | **1,0** | 1,0 | 22,1 % | 🔴 **3** | 🆕 **NE PAS LISSER** (33,3 %) ⚠️ |
+| **`gpu.3`** | **tr/min** | 598,0 | 607,0 | 1,0 | **1,0** | 2,0 | 50,8 % | 🔴 **9** | 🆕 **NE PAS LISSER** (11,1 %) ⚠️ |
+| `ram.0` | % | 52,6 | 55,3 | 0,0 | 0,1 | 0,7 | 28,9 % | 27 | 📎 §13.7 **NE PAS LISSER** |
+| **`ram.1`** | **Go tot.** | 31,9 | 31,9 | 0,0 | 0,0 | 0,0 | 0,0 % | 🔴 **0** | 🆕 ⛔ **NON EXERCÉE** |
+| `net.0` | Mb/s | 0,0 | 10,2 | 0,1 | 4,3 | 10,0 | 64,4 % | 102 | 📎 §13.7 **LISSER** |
+| **`net.1`** | Mb/s | 0,0 | 13,1 | 0,1 | 8,5 | 12,9 | 65,3 % | 131 | 🔶 **LISSER** (64,9 %) |
+| `disk.0` | Mo/s | 0,0 | 232,5 | 0,2 | 2,4 | 232,5 | 80,2 % | 2325 | 📎 §13.7 **LISSER** |
+| **`disk.1`** | **extr. moy** | 978 | 1113 | 0,0 | **4,0** | 81,0 | 20,2 % | **135** | 🆕 **NE PAS LISSER** (3,0 %) |
+| **`disk.2`** | **CPU_NOCTUA** | 282 | 409 | 0,0 | **3,0** | 80,0 | 12,0 % | **127** | 🆕 **NE PAS LISSER** (2,4 %) |
+| **`disk.3`** | **CASE_GROUP** | 860 | 957 | 0,0 | **4,0** | 65,0 | 20,0 % | **97** | 🆕 **NE PAS LISSER** (4,1 %) |
+
+📎 = **reconduit tel quel** depuis §13.7, ⛔ **pas re-mesuré ici**. 🆕 = **n'avait aucun chiffre**.
+🔶 = **§13.7 l'a MESURÉE mais ⛔ NE L'A JAMAIS CLASSÉE.**
+
+> 🔴 **CORRECTION D'UNE ATTRIBUTION FAUSSE, FAITE AVANT PUBLICATION (2026-08-26).** Une première
+> version de cette table étiquetait `GPU %` et `RÉSEAU ↑` « 📎 §13.7 ». **C'est faux** : la prose de
+> §13.7 (l.541-546) ne range **que six** de ses huit grandeurs — *Lissage NÉCESSAIRE* (`CPU GHz`,
+> `RÉSEAU ↓`, `DISQUE`), *INUTILE* (`RAM %`, `GPU °C`), *À DISCUTER* (`CPU %`). **`GPU %` et
+> `RÉSEAU ↑` n'apparaissent nulle part.** Pour `GPU %` le motif était pourtant plausible — §13.11.1
+> écrit que la source ADL est *« déjà moins dynamique que le Gestionnaire des tâches »* — mais c'est
+> **un fait à connaître AVANT de décider**, ⛔ **pas une décision prise**. Attribuer à une source un
+> verdict qu'elle n'a jamais publié est exactement le défaut que ce dépôt traque.
+> ⇒ les deux sont traitées **comme des grandeurs neuves** : le critère s'y applique, avec le chiffre
+> de `dn4-5`.
+
+### 27.2 🔴 LA COLONNE « pas » — TROIS VERDICTS SONT **MAL CONDITIONNÉS**, ET ON LE DIT
+
+**`pas` = la plage observée, exprimée en PAS D'AFFICHAGE.** Le critère de §13.7 est un **ratio**
+(`p95 / plage`) : quand la plage ne fait que quelques pas, ce ratio n'a que **quelques crans
+possibles**, et le seuil de 40 % **tombe entre deux d'entre eux**.
+*« Un seuil plus fin que le PAS de son dénominateur n'est pas tranchable. »*
+
+| grandeur | pas | ce que ça veut dire |
+|---|---:|---|
+| **`gpu.2`** (W) | **3** | « 33,3 % » signifie **1 pas sur 3**, ⛔ pas « elle saute d'un tiers de sa course » |
+| **`gpu.3`** (tr/min) | **9** | le ratio n'a que **9 crans** ; 11,1 % reste loin du seuil, mais la granularité est de 11 pt |
+| **`ram.1`** (Go tot.) | **0** | plage **NULLE** — elle est **constante à 31,9 Go**. ⛔ **« NON EXERCÉE » n'est PAS « NE PAS LISSER »** |
+
+⛔ **CETTE COLONNE NE RENVERSE AUCUN VERDICT, ET C'EST DÉLIBÉRÉ** : le critère fait foi et *« il ne
+se renégocie pas après coup »*. Elle **dit le conditionnement**, pour que le lecteur sache ce que le
+chiffre vaut. ✅ **Et dans les trois cas, la réserve et le verdict pointent au même endroit** : une
+grandeur qui ne bouge que d'un pas ou pas du tout n'a de toute façon rien à lisser.
+
+### 27.3 🔴 LE CRITÈRE DE §13.7 **NE REPRODUIT PAS LES VERDICTS DE §13.7** — 3 DÉSACCORDS SUR 8
+
+`AC4.2` déclare : *« Le critère de §13.7 fait foi — saut p95 ≥ 40 % de la plage observée ⇒ lisser »*.
+**Appliqué au tableau de §13.7 lui-même**, ce critère donne :
+
+| grandeur (§13.7) | min | max | p95 | **p95/plage** | le critère dit | **§13.7 a publié** | accord |
+|---|---:|---:|---:|---:|---|---|---|
+| CPU GHz | 1,2 | 3,2 | 2,0 | **100,0 %** | LISSER | **LISSER** | ✅ |
+| CPU % | 14,2 | 86,9 | 45,7 | 62,9 % | LISSER | *À DISCUTER* | — |
+| **RÉSEAU ↓** | 0,1 | 296,1 | 86,1 | **29,1 %** | NE PAS LISSER | **LISSER** | 🔴 **NON** |
+| RÉSEAU ↑ | 0,2 | 28,1 | 9,3 | 33,3 % | NE PAS LISSER | *(non classé)* | — |
+| **DISQUE Mo/s** | 0,0 | 268,4 | 7,6 | **2,8 %** | NE PAS LISSER | **LISSER** | 🔴 **NON** |
+| GPU % | 0,0 | 19,0 | 6,0 | 31,6 % | NE PAS LISSER | **NE PAS LISSER** | ✅ |
+| **GPU °C** | 46,0 | 48,0 | 1,0 | **50,0 %** | LISSER | **NE PAS LISSER** | 🔴 **NON** |
+| RAM % | 60,1 | 67,6 | 0,1 | 1,3 % | NE PAS LISSER | **NE PAS LISSER** | ✅ |
+
+🔴 **LA PHRASE DE §13.7 EST FAUSSE CONTRE SON PROPRE TABLEAU.** §13.7 écrit :
+*« Lissage NÉCESSAIRE : CPU GHz, RÉSEAU ↓, DISQUE — saut p95 ≥ 40 % de la plage observée. »*
+**Un seul des trois** satisfait ce seuil (`CPU GHz`, 100 %). `RÉSEAU ↓` est à **29,1 %** et `DISQUE`
+à **2,8 %**. ⚠️ Et `GPU °C`, à **50 %**, **dépasse** le seuil tout en étant classée *NE PAS LISSER*.
+
+⛔ **CE QUE ÇA NE VEUT PAS DIRE** : que les verdicts de §13.7 sont faux. Ils portent des motifs
+NARRATIFS qui tiennent (*« un CPU lissé ment sur les pics »*, *« lisser une source déjà plus lisse
+que sa référence n'ajouterait qu'un retard »*). ⇒ **les huit sont reconduits TELS QUELS**, comme
+`AC4.2` l'ordonne.
+
+🎯 **CE QUE ÇA VEUT DIRE, ET C'EST UNE QUESTION OWNER** : appliqué à la lettre aux **grandeurs
+neuves**, ce critère est **plus sévère que la règle qui a réellement tranché le legs**. La grandeur
+que ça déplace est **`cpu.2` (% c.max, 21,9 %)** : elle est **entre** `DISQUE` (2,8 %, lissée) et
+`CPU %` (62,9 %, à discuter). ⇒ **sous le critère écrit elle ne se lisse pas ; sous la pratique
+réelle de §13.7, elle se lisserait.**
+⛔ **Ce n'est pas un arbitrage d'agent** — c'est le `[CC]` posé à l'owner par `dn4-5`.
+
+
+### 27.4 ✅ DÉCISION OWNER DU 2026-08-26 — **(a) LE CRITÈRE ÉCRIT FAIT FOI**
+
+Mise devant les trois désaccords de §27.3, la décision owner est **(a)** : *le critère écrit fait
+foi pour les grandeurs neuves*. ⇒ **les huit verdicts de §13.7 restent reconduits tels quels**, et
+la règle *« p95 ≥ 40 % de la plage »* tranche tout le reste — **en assumant explicitement qu'elle est
+plus sévère que la pratique qui a produit le legs**.
+
+**LE JEU LIVRABLE, ARRÊTÉ :**
+
+| verdict | grandeurs | origine |
+|---|---|---|
+| ✅ **LISSER** | `CPU GHz` · `RÉSEAU ↓` · `DISQUE Mo/s` | 📎 legs §13.7 |
+| ✅ **LISSER** | **`RÉSEAU ↑`** — **64,9 %** de sa plage | 🔶 §13.7 muette ⇒ tranchée par le critère |
+| ⛔ **NE PAS LISSER** | `RAM %` · `GPU °C` | 📎 legs §13.7 |
+| ⛔ **NE PAS LISSER** | **`GPU %`** (22,0 %) | 🔶 §13.7 muette ⇒ tranchée par le critère |
+| ⛔ **NE PAS LISSER** | `cpu.2` (21,9 %) · `cpu.3` (7,5 %) · `gpu.2` (33,3 %) · `gpu.3` (11,1 %) · `disk.1/2/3` (3,0 / 2,4 / 4,1 %) | 🆕 `dn4-5` |
+| ⛔ **NON EXERCÉE** | `ram.1` (Go totaux) — plage **nulle** | 🆕 `dn4-5` |
+| 🔴 **TOUJOURS OUVERT** | **`CPU %`** — *« À DISCUTER »* depuis §13.7 | ⇒ **AC4.4**, à trancher **À L'ŒIL** contre le Gestionnaire des tâches |
+
+🎯 **CE QUE ÇA VEUT DIRE POUR T4** : **quatre grandeurs à lisser**, sur seize. ⚠️ **Et une seule
+d'entre elles est neuve** (`RÉSEAU ↑`) — les trois autres étaient déjà tranchées par `dn4-1`.
+⛔ **`CPU %` reste hors du lot tant qu'AC4.4 n'a pas été tiré à l'œil** : le critère le classerait
+*LISSER* (62,9 %), et §13.7 a **délibérément refusé** de trancher sur ce chiffre — *« un CPU lissé
+ment sur les pics »*.
+
+### 27.5 ✅ T4 — LE LISSAGE EST IMPLÉMENTÉ **CÔTÉ AGENT**, ET AC4.3 EST CE QUI L'A TRANCHÉ
+
+🔴 **AC4.6 DEMANDE DE TRANCHER « PAR LE COÛT MESURÉ ». LE COÛT NE TRANCHE PAS, ET C'EST DIT.**
+Côté firmware, le filtre coûterait **4 grandeurs × 3 échantillons × 4 o = 48 o** de RAM interne —
+sur ~104 ko libres, c'est **indiscernable de zéro**. Côté agent, il coûte **5,79 µs par cycle**
+(voir 27.6). ⛔ **Prétendre qu'une mesure de coût a départagé serait faux.**
+
+🎯 **CE QUI TRANCHE EST AC4.3, ET C'EST UNE CONTRAINTE, PAS UNE PRÉFÉRENCE** :
+*« Aucune valeur lissée ne doit survivre à la péremption de 3 s, sinon AC7 de `dn2-2` tombe. »*
+
+| | **côté agent** (retenu) | côté firmware |
+|---|---|---|
+| **délai de péremption** | ✅ **IDENTIQUE PAR CONSTRUCTION** — le firmware n'est pas touché : agent coupé ⇒ plus de trames ⇒ la péremption tire exactement comme avant | ⚠️ il faudrait vider l'état du filtre à la péremption **ET** à la reprise, **par grandeur** (règle W10 : `connue[]` est PAR GRANDEUR) |
+| **où ça se casse** | un seul endroit : le vidage à la reprise | dans le module même dont **AC7 est la contrainte non négociable** |
+| **RAM carte** | **0 o** | 48 o (négligeable) |
+| **Δ binaire firmware** | **0 o — vérifié** (1 151 120 o avant et après) | non nul |
+
+⚠️ **CE QUE ÇA COÛTE, ET C'EST ÉCRIT** : le fil ne porte plus la valeur **brute** des quatre
+grandeurs lissées. ⇒ **`--lissage off`** rétablit le brut **sans reflasher** — c'est la jambe « brut »
+de l'A/B d'AC4.4, et sans elle il faudrait deux flashes avant le gel d'AC3.1.
+
+### 27.6 🎯 LA FENÊTRE VAUT **n = 3**, ET LA BORNE VIENT D'AC4.3 — ⛔ PAS DU GOÛT
+
+Une fenêtre de `n` échantillons à **1 Hz** porte un échantillon vieux de **`(n−1)` s**. Exiger
+qu'**aucun échantillon du filtre ne soit plus vieux que la péremption** (`DN_LINK_PEREMPTION_US`
+= 3 s) donne **`n − 1 < 3`, soit `n ≤ 3`**.
+
+⚠️ **ET LE RATIO SE JUGE CONTRE LA PLAGE BRUTE, ⛔ PAS CONTRE CELLE DE LA SÉRIE LISSÉE.** Mesuré :
+contre sa propre plage, `RÉSEAU ↓` donne **40,4 %** (n=2), **40,0 %** (n=3), **40,7 %** (n=4),
+39,1 % (n=5) — **non monotone**, parce que le lissage rétrécit le dénominateur aussi vite que le
+numérateur. La plage brute est une référence **fixe**, et c'est le raisonnement de §13.7 elle-même
+(*« 40 % de sa COURSE »*).
+
+**Effet mesuré à n = 3, sur les 960 échantillons** (`mesures/dn4-5/T4-choix-fenetre.txt`) :
+
+| grandeur | p95 brut | p95 lissé | **% de la plage BRUTE** | saut MAX | % qui changent | retard |
+|---|---:|---:|---:|---:|---:|---:|
+| **CPU GHz** | 2,00 | **0,70** | **100 % → 35 %** ✅ passe le seuil | 2,00 → 0,70 | 53,4 → 52,0 % | **1,0 s** |
+| RÉSEAU ↓ | 4,30 | 1,40 | 42,2 % → **13,7 %** | 10,00 → 3,40 | 64,4 → 48,1 % | 1,0 s |
+| RÉSEAU ↑ | 8,50 | 2,80 | 64,9 % → **21,4 %** | 12,90 → 4,30 | 65,3 → 48,0 % | 1,0 s |
+| DISQUE Mo/s | 2,40 | 1,00 | 1,0 % → **0,4 %** | **232,50 → 77,50** | 80,2 → 61,2 % | 1,0 s |
+
+🔴 **`CPU GHz` ÉTAIT LA SEULE À ÉCHOUER AU CRITÈRE, ET ELLE PASSE.** ⚠️ **`DISQUE` passait déjà au
+brut (1,0 %)** : ⛔ **ce n'est pas le critère qui l'a fait lisser**, c'est le legs de §13.7. Ce que
+le lissage lui apporte est ailleurs, et c'est mesuré : le **pic tombe de 232,5 à 77,5 Mo/s**.
+
+### 27.7 ✅ LE COÛT DU LISSAGE, MESURÉ (AC4.5 — la part qui ne demande pas la carte)
+
+| poste | valeur | comment |
+|---|---:|---|
+| **Δ binaire firmware** | **0 o** | 1 151 120 o avant **et** après T4 — le firmware n'est pas touché |
+| **Δ RAM interne carte** | **0 o** | idem, par construction |
+| **coût CPU agent** | **5,79 µs / cycle** | médiane de 5 séries × 200 000 appels, **Python 3.13.4 de la tour** ; étendue des séries **1,66 µs** |
+| **⇒ travail ajouté** | **0,000579 %** d'un cœur | à 1 Hz |
+| **retard ajouté** | **1,0 s** | `(n−1)/2` à 1 Hz — **un tiers de la péremption** |
+
+⛔ **CE CHIFFRE N'EST PAS CELUI D'AC4.6.** AC4.6 mesure le **% machine** de l'agent dans le **régime
+livré** (tâche au logon, `-RunLevel Limited`, **WSL éteint**), aux rangs **60 s et 180 s**, avec un
+seuil de lecture de **0,390 pt** (rang 60 s) et **0,339 pt** (rang 180 s). Celui-ci borne le
+**travail ajouté**, ⛔ pas le budget. ⚠️ Il le borne **très largement sous** le seuil de lecture —
+mais *« très largement sous »* n'est pas *« mesuré »*, et **AC4.6 reste dû**.
+
+⏳ **CE QUI RESTE DE AC4.5 EST SUR LA CARTE** : **Δ px par cycle** et **Δ latence
+acceptation→label**. Les deux se relèvent au firmware (`flush reset`, `nav ab`), donc en séance.

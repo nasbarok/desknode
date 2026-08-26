@@ -1,0 +1,53 @@
+── resolutions d'affichage, LUES dans dn_ui.c (k_desc[]) ──
+  cpu   %:DIXIEME · GHz:DIXIEME · %:DIXIEME · deg" "C:DIXIEME
+  gpu   %:DIXIEME · deg" "C:DIXIEME · W:ENTIER · tr/min:ENTIER
+  ram   %:DIXIEME · Go:DIXIEME
+  net   Mb/s:DIXIEME · Mb/s:DIXIEME
+  disk  Mo/s:DIXIEME · tr/min:ENTIER · tr/min:ENTIER · tr/min:ENTIER
+[agent] GPU : AMD Radeon RX 6800 XT via ADL PMLog (adaptateur 0) — temoin de mapping BUS_LANES=16 CLK_MEMCLK=1982 MHz
+[agent] LHM : 127.0.0.1:8085/metrics — 5/5 sonde(s) avec valeur (timeout 0.60 s, connexion PERSISTANTE)
+
+── tir : 960 echantillons a 1.0 Hz (~16.0 min) ──
+    60/960 …
+   120/960 …
+   180/960 …
+   240/960 …
+   300/960 …
+   360/960 …
+   420/960 …
+   480/960 …
+   540/960 …
+   600/960 …
+   660/960 …
+   720/960 …
+   780/960 …
+   840/960 …
+   900/960 …
+   960/960 …
+
+============================================================================================================
+dn4-5 / AC4.1 — TABLE DE SAUT, FORMAT §13.7  (valeurs AFFICHEES)
+============================================================================================================
+grandeur     unite            min        max  saut med  saut p95  saut MAX    % chg   rupt  VERDICT
+cpu.0        %                4.1       49.8       2.1       9.2      29.6    99.2%      0  📎 §13.7 A DISCUTER (« un CPU lisse ment sur les pics »)
+cpu.1        GHz              1.2        3.2       0.1       2.0       2.0    53.4%      0  📎 §13.7 LISSER
+cpu.2        %                9.4       95.3       5.0      18.8      46.4    98.2%      0  🆕 dn4-5 NE PAS LISSER — saut p95 = 21.9 % de la plage (seuil 40 %)
+cpu.3        deg" "C         40.8       47.5       0.0       0.5       4.3    18.0%      0  🆕 dn4-5 NE PAS LISSER — saut p95 = 7.5 % de la plage (seuil 40 %)
+gpu.0        %                0.0       41.0       3.0       9.0      37.0    90.3%      0  📎 §13.7 NE PAS LISSER (source ADL deja moins dynamique que Windows)
+gpu.1        deg" "C         44.0       46.0       0.0       1.0       1.0    24.4%      0  📎 §13.7 NE PAS LISSER
+gpu.2        W               51.0       54.0       0.0       1.0       1.0    22.1%      0  🆕 dn4-5 NE PAS LISSER — saut p95 = 33.3 % de la plage (seuil 40 %)
+gpu.3        tr/min         598.0      607.0       1.0       1.0       2.0    50.8%      0  🆕 dn4-5 NE PAS LISSER — saut p95 = 11.1 % de la plage (seuil 40 %)
+ram.0        %               52.6       55.3       0.0       0.1       0.7    28.9%      0  📎 §13.7 NE PAS LISSER
+ram.1        Go              31.9       31.9       0.0       0.0       0.0     0.0%      0  🆕 dn4-5 NON EXERCEE — plage NULLE sur la fenetre — ⛔ pas un verdict
+net.0        Mb/s             0.0       10.2       0.1       4.3      10.0    64.4%      0  📎 §13.7 LISSER
+net.1        Mb/s             0.0       13.1       0.1       8.5      12.9    65.3%      0  📎 §13.7 LISSER
+disk.0       Mo/s             0.0      232.5       0.2       2.4     232.5    80.2%      0  📎 §13.7 LISSER
+disk.1       tr/min         978.0     1113.0       0.0       4.0      81.0    20.2%      0  🆕 dn4-5 NE PAS LISSER — saut p95 = 3.0 % de la plage (seuil 40 %)
+disk.2       tr/min         282.0      409.0       0.0       3.0      80.0    12.0%      0  🆕 dn4-5 NE PAS LISSER — saut p95 = 2.4 % de la plage (seuil 40 %)
+disk.3       tr/min         860.0      957.0       0.0       4.0      65.0    20.0%      0  🆕 dn4-5 NE PAS LISSER — saut p95 = 4.1 % de la plage (seuil 40 %)
+============================================================================================================
+📎 §13.7 = deja tranche par dn4-1, RECONDUIT tel quel, ⛔ pas re-mesure ici.
+🆕 dn4-5 = grandeur qui n'avait AUCUN chiffre de saut avant ce tir.
+⚠️ « rupt » = transitions RETIREES du denominateur (source absente).
+⛔ « NON EXERCEE » n'est PAS « NE PAS LISSER » : la grandeur n'a pas bouge,
+   donc ce tir ne dit RIEN d'elle. Il faut une fenetre qui l'exerce.

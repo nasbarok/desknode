@@ -146,6 +146,20 @@ bool dn_veille_doit_dormir(bool armee, dn_veille_mode_t mode,
  *    la classe d'étiquette fausse que ce dépôt traque.
  */
 dn_veille_action_t dn_veille_tick(uint32_t inactivite_ms);
+
+/*
+ * dn4-5 / AC3.2 — LE TEMPS MURAL CUMULÉ DANS CHAQUE MODE, depuis le boot.
+ *
+ * 🔴 C'est l'instrument du seuil « en Ambient LA MAJORITÉ DU TEMPS » (> 50 %),
+ *    et il n'existait pas. ⛔ Il ne compte PAS des ticks : `veille now` passe
+ *    volontairement à côté du tick, un dénominateur en ticks aurait des trous.
+ * ⚠️ EN RAM (D4) : il ne survit pas au reboot — et un reboot rompt la fenêtre
+ *    du soak de toute façon (AC3.6).
+ * ⚠️ Ce que cet instrument NE dit PAS : que l'écran est effectivement sombre.
+ *    Il dit dans quel MODE le module se croit. La correspondance avec l'œil
+ *    reste un constat owner.
+ */
+void dn_veille_cumul(int64_t *out_actif_us, int64_t *out_ambient_us);
 void dn_veille_annuler_bascule(void);
 
 /*

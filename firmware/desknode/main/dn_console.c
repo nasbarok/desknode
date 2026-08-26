@@ -1328,8 +1328,47 @@ static int cmd_flush(int argc, char **argv)
         uint32_t per = dn_measure_periode_us();
         uint32_t bp = dn_measure_back_porch_us();
         uint32_t vb = dn_measure_vblank_us();
-        printf("─── glissement de trame (dn4-10) — fenêtre %lu ms ───\n",
-               (unsigned long)b.fenetre_ms);
+        printf("─── glissement de trame (dn4-10) — fenêtre %llu ms ───\n",
+               (unsigned long long)b.fenetre_ms);
+        /*
+         * 🔴 dn4-5 / AC1.2 — LE CRI, ET IL PORTE SA PROPRE CONTRE-ÉPREUVE.
+         *    Ce dénominateur rebouclait toutes les 71,58 min et publiait une
+         *    fenêtre fausse À EXIT 0. Il est désormais en base int64 ; quand la
+         *    fenêtre dépasse le seuil, on imprime CE QUE L'INSTRUMENT D'AVANT
+         *    AURAIT DIT, à côté de la valeur juste. La démonstration est donc
+         *    LUE sur la sortie, ⛔ pas déduite d'une relecture du code.
+         * ⚠️ Le patron est celui de `cpu brut`, qui refuse sa table dans le
+         *    même cas (correctif de revue du 2026-08-18) — à une différence
+         *    près, et elle est délibérée : `cpu brut` REFUSE parce que ses
+         *    compteurs rebouclent à des instants DIFFÉRENTS et qu'aucun
+         *    pourcentage n'est récupérable. Ici l'origine est reconstruite,
+         *    donc la fenêtre est JUSTE : refuser reviendrait à jeter un chiffre
+         *    correct. On publie, et on dit ce qui aurait été faux.
+         */
+        if (b.fenetre_deborde) {
+            printf("⚠️ FENÊTRE AU-DELÀ DE 71,58 min (2^32 µs) — l'instrument\n");
+            printf("   d'AVANT dn4-5 aurait publié %lu ms ici, soit %llu ms de\n",
+                   (unsigned long)b.fenetre_ms_32,
+                   (unsigned long long)(b.fenetre_ms -
+                                        (unsigned long long)b.fenetre_ms_32));
+            printf("   MOINS que la réalité.\n");
+            /*
+             * ⚠️ CE QUE CETTE FENÊTRE EST, ET CE QU'ELLE N'EST PAS — vérifié
+             *    au `grep` sur les deux dépôts le 2026-08-26, et ça DÉMENT le
+             *    cadrage de dn4-5, qui la nommait « LE DÉNOMINATEUR des taux
+             *    que flush publie ». Elle ne l'est pas : les taux ci-dessous
+             *    se divisent par `intervalles`, `ph_n` et `t_demi_us`, jamais
+             *    par elle, et AUCUN outil de tools/ ni de agent/ ne la lit.
+             *    Le défaut reste entier — elle est le SEUL chiffre qui dise
+             *    sur quelle durée les compteurs ci-dessous ont été cumulés, et
+             *    c'est un humain qui fait la division. Une fenêtre fausse rend
+             *    donc tout ce bloc INEXPLOITABLE, en ayant l'air correct.
+             */
+            printf("   ⚠️ cette fenêtre n'est PAS un dénominateur de calcul :\n");
+            printf("      c'est la DURÉE DE CUMUL des compteurs ci-dessous, et\n");
+            printf("      c'est le lecteur qui divise. Fausse, elle ne rend rien\n");
+            printf("      d'absurde — elle rend tout PLAUSIBLE et inexploitable.\n");
+        }
         if (b.raz_en_attente) {
             printf("⚠️ remise à zéro ARMÉE mais PAS ENCORE CONSOMMÉE (aucun vsync\n");
             printf("   depuis) : les chiffres ci-dessous sont ceux d'AVANT.\n");
@@ -7088,6 +7127,10 @@ static int cmd_capteurs(int argc, char **argv)
         printf(" — aucune valeur courante");
     }
     printf("\n");
+    /* dn4-5/AC6.1 — LE RETARD EST DIT ICI AUSSI, parce que c'est ICI qu'on
+     * regarde la valeur. ⛔ La phrase n'est PAS recopiee : elle est rendue par
+     * `dn_capteurs.c`, qui la definit une seule fois. */
+    printf("  ⚠️ %s\n", dn_capt_retard_txt());
     /* 🔴 dn4-3 — LA PRESSION, MESUREE DEPUIS dn2-1 ET JETEE JUSQU'ICI.
      * Publiee pour que X2 (la 6e case) se tranche sur des chiffres et pas sur
      * un pronostic. ⛔ Elle n'est PAS affichee dans une case, et elle n'a donc
@@ -7305,6 +7348,99 @@ static int cmd_capteurs(int argc, char **argv)
         printf("             reste sur le cycle precedent. Ce n'est PAS une erreur\n");
         printf("             de capteur : son propre seau, hors des 3 causes d'AC7.\n");
     }
+    return 0;
+}
+
+/*
+ * ─── `gel` — LA CONTRE-EPREUVE DE LA TRIADE (dn4-5 / AC2.2) ──────────────────
+ *
+ * 🔴 CE QU'ELLE REPOND. Le verdict de cette story est « 0 gel sur 7 jours ». Or
+ *    « un uptime de 7 jours ne prouve PAS l'absence de gel » : la tache LVGL
+ *    peut etre bloquee pendant que `up` continue d'avancer, et le watchdog de
+ *    tache NE REDEMARRE RIEN dans ce build (CONFIG_ESP_TASK_WDT_PANIC non pose).
+ *    Le seul instrument qui separe les deux cas est la TRIADE du battement,
+ *    parce que ses trois compteurs viennent de sources INDEPENDANTES :
+ *      · `up`             tache `app_main`   -> l'application vit
+ *      · `vsync`          ISR du panneau RGB -> la DMA balaie la dalle
+ *      · `flush`/`cycles` tache LVGL         -> quelque chose est DESSINE
+ *    Cette commande PROVOQUE le cas a discriminer et montre l'instrument crier.
+ *
+ * ⚠️ LA DUREE PAR DEFAUT EST DE 12 s, ET LE CHIFFRE N'EST PAS ARBITRAIRE : il
+ *    doit depasser (a) les 10 s du battement, sans quoi aucune ligne `up` ne
+ *    sortirait PENDANT le gel et la preuve la plus lisible manquerait, et (b)
+ *    les 5 s de CONFIG_ESP_TASK_WDT_TIMEOUT_S, pour que le comportement du
+ *    watchdog soit observe lui aussi.
+ *
+ * ⛔ CE QUE CETTE COMMANDE NE PROUVE PAS : que la carte ne gelera pas. Elle
+ *    prouve que SI elle gele, l'instrument le VERRA. C'est tout, et c'est
+ *    exactement ce qui manquait.
+ */
+static int cmd_gel(int argc, char **argv)
+{
+    uint32_t ms = 12000;
+    if (argc >= 2) {
+        int v = atoi(argv[1]);
+        if (v < 1 || v > 60) {
+            printf("gel [secondes] — 1..60, defaut 12 (> battement 10 s ET > "
+                   "TWDT 5 s)\n");
+            return 1;
+        }
+        ms = (uint32_t)v * 1000u;
+    }
+    printf("─── gel PROVOQUE (dn4-5/AC2.2) — LVGL bloquee %lu ms ───\n",
+           (unsigned long)ms);
+    printf("  ⚠️ REGARDER LE LOG PENDANT LE GEL : la ligne de battement doit\n");
+    printf("     continuer de sortir, avec `up` QUI AVANCE et `flush=` FIGE.\n");
+    /*
+     * 🔴 LE RELEVE D'AVANT N'EST PLUS PRIS ICI — corrige sur la carte le
+     *    2026-08-26. Pris ici, il l'etait HORS DU VERROU : entre lui et la
+     *    prise du verrou, la tache LVGL finissait un cycle, et cette commande
+     *    publiait `flush +1` sur un gel parfaitement reel, puis REFUSAIT de
+     *    conclure. Le refus etait juste ; le defaut etait le sien.
+     * ⇒ Les DEUX relevés sont desormais pris dans `dn_ui_geler_ms()`, verrou
+     *   en main.
+     */
+    fflush(stdout);
+
+    dn_ui_gel_pt_t av, ap;
+    if (!dn_ui_geler_ms(ms, &av, &ap)) {
+        printf("🔴 verrou LVGL NON PRIS en 2 s — ⛔ « pas mesure », PAS « pas de "
+               "gel ». Rejouer.\n");
+        return 1;
+    }
+    double dt_s = (double)(ap.us - av.us) / 1000000.0;
+    uint32_t d_vs = ap.vsync - av.vsync;
+    uint32_t d_fl = ap.st.flushes - av.st.flushes;
+    uint32_t d_cy = ap.st.cycles - av.st.cycles;
+    printf("  AVANT : mural %lld s · vsync=%lu · flush=%lu cycles=%lu\n",
+           (long long)(av.us / 1000000), (unsigned long)av.vsync,
+           (unsigned long)av.st.flushes, (unsigned long)av.st.cycles);
+    printf("  APRES : mural %lld s · vsync=%lu · flush=%lu cycles=%lu\n",
+           (long long)(ap.us / 1000000), (unsigned long)ap.vsync,
+           (unsigned long)ap.st.flushes, (unsigned long)ap.st.cycles);
+    printf("  ─ Δ sur %.1f s, LES DEUX RELEVES PRIS SOUS LE VERROU ─\n", dt_s);
+    printf("    mural  (tache app_main / horloge) : %+.1f s   %s\n", dt_s,
+           dt_s > 0.5 ? "✅ VIVANT" : "🔴 FIGE");
+    printf("    vsync  (ISR du panneau RGB)       : +%lu      %s "
+           "(attendu ~%.0f a 37,40 Hz)\n",
+           (unsigned long)d_vs, d_vs > 0 ? "✅ VIVANT" : "🔴 FIGE", dt_s * 37.40);
+    printf("    flush  (tache LVGL)               : +%lu      %s\n",
+           (unsigned long)d_fl, d_fl == 0 ? "🔴 FIGE (attendu)" : "⚠️ A BOUGE");
+    printf("    cycles (tache LVGL)               : +%lu      %s\n",
+           (unsigned long)d_cy, d_cy == 0 ? "🔴 FIGE (attendu)" : "⚠️ A BOUGE");
+    if (d_fl == 0 && d_cy == 0 && d_vs > 0 && dt_s > 0.5) {
+        printf("  ⇒ ✅ L'INSTRUMENT SAIT VOIR UN GEL D'IMAGE SUR UNE APPLICATION\n");
+        printf("       VIVANTE. C'est la contre-epreuve d'AC2.2 : l'ecart entre\n");
+        printf("       `up`/`vsync` et `flush`/`cycles` EST la signature du gel.\n");
+    } else {
+        printf("  ⇒ 🔴 LE STIMULUS N'A PAS PRODUIT LA SIGNATURE ATTENDUE. ⛔ Ne\n");
+        printf("       PAS conclure « pas de gel » : conclure que CETTE MESURE\n");
+        printf("       est a jeter, et chercher pourquoi.\n");
+    }
+    printf("  ⚠️ CE QUE CE TEMOIN NE MONTRE PAS : `vsync` ne descend PAS jusqu'a\n");
+    printf("     l'oeil. Une dalle qui balaie un framebuffer FIGE compte des\n");
+    printf("     vsyncs comme une dalle vivante. Le constat owner reste requis.\n");
+    printf("────────────────────────────────────────────────────────────\n");
     return 0;
 }
 
@@ -8158,6 +8294,43 @@ static void veille_imprimer_etat(void)
     printf("secondes OBSERVEES : %lu (⚠️ ⛔ PAS l'uptime : le tick 1 Hz ne bat\n",
            (unsigned long)c.secondes_vues);
     printf("   pas pendant `ui off`, donc la veille y est AVEUGLE)\n");
+    /*
+     * ─── dn4-5 / AC3.2 : LE SEUIL « EN AMBIANT LA MAJORITE DU TEMPS » ───────
+     *
+     * 🔴 Le brief exige « en Ambient la majorite du temps » : **> 50 %** est un
+     *    SEUIL, ⛔ pas une figure de style, et il n'avait AUCUN instrument.
+     * ⛔ CE CUMUL NE COMPTE PAS DES TICKS. La ligne juste au-dessus dit
+     *    elle-meme que le tick 1 Hz ne bat pas pendant `ui off` : un
+     *    denominateur en ticks aurait des TROUS et rendrait, sur 7 jours, un
+     *    pourcentage plausible et faux. On cumule du TEMPS MURAL, canalise par
+     *    l'unique poseur de mode de dn_veille.c.
+     */
+    {
+        int64_t ua = 0, ub = 0;
+        dn_veille_cumul(&ua, &ub);
+        int64_t tot = ua + ub;
+        printf("─── temps MURAL par mode depuis le boot (dn4-5/AC3.2) ───\n");
+        printf("  Actif   : %8lld s\n", (long long)(ua / 1000000));
+        printf("  Ambient : %8lld s\n", (long long)(ub / 1000000));
+        if (tot > 0) {
+            /* Le pourcentage est calcule ICI, sur le total RELU — ⛔ jamais
+             * recite d'une valeur rangee ailleurs. */
+            int pct = (int)((ub * 100) / tot);
+            printf("  total   : %8lld s  ⇒ Ambient = %d %%  %s\n",
+                   (long long)(tot / 1000000), pct,
+                   pct > 50 ? "✅ MAJORITE (seuil > 50 %)"
+                            : "🔴 SOUS LE SEUIL de 50 %");
+        } else {
+            printf("  ⛔ aucun temps cumule — rien a conclure.\n");
+        }
+        printf("  ⚠️ CE QUE CE CUMUL NE VOIT PAS : il dit dans quel MODE le\n");
+        printf("     module se croit, ⛔ pas que la dalle est effectivement\n");
+        printf("     sombre. Le constat owner reste requis. Et pendant un\n");
+        printf("     `ui off`, le temps est impute au mode COURANT — sans\n");
+        printf("     consequence en regime, ou le port est tenu par l'agent.\n");
+        printf("  ⛔ EN RAM (D4) : un reboot le remet a zero, et il rompt la\n");
+        printf("     fenetre du soak de toute facon (AC3.6).\n");
+    }
     printf("rebases d'horloge a `ui on` : %lu · bascules ANNULEES (async refusee) : %lu\n",
            (unsigned long)c.rebases, (unsigned long)c.annulations);
     /* 🔴 LE COUT DE LA PERSISTANCE EST PUBLIE, PARCE QU'IL EST PAYE DANS LA
@@ -8936,6 +9109,11 @@ static const esp_console_cmd_t k_cmds[] = {
            cmd_flush),
     DN_CMD("anim", "anim on [ms] | off — stimulus adverse LVGL (témoin de tearing)",
            cmd_anim),
+    /* dn4-5/AC2.2 : la CONTRE-ÉPREUVE de la triade du battement. */
+    DN_CMD("gel",
+           "gel [secondes] — BLOQUE LVGL (défaut 12 s) et montre `up`/`vsync` "
+           "qui avancent pendant que `flush`/`cycles` sont FIGÉS (dn4-5)",
+           cmd_gel),
     /* ⚠️ `trace` et `delais` MANQUAIENT ici (revue dn1-4). Le README pose la
      * règle « c'est `aide` qui fait foi, pas cette liste » — et `touch trace`
      * est l'instrument de la preuve d'AC3, documenté au README mais introuvable

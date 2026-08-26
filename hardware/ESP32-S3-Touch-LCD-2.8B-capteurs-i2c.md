@@ -3834,6 +3834,14 @@ la question.** Aucune décision n'a été prise sur l'ambiguïté : elle a été
   Switch »** sur l'alimentation USB n'est **toujours pas documentée**. `dn4-2` avait l'occasion de
   la mesurer et ne l'a pas fait ; `dn4-3` non plus, **et c'est écrit**. Un INA219 en série y
   répondrait dans le même geste — **le jour où le fer ressortira**, pas avant.
+  🎯 **ANNOTÉ LE 2026-08-26 PAR `dn4-5` — CETTE OCCASION N'EST PLUS OUVERTE, ELLE EST SANS OBJET.**
+  ⛔ Non effacé, annoté. **Constat owner du 2026-08-25** : tour éteinte, la dalle DeskNode **reste
+  allumée** ⇒ **l'interrupteur NE COUPE PAS l'USB**, et le port où DeskNode est branché reste
+  alimenté. ⇒ **plus rien à mesurer là**, et ⛔ **le fer ne ressortira pas pour ça**.
+  ⚠️ **ET LA LIGNE CI-DESSUS QUI ANNONCE « `dn4-5` DEVRA MESURER LA CONSOMMATION AUTREMENT » EST
+  FAUSSE DEPUIS LE 2026-08-20** : l'INA219 a été déclaré **hors régime** puis **retiré
+  physiquement du bus** (owner, 2026-08-21). ⇒ **la consommation ne sera pas mesurée en V1**, et
+  *« ce n'était pas le livrable »*. **D5 est soldé par un CONSTAT, ⛔ pas par un chiffre.**
 - ✅ **L'INA219 est lu EN RÉGIME quand même** (AC1), et **ce qu'il mesure est NOMMÉ** : le potentiel
   d'une entrée flottante (**~900 mV**, stable et plausible) et le bruit de son shunt libre
   (**−10 à −50 µV**). ⛔ **Ce ne sont PAS des grandeurs d'alimentation**, et `env` le dit en toutes

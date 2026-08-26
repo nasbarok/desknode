@@ -1,0 +1,37 @@
+[stub] ⚠️  psutil est un STUB (tools/stub_psutil) : les valeurs cpu/ram/net/disk sont FABRIQUEES. ⛔ Aucun chiffre de cette session n'est une mesure.
+==============================================================================
+dn4-5 / T4 — LE LISSAGE D'AFFICHAGE
+==============================================================================
+
+── 1. LE JEU LISSE EST CELUI QUI A ETE VERDICTE ──────────────────
+  [OK ] exactement les 4 grandeurs verdictees LISSER             [('cpu', 1), ('disk', 0), ('net', 0), ('net', 1)]
+  [OK ] ⛔ `CPU %` n'est PAS lisse                                « A DISCUTER » depuis §13.7 ⇒ AC4.4, A L'OEIL
+
+── 2. LA FENETRE EST BORNEE PAR LA PEREMPTION, RELUE AU FIRMWARE ─
+  [OK ] `DN_LINK_PEREMPTION_US` relu dans dn_link.h              3000000 us
+  [OK ] aucun echantillon du filtre n'atteint la peremption      n = 3 ⇒ le plus vieux a 2 s, peremption 3 s
+
+── 3. ON MOYENNE A LA RESOLUTION AFFICHEE ────────────────────────
+  [OK ] les 4 grandeurs lissees sont toutes DN_PREC_DIXIEME      moyenner en dixiemes = moyenner a la resolution affichee
+
+── 4. LE REJEU SUR LA VRAIE CAPTURE (960 echantillons) ───────────
+  [OK ] capture rejouee dans le PRODUIT                          960 echantillons x 16 grandeurs
+  [OK ] CPU GHz : le chiffre PUBLIE est celui que le code produit p95 20 -> 7 dixiemes (publie : 2,0 -> 0,7 GHz)
+  [OK ] ⛔ les 12 autres grandeurs sont INTACTES                  seules les 4 verdictees changent
+  [OK ] et les 4 lissees ont bien CHANGE                         ⛔ une grandeur declaree lissee qui ne bouge pas serait un lissage MORT
+
+── 5. AC4.3 — LA FENETRE SE VIDE A LA REPRISE ────────────────────
+  [OK ] la 1re valeur APRES reprise est la valeur BRUTE          32 == 32 dixiemes — ⛔ aucune trace de la fenetre d'avant
+  [OK ] une source ABSENTE vide la fenetre de sa grandeur        900 == 900 — ⛔ moyenner a cheval sur un trou fabriquerait une valeur qui n'a jamais existe
+
+── 6. `--lissage off` EST UN VRAI CONTOURNEMENT ──────────────────
+  [OK ] `actif=False` rend la photo INCHANGEE                    c'est la jambe « brut » de l'A/B d'AC4.4
+
+── 7. LES TEMOINS NEGATIFS — ON DOIT LES VOIR ROUGIR ─────────────
+  [OK ] mutant A « pas de vidage a la reprise » : VU ROUGIR      publie 19 au lieu du brut 32 — la valeur d'AVANT la coupure a SURVECU
+  [OK ] mutant B « fenetre n = 6 » : VU ROUGIR                   le plus vieux echantillon aurait 5 s, pour une peremption de 3 s
+  [OK ] mutant C « CPU %% lisse en douce » : VU ROUGIR           le controle du §1 le refuserait — AC4.4 n'a pas encore tranche
+
+==============================================================================
+BILAN : 15 OK, 0 KO
+==============================================================================

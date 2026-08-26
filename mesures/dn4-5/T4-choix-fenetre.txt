@@ -1,0 +1,43 @@
+====================================================================================================
+dn4-5 / T4 — LA FENETRE EST BORNEE PAR AC4.3, PUIS VERIFIEE PAR LA MESURE
+====================================================================================================
+
+🔴 LA BORNE VIENT D'AC4.3, ⛔ PAS DU GOUT. « Aucune valeur lissee ne doit survivre a la
+   peremption de 3 s » (DN_LINK_PEREMPTION_US). Une fenetre de n echantillons a 1 Hz porte
+   un echantillon vieux de (n-1) s. Exiger qu'AUCUN echantillon du filtre ne soit plus vieux
+   que la peremption donne :  n - 1 < 3  ⇒  **n <= 3**.
+
+⚠️ ET LE RATIO SE JUGE CONTRE LA PLAGE **BRUTE**, ⛔ pas contre celle de la serie lissee.
+   Mesure a l'appui : contre sa propre plage, `net.0` donne 40,4 % (n=2), 40,0 % (n=3),
+   **40,7 %** (n=4), 39,1 % (n=5) — NON MONOTONE, parce que le lissage retrecit le
+   denominateur aussi vite que le numerateur. La plage BRUTE est une reference FIXE, et
+   c'est le raisonnement de §13.7 lui-meme (« 40 % de sa COURSE »).
+
+grandeur n         p95  p95/BRUT  saut MAX  MAX/BRUT    % chg   retard
+cpu.1    1        2.00    100.0%      2.00    100.0%    53.4%    0,0 s   <- BRUT
+cpu.1    2        1.00     50.0%      1.10     55.0%    51.0%    0.5 s
+cpu.1    3        0.70     35.0%      0.70     35.0%    52.0%    1.0 s   <== RETENU (borne AC4.3)
+cpu.1    4        0.50     25.0%      0.60     30.0%    49.7%    1.5 s   ⛔ n-1 = 3 s : A LA LIMITE
+
+net.0    1        4.30     42.2%     10.00     98.0%    64.4%    0,0 s   <- BRUT
+net.0    2        2.10     20.6%      5.00     49.0%    54.1%    0.5 s
+net.0    3        1.40     13.7%      3.40     33.3%    48.1%    1.0 s   <== RETENU (borne AC4.3)
+net.0    4        1.10     10.8%      2.50     24.5%    41.6%    1.5 s   ⛔ n-1 = 3 s : A LA LIMITE
+
+net.1    1        8.50     64.9%     12.90     98.5%    65.3%    0,0 s   <- BRUT
+net.1    2        4.20     32.1%      6.40     48.9%    56.4%    0.5 s
+net.1    3        2.80     21.4%      4.30     32.8%    48.0%    1.0 s   <== RETENU (borne AC4.3)
+net.1    4        2.10     16.0%      3.30     25.2%    42.9%    1.5 s   ⛔ n-1 = 3 s : A LA LIMITE
+
+disk.0   1        2.40      1.0%    232.50    100.0%    80.2%    0,0 s   <- BRUT
+disk.0   2        1.50      0.6%    116.20     50.0%    69.6%    0.5 s
+disk.0   3        1.00      0.4%     77.50     33.3%    61.2%    1.0 s   <== RETENU (borne AC4.3)
+disk.0   4        0.80      0.3%     58.20     25.0%    54.1%    1.5 s   ⛔ n-1 = 3 s : A LA LIMITE
+
+====================================================================================================
+🎯 n = 3 RETENU. Effet MESURE sur la seule grandeur qui ECHOUAIT au critere :
+   CPU GHz : p95 2.0 -> 0.7  soit 100 % -> 35 % de sa plage  (seuil 40 %)
+   ⇒ elle PASSE, et le retard ajoute est de 1,0 s — un tiers de la peremption.
+⚠️ `disk.0` passait DEJA le critere a l'etat brut (1,0 %) : ⛔ ce n'est pas le critere
+   qui l'a fait lisser, c'est le legs de §13.7. Le lissage y reduit surtout le PIC
+   (saut MAX 232 -> 78) et le % de changements (80 -> 61).

@@ -1901,6 +1901,33 @@ bas ⇒ 0x5D). Entrée ⚪ déjà ouverte au ledger sur ce conflit.
 | **`GPIO4` = lecture de la tension batterie**, « isolable en dessoudant la résistance » | seule broche analogique documentée ; ⚠️ **aucun rapport de pont diviseur donné** ⇒ à mesurer, jamais à supposer | ⚠️ hypothèse |
 | **Connecteur `MX1.25 2PIN` pour LiPo 3,7 V** + chargeur **`MP1605GTF-Z` (2 A max)** | voir la décision **D5** ci-dessous | ⚠️ hypothèse |
 | **L'interrupteur ON/OFF est un « Battery Power Control Switch »** | 🔴 **Il n'avait jamais été identifié**, alors qu'il est visible sur `docs/cablage/2026-08-16_2228-…`. Sa portée sur l'alimentation USB **n'est pas documentée** ⇒ une carte qui ne démarre pas après qu'on l'a bougé est un diagnostic à connaître AVANT de dérouler la recette « carte muette » | ⚠️ **à établir par la mesure**, et c'est le plus actionnable des cinq |
+
+> ─────────────────────────────────────────────────────────────────────────────
+> 🎯 **ANNOTÉ LE 2026-08-26 PAR `dn4-5` — CETTE QUESTION EST FERMÉE PAR UN CONSTAT
+> OWNER DU 2026-08-25, ET LE TEXTE CI-DESSUS EST DONC PÉRIMÉ.** ⛔ On ANNOTE, on
+> n'efface pas : la question a été réelle, et sa réponse se lit à côté d'elle.
+>
+> **LE GESTE QUI A TRANCHÉ, ET IL A TRANCHÉ DEUX CHOSES D'UN COUP** : tour
+> **éteinte**, la **dalle DeskNode reste allumée** ⇒ le port USB **où DeskNode
+> est branché** reste alimenté.
+> - ✅ **D5 est SOLDÉ** : ⛔ **aucune alimentation séparée**, ⛔ **aucun réglage
+>   BIOS à toucher**, ⛔ **aucune mesure de courant**.
+> - ✅ **L'interrupteur « Battery Power Control Switch » NE COUPE PAS L'USB** —
+>   tranché **par le même geste**. L'hypothèse ouverte depuis le **2026-08-16**
+>   est **fermée**.
+>
+> ⚠️ **LA RÉSERVE QUI ÉTAIT ÉCRITE TOMBE, ET IL FAUT DIRE POURQUOI.** Le dossier
+> objectait qu'*« un chargeur de téléphone n'établit qu'AU MOINS UN port
+> alimenté »* : c'était juste pour un port quelconque, mais le constat du
+> 2026-08-25 porte sur **LE port où DeskNode est branché**, et le témoin est
+> **DeskNode lui-même**. La réserve ne s'applique donc plus.
+>
+> ⛔ **CE QUE CE CONSTAT NE DIT PAS**, et il ne faut pas le lui faire dire : il
+> ne donne **aucun chiffre de consommation**. L'INA219 est **hors régime et
+> retiré physiquement du bus** (owner, 2026-08-21) ⇒ **le courant de DeskNode ne
+> sera pas mesuré en V1**, et *« ce n'était pas le livrable »*.
+> ─────────────────────────────────────────────────────────────────────────────
+
 | **`TCA9554PWR` : « toutes les broches utilisées, non sorties »** | confirme §1.2 : l'expander est entièrement consommé, rien à en tirer pour dn4-1 | ✅ cohérent avec la mesure |
 
 > ✅ **PARADE ÉCRITE AVANT LE FER — `dn4-2`, 2026-08-19 (AC3, Y1). LA PARADE DOMINE LA QUESTION,
@@ -1951,6 +1978,13 @@ séparée**. C'est la formulation d'origine de la story, et elle est confirmée 
 ⚠️ **`GPIO4` et le chargeur perdent leur intérêt fonctionnel**, mais **PAS leur intérêt de
 diagnostic** : l'interrupteur « Battery Power Control » reste sur la carte et peut couper quelque
 chose, batterie ou non. **Le mesurer reste utile.**
+
+🎯 **ANNOTÉ LE 2026-08-26 PAR `dn4-5` — CE PARAGRAPHE EST PÉRIMÉ.** ⛔ Non effacé, annoté.
+Le constat owner du **2026-08-25** (tour éteinte ⇒ la dalle DeskNode reste allumée) a tranché
+**par le même geste** que D5 : **l'interrupteur « Battery Power Control » NE COUPE PAS l'USB**.
+⇒ *« Le mesurer reste utile »* **ne tient plus** : il n'y a plus rien à mesurer là.
+⚠️ **`GPIO4` garde en revanche son statut d'origine** : *« aucun rapport de pont diviseur donné »*,
+⛔ toujours **à mesurer, jamais à supposer** — ce constat-ci ne dit rien de lui.
 
 ---
 
@@ -7204,3 +7238,255 @@ du dépôt, et `git status --porcelain` **vide avant le flash**.
 - **Que les constats owner de §24.11.2 valent sur `dfa8204`.** Ils ont été pris
   sur **`6144064`**. Le correctif de §24.12 ne touche **ni le rendu du MENU ni
   le dispatch des zones** — mais c'est un **raisonnement**, ⛔ pas une mesure.
+
+---
+
+# §25. 🎯 `dn4-5` (P9.5) — L'INSTRUMENT QUI PEUT VOIR LE GEL, ET LE COMPTEUR QUI NE REBOUCLE PLUS
+
+> **Périmètre** : ce que `dn4-5` a **construit et éprouvé sans carte**, avant le soak de 7 jours.
+> ⚠️ **Tout ce qui suit est éprouvé sur le PRODUIT COMPILÉ, sous WSL, avec une horloge pilotée.**
+> ⛔ **Rien ici n'est une mesure sur le silicium** — la confirmation carte est AC3, et elle est dite
+> à chaque endroit où elle manque.
+> **SHA de départ** : `c31bb97`. **Décision owner du 2026-08-26** : **Ordre A** — le soak attend
+> `dn3-3` et `dn4-10`, ⛔ aucune story `backlog` n'entre dans le gel.
+
+## 25.1 🎯 LA TRIADE DU BATTEMENT — TROIS HORLOGES, TROIS SOURCES, ET C'EST ÇA L'INSTRUMENT (AC2.1)
+
+**Le verdict de cette story est *« 0 gel sur 7 jours »*, et le piège est STRUCTUREL** :
+*« un uptime de 7 jours ne prouve PAS l'absence de gel »*. La carte peut avoir **l'image figée**
+pendant que la tâche `app_main` bat tranquillement. Ce qui rend les deux cas **discriminables**,
+c'est que la ligne de battement porte **trois compteurs qui ne viennent pas de la même source** :
+
+| compteur | qui l'écrit | ce qu'il prouve QUAND IL AVANCE | ce que son FIGEMENT signifie |
+|---|---|---|---|
+| `up` / `mural` | tâche `app_main` (`vTaskDelay` / `esp_timer`) | **l'application est planifiée** | FreeRTOS ne planifie plus cette tâche |
+| `vsync` | **ISR du panneau RGB** (`dn_measure.c`, `on_vsync`) | **la DMA balaie la dalle** | dalle morte, DMA arrêtée, ou ISR jamais appelée |
+| `flush` / `cycles` | **tâche LVGL** (`dn_ui.c`) | **quelque chose est DESSINÉ** | 🔴 **LVGL est bloquée — L'IMAGE EST FIGÉE PENDANT QUE `up` AVANCE** |
+
+🔴 **LA SIGNATURE À CHERCHER DANS LE JOURNAL DU SOAK** : `up` et `vsync` **qui avancent** pendant
+que `flush` et `cycles` **ne bougent pas**. C'est ce triplet, et lui seul, qui distingue une image
+figée d'une carte en bonne santé.
+
+⛔ **CE QUE LA TRIADE NE VOIT PAS, ET IL FAUT LE SAVOIR EN LISANT** :
+- **`vsync` ne descend pas jusqu'à l'œil.** Une dalle qui balaie un framebuffer **figé** compte
+  des vsyncs exactement comme une dalle vivante. ⇒ **le constat owner à l'œil reste requis** (AC3.4).
+- **`flush` qui avance ne prouve pas que le CONTENU change.** LVGL peut redessiner la même chose.
+- **Une carte HALTÉE n'émet plus rien** : elle se lit comme un **silence**, ⛔ jamais comme un
+  événement. C'est pour ça que le battement est journalisé — **son absence EST le signal**.
+
+## 25.2 🔴 LA CONTRE-ÉPREUVE — LA COMMANDE `gel`, PARCE QU'UNE GATE JAMAIS VUE CRIER N'EN EST PAS UNE (AC2.2)
+
+**Au cadrage, la triade n'avait JAMAIS été mise à l'épreuve sur un gel.** Elle était un raisonnement,
+pas un instrument. Il n'existait par ailleurs **aucun moyen de bloquer LVGL volontairement** : ni
+dans `dn_stimulus.c` (qui ne porte que `tear` et `flash`), ni au README.
+
+⇒ **`dn_ui_geler_ms()`** (dn_ui.c) prend le **verrou LVGL** et le **tient**. La tâche LVGL le réclame
+à chaque itération : privée de lui, elle **ne dessine plus**. La commande console **`gel [secondes]`**
+l'enveloppe et publie le Δ des trois compteurs.
+
+**Trois choix de conception, et chacun ferme un faux négatif** :
+
+1. **LE RELEVÉ EST PRIS AVANT LE DÉVERROUILLAGE.** Relevé après, depuis l'appelant, la tâche LVGL
+   aurait le temps de faire **un ou plusieurs cycles de rattrapage** entre le déverrouillage et la
+   lecture : `flush` aurait bougé, et la contre-épreuve conclurait *« pas de gel »* **sur un gel qui
+   a bel et bien eu lieu**. ⇒ un faux négatif **fabriqué par l'instrument lui-même**.
+2. **12 s PAR DÉFAUT, ET LE CHIFFRE N'EST PAS ARBITRAIRE** : il doit dépasser **les 10 s du
+   battement** (sans quoi aucune ligne `up` ne sortirait *pendant* le gel, et la preuve la plus
+   lisible manquerait) **et les 5 s de `CONFIG_ESP_TASK_WDT_TIMEOUT_S`.**
+3. **ON DORT, ON NE TOURNE PAS EN ROND.** Une attente active tiendrait un cœur à 100 % et ferait
+   japper le watchdog sur la tâche IDLE : on mesurerait **deux défauts au lieu d'un**, et le journal
+   ne saurait plus lequel il regarde.
+
+⚠️ **`gel` rend `false` si le verrou n'est pas pris en 2 s** — et la commande le dit :
+*« ⛔ « pas mesuré », PAS « pas de gel ». Rejouer. »*
+
+## 25.2 bis ✅ AC2.2 **TIRÉ SUR LA CARTE** LE 2026-08-26 — ET LA CARTE A TROUVÉ UN DÉFAUT D'INSTRUMENT
+
+**Firmware `dn4-5`, flashé et vérifié** (`desknode.bin` 1 151 120 o, hash confirmé).
+
+### Le tir décisif — et le régime est CONFIRMÉ AVANT, ⛔ pas supposé
+
+| relevé | mural | vsync | flush | cycles |
+|---|---:|---:|---:|---:|
+| **AVANT** (sous verrou) | 85 s | 3 095 | **1 034** | **997** |
+| **battement PENDANT le gel** | 93 s | 3 420 | **1 034** | **997** |
+| **APRÈS** (sous verrou) | 97 s | 3 543 | **1 034** | **997** |
+| **Δ sur 12,0 s** | **+12,0 s** ✅ | **+448** ✅ (attendu ~449) | **+0** 🔴 | **+0** 🔴 |
+
+🎯 **LE RÉGIME EST CHIFFRÉ, ET C'EST CE QUI DONNE SA FORCE AU ZÉRO** : juste avant le tir, `anim on
+2000` faisait tourner l'écran à **18,1 flush/s** (286 → 468 → 649, soit **+182 puis +181 par 10 s**).
+⇒ **un gel de 12,0 s a supprimé ~217 redessins attendus. Il en est passé ZÉRO.**
+
+### 🔴 QUATRE INSTRUMENTS INDÉPENDANTS, PLUS L'ŒIL
+
+| témoin | ce qu'il a dit |
+|---|---|
+| le **battement** | `up` +10 et `vsync` +325 pendant que `flush`/`cycles` ne bougent pas d'un cran |
+| **`dn_capt`** (⚠️ non prévu) | *« verrou LVGL indisponible 2 fois — poussée perdue »*, **deux fois** |
+| **`dn_ui`** (⚠️ non prévu) | *« historique : **11 seconde(s) NON ÉCHANTILLONNÉE(S)** »* — il **chiffre** le gel |
+| **`vsync` vs `mural`** | +448 pour 12,0 s = **37,3 Hz**, la dalle balayait normalement |
+| 🔴 **CONSTAT OWNER** | *« la barre s'est arrêtée net puis repartie »* |
+
+### 🔴 CE QUE LA CARTE A TROUVÉ, ET QUE LE BANC N'AURAIT PAS TROUVÉ
+
+**Le premier tir a publié `flush +1` et l'instrument a REFUSÉ de conclure** — *« CETTE MESURE est à
+jeter, et chercher pourquoi »*. Le refus était juste ; **le défaut était le sien** :
+le relevé d'**AVANT** était pris **par l'appelant, HORS du verrou**. Entre ce relevé et la prise du
+verrou, la tâche LVGL avait le temps de finir **un cycle**.
+
+⚠️ **ET IL NE SE MONTRE QU'EN RÉGIME CHARGÉ.** Au repos (agent arrêté, ~2 flush / 10 s) la fenêtre
+de course est trop courte pour être touchée : **le premier tir, au repos, avait publié `+0`**. Un
+instrument éprouvé **uniquement au repos** aurait été déclaré bon. C'est `anim on` qui l'a sorti.
+⇒ **les deux relevés sont désormais pris dans `dn_ui_geler_ms()`, verrou en main.**
+
+⚠️ **ET LE PIÈGE S'EST PRÉSENTÉ UNE SECONDE FOIS, SOUS UN AUTRE VISAGE** : le tir de vérification
+suivant a été lancé **juste après `anim on`**, alors que l'animation **n'avait pas encore démarré**
+(`flush` valait 16 et n'a pas bougé). Il rendait `+0`… **dans le régime au repos, celui-là même qui
+cachait le défaut.** ⇒ **le régime se CONFIRME au compteur avant de tirer**, ⛔ il ne se suppose pas
+parce qu'on vient d'armer le stimulus.
+
+### 📋 CE QUE CE TIR NE DIT TOUJOURS PAS
+- **`vsync` ne descend pas jusqu'à l'œil** : une dalle qui balaie un framebuffer figé compte des
+  vsyncs comme une dalle vivante. ⇒ le constat owner reste requis, et il a été pris.
+- ⛔ **Il ne dit pas que la carte ne gèlera pas.** Il dit que **si elle gèle, l'instrument le verra**.
+
+### ⚠️ ET UN CONSTAT EN PASSANT, QUI CORRIGE CE QUE §25 ÉCRIVAIT LE MATIN MÊME
+
+L'écart `mural − up` a été relevé **+3 s** à `up 10..90 s`, puis **+5 s** à `up 6010 s` (~100 min
+plus tard, même boot). ⇒ **ce n'est PAS un décalage d'amorçage constant : il DÉRIVE.**
+⛔ Deux points ne font pas une loi et l'ampleur n'est **pas** extrapolée ici — mais la direction est
+mesurée, et c'est **exactement** ce qu'AC1.4 existe pour rendre visible. **Le soak tranchera.**
+
+## 25.3 ⚠️ CE QUE LA CONFIG FAIT SUR UNE PANNE — TROIS FAITS, ET DEUX SONT DES FAUX NÉGATIFS (AC2.3, AC2.4)
+
+Relus dans `sdkconfig` au 2026-08-26.
+
+| réglage | valeur | ce que ça fait **vraiment** |
+|---|---|---|
+| `CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT` | **`y`** (l.1320) | 🔴 une panique **HALTE la puce** : ⛔ **pas de reboot**, écran figé sur sa dernière image, et **plus un octet sur le fil** |
+| `CONFIG_ESP_TASK_WDT_PANIC` | **non posé** (l.1356) · `TIMEOUT_S = 5` | 🔴 une tâche bloquée > 5 s **IMPRIME un avertissement** et **ne redémarre RIEN** ⇒ **`up` continue d'avancer** |
+| `CONFIG_ESP_COREDUMP_ENABLE_TO_NONE` | **`y`** (l.1467) | ⛔ **aucun post-mortem**. Si la carte tombe au jour 5, **la seule trace est le fil série** |
+
+🔴 **AC2.3 — LA SIGNATURE DE LA PANIQUE HALTÉE, ET POURQUOI ELLE SE CONFOND AVEC AUTRE CHOSE.**
+Une carte haltée et un agent qui a perdu le port produisent **le même symptôme vu du fil** : plus
+rien n'arrive, et l'agent voit un `Write timeout`. **Les deux se ressemblent trait pour trait.**
+⇒ **c'est le journal de la tour qui les sépare** : il journalise les **événements de port de
+l'agent** (`PORT OUVERT` / `PORT PERDU` / `PORT FERMÉ`) **à côté** du battement de la carte.
+- battement qui s'arrête **sans** `PORT PERDU` ⇒ 🔴 **la carte s'est tue** (haltée, ou morte) ;
+- battement qui s'arrête **avec** `PORT PERDU` ⇒ ⚠️ **l'agent a perdu le port**, la carte est
+  peut-être intacte — et la reprise le dira.
+
+⚠️ **ET `esp_reset_reason()` NE VERRA JAMAIS UNE PANIQUE HALTÉE**, puisqu'il n'y a **pas de boot
+suivant**. Si quelqu'un débranche après coup, le reset suivant sera `POWERON`. ⇒ **la panique haltée
+se détecte par l'ABSENCE de battement, ⛔ jamais par la raison du reset.** C'est écrit dans le code,
+au-dessus de `raison_reset_clair()`.
+
+🔴 **AC2.4 — LE TWDT EST NON-PANIQUANT, ET C'EST UNE DÉCISION OWNER, ⛔ PAS UN OUBLI.**
+Le poser à `y` ferait **rebooter** la carte sur blocage : c'est un **changement de comportement en
+régime**, sur la story qui mesure précisément ce régime.
+**Décision owner du 2026-08-26 : il RESTE non posé.** Conséquence, écrite plutôt que subie :
+**une tâche bloquée sept jours n'entraîne AUCUN redémarrage, et `up` continue d'avancer.**
+⇒ **c'est exactement le faux négatif que la triade de §25.1 existe pour rattraper.**
+
+## 25.4 ✅ LE JOURNAL DU SOAK VIT CÔTÉ TOUR — ET SON VOLUME EST BORNÉ **AVANT** LE DÉPART (AC2.5)
+
+⛔ **AUCUNE ÉCRITURE NVS/FLASH CÔTÉ CARTE (D4/D5).** Une semaine H24 est très exactement le régime
+où une écriture périodique se paierait — mesuré : sous écriture flash, *« l'image défile »*, à
+**165 343 o/s**.
+
+🔴 **ET `--tracer-console` N'EST PAS L'INSTRUMENT DU SOAK.** Le cadrage de `dn4-5` annonçait
+*« 232,0 o/s ⇒ ~140 Mo sur 7 jours »* (§13.11.1). **Le dépôt avait déjà corrigé ce chiffre** :
+`dn_agent.py` écrit lui-même **447 à 530 o/s, soit 270 à 320 Mo sur 7 jours, sans aucune rotation**,
+et conclut *« ⛔ Ne pas le laisser armé sur un soak »*. **Le cadrage sous-estimait d'un facteur ~1,9.**
+
+⇒ **`--journal-soak FICHIER`** est un **canal DISTINCT**, ⛔ il ne remplace pas `--tracer-console`
+(qui reste l'instrument de diagnostic de `dn4-18`, sur fenêtre courte) :
+
+| | `--tracer-console` | `--journal-soak` |
+|---|---|---|
+| contenu | **tout** le fil, brut | battement · reboots · alarmes · **événements de port** |
+| débit | **447-530 o/s** | **18,3 o/s** (mesuré sur la ligne réelle : 183 o) |
+| sur 7 jours | **270-320 Mo** | **10,6 Mo** |
+| rotation | ⛔ aucune | ✅ 32 Mo × 4 |
+| usage | diagnostic, fenêtre courte | **la boîte noire du soak** |
+
+⚠️ **L'ÉCRÊTAGE EST DIT, JAMAIS SILENCIEUX** : un quota de 60 lignes « fil » par minute protège la
+boîte noire d'une tempête d'erreurs, et **les lignes écartées sont comptées et publiées**
+(`QUOTA  N ligne(s) ECARTEE(S)`). ⛔ Les **événements de port échappent au quota** — les perdre
+reviendrait à rendre §25.3 indécidable.
+
+⚠️ **LE FRAGMENT EST REPORTÉ** : une ligne de battement peut être coupée entre deux `read()`. Sans
+report du reste, on en perdrait une de temps en temps, **en silence** — le piège exact que `dn4-18`
+a payé sur son marqueur.
+
+## 25.5 ✅ LE CUMUL « EN AMBIANT LA MAJORITÉ DU TEMPS » — IL N'EXISTAIT PAS (AC3.2)
+
+Le brief exige *« en Ambient la majorité du temps »*. **> 50 % est un SEUIL**, ⛔ pas une figure de
+style — et **aucun instrument ne le mesurait**.
+
+🔴 **ET IL NE FALLAIT SURTOUT PAS COMPTER DES TICKS.** La tentation était `s_secondes_vues`. Le
+dépôt dit lui-même, **dans sa propre sortie console**, que *« le tick 1 Hz ne bat pas pendant
+`ui off` »*, et `dn_ui.c` documente que `veille now` passe **délibérément** à côté du tick
+(*« un geste d'opérateur ne doit pas faire avancer une horloge d'observation »*). ⇒ un dénominateur
+en ticks aurait des **trous**, et rendrait sur 7 jours **un pourcentage plausible et faux**.
+
+⇒ **on cumule du TEMPS MURAL** (`esp_timer_get_time()`, int64), canalisé par **l'unique poseur de
+mode** de `dn_veille.c` — vérifié par gate sur **tout le fichier** : `s_mode` n'est écrit qu'à
+l'initialisation et dans `veille_poser_mode()`.
+
+⚠️ **L'INTERVALLE EN COURS EST AJOUTÉ À LA LECTURE.** Sans lui, un module en Ambient depuis six
+jours publierait le cumul de la **dernière bascule** — soit **« 0 % d'Ambient »** sur un critère qui
+est en réalité tenu. **Le pire cas possible** : faux, plausible, et dans le sens qui fait échouer à
+tort. Un mutant le montre (**3 240 s publiés au lieu de 23 240**).
+
+⛔ **EN RAM (D4)** : le cumul ne survit pas au reboot — et un reboot rompt la fenêtre du soak de
+toute façon (AC3.6).
+⚠️ **CE QU'IL NE DIT PAS** : il dit **dans quel MODE le module se croit**, ⛔ pas que la dalle est
+effectivement sombre. **Le constat owner reste requis.**
+
+## 25.6 ✅ CE QUE LES GATES PROUVENT — 120 CONTRÔLES, SANS CARTE NI TOUR
+
+| gate | ce qu'elle éprouve | contrôles |
+|---|---|---|
+| `tools/audit_rebouclage_dn45.py` | l'inventaire de rebouclage **mécanique** sur tout `main/` (112 sites) | **13** |
+| `tools/verif_rebouclage_dn45.py` | la fenêtre en base 64 bits + **3 mutants vus rougir** | **29** |
+| `tools/verif_cumul_ambient_dn45.py` | le cumul Ambient + **2 mutants vus rougir** | **19** |
+| `tools/verif_journal_soak_dn45.py` | la boîte noire : fragment, quota, rotation, **volume mesuré** | **13** |
+| `tools/verif_bme680_retard_dn45.py` | le miroir console↔docblock + **1 mutant vu rougir** | **15** |
+| `tools/verif_dossier_d5_dn45.py` | le balayage D5 sur **les deux dépôts** | **10** |
+| `tools/verif_d4_nvs_dn45.py` | les écrivains NVS, chacun avec son déclencheur | **6** |
+| `tools/verif_lissage_dn45.py` | le lissage sur la **vraie capture** + **3 mutants vus rougir** | **15** |
+
+⛔ **CE QUE CES 120 CONTRÔLES NE PROUVENT PAS** : que la carte tient sept jours. Ils prouvent que
+**l'instrument qui le dira ne ment pas**. C'est tout — et c'est ce qui manquait.
+⚠️ **ET AUCUN D'EUX N'A VU LE SILICIUM.** Quatre choses restent dues **sur la carte** : la capture
+de `gel` (AC2.2), le témoin de péremption **sur la carte** (AC4.3), l'A/B à l'œil (AC4.4) et les
+Δ px / Δ latence (AC4.5).
+
+## 25.7 ✅ D4 EST **VÉRIFIÉ**, ⛔ PAS AFFIRMÉ — LES TROIS ÉCRIVAINS, ET LEUR DÉCLENCHEUR (AC9)
+
+🔴 **L'INSTRUMENT QUI EXISTAIT NE COUVRAIT QU'UN SEUL ÉCRIVAIN.** La commande `veille` publie
+*« aucune écriture NVS depuis le boot ou le dernier `veille reset` »* — mais elle ne connaît que
+`dn_veille`. Un verdict fondé sur elle seule serait **LOCAL, pas global** : *« une gate scopée à UNE
+fonction peut épingler VERT le même défaut ailleurs »*.
+
+⇒ balayage de **tout** `firmware/desknode/main/` sur les sept primitives d'écriture
+(`nvs_set_*`, `nvs_commit`, `nvs_erase*`, `esp_partition_write/erase`, `esp_flash_write/erase`) :
+
+| fichier | appels | déclencheur | en régime ? |
+|---|---|---|---|
+| `dn_bootcfg.c` | **4** | console (`set fbs\|bounce\|lines\|drawmem\|core`, `cfg reset`) — **ET un chemin de BOOT** | ⛔ **non** |
+| `dn_stimulus.c` | **2** | `esp_partition_write` du **stimulus flash**, armé par `flash on` **uniquement** | ⛔ **non** |
+| `dn_veille.c` | **2** | persistance des **deux réglages** de veille, sur un **geste** (tap MENU / `veille`) | ⛔ **non** |
+
+⚠️ **LE CHEMIN DE BOOT EST NOMMÉ PLUTÔT QUE TU** : `desknode_main.c` **corrige la NVS** quand
+`bounce_px` **ne s'alloue pas** (repli `dn4-10` du 2026-08-23). Il est **conditionnel**, il tombe
+**avant** que le régime commence, et **il s'auto-éteint** — le boot suivant est propre.
+
+⚠️ **`hist` RESTE EN RAM, ET LE DIT LUI-MÊME** : *« EN RAM, ⛔ AUCUNE écriture NVS/flash (D4) »*.
+⇒ l'historique de session **ne survit pas au reboot, et c'est VOULU** — à rappeler dans le journal
+du soak.
+
+⛔ **CE QUE CETTE GATE NE PROUVE PAS** : que rien n'a été écrit **pendant** le soak. Elle prouve que
+**les seuls chemins d'écriture qui existent** sont hors régime. La vérification de terrain est
+**AC9.1** — relire `veille` **à la fin du soak, sur la carte**.

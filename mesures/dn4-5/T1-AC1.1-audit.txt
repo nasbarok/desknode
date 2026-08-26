@@ -1,0 +1,184 @@
+==============================================================================
+dn4-5 / AC1.1 — AUDIT DE REBOUCLAGE — TOUT firmware/desknode/main/
+==============================================================================
+
+perimetre : 39 fichiers (.c et .h) — sha256 des sources LUES : 68d9fdd8393aca19
+commande equivalente, pour qui veut rejouer a la main :
+  grep -rnE '\\w+(\\.|->)?\\w*\\s*(\\+\\+|\\+=)' firmware/desknode/main/*.c
+
+── 1+2. BALAYAGE DES ACCUMULATIONS ET RESOLUTION DE TYPE ─────────
+  [OK ] le balayage a trouve des sites                                 112 sites persistants, 279 accumulations locales ecartees
+  [OK ] tous les types sont RESOLUS                                    112 sites, 0 type inconnu
+
+── 3. CONFRONTATION A LA TABLE DECLAREE ──────────────────────────
+  [OK ] aucun site BALAYE n'est absent de la table                     112 sites tous classes
+  [OK ] aucune entree de table n'est perimee                           table a jour
+
+── L'INVENTAIRE, CHAQUE LIGNE AVEC SON HORIZON CHIFFRE ───────────
+
+  🔴 REBOUCLE SANS PARADE — 0 site(s)
+
+  ⚠️ REBOUCLE, PARADE ECRITE — 4 site(s)
+   ⚠️ touch          s_lat_total_us           uint32_t  10.00 Hz   x100000  71.6 min       l.1038
+       ↳ cumul de latences en us. PARADE ECRITE : dn_touch.h:306 dit « reboucle a ~4295 s cumulees », et `dn_touch_reset_latence()` (dn_touch.c:1061) rebase
+   ⚠️ ui             s_attente_us             uint32_t  30.30 Hz   x33000   71.6 min       l.2178
+       ↳ temps cumule en us. PARADE ECRITE : dn_ui.h:171-176 chiffre « ~4 295 s de temps CUMULE » et pose le depart depuis un reset
+   ⚠️ ui             s_copie_us               uint32_t  30.30 Hz   x33000   71.6 min       l.2177
+       ↳ temps cumule en us. PARADE ECRITE : dn_ui.h:171-176 chiffre « ~4 295 s de temps CUMULE » et pose le depart depuis un reset
+   ⚠️ ui             s_px                     uint32_t  30.30 Hz   x307200  7.7 min        l.2089,2176
+       ↳ aire cumulee. PARADE ECRITE : dn_ui.h:171-176 chiffre « ~13 981 ecrans pleins » et pose « toute mesure publiee part d'un reset » (`flush reset`)
+
+  🔒 BORNE PAR UNE GARDE — 2 site(s)
+   🔒 hist           s_ecrits[]               uint32_t  bornee     x1       ⛔ ne cumule pas l.267,300
+       ↳ garde explicite `if (s_ecrits[s] < DN_HIST_N_POINTS)` — ⛔ ne cumule pas
+   🔒 ui             s_voiles_n               int       bornee     x1       ⛔ ne cumule pas l.2438
+       ↳ garde explicite `if (s_voiles_n < DN_UI_VOILES_MAX)` — ⛔ ne cumule pas
+
+  ✅ SURVIT A 7 JOURS — 106 site(s)
+   ✅ capteurs       s_cnt.err_bornes         uint32_t  0.20 Hz    x1       680.5 ans      l.1171,1325
+   ✅ capteurs       s_cnt.err_donnee         uint32_t  0.20 Hz    x1       680.5 ans      l.1208
+   ✅ capteurs       s_cnt.err_i2c            uint32_t  0.20 Hz    x1       680.5 ans      l.1163,1210
+   ✅ capteurs       s_cnt.lectures           uint32_t  0.20 Hz    x1       680.5 ans      l.1378
+   ✅ capteurs       s_cnt.pousses_ratees     uint32_t  0.20 Hz    x1       680.5 ans      l.821
+   ✅ capteurs       s_cnt.reconfigs          uint32_t  0.20 Hz    x1       680.5 ans      l.908
+   ✅ capteurs       s_cnt.reprises           uint32_t  0.20 Hz    x1       680.5 ans      l.1381
+   ✅ capteurs       s_reconf_echecs          int       0.20 Hz    x1       340.2 ans      l.968,979
+   ✅ env            s_c[].cnt.conformite     uint32_t  0.20 Hz    x1       680.5 ans      l.652
+   ✅ env            s_c[].cnt.err_bornes     uint32_t  0.20 Hz    x1       680.5 ans      l.256
+   ✅ env            s_c[].cnt.err_donnee     uint32_t  0.20 Hz    x1       680.5 ans      l.248
+   ✅ env            s_c[].cnt.err_i2c        uint32_t  0.20 Hz    x1       680.5 ans      l.240
+   ✅ env            s_c[].cnt.lectures       uint32_t  0.20 Hz    x1       680.5 ans      l.268
+   ✅ env            s_c[].cnt.reprises       uint32_t  0.20 Hz    x1       680.5 ans      l.270
+   ✅ env            s_cycles                 uint32_t  0.20 Hz    x1       680.5 ans      l.687
+   ✅ env            s_w2[].ruptures          uint32_t  1.00 Hz    x1       136.1 ans      l.1177
+   ✅ hist           s_rattr_evts             uint32_t  1.00 Hz    x1       136.1 ans      l.271
+   ✅ hist           s_rattr_trous            uint32_t  1.00 Hz    x1       136.1 ans      l.272
+   ✅ hist           s_tick_us                int64_t   1.00 Hz    x1000000 292271.0 ans   l.238
+   ✅ link           s_cnt.doublons           uint32_t  5.00 Hz    x1       27.2 ans       l.454
+   ✅ link           s_cnt.pertes_seq         uint32_t  5.00 Hz    x1       27.2 ans       l.476
+   ✅ link           s_cnt.recues             uint32_t  5.00 Hz    x1       27.2 ans       l.496
+   ✅ link           s_cnt.rejets_bornes      uint32_t  5.00 Hz    x1       27.2 ans       l.445
+   ✅ link           s_cnt.rejets_checksum    uint32_t  5.00 Hz    x1       27.2 ans       l.280
+   ✅ link           s_cnt.rejets_format      uint32_t  5.00 Hz    x1       27.2 ans       l.254,272,315
+   ✅ link           s_cnt.rejets_tronquee    uint32_t  5.00 Hz    x1       27.2 ans       l.262,266,671
+   ✅ link           s_cnt.rejets_trop_longue uint32_t  5.00 Hz    x1       27.2 ans       l.250
+   ✅ link           s_cnt.rejets_version     uint32_t  5.00 Hz    x1       27.2 ans       l.334
+   ✅ link           s_cnt.reprises           uint32_t  5.00 Hz    x1       27.2 ans       l.803
+   ✅ link           s_cnt.resynchros         uint32_t  5.00 Hz    x1       27.2 ans       l.474
+   ✅ link           s_lat_n                  uint32_t  5.00 Hz    x1       27.2 ans       l.840
+   ✅ link           s_lat_somme              int64_t   5.00 Hz    x1000000 58454.2 ans    l.839
+   ✅ measure        s_bnc_doubles            uint32_t  37.40 Hz   x1       3.6 ans        l.309
+   ✅ measure        s_bnc_inter_n            uint32_t  37.40 Hz   x1       3.6 ans        l.367
+   ✅ measure        s_bnc_inter_somme        uint64_t  37.40 Hz   x53400   292686.6 ans   l.374
+   ✅ measure        s_bnc_manques            uint32_t  37.40 Hz   x1       3.6 ans        l.307
+   ✅ measure        s_bnc_ph_100pc           uint32_t  37.40 Hz   x1       3.6 ans        l.357
+   ✅ measure        s_bnc_ph_10pc            uint32_t  37.40 Hz   x1       3.6 ans        l.348
+   ✅ measure        s_bnc_ph_25pc            uint32_t  37.40 Hz   x1       3.6 ans        l.351
+   ✅ measure        s_bnc_ph_50pc            uint32_t  37.40 Hz   x1       3.6 ans        l.354
+   ✅ measure        s_bnc_ph_ecarte          uint32_t  37.40 Hz   x1       3.6 ans        l.329
+   ✅ measure        s_bnc_ph_n               uint32_t  37.40 Hz   x1       3.6 ans        l.328,338
+   ✅ measure        s_bnc_ph_somme           uint64_t  37.40 Hz   x53400   292686.6 ans   l.337
+   ✅ measure        s_bnc_raz_gen            uint32_t  humaine    x1       jamais (cadence humaine) l.273
+   ✅ measure        s_bnc_ret_100            uint32_t  37.40 Hz   x1       3.6 ans        l.376
+   ✅ measure        s_bnc_ret_bp             uint32_t  37.40 Hz   x1       3.6 ans        l.379
+   ✅ measure        s_bnc_ret_trame          uint32_t  37.40 Hz   x1       3.6 ans        l.385
+   ✅ measure        s_bnc_ret_vb             uint32_t  37.40 Hz   x1       3.6 ans        l.382
+   ✅ measure        s_bnc_wraps              uint32_t  37.40 Hz   x1       3.6 ans        l.427
+   ✅ measure        s_vsync_count            uint32_t  37.40 Hz   x1       3.6 ans        l.258
+   ✅ recal          s_count                  uint32_t  37.40 Hz   x1       3.6 ans        l.79
+   ✅ recal          s_rate                   uint32_t  37.40 Hz   x1       3.6 ans        l.134
+   ✅ rtc            s_cpt.bascules           uint32_t  2.00 Hz    x1       68.0 ans       l.369
+   ✅ rtc            s_cpt.err_bcd            uint32_t  2.00 Hz    x1       68.0 ans       l.374
+   ✅ rtc            s_cpt.err_i2c            uint32_t  2.00 Hz    x1       68.0 ans       l.364
+   ✅ rtc            s_cpt.lectures           uint32_t  2.00 Hz    x1       68.0 ans       l.359,760
+   ✅ rtc            s_cpt.os_vus             uint32_t  2.00 Hz    x1       68.0 ans       l.361,762
+   ✅ rtc            s_cpt.poses              uint32_t  2.00 Hz    x1       68.0 ans       l.577
+   ✅ rtc            s_cpt.poussees_perdues   uint32_t  2.00 Hz    x1       68.0 ans       l.434
+   ✅ rtc            s_cpt.reprises           uint32_t  2.00 Hz    x1       68.0 ans       l.409
+   ✅ rtc            s_cpt.temoins_perdus     uint32_t  2.00 Hz    x1       68.0 ans       l.378
+   ✅ rtc            s_generation             uint32_t  humaine    x1       jamais (cadence humaine) l.578
+   ✅ stimulus       s_flash_bytes            uint64_t  humaine    x1       jamais (cadence humaine) l.441
+   ✅ stimulus       s_flash_sectors          uint32_t  humaine    x1       jamais (cadence humaine) l.440
+   ✅ stimulus       s_tear_miss_fbdone       uint32_t  37.40 Hz   x1       3.6 ans        l.219
+   ✅ stimulus       s_tear_miss_vsync        uint32_t  37.40 Hz   x1       3.6 ans        l.204
+   ✅ touch          s_appuis                 uint32_t  10.00 Hz   x1       13.6 ans       l.346
+   ✅ touch          s_consommes              uint32_t  10.00 Hz   x1       13.6 ans       l.350
+   ✅ touch          s_err_i2c                uint32_t  100.00 Hz  x1       1.4 ans        l.302
+   ✅ touch          s_irq                    uint32_t  100.00 Hz  x1       1.4 ans        l.244
+   ✅ touch          s_lat_n                  uint32_t  10.00 Hz   x1       13.6 ans       l.1039
+   ✅ touch          s_lat_rejets             uint32_t  10.00 Hz   x1       13.6 ans       l.1033
+   ✅ touch          s_lectures               uint32_t  100.00 Hz  x1       1.4 ans        l.298
+   ✅ touch          s_relaches               uint32_t  10.00 Hz   x1       13.6 ans       l.373
+   ✅ ui             s_async_refus            uint32_t  10.00 Hz   x1       13.6 ans       l.2645,2657,2685
+   ✅ ui             s_clic_seq               uint32_t  10.00 Hz   x1       13.6 ans       l.2621
+   ✅ ui             s_courbe_appels          uint32_t  30.30 Hz   x1       4.5 ans        l.3837
+   ✅ ui             s_courbe_redessins       uint32_t  30.30 Hz   x1       4.5 ans        l.3923
+   ✅ ui             s_gardeh_cris            uint32_t  30.30 Hz   x1       4.5 ans        l.4418
+   ✅ ui             s_gardeh_n               uint32_t  30.30 Hz   x1       4.5 ans        l.4411
+   ✅ ui             s_lat_ecrits             uint32_t  10.00 Hz   x1       13.6 ans       l.6695
+   ✅ ui             s_lat_w                  uint32_t  10.00 Hz   x1       13.6 ans       l.6694
+   ✅ ui             s_menu_reglages          uint32_t  10.00 Hz   x1       13.6 ans       l.2935,2951
+   ✅ ui             s_menu_taps              uint32_t  10.00 Hz   x1       13.6 ans       l.2690
+   ✅ ui             s_n_cycles               uint32_t  30.30 Hz   x1       4.5 ans        l.2186
+   ✅ ui             s_n_flush                uint32_t  30.30 Hz   x1       4.5 ans        l.2087,2175
+   ✅ ui             s_n_noop                 uint32_t  30.30 Hz   x1       4.5 ans        l.2088
+   ✅ ui             s_nav_count              uint32_t  10.00 Hz   x1       13.6 ans       l.4947
+   ✅ ui             s_nav_veille_count       uint32_t  10.00 Hz   x1       13.6 ans       l.6790
+   ✅ ui             s_pousse_seq             uint32_t  5.00 Hz    x1       27.2 ans       l.8626
+   ✅ ui             s_taps                   uint32_t  10.00 Hz   x1       13.6 ans       l.2649,2661,2689
+   ✅ ui             s_timeouts               uint32_t  30.30 Hz   x1       4.5 ans        l.2105,2111
+   ✅ veille         s_annulations            uint32_t  1.00 Hz    x1       136.1 ans      l.493
+   ✅ veille         s_bascules               uint32_t  1.00 Hz    x1       136.1 ans      l.432,464
+   ✅ veille         s_cumul_us[]             int64_t   1.00 Hz    x1000000 292271.0 ans   l.136
+   ✅ veille         s_inact_bascule_w        uint32_t  1.00 Hz    x1       136.1 ans      l.442
+   ✅ veille         s_persist_n              uint32_t  humaine    x1       jamais (cadence humaine) l.262,277
+   ✅ veille         s_rebases                uint32_t  1.00 Hz    x1       136.1 ans      l.513
+   ✅ veille         s_reveils                uint32_t  1.00 Hz    x1       136.1 ans      l.506
+   ✅ veille         s_secondes_vues          uint32_t  1.00 Hz    x1       136.1 ans      l.406
+   ✅ widget         s_chevauchements         uint32_t  30.30 Hz   x1       4.5 ans        l.1365
+   ✅ widget         s_debordements           uint32_t  30.30 Hz   x8       205.1 j        l.1105,1505
+   ✅ widget         s_trop_larges            uint32_t  30.30 Hz   x1       4.5 ans        l.1121,1493
+   ✅ wifi           s_reconnexions           uint32_t  humaine    x1       jamais (cadence humaine) l.64
+   ✅ wifi           s_ws_connexions          uint32_t  humaine    x1       jamais (cadence humaine) l.195
+   ✅ wifi           s_ws_messages            uint32_t  humaine    x1       jamais (cadence humaine) l.226
+
+── 4. LE SEUIL DE 7 JOURS (604 800 s), APPLIQUE ──────────────────
+  [OK ] aucun site classe ✅ n'a un horizon < 7 jours                   106 sites ✅, le plus court tient 205.1 j
+  [OK ] aucun rebouclage SANS PARADE ne subsiste                       0 rouge — les 4 ⚠️ ont tous leur parade CITEE
+
+── 5. LES TRONCATURES DE L'HORLOGE 64 BITS ───────────────────────
+  [OK ] toute troncature balayee est DECLAREE                          11 constructions distinctes, 13 occurrences
+  [OK ] aucune entree de troncature n'est perimee                      table a jour
+   ✅ dn_hist.c      l.406                (uint32_t)(up_s % DN_HIST_SEAU_S);
+       ↳ `up_s` est en SECONDES (`esp_timer_get_time() / 1000000`), donc 2^32 s = 136 ans ; et ce site-ci est de surcroit un MODULO borne a DN_HIST_SEAU_S = 3 600
+   ✅ dn_measure.c   l.428                s_bnc_t_wrap_us = (uint32_t)esp_timer_get_time();
+       ↳ horodatage du dernier enroulement, lu en DELTA COURT uniquement (`ph = t_us - s_bnc_t_wrap_us`, borne de sanite a 2 periodes)
+   ✅ dn_measure.c   l.266                uint32_t t_us = (uint32_t)esp_timer_get_time();
+       ↳ ISR de vsync : horodatage pris EN TETE. Il n'alimente que des DELTAS COURTS (`dt` <= 27 ms, `ph` < 2 periodes) — la soustraction non signee absorbe l'enroulement. ⛔ Il alimentait AUSSI l'origine `s_bnc_t0_us`, et c'est LA le defaut ferme par dn4-5/AC1.2
+   ⚠️ dn_measure.c   l.651                uint32_t t_us = (uint32_t)maintenant;
+       ↳ dn4-5/AC1.2 : CONSERVE VOLONTAIREMENT, et c'est le SEUL de la liste a etre FAUX PAR CONSTRUCTION au-dela de 71,58 min. Il n'alimente plus `fenetre_ms` (passee en base int64) mais `fenetre_ms_32`, publie COMME CONTRE-EPREUVE a cote de la valeur juste. Sa faussete EST le livrable
+   ✅ dn_touch.c     l.1036               uint32_t us = (uint32_t)dt;
+       ↳ `dt` est un delta arme/desarme dans la meme sequence tactile ; les dt negatifs sont COMPTES (`s_lat_rejets`) et rejetes
+   ✅ dn_ui.c        l.2178               s_attente_us += (uint32_t)(t1 - t0);
+       ↳ la TRONCATURE est saine (delta court) ; c'est l'ACCUMULATION qui reboucle, et elle est classee ⚠️ en phase 3 avec sa parade
+   ✅ dn_ui.c        l.2174               uint32_t copie = (uint32_t)(t2 - t1);
+       ↳ duree d'UNE copie `draw_bitmap`, entre deux horodatages voisins de la meme fonction de flush. La TRONCATURE est saine ; c'est `s_copie_us` qui l'accumule, et elle est classee ⚠️ en phase 3
+   ✅ dn_ui.c        l.2271,8423          uint32_t s = (uint32_t)(esp_timer_get_time() / 1000000);
+       ↳ des SECONDES, ⛔ pas des us : 136 ans. DEUX sites identiques (dn_ui.c:2271 et :8366), meme construction
+   ✅ dn_ui.c        l.6717               uint32_t t1 = (uint32_t)(esp_timer_get_time() - t0);
+       ↳ delta court mesure dans la meme fonction
+   ✅ dn_ui.c        l.6751               uint32_t t2 = (uint32_t)(esp_timer_get_time() - t0);
+       ↳ delta court mesure dans la meme fonction
+   ✅ dn_veille.c    l.261,276            s_persist_us = (uint32_t)(esp_timer_get_time() - t0);
+       ↳ duree d'UNE ecriture NVS, entre deux appels voisins. DEUX sites identiques (dn_veille.c:203 et :218)
+  [OK ] `configRUN_TIME_COUNTER_TYPE` (71,58 min) reste GARDE dans dn_console.c 2 marqueur(s) de garde trouve(s), 2 attendu(s)
+
+── 6. AC1.2 — LE SITE NOMME PAR LE CADRAGE EST-IL FERME ? ────────
+  [OK ] la formule 32 bits d'origine a DISPARU de dn_measure.c         remplacee par la base int64
+  [OK ] l'origine est reconstruite sur 64 bits                         ancre + origine presentes
+  [OK ] `fenetre_ms` est publie sur 64 bits                            dn_measure.h
+  [OK ] la contre-epreuve est publiee a cote                           fenetre_ms_32 + fenetre_deborde
+
+==============================================================================
+BILAN : 13 OK, 0 KO
+==============================================================================

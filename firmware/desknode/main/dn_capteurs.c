@@ -6,6 +6,30 @@
  *    2026-08-17 (3 couches). Chacun est signalé « CR 2026-08-17 » à l'endroit
  *    où il agit, avec le symptôme qui l'a fait trouver — la règle du dépôt étant
  *    que les erreurs réfutées restent écrites avec leur réfutation.
+ *
+ * ─── dn4-5 / AC6 : L'AFFICHAGE A UN CYCLE DE RETARD, ET C'EST ASSUMÉ ────────
+ *
+ * 🔴 LE FAIT, MESURÉ : la boucle « data ready » du composant SORT DÈS LA
+ *    PREMIÈRE ITÉRATION, alors que la conversion 8x/8x/1x demande **~41 ms** ;
+ *    le cycle, lui, se mesure à **25-26 ms**. ⇒ **chaque cycle DÉCLENCHE une
+ *    conversion et LIT LA PRÉCÉDENTE.** L'écran montre donc l'air d'il y a
+ *    `DN_CAPT_PERIODE_MS`, soit **5 s**.
+ *
+ * ✅ TÉMOIN POSITIF DÉJÀ MESURÉ : `capteurs gaz on` ajoute **300 ms** de chauffe
+ *    et **le cycle reste à 26 ms** pendant que la température dérive de 26,0 à
+ *    26,2 °C. Si le cycle attendait la conversion, il aurait sauté à ~341 ms.
+ *
+ * ⛔ ET LE CORRECTIF N'EST **PAS** D'ATTENDRE LA CONVERSION. Attendre coûterait
+ *    **41 ms bloqués** par cycle, **341 ms** gaz allumé — sur une tâche qui
+ *    partage le bus I²C avec l'horloge et le tactile. Le correctif est de
+ *    **déclencher au cycle N et lire au cycle N+1 EN CONNAISSANCE DE CAUSE**, et
+ *    de LE DIRE. C'est ce que fait la ligne `DN_CAPT_RETARD_TXT` ci-dessous.
+ *    ⚠️ *« Anodin à 5 s, PAS anodin pour une story qui touche à la cadence. »*
+ *
+ * ⚠️ LA PHRASE EST DÉFINIE **UNE SEULE FOIS** (`DN_CAPT_RETARD_TXT`) et le
+ *    docblock la cite. Deux vérités qui divergent en silence, c'est le défaut
+ *    que ce dépôt traque depuis `dn4-8` — une gate
+ *    (`tools/verif_bme680_retard_dn45.py`) refuse qu'elles s'écartent.
  */
 #include "dn_capteurs.h"
 #include "dn_env.h"
@@ -26,6 +50,19 @@
 
 static const char *TAG = "dn_capt";
 
+/*
+ * dn4-5 / AC6.1 — LA PHRASE, DÉFINIE ICI ET NULLE PART AILLEURS.
+ * ⛔ Ne pas la recopier : le docblock de ce fichier la CITE, et une gate vérifie
+ *    que les deux ne s'écartent pas.
+ */
+#define DN_CAPT_RETARD_TXT                                                    \
+    "l'affichage a UN CYCLE DE RETARD (5 s) sur le capteur : la boucle "      \
+    "« data ready » sort a la 1re iteration alors que la conversion 8x/8x/1x " \
+    "demande ~41 ms, et le cycle mesure 25-26 ms. Chaque cycle DECLENCHE une " \
+    "conversion et LIT LA PRECEDENTE. C'est ASSUME, pas subi : attendre "     \
+    "couterait 41 ms bloques par cycle (341 ms gaz allume) sur la tache qui " \
+    "partage le bus I2C."
+
 /* ⚠️ portMUX et non un mutex : ces champs sont lus par la console (cœur 0) et
  * écrits par la tâche de lecture. Les int64 sont DÉCHIRABLES sur Xtensa (deux
  * stockages 32 bits) — `volatile` n'y change rien. Leçon du ledger dn1-2.
@@ -36,6 +73,8 @@ static const char *TAG = "dn_capt";
  * et `--s_faute_restants` est une lecture-modification-écriture. Ils y sont
  * rentrés. */
 static portMUX_TYPE s_mux = portMUX_INITIALIZER_UNLOCKED;
+
+const char *dn_capt_retard_txt(void) { return DN_CAPT_RETARD_TXT; }
 
 static bme680_handle_t s_dev;
 static uint8_t s_chip_id;
@@ -1470,6 +1509,9 @@ esp_err_t dn_capteurs_init(void)
                  DN_BME680_ADDR, DN_CAPT_MODE_TXT, DN_CAPT_OSR_TH_TXT,
                  DN_CAPT_OSR_P_TXT, DN_CAPT_IIR_TXT, gaz ? "ACTIF" : "coupe",
                  DN_CAPT_PERIODE_MS, (long long)(DN_CAPT_PEREMPTION_US / 1000));
+        /* dn4-5/AC6.1 : ⛔ un retard qu'on connait et qu'on ne dit pas est un
+         * mensonge d'interface. Il est DIT ici, a chaque demarrage du module. */
+        ESP_LOGI(TAG, "  " DN_CAPT_RETARD_TXT);
         if (!DN_CAPT_GAZ_DEFAUT) {
             ESP_LOGI(TAG,
                      "  (gaz coupe DELIBEREMENT : sa plaque a 300 C chaufferait le "

@@ -477,6 +477,33 @@ lv_display_t *dn_ui_display(void);
 bool dn_ui_first_frame_done(void);
 bool dn_ui_wait_first_frame(uint32_t timeout_ms);
 
+/*
+ * dn4-5 / AC2.2 — LE GEL PROVOQUÉ. Prend le verrou LVGL et le tient `ms`
+ * millisecondes : la tâche LVGL est privée du verrou, donc `flush`/`cycles`
+ * S'ARRÊTENT pendant que `up` et `vsync` continuent. C'est la contre-épreuve de
+ * la triade du battement — ⛔ sans elle, « 0 gel » sur 7 jours ne vaut rien,
+ * puisque personne n'aurait jamais vu l'instrument crier.
+ * ⚠️ Rend `false` si le verrou n'a pas été pris en 2 s : ⛔ « pas mesuré » n'est
+ *    PAS « pas de gel ».
+ * 🔴 LES DEUX RELEVÉS SONT PRIS **SOUS LE VERROU**, ET C'EST LE POINT.
+ *    · celui d'APRÈS, avant de rendre le verrou : relevé après, la tâche LVGL
+ *      aurait rattrapé un cycle ou deux et la contre-épreuve conclurait « pas
+ *      de gel » sur un gel réel ;
+ *    · celui d'AVANT, juste après l'avoir pris — 🔴 **CORRIGÉ SUR LA CARTE LE
+ *      2026-08-26**. Il était pris par l'appelant, DEHORS : entre ce relevé et
+ *      la prise du verrou, la tâche LVGL avait le temps de finir **un cycle**.
+ *      Au repos la fenêtre de course est trop courte pour être touchée ; avec
+ *      `anim on` elle l'a été, et l'instrument a publié `flush +1` puis
+ *      REFUSÉ de conclure. ⇒ la faute était fermée d'un seul côté.
+ */
+typedef struct {
+    dn_flush_stats_t st;  /* flushes / cycles / px / … */
+    uint32_t vsync;       /* compteur de l'ISR du panneau */
+    int64_t us;           /* horloge murale */
+} dn_ui_gel_pt_t;
+
+bool dn_ui_geler_ms(uint32_t ms, dn_ui_gel_pt_t *avant, dn_ui_gel_pt_t *apres);
+
 void dn_ui_get_stats(dn_flush_stats_t *out);
 void dn_ui_reset_stats(void);
 

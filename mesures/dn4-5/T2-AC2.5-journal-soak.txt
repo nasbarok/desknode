@@ -1,0 +1,33 @@
+[stub] ⚠️  psutil est un STUB (tools/stub_psutil) : les valeurs cpu/ram/net/disk sont FABRIQUEES. ⛔ Aucun chiffre de cette session n'est une mesure.
+==============================================================================
+dn4-5 / AC2.5 — LA BOITE NOIRE DU SOAK
+==============================================================================
+
+── 1. CE QUI EST GARDE, ET CE QUI NE L'EST PAS ───────────────────
+  [OK ] le battement est journalise                                1 ligne BATTEMENT
+  [OK ] un redemarrage est journalise                              `rst:0x…` reconnu
+  [OK ] une panique est journalisee                                `Guru Meditation` reconnu
+  [OK ] la ligne de battement est gardee ENTIERE                   texte preserve
+
+── 2. UNE LIGNE COUPEE ENTRE DEUX `read()` N'EST PAS PERDUE ──────
+  [OK ] coupure a l'octet 10 : la ligne survit ENTIERE             1 ligne(s) ecrite(s)
+  [OK ] coupure a l'octet 40 : la ligne survit ENTIERE             1 ligne(s) ecrite(s)
+  [OK ] coupure a l'octet 146 : la ligne survit ENTIERE            1 ligne(s) ecrite(s)
+
+── 3. LE QUOTA ECRETE, ET IL LE DIT ──────────────────────────────
+  [OK ] le quota plafonne bien les lignes « fil »                  60 gardees pour 110 emises (plafond 60)
+  [OK ] ⛔ l'ecretage est DIT, jamais silencieux                    50 ligne(s) ECARTEE(S) dans la minute precedente (plafond 60
+
+── 4. LES EVENEMENTS DE PORT PASSENT TOUJOURS ────────────────────
+  [OK ] un PORT PERDU passe malgre le quota SATURE                 c'est lui qui separe « agent sans port » de « carte haltee »
+
+── 5. LA ROTATION BORNE LE DISQUE ────────────────────────────────
+  [OK ] au plus `rotations`+1 fichiers subsistent                  3 fichier(s) : ['rot.log', 'rot.log.1', 'rot.log.2']
+  [OK ] aucun fichier ne depasse grossierement le plafond          le plus gros : 4108 o pour un plafond de 4 096 o
+
+── 6. LE VOLUME SUR 7 JOURS, ⛔ PAS ESTIME AU DOIGT ──────────────
+  [OK ] le journal du soak tient TRES largement sur 7 jours        183 o/ligne ⇒ 18.3 o/s ⇒ 10.6 Mo sur 7 j (trace BRUTE : 270-320 Mo)
+
+==============================================================================
+BILAN : 13 OK, 0 KO
+==============================================================================

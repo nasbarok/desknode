@@ -313,7 +313,35 @@ typedef struct {
     uint32_t us_par_ligne; /* la durée d'une ligne, publiée pour que la sortie
                             * se suffise à elle-même */
 
-    uint32_t fenetre_ms;    /* durée écoulée depuis la remise à zéro */
+    /*
+     * 🔴 dn4-5 / AC1.2 — CE CHAMP REBOUCLAIT, ET IL DIT SUR QUELLE DURÉE TOUT
+     *    LE BLOC A ÉTÉ CUMULÉ. Il valait `(uint32_t - uint32_t) / 1000` en µs : juste
+     *    jusqu'à 2^32 µs = **4 294,967 s = 71,58 min**, faux modulo cette durée
+     *    au-delà — sans un mot, et à exit 0. Il est désormais calculé en base
+     *    `int64_t` (`esp_timer_get_time()` ne déborde qu'après ~292 000 ans) et
+     *    publié sur 64 bits : plus aucun horizon avant 5,8 × 10^8 ans.
+     * ⚠️ ⛔ CE N'EST PAS « le dénominateur des taux que `flush` publie », comme
+     *    le disait le cadrage de dn4-5 : vérifié au `grep` sur les deux dépôts
+     *    le 2026-08-26, les taux se divisent par `intervalles`, `ph_n` et
+     *    `t_demi_us`, et aucun outil de `tools/` ni de `agent/` ne lit ce
+     *    champ. La gravité est ailleurs, et elle est intacte : c'est le SEUL
+     *    chiffre qui dise sur quelle durée les compteurs ont été cumulés, et
+     *    c'est un HUMAIN qui fait la division.
+     * ⚠️ La reconstruction de l'origine sur 64 bits est faite CÔTÉ TÂCHE
+     *    CONSOLE, ⛔ pas dans l'ISR — voir le commentaire de `s_bnc_arme_us64`
+     *    dans dn_measure.c. L'invariant « aucun verrou sur le chemin chaud »
+     *    tient sans exception.
+     */
+    uint64_t fenetre_ms;    /* durée écoulée depuis la remise à zéro */
+    /*
+     * LA CONTRE-ÉPREUVE, PUBLIÉE À CÔTÉ DE LA VALEUR JUSTE. C'est très
+     * exactement ce que l'instrument d'AVANT dn4-5 aurait imprimé. Tant que
+     * `fenetre_deborde` est faux les deux coïncident (au ms près) ; dès qu'il
+     * est vrai, l'écart EST la démonstration du défaut, lisible sur la sortie
+     * elle-même — ⛔ pas déduite d'une relecture du code.
+     */
+    uint32_t fenetre_ms_32; /* la même fenêtre, calculée à l'ancienne (32 bits) */
+    bool fenetre_deborde;   /* ⚠️ la fenêtre dépasse 71,58 min : `fenetre_ms_32` MENT */
     bool raz_en_attente;    /* la RAZ n'a pas encore été consommée par l'ISR */
 } dn_bounce_stats_t;
 

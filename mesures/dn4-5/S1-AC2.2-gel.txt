@@ -1,0 +1,66 @@
+
+===== (écoute) =====
+I (184137) desknode: up 180 s — vsync=6774 — flush=51 cycles=43 — PSRAM libre 7768048 o — mural 183 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (194140) desknode: up 190 s — vsync=7148 — flush=53 cycles=45 — PSRAM libre 7768048 o — mural 193 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+
+===== gel 12 =====
+gel 12
+─── gel PROVOQUE (dn4-5/AC2.2) — LVGL bloquee 12000 ms ───
+  AVANT : mural 229 s · vsync=8480 · flush=61 cycles=53
+  ⚠️ REGARDER LE LOG PENDANT LE GEL : la ligne de battement doit
+     continuer de sortir, avec `up` QUI AVANCE et `flush=` FIGE.
+I (234199) desknode: up 230 s — vsync=8646 — flush=61 cycles=53 — PSRAM libre 7767916 o — mural 233 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+W (235578) dn_capt: verrou LVGL indisponible 2 fois — poussee perdue, l'ecran garde l'affichage du cycle precedent pendant 5000 ms
+W (240578) dn_capt: verrou LVGL indisponible 2 fois — poussee perdue, l'ecran garde l'affichage du cycle precedent pendant 5000 ms
+  APRES : mural 241 s · vsync=8929 · flush=61 cycles=53
+W (241762) dn_ui: historique : 11 seconde(s) NON ÉCHANTILLONNÉE(S) (pause `ui off` ou préemption longue) — 11 position(s) creusée(s) en TROUS ; la courbe ne reliera PAS les deux bords de la coupure
+  ─ Δ sur 12.0 s, RELEVE AVANT LE DEVERROUILLAGE ─
+    mural  (tache app_main / horloge) : +12.0 s   ✅ VIVANT
+    vsync  (ISR du panneau RGB)       : +449      ✅ VIVANT (attendu ~449 a 37,40 Hz)
+    flush  (tache LVGL)               : +0      🔴 FIGE (attendu)
+    cycles (tache LVGL)               : +0      🔴 FIGE (attendu)
+  ⇒ ✅ L'INSTRUMENT SAIT VOIR UN GEL D'IMAGE SUR UNE APPLICATION
+       VIVANTE. C'est la contre-epreuve d'AC2.2 : l'ecart entre
+       `up`/`vsync` et `flush`/`cycles` EST la signature du gel.
+  ⚠️ CE QUE CE TEMOIN NE MONTRE PAS : `vsync` ne descend PAS jusqu'a
+     l'oeil. Une dalle qui balaie un framebuffer FIGE compte des
+     vsyncs comme une dalle vivante. Le constat owner reste requis.
+────────────────────────────────────────────────────────────
+desknode> 
+===== anim on 2000 =====
+anim on 2000
+stimulus adverse LANCÉ :
+  période 2000 ms, synchro du flush : vsync
+  PROTOCOLE AC4 — le témoin positif D'ABORD :
+   1. `flush sync off` puis regarder : la barre DOIT se couper.
+      Si elle ne se coupe pas, l'instrument ne sait pas voir et
+      rien ne peut être conclu ensuite.
+   2. `flush sync vsync`, puis `fbdone` : verdicts SÉPARÉS.
+   3. `anim off` + label seul : le régime PRODUIT, noté à part.
+desknode> 
+===== gel 12 =====
+desknode> 
+===== gel 12 =====
+gel 12
+─── gel PROVOQUE (dn4-5/AC2.2) — LVGL bloquee 12000 ms ───
+  AVANT : mural 6010 s · vsync=224702 · flush=2751 cycles=2727
+  ⚠️ REGARDER LE LOG PENDANT LE GEL : la ligne de battement doit
+     continuer de sortir, avec `up` QUI AVANCE et `flush=` FIGE.
+W (6015578) dn_capt: verrou LVGL indisponible 2 fois — poussee perdue, l'ecran garde l'affichage du cycle precedent pendant 5000 ms
+I (6015973) desknode: up 6010 s — vsync=224889 — flush=2752 cycles=2728 — PSRAM libre 7767916 o — mural 6015 s (écart +5 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+W (6020578) dn_capt: verrou LVGL indisponible 2 fois — poussee perdue, l'ecran garde l'affichage du cycle precedent pendant 5000 ms
+  APRES : mural 6022 s · vsync=225152 · flush=2752 cycles=2728
+W (6023028) dn_ui: historique : 11 seconde(s) NON ÉCHANTILLONNÉE(S) (pause `ui off` ou préemption longue) — 11 position(s) creusée(s) en TROUS ; la courbe ne reliera PAS les deux bords de la coupure
+  ─ Δ sur 12.1 s, RELEVE AVANT LE DEVERROUILLAGE ─
+    mural  (tache app_main / horloge) : +12.1 s   ✅ VIVANT
+    vsync  (ISR du panneau RGB)       : +450      ✅ VIVANT (attendu ~451 a 37,40 Hz)
+    flush  (tache LVGL)               : +1      ⚠️ A BOUGE
+    cycles (tache LVGL)               : +1      ⚠️ A BOUGE
+  ⇒ 🔴 LE STIMULUS N'A PAS PRODUIT LA SIGNATURE ATTENDUE. ⛔ Ne
+       PAS conclure « pas de gel » : conclure que CETTE MESURE
+       est a jeter, et chercher pourquoi.
+  ⚠️ CE QUE CE TEMOIN NE MONTRE PAS : `vsync` ne descend PAS jusqu'a
+     l'oeil. Une dalle qui balaie un framebuffer FIGE compte des
+     vsyncs comme une dalle vivante. Le constat owner reste requis.
+────────────────────────────────────────────────────────────
+desknode> 

@@ -6130,6 +6130,76 @@ bool dn_ui_wait_first_frame(uint32_t timeout_ms)
     return true;
 }
 
+/*
+ * ─── dn4-5 / AC2.2 : GELER LVGL VOLONTAIREMENT ──────────────────────────────
+ *
+ * 🔴 POURQUOI CETTE FONCTION EXISTE. Le battement porte TROIS horloges de
+ *    sources INDEPENDANTES — `up` (tâche `app_main`), `vsync` (ISR du panneau
+ *    RGB) et `flush`/`cycles` (tâche LVGL) — et cette triade est ce qui rend
+ *    DISCRIMINABLE le piège que l'epic nomme : « la carte peut avoir l'image
+ *    figée avec la tâche LVGL vivante ». Mais elle n'avait **JAMAIS ÉTÉ MISE À
+ *    L'ÉPREUVE SUR UN GEL RÉEL**. Une gate qu'on n'a jamais vue crier n'est pas
+ *    une gate — et sur un soak de 7 jours, l'instrument du verdict ne peut pas
+ *    être une supposition.
+ *
+ * ⚠️ CE QU'ELLE FAIT, ET C'EST TOUT : elle PREND le verrou LVGL et le GARDE.
+ *    La tâche LVGL le réclame à chaque itération : privée de lui, elle ne
+ *    dessine plus, donc `flush` et `cycles` CESSENT D'AVANCER. Pendant ce
+ *    temps la DMA continue de balayer la dalle (`vsync` avance) et `app_main`
+ *    continue de battre (`up` avance). C'est exactement la signature d'une
+ *    image figée sur une application vivante.
+ *
+ * ⛔ ELLE NE SIMULE PAS UN PLANTAGE : le verrou est RENDU à la fin, et l'écran
+ *    repart. C'est un stimulus réversible, ⛔ pas une panne.
+ *
+ * ⚠️ ON DORT, ON NE TOURNE PAS EN ROND. Une attente active tiendrait un cœur à
+ *    100 % et ferait japper le watchdog de tâche sur la tâche IDLE
+ *    (CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0/1=y) : on mesurerait alors DEUX
+ *    défauts au lieu d'un, et le journal du soak ne saurait plus lequel il
+ *    regarde.
+ */
+static void gel_relever(dn_ui_gel_pt_t *pt)
+{
+    if (!pt) {
+        return;
+    }
+    dn_ui_get_stats(&pt->st);
+    pt->vsync = dn_measure_vsync_count();
+    pt->us = esp_timer_get_time();
+}
+
+bool dn_ui_geler_ms(uint32_t ms, dn_ui_gel_pt_t *avant, dn_ui_gel_pt_t *apres)
+{
+    if (!lvgl_port_lock(2000)) {
+        return false;
+    }
+    /*
+     * 🔴 LE RELEVÉ D'AVANT EST PRIS **ICI**, VERROU DÉJÀ EN MAIN — corrigé sur
+     *    la carte le 2026-08-26. Pris par l'appelant, il l'était DEHORS : entre
+     *    lui et la prise du verrou, la tâche LVGL finissait **un cycle**, et
+     *    l'instrument publiait `flush +1` sur un gel parfaitement réel. Il a
+     *    REFUSÉ de conclure, ce qui était juste — mais il refusait pour un
+     *    défaut qui était le sien.
+     * ⚠️ Au repos la fenêtre de course est trop courte pour être touchée : le
+     *    défaut ne s'est montré qu'avec `anim on`. Un instrument éprouvé
+     *    UNIQUEMENT au repos aurait été déclaré bon.
+     */
+    gel_relever(avant);
+    /* ⚠️ Le verrou est tenu PENDANT le sommeil — c'est tout l'objet. */
+    vTaskDelay(pdMS_TO_TICKS(ms));
+    /*
+     * 🔴 ON RELÈVE **AVANT** DE RENDRE LE VERROU, ET C'EST LE POINT DÉLICAT.
+     *    Relever après, depuis l'appelant, laisserait la tâche LVGL faire un ou
+     *    plusieurs cycles de RATTRAPAGE entre le déverrouillage et la lecture :
+     *    `flush` aurait alors bougé, et la contre-épreuve conclurait « pas de
+     *    gel » sur un gel qui a bel et bien eu lieu. Un faux négatif fabriqué
+     *    par l'instrument lui-même — exactement ce que cette story traque.
+     */
+    gel_relever(apres);
+    lvgl_port_unlock();
+    return true;
+}
+
 void dn_ui_get_stats(dn_flush_stats_t *out)
 {
     if (!out) {

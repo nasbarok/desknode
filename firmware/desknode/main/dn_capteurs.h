@@ -70,6 +70,15 @@
  *     qu'à 1 Hz. Chiffre à confronter en T10, legs pour dn3-2.
  */
 #define DN_CAPT_PERIODE_MS 5000
+
+/*
+ * dn4-5 / AC6.1 — LA PHRASE DU RETARD, RENDUE PAR LE MODULE LUI-MÊME.
+ * ⛔ Ne pas la recopier côté console : c'est très exactement comme ça qu'on
+ *    obtient deux vérités qui divergent. Elle est définie UNE FOIS dans
+ *    `dn_capteurs.c` (`DN_CAPT_RETARD_TXT`), citée par le docblock du même
+ *    fichier, et une gate refuse que les deux s'écartent.
+ */
+const char *dn_capt_retard_txt(void);
 /* 3 périodes, comme dn_link prend 3 périodes de l'agent. Assez court pour que
  * l'état menteur dure peu, assez long pour survivre à une lecture ratée isolée. */
 #define DN_CAPT_PEREMPTION_US (3LL * DN_CAPT_PERIODE_MS * 1000)

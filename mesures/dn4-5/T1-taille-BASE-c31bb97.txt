@@ -1,0 +1,36 @@
+Executing action: size
+Running ninja in directory /home/nasbarok/projects/desknode/firmware/desknode/build
+Executing "ninja all"...
+[1/4] cd /home/nasbarok/projects/desknode/firmware/desknode/build/esp-idf/esptool_py && /home/nasbarok/.espressif/python_env/idf5.5_py3.12_env/bin/python /home/nasbarok/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app /home/nasbarok/projects/desknode/firmware/desknode/build/partition_table/partition-table.bin /home/nasbarok/projects/desknode/firmware/desknode/build/desknode.bin
+desknode.bin binary size 0x117560 bytes. Smallest app partition is 0x400000 bytes. 0x2e8aa0 bytes (73%) free.
+[2/4] Performing build step for 'bootloader'
+[1/1] cd /home/nasbarok/projects/desknode/firmware/desknode/build/bootloader/esp-idf/esptool_py && /home/nasbarok/.espressif/python_env/idf5.5_py3.12_env/bin/python /home/nasbarok/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x0 /home/nasbarok/projects/desknode/firmware/desknode/build/bootloader/bootloader.bin
+Bootloader binary size 0x5170 bytes. 0x2e90 bytes (36%) free.
+[3/4] No install step for 'bootloader'
+[4/4] Completed 'bootloader'
+Running ninja in directory /home/nasbarok/projects/desknode/firmware/desknode/build
+Executing "ninja size"...
+[0/1] cd /home/nasbarok/projects/desknode/firmware/desknode/build && /usr/bin/cmake -D "IDF_SIZE_TOOL=/home/nasbarok/.espressif/python_env/idf5.5_py3.12_env/bin/python;-m;esp_idf_size" -D MAP_FILE=/home/nasbarok/projects/desknode/firmware/desknode/build/desknode.map -D OUTPUT_JSON= -P /home/nasbarok/esp/esp-idf/tools/cmake/run_size_tool.cmake
+                            Memory Type Usage Summary                             
+┏━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓
+┃ Memory Type/Section ┃ Used [bytes] ┃ Used [%] ┃ Remain [bytes] ┃ Total [bytes] ┃
+┡━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩
+│ Flash Code          │       608990 │          │                │               │
+│    .text            │       608990 │          │                │               │
+│ Flash Data          │       438920 │          │                │               │
+│    .rodata          │       438664 │          │                │               │
+│    .appdesc         │          256 │          │                │               │
+│ DIRAM               │       162919 │    47.67 │         178841 │        341760 │
+│    .bss             │        83208 │    24.35 │                │               │
+│    .text            │        64523 │    18.88 │                │               │
+│    .data            │        15188 │     4.44 │                │               │
+│ IRAM                │        16384 │    100.0 │              0 │         16384 │
+│    .text            │        15356 │    93.73 │                │               │
+│    .vectors         │         1028 │     6.27 │                │               │
+│ RTC SLOW            │           32 │     0.39 │           8160 │          8192 │
+│    .force_slow      │           32 │     0.39 │                │               │
+│ RTC FAST            │           24 │     0.29 │           8168 │          8192 │
+│    .rtc_reserved    │           24 │     0.29 │                │               │
+└─────────────────────┴──────────────┴──────────┴────────────────┴───────────────┘
+Total image size: 1144037 bytes (.bin may be padded larger)
+Note: The reported total sizes may be smaller than those in the technical reference manual due to reserved memory and application configuration. The total flash size available for the application is not included by default, as it cannot be reliably determined due to the presence of other data like the bootloader, partition table, and application partition size.

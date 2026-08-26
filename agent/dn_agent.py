@@ -2221,6 +2221,268 @@ class SortieStdout:
         pass
 
 
+class Lisseur:
+    """dn4-5 / T4 — LE LISSAGE D'AFFICHAGE. ⛔ PAS le lissage de bruit de capteur.
+
+    ⚠️ ⛔ NE PAS LE CONFONDRE AVEC L'IIR DE `dn_capteurs.c`. Celui-là lisse le
+       BRUIT DE CONVERSION d'un capteur, sur 3 échantillons, et il est
+       explicitement déclaré « ce n'est PAS le lissage du brief ». Celui-ci est
+       la **moyenne d'affichage** que le critère n°2 du brief demande :
+       « des valeurs vivantes ET LISSÉES ».
+
+    ═══ POURQUOI CÔTÉ AGENT, ET PAS CÔTÉ FIRMWARE ═══════════════════════════
+
+    🔴 **AC4.3 TRANCHE, ET C'EST UNE CONTRAINTE, PAS UNE PRÉFÉRENCE.** « Aucune
+       valeur lissée ne doit survivre à la péremption de 3 s, sinon AC7 de
+       `dn2-2` tombe. »
+         · **Côté agent** : l'agent coupé, plus aucune trame n'arrive, et la
+           péremption du firmware tire **exactement comme avant** — le firmware
+           n'est pas touché, donc le délai est IDENTIQUE PAR CONSTRUCTION.
+         · **Côté firmware** : il faudrait vider l'état du filtre à la
+           péremption **ET** à la reprise, **par grandeur** (règle W10 :
+           `connue[]` est PAR GRANDEUR), dans le module même dont AC7 est la
+           contrainte non négociable. Plus d'endroits où se tromper, sur le seul
+           code qu'on n'a pas le droit de casser.
+    ⚠️ **ET LA RAM NE DÉPARTAGE PAS** : 4 grandeurs x 3 échantillons x 4 o = 48 o
+       côté carte. ⛔ Prétendre que la mesure de RAM a tranché serait faux — ce
+       qui tranche est AC4.3.
+    ⚠️ **CE QUE ÇA COÛTE, ET C'EST DIT** : le fil ne porte plus la valeur BRUTE
+       des quatre grandeurs lissées. ⇒ pour l'A/B d'AC4.4, `--lissage off`
+       rétablit le brut **sans reflasher**.
+
+    ═══ LA FENÊTRE : n = 3, ET LA BORNE VIENT D'AC4.3 ═══════════════════════
+
+    🔴 Une fenêtre de `n` échantillons à 1 Hz porte un échantillon vieux de
+       `(n-1)` s. Exiger qu'**aucun échantillon du filtre ne soit plus vieux que
+       la péremption** (`DN_LINK_PEREMPTION_US` = 3 s) donne `n - 1 < 3`, soit
+       **n <= 3**. ⛔ Ce n'est pas un réglage de goût.
+    ✅ **VÉRIFIÉ SUR LES 960 ÉCHANTILLONS** (`mesures/dn4-5/T4-choix-fenetre.txt`) :
+       la seule grandeur qui ÉCHOUAIT au critère, `CPU GHz`, passe de **100 %**
+       à **35 %** de sa plage (seuil 40 %), pour **1,0 s** de retard ajouté.
+
+    ⚠️ **LES QUATRE GRANDEURS LISSÉES SONT TOUTES `DN_PREC_DIXIEME`**, et c'est
+       ce qui rend la moyenne honnête : on moyenne EN DIXIÈMES, c'est-à-dire
+       **à la résolution que l'écran affiche**. Une grandeur `DN_PREC_ENTIER`
+       exigerait un arrondi différent — une gate refuse qu'on en ajoute une ici.
+    """
+
+    FENETRE = 3
+
+    # ── LE JEU LISSÉ, ARRÊTÉ PAR LA DÉCISION OWNER DU 2026-08-26 (réponse (a) :
+    #    « le critère écrit fait foi ») ────────────────────────────────────────
+    #    `CPU GHz` · `RÉSEAU bas` · `RÉSEAU haut` · `DISQUE Mo/s`
+    #    ⛔ `CPU %` N'EN EST PAS : §13.7 le classe « À DISCUTER » depuis dn4-1
+    #      (« un CPU lissé ment sur les pics ») et AC4.4 le tranche À L'ŒIL.
+    LISSEES = {("cpu", 1), ("net", 0), ("net", 1), ("disk", 0)}
+
+    def __init__(self, fenetre: int = FENETRE, actif: bool = True):
+        self.fenetre = fenetre
+        self.actif = actif
+        self._buf = {}
+        self._generation = None
+
+    def vider(self) -> None:
+        """⛔ TOUT l'état part. Appelé à chaque reprise de liaison."""
+        self._buf.clear()
+
+    def appliquer(self, photo, generation=0):
+        """Rend la photo, les quatre grandeurs lissées remplacées.
+
+        🔴 LE VIDAGE À LA REPRISE EST LE PIÈGE NOMMÉ PAR AC4.3 : « un IIR qui
+           garde son état ré-affiche une valeur d'AVANT la coupure dès la
+           première trame de reprise ». On se cale sur un COMPTEUR D'OUVERTURES
+           du port, ⛔ pas sur `reprise_liaison` — ce drapeau-là est CONSOMMÉ par
+           le reposeur d'horloge, et deux lecteurs d'un même drapeau se le
+           volent.
+        """
+        if not self.actif:
+            return photo
+        if generation != self._generation:
+            self._generation = generation
+            self.vider()
+        out = []
+        for metrique, valeurs in photo:
+            neuves = list(valeurs)
+            for i, v in enumerate(neuves):
+                if (metrique, i) not in self.LISSEES:
+                    continue
+                cle = (metrique, i)
+                if v is None:
+                    # ⚠️ UNE SOURCE ABSENTE EST UNE RUPTURE : elle vide la
+                    #    fenêtre. Moyenner à cheval sur un trou fabriquerait une
+                    #    valeur qui n'a jamais existé — même règle que les
+                    #    `ruptures` de `dn_w2_t` (dn3-3).
+                    self._buf.pop(cle, None)
+                    continue
+                b = self._buf.setdefault(cle, [])
+                b.append(v)
+                if len(b) > self.fenetre:
+                    b.pop(0)
+                # Les valeurs sont des DIXIÈMES ENTIERS, et les quatre grandeurs
+                # lissées sont toutes DN_PREC_DIXIEME : moyenner ici, c'est
+                # moyenner À LA RÉSOLUTION AFFICHÉE.
+                neuves[i] = int(sum(b) / len(b) + 0.5)
+            out.append((metrique, neuves))
+        return out
+
+
+class JournalSoak:
+    """dn4-5 / AC2.5 — LA BOITE NOIRE DU SOAK, CÔTÉ TOUR.
+
+    🔴 POURQUOI CE CANAL EXISTE À CÔTÉ DE `--tracer-console`, ET NE LE REMPLACE
+       PAS. `--tracer-console` capture TOUT le fil, brut : le dépôt chiffre
+       lui-même son débit à **447-530 o/s**, soit **270 à 320 Mo sur 7 jours,
+       sans aucune rotation**, et il écrit « ⛔ Ne pas le laisser armé sur un
+       soak ». Il reste l'instrument de diagnostic (dn4-18) ; il n'est pas
+       l'instrument d'une semaine. ⚠️ Le cadrage de dn4-5 annonçait ~140 Mo :
+       c'est le chiffre de §13.11.1 (232,0 o/s), que le code a déjà corrigé d'un
+       facteur ~1,9 — vérifié le 2026-08-26 dans `dn_agent.py` lui-même.
+
+    🎯 CE QUE CE JOURNAL GARDE, ET RIEN D'AUTRE :
+       · le BATTEMENT (une ligne / 10 s) — c'est lui qui porte la triade
+         `up`/`vsync`/`flush`, l'heure MURALE, et la raison du dernier reset ;
+       · toute trace de REDÉMARRAGE (bandeau du bootloader `rst:0x…`) ;
+       · toute trace de PANIQUE ou de WATCHDOG ;
+       · les ÉVÉNEMENTS DE PORT de l'agent (ouverture, perte, fermeture), parce
+         que « l'agent a perdu le port » et « la carte est haltée » se
+         ressemblent trait pour trait, et qu'AC2.3 exige de les séparer.
+
+    ⚠️ VOLUME BORNÉ **AVANT** DE LANCER, ⛔ pas constaté après : une ligne de
+       battement toutes les 10 s pèse ~180 o ⇒ **~18 o/s, soit ~11 Mo sur
+       7 jours** — deux ordres de grandeur sous la trace brute. Le plafond +
+       rotation sont une CEINTURE, pas le mécanisme principal.
+       ⛔ « Un instrument qui remplit le disque de la tour casse ce qu'il
+       observe. »
+
+    ⚠️ ET CE JOURNAL NE VOIT PAS TOUT, C'EST ÉCRIT ICI : il ne voit que ce que
+       la carte ÉMET. Une carte haltée par `PANIC_PRINT_HALT` n'émet plus rien —
+       elle se lit donc comme un SILENCE, ⛔ jamais comme un événement. C'est
+       exactement pour ça que le battement est journalisé : son absence EST le
+       signal.
+    """
+
+    # Un quota sur les lignes qui ne sont ni battement ni redémarrage : une
+    # tempête d'erreurs ne doit pas noyer la boîte noire. ⛔ Les lignes écartées
+    # sont COMPTÉES et DITES — un écrêtage silencieux est un mensonge.
+    QUOTA_AUTRES_PAR_MIN = 60
+
+    RE_BATTEMENT = re.compile(rb"desknode: up \d+ s")
+    RE_REBOOT = re.compile(rb"rst:0x|boot: ESP-IDF|cpu_start:")
+    RE_ALARME = re.compile(rb"Guru Meditation|Task watchdog|abort\(\)|"
+                           rb"assert failed|Backtrace:|Brownout")
+
+    def __init__(self, chemin: str, max_octets: int = 32 * 1024 * 1024,
+                 rotations: int = 4):
+        self._chemin = chemin
+        self._max = max_octets
+        self._rot = rotations
+        self._f = None
+        self._reste = b""
+        self._ecrits = 0
+        self._fenetre_min = -1
+        self._autres = 0
+        self._ecartees = 0
+
+    # ── l'écriture, best-effort comme `_tracer` et POUR LA MÊME RAISON ──────
+    def _ecrire(self, etiquette: str, texte: str) -> None:
+        try:
+            if self._f is None:
+                # 'a' : on AJOUTE. Une reprise après interruption ne doit pas
+                # écraser la fenêtre précédente — AC3.6 exige de PUBLIER ce
+                # qu'on a, y compris les épisodes rompus.
+                self._f = open(self._chemin, "a", encoding="utf-8")
+            t = time.time()
+            lt = time.localtime(t)
+            ligne = ("%04d-%02d-%02d %02d:%02d:%02d.%03d  %-9s %s\n"
+                     % (lt.tm_year, lt.tm_mon, lt.tm_mday, lt.tm_hour, lt.tm_min,
+                        lt.tm_sec, int((t % 1.0) * 1000), etiquette, texte))
+            self._f.write(ligne)
+            self._f.flush()
+            self._ecrits += len(ligne)
+            if self._ecrits >= self._max:
+                self._rotationner()
+        except Exception:
+            # ⛔ UN INSTRUMENT QUI CASSE CE QU'IL OBSERVE N'EST PAS UN
+            #    INSTRUMENT. Même arbitrage que `SortieSerie._tracer`.
+            pass
+
+    def _rotationner(self) -> None:
+        try:
+            self._f.close()
+        except Exception:
+            pass
+        self._f = None
+        self._ecrits = 0
+        try:
+            plus_vieux = "%s.%d" % (self._chemin, self._rot)
+            if os.path.exists(plus_vieux):
+                os.remove(plus_vieux)
+            for i in range(self._rot - 1, 0, -1):
+                a, b = "%s.%d" % (self._chemin, i), "%s.%d" % (self._chemin, i + 1)
+                if os.path.exists(a):
+                    os.replace(a, b)
+            if os.path.exists(self._chemin):
+                os.replace(self._chemin, "%s.1" % self._chemin)
+        except Exception:
+            pass
+
+    def evenement(self, etiquette: str, texte: str) -> None:
+        """Un fait de l'AGENT (port ouvert/perdu/fermé, départ, arrêt).
+        ⛔ Jamais soumis au quota : ce sont eux qui séparent « l'agent a perdu
+        le port » de « la carte est haltée »."""
+        self._ecrire(etiquette, texte)
+
+    def alimenter(self, octets: bytes) -> None:
+        """Le flux DRAINÉ, filtré. ⚠️ Alimenté par le MÊME `_drainer()` que le
+        compteur d'écho : ⛔ pas un second lecteur du port — « deux lecteurs sur
+        un tty se VOLENT les octets »."""
+        if not octets:
+            return
+        # 🔴 LE REPORT DE FRAGMENT. Une ligne de battement peut être coupée
+        #    entre deux `read()` : sans ce reste, on la perdrait ~une fois sur
+        #    N, en silence, et le journal aurait des trous qu'aucun compteur ne
+        #    signalerait. Même piège que le marqueur de dn4-18.
+        tampon = self._reste + octets
+        morceaux = tampon.split(b"\n")
+        self._reste = morceaux[-1][-512:]
+        minute = int(time.time() // 60)
+        if minute != self._fenetre_min:
+            if self._ecartees:
+                self._ecrire("QUOTA", "%d ligne(s) ECARTEE(S) dans la minute "
+                                      "precedente (plafond %d) — ⛔ ecretage "
+                                      "DIT, jamais silencieux"
+                             % (self._ecartees, self.QUOTA_AUTRES_PAR_MIN))
+            self._fenetre_min = minute
+            self._autres = 0
+            self._ecartees = 0
+        for ligne in morceaux[:-1]:
+            ligne = ligne.rstrip(b"\r")
+            if not ligne:
+                continue
+            txt = ligne.decode("utf-8", "replace")
+            if self.RE_BATTEMENT.search(ligne):
+                self._ecrire("BATTEMENT", txt)
+            elif self.RE_REBOOT.search(ligne):
+                self._ecrire("REBOOT", txt)
+            elif self.RE_ALARME.search(ligne):
+                self._ecrire("ALARME", txt)
+            elif self._autres < self.QUOTA_AUTRES_PAR_MIN:
+                self._autres += 1
+                self._ecrire("fil", txt)
+            else:
+                self._ecartees += 1
+
+    def fermer(self) -> None:
+        if self._f is None:
+            return
+        try:
+            self._f.close()
+        except Exception:
+            pass
+        finally:
+            self._f = None
+
+
 class SortieSerie:
     """Branche A — le port série (COM3 sous Windows quand la carte n'est PAS attachée à WSL).
     ⚠️ Exclusivité WSL↔COM3 : si `usbipd attach` tient la carte, COM3 N'EXISTE PAS ici.
@@ -2242,7 +2504,7 @@ class SortieSerie:
     # EST la mesure du bruit de cohabitation d'AC3 (octets/s et lignes/s ajoutés au
     # flux console par le régime 1 Hz).
 
-    def __init__(self, port: str, tracer: str = None):
+    def __init__(self, port: str, tracer: str = None, journal=None):
         import serial  # pyserial — déjà sur la tour
 
         self._serial_mod = serial
@@ -2261,6 +2523,18 @@ class SortieSerie:
         # ⚠️ COÛT QUAND L'OPTION N'EST PAS POSÉE : un `is None` par drain.
         self._tracer_chemin = tracer
         self._tracer_f = None
+        # 🔴 dn4-5 / AC2.5 — LA BOITE NOIRE DU SOAK. ⛔ Canal DISTINCT de
+        #    `--tracer-console` : celui-ci filtre (battement, reboots,
+        #    alarmes, evenements de port) et TOURNE, l'autre capture tout
+        #    et ne tourne pas. Voir `JournalSoak`.
+        self._journal = journal
+        # 🔴 dn4-5/T4 — COMPTEUR MONOTONE D'OUVERTURES. Le lisseur s'y cale
+        #    pour vider sa fenetre a chaque reprise (AC4.3). ⛔ Il ne peut PAS
+        #    se caler sur `reprise_liaison` : ce drapeau est CONSOMME par le
+        #    reposeur d'horloge (il le remet a False), et deux lecteurs d'un
+        #    meme drapeau se le VOLENT — exactement le piege que dn4-18 a paye
+        #    sur `NON ARMEE`.
+        self.ouvertures = 0
         # 🔴 dn4-18 — LE LECTEUR D'ÉTAT D'HORLOGE. Il est alimenté par le MÊME
         #    `_drainer()` qui compte déjà l'écho : ⛔ pas un second lecteur du
         #    port (« deux lecteurs sur un tty se VOLENT les octets »).
@@ -2375,11 +2649,14 @@ class SortieSerie:
         # 🔬 dn4-18 : l'instant EXACT où l'hôte a repris le port. C'est le
         #    point de départ du délai d'AC1.1 — celui que stderr ne date pas.
         self._tracer("PORT OUVERT (%s)" % self._port)
+        if self._journal is not None:
+            self._journal.evenement("PORT", "OUVERT (%s)" % self._port)
         # 🔴 AC4.2 — TOUTE ouverture réussie est une reprise de liaison, y
         #    compris LA PREMIÈRE. ⛔ Ce n'est pas « au démarrage de l'agent »
         #    (décision n°1, réfutée) : le déclencheur reste l'ÉTAT de la carte.
         #    C'est seulement le MOMENT où l'agent va aller le LIRE.
         self.reprise_liaison = True
+        self.ouvertures += 1  # dn4-5/T4 : le lisseur vide sa fenetre ici
 
     def envoyer(self, ligne: str) -> None:
         if self._con is None:
@@ -2452,6 +2729,14 @@ class SortieSerie:
             #    datée des deux bouts (celle-ci et « PORT OUVERT »).
             self._tracer("PORT PERDU — backoff %.1f s (echecs_envoi=%d) : %s"
                          % (delai, self._echecs_envoi, exc))
+            # 🔴 dn4-5/AC2.5 — CET EVENEMENT EST CE QUI SEPARE « l'agent a perdu
+            #    le port » de « la carte est HALTEE ». Les deux se ressemblent
+            #    trait pour trait vus du fil (plus rien n'arrive) ; seul le
+            #    JOURNAL peut dire lequel des deux s'est produit, et quand.
+            if self._journal is not None:
+                self._journal.evenement(
+                    "PORT", "PERDU — backoff %.1f s (echecs_envoi=%d) : %s"
+                            % (delai, self._echecs_envoi, exc))
             try:
                 self._con.close()
             finally:
@@ -2534,6 +2819,10 @@ class SortieSerie:
             #    réponse recevable à « la ligne `barre : … · horloge …` du
             #    bandeau de boot est-elle drainée, oui ou non » (AC1.1).
             self._tracer("DRAIN", retour)
+            # dn4-5/AC2.5 : LE MEME flux, filtre pour la boite noire du
+            # soak. ⛔ Pas un second `read()` sur le port.
+            if self._journal is not None:
+                self._journal.alimenter(retour)
             # 🔴 dn4-18 — LE MÊME FLUX, LU UNE SECONDE FOIS PAR LE LECTEUR
             #    D'HORLOGE. ⛔ Pas un second `read()` : deux lecteurs sur un
             #    tty ne s'excluent pas, ils se VOLENT les octets (dn_console.py).
@@ -2571,6 +2860,8 @@ class SortieSerie:
         finally:
             self._con = None
             self._tracer("PORT FERME (arret de l'agent)")
+            if self._journal is not None:
+                self._journal.evenement("PORT", "FERME (arret de l'agent)")
             self._fermer_tracer()
 
     def _fermer_tracer(self) -> None:
@@ -2975,6 +3266,35 @@ def principal() -> int:
     # ⇒ **447 à 530 o/s, soit 1,6 à 1,9 Mo/h** — ~1,7× ce qui était annoncé.
     #   Sur les 7 jours de dn4-5 : **~270 à 320 Mo**, ⛔ sans aucune rotation.
     # ⛔ Ne pas le laisser armé sur un soak.
+    # ─── dn4-5 / T4 : LE LISSAGE D'AFFICHAGE ────────────────────────────────
+    # 🔴 `on` EST LE REGIME LIVRE. `off` existe pour UNE raison nommee : l'A/B
+    #    d'AC4.4 se joue A L'OEIL, ecran contre Gestionnaire des taches, et sans
+    #    ce drapeau il faudrait REFLASHER entre les deux jambes — donc casser le
+    #    compteur du soak. ⛔ Ce n'est pas un reglage de confort.
+    ap.add_argument("--lissage", choices=("on", "off"), default="on",
+                    help="dn4-5/T4 — moyenne d'affichage sur 3 echantillons pour "
+                         "CPU GHz, RESEAU bas/haut et DISQUE Mo/s (defaut `on`, "
+                         "c'est le regime livre). `off` = valeurs BRUTES, pour "
+                         "l'A/B a l'oeil d'AC4.4 SANS reflasher.")
+
+    # ─── dn4-5 / AC2.5 : LA BOITE NOIRE DU SOAK ─────────────────────────────
+    # ⚠️ ⛔ CE N'EST PAS `--tracer-console`, ET LES DEUX NE SE REMPLACENT PAS.
+    #    `--tracer-console` = tout le fil, brut, 447-530 o/s, SANS rotation
+    #    (270-320 Mo sur 7 j) : c'est un instrument de DIAGNOSTIC, sur fenetre
+    #    courte. `--journal-soak` = le battement, les reboots, les alarmes et
+    #    les evenements de port, avec ROTATION : ~18 o/s, soit ~11 Mo sur 7 j.
+    # 🔴 CE JOURNAL VIT COTE TOUR (D4/D5) : ⛔ aucune ecriture NVS/flash cote
+    #    carte en regime — une semaine H24 est EXACTEMENT le regime ou une
+    #    ecriture periodique se paierait (mesure : sous ecriture flash,
+    #    « l'image defile », 165 343 o/s).
+    ap.add_argument("--journal-soak", metavar="FICHIER", default=None,
+                    type=_chemin_non_vide,
+                    help="dn4-5/AC2.5 — journal FILTRE et HORODATE du soak "
+                         "(battement, reboots, alarmes, evenements de port), "
+                         "avec rotation. ⛔ Ne fonctionne QU'AVEC --serie.")
+    ap.add_argument("--journal-max-mo", metavar="Mo", type=int, default=32,
+                    help="plafond d'un fichier de journal avant rotation "
+                         "(defaut 32 Mo, 4 rotations => 160 Mo au pire).")
     ap.add_argument("--tracer-console", metavar="FICHIER", default=None,
                     type=_chemin_non_vide,
                     help="capture BRUTE et HORODATEE de tout ce que l'agent "
@@ -3008,15 +3328,43 @@ def principal() -> int:
             ap.error("--tracer-console %r n'est PAS inscriptible (%s). ⛔ Une "
                      "capture qui echoue en silence est une fenetre "
                      "d'observation PERDUE." % (args.tracer_console, exc))
+    if args.journal_soak is not None:
+        # ⚠️ MEME EXIGENCE QUE POUR `--tracer-console`, ET POUR LA MEME RAISON :
+        #    un journal qu'on decouvre non inscriptible APRES sept jours est une
+        #    fenetre d'observation PERDUE, et elle ne se rejoue pas.
+        try:
+            with open(args.journal_soak, "a", encoding="utf-8"):
+                pass
+        except OSError as exc:
+            ap.error("--journal-soak %r n'est PAS inscriptible (%s). ⛔ Une "
+                     "boite noire qu'on decouvre muette au jour 7 est une "
+                     "fenetre d'observation PERDUE." % (args.journal_soak, exc))
+    if args.journal_soak is not None and args.serie is None:
+        ap.error("--journal-soak n'a de sens QU'AVEC --serie : il journalise ce "
+                 "que la CARTE emet sur le fil.")
+    if args.journal_max_mo < 1:
+        ap.error("--journal-max-mo doit valoir au moins 1.")
     if args.tracer_console is not None and args.serie is None:
         ap.error("--tracer-console n'a de sens QU'AVEC --serie : il capture ce "
                  "que l'agent draine sur le FIL de la console, et ni --stdout "
                  "ni --ws n'en ont un. ⛔ Posé ici, il n'ecrirait JAMAIS rien.")
 
+    # dn4-5/T4 — UN SEUL lisseur, quel que soit le transport : il vit entre la
+    # PHOTO et la TRAME, ⛔ pas dans la sortie.
+    lisseur = Lisseur(actif=(args.lissage == "on"))
+
     if args.serie is not None:
         if not args.serie.strip():
             ap.error("--serie attend un port (ex. COM3), pas une chaine vide")
-        sortie = SortieSerie(args.serie, tracer=args.tracer_console)
+        journal = (JournalSoak(args.journal_soak,
+                               max_octets=args.journal_max_mo * 1024 * 1024)
+                   if args.journal_soak else None)
+        sortie = SortieSerie(args.serie, tracer=args.tracer_console,
+                             journal=journal)
+        if journal is not None:
+            journal.evenement("DEPART", "agent demarre — journal du soak arme "
+                                        "(plafond %d Mo x 4 rotations)"
+                              % args.journal_max_mo)
     elif args.ws is not None:
         if not args.ws.strip():
             ap.error("--ws attend une URL (ex. ws://192.168.3.19/dn), pas une chaine vide")
@@ -3244,6 +3592,13 @@ def principal() -> int:
             # La photo des cinq métriques, prise en UNE fois. La fenêtre des
             # débits et celle du % CPU sont donc la MÊME.
             photo = collecteur.photo()
+            # 🔴 dn4-5/T4 — LE LISSAGE S'APPLIQUE ICI, ENTRE LA PHOTO ET LA TRAME.
+            #    ⇒ le fil porte la valeur LISSÉE pour les quatre grandeurs
+            #      verdictées, et la valeur BRUTE pour les douze autres.
+            #    ⚠️ La GÉNÉRATION d'ouverture du port lui dit quand VIDER sa
+            #      fenêtre (AC4.3) — ⛔ pas le drapeau `reprise_liaison`, qui est
+            #      consommé ailleurs.
+            photo = lisseur.appliquer(photo, getattr(sortie, "ouvertures", 0))
             t_ms = int((time.monotonic() - depart) * 1000) & 0xFFFFFFFF
 
             rompu = False

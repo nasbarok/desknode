@@ -1,0 +1,63 @@
+── resolutions d'affichage, LUES dans dn_ui.c (k_desc[]) ──
+  cpu   %:DIXIEME · GHz:DIXIEME · %:DIXIEME · deg" "C:DIXIEME
+  gpu   %:DIXIEME · deg" "C:DIXIEME · W:ENTIER · tr/min:ENTIER
+  ram   %:DIXIEME · Go:DIXIEME
+  net   Mb/s:DIXIEME · Mb/s:DIXIEME
+  disk  Mo/s:DIXIEME · tr/min:ENTIER · tr/min:ENTIER · tr/min:ENTIER
+
+🎯 RE-ANALYSE de mesures/dn4-5/T3-AC4.1-lissage-960.csv — 960 echantillon(s), ⛔ AUCUNE nouvelle mesure
+
+============================================================================================================
+dn4-5 / AC4.1 — TABLE DE SAUT, FORMAT §13.7  (valeurs AFFICHEES)
+============================================================================================================
+grandeur     unite            min        max  saut med  saut p95  saut MAX    % chg   rupt    pas  VERDICT
+cpu.0        %                4.1       49.8       2.1       9.2      29.6    99.2%      0    457  📎 §13.7 A DISCUTER (« un CPU lisse ment sur les pics ») — reste OUVERT
+cpu.1        GHz              1.2        3.2       0.1       2.0       2.0    53.4%      0     20  📎 §13.7 LISSER
+cpu.2        %                9.4       95.3       5.0      18.8      46.4    98.2%      0    859  🆕 dn4-5 NE PAS LISSER — saut p95 = 21.9 % de la plage (seuil 40 %)
+cpu.3        deg" "C         40.8       47.5       0.0       0.5       4.3    18.0%      0     67  🆕 dn4-5 NE PAS LISSER — saut p95 = 7.5 % de la plage (seuil 40 %)
+gpu.0        %                0.0       41.0       3.0       9.0      37.0    90.3%      0    410  🔶 §13.7 MUETTE NE PAS LISSER — saut p95 = 22.0 % de la plage (seuil 40 %)
+gpu.1        deg" "C         44.0       46.0       0.0       1.0       1.0    24.4%      0     20  📎 §13.7 NE PAS LISSER
+gpu.2        W               51.0       54.0       0.0       1.0       1.0    22.1%      0      3  🆕 dn4-5 NE PAS LISSER — saut p95 = 33.3 % de la plage (seuil 40 %)
+                🔴 RESERVE : la plage ne fait que 3 pas d'affichage. Le ratio du critere n'a donc que 3 crans, et le seuil de 40 % tombe ENTRE deux d'entre eux. ⛔ Le verdict ci-dessus TIENT (le critere fait foi et ne se renegocie pas), mais il est MAL CONDITIONNE : cette fenetre n'a pas exerce la grandeur.
+gpu.3        tr/min         598.0      607.0       1.0       1.0       2.0    50.8%      0      9  🆕 dn4-5 NE PAS LISSER — saut p95 = 11.1 % de la plage (seuil 40 %)
+                🔴 RESERVE : la plage ne fait que 9 pas d'affichage. Le ratio du critere n'a donc que 9 crans, et le seuil de 40 % tombe ENTRE deux d'entre eux. ⛔ Le verdict ci-dessus TIENT (le critere fait foi et ne se renegocie pas), mais il est MAL CONDITIONNE : cette fenetre n'a pas exerce la grandeur.
+ram.0        %               52.6       55.3       0.0       0.1       0.7    28.9%      0     27  📎 §13.7 NE PAS LISSER
+ram.1        Go              31.9       31.9       0.0       0.0       0.0     0.0%      0      0  🆕 dn4-5 NON EXERCEE — plage NULLE sur la fenetre — ⛔ pas un verdict
+                🔴 RESERVE : la plage ne fait que 0 pas d'affichage. Le ratio du critere n'a donc que 0 crans, et le seuil de 40 % tombe ENTRE deux d'entre eux. ⛔ Le verdict ci-dessus TIENT (le critere fait foi et ne se renegocie pas), mais il est MAL CONDITIONNE : cette fenetre n'a pas exerce la grandeur.
+net.0        Mb/s             0.0       10.2       0.1       4.3      10.0    64.4%      0    102  📎 §13.7 LISSER
+net.1        Mb/s             0.0       13.1       0.1       8.5      12.9    65.3%      0    131  🔶 §13.7 MUETTE LISSER — saut p95 = 64.9 % de la plage (seuil 40 %)
+disk.0       Mo/s             0.0      232.5       0.2       2.4     232.5    80.2%      0   2325  📎 §13.7 LISSER
+disk.1       tr/min         978.0     1113.0       0.0       4.0      81.0    20.2%      0    135  🆕 dn4-5 NE PAS LISSER — saut p95 = 3.0 % de la plage (seuil 40 %)
+disk.2       tr/min         282.0      409.0       0.0       3.0      80.0    12.0%      0    127  🆕 dn4-5 NE PAS LISSER — saut p95 = 2.4 % de la plage (seuil 40 %)
+disk.3       tr/min         860.0      957.0       0.0       4.0      65.0    20.0%      0     97  🆕 dn4-5 NE PAS LISSER — saut p95 = 4.1 % de la plage (seuil 40 %)
+============================================================================================================
+📎 §13.7 = deja tranche par dn4-1, RECONDUIT tel quel, ⛔ pas re-mesure ici.
+🆕 dn4-5 = grandeur qui n'avait AUCUN chiffre de saut avant ce tir.
+🔶 §13.7 MUETTE = §13.7 l'a MESUREE mais ⛔ NE L'A JAMAIS CLASSEE (elle
+   n'apparait dans aucun de ses trois groupes). Le critere s'y applique.
+⚠️ « rupt » = transitions RETIREES du denominateur (source absente).
+⛔ « NON EXERCEE » n'est PAS « NE PAS LISSER » : la grandeur n'a pas bouge,
+   donc ce tir ne dit RIEN d'elle. Il faut une fenetre qui l'exerce.
+
+====================================================================================================
+🔬 LE CRITERE DE §13.7 REPRODUIT-IL LES VERDICTS DE §13.7 ?
+====================================================================================================
+grandeur           min      max      p95 p95/plage  critere 40 %    §13.7 PUBLIE    accord ?
+CPU GHz            1.2      3.2      2.0    100.0%  LISSER          LISSER          ✅ oui
+CPU %             14.2     86.9     45.7     62.9%  LISSER          A DISCUTER      — (hors binaire)
+RESEAU bas         0.1    296.1     86.1     29.1%  NE PAS LISSER   LISSER          🔴 NON
+RESEAU haut        0.2     28.1      9.3     33.3%  NE PAS LISSER   (non classe)    — (hors binaire)
+DISQUE Mo/s        0.0    268.4      7.6      2.8%  NE PAS LISSER   LISSER          🔴 NON
+GPU %              0.0     19.0      6.0     31.6%  NE PAS LISSER   NE PAS LISSER   ✅ oui
+GPU degC          46.0     48.0      1.0     50.0%  LISSER          NE PAS LISSER   🔴 NON
+RAM %             60.1     67.6      0.1      1.3%  NE PAS LISSER   NE PAS LISSER   ✅ oui
+====================================================================================================
+🔴 LE CRITERE NE REPRODUIT PAS 3 DES VERDICTS DE §13.7 :
+   · RESEAU bas    p95 = 29.1 % de la plage ⇒ le critere dit « NE PAS LISSER », §13.7 a publie « LISSER »
+   · DISQUE Mo/s   p95 = 2.8 % de la plage ⇒ le critere dit « NE PAS LISSER », §13.7 a publie « LISSER »
+   · GPU degC      p95 = 50.0 % de la plage ⇒ le critere dit « LISSER », §13.7 a publie « NE PAS LISSER »
+⇒ ⛔ LE CRITERE, PRIS A LA LETTRE, N'EST PAS CE QUI A TRANCHE §13.7.
+   Les huit verdicts de §13.7 restent RECONDUITS TELS QUELS (la story
+   l'ordonne). Mais appliquer ce critere aux grandeurs NEUVES revient
+   a utiliser une regle PLUS SEVERE que celle qui a servi au legs —
+   et c'est une question OWNER, ⛔ pas un arbitrage d'agent.

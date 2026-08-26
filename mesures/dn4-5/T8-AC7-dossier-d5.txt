@@ -1,0 +1,37 @@
+==============================================================================
+dn4-5 / AC7.2 — LE DOSSIER RATTRAPE LE CONSTAT OWNER DU 2026-08-25
+==============================================================================
+
+motifs cherches : « Battery Power Control » · « DEVRA MESURER LA CONSOMMATION »
+perimetre : les DEUX depots, arbre ENTIER (⛔ pas le diff)
+
+── 1. LES FICHIERS FAISANT AUTORITE — CHACUN DOIT ETRE ANNOTE ────
+  [OK ] hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md              4 occurrence(s), toutes annotees (l.1903,1915,1979,1984)
+  [OK ] hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md           3 occurrence(s), toutes annotees (l.3830,3833,3841)
+  [ -- ] hardware/ESP32-S3-Touch-LCD-2.8B-liaison-pc.md             aucune occurrence
+  [ -- ] README.md                                                  aucune occurrence
+  [OK ] mad-output/implementation-artifacts/deferred-work.md       3 occurrence(s), toutes annotees (l.1550,2544,2556)
+  [OK ] implementation-artifacts/sprint-status-desknode.yaml       2 occurrence(s), toutes annotees (l.64,375)
+  [OK ] le balayage a bien trouve des occurrences                  12 occurrence(s) faisant autorite, 12 annotee(s)
+
+── 2. CE QUI EST ECARTE, ET C'EST DECLARE ────────────────────────
+  ARCHIVES (⛔ NON exigees annotees — elles disent ce qui etait vrai ALORS) :
+     mad-output/implementation-artifacts/code-reviews/cr-dn4-17-cockpit.patch 4
+     tation-artifacts/dn4-17-l-agent-vit-sur-la-tour-et-on-reprend-la-main.md 1
+     mad-output/implementation-artifacts/dn4-2-brancher-les-trois-capteurs.md 1
+     _bmad-output/implementation-artifacts/dn4-3-exploiter-les-capteurs.md    1
+     _bmad-output/implementation-artifacts/dn4-5-le-module-vit-tout-seul.md   4
+     _bmad-output/planning-artifacts/epics-desknode-v1.md                     1
+     _bmad-output/planning-artifacts/sprint-change-proposal-2026-08-25.md     4
+     tools/verif_dossier_d5_dn45.py                                           3
+  [OK ] les archives sont LISTEES, ⛔ pas ecartees en silence       8 fichier(s) d'archive
+
+── 3. LE FAIT QUI FERME, ET IL EST ECRIT PARTOUT PAREIL ──────────
+  [OK ] hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md date le constat constat owner du 2026-08-25
+  [OK ] rdware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md date le constat constat owner du 2026-08-25
+  [OK ] tput/implementation-artifacts/deferred-work.md date le constat constat owner du 2026-08-25
+  [OK ] entation-artifacts/sprint-status-desknode.yaml date le constat constat owner du 2026-08-25
+
+==============================================================================
+BILAN : 10 OK, 0 KO
+==============================================================================

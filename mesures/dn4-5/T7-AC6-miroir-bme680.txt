@@ -1,0 +1,34 @@
+==============================================================================
+dn4-5 / AC6 — LE BME680 DIT SON RETARD, ET NE SE CONTREDIT PAS
+==============================================================================
+
+sources LUES : dn_capteurs.c 3e877238c92d2dbd · .h 7ede583dda0862b3 · dn_console.c 83cab0ccc7536ccf
+
+── 1. LA PHRASE EXISTE, ET UNE SEULE FOIS ────────────────────────
+  [OK ] `DN_CAPT_RETARD_TXT` est defini EXACTEMENT une fois      1 definition(s)
+  [OK ] la phrase est extractible et non vide                    372 caracteres
+  [OK ] le getter est DECLARE dans l'en-tete                     dn_capteurs.h
+  [OK ] et DEFINI une seule fois                                 dn_capteurs.c
+
+── 2. LA CONSOLE NE RECOPIE PAS — ELLE DEMANDE ───────────────────
+  [OK ] `dn_console.c` APPELLE le getter                         ⛔ pas de copie de la phrase
+  [OK ] ⛔ « UN CYCLE DE RETARD » n'est PAS recopie dans dn_console.c la phrase n'a qu'un seul proprietaire
+  [OK ] ⛔ « LIT LA PRECEDENTE » n'est PAS recopie dans dn_console.c la phrase n'a qu'un seul proprietaire
+  [OK ] ⛔ « 341 ms » n'est PAS recopie dans dn_console.c         la phrase n'a qu'un seul proprietaire
+
+── 3. LE DOCBLOCK PORTE LES MEMES CHIFFRES QUE LA PHRASE ─────────
+  [OK ] chaque chiffre de la phrase est DANS le docblock         6 grandeur(s) chiffree(s) : ['1x', '26 ms', '341 ms', '41 ms', '5 s', '8x']
+  [OK ] et le docblock nomme le defaut                           « un cycle de retard »
+
+── 4. AC6.2 — L'INTERDICTION, VERIFIEE PAR L'ABSENCE ─────────────
+  [OK ] ⛔ la cadence n'a PAS bouge                               DN_CAPT_PERIODE_MS = 5000
+  [OK ] la phrase CHIFFRE ce que couterait l'attente             41 ms par cycle, 341 ms gaz allume — ⛔ pas « ce serait cher »
+  [OK ] et elle dit que le retard est ASSUME, ⛔ pas subi         
+
+── 5. LE TEMOIN NEGATIF — ON DOIT VOIR LA GATE ROUGIR ────────────
+  [OK ] la mutation s'applique                                   41 ms -> 99 ms
+  [OK ] mutant : VU ROUGIR                                       le docblock ne porte plus ['99 ms'] — la divergence est DETECTEE
+
+==============================================================================
+BILAN : 15 OK, 0 KO
+==============================================================================
