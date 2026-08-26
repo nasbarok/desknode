@@ -1591,9 +1591,30 @@ il prouve qu'il n'y en a pas eu **depuis le dernier boot ESP32**, et ce boot peu
 
 ⇒ **chaque extinction de la tour est une perte d'heure**, et le mécanisme la couvre : au logon,
 l'agent redémarre, interroge à la reprise de liaison, lit `OS = 1`, pose.
-⚠️ **Reste à prendre à l'instrument** : la lecture `rtc` **au premier démarrage suivant une
-extinction complète**, **avant tout reset**. Elle n'a pas été prise le 2026-08-26 parce que la
-session d'outillage **tournait sur la tour**. **Coût nul au prochain allumage.**
+🔴 **CONFIRMÉ À L'INSTRUMENT LE 2026-08-26 À 15:01**, sur une **extinction complète puis un
+rallumage réels** de la tour — ⛔ pas un débranchement, pas un reset :
+
+```
+[agent] ⏱️  horloge : pose demandee (OS=1) — « rtc set 2026-08-26 15:01:51 »
+[agent] ✅ horloge : heure POSEE et VERIFIEE par la carte
+        — I (54620) dn_rtc: heure posee : 2026-08-26 15:01:51 (jsem 3) — OS retombe a 0
+```
+
+⇒ ✅ **LA CARTE AVAIT `OS = 1` AU RALLUMAGE : elle avait bien PERDU L'HEURE.** Le témoin owner et la
+concordance du compteur RTC sont désormais **confirmés par l'instrument**. **La décision owner n°1
+(*« le port reste alimenté »*) est définitivement CORRIGÉE.**
+
+⚠️ **ET LA MESURE A ÉTÉ PRISE PAR LE MÉCANISME LUI-MÊME, PARCE QU'IL DÉTRUIT SA PROPRE
+MESURE :** l'agent, lancé par la tâche au logon à **15:01:48**, a interrogé à la reprise de liaison
+et **posé l'heure 3 s plus tard** ⇒ `OS` retombe à **0** bien avant qu'un humain puisse taper `rtc`.
+✅ **C'est la ligne `pose demandee (OS=1)` du journal qui EST la preuve** — elle ne demande rien à
+préparer, et c'est le chemin que le ledger avait nommé d'avance.
+⛔ **`retention` n'a PAS été relu**, et ça ne change pas le verdict : depuis §13.15.7.8 ce témoin ne
+prouve l'absence de coupure que **depuis le dernier boot ESP32**. **`OS` est celui qui ne ment pas.**
+📌 **Un chiffre en passant** : `I (54620)` ⇒ l'ESP32 était debout depuis **54,6 s** quand la pose a
+eu lieu, soit un boot de carte à **~15:00:56** pour une tâche au logon tirée à **15:01:01** —
+**5 s d'écart**, du même ordre que les 20 s relevés le matin. **La carte et la tour s'allument
+ensemble.**
 
 ---
 

@@ -3032,3 +3032,97 @@ c'est-à-dire **le même état de charge**.
   au prochain allumage de la tour** — le même où se solde la lecture `rtc` d'après extinction
   (`…-capteurs-i2c.md` §13.15.7.9).
 
+### 26.5 🔴 LE TIR §25-IDENTIQUE — PRIS LE MÊME JOUR, ET **MA PRÉDICTION EST RATÉE PAR LE BAS**
+
+La tour a été **éteinte puis rallumée** le 2026-08-26 à ~15:00. Le tir manquant a donc été pris
+**exactement dans le régime de §25.1** : **tâche au logon** (tirée à `15:01:01`, agent lancé à
+`15:01:48`, régime `tache au logon (avant-plan)`), **tour fraîchement démarrée**, `--temoin`,
+16 cœurs, SHA déposé **`15bba7a`**.
+⚠️ **UNE RÉSERVE, ÉCRITE ET DATÉE** : **WSL a démarré à `15:02:14`**, soit **+26 s**. Les rangs 10
+et 20 s sont donc WSL éteint, **⛔ les suivants non**. Et **LHM était INJOIGNABLE au démarrage**
+(2 échecs, puis reprise) ⇒ la **réserve n°2 de §25.4 s'applique ici**, contrairement à §25.18.
+📄 Capture : `mesures/dn4-18/AC1-3-AC8-journal-apres-extinction-tour.log`
+
+**Série complète (rangs 10 → 440 s, % d'un cœur), 44 points :**
+`2,494 · 1,631 · 1,728 · 2,106 · 2,214 · 2,367 · 2,209 · 1,992 · 1,840 · 1,750 · 1,704 · 1,653 ·
+1,610 · 1,618 · 1,562 · 1,513 · 1,479 · 1,423 · 1,398 · 1,383 · 1,354 · 1,328 · 1,318 · 1,295 ·
+1,287 · 1,256 · 1,261 · 1,244 · 1,245 · 1,229 · 1,215 · 1,230 · 1,226 · 1,213 · 1,223 · 1,219 ·
+1,237 · 1,221 · 1,226 · 1,230 · 1,216 · 1,228 · 1,232 · 1,232`
+
+| rang | % d'un cœur | % machine | marge critère n°4 |
+|---|---:|---:|---:|
+| 60 s | **2,367** | `0,1479 %` | **6,8×** |
+| 180 s | **1,423** | `0,0890 %` | **11,2×** |
+| **plateau 300-440 s** | **1,213 – 1,237** (bande **0,024 pt**) | `~0,0767 %` | **13,0×** |
+
+#### 🔴 LA PRÉDICTION, ET SON VERDICT — LES DEUX RANGS NE DISENT PAS LA MÊME CHOSE
+
+| rang | Δ vs §25.18 (logon) | dispersion §25.17 | verdict |
+|---|---:|---:|---|
+| **60 s** | **+0,337 pt** | 0,390 | ✅ **DEDANS** — la prédiction n'est pas contredite |
+| **180 s** | **−0,695 pt** | 0,339 | 🔴 **HORS BANDE, PAR LE BAS** |
+
+🔴 **MA PRÉDICTION EST DONC RATÉE AU RANG 180 s, ET PAR LE BAS — exactement comme celle de §25.3.**
+Mon critère était **bilatéral** (c'était toute la leçon de §25.10), il a donc **tiré**, et je
+l'écris au lieu de le contourner.
+
+#### 🔴 CE QUE CET ÉCHEC A APPRIS — UNE RÈGLE DE MÉTHODE QUE LE DOSSIER N'AVAIT PAS
+
+**Le rang seul ne garantit PAS la comparabilité : il faut aussi le même état de CONVERGENCE.**
+
+- **ma série n'avait PAS convergé au rang 180 s** — elle descend encore de **1,423 → 1,229** entre
+  180 s et 300 s, soit **−0,19 pt**, et ne se stabilise qu'**après 300 s** ;
+- **les séries de référence, elles, étaient déclarées convergées** : §25.11 *« au-delà de 120 s elle
+  oscille dans [1,785 ; 1,817] »*, §25.18 *« plateau 2,05-2,12 de 100 s à 290 s »*.
+
+⇒ le Δ de −0,695 pt au rang 180 s compare **un point encore en chute** à **un point stabilisé**.
+⚠️ AC8.3 mettait déjà en garde contre *« un 60 s contre un 180 s »* ; **ce tir montre que deux
+points au MÊME rang peuvent eux aussi être incomparables.**
+🔴 **ET ÇA JETTE UN DOUTE SUR LES PLATEAUX DÉJÀ PUBLIÉS** : si une série peut encore perdre
+**0,19 pt** entre 180 s et 300 s, un plateau déclaré sur une fenêtre qui s'arrête à 190 s (§25.11)
+ou à 290 s (§25.18) **a pu l'être trop tôt**. ⛔ **Non établi** — il faudrait rejouer les binaires
+d'alors. **Versé tel quel.**
+
+#### ⛔ ET CE QUE CE TIR N'ATTRIBUE PAS
+
+Le **plateau** de ce tir (**1,228**) est **0,56 à 0,89 pt sous** tous les plateaux publiés
+(§25.11 : 1,785-1,817 · §25.18 : 2,05-2,12 · `dn4-18` tour occupée : 1,916-1,948). **C'est HORS de
+la dispersion de 0,390 pt** ⇒ **c'est un signal**, ⛔ pas du bruit.
+
+⛔ **ET CE N'EST PAS LE MÉCANISME** — par raisonnement, pas par mesure : **un mécanisme qui ajoute
+du travail ne rend pas l'agent moins cher.** Ce qui reste à expliquer est donc **une baisse**, et
+elle n'est **pas attribuée**.
+
+🔴 **UNE PISTE EST NOMMÉE ET RÉFUTÉE PAR LA MESURE, DANS LE MÊME GESTE** : `LHM` avait été nommé en
+§25.11 comme *« un fait à côté du chiffre »*. Ici sa **durée moyenne vaut 14,5 ms**, contre
+**8,1 ms** en §25.11 et **53,0 ms** en §23. ⇒ **LHM est PLUS LENT ici, et l'agent est PLUS
+BON MARCHÉ.** ⛔ **La piste LHM ne peut pas expliquer la baisse : elle est réfutée.**
+
+#### ✅ LA PRÉDICTION DE COÛT **CONSOLE**, ELLE, EST CONFIRMÉE
+
+C'était la seule moitié de la prédiction qui portait un chiffre **absolu** :
+*« 2 598 o / 600 s = 4,3 o/s, soit +1,6 % du bruit console »*.
+
+| | valeur |
+|---|---:|
+| écho console **avant** le mécanisme (session de 1 953 s, même jour) | **272,9 o/s** |
+| écho console **avec** le mécanisme (session de 468 s, au logon) | **277,6 o/s** |
+| **Δ mesuré** | **+4,7 o/s** = **+1,7 %** |
+| **prédit** | **+4,3 o/s** = **+1,6 %** |
+
+⇒ ✅ **La prédiction du coût console tombe à 0,4 o/s près.** Et le bilan dit ce qui l'a produit :
+**3 commandes console** (2 × `rtc`, 1 × `rtc set`), **0 en échec**, **0 refus firmware**,
+**0 recalage de cadence**.
+
+#### ✅ 26.6 LE VERDICT DU CRITÈRE N°4, SOUS LE RÉGIME §25
+
+| rang | % machine | marge |
+|---|---:|---:|
+| 60 s | `0,1479 %` | **6,8×** |
+| **plateau (300-440 s)** | `0,0767 %` | **13,0×** |
+
+⇒ ✅ **LE CRITÈRE N°4 RESTE COCHÉ**, et **plus largement que jamais** — sur le régime que le brief
+décrit, **mesuré après une extinction et un rallumage réels de la tour**.
+⛔ **Et ça ne solde toujours pas l'entrée « +0,26 pt »** : il n'y a **toujours pas d'A/B à charge
+contrôlée**. **Pas d'A/B ⇒ pas d'attribution.**
+
