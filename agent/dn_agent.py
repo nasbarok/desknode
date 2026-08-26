@@ -2366,6 +2366,23 @@ class JournalSoak:
     # sont COMPTÉES et DITES — un écrêtage silencieux est un mensonge.
     QUOTA_AUTRES_PAR_MIN = 60
 
+    # 🔴 CE QUE LA CARTE A APPRIS AU JOURNAL, LE 2026-08-26 — ET C'ETAIT UN
+    #    DEFAUT GRAVE POUR LE SOAK. Sur 120 s de regime reel, le journal a ecrit
+    #    18 873 o (157 o/s, ⇒ ~95 Mo sur 7 j) la ou j'avais PREDIT 18,3 o/s a
+    #    partir du battement seul — faux d'un facteur ~8,6. Et surtout : le
+    #    quota a jete **437 lignes en deux minutes**.
+    # ⛔ CE QUI SATURAIT LE QUOTA ETAIT L'AGENT LUI-MEME. Le REPL RENVOIE en
+    #    echo chaque trame `pc $DN,...` qu'on lui envoie — cinq par seconde —
+    #    entrelacees d'invites `desknode> `. C'est du bruit PUR pour une boite
+    #    noire, et il ecrasait le quota.
+    # 🔴 LA CONSEQUENCE ETAIT LA VRAIE FAUTE : une anomalie REELLE pouvait etre
+    #    ECARTEE par le quota parce que l'echo l'avait sature. Un instrument qui
+    #    jette le signal pour garder son propre bruit ne protege rien.
+    # ⇒ ON FILTRE L'ECHO, ⛔ ON NE L'ECRETE PAS. Le quota reste, mais il ne
+    #   garde plus que ce qui n'est pas nous.
+    RE_ECHO_AGENT = re.compile(rb"^(desknode>\s*)*(pc \$DN,|rtc set\b|\$DN,)")
+    RE_INVITE_SEULE = re.compile(rb"^(desknode>\s*)+$")
+
     RE_BATTEMENT = re.compile(rb"desknode: up \d+ s")
     RE_REBOOT = re.compile(rb"rst:0x|boot: ESP-IDF|cpu_start:")
     RE_ALARME = re.compile(rb"Guru Meditation|Task watchdog|abort\(\)|"
@@ -2382,6 +2399,7 @@ class JournalSoak:
         self._fenetre_min = -1
         self._autres = 0
         self._ecartees = 0
+        self._echos = 0
 
     # ── l'écriture, best-effort comme `_tracer` et POUR LA MÊME RAISON ──────
     def _ecrire(self, etiquette: str, texte: str) -> None:
@@ -2447,14 +2465,17 @@ class JournalSoak:
         self._reste = morceaux[-1][-512:]
         minute = int(time.time() // 60)
         if minute != self._fenetre_min:
-            if self._ecartees:
-                self._ecrire("QUOTA", "%d ligne(s) ECARTEE(S) dans la minute "
-                                      "precedente (plafond %d) — ⛔ ecretage "
-                                      "DIT, jamais silencieux"
-                             % (self._ecartees, self.QUOTA_AUTRES_PAR_MIN))
+            if self._ecartees or self._echos:
+                self._ecrire("MINUTE", "%d ligne(s) ECARTEE(S) par le quota "
+                                       "(plafond %d) · %d echo(s) de l'agent "
+                                       "filtre(s) — ⛔ rien n'est jete en "
+                                       "silence"
+                             % (self._ecartees, self.QUOTA_AUTRES_PAR_MIN,
+                                self._echos))
             self._fenetre_min = minute
             self._autres = 0
             self._ecartees = 0
+            self._echos = 0
         for ligne in morceaux[:-1]:
             ligne = ligne.rstrip(b"\r")
             if not ligne:
@@ -2466,6 +2487,11 @@ class JournalSoak:
                 self._ecrire("REBOOT", txt)
             elif self.RE_ALARME.search(ligne):
                 self._ecrire("ALARME", txt)
+            elif self.RE_ECHO_AGENT.search(ligne) or self.RE_INVITE_SEULE.match(ligne):
+                # ⛔ NOTRE PROPRE ECHO. ⚠️ Il est COMPTE, pas jete en silence :
+                #    un echo qui s'effondrerait dirait que la carte ne recoit
+                #    plus rien, et ce serait une information.
+                self._echos += 1
             elif self._autres < self.QUOTA_AUTRES_PAR_MIN:
                 self._autres += 1
                 self._ecrire("fil", txt)

@@ -131,10 +131,42 @@ def main():
         j3._fenetre_min = -999
         j3.alimenter(b"I (1) dn_env: minute suivante\r\n")
         j3.fermer()
-        aveu = [l for l in lignes(p3) if "QUOTA" in l]
+        aveu = [l for l in lignes(p3) if "MINUTE" in l]
         ctrl(len(aveu) == 1 and "50 ligne(s) ECARTEE(S)" in aveu[0],
              "⛔ l'ecretage est DIT, jamais silencieux",
-             aveu[0].split("QUOTA")[-1].strip()[:60] if aveu else "⛔ AUCUN AVEU")
+             aveu[0].split("MINUTE")[-1].strip()[:60] if aveu else "⛔ AUCUN AVEU")
+
+        # ── L'ECHO DE L'AGENT — LE DEFAUT QUE LA CARTE A TROUVE ─────────────
+        print("\n── 3 bis. L'ECHO DE L'AGENT EST FILTRE, ⛔ PAS ECRETE ────────────")
+        # 🔴 MESURE DU 2026-08-26, SUR LA CARTE : le REPL RENVOIE en echo chaque
+        #    trame `pc $DN,...` (cinq par seconde), entrelacee d'invites. Ce
+        #    bruit SATURAIT le quota — 437 lignes jetees en 2 minutes — et une
+        #    anomalie REELLE pouvait partir avec. Un instrument qui jette le
+        #    signal pour garder son propre bruit ne protege rien.
+        p3b = os.path.join(d, "echo.log")
+        j3b = dn_agent.JournalSoak(p3b)
+        for i in range(300):
+            j3b.alimenter(b"pc $DN,3,1,1050,cpu,83,23,164,433*67\r\n")
+            j3b.alimenter(b"desknode> pc $DN,3,2,1050,gpu,80,480,530,6000*69\r\n")
+            j3b.alimenter(b"desknode> \r\n")
+        j3b.alimenter(b"I (1) dn_env: une VRAIE ligne\r\n")
+        j3b.fermer()
+        ls3b = lignes(p3b)
+        ctrl(not any("pc $DN" in l for l in ls3b),
+             "⛔ AUCUN echo `pc $DN` n'entre dans la boite noire",
+             "%d ligne(s) ecrite(s) pour 900 echos injectes" % len(ls3b))
+        ctrl(any("une VRAIE ligne" in l for l in ls3b),
+             "et la VRAIE ligne passe quand meme",
+             "⛔ 900 echos ne doivent PAS saturer le quota d'une vraie ligne")
+        j3b2 = dn_agent.JournalSoak(os.path.join(d, "echo2.log"))
+        j3b2.alimenter(b"pc $DN,3,1,1050,cpu,1*01\r\n")
+        j3b2._fenetre_min = -999
+        j3b2.alimenter(b"I (1) x: suivante\r\n")
+        j3b2.fermer()
+        av2 = [l for l in lignes(os.path.join(d, "echo2.log")) if "MINUTE" in l]
+        ctrl(av2 and "1 echo(s) de l'agent filtre(s)" in av2[0],
+             "les echos filtres sont COMPTES et DITS",
+             "⛔ un echo qui s'effondre dirait que la carte ne recoit plus rien")
 
         # ── 4. LES EVENEMENTS DE PORT ECHAPPENT AU QUOTA ────────────────────
         print("\n── 4. LES EVENEMENTS DE PORT PASSENT TOUJOURS ────────────────────")
@@ -171,10 +203,20 @@ def main():
         taille = os.path.getsize(p6)
         par_s = taille / 10.0            # une ligne de battement toutes les 10 s
         sept_j = par_s * 7 * 24 * 3600
+        # 🔴 CE CHIFFRE DE BANC EST UN PLANCHER, ⛔ PAS UNE PREVISION — ET LA
+        #    CARTE L'A DEMONTRE. Le banc ne compte QUE le battement ; le 2026-08-26,
+        #    sur 120 s de regime reel, le journal a ecrit 18 873 o = **157 o/s**,
+        #    soit ~95 Mo sur 7 jours — **8,6x** ce que ce calcul annonce. L'ecart
+        #    venait de l'echo de l'agent, desormais FILTRE (§3 bis), mais le
+        #    principe reste : un volume estime au banc borne par le BAS.
         ctrl(sept_j < 50 * 1024 * 1024,
-             "le journal du soak tient TRES largement sur 7 jours",
-             "%d o/ligne ⇒ %.1f o/s ⇒ %.1f Mo sur 7 j (trace BRUTE : 270-320 Mo)"
+             "le PLANCHER de banc tient largement sur 7 jours",
+             "%d o/ligne ⇒ %.1f o/s ⇒ %.1f Mo (⚠️ PLANCHER : la carte a mesure "
+             "157 o/s AVANT le filtre d'echo ⇒ ~95 Mo)"
              % (taille, par_s, sept_j / (1024 * 1024)))
+        ctrl(True, "⚠️ et la limite de ce calcul est DECLAREE",
+             "il ne compte que le battement ; le fil porte aussi les logs des "
+             "autres modules")
     finally:
         shutil.rmtree(d, ignore_errors=True)
 

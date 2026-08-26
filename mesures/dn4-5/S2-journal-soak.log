@@ -1,0 +1,197 @@
+2026-08-26 23:22:16.342  DEPART    agent demarre — journal du soak arme (plafond 32 Mo x 4 rotations)
+2026-08-26 23:22:17.460  PORT      OUVERT (COM3)
+2026-08-26 23:22:18.448  fil       pc $DN,3,1,1050,cpu,83,23,164,433*67
+2026-08-26 23:22:18.448  fil       desknode> pc $DN,3,desknode> 2,1050,gpu,80,480,530,6000*69
+2026-08-26 23:22:18.448  fil       Unrecognized command
+2026-08-26 23:22:18.448  fil       desknode> pc $DN,3,3,1050,ram,449,319*72
+2026-08-26 23:22:18.448  fil       desknode> pc $DN,3,4,1050,nedesknode> t,0,0*76
+2026-08-26 23:22:18.448  fil       Unrecognized command
+2026-08-26 23:22:18.448  fil       desknode> pc $DN,3,5,1050,disk,2,10426,3481,9122*18
+2026-08-26 23:22:18.448  fil       desknode> rtc
+2026-08-26 23:22:18.450  fil       registres 0x00..0x11 (RELUS a l'instant) :
+2026-08-26 23:22:18.450  fil         00 00 00 D7 16 22 23 26 03 08 26 80 80 80 80 80 00 18 
+2026-08-26 23:22:18.450  fil       compteurs  : 77 lectures · 0 reprises · 0 poses
+2026-08-26 23:22:18.450  fil       erreurs    : i2c 0 · bcd 0
+2026-08-26 23:22:18.450  fil                    i2c = elle ne repond plus · bcd = elle repond mais rend
+2026-08-26 23:22:18.450  fil                    un quartet > 9. DEUX diagnostics opposes, deux seaux
+2026-08-26 23:22:18.450  fil                    (lecon dn2-2 : les confondre envoie chercher la panne du
+2026-08-26 23:22:18.450  fil                    cote du cablage, qu'on vient de prouver bon).
+2026-08-26 23:22:18.450  fil       rejets     : bascule 0 · poussee perdue 0
+2026-08-26 23:22:18.450  fil                    🔴 DEUX SEAUX AJOUTES EN REVUE (2026-08-18). Avant, la
+2026-08-26 23:22:18.450  fil                    BASCULE — la seconde a tourne entre le burst et sa
+2026-08-26 23:22:18.450  fil                    relecture, « ni erreur ni donnee » — tombait dans `bcd`
+2026-08-26 23:22:18.450  fil                    et faisait chercher un quartet > 9 sur une puce SAINE.
+2026-08-26 23:22:18.450  fil                    POUSSEE PERDUE = le verrou LVGL n'a pas ete pris, la
+2026-08-26 23:22:18.450  fil                    barre garde son texte ; sans ce compteur une barre
+2026-08-26 23:22:18.450  fil                    figee par contention etait indiscernable d'une barre
+2026-08-26 23:22:18.451  fil                    a jour. Les deux sont NORMAUX en petit nombre.
+2026-08-26 23:22:18.451  fil       etats      : OS vu 0 fois · temoin perdu 0 fois
+2026-08-26 23:22:18.451  fil       pile tache : 2356 o libres sur 4096 (high-water mark RELU)
+2026-08-26 23:22:18.451  fil                    ⚠️ RAM INTERNE — la ressource meme qui a tue la branche
+2026-08-26 23:22:18.451  fil                    WiFi en dn2-2. Reduire cette pile demandera CE chiffre.
+2026-08-26 23:22:18.451  fil       barre      : HH:MM (au changement de minute) · « 23:22 » / « MER. 26 AOÛT » · DESSINEE
+2026-08-26 23:22:18.451  fil       epoque     : 2000..2099 — CHOIX du driver, pas de la puce : le PCF85063A
+2026-08-26 23:22:18.451  fil                    porte l'annee sur 0..99 et n'a AUCUN bit de siecle.
+2026-08-26 23:22:19.444  fil       desknode> pc $DN,3,6,2040,cpu,97,25,222,433*60
+2026-08-26 23:22:19.444  fil       desknode> pc $DN,3,7,2040,gpu,70,480,540,6000*66
+2026-08-26 23:22:19.444  fil       desknode> pc $DN,3,8,2040,ram,449,319*7B
+2026-08-26 23:22:19.444  fil       desknode> pc $DN,3,9,2040,net,0,0*79
+2026-08-26 23:22:19.444  fil       desknode> pc $DN,3,10,2040,disk,0,10426,3481,9122*2C
+2026-08-26 23:22:20.450  fil       desknode> pc $DN,3,11,3036,cpu,96,29,179,433*56
+2026-08-26 23:22:20.451  fil       desknode> pc $DN,3,12,3036,gpudesknode> ,30,480,540,6000*56
+2026-08-26 23:22:20.451  fil       Unrecognized command
+2026-08-26 23:22:20.451  fil       desknode> pc $DN,3,13,3036,ram,449,319*41
+2026-08-26 23:22:20.451  fil       desknode> pc $DN,3,14,3036,net,1,1*45
+2026-08-26 23:22:20.451  fil       desknode> pc $DN,3,15,3036,disk,1,10426,3481,9122*28
+2026-08-26 23:22:20.451  BATTEMENT desknode> I (44275) desknode: up 40 s — vsync=1542 — flush=33 cycles=20 — PSRAM libre 7768048 o — mural 43 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+2026-08-26 23:22:21.441  fil       pc $DN,3,16,4042,cpu,57,26,188,433*59
+2026-08-26 23:22:21.441  fil       desknode> pc $DN,3,17,4042,gpu,130,480,540,6000*66
+2026-08-26 23:22:21.441  fil       desknode> pc $DN,3,18,4042,ram,449,319*4E
+2026-08-26 23:22:21.441  fil       desknode> pc $DN,3,19,4042,net,1,1*4C
+2026-08-26 23:22:21.441  fil       desknode> pc $DN,3,20,4042,disk,1,10295,3372,9036*2B
+2026-08-26 23:22:21.441  fil       desknode> W (45203) dn_ui: historique : 1 seconde(s) NON ÉCHANTILLONNÉE(S) (pause `ui off` ou préemption longue) — 1 position(s) creusée(s) en TROUS ; la courbe ne reliera PAS les deux bords de la coupure
+2026-08-26 23:22:22.462  fil       pc $DN,3,21,5033,cpu,58,29,172,433*5F
+2026-08-26 23:22:22.462  fil       desknode> pc $DN,3,22,5033,gpu,50,480,530,6000*57
+2026-08-26 23:22:22.462  fil       desknode> pc $DN,3,23,5033,ram,449,319*41
+2026-08-26 23:22:22.462  fil       desknode> pc $DN,3,24,5033,net,2,2*45
+2026-08-26 23:22:22.462  fil       desknode> pc $DN,3,25,5033,disk,1,10295,3372,9036*29
+2026-08-26 23:22:23.443  fil       desknode> pc $DN,3,26,6054,cpu,58,23,138,433*5E
+2026-08-26 23:22:23.443  fil       desknode> pc $DN,3,27,6054,gpu,70,480,530,6000*52
+2026-08-26 23:22:23.443  fil       desknode> pc $DN,3,28,6054,ram,449,319*48
+2026-08-26 23:22:23.443  fil       desknode> pc $DN,3,29,6054,net,1,1*4A
+2026-08-26 23:22:23.443  fil       desknode> pc $DN,3,30,6054,diskdesknode> 1,10295,3372,9036*2F
+2026-08-26 23:22:23.443  fil       Unrecognized command
+2026-08-26 23:22:30.440  BATTEMENT desknode> I (54278) desknode: up 50 s — vsync=1916 — flush=84 cycles=42 — PSRAM libre 7768048 o — mural 53 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+2026-08-26 23:22:40.454  BATTEMENT desknode> I (64281) desknode: up 60 s — vsync=2290 — flush=136 cycles=64 — PSRAM libre 7768048 o — mural 63 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+2026-08-26 23:22:50.436  BATTEMENT desknode> I (74284) desknode: up 70 s — vsync=2664 — flush=188 cycles=86 — PSRAM libre 7768048 o — mural 73 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+2026-08-26 23:23:00.439  QUOTA     182 ligne(s) ECARTEE(S) dans la minute precedente (plafond 60) — ⛔ ecretage DIT, jamais silencieux
+2026-08-26 23:23:00.440  fil       desknode> pc $DN,3,211,43048,cpu,78,24,274,433*5A
+2026-08-26 23:23:00.440  fil       desknode> pc $DN,3,212,43048,gpu,90,480,540,600desknode> 0*53
+2026-08-26 23:23:00.440  fil       Unrecognized command
+2026-08-26 23:23:00.440  fil       desknode> pc $DN,3,213,43048,ram,449,319*4E
+2026-08-26 23:23:00.440  fil       desknode> pc $DN,3,214,43048,net,0,0*4A
+2026-08-26 23:23:00.440  fil       desknode> pc $DN,3,215,43048,disk,0,10313,3390,9036*24
+2026-08-26 23:23:00.440  BATTEMENT desknode> I (84287) desknode: up 80 s — vsync=3038 — flush=239 cycles=110 — PSRAM libre 7768048 o — mural 83 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+2026-08-26 23:23:01.447  fil       pc $DN,3,216,44031,cpu,99,26,270,433*5D
+2026-08-26 23:23:01.447  fil       desknode> pc $DN,3,217,44031,gpu,40,480,540,6000*52
+2026-08-26 23:23:01.447  fil       desknode> pc $DN,3,218,44031,ram,449,319*4C
+2026-08-26 23:23:01.447  fil       desknode> pc $DN,3,219,44031,net,0,0*4E
+2026-08-26 23:23:01.447  fil       desknode> pc $DN,3,220,4desknode> 4031,disk,0,10306,3desknode> 389,9014*27
+2026-08-26 23:23:01.447  fil       Unrecognized command
+2026-08-26 23:23:02.467  fil       desknode> pc $DN,3,221,45039,cpu,50,28,188,433*5F
+2026-08-26 23:23:02.467  fil       desknode> pc $DN,3,222,45039,gpu,20,480,530,6000*5C
+2026-08-26 23:23:02.467  fil       desknode> pc $DN,3,223,45039,ram,450,319*45
+2026-08-26 23:23:02.467  fil       desknode> pc $DN,3,224,45039,net,0,0*49
+2026-08-26 23:23:02.467  fil       desknode> pc $DN,3,225,45039,disk,1,10306,3389,9014*2A
+2026-08-26 23:23:02.469  fil       desknode> W (86203) dn_ui: historique : 1 seconde(s) NON ÉCHANTILLONNÉE(S) (pause `ui off` ou préemption longue) — 1 position(s) creusée(s) en TROUS ; la courbe ne reliera PAS les deux bords de la coupure
+2026-08-26 23:23:03.444  fil       pc $DN,3,226,46059,cpu,88,32,286,433*5E
+2026-08-26 23:23:03.444  fil       desknode> pc $DN,3,227,46059,gpu,60,480,540,6010*5E
+2026-08-26 23:23:03.444  fil       desknode> pc $DN,3,228,46059,ram,449,319*43
+2026-08-26 23:23:03.444  fil       desknode> pc $DN,3,229,46059,net,0,0*41
+2026-08-26 23:23:03.444  fil       desknode> pdesknode> c $DN,3,230,46059,disk,2,10306,3389,9014*28
+2026-08-26 23:23:03.444  fil       Unrecognized command
+2026-08-26 23:23:04.459  fil       desknode> pc $DN,3,231,47036,cpu,69,31,190,428*52
+2026-08-26 23:23:04.459  fil       desknode> pc $DN,3,232,47036,gpu,70,480,540,6010*53
+2026-08-26 23:23:04.459  fil       desknode> pc $DN,3,233,47036,ram,449,319*41
+2026-08-26 23:23:04.459  fil       desknode> pc $DN,3,234,47036,net,0,1*44
+2026-08-26 23:23:04.459  fil       desknode> pc $DN,3,235,47036,disk,2,10306,3389,9014*25
+2026-08-26 23:23:05.441  fil       desknode> pc $DN,3,236,48051,cpu,72,30,242,428*5C
+2026-08-26 23:23:05.441  fil       desknode> pc $DN,3,237,48051,gpu,70,480,540,6010*58
+2026-08-26 23:23:05.441  fil       desknode> pc $DN,3,238,48051,ram,449,319*44
+2026-08-26 23:23:05.441  fil       desknode> pc $DN,3,239,48051,net,1,2*45
+2026-08-26 23:23:05.441  fil       desknode> pc $DN,3,240,48051,disk,1,10311,3389,9008*21
+2026-08-26 23:23:06.463  fil       desknode> pc $DN,3,241,49033,cpu,81,27,206,428*53
+2026-08-26 23:23:06.463  fil       desknode> pc $DN,3,242,49033,gpu,20,480,540,6010*5A
+2026-08-26 23:23:06.463  fil       desknode> pc $DN,3,243,49033,ram,449,319*4D
+2026-08-26 23:23:06.463  fil       desknode> pc $DN,3,244,49033,net,1,2*4A
+2026-08-26 23:23:06.463  fil       desknode> pc $DN,3,245,49033,disk,1,10311,3389,9008*21
+2026-08-26 23:23:07.432  fil       desknode> pc $DN,3,246,50055,cpu,67,22,209,428*5E
+2026-08-26 23:23:07.432  fil       desknode> pc $DN,3,247,50055,gpu,50,480,540,6000*51
+2026-08-26 23:23:07.432  fil       desknode> pc $DN,3,248,50055,ram,449,319*4E
+2026-08-26 23:23:07.432  fil       desknode> pc $DN,3,249,50055,net,1,2*4F
+2026-08-26 23:23:07.432  fil       desknode> pc $DN,3,250,50055,disk,14,10311,3389,9008*19
+2026-08-26 23:23:08.445  fil       desknode> pc $DN,3,251,51024,cpu,81,23,319,428*56
+2026-08-26 23:23:08.445  fil       desknode> pc $DN,3,252,51024,gpu,50,480,540,6010*53
+2026-08-26 23:23:08.445  fil       desknode> pc $DN,3,253,51024,ram,449,319*43
+2026-08-26 23:23:08.445  fil       desknode> pc $DN,3,254,51024,net,0,0*47
+2026-08-26 23:23:08.445  fil       desknode> pc $DN,3,255,51024,disk,14,10311,3389,9008*1B
+2026-08-26 23:23:09.460  fil       desknode> pc $DN,3,256,52037,cpu,56,26,200,428*56
+2026-08-26 23:23:09.460  fil       desknode> pc $DN,3,257,52037,gpu,60,480,540,6000*55
+2026-08-26 23:23:09.460  fil       desknode> pc $DN,3,258,52037,ram,449,319*49
+2026-08-26 23:23:09.460  fil       desknode> pc $DN,3,259,52037,net,0,0*4B
+2026-08-26 23:23:09.460  fil       desknode> pc $DN,3,260,52037,disk,14,10298,3390,9030*1F
+2026-08-26 23:23:10.456  fil       desknode> pc $DN,3,261,53052,cpu,81,25,203,428*5A
+2026-08-26 23:23:10.456  fil       desknode> pc $DN,3,262,53052,gpu,40,480,540,6010*52
+2026-08-26 23:23:10.456  fil       desknode> pc $DN,3,263,53052,ram,449,319*43
+2026-08-26 23:23:10.456  fil       desknode> pc $DN,3,264,53052,net,0,0*47
+2026-08-26 23:23:10.456  fil       desknode> pc $DN,3,265,53052,disk,0,10298,3390,9030*2D
+2026-08-26 23:23:10.456  BATTEMENT desknode> I (94290) desknode: up 90 s — vsync=3412 — flush=290 cycles=132 — PSRAM libre 7768048 o — mural 93 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+2026-08-26 23:23:11.433  fil       pc $DN,3,266,54047,cpu,79,22,167,428*5F
+2026-08-26 23:23:20.446  BATTEMENT I (104293) desknode: up 100 s — vsync=3786 — flush=341 cycles=154 — PSRAM libre 7768048 o — mural 103 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+2026-08-26 23:23:30.472  BATTEMENT I (114296) desknode: up 110 s — vsync=4161 — flush=392 cycles=176 — PSRAM libre 7768048 o — mural 113 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+2026-08-26 23:23:40.444  BATTEMENT desknode> I (124299) desknode: up 120 s — vsync=4535 — flush=443 cycles=197 — PSRAM libre 7768048 o — mural 123 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+2026-08-26 23:23:50.455  BATTEMENT desknode> I (134302) desknode: up 130 s — vsync=4909 — flush=493 cycles=220 — PSRAM libre 7768048 o — mural 133 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+2026-08-26 23:24:00.432  QUOTA     255 ligne(s) ECARTEE(S) dans la minute precedente (plafond 60) — ⛔ ecretage DIT, jamais silencieux
+2026-08-26 23:24:00.432  fil       desknode> pc $DN,3,511,103036,cpu,63,31,203,430*6C
+2026-08-26 23:24:00.432  fil       desknode> pc $DN,3,512,103036,gpu,30,480,530,6020*67
+2026-08-26 23:24:00.432  fil       desknode> pc $DN,3,513,103036,ram,448,319*74
+2026-08-26 23:24:00.432  fil       desknode> pc $DN,3,514,103036,net,0,0*71
+2026-08-26 23:24:00.432  fil       desknode> pc $DN,3,515,103036,disk,0,10304,3372,9015*14
+2026-08-26 23:24:00.432  BATTEMENT desknode> I (144305) desknode: up 140 s — vsync=5283 — flush=544 cycles=242 — PSRAM libre 7768048 o — mural 143 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+2026-08-26 23:24:01.444  fil       pc $DN,3,516,104024,cpu,101,32,234,430*5D
+2026-08-26 23:24:01.444  fil       desknode> pc $DN,3,517,104024,gpu,110,480,540,6030*53
+2026-08-26 23:24:01.444  fil       desknode> pc $DN,3,518,104024,ram,449,319*7A
+2026-08-26 23:24:01.444  fil       desknode> pc $DN,3,519,104024,net,0,0*78
+2026-08-26 23:24:01.444  fil       desknode> pc $DN,3,520,104024,disk,1,10288,3376,9033*12
+2026-08-26 23:24:02.447  fil       desknode> pc $DN,3,521,105036,cpu,63,32,174,430*69
+2026-08-26 23:24:02.447  fil       desknode> pc $DN,3,522,105036,gpu,60,480,540,6020*60
+2026-08-26 23:24:02.447  fil       desknode> pc $DN,3,523,105036,ram,449,319*70
+2026-08-26 23:24:02.447  fil       desknode> pc $DN,3,524,105036,net,0,0*74
+2026-08-26 23:24:02.447  fil       desknode> pc $DN,3,525,105036,disk,1,10288,3376,9033*15
+2026-08-26 23:24:03.434  fil       desknode> pc $DN,3,526,106039,cpu,62,32,188,430*60
+2026-08-26 23:24:03.434  fil       desknode> pc $DN,3,527,106039,gpu,40,490,540,6020*6A
+2026-08-26 23:24:03.434  fil       desknode> pc $DN,3,528,106039,ram,450,319*7F
+2026-08-26 23:24:03.434  fil       desknode> pc $DN,3,529,106039,net,0,0*75
+2026-08-26 23:24:03.434  fil       desknode> pc $DN,3,530,106039,disk,1,10288,3376,9033*1D
+2026-08-26 23:24:04.445  fil       desknode> pc $DN,3,531,107026,cpu,70,32,243,433*6D
+2026-08-26 23:24:04.445  fil       desknode> pc $DN,3,532,107026,gpu,40,480,540,6020*60
+2026-08-26 23:24:04.445  fil       desknode> pc $DN,3,533,107026,ram,450,319*7A
+2026-08-26 23:24:04.445  fil       desknode> pc $DN,3,534,107026,net,0,0*76
+2026-08-26 23:24:04.445  fil       desknode> pc $DN,3,535,107026,disk,0,10288,3376,9033*16
+2026-08-26 23:24:05.451  fil       desknode> pc $DN,3,536,108037,cpu,65,32,211,433*66
+2026-08-26 23:24:05.451  fil       desknode> pc $DN,3,537,108037,gpu,70,480,540,6020*69
+2026-08-26 23:24:05.451  fil       desknode> pc $DN,3,538,108037,ram,449,319*76
+2026-08-26 23:24:05.451  fil       desknode> pc $DN,3,539,108037,net,0,0*74
+2026-08-26 23:24:05.451  fil       desknode> pc $DN,3,540,108037,disk,0,10315,3375,9015*19
+2026-08-26 23:24:06.461  fil       desknode> pc $DN,3,541,109043,cpu,86,26,203,433*6F
+2026-08-26 23:24:06.461  fil       desknode> pc $DN,3,542,109043,gpu,60,480,540,6020*68
+2026-08-26 23:24:06.461  fil       desknode> pc $DN,3,543,109043,ram,449,319*78
+2026-08-26 23:24:06.461  fil       desknode> pc $DN,3,544,109043,net,0,0*7C
+2026-08-26 23:24:06.461  fil       desknode> pc $DN,3desknode> 545,109043,disk,0,10315,3375,9015*1E
+2026-08-26 23:24:06.461  fil       Unrecognized command
+2026-08-26 23:24:07.441  fil       desknode> pc $DN,3,546,110053,cpu,92,22,311,433*62
+2026-08-26 23:24:07.441  fil       desknode> pc $DN,3,547,110053,gpu,20,480,540,6020*60
+2026-08-26 23:24:07.441  fil       desknode> pc $DN,3,548,110053,ram,449,319*7A
+2026-08-26 23:24:07.441  fil       desknode> pc $DN,3,549,110053,net,0,0*78
+2026-08-26 23:24:07.441  fil       desknode> pc $DN,3,550,110053,disk,1,10315,3375,9015*12
+2026-08-26 23:24:08.436  fil       desknode> pc $DN,3,551,111033,cpu,109,16,317,430*52
+2026-08-26 23:24:08.436  fil       desknode> pc $DN,3,552,111033,gpu,40,480,540,6010*66
+2026-08-26 23:24:08.436  fil       desknode> pc $DN,3,553,111033,ram,449,319*77
+2026-08-26 23:24:08.436  fil       desknode> pc $DN,3,554,111033,net,0,0*73
+2026-08-26 23:24:08.436  fil       desknode> pc $DN,3,555,111033,disk,1,10315,3375,9015*10
+2026-08-26 23:24:09.454  fil       desknode> pc $DN,3,556,112028,cpu,139,22,484,430*55
+2026-08-26 23:24:09.454  fil       desknode> pc $DN,3,557,112028,gpu,90,480,540,6010*67
+2026-08-26 23:24:09.454  fil       desknode> pc $DN,3,558,112028,ram,449,319*75
+2026-08-26 23:24:09.454  fil       desknode> pc $DN,3,559,112028,net,0,0*77
+2026-08-26 23:24:09.454  fil       desknode> pc $DN,3,560,112028,disk,1,10291,3372,9027*14
+2026-08-26 23:24:10.438  fil       desknode> pc $DN,3,561,113046,cpu,73,26,176,430*6B
+2026-08-26 23:24:10.438  fil       desknode> pc $DN,3,562,113046,gpu,20,480,540,6010*63
+2026-08-26 23:24:10.438  fil       desknode> pc $DN,3,563,113046,ram,450,319*7C
+2026-08-26 23:24:10.438  fil       desknode> pc $DN,3,564,113046,net,0,0*70
+2026-08-26 23:24:10.438  fil       desknode> pc $DN,3,565,113046,disk,0,10291,3372,9027*19
+2026-08-26 23:24:10.438  BATTEMENT desknode> I (154308) desknode: up 150 s — vsync=5657 — flush=596 cycles=264 — PSRAM libre 7768048 o — mural 153 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+2026-08-26 23:24:11.436  fil       pc $DN,3,566,114030,cpu,65,31,164,430*68
+2026-08-26 23:24:11.436  fil       desknode> pc $DN,3,567,114030,gpu,80,480,540,6010*6A
+2026-08-26 23:24:11.436  fil       desknode> pc $DN,3,568,114030,ram,450,319*71
+2026-08-26 23:24:11.436  fil       desknode> pc $DN,3,569,114030,net,0,0*7B
+2026-08-26 23:24:16.491  PORT      FERME (arret de l'agent)
