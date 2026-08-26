@@ -185,6 +185,7 @@ n'était imprimé qu'en sortie `--duree`, donc perdu sur la plupart des sessions
 import argparse
 import os
 import sys
+import threading
 import time
 
 # 🔴 dn4-8 / AC6 : DEUX MODULES DE LA **STDLIB**, ⛔ AUCUNE DEPENDANCE NOUVELLE.
@@ -2087,7 +2088,11 @@ def principal() -> int:
     #      sauver. Un fichier-drapeau est le seul canal qui traverse les
     #      trois régimes (console, détaché, tâche planifiée sans console).
     # ⚠️ Coût : UN `os.path.exists` par cycle, soit 1/s (PERIODE_S = 1,0 s).
+    # 🔴 `type=` REFUSE LA CHAÎNE VIDE À L'ANALYSE (revue du 2026-08-26). Une
+    #    option posée avec une valeur vide est une ERREUR DE LANCEUR, ⛔ pas une
+    #    demande de désactivation : la taire produit un agent inarrêtable.
     ap.add_argument("--stop-si", metavar="FICHIER", default=None,
+                    type=_chemin_non_vide,
                     help="s'arrête PROPREMENT dès que FICHIER apparaît — le "
                          "seul arrêt propre possible sans console")
     args = ap.parse_args()
@@ -2225,11 +2230,52 @@ def principal() -> int:
     # explicitement (correctif de revue 2026-08-16).
     # ⚠️ Lu UNE fois : on ne re-teste pas `args.stop_si` a chaque tour pour
     #    rien quand l'option n'est pas posee.
-    drapeau_stop = args.stop_si or None
+    # 🔴 CORRECTIF DE REVUE DU 2026-08-26 — `args.stop_si or None` testait la
+    #    VÉRACITÉ, pas la PRÉSENCE : c'est EXACTEMENT le défaut corrigé vingt
+    #    lignes plus haut pour `--serie` (« `--serie ""` retombait EN SILENCE
+    #    sur stdout »). Un `--stop-si ""` — que produit une expansion vide de
+    #    `%DN_ARGS%` ou un lanceur mal cité — donnait un agent qu'on ne peut
+    #    JAMAIS arrêter proprement : `stop` pose le drapeau, attend 8 s,
+    #    `taskkill /PID`, puis `/F`, et annonce « LE BILAN EST PERDU » avec la
+    #    mauvaise cause. ⇒ La chaîne vide est REFUSÉE À L'ANALYSE (voir
+    #    `--stop-si` dans le parseur), et ici on teste la PRÉSENCE.
+    drapeau_stop = args.stop_si if args.stop_si is not None else None
     motif_arret = None
+
+    # =====================================================================
+    # 🔴 LE BILAN ÉTAIT PERDU À L'EXTINCTION — MESURÉ LE 2026-08-26, ⛔ PAS DÉDUIT
+    #    Protocole : agent lancé au logon (PID 3792), `dn-agent.log` à
+    #    **74 379 o**, extinction COMPLÈTE de la tour SANS `dn-agent.bat stop`.
+    #    Au rallumage, le journal fait 77 342 o — et **l'octet 74 380 est la
+    #    PREMIÈRE LIGNE DU NOUVEL AGENT**. Entre les deux : RIEN. **0 octet.**
+    #    ⚠️ Or l'extinction est la fin NORMALE de cet agent (décision owner
+    #    n°1 : « tour éteinte, la dalle reste allumée »), et `--stop-si` ne
+    #    tire QUE depuis `dn-agent.bat stop`. Le défaut que le dossier §25.8
+    #    déclare fermé était donc ROUVERT sur le chemin quotidien.
+    #    ✅ Contre-épreuve : le chemin PROPRE, lui, écrit toujours son bilan
+    #    (1 384 / 853 / 855 o mesurés le même jour). Ce n'est pas l'écriture
+    #    qui manquait, c'est le HANDLER à la terminaison de session.
+    #
+    # ⛔ POURQUOI PAS `signal.SIGTERM` : Windows ne le délivre pas au logoff.
+    #    Le seul mécanisme qui l'est est `SetConsoleCtrlHandler`, sur
+    #    `CTRL_LOGOFF_EVENT` (2) et `CTRL_SHUTDOWN_EVENT` (6).
+    # ⚠️ ET LE HANDLER DOIT **BLOQUER** : rendre la main autorise Windows à
+    #    terminer le process. Il pose donc le drapeau, puis ATTEND que la
+    #    boucle ait imprimé le bilan — avec un plafond, parce que le système
+    #    ne nous accorde que quelques secondes.
+    # ⚠️ COÛT SUR LE BUDGET D'AC6 : NUL. Le handler est installé UNE FOIS et
+    #    n'est jamais appelé en régime ; la boucle ne gagne qu'un `is_set()`
+    #    par cycle (1 Hz).
+    # =====================================================================
+    arret_systeme = threading.Event()
+    bilan_ecrit = threading.Event()
+    _handler_ref = _armer_arret_systeme(arret_systeme, bilan_ecrit)
 
     try:
         while args.duree <= 0 or (time.monotonic() - depart) < args.duree:
+            if arret_systeme.is_set():
+                motif_arret = "fermeture de session Windows"
+                break
             if drapeau_stop is not None and os.path.exists(drapeau_stop):
                 motif_arret = drapeau_stop
                 break
@@ -2335,12 +2381,94 @@ def principal() -> int:
         #    demandé et une panne se ressemblent — et le bilan qui suit ne
         #    dirait pas lequel des deux il décrit.
         if motif_arret is not None:
-            print("[agent] arrêt demandé (drapeau %s)" % motif_arret,
-                  file=sys.stderr)
+            print("[agent] arrêt demandé (%s)" % motif_arret, file=sys.stderr)
         _bilan(sortie, depart, trames_emises, erreurs_envoi, rattrapages,
                collecteur)
         collecteur.fermer()
+        # ⚠️ DÉBLOQUE LE HANDLER DE FERMETURE DE SESSION : tant qu'il n'a pas
+        #    la main, Windows attend. C'est ce qui laisse le bilan sortir.
+        try:
+            sys.stderr.flush()
+        except Exception:
+            pass
+        bilan_ecrit.set()
+        del _handler_ref   # garde la référence vivante jusqu'ici (ctypes)
     return 0
+
+
+def _chemin_non_vide(v: str) -> str:
+    """Refuse une valeur d'option VIDE, à l'analyse. (revue du 2026-08-26)
+
+    🔴 LE MÊME DÉFAUT A ÉTÉ CORRIGÉ DEUX FOIS DANS CE FICHIER, à vingt lignes
+       d'écart, et la seconde occurrence a survécu à la première :
+         · `--serie ""` retombait EN SILENCE sur stdout (corrigé le 2026-08-19) ;
+         · `--stop-si ""` désactivait EN SILENCE l'arrêt propre (mesuré ici).
+       Dans les deux cas la cause est la même : `args.X or None` teste la
+       VÉRACITÉ là où il fallait tester la PRÉSENCE. ⛔ Une option posée avec
+       une valeur vide est une **erreur de lanceur**, jamais une demande de
+       désactivation — la taire produit un agent inarrêtable, et `stop` accuse
+       alors l'agent d'avoir ignoré un drapeau qu'il n'a jamais eu à lire.
+    ⇒ On refuse À L'ANALYSE : c'est le seul endroit qui couvre TOUS les
+      appelants (le `.bat`, la tâche, la main de l'owner) d'un seul geste.
+    """
+    if v is None or v.strip() == "":
+        raise argparse.ArgumentTypeError(
+            # (!) MESSAGE EN ASCII PUR : il s'affiche dans une console cmd.exe,
+            #     dont la page de code rend un "interdit" comme \u26d4. Un
+            #     diagnostic illisible la ou il s'affiche n'est pas un diagnostic.
+            "valeur VIDE refusee : une option posee doit porter un chemin. "
+            "Pour ne pas l'utiliser, ne pas la poser du tout.")
+    return v
+
+
+def _armer_arret_systeme(arret: "threading.Event",
+                         bilan_ecrit: "threading.Event"):
+    """Fait sortir le bilan quand Windows ferme la session. (revue 2026-08-26)
+
+    🔴 MESURÉ, ⛔ PAS DÉDUIT : extinction complète de la tour sans
+       `dn-agent.bat stop`, journal à 74 379 o avant, 77 342 o après — et le
+       premier octet écrit après la coupure est la PREMIÈRE LIGNE DU NOUVEL
+       AGENT. **0 octet de bilan.** Or l'extinction est la fin NORMALE d'un
+       agent permanent.
+
+    ⛔ POURQUOI PAS `signal.SIGTERM` : Windows ne le délivre pas au logoff. Le
+       seul mécanisme qui l'est pour un process console est
+       `SetConsoleCtrlHandler`.
+    ⚠️ ET LE HANDLER DOIT BLOQUER. Rendre la main autorise le système à
+       terminer le process : il pose donc le drapeau puis ATTEND que la boucle
+       ait imprimé le bilan, avec un plafond — le système ne nous accorde que
+       quelques secondes, et un handler qui ne rend jamais la main serait pire
+       que le défaut qu'il corrige.
+    ⚠️ ON NE TOUCHE PAS À Ctrl+C : les événements 0 et 1 rendent `False`, donc
+       le comportement par défaut (KeyboardInterrupt) survit intact — c'est lui
+       que le correctif du 2026-08-16 avait mis en place.
+    ⇒ Rend l'objet callback, que l'appelant DOIT garder vivant : `ctypes` ne
+      détient pas de référence, et un ramasse-miettes le libérerait sous
+      Windows, qui appellerait alors une adresse morte.
+    """
+    if sys.platform != "win32":
+        return None
+    CTRL_CLOSE, CTRL_LOGOFF, CTRL_SHUTDOWN = 2, 5, 6
+    fabrique = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_uint)
+
+    def _sur_evenement(evt):
+        if evt in (CTRL_CLOSE, CTRL_LOGOFF, CTRL_SHUTDOWN):
+            arret.set()
+            bilan_ecrit.wait(4.0)
+            return True
+        return False   # Ctrl+C / Ctrl+Break : comportement par défaut
+
+    rappel = fabrique(_sur_evenement)
+    try:
+        if not ctypes.windll.kernel32.SetConsoleCtrlHandler(rappel, True):
+            print("[agent] /!\\ SetConsoleCtrlHandler a échoué : le bilan de fin "
+                  "sera PERDU si la session se ferme sans `stop`.", file=sys.stderr)
+            return None
+    except Exception as e:
+        print("[agent] /!\\ pas de handler de fermeture de session (%s) : le bilan "
+              "sera PERDU a l'extinction." % e, file=sys.stderr)
+        return None
+    return rappel
 
 
 def _bilan(sortie, depart: float, seq: int, erreurs_envoi: int, rattrapages: int,

@@ -35,10 +35,33 @@ VID_PID="303a:1001"
 USBIPD='C:\Program Files\usbipd-win\usbipd.exe'
 SERIE="${DN_SERIE:-COM3}"
 TOUR_WIN="${DN_TOUR_WIN:-H:\\dev\\projets\\desknode}"
+# ⚠️ REVUE DU 2026-08-26 — `TOUR_WIN` ET LA CIBLE DE `deployer_tour.sh` NE SONT
+#    PAS RELIEES : ici `H:\dev\projets\desknode`, la-bas
+#    `/mnt/h/dev/projets/desknode`, deux notations, aucune ne lit l'autre. Un
+#    depot ailleurs (cas documente a l'EMPLOI du deployeur) fait appeler ici un
+#    `.bat` inexistant ; l'erreur PowerShell part dans `sed`, le code de retour
+#    n'est pas teste, et la cause affichee est fausse.
+# ⇒ On le VERIFIE avant de s'en servir, et on nomme les deux variables.
 RACINE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # Délai de re-vérification du detach. Les veilleurs ressuscitent en ~2 s
 # (README étape 2) : on regarde APRÈS, sinon on regarde avant le problème.
 DELAI_REVERIF="${DN_DELAI_REVERIF:-4}"
+# 🔴 REVUE DU 2026-08-26 — CETTE VARIABLE D'ENVIRONNEMENT DESARMAIT LA REGLE
+#    N°2 DE L'EN-TETE DE CE SCRIPT. `DN_DELAI_REVERIF=0` (ou une valeur non
+#    numerique : `sleep` echoue, et il n'y a pas de `set -e`) supprimait le
+#    delai ⇒ la relecture avait lieu AVANT la resurrection des veilleurs
+#    (~2 s) et l'outil declarait « le detach a TENU » sur un port qui allait
+#    redevenir fantome. Une garde qu'une variable peut eteindre n'est pas une
+#    garde. ⇒ Entier, et jamais sous le temps de resurrection MESURE.
+case "$DELAI_REVERIF" in
+  ''|*[!0-9]*) echo "ÉCHEC : DN_DELAI_REVERIF='$DELAI_REVERIF' n'est pas un entier." >&2; exit 2 ;;
+esac
+if [ "$DELAI_REVERIF" -lt 3 ]; then
+  echo "ÉCHEC : DN_DELAI_REVERIF=$DELAI_REVERIF est SOUS le temps de resurrection" >&2
+  echo "        mesuré des veilleurs (~2 s). Re-vérifier plus tôt que le problème" >&2
+  echo "        ne se produit, c'est ne pas le vérifier. Minimum : 3." >&2
+  exit 2
+fi
 
 PWSH="$(command -v powershell.exe || true)"
 [ -z "$PWSH" ] && PWSH="/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
@@ -74,13 +97,41 @@ busid_relu() {
   return 1
 }
 
-etat_com() {   # absent | libre | tenu
-  ps_win "\$n=[System.IO.Ports.SerialPort]::GetPortNames()
-          if (\$n -notcontains '$SERIE') { 'absent' } else {
+# 🔴 REVUE DU 2026-08-26 — CETTE FONCTION POUVAIT RENDRE UN **MESSAGE
+#    D'ERREUR** COMME ETAT DE PORT, ET LES APPELANTS LE PRENAIENT POUR UN
+#    SUCCES. `ps_win()` fusionne stderr dans stdout (`2>&1`) et jette le code
+#    de retour ; la valeur 'libre'/'tenu' etait emise AVANT le
+#    `finally { Dispose() }`, donc un `Dispose()` qui leve (port qui disparait
+#    en cours de sonde) plaçait l'enregistrement d'erreur APRES la valeur, et
+#    `tail -1` rendait le texte de l'erreur.
+#    ⇒ Consequences MESUREES A LA LECTURE :
+#      · `--vers-agent` etape 4 : `[ "$P" != "absent" ] && break`, puis les
+#        deux tests suivants echouent ⇒ **« ✅ Le port est à Windows »** sur un
+#        etat INCONNU ;
+#      · `--vers-flash` etape 1 : seul `"tenu"` bloque ⇒ l'outil **attache la
+#        carte à WSL** alors que `COM3` peut encore etre tenu. C'est
+#        exactement le nœud mort que cet outil existe pour empecher.
+# ⇒ ON MARQUE LA VALEUR, et tout ce qui n'est pas marque est `inconnu`.
+#   ⛔ Plus jamais « ce que la derniere ligne contenait ».
+etat_com() {   # absent | libre | tenu | fantome | inconnu
+  local brut val
+  brut="$(ps_win "\$n=[System.IO.Ports.SerialPort]::GetPortNames()
+          if (\$n -notcontains '$SERIE') { 'DN_ETAT=absent' } else {
             \$sp = New-Object System.IO.Ports.SerialPort '$SERIE',115200
             \$sp.DtrEnable = \$false ; \$sp.RtsEnable = \$false
-            try { \$sp.Open(); \$sp.Close(); 'libre' } catch { 'tenu' }
-            finally { \$sp.Dispose() } }" | tail -1
+            try { \$sp.Open(); \$sp.Close(); 'DN_ETAT=libre' }
+            catch [System.IO.FileNotFoundException] { 'DN_ETAT=fantome' }
+            catch [System.UnauthorizedAccessException] { 'DN_ETAT=tenu' }
+            catch { 'DN_ETAT=inconnu' }
+            finally { \$sp.Dispose() } }")"
+  val="$(printf '%s\n' "$brut" | sed -n 's/^DN_ETAT=\([a-z]*\)$/\1/p' | head -1)"
+  case "$val" in
+    absent|libre|tenu|fantome) printf '%s' "$val" ;;
+    *) # ⛔ NI un etat, NI une erreur qu'on peut ignorer : on le DIT, et on
+       #   rend `inconnu` — que les appelants traitent comme BLOQUANT.
+       printf '%s\n' "$brut" | sed 's/^/       | /' >&2
+       printf 'inconnu' ;;
+  esac
 }
 
 etat_tty() {
@@ -200,13 +251,29 @@ agent)
     sleep 0.5
   done
   dire "$SERIE : $P"
-  if [ "$P" = "absent" ]; then
-    crier "$SERIE n'apparaît pas après 10 s. Le detach a tenu mais Windows n'énumère pas."
-    exit 4
-  fi
-  if [ "$P" = "tenu" ]; then
-    dire "(i) $SERIE existe et est DÉJÀ TENU — un agent tourne probablement déjà."
-  fi
+  # 🔴 REVUE DU 2026-08-26 — LE SUCCÈS ÉTAIT LA BRANCHE DE **FALL-THROUGH** :
+  #    tout ce qui n'était ni « absent » ni « tenu » tombait sur le ✅, y
+  #    compris un texte d'erreur PowerShell rendu par `tail -1`. ⇒ On ÉNUMÈRE
+  #    les états, et l'inconnu est BLOQUANT. Un verdict ne se donne pas par
+  #    défaut.
+  case "$P" in
+    absent)
+      crier "$SERIE n'apparaît pas après 10 s. Le detach a tenu mais Windows n'énumère pas."
+      exit 4 ;;
+    fantome)
+      crier "$SERIE est ÉNUMÉRÉ mais NE S'OUVRE PAS (FileNotFound) — c'est le COM"
+      crier "    FANTÔME : un veilleur a déjà repris la carte pour WSL."
+      crier "    ⛔ Ce n'est PAS « le port est à Windows »."
+      dire  "usbipd : $(ligne_carte)"
+      exit 4 ;;
+    inconnu)
+      crier "L'état de $SERIE est INCONNU (voir la sortie brute ci-dessus)."
+      crier "    ⛔ On ne déclare pas un succès sur un état qu'on n'a pas lu."
+      exit 4 ;;
+    tenu)
+      dire "(i) $SERIE existe et est DÉJÀ TENU — un agent tourne probablement déjà." ;;
+    libre) : ;;
+  esac
   echo
   echo "  ✅ Le port est à Windows en $(chrono) s. Lancer l'agent :"
   echo "        (sur la tour)  $TOUR_WIN\\dn-agent.bat"
@@ -218,14 +285,42 @@ flash)
   # Piège P2, mesuré sur ce poste : tout process Windows survit à la mort de
   # son lanceur (Edge headless : 416 process / 11,6 Go ; un python vivant
   # 29 min après son lanceur). Un agent qu'on CROIT mort peut tenir COM3.
-  ps_win "& '$TOUR_WIN\\dn-agent.bat' stop" | sed 's/^/     /'
-  P="$(etat_com)"
-  dire "$SERIE après stop : $P"
-  if [ "$P" = "tenu" ]; then
-    crier "$SERIE est ENCORE TENU : l'agent (ou un autre process) ne l'a pas rendu."
-    crier "    ⛔ L'attachement à WSL échouerait ou donnerait un nœud mort."
+  # ⚠️ REVUE DU 2026-08-26 — ON VÉRIFIE QUE LE `.bat` EXISTE, ET ON LUI PASSE
+  #    LE PORT. `DN_SERIE=COM7 ./rendre-port.sh --vers-flash` arrêtait l'agent
+  #    de **COM3** (valeur par défaut du `.bat`) puis vérifiait **COM7** :
+  #    deux ports différents dans un même geste, sans que rien ne le dise.
+  BAT_WIN="$TOUR_WIN\\dn-agent.bat"
+  if ! ps_win "if (Test-Path '$BAT_WIN') { 'DN_BAT=oui' } else { 'DN_BAT=non' }" \
+       | grep -q 'DN_BAT=oui'; then
+    crier "dn-agent.bat INTROUVABLE sur la tour : $BAT_WIN"
+    crier "    (DN_TOUR_WIN pointe-t-il la même cible que deployer_tour.sh ?)"
+    crier "    ⛔ Sans lui, impossible d'arrêter l'agent PROPREMENT. Rien n'est attaché."
     exit 5
   fi
+  ps_win "& '$BAT_WIN' stop $SERIE" | sed 's/^/     /'
+  P="$(etat_com)"
+  dire "$SERIE après stop : $P"
+  # 🔴 REVUE DU 2026-08-26 — SEUL « tenu » BLOQUAIT. Tout le reste — y compris
+  #    un texte d'erreur — laissait l'outil ATTACHER LA CARTE À WSL alors que
+  #    le port pouvait être encore tenu côté Windows : le nœud mort que cet
+  #    outil existe précisément pour empêcher.
+  case "$P" in
+    libre) : ;;
+    tenu)
+      crier "$SERIE est ENCORE TENU : l'agent (ou un autre process) ne l'a pas rendu."
+      crier "    ⛔ L'attachement à WSL échouerait ou donnerait un nœud mort."
+      exit 5 ;;
+    absent)
+      dire "(i) $SERIE n'existe plus côté Windows — la carte est déjà partie." ;;
+    fantome)
+      crier "$SERIE est un FANTÔME : énuméré, mais il ne s'ouvre pas."
+      crier "    Un veilleur a déjà repris la carte. On repart d'une base propre :"
+      crier "    ⛔ on n'attache pas par-dessus un état qu'on n'a pas nettoyé." ;;
+    *)
+      crier "L'état de $SERIE est INCONNU (sortie brute ci-dessus)."
+      crier "    ⛔ On n'attache PAS la carte sur un état qu'on n'a pas lu."
+      exit 5 ;;
+  esac
 
   etape "2/4  Veilleurs --auto-attach (on repart d'une base propre)"
   tuer_veilleurs

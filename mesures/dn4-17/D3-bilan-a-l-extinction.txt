@@ -1,0 +1,52 @@
+=============================================================================
+ D3 — LE BILAN DE FIN SURVIT-IL A UNE EXTINCTION ?   (constat de revue, dn4-17)
+=============================================================================
+ SHA du depot au releve : 6c26ce2          Cœurs logiques : 16
+ Poste                  : tour Windows, naoua
+ Releve par             : revue de code 3 couches du 2026-08-26
+
+ CE QU'ON MESURE, ET POURQUOI
+   `agent/dn_agent.py` n'a AUCUN handler de signal :
+       rtk proxy grep -n "signal\.\|atexit\|SIGTERM\|SetConsoleCtrlHandler" agent/dn_agent.py  =>  0
+   `--stop-si` ne tire QUE depuis `dn-agent.bat stop`. La fin NORMALE de cet
+   agent permanent est l'extinction de la tour (decision owner n.1 : « tour
+   eteinte, la dalle reste allumee »). Si Windows le termine sans qu'il ecrive
+   son bilan, alors le defaut que 25.8 declare ferme est ROUVERT sur le seul
+   chemin qui compte tous les jours.
+   /!\ TANT QUE CE CHIFFRE N'EST PAS RELEVE, AUCUNE LIGNE NE DOIT ENTRER DANS
+       dn_agent.py : la story exige un defaut MESURE, pas deduit.
+
+ PROTOCOLE — 2 gestes owner, aucun outil
+   1. NE PAS jouer `dn-agent.bat stop`. C'est tout l'objet de la mesure.
+   2. Eteindre la tour, puis la rallumer et ouvrir la session normalement.
+
+ LIGNE DE BASE, PRISE LE 2026-08-26T11:54:40+02:00 (avant extinction)
+   journal dn-agent.log ......... 74379 o
+   agent vivant ................. PID 3792, cree 2026-08-26 11:39:13
+   ses arguments ................ --serie COM3 --stop-si H:\dev\projets\desknode\dn-agent.stop
+                                  (/!\ PAS de --temoin : lance par DOUBLE-CLIC)
+   action de la tache ........... powershell.exe -NoProfile -ExecutionPolicy Bypass
+                                  -WindowStyle Hidden -File "H:\dev\projets\desknode\dn_agent_tour.ps1"
+                                  tache -Serie COM3 -Duree 0 -Temoin
+   busid ........................ 3-5   (3e valeur du dossier : 3-7, puis 3-1, puis 3-5)
+   COM .......................... COM3  (INCHANGE malgre le changement de port physique ET de cable)
+
+ VERDICT ATTENDU APRES RALLUMAGE — a remplir
+   [ ] taille de dn-agent.log juste apres le logon ......... ____ o
+   [ ] un bloc de bilan portant le PID 3792 y figure-t-il ?  OUI / NON
+       => NON  ⇒ le defaut est MESURE, la ligne dans dn_agent.py est justifiee
+       => OUI  ⇒ Windows laisse le delai de grace suffire, RIEN a coder
+
+ CE QUE LE MEME RALLUMAGE FERME AUSSI, GRATUITEMENT
+   - 25.15 : la tache (-Temoin) REECRIT LA SERIE CPU ENTIERE sous l'action
+     LIVREE (powershell -WindowStyle Hidden). C'est le chiffre que brief.md
+     publie aujourd'hui comme « re-mesure dans le regime livre » alors que le
+     tir de 25.10 a ete pris sous l'ANCIENNE action (cmd.exe direct).
+   - AC6.6 : la chaine de PID sous l'action livree, sur un logon REEL.
+     Relevee a chaud le 2026-08-26T11:26 (instance precedente) :
+         python 20132  <-  cmd 19324  <-  powershell 24608  <-  svchost 1516
+         Schedule.Service.GetRunningTasks() : \DeskNode agent  EnginePID = 24608
+     /!\ L'EnginePID est donc le GRAND-PERE de python.exe, PLUS SON PERE :
+         l'egalite publiee dans brief.md:240 ne tient PAS sous le code livre.
+   - AC5.6 : temoin d'un demarrage par logon reel, une 2e fois.
+=============================================================================

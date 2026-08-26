@@ -14,7 +14,15 @@ REM    dn-agent.bat                 start  (double-clic)
 REM    dn-agent.bat etat            dit tout, ne change RIEN
 REM    dn-agent.bat stop            arrete, et le PROUVE en rouvrant le port
 REM    dn-agent.bat run  [port] [duree] [temoin]   avant-plan (la tache)
-REM    dn-agent.bat exec [port]     avant-plan SANS pre-vol (usage interne)
+REM    dn-agent.bat exec            avant-plan SANS pre-vol (usage interne)
+REM                                 !!! IL N'ACCEPTE PAS DE PORT. Corrige le
+REM                                 2026-08-26 : l'aide annoncait "exec [port]"
+REM                                 alors que :EXEC ne lit JAMAIS %SERIE% - il
+REM                                 rejoue les arguments du DERNIER pre-vol,
+REM                                 ecrits dans dn-agent.env.cmd. Un
+REM                                 "exec COM7" partait donc sur COM3, en
+REM                                 silence. Le port se choisit au pre-vol :
+REM                                 "dn-agent.bat start COM7" ou "run COM7".
 REM    dn-agent.bat permanence      pose la tache au logon (NON ELEVEE)
 REM    dn-agent.bat retirer         retire la tache
 REM
@@ -97,31 +105,46 @@ REM pas de console, sans cette redirection il serait PERDU. (AC3.6)
 "%DN_PY%" "%DN_DIR%\dn_agent.py" %DN_ARGS% 1>>"%DN_OUT%" 2>>"%DN_LOG%"
 goto :FIN
 
+REM ===========================================================================
+REM  !!! REVUE DU 2026-08-26 - CES TROIS SORTIES FAISAIENT `exit /b` DIRECTEMENT
+REM      ET COURT-CIRCUITAIENT :FIN, DONC LE `pause` DU DOUBLE-CLIC.
+REM      :SANSPS1 est teste AVANT le dispatch de verbe : un double-clic sur un
+REM      deploiement incomplet imprimait "Redeployer depuis le depot" et
+REM      REFERMAIT LA FENETRE - c'est EXACTEMENT le constat owner qui a motive
+REM      le correctif du pause : "pas pu voir, la fenetre se referme direct".
+REM      Un message qu'on ne peut pas lire n'est pas un message.
+REM  => Elles passent toutes par :FIN, qui porte la garde double.
+REM ===========================================================================
 :SANSPS1
 echo   /!\ dn_agent_tour.ps1 ABSENT a cote de ce .bat.
 echo       Redeployer depuis le depot : tools/deployer_tour.sh
-exit /b 3
+set "RC=3"
+goto :FIN
 
 :SANSENV
 echo   /!\ dn-agent.env.cmd absent ou vide : le pre-vol n'a pas eu lieu.
 echo       Utiliser "dn-agent.bat start" ou "dn-agent.bat run".
-exit /b 3
+set "RC=3"
+goto :FIN
 
 :USAGE
 echo   /!\ verbe inconnu : %VERBE%
 echo       verbes : start / etat / stop / run / exec / permanence / retirer
-exit /b 2
+set "RC=2"
+goto :FIN
 
 :FIN
-set "RC=%ERRORLEVEL%"
+REM  RC peut avoir ete pose par :SANSPS1 / :SANSENV / :USAGE (revue 2026-08-26).
+REM  Sinon il vaut le code de la derniere commande.
+if not defined RC set "RC=%ERRORLEVEL%"
 REM ===========================================================================
 REM  DOUBLE-CLIC : ON S'ARRETE POUR QUE L'OWNER PUISSE LIRE.
-REM  Constat owner du 2026-08-26 : « pas pu voir, la fenetre se referme
-REM  direct ». Un outil dont on ne peut pas lire la reponse n'est pas un
+REM  Constat owner du 2026-08-26 : " pas pu voir, la fenetre se referme
+REM  direct ". Un outil dont on ne peut pas lire la reponse n'est pas un
 REM  outil - et la reponse qu'il donnait la etait justement le temoin
-REM  anti-doublon (« DEJA LANCE ... Aucun second process »).
+REM  anti-doublon (" DEJA LANCE ... Aucun second process ").
 REM  !!! LA GARDE EST DOUBLE, ET C'EST OBLIGATOIRE : la tache au logon lance
-REM      « dn-agent.bat run COM3 0 -Temoin » via cmd /c, donc %cmdcmdline%
+REM      " dn-agent.bat run COM3 0 -Temoin " via cmd /c, donc %cmdcmdline%
 REM      CONTIENT le chemin du .bat. Un `pause` la ferait attendre POUR
 REM      TOUJOURS. On n'attend donc que si, EN PLUS, aucun argument n'a ete
 REM      passe - ce qui est exactement le double-clic.

@@ -1,0 +1,459 @@
+=============================================================================
+ AC4.6 — LE GESTE DE REPRISE DE MAIN, RE-MESURE AVEC SA CAPTURE BRUTE
+=============================================================================
+ SHA du depot : 6c26ce2   (⛔ les chiffres publies jusqu'ici ne portaient AUCUN SHA)
+ Date         : 2026-08-26, ~12:21-12:24        Cœurs : 16
+ Busid        : 3-5  (⛔ 3e valeur du dossier — la carte a change de PORT
+                PHYSIQUE et de CABLE le meme jour. C'est la 1re fois que
+                rendre-port.sh est mesure sur ce port.)
+ Origine      : revue de code 3 couches de dn4-17. Constat D4 : les chiffres
+                7,26 s / 6,58 s / n=4 / 0 echec sur 8 sont publies QUATRE FOIS
+                (README:1010-1012, 25.6, 25.7, ledger) sans AUCUNE capture,
+                et 25.16 re-chronometre --vers-flash a 8,5 s (+29 %).
+
+=============================================================================
+ 🔴 CE QUE LA RE-MESURE TROUVE : LES DEUX CHIFFRES SONT JUSTES,
+    ET ILS NE DECRIVENT PAS LA MEME CHOSE
+=============================================================================
+ --vers-flash a DEUX regimes de cout, selon qu'un agent doit etre arrete :
+
+   geste                                  | n |  min  |  max  | moyenne
+   ---------------------------------------|---|-------|-------|--------
+   --vers-flash AVEC un agent a arreter   | 3 | 8,046 | 9,124 | 8,519 s
+   --vers-flash SANS agent (port deja libre)| 3 | 6,438 | 6,717 | 6,598 s
+   --vers-agent                           | 6 | 7,232 | 7,480 | 7,349 s
+
+   TOTAL : 12 passages, 0 ECHEC.
+
+ ==> 25.16 (8,5 s) mesurait le cas AVEC agent : 8,519 mesure, il avait RAISON.
+ ==> Le 6,58 s publie 4 fois mesurait le cas SANS agent : 6,598 mesure, il
+     avait raison AUSSI.
+ 🔴 MAIS LE CAS SANS AGENT N'EST JAMAIS CELUI DE L'OWNER. Il reprend la carte
+    POUR FLASHER, donc l'agent TOURNE. Le chiffre publie 4 fois decrit un
+    etat que le geste reel ne rencontre pas.
+ ⇒ LE CHIFFRE A PUBLIER EST **8,5 s**, et l'ecart de +1,9 s est LE COUT DE
+   L'ARRET PROPRE DE L'AGENT — qui est une FONCTIONNALITE (le bilan sort :
+   1501 o, 853 o, 855 o sur les trois passages), ⛔ pas une perte.
+ ⚠️ Ce n'etait donc PAS une derive de binaire, contrairement a ce que la revue
+    avait suppose en voyant que le .bat et le .ps1 avaient change 3 fois dans
+    la plage. LA SUPPOSITION EST REFUTEE PAR LA MESURE.
+
+=============================================================================
+ CE QUE CES 12 PASSAGES ETABLISSENT AUSSI
+=============================================================================
+ AC4.2  Le BUSID est RELU a chaque appel : « BUSID relu : 3-5 » sur les 12.
+        1re mesure sur ce port physique — la carte y a ete rebranchee ce jour.
+ AC4.3  Le detach est re-verifie apres delai sur les 6 --vers-agent : aucun
+        retour a « Attached », aucun exit 3.
+ AC4.4  Le faux negatif CommandLine est VU et DECLARE, pas tu, sur les 12 :
+        « /!\ 1 usbipd.exe a CommandLine ILLISIBLE : ni tues, ni innocentes.
+          (faux negatif MESURE le 2026-08-26 — PID 6056). Le verdict reste
+          l'etat du port. »  ⇒ le meme process muet est la a chaque passage,
+        et le verdict ne s'appuie jamais sur lui.
+ AC3.3  6 arrets propres supplementaires ce jour (1501, 853, 855 o + les 3
+        de la seance du matin) : le chemin propre ecrit TOUJOURS son bilan.
+        ⇒ Contre-epreuve du defaut D3 : ce n'est pas l'ECRITURE qui manque,
+          c'est le HANDLER a la terminaison de session.
+
+=============================================================================
+ CE QUE CETTE MESURE NE COUVRE PAS — nomme, ⛔ pas tu
+=============================================================================
+ * AC5.1 (« un flash reussi APRES la pose de la tache ») n'a toujours AUCUNE
+   sortie esptool committee. Ces 12 passages amenent la carte a WSL et
+   verifient /dev/ttyACM0 ecrivable, ⛔ mais ne flashent rien.
+ * AC4.5 (la fourche WSL vs Windows-only : 13,84 s / 8,15 s / esptool 1,62 s)
+   n'est pas re-jouee ici et reste sans capture brute.
+=============================================================================
+
+===== CAPTURE BRUTE DES 12 PASSAGES =====
+
+########## PASSE 1 — --vers-flash  2026-08-26T12:21:09+02:00 ##########
+=== rendre-port.sh — flash ===
+  BUSID relu : 3-5   (⛔ jamais en dur : il suit le port physique)
+
+[0.5s] 1/4  Arrêter l'agent — et LE PROUVER (⛔ pas par un code de retour)
+     
+     === STOP ===
+       a arreter : PID=23268
+       drapeau pose : arret PROPRE demande (le bilan de fin doit sortir)
+       arret propre en 1 s ; bilan ecrit : 1501 o
+     
+     === PREUVE : ON RE-OUVRE LE PORT ===
+       python.exe vivants : 0  (portant dn_agent.py : 0 | CommandLine ILLISIBLE : 0)
+       port COM3 : libre
+       usbipd : 3-5 303a:1001 Périphérique série USB (COM3), USB JTAG/serial debug unit Shared
+       marqueur : absent
+       journal : 82657 o  H:\dev\projets\desknode\dn-agent.log
+       OK - COM3 se REOUVRE : le port est rendu.
+  COM3 après stop : libre
+
+[4.5s] 2/4  Veilleurs --auto-attach (on repart d'une base propre)
+  veilleurs tués : Windows=0  WSL=0
+  /!\ 1 usbipd.exe à CommandLine ILLISIBLE : ni tués, ni innocentés.
+  /!\     (faux négatif MESURÉ le 2026-08-26 — PID 6056). Le verdict reste l'état du port.
+
+[6.0s] 3/4  wsl-attach.sh (busid relu par lui aussi)
+     1/4  Chargement des modules noyau USB…
+     2/4  Recherche de la carte (303a:1001) dans 'usbipd list'…
+          BUSID = 3-5
+     3/4  Attachement à WSL…
+          usbipd: info: Using WSL distribution 'Ubuntu' to attach; the device will be available in all WSL 2 distributions.
+          usbipd: info: Detected networking mode 'nat'.
+          usbipd: info: Using IP address 192.168.224.1 to reach the host.
+     4/4  Ouverture des droits sur /dev/ttyACM0…
+     
+     Prêt : /dev/ttyACM0  nasbarok:root  crw-------
+     Boucle :  cd ~/projects/desknode/firmware/hello-desknode && idf.py -p /dev/ttyACM0 flash monitor
+
+[9.1s] 4/4  VERDICT : /dev/ttyACM* présent ET écrivable
+  /dev/ttyACM0  nasbarok:root  crw-------
+
+  ✅ La carte est à WSL en 9.1 s. Flasher :
+        cd /home/nasbarok/projects/desknode/firmware/hello-desknode && idf.py -p /dev/ttyACM0 flash monitor
+RC=0  DUREE=9.124344980 s
+
+########## --vers-agent  (tour 1)  2026-08-26T12:21:35+02:00 ##########
+=== rendre-port.sh — agent ===
+  BUSID relu : 3-5   (⛔ jamais en dur : il suit le port physique)
+
+[0.5s] 1/4  Veilleurs --auto-attach (les deux côtés)
+  veilleurs tués : Windows=0  WSL=0
+  /!\ 1 usbipd.exe à CommandLine ILLISIBLE : ni tués, ni innocentés.
+  /!\     (faux négatif MESURÉ le 2026-08-26 — PID 6056). Le verdict reste l'état du port.
+
+[2.0s] 2/4  detach 3-5
+
+[2.4s] 3/4  Re-vérification APRÈS 4s (les veilleurs ressuscitent en ~2 s)
+  usbipd : 3-5    303a:1001  Périphérique série USB (COM3), USB JTAG/serial debug unit     Shared
+  STATE = Shared — le detach a TENU.
+
+[6.8s] 4/4  VERDICT : COM3 doit APPARAÎTRE côté Windows
+  COM3 : libre
+
+  ✅ Le port est à Windows en 7.3 s. Lancer l'agent :
+        (sur la tour)  H:\dev\projets\desknode\dn-agent.bat
+>>> RC=0  DUREE=7.315426429 s
+########## --vers-flash  (tour 1)  2026-08-26T12:21:42+02:00 ##########
+=== rendre-port.sh — flash ===
+  BUSID relu : 3-5   (⛔ jamais en dur : il suit le port physique)
+
+[0.4s] 1/4  Arrêter l'agent — et LE PROUVER (⛔ pas par un code de retour)
+     
+     === STOP ===
+       aucun agent reconnu.
+     
+     === PREUVE : ON RE-OUVRE LE PORT ===
+       python.exe vivants : 0  (portant dn_agent.py : 0 | CommandLine ILLISIBLE : 0)
+       port COM3 : libre
+       usbipd : 3-5 303a:1001 Périphérique série USB (COM3), USB JTAG/serial debug unit Shared
+       marqueur : absent
+       journal : 82657 o  H:\dev\projets\desknode\dn-agent.log
+       OK - COM3 se REOUVRE : le port est rendu.
+  COM3 après stop : libre
+
+[2.3s] 2/4  Veilleurs --auto-attach (on repart d'une base propre)
+  veilleurs tués : Windows=0  WSL=0
+  /!\ 1 usbipd.exe à CommandLine ILLISIBLE : ni tués, ni innocentés.
+  /!\     (faux négatif MESURÉ le 2026-08-26 — PID 6056). Le verdict reste l'état du port.
+
+[3.8s] 3/4  wsl-attach.sh (busid relu par lui aussi)
+     1/4  Chargement des modules noyau USB…
+     2/4  Recherche de la carte (303a:1001) dans 'usbipd list'…
+          BUSID = 3-5
+     3/4  Attachement à WSL…
+          usbipd: info: Using WSL distribution 'Ubuntu' to attach; the device will be available in all WSL 2 distributions.
+          usbipd: info: Detected networking mode 'nat'.
+          usbipd: info: Using IP address 192.168.224.1 to reach the host.
+     4/4  Ouverture des droits sur /dev/ttyACM0…
+     
+     Prêt : /dev/ttyACM0  nasbarok:root  crw-------
+     Boucle :  cd ~/projects/desknode/firmware/hello-desknode && idf.py -p /dev/ttyACM0 flash monitor
+
+[6.7s] 4/4  VERDICT : /dev/ttyACM* présent ET écrivable
+  /dev/ttyACM0  nasbarok:root  crw-------
+
+  ✅ La carte est à WSL en 6.7 s. Flasher :
+        cd /home/nasbarok/projects/desknode/firmware/hello-desknode && idf.py -p /dev/ttyACM0 flash monitor
+>>> RC=0  DUREE=6.716595741 s
+########## --vers-agent  (tour 2)  2026-08-26T12:21:49+02:00 ##########
+=== rendre-port.sh — agent ===
+  BUSID relu : 3-5   (⛔ jamais en dur : il suit le port physique)
+
+[0.5s] 1/4  Veilleurs --auto-attach (les deux côtés)
+  veilleurs tués : Windows=0  WSL=0
+  /!\ 1 usbipd.exe à CommandLine ILLISIBLE : ni tués, ni innocentés.
+  /!\     (faux négatif MESURÉ le 2026-08-26 — PID 6056). Le verdict reste l'état du port.
+
+[2.1s] 2/4  detach 3-5
+
+[2.5s] 3/4  Re-vérification APRÈS 4s (les veilleurs ressuscitent en ~2 s)
+  usbipd : 3-5    303a:1001  Périphérique série USB (COM3), USB JTAG/serial debug unit     Shared
+  STATE = Shared — le detach a TENU.
+
+[6.9s] 4/4  VERDICT : COM3 doit APPARAÎTRE côté Windows
+  COM3 : libre
+
+  ✅ Le port est à Windows en 7.4 s. Lancer l'agent :
+        (sur la tour)  H:\dev\projets\desknode\dn-agent.bat
+>>> RC=0  DUREE=7.480419388 s
+########## --vers-flash  (tour 2)  2026-08-26T12:21:56+02:00 ##########
+=== rendre-port.sh — flash ===
+  BUSID relu : 3-5   (⛔ jamais en dur : il suit le port physique)
+
+[0.4s] 1/4  Arrêter l'agent — et LE PROUVER (⛔ pas par un code de retour)
+     
+     === STOP ===
+       aucun agent reconnu.
+     
+     === PREUVE : ON RE-OUVRE LE PORT ===
+       python.exe vivants : 0  (portant dn_agent.py : 0 | CommandLine ILLISIBLE : 0)
+       port COM3 : libre
+       usbipd : 3-5 303a:1001 Périphérique série USB (COM3), USB JTAG/serial debug unit Shared
+       marqueur : absent
+       journal : 82657 o  H:\dev\projets\desknode\dn-agent.log
+       OK - COM3 se REOUVRE : le port est rendu.
+  COM3 après stop : libre
+
+[2.3s] 2/4  Veilleurs --auto-attach (on repart d'une base propre)
+  veilleurs tués : Windows=0  WSL=0
+  /!\ 1 usbipd.exe à CommandLine ILLISIBLE : ni tués, ni innocentés.
+  /!\     (faux négatif MESURÉ le 2026-08-26 — PID 6056). Le verdict reste l'état du port.
+
+[3.8s] 3/4  wsl-attach.sh (busid relu par lui aussi)
+     1/4  Chargement des modules noyau USB…
+     2/4  Recherche de la carte (303a:1001) dans 'usbipd list'…
+          BUSID = 3-5
+     3/4  Attachement à WSL…
+          usbipd: info: Using WSL distribution 'Ubuntu' to attach; the device will be available in all WSL 2 distributions.
+          usbipd: info: Detected networking mode 'nat'.
+          usbipd: info: Using IP address 192.168.224.1 to reach the host.
+     4/4  Ouverture des droits sur /dev/ttyACM0…
+     
+     Prêt : /dev/ttyACM0  nasbarok:root  crw-------
+     Boucle :  cd ~/projects/desknode/firmware/hello-desknode && idf.py -p /dev/ttyACM0 flash monitor
+
+[6.6s] 4/4  VERDICT : /dev/ttyACM* présent ET écrivable
+  /dev/ttyACM0  nasbarok:root  crw-------
+
+  ✅ La carte est à WSL en 6.6 s. Flasher :
+        cd /home/nasbarok/projects/desknode/firmware/hello-desknode && idf.py -p /dev/ttyACM0 flash monitor
+>>> RC=0  DUREE=6.638117202 s
+########## --vers-agent  (tour 3)  2026-08-26T12:22:03+02:00 ##########
+=== rendre-port.sh — agent ===
+  BUSID relu : 3-5   (⛔ jamais en dur : il suit le port physique)
+
+[0.5s] 1/4  Veilleurs --auto-attach (les deux côtés)
+  veilleurs tués : Windows=0  WSL=0
+  /!\ 1 usbipd.exe à CommandLine ILLISIBLE : ni tués, ni innocentés.
+  /!\     (faux négatif MESURÉ le 2026-08-26 — PID 6056). Le verdict reste l'état du port.
+
+[2.1s] 2/4  detach 3-5
+
+[2.5s] 3/4  Re-vérification APRÈS 4s (les veilleurs ressuscitent en ~2 s)
+  usbipd : 3-5    303a:1001  Périphérique série USB (COM3), USB JTAG/serial debug unit     Shared
+  STATE = Shared — le detach a TENU.
+
+[6.9s] 4/4  VERDICT : COM3 doit APPARAÎTRE côté Windows
+  COM3 : libre
+
+  ✅ Le port est à Windows en 7.4 s. Lancer l'agent :
+        (sur la tour)  H:\dev\projets\desknode\dn-agent.bat
+>>> RC=0  DUREE=7.447098207 s
+########## --vers-flash  (tour 3)  2026-08-26T12:22:10+02:00 ##########
+=== rendre-port.sh — flash ===
+  BUSID relu : 3-5   (⛔ jamais en dur : il suit le port physique)
+
+[0.4s] 1/4  Arrêter l'agent — et LE PROUVER (⛔ pas par un code de retour)
+     
+     === STOP ===
+       aucun agent reconnu.
+     
+     === PREUVE : ON RE-OUVRE LE PORT ===
+       python.exe vivants : 0  (portant dn_agent.py : 0 | CommandLine ILLISIBLE : 0)
+       port COM3 : libre
+       usbipd : 3-5 303a:1001 Périphérique série USB (COM3), USB JTAG/serial debug unit Shared
+       marqueur : absent
+       journal : 82657 o  H:\dev\projets\desknode\dn-agent.log
+       OK - COM3 se REOUVRE : le port est rendu.
+  COM3 après stop : libre
+
+[2.2s] 2/4  Veilleurs --auto-attach (on repart d'une base propre)
+  veilleurs tués : Windows=0  WSL=0
+  /!\ 1 usbipd.exe à CommandLine ILLISIBLE : ni tués, ni innocentés.
+  /!\     (faux négatif MESURÉ le 2026-08-26 — PID 6056). Le verdict reste l'état du port.
+
+[3.7s] 3/4  wsl-attach.sh (busid relu par lui aussi)
+     1/4  Chargement des modules noyau USB…
+     2/4  Recherche de la carte (303a:1001) dans 'usbipd list'…
+          BUSID = 3-5
+     3/4  Attachement à WSL…
+          usbipd: info: Using WSL distribution 'Ubuntu' to attach; the device will be available in all WSL 2 distributions.
+          usbipd: info: Detected networking mode 'nat'.
+          usbipd: info: Using IP address 192.168.224.1 to reach the host.
+     4/4  Ouverture des droits sur /dev/ttyACM0…
+     
+     Prêt : /dev/ttyACM0  nasbarok:root  crw-------
+     Boucle :  cd ~/projects/desknode/firmware/hello-desknode && idf.py -p /dev/ttyACM0 flash monitor
+
+[6.4s] 4/4  VERDICT : /dev/ttyACM* présent ET écrivable
+  /dev/ttyACM0  nasbarok:root  crw-------
+
+  ✅ La carte est à WSL en 6.4 s. Flasher :
+        cd /home/nasbarok/projects/desknode/firmware/hello-desknode && idf.py -p /dev/ttyACM0 flash monitor
+>>> RC=0  DUREE=6.437710955 s
+########## --vers-agent  (tour 4, retour a Windows)  2026-08-26T12:22:17+02:00 ##########
+=== rendre-port.sh — agent ===
+  BUSID relu : 3-5   (⛔ jamais en dur : il suit le port physique)
+
+[0.5s] 1/4  Veilleurs --auto-attach (les deux côtés)
+  veilleurs tués : Windows=0  WSL=0
+  /!\ 1 usbipd.exe à CommandLine ILLISIBLE : ni tués, ni innocentés.
+  /!\     (faux négatif MESURÉ le 2026-08-26 — PID 6056). Le verdict reste l'état du port.
+
+[2.0s] 2/4  detach 3-5
+
+[2.4s] 3/4  Re-vérification APRÈS 4s (les veilleurs ressuscitent en ~2 s)
+  usbipd : 3-5    303a:1001  Périphérique série USB (COM3), USB JTAG/serial debug unit     Shared
+  STATE = Shared — le detach a TENU.
+
+[6.8s] 4/4  VERDICT : COM3 doit APPARAÎTRE côté Windows
+  COM3 : libre
+
+  ✅ Le port est à Windows en 7.3 s. Lancer l'agent :
+        (sur la tour)  H:\dev\projets\desknode\dn-agent.bat
+>>> RC=0  DUREE=7.354997604 s
+
+########## CYCLE REALISTE 1 — on RELANCE l'agent d'abord  2026-08-26T12:22:52+02:00 ##########
+=== PRE-VOL ===
+  agent VIVANT  PID=8140
+--- --vers-flash AVEC un agent a arreter ---
+=== rendre-port.sh — flash ===
+  BUSID relu : 3-5   (⛔ jamais en dur : il suit le port physique)
+
+[0.5s] 1/4  Arrêter l'agent — et LE PROUVER (⛔ pas par un code de retour)
+     
+     === STOP ===
+       a arreter : PID=8140
+       drapeau pose : arret PROPRE demande (le bilan de fin doit sortir)
+       arret propre en 1 s ; bilan ecrit : 853 o
+     
+     === PREUVE : ON RE-OUVRE LE PORT ===
+       python.exe vivants : 0  (portant dn_agent.py : 0 | CommandLine ILLISIBLE : 0)
+       port COM3 : libre
+       usbipd : 3-5 303a:1001 Périphérique série USB (COM3), USB JTAG/serial debug unit Shared
+       marqueur : absent
+       journal : 83738 o  H:\dev\projets\desknode\dn-agent.log
+       OK - COM3 se REOUVRE : le port est rendu.
+  COM3 après stop : libre
+
+[3.8s] 2/4  Veilleurs --auto-attach (on repart d'une base propre)
+  veilleurs tués : Windows=0  WSL=0
+  /!\ 1 usbipd.exe à CommandLine ILLISIBLE : ni tués, ni innocentés.
+  /!\     (faux négatif MESURÉ le 2026-08-26 — PID 6056). Le verdict reste l'état du port.
+
+[5.3s] 3/4  wsl-attach.sh (busid relu par lui aussi)
+     1/4  Chargement des modules noyau USB…
+     2/4  Recherche de la carte (303a:1001) dans 'usbipd list'…
+          BUSID = 3-5
+     3/4  Attachement à WSL…
+          usbipd: info: Using WSL distribution 'Ubuntu' to attach; the device will be available in all WSL 2 distributions.
+          usbipd: info: Detected networking mode 'nat'.
+          usbipd: info: Using IP address 192.168.224.1 to reach the host.
+     4/4  Ouverture des droits sur /dev/ttyACM0…
+     
+     Prêt : /dev/ttyACM0  nasbarok:root  crw-------
+     Boucle :  cd ~/projects/desknode/firmware/hello-desknode && idf.py -p /dev/ttyACM0 flash monitor
+
+[8.0s] 4/4  VERDICT : /dev/ttyACM* présent ET écrivable
+  /dev/ttyACM0  nasbarok:root  crw-------
+
+  ✅ La carte est à WSL en 8.0 s. Flasher :
+        cd /home/nasbarok/projects/desknode/firmware/hello-desknode && idf.py -p /dev/ttyACM0 flash monitor
+>>> vers-flash(AVEC agent) RC=0 DUREE=8.045978182 s
+=== rendre-port.sh — agent ===
+  BUSID relu : 3-5   (⛔ jamais en dur : il suit le port physique)
+
+[0.4s] 1/4  Veilleurs --auto-attach (les deux côtés)
+  veilleurs tués : Windows=0  WSL=0
+  /!\ 1 usbipd.exe à CommandLine ILLISIBLE : ni tués, ni innocentés.
+  /!\     (faux négatif MESURÉ le 2026-08-26 — PID 6056). Le verdict reste l'état du port.
+
+[2.0s] 2/4  detach 3-5
+
+[2.3s] 3/4  Re-vérification APRÈS 4s (les veilleurs ressuscitent en ~2 s)
+  usbipd : 3-5    303a:1001  Périphérique série USB (COM3), USB JTAG/serial debug unit     Shared
+  STATE = Shared — le detach a TENU.
+
+[6.8s] 4/4  VERDICT : COM3 doit APPARAÎTRE côté Windows
+  COM3 : libre
+
+  ✅ Le port est à Windows en 7.2 s. Lancer l'agent :
+        (sur la tour)  H:\dev\projets\desknode\dn-agent.bat
+>>> vers-agent RC=0 DUREE=7.263603985 s
+########## CYCLE REALISTE 2 — on RELANCE l'agent d'abord  2026-08-26T12:23:18+02:00 ##########
+=== PRE-VOL ===
+  agent VIVANT  PID=24588
+--- --vers-flash AVEC un agent a arreter ---
+=== rendre-port.sh — flash ===
+  BUSID relu : 3-5   (⛔ jamais en dur : il suit le port physique)
+
+[0.4s] 1/4  Arrêter l'agent — et LE PROUVER (⛔ pas par un code de retour)
+     
+     === STOP ===
+       a arreter : PID=24588
+       drapeau pose : arret PROPRE demande (le bilan de fin doit sortir)
+       arret propre en 1 s ; bilan ecrit : 855 o
+     
+     === PREUVE : ON RE-OUVRE LE PORT ===
+       python.exe vivants : 0  (portant dn_agent.py : 0 | CommandLine ILLISIBLE : 0)
+       port COM3 : libre
+       usbipd : 3-5 303a:1001 Périphérique série USB (COM3), USB JTAG/serial debug unit Shared
+       marqueur : absent
+       journal : 84821 o  H:\dev\projets\desknode\dn-agent.log
+       OK - COM3 se REOUVRE : le port est rendu.
+  COM3 après stop : libre
+
+[4.2s] 2/4  Veilleurs --auto-attach (on repart d'une base propre)
+  veilleurs tués : Windows=0  WSL=0
+  /!\ 1 usbipd.exe à CommandLine ILLISIBLE : ni tués, ni innocentés.
+  /!\     (faux négatif MESURÉ le 2026-08-26 — PID 6056). Le verdict reste l'état du port.
+
+[5.6s] 3/4  wsl-attach.sh (busid relu par lui aussi)
+     1/4  Chargement des modules noyau USB…
+     2/4  Recherche de la carte (303a:1001) dans 'usbipd list'…
+          BUSID = 3-5
+     3/4  Attachement à WSL…
+          usbipd: info: Using WSL distribution 'Ubuntu' to attach; the device will be available in all WSL 2 distributions.
+          usbipd: info: Detected networking mode 'nat'.
+          usbipd: info: Using IP address 192.168.224.1 to reach the host.
+     4/4  Ouverture des droits sur /dev/ttyACM0…
+     
+     Prêt : /dev/ttyACM0  nasbarok:root  crw-------
+     Boucle :  cd ~/projects/desknode/firmware/hello-desknode && idf.py -p /dev/ttyACM0 flash monitor
+
+[8.3s] 4/4  VERDICT : /dev/ttyACM* présent ET écrivable
+  /dev/ttyACM0  nasbarok:root  crw-------
+
+  ✅ La carte est à WSL en 8.3 s. Flasher :
+        cd /home/nasbarok/projects/desknode/firmware/hello-desknode && idf.py -p /dev/ttyACM0 flash monitor
+>>> vers-flash(AVEC agent) RC=0 DUREE=8.386487655 s
+=== rendre-port.sh — agent ===
+  BUSID relu : 3-5   (⛔ jamais en dur : il suit le port physique)
+
+[0.4s] 1/4  Veilleurs --auto-attach (les deux côtés)
+  veilleurs tués : Windows=0  WSL=0
+  /!\ 1 usbipd.exe à CommandLine ILLISIBLE : ni tués, ni innocentés.
+  /!\     (faux négatif MESURÉ le 2026-08-26 — PID 6056). Le verdict reste l'état du port.
+
+[1.9s] 2/4  detach 3-5
+
+[2.3s] 3/4  Re-vérification APRÈS 4s (les veilleurs ressuscitent en ~2 s)
+  usbipd : 3-5    303a:1001  Périphérique série USB (COM3), USB JTAG/serial debug unit     Shared
+  STATE = Shared — le detach a TENU.
+
+[6.7s] 4/4  VERDICT : COM3 doit APPARAÎTRE côté Windows
+  COM3 : libre
+
+  ✅ Le port est à Windows en 7.2 s. Lancer l'agent :
+        (sur la tour)  H:\dev\projets\desknode\dn-agent.bat
+>>> vers-agent RC=0 DUREE=7.231623607 s

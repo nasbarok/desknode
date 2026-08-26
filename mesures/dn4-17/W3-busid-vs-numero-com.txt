@@ -1,0 +1,53 @@
+=============================================================================
+ W3 / dn4-15 — LE BUSID SUIT LE PORT PHYSIQUE, LE NUMERO COM SUIT LA CARTE
+=============================================================================
+ SHA du depot : 6c26ce2        Poste : tour Windows, naoua
+ Geste owner  : changement de PORT USB PHYSIQUE **et** de CABLE, 2026-08-26 ~11:40
+ Motif        : la revue avait verse en report le constat « le numero COM est
+                une constante la ou le busid est relu — il suit le meme
+                rebranchement ». Le geste owner l'a mis a l'epreuve.
+=============================================================================
+
+########## APRES CHANGEMENT DE PORT PHYSIQUE + CABLE  2026-08-26T11:46:30+02:00 ##########
+Connected:
+BUSID  VID:PID    DEVICE                                                        STATE
+3-5    303a:1001  Périphérique série USB (COM3), USB JTAG/serial debug unit     Shared
+3-9    e5b7:0811  Périphérique d’entrée USB                                     Not shared
+9-1    0b0e:245d  Jabra Link 370, Périphérique d’entrée USB                     Not shared
+9-2    046d:c336  Périphérique d’entrée USB                                     Not shared
+9-3    046d:c099  Périphérique d’entrée USB                                     Not shared
+
+Persisted:
+GUID                                  DEVICE
+--- PORTS SERIE WINDOWS ---
+COM3
+--- AGENT ---
+
+
+ProcessId       : 3792
+ParentProcessId : 8012
+CreationDate    : 26/08/2026 11:39:13
+CommandLine     : "C:\Users\naoua\AppData\Local\Programs\Python\Python313\python.exe"  
+                  "H:\dev\projets\desknode\dn_agent.py" --serie COM3 --stop-si H:\dev\projets\desknode\dn-agent.stop 
+
+
+
+
+=============================================================================
+ VERDICT — LE CONSTAT DE REVUE EST **PARTIELLEMENT REFUTE PAR LA MESURE**
+=============================================================================
+ * BUSID : 3-1  ->  3-5 apres le changement de port.
+   TROISIEME valeur du dossier : 3-7 (tableau dn4-15), 3-1 (2026-08-26 matin),
+   3-5 (2026-08-26 apres-midi). La doctrine « jamais de busid en dur » est
+   confirmee une 3e fois. ==> LA NOTE A dn4-15 DOIT PORTER TROIS VALEURS.
+ * COM  : COM3  ->  COM3.  INCHANGE.
+   /!\ Windows lie le numero COM au DEVICE (la carte annonce un numero de
+   serie), PAS au port physique. Le busid suit le PORT, le COM suit la CARTE.
+   ==> Le constat « le COM suit le meme rebranchement que le busid » est FAUX
+       sur ce poste, et le figer a COM3 n'est donc PAS le meme defaut que
+       figer un busid.
+ * RESERVE, nommee : rien ne garantit COM3 si un AUTRE peripherique serie
+   reclame ce numero en premier (nouvelle installation Windows, adaptateur
+   USB-serie branche avant la carte). Le risque existe, mais il n'est PAS
+   celui que la revue avait decrit, et il ne se declenche pas au rebranchement.
+=============================================================================

@@ -1,0 +1,178 @@
+=============================================================================
+ AC3.2 / AC3.3 / AC3.1 â€” LES TEMOINS QUI MANQUAIENT, JOUES LE 2026-08-26
+=============================================================================
+ SHA du depot : 6c26ce2        CÅ“urs : 16        Poste : tour Windows, naoua
+ Origine      : revue de code 3 couches du 2026-08-26. L'audit a releve que
+                AC3.2 et AC3.3 n'avaient AUCUNE capture dans le depot (le PID
+                22176 annonce par les Completion Notes est introuvable :
+                `rtk proxy grep -rn '22176' .` => 0), et que la branche
+                :START -> lancer -> Start-Process (le detachement du
+                double-clic) n'avait JAMAIS ete exercee.
+ Regime       : copie deposee sur H:\dev\projets\desknode, appelee depuis WSL
+                via powershell.exe. /!\ CE N'EST PAS UN DOUBLE-CLIC : le seul
+                ecart est la garde `pause` de :FIN. Le double-clic proprement
+                dit a ete joue par l'owner a 11:39:13 (voir en fin de fichier).
+ Instrument   : le COMPTE (Get-CimInstance Win32_Process) ET L'ETAT DU PORT.
+                /!\ JAMAIS le code de retour du .bat (piege P2).
+=============================================================================
+
+########## T-AVANT  2026-08-26T11:32:36+02:00 ##########
+
+
+ProcessId       : 20132
+ParentProcessId : 19324
+CreationDate    : 26/08/2026 10:17:30
+CommandLine     : "C:\Users\naoua\AppData\Local\Programs\Python\Python313\python.exe"  
+                  "H:\dev\projets\desknode\dn_agent.py" --serie COM3 --stop-si H:\dev\projets\desknode\dn-agent.stop 
+                  --temoin 
+
+
+
+PORTS : COM3
+
+########## STOP  2026-08-26T11:32:42+02:00 ##########
+'\\wsl.localhost\Ubuntu\home\nasbarok\projects\compagnon_project'
+CMD.EXE a ‚t‚ d‚marr‚ avec le chemin d'accŠs comme r‚pertoire en
+cours. Les chemins d'accŠs UNC ne sont pas prise en charge. Utilisation
+du r‚pertoire Windows par d‚faut.
+
+=== STOP ===
+  a arreter : PID=20132
+  drapeau pose : arret PROPRE demande (le bilan de fin doit sortir)
+  arret propre en 1 s ; bilan ecrit : 1384 o
+
+=== PREUVE : ON RE-OUVRE LE PORT ===
+  python.exe vivants : 0  (portant dn_agent.py : 0 | CommandLine ILLISIBLE : 0)
+  port COM3 : libre
+  usbipd : 3-1 303a:1001 PÃ©riphÃ©rique sÃ©rie USB (COM3), USB JTAG/serial debug unit Shared
+  marqueur : absent
+  journal : 66989 o  H:\dev\projets\desknode\dn-agent.log
+  OK - COM3 se REOUVRE : le port est rendu.
+EXITCODE=0
+
+########## START #1 (branche :START -> lancer -> Start-Process)  2026-08-26T11:32:54+02:00 ##########
+'\\wsl.localhost\Ubuntu\home\nasbarok\projects\compagnon_project'
+CMD.EXE a ‚t‚ d‚marr‚ avec le chemin d'accŠs comme r‚pertoire en
+cours. Les chemins d'accŠs UNC ne sont pas prise en charge. Utilisation
+du r‚pertoire Windows par d‚faut.
+
+=== PRE-VOL ===
+  python : C:\Users\naoua\AppData\Local\Programs\Python\Python313\python.exe
+  args : --serie COM3 --stop-si H:\dev\projets\desknode\dn-agent.stop
+  pre-vol OK
+
+=== LANCEMENT ===
+  agent VIVANT  PID=1640
+  lanceur cmd.exe PID=8672  (pere de python.exe)
+  journal : H:\dev\projets\desknode\dn-agent.log
+EXITCODE=0
+
+########## COMPTE APRES START #1  2026-08-26T11:33:24+02:00 ##########
+
+
+ProcessId       : 1640
+ParentProcessId : 8672
+CommandLine     : "C:\Users\naoua\AppData\Local\Programs\Python\Python313\python.exe"  
+                  "H:\dev\projets\desknode\dn_agent.py" --serie COM3 --stop-si H:\dev\projets\desknode\dn-agent.stop 
+
+
+
+########## START #2 (agent DEJA vivant) ##########
+'\\wsl.localhost\Ubuntu\home\nasbarok\projects\compagnon_project'
+CMD.EXE a ‚t‚ d‚marr‚ avec le chemin d'accŠs comme r‚pertoire en
+cours. Les chemins d'accŠs UNC ne sont pas prise en charge. Utilisation
+du r‚pertoire Windows par d‚faut.
+
+=== PRE-VOL ===
+  python : C:\Users\naoua\AppData\Local\Programs\Python\Python313\python.exe
+  /!\ DEJA LANCE : 1 agent(s) vivant(s). Aucun second process ne sera cree.
+    PID=1640
+EXITCODE=0
+########## COMPTE APRES START #2 ##########
+
+
+ProcessId       : 1640
+ParentProcessId : 8672
+CommandLine     : "C:\Users\naoua\AppData\Local\Programs\Python\Python313\python.exe"  
+                  "H:\dev\projets\desknode\dn_agent.py" --serie COM3 --stop-si H:\dev\projets\desknode\dn-agent.stop 
+
+
+
+
+########## RESTAURATION DU REGIME (--temoin)  2026-08-26T11:33:43+02:00 ##########
+'\\wsl.localhost\Ubuntu\home\nasbarok\projects\compagnon_project'
+CMD.EXE a ‚t‚ d‚marr‚ avec le chemin d'accŠs comme r‚pertoire en
+cours. Les chemins d'accŠs UNC ne sont pas prise en charge. Utilisation
+du r‚pertoire Windows par d‚faut.
+
+=== STOP ===
+  a arreter : PID=1640
+  drapeau pose : arret PROPRE demande (le bilan de fin doit sortir)
+  arret propre en 1 s ; bilan ecrit : 747 o
+
+=== PREUVE : ON RE-OUVRE LE PORT ===
+  python.exe vivants : 0  (portant dn_agent.py : 0 | CommandLine ILLISIBLE : 0)
+  port COM3 : libre
+  usbipd : 3-1 303a:1001 PÃ©riphÃ©rique sÃ©rie USB (COM3), USB JTAG/serial debug unit Shared
+  marqueur : absent
+  journal : 67964 o  H:\dev\projets\desknode\dn-agent.log
+  OK - COM3 se REOUVRE : le port est rendu.
+STOP EXITCODE=0
+'\\wsl.localhost\Ubuntu\home\nasbarok\projects\compagnon_project'
+CMD.EXE a ‚t‚ d‚marr‚ avec le chemin d'accŠs comme r‚pertoire en
+cours. Les chemins d'accŠs UNC ne sont pas prise en charge. Utilisation
+du r‚pertoire Windows par d‚faut.
+
+=== PRE-VOL ===
+  python : C:\Users\naoua\AppData\Local\Programs\Python\Python313\python.exe
+  args : --serie COM3 --stop-si H:\dev\projets\desknode\dn-agent.stop --temoin
+  pre-vol OK
+
+=== LANCEMENT ===
+  agent VIVANT  PID=16972
+  lanceur cmd.exe PID=16196  (pere de python.exe)
+  journal : H:\dev\projets\desknode\dn-agent.log
+START EXITCODE=0
+########## ETAT FINAL ##########
+'\\wsl.localhost\Ubuntu\home\nasbarok\projects\compagnon_project'
+CMD.EXE a ‚t‚ d‚marr‚ avec le chemin d'accŠs comme r‚pertoire en
+cours. Les chemins d'accŠs UNC ne sont pas prise en charge. Utilisation
+du r‚pertoire Windows par d‚faut.
+
+=== ETAT (ne change RIEN) ===
+  python.exe vivants : 1  (portant dn_agent.py : 1 | CommandLine ILLISIBLE : 0)
+    agent  PID=16972  "C:\Users\naoua\AppData\Local\Programs\Python\Python313\python.exe"  "H:\dev\projets\desknode\dn_agent.py" --serie COM3 --stop-si H:\dev\projets\desknode\dn-agent.stop --temoin 
+  port COM3 : tenu
+  usbipd : 3-1 303a:1001 PÃ©riphÃ©rique sÃ©rie USB (COM3), USB JTAG/serial debug unit Shared
+  marqueur : lance   : 2026-08-26T11:33:47+02:00 regime  : double-clic (detache) python  : C:\Users\naoua\AppData\Local\Programs\Python\Python313\python.exe agent   : H:\dev\projets\desknode\dn_agent.py args    : --serie COM3 --stop-si H:\dev\projets\desknode\dn-agent.stop --temoin coeurs  : 16 
+  journal : 68192 o  H:\dev\projets\desknode\dn-agent.log
+
+=============================================================================
+ CE QUE CES RELEVES SOLDENT
+=============================================================================
+ AC3.3  stop REND COM3, prouve par UNE OUVERTURE QUI REUSSIT.
+        3 arrets propres joues ce jour, chacun avec son bilan :
+            PID 20132 -> 1 s, 1384 o     PID 1640 -> 1 s, 747 o
+            PID 16972 -> 1 s,  752 o  (joue par l'owner en cmd, sur la tour)
+        A chaque fois : "OK - COM3 se REOUVRE : le port est rendu.", exit 0.
+ AC3.2  RELANCE PENDANT QUE L'AGENT TOURNE : AUCUN second process.
+            avant START #2 : 1 agent, PID=1640
+            apres START #2 : 1 agent, PID=1640   <== MEME COMPTE, MEME PID
+        Le pre-vol imprime "DEJA LANCE : 1 agent(s) vivant(s)".
+ AC3.1  La branche :START -> lancer -> Start-Process DETACHE est EXERCEE :
+            "agent VIVANT PID=1640 / lanceur cmd.exe PID=8672 (pere de python)"
+        Puis SOLDE A LA LETTRE par l'owner le 2026-08-26 vers 11:39 :
+            `dn-agent.bat stop` en cmd sur la tour => port rendu (752 o)
+            DOUBLE-CLIC sur H:\dev\projets\desknode\dn-agent.bat
+              => la fenetre RESTE OUVERTE (correctif 6c26ce2 verifie a l'oeil)
+              => "agent VIVANT PID=..."  ; agent releve ensuite : PID 3792
+              => la case CPU de la dalle REVIT (constat owner, a l'oeil)
+
+ /!\ UN DEFAUT S'EST MANIFESTE PENDANT CES TIRS, ET IL EST DANS LE GESTE OWNER
+     `dn-agent.bat start` sans 4e argument pose l'agent SANS `--temoin` :
+         args : --serie COM3 --stop-si H:\...\dn-agent.stop        <== pas de temoin
+     Verifie sur l'agent du DOUBLE-CLIC de l'owner (PID 3792) : meme absence.
+     Or l'action de la tache au logon, elle, porte bien `-Temoin`.
+     ==> LES DEUX GESTES LIVRES N'ONT PAS LE MEME REGIME, EN SILENCE, et
+         25.15 fait dependre sa re-verification gratuite du temoin.
+=============================================================================

@@ -1,0 +1,153 @@
+=============================================================================
+ REDEMARRAGE REEL DE LA TOUR — 2026-08-26 ~12:11
+ Ce que ce SEUL geste owner a mesure : D3, le reliquat de D1, AC6.6, AC5.6
+=============================================================================
+ SHA du depot : 6c26ce2        Cœurs logiques : 16        Poste : tour, naoua
+ Protocole    : extinction COMPLETE puis rallumage et ouverture de session.
+                ⛔ AUCUN `dn-agent.bat stop` avant de couper — c'est tout
+                l'objet de la mesure D3.
+ Origine      : revue de code 3 couches de dn4-17, 2026-08-26.
+ Regime livre : tache au logon -> powershell.exe -WindowStyle Hidden -File
+                dn_agent_tour.ps1 tache -Serie COM3 -Duree 0 -Temoin
+                -> cmd.exe (dn-agent.bat run) -> python.exe
+
+=============================================================================
+ D3 — LE BILAN DE FIN A L'EXTINCTION :  **0 OCTET.  DEFAUT MESURE.**
+=============================================================================
+ Ligne de base prise le 2026-08-26T11:54:40, AVANT extinction :
+     dn-agent.log ....... 74379 o
+     agent vivant ....... PID 3792, cree 11:39:13 (lance par DOUBLE-CLIC)
+     derniere ligne ..... "[agent] ✅ source `lhm` a REPRIS apres 1 echec(s)…"
+
+ Apres rallumage :
+     dn-agent.log ....... 77342 o     (+2963 o)
+     PREMIER OCTET APRES 74379 (lu par `tail -c +74380`) :
+         [agent] GPU : AMD Radeon RX 6800 XT via ADL PMLog (adaptateur 0) …
+     ==> c'est la PREMIERE LIGNE DU NOUVEL AGENT.
+
+ 🔴 IL N'Y A **RIEN** ENTRE LES DEUX. Aucun bloc de bilan, aucune ligne
+    d'arret, aucun octet attribuable a l'agent 3792. Les +2963 o sont
+    INTEGRALEMENT le demarrage et le temoin du NOUVEL agent.
+
+ VERDICT : a l'extinction, l'agent est termine SANS ECRIRE SON BILAN.
+   * `rtk proxy grep -n "signal\.\|atexit\|SIGTERM\|SetConsoleCtrlHandler" agent/dn_agent.py` => 0
+   * `--stop-si` ne tire QUE depuis `dn-agent.bat stop`.
+   * L'extinction est la fin NORMALE de cet agent (decision owner n.1 :
+     « tour eteinte, la dalle reste allumee »).
+ ==> LE DEFAUT QUE 25.8 DECLARE FERME EST ROUVERT SUR LE CHEMIN QUOTIDIEN.
+     La condition posee par la story (« toute ligne qui entre dans
+     dn_agent.py doit etre JUSTIFIEE PAR UN DEFAUT MESURE ») EST REMPLIE.
+ ⚠️ CONTRE-EPREUVE DEJA AU DOSSIER : le chemin PROPRE, lui, marche — trois
+    `stop` joues le meme jour ont ecrit 1384 o, 747 o et 752 o de bilan.
+    Ce n'est donc pas l'ecriture qui est en cause, c'est l'ABSENCE DE
+    HANDLER a la terminaison de session.
+
+=============================================================================
+ AC6.6 — LA CHAINE DE PID SOUS L'ACTION LIVREE, SUR UN LOGON REEL
+=============================================================================
+     [0] PID=23268  python.exe      <- pere 15844
+     [1] PID=15844  cmd.exe         <- pere 16176
+     [2] PID=16176  powershell.exe  <- pere 1516
+     [3] PID=1516   svchost.exe
+     Schedule.Service.GetRunningTasks() :  EnginePID de la tache = 16176
+     Tache : LastRunTime 12:11:11 · agent cree 12:11:40 · LastTaskResult 267009 (en cours)
+
+ ✅ Le process mesure EST celui que la tache a lance : la chaine remonte
+    sans trou jusqu'a l'EnginePID.
+ 🔴 MAIS L'EGALITE PUBLIEE NE TIENT PAS : l'EnginePID (16176) est le
+    GRAND-PERE de python.exe, plus son PERE. brief.md:240 ecrit
+    « EnginePID = 9492 = le pere de python.exe » : c'etait vrai sous
+    l'ANCIENNE action (cmd.exe direct), FAUX sous celle qui est livree.
+    ==> 25.12, 25.13 et brief.md:240 doivent dire la chaine A QUATRE MAILLONS.
+ ✅ MainWindowHandle = 0 sur cmd, powershell ET python : le 7e defaut
+    (fenetre console 24 h/24) tient a travers un redemarrage complet.
+
+=============================================================================
+ AC5.6 — 2e TEMOIN DE DEMARRAGE PAR LOGON REEL
+=============================================================================
+ Redemarrage COMPLET de la machine (⛔ pas `Start-ScheduledTask`, ⛔ pas un
+ simple logoff). La tache a tire seule a 12:11:11 et l'agent tourne depuis
+ 12:11:40, avec `--temoin` — que l'action de la tache porte, contrairement
+ au double-clic (voir le defaut nomme plus bas).
+
+=============================================================================
+ RELIQUAT DE D1 — LA SERIE CPU, ENFIN PRISE SOUS L'ACTION LIVREE
+=============================================================================
+ Methode IDENTIQUE a 23 et 25.10 : agent REEL, sortie COM3, --temoin,
+ serie complete, 16 cœurs. Comparaison AU MEME RANG, jamais 60 contre 180.
+
+   rang mur | % d'un cœur | % machine | marge / 1 %
+   ---------|-------------|-----------|------------
+     10 s   |    2,182    |  0,1364   |   7,3x
+     20 s   |    1,951    |  0,1219   |   8,2x
+     30 s   |    2,181    |  0,1363   |   7,3x
+     40 s   |    2,225    |  0,1391   |   7,2x
+     50 s   |    2,093    |  0,1308   |   7,6x
+     60 s   |    2,030    |  0,1269   |   7,9x   <== RANG DE COMPARAISON
+     70 s   |    1,986    |  0,1241   |   8,1x
+     80 s   |    1,991    |  0,1245   |   8,0x
+     90 s   |    1,978    |  0,1236   |   8,1x
+    100 s   |    2,046    |  0,1279   |   7,8x
+    110 s   |    2,059    |  0,1287   |   7,8x
+    120 s   |    2,031    |  0,1269   |   7,9x
+    130 s   |    2,055    |  0,1284   |   7,8x
+    140 s   |    2,064    |  0,1290   |   7,8x
+    150 s   |    2,062    |  0,1289   |   7,8x
+    160 s   |    2,080    |  0,1300   |   7,7x
+    170 s   |    2,095    |  0,1309   |   7,6x
+    180 s   |    2,118    |  0,1323   |   7,6x   <== RANG DE COMPARAISON
+    190 s   |    2,121    |  0,1326   |   7,5x
+    200 s   |    2,109    |  0,1318   |   7,6x
+    210 s   |    2,113    |  0,1320   |   7,6x
+    220 s   |    2,109    |  0,1318   |   7,6x
+    230 s   |    2,113    |  0,1320   |   7,6x
+    240 s   |    2,109    |  0,1318   |   7,6x
+    250 s   |    2,094    |  0,1308   |   7,6x
+    260 s   |    2,085    |  0,1303   |   7,7x
+    270 s   |    2,072    |  0,1295   |   7,7x
+    280 s   |    2,053    |  0,1283   |   7,8x
+    290 s   |    2,053    |  0,1283   |   7,8x
+
+ COMPARAISON AU MEME RANG — ancienne action (25.10) contre action LIVREE
+   rang  | 25.10 (cmd.exe direct) | LIVREE (powershell -Hidden) |   Δ
+   ------|------------------------|-----------------------------|--------
+    60 s |         2,057          |            2,030            | -0,027
+   180 s |         1,805          |            2,118            | +0,313
+
+ 🔴 ET 25.17 S'APPLIQUE A SA PROPRE MESURE : la dispersion de l'instrument
+    vaut +0,390 pt au rang 60 s et +0,339 pt au rang 180 s. Le Δ de +0,313 pt
+    a 180 s est DEDANS. ⇒ ⛔ ON NE PEUT PAS CONCLURE que le maillon
+    powershell coute quoi que ce soit. La regle « ⛔ ne rien conclure d'un
+    Δ < 0,4 pt » mord ici, et elle mord dans le bon sens.
+
+ ✅ VERDICT DU CRITERE N.4, SOUS L'ACTION REELLEMENT LIVREE :
+        0,1269 % machine a 60 s  (7,9x sous le seuil de 1 %)
+        0,1323 % machine a 180 s (7,6x)
+    Le critere TIENT, et pour la premiere fois le chiffre decrit VRAIMENT
+    le regime qu'il pretend decrire.
+ ⇒ brief.md:243 doit citer CES chiffres, ou dire honnetement de quel regime
+   vient 0,1285 %.
+
+ ⚠️ RESERVES, ECRITES ET NON MASQUEES
+   1. La tour n'est PAS au repos controle (reserve permanente de 23.4/25.4).
+      Elle etait toutefois FRAICHEMENT DEMARREE, donc plus proche du calme
+      que du regime « tour occupee » du tir de controle.
+   2. LHM : « INJOIGNABLE au demarrage (budget 600 ms epuise) » PUIS
+      « ✅ source lhm a REPRIS apres 1 echec(s) ». ⇒ contrairement au tir a
+      blanc de AC6-tir-a-blanc-LHM-MORT.txt, LHM ETAIT VIVANT pour cette
+      serie. La reserve n.2 de 25.4 ne s'applique donc PAS ici.
+   3. La serie ci-dessus est CONVERGEE (plateau ~2,05-2,12 de 100 s a 290 s),
+      alors que celle de 25.10 descendait encore. ⛔ Ne pas en conclure que
+      l'une est « meilleure » : les deux plateaux sont distants de moins que
+      la dispersion mesuree.
+
+=============================================================================
+ DEFAUT CONFIRME EN VRAI PENDANT CETTE SEANCE
+=============================================================================
+ Les DEUX gestes livres n'ont PAS le meme regime, et rien ne le dit :
+     tache au logon  -> action enregistree avec  -Temoin   => temoin PRESENT
+     double-clic     -> `dn-agent.bat` sans 4e arg        => temoin ABSENT
+ Verifie sur l'agent du double-clic de l'owner (PID 3792) et sur celui de
+ la tache (PID 23268). Or 25.15 fait dependre du temoin sa re-verification
+ « gratuite et automatique au prochain logon ».
+=============================================================================

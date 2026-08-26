@@ -1,0 +1,73 @@
+=============================================================================
+ AC6.6 — LA CHAINE DE PID SOUS L'ACTION REELLEMENT POSEE
+=============================================================================
+ SHA du depot : 6c26ce2        Cœurs : 16        Poste : tour Windows, naoua
+ Origine      : revue de code 3 couches du 2026-08-26.
+ CE QUE CE RELEVE CORRIGE
+   `06a791d` a change l'action de la tache de `cmd.exe /c` a
+   `powershell.exe -WindowStyle Hidden -File ... tache`. La chaine livree
+   gagne donc UN MAILLON :  engine -> powershell -> cmd -> python.
+   La seule capture publiee (AC5-AC6-constat-apres-logon.txt:29) montre
+   `EnginePID 9492 = pere de python.exe`, soit l'ANCIENNE action.
+   25.15 le reconnait ; 25.13 et brief.md:240 l'affirment comme PROUVE.
+   ==> Le releve ci-dessous mesure la chaine SOUS L'ACTION LIVREE.
+=============================================================================
+
+=== releve 2026-08-26T11:26:32+02:00 ===
+
+
+Execute   : powershell.exe
+Arguments : -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "H:\dev\projets\desknode\dn_agent_tour.ps1" 
+            tache -Serie COM3 -Duree 0 -Temoin
+
+
+
+
+
+LastRunTime    : 26/08/2026 10:17:17
+LastTaskResult : 267009
+NextRunTime    : 
+
+
+
+
+
+UserId    : naoua
+RunLevel  : Limited
+LogonType : Interactive
+
+
+
+RUNNING \DeskNode agent EnginePID=24608
+[0] PID=20132  python.exe  MainWindowHandle?  <- pere 19324
+[1] PID=19324  cmd.exe  MainWindowHandle?  <- pere 24608
+[2] PID=24608  powershell.exe  MainWindowHandle?  <- pere 1516
+[3] PID=1516  svchost.exe  MainWindowHandle?  <- pere 1144
+[4] PID=1144  services.exe  MainWindowHandle?  <- pere 1072
+
+   Id ProcessName MainWindowHandle
+   -- ----------- ----------------
+19324 cmd                        0
+24608 powershell                 0
+20132 python                     0
+
+
+
+=============================================================================
+ CE QUE CA ETABLIT
+=============================================================================
+ * L'action enregistree EST bien la nouvelle :
+       powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden
+       -File "H:\dev\projets\desknode\dn_agent_tour.ps1" tache -Serie COM3 -Duree 0 -Temoin
+ * RunLevel = Limited, LogonType = Interactive, UserId = naoua  (AC5.2 re-verifie)
+ * La chaine est INTACTE et TRACABLE :
+       python 20132  <-  cmd 19324  <-  powershell 24608  <-  svchost 1516
+       Schedule.Service.GetRunningTasks() : \DeskNode agent  EnginePID = 24608
+ * /!\ MAIS L'EGALITE PUBLIEE NE TIENT PLUS : l'EnginePID (24608) est le
+   GRAND-PERE de python.exe, plus son PERE. Un lecteur qui re-jouerait la
+   verification de brief.md:240 conclurait que la preuve a ECHOUE, alors que
+   la chaine est simplement PLUS LONGUE D'UN MAILLON.
+   ==> 25.12, 25.13 et brief.md:240 doivent dire la chaine A QUATRE MAILLONS.
+ * MainWindowHandle = 0 sur les TROIS maillons (cmd, powershell, python) :
+   le 7e defaut (fenetre console 24 h/24) reste ferme.
+=============================================================================

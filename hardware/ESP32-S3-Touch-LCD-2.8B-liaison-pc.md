@@ -2569,7 +2569,7 @@ compté **`3-7`** — *il suit le port physique*, les deux ont été vrais).
 | | AVANT (README § « le port est EXCLUSIF ») | 🆕 APRÈS (`rendre-port.sh`) |
 |---|---|---|
 | commandes owner | **4**, plus une **étape 0** | **1** |
-| durée | réattachement seul : **2,7–3,1 s** (dn4-3) | **vers-agent 7,26 s** · **vers-flash 6,58 s** |
+| durée | réattachement seul : **2,7–3,1 s** (dn4-3) | **vers-agent 7,349 s** (n=6) · **vers-flash 8,519 s** (n=3, *avec* agent à arrêter) |
 | n | — | **4 par sens**, 2026-08-26 |
 | échecs | 🔴 **non nul** : veilleur ressuscité, `COM3` fantôme, « Attached » orphelin, RESET physique | **0 / 8** |
 | detach re-vérifié | ⛔ non (`echo OK`) | ✅ **relu après 4 s** — et il **échoue bruyamment** si la ligne repasse à `Attached` |
@@ -2586,8 +2586,8 @@ ressuscitent en ~2 s »*, et c'est ce qui faisait échouer le rituel.
 
 | | branche **WSL** (`usbipd`) | branche **WINDOWS-ONLY** |
 |---|---|---|
-| rendre la carte au flash | `rendre-port.sh --vers-flash` — **6,58 s** | `dn-agent.bat stop` — **2,76 s** |
-| rendre la carte à l'agent | `rendre-port.sh --vers-agent` — **7,26 s** | `dn-agent.bat start` — **5,39 s** |
+| rendre la carte au flash | `rendre-port.sh --vers-flash` — **8,519 s** (n=3) | `dn-agent.bat stop` — **2,76 s** |
+| rendre la carte à l'agent | `rendre-port.sh --vers-agent` — **7,349 s** (n=6) | `dn-agent.bat start` — **5,39 s** |
 | **aller-retour** | **13,84 s** | **8,15 s** |
 | commandes owner | 2 | 2 |
 | échecs mesurés | **0 / 8** | **0 / 1** |
@@ -2625,7 +2625,7 @@ erreurs d'envoi, recalages, bruit d'écho, refus firmware). Sans le drapeau, la 
 | avec `--temoin` (le régime livré) | 1 ligne / 10 s ≈ **~1,2 Mo/jour** |
 
 ⇒ **Politique** : bascule en `.1` (**une seule génération**) dès que le journal atteint **5 Mo**,
-**au pré-vol** de chaque lancement. Plafond disque **10 Mo**.
+**au pré-vol** de chaque lancement. Plafond disque **20 Mo** — ⚠️ **corrigé le 2026-08-26 (revue)** : la rotation porte sur **DEUX** fichiers (`dn-agent.log` **et** `dn-agent.out`), chacun avec une génération `.1`, soit **2 × 2 × 5 Mo**. Le « 10 Mo » était publié **quatre fois** (script, ici, `PROVENANCE.txt`, ledger) et comptait un seul fichier. ⚠️ `dn-agent.out` reste à **0 o** dans le régime livré (`--serie COM3`) : le plafond n'est atteignable qu'en `--stdout`, dont le débit n'a **pas** été mesuré.
 ⚠️ **CE QUE CETTE POLITIQUE NE COUVRE PAS, ET ON LE DIT** : la rotation a lieu **au lancement**.
 Un agent permanent qui tourne **des semaines sans redémarrer** peut dépasser le plafond — à
 ~1,2 Mo/jour, il atteint 5 Mo en **~4 jours**. ⛔ C'est **assumé**, ⛔ pas ignoré : l'agent redémarre
@@ -2688,6 +2688,31 @@ tel quel.
 ### 25.12 ✅ LE RÉGIME EST **PROUVÉ**, ET IL EST **COMPARABLE** — les deux réserves qui comptaient sont levées
 
 **AC6.6 — le process mesuré EST celui que la tâche a lancé, prouvé par la chaîne de PID :**
+
+> 🔴 **AMENDÉ LE 2026-08-26 PAR LA REVUE DE CODE — CETTE CHAÎNE DÉCRIT L'ANCIENNE
+> ACTION DE TÂCHE, CELLE QUE `06a791d` A REMPLACÉE DANS LE MÊME COMMIT.**
+> Le relevé ci-dessous a été pris quand l'action était `cmd.exe /c … run`.
+> `06a791d` l'a passée à `powershell.exe -WindowStyle Hidden -File … tache`
+> (§25.15 le dit), ce qui **ajoute un maillon** : l'`EnginePID` **n'est plus le
+> père de `python.exe`, c'est son GRAND-PÈRE**.
+> ⇒ **Un lecteur qui re-jouerait la vérification « EnginePID == père » la
+> trouverait FAUSSE**, et conclurait à tort que la preuve d'AC6.6 a échoué.
+> ✅ **La chaîne sous l'action LIVRÉE est mesurée**, sur un **redémarrage réel**
+> de la tour le 2026-08-26 à 12:11 — capture
+> `mesures/dn4-17/POST-REBOOT-D3-AC6.6-AC5.6-serie-livree.txt` :
+>
+> ```
+> [0] PID=23268  python.exe      <- père 15844
+> [1] PID=15844  cmd.exe         <- père 16176
+> [2] PID=16176  powershell.exe  <- père 1516      ^^^ C'EST L'ENGINE DE LA TÂCHE
+> [3] PID=1516   svchost.exe
+> Schedule.Service.GetRunningTasks() : EnginePID de la tâche = 16176
+> ```
+>
+> ✅ AC6.6 tient — le process mesuré **est** celui que la tâche a lancé, la
+> chaîne remonte sans trou. ⛔ Ce qui ne tient plus, c'est l'**égalité**
+> `EnginePID == père de python.exe`. `MainWindowHandle = 0` sur les trois
+> maillons : le 7ᵉ défaut tient à travers un cycle d'alimentation complet.
 
 ```
 [0] PID=16344  python.exe   <- père 9492
@@ -2841,3 +2866,86 @@ ce n'est pas le code de l'agent.
 bougé ensemble** — la fenêtre ET la charge. ⛔ Il ne prouve donc **rien** sur la fenêtre ; il prouve
 que **la charge domine**. La vérification du correctif reste **gratuite et automatique** au prochain
 logon (§25.15).
+
+
+---
+
+### 25.18 🔍 CE QUE LA **REVUE DE CODE** A MESURÉ — un redémarrage réel, et trois chiffres qui changent
+
+Revue 3 couches du **2026-08-26** (Blind Hunter · Edge Case Hunter · Acceptance Auditor) sur
+`b532574..6c26ce2`. Elle a produit **4 décisions** et **28 correctifs**. Trois de ses constats se
+sont soldés par une **mesure**, ⛔ pas par une correction de prose.
+📄 Captures : `mesures/dn4-17/POST-REBOOT-D3-AC6.6-AC5.6-serie-livree.txt` ·
+`AC4.6-reprise-de-main-12-passages.txt` · `AC3-temoins-compte-et-port.txt` ·
+`AC6.6-chaine-action-livree.txt` · `W3-busid-vs-numero-com.txt`
+
+#### 25.18.1 🔴 LE BILAN EST **PERDU À L'EXTINCTION** — et l'extinction est la fin NORMALE de cet agent
+
+**Protocole** : agent lancé par la tâche au logon (**PID 3792**), `dn-agent.log` à **74 379 o**,
+puis **extinction complète de la tour**, ⛔ **sans** `dn-agent.bat stop`.
+**Constat** : au rallumage, le journal fait **77 342 o** — et **l'octet 74 380 est la PREMIÈRE LIGNE
+DU NOUVEL AGENT**. Entre les deux, **rien**. **0 octet de bilan.**
+
+⚠️ Le défaut que **§25.8 déclare fermé** était donc **rouvert sur le chemin quotidien** : `--stop-si`
+ne tire que depuis `dn-agent.bat stop`, et `agent/dn_agent.py` n'avait **aucun** handler
+(`grep signal.|atexit|SIGTERM|SetConsoleCtrlHandler` ⇒ **0**).
+✅ **Contre-épreuve** : le chemin **propre**, lui, écrit toujours son bilan — **6 arrêts** joués ce
+jour-là, à 1 384 / 853 / 855 / 1 501 / 747 / 752 o. Ce n'était **pas** l'écriture qui manquait, mais
+le handler à la terminaison de session.
+⇒ **Corrigé** : `SetConsoleCtrlHandler` sur `CTRL_CLOSE`/`CTRL_LOGOFF`/`CTRL_SHUTDOWN`, qui **bloque**
+jusqu'à ce que le bilan soit imprimé (plafond 4 s). ⛔ **Pas `SIGTERM`** : Windows ne le délivre pas
+au logoff. **Coût sur le budget d'AC6 : nul** — installé une fois, jamais appelé en régime.
+⚠️ **C'est la mesure qui a autorisé la ligne** : la story exige un défaut **mesuré**, et il l'était
+seulement après ce redémarrage.
+
+#### 25.18.2 ✅ LA SÉRIE CPU **SOUS L'ACTION LIVRÉE** — le chiffre décrit enfin son propre régime
+
+Même méthode que §23 et §25.10 : agent réel, `COM3`, `--temoin`, série complète, **16 cœurs**.
+Régime : **tâche au logon → `powershell -WindowStyle Hidden` → `cmd` → `python`**, sur un
+**redémarrage complet** (tâche à 12:11:11, agent à 12:11:40).
+
+| rang | §25.10 — **ancienne** action (`cmd.exe` direct) | **livrée** (`powershell -Hidden`) | Δ (pt d'un cœur) |
+|---|---|---|---|
+| **60 s** | 2,057 % · `0,1285 %` machine | **2,030 %** · **`0,1269 %`** · **7,9×** | **−0,027** |
+| **180 s** | 1,805 % · `0,1128 %` machine | **2,118 %** · **`0,1323 %`** · **7,6×** | **+0,313** |
+
+🔴 **ET §25.17 S'APPLIQUE À SA PROPRE MESURE** : la dispersion vaut **0,339 pt** au rang 180 s. Le Δ
+de **+0,313 pt** est **DEDANS**. ⇒ ⛔ **on ne peut pas dire que le maillon `powershell` coûte quoi que
+ce soit.** La règle *« ne rien conclure d'un Δ < 0,4 pt »* mord ici, et elle mord dans le bon sens.
+✅ **Le critère n°4 tient sous le régime réellement livré**, et c'est la première fois que le chiffre
+décrit le régime qu'il prétend décrire.
+⚠️ **Réserves écrites** : (1) la tour n'est pas au repos contrôlé, mais elle était **fraîchement
+démarrée** ; (2) **LHM était VIVANT** pour cette série (*« INJOIGNABLE au démarrage … puis a REPRIS
+après 1 échec »*) ⇒ la réserve n°2 de §25.4 **ne s'applique pas** ici ; (3) la série est **convergée**
+(plateau 2,05-2,12 de 100 s à 290 s) alors que celle de §25.10 descendait encore — ⛔ n'en rien
+conclure, les deux plateaux sont distants de **moins que la dispersion**.
+
+#### 25.18.3 🔴 `--vers-flash` A **DEUX RÉGIMES DE COÛT** — et le dossier publiait le mauvais
+
+**12 passages re-joués, 0 échec**, busid **`3-5`** (⚠️ **3ᵉ valeur du dossier** : la carte a changé de
+port physique **et** de câble le même jour — c'est la première mesure sur ce port).
+
+| geste | n | min | max | **moyenne** |
+|---|---|---|---|---|
+| `--vers-flash` **avec** un agent à arrêter — *le cas réel* | 3 | 8,046 | 9,124 | **8,519 s** |
+| `--vers-flash` **sans** agent (port déjà libre) | 3 | 6,438 | 6,717 | **6,598 s** |
+| `--vers-agent` | 6 | 7,232 | 7,480 | **7,349 s** |
+
+⇒ **§25.16 avait raison** avec son `8,5 s` (8,519 mesuré), **et le `6,58 s` publié 4 fois aussi**
+(6,598 mesuré). 🔴 **Ce n'était donc PAS une dérive de binaire** — ce que la revue avait supposé en
+voyant le `.bat` et le `.ps1` changer trois fois dans la plage : **la supposition est réfutée par la
+mesure**. Les deux chiffres décrivent **deux situations différentes**, et le dossier les présentait
+comme la même.
+🔴 **Le cas « sans agent » n'est JAMAIS celui de l'owner** : il reprend la carte **pour flasher**,
+donc l'agent tourne. ⇒ **le chiffre à publier est 8,5 s**, et les **+1,9 s** sont **le coût de l'arrêt
+propre** — une fonctionnalité (le bilan sort), ⛔ pas une perte.
+
+#### 25.18.4 ⚠️ LE BUSID SUIT LE **PORT**, LE NUMÉRO COM SUIT LA **CARTE**
+
+Après le changement de port physique et de câble : busid **`3-1` → `3-5`**, mais **`COM3` INCHANGÉ**.
+⇒ Le constat de revue *« le COM est une constante là où le busid est relu — il suit le même
+rebranchement »* est **partiellement RÉFUTÉ** : Windows lie le numéro COM au **device** (la carte
+annonce un numéro de série), pas au port. **Réserve nommée** : rien ne garantit `COM3` si un autre
+périphérique série réclame ce numéro en premier — mais ce risque ne se déclenche **pas** au
+rebranchement.
+⇒ 🔴 **`dn4-15` doit compter TROIS valeurs**, pas deux : `3-7`, `3-1`, `3-5`.

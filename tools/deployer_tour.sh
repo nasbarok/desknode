@@ -78,6 +78,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
 '
 VERIFIER=0
 CIBLE="$CIBLE_DEFAUT"
+CIBLE_VUE=""          # une cible explicite a-t-elle deja ete donnee ? (voir plus bas)
 for arg in "$@"; do
   case "$arg" in
     --verifier) VERIFIER=1 ;;
@@ -93,7 +94,30 @@ for arg in "$@"; do
     -*)         echo "  /!\ option inconnue : $arg" >&2
                 echo "      options : --verifier | -h | <repertoire cible>" >&2
                 exit 2 ;;
-    *)          CIBLE="$arg" ;;
+    # 🔴 REVUE DU 2026-08-26 — LE CORRECTIF dn4-8 N'AVAIT BOUCHE QUE `-*`, ET LA
+    #    FAUTE DE FRAPPE LA PLUS PROBABLE N'EST PAS `--verify`, C'EST L'OUBLI
+    #    DES TIRETS. MESURE : `./tools/deployer_tour.sh verifier` creait
+    #    `./verifier/`, y deposait les 4 fichiers PLUS le `poser-permanence.cmd`
+    #    AUTO-ELEVATEUR, imprimait « OK — aucun ecart » et rendait **0** —
+    #    pendant que LA TOUR N'ETAIT PAS TOUCHEE et que l'owner croyait avoir
+    #    deploye. C'est le meme defaut que dn4-8, par l'autre bout :
+    #    « un outil qui obeit a une faute de frappe ment ».
+    # ⇒ UNE CIBLE EST UN CHEMIN ABSOLU, ET IL N'Y EN A QU'UNE.
+    /*)         if [ -n "$CIBLE_VUE" ]; then
+                  echo "  /!\ DEUX cibles : « $CIBLE_VUE » puis « $arg »." >&2
+                  echo "      ⛔ Une seule. Le dernier NE gagne PAS en silence" >&2
+                  echo "         (rendre-port.sh et wsl-attach.sh refusent deja)." >&2
+                  exit 2
+                fi
+                CIBLE="$arg"; CIBLE_VUE="$arg" ;;
+    *)          echo "  /!\ CIBLE RELATIVE REFUSEE : « $arg »" >&2
+                echo "      Une cible est un chemin ABSOLU (elle vit sur un montage" >&2
+                echo "      Windows). Un mot nu est presque toujours une option dont" >&2
+                echo "      les tirets ont saute — et le deposer creerait un" >&2
+                echo "      repertoire au hasard, avec un lanceur AUTO-ELEVATEUR" >&2
+                echo "      dedans, en annoncant un succes." >&2
+                echo "      ⇒ vouliez-vous « --$arg » ?" >&2
+                exit 2 ;;
   esac
 done
 
@@ -115,7 +139,43 @@ if [ "$SALE" -ne 0 ]; then
   echo "  /!\\ ARBRE SALE ($SALE fichier(s)) — le SHA ci-dessus NE DECRIT PAS ce qui est copie."
 fi
 
-[ "$VERIFIER" -eq 0 ] && mkdir -p "$CIBLE"
+if [ "$VERIFIER" -eq 0 ]; then
+  if ! mkdir -p "$CIBLE" 2>/dev/null; then
+    echo "  /!\ Impossible de creer/atteindre la cible : $CIBLE"
+    echo "      (montage decroche, lecture seule, disque plein ?)"
+    exit 2
+  fi
+  # =========================================================================
+  # 🔴 ON NE DEPOSE PAS SOUS UN AGENT VIVANT.            (revue du 2026-08-26)
+  #    MESURE ce jour-la : `PROVENANCE.txt` disait `depose : 10:26:36` pendant
+  #    que `dn-agent.started` disait `lance : 10:17:30` et que l'agent tournait
+  #    ENCORE. Deux consequences, toutes deux silencieuses :
+  #      (1) `dn_agent.py` est ECRASE alors qu'il est deja charge en memoire —
+  #          la tour execute donc du code que PROVENANCE ne decrit PAS ;
+  #      (2) `dn-agent.bat` est reecrit SOUS le `cmd.exe` qui l'execute, et
+  #          cmd.exe relit un fichier batch A L'OFFSET D'OCTET.
+  #    ⛔ « L'AUTORITE EST LE DEPOT » ne veut rien dire si la copie deposee ne
+  #    decrit pas ce qui TOURNE.
+  # ⇒ REFUS, avec le geste exact. Echappatoire NOMMEE : DN_DEPLOI_A_CHAUD=1.
+  # =========================================================================
+  if [ "${DN_DEPLOI_A_CHAUD:-0}" != "1" ]; then
+    vivants="$(powershell.exe -NoProfile -Command \
+      "@(Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" -ErrorAction SilentlyContinue | Where-Object { \$_.CommandLine -and (\$_.CommandLine -match 'dn_agent\\.py') }).Count" \
+      2>/dev/null | tr -d '\r' | tail -1)"
+    case "$vivants" in
+      ''|0) : ;;
+      *)  echo "  /!\ UN AGENT TOURNE SUR LA TOUR ($vivants process)."
+          echo "      ⛔ Deposer maintenant ecraserait dn_agent.py SOUS lui, et"
+          echo "         dn-agent.bat sous le cmd.exe qui l'execute."
+          echo "      ⇒ L'arreter d'abord, PROPREMENT (le bilan sort) :"
+          echo "           ./tools/rendre-port.sh --vers-flash"
+          echo "         ou, si la carte doit rester a Windows :"
+          echo "           powershell.exe -c \"& '$(printf '%s' "$CIBLE" | sed 's#^/mnt/\(.\)/#\U\1:\\#; s#/#\\#g')\\dn-agent.bat' stop\""
+          echo "      (⚠️ contournement assume : DN_DEPLOI_A_CHAUD=1)"
+          exit 2 ;;
+    esac
+  fi
+fi
 
 # 🔴 CONTROLE ASCII-PUR — 2e REVUE (2026-08-24). LA CONTRAINTE ETAIT ECRITE,
 #    LOAD-BEARING, ET **RIEN NE LA JOUAIT**. PowerShell 5.1 lit un `.ps1` UTF-8
@@ -130,7 +190,23 @@ fi
 #    ICI, ⛔ pas dans un commentaire que personne n'execute.
 verifier_ascii() {
   f="$1"
-  n="$(LC_ALL=C grep -c '[^ -~	]' "$f" 2>/dev/null || true)"
+  # 🔴 REVUE DU 2026-08-26 — CETTE GATE ECHOUAIT **OUVERT**.
+  #    L'ancienne forme `n="$(grep -c … 2>/dev/null || true)"` + `[ -z "$n" ]`
+  #    ne casse pas comme le `|| echo 0` de `verifier_crlf` (`true` n'imprime
+  #    rien), mais elle CONFOND « zero octet non-ASCII » et « je n'ai pas pu
+  #    lire le fichier ». `grep` sort en **2** sur un fichier illisible
+  #    (montage drvfs qui decroche — le contexte MEME de ce script) : stdout
+  #    vide, erreur avalee, `n=0`, ET LA GATE PASSE.
+  #    ⚠️ `verifier_crlf`, avec la forme corrigee d'AC2, CRIE sur la meme
+  #    panne : la meme cause donnait deux verdicts opposes selon la gate.
+  # ⇒ ON SEPARE LES TROIS CAS : trouve / rien trouve / PAS PU LIRE.
+  n="$(LC_ALL=C grep -c '[^ -~	]' "$f" 2>/dev/null)"; rc=$?
+  if [ "$rc" -gt 1 ]; then
+    echo "  /!\ $(basename "$f") : ILLISIBLE (grep sort en $rc)."
+    echo "      ⛔ Ce n'est PAS « aucun octet non-ASCII » — c'est « je n'ai pas pu"
+    echo "         regarder ». Un fichier qu'on ne peut pas lire ne se depose pas."
+    return 1
+  fi
   [ -z "$n" ] && n=0
   if [ "$n" -ne 0 ]; then
     echo "  /!\\ $(basename "$f") CONTIENT $n LIGNE(S) NON-ASCII."
@@ -229,20 +305,48 @@ for rel in "${A_DEPOSER[@]}"; do
     fi
     continue
   fi
-  cp -f "$src" "$dst"
+  # 🔴 REVUE DU 2026-08-26 — LE CODE DE RETOUR DE `cp` N'ETAIT PAS TESTE.
+  #    Sur une cible non inscriptible, la sortie de l'operateur commencait par
+  #    une erreur brute de `sha256sum`, ⛔ pas par un diagnostic.
+  if ! cp -f "$src" "$dst" 2>/dev/null; then
+    echo "  /!\ ECRITURE REFUSEE : $(basename "$rel")"
+    echo "      (cible non inscriptible, pleine, ou montage decroche)"
+    ecarts=$((ecarts+1)); continue
+  fi
   # 🔴 CONVERSION CRLF AU DEPOT, pour la meme raison que
   #    `poser-permanence.cmd` : `cp -f` copie A L'OCTET, donc un `.bat`
   #    versionne depuis WSL ARRIVERAIT EN LF. ⚠️ `sed`, ⛔ pas `unix2dos` :
   #    cet outil n'est pas garanti present et un deploiement qui echoue faute
   #    d'un paquet optionnel serait une dependance cachee.
+  # ⚠️ REVUE DU 2026-08-26 — `s/$/\r/` SEUL N'EST PAS IDEMPOTENT : une source
+  #    deja en CRLF (checkout avec `core.autocrlf`, edition Windows) produisait
+  #    `\r\r\n`, que `verifier_crlf` ACCEPTE (`\r$` matche) et que `empreinte`
+  #    NORMALISE. ⇒ vert sur un `.bat` malforme. On retire AVANT d'ajouter.
   case "$rel" in
-    *.bat|*.cmd) sed -i 's/$/\r/' "$dst" ;;
+    *.bat|*.cmd)
+      if ! sed -i 's/\r$//; s/$/\r/' "$dst" 2>/dev/null; then
+        echo "  /!\ CONVERSION CRLF ECHOUEE : $(basename "$rel")"
+        echo "      ⛔ Un .bat en LF peut executer une ligne TRONQUEE (cmd.exe)."
+        ecarts=$((ecarts+1)); continue
+      fi ;;
   esac
   hd="$(empreinte "$rel" "$dst")"
   # (!) On RELIT ce qu'on vient d'ecrire. Une copie vers un montage Windows peut
   #     echouer partiellement sans que `cp` le dise.
   if [ "$hs" = "$hd" ]; then echo "  depose : $(basename "$rel")  ($hs)"
-  else echo "  /!\\ COPIE ABIMEE : $(basename "$rel")  depot=$hs  tour=$hd"; ecarts=$((ecarts+1)); fi
+  else echo "  /!\\ COPIE ABIMEE : $(basename "$rel")  depot=$hs  tour=$hd"; ecarts=$((ecarts+1)); continue; fi
+  # =========================================================================
+  # 🔴 LA GATE CRLF TIRE **AUSSI AU DEPOT**, ET C'EST LE POINT.  (revue 2026-08-26)
+  #    Elle n'etait appelee QUE dans la branche `--verifier`. Or `empreinte()`
+  #    fait `tr -d '\r'` DES DEUX COTES pour les `.bat`/`.cmd` : la « relecture
+  #    de ce qu'on vient d'ecrire » est donc STRUCTURELLEMENT AVEUGLE a l'echec
+  #    de la conversion. Un `sed -i` qui echoue partiellement rendait `hs = hd`
+  #    ⇒ « depose », PROVENANCE ecrite, et un `.bat` 0/N en CR sur la tour.
+  # ⛔ LE CHEMIN QUI **FABRIQUE** LE DEFAUT NE JOUAIT JAMAIS LA GATE QUI LE VOIT.
+  # =========================================================================
+  case "$rel" in
+    *.bat|*.cmd) verifier_crlf "$dst" || ecarts=$((ecarts+1)) ;;
+  esac
 done
 
 # 🔴 ON N'ECRIT PAS UNE PROVENANCE POUR UNE COPIE DECLAREE ABIMEE (revue dn4-8,
@@ -269,6 +373,22 @@ if [ "$VERIFIER" -eq 0 ] && [ "$ecarts" -ne 0 ]; then
       rm -f "$perime" && echo "     retire (perime) : $(basename "$perime")"
     fi
   done
+  # =========================================================================
+  # 🔴 ET ON DIT CE QUI RESTE.                            (revue du 2026-08-26)
+  #    Retirer la provenance repose sur la these « une tour sans provenance se
+  #    voit ». ⛔ ELLE N'A PAS DE LECTEUR : ni `dn-agent.bat`, ni
+  #    `dn_agent_tour.ps1` n'ouvrent jamais `PROVENANCE.txt`, et `prevol` ne
+  #    teste que l'EXISTENCE de `dn_agent.py`. La provenance ne se voit qu'au
+  #    prochain `--verifier` — alors que le prochain LOGON, lui, lance ce qui
+  #    est la. Les EXECUTABLES perimes, eux, sont toujours en place.
+  # =========================================================================
+  echo "  ⛔ LES EXECUTABLES PERIMES, EUX, SONT TOUJOURS SUR LA TOUR :"
+  for rel in "${A_DEPOSER[@]}"; do
+    [ -f "$CIBLE/$(basename "$rel")" ] && echo "       $(basename "$rel")"
+  done
+  echo "     ⚠️ ET LA TACHE AU LOGON LES LANCERA. Tant que le depot n'est pas"
+  echo "        repare, soit on redepose, soit on retire la tache :"
+  echo "            dn-agent.bat retirer      (depuis la tour)"
 fi
 if [ "$VERIFIER" -eq 0 ] && [ "$ecarts" -eq 0 ]; then
   cat > "$CIBLE/PROVENANCE.txt" <<EOF
@@ -302,10 +422,24 @@ CE QUE FAIT dn-agent.bat (dn4-17)
   d'envoi, recalages, echo console, refus firmware). Il est AJOUTE, jamais
   tronque, et bascule en .1 au-dela de 5 Mo.
 EOF
-  echo "  ecrit  : PROVENANCE.txt"
+  rc_prov=$?
+  # 🔴 REVUE DU 2026-08-26 — CE `echo` ETAIT INCONDITIONNEL. Sur cible non
+  #    inscriptible, le script imprimait « ecrit : PROVENANCE.txt » pour un
+  #    fichier QUI N'EXISTAIT PAS, puis « OK — aucun ecart » et exit 0.
+  #    ⛔ C'est la these du correctif dn4-8 RETOURNEE : le run certifiait une
+  #    arborescence dont il n'avait ecrit ni la provenance ni le lanceur.
+  if [ "$rc_prov" -ne 0 ] || [ ! -s "$CIBLE/PROVENANCE.txt" ]; then
+    echo "  /!\ PROVENANCE.txt N'A PAS ETE ECRITE (rc=$rc_prov)."
+    echo "      ⛔ Une tour sans provenance se voit ; une tour dont l'outil"
+    echo "         PRETEND avoir ecrit la provenance, non."
+    ecarts=$((ecarts+1))
+  else
+    echo "  ecrit  : PROVENANCE.txt"
+  fi
 
   # Raccourci self-elevant : le geste owner en un double-clic.
   printf '%s' "$CMD_PERMANENCE" > "$CIBLE/poser-permanence.cmd"
+  rc_cmd=$?
   # 🔴 CRLF, ET C'EST OBLIGATOIRE (revue dn4-8, 2026-08-21). Le heredoc ecrivait
   #    des fins de ligne LF depuis WSL, alors que le fichier utilise une
   #    CONTINUATION `^` que `cmd.exe` ne parse de façon fiable QUE contre CRLF.
@@ -314,8 +448,23 @@ EOF
   # ⚠️ On le fait avec `sed`, ⛔ pas `unix2dos` : cet outil n'est pas garanti
   #    present, et un deploiement qui echoue faute d'un paquet optionnel serait
   #    une dependance cachee.
-  sed -i 's/$/\r/' "$CIBLE/poser-permanence.cmd"
-  echo "  ecrit  : poser-permanence.cmd  (self-elevant, double-clic, CRLF)"
+  # ⚠️ idem A3 : on RETIRE avant d'ajouter, sinon `\r\r\n` sur une source deja
+  #    convertie — accepte par la gate et normalise par l'empreinte.
+  sed -i 's/\r$//; s/$/\r/' "$CIBLE/poser-permanence.cmd" 2>/dev/null; rc_sed=$?
+  if [ "$rc_cmd" -ne 0 ] || [ "$rc_sed" -ne 0 ] || [ ! -s "$CIBLE/poser-permanence.cmd" ]; then
+    echo "  /!\ poser-permanence.cmd N'A PAS ETE ECRIT (rc=$rc_cmd/$rc_sed)."
+    echo "      ⛔ C'est le lanceur AUTO-ELEVATEUR : son absence NE DOIT PAS"
+    echo "         passer pour un succes."
+    ecarts=$((ecarts+1))
+  else
+    # 🔴 ET ON RELIT LA CONVERSION, pour la meme raison qu'au-dessus : ce
+    #    fichier porte une CONTINUATION `^` et se releve en UAC.
+    if verifier_crlf "$CIBLE/poser-permanence.cmd"; then
+      echo "  ecrit  : poser-permanence.cmd  (self-elevant, double-clic, CRLF)"
+    else
+      ecarts=$((ecarts+1))
+    fi
+  fi
 fi
 
 # 🔴 LES DEUX FICHIERS **GENERES** SONT VERIFIES EUX AUSSI (revue 2026-08-21).
@@ -393,6 +542,55 @@ if [ "$VERIFIER" -eq 1 ]; then
       echo "         ce qui n'a jamais ete depose. Redeployer."
       ecarts=$((ecarts+1))
     fi
+  fi
+
+  # =========================================================================
+  # 🔴 CE QUI EST **EN TROP** SUR LA TOUR.                (revue du 2026-08-26)
+  #    `--verifier` n'iterait que sur `A_DEPOSER` + les 2 generes : il ne
+  #    pouvait donc VOIR AUCUN fichier surnumeraire — y compris celui que
+  #    l'en-tete de ce script declare FATAL :
+  #      « ⛔ tools/stub_psutil/psutil.py … pose a cote de dn_agent.py il
+  #        MASQUERAIT le vrai psutil, et l'agent publierait des chiffres de
+  #        STUB sans que rien ne le dise. »
+  #    La seule protection etait que `A_DEPOSER` ne l'expedie pas. ⛔ RIEN ne
+  #    le detectait s'il arrivait AUTREMENT — et ce n'est pas theorique :
+  #    MESURE le 2026-08-26, la cible portait **6 fichiers** que le deployeur
+  #    n'a jamais poses (des captures deposees a la main).
+  # ⚠️ ET LE PRE-VOL NE RATTRAPE PAS : `python -c "import psutil, serial"`
+  #    teste que l'import REUSSIT — ce qu'un stub fait PAR CONSTRUCTION — et
+  #    `sys.path[0]` vaut le repertoire de depot dans les DEUX regimes.
+  # =========================================================================
+  attendus=" PROVENANCE.txt poser-permanence.cmd "
+  for rel in "${A_DEPOSER[@]}"; do attendus="$attendus$(basename "$rel") "; done
+  # Fichiers que le .bat cree LEGITIMEMENT a l'execution (⛔ pas des ecarts).
+  runtime=" dn-agent.log dn-agent.log.1 dn-agent.out dn-agent.out.1 dn-agent.env.cmd dn-agent.started dn-agent.stop "
+  surnum=0 ; masquants=0
+  for f in "$CIBLE"/*; do
+    [ -e "$f" ] || continue
+    b="$(basename "$f")"
+    case "$attendus" in *" $b "*) continue ;; esac
+    case "$runtime"  in *" $b "*) continue ;; esac
+    surnum=$((surnum+1))
+    # 🔴 UN `.py` A COTE DE `dn_agent.py` EST UN MASQUEUR D'IMPORT, PAS UN
+    #    FICHIER EN TROP : `sys.path[0]` est ce repertoire.
+    case "$b" in
+      *.py) echo "  /!\ 🔴 MASQUEUR D'IMPORT : $b"
+            echo "      ⛔ Il est sur le sys.path[0] de dn_agent.py ET du pre-vol."
+            echo "         Un psutil.py/serial.py ici ferait publier des chiffres"
+            echo "         de STUB sans que rien ne le dise. RETIRER."
+            masquants=$((masquants+1)) ;;
+      *)    echo "  en trop   : $b  (⛔ hors A_DEPOSER, donc hors gates)" ;;
+    esac
+  done
+  if [ "$masquants" -ne 0 ]; then
+    ecarts=$((ecarts+masquants))
+  elif [ "$surnum" -ne 0 ]; then
+    echo "      ⇒ $surnum fichier(s) que cet outil n'a pas depose : ni compares,"
+    echo "        ni couverts par la gate CRLF ni par la gate ASCII. Les"
+    echo "        versionner dans le depot et les ajouter a A_DEPOSER, ou les"
+    echo "        retirer. (revue dn4-8 : « un lanceur que --verifier ne"
+    echo "        couvrait pas »)"
+    ecarts=$((ecarts+1))
   fi
 fi
 

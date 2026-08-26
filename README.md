@@ -1007,16 +1007,31 @@ consigné (`deferred-work.md:1348`).
 usbipd + présence de `COM3` / `/dev/ttyACM*`.
 
 ```bash
-# rendre le port à Windows, pour l'agent   — mesuré 7,26 s · n = 4 · 0 échec
+# rendre le port à Windows, pour l'agent   — mesuré 7,349 s · n = 6 · 0 échec
 ./tools/rendre-port.sh --vers-agent
-# reprendre la carte sous WSL, pour flasher — mesuré 6,58 s · n = 4 · 0 échec
+# reprendre la carte sous WSL, pour flasher — mesuré 8,519 s · n = 3 · 0 échec
+
+> 🔴 **CHIFFRES CORRIGÉS LE 2026-08-26 (revue de code), ET LE MOTIF COMPTE.**
+> `--vers-flash` a **DEUX régimes de coût**, et le README publiait le mauvais :
+>
+> | | n | min | max | **moyenne** |
+> |---|---|---|---|---|
+> | `--vers-flash` **avec un agent à arrêter** — *ce que vous faites* | 3 | 8,046 | 9,124 | **8,519 s** |
+> | `--vers-flash` sans agent (port déjà libre) | 3 | 6,438 | 6,717 | 6,598 s |
+> | `--vers-agent` | 6 | 7,232 | 7,480 | **7,349 s** |
+>
+> L'ancien **6,58 s** mesurait le cas **sans agent** — qui n'arrive jamais quand
+> on reprend la carte **pour flasher**. Les **+1,9 s** sont **le coût de l'arrêt
+> propre**, celui qui fait sortir le bilan de fin : c'est une fonctionnalité,
+> ⛔ pas une perte. **12 passages, 0 échec**, busid `3-5`, SHA au dossier §25.18.
+
 #   (il ARRÊTE l'agent et le PROUVE en rouvrant COM3, ⛔ pas par un code de retour)
 ./tools/rendre-port.sh --vers-flash
 # ne change RIEN, dit tout :
 ./tools/rendre-port.sh --etat
 ```
 
-⚠️ **~4 des 7,26 s sont un DÉLAI DE RE-VÉRIFICATION, et il est voulu** : les veilleurs
+⚠️ **~4 des 7,349 s sont un DÉLAI DE RE-VÉRIFICATION, et il est voulu** : les veilleurs
 ressuscitent en ~2 s, donc l'outil **relit `usbipd list` après le délai** et **échoue
 bruyamment** si la ligne repasse à `Attached`. On paie 4 s pour ne plus payer une heure.
 🔴 **Le busid n'est écrit NULLE PART ici, et c'est délibéré** : il **suit le port
