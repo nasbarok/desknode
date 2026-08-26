@@ -1,0 +1,30 @@
+
+===== pc =====
+pc
+liaison PC : MORTE (RESUME GLOBAL : VIVANTE des qu'UNE metrique l'est)
+             derniere trame toutes metriques : age 87865 ms · seq 600 · t_ms agent 120044
+metriques  : (peremption 3000 ms, par metrique)
+  cpu   -> case 0 CPU       MORTE        9,8 % · 3,1 GHz · c.max 27,3 % · 44,3 degC  · age 87893 ms · seq 596
+  gpu   -> case 1 GPU       MORTE        11,0 % · 47,0 degC · 54,0 W · 601,0 tr/min  · age 87889 ms · seq 597
+  ram   -> case 2 RAM       MORTE        49,5 % · 31,9 Go  · age 87885 ms · seq 598
+  net   -> case 3 RÉSEAU   MORTE        21,5 Mb/s · 3,3 Mb/s  · age 87881 ms · seq 599
+  disk  -> case 4 DISQUE    MORTE        0,7 Mo/s · extr.moy 1085,4 tr/min · ventirad 387,2 tr/min · boitier 940,0 tr/min  · age 87873 ms · seq 600
+poussee    : GROUPEE (defaut)
+peremption : 3000 ms, en temps absolu de RECEPTION — la cadence de
+             l'agent ne fait jamais foi (AC7)
+trames     : 582 valides · 0 doublons · 16 pertes seq · 0 resynchros · 0 reprises
+rejets     : tronquee 0 · trop longue 0 · checksum 0 · version 0 · format 0 · bornes 0
+             tronquee = la fin de ligne est PERDUE · trop longue = la
+             ligne est COMPLETE mais depasse 71 o (emetteur elargi)
+             ⚠️ bande « trop longue » ATTEIGNABLE : le REPL delivre
+             124 caracteres de trame au parseur (MESURE, dn4-1) —
+             la bande 72..124 est donc large de 53 o. Un compteur
+             inatteignable serait un instrument qui ment.
+             resynchros = saut de seq non credible (agent redemarre,
+             seq fabrique) : trame APPLIQUEE, pas comptee en pertes
+latence acceptation->label : n=582 · min 2 ms · moy 76 ms · max 332 ms
+  (NON instrumente ici : echantillonnage cote PC, vol dans le
+   transport, et le flush LVGL suivant — <= 1 cycle, ~27 ms)
+transport  : wifi non compilee (maquette B ecartee — fourche T5) · ws off (0 messages, 0 connexions)
+             branche A = cette console : l'agent envoie `pc $DN,...`
+desknode> 

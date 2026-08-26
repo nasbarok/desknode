@@ -3429,3 +3429,39 @@ texte** — le label change donc à peu près aussi souvent qu'avant.
 ⛔ **CE QUE CES TROIS TIRS NE DISENT PAS** : la dispersion est estimée sur **DEUX** tirs `off`. C'est
 assez pour dire « l'écart `on` est dedans », ⛔ pas pour publier une dispersion. Un effet réel mais
 **inférieur à ~1,5 %** resterait invisible ici.
+
+### 27.9 ✅ AC4.3 SUR LA CARTE — LE « MÊME DÉLAI » SE PROUVE PAR CONSTRUCTION, ⛔ PAS PAR UN CHRONO
+
+**Séance du 2026-08-27.** AC4.3 exige que *« chaque case lissée passe à `--` dans le MÊME délai
+qu'avant le lissage »*.
+
+🔴 **ET CE DÉLAI NE PEUT PAS SE CHRONOMÉTRER DEPUIS L'HÔTE, POUR UNE RAISON STRUCTURELLE** : pour
+lire l'état des cases il faut la console, donc **reprendre le port** (~7 s mesurées) — alors que la
+péremption est à **3 s**. Quand l'instrument arrive, la transition est déjà passée. ⛔ Un chrono
+pris là mesurerait la bascule de port, pas la péremption.
+
+🎯 **LA PREUVE EST AILLEURS, ET ELLE EST PLUS FORTE QU'UN CHRONO** :
+
+```
+git diff c31bb97..HEAD -- main/dn_link.c main/dn_link.h   →   VIDE
+```
+
+**Le chemin de péremption n'a pas changé d'un octet.** Le lissage vit **côté agent** : le firmware
+reçoit des valeurs différentes, ⛔ pas une mécanique différente. ⇒ **le délai est identique parce que
+c'est LE MÊME CODE**, et c'était très exactement l'argument qui a fait choisir le côté agent
+(§27.5).
+
+**Le relevé de contrôle, agent arrêté** (`pc`) :
+
+| case | état | dernier âge |
+|---|---|---:|
+| CPU · GPU · RAM · RÉSEAU · DISQUE | **les cinq `MORTE`** | ~87 900 ms |
+
+⇒ péremption **3 000 ms**, âge **×29** : les cases sont mortes, comme prévu.
+
+⚠️ **CE QUE CE RELEVÉ NE PROUVE PAS**, et c'est écrit : il montre l'**état final**, ⛔ pas le
+**délai**. Le délai est prouvé par le diff vide ci-dessus.
+⚠️ **ET LA SECONDE MOITIÉ D'AC4.3 — « rien de périmé ne réapparaît à la reprise » — EST PROUVÉE PAR
+GATE**, sur la capture réelle des 960 échantillons : le mutant « pas de vidage à la reprise »
+republie **19 au lieu du brut 32**, c'est-à-dire *la valeur d'AVANT la coupure*. ⛔ La carte n'a rien
+à ajouter à ça : c'est le même code, et l'œil ne saurait pas distinguer 19 de 32 sur un écran.
