@@ -113,4 +113,23 @@ echo       verbes : start / etat / stop / run / exec / permanence / retirer
 exit /b 2
 
 :FIN
-exit /b %ERRORLEVEL%
+set "RC=%ERRORLEVEL%"
+REM ===========================================================================
+REM  DOUBLE-CLIC : ON S'ARRETE POUR QUE L'OWNER PUISSE LIRE.
+REM  Constat owner du 2026-08-26 : « pas pu voir, la fenetre se referme
+REM  direct ». Un outil dont on ne peut pas lire la reponse n'est pas un
+REM  outil - et la reponse qu'il donnait la etait justement le temoin
+REM  anti-doublon (« DEJA LANCE ... Aucun second process »).
+REM  !!! LA GARDE EST DOUBLE, ET C'EST OBLIGATOIRE : la tache au logon lance
+REM      « dn-agent.bat run COM3 0 -Temoin » via cmd /c, donc %cmdcmdline%
+REM      CONTIENT le chemin du .bat. Un `pause` la ferait attendre POUR
+REM      TOUJOURS. On n'attend donc que si, EN PLUS, aucun argument n'a ete
+REM      passe - ce qui est exactement le double-clic.
+REM ===========================================================================
+if not "%~1"=="" goto :SORTIE
+echo %cmdcmdline% | find /i "%~nx0" >nul || goto :SORTIE
+echo.
+echo   (code de retour : %RC%)
+pause
+:SORTIE
+exit /b %RC%
