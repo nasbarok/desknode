@@ -4778,6 +4778,29 @@ ne veut pas dire « 0 pixel » ; et l'horodatage de référence vient **lui auss
 
 #### 20.7.5 🎯 CE QUE LA PHASE MESURE — trois régimes, fenêtres de 180 s IDENTIQUES
 
+> 🔴 **AMENDÉE LE 2026-08-27 — DEUX DÉFAUTS D'INSTRUMENT ONT ÉTÉ TROUVÉS SOUS CES CHIFFRES, ET ILS
+> NE SONT PAS EFFACÉS.** La revue de code les a relevés, la lecture les a confirmés, le correctif
+> est dans `eeee27f`. ⛔ **Ces valeurs restent PUBLIÉES telles quelles ; ce qui change, c'est ce
+> qu'on a le droit d'en conclure.**
+>
+> 1. **`min` et `MAX` ne portaient PAS sur la même population que `moy`.** Les **32 trames de
+>    dégrossissage** entraient dans `min`/`MAX` et **pas** dans `somme`/`n` — pendant que la ligne
+>    console présentait les trois comme issues du même `n`. ⇒ `min 1915 · moy 1961 · MAX 1978`
+>    **mélange deux échantillons**. Depuis `eeee27f` les trois portent sur la population comptée,
+>    et le dégrossissage est annoncé à part.
+> 2. 🔴 **La référence des déficits était un MAXIMUM GLISSANT À CLIQUET** : elle était mise à jour
+>    avec l'échantillon courant **avant** de servir de référence à ce même échantillon, et ne
+>    redescendait jamais. ⇒ un seul retard ponctuel saturait la colonne `CORRUPTION` pour tout le
+>    reste de la fenêtre, **et le même jeu de valeurs dans l'ordre inverse rendait un autre
+>    chiffre**. ⚠️ **La colonne `CORRUPTION` de ce tableau est donc un MAJORANT**, ⛔ pas une
+>    mesure. La référence est **figée** depuis `eeee27f`.
+>
+> ⇒ **CE QUI TIENT MALGRÉ TOUT, ET C'EST L'ESSENTIEL** : le **facteur 12** entre repos et trafic
+> repose sur le **déficit pire** (63 µs contre 741), pas sur la colonne saturable ; et le biais
+> décrit ne peut que **SUR-compter** — un instrument qui ne sait que sur-compter **ne fabrique pas
+> le ZÉRO du repos**. La corrélation quantitative avec l'œil, elle, est intacte.
+> ⛔ **Un nouveau tirage sous ce binaire ne sera PAS comparable à ces chiffres.**
+
 | régime | phase min | moy | MAX | **déficit pire** | 🔴 CORRUPTION |
 |---|---:|---:|---:|---:|---:|
 | **repos, zéro trafic** | 1 915 | 1 961 | 1 978 | **63 µs** | **0** |
@@ -5160,6 +5183,34 @@ visuelle **certaine** contre **−42 %** sur un défaut qui reste visible de tou
    minimale. Sous agent réel, **les textes changent de largeur** ⇒ l'union s'élargit à chaque mise
    à jour. **Le mécanisme même du mode le rend sensible au stimulus.**
 
+   > 🔴 **RÉFUTÉ LE 2026-08-27, PAR LECTURE — ⛔ CE PARAGRAPHE EST FAUX ET IL N'EST PAS EFFACÉ.**
+   > L'explication ci-dessus est **mécaniquement impossible** : **aucune des deux passes ne voyait
+   > jamais la nouvelle largeur.** `lv_obj_get_coords()` est une copie de struct nue
+   > (`lv_obj_pos.c:566-571`) ; `lv_label_set_text` finit par `lv_obj_mark_layout_as_dirty`, qui ne
+   > fait que poser `layout_inv` et poster `LV_EVENT_REFR_REQUEST` (`lv_obj_pos.c:368-379`) — **la
+   > géométrie est DIFFÉRÉE** — et `dn_widget.c` n'appelait **nulle part** `lv_obj_update_layout`
+   > (grep sur tout le fichier : **0**). ⇒ la seconde boucle unissait **les rectangles identiques**
+   > à la première. C'est le **rétrécissement** qui était couvert (par accident : l'union garde
+   > l'ancienne boîte, plus large), et **l'élargissement qui ne l'était pas** — soit l'inverse de
+   > ce qui est écrit ci-dessus.
+   >
+   > 🔴 **ET LA MESURE ELLE-MÊME A ÉTÉ PRISE DANS UN ÉTAT CASSÉ.** La zone d'union n'était
+   > construite qu'à partir des **valeurs**, alors que la fonction écrit aussi la **jauge**
+   > (`lv_bar_set_value`) et le **badge** (`HIDDEN`) pendant que l'invalidation est coupée — tous
+   > deux **hors** de la boîte des valeurs, et **sans filet différé** (`lv_bar.c:748`,
+   > `lv_obj.c:262`). ⇒ **la jauge gelait et le badge ne suivait pas.** Le `0,97 /s` a donc été
+   > mesuré sur un mode **qui perdait des pixels**, puis déclaré « voie morte » sur cette base.
+   >
+   > ⚠️ **ET L'ATOMICITÉ, SEULE RAISON D'ÊTRE DU MODE, N'AVAIT JAMAIS EXISTÉ** : l'auto-réparation
+   > différée des labels (`LV_EVENT_UPDATE_LAYOUT_COMPLETED`, `lv_label.c:1354`) tombait **après**
+   > le rétablissement de l'invalidation ⇒ chaque label ajoutait **une zone sale de plus**.
+   >
+   > ✅ **CORRIGÉ DANS `12016bd`** : tous les enfants écrits entrent dans l'union, et
+   > `lv_obj_update_layout()` est appelé **avant** le rétablissement de l'invalidation.
+   > ⛔ **LE `0,97 /s` EST À REPRENDRE SUR LA CARTE**, sous agent RÉEL. ⚠️ Le verdict « voie morte »
+   > n'est **ni confirmé ni infirmé** — il n'a jamais été éprouvé sur un mode qui marchait.
+   > ⛔ Ça **ne rouvre pas** la décision owner du 2026-08-23 : le mode livré reste `on`.
+
 #### 20.7.20 🎯 DEUX SIGNATURES VISUELLES QUI DISTINGUENT LES DEUX DÉFAUTS
 
 **Constats owner du 2026-08-23, verbatim, et ce qu'ils désignent :**
@@ -5340,6 +5391,46 @@ passera plus dès que le binaire grossira »*. Le binaire a grossi ; le cran s'e
 - ⛔ **Le nombre de resets réellement joués par le driver reste inobservable** : à `n` il relance en interne sans passer
   par `need_restart`, donc `recal` compte **1** (l'amorçage) et rien d'autre.
 - ⚠️ **Quatre fenêtres de 180 s ne valent pas une journée d'usage.**
+  > 🎯 **CETTE RÉSERVE-LÀ EST LEVÉE LE 2026-08-27, ET PAS PAR UNE MESURE — voir §20bis.9.**
+
+### 20bis.9 🎯 LE CONSTAT OWNER DU 2026-08-27 — le correctif tient sur PLUSIEURS SÉANCES, et il reste UNE chose
+
+🔴 **VERBATIM OWNER, 2026-08-27** :
+
+> *« depuis plusieurs temps dev et test plus de soucis d'image qui glisse juste un petit eartefact
+> sur les % dans le detail cpu mais c'est tt »*
+
+**CE QUE ÇA SOLDE, ET C'EST LA MEILLEURE PREUVE QU'ON AIT SUR CE DÉFAUT.**
+Les quatre fenêtres de 180 s du 2026-08-23 étaient la réserve explicite de §20bis.8 : *« quatre
+fenêtres de 180 s ne valent pas une journée d'usage »*. Ce constat-ci couvre **plusieurs séances de
+développement et de test** menées entre le 2026-08-23 et le 2026-08-27 (`dn4-12`, `dn4-13`,
+`dn4-17`, `dn4-18`, `dn4-5`), sur le firmware `1adf259` et ses successeurs. ⇒ **la durée d'usage
+que le compteur ne savait pas produire, l'usage l'a produite.**
+
+⇒ **DEUX RÉSERVES DE §20bis.8 TOMBENT** :
+- ✅ *« quatre fenêtres de 180 s ne valent pas une journée d'usage »* — **soldée par l'usage**.
+- ✅ 🔴 *« parfois ça reste glissé »* (le **permanent desync**, le rattrapage du driver qui échoue) —
+  **non revu sur plusieurs séances**. ⚠️ ⛔ **Ce n'est toujours PAS « prouvé absent »** : c'est un
+  état RARE, l'owner ne l'observait déjà que *« parfois »*, et **rien ne le mesure encore**. Mais un
+  défaut qui ne se montre plus sur des jours d'usage n'a plus le même rang qu'un défaut vu la veille.
+  ⇒ **`dn4-12` garde son objet** (mesurer une DURÉE), il perd son urgence.
+
+⚠️ **ET LE RÉSIDUEL A CHANGÉ DE NATURE — c'est ça, l'information neuve.**
+Le résiduel de §20bis.8 était *« il reste un tout petit peu »* de **glissement**. Ce qui reste
+aujourd'hui n'est **plus décrit comme un glissement** : c'est *« un petit artefact sur les % dans le
+détail CPU »* — **local**, **localisé sur une zone nommée**, et **permanent dans la description**.
+
+🔴 **⛔ ET ON NE LUI ATTRIBUE PAS DE CAUSE, PARCE QU'AUCUNE DES DEUX SIGNATURES PUBLIÉES NE LUI VA.**
+§20.7.20 range *« restes de chiffres »* du côté de l'**invalidation** — mais elle ajoute que ces
+artefacts *« n'apparaissent qu'en `off` / `union` »*, et **le mode livré est `on`**. Et *« ligne
+verte »*, la signature du glissement, n'est **pas** ce qui est décrit. ⇒ **cet artefact-ci sort de
+la table**, et c'est déclaré.
+
+⚠️ **UNE PISTE, ET ELLE N'EST QUE ÇA — ⛔ NON ÉTABLIE.** §20bis.6 relève qu'à `bounce_px = 15 360`
+l'owner voyait *« une bande qui couvre les % »* : **la même zone de l'écran**. Ça peut désigner une
+géométrie de bounce qui tombe mal sur cette bande-là, ou une pure coïncidence de position.
+⛔ **Aucune mesure ne le tranche, et on n'en tire rien.** C'est le sujet d'une observation dédiée,
+⛔ pas de cette section.
 
 ## 21. `dn4-9` / AC8 — LE CONSTAT OWNER À L'ŒIL, 2026-08-22, firmware `38c3b99`
 
