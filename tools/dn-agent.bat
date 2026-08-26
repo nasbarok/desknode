@@ -60,7 +60,10 @@ goto :FIN
 goto :FIN
 
 :PERM
-%PS% "%DN_PS1%" permanence -Serie %SERIE%
+REM Les arguments 3 et 4 (duree, temoin) sont TRANSMIS : c'est la tache qui
+REM porte le regime, et le temoin en fait partie. Sans ca, la cible posee
+REM aurait dit autre chose que ce que l'appel demandait.
+%PS% "%DN_PS1%" permanence -Serie %SERIE% -Duree %DUREE% %TEMOIN%
 goto :FIN
 
 :RETIRER

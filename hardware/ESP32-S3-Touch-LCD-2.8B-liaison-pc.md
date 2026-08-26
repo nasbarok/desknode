@@ -2478,3 +2478,155 @@ Verbatim du 2026-08-24 : *« je ferai des tests de charges plus tard »*.
 concluante, et les quatre grandeurs qualifient.
 ⚠️ **Et il pèse un refus owner antérieur** : *« non pas de tests comme ça sur le pc »*. ⛔ **Ce tir
 ne se lance pas sans demande explicite.**
+
+---
+
+## 25. 🔴 `dn4-17` — L'AGENT VIT SUR LA TOUR : LE RÉGIME CHANGE, DONC LE CHIFFRE SE RE-MESURE
+
+> ⛔ **CE BLOC EST COMMITTÉ AVANT QUE L'AGENT NE TOURNE SOUS LE NOUVEAU RÉGIME.**
+> C'est la doctrine d'AC9 (`dn4-1`), appliquée en §23 : *« Si le commit suivant portait déjà le
+> résultat, il n'y aurait pas de prédiction, il y aurait une justification. »*
+
+### 25.1 Ce qui change dans le régime — ⛔ pas dans le code de mesure
+
+Le chiffre de **§23.9** (`0,1480 % machine` / `2,367 % d'un cœur` au rang 60 s) décrit **un agent
+lancé À LA MAIN DEPUIS WSL**. `dn4-17` livre autre chose :
+
+| | §23 (2026-08-24) | 🆕 régime `dn4-17` |
+|---|---|---|
+| d'où l'agent est lu | dépôt WSL | **copie locale sur `H:\dev\projets\desknode`** |
+| qui le lance | l'opérateur, à la main | **une tâche planifiée AU LOGON**, `-RunLevel Limited` |
+| père du process | le shell | **`cmd.exe` du `.bat`**, vivant tout le run |
+| console | oui | ⛔ **aucune** — `stderr` est **redirigé vers un fichier** |
+| WSL | allumé | **peut être éteint** |
+| dans le chemin par cycle | — | 🆕 **un `os.path.exists()`** (`--stop-si`), **1/s** |
+| `--temoin` | posé pour le tir | **posé EN PERMANENCE** (il fait partie du régime livré) |
+
+### 25.2 Ce que le nouveau chemin par cycle devrait coûter
+
+| Ajout | Fréquence | Coût unitaire attendu |
+|---|---|---|
+| `os.path.exists(drapeau)` sur un NTFS **local** | **1/s** (PERIODE_S = 1,0 s) | ~10–50 µs ⇒ **~0,005 % d'un cœur** |
+| `stderr` vers un **fichier** au lieu d'une console | 1 ligne / 10 s | ⚠️ **moins cher** qu'une console |
+| chargement du `.py` depuis `H:` au lieu de `\\wsl.localhost` | **1 fois**, au démarrage | hors régime établi |
+
+⇒ **Le seul poste récurrent nouveau est estimé à 0,005 % d'un cœur** — un ordre de grandeur sous la
+dispersion observée entre deux tirs (§23.6 : Δ de 0,118 à 0,793 pt selon le rang).
+
+### 25.3 🎯 LA PRÉDICTION
+
+> **Agent RÉEL, `COM3`, `--temoin`, 16 cœurs logiques, lancé PAR LA TÂCHE, WSL éteint :**
+>
+> | rang | % d'un cœur | % machine |
+> |---|---|---|
+> | **60 s** | **`[2,20 ; 2,70]`** | **`[0,1375 ; 0,1688]`** |
+> | **180 s** | **`[1,90 ; 2,30]`** | **`[0,1188 ; 0,1438]`** |
+>
+> — c'est-à-dire **INDISCERNABLE de 2,367 / 2,065**.
+
+🔴 **CE QUI LA DÉMENTIRAIT, ET IL FAUDRAIT ALORS CHERCHER, ⛔ PAS ACCEPTER** : une valeur **> 2,70**
+au rang 60 s signalerait un coût que le tableau de §25.2 n'a pas vu. La cause à suspecter en
+premier serait **le drainage d'écho**, ⛔ pas le drapeau.
+
+### 25.4 ⛔ LES RÉSERVES, ÉCRITES AVANT LE TIR — ET IL Y EN A **TROIS**, PAS DEUX
+
+1. 🔴 **LES DEUX PIÈGES DE §23.4 TIENNENT ET SE RÉÉCRIVENT.**
+   (a) **Comparer au MÊME RANG** : la série n'avait pas convergé à 60 s
+   (`4,348 → 3,431 → 2,859 → 2,692 → 2,497 → 2,367`, puis **2,065** à 180 s). ⛔ Jamais un 60 s
+   contre un 180 s. (b) ⛔ **JAMAIS un chiffre `--stdout` contre un chiffre `COM3`** : le port coûte
+   **+0,63 pt** en propre. Le tir est sur `COM3`.
+2. 🔴 **LHM DOIT ÊTRE VIVANT, SINON LE CHIFFRE N'EST PAS COMPARABLE À §23 — ET C'EST MESURÉ.**
+   Le tir de §23 avait *« LHM : 181 lectures réussies, **0 en échec**, 53,0 ms de moyenne »*.
+   Le 2026-08-26, la tour rend l'inverse : **0 réussie, 24 en échec**, chacune coupée au **timeout
+   de 600 ms**. La tâche `LibreHardwareMonitor` est pourtant **PRÉSENTE** (`RunLevel=Highest`,
+   `état=Ready`) — **LHM n'est simplement pas lancé** (0 processus). ⚠️ Une source qui échoue au
+   timeout à chaque cycle change le **mural**, donc le **rapport** : *attendre ne consomme pas de
+   CPU* (§23.7). ⇒ **Si LHM n'est pas vivant au moment du tir, le chiffre est publié AVEC cette
+   mention et ⛔ N'EST PAS opposé à 2,367.**
+3. ⚠️ **LE FIRMWARE N'EST PAS LE MÊME, ET IL PARLE.** §23 tirait sur `d379c0d`. La carte porte
+   aujourd'hui le firmware de `dn3-3`. Le bruit de console mesuré le 2026-08-26 est de
+   **226,1 o/s · 5,04 lignes/s** — c'est de l'écho que l'agent **draine**, donc du coût. ⛔ Un écart
+   de bruit console est une cause de premier rang, et elle n'est pas contrôlée.
+4. ⚠️ **La tour n'est pas au repos contrôlé** (réserve de §23.4, inchangée). C'est une **réserve**,
+   ⛔ pas une excuse — elle est écrite **avant**.
+
+### 25.5 ⛔ CE TIR NE SOLDE **PAS** L'ENTRÉE « +0,26 pt » DU LEDGER
+
+[`deferred-work.md:1879`] Elle a **deux candidats non départagés** (isolation par source ·
+découplage des fenêtres de débit) et exige un **A/B sur tour au repos**. 🔴 **Le changement de
+régime de `dn4-17` en ajoute un TROISIÈME.** Mesurer après lui, sans point de comparaison,
+**mélangerait trois causes dans un même chiffre**. ⛔ **PAS D'A/B ⇒ PAS D'ATTRIBUTION.**
+⇒ **L'entrée RESTE OUVERTE**, avec ce motif.
+
+---
+
+### 25.6 Le geste de reprise de main — **MESURÉ**, ⛔ pas « plus simple »
+
+`tools/rendre-port.sh` (nouveau) fait **les deux sens** en **une** commande. Le busid est **relu à
+chaque appel** (⛔ jamais en dur : `usbipd list` rend **`3-1`** le 2026-08-26 là où `dn4-15` a
+compté **`3-7`** — *il suit le port physique*, les deux ont été vrais).
+
+| | AVANT (README § « le port est EXCLUSIF ») | 🆕 APRÈS (`rendre-port.sh`) |
+|---|---|---|
+| commandes owner | **4**, plus une **étape 0** | **1** |
+| durée | réattachement seul : **2,7–3,1 s** (dn4-3) | **vers-agent 7,26 s** · **vers-flash 6,58 s** |
+| n | — | **4 par sens**, 2026-08-26 |
+| échecs | 🔴 **non nul** : veilleur ressuscité, `COM3` fantôme, « Attached » orphelin, RESET physique | **0 / 8** |
+| detach re-vérifié | ⛔ non (`echo OK`) | ✅ **relu après 4 s** — et il **échoue bruyamment** si la ligne repasse à `Attached` |
+
+⚠️ **LE GESTE EST PLUS LONG QUE LE `detach` NU, ET C'EST VOULU** : ~4 des 7,26 s de `--vers-agent`
+sont **le délai de re-vérification**. On paie 4 s pour ne plus payer une heure — *« les veilleurs
+ressuscitent en ~2 s »*, et c'est ce qui faisait échouer le rituel.
+🔴 **ET LE COMPTE NE TRANCHE PAS, LE PORT TRANCHE** : à chaque passage, l'outil signale
+**1 `usbipd.exe` à `CommandLine` ILLISIBLE** — *« ni tué, ni innocenté »*. Le faux négatif de
+`wsl-attach.sh:75-81` est donc **VISIBLE** au lieu d'être silencieux, et le verdict reste
+`STATE` + présence de `COM3` / `/dev/ttyACM*`.
+
+### 25.7 🎯 LA FOURCHE « WSL vs WINDOWS-ONLY » — les DEUX colonnes, mesurées
+
+| | branche **WSL** (`usbipd`) | branche **WINDOWS-ONLY** |
+|---|---|---|
+| rendre la carte au flash | `rendre-port.sh --vers-flash` — **6,58 s** | `dn-agent.bat stop` — **2,76 s** |
+| rendre la carte à l'agent | `rendre-port.sh --vers-agent` — **7,26 s** | `dn-agent.bat start` — **5,39 s** |
+| **aller-retour** | **13,84 s** | **8,15 s** |
+| commandes owner | 2 | 2 |
+| échecs mesurés | **0 / 8** | **0 / 1** |
+| outil de flash | ESP-IDF **dans WSL** ✅ | 🎯 **`esptool 5.3.1` EST présent** sur le Python de la tour, et **il parle à la puce** : `MAC a0:f2:62:e3:d7:f4`, entrée **et sortie** de download mode (`--after watchdog_reset`) en **1,62 s** |
+| **construire** le firmware | ✅ | 🔴 **NON** — `IDF_PATH` absent, **aucun** répertoire ESP-IDF côté Windows |
+| dépendance `usbipd` | oui (veilleurs, busid, délai) | ⛔ **aucune** |
+
+🎯 **VERDICT, AVEC SES CHIFFRES.** La branche Windows-only **existe déjà à moitié** : elle **flashe**
+(1,62 s pour parler à la puce, `usbipd` entièrement dissous) mais elle **ne construit pas**.
+⇒ **La bascule complète n'est PAS jouable aujourd'hui**, et le manque est **nommé** : ESP-IDF
+côté Windows. ⛔ **On ne conclut donc pas sur la branche survivante** — la branche WSL reste le
+régime, et le cap owner *« Windows-only à terme »* a désormais **son chiffre et son bloquant**.
+⚠️ **Ce que ce relevé NE dit PAS** : le coût d'un `write_flash` réel côté Windows (seul un
+`chip-id` a été joué), ni comment l'artefact construit dans WSL atteindrait `esptool` côté tour.
+
+### 25.8 L'arrêt de l'agent — **le bilan était perdu à CHAQUE FOIS**, et c'est mesuré
+
+| geste | l'agent meurt ? | bilan de fin écrit |
+|---|---|---:|
+| `taskkill /PID` (poli) | ⛔ **NON** — encore vivant après **5 s** | — |
+| `taskkill /F` (repli) | ✅ | 🔴 **0 o** |
+| 🆕 **drapeau `--stop-si`** | ✅ **en 1 s** | ✅ **1 560 o** |
+
+🔴 **Pourquoi ça compte** : détaché ou en tâche planifiée, **l'agent n'a pas de console**, donc pas
+de `Ctrl+C`. Le bilan est *« le seul instrument qui dit si la liaison va bien »* (trames émises,
+erreurs d'envoi, recalages, bruit d'écho, refus firmware). Sans le drapeau, la redirection de
+`stderr` d'AC3.6 sauvait le journal **de fonctionnement** et perdait **le bilan**.
+⚠️ **Le repli `taskkill /F` reste**, et il **DÉCLARE** la perte au lieu de la taire.
+
+### 25.9 La rotation du journal — **décision ÉCRITE, et elle est dimensionnée sur un débit MESURÉ**
+
+| | mesuré le 2026-08-26 |
+|---|---|
+| `stderr` en **régime établi**, sans `--temoin` | **0 o/s** — les 1 162 o d'une session sont **tous écrits dans les 4 premières secondes**, puis plus rien pendant **178 s** |
+| avec `--temoin` (le régime livré) | 1 ligne / 10 s ≈ **~1,2 Mo/jour** |
+
+⇒ **Politique** : bascule en `.1` (**une seule génération**) dès que le journal atteint **5 Mo**,
+**au pré-vol** de chaque lancement. Plafond disque **10 Mo**.
+⚠️ **CE QUE CETTE POLITIQUE NE COUVRE PAS, ET ON LE DIT** : la rotation a lieu **au lancement**.
+Un agent permanent qui tourne **des semaines sans redémarrer** peut dépasser le plafond — à
+~1,2 Mo/jour, il atteint 5 Mo en **~4 jours**. ⛔ C'est **assumé**, ⛔ pas ignoré : l'agent redémarre
+à chaque logon, et le débit mesuré dit de combien on dépasse si ce n'est pas le cas.

@@ -390,8 +390,22 @@ switch ($Action) {
         Unregister-ScheduledTask -TaskName $NOM_TACHE -Confirm:$false
         Dire "tache existante retiree (reposee a l'identique)."
     }
-    $cible = '/c ""' + $BAT + '" run ' + $Serie + '"'
-    $action = New-ScheduledTaskAction -Execute $env:ComSpec -Argument $cible -WorkingDirectory $RACINE
+    # !!! LA TACHE PORTE `-Temoin` SI ON LE LUI DEMANDE, ET C'EST UN CHOIX
+    #     DE REGIME, pas un reglage de mise au point. Le temoin est le SEUL
+    #     instrument qui dise ce que l'agent coute (cumul cpu_times rapporte
+    #     au mural, imprime tous les 10 cycles). Sans lui dans le regime
+    #     LIVRE, tout chiffre de cout decrirait un AUTRE regime que celui
+    #     qui tourne. Cout : une lecture psutil toutes les 10 s, et ~1,2 Mo
+    #     de journal par jour - la rotation est dimensionnee pour.
+    $tem = $(if ($Temoin) { '-Temoin' } else { '' })
+    $cible = '/c ""' + $BAT + '" run ' + $Serie + ' ' + $Duree + ' ' + $tem + '"'
+    # !!! PAS `$action` : ce script a un PARAMETRE `$Action` avec un
+    #     ValidateSet, et les variables PowerShell sont INSENSIBLES A LA
+    #     CASSE. `$action = New-ScheduledTaskAction ...` declenchait donc le
+    #     ValidateSet du parametre et la pose echouait avec un message qui
+    #     parlait de MSFT_TaskExecAction - un diagnostic qui envoie regarder
+    #     la tache alors que la faute est un nom de variable. MESURE ici.
+    $acte = New-ScheduledTaskAction -Execute $env:ComSpec -Argument $cible -WorkingDirectory $RACINE
     $trigger = New-ScheduledTaskTrigger -AtLogOn -User $moi
     # =====================================================================
     # !!! `-RunLevel Limited`, ET C'EST **VOULU**.        (dn4-17 / AC5.2)
@@ -411,7 +425,7 @@ switch ($Action) {
     $reglages = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries `
         -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) `
         -StartWhenAvailable -MultipleInstances IgnoreNew
-    Register-ScheduledTask -TaskName $NOM_TACHE -Action $action -Trigger $trigger `
+    Register-ScheduledTask -TaskName $NOM_TACHE -Action $acte -Trigger $trigger `
         -Principal $principal -Settings $reglages `
         -Description 'Lance l agent DeskNode a l ouverture de session. NON ELEVE (dn4-17 / AC5.2).' | Out-Null
 

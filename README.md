@@ -986,10 +986,10 @@ $py = "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe"
   3 s sans trame valide (une valeur figée serait un mensonge d'interface) ; reprise
   sans reboot en ≤ 2 s quand l'agent revient.
 
-### ⚠️ Le port est EXCLUSIF : agent ⇄ boucle de flash, le geste (branche A)
+### ⚠️ Le port est EXCLUSIF : agent ⇄ boucle de flash — **UN SEUL GESTE** (`dn4-17`)
 
-L'agent (Windows, COM3) et la boucle WSL (flash + `dn_console.py`) ne coexistent
-JAMAIS — exclusivité usbipd + TIOCEXCL, mesurée. L'alternance :
+L'agent (Windows, `COM3`) et la boucle WSL (flash + `dn_console.py`) ne coexistent
+JAMAIS — exclusivité usbipd + TIOCEXCL, mesurée.
 
 🔴 **ÉTAPE 0 — TUER LES VEILLEURS `--auto-attach`, AVANT TOUT LE RESTE.** Sinon ils
 re-attachent la carte à WSL en quelques secondes après le detach, et l'agent trouve un
@@ -997,20 +997,70 @@ COM3 fantôme (`FileNotFoundError`) pendant que l'état usbipd se bloque en « A
 orphelin. *(Ce piège a coûté une heure en session dn2-2 ; l'avertissement était écrit
 APRÈS le bloc de commandes, soit dans l'ordre inverse de l'exécution — corrigé par la
 revue du 2026-08-16.)*
-`ps aux | grep usbip-auto-attach` (WSL) et, côté Windows,
-`Get-CimInstance Win32_Process -Filter "Name='usbipd.exe'"` → `Stop-Process` sur
-ceux dont la ligne de commande contient `auto-attach`.
+✅ **DEPUIS `dn4-17`, C'EST L'OUTIL QUI LE FAIT** — des DEUX côtés, à chaque appel. C'est
+exactement pourquoi il existe : le rituel manuel **échouait**, et le ledger l'avait
+consigné (`deferred-work.md:1348`).
+🔴 **⚠️ MAIS LE COMPTE DE VEILLEURS TUÉS NE TRANCHE RIEN** — un `usbipd.exe` dont la
+`CommandLine` est **illisible** est classé « pas un veilleur » EN SILENCE par
+`wsl-attach.sh:75-81` (faux négatif **MESURÉ** le 2026-08-26, PID 6056). L'outil le
+**dit** (*« ni tué, ni innocenté »*) et **le verdict reste l'ÉTAT DU PORT** : `STATE`
+usbipd + présence de `COM3` / `/dev/ttyACM*`.
 
 ```bash
-# 1) WSL → Windows (rendre COM3 à l'agent) — 0,3 s :
-powershell.exe -Command "& 'C:\Program Files\usbipd-win\usbipd.exe' detach --busid 3-1"
-# 2) VÉRIFIER que le detach a TENU (les veilleurs ressuscitent en ~2 s) :
+# rendre le port à Windows, pour l'agent   — mesuré 7,26 s · n = 4 · 0 échec
+./tools/rendre-port.sh --vers-agent
+# reprendre la carte sous WSL, pour flasher — mesuré 6,58 s · n = 4 · 0 échec
+#   (il ARRÊTE l'agent et le PROUVE en rouvrant COM3, ⛔ pas par un code de retour)
+./tools/rendre-port.sh --vers-flash
+# ne change RIEN, dit tout :
+./tools/rendre-port.sh --etat
+```
+
+⚠️ **~4 des 7,26 s sont un DÉLAI DE RE-VÉRIFICATION, et il est voulu** : les veilleurs
+ressuscitent en ~2 s, donc l'outil **relit `usbipd list` après le délai** et **échoue
+bruyamment** si la ligne repasse à `Attached`. On paie 4 s pour ne plus payer une heure.
+🔴 **Le busid n'est écrit NULLE PART ici, et c'est délibéré** : il **suit le port
+physique** (`3-1` le 2026-08-26 ; `3-7` compté par `dn4-15`) — **les deux ont été vrais**.
+L'outil le **relit à chaque appel** et **échoue proprement** si la carte est absente.
+
+<details><summary>Le rituel manuel, si l'outil est indisponible — ⛔ il ÉCHOUE, c'est mesuré</summary>
+
+```bash
+# 0) tuer les veilleurs DES DEUX CÔTÉS (voir l'avertissement ci-dessus)
+ps aux | grep usbip-auto-attach                                   # WSL
+powershell.exe -Command "Get-CimInstance Win32_Process -Filter \"Name='usbipd.exe'\""
+#    → Stop-Process sur ceux dont la ligne de commande contient auto-attach
+# 1) RELIRE le busid — ⛔ jamais une constante :
 powershell.exe -Command "& 'C:\Program Files\usbipd-win\usbipd.exe' list"
-#    → la ligne 3-1 doit afficher STATE = « Shared », PAS « Attached ».
-#      Si elle est « Attached », un veilleur a survécu : retour à l'étape 0.
-# 3) Windows → WSL (reflasher / mesurer) — ~3,1 s :
+# 2) detach, puis VÉRIFIER que ça a TENU (STATE doit être « Shared ») — 0,3 s
+# 3) retour vers WSL — ~3,1 s :
 cd ~/projects/desknode && ./tools/wsl-attach.sh
 ```
+⚠️ **Coût réel de ce rituel** : un `detach` défait en quelques secondes, un `COM3`
+fantôme, un « Attached » orphelin, et une récupération qui demande **un RESET physique**.
+</details>
+
+### 🆕 Lancer / arrêter l'agent DEPUIS WINDOWS — `dn-agent.bat` (`dn4-17`)
+
+L'agent **vit sur la tour** : `tools/deployer_tour.sh` dépose `dn_agent.py`, `dn-agent.bat`
+et `dn_agent_tour.ps1` dans `H:\dev\projets\desknode`. ⛔ **Plus aucun chemin
+`\\wsl.localhost`** ⇒ **WSL peut être éteint**.
+
+| geste | ce qu'il fait |
+|---|---|
+| **double-clic** sur `dn-agent.bat` | `start` — et un second double-clic ne crée **AUCUN doublon** |
+| `dn-agent.bat etat` | compte de process **avec PID**, état de `COM3`, état usbipd — **ne change RIEN** |
+| `dn-agent.bat stop` | arrêt **propre** (le bilan de fin est écrit), **prouvé** en rouvrant `COM3` |
+| `dn-agent.bat permanence COM3 0 -Temoin` | pose la tâche **au logon**, `-RunLevel Limited` (⛔ **pas** `Highest` : l'agent n'a ni élévation, ni driver, ni .NET — D8/D13) |
+| `dn-agent.bat retirer` | retire la tâche, et **vérifie** qu'elle est absente |
+
+⚠️ **`stderr` est redirigé vers `dn-agent.log`** (ajouté, jamais tronqué, bascule en `.1`
+au-delà de 5 Mo) : une tâche planifiée **n'a pas de console**, et sans ça le **bilan de
+fin** — le seul instrument qui dise si la liaison va bien — serait perdu.
+🔴 **`taskkill` ne suffit PAS, et c'est mesuré** : le poli ne tue pas l'agent (vivant
+après 5 s) et le `/F` est un `TerminateProcess` inarrêtable ⇒ **0 o de bilan**. L'arrêt
+propre passe par un **fichier-drapeau** (`--stop-si`) : **1 s, 1 560 o de bilan**.
+⇒ Détails et chiffres : `hardware/ESP32-S3-Touch-LCD-2.8B-liaison-pc.md` §25.
 
 🔴 **DTR/RTS : la parade est WINDOWS-ONLY, et sous Linux elle NUIT.** Sous Windows,
 pyserial pose DTR/RTS à l'ouverture et la séquence **RESET la carte** (dn2-2, trois
