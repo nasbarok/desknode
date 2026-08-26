@@ -1,0 +1,45 @@
+
+===== rtc =====
+ rtc
+horloge PCF85063A @ 0x51 : FIABLE
+lue        : 2026-08-26 15:12:37 (jour de semaine 3) — AFFICHABLE
+age        : 98 ms (peremption 1500 ms, en temps absolu)
+bit OS     : 0 — ✅ l'oscillateur n'a pas decroche depuis la derniere pose
+retention  : 0x00 relu AU BOOT (attendu 0xD7) ⇒ 🔴 ELLE A PERDU SON
+             ALIMENTATION depuis le dernier demarrage — l'heure
+             qu'elle portait est morte avec.
+             📌 MESURE DU 2026-08-18 : cette carte N'A AUCUNE
+             SAUVEGARDE. Coupure USB de 30 s ⇒ OS=1 et
+             2000-01-01 00:00:54. D5 (« pas de batterie ») ne
+             disait rien d'une cellule de backup du RTC : il n'y
+             en a pas. `rtc set` apres chaque coupure secteur.
+temoin     : 0xD7 en 0x03 (attendu 0xD7) — ✅ pas de redemarrage EN COURS DE ROUTE (verdict RUNTIME)
+Control_1  : 0x00 a l'init, 0x00 maintenant
+             STOP=0 · format 24 h · quartz 7 pF
+             ⚠️ CAP_SEL n'est PAS verifie : rien sur cette carte ne dit
+                quel quartz est soude. Mauvais reglage = DERIVE, pas panne.
+registres 0x00..0x11 (RELUS a l'instant) :
+  00 00 00 D7 37 12 15 26 03 08 26 80 80 80 80 80 00 18 
+compteurs  : 1394 lectures · 0 reprises · 1 poses
+erreurs    : i2c 0 · bcd 0
+             i2c = elle ne repond plus · bcd = elle repond mais rend
+             un quartet > 9. DEUX diagnostics opposes, deux seaux
+             (lecon dn2-2 : les confondre envoie chercher la panne du
+             cote du cablage, qu'on vient de prouver bon).
+rejets     : bascule 0 · poussee perdue 0
+             🔴 DEUX SEAUX AJOUTES EN REVUE (2026-08-18). Avant, la
+             BASCULE — la seconde a tourne entre le burst et sa
+             relecture, « ni erreur ni donnee » — tombait dans `bcd`
+             et faisait chercher un quartet > 9 sur une puce SAINE.
+             POUSSEE PERDUE = le verrou LVGL n'a pas ete pris, la
+             barre garde son texte ; sans ce compteur une barre
+             figee par contention etait indiscernable d'une barre
+             a jour. Les deux sont NORMAUX en petit nombre.
+etats      : OS vu 103 fois · temoin perdu 0 fois
+pile tache : 2236 o libres sur 4096 (high-water mark RELU)
+             ⚠️ RAM INTERNE — la ressource meme qui a tue la branche
+             WiFi en dn2-2. Reduire cette pile demandera CE chiffre.
+barre      : HH:MM (au changement de minute) · « 15:12 » / « MER. 26 AOÛT » · DESSINEE
+epoque     : 2000..2099 — CHOIX du driver, pas de la puce : le PCF85063A
+             porte l'annee sur 0..99 et n'a AUCUN bit de siecle.
+desknode> 

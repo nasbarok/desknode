@@ -1609,8 +1609,29 @@ MESURE :** l'agent, lancé par la tâche au logon à **15:01:48**, a interrogé 
 et **posé l'heure 3 s plus tard** ⇒ `OS` retombe à **0** bien avant qu'un humain puisse taper `rtc`.
 ✅ **C'est la ligne `pose demandee (OS=1)` du journal qui EST la preuve** — elle ne demande rien à
 préparer, et c'est le chemin que le ledger avait nommé d'avance.
-⛔ **`retention` n'a PAS été relu**, et ça ne change pas le verdict : depuis §13.15.7.8 ce témoin ne
-prouve l'absence de coupure que **depuis le dernier boot ESP32**. **`OS` est celui qui ne ment pas.**
+✅ **ET `retention` A ÉTÉ RELU, LUI AUSSI — SANS REDÉMARRAGE SUPPLÉMENTAIRE.** Il est **latché en
+RAM depuis le boot** et reste donc lisible tant que l'ESP32 n'a pas redémarré. Contrôle préalable :
+`up 680 s` à **15:12:16** ⇒ boot à **15:00:56**, soit **exactement** celui d'après le rallumage, et
+**aucun redémarrage depuis**. Lecture à 15:12:37 :
+
+```
+retention  : 0x00 relu AU BOOT (attendu 0xD7) ⇒ 🔴 ELLE A PERDU SON ALIMENTATION
+             depuis le dernier demarrage — l'heure qu'elle portait est morte avec.
+temoin     : 0xD7 en 0x03 (attendu 0xD7) — ✅ pas de redemarrage EN COURS DE ROUTE
+compteurs  : 1394 lectures · 0 reprises · 1 poses
+etats      : OS vu 103 fois · temoin perdu 0 fois
+```
+
+⇒ ✅ **QUATRE INSTRUMENTS INDÉPENDANTS CONCORDENT** : `OS = 1` au logon (lu **par le mécanisme**) ·
+`retention = 0x00` (*« ELLE A PERDU SON ALIMENTATION »*) · **`1 poses`** depuis le boot, c'est-à-dire
+**exactement** celle de l'agent · **`OS vu 103 fois`** à 2 Hz ≈ **51 s**, ce qui recoupe le boot à
+15:00:56 et la pose à 15:01:51 (**55 s**).
+
+🔴 **ET C'EST LA CONTRE-ÉPREUVE DE §13.15.7.8, GRATUITE.** Ce matin, `retention` valait **`0xD7`**
+alors que `OS = 1` — **trompeur**, parce qu'un reset ESP32 *postérieur* à la coupure l'avait
+réécrit. Cet après-midi, sur une coupure **suivie d'aucun reset**, il vaut **`0x00`** et il dit
+**vrai**. ⇒ **les deux lectures, opposées, s'expliquent par la même règle** : `retention` ne parle
+que **depuis le dernier boot ESP32**. **`OS`, lui, ne ment dans aucun des deux cas.**
 📌 **Un chiffre en passant** : `I (54620)` ⇒ l'ESP32 était debout depuis **54,6 s** quand la pose a
 eu lieu, soit un boot de carte à **~15:00:56** pour une tâche au logon tirée à **15:01:01** —
 **5 s d'écart**, du même ordre que les 20 s relevés le matin. **La carte et la tour s'allument
