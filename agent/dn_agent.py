@@ -183,6 +183,7 @@ n'était imprimé qu'en sortie `--duree`, donc perdu sur la plupart des sessions
 """
 
 import argparse
+import os
 import sys
 import time
 
@@ -2072,6 +2073,23 @@ def principal() -> int:
     ap.add_argument("--duree", type=int, default=0, metavar="S",
                     help="s'arrête PROPREMENT après S secondes (0 = infini) — "
                          "c'est le témoin « arrêt propre » d'AC7")
+    # 🔴 dn4-17 (2026-08-26) — ET CETTE LIGNE EST PAYÉE PAR UNE MESURE, ⛔ PAS
+    #    PAR DU CONFORT. Depuis dn4-17 l'agent tourne DÉTACHÉ sur la tour
+    #    (double-clic ou tâche au logon) : il n'a PLUS DE CONSOLE, donc plus
+    #    de Ctrl+C. MESURÉ ce jour-là sur le geste `dn-agent.bat stop` :
+    #    `taskkill /PID` (poli) NE LE TUE PAS — il était encore vivant après
+    #    5 s — et le repli `taskkill /F` (TerminateProcess) ne peut être
+    #    intercepté par personne : **0 octet ajouté au journal**.
+    #    ⇒ Le bilan de fin — le SEUL instrument qui dise si la liaison va
+    #      bien (trames émises, erreurs d'envoi, recalages, bruit d'écho,
+    #      refus firmware) — était PERDU À CHAQUE ARRÊT OWNER, alors que
+    #      c'est exactement ce que la redirection de stderr existe pour
+    #      sauver. Un fichier-drapeau est le seul canal qui traverse les
+    #      trois régimes (console, détaché, tâche planifiée sans console).
+    # ⚠️ Coût : UN `os.path.exists` par cycle, soit 1/s (PERIODE_S = 1,0 s).
+    ap.add_argument("--stop-si", metavar="FICHIER", default=None,
+                    help="s'arrête PROPREMENT dès que FICHIER apparaît — le "
+                         "seul arrêt propre possible sans console")
     args = ap.parse_args()
 
     if args.duree < 0:
@@ -2205,8 +2223,16 @@ def principal() -> int:
     # plus naturel. Avant, il n'était imprimé qu'en sortie `--duree` : sur la
     # majorité des sessions le chiffre était perdu, et le port jamais fermé
     # explicitement (correctif de revue 2026-08-16).
+    # ⚠️ Lu UNE fois : on ne re-teste pas `args.stop_si` a chaque tour pour
+    #    rien quand l'option n'est pas posee.
+    drapeau_stop = args.stop_si or None
+    motif_arret = None
+
     try:
         while args.duree <= 0 or (time.monotonic() - depart) < args.duree:
+            if drapeau_stop is not None and os.path.exists(drapeau_stop):
+                motif_arret = drapeau_stop
+                break
             # Cadence en temps absolu : on vise depart + n*PERIODE, pas « sleep(1) cumulés ».
             maintenant = time.monotonic()
             if maintenant < prochain:
@@ -2305,6 +2331,12 @@ def principal() -> int:
     except KeyboardInterrupt:
         print("[agent] arrêt demandé (Ctrl+C)", file=sys.stderr)
     finally:
+        # ⚠️ On DIT pourquoi on s'arrête. Sans ça, dans un journal, un arrêt
+        #    demandé et une panne se ressemblent — et le bilan qui suit ne
+        #    dirait pas lequel des deux il décrit.
+        if motif_arret is not None:
+            print("[agent] arrêt demandé (drapeau %s)" % motif_arret,
+                  file=sys.stderr)
         _bilan(sortie, depart, trames_emises, erreurs_envoi, rattrapages,
                collecteur)
         collecteur.fermer()

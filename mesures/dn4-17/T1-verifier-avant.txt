@@ -1,0 +1,13 @@
+=== deployer_tour.sh ===
+  source : /home/nasbarok/projects/desknode
+  cible  : /mnt/h/dev/projets/desknode
+  HEAD   : b532574
+  /!\ DIVERGE  : dn_lhm_tour.ps1  depot=7077601617a79e9f  tour=3b49198ae8900ab7
+  /!\ DIVERGE  : poser-permanence.cmd  attendu=f42a06bf2518f27a  tour=dfd854279cbff2f9
+      ⛔ C'est le lanceur AUTO-ELEVATEUR (UAC). Une divergence ici
+         n'est pas cosmetique. Redeployer, ⛔ ne pas editer sur place.
+./tools/deployer_tour.sh: line 242: [: 0
+0: integer expression expected
+  present   : PROVENANCE.txt  (⛔ contenu NON compare : il est horodate)
+
+  /!\ 2 ecart(s).

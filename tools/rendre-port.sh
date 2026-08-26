@@ -52,7 +52,11 @@ dire()   { printf '  %s\n' "$*"; }
 etape()  { printf '\n[%ss] %s\n' "$(chrono)" "$*"; }
 crier()  { printf '  /!\\ %s\n' "$*" >&2; }
 
-ps_win() { "$PWSH" -NoProfile -Command "$1" 2>&1 | tr -d '\r'; }
+# ⚠️ `Set-Location` D'ABORD : ce script tourne depuis WSL, donc le cwd de
+#    PowerShell est un chemin UNC `\\wsl.localhost\...`. Tout `cmd.exe`
+#    lance de la crie « Les chemins UNC ne sont pas pris en charge » et
+#    bascule ailleurs — un bruit qui ressemble a une panne et n'en est pas.
+ps_win() { "$PWSH" -NoProfile -Command "Set-Location \$env:SystemRoot; $1" 2>&1 | tr -d '\r'; }
 
 # --- les trois lectures d'état, aucune n'écrit -----------------------------
 lister_usbipd() { ps_win "& '$USBIPD' list"; }
@@ -101,7 +105,13 @@ tuer_veilleurs() {
              Where-Object { \$_.CommandLine -like '*--auto-attach*' })
            \$v | ForEach-Object { Stop-Process -Id \$_.ProcessId -Force }
            \$v.Count" | tail -1)"
-  n_wsl="$(pkill -c -f 'usbip.*auto-attach' 2>/dev/null || echo 0)"
+  # 🔴 ⛔ PAS DE REPLI `echo 0` DANS LA SUBSTITUTION ICI.
+  #    `pkill -c` SORT EN 1 quand il ne tue
+  #    rien, ET IL A DEJA IMPRIME « 0 » : le repli en ajoutait un SECOND, la
+  #    variable valait la chaine "0\n0" et le message se cassait en deux
+  #    lignes. C'est le defaut D-A de `deployer_tour.sh`, re-fabrique ici —
+  #    VU A L'EXECUTION le 2026-08-26. Le `||` porte sur L'AFFECTATION.
+  n_wsl="$(pkill -c -f 'usbip.*auto-attach' 2>/dev/null)" || n_wsl=0
   dire "veilleurs tués : Windows=$n_win  WSL=$n_wsl"
   # 🔴 ET ON DIT CE QU'ON NE SAIT PAS. Un usbipd.exe dont la CommandLine est
   #    illisible n'a PAS pu être classé — il n'est ni tué, ni innocenté.

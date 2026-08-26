@@ -66,6 +66,7 @@ $BAT     = Join-Path $RACINE 'dn-agent.bat'
 $LOG     = Join-Path $RACINE 'dn-agent.log'
 $SORTIE  = Join-Path $RACINE 'dn-agent.out'
 $MARQUE  = Join-Path $RACINE 'dn-agent.started'
+$DRAPEAU = Join-Path $RACINE 'dn-agent.stop'
 $ENVCMD  = Join-Path $RACINE 'dn-agent.env.cmd'
 $NOM_TACHE = 'DeskNode agent'
 $USBIPD  = 'C:\Program Files\usbipd-win\usbipd.exe'
@@ -239,24 +240,35 @@ switch ($Action) {
     }
 
     Rotation-Journal
-    $argl = @('--serie', $Serie)
+    # !!! UN DRAPEAU PERIME TUERAIT LE NOUVEL AGENT AU PREMIER CYCLE. On le
+    #     retire ICI, avant de lancer, et pas seulement a la fin de `stop` :
+    #     un `stop` interrompu en laisserait un derriere lui.
+    if (Test-Path $DRAPEAU) { Remove-Item -Force $DRAPEAU }
+    $argl = @('--serie', $Serie, '--stop-si', $DRAPEAU)
     if ($Temoin)      { $argl += '--temoin' }
     if ($Duree -gt 0) { $argl += @('--duree', "$Duree") }
     $regime = $(if ($env:DN_REGIME) { $env:DN_REGIME } else { 'inconnu' })
+    # !!! CHAQUE ELEMENT EST PARENTHESE, ET CE N'EST PAS COSMETIQUE.
+    #    En PowerShell LA VIRGULE LIE PLUS FORT QUE `+` : sans parentheses,
+    #    `@('a' + $x, 'b' + $y)` se parse en `'a' + $x + ('"','b') + $y`,
+    #    l'array est APLATI avec $OFS (un ESPACE) et les deux lignes n'en font
+    #    qu'UNE. MESURE le 2026-08-26 : dn-agent.env.cmd est sorti sur une
+    #    seule ligne, le second `set` n'a jamais ete execute, et python a
+    #    recu "...\set" comme nom de script.
     @(
-        "lance   : " + (Get-Date -Format 'yyyy-MM-ddTHH:mm:ssK'),
-        "regime  : " + $regime,
-        "python  : " + $py,
-        "agent   : " + $AGENT,
-        "args    : " + ($argl -join ' '),
-        "coeurs  : " + $env:NUMBER_OF_PROCESSORS
+        ("lance   : " + (Get-Date -Format 'yyyy-MM-ddTHH:mm:ssK')),
+        ("regime  : " + $regime),
+        ("python  : " + $py),
+        ("agent   : " + $AGENT),
+        ("args    : " + ($argl -join ' ')),
+        ("coeurs  : " + $env:NUMBER_OF_PROCESSORS)
     ) -join "`r`n" | Set-Content -Encoding ASCII $MARQUE
 
     # Le .bat relit ces variables : pas de parsing de sortie, pas de
     # devinette de guillemets.
     @(
-        'set "DN_PY=' + $py + '"',
-        'set "DN_ARGS=' + ($argl -join ' ') + '"'
+        ('set "DN_PY=' + $py + '"'),
+        ('set "DN_ARGS=' + ($argl -join ' ') + '"')
     ) -join "`r`n" | Set-Content -Encoding ASCII $ENVCMD
     Dire ("args : " + ($argl -join ' '))
     Dire "pre-vol OK"
@@ -300,26 +312,56 @@ switch ($Action) {
     Titre 'STOP'
     $i = Get-Instances
     if ($i.Confirmes.Count -eq 0) { Dire "aucun agent reconnu." }
-    foreach ($c in $i.Confirmes) {
-        # 1) On demande d'abord poliment. Si le bilan de fin (le seul
-        #    instrument qui dit si la liaison va bien) peut etre sauve, il
-        #    l'est. Le resultat de cette tentative est MESURE, pas suppose :
-        #    voir liaison-pc.md (dn4-17).
-        Dire ("arret demande : PID=" + $c.ProcessId)
-        & taskkill.exe /PID $c.ProcessId 2>&1 | Out-Null
+    foreach ($c in $i.Confirmes) { Dire ("a arreter : PID=" + $c.ProcessId) }
+
+    if ($i.Confirmes.Count -gt 0) {
+        # =================================================================
+        # 1) LE DRAPEAU D'ABORD - ET C'EST LE SEUL ARRET **PROPRE**.
+        #    MESURE le 2026-08-26 : `taskkill /PID` (poli) NE TUE PAS cet
+        #    agent (encore vivant apres 5 s), et le repli `/F` est un
+        #    TerminateProcess que personne ne peut intercepter => le bilan
+        #    de fin - trames emises, erreurs d'envoi, recalages, bruit
+        #    d'echo, refus firmware - etait PERDU A CHAQUE ARRET (0 octet
+        #    ajoute au journal). Detache ou en tache planifiee, l'agent n'a
+        #    PAS DE CONSOLE : il n'y a pas de Ctrl+C a envoyer.
+        #    => `--stop-si` (dn_agent.py) lit ce fichier une fois par cycle
+        #       et sort par son try/finally, qui IMPRIME le bilan.
+        # =================================================================
+        $avant = 0
+        if (Test-Path $LOG) { $avant = (Get-Item $LOG).Length }
+        Set-Content -Encoding ASCII $DRAPEAU ("stop demande " + (Get-Date -Format 'yyyy-MM-ddTHH:mm:ssK'))
+        Dire "drapeau pose : arret PROPRE demande (le bilan de fin doit sortir)"
+        $t0 = Get-Date
+        while (((Get-Date) - $t0).TotalSeconds -lt 8) {
+            if ((Get-Instances).Confirmes.Count -eq 0) { break }
+            Start-Sleep -Milliseconds 250
+        }
+        $apres = 0
+        if (Test-Path $LOG) { $apres = (Get-Item $LOG).Length }
+        if ((Get-Instances).Confirmes.Count -eq 0) {
+            Dire ("arret propre en " + [int](((Get-Date) - $t0).TotalSeconds) + " s ; bilan ecrit : " + ($apres - $avant) + " o")
+        }
+
+        # 2) REPLI, et il est DECLARE : on perd le bilan, on le dit.
+        foreach ($c in (Get-Instances).Confirmes) {
+            Alerte ("PID=" + $c.ProcessId + " vivant apres 8 s : le drapeau n'a pas ete lu.")
+            & taskkill.exe /PID $c.ProcessId 2>&1 | Out-Null
+        }
+        $t0 = Get-Date
+        while (((Get-Date) - $t0).TotalSeconds -lt 5) {
+            if ((Get-Instances).Confirmes.Count -eq 0) { break }
+            Start-Sleep -Milliseconds 250
+        }
+        foreach ($c in (Get-Instances).Confirmes) {
+            Alerte ("PID=" + $c.ProcessId + " : arret FORCE. LE BILAN DE FIN EST PERDU.")
+            & taskkill.exe /F /PID $c.ProcessId 2>&1 | Out-Null
+        }
+        Start-Sleep -Milliseconds 500
     }
-    $t0 = Get-Date
-    while (((Get-Date) - $t0).TotalSeconds -lt 5) {
-        if ((Get-Instances).Confirmes.Count -eq 0) { break }
-        Start-Sleep -Milliseconds 250
-    }
-    $reste = (Get-Instances).Confirmes
-    foreach ($c in $reste) {
-        Alerte ("PID=" + $c.ProcessId + " toujours vivant apres 5 s : arret FORCE (le bilan de fin sera PERDU).")
-        & taskkill.exe /F /PID $c.ProcessId 2>&1 | Out-Null
-    }
-    Start-Sleep -Milliseconds 500
-    if (Test-Path $MARQUE) { Remove-Item -Force $MARQUE }
+    # Le drapeau est retire DANS TOUS LES CAS : un drapeau oublie tuerait le
+    # prochain agent des son premier cycle.
+    if (Test-Path $DRAPEAU) { Remove-Item -Force $DRAPEAU }
+    if (Test-Path $MARQUE)  { Remove-Item -Force $MARQUE }
 
     # 2) LA PREUVE. Un code de retour ne prouve rien (piege P2).
     Titre 'PREUVE : ON RE-OUVRE LE PORT'

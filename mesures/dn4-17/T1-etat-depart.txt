@@ -1,0 +1,53 @@
+=== T1 — ETAT DE DEPART — 2026-08-26 — desknode HEAD b532574 (arbre propre) ===
+
+--- usbipd list ---
+Connected:
+BUSID  VID:PID    DEVICE                                                        STATE
+3-1    303a:1001  Périphérique série USB (COM3), USB JTAG/serial debug unit     Attached
+3-9    e5b7:0811  Périphérique d’entrée USB                                     Not shared
+9-1    0b0e:245d  Jabra Link 370, Périphérique d’entrée USB                     Not shared
+9-2    046d:c336  Périphérique d’entrée USB                                     Not shared
+9-3    046d:c099  Périphérique d’entrée USB                                     Not shared
+
+Persisted:
+GUID                                  DEVICE
+
+
+--- GetPortNames() cote Windows ---
+(AUCUN port)
+
+--- python.exe vivants sur la tour ---
+compte=0
+--- /dev/ttyACM* cote WSL ---
+/dev/ttyACM0  0B
+--- PROVENANCE.txt sur H: ---
+Cette arborescence est une COPIE DE DEPLOIEMENT. ⛔ L'AUTORITE EST LE DEPOT.
+
+  depot   : ~/projects/desknode  (WSL Ubuntu)
+  HEAD    : 55469ee
+  depose  : 2026-08-21T15:26:08+02:00
+  par     : tools/deployer_tour.sh
+
+⛔ NE PAS EDITER LES FICHIERS ICI. Le prochain deploiement les ecrase, et l'ecart
+   ne se verrait nulle part. Toute modification se fait dans le depot, puis :
+       ~/projects/desknode/tools/deployer_tour.sh
+   Pour comparer sans rien ecraser :
+       ~/projects/desknode/tools/deployer_tour.sh --verifier
+
+CE QUE FAIT dn_lhm_tour.ps1 (dn4-8 / D13)
+  .\dn_lhm_tour.ps1                          VERIFIE, ne change RIEN
+  .\dn_lhm_tour.ps1 -Poser                   installe ce qui manque + serveur web
+  .\dn_lhm_tour.ps1 -Permanence tache        tache planifiee au logon, ELEVEE
+  .\dn_lhm_tour.ps1 -Retirer                 retire la tache (ne desinstalle rien)
+
+--- ls H: ---
+PROVENANCE.txt  883B
+dn_lhm_tour.ps1  21.2K
+poser-permanence.cmd  436B
+
+--- retard mesure ---
+sha_provenance=
+0
+--- CRLF du .cmd depose ---
+/mnt/h/dev/projets/desknode/poser-permanence.cmd: DOS batch file, Unicode text, UTF-8 text
+lignes=6  avec_CR=0

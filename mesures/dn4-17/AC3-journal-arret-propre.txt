@@ -1,0 +1,39 @@
+[agent] GPU : AMD Radeon RX 6800 XT via ADL PMLog (adaptateur 0) — temoin de mapping BUS_LANES=16 CLK_MEMCLK=1982 MHz
+[agent] ⚠️ LHM INJOIGNABLE au demarrage (TimeoutError: budget de lecture LHM epuise (600 ms)) — la °C CPU et les tr/min diront « -- », les autres grandeurs continuent. ⚠️ La source RESTE ARMEE : elle retente a chaque cycle et reprendra seule si LHM demarre.
+[agent] ⚠️ source `lhm` en ECHEC (budget de lecture LHM epuise (600 ms)) — la ou elle remplissait une grandeur, le fil porte un CHAMP VIDE et la ligne dit « -- » ; SI elle tenait la position 0, c'est la metrique entiere qui n'est pas emise. Les autres continuent : une source morte meurt SEULE.
+[agent] arrêt demandé (drapeau H:\dev\projets\desknode\dn-agent.stop)
+[agent] arrêt après 23.6 s — 115 trames émises (4.87 trames/s), 0 erreurs d'envoi, 0 recalages de cadence
+[agent] écho console draîné : 5341 o, 119 lignes en 23.6 s = 226.1 o/s, 5.04 lignes/s (PLAFOND du bruit console : inclut le battement 10 s et tout ESP_LOGx)
+[agent] aucun refus signalé par le firmware sur le fil
+[agent] aucun ecretage : toute valeur emise est la valeur mesuree
+[agent] 🔴 PANNES DE SOURCE (grandeur perdue ⇒ champ VIDE, « -- » sur SA ligne ; metrique non emise SEULEMENT si la position 0 manquait) : lhm:TimeoutError=23
+[agent] LHM : 0 lecture(s) reussie(s), 24 en echec — duree moyenne 607.6 ms, MAX 616.7 ms (timeout pose : 600 ms)
+[agent] 🔴 le plafond a COUPE au moins une lecture (24 echec(s), timeout 600 ms). ⚠️ Le dimensionnement est a revoir. ⛔ `duree_max` (617 ms) est un MAX sur les reussites ET les echecs : il ne dit PAS a quel instant la coupe a eu lieu.
+[agent] 🔴 UNE LECTURE LHM A DEPASSE LE PLAFOND SANS ECHOUER : 617 ms pour un timeout de 600 ms (103 %), 24 echec(s). ⚠️ Le budget ne borne que le RESEAU : ce depassement vient d'ailleurs (parse, ordonnancement). ⛔ C'EST un incident — il mange la cadence et arme le recalage.
+[agent] ⚠️ LHM est reste INJOIGNABLE toute la session (TimeoutError: budget de lecture LHM epuise (600 ms)) — la °C CPU et les tr/min n'ont JAMAIS ete publies. ⛔ Ce n'est pas « zero », c'est « inconnu » : le fil porte un champ VIDE et la carte affiche « -- ».
+[agent] GPU : AMD Radeon RX 6800 XT via ADL PMLog (adaptateur 0) — temoin de mapping BUS_LANES=16 CLK_MEMCLK=1988 MHz
+[agent] ⚠️ LHM INJOIGNABLE au demarrage (TimeoutError: budget de lecture LHM epuise (600 ms)) — la °C CPU et les tr/min diront « -- », les autres grandeurs continuent. ⚠️ La source RESTE ARMEE : elle retente a chaque cycle et reprendra seule si LHM demarre.
+[agent] ⚠️ source `lhm` en ECHEC (budget de lecture LHM epuise (600 ms)) — la ou elle remplissait une grandeur, le fil porte un CHAMP VIDE et la ligne dit « -- » ; SI elle tenait la position 0, c'est la metrique entiere qui n'est pas emise. Les autres continuent : une source morte meurt SEULE.
+[agent] arrêt demandé (drapeau H:\dev\projets\desknode\dn-agent.stop)
+[agent] arrêt après 3.6 s — 15 trames émises (4.13 trames/s), 0 erreurs d'envoi, 0 recalages de cadence
+[agent] écho console draîné : 4444 o, 59 lignes en 3.6 s = 1224.1 o/s, 16.25 lignes/s (PLAFOND du bruit console : inclut le battement 10 s et tout ESP_LOGx)
+[agent] aucun refus signalé par le firmware sur le fil
+[agent] aucun ecretage : toute valeur emise est la valeur mesuree
+[agent] 🔴 PANNES DE SOURCE (grandeur perdue ⇒ champ VIDE, « -- » sur SA ligne ; metrique non emise SEULEMENT si la position 0 manquait) : lhm:TimeoutError=3
+[agent] LHM : 0 lecture(s) reussie(s), 4 en echec — duree moyenne 611.7 ms, MAX 616.7 ms (timeout pose : 600 ms)
+[agent] 🔴 le plafond a COUPE au moins une lecture (4 echec(s), timeout 600 ms). ⚠️ Le dimensionnement est a revoir. ⛔ `duree_max` (617 ms) est un MAX sur les reussites ET les echecs : il ne dit PAS a quel instant la coupe a eu lieu.
+[agent] 🔴 UNE LECTURE LHM A DEPASSE LE PLAFOND SANS ECHOUER : 617 ms pour un timeout de 600 ms (103 %), 4 echec(s). ⚠️ Le budget ne borne que le RESEAU : ce depassement vient d'ailleurs (parse, ordonnancement). ⛔ C'EST un incident — il mange la cadence et arme le recalage.
+[agent] ⚠️ LHM est reste INJOIGNABLE toute la session (TimeoutError: budget de lecture LHM epuise (600 ms)) — la °C CPU et les tr/min n'ont JAMAIS ete publies. ⛔ Ce n'est pas « zero », c'est « inconnu » : le fil porte un champ VIDE et la carte affiche « -- ».
+[agent] GPU : AMD Radeon RX 6800 XT via ADL PMLog (adaptateur 0) — temoin de mapping BUS_LANES=16 CLK_MEMCLK=1990 MHz
+[agent] ⚠️ LHM INJOIGNABLE au demarrage (TimeoutError: budget de lecture LHM epuise (600 ms)) — la °C CPU et les tr/min diront « -- », les autres grandeurs continuent. ⚠️ La source RESTE ARMEE : elle retente a chaque cycle et reprendra seule si LHM demarre.
+[agent] ⚠️ source `lhm` en ECHEC (budget de lecture LHM epuise (600 ms)) — la ou elle remplissait une grandeur, le fil porte un CHAMP VIDE et la ligne dit « -- » ; SI elle tenait la position 0, c'est la metrique entiere qui n'est pas emise. Les autres continuent : une source morte meurt SEULE.
+[agent] arrêt demandé (drapeau H:\dev\projets\desknode\dn-agent.stop)
+[agent] arrêt après 43.6 s — 215 trames émises (4.93 trames/s), 0 erreurs d'envoi, 0 recalages de cadence
+[agent] écho console draîné : 17261 o, 297 lignes en 43.6 s = 395.7 o/s, 6.81 lignes/s (PLAFOND du bruit console : inclut le battement 10 s et tout ESP_LOGx)
+[agent] aucun refus signalé par le firmware sur le fil
+[agent] aucun ecretage : toute valeur emise est la valeur mesuree
+[agent] 🔴 PANNES DE SOURCE (grandeur perdue ⇒ champ VIDE, « -- » sur SA ligne ; metrique non emise SEULEMENT si la position 0 manquait) : lhm:TimeoutError=43
+[agent] LHM : 0 lecture(s) reussie(s), 44 en echec — duree moyenne 610.8 ms, MAX 675.7 ms (timeout pose : 600 ms)
+[agent] 🔴 le plafond a COUPE au moins une lecture (44 echec(s), timeout 600 ms). ⚠️ Le dimensionnement est a revoir. ⛔ `duree_max` (676 ms) est un MAX sur les reussites ET les echecs : il ne dit PAS a quel instant la coupe a eu lieu.
+[agent] 🔴 UNE LECTURE LHM A DEPASSE LE PLAFOND SANS ECHOUER : 676 ms pour un timeout de 600 ms (113 %), 44 echec(s). ⚠️ Le budget ne borne que le RESEAU : ce depassement vient d'ailleurs (parse, ordonnancement). ⛔ C'EST un incident — il mange la cadence et arme le recalage.
+[agent] ⚠️ LHM est reste INJOIGNABLE toute la session (TimeoutError: budget de lecture LHM epuise (600 ms)) — la °C CPU et les tr/min n'ont JAMAIS ete publies. ⛔ Ce n'est pas « zero », c'est « inconnu » : le fil porte un champ VIDE et la carte affiche « -- ».
