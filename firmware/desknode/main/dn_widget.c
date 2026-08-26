@@ -1649,6 +1649,29 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
     dn_widget_maj(desc, etat, out);
 }
 
+/*
+ * TOUS LES ENFANTS QUE `dn_widget_maj()` ECRIT — ⛔ pas seulement les valeurs.
+ * Pose le 2026-08-27 : la liste etait implicite et INCOMPLETE aux deux passes
+ * de l'union (jauge et badge manquaient). L'avoir en UN SEUL endroit est ce qui
+ * empeche les deux passes de diverger, et ce qui rend l'oubli visible le jour
+ * ou `dn_widget_maj()` gagnera un enfant.
+ * ⚠️ CE QUE CA COUTE, ET IL FAUT LE DIRE : la zone d'union s'approche desormais
+ *    du conteneur entier, puisqu'elle englobe la jauge (en bas) et le badge (en
+ *    haut). Le gain d'aire du mode `union` sur le mode `on` est donc PLUS PETIT
+ *    qu'avant — mais avant, il etait obtenu en NE REPEIGNANT PAS des enfants
+ *    qu'on venait d'ecrire. ⛔ Une aire plus petite obtenue en perdant des
+ *    pixels n'est pas un gain, c'est un defaut.
+ */
+static void zone_widget_prendre(const dn_widget_t *w, lv_area_t *zone, bool *vide)
+{
+    for (int i = 0; i < DN_WIDGET_GRANDEURS_MAX; i++) {
+        zone_prendre(zone, vide, w->valeur[i]);
+    }
+    zone_prendre(zone, vide, w->jauge);
+    zone_prendre(zone, vide, w->sec);
+    zone_prendre(zone, vide, w->badge);
+}
+
 void dn_widget_maj(const dn_widget_desc_t *desc, const dn_widget_etat_t *etat,
                    dn_widget_t *w)
 {
@@ -1665,11 +1688,29 @@ void dn_widget_maj(const dn_widget_desc_t *desc, const dn_widget_etat_t *etat,
     lv_area_t zone_union;
     bool zone_vide = true;
     if (grouper && s_groupe_union) {
-        /* AVANT écriture : un texte qui raccourcit libère de la place, et cette
-         * place n'est dans AUCUNE coordonnée d'après. */
-        for (int i = 0; i < DN_WIDGET_GRANDEURS_MAX; i++) {
-            zone_prendre(&zone_union, &zone_vide, w->valeur[i]);
-        }
+        /*
+         * AVANT écriture : la boîte que les enfants OCCUPENT ENCORE. Un texte
+         * qui raccourcit, une jauge qui recule, un badge qui va disparaître
+         * laissent leur trace ICI et nulle part ailleurs.
+         *
+         * 🔴 CORRIGÉ LE 2026-08-27 (2ᵉ revue de code) — ⛔ CETTE BOUCLE NE
+         *    PRENAIT QUE `w->valeur[i]`. Entre les deux passes, la fonction
+         *    écrit AUSSI `lv_bar_set_value(w->jauge, …)` et bascule
+         *    `w->badge` — pendant que `lv_display_enable_invalidation(disp,
+         *    false)` court. Géométrie relue : la jauge est posée à `y_bas + 6`
+         *    et le badge à `entete_y_badge()`, TOUS DEUX HORS de la boîte des
+         *    valeurs. ⛔ Et contrairement aux labels, ni `lv_bar` ni le drapeau
+         *    `HIDDEN` n'ont de filet différé : `lv_bar_set_value(…, LV_ANIM_OFF)`
+         *    n'émet qu'un `lv_obj_invalidate(obj)` (lv_bar.c:748) et
+         *    `lv_obj_add_flag(HIDDEN)` de même (lv_obj.c:262) — tous deux
+         *    AVALÉS. ⇒ la jauge GELAIT à sa dernière valeur peinte et le badge
+         *    « SIMULÉ » restait ou ne venait pas. Cas vivant : `DN_UI_CASE_RAM`
+         *    (`dn_ui.c`, `.indicateur = true`).
+         * 🔴 ET ÇA INVALIDE UNE CONCLUSION PUBLIÉE : `union` a été mesuré à
+         *    0,97 /s puis déclaré « voie morte » (§20.7.19) — DANS CET ÉTAT
+         *    CASSÉ. ⛔ Le chiffre ne vaut plus ; il est à reprendre sur la carte.
+         */
+        zone_widget_prendre(w, &zone_union, &zone_vide);
     }
     if (grouper) {
         /* ⚠️ De cette ligne jusqu'au rétablissement, AUCUNE invalidation n'est
@@ -1788,13 +1829,45 @@ void dn_widget_maj(const dn_widget_desc_t *desc, const dn_widget_etat_t *etat,
     }
 
     if (grouper) {
-        lv_display_enable_invalidation(disp, true);
         if (s_groupe_union) {
-            /* APRÈS écriture : la zone d'arrivée des mêmes labels. */
-            for (int i = 0; i < DN_WIDGET_GRANDEURS_MAX; i++) {
-                zone_prendre(&zone_union, &zone_vide, w->valeur[i]);
-            }
+            /*
+             * APRÈS écriture : la zone d'ARRIVÉE des mêmes enfants.
+             *
+             * 🔴 CORRIGÉ LE 2026-08-27 (2ᵉ revue de code) — ⛔ CETTE PASSE LISAIT
+             *    DEUX FOIS LES MÊMES COORDONNÉES, ET LE COMMENTAIRE QUI LA
+             *    JUSTIFIAIT DÉCRIVAIT UN MÉCANISME IMPOSSIBLE.
+             *    `lv_obj_get_coords()` est une copie de struct nue
+             *    (lv_obj_pos.c:566-571). `lv_label_set_text` finit par
+             *    `lv_obj_refresh_self_size` → `lv_obj_mark_layout_as_dirty`, qui
+             *    ne fait que poser `layout_inv` et poster `LV_EVENT_REFR_REQUEST`
+             *    (lv_obj_pos.c:368-379) : LA GÉOMÉTRIE EST DIFFÉRÉE.
+             *    `lv_obj_set_pos` de `valeur_placer` l'est aussi. Et ce fichier
+             *    n'appelait NULLE PART `lv_obj_update_layout` (grep : vide).
+             *    ⇒ la seconde boucle unissait des rectangles IDENTIQUES à la
+             *      première, et l'élargissement n'était JAMAIS couvert. Le
+             *      rétrécissement l'était par accident (l'union garde l'ancienne
+             *      boîte, plus large) — soit l'INVERSE de ce que le commentaire
+             *      d'origine affirmait.
+             * 🔴 ET ÇA RÉFUTE L'EXPLICATION PUBLIÉE en §20.7.19 pt 3 : « les
+             *    textes changent de largeur ⇒ l'union s'élargit à chaque mise à
+             *    jour » est MÉCANIQUEMENT IMPOSSIBLE — aucune des deux passes ne
+             *    voyait jamais la nouvelle largeur. La mesure de 0,97 /s est
+             *    réelle ; l'explication qu'on lui a attachée, non.
+             * ⚠️ ET L'ATOMICITÉ N'AVAIT JAMAIS EXISTÉ : l'auto-réparation
+             *    différée des labels (`LV_EVENT_UPDATE_LAYOUT_COMPLETED`,
+             *    lv_label.c:1354) tombait APRÈS le rétablissement de
+             *    l'invalidation ⇒ chaque label ajoutait UNE zone sale de plus,
+             *    c'est-à-dire exactement ce que le mode existe pour supprimer.
+             * 🎯 LE CORRECTIF, ET IL FERME LES DEUX : on force la géométrie ICI,
+             *    ⛔ AVANT de rétablir l'invalidation. Les invalidations que
+             *    `lv_obj_update_layout` déclenche sont donc AVALÉES comme les
+             *    autres, la seconde passe lit enfin les NOUVELLES coordonnées,
+             *    et il ne reste bien qu'UNE zone sale à la sortie.
+             */
+            lv_obj_update_layout(w->racine);
+            zone_widget_prendre(w, &zone_union, &zone_vide);
         }
+        lv_display_enable_invalidation(disp, true);
         if (s_groupe_union && !zone_vide) {
             /* UNE seule zone sale — donc UN seul flush, donc l'atomicité — mais
              * bornée aux valeurs au lieu du conteneur entier.
