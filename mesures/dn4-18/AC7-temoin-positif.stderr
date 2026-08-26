@@ -1,0 +1,129 @@
+﻿python.exe : [agent] ƒö¼ TRACE CONSOLE ARMEE vers H:\dev\projets\desknode\dn4-18-tracePOS.log ÔÇö Ôøö CE TIR EST 
+INSTRUMENTE, ce n'est PAS un tir de regime (le fichier grossit d'environ 275 o/s).
+Au caractère Ligne:1 : 41
++ ... \desknode'; & 'C:\Users\naoua\AppData\Local\Programs\Python\Python313 ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([agent] ­ƒö¼ TR...viron 275 o/s).:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[agent] GPU : AMD Radeon RX 6800 XT via ADL PMLog (adaptateur 0) ÔÇö temoin de mapping BUS_LANES=16 CLK_MEMCLK=1992 MHz
+[agent] LHM : 127.0.0.1:8085/metrics ÔÇö 5/5 sonde(s) avec valeur (timeout 0.60 s, connexion PERSISTANTE)
+[agent] ÔÅ▒´©Å  horloge : pose demandee (OS=1) ÔÇö ┬½ rtc set 2026-08-26 14:29:29 ┬╗
+[agent] Ô£à horloge : heure POSEE et VERIFIEE par la carte ÔÇö I (256098) dn_rtc: heure posee : 2026-08-26 14:29:29 
+(jsem 3) ÔÇö OS retombe a 0
+[agent] t├®moin co├╗t cumul├® : 0.484 s CPU / 10.0 s mur = 4.831 % d'un c┼ôur (0.3019 % machine) ÔÇö seq=50
+[agent] t├®moin co├╗t cumul├® : 0.672 s CPU / 20.0 s mur = 3.353 % d'un c┼ôur (0.2096 % machine) ÔÇö seq=100
+[agent] t├®moin co├╗t cumul├® : 0.828 s CPU / 30.0 s mur = 2.758 % d'un c┼ôur (0.1723 % machine) ÔÇö seq=150
+[agent] t├®moin co├╗t cumul├® : 1.000 s CPU / 40.0 s mur = 2.498 % d'un c┼ôur (0.1561 % machine) ÔÇö seq=200
+[agent] t├®moin co├╗t cumul├® : 1.156 s CPU / 50.0 s mur = 2.311 % d'un c┼ôur (0.1444 % machine) ÔÇö seq=250
+[agent] t├®moin co├╗t cumul├® : 1.328 s CPU / 60.0 s mur = 2.212 % d'un c┼ôur (0.1383 % machine) ÔÇö seq=300
+[agent] t├®moin co├╗t cumul├® : 1.531 s CPU / 70.0 s mur = 2.187 % d'un c┼ôur (0.1367 % machine) ÔÇö seq=350
+[agent] t├®moin co├╗t cumul├® : 1.703 s CPU / 80.0 s mur = 2.128 % d'un c┼ôur (0.1330 % machine) ÔÇö seq=400
+[agent] t├®moin co├╗t cumul├® : 1.844 s CPU / 90.0 s mur = 2.048 % d'un c┼ôur (0.1280 % machine) ÔÇö seq=450
+[agent] t├®moin co├╗t cumul├® : 2.016 s CPU / 100.0 s mur = 2.015 % d'un c┼ôur (0.1259 % machine) ÔÇö seq=500
+[agent] envoi serie en ├®chec (1) : WriteFile failed (PermissionError(13, 'Le p├®riph├®rique ne reconna├«t pas la 
+commande.', None, 22))
+[agent] port COM3 en attente de reouverture (1 echec(s) consecutif(s)) ÔÇö les trames sont ABANDONNEES tant que le 
+backoff court (compte total : 2)
+[agent] envoi serie en ├®chec (6) : could not open port 'COM3': FileNotFoundError(2, 'Le fichier sp├®cifi├® est 
+introuvable.', None, 2)
+[agent] port COM3 en attente de reouverture (2 echec(s) consecutif(s)) ÔÇö les trames sont ABANDONNEES tant que le 
+backoff court (compte total : 7)
+[agent] envoi serie en ├®chec (11) : could not open port 'COM3': FileNotFoundError(2, 'Le fichier sp├®cifi├® est 
+introuvable.', None, 2)
+[agent] port COM3 en attente de reouverture (3 echec(s) consecutif(s)) ÔÇö les trames sont ABANDONNEES tant que le 
+backoff court (compte total : 12)
+[agent] envoi serie en ├®chec (16) : could not open port 'COM3': FileNotFoundError(2, 'Le fichier sp├®cifi├® est 
+introuvable.', None, 2)
+[agent] port COM3 en attente de reouverture (4 echec(s) consecutif(s)) ÔÇö les trames sont ABANDONNEES tant que le 
+backoff court (compte total : 17)
+[agent] envoi serie en ├®chec (31) : could not open port 'COM3': FileNotFoundError(2, 'Le fichier sp├®cifi├® est 
+introuvable.', None, 2)
+[agent] port COM3 en attente de reouverture (5 echec(s) consecutif(s)) ÔÇö les trames sont ABANDONNEES tant que le 
+backoff court (compte total : 32)
+[agent] t├®moin co├╗t cumul├® : 2.188 s CPU / 110.0 s mur = 1.988 % d'un c┼ôur (0.1243 % machine) ÔÇö seq=550
+[agent] envoi serie en ├®chec (51) : could not open port 'COM3': FileNotFoundError(2, 'Le fichier sp├®cifi├® est 
+introuvable.', None, 2)
+[agent] port COM3 en attente de reouverture (6 echec(s) consecutif(s)) ÔÇö les trames sont ABANDONNEES tant que le 
+backoff court (compte total : 52)
+[agent] ÔÅ▒´©Å  horloge : pose demandee (OS=1) ÔÇö ┬½ rtc set 2026-08-26 14:31:24 ┬╗
+[agent] Ô£à horloge : heure POSEE et VERIFIEE par la carte ÔÇö I (4931) dn_rtc: heure posee : 2026-08-26 14:31:24 
+(jsem 3) ÔÇö OS retombe a 0
+[agent] t├®moin co├╗t cumul├® : 2.328 s CPU / 120.0 s mur = 1.939 % d'un c┼ôur (0.1212 % machine) ÔÇö seq=600
+[agent] envoi serie en ├®chec (76) : WriteFile failed (PermissionError(13, 'Le p├®riph├®rique ne reconna├«t pas la 
+commande.', None, 22))
+[agent] port COM3 en attente de reouverture (1 echec(s) consecutif(s)) ÔÇö les trames sont ABANDONNEES tant que le 
+backoff court (compte total : 77)
+[agent] envoi serie en ├®chec (81) : could not open port 'COM3': FileNotFoundError(2, 'Le fichier sp├®cifi├® est 
+introuvable.', None, 2)
+[agent] port COM3 en attente de reouverture (2 echec(s) consecutif(s)) ÔÇö les trames sont ABANDONNEES tant que le 
+backoff court (compte total : 82)
+[agent] t├®moin co├╗t cumul├® : 2.438 s CPU / 130.0 s mur = 1.875 % d'un c┼ôur (0.1172 % machine) ÔÇö seq=650
+[agent] envoi serie en ├®chec (86) : could not open port 'COM3': FileNotFoundError(2, 'Le fichier sp├®cifi├® est 
+introuvable.', None, 2)
+[agent] port COM3 en attente de reouverture (3 echec(s) consecutif(s)) ÔÇö les trames sont ABANDONNEES tant que le 
+backoff court (compte total : 87)
+[agent] envoi serie en ├®chec (96) : could not open port 'COM3': FileNotFoundError(2, 'Le fichier sp├®cifi├® est 
+introuvable.', None, 2)
+[agent] port COM3 en attente de reouverture (4 echec(s) consecutif(s)) ÔÇö les trames sont ABANDONNEES tant que le 
+backoff court (compte total : 97)
+[agent] envoi serie en ├®chec (111) : could not open port 'COM3': FileNotFoundError(2, 'Le fichier sp├®cifi├® est 
+introuvable.', None, 2)
+[agent] port COM3 en attente de reouverture (5 echec(s) consecutif(s)) ÔÇö les trames sont ABANDONNEES tant que le 
+backoff court (compte total : 112)
+[agent] t├®moin co├╗t cumul├® : 2.578 s CPU / 140.0 s mur = 1.841 % d'un c┼ôur (0.1151 % machine) ÔÇö seq=700
+[agent] ÔÅ▒´©Å  horloge : pose demandee (OS=1) ÔÇö ┬½ rtc set 2026-08-26 14:31:55 ┬╗
+[agent] Ô£à horloge : heure POSEE et VERIFIEE par la carte ÔÇö I (10411) dn_rtc: heure posee : 2026-08-26 14:31:55 
+(jsem 3) ÔÇö OS retombe a 0
+[agent] t├®moin co├╗t cumul├® : 2.797 s CPU / 150.0 s mur = 1.864 % d'un c┼ôur (0.1165 % machine) ÔÇö seq=750
+[agent] t├®moin co├╗t cumul├® : 2.938 s CPU / 160.0 s mur = 1.836 % d'un c┼ôur (0.1147 % machine) ÔÇö seq=800
+[agent] envoi serie en ├®chec (136) : WriteFile failed (PermissionError(13, 'Le p├®riph├®rique ne reconna├«t pas la 
+commande.', None, 22))
+[agent] port COM3 en attente de reouverture (1 echec(s) consecutif(s)) ÔÇö les trames sont ABANDONNEES tant que le 
+backoff court (compte total : 137)
+[agent] envoi serie en ├®chec (141) : could not open port 'COM3': FileNotFoundError(2, 'Le fichier sp├®cifi├® est 
+introuvable.', None, 2)
+[agent] port COM3 en attente de reouverture (2 echec(s) consecutif(s)) ÔÇö les trames sont ABANDONNEES tant que le 
+backoff court (compte total : 142)
+[agent] envoi serie en ├®chec (146) : could not open port 'COM3': FileNotFoundError(2, 'Le fichier sp├®cifi├® est 
+introuvable.', None, 2)
+[agent] port COM3 en attente de reouverture (3 echec(s) consecutif(s)) ÔÇö les trames sont ABANDONNEES tant que le 
+backoff court (compte total : 147)
+[agent] envoi serie en ├®chec (151) : could not open port 'COM3': FileNotFoundError(2, 'Le fichier sp├®cifi├® est 
+introuvable.', None, 2)
+[agent] port COM3 en attente de reouverture (4 echec(s) consecutif(s)) ÔÇö les trames sont ABANDONNEES tant que le 
+backoff court (compte total : 152)
+[agent] envoi serie en ├®chec (166) : could not open port 'COM3': FileNotFoundError(2, 'Le fichier sp├®cifi├® est 
+introuvable.', None, 2)
+[agent] port COM3 en attente de reouverture (5 echec(s) consecutif(s)) ÔÇö les trames sont ABANDONNEES tant que le 
+backoff court (compte total : 167)
+[agent] t├®moin co├╗t cumul├® : 3.078 s CPU / 170.0 s mur = 1.810 % d'un c┼ôur (0.1131 % machine) ÔÇö seq=850
+[agent] ÔÅ▒´©Å  horloge : pose demandee (OS=1) ÔÇö ┬½ rtc set 2026-08-26 14:32:26 ┬╗
+[agent] Ô£à horloge : heure POSEE et VERIFIEE par la carte ÔÇö I (10403) dn_rtc: heure posee : 2026-08-26 14:32:26 
+(jsem 3) ÔÇö OS retombe a 0
+[agent] t├®moin co├╗t cumul├® : 3.312 s CPU / 180.0 s mur = 1.840 % d'un c┼ôur (0.1150 % machine) ÔÇö seq=900
+[agent] t├®moin co├╗t cumul├® : 3.484 s CPU / 190.0 s mur = 1.834 % d'un c┼ôur (0.1146 % machine) ÔÇö seq=950
+[agent] t├®moin co├╗t cumul├® : 3.656 s CPU / 200.0 s mur = 1.828 % d'un c┼ôur (0.1142 % machine) ÔÇö seq=1000
+[agent] t├®moin co├╗t cumul├® : 3.844 s CPU / 210.1 s mur = 1.830 % d'un c┼ôur (0.1144 % machine) ÔÇö seq=1050
+[agent] t├®moin co├╗t cumul├® : 3.984 s CPU / 220.0 s mur = 1.811 % d'un c┼ôur (0.1132 % machine) ÔÇö seq=1100
+[agent] t├®moin co├╗t cumul├® : 4.156 s CPU / 230.0 s mur = 1.807 % d'un c┼ôur (0.1129 % machine) ÔÇö seq=1150
+[agent] t├®moin co├╗t cumul├® : 4.312 s CPU / 240.0 s mur = 1.797 % d'un c┼ôur (0.1123 % machine) ÔÇö seq=1200
+[agent] t├®moin co├╗t cumul├® : 4.547 s CPU / 250.0 s mur = 1.819 % d'un c┼ôur (0.1137 % machine) ÔÇö seq=1250
+[agent] t├®moin co├╗t cumul├® : 4.750 s CPU / 260.0 s mur = 1.827 % d'un c┼ôur (0.1142 % machine) ÔÇö seq=1300
+[agent] arr├¬t demand├® (H:\dev\projets\desknode\dn4-18-stopPOS)
+[agent] arr├¬t apr├¿s 261.0 s ÔÇö 1120 trames ├®mises (4.29 trames/s), 185 erreurs d'envoi, 0 recalages de cadence
+[agent] ├®cho console dra├«n├® : 89131 o, 1596 lignes en 261.0 s = 341.5 o/s, 6.11 lignes/s (PLAFOND du bruit console 
+: inclut le battement 10 s et tout ESP_LOGx)
+[agent] aucun refus signal├® par le firmware sur le fil
+[agent] horloge LUE : dernier etat ┬½ OS0 ┬╗ (bit OS = 0), il y a 50 s ÔÇö 19 lecture(s) d'etat sur 6 interrogation(s) 
+`rtc`
+[agent] horloge VUE : la carte disait ┬½ 2026-08-26 14:32:57 ┬╗ (ecart carte-tour -1 s ; ecart MAX vu 1 s ; seuil 
+ete/hiver 120 s)
+[agent] horloge POSEE : 4 tentative(s) ÔÇö 4 reussie(s), 0 refusee(s), 0 sans reponse (OS=1=4)
+[agent] horloge : aucun refus de pose signale par la carte
+[agent] horloge : 10 commande(s) console emise(s), 0 en echec ÔÇö Ôøö HORS `trames_emises` (le debit publie ci-dessus 
+decrit les trames, et rien d'autre)
+[agent] aucun ecretage : toute valeur emise est la valeur mesuree
+[agent] aucune panne de source : les cinq ont repondu a chaque cycle
+[agent] LHM : 262 lecture(s) reussie(s), 0 en echec ÔÇö duree moyenne 9.9 ms, MAX 32.5 ms (timeout pose : 600 ms)
+[agent] aucune absence LHM : les cinq sondes ont rendu une valeur a chaque lecture reussie

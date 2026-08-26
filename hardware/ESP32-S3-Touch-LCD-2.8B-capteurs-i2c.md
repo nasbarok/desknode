@@ -1425,6 +1425,178 @@ publié pour que la décision soit une mesure, pas une intuition.**
 
 ---
 
+### 13.15.7 🔴 LA CARTE RÉCUPÈRE L'HEURE TOUTE SEULE — LE MÉCANISME, ET CE QU'IL A COÛTÉ DE LE PROUVER (`dn4-18`, 2026-08-26)
+
+**Constat owner d'origine, verbatim** : *« en débranchant rebranchant tt s'est relancé sauf
+l'heure »*. §13.15.3 avait mesuré **pourquoi** (aucune sauvegarde RTC) ; ce qui manquait n'était
+donc **ni la détection ni la pose** — c'était **le raccordement**. Au SHA `2b7e505`,
+`dn_rtc_poser()` n'avait **qu'un seul appelant dans tout le firmware** : une commande console
+**tapée à la main** (`dn_console.c:7373`).
+
+⇒ 🔴 **LE FIRMWARE N'A PAS BOUGÉ. Aucun build, aucun flash.** Tout est côté **agent de la tour**.
+
+#### 13.15.7.1 Le mécanisme, en une phrase et trois cadences
+
+L'agent **DEMANDE** l'état (`rtc`), il ne l'attend pas. Le déclencheur est **l'état de la carte**
+(le bit `OS`), ⛔ **jamais le cycle de vie de l'agent**.
+
+| quand | cadence | motif chiffré |
+|---|---|---|
+| **à chaque reprise de liaison** (ouverture du port, sortie de backoff) | — | c'est le seul moment qui couvre *« la tour ou l'agent redémarre pendant que la carte reste allumée »* |
+| interrogation de régime | **600 s** | 2 598 o / 600 s = **4,3 o/s** = **+1,6 %** du bruit console mesuré (272,9 o/s) |
+| plancher entre deux interrogations | **30 s** | pire cas (2 598 + 376) / 30 = **99 o/s**. ⛔ C'est lui qui empêche un port qui bat de noyer `echo_octets` |
+| après un refus de pose | **60 · 120 · 240 …** ⩽ **3 600 s** | et il pace **aussi la relecture**, sinon `rtc` toutes les 30 s = 87 o/s |
+
+**Mesuré en refus PERMANENT : 74,5 o/s sur 70 s.** ⇒ le *« plusieurs Ko/s »* que le pire cas
+nommait est **fermé, et il est chiffré**.
+
+#### 13.15.7.2 🔴 TROIS ÉTATS, ⛔ PAS DEUX — et deux pièges du flux réel
+
+`OS=1` (poser) · `OS=0` (ne rien faire) · **`INCONNU`** (rien lu, ou texte non reconnu), plus
+**`NON ARMEE`**, qui est **TERMINAL** : le device I²C n'existe pas, **il n'y a rien à poser**, et la
+barre dit déjà `--:--`, *« et c'est CORRECT »*.
+⛔ `INCONNU` n'est traité **ni** comme `OS=0` (ce serait le mode de panne du capteur fantôme
+transposé : *« il répond »* n'est pas *« il dit vrai »*) **ni** comme `OS=1` (ce serait une boucle
+de pose sur une carte qui n'a peut-être pas d'horloge).
+
+🔴 **DEUX PIÈGES MESURÉS SUR LE FLUX RÉEL, fermés AVANT d'écrire le lecteur :**
+
+1. **`FIABLE` apparaît 6 fois dans UN SEUL boot, et 3 de ces 6 disent le CONTRAIRE** — le firmware
+   journalise `W (…) dn_rtc: 🔴 OS = 1 — … l'heure lue (…) N'EST PAS FIABLE`. Un
+   `if "FIABLE" in ligne` aurait lu *« tout va bien »* **au moment exact où l'horloge est perdue**.
+   Et `FIABLE` est en plus un **sous-mot** de `NON FIABLE (OS=1)`.
+   ⇒ ✅ l'état est extrait d'une **position ANCRÉE** puis comparé **À L'IDENTIQUE**, ⛔ jamais
+   cherché en sous-chaîne.
+2. **La console émet du CRLF** (471 CRLF sur 471 LF) et sa plus longue ligne fait **483 o** ⇒ le
+   tampon de lignes de l'agent est **borné à 1 024 o**, au-dessus du maximum **mesuré**.
+
+#### 13.15.7.3 ⚠️ ET LE BANDEAU DE BOOT N'EST **PAS** UN CANAL — 9 fois sur 10
+
+`dn_console_banner()` (`dn_console.c:9117`) annonce **déjà** l'état d'horloge sur le fil. Le cadrage
+craignait qu'il n'arrive jamais (console `USB Serial/JTAG`, ré-énumération au débranchement).
+**Dix cycles de débranchement/rebranchement physiques, instrumentés le 2026-08-26 :**
+
+| écouteur | cycles | bandeau reçu |
+|---|---|---|
+| agent réel, aveugle 11-12 s pendant son backoff | 3 | **3/3** |
+| écouteur permanent (réouverture toutes les 50 ms) | 3 | **3/3** — reçu à **+3,43 / +3,53 / +3,56 s** de l'ouverture |
+| agent réel (témoin négatif d'AC7) | 1 | 🔴 **0/1** |
+| agent réel (témoin positif d'AC7) | 3 | 3/3 |
+
+⇒ 🔴 **9/10.** Et sur l'échec, la carte **avait bien redémarré** (`up 10 s`) et l'agent **avait le
+port ouvert** : **9 113 o drainés, tous de l'écho de trames**, là où l'écouteur permanent en
+collecte **14 523** sur le même type de boot.
+⛔ **CAUSE DE L'UNIQUE PERTE : NON ÉTABLIE.** La granularité de 1 s du compteur `up` et la cadence
+de réessai laissent **±1 à 2 s** d'incertitude sur l'instant de boot — **du même ordre que le délai
+de 3,5 s du bandeau**.
+⇒ ✅ **Mais ça suffit à trancher** : *« 9 fois sur 10 »* n'est pas un canal.
+🔴 **ET IL Y A PIRE, ET C'EST STRUCTUREL** : quand c'est **l'agent** qui redémarre et **pas la
+carte**, il n'y a **aucun boot**, donc **aucun bandeau** — mesuré **0/2**. Ce cas s'est produit
+**trois fois** dans la seule séance du 2026-08-26.
+⇒ Le bandeau est **lu au passage** (mêmes littéraux, coût nul), ⛔ **rien ne s'appuie dessus**.
+
+#### 13.15.7.4 ✅ LE TÉMOIN — ET IL A SON TÉMOIN NÉGATIF
+
+**Régime** : agent `15bba7a` (sha256 `ff6b0fae67422fce…`, **vérifié sur `H:` après dépôt**),
+firmware **`2b7e505` inchangé**, débranchements **physiques du câble** — ⛔ pas un `--reset`, qui ne
+coupe pas l'alimentation et **ne reproduit donc pas le défaut**.
+
+🔴 **TÉMOIN NÉGATIF D'ABORD** — binaire `57e0ce3`, **même instrumentation, aucun mécanisme** (un A/B
+à **une seule variable**) : **ZÉRO commande console émise**, et constat owner **à l'œil** :
+*« la barre reste à HEURE NON POSÉE »*. ⇒ **sans le mécanisme, elle ne revient pas.**
+
+| cycle | débranchement | port rouvert | `rtc set` | confirmé par la carte | **reprise** |
+|---|---|---|---|---|---|
+| 1 | 14:31:08.056 | 14:31:23.070 | 14:31:24.068 | 14:31:25.057 | **17,001 s** |
+| 2 | 14:31:36.076 | 14:31:48.070 | 14:31:55.059 | 14:31:56.070 | **19,994 s** |
+| 3 | 14:32:09.056 | 14:32:19.075 | 14:32:26.072 | 14:32:27.066 | **18,010 s** |
+
+⚠️ **Les ~6 s de plus sur les cycles 2 et 3 sont le PLANCHER de 30 s** — deux débranchements
+rapprochés font attendre l'interrogation. C'est le **prix mesuré** d'une garde, ⛔ pas un défaut.
+**Constat owner** : *« la barre heure apparais au bout de 5-7sec en meme temps ou juste apres la
+temperature/humiditée »* — la barre a **cessé d'être la seule chose du tableau de bord qui ne se
+relance pas**.
+
+#### 13.15.7.5 Le fuseau et la justesse — **≤ 2 s tenu**, des deux côtés
+
+| tir | plateforme | écart carte↔hôte |
+|---|---|---|
+| 13:30 | WSL (`/dev/ttyACM0`) | **−0,4 s** |
+| 13:47 | **tour** (Windows, `COM3`) | **−0,2 s** |
+| 14:39 (régime, agent réel) | tour | **−1 s** |
+
+✅ **Heure LOCALE décomposée**, ⛔ pas un epoch UTC. Le jour de semaine n'est **pas** passé : le
+firmware le **calcule** (Sakamoto) — le donner ferait deux sources de vérité.
+⚠️ **L'agent ARRONDIT à la seconde la plus proche** (`t + 0,5`) : composer depuis `localtime(t)`
+**tronque** les sous-secondes ⇒ biais systématiquement dans `[−1 s, 0]`. Arrondi, il devient
+`[−0,5 s, +0,5 s]`, **centré**.
+✅ Horloge **WSL vs Windows : 28 ms d'écart**, lancement de PowerShell inclus.
+
+#### 13.15.7.6 🆕 LE TROU ÉTÉ/HIVER — nommé, et FERMÉ ICI
+
+`rtc set` prend de **l'heure locale**. Au passage été/hiver, la tour change d'heure, **la carte
+non** : `OS` reste à **0**, la carte se déclare **`FIABLE`**, et **la barre affiche une heure fausse
+SANS se déclarer fausse, pendant des mois**. ⛔ C'est précisément le mode de panne que `dn_rtc.h`
+dit interdit — et **le déclencheur `OS` ne le voit pas, par construction**.
+
+✅ **Le mécanisme qui le ferme était déjà payé** : la ligne `lue : AAAA-MM-JJ HH:MM:SS` sort **dans
+la même réponse** que le bit `OS` (`dn_console.c:7432`). ⇒ la comparaison ne coûte **rien de plus**.
+
+**Seuil : 120 s**, et il est **entre deux grandeurs mesurées** :
+- **5 jours** de dérive au pire (§13.15.5 : `|dérive| < 280 ppm` ⇒ **≤ ~24 s/jour**) ⇒ **un seul
+  jour ne peut pas le déclencher** ;
+- **30× sous** un décalage de fuseau (**3 600 s**) ⇒ un changement d'heure le déclenche **toujours** ;
+- et très au-dessus de la quantification (secondes entières, ±1 s, + ~50 ms d'aller-retour).
+
+⚠️ **La comparaison se fait en CALENDRIER NAÏF**, ⛔ **pas** via `mktime` : au changement d'heure la
+même heure locale est **ambiguë**, et `mktime` rendrait `0` ou `3 600` **selon l'humeur de la
+libc**. Deux lectures de **pendule** se comparent sans fuseau.
+
+#### 13.15.7.7 ⚠️ CE QUE ÇA REND DÉPENDANT, ET CE QUE ÇA NE TOUCHE PAS
+
+🔴 **L'heure de la carte devient dépendante de celle de la TOUR.** Une tour à l'heure fausse fait
+une carte à l'heure fausse — **et la carte dira `OS = 0`, donc FIABLE**. Fait de conception, ⛔ pas
+défaut caché.
+⛔ **`CAP_SEL` n'est pas touché** (§13.15.5 : consigné INCONNU depuis `dn3-2`) · ⛔ **la pile de
+`dn_rtc` n'est pas touchée** (§13.15.6) · ⛔ **`CLKOUT` n'est pas touché** · ⛔ **aucun pixel de la
+barre ne bouge** (c'est `dn4-14-2`, le RENDU, ⛔ pas la SOURCE).
+
+#### 13.15.7.8 🔴 UN FAIT NOUVEAU SUR LE TÉMOIN DE RÉTENTION — il peut être détruit par autre chose qu'un `--reset`
+
+§13.15.4 nomme `dn_console.py --reset` comme le geste qui réécrit `0xD7` et détruit le verdict
+cross-boot. **Ce n'était pas le seul chemin.** Relevé du 2026-08-26 : `rtc` rendait
+`retention 0xD7` (*« la puce a GARDÉ son alimentation »*) **en même temps que `OS = 1`**.
+Recoupement par deux compteurs indépendants :
+
+| instrument | ce qu'il dit | instant reconstitué |
+|---|---|---|
+| compteur RTC (`lue 01:14:49` à 13:25:40) | alimentation revenue il y a 1 h 14 min 49 s | **~12:10:51** |
+| battement 10 s (`up 3760 s` à 13:26:23) | l'ESP32 a démarré il y a 62 min 40 s | **12:23:43** |
+
+⇒ **l'ESP32 a redémarré 12 min 52 s APRÈS la reprise d'alimentation du RTC**, donc **sans** que le
+RTC perde la sienne — et ce redémarrage a **réécrit le verdict**. Second cas le même jour (boot à
+**13:31:24**, pendant une bascule de port WSL→Windows).
+⛔ **CAUSE DES DEUX RESETS : NON ÉTABLIE.**
+⚠️ **CONSÉQUENCE PRATIQUE** : un `retention 0xD7` **ne prouve pas** qu'il n'y a pas eu de coupure —
+il prouve qu'il n'y en a pas eu **depuis le dernier boot ESP32**, et ce boot peut être arrivé
+**bien après** la coupure. **`OS` reste le témoin qui ne ment pas.**
+
+#### 13.15.7.9 ✅ ET LA CARTE N'EST **PAS** ALIMENTÉE TOUR ÉTEINTE
+
+🔴 **La décision owner n°1 (*« le port reste alimenté »*) est CORRIGÉE.** Deux témoins concordants :
+1. **owner, vérifié directement** (2026-08-26) : *« la tour éteinte la carte est bien plus
+   alimentée j'ai verifié tt a lh »* ;
+2. le **compteur RTC** place la reprise d'alimentation à **~12:10:51**, et la tâche au logon a tiré
+   à **12:11:11** — **20 s plus tard**. Même allumage de tour.
+
+⇒ **chaque extinction de la tour est une perte d'heure**, et le mécanisme la couvre : au logon,
+l'agent redémarre, interroge à la reprise de liaison, lit `OS = 1`, pose.
+⚠️ **Reste à prendre à l'instrument** : la lecture `rtc` **au premier démarrage suivant une
+extinction complète**, **avant tout reset**. Elle n'a pas été prise le 2026-08-26 parce que la
+session d'outillage **tournait sur la tour**. **Coût nul au prochain allumage.**
+
+---
+
 ## 13.16 🔴 SÉANCE `dn4-2` (2026-08-19) — T0, ET L'INSTRUMENT RÉPARÉ **AVANT** LE FER
 
 ### 13.16.1 T0 — le point de départ, prouvé sur `df5d23d` (SHA **LU AU BANDEAU**)

@@ -2949,3 +2949,86 @@ annonce un numéro de série), pas au port. **Réserve nommée** : rien ne garan
 périphérique série réclame ce numéro en premier — mais ce risque ne se déclenche **pas** au
 rebranchement.
 ⇒ 🔴 **`dn4-15` doit compter TROIS valeurs**, pas deux : `3-7`, `3-1`, `3-5`.
+
+---
+
+## 26. 🔴 `dn4-18` — UN CHEMIN SORTANT DE PLUS SUR LE FIL : L'AGENT PARLE À LA CONSOLE (2026-08-26)
+
+Jusqu'ici, l'agent n'écrivait **qu'une** chose sur le fil : ses trames, en `pc $DN,…`. Et c'était
+**structurel** — `SortieSerie.envoyer()` préfixe `b"pc "` **EN DUR** (`dn_agent.py:1951` au SHA
+`2b7e505`), donc **il n'existait aucun chemin** pour émettre une commande console autre que `pc …`.
+
+`dn4-18` en ouvre un second : **`SortieSerie.commande_console()`**.
+
+### 26.1 Ce que ce chemin émet, et à quelle cadence
+
+| commande | taille émise | **réponse de la carte, MESURÉE** | quand |
+|---|---|---|---|
+| `rtc` | 4 o | **2 273 à 2 648 o · 36 à 42 lignes · ~0,043 s** | reprise de liaison, puis **600 s** |
+| `rtc set AAAA-MM-JJ HH:MM:SS` | 28 o | **376 o · 7 lignes · 0,012–0,018 s** | seulement quand la carte le demande |
+
+⚠️ **LA RÉPONSE DE `rtc` DÉPEND DE L'ÉTAT** : **2 598 o** avec `OS = 1` (le bloc d'explication
+s'ajoute), **2 273 o** avec `OS = 0`. Le chiffre à retenir pour un budget est **le pire**.
+⚠️ Face aux **272,9 o/s** d'écho console mesurés en régime, **une** interrogation vaut **~8,3 à
+9,7 s de bruit console normal**. ⇒ la cadence lente n'est pas une précaution, **elle est chiffrée**.
+
+### 26.2 🔴 CE QUE CE CHEMIN NE FAIT **PAS** — et pourquoi chaque « pas » compte
+
+| ⛔ | motif |
+|---|---|
+| Il n'incrémente **ni `trames_emises` ni `seq`** | sinon le débit publié au bilan — **et le chiffre du critère n°4** — décrirait autre chose que ce qu'il prétend décrire. Le bilan publie les commandes console **sur leur propre ligne** |
+| Il **n'ouvre pas** le port lui-même | l'ouvrir court-circuiterait le backoff, donc — **sous Windows** — la séquence DTR/RTS **hors de tout compteur d'échecs** (§13.11.5). Port fermé ⇒ `LiaisonEnAttente`, comme le reste |
+| Il n'ajoute **aucune attente non bornée** | même `write_timeout = 2 s`. Une carte en **panique haltée** ne peut pas figer l'agent par ce chemin non plus |
+| Il n'existe **que** sur `SortieSerie` | sur `--stdout` et `--ws` il n'y a **pas de REPL**. L'absence de canal est un **ÉTAT DÉCLARÉ** — dit au lancement **et** au bilan — ⛔ jamais un `AttributeError`, jamais un silence |
+| Il n'ajoute **aucun marqueur** à `_drainer()` | la queue reste à **18 o**, donc `non-zero error code` (**19 o**) ne peut toujours pas y tenir entier, donc `refus_firmware` ne peut toujours pas être **double-compté**. La lecture d'horloge passe par un assembleur de lignes **borné**, à côté |
+
+### 26.3 🎯 LE COÛT — TIR DU 2026-08-26, SHA `15bba7a`
+
+**Prédiction committée AVANT le tir** (`3ed3ad1`) : **|Δ| < 0,05 pt** d'un cœur au rang 60 s, soit
+**8× plus petit** que la dispersion mesurée de la méthode (**0,390 pt**, §25.17).
+🔴 **Critère de réfutation BILATÉRAL**, et c'est la leçon de §25.10 (*« une prédiction qui ne peut
+être démentie que d'un côté est une demi-prédiction »*).
+
+⚠️ **RÉGIME, ÉCRIT AVANT LE TIR** : agent **RÉEL** sur `COM3`, copie déposée sur `H:`, lancée par
+**le verbe que la tâche appelle** (`dn-agent.bat run`), `--temoin`, **200 s**, 16 cœurs.
+⛔ **Ce n'est PAS le régime de §25.1** : la tour n'est pas au calme et **WSL tourne**, parce que la
+session d'outillage **s'exécute dans WSL** et que l'éteindre la termine. ⇒ la référence retenue est
+**le tir de CONTRÔLE de §25.17** (*« session de travail active (WSL, éditeur, agent de dev) »*),
+c'est-à-dire **le même état de charge**.
+
+| rang | **`dn4-18` mesuré** | référence §25.17 (tour occupée) | Δ | bande de non-signal | verdict |
+|---|---:|---:|---:|---|---|
+| **60 s** | **2,395 %** d'un cœur · **`0,1497 %`** machine | 2,447 | **−0,052 pt** | `[2,05 ; 2,85]` | ✅ **DANS** |
+| **180 s** | **1,927 %** d'un cœur · **`0,1204 %`** machine | 2,144 | **−0,217 pt** | `[1,81 ; 2,48]` | ✅ **DANS** |
+
+**Série complète** (rangs 10 → 200 s, % d'un cœur) :
+`4,358 · 3,277 · 2,706 · 2,653 · 2,499 · 2,395 · 2,298 · 2,226 · 2,135 · 2,109 · 2,059 · 2,018 ·
+1,946 · 1,942 · 1,916 · 1,933 · 1,948 · 1,927 · 1,916 · 1,914`
+⚠️ **Elle a CONVERGÉ** : au-delà de 130 s elle oscille dans `[1,916 ; 1,948]`, une bande de
+**0,032 pt** — la même largeur qu'en §25.11.
+📄 Captures : `mesures/dn4-18/AC8-serie-complete.txt` · `AC8-tir-cout-bilan.txt`
+
+### 26.4 ✅ LE VERDICT DU CRITÈRE N°4 — ET CE QU'IL NE DIT PAS
+
+**Critère n°4 du brief** : *« L'agent Windows démarre avec la session et reste imperceptible
+(< 1 % CPU en régime). »*
+
+| rang | % machine | **marge** |
+|---|---:|---:|
+| 60 s | `0,1497 %` | **6,7×** |
+| 180 s | `0,1204 %` | **8,3×** |
+
+⇒ ✅ **LE CRITÈRE N°4 RESTE COCHÉ**, sous un régime **plus chargé** que celui de §25.18.
+
+🔴 **ET CE QUE CE TIR NE PROUVE PAS, ÉCRIT AUSSI GRAND :**
+- ⛔ **Il ne prouve PAS un coût nul du mécanisme.** Les deux Δ sont **sous les ~0,4 pt** que §25.17
+  a mesurés comme la résolution de la méthode. *« Dans la bande »* veut dire **« ne contredit
+  pas »**, ⛔ pas **« confirme »**. Les deux Δ sont d'ailleurs **NÉGATIFS** — un mécanisme qui
+  ajoute du travail ne rend pas l'agent moins cher : c'est la **charge de fond** qu'on lit.
+- ⛔ **Il ne solde toujours PAS l'entrée « +0,26 pt » du ledger.** §25.17 a nommé ce qu'il faut :
+  un A/B **à charge de tour contrôlée**, avec **n > 1 par branche**. Ce tir en serait un
+  **troisième candidat non départagé**. **Pas d'A/B ⇒ pas d'attribution.**
+- ⚠️ **Le tir §25-identique reste à prendre** (logon, tour au calme, WSL éteint). Il est **gratuit
+  au prochain allumage de la tour** — le même où se solde la lecture `rtc` d'après extinction
+  (`…-capteurs-i2c.md` §13.15.7.9).
+

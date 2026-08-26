@@ -1,0 +1,32 @@
+[agent] témoin coût cumulé : 0.812 s CPU / 30.0 s mur = 2.706 % d'un cœur (0.1691 % machine) — seq=150
+[agent] témoin coût cumulé : 1.062 s CPU / 40.0 s mur = 2.653 % d'un cœur (0.1658 % machine) — seq=200
+[agent] témoin coût cumulé : 1.250 s CPU / 50.0 s mur = 2.499 % d'un cœur (0.1562 % machine) — seq=250
+[agent] témoin coût cumulé : 1.438 s CPU / 60.0 s mur = 2.395 % d'un cœur (0.1497 % machine) — seq=300
+[agent] témoin coût cumulé : 1.609 s CPU / 70.0 s mur = 2.298 % d'un cœur (0.1436 % machine) — seq=350
+[agent] témoin coût cumulé : 1.781 s CPU / 80.0 s mur = 2.226 % d'un cœur (0.1391 % machine) — seq=400
+[agent] témoin coût cumulé : 1.922 s CPU / 90.0 s mur = 2.135 % d'un cœur (0.1334 % machine) — seq=450
+[agent] témoin coût cumulé : 2.109 s CPU / 100.0 s mur = 2.109 % d'un cœur (0.1318 % machine) — seq=500
+[agent] témoin coût cumulé : 2.266 s CPU / 110.0 s mur = 2.059 % d'un cœur (0.1287 % machine) — seq=550
+[agent] témoin coût cumulé : 2.422 s CPU / 120.0 s mur = 2.018 % d'un cœur (0.1261 % machine) — seq=600
+[agent] témoin coût cumulé : 2.531 s CPU / 130.0 s mur = 1.946 % d'un cœur (0.1217 % machine) — seq=650
+[agent] témoin coût cumulé : 2.719 s CPU / 140.0 s mur = 1.942 % d'un cœur (0.1213 % machine) — seq=700
+[agent] témoin coût cumulé : 2.875 s CPU / 150.0 s mur = 1.916 % d'un cœur (0.1198 % machine) — seq=750
+[agent] témoin coût cumulé : 3.094 s CPU / 160.0 s mur = 1.933 % d'un cœur (0.1208 % machine) — seq=800
+[agent] témoin coût cumulé : 3.312 s CPU / 170.0 s mur = 1.948 % d'un cœur (0.1218 % machine) — seq=850
+[agent] témoin coût cumulé : 3.469 s CPU / 180.0 s mur = 1.927 % d'un cœur (0.1204 % machine) — seq=900
+[agent] témoin coût cumulé : 3.641 s CPU / 190.0 s mur = 1.916 % d'un cœur (0.1197 % machine) — seq=950
+[agent] témoin coût cumulé : 3.828 s CPU / 200.0 s mur = 1.914 % d'un cœur (0.1196 % machine) — seq=1000
+[agent] arrêt après 200.0 s — 1000 trames émises (5.00 trames/s), 0 erreurs d'envoi, 0 recalages de cadence
+[agent] écho console draîné : 54614 o, 1071 lignes en 200.0 s = 273.0 o/s, 5.35 lignes/s (PLAFOND du bruit console : inclut le battement 10 s et tout ESP_LOGx)
+[agent] aucun refus signalé par le firmware sur le fil
+[agent] horloge LUE : dernier etat « OS0 » (bit OS = 0), il y a 198 s — 2 lecture(s) d'etat sur 1 interrogation(s) `rtc`
+[agent] horloge VUE : la carte disait « 2026-08-26 14:39:33 » (ecart carte-tour -1 s ; ecart MAX vu 1 s ; seuil ete/hiver 120 s)
+[agent] horloge : AUCUNE pose tentee — c'est le regime NORMAL quand la carte n'a pas perdu l'heure. ⚠️ Le lire avec la ligne « horloge LUE » ci-dessus : c'est elle qui distingue « rien a faire » de « mecanisme mort ».
+[agent] horloge : aucun refus de pose signale par la carte
+[agent] horloge : 1 commande(s) console emise(s), 0 en echec — ⛔ HORS `trames_emises` (le debit publie ci-dessus decrit les trames, et rien d'autre)
+[agent] aucun ecretage : toute valeur emise est la valeur mesuree
+[agent] aucune panne de source : les cinq ont repondu a chaque cycle
+[agent] LHM : 201 lecture(s) reussie(s), 0 en echec — duree moyenne 9.4 ms, MAX 24.4 ms (timeout pose : 600 ms)
+[agent] aucune absence LHM : les cinq sondes ont rendu une valeur a chaque lecture reussie
+[agent] GPU : AMD Radeon RX 6800 XT via ADL PMLog (adaptateur 0) — temoin de mapping BUS_LANES=16 CLK_MEMCLK=1992 MHz
+[agent] LHM : 127.0.0.1:8085/metrics — 5/5 sonde(s) avec valeur (timeout 0.60 s, connexion PERSISTANTE)

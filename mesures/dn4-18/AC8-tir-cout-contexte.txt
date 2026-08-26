@@ -1,0 +1,12 @@
+  marqueur : absent
+  journal : 165477 o  H:\dev\projets\desknode\dn-agent.log
+  OK - COM3 se REOUVRE : le port est rendu.
+14:39:30  <- debut du tir AC8 (180 s + marge)
+=== PRE-VOL ===
+  python : C:\Users\naoua\AppData\Local\Programs\Python\Python313\python.exe
+  args : --serie COM3 --stop-si H:\dev\projets\desknode\dn-agent.stop --temoin --duree 200
+  pre-vol OK
+=== fin ===
+14:42:52
+
+[exited with code 0]
