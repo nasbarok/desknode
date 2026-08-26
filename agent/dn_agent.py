@@ -1840,12 +1840,25 @@ class SortieSerie:
     # EST la mesure du bruit de cohabitation d'AC3 (octets/s et lignes/s ajoutés au
     # flux console par le régime 1 Hz).
 
-    def __init__(self, port: str):
+    def __init__(self, port: str, tracer: str = None):
         import serial  # pyserial — déjà sur la tour
 
         self._serial_mod = serial
         self._port = port
         self._con = None
+        # 🔬 INSTRUMENT dn4-18 (2026-08-26) — ⛔ CE N'EST PAS LE MÉCANISME.
+        #    AC1.1 demande « le texte DRAINÉ pendant la fenêtre », verbatim.
+        #    `_drainer()` COMPTE les octets et les JETTE : le bandeau de boot,
+        #    s'il arrive, ne laisse que quelques centaines d'unités de plus
+        #    dans un compteur cumulatif. Et les lignes `[agent] …` de stderr ne
+        #    portent AUCUN horodatage, donc aucun délai ne s'en déduit.
+        # ⚠️ ⛔ NE PAS le remplacer par un harnais qui rejouerait le drain à
+        #    côté : « un harnais qui REJOUE au lieu d'appeler la fonction est
+        #    décoratif ». Le seul témoin recevable de ce que l'AGENT entend est
+        #    pris DANS l'agent.
+        # ⚠️ COÛT QUAND L'OPTION N'EST PAS POSÉE : un `is None` par drain.
+        self._tracer_chemin = tracer
+        self._tracer_f = None
         # Backoff de réouverture — voir `envoyer()`. ⛔ Un port qui a disparu en
         # cours de session (usbipd attach, carte débranchée) ne doit pas produire
         # cinq tentatives et cinq lignes de stderr par seconde, sans fin.
@@ -1868,6 +1881,34 @@ class SortieSerie:
         # que l'écran restait à « -- ». Un « 35/35 trames » prouvait 35 ÉCRITURES,
         # pas 35 acceptations (correctif de revue 2026-08-16).
         self.refus_firmware = 0
+
+    def _tracer(self, etiquette: str, octets: bytes = b"") -> None:
+        """La trace BRUTE et HORODATÉE d'AC1.1 — ⛔ best-effort, par construction.
+
+        ⛔ UN INSTRUMENT QUI CASSE CE QU'IL OBSERVE N'EST PAS UN INSTRUMENT :
+           toute panne d'écriture de la trace est avalée. La liaison, elle,
+           n'est pas best-effort — c'est pourquoi ce `except` est ICI et
+           nulle part ailleurs.
+        """
+        if self._tracer_chemin is None:
+            return
+        try:
+            if self._tracer_f is None:
+                # 'ab' : on AJOUTE. Trois débranchements dans une même fenêtre
+                # d'observation écriraient sinon l'un sur l'autre.
+                self._tracer_f = open(self._tracer_chemin, "ab")
+            t = time.time()
+            lt = time.localtime(t)
+            entete = ("\n--- %04d-%02d-%02d %02d:%02d:%02d.%03d  %s (%d o) ---\n"
+                      % (lt.tm_year, lt.tm_mon, lt.tm_mday, lt.tm_hour,
+                         lt.tm_min, lt.tm_sec, int((t % 1.0) * 1000),
+                         etiquette, len(octets)))
+            self._tracer_f.write(entete.encode("utf-8"))
+            if octets:
+                self._tracer_f.write(octets)
+            self._tracer_f.flush()
+        except Exception:
+            pass
 
     def _ouvrir(self):
         # ⚠️ CROYANCE §7.3 CORRIGÉE PAR LA MESURE (dn2-2, 2026-08-16) : « ouvrir ne
@@ -1908,6 +1949,9 @@ class SortieSerie:
             con.rts = False
         con.open()
         self._con = con
+        # 🔬 dn4-18 : l'instant EXACT où l'hôte a repris le port. C'est le
+        #    point de départ du délai d'AC1.1 — celui que stderr ne date pas.
+        self._tracer("PORT OUVERT (%s)" % self._port)
 
     def envoyer(self, ligne: str) -> None:
         if self._con is None:
@@ -1938,12 +1982,18 @@ class SortieSerie:
                     f"consecutif(s))")
             try:
                 self._ouvrir()
-            except Exception:
+            except Exception as exc:
                 self._echecs_ouverture += 1
                 # Paliers 0,5 · 1 · 2 · 4 s, plafonnés à 5 s — soit AU PLUS une
                 # tentative d'ouverture par cycle de cinq trames, jamais cinq.
                 delai = min(0.5 * (2 ** min(self._echecs_ouverture - 1, 4)), 5.0)
                 self._prochain_essai = time.monotonic() + delai
+                # 🔬 dn4-18 : chaque tentative d'ouverture REFUSÉE est datée.
+                #    C'est ce qui borne, par le haut, l'instant où le port est
+                #    redevenu ouvrable — donc le délai d'AC1.1.
+                self._tracer("OUVERTURE REFUSEE — backoff %.1f s "
+                             "(echecs_ouverture=%d) : %s"
+                             % (delai, self._echecs_ouverture, exc))
                 raise
             self._echecs_ouverture = 0
             self._prochain_essai = 0.0
@@ -1956,7 +2006,7 @@ class SortieSerie:
                 raise IOError(f"ecriture partielle {ecrits}/{len(trame_octets)} o")
             self._drainer()
             self._echecs_envoi = 0
-        except Exception:
+        except Exception as exc:
             # 🔴 LE BACKOFF S'ARME AUSSI SUR L'ÉCHEC D'ENVOI — correctif de revue
             #    2026-08-19, ET C'EST LE PIRE CAS QUE LE CORRECTIF DU 2026-08-18
             #    NOMMAIT SANS LE COUVRIR. Sur une carte en PANIQUE HALTÉE, le port
@@ -1969,6 +2019,11 @@ class SortieSerie:
             self._echecs_envoi += 1
             delai = min(0.5 * (2 ** min(self._echecs_envoi - 1, 4)), 5.0)
             self._prochain_essai = time.monotonic() + delai
+            # 🔬 dn4-18 : l'instant EXACT où le fil s'est rompu, et le palier de
+            #    backoff qui s'arme. ⇒ la fenêtre d'AVEUGLEMENT de l'agent est
+            #    datée des deux bouts (celle-ci et « PORT OUVERT »).
+            self._tracer("PORT PERDU — backoff %.1f s (echecs_envoi=%d) : %s"
+                         % (delai, self._echecs_envoi, exc))
             try:
                 self._con.close()
             finally:
@@ -1985,6 +2040,10 @@ class SortieSerie:
         """
         retour = self._con.read(self._con.in_waiting or 0)
         if retour:
+            # 🔬 dn4-18 : LE TEXTE, pas seulement son compte. C'est la seule
+            #    réponse recevable à « la ligne `barre : … · horloge …` du
+            #    bandeau de boot est-elle drainée, oui ou non » (AC1.1).
+            self._tracer("DRAIN", retour)
             self.echo_octets += len(retour)
             self.echo_lignes += retour.count(b"\n")
             # 🔴 LE MARQUEUR PEUT ÊTRE COUPÉ ENTRE DEUX DRAINS (revue 2026-08-19).
@@ -2006,6 +2065,7 @@ class SortieSerie:
         fermeture explicite. Sans ce drain final, le compte d'AC3 perdait
         systématiquement un cycle."""
         if self._con is None:
+            self._fermer_tracer()
             return
         try:
             time.sleep(0.05)  # ~33 o à 115 200 bauds ≈ 3 ms ; 50 ms est confortable
@@ -2016,6 +2076,21 @@ class SortieSerie:
             self._con.close()
         finally:
             self._con = None
+            self._tracer("PORT FERME (arret de l'agent)")
+            self._fermer_tracer()
+
+    def _fermer_tracer(self) -> None:
+        """⚠️ `_bilan` appelle `fermer()` AVANT de publier le chiffre d'écho, et
+        `fermer()` peut être appelé deux fois. La fermeture du fichier de trace
+        est donc IDEMPOTENTE, et elle ne remonte jamais d'exception."""
+        if self._tracer_f is None:
+            return
+        try:
+            self._tracer_f.close()
+        except Exception:
+            pass
+        finally:
+            self._tracer_f = None
 
 
 class SortieWebSocket:
@@ -2095,6 +2170,14 @@ def principal() -> int:
                     type=_chemin_non_vide,
                     help="s'arrête PROPREMENT dès que FICHIER apparaît — le "
                          "seul arrêt propre possible sans console")
+    # 🔬 dn4-18 (2026-08-26) — INSTRUMENT, ⛔ PAS UN RÉGIME.
+    # ⚠️ Il fait grossir un fichier d'environ 275 o/s (le débit d'écho mesuré
+    #    en régime), soit ~1 Mo/h. ⛔ Ne pas le laisser armé sur un soak.
+    ap.add_argument("--tracer-console", metavar="FICHIER", default=None,
+                    type=_chemin_non_vide,
+                    help="capture BRUTE et HORODATEE de tout ce que l'agent "
+                         "draine sur le fil (diagnostic dn4-18). ⛔ Ne "
+                         "fonctionne QUE avec --serie.")
     args = ap.parse_args()
 
     if args.duree < 0:
@@ -2103,10 +2186,20 @@ def principal() -> int:
     # ⚠️ `if args.serie:` testait la VÉRACITÉ, pas la présence : un `--serie ""`
     # (variable vide développée par un script de lancement) retombait EN SILENCE
     # sur stdout, la carte restait « jamais recue », et rien ne le signalait.
+    # 🔬 dn4-18 — ⛔ UNE OPTION QUI NE FAIT RIEN EN SILENCE EST UN DÉFAUT, PAS
+    #    UN CONFORT. C'est le motif déjà payé trois fois dans ce fichier
+    #    (`--serie ""`, `--stop-si ""`, `--lhm "hote:"`). Il n'y a de FIL que
+    #    sur la branche série : sur stdout et sur WebSocket, l'absence de canal
+    #    console est un ÉTAT DÉCLARÉ, ⛔ jamais un silence.
+    if args.tracer_console is not None and args.serie is None:
+        ap.error("--tracer-console n'a de sens QU'AVEC --serie : il capture ce "
+                 "que l'agent draine sur le FIL de la console, et ni --stdout "
+                 "ni --ws n'en ont un. ⛔ Posé ici, il n'ecrirait JAMAIS rien.")
+
     if args.serie is not None:
         if not args.serie.strip():
             ap.error("--serie attend un port (ex. COM3), pas une chaine vide")
-        sortie = SortieSerie(args.serie)
+        sortie = SortieSerie(args.serie, tracer=args.tracer_console)
     elif args.ws is not None:
         if not args.ws.strip():
             ap.error("--ws attend une URL (ex. ws://192.168.3.19/dn), pas une chaine vide")
@@ -2118,6 +2211,16 @@ def principal() -> int:
     # Windows (cp1252 par défaut jusqu'à Python 3.14) : on force l'UTF-8.
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
+
+    # 🔬 dn4-18 — ⛔ UN TIR INSTRUMENTÉ NE DOIT JAMAIS POUVOIR PASSER POUR UN
+    #    TIR DE RÉGIME. Le journal de la tour est cumulatif : sans cette ligne,
+    #    un chiffre de coût relevé pendant une capture serait indiscernable
+    #    d'un chiffre de régime — et « une mesure porte la date de son binaire »
+    #    ne suffirait pas à les séparer, puisque c'est le MÊME binaire.
+    if args.tracer_console:
+        print("[agent] 🔬 TRACE CONSOLE ARMEE vers %s — ⛔ CE TIR EST "
+              "INSTRUMENTE, ce n'est PAS un tir de regime (le fichier grossit "
+              "d'environ 275 o/s)." % args.tracer_console, file=sys.stderr)
 
     moi = psutil.Process()
 

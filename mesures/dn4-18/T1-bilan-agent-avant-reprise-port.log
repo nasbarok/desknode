@@ -1,0 +1,12 @@
+[agent] témoin coût cumulé : 18.500 s CPU / 1920.0 s mur = 0.964 % d'un cœur (0.0602 % machine) — seq=9600
+[agent] témoin coût cumulé : 18.578 s CPU / 1930.0 s mur = 0.963 % d'un cœur (0.0602 % machine) — seq=9650
+[agent] témoin coût cumulé : 18.672 s CPU / 1940.0 s mur = 0.962 % d'un cœur (0.0602 % machine) — seq=9700
+[agent] témoin coût cumulé : 18.734 s CPU / 1950.0 s mur = 0.961 % d'un cœur (0.0600 % machine) — seq=9750
+[agent] arrêt demandé (H:\dev\projets\desknode\dn-agent.stop)
+[agent] arrêt après 1953.0 s — 9765 trames émises (5.00 trames/s), 0 erreurs d'envoi, 0 recalages de cadence
+[agent] écho console draîné : 532932 o, 10127 lignes en 1953.0 s = 272.9 o/s, 5.19 lignes/s (PLAFOND du bruit console : inclut le battement 10 s et tout ESP_LOGx)
+[agent] aucun refus signalé par le firmware sur le fil
+[agent] aucun ecretage : toute valeur emise est la valeur mesuree
+[agent] aucune panne de source : les cinq ont repondu a chaque cycle
+[agent] LHM : 1954 lecture(s) reussie(s), 0 en echec — duree moyenne 7.5 ms, MAX 60.8 ms (timeout pose : 600 ms)
+[agent] aucune absence LHM : les cinq sondes ont rendu une valeur a chaque lecture reussie

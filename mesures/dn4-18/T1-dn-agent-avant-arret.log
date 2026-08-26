@@ -1,0 +1,1126 @@
+[agent] GPU : AMD Radeon RX 6800 XT via ADL PMLog (adaptateur 0) — temoin de mapping BUS_LANES=16 CLK_MEMCLK=1990 MHz
+[agent] ⚠️ LHM INJOIGNABLE au demarrage (TimeoutError: budget de lecture LHM epuise (600 ms)) — la °C CPU et les tr/min diront « -- », les autres grandeurs continuent. ⚠️ La source RESTE ARMEE : elle retente a chaque cycle et reprendra seule si LHM demarre.
+[agent] ⚠️ source `lhm` en ECHEC (/metrics a repondu 200 mais ne porte AUCUNE ligne `lhm_` (242 ligne(s) recues) — ⛔ CE N'EST PAS une absence de capteur : mauvais endpoint, corps vide, ou prefixe de famille renomme.) — la ou elle remplissait une grandeur, le fil porte un CHAMP VIDE et la ligne dit « -- » ; SI elle tenait la position 0, c'est la metrique entiere qui n'est pas emise. Les autres continuent : une source morte meurt SEULE.
+[agent] ✅ source `lhm` a REPRIS apres 1 echec(s) consecutif(s) — la connexion persistante s'est retablie SANS redemarrer l'agent.
+[agent] témoin coût cumulé : 0.312 s CPU / 10.0 s mur = 3.119 % d'un cœur (0.1949 % machine) — seq=50
+[agent] témoin coût cumulé : 0.453 s CPU / 20.0 s mur = 2.263 % d'un cœur (0.1414 % machine) — seq=100
+[agent] témoin coût cumulé : 0.656 s CPU / 30.2 s mur = 2.173 % d'un cœur (0.1358 % machine) — seq=150
+[agent] témoin coût cumulé : 0.859 s CPU / 40.0 s mur = 2.147 % d'un cœur (0.1342 % machine) — seq=200
+[agent] témoin coût cumulé : 1.016 s CPU / 50.0 s mur = 2.030 % d'un cœur (0.1269 % machine) — seq=250
+[agent] témoin coût cumulé : 1.234 s CPU / 60.0 s mur = 2.057 % d'un cœur (0.1285 % machine) — seq=300
+[agent] témoin coût cumulé : 1.375 s CPU / 70.0 s mur = 1.964 % d'un cœur (0.1227 % machine) — seq=350
+[agent] témoin coût cumulé : 1.516 s CPU / 80.0 s mur = 1.894 % d'un cœur (0.1184 % machine) — seq=400
+[agent] témoin coût cumulé : 1.688 s CPU / 90.0 s mur = 1.874 % d'un cœur (0.1171 % machine) — seq=450
+[agent] témoin coût cumulé : 1.859 s CPU / 100.0 s mur = 1.859 % d'un cœur (0.1162 % machine) — seq=500
+[agent] témoin coût cumulé : 2.016 s CPU / 110.0 s mur = 1.832 % d'un cœur (0.1145 % machine) — seq=550
+[agent] témoin coût cumulé : 2.156 s CPU / 120.0 s mur = 1.797 % d'un cœur (0.1123 % machine) — seq=600
+[agent] témoin coût cumulé : 2.344 s CPU / 130.0 s mur = 1.803 % d'un cœur (0.1127 % machine) — seq=650
+[agent] témoin coût cumulé : 2.500 s CPU / 140.0 s mur = 1.785 % d'un cœur (0.1116 % machine) — seq=700
+[agent] témoin coût cumulé : 2.688 s CPU / 150.1 s mur = 1.791 % d'un cœur (0.1119 % machine) — seq=750
+[agent] témoin coût cumulé : 2.859 s CPU / 160.0 s mur = 1.787 % d'un cœur (0.1117 % machine) — seq=800
+[agent] témoin coût cumulé : 3.062 s CPU / 170.0 s mur = 1.801 % d'un cœur (0.1126 % machine) — seq=850
+[agent] témoin coût cumulé : 3.250 s CPU / 180.0 s mur = 1.805 % d'un cœur (0.1128 % machine) — seq=900
+[agent] témoin coût cumulé : 3.453 s CPU / 190.0 s mur = 1.817 % d'un cœur (0.1136 % machine) — seq=950
+[agent] témoin coût cumulé : 3.609 s CPU / 200.0 s mur = 1.804 % d'un cœur (0.1128 % machine) — seq=1000
+[agent] témoin coût cumulé : 3.781 s CPU / 210.0 s mur = 1.800 % d'un cœur (0.1125 % machine) — seq=1050
+[agent] témoin coût cumulé : 3.938 s CPU / 220.0 s mur = 1.790 % d'un cœur (0.1119 % machine) — seq=1100
+[agent] témoin coût cumulé : 4.125 s CPU / 230.0 s mur = 1.793 % d'un cœur (0.1121 % machine) — seq=1150
+[agent] témoin coût cumulé : 4.297 s CPU / 240.0 s mur = 1.790 % d'un cœur (0.1119 % machine) — seq=1200
+[agent] témoin coût cumulé : 4.469 s CPU / 250.0 s mur = 1.787 % d'un cœur (0.1117 % machine) — seq=1250
+[agent] témoin coût cumulé : 4.641 s CPU / 260.0 s mur = 1.785 % d'un cœur (0.1115 % machine) — seq=1300
+[agent] témoin coût cumulé : 4.812 s CPU / 270.0 s mur = 1.782 % d'un cœur (0.1114 % machine) — seq=1350
+[agent] témoin coût cumulé : 5.000 s CPU / 280.0 s mur = 1.786 % d'un cœur (0.1116 % machine) — seq=1400
+[agent] témoin coût cumulé : 5.203 s CPU / 290.0 s mur = 1.794 % d'un cœur (0.1121 % machine) — seq=1450
+[agent] témoin coût cumulé : 5.406 s CPU / 300.0 s mur = 1.802 % d'un cœur (0.1126 % machine) — seq=1500
+[agent] témoin coût cumulé : 5.578 s CPU / 310.0 s mur = 1.799 % d'un cœur (0.1125 % machine) — seq=1550
+[agent] témoin coût cumulé : 5.797 s CPU / 320.0 s mur = 1.811 % d'un cœur (0.1132 % machine) — seq=1600
+[agent] témoin coût cumulé : 6.016 s CPU / 330.0 s mur = 1.823 % d'un cœur (0.1139 % machine) — seq=1650
+[agent] témoin coût cumulé : 6.188 s CPU / 340.0 s mur = 1.820 % d'un cœur (0.1137 % machine) — seq=1700
+[agent] témoin coût cumulé : 6.359 s CPU / 350.0 s mur = 1.817 % d'un cœur (0.1136 % machine) — seq=1750
+[agent] témoin coût cumulé : 6.562 s CPU / 360.0 s mur = 1.823 % d'un cœur (0.1139 % machine) — seq=1800
+[agent] témoin coût cumulé : 6.719 s CPU / 370.0 s mur = 1.816 % d'un cœur (0.1135 % machine) — seq=1850
+[agent] témoin coût cumulé : 6.891 s CPU / 380.0 s mur = 1.813 % d'un cœur (0.1133 % machine) — seq=1900
+[agent] témoin coût cumulé : 7.062 s CPU / 390.0 s mur = 1.811 % d'un cœur (0.1132 % machine) — seq=1950
+[agent] témoin coût cumulé : 7.281 s CPU / 400.0 s mur = 1.820 % d'un cœur (0.1138 % machine) — seq=2000
+[agent] témoin coût cumulé : 7.469 s CPU / 410.0 s mur = 1.822 % d'un cœur (0.1138 % machine) — seq=2050
+[agent] témoin coût cumulé : 7.688 s CPU / 420.0 s mur = 1.830 % d'un cœur (0.1144 % machine) — seq=2100
+[agent] témoin coût cumulé : 7.891 s CPU / 430.0 s mur = 1.835 % d'un cœur (0.1147 % machine) — seq=2150
+[agent] témoin coût cumulé : 8.047 s CPU / 440.0 s mur = 1.829 % d'un cœur (0.1143 % machine) — seq=2200
+[agent] témoin coût cumulé : 8.188 s CPU / 450.0 s mur = 1.819 % d'un cœur (0.1137 % machine) — seq=2250
+[agent] témoin coût cumulé : 8.375 s CPU / 460.0 s mur = 1.820 % d'un cœur (0.1138 % machine) — seq=2300
+[agent] témoin coût cumulé : 8.547 s CPU / 470.0 s mur = 1.818 % d'un cœur (0.1137 % machine) — seq=2350
+[agent] témoin coût cumulé : 8.750 s CPU / 480.0 s mur = 1.823 % d'un cœur (0.1139 % machine) — seq=2400
+[agent] témoin coût cumulé : 8.922 s CPU / 490.0 s mur = 1.821 % d'un cœur (0.1138 % machine) — seq=2450
+[agent] témoin coût cumulé : 9.078 s CPU / 500.0 s mur = 1.815 % d'un cœur (0.1135 % machine) — seq=2500
+[agent] témoin coût cumulé : 9.281 s CPU / 510.0 s mur = 1.820 % d'un cœur (0.1137 % machine) — seq=2550
+[agent] témoin coût cumulé : 9.531 s CPU / 520.0 s mur = 1.833 % d'un cœur (0.1145 % machine) — seq=2600
+[agent] témoin coût cumulé : 9.781 s CPU / 530.0 s mur = 1.845 % d'un cœur (0.1153 % machine) — seq=2650
+[agent] témoin coût cumulé : 9.938 s CPU / 540.0 s mur = 1.840 % d'un cœur (0.1150 % machine) — seq=2700
+[agent] témoin coût cumulé : 10.172 s CPU / 550.0 s mur = 1.849 % d'un cœur (0.1156 % machine) — seq=2750
+[agent] témoin coût cumulé : 10.359 s CPU / 560.0 s mur = 1.850 % d'un cœur (0.1156 % machine) — seq=2800
+[agent] témoin coût cumulé : 10.594 s CPU / 570.0 s mur = 1.858 % d'un cœur (0.1162 % machine) — seq=2850
+[agent] témoin coût cumulé : 10.844 s CPU / 580.0 s mur = 1.869 % d'un cœur (0.1168 % machine) — seq=2900
+[agent] témoin coût cumulé : 11.062 s CPU / 590.0 s mur = 1.875 % d'un cœur (0.1172 % machine) — seq=2950
+[agent] témoin coût cumulé : 11.250 s CPU / 600.0 s mur = 1.875 % d'un cœur (0.1172 % machine) — seq=3000
+[agent] témoin coût cumulé : 11.438 s CPU / 610.2 s mur = 1.874 % d'un cœur (0.1172 % machine) — seq=3050
+[agent] témoin coût cumulé : 11.641 s CPU / 620.0 s mur = 1.877 % d'un cœur (0.1173 % machine) — seq=3100
+[agent] témoin coût cumulé : 11.844 s CPU / 630.0 s mur = 1.880 % d'un cœur (0.1175 % machine) — seq=3150
+[agent] témoin coût cumulé : 12.031 s CPU / 640.0 s mur = 1.880 % d'un cœur (0.1175 % machine) — seq=3200
+[agent] témoin coût cumulé : 12.188 s CPU / 650.0 s mur = 1.875 % d'un cœur (0.1172 % machine) — seq=3250
+[agent] témoin coût cumulé : 12.375 s CPU / 660.0 s mur = 1.875 % d'un cœur (0.1172 % machine) — seq=3300
+[agent] témoin coût cumulé : 12.578 s CPU / 670.0 s mur = 1.877 % d'un cœur (0.1173 % machine) — seq=3350
+[agent] témoin coût cumulé : 12.766 s CPU / 680.0 s mur = 1.877 % d'un cœur (0.1173 % machine) — seq=3400
+[agent] témoin coût cumulé : 12.953 s CPU / 690.0 s mur = 1.877 % d'un cœur (0.1173 % machine) — seq=3450
+[agent] témoin coût cumulé : 13.156 s CPU / 700.0 s mur = 1.879 % d'un cœur (0.1175 % machine) — seq=3500
+[agent] témoin coût cumulé : 13.391 s CPU / 710.0 s mur = 1.886 % d'un cœur (0.1179 % machine) — seq=3550
+[agent] témoin coût cumulé : 13.656 s CPU / 720.0 s mur = 1.897 % d'un cœur (0.1185 % machine) — seq=3600
+[agent] témoin coût cumulé : 13.891 s CPU / 730.0 s mur = 1.903 % d'un cœur (0.1189 % machine) — seq=3650
+[agent] témoin coût cumulé : 14.109 s CPU / 740.0 s mur = 1.907 % d'un cœur (0.1192 % machine) — seq=3700
+[agent] témoin coût cumulé : 14.312 s CPU / 750.0 s mur = 1.908 % d'un cœur (0.1193 % machine) — seq=3750
+[agent] témoin coût cumulé : 14.562 s CPU / 760.0 s mur = 1.916 % d'un cœur (0.1198 % machine) — seq=3800
+[agent] témoin coût cumulé : 14.781 s CPU / 770.0 s mur = 1.920 % d'un cœur (0.1200 % machine) — seq=3850
+[agent] témoin coût cumulé : 14.953 s CPU / 780.0 s mur = 1.917 % d'un cœur (0.1198 % machine) — seq=3900
+[agent] témoin coût cumulé : 15.109 s CPU / 790.0 s mur = 1.912 % d'un cœur (0.1195 % machine) — seq=3950
+[agent] témoin coût cumulé : 15.344 s CPU / 800.0 s mur = 1.918 % d'un cœur (0.1199 % machine) — seq=4000
+[agent] témoin coût cumulé : 15.594 s CPU / 810.0 s mur = 1.925 % d'un cœur (0.1203 % machine) — seq=4050
+[agent] témoin coût cumulé : 15.875 s CPU / 820.0 s mur = 1.936 % d'un cœur (0.1210 % machine) — seq=4100
+[agent] témoin coût cumulé : 16.141 s CPU / 830.0 s mur = 1.945 % d'un cœur (0.1215 % machine) — seq=4150
+[agent] témoin coût cumulé : 16.344 s CPU / 840.0 s mur = 1.946 % d'un cœur (0.1216 % machine) — seq=4200
+[agent] témoin coût cumulé : 16.562 s CPU / 850.0 s mur = 1.948 % d'un cœur (0.1218 % machine) — seq=4250
+[agent] témoin coût cumulé : 16.781 s CPU / 860.0 s mur = 1.951 % d'un cœur (0.1220 % machine) — seq=4300
+[agent] témoin coût cumulé : 16.984 s CPU / 870.0 s mur = 1.952 % d'un cœur (0.1220 % machine) — seq=4350
+[agent] témoin coût cumulé : 17.188 s CPU / 880.0 s mur = 1.953 % d'un cœur (0.1221 % machine) — seq=4400
+[agent] témoin coût cumulé : 17.438 s CPU / 890.0 s mur = 1.959 % d'un cœur (0.1224 % machine) — seq=4450
+[agent] témoin coût cumulé : 17.641 s CPU / 900.0 s mur = 1.960 % d'un cœur (0.1225 % machine) — seq=4500
+[agent] témoin coût cumulé : 17.828 s CPU / 910.0 s mur = 1.959 % d'un cœur (0.1224 % machine) — seq=4550
+[agent] témoin coût cumulé : 18.047 s CPU / 920.0 s mur = 1.962 % d'un cœur (0.1226 % machine) — seq=4600
+[agent] témoin coût cumulé : 18.203 s CPU / 930.0 s mur = 1.957 % d'un cœur (0.1223 % machine) — seq=4650
+[agent] témoin coût cumulé : 18.406 s CPU / 940.0 s mur = 1.958 % d'un cœur (0.1224 % machine) — seq=4700
+[agent] témoin coût cumulé : 18.641 s CPU / 950.0 s mur = 1.962 % d'un cœur (0.1226 % machine) — seq=4750
+[agent] témoin coût cumulé : 18.844 s CPU / 960.0 s mur = 1.963 % d'un cœur (0.1227 % machine) — seq=4800
+[agent] témoin coût cumulé : 19.062 s CPU / 970.0 s mur = 1.965 % d'un cœur (0.1228 % machine) — seq=4850
+[agent] témoin coût cumulé : 19.281 s CPU / 980.0 s mur = 1.967 % d'un cœur (0.1230 % machine) — seq=4900
+[agent] arrêt demandé (drapeau H:\dev\projets\desknode\dn-agent.stop)
+[agent] arrêt après 989.0 s — 4945 trames émises (5.00 trames/s), 0 erreurs d'envoi, 0 recalages de cadence
+[agent] écho console draîné : 272533 o, 5157 lignes en 989.0 s = 275.6 o/s, 5.21 lignes/s (PLAFOND du bruit console : inclut le battement 10 s et tout ESP_LOGx)
+[agent] aucun refus signalé par le firmware sur le fil
+[agent] aucun ecretage : toute valeur emise est la valeur mesuree
+[agent] 🔴 PANNES DE SOURCE (grandeur perdue ⇒ champ VIDE, « -- » sur SA ligne ; metrique non emise SEULEMENT si la position 0 manquait) : lhm:OSError=1
+[agent] LHM : 988 lecture(s) reussie(s), 1 en echec — duree moyenne 8.1 ms, MAX 606.4 ms (timeout pose : 600 ms)
+[agent] 🔴 le plafond a COUPE au moins une lecture (1 echec(s), timeout 600 ms). ⚠️ Le dimensionnement est a revoir. ⛔ `duree_max` (606 ms) est un MAX sur les reussites ET les echecs : il ne dit PAS a quel instant la coupe a eu lieu.
+[agent] 🔴 UNE LECTURE LHM A DEPASSE LE PLAFOND SANS ECHOUER : 606 ms pour un timeout de 600 ms (101 %), 1 echec(s). ⚠️ Le budget ne borne que le RESEAU : ce depassement vient d'ailleurs (parse, ordonnancement). ⛔ C'EST un incident — il mange la cadence et arme le recalage.
+[agent] ⚠️ ABSENCES LHM (LHM a REPONDU, sans cette valeur — champ VIDE sur le fil, ⛔ PAS une panne) : cpu.degc=2 · fan.case_group=3 · fan.cpu_noctua=3 · fan.rear_out=3 · fan.top_out=3
+[agent] GPU : AMD Radeon RX 6800 XT via ADL PMLog (adaptateur 0) — temoin de mapping BUS_LANES=16 CLK_MEMCLK=1984 MHz
+[agent] LHM : 127.0.0.1:8085/metrics — 5/5 sonde(s) avec valeur (timeout 0.60 s, connexion PERSISTANTE)
+[agent] témoin coût cumulé : 0.484 s CPU / 10.0 s mur = 4.827 % d'un cœur (0.3017 % machine) — seq=50
+[agent] témoin coût cumulé : 0.703 s CPU / 20.0 s mur = 3.510 % d'un cœur (0.2194 % machine) — seq=100
+[agent] témoin coût cumulé : 0.891 s CPU / 30.0 s mur = 2.966 % d'un cœur (0.1854 % machine) — seq=150
+[agent] témoin coût cumulé : 1.094 s CPU / 40.0 s mur = 2.732 % d'un cœur (0.1708 % machine) — seq=200
+[agent] témoin coût cumulé : 1.266 s CPU / 50.0 s mur = 2.530 % d'un cœur (0.1581 % machine) — seq=250
+[agent] témoin coût cumulé : 1.469 s CPU / 60.0 s mur = 2.447 % d'un cœur (0.1529 % machine) — seq=300
+[agent] témoin coût cumulé : 1.688 s CPU / 70.0 s mur = 2.410 % d'un cœur (0.1506 % machine) — seq=350
+[agent] témoin coût cumulé : 1.875 s CPU / 80.0 s mur = 2.343 % d'un cœur (0.1464 % machine) — seq=400
+[agent] témoin coût cumulé : 2.062 s CPU / 90.0 s mur = 2.291 % d'un cœur (0.1432 % machine) — seq=450
+[agent] témoin coût cumulé : 2.266 s CPU / 100.0 s mur = 2.265 % d'un cœur (0.1416 % machine) — seq=500
+[agent] témoin coût cumulé : 2.438 s CPU / 110.0 s mur = 2.215 % d'un cœur (0.1385 % machine) — seq=550
+[agent] témoin coût cumulé : 2.625 s CPU / 120.0 s mur = 2.187 % d'un cœur (0.1367 % machine) — seq=600
+[agent] témoin coût cumulé : 2.828 s CPU / 130.0 s mur = 2.175 % d'un cœur (0.1359 % machine) — seq=650
+[agent] témoin coût cumulé : 3.047 s CPU / 140.0 s mur = 2.176 % d'un cœur (0.1360 % machine) — seq=700
+[agent] témoin coût cumulé : 3.266 s CPU / 150.0 s mur = 2.177 % d'un cœur (0.1360 % machine) — seq=750
+[agent] témoin coût cumulé : 3.438 s CPU / 160.0 s mur = 2.148 % d'un cœur (0.1343 % machine) — seq=800
+[agent] témoin coût cumulé : 3.641 s CPU / 170.0 s mur = 2.141 % d'un cœur (0.1338 % machine) — seq=850
+[agent] témoin coût cumulé : 3.859 s CPU / 180.0 s mur = 2.144 % d'un cœur (0.1340 % machine) — seq=900
+[agent] témoin coût cumulé : 4.031 s CPU / 190.0 s mur = 2.121 % d'un cœur (0.1326 % machine) — seq=950
+[agent] témoin coût cumulé : 4.188 s CPU / 200.0 s mur = 2.094 % d'un cœur (0.1308 % machine) — seq=1000
+[agent] témoin coût cumulé : 4.375 s CPU / 210.0 s mur = 2.083 % d'un cœur (0.1302 % machine) — seq=1050
+[agent] témoin coût cumulé : 4.594 s CPU / 220.0 s mur = 2.088 % d'un cœur (0.1305 % machine) — seq=1100
+[agent] témoin coût cumulé : 4.781 s CPU / 230.0 s mur = 2.079 % d'un cœur (0.1299 % machine) — seq=1150
+[agent] témoin coût cumulé : 4.969 s CPU / 240.0 s mur = 2.070 % d'un cœur (0.1294 % machine) — seq=1200
+[agent] témoin coût cumulé : 5.156 s CPU / 250.0 s mur = 2.062 % d'un cœur (0.1289 % machine) — seq=1250
+[agent] témoin coût cumulé : 5.359 s CPU / 260.0 s mur = 2.061 % d'un cœur (0.1288 % machine) — seq=1300
+[agent] témoin coût cumulé : 5.531 s CPU / 270.0 s mur = 2.048 % d'un cœur (0.1280 % machine) — seq=1350
+[agent] témoin coût cumulé : 5.750 s CPU / 280.0 s mur = 2.053 % d'un cœur (0.1283 % machine) — seq=1400
+[agent] témoin coût cumulé : 5.969 s CPU / 290.0 s mur = 2.058 % d'un cœur (0.1286 % machine) — seq=1450
+[agent] témoin coût cumulé : 6.219 s CPU / 300.0 s mur = 2.073 % d'un cœur (0.1295 % machine) — seq=1500
+[agent] témoin coût cumulé : 6.438 s CPU / 310.0 s mur = 2.076 % d'un cœur (0.1298 % machine) — seq=1550
+[agent] témoin coût cumulé : 6.656 s CPU / 320.0 s mur = 2.080 % d'un cœur (0.1300 % machine) — seq=1600
+[agent] témoin coût cumulé : 6.859 s CPU / 330.0 s mur = 2.078 % d'un cœur (0.1299 % machine) — seq=1650
+[agent] témoin coût cumulé : 7.047 s CPU / 340.0 s mur = 2.072 % d'un cœur (0.1295 % machine) — seq=1700
+[agent] témoin coût cumulé : 7.234 s CPU / 350.0 s mur = 2.067 % d'un cœur (0.1292 % machine) — seq=1750
+[agent] témoin coût cumulé : 7.406 s CPU / 360.0 s mur = 2.057 % d'un cœur (0.1286 % machine) — seq=1800
+[agent] témoin coût cumulé : 7.594 s CPU / 370.0 s mur = 2.052 % d'un cœur (0.1283 % machine) — seq=1850
+[agent] témoin coût cumulé : 7.781 s CPU / 380.0 s mur = 2.047 % d'un cœur (0.1280 % machine) — seq=1900
+[agent] témoin coût cumulé : 7.953 s CPU / 390.0 s mur = 2.039 % d'un cœur (0.1274 % machine) — seq=1950
+[agent] ⚠️ source `lhm` en ECHEC (budget de lecture LHM epuise (600 ms)) — la ou elle remplissait une grandeur, le fil porte un CHAMP VIDE et la ligne dit « -- » ; SI elle tenait la position 0, c'est la metrique entiere qui n'est pas emise. Les autres continuent : une source morte meurt SEULE.
+[agent] ✅ source `lhm` a REPRIS apres 1 echec(s) consecutif(s) — la connexion persistante s'est retablie SANS redemarrer l'agent.
+[agent] témoin coût cumulé : 8.141 s CPU / 400.0 s mur = 2.035 % d'un cœur (0.1272 % machine) — seq=2000
+[agent] témoin coût cumulé : 8.344 s CPU / 410.0 s mur = 2.035 % d'un cœur (0.1272 % machine) — seq=2050
+[agent] témoin coût cumulé : 8.531 s CPU / 420.0 s mur = 2.031 % d'un cœur (0.1269 % machine) — seq=2100
+[agent] témoin coût cumulé : 8.750 s CPU / 430.0 s mur = 2.035 % d'un cœur (0.1272 % machine) — seq=2150
+[agent] témoin coût cumulé : 8.984 s CPU / 440.0 s mur = 2.042 % d'un cœur (0.1276 % machine) — seq=2200
+[agent] témoin coût cumulé : 9.188 s CPU / 450.0 s mur = 2.042 % d'un cœur (0.1276 % machine) — seq=2250
+[agent] témoin coût cumulé : 9.391 s CPU / 460.0 s mur = 2.041 % d'un cœur (0.1276 % machine) — seq=2300
+[agent] témoin coût cumulé : 9.594 s CPU / 470.0 s mur = 2.041 % d'un cœur (0.1276 % machine) — seq=2350
+[agent] témoin coût cumulé : 9.750 s CPU / 480.0 s mur = 2.031 % d'un cœur (0.1269 % machine) — seq=2400
+[agent] témoin coût cumulé : 9.953 s CPU / 490.0 s mur = 2.031 % d'un cœur (0.1269 % machine) — seq=2450
+[agent] témoin coût cumulé : 10.141 s CPU / 500.0 s mur = 2.028 % d'un cœur (0.1268 % machine) — seq=2500
+[agent] témoin coût cumulé : 10.328 s CPU / 510.0 s mur = 2.025 % d'un cœur (0.1266 % machine) — seq=2550
+[agent] témoin coût cumulé : 10.531 s CPU / 520.0 s mur = 2.025 % d'un cœur (0.1266 % machine) — seq=2600
+[agent] témoin coût cumulé : 10.734 s CPU / 530.0 s mur = 2.025 % d'un cœur (0.1266 % machine) — seq=2650
+[agent] témoin coût cumulé : 10.922 s CPU / 540.0 s mur = 2.022 % d'un cœur (0.1264 % machine) — seq=2700
+[agent] témoin coût cumulé : 11.109 s CPU / 550.0 s mur = 2.020 % d'un cœur (0.1262 % machine) — seq=2750
+[agent] témoin coût cumulé : 11.281 s CPU / 560.0 s mur = 2.014 % d'un cœur (0.1259 % machine) — seq=2800
+[agent] témoin coût cumulé : 11.484 s CPU / 570.0 s mur = 2.015 % d'un cœur (0.1259 % machine) — seq=2850
+[agent] témoin coût cumulé : 11.656 s CPU / 580.0 s mur = 2.010 % d'un cœur (0.1256 % machine) — seq=2900
+[agent] témoin coût cumulé : 11.844 s CPU / 590.0 s mur = 2.007 % d'un cœur (0.1255 % machine) — seq=2950
+[agent] témoin coût cumulé : 12.016 s CPU / 600.0 s mur = 2.003 % d'un cœur (0.1252 % machine) — seq=3000
+[agent] témoin coût cumulé : 12.203 s CPU / 610.0 s mur = 2.000 % d'un cœur (0.1250 % machine) — seq=3050
+[agent] témoin coût cumulé : 12.359 s CPU / 620.0 s mur = 1.993 % d'un cœur (0.1246 % machine) — seq=3100
+[agent] témoin coût cumulé : 12.562 s CPU / 630.0 s mur = 1.994 % d'un cœur (0.1246 % machine) — seq=3150
+[agent] témoin coût cumulé : 12.797 s CPU / 640.0 s mur = 1.999 % d'un cœur (0.1250 % machine) — seq=3200
+[agent] témoin coût cumulé : 13.031 s CPU / 650.0 s mur = 2.005 % d'un cœur (0.1253 % machine) — seq=3250
+[agent] témoin coût cumulé : 13.250 s CPU / 660.0 s mur = 2.007 % d'un cœur (0.1255 % machine) — seq=3300
+[agent] témoin coût cumulé : 13.453 s CPU / 670.0 s mur = 2.008 % d'un cœur (0.1255 % machine) — seq=3350
+[agent] témoin coût cumulé : 13.672 s CPU / 680.0 s mur = 2.010 % d'un cœur (0.1257 % machine) — seq=3400
+[agent] témoin coût cumulé : 13.859 s CPU / 690.0 s mur = 2.009 % d'un cœur (0.1255 % machine) — seq=3450
+[agent] témoin coût cumulé : 14.062 s CPU / 700.0 s mur = 2.009 % d'un cœur (0.1256 % machine) — seq=3500
+[agent] témoin coût cumulé : 14.250 s CPU / 710.0 s mur = 2.007 % d'un cœur (0.1254 % machine) — seq=3550
+[agent] témoin coût cumulé : 14.438 s CPU / 720.0 s mur = 2.005 % d'un cœur (0.1253 % machine) — seq=3600
+[agent] témoin coût cumulé : 14.578 s CPU / 730.0 s mur = 1.997 % d'un cœur (0.1248 % machine) — seq=3650
+[agent] témoin coût cumulé : 14.766 s CPU / 740.0 s mur = 1.995 % d'un cœur (0.1247 % machine) — seq=3700
+[agent] témoin coût cumulé : 14.953 s CPU / 750.0 s mur = 1.994 % d'un cœur (0.1246 % machine) — seq=3750
+[agent] témoin coût cumulé : 15.141 s CPU / 760.0 s mur = 1.992 % d'un cœur (0.1245 % machine) — seq=3800
+[agent] témoin coût cumulé : 15.359 s CPU / 770.0 s mur = 1.995 % d'un cœur (0.1247 % machine) — seq=3850
+[agent] témoin coût cumulé : 15.578 s CPU / 780.0 s mur = 1.997 % d'un cœur (0.1248 % machine) — seq=3900
+[agent] témoin coût cumulé : 15.797 s CPU / 790.0 s mur = 2.000 % d'un cœur (0.1250 % machine) — seq=3950
+[agent] témoin coût cumulé : 16.031 s CPU / 800.0 s mur = 2.004 % d'un cœur (0.1252 % machine) — seq=4000
+[agent] témoin coût cumulé : 16.250 s CPU / 810.0 s mur = 2.006 % d'un cœur (0.1254 % machine) — seq=4050
+[agent] témoin coût cumulé : 16.453 s CPU / 820.0 s mur = 2.006 % d'un cœur (0.1254 % machine) — seq=4100
+[agent] témoin coût cumulé : 16.734 s CPU / 830.0 s mur = 2.016 % d'un cœur (0.1260 % machine) — seq=4150
+[agent] témoin coût cumulé : 16.906 s CPU / 840.0 s mur = 2.013 % d'un cœur (0.1258 % machine) — seq=4200
+[agent] témoin coût cumulé : 17.109 s CPU / 850.0 s mur = 2.013 % d'un cœur (0.1258 % machine) — seq=4250
+[agent] témoin coût cumulé : 17.344 s CPU / 860.0 s mur = 2.017 % d'un cœur (0.1260 % machine) — seq=4300
+[agent] témoin coût cumulé : 17.547 s CPU / 870.0 s mur = 2.017 % d'un cœur (0.1260 % machine) — seq=4350
+[agent] témoin coût cumulé : 17.766 s CPU / 880.0 s mur = 2.019 % d'un cœur (0.1262 % machine) — seq=4400
+[agent] témoin coût cumulé : 17.984 s CPU / 890.0 s mur = 2.021 % d'un cœur (0.1263 % machine) — seq=4450
+[agent] témoin coût cumulé : 18.172 s CPU / 900.0 s mur = 2.019 % d'un cœur (0.1262 % machine) — seq=4500
+[agent] témoin coût cumulé : 18.359 s CPU / 910.0 s mur = 2.017 % d'un cœur (0.1261 % machine) — seq=4550
+[agent] témoin coût cumulé : 18.594 s CPU / 920.0 s mur = 2.021 % d'un cœur (0.1263 % machine) — seq=4600
+[agent] témoin coût cumulé : 18.812 s CPU / 930.0 s mur = 2.023 % d'un cœur (0.1264 % machine) — seq=4650
+[agent] témoin coût cumulé : 19.062 s CPU / 940.0 s mur = 2.028 % d'un cœur (0.1267 % machine) — seq=4700
+[agent] témoin coût cumulé : 19.234 s CPU / 950.0 s mur = 2.025 % d'un cœur (0.1265 % machine) — seq=4750
+[agent] témoin coût cumulé : 19.422 s CPU / 960.0 s mur = 2.023 % d'un cœur (0.1264 % machine) — seq=4800
+[agent] témoin coût cumulé : 19.672 s CPU / 970.0 s mur = 2.028 % d'un cœur (0.1267 % machine) — seq=4850
+[agent] témoin coût cumulé : 19.828 s CPU / 980.0 s mur = 2.023 % d'un cœur (0.1264 % machine) — seq=4900
+[agent] témoin coût cumulé : 20.047 s CPU / 990.0 s mur = 2.025 % d'un cœur (0.1266 % machine) — seq=4950
+[agent] témoin coût cumulé : 20.281 s CPU / 1000.0 s mur = 2.028 % d'un cœur (0.1268 % machine) — seq=5000
+[agent] témoin coût cumulé : 20.469 s CPU / 1010.0 s mur = 2.027 % d'un cœur (0.1267 % machine) — seq=5050
+[agent] témoin coût cumulé : 20.688 s CPU / 1020.0 s mur = 2.028 % d'un cœur (0.1268 % machine) — seq=5100
+[agent] témoin coût cumulé : 20.844 s CPU / 1030.0 s mur = 2.024 % d'un cœur (0.1265 % machine) — seq=5150
+[agent] témoin coût cumulé : 21.047 s CPU / 1040.0 s mur = 2.024 % d'un cœur (0.1265 % machine) — seq=5200
+[agent] témoin coût cumulé : 21.188 s CPU / 1050.0 s mur = 2.018 % d'un cœur (0.1261 % machine) — seq=5250
+[agent] témoin coût cumulé : 21.359 s CPU / 1060.0 s mur = 2.015 % d'un cœur (0.1259 % machine) — seq=5300
+[agent] témoin coût cumulé : 21.547 s CPU / 1070.0 s mur = 2.014 % d'un cœur (0.1259 % machine) — seq=5350
+[agent] témoin coût cumulé : 21.797 s CPU / 1080.0 s mur = 2.018 % d'un cœur (0.1261 % machine) — seq=5400
+[agent] témoin coût cumulé : 22.000 s CPU / 1090.0 s mur = 2.018 % d'un cœur (0.1261 % machine) — seq=5450
+[agent] témoin coût cumulé : 22.172 s CPU / 1100.0 s mur = 2.016 % d'un cœur (0.1260 % machine) — seq=5500
+[agent] témoin coût cumulé : 22.344 s CPU / 1110.0 s mur = 2.013 % d'un cœur (0.1258 % machine) — seq=5550
+[agent] témoin coût cumulé : 22.516 s CPU / 1120.0 s mur = 2.010 % d'un cœur (0.1256 % machine) — seq=5600
+[agent] témoin coût cumulé : 22.719 s CPU / 1130.0 s mur = 2.010 % d'un cœur (0.1257 % machine) — seq=5650
+[agent] témoin coût cumulé : 22.922 s CPU / 1140.0 s mur = 2.011 % d'un cœur (0.1257 % machine) — seq=5700
+[agent] témoin coût cumulé : 23.125 s CPU / 1150.0 s mur = 2.011 % d'un cœur (0.1257 % machine) — seq=5750
+[agent] témoin coût cumulé : 23.359 s CPU / 1160.0 s mur = 2.014 % d'un cœur (0.1259 % machine) — seq=5800
+[agent] témoin coût cumulé : 23.578 s CPU / 1170.0 s mur = 2.015 % d'un cœur (0.1259 % machine) — seq=5850
+[agent] témoin coût cumulé : 23.812 s CPU / 1180.0 s mur = 2.018 % d'un cœur (0.1261 % machine) — seq=5900
+[agent] témoin coût cumulé : 24.031 s CPU / 1190.0 s mur = 2.019 % d'un cœur (0.1262 % machine) — seq=5950
+[agent] témoin coût cumulé : 24.219 s CPU / 1200.0 s mur = 2.018 % d'un cœur (0.1261 % machine) — seq=6000
+[agent] témoin coût cumulé : 24.438 s CPU / 1210.0 s mur = 2.020 % d'un cœur (0.1262 % machine) — seq=6050
+[agent] témoin coût cumulé : 24.641 s CPU / 1220.0 s mur = 2.020 % d'un cœur (0.1262 % machine) — seq=6100
+[agent] témoin coût cumulé : 24.828 s CPU / 1230.0 s mur = 2.018 % d'un cœur (0.1262 % machine) — seq=6150
+[agent] témoin coût cumulé : 25.109 s CPU / 1240.0 s mur = 2.025 % d'un cœur (0.1266 % machine) — seq=6200
+[agent] témoin coût cumulé : 25.312 s CPU / 1250.0 s mur = 2.025 % d'un cœur (0.1266 % machine) — seq=6250
+[agent] témoin coût cumulé : 25.500 s CPU / 1260.0 s mur = 2.024 % d'un cœur (0.1265 % machine) — seq=6300
+[agent] témoin coût cumulé : 25.703 s CPU / 1270.0 s mur = 2.024 % d'un cœur (0.1265 % machine) — seq=6350
+[agent] témoin coût cumulé : 25.891 s CPU / 1280.0 s mur = 2.023 % d'un cœur (0.1264 % machine) — seq=6400
+[agent] témoin coût cumulé : 26.125 s CPU / 1290.0 s mur = 2.025 % d'un cœur (0.1266 % machine) — seq=6450
+[agent] témoin coût cumulé : 26.312 s CPU / 1300.0 s mur = 2.024 % d'un cœur (0.1265 % machine) — seq=6500
+[agent] témoin coût cumulé : 26.547 s CPU / 1310.0 s mur = 2.026 % d'un cœur (0.1267 % machine) — seq=6550
+[agent] témoin coût cumulé : 26.750 s CPU / 1320.0 s mur = 2.026 % d'un cœur (0.1267 % machine) — seq=6600
+[agent] témoin coût cumulé : 26.969 s CPU / 1330.0 s mur = 2.028 % d'un cœur (0.1267 % machine) — seq=6650
+[agent] témoin coût cumulé : 27.156 s CPU / 1340.0 s mur = 2.027 % d'un cœur (0.1267 % machine) — seq=6700
+[agent] témoin coût cumulé : 27.359 s CPU / 1350.0 s mur = 2.027 % d'un cœur (0.1267 % machine) — seq=6750
+[agent] témoin coût cumulé : 27.578 s CPU / 1360.0 s mur = 2.028 % d'un cœur (0.1267 % machine) — seq=6800
+[agent] témoin coût cumulé : 27.812 s CPU / 1370.0 s mur = 2.030 % d'un cœur (0.1269 % machine) — seq=6850
+[agent] témoin coût cumulé : 28.062 s CPU / 1380.0 s mur = 2.033 % d'un cœur (0.1271 % machine) — seq=6900
+[agent] témoin coût cumulé : 28.234 s CPU / 1390.0 s mur = 2.031 % d'un cœur (0.1270 % machine) — seq=6950
+[agent] témoin coût cumulé : 28.453 s CPU / 1400.0 s mur = 2.032 % d'un cœur (0.1270 % machine) — seq=7000
+[agent] témoin coût cumulé : 28.672 s CPU / 1410.0 s mur = 2.033 % d'un cœur (0.1271 % machine) — seq=7050
+[agent] témoin coût cumulé : 28.906 s CPU / 1420.0 s mur = 2.036 % d'un cœur (0.1272 % machine) — seq=7100
+[agent] témoin coût cumulé : 29.094 s CPU / 1430.0 s mur = 2.034 % d'un cœur (0.1272 % machine) — seq=7150
+[agent] témoin coût cumulé : 29.281 s CPU / 1440.0 s mur = 2.033 % d'un cœur (0.1271 % machine) — seq=7200
+[agent] témoin coût cumulé : 29.484 s CPU / 1450.0 s mur = 2.033 % d'un cœur (0.1271 % machine) — seq=7250
+[agent] témoin coût cumulé : 29.672 s CPU / 1460.0 s mur = 2.032 % d'un cœur (0.1270 % machine) — seq=7300
+[agent] témoin coût cumulé : 29.844 s CPU / 1470.0 s mur = 2.030 % d'un cœur (0.1269 % machine) — seq=7350
+[agent] témoin coût cumulé : 30.031 s CPU / 1480.0 s mur = 2.029 % d'un cœur (0.1268 % machine) — seq=7400
+[agent] témoin coût cumulé : 30.234 s CPU / 1490.0 s mur = 2.029 % d'un cœur (0.1268 % machine) — seq=7450
+[agent] témoin coût cumulé : 30.422 s CPU / 1500.0 s mur = 2.028 % d'un cœur (0.1268 % machine) — seq=7500
+[agent] témoin coût cumulé : 30.578 s CPU / 1510.0 s mur = 2.025 % d'un cœur (0.1266 % machine) — seq=7550
+[agent] témoin coût cumulé : 30.781 s CPU / 1520.0 s mur = 2.025 % d'un cœur (0.1266 % machine) — seq=7600
+[agent] témoin coût cumulé : 30.969 s CPU / 1530.0 s mur = 2.024 % d'un cœur (0.1265 % machine) — seq=7650
+[agent] témoin coût cumulé : 31.141 s CPU / 1540.0 s mur = 2.022 % d'un cœur (0.1264 % machine) — seq=7700
+[agent] témoin coût cumulé : 31.312 s CPU / 1550.0 s mur = 2.020 % d'un cœur (0.1263 % machine) — seq=7750
+[agent] témoin coût cumulé : 31.547 s CPU / 1560.0 s mur = 2.022 % d'un cœur (0.1264 % machine) — seq=7800
+[agent] témoin coût cumulé : 31.797 s CPU / 1570.0 s mur = 2.025 % d'un cœur (0.1266 % machine) — seq=7850
+[agent] témoin coût cumulé : 32.047 s CPU / 1580.0 s mur = 2.028 % d'un cœur (0.1268 % machine) — seq=7900
+[agent] témoin coût cumulé : 32.219 s CPU / 1590.0 s mur = 2.026 % d'un cœur (0.1266 % machine) — seq=7950
+[agent] témoin coût cumulé : 32.422 s CPU / 1600.0 s mur = 2.026 % d'un cœur (0.1266 % machine) — seq=8000
+[agent] témoin coût cumulé : 32.625 s CPU / 1610.0 s mur = 2.026 % d'un cœur (0.1266 % machine) — seq=8050
+[agent] témoin coût cumulé : 32.797 s CPU / 1620.0 s mur = 2.024 % d'un cœur (0.1265 % machine) — seq=8100
+[agent] témoin coût cumulé : 32.984 s CPU / 1630.0 s mur = 2.024 % d'un cœur (0.1265 % machine) — seq=8150
+[agent] témoin coût cumulé : 33.172 s CPU / 1640.0 s mur = 2.023 % d'un cœur (0.1264 % machine) — seq=8200
+[agent] témoin coût cumulé : 33.375 s CPU / 1650.0 s mur = 2.023 % d'un cœur (0.1264 % machine) — seq=8250
+[agent] témoin coût cumulé : 33.609 s CPU / 1660.0 s mur = 2.025 % d'un cœur (0.1265 % machine) — seq=8300
+[agent] témoin coût cumulé : 33.766 s CPU / 1670.0 s mur = 2.022 % d'un cœur (0.1264 % machine) — seq=8350
+[agent] témoin coût cumulé : 33.969 s CPU / 1680.0 s mur = 2.022 % d'un cœur (0.1264 % machine) — seq=8400
+[agent] témoin coût cumulé : 34.156 s CPU / 1690.0 s mur = 2.021 % d'un cœur (0.1263 % machine) — seq=8450
+[agent] témoin coût cumulé : 34.359 s CPU / 1700.0 s mur = 2.021 % d'un cœur (0.1263 % machine) — seq=8500
+[agent] témoin coût cumulé : 34.594 s CPU / 1710.0 s mur = 2.023 % d'un cœur (0.1264 % machine) — seq=8550
+[agent] témoin coût cumulé : 34.766 s CPU / 1720.0 s mur = 2.021 % d'un cœur (0.1263 % machine) — seq=8600
+[agent] témoin coût cumulé : 34.938 s CPU / 1730.0 s mur = 2.019 % d'un cœur (0.1262 % machine) — seq=8650
+[agent] témoin coût cumulé : 35.094 s CPU / 1740.0 s mur = 2.017 % d'un cœur (0.1261 % machine) — seq=8700
+[agent] témoin coût cumulé : 35.312 s CPU / 1750.0 s mur = 2.018 % d'un cœur (0.1261 % machine) — seq=8750
+[agent] témoin coût cumulé : 35.547 s CPU / 1760.0 s mur = 2.020 % d'un cœur (0.1262 % machine) — seq=8800
+[agent] témoin coût cumulé : 35.703 s CPU / 1770.0 s mur = 2.017 % d'un cœur (0.1261 % machine) — seq=8850
+[agent] témoin coût cumulé : 35.906 s CPU / 1780.0 s mur = 2.017 % d'un cœur (0.1261 % machine) — seq=8900
+[agent] témoin coût cumulé : 36.125 s CPU / 1790.0 s mur = 2.018 % d'un cœur (0.1261 % machine) — seq=8950
+[agent] témoin coût cumulé : 36.312 s CPU / 1800.0 s mur = 2.017 % d'un cœur (0.1261 % machine) — seq=9000
+[agent] témoin coût cumulé : 36.484 s CPU / 1810.0 s mur = 2.016 % d'un cœur (0.1260 % machine) — seq=9050
+[agent] témoin coût cumulé : 36.672 s CPU / 1820.0 s mur = 2.015 % d'un cœur (0.1259 % machine) — seq=9100
+[agent] témoin coût cumulé : 36.859 s CPU / 1830.0 s mur = 2.014 % d'un cœur (0.1259 % machine) — seq=9150
+[agent] témoin coût cumulé : 37.062 s CPU / 1840.0 s mur = 2.014 % d'un cœur (0.1259 % machine) — seq=9200
+[agent] témoin coût cumulé : 37.234 s CPU / 1850.0 s mur = 2.013 % d'un cœur (0.1258 % machine) — seq=9250
+[agent] témoin coût cumulé : 37.422 s CPU / 1860.0 s mur = 2.012 % d'un cœur (0.1257 % machine) — seq=9300
+[agent] témoin coût cumulé : 37.609 s CPU / 1870.0 s mur = 2.011 % d'un cœur (0.1257 % machine) — seq=9350
+[agent] témoin coût cumulé : 37.828 s CPU / 1880.0 s mur = 2.012 % d'un cœur (0.1258 % machine) — seq=9400
+[agent] témoin coût cumulé : 38.062 s CPU / 1890.0 s mur = 2.014 % d'un cœur (0.1259 % machine) — seq=9450
+[agent] témoin coût cumulé : 38.250 s CPU / 1900.0 s mur = 2.013 % d'un cœur (0.1258 % machine) — seq=9500
+[agent] témoin coût cumulé : 38.438 s CPU / 1910.0 s mur = 2.012 % d'un cœur (0.1258 % machine) — seq=9550
+[agent] témoin coût cumulé : 38.641 s CPU / 1920.0 s mur = 2.013 % d'un cœur (0.1258 % machine) — seq=9600
+[agent] témoin coût cumulé : 38.828 s CPU / 1930.0 s mur = 2.012 % d'un cœur (0.1257 % machine) — seq=9650
+[agent] témoin coût cumulé : 39.000 s CPU / 1940.0 s mur = 2.010 % d'un cœur (0.1256 % machine) — seq=9700
+[agent] témoin coût cumulé : 39.141 s CPU / 1950.0 s mur = 2.007 % d'un cœur (0.1254 % machine) — seq=9750
+[agent] témoin coût cumulé : 39.297 s CPU / 1960.0 s mur = 2.005 % d'un cœur (0.1253 % machine) — seq=9800
+[agent] témoin coût cumulé : 39.469 s CPU / 1970.0 s mur = 2.003 % d'un cœur (0.1252 % machine) — seq=9850
+[agent] témoin coût cumulé : 39.672 s CPU / 1980.0 s mur = 2.004 % d'un cœur (0.1252 % machine) — seq=9900
+[agent] témoin coût cumulé : 39.891 s CPU / 1990.0 s mur = 2.005 % d'un cœur (0.1253 % machine) — seq=9950
+[agent] témoin coût cumulé : 40.078 s CPU / 2000.0 s mur = 2.004 % d'un cœur (0.1252 % machine) — seq=10000
+[agent] témoin coût cumulé : 40.312 s CPU / 2010.0 s mur = 2.006 % d'un cœur (0.1253 % machine) — seq=10050
+[agent] témoin coût cumulé : 40.500 s CPU / 2020.0 s mur = 2.005 % d'un cœur (0.1253 % machine) — seq=10100
+[agent] témoin coût cumulé : 40.703 s CPU / 2030.0 s mur = 2.005 % d'un cœur (0.1253 % machine) — seq=10150
+[agent] témoin coût cumulé : 40.891 s CPU / 2040.0 s mur = 2.004 % d'un cœur (0.1253 % machine) — seq=10200
+[agent] témoin coût cumulé : 41.094 s CPU / 2050.0 s mur = 2.005 % d'un cœur (0.1253 % machine) — seq=10250
+[agent] témoin coût cumulé : 41.281 s CPU / 2060.0 s mur = 2.004 % d'un cœur (0.1252 % machine) — seq=10300
+[agent] témoin coût cumulé : 41.500 s CPU / 2070.0 s mur = 2.005 % d'un cœur (0.1253 % machine) — seq=10350
+[agent] témoin coût cumulé : 41.734 s CPU / 2080.0 s mur = 2.006 % d'un cœur (0.1254 % machine) — seq=10400
+[agent] témoin coût cumulé : 41.938 s CPU / 2090.0 s mur = 2.007 % d'un cœur (0.1254 % machine) — seq=10450
+[agent] témoin coût cumulé : 42.141 s CPU / 2100.0 s mur = 2.007 % d'un cœur (0.1254 % machine) — seq=10500
+[agent] témoin coût cumulé : 42.312 s CPU / 2110.0 s mur = 2.005 % d'un cœur (0.1253 % machine) — seq=10550
+[agent] témoin coût cumulé : 42.516 s CPU / 2120.0 s mur = 2.005 % d'un cœur (0.1253 % machine) — seq=10600
+[agent] témoin coût cumulé : 42.734 s CPU / 2130.0 s mur = 2.006 % d'un cœur (0.1254 % machine) — seq=10650
+[agent] témoin coût cumulé : 42.969 s CPU / 2140.0 s mur = 2.008 % d'un cœur (0.1255 % machine) — seq=10700
+[agent] témoin coût cumulé : 43.125 s CPU / 2150.0 s mur = 2.006 % d'un cœur (0.1254 % machine) — seq=10750
+[agent] témoin coût cumulé : 43.297 s CPU / 2160.0 s mur = 2.004 % d'un cœur (0.1253 % machine) — seq=10800
+[agent] témoin coût cumulé : 43.484 s CPU / 2170.0 s mur = 2.004 % d'un cœur (0.1252 % machine) — seq=10850
+[agent] témoin coût cumulé : 43.688 s CPU / 2180.0 s mur = 2.004 % d'un cœur (0.1252 % machine) — seq=10900
+[agent] témoin coût cumulé : 43.875 s CPU / 2190.0 s mur = 2.003 % d'un cœur (0.1252 % machine) — seq=10950
+[agent] témoin coût cumulé : 44.047 s CPU / 2200.0 s mur = 2.002 % d'un cœur (0.1251 % machine) — seq=11000
+[agent] témoin coût cumulé : 44.266 s CPU / 2210.0 s mur = 2.003 % d'un cœur (0.1252 % machine) — seq=11050
+[agent] témoin coût cumulé : 44.422 s CPU / 2220.0 s mur = 2.001 % d'un cœur (0.1251 % machine) — seq=11100
+[agent] témoin coût cumulé : 44.672 s CPU / 2230.0 s mur = 2.003 % d'un cœur (0.1252 % machine) — seq=11150
+[agent] témoin coût cumulé : 44.844 s CPU / 2240.0 s mur = 2.002 % d'un cœur (0.1251 % machine) — seq=11200
+[agent] témoin coût cumulé : 45.000 s CPU / 2250.0 s mur = 2.000 % d'un cœur (0.1250 % machine) — seq=11250
+[agent] témoin coût cumulé : 45.172 s CPU / 2260.0 s mur = 1.999 % d'un cœur (0.1249 % machine) — seq=11300
+[agent] témoin coût cumulé : 45.359 s CPU / 2270.0 s mur = 1.998 % d'un cœur (0.1249 % machine) — seq=11350
+[agent] témoin coût cumulé : 45.516 s CPU / 2280.0 s mur = 1.996 % d'un cœur (0.1248 % machine) — seq=11400
+[agent] témoin coût cumulé : 45.703 s CPU / 2290.0 s mur = 1.996 % d'un cœur (0.1247 % machine) — seq=11450
+[agent] témoin coût cumulé : 45.875 s CPU / 2300.0 s mur = 1.995 % d'un cœur (0.1247 % machine) — seq=11500
+[agent] témoin coût cumulé : 46.031 s CPU / 2310.0 s mur = 1.993 % d'un cœur (0.1245 % machine) — seq=11550
+[agent] témoin coût cumulé : 46.188 s CPU / 2320.0 s mur = 1.991 % d'un cœur (0.1244 % machine) — seq=11600
+[agent] témoin coût cumulé : 46.344 s CPU / 2330.0 s mur = 1.989 % d'un cœur (0.1243 % machine) — seq=11650
+[agent] témoin coût cumulé : 46.516 s CPU / 2340.0 s mur = 1.988 % d'un cœur (0.1242 % machine) — seq=11700
+[agent] témoin coût cumulé : 46.719 s CPU / 2350.0 s mur = 1.988 % d'un cœur (0.1243 % machine) — seq=11750
+[agent] témoin coût cumulé : 46.875 s CPU / 2360.0 s mur = 1.986 % d'un cœur (0.1241 % machine) — seq=11800
+[agent] témoin coût cumulé : 47.047 s CPU / 2370.0 s mur = 1.985 % d'un cœur (0.1241 % machine) — seq=11850
+[agent] témoin coût cumulé : 47.266 s CPU / 2380.0 s mur = 1.986 % d'un cœur (0.1241 % machine) — seq=11900
+[agent] témoin coût cumulé : 47.453 s CPU / 2390.0 s mur = 1.985 % d'un cœur (0.1241 % machine) — seq=11950
+[agent] témoin coût cumulé : 47.641 s CPU / 2400.0 s mur = 1.985 % d'un cœur (0.1241 % machine) — seq=12000
+[agent] témoin coût cumulé : 47.844 s CPU / 2410.0 s mur = 1.985 % d'un cœur (0.1241 % machine) — seq=12050
+[agent] témoin coût cumulé : 48.000 s CPU / 2420.0 s mur = 1.983 % d'un cœur (0.1240 % machine) — seq=12100
+[agent] témoin coût cumulé : 48.188 s CPU / 2430.0 s mur = 1.983 % d'un cœur (0.1239 % machine) — seq=12150
+[agent] témoin coût cumulé : 48.391 s CPU / 2440.0 s mur = 1.983 % d'un cœur (0.1239 % machine) — seq=12200
+[agent] témoin coût cumulé : 48.562 s CPU / 2450.0 s mur = 1.982 % d'un cœur (0.1239 % machine) — seq=12250
+[agent] témoin coût cumulé : 48.719 s CPU / 2460.0 s mur = 1.980 % d'un cœur (0.1238 % machine) — seq=12300
+[agent] témoin coût cumulé : 48.891 s CPU / 2470.0 s mur = 1.979 % d'un cœur (0.1237 % machine) — seq=12350
+[agent] témoin coût cumulé : 49.062 s CPU / 2480.0 s mur = 1.978 % d'un cœur (0.1236 % machine) — seq=12400
+[agent] témoin coût cumulé : 49.219 s CPU / 2490.0 s mur = 1.977 % d'un cœur (0.1235 % machine) — seq=12450
+[agent] témoin coût cumulé : 49.375 s CPU / 2500.0 s mur = 1.975 % d'un cœur (0.1234 % machine) — seq=12500
+[agent] témoin coût cumulé : 49.547 s CPU / 2510.0 s mur = 1.974 % d'un cœur (0.1234 % machine) — seq=12550
+[agent] témoin coût cumulé : 49.734 s CPU / 2520.0 s mur = 1.974 % d'un cœur (0.1233 % machine) — seq=12600
+[agent] témoin coût cumulé : 49.953 s CPU / 2530.0 s mur = 1.974 % d'un cœur (0.1234 % machine) — seq=12650
+[agent] témoin coût cumulé : 50.094 s CPU / 2540.0 s mur = 1.972 % d'un cœur (0.1233 % machine) — seq=12700
+[agent] témoin coût cumulé : 50.281 s CPU / 2550.0 s mur = 1.972 % d'un cœur (0.1232 % machine) — seq=12750
+[agent] témoin coût cumulé : 50.469 s CPU / 2560.0 s mur = 1.971 % d'un cœur (0.1232 % machine) — seq=12800
+[agent] témoin coût cumulé : 50.688 s CPU / 2570.0 s mur = 1.972 % d'un cœur (0.1233 % machine) — seq=12850
+[agent] témoin coût cumulé : 50.891 s CPU / 2580.0 s mur = 1.972 % d'un cœur (0.1233 % machine) — seq=12900
+[agent] témoin coût cumulé : 51.047 s CPU / 2590.0 s mur = 1.971 % d'un cœur (0.1232 % machine) — seq=12950
+[agent] témoin coût cumulé : 51.266 s CPU / 2600.0 s mur = 1.972 % d'un cœur (0.1232 % machine) — seq=13000
+[agent] témoin coût cumulé : 51.500 s CPU / 2610.0 s mur = 1.973 % d'un cœur (0.1233 % machine) — seq=13050
+[agent] témoin coût cumulé : 51.719 s CPU / 2620.0 s mur = 1.974 % d'un cœur (0.1234 % machine) — seq=13100
+[agent] témoin coût cumulé : 51.953 s CPU / 2630.0 s mur = 1.975 % d'un cœur (0.1235 % machine) — seq=13150
+[agent] témoin coût cumulé : 52.156 s CPU / 2640.0 s mur = 1.976 % d'un cœur (0.1235 % machine) — seq=13200
+[agent] témoin coût cumulé : 52.359 s CPU / 2650.0 s mur = 1.976 % d'un cœur (0.1235 % machine) — seq=13250
+[agent] témoin coût cumulé : 52.562 s CPU / 2660.0 s mur = 1.976 % d'un cœur (0.1235 % machine) — seq=13300
+[agent] témoin coût cumulé : 52.750 s CPU / 2670.0 s mur = 1.976 % d'un cœur (0.1235 % machine) — seq=13350
+[agent] témoin coût cumulé : 52.984 s CPU / 2680.0 s mur = 1.977 % d'un cœur (0.1236 % machine) — seq=13400
+[agent] témoin coût cumulé : 53.203 s CPU / 2690.0 s mur = 1.978 % d'un cœur (0.1236 % machine) — seq=13450
+[agent] témoin coût cumulé : 53.422 s CPU / 2700.0 s mur = 1.979 % d'un cœur (0.1237 % machine) — seq=13500
+[agent] témoin coût cumulé : 53.609 s CPU / 2710.0 s mur = 1.978 % d'un cœur (0.1236 % machine) — seq=13550
+[agent] témoin coût cumulé : 53.828 s CPU / 2720.0 s mur = 1.979 % d'un cœur (0.1237 % machine) — seq=13600
+[agent] témoin coût cumulé : 54.047 s CPU / 2730.0 s mur = 1.980 % d'un cœur (0.1237 % machine) — seq=13650
+[agent] témoin coût cumulé : 54.266 s CPU / 2740.0 s mur = 1.980 % d'un cœur (0.1238 % machine) — seq=13700
+[agent] témoin coût cumulé : 54.469 s CPU / 2750.0 s mur = 1.981 % d'un cœur (0.1238 % machine) — seq=13750
+[agent] témoin coût cumulé : 54.672 s CPU / 2760.0 s mur = 1.981 % d'un cœur (0.1238 % machine) — seq=13800
+[agent] témoin coût cumulé : 54.875 s CPU / 2770.0 s mur = 1.981 % d'un cœur (0.1238 % machine) — seq=13850
+[agent] témoin coût cumulé : 55.094 s CPU / 2780.0 s mur = 1.982 % d'un cœur (0.1239 % machine) — seq=13900
+[agent] témoin coût cumulé : 55.266 s CPU / 2790.0 s mur = 1.981 % d'un cœur (0.1238 % machine) — seq=13950
+[agent] témoin coût cumulé : 55.531 s CPU / 2800.0 s mur = 1.983 % d'un cœur (0.1240 % machine) — seq=14000
+[agent] témoin coût cumulé : 55.750 s CPU / 2810.0 s mur = 1.984 % d'un cœur (0.1240 % machine) — seq=14050
+[agent] témoin coût cumulé : 55.953 s CPU / 2820.0 s mur = 1.984 % d'un cœur (0.1240 % machine) — seq=14100
+[agent] témoin coût cumulé : 56.172 s CPU / 2830.0 s mur = 1.985 % d'un cœur (0.1241 % machine) — seq=14150
+[agent] témoin coût cumulé : 56.391 s CPU / 2840.0 s mur = 1.986 % d'un cœur (0.1241 % machine) — seq=14200
+[agent] témoin coût cumulé : 56.562 s CPU / 2850.0 s mur = 1.985 % d'un cœur (0.1240 % machine) — seq=14250
+[agent] témoin coût cumulé : 56.719 s CPU / 2860.0 s mur = 1.983 % d'un cœur (0.1239 % machine) — seq=14300
+[agent] témoin coût cumulé : 56.891 s CPU / 2870.0 s mur = 1.982 % d'un cœur (0.1239 % machine) — seq=14350
+[agent] témoin coût cumulé : 57.094 s CPU / 2880.0 s mur = 1.982 % d'un cœur (0.1239 % machine) — seq=14400
+[agent] témoin coût cumulé : 57.281 s CPU / 2890.0 s mur = 1.982 % d'un cœur (0.1239 % machine) — seq=14450
+[agent] témoin coût cumulé : 57.469 s CPU / 2900.0 s mur = 1.982 % d'un cœur (0.1239 % machine) — seq=14500
+[agent] témoin coût cumulé : 57.672 s CPU / 2910.0 s mur = 1.982 % d'un cœur (0.1239 % machine) — seq=14550
+[agent] témoin coût cumulé : 57.891 s CPU / 2920.0 s mur = 1.983 % d'un cœur (0.1239 % machine) — seq=14600
+[agent] témoin coût cumulé : 58.062 s CPU / 2930.0 s mur = 1.982 % d'un cœur (0.1239 % machine) — seq=14650
+[agent] témoin coût cumulé : 58.250 s CPU / 2940.0 s mur = 1.981 % d'un cœur (0.1238 % machine) — seq=14700
+[agent] témoin coût cumulé : 58.438 s CPU / 2950.0 s mur = 1.981 % d'un cœur (0.1238 % machine) — seq=14750
+[agent] témoin coût cumulé : 58.656 s CPU / 2960.0 s mur = 1.982 % d'un cœur (0.1239 % machine) — seq=14800
+[agent] témoin coût cumulé : 58.859 s CPU / 2970.0 s mur = 1.982 % d'un cœur (0.1239 % machine) — seq=14850
+[agent] témoin coût cumulé : 59.109 s CPU / 2980.0 s mur = 1.984 % d'un cœur (0.1240 % machine) — seq=14900
+[agent] témoin coût cumulé : 59.297 s CPU / 2990.0 s mur = 1.983 % d'un cœur (0.1239 % machine) — seq=14950
+[agent] témoin coût cumulé : 59.484 s CPU / 3000.0 s mur = 1.983 % d'un cœur (0.1239 % machine) — seq=15000
+[agent] témoin coût cumulé : 59.672 s CPU / 3010.0 s mur = 1.982 % d'un cœur (0.1239 % machine) — seq=15050
+[agent] témoin coût cumulé : 59.875 s CPU / 3020.0 s mur = 1.983 % d'un cœur (0.1239 % machine) — seq=15100
+[agent] témoin coût cumulé : 60.109 s CPU / 3030.0 s mur = 1.984 % d'un cœur (0.1240 % machine) — seq=15150
+[agent] témoin coût cumulé : 60.328 s CPU / 3040.0 s mur = 1.984 % d'un cœur (0.1240 % machine) — seq=15200
+[agent] témoin coût cumulé : 60.531 s CPU / 3050.0 s mur = 1.985 % d'un cœur (0.1240 % machine) — seq=15250
+[agent] témoin coût cumulé : 60.719 s CPU / 3060.0 s mur = 1.984 % d'un cœur (0.1240 % machine) — seq=15300
+[agent] témoin coût cumulé : 60.906 s CPU / 3070.0 s mur = 1.984 % d'un cœur (0.1240 % machine) — seq=15350
+[agent] témoin coût cumulé : 61.141 s CPU / 3080.0 s mur = 1.985 % d'un cœur (0.1241 % machine) — seq=15400
+[agent] témoin coût cumulé : 61.375 s CPU / 3090.0 s mur = 1.986 % d'un cœur (0.1241 % machine) — seq=15450
+[agent] témoin coût cumulé : 61.609 s CPU / 3100.0 s mur = 1.987 % d'un cœur (0.1242 % machine) — seq=15500
+[agent] témoin coût cumulé : 61.828 s CPU / 3110.0 s mur = 1.988 % d'un cœur (0.1243 % machine) — seq=15550
+[agent] témoin coût cumulé : 62.047 s CPU / 3120.0 s mur = 1.989 % d'un cœur (0.1243 % machine) — seq=15600
+[agent] témoin coût cumulé : 62.234 s CPU / 3130.0 s mur = 1.988 % d'un cœur (0.1243 % machine) — seq=15650
+[agent] témoin coût cumulé : 62.438 s CPU / 3140.0 s mur = 1.988 % d'un cœur (0.1243 % machine) — seq=15700
+[agent] témoin coût cumulé : 62.594 s CPU / 3150.0 s mur = 1.987 % d'un cœur (0.1242 % machine) — seq=15750
+[agent] témoin coût cumulé : 62.734 s CPU / 3160.0 s mur = 1.985 % d'un cœur (0.1241 % machine) — seq=15800
+[agent] témoin coût cumulé : 62.906 s CPU / 3170.0 s mur = 1.984 % d'un cœur (0.1240 % machine) — seq=15850
+[agent] témoin coût cumulé : 63.031 s CPU / 3180.0 s mur = 1.982 % d'un cœur (0.1239 % machine) — seq=15900
+[agent] témoin coût cumulé : 63.219 s CPU / 3190.0 s mur = 1.982 % d'un cœur (0.1239 % machine) — seq=15950
+[agent] témoin coût cumulé : 63.375 s CPU / 3200.0 s mur = 1.980 % d'un cœur (0.1238 % machine) — seq=16000
+[agent] témoin coût cumulé : 63.531 s CPU / 3210.0 s mur = 1.979 % d'un cœur (0.1237 % machine) — seq=16050
+[agent] témoin coût cumulé : 63.719 s CPU / 3220.0 s mur = 1.979 % d'un cœur (0.1237 % machine) — seq=16100
+[agent] témoin coût cumulé : 63.875 s CPU / 3230.0 s mur = 1.978 % d'un cœur (0.1236 % machine) — seq=16150
+[agent] témoin coût cumulé : 64.016 s CPU / 3240.0 s mur = 1.976 % d'un cœur (0.1235 % machine) — seq=16200
+[agent] témoin coût cumulé : 64.188 s CPU / 3250.0 s mur = 1.975 % d'un cœur (0.1234 % machine) — seq=16250
+[agent] témoin coût cumulé : 64.297 s CPU / 3260.0 s mur = 1.972 % d'un cœur (0.1233 % machine) — seq=16300
+[agent] témoin coût cumulé : 64.453 s CPU / 3270.0 s mur = 1.971 % d'un cœur (0.1232 % machine) — seq=16350
+[agent] témoin coût cumulé : 64.625 s CPU / 3280.0 s mur = 1.970 % d'un cœur (0.1231 % machine) — seq=16400
+[agent] témoin coût cumulé : 64.766 s CPU / 3290.0 s mur = 1.969 % d'un cœur (0.1230 % machine) — seq=16450
+[agent] témoin coût cumulé : 64.906 s CPU / 3300.0 s mur = 1.967 % d'un cœur (0.1229 % machine) — seq=16500
+[agent] témoin coût cumulé : 65.047 s CPU / 3310.0 s mur = 1.965 % d'un cœur (0.1228 % machine) — seq=16550
+[agent] témoin coût cumulé : 65.188 s CPU / 3320.0 s mur = 1.963 % d'un cœur (0.1227 % machine) — seq=16600
+[agent] témoin coût cumulé : 65.344 s CPU / 3330.0 s mur = 1.962 % d'un cœur (0.1226 % machine) — seq=16650
+[agent] témoin coût cumulé : 65.547 s CPU / 3340.0 s mur = 1.962 % d'un cœur (0.1227 % machine) — seq=16700
+[agent] témoin coût cumulé : 65.750 s CPU / 3350.0 s mur = 1.963 % d'un cœur (0.1227 % machine) — seq=16750
+[agent] témoin coût cumulé : 65.969 s CPU / 3360.0 s mur = 1.963 % d'un cœur (0.1227 % machine) — seq=16800
+[agent] témoin coût cumulé : 66.156 s CPU / 3370.0 s mur = 1.963 % d'un cœur (0.1227 % machine) — seq=16850
+[agent] témoin coût cumulé : 66.312 s CPU / 3380.0 s mur = 1.962 % d'un cœur (0.1226 % machine) — seq=16900
+[agent] témoin coût cumulé : 66.516 s CPU / 3390.0 s mur = 1.962 % d'un cœur (0.1226 % machine) — seq=16950
+[agent] témoin coût cumulé : 66.734 s CPU / 3400.0 s mur = 1.963 % d'un cœur (0.1227 % machine) — seq=17000
+[agent] témoin coût cumulé : 66.953 s CPU / 3410.0 s mur = 1.963 % d'un cœur (0.1227 % machine) — seq=17050
+[agent] témoin coût cumulé : 67.203 s CPU / 3420.0 s mur = 1.965 % d'un cœur (0.1228 % machine) — seq=17100
+[agent] témoin coût cumulé : 67.422 s CPU / 3430.0 s mur = 1.966 % d'un cœur (0.1229 % machine) — seq=17150
+[agent] témoin coût cumulé : 67.625 s CPU / 3440.0 s mur = 1.966 % d'un cœur (0.1229 % machine) — seq=17200
+[agent] témoin coût cumulé : 67.828 s CPU / 3450.0 s mur = 1.966 % d'un cœur (0.1229 % machine) — seq=17250
+[agent] témoin coût cumulé : 68.016 s CPU / 3460.0 s mur = 1.966 % d'un cœur (0.1229 % machine) — seq=17300
+[agent] témoin coût cumulé : 68.203 s CPU / 3470.0 s mur = 1.965 % d'un cœur (0.1228 % machine) — seq=17350
+[agent] témoin coût cumulé : 68.359 s CPU / 3480.0 s mur = 1.964 % d'un cœur (0.1228 % machine) — seq=17400
+[agent] témoin coût cumulé : 68.578 s CPU / 3490.0 s mur = 1.965 % d'un cœur (0.1228 % machine) — seq=17450
+[agent] témoin coût cumulé : 68.719 s CPU / 3500.0 s mur = 1.963 % d'un cœur (0.1227 % machine) — seq=17500
+[agent] témoin coût cumulé : 68.891 s CPU / 3510.0 s mur = 1.963 % d'un cœur (0.1227 % machine) — seq=17550
+[agent] témoin coût cumulé : 69.094 s CPU / 3520.0 s mur = 1.963 % d'un cœur (0.1227 % machine) — seq=17600
+[agent] témoin coût cumulé : 69.328 s CPU / 3530.0 s mur = 1.964 % d'un cœur (0.1227 % machine) — seq=17650
+[agent] témoin coût cumulé : 69.562 s CPU / 3540.0 s mur = 1.965 % d'un cœur (0.1228 % machine) — seq=17700
+[agent] témoin coût cumulé : 69.781 s CPU / 3550.0 s mur = 1.966 % d'un cœur (0.1229 % machine) — seq=17750
+[agent] témoin coût cumulé : 69.969 s CPU / 3560.0 s mur = 1.965 % d'un cœur (0.1228 % machine) — seq=17800
+[agent] témoin coût cumulé : 70.156 s CPU / 3570.0 s mur = 1.965 % d'un cœur (0.1228 % machine) — seq=17850
+[agent] témoin coût cumulé : 70.312 s CPU / 3580.0 s mur = 1.964 % d'un cœur (0.1228 % machine) — seq=17900
+[agent] témoin coût cumulé : 70.547 s CPU / 3590.0 s mur = 1.965 % d'un cœur (0.1228 % machine) — seq=17950
+[agent] témoin coût cumulé : 70.766 s CPU / 3600.0 s mur = 1.966 % d'un cœur (0.1229 % machine) — seq=18000
+[agent] témoin coût cumulé : 70.953 s CPU / 3610.0 s mur = 1.965 % d'un cœur (0.1228 % machine) — seq=18050
+[agent] témoin coût cumulé : 71.125 s CPU / 3620.0 s mur = 1.965 % d'un cœur (0.1228 % machine) — seq=18100
+[agent] témoin coût cumulé : 71.281 s CPU / 3630.0 s mur = 1.964 % d'un cœur (0.1227 % machine) — seq=18150
+[agent] témoin coût cumulé : 71.484 s CPU / 3640.0 s mur = 1.964 % d'un cœur (0.1227 % machine) — seq=18200
+[agent] témoin coût cumulé : 71.672 s CPU / 3650.0 s mur = 1.964 % d'un cœur (0.1227 % machine) — seq=18250
+[agent] témoin coût cumulé : 71.844 s CPU / 3660.0 s mur = 1.963 % d'un cœur (0.1227 % machine) — seq=18300
+[agent] témoin coût cumulé : 72.016 s CPU / 3670.0 s mur = 1.962 % d'un cœur (0.1226 % machine) — seq=18350
+[agent] témoin coût cumulé : 72.281 s CPU / 3680.0 s mur = 1.964 % d'un cœur (0.1228 % machine) — seq=18400
+[agent] témoin coût cumulé : 72.406 s CPU / 3690.0 s mur = 1.962 % d'un cœur (0.1226 % machine) — seq=18450
+[agent] témoin coût cumulé : 72.594 s CPU / 3700.0 s mur = 1.962 % d'un cœur (0.1226 % machine) — seq=18500
+[agent] témoin coût cumulé : 72.797 s CPU / 3710.0 s mur = 1.962 % d'un cœur (0.1226 % machine) — seq=18550
+[agent] témoin coût cumulé : 72.984 s CPU / 3720.0 s mur = 1.962 % d'un cœur (0.1226 % machine) — seq=18600
+[agent] témoin coût cumulé : 73.219 s CPU / 3730.0 s mur = 1.963 % d'un cœur (0.1227 % machine) — seq=18650
+[agent] témoin coût cumulé : 73.359 s CPU / 3740.0 s mur = 1.961 % d'un cœur (0.1226 % machine) — seq=18700
+[agent] témoin coût cumulé : 73.531 s CPU / 3750.0 s mur = 1.961 % d'un cœur (0.1226 % machine) — seq=18750
+[agent] témoin coût cumulé : 73.719 s CPU / 3760.0 s mur = 1.961 % d'un cœur (0.1225 % machine) — seq=18800
+[agent] témoin coût cumulé : 73.875 s CPU / 3770.0 s mur = 1.960 % d'un cœur (0.1225 % machine) — seq=18850
+[agent] témoin coût cumulé : 74.031 s CPU / 3780.0 s mur = 1.958 % d'un cœur (0.1224 % machine) — seq=18900
+[agent] témoin coût cumulé : 74.203 s CPU / 3790.0 s mur = 1.958 % d'un cœur (0.1224 % machine) — seq=18950
+[agent] témoin coût cumulé : 74.375 s CPU / 3800.0 s mur = 1.957 % d'un cœur (0.1223 % machine) — seq=19000
+[agent] témoin coût cumulé : 74.594 s CPU / 3810.0 s mur = 1.958 % d'un cœur (0.1224 % machine) — seq=19050
+[agent] témoin coût cumulé : 74.766 s CPU / 3820.0 s mur = 1.957 % d'un cœur (0.1223 % machine) — seq=19100
+[agent] témoin coût cumulé : 75.016 s CPU / 3830.0 s mur = 1.959 % d'un cœur (0.1224 % machine) — seq=19150
+[agent] témoin coût cumulé : 75.203 s CPU / 3840.0 s mur = 1.958 % d'un cœur (0.1224 % machine) — seq=19200
+[agent] témoin coût cumulé : 75.422 s CPU / 3850.0 s mur = 1.959 % d'un cœur (0.1224 % machine) — seq=19250
+[agent] témoin coût cumulé : 75.609 s CPU / 3860.0 s mur = 1.959 % d'un cœur (0.1224 % machine) — seq=19300
+[agent] témoin coût cumulé : 75.828 s CPU / 3870.0 s mur = 1.959 % d'un cœur (0.1225 % machine) — seq=19350
+[agent] témoin coût cumulé : 76.047 s CPU / 3880.0 s mur = 1.960 % d'un cœur (0.1225 % machine) — seq=19400
+[agent] témoin coût cumulé : 76.281 s CPU / 3890.0 s mur = 1.961 % d'un cœur (0.1226 % machine) — seq=19450
+[agent] témoin coût cumulé : 76.453 s CPU / 3900.0 s mur = 1.960 % d'un cœur (0.1225 % machine) — seq=19500
+[agent] témoin coût cumulé : 76.641 s CPU / 3910.0 s mur = 1.960 % d'un cœur (0.1225 % machine) — seq=19550
+[agent] témoin coût cumulé : 76.812 s CPU / 3920.0 s mur = 1.959 % d'un cœur (0.1225 % machine) — seq=19600
+[agent] témoin coût cumulé : 77.016 s CPU / 3930.0 s mur = 1.960 % d'un cœur (0.1225 % machine) — seq=19650
+[agent] témoin coût cumulé : 77.266 s CPU / 3940.0 s mur = 1.961 % d'un cœur (0.1226 % machine) — seq=19700
+[agent] témoin coût cumulé : 77.484 s CPU / 3950.0 s mur = 1.962 % d'un cœur (0.1226 % machine) — seq=19750
+[agent] témoin coût cumulé : 77.688 s CPU / 3960.0 s mur = 1.962 % d'un cœur (0.1226 % machine) — seq=19800
+[agent] témoin coût cumulé : 77.859 s CPU / 3970.0 s mur = 1.961 % d'un cœur (0.1226 % machine) — seq=19850
+[agent] témoin coût cumulé : 78.031 s CPU / 3980.0 s mur = 1.961 % d'un cœur (0.1225 % machine) — seq=19900
+[agent] témoin coût cumulé : 78.250 s CPU / 3990.0 s mur = 1.961 % d'un cœur (0.1226 % machine) — seq=19950
+[agent] témoin coût cumulé : 78.469 s CPU / 4000.0 s mur = 1.962 % d'un cœur (0.1226 % machine) — seq=20000
+[agent] témoin coût cumulé : 78.641 s CPU / 4010.0 s mur = 1.961 % d'un cœur (0.1226 % machine) — seq=20050
+[agent] témoin coût cumulé : 78.828 s CPU / 4020.0 s mur = 1.961 % d'un cœur (0.1226 % machine) — seq=20100
+[agent] témoin coût cumulé : 79.016 s CPU / 4030.0 s mur = 1.961 % d'un cœur (0.1225 % machine) — seq=20150
+[agent] témoin coût cumulé : 79.219 s CPU / 4040.0 s mur = 1.961 % d'un cœur (0.1226 % machine) — seq=20200
+[agent] témoin coût cumulé : 79.406 s CPU / 4050.0 s mur = 1.961 % d'un cœur (0.1225 % machine) — seq=20250
+[agent] témoin coût cumulé : 79.594 s CPU / 4060.0 s mur = 1.960 % d'un cœur (0.1225 % machine) — seq=20300
+[agent] témoin coût cumulé : 79.797 s CPU / 4070.0 s mur = 1.961 % d'un cœur (0.1225 % machine) — seq=20350
+[agent] témoin coût cumulé : 80.016 s CPU / 4080.0 s mur = 1.961 % d'un cœur (0.1226 % machine) — seq=20400
+[agent] témoin coût cumulé : 80.250 s CPU / 4090.0 s mur = 1.962 % d'un cœur (0.1226 % machine) — seq=20450
+[agent] témoin coût cumulé : 80.453 s CPU / 4100.0 s mur = 1.962 % d'un cœur (0.1226 % machine) — seq=20500
+[agent] témoin coût cumulé : 80.719 s CPU / 4110.0 s mur = 1.964 % d'un cœur (0.1227 % machine) — seq=20550
+[agent] témoin coût cumulé : 80.922 s CPU / 4120.0 s mur = 1.964 % d'un cœur (0.1228 % machine) — seq=20600
+[agent] témoin coût cumulé : 81.078 s CPU / 4130.0 s mur = 1.963 % d'un cœur (0.1227 % machine) — seq=20650
+[agent] témoin coût cumulé : 81.234 s CPU / 4140.0 s mur = 1.962 % d'un cœur (0.1226 % machine) — seq=20700
+[agent] témoin coût cumulé : 81.438 s CPU / 4150.0 s mur = 1.962 % d'un cœur (0.1226 % machine) — seq=20750
+[agent] témoin coût cumulé : 81.625 s CPU / 4160.0 s mur = 1.962 % d'un cœur (0.1226 % machine) — seq=20800
+[agent] témoin coût cumulé : 81.844 s CPU / 4170.0 s mur = 1.963 % d'un cœur (0.1227 % machine) — seq=20850
+[agent] témoin coût cumulé : 82.062 s CPU / 4180.0 s mur = 1.963 % d'un cœur (0.1227 % machine) — seq=20900
+[agent] témoin coût cumulé : 82.312 s CPU / 4190.0 s mur = 1.964 % d'un cœur (0.1228 % machine) — seq=20950
+[agent] témoin coût cumulé : 82.531 s CPU / 4200.0 s mur = 1.965 % d'un cœur (0.1228 % machine) — seq=21000
+[agent] témoin coût cumulé : 82.766 s CPU / 4210.0 s mur = 1.966 % d'un cœur (0.1229 % machine) — seq=21050
+[agent] témoin coût cumulé : 82.953 s CPU / 4220.0 s mur = 1.966 % d'un cœur (0.1229 % machine) — seq=21100
+[agent] témoin coût cumulé : 83.172 s CPU / 4230.0 s mur = 1.966 % d'un cœur (0.1229 % machine) — seq=21150
+[agent] témoin coût cumulé : 83.391 s CPU / 4240.0 s mur = 1.967 % d'un cœur (0.1229 % machine) — seq=21200
+[agent] témoin coût cumulé : 83.578 s CPU / 4250.0 s mur = 1.967 % d'un cœur (0.1229 % machine) — seq=21250
+[agent] témoin coût cumulé : 83.766 s CPU / 4260.0 s mur = 1.966 % d'un cœur (0.1229 % machine) — seq=21300
+[agent] témoin coût cumulé : 83.984 s CPU / 4270.0 s mur = 1.967 % d'un cœur (0.1229 % machine) — seq=21350
+[agent] témoin coût cumulé : 84.172 s CPU / 4280.0 s mur = 1.967 % d'un cœur (0.1229 % machine) — seq=21400
+[agent] témoin coût cumulé : 84.391 s CPU / 4290.0 s mur = 1.967 % d'un cœur (0.1229 % machine) — seq=21450
+[agent] témoin coût cumulé : 84.578 s CPU / 4300.0 s mur = 1.967 % d'un cœur (0.1229 % machine) — seq=21500
+[agent] témoin coût cumulé : 84.797 s CPU / 4310.0 s mur = 1.967 % d'un cœur (0.1230 % machine) — seq=21550
+[agent] témoin coût cumulé : 85.016 s CPU / 4320.0 s mur = 1.968 % d'un cœur (0.1230 % machine) — seq=21600
+[agent] témoin coût cumulé : 85.250 s CPU / 4330.0 s mur = 1.969 % d'un cœur (0.1231 % machine) — seq=21650
+[agent] témoin coût cumulé : 85.469 s CPU / 4340.0 s mur = 1.969 % d'un cœur (0.1231 % machine) — seq=21700
+[agent] témoin coût cumulé : 85.641 s CPU / 4350.0 s mur = 1.969 % d'un cœur (0.1230 % machine) — seq=21750
+[agent] témoin coût cumulé : 85.859 s CPU / 4360.0 s mur = 1.969 % d'un cœur (0.1231 % machine) — seq=21800
+[agent] témoin coût cumulé : 86.109 s CPU / 4370.0 s mur = 1.970 % d'un cœur (0.1232 % machine) — seq=21850
+[agent] témoin coût cumulé : 86.344 s CPU / 4380.0 s mur = 1.971 % d'un cœur (0.1232 % machine) — seq=21900
+[agent] témoin coût cumulé : 86.531 s CPU / 4390.0 s mur = 1.971 % d'un cœur (0.1232 % machine) — seq=21950
+[agent] témoin coût cumulé : 86.703 s CPU / 4400.0 s mur = 1.971 % d'un cœur (0.1232 % machine) — seq=22000
+[agent] témoin coût cumulé : 86.922 s CPU / 4410.0 s mur = 1.971 % d'un cœur (0.1232 % machine) — seq=22050
+[agent] témoin coût cumulé : 87.156 s CPU / 4420.0 s mur = 1.972 % d'un cœur (0.1232 % machine) — seq=22100
+[agent] témoin coût cumulé : 87.359 s CPU / 4430.0 s mur = 1.972 % d'un cœur (0.1232 % machine) — seq=22150
+[agent] témoin coût cumulé : 87.609 s CPU / 4440.0 s mur = 1.973 % d'un cœur (0.1233 % machine) — seq=22200
+[agent] témoin coût cumulé : 87.844 s CPU / 4450.0 s mur = 1.974 % d'un cœur (0.1234 % machine) — seq=22250
+[agent] témoin coût cumulé : 88.016 s CPU / 4460.0 s mur = 1.973 % d'un cœur (0.1233 % machine) — seq=22300
+[agent] témoin coût cumulé : 88.250 s CPU / 4470.0 s mur = 1.974 % d'un cœur (0.1234 % machine) — seq=22350
+[agent] témoin coût cumulé : 88.469 s CPU / 4480.0 s mur = 1.975 % d'un cœur (0.1234 % machine) — seq=22400
+[agent] témoin coût cumulé : 88.641 s CPU / 4490.0 s mur = 1.974 % d'un cœur (0.1234 % machine) — seq=22450
+[agent] témoin coût cumulé : 88.828 s CPU / 4500.0 s mur = 1.974 % d'un cœur (0.1234 % machine) — seq=22500
+[agent] témoin coût cumulé : 89.062 s CPU / 4510.0 s mur = 1.975 % d'un cœur (0.1234 % machine) — seq=22550
+[agent] arrêt demandé (drapeau H:\dev\projets\desknode\dn-agent.stop)
+[agent] arrêt après 4512.0 s — 22560 trames émises (5.00 trames/s), 0 erreurs d'envoi, 0 recalages de cadence
+[agent] écho console draîné : 1241716 o, 23241 lignes en 4512.0 s = 275.2 o/s, 5.15 lignes/s (PLAFOND du bruit console : inclut le battement 10 s et tout ESP_LOGx)
+[agent] aucun refus signalé par le firmware sur le fil
+[agent] aucun ecretage : toute valeur emise est la valeur mesuree
+[agent] 🔴 PANNES DE SOURCE (grandeur perdue ⇒ champ VIDE, « -- » sur SA ligne ; metrique non emise SEULEMENT si la position 0 manquait) : lhm:TimeoutError=1
+[agent] LHM : 4512 lecture(s) reussie(s), 1 en echec — duree moyenne 7.3 ms, MAX 604.2 ms (timeout pose : 600 ms)
+[agent] 🔴 le plafond a COUPE au moins une lecture (1 echec(s), timeout 600 ms). ⚠️ Le dimensionnement est a revoir. ⛔ `duree_max` (604 ms) est un MAX sur les reussites ET les echecs : il ne dit PAS a quel instant la coupe a eu lieu.
+[agent] 🔴 UNE LECTURE LHM A DEPASSE LE PLAFOND SANS ECHOUER : 604 ms pour un timeout de 600 ms (101 %), 1 echec(s). ⚠️ Le budget ne borne que le RESEAU : ce depassement vient d'ailleurs (parse, ordonnancement). ⛔ C'EST un incident — il mange la cadence et arme le recalage.
+[agent] aucune absence LHM : les cinq sondes ont rendu une valeur a chaque lecture reussie
+[agent] GPU : AMD Radeon RX 6800 XT via ADL PMLog (adaptateur 0) — temoin de mapping BUS_LANES=16 CLK_MEMCLK=1986 MHz
+[agent] LHM : 127.0.0.1:8085/metrics — 5/5 sonde(s) avec valeur (timeout 0.60 s, connexion PERSISTANTE)
+[agent] arrêt demandé (drapeau H:\dev\projets\desknode\dn-agent.stop)
+[agent] arrêt après 48.0 s — 240 trames émises (5.00 trames/s), 0 erreurs d'envoi, 0 recalages de cadence
+[agent] écho console draîné : 12277 o, 247 lignes en 48.0 s = 255.7 o/s, 5.14 lignes/s (PLAFOND du bruit console : inclut le battement 10 s et tout ESP_LOGx)
+[agent] aucun refus signalé par le firmware sur le fil
+[agent] aucun ecretage : toute valeur emise est la valeur mesuree
+[agent] aucune panne de source : les cinq ont repondu a chaque cycle
+[agent] LHM : 49 lecture(s) reussie(s), 0 en echec — duree moyenne 7.3 ms, MAX 23.1 ms (timeout pose : 600 ms)
+[agent] aucune absence LHM : les cinq sondes ont rendu une valeur a chaque lecture reussie
+[agent] GPU : AMD Radeon RX 6800 XT via ADL PMLog (adaptateur 0) — temoin de mapping BUS_LANES=16 CLK_MEMCLK=1994 MHz
+[agent] LHM : 127.0.0.1:8085/metrics — 5/5 sonde(s) avec valeur (timeout 0.60 s, connexion PERSISTANTE)
+[agent] témoin coût cumulé : 0.375 s CPU / 10.0 s mur = 3.741 % d'un cœur (0.2338 % machine) — seq=50
+[agent] témoin coût cumulé : 0.578 s CPU / 20.0 s mur = 2.885 % d'un cœur (0.1803 % machine) — seq=100
+[agent] témoin coût cumulé : 0.781 s CPU / 30.0 s mur = 2.602 % d'un cœur (0.1626 % machine) — seq=150
+[agent] témoin coût cumulé : 1.016 s CPU / 40.0 s mur = 2.537 % d'un cœur (0.1586 % machine) — seq=200
+[agent] témoin coût cumulé : 1.203 s CPU / 50.0 s mur = 2.405 % d'un cœur (0.1503 % machine) — seq=250
+[agent] témoin coût cumulé : 1.391 s CPU / 60.0 s mur = 2.316 % d'un cœur (0.1448 % machine) — seq=300
+[agent] témoin coût cumulé : 1.562 s CPU / 70.0 s mur = 2.231 % d'un cœur (0.1395 % machine) — seq=350
+[agent] témoin coût cumulé : 1.719 s CPU / 80.0 s mur = 2.148 % d'un cœur (0.1342 % machine) — seq=400
+[agent] témoin coût cumulé : 1.938 s CPU / 90.0 s mur = 2.152 % d'un cœur (0.1345 % machine) — seq=450
+[agent] témoin coût cumulé : 2.125 s CPU / 100.0 s mur = 2.124 % d'un cœur (0.1328 % machine) — seq=500
+[agent] témoin coût cumulé : 2.328 s CPU / 110.0 s mur = 2.116 % d'un cœur (0.1322 % machine) — seq=550
+[agent] témoin coût cumulé : 2.531 s CPU / 120.0 s mur = 2.109 % d'un cœur (0.1318 % machine) — seq=600
+[agent] témoin coût cumulé : 2.719 s CPU / 130.0 s mur = 2.091 % d'un cœur (0.1307 % machine) — seq=650
+[agent] témoin coût cumulé : 2.906 s CPU / 140.0 s mur = 2.075 % d'un cœur (0.1297 % machine) — seq=700
+[agent] témoin coût cumulé : 3.109 s CPU / 150.0 s mur = 2.072 % d'un cœur (0.1295 % machine) — seq=750
+[agent] témoin coût cumulé : 3.359 s CPU / 160.0 s mur = 2.099 % d'un cœur (0.1312 % machine) — seq=800
+[agent] témoin coût cumulé : 3.562 s CPU / 170.0 s mur = 2.095 % d'un cœur (0.1310 % machine) — seq=850
+[agent] témoin coût cumulé : 3.797 s CPU / 180.0 s mur = 2.109 % d'un cœur (0.1318 % machine) — seq=900
+[agent] témoin coût cumulé : 4.031 s CPU / 190.0 s mur = 2.121 % d'un cœur (0.1326 % machine) — seq=950
+[agent] témoin coût cumulé : 4.250 s CPU / 200.0 s mur = 2.125 % d'un cœur (0.1328 % machine) — seq=1000
+[agent] témoin coût cumulé : 4.484 s CPU / 210.0 s mur = 2.135 % d'un cœur (0.1334 % machine) — seq=1050
+[agent] témoin coût cumulé : 4.766 s CPU / 220.0 s mur = 2.166 % d'un cœur (0.1354 % machine) — seq=1100
+[agent] témoin coût cumulé : 4.969 s CPU / 230.0 s mur = 2.160 % d'un cœur (0.1350 % machine) — seq=1150
+[agent] témoin coût cumulé : 5.188 s CPU / 240.0 s mur = 2.161 % d'un cœur (0.1351 % machine) — seq=1200
+[agent] témoin coût cumulé : 5.359 s CPU / 250.0 s mur = 2.144 % d'un cœur (0.1340 % machine) — seq=1250
+[agent] témoin coût cumulé : 5.531 s CPU / 260.0 s mur = 2.127 % d'un cœur (0.1329 % machine) — seq=1300
+[agent] témoin coût cumulé : 5.750 s CPU / 270.0 s mur = 2.129 % d'un cœur (0.1331 % machine) — seq=1350
+[agent] témoin coût cumulé : 5.938 s CPU / 280.0 s mur = 2.120 % d'un cœur (0.1325 % machine) — seq=1400
+[agent] témoin coût cumulé : 6.156 s CPU / 290.0 s mur = 2.123 % d'un cœur (0.1327 % machine) — seq=1450
+[agent] témoin coût cumulé : 6.359 s CPU / 300.0 s mur = 2.120 % d'un cœur (0.1325 % machine) — seq=1500
+[agent] arrêt demandé (drapeau H:\dev\projets\desknode\dn-agent.stop)
+[agent] arrêt après 305.0 s — 1525 trames émises (5.00 trames/s), 0 erreurs d'envoi, 0 recalages de cadence
+[agent] écho console draîné : 79975 o, 1567 lignes en 305.0 s = 262.2 o/s, 5.14 lignes/s (PLAFOND du bruit console : inclut le battement 10 s et tout ESP_LOGx)
+[agent] aucun refus signalé par le firmware sur le fil
+[agent] aucun ecretage : toute valeur emise est la valeur mesuree
+[agent] aucune panne de source : les cinq ont repondu a chaque cycle
+[agent] LHM : 306 lecture(s) reussie(s), 0 en echec — duree moyenne 7.4 ms, MAX 14.7 ms (timeout pose : 600 ms)
+[agent] aucune absence LHM : les cinq sondes ont rendu une valeur a chaque lecture reussie
+[agent] GPU : AMD Radeon RX 6800 XT via ADL PMLog (adaptateur 0) — temoin de mapping BUS_LANES=16 CLK_MEMCLK=1992 MHz
+[agent] LHM : 127.0.0.1:8085/metrics — 5/5 sonde(s) avec valeur (timeout 0.60 s, connexion PERSISTANTE)
+[agent] envoi serie en échec (1) : WriteFile failed (PermissionError(13, 'Le périphérique ne reconnaît pas la commande.', None, 22))
+[agent] port COM3 en attente de reouverture (1 echec(s) consecutif(s)) — les trames sont ABANDONNEES tant que le backoff court (compte total : 2)
+[agent] envoi serie en échec (6) : could not open port 'COM3': FileNotFoundError(2, 'Le fichier spécifié est introuvable.', None, 2)
+[agent] port COM3 en attente de reouverture (2 echec(s) consecutif(s)) — les trames sont ABANDONNEES tant que le backoff court (compte total : 7)
+[agent] envoi serie en échec (11) : could not open port 'COM3': FileNotFoundError(2, 'Le fichier spécifié est introuvable.', None, 2)
+[agent] port COM3 en attente de reouverture (3 echec(s) consecutif(s)) — les trames sont ABANDONNEES tant que le backoff court (compte total : 12)
+[agent] envoi serie en échec (16) : could not open port 'COM3': FileNotFoundError(2, 'Le fichier spécifié est introuvable.', None, 2)
+[agent] port COM3 en attente de reouverture (4 echec(s) consecutif(s)) — les trames sont ABANDONNEES tant que le backoff court (compte total : 17)
+[agent] envoi serie en échec (26) : could not open port 'COM3': FileNotFoundError(2, 'Le fichier spécifié est introuvable.', None, 2)
+[agent] port COM3 en attente de reouverture (5 echec(s) consecutif(s)) — les trames sont ABANDONNEES tant que le backoff court (compte total : 27)
+[agent] ⚠️ source `lhm` en ECHEC (budget de lecture LHM epuise (600 ms)) — la ou elle remplissait une grandeur, le fil porte un CHAMP VIDE et la ligne dit « -- » ; SI elle tenait la position 0, c'est la metrique entiere qui n'est pas emise. Les autres continuent : une source morte meurt SEULE.
+[agent] ✅ source `lhm` a REPRIS apres 1 echec(s) consecutif(s) — la connexion persistante s'est retablie SANS redemarrer l'agent.
+[agent] GPU : AMD Radeon RX 6800 XT via ADL PMLog (adaptateur 0) — temoin de mapping BUS_LANES=16 CLK_MEMCLK=1988 MHz
+[agent] ⚠️ LHM INJOIGNABLE au demarrage (TimeoutError: budget de lecture LHM epuise (600 ms)) — la °C CPU et les tr/min diront « -- », les autres grandeurs continuent. ⚠️ La source RESTE ARMEE : elle retente a chaque cycle et reprendra seule si LHM demarre.
+[agent] ✅ source `lhm` a REPRIS apres 1 echec(s) consecutif(s) — la connexion persistante s'est retablie SANS redemarrer l'agent.
+[agent] témoin coût cumulé : 0.219 s CPU / 10.0 s mur = 2.182 % d'un cœur (0.1364 % machine) — seq=50
+[agent] témoin coût cumulé : 0.391 s CPU / 20.0 s mur = 1.951 % d'un cœur (0.1219 % machine) — seq=100
+[agent] témoin coût cumulé : 0.656 s CPU / 30.1 s mur = 2.181 % d'un cœur (0.1363 % machine) — seq=150
+[agent] témoin coût cumulé : 0.891 s CPU / 40.0 s mur = 2.225 % d'un cœur (0.1391 % machine) — seq=200
+[agent] témoin coût cumulé : 1.047 s CPU / 50.0 s mur = 2.093 % d'un cœur (0.1308 % machine) — seq=250
+[agent] témoin coût cumulé : 1.219 s CPU / 60.0 s mur = 2.030 % d'un cœur (0.1269 % machine) — seq=300
+[agent] témoin coût cumulé : 1.391 s CPU / 70.0 s mur = 1.986 % d'un cœur (0.1241 % machine) — seq=350
+[agent] témoin coût cumulé : 1.594 s CPU / 80.0 s mur = 1.991 % d'un cœur (0.1245 % machine) — seq=400
+[agent] témoin coût cumulé : 1.781 s CPU / 90.0 s mur = 1.978 % d'un cœur (0.1236 % machine) — seq=450
+[agent] témoin coût cumulé : 2.047 s CPU / 100.0 s mur = 2.046 % d'un cœur (0.1279 % machine) — seq=500
+[agent] témoin coût cumulé : 2.266 s CPU / 110.0 s mur = 2.059 % d'un cœur (0.1287 % machine) — seq=550
+[agent] témoin coût cumulé : 2.438 s CPU / 120.0 s mur = 2.031 % d'un cœur (0.1269 % machine) — seq=600
+[agent] témoin coût cumulé : 2.672 s CPU / 130.0 s mur = 2.055 % d'un cœur (0.1284 % machine) — seq=650
+[agent] témoin coût cumulé : 2.891 s CPU / 140.0 s mur = 2.064 % d'un cœur (0.1290 % machine) — seq=700
+[agent] témoin coût cumulé : 3.094 s CPU / 150.0 s mur = 2.062 % d'un cœur (0.1289 % machine) — seq=750
+[agent] témoin coût cumulé : 3.328 s CPU / 160.0 s mur = 2.080 % d'un cœur (0.1300 % machine) — seq=800
+[agent] témoin coût cumulé : 3.562 s CPU / 170.0 s mur = 2.095 % d'un cœur (0.1309 % machine) — seq=850
+[agent] témoin coût cumulé : 3.812 s CPU / 180.0 s mur = 2.118 % d'un cœur (0.1323 % machine) — seq=900
+[agent] témoin coût cumulé : 4.031 s CPU / 190.0 s mur = 2.121 % d'un cœur (0.1326 % machine) — seq=950
+[agent] témoin coût cumulé : 4.219 s CPU / 200.0 s mur = 2.109 % d'un cœur (0.1318 % machine) — seq=1000
+[agent] témoin coût cumulé : 4.438 s CPU / 210.0 s mur = 2.113 % d'un cœur (0.1320 % machine) — seq=1050
+[agent] témoin coût cumulé : 4.641 s CPU / 220.0 s mur = 2.109 % d'un cœur (0.1318 % machine) — seq=1100
+[agent] témoin coût cumulé : 4.859 s CPU / 230.0 s mur = 2.113 % d'un cœur (0.1320 % machine) — seq=1150
+[agent] témoin coût cumulé : 5.062 s CPU / 240.0 s mur = 2.109 % d'un cœur (0.1318 % machine) — seq=1200
+[agent] témoin coût cumulé : 5.234 s CPU / 250.0 s mur = 2.094 % d'un cœur (0.1308 % machine) — seq=1250
+[agent] témoin coût cumulé : 5.422 s CPU / 260.0 s mur = 2.085 % d'un cœur (0.1303 % machine) — seq=1300
+[agent] témoin coût cumulé : 5.594 s CPU / 270.0 s mur = 2.072 % d'un cœur (0.1295 % machine) — seq=1350
+[agent] témoin coût cumulé : 5.750 s CPU / 280.0 s mur = 2.053 % d'un cœur (0.1283 % machine) — seq=1400
+[agent] témoin coût cumulé : 5.953 s CPU / 290.0 s mur = 2.053 % d'un cœur (0.1283 % machine) — seq=1450
+[agent] témoin coût cumulé : 6.109 s CPU / 300.0 s mur = 2.036 % d'un cœur (0.1273 % machine) — seq=1500
+[agent] témoin coût cumulé : 6.297 s CPU / 310.0 s mur = 2.031 % d'un cœur (0.1269 % machine) — seq=1550
+[agent] témoin coût cumulé : 6.500 s CPU / 320.0 s mur = 2.031 % d'un cœur (0.1269 % machine) — seq=1600
+[agent] témoin coût cumulé : 6.719 s CPU / 330.0 s mur = 2.036 % d'un cœur (0.1272 % machine) — seq=1650
+[agent] témoin coût cumulé : 6.938 s CPU / 340.0 s mur = 2.040 % d'un cœur (0.1275 % machine) — seq=1700
+[agent] témoin coût cumulé : 7.125 s CPU / 350.0 s mur = 2.036 % d'un cœur (0.1272 % machine) — seq=1750
+[agent] témoin coût cumulé : 7.281 s CPU / 360.0 s mur = 2.022 % d'un cœur (0.1264 % machine) — seq=1800
+[agent] témoin coût cumulé : 7.469 s CPU / 370.0 s mur = 2.018 % d'un cœur (0.1262 % machine) — seq=1850
+[agent] témoin coût cumulé : 7.688 s CPU / 380.0 s mur = 2.023 % d'un cœur (0.1264 % machine) — seq=1900
+[agent] témoin coût cumulé : 7.891 s CPU / 390.0 s mur = 2.023 % d'un cœur (0.1264 % machine) — seq=1950
+[agent] témoin coût cumulé : 8.109 s CPU / 400.0 s mur = 2.027 % d'un cœur (0.1267 % machine) — seq=2000
+[agent] témoin coût cumulé : 8.266 s CPU / 410.0 s mur = 2.016 % d'un cœur (0.1260 % machine) — seq=2050
+[agent] témoin coût cumulé : 8.484 s CPU / 420.0 s mur = 2.020 % d'un cœur (0.1262 % machine) — seq=2100
+[agent] témoin coût cumulé : 8.672 s CPU / 430.0 s mur = 2.017 % d'un cœur (0.1260 % machine) — seq=2150
+[agent] témoin coût cumulé : 8.844 s CPU / 440.0 s mur = 2.010 % d'un cœur (0.1256 % machine) — seq=2200
+[agent] témoin coût cumulé : 9.016 s CPU / 450.0 s mur = 2.003 % d'un cœur (0.1252 % machine) — seq=2250
+[agent] témoin coût cumulé : 9.203 s CPU / 460.0 s mur = 2.001 % d'un cœur (0.1250 % machine) — seq=2300
+[agent] témoin coût cumulé : 9.375 s CPU / 470.0 s mur = 1.995 % d'un cœur (0.1247 % machine) — seq=2350
+[agent] témoin coût cumulé : 9.547 s CPU / 480.0 s mur = 1.989 % d'un cœur (0.1243 % machine) — seq=2400
+[agent] témoin coût cumulé : 9.719 s CPU / 490.0 s mur = 1.983 % d'un cœur (0.1240 % machine) — seq=2450
+[agent] témoin coût cumulé : 9.938 s CPU / 500.0 s mur = 1.987 % d'un cœur (0.1242 % machine) — seq=2500
+[agent] témoin coût cumulé : 10.156 s CPU / 510.0 s mur = 1.991 % d'un cœur (0.1245 % machine) — seq=2550
+[agent] témoin coût cumulé : 10.328 s CPU / 520.0 s mur = 1.986 % d'un cœur (0.1241 % machine) — seq=2600
+[agent] témoin coût cumulé : 10.531 s CPU / 530.0 s mur = 1.987 % d'un cœur (0.1242 % machine) — seq=2650
+[agent] témoin coût cumulé : 10.688 s CPU / 540.0 s mur = 1.979 % d'un cœur (0.1237 % machine) — seq=2700
+[agent] témoin coût cumulé : 10.922 s CPU / 550.0 s mur = 1.986 % d'un cœur (0.1241 % machine) — seq=2750
+[agent] témoin coût cumulé : 11.109 s CPU / 560.0 s mur = 1.984 % d'un cœur (0.1240 % machine) — seq=2800
+[agent] témoin coût cumulé : 11.359 s CPU / 570.0 s mur = 1.993 % d'un cœur (0.1245 % machine) — seq=2850
+[agent] arrêt demandé (drapeau H:\dev\projets\desknode\dn-agent.stop)
+[agent] arrêt après 570.0 s — 2850 trames émises (5.00 trames/s), 0 erreurs d'envoi, 0 recalages de cadence
+[agent] écho console draîné : 152587 o, 2931 lignes en 570.0 s = 267.7 o/s, 5.14 lignes/s (PLAFOND du bruit console : inclut le battement 10 s et tout ESP_LOGx)
+[agent] aucun refus signalé par le firmware sur le fil
+[agent] aucun ecretage : toute valeur emise est la valeur mesuree
+[agent] aucune panne de source : les cinq ont repondu a chaque cycle
+[agent] LHM : 570 lecture(s) reussie(s), 1 en echec — duree moyenne 9.5 ms, MAX 610.4 ms (timeout pose : 600 ms)
+[agent] 🔴 le plafond a COUPE au moins une lecture (1 echec(s), timeout 600 ms). ⚠️ Le dimensionnement est a revoir. ⛔ `duree_max` (610 ms) est un MAX sur les reussites ET les echecs : il ne dit PAS a quel instant la coupe a eu lieu.
+[agent] 🔴 UNE LECTURE LHM A DEPASSE LE PLAFOND SANS ECHOUER : 610 ms pour un timeout de 600 ms (102 %), 1 echec(s). ⚠️ Le budget ne borne que le RESEAU : ce depassement vient d'ailleurs (parse, ordonnancement). ⛔ C'EST un incident — il mange la cadence et arme le recalage.
+[agent] ⚠️ ABSENCES LHM (LHM a REPONDU, sans cette valeur — champ VIDE sur le fil, ⛔ PAS une panne) : cpu.degc=2 · fan.case_group=3 · fan.cpu_noctua=3 · fan.rear_out=3 · fan.top_out=3
+[agent] GPU : AMD Radeon RX 6800 XT via ADL PMLog (adaptateur 0) — temoin de mapping BUS_LANES=16 CLK_MEMCLK=1984 MHz
+[agent] LHM : 127.0.0.1:8085/metrics — 5/5 sonde(s) avec valeur (timeout 0.60 s, connexion PERSISTANTE)
+[agent] témoin coût cumulé : 0.422 s CPU / 10.0 s mur = 4.205 % d'un cœur (0.2628 % machine) — seq=50
+[agent] arrêt demandé (drapeau H:\dev\projets\desknode\dn-agent.stop)
+[agent] arrêt après 10.0 s — 50 trames émises (4.98 trames/s), 0 erreurs d'envoi, 0 recalages de cadence
+[agent] écho console draîné : 2499 o, 51 lignes en 10.0 s = 249.1 o/s, 5.08 lignes/s (PLAFOND du bruit console : inclut le battement 10 s et tout ESP_LOGx)
+[agent] aucun refus signalé par le firmware sur le fil
+[agent] aucun ecretage : toute valeur emise est la valeur mesuree
+[agent] aucune panne de source : les cinq ont repondu a chaque cycle
+[agent] LHM : 11 lecture(s) reussie(s), 0 en echec — duree moyenne 7.0 ms, MAX 12.2 ms (timeout pose : 600 ms)
+[agent] aucune absence LHM : les cinq sondes ont rendu une valeur a chaque lecture reussie
+[agent] GPU : AMD Radeon RX 6800 XT via ADL PMLog (adaptateur 0) — temoin de mapping BUS_LANES=16 CLK_MEMCLK=1986 MHz
+[agent] LHM : 127.0.0.1:8085/metrics — 5/5 sonde(s) avec valeur (timeout 0.60 s, connexion PERSISTANTE)
+[agent] témoin coût cumulé : 0.312 s CPU / 10.0 s mur = 3.117 % d'un cœur (0.1948 % machine) — seq=50
+[agent] arrêt demandé (drapeau H:\dev\projets\desknode\dn-agent.stop)
+[agent] arrêt après 10.0 s — 50 trames émises (4.99 trames/s), 0 erreurs d'envoi, 0 recalages de cadence
+[agent] écho console draîné : 8473 o, 115 lignes en 10.0 s = 845.0 o/s, 11.47 lignes/s (PLAFOND du bruit console : inclut le battement 10 s et tout ESP_LOGx)
+[agent] aucun refus signalé par le firmware sur le fil
+[agent] aucun ecretage : toute valeur emise est la valeur mesuree
+[agent] aucune panne de source : les cinq ont repondu a chaque cycle
+[agent] LHM : 11 lecture(s) reussie(s), 0 en echec — duree moyenne 6.3 ms, MAX 12.2 ms (timeout pose : 600 ms)
+[agent] aucune absence LHM : les cinq sondes ont rendu une valeur a chaque lecture reussie
+[agent] GPU : AMD Radeon RX 6800 XT via ADL PMLog (adaptateur 0) — temoin de mapping BUS_LANES=16 CLK_MEMCLK=1980 MHz
+[agent] LHM : 127.0.0.1:8085/metrics — 5/5 sonde(s) avec valeur (timeout 0.60 s, connexion PERSISTANTE)
+[agent] témoin coût cumulé : 0.453 s CPU / 10.0 s mur = 4.517 % d'un cœur (0.2823 % machine) — seq=50
+[agent] témoin coût cumulé : 0.656 s CPU / 20.0 s mur = 3.277 % d'un cœur (0.2048 % machine) — seq=100
+[agent] témoin coût cumulé : 0.812 s CPU / 30.0 s mur = 2.706 % d'un cœur (0.1691 % machine) — seq=150
+[agent] témoin coût cumulé : 0.969 s CPU / 40.0 s mur = 2.420 % d'un cœur (0.1513 % machine) — seq=200
+[agent] témoin coût cumulé : 1.188 s CPU / 50.0 s mur = 2.374 % d'un cœur (0.1484 % machine) — seq=250
+[agent] témoin coût cumulé : 1.344 s CPU / 60.0 s mur = 2.239 % d'un cœur (0.1399 % machine) — seq=300
+[agent] témoin coût cumulé : 1.500 s CPU / 70.0 s mur = 2.142 % d'un cœur (0.1339 % machine) — seq=350
+[agent] témoin coût cumulé : 1.719 s CPU / 80.0 s mur = 2.148 % d'un cœur (0.1342 % machine) — seq=400
+[agent] témoin coût cumulé : 1.875 s CPU / 90.0 s mur = 2.083 % d'un cœur (0.1302 % machine) — seq=450
+[agent] témoin coût cumulé : 2.031 s CPU / 100.0 s mur = 2.031 % d'un cœur (0.1269 % machine) — seq=500
+[agent] témoin coût cumulé : 2.203 s CPU / 110.0 s mur = 2.002 % d'un cœur (0.1252 % machine) — seq=550
+[agent] témoin coût cumulé : 2.391 s CPU / 120.0 s mur = 1.992 % d'un cœur (0.1245 % machine) — seq=600
+[agent] témoin coût cumulé : 2.562 s CPU / 130.0 s mur = 1.971 % d'un cœur (0.1232 % machine) — seq=650
+[agent] témoin coût cumulé : 2.656 s CPU / 140.1 s mur = 1.895 % d'un cœur (0.1185 % machine) — seq=700
+[agent] témoin coût cumulé : 2.859 s CPU / 150.0 s mur = 1.906 % d'un cœur (0.1191 % machine) — seq=750
+[agent] témoin coût cumulé : 3.031 s CPU / 160.0 s mur = 1.894 % d'un cœur (0.1184 % machine) — seq=800
+[agent] témoin coût cumulé : 3.188 s CPU / 170.0 s mur = 1.875 % d'un cœur (0.1172 % machine) — seq=850
+[agent] témoin coût cumulé : 3.344 s CPU / 180.0 s mur = 1.857 % d'un cœur (0.1161 % machine) — seq=900
+[agent] témoin coût cumulé : 3.562 s CPU / 190.0 s mur = 1.875 % d'un cœur (0.1172 % machine) — seq=950
+[agent] témoin coût cumulé : 3.781 s CPU / 200.0 s mur = 1.890 % d'un cœur (0.1181 % machine) — seq=1000
+[agent] témoin coût cumulé : 3.969 s CPU / 210.0 s mur = 1.890 % d'un cœur (0.1181 % machine) — seq=1050
+[agent] témoin coût cumulé : 4.125 s CPU / 220.0 s mur = 1.875 % d'un cœur (0.1172 % machine) — seq=1100
+[agent] témoin coût cumulé : 4.281 s CPU / 230.0 s mur = 1.861 % d'un cœur (0.1163 % machine) — seq=1150
+[agent] témoin coût cumulé : 4.469 s CPU / 240.0 s mur = 1.862 % d'un cœur (0.1164 % machine) — seq=1200
+[agent] témoin coût cumulé : 4.672 s CPU / 250.0 s mur = 1.869 % d'un cœur (0.1168 % machine) — seq=1250
+[agent] témoin coût cumulé : 4.844 s CPU / 260.0 s mur = 1.863 % d'un cœur (0.1164 % machine) — seq=1300
+[agent] témoin coût cumulé : 5.016 s CPU / 270.0 s mur = 1.857 % d'un cœur (0.1161 % machine) — seq=1350
+[agent] témoin coût cumulé : 5.234 s CPU / 280.0 s mur = 1.869 % d'un cœur (0.1168 % machine) — seq=1400
+[agent] témoin coût cumulé : 5.406 s CPU / 290.0 s mur = 1.864 % d'un cœur (0.1165 % machine) — seq=1450
+[agent] témoin coût cumulé : 5.594 s CPU / 300.0 s mur = 1.864 % d'un cœur (0.1165 % machine) — seq=1500
+[agent] témoin coût cumulé : 5.750 s CPU / 310.0 s mur = 1.855 % d'un cœur (0.1159 % machine) — seq=1550
+[agent] témoin coût cumulé : 5.906 s CPU / 320.0 s mur = 1.846 % d'un cœur (0.1153 % machine) — seq=1600
+[agent] témoin coût cumulé : 6.062 s CPU / 330.0 s mur = 1.837 % d'un cœur (0.1148 % machine) — seq=1650
+[agent] témoin coût cumulé : 6.266 s CPU / 340.0 s mur = 1.843 % d'un cœur (0.1152 % machine) — seq=1700
+[agent] témoin coût cumulé : 6.438 s CPU / 350.0 s mur = 1.839 % d'un cœur (0.1149 % machine) — seq=1750
+[agent] témoin coût cumulé : 6.625 s CPU / 360.0 s mur = 1.840 % d'un cœur (0.1150 % machine) — seq=1800
+[agent] témoin coût cumulé : 6.797 s CPU / 370.0 s mur = 1.837 % d'un cœur (0.1148 % machine) — seq=1850
+[agent] témoin coût cumulé : 6.984 s CPU / 380.0 s mur = 1.838 % d'un cœur (0.1149 % machine) — seq=1900
+[agent] témoin coût cumulé : 7.172 s CPU / 390.0 s mur = 1.839 % d'un cœur (0.1149 % machine) — seq=1950
+[agent] témoin coût cumulé : 7.312 s CPU / 400.0 s mur = 1.828 % d'un cœur (0.1143 % machine) — seq=2000
+[agent] témoin coût cumulé : 7.500 s CPU / 410.0 s mur = 1.829 % d'un cœur (0.1143 % machine) — seq=2050
+[agent] témoin coût cumulé : 7.672 s CPU / 420.0 s mur = 1.827 % d'un cœur (0.1142 % machine) — seq=2100
+[agent] témoin coût cumulé : 7.844 s CPU / 430.0 s mur = 1.824 % d'un cœur (0.1140 % machine) — seq=2150
+[agent] témoin coût cumulé : 8.016 s CPU / 440.0 s mur = 1.822 % d'un cœur (0.1139 % machine) — seq=2200
+[agent] témoin coût cumulé : 8.172 s CPU / 450.0 s mur = 1.816 % d'un cœur (0.1135 % machine) — seq=2250
+[agent] témoin coût cumulé : 8.328 s CPU / 460.0 s mur = 1.810 % d'un cœur (0.1131 % machine) — seq=2300
+[agent] témoin coût cumulé : 8.500 s CPU / 470.0 s mur = 1.808 % d'un cœur (0.1130 % machine) — seq=2350
+[agent] témoin coût cumulé : 8.672 s CPU / 480.0 s mur = 1.807 % d'un cœur (0.1129 % machine) — seq=2400
+[agent] témoin coût cumulé : 8.828 s CPU / 490.0 s mur = 1.802 % d'un cœur (0.1126 % machine) — seq=2450
+[agent] témoin coût cumulé : 8.984 s CPU / 500.0 s mur = 1.797 % d'un cœur (0.1123 % machine) — seq=2500
+[agent] témoin coût cumulé : 9.141 s CPU / 510.0 s mur = 1.792 % d'un cœur (0.1120 % machine) — seq=2550
+[agent] témoin coût cumulé : 9.312 s CPU / 520.0 s mur = 1.791 % d'un cœur (0.1119 % machine) — seq=2600
+[agent] témoin coût cumulé : 9.500 s CPU / 530.0 s mur = 1.792 % d'un cœur (0.1120 % machine) — seq=2650
+[agent] témoin coût cumulé : 9.672 s CPU / 540.0 s mur = 1.791 % d'un cœur (0.1119 % machine) — seq=2700
+[agent] témoin coût cumulé : 9.875 s CPU / 550.0 s mur = 1.795 % d'un cœur (0.1122 % machine) — seq=2750
+[agent] témoin coût cumulé : 10.031 s CPU / 560.0 s mur = 1.791 % d'un cœur (0.1120 % machine) — seq=2800
+[agent] témoin coût cumulé : 10.203 s CPU / 570.0 s mur = 1.790 % d'un cœur (0.1119 % machine) — seq=2850
+[agent] témoin coût cumulé : 10.391 s CPU / 580.0 s mur = 1.791 % d'un cœur (0.1120 % machine) — seq=2900
+[agent] témoin coût cumulé : 10.547 s CPU / 590.0 s mur = 1.788 % d'un cœur (0.1117 % machine) — seq=2950
+[agent] témoin coût cumulé : 10.719 s CPU / 600.0 s mur = 1.786 % d'un cœur (0.1116 % machine) — seq=3000
+[agent] témoin coût cumulé : 10.891 s CPU / 610.0 s mur = 1.785 % d'un cœur (0.1116 % machine) — seq=3050
+[agent] témoin coût cumulé : 11.078 s CPU / 620.0 s mur = 1.787 % d'un cœur (0.1117 % machine) — seq=3100
+[agent] témoin coût cumulé : 11.266 s CPU / 630.0 s mur = 1.788 % d'un cœur (0.1118 % machine) — seq=3150
+[agent] témoin coût cumulé : 11.484 s CPU / 640.0 s mur = 1.794 % d'un cœur (0.1121 % machine) — seq=3200
+[agent] témoin coût cumulé : 11.672 s CPU / 650.0 s mur = 1.796 % d'un cœur (0.1122 % machine) — seq=3250
+[agent] témoin coût cumulé : 11.875 s CPU / 660.0 s mur = 1.799 % d'un cœur (0.1124 % machine) — seq=3300
+[agent] témoin coût cumulé : 12.047 s CPU / 670.0 s mur = 1.798 % d'un cœur (0.1124 % machine) — seq=3350
+[agent] témoin coût cumulé : 12.203 s CPU / 680.0 s mur = 1.795 % d'un cœur (0.1122 % machine) — seq=3400
+[agent] témoin coût cumulé : 12.406 s CPU / 690.0 s mur = 1.798 % d'un cœur (0.1124 % machine) — seq=3450
+[agent] témoin coût cumulé : 12.594 s CPU / 700.0 s mur = 1.799 % d'un cœur (0.1124 % machine) — seq=3500
+[agent] témoin coût cumulé : 12.766 s CPU / 710.0 s mur = 1.798 % d'un cœur (0.1124 % machine) — seq=3550
+[agent] témoin coût cumulé : 12.953 s CPU / 720.0 s mur = 1.799 % d'un cœur (0.1124 % machine) — seq=3600
+[agent] témoin coût cumulé : 13.141 s CPU / 730.0 s mur = 1.800 % d'un cœur (0.1125 % machine) — seq=3650
+[agent] témoin coût cumulé : 13.344 s CPU / 740.0 s mur = 1.803 % d'un cœur (0.1127 % machine) — seq=3700
+[agent] témoin coût cumulé : 13.531 s CPU / 750.0 s mur = 1.804 % d'un cœur (0.1128 % machine) — seq=3750
+[agent] témoin coût cumulé : 13.719 s CPU / 760.0 s mur = 1.805 % d'un cœur (0.1128 % machine) — seq=3800
+[agent] témoin coût cumulé : 13.891 s CPU / 770.0 s mur = 1.804 % d'un cœur (0.1127 % machine) — seq=3850
+[agent] témoin coût cumulé : 14.062 s CPU / 780.0 s mur = 1.803 % d'un cœur (0.1127 % machine) — seq=3900
+[agent] témoin coût cumulé : 14.250 s CPU / 790.0 s mur = 1.804 % d'un cœur (0.1127 % machine) — seq=3950
+[agent] témoin coût cumulé : 14.422 s CPU / 800.0 s mur = 1.803 % d'un cœur (0.1127 % machine) — seq=4000
+[agent] témoin coût cumulé : 14.609 s CPU / 810.0 s mur = 1.804 % d'un cœur (0.1127 % machine) — seq=4050
+[agent] témoin coût cumulé : 14.766 s CPU / 820.0 s mur = 1.801 % d'un cœur (0.1125 % machine) — seq=4100
+[agent] témoin coût cumulé : 14.953 s CPU / 830.0 s mur = 1.802 % d'un cœur (0.1126 % machine) — seq=4150
+[agent] témoin coût cumulé : 15.156 s CPU / 840.0 s mur = 1.804 % d'un cœur (0.1128 % machine) — seq=4200
+[agent] témoin coût cumulé : 15.375 s CPU / 850.0 s mur = 1.809 % d'un cœur (0.1130 % machine) — seq=4250
+[agent] témoin coût cumulé : 15.547 s CPU / 860.0 s mur = 1.808 % d'un cœur (0.1130 % machine) — seq=4300
+[agent] témoin coût cumulé : 15.719 s CPU / 870.0 s mur = 1.807 % d'un cœur (0.1129 % machine) — seq=4350
+[agent] témoin coût cumulé : 15.875 s CPU / 880.0 s mur = 1.804 % d'un cœur (0.1127 % machine) — seq=4400
+[agent] témoin coût cumulé : 16.047 s CPU / 890.0 s mur = 1.803 % d'un cœur (0.1127 % machine) — seq=4450
+[agent] témoin coût cumulé : 16.281 s CPU / 900.0 s mur = 1.809 % d'un cœur (0.1131 % machine) — seq=4500
+[agent] témoin coût cumulé : 16.469 s CPU / 910.0 s mur = 1.810 % d'un cœur (0.1131 % machine) — seq=4550
+[agent] témoin coût cumulé : 16.641 s CPU / 920.0 s mur = 1.809 % d'un cœur (0.1130 % machine) — seq=4600
+[agent] témoin coût cumulé : 16.797 s CPU / 930.0 s mur = 1.806 % d'un cœur (0.1129 % machine) — seq=4650
+[agent] témoin coût cumulé : 17.016 s CPU / 940.0 s mur = 1.810 % d'un cœur (0.1131 % machine) — seq=4700
+[agent] témoin coût cumulé : 17.203 s CPU / 950.0 s mur = 1.811 % d'un cœur (0.1132 % machine) — seq=4750
+[agent] témoin coût cumulé : 17.359 s CPU / 960.0 s mur = 1.808 % d'un cœur (0.1130 % machine) — seq=4800
+[agent] témoin coût cumulé : 17.578 s CPU / 970.0 s mur = 1.812 % d'un cœur (0.1133 % machine) — seq=4850
+[agent] témoin coût cumulé : 17.766 s CPU / 980.0 s mur = 1.813 % d'un cœur (0.1133 % machine) — seq=4900
+[agent] témoin coût cumulé : 17.953 s CPU / 990.0 s mur = 1.813 % d'un cœur (0.1133 % machine) — seq=4950
+[agent] témoin coût cumulé : 18.125 s CPU / 1000.0 s mur = 1.812 % d'un cœur (0.1133 % machine) — seq=5000
+[agent] témoin coût cumulé : 18.297 s CPU / 1010.0 s mur = 1.812 % d'un cœur (0.1132 % machine) — seq=5050
+[agent] témoin coût cumulé : 18.484 s CPU / 1020.0 s mur = 1.812 % d'un cœur (0.1133 % machine) — seq=5100
+[agent] témoin coût cumulé : 18.656 s CPU / 1030.0 s mur = 1.811 % d'un cœur (0.1132 % machine) — seq=5150
+[agent] témoin coût cumulé : 18.875 s CPU / 1040.0 s mur = 1.815 % d'un cœur (0.1134 % machine) — seq=5200
+[agent] témoin coût cumulé : 19.047 s CPU / 1050.0 s mur = 1.814 % d'un cœur (0.1134 % machine) — seq=5250
+[agent] témoin coût cumulé : 19.234 s CPU / 1060.0 s mur = 1.815 % d'un cœur (0.1134 % machine) — seq=5300
+[agent] témoin coût cumulé : 19.406 s CPU / 1070.0 s mur = 1.814 % d'un cœur (0.1134 % machine) — seq=5350
+[agent] témoin coût cumulé : 19.562 s CPU / 1080.0 s mur = 1.811 % d'un cœur (0.1132 % machine) — seq=5400
+[agent] témoin coût cumulé : 19.797 s CPU / 1090.0 s mur = 1.816 % d'un cœur (0.1135 % machine) — seq=5450
+[agent] témoin coût cumulé : 19.969 s CPU / 1100.0 s mur = 1.815 % d'un cœur (0.1135 % machine) — seq=5500
+[agent] témoin coût cumulé : 20.188 s CPU / 1110.0 s mur = 1.819 % d'un cœur (0.1137 % machine) — seq=5550
+[agent] témoin coût cumulé : 20.391 s CPU / 1120.0 s mur = 1.821 % d'un cœur (0.1138 % machine) — seq=5600
+[agent] témoin coût cumulé : 20.562 s CPU / 1130.0 s mur = 1.820 % d'un cœur (0.1137 % machine) — seq=5650
+[agent] témoin coût cumulé : 20.766 s CPU / 1140.0 s mur = 1.822 % d'un cœur (0.1138 % machine) — seq=5700
+[agent] témoin coût cumulé : 20.953 s CPU / 1150.0 s mur = 1.822 % d'un cœur (0.1139 % machine) — seq=5750
+[agent] témoin coût cumulé : 21.172 s CPU / 1160.0 s mur = 1.825 % d'un cœur (0.1141 % machine) — seq=5800
+[agent] témoin coût cumulé : 21.406 s CPU / 1170.0 s mur = 1.830 % d'un cœur (0.1143 % machine) — seq=5850
+[agent] témoin coût cumulé : 21.625 s CPU / 1180.0 s mur = 1.833 % d'un cœur (0.1145 % machine) — seq=5900
+[agent] témoin coût cumulé : 21.812 s CPU / 1190.0 s mur = 1.833 % d'un cœur (0.1146 % machine) — seq=5950
+[agent] témoin coût cumulé : 22.000 s CPU / 1200.0 s mur = 1.833 % d'un cœur (0.1146 % machine) — seq=6000
+[agent] témoin coût cumulé : 22.172 s CPU / 1210.0 s mur = 1.832 % d'un cœur (0.1145 % machine) — seq=6050
+[agent] arrêt demandé (drapeau H:\dev\projets\desknode\dn-agent.stop)
+[agent] arrêt après 1217.0 s — 6085 trames émises (5.00 trames/s), 0 erreurs d'envoi, 0 recalages de cadence
+[agent] écho console draîné : 363141 o, 6430 lignes en 1217.0 s = 298.4 o/s, 5.28 lignes/s (PLAFOND du bruit console : inclut le battement 10 s et tout ESP_LOGx)
+[agent] aucun refus signalé par le firmware sur le fil
+[agent] aucun ecretage : toute valeur emise est la valeur mesuree
+[agent] aucune panne de source : les cinq ont repondu a chaque cycle
+[agent] LHM : 1218 lecture(s) reussie(s), 0 en echec — duree moyenne 6.2 ms, MAX 56.0 ms (timeout pose : 600 ms)
+[agent] aucune absence LHM : les cinq sondes ont rendu une valeur a chaque lecture reussie
+[agent] GPU : AMD Radeon RX 6800 XT via ADL PMLog (adaptateur 0) — temoin de mapping BUS_LANES=16 CLK_MEMCLK=1984 MHz
+[agent] LHM : 127.0.0.1:8085/metrics — 5/5 sonde(s) avec valeur (timeout 0.60 s, connexion PERSISTANTE)
+[agent] témoin coût cumulé : 0.453 s CPU / 10.0 s mur = 4.519 % d'un cœur (0.2824 % machine) — seq=50
+[agent] témoin coût cumulé : 0.656 s CPU / 20.0 s mur = 3.277 % d'un cœur (0.2048 % machine) — seq=100
+[agent] témoin coût cumulé : 0.922 s CPU / 30.0 s mur = 3.070 % d'un cœur (0.1919 % machine) — seq=150
+[agent] arrêt demandé (H:\dev\projets\desknode\dn-agent.stop)
+[agent] arrêt après 32.0 s — 160 trames émises (5.00 trames/s), 0 erreurs d'envoi, 0 recalages de cadence
+[agent] écho console draîné : 8470 o, 166 lignes en 32.0 s = 264.5 o/s, 5.18 lignes/s (PLAFOND du bruit console : inclut le battement 10 s et tout ESP_LOGx)
+[agent] aucun refus signalé par le firmware sur le fil
+[agent] aucun ecretage : toute valeur emise est la valeur mesuree
+[agent] aucune panne de source : les cinq ont repondu a chaque cycle
+[agent] LHM : 33 lecture(s) reussie(s), 0 en echec — duree moyenne 6.5 ms, MAX 12.7 ms (timeout pose : 600 ms)
+[agent] aucune absence LHM : les cinq sondes ont rendu une valeur a chaque lecture reussie
+[agent] GPU : AMD Radeon RX 6800 XT via ADL PMLog (adaptateur 0) — temoin de mapping BUS_LANES=16 CLK_MEMCLK=1988 MHz
+[agent] LHM : 127.0.0.1:8085/metrics — 5/5 sonde(s) avec valeur (timeout 0.60 s, connexion PERSISTANTE)
+[agent] témoin coût cumulé : 0.266 s CPU / 10.0 s mur = 2.650 % d'un cœur (0.1656 % machine) — seq=50
+[agent] arrêt demandé (H:\dev\projets\desknode\dn-agent.stop)
+[agent] arrêt après 14.0 s — 70 trames émises (4.99 trames/s), 0 erreurs d'envoi, 0 recalages de cadence
+[agent] écho console draîné : 3497 o, 71 lignes en 14.0 s = 249.3 o/s, 5.06 lignes/s (PLAFOND du bruit console : inclut le battement 10 s et tout ESP_LOGx)
+[agent] aucun refus signalé par le firmware sur le fil
+[agent] aucun ecretage : toute valeur emise est la valeur mesuree
+[agent] aucune panne de source : les cinq ont repondu a chaque cycle
+[agent] LHM : 15 lecture(s) reussie(s), 0 en echec — duree moyenne 6.8 ms, MAX 11.4 ms (timeout pose : 600 ms)
+[agent] aucune absence LHM : les cinq sondes ont rendu une valeur a chaque lecture reussie
+[agent] GPU : AMD Radeon RX 6800 XT via ADL PMLog (adaptateur 0) — temoin de mapping BUS_LANES=16 CLK_MEMCLK=1978 MHz
+[agent] LHM : 127.0.0.1:8085/metrics — 5/5 sonde(s) avec valeur (timeout 0.60 s, connexion PERSISTANTE)
+[agent] témoin coût cumulé : 0.406 s CPU / 10.0 s mur = 4.051 % d'un cœur (0.2532 % machine) — seq=50
+[agent] témoin coût cumulé : 0.609 s CPU / 20.0 s mur = 3.043 % d'un cœur (0.1902 % machine) — seq=100
+[agent] témoin coût cumulé : 0.859 s CPU / 30.0 s mur = 2.862 % d'un cœur (0.1789 % machine) — seq=150
+[agent] témoin coût cumulé : 1.000 s CPU / 40.0 s mur = 2.498 % d'un cœur (0.1562 % machine) — seq=200
+[agent] témoin coût cumulé : 1.172 s CPU / 50.0 s mur = 2.342 % d'un cœur (0.1464 % machine) — seq=250
+[agent] témoin coût cumulé : 1.312 s CPU / 60.0 s mur = 2.187 % d'un cœur (0.1367 % machine) — seq=300
+[agent] témoin coût cumulé : 1.453 s CPU / 70.0 s mur = 2.075 % d'un cœur (0.1297 % machine) — seq=350
+[agent] témoin coût cumulé : 1.625 s CPU / 80.0 s mur = 2.031 % d'un cœur (0.1269 % machine) — seq=400
+[agent] témoin coût cumulé : 1.781 s CPU / 90.0 s mur = 1.979 % d'un cœur (0.1237 % machine) — seq=450
+[agent] témoin coût cumulé : 1.906 s CPU / 100.0 s mur = 1.906 % d'un cœur (0.1191 % machine) — seq=500
+[agent] témoin coût cumulé : 2.047 s CPU / 110.0 s mur = 1.860 % d'un cœur (0.1163 % machine) — seq=550
+[agent] témoin coût cumulé : 2.203 s CPU / 120.0 s mur = 1.836 % d'un cœur (0.1147 % machine) — seq=600
+[agent] témoin coût cumulé : 2.344 s CPU / 130.0 s mur = 1.803 % d'un cœur (0.1127 % machine) — seq=650
+[agent] témoin coût cumulé : 2.500 s CPU / 140.0 s mur = 1.785 % d'un cœur (0.1116 % machine) — seq=700
+[agent] témoin coût cumulé : 2.672 s CPU / 150.0 s mur = 1.781 % d'un cœur (0.1113 % machine) — seq=750
+[agent] témoin coût cumulé : 2.875 s CPU / 160.0 s mur = 1.797 % d'un cœur (0.1123 % machine) — seq=800
+[agent] témoin coût cumulé : 3.031 s CPU / 170.0 s mur = 1.783 % d'un cœur (0.1114 % machine) — seq=850
+[agent] témoin coût cumulé : 3.281 s CPU / 180.0 s mur = 1.823 % d'un cœur (0.1139 % machine) — seq=900
+[agent] témoin coût cumulé : 3.469 s CPU / 190.0 s mur = 1.825 % d'un cœur (0.1141 % machine) — seq=950
+[agent] témoin coût cumulé : 3.703 s CPU / 200.0 s mur = 1.851 % d'un cœur (0.1157 % machine) — seq=1000
+[agent] témoin coût cumulé : 3.875 s CPU / 210.0 s mur = 1.845 % d'un cœur (0.1153 % machine) — seq=1050
+[agent] témoin coût cumulé : 4.141 s CPU / 220.0 s mur = 1.882 % d'un cœur (0.1176 % machine) — seq=1100
+[agent] témoin coût cumulé : 4.359 s CPU / 230.0 s mur = 1.895 % d'un cœur (0.1184 % machine) — seq=1150
+[agent] témoin coût cumulé : 4.484 s CPU / 240.0 s mur = 1.868 % d'un cœur (0.1168 % machine) — seq=1200
+[agent] témoin coût cumulé : 4.609 s CPU / 250.0 s mur = 1.844 % d'un cœur (0.1152 % machine) — seq=1250
+[agent] témoin coût cumulé : 4.781 s CPU / 260.0 s mur = 1.839 % d'un cœur (0.1149 % machine) — seq=1300
+[agent] témoin coût cumulé : 4.875 s CPU / 270.0 s mur = 1.805 % d'un cœur (0.1128 % machine) — seq=1350
+[agent] témoin coût cumulé : 5.047 s CPU / 280.0 s mur = 1.802 % d'un cœur (0.1126 % machine) — seq=1400
+[agent] témoin coût cumulé : 5.250 s CPU / 290.0 s mur = 1.810 % d'un cœur (0.1131 % machine) — seq=1450
+[agent] témoin coût cumulé : 5.391 s CPU / 300.0 s mur = 1.797 % d'un cœur (0.1123 % machine) — seq=1500
+[agent] témoin coût cumulé : 5.500 s CPU / 310.0 s mur = 1.774 % d'un cœur (0.1109 % machine) — seq=1550
+[agent] témoin coût cumulé : 5.547 s CPU / 320.0 s mur = 1.733 % d'un cœur (0.1083 % machine) — seq=1600
+[agent] témoin coût cumulé : 5.609 s CPU / 330.0 s mur = 1.700 % d'un cœur (0.1062 % machine) — seq=1650
+[agent] témoin coût cumulé : 5.688 s CPU / 340.0 s mur = 1.673 % d'un cœur (0.1045 % machine) — seq=1700
+[agent] témoin coût cumulé : 5.750 s CPU / 350.0 s mur = 1.643 % d'un cœur (0.1027 % machine) — seq=1750
+[agent] arrêt demandé (H:\dev\projets\desknode\dn-agent.stop)
+[agent] arrêt après 356.0 s — 1780 trames émises (5.00 trames/s), 0 erreurs d'envoi, 0 recalages de cadence
+[agent] écho console draîné : 94723 o, 1828 lignes en 356.0 s = 266.0 o/s, 5.13 lignes/s (PLAFOND du bruit console : inclut le battement 10 s et tout ESP_LOGx)
+[agent] aucun refus signalé par le firmware sur le fil
+[agent] aucun ecretage : toute valeur emise est la valeur mesuree
+[agent] aucune panne de source : les cinq ont repondu a chaque cycle
+[agent] LHM : 357 lecture(s) reussie(s), 0 en echec — duree moyenne 6.8 ms, MAX 19.3 ms (timeout pose : 600 ms)
+[agent] aucune absence LHM : les cinq sondes ont rendu une valeur a chaque lecture reussie
+[agent] GPU : AMD Radeon RX 6800 XT via ADL PMLog (adaptateur 0) — temoin de mapping BUS_LANES=16 CLK_MEMCLK=1986 MHz
+[agent] LHM : 127.0.0.1:8085/metrics — 5/5 sonde(s) avec valeur (timeout 0.60 s, connexion PERSISTANTE)
+[agent] témoin coût cumulé : 0.234 s CPU / 10.0 s mur = 2.339 % d'un cœur (0.1462 % machine) — seq=50
+[agent] témoin coût cumulé : 0.344 s CPU / 20.0 s mur = 1.716 % d'un cœur (0.1073 % machine) — seq=100
+[agent] témoin coût cumulé : 0.391 s CPU / 30.0 s mur = 1.301 % d'un cœur (0.0813 % machine) — seq=150
+[agent] témoin coût cumulé : 0.422 s CPU / 40.0 s mur = 1.054 % d'un cœur (0.0659 % machine) — seq=200
+[agent] témoin coût cumulé : 0.484 s CPU / 50.0 s mur = 0.968 % d'un cœur (0.0605 % machine) — seq=250
+[agent] témoin coût cumulé : 0.531 s CPU / 60.0 s mur = 0.885 % d'un cœur (0.0553 % machine) — seq=300
+[agent] témoin coût cumulé : 0.609 s CPU / 70.0 s mur = 0.870 % d'un cœur (0.0544 % machine) — seq=350
+[agent] témoin coût cumulé : 0.641 s CPU / 80.0 s mur = 0.801 % d'un cœur (0.0500 % machine) — seq=400
+[agent] témoin coût cumulé : 0.688 s CPU / 90.0 s mur = 0.764 % d'un cœur (0.0477 % machine) — seq=450
+[agent] témoin coût cumulé : 0.750 s CPU / 100.0 s mur = 0.750 % d'un cœur (0.0469 % machine) — seq=500
+[agent] témoin coût cumulé : 0.844 s CPU / 110.0 s mur = 0.767 % d'un cœur (0.0479 % machine) — seq=550
+[agent] témoin coût cumulé : 0.875 s CPU / 120.0 s mur = 0.729 % d'un cœur (0.0456 % machine) — seq=600
+[agent] témoin coût cumulé : 0.906 s CPU / 130.0 s mur = 0.697 % d'un cœur (0.0436 % machine) — seq=650
+[agent] témoin coût cumulé : 0.953 s CPU / 140.0 s mur = 0.681 % d'un cœur (0.0425 % machine) — seq=700
+[agent] témoin coût cumulé : 0.953 s CPU / 150.0 s mur = 0.635 % d'un cœur (0.0397 % machine) — seq=750
+[agent] témoin coût cumulé : 1.000 s CPU / 160.0 s mur = 0.625 % d'un cœur (0.0391 % machine) — seq=800
+[agent] témoin coût cumulé : 1.062 s CPU / 170.0 s mur = 0.625 % d'un cœur (0.0391 % machine) — seq=850
+[agent] témoin coût cumulé : 1.125 s CPU / 180.0 s mur = 0.625 % d'un cœur (0.0391 % machine) — seq=900
+[agent] témoin coût cumulé : 1.219 s CPU / 190.0 s mur = 0.641 % d'un cœur (0.0401 % machine) — seq=950
+[agent] témoin coût cumulé : 1.266 s CPU / 200.0 s mur = 0.633 % d'un cœur (0.0395 % machine) — seq=1000
+[agent] témoin coût cumulé : 1.312 s CPU / 210.0 s mur = 0.625 % d'un cœur (0.0391 % machine) — seq=1050
+[agent] témoin coût cumulé : 1.359 s CPU / 220.0 s mur = 0.618 % d'un cœur (0.0386 % machine) — seq=1100
+[agent] témoin coût cumulé : 1.375 s CPU / 230.0 s mur = 0.598 % d'un cœur (0.0374 % machine) — seq=1150
+[agent] témoin coût cumulé : 1.422 s CPU / 240.0 s mur = 0.592 % d'un cœur (0.0370 % machine) — seq=1200
+[agent] témoin coût cumulé : 1.422 s CPU / 250.0 s mur = 0.569 % d'un cœur (0.0355 % machine) — seq=1250
+[agent] témoin coût cumulé : 1.516 s CPU / 260.0 s mur = 0.583 % d'un cœur (0.0364 % machine) — seq=1300
+[agent] témoin coût cumulé : 1.547 s CPU / 270.0 s mur = 0.573 % d'un cœur (0.0358 % machine) — seq=1350
+[agent] témoin coût cumulé : 1.562 s CPU / 280.0 s mur = 0.558 % d'un cœur (0.0349 % machine) — seq=1400
+[agent] témoin coût cumulé : 1.625 s CPU / 290.0 s mur = 0.560 % d'un cœur (0.0350 % machine) — seq=1450
+[agent] témoin coût cumulé : 1.641 s CPU / 300.0 s mur = 0.547 % d'un cœur (0.0342 % machine) — seq=1500
+[agent] témoin coût cumulé : 1.641 s CPU / 310.0 s mur = 0.529 % d'un cœur (0.0331 % machine) — seq=1550
+[agent] témoin coût cumulé : 1.750 s CPU / 320.0 s mur = 0.547 % d'un cœur (0.0342 % machine) — seq=1600
+[agent] témoin coût cumulé : 1.797 s CPU / 330.0 s mur = 0.544 % d'un cœur (0.0340 % machine) — seq=1650
+[agent] témoin coût cumulé : 1.844 s CPU / 340.0 s mur = 0.542 % d'un cœur (0.0339 % machine) — seq=1700
+[agent] témoin coût cumulé : 1.875 s CPU / 350.0 s mur = 0.536 % d'un cœur (0.0335 % machine) — seq=1750
+[agent] témoin coût cumulé : 1.953 s CPU / 360.0 s mur = 0.543 % d'un cœur (0.0339 % machine) — seq=1800
+[agent] témoin coût cumulé : 2.000 s CPU / 370.0 s mur = 0.541 % d'un cœur (0.0338 % machine) — seq=1850
+[agent] témoin coût cumulé : 2.031 s CPU / 380.0 s mur = 0.534 % d'un cœur (0.0334 % machine) — seq=1900
+[agent] témoin coût cumulé : 2.062 s CPU / 390.0 s mur = 0.529 % d'un cœur (0.0331 % machine) — seq=1950
+[agent] témoin coût cumulé : 2.094 s CPU / 400.0 s mur = 0.523 % d'un cœur (0.0327 % machine) — seq=2000
+[agent] témoin coût cumulé : 2.156 s CPU / 410.0 s mur = 0.526 % d'un cœur (0.0329 % machine) — seq=2050
+[agent] témoin coût cumulé : 2.172 s CPU / 420.0 s mur = 0.517 % d'un cœur (0.0323 % machine) — seq=2100
+[agent] témoin coût cumulé : 2.219 s CPU / 430.0 s mur = 0.516 % d'un cœur (0.0322 % machine) — seq=2150
+[agent] témoin coût cumulé : 2.266 s CPU / 440.0 s mur = 0.515 % d'un cœur (0.0322 % machine) — seq=2200
+[agent] témoin coût cumulé : 2.297 s CPU / 450.0 s mur = 0.510 % d'un cœur (0.0319 % machine) — seq=2250
+[agent] témoin coût cumulé : 2.328 s CPU / 460.0 s mur = 0.506 % d'un cœur (0.0316 % machine) — seq=2300
+[agent] témoin coût cumulé : 2.359 s CPU / 470.0 s mur = 0.502 % d'un cœur (0.0314 % machine) — seq=2350
+[agent] témoin coût cumulé : 2.359 s CPU / 480.0 s mur = 0.492 % d'un cœur (0.0307 % machine) — seq=2400
+[agent] témoin coût cumulé : 2.453 s CPU / 490.0 s mur = 0.501 % d'un cœur (0.0313 % machine) — seq=2450
+[agent] témoin coût cumulé : 2.469 s CPU / 500.0 s mur = 0.494 % d'un cœur (0.0309 % machine) — seq=2500
+[agent] témoin coût cumulé : 2.609 s CPU / 510.0 s mur = 0.512 % d'un cœur (0.0320 % machine) — seq=2550
+[agent] témoin coût cumulé : 2.781 s CPU / 520.0 s mur = 0.535 % d'un cœur (0.0334 % machine) — seq=2600
+[agent] témoin coût cumulé : 2.922 s CPU / 530.0 s mur = 0.551 % d'un cœur (0.0345 % machine) — seq=2650
+[agent] témoin coût cumulé : 3.031 s CPU / 540.0 s mur = 0.561 % d'un cœur (0.0351 % machine) — seq=2700
+[agent] témoin coût cumulé : 3.094 s CPU / 550.0 s mur = 0.562 % d'un cœur (0.0352 % machine) — seq=2750
+[agent] témoin coût cumulé : 3.219 s CPU / 560.0 s mur = 0.575 % d'un cœur (0.0359 % machine) — seq=2800
+[agent] témoin coût cumulé : 3.312 s CPU / 570.0 s mur = 0.581 % d'un cœur (0.0363 % machine) — seq=2850
+[agent] témoin coût cumulé : 3.438 s CPU / 580.0 s mur = 0.593 % d'un cœur (0.0370 % machine) — seq=2900
+[agent] témoin coût cumulé : 3.531 s CPU / 590.0 s mur = 0.598 % d'un cœur (0.0374 % machine) — seq=2950
+[agent] témoin coût cumulé : 3.656 s CPU / 600.0 s mur = 0.609 % d'un cœur (0.0381 % machine) — seq=3000
+[agent] témoin coût cumulé : 3.734 s CPU / 610.0 s mur = 0.612 % d'un cœur (0.0383 % machine) — seq=3050
+[agent] témoin coût cumulé : 3.781 s CPU / 620.0 s mur = 0.610 % d'un cœur (0.0381 % machine) — seq=3100
+[agent] témoin coût cumulé : 3.812 s CPU / 630.0 s mur = 0.605 % d'un cœur (0.0378 % machine) — seq=3150
+[agent] témoin coût cumulé : 3.875 s CPU / 640.0 s mur = 0.605 % d'un cœur (0.0378 % machine) — seq=3200
+[agent] témoin coût cumulé : 3.969 s CPU / 650.0 s mur = 0.611 % d'un cœur (0.0382 % machine) — seq=3250
+[agent] témoin coût cumulé : 4.078 s CPU / 660.0 s mur = 0.618 % d'un cœur (0.0386 % machine) — seq=3300
+[agent] témoin coût cumulé : 4.172 s CPU / 670.0 s mur = 0.623 % d'un cœur (0.0389 % machine) — seq=3350
+[agent] témoin coût cumulé : 4.297 s CPU / 680.0 s mur = 0.632 % d'un cœur (0.0395 % machine) — seq=3400
+[agent] témoin coût cumulé : 4.406 s CPU / 690.0 s mur = 0.639 % d'un cœur (0.0399 % machine) — seq=3450
+[agent] témoin coût cumulé : 4.484 s CPU / 700.0 s mur = 0.641 % d'un cœur (0.0400 % machine) — seq=3500
+[agent] témoin coût cumulé : 4.625 s CPU / 710.0 s mur = 0.651 % d'un cœur (0.0407 % machine) — seq=3550
+[agent] témoin coût cumulé : 4.688 s CPU / 720.0 s mur = 0.651 % d'un cœur (0.0407 % machine) — seq=3600
+[agent] témoin coût cumulé : 4.797 s CPU / 730.0 s mur = 0.657 % d'un cœur (0.0411 % machine) — seq=3650
+[agent] témoin coût cumulé : 4.875 s CPU / 740.0 s mur = 0.659 % d'un cœur (0.0412 % machine) — seq=3700
+[agent] témoin coût cumulé : 5.016 s CPU / 750.0 s mur = 0.669 % d'un cœur (0.0418 % machine) — seq=3750
+[agent] témoin coût cumulé : 5.062 s CPU / 760.0 s mur = 0.666 % d'un cœur (0.0416 % machine) — seq=3800
+[agent] témoin coût cumulé : 5.156 s CPU / 770.0 s mur = 0.670 % d'un cœur (0.0419 % machine) — seq=3850
+[agent] témoin coût cumulé : 5.203 s CPU / 780.0 s mur = 0.667 % d'un cœur (0.0417 % machine) — seq=3900
+[agent] témoin coût cumulé : 5.297 s CPU / 790.0 s mur = 0.670 % d'un cœur (0.0419 % machine) — seq=3950
+[agent] témoin coût cumulé : 5.391 s CPU / 800.0 s mur = 0.674 % d'un cœur (0.0421 % machine) — seq=4000
+[agent] témoin coût cumulé : 5.516 s CPU / 810.0 s mur = 0.681 % d'un cœur (0.0426 % machine) — seq=4050
+[agent] témoin coût cumulé : 5.625 s CPU / 820.0 s mur = 0.686 % d'un cœur (0.0429 % machine) — seq=4100
+[agent] témoin coût cumulé : 5.672 s CPU / 830.0 s mur = 0.683 % d'un cœur (0.0427 % machine) — seq=4150
+[agent] témoin coût cumulé : 5.750 s CPU / 840.0 s mur = 0.685 % d'un cœur (0.0428 % machine) — seq=4200
+[agent] témoin coût cumulé : 5.891 s CPU / 850.0 s mur = 0.693 % d'un cœur (0.0433 % machine) — seq=4250
+[agent] témoin coût cumulé : 6.000 s CPU / 860.0 s mur = 0.698 % d'un cœur (0.0436 % machine) — seq=4300
+[agent] témoin coût cumulé : 6.141 s CPU / 870.0 s mur = 0.706 % d'un cœur (0.0441 % machine) — seq=4350
+[agent] témoin coût cumulé : 6.266 s CPU / 880.0 s mur = 0.712 % d'un cœur (0.0445 % machine) — seq=4400
+[agent] témoin coût cumulé : 6.359 s CPU / 890.0 s mur = 0.715 % d'un cœur (0.0447 % machine) — seq=4450
+[agent] témoin coût cumulé : 6.484 s CPU / 900.0 s mur = 0.720 % d'un cœur (0.0450 % machine) — seq=4500
+[agent] témoin coût cumulé : 6.562 s CPU / 910.0 s mur = 0.721 % d'un cœur (0.0451 % machine) — seq=4550
+[agent] témoin coût cumulé : 6.703 s CPU / 920.0 s mur = 0.729 % d'un cœur (0.0455 % machine) — seq=4600
+[agent] témoin coût cumulé : 6.828 s CPU / 930.0 s mur = 0.734 % d'un cœur (0.0459 % machine) — seq=4650
+[agent] témoin coût cumulé : 6.875 s CPU / 940.0 s mur = 0.731 % d'un cœur (0.0457 % machine) — seq=4700
+[agent] témoin coût cumulé : 7.000 s CPU / 950.0 s mur = 0.737 % d'un cœur (0.0461 % machine) — seq=4750
+[agent] témoin coût cumulé : 7.062 s CPU / 960.0 s mur = 0.736 % d'un cœur (0.0460 % machine) — seq=4800
+[agent] témoin coût cumulé : 7.172 s CPU / 970.0 s mur = 0.739 % d'un cœur (0.0462 % machine) — seq=4850
+[agent] témoin coût cumulé : 7.297 s CPU / 980.0 s mur = 0.745 % d'un cœur (0.0465 % machine) — seq=4900
+[agent] témoin coût cumulé : 7.359 s CPU / 990.0 s mur = 0.743 % d'un cœur (0.0465 % machine) — seq=4950
+[agent] témoin coût cumulé : 7.406 s CPU / 1000.0 s mur = 0.741 % d'un cœur (0.0463 % machine) — seq=5000
+[agent] témoin coût cumulé : 7.500 s CPU / 1010.0 s mur = 0.743 % d'un cœur (0.0464 % machine) — seq=5050
+[agent] témoin coût cumulé : 7.578 s CPU / 1020.0 s mur = 0.743 % d'un cœur (0.0464 % machine) — seq=5100
+[agent] témoin coût cumulé : 7.641 s CPU / 1030.0 s mur = 0.742 % d'un cœur (0.0464 % machine) — seq=5150
+[agent] témoin coût cumulé : 7.703 s CPU / 1040.0 s mur = 0.741 % d'un cœur (0.0463 % machine) — seq=5200
+[agent] témoin coût cumulé : 7.734 s CPU / 1050.0 s mur = 0.737 % d'un cœur (0.0460 % machine) — seq=5250
+[agent] témoin coût cumulé : 7.797 s CPU / 1060.0 s mur = 0.736 % d'un cœur (0.0460 % machine) — seq=5300
+[agent] témoin coût cumulé : 7.875 s CPU / 1070.0 s mur = 0.736 % d'un cœur (0.0460 % machine) — seq=5350
+[agent] témoin coût cumulé : 7.906 s CPU / 1080.0 s mur = 0.732 % d'un cœur (0.0458 % machine) — seq=5400
+[agent] témoin coût cumulé : 7.938 s CPU / 1090.0 s mur = 0.728 % d'un cœur (0.0455 % machine) — seq=5450
+[agent] témoin coût cumulé : 8.000 s CPU / 1100.0 s mur = 0.727 % d'un cœur (0.0455 % machine) — seq=5500
+[agent] témoin coût cumulé : 8.078 s CPU / 1110.0 s mur = 0.728 % d'un cœur (0.0455 % machine) — seq=5550
+[agent] témoin coût cumulé : 8.109 s CPU / 1120.0 s mur = 0.724 % d'un cœur (0.0453 % machine) — seq=5600
+[agent] témoin coût cumulé : 8.234 s CPU / 1130.0 s mur = 0.729 % d'un cœur (0.0455 % machine) — seq=5650
+[agent] témoin coût cumulé : 8.297 s CPU / 1140.0 s mur = 0.728 % d'un cœur (0.0455 % machine) — seq=5700
+[agent] témoin coût cumulé : 8.359 s CPU / 1150.0 s mur = 0.727 % d'un cœur (0.0454 % machine) — seq=5750
+[agent] témoin coût cumulé : 8.438 s CPU / 1160.0 s mur = 0.727 % d'un cœur (0.0455 % machine) — seq=5800
+[agent] témoin coût cumulé : 8.562 s CPU / 1170.0 s mur = 0.732 % d'un cœur (0.0457 % machine) — seq=5850
+[agent] témoin coût cumulé : 8.688 s CPU / 1180.0 s mur = 0.736 % d'un cœur (0.0460 % machine) — seq=5900
+[agent] témoin coût cumulé : 8.797 s CPU / 1190.0 s mur = 0.739 % d'un cœur (0.0462 % machine) — seq=5950
+[agent] témoin coût cumulé : 8.984 s CPU / 1200.0 s mur = 0.749 % d'un cœur (0.0468 % machine) — seq=6000
+[agent] témoin coût cumulé : 9.156 s CPU / 1210.0 s mur = 0.757 % d'un cœur (0.0473 % machine) — seq=6050
+[agent] témoin coût cumulé : 9.281 s CPU / 1220.0 s mur = 0.761 % d'un cœur (0.0475 % machine) — seq=6100
+[agent] témoin coût cumulé : 9.500 s CPU / 1230.0 s mur = 0.772 % d'un cœur (0.0483 % machine) — seq=6150
+[agent] témoin coût cumulé : 9.594 s CPU / 1240.0 s mur = 0.774 % d'un cœur (0.0484 % machine) — seq=6200
+[agent] témoin coût cumulé : 9.797 s CPU / 1250.0 s mur = 0.784 % d'un cœur (0.0490 % machine) — seq=6250
+[agent] témoin coût cumulé : 9.938 s CPU / 1260.0 s mur = 0.789 % d'un cœur (0.0493 % machine) — seq=6300
+[agent] témoin coût cumulé : 10.094 s CPU / 1270.0 s mur = 0.795 % d'un cœur (0.0497 % machine) — seq=6350
+[agent] témoin coût cumulé : 10.266 s CPU / 1280.0 s mur = 0.802 % d'un cœur (0.0501 % machine) — seq=6400
+[agent] témoin coût cumulé : 10.469 s CPU / 1290.0 s mur = 0.812 % d'un cœur (0.0507 % machine) — seq=6450
+[agent] témoin coût cumulé : 10.641 s CPU / 1300.0 s mur = 0.818 % d'un cœur (0.0512 % machine) — seq=6500
+[agent] témoin coût cumulé : 10.766 s CPU / 1310.0 s mur = 0.822 % d'un cœur (0.0514 % machine) — seq=6550
+[agent] témoin coût cumulé : 10.922 s CPU / 1320.0 s mur = 0.827 % d'un cœur (0.0517 % machine) — seq=6600
+[agent] témoin coût cumulé : 11.031 s CPU / 1330.0 s mur = 0.829 % d'un cœur (0.0518 % machine) — seq=6650
+[agent] témoin coût cumulé : 11.172 s CPU / 1340.0 s mur = 0.834 % d'un cœur (0.0521 % machine) — seq=6700
+[agent] témoin coût cumulé : 11.297 s CPU / 1350.0 s mur = 0.837 % d'un cœur (0.0523 % machine) — seq=6750
+[agent] témoin coût cumulé : 11.438 s CPU / 1360.0 s mur = 0.841 % d'un cœur (0.0526 % machine) — seq=6800
+[agent] témoin coût cumulé : 11.641 s CPU / 1370.0 s mur = 0.850 % d'un cœur (0.0531 % machine) — seq=6850
+[agent] témoin coût cumulé : 11.797 s CPU / 1380.0 s mur = 0.855 % d'un cœur (0.0534 % machine) — seq=6900
+[agent] témoin coût cumulé : 11.969 s CPU / 1390.0 s mur = 0.861 % d'un cœur (0.0538 % machine) — seq=6950
+[agent] témoin coût cumulé : 12.156 s CPU / 1400.0 s mur = 0.868 % d'un cœur (0.0543 % machine) — seq=7000
+[agent] témoin coût cumulé : 12.250 s CPU / 1410.0 s mur = 0.869 % d'un cœur (0.0543 % machine) — seq=7050
+[agent] témoin coût cumulé : 12.359 s CPU / 1420.0 s mur = 0.870 % d'un cœur (0.0544 % machine) — seq=7100
+[agent] témoin coût cumulé : 12.453 s CPU / 1430.0 s mur = 0.871 % d'un cœur (0.0544 % machine) — seq=7150
+[agent] témoin coût cumulé : 12.594 s CPU / 1440.0 s mur = 0.875 % d'un cœur (0.0547 % machine) — seq=7200
+[agent] témoin coût cumulé : 12.688 s CPU / 1450.0 s mur = 0.875 % d'un cœur (0.0547 % machine) — seq=7250
+[agent] témoin coût cumulé : 12.750 s CPU / 1460.0 s mur = 0.873 % d'un cœur (0.0546 % machine) — seq=7300
+[agent] témoin coût cumulé : 12.891 s CPU / 1470.0 s mur = 0.877 % d'un cœur (0.0548 % machine) — seq=7350
+[agent] témoin coût cumulé : 13.094 s CPU / 1480.0 s mur = 0.885 % d'un cœur (0.0553 % machine) — seq=7400
+[agent] témoin coût cumulé : 13.172 s CPU / 1490.0 s mur = 0.884 % d'un cœur (0.0553 % machine) — seq=7450
+[agent] témoin coût cumulé : 13.375 s CPU / 1500.0 s mur = 0.892 % d'un cœur (0.0557 % machine) — seq=7500
+[agent] témoin coût cumulé : 13.562 s CPU / 1510.0 s mur = 0.898 % d'un cœur (0.0561 % machine) — seq=7550
+[agent] témoin coût cumulé : 13.672 s CPU / 1520.0 s mur = 0.899 % d'un cœur (0.0562 % machine) — seq=7600
+[agent] témoin coût cumulé : 13.797 s CPU / 1530.0 s mur = 0.902 % d'un cœur (0.0564 % machine) — seq=7650
+[agent] témoin coût cumulé : 13.875 s CPU / 1540.0 s mur = 0.901 % d'un cœur (0.0563 % machine) — seq=7700
+[agent] témoin coût cumulé : 14.078 s CPU / 1550.0 s mur = 0.908 % d'un cœur (0.0568 % machine) — seq=7750
+[agent] témoin coût cumulé : 14.234 s CPU / 1560.0 s mur = 0.912 % d'un cœur (0.0570 % machine) — seq=7800
+[agent] témoin coût cumulé : 14.438 s CPU / 1570.0 s mur = 0.920 % d'un cœur (0.0575 % machine) — seq=7850
+[agent] témoin coût cumulé : 14.625 s CPU / 1580.0 s mur = 0.926 % d'un cœur (0.0579 % machine) — seq=7900
+[agent] témoin coût cumulé : 14.703 s CPU / 1590.0 s mur = 0.925 % d'un cœur (0.0578 % machine) — seq=7950
+[agent] témoin coût cumulé : 14.828 s CPU / 1600.0 s mur = 0.927 % d'un cœur (0.0579 % machine) — seq=8000
+[agent] témoin coût cumulé : 14.891 s CPU / 1610.0 s mur = 0.925 % d'un cœur (0.0578 % machine) — seq=8050
+[agent] témoin coût cumulé : 14.953 s CPU / 1620.0 s mur = 0.923 % d'un cœur (0.0577 % machine) — seq=8100
+[agent] témoin coût cumulé : 15.047 s CPU / 1630.0 s mur = 0.923 % d'un cœur (0.0577 % machine) — seq=8150
+[agent] témoin coût cumulé : 15.172 s CPU / 1640.0 s mur = 0.925 % d'un cœur (0.0578 % machine) — seq=8200
+[agent] témoin coût cumulé : 15.234 s CPU / 1650.0 s mur = 0.923 % d'un cœur (0.0577 % machine) — seq=8250
+[agent] témoin coût cumulé : 15.312 s CPU / 1660.0 s mur = 0.922 % d'un cœur (0.0577 % machine) — seq=8300
+[agent] témoin coût cumulé : 15.438 s CPU / 1670.0 s mur = 0.924 % d'un cœur (0.0578 % machine) — seq=8350
+[agent] témoin coût cumulé : 15.578 s CPU / 1680.0 s mur = 0.927 % d'un cœur (0.0580 % machine) — seq=8400
+[agent] témoin coût cumulé : 15.703 s CPU / 1690.0 s mur = 0.929 % d'un cœur (0.0581 % machine) — seq=8450
+[agent] témoin coût cumulé : 15.797 s CPU / 1700.0 s mur = 0.929 % d'un cœur (0.0581 % machine) — seq=8500
+[agent] témoin coût cumulé : 15.906 s CPU / 1710.0 s mur = 0.930 % d'un cœur (0.0581 % machine) — seq=8550
+[agent] témoin coût cumulé : 16.016 s CPU / 1720.0 s mur = 0.931 % d'un cœur (0.0582 % machine) — seq=8600
+[agent] témoin coût cumulé : 16.141 s CPU / 1730.0 s mur = 0.933 % d'un cœur (0.0583 % machine) — seq=8650
+[agent] témoin coût cumulé : 16.234 s CPU / 1740.0 s mur = 0.933 % d'un cœur (0.0583 % machine) — seq=8700
+[agent] témoin coût cumulé : 16.391 s CPU / 1750.0 s mur = 0.937 % d'un cœur (0.0585 % machine) — seq=8750
+[agent] témoin coût cumulé : 16.547 s CPU / 1760.0 s mur = 0.940 % d'un cœur (0.0588 % machine) — seq=8800
+[agent] témoin coût cumulé : 16.641 s CPU / 1770.0 s mur = 0.940 % d'un cœur (0.0588 % machine) — seq=8850
+[agent] témoin coût cumulé : 16.797 s CPU / 1780.0 s mur = 0.944 % d'un cœur (0.0590 % machine) — seq=8900
+[agent] témoin coût cumulé : 16.859 s CPU / 1790.0 s mur = 0.942 % d'un cœur (0.0589 % machine) — seq=8950
+[agent] témoin coût cumulé : 16.984 s CPU / 1800.0 s mur = 0.944 % d'un cœur (0.0590 % machine) — seq=9000
+[agent] témoin coût cumulé : 17.141 s CPU / 1810.0 s mur = 0.947 % d'un cœur (0.0592 % machine) — seq=9050
+[agent] témoin coût cumulé : 17.219 s CPU / 1820.0 s mur = 0.946 % d'un cœur (0.0591 % machine) — seq=9100
+[agent] témoin coût cumulé : 17.375 s CPU / 1830.0 s mur = 0.949 % d'un cœur (0.0593 % machine) — seq=9150
+[agent] témoin coût cumulé : 17.484 s CPU / 1840.0 s mur = 0.950 % d'un cœur (0.0594 % machine) — seq=9200
+[agent] témoin coût cumulé : 17.641 s CPU / 1850.0 s mur = 0.954 % d'un cœur (0.0596 % machine) — seq=9250
+[agent] témoin coût cumulé : 17.719 s CPU / 1860.0 s mur = 0.953 % d'un cœur (0.0595 % machine) — seq=9300
+[agent] témoin coût cumulé : 17.828 s CPU / 1870.0 s mur = 0.953 % d'un cœur (0.0596 % machine) — seq=9350
+[agent] témoin coût cumulé : 17.891 s CPU / 1880.0 s mur = 0.952 % d'un cœur (0.0595 % machine) — seq=9400
+[agent] témoin coût cumulé : 18.078 s CPU / 1890.0 s mur = 0.956 % d'un cœur (0.0598 % machine) — seq=9450
+[agent] témoin coût cumulé : 18.188 s CPU / 1900.0 s mur = 0.957 % d'un cœur (0.0598 % machine) — seq=9500
+[agent] témoin coût cumulé : 18.344 s CPU / 1910.0 s mur = 0.960 % d'un cœur (0.0600 % machine) — seq=9550
