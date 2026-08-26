@@ -149,12 +149,20 @@ def main():
             j3b.alimenter(b"pc $DN,3,1,1050,cpu,83,23,164,433*67\r\n")
             j3b.alimenter(b"desknode> pc $DN,3,2,1050,gpu,80,480,530,6000*69\r\n")
             j3b.alimenter(b"desknode> \r\n")
+        # 🔴 LE FRAGMENT — mesure sur la carte le 2026-08-26. Le REPL entrelace
+        #    ses invites AU MILIEU des echos, et une trame coupee entre deux
+        #    `read()` arrive sous la forme `desknode> desknode> c $DN,3,126,...`
+        #    (le `p` de `pc` est parti dans l'autre morceau). Un filtre ancre en
+        #    debut de ligne la laissait passer.
+        j3b.alimenter(b"desknode> desknode> c $DN,3,126,26027,cpu,73,30,203*5A\r\n")
+        j3b.alimenter(b"desknode> 33,gpu,70 $DN,4,1,1*02\r\n")
         j3b.alimenter(b"I (1) dn_env: une VRAIE ligne\r\n")
         j3b.fermer()
         ls3b = lignes(p3b)
-        ctrl(not any("pc $DN" in l for l in ls3b),
-             "⛔ AUCUN echo `pc $DN` n'entre dans la boite noire",
-             "%d ligne(s) ecrite(s) pour 900 echos injectes" % len(ls3b))
+        ctrl(not any("$DN," in l for l in ls3b),
+             "⛔ AUCUN echo `$DN,` n'entre dans la boite noire, FRAGMENTS COMPRIS",
+             "%d ligne(s) ecrite(s) pour 902 echos injectes (dont 2 fragments)"
+             % len(ls3b))
         ctrl(any("une VRAIE ligne" in l for l in ls3b),
              "et la VRAIE ligne passe quand meme",
              "⛔ 900 echos ne doivent PAS saturer le quota d'une vraie ligne")

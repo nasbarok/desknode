@@ -2380,7 +2380,14 @@ class JournalSoak:
     #    jette le signal pour garder son propre bruit ne protege rien.
     # ⇒ ON FILTRE L'ECHO, ⛔ ON NE L'ECRETE PAS. Le quota reste, mais il ne
     #   garde plus que ce qui n'est pas nous.
-    RE_ECHO_AGENT = re.compile(rb"^(desknode>\s*)*(pc \$DN,|rtc set\b|\$DN,)")
+    # ⚠️ ANCRE SUR `$DN,` N'IMPORTE OU DANS LA LIGNE, ⛔ PAS SUR UN DEBUT DE
+    #    LIGNE — corrige le 2026-08-26, sur la carte. La version ancree ratait
+    #    `desknode> desknode> c $DN,3,126,...` : la trame avait ete COUPEE entre
+    #    deux `read()` et le `p` de `pc` etait parti dans l'autre morceau. Un
+    #    filtre qui ne tient pas sur un fragment ne tient pas du tout : le fil
+    #    en produit en permanence (le REPL entrelace ses invites au milieu des
+    #    echos).
+    RE_ECHO_AGENT = re.compile(rb"\$DN,\d")
     RE_INVITE_SEULE = re.compile(rb"^(desknode>\s*)+$")
 
     RE_BATTEMENT = re.compile(rb"desknode: up \d+ s")

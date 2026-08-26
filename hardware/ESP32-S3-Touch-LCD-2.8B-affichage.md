@@ -7491,3 +7491,57 @@ du soak.
 ⛔ **CE QUE CETTE GATE NE PROUVE PAS** : que rien n'a été écrit **pendant** le soak. Elle prouve que
 **les seuls chemins d'écriture qui existent** sont hors régime. La vérification de terrain est
 **AC9.1** — relire `veille` **à la fin du soak, sur la carte**.
+
+## 25.8 🔴 SÉANCE DU 2026-08-26 (SUITE) — TROIS CHOSES QUE LA CARTE A APPRISES AU DOSSIER
+
+### 25.8.1 ✅ **RENDRE LE PORT À L'AGENT REDÉMARRE LA PUCE** — mesuré, 3 occurrences
+
+Le dossier portait ce soupçon **depuis le 2026-08-16** sans jamais l'avoir établi : *« la parade
+DTR/RTS est WINDOWS-ONLY, et le côté Windows n'a jamais été validé par A/B »*.
+
+| # | avant le passage à l'agent | après | cause publiée |
+|---|---:|---:|---|
+| 1 | `up 5780 s` | **`up 160 s`** | `reset: USB` |
+| 2 | `up 160 s` | **`up 40 s`** | `reset: USB` |
+| 3 | (jambe de contrôle) | **bandeau de boot complet dans le journal** | idem |
+
+🎯 **ET C'EST LA GARDE D'AC1.4/AC1.5 QUI L'A ATTRAPÉ.** Sans `up`/`mural`/`reset:` au battement,
+la première jambe de mesure aurait été publiée : `flush reset` avant le passage, compteurs **remis à
+zéro par le reboot**, et un Δ px calculé sur des compteurs qui ne couvraient pas ce qu'on croyait.
+⛔ **Silencieux, plausible, faux.**
+
+⇒ **CONSÉQUENCE DE MÉTHODE, À APPLIQUER** : ⛔ **un `flush reset` avant un passage de port ne sert à
+rien.** Le reboot fait le zéro lui-même, à l'instant où l'agent ouvre. La fenêtre utile part donc
+**du boot**, et toute comparaison A/B doit avoir **des fenêtres de même longueur** — ce que la
+première tentative n'avait pas (145 s contre 228 s, la queue inactive valant 25 s d'un côté et 108 s
+de l'autre). **Ce Δ px n'a pas été publié : il aurait mesuré ma lenteur, pas le lissage.**
+
+### 25.8.2 🔴 LA BOÎTE NOIRE JETAIT LE SIGNAL POUR GARDER SON PROPRE BRUIT
+
+**Mesuré sur 120 s de régime réel** : le journal a écrit **18 873 o = 157 o/s**, là où le banc
+prédisait **18,3 o/s** — **faux d'un facteur ~8,6**. Et le quota a jeté **437 lignes en deux
+minutes**, en le disant.
+
+**Ce qui saturait le quota était l'agent lui-même** : le REPL **renvoie en écho** chaque trame
+`pc $DN,...` — cinq par seconde — entrelacée d'invites `desknode> `.
+🔴 **La vraie faute était la conséquence** : *une anomalie **réelle** pouvait être écartée par le
+quota parce que l'écho l'avait saturé.* Un instrument qui jette le signal pour garder son propre
+bruit ne protège rien.
+⇒ **l'écho est FILTRÉ, ⛔ plus écrêté** — et il reste **compté et dit** (ligne `MINUTE`) : un écho
+qui s'effondrerait dirait que **la carte ne reçoit plus rien**, et ce serait une information.
+
+⚠️ **ET LE FILTRE A DÛ ÊTRE REPRIS UNE SECONDE FOIS, PAR LA MESURE.** Ancré en début de ligne, il
+ratait `desknode> desknode> c $DN,3,126,...` — la trame avait été **coupée entre deux `read()`** et
+le `p` de `pc` était parti dans l'autre morceau. **Un filtre qui ne tient pas sur un fragment ne
+tient pas du tout** : le fil en produit en permanence.
+
+### 25.8.3 ⛔ ET LE VOLUME NE S'EXTRAPOLE PAS D'UNE FENÊTRE QUI CONTIENT UN BOOT
+
+Après filtrage, la mesure suivante donnait **encore 163 o/s**. En regardant **ce que c'était** :
+le **bandeau de boot** (avertissements `dn_ui`/`dn_env`/`dn_rtc`, texte d'accueil du REPL) — parce
+que le passage de port avait **encore** redémarré la carte.
+🔴 **Un bandeau de boot est un ÉVÉNEMENT PONCTUEL, ⛔ pas un débit.** Multiplier 163 o/s par 7 jours
+revient à facturer 6 048 boots. **Le « ~95 Mo sur 7 jours » que j'avais écrit une heure plus tôt est
+donc faux à son tour**, et pour une raison différente de la première.
+⇒ **le volume de régime se mesurera sur une fenêtre SANS reboot** — c'est-à-dire pendant le soak
+lui-même. ⛔ Aucun chiffre de volume de régime n'est publié ici.

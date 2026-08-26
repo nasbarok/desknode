@@ -1,0 +1,71 @@
+2026-08-26 23:27:39.771  DEPART    agent demarre — journal du soak arme (plafond 32 Mo x 4 rotations)
+2026-08-26 23:27:40.865  PORT      OUVERT (COM3)
+2026-08-26 23:27:42.492  fil       I (1938) dn_disp: reset tactile joué via l'expander bit1/EXIO2 (150 ms bas, 50 ms de repos) — TP_RST reste désormais en SORTIE HAUTE
+2026-08-26 23:27:42.492  fil       I (1939) dn_touch: probe APRÈS reset : ESP_OK — adresse RÉELLE 0x5D (visée 0x5D)
+2026-08-26 23:27:42.492  fil       I (1940) dn_touch: GT911 « 911 » fw 0x1060 · config v93 · résolution native 480x640 · 5 points · INT sur front DESCENDANT
+2026-08-26 23:27:42.492  fil       I (1941) GT911: I2C address initialization procedure skipped - using default GT9xx setup
+2026-08-26 23:27:42.494  fil       I (1943) GT911: TouchPad_ID:0x39,0x31,0x31
+2026-08-26 23:27:42.494  fil       I (1943) GT911: TouchPad_Config_Version:93
+2026-08-26 23:27:42.494  fil       I (1943) dn_touch: GT911 prêt à 0x5D — TP_INT=GPIO16, TP_RST=expander bit1
+2026-08-26 23:27:42.494  fil       I (1944) dn_ui: precision d'affichage : 6 cases auditees, 0 trou (AC9)
+2026-08-26 23:27:42.494  fil       I (1944) dn_ui: selections : 6 cases auditees, 0 faute (dn4-9 — invariants A/B/C)
+2026-08-26 23:27:42.494  fil       I (1945) dn_ui: k_desc[CPU] : case 3 [0, 1, 3] · detail 4 [0, 1, 2, 3] · peuplees 4 — `widget grandeurs 0 <1..4>` est jouable
+2026-08-26 23:27:42.494  fil       I (1945) dn_ui: k_desc[GPU] : case 3 [0, 1, 2] · detail 4 [0, 1, 2, 3] · peuplees 4 — `widget grandeurs 1 <1..4>` est jouable
+2026-08-26 23:27:42.494  fil       I (1946) dn_ui: k_desc[RAM] : case 1 [0] · detail 1 [0] · peuplees 1 — `widget grandeurs 2 <1..1>` est jouable
+2026-08-26 23:27:42.494  fil       I (1946) dn_ui: k_desc[RÉSEAU] : case 2 [0, 1] · detail 2 [0, 1] · peuplees 2 — `widget grandeurs 3 <1..2>` est jouable
+2026-08-26 23:27:42.494  fil       I (1947) dn_ui: k_desc[DISQUE] : case 2 [0, 1] · detail 4 [0, 1, 2, 3] · peuplees 4 — `widget grandeurs 4 <1..2>` est jouable
+2026-08-26 23:27:42.494  fil       I (1947) dn_ui: k_desc[AMBIANCE] : case 2 [0, 1] · detail 2 [0, 1] · peuplees 2 — `widget grandeurs 5 <1..2>` est jouable
+2026-08-26 23:27:42.494  fil       I (1948) dn_mes: abonnement vsync #0 : « flush »
+2026-08-26 23:27:42.494  fil       I (1949) LVGL: Starting LVGL task
+2026-08-26 23:27:42.494  fil       I (1997) dn_veille: veille ON · delai 10 min (600000 ms)
+2026-08-26 23:27:42.494  fil       I (2315) dn_ui: LVGL 9.5.0 prêt : rendu PARTIEL, draw buffer 480 x 128 px (122880 o) en RAM interne DMA
+2026-08-26 23:27:42.494  fil       I (2316) dn_ui:   flush : synchro « vsync », chemin « bitmap »
+2026-08-26 23:27:42.494  fil       I (2316) dn_ui:   coût en tas : RAM interne 232995 -> 102155 o (130840), PSRAM 7770024 -> 7770024 o (0)
+2026-08-26 23:27:42.494  fil       W (2317) dn_ui:   ⚠️ ce delta N'INCLUT PAS les 64 Ko statiques du tas de LVGL (LV_MEM_SIZE_KILOBYTES, réservés dans le .bss au link). L'instrument de CE coût-là est `ui`, qui imprime lv_mem_monitor().
+2026-08-26 23:27:42.494  fil       E (3048) gpio: gpio_install_isr_service(534): GPIO isr service already installed
+2026-08-26 23:27:42.495  fil       I (3049) dn_touch: indev LVGL branché — mode « poll »
+2026-08-26 23:27:42.495  fil       I (3049) dn_mes: dn4-10 : seuil de corruption = 775 us (ecoulement d'un demi-bounce de 9600 px, soit 20 ligne(s))
+2026-08-26 23:27:42.495  fil       I (3049) dn_mes: compteur vsync branché (ISR en IRAM, compteur en RAM interne)
+2026-08-26 23:27:42.495  fil       I (3050) dn_mes:   ⚠️ enregistrement EXCLUSIF : il vient d'écraser tout callback posé avant lui (esp_lcd rgb ASSIGNE, ne fusionne pas). C'est voulu — voir le commentaire au-dessus.
+2026-08-26 23:27:42.495  fil       I (3050) dn_mes: abonnement vsync #1 : « recal »
+2026-08-26 23:27:42.495  fil       I (3051) dn_recal: recalage sur événement ACTIF : 1 vsync(s) après chaque bascule (RESTART_IN_VSYNC=n, le bit `need_restart` est bien consulté).
+2026-08-26 23:27:42.495  fil       I (3151) dn_mes: témoin vsync : 4 trames en 100 ms — le compteur est vivant
+2026-08-26 23:27:42.495  fil       I (3151) desknode: rétroéclairage à 100 % (GPIO6 en LEDC 10 bits @ 24000 Hz). ⚠️ il ne clignote pas : le clignotement était le signe de vie de P0, ce n'est plus un symptôme valide depuis P1.
+2026-08-26 23:27:42.495  fil       I (3152) desknode: prêt en 2401 ms depuis app_main
+2026-08-26 23:27:42.495  fil       I (3152) desknode: recalage d'AMORÇAGE armé (1 vsync) — RESTART_IN_VSYNC=n, la DMA n'est plus relancée à chaque VBlank
+2026-08-26 23:27:42.495  fil       I (3152) desknode:   ⚠️ si l'image sort DÉCALÉE malgré ça : `recal` pour les compteurs, `dma` pour recaler à la main (opérante à `n`).
+2026-08-26 23:27:42.495  fil       I (3154) dn_capt: identite : chip id 0x61, variant 0x00 => BME680 @ 0x77
+2026-08-26 23:27:42.495  fil       I (3281) bme680: bme680_setup_heater_profiles: rh_reg_data 111 | gw_reg_data 146
+2026-08-26 23:27:42.495  fil       I (3327) dn_capt: config relue dans le capteur : 0x72=04 0x74=84 0x75=08
+2026-08-26 23:27:42.495  fil       I (3328) dn_capt: BME680 pret @ 0x77 — FORCED, T/H 8x, P 1x, IIR 3, gaz coupe, cadence 5000 ms, peremption 15000 ms
+2026-08-26 23:27:42.495  fil       I (3328) dn_capt:   l'affichage a UN CYCLE DE RETARD (5 s) sur le capteur : la boucle « data ready » sort a la 1re iteration alors que la conversion 8x/8x/1x demande ~41 ms, et le cycle mesure 25-26 ms. Chaque cycle DECLENCHE une conversion et LIT LA PRECEDENTE. C'est ASSUME, pas subi : attendre couterait 41 ms bloques par cycle (341 ms gaz allume) sur la tache qui partage le bus I2C.
+2026-08-26 23:27:42.495  fil       I (3330) dn_capt:   (gaz coupe DELIBEREMENT : sa plaque a 300 C chaufferait le die qui porte le thermometre, pour une donnee hors des 6 widgets du brief. A/B jouable a chaud : `capteurs gaz on`)
+2026-08-26 23:27:42.495  fil       I (3331) dn_env: INA219 @ 0x40 : NON CADENCE — ni ouvert ni configure. Voir `env` pour le motif.
+2026-08-26 23:27:42.495  fil       W (3332) dn_env: VL6180X @ 0x29 : configuration refusee au boot — ATTENDU a froid, elle sera REPOSEE par `cycle_un()` dans 60 s
+2026-08-26 23:27:42.495  fil       I (3333) dn_env: dn_env pret — 2/3 devices ouverts, cadence 5000 ms (portee par la tache dn_capt), peremption 15000 ms, timeout I2C 100 ms
+2026-08-26 23:27:42.495  fil       I (3334) dn_env:   retroeclairage auto : DESARME par defaut — la loi est 8% a 20 lx, 100% a 600 lx, bande morte 3 pts, pas max 20 pts/cycle. `bl auto on` pour l'armer.
+2026-08-26 23:27:42.495  fil       I (3335) dn_rtc: PCF85063A @ 0x51 — Control_1 = 0x00 : tourne, format 24 h, quartz 7 pF
+2026-08-26 23:27:42.495  fil       W (3335) dn_rtc:   ⚠️ CAP_SEL n'est PAS verifie : rien sur cette carte ne dit quel quartz est soude. Un mauvais reglage se paie en DERIVE, pas en panne. Laisse tel quel, consigne comme INCONNU.
+2026-08-26 23:27:42.495  fil       I (3336) dn_rtc: temoin RELU AVANT ecriture = 0xD7 : la puce a GARDE son alimentation depuis le dernier boot
+2026-08-26 23:27:42.495  fil       I (3337) dn_rtc: temoin anti-fantome pose en 0x03 = 0xD7 (relu)
+2026-08-26 23:27:42.495  fil       I (3338) dn_rtc: heure FIABLE : 2026-08-26 23:27:41
+2026-08-26 23:27:43.878  fil       [5nI (4063) dn_cli: console sur USB-Serial/JTAG
+2026-08-26 23:27:43.878  fil       Type 'help' to get the list of commands.
+2026-08-26 23:27:43.878  fil       Use UP/DOWN arrows to navigate through command history.
+2026-08-26 23:27:43.878  fil       Press TAB when typing command name to auto-complete.
+2026-08-26 23:27:43.878  fil       Your terminal application does not support escape sequences.
+2026-08-26 23:27:43.878  fil       Line editing and history features are disabled.
+2026-08-26 23:27:43.878  fil       On Windows, try using Windows Terminal or Putty instead.
+2026-08-26 23:27:43.878  fil       desknode> 33,gpu,70
+2026-08-26 23:27:43.878  fil       ,480,520,── DeskNode P7 — console de mesure ──
+2026-08-26 23:27:43.878  fil       5  scene   affiche une mire : bits|nbits|rgb|red|green|blue|white|black|frame|gray|asset
+2026-08-26 23:27:43.878  fil       990*61
+2026-08-26 23:27:53.864  BATTEMENT desknode> I (14343) desknode: up 10 s — vsync=422 — flush=69 cycles=30 — PSRAM libre 7768048 o — mural 13 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+2026-08-26 23:28:00.888  MINUTE    72 ligne(s) ECARTEE(S) par le quota (plafond 60) · 85 echo(s) de l'agent filtre(s) — ⛔ rien n'est jete en silence
+2026-08-26 23:28:03.887  BATTEMENT desknode> I (24346) desknode: up 20 s — vsync=796 — flush=122 cycles=52 — PSRAM libre 7768048 o — mural 23 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+2026-08-26 23:28:06.882  fil       desknode> desknode> c $DN,3,126,26027,cpu,73,30,203,430*5A
+2026-08-26 23:28:06.882  fil       Unrecognized command
+2026-08-26 23:28:13.874  BATTEMENT desknode> I (34349) desknode: up 30 s — vsync=1170 — flush=173 cycles=74 — PSRAM libre 7768048 o — mural 33 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+2026-08-26 23:28:23.870  BATTEMENT desknode> I (44352) desknode: up 40 s — vsync=1545 — flush=225 cycles=96 — PSRAM libre 7768048 o — mural 43 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+2026-08-26 23:28:33.876  BATTEMENT desknode> I (54355) desknode: up 50 s — vsync=1919 — flush=277 cycles=118 — PSRAM libre 7768048 o — mural 53 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+2026-08-26 23:28:39.913  PORT      FERME (arret de l'agent)
