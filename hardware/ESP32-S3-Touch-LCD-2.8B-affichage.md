@@ -5432,6 +5432,15 @@ géométrie de bounce qui tombe mal sur cette bande-là, ou une pure coïncidenc
 ⛔ **Aucune mesure ne le tranche, et on n'en tire rien.** C'est le sujet d'une observation dédiée,
 ⛔ pas de cette section.
 
+✅ **DÉCISION OWNER DU 2026-08-27 : ON LE NOTE, ⛔ ON N'OUVRE RIEN.** Il n'y a pour l'instant qu'une
+**description**, aucune mesure ; ouvrir un instrument pour un artefact qui ne gêne pas coûterait
+plus que ce qu'il rendrait. ⇒ ce paragraphe **est** le livrable. Il dort ici jusqu'à ce que
+l'artefact gêne, ou qu'une séance carte passe par là.
+🔧 **ET QUAND ON L'OUVRIRA, LA PREMIÈRE MANIP EST DÉJÀ ÉCRITE** — elle tient en une minute et elle
+tranche : un **A/B `widget grandeurs`** pour savoir si l'artefact suit **la CASE** (⇒ invalidation,
+donc un défaut de dessin) ou **la POSITION à l'écran** (⇒ géométrie de bounce, donc la piste
+ci-dessus). ⛔ Tant que ce n'est pas fait, **aucune des deux ne doit être écrite comme cause.**
+
 ## 21. `dn4-9` / AC8 — LE CONSTAT OWNER À L'ŒIL, 2026-08-22, firmware `38c3b99`
 
 🔴 **CE SONT LES YEUX DE L'OWNER, ⛔ PAS UNE DÉDUCTION.** Chaque question posée **une par une**,
