@@ -159,6 +159,23 @@ static int s_bl_pct_min = DN_ENV_BL_PCT_MIN;
 static int s_bl_dernier_pct = -1;  /* -1 = la loi n'a encore rien appliqué */
 static int s_bl_dernier_lux = DN_ENV_ABSENT;
 static bool s_bl_muet_dit;         /* le « capteur muet » n'est journalisé qu'une fois */
+/* 🔴 REVUE DE CODE `dn4-19`, 2026-08-27 — CE QUE LA LOI A **PHYSIQUEMENT POSÉ**,
+ *    ⛔ À NE PAS CONFONDRE AVEC `s_bl_dernier_pct`.
+ * `s_bl_dernier_pct` est une **SENTINELLE D'AFFICHAGE** : `dn_env_bl_auto_set(true)`
+ * la remet à `-1` exprès, pour que `bl` ne prétende pas *« la loi a appliqué ça »*
+ * juste après un armement (corrigé en revue le 2026-08-20 — ⛔ ce comportement
+ * RESTE). Mais le garde-fou du réveil (`dn_ui.c`) a besoin d'autre chose : *« quel
+ * duty la loi a-t-elle mis sur la dalle, et y est-il encore ? »*. Il s'appuyait sur
+ * la sentinelle, d'où **DEUX fausses accusations mesurées en revue** :
+ *   · `bl auto off` tapé pendant la veille — il ne touche PAS le duty, mais
+ *     `par_la_loi` exigeait `dn_env_bl_auto()` ⇒ accusation alors que personne
+ *     n'avait rien changé ;
+ *   · `bl auto on` tapé pendant la veille — il remet la sentinelle à `-1` ⇒ une
+ *     fenêtre de 5 s où la loi ne peut plus prouver ce qu'elle a posé. ⚠️ Et le
+ *     message d'accusation **recommande lui-même `bl auto on`** : le défaut se
+ *     ré-armait tout seul au réveil suivant.
+ * ⇒ Cette valeur-ci suit LA DALLE, ⛔ pas l'armement. Elle n'est jamais remise. */
+static int s_bl_pose_reelle = -1;
 /* 🔴 dn4-19 — LE RÉGIME. ⛔ POUSSÉ par `dn_ui`, jamais tiré : ce module n'appelle
  *    JAMAIS `dn_veille` (le harnais hôte de `dn3-3` compile `dn_veille.c` seul). */
 static dn_env_bl_regime_t s_bl_regime = DN_ENV_BL_REGIME_ACTIF;
@@ -731,10 +748,39 @@ void dn_env_cycle(void)
              * était appliqué SANS être re-testé, et `cible = courant + pas`
              * pouvait donc se calculer contre une NON-VALEUR (revue de code du
              * 2026-08-20). */
-            int courant = s_bl_dernier_pct;
-            if (courant < 0) {
-                courant = dn_display_backlight_pct_state();
-            }
+            /* 🔴 REVUE DE CODE `dn4-19`, 2026-08-27 — ~~`int courant =
+             *   s_bl_dernier_pct;`~~ ⇒ **L'ANCRE EST L'ÉTAT RÉEL DE LA DALLE.**
+             *   ⛔ BARRÉ, PAS EFFACÉ — le motif d'origine (ne pas calculer
+             *   contre la NON-VALEUR `-1`) tient toujours, et son test reste
+             *   trois lignes plus bas. Ce qui a cessé d'être vrai, c'est que
+             *   l'ombre décrivait la dalle : `s_bl_dernier_pct` ne dit que ce
+             *   que **LA LOI** a posé, et depuis `dn4-19` **QUATRE autres sites
+             *   posent le duty sans passer par elle** (les deux bascules de
+             *   veille, `veille pct`, `bl auto ambiant`). S'ancrer sur l'ombre
+             *   laissait TROIS défauts, tous les trois trouvés en revue :
+             *     · **GEL** — la veille pose 10 % (dernier recours, capteur
+             *       muet) pendant que l'ombre vaut 86. Le capteur revient au
+             *       même lux ⇒ `cible = 86 = courant` ⇒ la bande morte mord ⇒
+             *       **la dalle reste clouée à 10 % TOUTE la veille** pendant que
+             *       `bl` imprime `applique : 86 % (sur 363 lx)`. ⇒ **c'est F1,
+             *       la cause même de cette story, rouverte par un autre chemin.**
+             *     · **REBOND** — la bascule pose 40 EN UNE FOIS, l'ombre vaut
+             *       100 : le cycle suivant calcule `100 - PAS_MAX` et **REMONTE**
+             *       la dalle avant de redescendre. ⇒ viole l'invariant écrit
+             *       vingt lignes plus haut dans `dn_env.h` : *l'asservissement
+             *       fixe le NIVEAU DE RÉGIME ; il ne porte JAMAIS la transition.*
+             *     · **COMPTEUR** — ré-application systématique après chaque
+             *       bascule ⇒ `s_bl_applications` sur-compte **sans mouvement
+             *       réel**, et c'est l'instrument d'AC8.
+             * ✅ POURQUOI LE REBOUCLAGE EST SÛR : `dn_display_backlight_pct_state()`
+             *    rend le **pct DEMANDÉ**, mémorisé APRÈS confirmation
+             *    (`dn_display.c`) — ⛔ pas un duty re-dérivé de LEDC. Aucune
+             *    dérive d'arrondi ne peut donc s'accumuler en le rebouclant ici.
+             * ⚠️ `s_bl_dernier_pct` RESTE, et garde son sens : *« ce que la loi a
+             *    posé »* — c'est ce que `bl` publie (`applique :`) et ce sur quoi
+             *    le garde-fou du réveil s'appuie (`par_la_loi`). ⛔ Ne pas le
+             *    confondre à nouveau avec l'état de la dalle. */
+            int courant = dn_display_backlight_pct_state();
             if (courant < 0) {
                 /* LEDC pas encore monté : la discipline de boot dit que le duty
                  * ne monte qu'après la première trame. On ne calcule rien. */
@@ -754,6 +800,7 @@ void dn_env_cycle(void)
                  * annoncerait une luminosité que la dalle n'a pas prise. */
                 if (dn_display_backlight_pct(cible) == ESP_OK) {
                     s_bl_dernier_pct = cible;
+                    s_bl_pose_reelle = cible;   /* ⛔ jamais remise, voir sa décl. */
                     /* AC8 : la loi vit désormais H24 en Ambient. Ce compteur est
                      * ce qui rend le POMPAGE de la bande morte mesurable sur une
                      * fenêtre longue, au lieu d'être jugé à l'œil. */
@@ -995,7 +1042,19 @@ void dn_env_compteurs_reset(void)
 
 /* ── La loi du rétroéclairage ─────────────────────────────────────────────── */
 
-int dn_env_bl_loi(int lux)
+/*
+ * 🔴 REVUE DE CODE `dn4-19`, 2026-08-27 — LA COURBE DEVIENT UN **PARAMÈTRE**.
+ *    `bl loi` imprimait l'autre forme en **basculant `s_bl_courbe` puis en le
+ *    remettant** — une mutation d'état global, depuis la tâche **REPL**, pendant
+ *    que `dn_env_cycle()` tourne dans la tâche **`dn_capt`**, sur un S3
+ *    **bi-cœur sans affinité**. Un cycle tombé dans la fenêtre appliquait la
+ *    MAUVAISE loi : à 245 lx, **44 % au lieu de 76 %** — la dalle chutait de
+ *    32 points et y restait 5 s — pendant que la commande imprimait
+ *    `⛔ RIEN N'A ÉTÉ APPLIQUÉ`. ⚠️ Et 76/44 est **précisément l'écart que l'A/B
+ *    d'AC6.3 mesure** : la pollution tombait sur la mesure que la commande sert
+ *    à préparer. ⇒ **une prédiction ne doit JAMAIS écrire l'état qu'elle lit.**
+ */
+static int bl_loi_courbe(int lux, dn_env_bl_courbe_t courbe)
 {
     if (lux == DN_ENV_ABSENT) {
         return s_bl_pct_min;
@@ -1008,7 +1067,7 @@ int dn_env_bl_loi(int lux)
     }
     int span_pct = DN_ENV_BL_PCT_MAX - s_bl_pct_min;
 
-    if (s_bl_courbe == DN_ENV_BL_COURBE_LINEAIRE) {
+    if (courbe == DN_ENV_BL_COURBE_LINEAIRE) {
         /* Interpolation linéaire, en entiers, arrondie — comme le duty LEDC de
          * dn_display (`(pct * 1023 + 50) / 100`), pour la même raison : AC7 de
          * dn1-3 cherchait le PLANCHER lisible, et une troncature l'aurait raté. */
@@ -1043,6 +1102,8 @@ int dn_env_bl_loi(int lux)
     return s_bl_pct_min + (int)(f * (float)span_pct + 0.5f);
 }
 
+int dn_env_bl_loi(int lux) { return bl_loi_courbe(lux, s_bl_courbe); }
+
 void dn_env_bl_courbe_set(dn_env_bl_courbe_t c) { s_bl_courbe = c; }
 dn_env_bl_courbe_t dn_env_bl_courbe(void) { return s_bl_courbe; }
 const char *dn_env_bl_courbe_nom(dn_env_bl_courbe_t c)
@@ -1065,9 +1126,10 @@ void dn_env_bl_regime_set(dn_env_bl_regime_t regime)
 
 dn_env_bl_regime_t dn_env_bl_regime(void) { return s_bl_regime; }
 
-int dn_env_bl_loi_regime(int lux, dn_env_bl_regime_t regime)
+static int bl_loi_regime_courbe(int lux, dn_env_bl_regime_t regime,
+                               dn_env_bl_courbe_t courbe)
 {
-    int pct = dn_env_bl_loi(lux);
+    int pct = bl_loi_courbe(lux, courbe);
     if (regime != DN_ENV_BL_REGIME_AMBIENT) {
         return pct;
     }
@@ -1084,6 +1146,17 @@ int dn_env_bl_loi_regime(int lux, dn_env_bl_regime_t regime)
         pct = DN_ENV_BL_PCT_MAX;
     }
     return pct;
+}
+
+int dn_env_bl_loi_regime(int lux, dn_env_bl_regime_t regime)
+{
+    return bl_loi_regime_courbe(lux, regime, s_bl_courbe);
+}
+
+int dn_env_bl_loi_simule(int lux, dn_env_bl_regime_t regime,
+                         dn_env_bl_courbe_t courbe)
+{
+    return bl_loi_regime_courbe(lux, regime, courbe);
 }
 
 int dn_env_bl_cible(void)
@@ -1128,6 +1201,8 @@ esp_err_t dn_env_bl_amb_plancher_set(int pct)
 int dn_env_bl_amb_plancher(void) { return s_bl_amb_pct_min; }
 
 uint32_t dn_env_bl_applications(void) { return s_bl_applications; }
+
+int dn_env_bl_dernier_pose(void) { return s_bl_pose_reelle; }
 
 esp_err_t dn_env_bl_plancher_set(int pct)
 {

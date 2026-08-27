@@ -11,9 +11,30 @@
 #include "dn_asset.h"
 #include "dn_capteurs.h"
 #include "dn_display.h"
-/* dn3-3 : UNIQUEMENT pour `dn_env_bl_auto_desarmer()` — la veille est le 4ᵉ
- * écrivain de LEDC et doit s'arbitrer avec le 3ᵉ. ⛔ Rien d'autre de `dn_env`
- * n'est utilisé ici, et la loi d'asservissement n'est pas touchée. */
+/*
+ * ~~dn3-3 : UNIQUEMENT pour `dn_env_bl_auto_desarmer()` — la veille est le 4ᵉ~~
+ * ~~écrivain de LEDC et doit s'arbitrer avec le 3ᵉ. ⛔ Rien d'autre de `dn_env`~~
+ * ~~n'est utilisé ici, et la loi d'asservissement n'est pas touchée.~~
+ *
+ * 🔴 BARRÉ EN REVUE DE CODE LE 2026-08-27, ⛔ PAS EFFACÉ — **LES TROIS CLAUSES
+ *    SONT DEVENUES FAUSSES AVEC `dn4-19`**, et le commit qui les a rendues
+ *    fausses avait barré le gros bloc de `veille_bl_descendre()` en laissant
+ *    intact **le commentaire qui le résume en tête de fichier**. C'est la forme
+ *    la plus durable du défaut : on relit l'en-tête, pas le corps.
+ * ✅ CE QUE CE FICHIER UTILISE VRAIMENT DE `dn_env`, AUJOURD'HUI :
+ *    · `dn_env_bl_regime_set()` — dire à l'asservissement dans quel état est la
+ *      dalle (PUSH ; ⛔ `dn_env` n'appelle JAMAIS `dn_veille`, sans quoi le
+ *      harnais hôte de `dn3-3` tomberait) ;
+ *    · `dn_env_bl_cible()` — le niveau de régime pour le lux courant, ⛔ sans
+ *      l'appliquer (rend `-1` quand la loi ne peut pas parler) ;
+ *    · `dn_env_bl_auto()` / `dn_env_bl_dernier_pose()` / `dn_env_bl_amb_plancher()`
+ *      — l'armement, ce que la loi a physiquement posé, et le plancher d'Ambient.
+ *    · ⛔ **`dn_env_bl_auto_desarmer()` N'EST PLUS APPELÉE ICI** : la veille ne
+ *      désarme plus (`dn4-19`/AC2.2). Son seul appelant est le geste
+ *      d'opérateur, dans `dn_console.c`.
+ * ⇒ **la loi d'asservissement EST touchée par ce fichier** — c'est même tout le
+ *   propos de `dn4-19`.
+ */
 #include "dn_env.h"
 #include "dn_link.h"
 #include "dn_measure.h"
@@ -2914,6 +2935,27 @@ static esp_err_t veille_armee_appliquer_nolock(bool on, dn_veille_origine_t o)
          */
         if (dn_veille_reveiller(o)) {
             veille_peindre_nolock();
+            /*
+             * 🔴 AJOUTÉ EN REVUE DE CODE LE 2026-08-27 — ce chemin n'appelle
+             *    **JAMAIS** `veille_bl_remonter()`, donc il ne repassait pas le
+             *    régime à ACTIF : `veille off` en dormant laissait
+             *    `s_bl_regime == AMBIENT` **durablement**, et l'asservissement
+             *    pilotait ensuite le dashboard éveillé au plancher d'Ambient.
+             *    ⇒ **ce défaut-là est NEUF** : il naît de `dn4-19`, qui introduit
+             *    le régime et ne l'accrochait qu'à un seul chemin de sortie.
+             * ⚠️ ⛔ CE QUI RESTE OUVERT ICI, ET QUI EST **PRÉEXISTANT** (déjà vrai
+             *    au SHA `94af4f1`, ⛔ pas introduit par `dn4-19`) : ce chemin ne
+             *    restaure pas non plus **le rétroéclairage** — la dalle garde le
+             *    niveau d'Ambient jusqu'au prochain cycle de l'asservissement (≤
+             *    5 s s'il est armé, **indéfiniment sinon**) — et `s_bl_avant_veille`
+             *    reste ≥ 0, donc le prochain endormissement l'écrase avec le duty
+             *    courant : le geste d'opérateur qui précédait la veille est perdu.
+             *    ⇒ ⛔ **NE PAS le « réparer » en appelant `veille_bl_remonter()`
+             *    ici sans mesure** : cette fonction porte le garde-fou
+             *    d'accusation d'AC2.4, et l'appeler depuis un désarmement le ferait
+             *    crier sur un chemin qu'il n'a jamais couvert.
+             */
+            dn_env_bl_regime_set(DN_ENV_BL_REGIME_ACTIF);
         }
     }
     menu_reparametrer();
@@ -6509,7 +6551,77 @@ static int s_bl_avant_veille = -1; /* -1 = aucune veille en cours */
 /* 🔴 dn4-19 — CE QUE LA VEILLE A RÉELLEMENT POSÉ, ⛔ plus `dn_veille_pct()`.
  *    Le niveau d'Ambient est maintenant CALCULÉ : le garde-fou du réveil ne peut
  *    donc plus le re-dériver, il doit s'en souvenir. `-1` = rien de posé. */
+/*
+ * ══ 🔴 CE QUE CETTE STATIQUE NE GARANTIT **PAS** — dn4-19/E3, revue du 2026-08-27
+ *
+ * ⛔ **DÉCISION OWNER : PAS DE VERROU. LA LIMITE EST ÉCRITE ET ASSUMÉE.**
+ *    Motif : piège 8 des Dev Notes de `dn4-19` — *« `s_backlight_pct` est un
+ *    `int` nu, sans aucun verrou ; l'arbitrage est une DISCIPLINE D'APPELANTS,
+ *    ⛔ il n'y a pas de mutex à ajouter « vite fait » sans mesurer ce qu'il coûte
+ *    sur le chemin chaud »*. Le coût n'a pas été mesuré ⇒ on n'ajoute rien.
+ *
+ * 🔴 CE QUI EST VRAI, ET QU'UN LECTEUR DOIT SAVOIR AVANT DE TOUCHER À CECI :
+ *    · `s_bl_pose_par_veille` est **ÉCRITE DEPUIS DEUX TÂCHES** — LVGL (les deux
+ *      bascules) et **REPL** (`dn_ui_veille_set_pct`, `dn_ui_veille_bl_rafraichir`,
+ *      appelées par `veille pct` et `bl auto ambiant …`) ;
+ *    · elle est **LUE** par `veille_bl_remonter()`, en tâche LVGL ;
+ *    · ⛔ **aucun verrou n'arbitre**, et `dn_display_backlight_pct()` n'en a pas
+ *      davantage.
+ *
+ * ⚠️ LE CAS CONCRET QUE ÇA PRODUIT, ⛔ PAS UNE VUE DE L'ESPRIT :
+ *    `bl auto ambiant 40` tapé **à l'instant exact où le doigt se pose** ⇒
+ *    `veille_bl_remonter()` lit `courant` **AVANT** l'écriture du REPL, puis le
+ *    compare à `s_bl_pose_par_veille` que le REPL vient de réécrire **APRÈS** ⇒
+ *    les deux ne correspondent plus ⇒ **fausse accusation**, et le réveil sort
+ *    par la branche qui laisse la dalle au niveau d'Ambient.
+ *    ⇒ **Conséquence bornée** : un réveil bruyant et une dalle qui reste sombre
+ *    jusqu'au geste suivant. ⛔ Rien ne se corrompt durablement — le régime, lui,
+ *    repasse à ACTIF **en tête** de `veille_bl_remonter()` depuis cette revue.
+ *
+ * 🔴 ⛔ **L'ASYMÉTRIE AVEC LES VOISINES EST DÉLIBÉRÉE, PAS UN OUBLI.**
+ *    `dn_ui_veille_set_voile()` et `dn_ui_veille_set_armee()`, dans ce même
+ *    fichier, prennent `lvgl_port_lock(2000)` — parce qu'elles touchent **des
+ *    objets LVGL**, ce que LVGL exige. `dn_ui_veille_set_pct()` et
+ *    `dn_ui_veille_bl_rafraichir()` ne touchent **que LEDC et cette statique**,
+ *    ⛔ aucun objet LVGL. ⇒ **ne pas « harmoniser » en ajoutant un verrou LVGL
+ *    qui ne protège pas la bonne chose** : ce serait payer le chemin chaud pour
+ *    une garantie qu'on n'obtiendrait pas.
+ * ⇒ Si un jour ça doit être fermé, la bonne question est *« combien coûte un
+ *   verrou dédié au duty sur le chemin chaud »*, et elle se **MESURE** d'abord.
+ */
 static int s_bl_pose_par_veille = -1;
+/* 🔴 dn4-19, revue du 2026-08-27 — le pavé de « dernier recours » n'est plus
+ *    journalisé qu'UNE fois par épisode, comme `s_bl_muet_dit` amortit le même
+ *    cas dans `dn_env.c`. Sans ça, un `bl auto off` volontaire produisait **un
+ *    WARN par minute d'inactivité** (cran 1 min), et le journal d'une séance
+ *    devenait illisible là où il doit rester lisible. */
+static bool s_bl_recours_dit;
+
+/*
+ * ══ 🔴 LE NIVEAU DE DERNIER RECOURS, **PLANCHERISÉ** — dn4-19/AC3.3, C1 ══════
+ *
+ * ⛔ CORRIGÉ EN REVUE DE CODE LE 2026-08-27. La bascule posait `dn_veille_pct()`
+ *    **NU** — défaut **10 %**, réglable jusqu'à **3 %** — sur **le rendu
+ *    d'Ambient**, c'est-à-dire sur le contenu même pour lequel la story venait de
+ *    graver, le jour même, **verbatim owner : « 8 % c'est trop bas, 16 c'est
+ *    bien »** (`dn_env.h`, `DN_ENV_BL_AMB_PCT_MIN_DEFAUT`).
+ * 🔴 ⇒ **LE SEUL CHEMIN QUI SERT QUAND LE CAPTEUR EST MORT ÉTAIT LE SEUL À POSER
+ *    UNE VALEUR QUE L'ŒIL AVAIT DÉCLARÉE ILLISIBLE.** Et AC3.3 l'interdisait
+ *    nommément : *« ⛔ Surtout pas de repli sur 10 % »*.
+ * ⚠️ `DN_VEILLE_PCT_MIN = 3` ne protège pas : il a été mesuré sur **le Living
+ *    PCB et son label** (`dn1-3`/AC7), ⛔ un autre contenu. *« Un plancher de
+ *    lisibilité est une propriété du COUPLE duty × contenu. »*
+ * ⛔ LA BRANCHE « NE RIEN POSER » A ÉTÉ ÉCARTÉE PAR L'OWNER (arbitrage C1) : ne
+ *    rien poser laisserait la dalle à la luminosité d'ACTIF et, à l'œil, *« la
+ *    veille ne tombe plus »*. On pose — mais **jamais sous le plancher
+ *    d'Ambient**.
+ */
+static int veille_bl_dernier_recours(void)
+{
+    int pct = dn_veille_pct();
+    int plancher = dn_env_bl_amb_plancher();
+    return (pct < plancher) ? plancher : pct;
+}
 
 static void veille_bl_descendre(void)
 {
@@ -6531,15 +6643,26 @@ static void veille_bl_descendre(void)
          *    exactement le défaut que `dn4-19` ferme.
          * ⚠️ Ne RIEN poser serait pire : la dalle resterait à la luminosité
          *    d'Actif et, à l'œil, « la veille ne tombe plus ». */
-        cible = dn_veille_pct();
-        ESP_LOGW(TAG,
-                 "veille : la loi ne peut pas parler (%s) — on pose le niveau de "
-                 "DERNIER RECOURS, %d %% (`veille pct <n>` pour le changer). "
-                 "⛔ Ce n'est PAS le niveau d'Ambient normal : celui-la suit le "
-                 "lux.",
-                 dn_env_bl_auto() ? "capteur MUET ou lux jamais lu"
-                                  : "`bl auto` DESARME par un geste d'operateur",
-                 cible);
+        cible = veille_bl_dernier_recours();
+        /* ⚠️ AMORTI (dn4-19, revue du 2026-08-27) : le repli reste BAVARD — un
+         * repli silencieux serait exactement le defaut que cette story ferme —
+         * mais il ne se REPETE plus a chaque endormissement. Meme parade que
+         * `s_bl_muet_dit` dans `dn_env.c`, et pour le meme motif. */
+        if (!s_bl_recours_dit) {
+            s_bl_recours_dit = true;
+            ESP_LOGW(TAG,
+                     "veille : la loi ne peut pas parler (%s) — on pose le niveau "
+                     "de DERNIER RECOURS, %d %% (`veille pct <n>` pour le "
+                     "changer ; PLANCHERISE a %d %%, le plancher du rendu "
+                     "d'Ambient). ⛔ Ce n'est PAS le niveau d'Ambient normal : "
+                     "celui-la suit le lux. ⚠️ Ce message ne se REPETERA pas tant "
+                     "que la loi ne sera pas revenue.",
+                     dn_env_bl_auto() ? "capteur MUET ou lux jamais lu"
+                                      : "`bl auto` DESARME par un geste d'operateur",
+                     cible, dn_env_bl_amb_plancher());
+        }
+    } else {
+        s_bl_recours_dit = false;   /* la loi reparle : le prochain repli se dira */
     }
 
     esp_err_t err = dn_display_backlight_pct(cible);
@@ -6555,6 +6678,27 @@ static void veille_bl_descendre(void)
 
 static void veille_bl_remonter(void)
 {
+    /*
+     * 🔴 CORRIGÉ EN REVUE DE CODE LE 2026-08-27 — **LE RÉGIME RESTAIT COLLÉ À
+     *    `AMBIENT`.** `dn_env_bl_regime_set(ACTIF)` était posé **APRÈS** la garde
+     *    d'accusation ; or cette fonction a **DEUX sorties anticipées** — le
+     *    `return` de tête et celui de l'accusation — et **aucune** ne l'atteignait.
+     * ⇒ Dès que la garde accusait — **le scénario EXACT du témoin (b) d'AC2.4,
+     *   capturé en `mesures/dn4-19/T4-temoin-b.txt`** — le module repassait en
+     *   ACTIF avec `s_bl_regime == AMBIENT` : l'asservissement pilotait ensuite
+     *   **le dashboard éveillé** avec l'échelle et le plancher d'Ambient, `bl`
+     *   imprimait `régime : AMBIENT` en plein éveil, et
+     *   `dn_ui_veille_bl_rafraichir()` ne pouvait pas réparer (elle sort si le
+     *   mode n'est pas Ambient). Avec `bl auto ambiant 40` posé en séance — **le
+     *   levier même que cette story livre** — la dalle active restait à 40 % de
+     *   la loi jusqu'au prochain cycle veille→réveil propre, ou au reboot.
+     * ✅ LA RÈGLE QUI EN SORT, ET ELLE VAUT POUR LA SUITE : **le régime décrit
+     *    L'ÉTAT DE LA DALLE, ⛔ pas la décision d'écrire dessus.** Il se pose
+     *    donc EN TÊTE, avant toute garde — et il n'a rien à faire dans une
+     *    branche conditionnelle.
+     */
+    dn_env_bl_regime_set(DN_ENV_BL_REGIME_ACTIF);
+
     if (s_bl_avant_veille < 0) {
         return;
     }
@@ -6592,11 +6736,23 @@ static void veille_bl_remonter(void)
      *    code d'avant avait déjà cette limite. ⛔ Ne pas la « corriger » par un
      *    drapeau posé dans `bl` : ça ferait de la console un écrivain de plus.
      */
-    int dpct_loi = -1;
-    dn_env_bl_etat(NULL, NULL, NULL, NULL, &dpct_loi, NULL);
+    /* 🔴 CORRIGÉ EN REVUE DE CODE LE 2026-08-27 — ~~`dn_env_bl_etat(… &dpct …)`~~
+     *   ⇒ `dn_env_bl_dernier_pose()`, et ~~`dn_env_bl_auto() &&`~~ ⇒ **retiré**.
+     *   L'ancienne version produisait **DEUX fausses accusations**, toutes deux
+     *   sur des gestes qui **ne touchent PAS le duty** :
+     *     · `bl auto off` pendant la veille ⇒ `dn_env_bl_auto()` devient faux
+     *       ⇒ la loi ne pouvait plus se reconnaître, alors que le duty qu'elle
+     *       avait posé était toujours sur la dalle ;
+     *     · `bl auto on` pendant la veille ⇒ il remet la SENTINELLE D'AFFICHAGE
+     *       `dernier_pct` à `-1` (voulu, cf. `dn_env.c`) ⇒ fenêtre de 5 s sans
+     *       preuve. ⚠️ **Et le message d'accusation recommande lui-même
+     *       `bl auto on`** : le défaut se ré-armait au réveil suivant.
+     *   ⇒ On lit désormais **ce que la loi a PHYSIQUEMENT POSÉ**, qui suit la
+     *   dalle et ⛔ pas l'armement. */
+    int dpct_loi = dn_env_bl_dernier_pose();
     bool par_la_veille = (s_bl_pose_par_veille >= 0 &&
                           courant == s_bl_pose_par_veille);
-    bool par_la_loi = (dn_env_bl_auto() && dpct_loi >= 0 && courant == dpct_loi);
+    bool par_la_loi = (dpct_loi >= 0 && courant == dpct_loi);
 
     if (!par_la_veille && !par_la_loi) {
         ESP_LOGW(TAG,
@@ -6623,7 +6779,9 @@ static void veille_bl_remonter(void)
      *    `s_bl_avant_veille` reste le repli — il porte le geste d'opérateur qui
      *    précédait la veille, et c'est lui qu'on doit rendre si la loi se tait.
      */
-    dn_env_bl_regime_set(DN_ENV_BL_REGIME_ACTIF);
+    /* ⚠️ `dn_env_bl_regime_set(ACTIF)` est posé EN TÊTE de la fonction depuis la
+     * revue du 2026-08-27 — ⛔ ne pas le remettre ici : il manquerait de nouveau
+     * aux deux sorties anticipées. */
     int cible = dn_env_bl_auto() ? dn_env_bl_cible() : -1;
     if (cible < 0) {
         cible = s_bl_avant_veille;
@@ -7114,8 +7272,10 @@ esp_err_t dn_ui_veille_set_pct(int pct)
         if (cible < 0) {
             /* On EST sur le dernier recours : la valeur qu'on vient de poser est
              * bien celle qui pilote la dalle en ce moment. */
-            if (dn_display_backlight_pct(dn_veille_pct()) == ESP_OK) {
-                s_bl_pose_par_veille = dn_veille_pct();
+            int recours = veille_bl_dernier_recours();   /* ⛔ jamais sous le
+                                                         * plancher d'Ambient */
+            if (dn_display_backlight_pct(recours) == ESP_OK) {
+                s_bl_pose_par_veille = recours;
             }
         }
     }
@@ -7137,7 +7297,22 @@ void dn_ui_veille_bl_rafraichir(void)
     }
     int cible = dn_env_bl_auto() ? dn_env_bl_cible() : -1;
     if (cible < 0) {
-        cible = dn_veille_pct();
+        /* 🔴 CORRIGÉ EN REVUE DE CODE LE 2026-08-27 — CE REPLI ÉTAIT **SILENCIEUX**,
+         *   et il tombait au pire endroit : l'owner tape `bl auto ambiant 50`
+         *   pendant la veille, le BH1750 est muet, la dalle saute au dernier
+         *   recours — puis `bl_auto_etat()` imprime l'échelle qu'il vient de
+         *   régler. ⇒ **il attribue le saut à SON réglage**, et mesure le repli
+         *   en croyant mesurer sa commande. La bascule voisine, elle, journalise.
+         *   *« Un repli SILENCIEUX serait exactement le défaut que dn4-19 ferme. »* */
+        cible = veille_bl_dernier_recours();
+        ESP_LOGW(TAG,
+                 "`bl auto ambiant` : la loi ne peut pas parler (%s) — le reglage "
+                 "que vous venez de poser N'EST PAS celui qui pilote la dalle. On "
+                 "pose le DERNIER RECOURS, %d %% (plancherise a %d %%). ⇒ ce que "
+                 "vous voyez ne mesure PAS votre commande.",
+                 dn_env_bl_auto() ? "capteur MUET ou lux jamais lu"
+                                  : "`bl auto` DESARME par un geste d'operateur",
+                 cible, dn_env_bl_amb_plancher());
     }
     if (dn_display_backlight_pct(cible) == ESP_OK) {
         s_bl_pose_par_veille = cible;

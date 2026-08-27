@@ -202,7 +202,7 @@ typedef struct {
 /*
  * ══ 🔴 LA RÈGLE DE PRIORITÉ DES ÉCRIVAINS DE LEDC — `dn4-19`/AC2.1 ═══════════
  *
- * ⛔ IL Y A CINQ ÉCRIVAINS ET AUCUN VERROU. Énumérer les cinq sans dire qui
+ * ⛔ IL Y A SIX ÉCRIVAINS ET AUCUN VERROU. Énumérer les six sans dire qui
  *    l'emporte n'est PAS un arbitrage : c'est ce que ce fichier faisait, et le
  *    résultat est que la VEILLE désarmait l'asservissement pour se protéger.
  *
@@ -225,7 +225,7 @@ typedef struct {
  *      *l'asservissement fixe le NIVEAU DE RÉGIME de chaque état ;
  *       il ne porte JAMAIS la transition entre les deux.*
  *
- * Les cinq écrivains, et ce que la règle leur donne :
+ * Les six écrivains, et ce que la règle leur donne :
  *   1. le **boot** (`desknode_main.c:411`, 100 %, une fois) — c'est la première
  *      bascule vers ACTIF ; l'asservissement le ramène ensuite au régime.
  *      ⚠️ `dn3-3` cite encore `desknode_main.c:321` : **périmé**, c'est `:411`.
@@ -237,6 +237,22 @@ typedef struct {
  *   5. `veille pct` (`dn_ui_veille_set_pct`) — ⛔ ce n'est PLUS le niveau
  *      d'Ambient : c'est le niveau de **DERNIER RECOURS**, celui que la veille
  *      pose quand la loi ne peut pas parler (capteur muet). Voir `dn_veille.h`.
+ *   6. 🔴 **`dn_ui_veille_bl_rafraichir()`** (`dn_ui.c`) — **AJOUTÉ PAR
+ *      `dn4-19` LUI-MÊME, ET IL MANQUAIT À CETTE LISTE** (trouvé en revue de
+ *      code le 2026-08-27). Il est déclenché **DEPUIS LA CONSOLE** — `bl auto
+ *      ambiant`, `bl auto ambiant plancher`, `bl auto courbe` — pour que l'œil
+ *      voie l'effet du réglage SANS attendre un cycle de 5 s.
+ *      ⚠️ **Ce n'est PAS un geste d'opérateur au sens de la règle** : il ne
+ *      désarme rien et ne gagne rien. Il **re-pose le niveau du RÉGIME**, donc
+ *      il relève de la même clause que la bascule (n° 4) — il pose EN UNE FOIS,
+ *      et l'asservissement maintient ensuite. C'est pourquoi il **sort sans
+ *      rien faire hors Ambient** : en Actif, c'est l'asservissement qui mène.
+ *      ⛔ **La leçon de l'oubli, et elle vaut pour la prochaine story** : cette
+ *      énumération EST l'arbitrage (AC2.1). Un écrivain qu'on ajoute sans
+ *      l'y inscrire rend la règle fausse **au commit qui l'écrit** — c'est
+ *      exactement ce qui s'est passé ici. ⇒ **`rtk proxy grep -rn
+ *      'dn_display_backlight_pct(' main/` avant de refermer une story qui
+ *      touche au rétroéclairage.**
  */
 /*
  * 🔴 DEUX DE CES QUATRE BORNES ONT ÉTÉ DÉPLACÉES PAR L'ŒIL DE L'OWNER LE
@@ -312,22 +328,24 @@ typedef struct {
 #define DN_ENV_BL_AMB_ECHELLE_DEFAUT 100
 
 /*
- * 🔴 LE PLANCHER D'AMBIENT EST UN **TROISIÈME CONTENU**, ET IL N'A JAMAIS ÉTÉ
- *    MESURÉ — `dn4-19`/AC3.4. ⛔ CE `8` EST UN POINT DE DÉPART, PAS UN CONSTAT.
+ * ~~🔴 LE PLANCHER D'AMBIENT EST UN TROISIÈME CONTENU, ET IL N'A JAMAIS ÉTÉ~~
+ * ~~   MESURÉ — dn4-19/AC3.4. ⛔ CE `8` EST UN POINT DE DÉPART, PAS UN CONSTAT.~~
+ * ~~⇒ Il est RÉGLABLE À CHAUD (`bl auto ambiant plancher <n>`) et la séance~~
+ * ~~  d'AC7.1 le tranche À L'ŒIL, rideau fermé.~~
  *
- * Le dépôt porte trois planchers, et ils ne sont PAS interchangeables :
- *   · `DN_VEILLE_PCT_MIN = 3` — mesuré sur le **Living PCB et son label**
- *     (`dn1-3`/AC7), une image de fond contrastée ;
- *   · `DN_ENV_BL_PCT_MIN = 8` — mesuré sur le **dashboard à six cases**, du
- *     texte fin, rideau fermé (dichotomie 10 / 6 / 8) ;
- *   · celui-ci — le **rendu d'AMBIENT** : gros chiffres blancs sur noir pur,
- *     titres et icônes masqués. ⛔ **JAMAIS MESURÉ SUR CE CONTENU-LÀ.**
- *
- * *« Un plancher de lisibilité est une propriété du COUPLE duty × contenu, pas
- *  du duty seul »* — c'est écrit vingt lignes plus haut, et c'est exactement
- * pourquoi le 3 % de `dn1-3` n'a pas été invalidé quand le 8 % l'a remplacé.
- * ⇒ Il est RÉGLABLE À CHAUD (`bl auto ambiant plancher <n>`) et **la séance
- *   d'AC7.1 le tranche À L'ŒIL, rideau fermé.** ⛔ Ne pas le recopier ailleurs.
+ * 🔴 **BARRÉ EN REVUE DE CODE LE 2026-08-27, ⛔ PAS EFFACÉ** — ce bloc était le
+ *    cadrage AVANT la séance : il annonçait `8` (la valeur n'existe plus, c'est
+ *    **16**) et affirmait *« JAMAIS MESURÉ SUR CE CONTENU-LÀ »* (il l'a été le
+ *    jour même). Il était resté **EN TÊTE, ni barré ni effacé, DEVANT le bloc
+ *    qui le contredit** — alors que ce même commit barre proprement `~~20~~ ⇒
+ *    50`, `~~DÉSARMÉ PAR DÉFAUT~~` et `~~PCT_MAX 40~~`. ⇒ un lecteur qui
+ *    s'arrêtait au premier bloc repartait avec le chiffre d'avant.
+ * ✅ **CE QUI RESTE VRAI DU BLOC BARRÉ, ET QUI NE SE RÉ-OUVRE PAS** : les trois
+ *    planchers ne sont **PAS interchangeables**, parce que *« un plancher de
+ *    lisibilité est une propriété du COUPLE duty × contenu, pas du duty seul »*
+ *    — c'est écrit vingt lignes plus haut, et c'est exactement pourquoi le 3 %
+ *    de `dn1-3` n'a pas été invalidé quand le 8 % l'a remplacé. Le détail des
+ *    trois est repris tel quel dans le bloc ci-dessous.
  */
 /*
  * ✅ `dn4-19`, 2026-08-27 — **MESURÉ, ⛔ PLUS UN POINT DE DÉPART.**
@@ -493,7 +511,22 @@ void dn_env_bl_etat(int *lux_bas, int *lux_haut, int *pas, int *hyst,
  * ⚠️ `dn4-19` : cette fonction était exposée EXPRÈS pour ça et n'avait AUCUN
  *    APPELANT — la prédiction « 61 % » de la séance du 2026-08-27 a donc été
  *    calculée À LA MAIN, ce que les règles du dépôt interdisent. `bl loi [lux]`
- *    est son appelant, livré par `dn4-19`. */
+ *    est son appelant, livré par `dn4-19`.
+ * 🔴 **RECTIFIÉ EN REVUE DE CODE LE 2026-08-27, ⛔ PAS EFFACÉ** : la phrase
+ *    ci-dessus **n'est plus exacte**. `bl loi` passe par `dn_env_bl_loi_regime()`
+ *    et `dn_env_bl_loi_simule()` — il doit imprimer les DEUX régimes et les DEUX
+ *    courbes, ce que cette entrée-ci ne sait pas faire. Elle n'a donc, à nouveau,
+ *    **aucun appelant hors de `dn_env.c`**.
+ * ✅ ELLE EST GARDÉE DÉLIBÉRÉMENT, et voici pourquoi — ⛔ ne pas la supprimer au
+ *    prochain ménage : c'est **le nom stable de la loi** (régime ACTIF, courbe
+ *    courante, ⛔ sans mise à l'échelle), cité par le `README`, par
+ *    `hardware/…-capteurs-i2c.md` et par `dn4-3`. La retirer casserait ces
+ *    renvois pour une économie de trois lignes.
+ * ⚠️ ⛔ **CE QUE LA REVUE RETIENT DE CET ÉPISODE** : le commit qui a livré
+ *    `bl loi` a écrit ici *« voici son appelant »* — une étiquette juste **le
+ *    jour même**, fausse **six jours plus tard**. Une ligne de docblock qui
+ *    nomme un appelant se périme au premier refactor ⇒ **dire ce que la
+ *    fonction EST, ⛔ pas qui l'appelle.** */
 int dn_env_bl_loi(int lux);
 
 /* ── 🔴 LA FORME DE LA LOI (`dn4-19`/AC6.3) ───────────────────────────────────
@@ -549,6 +582,19 @@ dn_env_bl_regime_t dn_env_bl_regime(void);
  * ⛔ N'applique rien. */
 int dn_env_bl_loi_regime(int lux, dn_env_bl_regime_t regime);
 
+/* 🔴 LA MÊME, POUR UNE COURBE **DONNÉE** — `dn4-19`, revue de code du 2026-08-27.
+ * ⛔ N'applique rien ET N'ÉCRIT RIEN : c'est le point. `bl loi` imprimait l'autre
+ *   forme en **basculant `s_bl_courbe` puis en le remettant**, depuis la tâche
+ *   REPL, pendant que `dn_env_cycle()` tourne dans `dn_capt` sur un S3 bi-cœur
+ *   sans affinité — un cycle tombé dans la fenêtre appliquait la MAUVAISE loi
+ *   (44 % au lieu de 76 % à 245 lx) pendant que la commande affirmait
+ *   `⛔ RIEN N'A ÉTÉ APPLIQUÉ`. ⇒ **une prédiction ne doit JAMAIS écrire l'état
+ *   qu'elle lit.** Si une commande veut comparer deux courbes, elle les DEMANDE
+ *   toutes les deux ici, ⛔ elle ne bascule pas le module sous les pieds de la
+ *   tâche capteurs. */
+int dn_env_bl_loi_simule(int lux, dn_env_bl_regime_t regime,
+                         dn_env_bl_courbe_t courbe);
+
 /* Le duty de RÉGIME pour le lux COURANT, ⛔ sans l'appliquer.
  * 🔴 Rend `-1` quand la loi NE PEUT PAS PARLER (capteur muet ou périmé) — et
  *    `-1` est un ÉTAT, ⛔ pas un pourcentage : l'appelant doit le tester. C'est
@@ -570,6 +616,20 @@ int dn_env_bl_amb_plancher(void);
  * compteur le rend mesurable sur une fenêtre longue au lieu d'être jugé à
  * l'œil : deux relevés espacés donnent le nombre de mouvements de duty. */
 uint32_t dn_env_bl_applications(void);
+
+/* 🔴 LE DERNIER DUTY QUE LA LOI A **PHYSIQUEMENT POSÉ** — `dn4-19`, revue du
+ *   2026-08-27. ⛔ **CE N'EST PAS** le `dernier_pct` de `dn_env_bl_etat()** : ce
+ *   dernier est une SENTINELLE D'AFFICHAGE que `bl auto on` remet à `-1` exprès
+ *   (pour que `bl` ne prétende pas « la loi a appliqué ça » juste après un
+ *   armement — corrigé en revue le 2026-08-20, et ça RESTE).
+ * ⇒ Celle-ci suit **LA DALLE**, ⛔ pas l'armement, et elle n'est **jamais
+ *   remise**. C'est ce qu'il faut pour répondre à *« ce duty, est-ce la loi qui
+ *   l'a mis, ou un doigt ? »* — la question du garde-fou du réveil (AC2.4).
+ *   S'appuyer sur la sentinelle produisait DEUX fausses accusations : `bl auto
+ *   off` (qui ne touche pas le duty) et `bl auto on` (qui efface la sentinelle).
+ * 🔴 Rend `-1` tant que la loi n'a rien posé depuis le boot : un ÉTAT, ⛔ pas un
+ *   pourcentage. L'appelant DOIT le tester. */
+int dn_env_bl_dernier_pose(void);
 
 /*
  * ── 🔴 W2 — LE CRITÈRE « UNE CASE DE SIX DOIT BOUGER », MESURÉ DANS LE FIRMWARE

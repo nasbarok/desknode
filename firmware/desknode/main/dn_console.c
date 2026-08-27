@@ -1045,8 +1045,11 @@ static void bl_usage(void)
     printf("        bl auto plancher <n>  — le %% en piece SOMBRE (constat oeil)\n");
     printf("        bl auto ambiant <0..100>        — %% de la loi applique en AMBIENT (dn4-19)\n");
     printf("        bl auto ambiant plancher <n>    — le plancher du RENDU D'AMBIENT (dn4-19)\n");
-    printf("        bl loi [lux]        — ce que la loi RENDRAIT, ⛔ SANS l'appliquer\n");
     printf("        bl auto courbe log|lineaire     — la FORME de la loi (dn4-19/AC6.3)\n");
+    /* ⚠️ `bl loi` est en DERNIER, et separee : ce n'est pas un `bl auto …`, c'est
+     * une LECTURE. La ranger au milieu des reglages (revue du 2026-08-27) cassait
+     * le regroupement et laissait croire qu'elle pose quelque chose. */
+    printf("        bl loi [lux]        — ce que la loi RENDRAIT, ⛔ SANS rien appliquer NI desarmer\n");
 }
 
 /* 🔴 DEUX ÉCRIVAINS SUR LEDC, ET RIEN NE LES ARBITRAIT.
@@ -1093,7 +1096,17 @@ static void bl_auto_etat(void)
      * séance, et c'est publié comme tel) : rendre la sentinelle d'absence par
      * un `0` littéral affirmait l'obscurité totale là où rien n'avait été lu. */
     if (dpct < 0) {
-        printf("  applique : AUCUNE application depuis le boot\n");
+        /* 🔴 CORRIGÉ EN REVUE DE CODE LE 2026-08-27 — cette ligne disait
+         * « depuis le BOOT » et se retrouvait, **six lignes plus bas et dans la
+         * même sortie**, à côté de `applications : 15 mouvements de duty depuis
+         * le boot`. Capturé sur la carte (`mesures/dn4-19/T4-temoins.txt`).
+         * ⇒ Les DEUX chiffres étaient justes, sous **deux définitions
+         * différentes** : `dn_env_bl_auto_set(true)` remet la sentinelle
+         * d'affichage à `-1` (voulu — cf. `dn_env.c`) mais **pas** le compteur.
+         * ⛔ On ne « répare » donc AUCUN des deux : **on dit lequel est lequel.** */
+        printf("  applique : AUCUNE application depuis LE DERNIER ARMEMENT "
+               "(`bl auto on` remet ce temoin a zero — ⛔ pas le compteur "
+               "`applications` ci-dessous, qui lui compte depuis le BOOT)\n");
     } else if (dlux == DN_ENV_ABSENT) {
         printf("  applique : %d %% (sur un lux JAMAIS LU — ⛔ pas « 0 lx »)\n",
                dpct);
@@ -1109,11 +1122,22 @@ static void bl_auto_etat(void)
            amb ? "  (la loi est mise à l'échelle, voir ci-dessous)" : "");
     printf("  ambiant  : échelle %d %% de la loi · plancher %d %%\n",
            dn_env_bl_amb_echelle(), dn_env_bl_amb_plancher());
+    /* 🔴 CORRIGÉ EN REVUE DE CODE LE 2026-08-27 — cette ligne annonçait
+     * « ⛔ JAMAIS mesuré à l'œil » **à côté de `plancher 16 %`**, alors que le 16
+     * VIENT d'un balayage à l'œil du même jour. Le docblock de `dn_env.h` avait
+     * été corrigé, ⛔ pas cette chaîne — **troisième étiquette qui ment née du
+     * correctif**, et capturée telle quelle sur le binaire livré
+     * (`mesures/dn4-19/T9-final.txt`, `T11-etat-final.txt`).
+     * ⛔ *« Une étiquette qui ment se relit à chaque boot »* — celle-ci se
+     * relisait à chaque `bl`, et la séance suivante aurait re-mesuré. */
     printf("           ⚠️ ce plancher est un TROISIÈME contenu (gros chiffres sur "
-           "noir), ⛔ JAMAIS mesuré à l'œil : ⛔ ne pas le confondre avec les %d %% "
-           "du dashboard ni avec les %d %% du Living PCB.\n",
+           "noir), MESURÉ À L'ŒIL le 2026-08-27 dans le noir (« 8 %% c'est trop "
+           "bas, 16 c'est bien ») : ⛔ ne pas le confondre avec les %d %% du "
+           "dashboard ni avec les %d %% du Living PCB — trois CONTENUS, trois "
+           "chiffres.\n",
            DN_ENV_BL_PCT_MIN, DN_VEILLE_PCT_MIN);
-    printf("  applications : %u mouvements de duty depuis le boot\n",
+    printf("  applications : %u mouvements de duty depuis le BOOT "
+           "(⛔ jamais remis, meme par `bl auto on`)\n",
            (unsigned)dn_env_bl_applications());
     printf("           (dn4-19/AC8 : deux relevés espacés mesurent le POMPAGE de "
            "la bande morte — la loi vit H24 depuis que l'auto est armée par "
@@ -1167,6 +1191,12 @@ static int cmd_bl(int argc, char **argv)
                        "Rien n'a été touché.\n");
                 return 1;
             }
+            /* 🔴 AJOUTÉ EN REVUE DE CODE LE 2026-08-27 — `bl auto ambiant` et
+             * `bl auto courbe` rafraîchissaient la dalle, ⛔ pas ceux-ci : deux
+             * leviers voisins, deux latences (0 s contre 5 s), **sans que rien
+             * ne le dise**. Or `s_bl_lux_bas`/`_haut` entrent dans la loi, donc
+             * dans le régime Ambient aussi. ⇒ même service sur tous les leviers. */
+            dn_ui_veille_bl_rafraichir();
             bl_auto_etat();
             return 0;
         }
@@ -1184,13 +1214,22 @@ static int cmd_bl(int argc, char **argv)
                        DN_ENV_BL_PCT_MAX - DN_ENV_BL_HYST);
                 return 1;
             }
+            /* 🔴 AJOUTÉ EN REVUE DE CODE LE 2026-08-27 — voir `bornes` ci-dessus :
+             * `s_bl_pct_min` entre dans `dn_env_bl_loi()`, donc dans le régime
+             * Ambient aussi. La dichotomie du plancher se conduisait à l'aveugle
+             * pendant 5 s alors que celle du plancher d'Ambient répondait au doigt. */
+            dn_ui_veille_bl_rafraichir();
             bl_auto_etat();
             return 0;
         }
-        /* ── bl auto ambiant <0..100> | bl auto ambiant plancher <n> ──
-         * dn4-19/AC3.2 + AC3.4 : les DEUX réglages du régime Ambient se
-         * tranchent SUR LA DALLE, à l'œil, dans UNE séance — ⛔ pas au papier,
-         * et ⛔ pas au prix de trois reflashs. */
+        /* ── bl auto courbe log|lineaire ──
+         * 🔴 dn4-19/AC6.3 : la FORME de la loi, réfutable À CHAUD. C'est ce qui
+         * garde l'ancienne loi de `dn4-3` atteignable pour un A/B contradictoire,
+         * ⛔ sans reflash.
+         * ⚠️ CORRIGÉ EN REVUE LE 2026-08-27 : ce commentaire portait le texte de
+         * la branche `ambiant` (« les DEUX réglages du régime Ambient »), qui est
+         * vingt lignes plus bas. Un en-tête de section qui décrit la branche
+         * SUIVANTE envoie le lecteur au mauvais endroit. */
         if (strcmp(argv[2], "courbe") == 0) {
             if (argc != 4) {
                 printf("usage : bl auto courbe log|lineaire   (actuelle : %s)\n",
@@ -1212,6 +1251,10 @@ static int cmd_bl(int argc, char **argv)
             bl_auto_etat();
             return 0;
         }
+        /* ── bl auto ambiant <0..100> | bl auto ambiant plancher <n> ──
+         * dn4-19/AC3.2 + AC3.4 : les DEUX réglages du régime Ambient se
+         * tranchent SUR LA DALLE, à l'œil, dans UNE séance — ⛔ pas au papier,
+         * et ⛔ pas au prix de trois reflashs. */
         if (strcmp(argv[2], "ambiant") == 0) {
             if (argc == 5 && strcmp(argv[3], "plancher") == 0) {
                 long pct = 0;
@@ -1298,14 +1341,30 @@ static int cmd_bl(int argc, char **argv)
      * 🔴 dn4-19 — L'INSTRUMENT DE PRÉDICTION EXISTAIT ET N'AVAIT AUCUN APPELANT.
      *   `dn_env_bl_loi()` est exposée dans `dn_env.h` avec le commentaire
      *   « exposé pour que la console puisse imprimer la loi sans l'appliquer »…
-     *   et rien ne l'appelait. Résultat MESURÉ : la prédiction « 61 % » de la
+     *   et rien ne l'appelait. ⚠️ Depuis la revue du 2026-08-27, cette commande
+     *   passe par `dn_env_bl_loi_regime()` / `dn_env_bl_loi_simule()` — il lui
+     *   faut les DEUX régimes et les DEUX courbes, ⛔ sans rien muter. Résultat MESURÉ : la prédiction « 61 % » de la
      *   séance du 2026-08-27 a été calculée À LA MAIN, hors de la carte — alors
      *   que la règle du dépôt est *« s'en servir pour tout chiffre annoncé
      *   d'avance, ⛔ pas recalculer à la main dans un coin »*.
      * ⛔ N'APPLIQUE RIEN et NE DÉSARME RIEN : c'est une lecture. */
     if (strcmp(argv[1], "loi") == 0) {
         long lux = 0;
-        bool fourni = (argc >= 3);
+        /* 🔴 CORRIGÉ EN REVUE DE CODE LE 2026-08-27 — ~~`argc >= 3`~~ ⇒ les
+         * arguments surnuméraires étaient **silencieusement jetés** : `bl loi 300
+         * 600`, tapé en croyant donner deux bornes, rendait un chiffre pour
+         * 300 lx et **passait pour une commande réussie**. ⛔ TOUTE autre
+         * sous-commande de ce fichier refuse (`argc != 5` / `!= 4` / `!= 3`), et
+         * le motif est gravé vingt lignes plus haut : *« ⛔ `argc != 5`, PAS
+         * `argc < 5` — un token tapé de travers passait pour une commande
+         * réussie (revue de code 2026-08-20) »*. Le même défaut, re-livré. */
+        if (argc > 3) {
+            printf("⛔ `bl loi` prend AU PLUS un argument. « %s » est en trop — "
+                   "rien n'a été calculé.\n", argv[3]);
+            printf("usage : bl loi [lux]   — sans argument, le lux COURANT\n");
+            return 1;
+        }
+        bool fourni = (argc == 3);
         if (fourni && !parse_entier(argv[2], &lux)) {
             printf("« %s » n'est pas un nombre.\n", argv[2]);
             printf("usage : bl loi [lux]   — sans argument, le lux COURANT\n");
@@ -1334,14 +1393,25 @@ static int cmd_bl(int argc, char **argv)
         /* 🔴 dn4-19 — ON IMPRIME AUSSI L'AUTRE FORME, ⛔ sans la poser : c'est ce
          * qui rend l'A/B d'AC6.3 CONTRADICTOIRE au lieu d'être une affirmation.
          * L'A/B a coûté deux séances au dépôt faute d'avoir les deux chiffres
-         * côte à côte. */
+         * côte à côte.
+         * 🔴 CORRIGÉ EN REVUE DE CODE LE 2026-08-27 — ~~on basculait `s_bl_courbe`
+         *   puis on le remettait~~. C'était une **mutation d'état global depuis la
+         *   tâche REPL**, pendant que `dn_env_cycle()` tourne dans `dn_capt`, sur
+         *   un S3 **bi-cœur sans affinité** : un cycle tombé dans la fenêtre
+         *   appliquait la MAUVAISE loi — **44 % au lieu de 76 % à 245 lx**, la
+         *   dalle chutant de 32 points pour 5 s — pendant que la ligne finale
+         *   affirmait `⛔ RIEN N'A ÉTÉ APPLIQUÉ`. ⚠️ Et 76/44 est **exactement
+         *   l'écart que l'A/B d'AC6.3 mesure** : la pollution tombait sur la
+         *   mesure que cette commande sert à préparer.
+         * ✅ `dn_env_bl_loi_simule()` prend la courbe **en paramètre**, comme le
+         *   régime l'était déjà. ⇒ **une prédiction n'écrit plus l'état qu'elle
+         *   lit**, et l'affirmation ci-dessous devient vraie SANS condition. */
         dn_env_bl_courbe_t c0 = dn_env_bl_courbe();
-        dn_env_bl_courbe_set(c0 == DN_ENV_BL_COURBE_LOG
-                                 ? DN_ENV_BL_COURBE_LINEAIRE
-                                 : DN_ENV_BL_COURBE_LOG);
-        int autre = dn_env_bl_loi_regime((int)lux, DN_ENV_BL_REGIME_ACTIF);
-        const char *autre_nom = dn_env_bl_courbe_nom(dn_env_bl_courbe());
-        dn_env_bl_courbe_set(c0);   /* ⛔ REMIS : cette commande ne change RIEN */
+        dn_env_bl_courbe_t c_autre = (c0 == DN_ENV_BL_COURBE_LOG)
+                                         ? DN_ENV_BL_COURBE_LINEAIRE
+                                         : DN_ENV_BL_COURBE_LOG;
+        int autre = dn_env_bl_loi_simule((int)lux, DN_ENV_BL_REGIME_ACTIF, c_autre);
+        const char *autre_nom = dn_env_bl_courbe_nom(c_autre);
         printf("loi à %ld lx%s   ·   courbe : %s\n", lux,
                fourni ? "" : "  (lux COURANT, lu)", dn_env_bl_courbe_nom(c0));
         printf("  ACTIF   : %d %%\n", actif);
@@ -9474,6 +9544,16 @@ static int cmd_veille(int argc, char **argv)
                    DN_ENV_BL_PCT_MIN);
             printf("  qui est le plancher de la LOI d'asservissement au lux —\n");
             printf("  un autre chiffre pour un autre usage.\n");
+            /* 🔴 AJOUTÉ EN REVUE DE CODE LE 2026-08-27 — ce refus n'expliquait
+             * que DEUX planchers sur TROIS, et il omettait justement celui qui
+             * porte sur le rendu d'Ambient, c'est-a-dire **le seul qui concerne
+             * ce que cette borne garde depuis que le levier a change de nature**. */
+            printf("  ⚠️ ET IL Y EN A UN TROISIEME, dn4-19 : %d %% — le plancher\n",
+                   dn_env_bl_amb_plancher());
+            printf("  du RENDU D'AMBIENT (gros chiffres blancs sur noir),\n");
+            printf("  mesure a l'oeil dans le noir le 2026-08-27. C'est LUI qui\n");
+            printf("  borne desormais le dernier recours. TROIS contenus, TROIS\n");
+            printf("  chiffres — ⛔ ne pas les fusionner par reflexe.\n");
             printf("  ⚠️ dn4-19 : la borne HAUTE est passee de 40 a %d. Le 40\n",
                    DN_VEILLE_PCT_MAX);
             printf("  disait « Ambient est un etat SOMBRE » ; ce chiffre est\n");
@@ -9486,7 +9566,20 @@ static int cmd_veille(int argc, char **argv)
          *   Le laisser s'annoncer « retroeclairage d'Ambient » serait une
          *   etiquette qui ment, et *« une etiquette qui ment se relit a chaque
          *   boot »* est exactement le defaut que ce depot traque. */
-        printf("niveau d'Ambient de DERNIER RECOURS : %d %%\n", dn_veille_pct());
+        /* 🔴 RÉTABLI EN REVUE DE CODE LE 2026-08-27 — la version d'avant `dn4-19`
+         * imprimait « (applique MAINTENANT) » ou « (a la prochaine veille) », et
+         * `dn4-19` l'a PERDU en conditionnant l'effet immédiat. ⇒ l'owner ne
+         * pouvait plus savoir, depuis la sortie, si sa valeur pilotait la dalle —
+         * **sur le levier même dont la story venait de changer la nature**.
+         * ⚠️ La condition n'est plus « on dort », c'est « on dort ET la loi se
+         * tait » : c'est ça qu'il faut dire, ⛔ pas l'ancienne. */
+        bool pilote = (dn_veille_mode() == DN_VEILLE_AMBIENT) &&
+                      (!dn_env_bl_auto() || dn_env_bl_cible() < 0);
+        printf("niveau d'Ambient de DERNIER RECOURS : %d %%%s\n", dn_veille_pct(),
+               pilote ? "   ⇒ APPLIQUE MAINTENANT (la loi se tait, c'est bien lui "
+                        "qui pilote la dalle)"
+                      : "   ⇒ ⛔ IL NE PILOTE RIEN EN CE MOMENT (il ne servira "
+                        "qu'au prochain repli)");
         printf("⛔ CE N'EST PLUS le niveau d'Ambient (dn4-19) : en regime normal,\n");
         printf("   Ambient suit LE LUX (`bl loi` pour voir ce que la loi rendrait).\n");
         printf("   Cette valeur ne sert QUE si la loi ne peut pas parler :\n");
