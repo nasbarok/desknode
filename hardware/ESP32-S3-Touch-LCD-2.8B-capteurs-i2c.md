@@ -5676,6 +5676,11 @@ annonçait déjà deux lignes plus bas, sans que je l'applique à mon propre tex
 
 ## 13.23 🔴 SÉANCE DIAGNOSTIC (2026-08-27) — **L'ASSERVISSEMENT AU LUX N'A JAMAIS TOURNÉ**, et le capteur est INTACT
 
+> ➡️ **SUITE : §13.24 — LA SÉANCE DE CORRECTIF (`dn4-19`, même jour, firmware `0ced322`).**
+> ⛔ **Ce §13.23 n'est PAS réécrit** : il reste le récit du diagnostic **tel qu'il a eu lieu**, sur le
+> binaire `92e67b5`. Ce que le correctif a **confirmé, précisé ou renversé** est écrit **derrière**,
+> ⛔ pas à la place. *« Écrit, jamais masqué. »*
+
 **Firmware : `92e67b5`** — SHA **LU AU BANDEAU** `App version`, ⛔ pas déduit du dépôt.
 ⛔ **AUCUN FLASH, AUCUN BUILD.** Séance de lecture d'état à la console sur le binaire déjà en place.
 
@@ -5767,6 +5772,10 @@ et la veille a posé 10 %.** Même pièce, même instant, même capteur. Un fact
   le noir **et** 61 % à 363 lx. ⇒ **Le correctif n'est pas de déplacer la constante, c'est de laisser
   la loi vivre en Ambient.** Ce qui était faux dans le dossier, c'est que le 10 % y était consigné
   comme un constat **sans sa condition d'éclairage**.
+  > ✅ **CE RAISONNEMENT EST DEVENU UNE MESURE LE MÊME JOUR** (§13.24.3) : sur le firmware corrigé,
+  > **rideau fermé à 5 lx**, la carte tombée en Ambient **d'elle-même** rend **9 %** — soit **un point**
+  > du 10 % du 2026-08-25. ⇒ les deux constats ne sont plus *« compatibles par raisonnement »*, ils le
+  > sont **par le tir**. ⛔ Le 10 % reste **annoté, jamais effacé**.
 
 ### 13.23.7 ⏳ CE QUE LA SÉANCE **NE TRANCHE PAS** — et ça reste VIDE et DÉCLARÉ
 
@@ -5781,6 +5790,14 @@ et la veille a posé 10 %.** Même pièce, même instant, même capteur. Un fact
   La compatibilité avec le constat rideau-fermé du 2026-08-25 est un **raisonnement**, ⛔ pas un tir.
 - **AUCUNE DISPERSION MESURÉE** : chaque chiffre est UNE lecture, ⛔ pas une moyenne.
 
+> ✅ **LES TROIS SONT COMBLÉS — voir §13.24.** Le niveau d'Actif est tranché par un A/B à lux connu
+> (**« 75 % — nettement plus »**, et il **RÉFUTE la loi linéaire**) ; Ambient à bas lux est **rejoué**
+> (0-5 lx) ; et **plus aucun chiffre n'est UNE lecture** : chaque point porte **n ≥ 4 échantillons
+> capteur DISTINCTS** et son étendue.
+> ⚠️ **ET LA « PISTE » DU 100 % N'A PAS SERVI À ÉCARTER LE CONSTAT** — elle n'a **jamais été testée**,
+> et elle reste donc ce qu'elle était : une piste, ⛔ pas une explication. Ce qui a tranché, c'est
+> l'A/B.
+
 ### 13.23.8 L'état où la séance laisse la carte
 
 `--reset` en fin de séance pour lire le bandeau ⇒ la carte est **revenue à son comportement de tous
@@ -5788,3 +5805,174 @@ les jours** : 100 % au boot, asservissement **DÉSARMÉ**, et Ambient à 10 % à
 Délai de veille **remis à 10 min** (il avait été passé à 1 min pour le témoin ; ⚠️ il **persiste en NVS**).
 ⛔ **AUCUN CONTOURNEMENT DURABLE N'EXISTE** : `bl auto on` ne survit ni à la veille ni au reboot, et
 `veille pct` n'est pas persisté et plafonne à 40.
+
+> 🔴 **LES TROIS BLOCAGES DE CE PARAGRAPHE SONT LEVÉS PAR `dn4-19`** (§13.24) : `bl auto` est **armé par
+> défaut** et **survit au boot** ; **la veille ne le désarme plus** ; et `veille pct` **a changé de
+> nature** (niveau de **dernier recours**, plafond porté de 40 à 100). ⛔ Ce paragraphe reste vrai
+> **de `92e67b5`**, et c'est pour ça qu'il n'est pas effacé — une mesure porte la date de son binaire.
+
+---
+
+## 13.24 🎯 SÉANCE CORRECTIF (2026-08-27) — **LA LOI VIT EN AMBIENT**, et l'œil RÉFUTE la loi linéaire
+
+**Firmwares : `1871904` → `efbd515` → `0ced322`** — chaque SHA **LU AU BANDEAU** `App version`,
+⛔ jamais déduit du dépôt. Story `dn4-19`. ⚠️ **`[CC]` owner tranché AVANT le premier flash : Ordre B.**
+Captures brutes : `mesures/dn4-19/`.
+
+⛔ **Ce paragraphe ne remplace pas §13.23** : il en est la suite. Le diagnostic reste lisible tel
+qu'il a eu lieu, sur `92e67b5`.
+
+### 13.24.1 Le point zéro — tiré **AVANT** toute modification
+
+Régime **AMBIENT**, `bl auto` **DÉSARMÉ**, binaire `92e67b5` (équivalence source↔binaire
+**re-démontrée** : `git diff --name-only 92e67b5..94af4f1 -- firmware/` = **0 fichier**).
+
+| condition | n (échantillons **DISTINCTS**) | lux (étendue) | duty **appliqué** | `loi(lux)` | facteur |
+|---|---|---|---|---|---|
+| **A** — éclairage tel quel | **6** | 100-101 (**1 lx**) | **10 %** | 21 % | **2,10** |
+| **B** — pleine lumière | **6** | 174-180 (**6 lx**) | **10 %** | 32-33 % | **3,20-3,30** |
+
+`applique : AUCUNE application depuis le boot` sur **les 12 échantillons** ⇒ F1/F2/F3 **re-prouvés à
+l'exécution**, ⛔ pas seulement lus dans le source.
+
+🔴 **LE « FACTEUR 5,5 » N'EST PAS RE-MESURABLE À L'IDENTIQUE, ET C'EST DÉCLARÉ PLUTÔT QUE MAQUILLÉ** :
+la pièce plafonne à **180 lx** le 2026-08-27 contre **311-363 lx** à la séance du diagnostic.
+⇒ **le facteur est une FONCTION DU LUX, ⛔ pas une constante** — et le constat en sort **renforcé** :
+le duty reste **cloué à 10 %** sur une plage de lux qui **varie de 1,8×**.
+
+⚠️ **DÉFAUT D'INSTRUMENT TROUVÉ DANS L'ÉCHANTILLONNEUR LUI-MÊME, AVANT PUBLICATION** : le premier tir
+comptait **6 tirs pour 3 échantillons capteur distincts** — l'`age` qui vieillit puis retombe le
+prouve. Publier « n = 6 » aurait été un instrument qui ment. L'échantillonneur se cale désormais sur
+le **rafraîchissement** du capteur, et tous les `n` de ce §13.24 comptent des échantillons **distincts
+par construction**.
+
+### 13.24.2 ⚠️ DEUX CHIFFRES DE §13.23 TRANCHÉS **PAR LA CARTE**, ⛔ pas par raisonnement
+
+`bl loi [lux]` — la commande livrée par `dn4-19` — imprime la loi **sans l'appliquer**.
+🔴 **Elle n'existait pas** : `dn_env_bl_loi()` était exposée **exprès pour ça** depuis `dn4-3` et
+**n'avait aucun appelant**. La prédiction « 61 % » de §13.23.4 a donc été calculée **à la main**.
+
+| ce que §13.23 écrit | ce que la carte rend | verdict |
+|---|---|---|
+| *« la loi dit **55 %** sur 311 lx »* | `bl loi 311` ⇒ **54 %** (55 % demande **≥ 316 lx**) | le dossier a **arrondi** là où le firmware **tronque**. ⚠️ Écart d'**un point**, ⛔ aucune conclusion ne bouge |
+| `applique : 61 % (sur 363 lx)` | `bl loi 363` ⇒ **62 %** | ⛔ **PAS une contradiction** : l'écart de 1 point est **sous la bande morte de 3**, donc la boucle **ne bouge pas**. C'est exactement le critère d'AC3.1, observé pour la première fois |
+
+### 13.24.3 🎯 CE QUE LA CARTE CORRIGÉE REND — les trois causes fermées **à l'exécution**
+
+| observation | binaire | ce qu'elle prouve |
+|---|---|---|
+| `asservissement BH1750 : **ARMÉ**` au boot, sans un geste | `1871904` | **F3 fermée** |
+| `applique : 27 % (sur 142 lx)` + `applications : 4` — la dalle **descend de 100 % à 27 % en 4 cycles** | `1871904` | **la loi VIT**, et c'est le comportement nouveau d'AC3.6 |
+| `régime : **AMBIENT**` · `applique : 26 % (sur 136 lx)` | `efbd515` | **F1 fermée** — le niveau d'Ambient est une **fonction du lux**, ⛔ plus la constante 10 % |
+| veille + réveil au doigt, **aucune accusation** au journal sur 190 s | `efbd515` | **F2 fermée**, et la garde ne crie **plus à tort** |
+| **rideau fermé, 5 lx** : la carte tombe en Ambient d'elle-même ⇒ **9 %** | `efbd515` | 🎯 **le tir qui manquait à §13.23.6** : à **un point** du 10 % du 2026-08-25. Les deux constats sont compatibles **PAR LA MESURE** |
+
+### 13.24.4 ✅ LE GARDE-FOU DU RÉVEIL — témoin **DANS LES DEUX SENS**
+
+Le garde-fou de `veille_bl_remonter()` **aurait crié à chaque réveil** dès que la loi vit en Ambient :
+il comparait le duty courant à `dn_veille_pct()`, et ils diffèrent désormais **toujours**.
+⛔ Il n'a **pas** été désarmé, il a été rendu **discriminant** — il reconnaît les **deux** écritures
+légitimes (la bascule, mémorisée ; la loi, via son dernier duty posé) et accuse tout le reste.
+
+| témoin | geste | résultat |
+|---|---|---|
+| **(a)** | veille + réveil au doigt, **sans** geste humain (n = 2 bascules / 2 réveils) | ✅ **AUCUNE accusation** sur 190 s, alors que la loi avait bougé le duty **14 fois** |
+| **(b)** | `bl 40` tapé **pendant** la veille, puis réveil au doigt | ✅ **L'ACCUSATION SORT**, et elle **nomme les trois valeurs** : *« vaut 40 % alors que la veille l'avait posé à 29 % et que l'asservissement en est à 26 % »*, + deux commandes de sortie |
+
+🎯 **BONUS NON PLANIFIÉ, ET IL VAUT MIEUX QU'UN RAISONNEMENT** : le chemin de **dernier recours** s'est
+exercé tout seul et **il est BAVARD** — *« la loi ne peut pas parler (`bl auto` DESARME par un geste
+d'operateur) — on pose le niveau de DERNIER RECOURS, 10 % … ⛔ Ce n'est PAS le niveau d'Ambient
+normal : celui-la suit le lux. »* ⇒ le repli **n'est pas silencieux**, ce qui était le risque nommé.
+
+### 13.24.5 ✅ LES DEUX BASCULES RESTENT **POSÉES EN UNE FOIS** — l'invariant le plus facile à casser
+
+`veille lat`, **n = 4 réveils AU DOIGT** : **t₁ min 134 µs · méd 185 µs · max 5 732 µs**.
+`dn3-3`/AC4 publie **107 µs**. ⇒ **même ordre de grandeur** sur la médiane : l'asservissement fixe le
+**niveau de régime**, ⛔ il ne porte **jamais** la transition.
+
+⚠️ **LE MAX EST EXPLIQUÉ, ⛔ PAS ESCAMOTÉ** : les 5 732 µs sont **le réveil où l'accusation a été
+émise**. L'`ESP_LOGW` (une longue chaîne, sur USB CDC) part **à l'intérieur** de la mesure de t₁ —
+et **c'était déjà le cas avant `dn4-19`**. ⇒ ce n'est pas une régression, c'est le coût d'un
+diagnostic qui ne survient que si un humain a réellement tapé `bl` pendant la veille.
+⛔ **N'A PAS ÉTÉ RE-VÉRIFIÉ par une série de réveils propres** : la campagne a été arrêtée avant
+(§13.24.8). **L'attribution est cohérente avec les données, elle n'est pas prouvée.**
+
+### 13.24.6 🎯 CE QUE L'ŒIL A TRANCHÉ — quatre réglages, avec leur verbatim et leur condition
+
+| réglage | valeur | condition, n | verbatim owner |
+|---|---|---|---|
+| **échelle d'Ambient** | **100 %** — la MÊME loi qu'en Actif | ~210 lx, n = 5 × 4 points (100/70/50/100) | choix (a) sur les trois proposés |
+| **plancher d'Ambient** | **16 %** | **0 lx (noir complet)**, n = 4 × 5 points (3/6/8/12/16) | *« 8 % c'est trop bas 16 c'est bien »* |
+| **pas maximal** | **20 → 50** pts/cycle | main posée/retirée devant le capteur | *« trop lent »*, puis *« on voit bien les 2 se déclencher c'est good »* |
+| **forme de la loi** | **linéaire → LOGARITHMIQUE** | **245 lx**, n = 5 × 4 niveaux (41/55/75/100) | *« 75 % — nettement plus »* |
+
+🔴 **LE PLANCHER D'AMBIENT EST UN TROISIÈME CHIFFRE, ET IL EST PLUS HAUT QUE LES DEUX AUTRES** —
+⛔ à rebours de l'intuition *« gros chiffres blancs sur noir, donc ça se lit plus bas »* :
+**3 %** = Living PCB (`dn1-3`/AC7) · **8 %** = dashboard à texte fin · **16 %** = rendu d'Ambient.
+⛔ **Aucun des deux autres n'est invalidé** : ils ne portent pas sur ce contenu-là.
+
+🔴 **LES DEUX QUESTIONS ONT ÉTÉ POSÉES SÉPARÉMENT** (*« plus lumineux ? »* / *« plus rapide ? »*), et
+c'était nécessaire : les réponses sont tombées à **deux endroits opposés** de la loi — la **forme**
+pour l'une, le **pas** pour l'autre. Le dépôt s'était déjà fait piéger à les confondre (§13.19.7).
+
+⚠️ **CONSÉQUENCE NOMMÉE DE L'ÉCHELLE À 100 %** : Ambient cesse d'être *« plus sombre qu'Actif »*,
+propriété **D-1** voulue par `dn3-3`. ⇒ si les deux états doivent différer, c'est **ACTIF qui monte**,
+⛔ pas Ambient qui descend.
+
+### 13.24.7 🔴 LA LOI LINÉAIRE EST **RÉFUTÉE** — et le gamma est écarté **par le calcul**
+
+Le ledger portait *« LE DUTY LEDC N'EST PAS LINÉAIRE EN LUMINOSITÉ PERÇUE »* avec **deux** leviers et
+la consigne *« ne rien changer sans un besoin exprimé »*. **Le besoin a été exprimé** : 75 % voulu là
+où la loi linéaire rend **44 %** à 245 lx.
+
+| levier | ce qu'il donne | verdict |
+|---|---|---|
+| **gamma sur le duty** | doit être **calé** sur le point de l'owner (γ ≈ 3,0) ⇒ **coude brutal** juste au-dessus de `LUX_BAS` : 8 % à 20 lx, puis **27 % à 25 lx** | ⛔ **ÉCARTÉ** — un saut que personne n'a validé, sur une zone non mesurée |
+| **loi logarithmique** | **aucun paramètre à caler** : `8 + 92 × ln(245/20)/ln(600/20)` = **76 %** | ✅ **RETENU** — elle retombe sur le constat (75 %) *sans être ajustée*, et son motif était **déjà au ledger** : *« l'œil et le lux sont tous deux logarithmiques »* |
+
+✅ **VÉRIFIÉ SUR LA CARTE**, binaire `0ced322` :
+```
+loi      : 8 % à <= 20 lx · 100 % à >= 600 lx · courbe log entre les deux
+bl loi 245 →  ACTIF 76 %   ·  pour comparaison, courbe lineaire : 44 %
+bl loi   0 →  ACTIF  8 %   ·  AMBIENT 16 %
+```
+⛔ **AUCUNE des quatre valeurs réglées à l'œil n'est déplacée** (8 %, 20 lx, 600 lx, 3 pts) : les deux
+**bornes** sont préservées à l'identique, c'est la **FORME entre elles** qui change. AC6.4 tient.
+✅ **ET ELLE RESTE RÉFUTABLE** : `bl auto courbe lineaire|log` rebascule **à chaud**, et `bl loi`
+imprime **les deux formes côte à côte** (en restaurant la courbe — la commande ne change rien).
+
+### 13.24.8 🔴 CE QUE CETTE SÉANCE **N'A PAS** MESURÉ — et pourquoi
+
+- ⛔ **LE NIVEAU D'ACTIF À BAS LUX N'A PAS ÉTÉ MESURÉ.** Le 2ᵉ point de la courbe est **EMPRUNTÉ À
+  AMBIENT** (le 16 % dans le noir), sur **décision owner explicite**. ⇒ écrit comme tel, ⛔ jamais
+  présenté comme une mesure d'Actif.
+- 🔴 **ET LA CAUSE EST UN DÉFAUT DE MON PROPRE PROTOCOLE, DIT PAR L'OWNER, ET IL EST JUSTE** :
+  > *« arrete ces test tt pourri tu me demande de matter 100 sec un ecran qui se lance au bout de
+  > 100 sec je ne vais pas rester 10 min le nez collé a l'ecran en plus sans aucuns reperes visuel du
+  > % de luminosité fournis… »*
+
+  **Deux fautes, nommées :** (a) j'échantillonnais **n ≥ 5 par NIVEAU** dans un A/B jugé **à l'œil** —
+  ce `n` sert à la dispersion du **CAPTEUR**, il n'a rien à faire dans un jugement visuel, qui demande
+  **3 secondes** ; (b) l'owner jugeait **à l'aveugle**, sans jamais voir **quel % était posé**.
+- ✅ **CONSIGNE POUR LES PROCHAINES SÉANCES** : *un A/B à l'œil se pilote **PAR L'OWNER** (`bl <n>`,
+  effet immédiat, chiffre visible), ⛔ pas par un balayage instrumenté.* L'instrumentation sert à
+  **mesurer**, ⛔ pas à **faire juger**.
+- ⛔ **LE t₁ MAX N'A PAS ÉTÉ RE-VÉRIFIÉ** sur une série de réveils propres (§13.24.5).
+- ⛔ **AUCUNE OBSERVATION SOUS ÉCLAIRAGE INSTABLE** (fluo qui papillote) — voir §13.24.9.
+
+### 13.24.9 ✅ AC8 — LE POMPAGE N'EST PLUS THÉORIQUE, IL EST **MESURÉ**
+
+Le ledger déclarait la propriété anti-pompage *« JAMAIS EXERCÉE »*, le constat *« il ne pompe pas »*
+ayant été fait **dans le noir**, où `bl 100` et `bl 0` rendent tous deux `brut 0` — donc *« aucune
+contre-réaction optique possible »*. **`dn4-19` fait vivre la loi H24, en Ambient, sous éclairage
+domestique.** Le compteur `applications` (livré par cette story) le rend mesurable :
+
+| fenêtre | lux | mouvements de duty | lecture |
+|---|---|---|---|
+| **dérive naturelle**, 50 s | 238 → 225 lx | **1** (`applications` 31 → 32) | **~1 mouvement / 50 s** ⇒ ⛔ **pas de pompage** |
+| **transitoire provoqué** (main sur le capteur, ~105 s) | 0 → ~238 lx | **5** | course complète jusqu'au plancher **8 %** et retour à 44-45 %, en **2 cycles** |
+
+✅ **ET LA PROPRIÉTÉ DU NOIR EST RE-CONFIRMÉE** : à 0 lx, `brut` reste à **0 quel que soit le duty**
+⇒ **aucune contre-réaction optique**, exactement ce que le ledger avançait.
+⛔ **CE QUI RESTE NON FAIT** : aucune observation sous **éclairage instable** (fluo, ombre mobile).
+**Un silence n'est pas un verdict** — c'est déclaré ouvert, ⛔ pas conclu.
