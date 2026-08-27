@@ -838,13 +838,22 @@ esp_err_t dn_env_init(void)
              ouverts, DN_ENV_NB, DN_ENV_PERIODE_MS,
              (long long)(DN_ENV_PEREMPTION_US / 1000), DN_ENV_I2C_TIMEOUT_MS);
     ESP_LOGI(TAG,
+             /* 🔴 dn4-19 — CETTE LIGNE SE CONTREDISAIT DEPUIS LE PASSAGE A
+              *   `true` : elle annoncait « ARME par defaut » PUIS « `bl auto
+              *   on` pour l'armer ». Le suffixe etait ecrit en dur pour un
+              *   defaut `false`. ⛔ Une etiquette qui ment se relit a chaque
+              *   boot — et celle-ci se relit LITTERALEMENT a chaque boot. */
              "  retroeclairage auto : %s par defaut — la loi est %d%% a %d lx, "
-             "%d%% a %d lx, bande morte %d pts, pas max %d pts/cycle. "
-             "`bl auto on` pour l'armer.",
+             "%d%% a %d lx, bande morte %d pts, pas max %d pts/cycle. %s",
              DN_ENV_BL_AUTO_DEFAUT ? "ARME" : "DESARME",
              s_bl_pct_min, DN_ENV_BL_LUX_BAS,
              DN_ENV_BL_PCT_MAX, DN_ENV_BL_LUX_HAUT,
-             DN_ENV_BL_HYST, DN_ENV_BL_PAS_MAX);
+             DN_ENV_BL_HYST, DN_ENV_BL_PAS_MAX,
+             DN_ENV_BL_AUTO_DEFAUT
+                 ? "`bl auto off` pour le desarmer ; la dalle va donc DESCENDRE "
+                   "depuis les 100 % du boot, par pas, dans les prochains "
+                   "cycles — c'est NORMAL (dn4-19)."
+                 : "`bl auto on` pour l'armer.");
     return ESP_OK;
 }
 

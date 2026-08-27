@@ -9644,8 +9644,9 @@ static const esp_console_cmd_t k_cmds[] = {
            cmd_recal),
     DN_CMD("bl",
            "bl [0..100|on|off|ramp <pct> [ms]|freq <hz>|auto on|off|auto bornes "
-           "<bas> <haut>|auto pas <n>|auto plancher <n>] — rétroéclairage "
-           "gradable et asservi (dn1-3/dn4-3)",
+           "<bas> <haut>|auto pas <n>|auto plancher <n>|auto ambiant "
+           "<0..100>|auto ambiant plancher <n>|loi [lux]] — rétroéclairage "
+           "gradable et asservi (dn1-3/dn4-3), la loi vit en Ambient (dn4-19)",
            cmd_bl),
     DN_CMD("disp", "disp on|off — sortie d'affichage de la dalle (0x29/0x28)",
            cmd_disp),

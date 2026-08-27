@@ -1,0 +1,41 @@
+
+===== bl loi 311 =====
+bl loi 311
+loi à 311 lx :
+  ACTIF   : 54 %
+  AMBIENT : 54 %   (échelle 100 % · plancher 8 %)
+  duty POSÉ en ce moment : 27 %   ·   régime : ACTIF
+⛔ RIEN N'A ÉTÉ APPLIQUÉ ET RIEN N'A ÉTÉ DÉSARMÉ : c'est une lecture.
+desknode> 
+===== bl loi 316 =====
+bl loi 316
+loi à 316 lx :
+  ACTIF   : 55 %
+  AMBIENT : 55 %   (échelle 100 % · plancher 8 %)
+  duty POSÉ en ce moment : 27 %   ·   régime : ACTIF
+⛔ RIEN N'A ÉTÉ APPLIQUÉ ET RIEN N'A ÉTÉ DÉSARMÉ : c'est une lecture.
+desknode> 
+===== bl loi 363 =====
+bl loi 363
+loi à 363 lx :
+  ACTIF   : 62 %
+  AMBIENT : 62 %   (échelle 100 % · plancher 8 %)
+  duty POSÉ en ce moment : 27 %   ·   régime : ACTIF
+⛔ RIEN N'A ÉTÉ APPLIQUÉ ET RIEN N'A ÉTÉ DÉSARMÉ : c'est une lecture.
+desknode> 
+===== bl loi 20 =====
+bl loi 20
+loi à 20 lx :
+  ACTIF   : 8 %
+  AMBIENT : 8 %   (échelle 100 % · plancher 8 %)
+  duty POSÉ en ce moment : 27 %   ·   régime : ACTIF
+⛔ RIEN N'A ÉTÉ APPLIQUÉ ET RIEN N'A ÉTÉ DÉSARMÉ : c'est une lecture.
+desknode> 
+===== bl loi 5 =====
+bl loi 5
+loi à 5 lx :
+  ACTIF   : 8 %
+  AMBIENT : 8 %   (échelle 100 % · plancher 8 %)
+  duty POSÉ en ce moment : 27 %   ·   régime : ACTIF
+⛔ RIEN N'A ÉTÉ APPLIQUÉ ET RIEN N'A ÉTÉ DÉSARMÉ : c'est une lecture.
+desknode>
