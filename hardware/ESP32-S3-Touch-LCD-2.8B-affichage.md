@@ -5497,6 +5497,32 @@ qu'il n'a pas servi à construire.**
 2 × 38,75 = **77,5** : il **sur-estime de 4,6 %**. ⛔ **Écart systématique DÉCLARÉ, NON EXPLIQUÉ**
 (FIFO du contrôleur, latence d'amorçage de la DMA : aucune des deux n'est mesurée).
 
+🔴 **ET LA CONTRE-ÉPREUVE DE LA RÉFÉRENCE A CRIÉ SUR LES TROIS LIGNES DE CE TABLEAU** — relevé à la
+**3ᵉ revue de code, le 2026-08-27**, ⛔ pas pendant la séance. Sur chaque ligne, `MAX > référence` :
+**2 298 > 2 258** (+40) · **1 988 > 1 963** (+25) · **1 562 > 1 520** (+42). La console imprime alors
+*« les déficits ci-dessous sont SOUS-comptés de N µs. Refaire `flush reset` au REPOS avant de
+conclure »* — ⛔ **et ces trois points ONT ÉTÉ PRIS AU REPOS.** Le remède prescrit était **déjà la
+condition de la mesure**.
+
+⚠️ **LA CAUSE EST STRUCTURELLE, ⛔ PAS ACCIDENTELLE.** `ph_ref_us` est le **maximum de 32 trames** de
+dégrossissage ; `ph_max_us` est le maximum de la population comptée, qui se chiffre en **milliers**.
+Par statistique d'ordre, le max d'un grand échantillon dépasse celui d'un petit tiré de la même loi :
+**`MAX > référence` est le résultat ATTENDU** dès que `n ≫ 32`. ⇒ **cette sentinelle ne porte aucune
+information**, et son déclenchement le 2026-08-27 — noté à l'époque comme *« elle a tiré au premier
+tir »*, c'est-à-dire lu comme un **succès de l'instrument** — ne valait **pas** validation.
+
+🎯 **CE QUE ÇA CHANGE, ET ⛔ CE QUE ÇA NE CHANGE PAS — DÉCISION OWNER DU 2026-08-27 : ON NOTE, ON NE
+REFOND PAS.**
+- ✅ **AC1 N'EST PAS TOUCHÉ.** Sa loi linéaire porte sur **`moy`**, et le biais de référence
+  n'intervient que dans le calcul du **déficit**. Les trois `moy` (2 257 · 1 961 · 1 518) sont
+  intactes, la pente de 73,9 µs/ligne aussi.
+- ✅ **UN SEUIL FRANCHI L'EST *A FORTIORI*.** Le biais **SOUS**-compte ⇒ le déficit vrai est
+  **supérieur** au déficit publié. Un franchissement de `t_demi` est donc un **MINORANT**.
+- 🔴 **⛔ MAIS DEUX DÉFICITS NE SE COMPARENT PLUS ENTRE EUX.** Les deux termes portent le même biais,
+  dans des proportions inconnues. C'est ce qui fait tomber le rapport de §20bis.11 ci-dessous.
+- La console **le dit désormais elle-même**, et elle publie `ph_degrossi_n` à côté de `ph_n` pour que
+  le lecteur voie les deux tailles d'échantillon sans avoir à lire le code.
+
 ⇒ ✅ **AC1 EST LEVÉ.** L'instrument voit un déplacement **provoqué**, **linéairement**, sur une plage
 de **739 µs = 14 × la dispersion au repos (54 µs)**, avec une prédiction écrite d'avance qui tombe à
 **0,57 ligne**. **AC3, AC4 et AC5 tiennent.**
@@ -5514,8 +5540,22 @@ même géométrie** que la ligne de repos ci-dessus :
 | 🔴 100 % (CORRUPTION) | **0** | **62** — soit 0,144 /s |
 | 10 % · 25 % · 50 % | 0 · 0 · 0 | 582 · 85 · 77 |
 
-⇒ **× 56 sur le déficit pire, 0 → 62 sur les corruptions.** Le compteur **discrimine** repos et
-trafic. ✅ **Le témoin B est acquis.**
+⇒ 🔴 **0 → 62 SUR LES CORRUPTIONS.** Le compteur **discrimine** repos et trafic.
+✅ **Le témoin B est acquis** — et il l'est sur **ce** passage-là, ⛔ pas sur un rapport.
+
+⛔ **LE « × 56 » A ÉTÉ RETIRÉ — DÉCISION OWNER DU 2026-08-27, 3ᵉ REVUE DE CODE.** Ce paragraphe
+publiait *« × 56 sur le déficit pire »* (784 / 14). ⛔ **Ce quotient n'est pas défendable** : la
+contre-épreuve de la référence figée (voir §20bis.10 ci-dessus) déclare les déficits **sous-comptés
+de 25 à 42 µs**, et ce biais frappe **le numérateur ET le dénominateur**. Sur un dénominateur de
+**14 µs**, un biais de cet ordre le change d'un **facteur 3 ou 4** ; sur un numérateur de 784 µs il
+est négligeable. ⇒ le rapport est dominé par l'erreur, dans une proportion **inconnue et non
+mesurée**.
+
+✅ **CE QUI RESTE, ET QUI SUFFIT** : les deux relevés bruts ci-dessus, et le passage de **0 à 62
+corruptions**. Un compteur qui passe de zéro à soixante-deux **discrimine** — ⛔ il n'a pas besoin
+d'un quotient pour le prouver, et le quotient n'ajoutait rien qu'une fausse précision.
+⚠️ **Le `dépassé de 9 µs` sur le seuil de 775 TIENT**, et il tient *a fortiori* : le biais
+sous-compte, donc le déficit vrai est **au-dessus** de 784.
 
 ⛔ **ET ON NE COMPARE PAS AUX 0,94 /s DE §20.7.19.** Référence (cliquet → figée), population
 (min/MAX mélangés → disjoints), période (tronquée → arrondie) **et** `bounce_px` (7 680 → 9 600) ont
