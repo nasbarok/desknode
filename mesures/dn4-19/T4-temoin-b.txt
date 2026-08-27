@@ -1,0 +1,65 @@
+
+===== bl =====
+bl
+rétroéclairage : 26 % à 24000 Hz (allumé)
+⚠️ `bl 0` éteint le RÉTROÉCLAIRAGE : dalle NOIRE.
+   `disp off` éteint la SORTIE de la dalle : dalle GRISE éclairée.
+   Les deux donnent « plus d'image », par deux mécanismes différents.
+asservissement BH1750 : ARMÉ
+  loi      : 8 % à <= 20 lx · 100 % à >= 600 lx · linéaire entre les deux
+  garde    : bande morte 3 pts · pas max 20 pts par cycle de 5000 ms (course complète en 5 cycles)
+  applique : 26 % (sur 136 lx)
+  régime   : AMBIENT  (la loi est mise à l'échelle, voir ci-dessous)
+  ambiant  : échelle 100 % de la loi · plancher 8 %
+           ⚠️ ce plancher est un TROISIÈME contenu (gros chiffres sur noir), ⛔ JAMAIS mesuré à l'œil : ⛔ ne pas le confondre avec les 8 % du dashboard ni avec les 3 % du Living PCB.
+  applications : 15 mouvements de duty depuis le boot
+           (dn4-19/AC8 : deux relevés espacés mesurent le POMPAGE de la bande morte — la loi vit H24 depuis que l'auto est armée par défaut.)
+  ⚠️ `bl <n>`, `bl on|off` et `bl ramp` DÉSARMENT l'auto et le DISENT.
+  ⛔ `bl ramp` est BLOQUANTE : elle n'est JAMAIS appelée par l'asservissement.
+  ⛔ La VEILLE ne désarme PLUS (dn4-19) : elle POSE le niveau du régime EN UNE FOIS, et la loi le maintient ensuite.
+desknode> 
+===== bl 40 =====
+bl 40
+W (1927544) dn_env: retroeclairage auto DESARME par « bl <n> » — deux ecrivains sur LEDC ne s'arbitrent pas tout seuls, et une commande ecrasee au cycle suivant serait un instrument qui ment.
+⚠️ l'asservissement automatique était ARMÉ : il vient d'être DÉSARMÉ par « bl <n> ».
+   Sinon la valeur que vous venez de poser aurait été écrasée au prochain cycle (5 s), sans un mot.
+   `bl auto on` pour le réarmer.
+rétroéclairage 40 % : ESP_OK
+desknode> 
+===== (écoute) =====
+I (1944730) desknode: up 1940 s — vsync=72621 — flush=458 cycles=430 — PSRAM libre 7768048 o — mural 1944 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (1954734) desknode: up 1950 s — vsync=72995 — flush=460 cycles=432 — PSRAM libre 7768048 o — mural 1954 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (1964737) desknode: up 1960 s — vsync=73370 — flush=462 cycles=434 — PSRAM libre 7768048 o — mural 1964 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (1974740) desknode: up 1970 s — vsync=73744 — flush=464 cycles=436 — PSRAM libre 7768048 o — mural 1974 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (1984743) desknode: up 1980 s — vsync=74118 — flush=466 cycles=438 — PSRAM libre 7768048 o — mural 1984 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (1994747) desknode: up 1990 s — vsync=74492 — flush=469 cycles=441 — PSRAM libre 7768048 o — mural 1994 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (2004750) desknode: up 2000 s — vsync=74866 — flush=471 cycles=443 — PSRAM libre 7768048 o — mural 2004 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+
+===== (écoute) =====
+I (2034759) desknode: up 2030 s — vsync=75988 — flush=477 cycles=449 — PSRAM libre 7768048 o — mural 2034 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (2044762) desknode: up 2040 s — vsync=76363 — flush=479 cycles=451 — PSRAM libre 7768048 o — mural 2044 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+W (2052505) dn_ui: reveil : le retroeclairage vaut 40 % alors que la veille l'avait pose a 29 % et que l'asservissement en est a 26 % — quelqu'un l'a change PENDANT la veille. On le LAISSE tel quel plutot que d'ecraser ce geste (il aurait ete rendu a 29 % sans un mot). `bl 29` pour revenir a l'etat d'avant la veille, `bl auto on` pour rendre la main a la loi.
+I (2054765) desknode: up 2050 s — vsync=76737 — flush=487 cycles=455 — PSRAM libre 7768048 o — mural 2054 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (2064768) desknode: up 2060 s — vsync=77111 — flush=489 cycles=457 — PSRAM libre 7768048 o — mural 2064 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (2074771) desknode: up 2070 s — vsync=77485 — flush=491 cycles=459 — PSRAM libre 7768048 o — mural 2074 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (2084774) desknode: up 2080 s — vsync=77859 — flush=493 cycles=461 — PSRAM libre 7768048 o — mural 2084 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (2094777) desknode: up 2090 s — vsync=78233 — flush=495 cycles=463 — PSRAM libre 7768048 o — mural 2094 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (2104780) desknode: up 2100 s — vsync=78607 — flush=497 cycles=465 — PSRAM libre 7768048 o — mural 2104 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+W (2113431) dn_ui: veille : la loi ne peut pas parler (`bl auto` DESARME par un geste d'operateur) — on pose le niveau de DERNIER RECOURS, 10 % (`veille pct <n>` pour le changer). ⛔ Ce n'est PAS le niveau d'Ambient normal : celui-la suit le lux.
+I (2114783) desknode: up 2110 s — vsync=78981 — flush=505 cycles=469 — PSRAM libre 7768048 o — mural 2114 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (2124786) desknode: up 2120 s — vsync=79356 — flush=512 cycles=472 — PSRAM libre 7768048 o — mural 2124 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (2134789) desknode: up 2130 s — vsync=79730 — flush=514 cycles=474 — PSRAM libre 7768048 o — mural 2134 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (2144792) desknode: up 2140 s — vsync=80104 — flush=516 cycles=476 — PSRAM libre 7768048 o — mural 2144 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (2154795) desknode: up 2150 s — vsync=80478 — flush=518 cycles=478 — PSRAM libre 7768048 o — mural 2154 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (2164799) desknode: up 2160 s — vsync=80852 — flush=520 cycles=480 — PSRAM libre 7768048 o — mural 2164 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (2174802) desknode: up 2170 s — vsync=81226 — flush=523 cycles=483 — PSRAM libre 7768048 o — mural 2174 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+W (2175676) dn_ui: veille : la loi ne peut pas parler (`bl auto` DESARME par un geste d'operateur) — on pose le niveau de DERNIER RECOURS, 10 % (`veille pct <n>` pour le changer). ⛔ Ce n'est PAS le niveau d'Ambient normal : celui-la suit le lux.
+I (2184805) desknode: up 2180 s — vsync=81600 — flush=530 cycles=486 — PSRAM libre 7768048 o — mural 2184 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (2194809) desknode: up 2190 s — vsync=81974 — flush=532 cycles=488 — PSRAM libre 7768048 o — mural 2194 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (2204813) desknode: up 2200 s — vsync=82349 — flush=534 cycles=490 — PSRAM libre 7768048 o — mural 2204 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (2214816) desknode: up 2210 s — vsync=82723 — flush=536 cycles=492 — PSRAM libre 7768048 o — mural 2214 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (2224819) desknode: up 2220 s — vsync=83097 — flush=538 cycles=494 — PSRAM libre 7768048 o — mural 2224 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (2234822) desknode: up 2230 s — vsync=83471 — flush=541 cycles=497 — PSRAM libre 7768048 o — mural 2234 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (2244825) desknode: up 2240 s — vsync=83845 — flush=543 cycles=499 — PSRAM libre 7768048 o — mural 2244 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (2254828) desknode: up 2250 s — vsync=84219 — flush=545 cycles=501 — PSRAM libre 7768048 o — mural 2254 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (2264831) desknode: up 2260 s — vsync=84593 — flush=547 cycles=503 — PSRAM libre 7768048 o — mural 2264 s (écart +4 s) — reset: USB (reset par le périphérique USB — replug/JTAG)

@@ -1,0 +1,120 @@
+
+===== (écoute) =====
+I (1704606) desknode: up 1700 s — vsync=63641 — flush=391 cycles=375 — PSRAM libre 7768048 o — mural 1703 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (1714609) desknode: up 1710 s — vsync=64015 — flush=393 cycles=377 — PSRAM libre 7768048 o — mural 1713 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (1724612) desknode: up 1720 s — vsync=64389 — flush=395 cycles=379 — PSRAM libre 7768048 o — mural 1723 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (1734615) desknode: up 1730 s — vsync=64763 — flush=397 cycles=381 — PSRAM libre 7768048 o — mural 1733 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (1744618) desknode: up 1740 s — vsync=65137 — flush=399 cycles=383 — PSRAM libre 7768048 o — mural 1743 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (1754621) desknode: up 1750 s — vsync=65511 — flush=402 cycles=386 — PSRAM libre 7768048 o — mural 1753 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (1764624) desknode: up 1760 s — vsync=65885 — flush=414 cycles=390 — PSRAM libre 7768048 o — mural 1763 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (1774627) desknode: up 1770 s — vsync=66259 — flush=416 cycles=392 — PSRAM libre 7768048 o — mural 1773 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (1784630) desknode: up 1780 s — vsync=66633 — flush=418 cycles=394 — PSRAM libre 7768048 o — mural 1783 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (1794633) desknode: up 1790 s — vsync=67008 — flush=420 cycles=396 — PSRAM libre 7768048 o — mural 1793 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (1804637) desknode: up 1800 s — vsync=67382 — flush=422 cycles=398 — PSRAM libre 7768048 o — mural 1803 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (1814640) desknode: up 1810 s — vsync=67756 — flush=425 cycles=401 — PSRAM libre 7768048 o — mural 1813 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (1824643) desknode: up 1820 s — vsync=68130 — flush=432 cycles=404 — PSRAM libre 7768048 o — mural 1823 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (1834647) desknode: up 1830 s — vsync=68504 — flush=434 cycles=406 — PSRAM libre 7768048 o — mural 1833 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (1844650) desknode: up 1840 s — vsync=68878 — flush=436 cycles=408 — PSRAM libre 7768048 o — mural 1843 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (1854653) desknode: up 1850 s — vsync=69252 — flush=438 cycles=410 — PSRAM libre 7768048 o — mural 1853 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (1864657) desknode: up 1860 s — vsync=69627 — flush=440 cycles=412 — PSRAM libre 7768048 o — mural 1863 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (1874660) desknode: up 1870 s — vsync=70001 — flush=443 cycles=415 — PSRAM libre 7768048 o — mural 1873 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (1884663) desknode: up 1880 s — vsync=70375 — flush=445 cycles=417 — PSRAM libre 7768048 o — mural 1883 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+
+===== veille =====
+veille
+mode : AMBIENT · veille ARMEE · delai 1 min (60000 ms)
+inactivite : 140030 ms (max vue depuis le reset : 1694315 ms)
+bascules -> Ambient : 2 · reveils : 2 · dernier reveil par : doigt
+secondes OBSERVEES : 232 (⚠️ ⛔ PAS l'uptime : le tick 1 Hz ne bat
+   pas pendant `ui off`, donc la veille y est AVEUGLE)
+─── temps MURAL par mode depuis le boot (dn4-5/AC3.2) ───
+  Actif   :      722 s
+  Ambient :     1180 s
+  total   :     1902 s  ⇒ Ambient = 62 %  ✅ MAJORITE (seuil > 50 %)
+  ⚠️ CE QUE CE CUMUL NE VOIT PAS : il dit dans quel MODE le
+     module se croit, ⛔ pas que la dalle est effectivement
+     sombre. Le constat owner reste requis. Et pendant un
+     `ui off`, le temps est impute au mode COURANT — sans
+     consequence en regime, ou le port est tenu par l'agent.
+  ⛔ EN RAM (D4) : un reboot le remet a zero, et il rompt la
+     fenetre du soak de toute facon (AC3.6).
+rebases d'horloge a `ui on` : 0 · bascules ANNULEES (async refusee) : 0
+aucune ecriture NVS depuis le boot ou le dernier `veille reset`
+   (les deux reglages sont ceux qui etaient deja en vigueur).
+ecarts contact->bascule (le plus recent d'abord) :
+   #1     60025 ms  (delai arme 60000 ms, +25 ms)  ✅ dans [delai ; delai+1 s]
+   #2     60000 ms  (delai arme 60000 ms, +0 ms)  ✅ dans [delai ; delai+1 s]
+   ⚠️ la fenetre fait UNE seconde parce que la detection est
+   cadencee a 1 Hz (`label_tick`). ⛔ Ce n'est pas « environ
+   le delai » : c'est [delai ; delai+1 s], et c'est verifie.
+taps CONSOMMES par un reveil : 2 · taps de reglage dans le MENU : 0
+transitions provoquees PAR LA VEILLE : 0 (dans `nav`, mais SANS
+   chronometre : elles ne naissent d'aucun geste)
+
+⚠️ PROTOCOLE DE LA GATE `menu_taps` (AC5.6) — A LIRE AVANT DE LA TIRER
+   Le bandeau MENU n'existe QUE sur le dashboard : une fois la vue
+   MENU ouverte, les appuis suivants au meme endroit ne tombent sur
+   AUCUNE zone. La serie est donc 8 ALLERS-RETOURS : appui dans
+   la bande y = 589..639, puis `←` (ou `nav back`), huit fois.
+   ⛔ Huit appuis d'affilee rendraient 1, ⛔ pas 8 — et ce ne
+     serait PAS une zone morte.
+   TEMOIN NEGATIF : >= 5 appuis dans la BARRE DU HAUT (y = 0..59)
+   doivent rendre 0 tap — elle, elle reste morte.
+
+usage : veille                       etat, compteurs, diagnostics
+        veille on | off              ARME / DESARME (persiste en NVS)
+        veille delai <1|3|5|10>      le delai, en MINUTES (persiste)
+        veille now                   bascule en Ambient MAINTENANT
+        veille wake                  reveille MAINTENANT (origine console)
+        veille lat                   les DEUX latences de reveil (AC4)
+        veille geom                  la preuve que le layout NE BOUGE PAS
+        veille assets                le recompte de la partition (AC1.4)
+        veille fond                  voiles et aplats RELUS DES OBJETS LVGL
+        veille reset                 compteurs ET latences a zero
+  --- leviers A/B, a chaud, ⛔ NON persistes (ce sont des instruments) ---
+        veille pct <3..100>           niveau d'Ambient de DERNIER RECOURS
+        veille voile <0..255>        opacite du voile en Ambient
+        veille gris <reel|simule|absent> <rrggbb>
+desknode> 
+===== veille lat =====
+veille lat
+LES DEUX LATENCES DE REVEIL — ⛔ JAMAIS UNE MOYENNE DES DEUX
+  t1 = contact -> RETROECLAIRAGE remonte (« l'ecran s'allume »)
+  t2 = contact -> PALETTE Actif complete posee
+
+  n = 2 reveils AU DOIGT
+  t1 : min 145 us · med 185 us · max 185 us
+  t2 : min 26281 us · med 26479 us · max 26479 us
+
+⚠️ CE QUE t1 N'INCLUT PAS, ET IL FAUT LE DIRE : l'origine du
+   chronometre est l'instant ou le `read_cb` VOIT le front, ⛔ pas
+   l'instant du contact PHYSIQUE. Le trajet GT911 -> IRQ -> reveil de
+   la tache LVGL -> transaction I2C est EN AMONT et n'est pas
+   instrumente. Publier t1 comme « latence au doigt » sans cette
+   phrase fabriquerait un chiffre plus flatteur que le vecu.
+⚠️ SEULS LES REVEILS AU DOIGT entrent ici. Un `veille wake` tape au
+   clavier n'a pas le meme chemin d'entree ; il est ENREGISTRE mais
+   EXCLU de la statistique, ⛔ pas jete en silence.
+⛔ NE PAS CONFONDRE AVEC LE CRITERE BRIEF « < 300 ms », qui porte sur
+   la NAVIGATION et qui est DEJA NON COCHE (337,6 ms au `nav ab`,
+   361,8 ms au doigt — dn4-4, decision owner du 2026-08-24).
+desknode>
+===== bl =====
+bl
+rétroéclairage : 29 % à 24000 Hz (allumé)
+⚠️ `bl 0` éteint le RÉTROÉCLAIRAGE : dalle NOIRE.
+   `disp off` éteint la SORTIE de la dalle : dalle GRISE éclairée.
+   Les deux donnent « plus d'image », par deux mécanismes différents.
+asservissement BH1750 : ARMÉ
+  loi      : 8 % à <= 20 lx · 100 % à >= 600 lx · linéaire entre les deux
+  garde    : bande morte 3 pts · pas max 20 pts par cycle de 5000 ms (course complète en 5 cycles)
+  applique : 29 % (sur 137 lx)
+  régime   : AMBIENT  (la loi est mise à l'échelle, voir ci-dessous)
+  ambiant  : échelle 100 % de la loi · plancher 8 %
+           ⚠️ ce plancher est un TROISIÈME contenu (gros chiffres sur noir), ⛔ JAMAIS mesuré à l'œil : ⛔ ne pas le confondre avec les 8 % du dashboard ni avec les 3 % du Living PCB.
+  applications : 14 mouvements de duty depuis le boot
+           (dn4-19/AC8 : deux relevés espacés mesurent le POMPAGE de la bande morte — la loi vit H24 depuis que l'auto est armée par défaut.)
+  ⚠️ `bl <n>`, `bl on|off` et `bl ramp` DÉSARMENT l'auto et le DISENT.
+  ⛔ `bl ramp` est BLOQUANTE : elle n'est JAMAIS appelée par l'asservissement.
+  ⛔ La VEILLE ne désarme PLUS (dn4-19) : elle POSE le niveau du régime EN UNE FOIS, et la loi le maintient ensuite.
+desknode> 

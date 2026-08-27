@@ -1046,6 +1046,7 @@ static void bl_usage(void)
     printf("        bl auto ambiant <0..100>        — %% de la loi applique en AMBIENT (dn4-19)\n");
     printf("        bl auto ambiant plancher <n>    — le plancher du RENDU D'AMBIENT (dn4-19)\n");
     printf("        bl loi [lux]        — ce que la loi RENDRAIT, ⛔ SANS l'appliquer\n");
+    printf("        bl auto courbe log|lineaire     — la FORME de la loi (dn4-19/AC6.3)\n");
 }
 
 /* 🔴 DEUX ÉCRIVAINS SUR LEDC, ET RIEN NE LES ARBITRAIT.
@@ -1071,9 +1072,17 @@ static void bl_auto_etat(void)
     int lux_bas = 0, lux_haut = 0, pas = 0, hyst = 0, dpct = 0, dlux = 0;
     dn_env_bl_etat(&lux_bas, &lux_haut, &pas, &hyst, &dpct, &dlux);
     printf("asservissement BH1750 : %s\n", dn_env_bl_auto() ? "ARMÉ" : "DÉSARMÉ");
-    printf("  loi      : %d %% à <= %d lx · %d %% à >= %d lx · linéaire entre "
+    printf("  loi      : %d %% à <= %d lx · %d %% à >= %d lx · courbe %s entre "
            "les deux\n",
-           dn_env_bl_plancher(), lux_bas, DN_ENV_BL_PCT_MAX, lux_haut);
+           dn_env_bl_plancher(), lux_bas, DN_ENV_BL_PCT_MAX, lux_haut,
+           dn_env_bl_courbe_nom(dn_env_bl_courbe()));
+    if (dn_env_bl_courbe() == DN_ENV_BL_COURBE_LOG) {
+        printf("           (dn4-19/AC6.3 : l'œil ET le lux sont logarithmiques. "
+               "Constat owner du 2026-08-27, A/B en ACTIF à 245 lx : « 75 %% — "
+               "nettement plus », là où la loi LINÉAIRE rendait 44 %%. "
+               "⛔ Les deux bornes n'ont PAS bougé. `bl auto courbe lineaire` "
+               "pour revenir à la loi de dn4-3 et refaire l'A/B.)\n");
+    }
     printf("  garde    : bande morte %d pts · pas max %d pts par cycle de %d ms "
            "(course complète en %d cycles)\n",
            hyst, pas, DN_ENV_PERIODE_MS,
@@ -1182,6 +1191,27 @@ static int cmd_bl(int argc, char **argv)
          * dn4-19/AC3.2 + AC3.4 : les DEUX réglages du régime Ambient se
          * tranchent SUR LA DALLE, à l'œil, dans UNE séance — ⛔ pas au papier,
          * et ⛔ pas au prix de trois reflashs. */
+        if (strcmp(argv[2], "courbe") == 0) {
+            if (argc != 4) {
+                printf("usage : bl auto courbe log|lineaire   (actuelle : %s)\n",
+                       dn_env_bl_courbe_nom(dn_env_bl_courbe()));
+                return 1;
+            }
+            if (strcmp(argv[3], "log") == 0) {
+                dn_env_bl_courbe_set(DN_ENV_BL_COURBE_LOG);
+            } else if (strcmp(argv[3], "lineaire") == 0) {
+                dn_env_bl_courbe_set(DN_ENV_BL_COURBE_LINEAIRE);
+            } else {
+                printf("« %s » n'est ni `log` ni `lineaire` — rien n'a été "
+                       "touché.\n", argv[3]);
+                return 1;
+            }
+            /* L'œil doit voir l'effet MAINTENANT si on dort ; en Actif, la
+             * boucle rattrape au prochain cycle (5 s). */
+            dn_ui_veille_bl_rafraichir();
+            bl_auto_etat();
+            return 0;
+        }
         if (strcmp(argv[2], "ambiant") == 0) {
             if (argc == 5 && strcmp(argv[3], "plancher") == 0) {
                 long pct = 0;
@@ -1301,7 +1331,19 @@ static int cmd_bl(int argc, char **argv)
         }
         int actif = dn_env_bl_loi_regime((int)lux, DN_ENV_BL_REGIME_ACTIF);
         int ambi  = dn_env_bl_loi_regime((int)lux, DN_ENV_BL_REGIME_AMBIENT);
-        printf("loi à %ld lx%s :\n", lux, fourni ? "" : "  (lux COURANT, lu)");
+        /* 🔴 dn4-19 — ON IMPRIME AUSSI L'AUTRE FORME, ⛔ sans la poser : c'est ce
+         * qui rend l'A/B d'AC6.3 CONTRADICTOIRE au lieu d'être une affirmation.
+         * L'A/B a coûté deux séances au dépôt faute d'avoir les deux chiffres
+         * côte à côte. */
+        dn_env_bl_courbe_t c0 = dn_env_bl_courbe();
+        dn_env_bl_courbe_set(c0 == DN_ENV_BL_COURBE_LOG
+                                 ? DN_ENV_BL_COURBE_LINEAIRE
+                                 : DN_ENV_BL_COURBE_LOG);
+        int autre = dn_env_bl_loi_regime((int)lux, DN_ENV_BL_REGIME_ACTIF);
+        const char *autre_nom = dn_env_bl_courbe_nom(dn_env_bl_courbe());
+        dn_env_bl_courbe_set(c0);   /* ⛔ REMIS : cette commande ne change RIEN */
+        printf("loi à %ld lx%s   ·   courbe : %s\n", lux,
+               fourni ? "" : "  (lux COURANT, lu)", dn_env_bl_courbe_nom(c0));
         printf("  ACTIF   : %d %%\n", actif);
         printf("  AMBIENT : %d %%   (échelle %d %% · plancher %d %%)\n", ambi,
                dn_env_bl_amb_echelle(), dn_env_bl_amb_plancher());
@@ -1309,8 +1351,10 @@ static int cmd_bl(int argc, char **argv)
                dn_display_backlight_pct_state(),
                dn_env_bl_regime() == DN_ENV_BL_REGIME_AMBIENT ? "AMBIENT"
                                                               : "ACTIF");
-        printf("⛔ RIEN N'A ÉTÉ APPLIQUÉ ET RIEN N'A ÉTÉ DÉSARMÉ : c'est une "
-               "lecture.\n");
+        printf("  pour comparaison, courbe %s : %d %% en ACTIF\n", autre_nom,
+               autre);
+        printf("⛔ RIEN N'A ÉTÉ APPLIQUÉ, RIEN N'A ÉTÉ DÉSARMÉ ET LA COURBE EST "
+               "REMISE : c'est une lecture.\n");
         return 0;
     }
 
@@ -9645,7 +9689,8 @@ static const esp_console_cmd_t k_cmds[] = {
     DN_CMD("bl",
            "bl [0..100|on|off|ramp <pct> [ms]|freq <hz>|auto on|off|auto bornes "
            "<bas> <haut>|auto pas <n>|auto plancher <n>|auto ambiant "
-           "<0..100>|auto ambiant plancher <n>|loi [lux]] — rétroéclairage "
+           "<0..100>|auto ambiant plancher <n>|auto courbe log|lineaire|"
+           "loi [lux]] — rétroéclairage "
            "gradable et asservi (dn1-3/dn4-3), la loi vit en Ambient (dn4-19)",
            cmd_bl),
     DN_CMD("disp", "disp on|off — sortie d'affichage de la dalle (0x29/0x28)",

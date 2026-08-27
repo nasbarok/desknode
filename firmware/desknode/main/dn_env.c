@@ -7,6 +7,7 @@
  * (`bme680.c:432` — 6 briquages sur 7 avant la parade). Ici, TOUT retour est
  * testé et TOUTE erreur est comptée, jamais fatale.
  */
+#include <math.h>
 #include "dn_env.h"
 
 #include <stdlib.h>
@@ -164,6 +165,7 @@ static dn_env_bl_regime_t s_bl_regime = DN_ENV_BL_REGIME_ACTIF;
 static int s_bl_amb_echelle = DN_ENV_BL_AMB_ECHELLE_DEFAUT;
 static int s_bl_amb_pct_min = DN_ENV_BL_AMB_PCT_MIN_DEFAUT;
 static uint32_t s_bl_applications;  /* AC8 : combien de fois la loi a BOUGÉ le duty */
+static dn_env_bl_courbe_t s_bl_courbe = DN_ENV_BL_COURBE_LOG;  /* dn4-19/AC6.3 */
 
 static const char *k_nom[DN_ENV_NB] = { "BH1750", "INA219", "VL6180X" };
 static const uint8_t k_addr[DN_ENV_NB] = {
@@ -1004,13 +1006,48 @@ int dn_env_bl_loi(int lux)
     if (lux >= s_bl_lux_haut) {
         return DN_ENV_BL_PCT_MAX;
     }
-    /* Interpolation linéaire, en entiers, arrondie — comme le duty LEDC de
-     * dn_display (`(pct * 1023 + 50) / 100`), pour la même raison : AC7 de
-     * dn1-3 cherchait le PLANCHER lisible, et une troncature l'aurait raté. */
-    int span_lux = s_bl_lux_haut - s_bl_lux_bas;
     int span_pct = DN_ENV_BL_PCT_MAX - s_bl_pct_min;
-    return s_bl_pct_min +
-           (((lux - s_bl_lux_bas) * span_pct) + span_lux / 2) / span_lux;
+
+    if (s_bl_courbe == DN_ENV_BL_COURBE_LINEAIRE) {
+        /* Interpolation linéaire, en entiers, arrondie — comme le duty LEDC de
+         * dn_display (`(pct * 1023 + 50) / 100`), pour la même raison : AC7 de
+         * dn1-3 cherchait le PLANCHER lisible, et une troncature l'aurait raté. */
+        int span_lux = s_bl_lux_haut - s_bl_lux_bas;
+        return s_bl_pct_min +
+               (((lux - s_bl_lux_bas) * span_pct) + span_lux / 2) / span_lux;
+    }
+
+    /*
+     * 🔴 dn4-19/AC6.3 — LA LOI LOGARITHMIQUE. Les DEUX bornes sont préservées à
+     *    l'identique (`PCT_MIN` à `LUX_BAS`, `PCT_MAX` à `LUX_HAUT`) : c'est la
+     *    FORME entre les deux qui change, ⛔ pas les bornes.
+     * ⚠️ `dn_env_bl_bornes_set()` ACCEPTE `lux_bas = 0`, et `ln(lux/0)` n'existe
+     *    pas. On plancherise le diviseur à 1 lx PLUTÔT QUE DE DIVISER PAR ZÉRO —
+     *    et on le dit ici, parce qu'un NaN se propagerait en silence jusqu'au
+     *    duty, exactement comme le `-1` pris pour un pourcentage l'a fait une
+     *    fois (revue de code du 2026-08-20).
+     * ⚠️ Flottant assumé : ce chemin tourne UNE fois par cycle de 5 s, dans
+     *    `dn_capt`. `math.h` et le float sont déjà employés par `dn_capteurs.c`
+     *    et `dn_measure.c` — ⛔ aucune dépendance nouvelle n'entre ici.
+     */
+    float bas = (float)(s_bl_lux_bas > 0 ? s_bl_lux_bas : 1);
+    float haut = (float)s_bl_lux_haut;
+    float denom = logf(haut / bas);
+    if (!(denom > 0.0f)) {
+        /* Bornes dégénérées : ⛔ on ne rend PAS un NaN, on rend le plancher. */
+        return s_bl_pct_min;
+    }
+    float f = logf((float)lux / bas) / denom;
+    if (f < 0.0f) { f = 0.0f; }
+    if (f > 1.0f) { f = 1.0f; }
+    return s_bl_pct_min + (int)(f * (float)span_pct + 0.5f);
+}
+
+void dn_env_bl_courbe_set(dn_env_bl_courbe_t c) { s_bl_courbe = c; }
+dn_env_bl_courbe_t dn_env_bl_courbe(void) { return s_bl_courbe; }
+const char *dn_env_bl_courbe_nom(dn_env_bl_courbe_t c)
+{
+    return (c == DN_ENV_BL_COURBE_LINEAIRE) ? "lineaire" : "log";
 }
 
 /* ── 🔴 LE RÉGIME (dn4-19) ────────────────────────────────────────────────── */

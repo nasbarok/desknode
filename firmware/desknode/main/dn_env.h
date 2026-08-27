@@ -278,7 +278,20 @@ typedef struct {
 #define DN_ENV_BL_LUX_BAS      20
 #define DN_ENV_BL_LUX_HAUT     600
 #define DN_ENV_BL_HYST         3
-#define DN_ENV_BL_PAS_MAX      20
+/*
+ * 🔴 `dn4-19`, 2026-08-27 — ~~20~~ ⇒ **50**, PAR CONSTAT OWNER À L'ŒIL.
+ *    Question posée SÉPARÉMENT de « plus lumineux » (⛔ elles se corrigent à
+ *    deux endroits opposés de la loi, et ce dépôt s'est déjà fait piéger là) :
+ *    *« trop lent — j'aimerais plus réactif »*, puis, main posée devant le
+ *    capteur et retirée, **verbatim : « on voit bien les 2 se déclencher c'est
+ *    good »**. Course complète en **2 cycles (~10 s)** au lieu de 5 (~25 s).
+ * ⛔ LA CADENCE DE 5 s N'A PAS BOUGÉ, et ⛔ elle ne doit pas : elle cadence LES
+ *    CINQ PISTES CAPTEURS, pas seulement le rétroéclairage.
+ * ⚠️ Le verrou `pas >= DN_ENV_BL_HYST` reste (`dn_env_bl_pas_set`) : sous la
+ *    bande morte, la loi se fige à mi-chemin, dans les DEUX sens, pour TOUS les
+ *    lux.
+ */
+#define DN_ENV_BL_PAS_MAX      50
 #define DN_ENV_BL_AUTO_DEFAUT  true   /* dn4-19 : ⛔ était `false` — voir ci-dessus */
 
 /*
@@ -316,7 +329,22 @@ typedef struct {
  * ⇒ Il est RÉGLABLE À CHAUD (`bl auto ambiant plancher <n>`) et **la séance
  *   d'AC7.1 le tranche À L'ŒIL, rideau fermé.** ⛔ Ne pas le recopier ailleurs.
  */
-#define DN_ENV_BL_AMB_PCT_MIN_DEFAUT 8
+/*
+ * ✅ `dn4-19`, 2026-08-27 — **MESURÉ, ⛔ PLUS UN POINT DE DÉPART.**
+ *    Balayage 3 / 6 / 8 / 12 / 16 % conduit **DANS LE NOIR** (BH1750 à **0 lx**,
+ *    `brut 0`), **sur le rendu d'Ambient**, avec le plancher de la loi abaissé à
+ *    3 % le temps de la manœuvre pour que CE plancher-ci soit celui qui mord.
+ *    **Verbatim owner : « 8 % c'est trop bas, 16 c'est bien ».**
+ * 🔴 C'EST DONC BIEN UN **TROISIÈME CHIFFRE**, et il est **PLUS HAUT** que les
+ *    deux autres — ⛔ à rebours de l'intuition « gros chiffres blancs sur noir,
+ *    donc ça se lit plus bas ». Les trois planchers du dépôt :
+ *      · `DN_VEILLE_PCT_MIN`   = 3 %  — le Living PCB et son label (dn1-3/AC7)
+ *      · `DN_ENV_BL_PCT_MIN`   = 8 %  — le dashboard à six cases, texte fin
+ *      · celui-ci              = 16 % — le rendu d'AMBIENT
+ * ⛔ AUCUN DES DEUX AUTRES N'EST INVALIDÉ : ils ne portent pas sur ce contenu.
+ *    *« Un plancher de lisibilité est une propriété du COUPLE duty × contenu. »*
+ */
+#define DN_ENV_BL_AMB_PCT_MIN_DEFAUT 16
 
 /* ⛔ LES BORNES PHYSIQUES DE L'INA219 SONT RETIRÉES — correct-course du
  * 2026-08-20. Elles n'avaient de sens que pour un seau `err_bornes` sur des
@@ -467,6 +495,39 @@ void dn_env_bl_etat(int *lux_bas, int *lux_haut, int *pas, int *hyst,
  *    calculée À LA MAIN, ce que les règles du dépôt interdisent. `bl loi [lux]`
  *    est son appelant, livré par `dn4-19`. */
 int dn_env_bl_loi(int lux);
+
+/* ── 🔴 LA FORME DE LA LOI (`dn4-19`/AC6.3) ───────────────────────────────────
+ * Le ledger portait l'entrée *« LE DUTY LEDC N'EST PAS LINÉAIRE EN LUMINOSITÉ
+ * PERÇUE — mesuré par l'œil de l'owner »*, avec **deux** leviers nommés et la
+ * consigne *« ne rien changer sans un besoin exprimé »*. Le besoin a été
+ * exprimé le 2026-08-27 : **A/B en ACTIF, ≥ 3 niveaux, lux relevé à chaque
+ * point ⇒ verbatim « 75 % — nettement plus »**, là où la loi linéaire rendait
+ * **44 %** (à 245 lx).
+ *
+ * 🎯 DES DEUX LEVIERS, LE LOGARITHME GAGNE, ET ⛔ PAS PAR GOÛT :
+ *   · un **gamma** aurait dû être CALÉ sur le point de l'owner (γ ≈ 3,0), et il
+ *     produisait alors un **coude brutal** juste au-dessus de `LUX_BAS` :
+ *     8 % à 20 lx puis **27 % à 25 lx**, un saut que personne n'a validé ;
+ *   · la **loi logarithmique n'a AUCUN paramètre à caler** et retombe sur le
+ *     constat : `8 + 92 × ln(245/20)/ln(600/20)` = **76 %**, pour un owner qui a
+ *     dit **75 %**. Et son motif était déjà écrit au ledger : *« l'œil et le lux
+ *     sont tous deux logarithmiques »*.
+ *
+ * ⚠️ LES DEUX BORNES SONT PRÉSERVÉES À L'IDENTIQUE : `PCT_MIN` à `LUX_BAS`,
+ *    `PCT_MAX` à `LUX_HAUT`. ⛔ Aucune des quatre valeurs réglées à l'œil
+ *    (8 %, 20 lx, 600 lx, 3 pts) n'est déplacée — c'est la FORME entre les deux
+ *    qui change, ⛔ pas les bornes. C'est exactement ce qu'AC6.3 autorise.
+ * ✅ ET ELLE RESTE RÉFUTABLE : `bl auto courbe lineaire|log` rebascule À CHAUD,
+ *   donc l'ancienne loi reste atteignable sans reflash pour un A/B contradictoire.
+ */
+typedef enum {
+    DN_ENV_BL_COURBE_LOG = 0,   /* défaut dn4-19 */
+    DN_ENV_BL_COURBE_LINEAIRE,  /* la loi d'origine, dn4-3 */
+} dn_env_bl_courbe_t;
+
+void dn_env_bl_courbe_set(dn_env_bl_courbe_t c);
+dn_env_bl_courbe_t dn_env_bl_courbe(void);
+const char *dn_env_bl_courbe_nom(dn_env_bl_courbe_t c);
 
 /* ── 🔴 LE RÉGIME (`dn4-19`) ──────────────────────────────────────────────────
  * L'asservissement doit savoir DANS QUEL ÉTAT est la dalle, sinon il asservit

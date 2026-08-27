@@ -1,0 +1,72 @@
+
+===== veille delai 1 =====
+veille delai 1
+delai : 1 min (60000 ms).
+⚠️ la detection est cadencee a 1 Hz (`label_tick`) : l'ecart
+   MESURE entre le dernier contact et la bascule tombe donc dans
+   [60 ; 61] s, ⛔ pas « environ 1 min ».
+desknode> 
+===== veille reset =====
+veille reset
+compteurs et latences a ZERO.
+⛔ Les deux REGLAGES ne sont pas touches : ce sont des reglages,
+   pas des mesures. Le MODE non plus — le remettre a ACTIF ici
+   ferait diverger l'etat annonce de l'ecran reel.
+desknode>
+===== bl =====
+bl
+rétroéclairage : 35 % à 24000 Hz (allumé)
+⚠️ `bl 0` éteint le RÉTROÉCLAIRAGE : dalle NOIRE.
+   `disp off` éteint la SORTIE de la dalle : dalle GRISE éclairée.
+   Les deux donnent « plus d'image », par deux mécanismes différents.
+asservissement BH1750 : ARMÉ
+  loi      : 8 % à <= 20 lx · 100 % à >= 600 lx · linéaire entre les deux
+  garde    : bande morte 3 pts · pas max 20 pts par cycle de 5000 ms (course complète en 5 cycles)
+  applique : 35 % (sur 179 lx)
+  régime   : AMBIENT  (la loi est mise à l'échelle, voir ci-dessous)
+  ambiant  : échelle 100 % de la loi · plancher 8 %
+           ⚠️ ce plancher est un TROISIÈME contenu (gros chiffres sur noir), ⛔ JAMAIS mesuré à l'œil : ⛔ ne pas le confondre avec les 8 % du dashboard ni avec les 3 % du Living PCB.
+  applications : 12 mouvements de duty depuis le boot
+           (dn4-19/AC8 : deux relevés espacés mesurent le POMPAGE de la bande morte — la loi vit H24 depuis que l'auto est armée par défaut.)
+  ⚠️ `bl <n>`, `bl on|off` et `bl ramp` DÉSARMENT l'auto et le DISENT.
+  ⛔ `bl ramp` est BLOQUANTE : elle n'est JAMAIS appelée par l'asservissement.
+  ⛔ La VEILLE ne désarme PLUS (dn4-19) : elle POSE le niveau du régime EN UNE FOIS, et la loi le maintient ensuite.
+desknode>
+===== bl auto on =====
+bl auto on
+asservissement BH1750 : ARMÉ
+  loi      : 8 % à <= 20 lx · 100 % à >= 600 lx · linéaire entre les deux
+  garde    : bande morte 3 pts · pas max 20 pts par cycle de 5000 ms (course complète en 5 cycles)
+  applique : AUCUNE application depuis le boot
+  régime   : AMBIENT  (la loi est mise à l'échelle, voir ci-dessous)
+  ambiant  : échelle 100 % de la loi · plancher 8 %
+           ⚠️ ce plancher est un TROISIÈME contenu (gros chiffres sur noir), ⛔ JAMAIS mesuré à l'œil : ⛔ ne pas le confondre avec les 8 % du dashboard ni avec les 3 % du Living PCB.
+  applications : 15 mouvements de duty depuis le boot
+           (dn4-19/AC8 : deux relevés espacés mesurent le POMPAGE de la bande morte — la loi vit H24 depuis que l'auto est armée par défaut.)
+  ⚠️ `bl <n>`, `bl on|off` et `bl ramp` DÉSARMENT l'auto et le DISENT.
+  ⛔ `bl ramp` est BLOQUANTE : elle n'est JAMAIS appelée par l'asservissement.
+  ⛔ La VEILLE ne désarme PLUS (dn4-19) : elle POSE le niveau du régime EN UNE FOIS, et la loi le maintient ensuite.
+desknode> 
+===== veille lat =====
+veille lat
+LES DEUX LATENCES DE REVEIL — ⛔ JAMAIS UNE MOYENNE DES DEUX
+  t1 = contact -> RETROECLAIRAGE remonte (« l'ecran s'allume »)
+  t2 = contact -> PALETTE Actif complete posee
+
+  n = 4 reveils AU DOIGT
+  t1 : min 134 us · med 185 us · max 5732 us
+  t2 : min 26142 us · med 26479 us · max 31709 us
+
+⚠️ CE QUE t1 N'INCLUT PAS, ET IL FAUT LE DIRE : l'origine du
+   chronometre est l'instant ou le `read_cb` VOIT le front, ⛔ pas
+   l'instant du contact PHYSIQUE. Le trajet GT911 -> IRQ -> reveil de
+   la tache LVGL -> transaction I2C est EN AMONT et n'est pas
+   instrumente. Publier t1 comme « latence au doigt » sans cette
+   phrase fabriquerait un chiffre plus flatteur que le vecu.
+⚠️ SEULS LES REVEILS AU DOIGT entrent ici. Un `veille wake` tape au
+   clavier n'a pas le meme chemin d'entree ; il est ENREGISTRE mais
+   EXCLU de la statistique, ⛔ pas jete en silence.
+⛔ NE PAS CONFONDRE AVEC LE CRITERE BRIEF « < 300 ms », qui porte sur
+   la NAVIGATION et qui est DEJA NON COCHE (337,6 ms au `nav ab`,
+   361,8 ms au doigt — dn4-4, decision owner du 2026-08-24).
+desknode> 
