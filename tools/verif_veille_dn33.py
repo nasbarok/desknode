@@ -52,6 +52,8 @@ DN_WIDGET_C = os.path.join(MAIN, "dn_widget.c")
 DN_UI_C = os.path.join(MAIN, "dn_ui.c")
 DN_UI_H = os.path.join(MAIN, "dn_ui.h")
 DN_TOUCH_C = os.path.join(MAIN, "dn_touch.c")
+DN_CONSOLE_C = os.path.join(MAIN, "dn_console.c")
+DN_ENV_H_P = os.path.join(MAIN, "dn_env.h")
 PARTITIONS = os.path.join(RACINE, "firmware", "desknode", "partitions.csv")
 
 ok_total = [0]
@@ -1360,6 +1362,64 @@ def bloc_verite():
     ctrl("s_scr_dash && s_scr_detail && s_scr_menu" in ui,
          "…et la garde SCREENS exige les TROIS racines",
          "avec deux, `nav menu` aurait `lv_obj_clean` une racine PERMANENTE")
+
+    # ── AC10.4 — L'ETIQUETTE DE `w2 reset` NE PEUT PLUS SE PERIMER ──────────
+    # 🔴 TROUVE EN SEANCE LE 2026-08-27, AU `grep` DE L'ANGLE MORT, ⛔ PAS A
+    #    L'OEIL ET PAS PAR LA GATE : `w2 reset` annoncait « LES CINQ PISTES »
+    #    alors que dn3-3 en avait ajoute une SIXIEME (`DN_W2_CPU_DIX`).
+    #    ⚠️ Le reset, lui, couvrait bien les six (`memset` sur des tableaux
+    #    dimensionnes `DN_W2_NB`) ⇒ l'instrument etait JUSTE et SON ETIQUETTE
+    #    MENTAIT — le defaut a part entiere que `dn_widget.h:165` nomme.
+    # ⛔ LE CRITERE N'EST PAS « le message dit SIX » : ca se perimerait a la 7e
+    #    piste, c'est-a-dire qu'il reproduirait le defaut qu'il pretend fermer.
+    #    Le critere est « le compte est RELU de `DN_W2_NB` ».
+    cc, sha_cc = lire(DN_CONSOLE_C)
+    eh2, _ = lire(DN_ENV_H_P)
+
+    def _etiquette_w2(src):
+        """LA MEME predicate pour le produit ET pour le mutant.
+
+        ⛔ Elle ne rejoue pas la logique du firmware : elle LIT la ligne que le
+           firmware imprime. Rend None si la ligne a disparu (⇒ la gate ne
+           couvre plus rien, et elle le DIT au lieu de passer verte).
+        """
+        m = re.search(r'printf\("accumulateurs W2 remis a zero[^;]*;', src, re.S)
+        if m is None:
+            return None
+        ligne = m.group(0)
+        return (re.search(r"LES\s+[A-Z\u00c0-\u00dc]{2,7}\s+PISTES", ligne) is None,
+                "DN_W2_NB" in ligne)
+
+    reel = _etiquette_w2(cc)
+    if ctrl(reel is not None,
+            "AC10.4 : le message de `w2 reset` est TROUVABLE",
+            "dn_console.c sha %s" % sha_cc):
+        ctrl(reel[0],
+             "…il n'ecrit PLUS le compte en toutes lettres",
+             "ecrire « SIX » ne ferait que DEPLACER la date de peremption")
+        ctrl(reel[1],
+             "…il RELIT le compte de `DN_W2_NB`",
+             "⛔ un compte recite se perime a la piste suivante")
+
+        # MUTANT TEXTUEL — la MEME predicate, sur le source d'AVANT le correctif.
+        # ⚠️ Un mutant survivant voudrait dire que la garde n'atteint pas la
+        #    ligne : ce depot a deja paye un test VERT qui n'atteignait pas sa
+        #    garde. On le fait donc ROUGIR, et on le regarde.
+        mut = re.sub(r'printf\("accumulateurs W2 remis a zero[^;]*;',
+                     'printf("accumulateurs W2 remis a zero (LES CINQ PISTES).\\n");',
+                     cc, count=1, flags=re.S)
+        mm = _etiquette_w2(mut)
+        ctrl(mm is not None and mm == (False, False),
+             "mutant « LES CINQ PISTES » : les DEUX criteres rougissent",
+             "vu rougir : %r" % (mm,))
+
+    # ⚠️ ET LA GATE VERIFIE DE QUOI ELLE PARLE : `DN_W2_NB` doit bien CLORE une
+    #    enumeration qui porte la 6e piste. Sans ca, « relu de l'enum » serait
+    #    un mot, ⛔ pas une propriete.
+    m_enum = re.search(r"DN_W2_CPU_DIX,\s*\n\s*DN_W2_NB,", eh2)
+    ctrl(m_enum is not None,
+         "…et `DN_W2_NB` clot bien l'enum qui porte `DN_W2_CPU_DIX`",
+         "⛔ sinon le compte relu ne serait pas celui des pistes")
 
 
 def main():

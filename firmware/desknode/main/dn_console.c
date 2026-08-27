@@ -8602,7 +8602,21 @@ static int cmd_w2(int argc, char **argv)
      * tranche X2 (revue de code 2026-08-20). */
     if (argc == 2 && strcmp(argv[1], "reset") == 0) {
         dn_w2_reset();
-        printf("accumulateurs W2 remis a zero (LES CINQ PISTES).\n");
+        /*
+         * 🔴 dn3-3, 2026-08-27 — LE COMPTE EST **RELU DE L'ENUM**, ⛔ PLUS ÉCRIT
+         *    EN TOUTES LETTRES.
+         *    Cette ligne a annoncé « LES CINQ PISTES » pendant toute la vie de
+         *    la SIXIÈME : c'est `dn3-3` elle-même qui a ajouté `DN_W2_CPU_DIX`
+         *    sans amender le message. ⚠️ Le reset, lui, a **toujours** couvert
+         *    les six — `dn_w2_reset()` fait un `memset` sur des tableaux
+         *    dimensionnés `DN_W2_NB` — donc L'INSTRUMENT ÉTAIT JUSTE ET SON
+         *    ÉTIQUETTE MENTAIT, ce que ce dépôt traite comme un défaut à part
+         *    entière (`dn_widget.h:165`).
+         * ⛔ Écrire « SIX » ne ferait que DÉPLACER la date de péremption : une
+         *    7ᵉ piste rouvrirait exactement le même trou. Le compte se RELIT.
+         *    Trouvé au `grep` de l'angle mort d'AC10.4, ⛔ pas à l'œil.
+         */
+        printf("accumulateurs W2 remis a zero (LES %d PISTES).\n", (int)DN_W2_NB);
         return 0;
     }
     if (argc >= 2) {
