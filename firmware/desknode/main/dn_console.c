@@ -440,6 +440,23 @@ static int cmd_bw(int argc, char **argv)
     return 0;
 }
 
+/*
+ * 🔴 UNE VALEUR NON RELUE NE S'IMPRIME PAS COMME UNE MESURE — 3e revue du
+ *    2026-08-27. `demande_px`/`retenu_px` valaient 0 quand la cle NVS n'avait
+ *    pas pu etre lue, et 0 est un `bounce_px` LEGAL : « la NVS demandait 0 px »
+ *    etait indiscernable d'un vrai repli de `bounce 0`. On imprime desormais ce
+ *    qu'on sait, ⛔ pas un nombre par defaut.
+ */
+static void imprimer_px_repli(const char *etiquette, int px)
+{
+    if (px == DN_REPLI_NON_RELU) {
+        printf("   %s : ⛔ VALEUR NON RELUE (la clé NVS n'a pas répondu)\n",
+               etiquette);
+    } else {
+        printf("   %s : %d px\n", etiquette, px);
+    }
+}
+
 static int cmd_cfg(int argc, char **argv)
 {
     /*
@@ -451,18 +468,46 @@ static int cmd_cfg(int argc, char **argv)
      * faut pouvoir l'effacer, pas seulement l'avoir refusée à l'écriture.
      */
     if (argc >= 2 && strcmp(argv[1], "reset") == 0) {
-        esp_err_t err = dn_bootcfg_reset();
+        /*
+         * 🔴 CORRIGE LE 2026-08-27 (3e revue) — CETTE COMMANDE AFFIRMAIT LE
+         *    CONTRAIRE DE CE QUE LE FIRMWARE VENAIT DE JOURNALISER. Elle
+         *    imprimait « le TÉMOIN DE REPLI, lui, est CONSERVÉ » de maniere
+         *    INCONDITIONNELLE des que l'effacement rendait ESP_OK — y compris
+         *    (a) quand la repose du temoin avait echoue, une ligne apres un
+         *    `ESP_LOGE` disant « le TEMOIN DE REPLI a ete PERDU », et (b) quand
+         *    il n'y avait AUCUN temoin a conserver, sur une carte vierge.
+         *    ⛔ C'est mot pour mot la classe du constat #948 (`recal` affirmait
+         *    « jamais d'armement » deux lignes sous « recalages joués : 1 »),
+         *    que la seance du 2026-08-27 declarait soldee.
+         * ⇒ On ne dit plus que ce que `dn_bootcfg_reset_ex()` a MESURE.
+         */
+        esp_err_t repose = DN_REPOSE_SANS_OBJET;
+        esp_err_t err = dn_bootcfg_reset_ex(&repose);
         if (err != ESP_OK) {
             printf("effacement refusé : %s\n", esp_err_to_name(err));
             return 1;
         }
         printf("config NVS effacée. `reboot` pour repartir sur les défauts.\n");
-        printf("⚠️ le TÉMOIN DE REPLI, lui, est CONSERVÉ — délibérément : "
-               "`cfg reset`\n");
-        printf("   est précisément ce qu'on tape pour sortir d'une valeur "
-               "fautive.\n");
-        printf("   `cfg repli clear` pour l'effacer, et c'est le SEUL geste "
-               "qui l'efface.\n");
+        if (repose == DN_REPOSE_SANS_OBJET) {
+            printf("⚠️ aucun TÉMOIN DE REPLI n'était en NVS : il n'y avait rien "
+                   "à conserver.\n");
+            printf("   ⛔ Ça ne veut PAS dire qu'il n'y a jamais eu de repli — "
+                   "voir `cfg repli`.\n");
+        } else if (repose == ESP_OK) {
+            printf("✅ le TÉMOIN DE REPLI a été RELU, effacé et REPOSÉ — "
+                   "délibérément :\n");
+            printf("   `cfg reset` est précisément ce qu'on tape pour sortir "
+                   "d'une valeur fautive.\n");
+            printf("   `cfg repli clear` l'efface. ⚠️ C'est le seul geste "
+                   "d'OPÉRATEUR qui l'efface :\n");
+            printf("   un `nvs_flash_erase()` au boot (NVS corrompue ou "
+                   "nouvelle version) l'emporte aussi.\n");
+        } else {
+            printf("🔴 le TÉMOIN DE REPLI est PERDU (%s) — la seule trace est "
+                   "la ligne de log\n", esp_err_to_name(repose));
+            printf("   émise juste au-dessus. ⛔ La NVS n'en garde AUCUN "
+                   "reliquat : rien à relire.\n");
+        }
         return 0;
     }
     /*
@@ -484,9 +529,24 @@ static int cmd_cfg(int argc, char **argv)
             return 0;
         }
         dn_bootcfg_repli_t t;
-        dn_bootcfg_get_repli(&t);
+        /* 🔴 3e revue du 2026-08-27 : « aucun repli » ETAIT UNE AFFIRMATION NON
+         *    ETABLIE. `dn_bootcfg_get_repli()` rendait `void` : quand la NVS ne
+         *    s'ouvrait pas, on sortait avec `present == false` et on l'imprimait
+         *    comme un fait. ⛔ Un instrument qui ne peut pas echouer ne mesure
+         *    rien — c'est la leçon du témoin `widget rafale` (2026-08-19). */
+        esp_err_t err_lu = dn_bootcfg_get_repli(&t);
+        if (err_lu != ESP_OK) {
+            printf("⛔ TÉMOIN DE REPLI ILLISIBLE : %s\n",
+                   esp_err_to_name(err_lu));
+            printf("   ⚠️ Ce n'est PAS « aucun repli » — c'est « je n'ai pas pu "
+                   "lire ». La question\n");
+            printf("   reste OUVERTE, et aucun chiffre n'est publié ici.\n");
+            return 1;
+        }
         if (!t.present) {
             printf("aucun repli de bounce noté depuis le dernier effacement.\n");
+            printf("   (clé NVS LUE, et elle répond « rien » — ⛔ pas « je ne "
+                   "sais pas ».)\n");
             printf("⛔ Ça ne veut PAS dire qu'il n'y en a jamais eu : le témoin "
                    "date du 2026-08-27,\n");
             printf("   les replis d'avant n'ont laissé qu'une ligne de log.\n");
@@ -494,9 +554,17 @@ static int cmd_cfg(int argc, char **argv)
         }
         printf("🔴 REPLI DE BOUNCE SURVENU — %d fois depuis le dernier "
                "effacement\n", t.occurrences);
-        printf("   la NVS demandait  : %d px  ⛔ CETTE VALEUR EST PERDUE\n",
-               t.demande_px);
-        printf("   le filet a retenu : %d px\n", t.retenu_px);
+        imprimer_px_repli("la NVS demandait  ", t.demande_px);
+        if (t.demande_px != DN_REPLI_NON_RELU) {
+            printf("      ⛔ CETTE VALEUR EST PERDUE\n");
+        }
+        imprimer_px_repli("le filet a retenu ", t.retenu_px);
+        if (t.occurrences > 1) {
+            printf("   ⚠️ %d replis, mais UNE SEULE paire de valeurs est "
+                   "gardée : c'est la DERNIÈRE.\n", t.occurrences);
+            printf("      ⛔ Ne PAS lire « les %d replis demandaient cette "
+                   "valeur-là ».\n", t.occurrences);
+        }
         if (t.retenu_px == DN_BOUNCE_PX_PLANCHER) {
             printf("   🔴 C'EST LE PLANCHER, et il a un DÉFAUT VISIBLE CONNU : "
                    "à %d px\n", DN_BOUNCE_PX_PLANCHER);
@@ -535,11 +603,17 @@ static int cmd_cfg(int argc, char **argv)
      *    ne prévient personne : c'est exactement le silence qu'il ferme. */
     {
         dn_bootcfg_repli_t t;
-        dn_bootcfg_get_repli(&t);
-        if (t.present) {
-            printf("\n🔴 UN REPLI DE BOUNCE A EU LIEU (%d fois) : la NVS "
-                   "demandait %d px, le filet a retenu %d px.\n",
-                   t.occurrences, t.demande_px, t.retenu_px);
+        esp_err_t err_lu = dn_bootcfg_get_repli(&t);
+        if (err_lu != ESP_OK) {
+            /* ⛔ LE SILENCE N'EST PLUS UNE OPTION : se taire ici se lirait
+             *    « aucun repli », et c'est justement ce qu'on ne sait pas. */
+            printf("\n⛔ TÉMOIN DE REPLI ILLISIBLE (%s) — ⚠️ ce n'est PAS "
+                   "« aucun repli ».\n", esp_err_to_name(err_lu));
+        } else if (t.present) {
+            printf("\n🔴 UN REPLI DE BOUNCE A EU LIEU (%d fois).\n",
+                   t.occurrences);
+            imprimer_px_repli("la NVS demandait  ", t.demande_px);
+            imprimer_px_repli("le filet a retenu ", t.retenu_px);
             printf("   ⛔ La valeur demandée est PERDUE. `cfg repli` pour le "
                    "détail, `cfg repli clear` pour effacer le témoin.\n");
         }
@@ -1274,6 +1348,24 @@ static int cmd_flush(int argc, char **argv)
             return 1;
         }
         dn_ui_reset_stats();
+        /*
+         * 🔴 CORRIGE LE 2026-08-27 (3e revue) — LE TROISIEME SITE DU DEFAUT
+         *    #780, ET LE SEUL QUI IMPRIME LES DEUX FENETRES DANS UNE SEULE
+         *    COMMANDE. La correction du 2026-08-27 avait pose
+         *    `dn_measure_bounce_reset()` sur `flush sync` et `flush path` — les
+         *    deux sous-commandes qui rendent la main AVANT le bloc de
+         *    glissement, donc les deux qui ne pouvaient PAS produire une sortie
+         *    melangee. `flush full`, lui, tombe dans ce bloc par son chemin
+         *    NOMINAL (le « et on continue vers l'affichage » plus bas) : il
+         *    remettait les compteurs de FLUSH a zero puis imprimait la fenetre
+         *    de GLISSEMENT d'avant, sans le dire. ⛔ Et le commentaire du bloc
+         *    de glissement NOMMAIT deja « le chemin nominal de `flush full` » :
+         *    la retombee etait VUE, la gate etait scopee a deux sites.
+         * ⚠️ `flush full` est l'instrument de la « preuve NEGATIVE d'AC3 » —
+         *    c'est donc la sortie qui portait un verdict d'acceptation qui
+         *    etait contaminee.
+         */
+        dn_measure_bounce_reset();
         if (!dn_ui_force_full_redraw()) {
             /* Revue : la première version publiait les compteurs même quand le
              * redessin n'avait PAS été demandé (verrou non pris) — la preuve
@@ -1511,16 +1603,29 @@ static int cmd_flush(int argc, char **argv)
          * ⛔ UN « 0 » SUR LES QUATRE SEUILS NE VAUT QUE SI CES TROIS-LÀ SONT À
          *    ZÉRO. Sinon la bonne lecture n'est pas « pas de corruption », c'est
          *    « des retards trop gros, trop doubles ou trop déchirés pour moi ». */
-        if (b.ph_rejete || b.ph_doubles_ecartes || b.ph_dechire) {
+        if (b.ph_rejete || b.ph_doubles_ecartes || b.ph_dechire || b.ph_futur) {
             printf("  🔴 ÉCHANTILLONS DE PHASE JETÉS : %lu hors borne de sanité "
                    "(>= 2 périodes) · %lu trames à 2+ enroulements · %lu paires "
-                   "(wraps,t_wrap) déchirées\n",
+                   "(wraps,t_wrap) déchirées · %lu horodatages POSTÉRIEURS\n",
                    (unsigned long)b.ph_rejete,
                    (unsigned long)b.ph_doubles_ecartes,
-                   (unsigned long)b.ph_dechire);
+                   (unsigned long)b.ph_dechire,
+                   (unsigned long)b.ph_futur);
             if (b.ph_rejete) {
                 printf("     ⛔ les « hors borne » SONT LES PIRES RETARDS : un "
                        "zéro plus bas ne veut pas dire « aucune corruption ».\n");
+            }
+            if (b.ph_futur) {
+                /* 🔴 3e revue du 2026-08-27. Ces échantillons-là tombaient dans
+                 *    `ph_rejete`, donc sous la phrase ci-dessus, qui AFFIRMAIT
+                 *    une cause fausse pour eux. ⛔ Ils ne mesurent aucun retard :
+                 *    ils mesurent que les deux ISR se sont croisées. */
+                printf("     ⚠️ les « horodatages POSTÉRIEURS » ne sont ⛔ PAS "
+                       "des retards : les deux ISR se sont croisées entre la "
+                       "prise de `t_us` et la lecture de `wraps`.\n");
+                printf("        Ils ne pèsent sur AUCUN seuil. C'est un coût "
+                       "d'instrument, et il est ici pour être VU, pas pour être "
+                       "interprété.\n");
             }
         }
         if (b.ph_n == 0) {
@@ -1572,19 +1677,63 @@ static int cmd_flush(int argc, char **argv)
                        "presque `n`. Refaire `flush reset` EN RÉGIME, ⛔ pas au "
                        "boot.\n");
             } else if (b.ph_max_us > b.ph_ref_us) {
-                /* La contre-épreuve de la référence figée : si la population
+                /*
+                 * La contre-épreuve de la référence figée : si la population
                  * comptée dépasse la référence, le dégrossissage a été pris
-                 * dans un régime déjà dégradé et les déficits sont SOUS-comptés. */
-                printf("     ⚠️ MAX (%lu) > référence (%lu) : le dégrossissage a "
-                       "raté la phase « à l'heure » ⇒ les déficits ci-dessous "
-                       "sont SOUS-comptés de %lu us. Refaire `flush reset` au "
-                       "REPOS avant de conclure.\n",
+                 * dans un régime déjà dégradé et les déficits sont SOUS-comptés.
+                 *
+                 * 🔴 CETTE BRANCHE EST QUASI-CERTAINE, ET ELLE NE VAUT DONC PAS
+                 *    VALIDATION — déclaré le 2026-08-27 (3e revue), décision
+                 *    owner : ⛔ on NOTE, on ne refond pas.
+                 *    `ph_ref_us` est le MAX de DN_PHASE_DEGROSSI (32) trames ;
+                 *    `ph_max_us` est le MAX de la population comptée, qui se
+                 *    chiffre en MILLIERS. Par statistique d'ordre, le max d'un
+                 *    grand échantillon dépasse celui d'un petit tiré de la même
+                 *    loi : `MAX > référence` est le résultat ATTENDU dès que
+                 *    `n >> 32`, ⛔ pas un signal.
+                 *    MESURÉ : les TROIS points de §20bis.10 la déclenchent
+                 *    (2298/2258 · 1988/1963 · 1562/1520), et ces trois points
+                 *    ont été pris AU REPOS — c'est-à-dire que le remède imprimé
+                 *    ci-dessous était DÉJÀ la condition de la mesure.
+                 * 🎯 CE QUE ÇA CHANGE, ET ⛔ CE QUE ÇA NE CHANGE PAS :
+                 *    le biais SOUS-compte ⇒ le déficit vrai est SUPÉRIEUR à
+                 *    celui publié ⇒ un franchissement du seuil `t_demi` est un
+                 *    MINORANT et il tient A FORTIORI. En revanche tout RAPPORT
+                 *    entre deux déficits (repos vs charge) est indéfendable :
+                 *    les deux termes portent le même biais, dans des
+                 *    proportions inconnues.
+                 */
+                printf("     ⚠️ MAX (%lu) > référence (%lu) : les déficits "
+                       "ci-dessous sont SOUS-comptés de %lu us.\n",
                        (unsigned long)b.ph_max_us, (unsigned long)b.ph_ref_us,
                        (unsigned long)(b.ph_max_us - b.ph_ref_us));
+                printf("        ⛔ CETTE LIGNE EST QUASI-CERTAINE, ce n'est PAS "
+                       "un signal : la référence est le MAX de %lu trames, le "
+                       "MAX porte sur %lu. Un `flush reset` au repos ne la "
+                       "lèvera pas.\n",
+                       (unsigned long)b.ph_degrossi_n, (unsigned long)b.ph_n);
+                printf("        🎯 CE QU'ELLE AUTORISE : un seuil FRANCHI l'est "
+                       "a fortiori (le vrai déficit est plus grand). ⛔ CE "
+                       "QU'ELLE INTERDIT : comparer deux déficits entre eux — "
+                       "ils portent le même biais.\n");
             }
-            printf("     🔴 DÉFICIT PIRE sous la référence : %lu us, pour un "
-                   "demi-bounce qui s'écoule en %lu us\n",
-                   (unsigned long)b.ph_deficit_max_us, (unsigned long)b.t_demi_us);
+            /* 🔴 3e revue du 2026-08-27 : cette ligne imprimait « pour un
+             *    demi-bounce qui s'écoule en 0 us » — un seuil à ZÉRO, présenté
+             *    comme mesuré — UNE LIGNE AVANT le bloc qui annonce « Aucun
+             *    chiffre n'est publié ici : un zéro se lirait "aucune
+             *    corruption" ». ⛔ Le garde-fou arrivait après le chiffre qu'il
+             *    existe pour taire. */
+            if (b.t_demi_us) {
+                printf("     🔴 DÉFICIT PIRE sous la référence : %lu us, pour un "
+                       "demi-bounce qui s'écoule en %lu us\n",
+                       (unsigned long)b.ph_deficit_max_us,
+                       (unsigned long)b.t_demi_us);
+            } else {
+                printf("     🔴 DÉFICIT PIRE sous la référence : %lu us — ⛔ et "
+                       "le seuil de comparaison est INDISPONIBLE (demi-bounce = "
+                       "0 us), voir ci-dessous.\n",
+                       (unsigned long)b.ph_deficit_max_us);
+            }
             if (b.t_demi_us && b.ph_deficit_max_us > b.t_demi_us) {
                 printf("        ⇒ DÉPASSÉ de %lu us : la DMA a lu un tampon PAS "
                        "ENCORE REMPLI. C'est le décalage visible.\n",
