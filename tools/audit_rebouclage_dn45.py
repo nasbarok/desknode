@@ -348,7 +348,18 @@ _fam("dn_measure.c",
      ["s_vsync_count", "s_bnc_wraps", "s_bnc_manques", "s_bnc_doubles",
       "s_bnc_inter_n", "s_bnc_ph_n", "s_bnc_ph_ecarte", "s_bnc_ret_100",
       "s_bnc_ret_bp", "s_bnc_ret_vb", "s_bnc_ret_trame", "s_bnc_ph_10pc",
-      "s_bnc_ph_25pc", "s_bnc_ph_50pc", "s_bnc_ph_100pc"],
+      "s_bnc_ph_25pc", "s_bnc_ph_50pc", "s_bnc_ph_100pc",
+      # 🆕 dn4-10, 2026-08-27 : les trois compteurs de REJET de la phase. Meme
+      #    cadence et meme largeur que leurs voisins — au plus UNE incrementation
+      #    par trame, donc l'horizon de la famille. ⛔ Ils etaient BALAYES sans
+      #    etre DECLARES, et la gate le criait : « NON CLASSES ».
+      "s_bnc_ph_rejete", "s_bnc_ph_doubles_ec", "s_bnc_ph_dechire",
+      # 🆕 3e revue du 2026-08-27 : `ph_futur` separe de `ph_rejete` (horodatage
+      #    d'enroulement POSTERIEUR a l'entree de l'ISR = entrelacement des deux
+      #    ISR, ⛔ pas un retard). Meme cadence, meme largeur.
+      #    🎯 CETTE ENTREE A ETE POSEE PARCE QUE LA GATE L'A EXIGEE : elle a
+      #       criee « NON CLASSES » au premier tir apres l'ajout du compteur.
+      "s_bnc_ph_futur"],
      "OK", "vsync", 1, _EVT)
 _fam("dn_measure.c", ["s_bnc_inter_somme", "s_bnc_ph_somme"], "OK", "vsync",
      53400, "uint64 DEJA en place : cumul d'intervalles/phases en us")
@@ -454,6 +465,20 @@ _fam("dn_wifi.c", ["s_reconnexions", "s_ws_connexions", "s_ws_messages"],
 RE_CAST_DIRECT = re.compile(r'\((?:uint32_t|unsigned|uint16_t)\)\s*\(?[^;\n]*'
                             r'esp_timer_get_time\s*\(\s*\)')
 RE_DECL_H64 = re.compile(r'\bint64_t\s+(\w+)\s*=\s*esp_timer_get_time\s*\(\s*\)')
+# 🔴 AJOUTE LE 2026-08-27 (revue de code) — ET C'EST UN DEFAUT QUE CETTE GATE A
+#    ELLE-MEME PRODUIT. `RE_DECL_H64` exige la declaration ET l'affectation dans
+#    LA MEME instruction. Le refactor de dn4-10 a hisse `int64_t maintenant = 0;`
+#    hors de la boucle de re-lecture et affecte l'horloge PLUS LOIN : le site
+#    `uint32_t t_us = (uint32_t)maintenant;` est devenu INVISIBLE, et la gate a
+#    imprime « ⛔ n'existent plus » A PROPOS D'UN SITE QUI TRONQUE TOUJOURS et
+#    qui alimente `fenetre_ms_32`. ⛔ Un audit qui annonce la disparition d'un
+#    rebouclage vivant est pire que pas d'audit — et son propre docstring promet
+#    de « CRIER quand il ne sait pas, jamais d'omettre en silence ».
+# ⇒ On ne cherche plus un MOTIF, on resout un NOM : toute variable declaree
+#   `int64_t` ET affectee depuis `esp_timer_get_time()` quelque part dans le
+#   fichier est porteuse d'horloge, ou que soient les deux evenements.
+RE_DECL_I64_NOM = re.compile(r'\bint64_t\s+(\w+)\s*(?:=|;|,)')
+RE_AFFECT_HORLOGE = re.compile(r'\b(\w+)\s*=\s*esp_timer_get_time\s*\(\s*\)')
 RE_FONCTION = re.compile(r'^[A-Za-z_][\w \t\*]*\b(\w+)\s*\([^;]*\)\s*\{', re.M)
 
 TRONCATURES = {
@@ -465,12 +490,26 @@ TRONCATURES = {
     ("dn_measure.c", "s_bnc_t_wrap_us = (uint32_t)esp_timer_get_time();"): (
         "OK", "horodatage du dernier enroulement, lu en DELTA COURT uniquement "
         "(`ph = t_us - s_bnc_t_wrap_us`, borne de sanite a 2 periodes)"),
-    ("dn_measure.c", "uint32_t t_us = (uint32_t)maintenant;"): (
+    # ⚠️ CLE MISE A JOUR LE 2026-08-27 : la ligne s'ecrivait
+    #    `uint32_t t_us = (uint32_t)maintenant;` jusqu'au refactor de dn4-10, qui
+    #    a hisse la declaration hors de la boucle de re-lecture. ⛔ Le site n'a
+    #    PAS disparu — seule sa forme a change, et c'est precisement ce que la
+    #    gate a annonce a tort comme une disparition.
+    ("dn_measure.c", "t_us = (uint32_t)maintenant;"): (
         "ATTENTION", "dn4-5/AC1.2 : CONSERVE VOLONTAIREMENT, et c'est le SEUL de "
         "la liste a etre FAUX PAR CONSTRUCTION au-dela de 71,58 min. Il "
         "n'alimente plus `fenetre_ms` (passee en base int64) mais "
         "`fenetre_ms_32`, publie COMME CONTRE-EPREUVE a cote de la valeur juste. "
         "Sa faussete EST le livrable"),
+    # 🆕 DECOUVERT LE 2026-08-27 par la voie « declaration et affectation
+    #    SEPAREES ». ⛔ L'ancienne regex ne l'a JAMAIS vu : `up_s` est declare et
+    #    affecte dans la meme instruction, mais ce cast-ci est le SECOND de la
+    #    fonction et la voie d'origine ne notait que le PREMIER dans 4 000
+    #    caracteres. Une gate scopee au premier site epinglait vert le suivant.
+    ("dn_hist.c", "return (uint32_t)up_s < couv ? (uint32_t)up_s : couv;"): (
+        "OK", "`up_s` est en SECONDES (`esp_timer_get_time() / 1000000`), donc "
+        "2^32 s = 136 ans. Et la comparaison est bornee par `couv`, elle-meme "
+        "construite sur le meme `up_s`"),
     ("dn_hist.c", "(uint32_t)(up_s % DN_HIST_SEAU_S);"): (
         "OK", "`up_s` est en SECONDES (`esp_timer_get_time() / 1000000`), donc "
         "2^32 s = 136 ans ; et ce site-ci est de surcroit un MODULO borne a "
@@ -627,6 +666,19 @@ def main():
                            + re.escape(nom) + r'\b', reste)
             if mm:
                 noter(nu[:m.end() + mm.start()].count('\n') + 1)
+
+        # 🔴 SECONDE VOIE (2026-08-27) : declaration et affectation SEPAREES.
+        #    On resout par le NOM, sur tout le fichier, et on note CHAQUE cast
+        #    32 bits de ce nom — ⛔ pas seulement le premier dans 4 000
+        #    caracteres, qui etait la seconde faiblesse de la voie ci-dessus.
+        porteurs = (set(RE_DECL_I64_NOM.findall(nu))
+                    & set(RE_AFFECT_HORLOGE.findall(nu)))
+        for nom in sorted(porteurs):
+            rc = re.compile(r'\((?:uint32_t|unsigned|uint16_t)\)\s*\(?\s*'
+                            + re.escape(nom) + r'\b')
+            for i, ligne in enumerate(lignes, 1):
+                if rc.search(ligne):
+                    noter(i)
 
     # 🔴 LA CONFRONTATION, ⛔ PAS UN SIMPLE COMPTAGE. Une premiere version de cet
     #    outil imprimait « 13 site(s) — tous classes ci-dessous » sous une table

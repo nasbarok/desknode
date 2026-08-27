@@ -230,6 +230,19 @@ typedef struct esp_io_expander_s esp_io_expander_t;
 typedef esp_io_expander_t *esp_io_expander_handle_t;
 """
 
+SHIM_BOOTCFG = """
+#pragma once
+#include <stdint.h>
+/* ⚠️ COQUILLE, ⛔ PAS LE PRODUIT. `dn_measure.c` a acquis une dependance sur
+ *    `dn_bootcfg.h` le 2026-08-27 pour UNE SEULE ligne de log (le rappel de
+ *    `set bounce <defaut>` quand les seuils sont desarmes). Rien de ce que
+ *    cette gate prouve — le rebouclage 32 bits de la fenetre — ne depend de
+ *    cette valeur. On declare donc le prototype et `shim.c` en donne une
+ *    definition SENTINELLE, ⛔ pas le vrai defaut : si un controle venait un
+ *    jour a lire ce nombre, il lirait un chiffre impossible et le dirait. */
+int dn_bootcfg_defaut_bounce_px(void);
+"""
+
 SHIM_DISPLAY = """
 #pragma once
 #include <stdint.h>
@@ -275,6 +288,9 @@ esp_err_t esp_lcd_rgb_panel_restart(esp_lcd_panel_handle_t p)
 
 /* Un tour de trame COMPLET : l'ISR d'enroulement puis celle de vsync, dans
  * l'ordre reel (le trans-EOF tombe AVANT VSYNC_END). */
+/* ⛔ SENTINELLE, ⛔ PAS LE DEFAUT DU PRODUIT (9 600). Voir SHIM_BOOTCFG. */
+int dn_bootcfg_defaut_bounce_px(void) { return -1; }
+
 void shim_trame(void)
 {
     esp_lcd_rgb_panel_event_data_t d = {0};
@@ -327,22 +343,50 @@ def struct_depuis_entete(txt_h):
 #  CONSTRUCTION
 # ═══════════════════════════════════════════════════════════════════════════
 
+# ⚠️ TABLE DES COQUILLES, HISSEE AU NIVEAU MODULE LE 2026-08-27 (revue de code).
+#    Elle etait enfermee dans `construire()`, donc RIEN ne pouvait la relire — et
+#    le jour ou `dn_measure.c` a acquis un `#include "dn_bootcfg.h"` pour une
+#    seule ligne de log, la gate est morte a la COMPILATION en rendant
+#    « [KO] la gate n'a RIEN pu eprouver », ⛔ sans nommer la cause. Elle est
+#    desormais LISIBLE, et `includes_locaux_orphelins()` la confronte au produit.
+SHIMS = (("esp_err.h", SHIM_ESP_ERR), ("esp_attr.h", SHIM_ESP_ATTR),
+         ("esp_check.h", SHIM_ESP_CHECK), ("esp_log.h", SHIM_ESP_LOG),
+         ("esp_timer.h", SHIM_ESP_TIMER), ("esp_heap_caps.h", SHIM_HEAP),
+         ("esp_lcd_types.h", SHIM_LCD_TYPES),
+         ("esp_lcd_panel_rgb.h", SHIM_LCD_RGB),
+         ("dn_display.h", SHIM_DISPLAY),
+         ("dn_bootcfg.h", SHIM_BOOTCFG),
+         ("driver/i2c_master.h", SHIM_I2C),
+         ("esp_io_expander.h", SHIM_IOEXP),
+         ("freertos/FreeRTOS.h", SHIM_FREERTOS),
+         ("freertos/semphr.h", SHIM_SEMPHR),
+         ("freertos/task.h", SHIM_TASK),
+         ("shim.c", SHIM_C))
+
+# Ce que `construire()` copie VERBATIM du depot, en plus des coquilles.
+COPIES = ("dn_measure.h", "dn_pins.h")
+
+
+def includes_locaux_orphelins(src_c):
+    """🔴 LE CRI QUI MANQUAIT. Rend la liste des `#include "..."` de
+    `dn_measure.c` que la gate ne fournit NI en copie NI en coquille. Un tel
+    include tue la compilation, donc la gate entiere, et le seul symptome etait
+    un `[KO]` generique. ⛔ Les includes CITES dans les commentaires ne comptent
+    pas : ce depot documente massivement et en cite plusieurs."""
+    fournis = set(n for n, _ in SHIMS) | set(COPIES)
+    orphelins = []
+    for ligne in sans_commentaires(src_c).splitlines():
+        m = re.match(r'\s*#\s*include\s*"([^"]+)"', ligne)
+        if m and m.group(1) not in fournis:
+            orphelins.append(m.group(1))
+    return orphelins
+
+
 def construire(src_c, etiquette):
     d = tmpdir()
     os.makedirs(os.path.join(d, "freertos"), exist_ok=True)
     os.makedirs(os.path.join(d, "driver"), exist_ok=True)
-    for nom, contenu in (("esp_err.h", SHIM_ESP_ERR), ("esp_attr.h", SHIM_ESP_ATTR),
-                         ("esp_check.h", SHIM_ESP_CHECK), ("esp_log.h", SHIM_ESP_LOG),
-                         ("esp_timer.h", SHIM_ESP_TIMER), ("esp_heap_caps.h", SHIM_HEAP),
-                         ("esp_lcd_types.h", SHIM_LCD_TYPES),
-                         ("esp_lcd_panel_rgb.h", SHIM_LCD_RGB),
-                         ("dn_display.h", SHIM_DISPLAY),
-                         ("driver/i2c_master.h", SHIM_I2C),
-                         ("esp_io_expander.h", SHIM_IOEXP),
-                         ("freertos/FreeRTOS.h", SHIM_FREERTOS),
-                         ("freertos/semphr.h", SHIM_SEMPHR),
-                         ("freertos/task.h", SHIM_TASK),
-                         ("shim.c", SHIM_C)):
+    for nom, contenu in SHIMS:
         with io.open(os.path.join(d, nom), "w", encoding="utf-8") as f:
             f.write(contenu)
     # ⚠️ COPIES VERBATIM du depot : l'en-tete et les timings. Si l'un des deux
@@ -506,6 +550,12 @@ def main():
     Bounce, det = struct_depuis_entete(txt_h)
     if not ctrl(Bounce is not None, "`dn_bounce_stats_t` traduite en ctypes", det):
         return 1
+
+    orph = includes_locaux_orphelins(src)
+    ctrl(not orph,
+         "aucun `#include` local de dn_measure.c n'est ORPHELIN",
+         "%d fournis (coquilles + copies)" % (len(SHIMS) - 1 + len(COPIES))
+         if not orph else "⛔ NI COPIE NI COQUILLE : %s ⇒ la gate NE COMPILERA PAS" % orph)
 
     b = banc(src, "produit", Bounce)
     if not ctrl(b is not None, "dn_measure.c COMPILE ET CHARGE",
