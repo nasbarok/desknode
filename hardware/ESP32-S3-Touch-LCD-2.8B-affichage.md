@@ -5445,6 +5445,17 @@ géométrie de bounce qui tombe mal sur cette bande-là, ou une pure coïncidenc
 ⛔ **Aucune mesure ne le tranche, et on n'en tire rien.** C'est le sujet d'une observation dédiée,
 ⛔ pas de cette section.
 
+> 🎯 **AMENDÉ LE MÊME JOUR — LA CAUSE EST DÉSIGNÉE PAR LA MESURE, voir §20bis.12.**
+> ⛔ Le paragraphe ci-dessus (« aucune des deux signatures ne lui va », « aucune cause ne lui est
+> attribuée ») **n'est pas effacé** : il dit ce qu'on savait avant l'A/B. Ce qui a changé :
+> **la vue détail fait 4,0 flushes par cycle contre 1,0 pour la grille** — elle n'est **pas
+> groupée** — et elle produit **31 / 12 corruptions** là où la grille en produit **0 / 0**.
+> ⇒ l'objection *« un décalage DMA ne peut pas être local »* **tombe** : ce n'est pas le décalage
+> qui est local, c'est **sa cause**. ⚠️ Et la piste des 15 360 px (« même zone ») n'a **rien** à voir :
+> elle n'a **pas** été confirmée, et elle n'est plus nécessaire pour expliquer quoi que ce soit.
+> ⚠️ **CE QUI RESTE OUVERT** : que l'artefact **vu** soit **cette** corruption. La corrélation
+> œil ↔ compteur d'AC2 n'a pas été refaite dans cette vue.
+
 ✅ **DÉCISION OWNER DU 2026-08-27 : ON LE NOTE, ⛔ ON N'OUVRE RIEN.** Il n'y a pour l'instant qu'une
 **description**, aucune mesure ; ouvrir un instrument pour un artefact qui ne gêne pas coûterait
 plus que ce qu'il rendrait. ⇒ ce paragraphe **est** le livrable. Il dort ici jusqu'à ce que
@@ -5453,6 +5464,127 @@ l'artefact gêne, ou qu'une séance carte passe par là.
 tranche : un **A/B `widget grandeurs`** pour savoir si l'artefact suit **la CASE** (⇒ invalidation,
 donc un défaut de dessin) ou **la POSITION à l'écran** (⇒ géométrie de bounce, donc la piste
 ci-dessus). ⛔ Tant que ce n'est pas fait, **aucune des deux ne doit être écrite comme cause.**
+
+### 20bis.10 🔴 LE TÉMOIN PROVOQUÉ DU COMPTEUR DE PHASE — AC1 est levé, et la carte a corrigé mon modèle
+
+**Séance du 2026-08-27, firmware `42c866e`** (SHA **lu dans le descripteur du binaire**, ⛔ pas récité).
+AC1 fait du témoin une **condition d'arrêt** : *« si ça ne le fait pas bouger, l'instrument est faux
+et la story s'arrête là »*. Le compteur de **phase** n'en avait jamais eu ; seul `manques` avait le
+sien (`flash on`), qui valide l'enroulement, ⛔ pas la phase.
+
+🎯 **LE TÉMOIN CHOISI : DÉPLACER LE WRAP D'UN NOMBRE CONNU DE LIGNES.** `bounce_px` fixe la
+géométrie du remplissage à la microseconde près. Changer sa valeur déplace l'instant du wrap d'une
+quantité **calculable**, ⛔ pas ajustée. Trois points, **au repos**, fenêtres de 60 s identiques :
+
+| `bounce_px` | lignes / tampon | phase **min** | **moy** | **MAX** | référence figée | `t_demi` |
+|---:|---:|---:|---:|---:|---:|---:|
+| **9 600** | 20 | 2 244 | **2 257** | 2 298 | 2 258 | 775 |
+| **7 680** | 16 | 1 868 | **1 961** | 1 988 | 1 963 | 620 |
+| **4 800** | 10 | 1 461 | **1 518** | 1 562 | 1 520 | 388 |
+
+**PRÉDICTION N°1, écrite avant la mesure : −155 µs** (4 lignes × 38,75). **Mesuré : −296 µs.**
+⛔ **RATÉE D'UN FACTEUR 2, et c'est écrit tel quel.** Le signe et l'ordre de grandeur étaient bons,
+l'amplitude non : j'avais compté **un** tampon de bounce, or le driver en alloue **deux** et les
+alterne (`esp_lcd_panel_rgb.c`, `bb_size` × 2). Retirer 4 lignes **par tampon** en retire **8**.
+
+**PRÉDICTION N°2, écrite avant la mesure, sur le modèle corrigé** — 7 680 → 4 800, soit
+(10 − 16) × 2 = −12 lignes = **−465 µs ⇒ moy 1 496 µs**. **Mesuré : 1 518 µs. Écart 22 µs = 0,57
+ligne**, dans la tolérance d'une ligne annoncée. ✅ **Le modèle ajusté est confirmé sur un point
+qu'il n'a pas servi à construire.**
+
+🎯 **LA LOI EST LINÉAIRE, ET SA PENTE EST MESURÉE** : 74,0 µs/ligne entre 20 et 16, 73,8 entre 16 et
+10 ⇒ **73,9 µs par ligne de tampon, constante à 0,3 % près**. ⚠️ Le modèle géométrique pur donne
+2 × 38,75 = **77,5** : il **sur-estime de 4,6 %**. ⛔ **Écart systématique DÉCLARÉ, NON EXPLIQUÉ**
+(FIFO du contrôleur, latence d'amorçage de la DMA : aucune des deux n'est mesurée).
+
+⇒ ✅ **AC1 EST LEVÉ.** L'instrument voit un déplacement **provoqué**, **linéairement**, sur une plage
+de **739 µs = 14 × la dispersion au repos (54 µs)**, avec une prédiction écrite d'avance qui tombe à
+**0,57 ligne**. **AC3, AC4 et AC5 tiennent.**
+⚠️ **CE QUE CE TÉMOIN NE PROUVE PAS** : que le compteur voie une **famine**. Il déplace le wrap par
+**géométrie**, ⛔ pas par **contention**. C'est le témoin B qui couvre ça — §20bis.11.
+
+### 20bis.11 ✅ LE TÉMOIN B — la famine provoquée par le trafic RÉEL
+
+Agent RÉEL sur la tour, 5 trames/s, mode `on`, `bounce_px = 9 600`, **même binaire, même référence,
+même géométrie** que la ligne de repos ci-dessus :
+
+| | repos, 60 s | **agent RÉEL, 431 s** |
+|---|---:|---:|
+| déficit pire | **14 µs** | **784 µs** (seuil 775 ⇒ **dépassé de 9**) |
+| 🔴 100 % (CORRUPTION) | **0** | **62** — soit 0,144 /s |
+| 10 % · 25 % · 50 % | 0 · 0 · 0 | 582 · 85 · 77 |
+
+⇒ **× 56 sur le déficit pire, 0 → 62 sur les corruptions.** Le compteur **discrimine** repos et
+trafic. ✅ **Le témoin B est acquis.**
+
+⛔ **ET ON NE COMPARE PAS AUX 0,94 /s DE §20.7.19.** Référence (cliquet → figée), population
+(min/MAX mélangés → disjoints), période (tronquée → arrondie) **et** `bounce_px` (7 680 → 9 600) ont
+**tous** changé. Publier un rapport entre les deux serait le chiffre faux mais plausible que ce
+dépôt traque.
+
+### 20bis.12 🔴 L'ARTEFACT DES `%` A UNE CAUSE — **LA VUE DÉTAIL N'EST PAS GROUPÉE**
+
+Le constat owner du 2026-08-27 (§20bis.9) est resté **sans cause attribuée** une demi-journée.
+Il en a une, et elle était **déjà écrite au dossier** : §20.7.19 pt 1 pose que *« le groupage est une
+**ATOMICITÉ** : une case = UNE zone sale = UN flush »*. **La grille l'a. Le détail ne l'a pas.**
+
+**A/B, 4 bras ALTERNÉS**, stimulus identique (`widget pousser 0` × 3 200, ⛔ valeurs **variables** —
+`(s_pousse_seq × k_mul) % 100` — donc **vrai dessin**), **la même case poussée dans les deux vues** :
+
+| | **détail CPU** B1 / B2 | **grille** A1 / A2 |
+|---|---:|---:|
+| durée pour 3 200 poussées | **194 / 196 s** | **106 / 107 s** |
+| 🔴 **flushes par cycle** | **4,00 / 3,98** | **1,00 / 1,00** |
+| phase **min** | **1 473 / 1 481** | 1 852 / 1 583 |
+| déficit pire | **789 / 781 → DÉPASSÉ** | 407 / 679 → sous le seuil |
+| 🔴 100 % (CORRUPTION) | **31 / 12** | **0 / 0** |
+| px par flush | 18 133 (5,9 %) | 36 630 (11,9 %) |
+
+🎯 **AUCUNE STATISTIQUE NE SE RECOUVRE ENTRE LES DEUX VUES**, et `flushes/cycle` sépare **4,0 de 1,0**
+sans la moindre dispersion. ⇒ **une mise à jour du détail coûte QUATRE flushes**, donc **quatre
+rendez-vous de synchro**, donc **quatre fenêtres où la DMA peut décrocher** — contre **une** sur la
+grille.
+
+⇒ 🎯 **ÇA RÉCONCILIE LES DEUX FAITS QUI SEMBLAIENT INCOMPATIBLES.** La famine est **globale par
+nature** (elle décale toute la trame), mais elle n'est **provoquée** que quand le détail se
+repeint : d'où un artefact qui ne se voit **que là**. ⛔ L'objection *« un décalage DMA ne peut pas
+être local »* tombe — ce n'est pas le **décalage** qui est local, c'est sa **cause**.
+
+⚠️ **CE QUI RESTE NON ÉTABLI, ET IL FAUT LE LIRE AVEC LE TABLEAU** :
+- que l'artefact **vu par l'owner** SOIT cette corruption — la corrélation œil ↔ compteur d'AC2
+  **n'a pas été refaite dans cette vue** ;
+- le stimulus est la console à **28 poussées/s sur une case**, ⛔ pas l'agent à **1/s par case** :
+  c'est **~5× plus agressif**, et le tableau mesure un **contraste**, pas un régime ;
+- la cadence : 12–31 corruptions sur ~195 s = **0,06–0,16 /s** contre *« toutes les 5 s »* = 0,2 /s
+  à l'œil. **Même ordre, ⛔ pas la même valeur.**
+
+⚠️ **ET UNE LEÇON D'INSTRUMENT, PAYÉE ICI** : entre deux bras **identiques**, `phase min` bouge de
+**8 µs** côté détail mais de **269 µs** côté grille, et le compte de corruptions varie de **× 2,6**
+(31 → 12). ⇒ **`flushes/cycle` est la statistique solide ; le COMPTE de corruptions ne l'est pas.**
+Une conclusion bâtie sur le seul compte, sur une seule paire, aurait été indéfendable.
+
+### 20bis.13 ⚠️ LE BANDEAU PEUT NOMMER LE MAUVAIS COMMIT — mesuré le 2026-08-27
+
+🔴 **« SHA LU AU BANDEAU » A UN TROU, ET IL EST SYSTÉMATIQUE DANS CE DÉPÔT.**
+`App version` vient de `git describe` évalué **au dernier CMake *configure***, ⛔ **pas au dernier
+*build***. Or le rythme d'ici est **build → flash → mesure → commit** : le champ nomme donc le
+commit **PRÉCÉDENT**.
+
+**MESURÉ SUR MON PROPRE BINAIRE** : `desknode.bin` déclarait **`4cf35ae`** alors que `HEAD` valait
+**`42c866e`** — exactement **un commit de retard**. Après `idf.py reconfigure`, il déclarait
+`42c866e`, **taille inchangée** (0x11aa90).
+
+⇒ **CE QUE ÇA A COÛTÉ DANS CETTE SÉANCE** : la story affirmait *« la carte porte `1adf259` »*
+depuis le 2026-08-24. **Faux.** Le bandeau disait `c31bb97` et le binaire, compilé le
+**26/08 à 17:24:26**, contenait déjà le correctif `fenetre_deborde` de **`afee371`** — commité à
+**21:48**, quatre heures plus tard. C'est la **sortie de `flush` elle-même** qui a démenti le
+bandeau, ⛔ pas une relecture.
+
+🔧 **LES DEUX RÈGLES QUI EN SORTENT** :
+1. **`idf.py reconfigure` AVANT le flash de référence**, sinon l'étiquette ment.
+2. Le champ fait foi **seulement** confronté à `Compile time` — et la vraie preuve du contenu reste
+   **ce que le binaire IMPRIME**. Ici, `flush` a tranché en une ligne.
+3. Lire le descripteur sans la carte : offset **0x20** du `.bin`, `version[32]` à **+16**.
 
 ## 21. `dn4-9` / AC8 — LE CONSTAT OWNER À L'ŒIL, 2026-08-22, firmware `38c3b99`
 
