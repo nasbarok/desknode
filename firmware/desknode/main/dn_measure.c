@@ -123,9 +123,21 @@ static size_t s_psram_apres;
  *    la periode valait 26 737 us au lieu de 26 737,5 => `flush` imprimait
  *    « retard PIRE observe : +1 us » SUR UNE TRAME PARFAITEMENT A L'HEURE,
  *    a comparer aux « +16 us » publies comme resultat au repos. Et
- *    `t_demi_us` etait sous-estime de ~2 % pour bounce_px = 480, 960, 2400 et
- *    4800 — dont DEUX des six points du balayage de §20.7.6, donc un
- *    SUR-COMPTAGE des franchissements precisement la.
+ *    `t_demi_us` etait sous-estime pour bounce_px = 480, 960, 2400 et 4800 —
+ *    dont DEUX des six points du balayage de §20.7.6, donc un SUR-COMPTAGE des
+ *    franchissements precisement la.
+ *    🔴 CE PARAGRAPHE ANNONCAIT « ~2 % » — CHIFFRE FAUX, CORRIGE LE 2026-08-27
+ *       (3e revue). Le « ~2 % » ne vaut que pour UNE des quatre valeurs, et il
+ *       est 15 x trop grand pour la derniere. Le vrai profil est celui de la
+ *       troncature d'un demi-pixel de ligne, donc DECROISSANT avec la taille :
+ *         480 px  ->  38,75 us tronque a 38  =  -1,94 %
+ *         960 px  ->  77,50 us tronque a 77  =  -0,65 %
+ *        2400 px  -> 193,75 us tronque a 193 =  -0,39 %
+ *        4800 px  -> 387,50 us tronque a 387 =  -0,13 %
+ *       ⛔ Le DEFAUT est reel et le correctif en nanosecondes le ferme ; c'est
+ *          son AMPLITUDE qui etait recitee au lieu d'etre calculee. Un ordre de
+ *          grandeur qui ne survit pas a sa propre arithmetique est exactement ce
+ *          que ce fichier reproche a ses instruments.
  * ⇒ On calcule en NANOSECONDES (exact : 62,5 ns par pixel a 16 MHz, donc
  *   tout multiple de 2 pixels tombe juste) et on arrondit AU PLUS PROCHE pour
  *   la vue en microsecondes. La valeur exacte reste publiee a cote, en ns :
@@ -288,6 +300,7 @@ static volatile uint32_t s_bnc_ph_ref_seed; /* maximum vu PENDANT le degrossissa
 static volatile uint32_t s_bnc_ph_rejete;   /* hors borne de sanite — LES PIRES */
 static volatile uint32_t s_bnc_ph_doubles_ec; /* trames a >= 2 enroulements, ecartees */
 static volatile uint32_t s_bnc_ph_dechire;  /* paire (wraps, t_wrap) lue DECHIREE */
+static volatile uint32_t s_bnc_ph_futur;    /* tw > t_us : entrelacement des ISR, ⛔ PAS un retard */
 static volatile uint32_t s_bnc_ph_10pc;  /* deficit sous la reference > 10 % du demi-bounce */
 static volatile uint32_t s_bnc_ph_25pc;  /* > 25 % */
 static volatile uint32_t s_bnc_ph_50pc;  /* > 50 % */
@@ -396,6 +409,7 @@ static IRAM_ATTR bool on_vsync(esp_lcd_panel_handle_t panel,
         s_bnc_ph_rejete = 0;
         s_bnc_ph_doubles_ec = 0;
         s_bnc_ph_dechire = 0;
+        s_bnc_ph_futur = 0;
     } else {
         /* (a) comptabilite des enroulements : `wraps` doit suivre `trames` UN
          *     pour UN. La soustraction non signee absorbe l'enroulement 32 bits. */
@@ -445,7 +459,15 @@ static IRAM_ATTR bool on_vsync(esp_lcd_panel_handle_t panel,
                 s_bnc_ph_dechire++;
             } else {
                 uint32_t ph = t_us - tw;
-                if (ph >= 2u * DN_PERIODE_US) {
+                if ((int32_t)(t_us - tw) < 0) {
+                    /* 🔴 SEPARE DE `ph_rejete` LE 2026-08-27 (3e revue). Voir
+                     *    `ph_futur` dans dn_measure.h : l'horodatage
+                     *    d'enroulement est POSTERIEUR a l'entree de cette ISR,
+                     *    donc les deux ISR se sont croisees. ⛔ Ce n'est pas un
+                     *    retard, et le confondre avec les « pires retards »
+                     *    faisait AFFIRMER une cause a l'instrument. */
+                    s_bnc_ph_futur++;
+                } else if (ph >= 2u * DN_PERIODE_US) {
                     /* 🔴 LA BORNE DE SANITE ECARTE EXACTEMENT LE GLISSEMENT
                      *    RECHERCHE — et jusqu'au 2026-08-27 elle le jetait SANS
                      *    RIEN INCREMENTER. Un « 0 » de la console pouvait donc
@@ -572,8 +594,35 @@ static IRAM_ATTR bool on_frame_buf_complete(esp_lcd_panel_handle_t panel,
      * buffer (`bounce_px != 0`, notre cas depuis le 2026-08-16) cet evenement
      * tombe UNE FOIS PAR TRAME, a l'enroulement de `bounce_pos_px` — voir
      * l'amendement du 2026-08-22 dans dn_measure.h. */
-    s_bnc_wraps++;
+    /*
+     * 🔴 L'HORODATAGE D'ABORD, LE COMPTEUR ENSUITE — 3e revue du 2026-08-27.
+     *    ⛔ L'ORDRE INVERSE RENDAIT LA GARDE DE DECHIRURE UNILATERALE, et c'est
+     *    exactement le defaut que la carte a trouve dans `358fd95` sur la
+     *    contre-epreuve de la reference : « une contre-epreuve qui ne peut pas
+     *    echouer dans un sens n'est pas une contre-epreuve, c'est un
+     *    demi-garde-fou. » C'etait le SECOND de la meme story.
+     *
+     *    LE CAS QUI PASSAIT. Avec `wraps++` PUIS l'horodatage, si l'ISR de
+     *    vsync preempte celle-ci ENTRE LES DEUX (les deux sont en
+     *    ESP_INTR_FLAG_LOWMED et RIEN ne leur impose le meme niveau — voir
+     *    l'invariant de concurrence en tete de fichier), le lecteur voit :
+     *      `w`  = W+1  (le compteur NEUF)
+     *      `tw` = T(W) (l'horodatage ANCIEN, pas encore ecrase)
+     *      `w2` = W+1  ⇒ `w2 == w` ⇒ LA GARDE PASSE
+     *    et la phase publiee vaut « phase reelle + UNE PERIODE ENTIERE »
+     *    (~29 000 us pour ~2 257 attendus). ⛔ La borne de sanite ne l'ecarte
+     *    PAS : elle rejette a `2 x DN_PERIODE_US` = 53 476 us, et un echantillon
+     *    perime d'UNE SEULE trame reste dessous. S'il tombe dans les 32 trames
+     *    de degrossissage, il EMPOISONNE la reference figee.
+     *
+     *    AVEC CET ORDRE-CI, le cas symetrique (horodatage ecrit, `wraps++` pas
+     *    encore) donne `w` ANCIEN et `tw` NEUF : la phase calculee est alors
+     *    tres courte ou negative ⇒ elle deborde ⇒ elle part dans
+     *    `s_bnc_ph_futur`, ⛔ elle n'est PAS moyennee en silence. On echange un
+     *    biais MUET contre un rejet COMPTE.
+     */
     s_bnc_t_wrap_us = (uint32_t)esp_timer_get_time();
+    s_bnc_wraps++;
 
     BaseType_t hp = pdFALSE;
     if (s_fbdone_sem) {
@@ -890,13 +939,32 @@ void dn_measure_bounce_get(dn_bounce_stats_t *out)
         out->ph_rejete = s_bnc_ph_rejete;
         out->ph_doubles_ecartes = s_bnc_ph_doubles_ec;
         out->ph_dechire = s_bnc_ph_dechire;
+        out->ph_futur = s_bnc_ph_futur;
+        out->ph_degrossi_n = DN_PHASE_DEGROSSI;
         out->ph_min_us = s_bnc_ph_min;
         out->ph_max_us = s_bnc_ph_max;
         out->ph_ref_us = s_bnc_ph_ref_us;
         {
+            /*
+             * 🔴 `ph_n` RELU APRES LA SOMME — 3e revue du 2026-08-27.
+             *    La double lecture ci-dessous ne protegeait que contre la
+             *    DECHIRURE 64 BITS de `ph_somme`. Elle ne disait RIEN de
+             *    l'accord entre `ph_n` (lu ~15 lignes plus haut) et
+             *    `ph_somme` : une vsync entre les deux ajoutait un echantillon
+             *    a la somme SANS que `n` bouge pour le lecteur, et la console
+             *    calculait `somme(n+1) / n`. Negligeable en regime (`n` par
+             *    centaines), ⛔ mais un FACTEUR DEUX a `n = 1` — c'est-a-dire
+             *    juste apres un `flush reset`, le moment exact ou l'on lit.
+             * ⇒ On relit `ph_n` ici et on redemande un tour s'il a bouge. Le
+             *   critere existait deja (`sommes_stables`), il ne regardait pas
+             *   la bonne paire.
+             */
             uint64_t a = s_bnc_ph_somme;
             uint64_t b = s_bnc_ph_somme;
             if (a != b) {
+                sommes_stables = false;
+            }
+            if (s_bnc_ph_n != out->ph_n) {
                 sommes_stables = false;
             }
             out->ph_somme_us = b;
@@ -949,6 +1017,29 @@ void dn_measure_bounce_get(dn_bounce_stats_t *out)
     out->fenetre_deborde = (fen_us >= 4294967296LL);
     out->fenetre_ms_32 = (t_us - s_bnc_t0_us) / 1000u;
     out->raz_en_attente = s_bnc_raz;
+    /*
+     * 🔴 LA FENETRE ENTRE ENFIN SOUS LA GARDE — 3e revue du 2026-08-27.
+     *    Tout ce bloc-ci (l'origine 64 bits, `fenetre_ms`, `fenetre_ms_32`,
+     *    `raz_en_attente`) est calcule APRES la boucle de re-lecture, donc
+     *    HORS de la garde. Si l'ISR consommait une RAZ entre la sortie de la
+     *    boucle et ces lignes, la fenetre decrivait une periode qui ne
+     *    correspondait PAS aux `trames` / `ph_n` deja copies — et
+     *    `lecture_dechiree` valait `false`, c'est-a-dire que la sortie SE
+     *    DECLARAIT PROPRE. ⛔ Or `dn_measure.h` promet desormais que « la paire
+     *    (compteur, base) est protegee par une garde cote lecteur, et que
+     *    l'echec de cette garde est PUBLIE ». La promesse ne couvrait pas le
+     *    denominateur par lequel on divise tout le reste.
+     * ⇒ On relit la generation UNE DERNIERE FOIS. Si elle a bouge depuis
+     *   `gen_fin`, la fenetre et les compteurs ne parlent pas de la meme
+     *   chose, et on le DIT. ⛔ On ne recommence pas : la RAZ vient d'etre
+     *   consommee, la fenetre juste est celle du prochain appel.
+     * ⚠️ Cas derive ferme du meme coup : `fenetre_ms_32` pouvait sous-deborder
+     *    a ~4 294 967 ms quand `s_bnc_t0_us` devenait posterieur a `t_us`. Le
+     *    chiffre restait imprime comme une contre-epreuve valable.
+     */
+    if (s_bnc_raz_gen != gen_fin) {
+        out->lecture_dechiree = true;
+    }
 }
 
 size_t dn_measure_psram_free(void)

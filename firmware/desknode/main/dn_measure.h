@@ -322,6 +322,24 @@ typedef struct {
     uint32_t ph_rejete;
     uint32_t ph_doubles_ecartes;
     uint32_t ph_dechire;
+    /*  - `ph_futur` : l'horodatage d'enroulement est POSTERIEUR a l'entree de
+     *    l'ISR de vsync. ⛔ CE N'EST PAS UN RETARD, c'est un entrelacement des
+     *    deux ISR : `t_us` est pris en tete de `on_vsync` et le compteur
+     *    d'enroulements est lu ~40 lignes plus loin ; si l'ISR d'enroulement
+     *    tombe entre les deux, la paire est NEUVE et COHERENTE (la garde de
+     *    dechirure se tait, a juste titre) mais `tw > t_us`. La soustraction non
+     *    signee debordait alors a ~4,29e9 et franchissait la borne de sanite :
+     *    l'evenement etait compte dans `ph_rejete`, et la console AFFIRMAIT que
+     *    les « hors borne » SONT LES PIRES RETARDS. ⛔ Faux pour ce chemin-la.
+     *    3e revue du 2026-08-27 : les deux causes sont desormais SEPAREES, et
+     *    aucune des deux n'est presentee comme l'autre. */
+    uint32_t ph_futur;
+    /*  - `ph_degrossi_n` : la TAILLE de la population qui a servi à figer
+     *    `ph_ref_us`. ⛔ PUBLIÉE, ⛔ pas récitée par la console : c'est elle qui
+     *    dit pourquoi la contre-épreuve `MAX > référence` est quasi-certaine
+     *    (max de ~32 trames contre max de milliers). Un lecteur qui la voit à
+     *    côté de `ph_n` n'a plus besoin de lire le code pour le savoir. */
+    uint32_t ph_degrossi_n;
     uint32_t ph_min_us;
     uint32_t ph_max_us;
     /* La référence des déficits, FIGÉE à la fin du dégrossissage (2026-08-27).
