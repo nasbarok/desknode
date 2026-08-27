@@ -432,7 +432,49 @@ esp_err_t dn_bootcfg_load(dn_bootcfg_t *out)
              *    sous-optimal. La justification complete est dans dn_bootcfg.h,
              *    au-dessus de `DN_BOUNCE_PX_ALERTE`.
              */
-            if (v > 0 && v < DN_BOUNCE_PX_ALERTE) {
+            /*
+             * 🔴 TROISIEME ET QUATRIEME PALIER — 3e revue du 2026-08-27.
+             *    Les deux paliers poses le matin meme etaient tous deux gardes
+             *    par `v > 0 &&` et bornes en haut par le defaut. ⇒ DEUX zones
+             *    demarraient en SILENCE TOTAL :
+             *      - `bounce_px = 0`, que `bounce_px_refus()` ACCEPTE (ses trois
+             *        tests sont gardes par `v != 0`, et le commentaire de cette
+             *        fonction l'ecrit : « les douze valeurs, PLUS LE ZERO »).
+             *        Zero DESACTIVE le tampon de bounce : c'est la valeur qui
+             *        FABRIQUE le glissement que dn4-10 mesure, et rien ne le
+             *        disait au boot ;
+             *      - les QUATRE valeurs admissibles AU-DESSUS du defaut
+             *        (15 360, 19 200, 30 720, 38 400) — dont 15 360, que le
+             *        message du palier « reglage » ci-dessous qualifie
+             *        lui-meme de « PIRE », et qu'il n'imprimait QU'A CEUX QUI
+             *        N'Y SONT PAS.
+             * ⛔ Ce trou est ANTERIEUR aux correctifs du 2026-08-27 : le
+             *    `v > 0 &&` etait deja la. Il est ferme ici parce que c'est ce
+             *    bloc-ci qui porte desormais l'alerte de `bounce_px`.
+             */
+            if (v == 0) {
+                ESP_LOGE(TAG,
+                         "🔴 bounce_px=0 vient de la NVS : LE TAMPON DE BOUNCE "
+                         "EST DESACTIVE.");
+                ESP_LOGE(TAG,
+                         "  ⛔ C'est la valeur qui FABRIQUE le glissement, pas "
+                         "celle qui le corrige : la DMA lit la PSRAM "
+                         "directement. Les quatre compteurs de deficit ne "
+                         "mesureront RIEN (demi-bounce = 0 us). `cfg reset` ou "
+                         "`set bounce %d` puis `reboot`.",
+                         DN_DEFAULT_BOUNCE_PX);
+            } else if (v > DN_DEFAULT_BOUNCE_PX) {
+                ESP_LOGW(TAG,
+                         "bounce_px=%ld vient de la NVS et est AU-DESSUS de "
+                         "l'optimum mesure (%d px).",
+                         (long)v, DN_DEFAULT_BOUNCE_PX);
+                ESP_LOGW(TAG,
+                         "  ⚠️ Monter au-dela n'achete PAS de marge : constat "
+                         "owner sur 15 360 — « une bande sur les %% ». "
+                         "`set bounce %d` puis `reboot` pour revenir a "
+                         "l'optimum.",
+                         DN_DEFAULT_BOUNCE_PX);
+            } else if (v > 0 && v < DN_BOUNCE_PX_ALERTE) {
                 ESP_LOGW(TAG,
                          "bounce_px=%ld vient de la NVS et est SOUS le seuil "
                          "MESURE SUR (%d px = %d lignes).",
@@ -575,33 +617,57 @@ esp_err_t dn_bootcfg_set_lvgl_core(int core)
  *   - il est LU depuis la console ;
  *   - il n'entre JAMAIS dans `dn_bootcfg_t` : ce n'est pas de la config, et le
  *     confondre avec de la config le ferait appliquer au lieu d'etre lu. */
-void dn_bootcfg_get_repli(dn_bootcfg_repli_t *out)
+esp_err_t dn_bootcfg_get_repli(dn_bootcfg_repli_t *out)
 {
     if (!out) {
-        return;
+        return ESP_ERR_INVALID_ARG;
     }
+    /* ⛔ SENTINELLE IMPOSSIBLE, ⛔ PAS ZERO — voir DN_REPLI_NON_RELU dans
+     *    l'en-tete. Zero est une valeur de `bounce_px` LEGALE. */
     out->present = false;
-    out->demande_px = 0;
-    out->retenu_px = 0;
+    out->demande_px = DN_REPLI_NON_RELU;
+    out->retenu_px = DN_REPLI_NON_RELU;
     out->occurrences = 0;
 
     nvs_handle_t h;
-    if (open_nvs(NVS_READONLY, &h) != ESP_OK) {
-        return;
+    esp_err_t err = open_nvs(NVS_READONLY, &h);
+    if (err != ESP_OK) {
+        /* 🔴 ON REND L'ERREUR, ⛔ ON NE REND PAS « aucun repli ». L'appelant
+         *    n'a pas le droit d'affirmer une absence qu'il n'a pas etablie. */
+        return err;
     }
     int32_t n = 0;
-    if (nvs_get_i32(h, DN_KEY_REPLI_N, &n) == ESP_OK && n > 0) {
-        int32_t v = 0;
-        out->present = true;
-        out->occurrences = (int)n;
-        if (nvs_get_i32(h, DN_KEY_REPLI_DEM, &v) == ESP_OK) {
-            out->demande_px = (int)v;
+    err = nvs_get_i32(h, DN_KEY_REPLI_N, &n);
+    if (err == ESP_ERR_NVS_NOT_FOUND) {
+        /* Le cas NORMAL d'une carte qui n'a jamais replie : c'est une REPONSE,
+         * pas un echec. */
+        err = ESP_OK;
+    } else if (err == ESP_OK) {
+        if (n < 0) {
+            /* Une cle presente mais negative ne peut venir que d'une corruption
+             * ou d'un debordement : on ne la tait pas. */
+            ESP_LOGW(TAG, "temoin de repli : repli_n = %ld, valeur IMPOSSIBLE "
+                          "(corruption ?) — traitee comme « illisible »",
+                     (long)n);
+            nvs_close(h);
+            return ESP_ERR_INVALID_STATE;
         }
-        if (nvs_get_i32(h, DN_KEY_REPLI_RET, &v) == ESP_OK) {
-            out->retenu_px = (int)v;
+        if (n > 0) {
+            int32_t v = 0;
+            out->present = true;
+            out->occurrences = (int)n;
+            /* ⚠️ Un echec ici laisse la SENTINELLE en place : la console dira
+             *    « valeur NON RELUE », ⛔ pas « la NVS demandait 0 px ». */
+            if (nvs_get_i32(h, DN_KEY_REPLI_DEM, &v) == ESP_OK) {
+                out->demande_px = (int)v;
+            }
+            if (nvs_get_i32(h, DN_KEY_REPLI_RET, &v) == ESP_OK) {
+                out->retenu_px = (int)v;
+            }
         }
     }
     nvs_close(h);
+    return err;
 }
 
 esp_err_t dn_bootcfg_note_repli(int demande_px, int retenu_px)
@@ -649,7 +715,41 @@ esp_err_t dn_bootcfg_clear_repli(void)
     return err;
 }
 
-esp_err_t dn_bootcfg_reset(void)
+/*
+ * 🔴 LA REPOSE EN **UNE SEULE** ECRITURE — 3e revue du 2026-08-27.
+ *    Elle se faisait en rejouant `dn_bootcfg_note_repli()` `occurrences` fois,
+ *    ce qui avait DEUX defauts et pas un :
+ *      (a) `occurrences` cycles `nvs_open`/`set`x3/`commit`/`close` sur la
+ *          commande de SECOURS — usure flash et REPL bloque, en O(n) ;
+ *      (b) surtout : un echec au tour `i > 0` laissait `repli_n = i` en NVS
+ *          pendant que le journal disait « PERDU … cette ligne de log est
+ *          desormais la seule trace ». La NVS gardait alors un compte que
+ *          PERSONNE n'avait mesure, et `cfg repli` l'imprimait comme un fait.
+ *    ⇒ On ecrit les trois cles et on commit UNE fois. Soit tout est repose,
+ *      soit rien ne l'est — et dans les deux cas on peut le DIRE.
+ */
+static esp_err_t reposer_repli(const dn_bootcfg_repli_t *t)
+{
+    nvs_handle_t h;
+    esp_err_t err = nvs_open(DN_NVS_NAMESPACE, NVS_READWRITE, &h);
+    if (err != ESP_OK) {
+        return err;
+    }
+    err = nvs_set_i32(h, DN_KEY_REPLI_DEM, (int32_t)t->demande_px);
+    if (err == ESP_OK) {
+        err = nvs_set_i32(h, DN_KEY_REPLI_RET, (int32_t)t->retenu_px);
+    }
+    if (err == ESP_OK) {
+        err = nvs_set_i32(h, DN_KEY_REPLI_N, (int32_t)t->occurrences);
+    }
+    if (err == ESP_OK) {
+        err = nvs_commit(h);
+    }
+    nvs_close(h);
+    return err;
+}
+
+esp_err_t dn_bootcfg_reset_ex(esp_err_t *repose)
 {
     /*
      * 🔴 LE TEMOIN DE REPLI SURVIT A `cfg reset` — ET C'EST DELIBERE
@@ -661,8 +761,29 @@ esp_err_t dn_bootcfg_reset(void)
      * ⚠️ Si la repose echoue, on le DIT : perdre la trace en silence serait
      *    exactement le defaut que ce temoin existe pour fermer.
      */
+    /* 🔴 LE VERDICT PART A « SANS OBJET » ET NE DEVIENT « OK » QUE SI QUELQUE
+     *    CHOSE A REELLEMENT ETE REPOSE. ⛔ Jamais l'inverse : c'est l'appelant
+     *    qui imprime, et il imprimait « CONSERVE » par defaut. */
+    if (repose) {
+        *repose = DN_REPOSE_SANS_OBJET;
+    }
+
     dn_bootcfg_repli_t t;
-    dn_bootcfg_get_repli(&t);
+    esp_err_t err_lu = dn_bootcfg_get_repli(&t);
+    if (err_lu != ESP_OK) {
+        /* ⛔ ON NE PART PAS DU PRINCIPE QU'IL N'Y EN AVAIT PAS. Un temoin qu'on
+         *    n'a pas su lire va etre efface par `nvs_erase_all` juste apres :
+         *    c'est une PERTE, et elle se dit. */
+        ESP_LOGE(TAG,
+                 "🔴 cfg reset : le TEMOIN DE REPLI est ILLISIBLE (%s) — il va "
+                 "etre efface avec le reste et ⛔ RIEN ne dira ce qu'il "
+                 "contenait.",
+                 esp_err_to_name(err_lu));
+        if (repose) {
+            *repose = err_lu;
+        }
+        t.present = false;
+    }
 
     nvs_handle_t h;
     esp_err_t err = nvs_open(DN_NVS_NAMESPACE, NVS_READWRITE, &h);
@@ -675,9 +796,9 @@ esp_err_t dn_bootcfg_reset(void)
     }
     nvs_close(h);
     if (err == ESP_OK && t.present) {
-        esp_err_t err_t = ESP_OK;
-        for (int i = 0; i < t.occurrences && err_t == ESP_OK; i++) {
-            err_t = dn_bootcfg_note_repli(t.demande_px, t.retenu_px);
+        esp_err_t err_t = reposer_repli(&t);
+        if (repose) {
+            *repose = err_t;
         }
         if (err_t == ESP_OK) {
             ESP_LOGW(TAG,
@@ -689,7 +810,8 @@ esp_err_t dn_bootcfg_reset(void)
             ESP_LOGE(TAG,
                      "🔴 cfg reset : le TEMOIN DE REPLI a ete PERDU (%s). Il "
                      "disait : %d repli(s), %d px demandes -> %d px retenus. "
-                     "⛔ Cette ligne de log est desormais la seule trace.",
+                     "⛔ Cette ligne de log est desormais la seule trace, et "
+                     "la NVS n'en garde AUCUN reliquat (repose atomique).",
                      esp_err_to_name(err_t), t.occurrences, t.demande_px,
                      t.retenu_px);
         }

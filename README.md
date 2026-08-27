@@ -211,7 +211,8 @@ idf.py -p /dev/ttyACM0 flash monitor               # quitter le moniteur : Ctrl+
   `scene`, `fps`, `bw`, `mem`, `cpu`, `cfg`, `set`, `tear`, `flash`, `ui`, `flush`, `anim`,
   `touch`, `nav`, `recal`, `bl`, `disp`, `dma`, `i2c` (`lire` · **`lire16`** · **`brut`** · **`ecrire`** · **`rafale`**), `capteurs`, **`env`**, **`tof`** (`etat` · `sr03` · `balayage` · `als` · `range`), **`w2`**, `pc`, `wifi`, `widget`, **`hist`**, `rtc`, **`veille`**, `reboot`, `aide`. `cfg reset` rend
   les défauts au prochain boot, et **`cfg repli [clear]`** lit (ou efface) le
-  **témoin de repli de bounce** — ⛔ le seul geste qui l'efface. **C'est `aide` qui fait foi**, pas cette liste. Les commandes de
+  **témoin de repli de bounce** — ⛔ le seul geste **d'opérateur** qui l'efface
+  (un `nvs_flash_erase()` au boot l'emporte aussi ; voir plus bas). **C'est `aide` qui fait foi**, pas cette liste. Les commandes de
   dn1-3 et dn1-4 :
 
   | Commande | Ce qu'elle sert |
@@ -518,10 +519,24 @@ $B  = '\\wsl.localhost\Ubuntu\home\nasbarok\projects\desknode\firmware\desknode\
 > retenue, nombre d'occurrences). **`cfg` nu le crie** tant qu'il est là,
 > **`cfg repli`** en donne le détail, et **il SURVIT à `cfg reset`** —
 > délibérément, puisque `cfg reset` est précisément ce qu'on tape pour sortir
-> d'une valeur fautive. Seul **`cfg repli clear`** l'efface, et c'est un geste
-> explicite. ⚠️ Le témoin date du 2026-08-27 : **les replis d'avant n'ont laissé
+> d'une valeur fautive. Seul **`cfg repli clear`** l'efface **du côté
+> OPÉRATEUR**, et c'est un geste explicite.
+> 🔴 **⛔ IL EXISTE UN TROISIÈME CHEMIN D'EFFACEMENT, ET IL N'EST PAS UN GESTE**
+> — déclaré à la 3ᵉ revue de code, le 2026-08-27. `nvs_flash_init()` au boot
+> rend `NO_FREE_PAGES` ou `NEW_VERSION_FOUND` quand la partition est saturée ou
+> change de format, et le firmware appelle alors **`nvs_flash_erase()`**, qui
+> emporte la partition **entière — témoin compris**. On ne peut pas le sauver ;
+> le firmware **CRIE** désormais qu'il vient de le perdre, et dit qu'un
+> `cfg repli` postérieur à ce message ne prouve rien.
+> ⚠️ Le témoin date du 2026-08-27 : **les replis d'avant n'ont laissé
 > qu'une ligne de log**, et « aucun repli noté » ne veut donc pas dire
 > « aucun repli ».
+> 🔴 **ET « aucun repli noté » N'EST PLUS IMPRIMÉ QUAND LA CLÉ N'A PAS PU ÊTRE
+> LUE** (3ᵉ revue) : `dn_bootcfg_get_repli()` rendait `void`, donc une NVS qui
+> ne s'ouvrait pas produisait exactement la même phrase qu'une NVS vide. La
+> console distingue désormais **« ILLISIBLE »** de **« rien »**, et une valeur
+> qu'elle n'a pas su relire s'affiche **« VALEUR NON RELUE »** — ⛔ plus
+> « 0 px », qui est un `bounce_px` légal et se lisait comme une mesure.
 > ⚠️ Le repli peut atterrir sur le **PLANCHER (4 800 px)**, une valeur au
 > **défaut visible CONNU** — la console le dit explicitement dans ce cas.
 >

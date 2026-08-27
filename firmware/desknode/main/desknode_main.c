@@ -218,6 +218,23 @@ void app_main(void)
 
     esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        /*
+         * 🔴 CE CHEMIN EMPORTE LE TEMOIN DE REPLI — declare le 2026-08-27
+         *    (3e revue). La console ET le README affirmaient tous deux que
+         *    `cfg repli clear` est « le SEUL geste qui l'efface ». C'est vrai
+         *    pour l'OPERATEUR ; ca ne l'est pas pour le firmware :
+         *    `nvs_flash_erase()` efface la partition ENTIERE, temoin compris,
+         *    et il tombe precisement quand la NVS est saturee ou change de
+         *    version — deux cas ou l'on aimerait justement savoir ce qui s'est
+         *    passe avant. ⛔ On ne peut pas le sauver (la partition est
+         *    illisible telle quelle), mais on peut CRIER qu'on l'a perdu, ce
+         *    qui est tout ce que ce temoin demande.
+         */
+        ESP_LOGE(TAG,
+                 "🔴 NVS reinitialisee (%s) : TOUTE la config est perdue, ET LE "
+                 "TEMOIN DE REPLI AVEC. ⛔ Un `cfg repli` qui dira « aucun "
+                 "repli » apres ce message ne prouvera RIEN.",
+                 esp_err_to_name(err));
         ESP_ERROR_CHECK(nvs_flash_erase());
         err = nvs_flash_init();
     }
@@ -419,16 +436,28 @@ void app_main(void)
      *
      * ⚠️ POURQUOI ICI, ET PAS DANS `dn_display_init()` : `dn_recal_arm()` réveille
      *    une tâche qui compte des VSYNC. Elle a besoin que le panneau TOURNE et
-     *    que l'abonnement vsync de `dn_recal_init()` (étape 5, `:330`) soit posé.
+     *    que l'abonnement vsync de `dn_recal_init()` (étape 5) soit posé.
      *    ⚠️ CORRIGÉ LE 2026-08-27 (revue) : ce commentaire citait « étape 7 »,
-     *    qui est le RÉTROÉCLAIRAGE (`:363`). Le raisonnement était juste, la
-     *    référence était fausse — et c'est elle qu'un relecteur va vérifier.
-     *    (`dn_display.c:708`, cité plus bas, est exact.)
+     *    qui est le RÉTROÉCLAIRAGE. Le raisonnement était juste, la référence
+     *    était fausse — et c'est elle qu'un relecteur va vérifier.
+     *    🔴 ET LA CORRECTION A REDÉRIVÉ DANS LA MÊME SÉANCE (3e revue, le même
+     *    jour) : elle citait `dn_recal_init()` à `:330` et le rétroéclairage à
+     *    `:363` — deux numéros exacts au commit `f377d3b` et périmés de +26
+     *    lignes par `9a8d32f`, l'insertion faite quelques minutes plus tard
+     *    DANS CE FICHIER. ⛔ ET la parenthèse « (`dn_display.c:708`, cité plus
+     *    bas, est exact.) » était FAUSSE : `:708` est dans la rampe de
+     *    `dn_display_backlight_pct`, pas dans `dn_display_present()`.
+     *    ⇒ LES NUMÉROS DE LIGNE SONT RETIRÉS D'ICI. Un fichier qui bouge à
+     *      chaque commit ne peut pas porter ses propres numéros ; on cite le
+     *      NOM, qui lui ne dérive pas. C'est la troisième fois que cette
+     *      citation-ci est corrigée.
      *    On est donc au premier endroit où c'est vrai. ⛔ Le mettre plus tôt
      *    armerait dans le vide, sans que rien ne le dise.
      *
      * ⚠️ POURQUOI IL NE PASSE PAS PAR `dn_display_present()` COMME LES AUTRES :
-     *    ce chemin-là garde l'armement derrière `num_fbs > 1` (dn_display.c:708),
+     *    ce chemin-là garde l'armement derrière `num_fbs > 1` (dans
+     *    `dn_display_present()`, ⛔ le numéro de ligne est retiré : il citait
+     *    `:708`, qui est la rampe de rétroéclairage — 3e revue du 2026-08-27),
      *    et nous sommes à UN framebuffer. Le recalage de bascule n'a plus lieu
      *    d'être ; celui d'AMORÇAGE, si. Ce sont deux besoins différents qui
      *    partagent un mécanisme — ⛔ ne pas « unifier » sans relire ceci.

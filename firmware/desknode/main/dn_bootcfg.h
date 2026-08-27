@@ -154,8 +154,11 @@ esp_err_t dn_bootcfg_set_draw_lines(int lines);
 esp_err_t dn_bootcfg_set_draw_psram(int psram);
 esp_err_t dn_bootcfg_set_lvgl_core(int core);
 
-/* Efface la configuration : le prochain boot repart sur les défauts. */
-esp_err_t dn_bootcfg_reset(void);
+/* Efface la configuration : le prochain boot repart sur les défauts.
+ * ⛔ REMPLACEE PAR `dn_bootcfg_reset_ex()` LE 2026-08-27 (3e revue) — voir sa
+ *    justification plus bas, avec le témoin de repli. L'ancienne signature ne
+ *    pouvait PAS dire ce qu'il était advenu du témoin, et l'appelant l'affirmait
+ *    quand même. Elle n'a plus aucun appelant. */
 
 /*
  * ─── LE TEMOIN DE REPLI (decision owner du 2026-08-27) ──────────────────────
@@ -181,10 +184,22 @@ esp_err_t dn_bootcfg_reset(void);
  *    a le PLUS besoin de savoir qu'un repli a eu lieu. Il ne s'efface que par
  *    un geste EXPLICITE : `cfg repli clear`.
  */
+/* 🔴 SENTINELLE D'ABSENCE, POSEE LE 2026-08-27 (3e revue). `0` ne peut PAS
+ *    servir de « pas de valeur » : `bounce_px = 0` est une valeur ACCEPTEE par
+ *    `bounce_px_refus()` — le depot l'ecrit lui-meme (« les douze valeurs, plus
+ *    le zero ») — et elle desactive le tampon de bounce, c'est-a-dire qu'elle
+ *    FABRIQUE le glissement. Un champ laisse a 0 parce que la cle etait
+ *    illisible se lisait donc « la NVS demandait 0 px », indiscernable d'un vrai
+ *    repli. ⛔ Une sentinelle qui a la forme d'une mesure n'est pas une
+ *    sentinelle. `-1` est impossible pour `bounce_px` (`v < 0` est refuse). */
+#define DN_REPLI_NON_RELU (-1)
+
 typedef struct {
     bool present;     /* un repli a ete note en NVS */
-    int demande_px;   /* la valeur que l'operateur avait posee, et qui est PERDUE */
-    int retenu_px;    /* celle que le filet a retenue a sa place */
+    int demande_px;   /* la valeur que l'operateur avait posee, et qui est PERDUE
+                       * ⚠️ vaut DN_REPLI_NON_RELU si la cle n'a pas pu etre lue */
+    int retenu_px;    /* celle que le filet a retenue a sa place
+                       * ⚠️ vaut DN_REPLI_NON_RELU si la cle n'a pas pu etre lue */
     int occurrences;  /* combien de replis ont ete notes depuis le dernier clear */
 } dn_bootcfg_repli_t;
 
@@ -192,11 +207,45 @@ typedef struct {
  * ⛔ Ne remplace PAS la persistance : elle la rend interrogeable. */
 esp_err_t dn_bootcfg_note_repli(int demande_px, int retenu_px);
 
-/* Lit le temoin. `out->present == false` si aucun repli n'a ete note. */
-void dn_bootcfg_get_repli(dn_bootcfg_repli_t *out);
+/*
+ * Lit le temoin. `out->present == false` si aucun repli n'a ete note.
+ *
+ * 🔴 REND DESORMAIS UN `esp_err_t` — 3e revue du 2026-08-27. Le retour etait
+ *    `void` : quand la NVS ne s'ouvrait pas, on sortait avec `present == false`
+ *    et la console AFFIRMAIT « aucun repli de bounce note » pour un temoin
+ *    qu'elle n'avait JAMAIS REUSSI A LIRE. ⛔ C'est le defaut que ce depot
+ *    traque depuis dn4-6 : un compteur qui reste a zero ne prouve rien tant
+ *    qu'on n'a pas montre qu'il pouvait bouger — et ici on ne l'avait meme pas
+ *    interroge. `ESP_OK` = la reponse vaut ; toute autre valeur = « ILLISIBLE »,
+ *    ⛔ pas « aucun ».
+ */
+esp_err_t dn_bootcfg_get_repli(dn_bootcfg_repli_t *out);
 
-/* Efface le temoin. ⛔ GESTE EXPLICITE UNIQUEMENT — voir ci-dessus. */
+/* Efface le temoin. ⛔ GESTE EXPLICITE UNIQUEMENT — voir ci-dessus.
+ * ⚠️ « SEUL geste qui l'efface » est vrai pour l'OPERATEUR, ⛔ pas pour le
+ *    firmware : `nvs_flash_erase()` dans `desknode_main.c` (NVS corrompue ou
+ *    nouvelle version de la partition) l'emporte avec tout le reste. Ce
+ *    troisieme chemin est declare la-bas et dans le README depuis la 3e revue. */
 esp_err_t dn_bootcfg_clear_repli(void);
+
+/*
+ * 🔴 `dn_bootcfg_reset()` AVEC LE VERDICT DE LA REPOSE — 3e revue du 2026-08-27.
+ *    `dn_bootcfg_reset()` ne rendait que le statut de l'EFFACEMENT ; l'echec de
+ *    la repose du temoin etait journalise puis JETE. La console voyait `ESP_OK`
+ *    et imprimait « le TEMOIN DE REPLI, lui, est CONSERVE » — dans la meme
+ *    sortie que le `ESP_LOGE` disant qu'il etait PERDU. ⛔ Deux sorties
+ *    normatives en desaccord, sur le sujet meme que ce temoin existe pour
+ *    fermer, et c'est mot pour mot la classe du constat #948.
+ * ⇒ `repose` rend ce qui s'est reellement passe. `*repose` peut valoir :
+ *     DN_REPOSE_SANS_OBJET : il n'y avait aucun temoin a conserver
+ *     DN_REPOSE_OK         : le temoin a ete relu, efface et repose
+ *     autre                : l'`esp_err_t` de l'echec — le temoin est PERDU
+ *   `repose` peut etre NULL si l'appelant ne veut pas le savoir. ⛔ Mais alors
+ *   il n'a PAS le droit d'affirmer quoi que ce soit sur le temoin.
+ */
+#define DN_REPOSE_OK          ESP_OK
+#define DN_REPOSE_SANS_OBJET  ESP_ERR_NOT_FOUND
+esp_err_t dn_bootcfg_reset_ex(esp_err_t *repose);
 
 /*
  * ── LE BUDGET COMBINÉ, ET POURQUOI IL A FALLU L'AJOUTER (revue dn1-4) ────────
