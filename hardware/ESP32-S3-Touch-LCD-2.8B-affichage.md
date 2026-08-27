@@ -5608,6 +5608,26 @@ pas**. ⇒ *« un compteur qui reste à zéro ne prouve rien tant qu'on ne l'a p
 **4. ⚠️ L'alerte `bounce_px = 0` ressort à CHAQUE `set`**, pas seulement au boot — `set` relit la
 NVS. Le texte reste vrai (« vient de la NVS ») mais c'est **bruyant**. ⛔ Non corrigé, consigné.
 
+#### 🎯 CONSTAT OWNER D'ENDURANCE — **2026-08-27**, ⛔ SUR `358fd95`, PAS SUR LE BINAIRE DE CETTE SÉANCE
+
+Verbatim : *« il restait qu'à tester une session longue et là y'en a eu plein vu que ça tourne depuis
+hier »*, précisé en *« plein de sessions, avec l'artéfact des % »*.
+
+⚠️ **DATATION, ET ELLE EST DÉCISIVE** : la carte tournait depuis le **2026-08-26** sur **`358fd95`**.
+Le flash de `92e67b5` et les redémarrages ont eu lieu **AU MILIEU de la séance du 2026-08-27** ⇒
+**ce constat porte sur `358fd95`**, ⛔ **pas** sur le binaire validé ici.
+
+| ce que l'endurance donne | verdict |
+|---|---|
+| **Le glissement N'EST PAS REVENU** sur plusieurs sessions de plusieurs heures | ✅ **constat owner FAVORABLE**, et c'est la première mesure d'ENDURANCE du dossier — les campagnes précédentes tenaient en fenêtres de 60 à 431 s |
+| **L'artéfact sur les `%` du détail CPU est TOUJOURS LÀ** | ⚠️ **inchangé**. Confirme §20bis.9 et **§20bis.12** : la vue DÉTAIL n'est pas groupée (**4,00 flushes/cycle** contre 1,00 pour la grille) |
+| **Le « permanent desync » N'A PAS REPARU** | 🟡 toujours **non revu** — ⛔ et toujours pas « prouvé absent » : **rien ne le mesure**, c'est précisément l'objet de `dn4-12` |
+
+🎯 **CE QUE ÇA CHANGE POUR `dn4-5`** : son **AC3 (soak)** demandait une session longue. Celle-ci n'est
+⛔ **pas** un soak instrumenté — aucun compteur n'a été relevé au début ni à la fin, et le firmware
+n'était pas gelé. ⇒ **elle ne solde PAS AC3**, mais elle en **retire le doute qualitatif** : le
+défaut que le soak devait guetter ne s'est pas manifesté sur des heures d'usage réel.
+
 #### ⚠️ TROIS FAITS DE CHAÎNE, MESURÉS EN PASSANT
 
 - 🔴 **LE BUSID `3-1` DU SKILL `desknode-board` EST FAUX SUR CETTE MACHINE.** La carte est sur
