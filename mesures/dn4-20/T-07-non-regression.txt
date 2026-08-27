@@ -1,0 +1,70 @@
+# dn4-20 / T-07 — NON-REGRESSION (AC8), sur le binaire GRAVE
+# ===========================================================
+# Date : 2026-08-27, ~22:00-22:20   ·   Binaire : a445761 (App version LU AU BANDEAU)
+# Loi  : 20 % a <= 2 lx · 80 % a >= 11 lx · courbe log · echelle Ambient 100 % · plancher Amb 16 %
+
+── AC8.1 ✅ LES DEUX BASCULES RESTENT POSEES EN UNE FOIS ────────────────────────
+  `veille lat`, apres une chute PAR DELAI EXPIRE (inactivite max vue 755 s > 600 s)
+  et un reveil AU DOIGT :
+        n = 1 reveil AU DOIGT
+        t1 : min 175 us · med 175 us · max 175 us
+        t2 : min 26 816 us · med 26 816 us · max 26 816 us
+  ⇒ MEME ORDRE DE GRANDEUR que les 247 us de dn4-19 et les 107 us de dn3-3/AC4.
+  🔴 ET C'EST LE POINT : si la loi portait la transition, avec DN_ENV_BL_PAS_MAX = 50
+     il faudrait ~10 s. L'invariant de dn_env.h TIENT, y compris avec les bornes neuves :
+     *l'asservissement fixe le NIVEAU DE REGIME ; il ne porte JAMAIS la transition.*
+  ⚠️ n = 1. ⛔ Ce n'est pas une distribution, c'est UN echantillon — et il est publie
+     comme tel. L'instrument lui-meme refuse de mentir : avant ce reveil il rendait
+     « aucun reveil AU DOIGT depuis le reset ⇒ RIEN A PUBLIER. ⛔ 0 us serait un
+     chiffre ; pas d'echantillon n'en est pas un. »
+
+── AC8.2 ⚠️ LE POMPAGE — UNE MOITIE FAITE, L'AUTRE DECLAREE ────────────────────
+  ✅ MOITIE « PLEIN JOUR » (la condition reelle de l'owner, lumiere allumee) :
+     3 releves espaces de 2 min (21:59:41 · 22:01:41 · 22:03:41), piece a 89-90 lx
+     => `applications` FIGE A 4 sur 4 minutes  =>  0 MOUVEMENT.
+     La loi sature a 80 % au-dessus de 11 lx : elle ne bouge plus. ✅
+  ⛔ MOITIE « BAS LUX » : NON FAITE.
+     ⚠️ ET LA RECETTE DU LEDGER EST PERIMEE : elle disait « stabiliser entre 20 et
+        25 lx » — ces lux-la sont DESORMAIS DANS LE PLAT. La bande qui compte est
+        maintenant 2-11 lx.
+     Motif de l'absence : seance close sur DECISION OWNER apres ~45 min a l'oeil
+     dans le noir (« j'en avais marre d'etre dans le noir »).
+  🔴 CE QUI RESTE A VOIR, et le chiffre du risque est calcule a `bl loi` :
+     la marche fait ~6 pt/lx au coeur (0 lx -> 20 %, 4 -> 44, 11 -> 80), contre
+     1,35 pt/lx pour la log et 0,159 pour la lineaire. La dispersion mesuree en
+     T-04 vaut ±2 a 4 lx => ±12 POINTS, tres au-dessus de la bande morte de 3.
+     ⇒ EST-CE QUE LA DALLE BASCULERA A LA TOMBEE DU JOUR ? ⛔ NON MESURE.
+     ⛔ Decision owner reconduite DEUX FOIS : on ne pose rien avant de l'avoir vu.
+
+── AC8.3 ✅ LES DEUX GATES DU DEPOT, RE-TIREES SUR LE SOURCE GRAVE ─────────────
+     tools/verif_veille_dn33.py   ->  162 OK · 0 KO
+     tools/verif_d4_nvs_dn45.py   ->    6 OK · 0 KO   (dn_env.c HORS de la table)
+  ⇒ D4 TIENT : 0 ecriture NVS en regime, 0 cle de plus.
+  ✅ Et le harnais HOTE de dn3-3 compile toujours : ⛔ AUCUNE dependance a
+     `dn_env` / `dn_display` n'a ete introduite dans `dn_veille.c`.
+  ⚠️ ECRITURES NVS DE SEANCE, DECLAREES : `veille delai 10` et `veille off`/`on`
+     persistent (ce sont des GESTES, donc HORS REGIME — D4 n'est pas touche).
+     Elles ont ete jouees pour restaurer un reglage que l'owner avait change PAR
+     ACCIDENT en touchant la dalle (delai tombe a 1 min). Etat final : ARMEE, 10 min.
+
+── AC8.4 ✅ LE GARDE-FOU DU REVEIL, DANS LES DEUX SENS ─────────────────────────
+  (b) LE SENS QUI COMPTE — « un temoin qui ne montre que (a) ne prouve rien » :
+      carte endormie (`veille now`), puis `bl 40` POSE PENDANT LE SOMMEIL, puis
+      REVEIL AU DOIGT (owner). L'accusation SORT et NOMME LES TROIS VALEURS :
+        « reveil : le retroeclairage vaut 40 % alors que la veille l'avait pose a
+          80 % et que l'asservissement en est a 80 % — quelqu'un l'a change PENDANT
+          la veille. On le LAISSE tel quel plutot que d'ecraser ce geste »
+      ✅ 40 / 80 / 80 — les trois justes SUR LA LOI NEUVE (a 89 lx elle rend 80).
+      🎯 ET CA DIT UNE DEUXIEME CHOSE : le garde-fou a lu 80 CORRECTEMENT.
+         ⇒ le defaut de peremption de `applique:` (§13.26.7) NE L'A PAS FAIT MENTIR
+           sur ce chemin. C'est un defaut d'AFFICHAGE dans `bl`, ⛔ pas de garde.
+  (a) LE SENS MUET : carte endormie, RIEN touche, reveil => 0 ACCUSATION. ✅
+      ⚠️ DECLARE : ce reveil-la est d'ORIGINE CONSOLE (`veille wake`), ⛔ pas au
+         doigt — il est donc EXCLU de la statistique de `veille lat`. Pour la
+         LOGIQUE d'accusation, le chemin d'entree n'importe pas : ce qui compte est
+         que le duty n'ait pas bouge. ⛔ Dit plutot que passe sous silence.
+
+── ETAT FINAL DE LA CARTE ──────────────────────────────────────────────────────
+  rétroéclairage 80 % · applique : 80 % (sur 89 lx) · régime ACTIF
+  asservissement ARME · veille ARMEE, delai 10 min
+  ⇒ la carte est rendue a son regime normal, sur la loi gravee.

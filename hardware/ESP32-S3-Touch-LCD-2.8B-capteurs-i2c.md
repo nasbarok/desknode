@@ -5981,6 +5981,16 @@ domestique.** Le compteur `applications` (livré par cette story) le rend mesura
 
 ## §13.25 — LA SÉANCE DE CLÔTURE DE `dn4-19`, APRÈS LA REVUE DE CODE 3 COUCHES
 
+> 🔴 **RENVOI AJOUTÉ LE 2026-08-27 PAR `dn4-20` — ⛔ CETTE SECTION N'EST PAS RÉÉCRITE.**
+> Elle reste lisible **telle qu'elle a eu lieu**. Mais **trois de ses conclusions ont été
+> dépassées le soir même**, par une séance à l'œil sur un binaire plus récent (`a445761`) :
+> · ses **deux mesures manquantes** (l'ACTIF en pièce sombre, la dispersion capteur × pièce)
+>   **ont été prises** ⇒ **§13.26.2** et **§13.26.1** ;
+> · sa lecture *« l'œil est PLAT à ~80 % de 105 à 391 lx »* est **juste, et incomplète** : le plat
+>   **commence dès 11 lx**, ce que ses six points ne pouvaient pas voir ⇒ **§13.26.3** ;
+> · son plancher de **8 %** (hérité de §13.19.7 b) a été **refusé par le même œil, sur le même
+>   contenu** ⇒ **§13.26.4**. ⛔ **Le 8 % n'est pas effacé, il est daté.**
+
 ⚠️ **Binaire : `8f95975`, SHA LU AU BANDEAU** (`App version`), arbre **PROPRE**, `idf.py reconfigure`
 joué avant le flash. ⛔ Aucun chiffre de cette section n'est déduit du dépôt.
 Captures brutes : `mesures/dn4-19/T-A1` → `T-A9`.
@@ -6085,3 +6095,220 @@ l'écart. L'entrée de ledger *« LE DUTY LEDC N'EST PAS LINÉAIRE EN LUMINOSIT�
 4. ⛔ **LE POMPAGE À BAS LUX N'A PAS ÉTÉ TIRÉ** — différé au ledger avec sa recette (décision owner
    du 2026-08-27). ⚠️ Le compteur `applications` **vient d'être réparé** (il sur-comptait) : la
    mesure est désormais **possible**, elle ne l'était pas avant.
+
+---
+
+## §13.26 — `dn4-20` : L'ŒIL NE DEMANDE PAS UNE LOI, IL DEMANDE UNE MARCHE
+
+⚠️ **Binaires : `be0431f`** (la séance à l'œil) puis **`a445761`** (le résultat gravé), **SHA LUS AU
+BANDEAU** (`App version`), arbre **PROPRE**, `idf.py reconfigure` joué avant chaque flash de
+référence. ⛔ Aucun chiffre de cette section n'est déduit du dépôt.
+Captures brutes : `mesures/dn4-20/T-01` → `T-06`.
+
+### 13.26.1 ✅ LA DISPERSION DU COUPLE CAPTEUR × PIÈCE — **la mesure que §13.25 déclarait manquante**
+
+**Protocole** : éclairage nominalement constant (lampe fixe, rideau figé, personne devant le
+capteur), **n = 7** relevés espacés de 60 s ⇒ fenêtre de **6 min 02 s**. Fenêtre **annoncée à
+l'owner avant ouverture**, et **son OUI attendu**.
+⚠️ **C'est ICI que le `n ≥ 5` s'applique** : c'est un **instrument**, ⛔ pas un œil.
+
+| | |
+|---|---|
+| lux | 84 · 82 · 81 · 81 · 80 · 80 · 80 |
+| min / médiane / max | **80 / 81 / 84** |
+| **étendue** | **4 lx** (4,9 % de la médiane) · écart-type **1,36 lx** |
+
+🔴 **ET LA SÉRIE EST STRICTEMENT DÉCROISSANTE — ce n'est pas du bruit, c'est une TENDANCE.**
+84 → 82 → 81 → 81 → 80 → 80 → 80, **sans un seul rebond**, entre 20 h 36 et 20 h 42 fin août : c'est
+**le jour qui tombe**, ⛔ pas la dispersion du couple. ⇒ **la dispersion ALÉATOIRE est plus petite
+que ces 4 lx.**
+
+**L'étendue traduite en points de duty, avec `bl loi`, ⛔ pas à la main** :
+
+| là où on mesure | traduction | verdict |
+|---|---|---|
+| **~80 lx** (`bl loi 80` → 45 %, `bl loi 84` → 47 %) | **2 points** | ✅ **< bande morte (3)** ⇒ la loi est **lisible finement** ici |
+| **20-25 lx** (`bl loi 20` → 8 %, `bl loi 24` → 13 %) | **5 points** | 🔴 **> bande morte** ⇒ **ininterprétable** |
+
+⇒ 🔴 **LA LISIBILITÉ N'EST PAS UNE PROPRIÉTÉ DE LA LOI : ELLE DÉPEND D'OÙ L'ON EST DANS LA PLAGE.**
+2 points en haut, 5 points en bas. ⇒ **toute forme raide en bas de plage est ininterprétable.**
+
+⛔ **CE QUE CE TIR NE REPRODUIT PAS** : le **105 → 458 → 219 lx** de §13.25.7. Sous un protocole
+réellement non perturbé, le couple tient à **±2 lx en 6 minutes**. ⇒ ces excursions-là n'étaient
+donc **PAS la dispersion du capteur** — quelque chose a changé dans la pièce. ⛔ **QUOI : NON
+MESURÉ**, et ce tir ne permet pas de le dire.
+
+⚠️ **CE QUI N'EST TOUJOURS PAS MESURÉ, ET C'EST DÉCLARÉ** : **l'adaptation de l'œil**. Aucune des
+trois séances n'a contrôlé le temps passé devant la dalle ni la lumière subie avant le jugement.
+⛔ **C'est une limite déclarée de tout ce dossier**, pas un oubli de `dn4-20`.
+
+### 13.26.2 🔴 L'ACTIF EN PIÈCE SOMBRE — **l'autre mesure que §13.25 déclarait manquante**
+
+Rideau fermé, lumières éteintes, **BH1750 à 0 lx (brut 1 puis 0)**, **régime ACTIF confirmé à la
+carte** (dashboard six cases), veille **désarmée** pour qu'aucune bascule n'écrase le duty.
+
+| duty | verdict owner, verbatim |
+|---|---|
+| **8 %** — *le chiffre gravé le 20/08* | 🔴 ***« ok la ca parais pas assez lumineu »*** |
+| **12 %** | ⛔ *« trop sombre »* |
+| **16 %** | ✅ *« ok 16 c'est mieu »* |
+| 20 % | *« mieu ou pareil .. »* ⚠️ **DOUTEUX**, voir §13.26.6 |
+| 28 % | *« pareil »* ⚠️ **DOUTEUX**, voir §13.26.6 |
+| **72 %** | ⛔ ***« non c'est un peu fort quand meme »*** |
+
+⇒ **Le niveau sombre d'ACTIF est ~16-20 %**, et **72 % éblouit**. Le niveau sombre est donc **un
+vrai niveau bas** : ⛔ il ne s'absorbe pas dans le haut.
+
+### 13.26.3 🎯 LE RÉSULTAT CENTRAL : **LA MARCHE SE JOUE ENTRE 0 ET 11 lx**
+
+Deux conditions d'éclairage de plus, **régime ACTIF vérifié à la carte à chaque point** :
+
+| lux | duty | verdict owner, verbatim |
+|---|---|---|
+| **11** | 20 % | ⛔ *« trop sombre »* — **alors que 20 % PASSAIT à 0 lx** |
+| **11** | **72 %** | ✅ ***« bon »*** — **alors que 72 % ÉBLOUISSAIT à 0 lx** |
+| 34 | 40 % | ⛔ *« trop bas »* |
+| 34 | 60 % | ⛔ *« un peu encor trop bas »* |
+| **34** | **72 %** | ✅ ***« bon »*** |
+| 34 | 85 % | *« pareil »* |
+| 105 → 391 *(27/08, §13.25.5)* | ~80 % | ✅ **PLAT sur 3,7× de lumière** |
+
+🔴 **LES DEUX MÊMES DUTY S'INVERSENT ENTRE 0 ET 11 lx.** ⇒ **l'œil ne demande pas une loi : il
+demande une MARCHE**, ~16-20 % dans le noir → ~72-80 % dès qu'il y a de la lumière, **et la bascule
+tient dans les 11 premiers lux.** Au-dessus, **c'est plat jusqu'à 391 lx**.
+
+⇒ 🔴 **LA QUESTION QUE `dn4-20` DEVAIT TRANCHER S'EFFONDRE.** Elle demandait de choisir parmi
+**quatre formes** (plateau · puissance · plateau+reprise · gamma sur le duty). **Aucune ne passe par
+(34 ; 72)**, et surtout : entre des bornes aussi rapprochées, **la forme entre elles ne se voit
+plus.** ⛔ Ce n'est pas qu'un candidat gagne — **la question était mal posée.**
+
+**Le candidat (A) « plateau », mesuré sur la carte** (⛔ pas calculé à la main), émulé avec
+l'instrument livré le soir même — plancher 16 · plafond 80 · bornes 20/105 :
+
+| lux | 0 | **34** | 105 | 229 | 391 |
+|---|---|---|---|---|---|
+| (A) rend | 16 ✅ | **36** 🔴 | 80 ✅ | 80 ✅ | 80 ✅ |
+| l'œil veut | 16 | **72** | 80 | > 74 | 80 |
+
+⇒ **(A) tombe juste sur QUATRE des cinq points et rate le milieu-bas de 36 POINTS.**
+
+### 13.26.4 ✅ CE QUI EST GRAVÉ, ET LE CONSTAT QUI VA AVEC CHAQUE CHIFFRE
+
+Binaire **`a445761`**. ⛔ **Les anciennes valeurs sont BARRÉES dans le source, pas effacées.**
+
+| constante | ancienne | **nouvelle** | le constat qui la déplace |
+|---|---|---|---|
+| `DN_ENV_BL_PCT_MIN` | ~~8~~ | **20** | refusé **deux fois**, par le **même œil** et sur le **même contenu** que le 20/08 |
+| `DN_ENV_BL_PCT_MAX` | ~~100~~ | **80** | l'œil ne demande **jamais** plus de ~80, sur 3,7× de lumière |
+| `DN_ENV_BL_LUX_BAS` | ~~20~~ | **2** | la borne basse était **AU-DESSUS de la marche** : à 11 lx la loi rendait encore son plancher |
+| `DN_ENV_BL_LUX_HAUT` | ~~600~~ | **11** | l'œil est **plat dès 11 lx** ; la loi étalait sur **30×** de lumière une montée qu'il termine en 11 |
+| `DN_ENV_BL_HYST` | 3 | **3** | ⛔ **GELÉ** — aucun constat ne le touche |
+
+🔴 **LE `8 %` N'EST PAS DÉCLARÉ FAUX : IL EST DATÉ.** Il avait été gravé le **2026-08-20**, rideau
+fermé, capteur à 2 lx, **sur ce même contenu**, par dichotomie 10 / 6 / 8 — verbatim *« oui 8 %
+c'est bien »* (§13.19.7 b). Ce que la confrontation dit, c'est qu'**il n'a pas tenu sept jours**.
+⚠️ **L'adaptation de l'œil n'a jamais été instrumentée** : c'est la **première explication
+candidate**, et elle **n'est pas mesurée**.
+
+**Le témoin de bout en bout, même pièce, même lux :**
+
+| pièce à **90 lx** | binaire `8f95975` (début de séance) | binaire `a445761` (fin) |
+|---|---|---|
+| duty appliqué | **50 %** | **80 %** |
+
+⇒ constat owner sur le résultat, lumière rallumée : ***« oui ca va »***.
+
+### 13.26.5 🔴 LE PRIX EST MESURÉ, ET IL N'EST PAS PAYÉ
+
+**La marche vaut ~60 points sur 9 lx** (20 % à 2 lx → 80 % à 11 lx), dans une pièce dont §13.26.1
+mesure qu'elle bouge de **±2 à 4 lx toute seule**. **La bande morte vaut 3 points.**
+⇒ ⛔ **Elle ne peut rien contre ça.** L'hystérésis à deux seuils, refusée au papier **deux fois**
+(*« on ne pose rien avant de l'avoir vu »*, 20/08 puis 27/08), **vient d'être vue** — mais
+⛔ **ses deux seuils ne sont pas posables sans le bord de la marche.**
+
+⚠️ **`2` et `11` sont L'ENCADREMENT LE PLUS LARGE QUE LA MESURE DÉFEND, ⛔ PAS LE BORD DE LA
+MARCHE.** **Aucun point n'a été pris entre 0 et 11 lx** — décision owner de clore la séance,
+verbatim : *« la c'est juste pour regler 3 niveau pas besoin d'avoir 3600 param »*.
+⇒ **la loi rend 44 % à 4 lx, et ce 44 % n'a JAMAIS été jugé.**
+
+⚠️ **DEUX EFFETS DE BORD, DÉCLARÉS** :
+- **AMBIENT et ACTIF deviennent identiques** (échelle 100 %) — c'est l'état que `dn4-19` a laissé
+  **et déclaré**, ⛔ pas un choix de `dn4-20`. ⇒ **le réveil ne se voit pas**, et le **plancher
+  d'Ambient (16 %) devient INERTE**, la loi planchant à 20 au-dessus de lui.
+- ✅ **L'INVERSION BASSE DISPARAÎT** : sous ~26 lx, Ambient rendait **16** et Actif **8**
+  (*« s'endormir éclaire, se réveiller assombrit »*). Les deux valent désormais **la même chose**.
+  ⇒ la pathologie est levée, ⛔ **pas par un arbitrage : par effet du plancher gravé.**
+
+### 13.26.6 🔴 L'INCIDENT DE PROTOCOLE — DÉCLARÉ, ⛔ PAS MASQUÉ
+
+En manipulant la lampe près de la carte, **l'owner a touché la dalle**. `veille` l'a dit :
+**`taps de reglage dans le MENU : 2`**, veille **RÉ-ARMÉE**, **délai passé de 10 min à 1 MINUTE**,
+`bascules -> Ambient` **1 → 5**. ⚠️ Une bascule **écrase le duty**, **même asservissement désarmé**
+(`dn4-19` : *« elle POSE le niveau du régime EN UNE FOIS »*).
+
+**Ce que ça contamine, et le raisonnement est ASYMÉTRIQUE** — une bascule ne peut que **BAISSER** le
+duty (plancher d'Ambient 16) :
+- ✅ **SÛR** : tout verdict *« trop bas / trop sombre »* (8, 12, 40, 60) — un écrasement les aurait
+  rendus **plus** sombres, pas plus clairs.
+- ✅ **SÛR** : tout verdict *« bon / trop fort »* (16, 72, 85, et le 72 *« un peu fort »*) — un
+  écrasement à 16 les aurait fait juger **sombres**.
+- ⚠️ **DOUTEUX** : **20 % et 28 % à 0 lx**, tous deux *« pareil »*. ⇒ ça coûte **la LARGEUR de la
+  bande haute dans le noir**, ⛔ **ni la conclusion gravée, ni aucun point à 11 ou 34 lx.**
+
+⛔ **ET UNE FAUTE EST CÔTÉ AGENT, ELLE EST DITE** : le **lux** a été relevé à chaque point, le
+**régime** non — alors qu'AC7.2 l'exige. Corrigé en cours de séance (les points à 11 lx portent les
+trois : duty, lux, régime, **lus à la carte**).
+
+### 13.26.7 ⚠️ UN DÉFAUT D'INSTRUMENT, TROUVÉ ET ⛔ NON RÉPARÉ — AVEC SON MOTIF
+
+`bl` a publié **`applique : 8 % (sur 11 lx)`** pendant que la dalle était **à 80 %**.
+**Cause nommée** : `dn_ui_veille_bl_rafraichir()` — **le 6ᵉ écrivain de LEDC** — pose le duty **sans
+mettre à jour `s_bl_dernier_pct`**, et **la bande morte empêche ensuite la boucle de le corriger**
+⇒ la ligne **reste fausse indéfiniment**, et **ses deux moitiés viennent d'instants différents**
+(un pct périmé accolé à un lux frais — une paire qui n'a jamais existé).
+
+⛔ **NON CORRIGÉ ICI, et le motif n'est pas le périmètre** : ce champ nourrit le **garde-fou du
+réveil** dans `dn_ui.c`, qui appartient à **`dn3-3`, `in-progress`**. ⇒ entrée de ledger.
+
+### 13.26.8 ✅ L'INSTRUMENT QUI MANQUAIT — `bl auto plafond <n>`
+
+`s_bl_lux_bas`, `s_bl_lux_haut` et `s_bl_pct_min` étaient réglables à chaud ; **le plafond était un
+macro utilisé tel quel sur 14 sites dans DEUX fichiers**. ⇒ le candidat « plateau » aurait coûté
+**un reflash par valeur essayée**. 🎯 **C'est le défaut que `dn4-3` avait déjà payé sur le
+plancher** (§13.19.7 d) — *« un paramètre qu'on ne peut pas bouger en séance n'est pas arbitrable en
+séance »* — **pris par l'autre bout**.
+
+⛔ **Il refuse, il n'écrête pas** : haut = **100** (le max **physique** de `dn_display`), bas =
+**plancher + `DN_ENV_BL_HYST`**. **Vu en train de refuser** : `bl auto plafond 5` et `101` ⇒
+*« Rien n'a été touché »*. Et **le défaut qu'il ferme est vu, lui aussi** : sous un plafond posé à
+80, **`bl auto plancher 97` est maintenant REFUSÉ** (`[0, 77]`) — avant, il **acceptait**, et la loi
+devenait **inerte sans un mot**, ce que son propre commentaire disait vouloir empêcher.
+
+⚠️ **Et graver le plafond à 80 a obligé à dédoubler le macro** : `DN_ENV_BL_PCT_MAX` (défaut de la
+loi, **80**) vs `DN_ENV_BL_PCT_ABS_MAX` (max physique, **100**). Restés le même, `bl auto plafond
+100` serait devenu **impossible** — et **un instrument d'A/B qui ne sait plus remonter à son point
+de départ ne réfute plus rien.**
+
+### 13.26.9 ⛔ LES CONTRADICTIONS DU DOSSIER SONT DÉCLARÉES, ⛔ PAS RÉCONCILIÉES
+
+*« On garde LES DEUX et on le DIT — on ne fabrique pas de réconciliation »* (`mesures/dn4-19/T-A6`).
+**Chaque point porte son binaire, sa date, son régime, son lux et son protocole.**
+
+| # | les deux points qui se contredisent | ce qu'on en fait |
+|---|---|---|
+| **1** | **170 lx ⇒ 32 %** *« c'est ça »* (**2026-08-20**, §13.19.7 c, loi LINÉAIRE, dashboard six cases) **vs 105 lx ⇒ 80 %** *« celui-là »* (**2026-08-27**, loi LOG, même contenu) | ⛔ **AUCUNE loi croissante ne passe par ces deux points** : moins de lumière y demanderait **2,5× plus** de duty. ⇒ **`dn4-20` retient le 27/08** — protocole corrigé, owner aux commandes, et **trois** conditions d'éclairage au lieu d'une. ⛔ **Le 20/08 n'est pas effacé.** |
+| **2** | **245 lx ⇒ 75 %** *« nettement plus »* (27/08 **matin**, binaire `0ced322`, **balayage instrumenté RÉCUSÉ par l'owner**) **vs 229 lx ⇒ 74 %** *« trop limite »* (27/08 **soir**, binaire `8f95975`, owner aux commandes) | **Même duty, ~même lux, verdicts opposés, à deux heures d'intervalle.** ⇒ **`dn4-20` retient le second** : le premier vient du protocole que l'owner a récusé en toutes lettres (*« arrête ces tests tt pourris… sans aucun repère visuel du % »*). ⛔ **Les deux restent au dossier.** |
+| **3** | **8 % ⇒ *« oui 8 % c'est bien »*** (**2026-08-20**, §13.19.7 b, rideau fermé, 2 lx, dichotomie 10/6/8) **vs 8 % ⇒ *« pas assez lumineux »*** (**2026-08-27 soir**, 0 lx, **même contenu, même œil**) | 🔴 **La contradiction la plus dure du dossier : mêmes conditions, même contenu, même juge, sept jours d'écart.** ⇒ **`dn4-20` retient le 27/08 et grave 20 %**, mais ⛔ **ne déclare PAS le 20/08 faux : il est DATÉ.** ⚠️ **L'adaptation de l'œil** est la première explication candidate, et elle **n'a jamais été instrumentée**. |
+
+🔴 **CE QUE CES TROIS DISENT ENSEMBLE, ET C'EST LE RISQUE STRUCTUREL DU DOSSIER** :
+**dans UNE séance au protocole corrigé, les verdicts sont cohérents** (ils l'ont été ce soir sur
+douze points, à trois conditions d'éclairage). **D'UNE SÉANCE À L'AUTRE, ils ne le sont pas.**
+⇒ ⛔ **NE JAMAIS CALER UNE LOI SUR DES POINTS PRIS DANS DES SÉANCES DIFFÉRENTES.** C'est ce qui a
+produit la loi log (un point de 245 lx contre un plancher de 16 % pris deux heures plus tard).
+✅ **`dn4-20` s'y tient** : ses quatre bornes sont gravées **sur les douze points d'UNE SEULE
+séance**, ⛔ aucun point emprunté à une autre.
+
+⚠️ **ET LE 7ᵉ POINT EST PORTÉ AU DOSSIER À CÔTÉ DES SIX AUTRES** (§13.19.7 c, 2026-08-20) : il
+n'avait **jamais été rapproché** des six points de la séance de clôture — ⛔ **pas comme une erreur
+du dossier, comme un point qui n'avait jamais été mis en regard.** C'est lui qui forme la
+contradiction n°1, et **c'est le cadrage de `dn4-20` qui l'a trouvé**, pas la séance.
