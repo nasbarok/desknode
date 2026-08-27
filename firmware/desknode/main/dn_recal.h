@@ -78,14 +78,30 @@ esp_err_t dn_recal_init(esp_lcd_panel_handle_t panel);
  *    bien — mais du côté de l'APPELANT, pendant que l'en-tête de la fonction
  *    appelée continuait de l'interdire. ⛔ On annote, on n'efface pas.
  *
- * 🎯 LE CONTRAT RÉEL, ET IL A DEUX APPELANTS LÉGITIMES :
- *    (a) RECALAGE DE BASCULE — `dn_display_present()` (dn_display.c), sous
+ * 🎯 LE CONTRAT RÉEL, ET IL A TROIS APPELANTS LÉGITIMES :
+ *    (a) RECALAGE DE BASCULE — `dn_display_present()` (dn_display.c:789), sous
  *        `num_fbs > 1`. C'est le cas d'origine.
  *    (b) RECALAGE D'AMORÇAGE — `desknode_main.c`, UNE FOIS au boot, à
  *        `num_fbs = 1`, après que le panneau tourne et que l'abonnement vsync
  *        de `dn_recal_init()` soit posé. ⛔ UN one-shot : rien ne le rejoue.
- *    Les deux partagent le mécanisme et ⛔ PAS le besoin — ne pas « unifier »
- *    sans relire le bloc de `desknode_main.c`.
+ *    (c) RECALAGE DE FLUSH LVGL — `dn_ui.c:2136`, dans le crochet de flush sous
+ *        `s_direct_mode` (`num_fbs >= 2`, dn_ui.c:5853). Ce chemin court-circuite
+ *        `dn_display_present()` en appelant `esp_lcd_panel_draw_bitmap()` lui-même,
+ *        donc il doit armer LUI-MÊME. ⛔ C'est l'appelant le PLUS FRÉQUENT :
+ *        un armement PAR FLUSH, pas un one-shot. Son propre commentaire le
+ *        déclare nécessaire : « L'oublier ici rendrait le double tampon
+ *        inutilisable sous LVGL ».
+ *    Les trois partagent le mécanisme et ⛔ PAS le besoin — ne pas « unifier »
+ *    sans relire le bloc de `desknode_main.c` ET celui de `dn_ui.c`.
+ *
+ * 🔴 CE CONTRAT DISAIT « DEUX » JUSQU'AU 2026-08-27 (3e revue de code), ET
+ *    C'ÉTAIT LE MÊME DÉFAUT QU'IL VENAIT DE CORRIGER. Il a été amendé le matin
+ *    même parce que la phrase d'origine « interdisait ce que le dépôt fait
+ *    déjà » — et l'amendement a omis le troisième appelant, donc il continuait
+ *    de ne pas autoriser un appel que le dépôt fait. ⚠️ Le bloc `⛔ MAIS C'EST
+ *    UN ONE-SHOT` en tête de ce fichier écrivait pourtant « les DEUX AUTRES
+ *    appelants », c'est-à-dire trois, DANS LE MÊME FICHIER. ⛔ Un contrat qui se
+ *    contredit à vingt lignes d'intervalle n'est pas un contrat.
  *
  * ⚠️ CE QUE ÇA LAISSE OUVERT, ET C'EST DÉCLARÉ : à `num_fbs = 1` il n'existe
  *    AUCUNE parade automatique au décalage PERMANENT après le boot. Le filet

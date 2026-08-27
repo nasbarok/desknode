@@ -1713,6 +1713,34 @@ void dn_widget_maj(const dn_widget_desc_t *desc, const dn_widget_etat_t *etat,
         zone_widget_prendre(w, &zone_union, &zone_vide);
     }
     if (grouper) {
+        if (s_groupe_union) {
+            /*
+             * 🔴 REMONTÉ ICI LE 2026-08-27 (3e revue) — ⛔ IL ÉTAIT DANS LA
+             *    FENÊTRE COUPÉE, ET IL Y MANGEAIT LES RÉPARATIONS DES AUTRES.
+             *    `lv_obj_update_layout()` ne travaille PAS sur `w->racine` : il
+             *    remonte à l'ÉCRAN (lv_obj_pos.c:388) et envoie
+             *    `LV_EVENT_UPDATE_LAYOUT_COMPLETED` **AU DISPLAY**. Or CHAQUE
+             *    label de l'écran qui a un `need_refr_text` en attente s'y est
+             *    abonné (lv_label.c:1071) ; son callback SE DÉSABONNE
+             *    (lv_label.c:1081) puis appelle `lv_label_refr_text()`, qui
+             *    finit par `lv_obj_invalidate()` (lv_label.c:1354).
+             *    ⇒ appelé DANS la fenêtre coupée, il consommait — et AVALAIT —
+             *    la réparation différée de labels qui n'appartiennent PAS à ce
+             *    widget, DÉFINITIVEMENT, puisqu'ils venaient de se désabonner.
+             *    Cibles vivantes : la barre heure/date et la vue DÉTAIL.
+             * 🔴 ET ÇA RENVERSAIT UNE RÉFUTATION DE LA REVUE DU 2026-08-24, qui
+             *    avait écarté « `w->sec` est perdu en `union` » au motif que les
+             *    labels « s'auto-réparent HORS de la fenêtre coupée ». Le
+             *    correctif du 2026-08-27 avait déplacé le déclencheur DEDANS.
+             * 🎯 CE QUE LE DÉPLACEMENT COÛTE, ET C'EST ASSUMÉ : la géométrie est
+             *    forcée AVANT la coupure, donc les invalidations que le layout
+             *    déclenche pour CE widget ne sont plus avalées — une zone sale
+             *    de plus, au pire. ⛔ En échange, la seconde passe lit bien les
+             *    NOUVELLES coordonnées (c'était la raison d'être du correctif)
+             *    ET les labels des autres gardent leur réparation.
+             */
+            lv_obj_update_layout(w->racine);
+        }
         /* ⚠️ De cette ligne jusqu'au rétablissement, AUCUNE invalidation n'est
          *    enregistrée. On ne fait donc RIEN d'autre que d'écrire les enfants
          *    de CE widget — et surtout on ne relâche pas le verrou (voir le
@@ -1888,7 +1916,13 @@ void dn_widget_maj(const dn_widget_desc_t *desc, const dn_widget_etat_t *etat,
              *    réel est à MESURER sur la carte en même temps que son taux —
              *    le `0,97 /s` de §20.7.19 est de toute façon à reprendre.
              */
-            lv_obj_update_layout(w->racine);
+            /* ⛔ L'APPEL A `lv_obj_update_layout()` N'EST PLUS ICI — il a été
+             *    remonté AVANT `lv_display_enable_invalidation(disp, false)`.
+             *    Voir la justification complète à ce nouvel emplacement : dans
+             *    la fenêtre coupée, il consommait les réparations différées des
+             *    labels de TOUT l'écran, et leur désabonnement rendait la perte
+             *    définitive. La géométrie est donc déjà à jour quand on arrive
+             *    ici, et la seconde passe lit bien les nouvelles coordonnées. */
             zone_widget_prendre(w, &zone_union, &zone_vide);
         }
         lv_display_enable_invalidation(disp, true);
