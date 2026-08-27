@@ -1041,8 +1041,16 @@ static void bl_usage(void)
     printf("        bl freq <200..40000>  — fréquence PWM (le sifflement)\n");
     printf("        bl auto on|off      — asservissement au BH1750 (dn4-3, AC5)\n");
     printf("        bl auto bornes <lux_bas> <lux_haut>  — la loi, à chaud\n");
-    printf("        bl auto pas <1..100>  — pas maximal par cycle de 5 s\n");
+    /* 🟢 dn4-20/AC9.3 — ~~`<1..100>`~~ ⇒ **`<%d..100>`**, LU DANS LA CONSTANTE.
+     *   Entree de differe soldee : `dn_env_bl_pas_set()` REFUSE `pas < HYST`
+     *   (verrou mortel : sous la bande morte la loi se fige a mi-chemin), et
+     *   cette ligne d'aide annoncait `1` depuis. La branche `bl auto pas`
+     *   vingt lignes plus bas imprimait DEJA la bonne borne : deux etiquettes
+     *   pour un seul setter, et c'est la plus visible qui mentait. */
+    printf("        bl auto pas <%d..100>  — pas maximal par cycle de 5 s\n",
+           DN_ENV_BL_HYST);
     printf("        bl auto plancher <n>  — le %% en piece SOMBRE (constat oeil)\n");
+    printf("        bl auto plafond <n>   — le %% en PLEINE LUMIERE (dn4-20/AC4.6)\n");
     printf("        bl auto ambiant <0..100>        — %% de la loi applique en AMBIENT (dn4-19)\n");
     printf("        bl auto ambiant plancher <n>    — le plancher du RENDU D'AMBIENT (dn4-19)\n");
     printf("        bl auto courbe log|lineaire     — la FORME de la loi (dn4-19/AC6.3)\n");
@@ -1077,7 +1085,11 @@ static void bl_auto_etat(void)
     printf("asservissement BH1750 : %s\n", dn_env_bl_auto() ? "ARMÉ" : "DÉSARMÉ");
     printf("  loi      : %d %% à <= %d lx · %d %% à >= %d lx · courbe %s entre "
            "les deux\n",
-           dn_env_bl_plancher(), lux_bas, DN_ENV_BL_PCT_MAX, lux_haut,
+           /* 🔴 dn4-20/AC4.7 — LE PLAFOND COURANT, ⛔ PLUS LE MACRO. `bl` est
+            *   la sortie qui sert d'INSTRUMENT a toute la seance d'A/B :
+            *   publier 100 pendant que la loi sature a 80 aurait fausse
+            *   chaque lecture de la seance qu'elle sert a conduire. */
+           dn_env_bl_plancher(), lux_bas, dn_env_bl_plafond(), lux_haut,
            dn_env_bl_courbe_nom(dn_env_bl_courbe()));
     if (dn_env_bl_courbe() == DN_ENV_BL_COURBE_LOG) {
         printf("           (dn4-19/AC6.3 : l'œil ET le lux sont logarithmiques. "
@@ -1089,7 +1101,9 @@ static void bl_auto_etat(void)
     printf("  garde    : bande morte %d pts · pas max %d pts par cycle de %d ms "
            "(course complète en %d cycles)\n",
            hyst, pas, DN_ENV_PERIODE_MS,
-           (DN_ENV_BL_PCT_MAX - dn_env_bl_plancher() + pas - 1) / pas);
+           /* meme motif : la course annoncee doit etre celle que la loi
+            * PARCOURT REELLEMENT (dn4-20/AC4.7). */
+           (dn_env_bl_plafond() - dn_env_bl_plancher() + pas - 1) / pas);
     /* 🔴 « jamais lu » et « noir complet » ne s'impriment PLUS à l'identique —
      * corrigé en revue de code le 2026-08-20. `0 lx` est une valeur MESURÉE
      * légitime sur ce capteur (la main posée a rendu `brut = 0` deux fois en
@@ -1204,20 +1218,60 @@ static int cmd_bl(int argc, char **argv)
             long pct = 0;
             if (argc != 4 || !parse_entier(argv[3], &pct)) {
                 printf("usage : bl auto plancher <0..%d>\n",
-                       DN_ENV_BL_PCT_MAX - DN_ENV_BL_HYST);
+                       dn_env_bl_plafond() - DN_ENV_BL_HYST);
                 return 1;
             }
             if (dn_env_bl_plancher_set((int)pct) != ESP_OK) {
                 printf("refusé : le plancher doit être dans [0, %d] — au-delà, "
                        "la bande morte rendrait la loi INERTE sans le dire, ce "
                        "qui est pire qu'un refus. Rien n'a été touché.\n",
-                       DN_ENV_BL_PCT_MAX - DN_ENV_BL_HYST);
+                       dn_env_bl_plafond() - DN_ENV_BL_HYST);
                 return 1;
             }
             /* 🔴 AJOUTÉ EN REVUE DE CODE LE 2026-08-27 — voir `bornes` ci-dessus :
              * `s_bl_pct_min` entre dans `dn_env_bl_loi()`, donc dans le régime
              * Ambient aussi. La dichotomie du plancher se conduisait à l'aveugle
              * pendant 5 s alors que celle du plancher d'Ambient répondait au doigt. */
+            dn_ui_veille_bl_rafraichir();
+            bl_auto_etat();
+            return 0;
+        }
+        /* ── bl auto plafond <n> ── 🔴 `dn4-20`/AC4.6 ─────────────────────────
+         * LE PENDANT HAUT DE `plancher`, ET IL MANQUAIT. Le candidat « PLATEAU »
+         * d'AC4.1 EST un deplacement de plafond (100 -> 80) : sans cette
+         * sous-commande, l'arbitrer a l'oeil aurait coute UN REFLASH PAR VALEUR,
+         * et *« un parametre qu'on ne peut pas bouger en seance n'est pas
+         * arbitrable en seance »* (§13.19.7 d, deja paye sur le plancher).
+         * ⛔ IL REFUSE, IL N'ECRETE PAS — memes gardes que le plancher, par
+         *   l'autre bout. */
+        if (strcmp(argv[2], "plafond") == 0) {
+            long pct = 0;
+            if (argc != 4 || !parse_entier(argv[3], &pct)) {
+                printf("usage : bl auto plafond <%d..%d>   (actuel : %d %%)\n",
+                       dn_env_bl_plancher() + DN_ENV_BL_HYST, DN_ENV_BL_PCT_MAX,
+                       dn_env_bl_plafond());
+                return 1;
+            }
+            if (dn_env_bl_plafond_set((int)pct) != ESP_OK) {
+                printf("refusé : le plafond doit être dans [%d, %d]. "
+                       "Au-dessous de plancher+%d la loi serait INERTE sans le "
+                       "dire ; au-dessus de %d la dalle refuserait le duty et la "
+                       "loi viserait une cible jamais prise. Rien n'a été "
+                       "touché.\n",
+                       dn_env_bl_plancher() + DN_ENV_BL_HYST, DN_ENV_BL_PCT_MAX,
+                       DN_ENV_BL_HYST, DN_ENV_BL_PCT_MAX);
+                return 1;
+            }
+            /* ⚠️ `bl <n>` reste atteignable jusqu'a 100 : le plafond borne LA LOI,
+             *    ⛔ pas la dalle. On le DIT, sinon le prochain `bl 100` passera
+             *    pour un bug. */
+            printf("⚠️ le plafond borne LA LOI, ⛔ pas la dalle : `bl 100` reste "
+                   "un geste d'opérateur (il désarme l'auto et le dit).\n");
+            /* 🔴 LE 6e ECRIVAIN DE LEDC — `dn_ui_veille_bl_rafraichir()`. Sans
+             *   cet appel, l'oeil attendrait UN CYCLE DE 5 s pour voir l'effet,
+             *   et un A/B ou l'effet arrive en retard est EXACTEMENT le protocole
+             *   que l'owner a recuse le 2026-08-27. Il a deja ete oublie une fois
+             *   (trouve en revue le meme jour, sur `bornes` et `plancher`). */
             dn_ui_veille_bl_rafraichir();
             bl_auto_etat();
             return 0;
@@ -1260,14 +1314,14 @@ static int cmd_bl(int argc, char **argv)
                 long pct = 0;
                 if (!parse_entier(argv[4], &pct)) {
                     printf("usage : bl auto ambiant plancher <0..%d>\n",
-                           DN_ENV_BL_PCT_MAX - DN_ENV_BL_HYST);
+                           dn_env_bl_plafond() - DN_ENV_BL_HYST);
                     return 1;
                 }
                 if (dn_env_bl_amb_plancher_set((int)pct) != ESP_OK) {
                     printf("refusé : le plancher d'Ambient doit être dans "
                            "[0, %d] — au-delà, la bande morte rendrait la loi "
                            "INERTE sans le dire. Rien n'a été touché.\n",
-                           DN_ENV_BL_PCT_MAX - DN_ENV_BL_HYST);
+                           dn_env_bl_plafond() - DN_ENV_BL_HYST);
                     return 1;
                 }
                 dn_ui_veille_bl_rafraichir();
@@ -1278,7 +1332,7 @@ static int cmd_bl(int argc, char **argv)
             if (argc != 4 || !parse_entier(argv[3], &pct)) {
                 printf("usage : bl auto ambiant <0..100>            (l'échelle)\n");
                 printf("        bl auto ambiant plancher <0..%d>   (le plancher)\n",
-                       DN_ENV_BL_PCT_MAX - DN_ENV_BL_HYST);
+                       dn_env_bl_plafond() - DN_ENV_BL_HYST);
                 return 1;
             }
             if (dn_env_bl_amb_echelle_set((int)pct) != ESP_OK) {

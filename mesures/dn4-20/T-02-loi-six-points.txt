@@ -1,0 +1,71 @@
+# dn4-20 / T-02 — LA CALCULATRICE RE-CONFIRME LES SIX POINTS D'OEIL (AC1.4)
+# =========================================================================
+# Date    : 2026-08-27   ·   Binaire : 8f95975 (LU AU BANDEAU)
+# Gate    : la colonne « loi log » du tableau des six points doit RETOMBER
+#           EXACTEMENT : 98->51 · 105->53 · 229->74 · 245->76 · 391->88.
+#           ⛔ Un seul ecart => STOP + [CC] : le binaire ne serait pas celui
+#           des six points, et TOUT le materiau de calage serait mort.
+#
+# RESULTAT : ✅ 51 · 53 · 74 · 76 · 88  — LES CINQ RETOMBENT EXACTEMENT.
+#            => le materiau des six points d'oeil porte sur CE binaire.
+#
+# ⚠️ ETAT DE LA CARTE AU MOMENT DE CE TIR : elle tournait ENCORE la seance de
+#    cloture de dn4-19 — regime AMBIENT, `bl auto ambiant 65` toujours pose
+#    (1300 cycles = ~1 h 48 d'uptime). C'est pourquoi la colonne AMBIENT
+#    ci-dessous est a l'echelle 65 %, ⛔ pas au defaut 100 %.
+#
+# 🎯 ET CE TIR SOLDE AC5.1 SANS RIEN CODER — L'ARITHMETIQUE DU COUPLAGE EST
+#    MESUREE SUR LA CARTE, ⛔ plus seulement calculee au papier :
+#      · 229 lx, echelle 65 % => AMBIENT 48 %  = EXACTEMENT le « 48, bon pour
+#        la veille » de l'oeil owner (§13.25.5)                        ✅
+#      ·  98 lx, echelle 65 % => AMBIENT 33 %  quand l'oeil veut [50 ; 65]  ❌
+#    => la MEME echelle satisfait un point et rate l'autre, SUR LA CARTE.
+#       L'echelle d'Ambient ne peut pas etre reglee tant que la FORME
+#       d'ACTIF est fausse. AC5 est bien SUSPENDU a AC4.
+
+
+===== bl loi 98 =====
+bl loi 98
+loi à 98 lx   ·   courbe : log
+  ACTIF   : 51 %
+  AMBIENT : 33 %   (échelle 65 % · plancher 16 %)
+  duty POSÉ en ce moment : 33 %   ·   régime : AMBIENT
+  pour comparaison, courbe lineaire : 20 % en ACTIF
+⛔ RIEN N'A ÉTÉ APPLIQUÉ, RIEN N'A ÉTÉ DÉSARMÉ ET LA COURBE EST REMISE : c'est une lecture.
+desknode> 
+===== bl loi 105 =====
+bl loi 105
+loi à 105 lx   ·   courbe : log
+  ACTIF   : 53 %
+  AMBIENT : 34 %   (échelle 65 % · plancher 16 %)
+  duty POSÉ en ce moment : 33 %   ·   régime : AMBIENT
+  pour comparaison, courbe lineaire : 21 % en ACTIF
+⛔ RIEN N'A ÉTÉ APPLIQUÉ, RIEN N'A ÉTÉ DÉSARMÉ ET LA COURBE EST REMISE : c'est une lecture.
+desknode>
+===== bl loi 229 =====
+ bl loi 229
+loi à 229 lx   ·   courbe : log
+  ACTIF   : 74 %
+  AMBIENT : 48 %   (échelle 65 % · plancher 16 %)
+  duty POSÉ en ce moment : 33 %   ·   régime : AMBIENT
+  pour comparaison, courbe lineaire : 41 % en ACTIF
+⛔ RIEN N'A ÉTÉ APPLIQUÉ, RIEN N'A ÉTÉ DÉSARMÉ ET LA COURBE EST REMISE : c'est une lecture.
+desknode> 
+===== bl loi 245 =====
+bl loi 245
+loi à 245 lx   ·   courbe : log
+  ACTIF   : 76 %
+  AMBIENT : 49 %   (échelle 65 % · plancher 16 %)
+  duty POSÉ en ce moment : 33 %   ·   régime : AMBIENT
+  pour comparaison, courbe lineaire : 44 % en ACTIF
+⛔ RIEN N'A ÉTÉ APPLIQUÉ, RIEN N'A ÉTÉ DÉSARMÉ ET LA COURBE EST REMISE : c'est une lecture.
+desknode> 
+===== bl loi 391 =====
+bl loi 391
+loi à 391 lx   ·   courbe : log
+  ACTIF   : 88 %
+  AMBIENT : 57 %   (échelle 65 % · plancher 16 %)
+  duty POSÉ en ce moment : 33 %   ·   régime : AMBIENT
+  pour comparaison, courbe lineaire : 67 % en ACTIF
+⛔ RIEN N'A ÉTÉ APPLIQUÉ, RIEN N'A ÉTÉ DÉSARMÉ ET LA COURBE EST REMISE : c'est une lecture.
+desknode> 

@@ -156,6 +156,22 @@ static int s_bl_lux_bas = DN_ENV_BL_LUX_BAS;
 static int s_bl_lux_haut = DN_ENV_BL_LUX_HAUT;
 static int s_bl_pas = DN_ENV_BL_PAS_MAX;
 static int s_bl_pct_min = DN_ENV_BL_PCT_MIN;
+/* 🔴 `dn4-20`/AC4.6, 2026-08-27 — LE PLAFOND DEVIENT UN STATIQUE RÉGLABLE.
+ *    `s_bl_lux_bas`, `s_bl_lux_haut` et `s_bl_pct_min` l'étaient déjà ; le
+ *    PLAFOND, lui, était le macro `DN_ENV_BL_PCT_MAX` utilisé tel quel sur
+ *    **14 sites dans DEUX fichiers**. ⇒ le candidat « PLATEAU » d'AC4.1 — qui
+ *    EST un déplacement de plafond (100 → 80) — n'était **pas jouable en
+ *    séance** : il aurait demandé un reflash par valeur essayée.
+ * 🎯 C'EST EXACTEMENT LE DÉFAUT QUE `dn4-3` A DÉJÀ PAYÉ SUR LE PLANCHER
+ *    (§13.19.7 d) : *« les bornes en lux étaient ajustables, le plancher en %
+ *    était figé à la compilation — or c'est précisément lui que l'œil a
+ *    déplacé. Un paramètre qu'on ne peut pas bouger en séance n'est pas
+ *    arbitrable en séance. »* ⇒ le même défaut, pris par l'autre bout.
+ * ⛔ `bl auto bornes 20 105` N'IMITE PAS le plateau : ça sature à 100 %, pas
+ *    à 80. Il fallait bien le plafond lui-même.
+ * ⚠️ `DN_ENV_BL_PCT_MAX` reste, et il garde DEUX emplois : la valeur PAR
+ *    DÉFAUT, et le maximum PHYSIQUE que `dn_display_backlight_pct()` accepte. */
+static int s_bl_pct_max = DN_ENV_BL_PCT_MAX;
 static int s_bl_dernier_pct = -1;  /* -1 = la loi n'a encore rien appliqué */
 static int s_bl_dernier_lux = DN_ENV_ABSENT;
 static bool s_bl_muet_dit;         /* le « capteur muet » n'est journalisé qu'une fois */
@@ -895,13 +911,26 @@ esp_err_t dn_env_init(void)
              "  retroeclairage auto : %s par defaut — la loi est %d%% a %d lx, "
              "%d%% a %d lx, bande morte %d pts, pas max %d pts/cycle. %s",
              DN_ENV_BL_AUTO_DEFAUT ? "ARME" : "DESARME",
-             s_bl_pct_min, DN_ENV_BL_LUX_BAS,
-             DN_ENV_BL_PCT_MAX, DN_ENV_BL_LUX_HAUT,
-             DN_ENV_BL_HYST, DN_ENV_BL_PAS_MAX,
+             /* 🔴 `dn4-20` — LES QUATRE VALEURS SONT LUES DANS LES STATIQUES,
+              *   ⛔ PLUS DANS LES MACROS. Au boot elles sont égales, donc ça ne
+              *   changeait rien CE JOUR-LÀ — mais le plafond vient de devenir
+              *   réglable, et cette ligne-ci a DÉJÀ été corrigée une fois pour
+              *   ce motif exact (revue `dn4-19` : « ARME par defaut » suivi de
+              *   « `bl auto on` pour l'armer »). ⛔ Une étiquette qui ment se
+              *   relit à chaque boot. */
+             s_bl_pct_min, s_bl_lux_bas,
+             s_bl_pct_max, s_bl_lux_haut,
+             DN_ENV_BL_HYST, s_bl_pas,
              DN_ENV_BL_AUTO_DEFAUT
+                 /* 🔴 `dn4-20`/AC4.7 — LA DESCENTE EST ANNONCEE AVEC SA CIBLE.
+                  *   Le boot pose 100 % (`desknode_main.c`). Tant que le plafond
+                  *   valait 100, la dalle ne descendait que jusqu'a la loi ; avec
+                  *   un plafond deplace, elle descend AUSSI vers lui. ⛔ Ca ne se
+                  *   decouvre pas a l'oeil : ca se DIT, ici et au README. */
                  ? "`bl auto off` pour le desarmer ; la dalle va donc DESCENDRE "
-                   "depuis les 100 % du boot, par pas, dans les prochains "
-                   "cycles — c'est NORMAL (dn4-19)."
+                   "depuis les 100 % du boot vers la loi (plafond de la loi : "
+                   "voir ci-dessus), par pas, dans les prochains cycles — "
+                   "c'est NORMAL (dn4-19/dn4-20)."
                  : "`bl auto on` pour l'armer.");
     return ESP_OK;
 }
@@ -1063,9 +1092,9 @@ static int bl_loi_courbe(int lux, dn_env_bl_courbe_t courbe)
         return s_bl_pct_min;
     }
     if (lux >= s_bl_lux_haut) {
-        return DN_ENV_BL_PCT_MAX;
+        return s_bl_pct_max;
     }
-    int span_pct = DN_ENV_BL_PCT_MAX - s_bl_pct_min;
+    int span_pct = s_bl_pct_max - s_bl_pct_min;
 
     if (courbe == DN_ENV_BL_COURBE_LINEAIRE) {
         /* Interpolation linéaire, en entiers, arrondie — comme le duty LEDC de
@@ -1142,8 +1171,8 @@ static int bl_loi_regime_courbe(int lux, dn_env_bl_regime_t regime,
     if (pct < s_bl_amb_pct_min) {
         pct = s_bl_amb_pct_min;
     }
-    if (pct > DN_ENV_BL_PCT_MAX) {
-        pct = DN_ENV_BL_PCT_MAX;
+    if (pct > s_bl_pct_max) {
+        pct = s_bl_pct_max;
     }
     return pct;
 }
@@ -1191,7 +1220,7 @@ esp_err_t dn_env_bl_amb_plancher_set(int pct)
 {
     /* Même borne haute que `dn_env_bl_plancher_set()` et pour le même motif : un
      * plancher au ras du plafond rendrait la loi inerte SANS le dire. */
-    if (pct < 0 || pct > DN_ENV_BL_PCT_MAX - DN_ENV_BL_HYST) {
+    if (pct < 0 || pct > s_bl_pct_max - DN_ENV_BL_HYST) {
         return ESP_ERR_INVALID_ARG;
     }
     s_bl_amb_pct_min = pct;
@@ -1206,10 +1235,15 @@ int dn_env_bl_dernier_pose(void) { return s_bl_pose_reelle; }
 
 esp_err_t dn_env_bl_plancher_set(int pct)
 {
-    /* ⛔ Ce dépôt REFUSE, il n'écrête pas. La borne haute est DN_ENV_BL_PCT_MAX
-     * moins la bande morte : un plancher au ras du plafond rendrait la loi
-     * inerte SANS le dire, ce qui est pire qu'un refus. */
-    if (pct < 0 || pct > DN_ENV_BL_PCT_MAX - DN_ENV_BL_HYST) {
+    /* ⛔ Ce dépôt REFUSE, il n'écrête pas. La borne haute est LE PLAFOND
+     * COURANT moins la bande morte : un plancher au ras du plafond rendrait la
+     * loi inerte SANS le dire, ce qui est pire qu'un refus.
+     * 🔴 `dn4-20`/AC4.7 — ~~`DN_ENV_BL_PCT_MAX`~~ ⇒ **`s_bl_pct_max`**. ⛔ BARRÉ,
+     *    PAS EFFACÉ : le motif ne change pas, sa BORNE si. Tant que le plafond
+     *    était un macro, ce setter acceptait encore **97 %** après un plafond
+     *    posé à 80 ⇒ **loi inerte, sans un mot** — exactement ce que ce
+     *    commentaire dit vouloir empêcher, et il le disait en le laissant faire. */
+    if (pct < 0 || pct > s_bl_pct_max - DN_ENV_BL_HYST) {
         return ESP_ERR_INVALID_ARG;
     }
     s_bl_pct_min = pct;
@@ -1217,6 +1251,34 @@ esp_err_t dn_env_bl_plancher_set(int pct)
 }
 
 int dn_env_bl_plancher(void) { return s_bl_pct_min; }
+
+/*
+ * 🔴 `dn4-20`/AC4.6 — LE PLAFOND, RÉGLABLE À CHAUD. ⛔ IL REFUSE, IL N'ÉCRÊTE PAS.
+ *
+ * DEUX bornes, DEUX motifs, et aucune n'est de la commodité :
+ *   · borne HAUTE = `DN_ENV_BL_PCT_MAX` (100) — c'est le maximum **PHYSIQUE**
+ *     que `dn_display_backlight_pct()` accepte. Au-delà il refuserait, et la
+ *     loi calculerait une cible que la dalle ne prend jamais : un instrument
+ *     qui ment.
+ *   · borne BASSE = `plancher + DN_ENV_BL_HYST` — un plafond au ras du
+ *     plancher rendrait la loi **INERTE SANS LE DIRE**. C'est le motif déjà
+ *     écrit sur `dn_env_bl_plancher_set()`, ⛔ pris par l'autre bout : les deux
+ *     setters gardent maintenant le MÊME invariant, et ils se croisent.
+ *
+ * ⚠️ CE QU'IL NE BORNE **PAS** : `bl <n>` reste atteignable jusqu'à 100 %. Le
+ *    plafond borne **LA LOI**, ⛔ pas la dalle — et `bl <n>` désarme l'auto en
+ *    le disant, donc les deux ne se marchent pas dessus.
+ */
+esp_err_t dn_env_bl_plafond_set(int pct)
+{
+    if (pct > DN_ENV_BL_PCT_MAX || pct < s_bl_pct_min + DN_ENV_BL_HYST) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    s_bl_pct_max = pct;
+    return ESP_OK;
+}
+
+int dn_env_bl_plafond(void) { return s_bl_pct_max; }
 
 bool dn_env_bl_auto(void) { return s_bl_auto; }
 

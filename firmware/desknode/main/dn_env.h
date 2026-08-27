@@ -148,7 +148,8 @@ typedef struct {
  *   l'appellerait ferait dormir la tâche qui porte AUSSI le BME680.
  *
  *   lux <= DN_ENV_BL_LUX_BAS   ->  DN_ENV_BL_PCT_MIN
- *   lux >= DN_ENV_BL_LUX_HAUT  ->  DN_ENV_BL_PCT_MAX
+ *   lux >= DN_ENV_BL_LUX_HAUT  ->  le PLAFOND COURANT (`dn_env_bl_plafond()`,
+ *                                  défaut DN_ENV_BL_PCT_MAX — dn4-20/AC4.6)
  *   entre les deux             ->  interpolation LINÉAIRE
  *
  * 🔴 LES QUATRE BORNES SONT ANCRÉES SUR DES MESURES DE CE DÉPÔT, ⛔ PAS SUR UNE
@@ -290,6 +291,13 @@ typedef struct {
  *    a déplacé. *« L'arbitrage se tranche sur la dalle »* vaut pour les deux.
  */
 #define DN_ENV_BL_PCT_MIN      8
+/* 🔴 `dn4-20`/AC4.6 — CE MACRO N'EST PLUS « LE PLAFOND », il en est LE DÉFAUT.
+ *    Le plafond effectif vit dans `s_bl_pct_max` et se règle par
+ *    `bl auto plafond <n>` / `dn_env_bl_plafond_set()`. Ce `100` garde DEUX
+ *    emplois, et les deux sont réels : la valeur **au boot**, et le maximum
+ *    **PHYSIQUE** que `dn_display_backlight_pct()` accepte.
+ * ⛔ Ne plus l'utiliser pour BORNER un réglage : c'est ce qui laissait
+ *    `bl auto plancher 97` passer sous un plafond posé à 80. */
 #define DN_ENV_BL_PCT_MAX      100
 #define DN_ENV_BL_LUX_BAS      20
 #define DN_ENV_BL_LUX_HAUT     600
@@ -504,6 +512,17 @@ esp_err_t dn_env_bl_pas_set(int pas);
  * séance du 2026-08-20 a prouvé que c'est LUI que l'œil déplace, pas les lux. */
 esp_err_t dn_env_bl_plancher_set(int pct);
 int dn_env_bl_plancher(void);
+/* 🔴 `dn4-20`/AC4.6 — LE PLAFOND AUSSI, ET POUR LE MÊME MOTIF QUE LE PLANCHER.
+ * Le candidat « PLATEAU » d'AC4.1 **EST** un déplacement de plafond (100 → 80) :
+ * sans ce réglage, il aurait fallu **un reflash par valeur essayée**, et l'A/B
+ * n'aurait pas tenu dans une séance. ⛔ `bl auto bornes 20 105` ne l'imite pas —
+ * ça sature à 100 %, pas à 80.
+ * ⛔ IL REFUSE, IL N'ÉCRÊTE PAS : haut = 100 (le max PHYSIQUE de
+ *   `dn_display_backlight_pct()`), bas = `plancher + DN_ENV_BL_HYST` (au ras du
+ *   plancher, la loi serait INERTE sans le dire).
+ * ⚠️ Il borne **LA LOI**, ⛔ pas la dalle : `bl 100` reste un geste d'opérateur. */
+esp_err_t dn_env_bl_plafond_set(int pct);
+int dn_env_bl_plafond(void);
 void dn_env_bl_etat(int *lux_bas, int *lux_haut, int *pas, int *hyst,
                     int *dernier_pct, int *dernier_lux);
 /* Le pct que la loi rendrait POUR CE LUX — exposé pour que la console puisse

@@ -1,0 +1,148 @@
+# dn4-20 / T-03 — L'ETAT APRES LE REBOOT DE REFERENCE (AC1)
+# =========================================================
+# Date : 2026-08-27  ·  Binaire : 8f95975  ·  Piece : 90 lx (rideau ouvert, lampe allumee)
+#
+# ✅ LE REBOOT REMET LES DEFAUTS DU SOURCE, ET C'EST UNE PREUVE DE D4 :
+#      echelle d'Ambient 65 % (posee en seance dn4-19)  ->  100 % (defaut)
+#      applications 53                                   ->  1
+#    => ⛔ AUCUNE persistance NVS de ces reglages. D4 tient, mesure.
+#
+# 🔴 ET LE DEFAUT DE LA STORY EST VISIBLE, LA, TOUT DE SUITE, SANS RIEN TOUCHER :
+#      piece a 90 lx   ·   regime ACTIF   ·   la loi applique 50 %
+#      l'oeil owner, a 105 lx, a dit « celui-la » a 80 % (2026-08-27)
+#    => ~30 POINTS SOUS CE QUE L'OEIL DEMANDE, sur le bureau, maintenant.
+#
+# ⚠️ `applications : 1` s'explique et se verifie : le boot pose 100 %, le premier
+#    cycle descend de PAS_MAX=50 => 50 %. La loi rend 49 % a 90 lx, l'ecart
+#    50-49 = 1 point est SOUS la bande morte de 3 => la boucle se fige a 50.
+#    Un seul mouvement de duty, et le compteur en dit UN. ⇒ le compteur repare
+#    par la revue dn4-19 se comporte juste (instrument d'AC8.2).
+
+
+===== bl =====
+bl
+rétroéclairage : 50 % à 24000 Hz (allumé)
+⚠️ `bl 0` éteint le RÉTROÉCLAIRAGE : dalle NOIRE.
+   `disp off` éteint la SORTIE de la dalle : dalle GRISE éclairée.
+   Les deux donnent « plus d'image », par deux mécanismes différents.
+asservissement BH1750 : ARMÉ
+  loi      : 8 % à <= 20 lx · 100 % à >= 600 lx · courbe log entre les deux
+           (dn4-19/AC6.3 : l'œil ET le lux sont logarithmiques. Constat owner du 2026-08-27, A/B en ACTIF à 245 lx : « 75 % — nettement plus », là où la loi LINÉAIRE rendait 44 %. ⛔ Les deux bornes n'ont PAS bougé. `bl auto courbe lineaire` pour revenir à la loi de dn4-3 et refaire l'A/B.)
+  garde    : bande morte 3 pts · pas max 50 pts par cycle de 5000 ms (course complète en 2 cycles)
+  applique : 50 % (sur 90 lx)
+  régime   : ACTIF
+  ambiant  : échelle 100 % de la loi · plancher 16 %
+           ⚠️ ce plancher est un TROISIÈME contenu (gros chiffres sur noir), MESURÉ À L'ŒIL le 2026-08-27 dans le noir (« 8 % c'est trop bas, 16 c'est bien ») : ⛔ ne pas le confondre avec les 8 % du dashboard ni avec les 3 % du Living PCB — trois CONTENUS, trois chiffres.
+  applications : 1 mouvements de duty depuis le BOOT (⛔ jamais remis, meme par `bl auto on`)
+           (dn4-19/AC8 : deux relevés espacés mesurent le POMPAGE de la bande morte — la loi vit H24 depuis que l'auto est armée par défaut.)
+  ⚠️ `bl <n>`, `bl on|off` et `bl ramp` DÉSARMENT l'auto et le DISENT.
+  ⛔ `bl ramp` est BLOQUANTE : elle n'est JAMAIS appelée par l'asservissement.
+  ⛔ La VEILLE ne désarme PLUS (dn4-19) : elle POSE le niveau du régime EN UNE FOIS, et la loi le maintient ensuite.
+desknode> 
+===== env =====
+env
+capteurs d'environnement locaux (dn4-3) — AUCUNE tache propre :
+ils sont cadences par la tache `dn_capt`, toutes les 5000 ms, et
+l'appel est place AVANT toute branche de sa boucle (sinon il serait
+saute a chaque erreur du BME680 — voir §13.19.4).
+cycles     : 6 · dernier cycle 311 us MESURES
+peremption : 15000 ms (3 cycles) — MEME convention que dn_capteurs,
+             ⛔ pas les 3 s de dn_link. timeout I2C 100 ms.
+garde anti-fantome : UNE LECTURE par cycle, ⛔ AUCUNE ECRITURE en
+             regime. La config est ecrite UNE FOIS a l'ouverture et
+             RELUE ensuite : meme pouvoir discriminant qu'une
+             ecriture (un fantome ne tient pas la valeur), sans
+             ajouter un agresseur permanent sur le bus.
+
+BH1750  @ 0x23 : VIVANT — 90 lx (brut 108) · age 4409 ms
+  compteurs : 6 lectures · 0 reprises
+  erreurs   : i2c 0 · donnee 0 · bornes 0 · conformite 0
+  garde     : 🔴 AUCUNE, et c'est DECLARE. Le BH1750 n'a AUCUN
+              registre relisible : son seul registre ecrivable
+              est le MTreg, et il est NON RELISIBLE (piste
+              tentee, NON REPRODUITE). Sa qualification la plus
+              forte reste le STIMULUS (main posee), qui demande
+              un geste owner : ⛔ ce n'est donc PAS une garde de
+              regime. `conformite` reste a 0 A VIE ici.
+  bornes    : 0xFFFF compte en `bornes` — c'est le PLAFOND du
+              convertisseur (au moins 54612 lx), plus une mesure.
+              ⚠️ brut 0 est LEGITIME (obscurite) : la main posee a
+              mesure brut 2, pas 0. `donnee` ne compte que le 0
+              lu dans les 180 ms d'une (re)configuration — ⛔ et
+              ce seau reste donc a 0 SAUF si une configuration a
+              echoue puis ete REPOSEE : tout appel a configurer()
+              est suivi d'un `return`, la lecture suivante arrive
+              5000 ms plus tard. DECLARE en revue de code.
+              Source : ROHM BH1750FVI-TR, plage 1-65535 lx,
+              lux = brut / 1,2 au MTreg par defaut (69).
+  ⛔ NE JAMAIS republier des lux DIVISES PAR DIX : (brut*10)/12
+     EST deja la valeur en lux ENTIERS. L'imprimer comme des
+     dixiemes a publie « 4 614,8 » pour 46 148, TROIS FOIS.
+
+INA219  @ 0x40 : JAMAIS — ⛔ INERTE — plus lu en regime · JAMAIS LU · ⛔ DEVICE NON OUVERT
+  compteurs : 0 lectures · 0 reprises
+  erreurs   : i2c 0 · donnee 0 · bornes 0 · conformite 0
+  🔴 CE COMPOSANT N'EST PLUS LU, ET C'EST UNE DECISION OWNER
+     (correct-course du 2026-08-20), pas une panne.
+  pourquoi   : `Vin+`/`Vin-` NE SONT PAS CABLES — `dn4-2` a
+               tranche « bus seulement ». Le shunt R100 (0,1 ohm)
+               n'est traverse par AUCUN courant, donc la puce ne
+               mesurait QUE DU BRUIT sur une entree flottante :
+               bus 904 mV, shunt -30 uV, -0,3 mA, 0 mW (mesure le
+               2026-08-20). X3 a ete tranche NON par A/B.
+  ce que ca  : 5 transactions I2C sur les 9 du cycle (56 %) sont
+  rend       : rendues au bus — celui que §11.4 nomme « le PREMIER
+               AGRESSEUR CONNU » de la famine DMA, et qui se
+               degrade ~40 s a froid.
+  etat reel  : SOUDE et OUVERT, configure UNE FOIS au boot. ⛔ Il
+               n'est PAS dessoude (D9 : montage fini, le
+               dessoudage est un risque sur le bus pour ZERO
+               gain). Ses compteurs restent donc a zero A VIE.
+  ⚠️ POUR LE REMETTRE EN SERVICE, il faut du COURANT dans son
+     shunt. Le bornier a vis 2 points est DEJA SOUDE, donc
+     `Vin+`/`Vin-` sont accessibles SANS FER — mais VERIFIER
+     D'ABORD AU MULTIMETRE que le bornier est bien relie a
+     `Vin+`/`Vin-` : c'est le cablage standard CJMCU, et ce depot
+     ne l'a JAMAIS mesure.
+  ⛔ `Vin+`/`Vin-` NE SONT PAS UNE ALIMENTATION : y poser 5 V et
+     la masse court-circuiterait le shunt de 0,1 ohm. « Le miroir
+     tue » — c'est le piege nomme par dn4-2.
+  identite   : `i2c lire 40 00 2` rend `39 9F` (reset du registre
+               Configuration) — il repond toujours.
+
+VL6180X @ 0x29 : JAMAIS — presence et conformite SEULEMENT · JAMAIS LU
+  compteurs : 0 lectures · 0 reprises
+  erreurs   : i2c 1 · donnee 0 · bornes 0 · conformite 0
+  garde     : ✅ FORTE — 003F (gain, reset 0x06 -> impose 0x46) et
+              0041 (integration, reset 0x00 -> impose 0x63),
+              RELUS a chaque cycle. `lectures` compte les
+              identites 0xB4 confirmees ; une autre valeur va en
+              `donnee` (il repond, mais ce n'est pas lui).
+  🔴 AUCUNE GRANDEUR PUBLIEE, et voici pourquoi (AC8) : CE
+     COMPOSANT EST MORT COTE ANALOGIQUE. Son ALS ne reagit NI a
+     2 280x de lumiere (5 lx -> 11 418 lx, BH1750 en CONTROLE au
+     meme instant), NI a 40x de gain, NI a un cycle
+     d'alimentation. Sa sortie ne depend QUE de la duree
+     d'integration. Telemetrie : 0 sur 200 tirs, zero photon
+     jusque sur le canal de REFERENCE INTERNE.
+  ⛔ ET SR03 N'EST PAS LA CAUSE — ce texte l'a affirme jusqu'au
+     2026-08-21, A TORT : la sequence SE CHARGE (38/38, les 30
+     registres prives relus EXACTEMENT) et NE CHANGE RIEN.
+     Dossier complet : hardware/…-capteurs-i2c.md §13.20-§13.21.
+  ⚠️ 0x0016 (FRESH_OUT_OF_RESET) est un TEMOIN VALIDE lui aussi
+     (mesure : 0x01 au power-on, impose 0x00, relu 0x00) mais ce
+     module N'Y TOUCHE PAS : sa valeur est un FAIT sur
+     l'historique de la puce, et l'ecraser detruirait
+     l'information. `i2c lire16 29 0016 1` pour la lire.
+
+⛔ AUCUN de ces trois capteurs n'alimente une case, et c'est une
+   DECISION, pas un provisoire : X2 est TRANCHE — « AUCUNE 3e
+   grandeur, la case AMBIANCE reste a deux » (decision owner du
+   2026-08-20). Les QUATRE candidats ont ete mesures au MEME
+   instrument (`w2`) : pression 1 hPa d'etendue en 17 min, ALS
+   binaire, gaz sans reponse a deux bouffees, et le lux qualifie a
+   10-70x la reference — ce qui est justement l'argument CONTRE
+   (W2 est un seuil PLANCHER, pas un optimum).
+   ⇒ `env` est donc le SEUL endroit ou ces trois se lisent, et le
+     BH1750 a un SECOND emploi : il pilote le retroeclairage (`bl`).
+desknode> 
