@@ -1,0 +1,118 @@
+# dn4-20 / T-06 — LA SEANCE A L'OEIL : L'OEIL VEUT UNE MARCHE, ⛔ PAS UNE LOI
+# ===========================================================================
+# Date    : 2026-08-27, ~21:15 -> ~22:00   ·   Binaire : be0431f (App version)
+# Regime  : ACTIF (dashboard six cases) — VERIFIE A LA CARTE sur les points tardifs
+# Contenu : dashboard six cases (= ce qui s'appelle ACTIF depuis dn3-3)
+# Protocole: l'agent pose UNE valeur, l'ANNONCE, et ATTEND le verdict owner.
+#           ⛔ AUCUN balayage instrumente. L'owner tranche en 3 s.
+#           ⚠️ L'owner a demande que l'agent tape a sa place (il l'a choisi
+#              explicitement) — la valeur lui est ANNONCEE avant chaque jugement,
+#              donc il ne juge JAMAIS a l'aveugle. C'est la faute (b) du 27/08
+#              qui est evitee, ⛔ pas le protocole de dn4-19 qui est repris.
+
+── LES POINTS, TELS QU'ILS ONT ETE PRIS ────────────────────────────────────────
+
+  lux |  duty  | verdict owner (verbatim)                   | regime verifie
+ -----|--------|--------------------------------------------|----------------
+    0 |   8 %  | « ok la ca parais pas assez lumineu »       | ACTIF ✅
+    0 |  16 %  | « ok 16 c'est mieu »                        | ACTIF (debut)
+    0 |  20 %  | « mieu ou pareil .. »                       | ⚠️ DOUTEUX (voir plus bas)
+    0 |  28 %  | « pareil »                                  | ⚠️ DOUTEUX (voir plus bas)
+    0 |  12 %  | « trop sombre »                             | ACTIF (coherent)
+   34 |  40 %  | « trop bas »                                | ACTIF (coherent)
+   34 |  60 %  | « un peu encor trop bas »                   | ACTIF (coherent)
+   34 |  72 %  | « bon »                                     | ACTIF (coherent)
+   34 |  85 %  | « pareil »                                  | ACTIF (coherent)
+    0 |  72 %  | « non c'est un peu fort quand meme »        | ACTIF (coherent)
+   11 |  72 %  | « bon »                                     | ACTIF ✅ LU
+   11 |  20 %  | « trop sombre »                             | ACTIF ✅ LU
+
+🔴 LE RESULTAT, ET IL NE CHOISIT AUCUN DES QUATRE CANDIDATS D'AC4.1 :
+
+   · a  0 lx : 16 et 20 PASSENT, 72 est « un peu fort », 12 et 8 sont refuses
+   · a 11 lx : 20 est « trop sombre », 72 est « bon »
+   · a 34 lx : 40 et 60 trop bas, 72 et 85 bons
+   · a 105-391 lx (27/08) : ~80, PLAT
+
+  ⇒ L'OEIL NE DEMANDE PAS UNE LOI. IL DEMANDE UNE MARCHE :
+      ~16-20 % dans le NOIR   ->   ~72-80 % des qu'il y a de la lumiere,
+    et LA BASCULE SE JOUE ENTRE 0 ET 11 lx, ⛔ pas entre 20 et 600 lx.
+    Au-dessus de 11 lx, c'est PLAT jusqu'a 391 lx (3,7x de lumiere, 27/08).
+
+── CE QUE CA REFUTE, LIGNE PAR LIGNE, CHACUNE AVEC SA MESURE ───────────────────
+
+  🔴 DN_ENV_BL_PCT_MIN = 8   — REFUTE. Grave le 20/08 par dichotomie 10/6/8 sur
+     CE MEME CONTENU, verbatim « oui 8 % c'est bien ». Refuse deux fois ce soir :
+     8 % « pas assez lumineux », 12 % « trop sombre ». Le niveau sombre est ~16.
+     ⚠️ ⛔ NE PAS EFFACER LE 8 % : il est ANNOTE. Ce que la confrontation dit,
+        c'est que ce chiffre n'a pas tenu 7 jours — ⛔ pas qu'il etait faux le 20/08.
+        L'ADAPTATION DE L'OEIL n'a jamais ete controlee (AC2.4) : c'est la
+        premiere explication candidate, et elle N'EST PAS MESUREE.
+
+  🔴 DN_ENV_BL_LUX_BAS = 20  — REFUTE, et c'est LE constat que dn4-19/AC6.4
+     exigeait pour deplacer une borne. A 11 lx la loi rend 8 % (elle est encore
+     a son PLANCHER) alors que l'oeil veut 72 %. La borne basse est AU-DESSUS
+     de la marche.
+
+  🔴 DN_ENV_BL_LUX_HAUT = 600 — REFUTE par l'autre bout. L'oeil est plat des
+     11 lx ; la loi etale sur 30x de lumiere une montee que l'oeil finit en 11 lx.
+
+  ⇒ LA QUESTION D'AC4 (« log, lineaire, plateau ou puissance ? ») S'EFFONDRE :
+    entre des bornes aussi rapprochees, la FORME entre les deux ne se voit plus.
+    ⛔ Ce n'est pas qu'un candidat gagne : c'est que la question etait mal posee.
+
+── LE CANDIDAT (A) MESURE SUR LA CARTE (⛔ pas calcule a la main) ───────────────
+  Emule avec l'instrument livre ce soir : plancher 16 · plafond 80 · bornes 20/105
+      0 lx -> 16 %  ✅      34 lx -> 36 %  🔴 (l'oeil veut 72)
+    105 lx -> 80 %  ✅     229 lx -> 80 %  ✅     391 lx -> 80 %  ✅
+  ⇒ (A) + plancher 16 tombe juste sur QUATRE des cinq points, et rate le
+    milieu-bas de 36 POINTS. Capture : T-05 / t5-candidatA.
+
+── LE PRIX, ET IL EST MESURE CE SOIR AUSSI ─────────────────────────────────────
+  🔴 Une marche de ~52 points (20 -> 72) dans une piece dont T-04 a mesure
+     qu'elle bouge de ±2 a 4 lx TOUTE SEULE. La bande morte vaut 3 POINTS.
+     ⇒ ELLE NE PEUT RIEN CONTRE CA : la dalle basculerait entre les deux niveaux.
+  ⇒ L'HYSTERESIS A DEUX SEUILS, refusee au papier DEUX FOIS (« on ne pose rien
+    avant de l'avoir vu », 20/08 puis 27/08), VIENT D'ETRE VUE.
+
+── 🔴 L'INCIDENT DE PROTOCOLE, DECLARE, ⛔ PAS MASQUE ──────────────────────────
+  En manipulant la lampe pres de la carte, l'owner a TOUCHE LA DALLE.
+  `veille` l'a dit : `taps de reglage dans le MENU : 2`, veille RE-ARMEE et
+  delai passe de 10 min a 1 MINUTE, `bascules -> Ambient : 5` (contre 1 avant).
+  Avec 1 minute, la carte retombait en Ambient en permanence — et une bascule
+  ECRASE le duty, MEME asservissement desarme (dn4-19 : « elle POSE le niveau
+  du regime EN UNE FOIS »).
+
+  ⚠️ CE QUE CA CONTAMINE, ET LE RAISONNEMENT EST ASYMETRIQUE :
+     une bascule vers Ambient ne peut que BAISSER le duty (plancher d'Ambient 16).
+     · ✅ SUR : tout verdict « trop bas / trop sombre » (8, 12, 40, 60) — un
+          ecrasement les aurait rendus PLUS sombres, pas plus clairs.
+     · ✅ SUR : tout verdict « bon / trop fort » (16, 72, 85, et le 72 « un peu
+          fort ») — un ecrasement a 16 les aurait fait juger SOMBRES.
+     · ⚠️ DOUTEUX : 20 % et 28 % a 0 lx, tous deux « pareil ». Ils ont pu etre
+          ecrases a 16 — auquel cas l'owner comparait 16 a 16.
+          ⇒ CE QUE CA COUTE : la LARGEUR de la bande haute dans le noir.
+          ⇒ CE QUE CA NE COUTE PAS : la conclusion gravee (8 et 12 refuses,
+             16 accepte), ni AUCUN point a 11 ou 34 lx.
+
+  ⛔ ET UNE FAUTE EST COTE AGENT, ELLE EST DITE : le LUX a ete releve a chaque
+     point, le REGIME non — alors qu'AC7.2 l'exige. Corrige en cours de seance
+     (les points a 11 lx portent les trois : duty, lux, regime, lus a la carte).
+
+── CE QUI N'EST PAS MESURE, ET C'EST DIT ───────────────────────────────────────
+  · LE BORD DE LA MARCHE. Aucun point entre 0 et 11 lx. ⛔ DECISION OWNER de ne
+    pas le prendre, verbatim : « franchement non j'avais dit pour un chantier
+    comme ca des stories sur un outil detalonage.... la c'est juste pour regler
+    3 niveau pas besoin d'avoir 3600 param ».
+    ⇒ Les deux seuils d'une eventuelle hysteresis ne peuvent donc PAS etre poses
+      par la mesure aujourd'hui.
+  · AU-DELA DE 391 lx : toujours jamais juge (la piece a ete mesuree a 2 262 lx
+    en journee, §13.19.7 c).
+  · L'ADAPTATION DE L'OEIL : jamais instrumentee, ni ici ni ailleurs (AC2.4).
+
+── ETAT DE LA CARTE A LA FIN DE LA SEANCE (verifie) ────────────────────────────
+  plancher 8 · plafond 100 · bornes 20/600 · courbe log · echelle Ambient 100 %
+  asservissement ARME · veille ARMEE, delai 10 min (RESTAURE : l'owner l'avait
+  passe a 1 min par les 2 taps MENU)
+  ⇒ TOUT est revenu aux defauts du SOURCE. ⛔ Aucun reglage de seance ne survit.
+  🔴 Et la carte affiche le defaut en une ligne : `applique : 8 % (sur 11 lx)`.

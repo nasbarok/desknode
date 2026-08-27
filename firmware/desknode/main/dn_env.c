@@ -169,8 +169,13 @@ static int s_bl_pct_min = DN_ENV_BL_PCT_MIN;
  *    arbitrable en séance. »* ⇒ le même défaut, pris par l'autre bout.
  * ⛔ `bl auto bornes 20 105` N'IMITE PAS le plateau : ça sature à 100 %, pas
  *    à 80. Il fallait bien le plafond lui-même.
- * ⚠️ `DN_ENV_BL_PCT_MAX` reste, et il garde DEUX emplois : la valeur PAR
- *    DÉFAUT, et le maximum PHYSIQUE que `dn_display_backlight_pct()` accepte. */
+ * ⚠️ `dn4-20`, 2026-08-27 — ~~il garde DEUX emplois~~ ⇒ **LES DEUX EMPLOIS SONT
+ *    SÉPARÉS**, et il le fallait : la séance à l'œil a gravé le plafond de la loi
+ *    à **80**. Restés le même macro, `bl auto plafond 100` serait devenu
+ *    IMPOSSIBLE — et un instrument d'A/B qui ne sait plus remonter à son point
+ *    de départ ne réfute plus rien.
+ *      · `DN_ENV_BL_PCT_MAX`     = le DÉFAUT du plafond DE LA LOI (80)
+ *      · `DN_ENV_BL_PCT_ABS_MAX` = le maximum PHYSIQUE de `dn_display` (100) */
 static int s_bl_pct_max = DN_ENV_BL_PCT_MAX;
 static int s_bl_dernier_pct = -1;  /* -1 = la loi n'a encore rien appliqué */
 static int s_bl_dernier_lux = DN_ENV_ABSENT;
@@ -1256,7 +1261,7 @@ int dn_env_bl_plancher(void) { return s_bl_pct_min; }
  * 🔴 `dn4-20`/AC4.6 — LE PLAFOND, RÉGLABLE À CHAUD. ⛔ IL REFUSE, IL N'ÉCRÊTE PAS.
  *
  * DEUX bornes, DEUX motifs, et aucune n'est de la commodité :
- *   · borne HAUTE = `DN_ENV_BL_PCT_MAX` (100) — c'est le maximum **PHYSIQUE**
+ *   · borne HAUTE = `DN_ENV_BL_PCT_ABS_MAX` (100) — le maximum **PHYSIQUE**
  *     que `dn_display_backlight_pct()` accepte. Au-delà il refuserait, et la
  *     loi calculerait une cible que la dalle ne prend jamais : un instrument
  *     qui ment.
@@ -1271,7 +1276,7 @@ int dn_env_bl_plancher(void) { return s_bl_pct_min; }
  */
 esp_err_t dn_env_bl_plafond_set(int pct)
 {
-    if (pct > DN_ENV_BL_PCT_MAX || pct < s_bl_pct_min + DN_ENV_BL_HYST) {
+    if (pct > DN_ENV_BL_PCT_ABS_MAX || pct < s_bl_pct_min + DN_ENV_BL_HYST) {
         return ESP_ERR_INVALID_ARG;
     }
     s_bl_pct_max = pct;

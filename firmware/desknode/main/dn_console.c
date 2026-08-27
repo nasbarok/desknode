@@ -1248,7 +1248,7 @@ static int cmd_bl(int argc, char **argv)
             long pct = 0;
             if (argc != 4 || !parse_entier(argv[3], &pct)) {
                 printf("usage : bl auto plafond <%d..%d>   (actuel : %d %%)\n",
-                       dn_env_bl_plancher() + DN_ENV_BL_HYST, DN_ENV_BL_PCT_MAX,
+                       dn_env_bl_plancher() + DN_ENV_BL_HYST, DN_ENV_BL_PCT_ABS_MAX,
                        dn_env_bl_plafond());
                 return 1;
             }
@@ -1258,8 +1258,8 @@ static int cmd_bl(int argc, char **argv)
                        "dire ; au-dessus de %d la dalle refuserait le duty et la "
                        "loi viserait une cible jamais prise. Rien n'a été "
                        "touché.\n",
-                       dn_env_bl_plancher() + DN_ENV_BL_HYST, DN_ENV_BL_PCT_MAX,
-                       DN_ENV_BL_HYST, DN_ENV_BL_PCT_MAX);
+                       dn_env_bl_plancher() + DN_ENV_BL_HYST, DN_ENV_BL_PCT_ABS_MAX,
+                       DN_ENV_BL_HYST, DN_ENV_BL_PCT_ABS_MAX);
                 return 1;
             }
             /* ⚠️ `bl <n>` reste atteignable jusqu'a 100 : le plafond borne LA LOI,

@@ -290,17 +290,77 @@ typedef struct {
  *    le plancher en % figé à la compilation — or c'est précisément lui que l'œil
  *    a déplacé. *« L'arbitrage se tranche sur la dalle »* vaut pour les deux.
  */
-#define DN_ENV_BL_PCT_MIN      8
-/* 🔴 `dn4-20`/AC4.6 — CE MACRO N'EST PLUS « LE PLAFOND », il en est LE DÉFAUT.
- *    Le plafond effectif vit dans `s_bl_pct_max` et se règle par
- *    `bl auto plafond <n>` / `dn_env_bl_plafond_set()`. Ce `100` garde DEUX
- *    emplois, et les deux sont réels : la valeur **au boot**, et le maximum
- *    **PHYSIQUE** que `dn_display_backlight_pct()` accepte.
- * ⛔ Ne plus l'utiliser pour BORNER un réglage : c'est ce qui laissait
- *    `bl auto plancher 97` passer sous un plafond posé à 80. */
-#define DN_ENV_BL_PCT_MAX      100
-#define DN_ENV_BL_LUX_BAS      20
-#define DN_ENV_BL_LUX_HAUT     600
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ * 🔴 LES QUATRE BORNES SONT RÉÉCRITES PAR `dn4-20`, LE 2026-08-27 — ⛔ ET LES
+ *    ANCIENNES SONT BARRÉES, PAS EFFACÉES.
+ *
+ * SÉANCE À L'ŒIL, binaire **`be0431f`** (SHA lu au bandeau), régime **ACTIF**
+ * (dashboard six cases), owner aux commandes, ⛔ aucun balayage instrumenté.
+ * Capture : `mesures/dn4-20/T-06-oeil-actif-marche-pas-loi.txt`.
+ *
+ * 🎯 CE QUE LA SÉANCE A TROUVÉ, ET CE N'EST AUCUN DES QUATRE CANDIDATS QU'ELLE
+ *    DEVAIT DÉPARTAGER : **L'ŒIL NE DEMANDE PAS UNE LOI, IL DEMANDE UNE MARCHE.**
+ *      · pièce à **0 lx**  : 16 ✅ · 20 ✅ · **72 ⛔ « un peu fort quand même »**
+ *                            ⛔ 12 « trop sombre » · ⛔ 8 « pas assez lumineux »
+ *      · pièce à **11 lx** : ⛔ 20 « trop sombre » · **72 ✅ « bon »**
+ *      · pièce à **34 lx** : ⛔ 40 « trop bas » · ⛔ 60 « un peu encor trop bas »
+ *                            **72 ✅ « bon »** · 85 « pareil »
+ *      · 105 → 391 lx (27/08) : **~80, PLAT sur 3,7× de lumière**
+ *    ⇒ la bascule se joue **ENTRE 0 ET 11 lx**, ⛔ pas entre 20 et 600, et
+ *      au-dessus c'est plat. La FORME entre les bornes ne se voit plus.
+ * ══════════════════════════════════════════════════════════════════════════
+ */
+
+/* ~~`8`~~ ⇒ **20**. Le `8` avait été gravé le **2026-08-20**, rideau fermé,
+ * capteur à 2 lx, **sur ce même contenu**, par dichotomie 10 / 6 / 8 — verbatim
+ * *« oui 8 % c'est bien »*. Il a été **refusé deux fois le 2026-08-27**, par le
+ * **même œil, sur le même contenu**, à 0 lx : *« pas assez lumineux »* (8 %) et
+ * *« trop sombre »* (12 %). **16 et 20 passent.**
+ * ⛔ CE N'EST PAS QUE LE 8 % ÉTAIT FAUX LE 20/08 : c'est qu'il n'a pas tenu sept
+ *    jours. ⚠️ L'ADAPTATION DE L'ŒIL n'a **jamais** été instrumentée (AC2.4) —
+ *    c'est la première explication candidate, et elle **n'est pas mesurée**. */
+#define DN_ENV_BL_PCT_MIN      20
+
+/* 🔴 LE MAXIMUM **PHYSIQUE**, ⛔ À NE PAS CONFONDRE AVEC LE PLAFOND DE LA LOI.
+ * C'est ce que `dn_display_backlight_pct()` accepte, et c'est ce qui BORNE
+ * `dn_env_bl_plafond_set()` par le haut. ⛔ Il ne descend jamais : sans lui,
+ * graver un plafond de loi à 80 rendrait `bl auto plafond 100` IMPOSSIBLE et
+ * l'instrument d'A/B ne saurait plus remonter — un instrument qu'on ne peut pas
+ * ramener à son point de départ ne réfute plus rien. */
+#define DN_ENV_BL_PCT_ABS_MAX  100
+
+/* ~~`100`~~ ⇒ **80**, LE PLAFOND **DE LA LOI** (défaut de `s_bl_pct_max`).
+ * Constat owner **2026-08-27** : **80 % à 105 lx** *« celui-là »*, **80 % à
+ * 391 lx** *« toujours bon »*, et **74 % à 229 lx** *« trop limite »*. Ce soir,
+ * **85 % à 34 lx** *« pareil »* que 72. ⇒ l'œil ne demande **jamais** plus de
+ * ~80, sur **3,7× de lumière**.
+ * ⚠️ CONSÉQUENCE VISIBLE, ANNONCÉE ⛔ PAS DÉCOUVERTE : le boot pose 100 %
+ *    (`desknode_main.c`), donc **la dalle descend de 100 à 80** — la ligne de
+ *    boot de `dn_env.c` le dit, et le `README` aussi.
+ * ⚠️ `bl 100` reste atteignable à la main : le plafond borne LA LOI, ⛔ pas la dalle. */
+#define DN_ENV_BL_PCT_MAX      80
+
+/* ~~`20`~~ ⇒ **2**, et ~~`600`~~ ⇒ **11**. LES DEUX BORNES EN LUX SONT RÉFUTÉES,
+ * chacune par son bout, et **c'est le constat owner que `dn4-19`/AC6.4 exigeait**
+ * pour avoir le droit de les déplacer :
+ *   · `LUX_BAS = 20` — à **11 lx** la loi rendait encore **8 %** (elle était à son
+ *     PLANCHER) alors que l'œil y veut **72** : la borne basse était **AU-DESSUS
+ *     de la marche** ;
+ *   · `LUX_HAUT = 600` — l'œil est **plat dès 11 lx** : la loi étalait sur **30×**
+ *     de lumière une montée que l'œil termine en **11 lx**.
+ * 🔴 CE QUE CES DEUX CHIFFRES SONT, HONNÊTEMENT : **L'ENCADREMENT LE PLUS LARGE
+ *    QUE LA MESURE DÉFEND**, ⛔ pas le bord de la marche. **AUCUN point n'a été
+ *    pris entre 0 et 11 lx** — décision owner de clore la séance là. La loi rend
+ *    donc **44 % à 4 lx**, une valeur **JAMAIS JUGÉE**. ⇒ entrée de ledger.
+ * 🔴 ET LE PRIX EST MESURÉ, LUI : la marche vaut **~60 points** sur **9 lx**,
+ *    dans une pièce dont `T-04` a mesuré qu'elle bouge de **±2 à 4 lx toute
+ *    seule**. La bande morte vaut **3 points** ⇒ ⛔ **elle ne peut rien contre
+ *    ça.** L'hystérésis à deux seuils, refusée au papier **deux fois**
+ *    (*« on ne pose rien avant de l'avoir vu »*), **vient d'être vue** — mais
+ *    ⛔ ses deux seuils ne peuvent pas être posés sans le bord de la marche. */
+#define DN_ENV_BL_LUX_BAS      2
+#define DN_ENV_BL_LUX_HAUT     11
 #define DN_ENV_BL_HYST         3
 /*
  * 🔴 `dn4-19`, 2026-08-27 — ~~20~~ ⇒ **50**, PAR CONSTAT OWNER À L'ŒIL.

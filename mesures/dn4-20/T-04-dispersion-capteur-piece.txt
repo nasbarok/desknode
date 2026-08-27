@@ -1,0 +1,172 @@
+# dn4-20 / T-04 — LA DISPERSION DU COUPLE CAPTEUR x PIECE (AC2)
+# =============================================================
+# Date     : 2026-08-27, 20:36:26 -> 20:42:28   ·   Binaire : 8f95975 (⛔ AVANT le flash de be0431f)
+# Regime   : ACTIF   ·   Piece : bureau, lampe fixe allumee, rideau dans un etat FIGE
+# Protocole: n = 7 releves espaces de 60 s (fenetre 6 min 02 s). Fenetre ANNONCEE a
+#            l'owner AVANT ouverture (« ne touche a rien, ne passe pas devant le
+#            capteur »), et il a dit OUI avant qu'elle s'ouvre.
+#            ⚠️ C'est ICI que le n >= 5 s'applique : c'est un INSTRUMENT, ⛔ pas un oeil.
+#
+# ── AC2.1 — LES CHIFFRES ────────────────────────────────────────────────────────
+#   lux    : 84 · 82 · 81 · 81 · 80 · 80 · 80        (brut : 101 99 98 98 97 97 96)
+#   min    : 80        mediane : 81        max : 84
+#   ETENDUE: 4 lx  (4,9 % de la mediane)   ecart-type : 1,36 lx
+#
+# 🔴 ET LA SERIE EST STRICTEMENT DECROISSANTE — CE N'EST PAS DU BRUIT, C'EST UNE
+#    TENDANCE. 84 -> 82 -> 81 -> 81 -> 80 -> 80 -> 80, sans un seul rebond, entre
+#    20h36 et 20h42 fin aout : c'est LE JOUR QUI TOMBE, ⛔ pas la dispersion du
+#    couple. => la dispersion ALEATOIRE est donc PLUS PETITE que ces 4 lx.
+#
+# ── AC2.2 — L'ETENDUE TRADUITE EN POINTS DE DUTY, AVEC `bl loi` ⛔ PAS A LA MAIN ─
+#   A la hauteur de plage REELLEMENT mesuree :
+#       bl loi 80 -> ACTIF 45 %        bl loi 84 -> ACTIF 47 %
+#       => une etendue de 4 lx autour de 81 lx deplace la cible de 2 POINTS.
+#
+# ── AC2.3 — LE VERDICT, ET IL EST DOUBLE (le cadrage n'en attendait qu'un) ──────
+#   ✅ A ~80 lx : 2 points < 3 (bande morte) => LA LOI EST LISIBLE FINEMENT ICI.
+#      Un point d'oeil pris vers 80-250 lx DESIGNE bien un duty. AC4 se joue
+#      normalement, et les six points d'oeil de dn4-19 ne sont PAS affaiblis.
+#
+#   🔴 MAIS LA MEME ETENDUE EN BAS DE PLAGE FRANCHIT LA BANDE MORTE — mesure au
+#      meme instrument, meme binaire :
+#          bl loi 20 -> 8 %     bl loi 24 -> 13 %    => 5 POINTS pour 4 lx
+#          bl loi 21 -> 9 %     bl loi 25 -> 14 %    => 5 POINTS pour 4 lx
+#      => ⛔ LA LISIBILITE DE LA LOI N'EST PAS UNE PROPRIETE DE LA LOI : ELLE
+#         DEPEND D'OU L'ON EST DANS LA PLAGE. 2 pts en haut, 5 pts en bas.
+#      ⇒ CE QUI PESE DANS AC4 : toute forme RAIDE EN BAS DE PLAGE est
+#        ininterpretable, parce qu'un simple +-4 lx y deplace la cible de plus
+#        que la bande morte. Le candidat (B) (22 pt/lx a 20->21 lx) serait
+#        illisible d'un facteur ~4 de plus encore.
+#
+# ── AC2.4 — CE QUI N'EST PAS MESURE ICI, ET C'EST DIT ───────────────────────────
+#   · L'ADAPTATION DE L'OEIL. Ni cette seance ni les deux precedentes n'ont
+#     controle le temps passe devant la dalle ni la lumiere subie avant le
+#     jugement. ⛔ C'est une limite declaree de TOUT ce dossier.
+#   · LA CAUSE DU 105 -> 458 -> 219 lx DE LA SEANCE DE CLOTURE. Ce tir-ci ne la
+#     reproduit pas : sous un protocole reellement non perturbe, le couple tient
+#     a +-2 lx en 6 minutes. ⇒ ces excursions-la n'etaient donc PAS la dispersion
+#     du capteur — quelque chose a change dans la piece. ⛔ QUOI : NON MESURE, et
+#     ce tir ne permet pas de le dire.
+
+--- BRUT : les 7 releves ---
+--- releve 1  t=20:36:26 ---
+cycles     : 97 · dernier cycle 295 us MESURES
+BH1750  @ 0x23 : VIVANT — 84 lx (brut 101) · age 2926 ms
+  applique : 47 % (sur 84 lx)
+--- releve 2  t=20:37:27 ---
+cycles     : 109 · dernier cycle 369 us MESURES
+BH1750  @ 0x23 : VIVANT — 82 lx (brut 99) · age 3101 ms
+  applique : 47 % (sur 82 lx)
+--- releve 3  t=20:38:27 ---
+cycles     : 121 · dernier cycle 311 us MESURES
+BH1750  @ 0x23 : VIVANT — 81 lx (brut 98) · age 3288 ms
+  applique : 47 % (sur 81 lx)
+--- releve 4  t=20:39:27 ---
+cycles     : 133 · dernier cycle 301 us MESURES
+BH1750  @ 0x23 : VIVANT — 81 lx (brut 98) · age 3498 ms
+  applique : 47 % (sur 81 lx)
+--- releve 5  t=20:40:27 ---
+cycles     : 145 · dernier cycle 324 us MESURES
+BH1750  @ 0x23 : VIVANT — 80 lx (brut 97) · age 3686 ms
+  applique : 47 % (sur 80 lx)
+--- releve 6  t=20:41:27 ---
+cycles     : 157 · dernier cycle 734 us MESURES
+BH1750  @ 0x23 : VIVANT — 80 lx (brut 97) · age 3898 ms
+  applique : 47 % (sur 80 lx)
+--- releve 7  t=20:42:28 ---
+cycles     : 169 · dernier cycle 290 us MESURES
+BH1750  @ 0x23 : VIVANT — 80 lx (brut 96) · age 4093 ms
+  applique : 47 % (sur 80 lx)
+FINI
+
+--- BRUT : la traduction en points de duty (bl loi) ---
+
+===== bl auto plafond 100 =====
+bl auto plafond 100
+⚠️ le plafond borne LA LOI, ⛔ pas la dalle : `bl 100` reste un geste d'opérateur (il désarme l'auto et le dit).
+asservissement BH1750 : ARMÉ
+  loi      : 8 % à <= 20 lx · 100 % à >= 600 lx · courbe log entre les deux
+           (dn4-19/AC6.3 : l'œil ET le lux sont logarithmiques. Constat owner du 2026-08-27, A/B en ACTIF à 245 lx : « 75 % — nettement plus », là où la loi LINÉAIRE rendait 44 %. ⛔ Les deux bornes n'ont PAS bougé. `bl auto courbe lineaire` pour revenir à la loi de dn4-3 et refaire l'A/B.)
+  garde    : bande morte 3 pts · pas max 50 pts par cycle de 5000 ms (course complète en 2 cycles)
+  applique : 37 % (sur 80 lx)
+  régime   : ACTIF
+  ambiant  : échelle 100 % de la loi · plancher 16 %
+           ⚠️ ce plancher est un TROISIÈME contenu (gros chiffres sur noir), MESURÉ À L'ŒIL le 2026-08-27 dans le noir (« 8 % c'est trop bas, 16 c'est bien ») : ⛔ ne pas le confondre avec les 8 % du dashboard ni avec les 3 % du Living PCB — trois CONTENUS, trois chiffres.
+  applications : 3 mouvements de duty depuis le BOOT (⛔ jamais remis, meme par `bl auto on`)
+           (dn4-19/AC8 : deux relevés espacés mesurent le POMPAGE de la bande morte — la loi vit H24 depuis que l'auto est armée par défaut.)
+  ⚠️ `bl <n>`, `bl on|off` et `bl ramp` DÉSARMENT l'auto et le DISENT.
+  ⛔ `bl ramp` est BLOQUANTE : elle n'est JAMAIS appelée par l'asservissement.
+  ⛔ La VEILLE ne désarme PLUS (dn4-19) : elle POSE le niveau du régime EN UNE FOIS, et la loi le maintient ensuite.
+desknode> 
+===== bl loi 80 =====
+bl loi 80
+loi à 80 lx   ·   courbe : log
+  ACTIF   : 45 %
+  AMBIENT : 45 %   (échelle 100 % · plancher 16 %)
+  duty POSÉ en ce moment : 37 %   ·   régime : ACTIF
+  pour comparaison, courbe lineaire : 18 % en ACTIF
+⛔ RIEN N'A ÉTÉ APPLIQUÉ, RIEN N'A ÉTÉ DÉSARMÉ ET LA COURBE EST REMISE : c'est une lecture.
+desknode> 
+===== bl loi 84 =====
+bl loi 84
+loi à 84 lx   ·   courbe : log
+  ACTIF   : 47 %
+  AMBIENT : 47 %   (échelle 100 % · plancher 16 %)
+  duty POSÉ en ce moment : 37 %   ·   régime : ACTIF
+  pour comparaison, courbe lineaire : 18 % en ACTIF
+⛔ RIEN N'A ÉTÉ APPLIQUÉ, RIEN N'A ÉTÉ DÉSARMÉ ET LA COURBE EST REMISE : c'est une lecture.
+desknode> 
+===== bl loi 20 =====
+bl loi 20
+loi à 20 lx   ·   courbe : log
+  ACTIF   : 8 %
+  AMBIENT : 16 %   (échelle 100 % · plancher 16 %)
+  duty POSÉ en ce moment : 37 %   ·   régime : ACTIF
+  pour comparaison, courbe lineaire : 8 % en ACTIF
+⛔ RIEN N'A ÉTÉ APPLIQUÉ, RIEN N'A ÉTÉ DÉSARMÉ ET LA COURBE EST REMISE : c'est une lecture.
+desknode> 
+===== bl loi 21 =====
+bl loi 21
+loi à 21 lx   ·   courbe : log
+  ACTIF   : 9 %
+  AMBIENT : 16 %   (échelle 100 % · plancher 16 %)
+  duty POSÉ en ce moment : 37 %   ·   régime : ACTIF
+  pour comparaison, courbe lineaire : 8 % en ACTIF
+⛔ RIEN N'A ÉTÉ APPLIQUÉ, RIEN N'A ÉTÉ DÉSARMÉ ET LA COURBE EST REMISE : c'est une lecture.
+desknode>
+===== bl loi 24 =====
+bl loi 24
+loi à 24 lx   ·   courbe : log
+  ACTIF   : 13 %
+  AMBIENT : 16 %   (échelle 100 % · plancher 16 %)
+  duty POSÉ en ce moment : 37 %   ·   régime : ACTIF
+  pour comparaison, courbe lineaire : 9 % en ACTIF
+⛔ RIEN N'A ÉTÉ APPLIQUÉ, RIEN N'A ÉTÉ DÉSARMÉ ET LA COURBE EST REMISE : c'est une lecture.
+desknode> 
+===== bl loi 25 =====
+bl loi 25
+loi à 25 lx   ·   courbe : log
+  ACTIF   : 14 %
+  AMBIENT : 16 %   (échelle 100 % · plancher 16 %)
+  duty POSÉ en ce moment : 37 %   ·   régime : ACTIF
+  pour comparaison, courbe lineaire : 9 % en ACTIF
+⛔ RIEN N'A ÉTÉ APPLIQUÉ, RIEN N'A ÉTÉ DÉSARMÉ ET LA COURBE EST REMISE : c'est une lecture.
+desknode>
+===== bl loi 40 =====
+bl loi 40
+loi à 40 lx   ·   courbe : log
+  ACTIF   : 27 %
+  AMBIENT : 27 %   (échelle 100 % · plancher 16 %)
+  duty POSÉ en ce moment : 37 %   ·   régime : ACTIF
+  pour comparaison, courbe lineaire : 11 % en ACTIF
+⛔ RIEN N'A ÉTÉ APPLIQUÉ, RIEN N'A ÉTÉ DÉSARMÉ ET LA COURBE EST REMISE : c'est une lecture.
+desknode> 
+===== bl loi 60 =====
+bl loi 60
+loi à 60 lx   ·   courbe : log
+  ACTIF   : 38 %
+  AMBIENT : 38 %   (échelle 100 % · plancher 16 %)
+  duty POSÉ en ce moment : 37 %   ·   régime : ACTIF
+  pour comparaison, courbe lineaire : 14 % en ACTIF
+⛔ RIEN N'A ÉTÉ APPLIQUÉ, RIEN N'A ÉTÉ DÉSARMÉ ET LA COURBE EST REMISE : c'est une lecture.
+desknode> 

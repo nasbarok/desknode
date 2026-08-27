@@ -1,0 +1,91 @@
+# dn4-20 / T-05 — L'INSTRUMENT `bl auto plafond` EST LIVRE ET EPROUVE (AC4.6/AC4.7)
+# =================================================================================
+# Date    : 2026-08-27, ~20:45   ·   Binaire : be0431f (App version, ⛔ plus `-dirty`)
+# Contexte: FLASH JOUE APRES [CC] OWNER « Ordre B ». `idf.py reconfigure` joue AVANT
+#           le build, sinon le bandeau nomme le commit PRECEDENT (piege mesure le 27/08).
+#           ⇒ tout ce qui suit dans la seance porte UN SEUL SHA : be0431f.
+#
+# ⛔ CE BINAIRE NE CHANGE AUCUNE LOI. Le plafond vaut 100 par defaut => la loi est
+#    BIT POUR BIT celle des six points. C'est l'INSTRUMENT, ⛔ pas le verdict.
+#
+# ── LES REFUS, VUS EN TRAIN DE REFUSER (⛔ une garde n'existe que la, AC8) ───────
+#   bl auto plafond        -> usage : <11..100>  (actuel : 100 %)   [11 = plancher 8 + HYST 3]
+#   bl auto plafond 5      -> REFUSE, « Rien n'a ete touche »
+#   bl auto plafond 101    -> REFUSE, « Rien n'a ete touche »
+#
+# 🎯 ET LE DEFAUT QUE LA STORY AVAIT NOMME EST VU EN TRAIN D'ETRE CORRIGE :
+#   bl auto plafond 80     -> ACCEPTE, l'etiquette SUIT : « 8 % a <= 20 lx · 80 % a
+#                             >= 600 lx », et la dalle passe de 50 a 45 % IMMEDIATEMENT
+#                             (`dn_ui_veille_bl_rafraichir()`, le 6e ecrivain de LEDC)
+#   bl auto plancher 97    -> REFUSE : « le plancher doit etre dans [0, 77] »
+#     ⛔ AVANT CE COMMIT IL ACCEPTAIT 97 sous un plafond a 80 => LOI INERTE SANS UN
+#        MOT, exactement ce que son PROPRE commentaire disait vouloir empecher.
+#
+# ── AC4.4 — L'INVARIANT DES DEUX BORNES, POUR *CHAQUE* FORME DE L'ENUM ──────────
+#   plafond = 80 :  bl loi 20  -> ACTIF  8 % (= le plancher)  ✅
+#                   bl loi 600 -> ACTIF 80 % (= le plafond)   ✅
+#   et la ligne « pour comparaison, courbe lineaire » du MEME tir rend 8 et 80 :
+#   ⇒ l'invariant tient pour LES DEUX formes, verifie SANS basculer `s_bl_courbe`
+#     (⛔ une prediction n'ecrit jamais l'etat qu'elle lit).
+#
+# ⚠️ CONSTAT LIBRE, ET IL EST DEJA A L'ORDRE DU JOUR D'AC5.4 : a 20 lx la carte
+#    imprime ACTIF 8 % et AMBIENT 16 %. L'INVERSION BASSE EST LA, VISIBLE, SUR LE
+#    BINAIRE DE LA SEANCE : sous ~26 lx, s'endormir ECLAIRE et se reveiller ASSOMBRIT.
+#    ⛔ Elle n'a toujours pas ete soumise a l'oeil — c'est AC5.4 qui le fait.
+
+
+===== bl auto plafond =====
+bl auto plafond
+usage : bl auto plafond <11..100>   (actuel : 100 %)
+Command returned non-zero error code: 0x1 (ERROR)
+desknode> 
+===== bl auto plafond 5 =====
+bl auto plafond 5
+refusé : le plafond doit être dans [11, 100]. Au-dessous de plancher+3 la loi serait INERTE sans le dire ; au-dessus de 100 la dalle refuserait le duty et la loi viserait une cible jamais prise. Rien n'a été touché.
+Command returned non-zero error code: 0x1 (ERROR)
+desknode> 
+===== bl auto plafond 101 =====
+bl auto plafond 101
+refusé : le plafond doit être dans [11, 100]. Au-dessous de plancher+3 la loi serait INERTE sans le dire ; au-dessus de 100 la dalle refuserait le duty et la loi viserait une cible jamais prise. Rien n'a été touché.
+Command returned non-zero error code: 0x1 (ERROR)
+desknode> 
+===== bl auto plafond 80 =====
+bl auto plafond 80
+⚠️ le plafond borne LA LOI, ⛔ pas la dalle : `bl 100` reste un geste d'opérateur (il désarme l'auto et le dit).
+asservissement BH1750 : ARMÉ
+  loi      : 8 % à <= 20 lx · 80 % à >= 600 lx · courbe log entre les deux
+           (dn4-19/AC6.3 : l'œil ET le lux sont logarithmiques. Constat owner du 2026-08-27, A/B en ACTIF à 245 lx : « 75 % — nettement plus », là où la loi LINÉAIRE rendait 44 %. ⛔ Les deux bornes n'ont PAS bougé. `bl auto courbe lineaire` pour revenir à la loi de dn4-3 et refaire l'A/B.)
+  garde    : bande morte 3 pts · pas max 50 pts par cycle de 5000 ms (course complète en 2 cycles)
+  applique : 45 % (sur 80 lx)
+  régime   : ACTIF
+  ambiant  : échelle 100 % de la loi · plancher 16 %
+           ⚠️ ce plancher est un TROISIÈME contenu (gros chiffres sur noir), MESURÉ À L'ŒIL le 2026-08-27 dans le noir (« 8 % c'est trop bas, 16 c'est bien ») : ⛔ ne pas le confondre avec les 8 % du dashboard ni avec les 3 % du Living PCB — trois CONTENUS, trois chiffres.
+  applications : 2 mouvements de duty depuis le BOOT (⛔ jamais remis, meme par `bl auto on`)
+           (dn4-19/AC8 : deux relevés espacés mesurent le POMPAGE de la bande morte — la loi vit H24 depuis que l'auto est armée par défaut.)
+  ⚠️ `bl <n>`, `bl on|off` et `bl ramp` DÉSARMENT l'auto et le DISENT.
+  ⛔ `bl ramp` est BLOQUANTE : elle n'est JAMAIS appelée par l'asservissement.
+  ⛔ La VEILLE ne désarme PLUS (dn4-19) : elle POSE le niveau du régime EN UNE FOIS, et la loi le maintient ensuite.
+desknode> 
+===== bl auto plancher 97 =====
+bl auto plancher 97
+refusé : le plancher doit être dans [0, 77] — au-delà, la bande morte rendrait la loi INERTE sans le dire, ce qui est pire qu'un refus. Rien n'a été touché.
+Command returned non-zero error code: 0x1 (ERROR)
+desknode>
+===== bl loi 20 =====
+bl loi 20
+loi à 20 lx   ·   courbe : log
+  ACTIF   : 8 %
+  AMBIENT : 16 %   (échelle 100 % · plancher 16 %)
+  duty POSÉ en ce moment : 45 %   ·   régime : ACTIF
+  pour comparaison, courbe lineaire : 8 % en ACTIF
+⛔ RIEN N'A ÉTÉ APPLIQUÉ, RIEN N'A ÉTÉ DÉSARMÉ ET LA COURBE EST REMISE : c'est une lecture.
+desknode> 
+===== bl loi 600 =====
+bl loi 600
+loi à 600 lx   ·   courbe : log
+  ACTIF   : 80 %
+  AMBIENT : 80 %   (échelle 100 % · plancher 16 %)
+  duty POSÉ en ce moment : 45 %   ·   régime : ACTIF
+  pour comparaison, courbe lineaire : 80 % en ACTIF
+⛔ RIEN N'A ÉTÉ APPLIQUÉ, RIEN N'A ÉTÉ DÉSARMÉ ET LA COURBE EST REMISE : c'est une lecture.
+desknode> 
