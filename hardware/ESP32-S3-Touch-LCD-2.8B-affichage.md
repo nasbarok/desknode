@@ -5529,6 +5529,102 @@ de **739 µs = 14 × la dispersion au repos (54 µs)**, avec une prédiction éc
 ⚠️ **CE QUE CE TÉMOIN NE PROUVE PAS** : que le compteur voie une **famine**. Il déplace le wrap par
 **géométrie**, ⛔ pas par **contention**. C'est le témoin B qui couvre ça — §20bis.11.
 
+### 20bis.14 🔴 SÉANCE DE VALIDATION DES CORRECTIFS DE LA 3ᵉ REVUE — **2026-08-27**
+
+**Firmware `92e67b5`**, ⛔ **SHA LU DANS LE DESCRIPTEUR DU BINAIRE** (`app_desc`, offset 0x30),
+build **12:41:07 Aug 27 2026**, `desknode.bin` **0x11BAA0**.
+🎯 **`idf.py reconfigure` A ÉTÉ JOUÉ AVANT LE BUILD**, et le piège est **mesuré comme désarmé** : le
+bandeau annonce `App version : 92e67b5`, c'est-à-dire le **bon** commit. Sans ce préalable il aurait
+nommé le précédent (`App version` = git HEAD au dernier CMake *configure*, ⛔ pas au dernier build).
+
+**État de départ, relevé AVANT le flash** : `num_fbs=1 bounce_px=9600 draw_lines=128 draw_psram=0
+lvgl_core=0`, **aucun témoin de repli en NVS**. **Restauré à l'identique en fin de séance et
+VÉRIFIÉ** — `cfg reset` rend exactement ces valeurs, donc la config de départ **était** celle des
+défauts.
+
+#### ✅ CE QUI EST ÉPROUVÉ SUR LA CARTE
+
+| | mesure | verdict |
+|---|---|---|
+| **`fps 15`** | **37,40 Hz**, écart **+0,00 %** — 561 trames en 14 999 436 µs | ✅ **le vsync a survécu à la réécriture de l'ISR.** Contrôle obligatoire d'AC1 |
+| **`flush full` isole sa fenêtre** | `flush` juste avant : **72 680 ms** ⇒ `flush full` : **776 ms** (29 trames × 26,7 = 774 ✓) | ✅ **témoin DISCRIMINANT, aucun recouvrement.** Le 3ᵉ site du défaut #780 est fermé |
+| **`bounce_px = 0` crie au boot** | **DEUX** cris : le neuf à **t+726 ms** dans le bloc de config (`dn_cfg`), le préexistant à **t+2929 ms** (`dn_mes`) | ✅ avant, **seul le second** sortait — 2,2 s plus tard, hors du bloc qu'on lit |
+| **`bounce_px` au-dessus du défaut crie** | `38400` ⇒ *« AU-DESSUS de l'optimum mesuré (9600 px) … Monter au-delà n'achète PAS de marge »* | ✅ **les DEUX moitiés du trou sont fermées** : le zéro ET l'au-dessus |
+| **`cfg reset` sans témoin** | *« aucun TÉMOIN DE REPLI n'était en NVS : il n'y avait rien à conserver »* | ✅ avant, il **annonçait la conservation** d'un témoin qui n'a jamais existé |
+| **`cfg repli` dit son statut** | *« (clé NVS LUE, et elle répond "rien" — ⛔ pas "je ne sais pas".) »* | ✅ l'absence est désormais **établie**, ⛔ plus affirmée |
+
+#### 📊 LE BLOC DE PHASE, RE-RELEVÉ SUR `92e67b5`
+
+⚠️ **Fenêtre de 29 923 ms qui n'est PAS un repos pur** : elle contient `fps 15` et le trafic console.
+⛔ **Ces chiffres ne se comparent donc PAS à ceux de §20bis.11**, dont le repos était propre.
+
+| | |
+|---|---|
+| trames (vsync) / enroulements | **1119 / 1119** — un pour un, **0 manqué, 0 double** |
+| phase | `n = 1087` · min **2140** · moy **2256** · MAX **2267** µs (+32 de dégrossissage, hors stats) |
+| référence figée | **2256** µs · 1 ligne = **39** µs |
+| déficit pire | **111 µs** pour un demi-bounce de **775** ⇒ **664 µs de marge (85 %)** |
+| franchissements | 10 % : **1** · 25 % : 0 · 50 % : 0 · 🔴 **100 % : 0** |
+
+🎯 **LA SENTINELLE `MAX > référence` A TIRÉ UNE QUATRIÈME FOIS** — `2267 > 2256` — sur une mesure
+**neuve**, et elle **dit désormais ce qu'elle vaut**, avec les deux tailles d'échantillon
+**publiées** par le firmware :
+
+> *« ⛔ CETTE LIGNE EST QUASI-CERTAINE, ce n'est PAS un signal : la référence est le MAX de **32**
+> trames, le MAX porte sur **1087**. Un `flush reset` au repos ne la lèvera pas. »*
+
+⇒ **La décision owner (a) — « on NOTE, on ne refond pas » — est validée sur la carte** : le
+comportement prédit par lecture est exactement celui qu'on observe, et il est désormais **déclaré à
+l'endroit où il se lit**.
+
+#### 🔴 CE QUE LA CARTE A APPRIS, ET QUI N'ÉTAIT PAS AU PROGRAMME
+
+**1. `bounce_px = 0` NE REPRODUIT PAS LE GLISSEMENT DE CETTE STORY — c'est un défaut DIFFÉRENT.**
+Constat owner, verbatim : *« décalé verticalement + ça défile à toute vitesse horizontalement »*.
+⛔ Le glissement de dn4-10 est **périodique et occasionnel** ; ceci est un **défilement continu à
+pleine vitesse** avec décalage vertical. Ce n'est pas non plus le décalage **statique** du piège
+`6400`. ⇒ **Ne PAS écrire que `bounce 0` est un témoin positif du glissement.** Il désynchronise
+entièrement la DMA du panneau, ce qui est un troisième mode de défaillance.
+
+**2. 🔴 LE FILET DE REPLI N'EST PAS ATTEIGNABLE DEPUIS LA CONSOLE, DONC LE TÉMOIN N'EST PAS
+PROVOCABLE.** Le repli s'arme quand `dn_display_init()` rend `ESP_ERR_NO_MEM`. Or
+`DN_BOUNCE_PX_MAX = 38 400` est précisément choisi pour que **toute valeur légale alloue** —
+et c'est **mesuré** : `panneau RGB prêt : … bounce=38400 px`, **aucun repli**.
+🎯 **PRÉDICTION ÉCRITE AVANT LE TIR** (règle L18) : *« 2 × 76 800 o contigus sur un tas de ~283 Kio
+quasi vierge à cet instant du boot ⇒ ça alloue, donc aucun repli »*. ✅ **Juste.**
+⇒ **Les 7 constats du commit du témoin de repli restent LIVRÉS, NON ÉPROUVÉS**, sauf les deux
+ci-dessus (`cfg reset` sans témoin, `cfg repli` qui dit son statut). Ils sont dans la **même classe**
+que la branche « référence trop haute » de `358fd95` : un chemin que le code couvre et que la carte
+ne sait pas atteindre. ⛔ Ce n'est pas un échec de la séance, c'est une **limite de testabilité**, et
+elle se déclare.
+
+**3. ⚠️ `ph_futur` EST À ZÉRO, ET CE ZÉRO NE PROUVE RIEN.** Aucune ligne « ÉCHANTILLONS DE PHASE
+JETÉS » ne sort ; la garde étant une **disjonction** sur les quatre compteurs, cela **établit** que
+`ph_rejete`, `ph_doubles_ec`, `ph_dechire` **et** `ph_futur` valent tous **0**. ⛔ **Mais `ph_futur`
+n'a jamais été vu bouger**, et son déclencheur — l'entrelacement de deux ISR — **ne se commande
+pas**. ⇒ *« un compteur qui reste à zéro ne prouve rien tant qu'on ne l'a pas fait bouger »* :
+**non éprouvé, déclaré tel.**
+
+**4. ⚠️ L'alerte `bounce_px = 0` ressort à CHAQUE `set`**, pas seulement au boot — `set` relit la
+NVS. Le texte reste vrai (« vient de la NVS ») mais c'est **bruyant**. ⛔ Non corrigé, consigné.
+
+#### ⚠️ TROIS FAITS DE CHAÎNE, MESURÉS EN PASSANT
+
+- 🔴 **LE BUSID `3-1` DU SKILL `desknode-board` EST FAUX SUR CETTE MACHINE.** La carte est sur
+  **`3-5`** ; `3-1` porte un **`V31GT` (`0e8d:201c`)**. Suivre le rituel à la lettre aurait détaché
+  **le mauvais périphérique**. ✅ `tools/wsl-attach.sh`, lui, résout le BUSID **par VID:PID à chaque
+  appel** — l'outil est juste, c'est sa **documentation** qui récite un numéro figé.
+- ⚠️ **`usbipd list` immédiatement après un `detach` rend une liste VIDE** — la carte ré-énumère.
+  ⛔ Ne pas en conclure qu'elle a disparu : elle revient en `Shared` en quelques secondes.
+- ✅ **COM3 était tenu par `dn_agent.py`** (l'attachement WSL échoue en *« Device busy (exported) »*).
+  ⛔ **Pas de `taskkill`** : l'agent a une **sortie propre** par sentinelle (`--stop-si`), qui lui
+  fait rendre son bilan. Arrêt confirmé en < 10 s, relance à l'identique en fin de séance,
+  **un seul `python.exe`** au compte final — aucun reste. ✅ **Et la reprise est confirmée À L'ŒIL** :
+  constat owner, le dashboard réaffiche des **données vivantes**. ⛔ C'est la seule preuve de bout en
+  bout — la console est côté Windows après le `detach`, donc l'agent ne peut plus être interrogé
+  depuis WSL.
+
+
 ### 20bis.11 ✅ LE TÉMOIN B — la famine provoquée par le trafic RÉEL
 
 Agent RÉEL sur la tour, 5 trames/s, mode `on`, `bounce_px = 9 600`, **même binaire, même référence,
