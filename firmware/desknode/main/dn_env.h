@@ -180,9 +180,63 @@ typedef struct {
  * ⚠️ CAPTEUR MUET : ⛔ le duty NE BOUGE PAS. On garde le dernier appliqué. Un
  *    capteur silencieux ne doit ni éteindre l'écran ni le mettre à fond.
  *
- * 🔴 DÉSARMÉ PAR DÉFAUT, et c'est le repli pré-autorisé d'AC5 qui devient l'état
- *    de départ : la discipline de boot (duty 0 à l'init, il ne monte qu'après la
- *    première trame) reste INTOUCHÉE, et l'A/B se joue dans UN SEUL FIRMWARE.
+ * ~~🔴 DÉSARMÉ PAR DÉFAUT, et c'est le repli pré-autorisé d'AC5 qui devient
+ *    l'état de départ : la discipline de boot (duty 0 à l'init, il ne monte
+ *    qu'après la première trame) reste INTOUCHÉE, et l'A/B se joue dans UN SEUL
+ *    FIRMWARE.~~
+ * 🔴 BARRÉ PAR `dn4-19` LE 2026-08-27, ⛔ PAS EFFACÉ — LE MOTIF ÉTAIT L'A/B DE
+ *    `dn4-3`, ET L'A/B EST FINI. Ce `false` a eu une conséquence que personne
+ *    n'avait mesurée : **l'asservissement n'a JAMAIS TOURNÉ**. Carte à
+ *    `up 3820 s`, 68 % du temps en Ambient, `bl` rend `applique : AUCUNE
+ *    application depuis le boot`, et le duty reste cloué à 10 % pendant que le
+ *    BH1750 lit 357 lx à dix centimètres. ⇒ `true`, et le coût est NUL sur les
+ *    trois lignes qui coûtent : **0 écriture NVS en régime** (D4 de `dn4-5`
+ *    tient), **0 clé NVS de plus** (les deux d'aujourd'hui suffisent), et
+ *    `dn_env.c` **reste hors de la table** de `tools/verif_d4_nvs_dn45.py`.
+ * ✅ ET LE RETOUR À L'ÉTAT SAIN RESTE GRATUIT : `bl auto off` ne survit pas au
+ *    reboot, donc un module qu'un geste a laissé dans un état bancal se répare
+ *    en le redémarrant. C'est ce que la persistance NVS aurait coûté : un
+ *    `bl auto off` qui survit, c'est un module qui peut rester cassé.
+ */
+
+/*
+ * ══ 🔴 LA RÈGLE DE PRIORITÉ DES ÉCRIVAINS DE LEDC — `dn4-19`/AC2.1 ═══════════
+ *
+ * ⛔ IL Y A CINQ ÉCRIVAINS ET AUCUN VERROU. Énumérer les cinq sans dire qui
+ *    l'emporte n'est PAS un arbitrage : c'est ce que ce fichier faisait, et le
+ *    résultat est que la VEILLE désarmait l'asservissement pour se protéger.
+ *
+ * ✅ LA RÈGLE, EN UNE PHRASE :
+ *
+ *      **Le dernier GESTE D'OPÉRATEUR l'emporte sur tout — il désarme
+ *      l'asservissement et il le DIT ; sinon la BASCULE d'état pose le niveau
+ *      du nouveau régime EN UNE FOIS, et l'ASSERVISSEMENT le maintient ensuite,
+ *      par pas de `DN_ENV_BL_PAS_MAX` points.**
+ *
+ * ✅ ET LE POURQUOI, PARCE QU'UNE RÈGLE SANS MOTIF SE FAIT DÉFAIRE :
+ *    · un humain qui tape une valeur veut **la voir tenir** — sinon l'instrument
+ *      ment (`bl 50` écrasé au cycle suivant, sans un mot) ;
+ *    · une **transition** doit être instantanée à l'œil — `dn3-3`/AC4 publie
+ *      t₁ = 107 µs, et la porter par le pas de 20 pts/5 s la ferait passer à
+ *      ~20 s, soit **quatre ordres de grandeur** ;
+ *    · un **régime** doit suivre la pièce — c'est tout le sujet de `dn4-19`.
+ *
+ * ⇒ 🔴 L'INVARIANT QUI EN DÉCOULE, ET IL EST TESTABLE :
+ *      *l'asservissement fixe le NIVEAU DE RÉGIME de chaque état ;
+ *       il ne porte JAMAIS la transition entre les deux.*
+ *
+ * Les cinq écrivains, et ce que la règle leur donne :
+ *   1. le **boot** (`desknode_main.c:411`, 100 %, une fois) — c'est la première
+ *      bascule vers ACTIF ; l'asservissement le ramène ensuite au régime.
+ *      ⚠️ `dn3-3` cite encore `desknode_main.c:321` : **périmé**, c'est `:411`.
+ *   2. le **REPL** (`bl <n>`, `bl on|off`, `bl ramp`) — geste d'opérateur, il
+ *      GAGNE, et il désarme en le disant (`dn_console.c`).
+ *   3. l'**asservissement** (`dn_env_cycle()`, toutes les `DN_ENV_PERIODE_MS`).
+ *   4. la **VEILLE** (`dn_ui.c`, `veille_bl_descendre` / `veille_bl_remonter`) —
+ *      elle pose le niveau du régime EN UNE FOIS, ⛔ elle ne désarme plus.
+ *   5. `veille pct` (`dn_ui_veille_set_pct`) — ⛔ ce n'est PLUS le niveau
+ *      d'Ambient : c'est le niveau de **DERNIER RECOURS**, celui que la veille
+ *      pose quand la loi ne peut pas parler (capteur muet). Voir `dn_veille.h`.
  */
 /*
  * 🔴 DEUX DE CES QUATRE BORNES ONT ÉTÉ DÉPLACÉES PAR L'ŒIL DE L'OWNER LE
@@ -225,7 +279,44 @@ typedef struct {
 #define DN_ENV_BL_LUX_HAUT     600
 #define DN_ENV_BL_HYST         3
 #define DN_ENV_BL_PAS_MAX      20
-#define DN_ENV_BL_AUTO_DEFAUT  false
+#define DN_ENV_BL_AUTO_DEFAUT  true   /* dn4-19 : ⛔ était `false` — voir ci-dessus */
+
+/*
+ * 🔴 LE RÉGIME D'AMBIENT — `dn4-19`/AC3.2, ET LE CADRAGE N'EN TRANCHE AUCUN.
+ *
+ * L'échelle dit quel pourcentage de la loi s'applique en AMBIENT. `100` = la
+ * MÊME loi dans les deux états — candidat (a) du tableau d'AC3.2, et c'est la
+ * SEULE valeur qui porte un constat owner : *« j'ai bien vu 10 -> 30 -> 50 ->
+ * 61 % et 61 c'est bien mieux »*, à 363 lx, où la loi rend exactement 61.
+ * ⚠️ Elle coûte la propriété D-1 de `dn3-3` (*« Ambient est plus sombre
+ *    qu'Actif »*), et c'est DÉLIBÉRÉ : l'owner a validé 61 % en Ambient ET
+ *    trouvé 61 % un peu faible en Actif, dans la même séance — donc si les deux
+ *    états doivent différer, c'est ACTIF qui doit monter, ⛔ pas Ambient qui
+ *    doit descendre. C'est AC6 qui le tranche, PAR LA MESURE, ⛔ pas ce bloc.
+ * ⇒ RÉGLABLE À CHAUD (`bl auto ambiant <n>`) : l'arbitrage se tranche SUR LA
+ *   DALLE, et une seule séance suffit au lieu de trois reflashs.
+ */
+#define DN_ENV_BL_AMB_ECHELLE_DEFAUT 100
+
+/*
+ * 🔴 LE PLANCHER D'AMBIENT EST UN **TROISIÈME CONTENU**, ET IL N'A JAMAIS ÉTÉ
+ *    MESURÉ — `dn4-19`/AC3.4. ⛔ CE `8` EST UN POINT DE DÉPART, PAS UN CONSTAT.
+ *
+ * Le dépôt porte trois planchers, et ils ne sont PAS interchangeables :
+ *   · `DN_VEILLE_PCT_MIN = 3` — mesuré sur le **Living PCB et son label**
+ *     (`dn1-3`/AC7), une image de fond contrastée ;
+ *   · `DN_ENV_BL_PCT_MIN = 8` — mesuré sur le **dashboard à six cases**, du
+ *     texte fin, rideau fermé (dichotomie 10 / 6 / 8) ;
+ *   · celui-ci — le **rendu d'AMBIENT** : gros chiffres blancs sur noir pur,
+ *     titres et icônes masqués. ⛔ **JAMAIS MESURÉ SUR CE CONTENU-LÀ.**
+ *
+ * *« Un plancher de lisibilité est une propriété du COUPLE duty × contenu, pas
+ *  du duty seul »* — c'est écrit vingt lignes plus haut, et c'est exactement
+ * pourquoi le 3 % de `dn1-3` n'a pas été invalidé quand le 8 % l'a remplacé.
+ * ⇒ Il est RÉGLABLE À CHAUD (`bl auto ambiant plancher <n>`) et **la séance
+ *   d'AC7.1 le tranche À L'ŒIL, rideau fermé.** ⛔ Ne pas le recopier ailleurs.
+ */
+#define DN_ENV_BL_AMB_PCT_MIN_DEFAUT 8
 
 /* ⛔ LES BORNES PHYSIQUES DE L'INA219 SONT RETIRÉES — correct-course du
  * 2026-08-20. Elles n'avaient de sens que pour un seau `err_bornes` sur des
@@ -370,8 +461,54 @@ int dn_env_bl_plancher(void);
 void dn_env_bl_etat(int *lux_bas, int *lux_haut, int *pas, int *hyst,
                     int *dernier_pct, int *dernier_lux);
 /* Le pct que la loi rendrait POUR CE LUX — exposé pour que la console puisse
- * imprimer la loi sans l'appliquer. */
+ * imprimer la loi sans l'appliquer.
+ * ⚠️ `dn4-19` : cette fonction était exposée EXPRÈS pour ça et n'avait AUCUN
+ *    APPELANT — la prédiction « 61 % » de la séance du 2026-08-27 a donc été
+ *    calculée À LA MAIN, ce que les règles du dépôt interdisent. `bl loi [lux]`
+ *    est son appelant, livré par `dn4-19`. */
 int dn_env_bl_loi(int lux);
+
+/* ── 🔴 LE RÉGIME (`dn4-19`) ──────────────────────────────────────────────────
+ * L'asservissement doit savoir DANS QUEL ÉTAT est la dalle, sinon il asservit
+ * Ambient au niveau d'Actif. ⛔ C'est un PUSH, pas un PULL : `dn_ui` le DIT à
+ * `dn_env`, et `dn_env` n'appelle JAMAIS `dn_veille` — sans quoi le harnais
+ * hôte de `dn3-3` (`tools/verif_veille_dn33.py`, qui compile `dn_veille.c` sur
+ * l'hôte) tomberait, et elle est `in-progress`. */
+typedef enum {
+    DN_ENV_BL_REGIME_ACTIF = 0,
+    DN_ENV_BL_REGIME_AMBIENT,
+} dn_env_bl_regime_t;
+
+/* ⛔ NE POSE RIEN sur LEDC : dit seulement quel régime vise l'asservissement.
+ * C'est l'appelant (la bascule) qui pose le niveau, EN UNE FOIS. */
+void dn_env_bl_regime_set(dn_env_bl_regime_t regime);
+dn_env_bl_regime_t dn_env_bl_regime(void);
+
+/* La loi, MISE À L'ÉCHELLE DU RÉGIME et bornée par le plancher du régime.
+ * ⛔ N'applique rien. */
+int dn_env_bl_loi_regime(int lux, dn_env_bl_regime_t regime);
+
+/* Le duty de RÉGIME pour le lux COURANT, ⛔ sans l'appliquer.
+ * 🔴 Rend `-1` quand la loi NE PEUT PAS PARLER (capteur muet ou périmé) — et
+ *    `-1` est un ÉTAT, ⛔ pas un pourcentage : l'appelant doit le tester. C'est
+ *    le même piège que `dn_display_backlight_pct_state()`, déjà payé une fois
+ *    en revue de code le 2026-08-20. */
+int dn_env_bl_cible(void);
+
+/* L'échelle et le plancher du régime AMBIENT, réglables à chaud (AC3.2/AC3.4).
+ * ⛔ Le dépôt REFUSE, il n'écrête pas. */
+esp_err_t dn_env_bl_amb_echelle_set(int pct);
+int dn_env_bl_amb_echelle(void);
+esp_err_t dn_env_bl_amb_plancher_set(int pct);
+int dn_env_bl_amb_plancher(void);
+
+/* 🔴 LE COMPTEUR D'APPLICATIONS — `dn4-19`/AC8.
+ * Avant cette story la loi tournait RAREMENT (désarmée par défaut, désarmée par
+ * la veille). Après, elle tourne H24 sous éclairage domestique : le pompage de
+ * la bande morte, déclaré « JAMAIS EXERCÉ » au ledger, DEVIENT EXERÇABLE. Ce
+ * compteur le rend mesurable sur une fenêtre longue au lieu d'être jugé à
+ * l'œil : deux relevés espacés donnent le nombre de mouvements de duty. */
+uint32_t dn_env_bl_applications(void);
 
 /*
  * ── 🔴 W2 — LE CRITÈRE « UNE CASE DE SIX DOIT BOUGER », MESURÉ DANS LE FIRMWARE

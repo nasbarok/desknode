@@ -6475,17 +6475,41 @@ static bool case_appliquer(int idx)
 /* ── Le rétroéclairage : le QUATRIÈME écrivain de LEDC ───────────────────── */
 
 /*
- * 🔴 IL Y EN A QUATRE, ET AUCUN VERROU NE LES ARBITRE.
- *    `dn_display_backlight_pct()` n'a AUCUN verrou et `s_backlight_pct` est un
- *    `int` nu (`dn_env.h:352-357` le dit en toutes lettres).
- *      1. le boot (100 %, une fois)   2. le REPL (`bl …`, à la main)
- *      3. l'asservissement BH1750 (toutes les 5 s)   4. 🆕 LA VEILLE
- * ⚠️ `bl auto` est `false` PAR DÉFAUT — donc LE DÉFAUT NE RÉVÈLE PAS LE BUG. Il
- *    apparaît dès qu'on arme l'auto, CINQ SECONDES plus tard, sans un mot : la
- *    luminosité d'Ambient serait écrasée et l'owner conclurait « la veille ne
- *    marche pas ». C'est pour ça qu'AC2.6 exige le témoin AVEC `bl auto on`.
+ * ~~🔴 IL Y EN A QUATRE, ET AUCUN VERROU NE LES ARBITRE.~~
+ * ~~   `bl auto` est `false` PAR DÉFAUT — donc LE DÉFAUT NE RÉVÈLE PAS LE BUG.~~
+ * ~~   Il apparaît dès qu'on arme l'auto, CINQ SECONDES plus tard, sans un~~
+ * ~~   mot : la luminosité d'Ambient serait écrasée et l'owner conclurait~~
+ * ~~   « la veille ne marche pas ».~~
+ *
+ * 🔴 BARRÉ PAR `dn4-19` LE 2026-08-27, ⛔ PAS EFFACÉ — **LA PRÉMISSE EST
+ *    RENVERSÉE PAR LA MESURE.** Ce que l'owner veut, c'est **précisément** que
+ *    la loi pilote Ambient : *« en veille, avec la lumière, l'écran n'est pas
+ *    assez rétroéclairé »*, puis, l'asservissement armé à la main sur la même
+ *    dalle, *« super bien mieux comme ça j'ai bien vu 10 -> 30 -> 50 -> 61 % et
+ *    61 c'est bien mieux »*. Le désarmement protégeait donc **contre ce que
+ *    l'owner demande**. Ce n'était pas une étourderie : c'est `dn3-3`/AC2.5,
+ *    écrite avec son motif — et son motif a cessé d'être vrai.
+ *
+ * ✅ CE QUI LE REMPLACE : **la règle de priorité de LEDC**, écrite en une phrase
+ *    dans `dn_env.h` (`dn4-19`/AC2.1), et l'invariant qui en découle :
+ *      *l'asservissement fixe le NIVEAU DE RÉGIME de chaque état ;
+ *       il ne porte JAMAIS la transition entre les deux.*
+ *    ⇒ les deux bascules ci-dessous posent le niveau **EN UNE FOIS**, ⛔ jamais
+ *      par le pas de `DN_ENV_BL_PAS_MAX` points — sinon la veille mettrait ~20 s
+ *      à tomber et le réveil ~20 s à remonter, et `dn3-3`/AC4 publie
+ *      **t₁ = 107 µs**.
+ *
+ * ⚠️ LE DÉSARMEMENT PAR **GESTE D'OPÉRATEUR** RESTE, ET IL RESTE BAVARD :
+ *    `bl <n>`, `bl on|off`, `bl ramp` désarment et le DISENT
+ *    (`dn_console.c`). Son motif, lui, est toujours vrai : *« un `bl 50` tapé
+ *    en séance serait écrasé au cycle suivant SANS UN MOT, et le constat owner
+ *    mesurerait la boucle en croyant mesurer la commande »*.
  */
 static int s_bl_avant_veille = -1; /* -1 = aucune veille en cours */
+/* 🔴 dn4-19 — CE QUE LA VEILLE A RÉELLEMENT POSÉ, ⛔ plus `dn_veille_pct()`.
+ *    Le niveau d'Ambient est maintenant CALCULÉ : le garde-fou du réveil ne peut
+ *    donc plus le re-dériver, il doit s'en souvenir. `-1` = rien de posé. */
+static int s_bl_pose_par_veille = -1;
 
 static void veille_bl_descendre(void)
 {
@@ -6493,19 +6517,40 @@ static void veille_bl_descendre(void)
      * l'opérateur avait posé `bl 40` avant que la veille tombe, le réveil doit
      * rendre 40, pas 100. */
     s_bl_avant_veille = dn_display_backlight_pct_state();
-    if (dn_env_bl_auto_desarmer("veille")) {
+
+    /* ⛔ PLUS DE `dn_env_bl_auto_desarmer("veille")` ICI — voir le bloc barré
+     *   ci-dessus. On DIT au régime qu'on passe en Ambient, et on pose le
+     *   niveau nous-mêmes, EN UNE FOIS. */
+    dn_env_bl_regime_set(DN_ENV_BL_REGIME_AMBIENT);
+
+    int cible = dn_env_bl_auto() ? dn_env_bl_cible() : -1;
+    if (cible < 0) {
+        /* 🔴 LA LOI NE PEUT PAS PARLER — capteur muet, jamais lu, périmé, ou
+         *    asservissement désarmé par un geste d'opérateur. On pose le niveau
+         *    de DERNIER RECOURS, ET ON LE DIT : un repli SILENCIEUX serait
+         *    exactement le défaut que `dn4-19` ferme.
+         * ⚠️ Ne RIEN poser serait pire : la dalle resterait à la luminosité
+         *    d'Actif et, à l'œil, « la veille ne tombe plus ». */
+        cible = dn_veille_pct();
         ESP_LOGW(TAG,
-                 "l'asservissement `bl auto` etait ARME : la VEILLE vient de le "
-                 "DESARMER. Sinon la luminosite d'Ambient aurait ete ecrasee au "
-                 "prochain cycle (5 s), SANS UN MOT, et « la veille ne marche "
-                 "pas » aurait ete le diagnostic. `bl auto on` pour le rearmer.");
+                 "veille : la loi ne peut pas parler (%s) — on pose le niveau de "
+                 "DERNIER RECOURS, %d %% (`veille pct <n>` pour le changer). "
+                 "⛔ Ce n'est PAS le niveau d'Ambient normal : celui-la suit le "
+                 "lux.",
+                 dn_env_bl_auto() ? "capteur MUET ou lux jamais lu"
+                                  : "`bl auto` DESARME par un geste d'operateur",
+                 cible);
     }
-    esp_err_t err = dn_display_backlight_pct(dn_veille_pct());
+
+    esp_err_t err = dn_display_backlight_pct(cible);
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "veille : retroeclairage a %d %% REFUSE (%s) — l'ecran "
                       "reste a sa luminosite precedente.",
-                 dn_veille_pct(), esp_err_to_name(err));
+                 cible, esp_err_to_name(err));
+        s_bl_pose_par_veille = -1;
+        return;
     }
+    s_bl_pose_par_veille = cible;
 }
 
 static void veille_bl_remonter(void)
@@ -6525,20 +6570,67 @@ static void veille_bl_remonter(void)
      *    valeur que la veille et ne déclenche donc pas cette garde.
      */
     int courant = dn_display_backlight_pct_state();
-    if (courant != dn_veille_pct()) {
+
+    /*
+     * 🔴 dn4-19/AC2.4 — CE GARDE-FOU SERAIT DEVENU UN CRIEUR PERMANENT.
+     *    Il comparait le duty courant à `dn_veille_pct()`. Dès que la loi vit en
+     *    Ambient, le duty BOUGE pendant la veille (la pièce change de lumière)
+     *    ⇒ ils diffèrent TOUJOURS ⇒ l'accusation « quelqu'un l'a changé » serait
+     *    sortie **à chaque réveil**. ⛔ Ce n'est pas une hypothèse : la ligne a
+     *    été CAPTURÉE au journal pendant la séance du 2026-08-27.
+     * ✅ LA GARDE N'EST PAS DÉSARMÉE, ELLE EST RENDUE DISCRIMINANTE. Deux
+     *    écritures sont LÉGITIMES pendant la veille, et elles se reconnaissent :
+     *      · celle de la BASCULE  — `s_bl_pose_par_veille` (mémorisée, ⛔ plus
+     *        re-dérivée : le niveau d'Ambient est calculé, il ne se redevine pas) ;
+     *      · celle de la LOI      — `dn_env_bl_etat(... &dpct ...)` publie le
+     *        dernier duty que l'asservissement a POSÉ. S'il vaut le duty courant,
+     *        c'est la loi qui a bougé, ⛔ pas un doigt.
+     *    Tout le reste est un geste d'opérateur, et il est accusé — c'est le
+     *    témoin (b) d'AC2.4.
+     * ⚠️ LIMITE ASSUMÉE ET ÉCRITE : un `bl <n>` qui tomberait EXACTEMENT sur une
+     *    de ces deux valeurs passe inaperçu. L'état ne les distingue pas, et le
+     *    code d'avant avait déjà cette limite. ⛔ Ne pas la « corriger » par un
+     *    drapeau posé dans `bl` : ça ferait de la console un écrivain de plus.
+     */
+    int dpct_loi = -1;
+    dn_env_bl_etat(NULL, NULL, NULL, NULL, &dpct_loi, NULL);
+    bool par_la_veille = (s_bl_pose_par_veille >= 0 &&
+                          courant == s_bl_pose_par_veille);
+    bool par_la_loi = (dn_env_bl_auto() && dpct_loi >= 0 && courant == dpct_loi);
+
+    if (!par_la_veille && !par_la_loi) {
         ESP_LOGW(TAG,
                  "reveil : le retroeclairage vaut %d %% alors que la veille "
-                 "l'avait pose a %d %% — quelqu'un l'a change PENDANT la "
-                 "veille. On le LAISSE tel quel plutot que d'ecraser ce geste "
-                 "(il aurait ete rendu a %d %% sans un mot). `bl %d` pour "
-                 "revenir a l'etat d'avant la veille.",
-                 courant, dn_veille_pct(), s_bl_avant_veille,
+                 "l'avait pose a %d %% et que l'asservissement en est a %d %% — "
+                 "quelqu'un l'a change PENDANT la veille. On le LAISSE tel quel "
+                 "plutot que d'ecraser ce geste (il aurait ete rendu a %d %% "
+                 "sans un mot). `bl %d` pour revenir a l'etat d'avant la veille, "
+                 "`bl auto on` pour rendre la main a la loi.",
+                 courant, s_bl_pose_par_veille, dpct_loi, s_bl_avant_veille,
                  s_bl_avant_veille);
         s_bl_avant_veille = -1;
+        s_bl_pose_par_veille = -1;
         return;
     }
-    (void)dn_display_backlight_pct(s_bl_avant_veille);
+
+    /*
+     * 🔴 LE NIVEAU D'ACTIF EST POSÉ **EN UNE FOIS** — AC3.5.
+     *    ⛔ On ne laisse PAS l'asservissement porter la remontée : `dn3-3`/AC4
+     *    publie t₁ = 107 µs (« contact -> rétroéclairage remonté »), et le pas
+     *    de `DN_ENV_BL_PAS_MAX` points par cycle de 5 s le ferait passer à ~20 s.
+     * ⚠️ Et on repart de la LOI, ⛔ pas de `s_bl_avant_veille`, quand elle peut
+     *    parler : la pièce a pu changer de lumière pendant huit heures de veille.
+     *    `s_bl_avant_veille` reste le repli — il porte le geste d'opérateur qui
+     *    précédait la veille, et c'est lui qu'on doit rendre si la loi se tait.
+     */
+    dn_env_bl_regime_set(DN_ENV_BL_REGIME_ACTIF);
+    int cible = dn_env_bl_auto() ? dn_env_bl_cible() : -1;
+    if (cible < 0) {
+        cible = s_bl_avant_veille;
+    }
+    (void)dn_display_backlight_pct(cible);
     s_bl_avant_veille = -1;
+    s_bl_pose_par_veille = -1;
 }
 
 /* ── Le repeint, SANS reconstruction ─────────────────────────────────────── */
@@ -6990,19 +7082,66 @@ esp_err_t dn_ui_veille_set_cran(int idx)
     return err;
 }
 
+/*
+ * 🔴 dn4-19/AC2.6 — LE SORT DE CE CINQUIÈME POINT D'ÉCRITURE EST **ÉCRIT**,
+ *    ⛔ PAS LAISSÉ PAR OMISSION.
+ *
+ * ~~Effet IMMÉDIAT si on dort déjà — sinon l'A/B d'AC9.1 exigerait d'attendre~~
+ * ~~la prochaine bascule pour voir chaque valeur, et le balayage 3 -> 20~~
+ * ~~coûterait vingt délais.~~
+ *
+ * ⛔ **CET EFFET IMMÉDIAT INCONDITIONNEL DEVENAIT UN COMBAT CONTRE LA LOI** :
+ *    il posait le duty, et l'asservissement le reprenait au cycle suivant (5 s)
+ *    — l'owner aurait mesuré la boucle en croyant mesurer sa commande, ce qui
+ *    est exactement le défaut que `bl_desarmer_si_besoin()` existe pour éviter.
+ * ✅ CE QUI LE REMPLACE : l'effet immédiat n'a lieu QUE si la dalle tourne
+ *    RÉELLEMENT sur le dernier recours (Ambient **et** loi muette). Sinon on
+ *    enregistre la valeur et on rend `ESP_OK` — le levier reste vrai, il ne
+ *    ment simplement plus sur ce qu'il pilote.
+ * ✅ ET L'A/B N'EST PAS PERDU, IL A CHANGÉ D'OUTIL : le balayage du niveau
+ *    d'Ambient se fait désormais avec `bl auto ambiant <n>` et
+ *    `bl auto ambiant plancher <n>`, qui rafraîchissent la dalle à chaud
+ *    (`dn_ui_veille_bl_rafraichir()`). C'est le même service, sur le bon levier.
+ */
 esp_err_t dn_ui_veille_set_pct(int pct)
 {
     esp_err_t err = dn_veille_set_pct(pct);
     if (err != ESP_OK) {
         return err;
     }
-    /* Effet IMMÉDIAT si on dort déjà — sinon l'A/B d'AC9.1 exigerait
-     * d'attendre la prochaine bascule pour voir chaque valeur, et le balayage
-     * 3 -> 20 coûterait vingt délais. */
     if (dn_veille_mode() == DN_VEILLE_AMBIENT) {
-        (void)dn_display_backlight_pct(dn_veille_pct());
+        int cible = dn_env_bl_auto() ? dn_env_bl_cible() : -1;
+        if (cible < 0) {
+            /* On EST sur le dernier recours : la valeur qu'on vient de poser est
+             * bien celle qui pilote la dalle en ce moment. */
+            if (dn_display_backlight_pct(dn_veille_pct()) == ESP_OK) {
+                s_bl_pose_par_veille = dn_veille_pct();
+            }
+        }
     }
     return ESP_OK;
+}
+
+/*
+ * 🔴 dn4-19 — RE-POSER LE NIVEAU DU RÉGIME AMBIENT, À CHAUD ET EN UNE FOIS.
+ *    Appelée par `bl auto ambiant …` pour que l'œil de l'owner voie l'effet
+ *    IMMÉDIATEMENT au lieu d'attendre un cycle de 5 s : c'est ce qui rend AC3.4
+ *    et AC6 jouables en UNE séance au lieu de trois reflashs.
+ * ⛔ Sans effet hors Ambient : en Actif, c'est l'asservissement qui mène, et
+ *   poser ici ferait de cette fonction un écrivain de plus sur le chemin chaud.
+ */
+void dn_ui_veille_bl_rafraichir(void)
+{
+    if (dn_veille_mode() != DN_VEILLE_AMBIENT) {
+        return;
+    }
+    int cible = dn_env_bl_auto() ? dn_env_bl_cible() : -1;
+    if (cible < 0) {
+        cible = dn_veille_pct();
+    }
+    if (dn_display_backlight_pct(cible) == ESP_OK) {
+        s_bl_pose_par_veille = cible;
+    }
 }
 
 esp_err_t dn_ui_veille_set_voile(uint8_t opa)

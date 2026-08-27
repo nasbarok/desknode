@@ -220,6 +220,23 @@ static dn_veille_origine_t s_origine = DN_VEILLE_ORIG_AUCUNE;
  *   - `DN_ENV_BL_PCT_MIN = 8` est le plancher de la LOI d'asservissement au
  *     lux, constat owner « c'est ça » — un autre chiffre pour un autre usage.
  * ⛔ Ne pas graver 8 par recopie : ce n'est pas le même arbitrage.
+ *
+ * ══ 🔴 `dn4-19`, 2026-08-27 — CE CHIFFRE A CHANGÉ DE RÔLE ════════════════════
+ * ⛔ **CE N'EST PLUS LE NIVEAU D'AMBIENT.** Le niveau d'Ambient est désormais
+ *    une **fonction du lux** (`dn_env_bl_loi_regime()`), et c'est tout l'objet
+ *    de la story : cette constante était **F1**, la première des trois causes.
+ * ⛔ **ET LE CONSTAT DU 2026-08-25 N'EST PAS INVALIDÉ — IL LUI MANQUAIT SA
+ *    CONDITION D'ÉCLAIRAGE.** *« La luminosité de la veille est bien »* a été
+ *    dit **RIDEAU FERMÉ**, où 10 % coïncide à deux points près avec
+ *    `DN_ENV_BL_PCT_MIN = 8`. Le constat du 2026-08-27 (*« en veille, avec la
+ *    lumière, l'écran n'est pas assez rétroéclairé »*) a été fait **EN PLEINE
+ *    LUMIÈRE**. **Les deux sont COMPATIBLES**, et ce qui était faux, c'est
+ *    qu'un chiffre a été consigné sans dire sous quelle lumière il valait.
+ *    ⇒ *« Une mesure porte la date de son binaire »* — et sa condition.
+ * ✅ CE QUE `s_pct` DEVIENT : le niveau d'Ambient de **DERNIER RECOURS**, posé
+ *    par la bascule **quand la loi ne peut pas parler** (capteur muet, jamais
+ *    lu, ou périmé) — et **journalisé quand il sert**, parce qu'un repli
+ *    silencieux serait exactement le défaut que cette story ferme.
  */
 static int s_pct = 10;
 

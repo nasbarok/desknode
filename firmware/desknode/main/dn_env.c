@@ -158,6 +158,12 @@ static int s_bl_pct_min = DN_ENV_BL_PCT_MIN;
 static int s_bl_dernier_pct = -1;  /* -1 = la loi n'a encore rien appliqué */
 static int s_bl_dernier_lux = DN_ENV_ABSENT;
 static bool s_bl_muet_dit;         /* le « capteur muet » n'est journalisé qu'une fois */
+/* 🔴 dn4-19 — LE RÉGIME. ⛔ POUSSÉ par `dn_ui`, jamais tiré : ce module n'appelle
+ *    JAMAIS `dn_veille` (le harnais hôte de `dn3-3` compile `dn_veille.c` seul). */
+static dn_env_bl_regime_t s_bl_regime = DN_ENV_BL_REGIME_ACTIF;
+static int s_bl_amb_echelle = DN_ENV_BL_AMB_ECHELLE_DEFAUT;
+static int s_bl_amb_pct_min = DN_ENV_BL_AMB_PCT_MIN_DEFAUT;
+static uint32_t s_bl_applications;  /* AC8 : combien de fois la loi a BOUGÉ le duty */
 
 static const char *k_nom[DN_ENV_NB] = { "BH1750", "INA219", "VL6180X" };
 static const uint8_t k_addr[DN_ENV_NB] = {
@@ -713,7 +719,11 @@ void dn_env_cycle(void)
             }
         } else {
             s_bl_muet_dit = false;
-            int cible = dn_env_bl_loi(lux);
+            /* 🔴 dn4-19 : la cible est celle DU RÉGIME COURANT, ⛔ plus celle
+             * d'Actif quel que soit l'état. C'est F1 : avant, Ambient ne
+             * consultait JAMAIS le lux — `grep -c veille dn_env.c` rendait 0 et
+             * le duty restait cloué à la constante `s_pct = 10`. */
+            int cible = dn_env_bl_loi_regime(lux, s_bl_regime);
             /* 🔴 `dn_display_backlight_pct_state()` rend `-1` quand LEDC n'est
              * pas encore monté : c'est un ÉTAT, ⛔ pas un pourcentage. Le repli
              * était appliqué SANS être re-testé, et `cible = courant + pas`
@@ -742,6 +752,10 @@ void dn_env_cycle(void)
                  * annoncerait une luminosité que la dalle n'a pas prise. */
                 if (dn_display_backlight_pct(cible) == ESP_OK) {
                     s_bl_dernier_pct = cible;
+                    /* AC8 : la loi vit désormais H24 en Ambient. Ce compteur est
+                     * ce qui rend le POMPAGE de la bande morte mesurable sur une
+                     * fenêtre longue, au lieu d'être jugé à l'œil. */
+                    s_bl_applications++;
                 }
             }
             s_bl_dernier_lux = lux;
@@ -989,6 +1003,85 @@ int dn_env_bl_loi(int lux)
     return s_bl_pct_min +
            (((lux - s_bl_lux_bas) * span_pct) + span_lux / 2) / span_lux;
 }
+
+/* ── 🔴 LE RÉGIME (dn4-19) ────────────────────────────────────────────────── */
+
+void dn_env_bl_regime_set(dn_env_bl_regime_t regime)
+{
+    /* ⛔ ON NE POSE RIEN SUR LEDC ICI, et c'est l'invariant d'AC3.5 :
+     *    *l'asservissement fixe le NIVEAU DE RÉGIME de chaque état ; il ne porte
+     *     JAMAIS la transition entre les deux.* La bascule pose le niveau EN UNE
+     *    FOIS, chez l'appelant ; ici on dit seulement vers quoi converger.
+     * 🔴 Le porter ici coûterait t₁ : `dn3-3`/AC4 publie 107 µs, et le pas de
+     *    `DN_ENV_BL_PAS_MAX` points par cycle de 5 s le ferait passer à ~20 s. */
+    s_bl_regime = regime;
+}
+
+dn_env_bl_regime_t dn_env_bl_regime(void) { return s_bl_regime; }
+
+int dn_env_bl_loi_regime(int lux, dn_env_bl_regime_t regime)
+{
+    int pct = dn_env_bl_loi(lux);
+    if (regime != DN_ENV_BL_REGIME_AMBIENT) {
+        return pct;
+    }
+    /* Mise à l'échelle ENTIÈRE, arrondie — même convention que la loi et que le
+     * duty LEDC de `dn_display` : AC7 de `dn1-3` cherchait un PLANCHER lisible,
+     * et une troncature l'aurait raté. */
+    pct = (pct * s_bl_amb_echelle + 50) / 100;
+    /* 🔴 Le plancher d'AMBIENT, ⛔ PAS celui de la loi : troisième contenu,
+     *    troisième plancher (AC3.4). */
+    if (pct < s_bl_amb_pct_min) {
+        pct = s_bl_amb_pct_min;
+    }
+    if (pct > DN_ENV_BL_PCT_MAX) {
+        pct = DN_ENV_BL_PCT_MAX;
+    }
+    return pct;
+}
+
+int dn_env_bl_cible(void)
+{
+    int lux;
+    dn_env_etat_t e = dn_env_etat(DN_ENV_LUM);
+    portENTER_CRITICAL(&s_mux);
+    lux = s_lux;
+    portEXIT_CRITICAL(&s_mux);
+    /* 🔴 MÊME TEST QUE LA BOUCLE, ⛔ pas un test approchant : `DN_ENV_VIVANT`
+     *    veut dire « pas encore périmé », et `DN_ENV_ABSENT` veut dire « jamais
+     *    lu ». Les deux doivent faire taire la loi. */
+    if (e != DN_ENV_VIVANT || lux == DN_ENV_ABSENT) {
+        return -1;   /* ⛔ un ÉTAT, pas un pourcentage */
+    }
+    return dn_env_bl_loi_regime(lux, s_bl_regime);
+}
+
+esp_err_t dn_env_bl_amb_echelle_set(int pct)
+{
+    /* ⛔ Le dépôt REFUSE, il n'écrête pas. */
+    if (pct < 0 || pct > 100) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    s_bl_amb_echelle = pct;
+    return ESP_OK;
+}
+
+int dn_env_bl_amb_echelle(void) { return s_bl_amb_echelle; }
+
+esp_err_t dn_env_bl_amb_plancher_set(int pct)
+{
+    /* Même borne haute que `dn_env_bl_plancher_set()` et pour le même motif : un
+     * plancher au ras du plafond rendrait la loi inerte SANS le dire. */
+    if (pct < 0 || pct > DN_ENV_BL_PCT_MAX - DN_ENV_BL_HYST) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    s_bl_amb_pct_min = pct;
+    return ESP_OK;
+}
+
+int dn_env_bl_amb_plancher(void) { return s_bl_amb_pct_min; }
+
+uint32_t dn_env_bl_applications(void) { return s_bl_applications; }
 
 esp_err_t dn_env_bl_plancher_set(int pct)
 {

@@ -1043,6 +1043,9 @@ static void bl_usage(void)
     printf("        bl auto bornes <lux_bas> <lux_haut>  — la loi, à chaud\n");
     printf("        bl auto pas <1..100>  — pas maximal par cycle de 5 s\n");
     printf("        bl auto plancher <n>  — le %% en piece SOMBRE (constat oeil)\n");
+    printf("        bl auto ambiant <0..100>        — %% de la loi applique en AMBIENT (dn4-19)\n");
+    printf("        bl auto ambiant plancher <n>    — le plancher du RENDU D'AMBIENT (dn4-19)\n");
+    printf("        bl loi [lux]        — ce que la loi RENDRAIT, ⛔ SANS l'appliquer\n");
 }
 
 /* 🔴 DEUX ÉCRIVAINS SUR LEDC, ET RIEN NE LES ARBITRAIT.
@@ -1088,10 +1091,30 @@ static void bl_auto_etat(void)
     } else {
         printf("  applique : %d %% (sur %d lx)\n", dpct, dlux);
     }
+    /* 🔴 dn4-19 — LE RÉGIME EST LA MOITIÉ DE L'ÉTAT. Sans lui, `applique : N %%`
+     * ne dit pas SUR QUOI la loi asservit, et c'est exactement l'aveuglement qui
+     * a laissé « l'asservissement n'a jamais tourné » invisible pendant des
+     * semaines : la sortie était juste, elle ne disait simplement pas assez. */
+    bool amb = (dn_env_bl_regime() == DN_ENV_BL_REGIME_AMBIENT);
+    printf("  régime   : %s%s\n", amb ? "AMBIENT" : "ACTIF",
+           amb ? "  (la loi est mise à l'échelle, voir ci-dessous)" : "");
+    printf("  ambiant  : échelle %d %% de la loi · plancher %d %%\n",
+           dn_env_bl_amb_echelle(), dn_env_bl_amb_plancher());
+    printf("           ⚠️ ce plancher est un TROISIÈME contenu (gros chiffres sur "
+           "noir), ⛔ JAMAIS mesuré à l'œil : ⛔ ne pas le confondre avec les %d %% "
+           "du dashboard ni avec les %d %% du Living PCB.\n",
+           DN_ENV_BL_PCT_MIN, DN_VEILLE_PCT_MIN);
+    printf("  applications : %u mouvements de duty depuis le boot\n",
+           (unsigned)dn_env_bl_applications());
+    printf("           (dn4-19/AC8 : deux relevés espacés mesurent le POMPAGE de "
+           "la bande morte — la loi vit H24 depuis que l'auto est armée par "
+           "défaut.)\n");
     printf("  ⚠️ `bl <n>`, `bl on|off` et `bl ramp` DÉSARMENT l'auto et le "
            "DISENT.\n");
     printf("  ⛔ `bl ramp` est BLOQUANTE : elle n'est JAMAIS appelée par "
            "l'asservissement.\n");
+    printf("  ⛔ La VEILLE ne désarme PLUS (dn4-19) : elle POSE le niveau du "
+           "régime EN UNE FOIS, et la loi le maintient ensuite.\n");
 }
 
 static int cmd_bl(int argc, char **argv)
@@ -1155,6 +1178,46 @@ static int cmd_bl(int argc, char **argv)
             bl_auto_etat();
             return 0;
         }
+        /* ── bl auto ambiant <0..100> | bl auto ambiant plancher <n> ──
+         * dn4-19/AC3.2 + AC3.4 : les DEUX réglages du régime Ambient se
+         * tranchent SUR LA DALLE, à l'œil, dans UNE séance — ⛔ pas au papier,
+         * et ⛔ pas au prix de trois reflashs. */
+        if (strcmp(argv[2], "ambiant") == 0) {
+            if (argc == 5 && strcmp(argv[3], "plancher") == 0) {
+                long pct = 0;
+                if (!parse_entier(argv[4], &pct)) {
+                    printf("usage : bl auto ambiant plancher <0..%d>\n",
+                           DN_ENV_BL_PCT_MAX - DN_ENV_BL_HYST);
+                    return 1;
+                }
+                if (dn_env_bl_amb_plancher_set((int)pct) != ESP_OK) {
+                    printf("refusé : le plancher d'Ambient doit être dans "
+                           "[0, %d] — au-delà, la bande morte rendrait la loi "
+                           "INERTE sans le dire. Rien n'a été touché.\n",
+                           DN_ENV_BL_PCT_MAX - DN_ENV_BL_HYST);
+                    return 1;
+                }
+                dn_ui_veille_bl_rafraichir();
+                bl_auto_etat();
+                return 0;
+            }
+            long pct = 0;
+            if (argc != 4 || !parse_entier(argv[3], &pct)) {
+                printf("usage : bl auto ambiant <0..100>            (l'échelle)\n");
+                printf("        bl auto ambiant plancher <0..%d>   (le plancher)\n",
+                       DN_ENV_BL_PCT_MAX - DN_ENV_BL_HYST);
+                return 1;
+            }
+            if (dn_env_bl_amb_echelle_set((int)pct) != ESP_OK) {
+                printf("refusé : l'échelle d'Ambient doit être dans [0, 100] %% "
+                       "de la loi. Rien n'a été touché.\n");
+                return 1;
+            }
+            /* L'œil doit voir l'effet MAINTENANT, pas au prochain cycle de 5 s. */
+            dn_ui_veille_bl_rafraichir();
+            bl_auto_etat();
+            return 0;
+        }
         if (strcmp(argv[2], "pas") == 0) {
             long pas = 0;
             if (argc != 4 || !parse_entier(argv[3], &pas)) {
@@ -1198,6 +1261,56 @@ static int cmd_bl(int argc, char **argv)
         }
         dn_env_bl_auto_set(on_auto);
         bl_auto_etat();
+        return 0;
+    }
+
+    /* ── bl loi [lux] ──────────────────────────────────────────────────────
+     * 🔴 dn4-19 — L'INSTRUMENT DE PRÉDICTION EXISTAIT ET N'AVAIT AUCUN APPELANT.
+     *   `dn_env_bl_loi()` est exposée dans `dn_env.h` avec le commentaire
+     *   « exposé pour que la console puisse imprimer la loi sans l'appliquer »…
+     *   et rien ne l'appelait. Résultat MESURÉ : la prédiction « 61 % » de la
+     *   séance du 2026-08-27 a été calculée À LA MAIN, hors de la carte — alors
+     *   que la règle du dépôt est *« s'en servir pour tout chiffre annoncé
+     *   d'avance, ⛔ pas recalculer à la main dans un coin »*.
+     * ⛔ N'APPLIQUE RIEN et NE DÉSARME RIEN : c'est une lecture. */
+    if (strcmp(argv[1], "loi") == 0) {
+        long lux = 0;
+        bool fourni = (argc >= 3);
+        if (fourni && !parse_entier(argv[2], &lux)) {
+            printf("« %s » n'est pas un nombre.\n", argv[2]);
+            printf("usage : bl loi [lux]   — sans argument, le lux COURANT\n");
+            return 1;
+        }
+        if (!fourni) {
+            int courant = dn_env_lux();
+            if (courant == DN_ENV_ABSENT ||
+                dn_env_etat(DN_ENV_LUM) != DN_ENV_VIVANT) {
+                /* ⛔ On ne fabrique PAS un « 0 lx » : « jamais lu » et « noir
+                 * complet » ne s'impriment pas à l'identique — corrigé en revue
+                 * de code le 2026-08-20, ⛔ ne pas le ré-introduire ici. */
+                printf("⛔ pas de lux exploitable en ce moment : le BH1750 est "
+                       "« %s ». Donner un lux explicitement : `bl loi <lux>`.\n",
+                       dn_env_etat_nom(dn_env_etat(DN_ENV_LUM)));
+                return 1;
+            }
+            lux = courant;
+        }
+        if (lux < 0) {
+            printf("⚠️ un lux négatif n'existe pas — rien n'a été calculé.\n");
+            return 1;
+        }
+        int actif = dn_env_bl_loi_regime((int)lux, DN_ENV_BL_REGIME_ACTIF);
+        int ambi  = dn_env_bl_loi_regime((int)lux, DN_ENV_BL_REGIME_AMBIENT);
+        printf("loi à %ld lx%s :\n", lux, fourni ? "" : "  (lux COURANT, lu)");
+        printf("  ACTIF   : %d %%\n", actif);
+        printf("  AMBIENT : %d %%   (échelle %d %% · plancher %d %%)\n", ambi,
+               dn_env_bl_amb_echelle(), dn_env_bl_amb_plancher());
+        printf("  duty POSÉ en ce moment : %d %%   ·   régime : %s\n",
+               dn_display_backlight_pct_state(),
+               dn_env_bl_regime() == DN_ENV_BL_REGIME_AMBIENT ? "AMBIENT"
+                                                              : "ACTIF");
+        printf("⛔ RIEN N'A ÉTÉ APPLIQUÉ ET RIEN N'A ÉTÉ DÉSARMÉ : c'est une "
+               "lecture.\n");
         return 0;
     }
 
@@ -8639,7 +8752,7 @@ static void veille_usage(void)
     printf("        veille fond                  voiles et aplats RELUS DES OBJETS LVGL\n");
     printf("        veille reset                 compteurs ET latences a zero\n");
     printf("  --- leviers A/B, a chaud, ⛔ NON persistes (ce sont des instruments) ---\n");
-    printf("        veille pct <%d..%d>            retroeclairage d'Ambient\n",
+    printf("        veille pct <%d..%d>           niveau d'Ambient de DERNIER RECOURS\n",
            DN_VEILLE_PCT_MIN, DN_VEILLE_PCT_MAX);
     printf("        veille voile <0..255>        opacite du voile en Ambient\n");
     printf("        veille gris <reel|simule|absent> <rrggbb>\n");
@@ -9155,7 +9268,11 @@ static int cmd_veille(int argc, char **argv)
             return 1;
         }
         printf("Ambient. Le retroeclairage est a %d %%, le voile a %u.\n",
-               dn_veille_pct(), (unsigned)dn_ui_veille_voile());
+               dn_display_backlight_pct_state(), (unsigned)dn_ui_veille_voile());
+        /* 🔴 dn4-19 — CETTE LIGNE IMPRIMAIT `dn_veille_pct()`, C'EST-A-DIRE UN
+         *   REGLAGE, EN ANNONCANT L'ETAT DE LA DALLE. Tant qu'Ambient valait la
+         *   constante, les deux coincidaient ; depuis que le niveau suit le lux,
+         *   c'etait devenu un instrument qui ment. On lit desormais LEDC. */
         printf("⚠️ LES DONNEES RESTENT VIVANTES : `hist` continue d'echantillonner,\n");
         printf("   l'heure avance, les six cases changent. Veille ≠ fige.\n");
         return 0;
@@ -9313,11 +9430,28 @@ static int cmd_veille(int argc, char **argv)
                    DN_ENV_BL_PCT_MIN);
             printf("  qui est le plancher de la LOI d'asservissement au lux —\n");
             printf("  un autre chiffre pour un autre usage.\n");
+            printf("  ⚠️ dn4-19 : la borne HAUTE est passee de 40 a %d. Le 40\n",
+                   DN_VEILLE_PCT_MAX);
+            printf("  disait « Ambient est un etat SOMBRE » ; ce chiffre est\n");
+            printf("  desormais le DERNIER RECOURS, donc il s'applique a\n");
+            printf("  n'importe quel eclairage — un plafond a 40 y serait faux\n");
+            printf("  pour la meme raison que le 10 %% l'etait.\n");
             return 1;
         }
-        printf("retroeclairage d'Ambient : %d %%%s\n", dn_veille_pct(),
-               dn_veille_mode() == DN_VEILLE_AMBIENT ? " (applique MAINTENANT)"
-                                                     : " (a la prochaine veille)");
+        /* 🔴 dn4-19 — CE LEVIER A CHANGE DE NATURE, ET LA CONSOLE DOIT LE DIRE.
+         *   Le laisser s'annoncer « retroeclairage d'Ambient » serait une
+         *   etiquette qui ment, et *« une etiquette qui ment se relit a chaque
+         *   boot »* est exactement le defaut que ce depot traque. */
+        printf("niveau d'Ambient de DERNIER RECOURS : %d %%\n", dn_veille_pct());
+        printf("⛔ CE N'EST PLUS le niveau d'Ambient (dn4-19) : en regime normal,\n");
+        printf("   Ambient suit LE LUX (`bl loi` pour voir ce que la loi rendrait).\n");
+        printf("   Cette valeur ne sert QUE si la loi ne peut pas parler :\n");
+        printf("   BH1750 muet / jamais lu, ou `bl auto` DESARME par un geste.\n");
+        printf("   Elle est JOURNALISEE quand elle sert — un repli silencieux\n");
+        printf("   serait exactement le defaut que dn4-19 ferme.\n");
+        printf("✅ Pour regler le niveau d'Ambient NORMAL, c'est :\n");
+        printf("     `bl auto ambiant <0..100>`          l'echelle de la loi\n");
+        printf("     `bl auto ambiant plancher <n>`      le plancher du RENDU d'Ambient\n");
         return 0;
     }
 

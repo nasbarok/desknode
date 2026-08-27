@@ -306,7 +306,18 @@ bool dn_veille_soupcon_appui_fantome(void);
  * en NVS sur une carte et pas sur une autre. Et ça garde la NVS à EXACTEMENT
  * les deux clés qu'AC7.1 décrit.
  */
-int dn_veille_pct(void); /* rétroéclairage d'Ambient, en % */
+/*
+ * 🔴 `dn4-19` — CE LEVIER A CHANGÉ DE NATURE, ⛔ IL N'EST PLUS « LE NIVEAU
+ *    D'AMBIENT ». Depuis `dn4-19`, le niveau d'Ambient est une **fonction du
+ *    lux** (`dn_env_bl_loi_regime()`), ⛔ plus une constante : c'était F1, et
+ *    c'est ce qui laissait la dalle à 10 % pendant que le BH1750 lisait 357 lx.
+ * ⇒ **Ce pourcentage est désormais le niveau d'Ambient de DERNIER RECOURS** :
+ *   celui que la bascule pose **quand la loi ne peut pas parler** — capteur
+ *   muet, jamais lu, ou valeur périmée. Il est journalisé quand il sert : un
+ *   repli SILENCIEUX serait exactement le défaut que `dn4-19` ferme.
+ * ⚠️ Il ne va toujours PAS en NVS, et le motif d'origine tient (voir ci-dessus).
+ */
+int dn_veille_pct(void); /* niveau d'Ambient de DERNIER RECOURS, en % */
 esp_err_t dn_veille_set_pct(int pct);
 
 /*
@@ -317,7 +328,27 @@ esp_err_t dn_veille_set_pct(int pct);
  *    recopier ici par réflexe. AC9.1 balaye 3 -> 20 et l'œil tranche.
  */
 #define DN_VEILLE_PCT_MIN 3
-#define DN_VEILLE_PCT_MAX 40
+
+/*
+ * 🔴 `dn4-19`/AC5 — ~~`DN_VEILLE_PCT_MAX 40`~~ ⇒ **100**. BARRÉ, ⛔ PAS EFFACÉ.
+ *
+ * ⛔ LE 40 ÉTAIT DÉMENTI PAR L'ŒIL : le 2026-08-27, l'owner a validé **61 %**
+ *    en Ambient (*« j'ai bien vu 10 -> 30 -> 50 -> 61 % et 61 c'est bien
+ *    mieux »*) — et `veille pct 61` était **REFUSÉ** par cette borne. Une borne
+ *    qui interdit un réglage validé à l'œil est **un instrument qui ment**.
+ * 🔴 ET LE MOTIF DE LA BORNE A DISPARU AVEC LE CHANGEMENT DE NATURE : tant que
+ *    ce chiffre était « le niveau d'Ambient », un plafond bas disait *« Ambient
+ *    est un état SOMBRE »*. Maintenant qu'il est le niveau de **dernier
+ *    recours**, il s'applique **à n'importe quel éclairage** — y compris en
+ *    plein jour, capteur muet. Un plafond à 40 y serait faux **pour la même
+ *    raison que le 10 % l'était** : il ignorerait la lumière de la pièce.
+ * ✅ `DN_VEILLE_PCT_MIN = 3` RESTE, ET IL RESTE DISTINCT DE `DN_ENV_BL_PCT_MIN`
+ *    (8) ET DU PLANCHER D'AMBIENT (`DN_ENV_BL_AMB_PCT_MIN_DEFAUT`) : trois
+ *    chiffres, trois CONTENUS mesurés séparément. ⛔ Ne pas les fusionner par
+ *    réflexe — *« un plancher de lisibilité est une propriété du COUPLE
+ *    duty × contenu, pas du duty seul »*.
+ */
+#define DN_VEILLE_PCT_MAX 100
 
 #ifdef __cplusplus
 }

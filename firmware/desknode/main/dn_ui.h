@@ -394,7 +394,12 @@ esp_err_t dn_ui_veille_set_armee(bool on, dn_veille_origine_t origine);
 esp_err_t dn_ui_veille_set_cran(int idx);
 
 /* ── Les leviers d'AC9, à chaud (⛔ non persistés — ce sont des instruments) ── */
+/* ⚠️ dn4-19 : ⛔ ce n'est PLUS « le niveau d'Ambient », c'est le niveau de
+ * DERNIER RECOURS (capteur muet / loi désarmée). Voir `dn_veille.h`. */
 esp_err_t dn_ui_veille_set_pct(int pct);
+/* Re-pose le niveau du régime AMBIENT immédiatement, si on dort. Sans effet
+ * sinon. C'est le levier d'A/B de `bl auto ambiant …` (dn4-19/AC3.4, AC6). */
+void dn_ui_veille_bl_rafraichir(void);
 /* L'opacité du voile EN AMBIENT. ⛔ Ne reconstruit PAS la scène : le voile est
  * retenu, on n'écrit que son style. */
 esp_err_t dn_ui_veille_set_voile(uint8_t opa);

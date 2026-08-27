@@ -1,0 +1,33 @@
+
+=== T1.4 POINT ZERO — condition A (eclairage tel quel), AMBIENT, firmware de depart — n=6 — 2026-08-27 15:26:48 ===
+{'tir': 1, 'etat': 'VIVANT', 'lux': 109, 'brut': 131, 'age': 1707, 'duty': 10, 'arme': 'DÉSARMÉ', 'applique': 'AUCUNE application depuis le boot', 'cycles': 748}
+{'tir': 2, 'etat': 'VIVANT', 'lux': 109, 'brut': 131, 'age': 2964, 'duty': 10, 'arme': 'DÉSARMÉ', 'applique': 'AUCUNE application depuis le boot', 'cycles': 749}
+{'tir': 3, 'etat': 'VIVANT', 'lux': 108, 'brut': 130, 'age': 4232, 'duty': 10, 'arme': 'DÉSARMÉ', 'applique': 'AUCUNE application depuis le boot', 'cycles': 750}
+{'tir': 4, 'etat': 'VIVANT', 'lux': 105, 'brut': 127, 'age': 400, 'duty': 10, 'arme': 'DÉSARMÉ', 'applique': 'AUCUNE application depuis le boot', 'cycles': 752}
+{'tir': 5, 'etat': 'VIVANT', 'lux': 105, 'brut': 127, 'age': 1560, 'duty': 10, 'arme': 'DÉSARMÉ', 'applique': 'AUCUNE application depuis le boot', 'cycles': 753}
+{'tir': 6, 'etat': 'VIVANT', 'lux': 105, 'brut': 126, 'age': 2716, 'duty': 10, 'arme': 'DÉSARMÉ', 'applique': 'AUCUNE application depuis le boot', 'cycles': 754}
+lux etendue 105..109 | duty 10..10 | loi 21..22 | facteur 2.10..2.20
+
+=== T1.4 POINT ZERO — condition A (eclairage tel quel), AMBIENT, firmware de depart — n=6 ECHANTILLONS DISTINCTS — 2026-08-27 15:28:11 ===
+lux      : 100..101  (etendue 1)   bruts [122, 122, 121, 121, 122, 122]
+duty     : 10..10 (etendue 0)
+loi(lux) : 21..21 (etendue 0)
+facteur loi/duty : 2.10..2.10
+{'etat': 'VIVANT', 'lux': 101, 'brut': 122, 'age': 127, 'duty': 10, 'arme': 'DÉSARMÉ', 'applique': 'AUCUNE application depuis le boot', 'cycles': 762, 'tir': 1}
+{'etat': 'VIVANT', 'lux': 101, 'brut': 122, 'age': 1053, 'duty': 10, 'arme': 'DÉSARMÉ', 'applique': 'AUCUNE application depuis le boot', 'cycles': 764, 'tir': 2}
+{'etat': 'VIVANT', 'lux': 100, 'brut': 121, 'age': 1062, 'duty': 10, 'arme': 'DÉSARMÉ', 'applique': 'AUCUNE application depuis le boot', 'cycles': 767, 'tir': 3}
+{'etat': 'VIVANT', 'lux': 100, 'brut': 121, 'age': 1074, 'duty': 10, 'arme': 'DÉSARMÉ', 'applique': 'AUCUNE application depuis le boot', 'cycles': 769, 'tir': 4}
+{'etat': 'VIVANT', 'lux': 101, 'brut': 122, 'age': 1066, 'duty': 10, 'arme': 'DÉSARMÉ', 'applique': 'AUCUNE application depuis le boot', 'cycles': 770, 'tir': 5}
+{'etat': 'VIVANT', 'lux': 101, 'brut': 122, 'age': 1051, 'duty': 10, 'arme': 'DÉSARMÉ', 'applique': 'AUCUNE application depuis le boot', 'cycles': 771, 'tir': 6}
+
+=== T1.4 POINT ZERO — condition B (PLEINE LUMIERE), AMBIENT, firmware de depart — n=6 ECHANTILLONS DISTINCTS — 2026-08-27 15:34:51 ===
+lux      : 174..180  (etendue 6)   bruts [215, 216, 215, 210, 209, 209]
+duty     : 10..10 (etendue 0)
+loi(lux) : 32..33 (etendue 1)
+facteur loi/duty : 3.20..3.30
+{'etat': 'VIVANT', 'lux': 179, 'brut': 215, 'age': 1736, 'duty': 10, 'arme': 'DÉSARMÉ', 'applique': 'AUCUNE application depuis le boot', 'cycles': 841, 'tir': 1}
+{'etat': 'VIVANT', 'lux': 180, 'brut': 216, 'age': 1129, 'duty': 10, 'arme': 'DÉSARMÉ', 'applique': 'AUCUNE application depuis le boot', 'cycles': 842, 'tir': 2}
+{'etat': 'VIVANT', 'lux': 179, 'brut': 215, 'age': 1047, 'duty': 10, 'arme': '?', 'applique': '?', 'cycles': 843, 'tir': 3}
+{'etat': 'VIVANT', 'lux': 175, 'brut': 210, 'age': 1054, 'duty': 10, 'arme': 'DÉSARMÉ', 'applique': 'AUCUNE application depuis le boot', 'cycles': 846, 'tir': 4}
+{'etat': 'VIVANT', 'lux': 174, 'brut': 209, 'age': 1062, 'duty': 10, 'arme': 'DÉSARMÉ', 'applique': 'AUCUNE application depuis le boot', 'cycles': 849, 'tir': 5}
+{'etat': 'VIVANT', 'lux': 174, 'brut': 209, 'age': 1052, 'duty': 10, 'arme': 'DÉSARMÉ', 'applique': 'AUCUNE application depuis le boot', 'cycles': 851, 'tir': 6}
