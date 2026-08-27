@@ -1545,7 +1545,33 @@ static int cmd_flush(int argc, char **argv)
             printf("     référence des déficits (FIGÉE après dégrossissage) : "
                    "%lu us · 1 ligne = %lu us\n",
                    (unsigned long)b.ph_ref_us, (unsigned long)b.us_par_ligne);
-            if (b.ph_max_us > b.ph_ref_us) {
+            /*
+             * 🔴 LA CONTRE-EPREUVE ETAIT UNILATERALE — TROUVE PAR LA CARTE LE
+             *    2026-08-27, ⛔ PAS PAR LA LECTURE. Elle ne testait que
+             *    `MAX > reference` (reference trop BASSE => sous-comptage).
+             *    Le cas SYMETRIQUE existe et il est PIRE : si le degrossissage
+             *    tombe pendant le BOOT, quand rien ne dessine, la phase y est
+             *    LONGUE => la reference est posee AU-DESSUS DE TOUTE LA
+             *    POPULATION => TOUTES les trames affichent un deficit.
+             *    MESURE sur la carte : `10 % 9372` sur `n=9372` — 100 % des
+             *    trames — avec `MAX 2292` pour une reference de ~2452.
+             *    ⛔ Et l'ancienne contre-epreuve etait MUETTE dans ce cas, parce
+             *    que `MAX > ref` est FAUX quand la reference est trop haute.
+             * ⇒ Les deux sens sont dits, et le second nomme son symptome
+             *   (« le seau 10 % vaut ~n ») pour qu'il se reconnaisse a l'oeil.
+             */
+            if (b.ph_ref_us > b.ph_max_us) {
+                printf("     🔴 RÉFÉRENCE (%lu) AU-DESSUS DU MAX (%lu) : le "
+                       "dégrossissage est tombé dans un régime où la phase "
+                       "était PLUS LONGUE qu'en régime (typiquement le BOOT) "
+                       "⇒ les déficits ci-dessous sont SUR-comptés de %lu us "
+                       "sur TOUTES les trames.\n",
+                       (unsigned long)b.ph_ref_us, (unsigned long)b.ph_max_us,
+                       (unsigned long)(b.ph_ref_us - b.ph_max_us));
+                printf("        ⛔ SYMPTÔME À RECONNAÎTRE : le seau 10 %% vaut "
+                       "presque `n`. Refaire `flush reset` EN RÉGIME, ⛔ pas au "
+                       "boot.\n");
+            } else if (b.ph_max_us > b.ph_ref_us) {
                 /* La contre-épreuve de la référence figée : si la population
                  * comptée dépasse la référence, le dégrossissage a été pris
                  * dans un régime déjà dégradé et les déficits sont SOUS-comptés. */
