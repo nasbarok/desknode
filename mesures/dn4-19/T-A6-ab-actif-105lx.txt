@@ -1,0 +1,23 @@
+=== T-A6 — A/B d'ACTIF, CONDITION 2 : ~105 lx — binaire 8f95975 (SHA LU AU BANDEAU)
+=== Protocole : owner pilote, 3 s par niveau, lux releve a chaque point.
+=== ⛔ PAS de balayage instrumente (consigne owner du 2026-08-27, versee au ledger).
+
+  niveau pose   lux au meme instant   verdict owner
+  ----------------------------------------------------------------
+  53 % (LA LOI)      105 lx           point de depart, vu
+  80 %               105 lx           🎯 « celui-la »  ⇒ RETENU
+  100 %              --               ⛔ NON TIRE : l'owner a tranche a 80
+
+CE QUE LA LOI LOG REND A 105 lx : 53 %   ⇒ ECART DE 27 POINTS avec l'oeil.
+
+🔴 ET CE POINT CONTREDIT LE SEUL POINT DE CALAGE DE LA LOI LOG :
+     ACTIF a 245 lx (seance du 2026-08-27) ⇒ oeil = 75 %, loi log = 76 %  ✅
+     ACTIF a 105 lx (cette seance)         ⇒ oeil = 80 %, loi log = 53 %  ❌
+   245 lx est 2,3x PLUS LUMINEUX que 105 lx et demanderait MOINS de duty.
+   ⛔ AUCUNE LOI CROISSANTE NE PASSE PAR CES DEUX POINTS.
+   ⛔ On garde LES DEUX et on le DIT — on ne fabrique pas de reconciliation.
+
+⚠️ CIRCONSTANCE ATTENUANTE DU POINT DE 245 lx, ECRITE DANS LA STORY ELLE-MEME :
+   ce point vient de la campagne que l'owner a INTERROMPUE en la qualifiant de
+   « test tt pourri » (balayage instrumente, 100 s par niveau, juge a l'aveugle
+   sans voir le %). Le point de 105 lx, lui, est pris au protocole corrige.

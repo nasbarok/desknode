@@ -1,0 +1,48 @@
+=== T-A9 — ECHELLE D'AMBIENT + SYNTHESE DES 6 POINTS D'OEIL — binaire 8f95975
+
+──── Test de l'echelle d'Ambient a 65 %, a 229 lx ────
+  AMBIENT pose : 48 %   ·   ACTIF au reveil : 74 %   ⇒ 26 points d'ecart
+  Q1 « le bond se voit-il ? »        ⇒ ⛔ « PAS DU TOUT, ca parais etre la meme »
+  Q2 « 48 % en Ambient, c'est bon ? » ⇒ ✅ « oui pour la veille »
+  Q2bis « et 74 % en Actif ? »        ⇒ ⛔ « trop limite pour le actif »
+
+🔴 CE QUE Q1 MESURE, ET C'EST UNE ENTREE DE LEDGER QUI SE FERME :
+  « LE DUTY LEDC N'EST PAS LINEAIRE EN LUMINOSITE PERCUE ». 48 -> 74 est un
+  facteur 1,5 ; le 10 -> 30 de la seance du 27/08 etait un facteur 3, et il
+  SAUTAIT AUX YEUX. ⇒ en haut de plage, un grand ecart de duty ne se VOIT pas.
+  ⛔ Consequence directe : on ne peut PAS rendre le reveil visible en creusant
+  l'ecart de duty entre les deux regimes. Le levier est la COURBE duty->percu,
+  ⛔ pas l'ecart.
+
+──── SYNTHESE : SIX POINTS D'OEIL, TOUS AVEC LEUR LUX ET LEUR BINAIRE ────
+
+  regime    lux    oeil owner            loi log   binaire
+  ---------------------------------------------------------------
+  AMBIENT    98    [50 ; 65] bande         51      8f95975
+  AMBIENT   229    48  ✅ « bon »          48      8f95975
+  ACTIF     105    80                      53      8f95975
+  ACTIF     229    74  ⛔ « trop limite »   74      8f95975
+  ACTIF     245    75  (protocole recuse)  76      0ced322
+  ACTIF     391    80  ✅ « toujours bon »  88      8f95975
+
+🔴 CE QUE CES SIX POINTS DISENT, ET AUCUN N'EST UNE DEDUCTION :
+  1. EN ACTIF, L'OEIL EST PLAT A ~80 % DE 105 lx A 391 lx (3,7x de lumiere).
+     La loi log y balaie 53 -> 88 %. ⇒ SA PENTE EST REFUTEE sur la plage
+     domestique reellement vecue.
+  2. EN AMBIENT, L'OEIL EST PLAT A ~48-65 % sur 98 -> 229 lx.
+  3. ⇒ L'OEIL VEUT DEUX NIVEAUX ~FIXES SUR 100-400 lx, ⛔ PAS UNE LOI.
+     ⚠️ CE N'EST VRAI QUE SUR CETTE PLAGE : le plancher de 16 % DANS LE NOIR
+     est valide, lui, et il PROUVE que la loi sert aux extremes. ⛔ Ne pas
+     conclure « la loi ne sert a rien » — conclure « sa pente est fausse AU
+     MILIEU », ce qui n'est pas la meme chose et ne se corrige pas au meme endroit.
+  4. D-1 EST RESTAUREE DANS LE SENS PREDIT PAR LA STORY : ACTIF (80) DOIT ETRE
+     AU-DESSUS D'AMBIENT (48-65). C'est bien ACTIF QUI MONTE.
+  5. ⛔ MAIS L'ECHELLE SEULE NE SUFFIT PAS : elle ne peut que DESCENDRE Ambient
+     sous une loi d'ACTIF qui est deja trop basse en bas de plage. Les deux sont
+     COUPLES ⇒ UN SEUL [CC], sur AC6.3 (la courbe) + AC3.2 (l'echelle).
+
+⚠️ NON MESURE, ET DECLARE : l'ACTIF en pièce SOMBRE (rideau ferme). Les six
+   points couvrent 98 -> 391 lx. ⛔ Rien ne dit ce que l'oeil veut en Actif a 5 lx.
+⚠️ NON MESURE : le lux a DERIVE fortement pendant la seance (105 -> 458 -> 219 lx
+   avec la meme lampe allumee). La dispersion du couple capteur x piece n'a pas
+   ete quantifiee ici. ⇒ AC7.2 reste partiel sur ce point.

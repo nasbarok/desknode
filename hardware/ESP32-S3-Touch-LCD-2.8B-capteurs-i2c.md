@@ -5976,3 +5976,112 @@ domestique.** Le compteur `applications` (livré par cette story) le rend mesura
 ⇒ **aucune contre-réaction optique**, exactement ce que le ledger avançait.
 ⛔ **CE QUI RESTE NON FAIT** : aucune observation sous **éclairage instable** (fluo, ombre mobile).
 **Un silence n'est pas un verdict** — c'est déclaré ouvert, ⛔ pas conclu.
+
+---
+
+## §13.25 — LA SÉANCE DE CLÔTURE DE `dn4-19`, APRÈS LA REVUE DE CODE 3 COUCHES
+
+⚠️ **Binaire : `8f95975`, SHA LU AU BANDEAU** (`App version`), arbre **PROPRE**, `idf.py reconfigure`
+joué avant le flash. ⛔ Aucun chiffre de cette section n'est déduit du dépôt.
+Captures brutes : `mesures/dn4-19/T-A1` → `T-A9`.
+
+### 13.25.1 🔴 CE QUE §13.24 AFFIRMAIT ET QUI N'ÉTAIT **PAS OBSERVÉ** — la revue l'a trouvé
+
+⛔ **LE BINAIRE `0ced322` N'A JAMAIS TOURNÉ EN RÉGIME AMBIENT.** `mesures/dn4-19/T11-etat-final.txt`
+rend `bascules -> Ambient : 0 · reveils : 0` et `total 557 s ⇒ Ambient = 0 %`. Les **trois** seules
+occurrences d'`AMBIENT` dans ses captures viennent de **`bl loi`** — la calculatrice en lecture
+seule — et **les trois affichent `régime : ACTIF`**.
+⇒ Les chiffres d'Ambient de §13.24.3 (**26 %** sur 136 lx, **9 %** à 5 lx) sont mesurés sur
+**`efbd515`** (loi **LINÉAIRE**, plancher ambiant **8**), ⛔ **pas** sur le binaire livré.
+✅ **§13.24 nommait pourtant bien ses SHA colonne par colonne** — c'est la *story* et le *tracker*
+qui les avaient écrasés sous un seul. Les deux sont corrigés.
+
+### 13.25.2 ✅ AMBIENT TOURNE — POUR LA PREMIÈRE FOIS, SUR LE BINAIRE LIVRÉ
+
+| | `0ced322` | **`8f95975`** |
+|---|---|---|
+| `bascules -> Ambient` | **0** | **1**, puis 4 |
+| `régime` | `ACTIF` | **`AMBIENT`** |
+| duty en Ambient | ⛔ jamais observé | **`applique : 50 % (sur 98 lx)`** |
+| `applications` après la bascule | — | **1** — ⛔ pas 2 |
+
+🎯 La dernière ligne est la **preuve directe du correctif de l'ombre** : sous l'ancien code la
+bascule déclenchait une **ré-application fantôme** au cycle suivant et le compteur passait à 2.
+✅ Loi = **51 %** à 97 lx, dalle = **50 %** ⇒ **un point d'écart, sous la bande morte.**
+⇒ **PLUS DE FACTEUR 5,5.** C'est le critère de succès chiffré d'AC3.1, enfin **observé**.
+
+### 13.25.3 ✅ LE GARDE-FOU DU RÉVEIL, LES DEUX SENS, SUR CE BINAIRE
+
+- **(a)** 140 s d'écoute, **2 réveils AU DOIGT**, 2 bascules ⇒ ⛔ **AUCUNE accusation**
+  (`T-A3`). Couvre en plus le chemin du **dernier recours**, que la story n'avait pas exercé.
+- **(b)** `bl 40` tapé **pendant** la veille, réveil au doigt ⇒ **l'accusation SORT**, et elle nomme
+  **les trois valeurs — 40 / 93 / 95 — exactement celles prédites AVANT le tir** (`T-A8`) :
+
+```
+W dn_ui: reveil : le retroeclairage vaut 40 % alors que la veille l'avait pose a 93 % et que
+         l'asservissement en est a 95 % — quelqu'un l'a change PENDANT la veille. On le LAISSE
+         tel quel plutot que d'ecraser ce geste (il aurait ete rendu a 95 % sans un mot).
+```
+
+✅ **`régime : ACTIF` et `mode : ACTIF` s'accordent** au réveil (`T-A5`) — c'est le témoin du défaut
+haut n°1 de la revue : le régime restait collé à `AMBIENT`, et l'asservissement pilotait alors le
+**dashboard éveillé** à l'échelle et au plancher d'Ambient.
+
+### 13.25.4 ✅ AC3.5 RE-TIRÉ — l'instrument avait changé, donc le chiffre était mort
+
+`veille lat` sur `8f95975` : **n = 4 réveils AU DOIGT**, **t₁ min 124 · méd 247 · max 5067 µs**.
+⇒ **même ordre de grandeur** que les 107 µs de `dn3-3`/AC4 et les 185 µs de §13.24.5. Si la loi
+portait la transition, on serait à **~20 s**. ✅ **L'invariant tient.**
+⚠️ `t₁ max` : même artefact qu'en §13.24.5, **même statut** — l'attribution à l'`ESP_LOGW` reste
+**cohérente, ⛔ PAS PROUVÉE.** L'entrée de ledger reste **ouverte**.
+
+### 13.25.5 🔴 SIX POINTS D'ŒIL — ET LA PENTE DE LA LOI EST RÉFUTÉE AU MILIEU
+
+| régime | lux | **œil owner** | loi log | binaire |
+|---|---|---|---|---|
+| AMBIENT | 98 | **[50 ; 65]** (bande) | 51 | `8f95975` |
+| AMBIENT | 229 | **48** ✅ *« bon pour la veille »* | 48 | `8f95975` |
+| ACTIF | 105 | **80** | 53 | `8f95975` |
+| ACTIF | 229 | **74** ⛔ *« trop limite »* | 74 | `8f95975` |
+| ACTIF | 245 | 75 *(protocole récusé par l'owner)* | 76 | `0ced322` |
+| ACTIF | 391 | **80** ✅ *« toujours bon »* | 88 | `8f95975` |
+
+1. 🔴 **EN ACTIF, L'ŒIL EST PLAT À ~80 % DE 105 lx À 391 lx** — **3,7×** de lumière. La loi log y
+   balaie **53 → 88 %** : **35 points** là où l'œil n'en veut ~aucun. ⇒ **sa PENTE est réfutée sur
+   la plage domestique réellement vécue.**
+2. **EN AMBIENT, l'œil est plat à ~48-65 %** sur 98 → 229 lx.
+3. ⇒ **L'ŒIL VEUT DEUX NIVEAUX ~FIXES SUR 100-400 lx, ⛔ PAS UNE LOI.**
+   ⚠️ ⛔ **CE N'EST VRAI QUE SUR CETTE PLAGE.** Le plancher **16 % DANS LE NOIR** est validé
+   (§13.24.6) et **prouve que la loi sert aux extrêmes**. ⇒ conclure *« sa pente est fausse AU
+   MILIEU »*, ⛔ **jamais** *« la loi ne sert à rien »* : ce n'est pas la même chose et ça ne se
+   corrige pas au même endroit.
+4. ✅ **D-1 EST RESTAURÉE DANS LE SENS QUE LA STORY AVAIT PRÉDIT** : l'œil veut **ACTIF (80)
+   AU-DESSUS d'AMBIENT (48-65)**. C'est bien **ACTIF QUI MONTE**.
+5. ⛔ **MAIS L'ÉCHELLE SEULE NE SUFFIT PAS** : elle ne sait que **descendre** Ambient sous une loi
+   d'ACTIF déjà trop basse en bas de plage. ⇒ **AC6.3 et AC3.2 sont COUPLÉS**, et se traitent
+   ensemble.
+
+### 13.25.6 🔴 LE DUTY N'EST PAS LINÉAIRE EN PERÇU — ET C'EST MESURÉ UNE SECONDE FOIS
+
+Échelle d'Ambient posée à **65 %** à 229 lx ⇒ **AMBIENT 48 % · ACTIF 74 %**, soit **26 points**.
+Question posée à l'owner : *« le bond au réveil se voit-il ? »* ⇒ ⛔ **« PAS DU TOUT, ça paraît être
+la même. »**
+⇒ 48 → 74 est un facteur **1,5** ; le 10 → 30 de la séance du 27/08 était un facteur **3**, et il
+sautait aux yeux. **En haut de plage, un grand écart de duty ne se VOIT pas.**
+🔴 **CONSÉQUENCE DIRECTE, ET ELLE FERME UNE PISTE** : ⛔ **on ne rendra PAS le réveil visible en
+creusant l'écart de duty entre les deux régimes.** Le levier est la **courbe duty→perçu**, ⛔ pas
+l'écart. L'entrée de ledger *« LE DUTY LEDC N'EST PAS LINÉAIRE EN LUMINOSITÉ PERÇUE »* est donc
+**RE-CONFIRMÉE et RE-DATÉE**, ⛔ **pas fermée** — contrairement à ce que §13.24 annonçait.
+
+### 13.25.7 ⛔ CE QUE CETTE SÉANCE N'A **PAS** MESURÉ — déclaré, pas masqué
+
+1. ⛔ **L'ACTIF EN PIÈCE SOMBRE.** Les six points couvrent **98 → 391 lx**. Rien ne dit ce que l'œil
+   veut en Actif à 5 lx. ⇒ la conclusion « plat » **ne s'extrapole pas** vers le bas.
+2. ⛔ **LA DISPERSION DU COUPLE CAPTEUR × PIÈCE.** Le lux a dérivé **105 → 458 → 219 lx** avec la
+   **même lampe allumée**, en quelques minutes. ⇒ **AC7.2 reste PARTIEL** : chaque point porte son
+   lux, mais l'étendue de l'instrument n'est pas quantifiée. ⚠️ Et ça **affaiblit toute lecture fine
+   de la loi** : un écart de 20 lx sur une lecture unique déplace la cible de plusieurs points.
+3. ⛔ **AUCUNE OBSERVATION SOUS ÉCLAIRAGE INSTABLE** (AC8.2) — inchangé, toujours déclaré ouvert.
+4. ⛔ **LE POMPAGE À BAS LUX N'A PAS ÉTÉ TIRÉ** — différé au ledger avec sa recette (décision owner
+   du 2026-08-27). ⚠️ Le compteur `applications` **vient d'être réparé** (il sur-comptait) : la
+   mesure est désormais **possible**, elle ne l'était pas avant.

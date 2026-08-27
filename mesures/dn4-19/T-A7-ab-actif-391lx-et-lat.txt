@@ -1,0 +1,38 @@
+=== T-A7 — A/B d'ACTIF, CONDITION 3 : 391 lx (lampe ajoutee) — binaire 8f95975
+=== + TEMOIN OBLIGATOIRE d'AC3.5 (`veille lat`) re-tire sur CE binaire.
+
+──── A/B d'ACTIF, condition 3 ────
+  niveau pose   lux au meme instant   verdict owner
+  ----------------------------------------------------------------
+  80 %               391 lx           🎯 « toujours bon »  ⇒ RETENU
+  88 % (LA LOI)      --               ⛔ NON TIRE : l'owner a tranche a 80
+
+🔴 CE QUE LES TROIS CONDITIONS DISENT ENSEMBLE — ET LA CONTRADICTION TOMBE :
+
+  regime   lux      oeil owner        loi log     ecart
+  --------------------------------------------------------
+  AMBIENT   98      [50 ; 65] (bande)    51        ✅ dans la bande
+  ACTIF    105      80                   53        ❌ -27 pts
+  ACTIF    245      75  (seance 27/08)   76        ✅
+  ACTIF    391      80                   88        (80 juge BON, 88 non tire)
+
+⇒ EN ACTIF, L'OEIL EST ~PLAT A 75-80 % DE 105 lx A 391 lx (3,7x de lumiere).
+  La loi log, elle, balaie 53 -> 88 % sur la meme plage : 35 POINTS de variation
+  la ou l'oeil n'en veut ~AUCUN.
+⛔ LA CONTRADICTION APPARENTE (245 lx voulant MOINS que 105 lx) EST DISSOUTE :
+  75 et 80 sont dans une meme bande d'acceptable. Ce n'est pas la DIRECTION de
+  la loi qui est fausse, c'est sa PENTE sur la plage domestique reellement vecue.
+⇒ ET D-1 EST RESTAUREE DANS LE SENS QUE LA STORY AVAIT PREDIT : l'oeil veut
+  ACTIF (80) AU-DESSUS d'AMBIENT (50-65). C'est bien ACTIF QUI MONTE.
+  ⚠️ L'echelle d'Ambient ne peut PAS etre reglee tant que la loi d'ACTIF est
+  fausse en bas : Ambient = echelle x Actif. Les deux sont COUPLES ⇒ UN SEUL [CC].
+
+──── veille lat — AC3.5, sur 8f95975 ────
+  n = 4 reveils AU DOIGT
+  t1 : min 124 us · med 247 us · max 5067 us
+  t2 : min 26031 us · med 26593 us · max 31017 us
+  ⇒ MEME ORDRE DE GRANDEUR que les 107 us de dn3-3/AC4 et les 185 us de la
+    story (sur efbd515). Si la loi portait la transition : ~20 s. ✅ AC3.5 TENU.
+  ⚠️ t1 max 5067 us : meme artefact que les 5732 us de la story, meme statut —
+    l'attribution a l'ESP_LOGW reste COHERENTE, ⛔ PAS PROUVEE. Entree de ledger
+    deja ouverte, elle reste ouverte.
