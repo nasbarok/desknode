@@ -5671,3 +5671,120 @@ annonçait déjà deux lignes plus bas, sans que je l'applique à mon propre tex
   suivante** — exactement le cas *« mesure pas encore prête »* dont l'instrument avertit. ⛔ Pas un
   défaut ; produit **involontairement**, et gardé ici parce qu'il **valide l'avertissement**.
 
+
+---
+
+## 13.23 🔴 SÉANCE DIAGNOSTIC (2026-08-27) — **L'ASSERVISSEMENT AU LUX N'A JAMAIS TOURNÉ**, et le capteur est INTACT
+
+**Firmware : `92e67b5`** — SHA **LU AU BANDEAU** `App version`, ⛔ pas déduit du dépôt.
+⛔ **AUCUN FLASH, AUCUN BUILD.** Séance de lecture d'état à la console sur le binaire déjà en place.
+
+🔴 **LA RÉSERVE HABITUELLE EST LEVÉE PAR PREUVE, ⛔ PAS PAR CONCORDANCE.** Le source relu pour
+préparer la séance était `a39d5aa`, le binaire porte `92e67b5`. `git diff --name-only 92e67b5..a39d5aa`
+rend **UN SEUL FICHIER**, `hardware/…-affichage.md`, et **ZÉRO fichier sous `firmware/`**. La lecture
+du source décrit donc **exactement** le binaire mesuré. ⚠️ C'est la première fois que cette
+équivalence est *démontrée* plutôt que supposée — la règle du dépôt (« le bandeau nomme le commit
+PRÉCÉDENT ») rendait le raccourci tentant et faux.
+
+### 13.23.1 Le point de départ — **le régime RÉEL, pas un banc**
+
+L'agent PC **tournait** (`dn_agent.py --serie COM3`, PID 24176) au moment du constat owner. Il a été
+arrêté par son **fichier d'arrêt** (`dn-agent.stop`), ⛔ pas par un `taskkill` — qui ne rend aucun bilan.
+La carte **n'a pas redémarré** au passage de port : `up 3820 s`, **3 647 s de temps mural**, et elle
+était **EN AMBIENT** à l'instant du relevé (Ambient = **68 %** du temps depuis le boot, 4 bascules,
+3 réveils, dernier réveil **par doigt**).
+
+⇒ **L'état relevé est celui du défaut vécu, ⛔ pas un état reconstruit.**
+
+### 13.23.2 🎯 LE FAIT CENTRAL — `applique : AUCUNE APPLICATION DEPUIS LE BOOT`
+
+```
+rétroéclairage : 10 % à 24000 Hz (allumé)
+asservissement BH1750 : DÉSARMÉ
+  applique : AUCUNE application depuis le boot
+```
+
+L'asservissement au lux **n'a pas « mal fonctionné » : il n'a jamais fonctionné une seule fois de
+la session.** `DN_ENV_BL_AUTO_DEFAUT = false` et **aucune persistance NVS** (`grep -c nvs dn_env.c`
+= **0**) ⇒ il repart DÉSARMÉ à chaque boot, et rien ne le rearme jamais tout seul.
+
+### 13.23.3 ⛔ « LE MODULE EST DOWN » — **RÉFUTÉ**, et sans appel
+
+```
+BH1750 @ 0x23 : VIVANT — 357 lx (brut 429) · age 2234 ms
+  compteurs : 734 lectures · 0 reprises
+  erreurs   : i2c 0 · donnee 0 · bornes 0 · conformite 0
+```
+
+**734 lectures, 0 erreur, 0 reprise.** Le capteur lit la pièce en continu pendant que la dalle est
+à 10 %. ⛔ Le grief « le module est down » ne tient pas une seconde devant ce compteur.
+
+### 13.23.4 ✅ LA LOI EST JUSTE — **prédiction ÉCRITE AVANT le tir, vérifiée APRÈS**
+
+Prédiction posée **avant** d'envoyer quoi que ce soit, à partir de 357 lx :
+`8 + (357−20) × 92 / 580` = **61 %**.
+Tir `bl auto on`, puis relecture : **`applique : 61 % (sur 363 lx)`**.
+
+⇒ La chaîne **BH1750 → loi → LEDC → dalle est INTACTE**. Ce qui manquait était l'**armement**.
+
+🎯 **CONSTAT OWNER, VERBATIM (2026-08-27)** : *« super bien mieux comme ça j'ai bien vu 10 → 30 →
+50 → 61 % et 61 c'est bien mieux »*.
+⚠️ Les paliers cités sont **exactement** ceux que `DN_ENV_BL_PAS_MAX = 20` impose (dernier écart 11,
+sous le pas) : l'œil a donc validé **la mécanique**, pas seulement le résultat.
+
+### 13.23.5 🔴 LA VEILLE JETTE L'ASSERVISSEMENT — **PROUVÉ À L'EXÉCUTION**, journal à l'appui
+
+Protocole **proposé par l'owner**, et il est meilleur que celui que j'avais préparé : réveil **au
+doigt** (⛔ pas `veille wake`, que le code exclut de ses statistiques) et endormissement **par délai
+expiré** (⛔ pas `veille now`, qui évite délibérément le tick). Les deux bouts du **vrai** chemin.
+
+```
+W dn_ui : reveil : le retroeclairage vaut 58 % alors que la veille l'avait pose a 10 % —
+          quelqu'un l'a change PENDANT la veille. On le LAISSE tel quel (il aurait ete
+          rendu a 100 % sans un mot).
+W dn_env: retroeclairage auto DESARME par « veille »
+W dn_ui : l'asservissement `bl auto` etait ARME : la VEILLE vient de le DESARMER.
+```
+
+Et l'état après la bascule :
+
+```
+rétroéclairage : 10 %
+asservissement BH1750 : DÉSARMÉ
+  applique : 55 % (sur 311 lx)
+```
+
+🔴 **LE CHIFFRE QUI RÉSUME TOUT LE DÉFAUT : la loi disait 55 % sur un capteur vivant lisant 311 lx,
+et la veille a posé 10 %.** Même pièce, même instant, même capteur. Un facteur **5,5**.
+
+### 13.23.6 🔴 CE QUE ÇA FAIT AUX BORNES DÉJÀ CONSIGNÉES
+
+- **`DN_VEILLE_PCT_MAX = 40` EST DÉMENTIE PAR L'ŒIL.** L'owner a validé **61 %** en Ambient. La borne
+  du dépôt **interdit aujourd'hui le réglage qu'il vient de dire bon** — `veille pct 61` serait refusé.
+- **⛔ LE 10 % DU 2026-08-25 N'EST PAS INVALIDÉ**, et c'est le point à ne pas rater. `DN_ENV_BL_PCT_MIN
+  = 8` (constat owner rideau fermé) et le 10 % d'Ambient **coïncident à 2 points près**. Les deux
+  constats sont donc **compatibles** : la loi, laissée vivante pendant Ambient, rendrait ~8-10 % dans
+  le noir **et** 61 % à 363 lx. ⇒ **Le correctif n'est pas de déplacer la constante, c'est de laisser
+  la loi vivre en Ambient.** Ce qui était faux dans le dossier, c'est que le 10 % y était consigné
+  comme un constat **sans sa condition d'éclairage**.
+
+### 13.23.7 ⏳ CE QUE LA SÉANCE **NE TRANCHE PAS** — et ça reste VIDE et DÉCLARÉ
+
+- 🔴 **LE NIVEAU D'ACTIF N'EST PAS TRANCHÉ.** Constat owner au réveil : *« elle paraît à 61 alors
+  qu'elle devrait être un peu plus forte »*. ⚠️ **UNE seule condition (≈330 lx), et un ancrage
+  possible** : le journal montre que le comportement normal aurait restauré **100 %** (`s_bl_avant_veille`
+  = la valeur de boot). L'owner compare donc peut-être à un 100 % dont il a l'habitude.
+  ⛔ **CETTE EXPLICATION EST UNE PISTE, PAS UNE MESURE** — elle n'a été ni testée ni confirmée par
+  l'owner, et elle ne doit pas servir à écarter son constat. Ce qu'il faut : un A/B en **Actif**, à
+  lux connu, sur plusieurs niveaux.
+- **LE NIVEAU D'AMBIENT À BAS LUX N'A PAS ÉTÉ REJOUÉ** cette séance (une seule condition, ≈310-363 lx).
+  La compatibilité avec le constat rideau-fermé du 2026-08-25 est un **raisonnement**, ⛔ pas un tir.
+- **AUCUNE DISPERSION MESURÉE** : chaque chiffre est UNE lecture, ⛔ pas une moyenne.
+
+### 13.23.8 L'état où la séance laisse la carte
+
+`--reset` en fin de séance pour lire le bandeau ⇒ la carte est **revenue à son comportement de tous
+les jours** : 100 % au boot, asservissement **DÉSARMÉ**, et Ambient à 10 % à la prochaine bascule.
+Délai de veille **remis à 10 min** (il avait été passé à 1 min pour le témoin ; ⚠️ il **persiste en NVS**).
+⛔ **AUCUN CONTOURNEMENT DURABLE N'EXISTE** : `bl auto on` ne survit ni à la veille ni au reboot, et
+`veille pct` n'est pas persisté et plafonne à 40.
