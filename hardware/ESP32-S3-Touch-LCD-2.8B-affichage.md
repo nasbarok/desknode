@@ -6858,11 +6858,39 @@ disponible, et la console **DIT quelle paire il confond, calculé à l'exécutio
 
 ⚠️ **`veille accents` est un A/B à chaud** : c'est AC9.4 qui tranche à l'œil.
 
-## 24.5 ✅ CE QUE LA GATE HÔTE PROUVE — 162 CONTRÔLES, SANS CARTE NI TOUR
+## 24.5 ✅ CE QUE LA GATE HÔTE PROUVE — 178 CONTRÔLES, SANS CARTE NI TOUR
 
-⚠️ **CHIFFRE À JOUR AU 2026-08-25 (soir)** : 119 → **139** (bloc « 4 bis »,
-§24.12.4, +2 mutants) → **162 OK / 0 KO** (bloc « 4 ter », la 6ᵉ piste W2,
-§24.13.1, +2 mutants). Le nombre de mutants passe de **quatre** à **huit**.
+⚠️ **CHIFFRE À JOUR AU 2026-08-28** : 119 → **139** (bloc « 4 bis »,
+§24.12.4, +2 mutants) → **162** (bloc « 4 ter », la 6ᵉ piste W2,
+§24.13.1, +2 mutants) → **167** (bloc « 4 quater », l'étiquette de
+`w2 reset`, §24.15.3, **+1 mutant TEXTUEL**) → **178 OK / 0 KO** au
+**2026-08-28**, après la **REVUE DE CODE 3 COUCHES** (§24.16). Le nombre de
+mutants passe de **quatre** à **onze**.
+
+🔴 **CE QUE LES ONZE DERNIERS CONTRÔLES ÉPINGLENT, ET POURQUOI ILS COMPTENT** —
+la revue a trouvé **trois contrôles qui épinglaient VERT du code FAUX** :
+· le dénominateur W2 était gaté sur `n - 1 - ruptures`, qui retranche **une
+  rupture de trop** dès qu'on lit hors Ambient (le cas normal) ⇒ le critère est
+  désormais `n - ÉPISODES`, avec `amorce` lu **dans la même section critique**
+  que les compteurs, et un **mutant textuel** qui remet l'ancienne formule et la
+  fait rougir ;
+· le mutant de la condition d'observation visait `s_secondes_vues * 1000u`, qui
+  **débordait un `uint32_t` à ~49,7 jours** — sur un module dont le critère n°1
+  est « une semaine H24 » ;
+· 🎯 et le diagnostic d'appui fantôme lui-même était **structurellement aveugle
+  au seul cas qui l'atteint** : sa garde était « aucune bascule DEPUIS LE BOOT »,
+  or le verrou de consommation ne se pose **qu'en Ambient**, donc **après** au
+  moins une bascule. Trois contrôles neufs le prouvent maintenant dans les deux
+  sens — *« après un `veille now` + réveil, l'alerte SORT quand même »*,
+  *« une bascule AUTOMATIQUE l'éteint bien »* (⛔ pas de cri sur un module sain)
+  et *« RÉVEIL puis doigt collé ⇒ l'alerte SORT, fenêtre ré-armée »*.
+⚠️ **Les 167 d'avant n'étaient donc pas faux : ils étaient VRAIS SUR UN CODE QUI
+   L'ÉTAIT MOINS.** Une gate ne relit pas ce qu'elle épingle.
+
+🔴 **LE BLOC « 4 quater » GATE UNE ÉTIQUETTE, ⛔ PAS UNE LOGIQUE** — et c'est
+délibéré : le défaut de §24.15.3 était **une phrase imprimée qui mentait sur un
+instrument juste**. La prédicate **LIT la ligne produite** ; ⛔ elle ne rejoue
+pas le `memset` du firmware. La même prédicate sert au produit et au mutant.
 🔴 **ET LE BLOC « 4 ter » COMBLE UN TROU PLUS ANCIEN QUE `dn3-3` : W2 n'avait
 JAMAIS été gaté** — aucun `verif_*.py` du dépôt ne le touchait.
 
@@ -6898,12 +6926,52 @@ tickait au-dessus du délai, donc le tick **re-basculait** et le témoin mesurai
 sa propre bascule. Corrigé à 30 000 ms. Une gate qu'on n'a pas vue rougir pour
 une raison qu'on comprend ne prouve rien.
 
-✅ **AC6.5 — DELTA POLICE = 0 OCTET, VÉRIFIÉ DANS LE `.c` PRODUIT.**
+🔴 **AC6.5 — AMENDÉ EN REVUE DE CODE LE 2026-08-28. ⛔ CE QUI SUIT N'EST PAS
+EFFACÉ : LE CONSTAT ÉTAIT JUSTE, LA CONCLUSION ÉTAIT FAUSSE.**
+
+✅ **CE QUI RESTE VRAI, ET QUI A ÉTÉ RÉELLEMENT VÉRIFIÉ DANS LE `.c` PRODUIT.**
 `codepoints_du_c()` sur `dn_font_14.c` et `dn_font_28.c` : `LV_SYMBOL_OK`
 (`0xF00C`), `LV_SYMBOL_LEFT` (`0xF053`) et `LV_SYMBOL_SETTINGS` (`0xF013`) sont
 **présents dans les deux**. ⚠️ **Témoin négatif** : `0xF863` (`fan`) est
 **ABSENT** — c'est le glyphe qu'un test de bornes avait cru présent en `dn3-1`.
-⇒ Aucune police n'est régénérée.
+⇒ **Aucun glyphe n'a été ajouté aux DEUX POLICES EXISTANTES**, et les glyphes du
+MENU n'ont donc rien coûté. **C'est ça que la vérification a établi.**
+
+🔴 ~~⇒ Aucune police n'est régénérée.~~ **CETTE PHRASE EST FAUSSE, ET ELLE A ÉTÉ
+PUBLIÉE DANS UNE SECTION DÉCLARÉE CLOSE.** `dn3-3` a **CRÉÉ DEUX POLICES** :
+
+| Fichier | Taille | Rôle |
+|---|---|---|
+| `main/fonts/dn_font_33.c` | **134 397 o** | police de veille **33 px** (`veille unite on`) |
+| `main/fonts/dn_font_56.c` | **317 998 o** | police de veille **56 px** (`veille unite off`) |
+
+Elles sont **liées** (`main/CMakeLists.txt`) et **consommées** par `dn_ui.c`
+(`return s_amb_unite ? &dn_font_33 : &dn_font_56;`), avec `fonts/dn_font.h`
+(+26 l.) et `tools/gen_font_dn.py` (120 l. modifiées, plage réduite
+`0x20-0x7F,0xB0` ⇒ **97 glyphes au lieu de 261**).
+
+🎯 **DELTA RÉEL : `+76 352 o`** — ⛔ pas `0`.
+
+⇒ **AC6.5 FERME AVEC ÉCART DÉCLARÉ, décision owner du 2026-08-28.** Le motif
+n'est **pas** un oubli de dev : c'est **O-2** — *« nombre + unité sur une
+ligne »*, choix éclairé de l'owner, qui impose la police de veille à 33 px.
+Une AC réfutée par une décision owner **postérieure** se ferme par écart déclaré,
+⛔ elle ne se coche pas.
+
+⚠️ **DEUX CHOSES À RETENIR DE CET INCIDENT, ET ELLES DÉPASSENT `dn3-3`** :
+1. 🔴 **LE CHIFFRE N'EXISTAIT QU'À UN SEUL ENDROIT DU DÉPÔT.** `grep "76 352"`
+   sur `hardware/` et `README.md` rendait **0 occurrence** — il ne vivait que
+   dans le Change Log de la story. ⇒ **un coût publié une seule fois n'est pas
+   publié.**
+2. 🎯 **LA GATE CONNAISSAIT LES DEUX POLICES PENDANT QUE §24.5 NIAIT LEUR
+   EXISTENCE.** `tools/verif_veille_dn33.py` **ouvre** `dn_font_33.c` et
+   `dn_font_56.c` pour vérifier leur plage réduite. Les **167 OK** épinglaient
+   donc la présence de fichiers dont cette sous-section disait qu'ils
+   n'existaient pas. ⇒ **une gate verte ne relit pas le dossier**, et c'est
+   précisément pour ça qu'AC10.4 exige le `grep` sur tout l'arbre — **y compris
+   contre son propre livrable.** Le Change Log de `dn3-3` revendique avoir
+   amendé **trois** affirmations devenues fausses de §24 **sans voir celle-ci,
+   qui vit dans la même §24.5.**
 
 ## 24.6 📋 LE VERBATIM POUR `dn4-16` — CE QUE CETTE STORY PÉRIME
 
@@ -7525,13 +7593,19 @@ moitié MENU** et le coût NVS de la voie MENU (§24.11.4) · **AC4.3 à la lett
 et **D-7** (§24.11.5) · **AC9.5 / AC9.6** (§24.11.6) · **AC3.3 re-tirée**
 (§24.11.7).
 
-⛔ **RIEN DE CE QUI SUIT N'EST MESURÉ.**
+🔴 **CETTE PHRASE ÉTAIT « ⛔ RIEN DE CE QUI SUIT N'EST MESURÉ » — ELLE EST
+DEVENUE FAUSSE LE 2026-08-28, ET ELLE EST AMENDÉE, ⛔ PAS EFFACÉE.** Deux des
+trois lignes du tableau sont **soldées et chiffrées** (§24.15.1, §24.15.2) ; la
+troisième est **close par un écart déclaré**, sur un motif **arithmétique**
+(§24.15.4). ⛔ Laisser cette phrase telle quelle aurait publié dans le dossier
+exactement le défaut que §24.15.3 corrige dans le firmware : **une étiquette qui
+ment sur un état juste.**
 
 | # | À mesurer | Instrument | Pourquoi ce n'est pas encore fait |
 |---|---|---|---|
-| **AC2.1** | une case change en Ambient sur 60 s, critère `W2` (étendue ≥ 5, changement de **TEXTE** ≥ 10 %, σ ≥ 1) **sous agent réel** | ✅ `w2`, piste **`CPU % (dixieme) @1s [AMBIENT seul]`** — voir §24.13.1 | l'agent n'est **pas déployé** sur la tour ; il exige `COM3` côté Windows ⇒ **plus de console**. ⚠️ L'instrument, lui, **accumule tout seul** : c'est pour ça qu'il est dans le firmware. |
-| **AC2.4** | les cinq métriques PC **périment** et passent `--` quand les trames s'arrêtent, `AMBIANCE` restant **réelle** | `pc`, `veille` | ⚠️ **se tire AVEC AC2.1** : sans trames préalables, les cases sont `ABSENTE` **par défaut** et ne prouvent aucune péremption |
-| **AC9.8** | **une nuit** en Ambient, relevée au matin (compteurs, `veille`, `hist`, heure) | `veille`, `hist` | demande une nuit |
+| ✅ **AC2.1** *(SOLDÉ le 2026-08-28 — §24.15.1)* | une case change en Ambient sur 60 s, critère `W2` (étendue ≥ 5, changement de **TEXTE** ≥ 10 %, σ ≥ 1) **sous agent réel** | ✅ `w2`, piste **`CPU % (dixieme) @1s [AMBIENT seul]`** — voir §24.13.1 | l'agent n'est **pas déployé** sur la tour ; il exige `COM3` côté Windows ⇒ **plus de console**. ⚠️ L'instrument, lui, **accumule tout seul** : c'est pour ça qu'il est dans le firmware. |
+| ✅ **AC2.4** *(SOLDÉ le 2026-08-28 — §24.15.2)* | les cinq métriques PC **périment** et passent `--` quand les trames s'arrêtent, `AMBIANCE` restant **réelle** | `pc`, `veille` | ⚠️ **se tire AVEC AC2.1** : sans trames préalables, les cases sont `ABSENTE` **par défaut** et ne prouvent aucune péremption |
+| **AC9.8** | **une nuit** en Ambient, relevée au matin (compteurs, `veille`, `hist`, heure) | ⛔ **`hist` NE PORTE PAS LA GRANDEUR** — l'anneau fait **120 s** | 🔴 **CLOS PAR ÉCART DÉCLARÉ** (décision owner du 2026-08-28) — le motif est **arithmétique**, pas un renoncement : **§24.15.4** |
 
 ⚠️ **AC2.4 NE SE TIRE PAS « PC ÉTEINT » DEPUIS CETTE SÉANCE** : la console vit
 dans **WSL sur la tour**. Éteindre le PC supprime l'instrument. L'alimentation
@@ -7618,8 +7692,15 @@ du dépôt, et `git status --porcelain` **vide avant le flash**.
 
 ## 24.14 ⛔ CE QUE §24 NE PROUVERA PAS, MÊME APRÈS LA SÉANCE
 
-- **La tenue 7 jours H24.** C'est `dn4-5`. `dn3-3`/AC9.8 prouve **une nuit**, et
-  rien de plus. ⛔ Ne pas extrapoler d'une nuit à une semaine.
+- 🔴 **LA TENUE DANS LA DURÉE — ET CE POINT A ÉTÉ RÉÉCRIT LE 2026-08-28, PARCE
+  QU'IL AFFIRMAIT CE QUI N'A JAMAIS ÉTÉ TIRÉ.** Il disait : *« `dn3-3`/AC9.8
+  prouve **une nuit**, et rien de plus »*. **`dn3-3` ne prouve PAS une nuit** :
+  AC9.8 est **clos par écart déclaré** et **aucune nuit n'a été relevée**
+  (§24.15.4). ⇒ **La plus longue fenêtre d'Ambient que §24 publie est 513 s**
+  (§24.15.1). ⛔ Ne rien extrapoler au-delà — ni à une nuit, ni à une semaine.
+  La durée, sous toutes ses formes, est **`dn4-5`**, et elle a **ses propres
+  instruments** : les **24 seaux d'une heure** (§25.5) et le **`--journal-soak`**
+  (§25.4). ⛔ Aucun des deux n'appartient à `dn3-3`.
 - **L'appui fantôme RÉEL.** Le diagnostic est **armé et éprouvé sur mutant**, il
   n'a **pas été provoqué** sur la carte. Un GT911 réellement collé n'a pas été
   observé — on sait seulement que s'il l'était, la console le **dirait**.
@@ -7639,6 +7720,167 @@ du dépôt, et `git status --porcelain` **vide avant le flash**.
 - **Que les constats owner de §24.11.2 valent sur `dfa8204`.** Ils ont été pris
   sur **`6144064`**. Le correctif de §24.12 ne touche **ni le rendu du MENU ni
   le dispatch des zones** — mais c'est un **raisonnement**, ⛔ pas une mesure.
+
+## 24.15 🏁 LA CLÔTURE DE `dn3-3` — LA SÉANCE SOUS AGENT RÉEL, PUIS L'ÉCART QUI FERME LA STORY
+
+> **Date** : 2026-08-28. **Firmware de la séance** : `156b507`, **SHA LU AU
+> BANDEAU**, rebuild fait **APRÈS** le commit.
+> **Binaire en place à la clôture** : **`d244011`** (le remède XIP de `dn4-22`).
+> ⚠️ **CE N'EST PAS LE MÊME SHA, ET C'EST DIT** : `d244011` est un **descendant**
+> de `156b507` (`git merge-base --is-ancestor 156b507 d244011` ⇒ vrai), et il ne
+> diffère du HEAD `f5fe6dd` que par **un fichier de mesures** ⇒ le **code** du
+> binaire flashé est celui du HEAD. Les chiffres de §24.15.1 et §24.15.2 restent
+> attachés à **`156b507`**, ⛔ pas au binaire en place.
+
+### 24.15.1 🎯 AC2.1 — LES DONNÉES SONT VIVANTES EN AMBIENT, ET LE CRITÈRE `W2` QUALIFIE TRÈS AU-DELÀ DU SEUIL
+
+**Agent réel sur la tour** (⛔ ni `dn_injecteur.py`, ni l'injection console : §24.10
+démontre par les chiffres que cette dernière est un mauvais témoin) :
+**3 265 trames à 5,00/s, 0 erreur d'envoi**, sur **653 s**.
+
+Piste **`CPU % (dixieme) @1s [AMBIENT seul]`** — la valeur **AFFICHÉE**, ⛔ pas la
+source (motifs de conception en §24.13.1) :
+
+| Grandeur | Seuil `W2` | Mesuré | Marge |
+|---|---|---|---|
+| `n` (échantillons) | **60** demandés par AC2.1 | **513** | **8,5×** |
+| étendue | **≥ 5** | **899** (min **32** → max **931** dixièmes, soit 3,2 % → 93,1 % de CPU) | **180×** |
+| taux de changement du **TEXTE** | **≥ 10 %** | **96 %** | **9,6×** |
+| σ | **≥ 1** | **176,411** | **176×** |
+
+⇒ ✅ **QUALIFIE sur les TROIS seuils.** `rup = 2` (ruptures de chaîne entre
+épisodes de veille, **retirées du dénominateur** — sans ce retrait le biais irait
+**toujours** vers « ne qualifie pas », §24.13.1).
+
+🎯 **UN CHIFFRE QUI SE DÉDUIT DE LUI-MÊME, ET IL VAUT D'ÊTRE DIT** : la piste
+n'échantillonne **qu'en Ambient**, à **1 Hz** ⇒ `n = 513` **signifie 513 s
+d'Ambient dans les 653 s d'agent**. **C'est la plus longue fenêtre d'Ambient que
+§24 publie**, et §24.14 s'appuie dessus pour interdire toute extrapolation.
+
+### 24.15.2 🎯 AC2.4 — LA PÉREMPTION EST PROUVÉE, ⛔ CE N'EST PAS LE `ABSENTE` PAR DÉFAUT
+
+Après **coupure de l'agent**, `widget` relit les régimes :
+
+| Case | Régime | Valeur affichée |
+|---|---|---|
+| `CPU` `GPU` `RAM` `RÉSEAU` `DISQUE` | **`ABSENTE`** | **`--`** |
+| `AMBIANCE` | **`RÉELLE`** | **22,5 °C · 66,9 %** |
+
+🎯 **CE QUI FAIT LA PREUVE, C'EST L'ORDRE** : les **3 265 trames ont COULÉ PUIS
+SE SONT ARRÊTÉES**. ⇒ c'est une **vraie péremption**, ⛔ pas le `ABSENTE` par
+défaut que la story redoutait en toutes lettres (*« sans agent préalable, les cinq
+cases sont ABSENTE par défaut et ne prouvent AUCUNE péremption »*).
+⛔ **Aucune valeur gelée n'est présentée comme vivante.**
+
+⚠️ **ÉCART DÉCLARÉ, INCHANGÉ** : le volet **« PC ÉTEINT »** n'est **pas** tiré.
+La console vit dans **WSL sur la tour** — l'éteindre supprime l'instrument.
+L'alimentation USB de la carte, elle, **survit** à l'extinction (constat owner du
+2026-08-25) ⇒ ce relevé reste possible **À L'ŒIL uniquement**.
+
+### 24.15.3 🔴 UN 5ᵉ SITE D'ANGLE MORT — ET C'EST `dn3-3` QUI L'AVAIT CRÉÉ
+
+`w2 reset` répondait *« accumulateurs W2 remis a zero (LES CINQ PISTES) »* alors
+que cette story avait ajouté **`DN_W2_CPU_DIX` comme SIXIÈME** (§24.13.1).
+
+⚠️ **L'INSTRUMENT ÉTAIT JUSTE** — `dn_w2_reset()` fait un `memset` sur des
+tableaux dimensionnés `DN_W2_NB`, donc **les six pistes étaient bien remises à
+zéro**. **C'est l'ÉTIQUETTE qui mentait**, et ce dépôt traite ça comme un défaut
+à part entière (`dn_widget.h:165`).
+
+⛔ **ÉCRIRE « SIX » N'AURAIT FAIT QUE DÉPLACER LA DATE DE PÉREMPTION** ⇒ le compte
+est désormais **RELU de `DN_W2_NB`**. Un compte récité se périme à la piste
+suivante ; un compte relu, jamais.
+
+✅ **LE BALAYAGE A ÉTÉ FAIT SUR TOUT L'ARBRE, ET IL A ÉVITÉ QUATRE MENSONGES** :
+les **6 autres occurrences de « cinq »** sont **JUSTES** et ⛔ **non touchées** —
+`dn_console.c:8620`, `dn_env.h:373`, `dn_env.h:738`, `dn_ui.c:5811` disent « cinq
+pistes **CAPTEURS** » (ce qui est vrai : les cinq appelants historiques sont des
+capteurs locaux), et deux autres en parlent **au passé** : l'en-tête du bloc
+**« 4 ter »** de `verif_veille_dn33.py` (*« avait cinq appelants »*) et le constat
+d'ouverture de **§24.13.1** (*« `dn_w2_echantillon()` — CINQ appelants, TOUS des
+capteurs LOCAUX »*). **Corriger à l'aveugle aurait fabriqué 4 mensonges.**
+
+> ⚠️ **CES DEUX-LÀ SONT CITÉS PAR SYMBOLE, ⛔ PAS PAR NUMÉRO DE LIGNE — ET C'EST
+> UNE LEÇON PAYÉE DEUX FOIS DANS CE DOSSIER.** `dn4-19` a cité `dn_console.c:8729`
+> au cadrage et la ligne était **déjà périmée** à la livraison. La rédaction de
+> §24.15 a **rejoué la même faute en direct** : elle citait `affichage.md:7550`
+> alors que l'insertion de §24.15 elle-même **venait de décaler ce numéro à
+> 7563**. ⇒ dans un fichier de cette taille que **trois stories vivantes** se
+> partagent, **un numéro de ligne se périme pendant qu'on l'écrit**.
+
+**Gate hôte : 162 → 167 OK / 0 KO**, dont un **MUTANT TEXTUEL** qui remet « LES
+CINQ PISTES » et **le fait rougir sur les DEUX critères** — vu rougir :
+`(False, False)`. Commit **`156b507`**.
+
+### 24.15.4 ⛔ AC9.8 « LA NUIT » — CLOS PAR ÉCART DÉCLARÉ, ET LE MOTIF EST ARITHMÉTIQUE
+
+🔴 **AUCUNE NUIT N'A ÉTÉ RELEVÉE. LE CRITÈRE N'EST PAS SATISFAIT.** Ce qui suit
+dit **pourquoi il ne pouvait pas l'être avec l'instrument qu'il nomme**, ⛔ pas
+pourquoi on a renoncé.
+
+**Constat owner qui a ouvert l'examen, verbatim (2026-08-28)** :
+> *« je ne comprend pas l'interret ? juste le pc est alume lagent tourne et la
+> tablette point ya pas de nuit avec un autre affichage »*
+
+**Quatre faits, relus dans le source, ⛔ pas dans la story :**
+
+1. 🎯 **`hist` NE PEUT PAS PORTER UNE NUIT — C'EST UNE MULTIPLICATION.**
+   `dn_hist.h:135-137` : `DN_HIST_N_POINTS = 120` et `DN_HIST_PERIODE_MS = 1000`
+   ⇒ **l'anneau couvre 120 s, soit 2 minutes**. Au matin, `hist` rendrait **les
+   deux dernières minutes**. ⇒ **l'AC nomme un instrument qui ne porte pas la
+   grandeur qu'il lui demande.**
+2. **LES TROIS AUTRES GRANDEURS D'AC9.8 SONT DÉJÀ SOLDÉES**, à des fenêtres plus
+   courtes mais **avec leurs chiffres** : `hist` continue ⇒ **AC2.2** (+60 écrits
+   / +60 réels / **0 trou**, §24.7.4) · compteurs et `veille` ⇒ **AC2.1**
+   (**513 s d'Ambient**, §24.15.1) · l'heure avance ⇒ **AC2.3**. Une nuit sans
+   contact rendrait **1 bascule, 0 réveil, Ambient** — ⛔ rien qui ne soit
+   prédictible.
+3. **CE QUI PORTE VRAIMENT UNE NUIT EXISTE, ET CE N'EST PAS À `dn3-3`** :
+   `dn_hist.h:226-227` — `DN_HIST_SEAUX = 24` × `DN_HIST_SEAU_S = 3600` ⇒ **24
+   seaux d'une heure**, lus par `dn_hist_minmax_long()` ; et le
+   **`--journal-soak`** côté tour (**18,3 o/s**, rotation **32 Mo × 4**). **Les
+   deux sont les instruments de `dn4-5`** — son **AC3.2** (§25.5) et son **AC2.5**
+   (§25.4). AC9.8 demandait donc à `dn3-3` de prouver **un sous-ensemble de
+   `dn4-5`** avec un anneau de **2 minutes**.
+4. 🔴 **LE SEUL PROTOCOLE DE RELEVÉ DÉTRUIT SA PROPRE MESURE.** L'agent tient
+   `COM3` côté Windows ; reprendre le port **redémarre la puce** ⇒ le relevé du
+   matin **effacerait les compteurs, `hist` et l'heure** qu'il vient chercher.
+   La seule parade (couper l'agent pour la nuit) **dégrade la condition
+   nominale** — précisément ce que le constat owner refuse.
+
+🎯 **CE QUE LE CONSTAT OWNER DIT, ET QUE LES QUATRE FAITS CONFIRMENT** : *« il n'y
+a pas de nuit avec un autre affichage »*. **La nuit n'est pas un ÉTAT, c'est une
+DURÉE.** Il n'existe **aucun régime nocturne** à mesurer — Ambient la nuit, c'est
+Ambient. Et la durée, sous toutes ses formes, **est le métier de `dn4-5`**.
+
+⇒ **DÉCISION OWNER DU 2026-08-28** : `dn3-3` se **ferme avec cet écart déclaré**,
+⛔ **sans `[CC]`** et ⛔ **sans nuit tirée**.
+
+⚠️ **LE COÛT DE CETTE FERMETURE EST ÉCRIT, ⛔ PAS MINIMISÉ** :
+- `dn3-3` **ne publie aucune fenêtre d'Ambient au-delà de 653 s** (513 s
+  d'Ambient dedans). §24.14 le dit et interdit l'extrapolation.
+- **`dn4-5` n'hérite formellement de rien** : la fermeture est un écart, ⛔ pas un
+  transfert de périmètre. Si la tenue d'une nuit doit être prouvée un jour, elle
+  se prouvera **dans `dn4-5`, avec les seaux et le journal**, ⛔ pas ici.
+
+### 24.15.5 ⛔ CE QUE CETTE CLÔTURE NE PROUVE PAS
+
+- 🔴 **LES CAPTURES BRUTES DE LA SÉANCE DU 2026-08-28 NE SONT PAS ARCHIVÉES.**
+  Il n'existe **pas** de `mesures/dn3-3/` dans le dépôt (vérifié : `mesures/` ne
+  porte que `dn4-4`, `dn4-5`, `dn4-8`, `dn4-13`, `dn4-17`, `dn4-18`, `dn4-19`,
+  `dn4-20`, `dn4-22`). Les chiffres de §24.15.1 et §24.15.2 proviennent du relevé
+  de séance consigné **le jour même** au tracker. ⚠️ **C'est un écart de
+  traçabilité, et il est dit** : ⛔ ces deux sous-sections ne sont pas
+  re-vérifiables à partir du dépôt seul, contrairement à §24.7 à §24.12.
+- **Que les chiffres de §24.15.1-2 vaillent sur le binaire EN PLACE.** Ils sont
+  tirés sur **`156b507`** ; le binaire en place est **`d244011`**. La filiation
+  est vérifiée (§24.15, en-tête), mais **la reconduction est un raisonnement**,
+  ⛔ pas une mesure.
+- **Une nuit, une semaine, ou quelque durée que ce soit** — §24.15.4.
+- **Tout ce que §24.14 énumère déjà** reste vrai et non touché.
+
+🏁 **§24 EST CLOSE.** Les critères de `dn3-3` y sont tous adressés : ✅ mesurés,
+ou ⛔ **déclarés non tirés avec leur motif**. ⛔ Aucun n'est laissé en silence.
 
 ---
 

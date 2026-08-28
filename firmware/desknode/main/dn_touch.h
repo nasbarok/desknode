@@ -199,6 +199,19 @@ void dn_touch_reset_stats(void);
  * un bus partagé par cinq composants a le droit de rater, le firmware n'a pas le
  * droit d'en mourir. Non nul = le premier chiffre à regarder. */
 uint32_t dn_touch_err_i2c(void);
+/*
+ * 🔴 REVUE DE CODE DU 2026-08-28 — COMBIEN DE FOIS UN CONTACT CONSOMMÉ A ÉTÉ
+ *    ABANDONNÉ FAUTE DE POUVOIR ENCORE LIRE LE DOIGT.
+ * Le verrou de consommation (D-7) n'était levé que par une lecture RÉUSSIE sans
+ * point. Si le bus tombe PENDANT un contact consommé — la fenêtre mesurée de
+ * démarrage à froid, ~40 s à **55,5 % d'erreurs GT911** — le chemin d'erreur
+ * continuait d'appeler `lv_display_trigger_activity()` à chaque lecture, doigt
+ * retiré ou non ⇒ **la veille ne retombait plus jamais, EN SILENCE**.
+ * ⇒ Le verrou expire au bout de 32 lectures ratées d'affilée, et CE COMPTEUR
+ *   le dit. ⛔ Un `0` ne prouve rien sur la santé du bus : il dit seulement
+ *   qu'aucun contact consommé n'a été perdu.
+ */
+uint32_t dn_touch_conso_expirees(void);
 
 /* Délais de la séquence de reset, pour rejouer autre chose que les 150/50 ms de
  * la démo Waveshare sans reflasher. Ne survivent pas au reboot (pas de NVS) :

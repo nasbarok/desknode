@@ -206,7 +206,18 @@ typedef struct {
     uint32_t delai_ms;
     uint32_t inactivite_ms;     /* dernière lue par le tick */
     uint32_t inactivite_max_ms; /* la plus grande vue depuis le reset */
-    uint32_t bascules;          /* Actif -> Ambient */
+    uint32_t bascules;          /* Actif -> Ambient, TOUTES origines confondues */
+    /* 🔴 AJOUTÉS EN REVUE DE CODE LE 2026-08-28 — SANS EUX, LE DIAGNOSTIC
+     *    D'APPUI FANTÔME (AC8.2) NE PEUT PAS ÊTRE JUSTE.
+     *    `bascules` mélangeait les bascules AUTOMATIQUES (la garde a cédé) et
+     *    les bascules FORCÉES (`veille now`, le MENU). Or le diagnostic doit
+     *    répondre à « la garde a-t-elle cédé ? », ⛔ pas à « quelqu'un a-t-il
+     *    tapé une commande ? » — et il suffisait d'UN SEUL `veille now` pour
+     *    l'éteindre définitivement. */
+    uint32_t bascules_forcees;  /* le sous-ensemble dû à un geste d'opérateur */
+    uint32_t bascules_auto_depuis_reveil; /* la garde a-t-elle cédé DEPUIS ? */
+    uint32_t secondes_depuis_reveil;      /* la fenêtre d'observation UTILE */
+    uint32_t inact_max_depuis_reveil_ms;  /* le max sur CETTE fenêtre */
     uint32_t reveils;           /* Ambient -> Actif */
     uint32_t rebases;           /* `ui on` ayant rebasé l'horloge */
     uint32_t annulations;       /* bascules programmées puis REFUSÉES par LVGL */
@@ -215,6 +226,36 @@ typedef struct {
 } dn_veille_compteurs_t;
 
 void dn_veille_compteurs(dn_veille_compteurs_t *out);
+
+/*
+ * 🔴 AJOUTÉ EN REVUE DE CODE LE 2026-08-28 — TOUTE LA MOITIÉ « DIAGNOSTIC » DE
+ *    `veille` LISAIT CES STATIQUES **HORS VERROU**, ET LE TOCTOU ROUVRAIT
+ *    EXACTEMENT LE DÉFAUT QUE L'ANNEAU AVAIT ÉTÉ ÉTENDU POUR FERMER.
+ *
+ * La console prenait le verrou pour `dn_ui_veille_compteurs()`, le relâchait,
+ * puis appelait SANS verrou `dn_veille_persist_*()`, `dn_veille_bascule_*()` —
+ * **trois lectures SÉPARÉES du même slot** — et `dn_veille_soupcon_appui_fantome()`.
+ * Une bascule qui tombe pendant l'impression (le tick 1 Hz écrit
+ * `s_inact_bascule_w` puis les tableaux) faisait imprimer l'écart de la bascule
+ * **A** avec le délai de la bascule **B** ⇒ un « 🔴 HORS de [delai ; delai+1 s] »
+ * sur un comportement PARFAITEMENT CORRECT.
+ * 🎯 C'est mot pour mot le défaut du 2026-08-25 que `s_inact_bascule_delai_ms`
+ *    documente sur dix lignes avoir fermé : il avait été fermé côté CONTENU
+ *    (chaque échantillon porte son délai) et rouvert côté LECTURE (les deux se
+ *    lisaient à deux instants différents).
+ * ⇒ TOUT SE LIT EN UN SEUL COUP, et `dn_ui_veille_diag()` prend le verrou.
+ */
+typedef struct {
+    uint32_t n; /* échantillons disponibles, 0..DN_VEILLE_BASCULES_GARDEES */
+    uint32_t ecart_ms[4];
+    uint32_t delai_ms[4];
+    bool jugeable[4];
+    uint32_t persist_us;
+    uint32_t persist_n;
+    bool soupcon_appui_fantome;
+} dn_veille_diag_t;
+
+void dn_veille_diag(dn_veille_diag_t *out);
 
 /*
  * 🔴 L'INSTRUMENT D'AC3.3 : L'ÉCART **DERNIER CONTACT → BASCULE**, LATCHÉ PAR LE

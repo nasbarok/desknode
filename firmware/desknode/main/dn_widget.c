@@ -800,13 +800,24 @@ lv_obj_t *dn_widget_texte(lv_obj_t *parent, const char *s, const lv_font_t *font
  *    la teinte, et la valeur retenue se gravera ici avec son constat.
  *      RÉELLE  0xffffff : BLANC. Décision owner du 2026-08-25, verbatim —
  *                         « blanc sur fond noir et sur fond gris foncé ».
- *      SIMULÉE 0xa0a0a0 : gris moyen. ⛔ PLUS de teinte ambrée : l'owner a
+ *      SIMULÉE 0xa4a4a4 : gris moyen. ⛔ PLUS de teinte ambrée : l'owner a
  *                         demandé « TOUT en nuances de noir et blanc », et une
  *                         seule tache de couleur sur un écran monochrome est le
  *                         premier point que l'œil accroche.
- *      ABSENTE 0x565656 : gris sombre, nettement SOUS le vivant.
+ *      ABSENTE 0x585858 : gris sombre, nettement SOUS le vivant.
+ *
+ * 🔴 CES DEUX VALEURS ONT ÉTÉ CORRIGÉES EN REVUE DE CODE LE 2026-08-28 — ELLES
+ *    DISAIENT `0xa0a0a0` ET `0x565656` ALORS QUE LE TABLEAU JUSTE EN DESSOUS
+ *    PORTE `0xa4a4a4` ET `0x585858` DEPUIS LE CORRECTIF RGB565-NEUTRE.
+ *    Le tableau porte son propre motif (« `0x58` et ⛔ PAS `0x56` ») ; c'est ce
+ *    bloc-ci qui n'avait pas suivi. ⚠️ Et il est LE bloc qu'on lit avant de
+ *    lancer une campagne AC9.3 : on y aurait calculé une marge sur des chiffres
+ *    faux, en croyant vérifier le code.
+ *
  * 🔴 LES TROIS RESTENT DISTINCTS, ET C'EST NON NÉGOCIABLE. Luminances 255 /
- *    160 / 86 : écarts de 95 et 74 pour un seuil de gate à 24. Un Ambient
+ *    **164** / **88** : écarts de **91** et **76** pour un seuil de gate à 24.
+ *    ⚠️ Ce bloc annonçait « 160 / 86, écarts 95 et 74 » — les deux chiffres ET
+ *    les deux écarts étaient faux, du même correctif non répercuté. Un Ambient
  *    « tout blanc » aurait rendu SIMULÉE indiscernable de RÉELLE — le défaut
  *    du 2026-08-18, remis en place par la porte du monochrome.
  * ⚠️ ET LE BADGE « SIMULÉ » EST MASQUÉ EN AMBIENT : le gris est donc le SEUL

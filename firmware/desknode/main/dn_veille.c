@@ -127,6 +127,32 @@ static uint32_t s_reveils;
 static uint32_t s_rebases;
 static uint32_t s_annulations;
 static uint32_t s_secondes_vues;
+/*
+ * 🔴 AJOUTÉS EN REVUE DE CODE LE 2026-08-28 — LE DIAGNOSTIC D'APPUI FANTÔME
+ *    (AC8.2) ÉTAIT AVEUGLE AU SEUL CAS QUI L'ATTEINT, ET C'EST DÉMONTRABLE.
+ *
+ * L'ANCIENNE GARDE DISAIT : « si `s_bascules > 0`, plus jamais de soupçon ».
+ * ⇒ Elle n'était donc armée QU'ENTRE LE BOOT ET LA PREMIÈRE BASCULE.
+ *
+ * 🎯 OR LA PANNE QU'ELLE VISE NE PEUT PAS SURVENIR DANS CETTE FENÊTRE. Un
+ *    `PRESSED` fantôme du GT911 se latche via `s_consommer` (`dn_touch.c`), qui
+ *    n'est posé QU'EN AMBIENT — c'est-à-dire **APRÈS au moins une bascule**.
+ *    Le détecteur s'éteignait donc exactement au moment où il devenait utile.
+ * ⚠️ Et il suffisait d'UN SEUL `veille now` pour l'éteindre, alors que
+ *    `dn_veille_forcer_dormir()` jure au-dessus d'elle-même d'éviter
+ *    `dn_veille_tick()` POUR NE PAS fausser ce diagnostic : elle épargnait
+ *    l'horloge d'observation et empoisonnait l'AUTRE entrée du même calcul.
+ *
+ * ⇒ LA FENÊTRE D'OBSERVATION EST DÉSORMAIS « DEPUIS LE DERNIER RÉVEIL »,
+ *   ⛔ plus « depuis le boot », et seules les bascules AUTOMATIQUES comptent.
+ *   C'est la question à laquelle AC8.2 veut répondre : *« la garde a-t-elle
+ *   cédé depuis qu'on est éveillé ? »* — ⛔ pas *« quelqu'un a-t-il déjà tapé
+ *   une commande depuis le boot ? »*.
+ */
+static uint32_t s_bascules_forcees;
+static uint32_t s_bascules_auto_depuis_reveil;
+static uint32_t s_secondes_depuis_reveil;
+static uint32_t s_inact_max_depuis_reveil_ms;
 
 static void veille_poser_mode(dn_veille_mode_t m)
 {
@@ -312,6 +338,20 @@ void dn_veille_init(void)
         return;
     }
 
+    /*
+     * 🔴 REVUE DE CODE DU 2026-08-28 — AC7.4 N'ÉTAIT PAS TENUE POUR LE CAS
+     *    « ABSENT », ET LE NAMESPACE PARTAGÉ EN FAISAIT LE CAS **NOMINAL**.
+     *    Le seul journal « aucun réglage en NVS » est celui du `nvs_open`
+     *    ci-dessus. Or `DN_NVS_NAMESPACE` vaut `"desknode"` — **le même que
+     *    `dn_bootcfg`** — donc sur toute carte ayant déjà écrit une config de
+     *    boot, `nvs_open` RÉUSSIT, les deux clés rendent `ESP_ERR_NVS_NOT_FOUND`
+     *    et l'ancienne branche `else if (err != ESP_ERR_NVS_NOT_FOUND)` ne
+     *    journalisait RIEN. ⇒ le défaut s'appliquait EN SILENCE, exactement ce
+     *    qu'AC7.4 interdit (« un défaut silencieux fausserait une mesure sans
+     *    qu'on le sache »).
+     * ⚠️ Le cas ABERRANT, lui, était bien traité — c'est le cas ABSENT qui
+     *    tombait dans le trou, et c'est le plus fréquent des deux.
+     */
     int32_t v = 0;
     err = nvs_get_i32(h, DN_KEY_ARMEE, &v);
     if (err == ESP_OK) {
@@ -327,7 +367,15 @@ void dn_veille_init(void)
                      DN_KEY_ARMEE, (long)v,
                      DN_VEILLE_ARMEE_DEFAUT ? "ON" : "OFF");
         }
-    } else if (err != ESP_ERR_NVS_NOT_FOUND) {
+    } else if (err == ESP_ERR_NVS_NOT_FOUND) {
+        ESP_LOGW(TAG,
+                 "cle « %s » ABSENTE : defaut %s applique et JOURNALISE (AC7.4). "
+                 "⚠️ Le namespace « %s » est PARTAGE avec `dn_bootcfg` — son "
+                 "ouverture reussit donc meme quand AUCUN reglage de veille n'y "
+                 "a jamais ete ecrit.",
+                 DN_KEY_ARMEE, DN_VEILLE_ARMEE_DEFAUT ? "ON" : "OFF",
+                 DN_NVS_NAMESPACE);
+    } else {
         ESP_LOGW(TAG, "lecture « %s » : %s — defaut applique.", DN_KEY_ARMEE,
                  esp_err_to_name(err));
     }
@@ -343,7 +391,12 @@ void dn_veille_init(void)
                      DN_KEY_CRAN, (long)v, DN_VEILLE_CRANS - 1,
                      dn_veille_cran_min(DN_VEILLE_CRAN_DEFAUT));
         }
-    } else if (err != ESP_ERR_NVS_NOT_FOUND) {
+    } else if (err == ESP_ERR_NVS_NOT_FOUND) {
+        ESP_LOGW(TAG,
+                 "cle « %s » ABSENTE : defaut %d min applique et JOURNALISE "
+                 "(AC7.4).",
+                 DN_KEY_CRAN, dn_veille_cran_min(DN_VEILLE_CRAN_DEFAUT));
+    } else {
         ESP_LOGW(TAG, "lecture « %s » : %s — defaut applique.", DN_KEY_CRAN,
                  esp_err_to_name(err));
     }
@@ -425,6 +478,12 @@ dn_veille_action_t dn_veille_tick(uint32_t inactivite_ms)
     if (inactivite_ms > s_inactivite_max_ms) {
         s_inactivite_max_ms = inactivite_ms;
     }
+    /* La fenêtre d'observation UTILE au diagnostic d'AC8.2 : depuis le dernier
+     * réveil, ⛔ pas depuis le boot. Voir le bloc de `s_bascules_forcees`. */
+    s_secondes_depuis_reveil++;
+    if (inactivite_ms > s_inact_max_depuis_reveil_ms) {
+        s_inact_max_depuis_reveil_ms = inactivite_ms;
+    }
 
     uint32_t delai = dn_veille_delai_ms();
     if (!dn_veille_doit_dormir(s_armee, s_mode, inactivite_ms, delai)) {
@@ -447,6 +506,7 @@ dn_veille_action_t dn_veille_tick(uint32_t inactivite_ms)
      * quoi la console annoncerait AMBIENT sur un écran resté en couleurs. */
     veille_poser_mode(DN_VEILLE_AMBIENT);
     s_bascules++;
+    s_bascules_auto_depuis_reveil++;
     /* L'écart d'AC3.3, LATCHÉ à l'instant exact où la garde a cédé — AVEC LE
      * DÉLAI QUI ÉTAIT ARMÉ À CET INSTANT, et avec le fait de savoir s'il est
      * jugeable. ⛔ Un écart nu ne se juge pas : voir `s_inact_bascule_delai_ms`. */
@@ -479,6 +539,17 @@ bool dn_veille_forcer_dormir(void)
     }
     veille_poser_mode(DN_VEILLE_AMBIENT);
     s_bascules++;
+    /* 🔴 REVUE DE CODE DU 2026-08-28 — ⛔ ON N'INCRÉMENTE **PAS**
+     *    `s_bascules_auto_depuis_reveil` ICI, ET C'EST TOUT LE POINT.
+     *    Cette fonction épargnait déjà `s_secondes_vues` pour ne pas fausser le
+     *    diagnostic d'appui fantôme ; elle empoisonnait pourtant son AUTRE
+     *    entrée en faisant monter le compteur que la garde interrogeait. Un
+     *    seul `veille now` éteignait le détecteur DÉFINITIVEMENT.
+     * ⚠️ `s_bascules` monte quand même : c'est le compteur PUBLIÉ, et une
+     *    bascule forcée EST une bascule. `s_bascules_forcees` dit laquelle,
+     *    pour que la console puisse expliquer l'écart avec l'anneau d'AC3.3 —
+     *    une bascule forcée ne latche AUCUN échantillon, par construction. */
+    s_bascules_forcees++;
     return true;
 }
 
@@ -522,6 +593,13 @@ bool dn_veille_reveiller(dn_veille_origine_t origine)
     veille_poser_mode(DN_VEILLE_ACTIF);
     s_reveils++;
     s_origine = origine;
+    /* 🔴 LE RÉVEIL ROUVRE LA FENÊTRE D'OBSERVATION D'AC8.2 (revue du
+     *    2026-08-28). À partir d'ici, la question redevient : « la garde
+     *    va-t-elle céder ? » — et si elle ne cède pas alors que le module est
+     *    armé et que le temps passe, c'est précisément le soupçon à lever. */
+    s_bascules_auto_depuis_reveil = 0;
+    s_secondes_depuis_reveil = 0;
+    s_inact_max_depuis_reveil_ms = 0;
     return true;
 }
 
@@ -554,6 +632,10 @@ void dn_veille_compteurs(dn_veille_compteurs_t *out)
     out->rebases = s_rebases;
     out->annulations = s_annulations;
     out->secondes_vues = s_secondes_vues;
+    out->bascules_forcees = s_bascules_forcees;
+    out->bascules_auto_depuis_reveil = s_bascules_auto_depuis_reveil;
+    out->secondes_depuis_reveil = s_secondes_depuis_reveil;
+    out->inact_max_depuis_reveil_ms = s_inact_max_depuis_reveil_ms;
     out->origine = s_origine;
 }
 
@@ -598,6 +680,35 @@ uint32_t dn_veille_bascule_ecarts_n(void)
                : DN_VEILLE_BASCULES_GARDEES;
 }
 
+/*
+ * 🔴 LE SNAPSHOT DE DIAGNOSTIC — UN SEUL COUP, ⛔ PLUS SEPT LECTURES ÉPARSES.
+ *    Motif complet dans `dn_veille.h`. Appelé sous le verrou LVGL par
+ *    `dn_ui_veille_diag()` : ⛔ ne pas l'appeler directement depuis le REPL.
+ */
+void dn_veille_diag(dn_veille_diag_t *out)
+{
+    if (!out) {
+        return;
+    }
+    memset(out, 0, sizeof(*out));
+    uint32_t n = dn_veille_bascule_ecarts_n();
+    if (n > DN_VEILLE_BASCULES_GARDEES) {
+        n = DN_VEILLE_BASCULES_GARDEES;
+    }
+    out->n = n;
+    for (uint32_t i = 0; i < n; i++) {
+        /* ⚠️ LES TROIS CHAMPS DU MÊME RANG SONT LUS DANS LA MÊME ITÉRATION, ET
+         *    L'ENSEMBLE SOUS UN SEUL VERROU : c'est CE couplage-là qui manquait,
+         *    ⛔ pas la justesse de chaque accesseur pris isolément. */
+        out->ecart_ms[i] = dn_veille_bascule_ecart_ms((int)i);
+        out->delai_ms[i] = dn_veille_bascule_delai_ms((int)i);
+        out->jugeable[i] = dn_veille_bascule_jugeable((int)i);
+    }
+    out->persist_us = s_persist_us;
+    out->persist_n = s_persist_n;
+    out->soupcon_appui_fantome = dn_veille_soupcon_appui_fantome();
+}
+
 void dn_veille_reset(void)
 {
     s_inactivite_ms = 0;
@@ -623,6 +734,30 @@ void dn_veille_reset(void)
      *    exactement ça sur `*cris` en dn4-13. */
     s_persist_us = 0;
     s_persist_n = 0;
+    /* Les compteurs de la revue du 2026-08-28 suivent le même reset : ils sont
+     * des MESURES, pas des réglages. */
+    s_bascules_forcees = 0;
+    s_bascules_auto_depuis_reveil = 0;
+    s_secondes_depuis_reveil = 0;
+    s_inact_max_depuis_reveil_ms = 0;
+    /*
+     * 🔴 REVUE DE CODE DU 2026-08-28 — `s_cumul_us[]` / `s_t_mode_us` NE SONT
+     *    **PAS** REMIS À ZÉRO ICI, ET LE MOTIF EST PLUS FORT QU'AC8.3.
+     *
+     * AC8.3 dit « TOUS les compteurs se remettent à zéro par `veille reset` »,
+     * et le cumul mural est bien un compteur — la revue a raison de le relever.
+     * ⛔ MAIS CE CUMUL N'APPARTIENT PAS À `dn3-3` : c'est **la fenêtre de soak
+     *    de `dn4-5`**, qui dure UNE SEMAINE. Le zéroter ici donnerait à une
+     *    commande de diagnostic tapée machinalement le pouvoir de DÉTRUIRE sept
+     *    jours de mesure, en une frappe et sans confirmation. Le remède serait
+     *    pire que le défaut.
+     * ⇒ ON L'ÉPARGNE, ET C'EST **LA SORTIE DE CONSOLE QUI CESSE DE MENTIR** :
+     *   `veille reset` ne dit plus « compteurs et latences a ZERO » tout court,
+     *   il NOMME ce qu'il n'a pas touché (`dn_console.c`). Une étiquette juste
+     *   sur un périmètre assumé, ⛔ plutôt qu'une promesse trop large.
+     * ⚠️ Le cumul porte déjà son étiquette honnête à la lecture : « temps MURAL
+     *   par mode DEPUIS LE BOOT ». Il ne ment pas sur lui-même.
+     */
     /* ⛔ `s_armee`, `s_cran`, `s_mode` et `s_pct` NE SONT PAS TOUCHÉS : ce sont
      *    des réglages et un état, pas des mesures. Remettre le mode à ACTIF ici
      *    ferait diverger l'état annoncé de l'écran réel. */
@@ -633,19 +768,43 @@ bool dn_veille_soupcon_appui_fantome(void)
     if (!s_armee) {
         return false;
     }
-    if (s_bascules > 0) {
+    /* 🔴 RÉÉCRITE EN REVUE DE CODE LE 2026-08-28 — VOIR LE BLOC DE
+     *    `s_bascules_forcees` POUR LA DÉMONSTRATION COMPLÈTE.
+     *    Ce qui a changé, en une phrase : la fenêtre est **DEPUIS LE DERNIER
+     *    RÉVEIL**, ⛔ plus « depuis le boot », et seules les bascules
+     *    **AUTOMATIQUES** l'invalident. Sans ça, le détecteur s'éteignait à la
+     *    première bascule — c'est-à-dire AVANT que la panne qu'il vise puisse
+     *    seulement survenir, puisque `s_consommer` ne se pose qu'en Ambient. */
+    if (s_mode != DN_VEILLE_ACTIF) {
+        /* On DORT : la garde a cédé, il n'y a rien à soupçonner. ⛔ Ce n'est
+         * pas la même chose que « aucune bascule » — c'est plus fort. */
+        return false;
+    }
+    if (s_bascules_auto_depuis_reveil > 0) {
         return false;
     }
     uint32_t delai = dn_veille_delai_ms();
-    if (s_inactivite_max_ms >= delai) {
+    if (s_inact_max_depuis_reveil_ms >= delai) {
+        /* L'inactivité A atteint le délai depuis le réveil : si la bascule n'a
+         * pas eu lieu, ce n'est pas un doigt collé — c'est autre chose, et ce
+         * détecteur-là n'est pas le bon instrument pour le dire. */
         return false;
     }
-    /* ⚠️ LA CONDITION D'OBSERVATION. `s_secondes_vues` compte les ticks 1 Hz
-     *    RÉELLEMENT joués — donc l'uptime OBSERVÉ, `ui off` exclu. Sans elle,
-     *    l'alerte sortirait à chaque boot pendant les `délai` premières
-     *    secondes, c'est-à-dire exactement quand tout est normal. */
-    uint32_t observe_ms = s_secondes_vues * 1000u;
-    return observe_ms > delai + (uint32_t)DN_VEILLE_MARGE_SOUPCON_S * 1000u;
+    /* ⚠️ LA CONDITION D'OBSERVATION. `s_secondes_depuis_reveil` compte les ticks
+     *    1 Hz RÉELLEMENT joués — donc l'uptime OBSERVÉ, `ui off` exclu. Sans
+     *    elle, l'alerte sortirait après chaque réveil pendant les `délai`
+     *    premières secondes, c'est-à-dire exactement quand tout est normal.
+     * 🔴 ET LA COMPARAISON SE FAIT EN **SECONDES**, ⛔ PLUS EN MILLISECONDES.
+     *    L'ancienne écriture `s_secondes_vues * 1000u` débordait un `uint32_t`
+     *    à **4 294 967 s ≈ 49,7 jours** : passé ce cap, la condition
+     *    d'observation redevenait FAUSSE et le détecteur s'éteignait puis se
+     *    rallumait tout seul, EN SILENCE — le compteur brut publié restant
+     *    juste, l'incohérence était invisible à la relecture. Sur un module
+     *    dont le critère n°1 est « une semaine H24 », ⛔ ce n'était pas
+     *    théorique. Ici les deux membres tiennent largement : le délai plafonne
+     *    à 10 min et la marge à quelques secondes. */
+    uint32_t seuil_s = (delai / 1000u) + (uint32_t)DN_VEILLE_MARGE_SOUPCON_S;
+    return s_secondes_depuis_reveil > seuil_s;
 }
 
 /* ── Les leviers d'AC9 ───────────────────────────────────────────────────── */

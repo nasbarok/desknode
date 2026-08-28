@@ -387,6 +387,12 @@ bool dn_ui_veille_latences(uint32_t *n, uint32_t *t1_min, uint32_t *t1_med,
  * tâche LVGL. `false` = verrou non pris ⇒ « pas mesuré ». */
 bool dn_ui_veille_compteurs(dn_veille_compteurs_t *out);
 
+/* 🔴 revue du 2026-08-28 — le pendant du précédent pour l'anneau d'écarts, le
+ *    coût NVS et le soupçon d'appui fantôme, qui se lisaient HORS VERROU en
+ *    sept appels séparés. Rend **`false` = pas mesuré**, ⛔ jamais des zéros.
+ *    Le scénario du TOCTOU est écrit dans `dn_veille.h`. */
+bool dn_ui_veille_diag(dn_veille_diag_t *out);
+
 /* Les deux réglages, appliqués À CHAUD et persistés. Passent par ici plutôt que
  * par `dn_veille` directement pour que l'écran suive : désarmer la veille
  * pendant qu'on dort doit RÉVEILLER, sinon l'état annoncé et l'écran divergent. */
@@ -440,7 +446,30 @@ esp_err_t dn_ui_veille_set_unite(bool on);
 esp_err_t dn_ui_veille_set_jauge(bool on);
 /* Vide le ring de latences ET les deux compteurs de contexte. ⛔ Un compteur
  * cumulatif ne tranche pas : le dépôt a déjà payé ça sur `*cris` en dn4-13. */
-void dn_ui_veille_latences_reset(void);
+/*
+ * 🔴 revue du 2026-08-28 — REMPLACE `dn_ui_veille_latences_reset()`, qui rendait
+ *    `void` ET ne nommait qu'un tiers de ce qu'elle fait.
+ * Remet à zéro, **SOUS UN SEUL ET MÊME VERROU LVGL** : les latences de réveil,
+ * les compteurs de `dn_ui` (transitions de veille, réglages MENU, abandons
+ * d'async), TOUT `dn_veille` (`dn_veille_reset()`) et la base des taps
+ * consommés. Avant, la console appelait ces trois-là À LA SUITE et les deux
+ * dernières écrivaient depuis la tâche REPL en concurrence du tick 1 Hz.
+ * ⇒ Rend **`false` si le verrou n'a pas été pris en 500 ms : RIEN n'a été
+ *   remis à zéro** — et l'appelant NE DOIT PAS annoncer le succès sans le lire,
+ *   ce qu'il faisait pendant que `build_scene()` tenait le verrou 307-322 ms.
+ *   Même contrat que `dn_ui_veille_compteurs()`.
+ * ⛔ `s_cumul_us[]` (le temps mural par mode) N'EST PAS touché : c'est la
+ *   fenêtre de soak de `dn4-5`, qui dure UNE SEMAINE. Motif complet dans
+ *   `dn_veille.c`, et la console le DIT. */
+bool dn_ui_veille_reset_tout(void);
+
+/* 🔴 revue du 2026-08-28 — bascules vers Ambient dont l'async a été ABANDONNÉE
+ *    parce qu'un réveil s'était intercalé entre l'enfilage et l'exécution.
+ * ⛔ À NE PAS CONFONDRE avec `annulations` (`dn_veille`), qui compte les
+ *    `lv_async_call` REFUSÉES parce que la file était pleine : ici l'enfilage a
+ *    RÉUSSI, c'est le monde qui a changé entre-temps. Sans ce compteur, l'écran
+ *    finissait « palette ACTIF à la luminosité d'Ambient » sans un mot. */
+uint32_t dn_ui_veille_async_abandons(void);
 /* Taps de RÉGLAGE dans le MENU. ⛔ Distinct de `dn_ui_menu_taps()`, qui compte
  * les taps sur le BANDEAU et sert de preuve à AC5.5/AC5.6. */
 uint32_t dn_ui_menu_reglages(void);
@@ -452,7 +481,12 @@ uint32_t dn_ui_nav_veille_count(void);
 /*
  * 🔴 AC1.3 — LA PREUVE QUE LE LAYOUT EST STRICTEMENT IDENTIQUE, CHIFFRÉE.
  * Rend dans `hash` un condensé des quatre nombres de chacune des six cases ET
- * du triplet de bandes. ⛔ Ce n'est PAS un constat à l'œil : deux modes qui
+ * des QUATRE bandes (`barre_h`, `menu_h`, `grille_h`, `case_h` — ⚠️ « triplet »
+ * jusqu'au 2026-08-28, alors que la fonction en rend QUATRE et que le condensé
+ * en hache QUATRE : la console dit bien « 28 nombres » = 6x4 + 4. Un lecteur qui
+ * aurait « corrigé » le hachage vers trois pour l'accorder au contrat écrit
+ * aurait fait cesser le condensé de couvrir `case_h`).
+ * ⛔ Ce n'est PAS un constat à l'œil : deux modes qui
  * rendent le même condensé n'ont pas bougé d'un pixel, et `veille geom` les
  * imprime CÔTE À CÔTE. `false` si le verrou n'a pas été pris.
  */
@@ -837,6 +871,19 @@ bool dn_ui_barre_dessinee(bool *dessinee);
  *    2026-08-18) : c'est la divergence .h/code que dn3-1 avait déjà payée une
  *    fois, quand un A/B mesurait deux fois la même branche. */
 const dn_widget_desc_t *dn_ui_desc(int idx);
+
+/*
+ * 🔴 revue du 2026-08-28 — LA **7ᵉ** COULEUR D'ACCENT : l'humidité d'`AMBIANCE`.
+ * `veille_accents_collisions()` ne testait que les SIX accents de case, alors
+ * que le motif du défaut `95` (`dn_widget.c`) parle des **SEPT** accents — « les
+ * six cases + l'humidité d'`AMBIANCE` ». La gate était donc scopée plus étroit
+ * que la propriété qu'elle annonçait, et pouvait imprimer « ✅ … restent
+ * DISTINCTS » alors que l'humidité venait d'entrer en collision.
+ * ⛔ La 2ᵉ courbe de `RÉSEAU` n'est PAS exposée : elle vaut exactement le cyan
+ *   de `GPU`, et l'inclure fabriquerait une alerte permanente sur un
+ *   recouvrement délibéré (« on ne voit jamais deux pages à la fois »).
+ */
+uint32_t dn_ui_accent_hum(void);
 
 /* Le descripteur BRUT, ⛔ SANS l'override W11 — pour les INSTRUMENTS qui publient
  * ce que le descripteur DEMANDE (table de géométrie de la console), jamais pour

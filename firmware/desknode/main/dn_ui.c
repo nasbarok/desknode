@@ -1275,6 +1275,32 @@ const char *dn_ui_metrique_nom(int idx)
     return (idx >= 0 && idx < DN_UI_METRIQUES) ? k_nom[idx] : "?";
 }
 
+/*
+ * 🔴 EXPOSEE EN REVUE DE CODE LE 2026-08-28 — LA 7e COULEUR D'ACCENT MANQUAIT A
+ *    L'INSTRUMENT DE COLLISION.
+ * `veille_accents_collisions()` (`dn_console.c`) ne testait que les SIX accents
+ * de case, alors que le motif du defaut `95` — ecrit dans `dn_widget.c` — parle
+ * des **SEPT** accents : « les six cases + l'humidite d'AMBIANCE ». La gate
+ * etait donc scopee plus etroit que la propriete qu'elle annoncait, et
+ * imprimait « ✅ … restent DISTINCTS » sur une collision possible.
+ * ⛔ On n'expose QUE la couleur 1 : elle est relue de la MEME fonction que
+ *   l'ecran, ⛔ pas recopiee.
+ */
+uint32_t dn_ui_accent_hum(void)
+{
+    /* ⛔ RELUE DE LA MEME FONCTION QUE L'ECRAN, ⛔ pas recopiee : un rapport
+     *    calcule sur une copie de la formule mesurerait l'accord de la copie
+     *    avec elle-meme. `AMBIANCE` n'est pas `RESEAU`, donc `courbe_couleur1`
+     *    rend bien le cyan de l'humidite.
+     * ⚠️ ⛔ ET ON N'EXPOSE PAS `DET_COURBE_COUL_NETUP` : il vaut `0x22d3ee`,
+     *    c'est-a-dire EXACTEMENT le cyan de `GPU`. L'inclure dans le rapport de
+     *    collision fabriquerait une alerte PERMANENTE sur un recouvrement
+     *    DELIBERE et sans consequence — « on ne voit jamais deux pages a la
+     *    fois » (dn4-13). Le motif du defaut `95` nomme SEPT accents, ⛔ pas
+     *    huit, et c'est bien ces sept-la qu'on teste. */
+    return courbe_couleur1(DN_UI_CASE_AMB);
+}
+
 const dn_widget_desc_t *dn_ui_desc(int idx)
 {
     /* LECTEUR 1/7 de l'override W11 — voir `case_est_widget()`. */
@@ -2885,6 +2911,9 @@ static void menu_sel_peindre(menu_sel_t *s, bool choisi, bool actif)
     }
 }
 
+static esp_err_t s_menu_nvs_err;
+static char s_menu_nvs_quoi[16];
+
 static void menu_reparametrer(void)
 {
     if (!s_menu_on.zone) {
@@ -2916,8 +2945,43 @@ static void menu_reparametrer(void)
                  dn_veille_mode_nom(c.mode), (unsigned long)c.bascules,
                  (unsigned long)c.reveils, dn_veille_cran_min(c.cran),
                  (unsigned long)(c.inactivite_ms / 1000u));
+        /* 🔴 revue du 2026-08-28 — l'échec d'écriture NVS se dit LÀ OÙ LE DOIGT
+         *    A TAPÉ. ⛔ Un réglage qui obéit à chaud sans être enregistré est
+         *    exactement le « enregistré » mensonger que `dn_veille.h` interdit. */
+        if (s_menu_nvs_err != ESP_OK) {
+            size_t n = strlen(buf);
+            snprintf(buf + n, sizeof(buf) - n,
+                     "\n⛔ « %s » NON ENREGISTRE (%s) : perdu au reboot.",
+                     s_menu_nvs_quoi, esp_err_to_name(s_menu_nvs_err));
+        }
         lv_label_set_text(s_menu_etat, buf);
     }
+}
+
+/*
+ * 🔴 AJOUTÉ EN REVUE DE CODE LE 2026-08-28 — LE MENU JETAIT LE CODE D'ERREUR
+ *    NVS ET AFFICHAIT QUAND MÊME LE RÉGLAGE COMME PRIS.
+ * `on_menu_veille_clic` et `on_menu_cran_clic` appelaient les `…_appliquer_nolock`
+ * en ignorant leur `esp_err_t`. Flash pleine ⇒ le `LV_SYMBOL_OK` se déplaçait, le
+ * module obéissait À CHAUD, et **rien** ne disait que le réglage ne survivrait pas
+ * au reboot. Le chemin console, lui, imprime « ⚠️ ECRITURE NVS REFUSEE », et
+ * `dn_veille.h` écrit ⛔ « Ne jamais annoncer *enregistré* sur un échec ».
+ * ⇒ L'échec est RETENU, JOURNALISÉ, et RENDU VISIBLE dans le panneau d'état du
+ *   MENU — c'est-à-dire là où le doigt vient de taper, ⛔ pas seulement dans un
+ *   journal que l'owner ne lit pas au doigt.
+ */
+static void menu_nvs_noter(esp_err_t err, const char *quoi)
+{
+    if (err == ESP_OK) {
+        return;
+    }
+    s_menu_nvs_err = err;
+    snprintf(s_menu_nvs_quoi, sizeof(s_menu_nvs_quoi), "%s", quoi);
+    ESP_LOGW(TAG,
+             "MENU : « %s » applique A CHAUD mais NON ENREGISTRE (%s) — "
+             "⛔ il NE survivra PAS au reboot. Le panneau d'etat du MENU le dit.",
+             quoi, esp_err_to_name(err));
+    menu_reparametrer();
 }
 
 /* Applique les réglages SANS prendre le verrou (l'appelant l'a déjà). */
@@ -2934,6 +2998,19 @@ static esp_err_t veille_armee_appliquer_nolock(bool on, dn_veille_origine_t o)
          *    mensonge d'interface.
          */
         if (dn_veille_reveiller(o)) {
+            /*
+             * 🔴 REBASE AJOUTÉ EN REVUE DE CODE LE 2026-08-28 — L'INVARIANT
+             *    « UN RÉVEIL REPART D'UN DÉLAI NEUF » ÉTAIT VIOLÉ ICI.
+             * Ce chemin appelle `dn_veille_reveiller()` DIRECTEMENT, ⛔ pas
+             * `veille_reveil_nolock()` — il n'héritait donc pas du
+             * `lv_display_trigger_activity()` que celui-ci pose « POUR TOUTES
+             * LES ORIGINES ». Conséquence mesurable : `veille off` après huit
+             * heures d'Ambient puis `veille on` ⇒ l'inactivité vaut toujours
+             * ~8 h ⇒ **retour en Ambient au tick suivant, ~1 s plus tard**.
+             * C'est exactement le symptôme que `c204f4a` dit avoir fermé pour
+             * `veille wake` — il restait ouvert sur la porte d'à côté.
+             */
+            lv_display_trigger_activity(NULL);
             veille_peindre_nolock();
             /*
              * 🔴 AJOUTÉ EN REVUE DE CODE LE 2026-08-27 — ce chemin n'appelle
@@ -2984,14 +3061,15 @@ static void on_menu_veille_clic(lv_event_t *e)
      *    la parade du fichier est `lv_async_call` — mais ici on n'en a même pas
      *    besoin, parce qu'on ne détruit RIEN.
      */
-    veille_armee_appliquer_nolock(on, DN_VEILLE_ORIG_MENU);
+    menu_nvs_noter(veille_armee_appliquer_nolock(on, DN_VEILLE_ORIG_MENU),
+                   on ? "veille ON" : "veille OFF");
 }
 
 static void on_menu_cran_clic(lv_event_t *e)
 {
     int idx = (int)(intptr_t)lv_event_get_user_data(e);
     s_menu_reglages++;
-    veille_cran_appliquer_nolock(idx);
+    menu_nvs_noter(veille_cran_appliquer_nolock(idx), "delai");
 }
 
 /* ── La construction ─────────────────────────────────────────────────────── */
@@ -3316,8 +3394,17 @@ static void build_dashboard(lv_obj_t *scr)
          *    action qui n'existe pas ». L'action existe : le retirer MAINTENANT
          *    serait le défaut symétrique — une porte qui ne dit pas qu'elle en
          *    est une. `LV_SYMBOL_SETTINGS` (0xF013) est VÉRIFIÉ PRÉSENT dans les
-         *    deux `.c` de police produits (`codepoints_du_c()`, AC6.5) : delta
-         *    police = 0 octet.
+         *    `.c` de police EXISTANTS — `dn_font_14.c` et `dn_font_28.c`
+         *    (`codepoints_du_c()`, AC6.5) : ~~delta police = 0 octet~~.
+         * 🔴 CORRIGÉ EN REVUE DE CODE LE 2026-08-28, ⛔ PAS EFFACÉ. Le constat
+         *    ci-dessus reste JUSTE — aucun glyphe n'a été ajouté à ces deux
+         *    polices, et le glyphe du MENU n'a donc rien coûté. Mais la
+         *    conclusion « delta police = 0 » était fausse à l'échelle du dépôt :
+         *    la story a CRÉÉ DEUX POLICES DE PLUS (`dn_font_33.c`, 134 397 o, et
+         *    `dn_font_56.c`, 317 998 o), imposées par **O-2** (« nombre + unité
+         *    sur une ligne »). **Delta réel : +76 352 o.** Il y a désormais
+         *    QUATRE `.c` de police dans l'arbre, ⛔ pas deux — et cette phrase
+         *    était l'un des trois endroits qui disaient encore le contraire.
          * ⚠️ Le texte est plus CLAIR qu'en dn3-2 (`0xc0d8e8` au lieu de
          *    `0x9a9a9a`) : `0x9a9a9a` est EXACTEMENT `W_COL_ABSENTE`, la couleur
          *    que ce dépôt réserve à « aucune source ». Un bandeau ACTIONNABLE
@@ -4950,7 +5037,6 @@ static bool nav_appliquer(int cible, int64_t t_clic)
          *    dn1-3, avec le pire délai de diagnostic possible. */
         s_voiles_n = 0;
         s_menu_bandeau = NULL;
-    s_menu_bandeau = NULL;
         /* dn3-3 : idem pour les sélecteurs du MENU. */
         menu_oublier();
         for (int i = 0; i < DN_UI_METRIQUES; i++) {
@@ -5227,7 +5313,6 @@ esp_err_t dn_ui_set_nav_model(dn_nav_model_t m)
          *    dn1-3, avec le pire délai de diagnostic possible. */
         s_voiles_n = 0;
         s_menu_bandeau = NULL;
-    s_menu_bandeau = NULL;
         /* dn3-3 : idem pour les sélecteurs du MENU. */
         menu_oublier();
         s_label_dash = NULL;
@@ -6548,6 +6633,16 @@ static bool case_appliquer(int idx)
  *    mesurerait la boucle en croyant mesurer la commande »*.
  */
 static int s_bl_avant_veille = -1; /* -1 = aucune veille en cours */
+/* 🔴 revue du 2026-08-28 — bascules dont l'async a été ABANDONNÉE parce qu'un
+ *    réveil s'était intercalé. ⛔ À ne pas confondre avec `annulations`, qui
+ *    compte les `lv_async_call` REFUSÉES (file pleine) : ici l'enfilage a
+ *    réussi, c'est le monde qui a changé entre-temps. */
+static uint32_t s_veille_async_abandons;
+/* 🔴 revue du 2026-08-28 — amortit le WARN « Ambient sans voile » à une fois par
+ *    épisode. Sans ça, un module laissé en `widget fond off` produirait un WARN
+ *    par bascule, et le journal d'une séance deviendrait illisible là où il doit
+ *    rester lisible. Même parade que `s_bl_recours_dit`. */
+static bool s_voile_absent_dit;
 /* 🔴 dn4-19 — CE QUE LA VEILLE A RÉELLEMENT POSÉ, ⛔ plus `dn_veille_pct()`.
  *    Le niveau d'Ambient est maintenant CALCULÉ : le garde-fou du réveil ne peut
  *    donc plus le re-dériver, il doit s'en souvenir. `-1` = rien de posé. */
@@ -6829,6 +6924,40 @@ static void veille_peindre_nolock(void)
     /* Les voiles : un par racine vivante. ⛔ On n'appelle PAS
      * `dn_ui_set_voile_opa()`, qui reconstruit la scène. */
     uint8_t opa = ui_voile_opa_courante();
+    /*
+     * 🔴 REVUE DE CODE DU 2026-08-28 — AUCUN VOILE RETENU ⇒ AMBIENT
+     *    N'ASSOMBRIT **RIEN**, ET ÇA SE TAISAIT.
+     * `fond_poser()` n'enregistre un voile QUE dans son état 3 (image posée).
+     * Les états 1 (`widget fond off`) et 2 (`ASSET ABSENT`, fond `0x7f0000`)
+     * n'en posent aucun ⇒ cette boucle ne parcourt rien, et le fond de l'écran
+     * — qui n'appartient à aucun objet qui change — **reste tel quel** en
+     * Ambient. Sur l'état 2, le rouge de panne traverse donc une veille censée
+     * être « tout en nuance de noir blanc ».
+     * ⛔ ON NE CHANGE PAS LE RENDU ICI, ET C'EST DÉLIBÉRÉ : que l'écran de panne
+     *   doive ou non passer en monochrome est un **jugement à l'œil**, il
+     *   appartient à l'owner, et l'état 2 est explicitement « la VRAIE panne,
+     *   CONSERVÉE CRIANTE » (décision owner n°2 de dn4-13). Poser un voile
+     *   dessus atténuerait un signal de panne sans que personne l'ait demandé —
+     *   et l'état 1 est un INSTRUMENT dont le seul intérêt est de ne rien
+     *   coûter d'autre que le remplissage.
+     * ⇒ CE QUI CHANGE : le cas CESSE D'ÊTRE SILENCIEUX. `veille fond` savait
+     *   déjà le dire (« AUCUN VOILE RETENU ») ; encore fallait-il aller le
+     *   demander. Amorti à UNE fois par épisode, comme `s_bl_recours_dit`.
+     */
+    if (amb && s_voiles_n == 0) {
+        if (!s_voile_absent_dit) {
+            s_voile_absent_dit = true;
+            ESP_LOGW(TAG,
+                     "AMBIENT sans AUCUN voile retenu : le fond de l'ecran N'EST "
+                     "PAS assombri (les cases, elles, passent bien en gris). "
+                     "Cause : `widget fond off` (etat 1) ou `ASSET ABSENT` "
+                     "(etat 2, fond ROUGE conserve DELIBEREMENT). "
+                     "⛔ Ce n'est pas un defaut de la veille — c'est qu'il n'y a "
+                     "rien a voiler. Instrument : `veille fond`.");
+        }
+    } else if (!amb) {
+        s_voile_absent_dit = false;
+    }
     for (int i = 0; i < s_voiles_n; i++) {
         if (s_voiles[i]) {
             lv_obj_set_style_bg_opa(s_voiles[i], opa, 0);
@@ -7032,6 +7161,35 @@ static void veille_dormir_async(void *param)
 {
     (void)param;
     /*
+     * 🔴 GARDE AJOUTÉE EN REVUE DE CODE LE 2026-08-28 — SANS ELLE, UN RÉVEIL
+     *    QUI S'INTERCALE LAISSAIT L'ÉCRAN DANS UN ÉTAT QUE PERSONNE NE DISAIT.
+     *
+     * `dn_veille_tick()` bascule l'état IMMÉDIATEMENT ; `lv_async_call` diffère
+     * le travail visuel. Entre les deux, la tâche LVGL REND LE VERROU — un
+     * `veille wake` depuis le REPL (ou un doigt) réveille alors pour de bon.
+     * L'async pendante s'exécutait quand même : `veille_bl_descendre()` posait
+     * le niveau d'Ambient et armait `s_bl_avant_veille` sur le duty d'ACTIF,
+     * puis `veille_peindre_nolock()` relisait le mode — ACTIF — et repeignait
+     * EN COULEURS.
+     * ⇒ **PALETTE ACTIF À LA LUMINOSITÉ D'AMBIENT**, `s_bl_regime` resté à
+     *   AMBIENT en plein éveil, `veille` annonçant `mode : ACTIF`, et
+     *   `lv_display_trigger_activity()` du réveil garantissant qu'AUCUNE
+     *   bascule ne viendrait rattraper. ⛔ Aucun compteur ne le disait.
+     * ⚠️ ON COMPTE L'ABANDON, ⛔ on ne sort pas en silence : c'est le même
+     *   contrat que `dn_veille_annuler_bascule()` — une bascule programmée qui
+     *   n'a pas eu lieu doit se VOIR.
+     */
+    if (dn_veille_mode() != DN_VEILLE_AMBIENT) {
+        s_veille_async_abandons++;
+        ESP_LOGW(TAG,
+                 "bascule vers Ambient ABANDONNEE : un reveil s'est intercale "
+                 "entre l'enfilage de l'async et son execution (mode courant : "
+                 "%s). ⛔ Rien n'est peint, rien n'est assombri — l'ecran reste "
+                 "celui du reveil. Compteur : `veille` (`async abandonnees`).",
+                 dn_veille_mode_nom(dn_veille_mode()));
+        return;
+    }
+    /*
      * 🔴 AC3.5 — SI ON EST SUR UNE PAGE DE DÉTAIL (OU LE MENU), LA VEILLE
      *    RETOURNE AU DASHBOARD D'ABORD.
      *    Motif : Ambient est le VISAGE DE REPOS H24 du module. Laisser une page
@@ -7141,6 +7299,25 @@ esp_err_t dn_ui_veille_reveiller(dn_veille_origine_t origine)
     return fait ? ESP_OK : ESP_ERR_INVALID_STATE;
 }
 
+/*
+ * 🔴 AJOUTÉ EN REVUE DE CODE LE 2026-08-28 — LE PENDANT DE `dn_ui_veille_compteurs()`
+ *    POUR LA MOITIÉ « DIAGNOSTIC », QUI SE LISAIT JUSQU'ICI **HORS VERROU**.
+ *    Motif complet, avec le scénario chiffré, dans `dn_veille.h`.
+ * ⇒ Même contrat : **`false` = PAS MESURÉ**, ⛔ jamais des zéros.
+ */
+bool dn_ui_veille_diag(dn_veille_diag_t *out)
+{
+    if (!out) {
+        return false;
+    }
+    if (!lvgl_port_lock(500)) {
+        return false;
+    }
+    dn_veille_diag(out);
+    lvgl_port_unlock();
+    return true;
+}
+
 bool dn_ui_veille_compteurs(dn_veille_compteurs_t *out)
 {
     if (!out) {
@@ -7204,17 +7381,47 @@ bool dn_ui_veille_latences(uint32_t *n, uint32_t *t1_min, uint32_t *t1_med,
     return true;
 }
 
-void dn_ui_veille_latences_reset(void)
+bool dn_ui_veille_reset_tout(void)
 {
+    /* 🔴 REVUE DE CODE DU 2026-08-28 — CETTE FONCTION RENDAIT `void`, ET LA
+     *    CONSOLE ANNONÇAIT LE SUCCÈS INCONDITIONNELLEMENT.
+     * Sur `!lvgl_port_lock(500)` elle sortait EN SILENCE : `veille reset` tapé
+     * pendant un `build_scene()` (**307-322 ms verrou tenu, mesuré**) laissait
+     * `s_lat[]`, `s_nav_veille_count` et `s_menu_reglages` PLEINS pendant que la
+     * console imprimait « compteurs et latences a ZERO ».
+     * ⇒ Même contrat que `dn_ui_veille_compteurs()` et `dn_ui_veille_latences()` :
+     *   **`false` = pas fait**, ⛔ jamais un succès supposé. */
     if (!lvgl_port_lock(500)) {
-        return;
+        return false;
     }
     memset(s_lat, 0, sizeof(s_lat));
     s_lat_w = 0;
     s_lat_ecrits = 0;
     s_nav_veille_count = 0;
     s_menu_reglages = 0;
+    s_veille_async_abandons = 0;
+    /*
+     * 🔴 REVUE DE CODE DU 2026-08-28 — `dn_veille_reset()` ENTRE **SOUS LE MÊME
+     *    VERROU**, ET C'EST POUR ÇA QUE CETTE FONCTION A CHANGÉ DE NOM.
+     * `dn_console.c` appelait les deux À LA SUITE : la première prenait le
+     * verrou, la seconde écrivait `dn_veille` DEPUIS LA TÂCHE REPL pendant que
+     * le tick 1 Hz l'écrivait aussi. La séquence du tick est « écrire le slot,
+     * puis `w++` » — un reset intercalé entre les deux laissait les tableaux à
+     * zéro avec `w == 1`, et le `veille` suivant imprimait
+     * `#1  0 ms  (delai arme 0 ms)  ⚪ NON JUGEABLE` : un échantillon FANTÔME,
+     * avec un délai qui ne correspond à aucun cran.
+     * ⚠️ ET LE NOM SUIVAIT LE MÊME TRAVERS : « latences_reset » décrivait un
+     *    tiers de ce que la commande fait. Une étiquette qui ment est un défaut
+     *    à part entière (`dn_widget.h`), y compris quand c'est un nom de
+     *    fonction.
+     */
+    dn_veille_reset();
+    /* ⛔ Surtout pas `dn_touch_reset_stats()` : il zéroterait AUSSI IRQ,
+     *    lectures, appuis, relâchements et erreurs I²C, que `touch` publie et
+     *    que `veille` ne publie pas. Motif complet dans `dn_touch.h`. */
+    dn_touch_consommes_rebaser();
     lvgl_port_unlock();
+    return true;
 }
 
 esp_err_t dn_ui_veille_set_armee(bool on, dn_veille_origine_t origine)
@@ -7222,6 +7429,9 @@ esp_err_t dn_ui_veille_set_armee(bool on, dn_veille_origine_t origine)
     if (!lvgl_port_lock(2000)) {
         return ESP_ERR_TIMEOUT;
     }
+    /* 🔴 revue du 2026-08-28 — même motif que `dn_ui_veille_set_cran()` :
+     *    armer ou désarmer est un GESTE, et un geste repart d'un délai neuf. */
+    nav_activite_console();
     esp_err_t err = veille_armee_appliquer_nolock(on, origine);
     lvgl_port_unlock();
     return err;
@@ -7235,6 +7445,19 @@ esp_err_t dn_ui_veille_set_cran(int idx)
     if (!lvgl_port_lock(2000)) {
         return ESP_ERR_TIMEOUT;
     }
+    /*
+     * 🔴 REVUE DE CODE DU 2026-08-28 — LE RÉGLAGE REBASE L'HORLOGE, COMME
+     *    `nav open|back|menu` LE FONT DÉJÀ (AC4.5).
+     * Sans ça, une campagne au clavier de cinq minutes suivie d'un
+     * `veille delai 1` faisait basculer **sous l'opérateur** au tick suivant :
+     * c'est la cause des **178 270 ms** relevés en séance, que le dépôt
+     * traitait jusqu'ici par le SYMPTÔME (`s_inact_bascule_jugeable`,
+     * « NON JUGEABLE ») sans jamais toucher à la cause — alors que le motif
+     * était écrit noir sur blanc pour `nav`.
+     * ⚠️ `veille now` n'en bénéficie PAS, et c'est voulu : elle DEMANDE la
+     *    bascule. Rebaser y serait absurde.
+     */
+    nav_activite_console();
     esp_err_t err = veille_cran_appliquer_nolock(idx);
     lvgl_port_unlock();
     return err;
@@ -7536,7 +7759,7 @@ uint32_t dn_ui_nav_veille_count(void) { return s_nav_veille_count; }
  * 🔴 AC1.3 — LA PREUVE CHIFFRÉE QUE LE LAYOUT NE BOUGE PAS D'UN PIXEL.
  *
  * ⛔ CE N'EST PAS UN CONSTAT À L'ŒIL. On condense les QUATRE nombres de chacune
- *    des six cases (`dn_ui_case_rect`) et le triplet de bandes
+ *    des six cases (`dn_ui_case_rect`) et les QUATRE bandes
  *    (`dn_ui_geom_bandes`) en un seul entier. Deux modes qui rendent le même
  *    condensé n'ont rien déplacé.
  * ⚠️ FNV-1a 32 bits, ⛔ pas une somme : une somme aurait rendu le MÊME condensé
@@ -7555,7 +7778,13 @@ bool dn_ui_geom_signature(uint32_t *hash)
         return false;
     }
     uint32_t h = 2166136261u; /* FNV offset basis */
-    int vals[6 * 4 + 4];
+    /* 🔴 REVUE DE CODE DU 2026-08-28 — LE `6` ÉTAIT LITTÉRAL DANS UNE FONCTION
+     *    BORNÉE PAR `DN_UI_METRIQUES`. Débordement de pile SILENCIEUX à la 7ᵉ
+     *    métrique, **verrou LVGL tenu**. Ce fichier refuse pourtant déjà ce
+     *    littéral quatre mille lignes plus haut (`DN_NAV_CIBLE_MENU`, dont le
+     *    motif écrit est : « le jour où une 7ᵉ métrique naîtra, un 7 littéral
+     *    aurait fait ouvrir le MENU sur un tap de case, en silence »). */
+    int vals[DN_UI_METRIQUES * 4 + 4];
     int k = 0;
     for (int i = 0; i < DN_UI_METRIQUES; i++) {
         int x = 0, y = 0, w = 0, ht = 0;
@@ -10093,6 +10322,24 @@ esp_err_t dn_ui_resume(void)
          */
         if (lvgl_port_lock(1000)) {
             lv_display_trigger_activity(NULL);
+            /*
+             * 🔴 AJOUTÉ EN REVUE DE CODE LE 2026-08-28 — UNE COUPURE `ui off`
+             *    NE BRISAIT **PAS** LA CHAÎNE W2 DE LA PISTE CPU.
+             * `dn_w2_desamorcer(DN_W2_CPU_DIX)` n'est appelée que depuis
+             * `hist_tick`, un `lv_timer` — qui NE TOURNE PAS pendant `ui off`.
+             * Aucune rupture n'était donc enregistrée pour le trou, et
+             * l'échantillon d'après la coupure comptait comme une TRANSITION
+             * LÉGITIME face à une valeur vieille de toute la pause.
+             * ⚠️ dn4-13 a mesuré un `ui off` de **135 s** — la fenêtre annoncée
+             *    `n x DN_W2_CADENCE_CPU_MS` était donc fausse de 135 s, sur
+             *    l'instrument même qui SOLDE AC2.1.
+             * 🎯 Le même `hist_tick` appelle déjà `dn_hist_rattraper()`
+             *    PRÉCISÉMENT parce que ces trous existent : la chaîne W2 était
+             *    le seul à ne pas le savoir.
+             * ⛔ `dn_w2_desamorcer()` est IDEMPOTENTE : l'appeler alors que la
+             *    chaîne n'était pas amorcée ne compte aucune rupture.
+             */
+            dn_w2_desamorcer(DN_W2_CPU_DIX);
             lvgl_port_unlock();
             dn_veille_note_rebase();
         } else {
@@ -10108,6 +10355,9 @@ esp_err_t dn_ui_resume(void)
     }
     return err;
 }
+
+/* 🔴 revue du 2026-08-28 — voir `s_veille_async_abandons`. */
+uint32_t dn_ui_veille_async_abandons(void) { return s_veille_async_abandons; }
 
 bool dn_ui_active(void) { return s_active; }
 

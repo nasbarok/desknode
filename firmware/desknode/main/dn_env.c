@@ -1471,6 +1471,11 @@ void dn_w2_lire(dn_w2_id_t id, dn_w2_t *out)
     }
     portENTER_CRITICAL(&s_mux);
     *out = s_w2[id];
+    /* 🔴 revue du 2026-08-28 — l'état d'amorçage est LU DANS LA MÊME SECTION
+     *    CRITIQUE que les compteurs : lu après coup, il aurait pu décrire un
+     *    autre instant que celui du `n` qu'il sert à corriger. Motif complet
+     *    dans `dn_env.h`, au champ `amorce`. */
+    out->amorce = s_w2_amorce[id];
     portEXIT_CRITICAL(&s_mux);
 }
 

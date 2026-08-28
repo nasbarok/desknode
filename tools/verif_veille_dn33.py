@@ -77,6 +77,25 @@ def ctrl(ok, libelle, detail=""):
     return ok
 
 
+# ── LES SITES D'APPEL, ⛔ PAS LES MENTIONS EN COMMENTAIRE ────────────────────
+_RE_COMMENTAIRES_C = re.compile(r"/\*.*?\*/|//[^\n]*", re.S)
+
+
+def sites_appel(src, jeton):
+    """Compte les SITES D'APPEL de `jeton`, ⛔ pas ses mentions en commentaire.
+
+    🔴 CORRIGÉ EN REVUE DE CODE LE 2026-08-28 — LE VERDICT TENAIT, L'ÉTIQUETTE
+       MENTAIT. Le contrôle d'AC4.5 faisait un `src.count(...)` nu et publiait
+       « 4 sites dans dn_ui.c » là où il y a **3 appels** et **1 mention dans
+       un commentaire** (`dn_ui.c`, le bloc au-dessus de `nav_activite_console`).
+       Le seuil étant 2, le verdict restait juste — mais ce dépôt traite une
+       étiquette qui ment comme un défaut à part entière (`dn_widget.h`), et
+       c'est ce même travers qu'il vient de corriger sur `w2 reset` (`156b507`).
+    ⛔ Et le compte n'est PAS récité : il est RELU de la source à chaque appel.
+    """
+    return _RE_COMMENTAIRES_C.sub("", src).count(jeton)
+
+
 def tmpdir():
     d = tempfile.mkdtemp(prefix="dn33_")
     _tmp.append(d)
@@ -833,10 +852,34 @@ def bloc_w2_cpu():
 
     # ── G. LE DENOMINATEUR RETIRE LES RUPTURES, DANS LA CONSOLE ────────────
     cons, _ = lire(DN_CONSOLE_C)
-    ctrl("uint32_t hors = 1u + w.ruptures;" in cons,
-         "G : la console retire les ruptures du denominateur",
-         "sinon le taux serait dilue, TOUJOURS vers « NE QUALIFIE PAS »")
-    ctrl("w.n - hors" in cons, "G : …et le taux vaut chg / (n - 1 - ruptures)")
+    # 🔴 REECRIT EN REVUE DE CODE LE 2026-08-28 — CES DEUX CONTROLES EPINGLAIENT
+    #    `n - 1 - ruptures`, QUI RETRANCHAIT UNE RUPTURE DE TROP DANS LE CAS
+    #    NORMAL. `ruptures` est TERMINALE (`dn_w2_desamorcer`), donc le nombre
+    #    d'EPISODES vaut `ruptures + 1` seulement tant que le dernier est OUVERT.
+    #    Lu HORS Ambient — le cas normal, puisque sortir d'Ambient desamorce —
+    #    tous les episodes sont clos et le denominateur juste est `n - ruptures`.
+    ctrl("uint32_t episodes = w.ruptures + (w.amorce ? 1u : 0u);" in cons,
+         "G : le denominateur compte les EPISODES, ⛔ pas les ruptures + 1",
+         "`ruptures` est TERMINALE : +1 seulement si la chaine est OUVERTE")
+    ctrl("(w.n > episodes) ? (w.n - episodes) : 0u" in cons,
+         "G : …et le taux vaut chg / (n - episodes)")
+    ctrl("out->amorce = s_w2_amorce[id];" in ec,
+         "G : `amorce` est LU DANS LA MEME SECTION CRITIQUE que les compteurs",
+         "lu apres coup, il decrirait un autre instant que le `n` qu'il corrige")
+    ctrl("if (taux > 100u) {" in cons,
+         "G : un taux > 100 % est DIT, ⛔ pas publie",
+         "`changements` est un sous-ensemble des transitions : c'est impossible")
+    # ⚠️ MUTANT TEXTUEL : on remet l'ancienne formule et on EXIGE que les deux
+    #    controles ci-dessus rougissent. Sans lui, on aurait remplace un
+    #    critere par un autre sans jamais voir le nouveau echouer.
+    _mut_den = cons.replace(
+        "uint32_t episodes = w.ruptures + (w.amorce ? 1u : 0u);",
+        "uint32_t episodes = 1u + w.ruptures;")
+    ctrl(("uint32_t episodes = w.ruptures + (w.amorce ? 1u : 0u);"
+          not in _mut_den) and ("uint32_t episodes = 1u + w.ruptures;"
+                                in _mut_den),
+         "G : MUTANT « 1u + w.ruptures » — le critere le voit",
+         "vu rougir : l'ancienne formule ne satisfait plus le controle")
 
     # ── H. LES DEUX MUTANTS, COMPILES ET VUS ROUGIR ────────────────────────
     m1 = bloc.replace("if (s_w2_amorce[id] && v != s_w2_prec[id]) {",
@@ -905,8 +948,13 @@ def bloc_fantome(src):
          "regime NORMAL (une bascule a eu lieu) ⇒ pas d'alerte")
 
     # ── MUTANT : on retire la condition d'observation ──────────────────────
-    marqueur = ("    uint32_t observe_ms = s_secondes_vues * 1000u;\n"
-                "    return observe_ms > delai + (uint32_t)DN_VEILLE_MARGE_SOUPCON_S * 1000u;")
+    # 🔴 MARQUEUR MIS A JOUR EN REVUE DE CODE LE 2026-08-28. L'ancien visait
+    #    `s_secondes_vues * 1000u`, qui DEBORDAIT un uint32 a ~49,7 jours — sur
+    #    un module dont le critere n°1 est « une semaine H24 ». La comparaison se
+    #    fait desormais EN SECONDES, et la fenetre part du DERNIER REVEIL.
+    marqueur = ("    uint32_t seuil_s = (delai / 1000u) + "
+                "(uint32_t)DN_VEILLE_MARGE_SOUPCON_S;\n"
+                "    return s_secondes_depuis_reveil > seuil_s;")
     if marqueur not in src:
         ctrl(False, "MUTANT condition d'observation : site introuvable")
         return
@@ -916,6 +964,40 @@ def bloc_fantome(src):
     ctrl(libm.dn_veille_soupcon_appui_fantome(),
          "MUTANT : sans la condition, l'alerte sort des le 1er tick",
          "le test le voit ⇒ la garde est bien ATTEINTE")
+
+    # ── 🔴 LA FENETRE PART DU DERNIER REVEIL, ET UN `veille now` NE L'ETEINT
+    #    PLUS (revue du 2026-08-28). AVANT, `s_bascules > 0` desarmait le
+    #    detecteur DEFINITIVEMENT — or `s_consommer` (`dn_touch.c`) ne se pose
+    #    QU'EN AMBIENT, donc APRES au moins une bascule : le detecteur
+    #    s'eteignait exactement quand il devenait utile.
+    lib3 = neuf(src, "apres un veille now")
+    ctrl(lib3.dn_veille_forcer_dormir(),
+         "une bascule FORCEE est acceptee (veille armee, on est ACTIF)")
+    ctrl(lib3.dn_veille_reveiller(0), "…puis on reveille")
+    for _ in range(70):
+        lib3.dn_veille_tick(0)
+    ctrl(lib3.dn_veille_soupcon_appui_fantome(),
+         "APRES un `veille now` + reveil, l'alerte SORT quand meme",
+         "⛔ AVANT, UN SEUL `veille now` eteignait le detecteur pour de bon")
+
+    # ⚠️ TEMOIN NEGATIF DU MEME MECANISME : une bascule AUTOMATIQUE, elle, DOIT
+    #    eteindre l'alerte — sinon on aurait remplace un aveuglement par un
+    #    detecteur qui crie sur un module parfaitement sain.
+    lib4 = neuf(src, "bascule automatique")
+    for i in range(70):
+        lib4.dn_veille_tick(i * 1000)
+    ctrl(not lib4.dn_veille_soupcon_appui_fantome(),
+         "…mais une bascule AUTOMATIQUE l'eteint bien",
+         "⛔ sinon le detecteur crierait sur un module sain")
+
+    # ⚠️ ET LA FENETRE SE REARME AU REVEIL : c'est ce qui rend le detecteur
+    #    utile APRES la premiere veille, la ou la panne se produit reellement.
+    ctrl(lib4.dn_veille_reveiller(0), "on reveille apres la bascule auto")
+    for _ in range(70):
+        lib4.dn_veille_tick(0)
+    ctrl(lib4.dn_veille_soupcon_appui_fantome(),
+         "REVEIL puis doigt colle ⇒ l'alerte SORT (fenetre re-armee)",
+         "🎯 c'est LE cas que l'ancienne garde ne pouvait PAS voir")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1313,9 +1395,22 @@ def bloc_verite():
     ctrl("BLEU VIF" in ui, "le commentaire dit desormais BLEU VIF")
 
     # AC4.5 — trigger_activity sur les chemins console.
-    ctrl(ui.count("lv_display_trigger_activity(NULL)") >= 2,
+    _n_app = sites_appel(ui, "lv_display_trigger_activity(NULL)")
+    ctrl(_n_app >= 2,
          "`lv_display_trigger_activity` est appele sur les chemins SANS doigt",
-         "%d sites dans dn_ui.c" % ui.count("lv_display_trigger_activity(NULL)"))
+         "%d SITES D'APPEL dans dn_ui.c (commentaires exclus)" % _n_app)
+    # ⚠️ TEMOIN : le compte doit IGNORER une mention en commentaire. Sans lui, on
+    #    republierait le defaut de l'etiquette qu'on vient de corriger.
+    ctrl(sites_appel("/* lv_display_trigger_activity(NULL) */\n"
+                     "  lv_display_trigger_activity(NULL);\n"
+                     "  // lv_display_trigger_activity(NULL)\n",
+                     "lv_display_trigger_activity(NULL)") == 1,
+         "…et le compte IGNORE les mentions en commentaire",
+         "mutant textuel : 3 occurrences, 1 seul SITE — vu rendre 1")
+    ctrl(ui.count("lv_display_trigger_activity(NULL)") > _n_app,
+         "…temoin de cablage : dn_ui.c porte bien au moins une MENTION en commentaire",
+         "brut %d > sites %d — sinon ce controle ne prouverait rien"
+         % (ui.count("lv_display_trigger_activity(NULL)"), _n_app))
     ctrl("lv_display_trigger_activity(NULL)" in tc,
          "…et pendant un contact CONSOMME (sinon on se rendort doigt pose)")
 

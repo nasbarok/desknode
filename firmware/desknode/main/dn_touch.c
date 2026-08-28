@@ -129,6 +129,37 @@ static volatile dn_touch_mode_t s_mode = DN_TOUCH_MODE_DEFAUT;
 
 /* Compteurs — 32 bits (voir dn_touch.h). `s_irq` est écrit par l'ISR. */
 static volatile uint32_t s_irq, s_lectures, s_appuis, s_relaches, s_err_i2c;
+/*
+ * 🔴 AJOUTÉS EN REVUE DE CODE LE 2026-08-28 — LE VERROU DE CONSOMMATION N'AVAIT
+ *    NI DÉLAI DE GARDE NI SORTIE SUR ERREUR I²C, ET IL ÉPINGLAIT L'HORLOGE
+ *    D'INACTIVITÉ À ZÉRO.
+ *
+ * LE DÉFAUT, EN UNE PHRASE : `s_consommer` n'était levé QUE par une lecture
+ * RÉUSSIE sans point. Si le bus tombe PENDANT un contact consommé, le chemin
+ * d'erreur continue d'appeler `lv_display_trigger_activity()` à CHAQUE lecture
+ * (~30 Hz), doigt retiré ou non ⇒ `lv_display_get_inactive_time()` reste collée
+ * à 0 ⇒ **LA VEILLE NE RETOMBE PLUS JAMAIS**, et `s_relaches` ne bouge pas.
+ *
+ * ⚠️ CE N'EST PAS UN CAS D'ÉCOLE : c'est exactement la fenêtre de démarrage à
+ *    froid que ce dépôt a MESURÉE — ~40 s de dégradation du bus, **55,5 %
+ *    d'erreurs GT911**, et le scan ne la voit pas.
+ *
+ * 🎯 LA PARADE EST BORNÉE PAR LES DONNÉES, ⛔ PAS PAR UNE HORLOGE MURALE : au
+ *    bout de `DN_TOUCH_CONSO_ERR_MAX` lectures RATÉES D'AFFILÉE, on n'a plus
+ *    AUCUNE observation du doigt — continuer à affirmer « il y a de l'activité »
+ *    serait affirmer ce qu'on ne peut plus voir. On lève donc le verrou, et
+ *    ON LE COMPTE pour que `touch` le DISE : ⛔ un module qui ne s'endort jamais
+ *    sans qu'on sache pourquoi est précisément la panne que ce dépôt traque.
+ * ⚠️ LE RELÂCHEMENT SYNTHÉTIQUE NE FABRIQUE **AUCUN** CLIC : pendant tout le
+ *    contact consommé, LVGL n'a JAMAIS vu `PRESSED` (on lui présentait
+ *    `RELEASED`). Il n'y a donc pas d'appui à apparier, et `CLICKED` exige la
+ *    paire. C'est ce qui rend cette sortie sûre là où forcer le relâchement sur
+ *    une erreur ORDINAIRE ne le serait pas — voir le bloc de `dn_touch_read`.
+ */
+#define DN_TOUCH_CONSO_ERR_MAX 32 /* ~1 s de lectures aveugles à ~30 Hz */
+static uint32_t s_err_consec;
+static uint32_t s_conso_expirees;
+static uint32_t s_base_conso_expirees;
 static volatile uint32_t s_x, s_y, s_brut_x, s_brut_y;
 static volatile bool s_appuye;
 
@@ -314,6 +345,26 @@ static void dn_touch_read(lv_indev_t *indev, lv_indev_data_t *data)
          *    souvent au démarrage à froid (55,5 % d'erreurs GT911 sur ~40 s,
          *    et le scan ne le voit pas) : c'est le pire moment pour laisser
          *    fuir un tap de réveil. */
+        s_err_consec++;
+        if (s_consommer && s_err_consec > DN_TOUCH_CONSO_ERR_MAX) {
+            /* 🔴 PLUS AUCUNE OBSERVATION DU DOIGT DEPUIS %d LECTURES : on cesse
+             *    d'affirmer une activité qu'on ne voit plus. Voir le bloc de
+             *    `DN_TOUCH_CONSO_ERR_MAX`. ⛔ On ne rafraîchit PAS l'horloge
+             *    ici — c'est tout l'objet du correctif. */
+            s_consommer = false;
+            s_conso_expirees++;
+            if (s_appuye) {
+                s_appuye = false;
+                s_relaches++;
+            }
+            ESP_LOGW(TAG,
+                     "contact CONSOMME EXPIRE : %lu lectures I2C ratees "
+                     "d'affilee (max %d) — on ne peut plus voir le doigt, donc "
+                     "on cesse de rafraichir l'horloge d'inactivite. ⚠️ Sans "
+                     "ca, la veille ne retombait PLUS JAMAIS, en silence. "
+                     "Instrument : `touch` (`err_i2c`, `conso expirees`).",
+                     (unsigned long)s_err_consec, DN_TOUCH_CONSO_ERR_MAX);
+        }
         if (s_consommer) {
             lv_display_trigger_activity(NULL);
             data->state = LV_INDEV_STATE_RELEASED;
@@ -330,6 +381,9 @@ static void dn_touch_read(lv_indev_t *indev, lv_indev_data_t *data)
      * capture du brut et les flags d'orientation gardent exactement le même sens.
      * ⚠️ `n` est initialisé à 0 ICI : quand rien n'est touché, la fonction rend
      *    ESP_OK sans forcément y toucher. */
+    /* La lecture a réussi : la chaîne d'aveuglement est rompue. */
+    s_err_consec = 0;
+
     esp_lcd_touch_point_data_t pts[CONFIG_ESP_LCD_TOUCH_MAX_POINTS] = {0};
     uint8_t n = 0;
     esp_err_t lu = esp_lcd_touch_get_data(s_tp, pts, &n,
@@ -839,6 +893,13 @@ void dn_touch_get_stats(dn_touch_stats_t *out)
 }
 
 uint32_t dn_touch_err_i2c(void) { return s_err_i2c - s_base_err_i2c; }
+/* 🔴 revue du 2026-08-28 — combien de fois le verrou de consommation a EXPIRÉ
+ *    faute de pouvoir lire le doigt. ⛔ Un `0` ici ne prouve pas que le bus va
+ *    bien : il dit seulement qu'aucun contact consommé n'a été perdu. */
+uint32_t dn_touch_conso_expirees(void)
+{
+    return s_conso_expirees - s_base_conso_expirees;
+}
 
 /* Voir le contrat, et le défaut qu'il corrige, dans `dn_touch.h`. */
 void dn_touch_consommes_rebaser(void)
@@ -854,6 +915,7 @@ void dn_touch_reset_stats(void)
     s_base_relaches = s_relaches;
     s_base_err_i2c = s_err_i2c;
     s_base_consommes = s_consommes;
+    s_base_conso_expirees = s_conso_expirees;
 }
 
 dn_touch_mode_t dn_touch_get_mode(void) { return s_mode; }

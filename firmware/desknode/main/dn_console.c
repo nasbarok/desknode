@@ -8673,9 +8673,27 @@ static int cmd_w2(int argc, char **argv)
          *    au denominateur diluerait le taux, TOUJOURS vers « NE QUALIFIE
          *    PAS » — le meme sens que les deux troncatures corrigees le
          *    2026-08-20. */
-        uint32_t hors = 1u + w.ruptures;
-        uint32_t transitions = (w.n > hors) ? (w.n - hors) : 1u;
-        uint32_t taux = (w.changements * 100u) / transitions;
+        /* 🔴 CORRIGE EN REVUE DE CODE LE 2026-08-28 — ON RETRANCHAIT **UNE
+         *    RUPTURE DE TROP** DANS LE CAS NORMAL. `ruptures` est TERMINALE
+         *    (`dn_w2_desamorcer`), donc le nombre d'EPISODES vaut
+         *    `ruptures + 1` seulement tant que le dernier est ENCORE OUVERT.
+         *    Motif complet et temoin chiffre dans `dn_env.h`, champ `amorce`. */
+        uint32_t episodes = w.ruptures + (w.amorce ? 1u : 0u);
+        uint32_t transitions = (w.n > episodes) ? (w.n - episodes) : 0u;
+        uint32_t taux = transitions ? (w.changements * 100u) / transitions : 0u;
+        /* ⚠️ UN TAUX > 100 % EST ARITHMETIQUEMENT IMPOSSIBLE : `changements` est
+         *    un sous-ensemble des transitions. S'il sort, c'est que la
+         *    comptabilite des episodes a decroche — et ⛔ on le DIT plutot que
+         *    de publier un nombre qui ne peut pas exister. */
+        if (taux > 100u) {
+            printf("🔴 « %s » : taux %lu %% — ARITHMETIQUEMENT IMPOSSIBLE "
+                   "(changements %lu > transitions %lu).\n",
+                   dn_w2_nom((dn_w2_id_t)i), (unsigned long)taux,
+                   (unsigned long)w.changements, (unsigned long)transitions);
+            printf("   ⛔ Ne rien conclure de ce chiffre : la comptabilite des "
+                   "episodes a decroche.\n");
+            taux = 100u;
+        }
         /* sigma en MILLIEMES, en entiers : variance = E[x²] - E[x]².
          * ⛔ Aucun flottant : le depot les interdit sur le fil, et une racine
          *    entiere par Newton suffit largement ici.
@@ -8943,6 +8961,10 @@ static void veille_usage(void)
     printf("                                     (on ⇒ 33 px · off ⇒ 56 px, tailles MESUREES)\n");
     printf("        veille jauge on|off          la barre de remplissage en veille\n");
     printf("        veille case <rrggbb>         l'aplat de case en Ambient\n");
+    printf("⚠️ La ligne de resume de `help` a OMIS `fond`, `unite`, `jauge` et\n");
+    printf("   `case` jusqu'au 2026-08-28 — corrige. `veille fond` est l'outil de\n");
+    printf("   bissection qui a tranche le constat owner « au lieu d'un noir/gris\n");
+    printf("   sombre c'est un vert » : il etait invisible pour qui part de `help`.\n");
 }
 
 static void veille_imprimer_etat(void)
@@ -8953,6 +8975,23 @@ static void veille_imprimer_etat(void)
          *    tache LVGL ; imprimer des zeros sur un verrou non pris ferait
          *    publier « 0 bascule » pour « on n'a pas pu lire ». */
         printf("⛔ PAS MESURE : le verrou LVGL n'a pas ete pris en 500 ms.\n");
+        printf("   ⛔ Ne rien conclure de cette absence — ce n'est PAS « zero ».\n");
+        return;
+    }
+
+    /*
+     * 🔴 REVUE DE CODE DU 2026-08-28 — TOUT CE BLOC LISAIT `dn_veille` **HORS
+     *    VERROU**, EN SEPT APPELS SEPARES. Le scenario chiffre est dans
+     *    `dn_veille.h` : une bascule qui tombe pendant l'impression faisait
+     *    imprimer l'ecart de la bascule A avec le delai de la bascule B, donc un
+     *    « 🔴 HORS » sur un comportement CORRECT — le defaut meme que
+     *    `s_inact_bascule_delai_ms` avait ferme cote CONTENU, rouvert cote
+     *    LECTURE. ⇒ UN SEUL SNAPSHOT, sous le verrou LVGL.
+     */
+    dn_veille_diag_t dg;
+    if (!dn_ui_veille_diag(&dg)) {
+        printf("⛔ PAS MESURE : le verrou LVGL n'a pas ete pris en 500 ms pour "
+               "le bloc de DIAGNOSTIC.\n");
         printf("   ⛔ Ne rien conclure de cette absence — ce n'est PAS « zero ».\n");
         return;
     }
@@ -9011,10 +9050,9 @@ static void veille_imprimer_etat(void)
      *    TACHE LVGL au tap MENU : une ecriture flash coupe le cache, la tache
      *    de rendu STALLE, ce sont des trames perdues. ⛔ Ni une raison de ne pas
      *    persister, ni une raison de le taire. */
-    if (dn_veille_persist_n() > 0) {
+    if (dg.persist_n > 0) {
         printf("derniere ecriture NVS : %lu us (%lu au total)\n",
-               (unsigned long)dn_veille_persist_us(),
-               (unsigned long)dn_veille_persist_n());
+               (unsigned long)dg.persist_us, (unsigned long)dg.persist_n);
         printf("   ⚠️ payee DANS LA TACHE LVGL quand elle vient d'un tap MENU :\n");
         printf("   le cache flash est coupe pendant ce temps-la.\n");
     } else {
@@ -9028,7 +9066,7 @@ static void veille_imprimer_etat(void)
      *    BASCULE. ⛔ Un sondage depuis l'hote ne peut PAS l'etablir : sa propre
      *    latence ajouterait une seconde a une fenetre qui n'en fait qu'une. */
     {
-        uint32_t ne = dn_veille_bascule_ecarts_n();
+        uint32_t ne = dg.n;
         if (ne == 0) {
             printf("ecarts contact->bascule : AUCUN ECHANTILLON\n");
             printf("   ⛔ « pas mesure », ⛔ PAS « 0 ms ».\n");
@@ -9039,9 +9077,9 @@ static void veille_imprimer_etat(void)
              *    1 min s'affichaient « 🔴 HORS » apres un passage a 10 min. */
             printf("ecarts contact->bascule (le plus recent d'abord) :\n");
             for (uint32_t i = 0; i < ne; i++) {
-                uint32_t e = dn_veille_bascule_ecart_ms((int)i);
-                uint32_t dl = dn_veille_bascule_delai_ms((int)i);
-                if (!dn_veille_bascule_jugeable((int)i)) {
+                uint32_t e = dg.ecart_ms[i];
+                uint32_t dl = dg.delai_ms[i];
+                if (!dg.jugeable[i]) {
                     /* ⛔ ENREGISTRE, EXCLU, ET DIT — jamais jete en silence, et
                      *    surtout jamais marque en rouge : la bascule est
                      *    CORRECTE, c'est la fenetre qui ne s'applique pas. */
@@ -9065,6 +9103,20 @@ static void veille_imprimer_etat(void)
                        dans ? "✅ dans [delai ; delai+1 s]"
                             : "🔴 HORS de [delai ; delai+1 s]");
             }
+            /* 🔴 revue du 2026-08-28 — L'ECART ENTRE `bascules` ET LE NOMBRE
+             *    D'ECHANTILLONS N'ETAIT EXPLIQUE NULLE PART. Une bascule FORCEE
+             *    (`veille now`, le MENU) monte le compteur et ne latche AUCUN
+             *    echantillon, PAR CONSTRUCTION : trois `veille now` donnaient
+             *    « bascules : 3 » a cote de « AUCUN ECHANTILLON », a trois
+             *    lignes d'ecart et sans un mot. */
+            if (c.bascules_forcees > 0) {
+                printf("   ⚠️ %lu des %lu bascules sont FORCEES (`veille now` / "
+                       "MENU) :\n",
+                       (unsigned long)c.bascules_forcees,
+                       (unsigned long)c.bascules);
+                printf("   elles ne latchent AUCUN ecart, par construction — "
+                       "aucune garde n'a cede.\n");
+            }
             printf("   ⚠️ la fenetre fait UNE seconde parce que la detection est\n");
             printf("   cadencee a 1 Hz (`label_tick`). ⛔ Ce n'est pas « environ\n");
             printf("   le delai » : c'est [delai ; delai+1 s], et c'est verifie.\n");
@@ -9073,6 +9125,27 @@ static void veille_imprimer_etat(void)
     printf("taps CONSOMMES par un reveil : %lu · taps de reglage dans le MENU : %lu\n",
            (unsigned long)dn_touch_consommes(),
            (unsigned long)dn_ui_menu_reglages());
+    /* 🔴 TROIS COMPTEURS NES DE LA REVUE DU 2026-08-28. Chacun nomme une panne
+     *    qui, avant lui, se serait produite EN SILENCE. */
+    printf("contacts consommes EXPIRES (bus illisible) : %lu · bascules dont "
+           "l'async a ete ABANDONNEE : %lu\n",
+           (unsigned long)dn_touch_conso_expirees(),
+           (unsigned long)dn_ui_veille_async_abandons());
+    if (dn_touch_conso_expirees() > 0) {
+        printf("   ⚠️ un contact consomme a ete abandonne faute de pouvoir lire "
+               "le doigt (32 lectures\n");
+        printf("   I2C ratees d'affilee). AVANT ce garde-fou, l'horloge "
+               "d'inactivite restait EPINGLEE\n");
+        printf("   a zero et LA VEILLE NE RETOMBAIT PLUS JAMAIS. Lire `touch` / "
+               "`err_i2c`.\n");
+    }
+    if (dn_ui_veille_async_abandons() > 0) {
+        printf("   ⚠️ un reveil s'est intercale entre l'enfilage de l'async de "
+               "bascule et son execution.\n");
+        printf("   L'ecran reste celui du reveil — ⛔ AVANT, il finissait "
+               "« palette ACTIF a la\n");
+        printf("   luminosite d'Ambient », et rien ne le disait.\n");
+    }
     printf("transitions provoquees PAR LA VEILLE : %lu (dans `nav`, mais SANS\n",
            (unsigned long)dn_ui_nav_veille_count());
     printf("   chronometre : elles ne naissent d'aucun geste)\n");
@@ -9085,7 +9158,7 @@ static void veille_imprimer_etat(void)
      *    ~40 s au demarrage a froid avec 55,5 % d'erreurs GT911, et LE SCAN NE
      *    LE VOIT PAS — l'instrument est `touch` / `err_i2c`.
      */
-    if (dn_veille_soupcon_appui_fantome()) {
+    if (dg.soupcon_appui_fantome) {
         printf("\n🔴 SOUPCON D'APPUI FANTOME — LA VEILLE NE TOMBE PAS, ET VOICI POURQUOI\n");
         printf("   La veille est ARMEE, %lu s ont ete OBSERVEES (soit plus que le\n",
                (unsigned long)c.secondes_vues);
@@ -9177,9 +9250,13 @@ static void veille_imprimer_geom(void)
     /*
      * 🔴 AC1.3 — LE LAYOUT EST STRICTEMENT IDENTIQUE, ET C'EST CHIFFRE.
      *    ⛔ Pas un constat a l'oeil : on imprime les quatre nombres de chacune
-     *    des six cases DANS LES DEUX MODES, plus un condense FNV-1a des 28
+     *    des six cases POUR LE MODE COURANT, plus un condense FNV-1a des 28
      *    nombres. Deux modes qui rendent le meme condense n'ont pas bouge d'un
      *    pixel.
+     * 🔴 CORRIGE EN REVUE DE CODE LE 2026-08-28 — CE COMMENTAIRE DISAIT « DANS
+     *    LES DEUX MODES », CE QUE CETTE FONCTION N'A JAMAIS FAIT : elle
+     *    n'imprime QUE le mode ou l'on se trouve. Ce sont les DEUX RELEVES du
+     *    protocole ci-dessous qui couvrent les deux modes.
      */
     uint32_t h = 0;
     if (!dn_ui_geom_signature(&h)) {
@@ -9199,9 +9276,19 @@ static void veille_imprimer_geom(void)
     printf("  bandes : barre %d · menu %d · grille %d · case %d\n", bh, mh, gh,
            ch);
     printf("  SIGNATURE FNV-1a des 28 nombres : 0x%08lX\n", (unsigned long)h);
-    printf("\n⚠️ LA PREUVE SE FAIT EN **DEUX** RELEVES : `veille geom`, puis\n");
+    printf("\n⚠️ LE PROTOCOLE FAIT DEUX RELEVES : `veille geom`, puis\n");
     printf("   `veille now`, puis `veille geom` a nouveau. Les deux signatures\n");
     printf("   DOIVENT etre identiques. ⛔ Un seul releve ne prouve rien.\n");
+    printf("🔴 ET CE QU'IL PROUVE EST BORNE — DIT EN REVUE DE CODE LE 2026-08-28.\n");
+    printf("   `dn_ui_case_rect()` et `dn_ui_geom_bandes()` NE CONSULTENT JAMAIS\n");
+    printf("   le mode : les deux signatures sont donc identiques PAR\n");
+    printf("   CONSTRUCTION, et ce releve est une GARDE DE NON-REGRESSION,\n");
+    printf("   ⛔ pas une mesure qui pourrait echouer aujourd'hui.\n");
+    printf("   ⚠️ CE QUE LA VEILLE DEPLACE VIT AILLEURS ET N'EST **PAS** COUVERT\n");
+    printf("   ICI : l'ordonnee de la valeur (48 -> 26), le pas entre lignes\n");
+    printf("   (40 -> 47) et la police (28 -> 33 ou 56). AC1.3 porte sur les\n");
+    printf("   CASES et les BANDES — ⛔ ne pas lire ce condense comme une preuve\n");
+    printf("   que rien ne bouge dans une case.\n");
     printf("⚠️ FNV-1a et ⛔ pas une somme : une somme aurait rendu le MEME\n");
     printf("   condense pour une case deplacee de +1 en x et -1 en y.\n");
 }
@@ -9267,8 +9354,16 @@ static void veille_imprimer_assets(void)
 static void veille_accents_collisions(void)
 {
     int pct = dn_widget_accent_amb();
-    uint32_t c[DN_UI_METRIQUES];
-    int idx[DN_UI_METRIQUES];
+    /* 🔴 REVUE DE CODE DU 2026-08-28 — LE TABLEAU FAISAIT SIX ET LE DEFAUT `95`
+     *    EST ETABLI SUR **SEPT**. Le motif ecrit juste au-dessus dit « les six
+     *    cases + l'humidite d'AMBIANCE » ; la boucle, elle, s'arretait aux
+     *    cases. ⇒ `veille accents 60` pouvait faire entrer l'accent d'humidite
+     *    en collision pendant que l'instrument imprimait « ✅ … restent
+     *    DISTINCTS deux a deux ». Une gate scopee plus etroit que la propriete
+     *    qu'elle annonce. */
+    uint32_t c[DN_UI_METRIQUES + 1];
+    int idx[DN_UI_METRIQUES + 1];
+    const char *nom7 = "AMBIANCE (humidite)";
     int n = 0;
     for (int i = 0; i < DN_UI_METRIQUES; i++) {
         /* ⚠️ LA COULEUR EST RELUE DU DESCRIPTEUR (`dn_ui_desc`), ⛔ pas recopiee
@@ -9281,6 +9376,11 @@ static void veille_accents_collisions(void)
             n++;
         }
     }
+    /* La 7e : relue de `dn_ui_accent_hum()`, ⛔ pas recopiee ici. */
+    idx[n] = -1;
+    c[n] = dn_widget_desaturer(dn_ui_accent_hum(), pct);
+    n++;
+
     int paires = 0;
     for (int i = 0; i < n; i++) {
         for (int j = i + 1; j < n; j++) {
@@ -9290,13 +9390,15 @@ static void veille_accents_collisions(void)
                 }
                 paires++;
                 printf("   « %s » et « %s » rendent tous deux %06lX\n",
-                       dn_ui_metrique_nom(idx[i]), dn_ui_metrique_nom(idx[j]),
+                       idx[i] < 0 ? nom7 : dn_ui_metrique_nom(idx[i]),
+                       idx[j] < 0 ? nom7 : dn_ui_metrique_nom(idx[j]),
                        (unsigned long)c[i]);
             }
         }
     }
     if (paires == 0) {
-        printf("✅ a %d %%, les %d accents de case restent DISTINCTS deux a deux.\n",
+        printf("✅ a %d %%, les %d accents restent DISTINCTS deux a deux "
+               "(les cases + l'humidite d'AMBIANCE).\n",
                pct, n);
     } else {
         printf("   ⇒ `veille accents 95` les separe (ecart chromatique 7/255,\n");
@@ -9579,19 +9681,42 @@ static int cmd_veille(int argc, char **argv)
             printf("usage : veille reset\n");
             return 1;
         }
-        dn_ui_veille_latences_reset();
-        dn_veille_reset();
+        /* 🔴 REVUE DE CODE DU 2026-08-28 — LES TROIS RESETS PASSENT DESORMAIS
+         *    SOUS **UN SEUL VERROU**, ET LE SUCCES SE LIT. Avant, `dn_veille_reset()`
+         *    et `dn_touch_consommes_rebaser()` ecrivaient depuis la tache REPL
+         *    en concurrence du tick 1 Hz, et le succes etait annonce meme quand
+         *    le verrou n'avait pas ete pris. Motifs dans `dn_ui.h`. */
+        if (!dn_ui_veille_reset_tout()) {
+            printf("⛔ PAS FAIT : le verrou LVGL n'a pas ete pris en 500 ms.\n");
+            printf("   RIEN n'a ete remis a zero — ⛔ ne pas lire la sortie "
+                   "suivante comme un etat neuf.\n");
+            printf("   ⚠️ `build_scene()` tient le verrou 307-322 ms (mesure) : "
+                   "reessayer suffit en general.\n");
+            return 1;
+        }
         /* 🔴 AC8.3 — CE COMPTEUR-LA SURVIVAIT AU RESET, ET LA SORTIE SE
          *    CONTREDISAIT : « reveils 0 » a cote de « taps CONSOMMES par un
          *    reveil : 1 », dans le meme bloc. Mesure le 2026-08-25.
          * ⛔ Surtout pas `dn_touch_reset_stats()` : il zeroterait aussi IRQ,
          *    lectures, appuis, relachements et erreurs I2C, que `touch`
          *    publie et que `veille` ne publie pas. */
-        dn_touch_consommes_rebaser();
         printf("compteurs et latences a ZERO.\n");
         printf("⛔ Les deux REGLAGES ne sont pas touches : ce sont des reglages,\n");
         printf("   pas des mesures. Le MODE non plus — le remettre a ACTIF ici\n");
         printf("   ferait diverger l'etat annonce de l'ecran reel.\n");
+        /* 🔴 REVUE DE CODE DU 2026-08-28 — AC8.3 DIT « TOUS LES COMPTEURS », ET
+         *    IL Y EN A UN QU'ON EPARGNE **DELIBEREMENT**. Le taire aurait laisse
+         *    « compteurs a ZERO » decrire un bloc qui, lui, ne bouge pas — la
+         *    forme exacte du defaut que cette story a deja corrige deux fois
+         *    (`s_persist_n`, `dn_touch_consommes`). */
+        printf("⛔ LE TEMPS MURAL PAR MODE (« depuis le boot ») N'EST PAS "
+               "REMIS A ZERO :\n");
+        printf("   c'est la FENETRE DE SOAK de `dn4-5`, qui dure UNE SEMAINE. "
+               "La zeroter ici\n");
+        printf("   donnerait a une commande de diagnostic le pouvoir de "
+               "detruire sept jours de\n");
+        printf("   mesure en une frappe. Son etiquette, elle, reste juste : "
+               "« depuis le boot ».\n");
         return 0;
     }
 
@@ -9669,7 +9794,21 @@ static int cmd_veille(int argc, char **argv)
                    (unsigned)dn_ui_voile_opa());
             return 1;
         }
-        dn_ui_veille_set_voile((uint8_t)v);
+        /* 🔴 REVUE DE CODE DU 2026-08-28 — CE RETOUR ETAIT JETE, ET LA LIGNE
+         *    SUIVANTE ANNONCAIT « (applique MAINTENANT) ». ``dn_ui_veille_set_voile()`` ecrit sous
+         *    `lvgl_port_lock(2000)` et rend `ESP_ERR_TIMEOUT` sinon : tapee
+         *    pendant un `build_scene()` (307-322 ms verrou tenu, MESURE)
+         *    enchaine a une ecriture NVS, la commande n'ecrivait RIEN et la
+         *    console disait le contraire. ⇒ l'A/B d'AC9 tranchait A L'OEIL sur
+         *    une valeur JAMAIS POSEE. Les trois voisines (`veille on`,
+         *    `veille delai`, `veille unite`) testaient deja leur retour. */
+        esp_err_t evo = dn_ui_veille_set_voile((uint8_t)v);
+        if (evo != ESP_OK) {
+            printf("⛔ NON APPLIQUE : %s — le verrou LVGL n'a pas ete pris.\n",
+                   esp_err_to_name(evo));
+            printf("   ⛔ Ne rien conclure a l'oeil : la valeur n'est PAS posee.\n");
+            return 1;
+        }
         printf("voile d'Ambient : %ld%s\n", v,
                dn_veille_mode() == DN_VEILLE_AMBIENT ? " (applique MAINTENANT)"
                                                      : " (a la prochaine veille)");
@@ -9706,7 +9845,21 @@ static int cmd_veille(int argc, char **argv)
             printf("   qui avait demande une revue de code pour etre vu.\n");
             return 1;
         }
-        dn_ui_veille_set_gris(reg, (uint32_t)rgb);
+        /* 🔴 REVUE DE CODE DU 2026-08-28 — CE RETOUR ETAIT JETE, ET LA LIGNE
+         *    SUIVANTE ANNONCAIT « (applique MAINTENANT) ». ``dn_ui_veille_set_gris()`` ecrit sous
+         *    `lvgl_port_lock(2000)` et rend `ESP_ERR_TIMEOUT` sinon : tapee
+         *    pendant un `build_scene()` (307-322 ms verrou tenu, MESURE)
+         *    enchaine a une ecriture NVS, la commande n'ecrivait RIEN et la
+         *    console disait le contraire. ⇒ l'A/B d'AC9 tranchait A L'OEIL sur
+         *    une valeur JAMAIS POSEE. Les trois voisines (`veille on`,
+         *    `veille delai`, `veille unite`) testaient deja leur retour. */
+        esp_err_t egr = dn_ui_veille_set_gris(reg, (uint32_t)rgb);
+        if (egr != ESP_OK) {
+            printf("⛔ NON APPLIQUE : %s — le verrou LVGL n'a pas ete pris.\n",
+                   esp_err_to_name(egr));
+            printf("   ⛔ Ne rien conclure a l'oeil : la valeur n'est PAS posee.\n");
+            return 1;
+        }
         veille_dire_si_pas_neutre((uint32_t)rgb);
         printf("gris d'Ambient « %s » : %06lX%s\n", argv[2], (unsigned long)rgb,
                dn_veille_mode() == DN_VEILLE_AMBIENT ? " (applique MAINTENANT)"
@@ -9729,7 +9882,21 @@ static int cmd_veille(int argc, char **argv)
             printf("   ce qui est DESSINE. Poser une couleur FRANCHE tranche.\n");
             return 1;
         }
-        dn_ui_veille_set_case_bg((uint32_t)rgb);
+        /* 🔴 REVUE DE CODE DU 2026-08-28 — CE RETOUR ETAIT JETE, ET LA LIGNE
+         *    SUIVANTE ANNONCAIT « (applique MAINTENANT) ». ``dn_ui_veille_set_case_bg()`` ecrit sous
+         *    `lvgl_port_lock(2000)` et rend `ESP_ERR_TIMEOUT` sinon : tapee
+         *    pendant un `build_scene()` (307-322 ms verrou tenu, MESURE)
+         *    enchaine a une ecriture NVS, la commande n'ecrivait RIEN et la
+         *    console disait le contraire. ⇒ l'A/B d'AC9 tranchait A L'OEIL sur
+         *    une valeur JAMAIS POSEE. Les trois voisines (`veille on`,
+         *    `veille delai`, `veille unite`) testaient deja leur retour. */
+        esp_err_t eca = dn_ui_veille_set_case_bg((uint32_t)rgb);
+        if (eca != ESP_OK) {
+            printf("⛔ NON APPLIQUE : %s — le verrou LVGL n'a pas ete pris.\n",
+                   esp_err_to_name(eca));
+            printf("   ⛔ Ne rien conclure a l'oeil : la valeur n'est PAS posee.\n");
+            return 1;
+        }
         veille_dire_si_pas_neutre((uint32_t)rgb);
         printf("aplat de case en Ambient : %06lX%s\n", (unsigned long)rgb,
                dn_veille_mode() == DN_VEILLE_AMBIENT ? " (applique MAINTENANT)"
@@ -9816,8 +9983,14 @@ static const esp_console_cmd_t k_cmds[] = {
     DN_CMD("reboot", "redémarre pour appliquer un `set`", cmd_reboot),
     /* dn3-3 : la VEILLE (`Ambient`) — pilotage ET mesure. */
     DN_CMD("veille",
+           /* 🔴 revue du 2026-08-28 — `fond`, `unite`, `jauge` et `case`
+            *    MANQUAIENT ici alors que `veille_usage()` les documente. C'est
+            *    cette ligne que `help` imprime : `veille fond`, l'outil de
+            *    bissection qui a tranche « au lieu d'un noir/gris sombre c'est
+            *    un vert », etait INVISIBLE pour qui part de `help`. */
            "veille | on|off | delai <1|3|5|10> | now | wake | lat | geom | "
-           "assets | reset | pct | voile | gris | accents — la VEILLE (dn3-3)",
+           "assets | reset | pct | voile | gris | accents | fond | unite | "
+           "jauge | case — la VEILLE (dn3-3)",
            cmd_veille),
     DN_CMD("tear", "tear on|vsync|sync|both|flip|off — déchirement BRUT (dn1-2)",
            cmd_tear),

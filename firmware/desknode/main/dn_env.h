@@ -801,6 +801,25 @@ typedef struct {
      *    défauts de troncature corrigés le 2026-08-20.
      */
     uint32_t ruptures;
+    /*
+     * 🔴 AJOUTÉ EN REVUE DE CODE LE 2026-08-28 — SANS LUI, LE DÉNOMINATEUR
+     *    RETRANCHAIT **UNE RUPTURE DE TROP** DANS LE CAS NORMAL.
+     * `ruptures` est TERMINALE : elle est incrémentée par `dn_w2_desamorcer()`,
+     * donc à la FIN d'un épisode. Le bon dénominateur est `n - E` (E = nombre
+     * d'ÉPISODES), et E vaut `ruptures + 1` seulement tant que le dernier
+     * épisode est ENCORE OUVERT.
+     * ⇒ Lu **en** Ambient (chaîne ouverte), `n - 1 - ruptures` était juste.
+     *   Lu **hors** Ambient — le cas NORMAL, puisque sortir d'Ambient
+     *   désamorce — tous les épisodes sont clos, `ruptures == E`, et la
+     *   formule rendait `n - E - 1`.
+     * ⚠️ TÉMOIN CHIFFRÉ : `w2 reset`, `veille now`, 3 s, toucher, `w2` ⇒
+     *   `n = 3, rup = 1` ⇒ dénominateur 1 pour 2 changements ⇒ **taux 200 %**,
+     *   au-dessus du seuil, sans aucun clamp.
+     * ✅ ⛔ ET LE CHIFFRE PUBLIÉ D'AC2.1 N'EST **PAS** MENACÉ : à `n = 513,
+     *   rup = 2`, l'écart est 510 contre 511, soit **0,2 %** sur un taux de
+     *   96 % jugé contre un seuil de 10 %.
+     */
+    bool amorce; /* la chaîne est-elle OUVERTE à l'instant de la lecture ? */
     int64_t somme;
     int64_t somme_carres;
 } dn_w2_t;
