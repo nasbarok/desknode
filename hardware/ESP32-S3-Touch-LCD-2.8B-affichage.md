@@ -7851,7 +7851,8 @@ pourquoi on a renoncé.
 3. **CE QUI PORTE VRAIMENT UNE NUIT EXISTE, ET CE N'EST PAS À `dn3-3`** :
    `dn_hist.h:226-227` — `DN_HIST_SEAUX = 24` × `DN_HIST_SEAU_S = 3600` ⇒ **24
    seaux d'une heure**, lus par `dn_hist_minmax_long()` ; et le
-   **`--journal-soak`** côté tour (**18,3 o/s**, rotation **32 Mo × 4**). **Les
+   **`--journal-soak`** côté tour (⚠️ **plancher 18,3 o/s**, mesuré ailleurs à **157-163 o/s** ;
+   rotation **32 Mo × 4 crans ⇒ rétention 160 Mo** — chiffre repris le 2026-08-28, voir §25.4). **Les
    deux sont les instruments de `dn4-5`** — son **AC3.2** (§25.5) et son **AC2.5**
    (§25.4). AC9.8 demandait donc à `dn3-3` de prouver **un sous-ensemble de
    `dn4-5`** avec un anneau de **2 minutes**.
@@ -8249,10 +8250,20 @@ et conclut *« ⛔ Ne pas le laisser armé sur un soak »*. **Le cadrage sous-es
 | | `--tracer-console` | `--journal-soak` |
 |---|---|---|
 | contenu | **tout** le fil, brut | battement · reboots · alarmes · **événements de port** |
-| débit | **447-530 o/s** | **18,3 o/s** (mesuré sur la ligne réelle : 183 o) |
-| sur 7 jours | **270-320 Mo** | **10,6 Mo** |
-| rotation | ⛔ aucune | ✅ 32 Mo × 4 |
+| débit | **447-530 o/s** | ⚠️ **PLANCHER 18,3 o/s** · mesuré ailleurs à **157-163 o/s** |
+| sur 7 jours | **270-320 Mo** | ⚠️ **PLANCHER 10,6 Mo** · ~**95-98 Mo** au débit haut |
+| rotation | ⛔ aucune | ✅ 32 Mo × 4 crans ⇒ **rétention 160 Mo**, au-delà le DÉBUT est détruit |
 | usage | diagnostic, fenêtre courte | **la boîte noire du soak** |
+
+🔴 **CORRIGÉ LE 2026-08-28 (revue de code) — CETTE TABLE PUBLIAIT UN CHIFFRE QUE §25.8.3 RÉFUTE.**
+Elle affichait `18,3 o/s` et `10,6 Mo sur 7 jours` **sans réserve**, pendant que §25.8.3 écrit
+*« le volume de régime se mesurera **pendant le soak lui-même** ⛔ Aucun chiffre de volume de
+régime n'est publié ici »*, et que le code lui-même porte les **deux** versions (`dn_agent.py`
+docstring `~18 o/s` contre le bloc voisin `157 o/s ⇒ ~95 Mo sur 7 j, faux d'un facteur ~8,6`).
+La gate, elle, requalifiait déjà 10,6 Mo en **« ⚠️ PLANCHER »**. ⇒ **Le plancher et le plafond de
+rétention sont publiés, le chiffre unique ne l'est plus.** ⚠️ AC2.5 exige de borner **AVANT** de
+lancer : ce qui borne n'est PAS le débit (inconnu), c'est la **rétention de 160 Mo** — et chaque
+rotation l'écrit désormais dans le journal, sous l'étiquette `ROTATION`.
 
 ⚠️ **L'ÉCRÊTAGE EST DIT, JAMAIS SILENCIEUX** : un quota de 60 lignes « fil » par minute protège la
 boîte noire d'une tempête d'erreurs, et **les lignes écartées sont comptées et publiées**
@@ -8288,40 +8299,85 @@ toute façon (AC3.6).
 ⚠️ **CE QU'IL NE DIT PAS** : il dit **dans quel MODE le module se croit**, ⛔ pas que la dalle est
 effectivement sombre. **Le constat owner reste requis.**
 
-## 25.6 ✅ CE QUE LES GATES PROUVENT — 120 CONTRÔLES, SANS CARTE NI TOUR
+## 25.6 ✅ CE QUE LES GATES PROUVENT — 145 CONTRÔLES, SANS CARTE NI TOUR
+
+🔴 **CHIFFRES REPRIS LE 2026-08-28 APRÈS LA REVUE DE CODE, ET LE PRÉCÉDENT ÉTAIT FAUX.** Cette
+section publiait *« 120 CONTRÔLES »* et *« 112 sites »* : au tir réel du 2026-08-28, les huit gates
+rendaient **124 OK et UN KO** — `audit_rebouclage_dn45.py` sortait en **exit 1** avec **six
+compteurs NON CLASSÉS**, ajoutés par `dn3-3`/`dn4-19`/`dn4-20` **après** `dn4-5`. ⚠️ Aucun de ces
+six ne reboucle en 7 jours : le défaut n'était pas un rebouclage, c'était que **l'instrument
+d'AC1.1 ne décrivait plus le firmware qu'on s'apprêtait à geler — et qu'il le disait lui-même**.
+C'était la **deuxième** dérive de cette table (la première réparée par `73a49ad`). Les chiffres
+ci-dessous sont **tirés**, ⛔ pas recopiés.
 
 | gate | ce qu'elle éprouve | contrôles |
 |---|---|---|
-| `tools/audit_rebouclage_dn45.py` | l'inventaire de rebouclage **mécanique** sur tout `main/` (112 sites) | **13** |
-| `tools/verif_rebouclage_dn45.py` | la fenêtre en base 64 bits + **3 mutants vus rougir** | **29** |
-| `tools/verif_cumul_ambient_dn45.py` | le cumul Ambient + **2 mutants vus rougir** | **19** |
-| `tools/verif_journal_soak_dn45.py` | la boîte noire : fragment, quota, rotation, **volume mesuré** | **13** |
+| `tools/audit_rebouclage_dn45.py` | l'inventaire de rebouclage **mécanique** sur tout `main/` (**123 sites**) | **13** |
+| `tools/verif_rebouclage_dn45.py` | la fenêtre en base 64 bits + **3 mutants vus rougir** | **30** |
+| `tools/verif_cumul_ambient_dn45.py` | le cumul Ambient + le **seqlock par sa forme** + **2 mutants vus rougir** | **23** |
+| `tools/verif_journal_soak_dn45.py` | la boîte noire, **y compris ses propres chemins de panne** | **27** |
 | `tools/verif_bme680_retard_dn45.py` | le miroir console↔docblock + **1 mutant vu rougir** | **15** |
 | `tools/verif_dossier_d5_dn45.py` | le balayage D5 sur **les deux dépôts** | **10** |
-| `tools/verif_d4_nvs_dn45.py` | les écrivains NVS, chacun avec son déclencheur | **6** |
-| `tools/verif_lissage_dn45.py` | le lissage sur la **vraie capture** + **3 mutants vus rougir** | **15** |
+| `tools/verif_d4_nvs_dn45.py` | les écrivains NVS (**4**), chacun avec son déclencheur | **6** |
+| `tools/verif_lissage_dn45.py` | le lissage + la **borne d'âge** d'AC4.3 + **4 mutants vus rougir** | **21** |
 
-⛔ **CE QUE CES 120 CONTRÔLES NE PROUVENT PAS** : que la carte tient sept jours. Ils prouvent que
+**TOTAL : 145 contrôles au vert, 0 KO, 10 mutants vus rougir** — les huit gates sortent en `exit 0`.
+
+⛔ **CE QUE CES 145 CONTRÔLES NE PROUVENT PAS** : que la carte tient sept jours. Ils prouvent que
 **l'instrument qui le dira ne ment pas**. C'est tout — et c'est ce qui manquait.
+⛔ **ET UNE CHOSE QU'ILS NE PROUVENT TOUJOURS PAS, ÉCRITE PLUTÔT QUE TUE** : le **seqlock** de
+`dn_veille_cumul()` est vérifié **par sa FORME**, ⛔ pas par son effet. Un banc séquentiel
+**n'exerce pas une course** : le mutant « seqlock retiré » a été construit, il s'applique, il
+compile, et il rend **le même chiffre**. Le garder aurait donné une gate rouge en permanence ;
+l'inverser pour la faire passer aurait épinglé **vert une absence de preuve**. Il a donc été
+**retiré et son échec est écrit dans la gate**.
 ⚠️ **ET AUCUN D'EUX N'A VU LE SILICIUM.** Quatre choses restent dues **sur la carte** : la capture
 de `gel` (AC2.2), le témoin de péremption **sur la carte** (AC4.3), l'A/B à l'œil (AC4.4) et les
 Δ px / Δ latence (AC4.5).
 
-## 25.7 ✅ D4 EST **VÉRIFIÉ**, ⛔ PAS AFFIRMÉ — LES TROIS ÉCRIVAINS, ET LEUR DÉCLENCHEUR (AC9)
+## 25.7 ✅ D4 EST **VÉRIFIÉ**, ⛔ PAS AFFIRMÉ — LES **QUATRE** ÉCRIVAINS, ET LEUR DÉCLENCHEUR (AC9)
 
 🔴 **L'INSTRUMENT QUI EXISTAIT NE COUVRAIT QU'UN SEUL ÉCRIVAIN.** La commande `veille` publie
 *« aucune écriture NVS depuis le boot ou le dernier `veille reset` »* — mais elle ne connaît que
 `dn_veille`. Un verdict fondé sur elle seule serait **LOCAL, pas global** : *« une gate scopée à UNE
 fonction peut épingler VERT le même défaut ailleurs »*.
 
-⇒ balayage de **tout** `firmware/desknode/main/` sur les sept primitives d'écriture
-(`nvs_set_*`, `nvs_commit`, `nvs_erase*`, `esp_partition_write/erase`, `esp_flash_write/erase`) :
+🔴 **ET L'INSTRUMENT QUI A REMPLACÉ CELUI-LÀ AVAIT LUI AUSSI UN ANGLE MORT — TROUVÉ LE 2026-08-28.**
+Le balayage cherchait **sept** primitives, et `nvs_flash_erase` n'en faisait pas partie : ni
+`"nvs_erase"` ni `"esp_flash_erase"` n'est une **sous-chaîne** de `nvs_flash_erase` (vérifié :
+`[p for p in PRIMITIVES if p in "nvs_flash_erase"]` rendait `[]`). ⇒ `desknode_main.c` **effaçait
+la partition NVS ENTIÈRE** sans que l'inventaire le voie, et cette page publiait *« trois
+écrivains »*. ⚠️ **La substance de D4 tenait** — ce chemin est un `nvs_flash_init()` en échec **au
+boot**, donc hors régime ; ce qui était en défaut, c'est **l'inventaire**, et un inventaire
+incomplet rend le verdict d'AC9.1 **local, pas global** : exactement ce qu'AC9.2 interdit.
+⚠️ **Le site existait déjà à `c31bb97`** : ⛔ ce n'est **pas** une régression post-`dn4-5`.
+
+🎯 **ET LA PRIMITIVE AJOUTÉE A IMMÉDIATEMENT ACCUSÉ DU CODE SAIN** : le balayage a classé
+`dn_console.c` comme écrivain, alors que ses deux seules occurrences sont un `printf(...)` qui
+**explique** à l'opérateur ce qu'est un `nvs_flash_erase()` au boot, et un commentaire. ⇒ le
+balayage blanchit désormais **les littéraux de chaîne** en plus des commentaires. **Une gate qui
+prend une MENTION TEXTUELLE pour un APPEL accuse du code sain** — c'est la faute symétrique de
+*« une gate verte sur du code faux »*, et elle a la même racine : lire du **texte** là où on croit
+lire du **code**.
+
+⇒ balayage de **tout** `firmware/desknode/main/` sur les **huit** primitives d'écriture
+(`nvs_set_*`, `nvs_commit`, `nvs_erase*`, **`nvs_flash_erase`**, `esp_partition_write/erase`,
+`esp_flash_write/erase`), **commentaires et chaînes blanchis** :
 
 | fichier | appels | déclencheur | en régime ? |
 |---|---|---|---|
-| `dn_bootcfg.c` | **4** | console (`set fbs\|bounce\|lines\|drawmem\|core`, `cfg reset`) — **ET un chemin de BOOT** | ⛔ **non** |
+| `desknode_main.c` | **1** | `nvs_flash_erase()` — **efface la partition ENTIÈRE**. Déclencheur : `nvs_flash_init()` qui rend `NO_FREE_PAGES`/`NEW_VERSION_FOUND` **au boot** | ⛔ **non** |
+| `dn_bootcfg.c` | **16** | console (`set fbs\|bounce\|lines\|drawmem\|core`, `cfg reset`, **`cfg repli clear`**) — **ET un chemin de BOOT** | ⛔ **non** |
 | `dn_stimulus.c` | **2** | `esp_partition_write` du **stimulus flash**, armé par `flash on` **uniquement** | ⛔ **non** |
 | `dn_veille.c` | **2** | persistance des **deux réglages** de veille, sur un **geste** (tap MENU / `veille`) | ⛔ **non** |
+
+⚠️ **DEUX CHIFFRES DE CETTE TABLE AVAIENT DÉRIVÉ** : `dn_bootcfg.c` publiait **4** appels, il y en a
+**16** au HEAD, et un déclencheur console ajouté **après** `dn4-5` n'était pas nommé —
+`cfg repli clear` → `dn_bootcfg_clear_repli()` (`nvs_erase_key` ×3 + `nvs_commit`). ✅ **Le COMPTE
+avait dérivé, ⛔ pas le VERDICT** : vérifié, **aucun chemin de RÉGIME n'a été introduit**
+(`dn_bootcfg_note_repli` n'est appelé que depuis `desknode_main.c:315`, `dn_veille` n'écrit que par
+`dn_veille_armer`/`dn_veille_cran` et **jamais** depuis `veille_poser_mode()`, et `dn_env.c`
+n'appelle **aucune** primitive NVS).
 
 ⚠️ **LE CHEMIN DE BOOT EST NOMMÉ PLUTÔT QUE TU** : `desknode_main.c` **corrige la NVS** quand
 `bounce_px` **ne s'alloue pas** (repli `dn4-10` du 2026-08-23). Il est **conditionnel**, il tombe

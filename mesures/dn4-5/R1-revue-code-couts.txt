@@ -1,0 +1,44 @@
+dn4-5 — REVUE DE CODE 3 COUCHES DU 2026-08-28 : LE COUT DES 17 CORRECTIFS
+=========================================================================
+BASE   : 1bc4672 (HEAD avant revue), arbre propre, build complet
+APRES  : les 17 correctifs de revue appliques
+Toolchain : ESP-IDF v5.5.x (~/esp/esp-idf), idf.py build, 0 avertissement
+
+BINAIRE (build/desknode.bin)
+  base   1 177 728 o   (0x11f880)
+  apres  1 179 968 o   (0x120140)
+  Δ      +2 240 o      (+0,190 %)
+
+RAM STATIQUE (idf.py size, DIRAM)
+  base   164 527 o utilisés — 177 233 o libres
+  apres  164 551 o utilisés — 177 209 o libres
+  Δ      +24 o
+  ⇒ ce sont les QUATRE compteurs 32 bits ajoutes, plus l'alignement :
+      s_px_enr / s_copie_enr / s_attente_enr  (dn_ui.c, 12 o)
+      s_mode_gen                              (dn_veille.c, 4 o)
+
+COUT DU CHEMIN CHAUD (⛔ NON MESURE SUR LA CARTE — declare)
+  Le flush LVGL paie desormais TROIS comparaisons `if (x < av)` par appel
+  (detection d'enroulement). ⛔ AUCUN verrou n'a ete ajoute sur ce chemin.
+  ⚠️ Le cout en us/flush n'est PAS mesure ici : il demande la carte.
+     A relever dans la seance carte, en comparant `flush` avant/apres sur
+     une meme duree — c'est le seul chemin de cette revue qui touche au
+     chemin chaud.
+
+COUT COTE AGENT (dn_agent.py)
+  ⛔ NON MESURE. La borne d'age du lisseur ajoute une comparaison et un
+  `pop(0)` par grandeur lissee et par cycle (4 grandeurs, 1 Hz).
+  ⚠️ A verser a AC4.6 quand il se tirera (tour en regime livre, WSL eteint).
+
+GATES (tir reel apres correctifs, les 8 en exit 0)
+  audit_rebouclage      13 OK   (etait 12 OK / 1 KO — ROUGE avant la revue)
+  verif_rebouclage      30 OK
+  verif_cumul_ambient   23 OK   (etait 19)
+  verif_journal_soak    27 OK   (etait 13 au dossier, 17 au HEAD)
+  verif_bme680_retard   15 OK
+  verif_dossier_d5      10 OK
+  verif_d4_nvs           6 OK   (4 ecrivains, etait 3)
+  verif_lissage         21 OK   (etait 15)
+  ------------------------------------------------------------------
+  TOTAL 145 controles, 0 KO, 10 mutants VUS ROUGIR
+  ⛔ Le dossier publiait « 120 controles, 0 KO » : c'etait FAUX au HEAD.

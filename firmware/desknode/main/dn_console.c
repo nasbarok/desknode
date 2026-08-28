@@ -2123,13 +2123,28 @@ static int cmd_flush(int argc, char **argv)
         printf("aucun flush depuis le reset — rien à conclure.\n");
         return 0;
     }
-    printf("aire cumulée       : %lu px\n", (unsigned long)st.px);
-    printf("  => %lu px par flush en moyenne (écran plein = %d px, soit %.2f %%)\n",
-           (unsigned long)(st.px / st.flushes), DN_LCD_TOTAL_PX,
+    /* 🔴 CORRECTIF DE REVUE 2026-08-28 — LES ENROULEMENTS SE DISENT.
+     *    Ces trois cumuls rebouclaient en SILENCE (px ~6,48 h, attente ~13,18 h,
+     *    copie ~3,78 j) sur un dénominateur qui, lui, ne reboucle pas : les
+     *    moyennes sortaient plausibles et fausses. Elles sont désormais
+     *    COMPOSÉES sur 64 bits — mais le compte est publié quand même, parce
+     *    qu'un lecteur qui compare ce bloc à une capture ANCIENNE doit savoir
+     *    que l'ancienne était tronquée. */
+    if (st.px_enr || st.copie_enr || st.attente_enr) {
+        printf("⚠️ ENROULEMENTS 32 bits ABSORBÉS : px x%lu · copie x%lu · "
+               "attente x%lu — les cumuls ci-dessous sont COMPOSÉS sur 64 bits "
+               "et JUSTES. ⛔ Une capture d'avant le 2026-08-28 les publiait "
+               "TRONQUÉS.\n",
+               (unsigned long)st.px_enr, (unsigned long)st.copie_enr,
+               (unsigned long)st.attente_enr);
+    }
+    printf("aire cumulée       : %llu px\n", (unsigned long long)st.px);
+    printf("  => %llu px par flush en moyenne (écran plein = %d px, soit %.2f %%)\n",
+           (unsigned long long)(st.px / st.flushes), DN_LCD_TOTAL_PX,
            (double)(st.px / st.flushes) * 100.0 / (double)DN_LCD_TOTAL_PX);
     if (st.cycles > 0) {
-        printf("  => %lu px et %.1f flush(es) par CYCLE de redessin\n",
-               (unsigned long)(st.px / st.cycles),
+        printf("  => %llu px et %.1f flush(es) par CYCLE de redessin\n",
+               (unsigned long long)(st.px / st.cycles),
                (double)st.flushes / (double)st.cycles);
         printf("     (le CYCLE est l'unité qui compte : c'est ce qu'une mise à\n");
         printf("      jour du label coûte réellement, flushes multiples inclus.)\n");
@@ -2146,14 +2161,14 @@ static int cmd_flush(int argc, char **argv)
         printf("copie / attente    : aucun flush effectif (que des no-op).\n");
         return 0;
     }
-    printf("copie              : %lu us cumulés, %lu us/flush en moyenne, "
+    printf("copie              : %llu us cumulés, %llu us/flush en moyenne, "
            "%lu us au pire\n",
-           (unsigned long)st.copie_us,
-           (unsigned long)(st.copie_us / reels),
+           (unsigned long long)st.copie_us,
+           (unsigned long long)(st.copie_us / reels),
            (unsigned long)st.max_copie_us);
-    printf("attente de synchro : %lu us cumulés, %lu us/flush en moyenne\n",
-           (unsigned long)st.attente_us,
-           (unsigned long)(st.attente_us / reels));
+    printf("attente de synchro : %llu us cumulés, %llu us/flush en moyenne\n",
+           (unsigned long long)st.attente_us,
+           (unsigned long long)(st.attente_us / reels));
     printf("   (comptée À PART de la copie : sinon « le flush coûte 27 ms » se\n");
     printf("    lirait comme un problème de bande passante alors que c'est la\n");
     printf("    synchro qui attend sa trame — 26,7 ms de période.)\n");
@@ -8051,6 +8066,34 @@ static int cmd_gel(int argc, char **argv)
            (unsigned long)ms);
     printf("  ⚠️ REGARDER LE LOG PENDANT LE GEL : la ligne de battement doit\n");
     printf("     continuer de sortir, avec `up` QUI AVANCE et `flush=` FIGE.\n");
+    /*
+     * 🔴 CE QUE CETTE COMMANDE COUPE, ET QUI N'ETAIT DIT NULLE PART — CONSTAT DE
+     *    REVUE DU 2026-08-28. `cmd_gel` s'execute SUR LA TACHE DU REPL, et le
+     *    REPL **EST** le transport de la telemetrie : l'agent envoie chaque
+     *    trame comme une commande console (`pc $DN,…`). Pendant le gel, la tache
+     *    REPL est dans `vTaskDelay()` et NE LIT PLUS LE PORT ; l'anneau RX
+     *    USB-Serial/JTAG sature, le peripherique NAK, et le `write()` de l'hote
+     *    expire a `write_timeout = 2 s` ⇒ PORT PERDU cote agent, puis
+     *    close/open, plusieurs fois pendant un gel de 12 s.
+     *    ⇒ TROIS CONSEQUENCES : (a) la contre-epreuve d'AC2.2 INJECTE elle-meme
+     *      les evenements de liaison qu'AC2.3 demande de distinguer d'une vraie
+     *      panne ; (b) le close/open du port est la sequence dont le depot ecrit
+     *      qu'elle REBOOTAIT la carte, sur une story dont le verdict est
+     *      « 0 reboot non commande » ; (c) rien ne le disait.
+     */
+    printf("  🔴 CE GEL COUPE LE FIL, ET C'EST STRUCTUREL : cette commande\n");
+    printf("     tourne SUR LA TACHE DU REPL, et le REPL EST le transport de\n");
+    printf("     la telemetrie (l'agent envoie `pc $DN,…`). Pendant le gel le\n");
+    printf("     port n'est plus lu ⇒ l'agent va voir PORT PERDU puis rouvrir,\n");
+    printf("     plusieurs fois. ⛔ Ces evenements sont des ARTEFACTS DE CETTE\n");
+    printf("     COMMANDE, ⛔ pas une panne de liaison (AC2.3).\n");
+    printf("  ⛔ NE PAS LA JOUER PENDANT LE SOAK : un close/open de port a deja\n");
+    printf("     ete vu REBOOTER la carte, et le verdict du soak est « 0 reboot\n");
+    printf("     non commande ». La tirer AVANT de demarrer le compteur.\n");
+    printf("  ⛔ NI PRES D'UNE ECHEANCE DE VEILLE : le tick LVGL est fige\n");
+    printf("     pendant le gel alors que l'inactivite suit l'horloge murale ⇒\n");
+    printf("     le releve d'AC3.3 qui suit porte `jugeable` et il MENT. Jeter\n");
+    printf("     tout releve AC3.3 pris dans les 60 s qui suivent.\n");
     /*
      * 🔴 LE RELEVE D'AVANT N'EST PLUS PRIS ICI — corrige sur la carte le
      *    2026-08-26. Pris ici, il l'etait HORS DU VERROU : entre lui et la

@@ -2011,6 +2011,20 @@ static volatile uint32_t s_menu_taps;
 /* Compteurs — 32 bits, écrits par la tâche LVGL, lus par le REPL. Voir dn_ui.h
  * pour ce que cette absence de verrou garantit et ce qu'elle ne garantit pas. */
 static volatile uint32_t s_n_flush, s_n_cycles, s_px, s_copie_us, s_attente_us;
+/*
+ * 🔴 LES COMPTEURS D'ENROULEMENT — CORRECTIF DE REVUE DU 2026-08-28.
+ *    `s_px` reboucle toutes les ~6,48 h, `s_attente_us` toutes les ~13,18 h,
+ *    `s_copie_us` tous les ~3,78 j. Sur un soak de 7 JOURS ça fait
+ *    respectivement ~26, ~13 et 1 tours, pendant que le dénominateur
+ *    (`s_n_flush`, 27 ans) n'en fait aucun ⇒ des moyennes plausibles et fausses.
+ * ⛔ ON NE PASSE PAS LES ACCUMULATEURS EN 64 BITS : ils sont incrémentés sur le
+ *   chemin chaud de la tâche LVGL et lus SANS VERROU par la tâche console et
+ *   par le battement. Un `uint32_t` volatile se lit d'un seul `l32i` — atomique.
+ *   Un `uint64_t` se lirait en DEUX, et `dn_capteurs.c:66` dit ce que ça vaut :
+ *   « les int64 sont DÉCHIRABLES sur Xtensa — `volatile` n'y change rien ».
+ *   Le correctif aurait donc introduit un défaut de la classe qu'il ferme.
+ */
+static volatile uint32_t s_px_enr, s_copie_enr, s_attente_enr;
 static volatile uint32_t s_max_px, s_max_copie_us, s_timeouts;
 /* Flushes NO-OP du mode direct (early return : aire comptée, aucun µs). Compté
  * À PART (revue) : les inclure au dénominateur diluait les moyennes copie/attente
@@ -2133,7 +2147,13 @@ static void dn_ui_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px_m
          */
         s_n_flush++;
         s_n_noop++;
-        s_px += w * h;
+        {   /* l'enroulement se DÉTECTE ici, il ne se devine pas à la lecture */
+            uint32_t av = s_px;
+            s_px += w * h;
+            if (s_px < av) {
+                s_px_enr++;
+            }
+        }
         if (w * h > s_max_px) {
             s_max_px = w * h;
         }
@@ -2220,9 +2240,23 @@ static void dn_ui_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px_m
     uint32_t px = w * h;
     uint32_t copie = (uint32_t)(t2 - t1);
     s_n_flush++;
-    s_px += px;
-    s_copie_us += copie;
-    s_attente_us += (uint32_t)(t1 - t0);
+    {   /* trois détections d'enroulement, une comparaison chacune */
+        uint32_t av = s_px;
+        s_px += px;
+        if (s_px < av) {
+            s_px_enr++;
+        }
+        av = s_copie_us;
+        s_copie_us += copie;
+        if (s_copie_us < av) {
+            s_copie_enr++;
+        }
+        av = s_attente_us;
+        s_attente_us += (uint32_t)(t1 - t0);
+        if (s_attente_us < av) {
+            s_attente_enr++;
+        }
+    }
     if (px > s_max_px) {
         s_max_px = px;
     }
@@ -6327,6 +6361,27 @@ bool dn_ui_geler_ms(uint32_t ms, dn_ui_gel_pt_t *avant, dn_ui_gel_pt_t *apres)
     return true;
 }
 
+/*
+ * Compose la valeur 64 bits à partir du bas (32 bits, atomique) et du compte
+ * d'enroulements. ⚠️ LA RELECTURE DU HAUT N'EST PAS DÉCORATIVE : si un
+ * enroulement tombe entre la lecture du haut et celle du bas, le bas est
+ * post-enroulement (petit) et le haut pré-enroulement ⇒ on publierait une
+ * valeur trop PETITE de 2^32. On relit et on recommence. Même arbitrage que le
+ * seqlock de `dn_measure_bounce_get`, et sur ~26 enroulements en 7 jours la
+ * boucle ne tourne pratiquement jamais deux fois.
+ */
+static uint64_t stats_composer(volatile uint32_t *bas, volatile uint32_t *haut)
+{
+    for (;;) {
+        uint32_t h1 = *haut;
+        uint32_t b = *bas;
+        uint32_t h2 = *haut;
+        if (h1 == h2) {
+            return ((uint64_t)h1 << 32) | (uint64_t)b;
+        }
+    }
+}
+
 void dn_ui_get_stats(dn_flush_stats_t *out)
 {
     if (!out) {
@@ -6334,9 +6389,12 @@ void dn_ui_get_stats(dn_flush_stats_t *out)
     }
     out->flushes = s_n_flush;
     out->cycles = s_n_cycles;
-    out->px = s_px;
-    out->copie_us = s_copie_us;
-    out->attente_us = s_attente_us;
+    out->px = stats_composer(&s_px, &s_px_enr);
+    out->copie_us = stats_composer(&s_copie_us, &s_copie_enr);
+    out->attente_us = stats_composer(&s_attente_us, &s_attente_enr);
+    out->px_enr = s_px_enr;
+    out->copie_enr = s_copie_enr;
+    out->attente_enr = s_attente_enr;
     out->max_px = s_max_px;
     out->max_copie_us = s_max_copie_us;
     out->timeouts = s_timeouts;
@@ -6351,6 +6409,9 @@ void dn_ui_reset_stats(void)
     s_px = 0;
     s_copie_us = 0;
     s_attente_us = 0;
+    s_px_enr = 0;
+    s_copie_enr = 0;
+    s_attente_enr = 0;
     s_max_px = 0;
     s_max_copie_us = 0;
     s_timeouts = 0;

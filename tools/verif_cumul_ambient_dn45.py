@@ -231,28 +231,42 @@ def scenario(b):
             "attendu_actif": 360, "attendu_ambient": 3240 + 20000, "t": t}
 
 
+# ⚠️ LES DEUX MOTIFS ONT ETE REECRITS LE 2026-08-28 : `dn_veille_cumul()` et
+#    `veille_poser_mode()` ont recu un seqlock en revue de code, et les motifs
+#    d'origine ne s'appliquaient plus. Une gate dont le mutant ne MUTE RIEN
+#    n'eprouve rien — elle sortait « motif introuvable », ce qui est le seul
+#    comportement acceptable : ⛔ elle n'a PAS fait semblant de passer.
 MUTANTS = {
     "A. l'intervalle en cours est oublie": (
         """    int64_t now = esp_timer_get_time();
-    int idx = (s_mode == DN_VEILLE_AMBIENT) ? 1 : 0;
-    if (now > s_t_mode_us) {
-        c[idx] += now - s_t_mode_us;
+    if (now > t_mode) {
+        c[idx] += now - t_mode;
     }
     if (out_actif_us) {""",
         """    if (out_actif_us) {"""),
     "B. le cumul compte des TICKS au lieu du temps": (
-        """    int64_t now = esp_timer_get_time();
-    int idx = (s_mode == DN_VEILLE_AMBIENT) ? 1 : 0;
+        """    s_mode_gen++;
     if (now > s_t_mode_us) {
         s_cumul_us[idx] += now - s_t_mode_us;
     }
     s_t_mode_us = now;
     s_mode = m;""",
-        """    int idx = (s_mode == DN_VEILLE_AMBIENT) ? 1 : 0;
+        """    s_mode_gen++;
     s_cumul_us[idx] += (int64_t)s_secondes_vues * 1000000;
     s_t_mode_us = esp_timer_get_time();
     s_mode = m;"""),
 }
+
+# 🔴 CE QU'ON A ESSAYE ET QUI NE MARCHE PAS — ECRIT PLUTOT QUE TU (2026-08-28).
+#    Un mutant « le seqlock du lecteur est retire » a ete construit, il
+#    s'applique et il compile — mais il rend LE MEME CHIFFRE (23 240 s) que le
+#    produit. C'est NORMAL et ca ne se contourne pas : ce banc est SEQUENTIEL,
+#    il appelle le lecteur puis l'ecrivain l'un apres l'autre. UNE COURSE NE
+#    S'EXERCE PAS SUR UN FIL UNIQUE. ⛔ Garder ce mutant aurait donne une gate
+#    ROUGE en permanence, ou pire — l'inverser pour la faire passer aurait
+#    epingle VERT une absence de preuve.
+# ⇒ LE SEQLOCK EST DONC VERIFIE PAR SA FORME (§3bis), ⛔ PAS PAR SON EFFET. La
+#   gate le dit, et c'est la limite exacte de ce qu'elle prouve.
 
 
 def main():
@@ -303,7 +317,13 @@ def main():
     dans_poseur = re.search(
         r'static void veille_poser_mode\([^)]*\)\s*\{(.*?)\n\}', nu, re.S)
     ctrl(dans_poseur is not None, "`veille_poser_mode()` existe", "")
-    n_init = len(re.findall(r'static dn_veille_mode_t s_mode\s*=(?!=)', nu))
+    # ⚠️ `volatile` ADMIS depuis la revue du 2026-08-28 : `s_mode` est lu par la
+    #    tache REPL sous seqlock pendant que la tache LVGL l'ecrit, et sans
+    #    `volatile` le compilateur pourrait hisser la lecture hors de la boucle
+    #    de relecture. La gate n'a pas a interdire le qualificatif qui rend le
+    #    seqlock valide — elle doit continuer d'interdire les ECRITURES sauvages.
+    n_init = len(re.findall(
+        r'static\s+(?:volatile\s+)?dn_veille_mode_t s_mode\s*=(?!=)', nu))
     n_poseur = len(re.findall(r'\bs_mode\s*=(?!=)', dans_poseur.group(1))) \
         if dans_poseur else 0
     ctrl(len(ecritures) == n_init + n_poseur,
@@ -312,6 +332,37 @@ def main():
          % (len(ecritures), n_init, n_poseur))
     ctrl(len(ecritures) >= 2, "et le poseur ECRIT bien le mode",
          "⛔ un poseur qui n'ecrit rien passerait le controle precedent")
+
+    print("\n── 3bis. LE SEQLOCK EXISTE — VERIFIE PAR SA FORME ────────────────")
+    # 🔴 AJOUTE LE 2026-08-28 (revue de code). `s_cumul_us[]`, `s_t_mode_us` et
+    #    `s_mode` sont ecrits par la tache LVGL et lus par la tache REPL SANS
+    #    verrou : instantane incoherent (jusqu'a six jours d'Ambient perdus) et
+    #    dechirure int64 (±71,58 min). Le remede est le seqlock de pauvre deja
+    #    impose a `dn_measure_bounce_get`.
+    # ⛔ CE QUE CES CONTROLES PROUVENT : que le motif est LA. ⛔ CE QU'ILS NE
+    #   PROUVENT PAS : qu'il ferme la course — voir le bloc MUTANTS.
+    n_gen_poseur = len(re.findall(r'\bs_mode_gen\+\+',
+                                  dans_poseur.group(1) if dans_poseur else ""))
+    ctrl(n_gen_poseur == 2,
+         "le poseur encadre son ecriture (generation IMPAIRE pendant)",
+         "%d increment(s) de `s_mode_gen` dans le poseur — il en faut "
+         "EXACTEMENT 2 (avant et apres)" % n_gen_poseur)
+    corps_c = re.search(r'void dn_veille_cumul\([^)]*\)\s*\{(.*?)\n\}',
+                        nu, re.S)
+    zc = corps_c.group(1) if corps_c else ""
+    ctrl("s_mode_gen" in zc,
+         "le lecteur RELIT la generation",
+         "⛔ sans relecture, la copie peut etre prise a cheval sur une bascule")
+    ctrl(len(re.findall(r'\bvolatile\b[^;\n]*s_cumul_us', nu)) == 1
+         and len(re.findall(r'\bvolatile\b[^;\n]*s_t_mode_us', nu)) == 1
+         and len(re.findall(r'\bvolatile\b[^;\n]*s_mode\s*=', nu)) == 1,
+         "les trois etats partages sont `volatile`",
+         "⛔ sans lui le compilateur peut hisser la lecture HORS de la boucle "
+         "de relecture, ce qui VIDE le seqlock de son sens")
+    ctrl("essai" in zc and ">= 3" in zc,
+         "le lecteur BORNE ses essais et publie quand meme",
+         "⛔ boucler sans borne sur le chemin qu'on mesure serait pire que le "
+         "defaut — meme arbitrage que `dn_measure_bounce_get`")
 
     # 🔴 LE CONTROLE QUI PROTEGE LE CHOIX DE CONCEPTION : ni le poseur ni le
     #    lecteur ne doivent toucher au compteur de TICKS, dont le depot dit

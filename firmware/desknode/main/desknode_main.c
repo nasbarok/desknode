@@ -651,8 +651,30 @@ void app_main(void)
      * ⚠️ ANODIN SUR 45 s DE CAMPAGNE, PAS SUR 604 800 s. Et `up` est très
      *    exactement le chiffre que le critère n°1 du brief exige (« une semaine
      *    H24 sans reboot »). On publie donc l'horloge murale À CÔTÉ, ⛔ pas à
-     *    la place : c'est l'ÉCART entre les deux qui est le signal — il mesure
-     *    la famine de planification cumulée de la tâche `app_main`.
+     *    la place : c'est l'ÉCART entre les deux qui est le signal.
+     *
+     * 🔴 CORRECTIF DE REVUE DU 2026-08-28 — CE COMMENTAIRE DISAIT « il mesure la
+     *    famine de planification cumulée de la tâche `app_main` », ET C'ÉTAIT
+     *    FAUX DEUX FOIS.
+     *    (a) `s` partait de 0 À L'ENTRÉE DE LA BOUCLE pendant que
+     *        `esp_timer_get_time()` part AU BOOT : l'écart contenait en
+     *        permanence la durée d'initialisation, jamais soustraite. Mesuré
+     *        dans le dépôt (`mesures/dn4-22/ARM9-bandeau.txt:217`) :
+     *        `up 10 s — … — mural 13 s (écart +3 s)` — **+3 s au TOUT PREMIER
+     *        battement**, avant qu'un seul événement de planification ait pu
+     *        se produire.
+     *    (b) Le résidu n'est pas de la famine non plus : c'est la
+     *        quantification du tick de `vTaskDelay`
+     *        (`mesures/dn4-18/AC7-4-temoin-negatif.trace:55` : +4,65 s à 37 min
+     *        d'uptime, dont ~3 s de socle). ⇒ Extrapolé à 604 800 s, une carte
+     *        PARFAITEMENT SAINE aurait affiché plusieurs CENTAINES de secondes
+     *        d'écart, et un gel réel de 5 s ne pèse que ~2,5 % de cette rampe :
+     *        invisible, sans aucun seuil qui les sépare.
+     *    ⇒ CE QUI EST FAIT : l'origine est prise JUSTE AVANT la boucle, donc
+     *      l'écart part de zéro ; et on publie AUSSI le Δ depuis le battement
+     *      précédent, qui est le SEUL usage exploitable — une rampe ne dit rien,
+     *      sa dérivée dit tout. ⚠️ Le socle d'initialisation n'est pas jeté : il
+     *      est publié UNE FOIS au premier battement, sous son propre nom.
      *
      * ⛔ LA CADENCE DE 10 s EST INCHANGÉE, et le format de la ligne n'est
      *    ENRICHI QU'EN QUEUE : la recette « carte muette » du README a sa durée
@@ -661,6 +683,11 @@ void app_main(void)
      */
     uint32_t s = 0;
     const char *raison = raison_reset_clair(esp_reset_reason());
+    /* L'ORIGINE. ⛔ Prise ICI, pas au boot : sans elle l'écart publiait la durée
+     * d'initialisation à chaque battement, pour toujours. */
+    const int64_t t0_us = esp_timer_get_time();
+    const long long socle_s = (long long)(t0_us / 1000000);
+    long long ecart_prec = 0;
     while (1) {
         vTaskDelay(pdMS_TO_TICKS(10000));
         s += 10;
@@ -668,13 +695,28 @@ void app_main(void)
         dn_ui_get_stats(&st);
         /* int64 : `esp_timer_get_time()` ne déborde qu'après ~292 000 ans. */
         int64_t mural_s = esp_timer_get_time() / 1000000;
-        long long ecart = (long long)mural_s - (long long)s;
+        /* ⇒ RÉFÉRENCÉ À L'ENTRÉE DE BOUCLE : sur une carte saine il part de 0 et
+         *   monte lentement (quantification du tick), ⛔ il ne part plus de +3 s. */
+        long long ecart = (long long)((esp_timer_get_time() - t0_us) / 1000000)
+                          - (long long)s;
+        long long d_ecart = ecart - ecart_prec;
+        ecart_prec = ecart;
         ESP_LOGI(TAG,
                  "up %" PRIu32 " s — vsync=%" PRIu32 " — flush=%" PRIu32
                  " cycles=%" PRIu32 " — PSRAM libre %u o — mural %lld s "
-                 "(écart %+lld s) — reset: %s",
+                 "(écart %+lld s, Δ %+lld s) — reset: %s",
                  s, dn_measure_vsync_count(), st.flushes, st.cycles,
                  (unsigned)dn_measure_psram_free(), (long long)mural_s, ecart,
-                 raison);
+                 d_ecart, raison);
+        if (s == 10) {
+            /* UNE SEULE FOIS, et sous son propre nom : le socle n'est pas de la
+             * famine, c'est le temps d'initialisation. Le jeter serait perdre
+             * une mesure ; le laisser dans l'écart serait mentir. */
+            ESP_LOGI(TAG,
+                     "socle d'initialisation : %lld s entre le boot et l'entrée "
+                     "du battement — ⛔ EXCLU de l'écart ci-dessus, qui ne "
+                     "mesure QUE la dérive de la tâche app_main",
+                     socle_s);
+        }
     }
 }

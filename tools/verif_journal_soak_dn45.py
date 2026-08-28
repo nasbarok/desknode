@@ -225,6 +225,111 @@ def main():
         ctrl(True, "⚠️ et la limite de ce calcul est DECLAREE",
              "il ne compte que le battement ; le fil porte aussi les logs des "
              "autres modules")
+
+        # ══════════════════════════════════════════════════════════════════
+        # 🔴 §7 — CE QUE LA REVUE DU 2026-08-28 A TROUVE, ET QUI N'ETAIT
+        #    EPINGLE PAR RIEN. La boite noire est LE SEUL post-mortem du soak
+        #    (`COREDUMP_ENABLE_TO_NONE=y`) : chacun de ces chemins la rendait
+        #    muette, incomplete ou non bornee, EN SILENCE.
+        # ══════════════════════════════════════════════════════════════════
+        print("\n── 7. LES CHEMINS DE PANNE DE LA BOITE NOIRE ELLE-MEME ───────────")
+
+        # (a) `_ecrits` REPREND LA TAILLE DU FICHIER. Sans ca le compteur etait
+        #     PAR PROCESSUS et le fichier CUMULATIF : chaque relance de l'agent
+        #     repartait de zero sur un fichier existant ⇒ N x max_octets.
+        p7 = os.path.join(d, "reprise.log")
+        io.open(p7, "w", encoding="utf-8").write("x" * 5000)
+        j7 = dn_agent.JournalSoak(p7, max_octets=4096, rotations=2)
+        ctrl(j7._ecrits == 5000,
+             "`_ecrits` REPREND la taille du fichier existant",
+             "%d o lus a l'ouverture — ⛔ repartir de 0 rendait le plafond "
+             "« 160 Mo au pire » FAUX des la premiere relance" % j7._ecrits)
+
+        # (b) UN ECHEC D'ECRITURE NE REND PAS LA BOITE MUETTE A VIE.
+        p8 = os.path.join(d, "casse.log")
+        j8 = dn_agent.JournalSoak(p8, max_octets=1 << 30, rotations=2)
+        j8.evenement("DEPART", "ok")
+
+        class FauxFichier:
+            def write(self, _):
+                raise IOError("disque plein (simule)")
+
+            def flush(self):
+                raise IOError("disque plein (simule)")
+
+            def close(self):
+                pass
+
+        j8._f = FauxFichier()
+        j8.evenement("PENDANT", "cette ligne est PERDUE")
+        ctrl(j8._f is None,
+             "un echec d'ecriture REARME l'ouverture (⛔ plus muet a vie)",
+             "`_f` remis a None — ⛔ avant, il restait pose et AUCUNE ligne "
+             "n'etait plus jamais ecrite, sans un mot")
+        ctrl(j8._echecs_ecriture == 1,
+             "et l'echec est COMPTE",
+             "%d — il est publie au bilan et sur stderr au premier"
+             % j8._echecs_ecriture)
+        j8.evenement("APRES", "celle-ci doit REVENIR dans le fichier")
+        ctrl(any("celle-ci doit REVENIR" in l for l in lignes(p8)),
+             "la ligne SUIVANTE est bien reecrite",
+             "la boite noire s'est rouverte toute seule")
+
+        # (c) UNE ROTATION REFUSEE NE REMET PAS `_ecrits` A ZERO.
+        p9 = os.path.join(d, "rot.log")
+        j9 = dn_agent.JournalSoak(p9, max_octets=200, rotations=2)
+        j9._f = None
+        j9._ecrits = 500
+        vrai_replace = os.replace
+
+        def replace_refuse(*a, **k):
+            raise PermissionError("fichier tenu (antivirus simule)")
+
+        os.replace = replace_refuse
+        try:
+            j9._rotationner()
+        finally:
+            os.replace = vrai_replace
+        ctrl(j9._ecrits == 500,
+             "une rotation REFUSEE laisse `_ecrits` INTACT",
+             "%d — ⛔ le remettre a 0 avant la section faillible faisait "
+             "grossir le fichier de `max_octets` de plus a chaque echec, "
+             "SANS BORNE et sans signal" % j9._ecrits)
+        ctrl(j9._echecs_rotation == 1,
+             "et le refus est COMPTE et DIT",
+             "%d — « l'ecretage est dit, jamais silencieux » devient VRAI"
+             % j9._echecs_rotation)
+
+        # (d) LE RECAP DE MINUTE EST PILOTE PAR LE TEMPS, ⛔ pas par les octets.
+        ctrl(hasattr(dn_agent.JournalSoak, "rincer"),
+             "`rincer()` existe et est appelable SANS octets",
+             "⛔ le recap n'etait ecrit qu'a la bascule de minute SUIVANTE, "
+             "declenchee par l'arrivee d'octets ⇒ carte haltee = decompte de "
+             "LA MINUTE DE L'INCIDENT jamais publie")
+
+        # (e) `fermer()` VERSE LE FRAGMENT EN VOL.
+        p10 = os.path.join(d, "reste.log")
+        j10 = dn_agent.JournalSoak(p10, max_octets=1 << 30, rotations=2)
+        j10.alimenter(b"une ligne COMPLETE\nun debut de Guru Meditation sans fin")
+        j10.fermer()
+        ctrl(any("sans fin" in l and "NON TERMINEE" in l for l in lignes(p10)),
+             "`fermer()` verse le FRAGMENT EN VOL, etiquete",
+             "⛔ la ligne non terminee au moment de l'arret est peut-etre le "
+             "DEBUT du `Guru Meditation` coupe par le halt")
+
+        # (f) LE FRAGMENT EST TRONQUE PAR LA TETE, ⛔ PAS PAR LA QUEUE.
+        p11 = os.path.join(d, "tronq.log")
+        j11 = dn_agent.JournalSoak(p11, max_octets=1 << 30, rotations=2)
+        marque = b"Guru Meditation Error: DEBUT-QUI-DOIT-SURVIVRE "
+        j11.alimenter(marque + b"Z" * (dn_agent.JournalSoak.MAX_FRAGMENT + 1000))
+        ctrl(j11._reste.startswith(marque),
+             "un fragment trop long garde sa TETE",
+             "⛔ `[-512:]` gardait la FIN : le prefixe `Guru Meditation` "
+             "disparaissait, la ligne sortait de RE_ALARME, retombait sous le "
+             "quota et pouvait etre ECARTEE")
+        ctrl(j11._tronquees == 1,
+             "et la troncature est COMPTEE",
+             "%d — elle est publiee par `sante()`" % j11._tronquees)
     finally:
         shutil.rmtree(d, ignore_errors=True)
 

@@ -40,19 +40,46 @@ import sys
 RACINE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MAIN = os.path.join(RACINE, "firmware", "desknode", "main")
 
-PRIMITIVES = ["nvs_set_", "nvs_commit", "nvs_erase", "esp_partition_write",
-              "esp_partition_erase", "esp_flash_write", "esp_flash_erase"]
+# 🔴 `nvs_flash_erase` AJOUTEE LE 2026-08-28 (revue de code). Elle MANQUAIT, et
+#    l'omission etait invisible parce qu'elle ressemble aux autres : ni
+#    "nvs_erase" ni "esp_flash_erase" n'est une SOUS-CHAINE de "nvs_flash_erase"
+#    (verifie : `[p for p in PRIMITIVES if p in "nvs_flash_erase"]` rendait []).
+#    ⇒ `desknode_main.c` effacait LA PARTITION NVS ENTIERE sans que l'inventaire
+#      d'AC9.2 le voie, et le dossier publiait « balayage sur les SEPT
+#      primitives » avec 3 ecrivains au lieu de 4 fichiers.
+#    ⚠️ LA SUBSTANCE DE D4 TENAIT : ce chemin est un `nvs_flash_init()` en ECHEC
+#      AU BOOT, donc hors regime. Ce qui etait en defaut, c'est L'INVENTAIRE —
+#      et un inventaire incomplet rend le verdict d'AC9.1 LOCAL, pas global.
+#      C'est exactement ce qu'AC9.2 interdit.
+PRIMITIVES = ["nvs_set_", "nvs_commit", "nvs_erase", "nvs_flash_erase",
+              "esp_partition_write", "esp_partition_erase", "esp_flash_write",
+              "esp_flash_erase"]
 
 # ── LA TABLE : ecrivain -> (regime ?, declencheur) ──────────────────────────
 #    « REGIME » ferait echouer la gate. Aucun ne doit l'etre.
 ECRIVAINS = {
     "dn_bootcfg.c": (
         "HORS REGIME",
-        "console UNIQUEMENT (`set fbs|bounce|lines|drawmem|core`, `cfg reset`) "
-        "— ET UN CHEMIN DE BOOT, nomme plutot que tu : desknode_main.c corrige "
-        "la NVS quand `bounce_px` NE S'ALLOUE PAS (repli dn4-10 du 2026-08-23). "
+        "console UNIQUEMENT (`set fbs|bounce|lines|drawmem|core`, `cfg reset`, "
+        "et `cfg repli clear` -> `dn_bootcfg_clear_repli()` : ce dernier a ete "
+        "AJOUTE APRES dn4-5 et le dossier ne le nommait pas — trouve en revue le "
+        "2026-08-28) — ET UN CHEMIN DE BOOT, nomme plutot que tu : "
+        "desknode_main.c corrige la NVS quand `bounce_px` NE S'ALLOUE PAS "
+        "(repli dn4-10 du 2026-08-23). "
         "⚠️ Ce chemin est CONDITIONNEL, il tombe AVANT que le regime commence, "
-        "et il s'auto-eteint (le boot suivant est propre)"),
+        "et il s'auto-eteint (le boot suivant est propre). "
+        "⚠️ LE COMPTE PUBLIE PAR LE DOSSIER ETAIT 4 APPELS : il y en a 16 au "
+        "HEAD. Le COMPTE avait derive, ⛔ pas le VERDICT — aucun chemin de "
+        "REGIME n'a ete introduit"),
+    "desknode_main.c": (
+        "HORS REGIME",
+        "`nvs_flash_erase()` — efface la partition NVS ENTIERE, temoin compris. "
+        "Declencheur : `nvs_flash_init()` qui rend NO_FREE_PAGES ou "
+        "NEW_VERSION_FOUND AU BOOT (desknode_main.c:267). ⛔ Il tombe AVANT que "
+        "le regime commence, et il ne peut pas se rejouer sans un nouveau boot. "
+        "🔴 CE SITE EXISTAIT DEJA A `c31bb97` : ⛔ ce n'est PAS une regression "
+        "post-dn4-5, c'est un ANGLE MORT de la gate, trouve en revue le "
+        "2026-08-28 (la primitive `nvs_flash_erase` n'etait pas cherchee)"),
     "dn_stimulus.c": (
         "HORS REGIME",
         "`esp_partition_write` du STIMULUS flash, arme par la commande "
@@ -81,6 +108,19 @@ def ctrl(ok, libelle, detail=""):
 
 
 def sans_commentaires(txt):
+    """Blanchit les commentaires ET LES LITTERAUX DE CHAINE.
+
+    🔴 LES CHAINES ONT ETE AJOUTEES LE 2026-08-28 (revue de code), ET C'EST LA
+       GATE ELLE-MEME QUI L'A EXIGE. En ajoutant `nvs_flash_erase` aux
+       primitives, le balayage a classe `dn_console.c` comme ECRIVAIN — alors
+       que ses deux seules occurrences sont (a) un `printf(...)` qui EXPLIQUE a
+       l'operateur ce qu'est un `nvs_flash_erase()` au boot (dn_console.c:503)
+       et (b) un commentaire. ⛔ Une gate qui prend une MENTION TEXTUELLE pour un
+       APPEL accuse du code sain, et sur ce depot le precedent inverse est deja
+       paye : « une gate verte sur du code faux ». Les deux fautes ont la meme
+       racine — un balayage qui lit du TEXTE la ou il croit lire du CODE.
+    ⚠️ Les sequences d'echappement sont traitees : `"\\""` ne ferme pas la chaine.
+    """
     out, i, n = [], 0, len(txt)
     while i < n:
         c = txt[i]
@@ -94,6 +134,24 @@ def sans_commentaires(txt):
             j = n if j < 0 else j
             out.append(' ' * (j - i))
             i = j
+        elif c == '"' or c == "'":
+            # ⛔ LE CONTENU D'UNE CHAINE N'EST PAS DU CODE. On garde les
+            #    delimiteurs et les sauts de ligne (les numeros de ligne et le
+            #    hash de forme restent lisibles), on blanchit l'interieur.
+            fin = c
+            out.append(c)
+            i += 1
+            while i < n:
+                if txt[i] == '\\' and i + 1 < n:
+                    out.append('  ' if txt[i + 1] != '\n' else ' \n')
+                    i += 2
+                    continue
+                if txt[i] == fin:
+                    out.append(fin)
+                    i += 1
+                    break
+                out.append('\n' if txt[i] == '\n' else ' ')
+                i += 1
         else:
             out.append(c)
             i += 1

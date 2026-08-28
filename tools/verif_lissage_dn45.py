@@ -219,6 +219,60 @@ def main():
          "%s == 900 — ⛔ moyenner a cheval sur un trou fabriquerait une valeur "
          "qui n'a jamais existe" % apres)
 
+    print("\n── 5bis. AC4.3 — LA BORNE D'AGE, LE CHEMIN QUE §5 NE VOYAIT PAS ──")
+    # 🔴 CORRECTIF DE REVUE DU 2026-08-28. Le §5 ci-dessus ne modelise la
+    #    coupure QUE par un changement de GENERATION, c'est-a-dire par une
+    #    REOUVERTURE DU PORT. Un decrochage de cadence qui laisse le port OUVERT
+    #    (`gel` de la carte, TDR du pilote GPU, famine d'ordonnancement) ne
+    #    change pas la generation : le §5 le declarait vert alors que la
+    #    premiere trame de reprise republiait DEUX TIERS de valeur d'AVANT la
+    #    peremption. Ce controle-ci joue le temps QUI PASSE, generation FIGEE.
+    ctrl(abs(dn_agent.Lisseur.AGE_MAX_S * 1_000_000 - (per or 0)) < 1,
+         "`AGE_MAX_S` est le MIROIR EXACT de `DN_LINK_PEREMPTION_US`",
+         "%.1f s cote agent contre %s us cote firmware — ⛔ un miroir qui derive "
+         "rend l'AC fausse en silence" % (dn_agent.Lisseur.AGE_MAX_S, per))
+
+    def apres_trou(lis, trou_s):
+        """3 echantillons a 1 Hz, puis un TROU, puis 1 echantillon. Generation
+        INCHANGEE tout du long : le port n'a jamais ete ferme."""
+        t = 1000.0
+        for v in (100, 100, 100):
+            lis.appliquer([("cpu", [0, v, 0, 0])], 0, maintenant=t)
+            t += 1.0
+        t += trou_s
+        return lis.appliquer([("cpu", [0, 900, 0, 0])], 0, maintenant=t)[0][1][1]
+
+    v = apres_trou(dn_agent.Lisseur(), 12.0)
+    ctrl(v == 900,
+         "apres un TROU DE 12 s a generation FIGEE, la valeur est BRUTE",
+         "%s == 900 dixiemes — ⛔ aucun echantillon d'avant la peremption ne "
+         "survit, et le port n'a JAMAIS ete ferme" % v)
+
+    v = apres_trou(dn_agent.Lisseur(), 3.0)
+    ctrl(v == 900,
+         "un trou de 3,0 s EXACTEMENT (= la peremption) vide aussi la fenetre",
+         "%s == 900 — la borne est STRICTE : un echantillon d'age 3,0 s est "
+         "DEJA perime, ⛔ pas 'encore bon'" % v)
+
+    v = apres_trou(dn_agent.Lisseur(), 0.0)
+    ctrl(v != 900,
+         "SANS trou, le lissage LISSE toujours (⛔ la borne ne casse pas l'AC4)",
+         "%s != 900 — la borne d'age ne doit pas transformer le lisseur en "
+         "passe-plat" % v)
+
+    # 🔴 LE CAS QUE LA REVUE A TROUVE, DANS SA FORME EXACTE : la fenetre peut
+    #    couvrir 3,0 s sans AUCUN trou, par simple gigue — la boucle ne
+    #    resynchronise qu'au-dela de 1,0 s de retard, donc elle tolere 2,0 s
+    #    entre deux echantillons.
+    lis = dn_agent.Lisseur()
+    lis.appliquer([("cpu", [0, 100, 0, 0])], 0, maintenant=1000.0)
+    lis.appliquer([("cpu", [0, 100, 0, 0])], 0, maintenant=1001.0)
+    v = lis.appliquer([("cpu", [0, 900, 0, 0])], 0, maintenant=1003.0)[0][1][1]
+    ctrl(v == 500,
+         "gigue 1,0 s + 2,0 s : le plus vieux (age 3,0 s) est EJECTE",
+         "%s == 500 (moyenne de 100 et 900) — ⛔ pas 366, qui serait la moyenne "
+         "des TROIS et porterait un echantillon a la peremption" % v)
+
     print("\n── 6. `--lissage off` EST UN VRAI CONTOURNEMENT ──────────────────")
     ctrl(all(brut[k] == [v for v in ser[k]] for k in ser),
          "`actif=False` rend la photo INCHANGEE",
@@ -242,12 +296,26 @@ def main():
          "mutant B « fenetre n = 6 » : VU ROUGIR",
          "le plus vieux echantillon aurait 5 s, pour une peremption de %d s"
          % ((per or 0) // 1_000_000))
+    # D. LA BORNE D'AGE EST RETIREE : le lisseur retombe dans le defaut que la
+    #    revue du 2026-08-28 a trouve — un trou de 12 s a generation figee, et
+    #    deux tiers de la valeur publiee datent d'AVANT la peremption.
+    class SansBorneAge(dn_agent.Lisseur):
+        AGE_MAX_S = 1e9  # aucune ejection par l'age
+
+    v = apres_trou(SansBorneAge(), 12.0)
+    ctrl(v != 900,
+         "mutant D « pas de borne d'age » : VU ROUGIR",
+         "publie %s au lieu du brut 900 — la valeur d'AVANT le trou a SURVECU "
+         "a la peremption, port jamais ferme" % v)
+
     # C. `CPU %` glisse dans le lot.
     class AvecCpuPct(dn_agent.Lisseur):
         LISSEES = dn_agent.Lisseur.LISSEES | {("cpu", 0)}
     ctrl(set(AvecCpuPct.LISSEES) != ATTENDU,
          "mutant C « CPU %% lisse en douce » : VU ROUGIR",
-         "le controle du §1 le refuserait — AC4.4 n'a pas encore tranche")
+         "le controle du §1 le refuserait — 🎯 AC4.4 EST TRANCHE PAR L'OWNER "
+         "LE 2026-08-28 : « non on ne lisse pas cpu ! » ⇒ ce mutant n'est plus "
+         "une question ouverte, c'est une DECISION a defendre")
 
     print("\n" + "=" * 78)
     print("BILAN : %d OK, %d KO" % (ok_total[0], ko_total[0]))

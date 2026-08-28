@@ -2209,6 +2209,16 @@ class SortieStdout:
     # ⛔ PAS DE FIL ICI, ET C'EST UN ÉTAT DÉCLARÉ (AC2.4) — ⛔ jamais un
     #    `AttributeError`, jamais un silence.
     canal_console = False
+    # 🔴 dn4-5/AC4.3 (correctif de revue 2026-08-28) — `ouvertures` EST DESORMAIS
+    #    UN CONTRAT DE TOUS LES TRANSPORTS. Il n'existait que sur `SortieSerie`,
+    #    et l'appelant faisait `getattr(sortie, "ouvertures", 0)` : sur `--ws` et
+    #    sur stdout, le defaut `0` figeait la generation ⇒ `Lisseur.vider()`
+    #    n'etait PLUS JAMAIS appele apres le premier cycle. La garde d'AC4.3
+    #    etait donc SPECIFIQUE AU SERIE alors que le lissage, lui, est GLOBAL
+    #    (« UN SEUL lisseur, quel que soit le transport »).
+    #    ⛔ stdout n'a pas de connexion : le compteur reste a 0 par NATURE, ⛔ pas
+    #      par absence d'attribut — et c'est ecrit.
+    ouvertures = 0
 
     def envoyer(self, ligne: str) -> None:
         # ⚠️ BrokenPipeError est une SOUS-CLASSE d'Exception : redirigé vers un
@@ -2256,6 +2266,13 @@ class Lisseur:
        `(n-1)` s. Exiger qu'**aucun échantillon du filtre ne soit plus vieux que
        la péremption** (`DN_LINK_PEREMPTION_US` = 3 s) donne `n - 1 < 3`, soit
        **n <= 3**. ⛔ Ce n'est pas un réglage de goût.
+    ⚠️ **CETTE DÉRIVATION EST VRAIE À 1 Hz EXACT, ET LA BOUCLE N'OFFRE PAS ÇA**
+       (revue du 2026-08-28) : elle ne resynchronise qu'**au-delà de 1,0 s de
+       retard**, donc elle tolère un intervalle de **2,0 s** ⇒ la fenêtre peut
+       couvrir **3,0 s**, soit exactement la péremption. **La marge était NULLE.**
+       ⇒ `n = 3` reste la borne de COMPTE, mais ce qui garantit AC4.3 est
+       désormais `AGE_MAX_S` — voir ci-dessous. ⛔ Ne plus lire `n <= 3` comme
+       la preuve d'AC4.3 : c'est une condition nécessaire, ⛔ pas suffisante.
     ✅ **VÉRIFIÉ SUR LES 960 ÉCHANTILLONS** (`mesures/dn4-5/T4-choix-fenetre.txt`) :
        la seule grandeur qui ÉCHOUAIT au critère, `CPU GHz`, passe de **100 %**
        à **35 %** de sa plage (seuil 40 %), pour **1,0 s** de retard ajouté.
@@ -2267,6 +2284,29 @@ class Lisseur:
     """
 
     FENETRE = 3
+
+    # ── 🔴 LA BORNE D'AGE — CORRECTIF DE REVUE DU 2026-08-28 ────────────────
+    #    AC4.3 dit « aucune valeur lissee ne doit survivre a la peremption de
+    #    3 s ». La derivation `n - 1 < 3` ci-dessus SUPPOSE UNE CADENCE DE 1 Hz
+    #    SANS GIGUE — et la revue a montre que la boucle n'en offre pas :
+    #    elle ne resynchronise QU'AU-DELA de 1,0 s de retard, donc elle tolere
+    #    SANS RIEN DIRE un intervalle inter-echantillons de 2,0 s. Avec n = 3 la
+    #    fenetre peut alors couvrir 1,0 + 2,0 = 3,0 s, soit EXACTEMENT
+    #    `DN_LINK_PEREMPTION_US`. La marge annoncee etait NULLE.
+    #    ⚠️ PIRE : le chemin de resynchronisation (`rattrapages` -> `reamorcer()`
+    #    -> `continue`) ne vidait PAS le lisseur — `vider()` n'etait declenche
+    #    que par une REOUVERTURE DU PORT. Un decrochage qui laisse le port
+    #    ouvert (un `gel` de la carte, un TDR du pilote GPU, une famine
+    #    d'ordonnancement) republiait donc, a la premiere trame de reprise,
+    #    une moyenne dont DEUX TIERS dataient d'AVANT la peremption.
+    # ⇒ ON NE COMPTE PLUS LES ECHANTILLONS, ON BORNE LEUR AGE. Chaque
+    #   echantillon porte son heure ; tout echantillon d'age >= AGE_MAX_S sort
+    #   de la fenetre. L'AC devient vraie PAR CONSTRUCTION, quelle que soit la
+    #   gigue et quel que soit le chemin de rupture — ⛔ plus par enumeration
+    #   des chemins, qui laissait passer ceux qu'on n'avait pas nommes.
+    # ⛔ MIROIR DU FIRMWARE : `DN_LINK_PEREMPTION_US` = 3 000 000 us
+    #   (`firmware/desknode/main/dn_link.h`). Une gate verifie l'egalite.
+    AGE_MAX_S = 3.0
 
     # ── LE JEU LISSÉ, ARRÊTÉ PAR LA DÉCISION OWNER DU 2026-08-26 (réponse (a) :
     #    « le critère écrit fait foi ») ────────────────────────────────────────
@@ -2282,10 +2322,15 @@ class Lisseur:
         self._generation = None
 
     def vider(self) -> None:
-        """⛔ TOUT l'état part. Appelé à chaque reprise de liaison."""
+        """⛔ TOUT l'état part. Appelé à chaque reprise de liaison.
+
+        ⚠️ Ce vidage reste la garde EXPLICITE de la réouverture de port ; il
+           n'est plus la SEULE. La borne d'âge (`AGE_MAX_S`) couvre les ruptures
+           qui ne ferment pas le port, et que cette méthode ne voyait pas.
+        """
         self._buf.clear()
 
-    def appliquer(self, photo, generation=0):
+    def appliquer(self, photo, generation=0, maintenant=None):
         """Rend la photo, les quatre grandeurs lissées remplacées.
 
         🔴 LE VIDAGE À LA REPRISE EST LE PIÈGE NOMMÉ PAR AC4.3 : « un IIR qui
@@ -2297,6 +2342,11 @@ class Lisseur:
         """
         if not self.actif:
             return photo
+        # ⛔ `time.monotonic()` : l'horloge murale peut RECULER (NTP, changement
+        #    d'heure), et un echantillon d'age NEGATIF ne sortirait jamais de la
+        #    fenetre. L'injection par parametre existe pour les gates.
+        if maintenant is None:
+            maintenant = time.monotonic()
         if generation != self._generation:
             self._generation = generation
             self.vider()
@@ -2315,13 +2365,21 @@ class Lisseur:
                     self._buf.pop(cle, None)
                     continue
                 b = self._buf.setdefault(cle, [])
-                b.append(v)
-                if len(b) > self.fenetre:
+                b.append((maintenant, v))
+                # 🔴 LA BORNE D'AGE PASSE AVANT LA BORNE DE COMPTE. Tout
+                #    echantillon dont l'age ATTEINT la peremption sort — donc
+                #    l'echantillon le plus vieux de la fenetre est TOUJOURS
+                #    strictement plus jeune que `DN_LINK_PEREMPTION_US`.
+                #    C'est l'enonce d'AC4.3, verifie ici a chaque trame.
+                limite = maintenant - self.AGE_MAX_S
+                while b and b[0][0] <= limite:
                     b.pop(0)
+                if len(b) > self.fenetre:
+                    del b[:len(b) - self.fenetre]
                 # Les valeurs sont des DIXIÈMES ENTIERS, et les quatre grandeurs
                 # lissées sont toutes DN_PREC_DIXIEME : moyenner ici, c'est
                 # moyenner À LA RÉSOLUTION AFFICHÉE.
-                neuves[i] = int(sum(b) / len(b) + 0.5)
+                neuves[i] = int(sum(x[1] for x in b) / len(b) + 0.5)
             out.append((metrique, neuves))
         return out
 
@@ -2402,11 +2460,28 @@ class JournalSoak:
         self._rot = rotations
         self._f = None
         self._reste = b""
-        self._ecrits = 0
+        # 🔴 CORRECTIF DE REVUE 2026-08-28 — `_ecrits` REPREND LA TAILLE DU
+        #    FICHIER. Il etait remis a 0 a chaque construction alors que le
+        #    fichier est ouvert en 'a' : le compteur etait PAR PROCESSUS, le
+        #    fichier CUMULATIF. Chaque relance de l'agent (extinction/rallumage
+        #    de la tour = la fin NORMALE de cet agent) repartait de zero sur un
+        #    fichier existant ⇒ avec N relances par cycle, le fichier vivant
+        #    atteignait N x max_octets, SANS AUCUNE BORNE EN N. L'aide de
+        #    `--journal-max-mo` promettait « 160 Mo au pire » : c'etait faux des
+        #    la premiere relance.
+        try:
+            self._ecrits = os.path.getsize(chemin)
+        except Exception:
+            self._ecrits = 0
         self._fenetre_min = -1
         self._autres = 0
         self._ecartees = 0
         self._echos = 0
+        # 🔴 CE QUI MANQUAIT POUR QUE LA BOITE NOIRE DISE QU'ELLE EST CASSEE.
+        self._echecs_ecriture = 0
+        self._echecs_rotation = 0
+        self._tronquees = 0
+        self._rotations = 0
 
     # ── l'écriture, best-effort comme `_tracer` et POUR LA MÊME RAISON ──────
     def _ecrire(self, etiquette: str, texte: str) -> None:
@@ -2423,21 +2498,58 @@ class JournalSoak:
                         lt.tm_sec, int((t % 1.0) * 1000), etiquette, texte))
             self._f.write(ligne)
             self._f.flush()
-            self._ecrits += len(ligne)
+            # ⚠️ EN OCTETS, ⛔ pas en caracteres : les lignes portent `—`, `⛔`,
+            #    `·`, `⚠️` (2 a 4 o chacun). Compter les caracteres faisait
+            #    franchir le plafond au FICHIER avant le COMPTEUR.
+            self._ecrits += len(ligne.encode("utf-8", "replace"))
             if self._ecrits >= self._max:
                 self._rotationner()
-        except Exception:
+        except Exception as exc:
             # ⛔ UN INSTRUMENT QUI CASSE CE QU'IL OBSERVE N'EST PAS UN
             #    INSTRUMENT. Même arbitrage que `SortieSerie._tracer`.
-            pass
+            # 🔴 MAIS CORRECTIF DE REVUE 2026-08-28 : `self._f` RESTE POSE et
+            #    l'echec etait avale SANS TRACE ⇒ la boite noire devenait muette
+            #    A VIE des le premier echec, et sur un disque plein l'enchainement
+            #    etait pire : `_ecrits` n'etait plus incremente, donc
+            #    `_ecrits >= _max` ne devenait jamais vrai, donc `_rotationner()`
+            #    n'etait JAMAIS appele, donc `os.remove(<le plus vieux>)` — la
+            #    seule ligne qui aurait rendu de la place — etait INATTEIGNABLE.
+            #    Le disque plein VERROUILLAIT le mecanisme cense lui survivre.
+            #    ⚠️ Et c'est le defaut exact que la validation d'option refuse au
+            #    lancement (« une boite noire qu'on decouvre muette au jour 7 est
+            #    une fenetre d'observation PERDUE ») : le code le construisait
+            #    APRES le controle.
+            self._echecs_ecriture += 1
+            try:
+                self._f.close()
+            except Exception:
+                pass
+            self._f = None  # ⇒ une REOUVERTURE sera tentee au prochain appel
+            if self._echecs_ecriture == 1:
+                print("[agent] 🔴 JOURNAL DU SOAK — premiere ECHEC D'ECRITURE "
+                      "sur %r (%s). La boite noire retentera d'ouvrir a chaque "
+                      "ligne ; le compte final est publie au bilan."
+                      % (self._chemin, exc), file=sys.stderr)
 
     def _rotationner(self) -> None:
+        """🔴 CORRECTIF DE REVUE 2026-08-28 — `_ecrits` N'EST REMIS A ZERO QUE
+        SI LA ROTATION A REUSSI.
+
+        Il etait pose a 0 AVANT le `try:`. Sous Windows — la plateforme cible —
+        `os.replace` leve `PermissionError` des qu'un antivirus, un editeur
+        ouvert par l'operateur ou une indexation tient le fichier. L'exception
+        etait avalee, le fichier vivant restait intact, MAIS le compteur etait
+        deja a zero : `_ecrire()` le rouvrait en 'a' et il grossissait de
+        `max_octets` de plus avant la tentative suivante, qui echouait pareil
+        tant que le verrou tenait. Croissance NON BORNEE, et pas un mot.
+        ⚠️ Et le dossier affirmait « L'ECRETAGE EST DIT, JAMAIS SILENCIEUX »
+        alors que cette methode n'ecrivait RIEN et n'exposait AUCUN compteur.
+        """
         try:
             self._f.close()
         except Exception:
             pass
         self._f = None
-        self._ecrits = 0
         try:
             plus_vieux = "%s.%d" % (self._chemin, self._rot)
             if os.path.exists(plus_vieux):
@@ -2448,14 +2560,73 @@ class JournalSoak:
                     os.replace(a, b)
             if os.path.exists(self._chemin):
                 os.replace(self._chemin, "%s.1" % self._chemin)
-        except Exception:
-            pass
+        except Exception as exc:
+            # ⛔ L'ECHEC NE REMET PAS LE COMPTEUR A ZERO : le fichier vivant est
+            #    toujours la, a sa taille reelle. On re-tentera au prochain
+            #    franchissement, ⛔ pas apres `max_octets` de plus.
+            self._echecs_rotation += 1
+            if self._echecs_rotation == 1:
+                print("[agent] 🔴 JOURNAL DU SOAK — ROTATION REFUSEE sur %r "
+                      "(%s). Le fichier vivant N'EST PLUS BORNE tant que le "
+                      "verrou tient (antivirus ? editeur ouvert ?)."
+                      % (self._chemin, exc), file=sys.stderr)
+            return
+        # ✅ La rotation a REUSSI : le fichier vivant est neuf.
+        self._ecrits = 0
+        self._rotations += 1
+        # ⛔ L'ECRETAGE EST DIT, ET IL L'EST DANS LE JOURNAL LUI-MEME : la
+        #    premiere ligne du fichier neuf nomme ce qui vient d'etre pousse
+        #    d'un cran, et combien de crans ont deja tourne.
+        self._ecrire("ROTATION", "fichier plein (%d o) — rotation n°%d, le plus "
+                                 "vieux des %d crans est DETRUIT. ⛔ Si le soak "
+                                 "depasse %d crans, le DEBUT de la fenetre "
+                                 "n'existe plus."
+                     % (self._max, self._rotations, self._rot, self._rot))
 
     def evenement(self, etiquette: str, texte: str) -> None:
         """Un fait de l'AGENT (port ouvert/perdu/fermé, départ, arrêt).
         ⛔ Jamais soumis au quota : ce sont eux qui séparent « l'agent a perdu
         le port » de « la carte est haltée »."""
         self._ecrire(etiquette, texte)
+
+    # ⛔ LE PLAFOND DU REPORT DE FRAGMENT — 512 o A L'ORIGINE, ET IL TRONQUAIT
+    #    PAR LA TETE (`[-512:]`, on gardait la FIN). Or `RE_ALARME` ancre sur
+    #    `Backtrace:`, `Guru Meditation`, `Brownout` : TOUS EN DEBUT DE LIGNE.
+    #    Une ligne de panique plus longue que le plafond perdait donc son
+    #    prefixe, etait retrogradee en ligne « fil », passait sous le quota de
+    #    60/min et pouvait etre ECARTEE — sur une carte ou
+    #    `COREDUMP_ENABLE_TO_NONE=y` fait de cette ligne LE SEUL post-mortem.
+    #    ⇒ On garde la TETE, et le plafond passe a 4 ko pour qu'un backtrace
+    #      entier tienne. Toute troncature est COMPTEE et publiee au bilan.
+    MAX_FRAGMENT = 4096
+
+    def rincer(self) -> None:
+        """🔴 LE RECAP DE MINUTE EST PILOTE PAR LE TEMPS, ⛔ PLUS PAR L'ARRIVEE
+        D'OCTETS (correctif de revue 2026-08-28).
+
+        Il n'etait ecrit qu'a la bascule de minute SUIVANTE, elle-meme declenchee
+        par un appel a `alimenter()` AVEC des octets — or `_drainer()` n'appelle
+        `alimenter()` que `if retour:`. Consequence : carte haltee
+        (`PANIC_PRINT_HALT=y`) ou debranchee ⇒ plus un octet ⇒ le decompte des
+        lignes jetees par le quota pour la minute EN COURS n'etait JAMAIS publie.
+        C'est-a-dire LA MINUTE DE L'INCIDENT — la seule qu'on relira. Le journal
+        promet « ⛔ rien n'est jete en silence » : il rompait cette promesse
+        exactement la ou elle compte.
+        """
+        minute = int(time.time() // 60)
+        if minute == self._fenetre_min:
+            return
+        if self._ecartees or self._echos:
+            self._ecrire("MINUTE", "%d ligne(s) ECARTEE(S) par le quota "
+                                   "(plafond %d) · %d echo(s) de l'agent "
+                                   "filtre(s) — ⛔ rien n'est jete en "
+                                   "silence"
+                         % (self._ecartees, self.QUOTA_AUTRES_PAR_MIN,
+                            self._echos))
+        self._fenetre_min = minute
+        self._autres = 0
+        self._ecartees = 0
+        self._echos = 0
 
     def alimenter(self, octets: bytes) -> None:
         """Le flux DRAINÉ, filtré. ⚠️ Alimenté par le MÊME `_drainer()` que le
@@ -2469,20 +2640,13 @@ class JournalSoak:
         #    signalerait. Même piège que le marqueur de dn4-18.
         tampon = self._reste + octets
         morceaux = tampon.split(b"\n")
-        self._reste = morceaux[-1][-512:]
-        minute = int(time.time() // 60)
-        if minute != self._fenetre_min:
-            if self._ecartees or self._echos:
-                self._ecrire("MINUTE", "%d ligne(s) ECARTEE(S) par le quota "
-                                       "(plafond %d) · %d echo(s) de l'agent "
-                                       "filtre(s) — ⛔ rien n'est jete en "
-                                       "silence"
-                             % (self._ecartees, self.QUOTA_AUTRES_PAR_MIN,
-                                self._echos))
-            self._fenetre_min = minute
-            self._autres = 0
-            self._ecartees = 0
-            self._echos = 0
+        reste = morceaux[-1]
+        if len(reste) > self.MAX_FRAGMENT:
+            # ⛔ ON GARDE LA TETE : c'est elle qui porte le motif d'alarme.
+            reste = reste[:self.MAX_FRAGMENT]
+            self._tronquees += 1
+        self._reste = reste
+        self.rincer()
         for ligne in morceaux[:-1]:
             ligne = ligne.rstrip(b"\r")
             if not ligne:
@@ -2506,6 +2670,34 @@ class JournalSoak:
                 self._ecartees += 1
 
     def fermer(self) -> None:
+        """⚠️ CETTE METHODE N'ETAIT APPELEE NULLE PART — c'etait du code mort
+        (constat de revue 2026-08-28). Elle l'est desormais depuis
+        `SortieSerie.fermer()`, et elle RINCE avant de fermer : sans ca, le
+        decompte de la minute en cours et le fragment en vol (potentiellement le
+        DEBUT d'un `Guru Meditation` coupe par le halt) partaient a la poubelle.
+        """
+        # ⛔ Le recap de la minute EN COURS, meme si la minute n'a pas bascule.
+        if self._ecartees or self._echos:
+            self._ecrire("MINUTE", "%d ligne(s) ECARTEE(S) par le quota "
+                                   "(plafond %d) · %d echo(s) filtre(s) — "
+                                   "MINUTE INCOMPLETE, close par l'arret de "
+                                   "l'agent"
+                         % (self._ecartees, self.QUOTA_AUTRES_PAR_MIN,
+                            self._echos))
+            self._ecartees = 0
+            self._echos = 0
+        # ⛔ Le fragment EN VOL. Une ligne non terminee au moment de l'arret est
+        #    peut-etre la plus interessante du fichier.
+        if self._reste:
+            self._ecrire("FRAGMENT", self._reste.decode("utf-8", "replace")
+                         + "   ⚠️ LIGNE NON TERMINEE au moment de l'arret")
+            self._reste = b""
+        if self._echecs_ecriture or self._echecs_rotation or self._tronquees:
+            self._ecrire("SANTE", "boite noire : %d echec(s) d'ecriture · %d "
+                                  "rotation(s) REFUSEE(S) · %d fragment(s) "
+                                  "tronque(s) · %d rotation(s) reussie(s)"
+                         % (self._echecs_ecriture, self._echecs_rotation,
+                            self._tronquees, self._rotations))
         if self._f is None:
             return
         try:
@@ -2514,6 +2706,14 @@ class JournalSoak:
             pass
         finally:
             self._f = None
+
+    def sante(self) -> str:
+        """Ce que le bilan doit publier — ⛔ une boite noire cassee ne doit pas
+        se decouvrir en ouvrant le fichier au jour 7."""
+        return ("%d echec(s) d'ecriture · %d rotation(s) refusee(s) · %d "
+                "rotation(s) reussie(s) · %d fragment(s) tronque(s)"
+                % (self._echecs_ecriture, self._echecs_rotation,
+                   self._rotations, self._tronquees))
 
 
 class SortieSerie:
@@ -2847,6 +3047,12 @@ class SortieSerie:
         PLAFOND du bruit console, pas la contribution propre du régime 1 Hz.
         """
         retour = self._con.read(self._con.in_waiting or 0)
+        # 🔴 LE RINCAGE PASSE AVANT LE `if retour:` — c'est tout l'objet du
+        #    correctif : `alimenter()` n'etait appele QUE s'il arrivait des
+        #    octets, donc une carte haltee ou debranchee gelait le recap de
+        #    minute pour toujours. Or c'est exactement la minute qu'on relira.
+        if self._journal is not None:
+            self._journal.rincer()
         if retour:
             # 🔬 dn4-18 : LE TEXTE, pas seulement son compte. C'est la seule
             #    réponse recevable à « la ligne `barre : … · horloge …` du
@@ -2881,6 +3087,22 @@ class SortieSerie:
         fermeture explicite. Sans ce drain final, le compte d'AC3 perdait
         systématiquement un cycle."""
         if self._con is None:
+            # 🔴 CORRECTIF DE REVUE 2026-08-28 — L'ARRET SE DIT MEME EN BACKOFF.
+            #    Cette sortie anticipee n'ecrivait RIEN dans la boite noire.
+            #    Scenario : la carte tombe a J+3, l'agent entre en backoff
+            #    (`_con = None`), puis l'agent est arrete (ou la session Windows
+            #    se ferme) ⇒ le journal s'arretait sur un `PORT PERDU` et rien
+            #    d'autre. A la relecture au jour 7, on ne distinguait plus :
+            #    (a) l'agent a tourne en aveugle 4 jours ; (b) l'agent est mort
+            #    a J+3 ; (c) la tour s'est eteinte. C'est TEXTUELLEMENT la
+            #    discrimination que `JournalSoak` donne comme sa raison d'exister,
+            #    et l'evenement `DEPART` n'avait alors aucun pendant.
+            if self._journal is not None:
+                self._journal.evenement(
+                    "ARRET", "agent arrete ALORS QUE LE PORT ETAIT DEJA PERDU "
+                             "(backoff en cours) — ⚠️ le silence qui suit est "
+                             "celui de L'AGENT, ⛔ pas forcement celui de la carte")
+                self._journal.fermer()
             self._fermer_tracer()
             return
         try:
@@ -2895,6 +3117,10 @@ class SortieSerie:
             self._tracer("PORT FERME (arret de l'agent)")
             if self._journal is not None:
                 self._journal.evenement("PORT", "FERME (arret de l'agent)")
+                self._journal.evenement(
+                    "ARRET", "agent arrete PROPREMENT, port rendu — le silence "
+                             "qui suit est celui de L'AGENT")
+                self._journal.fermer()  # ⛔ etait du code mort avant la revue
             self._fermer_tracer()
 
     def _fermer_tracer(self) -> None:
@@ -2927,9 +3153,17 @@ class SortieWebSocket:
         self._connect = connect
         self._url = url
         self._con = None
+        # 🔴 dn4-5/AC4.3 (correctif de revue 2026-08-28). Cette branche
+        #    RECONNECTE bel et bien — `envoyer()` pose `_con = None` sur
+        #    exception et `_ouvrir()` repart au tour suivant — mais SANS
+        #    COMPTEUR. Le lisseur ne voyait donc jamais la reprise et
+        #    republiait, apres une coupure WiFi, une moyenne dont deux tiers
+        #    dataient d'avant. Le compteur est le MEME contrat que sur le serie.
+        self.ouvertures = 0
 
     def _ouvrir(self):
         self._con = self._connect(self._url, open_timeout=3)
+        self.ouvertures += 1  # ⇒ le lisseur vide sa fenetre ici (AC4.3)
 
     def envoyer(self, ligne: str) -> None:
         if self._con is None:
@@ -3327,7 +3561,12 @@ def principal() -> int:
                          "avec rotation. ⛔ Ne fonctionne QU'AVEC --serie.")
     ap.add_argument("--journal-max-mo", metavar="Mo", type=int, default=32,
                     help="plafond d'un fichier de journal avant rotation "
-                         "(defaut 32 Mo, 4 rotations => 160 Mo au pire).")
+                         "(defaut 32 Mo ; avec 4 crans la RETENTION est de "
+                         "5 x 32 = 160 Mo, et ce qui deborde est DETRUIT — "
+                         "chaque rotation l'ecrit dans le journal. Plafond "
+                         "2048 Mo. ⚠️ Le debit de regime sur 7 j n'est PAS "
+                         "connu : 10,6 Mo est un PLANCHER mesure a 18,3 o/s, "
+                         "le plus haut mesure est 163 o/s soit ~98 Mo.)")
     ap.add_argument("--tracer-console", metavar="FICHIER", default=None,
                     type=_chemin_non_vide,
                     help="capture BRUTE et HORODATEE de tout ce que l'agent "
@@ -3377,6 +3616,17 @@ def principal() -> int:
                  "que la CARTE emet sur le fil.")
     if args.journal_max_mo < 1:
         ap.error("--journal-max-mo doit valoir au moins 1.")
+    # 🔴 BORNE SUPERIEURE — CORRECTIF DE REVUE 2026-08-28. Seul `< 1` etait
+    #    refuse : `--journal-max-mo 100000` DESACTIVAIT la rotation en silence,
+    #    sur l'AC qui exige de borner le volume AVANT de lancer. 2 Go est
+    #    au-dela de tout debit plausible sur 7 j (le plus haut jamais mesure,
+    #    163 o/s, donne ~98 Mo) : franchir ce plafond n'est pas un reglage,
+    #    c'est une faute de frappe.
+    if args.journal_max_mo > 2048:
+        ap.error("--journal-max-mo %d Mo depasse le plafond de 2048 Mo. ⛔ Une "
+                 "valeur pareille DESACTIVE la rotation en silence, et AC2.5 "
+                 "exige que le volume soit BORNE AVANT de lancer."
+                 % args.journal_max_mo)
     if args.tracer_console is not None and args.serie is None:
         ap.error("--tracer-console n'a de sens QU'AVEC --serie : il capture ce "
                  "que l'agent draine sur le FIL de la console, et ni --stdout "
@@ -3396,8 +3646,12 @@ def principal() -> int:
                              journal=journal)
         if journal is not None:
             journal.evenement("DEPART", "agent demarre — journal du soak arme "
-                                        "(plafond %d Mo x 4 rotations)"
-                              % args.journal_max_mo)
+                                        "(fichier plafonne a %d Mo, %d crans "
+                                        "=> retention %d Mo ; au-dela, le DEBUT "
+                                        "de la fenetre est detruit et chaque "
+                                        "rotation le dit)"
+                              % (args.journal_max_mo, journal._rot,
+                                 args.journal_max_mo * (journal._rot + 1)))
     elif args.ws is not None:
         if not args.ws.strip():
             ap.error("--ws attend une URL (ex. ws://192.168.3.19/dn), pas une chaine vide")
@@ -3631,7 +3885,13 @@ def principal() -> int:
             #    ⚠️ La GÉNÉRATION d'ouverture du port lui dit quand VIDER sa
             #      fenêtre (AC4.3) — ⛔ pas le drapeau `reprise_liaison`, qui est
             #      consommé ailleurs.
-            photo = lisseur.appliquer(photo, getattr(sortie, "ouvertures", 0))
+            # ⛔ ACCES DIRECT, ⛔ PLUS `getattr(..., 0)` : le defaut silencieux
+            #    transformait « ce transport n'a pas de garde AC4.3 » en
+            #    « generation constante », c'est-a-dire en lissage JAMAIS vide.
+            #    `ouvertures` est un contrat de tous les transports ; qu'un
+            #    `AttributeError` sorte au premier cycle vaut infiniment mieux
+            #    qu'une valeur perimee republiee pendant sept jours.
+            photo = lisseur.appliquer(photo, sortie.ouvertures)
             t_ms = int((time.monotonic() - depart) * 1000) & 0xFFFFFFFF
 
             rompu = False
@@ -3814,7 +4074,22 @@ def _bilan(sortie, depart: float, seq: int, erreurs_envoi: int, rattrapages: int
           f"({seq / mur:.2f} trames/s), {erreurs_envoi} erreurs d'envoi, "
           f"{rattrapages} recalages de cadence", file=sys.stderr)
     if isinstance(sortie, SortieSerie):
+        journal = getattr(sortie, "_journal", None)
         sortie.fermer()  # dernier drain AVANT de publier le chiffre
+        # 🔴 LA SANTE DE LA BOITE NOIRE SE PUBLIE ICI — correctif de revue
+        #    2026-08-28. Une boite noire cassee se decouvrait en OUVRANT le
+        #    fichier au jour 7 : c'est trop tard, la fenetre est perdue.
+        if journal is not None:
+            etat = journal.sante()
+            grave = (journal._echecs_ecriture or journal._echecs_rotation)
+            print(f"[agent] {'🔴' if grave else '✅'} boite noire du soak : {etat}",
+                  file=sys.stderr)
+            if grave:
+                print("[agent]    ⛔ LE JOURNAL N'EST PAS COMPLET. Un echec "
+                      "d'ecriture ou une rotation refusee signifie que la "
+                      "fenetre d'observation a des TROUS — ⛔ ne pas conclure "
+                      "sur « 0 reboot » a partir d'un journal troue.",
+                      file=sys.stderr)
         print(f"[agent] écho console draîné : {sortie.echo_octets} o, "
               f"{sortie.echo_lignes} lignes en {mur:.1f} s "
               f"= {sortie.echo_octets / mur:.1f} o/s, "

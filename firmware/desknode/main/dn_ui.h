@@ -168,18 +168,38 @@ esp_err_t dn_ui_set_path(dn_flush_path_t p);
  *    conclusion ne doit tenir à un flush près ; si c'était le cas, il faudrait
  *    un verrou, et on l'écrirait.
  *
- * ⚠️ ENROULEMENTS, écrits parce qu'un compteur qui reboucle en silence est un
- *    chiffre faux : `px` reboucle à 4 294 967 296 px, soit ~13 981 écrans
- *    pleins ; `copie_us` et `attente_us` rebouclent à ~4 295 s de temps CUMULÉ
- *    dans la fonction. La commande `flush reset` remet tout à zéro : toute
- *    mesure publiée part d'un reset.
+ * 🔴 ENROULEMENTS — CORRECTIF DE REVUE DU 2026-08-28, ET C'ÉTAIT LE MÊME DÉFAUT
+ *    QUE dn4-5 AVAIT FERMÉ D'UN SEUL CÔTÉ. La story avait corrigé le
+ *    DÉNOMINATEUR (`fenetre_ms`, passé en int64) et laissé les TROIS
+ *    NUMÉRATEURS en `uint32_t`. Débits relevés dans le dépôt lui-même
+ *    (`mesures/dn4-22/ARM9bis-agent-repetition.txt`, fenêtre 307,98 s) :
+ *      · `px`         184 220 px/s  ⇒ horizon  6,48 h ⇒ **≈ 26 enroulements sur 7 j**
+ *      · `attente_us`  90 502 µs/s  ⇒ horizon 13,18 h ⇒ **≈ 13**
+ *      · `copie_us`    13 147 µs/s  ⇒ horizon  3,78 j ⇒ **1**
+ *    …pendant que `flushes` (5,09/s ⇒ 27 ans) ne reboucle PAS. Un numérateur
+ *    qui reboucle sur un dénominateur qui ne reboucle pas ne rend RIEN
+ *    D'ABSURDE : il rend une moyenne PLUS PETITE, PLAUSIBLE, ET FAUSSE.
+ *    ⛔ ET LA PARADE ÉCRITE ICI NE TENAIT PAS : « toute mesure part d'un reset »
+ *      ne protège de rien quand la fenêtre entre le reset et la lecture fait
+ *      SEPT JOURS — et c'est très exactement le protocole du soak.
+ * ⇒ CE QUI EST FAIT : les accumulateurs RESTENT en `uint32_t` côté écriture
+ *   (chemin chaud de la tâche LVGL, et un store 32 bits est ATOMIQUE sur
+ *   Xtensa — les passer en 64 bits aurait INTRODUIT la déchirure que
+ *   `dn_capteurs.c:66` déclare normativement). On COMPTE les enroulements à
+ *   l'incrément, et `dn_ui_get_stats()` COMPOSE la valeur 64 bits sous une
+ *   relecture de garde. Le chemin chaud paie une comparaison, ⛔ pas un verrou.
+ * ⚠️ `flushes`, `cycles`, `noops`, `timeouts`, `max_*` restent 32 bits : leurs
+ *    horizons (27 ans pour `flushes` à 5,09/s) sont hors de portée d'un soak.
  */
 typedef struct {
     uint32_t flushes;     /* appels au flush */
     uint32_t cycles;      /* cycles de rafraîchissement (flush marqué « dernier ») */
-    uint32_t px;          /* aire cumulée, en pixels */
-    uint32_t copie_us;    /* temps cumulé DANS draw_bitmap */
-    uint32_t attente_us;  /* temps cumulé à attendre la synchro */
+    uint64_t px;          /* aire cumulée, en pixels — COMPOSÉE, ⛔ plus tronquée */
+    uint64_t copie_us;    /* temps cumulé DANS draw_bitmap — COMPOSÉ */
+    uint64_t attente_us;  /* temps cumulé à attendre la synchro — COMPOSÉ */
+    uint32_t px_enr;      /* nb d'enroulements de l'accumulateur `px` */
+    uint32_t copie_enr;   /* idem `copie_us` */
+    uint32_t attente_enr; /* idem `attente_us` */
     uint32_t max_px;      /* plus grande aire vue en un flush */
     uint32_t max_copie_us;/* plus longue copie vue */
     uint32_t timeouts;    /* synchros expirées (instrument suspect si non nul) */

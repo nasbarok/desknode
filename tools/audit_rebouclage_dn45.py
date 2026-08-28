@@ -408,16 +408,67 @@ _fam("dn_ui.c", ["s_taps", "s_menu_taps", "s_async_refus", "s_clic_seq",
                  "s_lat_w", "s_lat_ecrits"],
      "OK", "touch_evt", 1, _EVT + " ; cadence tactile humaine")
 _fam("dn_ui.c", ["s_pousse_seq"], "OK", "link_trame", 1, _EVT)
-_fam("dn_ui.c", ["s_px"], "ATTENTION", "lvgl", 307200,
-     "aire cumulee. PARADE ECRITE : dn_ui.h:171-176 chiffre « ~13 981 ecrans "
-     "pleins » et pose « toute mesure publiee part d'un reset » (`flush reset`)")
-_fam("dn_ui.c", ["s_copie_us", "s_attente_us"], "ATTENTION", "lvgl", 33000,
-     "temps cumule en us. PARADE ECRITE : dn_ui.h:171-176 chiffre « ~4 295 s "
-     "de temps CUMULE » et pose le depart depuis un reset")
+# 🔴 RECLASSES LE 2026-08-28 (revue de code). Ils etaient "ATTENTION" avec pour
+#    parade la PHRASE « toute mesure publiee part d'un reset ». La revue a montre
+#    que cette parade NE TIENT PAS dans le regime de dn4-5 : entre le reset et la
+#    lecture il y a SEPT JOURS, et sur cette fenetre `s_px` reboucle ~26 fois,
+#    `s_attente_us` ~13 fois, `s_copie_us` 1 fois — pendant que le denominateur
+#    (`s_n_flush`, 27 ans) ne reboucle pas ⇒ des moyennes PLAUSIBLES ET FAUSSES.
+#    ⛔ LA GATE LES EPINGLAIT VERT PARCE QU'ELLE VERIFIAIT QU'UNE PHRASE EXISTE,
+#      ⛔ pas qu'elle tient dans le regime de la story. C'est le meme piege que
+#      `gate verte sur du code faux` deja paye sur ce depot.
+# ⇒ La parade est desormais MECANIQUE : compteurs d'enroulement poses a
+#   l'increment (`s_px_enr`/`s_copie_enr`/`s_attente_enr`) et composition 64 bits
+#   sous relecture de garde dans `dn_ui_get_stats()`. La valeur publiee est JUSTE.
+_fam("dn_ui.c", ["s_px"], "BORNE", "lvgl", 307200,
+     "aire cumulee, 32 bits PAR CHOIX (store atomique sur le chemin chaud LVGL). "
+     "PARADE MECANIQUE : `s_px_enr` compte les enroulements a l'increment "
+     "(dn_ui.c) et `dn_ui_get_stats()` compose sur 64 bits sous relecture ⇒ la "
+     "sortie de `flush` est JUSTE sur 7 j, et le compte d'enroulements est PUBLIE")
+_fam("dn_ui.c", ["s_copie_us", "s_attente_us"], "BORNE", "lvgl", 33000,
+     "temps cumule en us, 32 bits PAR CHOIX (meme motif). PARADE MECANIQUE : "
+     "`s_copie_enr` / `s_attente_enr` + composition 64 bits dans "
+     "`dn_ui_get_stats()`")
+_fam("dn_ui.c", ["s_px_enr", "s_copie_enr", "s_attente_enr"], "OK", "lvgl", 1,
+     "compteur d'ENROULEMENTS : +1 tous les 2^32 d'accumulation. Le plus rapide "
+     "(`s_px`) enroule toutes les ~6,48 h ⇒ ce compteur-ci atteindrait 2^32 en "
+     "~3,2 millions d'annees")
 _fam("dn_ui.c", ["s_voiles_n"], "BORNE", None, 1,
      "garde explicite `if (s_voiles_n < DN_UI_VOILES_MAX)` — ⛔ ne cumule pas")
 
+# ══════════════════════════════════════════════════════════════════════════
+# 🔴 LES SIX SITES QUE LA GATE TROUVAIT « NON CLASSES » LE 2026-08-28.
+#    Ils ont ete ajoutes par les stories POSTERIEURES a dn4-5 (dn4-19/dn4-20
+#    pour `dn_env.c` et `dn_touch.c`, dn3-3 pour `dn_ui.c` et `dn_veille.c`), et
+#    l'audit sortait en `exit 1` AU MOMENT MEME DU GEL DU FIRMWARE.
+#    ⚠️ AUCUN NE REBOUCLE EN 7 JOURS : le defaut n'etait pas un rebouclage,
+#      c'etait que L'INSTRUMENT D'AC1.1 NE DECRIVAIT PLUS LE FIRMWARE QU'ON
+#      S'APPRETE A GELER — et qu'il le disait lui-meme. C'est la DEUXIEME fois
+#      que cette table derive (la premiere a ete reparee par `73a49ad`).
+# ══════════════════════════════════════════════════════════════════════════
+_fam("dn_env.c", ["s_bl_applications"], "OK", "env", 1,
+     _EVT + " ; +1 par application EFFECTIVE de retroeclairage (dn4-19/dn4-20, "
+     "dn_env.c:828). Il vit dans la tache `env` ⇒ MAJORANT une application par "
+     "periode de 5 000 ms — et la bande morte en retire encore")
+_fam("dn_touch.c", ["s_conso_expirees", "s_err_consec"], "OK", "touch_evt", 1,
+     _EVT + " ; cadence tactile humaine — et `s_err_consec` est RAZ a chaque "
+     "lecture reussie, il ne cumule donc pas")
+_fam("dn_ui.c", ["s_veille_async_abandons"], "OK", "touch_evt", 1,
+     _EVT + " ; +1 par bascule de veille asynchrone abandonnee (dn3-3)")
+
 # ── dn_veille.c ─────────────────────────────────────────────────────────────
+_fam("dn_veille.c", ["s_bascules_forcees", "s_bascules_auto_depuis_reveil"],
+     "OK", "veille_tick", 1,
+     _EVT + " ; au plus une bascule par tick (dn3-3). "
+     "`s_bascules_auto_depuis_reveil` est en outre RAZ a chaque reveil")
+_fam("dn_veille.c", ["s_secondes_depuis_reveil"], "OK", "veille_tick", 1,
+     "+1 par tick d'une seconde (dn_veille.c:544) ⇒ l'horizon EST 2^32 s = "
+     "136 ans. Et il est RAZ a CHAQUE reveil (`:662`, `:802`) : la fenetre "
+     "reelle est « depuis le dernier reveil », ⛔ pas « depuis le boot »")
+_fam("dn_veille.c", ["s_mode_gen"], "OK", "veille_tick", 2,
+     "generation de seqlock posee en revue le 2026-08-28 : +2 par bascule de "
+     "mode ⇒ 2^31 bascules avant enroulement, et un enroulement de ce compteur "
+     "est INOFFENSIF (seule l'EGALITE avant/apres est testee, ⛔ pas l'ordre)")
 _fam("dn_veille.c", ["s_secondes_vues"], "OK", "veille_tick", 1,
      "+1 par seconde : l'horizon EST 2^32 s")
 _fam("dn_veille.c", ["s_bascules", "s_reveils", "s_annulations", "s_rebases",

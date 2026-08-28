@@ -91,7 +91,10 @@ const char *dn_veille_origine_nom(dn_veille_origine_t o)
  */
 static bool s_armee = DN_VEILLE_ARMEE_DEFAUT;
 static int s_cran = DN_VEILLE_CRAN_DEFAUT;
-static dn_veille_mode_t s_mode = DN_VEILLE_ACTIF;
+/* `volatile` : lu par la tache REPL sous seqlock pendant que la tache LVGL
+ * l'ecrit — sans lui le compilateur pourrait hisser la lecture HORS de la
+ * boucle de relecture, ce qui viderait le seqlock de son sens. */
+static volatile dn_veille_mode_t s_mode = DN_VEILLE_ACTIF;
 
 /*
  * ─── dn4-5 / AC3.2 : LE TEMPS PASSÉ DANS CHAQUE MODE ────────────────────────
@@ -117,8 +120,35 @@ static dn_veille_mode_t s_mode = DN_VEILLE_ACTIF;
  *    flash, « l'image défile ». Le cumul ne survit donc pas au reboot, et c'est
  *    VOULU : un reboot casse la fenêtre du soak de toute façon (AC3.6).
  */
-static int64_t s_cumul_us[2];  /* [DN_VEILLE_ACTIF], [DN_VEILLE_AMBIENT] */
-static int64_t s_t_mode_us;    /* instant d'entrée dans le mode COURANT */
+static volatile int64_t s_cumul_us[2];  /* [DN_VEILLE_ACTIF], [DN_VEILLE_AMBIENT] */
+static volatile int64_t s_t_mode_us;    /* instant d'entrée dans le mode COURANT */
+/*
+ * 🔴 LA GÉNÉRATION DE BASCULE — CORRECTIF DE REVUE DU 2026-08-28.
+ *    `s_cumul_us[]`, `s_t_mode_us` et `s_mode` sont écrits par `veille_poser_mode()`
+ *    depuis la tâche **LVGL** (`dn_ui.c:7221`, `:3000`, …) et lus par
+ *    `dn_veille_cumul()` depuis la tâche **REPL** (`dn_console.c`, SANS
+ *    `lvgl_port_lock`). Il n'y avait ni portMUX, ni seqlock, ni même `volatile`.
+ *    DEUX CHEMINS, et le premier est le pire :
+ *    (a) INSTANTANÉ INCOHÉRENT — une bascule qui tombe entre la copie de `c[]`
+ *        et la lecture de `s_mode`/`s_t_mode_us` fait DISPARAÎTRE du total
+ *        l'intervalle qui vient de se clore. Sur un soak, ça peut être SIX
+ *        JOURS d'Ambient ⇒ « 0 % d'Ambient » : exactement la panne que le
+ *        commentaire de `dn_veille_cumul()` dit prévenir, « faux, plausible, et
+ *        dans le sens qui fait échouer un critère qui est en réalité tenu ».
+ *    (b) DÉCHIRURE int64 — `s_cumul_us[idx] += …` et `s_t_mode_us = now` sont
+ *        des PAIRES de stores 32 bits sur Xtensa. La retenue de bit 31 tombe une
+ *        fois par 4 294,967 s (71,58 min) d'accumulation, soit ~140 occasions
+ *        par seau sur 604 800 s ; une lecture prise entre les deux stores est
+ *        fausse de ±2^32 µs = 71,58 min, sur un pourcentage qui reste plausible.
+ *    ⚠️ `dn_capteurs.c:66` déclare cette classe normativement, et
+ *      `dn_measure_bounce_get` s'est vu imposer un seqlock complet en revue le
+ *      2026-08-27. Ici, il n'y avait rien — alors que le seuil « > 50 % » EST le
+ *      verdict d'AC3.2.
+ * ⇒ SEQLOCK DE PAUVRE, CÔTÉ ÉCRIVAIN + CÔTÉ LECTEUR. IMPAIR = écriture en cours.
+ *   Le chemin d'écriture paie DEUX incréments 32 bits ; il n'est pas chaud (une
+ *   bascule de mode), et le lecteur est une commande console.
+ */
+static volatile uint32_t s_mode_gen;
 
 static uint32_t s_inactivite_ms;
 static uint32_t s_inactivite_max_ms;
@@ -158,11 +188,15 @@ static void veille_poser_mode(dn_veille_mode_t m)
 {
     int64_t now = esp_timer_get_time();
     int idx = (s_mode == DN_VEILLE_AMBIENT) ? 1 : 0;
+    /* IMPAIR : à partir d'ici l'état est en cours de mise à jour. */
+    s_mode_gen++;
     if (now > s_t_mode_us) {
         s_cumul_us[idx] += now - s_t_mode_us;
     }
     s_t_mode_us = now;
     s_mode = m;
+    /* PAIR : l'état est de nouveau cohérent. */
+    s_mode_gen++;
 }
 
 void dn_veille_cumul(int64_t *out_actif_us, int64_t *out_ambient_us)
@@ -171,11 +205,38 @@ void dn_veille_cumul(int64_t *out_actif_us, int64_t *out_ambient_us)
      *    six jours publierait le cumul de la DERNIÈRE BASCULE et rendrait « 0 %
      *    d'Ambient » — le pire cas possible : faux, plausible, et dans le sens
      *    qui fait échouer un critère qui est en réalité tenu. */
-    int64_t c[2] = {s_cumul_us[0], s_cumul_us[1]};
+    /*
+     * 🔴 LECTURE SOUS SEQLOCK — voir le bloc de `s_mode_gen`. On copie TOUT
+     *    l'état sous une génération PAIRE et INCHANGÉE : sans ça, une bascule
+     *    prise au milieu de la copie perdait l'intervalle qui venait de se
+     *    clore (jusqu'à six jours d'Ambient), ou déchirait un int64 de 71,58 min.
+     * ⛔ AU-DELÀ DE TROIS ESSAIS ON PUBLIE QUAND MÊME, plutôt que de boucler sur
+     *   le chemin qu'on mesure — même arbitrage que `dn_measure_bounce_get`.
+     *   Trois essais qui échouent voudraient dire trois bascules en quelques
+     *   dizaines de nanosecondes : ça n'existe pas, et si ça existait, boucler
+     *   serait pire que publier.
+     */
+    int64_t c[2] = {0, 0};
+    int64_t t_mode = 0;
+    int idx = 0;
+    for (int essai = 0; ; essai++) {
+        uint32_t g1 = s_mode_gen;
+        if (g1 & 1u) {
+            if (essai < 3) {
+                continue;   /* écriture en cours : on laisse finir */
+            }
+        }
+        c[0] = s_cumul_us[0];
+        c[1] = s_cumul_us[1];
+        t_mode = s_t_mode_us;
+        idx = (s_mode == DN_VEILLE_AMBIENT) ? 1 : 0;
+        if (s_mode_gen == g1 || essai >= 3) {
+            break;
+        }
+    }
     int64_t now = esp_timer_get_time();
-    int idx = (s_mode == DN_VEILLE_AMBIENT) ? 1 : 0;
-    if (now > s_t_mode_us) {
-        c[idx] += now - s_t_mode_us;
+    if (now > t_mode) {
+        c[idx] += now - t_mode;
     }
     if (out_actif_us) {
         *out_actif_us = c[0];
