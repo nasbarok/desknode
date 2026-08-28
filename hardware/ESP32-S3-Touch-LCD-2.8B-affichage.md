@@ -7696,8 +7696,21 @@ du dépôt, et `git status --porcelain` **vide avant le flash**.
   QU'IL AFFIRMAIT CE QUI N'A JAMAIS ÉTÉ TIRÉ.** Il disait : *« `dn3-3`/AC9.8
   prouve **une nuit**, et rien de plus »*. **`dn3-3` ne prouve PAS une nuit** :
   AC9.8 est **clos par écart déclaré** et **aucune nuit n'a été relevée**
-  (§24.15.4). ⇒ **La plus longue fenêtre d'Ambient que §24 publie est 513 s**
-  (§24.15.1). ⛔ Ne rien extrapoler au-delà — ni à une nuit, ni à une semaine.
+  (§24.15.4). ⇒ ~~**La plus longue fenêtre d'Ambient que §24 publie est 513 s**
+  (§24.15.1).~~
+  🔴 **AMENDÉ UNE SECONDE FOIS LE 2026-08-28 (§24.16.1), ⛔ PAS EFFACÉ — ET
+  CETTE FOIS C'EST LA MESURE QUI CORRIGE, PAS LA RELECTURE.** La séance de
+  validation a lu, **avant de flasher**, l'état que l'agent venait de laisser sur
+  `156b507` : piste `CPU % (dixieme) @1s [AMBIENT seul]` à **n = 5795**, soit
+  🎯 **5 795 s d'Ambient continu (1 h 37)**, `taux 98 %`, `σ 175,167` ⇒ QUALIFIE.
+  ⇒ **La plus longue fenêtre d'Ambient que §24 publie est donc 5 795 s**, soit
+  **11,3×** ce que cette ligne affirmait il y a quelques heures.
+  ⚠️ **ET ÇA NE FAIT TOUJOURS PAS UNE NUIT** : 1 h 37 n'est ni 8 h ni 7 jours, et
+  `hist` ne porte toujours que 120 s. ⛔ **L'interdiction d'extrapoler tient
+  entièrement** — ni à une nuit, ni à une semaine.
+  ⚠️ **LEÇON, ET ELLE DÉPASSE `dn3-3`** : ce chiffre n'a rien coûté à produire —
+  il suffisait de **lire la carte avant de la flasher**. Le 513 s n'était pas
+  faux, il était **le plus grand qu'on avait pensé à relever**.
   La durée, sous toutes ses formes, est **`dn4-5`**, et elle a **ses propres
   instruments** : les **24 seaux d'une heure** (§25.5) et le **`--journal-soak`**
   (§25.4). ⛔ Aucun des deux n'appartient à `dn3-3`.
@@ -7842,11 +7855,31 @@ pourquoi on a renoncé.
    deux sont les instruments de `dn4-5`** — son **AC3.2** (§25.5) et son **AC2.5**
    (§25.4). AC9.8 demandait donc à `dn3-3` de prouver **un sous-ensemble de
    `dn4-5`** avec un anneau de **2 minutes**.
-4. 🔴 **LE SEUL PROTOCOLE DE RELEVÉ DÉTRUIT SA PROPRE MESURE.** L'agent tient
+4. 🔴 ~~**LE SEUL PROTOCOLE DE RELEVÉ DÉTRUIT SA PROPRE MESURE.** L'agent tient
    `COM3` côté Windows ; reprendre le port **redémarre la puce** ⇒ le relevé du
    matin **effacerait les compteurs, `hist` et l'heure** qu'il vient chercher.
    La seule parade (couper l'agent pour la nuit) **dégrade la condition
-   nominale** — précisément ce que le constat owner refuse.
+   nominale** — précisément ce que le constat owner refuse.~~
+
+   🔴 **CE POINT N°4 EST RÉFUTÉ PAR LA MESURE LE 2026-08-28 (§24.16.1). ⛔ IL
+   N'EST PAS EFFACÉ : IL A ÉTÉ ÉCRIT, IL A PORTÉ UNE DÉCISION, ET IL ÉTAIT
+   FAUX.** Le relevé : après `./tools/rendre-port.sh --vers-flash` — c'est-à-dire
+   **exactement le geste du matin** (arrêt propre de l'agent par son fichier-stop,
+   puis `detach`/`attach`) — la console a rendu `secondes OBSERVEES : 5868`,
+   ⇒ **la puce tournait depuis 1 h 38 SANS reboot, compteurs INTACTS**.
+   🎯 **ET LE SENS INVERSE A ÉTÉ MESURÉ DANS LA MÊME SÉANCE** : `up` valait
+   **470 s** avant de rendre le port, l'agent a vécu **286 s**, et `up` au retour
+   valait **340 s** au lieu des ~760 attendus ⇒ **la puce redémarre quand
+   WINDOWS OUVRE `COM3`**, ⛔ pas au `detach`/`attach`. Le dépôt avait donc
+   raison sur *« sous Windows, ouvrir le port RESET la carte »* — et
+   `dn_agent.py` force bien `dtr=False, rts=False` **avant** `open()` sans que
+   ça suffise.
+   ⇒ 🔴 **LE MOTIF N°4 TOMBE ENTIÈREMENT, ET LE PROTOCOLE DE NUIT EXISTE** : le
+   reboot a lieu **au lancement de l'agent**, donc **AVANT la nuit** — on part
+   d'un état neuf **par construction** — et **le relevé du matin, lui, ne
+   redémarre rien**. ⛔ Ce qui maintient l'écart d'AC9.8 n'est plus ce motif :
+   c'est **l'anneau de 120 s** (motif n°3), et le fait qu'**aucune nuit n'a été
+   relevée**.
 
 🎯 **CE QUE LE CONSTAT OWNER DIT, ET QUE LES QUATRE FAITS CONFIRMENT** : *« il n'y
 a pas de nuit avec un autre affichage »*. **La nuit n'est pas un ÉTAT, c'est une
@@ -7857,8 +7890,10 @@ Ambient. Et la durée, sous toutes ses formes, **est le métier de `dn4-5`**.
 ⛔ **sans `[CC]`** et ⛔ **sans nuit tirée**.
 
 ⚠️ **LE COÛT DE CETTE FERMETURE EST ÉCRIT, ⛔ PAS MINIMISÉ** :
-- `dn3-3` **ne publie aucune fenêtre d'Ambient au-delà de 653 s** (513 s
-  d'Ambient dedans). §24.14 le dit et interdit l'extrapolation.
+- ~~`dn3-3` **ne publie aucune fenêtre d'Ambient au-delà de 653 s** (513 s
+  d'Ambient dedans).~~ 🔴 **PÉRIMÉ LE 2026-08-28 (§24.16.1)** : la mesure prise
+  avant le flash porte **5 795 s d'Ambient continu**. §24.14 interdit toujours
+  l'extrapolation — ⛔ 1 h 37 n'est pas une nuit.
 - **`dn4-5` n'hérite formellement de rien** : la fermeture est un écart, ⛔ pas un
   transfert de périmètre. Si la tenue d'une nuit doit être prouvée un jour, elle
   se prouvera **dans `dn4-5`, avec les seaux et le journal**, ⛔ pas ici.
@@ -7881,6 +7916,171 @@ Ambient. Et la durée, sous toutes ses formes, **est le métier de `dn4-5`**.
 
 🏁 **§24 EST CLOSE.** Les critères de `dn3-3` y sont tous adressés : ✅ mesurés,
 ou ⛔ **déclarés non tirés avec leur motif**. ⛔ Aucun n'est laissé en silence.
+
+---
+
+
+## 24.16 🔴 SÉANCE DU 2026-08-28 — LA REVUE DE CODE ÉPROUVÉE SUR LA CARTE, ET DEUX VERDICTS DE §24 QUI TOMBENT
+
+**Firmware `d6123c5`** — SHA **LU AU BANDEAU** (`App version : d6123c5`), arbre propre, rebuild
+fait **APRÈS** le commit. `SPI Flash Size : 16MB`, XIP PSRAM active (*« Instructions copied and
+mapped to SPIRAM »*), `num_fbs=1`, `bounce=9600`.
+
+### 24.16.1 🎯 DEUX AFFIRMATIONS DE §24 SONT RÉFUTÉES PAR LA MESURE, ⛔ PAS AMENDÉES À LA MARGE
+
+Les deux sont tombées **avant même le flash**, en lisant l'état que l'agent venait de laisser sur
+le firmware `156b507`. C'est le genre de mesure qu'on ne peut pas refaire : elle allait être
+détruite par le flash suivant.
+
+| # | Ce que §24 affirmait | Ce que la carte a rendu |
+|---|---|---|
+| **1** | *« reprendre le port REDÉMARRE LA PUCE ⇒ le relevé du matin effacerait exactement les compteurs qu'il vient chercher »* (§24.15.4, l'un des motifs d'AC9.8) | 🔴 **FAUX pour le sens agent → WSL.** `secondes OBSERVEES : 5868` ⇒ la puce tournait depuis **1 h 38 sans reboot**, compteurs intacts, APRÈS la reprise du port. |
+| **2** | *« la plus longue fenêtre d'Ambient que §24 publie est 513 s »* (§24.14, amendée le 2026-08-28) | 🔴 **DÉPASSÉE d'un facteur 11,3.** Piste `CPU % (dixieme) @1s [AMBIENT seul]` : **n = 5795**, soit **5 795 s d'Ambient continu** (1 h 37), `taux 98 %`, `σ 175,167` ⇒ **QUALIFIE**. |
+
+🎯 **ET LE SENS INVERSE A ÉTÉ MESURÉ DANS LA MÊME SÉANCE — LA QUESTION EST DONC TRANCHÉE DES DEUX
+CÔTÉS, ⛔ PLUS À MOITIÉ.** Témoin, en trois nombres qui se réconcilient :
+
+| Repère | Valeur |
+|---|---|
+| `up` relevé **avant** de rendre le port | **470 s** |
+| durée de vie du process agent | **286 s** |
+| `up` attendu si rien ne redémarre | ~**760 s** |
+| 🔴 `up` **lu au retour** | **340 s** |
+
+`340 ≈ 286 + 54` ⇒ **la puce a redémarré AU MOMENT OÙ WINDOWS A OUVERT `COM3`**, ⛔ pas pendant le
+`detach`/`attach`. Confirmé par `veille` au retour : `bascules : 1 · reveils : 0`,
+`Actif 61 s · Ambient 314 s` — la carte a rebooté, passé **exactement le cran de 1 min** en ACTIF,
+puis basculé. Tout se réconcilie.
+
+⇒ **LE VERDICT COMPLET, ET IL REND LE RELEVÉ DE NUIT POSSIBLE :**
+
+| Sens | Reboot ? | Conséquence pour un soak |
+|---|---|---|
+| **WSL → agent** (Windows **ouvre** `COM3`) | 🔴 **OUI** | ⚠️ Sans conséquence : ça a lieu **AVANT** la nuit, on part d'un état neuf **par construction**. |
+| **agent → WSL** (`--vers-flash`, arrêt propre puis `attach`) | ✅ **NON** | 🎯 **Le relevé du matin NE DÉTRUIT PAS sa mesure.** |
+
+🔴 **LE MOTIF N°4 D'AC9.8 EST DONC RÉFUTÉ, ET PAS À MOITIÉ** : *« le seul protocole de relevé
+détruit sa propre mesure »* est **faux**. Le protocole existe et il tient : **lancer l'agent (le
+reboot a lieu ici, avant la nuit) → laisser la nuit courir → reprendre le port au matin (aucun
+reboot) → lire.** ⛔ **Ce qui reste vrai**, et qui suffit à maintenir l'écart déclaré : **aucune
+nuit n'a été relevée**, et `hist` ne porte toujours que **120 s**.
+
+🔴 **CE QUE ÇA CHANGE POUR AC9.8, ET CE QUE ÇA NE CHANGE PAS.** Le motif d'écart d'AC9.8 reposait
+sur **deux** jambes : (a) *l'anneau `hist` ne couvre que 120 s* — ⛔ **elle tient, elle est
+arithmétique** (`DN_HIST_N_POINTS = 120` × `DN_HIST_PERIODE_MS = 1000`) ; (b) *le protocole détruit
+sa propre mesure* — 🔴 **elle est fausse**. ⇒ L'écart déclaré **reste** (aucune nuit n'a été
+relevée, et `hist` ne la porterait toujours pas), mais **son motif est corrigé de moitié**, et
+⛔ ce n'est pas une réécriture cosmétique : c'est **une porte qui se rouvre pour `dn4-5`**, dont le
+soak d'une semaine se relève précisément par ce chemin.
+
+### 24.16.1 bis ✅ AC2.1 RE-TIRÉE SUR `d6123c5`, SOUS AGENT RÉEL
+
+Agent lancé sur la tour, **286 s** de fenêtre, puis reprise du port et lecture.
+
+| Grandeur | Valeur | Seuil | Marge |
+|---|---|---|---|
+| `n` (piste `CPU % (dixieme) @1s [AMBIENT seul]`) | **247** | 60 | **4,1×** |
+| `rup` | 1 | — | — |
+| min / max (dixièmes) | 32 / 657 | — | 3,2 % → 65,7 % de CPU |
+| **étendue** | **625** | 5 | **125×** |
+| **taux de changement du TEXTE** | **97 %** | 10 % | **9,7×** |
+| **σ** | **173,080** | 1,000 | **173×** |
+| **verdict** | ✅ **QUALIFIE** | | |
+
+⚠️ **`n = 247` pour 286 s d'agent, ET C'EST COHÉRENT** : la carte a redémarré à l'ouverture de
+`COM3` (§24.16.1), donc elle a passé **61 s en ACTIF** avant de basculer — la piste
+n'échantillonne **qu'en Ambient**. `247 + 61 ≈ 308`, le reste étant la bascule de port.
+
+🎯 **ET CETTE LECTURE EXERCE LE DÉNOMINATEUR CORRIGÉ** : elle est prise **chaîne FERMÉE** (l'agent
+est arrêté depuis ~40 s, les valeurs sont périmées ⇒ `dn_w2_desamorcer()` a tiré, `amorce = false`)
+— c'est-à-dire **exactement le cas où l'ancienne formule retranchait une rupture de trop**. Ici
+`episodes = rup = 1` ⇒ `transitions = 246` ; l'ancienne écriture aurait rendu **245**.
+
+Liaison sur la même fenêtre : **1 479 trames valides**, 0 doublon, **16 pertes seq**, 0 resynchro ;
+latence acceptation→label **n = 1 479 · min 9 / moy 180 / max 447 ms**.
+✅ **AC2.4 re-confirmé sur `d6123c5`** : 40 s après l'arrêt de l'agent, les **cinq** métriques PC
+sont `MORTE` — les trames ont **coulé PUIS se sont arrêtées**, ⛔ ce n'est pas l'`ABSENTE` par
+défaut.
+✅ **AC3.2 (`dn4-5`)** sur cette fenêtre : `Actif 61 s · Ambient 314 s` ⇒ **Ambient = 84 %**.
+
+### 24.16.2 ✅ LES QUATRE DÉFAUTS FONCTIONNELS — UN SEUL EST DIRECTEMENT ÉPROUVABLE, ET IL L'EST
+
+🎯 **LE REBASE D'HORLOGE SUR `veille off` / `veille on` (défaut (d)) — PROUVÉ, CHIFFRÉ, SUR LA CARTE.**
+
+| Instant | `mode` | `inactivite` | `max vue` | `bascules` |
+|---|---|---|---|---|
+| en Ambient depuis ~3 min | `AMBIENT` | 204 260 ms | 204 260 ms | 1 |
+| après `veille off` | `ACTIF` | 🎯 **2 560 ms** | 204 260 ms | 1 |
+| **24,7 s après `veille on`** | 🎯 **`ACTIF`** | 24 735 ms | 204 260 ms | 🎯 **1** |
+
+⚠️ **CE QUE LE TABLEAU PROUVE, LIGNE PAR LIGNE** : l'horloge est **rebasée** (2 560 ms au lieu de
+204 260), le `max vue` **garde la trace** de ce qu'elle valait — donc l'instrument dit **les deux**,
+⛔ il n'efface pas —, et **24,7 s après le ré-armement le module est toujours ACTIF avec le même
+compteur de bascules**. **AVANT le correctif**, `veille on` trouvait `inactivite = 204 s > delai`
+⇒ bascule **au tick suivant (~1 s)**, avec un écart latché de 204 s marqué « NON JUGEABLE ».
+
+⛔ **LES TROIS AUTRES SONT ARMÉS ET DÉCLARÉS, ⛔ PAS PROVOQUÉS** — et c'est écrit ici plutôt que
+laissé à deviner, exactement comme l'appui fantôme de §24.14 :
+
+| Défaut | Compteur publié | Pourquoi il n'a pas été provoqué |
+|---|---|---|
+| (a) course de `veille_dormir_async` | `bascules dont l'async a ete ABANDONNEE : 0` | La fenêtre est **UN cycle `lv_timer_handler`** contre ~100 ms d'aller-retour console. **Budget d'essais annoncé et tenu : zéro tentative**, ⛔ plutôt que dix tirs au hasard présentés comme une preuve. |
+| (b) expiration du verrou de consommation | `contacts consommes EXPIRES (bus illisible) : 0` | Demande **32 lectures I²C ratées d'affilée pendant un contact consommé** — c'est la fenêtre de démarrage à froid, ⛔ pas provocable à la demande. |
+| (c) détecteur d'appui fantôme ré-armé | (pas de cri) | Le module est **sain** : `inact_max` dépasse le délai à chaque cycle ⇒ le détecteur **doit** se taire, et il se tait. 🎯 **Le sens positif est prouvé HORS CARTE**, par trois contrôles de gate qui compilent et appellent `dn_veille.c` — dont *« RÉVEIL puis doigt collé ⇒ l'alerte SORT »*, le cas que l'ancienne garde ne pouvait **pas** voir. |
+
+### 24.16.3 ✅ LES INSTRUMENTS CORRIGÉS, RE-TIRÉS SUR LA CARTE
+
+- **`veille geom`** — signature FNV-1a **`0xE6887D29`**, ⚠️ **IDENTIQUE** à celle du 2026-08-25 sur
+  `6144064` ⇒ la revue n'a **pas** bougé la géométrie. Et la sortie **DIT désormais ce que la preuve
+  vaut** : garde de non-régression, ⛔ pas une mesure qui pourrait échouer, avec la liste nommée de
+  ce qui n'est **pas** couvert (`val_y` 48→26, pas 40→47, police 28→33/56).
+- **`veille accents`** — *« a 95 %, les **7** accents restent DISTINCTS deux a deux (les cases + **l'humidite d'AMBIANCE**) »*.
+  🎯 **TÉMOIN POSITIF TIRÉ** : à **100 %**, l'instrument **CRIE** — *« GPU » et « RAM » rendent tous
+  deux `A0A0A0` ». ⛔ Sans ce tir, le ✅ à 95 % ne vaudrait rien.
+- **`w2 reset`** — *« accumulateurs W2 remis a zero (**LES 6 PISTES**) »*, compte **RELU** de
+  `DN_W2_NB`.
+- **`veille reset`** — ✅ remet bien à zéro (`ecarts : AUCUN ECHANTILLON`, ⛔ pas « 0 ms ») **et
+  NOMME ce qu'il épargne** : le temps mural par mode a **survécu** (`Actif 200 s · Ambient 231 s`),
+  parce que c'est la **fenêtre de soak de `dn4-5`, qui dure UNE SEMAINE**.
+
+### 24.16.4 ✅ AC3.3 RE-TIRÉE À LA LETTRE SUR `d6123c5` — ET LES TROIS SONT **JUGEABLES**
+
+| # | écart | délai armé | marge | verdict |
+|---|---|---|---|---|
+| 1 | **60 590 ms** | 60 000 | +590 | ✅ dans `[délai ; délai+1 s]` |
+| 2 | **60 805 ms** | 60 000 | +805 | ✅ |
+| 3 | **60 190 ms** | 60 000 | +190 | ✅ |
+
+Dispersion **615 ms** (vs **350 ms** sur `6144064`, §24.11.7 — plus dispersé, **les deux dans la
+fenêtre**, ⛔ aucun des deux ne réfute l'autre).
+🎯 **ET LES TROIS SONT JUGEABLES**, là où la séance du 25/08 avait dû publier des échantillons
+« NON JUGEABLE » : c'est l'effet **direct** du rebase ajouté à `veille delai` / `veille on|off` —
+le dépôt traitait le symptôme depuis le 2026-08-25, la revue a traité la cause.
+
+### 24.16.5 ✅ CE QUE LA SÉANCE A CONFIRMÉ AU PASSAGE
+
+- **AC7.3** — les deux réglages ont **survécu au flash** (délai 1 min, veille armée), et
+  *« aucune ecriture NVS depuis le boot »* prouve qu'ils sont **RELUS**, ⛔ pas ré-écrits.
+- **AC2.4** — sur `156b507`, 62 s après l'arrêt de l'agent : les **cinq** métriques PC en `MORTE`,
+  `AMBIANCE` vivante. **29 065 trames valides**, 0 doublon, **193 pertes seq**, 0 resynchro.
+  Latence acceptation→label **n = 29 065 · min 0 / moy 152 / max 392 ms**.
+- **AC3.2 (`dn4-5`)** — `Ambient = 98 %` sur la fenêtre de 1 h 38, très au-dessus du seuil de 50 %.
+- **fps** — **37,40 Hz mesuré = 37,40 Hz théorique, écart +0,00 %**, deux tirs (15 s et 65 s).
+- **Constat owner à l'œil** : allumage normal (asset **plein écran**, rétroéclairage **fixe**), et
+  🎯 **la DATE BLEUE de la barre en Ambient est ACCEPTÉE** — *« ça va, on la laisse »* ⇒ le report
+  du ledger se **ferme par constat owner**, la barre est de la **DONNÉE** (AC2.3), ⛔ pas une
+  affordance.
+
+### 24.16.6 ⛔ CE QUE §24.16 NE PROUVE PAS
+
+- ⛔ **Aucune nuit.** La plus longue fenêtre d'Ambient de cette séance est celle du firmware
+  **précédent** (5 795 s). Sur `d6123c5`, elle se compte en minutes.
+- ⛔ **Le sens WSL → agent n'est pas testé** pour la question du reboot (§24.16.1).
+- ⛔ **Trois des quatre défauts fonctionnels ne sont pas provoqués sur la carte** (§24.16.2) — leur
+  preuve est *hors carte* pour (c), et **inexistante** pour (a) et (b). Les compteurs sont armés :
+  s'ils montent un jour, ils le **diront**, et c'est tout ce qu'on peut affirmer aujourd'hui.
+- ⛔ **Le MENU au doigt n'a PAS été re-tiré** sur ce firmware : les constats de §24.11.2 valent par
+  **raisonnement**, ⛔ pas par mesure sur `d6123c5`.
 
 ---
 
