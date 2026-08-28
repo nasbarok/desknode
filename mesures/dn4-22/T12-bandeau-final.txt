@@ -1,0 +1,216 @@
+
+$ (reset RTS + bandeau de boot)
+I (226) esp_image: segment 3: paddr=00116bf4 vaddr=3fc987e8 sizeESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x15 (USB_UART_CHIP_RESET),boot:0xb (SPI_FAST_FLASH_BOOT)
+Saved PC:0x40056f6f
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x1530
+load:0x403c8700,len:0xcec
+load:0x403cb700,len:0x2ef8
+entry 0x403c8920
+I (24) boot: ESP-IDF v5.5.5 2nd stage bootloader
+I (24) boot: compile time Aug 15 2026 04:11:10
+I (25) boot: Multicore bootloader
+I (25) boot: chip revision: v0.2
+I (25) boot: efuse block revision: v1.4
+I (25) boot.esp32s3: Boot SPI Speed : 80MHz
+I (25) boot.esp32s3: SPI Mode       : DIO
+I (26) boot.esp32s3: SPI Flash Size : 16MB
+I (26) boot: Enabling RNG early entropy source...
+I (26) boot: Partition Table:
+I (26) boot: ## Label            Usage          Type ST Offset   Length
+I (26) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (27) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (27) boot:  2 factory          factory app      00 00 00010000 00400000
+I (28) boot:  3 assets           Unknown data     01 40 00410000 00100000
+I (28) boot:  4 stimulus         Unknown data     01 41 00510000 00100000
+I (28) boot: End of partition table
+I (29) esp_image: segment 0: paddr=00010020 vaddr=3c0a0020 size=6f908h (456968) map
+I (112) esp_image: segment 1: paddr=0007f930 vaddr=3fc98100 size=006e8h (  1768) load
+I (113) esp_image: segment 2: paddr=00080020 vaddr=42000020 size=96bcch (617420) map
+I (226) esp_image: segment 3: paddr=00116bf4 vaddr=3fc987e8 size=0361ch ( 13852) load
+I (230) esp_image: segment 4: paddr=0011a218 vaddr=40374000 size=13ff4h ( 81908) load
+I (248) esp_image: segment 5: paddr=0012e214 vaddr=50000000 size=00020h (    32) load
+I (257) boot: Loaded app from partition at offset 0x10000
+I (257) boot: Disabling RNG early entropy source...
+I (258) octal_psram: vendor id    : 0x0d (AP)
+I (258) octal_psram: dev id       : 0x02 (generation 3)
+I (258) octal_psram: density      : 0x03 (64 Mbit)
+I (259) octal_psram: good-die     : 0x01 (Pass)
+I (259) octal_psram: Latency      : 0x01 (Fixed)
+I (259) octal_psram: VCC          : 0x01 (3V)
+I (259) octal_psram: SRF          : 0x01 (Fast Refresh)
+I (260) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
+I (260) octal_psram: BurstLen     : 0x01 (32 Byte)
+I (260) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (260) octal_psram: DriveStrength: 0x00 (1/1)
+I (260) MSPI Timing: Enter psram timing tuning
+I (261) esp_psram: Found 8MB PSRAM device
+I (261) esp_psram: Speed: 80MHz
+I (307) mmu_psram: Read only data copied and mapped to SPIRAM
+I (375) mmu_psram: Instructions copied and mapped to SPIRAM
+I (375) cpu_start: Multicore app
+I (751) esp_psram: SPI SRAM memory test OK
+I (759) cpu_start: Pro cpu start user code
+I (759) cpu_start: cpu freq: 160000000 Hz
+I (759) app_init: Application information:
+I (759) app_init: Project name:     desknode
+I (759) app_init: App version:      d244011
+I (760) app_init: Compile time:     Aug 28 2026 15:21:05
+I (760) app_init: ELF file SHA256:  01cabd012...
+I (760) app_init: ESP-IDF:          v5.5.5
+I (760) efuse_init: Min chip rev:     v0.0
+I (760) efuse_init: Max chip rev:     v0.99 
+I (760) efuse_init: Chip rev:         v0.2
+I (761) heap_init: Initializing. RAM available for dynamic allocation:
+I (761) heap_init: At 3FCB0390 len 00039380 (228 KiB): RAM
+I (761) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (761) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (761) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+I (762) esp_psram: Adding pool of 7104K of PSRAM memory to heap allocator
+I (762) esp_psram: Adding pool of 1K of PSRAM memory gap generated due to end address alignment of drom to the heap allocator
+I (763) spi_flash: detected chip: generic
+I (763) spi_flash: flash io: dio
+I (763) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (764) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (764) main_task: Started on CPU0
+I (764) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (765) main_task: Calling app_main()
+I (770) desknode: ──── socle ────────────────────────────────────────────
+I (771) desknode: mesuré : raison du démarrage = USB (reset par le périphérique USB — replug/JTAG)
+I (771) desknode: mesuré : flash physique 16777216 o (16 MB)
+I (772) desknode: mesuré : PSRAM 8388608 o détectés au démarrage
+I (772) desknode: config : PSRAM en mode OCTAL
+I (772) desknode: config : horloge PSRAM 80 MHz
+I (772) desknode:   ⚠️ « config : » = relu du sdkconfig, PAS observé. Ces deux lignes ne peuvent pas démentir le build. Pour éprouver réellement le mode et l'horloge, mesurer le débit : `bw`.
+I (773) desknode: config : XIP depuis la PSRAM ACTIVÉ — code ET constantes sortis de la flash (dn4-22 : c'est le remède de §26, il rend la marge de famine DMA)
+I (773) desknode:   ⚠️ ceci est du « config : » — RELU DU SDKCONFIG, ⛔ PAS OBSERVÉ. La preuve d'exécution est « mmu_psram: Instructions copied and mapped to SPIRAM » plus haut dans CE log.
+I (774) desknode: config : LCD_RGB_RESTART_IN_VSYNC désactivé (défaut IDF) — la commande `dma` agit réellement dans ce build.
+W (774) desknode: config : LCD_RGB_ISR_IRAM_SAFE désactivé — l'ISR vsync peut être suspendue pendant une écriture flash. À noter si le fps mesuré pendant le stimulus d'AC6 devient bizarre.
+I (775) desknode: ──────────────────────────────────────────────────────
+I (776) dn_cfg: config de boot : num_fbs=1  bounce_px=9600
+I (776) dn_cfg:                 draw_lines=128 (122880 o) en RAM interne DMA
+I (776) dn_cfg:                 tâche LVGL sur le cœur 0 (avec le pipeline d'affichage)
+I (776) dn_disp: rétroéclairage en LEDC : GPIO6, 10 bits (1024 crans) @ 24000 Hz (24 kHz et non les 5 kHz du BSP : mesuré, à 5 kHz la carte SIFFLE à duty bas), duty 0 — il ne montera qu'après le remplissage du framebuffer
+I (777) dn_disp: bus I2C monté : SDA=GPIO15 SCL=GPIO7, tirages internes ON — l'horloge est posée PAR DEVICE (400000 Hz visés), pas par le bus
+I (778) dn_disp: sonde I2C 0x20 (TCA9554) : répond
+I (779) dn_disp: TCA9554 prêt : LCD_RST=bit0 et LCD_CS=bit2 en SORTIE ; TP_RST=bit1 laissé en ENTRÉE (état de reset de l'expander) — dn_touch le prendra en main
+I (949) dn_disp: reset matériel de la dalle joué via l'expander (20 ms bas, 150 ms de repos)
+I (949) lcd_panel.io.3wire_spi: Panel IO create success, version: 1.0.1
+I (949) dn_disp: 3-wire SPI : SDA=GPIO1 SCL=GPIO2, CS via expander bit2, horloge visée 500000 Hz (plafond logiciel du composant)
+I (950) st7701: version: 2.0.2
+I (1524) dn_disp: DISPON (0x29) envoyé explicitement — la séquence vendeur ne le contient pas, et esp_lcd_panel_init() non plus
+I (1525) dn_disp: panneau RGB prêt : 480x640 @ 16000000 Hz pclk, num_fbs=1, bounce=9600 px
+I (1525) dn_disp:   fb[0] @ 0x3c110a80
+I (1525) dn_disp: PSRAM libre : 7272264 o avant les framebuffers, 6657504 o après (delta 614760 o)
+I (1594) dn_asset: asset mappé : offset 0x410000, 614400 o utiles sur 1048576 o de partition, @ 0x3c800000
+I (1594) dn_asset: intégrité VÉRIFIÉE : magie « DNASSET1 », 614400 o, CRC32 0x0F027C7D (calculé en 67859 us)
+I (1594) dn_asset: asset mappé, aucune copie encore mesurée
+W (1595) dn_touch: probe AVANT reset : il répond DÉJÀ à 0x5D — TP_RST n'est donc pas maintenu bas par l'expander en entrée (la story attendait l'inverse). La séquence reste utile : elle rend l'adresse DÉTERMINISTE.
+I (1946) dn_disp: reset tactile joué via l'expander bit1/EXIO2 (150 ms bas, 50 ms de repos) — TP_RST reste désormais en SORTIE HAUTE
+I (1946) dn_touch: probe APRÈS reset : ESP_OK — adresse RÉELLE 0x5D (visée 0x5D)
+I (1948) dn_touch: GT911 « 911 » fw 0x1060 · config v93 · résolution native 480x640 · 5 points · INT sur front DESCENDANT
+I (1948) GT911: I2C address initialization procedure skipped - using default GT9xx setup
+I (1949) GT911: TouchPad_ID:0x39,0x31,0x31
+I (1949) GT911: TouchPad_Config_Version:93
+I (1949) dn_touch: GT911 prêt à 0x5D — TP_INT=GPIO16, TP_RST=expander bit1
+I (1950) dn_ui: precision d'affichage : 6 cases auditees, 0 trou (AC9)
+I (1950) dn_ui: selections : 6 cases auditees, 0 faute (dn4-9 — invariants A/B/C)
+I (1951) dn_ui: k_desc[CPU] : case 3 [0, 1, 3] · detail 4 [0, 1, 2, 3] · peuplees 4 — `widget grandeurs 0 <1..4>` est jouable
+I (1951) dn_ui: k_desc[GPU] : case 3 [0, 1, 2] · detail 4 [0, 1, 2, 3] · peuplees 4 — `widget grandeurs 1 <1..4>` est jouable
+I (1952) dn_ui: k_desc[RAM] : case 1 [0] · detail 1 [0] · peuplees 1 — `widget grandeurs 2 <1..1>` est jouable
+I (1952) dn_ui: k_desc[RÉSEAU] : case 2 [0, 1] · detail 2 [0, 1] · peuplees 2 — `widget grandeurs 3 <1..2>` est jouable
+I (1953) dn_ui: k_desc[DISQUE] : case 2 [0, 1] · detail 4 [0, 1, 2, 3] · peuplees 4 — `widget grandeurs 4 <1..2>` est jouable
+I (1953) dn_ui: k_desc[AMBIANCE] : case 2 [0, 1] · detail 2 [0, 1] · peuplees 2 — `widget grandeurs 5 <1..2>` est jouable
+I (1953) dn_mes: abonnement vsync #0 : « flush »
+I (1954) LVGL: Starting LVGL task
+I (1996) dn_veille: veille ON · delai 1 min (60000 ms)
+I (2227) dn_ui: LVGL 9.5.0 prêt : rendu PARTIEL, draw buffer 480 x 128 px (122880 o) en RAM interne DMA
+I (2228) dn_ui:   flush : synchro « vsync », chemin « bitmap »
+I (2228) dn_ui:   coût en tas : RAM interne 231427 -> 100587 o (130840), PSRAM 6657292 -> 6657292 o (0)
+W (2229) dn_ui:   ⚠️ ce delta N'INCLUT PAS les 64 Ko statiques du tas de LVGL (LV_MEM_SIZE_KILOBYTES, réservés dans le .bss au link). L'instrument de CE coût-là est `ui`, qui imprime lv_mem_monitor().
+E (2918) gpio: gpio_install_isr_service(534): GPIO isr service already installed
+I (2918) dn_touch: indev LVGL branché — mode « poll »
+I (2919) dn_mes: dn4-10 : seuil de corruption = 775 us (ecoulement d'un demi-bounce de 9600 px, soit 20 ligne(s))
+I (2919) dn_mes: compteur vsync branché (ISR en IRAM, compteur en RAM interne)
+I (2919) dn_mes:   ⚠️ enregistrement EXCLUSIF : il vient d'écraser tout callback posé avant lui (esp_lcd rgb ASSIGNE, ne fusionne pas). C'est voulu — voir le commentaire au-dessus.
+I (2920) dn_mes: abonnement vsync #1 : « recal »
+I (2920) dn_recal: recalage sur événement ACTIF : 1 vsync(s) après chaque bascule (RESTART_IN_VSYNC=n, le bit `need_restart` est bien consulté).
+I (3021) dn_mes: témoin vsync : 3 trames en 100 ms — le compteur est vivant
+I (3021) desknode: rétroéclairage à 100 % (GPIO6 en LEDC 10 bits @ 24000 Hz). ⚠️ il ne clignote pas : le clignotement était le signe de vie de P0, ce n'est plus un symptôme valide depuis P1.
+I (3022) desknode: prêt en 2256 ms depuis app_main
+I (3022) desknode: recalage d'AMORÇAGE armé (1 vsync) — RESTART_IN_VSYNC=n, la DMA n'est plus relancée à chaque VBlank
+I (3022) desknode:   ⚠️ si l'image sort DÉCALÉE malgré ça : `recal` pour les compteurs, `dma` pour recaler à la main (opérante à `n`).
+I (3023) desknode:   ⚠️ `recal N` n'est PAS persisté en NVS : un `recal 0` tapé à la console est perdu au reboot, et cet armement revient SANS trace. ⛔ Le réglage ne survit pas, le comportement si.
+I (3024) dn_capt: identite : chip id 0x61, variant 0x00 => BME680 @ 0x77
+I (3150) bme680: bme680_setup_heater_profiles: rh_reg_data 111 | gw_reg_data 146
+I (3196) dn_capt: config relue dans le capteur : 0x72=04 0x74=84 0x75=08
+I (3197) dn_capt: BME680 pret @ 0x77 — FORCED, T/H 8x, P 1x, IIR 3, gaz coupe, cadence 5000 ms, peremption 15000 ms
+I (3197) dn_capt:   l'affichage a UN CYCLE DE RETARD (5 s) sur le capteur : la boucle « data ready » sort a la 1re iteration alors que la conversion 8x/8x/1x demande ~41 ms, et le cycle mesure 25-26 ms. Chaque cycle DECLENCHE une conversion et LIT LA PRECEDENTE. C'est ASSUME, pas subi : attendre couterait 41 ms bloques par cycle (341 ms gaz allume) sur la tache qui partage le bus I2C.
+I (3198) dn_capt:   (gaz coupe DELIBEREMENT : sa plaque a 300 C chaufferait le die qui porte le thermometre, pour une donnee hors des 6 widgets du brief. A/B jouable a chaud : `capteurs gaz on`)
+I (3200) dn_env: INA219 @ 0x40 : NON CADENCE — ni ouvert ni configure. Voir `env` pour le motif.
+W (3200) dn_env: VL6180X @ 0x29 : configuration refusee au boot — ATTENDU a froid, elle sera REPOSEE par `cycle_un()` dans 60 s
+I (3201) dn_env: dn_env pret — 2/3 devices ouverts, cadence 5000 ms (portee par la tache dn_capt), peremption 15000 ms, timeout I2C 100 ms
+I (3201) dn_env:   retroeclairage auto : ARME par defaut — la loi est 20% a 2 lx, 80% a 11 lx, bande morte 3 pts, pas max 50 pts/cycle. `bl auto off` pour le desarmer ; la dalle va donc DESCENDRE depuis les 100 % du boot vers la loi (plafond de la loi : voir ci-dessus), par pas, dans les prochains cycles — c'est NORMAL (dn4-19/dn4-20).
+I (3203) dn_rtc: PCF85063A @ 0x51 — Control_1 = 0x00 : tourne, format 24 h, quartz 7 pF
+W (3203) dn_rtc:   ⚠️ CAP_SEL n'est PAS verifie : rien sur cette carte ne dit quel quartz est soude. Un mauvais reglage se paie en DERIVE, pas en panne. Laisse tel quel, consigne comme INCONNU.
+I (3204) dn_rtc: temoin RELU AVANT ecriture = 0xD7 : la puce a GARDE son alimentation depuis le dernier boot
+I (3205) dn_rtc: temoin anti-fantome pose en 0x03 = 0xD7 (relu)
+I (3206) dn_rtc: heure FIABLE : 2026-08-28 15:21:34
+[5nI (3864) dn_cli: console sur USB-Serial/JTAG
+
+Type 'help' to get the list of commands.
+Use UP/DOWN arrows to navigate through command history.
+Press TAB when typing command name to auto-complete.
+
+Your terminal application does not support escape sequences.
+
+Line editing and history features are disabled.
+
+On Windows, try using Windows Terminal or Putty instead.
+desknode> 
+── DeskNode P7 — console de mesure ──
+  scene   affiche une mire : bits|nbits|rgb|red|green|blue|white|black|frame|gray|asset
+  fps     mesure le fps sur N secondes (>= 10) et le confronte à la théorie
+  mem     PSRAM et RAM interne, avant/après framebuffers
+  cpu     cpu [secondes] | cpu brut — charge processeur (AC6)
+  bw      bande passante mesurée des 3 chemins de copie
+  cfg     cfg | cfg reset | cfg repli [clear] — config de boot (NVS), active, effacée, ou le TÉMOIN DE REPLI
+  set     set fbs | bounce | lines | drawmem | core <-1|0|1>
+  reboot  redémarre pour appliquer un `set`
+  veille  veille | on|off | delai <1|3|5|10> | now | wake | lat | geom | assets | reset | pct | voile | gris | accents — la VEILLE (dn3-3)
+  tear    tear on|vsync|sync|both|flip|off — déchirement BRUT (dn1-2)
+  flash   flash on|off — stimulus d'écriture flash
+  ui      ui [on|off] | ui label on|off | ui bg flash|psram — LVGL
+  flush   flush | reset | sync off|vsync|fbdone | path bitmap|direct | full — chemin de flush, ET le compteur de GLISSEMENT de trame (dn4-10)
+  anim    anim on [ms] | off — stimulus adverse LVGL (témoin de tearing)
+  gel     gel [secondes] — BLOQUE LVGL (défaut 12 s) et montre `up`/`vsync` qui avancent pendant que `flush`/`cycles` sont FIGÉS (dn4-5)
+  touch   touch | reset | mode | axes | trace | int | addr | delais — GT911 (dn1-4)
+  nav     nav | open <n> | back | model | ab <n> — navigation (dn1-4)
+  recal   recal <0..4> — recalage DMA N vsyncs après la bascule (AC5)
+  bl      bl [0..100|on|off|ramp <pct> [ms]|freq <hz>|auto on|off|auto bornes <bas> <haut>|auto pas <n>|auto plancher <n>|auto ambiant <0..100>|auto ambiant plancher <n>|auto courbe log|lineaire|loi [lux]] — rétroéclairage gradable et asservi (dn1-3/dn4-3), la loi vit en Ambient (dn4-19)
+  disp    disp on|off — sortie d'affichage de la dalle (0x29/0x28)
+  dma     relance la DMA du panneau (décalage permanent)
+  capteurs capteurs | reset | gaz on|off | simuler <cause> <n> — BME680 (dn2-1) + la pression, mesuree et publiee par dn4-3
+  env     env | reset — BH1750 et VL6180X, les capteurs locaux CADENCES (dn4-3). INA219 : RETIRE DU BUS le 2026-08-21, `env` dit pourquoi
+  w2      w2 | reset — le critere « une case doit BOUGER » mesure sur les candidats de la 6e case (dn4-3/AC6)
+  i2c     i2c | lire <addr> <reg> [n] | lire16 <addr> <reg16> [n] | brut <addr> [n] | ecrire <addr> <o1..o8> | rafale <ms> — scan, transactions et saturation (dn2-1/dn4-2)
+  tof     tof | etat | sr03 | balayage | als <ms> | range [n] — VL6180X : séquence SR03 (AN4545 Rev 1 §9), rejeu du balayage §13.19.5 et télémétrie à trois états (dn4-7)
+  pc      pc | reset | $DN,<trame> — liaison PC : état, compteurs, injection (dn2-2)
+  wifi    wifi [info] | on <ssid> <mdp> | off | ws on|off — branche B (dn2-2)
+  hist    historique de session (dn4-4) : coût RAM, points réels et TROUS par série
+  widget  widget | groupe on|off|union | opa <n> | voile <n> | mock on|off | demo on|off [n] | pousser <n> | oublier <n> | rafale | nue <n> on|off | barre 1hz|minute | bandes on|off | icone <case> <n> | piste <0xRRGGBB> | voie defaut|avantd12|a|b|c|c2|repli | grandeurs <case> <n> | dispo empile|cote|mixte | entete normal|compact | val <y> <pas> | police 14|28 | grille <barre> <menu> | largeur [texte|reset] | detail | replacer on|off — modèle de case (dn3-1/dn3-2/dn4-1/dn4-6)
+  rtc     rtc | set <AAAA-MM-JJ> <HH:MM[:SS]> | reset — horloge PCF85063A (dn3-2)
+  aide    cette aide
+
+état : num_fbs=1 bounce=9600 px · rétroéclairage 100 % · LVGL ACTIF
+       draw buffer 480 x 128 px en RAM interne DMA · synchro flush « vsync »
+       tactile GT911 @ 0x5D · lecture « poll » · vue « dashboard »
+       widgets : 6/6 cases · invalidation « groupée » · opa cases 178, voile 90
+       barre : « 15:21  VEN. 28 AOÛT » · HH:MM (au chgt de minute) · horloge FIABLE
+
+W (8226) dn_capt: pression : le driver annonce des HECTO-PASCALS (bme680.h:363) mais rend 99776.5 — c'est du PASCAL. L'etiquette MENT, la conversion est faite ici et elle est ANNONCEE. Un facteur 100 pris en silence est exactement ce qui a publie « 4 614,8 lx » pour 46 148.
+I (13936) desknode: up 10 s — vsync=412 — flush=14 cycles=9 — PSRAM libre 6655304 o — mural 13 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
+I (23938) desknode: up 20 s — vsync=786 — flush=16 cycles=11 — PSRAM libre 6655304 o — mural 23 s (écart +3 s) — reset: USB (reset par le périphérique USB — replug/JTAG)
