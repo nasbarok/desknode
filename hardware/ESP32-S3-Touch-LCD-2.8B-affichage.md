@@ -5401,6 +5401,15 @@ passera plus dès que le binaire grossira »*. Le binaire a grossi ; le cran s'e
 - 🔴 ***« Parfois ça reste glissé »*** : **non revu** sur quatre fenêtres de 180 s, mais ⛔ **PAS prouvé absent** —
   l'owner ne l'observait déjà que *« parfois »*, et **le compteur ne sait pas mesurer une DURÉE** (il compte des
   trames, pas des états). ⇒ à trancher par l'usage prolongé, ou par un instrument de durée.
+  > 🎯 **AMENDÉE LE 2026-08-28 (`dn4-12`), ⛔ LE TEXTE CI-DESSUS RESTE — il était juste pour sa date.**
+  > **L'instrument de durée EXISTE désormais : voir §20ter.** `flush` publie la **PLUS LONGUE SÉRIE DE TRAMES
+  > CONSÉCUTIVES NON SAINES**, avec sa **composition**, en **trames** (⛔ pas en microsecondes : `esp_timer`
+  > reboucle en 71,58 min, un compte de trames en ~3,6 ans). ⚠️ **Ce qui reste vrai de cette puce ci-dessus** :
+  > le symptôme n'est **toujours pas prouvé absent**, et cette section-là ne le prouvera pas non plus —
+  > **l'instrument est livré, la MESURE de régime attend la séance carte** (§20ter.6). ⛔ Et la 3ᵉ puce
+  > ci-dessous (« le nombre de resets réellement joués reste inobservable ») **n'est PAS levée** : c'est une
+  > contrainte de conception que `dn4-12` hérite et déclare — on mesure la **PERSISTANCE DE L'ÉTAT**, ⛔ jamais
+  > l'échec de relance (§20ter.9).
 - ⛔ **Le nombre de resets réellement joués par le driver reste inobservable** : à `n` il relance en interne sans passer
   par `need_restart`, donc `recal` compte **1** (l'amorçage) et rien d'autre.
 - ⚠️ **Quatre fenêtres de 180 s ne valent pas une journée d'usage.**
@@ -5741,6 +5750,263 @@ bandeau, ⛔ pas une relecture.
 2. Le champ fait foi **seulement** confronté à `Compile time` — et la vraie preuve du contenu reste
    **ce que le binaire IMPRIME**. Ici, `flush` a tranché en une ligne.
 3. Lire le descripteur sans la carte : offset **0x20** du `.bin`, `version[32]` à **+16**.
+
+## 20ter. 🎯 `dn4-12` — LE COMPTEUR SAIT ENFIN DIRE QU'UN ÉTAT A **DURÉ** (2026-08-28)
+
+> ⚠️ **SECTION AJOUTÉE, ⛔ RIEN N'EST RENUMÉROTÉ.** §20.1 à §20.7 et tout §20bis restent
+> **intacts** : ils sont justes pour leur date. §20bis.8 reçoit un **renvoi** vers ici, et son
+> texte d'origine est conservé.
+
+> 🔴 **ÉTAT DE CETTE SECTION AU MOMENT OÙ ELLE EST ÉCRITE.** Elle consigne ce qui est **livré et
+> mesuré SANS LA CARTE** : la machine à états, sa gate hôte, et le coût lu dans le `.map`.
+> ⛔ **Aucune mesure de régime n'y figure encore** : le témoin provoqué (§20ter.6), les fenêtres
+> sous agent réel et la nuit **attendent la séance carte**, qui demande un budget d'arms de
+> l'owner. **Ce qui n'a pas été mesuré est nommé, ⛔ pas passé sous silence.**
+
+### 20ter.1 🔴 LE TROU, ET POURQUOI IL A SURVÉCU À `dn4-10`
+
+L'owner décrit, le 2026-08-23, un défaut qui **DURE** :
+
+> *« parfois ça reste dans un état glissé […] ensuite ça reglisse »*
+
+Le driver Espressif nomme ce cas **« permanent desync »** et écrit que `RESTART_IN_VSYNC` existe
+pour l'empêcher (`esp_lcd_panel_rgb.c:1142-1148`). Nous avons **désactivé** ce flag le 2026-08-23
+(`4734d07`) parce qu'il **FABRIQUAIT** le glissement périodique (§20bis.1). Conséquence, et elle
+n'était écrite nulle part :
+
+🔴 **le permanent desync n'a plus AUCUNE parade automatique — et RIEN NE LE MESURE.**
+
+Le compteur de `dn4-10` compte des **trames au-dessus d'un seuil**, jamais leur **consécutivité**.
+Il ne peut donc **ni confirmer ni infirmer** le constat de l'owner. Et §20bis.5 a montré pourquoi
+il ne suffit pas : **143 corruptions AVANT COMME APRÈS** le correctif, pendant que l'œil passait de
+*« ça descend et remonte toutes les secondes »* à *« plus de glissement »*.
+
+⚠️ **CE QUE `dn4-12` NE FAIT PAS** : elle **ne branche pas la parade**. La décision `D4` est
+explicite — le ré-armement automatique de `dn_recal` se branchera **après** que cet instrument aura
+dit ce que son seuil de déclenchement doit valoir. Écrire ce seuil maintenant reviendrait à poser
+un critère **avant d'avoir mesuré la dispersion de ce qui le mesurera** : le défaut que ce dépôt a
+déjà payé deux fois.
+
+### 20ter.2 🔴 LE PIÈGE CENTRAL — LE GLISSEMENT RECHERCHÉ EST **JETÉ** PAR L'INSTRUMENT
+
+C'est le constat le plus court du cadrage, et le plus embarrassant : `ph_rejete`
+(`dn_measure.c`, borne de sanité) écarte les phases `>= 2 périodes`, et **le code l'écrit
+lui-même** :
+
+> *« 🔴 LA BORNE DE SANITÉ ÉCARTE EXACTEMENT LE GLISSEMENT RECHERCHÉ »*
+
+⇒ **un compteur de série branché naïvement dans la population COMPTÉE rendrait « plus longue série
+= 0 » PENDANT QUE L'ÉCRAN EST FIGÉ EN GLISSEMENT PERMANENT** — l'exact inverse du livrable.
+
+C'est la **décision D2** : `ph_rejete` **compte EN DÉFAUT**, il ne rompt pas la série.
+
+### 20ter.3 🔴 LA TABLE DES HUIT CLASSES DE TRAME — LA PIÈCE QU'UN LECTEUR CHERCHERA EN PREMIER
+
+**SIX classes de trame n'atteignent JAMAIS le site du déficit**, et aucune source du dépôt ne les
+énumérait ensemble avant `dn4-12`. Leur sort est tranché **une par une** :
+
+| # | Classe | Condition dans `on_vsync` | Compteur existant | **Verdict** |
+|---|---|---|---|---|
+| **A** | déficit franchi | `n == 1`, phase comptée, `déficit > t_demi_us` | `ph_100pc` | 🔴 **EN DÉFAUT — la série CONTINUE** |
+| **B** | saine | `n == 1`, phase comptée, `déficit <= t_demi_us` | — | ✅ **SAINE — la série SE ROMPT** |
+| **C** | hors borne de sanité | `n == 1`, `ph >= 2 × période` | `ph_rejete` | 🔴 **EN DÉFAUT — la série CONTINUE** (D2) |
+| **D** | aucun enroulement | `n == 0` | `manques` | 🔴 **EN DÉFAUT — la série CONTINUE** |
+| **E** | horodatage postérieur | `(int32_t)(t_us − tw) < 0` | `ph_futur` | ⚠️ **INDÉTERMINÉE — rompt ET est comptée** |
+| **F** | paire `(wraps, t_wrap)` déchirée | `w2 != w` | `ph_dechire` | ⚠️ **INDÉTERMINÉE — rompt ET est comptée** |
+| **G** | deux enroulements ou plus | `n >= 2` | `ph_doubles_ecartes` | ⚠️ **INDÉTERMINÉE — rompt ET est comptée** |
+| **H** | dégrossissage | `ph_ecarte < 32` | `ph_ecarte` | ⛔ **HORS SUJET — ni l'un ni l'autre** |
+
+**LE MOTIF DE CHAQUE VERDICT — ⛔ ÉCRIT, PAS SUPPOSÉ :**
+
+- **C compte EN DÉFAUT** : voir §20ter.2. Une série qui se romprait là rendrait **0 pendant que
+  l'écran est figé**.
+- **D compte EN DÉFAUT** parce que **le témoin de référence du dépôt l'impose** : `flash on` +
+  `bounce_px != 0` (mesure du 2026-08-22) rend **1 037 trames SANS enroulement sur 1 041**. Si
+  `manques` rompait la série, **le témoin le plus violent du dépôt rendrait une plus longue série
+  de ~1 pendant que la dalle est détruite** — l'instrument serait **aveugle exactement là où il
+  doit hurler**.
+- **E / F / G ROMPENT** parce qu'on **ne sait pas** si la trame était saine. Les faire continuer
+  **FABRIQUERAIT** de la durée. Rompre **sous-estime** — et **un minorant tient a fortiori**. Le
+  prix est **publié** : `ser_rompues_indet` compte les séries qu'une indéterminée a coupées.
+- **H ne fait ni l'un ni l'autre** : avant que `ph_ref_us` soit figée, **aucun déficit n'est
+  calculable**.
+
+> ⚠️ **UN POINT A ÉTÉ TRANCHÉ PAR LE DEV, ET IL EST DÉCLARÉ.** Le motif de **H** dit *« la série ne
+> commence qu'après le dégrossissage »*. Pris à la lettre **pour toutes les classes**, cela
+> armerait la machine seulement une fois `ph_ref_us` figée. ⛔ **Ce serait faux, et dangereux** :
+> les classes **C** et **D** ne lisent **ni la référence ni le seuil**, et **sous `flash on` le
+> dégrossissage n'avance même pas** — il ne se nourrit que de trames à `n == 1`, or 1 037 sur 1 041
+> n'ont aucun enroulement. Une machine armée sur le dégrossissage rendrait donc **« plus longue
+> série = 0 » pendant que la dalle est détruite** : mot pour mot le mode de défaillance que la
+> condition d'arrêt de la story déclare comme *« l'instrument est FAUX »*.
+> ⇒ **LA TABLE FAIT AUTORITÉ : C et D comptent TOUJOURS.** Seule la classe **A** exige le
+> dégrossissage, donc **une série de classe A ne peut pas commencer avant la 32ᵉ trame** — ce que
+> la gate épingle, et ce que la console dit.
+
+### 20ter.4 🔴 L'UNITÉ EST LA **TRAME**, ⛔ PAS LA MICROSECONDE — ET C'EST UN ARGUMENT DE CONCEPTION
+
+`esp_timer` reboucle à **2^32 µs = 71,58 min** : c'est le défaut que `dn4-5`/AC1.2 vient de fermer
+sur `fenetre_ms`. Un **compte de trames** ne reboucle qu'à **2^32 trames**, soit **~3,6 ans à
+37,40 Hz**.
+
+⇒ **la grandeur survit à une nuit et à une semaine PAR CONSTRUCTION**, ⛔ pas par précaution. La
+conversion en millisecondes se fait **côté console**, depuis `periode_ns` (**26 737 500 ns**, exacte)
+— ⛔ **jamais dans l'ISR**.
+
+### 20ter.5 🎯 CE QUE `flush` PUBLIE MAINTENANT — UN **TRIPLET**, ⛔ PAS LE MAX NU
+
+Le **DÉPASSEMENT** du seuil était enterré en **sous-ligne** du « DÉFICIT PIRE », lui-même au milieu
+du bloc, pendant que le **COMPTE** — qui **ne suit plus l'œil** depuis `4734d07` — sortait en
+évidence. **C'est un défaut de présentation réel, et il est corrigé.**
+
+⚠️ **MAIS LA GRANDEUR DE TÊTE EST UN TRIPLET — DÉCISION OWNER DU 2026-08-28.** Le livrable d'origine
+demandait le dépassement **seul**, sur la foi du tableau `+720 / +176 / +221 µs` du 2026-08-23. Or
+ce tableau **compare trois `ph_deficit_max_us` entre eux** — ce que `dn_console.c` **interdit en
+toutes lettres** (*« ils portent le même biais »*) — et **`dn4-22` l'a réfuté PAR LA MESURE** cinq
+jours plus tard : **ARM 5 rend 1 300 µs de déficit pire pour UNE corruption, contre 896 µs pour
+245** chez `f7be23c`. ⇒ **le MAX n'est pas un discriminateur : un seul point aberrant le déplace.**
+
+L'ordre de tête est donc :
+
+1. **① la PLUS LONGUE SÉRIE** de trames consécutives non saines, en **trames** et en **ms**, avec sa
+   **composition (A / C / D)**, sa **trame de début** (depuis la RAZ), le **nombre de séries**, la
+   **série EN COURS**, et le nombre de **séries rompues par une indéterminée** — ⚠️ **c'est un
+   MINORANT, et la console l'écrit** ;
+2. **② la DISTRIBUTION** des quatre seaux `10/25/50/100 %` — 🎯 **le signal jugé fiable par
+   `dn4-22`** (⛔ seaux **emboîtés**, ne pas les sommer) ;
+3. **③ le DÉPASSEMENT** du seuil, **avec sa RÉFUTATION IMPRIMÉE JUSTE DESSOUS** — le chiffre de
+   `dn4-22` est donné dans la sortie elle-même, ⛔ pas seulement connu.
+
+Puis, **en second**, le **COMPTE** `ph_100pc` **avec sa réserve** (143 avant comme après), et les
+**cinq chiffres de comparabilité** (`ph_ref`, `ph_max`, `ph_n`, `ph_degrossi_n`, `t_demi`) plus
+**l'instant de la dernière RAZ** — ou, à défaut, la ligne
+**`⛔ AUCUN flush reset : référence SEMÉE AU BOOT`**.
+
+🎯 **LA COMPOSITION N'EST PAS DÉCORATIVE.** Elle sépare *« la DMA a lu un tampon pas encore rempli
+200 fois de suite »* (classe A) de *« la DMA n'a pas fini une seule trame pendant 200 trames »*
+(classe D) : **deux pathologies différentes, deux remèdes différents**.
+
+### 20ter.6 ⏳ CE QUI ATTEND LA CARTE, ET CE QUE CHAQUE TIR DOIT RENDRE
+
+⛔ **RIEN DE CE BLOC N'EST MESURÉ À CE JOUR.** Il est écrit **avant** la séance, pour que l'attendu
+ne soit pas rédigé après coup.
+
+| Tir | Protocole | **Attendu, écrit AVANT** |
+|---|---|---|
+| **Témoin provoqué** | boot (SHA au bandeau) → **≥ 3 min** → `flush reset` → `flash on` → fenêtre → `flash off` → `flush` | une plus longue série de **plusieurs CENTAINES de trames**, **dominée par la classe D** (référence : 1 037 / 1 041). ⛔ **Si la grandeur ne bouge pas, l'instrument est FAUX et la story s'arrête là.** |
+| **Deux durées** | deux tirs `flash on` de rapport **≥ 3** (~10 s et ~35 s), `flush reset` entre | deux séries dont le **rapport suit celui des durées**. ⛔ Un écrêtage ou une saturation se verrait **ici**. |
+| **Régime réel** | **≥ 3 × 180 s** sous **AGENT RÉEL** (⛔ jamais l'injecteur : facteur **108** sur le dessin), bras alternés, **dispersion publiée** | la plus longue série doit être **COURTE** (le glissement périodique est corrigé ; il reste ~130-150 corruptions / 180 s, mais **isolées**). 🎯 **Une série longue en régime nominal serait le permanent desync PRIS SUR LE FAIT** — et cette story **n'a pas le droit de le fabriquer.** |
+| **Coût en marge de famine** | même protocole avant/après : pire déficit, les 4 seaux, CORRUPTION | ⛔ **à MESURER, pas à déduire** — voir §20ter.8. |
+| **La nuit** | protocole §24.16.1 (agent → WSL **ne reboote pas**) | ⚠️ **asymétrie écrite AVANT le résultat** : série **COURTE ⇒ CONCLUANT a fortiori** (le biais sur-compte) · série **LONGUE ⇒ ⛔ NON CONCLUANT** sans vérifier la référence (symptôme : **le seau 10 % vaut presque `n`**) ⇒ la nuit se **rejoue**, elle ne se **conclut** pas. |
+
+### 20ter.7 ✅ LA GATE HÔTE — `tools/verif_serie_dn412.py`, **50 OK / 0 KO**
+
+**Archetype B : elle COMPILE et APPELLE le produit**, ⛔ elle ne relit pas du source. **Deux étages,
+et les deux sont le produit** :
+
+- **étage 1** — `dn_measure_serie.h` compilé seul, ses trois fonctions appelées directement. C'est
+  le **seul** étage qui peut exercer la **classe F** (`ph_dechire`) : son déclencheur est que
+  `s_bnc_wraps` change **entre les deux lectures `w` et `w2`, à l'intérieur de l'ISR**, et il
+  n'existe **aucun point d'entrée de coquille entre ces deux lignes**. C'est exactement le sort de
+  `ph_futur`, déclaré *« JAMAIS VU BOUGER »* par `dn4-10` — **et c'est la raison qui a fait choisir
+  l'unité pure** ;
+- **étage 2** — `dn_measure.c` **compilé en entier**, sa **vraie `on_vsync`** appelée via les
+  callbacks que `dn_measure_attach()` enregistre. C'est lui qui prouve **le BRANCHEMENT** : un
+  étage 1 vert avec un branchement faux serait une gate *« verte sur du code faux »*, et le dépôt en
+  a déjà épinglé une.
+
+🎯 **La table `SHIMS` (16 coquilles) est REPRISE de `verif_rebouclage_dn45.py`, ⛔ pas réinventée.**
+
+**CINQ MUTANTS, CHACUN VU ROUGIR**, tous dans la passe nominale (⛔ aucun derrière un drapeau
+optionnel qu'aucun runner ne passe) :
+
+| Mutant | Ce qu'il casse | **Ce qu'on l'a vu faire** |
+|---|---|---|
+| **M1** | l'écrêtage posé **AVANT** le comptage (le défaut exact de `dn_hist_rattraper()`) | **200 et 700 trames rendent LE MÊME nombre (121)** — la durée est effacée avant d'être comptée |
+| **M2** | la classe **C** **rompt** au lieu de continuer (D2 renversée) | 7 trames hors borne rendent **max = 0** : **zéro pendant que l'écran est figé** |
+| **M3** | une **indéterminée** continue la série en silence | `rompues = 0` au lieu de 3, **et la série GONFLE de 2 à 6** : la durée est **FABRIQUÉE** |
+| **M4** | un champ neuf **oublié dans la branche RAZ** | un champ ne revient pas à zéro ⇒ **le témoin n'est plus rejouable** |
+| **M5** | un champ neuf **non traduisible** par le miroir `ctypes` | `verif_rebouclage_dn45.py` **CRIE et NOMME le champ**, ⛔ ne meurt pas en silence — **les DEUX chemins** de refus sont épinglés (tableau **et** type non mappé) |
+
+⚠️ **UN CONTRÔLE DE CETTE GATE A ÉTÉ REFAIT PARCE QU'IL NE SAVAIT PAS CRIER.** La première version
+de *« ⛔ aucune division dans `on_vsync` »* passait un `re.sub` inutile et **n'avait jamais été vue
+rougir** : elle aurait pu être verte pour la mauvaise raison. Elle a **son témoin négatif** désormais.
+⚠️ **Et le critère du mutant M1 était faux à UNE UNITÉ PRÈS** : il exigeait un plafond de `120` là où
+la mutation en produit `121`. ⛔ **La propriété à épingler n'est pas la valeur du plafond, c'est que
+deux durées de rapport 3,5 cessent de se distinguer** — le critère a été réécrit sur la propriété.
+
+⛔ **CE QUE CETTE GATE NE PROUVE PAS**, écrit dans son en-tête : **rien** sur le comportement sous
+**ISR réelle** (ici les callbacks sont appelés depuis une tâche Linux, en séquence, sans préemption
+ni cache coupé) · **rien** sur la **concurrence** (l'invariant « un seul écrivain » est vérifié **par
+lecture**, ⛔ pas par course) · **rien** sur les **valeurs de phase produites par le silicium**.
+
+### 20ter.8 🔴 LE COÛT, **LU DANS LE `.map`**, ⛔ PAS ESTIMÉ
+
+**Deux builds**, sources pristine puis modifiées, `idf.py reconfigure` **avant chacun**.
+
+| grandeur | AVANT | APRÈS | écart |
+|---|---|---|---|
+| `.bss` de `dn_measure.c.obj` | 218 o | 266 o | **+48 o** |
+| `.iram1` (🔴 **`on_vsync`**, résidente) | 1 433 o | 1 789 o | **+356 o** |
+| `.text` flash de `dn_measure.c.obj` | 2 457 o | 2 687 o | +230 o |
+| **`.rodata` de `dn_measure.c.obj`** | 2 336 o | 2 336 o | ✅ **+0** |
+| `.text` de `dn_console.c.obj` | 46 076 o | 46 568 o | +492 o |
+| `.rodata` de `dn_console.c.obj` | 151 250 o | 155 582 o | +4 332 o |
+| **image `desknode.bin`** | **1 179 984 o** | **1 185 568 o** | **+5 584 o (+0,473 %)** |
+
+🎯 **LA PRÉDICTION `.bss` ÉTAIT ÉCRITE AVANT LA MESURE : 48 octets (12 `uint32_t`). MESURE : 48
+octets. ÉCART NUL.** ⛔ La prédiction n'a pas été réécrite pour tomber juste — c'est l'écart qui
+s'écrit, et il est nul. Repère : tout le compteur de `dn4-10` coûte **74 o**.
+
+✅ **`.rodata` de `dn_measure.c` : +0.** C'est la conséquence directe du choix `#define` plutôt que
+`static const` — **aucun accès `.rodata` ajouté depuis l'ISR**, et la `.rodata` vit en flash, que
+l'ISR peut lire **cache coupé** pendant une écriture flash.
+
+🔴 **ET VOICI LE FAIT QUI COMPTE POUR §26 : LA CROISSANCE DU CHEMIN CHAUD EST EN IRAM, ⛔ PAS EN
+FLASH CACHÉE.** `on_vsync` est `IRAM_ATTR` ; ses **+356 octets** vivent dans une mémoire **toujours
+résidente**, qui **ne subit pas de défaut de cache**. Le mécanisme de §26 — du code réparti dans les
+fonctions, cherché en flash à travers le cache, en concurrence avec la DMA — **ne s'applique donc
+pas à `on_vsync` lui-même**.
+
+> ⛔ **ET CE N'EST PAS UNE CONCLUSION : C'EST UNE HYPOTHÈSE QUI RESTE À MESURER.** §26 a été établi
+> **par la mesure**, et **par un temoin qui a réfuté l'intuition volumétrique** (1 236 octets de
+> `.text` MORT rendant une image plus grosse **et** la fenêtre la plus propre de la campagne). Un
+> raisonnement sur le placement **ne remplace pas** un relevé avant/après sous agent réel. **C'est
+> le tir « coût en marge de famine » de §20ter.6, et il n'a pas eu lieu.**
+> ⚠️ **Rappel du repère de sensibilité** : le coût des 17 correctifs de `dn4-5` s'est révélé **non
+> distinguable de zéro** (Δ ≤ 0,1 pt sur 24 % de charge, **de signe opposé à un coût réel**), et
+> l'étendue de référence est **0,05 pt** sur n = 3. ⇒ ⛔ **ne rien conclure d'un Δ inférieur à
+> l'étendue**, et ⛔ **ne pas comparer à un échantillon unique**.
+
+⚠️ **Les +4 332 o de `.rodata` de `dn_console.c` sont les CHAÎNES du bloc de tête.** `dn_console.c`
+n'est **pas** sur le chemin chaud : ce coût est en flash, payé une fois à l'image, ⛔ pas par trame.
+
+✅ **Le témoin a survécu au linker** : `.bss.s_bnc_serie` **48 o** est présent dans le `.map`.
+C'est la vérification qu'exige `dn4-22`, qui avait **brûlé un arm** parce qu'un témoin de 1 064
+octets avait été **supprimé par `--gc-sections`** — `__attribute__((used))` retient le
+**compilateur**, ⛔ **pas** le linker.
+
+### 20ter.9 ⛔ CE QUE CET INSTRUMENT NE PROUVE PAS — ET NE POURRA PAS PROUVER
+
+1. 🔴 **LE NOMBRE DE RELANCES RÉELLEMENT JOUÉES PAR LE DRIVER RESTE INOBSERVABLE** à
+   `RESTART_IN_VSYNC=n` : il relance **en interne sans passer par `need_restart`**
+   (`esp_lcd_panel_rgb.c:1153-1163`), donc `recal` compte **1** (l'amorçage) et rien d'autre
+   (§20bis.8). ⇒ **contrainte de conception : on mesure la PERSISTANCE DE L'ÉTAT, ⛔ jamais l'échec
+   de relance.**
+2. **Plancher = la microseconde = 16 pixels** à `pclk = 16 MHz`. ⛔ « 0 » **ne veut pas dire**
+   « 0 pixel ».
+3. **Un retard COMMUN aux deux ISR s'annule et reste invisible** — l'horodatage de référence vient
+   lui aussi d'une ISR.
+4. **La plus longue série est un MINORANT** : E, F et G rompent, donc une série vraie a pu être
+   **coupée en deux**. Le nombre de ces coupures est publié — ⛔ **il ne se soustrait pas et ne se
+   recompose pas**.
+5. **Une nuit n'est pas une semaine.** Le soak 7 jours reste à `dn4-5` ; une nuit **arme** le
+   critère n°1 du brief, elle **ne le coche pas**.
+6. ⚠️ **À `bounce_px < 480` la classe A n'existe plus** et la ligne est **REFUSÉE**, ⛔ pas imprimée
+   à zéro (*« un zéro se lirait "aucune corruption" »*). Le refus **dit laquelle des trois classes
+   est perdue** : **C** et **D** restent comptables, seule **A** disparaît.
+7. ⚠️ **Le 3ᵉ mode de défaillance de `bounce_px = 0`** (*« décalé verticalement + ça défile à toute
+   vitesse horizontalement »*) reste **constaté et non caractérisé** — hors périmètre.
 
 ## 21. `dn4-9` / AC8 — LE CONSTAT OWNER À L'ŒIL, 2026-08-22, firmware `38c3b99`
 
