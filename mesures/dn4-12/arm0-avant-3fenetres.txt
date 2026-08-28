@@ -1,0 +1,261 @@
+════════════════════════════════════════════════════════════════
+  dn4-12 — ARM0/AVANT e3064f0 — fenetre 1/3
+  date              : 2026-08-29T00:09:55+02:00
+  duree de fenetre  : 300 s (⛔ MEME duree sur tous les bras)
+  stimulus          : AGENT REEL (dn_agent.py, COM3)
+  temoin agent      : debut=1 vivant(s) · fin=1 vivant(s)
+  flush reset       : ⛔ AUCUN — reference SEMEE AU BOOT (le rendre a
+                      l'agent reboote : les deux sont exclusifs)
+  port              : repris agent -> WSL, ⛔ AUCUN reboot
+════════════════════════════════════════════════════════════════
+───────── flush ─────────
+
+$ flush
+─── glissement de trame (dn4-10) — fenêtre 321293 ms ───
+  trames (vsync)   : 11934 · enroulements : 11934
+  trames SANS enroulement : 0 · à deux ou plus : 0
+  intervalle vsync→vsync : n=11933 · min 26722 · moy 26737 · MAX 26753 us
+     (période théorique 26737,500 us = 620 x 690 / 16000000 Hz)
+     retard PIRE observé : +15 us sur la période
+  ISR en retard de plus de : +100 us 0 · +775 us (back porch) 0 · +1938 us (VBlank) 0 · une trame 0
+  🎯 phase enroulement→VSYNC_END : n=11902 · min 2145 · moy 2256 · MAX 2272 us   (+32 trames de dégrossissage, ⛔ HORS de ces trois statistiques)
+     une phase COURTE = l'enroulement EN RETARD = le remplissage du bounce qui décroche.
+     référence des déficits (FIGÉE après dégrossissage) : 2262 us · 1 ligne = 39 us
+     ⚠️ MAX (2272) > référence (2262) : les déficits ci-dessous sont SOUS-comptés de 10 us.
+        ⛔ CETTE LIGNE EST QUASI-CERTAINE, ce n'est PAS un signal : la référence est le MAX de 32 trames, le MAX porte sur 11902. Un `flush reset` au repos ne la lèvera pas.
+        🎯 CE QU'ELLE AUTORISE : un seuil FRANCHI l'est a fortiori (le vrai déficit est plus grand). ⛔ CE QU'ELLE INTERDIT : comparer deux déficits entre eux — ils portent le même biais.
+     🔴 DÉFICIT PIRE sous la référence : 117 us, pour un demi-bounce qui s'écoule en 775 us
+        ⇒ sous le seuil, il restait 658 us de marge (84 % du demi-bounce)
+     trames dont le déficit dépasse : 10 % 16 · 25 % 0 · 50 % 0 · 🔴 100 % (CORRUPTION) 0
+     ⛔ CUMULS EMBOÎTÉS, ⛔ pas des paliers disjoints : un déficit > 100 % compte dans LES QUATRE. Ne pas les sommer.
+     ⚠️ PLANCHER : la microseconde, soit 16 px. ⛔ « 0 » ici ne veut PAS dire « 0 pixel ».
+     ⚠️ L'horodatage de référence vient LUI AUSSI d'une ISR : un retard COMMUN aux deux s'annule et reste invisible.
+  ce que ça veut dire : RESTART_IN_VSYNC=**n** dans CE binaire.
+     Le driver ne remet PLUS la DMA à zéro à chaque VBlank — et
+     c'est ce reset-là, quand l'ISR était en retard, qui
+     DÉCALAIT l'image (esp_lcd_panel_rgb.c:1142-1148). Le
+     glissement périodique est fermé par là (`4734d07`).
+     ⛔ CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT :
+     à `n` c'est le DÉPASSEMENT du seuil qui suit l'œil, pas le
+     compte. Le budget de l'ISR reste le back porch, 775 us —
+     pas le VBlank entier (1938 us), car VSYNC_END tombe à la FIN
+     de l'impulsion.
+     ⚠️ le driver garde SA propre relance sur famine avérée
+     (esp_lcd_panel_rgb.c:1153-1163), compilée dans ce binaire.
+  ⛔ un compteur à zéro ne prouve RIEN tant que le témoin ne
+     l'a pas fait bouger, et la correspondance avec l'œil est
+     un RÉSULTAT à établir, pas une hypothèse. ⛔ `fps` reste
+     aveugle à ce défaut : il MOYENNE, et la gigue s'y efface.
+────────────────────────────────────────────────────────────
+rendu : PARTIEL · synchro : vsync · chemin : bitmap
+draw buffer : 480 x 128 px (122880 o) en RAM interne DMA
+flushes            : 1620
+cycles de redessin : 1001
+aire cumulée       : 59437399 px
+  => 36689 px par flush en moyenne (écran plein = 307200 px, soit 11.94 %)
+  => 59378 px et 1.6 flush(es) par CYCLE de redessin
+     (le CYCLE est l'unité qui compte : c'est ce qu'une mise à
+      jour du label coûte réellement, flushes multiples inclus.)
+plus grande aire   : 61440 px
+copie              : 4318725 us cumulés, 2665 us/flush en moyenne, 6242 us au pire
+attente de synchro : 26054695 us cumulés, 16083 us/flush en moyenne
+   (comptée À PART de la copie : sinon « le flush coûte 27 ms » se
+    lirait comme un problème de bande passante alors que c'est la
+    synchro qui attend sa trame — 26,7 ms de période.)
+⚠️ 5 synchro(s) EXPIRÉE(S) : pour ces flushes-là, le mode
+   annoncé n'a PAS été appliqué. Toute comparaison A/B qui les
+   inclut compare partiellement « rien » à « rien ».
+rappel : redessiner l'écran ENTIER coûte 36,8 ms de memcpy PSRAM (§5.4),
+   pour 26,7 ms de période de trame — 1,4x TROP LENT. Les zones
+   sales ne sont pas une élégance, c'est la seule voie qui tient.
+───────── cfg ─────────
+
+$ cfg
+config de boot (NVS) : num_fbs=1 bounce_px=9600 draw_lines=128 draw_psram=0 lvgl_core=0
+config ACTIVE        : num_fbs=1 bounce_px=9600 draw_lines=128 draw_psram=0 lvgl_core=0
+⚠️ un `set` ne prend effet qu'au `reboot` : les framebuffers sont
+   alloués une fois, au démarrage. C'est voulu — réallouer à chaud
+   laisserait une PSRAM fragmentée et fausserait la mesure suivante.
+`cfg reset` efface la config NVS et rend les défauts au prochain boot.
+════════════════════════════════════════════════════════════════
+  dn4-12 — ARM0/AVANT e3064f0 — fenetre 2/3
+  date              : 2026-08-29T00:15:51+02:00
+  duree de fenetre  : 300 s (⛔ MEME duree sur tous les bras)
+  stimulus          : AGENT REEL (dn_agent.py, COM3)
+  temoin agent      : debut=1 vivant(s) · fin=1 vivant(s)
+  flush reset       : ⛔ AUCUN — reference SEMEE AU BOOT (le rendre a
+                      l'agent reboote : les deux sont exclusifs)
+  port              : repris agent -> WSL, ⛔ AUCUN reboot
+════════════════════════════════════════════════════════════════
+───────── flush ─────────
+
+$ flush
+ug/JTAG)
+Unrecognized command
+───────── cfg ─────────
+
+$ cfg
+config de boot (NVS) : num_fbs=1 bounce_px=9600 draw_lines=128 draw_psram=0 lvgl_core=0
+config ACTIVE        : num_fbs=1 bounce_px=9600 draw_lines=128 draw_psram=0 lvgl_core=0
+⚠️ un `set` ne prend effet qu'au `reboot` : les framebuffers sont
+   alloués une fois, au démarrage. C'est voulu — réallouer à chaud
+   laisserait une PSRAM fragmentée et fausserait la mesure suivante.
+`cfg reset` efface la config NVS et rend les défauts au prochain boot.
+════════════════════════════════════════════════════════════════
+  dn4-12 — ARM0/AVANT e3064f0 — fenetre 3/3
+  date              : 2026-08-29T00:21:20+02:00
+  duree de fenetre  : 300 s (⛔ MEME duree sur tous les bras)
+  stimulus          : AGENT REEL (dn_agent.py, COM3)
+  temoin agent      : debut=1 vivant(s) · fin=1 vivant(s)
+  flush reset       : ⛔ AUCUN — reference SEMEE AU BOOT (le rendre a
+                      l'agent reboote : les deux sont exclusifs)
+  port              : repris agent -> WSL, ⛔ AUCUN reboot
+════════════════════════════════════════════════════════════════
+───────── flush ─────────
+
+$ flush
+─── glissement de trame (dn4-10) — fenêtre 321193 ms ───
+  trames (vsync)   : 11930 · enroulements : 11930
+  trames SANS enroulement : 0 · à deux ou plus : 0
+  intervalle vsync→vsync : n=11929 · min 26728 · moy 26737 · MAX 26747 us
+     (période théorique 26737,500 us = 620 x 690 / 16000000 Hz)
+     retard PIRE observé : +9 us sur la période
+  ISR en retard de plus de : +100 us 0 · +775 us (back porch) 0 · +1938 us (VBlank) 0 · une trame 0
+  🎯 phase enroulement→VSYNC_END : n=11898 · min 2139 · moy 2256 · MAX 2264 us   (+32 trames de dégrossissage, ⛔ HORS de ces trois statistiques)
+     une phase COURTE = l'enroulement EN RETARD = le remplissage du bounce qui décroche.
+     référence des déficits (FIGÉE après dégrossissage) : 2262 us · 1 ligne = 39 us
+     ⚠️ MAX (2264) > référence (2262) : les déficits ci-dessous sont SOUS-comptés de 2 us.
+        ⛔ CETTE LIGNE EST QUASI-CERTAINE, ce n'est PAS un signal : la référence est le MAX de 32 trames, le MAX porte sur 11898. Un `flush reset` au repos ne la lèvera pas.
+        🎯 CE QU'ELLE AUTORISE : un seuil FRANCHI l'est a fortiori (le vrai déficit est plus grand). ⛔ CE QU'ELLE INTERDIT : comparer deux déficits entre eux — ils portent le même biais.
+     🔴 DÉFICIT PIRE sous la référence : 123 us, pour un demi-bounce qui s'écoule en 775 us
+        ⇒ sous le seuil, il restait 652 us de marge (84 % du demi-bounce)
+     trames dont le déficit dépasse : 10 % 33 · 25 % 0 · 50 % 0 · 🔴 100 % (CORRUPTION) 0
+     ⛔ CUMULS EMBOÎTÉS, ⛔ pas des paliers disjoints : un déficit > 100 % compte dans LES QUATRE. Ne pas les sommer.
+     ⚠️ PLANCHER : la microseconde, soit 16 px. ⛔ « 0 » ici ne veut PAS dire « 0 pixel ».
+     ⚠️ L'horodatage de référence vient LUI AUSSI d'une ISR : un retard COMMUN aux deux s'annule et reste invisible.
+  ce que ça veut dire : RESTART_IN_VSYNC=**n** dans CE binaire.
+     Le driver ne remet PLUS la DMA à zéro à chaque VBlank — et
+     c'est ce reset-là, quand l'ISR était en retard, qui
+     DÉCALAIT l'image (esp_lcd_panel_rgb.c:1142-1148). Le
+     glissement périodique est fermé par là (`4734d07`).
+     ⛔ CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT :
+     à `n` c'est le DÉPASSEMENT du seuil qui suit l'œil, pas le
+     compte. Le budget de l'ISR reste le back porch, 775 us —
+     pas le VBlank entier (1938 us), car VSYNC_END tombe à la FIN
+     de l'impulsion.
+     ⚠️ le driver garde SA propre relance sur famine avérée
+     (esp_lcd_panel_rgb.c:1153-1163), compilée dans ce binaire.
+  ⛔ un compteur à zéro ne prouve RIEN tant que le témoin ne
+     l'a pas fait bouger, et la correspondance avec l'œil est
+     un RÉSULTAT à établir, pas une hypothèse. ⛔ `fps` reste
+     aveugle à ce défaut : il MOYENNE, et la gigue s'y efface.
+────────────────────────────────────────────────────────────
+rendu : PARTIEL · synchro : vsync · chemin : bitmap
+draw buffer : 480 x 128 px (122880 o) en RAM interne DMA
+flushes            : 1617
+cycles de redessin : 957
+aire cumulée       : 59292899 px
+  => 36668 px par flush en moyenne (écran plein = 307200 px, soit 11.94 %)
+  => 61957 px et 1.7 flush(es) par CYCLE de redessin
+     (le CYCLE est l'unité qui compte : c'est ce qu'une mise à
+      jour du label coûte réellement, flushes multiples inclus.)
+plus grande aire   : 61440 px
+copie              : 4305103 us cumulés, 2662 us/flush en moyenne, 6242 us au pire
+attente de synchro : 25749202 us cumulés, 15924 us/flush en moyenne
+   (comptée À PART de la copie : sinon « le flush coûte 27 ms » se
+    lirait comme un problème de bande passante alors que c'est la
+    synchro qui attend sa trame — 26,7 ms de période.)
+⚠️ 5 synchro(s) EXPIRÉE(S) : pour ces flushes-là, le mode
+   annoncé n'a PAS été appliqué. Toute comparaison A/B qui les
+   inclut compare partiellement « rien » à « rien ».
+rappel : redessiner l'écran ENTIER coûte 36,8 ms de memcpy PSRAM (§5.4),
+   pour 26,7 ms de période de trame — 1,4x TROP LENT. Les zones
+   sales ne sont pas une élégance, c'est la seule voie qui tient.
+───────── cfg ─────────
+
+$ cfg
+config de boot (NVS) : num_fbs=1 bounce_px=9600 draw_lines=128 draw_psram=0 lvgl_core=0
+config ACTIVE        : num_fbs=1 bounce_px=9600 draw_lines=128 draw_psram=0 lvgl_core=0
+⚠️ un `set` ne prend effet qu'au `reboot` : les framebuffers sont
+   alloués une fois, au démarrage. C'est voulu — réallouer à chaud
+   laisserait une PSRAM fragmentée et fausserait la mesure suivante.
+`cfg reset` efface la config NVS et rend les défauts au prochain boot.
+════════════════════════════════════════════════════════════════
+  dn4-12 — ARM0/AVANT e3064f0 — fenetre 2/3 (REJOUEE, la 1re a ete perdue a la lecture)
+  date              : 2026-08-29T00:27:48+02:00
+  duree de fenetre  : 300 s (⛔ MEME duree sur tous les bras)
+  stimulus          : AGENT REEL (dn_agent.py, COM3)
+  temoin agent      : debut=1 vivant(s) · fin=1 vivant(s)
+  flush reset       : ⛔ AUCUN — reference SEMEE AU BOOT (le rendre a
+                      l'agent reboote : les deux sont exclusifs)
+  port              : repris agent -> WSL, ⛔ AUCUN reboot
+════════════════════════════════════════════════════════════════
+───────── flush (lecture GARDEE : marqueur exige) ─────────
+
+$ flush
+─── glissement de trame (dn4-10) — fenêtre 321733 ms ───
+  trames (vsync)   : 11950 · enroulements : 11950
+  trames SANS enroulement : 0 · à deux ou plus : 0
+  intervalle vsync→vsync : n=11949 · min 26730 · moy 26737 · MAX 26745 us
+     (période théorique 26737,500 us = 620 x 690 / 16000000 Hz)
+     retard PIRE observé : +7 us sur la période
+  ISR en retard de plus de : +100 us 0 · +775 us (back porch) 0 · +1938 us (VBlank) 0 · une trame 0
+  🎯 phase enroulement→VSYNC_END : n=11918 · min 2141 · moy 2256 · MAX 2264 us   (+32 trames de dégrossissage, ⛔ HORS de ces trois statistiques)
+     une phase COURTE = l'enroulement EN RETARD = le remplissage du bounce qui décroche.
+     référence des déficits (FIGÉE après dégrossissage) : 2262 us · 1 ligne = 39 us
+     ⚠️ MAX (2264) > référence (2262) : les déficits ci-dessous sont SOUS-comptés de 2 us.
+        ⛔ CETTE LIGNE EST QUASI-CERTAINE, ce n'est PAS un signal : la référence est le MAX de 32 trames, le MAX porte sur 11918. Un `flush reset` au repos ne la lèvera pas.
+        🎯 CE QU'ELLE AUTORISE : un seuil FRANCHI l'est a fortiori (le vrai déficit est plus grand). ⛔ CE QU'ELLE INTERDIT : comparer deux déficits entre eux — ils portent le même biais.
+     🔴 DÉFICIT PIRE sous la référence : 121 us, pour un demi-bounce qui s'écoule en 775 us
+        ⇒ sous le seuil, il restait 654 us de marge (84 % du demi-bounce)
+     trames dont le déficit dépasse : 10 % 30 · 25 % 0 · 50 % 0 · 🔴 100 % (CORRUPTION) 0
+     ⛔ CUMULS EMBOÎTÉS, ⛔ pas des paliers disjoints : un déficit > 100 % compte dans LES QUATRE. Ne pas les sommer.
+     ⚠️ PLANCHER : la microseconde, soit 16 px. ⛔ « 0 » ici ne veut PAS dire « 0 pixel ».
+     ⚠️ L'horodatage de référence vient LUI AUSSI d'une ISR : un retard COMMUN aux deux s'annule et reste invisible.
+  ce que ça veut dire : RESTART_IN_VSYNC=**n** dans CE binaire.
+     Le driver ne remet PLUS la DMA à zéro à chaque VBlank — et
+     c'est ce reset-là, quand l'ISR était en retard, qui
+     DÉCALAIT l'image (esp_lcd_panel_rgb.c:1142-1148). Le
+     glissement périodique est fermé par là (`4734d07`).
+     ⛔ CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT :
+     à `n` c'est le DÉPASSEMENT du seuil qui suit l'œil, pas le
+     compte. Le budget de l'ISR reste le back porch, 775 us —
+     pas le VBlank entier (1938 us), car VSYNC_END tombe à la FIN
+     de l'impulsion.
+     ⚠️ le driver garde SA propre relance sur famine avérée
+     (esp_lcd_panel_rgb.c:1153-1163), compilée dans ce binaire.
+  ⛔ un compteur à zéro ne prouve RIEN tant que le témoin ne
+     l'a pas fait bouger, et la correspondance avec l'œil est
+     un RÉSULTAT à établir, pas une hypothèse. ⛔ `fps` reste
+     aveugle à ce défaut : il MOYENNE, et la gigue s'y efface.
+────────────────────────────────────────────────────────────
+rendu : PARTIEL · synchro : vsync · chemin : bitmap
+draw buffer : 480 x 128 px (122880 o) en RAM interne DMA
+flushes            : 1624
+cycles de redessin : 952
+aire cumulée       : 59582999 px
+  => 36689 px par flush en moyenne (écran plein = 307200 px, soit 11.94 %)
+  => 62587 px et 1.7 flush(es) par CYCLE de redessin
+     (le CYCLE est l'unité qui compte : c'est ce qu'une mise à
+      jour du label coûte réellement, flushes multiples inclus.)
+plus grande aire   : 61440 px
+copie              : 4318681 us cumulés, 2659 us/flush en moyenne, 6242 us au pire
+attente de synchro : 25881016 us cumulés, 15936 us/flush en moyenne
+   (comptée À PART de la copie : sinon « le flush coûte 27 ms » se
+    lirait comme un problème de bande passante alors que c'est la
+    synchro qui attend sa trame — 26,7 ms de période.)
+⚠️ 5 synchro(s) EXPIRÉE(S) : pour ces flushes-là, le mode
+   annoncé n'a PAS été appliqué. Toute comparaison A/B qui les
+   inclut compare partiellement « rien » à « rien ».
+rappel : redessiner l'écran ENTIER coûte 36,8 ms de memcpy PSRAM (§5.4),
+   pour 26,7 ms de période de trame — 1,4x TROP LENT. Les zones
+   sales ne sont pas une élégance, c'est la seule voie qui tient.
+───────── cfg ─────────
+
+$ cfg
+config de boot (NVS) : num_fbs=1 bounce_px=9600 draw_lines=128 draw_psram=0 lvgl_core=0
+config ACTIVE        : num_fbs=1 bounce_px=9600 draw_lines=128 draw_psram=0 lvgl_core=0
+⚠️ un `set` ne prend effet qu'au `reboot` : les framebuffers sont
+   alloués une fois, au démarrage. C'est voulu — réallouer à chaud
+   laisserait une PSRAM fragmentée et fausserait la mesure suivante.
+`cfg reset` efface la config NVS et rend les défauts au prochain boot.

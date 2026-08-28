@@ -1,0 +1,1099 @@
+
+════════ T1 — flash on SEUL, 60 s (re-confirmation) ════════  2026-08-29T00:36:51+02:00
+
+$ flush reset
+compteurs de flush remis à zéro.
+compteurs de GLISSEMENT (dn4-10) armés : la remise à zéro est
+   consommée par l'ISR au prochain vsync (<= 27 ms), pas ici.
+  -> flash on
+
+$ flash on
+⚠️ COMBINAISON JAMAIS MESURÉE : bounce_px=9600 + stimulus flash.
+   L'ISR qui réalimente le bounce buffer est MASQUÉE pendant
+   l'effacement de secteur (ISR_IRAM_SAFE=n). Si l'image se
+   corrompt, c'est CE couplage — pas la dalle, et pas la
+   famine DMA de §11.4, qui est un autre régime.
+   §5.3 : question OUVERTE, D4 en vigueur. Consigner le
+   constat, quel qu'il soit. `set bounce 0` + `reboot` pour
+   retrouver le régime de dn1-3.
+stimulus flash lancé sur « stimulus » (1048576 o à 0x510000).
+Décrire ce qu'on VOIT, précisément :
+  rien ? une ligne ? un flash de toute la dalle ?
+  une image décalée EN PERMANENCE (la DMA a décroché) ?
+I (490303) dn_stim: stimulus FLASH démarré : effacement+écriture de secteurs de 4096 o, en boucle, sur la partition « stimulus » (1048576 o à 0x510000), sans pause entre deux secteurs.
+
+$ flash
+stimulus flash : EN COURS — 2468 secteurs, 10108928 o, 167806 o/s
+
+$ off
+Unrecognized command
+
+$ flush
+─── glissement de trame (dn4-10) — fenêtre 63408 ms ───
+  🎯 CE QUI SUIT L'ŒIL — LE TRIPLET DE TÊTE (dn4-12)
+   ① PLUS LONGUE SÉRIE de trames CONSÉCUTIVES NON SAINES : 0 trames ≈ 0 ms
+        composition : 0 déficit franchi (A) · 0 hors borne de sanité (C) · 0 sans enroulement (D)
+        commencée à la trame #0 depuis la RAZ · 0 série(s) au total
+        série en cours : aucune (la dernière trame était SAINE ou INDÉTERMINÉE).
+        ⚠️ MINORANT : 0 série(s) rompue(s) par une trame INDÉTERMINÉE (horodatage postérieur · paire déchirée · 2+ enroulements) — une série vraie a pu être COUPÉE EN DEUX.
+           ⛔ ce nombre NE SE SOUSTRAIT PAS et NE SE RECOMPOSE PAS : il BORNE la confiance, il ne corrige rien.
+        ⚠️ la classe A ne peut pas commencer avant la 32e trame (dégrossissage) : avant, aucun déficit n'est calculable. C et D, elles, comptent dès la 1re.
+        ⛔ ZÉRO NE PROUVE RIEN tant que le témoin ne l'a pas fait bouger : `flash on` doit rendre plusieurs CENTAINES de trames, dominées par la classe D.
+   ② DISTRIBUTION des déficits (sur n=2339 trames comptées) : 10 % 0 · 25 % 0 · 50 % 0 · 🔴 100 % (CORRUPTION) 0
+        ⛔ CUMULS EMBOÎTÉS, ⛔ pas des paliers disjoints : un déficit > 100 % compte dans LES QUATRE. Ne pas les sommer.
+        🎯 c'est la DISTRIBUTION qui est le signal FIABLE (dn4-22), ⛔ pas le maximum de ③.
+   ③ 🔴 DÉFICIT PIRE sous la référence : 12 µs, pour un demi-bounce qui s'écoule en 775 µs
+        ⇒ sous le seuil, il restait 763 µs de marge (98 % du demi-bounce)
+        ⛔ RÉFUTATION, ET ELLE EST MESURÉE : c'est un MAX — UN SEUL POINT ABERRANT LE DÉPLACE. dn4-22/ARM 5 rend 1 300 µs pour UNE corruption, contre 896 µs pour 245 chez `f7be23c`.
+           ⇒ à lire comme un ORDRE DE GRANDEUR, ⛔ PAS comme un discriminateur entre deux fenêtres. Le signal, c'est ②.
+  ── LE COMPTE, EN SECOND ─────────────────────────────
+  corruptions (déficit > 100 % du demi-bounce) : 0
+     ⚠️ RÉSERVE — voir « CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT » en fin de bloc. Le chiffre qui l'établit : 143 corruptions AVANT COMME APRÈS le correctif du 2026-08-23,
+        pendant que l'œil passait de « ça glisse » à « plus de glissement ». ⇒ ce compte NE SUIT PLUS L'ŒIL ; ① et ② sont là pour ça.
+  ── COMPARABILITÉ (les cinq chiffres, dn4-22/AC3.2) ──
+     ph_ref 2261 µs · ph_max 2268 µs · ph_n 2339 · dégrossissage 32 trames · demi-bounce 775 µs
+     dernière RAZ : 4 consommée(s) depuis le boot · la fenêtre ci-dessus (63408 ms) court depuis la dernière.
+  ─────────────────────────────────────────────────────
+  trames (vsync)   : 2371 · enroulements : 2371
+  trames SANS enroulement : 0 · à deux ou plus : 0
+  intervalle vsync→vsync : n=2370 · min 26727 · moy 26737 · MAX 26749 us
+     (période théorique 26737,500 us = 620 x 690 / 16000000 Hz)
+     retard PIRE observé : +11 us sur la période
+  ISR en retard de plus de : +100 us 0 · +775 us (back porch) 0 · +1938 us (VBlank) 0 · une trame 0
+  🎯 phase enroulement→VSYNC_END : n=2339 · min 2249 · moy 2255 · MAX 2268 us   (+32 trames de dégrossissage, ⛔ HORS de ces trois statistiques)
+     une phase COURTE = l'enroulement EN RETARD = le remplissage du bounce qui décroche.
+     référence des déficits (FIGÉE après dégrossissage) : 2261 us · 1 ligne = 39 us
+     ⚠️ MAX (2268) > référence (2261) : les déficits ci-dessous sont SOUS-comptés de 7 us.
+        ⛔ CETTE LIGNE EST QUASI-CERTAINE, ce n'est PAS un signal : la référence est le MAX de 32 trames, le MAX porte sur 2339. Un `flush reset` au repos ne la lèvera pas.
+        🎯 CE QU'ELLE AUTORISE : un seuil FRANCHI l'est a fortiori (le vrai déficit est plus grand). ⛔ CE QU'ELLE INTERDIT : comparer deux déficits entre eux — ils portent le même biais.
+     ⚠️ PLANCHER : la microseconde, soit 16 px. ⛔ « 0 » ici ne veut PAS dire « 0 pixel ».
+     ⚠️ L'horodatage de référence vient LUI AUSSI d'une ISR : un retard COMMUN aux deux s'annule et reste invisible.
+  ce que ça veut dire : RESTART_IN_VSYNC=**n** dans CE binaire.
+     Le driver ne remet PLUS la DMA à zéro à chaque VBlank — et
+     c'est ce reset-là, quand l'ISR était en retard, qui
+     DÉCALAIT l'image (esp_lcd_panel_rgb.c:1142-1148). Le
+     glissement périodique est fermé par là (`4734d07`).
+     ⛔ CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT :
+     à `n` c'est le DÉPASSEMENT du seuil qui suit l'œil, pas le
+     compte.
+     ⚠️ AMENDÉ le 2026-08-28 (dn4-12/D3) : le dépassement seul
+     NE SUFFIT PAS — c'est un MAX, qu'UN SEUL point aberrant
+     déplace (dn4-22 : 1 300 us pour UNE corruption contre 896
+     pour 245). La tête de bloc est un TRIPLET : ① la plus
+     longue SÉRIE · ② la DISTRIBUTION · ③ le dépassement AVEC
+     sa réfutation. Le compte descend en second, avec sa réserve.
+     Le budget de l'ISR reste le back porch, 775 us —
+     pas le VBlank entier (1938 us), car VSYNC_END tombe à la FIN
+     de l'impulsion.
+     ⚠️ le driver garde SA propre relance sur famine avérée
+     (esp_lcd_panel_rgb.c:1153-1163), compilée dans ce binaire.
+  ⛔ un compteur à zéro ne prouve RIEN tant que le témoin ne
+     l'a pas fait bouger, et la correspondance avec l'œil est
+     un RÉSULTAT à établir, pas une hypothèse. ⛔ `fps` reste
+     aveugle à ce défaut : il MOYENNE, et la gigue s'y efface.
+────────────────────────────────────────────────────────────
+rendu : PARTIEL · synchro : vsync · chemin : bitmap
+draw buffer : 480 x 128 px (122880 o) en RAM interne DMA
+flushes            : 14
+cycles de redessin : 14
+aire cumulée       : 481425 px
+  => 34387 px par flush en moyenne (écran plein = 307200 px, soit 11.19 %)
+  => 34387 px et 1.0 flush(es) par CYCLE de redessin
+     (le CYCLE est l'unité qui compte : c'est ce qu'une mise à
+      jour du label coûte réellement, flushes multiples inclus.)
+plus grande aire   : 36675 px
+copie              : 34691 us cumulés, 2477 us/flush en moyenne, 2665 us au pire
+attente de synchro : 142953 us cumulés, 10210 us/flush en moyenne
+   (comptée À PART de la copie : sinon « le flush coûte 27 ms » se
+    lirait comme un problème de bande passante alors que c'est la
+    synchro qui attend sa trame — 26,7 ms de période.)
+rappel : redessiner l'écran ENTIER coûte 36,8 ms de memcpy PSRAM (§5.4),
+   pour 26,7 ms de période de trame — 1,4x TROP LENT. Les zones
+   sales ne sont pas une élégance, c'est la seule voie qui tient.
+
+════════ T2 — anim on + flash on, 45 s ════════  2026-08-29T00:37:55+02:00
+
+$ flush reset
+compteurs de flush remis à zéro.
+compteurs de GLISSEMENT (dn4-10) armés : la remise à zéro est
+   consommée par l'ISR au prochain vsync (<= 27 ms), pas ici.
+  -> anim on
+
+$ anim on
+stimulus adverse LANCÉ :
+  période 2000 ms, synchro du flush : vsync
+  PROTOCOLE AC4 — le témoin positif D'ABORD :
+   1. `flush sync off` puis regarder : la barre DOIT se couper.
+      Si elle ne se coupe pas, l'instrument ne sait pas voir et
+      rien ne peut être conclu ensuite.
+   2. `flush sync vsync`, puis `fbdone` : verdicts SÉPARÉS.
+   3. `anim off` + label seul : le régime PRODUIT, noté à part.
+  -> flash on
+
+$ flash on
+⚠️ COMBINAISON JAMAIS MESURÉE : bounce_px=9600 + stimulus flash.
+   L'ISR qui réalimente le bounce buffer est MASQUÉE pendant
+   l'effacement de secteur (ISR_IRAM_SAFE=n). Si l'image se
+   corrompt, c'est CE couplage — pas la dalle, et pas la
+   famine DMA de §11.4, qui est un autre régime.
+   §5.3 : question OUVERTE, D4 en vigueur. Consigner le
+   constat, quel qu'il soit. `set bounce 0` + `reboot` pour
+   retrouver le régime de dn1-3.
+refusé : ESP_ERR_INVALID_STATE
+Command returned non-zero error code: 0x1 (ERROR)
+
+$ flash
+stimulus flash : EN COURS — 4240 secteurs, 17367040 o, 141340 o/s
+
+$ off
+Unrecognized command
+
+$ flush
+─── glissement de trame (dn4-10) — fenêtre 48520 ms ───
+  🎯 CE QUI SUIT L'ŒIL — LE TRIPLET DE TÊTE (dn4-12)
+   ① PLUS LONGUE SÉRIE de trames CONSÉCUTIVES NON SAINES : 0 trames ≈ 0 ms
+        composition : 0 déficit franchi (A) · 0 hors borne de sanité (C) · 0 sans enroulement (D)
+        commencée à la trame #0 depuis la RAZ · 0 série(s) au total
+        série en cours : aucune (la dernière trame était SAINE ou INDÉTERMINÉE).
+        ⚠️ MINORANT : 0 série(s) rompue(s) par une trame INDÉTERMINÉE (horodatage postérieur · paire déchirée · 2+ enroulements) — une série vraie a pu être COUPÉE EN DEUX.
+           ⛔ ce nombre NE SE SOUSTRAIT PAS et NE SE RECOMPOSE PAS : il BORNE la confiance, il ne corrige rien.
+        ⚠️ la classe A ne peut pas commencer avant la 32e trame (dégrossissage) : avant, aucun déficit n'est calculable. C et D, elles, comptent dès la 1re.
+        ⛔ ZÉRO NE PROUVE RIEN tant que le témoin ne l'a pas fait bouger : `flash on` doit rendre plusieurs CENTAINES de trames, dominées par la classe D.
+   ② DISTRIBUTION des déficits (sur n=1782 trames comptées) : 10 % 0 · 25 % 0 · 50 % 0 · 🔴 100 % (CORRUPTION) 0
+        ⛔ CUMULS EMBOÎTÉS, ⛔ pas des paliers disjoints : un déficit > 100 % compte dans LES QUATRE. Ne pas les sommer.
+        🎯 c'est la DISTRIBUTION qui est le signal FIABLE (dn4-22), ⛔ pas le maximum de ③.
+   ③ 🔴 DÉFICIT PIRE sous la référence : 7 µs, pour un demi-bounce qui s'écoule en 775 µs
+        ⇒ sous le seuil, il restait 768 µs de marge (99 % du demi-bounce)
+        ⛔ RÉFUTATION, ET ELLE EST MESURÉE : c'est un MAX — UN SEUL POINT ABERRANT LE DÉPLACE. dn4-22/ARM 5 rend 1 300 µs pour UNE corruption, contre 896 µs pour 245 chez `f7be23c`.
+           ⇒ à lire comme un ORDRE DE GRANDEUR, ⛔ PAS comme un discriminateur entre deux fenêtres. Le signal, c'est ②.
+  ── LE COMPTE, EN SECOND ─────────────────────────────
+  corruptions (déficit > 100 % du demi-bounce) : 0
+     ⚠️ RÉSERVE — voir « CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT » en fin de bloc. Le chiffre qui l'établit : 143 corruptions AVANT COMME APRÈS le correctif du 2026-08-23,
+        pendant que l'œil passait de « ça glisse » à « plus de glissement ». ⇒ ce compte NE SUIT PLUS L'ŒIL ; ① et ② sont là pour ça.
+  ── COMPARABILITÉ (les cinq chiffres, dn4-22/AC3.2) ──
+     ph_ref 2257 µs · ph_max 2268 µs · ph_n 1782 · dégrossissage 32 trames · demi-bounce 775 µs
+     dernière RAZ : 5 consommée(s) depuis le boot · la fenêtre ci-dessus (48520 ms) court depuis la dernière.
+  ─────────────────────────────────────────────────────
+  trames (vsync)   : 1814 · enroulements : 1814
+  trames SANS enroulement : 0 · à deux ou plus : 0
+  intervalle vsync→vsync : n=1813 · min 26725 · moy 26737 · MAX 26750 us
+     (période théorique 26737,500 us = 620 x 690 / 16000000 Hz)
+     retard PIRE observé : +12 us sur la période
+  ISR en retard de plus de : +100 us 0 · +775 us (back porch) 0 · +1938 us (VBlank) 0 · une trame 0
+  🎯 phase enroulement→VSYNC_END : n=1782 · min 2250 · moy 2255 · MAX 2268 us   (+32 trames de dégrossissage, ⛔ HORS de ces trois statistiques)
+     une phase COURTE = l'enroulement EN RETARD = le remplissage du bounce qui décroche.
+     référence des déficits (FIGÉE après dégrossissage) : 2257 us · 1 ligne = 39 us
+     ⚠️ MAX (2268) > référence (2257) : les déficits ci-dessous sont SOUS-comptés de 11 us.
+        ⛔ CETTE LIGNE EST QUASI-CERTAINE, ce n'est PAS un signal : la référence est le MAX de 32 trames, le MAX porte sur 1782. Un `flush reset` au repos ne la lèvera pas.
+        🎯 CE QU'ELLE AUTORISE : un seuil FRANCHI l'est a fortiori (le vrai déficit est plus grand). ⛔ CE QU'ELLE INTERDIT : comparer deux déficits entre eux — ils portent le même biais.
+     ⚠️ PLANCHER : la microseconde, soit 16 px. ⛔ « 0 » ici ne veut PAS dire « 0 pixel ».
+     ⚠️ L'horodatage de référence vient LUI AUSSI d'une ISR : un retard COMMUN aux deux s'annule et reste invisible.
+  ce que ça veut dire : RESTART_IN_VSYNC=**n** dans CE binaire.
+     Le driver ne remet PLUS la DMA à zéro à chaque VBlank — et
+     c'est ce reset-là, quand l'ISR était en retard, qui
+     DÉCALAIT l'image (esp_lcd_panel_rgb.c:1142-1148). Le
+     glissement périodique est fermé par là (`4734d07`).
+     ⛔ CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT :
+     à `n` c'est le DÉPASSEMENT du seuil qui suit l'œil, pas le
+     compte.
+     ⚠️ AMENDÉ le 2026-08-28 (dn4-12/D3) : le dépassement seul
+     NE SUFFIT PAS — c'est un MAX, qu'UN SEUL point aberrant
+     déplace (dn4-22 : 1 300 us pour UNE corruption contre 896
+     pour 245). La tête de bloc est un TRIPLET : ① la plus
+     longue SÉRIE · ② la DISTRIBUTION · ③ le dépassement AVEC
+     sa réfutation. Le compte descend en second, avec sa réserve.
+     Le budget de l'ISR reste le back porch, 775 us —
+     pas le VBlank entier (1938 us), car VSYNC_END tombe à la FIN
+     de l'impulsion.
+     ⚠️ le driver garde SA propre relance sur famine avérée
+     (esp_lcd_panel_rgb.c:1153-1163), compilée dans ce binaire.
+  ⛔ un compteur à zéro ne prouve RIEN tant que le témoin ne
+     l'a pas fait bouger, et la correspondance avec l'œil est
+     un RÉSULTAT à établir, pas une hypothèse. ⛔ `fps` reste
+     aveugle à ce défaut : il MOYENNE, et la gigue s'y efface.
+────────────────────────────────────────────────────────────
+rendu : PARTIEL · synchro : vsync · chemin : bitmap
+draw buffer : 480 x 128 px (122880 o) en RAM interne DMA
+flushes            : 1184
+cycles de redessin : 1174
+aire cumulée       : 24987770 px
+  => 21104 px par flush en moyenne (écran plein = 307200 px, soit 6.87 %)
+  => 21284 px et 1.0 flush(es) par CYCLE de redessin
+     (le CYCLE est l'unité qui compte : c'est ce qu'une mise à
+      jour du label coûte réellement, flushes multiples inclus.)
+plus grande aire   : 36675 px
+copie              : 1734531 us cumulés, 1464 us/flush en moyenne, 3144 us au pire
+attente de synchro : 16371148 us cumulés, 13826 us/flush en moyenne
+   (comptée À PART de la copie : sinon « le flush coûte 27 ms » se
+    lirait comme un problème de bande passante alors que c'est la
+    synchro qui attend sa trame — 26,7 ms de période.)
+rappel : redessiner l'écran ENTIER coûte 36,8 ms de memcpy PSRAM (§5.4),
+   pour 26,7 ms de période de trame — 1,4x TROP LENT. Les zones
+   sales ne sont pas une élégance, c'est la seule voie qui tient.
+
+$ anim off
+stimulus adverse arrêté.
+
+════════ T3 — ui bg psram + anim on + flash on, 45 s ════════  2026-08-29T00:38:44+02:00
+
+$ flush reset
+compteurs de flush remis à zéro.
+compteurs de GLISSEMENT (dn4-10) armés : la remise à zéro est
+   consommée par l'ISR au prochain vsync (<= 27 ms), pas ici.
+  -> ui bg psram
+
+$ ui bg psram
+I (602690) dn_ui: fond copié flash -> PSRAM : 614400 o en 78504 us (7.83 Mo/s)
+fond lu depuis une COPIE PSRAM (+614 400 o).
+⚠️ la source ne change RIEN au coût du flush lui-même : elle
+   change le coût du RE-BLIT du fond sous la zone sale, que LVGL
+   refait à chaque mise à jour du label. `flush reset` puis
+   attendre 60 s pour comparer proprement.
+  -> anim on
+
+$ anim on
+stimulus adverse LANCÉ :
+  période 2000 ms, synchro du flush : vsync
+  PROTOCOLE AC4 — le témoin positif D'ABORD :
+   1. `flush sync off` puis regarder : la barre DOIT se couper.
+      Si elle ne se coupe pas, l'instrument ne sait pas voir et
+      rien ne peut être conclu ensuite.
+   2. `flush sync vsync`, puis `fbdone` : verdicts SÉPARÉS.
+   3. `anim off` + label seul : le régime PRODUIT, noté à part.
+  -> flash on
+
+$ flash on
+⚠️ COMBINAISON JAMAIS MESURÉE : bounce_px=9600 + stimulus flash.
+   L'ISR qui réalimente le bounce buffer est MASQUÉE pendant
+   l'effacement de secteur (ISR_IRAM_SAFE=n). Si l'image se
+   corrompt, c'est CE couplage — pas la dalle, et pas la
+   famine DMA de §11.4, qui est un autre régime.
+   §5.3 : question OUVERTE, D4 en vigueur. Consigner le
+   constat, quel qu'il soit. `set bounce 0` + `reboot` pour
+   retrouver le régime de dn1-3.
+refusé : ESP_ERR_INVALID_STATE
+Command returned non-zero error code: 0x1 (ERROR)
+
+$ flash
+stimulus flash : EN COURS — 6024 secteurs, 24674304 o, 148114 o/s
+
+$ off
+Unrecognized command
+
+$ flush
+─── glissement de trame (dn4-10) — fenêtre 48902 ms ───
+  🎯 CE QUI SUIT L'ŒIL — LE TRIPLET DE TÊTE (dn4-12)
+   ① PLUS LONGUE SÉRIE de trames CONSÉCUTIVES NON SAINES : 4 trames ≈ 106 ms
+        composition : 1 déficit franchi (A) · 0 hors borne de sanité (C) · 3 sans enroulement (D)
+        commencée à la trame #117 depuis la RAZ · 1 série(s) au total
+        série en cours : aucune (la dernière trame était SAINE ou INDÉTERMINÉE).
+        ⚠️ MINORANT : 0 série(s) rompue(s) par une trame INDÉTERMINÉE (horodatage postérieur · paire déchirée · 2+ enroulements) — une série vraie a pu être COUPÉE EN DEUX.
+           ⛔ ce nombre NE SE SOUSTRAIT PAS et NE SE RECOMPOSE PAS : il BORNE la confiance, il ne corrige rien.
+        ⚠️ la classe A ne peut pas commencer avant la 32e trame (dégrossissage) : avant, aucun déficit n'est calculable. C et D, elles, comptent dès la 1re.
+   ② DISTRIBUTION des déficits (sur n=1793 trames comptées) : 10 % 1 · 25 % 1 · 50 % 1 · 🔴 100 % (CORRUPTION) 1
+        ⛔ CUMULS EMBOÎTÉS, ⛔ pas des paliers disjoints : un déficit > 100 % compte dans LES QUATRE. Ne pas les sommer.
+        🎯 c'est la DISTRIBUTION qui est le signal FIABLE (dn4-22), ⛔ pas le maximum de ③.
+   ③ 🔴 DÉFICIT PIRE sous la référence : 2248 µs, pour un demi-bounce qui s'écoule en 775 µs
+        ⇒ DÉPASSÉ de 1473 µs : la DMA a lu un tampon PAS ENCORE REMPLI. C'est le décalage visible.
+        ⛔ RÉFUTATION, ET ELLE EST MESURÉE : c'est un MAX — UN SEUL POINT ABERRANT LE DÉPLACE. dn4-22/ARM 5 rend 1 300 µs pour UNE corruption, contre 896 µs pour 245 chez `f7be23c`.
+           ⇒ à lire comme un ORDRE DE GRANDEUR, ⛔ PAS comme un discriminateur entre deux fenêtres. Le signal, c'est ②.
+  ── LE COMPTE, EN SECOND ─────────────────────────────
+  corruptions (déficit > 100 % du demi-bounce) : 1
+     ⚠️ RÉSERVE — voir « CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT » en fin de bloc. Le chiffre qui l'établit : 143 corruptions AVANT COMME APRÈS le correctif du 2026-08-23,
+        pendant que l'œil passait de « ça glisse » à « plus de glissement ». ⇒ ce compte NE SUIT PLUS L'ŒIL ; ① et ② sont là pour ça.
+  ── COMPARABILITÉ (les cinq chiffres, dn4-22/AC3.2) ──
+     ph_ref 2260 µs · ph_max 2272 µs · ph_n 1793 · dégrossissage 32 trames · demi-bounce 775 µs
+     dernière RAZ : 6 consommée(s) depuis le boot · la fenêtre ci-dessus (48902 ms) court depuis la dernière.
+  ─────────────────────────────────────────────────────
+  trames (vsync)   : 1828 · enroulements : 1826
+  trames SANS enroulement : 3 · à deux ou plus : 0
+  intervalle vsync→vsync : n=1827 · min 26114 · moy 26737 · MAX 27557 us
+     (période théorique 26737,500 us = 620 x 690 / 16000000 Hz)
+     retard PIRE observé : +819 us sur la période
+  ISR en retard de plus de : +100 us 1 · +775 us (back porch) 1 · +1938 us (VBlank) 0 · une trame 0
+  🎯 phase enroulement→VSYNC_END : n=1793 · min 12 · moy 2254 · MAX 2272 us   (+32 trames de dégrossissage, ⛔ HORS de ces trois statistiques)
+     une phase COURTE = l'enroulement EN RETARD = le remplissage du bounce qui décroche.
+     référence des déficits (FIGÉE après dégrossissage) : 2260 us · 1 ligne = 39 us
+     ⚠️ MAX (2272) > référence (2260) : les déficits ci-dessous sont SOUS-comptés de 12 us.
+        ⛔ CETTE LIGNE EST QUASI-CERTAINE, ce n'est PAS un signal : la référence est le MAX de 32 trames, le MAX porte sur 1793. Un `flush reset` au repos ne la lèvera pas.
+        🎯 CE QU'ELLE AUTORISE : un seuil FRANCHI l'est a fortiori (le vrai déficit est plus grand). ⛔ CE QU'ELLE INTERDIT : comparer deux déficits entre eux — ils portent le même biais.
+     ⚠️ PLANCHER : la microseconde, soit 16 px. ⛔ « 0 » ici ne veut PAS dire « 0 pixel ».
+     ⚠️ L'horodatage de référence vient LUI AUSSI d'une ISR : un retard COMMUN aux deux s'annule et reste invisible.
+  ce que ça veut dire : RESTART_IN_VSYNC=**n** dans CE binaire.
+     Le driver ne remet PLUS la DMA à zéro à chaque VBlank — et
+     c'est ce reset-là, quand l'ISR était en retard, qui
+     DÉCALAIT l'image (esp_lcd_panel_rgb.c:1142-1148). Le
+     glissement périodique est fermé par là (`4734d07`).
+     ⛔ CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT :
+     à `n` c'est le DÉPASSEMENT du seuil qui suit l'œil, pas le
+     compte.
+     ⚠️ AMENDÉ le 2026-08-28 (dn4-12/D3) : le dépassement seul
+     NE SUFFIT PAS — c'est un MAX, qu'UN SEUL point aberrant
+     déplace (dn4-22 : 1 300 us pour UNE corruption contre 896
+     pour 245). La tête de bloc est un TRIPLET : ① la plus
+     longue SÉRIE · ② la DISTRIBUTION · ③ le dépassement AVEC
+     sa réfutation. Le compte descend en second, avec sa réserve.
+     Le budget de l'ISR reste le back porch, 775 us —
+     pas le VBlank entier (1938 us), car VSYNC_END tombe à la FIN
+     de l'impulsion.
+     ⚠️ le driver garde SA propre relance sur famine avérée
+     (esp_lcd_panel_rgb.c:1153-1163), compilée dans ce binaire.
+  ⛔ un compteur à zéro ne prouve RIEN tant que le témoin ne
+     l'a pas fait bouger, et la correspondance avec l'œil est
+     un RÉSULTAT à établir, pas une hypothèse. ⛔ `fps` reste
+     aveugle à ce défaut : il MOYENNE, et la gigue s'y efface.
+────────────────────────────────────────────────────────────
+rendu : PARTIEL · synchro : vsync · chemin : bitmap
+draw buffer : 480 x 128 px (122880 o) en RAM interne DMA
+flushes            : 1181
+cycles de redessin : 1164
+aire cumulée       : 25312890 px
+  => 21433 px par flush en moyenne (écran plein = 307200 px, soit 6.98 %)
+  => 21746 px et 1.0 flush(es) par CYCLE de redessin
+     (le CYCLE est l'unité qui compte : c'est ce qu'une mise à
+      jour du label coûte réellement, flushes multiples inclus.)
+plus grande aire   : 61440 px
+copie              : 1754054 us cumulés, 1485 us/flush en moyenne, 5253 us au pire
+attente de synchro : 16644531 us cumulés, 14093 us/flush en moyenne
+   (comptée À PART de la copie : sinon « le flush coûte 27 ms » se
+    lirait comme un problème de bande passante alors que c'est la
+    synchro qui attend sa trame — 26,7 ms de période.)
+rappel : redessiner l'écran ENTIER coûte 36,8 ms de memcpy PSRAM (§5.4),
+   pour 26,7 ms de période de trame — 1,4x TROP LENT. Les zones
+   sales ne sont pas une élégance, c'est la seule voie qui tient.
+
+$ anim off
+stimulus adverse arrêté.
+
+$ ui bg flash
+fond lu depuis la flash mmap-ée (0 o).
+⚠️ la source ne change RIEN au coût du flush lui-même : elle
+   change le coût du RE-BLIT du fond sous la zone sale, que LVGL
+   refait à chaque mise à jour du label. `flush reset` puis
+   attendre 60 s pour comparer proprement.
+
+════════ T4 — widget rafale en boucle (charge de dessin), 45 s ════════  2026-08-29T00:39:33+02:00
+
+$ flush reset
+compteurs de flush remis à zéro.
+compteurs de GLISSEMENT (dn4-10) armés : la remise à zéro est
+   consommée par l'ISR au prochain vsync (<= 27 ms), pas ici.
+  -> anim on 40
+
+$ anim on 40
+refusé : ESP_ERR_INVALID_ARG — période attendue entre 200 et 10000 ms.
+Command returned non-zero error code: 0x1 (ERROR)
+
+$ true
+Unrecognized command
+
+$ flush
+─── glissement de trame (dn4-10) — fenêtre 48354 ms ───
+  🎯 CE QUI SUIT L'ŒIL — LE TRIPLET DE TÊTE (dn4-12)
+   ① PLUS LONGUE SÉRIE de trames CONSÉCUTIVES NON SAINES : 0 trames ≈ 0 ms
+        composition : 0 déficit franchi (A) · 0 hors borne de sanité (C) · 0 sans enroulement (D)
+        commencée à la trame #0 depuis la RAZ · 0 série(s) au total
+        série en cours : aucune (la dernière trame était SAINE ou INDÉTERMINÉE).
+        ⚠️ MINORANT : 0 série(s) rompue(s) par une trame INDÉTERMINÉE (horodatage postérieur · paire déchirée · 2+ enroulements) — une série vraie a pu être COUPÉE EN DEUX.
+           ⛔ ce nombre NE SE SOUSTRAIT PAS et NE SE RECOMPOSE PAS : il BORNE la confiance, il ne corrige rien.
+        ⚠️ la classe A ne peut pas commencer avant la 32e trame (dégrossissage) : avant, aucun déficit n'est calculable. C et D, elles, comptent dès la 1re.
+        ⛔ ZÉRO NE PROUVE RIEN tant que le témoin ne l'a pas fait bouger : `flash on` doit rendre plusieurs CENTAINES de trames, dominées par la classe D.
+   ② DISTRIBUTION des déficits (sur n=1776 trames comptées) : 10 % 0 · 25 % 0 · 50 % 0 · 🔴 100 % (CORRUPTION) 0
+        ⛔ CUMULS EMBOÎTÉS, ⛔ pas des paliers disjoints : un déficit > 100 % compte dans LES QUATRE. Ne pas les sommer.
+        🎯 c'est la DISTRIBUTION qui est le signal FIABLE (dn4-22), ⛔ pas le maximum de ③.
+   ③ 🔴 DÉFICIT PIRE sous la référence : 14 µs, pour un demi-bounce qui s'écoule en 775 µs
+        ⇒ sous le seuil, il restait 761 µs de marge (98 % du demi-bounce)
+        ⛔ RÉFUTATION, ET ELLE EST MESURÉE : c'est un MAX — UN SEUL POINT ABERRANT LE DÉPLACE. dn4-22/ARM 5 rend 1 300 µs pour UNE corruption, contre 896 µs pour 245 chez `f7be23c`.
+           ⇒ à lire comme un ORDRE DE GRANDEUR, ⛔ PAS comme un discriminateur entre deux fenêtres. Le signal, c'est ②.
+  ── LE COMPTE, EN SECOND ─────────────────────────────
+  corruptions (déficit > 100 % du demi-bounce) : 0
+     ⚠️ RÉSERVE — voir « CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT » en fin de bloc. Le chiffre qui l'établit : 143 corruptions AVANT COMME APRÈS le correctif du 2026-08-23,
+        pendant que l'œil passait de « ça glisse » à « plus de glissement ». ⇒ ce compte NE SUIT PLUS L'ŒIL ; ① et ② sont là pour ça.
+  ── COMPARABILITÉ (les cinq chiffres, dn4-22/AC3.2) ──
+     ph_ref 2258 µs · ph_max 2265 µs · ph_n 1776 · dégrossissage 32 trames · demi-bounce 775 µs
+     dernière RAZ : 7 consommée(s) depuis le boot · la fenêtre ci-dessus (48354 ms) court depuis la dernière.
+  ─────────────────────────────────────────────────────
+  trames (vsync)   : 1808 · enroulements : 1808
+  trames SANS enroulement : 0 · à deux ou plus : 0
+  intervalle vsync→vsync : n=1807 · min 26728 · moy 26737 · MAX 26747 us
+     (période théorique 26737,500 us = 620 x 690 / 16000000 Hz)
+     retard PIRE observé : +9 us sur la période
+  ISR en retard de plus de : +100 us 0 · +775 us (back porch) 0 · +1938 us (VBlank) 0 · une trame 0
+  🎯 phase enroulement→VSYNC_END : n=1776 · min 2244 · moy 2256 · MAX 2265 us   (+32 trames de dégrossissage, ⛔ HORS de ces trois statistiques)
+     une phase COURTE = l'enroulement EN RETARD = le remplissage du bounce qui décroche.
+     référence des déficits (FIGÉE après dégrossissage) : 2258 us · 1 ligne = 39 us
+     ⚠️ MAX (2265) > référence (2258) : les déficits ci-dessous sont SOUS-comptés de 7 us.
+        ⛔ CETTE LIGNE EST QUASI-CERTAINE, ce n'est PAS un signal : la référence est le MAX de 32 trames, le MAX porte sur 1776. Un `flush reset` au repos ne la lèvera pas.
+        🎯 CE QU'ELLE AUTORISE : un seuil FRANCHI l'est a fortiori (le vrai déficit est plus grand). ⛔ CE QU'ELLE INTERDIT : comparer deux déficits entre eux — ils portent le même biais.
+     ⚠️ PLANCHER : la microseconde, soit 16 px. ⛔ « 0 » ici ne veut PAS dire « 0 pixel ».
+     ⚠️ L'horodatage de référence vient LUI AUSSI d'une ISR : un retard COMMUN aux deux s'annule et reste invisible.
+  ce que ça veut dire : RESTART_IN_VSYNC=**n** dans CE binaire.
+     Le driver ne remet PLUS la DMA à zéro à chaque VBlank — et
+     c'est ce reset-là, quand l'ISR était en retard, qui
+     DÉCALAIT l'image (esp_lcd_panel_rgb.c:1142-1148). Le
+     glissement périodique est fermé par là (`4734d07`).
+     ⛔ CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT :
+     à `n` c'est le DÉPASSEMENT du seuil qui suit l'œil, pas le
+     compte.
+     ⚠️ AMENDÉ le 2026-08-28 (dn4-12/D3) : le dépassement seul
+     NE SUFFIT PAS — c'est un MAX, qu'UN SEUL point aberrant
+     déplace (dn4-22 : 1 300 us pour UNE corruption contre 896
+     pour 245). La tête de bloc est un TRIPLET : ① la plus
+     longue SÉRIE · ② la DISTRIBUTION · ③ le dépassement AVEC
+     sa réfutation. Le compte descend en second, avec sa réserve.
+     Le budget de l'ISR reste le back porch, 775 us —
+     pas le VBlank entier (1938 us), car VSYNC_END tombe à la FIN
+     de l'impulsion.
+     ⚠️ le driver garde SA propre relance sur famine avérée
+     (esp_lcd_panel_rgb.c:1153-1163), compilée dans ce binaire.
+  ⛔ un compteur à zéro ne prouve RIEN tant que le témoin ne
+     l'a pas fait bouger, et la correspondance avec l'œil est
+     un RÉSULTAT à établir, pas une hypothèse. ⛔ `fps` reste
+     aveugle à ce défaut : il MOYENNE, et la gigue s'y efface.
+────────────────────────────────────────────────────────────
+rendu : PARTIEL · synchro : vsync · chemin : bitmap
+draw buffer : 480 x 128 px (122880 o) en RAM interne DMA
+flushes            : 13
+cycles de redessin : 11
+aire cumulée       : 519295 px
+  => 39945 px par flush en moyenne (écran plein = 307200 px, soit 13.00 %)
+  => 47208 px et 1.2 flush(es) par CYCLE de redessin
+     (le CYCLE est l'unité qui compte : c'est ce qu'une mise à
+      jour du label coûte réellement, flushes multiples inclus.)
+plus grande aire   : 61440 px
+copie              : 38960 us cumulés, 2996 us/flush en moyenne, 5256 us au pire
+attente de synchro : 123022 us cumulés, 9463 us/flush en moyenne
+   (comptée À PART de la copie : sinon « le flush coûte 27 ms » se
+    lirait comme un problème de bande passante alors que c'est la
+    synchro qui attend sa trame — 26,7 ms de période.)
+rappel : redessiner l'écran ENTIER coûte 36,8 ms de memcpy PSRAM (§5.4),
+   pour 26,7 ms de période de trame — 1,4x TROP LENT. Les zones
+   sales ne sont pas une élégance, c'est la seule voie qui tient.
+
+$ anim off
+stimulus adverse arrêté.
+
+$ ui bg psram
+I (780863) dn_ui: fond copié flash -> PSRAM : 614400 o en 78831 us (7.79 Mo/s)
+fond lu depuis une COPIE PSRAM (+614 400 o).
+⚠️ la source ne change RIEN au coût du flush lui-même : elle
+   change le coût du RE-BLIT du fond sous la zone sale, que LVGL
+   refait à chaque mise à jour du label. `flush reset` puis
+   attendre 60 s pour comparer proprement.
+
+════════ T5 — bg psram + anim 10 ms + flash on, 90 s ════════ 2026-08-29T00:41:45+02:00
+
+$ flush reset
+compteurs de flush remis à zéro.
+compteurs de GLISSEMENT (dn4-10) armés : la remise à zéro est
+   consommée par l'ISR au prochain vsync (<= 27 ms), pas ici.
+  -> anim on 10
+
+$ anim on 10
+refusé : ESP_ERR_INVALID_ARG — période attendue entre 200 et 10000 ms.
+Command returned non-zero error code: 0x1 (ERROR)
+  -> flash on
+
+$ flash on
+⚠️ COMBINAISON JAMAIS MESURÉE : bounce_px=9600 + stimulus flash.
+   L'ISR qui réalimente le bounce buffer est MASQUÉE pendant
+   l'effacement de secteur (ISR_IRAM_SAFE=n). Si l'image se
+   corrompt, c'est CE couplage — pas la dalle, et pas la
+   famine DMA de §11.4, qui est un autre régime.
+   §5.3 : question OUVERTE, D4 en vigueur. Consigner le
+   constat, quel qu'il soit. `set bounce 0` + `reboot` pour
+   retrouver le régime de dn1-3.
+refusé : ESP_ERR_INVALID_STATE
+Command returned non-zero error code: 0x1 (ERROR)
+
+$ flash off
+I (874487) dn_stim: stimulus FLASH arrêté : 15156 secteurs, 62078976 o écrits, débit soutenu 168907 o/s
+
+$ flush
+─── glissement de trame (dn4-10) — fenêtre 93395 ms ───
+  🎯 CE QUI SUIT L'ŒIL — LE TRIPLET DE TÊTE (dn4-12)
+   ① PLUS LONGUE SÉRIE de trames CONSÉCUTIVES NON SAINES : 0 trames ≈ 0 ms
+        composition : 0 déficit franchi (A) · 0 hors borne de sanité (C) · 0 sans enroulement (D)
+        commencée à la trame #0 depuis la RAZ · 0 série(s) au total
+        série en cours : aucune (la dernière trame était SAINE ou INDÉTERMINÉE).
+        ⚠️ MINORANT : 0 série(s) rompue(s) par une trame INDÉTERMINÉE (horodatage postérieur · paire déchirée · 2+ enroulements) — une série vraie a pu être COUPÉE EN DEUX.
+           ⛔ ce nombre NE SE SOUSTRAIT PAS et NE SE RECOMPOSE PAS : il BORNE la confiance, il ne corrige rien.
+        ⚠️ la classe A ne peut pas commencer avant la 32e trame (dégrossissage) : avant, aucun déficit n'est calculable. C et D, elles, comptent dès la 1re.
+        ⛔ ZÉRO NE PROUVE RIEN tant que le témoin ne l'a pas fait bouger : `flash on` doit rendre plusieurs CENTAINES de trames, dominées par la classe D.
+   ② DISTRIBUTION des déficits (sur n=3461 trames comptées) : 10 % 0 · 25 % 0 · 50 % 0 · 🔴 100 % (CORRUPTION) 0
+        ⛔ CUMULS EMBOÎTÉS, ⛔ pas des paliers disjoints : un déficit > 100 % compte dans LES QUATRE. Ne pas les sommer.
+        🎯 c'est la DISTRIBUTION qui est le signal FIABLE (dn4-22), ⛔ pas le maximum de ③.
+   ③ 🔴 DÉFICIT PIRE sous la référence : 10 µs, pour un demi-bounce qui s'écoule en 775 µs
+        ⇒ sous le seuil, il restait 765 µs de marge (98 % du demi-bounce)
+        ⛔ RÉFUTATION, ET ELLE EST MESURÉE : c'est un MAX — UN SEUL POINT ABERRANT LE DÉPLACE. dn4-22/ARM 5 rend 1 300 µs pour UNE corruption, contre 896 µs pour 245 chez `f7be23c`.
+           ⇒ à lire comme un ORDRE DE GRANDEUR, ⛔ PAS comme un discriminateur entre deux fenêtres. Le signal, c'est ②.
+  ── LE COMPTE, EN SECOND ─────────────────────────────
+  corruptions (déficit > 100 % du demi-bounce) : 0
+     ⚠️ RÉSERVE — voir « CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT » en fin de bloc. Le chiffre qui l'établit : 143 corruptions AVANT COMME APRÈS le correctif du 2026-08-23,
+        pendant que l'œil passait de « ça glisse » à « plus de glissement ». ⇒ ce compte NE SUIT PLUS L'ŒIL ; ① et ② sont là pour ça.
+  ── COMPARABILITÉ (les cinq chiffres, dn4-22/AC3.2) ──
+     ph_ref 2259 µs · ph_max 2263 µs · ph_n 3461 · dégrossissage 32 trames · demi-bounce 775 µs
+     dernière RAZ : 8 consommée(s) depuis le boot · la fenêtre ci-dessus (93395 ms) court depuis la dernière.
+  ─────────────────────────────────────────────────────
+  trames (vsync)   : 3493 · enroulements : 3493
+  trames SANS enroulement : 0 · à deux ou plus : 0
+  intervalle vsync→vsync : n=3492 · min 26731 · moy 26737 · MAX 26744 us
+     (période théorique 26737,500 us = 620 x 690 / 16000000 Hz)
+     retard PIRE observé : +6 us sur la période
+  ISR en retard de plus de : +100 us 0 · +775 us (back porch) 0 · +1938 us (VBlank) 0 · une trame 0
+  🎯 phase enroulement→VSYNC_END : n=3461 · min 2249 · moy 2255 · MAX 2263 us   (+32 trames de dégrossissage, ⛔ HORS de ces trois statistiques)
+     une phase COURTE = l'enroulement EN RETARD = le remplissage du bounce qui décroche.
+     référence des déficits (FIGÉE après dégrossissage) : 2259 us · 1 ligne = 39 us
+     ⚠️ MAX (2263) > référence (2259) : les déficits ci-dessous sont SOUS-comptés de 4 us.
+        ⛔ CETTE LIGNE EST QUASI-CERTAINE, ce n'est PAS un signal : la référence est le MAX de 32 trames, le MAX porte sur 3461. Un `flush reset` au repos ne la lèvera pas.
+        🎯 CE QU'ELLE AUTORISE : un seuil FRANCHI l'est a fortiori (le vrai déficit est plus grand). ⛔ CE QU'ELLE INTERDIT : comparer deux déficits entre eux — ils portent le même biais.
+     ⚠️ PLANCHER : la microseconde, soit 16 px. ⛔ « 0 » ici ne veut PAS dire « 0 pixel ».
+     ⚠️ L'horodatage de référence vient LUI AUSSI d'une ISR : un retard COMMUN aux deux s'annule et reste invisible.
+  ce que ça veut dire : RESTART_IN_VSYNC=**n** dans CE binaire.
+     Le driver ne remet PLUS la DMA à zéro à chaque VBlank — et
+     c'est ce reset-là, quand l'ISR était en retard, qui
+     DÉCALAIT l'image (esp_lcd_panel_rgb.c:1142-1148). Le
+     glissement périodique est fermé par là (`4734d07`).
+     ⛔ CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT :
+     à `n` c'est le DÉPASSEMENT du seuil qui suit l'œil, pas le
+     compte.
+     ⚠️ AMENDÉ le 2026-08-28 (dn4-12/D3) : le dépassement seul
+     NE SUFFIT PAS — c'est un MAX, qu'UN SEUL point aberrant
+     déplace (dn4-22 : 1 300 us pour UNE corruption contre 896
+     pour 245). La tête de bloc est un TRIPLET : ① la plus
+     longue SÉRIE · ② la DISTRIBUTION · ③ le dépassement AVEC
+     sa réfutation. Le compte descend en second, avec sa réserve.
+     Le budget de l'ISR reste le back porch, 775 us —
+     pas le VBlank entier (1938 us), car VSYNC_END tombe à la FIN
+     de l'impulsion.
+     ⚠️ le driver garde SA propre relance sur famine avérée
+     (esp_lcd_panel_rgb.c:1153-1163), compilée dans ce binaire.
+  ⛔ un compteur à zéro ne prouve RIEN tant que le témoin ne
+     l'a pas fait bouger, et la correspondance avec l'œil est
+     un RÉSULTAT à établir, pas une hypothèse. ⛔ `fps` reste
+     aveugle à ce défaut : il MOYENNE, et la gigue s'y efface.
+────────────────────────────────────────────────────────────
+rendu : PARTIEL · synchro : vsync · chemin : bitmap
+draw buffer : 480 x 128 px (122880 o) en RAM interne DMA
+flushes            : 25
+cycles de redessin : 22
+aire cumulée       : 952085 px
+  => 38083 px par flush en moyenne (écran plein = 307200 px, soit 12.40 %)
+  => 43276 px et 1.1 flush(es) par CYCLE de redessin
+     (le CYCLE est l'unité qui compte : c'est ce qu'une mise à
+      jour du label coûte réellement, flushes multiples inclus.)
+plus grande aire   : 61440 px
+copie              : 71757 us cumulés, 2870 us/flush en moyenne, 5256 us au pire
+attente de synchro : 168746 us cumulés, 6749 us/flush en moyenne
+   (comptée À PART de la copie : sinon « le flush coûte 27 ms » se
+    lirait comme un problème de bande passante alors que c'est la
+    synchro qui attend sa trame — 26,7 ms de période.)
+rappel : redessiner l'écran ENTIER coûte 36,8 ms de memcpy PSRAM (§5.4),
+   pour 26,7 ms de période de trame — 1,4x TROP LENT. Les zones
+   sales ne sont pas une élégance, c'est la seule voie qui tient.
+
+$ anim off
+stimulus adverse arrêté.
+
+════════ T6 — bg psram + anim 10 + groupe off + flash on, 90 s ════════ 2026-08-29T00:43:19+02:00
+
+$ flush reset
+compteurs de flush remis à zéro.
+compteurs de GLISSEMENT (dn4-10) armés : la remise à zéro est
+   consommée par l'ISR au prochain vsync (<= 27 ms), pas ici.
+  -> anim on 10
+
+$ anim on 10
+refusé : ESP_ERR_INVALID_ARG — période attendue entre 200 et 10000 ms.
+Command returned non-zero error code: 0x1 (ERROR)
+  -> widget groupe off
+
+$ widget groupe off
+invalidation : FINE — LVGL fait SES zones, une par enfant modifie
+⚠️ `flush reset` MAINTENANT, puis attendre >= 3 cycles de source
+   avant `flush` : sinon la mesure melange les deux branches.
+  -> flash on
+
+$ flash on
+⚠️ COMBINAISON JAMAIS MESURÉE : bounce_px=9600 + stimulus flash.
+   L'ISR qui réalimente le bounce buffer est MASQUÉE pendant
+   l'effacement de secteur (ISR_IRAM_SAFE=n). Si l'image se
+   corrompt, c'est CE couplage — pas la dalle, et pas la
+   famine DMA de §11.4, qui est un autre régime.
+   §5.3 : question OUVERTE, D4 en vigueur. Consigner le
+   constat, quel qu'il soit. `set bounce 0` + `reboot` pour
+   retrouver le régime de dn1-3.
+stimulus flash lancé sur « stimulus » (1048576 o à 0x510000).
+Décrire ce qu'on VOIT, précisément :
+  rien ? une ligne ? un flash de toute la dalle ?
+  une image décalée EN PERMANENCE (la DMA a décroché) ?
+I (878115) dn_stim: stimulus FLASH démarré : effacement+écriture de secteurs de 4096 o, en boucle, sur la partition « stimulus » (1048576 o à 0x510000), sans pause entre deux secteurs.
+
+$ flash off
+I (968265) dn_stim: stimulus FLASH arrêté : 3611 secteurs, 14790656 o écrits, débit soutenu 171632 o/s
+
+$ flush
+─── glissement de trame (dn4-10) — fenêtre 93524 ms ───
+  🎯 CE QUI SUIT L'ŒIL — LE TRIPLET DE TÊTE (dn4-12)
+   ① PLUS LONGUE SÉRIE de trames CONSÉCUTIVES NON SAINES : 0 trames ≈ 0 ms
+        composition : 0 déficit franchi (A) · 0 hors borne de sanité (C) · 0 sans enroulement (D)
+        commencée à la trame #0 depuis la RAZ · 0 série(s) au total
+        série en cours : aucune (la dernière trame était SAINE ou INDÉTERMINÉE).
+        ⚠️ MINORANT : 0 série(s) rompue(s) par une trame INDÉTERMINÉE (horodatage postérieur · paire déchirée · 2+ enroulements) — une série vraie a pu être COUPÉE EN DEUX.
+           ⛔ ce nombre NE SE SOUSTRAIT PAS et NE SE RECOMPOSE PAS : il BORNE la confiance, il ne corrige rien.
+        ⚠️ la classe A ne peut pas commencer avant la 32e trame (dégrossissage) : avant, aucun déficit n'est calculable. C et D, elles, comptent dès la 1re.
+        ⛔ ZÉRO NE PROUVE RIEN tant que le témoin ne l'a pas fait bouger : `flash on` doit rendre plusieurs CENTAINES de trames, dominées par la classe D.
+   ② DISTRIBUTION des déficits (sur n=3465 trames comptées) : 10 % 0 · 25 % 0 · 50 % 0 · 🔴 100 % (CORRUPTION) 0
+        ⛔ CUMULS EMBOÎTÉS, ⛔ pas des paliers disjoints : un déficit > 100 % compte dans LES QUATRE. Ne pas les sommer.
+        🎯 c'est la DISTRIBUTION qui est le signal FIABLE (dn4-22), ⛔ pas le maximum de ③.
+   ③ 🔴 DÉFICIT PIRE sous la référence : 7 µs, pour un demi-bounce qui s'écoule en 775 µs
+        ⇒ sous le seuil, il restait 768 µs de marge (99 % du demi-bounce)
+        ⛔ RÉFUTATION, ET ELLE EST MESURÉE : c'est un MAX — UN SEUL POINT ABERRANT LE DÉPLACE. dn4-22/ARM 5 rend 1 300 µs pour UNE corruption, contre 896 µs pour 245 chez `f7be23c`.
+           ⇒ à lire comme un ORDRE DE GRANDEUR, ⛔ PAS comme un discriminateur entre deux fenêtres. Le signal, c'est ②.
+  ── LE COMPTE, EN SECOND ─────────────────────────────
+  corruptions (déficit > 100 % du demi-bounce) : 0
+     ⚠️ RÉSERVE — voir « CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT » en fin de bloc. Le chiffre qui l'établit : 143 corruptions AVANT COMME APRÈS le correctif du 2026-08-23,
+        pendant que l'œil passait de « ça glisse » à « plus de glissement ». ⇒ ce compte NE SUIT PLUS L'ŒIL ; ① et ② sont là pour ça.
+  ── COMPARABILITÉ (les cinq chiffres, dn4-22/AC3.2) ──
+     ph_ref 2257 µs · ph_max 2267 µs · ph_n 3465 · dégrossissage 32 trames · demi-bounce 775 µs
+     dernière RAZ : 9 consommée(s) depuis le boot · la fenêtre ci-dessus (93524 ms) court depuis la dernière.
+  ─────────────────────────────────────────────────────
+  trames (vsync)   : 3497 · enroulements : 3497
+  trames SANS enroulement : 0 · à deux ou plus : 0
+  intervalle vsync→vsync : n=3496 · min 26728 · moy 26737 · MAX 26747 us
+     (période théorique 26737,500 us = 620 x 690 / 16000000 Hz)
+     retard PIRE observé : +9 us sur la période
+  ISR en retard de plus de : +100 us 0 · +775 us (back porch) 0 · +1938 us (VBlank) 0 · une trame 0
+  🎯 phase enroulement→VSYNC_END : n=3465 · min 2250 · moy 2256 · MAX 2267 us   (+32 trames de dégrossissage, ⛔ HORS de ces trois statistiques)
+     une phase COURTE = l'enroulement EN RETARD = le remplissage du bounce qui décroche.
+     référence des déficits (FIGÉE après dégrossissage) : 2257 us · 1 ligne = 39 us
+     ⚠️ MAX (2267) > référence (2257) : les déficits ci-dessous sont SOUS-comptés de 10 us.
+        ⛔ CETTE LIGNE EST QUASI-CERTAINE, ce n'est PAS un signal : la référence est le MAX de 32 trames, le MAX porte sur 3465. Un `flush reset` au repos ne la lèvera pas.
+        🎯 CE QU'ELLE AUTORISE : un seuil FRANCHI l'est a fortiori (le vrai déficit est plus grand). ⛔ CE QU'ELLE INTERDIT : comparer deux déficits entre eux — ils portent le même biais.
+     ⚠️ PLANCHER : la microseconde, soit 16 px. ⛔ « 0 » ici ne veut PAS dire « 0 pixel ».
+     ⚠️ L'horodatage de référence vient LUI AUSSI d'une ISR : un retard COMMUN aux deux s'annule et reste invisible.
+  ce que ça veut dire : RESTART_IN_VSYNC=**n** dans CE binaire.
+     Le driver ne remet PLUS la DMA à zéro à chaque VBlank — et
+     c'est ce reset-là, quand l'ISR était en retard, qui
+     DÉCALAIT l'image (esp_lcd_panel_rgb.c:1142-1148). Le
+     glissement périodique est fermé par là (`4734d07`).
+     ⛔ CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT :
+     à `n` c'est le DÉPASSEMENT du seuil qui suit l'œil, pas le
+     compte.
+     ⚠️ AMENDÉ le 2026-08-28 (dn4-12/D3) : le dépassement seul
+     NE SUFFIT PAS — c'est un MAX, qu'UN SEUL point aberrant
+     déplace (dn4-22 : 1 300 us pour UNE corruption contre 896
+     pour 245). La tête de bloc est un TRIPLET : ① la plus
+     longue SÉRIE · ② la DISTRIBUTION · ③ le dépassement AVEC
+     sa réfutation. Le compte descend en second, avec sa réserve.
+     Le budget de l'ISR reste le back porch, 775 us —
+     pas le VBlank entier (1938 us), car VSYNC_END tombe à la FIN
+     de l'impulsion.
+     ⚠️ le driver garde SA propre relance sur famine avérée
+     (esp_lcd_panel_rgb.c:1153-1163), compilée dans ce binaire.
+  ⛔ un compteur à zéro ne prouve RIEN tant que le témoin ne
+     l'a pas fait bouger, et la correspondance avec l'œil est
+     un RÉSULTAT à établir, pas une hypothèse. ⛔ `fps` reste
+     aveugle à ce défaut : il MOYENNE, et la gigue s'y efface.
+────────────────────────────────────────────────────────────
+rendu : PARTIEL · synchro : vsync · chemin : bitmap
+draw buffer : 480 x 128 px (122880 o) en RAM interne DMA
+flushes            : 39
+cycles de redessin : 20
+aire cumulée       : 236948 px
+  => 6075 px par flush en moyenne (écran plein = 307200 px, soit 1.98 %)
+  => 11847 px et 1.9 flush(es) par CYCLE de redessin
+     (le CYCLE est l'unité qui compte : c'est ce qu'une mise à
+      jour du label coûte réellement, flushes multiples inclus.)
+plus grande aire   : 12672 px
+copie              : 10683 us cumulés, 273 us/flush en moyenne, 523 us au pire
+attente de synchro : 575877 us cumulés, 14766 us/flush en moyenne
+   (comptée À PART de la copie : sinon « le flush coûte 27 ms » se
+    lirait comme un problème de bande passante alors que c'est la
+    synchro qui attend sa trame — 26,7 ms de période.)
+rappel : redessiner l'écran ENTIER coûte 36,8 ms de memcpy PSRAM (§5.4),
+   pour 26,7 ms de période de trame — 1,4x TROP LENT. Les zones
+   sales ne sont pas une élégance, c'est la seule voie qui tient.
+
+$ anim off
+stimulus adverse arrêté.
+
+$ widget groupe on
+invalidation : GROUPEE — 1 zone sale par widget (le conteneur)
+   soit 225 x 163 = 36675 px par mise a jour
+⚠️ `flush reset` MAINTENANT, puis attendre >= 3 cycles de source
+   avant `flush` : sinon la mesure melange les deux branches.
+
+$ ui bg flash
+fond lu depuis la flash mmap-ée (0 o).
+⚠️ la source ne change RIEN au coût du flush lui-même : elle
+   change le coût du RE-BLIT du fond sous la zone sale, que LVGL
+   refait à chaque mise à jour du label. `flush reset` puis
+   attendre 60 s pour comparer proprement.
+
+════════ ETAT DE DEPART (RELU, ⛔ pas suppose) ════════ 2026-08-29T00:46:10+02:00
+
+$ flash off
+
+
+$ anim off
+stimulus adverse arrêté.
+
+$ ui
+LVGL : ACTIF · label masqué · stimulus arrêté · fond depuis flash (mmap)
+coût en tas de l'init LVGL :
+  RAM interne 231051 -> 100211 o  (130840 o)
+  PSRAM       6647124 -> 6647124 o  (0 o)
+tas LVGL (LV_MEM_SIZE_KILOBYTES = 64 Ko, STATIQUE en .bss) :
+  total 60744 o · utilisé 28488 o (47 %) · libre 32256 o
+  plus gros bloc libre 7248 o · fragmentation 78 %
+⚠️ ces octets-là sont réservés au LINK : ils n'apparaissent PAS dans
+   l'avant/après de `mem`. C'est le seul endroit où ils se voient.
+usage : ui on|off | ui label on|off | ui bg flash|psram
+
+════════ T7 —  SEUL (isole la RECONSTRUCTION) ════════ 2026-08-29T00:46:10+02:00
+
+$ flush reset
+compteurs de flush remis à zéro.
+compteurs de GLISSEMENT (dn4-10) armés : la remise à zéro est
+   consommée par l'ISR au prochain vsync (<= 27 ms), pas ici.
+  -> ui bg psram
+
+$ ui bg psram
+I (1049990) dn_ui: fond copié flash -> PSRAM : 614400 o en 79333 us (7.74 Mo/s)
+fond lu depuis une COPIE PSRAM (+614 400 o).
+⚠️ la source ne change RIEN au coût du flush lui-même : elle
+   change le coût du RE-BLIT du fond sous la zone sale, que LVGL
+   refait à chaque mise à jour du label. `flush reset` puis
+   attendre 60 s pour comparer proprement.
+W (1050202) dn_ui: historique : 1 seconde(s) NON ÉCHANTILLONNÉE(S) (pause `ui off` ou préemption longue) — 1 position(s) creusée(s) en TROUS ; la courbe ne reliera PAS les deux bords de la coupure
+
+$ flush
+─── glissement de trame (dn4-10) — fenêtre 24398 ms ───
+  🎯 CE QUI SUIT L'ŒIL — LE TRIPLET DE TÊTE (dn4-12)
+   ① PLUS LONGUE SÉRIE de trames CONSÉCUTIVES NON SAINES : 3 trames ≈ 80 ms
+        composition : 0 déficit franchi (A) · 0 hors borne de sanité (C) · 3 sans enroulement (D)
+        commencée à la trame #153 depuis la RAZ · 1 série(s) au total
+        série en cours : aucune (la dernière trame était SAINE ou INDÉTERMINÉE).
+        ⚠️ MINORANT : 0 série(s) rompue(s) par une trame INDÉTERMINÉE (horodatage postérieur · paire déchirée · 2+ enroulements) — une série vraie a pu être COUPÉE EN DEUX.
+           ⛔ ce nombre NE SE SOUSTRAIT PAS et NE SE RECOMPOSE PAS : il BORNE la confiance, il ne corrige rien.
+        ⚠️ la classe A ne peut pas commencer avant la 32e trame (dégrossissage) : avant, aucun déficit n'est calculable. C et D, elles, comptent dès la 1re.
+   ② DISTRIBUTION des déficits (sur n=877 trames comptées) : 10 % 0 · 25 % 0 · 50 % 0 · 🔴 100 % (CORRUPTION) 0
+        ⛔ CUMULS EMBOÎTÉS, ⛔ pas des paliers disjoints : un déficit > 100 % compte dans LES QUATRE. Ne pas les sommer.
+        🎯 c'est la DISTRIBUTION qui est le signal FIABLE (dn4-22), ⛔ pas le maximum de ③.
+   ③ 🔴 DÉFICIT PIRE sous la référence : 10 µs, pour un demi-bounce qui s'écoule en 775 µs
+        ⇒ sous le seuil, il restait 765 µs de marge (98 % du demi-bounce)
+        ⛔ RÉFUTATION, ET ELLE EST MESURÉE : c'est un MAX — UN SEUL POINT ABERRANT LE DÉPLACE. dn4-22/ARM 5 rend 1 300 µs pour UNE corruption, contre 896 µs pour 245 chez `f7be23c`.
+           ⇒ à lire comme un ORDRE DE GRANDEUR, ⛔ PAS comme un discriminateur entre deux fenêtres. Le signal, c'est ②.
+  ── LE COMPTE, EN SECOND ─────────────────────────────
+  corruptions (déficit > 100 % du demi-bounce) : 0
+     ⚠️ RÉSERVE — voir « CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT » en fin de bloc. Le chiffre qui l'établit : 143 corruptions AVANT COMME APRÈS le correctif du 2026-08-23,
+        pendant que l'œil passait de « ça glisse » à « plus de glissement ». ⇒ ce compte NE SUIT PLUS L'ŒIL ; ① et ② sont là pour ça.
+  ── COMPARABILITÉ (les cinq chiffres, dn4-22/AC3.2) ──
+     ph_ref 2257 µs · ph_max 2422 µs · ph_n 877 · dégrossissage 32 trames · demi-bounce 775 µs
+     dernière RAZ : 10 consommée(s) depuis le boot · la fenêtre ci-dessus (24398 ms) court depuis la dernière.
+  ─────────────────────────────────────────────────────
+  trames (vsync)   : 912 · enroulements : 909
+  trames SANS enroulement : 3 · à deux ou plus : 0
+  intervalle vsync→vsync : n=911 · min 25592 · moy 26737 · MAX 28075 us
+     (période théorique 26737,500 us = 620 x 690 / 16000000 Hz)
+     retard PIRE observé : +1337 us sur la période
+  ISR en retard de plus de : +100 us 1 · +775 us (back porch) 1 · +1938 us (VBlank) 0 · une trame 0
+  🎯 phase enroulement→VSYNC_END : n=877 · min 2247 · moy 2256 · MAX 2422 us   (+32 trames de dégrossissage, ⛔ HORS de ces trois statistiques)
+     une phase COURTE = l'enroulement EN RETARD = le remplissage du bounce qui décroche.
+     référence des déficits (FIGÉE après dégrossissage) : 2257 us · 1 ligne = 39 us
+     ⚠️ MAX (2422) > référence (2257) : les déficits ci-dessous sont SOUS-comptés de 165 us.
+        ⛔ CETTE LIGNE EST QUASI-CERTAINE, ce n'est PAS un signal : la référence est le MAX de 32 trames, le MAX porte sur 877. Un `flush reset` au repos ne la lèvera pas.
+        🎯 CE QU'ELLE AUTORISE : un seuil FRANCHI l'est a fortiori (le vrai déficit est plus grand). ⛔ CE QU'ELLE INTERDIT : comparer deux déficits entre eux — ils portent le même biais.
+     ⚠️ PLANCHER : la microseconde, soit 16 px. ⛔ « 0 » ici ne veut PAS dire « 0 pixel ».
+     ⚠️ L'horodatage de référence vient LUI AUSSI d'une ISR : un retard COMMUN aux deux s'annule et reste invisible.
+  ce que ça veut dire : RESTART_IN_VSYNC=**n** dans CE binaire.
+     Le driver ne remet PLUS la DMA à zéro à chaque VBlank — et
+     c'est ce reset-là, quand l'ISR était en retard, qui
+     DÉCALAIT l'image (esp_lcd_panel_rgb.c:1142-1148). Le
+     glissement périodique est fermé par là (`4734d07`).
+     ⛔ CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT :
+     à `n` c'est le DÉPASSEMENT du seuil qui suit l'œil, pas le
+     compte.
+     ⚠️ AMENDÉ le 2026-08-28 (dn4-12/D3) : le dépassement seul
+     NE SUFFIT PAS — c'est un MAX, qu'UN SEUL point aberrant
+     déplace (dn4-22 : 1 300 us pour UNE corruption contre 896
+     pour 245). La tête de bloc est un TRIPLET : ① la plus
+     longue SÉRIE · ② la DISTRIBUTION · ③ le dépassement AVEC
+     sa réfutation. Le compte descend en second, avec sa réserve.
+     Le budget de l'ISR reste le back porch, 775 us —
+     pas le VBlank entier (1938 us), car VSYNC_END tombe à la FIN
+     de l'impulsion.
+     ⚠️ le driver garde SA propre relance sur famine avérée
+     (esp_lcd_panel_rgb.c:1153-1163), compilée dans ce binaire.
+  ⛔ un compteur à zéro ne prouve RIEN tant que le témoin ne
+     l'a pas fait bouger, et la correspondance avec l'œil est
+     un RÉSULTAT à établir, pas une hypothèse. ⛔ `fps` reste
+     aveugle à ce défaut : il MOYENNE, et la gigue s'y efface.
+────────────────────────────────────────────────────────────
+rendu : PARTIEL · synchro : vsync · chemin : bitmap
+draw buffer : 480 x 128 px (122880 o) en RAM interne DMA
+flushes            : 10
+cycles de redessin : 6
+aire cumulée       : 490575 px
+  => 49057 px par flush en moyenne (écran plein = 307200 px, soit 15.97 %)
+  => 81762 px et 1.7 flush(es) par CYCLE de redessin
+     (le CYCLE est l'unité qui compte : c'est ce qu'une mise à
+      jour du label coûte réellement, flushes multiples inclus.)
+plus grande aire   : 61440 px
+copie              : 38204 us cumulés, 3820 us/flush en moyenne, 5248 us au pire
+attente de synchro : 138494 us cumulés, 13849 us/flush en moyenne
+   (comptée À PART de la copie : sinon « le flush coûte 27 ms » se
+    lirait comme un problème de bande passante alors que c'est la
+    synchro qui attend sa trame — 26,7 ms de période.)
+rappel : redessiner l'écran ENTIER coûte 36,8 ms de memcpy PSRAM (§5.4),
+   pour 26,7 ms de période de trame — 1,4x TROP LENT. Les zones
+   sales ne sont pas une élégance, c'est la seule voie qui tient.
+
+════════ T8 — REGIME SOUTENU 90 s, fond deja en PSRAM ════════ 2026-08-29T00:46:35+02:00
+
+$ flush reset
+compteurs de flush remis à zéro.
+compteurs de GLISSEMENT (dn4-10) armés : la remise à zéro est
+   consommée par l'ISR au prochain vsync (<= 27 ms), pas ici.
+  -> anim on
+
+$ anim on
+stimulus adverse LANCÉ :
+  période 2000 ms, synchro du flush : vsync
+  PROTOCOLE AC4 — le témoin positif D'ABORD :
+   1. `flush sync off` puis regarder : la barre DOIT se couper.
+      Si elle ne se coupe pas, l'instrument ne sait pas voir et
+      rien ne peut être conclu ensuite.
+   2. `flush sync vsync`, puis `fbdone` : verdicts SÉPARÉS.
+   3. `anim off` + label seul : le régime PRODUIT, noté à part.
+  -> flash on
+
+$ flash on
+⚠️ COMBINAISON JAMAIS MESURÉE : bounce_px=9600 + stimulus flash.
+   L'ISR qui réalimente le bounce buffer est MASQUÉE pendant
+   l'effacement de secteur (ISR_IRAM_SAFE=n). Si l'image se
+   corrompt, c'est CE couplage — pas la dalle, et pas la
+   famine DMA de §11.4, qui est un autre régime.
+   §5.3 : question OUVERTE, D4 en vigueur. Consigner le
+   constat, quel qu'il soit. `set bounce 0` + `reboot` pour
+   retrouver le régime de dn1-3.
+stimulus flash lancé sur « stimulus » (1048576 o à 0x510000).
+I (1074729) dn_stim: stimulus FLASH démarré : effacement+écriture de secteurs de 4096 o, en boucle, sur la partition « stimulus » (1048576 o à 0x510000), sans pause entre deux secteurs.
+Décrire ce qu'on VOIT, précisément :
+  rien ? une ligne ? un flash de toute la dalle ?
+  une image décalée EN PERMANENCE (la DMA a décroché) ?
+
+$ flash off
+I (1164825) dn_stim: stimulus FLASH arrêté : 3152 secteurs, 12910592 o écrits, débit soutenu 142679 o/s
+
+$ anim off
+stimulus adverse arrêté.
+
+$ flush
+─── glissement de trame (dn4-10) — fenêtre 94511 ms ───
+  🎯 CE QUI SUIT L'ŒIL — LE TRIPLET DE TÊTE (dn4-12)
+   ① PLUS LONGUE SÉRIE de trames CONSÉCUTIVES NON SAINES : 0 trames ≈ 0 ms
+        composition : 0 déficit franchi (A) · 0 hors borne de sanité (C) · 0 sans enroulement (D)
+        commencée à la trame #0 depuis la RAZ · 0 série(s) au total
+        série en cours : aucune (la dernière trame était SAINE ou INDÉTERMINÉE).
+        ⚠️ MINORANT : 0 série(s) rompue(s) par une trame INDÉTERMINÉE (horodatage postérieur · paire déchirée · 2+ enroulements) — une série vraie a pu être COUPÉE EN DEUX.
+           ⛔ ce nombre NE SE SOUSTRAIT PAS et NE SE RECOMPOSE PAS : il BORNE la confiance, il ne corrige rien.
+        ⚠️ la classe A ne peut pas commencer avant la 32e trame (dégrossissage) : avant, aucun déficit n'est calculable. C et D, elles, comptent dès la 1re.
+        ⛔ ZÉRO NE PROUVE RIEN tant que le témoin ne l'a pas fait bouger : `flash on` doit rendre plusieurs CENTAINES de trames, dominées par la classe D.
+   ② DISTRIBUTION des déficits (sur n=3502 trames comptées) : 10 % 0 · 25 % 0 · 50 % 0 · 🔴 100 % (CORRUPTION) 0
+        ⛔ CUMULS EMBOÎTÉS, ⛔ pas des paliers disjoints : un déficit > 100 % compte dans LES QUATRE. Ne pas les sommer.
+        🎯 c'est la DISTRIBUTION qui est le signal FIABLE (dn4-22), ⛔ pas le maximum de ③.
+   ③ 🔴 DÉFICIT PIRE sous la référence : 9 µs, pour un demi-bounce qui s'écoule en 775 µs
+        ⇒ sous le seuil, il restait 766 µs de marge (98 % du demi-bounce)
+        ⛔ RÉFUTATION, ET ELLE EST MESURÉE : c'est un MAX — UN SEUL POINT ABERRANT LE DÉPLACE. dn4-22/ARM 5 rend 1 300 µs pour UNE corruption, contre 896 µs pour 245 chez `f7be23c`.
+           ⇒ à lire comme un ORDRE DE GRANDEUR, ⛔ PAS comme un discriminateur entre deux fenêtres. Le signal, c'est ②.
+  ── LE COMPTE, EN SECOND ─────────────────────────────
+  corruptions (déficit > 100 % du demi-bounce) : 0
+     ⚠️ RÉSERVE — voir « CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT » en fin de bloc. Le chiffre qui l'établit : 143 corruptions AVANT COMME APRÈS le correctif du 2026-08-23,
+        pendant que l'œil passait de « ça glisse » à « plus de glissement ». ⇒ ce compte NE SUIT PLUS L'ŒIL ; ① et ② sont là pour ça.
+  ── COMPARABILITÉ (les cinq chiffres, dn4-22/AC3.2) ──
+     ph_ref 2259 µs · ph_max 2263 µs · ph_n 3502 · dégrossissage 32 trames · demi-bounce 775 µs
+     dernière RAZ : 11 consommée(s) depuis le boot · la fenêtre ci-dessus (94511 ms) court depuis la dernière.
+  ──────────────────────────────────────────     retard PIRE observé : +7 us sur la période
+  ISR en retard de plus de : +100 us 0 · +775 us (back porch) 0 · +1938 us (VBlank) 0 · une trame 0
+  🎯 phase enroulement→VSYNC_END : n=3502 · min 2250 · moy 2255 · MAX 2263 us   (+32 trames de dégrossissage, ⛔ HORS de ces trois statistiques)
+     une phase COURTE = l'enroulement EN RETARD = le remplissage du bounce qui décroche.
+     référence des déficits (FIGÉE après dégrossissage) : 2259 us · 1 ligne = 39 us
+     ⚠️ MAX (2263) > référence (2259) : les déficits ci-dessous sont SOUS-comptés de 4 us.
+        ⛔ CETTE LIGNE EST QUASI-CERTAINE, ce n'est PAS un signal : la référence est le MAX de 32 trames, le MAX porte sur 3502. Un `flush reset` au repos ne la lèvera pas.
+        🎯 CE QU'ELLE AUTORISE : un seuil FRANCHI l'est a fortiori (le vrai déficit est plus grand). ⛔ CE QU'ELLE INTERDIT : comparer deux déficits entre eux — ils portent le même biais.
+     ⚠️ PLANCHER : la microseconde, soit 16 px. ⛔ « 0 » ici ne veut PAS dire « 0 pixel ».
+     ⚠️ L'horodatage de référence vient LUI AUSSI d'une ISR : un retard COMMUN aux deux s'annule et reste invisible.
+  ce que ça veut dire : RESTART_IN_VSYNC=**n** dans CE binaire.
+     Le driver ne remet PLUS la DMA à zéro à chaque VBlank — et
+     c'est ce reset-là, quand l'ISR était en retard, qui
+     DÉCALAIT l'image (esp_lcd_panel_rgb.c:1142-1148). Le
+     glissement périodique est fermé par là (`4734d07`).
+     ⛔ CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT :
+     à `n` c'est le DÉPASSEMENT du seuil qui suit l'œil, pas le
+     compte.
+     ⚠️ AMENDÉ le 2026-08-28 (dn4-12/D3) : le dépassement seul
+     NE SUFFIT PAS — c'est un MAX, qu'UN SEUL point aberrant
+     déplace (dn4-22 : 1 300 us pour UNE corruption contre 896
+     pour 245). La tête de bloc est un TRIPLET : ① la plus
+     longue SÉRIE · ② la DISTRIBUTION · ③ le dépassement AVEC
+     sa réfutation. Le compte descend en second, avec sa réserve.
+     Le budget de l'ISR reste le back porch, 775 us —
+     pas le VBlank entier (1938 us), car VSYNC_END tombe à la FIN
+     de l'impulsion.
+     ⚠️ le driver garde SA propre relance sur famine avérée
+     (esp_lcd_panel_rgb.c:1153-1163), compilée dans ce binaire.
+  ⛔ un compteur à zéro ne prouve RIEN tant que le témoin ne
+     l'a pas fait bouger, et la correspondance avec l'œil est
+     un RÉSULTAT à établir, pas une hypothèse. ⛔ `fps` reste
+     aveugle à ce défaut : il MOYENNE, et la gigue s'y efface.
+────────────────────────────────────────────────────────────
+rendu : PARTIEL · synchro : vsync · chemin : bitmap
+draw buffer : 480 x 128 px (122880 o) en RAM interne DMA
+flushes            : 2354
+cycles de redessin : 2331
+aire cumulée       : 49893675 px
+  => 21195 px par flush en moyenne (écran plein = 307200 px, soit 6.90 %)
+  => 21404 px et 1.0 flush(es) par CYCLE de redessin
+     (le CYCLE est l'unité qui compte : c'est ce qu'une mise à
+      jour du label coûte réellement, flushes multiples inclus.)
+plus grande aire   : 61440 px
+copie              : 3453788 us cumulés, 1467 us/flush en moyenne, 6092 us au pire
+attente de synchro : 32620141 us cumulés, 13857 us/flush en moyenne
+   (comptée À PART de la copie : sinon « le flush coûte 27 ms » se
+    lirait comme un problème de bande passante alors que c'est la
+    synchro qui attend sa trame — 26,7 ms de période.)
+rappel : redessiner l'écran ENTIER coûte 36,8 ms de memcpy PSRAM (§5.4),
+   pour 26,7 ms de période de trame — 1,4x TROP LENT. Les zones
+   sales ne sont pas une élégance, c'est la seule voie qui tient.
+
+════════ T9 — REPRODUCTION de T3 : bg flash->psram DANS la fenetre ════════ 2026-08-29T00:48:09+02:00
+
+$ ui bg flash
+fond lu depuis la flash mmap-ée (0 o).
+⚠️ la source ne change RIEN au coût du flush lui-même : elle
+   change le coût du RE-BLIT du fond sous la zone sale, que LVGL
+   refait à chaque mise à jour du label. `flush reset` puis
+   attendre 60 s pour comparer proprement.
+
+$ flush reset
+compteurs de flush remis à zéro.
+compteurs de GLISSEMENT (dn4-10) armés : la remise à zéro est
+   consommée par l'ISR au prochain vsync (<= 27 ms), pas ici.
+  -> ui bg psram
+
+$ ui bg psram
+I (1172742) dn_ui: fond copié flash -> PSRAM : 614400 o en 82971 us (7.40 Mo/s)
+fond lu depuis une COPIE PSRAM (+614 400 o).
+⚠️ la source ne change RIEN au coût du flush lui-même : elle
+   change le coût du RE-BLIT du fond sous la zone sale, que LVGL
+   refait à chaque mise à jour du label. `flush reset` puis
+   attendre 60 s pour comparer proprement.
+  -> anim on
+
+$ anim on
+stimulus adverse LANCÉ :
+  période 2000 ms, synchro du flush : vsync
+  PROTOCOLE AC4 — le témoin positif D'ABORD :
+   1. `flush sync off` puis regarder : la barre DOIT se couper.
+      Si elle ne se coupe pas, l'instrument ne sait pas voir et
+      rien ne peut être conclu ensuite.
+   2. `flush sync vsync`, puis `fbdone` : verdicts SÉPARÉS.
+   3. `anim off` + label seul : le régime PRODUIT, noté à part.
+  -> flash on
+
+$ flash on
+⚠️ COMBINAISON JAMAIS MESURÉE : bounce_px=9600 + stimulus flash.
+   L'ISR qui réalimente le bounce buffer est MASQUÉE pendant
+   l'effacement de secteur (ISR_IRAM_SAFE=n). Si l'image se
+   corrompt, c'est CE couplage — pas la dalle, et pas la
+   famine DMA de §11.4, qui est un autre régime.
+   §5.3 : question OUVERTE, D4 en vigueur. Consigner le
+   constat, quel qu'il soit. `set bounce 0` + `reboot` pour
+   retrouver le régime de dn1-3.
+stimulus flash lancé sur « stimulus » (1048576 o à 0x510000).
+Décrire ce qu'on VOIT, précisément :
+  rien ? une ligne ? un flash de toute la dalle ?
+  une image décalée EN PERMANENCE (la DMA a décroché) ?
+I (1173215) dn_stim: stimulus FLASH démarré : effacement+écriture de secteurs de 4096 o, en boucle, sur la partition « stimulus » (1048576 o à 0x510000), sans pause entre deux secteurs.
+
+$ flash off
+I (1218350) dn_stim: stimulus FLASH arrêté : 1579 secteurs, 6467584 o écrits, débit soutenu 152311 o/s
+
+$ anim off
+stimulus adverse arrêté.
+
+$ flush
+─── glissement de trame (dn4-10) — fenêtre 50044 ms ───
+  🎯 CE QUI SUIT L'ŒIL — LE TRIPLET DE TÊTE (dn4-12)
+   ① PLUS LONGUE SÉRIE de trames CONSÉCUTIVES NON SAINES : 3 trames ≈ 80 ms
+        composition : 0 déficit franchi (A) · 0 hors borne de sanité (C) · 3 sans enroulement (D)
+        commencée à la trame #159 depuis la RAZ · 1 série(s) au total
+        série en cours : aucune (la dernière trame était SAINE ou INDÉTERMINÉE).
+        ⚠️ MINORANT : 0 série(s) rompue(s) par une trame INDÉTERMINÉE (horodatage postérieur · paire déchirée · 2+ enroulements) — une série vraie a pu être COUPÉE EN DEUX.
+           ⛔ ce nombre NE SE SOUSTRAIT PAS et NE SE RECOMPOSE PAS : il BORNE la confiance, il ne corrige rien.
+  ─────────────────────────────────────────────────────
+  trames (vsync)   : 1871 · enroulements : 1868
+  trames SANS enroulement : 3 · à deux ou plus : 0
+  intervalle vsync→vsync : n=1870 · min 25613 · moy 26737 · MAX 27396 us
+     (période théorique 26737,500 us = 620 x 690 / 16000000 Hz)
+     retard PIRE observé : +658 us sur la période
+  ISR en retard de plus de : +100 us 2 · +775 us (back porch) 0 · +1938 us (VBlank) 0 · une trame 0
+  🎯 phase enroulement→VSYNC_END : n=1836 · min 2236 · moy 2255 · MAX 2415 us   (+32 trames de dégrossissage, ⛔ HORS de ces trois statistiques)
+     une phase COURTE = l'enroulement EN RETARD = le remplissage du bounce qui décroche.
+     référence des déficits (FIGÉE après dégrossissage) : 2258 us · 1 ligne = 39 us
+     ⚠️ MAX (2415) > référence (2258) : les déficits ci-dessous sont SOUS-comptés de 157 us.
+        ⛔ CETTE LIGNE EST QUASI-CERTAINE, ce n'est PAS un signal : la référence est le MAX de 32 trames, le MAX porte sur 1836. Un `flush reset` au repos ne la lèvera pas.
+        🎯 CE QU'ELLE AUTORISE : un seuil FRANCHI l'est a fortiori (le vrai déficit est plus grand). ⛔ CE QU'ELLE INTERDIT : comparer deux déficits entre eux — ils portent le même biais.
+     ⚠️ PLANCHER : la microseconde, soit 16 px. ⛔ « 0 » ici ne veut PAS dire « 0 pixel ».
+     ⚠️ L'horodatage de référence vient LUI AUSSI d'une ISR : un retard COMMUN aux deux s'annule et reste invisible.
+  ce que ça veut dire : RESTART_IN_VSYNC=**n** dans CE binaire.
+     Le driver ne remet PLUS la DMA à zéro à chaque VBlank — et
+     c'est ce reset-là, quand l'ISR était en retard, qui
+     DÉCALAIT l'image (esp_lcd_panel_rgb.c:1142-1148). Le
+     glissement périodique est fermé par là (`4734d07`).
+     ⛔ CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT :
+     à `n` c'est le DÉPASSEMENT du seuil qui suit l'œil, pas le
+     compte.
+     ⚠️ AMENDÉ le 2026-08-28 (dn4-12/D3) : le dépassement seul
+     NE SUFFIT PAS — c'est un MAX, qu'UN SEUL point aberrant
+     déplace (dn4-22 : 1 300 us pour UNE corruption contre 896
+     pour 245). La tête de bloc est un TRIPLET : ① la plus
+     longue SÉRIE · ② la DISTRIBUTION · ③ le dépassement AVEC
+     sa réfutation. Le compte descend en second, avec sa réserve.
+     Le budget de l'ISR reste le back porch, 775 us —
+     pas le VBlank entier (1938 us), car VSYNC_END tombe à la FIN
+     de l'impulsion.
+     ⚠️ le driver garde SA propre relance sur famine avérée
+     (esp_lcd_panel_rgb.c:1153-1163), compilée dans ce binaire.
+  ⛔ un compteur à zéro ne prouve RIEN tant que le témoin ne
+     l'a pas fait bouger, et la correspondance avec l'œil est
+     un RÉSULTAT à établir, pas une hypothèse. ⛔ `fps` reste
+     aveugle à ce défaut : il MOYENNE, et la gigue s'y efface.
+────────────────────────────────────────────────────────────
+rendu : PARTIEL · synchro : vsync · chemin : bitmap
+draw buffer : 480 x 128 px (122880 o) en RAM interne DMA
+flushes            : 1188
+cycles de redessin : 1172
+aire cumulée       : 25507870 px
+  => 21471 px par flush en moyenne (écran plein = 307200 px, soit 6.99 %)
+  => 21764 px et 1.0 flush(es) par CYCLE de redessin
+     (le CYCLE est l'unité qui compte : c'est ce qu'une mise à
+      jour du label coûte réellement, flushes multiples inclus.)
+plus grande aire   : 61440 px
+copie              : 1771756 us cumulés, 1491 us/flush en moyenne, 6100 us au pire
+attente de synchro : 16562944 us cumulés, 13941 us/flush en moyenne
+   (comptée À PART de la copie : sinon « le flush coûte 27 ms » se
+    lirait comme un problème de bande passante alors que c'est la
+    synchro qui attend sa trame — 26,7 ms de période.)
+rappel : redessiner l'écran ENTIER coûte 36,8 ms de memcpy PSRAM (§5.4),
+   pour 26,7 ms de période de trame — 1,4x TROP LENT. Les zones
+   sales ne sont pas une élégance, c'est la seule voie qui tient.
+
+$ ui bg flash
+fond lu depuis la flash mmap-ée (0 o).
+⚠️ la source ne change RIEN au coût du flush lui-même : elle
+   change le coût du RE-BLIT du fond sous la zone sale, que LVGL
+   refait à chaque mise à jour du label. `flush reset` puis
+   attendre 60 s pour comparer proprement.

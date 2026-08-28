@@ -1,0 +1,288 @@
+################ AC3.4 — FENETRE D'OBSERVATION A L'OEIL ################
+date    : 2026-08-29T01:04:06+02:00 · binaire b1a810f (SHA lu au bandeau)
+config  : bounce ACTIF = 480 (⛔ TEMOIN TEMPORAIRE), veille DESARMEE
+guetter : 🎯 LA LIGNE VERTE (glissement DMA au niveau de l'octet)
+          ⚠️ ⛔ PAS les restes de chiffres / bande de fond / micro-rectangle
+« pret ? » DEMANDE et OUI ATTENDU — verbatim owner : « Oui, je regarde »
+################################################################
+── etat RELU AVANT ──
+
+$ veille
+mode : ACTIF · veille DESARMEE · delai 1 min (60000 ms)
+inactivite : 355690 ms (max vue depuis le reset : 439230 ms)
+bascules -> Ambient : 1 · reveils : 1 · dernier reveil par : console
+secondes OBSERVEES : 791 (⚠️ ⛔ PAS l'uptime : le tick 1 Hz ne bat
+   pas pendant `ui off`, donc la veille y est AVEUGLE)
+─── temps MURAL par mode depuis le boot (dn4-5/AC3.2) ───
+  Actif   :      417 s
+  Ambient :      379 s
+  total   :      796 s  ⇒ Ambient = 47 %  🔴 SOUS LE SEUIL de 50 %
+  ⚠️ CE QUE CE CUMUL NE VOIT PAS : il dit dans quel MODE le
+     module se croit, ⛔ pas que la dalle est effectivement
+     sombre. Le constat owner reste requis. Et pendant un
+     `ui off`, le temps est impute au mode COURANT — sans
+     consequence en regime, ou le port est tenu par l'agent.
+  ⛔ EN RAM (D4) : un reboot le remet a zero, et il rompt la
+     fenetre du soak de toute facon (AC3.6).
+rebases d'horloge a `ui on` : 0 · bascules ANNULEES (async refusee) : 0
+derniere ecriture NVS : 1747 us (1 au total)
+   ⚠️ payee DANS LA TACHE LVGL quand elle vient d'un tap MENU :
+   le cache flash est coupe pendant ce temps-la.
+ecarts contact->bascule (le plus recent d'abord) :
+   #1     60230 ms  (delai arme 60000 ms, +230 ms)  ✅ dans [delai ; delai+1 s]
+   ⚠️ la fenetre fait UNE seconde parce que la detection est
+   cadencee a 1 Hz (`label_tick`). ⛔ Ce n'est pas « environ
+   le delai » : c'est [delai ; delai+1 s], et c'est verifie.
+taps CONSOMMES par un reveil : 0 · taps de reglage dans le MENU : 0
+contacts consommes EXPIRES (bus illisible) : 0 · bascules dont l'async a ete ABANDONNEE : 0
+transitions provoquees PAR LA VEILLE : 0 (dans `nav`, mais SANS
+   chronometre : elles ne naissent d'aucun geste)
+
+⚠️ PROTOCOLE DE LA GATE `menu_taps` (AC5.6) — A LIRE AVANT DE LA TIRER
+   Le bandeau MENU n'existe QUE sur le dashboard : une fois la vue
+   MENU ouverte, les appuis suivants au meme endroit ne tombent sur
+   AUCUNE zone. La serie est donc 8 ALLERS-RETOURS : appui dans
+   la bande y = 589..639, puis `←` (ou `nav back`), huit fois.
+   ⛔ Huit appuis d'affilee rendraient 1, ⛔ pas 8 — et ce ne
+     serait PAS une zone morte.
+   TEMOIN NEGATIF : >= 5 appuis dans la BARRE DU HAUT (y = 0..59)
+   doivent rendre 0 tap — elle, elle reste morte.
+
+usage : veille                       etat, compteurs, diagnostics
+        veille on | off              ARME / DESARME (persiste en NVS)
+        veille delai <1|3|5|10>      le delai, en MINUTES (persiste)
+        veille now                   bascule en Ambient MAINTENANT
+        veille wake                  reveille MAINTENANT (origine console)
+        veille lat                   les DEUX latences de reveil (AC4)
+        veille geom                  la preuve que le layout NE BOUGE PAS
+        veille assets                le recompte de la partition (AC1.4)
+        veille fond                  voiles et aplats RELUS DES OBJETS LVGL
+        veille reset                 compteurs ET latences a zero
+  --- leviers A/B, a chaud, ⛔ NON persistes (ce sont des instruments) ---
+        veille pct <3..100>           niveau d'Ambient de DERNIER RECOURS
+        veille voile <0..255>        opacite du voile en Ambient
+        veille gris <reel|simule|absent> <rrggbb>
+        veille accents <0..100>      desaturation des accents (0=teinte, 100=gris)
+        veille unite on|off          l'unite reste-t-elle ? ⚠️ CHOISIT LA POLICE
+                                     (on ⇒ 33 px · off ⇒ 56 px, tailles MESUREES)
+        veille jauge on|off          la barre de remplissage en veille
+        veille case <rrggbb>         l'aplat de case en Ambient
+⚠️ La ligne de resume de `help` a OMIS `fond`, `unite`, `jauge` et
+   `case` jusqu'au 2026-08-28 — corrige. `veille fond` est l'outil de
+   bissection qui a tranche le constat owner « au lieu d'un noir/gris
+   sombre c'est un vert » : il etait invisible pour qui part de `help`.
+
+$ cfg
+W (797694) dn_cfg: bounce_px=480 vient de la NVS et est SOUS le seuil MESURE SUR (7680 px = 16 lignes).
+W (797696) dn_cfg:   🔴 C'est la zone ou l'image GLISSE d'un cran sous trafic serie + repeint (famine DMA, §18.9). `cfg reset` ou `set bounce 9600` pour revenir au defaut.
+config de boot (NVS) : num_fbs=1 bounce_px=480 draw_lines=128 draw_psram=0 lvgl_core=0
+config ACTIVE        : num_fbs=1 bounce_px=480 draw_lines=128 draw_psram=0 lvgl_core=0
+⚠️ un `set` ne prend effet qu'au `reboot` : les framebuffers sont
+   alloués une fois, au démarrage. C'est voulu — réallouer à chaud
+   laisserait une PSRAM fragmentée et fausserait la mesure suivante.
+`cfg reset` efface la config NVS et rend les défauts au prochain boot.
+
+$ bl
+rétroéclairage : 80 % à 24000 Hz (allumé)
+⚠️ `bl 0` éteint le RÉTROÉCLAIRAGE : dalle NOIRE.
+   `disp off` éteint la SORTIE de la dalle : dalle GRISE éclairée.
+   Les deux donnent « plus d'image », par deux mécanismes différents.
+asservissement BH1750 : ARMÉ
+  loi      : 20 % à <= 2 lx · 80 % à >= 11 lx · courbe log entre les deux
+           (dn4-19/AC6.3 : l'œil ET le lux sont logarithmiques. Constat owner du 2026-08-27, A/B en ACTIF à 245 lx : « 75 % — nettement plus », là où la loi LINÉAIRE rendait 44 %. ⛔ Les deux bornes n'ont PAS bougé. `bl auto courbe lineaire` pour revenir à la loi de dn4-3 et refaire l'A/B.)
+  garde    : bande morte 3 pts · pas max 50 pts par cycle de 5000 ms (course complète en 2 cycles)
+  applique : 80 % (sur 76 lx)
+  régime   : ACTIF
+  ambiant  : échelle 100 % de la loi · plancher 16 %
+           ⚠️ ce plancher est un TROISIÈME contenu (gros chiffres sur noir), MESURÉ À L'ŒIL le 2026-08-27 dans le noir (« 8 % c'est trop bas, 16 c'est bien ») : ⛔ ne pas le confondre avec les 20 % du dashboard ni avec les 3 % du Living PCB — trois CONTENUS, trois chiffres.
+  applications : 1 mouvements de duty depuis le BOOT (⛔ jamais remis, meme par `bl auto on`)
+           (dn4-19/AC8 : deux relevés espacés mesurent le POMPAGE de la bande morte — la loi vit H24 depuis que l'auto est armée par défaut.)
+  ⚠️ `bl <n>`, `bl on|off` et `bl ramp` DÉSARMENT l'auto et le DISENT.
+  ⛔ `bl ramp` est BLOQUANTE : elle n'est JAMAIS appelée par l'asservissement.
+  ⛔ La VEILLE ne désarme PLUS (dn4-19) : elle POSE le niveau du régime EN UNE FOIS, et la loi le maintient ensuite.
+
+$ flush reset
+compteurs de flush remis à zéro.
+compteurs de GLISSEMENT (dn4-10) armés : la remise à zéro est
+   consommée par l'ISR au prochain vsync (<= 27 ms), pas ici.
+
+$ anim on
+stimulus adverse LANCÉ :
+  période 2000 ms, synchro du flush : vsync
+  PROTOCOLE AC4 — le témoin positif D'ABORD :
+   1. `flush sync off` puis regarder : la barre DOIT se couper.
+      Si elle ne se coupe pas, l'instrument ne sait pas voir et
+      rien ne peut être conclu ensuite.
+   2. `flush sync vsync`, puis `fbdone` : verdicts SÉPARÉS.
+   3. `anim off` + label seul : le régime PRODUIT, noté à part.
+── flush SUR LA MEME FENETRE QUE L'OEIL ──
+
+$ flush
+─── glissement de trame (dn4-10) — fenêtre 64198 ms ───
+  🎯 CE QUI SUIT L'ŒIL — LE TRIPLET DE TÊTE (dn4-12)
+   ① PLUS LONGUE SÉRIE de trames CONSÉCUTIVES NON SAINES : 1 trames ≈ 26 ms
+        composition : 1 déficit franchi (A) · 0 hors borne de sanité (C) · 0 sans enroulement (D)
+        commencée à la trame #985 depuis la RAZ · 1 série(s) au total
+        série en cours : aucune (la dernière trame était SAINE ou INDÉTERMINÉE).
+        ⚠️ MINORANT : 0 série(s) rompue(s) par une trame INDÉTERMINÉE (horodatage postérieur · paire déchirée · 2+ enroulements) — une série vraie a pu être COUPÉE EN DEUX.
+           ⛔ ce nombre NE SE SOUSTRAIT PAS et NE SE RECOMPOSE PAS : il BORNE la confiance, il ne corrige rien.
+        ⚠️ la classe A ne peut pas commencer avant la 32e trame (dégrossissage) : avant, aucun déficit n'est calculable. C et D, elles, comptent dès la 1re.
+   ② DISTRIBUTION des déficits (sur n=2369 trames comptées) : 10 % 44 · 25 % 2 · 50 % 2 · 🔴 100 % (CORRUPTION) 1
+        ⛔ CUMULS EMBOÎTÉS, ⛔ pas des paliers disjoints : un déficit > 100 % compte dans LES QUATRE. Ne pas les sommer.
+        🎯 c'est la DISTRIBUTION qui est le signal FIABLE (dn4-22), ⛔ pas le maximum de ③.
+   ③ 🔴 DÉFICIT PIRE sous la référence : 40 µs, pour un demi-bounce qui s'écoule en 39 µs
+        ⇒ DÉPASSÉ de 1 µs : la DMA a lu un tampon PAS ENCORE REMPLI. C'est le décalage visible.
+        ⛔ RÉFUTATION, ET ELLE EST MESURÉE : c'est un MAX — UN SEUL POINT ABERRANT LE DÉPLACE. dn4-22/ARM 5 rend 1 300 µs pour UNE corruption, contre 896 µs pour 245 chez `f7be23c`.
+           ⇒ à lire comme un ORDRE DE GRANDEUR, ⛔ PAS comme un discriminateur entre deux fenêtres. Le signal, c'est ②.
+  ── LE COMPTE, EN SECOND ─────────────────────────────
+  corruptions (déficit > 100 % du demi-bounce) : 1
+     ⚠️ RÉSERVE — voir « CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT » en fin de bloc. Le chiffre qui l'établit : 143 corruptions AVANT COMME APRÈS le correctif du 2026-08-23,
+        pendant que l'œil passait de « ça glisse » à « plus de glissement ». ⇒ ce compte NE SUIT PLUS L'ŒIL ; ① et ② sont là pour ça.
+  ── COMPARABILITÉ (les cinq chiffres, dn4-22/AC3.2) ──
+     ph_ref 818 µs · ph_max 830 µs · ph_n 2369 · dégrossissage 32 trames · demi-bounce 39 µs
+     dernière RAZ : 5 consommée(s) depuis le boot · la fenêtre ci-dessus (64198 ms) court depuis la dernière.
+  ─────────────────────────────────────────────────────
+  trames (vsync)   : 2401 · enroulements : 2401
+  trames SANS enroulement : 0 · à deux ou plus : 0
+  intervalle vsync→vsync : n=2400 · min 26723 · moy 26737 · MAX 26752 us
+     (période théorique 26737,500 us = 620 x 690 / 16000000 Hz)
+     retard PIRE observé : +14 us sur la période
+  ISR en retard de plus de : +100 us 0 · +775 us (back porch) 0 · +1938 us (VBlank) 0 · une trame 0
+  🎯 phase enroulement→VSYNC_END : n=2369 · min 778 · moy 817 · MAX 830 us   (+32 trames de dégrossissage, ⛔ HORS de ces trois statistiques)
+     une phase COURTE = l'enroulement EN RETARD = le remplissage du bounce qui décroche.
+     référence des déficits (FIGÉE après dégrossissage) : 818 us · 1 ligne = 39 us
+     ⚠️ MAX (830) > référence (818) : les déficits ci-dessous sont SOUS-comptés de 12 us.
+        ⛔ CETTE LIGNE EST QUASI-CERTAINE, ce n'est PAS un signal : la référence est le MAX de 32 trames, le MAX porte sur 2369. Un `flush reset` au repos ne la lèvera pas.
+        🎯 CE QU'ELLE AUTORISE : un seuil FRANCHI l'est a fortiori (le vrai déficit est plus grand). ⛔ CE QU'ELLE INTERDIT : comparer deux déficits entre eux — ils portent le même biais.
+     ⚠️ PLANCHER : la microseconde, soit 16 px. ⛔ « 0 » ici ne veut PAS dire « 0 pixel ».
+     ⚠️ L'horodatage de référence vient LUI AUSSI d'une ISR : un retard COMMUN aux deux s'annule et reste invisible.
+  ce que ça veut dire : RESTART_IN_VSYNC=**n** dans CE binaire.
+     Le driver ne remet PLUS la DMA à zéro à chaque VBlank — et
+     c'est ce reset-là, quand l'ISR était en retard, qui
+     DÉCALAIT l'image (esp_lcd_panel_rgb.c:1142-1148). Le
+     glissement périodique est fermé par là (`4734d07`).
+     ⛔ CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT :
+     à `n` c'est le DÉPASSEMENT du seuil qui suit l'œil, pas le
+     compte.
+     ⚠️ AMENDÉ le 2026-08-28 (dn4-12/D3) : le dépassement seul
+     NE SUFFIT PAS — c'est un MAX, qu'UN SEUL point aberrant
+     déplace (dn4-22 : 1 300 us pour UNE corruption contre 896
+     pour 245). La tête de bloc est un TRIPLET : ① la plus
+     longue SÉRIE · ② la DISTRIBUTION · ③ le dépassement AVEC
+     sa réfutation. Le compte descend en second, avec sa réserve.
+     Le budget de l'ISR reste le back porch, 775 us —
+     pas le VBlank entier (1938 us), car VSYNC_END tombe à la FIN
+     de l'impulsion.
+     ⚠️ le driver garde SA propre relance sur famine avérée
+     (esp_lcd_panel_rgb.c:1153-1163), compilée dans ce binaire.
+  ⛔ un compteur à zéro ne prouve RIEN tant que le témoin ne
+     l'a pas fait bouger, et la correspondance avec l'œil est
+     un RÉSULTAT à établir, pas une hypothèse. ⛔ `fps` reste
+     aveugle à ce défaut : il MOYENNE, et la gigue s'y efface.
+────────────────────────────────────────────────────────────
+rendu : PARTIEL · synchro : vsync · chemin : bitmap
+draw buffer : 480 x 128 px (122880 o) en RAM interne DMA
+flushes            : 1158
+cycles de redessin : 1135
+aire cumulée       : 26575915 px
+  => 22949 px par flush en moyenne (écran plein = 307200 px, soit 7.47 %)
+  => 23414 px et 1.0 flush(es) par CYCLE de redessin
+     (le CYCLE est l'unité qui compte : c'est ce qu'une mise à
+      jour du label coûte réellement, flushes multiples inclus.)
+plus grande aire   : 36675 px
+copie              : 2846997 us cumulés, 2458 us/flush en moyenne, 3584 us au pire
+attente de synchro : 21417418 us cumulés, 18495 us/flush en moyenne
+   (comptée À PART de la copie : sinon « le flush coûte 27 ms » se
+    lirait comme un problème de bande passante alors que c'est la
+    synchro qui attend sa trame — 26,7 ms de période.)
+rappel : redessiner l'écran ENTIER coûte 36,8 ms de memcpy PSRAM (§5.4),
+   pour 26,7 ms de période de trame — 1,4x TROP LENT. Les zones
+   sales ne sont pas une élégance, c'est la seule voie qui tient.
+── etat RELU APRES ──
+
+$ veille
+mode : ACTIF · veille DESARMEE · delai 1 min (60000 ms)
+inactivite : 420140 ms (max vue depuis le reset : 439230 ms)
+bascules -> Ambient : 1 · reveils : 1 · dernier reveil par : console
+secondes OBSERVEES : 854 (⚠️ ⛔ PAS l'uptime : le tick 1 Hz ne bat
+   pas pendant `ui off`, donc la veille y est AVEUGLE)
+─── temps MURAL par mode depuis le boot (dn4-5/AC3.2) ───
+  Actif   :      482 s
+  Ambient :      379 s
+  total   :      861 s  ⇒ Ambient = 43 %  🔴 SOUS LE SEUIL de 50 %
+  ⚠️ CE QUE CE CUMUL NE VOIT PAS : il dit dans quel MODE le
+     module se croit, ⛔ pas que la dalle est effectivement
+     sombre. Le constat owner reste requis. Et pendant un
+     `ui off`, le temps est impute au mode COURANT — sans
+     consequence en regime, ou le port est tenu par l'agent.
+  ⛔ EN RAM (D4) : un reboot le remet a zero, et il rompt la
+     fenetre du soak de toute facon (AC3.6).
+rebases d'horloge a `ui on` : 0 · bascules ANNULEES (async refusee) : 0
+derniere ecriture NVS : 1747 us (1 au total)
+   ⚠️ payee DANS LA TACHE LVGL quand elle vient d'un tap MENU :
+   le cache flash est coupe pendant ce temps-la.
+ecarts contact->bascule (le plus recent d'abord) :
+   #1     60230 ms  (delai arme 60000 ms, +230 ms)  ✅ dans [delai ; delai+1 s]
+   ⚠️ la fenetre fait UNE seconde parce que la detection est
+   cadencee a 1 Hz (`label_tick`). ⛔ Ce n'est pas « environ
+   le delai » : c'est [delai ; delai+1 s], et c'est verifie.
+taps CONSOMMES par un reveil : 0 · taps de reglage dans le MENU : 0
+contacts consommes EXPIRES (bus illisible) : 0 · bascules dont l'async a ete ABANDONNEE : 0
+transitions provoquees PAR LA VEILLE : 0 (dans `nav`, mais SANS
+   chronometre : elles ne naissent d'aucun geste)
+
+⚠️ PROTOCOLE DE LA GATE `menu_taps` (AC5.6) — A LIRE AVANT DE LA TIRER
+   Le bandeau MENU n'existe QUE sur le dashboard : une fois la vue
+   MENU ouverte, les appuis suivants au meme endroit ne tombent sur
+   AUCUNE zone. La serie est donc 8 ALLERS-RETOURS : appui dans
+   la bande y = 589..639, puis `←` (ou `nav back`), huit fois.
+   ⛔ Huit appuis d'affilee rendraient 1, ⛔ pas 8 — et ce ne
+     serait PAS une zone morte.
+   TEMOIN NEGATIF : >= 5 appuis dans la BARRE DU HAUT (y = 0..59)
+   doivent rendre 0 tap — elle, elle reste morte.
+
+usage : veille                       etat, compteurs, diagnostics
+        veille on | off              ARME / DESARME (persiste en NVS)
+        veille delai <1|3|5|10>      le delai, en MINUTES (persiste)
+        veille now                   bascule en Ambient MAINTENANT
+        veille wake                  reveille MAINTENANT (origine console)
+        veille lat                   les DEUX latences de reveil (AC4)
+        veille geom                  la preuve que le layout NE BOUGE PAS
+        veille assets                le recompte de la partition (AC1.4)
+        veille fond                  voiles et aplats RELUS DES OBJETS LVGL
+        veille reset                 compteurs ET latences a zero
+  --- leviers A/B, a chaud, ⛔ NON persistes (ce sont des instruments) ---
+        veille pct <3..100>           niveau d'Ambient de DERNIER RECOURS
+        veille voile <0..255>        opacite du voile en Ambient
+        veille gris <reel|simule|absent> <rrggbb>
+        veille accents <0..100>      desaturation des accents (0=teinte, 100=gris)
+        veille unite on|off          l'unite reste-t-elle ? ⚠️ CHOISIT LA POLICE
+                                     (on ⇒ 33 px · off ⇒ 56 px, tailles MESUREES)
+        veille jauge on|off          la barre de remplissage en veille
+        veille case <rrggbb>         l'aplat de case en Ambient
+⚠️ La ligne de resume de `help` a OMIS `fond`, `unite`, `jauge` et
+   `case` jusqu'au 2026-08-28 — corrige. `veille fond` est l'outil de
+   bissection qui a tranche le constat owner « au lieu d'un noir/gris
+   sombre c'est un vert » : il etait invisible pour qui part de `help`.
+
+$ bl
+rétroéclairage : 80 % à 24000 Hz (allumé)
+⚠️ `bl 0` éteint le RÉTROÉCLAIRAGE : dalle NOIRE.
+   `disp off` éteint la SORTIE de la dalle : dalle GRISE éclairée.
+   Les deux donnent « plus d'image », par deux mécanismes différents.
+asservissement BH1750 : ARMÉ
+  loi      : 20 % à <= 2 lx · 80 % à >= 11 lx · courbe log entre les deux
+           (dn4-19/AC6.3 : l'œil ET le lux sont logarithmiques. Constat owner du 2026-08-27, A/B en ACTIF à 245 lx : « 75 % — nettement plus », là où la loi LINÉAIRE rendait 44 %. ⛔ Les deux bornes n'ont PAS bougé. `bl auto courbe lineaire` pour revenir à la loi de dn4-3 et refaire l'A/B.)
+  garde    : bande morte 3 pts · pas max 50 pts par cycle de 5000 ms (course complète en 2 cycles)
+  applique : 80 % (sur 77 lx)
+  régime   : ACTIF
+  ambiant  : échelle 100 % de la loi · plancher 16 %
+           ⚠️ ce plancher est un TROISIÈME contenu (gros chiffres sur noir), MESURÉ À L'ŒIL le 2026-08-27 dans le noir (« 8 % c'est trop bas, 16 c'est bien ») : ⛔ ne pas le confondre avec les 20 % du dashboard ni avec les 3 % du Living PCB — trois CONTENUS, trois chiffres.
+  applications : 1 mouvements de duty depuis le BOOT (⛔ jamais remis, meme par `bl auto on`)
+           (dn4-19/AC8 : deux relevés espacés mesurent le POMPAGE de la bande morte — la loi vit H24 depuis que l'auto est armée par défaut.)
+  ⚠️ `bl <n>`, `bl on|off` et `bl ramp` DÉSARMENT l'auto et le DISENT.
+  ⛔ `bl ramp` est BLOQUANTE : elle n'est JAMAIS appelée par l'asservissement.
+  ⛔ La VEILLE ne désarme PLUS (dn4-19) : elle POSE le niveau du régime EN UNE FOIS, et la loi le maintient ensuite.
+
+$ anim off
+stimulus adverse arrêté.

@@ -1,0 +1,377 @@
+
+################ TEMOIN  — famine SOUTENUE ################
+date : 2026-08-29T00:50:48+02:00 · binaire b1a810f (SHA lu au bandeau)
+
+$ set bounce 480
+écrit en NVS. `reboot` pour l'appliquer.
+
+$ reboot
+redémarrage…
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0xc (RTC_SW_CPU_RST),boot:0xb (SPI_FAST_FLASH_BOOT)
+Saved PC:0x4037d339
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x1530
+load:0x403c8700,len:0xcec
+load:0x403cb700,len:0x2ef8
+entry 0x403c8920
+I (24) boot: ESP-IDF v5.5.5 2nd stage bootloader
+I (24) boot: compile time Aug 15 2026 04:11:10
+I (24) boot: Multicore bootloader
+I (24) boot: chip revision: v0.2
+I (24) boot: efuse block revision: v1.4
+I (25) boot.esp32s3: Boot SPI Speed : 80MHz
+I (25) boot.esp32s3: SPI Mode       : DIO
+I (25) boot.esp32s3: SPI Flash Size : 16MB
+I (25) boot: Enabling RNG early entropy source...
+I (26) boot: Partition Table:
+I (26) boot: ## Label            Usage          Type ST Offset   Length
+I (26) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (26) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (27) boot:  2 factory          factory app      00 00 00010000 00400000
+I (27) boot:  3 assets           Unknown data     01 40 00410000 00100000
+I (28) boot:  4 stimulus         Unknown data     01 41 00510000 00100000
+I (28) boot: End of partition table
+I (28) esp_image: segment 0: paddr=00010020 vaddr=3c0a0020 size=71f08h (466696) map
+I (114) esp_image: segment 1: paddr=00081f30 vaddr=3fc98200 size=03d04h ( 15620) load
+I (118) esp_image: segment 2: paddr=00085c3c vaddr=40374000 size=0a3dch ( 41948) load
+I (128) esp_image: segment 3: paddr=00090020 vaddr=42000020 size=97924h (620836) map
+I (241) esp_image: segment 4: paddr=0012794c vaddr=4037e3dc size=09d7ch ( 40316) load
+I (251) esp_image: segment 5: paddr=001316d0 vaddr=50000000 size=00020h (    32) load
+I (259) boot: Loaded app from partition at offset 0x10000
+I (259) boot: Disabling RNG early entropy source...
+I (260) octal_psram: vendor id    : 0x0d (AP)
+I (261) octal_psram: dev id       : 0x02 (generation 3)
+I (261) octal_psram: density      : 0x03 (64 Mbit)
+I (261) octal_psram: good-die     : 0x01 (Pass)
+I (261) octal_psram: Latency      : 0x01 (Fixed)
+I (261) octal_psram: VCC          : 0x01 (3V)
+I (262) octal_psram: SRF          : 0x01 (Fast Refresh)
+I (262) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
+I (262) octal_psram: BurstLen     : 0x01 (32 Byte)
+I (262) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (262) octal_psram: DriveStrength: 0x00 (1/1)
+I (263) MSPI Timing: Enter psram timing tuning
+I (264) esp_psram: Found 8MB PSRAM device
+I (264) esp_psram: Speed: 80MHz
+I (316) mmu_psram: Read only data copied and mapped to SPIRAM
+I (384) mmu_psram: Instructions copied and mapped to SPIRAM
+I (384) cpu_start: Multicore app
+I (756) esp_psram: SPI SRAM memory test OK
+I (764) cpu_start: Pro cpu start user code
+I (764) cpu_start: cpu freq: 160000000 Hz
+I (764) app_init: Application information:
+I (765) app_init: Project name:     desknode
+I (765) app_init: App version:      b1a810f
+I (765) app_init: Compile time:     Aug 29 2026 00:11:02
+I (765) app_init: ELF file SHA256:  fecef5b2d...
+I (765) app_init: ESP-IDF:          v5.5.5
+I (765) efuse_init: Min chip rev:     v0.0
+I (766) efuse_init: Max chip rev:     v0.99 
+I (766) efuse_init: Chip rev:         v0.2
+I (766) heap_init: Initializing. RAM available for dynamic allocation:
+I (766) heap_init: At 3FCB0508 len 00039208 (228 KiB): RAM
+I (766) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (767) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (767) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+I (767) esp_psram: Adding pool of 7040K of PSRAM memory to heap allocator
+I (767) esp_psram: Adding pool of 56K of PSRAM memory gap generated due to end address alignment of drom to the heap allocator
+I (768) spi_flash: detected chip: generic
+I (768) spi_flash: flash io: dio
+I (768) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (769) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (770) main_task: Started on CPU0
+I (770) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (771) main_task: Calling app_main()
+I (777) desknode: ──── socle ────────────────────────────────────────────
+I (777) desknode: mesuré : raison du démarrage = SW (esp_restart — commande `reboot`)
+I (777) desknode: mesuré : flash physique 16777216 o (16 MB)
+I (778) desknode: mesuré : PSRAM 8388608 o détectés au démarrage
+I (778) desknode: config : PSRAM en mode OCTAL
+I (778) desknode: config : horloge PSRAM 80 MHz
+I (778) desknode:   ⚠️ « config : » = relu du sdkconfig, PAS observé. Ces deux lignes ne peuvent pas démentir le build. Pour éprouver réellement le mode et l'horloge, mesurer le débit : `bw`.
+I (779) desknode: config : XIP depuis la PSRAM ACTIVÉ — code ET constantes sortis de la flash (dn4-22 : c'est le remède de §26, il rend la marge de famine DMA)
+I (779) desknode:   ⚠️ ceci est du « config : » — RELU DU SDKCONFIG, ⛔ PAS OBSERVÉ. La preuve d'exécution est « mmu_psram: Instructions copied and mapped to SPIRAM » plus haut dans CE log.
+I (780) desknode: config : LCD_RGB_RESTART_IN_VSYNC désactivé (défaut IDF) — la commande `dma` agit réellement dans ce build.
+W (780) desknode: config : LCD_RGB_ISR_IRAM_SAFE désactivé — l'ISR vsync peut être suspendue pendant une écriture flash. À noter si le fps mesuré pendant le stimulus d'AC6 devient bizarre.
+I (781) desknode: ──────────────────────────────────────────────────────
+W (782) dn_cfg: bounce_px=480 vient de la NVS et est SOUS le seuil MESURE SUR (7680 px = 16 lignes).
+W (782) dn_cfg:   🔴 C'est la zone ou l'image GLISSE d'un cran sous trafic serie + repeint (famine DMA, §18.9). `cfg reset` ou `set bounce 9600` pour revenir au defaut.
+I (782) dn_cfg: config de boot : num_fbs=1  bounce_px=480
+I (783) dn_cfg:                 draw_lines=128 (122880 o) en RAM interne DMA
+I (783) dn_cfg:                 tâche LVGL sur le cœur 0 (avec le pipeline d'affichage)
+I (783) dn_disp: rétroéclairage en LEDC : GPIO6, 10 bits (1024 crans) @ 24000 Hz (24 kHz et non les 5 kHz du BSP : mesuré, à 5 kHz la carte SIFFLE à duty bas), duty 0 — il ne montera qu'après le remplissage du framebuffer
+I (784) dn_disp: bus I2C monté : SDA=GPIO15 SCL=GPIO7, tirages internes ON — l'horloge est posée PAR DEVICE (400000 Hz visés), pas par le bus
+I (785) dn_disp: sonde I2C 0x20 (TCA9554) : répond
+I (786) dn_disp: TCA9554 prêt : LCD_RST=bit0 et LCD_CS=bit2 en SORTIE ; TP_RST=bit1 laissé en ENTRÉE (état de reset de l'expander) — dn_touch le prendra en main
+I (956) dn_disp: reset matériel de la dalle joué via l'expander (20 ms bas, 150 ms de repos)
+I (956) lcd_panel.io.3wire_spi: Panel IO create success, version: 1.0.1
+I (956) dn_disp: 3-wire SPI : SDA=GPIO1 SCL=GPIO2, CS via expander bit2, horloge visée 500000 Hz (plafond logiciel du composant)
+I (957) st7701: version: 2.0.2
+I (1531) dn_disp: DISPON (0x29) envoyé explicitement — la séquence vendeur ne le contient pas, et esp_lcd_panel_init() non plus
+I (1531) dn_disp: panneau RGB prêt : 480x640 @ 16000000 Hz pclk, num_fbs=1, bounce=480 px
+I (1532) dn_disp:   fb[0] @ 0x3c120900
+I (1532) dn_disp: PSRAM libre : 7262084 o avant les framebuffers, 6647324 o après (delta 614760 o)
+I (1611) dn_asset: asset mappé : offset 0x410000, 614400 o utiles sur 1048576 o de partition, @ 0x3c800000
+I (1612) dn_asset: intégrité VÉRIFIÉE : magie « DNASSET1 », 614400 o, CRC32 0x0F027C7D (calculé en 78804 us)
+I (1612) dn_asset: asset mappé, aucune copie encore mesurée
+W (1613) dn_touch: probe AVANT reset : il répond DÉJÀ à 0x5D — TP_RST n'est donc pas maintenu bas par l'expander en entrée (la story attendait l'inverse). La séquence reste utile : elle rend l'adresse DÉTERMINISTE.
+I (1964) dn_disp: reset tactile joué via l'expander bit1/EXIO2 (150 ms bas, 50 ms de repos) — TP_RST reste désormais en SORTIE HAUTE
+I (1965) dn_touch: probe APRÈS reset : ESP_OK — adresse RÉELLE 0x5D (visée 0x5D)
+I (1966) dn_touch: GT911 « 911 » fw 0x1060 · config v93 · résolution native 480x640 · 5 points · INT sur front DESCENDANT
+I (1967) GT911: I2C address initialization procedure skipped - using default GT9xx setup
+I (1968) GT911: TouchPad_ID:0x39,0x31,0x31
+I (1968) GT911: TouchPad_Config_Version:93
+I (1968) dn_touch: GT911 prêt à 0x5D — TP_INT=GPIO16, TP_RST=expander bit1
+I (1969) dn_ui: precision d'affichage : 6 cases auditees, 0 trou (AC9)
+I (1969) dn_ui: selections : 6 cases auditees, 0 faute (dn4-9 — invariants A/B/C)
+I (1970) dn_ui: k_desc[CPU] : case 3 [0, 1, 3] · detail 4 [0, 1, 2, 3] · peuplees 4 — `widget grandeurs 0 <1..4>` est jouable
+I (1970) dn_ui: k_desc[GPU] : case 3 [0, 1, 2] · detail 4 [0, 1, 2, 3] · peuplees 4 — `widget grandeurs 1 <1..4>` est jouable
+I (1971) dn_ui: k_desc[RAM] : case 1 [0] · detail 1 [0] · peuplees 1 — `widget grandeurs 2 <1..1>` est jouable
+I (1972) dn_ui: k_desc[RÉSEAU] : case 2 [0, 1] · detail 2 [0, 1] · peuplees 2 — `widget grandeurs 3 <1..2>` est jouable
+I (1972) dn_ui: k_desc[DISQUE] : case 2 [0, 1] · detail 4 [0, 1, 2, 3] · peuplees 4 — `widget grandeurs 4 <1..2>` est jouable
+I (1973) dn_ui: k_desc[AMBIANCE] : case 2 [0, 1] · detail 2 [0, 1] · peuplees 2 — `widget grandeurs 5 <1..2>` est jouable
+I (1973) dn_mes: abonnement vsync #0 : « flush »
+I (1974) LVGL: Starting LVGL task
+I (2017) dn_veille: veille ON · delai 1 min (60000 ms)
+I (2303) dn_ui: LVGL 9.5.0 prêt : rendu PARTIEL, draw buffer 480 x 128 px (122880 o) en RAM interne DMA
+I (2304) dn_ui:   flush : synchro « vsync », chemin « bitmap »
+I (2304) dn_ui:   coût en tas : RAM interne 268139 -> 137299 o (130840), PSRAM 6647124 -> 6647124 o (0)
+W (2305) dn_ui:   ⚠️ ce delta N'INCLUT PAS les 64 Ko statiques du tas de LVGL (LV_MEM_SIZE_KILOBYTES, réservés dans le .bss au link). L'instrument de CE coût-là est `ui`, qui imprime lv_mem_monitor().
+E (3027) gpio: gpio_install_isr_service(534): GPIO isr service already installed
+I (3028) dn_touch: indev LVGL branché — mode « poll »
+I (3028) dn_mes: dn4-10 : seuil de corruption = 39 us (ecoulement d'un demi-bounce de 480 px, soit 1 ligne(s))
+I (3028) dn_mes: compteur vsync branché (ISR en IRAM, compteur en RAM interne)
+I (3029) dn_mes:   ⚠️ enregistrement EXCLUSIF : il vient d'écraser tout callback posé avant lui (esp_lcd rgb ASSIGNE, ne fusionne pas). C'est voulu — voir le commentaire au-dessus.
+I (3029) dn_mes: abonnement vsync #1 : « recal »
+I (3030) dn_recal: recalage sur événement ACTIF : 1 vsync(s) après chaque bascule (RESTART_IN_VSYNC=n, le bit `need_restart` est bien consulté).
+I (3130) dn_mes: témoin vsync : 3 trames en 100 ms — le compteur est vivant
+I (3130) desknode: rétroéclairage à 100 % (GPIO6 en LEDC 10 bits @ 24000 Hz). ⚠️ il ne clignote pas : le clignotement était le signe de vie de P0, ce n'est plus un symptôme valide depuis P1.
+I (3131) desknode: prêt en 2359 ms depuis app_main
+I (3131) desknode: recalage d'AMORÇAGE armé (1 vsync) — RESTART_IN_VSYNC=n, la DMA n'est plus relancée à chaque VBlank
+I (3131) desknode:   ⚠️ si l'image sort DÉCALÉE malgré ça : `recal` pour les compteurs, `dma` pour recaler à la main (opérante à `n`).
+I (3132) desknode:   ⚠️ `recal N` n'est PAS persisté en NVS : un `recal 0` tapé à la console est perdu au reboot, et cet armement revient SANS trace. ⛔ Le réglage ne survit pas, le comportement si.
+I (3134) dn_capt: identite : chip id 0x61, variant 0x00 => BME680 @ 0x77
+I (3260) bme680: bme680_setup_heater_profiles: rh_reg_data 111 | gw_reg_data 146
+I (3307) dn_capt: config relue dans le capteur : 0x72=04 0x74=84 0x75=08
+I (3307) dn_capt: BME680 pret @ 0x77 — FORCED, T/H 8x, P 1x, IIR 3, gaz coupe, cadence 5000 ms, peremption 15000 ms
+I (3308) dn_capt:   l'affichage a UN CYCLE DE RETARD (5 s) sur le capteur : la boucle « data ready » sort a la 1re iteration alors que la conversion 8x/8x/1x demande ~41 ms, et le cycle mesure 25-26 ms. Chaque cycle DECLENCHE une conversion et LIT LA PRECEDENTE. C'est ASSUME, pas subi : attendre couterait 41 ms bloques par cycle (341 ms gaz allume) sur la tache qui partage le bus I2C.
+I (3309) dn_capt:   (gaz coupe DELIBEREMENT : sa plaque a 300 C chaufferait le die qui porte le thermometre, pour une donnee hors des 6 widgets du brief. A/B jouable a chaud : `capteurs gaz on`)
+I (3311) dn_env: INA219 @ 0x40 : NON CADENCE — ni ouvert ni configure. Voir `env` pour le motif.
+W (3311) dn_env: VL6180X @ 0x29 : configuration refusee au boot — ATTENDU a froid, elle sera REPOSEE par `cycle_un()` dans 60 s
+I (3312) dn_env: dn_env pret — 2/3 devices ouverts, cadence 5000 ms (portee par la tache dn_capt), peremption 15000 ms, timeout I2C 100 ms
+I (3313) dn_env:   retroeclairage auto : ARME par defaut — la loi est 20% a 2 lx, 80% a 11 lx, bande morte 3 pts, pas max 50 pts/cycle. `bl auto off` pour le desarmer ; la dalle va donc DESCENDRE depuis les 100 % du boot vers la loi (plafond de la loi : voir ci-dessus), par pas, dans les prochains cycles — c'est NORMAL (dn4-19/dn4-20).
+I (3314) dn_rtc: PCF85063A @ 0x51 — Control_1 = 0x00 : tourne, format 24 h, quartz 7 pF
+W (3315) dn_rtc:   ⚠️ CAP_SEL n'est PAS verifie : rien sur cette carte ne dit quel quartz est soude. Un mauvais reglage se paie en DERIVE, pas en panne. Laisse tel quel, consigne comme INCONNU.
+I (3316) dn_rtc: temoin RELU AVANT ecriture = 0xD7 : la puce a GARDE son alimentation depuis le dernier boot
+I (3317) dn_rtc: temoin anti-fantome pose en 0x03 = 0xD7 (relu)
+I (3318) dn_rtc: heure FIABLE : 2026-08-29 00:50:43
+[5nI (4006) dn_cli: console sur USB-Serial/JTAG
+
+
+Type 'help' to get the list of commands.
+
+Use UP/DOWN arrows to navigate through command history.
+
+Press TAB when typing command name to auto-complete.
+
+
+
+Your terminal application does not support escape sequences.
+
+Line editing and history features are disabled.
+
+On Windows, try using Windows Terminal or Putty instead.
+── cfg RELU apres reboot ──
+
+$ cfg
+W (20671) dn_cfg: bounce_px=480 vient de la NVS et est SOUS le seuil MESURE SUR (7680 px = 16 lignes).
+W (20673) dn_cfg:   🔴 C'est la zone ou l'image GLISSE d'un cran sous trafic serie + repeint (famine DMA, §18.9). `cfg reset` ou `set bounce 9600` pour revenir au defaut.
+config de boot (NVS) : num_fbs=1 bounce_px=480 draw_lines=128 draw_psram=0 lvgl_core=0
+config ACTIVE        : num_fbs=1 bounce_px=480 draw_lines=128 draw_psram=0 lvgl_core=0
+⚠️ un `set` ne prend effet qu'au `reboot` : les framebuffers sont
+   alloués une fois, au démarrage. C'est voulu — réallouer à chaud
+   laisserait une PSRAM fragmentée et fausserait la mesure suivante.
+`cfg reset` efface la config NVS et rend les défauts au prochain boot.
+
+════════ AC3.2 / DUREE COURTE — fenetre 30 s ════════ 2026-08-29T00:54:29+02:00
+
+$ flush reset
+compteurs de flush remis à zéro.
+compteurs de GLISSEMENT (dn4-10) armés : la remise à zéro est
+   consommée par l'ISR au prochain vsync (<= 27 ms), pas ici.
+
+$ flush
+─── glissement de trame (dn4-10) — fenêtre 34097 ms ───
+  🎯 CE QUI SUIT L'ŒIL — LE TRIPLET DE TÊTE (dn4-12)
+   ① PLUS LONGUE SÉRIE de trames CONSÉCUTIVES NON SAINES : 0 trames ≈ 0 ms
+        composition : 0 déficit franchi (A) · 0 hors borne de sanité (C) · 0 sans enroulement (D)
+        commencée à la trame #0 depuis la RAZ · 0 série(s) au total
+        série en cours : aucune (la dernière trame était SAINE ou INDÉTERMINÉE).
+        ⚠️ MINORANT : 0 série(s) rompue(s) par une trame INDÉTERMINÉE (horodatage postérieur · paire déchirée · 2+ enroulements) — une série vraie a pu être COUPÉE EN DEUX.
+           ⛔ ce nombre NE SE SOUSTRAIT PAS et NE SE RECOMPOSE PAS : il BORNE la confiance, il ne corrige rien.
+        ⚠️ la classe A ne peut pas commencer avant la 32e trame (dégrossissage) : avant, aucun déficit n'est calculable. C et D, elles, comptent dès la 1re.
+        ⛔ ZÉRO NE PROUVE RIEN tant que le témoin ne l'a pas fait bouger : `flash on` doit rendre plusieurs CENTAINES de trames, dominées par la classe D.
+   ② DISTRIBUTION des déficits (sur n=1243 trames comptées) : 10 % 24 · 25 % 0 · 50 % 0 · 🔴 100 % (CORRUPTION) 0
+        ⛔ CUMULS EMBOÎTÉS, ⛔ pas des paliers disjoints : un déficit > 100 % compte dans LES QUATRE. Ne pas les sommer.
+        🎯 c'est la DISTRIBUTION qui est le signal FIABLE (dn4-22), ⛔ pas le maximum de ③.
+   ③ 🔴 DÉFICIT PIRE sous la référence : 7 µs, pour un demi-bounce qui s'écoule en 39 µs
+        ⇒ sous le seuil, il restait 32 µs de marge (82 % du demi-bounce)
+        ⛔ RÉFUTATION, ET ELLE EST MESURÉE : c'est un MAX — UN SEUL POINT ABERRANT LE DÉPLACE. dn4-22/ARM 5 rend 1 300 µs pour UNE corruption, contre 896 µs pour 245 chez `f7be23c`.
+           ⇒ à lire comme un ORDRE DE GRANDEUR, ⛔ PAS comme un discriminateur entre deux fenêtres. Le signal, c'est ②.
+  ── LE COMPTE, EN SECOND ─────────────────────────────
+  corruptions (déficit > 100 % du demi-bounce) : 0
+     ⚠️ RÉSERVE — voir « CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT » en fin de bloc. Le chiffre qui l'établit : 143 corruptions AVANT COMME APRÈS le correctif du 2026-08-23,
+        pendant que l'œil passait de « ça glisse » à « plus de glissement ». ⇒ ce compte NE SUIT PLUS L'ŒIL ; ① et ② sont là pour ça.
+  ── COMPARABILITÉ (les cinq chiffres, dn4-22/AC3.2) ──
+     ph_ref 819 µs · ph_max 826 µs · ph_n 1243 · dégrossissage 32 trames · demi-bounce 39 µs
+     dernière RAZ : 1 consommée(s) depuis le boot · la fenêtre ci-dessus (34097 ms) court depuis la dernière.
+  ─────────────────────────────────────────────────────
+  trames (vsync)   : 1275 · enroulements : 1275
+  trames SANS enroulement : 0 · à deux ou plus : 0
+  intervalle vsync→vsync : n=1274 · min 26729 · moy 26737 · MAX 26746 us
+     (période théorique 26737,500 us = 620 x 690 / 16000000 Hz)
+     retard PIRE observé : +8 us sur la période
+  ISR en retard de plus de : +100 us 0 · +775 us (back porch) 0 · +1938 us (VBlank) 0 · une trame 0
+  🎯 phase enroulement→VSYNC_END : n=1243 · min 812 · moy 817 · MAX 826 us   (+32 trames de dégrossissage, ⛔ HORS de ces trois statistiques)
+     une phase COURTE = l'enroulement EN RETARD = le remplissage du bounce qui décroche.
+     référence des déficits (FIGÉE après dégrossissage) : 819 us · 1 ligne = 39 us
+     ⚠️ MAX (826) > référence (819) : les déficits ci-dessous sont SOUS-comptés de 7 us.
+        ⛔ CETTE LIGNE EST QUASI-CERTAINE, ce n'est PAS un signal : la référence est le MAX de 32 trames, le MAX porte sur 1243. Un `flush reset` au repos ne la lèvera pas.
+        🎯 CE QU'ELLE AUTORISE : un seuil FRANCHI l'est a fortiori (le vrai déficit est plus grand). ⛔ CE QU'ELLE INTERDIT : comparer deux déficits entre eux — ils portent le même biais.
+     ⚠️ PLANCHER : la microseconde, soit 16 px. ⛔ « 0 » ici ne veut PAS dire « 0 pixel ».
+     ⚠️ L'horodatage de référence vient LUI AUSSI d'une ISR : un retard COMMUN aux deux s'annule et reste invisible.
+  ce que ça veut dire : RESTART_IN_VSYNC=**n** dans CE binaire.
+     Le driver ne remet PLUS la DMA à zéro à chaque VBlank — et
+     c'est ce reset-là, quand l'ISR était en retard, qui
+     DÉCALAIT l'image (esp_lcd_panel_rgb.c:1142-1148). Le
+     glissement périodique est fermé par là (`4734d07`).
+     ⛔ CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT :
+     à `n` c'est le DÉPASSEMENT du seuil qui suit l'œil, pas le
+     compte.
+     ⚠️ AMENDÉ le 2026-08-28 (dn4-12/D3) : le dépassement seul
+     NE SUFFIT PAS — c'est un MAX, qu'UN SEUL point aberrant
+     déplace (dn4-22 : 1 300 us pour UNE corruption contre 896
+     pour 245). La tête de bloc est un TRIPLET : ① la plus
+     longue SÉRIE · ② la DISTRIBUTION · ③ le dépassement AVEC
+     sa réfutation. Le compte descend en second, avec sa réserve.
+     Le budget de l'ISR reste le back porch, 775 us —
+     pas le VBlank entier (1938 us), car VSYNC_END tombe à la FIN
+     de l'impulsion.
+     ⚠️ le driver garde SA propre relance sur famine avérée
+     (esp_lcd_panel_rgb.c:1153-1163), compilée dans ce binaire.
+  ⛔ un compteur à zéro ne prouve RIEN tant que le témoin ne
+     l'a pas fait bouger, et la correspondance avec l'œil est
+     un RÉSULTAT à établir, pas une hypothèse. ⛔ `fps` reste
+     aveugle à ce défaut : il MOYENNE, et la gigue s'y efface.
+────────────────────────────────────────────────────────────
+rendu : PARTIEL · synchro : vsync · chemin : bitmap
+draw buffer : 480 x 128 px (122880 o) en RAM interne DMA
+flushes            : 7
+cycles de redessin : 7
+aire cumulée       : 256725 px
+  => 36675 px par flush en moyenne (écran plein = 307200 px, soit 11.94 %)
+  => 36675 px et 1.0 flush(es) par CYCLE de redessin
+     (le CYCLE est l'unité qui compte : c'est ce qu'une mise à
+      jour du label coûte réellement, flushes multiples inclus.)
+plus grande aire   : 36675 px
+copie              : 22402 us cumulés, 3200 us/flush en moyenne, 3224 us au pire
+attente de synchro : 180942 us cumulés, 25848 us/flush en moyenne
+   (comptée À PART de la copie : sinon « le flush coûte 27 ms » se
+    lirait comme un problème de bande passante alors que c'est la
+    synchro qui attend sa trame — 26,7 ms de période.)
+rappel : redessiner l'écran ENTIER coûte 36,8 ms de memcpy PSRAM (§5.4),
+   pour 26,7 ms de période de trame — 1,4x TROP LENT. Les zones
+   sales ne sont pas une élégance, c'est la seule voie qui tient.
+
+════════ AC3.2 / DUREE LONGUE (rapport 4) — fenetre 120 s ════════ 2026-08-29T00:55:03+02:00
+
+$ flush reset
+compteurs de flush remis à zéro.
+compteurs de GLISSEMENT (dn4-10) armés : la remise à zéro est
+   consommée par l'ISR au prochain vsync (<= 27 ms), pas ici.
+
+$ flush
+─── glissement de trame (dn4-10) — fenêtre 124095 ms ───
+  🎯 CE QUI SUIT L'ŒIL — LE TRIPLET DE TÊTE (dn4-12)
+   ① PLUS LONGUE SÉRIE de trames CONSÉCUTIVES NON SAINES : 0 trames ≈ 0 ms
+        composition : 0 déficit franchi (A) · 0 hors borne de sanité (C) · 0 sans enroulement (D)
+        commencée à la trame #0 depuis la RAZ · 0 série(s) au total
+        série en cours : aucune (la dernière trame était SAINE ou INDÉTERMINÉE).
+        ⚠️ MINORANT : 0 série(s) rompue(s) par une trame INDÉTERMINÉE (horodatage postérieur · paire déchirée · 2+ enroulements) — une série vraie a pu être COUPÉE EN DEUX.
+           ⛔ ce nombre NE SE SOUSTRAIT PAS et NE SE RECOMPOSE PAS : il BORNE la confiance, il ne corrige rien.
+        ⚠️ la classe A ne peut pas commencer avant la 32e trame (dégrossissage) : avant, aucun déficit n'est calculable. C et D, elles, comptent dès la 1re.
+        ⛔ ZÉRO NE PROUVE RIEN tant que le témoin ne l'a pas fait bouger : `flash on` doit rendre plusieurs CENTAINES de trames, dominées par la classe D.
+   ② DISTRIBUTION des déficits (sur n=4609 trames comptées) : 10 % 4511 · 25 % 25 · 50 % 1 · 🔴 100 % (CORRUPTION) 0
+        ⛔ CUMULS EMBOÎTÉS, ⛔ pas des paliers disjoints : un déficit > 100 % compte dans LES QUATRE. Ne pas les sommer.
+        🎯 c'est la DISTRIBUTION qui est le signal FIABLE (dn4-22), ⛔ pas le maximum de ③.
+   ③ 🔴 DÉFICIT PIRE sous la référence : 21 µs, pour un demi-bounce qui s'écoule en 39 µs
+        ⇒ sous le seuil, il restait 18 µs de marge (46 % du demi-bounce)
+        ⛔ RÉFUTATION, ET ELLE EST MESURÉE : c'est un MAX — UN SEUL POINT ABERRANT LE DÉPLACE. dn4-22/ARM 5 rend 1 300 µs pour UNE corruption, contre 896 µs pour 245 chez `f7be23c`.
+           ⇒ à lire comme un ORDRE DE GRANDEUR, ⛔ PAS comme un discriminateur entre deux fenêtres. Le signal, c'est ②.
+  ── LE COMPTE, EN SECOND ─────────────────────────────
+  corruptions (déficit > 100 % du demi-bounce) : 0
+     ⚠️ RÉSERVE — voir « CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT » en fin de bloc. Le chiffre qui l'établit : 143 corruptions AVANT COMME APRÈS le correctif du 2026-08-23,
+        pendant que l'œil passait de « ça glisse » à « plus de glissement ». ⇒ ce compte NE SUIT PLUS L'ŒIL ; ① et ② sont là pour ça.
+  ── COMPARABILITÉ (les cinq chiffres, dn4-22/AC3.2) ──
+     ph_ref 822 µs · ph_max 828 µs · ph_n 4609 · dégrossissage 32 trames · demi-bounce 39 µs
+     dernière RAZ : 2 consommée(s) depuis le boot · la fenêtre ci-dessus (124095 ms) court depuis la dernière.
+  ─────────────────────────────────────────────────────
+  trames (vsync)   : 4641 · enroulements : 4641
+  trames SANS enroulement : 0 · à deux ou plus : 0
+  intervalle vsync→vsync : n=4640 · min 26728 · moy 26737 · MAX 26747 us
+     (période théorique 26737,500 us = 620 x 690 / 16000000 Hz)
+     retard PIRE observé : +9 us sur la période
+  ISR en retard de plus de : +100 us 0 · +775 us (back porch) 0 · +1938 us (VBlank) 0 · une trame 0
+  🎯 phase enroulement→VSYNC_END : n=4609 · min 801 · moy 817 · MAX 828 us   (+32 trames de dégrossissage, ⛔ HORS de ces trois statistiques)
+     une phase COURTE = l'enroulement EN RETARD = le remplissage du bounce qui décroche.
+     référence des déficits (FIGÉE après dégrossissage) : 822 us · 1 ligne = 39 us
+     ⚠️ MAX (828) > référence (822) : les déficits ci-dessous sont SOUS-comptés de 6 us.
+        ⛔ CETTE LIGNE EST QUASI-CERTAINE, ce n'est PAS un signal : la référence est le MAX de 32 trames, le MAX porte sur 4609. Un `flush reset` au repos ne la lèvera pas.
+        🎯 CE QU'ELLE AUTORISE : un seuil FRANCHI l'est a fortiori (le vrai déficit est plus grand). ⛔ CE QU'ELLE INTERDIT : comparer deux déficits entre eux — ils portent le même biais.
+     ⚠️ PLANCHER : la microseconde, soit 16 px. ⛔ « 0 » ici ne veut PAS dire « 0 pixel ».
+     ⚠️ L'horodatage de référence vient LUI AUSSI d'une ISR : un retard COMMUN aux deux s'annule et reste invisible.
+  ce que ça veut dire : RESTART_IN_VSYNC=**n** dans CE binaire.
+     Le driver ne remet PLUS la DMA à zéro à chaque VBlank — et
+     c'est ce reset-là, quand l'ISR était en retard, qui
+     DÉCALAIT l'image (esp_lcd_panel_rgb.c:1142-1148). Le
+     glissement périodique est fermé par là (`4734d07`).
+     ⛔ CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT :
+     à `n` c'est le DÉPASSEMENT du seuil qui suit l'œil, pas le
+     compte.
+     ⚠️ AMENDÉ le 2026-08-28 (dn4-12/D3) : le dépassement seul
+     NE SUFFIT PAS — c'est un MAX, qu'UN SEUL point aberrant
+     déplace (dn4-22 : 1 300 us pour UNE corruption contre 896
+     pour 245). La tête de bloc est un TRIPLET : ① la plus
+     longue SÉRIE · ② la DISTRIBUTION · ③ le dépassement AVEC
+     sa réfutation. Le compte descend en second, avec sa réserve.
+     Le budget de l'ISR reste le back porch, 775 us —
+     pas le VBlank entier (1938 us), car VSYNC_END tombe à la FIN
+     de l'impulsion.
+     ⚠️ le driver garde SA propre relance sur famine avérée
+     (esp_lcd_panel_rgb.c:1153-1163), compilée dans ce binaire.
+  ⛔ un compteur à zéro ne prouve RIEN tant que le témoin ne
+     l'a pas fait bouger, et la correspondance avec l'œil est
+     un RÉSULTAT à établir, pas une hypothèse. ⛔ `fps` reste
+     aveugle à ce défaut : il MOYENNE, et la gigue s'y efface.
+────────────────────────────────────────────────────────────
+rendu : PARTIEL · synchro : vsync · chemin : bitmap
+draw buffer : 480 x 128 px (122880 o) en RAM interne DMA
+flushes            : 27
+cycles de redessin : 27
+aire cumulée       : 926275 px
+  => 34306 px par flush en moyenne (écran plein = 307200 px, soit 11.17 %)
+  => 34306 px et 1.0 flush(es) par CYCLE de redessin
+     (le CYCLE est l'unité qui compte : c'est ce qu'une mise à
+      jour du label coûte réellement, flushes multiples inclus.)
+plus grande aire   : 36675 px
+copie              : 80001 us cumulés, 2963 us/flush en moyenne, 3267 us au pire
+attente de synchro : 671083 us cumulés, 24854 us/flush en moyenne
+   (comptée À PART de la copie : sinon « le flush coûte 27 ms » se
+    lirait comme un problème de bande passante alors que c'est la
+    synchro qui attend sa trame — 26,7 ms de période.)
+rappel : redessiner l'écran ENTIER coûte 36,8 ms de memcpy PSRAM (§5.4),
+   pour 26,7 ms de période de trame — 1,4x TROP LENT. Les zones
+   sales ne sont pas une élégance, c'est la seule voie qui tient.

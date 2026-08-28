@@ -5891,6 +5891,13 @@ Puis, **en second**, le **COMPTE** `ph_100pc` **avec sa réserve** (143 avant co
 ⛔ **RIEN DE CE BLOC N'EST MESURÉ À CE JOUR.** Il est écrit **avant** la séance, pour que l'attendu
 ne soit pas rédigé après coup.
 
+> 🎯 **JOUÉ LE 2026-08-29 — LES RÉSULTATS SONT EN §20ter.10, ⛔ ET CE TABLEAU N'EST PAS RÉÉCRIT.**
+> Il reste tel quel parce que c'est **l'attendu écrit AVANT**, et que c'est sa seule valeur. ⚠️ Deux
+> de ses lignes ont été **réfutées par la mesure** : le témoin `flash on` est **désarmé** sur ce
+> binaire (0 au lieu de 1 037/1 041) et « deux durées » ne peut pas être joué faute d'un stimulus qui
+> **dure**. La ligne « régime réel » est **tenue, et son attendu était juste** : la série y vaut
+> **zéro**.
+
 | Tir | Protocole | **Attendu, écrit AVANT** |
 |---|---|---|
 | **Témoin provoqué** | boot (SHA au bandeau) → **≥ 3 min** → `flush reset` → `flash on` → fenêtre → `flash off` → `flush` | une plus longue série de **plusieurs CENTAINES de trames**, **dominée par la classe D** (référence : 1 037 / 1 041). ⛔ **Si la grandeur ne bouge pas, l'instrument est FAUX et la story s'arrête là.** |
@@ -6007,6 +6014,210 @@ octets avait été **supprimé par `--gc-sections`** — `__attribute__((used))`
    est perdue** : **C** et **D** restent comptables, seule **A** disparaît.
 7. ⚠️ **Le 3ᵉ mode de défaillance de `bounce_px = 0`** (*« décalé verticalement + ça défile à toute
    vitesse horizontalement »*) reste **constaté et non caractérisé** — hors périmètre.
+
+### 20ter.10 🔴 LA SÉANCE CARTE DU 2026-08-29 — L'INSTRUMENT SAIT VOIR, ET LA CARTE A CASSÉ TROIS DE MES PROTOCOLES
+
+> **Binaire `b1a810f`, SHA LU AU BANDEAU** (`App version : b1a810f`, `Compile time : Aug 29 2026
+> 00:11:02`), XIP confirmé **à l'exécution** (`mmu_psram: Instructions copied and mapped to SPIRAM`).
+> Config : `num_fbs=1 bounce_px=9600 draw_lines=128 draw_psram=0 lvgl_core=0`, seuil **775 µs**.
+> **2 arms accordés + 1 en réserve** (décision owner). ⛔ **L'arm de réserve N'A PAS été dépensé.**
+
+#### ✅ AC1.9 EST LEVÉ — L'INSTRUMENT SAIT VOIR, ET IL RETOMBE QUAND LA CAUSE EST RETIRÉE
+
+La preuve est faite **dans les deux sens**, ce que ce dépôt exige :
+
+| tir | ce qui tourne | plus longue série | composition |
+|---|---|---|---|
+| **T7** | `ui bg psram` **SEUL** (⛔ ni animation ni stimulus flash) | **3 trames ≈ 80 ms** | 3 D |
+| **T8** | animation + `flash on` **acceptés**, 90 s, ⛔ **aucune reconstruction de scène** | **0** | — |
+| **T9** | reproduction de T7 | **3 trames ≈ 80 ms** | 3 D |
+
+⇒ **retirer la cause fait retomber le compteur, la remettre le fait remonter.** La cause est la
+**RECONSTRUCTION DE SCÈNE** (`ui bg …`), qui prend le verrou LVGL et repose une image de 614 400 o :
+pendant ~80 ms la DMA n'obtient pas ses enroulements ⇒ **3 trames consécutives de classe D**.
+
+🎯 **ET C'EST LA DÉMONSTRATION DE CE QUE `dn4-12` AJOUTE.** Sur le même événement (tir T3, qui
+portait en plus un `flash on`) :
+- le compteur de `dn4-10` dit **« 1 corruption »** ;
+- le compteur de `dn4-12` dit **« un état dégradé a duré 4 trames consécutives ≈ 106 ms, dont
+  3 sans enroulement (D) et 1 franchissement (A) »**.
+
+Ce sont **deux informations différentes**, et la seconde est **celle que l'owner demandait** : la
+DURÉE. La composition **1 A + 3 D** est exactement ce que la table des huit classes promettait — deux
+pathologies dans une même série.
+
+#### 🔴 CE QUE LA CARTE A CASSÉ CHEZ MOI — TROIS PROTOCOLES, ET LE PREMIER A FAILLI PUBLIER UNE CONCLUSION FAUSSE
+
+**(1) J'ALLAIS ÉCRIRE QUE LE TÉMOIN DE RÉFÉRENCE DU DÉPÔT ÉTAIT MORT. C'ÉTAIT FAUX.**
+`flash on` a rendu **0** sur 60 s à plein débit (**169 898 o/s**, le débit de référence), et
+`bounce 480` — que §20.7.6 mesure à `manques = 290 / 4 873` — a rendu **0** lui aussi. J'ai conclu
+que le remède XIP avait supprimé la famine à la racine.
+⛔ **RÉFUTÉ PAR LA RELECTURE DE L'ÉTAT RÉEL** : `veille` disait **`mode : AMBIENT · veille ARMEE ·
+inactivite 403 s`**. La veille tombe à **60 s** d'inactivité, donc **avant la fin de presque toute
+fenêtre console**. Le chiffre qui tranche : **14 flushes en 60 s (0,23 /s)** contre **1 620 en 321 s
+(5,05 /s)** sous agent réel — **FACTEUR 22**. *« Une image statique ne déchire pas. »*
+⇒ **RÈGLE** : toute fenêtre console qui mesure la famine DMA **relit `veille` avant de tirer** et
+**publie son débit de flushes à côté de son résultat**. `veille off` n'est pas une précaution, c'est
+une **condition de validité**.
+
+**(2) DEUX COMMANDES REFUSÉES, LUES COMME ACCEPTÉES.** `anim on 10` ⇒ *« refusé :
+ESP_ERR_INVALID_ARG — période attendue entre 200 et 10000 ms »* : le stimulus de dessin n'a **jamais**
+tourné dans deux fenêtres de 90 s. `flash on` ⇒ *« refusé : ESP_ERR_INVALID_STATE »*, le stimulus
+précédent courant encore. **Les deux refus étaient imprimés à l'écran** ; mon harnais ne les lisait
+pas. ⇒ **RÈGLE** : un harnais qui pose une commande **échoue bruyamment** sur `refusé` / `ESP_ERR` /
+`Unrecognized`, sinon il fabrique des faux négatifs **plausibles**.
+
+**(3) UNE FENÊTRE PERDUE À LA LECTURE.** Le premier `flush` après un `wsl-attach` est parti pendant
+que le port bruissait encore : **`ug/JTAG)` + `Unrecognized command`**. Il a échoué **bruyamment** —
+⛔ mais rien ne le **gardait** : une sortie **partielle et parsable** aurait publié du faux, en
+silence. ⇒ **RÈGLE** : exiger un **marqueur du bloc attendu** avant de retenir une lecture.
+
+#### 🔴 LE TÉMOIN DE RÉFÉRENCE DU DÉPÔT EST DÉSARMÉ SUR CE BINAIRE — RE-TIRÉ **EN RÉGIME DE DESSIN**
+
+Après la correction du protocole (1) ci-dessus, `flash on` a été **re-tiré proprement** : `veille off`
+et `anim on` **acceptés** (⛔ pas seulement envoyés), `mode : ACTIF · veille DESARMEE` **relu avant ET
+après**, `bounce 9600`, binaire livré. Le stimulus a été **accepté et il a tiré** :
+
+| fenêtre | secteurs écrits | débit soutenu | `manques` | **série** | CORRUPTION | déficit pire |
+|---|---|---|---|---|---|---|
+| **20 s** | 1 344 (5 505 024 o) | **92 975 o/s** | **0** | **0** | **0** | 120 µs |
+| **80 s** | 1 805 (7 393 280 o) | **85 630 o/s** | **0** | **0** | **0** | 121 µs |
+
+⚠️ **Le débit lui-même atteste du régime** : **86-93 ko/s** ici contre **169 898 o/s** dans la fenêtre
+au repos — le CPU est bien chargé par l'animation, ⛔ ce n'est pas une carte inactive.
+
+🔴 **CONCLUSION, ET ELLE VAUT AU-DELÀ DE `dn4-12`** : `flash on` + `bounce_px ≠ 0` rendait **1 037
+trames SANS enroulement sur 1 041** le **2026-08-22**. Sur le binaire du **2026-08-29**, dans un
+régime de dessin, il en rend **ZÉRO**. ⇒ **LE TÉMOIN DE RÉFÉRENCE DE L'INSTRUMENT EST DÉSARMÉ**, et
+**aucun document du dépôt ne le disait** — il est encore cité comme *« le TEMOIN de reference : un
+compteur qui ne bouge pas sous `flash on` est un compteur mort »*.
+
+⛔ **ET LA CAUSE N'EST PAS PROUVÉE.** L'hypothèse est le **remède XIP** de `dn4-22` (`d244011`) :
+`CONFIG_SPIRAM_FETCH_INSTRUCTIONS` + `CONFIG_SPIRAM_RODATA` sortent le code **et** les constantes de
+la flash, or le mécanisme du témoin était que *« l'ISR qui réalimente le bounce buffer est MASQUÉE
+pendant l'effacement de secteur »* — c'est-à-dire qu'elle allait chercher ses instructions **en
+flash**. Cohérent, et confirmé à l'exécution par `mmu_psram: Instructions copied and mapped to
+SPIRAM`. ⛔ **Mais une explication n'est pas une preuve** : il faudrait **retirer XIP et voir le
+témoin remonter**, ce qui coûte un arm. **Non fait, et déclaré.**
+
+⚠️ **Le même verdict frappe le SECOND témoin du dossier** : `bounce 480`, que §20.7.6 mesure à
+`manques = 290 / 4 873`, rend **`manques = 0`** aujourd'hui — en régime de dessin, sur 30 s comme sur
+120 s. Ce qu'il produit encore, ce sont des **franchissements de seuil isolés** (le seuil y vaut
+39 µs), ⛔ plus de la famine.
+
+#### 📊 LE RÉGIME NOMINAL — CE QUE LA GRANDEUR NEUVE DIT, ET C'EST LA RÉPONSE À LA QUESTION DE LA STORY
+
+**3 fenêtres de ~322 s sous AGENT RÉEL** (témoin positif relevé au début ET à la fin de chacune,
+`bounce 9600`, binaire livré) :
+
+| fenêtre | trames | `manques` | **plus longue série** | **nombre de séries** | CORRUPTION | déficit pire |
+|---|---|---|---|---|---|---|
+| 1/3 | 11 989 | 0 | **0** | **0** | 0 | 121 µs |
+| 2/3 | 12 037 | 0 | **0** | **0** | 0 | 122 µs |
+| 3/3 | 11 956 | 0 | **0** | **0** | 0 | 121 µs |
+
+⇒ **sur 35 982 trames consécutives sous agent réel, la plus longue série d'un état dégradé vaut
+ZÉRO.** ⛔ Ce n'est pas « l'instrument ne voit rien » — il vient de voir, deux fois, une série de 3.
+C'est **le régime nominal qui est propre**.
+
+**Et à `bounce 480`, LE TÉMOIN DU DOSSIER, EN RÉGIME DE DESSIN** (veille désarmée + animation) :
+
+| fenêtre | CORRUPTION | seaux 10/25/50 | **plus longue série** | **nombre de séries** | rompues par indéterminée |
+|---|---|---|---|---|---|
+| 30 s | **2** | 1156 · 3 · 2 | **1 trame** | **2** | **0** |
+| 120 s (**rapport 4**) | **8** | 4324 · 16 · 8 | **1 trame** | **8** | **0** |
+
+🎯 **LE NOMBRE DE SÉRIES SUIT EXACTEMENT LA DURÉE (2 → 8 pour ×4), MAIS LA LONGUEUR RESTE 1.**
+⇒ **le défaut est STRICTEMENT ISOLÉ : il ne dure jamais.** Et **`rompues par une indéterminée = 0`
+sur les deux fenêtres** ⇒ la longueur 1 **n'est pas un artefact de rupture**, elle est réelle. C'est
+précisément ce que le compteur de `dn4-10` ne pouvait **ni confirmer ni infirmer**.
+
+⚠️ **UNE NUANCE D'INSTRUMENT, ET ELLE N'ÉTAIT ÉCRITE NULLE PART** : à `bounce 480` le seau 10 % vaut
+**4 324 / 4 609 = 94 % de `n`** — ce qui est **le symptôme que la console nomme** pour une référence
+pathologique. ⛔ **Ici il n'est PAS diagnostique** : 10 % de `t_demi = 39 µs` valent **3,9 µs**, sous
+le bruit de phase, donc le seau se remplit **par construction**. ⇒ **le symptôme « le seau 10 % vaut
+presque `n` » ne vaut qu'à GRAND seuil.**
+
+#### 👁️ AC3.4 — LE CONSTAT OWNER, VERBATIM
+
+« Prêt ? » demandé, **OUI attendu** (*« Oui, je regarde »*), ce qu'il fallait guetter annoncé (**la
+LIGNE VERTE**, ⛔ pas les restes de chiffres). Fenêtre d'une minute à `bounce 480`, veille désarmée.
+Relevé machine **sur la même fenêtre** : **1 corruption**, plus longue série **1 trame ≈ 26 ms**,
+déficit pire 40 µs pour un seuil de 39.
+
+> 🔴 **VERBATIM OWNER, 2026-08-29** : *« oui bien stable mini gresillment sur une ligne le long de la
+> minute de lh cp et ME de menu mais vraiments tres tres légé »*
+
+**CE QUE ÇA ÉTABLIT** : à `bounce 480`, la config où l'owner disait *« ça a glissé »* le 2026-08-23,
+il dit maintenant **« bien stable »**. ⇒ **le glissement n'est PAS revu dans la MÊME configuration**,
+et cette fois c'est l'œil qui le dit, pas un compteur.
+
+⚠️ **DEUX RÉSERVES, ⛔ NON RÉCONCILIÉES DE FORCE** :
+1. Il décrit un grésillement **« le long de la minute »**, donc **CONTINU**, là où la machine n'a
+   compté **qu'UN** événement de 26 ms. ⇒ **l'œil et le compteur ne décrivent pas le même
+   phénomène**, et ⛔ on ne les fait pas coïncider.
+2. Ce n'est **pas** la ligne verte : c'est localisé sur du **texte** (« lh cp », « ME de menu »),
+   signature de l'**artefact d'INVALIDATION** — un défaut **différent**, hors périmètre de `dn4-12`.
+
+#### 💰 AC6.3 — LE COÛT EN MARGE DE FAMINE : ⛔ NON ATTRIBUABLE, ET LE MOTIF EST MON PROTOCOLE
+
+Même protocole, **n = 3 par bras**, agent réel, fenêtres de ~322 s :
+
+| grandeur | **AVANT** `e3064f0` | **APRÈS** `b1a810f` | Δ | étendues |
+|---|---|---|---|---|
+| **déficit pire** | 117 · 121 · 123 ⇒ **120,3 µs** | 121 · 122 · 121 ⇒ **121,3 µs** | **+1,0 µs** | 6 et 1 |
+| **CORRUPTION** | 0 · 0 · 0 | 0 · 0 · 0 | **0** | 0 |
+| `manques` | 0 · 0 · 0 | 0 · 0 · 0 | **0** | 0 |
+| seau 10 % | 16 · 30 · 33 ⇒ **26,3** | 120 · 149 · 105 ⇒ **124,7** | **+98,4 (×4,7)** | 17 et 44 |
+
+✅ **Sur le déficit pire, le Δ est +1,0 µs pour des étendues de 6 et 1 : NON DISTINGUABLE DE ZÉRO** —
+même verdict que les 17 correctifs de `dn4-5`. Et **CORRUPTION reste à 0 sur les six fenêtres.**
+
+⛔ **MAIS LE SEAU 10 % FAIT ×4,7, ET JE NE L'ATTRIBUE PAS À `dn4-12`.** Le Δ dépasse les deux
+étendues, donc il est *distinguable de zéro* — ⛔ mais **les deux bras ne sont pas alternés** : ils
+sont séparés d'**une heure** et d'une campagne intense (**62 Mo d'écriture flash**, 3 reboots, un
+passage à `bounce 480`). **Un A/B qui n'alterne pas ne sépare pas l'effet du binaire de la dérive
+temporelle** — c'est exactement pourquoi le protocole du dépôt impose des **bras alternés**, et je
+n'ai pas pu alterner **faute d'arms**.
+
+⚠️ **Et un chiffre du dossier borne déjà ce seau** : sur la fenêtre de **4 h 06** relevée en début de
+séance sur `e3064f0`, le seau 10 % valait **21 sur 552 563 trames = 0,004 %**, contre **0,22 %** sur
+mes fenêtres AVANT de 300 s. ⇒ **le seau 10 % d'une fenêtre courte est dominé par le TRANSITOIRE DE
+BOOT**, qui est hautement variable. C'est une raison de plus de ne rien conclure.
+
+🔬 **UN CONTRÔLE DE DÉRIVE A ÉTÉ TIRÉ, ET IL COÛTE ZÉRO ARM** : **3 fenêtres de plus sur le MÊME
+binaire `b1a810f`**, ~40 min après le bras APRÈS. Seau 10 % : **103 · 98 · 135**. Déficit pire :
+**136 · 120 · 121**. Série : **0 · 0 · 0**. CORRUPTION : **0 · 0 · 0**.
+
+⇒ **SUR SIX FENÊTRES COUVRANT ~55 MINUTES, LE SEAU 10 % DU BINAIRE `b1a810f` RESTE DANS [98, 149]**,
+pendant que celui de `e3064f0` tenait dans **[16, 33]**. **Les deux plages ne se recouvrent PAS**, et
+la valeur haute **ne dérive pas** : ce n'est donc **pas** un transitoire qui retomberait tout seul.
+
+🟠 **VERDICT, ET IL EST DÉLIBÉRÉMENT INCOMPLET** : c'est un **CANDIDAT DE COÛT RÉEL**, ⛔ **pas un
+coût établi**. Ce qui manque est nommé : **les bras n'ont pas été ALTERNÉS** (`AVANT → APRÈS →
+AVANT`), faute d'arm. Tant qu'un retour sur `e3064f0` n'a pas fait **retomber** le seau, on ne peut
+pas séparer l'effet du binaire d'un changement d'état persistant de la carte survenu entre les deux
+bras. **Prouver une cause, c'est LA RETIRER et voir le compteur retomber — ⛔ pas l'expliquer.**
+
+⚠️ **Et le déficit pire, lui, est TRANCHÉ** : `[117, 123]` avant contre `[120, 136]` après, sur 3 et
+6 fenêtres. **Les plages se recouvrent largement** ⇒ **Δ NON DISTINGUABLE DE ZÉRO**. Idem pour
+**CORRUPTION**, qui vaut **0 sur les NEUF fenêtres**, et pour `manques`, à 0 partout.
+
+
+#### 🎁 UN RÉSULTAT HORS PROGRAMME — LE CORRECTIF `dn4-5`/AC1.2 EST VU CRIER SUR LA CARTE
+
+La toute première lecture de la séance, sur `e3064f0` après ~4 h d'agent réel, a rendu :
+
+```
+─── glissement de trame (dn4-10) — fenêtre 14805101 ms ───
+⚠️ FENÊTRE AU-DELÀ DE 71,58 min (2^32 µs) — l'instrument
+   d'AVANT dn4-5 aurait publié 1920200 ms ici, soit 12884901 ms de MOINS que la réalité.
+```
+
+⇒ **4 h 06 mesurées, et l'instrument d'avant `dn4-5` en aurait publié 32 min** — trois enroulements
+de 2³² µs perdus. Le correctif d'AC1.2 de `dn4-5` **n'est plus seulement prouvé en logique par sa
+gate : il a crié sur le silicium**, et c'est la première fois.
+
 
 ## 21. `dn4-9` / AC8 — LE CONSTAT OWNER À L'ŒIL, 2026-08-22, firmware `38c3b99`
 
