@@ -8775,3 +8775,127 @@ dans le chemin du rétroéclairage ⇒ **elle mesure un binaire dont la machiner
   ⇒ **la réfutation de `dn1-3` ne s'applique PAS à `dn4-22`**, pour **deux** raisons indépendantes.
 - **§10.5** — les sept causes de `dn1-3` restent valides **pour le glissement**. ⛔ Elles ne disent
   rien de la **marge de famine sous charge**, qui est le sujet de §26.
+
+---
+
+# §27 — SÉANCE CARTE DU 2026-08-28 : LA REVUE DE CODE `dn4-5` ÉPROUVÉE SUR LE SILICIUM
+
+> **Contexte.** `dn4-5` a été débloquée le 2026-08-28 et une **revue de code 3 couches** a été
+> tirée dans la foulée : 20 constats retenus, 3 décisions owner, **17 correctifs**. Cette séance
+> mesure ce que ces correctifs ont coûté et vérifie ceux qui ne se voient que sur la carte.
+> **Firmwares** : `A = 1bc4672` (avant revue) · `B = e3064f0` (les 17 correctifs).
+> **Config INCHANGÉE avant/après** : `num_fbs=1 bounce_px=9600 draw_lines=128 draw_psram=0
+> lvgl_core=0`. Relevés bruts : `mesures/dn4-5/R-seance-2026-08-28/`, synthèse `R2-…txt`.
+
+## 27.1 🔴 LE PIÈGE QUE LA SÉANCE A TROUVÉ, ET IL INVALIDE UNE PRATIQUE — **LES DEUX PREMIÈRES MINUTES APRÈS UN BOOT MENTENT**
+
+| relevé | uptime au départ de la fenêtre | cœur 0 occupé |
+|---|---|---|
+| **B1** | **44 s** | **42,26 %** |
+| B4 | 225 s | 24,16 % |
+| B5 | 256 s | 24,11 % |
+| B6 | 288 s | 24,11 % |
+
+**Même firmware. Même stimulus. Même protocole. 18 POINTS D'ÉCART**, soit **+75 % en relatif**.
+
+🔴 **CE QUE ÇA A FAILLI COÛTER** : `B1` avait été pris juste après le flash, et il donnait
+`42,26 %` contre `24,22 %` pour la référence. Lu seul, il concluait que **trois comparaisons
+entières coûtaient 74 % de CPU** — une absurdité qu'on aurait pu publier. C'est la méthode du
+**bruit de répétition** qui l'a démasqué : ⛔ on ne compare pas deux points, on compare un point à
+une **étendue**.
+
+⇒ **RÈGLE POUR TOUTE SÉANCE FUTURE : ⛔ AUCUNE MESURE DE CHARGE DANS LES ~3 PREMIÈRES MINUTES
+APRÈS UN FLASH.** Attendre que la carte soit chaude, et le dire dans le relevé.
+
+⚠️ **LA CAUSE N'EST PAS ÉTABLIE, ET ⛔ ON N'EN PUBLIE PAS.** Le relevé donne l'effet, pas le
+mécanisme. Candidats à vérifier si quelqu'un veut la fermer : chauffe du BME680, convergence de
+l'asservissement de rétroéclairage (`dn4-19`/`dn4-20`), premiers dessins LVGL.
+
+## 27.2 📊 LE COÛT DU CHEMIN CHAUD LVGL — A/B EN RÉGIME CHAUD COMPARABLE
+
+Les 17 correctifs n'ajoutent **qu'une seule chose** sur le chemin chaud : **trois comparaisons
+entières par flush** (détection d'enroulement de `s_px`/`s_copie_us`/`s_attente_us`). ⛔ Aucun
+verrou. Elles tombent **après** `draw_bitmap`, donc **invisibles à `copie_us`** — l'instrument
+valide est donc la **charge CPU** et le **débit de flushes**, ⛔ pas les compteurs de temps.
+
+`A` pris à **198 s** d'uptime ; `B4/B5/B6` à **225 / 256 / 288 s**. **Même régime.**
+
+| grandeur | A `1bc4672` (n=1) | B `e3064f0` (n=3) | étendue de B | Δ |
+|---|---|---|---|---|
+| **cœur 0 occupé** | **24,22 %** | 24,11 · 24,11 · 24,16 % | **0,05 pt** | **−0,10 pt** |
+| flushes/s | 26,25 | 25,84 · 25,99 · 25,87 | 0,14 | −0,34 |
+| px / flush | 21 207 | 21 130 · 21 097 · 21 132 | 36 | −87 |
+| copie µs / flush | 1 461 | 1 477 · 1 439 · 1 473 | 38 | +2 |
+
+🎯 **VERDICT : LE COÛT DES TROIS COMPARAISONS N'EST PAS DISTINGUABLE DE ZÉRO.** Δ ≤ **0,1 point**
+sur une charge de 24 %, soit **< 0,5 % en relatif**.
+
+🔴 **ET LE SIGNE EST OPPOSÉ À UN COÛT RÉEL** : `B` mesure marginalement **moins** que `A`. Ce n'est
+pas physique ⇒ ce qui reste est de la **variation résiduelle**, ⛔ pas un effet.
+
+⛔ **CE QUE CE CHIFFRE NE PROUVE PAS, ET ⛔ IL NE FAUT PAS LE LIRE SANS ÇA : `A` EST UN ÉCHANTILLON
+UNIQUE.** L'étendue de `B` est connue (0,05 pt) ; celle de `A` est **INCONNUE**. Fermer
+symétriquement demanderait `A ×3`, soit **deux flashs de plus** que le budget annoncé (2, tous deux
+consommés). **Décision owner du 2026-08-28 : on s'arrête là et on écrit la limite.**
+⛔ **Aucun chiffre n'a été fabriqué pour combler ce trou.**
+
+## 27.3 ✅ AC2.2 — LA CONTRE-ÉPREUVE DU GEL, MACHINE **ET** ŒIL
+
+`gel 12` sur `B`, **les deux relevés pris SOUS LE VERROU** :
+
+```
+mural  (tâche app_main / horloge) : +12,0 s   ✅ VIVANT
+vsync  (ISR du panneau RGB)       : +449      ✅ VIVANT (attendu ~449 à 37,40 Hz)
+flush  (tâche LVGL)               : +0        🔴 FIGÉ
+cycles (tâche LVGL)               : +0        🔴 FIGÉ
+```
+
+✅ **CONSTAT OWNER, DEMANDÉ ET OBTENU — ⛔ PAS DÉDUIT D'UN COMPTEUR.** L'image s'est **figée ~12 s
+puis est repartie** ; le rétroéclairage est resté **allumé fixe** ; **aucun** artefact, clignotement
+ou reprise brutale. **Verbatim : *« oui oui non rien de special »*.**
+
+⇒ **AC2.2 EST COMPLET** : l'écart entre `up`/`vsync` et `flush`/`cycles` **est** la signature d'un
+gel d'image sur une application vivante, et **l'œil l'a confirmé**. ⚠️ Le rappel imprimé par la
+commande reste vrai : `vsync` ne descend pas jusqu'à l'œil, une dalle qui balaie un framebuffer
+figé compte des vsyncs comme une dalle vivante — **c'est pourquoi le constat owner était requis**.
+
+⚠️ **DEUX EFFETS DE BORD ATTENDUS, ET LES DEUX INSTRUMENTS ONT *DIT* CE QU'ILS PERDAIENT** :
+`dn_capt` — *« verrou LVGL indisponible 2 fois — poussée perdue »* ; `dn_ui` — *« historique :
+11 seconde(s) NON ÉCHANTILLONNÉE(S) … la courbe ne reliera PAS les deux bords de la coupure »*.
+⛔ **Rien n'est passé en silence.**
+
+✅ **LES TROIS AVERTISSEMENTS AJOUTÉS À `cmd_gel` PAR LA REVUE SE SONT AFFICHÉS** : famine du REPL
+(le REPL **est** le transport), ⛔ pas pendant le soak, ⛔ pas près d'une échéance de veille.
+
+## 27.4 ✅ LES CORRECTIFS DE REVUE, VÉRIFIÉS SUR LA CARTE — ET LA CARTE EN A CASSÉ UN
+
+**LE BATTEMENT — le défaut, confirmé sur données réelles AVANT de flasher quoi que ce soit :**
+sur `A` et dans le journal de soak du 26/08, `écart +3 s` à `up` 10/20/30/40/50 s — **constant,
+jamais une variation**. C'était le **socle d'initialisation**, ⛔ pas de la famine
+d'ordonnancement — et le commentaire du code affirmait le contraire.
+
+Après correctif : `écart -1 s, Δ -1 s` **plus** `socle d'initialisation : 3 s … ⛔ EXCLU de
+l'écart`. **Le socle vaut exactement les 3 s** qui polluaient la mesure.
+
+🔬 **ET LA CARTE A TROUVÉ UN DÉFAUT DANS LE CORRECTIF LUI-MÊME.** L'écart partait à **−1 s** alors
+que le commentaire annonçait 0 : division **entière tronquée** (10 s de `vTaskDelay` mesurent
+9,9998 s, tronqué à 9). ⚠️ **Il se résorbait tout seul** — à **640 s** d'uptime la carte affichait
+déjà `écart +0 s`. Le défaut est donc **plus petit que le correctif ne le suggère**, et c'est écrit.
+⛔ **Mais un commentaire qui annonce « il part de 0 » au-dessus d'un code qui rend −1 est
+exactement l'étiquette qui ment que ce dépôt traque.** Corrigé par **arrondi au plus proche**
+(décision owner), reflashé, **re-vérifié** : `up 10 s … (écart +0 s, Δ +0 s)` **dès le premier
+battement**. Coût : `0x120140` → `0x120150` = **+16 o**.
+
+✅ **Les cumuls `flush` sont composés sur 64 bits** et s'impriment.
+⚠️ **LA BANNIÈRE D'ENROULEMENT NE S'EST PAS AFFICHÉE, ET C'EST CORRECT** : `px` enroule en
+**~6,48 h** et la carte avait 5 min. ⛔ **CE CHEMIN N'EST DONC PAS ÉPROUVÉ SUR LA CARTE.** Il le
+sera par le soak lui-même — **c'est la première chose à regarder au bloc `flush` du jour 7**.
+✅ `fps` : **37,40 Hz** mesuré contre 37,40 Hz théorique, écart **+0,00 %**.
+
+## 27.5 ⛔ CE QUE CETTE SÉANCE N'A **PAS** FAIT
+
+- **AC4.6** (budget de l'agent) : ⛔ **non tiré**. Il exige la tour en **régime livré, WSL ÉTEINT**.
+- **AC3 / AC5 / AC8 / AC9.1** : le **soak de 7 jours n'a pas été lancé**.
+- Le **coût AGENT** de la borne d'âge du lisseur : ⛔ non mesuré, **à verser à AC4.6**.
+- La **COURSE** du seqlock de `dn_veille_cumul()` : ⛔ **non exercée** — un banc séquentiel n'exerce
+  pas une course. Elle est vérifiée **par sa forme** (§25.6).

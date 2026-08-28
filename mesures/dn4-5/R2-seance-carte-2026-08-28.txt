@@ -1,0 +1,120 @@
+dn4-5 — SEANCE CARTE DU 2026-08-28, APRES LA REVUE DE CODE 3 COUCHES
+=====================================================================
+Carte : Waveshare ESP32-S3-Touch-LCD-2.8B, /dev/ttyACM0 (WSL)
+cfg (INCHANGEE avant/apres) : num_fbs=1 bounce_px=9600 draw_lines=128
+                              draw_psram=0 lvgl_core=0
+Firmwares : A = 1bc4672 (avant revue)   B = e3064f0 (17 correctifs)
+Protocole : mesures/dn4-5/R-seance-2026-08-28/protocole-mesure_ab.sh
+            (anim off / flush reset / anim on / cpu brut / 30 s / cpu brut /
+             flush / anim off — IDENTIQUE des deux cotes)
+Captures brutes : mesures/dn4-5/R-seance-2026-08-28/
+
+---------------------------------------------------------------------
+1. 🔴 UN PIEGE DE METHODE TROUVE PAR LA MESURE, ET IL VAUT POUR TOUTE
+   SEANCE FUTURE : LES DEUX PREMIERES MINUTES APRES UN BOOT MENTENT
+---------------------------------------------------------------------
+  releve   uptime au depart   coeur 0 occupe
+  B1                  44 s        42,26 %
+  B4                 225 s        24,16 %
+  B5                 256 s        24,11 %
+  B6                 288 s        24,11 %
+
+  ⇒ 18 POINTS D'ECART, soit +75 % en relatif, sur le MEME firmware et le
+    MEME stimulus. J'ai failli conclure que 3 comparaisons entieres
+    coutaient 74 % de CPU.
+  ⛔ TOUTE MESURE DE CHARGE PRISE DANS LES ~3 PREMIERES MINUTES APRES UN
+    FLASH EST A JETER. Attendre que la carte soit CHAUDE.
+  ⚠️ Cause NON etablie (le releve ne la donne pas). Candidats a verifier
+    si quelqu'un veut la fermer : chauffe du BME680, asservissement du
+    retroeclairage (dn4-19/dn4-20) qui converge, premiers dessins LVGL.
+    ⛔ NE PAS PUBLIER UNE CAUSE : elle n'est pas mesuree.
+
+---------------------------------------------------------------------
+2. LE COUT DU CHEMIN CHAUD LVGL — A/B EN REGIME CHAUD COMPARABLE
+---------------------------------------------------------------------
+  A pris a 198 s d'uptime ; B4/B5/B6 a 225/256/288 s. MEME regime.
+
+  grandeur            A (n=1)    B (n=3)                  etendue B    Δ
+  coeur 0 occupe      24,22 %    24,11 / 24,11 / 24,16 %     0,05 pt   -0,10 pt
+  flushes/s           26,25      25,84 / 25,99 / 25,87       0,14      -0,34
+  px / flush          21 207     21 130 / 21 097 / 21 132   36         -87
+  copie us / flush     1 461      1 477 /  1 439 /  1 473   38         +2
+
+  ⇒ VERDICT : LE COUT DES TROIS COMPARAISONS N'EST PAS DISTINGUABLE DE
+    ZERO. Δ <= 0,1 point sur une charge de 24 %, soit < 0,5 % en relatif.
+  🔴 ET LE SIGNE EST OPPOSE A UN COUT REEL : B mesure marginalement MOINS
+    que A. Ce n'est pas physique ⇒ ce qui reste est de la variation
+    residuelle, ⛔ pas un effet.
+
+  ⛔ CE QUE CE CHIFFRE NE PROUVE PAS, ET IL FAUT LE LIRE AVEC :
+    **A EST UN ECHANTILLON UNIQUE.** L'etendue de B est connue (0,05 pt),
+    celle de A est INCONNUE. Fermer proprement demanderait A x3, soit
+    DEUX FLASHS DE PLUS que le budget annonce (2, tous deux consommes).
+    DECISION OWNER DU 2026-08-28 : on s'arrete la et on ECRIT la limite.
+    ⛔ Aucun chiffre n'a ete fabrique pour combler ce trou.
+
+---------------------------------------------------------------------
+3. AC2.2 — LA CONTRE-EPREUVE DU GEL, MACHINE **ET** OEIL
+---------------------------------------------------------------------
+  `gel 12` sur B (e3064f0), les DEUX releves pris SOUS LE VERROU :
+    mural  (tache app_main / horloge) : +12,0 s   ✅ VIVANT
+    vsync  (ISR du panneau RGB)       : +449      ✅ VIVANT (attendu ~449
+                                                  a 37,40 Hz)
+    flush  (tache LVGL)               : +0        🔴 FIGE
+    cycles (tache LVGL)               : +0        🔴 FIGE
+
+  ✅ CONSTAT OWNER, DEMANDE ET OBTENU (⛔ pas deduit d'un compteur) :
+     l'image s'est FIGEE ~12 s puis est repartie ; le retroeclairage est
+     reste ALLUME FIXE ; aucun artefact, aucun clignotement, aucune
+     reprise brutale. Verbatim : « oui oui non rien de special ».
+  ⇒ AC2.2 EST COMPLET : la triade discrimine un gel d'image sur une
+    application VIVANTE, et l'oeil l'a confirme.
+
+  ⚠️ DEUX EFFETS DE BORD ATTENDUS, APPARUS DANS LE LOG, ET LES DEUX
+     INSTRUMENTS ONT **DIT** CE QU'ILS PERDAIENT :
+       dn_capt : « verrou LVGL indisponible 2 fois — poussee perdue »
+       dn_ui   : « historique : 11 seconde(s) NON ECHANTILLONNEE(S) …
+                   la courbe ne reliera PAS les deux bords de la coupure »
+     ⛔ Rien n'est passe en silence.
+
+  ✅ LES TROIS AVERTISSEMENTS AJOUTES A `cmd_gel` PAR LA REVUE SE SONT
+     AFFICHES (famine du REPL, ⛔ pas pendant le soak, ⛔ pas pres d'une
+     echeance de veille).
+
+---------------------------------------------------------------------
+4. LES CORRECTIFS DE REVUE, VERIFIES SUR LA CARTE
+---------------------------------------------------------------------
+  ✅ LE BATTEMENT — avant (1bc4672), sur la carte ET dans le journal de
+     soak du 26/08 : « ecart +3 s » a up 10/20/30/40/50 s, CONSTANT,
+     jamais une variation. C'etait le socle d'initialisation, ⛔ pas de la
+     famine d'ordonnancement — et le commentaire du code affirmait le
+     contraire.
+     apres (e3064f0) : « ecart -1 s, Δ -1 s » + « socle d'initialisation :
+     3 s … ⛔ EXCLU de l'ecart ». Le socle vaut EXACTEMENT les 3 s qui
+     polluaient la mesure.
+  🔬 ET LA CARTE A TROUVE UN DEFAUT DANS LE CORRECTIF LUI-MEME : le -1 s
+     vient de la division ENTIERE TRONQUEE (10 s de vTaskDelay mesurent
+     9,9998 s, tronque a 9). ⚠️ Il se resorbait TOUT SEUL — a 640 s
+     d'uptime la carte affichait deja « ecart +0 s ». ⛔ Mais un
+     commentaire qui annonce « il part de 0 » au-dessus d'un code qui rend
+     -1 est l'etiquette qui ment. Corrige par arrondi au plus proche
+     (decision owner), reflashe, RE-VERIFIE :
+        « up 10 s … (ecart +0 s, Δ +0 s) »  ✅ des le PREMIER battement
+     Cout : binaire 0x120140 -> 0x120150 = +16 o.
+  ✅ LES CUMULS `flush` SONT COMPOSES sur 64 bits et s'impriment.
+  ⚠️ LA BANNIERE D'ENROULEMENT ne s'affiche PAS — c'est CORRECT : `px`
+     enroule en ~6,48 h et la carte avait 5 min. ⛔ CE CHEMIN N'EST DONC
+     PAS EPROUVE SUR LA CARTE. Il le sera par le soak lui-meme, et c'est
+     la premiere chose a regarder au bloc `flush` du jour 7.
+  ✅ fps : 37,40 Hz mesure contre 37,40 Hz theorique, ecart +0,00 %.
+
+---------------------------------------------------------------------
+5. CE QUE CETTE SEANCE N'A PAS FAIT
+---------------------------------------------------------------------
+  ⛔ AC4.6 (budget de l'agent) : NON TIRE. Il exige la tour en regime
+     livre avec WSL ETEINT, et j'y tourne.
+  ⛔ AC3 / AC5 / AC8 / AC9.1 : le soak de 7 jours n'a pas ete lance.
+  ⛔ Le cout AGENT de la borne d'age du lisseur : non mesure, a verser a
+     AC4.6.
+  ⛔ La COURSE du seqlock de `dn_veille_cumul()` : non exercee (un banc
+     sequentiel n'exerce pas une course ; verifiee par sa FORME).

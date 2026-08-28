@@ -1,0 +1,22 @@
+
+$ cpu brut
+temps CPU CUMULÉ depuis le boot (tâche / ticks / %) :
+taskLVGL       	36223588		14%
+console_repl   	309309		0%
+IDLE1          	255261380		99%
+IDLE0          	216376114		84%
+dn_rtc         	347534		0%
+dn_capt        	171788		0%
+main           	491417		0%
+dn_link        	50316		0%
+ipc1           	9645		0%
+Tmr Svc        	19		0%
+esp_timer      	1862083		0%
+ipc0           	9999		0%
+dn_recal       	67		0%
+total          	255558861
+⚠️ cumulé depuis le boot, et le compteur reboucle toutes les ~71 min.
+   Pour chiffrer la charge ACTUELLE, utiliser `cpu [secondes]`.
+⚠️ Le % est rapporte a UN cœur (le total est une duree ECOULEE).
+   Sur un biprocesseur la colonne somme donc vers ~200 %, pas 100 % :
+   deux IDLE a 99 % et 85 % = 184 %, soit 92 % d'un bi-cœur au repos.

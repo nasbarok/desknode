@@ -695,10 +695,22 @@ void app_main(void)
         dn_ui_get_stats(&st);
         /* int64 : `esp_timer_get_time()` ne déborde qu'après ~292 000 ans. */
         int64_t mural_s = esp_timer_get_time() / 1000000;
-        /* ⇒ RÉFÉRENCÉ À L'ENTRÉE DE BOUCLE : sur une carte saine il part de 0 et
-         *   monte lentement (quantification du tick), ⛔ il ne part plus de +3 s. */
-        long long ecart = (long long)((esp_timer_get_time() - t0_us) / 1000000)
-                          - (long long)s;
+        /*
+         * ⇒ RÉFÉRENCÉ À L'ENTRÉE DE BOUCLE : sur une carte saine il part de 0 et
+         *   monte lentement (quantification du tick), ⛔ il ne part plus de +3 s.
+         * 🔬 L'ARRONDI N'EST PAS COSMÉTIQUE, ET C'EST LA CARTE QUI L'A DIT —
+         *    SÉANCE DU 2026-08-28. Avec la division TRONQUÉE, le tout premier
+         *    battement publiait `écart -1 s` : 10 s de `vTaskDelay` mesurent
+         *    9,9998 s, et 9,9998 tronqué vaut 9, donc 9 - 10 = -1.
+         *    ⚠️ LE DÉFAUT SE RÉSORBAIT TOUT SEUL — à 640 s d'uptime la carte
+         *      affichait déjà `écart +0 s`. Il est donc PLUS PETIT que le
+         *      correctif ne le suggère, et c'est écrit. ⛔ Mais un commentaire
+         *      qui annonce « il part de 0 » au-dessus d'un code qui rend -1 est
+         *      exactement l'étiquette qui ment que ce dépôt traque.
+         *    ⇒ On arrondit au plus proche, et le premier battement rend 0.
+         */
+        long long ecart = (long long)((esp_timer_get_time() - t0_us + 500000)
+                                      / 1000000) - (long long)s;
         long long d_ecart = ecart - ecart_prec;
         ecart_prec = ecart;
         ESP_LOGI(TAG,

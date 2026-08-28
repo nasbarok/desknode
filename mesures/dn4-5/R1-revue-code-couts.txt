@@ -6,8 +6,15 @@ Toolchain : ESP-IDF v5.5.x (~/esp/esp-idf), idf.py build, 0 avertissement
 
 BINAIRE (build/desknode.bin)
   base   1 177 728 o   (0x11f880)
-  apres  1 179 968 o   (0x120140)
+  apres  1 179 968 o   (0x120140)   <- les 17 correctifs
   Δ      +2 240 o      (+0,190 %)
+
+  ⚠️ REPRIS APRES LA SEANCE CARTE DU 2026-08-28 : la carte a trouve un
+     defaut DANS le correctif du battement (ecart a -1 s au lieu de 0,
+     troncature de la division entiere). Corrige par arrondi, sur
+     decision owner :
+  final  1 179 984 o   (0x120150)   <- + l'arrondi du battement
+  Δ TOTAL vs base : +2 256 o (+0,192 %)
 
 RAM STATIQUE (idf.py size, DIRAM)
   base   164 527 o utilisés — 177 233 o libres
