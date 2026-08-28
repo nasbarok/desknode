@@ -1,0 +1,42 @@
+=== rendre-port.sh — flash ===
+  BUSID relu : 3-5   (⛔ jamais en dur : il suit le port physique)
+
+[0.5s] 1/4  Arrêter l'agent — et LE PROUVER (⛔ pas par un code de retour)
+     
+     === STOP ===
+       a arreter : PID=18368
+       drapeau pose : arret PROPRE demande (le bilan de fin doit sortir)
+       arret propre en 1 s ; bilan ecrit : 1562 o
+     
+     === PREUVE : ON RE-OUVRE LE PORT ===
+       python.exe vivants : 0  (portant dn_agent.py : 0 | CommandLine ILLISIBLE : 0)
+       port COM3 : libre
+       usbipd : 3-5 303a:1001 Périphérique série USB (COM3), USB JTAG/serial debug unit Shared
+       marqueur : absent
+       journal : 447094 o  H:\dev\projets\desknode\dn-agent.log
+       OK - COM3 se REOUVRE : le port est rendu.
+  COM3 après stop : libre
+
+[4.9s] 2/4  Veilleurs --auto-attach (on repart d'une base propre)
+  veilleurs tués : Windows=0  WSL=0
+  /!\ 1 usbipd.exe à CommandLine ILLISIBLE : ni tués, ni innocentés.
+  /!\     (faux négatif MESURÉ le 2026-08-26 — PID 6056). Le verdict reste l'état du port.
+
+[6.3s] 3/4  wsl-attach.sh (busid relu par lui aussi)
+     1/4  Chargement des modules noyau USB…
+     2/4  Recherche de la carte (303a:1001) dans 'usbipd list'…
+          BUSID = 3-5
+     3/4  Attachement à WSL…
+          usbipd: info: Using WSL distribution 'Ubuntu' to attach; the device will be available in all WSL 2 distributions.
+          usbipd: info: Detected networking mode 'nat'.
+          usbipd: info: Using IP address 192.168.224.1 to reach the host.
+     4/4  Ouverture des droits sur /dev/ttyACM0…
+     
+     Prêt : /dev/ttyACM0  nasbarok:root  crw-------
+     Boucle :  cd ~/projects/desknode/firmware/hello-desknode && idf.py -p /dev/ttyACM0 flash monitor
+
+[9.6s] 4/4  VERDICT : /dev/ttyACM* présent ET écrivable
+  /dev/ttyACM0  nasbarok:root  crw-------
+
+  ✅ La carte est à WSL en 9.6 s. Flasher :
+        cd /home/nasbarok/projects/desknode/firmware/hello-desknode && idf.py -p /dev/ttyACM0 flash monitor

@@ -1,0 +1,90 @@
+Executing action: flash
+Running ninja in directory /tmp/claude-1000/-home-nasbarok-projects-compagnon-project/9a9225e9-5ce2-49f0-a484-22ed7fd9a2bb/scratchpad/wt/f7be23c/firmware/desknode/build
+Executing "ninja flash"...
+[1/5] cd /tmp/claude-1000/-home-nasbarok-projects-compagnon-project/9a9225e9-5ce2-49f0-a484-22ed7fd9a2bb/scratchpad/wt/f7be23c/firmware/desknode/build/esp-idf/esptool_py && /home/nasbarok/.espressif/python_env/idf5.5_py3.12_env/bin/python /home/nasbarok/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app /tmp/claude-1000/-home-nasbarok-projects-compagnon-project/9a9225e9-5ce2-49f0-a484-22ed7fd9a2bb/scratchpad/wt/f7be23c/firmware/desknode/build/partition_table/partition-table.bin /tmp/claude-1000/-home-nasbarok-projects-compagnon-project/9a9225e9-5ce2-49f0-a484-22ed7fd9a2bb/scratchpad/wt/f7be23c/firmware/desknode/build/desknode.bin
+desknode.bin binary size 0x11d770 bytes. Smallest app partition is 0x400000 bytes. 0x2e2890 bytes (72%) free.
+[2/5] Performing build step for 'bootloader'
+[1/1] cd /tmp/claude-1000/-home-nasbarok-projects-compagnon-project/9a9225e9-5ce2-49f0-a484-22ed7fd9a2bb/scratchpad/wt/f7be23c/firmware/desknode/build/bootloader/esp-idf/esptool_py && /home/nasbarok/.espressif/python_env/idf5.5_py3.12_env/bin/python /home/nasbarok/esp/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x0 /tmp/claude-1000/-home-nasbarok-projects-compagnon-project/9a9225e9-5ce2-49f0-a484-22ed7fd9a2bb/scratchpad/wt/f7be23c/firmware/desknode/build/bootloader/bootloader.bin
+Bootloader binary size 0x5170 bytes. 0x2e90 bytes (36%) free.
+[3/5] No install step for 'bootloader'
+[4/5] Completed 'bootloader'
+[4/5] cd /home/nasbarok/esp/esp-idf/components/esptool_py && /usr/bin/cmake -D IDF_PATH=/home/nasbarok/esp/esp-idf -D "SERIAL_TOOL=/home/nasbarok/.espressif/python_env/idf5.5_py3.12_env/bin/python;;/home/nasbarok/esp/esp-idf/components/esptool_py/esptool/esptool.py;--chip;esp32s3" -D "SERIAL_TOOL_ARGS=--before=default_reset;--after=hard_reset;write_flash;@flash_args" -D WORKING_DIRECTORY=/tmp/claude-1000/-home-nasbarok-projects-compagnon-project/9a9225e9-5ce2-49f0-a484-22ed7fd9a2bb/scratchpad/wt/f7be23c/firmware/desknode/build -P /home/nasbarok/esp/esp-idf/components/esptool_py/run_serial_tool.cmake
+esptool.py --chip esp32s3 -p /dev/ttyACM0 -b 460800 --before=default_reset --after=hard_reset write_flash --flash_mode dio --flash_freq 80m --flash_size 16MB 0x0 bootloader/bootloader.bin 0x10000 desknode.bin 0x8000 partition_table/partition-table.bin 0x410000 living_pcb_v0.bin
+esptool.py v4.12.0
+Serial port /dev/ttyACM0
+Connecting...
+Chip is ESP32-S3 (QFN56) (revision v0.2)
+Features: WiFi, BLE, Embedded PSRAM 8MB (AP_3v3)
+Crystal is 40MHz
+USB mode: USB-Serial/JTAG
+MAC: a0:f2:62:e3:d7:f4
+Uploading stub...
+Running stub...
+Stub running...
+Changing baud rate to 460800
+Changed.
+Configuring flash size...
+Flash will be erased from 0x00000000 to 0x00005fff...
+Flash will be erased from 0x00010000 to 0x0012dfff...
+Flash will be erased from 0x00008000 to 0x00008fff...
+Flash will be erased from 0x00410000 to 0x004a6fff...
+SHA digest in image updated
+Compressed 20848 bytes to 13354...
+Writing at 0x00000000... (100 %)
+Wrote 20848 bytes (13354 compressed) at 0x00000000 in 0.2 seconds (effective 777.6 kbit/s)...
+Hash of data verified.
+Compressed 1169264 bytes to 616900...
+Writing at 0x00010000... (2 %)
+Writing at 0x0001b1a9... (5 %)
+Writing at 0x000254d1... (7 %)
+Writing at 0x0002f780... (10 %)
+Writing at 0x00039b0a... (13 %)
+Writing at 0x00044a02... (15 %)
+Writing at 0x000515a2... (18 %)
+Writing at 0x000590be... (21 %)
+Writing at 0x00065b10... (23 %)
+Writing at 0x00072054... (26 %)
+Writing at 0x0007bd69... (28 %)
+Writing at 0x00084b70... (31 %)
+Writing at 0x0008ad61... (34 %)
+Writing at 0x00091219... (36 %)
+Writing at 0x00096bdc... (39 %)
+Writing at 0x0009c167... (42 %)
+Writing at 0x000a1ee7... (44 %)
+Writing at 0x000a7aa5... (47 %)
+Writing at 0x000ad902... (50 %)
+Writing at 0x000b3eba... (52 %)
+Writing at 0x000ba358... (55 %)
+Writing at 0x000bfc8c... (57 %)
+Writing at 0x000c5792... (60 %)
+Writing at 0x000cc2ae... (63 %)
+Writing at 0x000d1af9... (65 %)
+Writing at 0x000d77a8... (68 %)
+Writing at 0x000dd2ae... (71 %)
+Writing at 0x000e32b5... (73 %)
+Writing at 0x000eb485... (76 %)
+Writing at 0x000f362d... (78 %)
+Writing at 0x000f9838... (81 %)
+Writing at 0x000ff800... (84 %)
+Writing at 0x00108239... (86 %)
+Writing at 0x0010e5c1... (89 %)
+Writing at 0x00114e49... (92 %)
+Writing at 0x0011cc77... (94 %)
+Writing at 0x00122cb1... (97 %)
+Writing at 0x001294fa... (100 %)
+Wrote 1169264 bytes (616900 compressed) at 0x00010000 in 6.0 seconds (effective 1568.3 kbit/s)...
+Hash of data verified.
+Compressed 3072 bytes to 133...
+Writing at 0x00008000... (100 %)
+Wrote 3072 bytes (133 compressed) at 0x00008000 in 0.0 seconds (effective 1046.5 kbit/s)...
+Hash of data verified.
+Compressed 614416 bytes to 40204...
+Writing at 0x00410000... (33 %)
+Writing at 0x0045a7ce... (66 %)
+Writing at 0x0048fa10... (100 %)
+Wrote 614416 bytes (40204 compressed) at 0x00410000 in 2.5 seconds (effective 1977.6 kbit/s)...
+Hash of data verified.
+
+Leaving...
+Hard resetting via RTS pin...
+Done

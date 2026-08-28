@@ -169,11 +169,40 @@ static void log_socle(void)
     ESP_LOGE(TAG, "PSRAM DÉSACTIVÉE — aucun framebuffer possible");
 #endif
 
-#if CONFIG_SPIRAM_XIP_FROM_PSRAM
-    ESP_LOGI(TAG, "config : XIP depuis la PSRAM ACTIVÉ (mesure A/B d'AC6, branche « avec »)");
+    /* 🔴 CORRIGÉ LE 2026-08-28 (dn4-22) — CETTE LIGNE MENTAIT, ET ELLE A FAILLI
+     *    COÛTER UNE CONCLUSION. Elle testait ~~`CONFIG_SPIRAM_XIP_FROM_PSRAM`~~,
+     *    le symbole PARAPLUIE. Or `sdkconfig.defaults` pose les DEUX
+     *    SOUS-SYMBOLES (`SPIRAM_FETCH_INSTRUCTIONS` / `SPIRAM_RODATA`), et sous
+     *    IDF 5.5 poser les enfants n'active PAS le parapluie.
+     *    ⇒ le bandeau annonçait « XIP désactivé » SUR UN BINAIRE OÙ XIP
+     *      TOURNAIT — prouvé par le log de boot, qui lui ne ment pas :
+     *        I (307) mmu_psram: Read only data copied and mapped to SPIRAM
+     *        I (375) mmu_psram: Instructions copied and mapped to SPIRAM
+     *    ⚠️ ET ÇA JETTE UNE RÉSERVE RÉTROACTIVE sur la ligne 6 des sept causes
+     *      de §11.4 (« branche XIP ⇒ ❌ identique ») : elle a été tirée avec ce
+     *      même bandeau, donc ⛔ on ne sait pas si XIP y était armé.
+     * ⇒ ON TESTE DÉSORMAIS CE QUI EST RÉELLEMENT POSÉ, et on imprime les DEUX
+     *   symboles séparément : ils peuvent diverger (l'un sans l'autre est un
+     *   état LÉGAL de Kconfig, et il serait invisible sur une ligne unique).
+     * ⛔ `tools/verif_xip_dn422.py` épingle le miroir entre CE bloc et le
+     *   fichier de configuration — pour que l'étiquette ne puisse plus mentir. */
+#if CONFIG_SPIRAM_FETCH_INSTRUCTIONS && CONFIG_SPIRAM_RODATA
+    ESP_LOGI(TAG, "config : XIP depuis la PSRAM ACTIVÉ — code ET constantes "
+                  "sortis de la flash (dn4-22 : c'est le remède de §26, il rend "
+                  "la marge de famine DMA)");
+#elif CONFIG_SPIRAM_FETCH_INSTRUCTIONS
+    ESP_LOGW(TAG, "config : XIP PARTIEL — instructions en PSRAM, ⛔ PAS le "
+                  ".rodata. Les lectures de constantes restent sur SPI0.");
+#elif CONFIG_SPIRAM_RODATA
+    ESP_LOGW(TAG, "config : XIP PARTIEL — .rodata en PSRAM, ⛔ PAS les "
+                  "instructions. Les lectures de code restent sur SPI0.");
 #else
-    ESP_LOGI(TAG, "config : XIP depuis la PSRAM désactivé (branche « sans » d'AC6)");
+    ESP_LOGI(TAG, "config : XIP depuis la PSRAM désactivé — code et constantes "
+                  "lus en flash, sur SPI0 que la DMA du panneau partage (§5.3)");
 #endif
+    ESP_LOGI(TAG, "  ⚠️ ceci est du « config : » — RELU DU SDKCONFIG, ⛔ PAS "
+                  "OBSERVÉ. La preuve d'exécution est « mmu_psram: Instructions "
+                  "copied and mapped to SPIRAM » plus haut dans CE log.");
 #if CONFIG_LCD_RGB_RESTART_IN_VSYNC
     ESP_LOGI(TAG, "config : LCD_RGB_RESTART_IN_VSYNC activé — la DMA est "
                   "relancée à CHAQUE VBlank, automatiquement.");

@@ -1,0 +1,58 @@
+
+$ flush
+─── glissement de trame (dn4-10) — fenêtre 3994976 ms ───
+  trames (vsync)   : 149325 · enroulements : 149325
+  trames SANS enroulement : 0 · à deux ou plus : 0
+  intervalle vsync→vsync : n=149324 · min 26183 · moy 26737 · MAX 27292 us
+     (période théorique 26737,500 us = 620 x 690 / 16000000 Hz)
+     retard PIRE observé : +554 us sur la période
+  ISR en retard de plus de : +100 us 3 · +775 us (back porch) 0 · +1938 us (VBlank) 0 · une trame 0
+  🎯 phase enroulement→VSYNC_END : n=149293 · min 1311 · moy 2255 · MAX 2344 us   (+32 trames de dégrossissage, ⛔ HORS de ces trois statistiques)
+     une phase COURTE = l'enroulement EN RETARD = le remplissage du bounce qui décroche.
+     référence des déficits (FIGÉE après dégrossissage) : 2359 us · 1 ligne = 39 us
+     🔴 RÉFÉRENCE (2359) AU-DESSUS DU MAX (2344) : le dégrossissage est tombé dans un régime où la phase était PLUS LONGUE qu'en régime (typiquement le BOOT) ⇒ les déficits ci-dessous sont SUR-comptés de 15 us sur TOUTES les trames.
+        ⛔ SYMPTÔME À RECONNAÎTRE : le seau 10 % vaut presque `n`. Refaire `flush reset` EN RÉGIME, ⛔ pas au boot.
+     🔴 DÉFICIT PIRE sous la référence : 1048 us, pour un demi-bounce qui s'écoule en 775 us
+        ⇒ DÉPASSÉ de 273 us : la DMA a lu un tampon PAS ENCORE REMPLI. C'est le décalage visible.
+     trames dont le déficit dépasse : 10 % 149267 · 25 % 694 · 50 % 16 · 🔴 100 % (CORRUPTION) 8
+     ⛔ CUMULS EMBOÎTÉS, ⛔ pas des paliers disjoints : un déficit > 100 % compte dans LES QUATRE. Ne pas les sommer.
+     ⚠️ PLANCHER : la microseconde, soit 16 px. ⛔ « 0 » ici ne veut PAS dire « 0 pixel ».
+     ⚠️ L'horodatage de référence vient LUI AUSSI d'une ISR : un retard COMMUN aux deux s'annule et reste invisible.
+  ce que ça veut dire : RESTART_IN_VSYNC=**n** dans CE binaire.
+     Le driver ne remet PLUS la DMA à zéro à chaque VBlank — et
+     c'est ce reset-là, quand l'ISR était en retard, qui
+     DÉCALAIT l'image (esp_lcd_panel_rgb.c:1142-1148). Le
+     glissement périodique est fermé par là (`4734d07`).
+     ⛔ CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT :
+     à `n` c'est le DÉPASSEMENT du seuil qui suit l'œil, pas le
+     compte. Le budget de l'ISR reste le back porch, 775 us —
+     pas le VBlank entier (1938 us), car VSYNC_END tombe à la FIN
+     de l'impulsion.
+     ⚠️ le driver garde SA propre relance sur famine avérée
+     (esp_lcd_panel_rgb.c:1153-1163), compilée dans ce binaire.
+  ⛔ un compteur à zéro ne prouve RIEN tant que le témoin ne
+     l'a pas fait bouger, et la correspondance avec l'œil est
+     un RÉSULTAT à établir, pas une hypothèse. ⛔ `fps` reste
+     aveugle à ce défaut : il MOYENNE, et la gigue s'y efface.
+────────────────────────────────────────────────────────────
+rendu : PARTIEL · synchro : vsync · chemin : bitmap
+draw buffer : 480 x 128 px (122880 o) en RAM interne DMA
+flushes            : 20459
+cycles de redessin : 8405
+aire cumulée       : 749195559 px
+  => 36619 px par flush en moyenne (écran plein = 307200 px, soit 11.92 %)
+  => 89136 px et 2.4 flush(es) par CYCLE de redessin
+     (le CYCLE est l'unité qui compte : c'est ce qu'une mise à
+      jour du label coûte réellement, flushes multiples inclus.)
+plus grande aire   : 61440 px
+copie              : 59670291 us cumulés, 2916 us/flush en moyenne, 6326 us au pire
+attente de synchro : 322071813 us cumulés, 15742 us/flush en moyenne
+   (comptée À PART de la copie : sinon « le flush coûte 27 ms » se
+    lirait comme un problème de bande passante alors que c'est la
+    synchro qui attend sa trame — 26,7 ms de période.)
+⚠️ 5 synchro(s) EXPIRÉE(S) : pour ces flushes-là, le mode
+   annoncé n'a PAS été appliqué. Toute comparaison A/B qui les
+   inclut compare partiellement « rien » à « rien ».
+rappel : redessiner l'écran ENTIER coûte 36,8 ms de memcpy PSRAM (§5.4),
+   pour 26,7 ms de période de trame — 1,4x TROP LENT. Les zones
+   sales ne sont pas une élégance, c'est la seule voie qui tient.

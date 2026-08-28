@@ -1,0 +1,377 @@
+=== FENETRE dn4-22 · T1 POINT B — 0ced322 · flush reset EN REGIME · repetition ===
+T_OUVERTURE = 2026-08-28T03:05:12+02:00
+duree visee = 335.0 s · duty pose = 80 % · flush reset = OUI, EN REGIME
+
+$ bl 80
+rétroéclairage 80 % : ESP_OK
+
+$ veille wake
+W (673981) dn_ui: reveil : le retroeclairage vaut 80 % alors que la veille l'avait pose a 10 % et que l'asservissement en est a 8 % — quelqu'un l'a change PENDANT la veille. On le LAISSE tel quel plutot que d'ecraser ce geste (il aurait ete rendu a 80 % sans un mot). `bl 80` pour revenir a l'etat d'avant la veille, `bl auto on` pour rendre la main a la loi.
+Actif.
+⚠️ CET ECHANTILLON EST EXCLU de la statistique de `veille lat` :
+   il n'a pas le chemin d'entree du DOIGT. Il est enregistre et
+   compte, ⛔ pas jete en silence.
+
+--- ETAT RELU AVANT LA FENETRE (regles n°2 et n°3) ---
+
+$ bl
+rétroéclairage : 80 % à 24000 Hz (allumé)
+⚠️ `bl 0` éteint le RÉTROÉCLAIRAGE : dalle NOIRE.
+   `disp off` éteint la SORTIE de la dalle : dalle GRISE éclairée.
+   Les deux donnent « plus d'image », par deux mécanismes différents.
+asservissement BH1750 : DÉSARMÉ
+  loi      : 8 % à <= 20 lx · 100 % à >= 600 lx · courbe log entre les deux
+           (dn4-19/AC6.3 : l'œil ET le lux sont logarithmiques. Constat owner du 2026-08-27, A/B en ACTIF à 245 lx : « 75 % — nettement plus », là où la loi LINÉAIRE rendait 44 %. ⛔ Les deux bornes n'ont PAS bougé. `bl auto courbe lineaire` pour revenir à la loi de dn4-3 et refaire l'A/B.)
+  garde    : bande morte 3 pts · pas max 50 pts par cycle de 5000 ms (course complète en 2 cycles)
+  applique : 8 % (sur 0 lx)
+  régime   : AMBIENT  (la loi est mise à l'échelle, voir ci-dessous)
+  ambiant  : échelle 100 % de la loi · plancher 16 %
+           ⚠️ ce plancher est un TROISIÈME contenu (gros chiffres sur noir), ⛔ JAMAIS mesuré à l'œil : ⛔ ne pas le confondre avec les 8 % du dashboard ni avec les 3 % du Living PCB.
+  applications : 2 mouvements de duty depuis le boot
+           (dn4-19/AC8 : deux relevés espacés mesurent le POMPAGE de la bande morte — la loi vit H24 depuis que l'auto est armée par défaut.)
+  ⚠️ `bl <n>`, `bl on|off` et `bl ramp` DÉSARMENT l'auto et le DISENT.
+  ⛔ `bl ramp` est BLOQUANTE : elle n'est JAMAIS appelée par l'asservissement.
+  ⛔ La VEILLE ne désarme PLUS (dn4-19) : elle POSE le niveau du régime EN UNE FOIS, et la loi le maintient ensuite.
+
+$ veille
+mode : ACTIF · veille ARMEE · delai 10 min (600000 ms)
+inactivite : 671875 ms (max vue depuis le reset : 671875 ms)
+bascules -> Ambient : 1 · reveils : 1 · dernier reveil par : console
+secondes OBSERVEES : 671 (⚠️ ⛔ PAS l'uptime : le tick 1 Hz ne bat
+   pas pendant `ui off`, donc la veille y est AVEUGLE)
+─── temps MURAL par mode depuis le boot (dn4-5/AC3.2) ───
+  Actif   :      602 s
+  Ambient :       71 s
+  total   :      673 s  ⇒ Ambient = 10 %  🔴 SOUS LE SEUIL de 50 %
+  ⚠️ CE QUE CE CUMUL NE VOIT PAS : il dit dans quel MODE le
+     module se croit, ⛔ pas que la dalle est effectivement
+     sombre. Le constat owner reste requis. Et pendant un
+     `ui off`, le temps est impute au mode COURANT — sans
+     consequence en regime, ou le port est tenu par l'agent.
+  ⛔ EN RAM (D4) : un reboot le remet a zero, et il rompt la
+     fenetre du soak de toute facon (AC3.6).
+rebases d'horloge a `ui on` : 0 · bascules ANNULEES (async refusee) : 0
+aucune ecriture NVS depuis le boot ou le dernier `veille reset`
+   (les deux reglages sont ceux qui etaient deja en vigueur).
+ecarts contact->bascule (le plus recent d'abord) :
+   #1    600865 ms  (delai arme 600000 ms, +865 ms)  ✅ dans [delai ; delai+1 s]
+   ⚠️ la fenetre fait UNE seconde parce que la detection est
+   cadencee a 1 Hz (`label_tick`). ⛔ Ce n'est pas « environ
+   le delai » : c'est [delai ; delai+1 s], et c'est verifie.
+taps CONSOMMES par un reveil : 0 · taps de reglage dans le MENU : 0
+transitions provoquees PAR LA VEILLE : 0 (dans `nav`, mais SANS
+   chronometre : elles ne naissent d'aucun geste)
+
+⚠️ PROTOCOLE DE LA GATE `menu_taps` (AC5.6) — A LIRE AVANT DE LA TIRER
+   Le bandeau MENU n'existe QUE sur le dashboard : une fois la vue
+   MENU ouverte, les appuis suivants au meme endroit ne tombent sur
+   AUCUNE zone. La serie est donc 8 ALLERS-RETOURS : appui dans
+   la bande y = 589..639, puis `←` (ou `nav back`), huit fois.
+   ⛔ Huit appuis d'affilee rendraient 1, ⛔ pas 8 — et ce ne
+     serait PAS une zone morte.
+   TEMOIN NEGATIF : >= 5 appuis dans la BARRE DU HAUT (y = 0..59)
+   doivent rendre 0 tap — elle, elle reste morte.
+
+usage : veille                       etat, compteurs, diagnostics
+        veille on | off              ARME / DESARME (persiste en NVS)
+        veille delai <1|3|5|10>      le delai, en MINUTES (persiste)
+        veille now                   bascule en Ambient MAINTENANT
+        veille wake                  reveille MAINTENANT (origine console)
+        veille lat                   les DEUX latences de reveil (AC4)
+        veille geom                  la preuve que le layout NE BOUGE PAS
+        veille assets                le recompte de la partition (AC1.4)
+        veille fond                  voiles et aplats RELUS DES OBJETS LVGL
+        veille reset                 compteurs ET latences a zero
+  --- leviers A/B, a chaud, ⛔ NON persistes (ce sont des instruments) ---
+        veille pct <3..100>           niveau d'Ambient de DERNIER RECOURS
+        veille voile <0..255>        opacite du voile en Ambient
+        veille gris <reel|simule|absent> <rrggbb>
+        veille accents <0..100>      desaturation des accents (0=teinte, 100=gris)
+        veille unite on|off          l'unite reste-t-elle ? ⚠️ CHOISIT LA POLICE
+                                     (on ⇒ 33 px · off ⇒ 56 px, tailles MESUREES)
+        veille jauge on|off          la barre de remplissage en veille
+        veille case <rrggbb>         l'aplat de case en Ambient
+
+$ env
+capteurs d'environnement locaux (dn4-3) — AUCUNE tache propre :
+ils sont cadences par la tache `dn_capt`, toutes les 5000 ms, et
+l'appel est place AVANT toute branche de sa boucle (sinon il serait
+saute a chaque erreur du BME680 — voir §13.19.4).
+cycles     : 134 · dernier cycle 305 us MESURES
+peremption : 15000 ms (3 cycles) — MEME convention que dn_capteurs,
+             ⛔ pas les 3 s de dn_link. timeout I2C 100 ms.
+garde anti-fantome : UNE LECTURE par cycle, ⛔ AUCUNE ECRITURE en
+             regime. La config est ecrite UNE FOIS a l'ouverture et
+             RELUE ensuite : meme pouvoir discriminant qu'une
+             ecriture (un fantome ne tient pas la valeur), sans
+             ajouter un agresseur permanent sur le bus.
+
+BH1750  @ 0x23 : VIVANT — 0 lx (brut 0) · age 1180 ms
+  compteurs : 134 lectures · 0 reprises
+  erreurs   : i2c 0 · donnee 0 · bornes 0 · conformite 0
+  garde     : 🔴 AUCUNE, et c'est DECLARE. Le BH1750 n'a AUCUN
+              registre relisible : son seul registre ecrivable
+              est le MTreg, et il est NON RELISIBLE (piste
+              tentee, NON REPRODUITE). Sa qualification la plus
+              forte reste le STIMULUS (main posee), qui demande
+              un geste owner : ⛔ ce n'est donc PAS une garde de
+              regime. `conformite` reste a 0 A VIE ici.
+  bornes    : 0xFFFF compte en `bornes` — c'est le PLAFOND du
+              convertisseur (au moins 54612 lx), plus une mesure.
+              ⚠️ brut 0 est LEGITIME (obscurite) : la main posee a
+              mesure brut 2, pas 0. `donnee` ne compte que le 0
+              lu dans les 180 ms d'une (re)configuration — ⛔ et
+              ce seau reste donc a 0 SAUF si une configuration a
+              echoue puis ete REPOSEE : tout appel a configurer()
+              est suivi d'un `return`, la lecture suivante arrive
+              5000 ms plus tard. DECLARE en revue de code.
+              Source : ROHM BH1750FVI-TR, plage 1-65535 lx,
+              lux = brut / 1,2 au MTreg par defaut (69).
+  ⛔ NE JAMAIS republier des lux DIVISES PAR DIX : (brut*10)/12
+     EST deja la valeur en lux ENTIERS. L'imprimer comme des
+     dixiemes a publie « 4 614,8 » pour 46 148, TROIS FOIS.
+
+INA219  @ 0x40 : JAMAIS — ⛔ INERTE — plus lu en regime · JAMAIS LU · ⛔ DEVICE NON OUVERT
+  compteurs : 0 lectures · 0 reprises
+  erreurs   : i2c 0 · donnee 0 · bornes 0 · conformite 0
+  🔴 CE COMPOSANT N'EST PLUS LU, ET C'EST UNE DECISION OWNER
+     (correct-course du 2026-08-20), pas une panne.
+  pourquoi   : `Vin+`/`Vin-` NE SONT PAS CABLES — `dn4-2` a
+               tranche « bus seulement ». Le shunt R100 (0,1 ohm)
+               n'est traverse par AUCUN courant, donc la puce ne
+               mesurait QUE DU BRUIT sur une entree flottante :
+               bus 904 mV, shunt -30 uV, -0,3 mA, 0 mW (mesure le
+               2026-08-20). X3 a ete tranche NON par A/B.
+  ce que ca  : 5 transactions I2C sur les 9 du cycle (56 %) sont
+  rend       : rendues au bus — celui que §11.4 nomme « le PREMIER
+               AGRESSEUR CONNU » de la famine DMA, et qui se
+               degrade ~40 s a froid.
+  etat reel  : SOUDE et OUVERT, configure UNE FOIS au boot. ⛔ Il
+               n'est PAS dessoude (D9 : montage fini, le
+               dessoudage est un risque sur le bus pour ZERO
+               gain). Ses compteurs restent donc a zero A VIE.
+  ⚠️ POUR LE REMETTRE EN SERVICE, il faut du COURANT dans son
+     shunt. Le bornier a vis 2 points est DEJA SOUDE, donc
+     `Vin+`/`Vin-` sont accessibles SANS FER — mais VERIFIER
+     D'ABORD AU MULTIMETRE que le bornier est bien relie a
+     `Vin+`/`Vin-` : c'est le cablage standard CJMCU, et ce depot
+     ne l'a JAMAIS mesure.
+  ⛔ `Vin+`/`Vin-` NE SONT PAS UNE ALIMENTATION : y poser 5 V et
+     la masse court-circuiterait le shunt de 0,1 ohm. « Le miroir
+     tue » — c'est le piege nomme par dn4-2.
+  identite   : `i2c lire 40 00 2` rend `39 9F` (reset du registre
+               Configuration) — il repond toujours.
+
+VL6180X @ 0x29 : JAMAIS — presence et conformite SEULEMENT · JAMAIS LU
+  compteurs : 0 lectures · 0 reprises
+  erreurs   : i2c 12 · donnee 0 · bornes 0 · conformite 0
+  garde     : ✅ FORTE — 003F (gain, reset 0x06 -> impose 0x46) et
+              0041 (integration, reset 0x00 -> impose 0x63),
+              RELUS a chaque cycle. `lectures` compte les
+              identites 0xB4 confirmees ; une autre valeur va en
+              `donnee` (il repond, mais ce n'est pas lui).
+  🔴 AUCUNE GRANDEUR PUBLIEE, et voici pourquoi (AC8) : CE
+     COMPOSANT EST MORT COTE ANALOGIQUE. Son ALS ne reagit NI a
+     2 280x de lumiere (5 lx -> 11 418 lx, BH1750 en CONTROLE au
+     meme instant), NI a 40x de gain, NI a un cycle
+     d'alimentation. Sa sortie ne depend QUE de la duree
+     d'integration. Telemetrie : 0 sur 200 tirs, zero photon
+     jusque sur le canal de REFERENCE INTERNE.
+  ⛔ ET SR03 N'EST PAS LA CAUSE — ce texte l'a affirme jusqu'au
+     2026-08-21, A TORT : la sequence SE CHARGE (38/38, les 30
+     registres prives relus EXACTEMENT) et NE CHANGE RIEN.
+     Dossier complet : hardware/…-capteurs-i2c.md §13.20-§13.21.
+  ⚠️ 0x0016 (FRESH_OUT_OF_RESET) est un TEMOIN VALIDE lui aussi
+     (mesure : 0x01 au power-on, impose 0x00, relu 0x00) mais ce
+     module N'Y TOUCHE PAS : sa valeur est un FAIT sur
+     l'historique de la puce, et l'ecraser detruirait
+     l'information. `i2c lire16 29 0016 1` pour la lire.
+
+⛔ AUCUN de ces trois capteurs n'alimente une case, et c'est une
+   DECISION, pas un provisoire : X2 est TRANCHE — « AUCUNE 3e
+   grandeur, la case AMBIANCE reste a deux » (decision owner du
+   2026-08-20). Les QUATRE candidats ont ete mesures au MEME
+   instrument (`w2`) : pression 1 hPa d'etendue en 17 min, ALS
+   binaire, gaz sans reponse a deux bouffees, et le lux qualifie a
+   10-70x la reference — ce qui est justement l'argument CONTRE
+   (W2 est un seuil PLANCHER, pas un optimum).
+   ⇒ `env` est donc le SEUL endroit ou ces trois se lisent, et le
+     BH1750 a un SECOND emploi : il pilote le retroeclairage (`bl`).
+
+>>> T_FLUSH_RESET = 2026-08-28T03:05:13+02:00  (⛔ EN REGIME, pas au boot)
+
+$ flush reset
+compteurs de flush remis à zéro.
+compteurs de GLISSEMENT (dn4-10) armés : la remise à zéro est
+   consommée par l'ISR au prochain vsync (<= 27 ms), pas ici.
+
+$ pc reset
+compteurs de liaison remis a zero
+>>> T_DEBUT_FENETRE = 2026-08-28T03:05:13+02:00
+>>> T_FIN_FENETRE = 2026-08-28T03:10:48+02:00 · ecoule 335.0 s · 1676 trames (5.00/s) · 0 erreurs d'envoi
+
+$ flush
+─── glissement de trame (dn4-10) — fenêtre 335023 ms ───
+  trames (vsync)   : 12530 · enroulements : 12530
+  trames SANS enroulement : 0 · à deux ou plus : 0
+  intervalle vsync→vsync : n=12529 · min 26708 · moy 26737 · MAX 26768 us
+     (période théorique 26737,500 us = 620 x 690 / 16000000 Hz)
+     retard PIRE observé : +30 us sur la période
+  ISR en retard de plus de : +100 us 0 · +775 us (back porch) 0 · +1938 us (VBlank) 0 · une trame 0
+  🎯 phase enroulement→VSYNC_END : n=12498 · min 1865 · moy 2249 · MAX 2288 us   (+32 trames de dégrossissage, ⛔ HORS de ces trois statistiques)
+     une phase COURTE = l'enroulement EN RETARD = le remplissage du bounce qui décroche.
+     référence des déficits (FIGÉE après dégrossissage) : 2261 us · 1 ligne = 39 us
+     ⚠️ MAX (2288) > référence (2261) : les déficits ci-dessous sont SOUS-comptés de 27 us.
+        ⛔ CETTE LIGNE EST QUASI-CERTAINE, ce n'est PAS un signal : la référence est le MAX de 32 trames, le MAX porte sur 12498. Un `flush reset` au repos ne la lèvera pas.
+        🎯 CE QU'ELLE AUTORISE : un seuil FRANCHI l'est a fortiori (le vrai déficit est plus grand). ⛔ CE QU'ELLE INTERDIT : comparer deux déficits entre eux — ils portent le même biais.
+     🔴 DÉFICIT PIRE sous la référence : 396 us, pour un demi-bounce qui s'écoule en 775 us
+        ⇒ sous le seuil, il restait 379 us de marge (48 % du demi-bounce)
+     trames dont le déficit dépasse : 10 % 611 · 25 % 15 · 50 % 1 · 🔴 100 % (CORRUPTION) 0
+     ⛔ CUMULS EMBOÎTÉS, ⛔ pas des paliers disjoints : un déficit > 100 % compte dans LES QUATRE. Ne pas les sommer.
+     ⚠️ PLANCHER : la microseconde, soit 16 px. ⛔ « 0 » ici ne veut PAS dire « 0 pixel ».
+     ⚠️ L'horodatage de référence vient LUI AUSSI d'une ISR : un retard COMMUN aux deux s'annule et reste invisible.
+  ce que ça veut dire : RESTART_IN_VSYNC=**n** dans CE binaire.
+     Le driver ne remet PLUS la DMA à zéro à chaque VBlank — et
+     c'est ce reset-là, quand l'ISR était en retard, qui
+     DÉCALAIT l'image (esp_lcd_panel_rgb.c:1142-1148). Le
+     glissement périodique est fermé par là (`4734d07`).
+     ⛔ CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT :
+     à `n` c'est le DÉPASSEMENT du seuil qui suit l'œil, pas le
+     compte. Le budget de l'ISR reste le back porch, 775 us —
+     pas le VBlank entier (1938 us), car VSYNC_END tombe à la FIN
+     de l'impulsion.
+     ⚠️ le driver garde SA propre relance sur famine avérée
+     (esp_lcd_panel_rgb.c:1153-1163), compilée dans ce binaire.
+  ⛔ un compteur à zéro ne prouve RIEN tant que le témoin ne
+     l'a pas fait bouger, et la correspondance avec l'œil est
+     un RÉSULTAT à établir, pas une hypothèse. ⛔ `fps` reste
+     aveugle à ce défaut : il MOYENNE, et la gigue s'y efface.
+────────────────────────────────────────────────────────────
+rendu : PARTIEL · synchro : vsync · chemin : bitmap
+draw buffer : 480 x 128 px (122880 o) en RAM interne DMA
+flushes            : 1717
+cycles de redessin : 1700
+aire cumulée       : 62810700 px
+  => 36581 px par flush en moyenne (écran plein = 307200 px, soit 11.91 %)
+  => 36947 px et 1.0 flush(es) par CYCLE de redessin
+     (le CYCLE est l'unité qui compte : c'est ce qu'une mise à
+      jour du label coûte réellement, flushes multiples inclus.)
+plus grande aire   : 36675 px
+copie              : 5059653 us cumulés, 2946 us/flush en moyenne, 4016 us au pire
+attente de synchro : 19685196 us cumulés, 11464 us/flush en moyenne
+   (comptée À PART de la copie : sinon « le flush coûte 27 ms » se
+    lirait comme un problème de bande passante alors que c'est la
+    synchro qui attend sa trame — 26,7 ms de période.)
+rappel : redessiner l'écran ENTIER coûte 36,8 ms de memcpy PSRAM (§5.4),
+   pour 26,7 ms de période de trame — 1,4x TROP LENT. Les zones
+   sales ne sont pas une élégance, c'est la seule voie qui tient.
+
+--- ETAT RELU APRES LA FENETRE ---
+
+$ bl
+rétroéclairage : 80 % à 24000 Hz (allumé)
+⚠️ `bl 0` éteint le RÉTROÉCLAIRAGE : dalle NOIRE.
+   `disp off` éteint la SORTIE de la dalle : dalle GRISE éclairée.
+   Les deux donnent « plus d'image », par deux mécanismes différents.
+asservissement BH1750 : DÉSARMÉ
+  loi      : 8 % à <= 20 lx · 100 % à >= 600 lx · courbe log entre les deux
+           (dn4-19/AC6.3 : l'œil ET le lux sont logarithmiques. Constat owner du 2026-08-27, A/B en ACTIF à 245 lx : « 75 % — nettement plus », là où la loi LINÉAIRE rendait 44 %. ⛔ Les deux bornes n'ont PAS bougé. `bl auto courbe lineaire` pour revenir à la loi de dn4-3 et refaire l'A/B.)
+  garde    : bande morte 3 pts · pas max 50 pts par cycle de 5000 ms (course complète en 2 cycles)
+  applique : 8 % (sur 0 lx)
+  régime   : AMBIENT  (la loi est mise à l'échelle, voir ci-dessous)
+  ambiant  : échelle 100 % de la loi · plancher 16 %
+           ⚠️ ce plancher est un TROISIÈME contenu (gros chiffres sur noir), ⛔ JAMAIS mesuré à l'œil : ⛔ ne pas le confondre avec les 8 % du dashboard ni avec les 3 % du Living PCB.
+  applications : 2 mouvements de duty depuis le boot
+           (dn4-19/AC8 : deux relevés espacés mesurent le POMPAGE de la bande morte — la loi vit H24 depuis que l'auto est armée par défaut.)
+  ⚠️ `bl <n>`, `bl on|off` et `bl ramp` DÉSARMENT l'auto et le DISENT.
+  ⛔ `bl ramp` est BLOQUANTE : elle n'est JAMAIS appelée par l'asservissement.
+  ⛔ La VEILLE ne désarme PLUS (dn4-19) : elle POSE le niveau du régime EN UNE FOIS, et la loi le maintient ensuite.
+
+$ veille
+mode : ACTIF · veille ARMEE · delai 10 min (600000 ms)
+inactivite : 334840 ms (max vue depuis le reset : 671875 ms)
+bascules -> Ambient : 1 · reveils : 1 · dernier reveil par : console
+secondes OBSERVEES : 1006 (⚠️ ⛔ PAS l'uptime : le tick 1 Hz ne bat
+   pas pendant `ui off`, donc la veille y est AVEUGLE)
+─── temps MURAL par mode depuis le boot (dn4-5/AC3.2) ───
+  Actif   :      937 s
+  Ambient :       71 s
+  total   :     1009 s  ⇒ Ambient = 7 %  🔴 SOUS LE SEUIL de 50 %
+  ⚠️ CE QUE CE CUMUL NE VOIT PAS : il dit dans quel MODE le
+     module se croit, ⛔ pas que la dalle est effectivement
+     sombre. Le constat owner reste requis. Et pendant un
+     `ui off`, le temps est impute au mode COURANT — sans
+     consequence en regime, ou le port est tenu par l'agent.
+  ⛔ EN RAM (D4) : un reboot le remet a zero, et il rompt la
+     fenetre du soak de toute facon (AC3.6).
+rebases d'horloge a `ui on` : 0 · bascules ANNULEES (async refusee) : 0
+aucune ecriture NVS depuis le boot ou le dernier `veille reset`
+   (les deux reglages sont ceux qui etaient deja en vigueur).
+ecarts contact->bascule (le plus recent d'abord) :
+   #1    600865 ms  (delai arme 600000 ms, +865 ms)  ✅ dans [delai ; delai+1 s]
+   ⚠️ la fenetre fait UNE seconde parce que la detection est
+   cadencee a 1 Hz (`label_tick`). ⛔ Ce n'est pas « environ
+   le delai » : c'est [delai ; delai+1 s], et c'est verifie.
+taps CONSOMMES par un reveil : 0 · taps de reglage dans le MENU : 0
+transitions provoquees PAR LA VEILLE : 0 (dans `nav`, mais SANS
+   chronometre : elles ne naissent d'aucun geste)
+
+⚠️ PROTOCOLE DE LA GATE `menu_taps` (AC5.6) — A LIRE AVANT DE LA TIRER
+   Le bandeau MENU n'existe QUE sur le dashboard : une fois la vue
+   MENU ouverte, les appuis suivants au meme endroit ne tombent sur
+   AUCUNE zone. La serie est donc 8 ALLERS-RETOURS : appui dans
+   la bande y = 589..639, puis `←` (ou `nav back`), huit fois.
+   ⛔ Huit appuis d'affilee rendraient 1, ⛔ pas 8 — et ce ne
+     serait PAS une zone morte.
+   TEMOIN NEGATIF : >= 5 appuis dans la BARRE DU HAUT (y = 0..59)
+   doivent rendre 0 tap — elle, elle reste morte.
+
+usage : veille                       etat, compteurs, diagnostics
+        veille on | off              ARME / DESARME (persiste en NVS)
+        veille delai <1|3|5|10>      le delai, en MINUTES (persiste)
+        veille now                   bascule en Ambient MAINTENANT
+        veille wake                  reveille MAINTENANT (origine console)
+        veille lat                   les DEUX latences de reveil (AC4)
+        veille geom                  la preuve que le layout NE BOUGE PAS
+        veille assets                le recompte de la partition (AC1.4)
+        veille fond                  voiles et aplats RELUS DES OBJETS LVGL
+        veille reset                 compteurs ET latences a zero
+  --- leviers A/B, a chaud, ⛔ NON persistes (ce sont des instruments) ---
+        veille pct <3..100>           niveau d'Ambient de DERNIER RECOURS
+        veille voile <0..255>        opacite du voile en Ambient
+        veille gris <reel|simule|absent> <rrggbb>
+        veille accents <0..100>      desaturation des accents (0=teinte, 100=gris)
+        veille unite on|off          l'unite reste-t-elle ? ⚠️ CHOISIT LA POLICE
+                                     (on ⇒ 33 px · off ⇒ 56 px, tailles MESUREES)
+        veille jauge on|off          la barre de remplissage en veille
+        veille case <rrggbb>         l'aplat de case en Ambient
+
+$ pc
+liaison PC : VIVANTE (RESUME GLOBAL : VIVANTE des qu'UNE metrique l'est)
+             derniere trame toutes metriques : age 224 ms · seq 1676 · t_ms agent 335000
+metriques  : (peremption 3000 ms, par metrique)
+  cpu   -> case 0 CPU       VIVANTE      13,6 % · 14,6 GHz · c.max 15,6 % · 16,6 degC  · age 226 ms · seq 1676
+  gpu   -> case 1 GPU       VIVANTE      10,4 % · 11,4 degC · 12,4 W · 13,4 tr/min  · age 988 ms · seq 1672
+  ram   -> case 2 RAM       VIVANTE      11,2 % · 12,2 Go  · age 834 ms · seq 1673
+  net   -> case 3 RÉSEAU   VIVANTE      12,0 Mb/s · 13,0 Mb/s  · age 635 ms · seq 1674
+  disk  -> case 4 DISQUE    VIVANTE      12,8 Mo/s · extr.moy 13,8 tr/min · ventirad 14,8 tr/min · boitier 15,8 tr/min  · age 433 ms · seq 1675
+poussee    : GROUPEE (defaut)
+peremption : 3000 ms, en temps absolu de RECEPTION — la cadence de
+             l'agent ne fait jamais foi (AC7)
+trames     : 1647 valides · 0 doublons · 29 pertes seq · 0 resynchros · 0 reprises
+rejets     : tronquee 0 · trop longue 0 · checksum 0 · version 0 · format 0 · bornes 0
+             tronquee = la fin de ligne est PERDUE · trop longue = la
+             ligne est COMPLETE mais depasse 71 o (emetteur elargi)
+             ⚠️ bande « trop longue » ATTEIGNABLE : le REPL delivre
+             124 caracteres de trame au parseur (MESURE, dn4-1) —
+             la bande 72..124 est donc large de 53 o. Un compteur
+             inatteignable serait un instrument qui ment.
+             resynchros = saut de seq non credible (agent redemarre,
+             seq fabrique) : trame APPLIQUEE, pas comptee en pertes
+latence acceptation->label : n=1647 · min 3 ms · moy 140 ms · max 309 ms
+  (NON instrumente ici : echantillonnage cote PC, vol dans le
+   transport, et le flush LVGL suivant — <= 1 cycle, ~27 ms)
+transport  : wifi non compilee (maquette B ecartee — fourche T5) · ws off (0 messages, 0 connexions)
+             branche A = cette console : l'agent envoie `pc $DN,...`
+
+T_FERMETURE = 2026-08-28T03:10:48+02:00

@@ -198,9 +198,46 @@ CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS=y
 # (source : components/freertos/Kconfig, choice FREERTOS_RUN_TIME_STATS_CLK)
 CONFIG_FREERTOS_RUN_TIME_STATS_USING_ESP_TIMER=y
 
-# ── XIP depuis la PSRAM — RÉFUTÉ, donc ABSENT ────────────────────────────────
-# ⚠️ Ce bloc ne justifie AUCUNE ligne : `CONFIG_SPIRAM_XIP_FROM_PSRAM` est
-# DÉLIBÉRÉMENT absent de ce fichier (défaut IDF = n, on le garde à n). Il est
+# ── XIP depuis la PSRAM — 🔴 ADOPTÉ LE 2026-08-28 PAR `dn4-22` ───────────────
+# ⛔ ON ANNOTE, ON N'EFFACE PAS : tout le texte ci-dessous reste, parce qu'il
+#    est VRAI POUR SON SYMPTÔME. Ce qui change, c'est qu'un SECOND symptôme
+#    existe, et que XIP le corrige.
+#
+# 🔴 CE QUE `dn4-22` A MESURÉ (2026-08-28, dossier §26) :
+#   · `f7be23c` a CONSOMMÉ LA MARGE de famine DMA — le pire déficit passe de
+#     ~376 µs (`0ced322`) à ~779 µs pour un seuil de 775 µs — et FRANCHIT sous
+#     charge d'agent réel : CORRUPTION 0 ⇒ 245 (fenêtres de 306 s).
+#   · ⛔ AUCUN SITE n'est en cause : trois fichiers contribuent par trois voies,
+#     et aucun ne suffit seul. Le VOLUME est réfuté par témoin (1 236 o morts
+#     ⇒ image PLUS GROSSE que `f7be23c`, et PROPRE).
+#   · 🎯 XIP RÉTABLIT LA MARGE, il ne masque pas : pire déficit 900 ⇒ 121 µs,
+#     CORRUPTION 74 ⇒ 0 sur TROIS fenêtres (130 · 239 · 372 lx), et
+#     `ph_max − ph_ref` divisé par 3 (la population de phases se resserre).
+#   · CONSTAT OWNER, verbatim : « non plus rien c'est nickel ya meme plus
+#     l'artefact sur le detail cpu c'est genial ! »
+#   · COÛT MESURÉ : ≈ 1,08 Mo de PSRAM (code + .rodata copiés au boot),
+#     6 655 456 o restent libres ; image +2 500 o.
+#
+# ⚠️ POURQUOI CE N'EST PAS UNE CONTRADICTION AVEC LE VERDICT CI-DESSOUS : la
+#    réfutation de 2026-08-14 portait sur un stimulus d'ÉCRITURE flash, et elle
+#    dit ELLE-MÊME pourquoi le mécanisme ne s'y appliquait pas (« XIP ne retire
+#    de la flash que les LECTURES »). Le défaut de `dn4-22` est fait de
+#    LECTURES : c'est le cas d'application que cette réfutation EXCLUAIT.
+#
+# 🔴 ET ON POSE LES DEUX SOUS-SYMBOLES, ⛔ PAS LE PARAPLUIE : sous IDF 5.5,
+#    `CONFIG_SPIRAM_XIP_FROM_PSRAM` ne s'active PAS en posant ses enfants, et
+#    c'est LUI que le bandeau de `desknode_main.c` testait — d'où un bandeau qui
+#    annonçait « XIP désactivé » SUR UN BINAIRE OÙ XIP TOURNAIT. La preuve
+#    d'exécution est dans le log de boot, ⛔ pas dans l'étiquette :
+#      I (307) mmu_psram: Read only data copied and mapped to SPIRAM
+#      I (375) mmu_psram: Instructions copied and mapped to SPIRAM
+#    ⇒ le bandeau a été corrigé, et `tools/verif_xip_dn422.py` épingle le miroir.
+CONFIG_SPIRAM_FETCH_INSTRUCTIONS=y
+CONFIG_SPIRAM_RODATA=y
+
+# ── (texte d'origine, ⛔ CONSERVÉ — il reste vrai pour le symptôme de dn1-2) ──
+# ⚠️ Ce bloc ne justifiait AUCUNE ligne jusqu'au 2026-08-28 :
+# `CONFIG_SPIRAM_XIP_FROM_PSRAM` était DÉLIBÉRÉMENT absent de ce fichier. Il est
 # écrit ici pour qu'on ne le rajoute pas « au cas où » à la prochaine relecture.
 #
 # SYMPTÔME visé, sous stimulus d'écriture flash (effacement + écriture de

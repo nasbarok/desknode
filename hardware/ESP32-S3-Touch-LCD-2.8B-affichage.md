@@ -7946,3 +7946,334 @@ revient à facturer 6 048 boots. **Le « ~95 Mo sur 7 jours » que j'avais écri
 donc faux à son tour**, et pour une raison différente de la première.
 ⇒ **le volume de régime se mesurera sur une fenêtre SANS reboot** — c'est-à-dire pendant le soak
 lui-même. ⛔ Aucun chiffre de volume de régime n'est publié ici.
+
+---
+
+# §26. 🔴 `dn4-22` (P9.13) — LA DALLE SE DÉCHIRE PARCE QUE LA **MARGE** A ÉTÉ DÉPENSÉE, ⛔ PAS PARCE QU'UNE LIGNE COÛTE
+
+> **Séance du 2026-08-28**, `dn4-22`. Captures : `mesures/dn4-22/` (⚠️ la séance du 28/08 au matin
+> n'en avait laissé **aucune** — ce n'est plus le cas).
+> ⚠️ **Cette section CORRIGE des verdicts consignés.** Voir §26.6, « ce que ça ne prouve pas », et
+> §26.7, « ce que ça retire au dossier ».
+
+## 26.1 🎯 CE QUE LA SÉANCE ÉTABLIT, EN QUATRE LIGNES
+
+1. **La régression d'affichage est RÉELLE** — ⛔ pas un artefact d'instrument — et elle vit **dans
+   `f7be23c`** : les dix commits suivants n'ajoutent rien.
+2. **Le mécanisme est une MARGE DE FAMINE DMA CONSOMMÉE, ⛔ pas une ligne coûteuse.** `0ced322`
+   garde ~400 µs de marge sous le seuil quoi qu'on lui fasse ; `f7be23c` est **à la limite sans
+   charge** et **franchit sous charge**.
+3. **La charge de l'agent réel est un CO-FACTEUR NÉCESSAIRE.** ⛔ Ça **réfute** l'élimination
+   *« l'agent / le trafic série est éliminé »* du `[CC]` D17.
+4. **Il n'y a pas UN site.** Trois fichiers contribuent, par **trois voies différentes**, et
+   **aucun ne suffit seul**.
+
+## 26.2 ⚠️ LE PROTOCOLE — ET POURQUOI IL A DÛ CHANGER
+
+🔴 **Rendre le port à l'agent REDÉMARRE la puce** (§25.8.1, 3 occurrences le 26/08 ; **4ᵉ mesurée le
+28/08** : fenêtre `flush` 96 489 ms avant, **130 792 ms** après, et `applications` retombé de 10 à 2).
+⇒ **toute fenêtre « agent réel » CONTIENT un boot**, donc `ph_ref` y est **semée au boot**.
+
+**Ce que ça coûte, mesuré sur `0ced322` (un seul binaire) :**
+
+| RAZ | `ph_ref` relevées | étendue | seau 10 % |
+|---|---|---|---|
+| **`flush reset` EN RÉGIME** | 2262 · 2261 | **1 µs** | 4,5 % des trames |
+| **semée au BOOT** | **2359** · 2261 · 2259 · 2260 | **100 µs** | **99,98 %** puis 3,0-4,5 % |
+
+⇒ 🔴 **le semis au boot est une LOTERIE — 1 pathologique sur 4** — et quand il l'est, le seau 10 %
+vaut ~`n`. **AC3.3 (`flush reset` en régime) n'est pas une précaution : c'est la condition de
+comparabilité.** ⛔ **Aucun des huit points de la table d'A/B du `[CC]` D17 ne la respecte, et aucun
+ne publie `ph_ref`.**
+
+**⇒ DEUX PROTOCOLES, ET LES DEUX SONT PUBLIÉS :**
+
+| | régime | RAZ | ce qu'il vaut |
+|---|---|---|---|
+| **injecté** | `dn_console.py "pc $DN,…"`, **5,00 trames/s** (la cadence réelle de l'agent), **valeurs variables** | `flush reset` **en régime** *ou* boot | ✅ **défendable** — ⛔ **le PC n'est pas mesuré** |
+| **agent réel** | `dn_agent.py` sur la tour, `COM3` natif | **le boot** que la remise du port provoque | ✅ **comparable à la table du `[CC]`** — ⚠️ biais de référence **déclaré** |
+
+⛔ **« Agent réel » et « topologie du port » ne sont PAS séparés par cette séance** : en agent réel
+le port est `COM3` **natif Windows**, en injecté il est **usbipd→WSL**. Les deux changent ensemble.
+⇒ ce que la séance nomme est **« la charge de l'agent »**, ⛔ pas « le trafic série ».
+
+## 26.3 📊 LA MATRICE — 8 BINAIRES, 3 FICHIERS, **AGENT RÉEL**, FENÊTRES DE ~306 s
+
+| binaire | `dn_env` | `dn_ui` | `dn_console` | image (o) | pire déficit | 25 % | 50 % | 🔴 **100 %** |
+|---|:-:|:-:|:-:|---:|---:|---:|---:|---:|
+| `0ced322` | — | — | — | 1 167 553 | 241 µs | *417*⚠️ | **0** | **0** |
+| ARM 4 | ✓ | — | — | 1 167 561 | 645 µs | 5 | 3 | **0** |
+| ARM 5 | ✓ | ✓ | — | 1 168 081 | 1 300 µs | 2 | 2 | **1** |
+| ARM 6 *(= ARM 5)* | ✓ | ✓ | — | 1 168 081 | — | 1 | 1 | **0** |
+| ARM 7 *(ARM 5 + 1 236 o MORTS)* | ✓ | ✓ | *(bourrage)* | **1 169 317** | **125 µs** | **0** | **0** | **0** |
+| **ARM 8** | ✓ | — | **✓** | 1 168 613 | 1 095 µs | **39** | **22** | 🔴 **9** |
+| **`f7be23c`** | ✓ | ✓ | **✓** | 1 169 145 | 896 µs | 253 | 248 | 🔴 **245** |
+| **`156b507`** | ✓ | ✓ | **✓** | 1 169 145 | 900 µs | 75 | 74 | 🔴 **74** |
+
+*(⚠️ le `417` de `0ced322` vient de sa fenêtre à **référence pathologique** — sur-comptage sur toutes
+les trames ; ses seaux **50 %** et **100 %** sont à **0**, et ce `0` tient **a fortiori** puisque le
+biais ne peut que **fabriquer** de la corruption.)*
+
+🔴 **SANS `dn_console.c`@`f7be23c` : `0 · 0 · 1 · 0 · 0`** — cinq fenêtres, quatre binaires.
+🔴 **AVEC : `9 · 245 · 74`** — trois fenêtres, trois binaires.
+⇒ **son retrait fait retomber le compteur, sa remise le fait remonter. Les DEUX SENS sont prouvés —
+au niveau FICHIER.**
+
+**Et sous protocole INJECTÉ (fenêtres de 450 s), la marche existe aussi, en plus fin :**
+
+| binaire | `0ced322` | `f7be23c` | `156b507` |
+|---|---|---|---|
+| pire déficit | **376 µs** | **779 µs** ⚠️ *(+4 au-dessus du seuil)* | **777 µs** *(+2)* |
+| CORRUPTION | **0** | **1** | **1** |
+
+⇒ **`f7be23c` reproduit `156b507` à 2 µs près** (bruit mesuré : **41 µs**), et `0ced322` est
+**400 µs plus bas**. **Le périmètre `0ced322..f7be23c` du `[CC]` D17 est ÉTABLI PAR LA MESURE**,
+⛔ plus seulement par l'A/B non contrôlé du 28/08.
+
+## 26.4 🎯 LE MÉCANISME — TROIS CONTRIBUTIONS, TROIS VOIES, AUCUNE NE SUFFIT
+
+| contribution | par quelle voie | mesuré |
+|---|---|---|
+| **`dn_env.c`** | son **EXÉCUTION** (`dn_env_cycle()`, 5 s, tâche `dn_capt`) | pire déficit **241 → 645 µs** sous agent, **pour +8 OCTETS d'image** ⇒ ⛔ ce n'est pas la taille |
+| **`dn_ui.c`** | son **empreinte / placement** (+520 o) | seul avec `dn_env` : **encore propre** (0-1). **Amplificateur** en présence de `dn_console` : **9 → 74-245** (×8 à ×27) |
+| **`dn_console.c`** | son **placement** (+1 064 o **répartis dans ses fonctions**) | 🔴 **NÉCESSAIRE** : sans lui **jamais**, avec lui **toujours** |
+| **la charge de l'agent** | co-facteur **NÉCESSAIRE** | injecté **0-1** · agent réel **9-245** |
+
+🔴 **ET LE POINT QUI FERME LE RAISONNEMENT** : le diff de `dn_console.c` a été **relu ligne à ligne**
+(⛔ pas récité) — il est **entièrement** dans `cmd_bl`, `cmd_veille`, `bl_auto_etat` et `bl loi`.
+⛔ **Aucun de ces chemins ne s'exécute pendant une fenêtre de mesure** : l'agent ne tape ni `bl` ni
+`veille`, seulement `rtc`. ⇒ **`dn_console.c` NE PEUT PAS coûter de temps CPU. Son seul effet
+possible est de DÉPLACER le code qui suit dans l'image.**
+
+### 26.4.1 ⛔ LE **VOLUME** EST RÉFUTÉ PAR TÉMOIN DIRECT — le placement fin, NON
+
+**ARM 7 = ARM 5 + exactement 1 236 octets de `.text` MORT**, posés **dans `dn_console_banner()`**
+(fonction réellement appelée) derrière `static volatile int dn422_jamais_vrai = 0;`.
+**Image : 1 169 317 o — PLUS GROSSE que `f7be23c` (1 169 145).**
+⇒ **la fenêtre la plus PROPRE de toute la campagne** : `CORRUPTION 0`, pire déficit **125 µs**,
+**650 µs de marge (83 %)**.
+
+⇒ ⛔ **F-B « le VOLUME » est MORTE.** ⚠️ **MAIS le bourrage est UN SEUL bloc en fin d'unité**, là où
+`f7be23c` **répartit** sa croissance **DANS** ses fonctions. ⇒ **le VOLUME est réfuté ; le PLACEMENT
+FIN ne l'est pas.** *(Limite écrite AVANT la mesure.)*
+
+🔴 **PIÈGE PAYÉ AU PASSAGE — L'ARM 6 A ÉTÉ PERDU.** Sa première version posait `.space 1064` dans une
+fonction `__attribute__((used, noinline))` **jamais appelée** : ESP-IDF compile en
+`-ffunction-sections` et lie en `--gc-sections` ⇒ **le linker l'a supprimée** (`nm` : symbole absent
+de l'ELF, image **identique** à l'arm 5). ⛔ `used` ne lie que le **compilateur**.
+⚠️ **Sans la relecture de la taille AVANT de conclure, un « propre » aurait été publié comme
+réfutation de la taille alors que le témoin n'existait pas dans le binaire mesuré.**
+
+## 26.5 🎯 CE QUE ÇA RÉSOUT — LE PARADOXE DU CADRAGE
+
+Le `[CC]` D17 avait dressé **l'inventaire exécutable complet de `f7be23c` — 17 sites numérotés** —
+et conclu, à juste titre, qu'**aucun ne tourne sur un chemin chaud** : le seul périodique
+(`dn_env_cycle()`, 5 s) était éliminé, et le relevé le plus sale avait été pris **écran statique**.
+Il en tirait que *« chercher la ligne coûteuse est une impasse »*.
+
+🎯 **C'était exact, et pour la bonne raison : IL N'Y A PAS DE SITE.** Le cadrage cherchait une ligne
+qui coûte ; il n'y en a pas. Il y a **une marge de famine DMA d'environ 400 µs, dépensée par trois
+causes distinctes, dont DEUX ne sont pas de l'exécution.**
+
+⇒ **AC1.4 (« la cause est désignée par UN SITE, prouvée par SON retrait ») est INATTEIGNABLE tel
+qu'écrit** — ⛔ pas parce que la chasse a échoué, mais parce que **la cause n'a pas la forme que
+l'AC suppose**. C'est **AC1.6**, et un **`[CC]`** est posé.
+
+## 26.6 🎯 LE REMÈDE — **XIP DEPUIS LA PSRAM**, ET IL NE TOUCHE AUCUNE LIGNE DE `f7be23c`
+
+**Décision owner du 2026-08-28.** La cause étant une **marge dépensée par le placement**, ⛔ il n'y a
+aucune ligne à retirer. On rend la marge **en supprimant le mécanisme** : sortir le code et les
+constantes de la flash, donc **de SPI0**, que la DMA du panneau partage (§5.3, §11.4).
+
+**ARM 9 = `156b507` + `sdkconfig.defaults.xip-lecture-code`.**
+⛔ **SANS `sdkconfig.defaults.ac5-double-tampon`**, que le mode d'emploi de la branche associe : il
+pose `num_fbs = 2`, et **`dn4-22` s'interdit nommément de toucher `num_fbs`**.
+
+| | `156b507` seul | 🎯 **`156b507` + XIP** |
+|---|---|---|
+| **injecté**, 450 s — pire déficit | **777 µs** *(dépassé de 2)* | **176 µs** — **599 µs de marge (77 %)** |
+| **injecté** — CORRUPTION | 1 | **0** |
+| **agent réel**, ~305 s — pire déficit | **900 µs** *(dépassé de 125)* | **121 µs** — **654 µs de marge (84 %)** |
+| **agent réel** — 🔴 **CORRUPTION** | 🔴 **74** | 🎯 **0** |
+| seaux 10 / 25 / 50 % | 463 / 75 / 74 | **144 / 0 / 0** |
+| `ph_max − ph_ref` | 27 µs | **9 µs** |
+| duty relu | 80 % (237 lx) | **80 %** (130 lx) |
+
+🎯 **ET C'EST MIEUX QUE `0ced322` LUI-MÊME** (pire déficit **241 → 121 µs**). ⇒ **XIP ne MASQUE pas,
+il RÉTABLIT la marge** : la population de phases se **resserre** (`ph_max − ph_ref` divisé par 3) et
+le seau 10 % **s'effondre de 463 à 144**. **La contention SPI0 était bien le mécanisme.**
+
+**Coût mesuré (`mem`, sur la carte)** : PSRAM libre **6 655 456 o**, pool après copie du code
+**7 272 536 o** (contre 8 Mo de puce) ⇒ **≈ 1,08 Mo de PSRAM** pour le code + `.rodata` copiés.
+Le framebuffer prend **614 760 o** (théorie 614 400). ⛔ **Aucune marge en danger.**
+⚠️ Image : **1 171 645 o** (+2 500 vs `156b507`) — le code reste **stocké** en flash, il est
+**copié** en PSRAM au boot. ⇒ ⛔ **`idf.py size` NE PEUT PAS dire si XIP est armé.**
+
+### 26.6.1 🔴 LE BANDEAU **MENT SUR XIP** — défaut d'étiquette, à corriger
+
+`desknode_main.c` imprime *« config : XIP depuis la PSRAM **désactivé** (branche « sans » d'AC6) »*
+**alors que XIP TOURNE**. Il teste `CONFIG_SPIRAM_XIP_FROM_PSRAM` — le symbole **parapluie**, non
+posé — au lieu des deux symboles que la branche pose réellement, tous deux à `y` :
+`CONFIG_SPIRAM_FETCH_INSTRUCTIONS` et `CONFIG_SPIRAM_RODATA`.
+
+✅ **LA PREUVE D'EXÉCUTION, ⛔ pas l'étiquette** — dans le log de boot :
+```
+I (307) mmu_psram: Read only data copied and mapped to SPIRAM
+I (375) mmu_psram: Instructions copied and mapped to SPIRAM
+```
+
+⚠️ **ET ÇA JETTE UNE RÉSERVE SUR §11.4** : la réfutation de XIP par `dn1-3` (« ❌ identique ») a été
+faite avec **ce même fichier de branche**, donc avec **ce même bandeau menteur**. ⛔ **Impossible de
+savoir rétroactivement si XIP y était réellement armé** — les captures de l'époque ne sont pas
+au dépôt. ⇒ **la ligne 6 du tableau des sept causes de §11.4 est à considérer comme NON ÉTABLIE**
+tant qu'elle n'est pas re-tirée avec la preuve `mmu_psram` au boot.
+
+### 26.6.2 ✅ AC3.1 / AC3.5 — LE COMPTEUR RETOMBE, **DEUX FOIS**, ET L'ÉTENDUE VAUT `0`
+
+| `156b507` + XIP, **agent réel** | fenêtre 1 | fenêtre 2 | **fenêtre du constat owner** |
+|---|---|---|---|
+| durée | 304 587 ms | 307 977 ms | **284 172 ms** |
+| `ph_ref` / `ph_max` | 2259 / 2268 | 2260 / 2268 | 2258 / 2265 |
+| **pire déficit** | **121 µs** | **121 µs** | **120 µs** |
+| seau 10 % | 144 | 92 | 103 |
+| seaux 25 / 50 / **100 %** | 0 / 0 / **0** | 0 / 0 / **0** | 0 / 0 / **0** |
+| duty **relu** | 80 % (130 lx) | 80 % (239 lx) | **80 % (372 lx)** |
+
+🎯 **Trois fenêtres, trois lumières très différentes (130 · 239 · 372 lx), et le pire déficit vaut
+121 · 121 · 120 µs.** ⇒ **l'étendue du bras remède est `0` sur CORRUPTION et `1 µs` sur le pire
+déficit** — la mesure la plus reproductible de toute la campagne, et **très largement sous le seuil
+de `4`** d'AC3.1.
+
+## 26.7 ✅ AC4 — LE CONSTAT OWNER, **VERBATIM**
+
+**2026-08-28, ~14:56.** Binaire `156b507` + XIP, **agent réel** (PID 19492), régime depuis 14:52:30.
+
+> **« non plus rien c'est nickel ya meme plus l'artefact sur le detail cpu c'est genial ! »**
+
+🎯 **ET IL DONNE PLUS QUE CE QUI ÉTAIT DEMANDÉ** : *« ya même plus l'artefact sur le détail CPU »* —
+un défaut **hors périmètre de `dn4-22`**, jamais nommé dans le cadrage, que le remède **fait
+disparaître aussi**. ⇒ **renfort majeur du mécanisme** : si un artefact d'une AUTRE vue tombe avec
+le même correctif, c'est que la contention SPI0 le nourrissait lui aussi.
+⛔ **Ce n'est PAS une preuve** pour ce défaut-là (aucun instrument ne l'a mesuré) — **entrée ledger**.
+
+### Les conditions, **RELUES** (AC4.2) — ⛔ pas supposées
+
+| | |
+|---|---|
+| SHA | `156b507`, **lu au bandeau** · XIP prouvé par `mmu_psram` au boot (§26.6.1) |
+| duty | **80 %**, **relu** (`rétroéclairage : 80 % à 24000 Hz`) |
+| lux | **372 lx** (BH1750, âge 2 061 ms) |
+| servo | **ARMÉ** · `applique : 80 % (sur 372 lx)` · `applications : 1 depuis le boot` |
+| loi en vigueur | **`20 % à ≤ 2 lx · 80 % à ≥ 11 lx`, courbe log** — ⚠️ **les bornes de `dn4-20`** |
+| veille | **`mode : AMBIENT` · ARMÉE · délai 1 min** |
+| agent | **1 361 trames valides**, 13 pertes seq |
+| compteur de LA fenêtre observée | **CORRUPTION 0**, pire déficit **120 µs** |
+
+### ⚠️ DEUX CONDITIONS QUI N'AVAIENT PAS ÉTÉ RELEVÉES — et elles sont écrites (règle n°3)
+
+1. 🔴 **`156b507` porte les bornes de `dn4-20`** (20 / 80 / 2 lx / 11 lx) là où **`0ced322` et
+   `f7be23c` portent celles de `dn4-19`** (8 / 100 / 20 lx / 600 lx). ⇒ **à servo ARMÉ, le duty
+   n'était PAS le même d'un binaire à l'autre** : les fenêtres agent ont tourné entre **64 % et
+   86 %**. ⛔ **Ça ne casse pas la conclusion** — le duty est éliminé comme cause par la mesure du
+   `[CC]`, et **la comparaison du remède (`156b507` ± XIP) est à duty IDENTIQUE (80 %)** — mais
+   **c'est un écart, et il est déclaré**.
+2. ⚠️ **La carte était en `mode : AMBIENT`** au relevé (délai de veille **1 min** sur `156b507`,
+   contre 10 min sur `0ced322`). ⛔ **Sans effet visuel** ici — `ambiant : échelle 100 % de la loi`
+   ⇒ Ambient rend le même niveau qu'Actif — mais **le mode exact à l'instant où l'œil a jugé n'est
+   pas capturé**.
+
+## 26.8 📊 LA TABLE D'A/B DU `[CC]` D17 — CE QU'ELLE VAUT APRÈS CETTE SÉANCE
+
+| Binaire | Duty | Agent | CORRUPTION *(28/08)* | **re-tiré le 28/08 après-midi** |
+|---|---|---|---:|---|
+| `92e67b5` | 10 % | oui | **0** | ⛔ non re-tiré |
+| `1871904` | 17 % | oui | 14 | ⛔ non re-tiré |
+| `0ced322` | 45 % | oui | **4** | 🎯 **0** *(agent réel, 306 s)* |
+| **`f7be23c`** | 45 % | oui | **130** | 🎯 **245** *(agent réel, 306 s)* |
+| `a445761` + `156b507` | 80 % | oui | 219-255 | 🎯 **74** *(agent réel, 306 s)* |
+| `156b507` | 10 % | **non**, statique | **332** | ⛔ non re-tiré |
+| `f8d5813` | 80 % | oui | 181 | ⛔ **commit pendant**, ⛔ non re-tiré |
+| `0ced322` (78 lx) | 45 % | oui | **0 / 510 s** | cohérent avec le **0** re-tiré |
+
+⚠️ **BRUIT DÉCLARÉ DU `[CC]`** : **219 / 255 / 332** sur des conditions **nominalement identiques**.
+🎯 **Cette séance le confirme** : `f7be23c` rend **245** et `156b507` rend **74** — **le même
+groupe**, à un facteur 3,3. ⛔ **74 et 245 NE SE DISTINGUENT PAS.** Ce qui se distingue, c'est
+**`0-1` contre `9-245`** — **deux ordres de grandeur**, exactement le **fait 5** du cadrage.
+
+🎯 **LES CINQ CHIFFRES D'INSTRUMENT, POUR CHAQUE POINT RE-TIRÉ** (AC3.2) — ⛔ aucun `CORRUPTION` nu :
+
+| binaire · protocole | `ph_ref` | `ph_max` | `ph_n` | `ph_degrossi_n` | `t_demi` | RAZ | 🔴 CORR. |
+|---|---:|---:|---:|---:|---:|---|---:|
+| `0ced322` · injecté · reset régime (A) | 2262 | 2316 | 12 497 | 32 | 775 | **02:59:37** | **0** |
+| `0ced322` · injecté · reset régime (B) | 2261 | 2288 | 12 498 | 32 | 775 | **03:05:13** | **0** |
+| `0ced322` · injecté · boot (C) | 2260 | 2310 | 16 149 | 32 | 775 | boot 03:11:13 | **0** |
+| `0ced322` · injecté · boot (d′) | 2261 | 2311 | — | 32 | 775 | boot | **0** |
+| `0ced322` · **agent** · boot (b′) | **2379** | 2327 | — | 32 | 775 | boot | **0** ⚠️ |
+| `f7be23c` · injecté · boot (d″) | 2260 | 2316 | — | 32 | 775 | boot | **1** |
+| `f7be23c` · **agent** · boot (b″) | 2260 | 2287 | — | 32 | 775 | boot | **245** |
+| `156b507` · injecté · reset régime (a) | 2259 | 2290 | 12 497 | 32 | 775 | **11:03:00** | **0** ⚠️ |
+| `156b507` · injecté · boot (d) | 2261 | 2281 | — | 32 | 775 | boot | **1** |
+| `156b507` · **agent** · boot (b) | 2264 | 2281 | 11 331 | 32 | 775 | boot | **74** |
+| **`156b507`+XIP · agent** (1) | 2259 | 2268 | — | 32 | 775 | boot | 🎯 **0** |
+| **`156b507`+XIP · agent** (2) | 2260 | 2268 | — | 32 | 775 | boot | 🎯 **0** |
+| **`156b507`+XIP · agent** (owner) | 2258 | 2265 | — | 32 | 775 | boot | 🎯 **0** |
+
+⚠️ La ligne **(b′)** porte **`ph_ref > ph_max`** ⇒ *« RÉFÉRENCE AU-DESSUS DU MAX »*, **SUR-comptage**.
+Elle est publiée **parce qu'elle rend `0`** : un biais qui **fabrique** de la corruption n'en a
+fabriqué **aucune** ⇒ le `0` tient **a fortiori**. ⛔ **La réciproque serait irrecevable.**
+⚠️ La ligne **(a)** est **HORS SUJET** : `bl 80` y **désarmait le servo**, or les 17 sites vivent
+dans le chemin du rétroéclairage ⇒ **elle mesure un binaire dont la machinerie suspecte est
+éteinte**. Elle est **conservée pour ce qu'elle démontre**, ⛔ pas comme point d'A/B.
+
+## 26.9 ⛔ CE QUE ÇA NE PROUVE PAS
+
+1. ⛔ **« La marche vient d'UN SITE. »** Elle ne vient d'aucun site. **`dn_console.c` est
+   nécessaire**, `dn_ui.c` **amplifie**, `dn_env.c` **consomme par exécution** — et **aucun ne
+   suffit seul**. **AC1.4 est NON ATTEINT**, déclaré.
+2. ⛔ **« L'agent réel est la cause. »** Il est **co-facteur NÉCESSAIRE**, ⛔ pas cause : `0ced322`
+   **avec** agent rend **0**. ⚠️ **Et « agent réel » n'est PAS séparé de « topologie du port »** —
+   `COM3` natif Windows contre usbipd→WSL changent **ensemble**.
+3. ⛔ **« Le placement fin est réfuté. »** ⛔ **NON.** L'arm 7 réfute le **VOLUME** (1 236 o morts,
+   image **plus grosse** que `f7be23c`, **propre**) — mais son bourrage est **UN BLOC en fin
+   d'unité** là où `f7be23c` **répartit** sa croissance **dans** ses fonctions.
+4. ⛔ **`n = 1` sur les binaires SALES.** `f7be23c` (245), `156b507` (74) et ARM 8 (9) n'ont **UNE
+   fenêtre agent chacun**. Les binaires **propres** ont, eux, **5 fenêtres sur 4 binaires**.
+5. ⛔ **Le chemin d'APPLICATION du servo n'a JAMAIS été exercé** : toutes les fenêtres à servo armé
+   affichent `applique : AUCUNE application depuis le dernier armement` (lumière stable, bande
+   morte). ⇒ **une classe entière de comportement reste non mesurée.**
+6. ⛔ **Le duty n'était pas constant entre binaires à servo armé** (64 % à 86 %), parce que
+   `156b507` porte les bornes de `dn4-20` et les autres celles de `dn4-19`. ✅ **La comparaison du
+   remède est, elle, à duty identique.**
+7. ⛔ **Les quatre points de la table du `[CC]` NON re-tirés** (`92e67b5`, `1871904`, `156b507`
+   statique, `f8d5813`) restent **sans `ph_ref`** ⇒ **incomparables**, et le **332** ⛔ n'est pas
+   expliqué.
+8. ⛔ **La fenêtre injectée de l'arm 5 est PERDUE** (capture série tronquée, `pertes seq : 28`).
+   Elle a été **remplacée** par celle de l'arm 6 (même binaire), ⛔ pas re-tirée.
+9. ⛔ **« L'artefact du détail CPU » n'est PAS mesuré.** Le constat owner le nomme et dit qu'il
+   disparaît ; **aucun instrument ne l'a chiffré**, ni avant ni après. ⇒ **entrée ledger**.
+10. ⛔ **AC1.5 a été RESPECTÉ — l'ancre n'a pas été re-testée** — mais le **fait 7/8 du `[CC]` est
+    FRAGILISÉ** : son unique preuve est `f8d5813`, un **commit pendant** dont le cadrage écrit
+    lui-même que **la portée annoncée était fausse**, et le `applications : 0` qui l'appuie a une
+    **explication concurrente** (un `bl <n>` posé par l'agent, qui **désarme**). ⇒ **`[CC]`**.
+11. ⛔ **L'observation sous éclairage VARIABLE reste partielle** : 130 · 239 · 372 lx sur le remède
+    (✅ ce que le cadrage réclamait), mais ⛔ **rien sous 100 lx ni dans le noir** sur le remède.
+
+## 26.10 ⚠️ LE RENVOI À §5.3 / §10.5 / §11.4 / §20bis — **EXPLICITE ET NUANCÉ** (AC6.4)
+
+- **§5.3** — la DMA du panneau lit **23,0 Mo/s en continu** sur **SPI0**, que la PSRAM partage.
+  ⚠️ **Le chiffre « 483 268 o « map » au bandeau de boot » y est PÉRIMÉ D'UN FACTEUR 2,2** : les
+  segments « map » réels valent **454 712 + 616 370 = 1 071 082 o** au bandeau du 2026-08-28.
+  ⛔ **Ne plus le citer sans le dater.**
+- **§20bis** — *« l'arbitrage a CHANGÉ DE NATURE avec `RESTART_IN_VSYNC=n` : une famine ne décale
+  plus toute l'image, elle salit le demi-bounce en cours »*. 🎯 **C'est exactement les lignes
+  blanches de l'owner**, et c'est pourquoi la piste « lectures de code en flash » était **légitime
+  ici** alors qu'elle avait échoué en `dn1-3`.
+- **§11.4, ligne 6 des sept causes** — *« Lectures de code/constantes en flash → branche XIP →
+  ❌ identique »*. 🔴 **CETTE LIGNE EST À CONSIDÉRER COMME NON ÉTABLIE.** Elle a été tirée avec
+  **le même fichier de branche** que cette séance, donc avec **le même bandeau menteur** (§26.6.1) :
+  ⛔ **impossible de savoir rétroactivement si XIP y était réellement armé**, les captures de
+  l'époque n'étant pas au dépôt. ⚠️ **Et son périmètre ne couvrait pas ce symptôme** : elle portait
+  sur le **glissement** sous `RESTART_IN_VSYNC=y`, ⛔ pas sur la salissure du demi-bounce à `n`.
+  ⇒ **la réfutation de `dn1-3` ne s'applique PAS à `dn4-22`**, pour **deux** raisons indépendantes.
+- **§10.5** — les sept causes de `dn1-3` restent valides **pour le glissement**. ⛔ Elles ne disent
+  rien de la **marge de famine sous charge**, qui est le sujet de §26.

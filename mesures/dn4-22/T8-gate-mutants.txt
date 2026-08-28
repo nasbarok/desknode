@@ -1,0 +1,28 @@
+=== dn4-22 / AC5.2 — LA GATE VUE ROUGIR, LES QUATRE MUTANTS ===
+date : 2026-08-28T15:03:01+02:00
+
+--- NOMINAL ---
+rc=0
+==============================================================================
+BILAN : 10 OK / 0 KO
+==============================================================================
+
+--- MUTANT 1 ---
+rc=1 (1 = ROUGE, c'est ce qu'on veut)
+  [KO ] TOUT symbole teste est POSE par la configuration du projet  ⛔ fantome(s) : ['CONFIG_SPIRAM_XIP_FROM_PSRAM']
+BILAN : 9 OK / 1 KO
+
+--- MUTANT 2 ---
+rc=1 (1 = ROUGE, c'est ce qu'on veut)
+  [KO ] …et la branche `xip-lecture-code` pose EXACTEMENT LES MEMES  ⛔ ecart : ['CONFIG_SPIRAM_RODATA']
+BILAN : 8 OK / 1 KO
+
+--- MUTANT 3 ---
+rc=1 (1 = ROUGE, c'est ce qu'on veut)
+  [KO ] …et la branche `xip-lecture-code` pose EXACTEMENT LES MEMES  ⛔ ecart : ['CONFIG_SPIRAM_RODATA']
+BILAN : 9 OK / 1 KO
+
+--- MUTANT 4 ---
+rc=1 (1 = ROUGE, c'est ce qu'on veut)
+  [KO ] une branche ISOLE `CONFIG_SPIRAM_FETCH_INSTRUCTIONS`  ⛔ le cas « lui sans l'autre » serait INVISIBLE au bandeau
+BILAN : 9 OK / 1 KO

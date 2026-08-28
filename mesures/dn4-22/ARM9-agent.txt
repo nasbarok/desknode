@@ -1,0 +1,253 @@
+=== ARM9 — 156b507 + XIP · AGENT REEL ===
+T_DEBUT=2026-08-28T14:25:46+02:00
+=== rendre-port.sh — agent ===
+  BUSID relu : 3-5   (⛔ jamais en dur : il suit le port physique)
+
+[0.4s] 1/4  Veilleurs --auto-attach (les deux côtés)
+  veilleurs tués : Windows=0  WSL=0
+  /!\ 1 usbipd.exe à CommandLine ILLISIBLE : ni tués, ni innocentés.
+  /!\     (faux négatif MESURÉ le 2026-08-26 — PID 6056). Le verdict reste l'état du port.
+
+[2.2s] 2/4  detach 3-5
+
+[2.6s] 3/4  Re-vérification APRÈS 4s (les veilleurs ressuscitent en ~2 s)
+  usbipd : 3-5    303a:1001  Périphérique série USB (COM3), USB JTAG/serial debug unit     Shared
+  STATE = Shared — le detach a TENU.
+
+[7.1s] 4/4  VERDICT : COM3 doit APPARAÎTRE côté Windows
+  COM3 : libre
+
+  ✅ Le port est à Windows en 7.9 s. Lancer l'agent :
+        (sur la tour)  H:\dev\projets\desknode\dn-agent.bat
+'\\wsl.localhost\Ubuntu\home\nasbarok\projects\desknode'
+CMD.EXE a �t� d�marr� avec le chemin d'acc�s comme r�pertoire en
+cours. Les chemins d'acc�s UNC ne sont pas prise en charge. Utilisation
+du r�pertoire Windows par d�faut.
+
+=== PRE-VOL ===
+  python : C:\Users\naoua\AppData\Local\Programs\Python\Python313\python.exe
+  args : --serie COM3 --stop-si H:\dev\projets\desknode\dn-agent.stop
+  pre-vol OK
+
+=== LANCEMENT ===
+  agent VIVANT  PID=33476
+  lanceur cmd.exe PID=30636  (pere de python.exe)
+  journal : H:\dev\projets\desknode\dn-agent.log
+T_AGENT_START=2026-08-28T14:25:56+02:00
+=== rendre-port.sh — flash ===
+  BUSID relu : 3-5   (⛔ jamais en dur : il suit le port physique)
+
+[0.4s] 1/4  Arrêter l'agent — et LE PROUVER (⛔ pas par un code de retour)
+     
+     === STOP ===
+       a arreter : PID=33476
+       drapeau pose : arret PROPRE demande (le bilan de fin doit sortir)
+       arret propre en 1 s ; bilan ecrit : 1560 o
+     
+     === PREUVE : ON RE-OUVRE LE PORT ===
+       python.exe vivants : 0  (portant dn_agent.py : 0 | CommandLine ILLISIBLE : 0)
+       port COM3 : libre
+       usbipd : 3-5 303a:1001 Périphérique série USB (COM3), USB JTAG/serial debug unit Shared
+       marqueur : absent
+       journal : 466379 o  H:\dev\projets\desknode\dn-agent.log
+       OK - COM3 se REOUVRE : le port est rendu.
+  COM3 après stop : libre
+
+[4.2s] 2/4  Veilleurs --auto-attach (on repart d'une base propre)
+  veilleurs tués : Windows=0  WSL=0
+  /!\ 1 usbipd.exe à CommandLine ILLISIBLE : ni tués, ni innocentés.
+  /!\     (faux négatif MESURÉ le 2026-08-26 — PID 6056). Le verdict reste l'état du port.
+
+[5.4s] 3/4  wsl-attach.sh (busid relu par lui aussi)
+     1/4  Chargement des modules noyau USB…
+     2/4  Recherche de la carte (303a:1001) dans 'usbipd list'…
+          BUSID = 3-5
+     3/4  Attachement à WSL…
+          usbipd: info: Using WSL distribution 'Ubuntu' to attach; the device will be available in all WSL 2 distributions.
+          usbipd: info: Detected networking mode 'nat'.
+          usbipd: info: Using IP address 192.168.224.1 to reach the host.
+     4/4  Ouverture des droits sur /dev/ttyACM0…
+     
+     Prêt : /dev/ttyACM0  nasbarok:root  crw-------
+     Boucle :  cd ~/projects/desknode/firmware/hello-desknode && idf.py -p /dev/ttyACM0 flash monitor
+
+[8.0s] 4/4  VERDICT : /dev/ttyACM* présent ET écrivable
+  /dev/ttyACM0  nasbarok:root  crw-------
+
+  ✅ La carte est à WSL en 8.0 s. Flasher :
+        cd /home/nasbarok/projects/desknode/firmware/hello-desknode && idf.py -p /dev/ttyACM0 flash monitor
+
+$ flush
+
+$ flush
+─── glissement de trame (dn4-10) — fenêtre 304587 ms ───
+  trames (vsync)   : 11308 · enroulements : 11307
+  trames SANS enroulement : 1 · à deux ou plus : 0
+  intervalle vsync→vsync : n=11307 · min 26726 · moy 26737 · MAX 26750 us
+     (période théorique 26737,500 us = 620 x 690 / 16000000 Hz)
+     retard PIRE observé : +12 us sur la période
+  ISR en retard de plus de : +100 us 0 · +775 us (back porch) 0 · +1938 us (VBlank) 0 · une trame 0
+  🎯 phase enroulement→VSYNC_END : n=11275 · min 2138 · moy 2254 · MAX 2268 us   (+32 trames de dégrossissage, ⛔ HORS de ces trois statistiques)
+     une phase COURTE = l'enroulement EN RETARD = le remplissage du bounce qui décroche.
+     référence des déficits (FIGÉE après dégrossissage) : 2259 us · 1 ligne = 39 us
+     ⚠️ MAX (2268) > référence (2259) : les déficits ci-dessous sont SOUS-comptés de 9 us.
+        ⛔ CETTE LIGNE EST QUASI-CERTAINE, ce n'est PAS un signal : la référence est le MAX de 32 trames, le MAX porte sur 11275. Un `flush reset` au repos ne la lèvera pas.
+        🎯 CE QU'ELLE AUTORISE : un seuil FRANCHI l'est a fortiori (le vrai déficit est plus grand). ⛔ CE QU'ELLE INTERDIT : comparer deux déficits entre eux — ils portent le même biais.
+     🔴 DÉFICIT PIRE sous la référence : 121 us, pour un demi-bounce qui s'écoule en 775 us
+        ⇒ sous le seuil, il restait 654 us de marge (84 % du demi-bounce)
+     trames dont le déficit dépasse : 10 % 144 · 25 % 0 · 50 % 0 · 🔴 100 % (CORRUPTION) 0
+     ⛔ CUMULS EMBOÎTÉS, ⛔ pas des paliers disjoints : un déficit > 100 % compte dans LES QUATRE. Ne pas les sommer.
+     ⚠️ PLANCHER : la microseconde, soit 16 px. ⛔ « 0 » ici ne veut PAS dire « 0 pixel ».
+     ⚠️ L'horodatage de référence vient LUI AUSSI d'une ISR : un retard COMMUN aux deux s'annule et reste invisible.
+  ce que ça veut dire : RESTART_IN_VSYNC=**n** dans CE binaire.
+     Le driver ne remet PLUS la DMA à zéro à chaque VBlank — et
+     c'est ce reset-là, quand l'ISR était en retard, qui
+     DÉCALAIT l'image (esp_lcd_panel_rgb.c:1142-1148). Le
+     glissement périodique est fermé par là (`4734d07`).
+     ⛔ CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT :
+     à `n` c'est le DÉPASSEMENT du seuil qui suit l'œil, pas le
+     compte. Le budget de l'ISR reste le back porch, 775 us —
+     pas le VBlank entier (1938 us), car VSYNC_END tombe à la FIN
+     de l'impulsion.
+     ⚠️ le driver garde SA propre relance sur famine avérée
+     (esp_lcd_panel_rgb.c:1153-1163), compilée dans ce binaire.
+aire cumulée       : 56779249 px
+  => 36608 px par flush en moyenne (écran plein = 307200 px, soit 11.92 %)
+  => 42852 px et 1.2 flush(es) par CYCLE de redessin
+     (le CYCLE est l'unité qui compte : c'est ce qu'une mise à
+      jour du label coûte réellement, flushes multiples inclus.)
+plus grande aire   : 61440 px
+copie              : 4087792 us cumulés, 2635 us/flush en moyenne, 6393 us au pire
+attente de synchro : 27372423 us cumulés, 17648 us/flush en moyenne
+   (comptée À PART de la copie : sinon « le flush coûte 27 ms » se
+    lirait comme un problème de bande passante alors que c'est la
+    synchro qui attend sa trame — 26,7 ms de période.)
+⚠️ 5 synchro(s) EXPIRÉE(S) : pour ces flushes-là, le mode
+   annoncé n'a PAS été appliqué. Toute comparaison A/B qui les
+   inclut compare partiellement « rien » à « rien ».
+rappel : redessiner l'écran ENTIER coûte 36,8 ms de memcpy PSRAM (§5.4),
+   pour 26,7 ms de période de trame — 1,4x TROP LENT. Les zones
+   sales ne sont pas une élégance, c'est la seule voie qui tient.
+
+$ bl
+
+$ bl
+rétroéclairage : 80 % à 24000 Hz (allumé)
+⚠️ `bl 0` éteint le RÉTROÉCLAIRAGE : dalle NOIRE.
+   `disp off` éteint la SORTIE de la dalle : dalle GRISE éclairée.
+   Les deux donnent « plus d'image », par deux mécanismes différents.
+asservissement BH1750 : ARMÉ
+  loi      : 20 % à <= 2 lx · 80 % à >= 11 lx · courbe log entre les deux
+           (dn4-19/AC6.3 : l'œil ET le lux sont logarithmiques. Constat owner du 2026-08-27, A/B en ACTIF à 245 lx : « 75 % — nettement plus », là où la loi LINÉAIRE rendait 44 %. ⛔ Les deux bornes n'ont PAS bougé. `bl auto courbe lineaire` pour revenir à la loi de dn4-3 et refaire l'A/B.)
+  garde    : bande morte 3 pts · pas max 50 pts par cycle de 5000 ms (course complète en 2 cycles)
+  applique : 80 % (sur 130 lx)
+  régime   : ACTIF
+  ambiant  : échelle 100 % de la loi · plancher 16 %
+           ⚠️ ce plancher est un TROISIÈME contenu (gros chiffres sur noir), MESURÉ À L'ŒIL le 2026-08-27 dans le noir (« 8 % c'est trop bas, 16 c'est bien ») : ⛔ ne pas le confondre avec les 20 % du dashboard ni avec les 3 % du Living PCB — trois CONTENUS, trois chiffres.
+  applications : 1 mouvements de duty depuis le BOOT (⛔ jamais remis, meme par `bl auto on`)
+           (dn4-19/AC8 : deux relevés espacés mesurent le POMPAGE de la bande morte — la loi vit H24 depuis que l'auto est armée par défaut.)
+  ⚠️ `bl <n>`, `bl on|off` et `bl ramp` DÉSARMENT l'auto et le DISENT.
+  ⛔ `bl ramp` est BLOQUANTE : elle n'est JAMAIS appelée par l'asservissement.
+  ⛔ La VEILLE ne désarme PLUS (dn4-19) : elle POSE le niveau du régime EN UNE FOIS, et la loi le maintient ensuite.
+
+$ veille
+
+$ veille
+mode : ACTIF · veille ARMEE · delai 10 min (600000 ms)
+inactivite : 303225 ms (max vue depuis le reset : 303225 ms)
+bascules -> Ambient : 0 · reveils : 0 · dernier reveil par : aucun
+secondes OBSERVEES : 303 (⚠️ ⛔ PAS l'uptime : le tick 1 Hz ne bat
+   pas pendant `ui off`, donc la veille y est AVEUGLE)
+─── temps MURAL par mode depuis le boot (dn4-5/AC3.2) ───
+  Actif   :      305 s
+  Ambient :        0 s
+  total   :      305 s  ⇒ Ambient = 0 %  🔴 SOUS LE SEUIL de 50 %
+  ⚠️ CE QUE CE CUMUL NE VOIT PAS : il dit dans quel MODE le
+     module se croit, ⛔ pas que la dalle est effectivement
+     sombre. Le constat owner reste requis. Et pendant un
+     `ui off`, le temps est impute au mode COURANT — sans
+     consequence en regime, ou le port est tenu par l'agent.
+  ⛔ EN RAM (D4) : un reboot le remet a zero, et il rompt la
+     fenetre du soak de toute facon (AC3.6).
+rebases d'horloge a `ui on` : 0 · bascules ANNULEES (async refusee) : 0
+aucune ecriture NVS depuis le boot ou le dernier `veille reset`
+   (les deux reglages sont ceux qui etaient deja en vigueur).
+ecarts contact->bascule : AUCUN ECHANTILLON
+   ⛔ « pas mesure », ⛔ PAS « 0 ms ».
+taps CONSOMMES par un reveil : 0 · taps de reglage dans le MENU : 0
+transitions provoquees PAR LA VEILLE : 0 (dans `nav`, mais SANS
+   chronometre : elles ne naissent d'aucun geste)
+
+(aucune bascule pour l'instant — l'inactivite max vue est 303225 ms
+ pour un delai de 600000 ms : rien d'anormal a ce stade)
+
+⚠️ PROTOCOLE DE LA GATE `menu_taps` (AC5.6) — A LIRE AVANT DE LA TIRER
+   Le bandeau MENU n'existe QUE sur le dashboard : une fois la vue
+   MENU ouverte, les appuis suivants au meme endroit ne tombent sur
+   AUCUNE zone. La serie est donc 8 ALLERS-RETOURS : appui dans
+   la bande y = 589..639, puis `←` (ou `nav back`), huit fois.
+   ⛔ Huit appuis d'affilee rendraient 1, ⛔ pas 8 — et ce ne
+     serait PAS une zone morte.
+   TEMOIN NEGATIF : >= 5 appuis dans la BARRE DU HAUT (y = 0..59)
+   doivent rendre 0 tap — elle, elle reste morte.
+
+usage : veille                       etat, compteurs, diagnostics
+        veille on | off              ARME / DESARME (persiste en NVS)
+        veille delai <1|3|5|10>      le delai, en MINUTES (persiste)
+        veille now                   bascule en Ambient MAINTENANT
+        veille wake                  reveille MAINTENANT (origine console)
+        veille lat                   les DEUX latences de reveil (AC4)
+        veille geom                  la preuve que le layout NE BOUGE PAS
+        veille assets                le recompte de la partition (AC1.4)
+        veille fond                  voiles et aplats RELUS DES OBJETS LVGL
+        veille reset                 compteurs ET latences a zero
+  --- leviers A/B, a chaud, ⛔ NON persistes (ce sont des instruments) ---
+        veille pct <3..100>           niveau d'Ambient de DERNIER RECOURS
+        veille voile <0..255>        opacite du voile en Ambient
+        veille gris <reel|simule|absent> <rrggbb>
+        veille accents <0..100>      desaturation des accents (0=teinte, 100=gris)
+        veille unite on|off          l'unite reste-t-elle ? ⚠️ CHOISIT LA POLICE
+                                     (on ⇒ 33 px · off ⇒ 56 px, tailles MESUREES)
+        veille jauge on|off          la barre de remplissage en veille
+        veille case <rrggbb>         l'aplat de case en Ambient
+
+$ pc
+
+$ pc
+liaison PC : MORTE (RESUME GLOBAL : VIVANTE des qu'UNE metrique l'est)
+             derniere trame toutes metriques : age 6828 ms · seq 1485 · t_ms agent 297037
+metriques  : (peremption 3000 ms, par metrique)
+  cpu   -> case 0 CPU       MORTE        24,2 % · 2,5 GHz · c.max 43,9 % · 42,3 degC  · age 6856 ms · seq 1481
+  gpu   -> case 1 GPU       MORTE        7,0 % · 44,0 degC · 51,0 W · 614,0 tr/min  · age 6849 ms · seq 1482
+  ram   -> case 2 RAM       MORTE        60,8 % · 31,9 Go  · age 6846 ms · seq 1483
+  net   -> case 3 RÉSEAU   MORTE        0,2 Mb/s · 0,2 Mb/s  · age 6843 ms · seq 1484
+  disk  -> case 4 DISQUE    MORTE        1,6 Mo/s · extr.moy 1007,7 tr/min · ventirad 313,4 tr/min · boitier 879,9 tr/min  · age 6838 ms · seq 1485
+poussee    : GROUPEE (defaut)
+peremption : 3000 ms, en temps absolu de RECEPTION — la cadence de
+             l'agent ne fait jamais foi (AC7)
+trames     : 1469 valides · 0 doublons · 14 pertes seq · 0 resynchros · 0 reprises
+rejets     : tronquee 0 · trop longue 0 · checksum 0 · version 0 · format 0 · bornes 0
+             tronquee = la fin de ligne est PERDUE · trop longue = la
+             ligne est COMPLETE mais depasse 71 o (emetteur elargi)
+             ⚠️ bande « trop longue » ATTEIGNABLE : le REPL delivre
+             124 caracteres de trame au parseur (MESURE, dn4-1) —
+             la bande 72..124 est donc large de 53 o. Un compteur
+             inatteignable serait un instrument qui ment.
+             resynchros = saut de seq non credible (agent redemarre,
+             seq fabrique) : trame APPLIQUEE, pas comptee en pertes
+latence acceptation->label : n=1469 · min 1 ms · moy 224 ms · max 448 ms
+  (NON instrumente ici : echantillonnage cote PC, vol dans le
+   transport, et le flush LVGL suivant — <= 1 cycle, ~27 ms)
+transport  : wifi non compilee (maquette B ecartee — fourche T5) · ws off (0 messages, 0 connexions)
+             branche A = cette console : l'agent envoie `pc $DN,...`
+
+$ mem
+
+$ mem
+PSRAM libre maintenant : 6655456 o
+RAM interne libre      : 71263 o
+PSRAM avant framebuffers : 7272536 o
+PSRAM après framebuffers : 6657776 o
+=> consommée par 1 framebuffer(s) : 614760 o (théorie : 614400 o)
+bounce buffer : 9600 px (alloué en RAM INTERNE, pas en PSRAM)
+T_FIN=2026-08-28T14:31:00+02:00
