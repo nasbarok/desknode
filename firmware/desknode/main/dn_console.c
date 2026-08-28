@@ -1597,8 +1597,13 @@ static int cmd_bl(int argc, char **argv)
 static void flush_usage(void)
 {
     printf("usage : flush                   — compteurs, glissement en tête\n");
+    printf("                                  ① plus longue SÉRIE de trames\n");
+    printf("                                    consécutives non saines (dn4-12)\n");
+    printf("                                  ② DISTRIBUTION des 4 seaux\n");
+    printf("                                  ③ DÉPASSEMENT du seuil + sa\n");
+    printf("                                    RÉFUTATION (c'est un MAX)\n");
     printf("        flush reset             — remet les compteurs à zéro\n");
-    printf("                                  (glissement dn4-10 compris)\n");
+    printf("                                  (glissement dn4-10 ET série dn4-12)\n");
     printf("        flush sync off|vsync|fbdone — synchronisation du flush\n");
     printf("        flush path bitmap|direct    — par où la zone sale entre\n");
     printf("        flush full              — invalide TOUT l'écran (preuve "
@@ -1841,6 +1846,231 @@ static int cmd_flush(int argc, char **argv)
             printf("   bits est tombée pendant la copie, 3 essais n'ont pas\n");
             printf("   convergé. ⛔ NE RIEN CONCLURE de ce bloc — retaper `flush`.\n");
         }
+        /*
+         * ══════════════════════════════════════════════════════════════════
+         *  dn4-12 / AC2 — LE TRIPLET DE TÊTE : CE QUI SUIT L'ŒIL
+         * ══════════════════════════════════════════════════════════════════
+         *
+         * 🔴 CE QU'ON RÉPARE ICI EST UN DÉFAUT DE PRÉSENTATION RÉEL : le
+         *    DÉPASSEMENT du seuil était enterré en SOUS-LIGNE du « DÉFICIT
+         *    PIRE », lui-même perdu au milieu du bloc, pendant que le COMPTE de
+         *    corruptions — qui NE SUIT PLUS L'ŒIL depuis `4734d07` — sortait en
+         *    évidence. §20bis.5 : 143 corruptions AVANT COMME APRÈS le correctif
+         *    du 2026-08-23, pendant que l'œil passait de « ça descend et remonte
+         *    toutes les secondes » à « plus de glissement ».
+         *
+         * 🔴 MAIS LA GRANDEUR DE TÊTE EST UN **TRIPLET**, ⛔ PAS LE MAX NU —
+         *    DÉCISION OWNER D3 DU 2026-08-28. L'entrée de backlog demandait de
+         *    publier le dépassement SEUL, sur la foi du tableau
+         *    `+720 / +176 / +221 µs` du 2026-08-23. Or ce tableau COMPARE TROIS
+         *    `ph_deficit_max_us` ENTRE EUX — ce que ce fichier interdit en
+         *    toutes lettres quelques lignes plus bas — et dn4-22 l'a RÉFUTÉ PAR
+         *    LA MESURE cinq jours plus tard : ARM 5 rend 1 300 µs de déficit
+         *    pire pour UNE corruption, contre 896 µs pour 245 chez `f7be23c`.
+         *    ⇒ le MAX n'est pas un discriminateur : UN SEUL POINT ABERRANT LE
+         *      DÉPLACE. L'esprit du livrable est tenu (le dépassement monte en
+         *      tête), la lettre est amendée (il n'y monte pas SEUL).
+         *
+         * ⛔ ON RÉORDONNE ET ON AJOUTE, ON N'EFFACE PAS : la distribution des
+         *    quatre seaux et le bloc « DÉFICIT PIRE » ont été DÉPLACÉS ici
+         *    depuis le bas du bloc, ⛔ pas dupliqués. Le titre du bloc ne change
+         *    pas — il porte encore `dn4-10`, et c'est juste : c'est son bloc.
+         */
+        printf("  🎯 CE QUI SUIT L'ŒIL — LE TRIPLET DE TÊTE (dn4-12)\n");
+        /* ── ① LA PLUS LONGUE SÉRIE ─────────────────────────────────────── */
+        if (b.t_demi_us == 0u) {
+            /* 🔴 AC1.8 — DÉSARMEMENT. À `bounce_px < 480` le demi-bounce vaut
+             *    0 µs : la classe A ne peut PLUS EXISTER (aucune trame ne
+             *    franchit un seuil qui n'existe pas). ⛔ On refuse la grandeur
+             *    plutôt que de l'imprimer à zéro — « un zéro se lirait "aucune
+             *    corruption" ». Et on DIT LAQUELLE DES TROIS EST PERDUE : ⛔ on
+             *    ne se contente pas de se taire. */
+            printf("   ① 🔴 PLUS LONGUE SÉRIE : DÉSARMÉE — bounce_px < %d px ⇒ "
+                   "demi-bounce = 0 µs ⇒ LA CLASSE A (déficit franchi) N'EXISTE "
+                   "PLUS.\n", DN_LCD_H_RES);
+            printf("        ⇒ `set bounce %d` puis `reboot` pour réarmer.\n",
+                   dn_bootcfg_defaut_bounce_px());
+            printf("        ⚠️ les classes C (hors borne de sanité) et D (sans "
+                   "enroulement) ⛔ NE DÉPENDENT PAS de ce seuil : elles restent "
+                   "comptables. La série ci-dessous est donc PARTIELLE.\n");
+            printf("        série PARTIELLE (C+D seulement) : %lu trames · "
+                   "C %lu · D %lu · %lu série(s) · en cours %lu\n",
+                   (unsigned long)b.ser_max, (unsigned long)b.ser_max_c,
+                   (unsigned long)b.ser_max_d, (unsigned long)b.ser_n,
+                   (unsigned long)b.ser_courante);
+        } else {
+            /* 🔴 D1 — LA CONVERSION EN MILLISECONDES SE FAIT **ICI**, ⛔ JAMAIS
+             *    DANS L'ISR. La grandeur stockée est un COMPTE DE TRAMES, donc
+             *    immunisée au rebouclage `esp_timer` de 71,58 min : 2^32 trames
+             *    valent ~3,6 ans à 37,40 Hz. `periode_ns` est EXACTE
+             *    (26 737 500 ns), la division n'arrive qu'ici. */
+            printf("   ① PLUS LONGUE SÉRIE de trames CONSÉCUTIVES NON SAINES : "
+                   "%lu trames ≈ %llu ms\n",
+                   (unsigned long)b.ser_max,
+                   (unsigned long long)((uint64_t)b.ser_max *
+                                        (uint64_t)b.periode_ns / 1000000ULL));
+            printf("        composition : %lu déficit franchi (A) · %lu hors "
+                   "borne de sanité (C) · %lu sans enroulement (D)\n",
+                   (unsigned long)b.ser_max_a, (unsigned long)b.ser_max_c,
+                   (unsigned long)b.ser_max_d);
+            printf("        commencée à la trame #%lu depuis la RAZ · %lu "
+                   "série(s) au total\n",
+                   (unsigned long)b.ser_max_debut, (unsigned long)b.ser_n);
+            if (b.ser_courante) {
+                /* ⚠️ SANS CETTE LIGNE, UN LECTEUR NE SAIT PAS SI LE MAXIMUM EST
+                 *    ENCORE EN TRAIN DE CROÎTRE. Le maximum l'inclut DÉJÀ : il
+                 *    est mis à jour à chaque trame en défaut, ⛔ pas à la
+                 *    fermeture de la série. */
+                printf("        🔴 SÉRIE EN COURS : %lu trames ≈ %llu ms — LE "
+                       "MAXIMUM CI-DESSUS PEUT ENCORE CROÎTRE (il l'inclut "
+                       "déjà).\n",
+                       (unsigned long)b.ser_courante,
+                       (unsigned long long)((uint64_t)b.ser_courante *
+                                            (uint64_t)b.periode_ns / 1000000ULL));
+            } else {
+                printf("        série en cours : aucune (la dernière trame était "
+                       "SAINE ou INDÉTERMINÉE).\n");
+            }
+            /* 🔴 AC1.4 — C'EST UN MINORANT, ET LA CONSOLE L'ÉCRIT. */
+            printf("        ⚠️ MINORANT : %lu série(s) rompue(s) par une trame "
+                   "INDÉTERMINÉE (horodatage postérieur · paire déchirée · 2+ "
+                   "enroulements) — une série vraie a pu être COUPÉE EN DEUX.\n",
+                   (unsigned long)b.ser_rompues_indet);
+            printf("           ⛔ ce nombre NE SE SOUSTRAIT PAS et NE SE "
+                   "RECOMPOSE PAS : il BORNE la confiance, il ne corrige rien.\n");
+            printf("        ⚠️ la classe A ne peut pas commencer avant la %lue "
+                   "trame (dégrossissage) : avant, aucun déficit n'est "
+                   "calculable. C et D, elles, comptent dès la 1re.\n",
+                   (unsigned long)b.ph_degrossi_n);
+            if (b.ser_max == 0u) {
+                printf("        ⛔ ZÉRO NE PROUVE RIEN tant que le témoin ne l'a "
+                       "pas fait bouger : `flash on` doit rendre plusieurs "
+                       "CENTAINES de trames, dominées par la classe D.\n");
+            }
+        }
+        /* ── ② LA DISTRIBUTION — 🎯 LE SIGNAL JUGÉ FIABLE PAR dn4-22 ─────── */
+        if (b.ph_n == 0) {
+            printf("   ② ⛔ DISTRIBUTION : aucun échantillon de phase compté "
+                   "(%lu écartés au dégrossissage) — ② et ③ n'ont RIEN "
+                   "mesuré.\n", (unsigned long)b.ph_ecarte);
+        } else if (b.t_demi_us == 0u) {
+            /* 🔴 LE COMPTEUR DÉCORATIF, FERMÉ LE 2026-08-27 et DÉPLACÉ ICI le
+             *    2026-08-28. À `bounce_px < 480` l'ISR saute tout le bloc de
+             *    seuils, et cette ligne imprimait « 🔴 100 % (CORRUPTION) 0 » :
+             *    quatre zéros qui se lisent « aucune corruption » alors que RIEN
+             *    n'a été mesuré. On refuse la ligne au lieu de la remplir de
+             *    zéros. */
+            printf("   ② 🔴 SEUILS DÉSARMÉS : bounce_px < %d px ⇒ demi-bounce = "
+                   "0 µs ⇒ les quatre compteurs de déficit N'ONT RIEN MESURÉ. "
+                   "⛔ Aucun chiffre n'est publié ici : un zéro se lirait "
+                   "« aucune corruption ».\n", DN_LCD_H_RES);
+            printf("        ⇒ `set bounce %d` puis `reboot` pour réarmer.\n",
+                   dn_bootcfg_defaut_bounce_px());
+        } else {
+            printf("   ② DISTRIBUTION des déficits (sur n=%lu trames comptées) : "
+                   "10 %% %lu · 25 %% %lu · 50 %% %lu · 🔴 100 %% (CORRUPTION) "
+                   "%lu\n",
+                   (unsigned long)b.ph_n,
+                   (unsigned long)b.ph_10pc, (unsigned long)b.ph_25pc,
+                   (unsigned long)b.ph_50pc, (unsigned long)b.ph_100pc);
+            /* 🔴 2026-08-27 : ces quatre seaux sont EMBOÎTÉS, et la sortie les
+             *    présentait comme des paliers distincts. Un déficit > 100 %
+             *    incrémente aussi 50, 25 et 10 % : un lecteur qui sommait les
+             *    quatre comptait les pires JUSQU'À QUATRE FOIS. */
+            printf("        ⛔ CUMULS EMBOÎTÉS, ⛔ pas des paliers disjoints : un "
+                   "déficit > 100 %% compte dans LES QUATRE. Ne pas les "
+                   "sommer.\n");
+            printf("        🎯 c'est la DISTRIBUTION qui est le signal FIABLE "
+                   "(dn4-22), ⛔ pas le maximum de ③.\n");
+        }
+        /* ── ③ LE DÉPASSEMENT DU SEUIL, **AVEC SA RÉFUTATION** ───────────── */
+        if (b.t_demi_us == 0u) {
+            printf("   ③ 🔴 DÉFICIT PIRE sous la référence : %lu µs — ⛔ et le "
+                   "seuil de comparaison est INDISPONIBLE (demi-bounce = 0 µs), "
+                   "voir ②.\n", (unsigned long)b.ph_deficit_max_us);
+        } else {
+            printf("   ③ 🔴 DÉFICIT PIRE sous la référence : %lu µs, pour un "
+                   "demi-bounce qui s'écoule en %lu µs\n",
+                   (unsigned long)b.ph_deficit_max_us,
+                   (unsigned long)b.t_demi_us);
+            if (b.ph_deficit_max_us > b.t_demi_us) {
+                printf("        ⇒ DÉPASSÉ de %lu µs : la DMA a lu un tampon PAS "
+                       "ENCORE REMPLI. C'est le décalage visible.\n",
+                       (unsigned long)(b.ph_deficit_max_us - b.t_demi_us));
+            } else {
+                printf("        ⇒ sous le seuil, il restait %lu µs de marge "
+                       "(%lu %% du demi-bounce)\n",
+                       (unsigned long)(b.t_demi_us - b.ph_deficit_max_us),
+                       (unsigned long)((b.t_demi_us - b.ph_deficit_max_us) *
+                                       100u / b.t_demi_us));
+            }
+            /*
+             * 🔴 AC2.3 — LA RÉFUTATION EST IMPRIMÉE, ⛔ PAS SEULEMENT CONNUE.
+             *    Un opérateur qui lit ③ sans elle en fera un discriminateur
+             *    entre deux fenêtres, ce que la mesure INTERDIT. Le chiffre qui
+             *    l'établit est donné, ⛔ pas résumé.
+             */
+            printf("        ⛔ RÉFUTATION, ET ELLE EST MESURÉE : c'est un MAX — "
+                   "UN SEUL POINT ABERRANT LE DÉPLACE. dn4-22/ARM 5 rend "
+                   "1 300 µs pour UNE corruption, contre 896 µs pour 245 chez "
+                   "`f7be23c`.\n");
+            printf("           ⇒ à lire comme un ORDRE DE GRANDEUR, ⛔ PAS comme "
+                   "un discriminateur entre deux fenêtres. Le signal, c'est ②.\n");
+        }
+        /* ── LE COMPTE, EN SECOND, AVEC SA RÉSERVE (AC2.4) ───────────────── */
+        if (b.t_demi_us != 0u) {
+            printf("  ── LE COMPTE, EN SECOND ─────────────────────────────\n");
+            printf("  corruptions (déficit > 100 %% du demi-bounce) : %lu\n",
+                   (unsigned long)b.ph_100pc);
+            /* ⛔ ON NE DUPLIQUE PAS la phrase du bloc `#else` en fin de rapport
+             *    (« CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT ») :
+             *    on la RÉFÉRENCE, et on ajoute le CHIFFRE qui l'établit, qui
+             *    lui n'était écrit nulle part dans la sortie. */
+            printf("     ⚠️ RÉSERVE — voir « CE COMPTEUR MESURE DONC LA FAMINE, "
+                   "PAS LE GLISSEMENT » en fin de bloc. Le chiffre qui "
+                   "l'établit : 143 corruptions AVANT COMME APRÈS le correctif "
+                   "du 2026-08-23,\n");
+            printf("        pendant que l'œil passait de « ça glisse » à « plus "
+                   "de glissement ». ⇒ ce compte NE SUIT PLUS L'ŒIL ; ① et ② "
+                   "sont là pour ça.\n");
+        }
+        /*
+         * ── LES CINQ CHIFFRES DE COMPARABILITÉ + L'INSTANT DE LA RAZ ───────
+         * Règle dn4-22/AC3.2 : deux fenêtres ne se comparent que si ces cinq-là
+         * sont dans le MÊME bloc que les chiffres qu'on compare. Ils sont
+         * détaillés plus bas avec leurs contre-épreuves ; ici ils sont
+         * RASSEMBLÉS, pour qu'une capture de tête se suffise à elle-même.
+         */
+        printf("  ── COMPARABILITÉ (les cinq chiffres, dn4-22/AC3.2) ──\n");
+        printf("     ph_ref %lu µs · ph_max %lu µs · ph_n %lu · dégrossissage "
+               "%lu trames · demi-bounce %lu µs\n",
+               (unsigned long)b.ph_ref_us, (unsigned long)b.ph_max_us,
+               (unsigned long)b.ph_n, (unsigned long)b.ph_degrossi_n,
+               (unsigned long)b.t_demi_us);
+        if (b.raz_gen == 0u) {
+            /*
+             * 🔴 « UN COMPTEUR VIDE N'EST PAS UNE ABSENCE D'HISTOIRE » — et ici
+             *    ce n'est pas une formule : `flush` est remis à zéro par
+             *    `flush reset` ET par TOUT REDÉMARRAGE DE LA PUCE. Une référence
+             *    SEMÉE AU BOOT est PATHOLOGIQUE 1 FOIS SUR 4 (étendue 100 µs
+             *    contre 1 µs pour un `flush reset` en régime ; le seau 10 %
+             *    passe de 4,5 % à 99,98 % des trames). ⇒ ce n'est pas une
+             *    précaution, c'est LA CONDITION DE COMPARABILITÉ.
+             */
+            printf("     ⛔ AUCUN `flush reset` : référence SEMÉE AU BOOT — 1 "
+                   "semis sur 4 est PATHOLOGIQUE (symptôme : le seau 10 %% vaut "
+                   "presque `n`).\n");
+            printf("        ⇒ une fenêtre à référence pathologique reste "
+                   "CONCLUANTE si elle rend une série COURTE (le biais "
+                   "SUR-compte, le court tient a fortiori). ⛔ LA RÉCIPROQUE EST "
+                   "FAUSSE.\n");
+        } else {
+            printf("     dernière RAZ : %lu consommée(s) depuis le boot · la "
+                   "fenêtre ci-dessus (%llu ms) court depuis la dernière.\n",
+                   (unsigned long)b.raz_gen,
+                   (unsigned long long)b.fenetre_ms);
+        }
+        printf("  ─────────────────────────────────────────────────────\n");
         printf("  trames (vsync)   : %lu · enroulements : %lu\n",
                (unsigned long)b.trames, (unsigned long)b.wraps);
         printf("  trames SANS enroulement : %lu · à deux ou plus : %lu\n",
@@ -1998,62 +2228,25 @@ static int cmd_flush(int argc, char **argv)
                        "QU'ELLE INTERDIT : comparer deux déficits entre eux — "
                        "ils portent le même biais.\n");
             }
-            /* 🔴 3e revue du 2026-08-27 : cette ligne imprimait « pour un
-             *    demi-bounce qui s'écoule en 0 us » — un seuil à ZÉRO, présenté
-             *    comme mesuré — UNE LIGNE AVANT le bloc qui annonce « Aucun
-             *    chiffre n'est publié ici : un zéro se lirait "aucune
-             *    corruption" ». ⛔ Le garde-fou arrivait après le chiffre qu'il
-             *    existe pour taire. */
-            if (b.t_demi_us) {
-                printf("     🔴 DÉFICIT PIRE sous la référence : %lu us, pour un "
-                       "demi-bounce qui s'écoule en %lu us\n",
-                       (unsigned long)b.ph_deficit_max_us,
-                       (unsigned long)b.t_demi_us);
-            } else {
-                printf("     🔴 DÉFICIT PIRE sous la référence : %lu us — ⛔ et "
-                       "le seuil de comparaison est INDISPONIBLE (demi-bounce = "
-                       "0 us), voir ci-dessous.\n",
-                       (unsigned long)b.ph_deficit_max_us);
-            }
-            if (b.t_demi_us && b.ph_deficit_max_us > b.t_demi_us) {
-                printf("        ⇒ DÉPASSÉ de %lu us : la DMA a lu un tampon PAS "
-                       "ENCORE REMPLI. C'est le décalage visible.\n",
-                       (unsigned long)(b.ph_deficit_max_us - b.t_demi_us));
-            } else if (b.t_demi_us) {
-                printf("        ⇒ sous le seuil, il restait %lu us de marge "
-                       "(%lu %% du demi-bounce)\n",
-                       (unsigned long)(b.t_demi_us - b.ph_deficit_max_us),
-                       (unsigned long)((b.t_demi_us - b.ph_deficit_max_us) * 100u /
-                                       b.t_demi_us));
-            }
-            if (b.t_demi_us == 0u) {
-                /* 🔴 LE COMPTEUR DÉCORATIF, FERMÉ LE 2026-08-27. À
-                 *    `bounce_px < 480` (0 compris, et 0 est LÉGAL), le
-                 *    demi-bounce vaut 0 us, l'ISR saute tout le bloc de seuils,
-                 *    et cette ligne imprimait « 🔴 100 % (CORRUPTION) 0 » :
-                 *    quatre zéros qui se lisent « aucune corruption » alors que
-                 *    RIEN n'a été mesuré. On refuse la ligne au lieu de la
-                 *    remplir de zéros. */
-                printf("     🔴 SEUILS DÉSARMÉS : bounce_px < %d px ⇒ "
-                       "demi-bounce = 0 us ⇒ les quatre compteurs de déficit "
-                       "N'ONT RIEN MESURÉ. ⛔ Aucun chiffre n'est publié ici : "
-                       "un zéro se lirait « aucune corruption ».\n",
-                       DN_LCD_H_RES);
-                printf("        ⇒ `set bounce %d` puis `reboot` pour réarmer.\n",
-                       dn_bootcfg_defaut_bounce_px());
-            } else {
-                printf("     trames dont le déficit dépasse : 10 %% %lu · 25 %% %lu · "
-                       "50 %% %lu · 🔴 100 %% (CORRUPTION) %lu\n",
-                       (unsigned long)b.ph_10pc, (unsigned long)b.ph_25pc,
-                       (unsigned long)b.ph_50pc, (unsigned long)b.ph_100pc);
-                /* 🔴 2026-08-27 : ces quatre seaux sont EMBOÎTÉS, et la sortie
-                 *    les présentait comme des paliers distincts. Un déficit
-                 *    > 100 % incrémente aussi 50, 25 et 10 % : un lecteur qui
-                 *    sommait les quatre comptait les pires JUSQU'À QUATRE FOIS. */
-                printf("     ⛔ CUMULS EMBOÎTÉS, ⛔ pas des paliers disjoints : "
-                       "un déficit > 100 %% compte dans LES QUATRE. Ne pas les "
-                       "sommer.\n");
-            }
+            /*
+             * ⛔ RÉORDONNÉ LE 2026-08-28 (dn4-12 / AC2.1), ⛔ PAS SUPPRIMÉ.
+             *    QUATRE blocs vivaient ICI et ont été DÉPLACÉS EN TÊTE DE CE
+             *    MÊME BLOC, ⛔ pas dupliqués :
+             *      - « 🔴 DÉFICIT PIRE sous la référence »        ⇒ ③
+             *      - « ⇒ DÉPASSÉ de N us » / « ⇒ sous le seuil »  ⇒ ③
+             *      - « 🔴 SEUILS DÉSARMÉS » (bounce_px < 480)     ⇒ ②
+             *      - la distribution 10/25/50/100 % + « CUMULS EMBOÎTÉS » ⇒ ②
+             *    MOTIF : le DÉPASSEMENT était enterré en SOUS-LIGNE du déficit
+             *    pire, lui-même au milieu du bloc, pendant que le COMPTE — qui
+             *    NE SUIT PLUS L'ŒIL depuis `4734d07` — sortait en évidence.
+             *    ⚠️ La ligne « 🔴 3e revue du 2026-08-27 : cette ligne imprimait
+             *       "pour un demi-bounce qui s'écoule en 0 us" » a suivi son
+             *       bloc en tête : le garde-fou y arrive toujours AVANT le
+             *       chiffre qu'il existe pour taire.
+             *    ⇒ Ce qui RESTE ici est le DÉTAIL de la phase et ses
+             *      contre-épreuves : c'est leur place, ils qualifient les
+             *      chiffres de tête sans les répéter.
+             */
             printf("     ⚠️ PLANCHER : la microseconde, soit 16 px. ⛔ « 0 » ici ne "
                    "veut PAS dire « 0 pixel ».\n");
             printf("     ⚠️ L'horodatage de référence vient LUI AUSSI d'une ISR : "
@@ -2086,7 +2279,23 @@ static int cmd_flush(int argc, char **argv)
         printf("     glissement périodique est fermé par là (`4734d07`).\n");
         printf("     ⛔ CE COMPTEUR MESURE DONC LA FAMINE, PAS LE GLISSEMENT :\n");
         printf("     à `n` c'est le DÉPASSEMENT du seuil qui suit l'œil, pas le\n");
-        printf("     compte. Le budget de l'ISR reste le back porch, %lu us —\n",
+        printf("     compte.\n");
+        /*
+         * 🔴 AMENDÉ LE 2026-08-28 (dn4-12 / D3) — ⛔ LA LIGNE CI-DESSUS RESTE,
+         *    PARCE QU'ELLE ÉTAIT JUSTE POUR SA DATE, MAIS ELLE EST DEVENUE
+         *    INCOMPLÈTE. Elle a été écrite le 2026-08-23 sur la foi du tableau
+         *    `+720 / +176 / +221 µs`, qui COMPARE TROIS `ph_deficit_max_us`
+         *    ENTRE EUX — ce que le bloc « CE QU'ELLE INTERDIT » plus haut
+         *    interdit en toutes lettres. dn4-22 l'a réfuté PAR LA MESURE cinq
+         *    jours plus tard. ⛔ On annote, on n'efface pas.
+         */
+        printf("     ⚠️ AMENDÉ le 2026-08-28 (dn4-12/D3) : le dépassement seul\n");
+        printf("     NE SUFFIT PAS — c'est un MAX, qu'UN SEUL point aberrant\n");
+        printf("     déplace (dn4-22 : 1 300 us pour UNE corruption contre 896\n");
+        printf("     pour 245). La tête de bloc est un TRIPLET : ① la plus\n");
+        printf("     longue SÉRIE · ② la DISTRIBUTION · ③ le dépassement AVEC\n");
+        printf("     sa réfutation. Le compte descend en second, avec sa réserve.\n");
+        printf("     Le budget de l'ISR reste le back porch, %lu us —\n",
                (unsigned long)bp);
         printf("     pas le VBlank entier (%lu us), car VSYNC_END tombe à la FIN\n",
                (unsigned long)vb);
@@ -10041,7 +10250,8 @@ static const esp_console_cmd_t k_cmds[] = {
     DN_CMD("ui", "ui [on|off] | ui label on|off | ui bg flash|psram — LVGL", cmd_ui),
     DN_CMD("flush",
            "flush | reset | sync off|vsync|fbdone | path bitmap|direct | full — "
-           "chemin de flush, ET le compteur de GLISSEMENT de trame (dn4-10)",
+           "chemin de flush, le compteur de GLISSEMENT de trame (dn4-10) ET la "
+           "PLUS LONGUE SÉRIE de trames consécutives non saines (dn4-12)",
            cmd_flush),
     DN_CMD("anim", "anim on [ms] | off — stimulus adverse LVGL (témoin de tearing)",
            cmd_anim),

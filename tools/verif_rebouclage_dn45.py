@@ -46,6 +46,7 @@ RACINE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MAIN = os.path.join(RACINE, "firmware", "desknode", "main")
 DN_MEASURE_C = os.path.join(MAIN, "dn_measure.c")
 DN_MEASURE_H = os.path.join(MAIN, "dn_measure.h")
+DN_MEASURE_SERIE_H = os.path.join(MAIN, "dn_measure_serie.h")
 DN_PINS_H = os.path.join(MAIN, "dn_pins.h")
 
 ok_total = [0]
@@ -364,7 +365,14 @@ SHIMS = (("esp_err.h", SHIM_ESP_ERR), ("esp_attr.h", SHIM_ESP_ATTR),
          ("shim.c", SHIM_C))
 
 # Ce que `construire()` copie VERBATIM du depot, en plus des coquilles.
-COPIES = ("dn_measure.h", "dn_pins.h")
+# 🔴 `dn_measure_serie.h` AJOUTE LE 2026-08-28 (dn4-12) DANS LE MEME GESTE QUE
+#    l'`#include` qui l'a fait naitre. C'est l'unite pure de la machine a etats
+#    de serie consecutive ; sans cette ligne ET la copie dans `construire()`,
+#    cette gate meurt A LA COMPILATION en rendant « la gate n'a RIEN pu
+#    eprouver », ⛔ sans nommer la cause — l'incident `dn_bootcfg.h` du
+#    2026-08-27, a l'identique. ⛔ Ce n'est PAS une coquille : c'est le PRODUIT,
+#    copie verbatim, parce que c'est lui qu'on eprouve.
+COPIES = ("dn_measure.h", "dn_pins.h", "dn_measure_serie.h")
 
 
 def includes_locaux_orphelins(src_c):
@@ -391,7 +399,7 @@ def construire(src_c, etiquette):
             f.write(contenu)
     # ⚠️ COPIES VERBATIM du depot : l'en-tete et les timings. Si l'un des deux
     #    changeait, la gate compilerait AUTRE CHOSE que le produit.
-    for src in (DN_MEASURE_H, DN_PINS_H):
+    for src in (DN_MEASURE_H, DN_PINS_H, DN_MEASURE_SERIE_H):
         shutil.copy(src, os.path.join(d, os.path.basename(src)))
     with io.open(os.path.join(d, "dn_measure.c"), "w", encoding="utf-8") as f:
         f.write(src_c)

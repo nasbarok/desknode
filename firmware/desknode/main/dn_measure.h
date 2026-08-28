@@ -376,6 +376,60 @@ typedef struct {
      * PIRE observé : +1 µs » sur une trame parfaitement à l'heure. */
     uint32_t periode_ns;
 
+    /* ── dn4-12 : LA PLUS LONGUE SÉRIE DE TRAMES CONSÉCUTIVES NON SAINES ────
+     *
+     * 🔴 LE TROU QUE ÇA FERME. Tous les compteurs ci-dessus comptent des TRAMES
+     *    au-dessus d'un seuil ; AUCUN ne compte leur CONSÉCUTIVITÉ. Ils ne
+     *    peuvent donc ni confirmer ni infirmer le constat de l'owner du
+     *    2026-08-23 — « parfois ça reste dans un état glissé […] ensuite ça
+     *    reglisse ». Le driver nomme ce cas « permanent desync » et n'a plus
+     *    AUCUNE parade automatique depuis `4734d07` (RESTART_IN_VSYNC=n).
+     *
+     * 🔴 L'UNITÉ EST LA TRAME, ⛔ PAS LA MICROSECONDE (décision D1). `esp_timer`
+     *    reboucle à 2^32 µs = 71,58 min — le défaut que dn4-5/AC1.2 vient de
+     *    fermer sur `fenetre_ms`. Un compte de trames ne reboucle qu'à ~3,6 ans
+     *    à 37,40 Hz : la grandeur survit à une nuit et à une semaine PAR
+     *    CONSTRUCTION. La conversion en ms se fait CÔTÉ CONSOLE, depuis
+     *    `periode_ns` (26 737 500 ns, EXACTE) — ⛔ jamais dans l'ISR.
+     *
+     * ⚠️ C'EST UN MINORANT, ET `ser_rompues_indet` LE BORNE. Les trois classes
+     *    INDÉTERMINÉES (horodatage postérieur, paire déchirée, deux
+     *    enroulements) ROMPENT la série : on ne sait pas si la trame était
+     *    saine, et la faire continuer FABRIQUERAIT de la durée. Une série vraie
+     *    a donc pu être COUPÉE EN DEUX. ⛔ Ce nombre NE SE SOUSTRAIT PAS et NE
+     *    SE RECOMPOSE PAS — il borne la confiance, il ne corrige rien.
+     *
+     * ⛔ AUCUN PLAFOND, AUCUN ÉCRETAGE (précédent dn4-13 : `dn_hist_rattraper()`
+     *    écrêtait à 120 AVANT de compter, et `ui off` de 10 min et de 1 h
+     *    imprimaient EXACTEMENT la même phrase). Deux durées différentes
+     *    rendent deux nombres différents, quelle que soit leur longueur.
+     *
+     * ⛔ CE QUE CES CHAMPS NE MESURENT PAS : le nombre de relances réellement
+     *    jouées par le driver, INOBSERVABLE à `=n` (il relance en interne sans
+     *    passer par `need_restart`, esp_lcd_panel_rgb.c:1153-1163). On mesure la
+     *    PERSISTANCE DE L'ÉTAT, ⛔ jamais l'échec de relance.
+     *
+     * La table des HUIT classes de trame et le motif de chaque verdict sont
+     * dans `dn_measure_serie.h` — ils vivent AVEC la logique, pas ici.
+     */
+    uint32_t ser_max;             /* 🔴 LA PLUS LONGUE SÉRIE, en TRAMES */
+    uint32_t ser_max_a;           /* sa composition : classe A (déficit franchi) */
+    uint32_t ser_max_c;           /*                  classe C (hors borne de sanité) */
+    uint32_t ser_max_d;           /*                  classe D (aucun enroulement) */
+    uint32_t ser_max_debut;       /* index de trame DEPUIS LA RAZ où elle a commencé */
+    uint32_t ser_n;               /* nombre TOTAL de séries (celle en cours comprise) */
+    uint32_t ser_rompues_indet;   /* ⚠️ séries rompues par une trame INDÉTERMINÉE */
+    uint32_t ser_courante;        /* la série EN COURS à l'instant de la lecture —
+                                   * sans elle, un lecteur ne sait pas si le
+                                   * maximum est encore en train de CROÎTRE */
+    /* Le compteur de RAZ consommées. ⚠️ « un compteur vide n'est pas une absence
+     * d'histoire » : `flush` est remis par `flush reset` ET par tout redémarrage
+     * de la puce. À 0, la console écrit « ⛔ AUCUN flush reset : référence SEMÉE
+     * AU BOOT » — et ce n'est pas cosmétique : une référence semée au boot est
+     * PATHOLOGIQUE 1 fois sur 4 (étendue 100 µs contre 1 µs en régime, le seau
+     * 10 % passant de 4,5 % à 99,98 % des trames). */
+    uint32_t raz_gen;
+
     /*
      * 🔴 dn4-5 / AC1.2 — CE CHAMP REBOUCLAIT, ET IL DIT SUR QUELLE DURÉE TOUT
      *    LE BLOC A ÉTÉ CUMULÉ. Il valait `(uint32_t - uint32_t) / 1000` en µs : juste

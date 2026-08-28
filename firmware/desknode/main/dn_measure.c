@@ -4,6 +4,14 @@
 
 #include "dn_bootcfg.h"
 #include "dn_display.h"
+/* dn4-12 : la machine a etats de serie consecutive. UNITE PURE (<stdint.h>
+ * seul), `static inline`, inlinee dans `on_vsync` — ⛔ aucun appel de plus,
+ * aucun deplacement de code, ce qui protege la marge de famine DMA de §26.
+ * ⚠️ CET INCLUDE EST DECLARE DANS `COPIES` DE `tools/verif_rebouclage_dn45.py`,
+ *    qui COMPILE ce fichier sur l'hote : un include local qu'elle ne fournit ni
+ *    en copie ni en coquille TUE la gate a la COMPILATION — incident
+ *    `dn_bootcfg.h` du 2026-08-27, deja paye. */
+#include "dn_measure_serie.h"
 #include "dn_pins.h"
 #include "esp_attr.h"
 #include "esp_check.h"
@@ -308,6 +316,27 @@ static volatile uint32_t s_bnc_ph_100pc; /* > 100 % — 🔴 LE SEUIL DE CORRUPT
 static volatile uint32_t s_bnc_ph_deficit_max; /* le pire deficit, en us */
 static volatile uint32_t s_bnc_ph_ecarte; /* echantillons du degrossissage */
 
+/* ── dn4-12 : LA PLUS LONGUE SERIE DE TRAMES CONSECUTIVES NON SAINES ────────
+ *
+ * 🔴 LE TROU QUE CA FERME : tous les compteurs ci-dessus comptent des TRAMES
+ *    au-dessus d'un seuil, JAMAIS leur CONSECUTIVITE. Ils ne peuvent donc ni
+ *    confirmer ni infirmer le constat de l'owner du 2026-08-23 — « parfois ca
+ *    reste dans un etat glisse […] ensuite ca reglisse ». Un etat qui DURE n'a
+ *    aucun instrument dans ce fichier, et le driver n'a plus aucune parade
+ *    automatique au permanent desync depuis `4734d07` (RESTART_IN_VSYNC=n).
+ *
+ * ⛔ UN SEUL ECRIVAIN, `on_vsync`, comme tout le reste du bloc. Aucun verrou,
+ *    aucune section critique, aucun log : l'invariant en tete de fichier tient
+ *    sans exception. La lecture passe par le seqlock COTE LECTEUR de
+ *    `dn_measure_bounce_get()`.
+ *
+ * ⚠️ Les DOUZE champs sont des `volatile uint32_t` — 48 octets de `.bss` RAM
+ *    interne. ⛔ Pas le pool LVGL (invisible a `mem`), ⛔ pas la PSRAM
+ *    (goulot ~23 Mo/s). La table des huit classes et le motif de chaque verdict
+ *    sont dans `dn_measure_serie.h`, ⛔ pas ici : ils vivent AVEC la logique.
+ */
+static dn_serie_t s_bnc_serie;
+
 /* ── ecrite par la tache console UNIQUEMENT ── */
 static volatile bool s_bnc_raz;
 
@@ -410,14 +439,37 @@ static IRAM_ATTR bool on_vsync(esp_lcd_panel_handle_t panel,
         s_bnc_ph_doubles_ec = 0;
         s_bnc_ph_dechire = 0;
         s_bnc_ph_futur = 0;
+        /* dn4-12 / AC1.7 — LES DOUZE CHAMPS DE LA SERIE, EN UN SEUL POINT
+         * D'ENTREE. Cette branche porte deja 25 affectations ; en oublier une
+         * fabrique un compteur qui NE SE REMET JAMAIS A ZERO. Un appel unique
+         * qui les couvre tous rend l'oubli STRUCTURELLEMENT IMPOSSIBLE, et la
+         * gate `verif_serie_dn412.py` le prouve CHAMP PAR CHAMP, rejouable 3
+         * fois (AC5.5(i)), avec un mutant qui en oublie un (M4).
+         * 🔴 « Un temoin se remet a zero, ou il n'est pas un temoin. » */
+        dn_serie_raz(&s_bnc_serie);
     } else {
         /* (a) comptabilite des enroulements : `wraps` doit suivre `trames` UN
          *     pour UN. La soustraction non signee absorbe l'enroulement 32 bits. */
         uint32_t w = s_bnc_wraps;
         uint32_t n = w - s_bnc_wraps_vus;
         s_bnc_wraps_vus = w;
+        /* dn4-12 : l'index de CETTE trame depuis la RAZ. ⛔ Un COMPTE DE
+         * TRAMES, ⛔ pas un horodatage (D1) : `esp_timer` reboucle en 71,58 min,
+         * un compte de trames en ~3,6 ans a 37,40 Hz. Une soustraction non
+         * signee, une fois par trame ; elle n'est LUE que quand une serie
+         * COMMENCE. `s_vsync_count` vient d'etre incremente en tete de l'ISR,
+         * donc la premiere trame apres une RAZ porte l'index 1. */
+        uint32_t idx_trame = s_vsync_count - s_bnc_base_vsync;
         if (n == 0) {
             s_bnc_manques++;
+            /* dn4-12 / CLASSE D — 🔴 EN DEFAUT, LA SERIE CONTINUE.
+             * Motif MESURE, ⛔ pas suppose : le temoin de reference du depot
+             * (`flash on` + bounce_px != 0, 2026-08-22) rend 1 037 TRAMES SANS
+             * ENROULEMENT SUR 1 041. Si `manques` rompait la serie, le temoin
+             * le plus violent du depot rendrait une plus longue serie de ~1
+             * pendant que la dalle est detruite — l'instrument serait AVEUGLE
+             * EXACTEMENT LA OU IL DOIT HURLER. */
+            dn_serie_defaut(&s_bnc_serie, DN_SERIE_CL_D, idx_trame);
         } else if (n >= 2) {
             s_bnc_doubles++;
         }
@@ -457,6 +509,12 @@ static IRAM_ATTR bool on_vsync(esp_lcd_panel_handle_t panel,
             uint32_t w2 = s_bnc_wraps;
             if (w2 != w) {
                 s_bnc_ph_dechire++;
+                /* dn4-12 / CLASSE F — ⚠️ INDETERMINEE : ELLE ROMPT **ET** ELLE
+                 * EST COMPTEE. On ne sait pas si la trame etait saine ; la
+                 * faire continuer FABRIQUERAIT de la duree. Rompre SOUS-ESTIME,
+                 * et un minorant tient A FORTIORI — le prix est publie dans
+                 * `ser_rompues_indet` (AC1.4). */
+                dn_serie_rompt(&s_bnc_serie, 1u);
             } else {
                 uint32_t ph = t_us - tw;
                 if ((int32_t)(t_us - tw) < 0) {
@@ -467,6 +525,11 @@ static IRAM_ATTR bool on_vsync(esp_lcd_panel_handle_t panel,
                      *    retard, et le confondre avec les « pires retards »
                      *    faisait AFFIRMER une cause a l'instrument. */
                     s_bnc_ph_futur++;
+                    /* dn4-12 / CLASSE E — ⚠️ INDETERMINEE : ROMPT ET EST
+                     * COMPTEE. ⛔ Ce n'est pas un retard, c'est un
+                     * entrelacement des deux ISR : on ne sait rien de la sante
+                     * de cette trame. Meme motif que F et G. */
+                    dn_serie_rompt(&s_bnc_serie, 1u);
                 } else if (ph >= 2u * DN_PERIODE_US) {
                     /* 🔴 LA BORNE DE SANITE ECARTE EXACTEMENT LE GLISSEMENT
                      *    RECHERCHE — et jusqu'au 2026-08-27 elle le jetait SANS
@@ -474,6 +537,16 @@ static IRAM_ATTR bool on_vsync(esp_lcd_panel_handle_t panel,
                      *    vouloir dire « aucun retard » OU « des retards trop gros
                      *    pour l'instrument », sans qu'on puisse les distinguer. */
                     s_bnc_ph_rejete++;
+                    /* dn4-12 / CLASSE C — 🔴 EN DEFAUT, LA SERIE CONTINUE.
+                     * C'EST LA DECISION D2, ET C'EST LE PIEGE CENTRAL DE dn4-12.
+                     * Le commentaire six lignes plus haut l'ecrit lui-meme : « LA
+                     * BORNE DE SANITE ECARTE EXACTEMENT LE GLISSEMENT
+                     * RECHERCHE ». Une serie qui se romprait ici rendrait 0
+                     * PENDANT QUE L'ECRAN EST FIGE — l'exact inverse du
+                     * livrable. ⛔ Ne pas « corriger » ca en la faisant rompre :
+                     * le mutant M2 de `verif_serie_dn412.py` est precisement
+                     * cette mutation, et la gate DOIT la voir rougir. */
+                    dn_serie_defaut(&s_bnc_serie, DN_SERIE_CL_C, idx_trame);
                 } else if (s_bnc_ph_ecarte < DN_PHASE_DEGROSSI) {
                     /* Degrossissage : on etablit la REFERENCE (la phase « a
                      * l'heure »), on ne compte pas. ⛔ Et on ne touche NI
@@ -489,6 +562,23 @@ static IRAM_ATTR bool on_vsync(esp_lcd_panel_handle_t panel,
                     if (s_bnc_ph_ecarte == DN_PHASE_DEGROSSI) {
                         s_bnc_ph_ref_us = s_bnc_ph_ref_seed; /* FIGEE ici, et plus touchee */
                     }
+                    /* dn4-12 / CLASSE H — ⛔ HORS SUJET : NI L'UN NI L'AUTRE.
+                     * ⛔ AUCUN APPEL A LA MACHINE ICI, ET C'EST DELIBERE : tant
+                     * que `ph_ref_us` n'est pas figee, AUCUN deficit n'est
+                     * calculable, donc aucune trame ne peut etre dite saine NI
+                     * en defaut par la classe A. Consequence eprouvee par la
+                     * gate (AC5.5(f)) : une serie de classe A ne peut pas
+                     * commencer avant la 32e trame.
+                     * ⚠️ ⛔ CA NE VEUT PAS DIRE QUE LA MACHINE EST DESARMEE
+                     *    PENDANT LE DEGROSSISSAGE : les classes C et D ne lisent
+                     *    NI la reference NI le seuil, et elles comptent des la
+                     *    premiere trame. Sous `flash on` (1 037 trames sans
+                     *    enroulement sur 1 041) le degrossissage n'avance meme
+                     *    pas — il ne se nourrit que de trames a `n == 1` — donc
+                     *    une machine armee sur lui rendrait « plus longue serie
+                     *    = 0 » pendant que la dalle est detruite. C'est mot pour
+                     *    mot le mode de defaillance qu'AC1.9 declare comme
+                     *    « l'instrument est FAUX ». */
                 } else {
                     if (s_bnc_ph_n == 0 || ph < s_bnc_ph_min) {
                         s_bnc_ph_min = ph;
@@ -523,12 +613,39 @@ static IRAM_ATTR bool on_vsync(esp_lcd_panel_handle_t panel,
                         }
                         if (deficit > d) {
                             s_bnc_ph_100pc++;
+                            /* dn4-12 / CLASSE A — 🔴 EN DEFAUT, LA SERIE
+                             * CONTINUE. La DMA a lu un tampon PAS ENCORE
+                             * REMPLI : c'est le decalage que l'oeil voit. */
+                            dn_serie_defaut(&s_bnc_serie, DN_SERIE_CL_A,
+                                            idx_trame);
+                        } else {
+                            /* dn4-12 / CLASSE B — ✅ SAINE, LA SERIE SE ROMPT.
+                             * ⛔ La rupture n'est PAS comptee comme
+                             * indeterminee : on SAIT que cette trame allait
+                             * bien. */
+                            dn_serie_rompt(&s_bnc_serie, 0u);
                         }
+                    } else {
+                        /* dn4-12 — SEUIL DESARME (`bounce_px < 480` ⇒
+                         * `t_demi_us == 0`). La classe A devient INEXISTANTE :
+                         * aucune trame ne peut franchir un seuil qui n'existe
+                         * pas. On rompt, parce qu'on ne sait rien — et la
+                         * CONSOLE REFUSE LA LIGNE plutot que d'imprimer un zero
+                         * qui se lirait « aucune corruption » (AC1.8). ⚠️ Les
+                         * classes C et D, elles, restent comptables : elles ne
+                         * lisent pas ce seuil. La ligne de refus DIT laquelle
+                         * des trois est perdue. */
+                        dn_serie_rompt(&s_bnc_serie, 0u);
                     }
                 }
             }
         } else if (n >= 2) {
             s_bnc_ph_doubles_ec++;
+            /* dn4-12 / CLASSE G — ⚠️ INDETERMINEE : ROMPT ET EST COMPTEE.
+             * `s_bnc_t_wrap_us` est celui du SECOND enroulement : la phase
+             * serait tres courte, le deficit maximal, et la corruption
+             * FABRIQUEE par la comptabilite. On ne sait rien de cette trame. */
+            dn_serie_rompt(&s_bnc_serie, 1u);
         }
 
         /* (b) LA GIGUE. `fps` moyenne 561 trames et efface exactement ca. */
@@ -977,6 +1094,23 @@ void dn_measure_bounce_get(dn_bounce_stats_t *out)
         out->t_demi_us = s_bnc_t_demi_us;
         out->us_par_ligne = DN_US_PAR_LIGNE;
         out->periode_ns = DN_PERIODE_NS;
+        /* ── dn4-12 : LA SERIE, DANS LA MEME BOUCLE GARDEE QUE LE RESTE ─────
+         * ⛔ Ces neuf champs sont copies ICI, ⛔ pas apres la boucle : la serie
+         * et les compteurs qui la produisent doivent parler de LA MEME fenetre.
+         * Le bloc `fenetre_ms` d'apres-boucle a deja paye cette erreur (3e revue
+         * du 2026-08-27 : il decrivait une periode qui ne correspondait pas aux
+         * `trames` deja copies, et `lecture_dechiree` valait `false`).
+         * Chacun est un `volatile uint32_t` aligne : un seul acces, lecture
+         * atomique Xtensa. ⛔ Aucune somme 64 bits ici, donc rien a redoubler. */
+        out->ser_max = s_bnc_serie.max;
+        out->ser_max_a = s_bnc_serie.max_a;
+        out->ser_max_c = s_bnc_serie.max_c;
+        out->ser_max_d = s_bnc_serie.max_d;
+        out->ser_max_debut = s_bnc_serie.max_debut;
+        out->ser_n = s_bnc_serie.n;
+        out->ser_rompues_indet = s_bnc_serie.rompues;
+        out->ser_courante = s_bnc_serie.cur;
+        out->raz_gen = s_bnc_raz_gen;
         gen_fin = s_bnc_raz_gen;
         if (gen == gen_fin && sommes_stables) {
             break;
