@@ -1,5 +1,34 @@
+# ══ dn4-14-2 / AC3.1 — LES `.c` DE POLICE SONT DÉCOUVERTS, ⛔ PLUS ÉNUMÉRÉS ═══
+#
+# 🔴 CE QUE CE GLOB RÉPARE, ET C'EST UN DÉFAUT MESURÉ. La liste des polices
+#    était ÉCRITE À LA MAIN ci-dessous (`fonts/dn_font_14.c`, `_28`, `_33`,
+#    `_56`). Ajouter une taille à `TAILLES` dans `tools/gen_font_dn.py`
+#    produisait donc un `.c` que PERSONNE NE COMPILAIT — et le seul symptôme
+#    était un `undefined reference` au LINK, c'est-à-dire APRÈS avoir payé la
+#    régénération complète. C'est la SECONDE moitié du défaut d'AC3.1 :
+#    `dn_font.h` ne DÉCLARAIT pas la police neuve (corrigé dans le générateur),
+#    et CMake ne la COMPILAIT pas (corrigé ici).
+# ⚠️ `CONFIGURE_DEPENDS` fait re-globber CMake À CHAQUE BUILD : sans lui, un
+#    `.c` neuf resterait invisible jusqu'au prochain `idf.py reconfigure`, et on
+#    aurait remplacé une liste périmée par un cache périmé.
+# ⛔ CE GLOB NE CHANGE RIEN À LA DÉCISION W6 : les `.c` restent VERSIONNÉS, pas
+#    produits au build. Il découvre ce qui est DANS L'ARBRE, il ne génère rien.
+#    Un clone neuf SANS RÉSEAU compile toujours.
+# ⚠️ LES DEUX MODES, ET CE N'EST PAS DU ZÈLE : ESP-IDF relit CE FICHIER EN
+#    « SCRIPT MODE » pour résoudre les dépendances de composants
+#    (`component_get_requirements.cmake`), et CMake y REFUSE `CONFIGURE_DEPENDS`
+#    — « CONFIGURE_DEPENDS is invalid for script and find package modes ».
+#    Sans la garde, le projet ne CONFIGURE plus du tout. Mesuré, ⛔ pas prévu.
+if(CMAKE_SCRIPT_MODE_FILE)
+    file(GLOB DN_FONTS "${CMAKE_CURRENT_LIST_DIR}/fonts/dn_font_*.c")
+else()
+    file(GLOB DN_FONTS CONFIGURE_DEPENDS
+         "${CMAKE_CURRENT_LIST_DIR}/fonts/dn_font_*.c")
+endif()
+
 idf_component_register(
     SRCS
+        ${DN_FONTS}
         "desknode_main.c"
         "dn_display.c"
         "dn_patterns.c"
@@ -48,18 +77,21 @@ idf_component_register(
         #    ⛔ Ne pas y ajouter d'appel à `dn_ui`/`dn_display` : la gate
         #    cesserait de pouvoir l'exécuter, et redeviendrait décorative.
         "dn_veille.c"
-        "fonts/dn_font_14.c"
-        "fonts/dn_font_28.c"
-        # 🔴 dn3-3 : LES DEUX POLICES DE LA VEILLE, plage RÉDUITE (0x20-0x7F,0xB0).
-        #    En Ambient le titre, l'icône et le libellé disparaissent : il ne
-        #    reste que des valeurs, donc NI accents NI symboles NI FontAwesome —
-        #    et c'est ce qui rend l'agrandissement abordable (97 glyphes au lieu
-        #    de 261). ⚠️ Les DEUX tailles sont MESURÉES contre la largeur utile
-        #    d'une case (201 px) : 33 px AVEC l'unité, 56 px SANS.
+        # ⚠️ LES `.c` DE POLICE SONT DANS `${DN_FONTS}`, EN HAUT DE CE FICHIER —
+        #    découverts par `file(GLOB … CONFIGURE_DEPENDS)`, ⛔ plus énumérés
+        #    ici. Voir le motif au glob : une liste écrite à la main faisait
+        #    échouer au LINK toute taille ajoutée à `TAILLES`.
+        # 🔴 dn3-3 : DEUX de ces polices sont celles de la VEILLE, plage RÉDUITE
+        #    (0x20-0x7F,0xB0). En Ambient le titre, l'icône et le libellé
+        #    disparaissent : il ne reste que des valeurs, donc NI accents NI
+        #    symboles NI FontAwesome — et c'est ce qui rend l'agrandissement
+        #    abordable (97 glyphes au lieu de 259). ⚠️ Leurs DEUX tailles sont
+        #    MESURÉES contre la largeur utile d'une case (201 px) : 33 px AVEC
+        #    l'unité, 56 px SANS.
         #    ⛔ Ne jamais s'en servir pour du texte d'interface : un accent
         #       manquant ne produit AUCUNE erreur, juste un blanc.
-        "fonts/dn_font_33.c"
-        "fonts/dn_font_56.c"
+        #    ⇒ C'est `DN_FONT_LISTE` (dans `fonts/dn_font.h`, générée) qui dit
+        #      laquelle est d'INTERFACE et laquelle est de VEILLE.
     INCLUDE_DIRS "."
     REQUIRES
         driver

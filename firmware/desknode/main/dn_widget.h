@@ -953,13 +953,39 @@ const char *dn_widget_dispo_nom(dn_widget_dispo_t d);
  * `val_y = 36` ET QUE LE CODE POSE 48 — personne ne l'avait écrit, et ça change
  * les verdicts (AC3). Le plancher réel de l'en-tête, relu du code :
  *
- *   NORMAL   icône `dn_font_28` @ y=8  -> boîte  8..43   <- le plancher
- *            titre `dn_font_14` @ y=22 -> boîte 22..40
+ *   NORMAL   icône `dn_font_28` @ y=8  -> boîte  8..43
+ *            titre  (police RÉGLABLE) @ y=22 -> boîte 22..22+`line_height`
  *            badge `dn_font_14` @ y=14 -> boîte 14..32
- *            ⇒ bas de l'en-tête = 43, et `val_y = 48` laisse 5 px.
  *
- *   COMPACT  les TROIS en `dn_font_14` @ y=8 -> boîtes 8..26
- *            ⇒ bas de l'en-tête = 26, `val_y = 36` laisse 10 px.
+ * 🔴 CORRIGÉ PAR dn4-14-2 / AC5.4 — CE BLOC PUBLIAIT « bas de l'en-tête = 43,
+ *    et `val_y = 48` laisse 5 px » COMME SI C'ÉTAIT UNE CONSTANTE. Ça ne l'est
+ *    plus : depuis dn4-14-2 la police du TITRE se règle à chaud
+ *    (`widget titre <police>`), et **dès 18 px c'est LE TITRE qui devient le
+ *    plancher**, ⛔ plus l'icône. C'était le SEUL endroit du dépôt qui publiait
+ *    ce plancher, et une décision de conception repose dessus (l'A/B d'en-tête
+ *    de dn4-6). ⇒ le plancher est `max(43, 22 + line_height_du_titre, 32)` :
+ *
+ *      police du titre | `lh` | boîte du titre | plancher | marge sous val_y=48
+ *      ----------------|------|----------------|----------|--------------------
+ *      14 (le DÉFAUT)  |  18  |     22..40     |  43 icône|      8 px
+ *      16              |  21  |     22..43     |  43 =    |      5 px
+ *      18              |  23  |     22..45     |  45 TITRE|      3 px
+ *      20              |  25  |     22..47     |  47 TITRE|      1 px
+ *      22              |  28  |     22..50     |  50 TITRE| 🔴 -2 px ⇒ DÉBORDE
+ *
+ *    ⇒ **20 px est le plafond VERTICAL du titre ; 22 est RÉFUTÉ.**
+ * 🔴 ⛔ MAIS LE PLAFOND VERTICAL N'EST PAS LE PLAFOND. Le mur HORIZONTAL mord
+ *    AVANT : le titre dispose de `dn_widget_titre_utile()` px (107 sur une case
+ *    de 225 en NORMAL avec icône), et « AMBIANCE » y arrive à ~103 px dès 18.
+ *    ⇒ ⛔ NE PAS CONCLURE « on peut monter à 20 » depuis cette table seule :
+ *      elle ne regarde qu'une dimension. `widget largeur mur` regarde l'autre.
+ * ⚠️ Les `line_height` ci-dessus sont celles MESURÉES à la génération
+ *    (2026-08-29). Elles se relisent de `lv_font_get_line_height()` — ⛔ une
+ *    régénération à une autre taille les changerait sans prévenir ce tableau.
+ *
+ *   COMPACT  les TROIS à y=8 -> le titre va de 8 à 8+`line_height`
+ *            ⇒ bas de l'en-tête = max(26, 8+lh) ; `val_y = 36` laisse 10 px en
+ *              14, 5 px en 18, 3 px en 20.
  *
  * ⚠️ CE QUE LA TABLE DE D12 NE DIT PAS, ET QU'IL FAUT DIRE AVANT L'A/B :
  *    compacter l'en-tête N'EST PAS « rétrécir l'icône ». À `val_y = 36`, la
@@ -983,6 +1009,21 @@ typedef struct {
     dn_widget_dispo_t dispo;   /* défaut EMPILE */
     dn_widget_entete_t entete; /* défaut NORMAL */
     const lv_font_t *font_val; /* police des valeurs (défaut `dn_font_28`) */
+    /*
+     * 🔴 dn4-14-2 / AC4.1 — LA POLICE DU **TITRE**, ET ELLE N'EXISTAIT PAS.
+     *    `font_entete()` gouverne l'ICÔNE et le BADGE ; le titre était
+     *    `&dn_font_14` **EN DUR** (`dn_widget.c`). ⇒ ⛔ Ne pas croire que
+     *    `widget entete` suffisait pour un A/B de libellé : il aurait changé
+     *    l'icône, ⛔ pas le mot.
+     * ⚠️ MÊME CONTRAT QUE `font_val` : `NULL` = « personne n'a choisi », résolu
+     *    À L'USAGE (⛔ pas à l'initialisation), et **aucun état n'est livré**.
+     * 🔴 ⛔ ELLE N'EST JAMAIS UNE POLICE DE VEILLE, ET C'EST UNE GARDE, PAS UN
+     *    USAGE. Les polices de veille n'ont pas le latin-1 : « RÉSEAU » y
+     *    perdrait son É **sans un mot**. `dn_ui_geom_valider()` REFUSE une
+     *    police de veille ici, et `dn_widget_geom_appliquee()` ne peut donc pas
+     *    en graver une même si on la lui repassait (AC4.2).
+     */
+    const lv_font_t *font_titre; /* police du titre (défaut `dn_font_14`) */
 } dn_widget_geom_t;
 
 void dn_widget_geom(dn_widget_geom_t *out);       /* l'état COURANT, relu */
@@ -1037,6 +1078,45 @@ int dn_widget_gouttiere(void);
  */
 int dn_widget_titre_x(bool avec_icone);
 int dn_widget_titre_utile(int w, bool avec_icone);
+
+/*
+ * ── dn4-14-2 — LE REGISTRE DES POLICES LIÉES, EN **UNE SEULE** PLACE ─────────
+ *
+ * Développé depuis `DN_FONT_LISTE` (générée par `tools/gen_font_dn.py` depuis
+ * `TAILLES`). ⛔ Aucun autre fichier ne redéclare cette liste : le dépôt a payé
+ * trois fois la recopie d'une table (`dn_font.h` et les icônes).
+ * ⚠️ `dn_widget_police_interface()` distingue INTERFACE (latin-1 complet) de
+ *    VEILLE (plage réduite). Elle est **fermée par défaut** : une police
+ *    inconnue rend `false`. C'est la garde d'AC4.2 — y pointer un texte
+ *    d'interface ferait disparaître le É de « RÉSEAU » sans un mot.
+ */
+int dn_widget_polices_nb(void);
+bool dn_widget_police_at(int i, const char **nom, const lv_font_t **font,
+                         bool *interface_);
+const lv_font_t *dn_widget_police_par_nom(const char *nom);
+const char *dn_widget_police_nom(const lv_font_t *f);
+bool dn_widget_police_interface(const lv_font_t *f);
+
+/*
+ * ── dn4-14-2 / AC8.3 — LES LIBELLÉS SECONDAIRES SUIVENT-ILS LE TITRE ? ───────
+ *
+ * 🔴 C'EST UNE **QUESTION OWNER**, ⛔ PAS UN CHOIX DE DEV, et ce drapeau existe
+ *    pour qu'elle soit POSABLE SUR LA DALLE plutôt que tranchée ici. Le verbatim
+ *    du 2026-08-29 dit *« les ecriture sont trop petites … (cpu, gpu etc..) »* :
+ *    « cpu, gpu » sont des **TITRES**. Rien ne dit si le **libellé de grandeur**
+ *    (`c.max`, `extr.moy`…) et le titre de la **case NUE** suivent.
+ * ⚠️ `off` par défaut : ⛔ aucun état livré, et le périmètre le plus étroit est
+ *    celui que le verbatim couvre réellement.
+ * ⚠️ Quand il est `on`, ces deux libellés prennent `font_titre()` — ⛔ pas une
+ *    troisième police à régler séparément. Un réglage de plus serait un réglage
+ *    que personne ne demande.
+ */
+bool dn_widget_titre_suit(void);
+void dn_widget_set_titre_suit(bool suit);
+/* La police des libellés SECONDAIRES à cet instant — `font_titre()` si le
+ * drapeau est posé, `dn_font_14` sinon. ⛔ Relue, jamais récitée : `dn_ui.c`
+ * s'en sert AUSSI pour le titre de la case nue, et deux copies divergeraient. */
+const lv_font_t *dn_widget_font_libelle(void);
 
 /* Combien de chevauchements CÔTE À CÔTE ont été DÉTECTÉS depuis le dernier
  * `dn_widget_chevauchements_reset()`. ⚠️ Un chevauchement est journalisé ET

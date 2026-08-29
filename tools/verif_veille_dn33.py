@@ -1772,6 +1772,333 @@ def bloc_verite():
          "⛔ sinon le compte relu ne serait pas celui des pistes")
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# dn4-14-2 — LES POLICES, ET LE COMPTE QUI A ROMPU CINQ FOIS
+# ═══════════════════════════════════════════════════════════════════════════
+
+GEN_FONT = os.path.join(RACINE, "tools", "gen_font_dn.py")
+DN_FONT_H = os.path.join(MAIN, "fonts", "dn_font.h")
+DN_WIDGET_H = os.path.join(MAIN, "dn_widget.h")
+CMAKE_MAIN = os.path.join(MAIN, "CMakeLists.txt")
+README = os.path.join(RACINE, "README.md")
+_Q3 = "'" * 3
+
+
+def _fonctions_qui_reconstruisent(ui_src):
+    """Les `dn_ui_*` qui appellent `build_scene()`, RATTACHÉES à leur fonction.
+
+    ⛔ PAS une regex sur la signature : elle rate les prototypes multi-lignes et
+       fabrique des faux positifs — une première version comptait
+       `dn_ui_detail_courbe_axes`, qui est un LECTEUR, et aurait fait publier
+       DIX-SEPT au lieu de SEIZE. On remonte depuis chaque appel jusqu'à la
+       dernière accolade ouvrante EN COLONNE 0.
+    """
+    lignes = ui_src.split("\n")
+    ouvre = {}
+    for i, l in enumerate(lignes):
+        if l == "{" and i > 0:
+            j, sig = i - 1, ""
+            while (j >= 0 and lignes[j].strip()
+                   and not lignes[j].lstrip().startswith(("*", "/*", "//"))):
+                sig = lignes[j] + " " + sig
+                if (re.search(r"\w+\s*\(", lignes[j])
+                        and lignes[j].lstrip()[0] not in "),"):
+                    break
+                j -= 1
+            noms = re.findall(r"(\w+)\s*\(", sig)
+            ouvre[i] = noms[0] if noms else "?"
+    cles = sorted(ouvre)
+
+    def fonction_de(n):
+        prec = None
+        for o in cles:
+            if o <= n:
+                prec = o
+            else:
+                break
+        return ouvre.get(prec, "?")
+
+    out = set()
+    for i, l in enumerate(lignes):
+        if "build_scene()" in l and not l.lstrip().startswith(("*", "/*", "//")):
+            f = fonction_de(i)
+            if f.startswith("dn_ui_"):
+                out.add(f)
+    return out
+
+
+def _sous_commandes_widget(console_src):
+    """(toutes, celles qui reconstruisent) — RECOMPTÉES depuis le code."""
+    i = console_src.index("static int cmd_widget(int argc, char **argv)")
+    m = re.search(
+        r"\n(?:static\s+)?(?:int|void|esp_err_t|bool|const\s+char)\s+\w+\(",
+        console_src[i + 10:])
+    corps = console_src[i:i + 10 + m.start()]
+    # ⛔ PAS LES MENTIONS EN COMMENTAIRE : le docblock de `cmd_widget` NOMME
+    #   toutes les sous-commandes ; les compter là rendrait le contrôle
+    #   circulaire — il vérifierait que le texte est d'accord avec lui-même.
+    corps_nu = _RE_COMMENTAIRES_C.sub(" ", corps)
+    occ = [(mm.start(), mm.group(1)) for mm in re.finditer(
+        r'strcmp\(argv\[1\],\s*"([a-z0-9]+)"\)\s*==\s*0', corps_nu)]
+    toutes = sorted({n for _, n in occ})
+    ui_src, _ = lire(DN_UI_C)
+    recon_fn = _fonctions_qui_reconstruisent(ui_src)
+    # 🔴 ON REMONTE À LA **TÊTE DE BRANCHE**, ⛔ ON NE DÉCOUPE PAS.
+    #    Un découpage aux positions des `strcmp` échoue sur `opa` || `voile` :
+    #    la branche RÉ-TESTE `argv[1]` dans son corps (un ternaire), ce qui
+    #    coupe le segment de `voile` AVANT son appel et le fait disparaître du
+    #    compte EN SILENCE. Vu rougir en écrivant cette gate — c'est le même
+    #    genre d'erreur que celle qu'elle traque.
+    #    ⇒ Toutes les branches de `cmd_widget` sont des `if (` à 4 espaces
+    #      d'indentation. On prend, pour chaque appel qui reconstruit, la
+    #      DERNIÈRE tête avant lui, et TOUS les noms de sa CONDITION.
+    tetes = [m.start() for m in re.finditer(r"\n    if \(", corps_nu)]
+    recon = set()
+    for f in recon_fn:
+        for m in re.finditer(re.escape(f) + r"\(", corps_nu):
+            prec = [t for t in tetes if t < m.start()]
+            if not prec:
+                continue
+            deb = prec[-1]
+            cond = corps_nu[deb:corps_nu.find("{", deb) + 1]
+            recon |= set(re.findall(
+                r'strcmp\(argv\[1\],\s*"([a-z0-9]+)"\)\s*==\s*0', cond))
+    return toutes, sorted(recon)
+
+
+def bloc_reconstruit():
+    """🔴 LE COMPTE DES « RECONSTRUIT » EST **CALCULÉ**, ⛔ PLUS ÉCRIT.
+
+    Il a rompu CINQ fois. Les quatre premières étaient des arriérés ; la
+    cinquième (trouvée par dn4-14-2) est pire : le TREIZE publié était FAUX AU
+    MOMENT MÊME où on l'écrivait — il omettait `detpan` et `fond`, que le
+    README décrivait pourtant « reconstruit la scène », et la même ligne du
+    README publiait AUSSI « de DOUZE à QUATORZE ».
+    ⇒ « faire attention » a échoué cinq fois. Ici on RECOMPTE, et on CONFRONTE.
+    """
+    print("\n── dn4-14-2 : LE COMPTE DES « RECONSTRUIT », RECALCULÉ ─────────────")
+    console, sha = lire(DN_CONSOLE_C)
+    toutes, recon = _sous_commandes_widget(console)
+    n = len(recon)
+    ctrl(n > 0, "le recompte trouve les sous-commandes qui reconstruisent",
+         "%d sur %d" % (n, len(toutes)))
+    ctrl("opa" in recon and "voile" in recon,
+         "…`opa` ET `voile` y sont (elles PARTAGENT une branche)",
+         "⛔ un decoupage naif en perdrait une, en silence")
+    ctrl("courbe" not in recon,
+         "…et `courbe` n'y est PAS : c'est un LECTEUR",
+         "`dn_ui_detail_courbe_axes()` ne reconstruit rien")
+    ctrl("detpan" in recon and "fond" in recon,
+         "…`detpan` et `fond` y sont — le TREIZE les OMETTAIT",
+         "5e rupture : le compte etait faux quand on l'ecrivait")
+    ctrl("titre" in recon and "date" not in recon,
+         "…`titre` reconstruit, `date` NON (label repeint en place)",
+         "⛔ une reconstruction en veille pose la jauge 27 px trop haut")
+
+    m = re.search(r"LES \*\*(\d+)\*\* « RECONSTRUIT »", console)
+    ctrl(m is not None, "le docblock de `cmd_widget` publie un compte",
+         "motif « LES **N** « RECONSTRUIT » »")
+    if m:
+        ctrl(int(m.group(1)) == n, "…et c'est LE compte recalcule",
+             "publie %s · recompte %d" % (m.group(1), n))
+
+    rd, _ = lire(README)
+    mr = re.search(r"qui reconstruisent est de \*\*(\d+)\*\*", rd)
+    ctrl(mr is not None, "le README publie le MEME compte, au meme format",
+         "⛔ « ICI *et* dans le README dans le meme geste »")
+    if mr:
+        ctrl(int(mr.group(1)) == n, "…et c'est LE compte recalcule",
+             "README %s · recompte %d" % (mr.group(1), n))
+    # ⛔ ET AUCUN SECOND NOMBRE CONTRADICTOIRE : c'est EXACTEMENT la 5e rupture,
+    #   où la même ligne écrivait TREIZE et QUATORZE.
+    autres = re.findall(r"le compte passe de \w+ à \*\*(\w+)\*\*", rd)
+    ctrl(not autres,
+         "…et le README ne porte plus de SECOND compte contradictoire",
+         "trouve : %s" % (", ".join(autres) if autres else "aucun"))
+
+    m2 = re.search(r"Il porte \*\*(\d+) sous-commandes\*\*", console)
+    ctrl(m2 is not None, "le docblock publie aussi le NOMBRE de sous-commandes")
+    if m2:
+        ctrl(int(m2.group(1)) == len(toutes), "…et il est recalcule lui aussi",
+             "publie %s · recompte %d" % (m2.group(1), len(toutes)))
+    print("  (dn_console.c sha %s)" % sha)
+
+
+def bloc_polices():
+    """dn4-14-2 / AC3 + AC4.2 + AC5.3 — LA CHAÎNE DE POLICE, ET SES DEUX MOITIÉS."""
+    print("\n── dn4-14-2 : LES POLICES — DECLAREES, COMPILEES, ET NON-VEILLE ────")
+    gen, _ = lire(GEN_FONT)
+    fh, _ = lire(DN_FONT_H)
+    wc, _ = lire(DN_WIDGET_C)
+    wh, _ = lire(DN_WIDGET_H)
+    uc, _ = lire(DN_UI_C)
+    cm, _ = lire(CMAKE_MAIN)
+
+    mt = re.search(r"^TAILLES = \(([^)]*)\)", gen, re.M)
+    mv = re.search(r"^TAILLES_VEILLE = \(([^)]*)\)", gen, re.M)
+    ctrl(bool(mt) and bool(mv),
+         "`TAILLES` et `TAILLES_VEILLE` sont lisibles du generateur")
+    tailles = [int(x) for x in re.findall(r"\d+", mt.group(1))] if mt else []
+    veille = [int(x) for x in re.findall(r"\d+", mv.group(1))] if mv else []
+
+    # ── MOITIÉ n°1 : DÉCLARÉE ───────────────────────────────────────────────
+    decl = set(int(x) for x in re.findall(r"LV_FONT_DECLARE\(dn_font_(\d+)\)", fh))
+    ctrl(decl == set(tailles) | set(veille),
+         "chaque taille de `TAILLES` est DECLAREE dans `dn_font.h`",
+         "declarees %s · attendues %s"
+         % (sorted(decl), sorted(set(tailles) | set(veille))))
+    liste = re.findall(r"X\((\d+),\s*dn_font_(\d+),\s*([01])\)", fh)
+    ctrl(len(liste) == len(tailles) + len(veille),
+         "`DN_FONT_LISTE` porte exactement autant d'entrees",
+         "%d entrees" % len(liste))
+    ctrl(all(int(a) == int(b) for a, b, _ in liste),
+         "…et chaque entree nomme la police de SA taille")
+    itf = {int(a) for a, _, f in liste if f == "1"}
+    vei = {int(a) for a, _, f in liste if f == "0"}
+    ctrl(itf == set(tailles) and vei == set(veille),
+         "…et le drapeau INTERFACE/VEILLE suit les deux tuples",
+         "interface %s · veille %s" % (sorted(itf), sorted(vei)))
+
+    mm = re.search("ENTETE_MODELE = u" + _Q3 + "(.*?)" + _Q3, gen, re.S)
+    ctrl(mm is not None, "`ENTETE_MODELE` est lisible")
+    if mm:
+        ctrl(not re.search(r"LV_FONT_DECLARE\(dn_font_\d+\)", mm.group(1)),
+             "…et il ne RECITE plus aucune `LV_FONT_DECLARE(dn_font_NN)`",
+             "⛔ c'etait le defaut d'AC3.1 : une 3e taille jamais declaree")
+
+    # ── MOITIÉ n°2 : COMPILÉE ───────────────────────────────────────────────
+    ctrl("file(GLOB DN_FONTS" in cm,
+         "les `.c` de police sont DECOUVERTS par CMake, ⛔ plus enumeres",
+         "sinon : `undefined reference` au LINK, apres la regeneration")
+    ctrl("CONFIGURE_DEPENDS" in cm and "CMAKE_SCRIPT_MODE_FILE" in cm,
+         "…avec `CONFIGURE_DEPENDS`, ET la garde du mode script",
+         "ESP-IDF relit ce fichier en script mode, ou CMake le REFUSE")
+    ctrl(not re.search(r'"fonts/dn_font_\d+\.c"', cm),
+         "…et plus aucun `.c` de police n'est nomme a la main")
+    manque = [t for t in tailles + veille
+              if not os.path.isfile(os.path.join(MAIN, "fonts",
+                                                 "dn_font_%d.c" % t))]
+    ctrl(not manque, "…et chaque taille declaree a son `.c` DANS L'ARBRE",
+         "manquants : %s" % (manque if manque else "aucun"))
+    orphelins = sorted(
+        int(re.search(r"dn_font_(\d+)\.c", f).group(1))
+        for f in os.listdir(os.path.join(MAIN, "fonts"))
+        if re.match(r"dn_font_\d+\.c$", f))
+    ctrl(set(orphelins) == set(tailles) | set(veille),
+         "…et AUCUN `.c` orphelin ne traine (le menage est PAYE)",
+         "dans l'arbre %s" % orphelins)
+
+    # ── AC4.1 / AC4.2 ───────────────────────────────────────────────────────
+    ctrl("const lv_font_t *font_titre;" in wh,
+         "`dn_widget_geom_t` porte la police du TITRE (AC4.1)")
+    ctrl(re.search(r"static const lv_font_t \*font_titre\(void\)\s*\{\s*return\s+"
+                   r"s_geom\.font_titre \? s_geom\.font_titre : &dn_font_14;", wc)
+         is not None,
+         "…RESOLUE A L'USAGE, `NULL` = le defaut",
+         "⛔ pas figee a l'initialisation")
+    ctrl("font_titre_ambient" not in wc and "font_titre_actif" not in wc,
+         "…et elle n'a AUCUNE variante d'Ambient (AC4.2)",
+         "le titre DISPARAIT en Ambient : une 2e fonction rouvrirait la faille")
+    ctrl(re.search(
+        r"g->font_titre && !dn_widget_police_interface\(g->font_titre\)", uc)
+        is not None,
+        "`dn_ui_geom_valider()` REFUSE une police de VEILLE sur le titre",
+        "⛔ « RESEAU » y perdrait son E SANS UN MOT")
+    ctrl(re.search(r"if \(f && !dn_widget_police_interface\(f\)\)", uc) is not None,
+         "…et `dn_ui_set_barre_date_font()` la refuse aussi",
+         "la date porte « AOUT », « DEC. », « FEVR. »")
+
+    # ── AC5.3 : LE TITRE EST ENFIN CONTRÔLÉ EN LARGEUR ──────────────────────
+    ctrl("dn_widget_titre_utile(w, desc->icone != NULL)" in wc,
+         "le TITRE est mesure contre SON slot a la construction (AC5.3)",
+         "MESURE le 2026-08-29 : « DEMO 2+JAUGE » = 114 px pour 107 utiles")
+    # ⚠️ TROIS sites, ⛔ pas deux : une première version de ce contrôle en
+    #    attendait 2 et a rougi. Le 3e est la BASCULE DE MODE
+    #    (`dn_widget_controler_tenue`), qui existait avant dn4-14-2. Compter à
+    #    l'estime ce qu'on n'a pas relu, c'est exactement ce que cette gate
+    #    reproche au reste du dépôt.
+    ctrl(wc.count("s_trop_larges++") == 3,
+         "…il alimente `trop_larges`, ⛔ pas un 4e compteur",
+         "3 sites : colonne unique · bascule de mode · le TITRE (dn4-14-2)")
+    for f in ("dn_widget_chevauchements", "dn_widget_debordements",
+              "dn_widget_trop_larges"):
+        ctrl(f + "(void)" in wh, "…et les compteurs restent TROIS : `%s`" % f)
+
+
+def bloc_polices_mutants():
+    """🔴 AC5.5 — DEUX MUTANTS, ET ON EXIGE DE LES VOIR ROUGIR.
+
+    « N OK / 0 KO » ne suffit pas : `dn4-14` a epingle du code FAUX avec une
+    gate verte. Un controle qu'on n'a jamais vu ECHOUER ne prouve rien.
+    """
+    print("\n── dn4-14-2 / AC5.5 : LES MUTANTS, VUS ROUGIR ──────────────────────")
+    gen, _ = lire(GEN_FONT)
+    fh, _ = lire(DN_FONT_H)
+    uc, _ = lire(DN_UI_C)
+    wc, _ = lire(DN_WIDGET_C)
+
+    # ── MUTANT (a) : une taille RETIRÉE de `TAILLES` pendant qu'un `.c` la
+    #    déclare encore. C'est LE défaut du « ménage annoncé et non payé ».
+    mt = re.search(r"^TAILLES = \(([^)]*)\)", gen, re.M)
+    mv = re.search(r"^TAILLES_VEILLE = \(([^)]*)\)", gen, re.M)
+    tailles = [int(x) for x in re.findall(r"\d+", mt.group(1))]
+    veille = [int(x) for x in re.findall(r"\d+", mv.group(1))]
+    victime = tailles[1] if len(tailles) > 1 else tailles[0]
+    mut = [t for t in tailles if t != victime]
+    decl = set(int(x) for x in re.findall(r"LV_FONT_DECLARE\(dn_font_(\d+)\)", fh))
+    ctrl(decl != set(mut) | set(veille),
+         "MUTANT (a) : taille %d retiree de `TAILLES` ⇒ le controle ROUGIT"
+         % victime,
+         "vu rougir : declarees %s != attendues %s"
+         % (sorted(decl), sorted(set(mut) | set(veille))))
+    orph = sorted(int(re.search(r"dn_font_(\d+)\.c", f).group(1))
+                  for f in os.listdir(os.path.join(MAIN, "fonts"))
+                  if re.match(r"dn_font_\d+\.c$", f))
+    ctrl(set(orph) != set(mut) | set(veille),
+         "…et le controle d'ORPHELIN rougit aussi sur le meme mutant",
+         "le `.c` de %d resterait dans l'arbre" % victime)
+
+    # ── MUTANT (b) : la police du TITRE pointée vers une police de VEILLE.
+    #    ⚠️ On EXÉCUTE la garde en Python (même prédicat que le C), ⛔ on ne
+    #      relit pas son texte : « le refus est écrit » et « le refus se
+    #      produit » sont deux propositions distinctes.
+    liste = re.findall(r"X\((\d+),\s*dn_font_(\d+),\s*([01])\)", fh)
+    itf_ok = {int(a) for a, _, f in liste if f == "1"}
+    vei = {int(a) for a, _, f in liste if f == "0"}
+    ctrl(bool(vei) and bool(itf_ok),
+         "MUTANT (b) : il existe une police de VEILLE a pointer",
+         "veille %s · interface %s" % (sorted(vei), sorted(itf_ok)))
+
+    def police_interface(taille):
+        """Le MÊME prédicat que `dn_widget_police_interface()`, RELU du `.h`."""
+        return taille in itf_ok
+
+    def valider_titre(taille):
+        """Le MÊME prédicat que `dn_ui_geom_valider()`."""
+        return taille is None or police_interface(taille)
+
+    cible = sorted(vei)[0]
+    ctrl(not valider_titre(cible),
+         "…le validateur REFUSE la police de veille %d sur le titre" % cible,
+         "vu rougir : « RESEAU » y perdrait son E en silence")
+    ctrl(valider_titre(sorted(itf_ok)[0]) and valider_titre(None),
+         "…et il ACCEPTE une police d'interface, et `NULL`",
+         "⛔ une garde qui refuse tout ne prouve rien non plus")
+    # Et le prédicat Python doit être branché sur la MÊME table que le C.
+    ctrl(uc.count("dn_widget_police_interface(") == 2,
+         "…la garde C est aux DEUX endroits qui posent une police d'interface",
+         "titre (`dn_ui_geom_valider`) + date (`set_barre_date_font`)")
+    ctrl(re.search(r"esp_err_t dn_ui_set_widget_geom\(.*?dn_ui_geom_valider\(g\)",
+                   uc, re.S) is not None,
+         "…et le SEUL chemin de reglage passe par le validateur",
+         "⛔ une garde posee dans la console seule serait contournable")
+
+    # ── MUTANT (c) : le compteur du titre débranché.
+    ctrl("s_trop_larges++" in wc.split("TITRE trop large")[0][-400:],
+         "MUTANT (c) temoin : le site du titre INCREMENTE bien le compteur",
+         "⛔ un ESP_LOGW sans compteur serait une garde muette")
+
+
 def main():
     print("=" * 78)
     print("dn3-3 — VERIFICATION DE LA VEILLE, EN EXECUTANT LE PRODUIT")
@@ -1795,6 +2122,9 @@ def main():
     bloc_identite_ambient()
     bloc_assets()
     bloc_verite()
+    bloc_reconstruit()
+    bloc_polices()
+    bloc_polices_mutants()
 
     print("\n" + "=" * 78)
     print("BILAN : %d OK · %d KO" % (ok_total[0], ko_total[0]))

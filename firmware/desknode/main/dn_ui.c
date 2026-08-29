@@ -1817,6 +1817,28 @@ static lv_obj_t *s_barre_heure, *s_barre_date;
  * réouverture » — appliquée à la barre. */
 static char s_barre_h[16] = DN_UI_HEURE_INCONNUE;
 static char s_barre_d[24] = DN_UI_DATE_INCONNUE;
+
+/*
+ * ══ dn4-14-2 / AC4.3 — LA POLICE DE LA DATE DE BARRE ════════════════════════
+ *
+ * 🔴 ELLE A SON PROPRE RÉGLAGE, ET ⛔ ELLE NE PASSE **PAS** PAR
+ *    `dn_widget_geom_t` « parce que c'est plus court ». La barre **n'est pas un
+ *    widget** : elle n'a ni case, ni descripteur, ni `dn_widget_t`. La faire
+ *    voyager dans la structure des cases mettrait un réglage de barre sous le
+ *    contrat de `dn_widget_geom_appliquee()` — celui-là même qui grave les
+ *    polices d'Ambient si on le repasse à `set_geom()`.
+ * ⚠️ `NULL` = « personne n'a choisi », résolu À L'USAGE — même contrat que
+ *    `font_val` et `font_titre`. ⛔ Aucun état livré.
+ * ⚠️ ⛔ ELLE N'EST JAMAIS UNE POLICE DE VEILLE : la date porte « AOÛT », « DÉC. »
+ *    et « FÉVR. », et les polices de veille n'ont pas le latin-1. Le É
+ *    disparaîtrait SANS UN MOT. `dn_ui_set_barre_date_font()` refuse.
+ */
+static const lv_font_t *s_barre_date_font;
+
+static const lv_font_t *barre_date_font(void)
+{
+    return s_barre_date_font ? s_barre_date_font : &dn_font_14;
+}
 static bool s_barre_fiable;
 
 /*
@@ -3571,7 +3593,7 @@ static void build_dashboard(lv_obj_t *scr)
         texte(barre, s_barre_h, &dn_font_28, lv_color_white(), DN_UI_MARGE, 18);
     /* Accentué depuis dn3-1 : « AOÛT » a récupéré son Û. C'est le témoin le plus
      * simple que la police générée est bien celle qui est liée. */
-    s_barre_date = texte(barre, s_barre_d, &dn_font_14,
+    s_barre_date = texte(barre, s_barre_d, barre_date_font(),
                          lv_color_hex(0xa0d8ff), DN_UI_BARRE_DATE_X, 28);
     barre_ecrire_tout_nolock();
 
@@ -3621,7 +3643,12 @@ static void build_dashboard(lv_obj_t *scr)
          *    dn1-4 (« 37 % », « 12,4 Go », « 48 Mo/s ») sont supprimés. */
         lv_obj_t *case_ = zone_creer(scr, x, y, DN_UI_CASE_W, ui_case_h(),
                                      on_case_clic, (void *)(intptr_t)i);
-        texte(case_, k_nom[i], &dn_font_14, lv_color_hex(0xa0d8ff), 12, 10);
+        /* dn4-14-2 / AC8.3 — le titre de la case NUE suit le MÊME résolveur que
+         * le libellé de grandeur, pour que la question owner « ces deux-là
+         * suivent-ils le titre ? » soit posable SUR LA DALLE. ⛔ Pas un
+         * troisième réglage : `dn_widget_font_libelle()` est LA définition. */
+        texte(case_, k_nom[i], dn_widget_font_libelle(), lv_color_hex(0xa0d8ff),
+              12, 10);
         s_wobj[i].racine = case_;
         /* Même convention qu'à la mise à jour, et par le MÊME appel : c'est la
          * duplication de ce ternaire (ici ET dans `case_poser`) qui avait rendu
@@ -10200,6 +10227,19 @@ esp_err_t dn_ui_geom_valider(const dn_widget_geom_t *g)
     if (g->entete < 0 || g->entete >= DN_ENTETE_COUNT) {
         return ESP_ERR_INVALID_ARG;
     }
+    /*
+     * 🔴 dn4-14-2 / AC4.2 — LE TITRE NE PEUT PAS RECEVOIR UNE POLICE DE VEILLE.
+     *    Les polices de veille (plage réduite `0x20-0x7F,0xB0`) n'ont NI le
+     *    latin-1, NI les symboles : « RÉSEAU » y perdrait son É et LVGL ne
+     *    dirait RIEN — la classe de défaut « l'étiquette qui ment », transposée
+     *    aux glyphes. ⇒ C'est ICI que ça se refuse, ⛔ pas dans la console :
+     *    tout appelant du réglage passe par le validateur, une commande n'est
+     *    qu'un appelant parmi d'autres.
+     * ⚠️ `NULL` est LÉGAL : c'est « personne n'a choisi », résolu à l'usage.
+     */
+    if (g->font_titre && !dn_widget_police_interface(g->font_titre)) {
+        return ESP_ERR_INVALID_ARG;
+    }
     return ESP_OK;
 }
 
@@ -10287,6 +10327,41 @@ void dn_ui_barre_slots(int *heure_x, int *date_x, int *date_utile)
  * instrument : « HEURE NON POSÉE » est le PIRE CAS du slot de date (15 car.,
  * contre 13 pour la plus longue date réelle), et un instrument qui le récite
  * cesserait de mesurer le pire cas le jour où la chaîne change. */
+/*
+ * ── AC4.3 : LE RÉGLAGE, ET IL S'APPLIQUE **SANS RECONSTRUIRE LA SCÈNE** ──────
+ *
+ * 🔴 POURQUOI PAS UNE RECONSTRUCTION, ALORS QUE `widget police` en fait une :
+ *    une reconstruction PENDANT LA VEILLE pose la jauge **27 px trop haut** et
+ *    aucune garde ne le voit (défaut trouvé à l'œil en séance `dn4-14`). La
+ *    barre n'a qu'un label à repeindre — le faire coûte deux appels LVGL et
+ *    n'expose à rien. ⇒ ⛔ Cette commande ne sera PAS marquée « RECONSTRUIT ».
+ * ⚠️ Le statique est lu par `build_scene()` : le réglage SURVIT donc à une
+ *    reconstruction déclenchée par quelqu'un d'autre.
+ * ⚠️ Le label peut être NULL (scène démontée) : on pose le statique quand même,
+ *    et la prochaine construction le lira. ⛔ Ne pas refuser dans ce cas — le
+ *    réglage serait « accepté ou pas selon l'écran affiché », ce que personne
+ *    ne peut deviner.
+ */
+esp_err_t dn_ui_set_barre_date_font(const lv_font_t *f)
+{
+    if (f && !dn_widget_police_interface(f)) {
+        return ESP_ERR_INVALID_ARG; /* police de veille : le É de « AOÛT » sauterait */
+    }
+    if (!lvgl_port_lock(2000)) {
+        return ESP_ERR_TIMEOUT;
+    }
+    s_barre_date_font = f;
+    if (s_barre_date) {
+        lv_obj_set_style_text_font(s_barre_date, barre_date_font(), 0);
+    }
+    lvgl_port_unlock();
+    return ESP_OK;
+}
+
+/* ⛔ RELUE, jamais récitée — et elle résout le `NULL`, pour que l'appelant
+ *    n'ait pas à savoir ce qu'est le défaut. */
+const lv_font_t *dn_ui_barre_date_font(void) { return barre_date_font(); }
+
 const char *dn_ui_heure_inconnue(void) { return DN_UI_HEURE_INCONNUE; }
 const char *dn_ui_date_inconnue(void) { return DN_UI_DATE_INCONNUE; }
 

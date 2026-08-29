@@ -1134,6 +1134,20 @@ void dn_ui_geom_bandes_defaut(int *barre_h, int *menu_h);
  * `printf` — sinon son verdict survivrait à un déplacement du slot. */
 void dn_ui_barre_slots(int *heure_x, int *date_x, int *date_utile);
 
+/*
+ * dn4-14-2 / AC4.3 — LA POLICE DE LA DATE DE BARRE, COMMUTABLE À CHAUD.
+ * ⛔ Elle NE passe PAS par `dn_widget_geom_t` : la barre n'est pas un widget, et
+ *    l'y faire voyager la mettrait sous le contrat de
+ *    `dn_widget_geom_appliquee()` — celui qui grave les polices d'Ambient.
+ * `NULL` rend la main au défaut (`dn_font_14`). Une police de VEILLE est
+ * REFUSÉE (`ESP_ERR_INVALID_ARG`) : la date porte « AOÛT » et « FÉVR. », et les
+ * polices de veille n'ont pas le latin-1 — le É sauterait sans un mot.
+ * ⚠️ Le getter RÉSOUT le défaut : il ne rend jamais `NULL`.
+ * ⚠️ ⛔ CETTE COMMANDE NE RECONSTRUIT PAS LA SCÈNE — voir le motif à l'impl.
+ */
+esp_err_t dn_ui_set_barre_date_font(const lv_font_t *f);
+const lv_font_t *dn_ui_barre_date_font(void);
+
 /* Les deux chaînes de l'état NON POSÉ, relues du `#define` qui sert aussi
  * d'initialiseur. ⚠️ `dn_ui_date_inconnue()` est le PIRE CAS du slot de date
  * (15 caractères), et c'est l'état de BOOT — ⛔ pas un cas de laboratoire. */

@@ -113,6 +113,7 @@ static dn_widget_geom_t s_geom = {
     .dispo = DN_DISPO_EMPILE,
     .entete = DN_ENTETE_NORMAL,
     .font_val = NULL, /* NULL = `dn_font_28` — résolu à l'usage, voir font_val() */
+    .font_titre = NULL, /* NULL = `dn_font_14` — MÊME contrat, voir font_titre() */
 };
 
 /* ⚠️ RÉSOLU À L'USAGE, PAS À L'INITIALISATION : `&dn_font_28` n'est pas une
@@ -207,6 +208,36 @@ static const lv_font_t *font_entete(void)
     return s_geom.entete == DN_ENTETE_COMPACT ? &dn_font_14 : &dn_font_28;
 }
 
+/*
+ * 🔴 dn4-14-2 / AC4.1 — LA POLICE DU TITRE, RÉSOLUE À L'USAGE.
+ *
+ * ⚠️ ELLE N'A **PAS** DE VARIANTE D'AMBIENT, ET C'EST DÉLIBÉRÉ : en Ambient le
+ *    titre DISPARAÎT (`masquables[]`, décision owner du 2026-08-25). Une
+ *    « police de titre en veille » désignerait donc un objet qui n'est pas
+ *    dessiné — et surtout, elle ouvrirait la porte que `font_val` a dû fermer :
+ *    `dn_widget_geom()` étant lue en lecture-modification-écriture, un
+ *    `widget dispo` tapé pendant la veille graverait cette police-là comme
+ *    override PERMANENT, et « RÉSEAU » perdrait son É au retour en Actif.
+ * ⇒ 🔴 IL N'Y A QU'UNE FONCTION ICI, ET IL NE FAUT PAS EN AJOUTER UNE SECONDE.
+ *   L'absence de couple `_actif()` / `_ambient()` EST la garde d'AC4.2.
+ */
+static const lv_font_t *font_titre(void)
+{
+    return s_geom.font_titre ? s_geom.font_titre : &dn_font_14;
+}
+
+/* dn4-14-2 / AC8.3 — voir `dn_widget.h`. ⛔ `false` par défaut : aucun état
+ * livré, et le périmètre le plus étroit est celui que le verbatim couvre. */
+static bool s_titre_suit;
+
+bool dn_widget_titre_suit(void) { return s_titre_suit; }
+void dn_widget_set_titre_suit(bool suit) { s_titre_suit = suit; }
+
+const lv_font_t *dn_widget_font_libelle(void)
+{
+    return s_titre_suit ? font_titre() : &dn_font_14;
+}
+
 /* Le y des trois éléments d'en-tête. En COMPACT ils montent ENSEMBLE : le titre
  * déborde de `val_y = 36` tout autant que l'icône (boîte 22..40), et ne monter
  * que l'icône aurait laissé le défaut à moitié corrigé — sans le dire. */
@@ -270,6 +301,98 @@ int dn_widget_titre_utile(int w, bool avec_icone)
     return utile > 0 ? utile : 0;
 }
 
+/*
+ * ══ dn4-14-2 / AC2.1 + AC4.2 — LE REGISTRE DES POLICES, EN **UNE SEULE** PLACE ═
+ *
+ * 🔴 IL VIT ICI, ⛔ PAS DANS `dn_console.c`, PARCE QUE LE VALIDATEUR EN A BESOIN.
+ *    `dn_ui_geom_valider()` doit pouvoir REFUSER une police de veille dans
+ *    `font_titre` (AC4.2). Si la console gardait sa propre table, il y aurait
+ *    DEUX listes — et le dépôt sait exactement où ça mène : `dn_font.h` a
+ *    recopié un choix d'icône et a menti TROIS fois.
+ *
+ * ⚠️ LA TABLE EST DÉVELOPPÉE DEPUIS `DN_FONT_LISTE`, que `gen_font_dn.py`
+ *    construit depuis `TAILLES`. Ajouter une taille la remplit, en retirer une
+ *    la vide — ⛔ personne n'a à y penser, et aucun `printf` n'énumère plus.
+ * ⚠️ `line_height` n'est PAS stockée : elle se relit de l'objet. Une taille
+ *    recopiée ici se périmerait à la régénération suivante, sans un mot.
+ */
+static const struct {
+    const char *nom;
+    const lv_font_t *font;
+    bool interface_;
+} k_polices[] = {
+#define DN_POLICE_X(taille, symbole, itf) {#taille, &symbole, (itf) != 0},
+    DN_FONT_LISTE(DN_POLICE_X)
+#undef DN_POLICE_X
+};
+
+int dn_widget_polices_nb(void)
+{
+    return (int)(sizeof(k_polices) / sizeof(k_polices[0]));
+}
+
+bool dn_widget_police_at(int i, const char **nom, const lv_font_t **font,
+                         bool *interface_)
+{
+    if (i < 0 || i >= dn_widget_polices_nb()) {
+        return false;
+    }
+    if (nom) {
+        *nom = k_polices[i].nom;
+    }
+    if (font) {
+        *font = k_polices[i].font;
+    }
+    if (interface_) {
+        *interface_ = k_polices[i].interface_;
+    }
+    return true;
+}
+
+/* ⛔ AUCUNE correspondance partielle : « 1 » ne doit pas tomber sur « 14 ».
+ *    Un opérateur qui se trompe doit LE SAVOIR. */
+const lv_font_t *dn_widget_police_par_nom(const char *nom)
+{
+    if (!nom) {
+        return NULL;
+    }
+    for (int i = 0; i < dn_widget_polices_nb(); i++) {
+        if (strcmp(k_polices[i].nom, nom) == 0) {
+            return k_polices[i].font;
+        }
+    }
+    return NULL;
+}
+
+/* Le nom retrouvé par ADRESSE. ⛔ Jamais déduit d'une `line_height` : deux
+ * polices pourraient partager la leur. */
+const char *dn_widget_police_nom(const lv_font_t *f)
+{
+    for (int i = 0; i < dn_widget_polices_nb(); i++) {
+        if (k_polices[i].font == f) {
+            return k_polices[i].nom;
+        }
+    }
+    return "?";
+}
+
+/*
+ * 🔴 LA GARDE D'AC4.2, ET ELLE EST **FERMÉE PAR DÉFAUT**.
+ *    Une police inconnue de la table rend `false` : mieux vaut refuser un
+ *    pointeur qu'on ne sait pas qualifier que le laisser passer. Les polices de
+ *    veille n'ont pas le latin-1 ⇒ y pointer un texte d'interface ferait
+ *    disparaître le É de « RÉSEAU » **sans un mot**.
+ */
+bool dn_widget_police_interface(const lv_font_t *f)
+{
+    for (int i = 0; i < dn_widget_polices_nb(); i++) {
+        if (k_polices[i].font == f) {
+            return k_polices[i].interface_;
+        }
+    }
+    return false;
+}
+
 const char *dn_widget_dispo_nom(dn_widget_dispo_t d)
 {
     switch (d) {
@@ -308,6 +431,8 @@ void dn_widget_geom(dn_widget_geom_t *out)
          * ⚠️ Pour savoir ce qui S'APPLIQUE réellement, c'est
          *    `dn_widget_geom_appliquee()` — et elle, on ne la réécrit pas. */
         out->font_val = font_val_actif(); /* ⛔ jamais NULL vers l'extérieur */
+        out->font_titre = font_titre();   /* idem — et elle n'a pas de variante
+                                           * d'Ambient, donc rien à démêler */
     }
 }
 
@@ -329,6 +454,15 @@ void dn_widget_geom_appliquee(dn_widget_geom_t *out)
         out->val_y = val_y_courant();
         out->val_pas = val_pas_courant();
         out->font_val = font_val();
+        /* 🔴 AC4.2 — ELLE REND LA MÊME QU'EN ACTIF, ET C'EST LA GARDE.
+         *    `font_val` doit distinguer les deux modes (les polices de veille
+         *    sont les seules dont la taille ait été MESURÉE contre la largeur
+         *    utile) ; le TITRE, lui, n'est pas dessiné en Ambient. ⇒ repasser
+         *    cette structure à `set_geom()` ne peut PAS graver une police de
+         *    veille dans `font_titre` — il n'y en a jamais eu une dedans.
+         * ⛔ Ça n'autorise pas à la repasser : `val_y` / `val_pas` / `font_val`
+         *    restent ceux d'Ambient. Le contrat du docblock TIENT. */
+        out->font_titre = font_titre();
     }
 }
 
@@ -340,6 +474,7 @@ void dn_widget_geom_defaut(dn_widget_geom_t *out)
         out->dispo = DN_DISPO_EMPILE;
         out->entete = DN_ENTETE_NORMAL;
         out->font_val = &dn_font_28;
+        out->font_titre = &dn_font_14;
     }
 }
 
@@ -1471,8 +1606,35 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
     }
     /* 🔴 dn3-3 : RETENU, pour pouvoir DISPARAÎTRE en Ambient sans reconstruire
      *    la scène (307-322 ms verrou tenu). Même motif que `out->icone`. */
-    out->titre = dn_widget_texte(out->racine, desc->titre, &dn_font_14,
+    out->titre = dn_widget_texte(out->racine, desc->titre, font_titre(),
                                  lv_color_hex(W_COL_TITRE), tx, entete_y_titre());
+    /*
+     * 🔴 dn4-14-2 / AC5.3 — LE TITRE EST ENFIN CONTRÔLÉ, ET IL NE L'ÉTAIT PAS.
+     *    MESURÉ le 2026-08-29 sur le firmware d'AVANT : « DÉMO 2+JAUGE » occupe
+     *    **114 px pour 107 utiles** et se fait clipper de 7 px — avec les TROIS
+     *    compteurs à **ZÉRO**. `dn_widget_controler_tenue()` teste « le texte de
+     *    VALEUR sort-il de la case » et **ne regarde pas le titre**. Un
+     *    compteur à zéro n'était donc pas une absence d'histoire : c'était une
+     *    absence de GARDE.
+     * ⛔ ON POSE QUAND MÊME, à la place demandée — même doctrine que la valeur
+     *    trop large : masquer ou tronquer remplacerait un défaut VISIBLE par un
+     *    défaut MUET. Le log et le compteur sont l'instrument ; l'œil tranche.
+     * ⚠️ IL RÉUTILISE `trop_larges`, ⛔ il n'ajoute PAS un quatrième compteur :
+     *    « un texte plus large que son emplacement » est exactement ce que ce
+     *    compteur nomme, et les trois restent trois.
+     */
+    {
+        int t_utile = dn_widget_titre_utile(w, desc->icone != NULL);
+        int t_px = dn_widget_largeur(desc->titre, font_titre());
+        if (t_px > t_utile) {
+            s_trop_larges++;
+            ESP_LOGW(TAG,
+                     "TITRE trop large : « %s » = %d px pour %d utiles "
+                     "(x %d, badge a %d) — CLIPPE EN SILENCE par LVGL",
+                     desc->titre ? desc->titre : "?", t_px, t_utile, tx,
+                     w - W_BADGE_DE_DROITE);
+        }
+    }
 
     /* Le badge de régime — CRÉÉ TOUJOURS, masqué quand il ne s'applique pas.
      * Le créer à la demande obligerait `dn_widget_maj` à construire des objets
@@ -1653,7 +1815,8 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
         out->sec = dn_widget_texte(out->racine,
                                    (etat && etat->secondaire[0]) ? etat->secondaire
                                                                  : "",
-                                   &dn_font_14, lv_color_hex(W_COL_SEC), W_PAD,
+                                   dn_widget_font_libelle(),
+                                   lv_color_hex(W_COL_SEC), W_PAD,
                                    y_bas + 2);
     } else {
         /*

@@ -210,7 +210,20 @@ if len(set(ICONES.values())) != len(ICONES):
              "comptes réinjectés dans `dn_font.h` cesseraient d'être une "
              "identité vérifiable." % ", ".join(_dbl))
 
-TAILLES = (14, 28)
+# 🔴 dn4-14-2 — LES QUATRE CANDIDATS SONT EMBARQUÉS EN **UN SEUL FLASH**.
+#    Patron éprouvé par `dn4-14` (six icônes, un flash, l'owner commute à chaud).
+#    ⛔ Ne PAS flasher une taille, demander, reflasher : le budget ne l'impose
+#    pas (partition 4 194 304 o, binaire ~1,19 Mo ⇒ ~3,0 Mio libres ; les quatre
+#    candidats pèsent ~126 448 o de données, soit **~4,2 % du libre**) et chaque
+#    reflash coûte une manipulation à l'owner.
+# ⚠️ `22` N'EST PAS UN CANDIDAT : c'est le **TÉMOIN NÉGATIF** d'AC5.2. Il est
+#    réfuté par la géométrie (à 22 le titre déborde sur la 1ʳᵉ valeur) et il est
+#    embarqué EXPRÈS pour vérifier que la garde SAIT CRIER. Une garde qu'on n'a
+#    jamais vue crier ne prouve rien — `dn4-14` l'a payé.
+# 🔴 CES TAILLES SORTENT APRÈS LE VERDICT OWNER (AC6.1), et le ménage se PAIE
+#    par une vraie régénération : un retrait qui ne touche aucun octet serait un
+#    ménage *annoncé et non payé*.
+TAILLES = (14, 16, 18, 20, 22, 28)
 
 # ── dn3-3 : LES DEUX POLICES DE LA VEILLE ────────────────────────────────────
 #

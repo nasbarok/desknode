@@ -57,70 +57,30 @@ static const char *scene_courante(void)
 }
 
 /*
- * ══ dn4-14-2 / AC2.1 — LE REGISTRE DES POLICES, RELU DE CE QUI EST LIÉ ═══════
+ * ══ dn4-14-2 / AC2.1 — LES POLICES, RELUES DU REGISTRE DE `dn_widget` ═══════
  *
- * 🔴 POURQUOI IL N'EST PAS ÉCRIT ICI. `widget police` annonçait, dans un
- *    `printf`, « IL N'Y A QUE DEUX POLICES EMBARQUEES » — une phrase qu'aucune
- *    compilation ne re-vérifiait jamais, et qui devient fausse à la première
- *    taille ajoutée. La table ci-dessous est développée depuis `DN_FONT_LISTE`,
- *    que `tools/gen_font_dn.py` construit depuis `TAILLES` : ajouter une taille
- *    la remplit, en retirer une la vide, ⛔ personne n'a à y penser.
- *
- * ⚠️ `interface` DISTINGUE LES POLICES D'INTERFACE DES POLICES DE VEILLE, et ce
- *    n'est pas cosmétique : les polices de veille (plage réduite) N'ONT PAS le
- *    latin-1. Y pointer un texte d'interface ferait disparaître le É de
- *    « RÉSEAU » SANS UN MOT — la classe de défaut « l'étiquette qui ment »,
- *    transposée aux glyphes. Tout site qui CHOISIT une police lit ce champ.
- * ⚠️ `line_height` n'est PAS stockée : elle est RELUE de l'objet `lv_font_t` à
- *    l'impression. Une taille recopiée ici se périmerait à la régénération
- *    suivante sans que rien ne le dise.
+ * 🔴 LA TABLE N'EST **PAS** ICI, ET C'EST LE POINT. Elle vit dans `dn_widget.c`,
+ *    développée depuis `DN_FONT_LISTE` (que `gen_font_dn.py` construit depuis
+ *    `TAILLES`), parce que `dn_ui_geom_valider()` en a besoin AUSSI pour
+ *    refuser une police de veille sur le titre. Deux tables auraient divergé —
+ *    `dn_font.h` a recopié un choix d'icône et a menti TROIS fois.
+ * ⚠️ `widget police` en est la preuve vivante : il annonce « IL N'Y A QUE DEUX
+ *    POLICES EMBARQUEES » dans un `printf`, une phrase que rien ne re-vérifiait.
  */
-typedef struct {
-    const char *nom;
-    const lv_font_t *font;
-    bool interface_;
-} dn_police_t;
-
-static const dn_police_t k_polices[] = {
-#define DN_POLICE_X(taille, symbole, itf) {#taille, &symbole, (itf) != 0},
-    DN_FONT_LISTE(DN_POLICE_X)
-#undef DN_POLICE_X
-};
-#define DN_POLICES_NB (sizeof(k_polices) / sizeof(k_polices[0]))
-
-/* Rend l'entrée nommée, ou NULL. ⛔ Aucune correspondance partielle : « 1 » ne
- * doit pas tomber sur « 14 » — un opérateur qui se trompe doit LE SAVOIR. */
-static const dn_police_t *police_par_nom(const char *nom)
-{
-    for (size_t i = 0; i < DN_POLICES_NB; i++) {
-        if (strcmp(k_polices[i].nom, nom) == 0) {
-            return &k_polices[i];
-        }
-    }
-    return NULL;
-}
-
-/* Le nom de la police RÉELLEMENT pointée, retrouvé par ADRESSE. ⛔ Jamais
- * déduit d'une `line_height` : deux polices pourraient partager la leur. */
-static const char *police_nom_de(const lv_font_t *f)
-{
-    for (size_t i = 0; i < DN_POLICES_NB; i++) {
-        if (k_polices[i].font == f) {
-            return k_polices[i].nom;
-        }
-    }
-    return "?";
-}
-
-/* La liste, IMPRIMÉE depuis la table — ⛔ jamais depuis une chaîne écrite. */
 static void polices_imprimer(void)
 {
-    printf("polices LIEES (%d) :\n", (int)DN_POLICES_NB);
-    for (size_t i = 0; i < DN_POLICES_NB; i++) {
-        printf("  %-4s line_height %2d  %s\n", k_polices[i].nom,
-               (int)lv_font_get_line_height(k_polices[i].font),
-               k_polices[i].interface_
-                   ? "INTERFACE (latin-1 complet)"
+    printf("polices LIEES (%d) — RELUES du registre, ⛔ pas d'un printf :\n",
+           dn_widget_polices_nb());
+    for (int i = 0; i < dn_widget_polices_nb(); i++) {
+        const char *nom = NULL;
+        const lv_font_t *f = NULL;
+        bool itf = false;
+        if (!dn_widget_police_at(i, &nom, &f, &itf)) {
+            continue;
+        }
+        printf("  %-4s line_height %2d  %s\n", nom,
+               (int)lv_font_get_line_height(f),
+               itf ? "INTERFACE (latin-1 complet)"
                    : "VEILLE — ⛔ ni accent ni symbole, texte d'interface MUET");
     }
 }
@@ -3934,7 +3894,12 @@ static int cmd_pc(int argc, char **argv)
 /*
  * ── `widget` — L'INSTRUMENT DU MODÈLE (dn3-1) ────────────────────────────────
  *
- * Il fait QUATORZE choses. Aucune ne DORT — la console EST le transport PC depuis
+ * Il porte **30 sous-commandes** (plus `widget` nu, qui est une LECTURE pure).
+ * ⚠️ « QUATORZE » était écrit ici et n'a jamais été re-compté depuis dn3-1 —
+ *    corrigé par dn4-14-2, et désormais VÉRIFIÉ PAR LA GATE
+ *    (`verif_veille_dn33.py`, `bloc_reconstruit`), qui RECOMPTE depuis le code
+ *    à chaque passage. ⛔ Un compte écrit ne se re-vérifie jamais tout seul.
+ * Aucune ne DORT — la console EST le transport PC depuis
  * dn2-2, et une commande qui dort couperait la liaison qu'elle prétend observer
  * (c'est le défaut mesuré de `cpu N`). Mais CINQ d'entre elles font un travail
  * LONG, et c'est écrit ci-dessous plutôt que nié.
@@ -3978,6 +3943,19 @@ static int cmd_pc(int argc, char **argv)
  *   widget val <y> <pas>            `val_y` / `val_pas`, interligne ⚠️ RECONSTRUIT
  *   widget police 14|28             la police des VALEURS         ⚠️ RECONSTRUIT
  *   widget grille <barre> <menu>    D12 (60 51) / voie (a) (60 0) ⚠️ RECONSTRUIT
+ *   ── dn4-14-2 : LES DEUX A/B DE POLICE DE TEXTE ──────────────────────────
+ *   widget titre <police>|defaut    la police du TITRE de case — l'A/B du
+ *                                   constat owner « cpu, gpu … trop petites ».
+ *                                   ⛔ `widget entete` ne pouvait PAS le faire :
+ *                                   il change l'ICÔNE, pas le libellé
+ *                                                                ⚠️ RECONSTRUIT
+ *   widget titre suit on|off        les libellés SECONDAIRES (grandeur, titre de
+ *                                   la case NUE) suivent-ils ? 🔴 QUESTION OWNER
+ *                                                                ⚠️ RECONSTRUIT
+ *   widget date <police>|defaut     la police de la DATE de barre. ⛔ NE
+ *                                   RECONSTRUIT PAS — le label est repeint en
+ *                                   place, parce qu'une reconstruction PENDANT
+ *                                   la veille pose la jauge 27 px trop haut
  *   ── dn4-6 / AC5 : LA LARGEUR, MESURÉE ───────────────────────────────────
  *   widget detail           ce que la GRANDE VALEUR du détail a POSÉ : texte,
  *                           largeur réelle, panneau — ⛔ relu, jamais recomposé
@@ -3988,6 +3966,13 @@ static int cmd_pc(int argc, char **argv)
  *                           ne peut voir NI le mur de la date NI celui du titre,
  *                           tous deux en `dn_font_14`. La liste des polices est
  *                           RELUE de `DN_FONT_LISTE` (générée depuis `TAILLES`)
+ *                           🔴 ⛔ ELLE NE PEUT PAS PORTER D'ACCENT : le REPL
+ *                           SUPPRIME tout octet ≥ 0x80 (MESURÉ le 2026-08-29 —
+ *                           « AÉB » rend 21 px, comme « AB » ; « °C » rend
+ *                           « C »). Un jeton fait QUE d'accents devient vide et
+ *                           DISPARAÎT, décalant les arguments. ⇒ pour les
+ *                           chaînes accentuées : `widget largeur mur`, dont les
+ *                           chaînes sont COMPILÉES.
  *   widget largeur mur      dn4-14-2 — LE TABLEAU DU MUR HORIZONTAL : les slots
  *                           RELUS du rendu (date, heure, titre), les chaînes
  *                           nommées d'AC2.2 dans CHAQUE police d'interface, et
@@ -3995,7 +3980,7 @@ static int cmd_pc(int argc, char **argv)
  *                           — ⛔ pas supposé « MER. 06 SEPT. »
  *   widget largeur reset    remet à zéro les TROIS compteurs de « ça ne tient pas »
  *
- * 🔴 LES **TREIZE** « RECONSTRUIT » BLOQUENT LE REPL, DONC LE TRANSPORT PC (relevé
+ * 🔴 LES **16** « RECONSTRUIT » BLOQUENT LE REPL, DONC LE TRANSPORT PC (relevé
  *    en revue le 2026-08-18 : ce docblock affirmait qu'AUCUNE sous-commande
  *    n'était un travail long, trois lignes au-dessus de trois qui le sont — puis
  *    dn3-2 en a ajouté CINQ sans les lister, dont `nue`, qui reconstruit AUSSI
@@ -4017,12 +4002,35 @@ static int cmd_pc(int argc, char **argv)
  *    correctement marquée « ⚠️ RECONSTRUIT » vingt-huit lignes plus haut… en
  *    laissant **DOUZE** ici et dans le README. Le point de rupture annoncé par
  *    ce bloc a donc rompu **une fois de plus, sur la story qui l'avait lu**.
- *    LA LISTE, RELUE DU CODE — 5 anciennes + 7 de dn4-6 + 1 de dn4-14 = **13** :
+ *
+ * 🔴🔴 ET UNE **CINQUIÈME**, PIRE QUE LES QUATRE AUTRES — dn4-14-2, 2026-08-29.
+ *    Les quatre premières ruptures étaient des ARRIÉRÉS : un compte qui n'avait
+ *    pas suivi. Celle-ci est différente — **le TREIZE était FAUX AU MOMENT OÙ ON
+ *    L'ÉCRIVAIT**, et le README en portait la preuve. Recompté DEPUIS LE CODE
+ *    (chaque appel à `build_scene()` rattaché à sa fonction, chaque fonction à
+ *    sa sous-commande) : la liste de TREIZE **omettait `detpan` et `fond`**, que
+ *    le README lui-même décrivait « ⚠️ reconstruit la scène ». Le même README
+ *    écrivait donc, sur la MÊME ligne, *« est passé à TREIZE »* **et** *« le
+ *    compte passe de DOUZE à QUATORZE »*. Deux valeurs, une ligne, et **aucune
+ *    des deux n'était le nombre**.
+ *    ⚠️ `courbe`, lui, ne reconstruit PAS : `dn_ui_detail_courbe_axes()` est un
+ *      LECTEUR. Une analyse trop grossière l'avait compté — vérifié à la main.
+ *
+ *    LA LISTE, RECOMPTÉE DU CODE — **16** :
  *      anciennes : `opa` · `voile` · `icone` · `nue` · `piste`
  *      dn4-6     : `voie` · `grandeurs` · `dispo` · `entete` · `val` · `police`
  *                  · `grille`
+ *      jamais comptées : `detpan` · `fond`
  *      dn4-14    : `couleur`
- *    ⛔ `replacer`, `largeur` et `detail` NE reconstruisent PAS : ne pas les y
+ *      dn4-14-2  : `titre`   (⛔ `date`, non : le label est repeint EN PLACE)
+ *
+ * 🎯 ET LA PARADE N'EST PLUS « FAIRE ATTENTION », PARCE QUE ÇA A ÉCHOUÉ CINQ
+ *    FOIS. `verif_veille_dn33.py` (`bloc_reconstruit`) **RECOMPTE** ce nombre
+ *    depuis `dn_console.c` + `dn_ui.c` et le CONFRONTE à ce que ce docblock ET
+ *    le README publient. Un sixième oubli ROUGIT la gate. ⛔ Ne pas corriger le
+ *    texte sans relancer la gate : c'est elle qui fait foi, pas cette liste.
+ *
+ *    ⛔ `replacer`, `largeur`, `detail` et `courbe` NE reconstruisent PAS : ne pas les y
  *       ajouter « pour faire le compte ».
  *    ⚠️ `widget voie` ne reconstruit plus qu'**UNE SEULE FOIS** (~350 ms) depuis
  *       `ce41caf` : `dn_ui_set_voie()` prend un verrou et appelle un seul
@@ -4941,17 +4949,40 @@ static int cmd_widget(int argc, char **argv)
     if (argc == 3 && strcmp(argv[1], "police") == 0) {
         dn_widget_geom_t g;
         dn_widget_geom(&g);
-        if (strcmp(argv[2], "28") == 0) {
-            g.font_val = &dn_font_28;
-        } else if (strcmp(argv[2], "14") == 0) {
-            g.font_val = &dn_font_14;
+        /*
+         * 🔴 dn4-14-2 / AC7.1 — CE MESSAGE MENTAIT SUR TROIS POINTS À LA FOIS,
+         *    ET AUCUN N'ÉTAIT RE-VÉRIFIÉ PAR QUOI QUE CE SOIT :
+         *      · « IL N'Y A QUE DEUX POLICES EMBARQUEES » — faux depuis
+         *        dn4-14-2 : il y en a autant que `TAILLES` en porte, et la
+         *        liste se RELIT désormais du registre (`polices_imprimer`).
+         *      · « npm + reseau » — RÉFUTÉ par dn4-14 : `lv_font_conv` 1.5.3
+         *        répond depuis un shim local, onze conversions tirées.
+         *      · « ~19 Ko EXTRAPOLES » pour la police 22 — FAUX D'UN FACTEUR ~2 :
+         *        MESURÉ le 2026-08-29, 39 250 o d'objet (39 173 o de données de
+         *        police). ⚠️ Et le coût qui fait foi reste le DELTA DE BINAIRE :
+         *        les quatre candidats 16+18+20+22 ont coûté **+134 304 o** de
+         *        binaire pour 126 756 o d'objets — le reste est du CODE.
+         * ⛔ La liste des tailles acceptées n'est plus écrite ici : elle vient
+         *   de `DN_FONT_LISTE`, générée depuis `TAILLES`.
+         */
+        const lv_font_t *nf = dn_widget_police_par_nom(argv[2]);
+        if (nf && dn_widget_police_interface(nf)) {
+            g.font_val = nf;
         } else {
-            printf("usage : widget police 14|28   (actuelle : line_height %d)\n",
+            printf("usage : widget police <taille>   (actuelle : dn_font_%s, "
+                   "line_height %d)\n",
+                   dn_widget_police_nom(g.font_val),
                    (int)lv_font_get_line_height(g.font_val));
-            printf("⚠️ IL N'Y A QUE DEUX POLICES EMBARQUEES. La voie (b) vise ~22,\n");
-            printf("   qui EXIGE une regeneration (`tools/gen_font_dn.py`, npm +\n");
-            printf("   reseau, ~19 Ko EXTRAPOLES — a confirmer PAR UN BUILD).\n");
-            printf("⛔ Ne pas conclure sur (b) depuis la police 14.\n");
+            polices_imprimer();
+            if (nf) {
+                printf("⛔ « %s » est une police de VEILLE : plage reduite, ni\n",
+                       argv[2]);
+                printf("   accent ni symbole. La valeur « 25,5 °C » y perdrait\n");
+                printf("   son degre SANS UN MOT. Refusee.\n");
+            }
+            printf("⚠️ Le cout d'une police se MESURE au delta de BINAIRE, ⛔ pas\n");
+            printf("   au plancher `octets_police` (il sous-estime), et surtout\n");
+            printf("   ⛔ pas a une extrapolation par l'aire.\n");
             return 1;
         }
         esp_err_t e = dn_ui_set_widget_geom(&g);
@@ -4961,6 +4992,168 @@ static int cmd_widget(int argc, char **argv)
         }
         printf("police des valeurs : line_height %d — SCENE RECONSTRUITE\n",
                (int)lv_font_get_line_height(g.font_val));
+        return 0;
+    }
+
+    /*
+     * ════════════════════════════════════════════════════════════════════════
+     * dn4-14-2 / AC4 — LES DEUX A/B, COMMUTÉS À CHAUD
+     * ════════════════════════════════════════════════════════════════════════
+     * 🔴 IL EN FAUT **DEUX**, ET ILS NE SE FUSIONNENT PAS. Le titre vit dans
+     *    `dn_widget_geom_t` (c'est un élément de CASE) ; la date vit dans
+     *    `dn_ui.c` (la barre N'EST PAS un widget). Les faire passer par la même
+     *    commande « parce que c'est plus court » mettrait un réglage de barre
+     *    sous le contrat de `dn_widget_geom_appliquee()`.
+     * ⚠️ ⛔ `widget entete` NE SUFFISAIT PAS : il gouverne l'ICÔNE et le BADGE,
+     *    ⛔ pas le titre, qui était `&dn_font_14` EN DUR.
+     */
+    if (argc == 3 && strcmp(argv[1], "titre") == 0 &&
+        strcmp(argv[2], "suit") != 0) {
+        dn_widget_geom_t g;
+        dn_widget_geom(&g);
+        const lv_font_t *f = dn_widget_police_par_nom(argv[2]);
+        if (!f && strcmp(argv[2], "defaut") != 0) {
+            printf("usage : widget titre <police>|defaut|suit on|off\n");
+            printf("  actuelle : dn_font_%s (line_height %d)\n",
+                   dn_widget_police_nom(g.font_titre),
+                   (int)lv_font_get_line_height(g.font_titre));
+            polices_imprimer();
+            printf("⛔ Une police de VEILLE est REFUSEE ici : « RESEAU »\n");
+            printf("   perdrait son E sans un mot (plage reduite).\n");
+            return 1;
+        }
+        g.font_titre = f; /* `defaut` ⇒ NULL ⇒ resolu a l'usage */
+        esp_err_t e = dn_ui_set_widget_geom(&g);
+        if (e != ESP_OK) {
+            printf("refuse (%s) — RIEN n'a change\n", esp_err_to_name(e));
+            if (e == ESP_ERR_INVALID_ARG) {
+                printf("⛔ police de VEILLE sur un texte d'interface : le\n");
+                printf("   validateur la REFUSE (dn_ui_geom_valider).\n");
+            }
+            return 1;
+        }
+        /* ⛔ RELU DE L'ETAT REEL, jamais de `argv` : c'est la difference entre
+         *    « j'ai envoye » et « c'est pose ». */
+        dn_widget_geom_t apres;
+        dn_widget_geom(&apres);
+        int cw = 0;
+        dn_ui_case_dim(&cw, NULL);
+        printf("police du TITRE : dn_font_%s (line_height %d) — SCENE RECONSTRUITE\n",
+               dn_widget_police_nom(apres.font_titre),
+               (int)lv_font_get_line_height(apres.font_titre));
+        printf("libelles secondaires (grandeur, case NUE) : %s\n",
+               dn_widget_titre_suit() ? "SUIVENT" : "restent en 14");
+        /* Le verdict de largeur, TOUT DE SUITE — ⛔ pas au prochain relevé.
+         * LVGL clippe SANS UN MOT : si on ne le dit pas ici, personne ne le
+         * saura avant d'avoir pense a relire un compteur. */
+        int t_utile = dn_widget_titre_utile(cw, true);
+        printf("slot du titre : %d px utiles (case %d)\n", t_utile, cw);
+        for (int i = 0; i <= DN_UI_METRIQUES; i++) {
+            const char *t = dn_ui_case_titre(i);
+            if (!t) {
+                continue;
+            }
+            int w = dn_widget_largeur(t, apres.font_titre);
+            if (w > t_utile) {
+                printf("  🔴 « %s » = %d px > %d — CLIPPE de %d px\n", t, w,
+                       t_utile, w - t_utile);
+            }
+        }
+        printf("⚠️ %u trop-large(s) comptes depuis le dernier reset.\n",
+               (unsigned)dn_widget_trop_larges());
+        return 0;
+    }
+
+    if (argc == 4 && strcmp(argv[1], "titre") == 0 &&
+        strcmp(argv[2], "suit") == 0) {
+        bool on = false;
+        if (!parse_on_off(argv[3], &on)) {
+            printf("usage : widget titre suit on|off   (actuel : %s)\n",
+                   dn_widget_titre_suit() ? "on" : "off");
+            printf("⚠️ `on` = le LIBELLE DE GRANDEUR (`c.max`, `extr.moy`) et le\n");
+            printf("   titre de la case NUE prennent la police du TITRE.\n");
+            printf("🔴 C'EST UNE QUESTION OWNER : le verbatim dit « les ecriture\n");
+            printf("   sont trop petites (cpu, gpu etc..) » — « cpu, gpu » sont\n");
+            printf("   des TITRES. Rien ne dit si ces deux-la suivent.\n");
+            return 1;
+        }
+        dn_widget_set_titre_suit(on);
+        /* ⚠️ RECONSTRUCTION OBLIGATOIRE : un label LVGL naît avec sa police, et
+         *    `dn_widget_font_libelle()` n'est lue qu'à la création. Poser le
+         *    drapeau sans reconstruire serait « un réglage qui ne fait rien
+         *    sans l'annoncer » — la classe de défaut que `dma` a coûtée. */
+        dn_widget_geom_t g;
+        dn_widget_geom(&g);
+        esp_err_t e = dn_ui_set_widget_geom(&g);
+        if (e != ESP_OK) {
+            printf("refuse (%s)\n", esp_err_to_name(e));
+            return 1;
+        }
+        printf("libelles secondaires : %s — SCENE RECONSTRUITE\n",
+               dn_widget_titre_suit() ? "SUIVENT le titre" : "restent en dn_font_14");
+        printf("  police effective des libelles : dn_font_%s (line_height %d)\n",
+               dn_widget_police_nom(dn_widget_font_libelle()),
+               (int)lv_font_get_line_height(dn_widget_font_libelle()));
+        return 0;
+    }
+
+    if (argc == 3 && strcmp(argv[1], "date") == 0) {
+        const lv_font_t *f = dn_widget_police_par_nom(argv[2]);
+        if (!f && strcmp(argv[2], "defaut") != 0) {
+            printf("usage : widget date <police>|defaut\n");
+            printf("  actuelle : dn_font_%s (line_height %d)\n",
+                   dn_widget_police_nom(dn_ui_barre_date_font()),
+                   (int)lv_font_get_line_height(dn_ui_barre_date_font()));
+            polices_imprimer();
+            printf("⛔ Police de VEILLE REFUSEE : la date porte « AOUT »,\n");
+            printf("   « DEC. » et « FEVR. » — le E sauterait sans un mot.\n");
+            return 1;
+        }
+        esp_err_t e = dn_ui_set_barre_date_font(f);
+        if (e != ESP_OK) {
+            printf("refuse (%s) — RIEN n'a change\n", esp_err_to_name(e));
+            return 1;
+        }
+        const lv_font_t *pose = dn_ui_barre_date_font(); /* ⛔ RELU */
+        int date_x = 0, date_utile = 0;
+        dn_ui_barre_slots(NULL, &date_x, &date_utile);
+        printf("police de la DATE : dn_font_%s (line_height %d)\n",
+               dn_widget_police_nom(pose), (int)lv_font_get_line_height(pose));
+        printf("⛔ PAS de reconstruction de scene — le label est repeint en\n");
+        printf("   place. (Une reconstruction PENDANT la veille poserait la\n");
+        printf("   jauge 27 px trop haut, et aucune garde ne le voit.)\n");
+        printf("slot : x = %d, %d px utiles. Verdict sur les pires cas :\n",
+               date_x, date_utile);
+        {
+            const char *k[2];
+            k[0] = dn_ui_date_inconnue();
+            k[1] = NULL;
+            /* Le pire cas REEL est BALAYE, ⛔ pas suppose — meme methode que
+             * `widget largeur mur`, en plus court. */
+            char pire[24] = "";
+            int pire_w = -1;
+            for (int js = 0; js < 7; js++) {
+                for (int mo = 1; mo <= 12; mo++) {
+                    for (int jr = 1; jr <= 31; jr++) {
+                        char d[24];
+                        if (!dn_ui_barre_date_forme(js, jr, mo, d, sizeof(d))) {
+                            continue;
+                        }
+                        int w = dn_widget_largeur(d, pose);
+                        if (w > pire_w) {
+                            pire_w = w;
+                            snprintf(pire, sizeof(pire), "%s", d);
+                        }
+                    }
+                }
+            }
+            int w0 = dn_widget_largeur(k[0], pose);
+            printf("  pire DATE reelle   « %s » %d px  %s\n", pire, pire_w,
+                   pire_w <= date_utile ? "TIENT" : "🔴 NE TIENT PAS");
+            printf("  pire cas du SLOT   « %s » %d px  %s\n", k[0], w0,
+                   w0 <= date_utile ? "TIENT"
+                                    : "🔴 NE TIENT PAS — etat de BOOT et de coupure RTC");
+        }
         return 0;
     }
 
@@ -5084,9 +5277,12 @@ static int cmd_widget(int argc, char **argv)
 
         printf("\nCHAINES NOMMEES x POLICES D'INTERFACE — px, et le verdict :\n");
         printf("  %-33s %-18s", "quoi", "texte");
-        for (size_t p = 0; p < DN_POLICES_NB; p++) {
-            if (k_polices[p].interface_) {
-                printf("%9s", k_polices[p].nom);
+        for (int p = 0; p < dn_widget_polices_nb(); p++) {
+            const char *nom = NULL;
+            bool itf = false;
+            dn_widget_police_at(p, &nom, NULL, &itf);
+            if (itf) {
+                printf("%7s", nom);
             }
         }
         printf("   budget\n");
@@ -5095,13 +5291,15 @@ static int cmd_widget(int argc, char **argv)
             colonnes(k_mur[i].quoi, 33);
             printf(" ");
             colonnes(k_mur[i].txt ? k_mur[i].txt : "-", 18);
-            for (size_t p = 0; p < DN_POLICES_NB; p++) {
-                if (!k_polices[p].interface_) {
+            for (int p = 0; p < dn_widget_polices_nb(); p++) {
+                const lv_font_t *f = NULL;
+                bool itf = false;
+                dn_widget_police_at(p, NULL, &f, &itf);
+                if (!itf) {
                     continue;
                 }
-                int w = dn_widget_largeur(k_mur[i].txt ? k_mur[i].txt : "",
-                                          k_polices[p].font);
-                printf("%7d%s", w, w <= k_mur[i].budget ? "  " : " 🔴");
+                int w = dn_widget_largeur(k_mur[i].txt ? k_mur[i].txt : "", f);
+                printf("%5d%s", w, w <= k_mur[i].budget ? "  " : "🔴");
             }
             printf("   %d\n", k_mur[i].budget);
         }
@@ -5112,10 +5310,14 @@ static int cmd_widget(int argc, char **argv)
          *    en pixels est une autre question, et c'est celle-ci qui décide.
          *    On balaie les 7 x 12 x 32 dates que le composeur peut produire.
          */
-        printf("\nPIRE CAS DE DATE — BALAYE (7 jsem x 12 mois x 32 jours),\n");
+        printf("\nPIRE CAS DE DATE — BALAYE (7 jsem x 12 mois x 31 jours),\n");
         printf("⛔ pas suppose. Le composeur REEL est appele pour chacune :\n");
-        for (size_t p = 0; p < DN_POLICES_NB; p++) {
-            if (!k_polices[p].interface_) {
+        for (int p = 0; p < dn_widget_polices_nb(); p++) {
+            const char *p_nom = NULL;
+            const lv_font_t *p_f = NULL;
+            bool p_itf = false;
+            dn_widget_police_at(p, &p_nom, &p_f, &p_itf);
+            if (!p_itf) {
                 continue;
             }
             char pire[24] = "";
@@ -5123,13 +5325,18 @@ static int cmd_widget(int argc, char **argv)
             int n = 0;
             for (int js = 0; js < 7; js++) {
                 for (int mo = 1; mo <= 12; mo++) {
-                    for (int jr = 0; jr <= 31; jr++) {
+                    /* ⚠️ DE 1, ⛔ PAS DE 0. Le premier relevé (2026-08-29)
+                     * balayait `jour = 00`, que le RTC ne produit JAMAIS — et
+                     * il rendait « MAR. 00 MARS », 1 px de plus que le pire cas
+                     * ATTEIGNABLE. Un pire cas injoignable est un budget qu'on
+                     * s'invente. */
+                    for (int jr = 1; jr <= 31; jr++) {
                         char d[24];
                         if (!dn_ui_barre_date_forme(js, jr, mo, d, sizeof(d))) {
                             continue;
                         }
                         n++;
-                        int w = dn_widget_largeur(d, k_polices[p].font);
+                        int w = dn_widget_largeur(d, p_f);
                         if (w > pire_w) {
                             pire_w = w;
                             snprintf(pire, sizeof(pire), "%s", d);
@@ -5138,7 +5345,7 @@ static int cmd_widget(int argc, char **argv)
                 }
             }
             printf("  police %-4s  n = %4d  pire = « %s » %d px   budget %d  %s\n",
-                   k_polices[p].nom, n, pire, pire_w, date_utile,
+                   p_nom, n, pire, pire_w, date_utile,
                    pire_w <= date_utile ? "TIENT" : "🔴 NE TIENT PAS");
         }
         printf("\n⚠️ Un DEPASSEMENT ici ne se verra PAS a l'oeil comme une erreur :\n");
@@ -5162,17 +5369,18 @@ static int cmd_widget(int argc, char **argv)
             printf("  pour mesurer le MOT « %s », passez-le autrement.\n", argv[2]);
             return 1;
         }
-        const dn_police_t *p = police_par_nom(argv[3]);
-        if (!p) {
+        const lv_font_t *pf = dn_widget_police_par_nom(argv[3]);
+        if (!pf) {
             printf("police « %s » inconnue.\n", argv[3]);
             polices_imprimer();
             return 1;
         }
-        int w = dn_widget_largeur(argv[2], p->font);
+        bool itf = dn_widget_police_interface(pf);
+        int w = dn_widget_largeur(argv[2], pf);
         printf("« %s » = %d px   dans dn_font_%s (line_height %d)%s\n", argv[2],
-               w, p->nom, (int)lv_font_get_line_height(p->font),
-               p->interface_ ? "" : "   ⚠️ POLICE DE VEILLE");
-        if (!p->interface_) {
+               w, dn_widget_police_nom(pf), (int)lv_font_get_line_height(pf),
+               itf ? "" : "   ⚠️ POLICE DE VEILLE");
+        if (!itf) {
             printf("⛔ PLAGE REDUITE : ni accent, ni puce, ni symbole. Un glyphe\n");
             printf("   absent est LARGE DE ZERO et n'est PAS dessine — la mesure\n");
             printf("   ci-dessus est donc VRAIE et le rendu serait MUTILE.\n");
@@ -5207,6 +5415,27 @@ static int cmd_widget(int argc, char **argv)
             int w = dn_widget_largeur(argv[2], g.font_val);
             printf("« %s » = %d px   (utile %d, gouttiere %d)\n", argv[2], w,
                    utile, gout);
+            /*
+             * 🔴 dn4-14-2 — LA GARDE DU JETON AVALE, ET ELLE VIENT D'UNE MESURE.
+             *    Le REPL SUPPRIME tout octet >= 0x80 (mesure du 2026-08-29 :
+             *    « AEB » rend 21 px comme « AB », « °C » rend « C »). Un jeton
+             *    fait UNIQUEMENT d'accents devient VIDE et DISPARAIT : `argc`
+             *    tombe de 4 a 3, les arguments se decalent, et
+             *    `widget largeur <accents> 14` mesure LE MOT « 14 » — une
+             *    reponse juste a une autre question, sans un mot.
+             * ⇒ Si le seul argument restant EST un nom de police, on le DIT.
+             *   ⛔ On ne refuse pas : mesurer la chaine « 14 » est une question
+             *     legitime. On enleve juste l'ambiguite.
+             */
+            if (dn_widget_police_par_nom(argv[2])) {
+                printf("⚠️ « %s » est AUSSI un nom de police. Si vous vouliez\n",
+                       argv[2]);
+                printf("   `widget largeur <texte> %s` avec un texte ACCENTUE :\n",
+                       argv[2]);
+                printf("   LE REPL A AVALE LE TEXTE (il supprime tout octet\n");
+                printf("   >= 0x80). ⇒ pour les chaines accentuees, utiliser\n");
+                printf("   `widget largeur mur`, dont les chaines sont COMPILEES.\n");
+            }
             return 0;
         }
 
