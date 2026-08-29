@@ -1835,9 +1835,29 @@ static char s_barre_d[24] = DN_UI_DATE_INCONNUE;
  */
 static const lv_font_t *s_barre_date_font;
 
+/*
+ * 🔴 LE DÉFAUT EST **18** — VERDICT OWNER DU 2026-08-30, PRIS SUR LA DALLE.
+ *    Origine : constat du 2026-08-19, dalle sous les yeux, barre affichant
+ *    `01:17 MER. 19 AOÛT` — *« la date pourrait être un peu plus grande »*.
+ *
+ * ⚠️ 🔴 ET IL PORTE UN **ÉCART DÉCLARÉ**, ⛔ PAS UNE MARGE. MESURÉ sur la carte :
+ *      · toutes les VRAIES dates tiennent — pire cas BALAYÉ sur les 7 × 12 × 31
+ *        formes, « MAR. 04 MARS » = **135 px** pour **170 utiles** ;
+ *      · mais `DN_UI_DATE_INCONNUE` (« HEURE NON POSÉE ») fait **184 px** et
+ *        sera **CLIPPÉE**, sans un mot, de ~2 caractères.
+ *    ⇒ Le conflit a été posé à l'owner AVANT d'être tranché, avec ses quatre
+ *      leviers (accepter la coupe · redescendre à 16 · déplacer `x = 300` ·
+ *      bouger `BARRE_H`, qui périmerait TOUTE coordonnée tactile publiée).
+ *      Verdict : **accepter la coupe**.
+ *    ⚠️ CE QUI REND CE CHOIX RAISONNABLE EST **MESURÉ**, ⛔ pas supposé : le
+ *      PCF85063A a sa rétention (`0xD7` relu AU BOOT, bit OS = 0) ⇒ l'heure
+ *      SURVIT aux reboots, et « HEURE NON POSÉE » est un état **transitoire**,
+ *      ⛔ pas l'état de boot quotidien que le cadrage décrivait.
+ *    ⛔ 16 est la SEULE taille où même ce pire cas tient (164 ≤ 170).
+ */
 static const lv_font_t *barre_date_font(void)
 {
-    return s_barre_date_font ? s_barre_date_font : &dn_font_14;
+    return s_barre_date_font ? s_barre_date_font : &dn_font_18;
 }
 static bool s_barre_fiable;
 

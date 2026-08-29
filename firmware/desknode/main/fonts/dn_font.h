@@ -10,7 +10,7 @@
  * perdent leur lettre accentuée EN SILENCE — LVGL ne dessine pas un glyphe
  * absent et ne se plaint pas.
  *
- * `dn_font_14` / `dn_font_16` / `dn_font_18` / `dn_font_20` / `dn_font_22` / `dn_font_28` couvrent 0x20-0x7F,0xA0-0xFF,0x2022 :
+ * `dn_font_14` / `dn_font_18` / `dn_font_28` couvrent 0x20-0x7F,0xA0-0xFF,0x2022 :
  * ASCII + LATIN-1 COMPLET + la puce + les 60 symboles LV_SYMBOL_* UNIQUES
  * + 12 icônes FontAwesome, dont 6 sont DÉJÀ des symboles ⇒
  * 6 codepoints neufs, et 66 au `-r` FontAwesome final. Elles sont
@@ -81,10 +81,7 @@ extern "C" {
  *    main : le prochain passage du générateur l'effacerait, et la taille
  *    correspondante n'aurait aucun `.c`. */
 LV_FONT_DECLARE(dn_font_14)
-LV_FONT_DECLARE(dn_font_16)
 LV_FONT_DECLARE(dn_font_18)
-LV_FONT_DECLARE(dn_font_20)
-LV_FONT_DECLARE(dn_font_22)
 LV_FONT_DECLARE(dn_font_28)
 
 /*
@@ -138,10 +135,7 @@ LV_FONT_DECLARE(dn_font_56)
  */
 #define DN_FONT_LISTE(X) \
     X(14, dn_font_14, 1) \
-    X(16, dn_font_16, 1) \
     X(18, dn_font_18, 1) \
-    X(20, dn_font_20, 1) \
-    X(22, dn_font_22, 1) \
     X(28, dn_font_28, 1) \
     X(33, dn_font_33, 0) \
     X(56, dn_font_56, 0)

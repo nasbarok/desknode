@@ -210,20 +210,31 @@ if len(set(ICONES.values())) != len(ICONES):
              "comptes réinjectés dans `dn_font.h` cesseraient d'être une "
              "identité vérifiable." % ", ".join(_dbl))
 
-# 🔴 dn4-14-2 — LES QUATRE CANDIDATS SONT EMBARQUÉS EN **UN SEUL FLASH**.
-#    Patron éprouvé par `dn4-14` (six icônes, un flash, l'owner commute à chaud).
-#    ⛔ Ne PAS flasher une taille, demander, reflasher : le budget ne l'impose
-#    pas (partition 4 194 304 o, binaire ~1,19 Mo ⇒ ~3,0 Mio libres ; les quatre
-#    candidats pèsent ~126 448 o de données, soit **~4,2 % du libre**) et chaque
-#    reflash coûte une manipulation à l'owner.
-# ⚠️ `22` N'EST PAS UN CANDIDAT : c'est le **TÉMOIN NÉGATIF** d'AC5.2. Il est
-#    réfuté par la géométrie (à 22 le titre déborde sur la 1ʳᵉ valeur) et il est
-#    embarqué EXPRÈS pour vérifier que la garde SAIT CRIER. Une garde qu'on n'a
-#    jamais vue crier ne prouve rien — `dn4-14` l'a payé.
-# 🔴 CES TAILLES SORTENT APRÈS LE VERDICT OWNER (AC6.1), et le ménage se PAIE
-#    par une vraie régénération : un retrait qui ne touche aucun octet serait un
-#    ménage *annoncé et non payé*.
-TAILLES = (14, 16, 18, 20, 22, 28)
+# 🔴 dn4-14-2 — LE MÉNAGE EST **PAYÉ**, ⛔ PAS ANNONCÉ (AC6, 2026-08-30).
+#
+#    Les QUATRE candidats (16, 18, 20, 22) ont été embarqués en **UN SEUL
+#    FLASH** — patron `dn4-14` : N candidats, un flash, l'owner commute à chaud.
+#    Verdict owner sur la dalle : *« C'est ça, on garde 18 »*. ⇒ **16, 20 et 22
+#    SORTENT**, et leurs `.c` sont SUPPRIMÉS DE L'ARBRE.
+#
+# ⚠️ **LE PRIX SE DIT** : une taille sortie n'est **plus rejouable sans
+#    reflasher**. Rejouer l'A/B coûtera donc une régénération + un build + un
+#    flash, ⛔ pas une commande console.
+#
+# 🔴 ET « 22 » ÉTAIT LE TÉMOIN NÉGATIF — POURQUOI IL PEUT PARTIR QUAND MÊME.
+#    Il avait été embarqué pour vérifier que la garde de largeur du titre SAIT
+#    CRIER (AC5.2). Elle a crié : `widget titre 22` a rendu
+#    « TITRE trop large : « AMBIANCE » = 126 px pour 107 utiles » et
+#    « 1 trop-large(s) ». ⇒ La doctrine du dépôt garde ses témoins négatifs DANS
+#    le produit (`widget nue`, `widget detpan`)… mais **il en existe déjà un,
+#    GRATUIT et PERMANENT** : `widget demo on` pose « DÉMO 2+JAUGE », qui fait
+#    **114 px pour 107** — donc la garde reste falsifiable À TOUT MOMENT, sans
+#    payer 39 250 o. ⚠️ C'est MESURÉ, ⛔ pas argumenté : le même stimulus rendait
+#    « 0 trop large » avant cette story et rend « 1 » après.
+#
+# ⛔ `14` RESTE : le MENU, la page de détail et le badge « SIMULÉ » s'en servent
+#    — les sortir n'a jamais été demandé (§ « Ce qu'elle ne fait pas »).
+TAILLES = (14, 18, 28)
 
 # ── dn3-3 : LES DEUX POLICES DE LA VEILLE ────────────────────────────────────
 #

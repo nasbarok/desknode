@@ -113,7 +113,7 @@ static dn_widget_geom_t s_geom = {
     .dispo = DN_DISPO_EMPILE,
     .entete = DN_ENTETE_NORMAL,
     .font_val = NULL, /* NULL = `dn_font_28` — résolu à l'usage, voir font_val() */
-    .font_titre = NULL, /* NULL = `dn_font_14` — MÊME contrat, voir font_titre() */
+    .font_titre = NULL, /* NULL = LE DÉFAUT — résolu à l'usage, voir font_titre() */
 };
 
 /* ⚠️ RÉSOLU À L'USAGE, PAS À L'INITIALISATION : `&dn_font_28` n'est pas une
@@ -221,14 +221,31 @@ static const lv_font_t *font_entete(void)
  * ⇒ 🔴 IL N'Y A QU'UNE FONCTION ICI, ET IL NE FAUT PAS EN AJOUTER UNE SECONDE.
  *   L'absence de couple `_actif()` / `_ambient()` EST la garde d'AC4.2.
  */
+/*
+ * 🔴 LE DÉFAUT EST **18**, ET C'EST UN VERDICT OWNER DU 2026-08-30, ⛔ PAS UN
+ *    CHOIX DE DEV. Verbatim du 2026-08-29 : *« les ecriture sont trop petites
+ *    elles devrais etre agrandit un peu (cpu, gpu etc..) »* ; A/B joué sur la
+ *    dalle en mode ACTIF, avec l'agent réel, et tranché : *« C'est ça, on garde
+ *    18 »*.
+ * ⚠️ 18 EST LE PLAFOND, ET IL EST HORIZONTAL — ⛔ pas vertical. MESURÉ sur la
+ *    carte : « AMBIANCE » fait **103 px pour 107 utiles**. À 20 elle en fait
+ *    **113** et se ferait CLIPPER par le badge, SANS UN MOT.
+ *    ⇒ ⛔ NE PAS REMONTER CETTE VALEUR SANS RE-MESURER (`widget largeur mur`),
+ *      et ⛔ ne pas se fier au plafond VERTICAL de `dn_widget.h` (qui dit 20) :
+ *      il ne regarde qu'une dimension.
+ */
 static const lv_font_t *font_titre(void)
 {
-    return s_geom.font_titre ? s_geom.font_titre : &dn_font_14;
+    return s_geom.font_titre ? s_geom.font_titre : &dn_font_18;
 }
 
-/* dn4-14-2 / AC8.3 — voir `dn_widget.h`. ⛔ `false` par défaut : aucun état
- * livré, et le périmètre le plus étroit est celui que le verbatim couvre. */
-static bool s_titre_suit;
+/* 🔴 dn4-14-2 / AC8.3 — `true` PAR VERDICT OWNER DU 2026-08-30.
+ *    La question a été posée SUR LA DALLE, les deux variantes commutables :
+ *    *« On les garde comme ça ? »* ⇒ *« Oui — tout le chrome en 18 »*.
+ * ⚠️ Ce n'était PAS déductible du verbatim : *« cpu, gpu »* sont des TITRES, et
+ *    rien ne disait si `c.max` / `extr.moy` suivaient. ⛔ Le cadrage a
+ *    explicitement refusé de trancher à sa place — c'est l'œil qui l'a fait. */
+static bool s_titre_suit = true;
 
 bool dn_widget_titre_suit(void) { return s_titre_suit; }
 void dn_widget_set_titre_suit(bool suit) { s_titre_suit = suit; }
@@ -237,6 +254,11 @@ const lv_font_t *dn_widget_font_libelle(void)
 {
     return s_titre_suit ? font_titre() : &dn_font_14;
 }
+
+/* ⚠️ `&dn_font_14` reste le « non » de ce ternaire, ⛔ pas le défaut du titre :
+ *    `widget titre suit off` doit rendre les libellés à leur ANCIENNE taille,
+ *    pas à la nouvelle. Un `font_titre()` des deux côtés ferait de ce réglage
+ *    une commande qui ne fait rien — et qui ne le dirait pas. */
 
 /* Le y des trois éléments d'en-tête. En COMPACT ils montent ENSEMBLE : le titre
  * déborde de `val_y = 36` tout autant que l'icône (boîte 22..40), et ne monter
@@ -474,7 +496,7 @@ void dn_widget_geom_defaut(dn_widget_geom_t *out)
         out->dispo = DN_DISPO_EMPILE;
         out->entete = DN_ENTETE_NORMAL;
         out->font_val = &dn_font_28;
-        out->font_titre = &dn_font_14;
+        out->font_titre = &dn_font_18; /* verdict owner du 2026-08-30 */
     }
 }
 

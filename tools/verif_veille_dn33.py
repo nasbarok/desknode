@@ -1991,11 +1991,25 @@ def bloc_polices():
     # ── AC4.1 / AC4.2 ───────────────────────────────────────────────────────
     ctrl("const lv_font_t *font_titre;" in wh,
          "`dn_widget_geom_t` porte la police du TITRE (AC4.1)")
-    ctrl(re.search(r"static const lv_font_t \*font_titre\(void\)\s*\{\s*return\s+"
-                   r"s_geom\.font_titre \? s_geom\.font_titre : &dn_font_14;", wc)
-         is not None,
+    # ⚠️ ON VERIFIE LA **FORME**, ⛔ PAS LA VALEUR. Une premiere version de ce
+    #    controle recitait `&dn_font_14` et a rougi le jour ou le verdict owner
+    #    a fait passer le defaut a 18 — une gate qui RECITE une constante est
+    #    exactement le travers que cette story corrige. On exige donc : le
+    #    ternaire, ET que le defaut nomme soit une police d'INTERFACE LIEE.
+    mdef = re.search(r"static const lv_font_t \*font_titre\(void\)\s*\{\s*return\s+"
+                     r"s_geom\.font_titre \? s_geom\.font_titre : &dn_font_(\d+);", wc)
+    ctrl(mdef is not None,
          "…RESOLUE A L'USAGE, `NULL` = le defaut",
          "⛔ pas figee a l'initialisation")
+    if mdef:
+        d = int(mdef.group(1))
+        ctrl(d in set(tailles),
+             "…et le defaut du titre est une police d'INTERFACE LIEE",
+             "defaut = dn_font_%d · interface %s" % (d, sorted(tailles)))
+    mdd = re.search(r"return s_barre_date_font \? s_barre_date_font : &dn_font_(\d+);", uc)
+    ctrl(mdd is not None and int(mdd.group(1)) in set(tailles),
+         "…idem pour le defaut de la DATE de barre",
+         "defaut = dn_font_%s" % (mdd.group(1) if mdd else "?"))
     ctrl("font_titre_ambient" not in wc and "font_titre_actif" not in wc,
          "…et elle n'a AUCUNE variante d'Ambient (AC4.2)",
          "le titre DISPARAIT en Ambient : une 2e fonction rouvrirait la faille")
