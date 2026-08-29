@@ -5007,6 +5007,82 @@ static int cmd_widget(int argc, char **argv)
      * ⚠️ ⛔ `widget entete` NE SUFFISAIT PAS : il gouverne l'ICÔNE et le BADGE,
      *    ⛔ pas le titre, qui était `&dn_font_14` EN DUR.
      */
+    /*
+     * 🔴 LES FORMES NUES DISENT L'ETAT — DEFAUT TROUVE EN SEANCE, 2026-08-30.
+     *    `widget titre` sans argument tombait sur l'usage GENERIQUE (perime :
+     *    il annonce « police 14|28 » et ne nommait AUCUNE des trois commandes
+     *    de cette story), et `widget date` sans argument NE DISAIT RIEN DU
+     *    TOUT — une commande MUETTE, exactement la classe de defaut que ce
+     *    depot traque. ⇒ Les deux RELISENT et IMPRIMENT.
+     * ⛔ Trouve en relisant l'ETAT REEL apres le flash de livraison, ⛔ pas en
+     *   relisant la commande envoyee.
+     */
+    if (argc == 2 && strcmp(argv[1], "titre") == 0) {
+        dn_widget_geom_t g;
+        dn_widget_geom(&g);
+        int cw = 0;
+        dn_ui_case_dim(&cw, NULL);
+        int t_utile = dn_widget_titre_utile(cw, true);
+        printf("police du TITRE : dn_font_%s (line_height %d)\n",
+               dn_widget_police_nom(g.font_titre),
+               (int)lv_font_get_line_height(g.font_titre));
+        printf("libelles secondaires (grandeur, case NUE) : %s\n",
+               dn_widget_titre_suit() ? "SUIVENT le titre" : "restent en 14");
+        printf("  police effective des libelles : dn_font_%s\n",
+               dn_widget_police_nom(dn_widget_font_libelle()));
+        printf("slot du titre : x = %d, %d px utiles (case %d, badge a %d)\n",
+               dn_widget_titre_x(true), t_utile, cw,
+               dn_widget_titre_x(true) + t_utile);
+        for (int i = 0; i <= DN_UI_METRIQUES; i++) {
+            const char *t = dn_ui_case_titre(i);
+            if (!t) {
+                continue;
+            }
+            int w = dn_widget_largeur(t, g.font_titre);
+            printf("  %-14s %3d px%s\n", t, w,
+                   w > t_utile ? "  🔴 CLIPPE — LVGL ne dira RIEN" : "");
+        }
+        printf("⚠️ %u trop-large(s) depuis le dernier `widget largeur reset`.\n",
+               (unsigned)dn_widget_trop_larges());
+        printf("usage : widget titre <police>|defaut · widget titre suit on|off\n");
+        return 0;
+    }
+
+    if (argc == 2 && strcmp(argv[1], "date") == 0) {
+        const lv_font_t *f = dn_ui_barre_date_font();
+        int date_x = 0, date_utile = 0;
+        dn_ui_barre_slots(NULL, &date_x, &date_utile);
+        printf("police de la DATE : dn_font_%s (line_height %d)\n",
+               dn_widget_police_nom(f), (int)lv_font_get_line_height(f));
+        printf("slot : x = %d, %d px utiles\n", date_x, date_utile);
+        char pire[24] = "";
+        int pire_w = -1;
+        for (int js = 0; js < 7; js++) {
+            for (int mo = 1; mo <= 12; mo++) {
+                for (int jr = 1; jr <= 31; jr++) {
+                    char d[24];
+                    if (!dn_ui_barre_date_forme(js, jr, mo, d, sizeof(d))) {
+                        continue;
+                    }
+                    int w = dn_widget_largeur(d, f);
+                    if (w > pire_w) {
+                        pire_w = w;
+                        snprintf(pire, sizeof(pire), "%s", d);
+                    }
+                }
+            }
+        }
+        int w0 = dn_widget_largeur(dn_ui_date_inconnue(), f);
+        printf("  pire DATE reelle (BALAYEE) « %s » %d px  %s\n", pire, pire_w,
+               pire_w <= date_utile ? "TIENT" : "🔴 NE TIENT PAS");
+        printf("  pire cas du SLOT  « %s » %d px  %s\n", dn_ui_date_inconnue(),
+               w0, w0 <= date_utile
+                       ? "TIENT"
+                       : "🔴 CLIPPE — ecart DECLARE, verdict owner 2026-08-30");
+        printf("usage : widget date <police>|defaut\n");
+        return 0;
+    }
+
     if (argc == 3 && strcmp(argv[1], "titre") == 0 &&
         strcmp(argv[2], "suit") != 0) {
         dn_widget_geom_t g;
@@ -6127,8 +6203,12 @@ static int cmd_widget(int argc, char **argv)
         printf("        | dispo empile|cote|mixte               ⚠️ RECONSTRUIT\n");
         printf("        | entete normal|compact                 ⚠️ RECONSTRUIT\n");
         printf("        | val <y> <pas>                         ⚠️ RECONSTRUIT\n");
-        printf("        | police 14|28                          ⚠️ RECONSTRUIT\n");
+        printf("        | police <taille>                       ⚠️ RECONSTRUIT\n");
         printf("        | grille <barre> <menu>                 ⚠️ RECONSTRUIT\n");
+        printf("      dn4-14-2 — les DEUX A/B de police de TEXTE :\n");
+        printf("        | titre [<police>|defaut]               ⚠️ RECONSTRUIT\n");
+        printf("        | titre suit on|off                     ⚠️ RECONSTRUIT\n");
+        printf("        | date  [<police>|defaut]   (⛔ ne reconstruit PAS)\n");
         printf("      dn4-6 — les instruments (ne reconstruisent PAS) :\n");
         printf("        | largeur [<texte> [<police>]|mur|reset] | detail\n"
                "        | replacer on|off\n"
