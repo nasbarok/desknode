@@ -9794,3 +9794,197 @@ rien »* de l'owner était **exact** : aucune bande n'avait jamais été dessin�
   ⇒ **élargit `dn4-14-2`** (« la typographie du chrome »), qui existe exactement pour payer ce coût
   une seule fois.
 - ⛔ **Le remède du défaut de jauge** (§28.9.5) n'est pas appliqué : hors périmètre `dn4-14`.
+
+---
+
+# §29 — `dn4-14-2` (P9.6b) : **LE MUR N'ÉTAIT NI VERTICAL NI LÀ OÙ ON LE CHERCHAIT**
+
+*Séance des 2026-08-29 / 30. Firmware de mesure `1e968c0`, firmware des candidats `6013e57`,
+firmware livré `8308bbf`. Trois flashs, l'A/B joué en mode **ACTIF** avec **l'agent réel**.*
+
+## §29.0 — Ce que la story venait faire, et ce qu'elle a trouvé
+
+Deux constats owner **à l'œil**, à dix jours d'écart : *« la date pourrait être un peu plus
+grande »* (2026-08-19) et *« les ecriture sont trop petites elles devrais etre agrandit un peu
+(cpu, gpu etc..) »* (2026-08-29). ⛔ Aucun des deux ne nomme une taille ⇒ **A/B piloté par l'owner**.
+
+Le cadrage annonçait un mur **vertical** (la hauteur de barre, `BARRE_H`) et un plafond de **20 px**
+pour le titre. **Les deux sont faux**, et c'est la mesure qui le dit.
+
+## §29.1 — 🔴 LE MUR EST HORIZONTAL, ET IL ÉTAIT **DÉJÀ FRANCHI** AVANT LA STORY
+
+Relevé sur `1e968c0`, **avant tout changement de police**. Les slots sont **relus du rendu**
+(`dn_ui_barre_slots()`, `dn_widget_titre_utile()`), ⛔ pas écrits dans le message :
+
+| slot | x | utile |
+|---|---|---|
+| DATE de barre | 300 | **170 px** (dalle 480 − x − marge) |
+| HEURE de barre | 10 | **290 px** |
+| TITRE de case | 52 | **107 px** (case 225, badge à 159) |
+
+**Largeurs mesurées** (`lv_text_get_size`, kerning compris, police réellement liée) :
+
+| chaîne | 14 | 16 | 18 | 20 | 22 | 28 | budget |
+|---|---|---|---|---|---|---|---|
+| `AMBIANCE` — plus long titre **livré** | 78 | 92 | **103** | 113 🔴 | 126 🔴 | 161 🔴 | **107** |
+| `DÉMO 2+JAUGE` — plus long titre **existant** | **114 🔴** | 129 🔴 | 147 🔴 | 162 🔴 | 181 🔴 | 230 🔴 | **107** |
+| pire date **réelle**, balayée | 104 | 122 | 135 | 151 | 167 | 213 🔴 | **170** |
+| `HEURE NON POSÉE` — pire cas du **slot** | 141 | **164** | 184 🔴 | 201 🔴 | 227 🔴 | 288 🔴 | **170** |
+| `01:17` / `01:17:33` | 30/49 | 37/58 | 41/64 | 44/71 | 49/79 | 62/99 | **290** |
+
+⇒ 🎯 **Le titre plafonne à 18, ⛔ pas à 20.** Le cadrage donnait le plafond **vertical** (à 22 la
+boîte du titre passe sous `val_y`) ; le mur **horizontal** mord **avant**.
+⇒ 🎯 **`DÉMO 2+JAUGE` ne tenait DÉJÀ PAS à 14 px** : 114 pour 107, **clippé de 7 px**, sur le
+firmware d'avant. Défaut **préexistant**, révélé par l'instrument.
+
+## §29.2 — 🔴 LE PIRE CAS DE LA DATE **N'EST PAS UNE DATE**, ET LE PIRE CAS DE DATE N'EST PAS CELUI QU'ON CROYAIT
+
+`DN_UI_DATE_INCONNUE` vaut `"HEURE NON POSÉE"` — **15 caractères**, et c'est **elle** qui plafonne
+la date à **16 px**. Toutes les **vraies** dates tiennent jusqu'à **22**.
+
+Et le pire cas de date a été **BALAYÉ**, ⛔ pas supposé : les **7 × 12 × 31 = 2 604** formes que
+`barre_composer()` peut produire, **mesurées une par une** via `dn_ui_barre_date_forme()`.
+
+| | pire cas | px à 14 |
+|---|---|---|
+| **supposé** par le cadrage | `MER. 06 SEPT.` (13 car.) | 100 |
+| **mesuré** | **`MAR. 04 MARS`** (12 car.) | **104** |
+
+⇒ ⛔ *« le plus long »* n'est pas *« le plus large »*. Le pire cas réel est **plus court d'un
+caractère** et **plus large de 4 px**.
+
+⚠️ **Et la FRÉQUENCE annoncée est réfutée** : le cadrage écrivait que `HEURE NON POSÉE` est
+*« l'état au boot … donc un état que l'owner voit régulièrement »*. **Relu sur la carte** (`rtc`) :
+`retention : 0xD7 relu AU BOOT = attendu` et `bit OS : 0` ⇒ **le PCF85063A garde l'heure au travers
+des reboots**. C'est un état **transitoire**, ⛔ pas quotidien — et c'est ce fait qui a rendu
+acceptable l'écart déclaré de §29.6.
+
+## §29.3 — 🔴 AC5.2 PROUVÉE PAR UN **AVANT/APRÈS SUR LE MÊME STIMULUS**
+
+`widget demo on`, titre en 14, `DÉMO 2+JAUGE` clippé de 7 px :
+
+| | chevauchements | trop larges | débordements |
+|---|---|---|---|
+| **AVANT** (`1e968c0`) | 0 | **0** | 0 |
+| **APRÈS** (`6013e57`) | 0 | **1** | 0 |
+
+⇒ **Un compteur à zéro n'était pas une absence d'histoire : c'était une absence de GARDE.**
+`dn_widget_controler_tenue()` teste *« le texte de VALEUR sort-il de la case »* et **ne regardait
+pas le titre**. La garde est posée à la construction et alimente `trop_larges` — ⛔ pas un
+quatrième compteur, les trois restent trois.
+
+**Témoin négatif tiré** (`widget titre 22`) :
+`TITRE trop large : « AMBIANCE » = 126 px pour 107 utiles (x 52, badge a 159) — CLIPPE EN SILENCE`
+⇒ **la garde sait crier.**
+
+## §29.4 — 🔴 LA CHAÎNE DE POLICE AVAIT **DEUX MOITIÉS CASSÉES**
+
+Le cadrage demandait de *vérifier* qu'une 3ᵉ taille « ne casse rien ». **Vérifié : elle cassait deux
+fois.**
+
+| Moitié | Ce qui se passait | Symptôme |
+|---|---|---|
+| **Déclaration** | `ENTETE_MODELE` récitait `LV_FONT_DECLARE(dn_font_14)` / `(dn_font_28)` **en dur** | le `.c` neuf **jamais déclaré** — aucun site ne pouvait le nommer |
+| **Compilation** | `main/CMakeLists.txt` **énumérait** les `.c` à la main | `undefined reference` **au LINK**, ⇒ *après* avoir payé la régénération complète |
+
+Démontré en chargeant **les deux** générateurs avec `TAILLES = (14, 18, 28)` :
+`AVANT → 14, 28, 33, 56` (⛔ pas de 18) · `APRÈS → 14, 18, 28, 33, 56`.
+
+⇒ Corrigé **dans le générateur** (⛔ pas dans le `.h`, qui est écrasé) : déclarations **et** X-macro
+`DN_FONT_LISTE(X)` construites depuis `TAILLES`, sources **découvertes** par
+`file(GLOB … CONFIGURE_DEPENDS)`.
+⚠️ **Piège du glob** : ESP-IDF relit `CMakeLists.txt` en **script mode**, où CMake **refuse**
+`CONFIGURE_DEPENDS` (*« invalid for script and find package modes »*) ⇒ garde
+`if(CMAKE_SCRIPT_MODE_FILE)`. Sans elle **le projet ne configure plus du tout**.
+
+## §29.5 — 🔴 LE COMPTE DES « RECONSTRUIT » A ROMPU UNE **CINQUIÈME** FOIS — ET AUTREMENT
+
+Les quatre premières ruptures étaient des **arriérés**. La cinquième est d'une autre nature :
+**le TREIZE publié était FAUX AU MOMENT MÊME où on l'écrivait.**
+
+Recompté **depuis le code** (chaque appel à `build_scene()` remonté à sa sous-commande) :
+la liste de TREIZE **omettait `widget detpan` et `widget fond`**, que le README décrivait pourtant
+*« reconstruit la scène »*. La **même ligne** du README publiait donc *« est passé à TREIZE »*
+**et** *« le compte passe de DOUZE à QUATORZE »*.
+
+**Le vrai nombre est 16** (15 avant cette story, +`titre`).
+⚠️ `widget courbe` ne reconstruit **pas** (`dn_ui_detail_courbe_axes()` est un LECTEUR) — une
+première analyse l'avait compté ; vérifié à la main.
+⚠️ `widget date` non plus : le label est **repeint en place**, parce qu'une reconstruction
+**pendant la veille** poserait la jauge 27 px trop haut (§28.9.5).
+
+🎯 **La parade n'est plus « faire attention », parce que ça a échoué cinq fois** :
+`verif_veille_dn33.py` / `bloc_reconstruit` **RECOMPTE** et **CONFRONTE** aux deux textes.
+⚠️ Il a fait rougir sa propre première version, qui perdait `voile` (elle partage sa branche avec
+`opa`, laquelle re-teste `argv[1]` dans son corps).
+
+## §29.6 — LES TROIS VERDICTS OWNER, ET L'ÉCART DÉCLARÉ
+
+A/B joué **en mode ACTIF**, avec **l'agent réel** (⛔ pas `widget mock on`, qui repeint les valeurs
+en ambre — leçon `dn4-14`). `veille off` avant la série.
+
+| Question | Verdict, **verbatim** |
+|---|---|
+| police du TITRE | *« C'est ça, on garde 18 »* |
+| police de la DATE | *« Garder 18 et ACCEPTER la coupe »* |
+| les libellés secondaires suivent-ils ? | *« Oui — tout le chrome en 18 »* |
+
+⚠️ 🔴 **ÉCART DÉCLARÉ — la date en 18 CLIPPE `HEURE NON POSÉE`** (184 px pour 170, ~2 caractères).
+Le conflit a été **énoncé avant d'être tranché**, avec ses quatre leviers :
+accepter la coupe · redescendre à 16 (seule taille où **même ce pire cas** tient) · déplacer
+`x = 300` · bouger `BARRE_H` — qui **périmerait toute coordonnée tactile publiée**
+(`VENTILOS 506..516`, jauge `y = 340..350`) pendant que `dn4-5` et `dn4-10` sont ouverts.
+
+## §29.7 — LE COÛT, MESURÉ — ⛔ NI EXTRAPOLÉ, NI AU PLANCHER
+
+Référence : binaire **reconstruit depuis l'arbre PROPRE** (`ae18700`) = **1 188 016 o**.
+⚠️ Le cadrage annonçait cette référence **périmée** (bâtie sur un arbre sale) — **reconstruite, elle
+est identique À L'OCTET**. La crainte est réfutée par sa propre mesure.
+
+| étape | binaire | delta |
+|---|---|---|
+| référence | 1 188 016 | — |
+| instrument seul (`1e968c0`) | 1 191 664 | +3 648 |
+| **4 candidats à bord** (`6013e57`) | 1 322 848 | **+134 832** |
+| **après ménage** (`34d3c2c`) | 1 225 440 | **+37 424** |
+
+⇒ **le ménage rend 97 408 o** — le compte baisse **pour de vrai** (leçon `dn4-14`/AC3.3).
+**Coût net : +37 424 o, soit 1,24 % du libre** (partition 4 194 304, ~3,0 Mio libres).
+
+**Le plancher n'est pas le coût** — les deux, côte à côte :
+
+| taille | plancher `octets_police` | **objet compilé** | écart |
+|---|---|---|---|
+| 16 | 24 429 | 24 506 | +77 |
+| 18 | 29 344 | **29 421** | +77 |
+| 20 | 33 502 | 33 579 | +77 |
+| 22 | 39 173 | **39 250** | +77 |
+| **les quatre** | 126 448 | **126 756** | **+308** |
+
+⇒ Et le plancher sous-estime le **binaire** de **8 384 o** : le reste est du **code**.
+⚠️ **« ~19 Ko extrapolés par l'aire » pour la police 22 était FAUX D'UN FACTEUR ~2** — corrigé dans
+`addendum.md:172` (texte d'origine **conservé**) et dans `widget police`.
+
+## §29.8 — AC2.4 : LE CALCUL HORS CARTE, **CONFRONTÉ**
+
+Le cadrage pose `adv_w ÷ taille = 0,695`, constant à 0,1 % ⇒ largeur **linéaire** en la taille, donc
+14 → 28 devrait valoir **×2,000**. Mesuré sur huit chaînes : **min 2,018 · max 2,174 · moyenne
+2,057**.
+
+⇒ Le modèle **sous-estime de +0,9 % à +8,7 %** (moyenne **+2,9 %**), et **toujours du même côté** :
+celui qui fait croire que ça tient. ⛔ Ce n'est **pas** *« l'estimation est fausse »* au sens de
+`dn3-1` (22 px d'erreur sur 205) — c'est **un biais systématique et optimiste**. Les deux
+propositions sont **distinctes**.
+✅ Les prédictions faites depuis ce biais corrigé (`AMBIANCE` ~103 à 18, `HEURE NON POSÉE` ~166 à 16)
+ont été **confirmées par la mesure** (103 et 164).
+
+## §29.9 — CE QUE CETTE SECTION NE PROUVE **PAS**
+
+- ⛔ **Aucune mesure de charge** n'a été prise : `px/cycle`, `ms/cycle` et `duty` **changent** (tous
+  les pixels du chrome ont bougé) mais n'ont **pas** été re-relevés. ⇒ **tout chiffre de `dn4-5` /
+  `dn4-10` / `dn4-12` cité après le 2026-08-30 doit porter son SHA.**
+- ⛔ Le soak `dn4-5` a été **coupé** (60 317 trames valides · 483 pertes seq · latence n=60317
+  1/174/541 ms, sur `6af9bd8`) et **redémarré** sur `8308bbf`. **Ordre B, décision owner.**
+- ⛔ `DÉMO 2+JAUGE` **reste clippé** (147 px pour 107 en 18) : c'est une case d'**instrument**, et
+  elle sert désormais de **témoin négatif permanent et gratuit** de la garde de largeur.
+- ⛔ Le badge « SIMULÉ » reste en `dn_font_14` — **contraint par sa largeur**, hors périmètre.
