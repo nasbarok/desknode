@@ -1096,7 +1096,22 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
                        .prefixe_detail_seul = true, .prec = DN_PREC_ENTIER}},
     },
     [DN_UI_CASE_AMB] = {
-        .icone = DN_ICONE_THERMOMETER_HALF,
+        /* 🔴 dn4-14 / AC1 — LA MAISON, ET LE DOUBLON QU'ELLE LÈVE.
+         *    Constat owner à l'œil du 2026-08-25 : « icone ambiance mettre un
+         *    icone maison ». Jusqu'ici la case portait `THERMOMETER_HALF` —
+         *    LE MÊME GLYPHE que `.grandeurs[0].icone` ci-dessous, posé par
+         *    dn4-13 : le thermomètre était dessiné DEUX FOIS dans la même
+         *    tuile, et le doublon coûtait le seul usage réel d'une icône de
+         *    28 px (se lire d'un coup d'œil).
+         *    ⇒ MOTIF DE LA RÉPARTITION : LA MAISON = LA PIÈCE (ce que la case
+         *      désigne), LE THERMOMÈTRE = CE QU'ON Y MESURE (la grandeur 0).
+         *    ⛔ `.grandeurs[0].icone` NE BOUGE PAS — c'est un acquis dn4-13.
+         *    ✅ ET ELLE N'A COÛTÉ AUCUN OCTET : 0xF015 est `LV_SYMBOL_HOME`,
+         *      déjà injecté par le générateur AMONT dans les deux `.c`.
+         *      Prouvé au `sha256sum` avant/après `--entete-seule` (identique),
+         *      ⛔ pas déduit d'une table FontAwesome. Le motif complet et la
+         *      méthode sont dans `tools/gen_font_dn.py`, entrée « home ». */
+        .icone = DN_ICONE_HOME,
         .titre = "AMBIANCE",
         .couleur = 0xff9640, /* orange */
         .n_grandeurs = 2,    /* D6 — DANS LE MODÈLE, pas rustiné après */

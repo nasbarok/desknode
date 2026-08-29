@@ -116,6 +116,25 @@ ICONES = {
     #    / 3 cmaps, présent en 14 px ET en 28 px), ⛔ PAS par un test de bornes :
     #    c'est précisément ce test-là qui avait fait croire `fan` présent.
     "save":             0xF0C7,  # DISQUE (dn4-1) — la disquette
+    # ── dn4-14 / AC1 : LA MAISON D'`AMBIANCE`, ET POURQUOI ELLE EST GRATUITE ─
+    # Constat owner à l'œil du 2026-08-25 : « icone ambiance mettre un icone
+    # maison ». L'epic ET le ledger annonçaient tous les deux « il n'y a pas de
+    # maison ⇒ régénération de police obligatoire ». 🔴 C'EST FAUX, ET LA MESURE
+    # LE DIT : 0xF015 est `LV_SYMBOL_HOME`, l'un des 60 codepoints de symboles
+    # que `built_in_font_gen.py` (l'AMONT) injecte dans chaque police. Il est
+    # donc DÉJÀ porté par `dn_font_14.c` ET `dn_font_28.c` ⇒ union `-r`
+    # INCHANGÉE à 68, `.c` bit-identiques, delta = 0 octet.
+    # ⚠️ COMMENT ÇA A ÉTÉ VÉRIFIÉ (2026-08-29), et ⛔ pas autrement :
+    #    1. `codepoints_du_c()` relu sur les DEUX `.c` (260 codepoints / 3 cmaps
+    #       chacun) — ⛔ JAMAIS un test de bornes, c'est ce test-là qui avait
+    #       fait croire `fan` présent sur une cmap SPARSE ;
+    #    2. conversion isolée `-r 0xF015` ⇒ rc = 0 ;
+    #    3. contrôle négatif `-r 0xF863` (`fan`) ⇒ rc = 1, message explicite
+    #       « doesn't have any characters included in range 0xf863 » — c'est LUI
+    #       qui prouve que l'instrument voit quelque chose.
+    #    4. `sha256sum` des 4 `.c` relevé AVANT et APRÈS `--entete-seule` :
+    #       identique. La porte gardée de dn4-1 suffit, ⛔ zéro npm, zéro réseau.
+    "home":             0xF015,  # AMBIANCE (dn4-14) — la maison = LA PIÈCE
     # ── LES QUATRE CANDIDATS AU VENTILATEUR ──────────────────────────────────
     # ⚠️ dn4-1 les GARDE alors que la case ne s'appelle plus VENTILOS (D8).
     #    MESURÉ le 2026-08-18 : sur les quatre, `cog` (0xF013) est DÉJÀ amont ;
