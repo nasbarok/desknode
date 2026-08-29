@@ -704,11 +704,27 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
      *    pioche que dans la liste vérifiée de `fonts/dn_font.h`.
      */
     [DN_UI_CASE_GPU] = {
-        /* `desktop` (U+F108) : le GPU est ce qui pilote l'écran. C'est le
-         * moins mauvais des glyphes DISPONIBLES — `microchip` est déjà pris
-         * par CPU, et un doublon rendrait les deux cases confusibles au coup
-         * d'oeil, qui est le seul usage réel d'une icône de 28 px. */
-        .icone = DN_ICONE_DESKTOP,
+        /* 🔴 dn4-14 / AC2.4 — `gamepad`, TRANCHÉ À L'ŒIL OWNER EN SÉANCE LE
+         *    2026-08-29. Verbatim : « on garde gamepad ».
+         *    ⚠️ CE N'EST PAS UN CHOIX D'AGENT. Le constat d'origine (2026-08-25)
+         *    disait seulement « pour l'icon du gpu revoir celui ci est pas
+         *    bon » — il nommait le défaut, ⛔ pas la cible. Les SIX candidats
+         *    ont donc été embarqués ensemble et commutés à chaud sur LA MÊME
+         *    case (`widget icone 1 <n>`), sans reflash entre deux.
+         *    📜 LES CINQ REJETS, VERBATIM, pour que personne ne les re-propose :
+         *      · `cube` (un cube en perspective)      → « cube tres bof »
+         *      · `vr-cardboard` (casque de RV)        → « vr non plus »
+         *      · `bolt` (un éclair)                   → « elimine »
+         *      · `image` (cadre photo)                → « elimine »
+         *      · `film` (pellicule perforée)          → « nop »
+         *    Ce qu'elle remplace : `desktop` (U+F108), une TOUR DE BUREAU pour
+         *    une carte graphique — dont le commentaire d'origine assumait déjà
+         *    qu'elle était « le moins mauvais des glyphes DISPONIBLES ». Elle
+         *    ne l'est plus : la police porte désormais de quoi choisir.
+         *    ⛔ `microchip` reste INTERDIT ici : il est déjà `CPU`, et un
+         *      doublon rendrait les deux cases confusibles au coup d'œil, qui
+         *      est le seul usage réel d'une icône de 28 px. */
+        .icone = DN_ICONE_GAMEPAD,
         .titre = "GPU",
         .couleur = 0x22d3ee, /* CYAN — `GPU` garde le cyan, mais la FAMILLE est
                               * morte : il n'est plus partagé (dn4-4, 2026-08-24). */
@@ -803,11 +819,31 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
     [DN_UI_CASE_RAM] = {
         .icone = DN_ICONE_MEMORY,
         .titre = "RAM",
+        /* 🔴 dn4-14 / AC5.4 — LE ROSE RESTE, ET C'EST UNE DÉCISION OWNER DE
+         *    SÉANCE (2026-08-29), ⛔ pas un oubli. Ce commentaire est AMENDÉ,
+         *    ⛔ pas effacé : le motif du rose ci-dessous est toujours vrai.
+         *
+         *    L'addendum §1 demande « RAM : violet » et l'owner l'a redemandé le
+         *    2026-08-25. **ESSAYÉ SUR LA DALLE** (`0x7c3aed`, posé à chaud par
+         *    `widget couleur 2 …`, sans reflash) — verdict à l'œil :
+         *      « maintenant c'est la meme couleur que cpu lol »
+         *    `CPU` est déjà violet `0xa855f7`, et dn4-4 l'y avait déplacé
+         *    EXPRÈS le 2026-08-24 pour l'écarter du cyan de `GPU`. Le violet ne
+         *    faisait donc que **déplacer** la collision, ⛔ pas la lever.
+         *    ⇒ LA DEMANDE DE L'ADDENDUM §1 EST REFUSÉE PAR SON PROPRE AUTEUR,
+         *      sur constat à l'œil. C'est `DISQUE` qui a bougé à la place.
+         *    ⛔ Ne pas la ré-appliquer « parce que la spec le dit » : la spec a
+         *      été confrontée à la dalle, et la dalle a gagné. */
         .couleur = 0xf472b6, /* ROSE — dn4-4, 2026-08-24 (2e passe). Le vert de la
                               * 1re passe faisait « vert sur vert » a l'oeil owner :
                               * le Living PCB est VERT, et une jauge verte sur un
                               * PCB vert disparait. ⛔ Une couleur ne se choisit pas
-                              * dans le vide : elle se choisit CONTRE un fond. */
+                              * dans le vide : elle se choisit CONTRE un fond.
+                              * ⚠️ Ce motif reste la raison pour laquelle le VERT
+                              * ne reviendra pas — y compris comme candidat pour
+                              * une AUTRE case (dn4-14 l'a écarté pour `DISQUE`
+                              * sans le re-tester : une expérience déjà perdue ne
+                              * se rejoue pas au prix d'un regard owner). */
         /*
          * 🔴 UNE SEULE GRANDEUR, ET C'EST LE PIÈGE N°1 DU MODÈLE QUI L'IMPOSE.
          *    L'addendum §1 demande « violet + JAUGE » ET une donnée secondaire
@@ -972,9 +1008,40 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
          */
         .icone = DN_ICONE_SAVE,
         .titre = "DISQUE",
-        .couleur = 0xf87171, /* ROUGE — dn4-4, 2026-08-24 (2e passe ; le rose est
-                              * passe a `RAM`). ✅ Et ça SOLDE le « PROVISOIRE, hérité
-                              * de VENTILOS (legs dn3-3) » qui traînait ici. */
+        /* 🔴 dn4-14 / AC5 — CLAIR NEUTRE, TRANCHÉ À L'ŒIL OWNER LE 2026-08-29.
+         *    Verbatim de validation : « disque est bien distinct maintenant ».
+         *
+         * 🎯 ET C'EST `DISQUE` QUI BOUGE, ⛔ PAS `RAM` — alors que la demande
+         *    d'origine visait `RAM`. Constat owner en séance, dalle sous les
+         *    yeux : « l'icone est jaune, la barre des 53 % utilisé aussi est
+         *    jaune, le logo du disque aussi est jaune — c'est juste que disque
+         *    et ram sont jaune, il faut une autre couleur pour l'un des 2 ».
+         *    ⇒ LE DÉFAUT N'ÉTAIT PAS « RAM EST JAUNE », c'était « RAM ET DISQUE
+         *      SONT LA MÊME COULEUR ». Mesuré : leurs teintes n'étaient qu'à
+         *      31° l'une de l'autre (rose 329° / corail 0°), avec des
+         *      luminosités quasi identiques (70,2 % et 70,8 %).
+         *
+         * ⛔ LE VIOLET A ÉTÉ ESSAYÉ SUR LA DALLE, ET RÉFUTÉ PAR L'ŒIL. L'owner
+         *    demandait « RAM en violet » depuis le 2026-08-25 (et l'addendum §1
+         *    le demande aussi). Posé à chaud (`0x7c3aed`), son verdict a été :
+         *    « maintenant c'est la meme couleur que cpu lol ». `CPU` est déjà
+         *    violet `0xa855f7` — dn4-4 l'y avait déplacé EXPRÈS pour l'écarter
+         *    du cyan de `GPU`. ⇒ le violet ne fait que DÉPLACER la collision.
+         *    ⚠️ La demande de l'addendum §1 est donc REFUSÉE PAR SON PROPRE
+         *      AUTEUR, sur mesure et à l'œil. `RAM` GARDE SON ROSE.
+         *
+         * ⚠️ CE QUE ÇA NE RÈGLE PAS, ET QUI EST MESURÉ : deux autres paires
+         *    restent serrées — `GPU`/`RÉSEAU` (29°) et, avant ce correctif,
+         *    `DISQUE`/`AMBIANCE` (27°). Le clair neutre sort `DISQUE` de la
+         *    famille chaude, donc il ferme LES DEUX collisions qui
+         *    l'impliquaient. `GPU`/`RÉSEAU` reste ouverte : ⛔ non corrigée,
+         *    non masquée, elle est écrite au ledger.
+         *
+         * 📜 Ce qu'elle remplace : `0xf87171` (« ROUGE — dn4-4, 2026-08-24,
+         *    2e passe ; le rose est passé à `RAM` »), qui soldait lui-même le
+         *    « PROVISOIRE hérité de VENTILOS (legs dn3-3) ». Ce motif-là reste
+         *    vrai pour ce qu'il décrivait : il n'est pas effacé, il est daté. */
+        .couleur = 0xe2e8f0, /* CLAIR neutre — dn4-14, 2026-08-29 (œil owner) */
         /*
          * ⚠️ AMENDÉ LE 2026-08-22 (dn4-9) : tout ce bloc décrit l'état de dn4-8
          *    et il reste VRAI pour ce qu'il mesure (le mapping, `FRONT_IN`, la

@@ -5080,8 +5080,16 @@ static int cmd_widget(int argc, char **argv)
             for (int i = 0; i < DN_UI_METRIQUES; i++) {
                 uint32_t eff = dn_ui_case_couleur(i);
                 const dn_widget_desc_t *b = dn_ui_desc_brut(i);
-                printf("   %d = %-9s 0x%06X%s\n", i, dn_ui_metrique_nom(i),
-                       (unsigned)eff,
+                /* 🔴 `%-9s` REMPLIT EN OCTETS, ⛔ PAS EN COLONNES — et c'est
+                 *    le defaut que `dn_console_banner()` documente, commis a
+                 *    nouveau ici et attrape A L'OEIL PAR L'OWNER en seance le
+                 *    2026-08-29 : « RESEAU » pese 7 octets pour 6 colonnes,
+                 *    donc sa ligne se decalait d'un caractere. Depuis dn3-1
+                 *    les libelles sont ACCENTUES : tout `%-Ns` sur un nom de
+                 *    metrique est faux. On paie les colonnes a la main. */
+                printf("   %d = ", i);
+                colonnes(dn_ui_metrique_nom(i), 10);
+                printf("0x%06X%s\n", (unsigned)eff,
                        (b && eff != b->couleur) ? "  ⚠️ FORCEE (descr. differe)"
                                                 : "");
             }

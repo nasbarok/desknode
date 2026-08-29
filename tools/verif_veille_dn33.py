@@ -1095,7 +1095,12 @@ def bloc_accents():
     #      « si le commentaire NOMME une teinte, la valeur DOIT etre de cette
     #      famille » : rose/magenta ⇒ R > B > G ; violet ⇒ B >= R > G.
     mram = re.search(r"\.couleur = 0x([0-9a-fA-F]{6}),\s*/\* ([A-ZÉÈÀ]+)", mk.group(0))
-    fam = {"ROSE":   lambda r, g, b: r > b > g,
+    # ⚠️ dn4-14 (seance) : « CLAIR » entre au dictionnaire parce que `DISQUE`
+    #    est devenue un clair neutre. ⛔ Sans lui la boucle SAUTE l'entree
+    #    (`if nom not in fam: continue`) et le controle serait VERT en ne
+    #    verifiant RIEN — exactement la classe de defaut que cette gate traque.
+    fam = {"CLAIR":  lambda r, g, b: min(r, g, b) > 200 and (max(r, g, b) - min(r, g, b)) < 40,
+           "ROSE":   lambda r, g, b: r > b > g,
            "MAGENTA": lambda r, g, b: r > b > g,
            "VIOLET": lambda r, g, b: b >= r > g,
            "ORANGE": lambda r, g, b: r > g > b,
