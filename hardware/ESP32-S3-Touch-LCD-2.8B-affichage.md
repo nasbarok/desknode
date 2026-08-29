@@ -6060,6 +6060,33 @@ fenêtre console**. Le chiffre qui tranche : **14 flushes en 60 s (0,23 /s)** co
 **publie son débit de flushes à côté de son résultat**. `veille off` n'est pas une précaution, c'est
 une **condition de validité**.
 
+> 🔴 **AMENDÉ LE 2026-08-29, QUELQUES HEURES PLUS TARD — ⛔ LE TEXTE CI-DESSUS RESTE, MAIS IL NOMME
+> LA MAUVAISE CAUSE, ET C'EST MOI QUI L'AI ÉCRIT.** J'ai attribué le vide à **la veille**. ⛔ **Faux** :
+> **sous agent réel, en AMBIENT, la carte DESSINE** — mesuré en rendant le port à l'agent puis en le
+> reprenant : `mode : AMBIENT · bascules -> Ambient : 1 · reveils : 0` après 32 min d'agent continu,
+> et pourtant **5 226 cycles de redessin / 1 960 s = 2,67 cycles/s**. **La veille masque la scène,
+> elle ne supprime pas le redessin.**
+>
+> **CE QUI MANQUAIT À LA FENÊTRE VIDE, C'EST LE STIMULUS DE DESSIN** — ni agent (qui fait **bouger
+> les cases**, donc déclenche l'invalidation), ni animation. La table, en **cycles de redessin par
+> seconde**, ⛔ pas en flushes :
+>
+> | régime | cycles/s | rapport à la fenêtre vide |
+> |---|---|---|
+> | ni agent ni animation, en veille (le tir raté) | **0,22** | — |
+> | **agent réel, en AMBIENT** | **2,67** | **×12** |
+> | agent réel, fenêtres de 322 s de la séance | **3,10** | **×14** |
+> | `veille off` **+ `anim on`**, sans agent | **20,7** | **×94** |
+>
+> ⇒ **LA RÈGLE CORRIGÉE** : ⛔ **`veille off` NE SUFFIT PAS.** Une fenêtre console qui mesure la
+> famine DMA doit porter **un STIMULUS DE DESSIN** — l'agent, ou `anim on` — et **publier son débit
+> de cycles de redessin** à côté de son résultat. C'est le débit qui atteste du régime, ⛔ pas l'état
+> de la veille.
+>
+> ✅ **ET CE QUE ÇA CHANGE POUR LA CONCLUSION SUR LE TÉMOIN : RIEN, SINON QU'ELLE TIENT MIEUX.** Le
+> re-tir propre de `flash on` avait `veille off` **+ `anim on`**, soit **20,7 cycles/s — SEPT FOIS le
+> régime de l'agent réel** — et il rend **0**.
+
 **(2) DEUX COMMANDES REFUSÉES, LUES COMME ACCEPTÉES.** `anim on 10` ⇒ *« refusé :
 ESP_ERR_INVALID_ARG — période attendue entre 200 et 10000 ms »* : le stimulus de dessin n'a **jamais**
 tourné dans deux fenêtres de 90 s. `flash on` ⇒ *« refusé : ESP_ERR_INVALID_STATE »*, le stimulus
