@@ -754,13 +754,20 @@ leur `.c`), soit ASCII + le signe degré + la puce, **et rien d'autre**. LVGL ne
 glyphe absent **et ne se plaint pas** — « RÉSEAU », « HUMIDITÉ », « AOÛT » y perdaient leur lettre.
 
 `main/fonts/dn_font_14.c` et `dn_font_28.c` les remplacent : **ASCII + latin-1 complet + la puce +
-les 60 `LV_SYMBOL_*` uniques + 10 icônes FontAwesome** — dont **2 sont déjà des symboles** (`cog`
-0xF013, `tint` 0xF043), soit **8 codepoints neufs** et **68 au `-r` FontAwesome final**. Ce sont des
+les 60 `LV_SYMBOL_*` uniques + les icônes FontAwesome du dictionnaire `ICONES`**. Ce sont des
 **sur-ensembles stricts** des built-ins.
+
+⛔ **AUCUN COMPTE N'EST ÉCRIT ICI, ET C'EST DÉLIBÉRÉ.** Le nombre d'icônes, combien sont déjà des
+symboles amont, combien de codepoints neufs, et l'union `-r` finale sont **calculés à la génération**
+et réinjectés dans `dn_font.h` : **les lire là**, ou dans la sortie de `python3 tools/gen_font_dn.py`.
+🔴 **Cette phrase-ci en portait encore deux faux le 2026-08-29** : elle annonçait *« 10 icônes, dont
+2 déjà des symboles »* alors qu'il y en avait **11 dont 3** (`cog` 0xF013, `tint` 0xF043 **et**
+`save` 0xF0C7, ajouté par dn4-1 sans que cette ligne suive). Les *« 8 neufs / 68 »*, eux, étaient
+justes — par coïncidence, les deux erreurs se compensant. C'est **exactement** la classe de défaut
+que le générateur ferme depuis 2026-08-18 : *cinq endroits du dépôt en annonçaient trois valeurs
+différentes, aucune juste*. **Un compte recopié dérive, et sa dérive est silencieuse.**
 ⚠️ **« 61 » est le nombre d'entrées BRUTES de la liste amont** : elle contient un **doublon** (61452
-deux fois), d'où **60** uniques. Ces nombres sont désormais **calculés** par le générateur et
-réinjectés dans `dn_font.h` — cinq endroits du dépôt en annonçaient **trois valeurs différentes,
-aucune juste** (revue de code du 2026-08-18).
+deux fois), d'où **60** uniques.
 
 ### Régénérer
 
@@ -775,7 +782,23 @@ python3 tools/gen_font_dn.py --mesure   # compare les plages et le kerning, ne g
 ```
 
 - **Mesuré depuis ce WSL le 2026-08-17** : `node v24.14.0`, `npm 11.9.0`,
-  `npx --yes lv_font_conv --version` → **1.5.3** (rc=0).
+  `npx --yes lv_font_conv --version` → **1.5.3** (rc=0). **Re-mesuré le 2026-08-29** (dn4-14) :
+  toujours **1.5.3**, rc = 0. ⛔ **Ne pas re-supposer que la chaîne est morte** : le ledger l'a
+  reportée pendant des semaines sur *« npm + réseau, absents du tableau des versions figées »*,
+  et une ligne suffisait à le vérifier.
+- 🔴 **dn4-14 : le générateur fait désormais un PRÉ-VOL.** `lv_font_conv` absent du PATH sortait en
+  `FileNotFoundError` **nu**, **après** avoir lu la liste amont et construit sa ligne de commande.
+  C'est le **premier échec attendu d'un poste neuf**. Il nomme maintenant la dépendance et donne la
+  recette ci-dessus. ⚠️ `--entete-seule` passe **avant** ce contrôle, délibérément : c'est le chemin
+  qui n'a besoin de rien.
+- 🎯 **`--entete-seule` : la porte gardée, et quand elle est légitime.** Ajouter une icône dont le
+  codepoint est **déjà** dans les `.c` (parce que l'amont l'injecte avec ses symboles) ne change
+  **rien** aux polices. La commande relit les `.c` avec `codepoints_du_c()` et **REFUSE** si un
+  codepoint manque. **Mesuré sur `home` U+F015 le 2026-08-29** : `12/12 icônes présentes`,
+  `sha256sum` des quatre `.c` **identique avant/après**, et **delta de binaire = 0 octet**.
+  ⛔ **Elle ne paie JAMAIS un ménage** : elle vérifie une **présence**, pas une **absence**. Retirer
+  une entrée d'`ICONES` la fait passer **sans toucher un octet** — le ménage serait *annoncé et non
+  payé*. Un retrait exige `python3 tools/gen_font_dn.py`, puis `codepoints_du_c()` pour le prouver.
 - Le générateur **lit** les codepoints de symboles dans
   `managed_components/lvgl__lvgl/scripts/built_in_font/built_in_font_gen.py` — il ne les recopie
   **jamais**. Une liste recopiée dérive, et sa dérive est **silencieuse** : `LV_SYMBOL_LIST` (bandeau

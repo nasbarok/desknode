@@ -9450,3 +9450,201 @@ sera par le soak lui-même — **c'est la première chose à regarder au bloc `f
 - Le **coût AGENT** de la borne d'âge du lisseur : ⛔ non mesuré, **à verser à AC4.6**.
 - La **COURSE** du seqlock de `dn_veille_cumul()` : ⛔ **non exercée** — un banc séquentiel n'exerce
   pas une course. Elle est vérifiée **par sa forme** (§25.6).
+
+---
+
+# §28 — `dn4-14` (P9.6) : LA PRÉMISSE ÉTAIT FAUSSE, ET C'EST **L'INSTRUMENT DU DÉPÔT** QUI LE DIT
+
+⚠️ **NUMÉROTATION** : §27 était le dernier bloc au 2026-08-29 (séance `dn4-5` du 2026-08-28).
+`dn4-5` est **encore `in-progress`** et son soak de 7 jours n'a rien écrit : si sa clôture réclame
+un §28, **c'est celui-ci qui a le numéro** et l'autre prend §29. ⛔ Ne pas fusionner deux séances
+sous un même numéro — c'est déjà arrivé.
+
+⛔ **CE §28 NE CONTIENT AUCUNE MESURE SUR CARTE.** Tout ce qui suit a été tiré **depuis WSL**, sur
+le dépôt. La séance carte (`AC4` le jaune, `AC2.4` l'A/B `GPU`, `AC5.3` l'arbitrage violet) est
+**le point de synchronisation** et reste **à jouer avec l'owner**.
+
+## 28.1 🔴 « IL N'Y A PAS DE MAISON » ÉTAIT FAUX — ET L'EPIC ET LE LEDGER LE DISAIENT TOUS LES DEUX
+
+L'epic (`epics-desknode-v1.md` § `dn4-14`) et le ledger écrivaient : *« la police n'embarque que
+ONZE glyphes et il n'y a pas de maison ⇒ **deux des trois demandes owner exigent une régénération
+de police** »*.
+
+**MESURÉ le 2026-08-29 avec `tools/gen_font_dn.py::codepoints_du_c()`** — ⛔ **jamais un test de
+bornes** (c'est ce test-là qui avait fait croire `fan` présent sur une cmap SPARSE) :
+
+| Fait | Mesure |
+|---|---|
+| `home` U+F015 **est déjà porté** par `dn_font_14.c` **et** `dn_font_28.c` | 260 codepoints / 3 cmaps par police, présent dans les deux |
+| Pourquoi | `home` est `LV_SYMBOL_HOME`, l'un des **60 codepoints que le générateur AMONT injecte** |
+| Coût de la maison | union `-r` **inchangée à 68** · `sha256sum` des 4 `.c` **identique** avant/après `--entete-seule` · **delta de binaire = 0 octet** |
+
+⇒ **UNE SEULE des trois demandes exigeait une régénération : le `GPU`.**
+⚠️ **La CONCLUSION de l'epic (« les deux se font en une passe ») reste JUSTE** — c'est son
+**chiffrage** qui était faux, pas son plan.
+
+⚠️ **ET LE BLOCAGE DU LEDGER ÉTAIT LEVÉ AUSSI.** Il reportait le ménage sur *« npm + réseau,
+absents du tableau des versions figées »*. `lv_font_conv --version` rend **1.5.3**, rc = 0. **Une
+ligne suffisait.** ⛔ Ne pas re-supposer un blocage : le re-vérifier.
+
+## 28.2 🎯 LA MÉTHODE DE SONDE, ET POURQUOI IL FAUT **DEUX** CONTRÔLES NÉGATIFS
+
+LVGL **ne dessine pas** un glyphe absent **et ne se plaint pas**. Un codepoint adopté depuis une
+table FontAwesome donne donc un rectangle vide, sans une erreur. La seule méthode admise est de
+**convertir le codepoint SEUL** :
+
+```bash
+lv_font_conv --no-compress --no-prefilter --bpp 4 --size 28 \
+  --font "FontAwesome5-Solid+Brands+Regular.woff" -r 0xF015 \
+  --format lvgl -o /tmp/sonde.c --force-fast-kern-format
+```
+
+**14 candidats sondés un par un le 2026-08-29, tous `rc = 0`.** Et **DEUX contrôles négatifs ont
+échoué bruyamment dans la même passe** :
+
+| Codepoint | rc | Message |
+|---|---|---|
+| `fan` **0xF863** | 1 | *« doesn't have any characters included in range 0xf863-0xf863 »* |
+| `display` **0xF390** | 1 | idem, plage `0xf390` |
+
+Les deux sont arrivés en **FontAwesome ≥ 5.11** ; le `.woff` embarqué est antérieur.
+🎯 **C'est ce DOUBLE échec qui donne du sens aux 14 `rc = 0`** : sans lui, une sonde qui dit
+« présent » pour tout ne prouve rien. ⛔ **Un contrôle négatif n'est pas une formalité.**
+
+## 28.3 📊 L'ARITHMÉTIQUE DU BUDGET — **CALCULÉE**, ⛔ pas estimée
+
+| Étape | Union `-r` FontAwesome |
+|---|---|
+| Avant la story (11 icônes, dont 3 amont) | **68** |
+| − ménage des 3 morts **propres au dépôt** (`sync-alt` F2F1, `wind` F72E, `cogs` F085) | **65** |
+| + `home` F015 (amont) | **65** |
+| + `bolt` F0E7, `image` F03E, `film` F008 (**amont** — `LV_SYMBOL_CHARGE` / `_IMAGE` / `_VIDEO`) | **65** |
+| + `gamepad` F11B, `cube` F1B2, `vr-cardboard` F729 | **68** |
+
+⇒ **SIX candidats `GPU` + la maison, pour un budget STRICTEMENT NEUTRE.**
+
+⚠️ **`cog` 0xF013 SORT DU DICTIONNAIRE MAIS RESTE DANS LA POLICE** : il est `LV_SYMBOL_SETTINGS`,
+injecté par l'amont. C'est **la macro** `DN_ICONE_COG` qui disparaît, ⛔ **pas le glyphe**. Écrit
+ici **et dans le source** pour que la prochaine lecture de `codepoints_du_c()` n'y voie pas une
+régression.
+
+### Le prix, en BINAIRE — c'est lui qui fait foi
+
+| Build | `desknode.bin` | Delta |
+|---|---|---|
+| Avant la story (`77e06b5`) | 1 185 568 o | — |
+| Après la maison seule (T1) | 1 185 568 o | **0** |
+| Après la régénération complète (T3) | 1 185 520 o | 🎯 **−48 o** |
+| Après `widget couleur` + son aide (T4..T7) | 1 187 280 o | +1 712 o |
+
+⇒ **Le travail sur les icônes RAPPORTE 48 octets.** Le `+1 712` final est **l'instrument de
+réglage** (`widget couleur` et son texte d'aide), ⛔ pas la police.
+
+## 28.4 🔴 CE QUE LE MÉNAGE PROUVE, ET CE QU'IL NE PROUVERAIT PAS
+
+⛔ **`--entete-seule` NE PAIE JAMAIS UN MÉNAGE.** Elle vérifie une **PRÉSENCE**, pas une
+**absence** : retirer des entrées d'`ICONES` puis la lancer **PASSE** (il y a moins de codepoints à
+vérifier) et **les octets restent dans les `.c`**. Le ménage serait **annoncé et NON PAYÉ**, en
+silence.
+
+**La preuve est `codepoints_du_c()` sur les `.c` RÉGÉNÉRÉS** :
+
+| Codepoint | Après régénération |
+|---|---|
+| `sync-alt` 0xF2F1 · `wind` 0xF72E · `cogs` 0xF085 | ⛔ **ABSENTS** |
+| `cog` 0xF013 | ✅ présent — **amont, ce n'est pas une régression** |
+| `gamepad` F11B · `cube` F1B2 · `vr-cardboard` F729 | ✅ présents |
+| Total porté | **260** (inchangé : −3 puis +3, c'est le troc du budget neutre) |
+
+⚠️ **LE COMPTE TOTAL NE BAISSE PAS, ET C'EST ATTENDU** : la story dépense l'économie du ménage sur
+les candidats `GPU`, dans la même passe. Le ménage se prouve **glyphe par glyphe**, ⛔ pas au
+compteur — un total identique peut cacher un troc, et c'est exactement ce qu'il cache ici.
+
+## 28.5 🔴 UN **QUATRIÈME** CONSOMMATEUR DE LA COULEUR DE CASE, QUE LE CADRAGE N'AVAIT PAS VU
+
+Le cadrage recensait **trois** lecteurs de `k_desc[].couleur` : la tuile (`desc_effectif`), le
+chevron (`chevron_couleur`), la série 0 de la courbe (`coul0`). **En les branchant sur le résolveur
+unique `case_couleur()`, un QUATRIÈME est apparu** :
+
+> `dn_console.c::veille_accents_collisions()` lisait **`dn_ui_desc(i)->couleur`** — un pointeur vers
+> la table **`const`**, donc **aveugle à l'override à chaud**.
+
+🎯 **ET C'EST L'INSTRUMENT MÊME DE L'ARBITRAGE.** `veille accents <pct>` est ce qu'on interroge
+pour savoir si un nouveau violet `RAM` se confond avec le violet `CPU` en Ambient. Sans ce
+correctif, il aurait rendu **son verdict sur l'ANCIENNE palette pendant que la dalle affichait la
+nouvelle** — la classe de défaut « l'étiquette qui ment », au pire endroit possible.
+⇒ `dn_ui_case_couleur()` est exposé, et **les quatre** le consomment.
+
+## 28.6 🔴 LA GATE DES ACCENTS ÉTAIT **VERTE EN MESURANT LA MÉTRIQUE FICTIVE**
+
+`tools/verif_veille_dn33.py::bloc_accents()` faisait un `re.findall(r"\.couleur = 0x([0-9a-f]{6})")`
+sur **tout** `dn_ui.c` et prenait les **sept** valeurs trouvées, en écrivant que la 7ᵉ était
+*« cyan pour l'humidité »* de la bicolore D6.
+
+**MESURÉ** :
+
+| Rang | Valeur | Ce que c'est **vraiment** |
+|---|---|---|
+| 1–6 | `a855f7 22d3ee f472b6 3b82f6 f87171 ff9640` | les six cases ✅ |
+| **7** | **`35d6e8`** (l. 10139) | 🔴 **`k_demo_desc.couleur` — LA MÉTRIQUE FICTIVE DE DÉMO** |
+| *(absente)* | `67e8f9` (`DET_COURBE_COUL_HUM`, l. 322) | l'accent **réel** de l'humidité, **non couvert** |
+
+⇒ **Elle mesurait une couleur que personne ne voit, et ne mesurait pas celle qu'elle annonçait.**
+
+### Et une propriété épinglée a basculé — par la **correction du jeu**, ⛔ pas par la palette
+
+La gate affirmait : *« TÉMOIN : la moyenne en confond UNE AUSSI — simplement pas la même »*.
+
+| Jeu | BT.601 (100 %) | Moyenne |
+|---|---|---|
+| **Ancien** (avec la démo) | 1 collision : `GPU`/`RAM` à 160 | 1 collision : **`CPU`/DÉMO** à 166 |
+| **Corrigé** (avec l'humidité) | 1 collision : `GPU`/`RAM` à 160 | 🔴 **AUCUNE** — 7/7 distinctes |
+
+⇒ La paire que le témoin comptait était **`CPU` / la métrique fictive**, ⛔ pas `CPU`/humidité. Sur
+le jeu **réellement peint**, c'est **BT.601 qui confond et la moyenne qui sépare tout** — donc la
+phrase d'origine de `dn_widget_desaturer()` (*« la moyenne confondrait, BT.601 sépare »*) est fausse
+**encore plus fort**, et **dans l'autre sens**.
+
+⛔ **ET CE N'EST PAS UNE RAISON DE TOUCHER LA FONCTION.** Le produit tourne au défaut
+`s_accent_amb_pct = 95`, où les **sept restent distincts** avec un écart chromatique de **10/255**.
+L'écart BT.601/moyenne n'existe **qu'à 100 %**, un régime que le produit n'emploie pas.
+**C'est un fait à écrire, pas un correctif à faire.**
+
+⚠️ **Et `dn_ui.c` mentait deux fois sur la même valeur** : *« l'humidité garde le cyan `0x35d6e8`,
+celui de `GPU` »* — l'humidité vaut `0x67e8f9` et `GPU` vaut `0x22d3ee`. **`0x35d6e8` n'est ni
+l'un ni l'autre.** Les deux valeurs coïncidaient par accident d'arithmétique : **c'est ce qui a
+laissé la gate verte**.
+
+## 28.7 ✅ CE QUE LES GATES DISENT, ET LES **TROIS MUTANTS VUS ROUGIR**
+
+`python3 tools/verif_veille_dn33.py` ⇒ **187 OK · 0 KO**. ⛔ Une gate verte ne prouve rien seule
+(*« une gate N OK / 0 KO peut épingler du code FAUX »*). Trois mutants ont donc été tirés :
+
+| Mutant | Verdict |
+|---|---|
+| L'humidité ramenée à `0x35d6e8` (le défaut d'avant `dn4-14`) | 🔴 **rougit** — le témoin de la moyenne |
+| `RAM` passée en cyan sous un commentaire qui dit toujours *« ROSE »* | 🔴 **rougit 4 fois** (dont AC6.5) |
+| La teinte de démo **infiltrée dans `k_desc[]`** | 🔴 **rougit 5 fois** — l'exclusion opère |
+
+`idf.py build` : **0 erreur, 0 avertissement**.
+
+## 28.8 ⛔ CE QUE CE §28 N'A **PAS** FAIT — ET QUI DEMANDE L'OWNER
+
+- ⛔ **AC4 — LE JAUNE DE `RAM` N'EST PAS RELEVÉ.** Il se relève **sur la dalle, AVANT tout
+  changement de palette**, sinon le relevé ne relève plus rien. ⚠️ Le **seul jaune que ce firmware
+  sait peindre** est l'ambre `W_COL_SIMULEE = 0xffb020` du **régime SIMULÉE** (`dn_widget.c`) —
+  ⛔ **ce n'est pas une conclusion**, c'est la première chose à écarter **avec les yeux**. Si c'est
+  lui, la demande owner ne portait **pas** sur la palette et **AC5 devient sans objet**.
+- ⛔ **AC2.4 — L'A/B `GPU` n'est pas joué.** Six candidats + l'icône en place sont embarqués et
+  commutables à chaud (`widget icone <case> <n>`). **L'agent ne choisit pas.**
+- ⛔ **AC5.3 — L'ARBITRAGE DU VIOLET.** `CPU` est **déjà** violet `0xa855f7`, et `dn4-4` l'y avait
+  **déplacé exprès** le 2026-08-24 pour l'écarter du cyan de `GPU`. « `RAM` en violet » remet donc
+  **deux violets côte à côte** — le défaut que `dn4-4` a corrigé. ⇒ arbitrage **owner**.
+- ⛔ **AC6.4 — les nombres de la gate ne sont pas re-mesurés sur la palette RETENUE** : ils en
+  dépendent. Si le violet de `RAM` fait passer la collision BT.601 à **zéro paire**, la gate
+  **rougira sur une AMÉLIORATION** ⇒ **ré-écrire le nombre AVEC son motif**, ⛔ jamais l'ajuster.
+
+⚠️ **PIÈGE À TENIR EN SÉANCE** : `dn_widget.c` masque `{ titre, icone, badge }` en **Ambient**.
+⇒ **L'A/B d'icône se juge en mode ACTIF**, sinon l'owner regarde une case où **il n'y a pas
+d'icône**. La **couleur**, elle, a **deux régimes à juger** — teinte pleine en Actif, gris désaturé
+à 95 % en Ambient, encore visible **par la jauge**.
