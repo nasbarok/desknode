@@ -1041,6 +1041,26 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
          *    2e passe ; le rose est passé à `RAM` »), qui soldait lui-même le
          *    « PROVISOIRE hérité de VENTILOS (legs dn3-3) ». Ce motif-là reste
          *    vrai pour ce qu'il décrivait : il n'est pas effacé, il est daté. */
+        /* 🔴 ET CE QUE LA DALLE EN FAIT N'EST PAS CE QUE LA VALEUR DIT.
+         *    `0xe2e8f0` est un CLAIR NEUTRE (R226 G232 B240, ecart max-canal
+         *    14). L'owner, dalle sous les yeux le 2026-08-29 :
+         *      « disque est en violet mais c'est nickel »
+         *    ⛔ CE N'EST PAS UNE ERREUR D'OBSERVATION, et ce n'est pas non plus
+         *    un bug : c'est une propriete MESUREE de cette dalle, deja ecrite
+         *    dans `dn_widget.c` le 2026-08-25 — « sur CETTE dalle, en RGB565,
+         *    AUCUN GRIS N'EST NEUTRE : vert vers les tons sombres, VIOLET vers
+         *    le milieu et LES TONS CLAIRS » (le vert a 6 bits, le rouge et le
+         *    bleu 5 : il prend puis rend son avance a chaque pas de la rampe).
+         *    🎯 Cette propriete, relevee quatre jours plus tot, A PREDIT ce
+         *      qu'on voit ici. C'est le seul cas connu dans ce depot ou une
+         *      mesure de dalle a anticipe un resultat de conception.
+         *    ⚠️ DONC : ⛔ ne pas « corriger » cette valeur vers un violet
+         *      explicite en croyant reparer une incoherence, et ⛔ ne pas la
+         *      pousser vers le blanc pur en croyant la neutraliser. Elle est
+         *      VALIDEE TELLE QUELLE, sur la dalle, par l'oeil qui l'utilise.
+         *    ✅ Et le piege de la collision deplacee a ete VERIFIE, ⛔ pas
+         *      deduit : « oui c'est bien distinct de cpu qui est beaucoup plus
+         *      bleute ». */
         .couleur = 0xe2e8f0, /* CLAIR neutre — dn4-14, 2026-08-29 (œil owner) */
         /*
          * ⚠️ AMENDÉ LE 2026-08-22 (dn4-9) : tout ce bloc décrit l'état de dn4-8

@@ -9648,3 +9648,149 @@ laissé la gate verte**.
 ⇒ **L'A/B d'icône se juge en mode ACTIF**, sinon l'owner regarde une case où **il n'y a pas
 d'icône**. La **couleur**, elle, a **deux régimes à juger** — teinte pleine en Actif, gris désaturé
 à 95 % en Ambient, encore visible **par la jauge**.
+
+## 28.9 🔴 LA SÉANCE DU 2026-08-29 — **LES TROIS VERDICTS SONT DE L'ŒIL, ET DEUX RENVERSENT LA STORY**
+
+Firmware `6f188ed` puis `6af9bd8`, **SHA lu au bandeau** · **agent RÉEL** sur la tour
+(⛔ pas le mock) · veille désarmée pendant les A/B.
+
+### 28.9.1 ⛔ AC4 — LE JAUNE N'EST PAS CE QUE LA STORY AVAIT PRÉSUMÉ
+
+**Verbatim owner, dalle sous les yeux :**
+
+> *« l'icone est jaune la barre des 53% utilisé aussi est jaune le logo du disque aussi est jaune
+> (c'est juste que disque et ram sont jaune il fau une autre couleur pour l'un des 2) »*
+
+🔴 **La story annonçait l'ambre du régime SIMULÉE** (`W_COL_SIMULEE 0xffb020`, le texte de valeur)
+et prévoyait qu'AC5 devienne **sans objet** si c'était lui. **RÉFUTÉ** : l'owner nomme **l'icône et
+la jauge**, donc **l'accent**, donc `k_desc[].couleur`. AC5 reste dans le périmètre.
+
+🔴 **Et le défaut n'est pas « `RAM` est jaune » — c'est « `RAM` et `DISQUE` sont la même couleur ».**
+
+| Mesure | Valeur |
+|---|---|
+| Écart de teinte `RAM` (rose 328,6°) / `DISQUE` (corail 0,0°) | **31,4°** |
+| Leurs luminosités | **70,2 %** et **70,8 %** — quasi égales |
+
+⚠️ **Et ce n'était qu'UNE des TROIS paires serrées** : `DISQUE`/`AMBIANCE` **27,0°**,
+`GPU`/`RÉSEAU` **29,3°**, `RAM`/`DISQUE` **31,4°**. Les six teintes tiennent en **deux paquets**
+(chaud 0/27/329° · froid 188/217/271°) avec un **vide de 160,9°**.
+🎯 **Calculé** : déplacer **une seule** case ne pouvait pas régler ça — le meilleur coup unique ne
+fait passer la pire paire que de **27,0° à 29,3°**.
+
+### 28.9.2 🔴 AC5 — LE VIOLET EST ESSAYÉ SUR LA DALLE, PUIS **RÉFUTÉ PAR SON DEMANDEUR**
+
+`0x7c3aed` posé à chaud sur `RAM` (`widget couleur 2 …`, **sans reflash**). Verdict :
+
+> *« maintennat c'est la meme couleur que cpu lol »*
+
+`CPU` est déjà `0xa855f7`, où `dn4-4` l'avait **déplacé exprès** le 2026-08-24 pour s'écarter du
+cyan de `GPU`. ⇒ le violet ne faisait que **déplacer** la collision.
+⇒ 🎯 **LA DEMANDE DE L'ADDENDUM §1 (« RAM : violet ») EST REFUSÉE PAR SON PROPRE AUTEUR**, sur
+constat à l'œil. **`RAM` garde son rose**, et son commentaire est **amendé, ⛔ pas effacé**.
+
+⇒ **C'est `DISQUE` qui bouge** — chemin proposé par l'owner lui-même (*« il faut une autre couleur
+pour l'un des 2 »*) : `0xf87171` → **`0xe2e8f0`**. Verdict : *« disque est bien distinct
+maintenant »*.
+
+⛔ **Le VERT n'a pas été proposé** : `dn4-4` l'a déjà tué (« vert sur vert » avec le PCB). **Une
+expérience déjà perdue ne se rejoue pas au prix d'un regard owner.**
+
+### 28.9.3 🎯 ET LA DALLE REND CE CLAIR **VIOLET** — CE QUI ÉTAIT **PRÉDIT** DEPUIS QUATRE JOURS
+
+> *« disque est en violet mais c'est nickel »*
+
+`0xe2e8f0` vaut R226 G232 B240 : un **clair neutre** (écart max-canal 14). L'owner le voit
+**violet**. ⛔ **Ce n'est ni une erreur d'observation ni un bug** — `dn_widget.c` porte déjà, depuis
+le **2026-08-25**, le constat de `scene gray` :
+
+> *« sur CETTE dalle, en RGB565, **AUCUN GRIS N'EST NEUTRE** : vert vers les tons sombres, **violet
+> vers le milieu et les tons clairs** »* — le vert a **6 bits**, le rouge et le bleu **5** : il prend
+> puis rend son avance à chaque pas de la rampe.
+
+🎯 **Cette propriété, relevée quatre jours plus tôt, A PRÉDIT le résultat d'aujourd'hui.** C'est le
+seul cas connu de ce dépôt où une mesure de dalle a **anticipé** un résultat de conception.
+⚠️ ⛔ Ne pas « corriger » cette valeur vers un violet explicite en croyant réparer une incohérence,
+ni la pousser vers le blanc pur en croyant la neutraliser : **elle est validée telle quelle**.
+✅ Le piège de la **collision déplacée** a été **vérifié, ⛔ pas déduit** :
+*« oui c'est bien distinct de cpu qui est beaucoup plus bleuté »*.
+
+### 28.9.4 ✅ AC2.4 — L'A/B DES SIX ICÔNES, MÊME CASE, **ZÉRO REFLASH**
+
+Verdict : **`gamepad`** — *« on garde gamepad »*. Les cinq rejets sont consignés **verbatim** dans
+le descripteur pour que personne ne les re-propose :
+
+| Candidat | Verdict owner |
+|---|---|
+| `cube` (un cube en perspective) | *« cube tres bof »* |
+| `vr-cardboard` (casque de RV) | *« vr non plus »* |
+| `bolt` (un éclair) | *« elimine »* |
+| `image` (cadre photo) | *« elimine »* |
+| `film` (pellicule perforée) | *« nop »* |
+
+⛔ **L'agent n'a choisi aucune des six.** Les sept glyphes (six candidats + l'icône en place) étaient
+embarqués **ensemble** : l'A/B complet a coûté **UN flash**, pas sept.
+✅ La **maison** d'`AMBIANCE` est relue à l'œil en mode ACTIF : *« oui nickel aussi »* — ⚠️ et
+c'était nécessaire : le coût nul était prouvé au `sha256sum`, mais **une preuve d'octets n'est pas
+une preuve de dessin**.
+
+### 28.9.5 🔴 CE QUE LA SÉANCE A TROUVÉ EN PLUS — **LA JAUGE SE POSE 27 px TROP HAUT**
+
+> *« la barre a été un peu remontté ? maintenant elle est sur le chiffre % et plus en dessous ?! »*
+> puis, après reconstruction en actif : *« oui la barre est revenue sous le chiffre »*
+
+**MÉCANISME, RELU DANS LE CODE :** `dn_widget_creer()` calcule la position de la jauge à partir de
+`font_val()`, **qui dépend du mode** :
+
+| Mode | `val_y` | interligne | bas de valeur (n=1) |
+|---|---|---|---|
+| **ACTIF** | 48 | 35 (`dn_font_28`) | **83 px** |
+| **AMBIENT** | 26 (`W_AMB_VAL_Y`) | 30 (police de veille) | **56 px** |
+
+⇒ Une scène **reconstruite en veille** pose la jauge ~**27 px trop haut** pour l'actif. Elle ne fait
+que **10 px** (`W_JAUGE_H`) : elle atterrit **en plein sur le chiffre**.
+
+🔴 **ET LA GARDE EXISTANTE NE LE VOIT PAS.** `dn_widget_controler_tenue()` tourne bien à la bascule,
+mais elle **CONSTATE et JOURNALISE** un débordement — ⛔ **elle ne repositionne rien**, et elle ne
+teste que *« le texte sort-il de la case »*, ⛔ **pas** *« la jauge est-elle encore sous la
+valeur »*. **Compteurs de débordement à ZÉRO pendant que la jauge chevauchait le chiffre.**
+⇒ **L'œil a vu ce que l'instrument ne mesure pas** — une garde plus étroite que la propriété
+qu'elle annonce, la classe de défaut récurrente de ce dépôt.
+
+⚠️ **PRÉCISION OWNER, ET ELLE COMPTE** : *« la veille etait ok ! »* — ⛔ le défaut **n'est pas la
+veille**, c'est la **RECONSTRUCTION PENDANT la veille**.
+⚠️ **PORTÉE** : `dn_ui.c:9545` écrit que *« le régime courant ne doit pas déclencher
+`build_scene()` »*, et les appelants restants sont l'init, la navigation et **les commandes
+console**. Or un doigt **réveille avant de naviguer** ⇒ **l'usage normal n'est pas atteint** ; ce
+sont **les outils d'A/B** qui l'exposent. ⇒ versé au ledger avec son remède.
+
+### 28.9.6 ✅ RÉFUTÉ AU PASSAGE — « LA DALLE DÉFORME LES COULEURS »
+
+Les six accents décrits par l'owner ne correspondaient qu'**une fois sur six** aux valeurs du
+source. Avant tout arbitrage, témoin `scene rgb` (trois bandes **auto-étiquetées**) :
+
+> *« oui rouge est rouge bleu est bleu et vert est vert (vraiment les RGB classique) »*
+
+⇒ ⛔ **ni permutation R/B, ni octets échangés.** Les primaires sont exactes — ce sont les **tons
+intermédiaires et clairs** qui dérivent (§28.9.3).
+
+🔴 **ET UNE LEÇON D'INSTRUMENT, PAYÉE DANS LA MÊME PASSE** : au premier tir, `scene rgb` a rendu une
+capture **totalement vide** et j'ai failli conclure à une panne d'affichage. La commande avait en
+fait été **REFUSÉE** (`ui_bloque` : *« LVGL tient l'écran — `ui off` d'abord »*), et le message
+n'avait pas été capturé.
+⇒ ⛔ **UNE CAPTURE VIDE N'EST PAS « la commande a tourné sans rien dire ».** Le *« je ne vois
+rien »* de l'owner était **exact** : aucune bande n'avait jamais été dessinée.
+
+### 28.9.7 ⛔ CE QUE LA SÉANCE N'A **PAS** FAIT
+
+- ⛔ **`GPU`/`RÉSEAU` (29,3°) reste une paire serrée** — ⛔ non corrigée, **non masquée**. L'owner ne
+  l'a pas signalée (il voit *« cpu gpu bleu claire »* et *« reseau bleu foncé »*, donc il les
+  distingue). **Versée au ledger** plutôt que corrigée sans demande.
+- ⛔ **Les libellés de case ne sont pas agrandis.** Demande owner de séance : *« les ecriture sont
+  trop petites elles devrais etre agrandit un peu (cpu, gpu etc..) »*. Les titres sont en
+  `dn_font_14` et les seules autres tailles embarquées sont **28/33/56** : passer à 28 les
+  **doublerait**. Il faut une **taille intermédiaire**, donc une **vraie régénération** — et ça
+  change **tous les pixels**, donc `px/cycle`, `ms/cycle`, `duty`, que le soak de `dn4-5` mesure.
+  ⇒ **élargit `dn4-14-2`** (« la typographie du chrome »), qui existe exactement pour payer ce coût
+  une seule fois.
+- ⛔ **Le remède du défaut de jauge** (§28.9.5) n'est pas appliqué : hors périmètre `dn4-14`.
