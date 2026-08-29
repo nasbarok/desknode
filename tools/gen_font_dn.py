@@ -14,12 +14,14 @@ story dn3-1 le dit explicitement.
 MAIS il ne sait pas AJOUTER de codepoints FontAwesome. Sa liste de symboles est
 une constante `syms = "61441,61448,..."` dans le corps du script, et son `-r`
 utilisateur s'applique à la police LATINE (Montserrat), pas au `.woff`. Or dn3-1
-a besoin d'icônes FontAwesome en plus : 10 entrées au dictionnaire `ICONES`
-ci-dessous, dont 2 (`cog` 0xF013 et `tint` 0xF043) sont DÉJÀ des symboles ⇒
-**8 codepoints neufs**, et 68 au `-r` FontAwesome final.
-⚠️ Ces nombres sont CALCULÉS et réinjectés dans `dn_font.h` à chaque génération,
-   plus récités : cinq endroits du dépôt en annonçaient trois valeurs
-   différentes, aucune juste (revue de code du 2026-08-18).
+a besoin d'icônes FontAwesome en plus : le dictionnaire `ICONES` ci-dessous.
+⛔ AUCUN COMPTE N'EST ÉCRIT ICI, ET C'EST DÉLIBÉRÉ. Le nombre d'entrées, le
+   nombre de codepoints déjà amont, le nombre de neufs et l'union `-r` finale
+   sont CALCULÉS à la génération et réinjectés dans `dn_font.h` — les lire là,
+   ou dans la sortie de `--mesure`. Cinq endroits du dépôt en annonçaient trois
+   valeurs différentes, aucune juste (revue de code du 2026-08-18) ; cette
+   phrase-ci en portait encore deux fausses (« 10 entrées, dont 2 ») le
+   2026-08-29, alors qu'il y en avait 11 dont 3. ⇒ ON NE LES RECOPIE PLUS.
 
 Ce script est donc un sur-ensemble, et il se défend du seul risque que ça crée —
 LA DÉRIVE DE LA LISTE DES SYMBOLES :
@@ -135,23 +137,48 @@ ICONES = {
     #    4. `sha256sum` des 4 `.c` relevé AVANT et APRÈS `--entete-seule` :
     #       identique. La porte gardée de dn4-1 suffit, ⛔ zéro npm, zéro réseau.
     "home":             0xF015,  # AMBIANCE (dn4-14) — la maison = LA PIÈCE
-    # ── LES QUATRE CANDIDATS AU VENTILATEUR ──────────────────────────────────
-    # ⚠️ dn4-1 les GARDE alors que la case ne s'appelle plus VENTILOS (D8).
-    #    MESURÉ le 2026-08-18 : sur les quatre, `cog` (0xF013) est DÉJÀ amont ;
-    #    seuls `sync-alt`, `wind` et `cogs` sont propres au dépôt. Les retirer
-    #    n'économiserait donc que **3 glyphes**, mais ferait passer l'union `-r`
-    #    de **68 à 65** — donc imposerait une VRAIE régénération (npm + réseau)
-    #    pour un gain négligeable. ⇒ HORS PÉRIMÈTRE de dn4-1 : le ménage attend
-    #    le jour où une régénération est nécessaire pour une autre raison.
-    # `fan` (0xF863) est ABSENT du .woff du dépôt. Les quatre substituts sont
-    # EMBARQUÉS ENSEMBLE et commutables à chaud (`widget icone <0..3>`) : le
-    # choix est un constat owner sur la dalle, pas une intuition — et un A/B qui
-    # demande trois reflashs coûte trois observations à l'owner pour un rendement
-    # qui baisse. Les 4 glyphes coûtent ~3 ko sur une partition libre à 79 %.
-    "sync-alt":         0xF2F1,  # deux flèches en rotation
-    "wind":             0xF72E,  # lignes de souffle
-    "cogs":             0xF085,  # engrenages
-    "cog":              0xF013,  # un engrenage
+    # ── dn4-14 / AC2 : LES CANDIDATS `GPU`, ET LE MÉNAGE QUI LES PAIE ────────
+    #
+    # 🔴 CE QUI EST PARTI D'ICI, ET POURQUOI. Les QUATRE candidats ventilateur
+    #    de dn3-1 (`sync-alt` 0xF2F1, `wind` 0xF72E, `cogs` 0xF085, `cog`
+    #    0xF013) sont RETIRÉS. Ils écrivaient eux-mêmes leur motif de report :
+    #    « les retirer coûterait une VRAIE régénération de police […] hors
+    #    périmètre dn4-1 ». 🎯 CE COÛT EST PAYÉ ICI, par le `GPU` : la case ne
+    #    s'appelle plus VENTILOS depuis D8 et `grep` sur tout `main/` le
+    #    2026-08-29 ne leur trouvait QU'UN SEUL site d'usage, `k_icones_alt[]`.
+    #    ⚠️ `cog` (0xF013) SORT DU DICTIONNAIRE MAIS RESTE DANS LA POLICE : il
+    #       est `LV_SYMBOL_SETTINGS`, injecté par l'amont. C'est LA MACRO
+    #       `DN_ICONE_COG` qui disparaît, ⛔ pas le glyphe — et c'est écrit ici
+    #       pour que la prochaine lecture de `codepoints_du_c()` n'y voie pas
+    #       une régression.
+    #
+    # ⚠️ TOUS SONDÉS UN PAR UN dans le `.woff` du dépôt le 2026-08-29, chacun
+    #    converti SEUL (⛔ jamais adopté depuis une table FontAwesome : LVGL ne
+    #    dessine pas un glyphe absent et NE SE PLAINT PAS). La même passe a tiré
+    #    DEUX contrôles négatifs qui ont échoué bruyamment — `fan` 0xF863 et
+    #    `display` 0xF390, tous deux arrivés en FontAwesome ≥ 5.11 alors que le
+    #    `.woff` embarqué est antérieur. C'est ce double échec qui prouve que
+    #    l'instrument DISCRIMINE, et donc que les 14 rc = 0 veulent dire
+    #    quelque chose.
+    #
+    # 🔴 L'OWNER TRANCHE, ⛔ PAS L'AGENT. Son constat du 2026-08-25 (« pour
+    #    l'icon du gpu revoir celui ci est pas bon ») dit CE QUI NE VA PAS sans
+    #    nommer de cible ⇒ c'est un A/B, et les candidats partent EMBARQUÉS
+    #    ENSEMBLE pour que la commutation soit à chaud (`widget icone`).
+    #    ⛔ `microchip` (0xF2DB) est INTERDIT comme candidat : il est déjà `CPU`,
+    #       et un doublon rendrait les deux cases confusibles au coup d'œil.
+    #
+    # 🎯 LE BUDGET EST NEUTRE, ET CALCULÉ (⛔ pas estimé) : ménage −3 propres au
+    #    dépôt ⇒ 65 ; `home` +0 (amont) ; `bolt`/`image`/`film` +0 (amont, ce
+    #    sont LV_SYMBOL_CHARGE / _IMAGE / _VIDEO) ; `gamepad`/`cube`/
+    #    `vr-cardboard` +3 ⇒ 68, EXACTEMENT l'union d'avant la story.
+    #    ⇒ SIX candidats pour le prix de zéro.
+    "bolt":             0xF0E7,  # GPU cand. — un éclair          (AMONT, +0)
+    "image":            0xF03E,  # GPU cand. — un cadre photo     (AMONT, +0)
+    "film":             0xF008,  # GPU cand. — une pellicule      (AMONT, +0)
+    "gamepad":          0xF11B,  # GPU cand. — une manette de jeu       (+1)
+    "cube":             0xF1B2,  # GPU cand. — un cube en perspective   (+1)
+    "vr-cardboard":     0xF729,  # GPU cand. — un casque de RV          (+1)
 }
 
 TAILLES = (14, 28)
@@ -464,6 +491,36 @@ def octets_police(chemin):
     return detail
 
 
+def prevol_lv_font_conv():
+    """dn4-14 / AC8.2 — nommer la dépendance manquante, ⛔ pas la faire deviner.
+
+    ⚠️ On appelle `--version` plutôt que de tester le PATH : le dépôt utilise un
+    SHIM `~/.local/bin/lv_font_conv`, donc « le fichier existe » ne dit rien sur
+    « il tourne ». Le seul contrôle qui prouve quelque chose est l'exécution.
+    """
+    try:
+        r = subprocess.run(["lv_font_conv", "--version"],
+                           capture_output=True, text=True)
+        if r.returncode == 0:
+            print("lv_font_conv : %s" % (r.stdout or r.stderr).strip())
+            return
+        detail = "il a rendu rc = %d" % r.returncode
+    except FileNotFoundError:
+        detail = "introuvable dans le PATH"
+    except OSError as e:
+        detail = "impossible a lancer (%s)" % e
+    sys.exit(
+        "ÉCHEC : `lv_font_conv` %s — RIEN n'a été généré.\n"
+        "  C'est une dépendance npm, ⛔ absente du tableau des versions figées\n"
+        "  du dépôt : un clone neuf ne l'a PAS. Recette (README § Les polices) :\n"
+        "      npm install -g lv_font_conv\n"
+        "  puis vérifier :  lv_font_conv --version\n"
+        "  ⚠️ Si l'icône visée est DÉJÀ portée par les `.c` (cas d'un codepoint\n"
+        "     LV_SYMBOL_* injecté par l'amont), `--entete-seule` fait le travail\n"
+        "     SANS npm ni réseau — et elle REFUSE si le codepoint n'y est pas."
+        % detail)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -484,6 +541,18 @@ def main():
     if args.entete_seule:
         return entete_seule()
 
+    # 🔴 dn4-14 / AC8.2 — LE PRÉ-VOL, ET IL EST *AVANT* LA PREMIÈRE CONVERSION.
+    #    `lv_font_conv` absent du PATH sortait en `FileNotFoundError` NU depuis
+    #    `subprocess.run(cmd, check=True)` — un traceback Python sans un mot sur
+    #    ce qu'il faut installer, et qui n'arrivait qu'APRÈS que le script ait
+    #    lu la liste amont et construit sa ligne de commande. C'est le PREMIER
+    #    échec attendu d'un poste neuf (c'est une dépendance npm, absente du
+    #    tableau des versions figées), alors que les deux autres pannes
+    #    d'environnement — générateur amont absent, `syms` de forme inattendue —
+    #    échouent déjà proprement. ⚠️ `--entete-seule` passe AVANT ce contrôle,
+    #    délibérément : c'est précisément le chemin qui n'a besoin de RIEN.
+    prevol_lv_font_conv()
+
     if args.mesure:
         tmp = os.path.join("/tmp", "dn_font_mesure")
         os.makedirs(tmp, exist_ok=True)
@@ -493,8 +562,17 @@ def main():
                            "0xDB,0xE0,0xE7,0xE8,0xE9,0xEA,0xEE,0xF4,0xFB",
             "latin-1 complet": "0x20-0x7F,0xA0-0xFF,0x2022",
         }
-        print("%-24s %-10s %8s %10s %10s %10s"
-              % ("plage", "kerning", "glyphes", "14 px", "28 px", "TOTAL"))
+        # 🔴 dn4-14 / AC8.1 — LE TABLEAU EST CONSTRUIT DEPUIS `TAILLES`, ⛔ PLUS
+        #    ÉCRIT POUR DEUX. Avant : l'en-tête imprimait « 14 px / 28 px »
+        #    QUOI QU'IL ARRIVE, et la ligne de données faisait
+        #    `par_taille[0], par_taille[1]` — une 3e taille sortait en
+        #    `IndexError` APRÈS avoir tiré toutes les conversions (donc après
+        #    avoir payé la minute de calcul), et une SEULE taille aurait rendu
+        #    un tableau muet sur la moitié de ses colonnes.
+        entete = "%-24s %-10s %8s" % ("plage", "kerning", "glyphes")
+        entete += "".join("%10s" % ("%d px" % t) for t in TAILLES)
+        entete += "%10s" % "TOTAL"
+        print(entete)
         for nom, plage in plages.items():
             for kern in (True, False):
                 tot, glyphes, par_taille = 0, 0, []
@@ -511,9 +589,11 @@ def main():
                     par_taille.append(d["_total"])
                     tot += d["_total"]
                     glyphes = d["_glyphes"]
-                print("%-24s %-10s %8d %10d %10d %10d"
-                      % (nom, "oui" if kern else "NON", glyphes,
-                         par_taille[0], par_taille[1], tot))
+                ligne = "%-24s %-10s %8d" % (nom, "oui" if kern else "NON",
+                                              glyphes)
+                ligne += "".join("%10d" % o for o in par_taille)
+                ligne += "%10d" % tot
+                print(ligne)
         return
 
     os.makedirs(SORTIE, exist_ok=True)
@@ -662,33 +742,35 @@ ENTETE_MODELE = u'''/*
  * pris dans le `FontAwesome5-Solid+Brands+Regular.woff` déjà présent dans
  * l'arbre — zéro asset, zéro dépendance neuve.
  *
- * 🔴 `0xF863` (`fan`) est ABSENT de ce `.woff` : il est arrivé en FontAwesome
- *    5.11, le fichier embarqué est antérieur. VÉRIFIÉ le 2026-08-17 en le
- *    convertissant seul (`lv_font_conv` échoue bruyamment sur un codepoint
- *    absent), pas déduit d'une table.
+ * 🔴 DEUX CODEPOINTS SONT ABSENTS DE CE `.woff`, ET C'EST UN FAIT DE POLICE :
+ *    `0xF863` (`fan`) et `0xF390` (`display`). Les deux sont arrivés en
+ *    FontAwesome >= 5.11 ; le fichier embarqué est antérieur. VÉRIFIÉS en les
+ *    convertissant SEULS (`lv_font_conv` échoue bruyamment sur un codepoint
+ *    absent : « doesn't have any characters included in range … »), ⛔ jamais
+ *    déduits d'une table.
+ *    ⚠️ CES DEUX ÉCHECS SONT L'INSTRUMENT DE CONTRÔLE DU DÉPÔT : avant
+ *    d'adopter un codepoint, on le convertit seul ET on re-tire l'un de ces
+ *    deux-là. S'il ne rate pas, la sonde ne prouve rien. (LVGL ne dessine pas
+ *    un glyphe absent et NE SE PLAINT PAS — c'est la classe de défaut
+ *    « l'étiquette qui ment », transposée aux glyphes.)
  *
- * 🔴 L'ICÔNE DE LA CASE 4 EST LA DISQUETTE `save` (0xF0C7), tranchée par DÉCISION
- *    OWNER le 2026-08-18 (« icône disquette ») EN MÊME TEMPS QUE LE RENOMMAGE
- *    `VENTILOS` -> `DISQUE` : la case a changé de métrique (tr/min -> Mo/s), donc
- *    d'icône. Elle est GRATUITE — 0xF0C7 est DÉJÀ l'un des 60 codepoints de
- *    symboles que `built_in_font_gen.py` injecte : union `-r` inchangée à 68
- *    glyphes, delta = 0, les deux `.c` de police BIT-IDENTIQUES.
- *    ⚠️ Vérifié DANS LES `.c` PRODUITS avec `codepoints_du_c()`, ⛔ jamais par un
- *    test de bornes — c'est ce test-là qui avait fait croire `fan` présent.
- *
- * 📜 HISTORIQUE DE CETTE LIGNE — ELLE A MENTI DEUX FOIS, ET C'EST LA MÊME CAUSE.
- *    · jusqu'au 2026-08-17 elle annonçait `sync-alt`, alors que le descripteur
- *      disait autre chose ;
- *    · corrigée en `cog` le 2026-08-18… et re-fausse le jour même, parce que la
- *      story dn4-1 a changé l'icône POUR `save` sans toucher `ENTETE_MODELE`.
- *    🔴 LA CAUSE N'EST PAS L'ÉTOURDERIE, C'EST L'ENDROIT : `dn_font.h` est
- *    GÉNÉRÉ, donc toute correction faite dans le `.h` est effacée à la
- *    régénération suivante. ⛔ CE TEXTE SE CORRIGE **ICI**, dans
- *    `tools/gen_font_dn.py`, JAMAIS dans `main/fonts/dn_font.h`.
- *    ⚠️ Et il décrit un CHOIX D'AFFICHAGE, qui vit dans `dn_ui.c` (`k_desc[].icone`)
- *    et dans `k_icones_alt[]` : ce fichier ne peut que le RECOPIER, donc il
- *    re-divergera. La seule vraie parade serait de ne pas le recopier du tout.
- *    (Relevé en revue de code le 2026-08-18, DEUXIÈME occurrence.)
+ * ⛔ CE FICHIER NE DIT PLUS QUELLE CASE PORTE QUELLE ICÔNE — dn4-14 / AC8.3.
+ *    Ce `.h` DÉCRIT LA POLICE : ses plages, ses comptes CALCULÉS, et ce qui est
+ *    absent du `.woff`. Il ne décrit PAS ce que `dn_ui.c` fait de ses glyphes.
+ *    📜 POURQUOI CETTE RÈGLE EXISTE — CETTE PLACE A MENTI TROIS FOIS :
+ *      · jusqu'au 2026-08-17 elle annonçait `sync-alt` quand le descripteur
+ *        disait autre chose ;
+ *      · corrigée en `cog` le 2026-08-18… et re-fausse LE JOUR MÊME, parce que
+ *        dn4-1 a changé l'icône pour `save` sans toucher le modèle ;
+ *      · et dn4-14 change TROIS choix d'icône d'un coup (la maison d'AMBIANCE,
+ *        les six candidats GPU, le retrait des quatre morts) : la garder aurait
+ *        fabriqué le mensonge une TROISIÈME fois, mécaniquement.
+ *    🔴 LA CAUSE N'ÉTAIT PAS L'ÉTOURDERIE, C'ÉTAIT L'ENDROIT. Un choix
+ *    d'affichage vit dans `dn_ui.c` (`k_desc[].icone`, `k_icones_alt[]`) ; ce
+ *    fichier ne pouvait que le RECOPIER, sans qu'aucune compilation ne s'en
+ *    plaigne, et la régénération le réimprimait tel quel. La seule vraie parade
+ *    était de NE PAS LE RECOPIER DU TOUT — c'est fait.
+ *    ⇒ Pour savoir quelle case porte quoi : `dn_ui.c`, ou `widget` à la console.
  *
  * Reproduction :  python3 tools/gen_font_dn.py
  * La ligne de commande exacte est dans l'en-tête de chaque `.c` généré.

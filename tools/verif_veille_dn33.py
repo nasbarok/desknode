@@ -1032,15 +1032,89 @@ def bloc_accents():
     lib.dn_widget_desaturer.restype = ctypes.c_uint32
     lib.dn_widget_desaturer.argtypes = [ctypes.c_uint32, ctypes.c_int]
 
-    # Les SIX couleurs d'accent RELUES du descripteur, ⛔ pas recopiees ici.
+    # ══════════════════════════════════════════════════════════════════════
+    # 🔴 dn4-14 / AC6.1-6.2 — CETTE GATE MESURAIT AUTRE CHOSE QUE CE QU'ELLE
+    #    DISAIT, ET ELLE ETAIT VERTE. Elle faisait un `re.findall` sur TOUT
+    #    `dn_ui.c` et rendait SEPT valeurs, en ecrivant que la 7e etait
+    #    « cyan pour l'humidite » de la bicolore D6. MESURE le 2026-08-29 :
+    #    les six premieres sont bien les cases (l.575, 703, 796, 828, 965,
+    #    1116) mais la 7e est `k_demo_desc.couleur` (0x35d6e8, l.10139) — LA
+    #    METRIQUE FICTIVE DE DEMO. ⇒ elle mesurait une couleur que PERSONNE
+    #    NE VOIT, et ne couvrait PAS l'humidite, qui vaut `0x67e8f9`
+    #    (`DET_COURBE_COUL_HUM`). Les deux valeurs coincidaient par accident
+    #    d'arithmetique : c'est ce qui a laisse la gate verte.
+    #    ⛔ CE N'EST PAS UN DETAIL DE PERIMETRE : le defaut « une gate VERTE
+    #      sur du code faux » applique A LA GATE ELLE-MEME.
+    # ⇒ LE JEU DEVIENT CE QUI EST REELLEMENT PEINT : les 6 cases + l'humidite.
+    #   Le descripteur de DEMO est EXCLU en scopant le regex au bloc `k_desc[]`
+    #   (⛔ pas en retirant « la derniere » : ca se re-casserait a la prochaine
+    #   `.couleur` ajoutee n'importe ou dans le fichier).
+    # ══════════════════════════════════════════════════════════════════════
     ui, _ = lire(DN_UI_C)
-    accents = [int(x, 16) for x in
-               re.findall(r"\.couleur = 0x([0-9a-fA-F]{6})", ui)]
-    # ⚠️ SEPT et non six : `AMBIANCE` porte DEUX couleurs (la bicolore D6 —
-    #    orange pour la temperature, cyan pour l'humidite).
+    mk = re.search(r"static const dn_widget_desc_t k_desc\[DN_UI_METRIQUES\] = \{"
+                   r".*?\n\};", ui, re.S)
+    if not ctrl(mk is not None,
+                "le bloc `k_desc[]` est LOCALISE dans dn_ui.c",
+                "⛔ sans lui le regex ramasserait aussi `k_demo_desc`"):
+        return
+    cases = [int(x, 16) for x in
+             re.findall(r"\.couleur = 0x([0-9a-fA-F]{6})", mk.group(0))]
+    ctrl(len(cases) == 6,
+         "les SIX couleurs de CASE sont relues du bloc `k_desc[]`",
+         " ".join("%06x" % a for a in cases))
+
+    # ⚠️ TEMOIN NEGATIF : le descripteur de DEMO doit etre HORS du jeu. Sans ce
+    #    controle, une future `.couleur` glissee dans `k_desc[]` par erreur
+    #    passerait, et surtout on ne saurait pas que l'exclusion opere.
+    mdemo = re.search(r"k_demo_desc = \{.*?\n\};", ui, re.S)
+    demo = (int(re.search(r"\.couleur = 0x([0-9a-fA-F]{6})",
+                          mdemo.group(0)).group(1), 16) if mdemo else None)
+    ctrl(demo is not None and demo not in cases,
+         "TEMOIN : la couleur de la metrique FICTIVE (`k_demo_desc`) est EXCLUE",
+         "0x%06x — elle etait comptee comme 7e accent avant dn4-14"
+         % (demo if demo is not None else 0))
+
+    # La 7e, LA VRAIE : l'accent de l'humidite d'AMBIANCE (bicolore D6).
+    mh = re.search(r"#define\s+DET_COURBE_COUL_HUM\s+0x([0-9a-fA-F]{6})", ui)
+    if not ctrl(mh is not None,
+                "l'accent de l'HUMIDITE est relu de `DET_COURBE_COUL_HUM`",
+                "⛔ pas recopie ici"):
+        return
+    hum = int(mh.group(1), 16)
+    accents = cases + [hum]
     ctrl(len(accents) == 7,
-         "les SEPT couleurs d'accent sont relues de dn_ui.c",
-         " ".join("%06x" % a for a in accents))
+         "⇒ SEPT accents REELLEMENT PEINTS : 6 cases + l'humidite",
+         "%s + hum %06x" % (" ".join("%06x" % a for a in cases), hum))
+
+    # ── dn4-14 / AC6.5 — UNE COULEUR ET SON COMMENTAIRE NE PEUVENT PLUS
+    #    DIVERGER. Precedent : AC10.1 epingle deja `.couleur = 0x3b82f6, /* VERT`
+    #    (un BLEU annonce vert). `RAM` est le prochain candidat : dn4-14 peut
+    #    changer sa valeur, et son commentaire dit « ROSE — dn4-4 ».
+    #    ⛔ LE CRITERE N'EST PAS « le commentaire dit rose » — ca se perimerait
+    #      au premier changement, c.-a-d. reproduirait le defaut. Le critere est
+    #      « si le commentaire NOMME une teinte, la valeur DOIT etre de cette
+    #      famille » : rose/magenta ⇒ R > B > G ; violet ⇒ B >= R > G.
+    mram = re.search(r"\.couleur = 0x([0-9a-fA-F]{6}),\s*/\* ([A-ZÉÈÀ]+)", mk.group(0))
+    fam = {"ROSE":   lambda r, g, b: r > b > g,
+           "MAGENTA": lambda r, g, b: r > b > g,
+           "VIOLET": lambda r, g, b: b >= r > g,
+           "ORANGE": lambda r, g, b: r > g > b,
+           "CYAN":   lambda r, g, b: b >= g > r,
+           "BLEU":   lambda r, g, b: b > g >= r,
+           "ROUGE":  lambda r, g, b: r > g and r > b,
+           "VERT":   lambda r, g, b: g > r and g > b}
+    for m2 in re.finditer(r"\.couleur = 0x([0-9a-fA-F]{6}),\s*/\*+\s*([A-Z\u00c0-\u00dc]{3,8})",
+                          mk.group(0)):
+        v = int(m2.group(1), 16)
+        nom = m2.group(2)
+        if nom not in fam:
+            continue
+        r, g, b = (v >> 16) & 0xFF, (v >> 8) & 0xFF, v & 0xFF
+        ctrl(fam[nom](r, g, b),
+             "AC6.5 : 0x%06x est annoncee « %s » et l'EST (R%d G%d B%d)"
+             % (v, nom, r, g, b),
+             "⛔ un commentaire qui survit a la valeur qu'il decrit est un "
+             "defaut au meme titre qu'un chiffre faux")
 
     ctrl(all(lib.dn_widget_desaturer(a, 0) == a for a in accents),
          "pct = 0 ⇒ la teinte est INTACTE")
@@ -1061,16 +1135,55 @@ def bloc_accents():
     #      croyance : « un motif faux dans un commentaire est un defaut au meme
     #      titre qu'un chiffre faux ».
     # ══════════════════════════════════════════════════════════════════════
-    ys = sorted((g & 0xFF) for g in gris)
-    ctrl(len(set(ys)) == 6,
+    def _paires(vals, etiq):
+        return [(etiq[i], etiq[j], vals[i])
+                for i in range(len(vals)) for j in range(i + 1, len(vals))
+                if vals[i] == vals[j]]
+
+    etiq = ["CPU", "GPU", "RAM", "RESEAU", "DISQUE", "AMBIANCE", "AMB-humidite"]
+    ys = [(g & 0xFF) for g in gris]
+    coll_bt = _paires(ys, etiq)
+    # ⚠️ RE-MESURE dn4-14 SUR LE JEU CORRIGE (2026-08-29) : la propriete TIENT
+    #    — la substitution demo -> humidite ne change RIEN a 100 % en BT.601,
+    #    la paire confondue reste `GPU`/`RAM` a 160. Luminances mesurees :
+    #    [121, 127, 153, 160, 160, 172, 195].
+    # ⛔ CE N'EST PAS UN BUT : c'est un CONSTAT epingle. Si un changement de
+    #   palette le fait passer a ZERO paire, la gate ROUGIT SUR UNE
+    #   AMELIORATION — et alors on RE-ECRIT le nombre AVEC SON MOTIF, on ne
+    #   « l'ajuste » pas. Le nom de la paire est imprime pour que la relecture
+    #   sache LAQUELLE, ⛔ pas seulement combien.
+    ctrl(len(coll_bt) == 1,
          "a 100 %, EXACTEMENT UNE paire se confond (mesure, ⛔ pas un but)",
-         "6 gris distincts sur 7 — luminances %s" % ys)
+         "%s — luminances %s"
+         % (", ".join("%s/%s a %d" % c for c in coll_bt) or "AUCUNE",
+            sorted(ys)))
 
     def moy(c):
         return (((c >> 16) & 0xFF) + ((c >> 8) & 0xFF) + (c & 0xFF)) // 3
-    ctrl(len(set(moy(a) for a in accents)) == 6,
-         "TEMOIN : la moyenne en confond UNE AUSSI — simplement pas la meme",
-         "⛔ « la moyenne confondrait, pas BT.601 » etait FAUX")
+    mv = [moy(a) for a in accents]
+    coll_moy = _paires(mv, etiq)
+    # ══════════════════════════════════════════════════════════════════════
+    # 🔴 dn4-14 / AC6.4 — CE TEMOIN A BASCULE, ET C'EST LA CORRECTION DU JEU
+    #    QUI L'A FAIT BASCULER, ⛔ PAS UN CHANGEMENT DE PALETTE.
+    #    Il affirmait « la moyenne en confond UNE AUSSI — simplement pas la
+    #    meme », et il etait VERT. MESURE le 2026-08-29 : la paire qu'il
+    #    comptait etait `CPU` / **la metrique FICTIVE de demo** (166) — ⛔ pas
+    #    `CPU`/humidite. Sur le jeu REELLEMENT PEINT, la moyenne ne confond
+    #    RIEN : 7 valeurs distinctes (145, 156, 158, 161, 166, 180, 194).
+    #    ⇒ La phrase d'origine de `dn_widget_desaturer()` (« la moyenne
+    #      confondrait, BT.601 separe ») est donc fausse ENCORE PLUS FORT
+    #      qu'on ne le croyait, et DANS L'AUTRE SENS : sur les accents reels,
+    #      c'est BT.601 qui confond (GPU/RAM) et la moyenne qui separe tout.
+    #    ⛔ ET CE N'EST PAS UNE RAISON DE CHANGER LA FONCTION : le produit
+    #      tourne au defaut 95 %, ou les SEPT restent distincts avec un ecart
+    #      chromatique de 10/255. L'ecart BT.601/moyenne n'existe qu'a 100 %,
+    #      un regime que le produit n'emploie pas. C'est un FAIT A ECRIRE,
+    #      ⛔ pas un correctif a faire.
+    # ══════════════════════════════════════════════════════════════════════
+    ctrl(len(coll_moy) == 0,
+         "TEMOIN : sur le jeu REEL, la moyenne ne confond RIEN (BT.601, si)",
+         "moyennes %s — l'ancien « elle en confond une aussi » comptait "
+         "la couleur de DEMO" % sorted(mv))
 
     # ── LE DEFAUT DU PRODUIT DOIT, LUI, TOUT SEPARER ──────────────────────
     m = re.search(r"static int s_accent_amb_pct = (\d+);", src)

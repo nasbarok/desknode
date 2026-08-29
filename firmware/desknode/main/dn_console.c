@@ -3887,6 +3887,10 @@ static int cmd_pc(int argc, char **argv)
  *   widget barre 1hz|minute W2/AC4 — la cadence de la barre heure/date
  *   widget bandes on|off    W8/AC9 — le repeint en BANDES pleine largeur
  *   widget piste <0xRRGGBB> le fond de la jauge, part NON remplie ⚠️ RECONSTRUIT
+ *   widget couleur <case> <0xRRGGBB>  dn4-14 — LA COULEUR D'UNE CASE, à chaud :
+ *                           accent de tuile + chevron + série 0. `0` rend la
+ *                           main au descripteur. ⛔ aucun état livré
+ *                                                            ⚠️ RECONSTRUIT
  *
  *   ── dn4-6 / AC4 : LES TROIS VOIES, COMMUTÉES À CHAUD ────────────────────
  *   widget voie defaut|a|b|c|c2   applique une voie ENTIÈRE et IMPRIME SON PRIX
@@ -5059,6 +5063,60 @@ static int cmd_widget(int argc, char **argv)
         printf("   ceci n'est PAS la passe de palette.\n");
         return 0;
     }
+    if (argc == 4 && strcmp(argv[1], "couleur") == 0) {
+        char *fin = NULL;
+        long idx = strtol(argv[2], &fin, 0);
+        bool ok_idx = (fin != argv[2] && *fin == '\0' && idx >= 0 &&
+                       idx < DN_UI_METRIQUES);
+        long v = strtol(argv[3], &fin, 0);   /* accepte 0x… et le decimal */
+        /* ⚠️ `fin == argv[i]` : la CHAINE VIDE passe sinon — `strtol` renseigne
+         *    TOUJOURS `endptr`, et pour "" il vaut nptr avec `*fin == '\0'`.
+         *    C'est la convention du fichier (`:94`, `:120`, `:2920`), et le
+         *    defaut a deja ete commis une fois sur `widget icone`. */
+        if (!ok_idx || fin == argv[3] || *fin != '\0' || v < 0 || v > 0xFFFFFF) {
+            printf("usage : widget couleur <case 0..%d> <0xRRGGBB>\n",
+                   DN_UI_METRIQUES - 1);
+            printf("   (0 = RENDRE LA MAIN au descripteur)\n");
+            for (int i = 0; i < DN_UI_METRIQUES; i++) {
+                uint32_t eff = dn_ui_case_couleur(i);
+                const dn_widget_desc_t *b = dn_ui_desc_brut(i);
+                printf("   %d = %-9s 0x%06X%s\n", i, dn_ui_metrique_nom(i),
+                       (unsigned)eff,
+                       (b && eff != b->couleur) ? "  ⚠️ FORCEE (descr. differe)"
+                                                : "");
+            }
+            printf("⚠️ LA COULEUR D'UNE CASE PEINT TROIS CHOSES : l'accent de la\n");
+            printf("   tuile (icone + indicateur de jauge), le CHEVRON de la page\n");
+            printf("   de detail, et la SERIE 0 de sa courbe. C'est voulu — une\n");
+            printf("   metrique, une couleur, partout.\n");
+            printf("⚠️ EN AMBIENT l'icone est MASQUEE : seule LA JAUGE porte\n");
+            printf("   encore l'accent, desature. ⇒ juger DANS LES DEUX MODES.\n");
+            printf("⛔ AUCUN ETAT LIVRE : au boot le descripteur fait foi.\n");
+            return 1;
+        }
+        esp_err_t err = dn_ui_set_couleur((int)idx, (uint32_t)v);
+        if (err == ESP_ERR_TIMEOUT) {
+            printf("verrou LVGL non pris — RIEN n'a change (reessayer)\n");
+            return 1;
+        }
+        if (err != ESP_OK) {
+            printf("index hors plage : widget couleur <case 0..%d> <0xRRGGBB>\n",
+                   DN_UI_METRIQUES - 1);
+            return 1;
+        }
+        if (v == 0) {
+            printf("couleur de la case %d (%s) = RENDUE AU DESCRIPTEUR "
+                   "(0x%06X) — SCENE RECONSTRUITE\n",
+                   (int)idx, dn_ui_metrique_nom((int)idx),
+                   (unsigned)dn_ui_case_couleur((int)idx));
+        } else {
+            printf("couleur de la case %d (%s) = 0x%06X — SCENE RECONSTRUITE\n",
+                   (int)idx, dn_ui_metrique_nom((int)idx), (unsigned)v);
+        }
+        printf("   ⇒ accent de tuile + chevron + serie 0 de la courbe.\n");
+        printf("⚠️ la reconstruction a retire le stimulus `anim` et la demo.\n");
+        return 0;
+    }
     if (argc == 4 && strcmp(argv[1], "icone") == 0) {
         char *fin = NULL;
         long idx = strtol(argv[2], &fin, 0);
@@ -5075,11 +5133,21 @@ static int cmd_widget(int argc, char **argv)
             for (int i = 0; i < dn_ui_icones_alt_n(); i++) {
                 printf("   %d = %s\n", i, dn_ui_icone_alt_nom(i));
             }
-            printf("⚠️ `fan` (0xF863) est ABSENT du FontAwesome du depot —\n");
-            printf("   VERIFIE en le convertissant seul, pas deduit d'une table.\n");
-            printf("   Il est arrive en FontAwesome 5.11, le .woff est anterieur.\n");
-            printf("   (les 4 premiers glyphes sont ses substituts, gardes : les\n");
-            printf("    retirer changerait l'union -r de 68 a 65 — vraie regen.)\n");
+            /* 🔴 dn4-14 / AC7.3 — LE TEXTE SUIT LA TABLE. Il recitait « les 4
+             *    premiers glyphes sont les substituts de `fan`, gardes : les
+             *    retirer changerait l'union -r de 68 a 65 — vraie regen ».
+             *    Ces quatre candidats ventilateur N'EXISTENT PLUS : la vraie
+             *    regeneration a ete payee le 2026-08-29 par le `GPU`, et le
+             *    menage est parti avec. Une explication qui survit a ce qu'elle
+             *    explique est la meme classe de defaut que le « ? » ci-dessus. */
+            printf("⚠️ LE RANG 0 EST L'ICONE EN PLACE sur la case `GPU` : l'A/B\n");
+            printf("   compare les candidats A CE QU'ON REJETTE, et permet d'y\n");
+            printf("   revenir sans reflasher.\n");
+            printf("⚠️ EN AMBIENT L'ICONE EST MASQUEE (titre + icone + badge).\n");
+            printf("   ⇒ juger un glyphe se fait EN MODE ACTIF, sinon on regarde\n");
+            printf("     une case ou il n'y a pas d'icone.\n");
+            printf("⛔ `microchip` n'est pas candidat : il est deja `CPU`, et un\n");
+            printf("   doublon rendrait les deux cases confusibles au coup d'oeil.\n");
             return 1;
         }
         /* 🔴 UN ÉCHEC DE VERROU N'EST PAS UNE ERREUR D'ARGUMENT (revue
@@ -5697,9 +5765,20 @@ static int cmd_widget(int argc, char **argv)
      *    dur : c'est exactement le défaut que dn4-1 corrige trois fois ailleurs. */
     {
         int i_disque = dn_ui_case_de_metrique(DN_LINK_M_DISK);
-        printf("icone DISQUE : %s   (W4 — `fan` 0xF863 est ABSENT du .woff ;\n",
+        printf("icone DISQUE : %s\n",
                dn_ui_icone_alt_nom(dn_ui_icone_alt(i_disque)));
-        printf("               « ? » = celle du descripteur, non commutee)\n");
+        /* 🔴 dn4-14 / AC7.2 — CE MESSAGE ETAIT FAUX, ET IL L'ETAIT DEJA AVANT
+         *    CETTE STORY. Il ecrivait « « ? » = celle du descripteur, non
+         *    commutee » — or `save` EST une entree de `k_icones_alt[]`, donc
+         *    l'icone du descripteur de DISQUE se RETROUVE dans la table et rend
+         *    son nom, jamais « ? ». `?` ne peut donc PAS vouloir dire « non
+         *    commutee » : il veut dire que LA CORRESPONDANCE A ECHOUE, c.-a-d.
+         *    que le glyphe pose ne figure dans AUCUN candidat. Le message dit
+         *    desormais ce que le symptome VEUT DIRE. */
+        printf("               (« ? » = le glyphe pose ne figure dans AUCUN\n");
+        printf("                candidat de `widget icone` — ⛔ ce n'est PAS\n");
+        printf("                « non commutee » : l'icone du descripteur EST\n");
+        printf("                dans la table et rend son nom.)\n");
     }
 
     printf("\n  idx nom        forme   regime   dessinee  valeur(s)\n");
@@ -9618,13 +9697,21 @@ static void veille_accents_collisions(void)
     const char *nom7 = "AMBIANCE (humidite)";
     int n = 0;
     for (int i = 0; i < DN_UI_METRIQUES; i++) {
-        /* ⚠️ LA COULEUR EST RELUE DU DESCRIPTEUR (`dn_ui_desc`), ⛔ pas recopiee
-         *    ici. `dn_ui_desc()` rend NULL pour une case rendue NUE — elle n'a
-         *    pas d'accent, elle ne participe donc pas au compte. */
+        /* ⚠️ LA COULEUR EST RELUE, ⛔ pas recopiee ici. `dn_ui_desc()` rend NULL
+         *    pour une case rendue NUE — elle n'a pas d'accent, elle ne
+         *    participe donc pas au compte.
+         * 🔴 dn4-14 — MAIS LA VALEUR VIENT DE `dn_ui_case_couleur()`, ⛔ PLUS DE
+         *    `d->couleur`. Ce pointeur vise `k_desc[]`, qui est `const` : il
+         *    IGNORE l'override a chaud. Cet instrument aurait donc rendu son
+         *    verdict de collision sur L'ANCIENNE PALETTE pendant que la dalle
+         *    affichait la nouvelle — et c'est PRECISEMENT pendant l'arbitrage
+         *    de couleur qu'on s'en sert. La story ne recensait que TROIS
+         *    consommateurs de `k_desc[].couleur` ; celui-ci est le QUATRIEME,
+         *    trouve en cherchant les autres. */
         const dn_widget_desc_t *d = dn_ui_desc(i);
         if (d) {
             idx[n] = i;
-            c[n] = dn_widget_desaturer(d->couleur, pct);
+            c[n] = dn_widget_desaturer(dn_ui_case_couleur(i), pct);
             n++;
         }
     }

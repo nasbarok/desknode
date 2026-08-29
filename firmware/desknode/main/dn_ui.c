@@ -565,8 +565,18 @@ static uint8_t s_gr_force[DN_UI_METRIQUES];
  *    orange d'`AMBIANCE` date de `dn3-1`** et qu'on ne la change pas au jugé :
  *    **l'œil owner arbitre**, comme pour la piste de jauge.
  *
- * ⚠️ L'humidité d'`AMBIANCE` garde le cyan `0x35d6e8`, celui de `GPU`. Aucune
- *    ambiguïté possible : on ne voit **jamais** deux pages à la fois.
+ * ⚠️ L'humidité d'`AMBIANCE` garde son cyan `0x67e8f9` (`DET_COURBE_COUL_HUM`,
+ *    exposé par `dn_ui_accent_hum()`). Aucune ambiguïté possible avec le cyan
+ *    de `GPU` : on ne voit **jamais** deux pages à la fois.
+ * 🔴 dn4-14 / AC6.3 — CETTE PHRASE MENTAIT DEUX FOIS, ET ELLE A ÉTÉ CRUE.
+ *    Elle écrivait « le cyan `0x35d6e8`, celui de `GPU` ». Les deux moitiés
+ *    sont fausses : l'humidité vaut `0x67e8f9`, et `GPU` vaut `0x22d3ee` —
+ *    `0x35d6e8` n'est NI l'un NI l'autre, c'est `k_demo_desc.couleur`, la
+ *    métrique FICTIVE de démo. ⚠️ ET LA GATE DES ACCENTS L'A RECOPIÉE : son
+ *    `re.findall` sur `.couleur = 0x…` ramassait le descripteur de démo comme
+ *    7ᵉ accent, donc elle mesurait une couleur que PERSONNE NE VOIT et ne
+ *    couvrait PAS l'humidité — tout en s'affichant verte. Les deux valeurs
+ *    coïncidaient par accident d'arithmétique. Corrigé des deux côtés.
  */
 static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
     [DN_UI_CASE_CPU] = {
@@ -1140,6 +1150,44 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
 };
 
 /*
+ * ── dn4-14 / AC5 : L'OVERRIDE DE COULEUR DE CASE, ET SON RÉSOLVEUR UNIQUE ────
+ *
+ * 🔴 POURQUOI UN RÉSOLVEUR ET PAS UN OVERRIDE POSÉ DANS `desc_effectif()`.
+ *    `k_desc[idx].couleur` est lu à TROIS endroits, RELEVÉS le 2026-08-29 :
+ *      1. `desc_effectif()` → `dn_widget` : l'ICÔNE de la case ET l'INDICATEUR
+ *         de sa jauge (`dn_widget_accent_couleur()`) ;
+ *      2. `chevron_couleur(idx, 0)` : le CHEVRON de la page de détail ;
+ *      3. `coul0` de `courbe_*` : la SÉRIE 0 de la courbe de détail.
+ *    Ils LISENT tous les trois — ⛔ aucun ne recopie, et c'est précisément ce
+ *    qui les tient d'accord aujourd'hui. Poser l'override dans le SEUL
+ *    `desc_effectif()` n'aurait nourri que le n°1 : la tuile serait devenue
+ *    violette pendant que la courbe et le chevron restaient roses, et
+ *    PERSONNE ne l'aurait vu avant d'ouvrir la page de détail. C'est
+ *    exactement la divergence que `ui_case_origine()` et
+ *    `dn_val_regime_couleur()` ont déjà coûtée à ce dépôt.
+ *  ⇒ UN SEUL POINT DE VÉRITÉ : `case_couleur(idx)`. Les trois le consomment.
+ *
+ * ⚠️ MÊME PATRON QUE `s_nue_force[]` ET `s_icone_alt[]` : `k_desc[]` reste
+ *    `const` en `.rodata`, l'override vit à côté. 0 = pas d'override, et c'est
+ *    sans ambiguïté : 0x000000 est un noir pur qu'aucune palette de ce produit
+ *    n'emploie (le fond est un PCB, pas du noir).
+ * ⚠️ Le champ pilote TROIS choses et « c'est voulu : une métrique, une couleur,
+ *    partout — ⛔ ne pas en découpler une sans le dire » (règle dn4-4).
+ * ⚠️ AUCUN ÉTAT LIVRÉ : au boot `s_coul_force[]` est nul et LE DESCRIPTEUR FAIT
+ *    FOI. C'est un OUTIL DE RÉGLAGE dans le produit — il reste pour pouvoir
+ *    rejouer l'arbitrage sans reflasher, ⛔ pas pour porter la décision.
+ */
+static uint32_t s_coul_force[DN_UI_METRIQUES];
+
+static uint32_t case_couleur(int idx)
+{
+    if (idx < 0 || idx >= DN_UI_METRIQUES) {
+        return 0;
+    }
+    return s_coul_force[idx] ? s_coul_force[idx] : k_desc[idx].couleur;
+}
+
+/*
  * 🔴 LA COULEUR D'UNE GRANDEUR **DANS LE TEXTE**, ET ELLE DOIT ÊTRE LA MÊME QUE
  *    CELLE DE SA COURBE — demande owner du 2026-08-24 : *« mettre ces 2 couleurs
  *    au couleurs des chevrons »*.
@@ -1162,7 +1210,7 @@ static uint32_t chevron_couleur(int idx, int g)
         return 0; /* une seule courbe ⇒ rien à distinguer */
     }
     if (g == 0) {
-        return k_desc[idx].couleur;
+        return case_couleur(idx); /* dn4-14 : le résolveur, ⛔ pas le descripteur */
     }
     if (g == 1) {
         return courbe_couleur1(idx);
@@ -1768,6 +1816,7 @@ static void desc_effectif(int idx, dn_widget_desc_t *out)
     if (s_icone_alt[idx]) {
         out->icone = s_icone_alt[idx];
     }
+    out->couleur = case_couleur(idx); /* dn4-14 — le résolveur, jamais un 2e if */
     uint8_t sel[DN_WIDGET_GRANDEURS_MAX];
     int n = case_grandeurs(idx, sel);
     out->n_grandeurs = (uint8_t)n;
@@ -1782,18 +1831,47 @@ static const struct {
     const char *nom;
     const char *glyphe;
 } k_icones_alt[] = {
-    /* ⚠️ LES QUATRE PREMIERS SONT LES CANDIDATS VENTILATEUR DE dn3-1, ET ILS
-     *    RESTENT. La case n'est plus VENTILOS (D8), mais les retirer coûterait
-     *    une VRAIE régénération de police : MESURÉ le 2026-08-18, `cog` (0xF013)
-     *    est déjà un symbole amont, donc le ménage n'économiserait que 3 glyphes
-     *    tout en faisant passer l'union `-r` de 68 à 65. Hors périmètre dn4-1. */
-    {"sync-alt (2 fleches en rotation)", DN_ICONE_SYNC_ALT},
-    {"wind (lignes de souffle)", DN_ICONE_WIND},
-    {"cogs (deux engrenages)", DN_ICONE_COGS},
-    {"cog (un engrenage)", DN_ICONE_COG},
+    /* 🔴 dn4-14 / AC3 — LES QUATRE CANDIDATS VENTILATEUR DE dn3-1 SONT PARTIS,
+     *    ET LE COÛT EST PAYÉ, ⛔ PAS ANNONCÉ. Le commentaire qui était ici
+     *    écrivait son propre motif de report : « les retirer coûterait une
+     *    VRAIE régénération de police […] hors périmètre dn4-1 ». Le `GPU` a
+     *    payé cette régénération le 2026-08-29 ⇒ le motif n'existe plus, il
+     *    part avec eux. La preuve n'est PAS `--entete-seule` (elle vérifie une
+     *    PRÉSENCE, pas une absence, et passerait sans toucher un octet) : c'est
+     *    `codepoints_du_c()` relu sur les `.c` RÉGÉNÉRÉS.
+     *    ⚠️ `cog` reste DANS LA POLICE (il est `LV_SYMBOL_SETTINGS`, amont) —
+     *       c'est la macro qui part, pas le glyphe.
+     *
+     * 🔴 dn4-14 / AC2 — LES CANDIDATS `GPU`. Constat owner du 2026-08-25 :
+     *    « pour l'icon du gpu revoir celui ci est pas bon ». Il dit CE QUI NE
+     *    VA PAS sans nommer de cible ⇒ ⛔ l'agent ne choisit pas, l'œil owner
+     *    tranche sur la dalle. Les six partent EMBARQUÉS ENSEMBLE pour que la
+     *    commutation soit à chaud : un A/B qui demande six reflashs coûte six
+     *    observations pour un rendement qui baisse.
+     *    ⚠️ LE RANG 0 EST L'ICÔNE EN PLACE, délibérément : sans elle l'owner
+     *       compare les candidats entre eux mais ⛔ pas à ce qu'il rejette, et
+     *       il ne peut pas revenir en arrière sans reflasher.
+     *    ⛔ `microchip` N'EST PAS CANDIDAT : il est déjà `CPU` (`dn_ui.c`,
+     *       k_desc), et un doublon rendrait les deux cases confusibles au coup
+     *       d'œil — le seul usage réel d'une icône de 28 px.
+     *    🎯 BUDGET NEUTRE, CALCULÉ : ménage −3 propres au dépôt ⇒ 65, puis
+     *       `bolt`/`image`/`film` +0 (amont) et `gamepad`/`cube`/`vr-cardboard`
+     *       +3 ⇒ 68, l'union EXACTE d'avant la story.
+     *    ⚠️ LES NOMS DÉCRIVENT LE DESSIN, ⛔ pas le nom FontAwesome : l'owner
+     *       lit cette liste à la console pendant qu'il regarde la dalle. */
+    {"desktop (une tour + son ecran) — GPU AUJOURD'HUI", DN_ICONE_DESKTOP},
+    {"gamepad (une manette de jeu)", DN_ICONE_GAMEPAD},
+    {"cube (un cube en perspective)", DN_ICONE_CUBE},
+    {"vr-cardboard (un casque de realite virtuelle)", DN_ICONE_VR_CARDBOARD},
+    {"bolt (un eclair)", DN_ICONE_BOLT},
+    {"image (un cadre photo : montagne + soleil)", DN_ICONE_IMAGE},
+    {"film (une pellicule perforee)", DN_ICONE_FILM},
     /* dn4-1 : l'icône RETENUE pour DISQUE, dans la liste pour que l'A/B puisse
      * y revenir sans reflasher. Gratuite (déjà dans les deux `.c`). */
     {"save (la disquette) — DISQUE", DN_ICONE_SAVE},
+    /* dn4-14 : idem pour la maison d'AMBIANCE — sinon la ligne d'état de la
+     * console rendrait « ? » pour une icône parfaitement posée. */
+    {"home (une maison) — AMBIANCE", DN_ICONE_HOME},
 };
 #define DN_UI_ICONES_ALT (sizeof(k_icones_alt) / sizeof(k_icones_alt[0]))
 
@@ -4066,7 +4144,9 @@ static void courbe_reparametrer(int idx)
             p1 = courbe_serie_plage(s1, deux_vivantes ? 1 : -1, idx, &a1, &b1);
         }
     }
-    uint32_t coul0 = case_est_widget(idx) ? k_desc[idx].couleur : 0x808080u;
+    /* dn4-14 : le résolveur, ⛔ pas le descripteur — sinon la courbe garderait
+     * l'ancienne teinte pendant que la tuile porte la nouvelle. */
+    uint32_t coul0 = case_est_widget(idx) ? case_couleur(idx) : 0x808080u;
     uint32_t coul1 = courbe_couleur1(idx);
 
     /* ── 2) EST-CE QUE ÇA CHANGE QUELQUE CHOSE ? ──────────────────────────── */
@@ -9596,11 +9676,22 @@ int dn_ui_icone_alt(int idx)
         return -1;
     }
     for (int i = 0; i < (int)DN_UI_ICONES_ALT; i++) {
-        /* RELU du pointeur réellement posé, pas d'un index mémorisé à part : un
+        /* RELU du glyphe réellement posé, pas d'un index mémorisé à part : un
          * index et un glyphe qui divergent, c'est l'étiquette qui ment. */
         const char *actif = s_icone_alt[idx] ? s_icone_alt[idx]
                                              : k_desc[idx].icone;
-        if (actif == k_icones_alt[i].glyphe) {
+        /* 🔴 dn4-14 / AC7.1 — `strcmp`, ⛔ PLUS `==` SUR DES POINTEURS.
+         *    La comparaison d'adresses ne tenait QUE parce que GCC fusionne les
+         *    littéraux de chaîne identiques (`-fmerge-constants`, actif dès
+         *    `-O1`) : `k_desc[].icone` et `k_icones_alt[].glyphe` viennent tous
+         *    deux d'un `DN_ICONE_*`, donc du MÊME littéral, donc de la même
+         *    adresse — par une optimisation, ⛔ pas par une garantie du langage.
+         *    À `-O0`, ou si les deux tables migraient dans des unités de
+         *    traduction différentes, la fonction rendrait `-1` pour une icône
+         *    parfaitement posée, et la console annoncerait « ? ».
+         *    ⚠️ Le coût est nul : la table fait une poignée d'entrées et cette
+         *       fonction ne tourne QUE sur demande de la console. */
+        if (actif && strcmp(actif, k_icones_alt[i].glyphe) == 0) {
             return i;
         }
     }
@@ -9627,6 +9718,46 @@ esp_err_t dn_ui_set_icone_alt(int idx, int n)
  * défaut que `dma` (inerte dans ce build) a coûtée au dépôt.
  * 🔴 AMENDE LE 2026-08-24 : « (inerte dans ce build) » est PERIME — `dma` est
  *    OPERANTE depuis `4734d07`. La lecon citee reste exacte. */
+/*
+ * ── dn4-14 / AC5 : LA COULEUR D'UNE CASE SE TAPE, SE VOIT, ET L'OWNER TRANCHE ─
+ *
+ * Même contrat que `dn_ui_set_piste` : la couleur est résolue à la CRÉATION des
+ * objets (style de l'accent, série de la courbe, balise du chevron), donc on
+ * RECONSTRUIT la scène — et la console le DIT. Un réglage qui « ne fait rien »
+ * sans l'annoncer est une classe de défaut que ce dépôt a déjà payée.
+ *
+ * 🔴 POURQUOI CET OUTIL EXISTE. L'addendum §1 demande « RAM : violet », et
+ *    `CPU` est DÉJÀ violet `0xa855f7` — dn4-4 l'y avait DÉPLACÉ le 2026-08-24
+ *    exprès pour l'écarter du cyan de `GPU`. Mettre `RAM` en violet remet donc
+ *    DEUX violets côte à côte, ce qui re-fabrique le défaut que dn4-4 a corrigé
+ *    (« trois couleurs pour six pages — la couleur n'identifiait pas la page »).
+ *    ⇒ C'EST UN ARBITRAGE OWNER, ⛔ il ne se tranche ni depuis le source ni par
+ *      l'agent. Il se tape, il se voit, il se tranche en 3 secondes.
+ *
+ * ⚠️ IL RESTE DANS LE PRODUIT après la décision — c'est la règle du dépôt
+ *    (« l'étalonnage est un outil de réglage DANS le produit »), et c'est ce qui
+ *    permet de rejouer l'arbitrage sans reflasher. ⛔ Il ne pose AUCUN état
+ *    livré : au boot `s_coul_force[]` est nul et le descripteur fait foi.
+ * ⚠️ À JUGER DANS LES DEUX RÉGIMES : la teinte pleine en Actif, et le gris
+ *    désaturé de l'Ambient (`dn_widget_accent_couleur()`), qui reste visible par
+ *    LA JAUGE — l'icône, elle, est MASQUÉE en Ambient.
+ */
+uint32_t dn_ui_case_couleur(int idx) { return case_couleur(idx); }
+
+esp_err_t dn_ui_set_couleur(int idx, uint32_t rgb)
+{
+    if (idx < 0 || idx >= DN_UI_METRIQUES || rgb > 0xFFFFFFu) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (!lvgl_port_lock(2000)) {
+        return ESP_ERR_TIMEOUT;
+    }
+    s_coul_force[idx] = rgb; /* 0 ⇒ on rend la main au descripteur */
+    build_scene();
+    lvgl_port_unlock();
+    return ESP_OK;
+}
+
 esp_err_t dn_ui_set_piste(uint32_t rgb)
 {
     if (!lvgl_port_lock(2000)) {

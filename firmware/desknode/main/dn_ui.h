@@ -1071,6 +1071,20 @@ const char *dn_ui_icone_alt_nom(int n);
 int dn_ui_icone_alt(int idx);
 esp_err_t dn_ui_set_icone_alt(int idx, int n);
 
+/* ── dn4-14 / AC5 : LA COULEUR D'UNE CASE, À CHAUD ────────────────────────────
+ * Un OUTIL DE RÉGLAGE dans le produit, au patron de `dn_ui_set_piste` : la
+ * valeur se tape, la dalle la montre, l'owner tranche. Reconstruit la scène.
+ * ⚠️ `dn_ui_case_couleur(idx)` est LE POINT DE VÉRITÉ — l'override s'il est
+ *    posé, le descripteur sinon. ⛔ NE JAMAIS relire `couleur` d'un
+ *    `dn_ui_desc()` pour peindre ou pour MESURER : ce pointeur vise la table
+ *    `const`, donc il ignore l'override et rendrait un verdict sur une palette
+ *    que la dalle n'affiche plus.
+ * ⚠️ `rgb = 0` REND LA MAIN au descripteur (0x000000 n'est employé par aucune
+ *    palette de ce produit — le fond est un PCB, pas du noir).
+ * ⚠️ AUCUN ÉTAT LIVRÉ : nul au boot, le descripteur fait foi. */
+uint32_t dn_ui_case_couleur(int idx);
+esp_err_t dn_ui_set_couleur(int idx, uint32_t rgb);
+
 /* ── La PISTE de la jauge (constat owner 2026-08-18) ──────────────────────────
  * Passe par dn_widget (une seule définition) et reconstruit la scène. */
 esp_err_t dn_ui_set_piste(uint32_t rgb);
