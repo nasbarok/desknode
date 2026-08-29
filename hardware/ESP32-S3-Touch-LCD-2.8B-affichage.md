@@ -6231,6 +6231,53 @@ bras. **Prouver une cause, c'est LA RETIRER et voir le compteur retomber — ⛔
 **CORRUPTION**, qui vaut **0 sur les NEUF fenêtres**, et pour `manques`, à 0 partout.
 
 
+#### 🔴 CLÔTURE DU 2026-08-29 — LE ×4,7 D'AC6.3 EST **RÉFUTÉ**, ET C'EST UNE MESURE QUI LE FAIT
+
+> **DÉCISION OWNER DU 2026-08-29** : *« ok on boucle, le soak de 7 jours couvrira mieux »*.
+> **AC4 se ferme AVEC ÉCART DÉCLARÉ** — ⛔ pas coché.
+
+Avant de boucler, une dernière fenêtre a été relevée sur le binaire livré `b1a810f`, **carte reposée**
+(la tour avait redémarré à 13:42, aucune campagne depuis) :
+
+| grandeur | valeur |
+|---|---|
+| durée (T0 mural **confronté**) | **725 091 ms = 12 min 05 s** ⇒ ⛔ **aucune coupure** |
+| trames | **27 036** · `manques` **0** · `doubles` **0** |
+| **plus longue série** | **0** · 0 série · **0 rompue par une indéterminée** |
+| CORRUPTION | **0** · déficit pire **120 µs** (seuil 775) |
+| `ph_ref` / `ph_max` | 2259 / 2269 µs — sain |
+| cycles de redessin | 1 919 / 725 s = **2,65 /s** (régime AMBIENT sous agent, cf. 2,67 la veille) |
+
+🔴 **ET C'EST LE SEAU 10 % QUI TRANCHE AC6.3.** Ramené au même dénominateur, **pour 10 000 trames** :
+
+| bras | taux /10 000 |
+|---|---|
+| **AVANT** `e3064f0` (hier, 3 fenêtres de ~322 s) | **13,4 · 25,2 · 27,7** |
+| **APRÈS** `b1a810f` (hier, 6 fenêtres de ~322 s) | **100 · 124 · 88 · 86 · 82 · 113** |
+| **APRÈS** `b1a810f` (**aujourd'hui, carte reposée, 12 min**) | **8,1** |
+| pour mémoire, `e3064f0` sur **4 h 06** | **0,38** |
+
+⇒ 🎯 **LE MÊME BINAIRE QUI DONNAIT 82-124 HIER SOIR EN DONNE 8,1 AUJOURD'HUI — c'est-à-dire SOUS la
+plage du bras AVANT.** ⛔ **L'attribution du ×4,7 au binaire est donc RÉFUTÉE** : l'écart d'hier
+était dominé par **l'état de la carte** (62 Mo d'écriture flash, 3 reboots, un passage à
+`bounce 480`) et par **la durée de la fenêtre**, ⛔ pas par le code de `dn4-12`.
+
+⚠️ **CE QUE ÇA VAUT, ET CE QUE ÇA NE VAUT PAS.** C'est **UNE** fenêtre, et le dépôt interdit de
+conclure d'un échantillon unique. ⛔ **Mais elle ne SERT PAS à établir un coût : elle DÉTRUIT une
+attribution.** Un point qui réfute une hypothèse de coût ne demande pas la même force qu'un point
+qui l'établirait — et l'écart est d'un **facteur 10 à 15**, dans le sens qui innocente le code.
+
+✅ **CE QUI RESTE ACQUIS D'AC6.3, ET QUI NE BOUGE PAS** : le **déficit pire** est non distinguable
+de zéro ([117, 123] contre [120, 136]), **CORRUPTION vaut 0 sur les DIX fenêtres** de la campagne, et
+`manques` vaut 0 partout. ⇒ **aucun coût de marge de famine n'est démontré**, et celui qui était
+soupçonné ne se reproduit pas.
+
+⛔ **CE QUI RESTE OUVERT, ET QUI PART AU SOAK** : le seau 10 % dépend **fortement de la DURÉE de la
+fenêtre ET de l'ÉTAT de la carte**, dans des proportions **non séparées** (0,38 sur 4 h 06 · 8,1 sur
+12 min · 13-28 et 82-124 sur 5 min). ⇒ il **ne peut pas** servir à attribuer un coût depuis des
+fenêtres courtes et non alternées. **Le soak 7 jours d'AC3 de `dn4-5` tournera sur ce binaire et
+donnera le chiffre long, avec le transitoire de boot dilué.** C'est là que la question se referme.
+
 #### 🎁 UN RÉSULTAT HORS PROGRAMME — LE CORRECTIF `dn4-5`/AC1.2 EST VU CRIER SUR LA CARTE
 
 La toute première lecture de la séance, sur `e3064f0` après ~4 h d'agent réel, a rendu :
