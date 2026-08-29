@@ -1127,6 +1127,32 @@ void dn_ui_case_rect(int idx, int *x, int *y, int *w, int *h);
 void dn_ui_geom_bandes(int *barre_h, int *menu_h, int *grille_h, int *case_h);
 void dn_ui_geom_bandes_defaut(int *barre_h, int *menu_h);
 
+/* dn4-14-2 / AC2 — LE SLOT HORIZONTAL DE LA BARRE, calculé des mêmes symboles
+ * que `build_dashboard()` pose. `date_utile` = largeur de dalle − x de la date
+ * − marge droite. ⛔ Ce nombre n'est écrit nulle part : tout instrument qui
+ * juge « tient / NE TIENT PAS » doit le prendre ICI, jamais dans son propre
+ * `printf` — sinon son verdict survivrait à un déplacement du slot. */
+void dn_ui_barre_slots(int *heure_x, int *date_x, int *date_utile);
+
+/* Les deux chaînes de l'état NON POSÉ, relues du `#define` qui sert aussi
+ * d'initialiseur. ⚠️ `dn_ui_date_inconnue()` est le PIRE CAS du slot de date
+ * (15 caractères), et c'est l'état de BOOT — ⛔ pas un cas de laboratoire. */
+const char *dn_ui_heure_inconnue(void);
+const char *dn_ui_date_inconnue(void);
+
+/* dn4-14-2 / AC2.2 — compose UNE date de barre au MÊME format que le composeur
+ * réel, pour que l'instrument puisse BALAYER les 7 × 12 × 32 combinaisons et
+ * MESURER laquelle est la plus large. ⛔ Le pire cas est un RÉSULTAT, pas une
+ * chaîne écrite : « MER. 06 SEPT. » est la plus longue en CARACTÈRES, ce qui
+ * n'est pas la plus large en PIXELS. Rend `false` hors bornes. */
+bool dn_ui_barre_date_forme(int jsem, int jour, int mois, char *out, size_t n);
+
+/* dn4-14-2 / AC2.2 — LE TITRE RÉELLEMENT DESSINÉ par une case, relu du
+ * DESCRIPTEUR (⛔ pas de `k_nom[]`, qui est une seconde table). `idx` dans
+ * 0..DN_UI_METRIQUES, où `DN_UI_METRIQUES` désigne la DÉMO — même convention
+ * que `dn_ui_case_rect()`. Hors bornes ⇒ NULL. */
+const char *dn_ui_case_titre(int idx);
+
 /* La géométrie interne de la case (voie (b) : la police ; voie (c) : `dispo`).
  * ⚠️ Enveloppe de `dn_widget_set_geom()` : elle prend le verrou et RECONSTRUIT.
  *    Appeler `dn_widget_set_geom()` nu changerait le réglage sans redessiner —

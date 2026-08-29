@@ -671,9 +671,14 @@ def main():
               % (t, d["_glyphes"], d["_total"], PLAGE_VEILLE))
 
     ecrire_entete()
-    print("dn_font.h : réécrit · TOTAL %d o de données de police (les QUATRE "
-          "tailles). ⚠️ PLANCHER : le coût qui fait foi est le delta de BINAIRE."
-          % total)
+    # ⚠️ « les QUATRE tailles » était ÉCRIT — il aurait menti dès la 3ᵉ police
+    #    d'interface. Le compte est RELU de `TAILLES` + `TAILLES_VEILLE`.
+    print("dn_font.h : réécrit · TOTAL %d o de données de police (%d tailles : "
+          "%s d'interface + %s de veille). ⚠️ PLANCHER : le coût qui fait foi "
+          "est le delta de BINAIRE."
+          % (total, len(TAILLES) + len(TAILLES_VEILLE),
+             "/".join(str(t) for t in TAILLES),
+             "/".join(str(t) for t in TAILLES_VEILLE)))
 
 
 def entete_seule():
@@ -741,8 +746,9 @@ def entete_seule():
                  "  ⇒ il faut une VRAIE génération (`python3 tools/gen_font_dn.py`)."
                  % "\n  - ".join(manques + surplus))
     ecrire_entete()
-    print("dn_font.h : réécrit depuis ICONES. Les deux `.c` n'ont PAS été touchés "
-          "— vérifiable au `sha256sum`.")
+    # ⚠️ « les deux `.c` » était ÉCRIT : faux dès la 3ᵉ taille d'interface.
+    print("dn_font.h : réécrit depuis ICONES. Les %d `.c` d'interface n'ont PAS "
+          "été touchés — vérifiable au `sha256sum`." % len(TAILLES))
     return 0
 
 
@@ -766,6 +772,31 @@ def ecrire_entete():
     # `sdkconfig.defaults` disaient 7, et §15.4 s'intitulait « 7 glyphes ».
     syms = symboles_amont()
     deja = [cp for cp in ICONES.values() if cp in set(syms)]
+    # 🔴 dn4-14-2 / AC3.1 — LES `LV_FONT_DECLARE` SE CONSTRUISENT DEPUIS
+    #    `TAILLES`, ⛔ PLUS ÉCRITS POUR DEUX. Le cadrage de dn4-14-2 affirmait
+    #    que « le tableau de `dn_font.h` se construit depuis `TAILLES` » : c'est
+    #    vrai de `--mesure` (correctif dn4-14/AC8.1) et **FAUX de ce `.h`**, qui
+    #    récitait `LV_FONT_DECLARE(dn_font_14)` et `(dn_font_28)` en dur. Une 3ᵉ
+    #    taille ajoutée à `TAILLES` produisait donc un `dn_font_18.c` COMPILÉ
+    #    mais JAMAIS DÉCLARÉ — le `.c` payait ses octets dans le binaire et
+    #    aucun site ne pouvait le nommer. ⚠️ Vérifié, ⛔ pas supposé.
+    # 🔴 ET LA LISTE `DN_FONT_LISTE` EXISTE POUR LA MÊME RAISON, D'UN CRAN PLUS
+    #    LOIN : une commande console qui énumère les polices en dur (« 14|28 »
+    #    dans un `printf`, comme `widget police` le faisait) se périme à la
+    #    taille suivante SANS QU'AUCUNE COMPILATION NE S'EN PLAIGNE. Ici la
+    #    liste EST le générateur : ajouter une taille la remplit, en retirer une
+    #    la vide, et le message console suit MÉCANIQUEMENT.
+    # ⚠️ Le 3ᵉ champ dit `1` pour une police d'INTERFACE (latin-1 complet) et
+    #    `0` pour une police de VEILLE (plage réduite `PLAGE_VEILLE`). ⛔ Il
+    #    n'est pas décoratif : pointer un texte d'interface vers une police de
+    #    veille lui fait perdre ses accents EN SILENCE.
+    decl = lambda ts: "\n".join("LV_FONT_DECLARE(dn_font_%d)" % t for t in ts)
+    liste = []
+    for t in TAILLES:
+        liste.append("    X(%d, dn_font_%d, 1)" % (t, t))
+    for t in TAILLES_VEILLE:
+        liste.append("    X(%d, dn_font_%d, 0)" % (t, t))
+    liste = " \\\n".join(liste)
     contenu = ENTETE_MODELE % {
         "plage": PLAGE,
         "icones": "\n".join(lignes),
@@ -774,6 +805,14 @@ def ecrire_entete():
         "n_deja": len(deja),
         "n_neufs": len(ICONES) - len(deja),
         "n_r": len(set(syms) | set(ICONES.values())),
+        "declare_interface": decl(TAILLES),
+        "declare_veille": decl(TAILLES_VEILLE),
+        "noms_interface": " / ".join("`dn_font_%d`" % t for t in TAILLES),
+        "noms_veille": " / ".join("`dn_font_%d`" % t for t in TAILLES_VEILLE),
+        "n_interface": len(TAILLES),
+        "n_veille": len(TAILLES_VEILLE),
+        "liste": liste,
+        "plage_veille": PLAGE_VEILLE,
     }
     with open(os.path.join(SORTIE, "dn_font.h"), "w", encoding="utf-8") as f:
         f.write(contenu)
@@ -791,7 +830,7 @@ ENTETE_MODELE = u'''/*
  * perdent leur lettre accentuée EN SILENCE — LVGL ne dessine pas un glyphe
  * absent et ne se plaint pas.
  *
- * `dn_font_14` / `dn_font_28` couvrent %(plage)s :
+ * %(noms_interface)s couvrent %(plage)s :
  * ASCII + LATIN-1 COMPLET + la puce + les %(n_syms)d symboles LV_SYMBOL_* UNIQUES
  * + %(n_icones)d icônes FontAwesome, dont %(n_deja)d sont DÉJÀ des symboles ⇒
  * %(n_neufs)d codepoints neufs, et %(n_r)d au `-r` FontAwesome final. Elles sont
@@ -857,9 +896,11 @@ ENTETE_MODELE = u'''/*
 extern "C" {
 #endif
 
-/* ASCII + latin-1 complet + puce + %(n_syms)d symboles + %(n_icones)d icônes. */
-LV_FONT_DECLARE(dn_font_14)
-LV_FONT_DECLARE(dn_font_28)
+/* ASCII + latin-1 complet + puce + %(n_syms)d symboles + %(n_icones)d icônes.
+ * ⛔ CETTE LISTE EST GÉNÉRÉE DEPUIS `TAILLES` — ne pas y ajouter une ligne à la
+ *    main : le prochain passage du générateur l'effacerait, et la taille
+ *    correspondante n'aurait aucun `.c`. */
+%(declare_interface)s
 
 /*
  * ── dn3-3 : LES DEUX POLICES DE LA VEILLE ────────────────────────────────────
@@ -884,8 +925,33 @@ LV_FONT_DECLARE(dn_font_28)
  *       les libellés disparaissent en Ambient. C'est CE fait qui débloque
  *       l'agrandissement.
  */
-LV_FONT_DECLARE(dn_font_33)
-LV_FONT_DECLARE(dn_font_56)
+%(declare_veille)s
+
+/*
+ * ── LA LISTE DES POLICES LIÉES — GÉNÉRÉE DEPUIS `TAILLES` / `TAILLES_VEILLE` ─
+ *
+ * 🔴 POURQUOI UNE X-MACRO ET PAS UNE TABLE ÉCRITE DANS `dn_console.c` : une
+ *    commande qui énumère les polices EN DUR se périme à la taille suivante
+ *    SANS QU'AUCUNE COMPILATION NE S'EN PLAIGNE. `widget police` en est la
+ *    preuve vivante — il annonçait « IL N'Y A QUE DEUX POLICES EMBARQUEES »
+ *    dans un `printf`, un fait que rien ne re-vérifiait jamais.
+ *    ⇒ Ici la liste EST le générateur. Ajouter une taille à `TAILLES` la
+ *      remplit ; en retirer une la vide ; le message console suit.
+ *
+ * ⚠️ LE 3ᵉ CHAMP N'EST PAS DÉCORATIF : `1` = police d'INTERFACE (latin-1
+ *    complet, accents, symboles, icônes) · `0` = police de VEILLE (plage
+ *    réduite `%(plage_veille)s`, ⛔ ni accent ni symbole). Pointer un texte
+ *    d'interface vers une police de veille lui fait perdre ses accents EN
+ *    SILENCE — « RÉSEAU » deviendrait « R SEAU ». Tout site qui CHOISIT une
+ *    police doit lire ce champ.
+ *
+ * Usage :
+ *     #define X(taille, symbole, itf)  { #taille, &symbole, (itf) != 0 },
+ *     static const ... k_polices[] = { DN_FONT_LISTE(X) };
+ *     #undef X
+ */
+#define DN_FONT_LISTE(X) \\
+%(liste)s
 
 /* Les icônes, en UTF-8 prêt à concaténer dans un littéral de chaîne.
  * GÉNÉRÉES depuis le même dictionnaire que la police : une macro ne peut pas

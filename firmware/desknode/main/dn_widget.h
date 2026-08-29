@@ -1023,6 +1023,21 @@ int dn_widget_largeur_utile(int w);
 /* La gouttière minimale entre deux colonnes en côte à côte. */
 int dn_widget_gouttiere(void);
 
+/*
+ * dn4-14-2 / AC2 — LE SLOT HORIZONTAL DU TITRE DE CASE.
+ * `dn_widget_titre_x()` = où le titre commence (après le sillon d'icône, dont
+ * la largeur DÉPEND du régime d'en-tête) · `dn_widget_titre_utile()` = ce qui
+ * reste avant le badge « SIMULÉ ». Sur une case de 225 en en-tête NORMAL avec
+ * icône : 52 et 107 px.
+ * 🔴 C'EST LE SECOND MUR HORIZONTAL DE dn4-14-2, et il est plus serré que
+ *    celui de la date. Le plus long titre LIVRÉ fait 8 caractères
+ *    (« AMBIANCE ») mais la case de démo en porte 12 (« DÉMO 2+JAUGE »).
+ * ⛔ Ne jamais réécrire ces bornes dans un instrument : LVGL clippe au parent
+ *    SANS UN MOT, donc un budget faux ne se manifeste par AUCUN symptôme.
+ */
+int dn_widget_titre_x(bool avec_icone);
+int dn_widget_titre_utile(int w, bool avec_icone);
+
 /* Combien de chevauchements CÔTE À CÔTE ont été DÉTECTÉS depuis le dernier
  * `dn_widget_chevauchements_reset()`. ⚠️ Un chevauchement est journalisé ET
  * compté : LVGL clipperait sans un mot, et « rien n'a planté » n'est pas

@@ -160,6 +160,20 @@ static const char *TAG = "dn_ui";
 #define DN_UI_BARRE_H_DEFAUT 60
 #define DN_UI_MENU_H_DEFAUT 51
 #define DN_UI_MARGE 10
+/*
+ * 🔴 dn4-14-2 / AC2 — LE x DE LA DATE DE BARRE, EXTRAIT DU SITE D'APPEL.
+ *    Il était écrit `300` EN DUR dans `texte(barre, s_barre_d, …, 300, 28)`,
+ *    pendant que le docblock de `k_mois_court[]` en tirait toute son
+ *    arithmétique (« il reste 480 − 300 − 10 = 170 px utiles »). ⇒ DEUX
+ *    endroits, un seul nombre, et aucun des deux ne relisait l'autre.
+ * ⚠️ C'EST LE VRAI PLAFOND DE LA DATE, ET IL EST INVISIBLE DEPUIS LA POLICE :
+ *    ni `TAILLES`, ni `BARRE_H`, ni `line_height` ne le portent. Une date
+ *    agrandie ne casse pas en HAUTEUR (14 px de marge dans la barre de 60) —
+ *    elle casse en LARGEUR, et LVGL clippe au parent SANS UN MOT.
+ * ⚠️ Le pire cas du slot N'EST PAS UNE DATE : `DN_UI_DATE_INCONNUE` fait 15
+ *    caractères contre 13 pour « MER. 06 SEPT. », et c'est l'état de BOOT.
+ */
+#define DN_UI_BARRE_DATE_X 300
 #define DN_UI_GAP 10
 #define DN_UI_CASE_W ((DN_LCD_H_RES - 2 * DN_UI_MARGE - DN_UI_GAP) / 2) /* 225 */
 
@@ -3557,8 +3571,8 @@ static void build_dashboard(lv_obj_t *scr)
         texte(barre, s_barre_h, &dn_font_28, lv_color_white(), DN_UI_MARGE, 18);
     /* Accentué depuis dn3-1 : « AOÛT » a récupéré son Û. C'est le témoin le plus
      * simple que la police générée est bien celle qui est liée. */
-    s_barre_date =
-        texte(barre, s_barre_d, &dn_font_14, lv_color_hex(0xa0d8ff), 300, 28);
+    s_barre_date = texte(barre, s_barre_d, &dn_font_14,
+                         lv_color_hex(0xa0d8ff), DN_UI_BARRE_DATE_X, 28);
     barre_ecrire_tout_nolock();
 
     /*
@@ -10244,6 +10258,64 @@ void dn_ui_geom_bandes(int *barre_h, int *menu_h, int *grille_h, int *case_h)
 }
 
 /*
+ * ── dn4-14-2 / AC2 : LE SLOT DE LA DATE, RELU DES CONSTANTES DU RENDU ────────
+ *
+ * 🔴 CE QUE CETTE FONCTION EMPÊCHE : que l'instrument de largeur récite son
+ *    propre budget. `widget largeur` doit dire « tient / NE TIENT PAS », et un
+ *    verdict contre un budget ÉCRIT DANS LE MESSAGE ne prouve rien — il
+ *    survivrait à un déplacement du slot sans broncher. Ici le budget vient des
+ *    MÊMES symboles que `build_dashboard()` pose.
+ * ⚠️ `DN_LCD_H_RES` est la largeur de dalle, `DN_UI_MARGE` la marge droite :
+ *    utile = 480 − 300 − 10 = 170 px AUJOURD'HUI, et ce nombre-là n'est écrit
+ *    NULLE PART — il est calculé à chaque appel.
+ */
+void dn_ui_barre_slots(int *heure_x, int *date_x, int *date_utile)
+{
+    if (heure_x) {
+        *heure_x = DN_UI_MARGE;
+    }
+    if (date_x) {
+        *date_x = DN_UI_BARRE_DATE_X;
+    }
+    if (date_utile) {
+        *date_utile = DN_LCD_H_RES - DN_UI_BARRE_DATE_X - DN_UI_MARGE;
+    }
+}
+
+/* Les deux chaînes de l'état NON POSÉ, RELUES du `#define` qui sert AUSSI
+ * d'initialiseur et de sortie du composeur. ⛔ Ne jamais les recopier dans un
+ * instrument : « HEURE NON POSÉE » est le PIRE CAS du slot de date (15 car.,
+ * contre 13 pour la plus longue date réelle), et un instrument qui le récite
+ * cesserait de mesurer le pire cas le jour où la chaîne change. */
+const char *dn_ui_heure_inconnue(void) { return DN_UI_HEURE_INCONNUE; }
+const char *dn_ui_date_inconnue(void) { return DN_UI_DATE_INCONNUE; }
+
+/*
+ * ── dn4-14-2 / AC2.2 : LE PIRE CAS DE DATE SE CHERCHE, ⛔ IL NE SE RÉCITE PAS ─
+ *
+ * 🔴 « MER. 06 SEPT. » est une SUPPOSITION — la plus longue en CARACTÈRES, ce
+ *    qui n'est pas la plus large en PIXELS : les glyphes n'ont pas la même
+ *    avance, et le kerning n'est pas linéaire. Le dépôt a déjà payé ce
+ *    raccourci en dn3-1 (« nb_caractères × largeur moyenne », qui a écarté le
+ *    côte à côte sur un calcul faux).
+ * ⇒ Cette fonction EXPOSE le composeur, et l'instrument BALAIE les 7 × 12 × 32
+ *   combinaisons en les MESURANT. Le pire cas devient un RÉSULTAT.
+ * ⚠️ MÊME FORMAT que `barre_composer()`, par construction : si le format change
+ *    ici sans changer là, les deux divergent — d'où le `snprintf` recopié dans
+ *    UNE seule expression, dont la forme est vérifiée par la gate.
+ */
+bool dn_ui_barre_date_forme(int jsem, int jour, int mois, char *out, size_t n)
+{
+    if (!out || n == 0 || jsem < 0 || jsem >= 7 || mois < 1 || mois > 12 ||
+        jour < 0 || jour > 31) {
+        return false;
+    }
+    snprintf(out, n, "%s %02u %s", k_jsem_court[jsem], (unsigned)jour,
+             k_mois_court[mois - 1]);
+    return true;
+}
+
+/*
  * ── AC1 : LA PREUVE D'UNICITÉ, ET ELLE EST FALSIFIABLE ───────────────────────
  *
  * Une 7e métrique FICTIVE, produite par le MÊME `dn_widget_creer` que les trois
@@ -10300,6 +10372,28 @@ static const dn_widget_desc_t k_demo_desc = {
                   {.unite = "W", .prefixe = "d3", .prec = DN_PREC_ENTIER},
                   {.unite = "tr/min", .prefixe = "d4", .prec = DN_PREC_ENTIER}},
 };
+
+/*
+ * ── dn4-14-2 / AC2.2 : LE TITRE RÉELLEMENT DESSINÉ, RELU DU DESCRIPTEUR ──────
+ *
+ * 🔴 ⛔ PAS `k_nom[]`, QUI EST UNE SECONDE TABLE. La case NUE dessine `k_nom[i]`
+ *    et la case WIDGET dessine `k_desc[i].titre` : les deux coïncident
+ *    aujourd'hui, et rien ne les y oblige. L'instrument du mur doit mesurer ce
+ *    que le RENDU pose, ⛔ pas un nom parallèle.
+ * ⚠️ `idx == DN_UI_METRIQUES` DÉSIGNE LA DÉMO — même convention que
+ *    `dn_ui_case_rect()`. C'est ce qui fait que « DÉMO 2+JAUGE », le plus long
+ *    titre EXISTANT, entre dans le balayage sans être récité nulle part.
+ */
+const char *dn_ui_case_titre(int idx)
+{
+    if (idx >= 0 && idx < DN_UI_METRIQUES) {
+        return k_desc[idx].titre;
+    }
+    if (idx == DN_UI_METRIQUES) {
+        return k_demo_desc.titre;
+    }
+    return NULL;
+}
 
 /*
  * ── dn4-6 / AC2 : LE NOMBRE DE GRANDEURS DE LA DÉMO EST RÉGLABLE À CHAUD ─────

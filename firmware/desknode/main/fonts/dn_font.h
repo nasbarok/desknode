@@ -76,7 +76,10 @@
 extern "C" {
 #endif
 
-/* ASCII + latin-1 complet + puce + 60 symboles + 12 icônes. */
+/* ASCII + latin-1 complet + puce + 60 symboles + 12 icônes.
+ * ⛔ CETTE LISTE EST GÉNÉRÉE DEPUIS `TAILLES` — ne pas y ajouter une ligne à la
+ *    main : le prochain passage du générateur l'effacerait, et la taille
+ *    correspondante n'aurait aucun `.c`. */
 LV_FONT_DECLARE(dn_font_14)
 LV_FONT_DECLARE(dn_font_28)
 
@@ -105,6 +108,35 @@ LV_FONT_DECLARE(dn_font_28)
  */
 LV_FONT_DECLARE(dn_font_33)
 LV_FONT_DECLARE(dn_font_56)
+
+/*
+ * ── LA LISTE DES POLICES LIÉES — GÉNÉRÉE DEPUIS `TAILLES` / `TAILLES_VEILLE` ─
+ *
+ * 🔴 POURQUOI UNE X-MACRO ET PAS UNE TABLE ÉCRITE DANS `dn_console.c` : une
+ *    commande qui énumère les polices EN DUR se périme à la taille suivante
+ *    SANS QU'AUCUNE COMPILATION NE S'EN PLAIGNE. `widget police` en est la
+ *    preuve vivante — il annonçait « IL N'Y A QUE DEUX POLICES EMBARQUEES »
+ *    dans un `printf`, un fait que rien ne re-vérifiait jamais.
+ *    ⇒ Ici la liste EST le générateur. Ajouter une taille à `TAILLES` la
+ *      remplit ; en retirer une la vide ; le message console suit.
+ *
+ * ⚠️ LE 3ᵉ CHAMP N'EST PAS DÉCORATIF : `1` = police d'INTERFACE (latin-1
+ *    complet, accents, symboles, icônes) · `0` = police de VEILLE (plage
+ *    réduite `0x20-0x7F,0xB0`, ⛔ ni accent ni symbole). Pointer un texte
+ *    d'interface vers une police de veille lui fait perdre ses accents EN
+ *    SILENCE — « RÉSEAU » deviendrait « R SEAU ». Tout site qui CHOISIT une
+ *    police doit lire ce champ.
+ *
+ * Usage :
+ *     #define X(taille, symbole, itf)  { #taille, &symbole, (itf) != 0 },
+ *     static const ... k_polices[] = { DN_FONT_LISTE(X) };
+ *     #undef X
+ */
+#define DN_FONT_LISTE(X) \
+    X(14, dn_font_14, 1) \
+    X(28, dn_font_28, 1) \
+    X(33, dn_font_33, 0) \
+    X(56, dn_font_56, 0)
 
 /* Les icônes, en UTF-8 prêt à concaténer dans un littéral de chaîne.
  * GÉNÉRÉES depuis le même dictionnaire que la police : une macro ne peut pas

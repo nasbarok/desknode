@@ -89,6 +89,16 @@ static const char *TAG = "dn_widget";
 /* Largeur du sillon réservé à l'icône de la case, par taille de police. */
 #define W_ICONE_AV_28 40
 #define W_ICONE_AV_14 22
+/*
+ * 🔴 dn4-14-2 / AC2 — LE RETRAIT DU BADGE « SIMULÉ » DEPUIS LE BORD DROIT.
+ *    Il était écrit `w - 66` EN DUR au site de création, et c'est LUI qui borne
+ *    le TITRE : le titre commence en `W_PAD + W_ICONE_AV_*` et le badge finit
+ *    l'espace disponible. ⇒ 52..159 sur une case de 225, soit **107 px**, et ce
+ *    nombre n'était calculable nulle part.
+ * ⚠️ CE MUR EST INVISIBLE : LVGL clippe au parent SANS UN MOT. Un titre en 20 px
+ *    qui mord sur le badge ne fait ni log, ni erreur, ni crash — il se coupe.
+ */
+#define W_BADGE_DE_DROITE 66
 
 /*
  * ── dn4-6 / AC4 : L'OVERRIDE DE GÉOMÉTRIE ────────────────────────────────────
@@ -233,6 +243,32 @@ void dn_widget_trop_larges_reset(void) { s_trop_larges = 0; }
 
 int dn_widget_gouttiere(void) { return W_GOUTTIERE; }
 int dn_widget_largeur_utile(int w) { return w - 2 * W_PAD; }
+
+/*
+ * ── dn4-14-2 / AC2 : LE SLOT DU TITRE, RELU — ⛔ PAS RÉCITÉ ──────────────────
+ *
+ * Le titre part après le sillon d'icône et s'arrête au badge. Les deux bornes
+ * viennent des MÊMES macros que `dn_widget_creer()` emploie, et la largeur du
+ * sillon DÉPEND DU RÉGIME D'EN-TÊTE (`W_ICONE_AV_28` en NORMAL, `_14` en
+ * COMPACT) : un instrument qui figerait 40 px se tromperait de 18 px dès qu'on
+ * bascule en COMPACT, et se tromperait EN SILENCE.
+ * ⚠️ `avec_icone` est un paramètre parce que `desc->icone` peut être NULL : une
+ *    case sans icône donne son sillon au titre. ⛔ Ne pas le supposer.
+ */
+int dn_widget_titre_x(bool avec_icone)
+{
+    if (!avec_icone) {
+        return W_PAD;
+    }
+    return W_PAD + ((s_geom.entete == DN_ENTETE_COMPACT) ? W_ICONE_AV_14
+                                                         : W_ICONE_AV_28);
+}
+
+int dn_widget_titre_utile(int w, bool avec_icone)
+{
+    int utile = (w - W_BADGE_DE_DROITE) - dn_widget_titre_x(avec_icone);
+    return utile > 0 ? utile : 0;
+}
 
 const char *dn_widget_dispo_nom(dn_widget_dispo_t d)
 {
@@ -1443,8 +1479,8 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
      * LVGL, donc à allouer, sous le verrou et depuis une tâche de source. Un
      * `lv_obj_add_flag(HIDDEN)` ne peut pas échouer ; un `lv_label_create` si. */
     out->badge = dn_widget_texte(out->racine, "SIMULÉ", &dn_font_14,
-                                 lv_color_hex(W_COL_SIMULEE), w - 66,
-                                 entete_y_badge());
+                                 lv_color_hex(W_COL_SIMULEE),
+                                 w - W_BADGE_DE_DROITE, entete_y_badge());
     lv_obj_add_flag(out->badge, LV_OBJ_FLAG_HIDDEN);
 
     /* 🔴 L'ÉCRÊTAGE DU NOMBRE DE GRANDEURS EST JOURNALISÉ — correctif de revue
