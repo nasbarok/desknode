@@ -446,16 +446,56 @@ def bloc_tick(src):
          "annulation ⇒ retour a ACTIF",
          "⛔ pas d'etiquette AMBIENT sur un ecran reste en couleurs")
 
+    # 🔴 REVUE DE CODE DU 2026-08-29 — CE MIROIR ETAIT PLUS COURT QUE LA
+    #    STRUCTURE C, ET IL FAISAIT ECRIRE `dn_veille_compteurs()` HORS DU
+    #    TAMPON PYTHON. Les quatre champs `bascules_forcees`,
+    #    `bascules_auto_depuis_reveil`, `secondes_depuis_reveil` et
+    #    `inact_max_depuis_reveil_ms` ont ete AJOUTES A `dn_veille.h` par la
+    #    revue du 2026-08-28 (AC8.2, diagnostic d'appui fantome) — et ce miroir
+    #    n'a PAS suivi. Mesure : 48 octets ici contre 64 cote C ⇒ le `*out = …`
+    #    de `dn_veille_compteurs()` ecrivait **16 OCTETS AU-DELA** du tampon.
+    #    ⇒ DEUX consequences, et la seconde est la pire :
+    #      1. CORRUPTION DE TAS ⇒ SIGSEGV a la sortie de l'interpreteur, une
+    #         fois sur deux, APRES l'impression du bilan (mesure 2026-08-29 :
+    #         4 crashes / 10 sur ce bloc seul) ⇒ `$?` = 139 sur une gate VERTE.
+    #      2. TOUT CHAMP SITUE APRES LE TROU ETAIT LU DECALE : `reveils`,
+    #         `rebases`, `annulations`, `secondes_vues` et `origine` ne
+    #         designaient PAS ce que leur nom disait. Les controles qui s'en
+    #         servaient etaient donc VERTS SUR LA MAUVAISE DONNEE.
+    #    ⚠️ LECON : un miroir ctypes est un CONTRAT SILENCIEux — il ne se
+    #      plaint ni a la compilation ni a l'execution. La garde posee juste
+    #      apres (`sizeof` relu du C) est ce qui le rend bruyant.
     class C(ctypes.Structure):
         _fields_ = [("mode", ctypes.c_int), ("armee", ctypes.c_bool),
                     ("cran", ctypes.c_int), ("delai_ms", ctypes.c_uint32),
                     ("inactivite_ms", ctypes.c_uint32),
                     ("inactivite_max_ms", ctypes.c_uint32),
-                    ("bascules", ctypes.c_uint32), ("reveils", ctypes.c_uint32),
+                    ("bascules", ctypes.c_uint32),
+                    ("bascules_forcees", ctypes.c_uint32),
+                    ("bascules_auto_depuis_reveil", ctypes.c_uint32),
+                    ("secondes_depuis_reveil", ctypes.c_uint32),
+                    ("inact_max_depuis_reveil_ms", ctypes.c_uint32),
+                    ("reveils", ctypes.c_uint32),
                     ("rebases", ctypes.c_uint32),
                     ("annulations", ctypes.c_uint32),
                     ("secondes_vues", ctypes.c_uint32),
                     ("origine", ctypes.c_int)]
+    # ⛔ LA GARDE QUI MANQUAIT : le nombre de champs `uint32_t` du `.h` est
+    #   RELU, ⛔ pas recopie. Si un champ est ajoute cote C sans l'etre ici, ce
+    #   controle ROUGIT — au lieu de laisser un depassement muet corrompre le
+    #   tas et fausser les lectures.
+    mstruct = (re.search(r"typedef struct \{(.*?)\} dn_veille_compteurs_t;",
+                         lire(DN_VEILLE_H)[0], re.S)
+               if os.path.exists(DN_VEILLE_H) else None)
+    if mstruct is not None:
+        n_c = len(re.findall(r"^\s*(?:uint32_t|int|bool|dn_veille_mode_t|"
+                             r"dn_veille_origine_t)\s+\w+;", mstruct.group(1),
+                             re.M))
+        ctrl(n_c == len(C._fields_),
+             "le miroir ctypes de `dn_veille_compteurs_t` a AUTANT de champs "
+             "que le `.h` (%d)" % n_c,
+             "⛔ un miroir plus court fait ECRIRE HORS DU TAMPON : %d cote "
+             "Python" % len(C._fields_))
     c = C()
     lib.dn_veille_compteurs(ctypes.byref(c))
     ctrl(c.annulations == 1, "l'annulation est COMPTEE", "annulations = %d" % c.annulations)
@@ -1037,8 +1077,8 @@ def bloc_accents():
     #    DISAIT, ET ELLE ETAIT VERTE. Elle faisait un `re.findall` sur TOUT
     #    `dn_ui.c` et rendait SEPT valeurs, en ecrivant que la 7e etait
     #    « cyan pour l'humidite » de la bicolore D6. MESURE le 2026-08-29 :
-    #    les six premieres sont bien les cases (l.575, 703, 796, 828, 965,
-    #    1116) mais la 7e est `k_demo_desc.couleur` (0x35d6e8, l.10139) — LA
+    #    les six premieres sont bien les cases (les six blocs
+    #    `[DN_UI_CASE_*]`) mais la 7e est `k_demo_desc.couleur` (0x35d6e8) — LA
     #    METRIQUE FICTIVE DE DEMO. ⇒ elle mesurait une couleur que PERSONNE
     #    NE VOIT, et ne couvrait PAS l'humidite, qui vaut `0x67e8f9`
     #    (`DET_COURBE_COUL_HUM`). Les deux valeurs coincidaient par accident
@@ -1049,6 +1089,13 @@ def bloc_accents():
     #   Le descripteur de DEMO est EXCLU en scopant le regex au bloc `k_desc[]`
     #   (⛔ pas en retirant « la derniere » : ca se re-casserait a la prochaine
     #   `.couleur` ajoutee n'importe ou dans le fichier).
+    # ⛔ AUCUN NUMERO DE LIGNE N'EST ECRIT DANS CE BLOC, ET C'EST DELIBERE.
+    #   La revue du 2026-08-29 a trouve les SEPT ancres qu'il recitait toutes
+    #   perimees — 575/703/796/828/965/1116/10139 pour, en vrai,
+    #   585/729/837/874/1064/1213/10236 — dans le fichier dont le sujet ENTIER
+    #   est « un compte recopie derive, et sa derive est silencieuse ». Les
+    #   reperes sont donc des NOMS (`k_desc[]`, `k_demo_desc`,
+    #   `DET_COURBE_COUL_HUM`), ⛔ jamais des lignes.
     # ══════════════════════════════════════════════════════════════════════
     ui, _ = lire(DN_UI_C)
     mk = re.search(r"static const dn_widget_desc_t k_desc\[DN_UI_METRIQUES\] = \{"
@@ -1057,18 +1104,42 @@ def bloc_accents():
                 "le bloc `k_desc[]` est LOCALISE dans dn_ui.c",
                 "⛔ sans lui le regex ramasserait aussi `k_demo_desc`"):
         return
-    cases = [int(x, 16) for x in
-             re.findall(r"\.couleur = 0x([0-9a-fA-F]{6})", mk.group(0))]
-    ctrl(len(cases) == 6,
-         "les SIX couleurs de CASE sont relues du bloc `k_desc[]`",
-         " ".join("%06x" % a for a in cases))
+    # 🔴 dn4-14 / REVUE 2026-08-29 — LE NOM DE CHAQUE CASE EST LU DE SON
+    #    DESIGNATEUR, ⛔ PLUS DEDUIT DE SA POSITION. `k_desc[]` est initialise
+    #    par designateurs (`[DN_UI_CASE_CPU] = {`) : l'ordre des blocs dans le
+    #    source est donc ARBITRAIRE et une reorganisation compile sans rien
+    #    changer. Une liste d'etiquettes recitee a cote (`etiq = [...]`) faisait
+    #    alors NOMMER LA MAUVAISE PAIRE en restant VERTE — le contraire de ce
+    #    que ces etiquettes existent pour donner (« que la relecture sache
+    #    LAQUELLE »).
+    blocs = re.split(r"\[DN_UI_CASE_", mk.group(0))[1:]
+    cases, noms = [], []
+    for b in blocs:
+        mn = re.match(r"([A-Z0-9_]+)\]", b)
+        mc = re.search(r"\.couleur = 0x([0-9a-fA-F]{6})", b)
+        if mn and mc:
+            noms.append(mn.group(1))
+            cases.append(int(mc.group(1), 16))
+    if not ctrl(len(cases) == 6,
+                "les SIX couleurs de CASE sont relues du bloc `k_desc[]`, "
+                "chacune AVEC LE NOM DE SON DESIGNATEUR",
+                " ".join("%s=%06x" % (nm, a) for nm, a in zip(noms, cases))):
+        # ⛔ SANS CE `return`, une 7e case ferait planter `_paires()` sur un
+        #    IndexError d'etiquette au lieu de rendre un KO lisible.
+        return
 
     # ⚠️ TEMOIN NEGATIF : le descripteur de DEMO doit etre HORS du jeu. Sans ce
     #    controle, une future `.couleur` glissee dans `k_desc[]` par erreur
     #    passerait, et surtout on ne saurait pas que l'exclusion opere.
     mdemo = re.search(r"k_demo_desc = \{.*?\n\};", ui, re.S)
-    demo = (int(re.search(r"\.couleur = 0x([0-9a-fA-F]{6})",
-                          mdemo.group(0)).group(1), 16) if mdemo else None)
+    # ⚠️ REVUE 2026-08-29 : le `.group(1)` etait pris SANS verifier que la
+    #    recherche interne avait abouti. Ecrire la teinte autrement (`0x35d6e8u`,
+    #    un espacement different, une constante nommee) rendait `None` ⇒
+    #    AttributeError, et LA GATE PLANTAIT AU LIEU DE RENDRE KO. Une gate qui
+    #    meurt ne dit pas « non », elle ne dit RIEN.
+    mdc = (re.search(r"\.couleur = 0x([0-9a-fA-F]{6})", mdemo.group(0))
+           if mdemo else None)
+    demo = int(mdc.group(1), 16) if mdc else None
     ctrl(demo is not None and demo not in cases,
          "TEMOIN : la couleur de la metrique FICTIVE (`k_demo_desc`) est EXCLUE",
          "0x%06x — elle etait comptee comme 7e accent avant dn4-14"
@@ -1094,7 +1165,6 @@ def bloc_accents():
     #      au premier changement, c.-a-d. reproduirait le defaut. Le critere est
     #      « si le commentaire NOMME une teinte, la valeur DOIT etre de cette
     #      famille » : rose/magenta ⇒ R > B > G ; violet ⇒ B >= R > G.
-    mram = re.search(r"\.couleur = 0x([0-9a-fA-F]{6}),\s*/\* ([A-ZÉÈÀ]+)", mk.group(0))
     # ⚠️ dn4-14 (seance) : « CLAIR » entre au dictionnaire parce que `DISQUE`
     #    est devenue un clair neutre. ⛔ Sans lui la boucle SAUTE l'entree
     #    (`if nom not in fam: continue`) et le controle serait VERT en ne
@@ -1108,18 +1178,41 @@ def bloc_accents():
            "BLEU":   lambda r, g, b: b > g >= r,
            "ROUGE":  lambda r, g, b: r > g and r > b,
            "VERT":   lambda r, g, b: g > r and g > b}
-    for m2 in re.finditer(r"\.couleur = 0x([0-9a-fA-F]{6}),\s*/\*+\s*([A-Z\u00c0-\u00dc]{3,8})",
-                          mk.group(0)):
+    # 🔴 REVUE 2026-08-29 — CE CONTROLE SAUTAIT UNE CASE SUR SIX, EN SILENCE,
+    #    ET IL ETAIT VERT. La classe de caracteres exigeait des CAPITALES
+    #    (`[A-Z\u00c0-\u00dc]{3,8}`) ; `k_desc[DN_UI_CASE_AMB]` ecrit
+    #    `.couleur = 0xff9640, /* orange */` EN MINUSCULES ⇒ l'entree n'etait
+    #    jamais appariee, la famille "ORANGE" ci-dessus etait MORTE, et
+    #    seules CINQ des six couleurs etaient verifiees.
+    #    ⛔ MESURE PAR MUTATION : poser 0x2266ff (un BLEU) sous un
+    #      `/* orange */` inchange laissait la gate a 0 KO.
+    #    🔴 C'est VERBATIM le piege que le commentaire ci-dessus dit avoir
+    #      ferme en ajoutant "CLAIR" — commis un ecran plus bas. La lecon
+    #      n'est pas « ajouter une famille de plus » : c'est que RIEN NE
+    #      COMPTAIT LES CORRESPONDANCES. Les deux bouts sont corriges :
+    #      l'appariement ignore la casse, ET la couverture est ASSERTEE.
+    verifiees = []
+    for m2 in re.finditer(r"\.couleur = 0x([0-9a-fA-F]{6}),\s*/\*+\s*"
+                          r"([A-Za-z\u00c0-\u00ff]{3,8})", mk.group(0)):
         v = int(m2.group(1), 16)
-        nom = m2.group(2)
+        nom = m2.group(2).upper()
         if nom not in fam:
             continue
+        verifiees.append("0x%06x/%s" % (v, nom))
         r, g, b = (v >> 16) & 0xFF, (v >> 8) & 0xFF, v & 0xFF
         ctrl(fam[nom](r, g, b),
              "AC6.5 : 0x%06x est annoncee « %s » et l'EST (R%d G%d B%d)"
              % (v, nom, r, g, b),
              "⛔ un commentaire qui survit a la valeur qu'il decrit est un "
              "defaut au meme titre qu'un chiffre faux")
+    # ⛔ LE CONTROLE QUI MANQUAIT, ET SANS LEQUEL LES AUTRES NE PROUVENT RIEN :
+    #   un saut silencieux (casse, teinte non repertoriee, commentaire retire)
+    #   redevient un KO, ⛔ pas une absence de ligne que personne ne compte.
+    ctrl(len(verifiees) == len(cases),
+         "AC6.5 : les %d couleurs de case annoncent TOUTES une teinte, et "
+         "TOUTES sont verifiees" % len(cases),
+         "%d/%d verifiees — %s" % (len(verifiees), len(cases),
+                                   " ".join(verifiees)))
 
     ctrl(all(lib.dn_widget_desaturer(a, 0) == a for a in accents),
          "pct = 0 ⇒ la teinte est INTACTE")
@@ -1145,13 +1238,21 @@ def bloc_accents():
                 for i in range(len(vals)) for j in range(i + 1, len(vals))
                 if vals[i] == vals[j]]
 
-    etiq = ["CPU", "GPU", "RAM", "RESEAU", "DISQUE", "AMBIANCE", "AMB-humidite"]
+    # ⛔ DERIVEES DES DESIGNATEURS, ⛔ PLUS RECITEES : voir le motif au
+    #   `re.split` ci-dessus (une reorganisation de `k_desc[]` nommait la
+    #   mauvaise paire en restant verte).
+    etiq = noms + ["AMB-humidite"]
     ys = [(g & 0xFF) for g in gris]
     coll_bt = _paires(ys, etiq)
     # ⚠️ RE-MESURE dn4-14 SUR LE JEU CORRIGE (2026-08-29) : la propriete TIENT
     #    — la substitution demo -> humidite ne change RIEN a 100 % en BT.601,
-    #    la paire confondue reste `GPU`/`RAM` a 160. Luminances mesurees :
-    #    [121, 127, 153, 160, 160, 172, 195].
+    #    la paire confondue reste `GPU`/`RAM` a 160.
+    #    ⚠️ RE-MESUREE UNE 2e FOIS LE 2026-08-29 (revue) : le releve ecrit ici
+    #      etait celui d'AVANT la seance — [121, 127, 153, 160, 160, 172, 195]
+    #      — et `153` etait l'ANCIEN `DISQUE` (0xf87171). Sur la palette
+    #      RETENUE (DISQUE = 0xe2e8f0) les luminances sont
+    #      [121, 128, 160, 160, 171, 195, 231]. AC6.4 exige le nouveau nombre
+    #      AVEC son motif : le voici, et la propriete TIENT toujours.
     # ⛔ CE N'EST PAS UN BUT : c'est un CONSTAT epingle. Si un changement de
     #   palette le fait passer a ZERO paire, la gate ROUGIT SUR UNE
     #   AMELIORATION — et alors on RE-ECRIT le nombre AVEC SON MOTIF, on ne
@@ -1174,7 +1275,9 @@ def bloc_accents():
     #    meme », et il etait VERT. MESURE le 2026-08-29 : la paire qu'il
     #    comptait etait `CPU` / **la metrique FICTIVE de demo** (166) — ⛔ pas
     #    `CPU`/humidite. Sur le jeu REELLEMENT PEINT, la moyenne ne confond
-    #    RIEN : 7 valeurs distinctes (145, 156, 158, 161, 166, 180, 194).
+    #    RIEN : 7 valeurs distinctes. ⚠️ RE-MESUREES LE 2026-08-29 (revue)
+    #    sur la palette RETENUE : (145, 156, 161, 166, 180, 194, 232) — le
+    #    releve precedent (…158…) datait d'avant le deplacement de `DISQUE`.
     #    ⇒ La phrase d'origine de `dn_widget_desaturer()` (« la moyenne
     #      confondrait, BT.601 separe ») est donc fausse ENCORE PLUS FORT
     #      qu'on ne le croyait, et DANS L'AUTRE SENS : sur les accents reels,
@@ -1189,6 +1292,40 @@ def bloc_accents():
          "TEMOIN : sur le jeu REEL, la moyenne ne confond RIEN (BT.601, si)",
          "moyennes %s — l'ancien « elle en confond une aussi » comptait "
          "la couleur de DEMO" % sorted(mv))
+
+    # ══════════════════════════════════════════════════════════════════════
+    # 🔴 dn4-14 / AC5.2 — L'INVARIANT DU RESOLVEUR UNIQUE, FIGE MECANIQUEMENT.
+    #    La story a trouve un QUATRIEME consommateur de `k_desc[].couleur`
+    #    (`veille_accents_collisions()`, qui lisait `dn_ui_desc(i)->couleur`,
+    #    aveugle a l'override) — A LA MAIN, apres en avoir recense trois. Rien
+    #    n'empechait le cinquieme d'etre tout aussi silencieux : un override
+    #    pose sans lui donnerait une tuile d'une couleur et une courbe d'une
+    #    autre, et PERSONNE ne le verrait avant d'ouvrir la page de detail.
+    #    ⇒ LE CONTRAT SE MESURE : `k_desc[…].couleur` n'est lu QU'A UN SEUL
+    #      site de code (dans `case_couleur()`), et `dn_ui_desc(…)->couleur`
+    #      A AUCUN. ⛔ Les mentions en COMMENTAIRE sont exclues — c'est le
+    #      piege que `lv_display_trigger_activity` a deja coute a ce depot.
+    # ══════════════════════════════════════════════════════════════════════
+    sans_com = re.sub(r"/\*.*?\*/", "", ui, flags=re.S)
+    sans_com = re.sub(r"//[^\n]*", "", sans_com)
+    n_direct = len(re.findall(r"k_desc\[[^\]]+\]\.couleur", sans_com))
+    n_ptr = len(re.findall(r"dn_ui_desc\([^)]*\)\s*->\s*couleur", sans_com))
+    ctrl(n_direct == 1,
+         "AC5.2 : `k_desc[].couleur` n'est lu QU'A UN SEUL site de code",
+         "%d site(s) hors commentaire — le resolveur `case_couleur()` doit "
+         "etre le SEUL ; un 2e lecteur serait aveugle a l'override" % n_direct)
+    ctrl(n_ptr == 0,
+         "AC5.2 : plus AUCUN `dn_ui_desc(...)->couleur` (le 4e consommateur)",
+         "%d site(s) hors commentaire — c'est par la que "
+         "`veille_accents_collisions()` jugeait l'ANCIENNE palette" % n_ptr)
+    # ⚠️ TEMOIN DE CABLAGE : sans lui, un `ui` vide ou un regex casse rendrait
+    #   0 et 0, donc DEUX verts en ne mesurant rien.
+    ctrl(len(re.findall(r"k_desc\[", ui)) > len(
+             re.findall(r"k_desc\[", sans_com)),
+         "…et le decompte IGNORE bien les mentions en commentaire",
+         "%d occurrences brutes de `k_desc[` contre %d hors commentaire"
+         % (len(re.findall(r"k_desc\[", ui)),
+            len(re.findall(r"k_desc\[", sans_com))))
 
     # ── LE DEFAUT DU PRODUIT DOIT, LUI, TOUT SEPARER ──────────────────────
     m = re.search(r"static int s_accent_amb_pct = (\d+);", src)

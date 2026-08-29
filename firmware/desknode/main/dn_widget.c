@@ -910,19 +910,30 @@ uint32_t dn_widget_desaturer(uint32_t rgb, int pct)
     }
     uint32_t r = (rgb >> 16) & 0xFFu, g = (rgb >> 8) & 0xFFu, b = rgb & 0xFFu;
     /*
-     * ⚠️ ITU-R BT.601 (77/150/29 sur 256), ⛔ pas une moyenne des trois canaux —
-     *    et le motif N'EST PAS « la moyenne confondrait des couleurs » : MESURÉ
-     *    LE 2026-08-25, les deux mappings confondent EXACTEMENT UNE PAIRE
-     *    chacun, simplement pas la même (BT.601 : `GPU`/`RAM`, tous deux à 160 ;
-     *    moyenne : `CPU`/humidité d'`AMBIANCE`, tous deux à 166).
-     *    ⇒ Le vrai motif est PERCEPTUEL : BT.601 pondère les canaux comme l'œil
-     *      les voit (le vert compte pour 59 %, le bleu pour 11 %), une moyenne
-     *      non. Un gris « juste » est celui qui garde la clarté RELATIVE des six
-     *      accents, ⛔ pas celui qui maximise le nombre de valeurs distinctes.
-     * 🔴 UNE PREMIÈRE VERSION DE CE COMMENTAIRE AFFIRMAIT L'INVERSE, en citant
-     *    précisément la paire que BT.601 confond LUI-MÊME. Elle a été corrigée
-     *    par la mesure avant d'être publiée — un motif faux dans un commentaire
-     *    est un défaut au même titre qu'un chiffre faux.
+     * ⚠️ ITU-R BT.601 (77/150/29 sur 256), ⛔ pas une moyenne des trois canaux.
+     *    ⇒ LE MOTIF EST PERCEPTUEL, ET C'EST LE SEUL : BT.601 pondère les
+     *      canaux comme l'œil les voit (le vert compte pour 59 %, le bleu pour
+     *      11 %), une moyenne non. Un gris « juste » est celui qui garde la
+     *      clarté RELATIVE des sept accents, ⛔ pas celui qui maximise le
+     *      nombre de valeurs distinctes.
+     * 🔴 ⛔ NE PAS RÉÉCRIRE ICI « ET D'AILLEURS LA MOYENNE CONFOND X » : CE
+     *    COMMENTAIRE S'EST TROMPÉ DEUX FOIS SUR CE POINT PRÉCIS, ET LE COMPTAGE
+     *    EST TENU AILLEURS.
+     *    · 1ʳᵉ fois — il affirmait que la moyenne confondait `GPU`/`RAM` et que
+     *      BT.601 les séparait : c'était L'INVERSE, corrigé le 2026-08-25.
+     *    · 2ᵉ fois — il affirmait alors « les deux mappings confondent
+     *      EXACTEMENT UNE PAIRE chacun … moyenne : `CPU`/humidité, tous deux à
+     *      166 ». MESURÉ EN REVUE LE 2026-08-29 : `moy(CPU 0xa855f7) = 166`
+     *      mais `moy(humidité 0x67e8f9) = 194`. Le 166 ne tombait juste qu'avec
+     *      `0x35d6e8`, **la teinte de la métrique FICTIVE de démo** — le défaut
+     *      AC6.1/AC6.2 exactement, laissé ici pendant qu'AC6.3 le corrigeait
+     *      dans `dn_ui.c`. Sur le jeu RÉELLEMENT PEINT (6 cases + humidité), la
+     *      moyenne ne confond RIEN et BT.601 confond `GPU`/`RAM` à 160.
+     *    ⇒ LA PROPRIÉTÉ EST ÉPINGLÉE PAR `tools/verif_veille_dn33.py`
+     *      (`bloc_accents`), qui la RE-MESURE à chaque passage. C'est LUI qui
+     *      fait foi, ⛔ pas une phrase recopiée ici — « un motif faux dans un
+     *      commentaire est un défaut au même titre qu'un chiffre faux », et
+     *      celui-ci l'a prouvé deux fois.
      */
     uint32_t y = (r * 77u + g * 150u + b * 29u) >> 8;
     if (y > 255u) {

@@ -168,18 +168,47 @@ ICONES = {
     #    ⛔ `microchip` (0xF2DB) est INTERDIT comme candidat : il est déjà `CPU`,
     #       et un doublon rendrait les deux cases confusibles au coup d'œil.
     #
-    # 🎯 LE BUDGET EST NEUTRE, ET CALCULÉ (⛔ pas estimé) : ménage −3 propres au
-    #    dépôt ⇒ 65 ; `home` +0 (amont) ; `bolt`/`image`/`film` +0 (amont, ce
-    #    sont LV_SYMBOL_CHARGE / _IMAGE / _VIDEO) ; `gamepad`/`cube`/
-    #    `vr-cardboard` +3 ⇒ 68, EXACTEMENT l'union d'avant la story.
-    #    ⇒ SIX candidats pour le prix de zéro.
+    # 🎯 LE BUDGET, CALCULÉ (⛔ pas estimé) : ménage −3 propres au dépôt ⇒ 65 ;
+    #    `home` +0 (amont) ; `bolt`/`image`/`film` +0 (amont, ce sont
+    #    LV_SYMBOL_CHARGE / _IMAGE / _VIDEO) ; `gamepad` +1 ⇒ **66**, soit
+    #    **DEUX de moins** que l'union d'avant la story.
+    #
+    # 🔴 DÉCISION OWNER DU 2026-08-29, EN REVUE DE CODE — `cube` (0xF1B2) et
+    #    `vr-cardboard` (0xF729) SONT SORTIS. C'étaient les deux candidats
+    #    PAYANTS non retenus (verdict de séance : « on garde gamepad »).
+    #    ⚠️ POURQUOI ÇA COMPTE : la story avait écrit que l'écart d'AC3.3
+    #      (« le compte de codepoints doit baisser ») « se refermerait après T8,
+    #      sans travail supplémentaire ». T8 a eu lieu, l'owner a tranché, et
+    #      **le compte était resté à 260** — les deux rejetés étaient toujours
+    #      là. L'écart ne se refermait donc PAS tout seul : il fallait ce geste.
+    #    ⚠️ LE PRIX EST ASSUMÉ ET IL S'ÉCRIT : ces deux dessins-là ne sont plus
+    #      rejouables sans reflasher. Les quatre candidats qui restent
+    #      (`desktop`, `bolt`, `image`, `film`) sont tous GRATUITS — l'A/B garde
+    #      de quoi comparer à coût nul.
     "bolt":             0xF0E7,  # GPU cand. — un éclair          (AMONT, +0)
     "image":            0xF03E,  # GPU cand. — un cadre photo     (AMONT, +0)
     "film":             0xF008,  # GPU cand. — une pellicule      (AMONT, +0)
-    "gamepad":          0xF11B,  # GPU cand. — une manette de jeu       (+1)
-    "cube":             0xF1B2,  # GPU cand. — un cube en perspective   (+1)
-    "vr-cardboard":     0xF729,  # GPU cand. — un casque de RV          (+1)
+    "gamepad":          0xF11B,  # GPU RETENU (owner) — une manette     (+1)
 }
+
+# 🔴 CONTRÔLES DE COHÉRENCE DU DICTIONNAIRE — REVUE DU 2026-08-29.
+#    Deux entrées d'`ICONES` peuvent porter LE MÊME codepoint sous deux noms.
+#    `n_icones` compte alors des NOMS et `n_r` des CODEPOINTS : le `.h` généré
+#    publierait « n icônes, dont k amont ⇒ neufs, N au -r » avec une identité
+#    QUI NE TIENT PLUS — un fait calculé, donc cru, et faux.
+#    ⛔ Et un dictionnaire VIDE passait « 0/0 icônes présentes » en rendant un
+#      `.h` sans aucune macro `DN_ICONE_*`, qui casse loin d'ici, à la
+#      compilation du firmware.
+if not ICONES:
+    sys.exit("ÉCHEC : le dictionnaire `ICONES` est VIDE — le `.h` généré ne "
+             "porterait aucune macro `DN_ICONE_*`, et l'échec se produirait "
+             "à la compilation du firmware, loin d'ici.")
+if len(set(ICONES.values())) != len(ICONES):
+    _dbl = sorted(n for n, c in ICONES.items()
+                  if list(ICONES.values()).count(c) > 1)
+    sys.exit("ÉCHEC : deux noms d'`ICONES` partagent un codepoint (%s) — les "
+             "comptes réinjectés dans `dn_font.h` cesseraient d'être une "
+             "identité vérifiable." % ", ".join(_dbl))
 
 TAILLES = (14, 28)
 
@@ -498,13 +527,28 @@ def prevol_lv_font_conv():
     SHIM `~/.local/bin/lv_font_conv`, donc « le fichier existe » ne dit rien sur
     « il tourne ». Le seul contrôle qui prouve quelque chose est l'exécution.
     """
+    # 🔴 `timeout=` ET `stdin=DEVNULL` — AJOUTÉS EN REVUE LE 2026-08-29.
+    #    Sans eux, le contrôle ajouté POUR ÉCHOUER VITE pouvait bloquer
+    #    INDÉFINIMENT, sans le moindre message : le dépôt lance `lv_font_conv`
+    #    par un SHIM `npx --yes lv_font_conv@1.5.3` (la docstring ci-dessus le
+    #    dit), et `npx` attend le réseau — ou une invite — quand le paquet n'est
+    #    pas en cache. Un pré-vol muet qui pend est PIRE que le traceback qu'il
+    #    remplace : c'est exactement le cas « premier échec attendu d'un nouveau
+    #    poste » qu'AC8.2 crée cette fonction pour éliminer.
     try:
         r = subprocess.run(["lv_font_conv", "--version"],
-                           capture_output=True, text=True)
+                           capture_output=True, text=True,
+                           stdin=subprocess.DEVNULL, timeout=60)
         if r.returncode == 0:
-            print("lv_font_conv : %s" % (r.stdout or r.stderr).strip())
+            v = (r.stdout or r.stderr).strip()
+            # ⚠️ Une sortie VIDE ne prouve rien : ne pas imprimer une étiquette nue.
+            print("lv_font_conv : %s" % (v or "rc = 0, mais AUCUNE version "
+                                              "imprimée — shim suspect"))
             return
         detail = "il a rendu rc = %d" % r.returncode
+    except subprocess.TimeoutExpired:
+        detail = ("il n'a pas répondu en 60 s (shim `npx` en attente de réseau "
+                  "ou d'une invite ?)")
     except FileNotFoundError:
         detail = "introuvable dans le PATH"
     except OSError as e:
@@ -648,8 +692,27 @@ def entete_seule():
        qui ment », et c'est exactement ce qui avait fait croire `fan` présent.
        ⇒ On RELIT donc les `.c` avec `codepoints_du_c()` (⛔ jamais un test de
          bornes) et on REFUSE si un codepoint d'`ICONES` n'y est pas.
+
+    🔴 ET ELLE REFUSE AUSSI LE SURPLUS — AJOUTÉ EN REVUE LE 2026-08-29.
+       Le contrôle ne regardait que la PRÉSENCE : RETIRER une entrée d'`ICONES`
+       puis lancer `--entete-seule` PASSAIT (il y a moins de codepoints à
+       vérifier), et `ecrire_entete()` réinjectait alors dans `dn_font.h` des
+       `n_icones` / `n_neufs` / `n_r` DIMINUÉS pendant que les `.c` portaient
+       toujours les anciens glyphes et leur ligne `Opts:` d'origine.
+       ⇒ Le `.h` aurait publié comme CALCULÉS des compteurs faux — la classe
+         de défaut « un compte recopié dérive » ré-ouverte par le chemin même
+         qu'AC1.2 promeut comme sûr. Un ménage se PAIE par une vraie
+         génération : c'est tout le sujet de l'écart d'AC3.3.
+
+    ⚠️ CE CHEMIN N'EST PAS SANS DÉPENDANCE, CONTRAIREMENT À CE QU'ON A ÉCRIT.
+       `ecrire_entete()` appelle `symboles_amont()`, qui lit
+       `managed_components/…/built_in_font_gen.py` — et `managed_components/`
+       est GITIGNORÉ. Sur un clone neuf il faut donc un `idf.py reconfigure`
+       AVANT. Ce qui est vrai, et c'est déjà beaucoup : ⛔ zéro npm, ⛔ zéro
+       réseau, ⛔ aucun `.c` réécrit.
     """
     manques = []
+    surplus = []
     for t in TAILLES:
         chemin = os.path.join(SORTIE, "dn_font_%d.c" % t)
         if not os.path.isfile(chemin):
@@ -662,11 +725,21 @@ def entete_seule():
                              len(ICONES) - len(absents), len(ICONES)))
         for cp in absents:
             manques.append("U+%04X absent de %s" % (cp, chemin))
-    if manques:
-        sys.exit("ÉCHEC : --entete-seule REFUSÉ, les `.c` ne portent pas tout :\n"
+        # ⛔ LE SURPLUS : un codepoint FontAwesome porté par le `.c` que le
+        #   dictionnaire ne demande plus. Les symboles amont, eux, sont
+        #   légitimement présents sans être dans `ICONES` : on ne regarde donc
+        #   QUE la plage FontAwesome, et on soustrait l'amont.
+        amont = set(symboles_amont())
+        fa_portes = {cp for cp in couverts if 0xF000 <= cp <= 0xF8FF}
+        for cp in sorted(fa_portes - set(ICONES.values()) - amont):
+            surplus.append("U+%04X porté par %s mais ABSENT d'`ICONES`"
+                           % (cp, chemin))
+    if manques or surplus:
+        sys.exit("ÉCHEC : --entete-seule REFUSÉ — le `.h` ne peut pas annoncer "
+                 "des comptes que les `.c` contredisent :\n"
                  "  - %s\n"
                  "  ⇒ il faut une VRAIE génération (`python3 tools/gen_font_dn.py`)."
-                 % "\n  - ".join(manques))
+                 % "\n  - ".join(manques + surplus))
     ecrire_entete()
     print("dn_font.h : réécrit depuis ICONES. Les deux `.c` n'ont PAS été touchés "
           "— vérifiable au `sha256sum`.")

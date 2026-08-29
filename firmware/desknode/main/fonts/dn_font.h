@@ -12,8 +12,8 @@
  *
  * `dn_font_14` / `dn_font_28` couvrent 0x20-0x7F,0xA0-0xFF,0x2022 :
  * ASCII + LATIN-1 COMPLET + la puce + les 60 symboles LV_SYMBOL_* UNIQUES
- * + 14 icônes FontAwesome, dont 6 sont DÉJÀ des symboles ⇒
- * 8 codepoints neufs, et 68 au `-r` FontAwesome final. Elles sont
+ * + 12 icônes FontAwesome, dont 6 sont DÉJÀ des symboles ⇒
+ * 6 codepoints neufs, et 66 au `-r` FontAwesome final. Elles sont
  * donc un SUR-ENSEMBLE STRICT des built-ins.
  * ⚠️ « 61 » est le nombre d'entrées BRUTES de la liste amont — elle contient un
  *    DOUBLON (61452 deux fois), d'où 60 uniques. Ces nombres sont
@@ -76,7 +76,7 @@
 extern "C" {
 #endif
 
-/* ASCII + latin-1 complet + puce + 60 symboles + 14 icônes. */
+/* ASCII + latin-1 complet + puce + 60 symboles + 12 icônes. */
 LV_FONT_DECLARE(dn_font_14)
 LV_FONT_DECLARE(dn_font_28)
 
@@ -117,12 +117,10 @@ LV_FONT_DECLARE(dn_font_56)
 #define DN_ICONE_BOLT                "\xEF\x83\xA7" /* U+F0E7 bolt */
 #define DN_ICONE_DESKTOP             "\xEF\x84\x88" /* U+F108 desktop */
 #define DN_ICONE_GAMEPAD             "\xEF\x84\x9B" /* U+F11B gamepad */
-#define DN_ICONE_CUBE                "\xEF\x86\xB2" /* U+F1B2 cube */
 #define DN_ICONE_THERMOMETER_HALF    "\xEF\x8B\x89" /* U+F2C9 thermometer-half */
 #define DN_ICONE_MICROCHIP           "\xEF\x8B\x9B" /* U+F2DB microchip */
 #define DN_ICONE_MEMORY              "\xEF\x94\xB8" /* U+F538 memory */
 #define DN_ICONE_NETWORK_WIRED       "\xEF\x9B\xBF" /* U+F6FF network-wired */
-#define DN_ICONE_VR_CARDBOARD        "\xEF\x9C\xA9" /* U+F729 vr-cardboard */
 
 #ifdef __cplusplus
 }

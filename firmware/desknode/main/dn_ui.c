@@ -1240,7 +1240,16 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
  * ── dn4-14 / AC5 : L'OVERRIDE DE COULEUR DE CASE, ET SON RÉSOLVEUR UNIQUE ────
  *
  * 🔴 POURQUOI UN RÉSOLVEUR ET PAS UN OVERRIDE POSÉ DANS `desc_effectif()`.
- *    `k_desc[idx].couleur` est lu à TROIS endroits, RELEVÉS le 2026-08-29 :
+ *    `k_desc[idx].couleur` était lu à TROIS endroits au cadrage — et un
+ *    QUATRIÈME a été trouvé pendant la story (`veille_accents_collisions()`,
+ *    qui lisait `dn_ui_desc(i)->couleur`, un pointeur vers la table `const`,
+ *    donc AVEUGLE à l'override : c'est l'instrument même de l'arbitrage, il
+ *    aurait jugé l'ANCIENNE palette pendant que la dalle montrait la neuve).
+ *    ⚠️ Ces quatre-là ont été recensés À LA MAIN. Depuis la revue du
+ *    2026-08-29, l'invariant est MESURÉ par `tools/verif_veille_dn33.py`
+ *    (« `k_desc[].couleur` hors commentaire == 1 site » et
+ *    « `dn_ui_desc(…)->couleur` == 0 site ») ⇒ le CINQUIÈME rougira, ⛔ il ne
+ *    se trouvera pas à l'œil. Les trois du cadrage, pour mémoire :
  *      1. `desc_effectif()` → `dn_widget` : l'ICÔNE de la case ET l'INDICATEUR
  *         de sa jauge (`dn_widget_accent_couleur()`) ;
  *      2. `chevron_couleur(idx, 0)` : le CHEVRON de la page de détail ;
@@ -1256,8 +1265,14 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
  *
  * ⚠️ MÊME PATRON QUE `s_nue_force[]` ET `s_icone_alt[]` : `k_desc[]` reste
  *    `const` en `.rodata`, l'override vit à côté. 0 = pas d'override, et c'est
- *    sans ambiguïté : 0x000000 est un noir pur qu'aucune palette de ce produit
- *    n'emploie (le fond est un PCB, pas du noir).
+ *    sans ambiguïté POUR UN ACCENT. ⚠️ AMENDÉ EN REVUE LE 2026-08-29 : la
+ *    formulation d'origine disait « 0x000000 est un noir pur qu'aucune palette
+ *    de ce produit n'emploie », et c'est FAUX — `dn_widget.c` définit
+ *    `W_AMB_CASE_BG 0x000000` (l'aplat de case en Ambient), et la gate imprime
+ *    même « l'aplat de case (000000) est EXACTEMENT neutre ». Le motif JUSTE
+ *    est plus étroit : aucun ACCENT n'est noir, et un accent noir serait
+ *    invisible sur l'aplat. ⛔ Conséquence assumée : `widget couleur <case>
+ *    0x000000` ne force pas un accent noir, il RELÂCHE l'override.
  * ⚠️ Le champ pilote TROIS choses et « c'est voulu : une métrique, une couleur,
  *    partout — ⛔ ne pas en découpler une sans le dire » (règle dn4-4).
  * ⚠️ AUCUN ÉTAT LIVRÉ : au boot `s_coul_force[]` est nul et LE DESCRIPTEUR FAIT
@@ -1266,6 +1281,16 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
  */
 static uint32_t s_coul_force[DN_UI_METRIQUES];
 
+/*
+ * ⚠️ CONVENTION D'ERREUR, ÉCRITE PARCE QU'ELLE DIFFÈRE DE SA VOISINE (revue du
+ *    2026-08-29) : sur un index hors plage, celle-ci rend **0**, quand
+ *    `dn_ui_desc_brut()` rend **NULL** pour exactement la même garde. Le 0 est
+ *    ici indiscernable d'une donnée. ⛔ Ce n'est PAS un piège tant que tous les
+ *    appelants pré-valident (c'est le cas aujourd'hui : `desc_effectif()`,
+ *    `chevron_couleur()`, `courbe_reparametrer()` et `dn_ui_case_couleur()`
+ *    passent un index déjà borné) — mais un appelant futur ne peut pas
+ *    distinguer l'échec, et c'est ça qui est écrit ici plutôt que tu.
+ */
 static uint32_t case_couleur(int idx)
 {
     if (idx < 0 || idx >= DN_UI_METRIQUES) {
@@ -1935,21 +1960,36 @@ static const struct {
      *    tranche sur la dalle. Les six partent EMBARQUÉS ENSEMBLE pour que la
      *    commutation soit à chaud : un A/B qui demande six reflashs coûte six
      *    observations pour un rendement qui baisse.
-     *    ⚠️ LE RANG 0 EST L'ICÔNE EN PLACE, délibérément : sans elle l'owner
-     *       compare les candidats entre eux mais ⛔ pas à ce qu'il rejette, et
-     *       il ne peut pas revenir en arrière sans reflasher.
+     *    🔴 CE BLOC A MENTI ENTRE LA SÉANCE ET LA REVUE (2026-08-29), et
+     *       c'est exactement la classe de défaut qu'AC7.2/AC7.3 corrigent
+     *       quarante lignes plus haut. Il écrivait *« LE RANG 0 EST L'ICÔNE EN
+     *       PLACE »* et le rang 0 s'appelait *« desktop — GPU AUJOURD'HUI »* —
+     *       or l'owner avait tranché *« on garde gamepad »*, donc **`desktop`
+     *       était devenu le candidat REJETÉ** et `dn_ui_icone_alt(GPU)` rendait
+     *       **1**. Une explication qui survit à ce qu'elle explique.
+     *    ⇒ ⛔ AUCUN RANG N'EST DÉCLARÉ « EN PLACE » DANS CETTE TABLE. La
+     *       console le DÉRIVE à l'impression, en demandant à
+     *       `dn_ui_icone_alt(case)` — la seule source qui ne peut pas dériver.
+     *    ⚠️ `desktop` RESTE au rang 0 : c'est ce que l'owner rejette, et un A/B
+     *       qui ne garde pas de quoi revenir en arrière n'est pas un A/B.
      *    ⛔ `microchip` N'EST PAS CANDIDAT : il est déjà `CPU` (`dn_ui.c`,
      *       k_desc), et un doublon rendrait les deux cases confusibles au coup
      *       d'œil — le seul usage réel d'une icône de 28 px.
-     *    🎯 BUDGET NEUTRE, CALCULÉ : ménage −3 propres au dépôt ⇒ 65, puis
-     *       `bolt`/`image`/`film` +0 (amont) et `gamepad`/`cube`/`vr-cardboard`
-     *       +3 ⇒ 68, l'union EXACTE d'avant la story.
+     *    🎯 BUDGET, RE-CALCULÉ APRÈS LE VERDICT (revue du 2026-08-29) :
+     *       ménage −3 propres au dépôt ⇒ 65, puis `bolt`/`image`/`film` +0
+     *       (amont, ce sont LV_SYMBOL_CHARGE / _IMAGE / _VIDEO) et le SEUL
+     *       `gamepad` +1 ⇒ **66**, soit **−2 sous l'union d'avant la story**.
+     *    🔴 DÉCISION OWNER DU 2026-08-29, EN REVUE : `cube` et `vr-cardboard`
+     *       étaient les deux candidats PAYANTS non retenus. Ils sont SORTIS —
+     *       la story avait promis que l'écart d'AC3.3 « se refermerait après
+     *       T8 », et le compte était resté à 260. Il baisse maintenant pour de
+     *       vrai. ⚠️ LE PRIX EST ASSUMÉ ET IL S'ÉCRIT : ces deux dessins-là ne
+     *       sont plus rejouables sans reflasher. Les quatre autres candidats
+     *       (`desktop`, `bolt`, `image`, `film`) restent, et ils sont GRATUITS.
      *    ⚠️ LES NOMS DÉCRIVENT LE DESSIN, ⛔ pas le nom FontAwesome : l'owner
      *       lit cette liste à la console pendant qu'il regarde la dalle. */
-    {"desktop (une tour + son ecran) — GPU AUJOURD'HUI", DN_ICONE_DESKTOP},
-    {"gamepad (une manette de jeu)", DN_ICONE_GAMEPAD},
-    {"cube (un cube en perspective)", DN_ICONE_CUBE},
-    {"vr-cardboard (un casque de realite virtuelle)", DN_ICONE_VR_CARDBOARD},
+    {"desktop (une tour + son ecran) — l'ANCIENNE de GPU", DN_ICONE_DESKTOP},
+    {"gamepad (une manette de jeu) — GPU", DN_ICONE_GAMEPAD},
     {"bolt (un eclair)", DN_ICONE_BOLT},
     {"image (un cadre photo : montagne + soleil)", DN_ICONE_IMAGE},
     {"film (une pellicule perforee)", DN_ICONE_FILM},
@@ -9785,15 +9825,25 @@ int dn_ui_icone_alt(int idx)
     return -1;
 }
 
+/*
+ * 🔴 `n == -1` REND LA MAIN AU DESCRIPTEUR — AJOUTÉ EN REVUE LE 2026-08-29.
+ *    `s_icone_alt[idx]` ne pouvait être posé qu'à un glyphe de la table, JAMAIS
+ *    remis à `NULL`. Or `microchip`, `memory` et `network-wired` n'y sont
+ *    délibérément pas ⇒ dès qu'un A/B était lancé sur `CPU`, `RAM` ou `RÉSEAU`,
+ *    **il n'existait aucun chemin console pour revenir**, alors que le bloc de
+ *    `k_icones_alt[]` justifie sa composition par « il ne peut pas revenir en
+ *    arrière sans reflasher ». Le retour arrière existe maintenant pour les six
+ *    cases, ⛔ pas seulement pour celles dont l'icône est dans la table.
+ */
 esp_err_t dn_ui_set_icone_alt(int idx, int n)
 {
-    if (idx < 0 || idx >= DN_UI_METRIQUES || n < 0 || n >= (int)DN_UI_ICONES_ALT) {
+    if (idx < 0 || idx >= DN_UI_METRIQUES || n < -1 || n >= (int)DN_UI_ICONES_ALT) {
         return ESP_ERR_INVALID_ARG;
     }
     if (!lvgl_port_lock(2000)) {
         return ESP_ERR_TIMEOUT;
     }
-    s_icone_alt[idx] = k_icones_alt[n].glyphe;
+    s_icone_alt[idx] = (n < 0) ? NULL : k_icones_alt[n].glyphe;
     build_scene();
     lvgl_port_unlock();
     return ESP_OK;

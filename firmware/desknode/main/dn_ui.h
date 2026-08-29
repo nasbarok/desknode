@@ -1065,7 +1065,13 @@ uint8_t dn_ui_voile_opa(void);
  *    continué de viser l'ancienne case ventilateur SANS RIEN DIRE. C'était l'une
  *    des trois tables « câblées par index » que dn4-1 aurait fait mentir.
  * `dn_ui_icone_alt(idx)` rend -1 si l'icône active n'est aucun des candidats
- * (cas nominal : la case porte celle de son descripteur). */
+ * (cas nominal : la case porte celle de son descripteur).
+ * 🔴 `dn_ui_set_icone_alt(idx, -1)` REND LA MAIN AU DESCRIPTEUR (revue du
+ *    2026-08-29). Sans ce chemin, un A/B lancé sur `CPU`, `RAM` ou `RÉSEAU` —
+ *    dont les icônes ne sont PAS dans la table — ne pouvait plus revenir en
+ *    arrière sans reflasher, ce que le bloc `k_icones_alt[]` prétend pourtant
+ *    garantir. ⛔ Aucun rang n'est « l'icône en place » : ça se DEMANDE à
+ *    `dn_ui_icone_alt(idx)`, ⛔ ça ne s'écrit pas dans un libellé. */
 int dn_ui_icones_alt_n(void);
 const char *dn_ui_icone_alt_nom(int n);
 int dn_ui_icone_alt(int idx);
@@ -1079,7 +1085,10 @@ esp_err_t dn_ui_set_icone_alt(int idx, int n);
  *    `dn_ui_desc()` pour peindre ou pour MESURER : ce pointeur vise la table
  *    `const`, donc il ignore l'override et rendrait un verdict sur une palette
  *    que la dalle n'affiche plus.
- * ⚠️ `rgb = 0` REND LA MAIN au descripteur (0x000000 n'est employé par aucune
+ * ⚠️ `rgb = 0` REND LA MAIN au descripteur — ⛔ il ne force PAS un accent noir
+ *    (revue 2026-08-29 : `W_AMB_CASE_BG` vaut bien 0x000000, mais c'est un
+ *    APLAT, pas un accent ; aucun ACCENT n'est noir, et il serait invisible).
+ *    (0x000000 n'est employé par aucune
  *    palette de ce produit — le fond est un PCB, pas du noir).
  * ⚠️ AUCUN ÉTAT LIVRÉ : nul au boot, le descripteur fait foi. */
 uint32_t dn_ui_case_couleur(int idx);

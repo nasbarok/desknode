@@ -3916,7 +3916,7 @@ static int cmd_pc(int argc, char **argv)
  *   widget largeur <texte>  la largeur d'UNE chaîne dans la police liée
  *   widget largeur reset    remet à zéro le compteur de CHEVAUCHEMENTS détectés
  *
- * 🔴 LES **DOUZE** « RECONSTRUIT » BLOQUENT LE REPL, DONC LE TRANSPORT PC (relevé
+ * 🔴 LES **TREIZE** « RECONSTRUIT » BLOQUENT LE REPL, DONC LE TRANSPORT PC (relevé
  *    en revue le 2026-08-18 : ce docblock affirmait qu'AUCUNE sous-commande
  *    n'était un travail long, trois lignes au-dessus de trois qui le sont — puis
  *    dn3-2 en a ajouté CINQ sans les lister, dont `nue`, qui reconstruit AUSSI
@@ -3933,10 +3933,16 @@ static int cmd_pc(int argc, char **argv)
  *    **Trois textes, trois valeurs, aucune juste**, et corrigés dans le MÊME
  *    commit — la règle « dans le même geste » avait donc été tenue à la lettre
  *    et manquée sur le fond.
- *    LA LISTE, RELUE DU CODE, EST CELLE-CI — 5 anciennes + 7 de dn4-6 = **12** :
+ * 🔴 ET UNE QUATRIÈME FOIS — REVUE DE CODE DU 2026-08-29. `dn4-14` a ajouté
+ *    `widget couleur`, qui appelle `build_scene()` comme les autres, et l'a
+ *    correctement marquée « ⚠️ RECONSTRUIT » vingt-huit lignes plus haut… en
+ *    laissant **DOUZE** ici et dans le README. Le point de rupture annoncé par
+ *    ce bloc a donc rompu **une fois de plus, sur la story qui l'avait lu**.
+ *    LA LISTE, RELUE DU CODE — 5 anciennes + 7 de dn4-6 + 1 de dn4-14 = **13** :
  *      anciennes : `opa` · `voile` · `icone` · `nue` · `piste`
  *      dn4-6     : `voie` · `grandeurs` · `dispo` · `entete` · `val` · `police`
  *                  · `grille`
+ *      dn4-14    : `couleur`
  *    ⛔ `replacer`, `largeur` et `detail` NE reconstruisent PAS : ne pas les y
  *       ajouter « pour faire le compte ».
  *    ⚠️ `widget voie` ne reconstruit plus qu'**UNE SEULE FOIS** (~350 ms) depuis
@@ -5108,7 +5114,14 @@ static int cmd_widget(int argc, char **argv)
             return 1;
         }
         if (err != ESP_OK) {
-            printf("index hors plage : widget couleur <case 0..%d> <0xRRGGBB>\n",
+            /* ⚠️ REVUE DU 2026-08-29 — `dn_ui_set_couleur()` rend
+             *    `ESP_ERR_INVALID_ARG` pour DEUX causes (index hors plage ET
+             *    `rgb > 0xFFFFFF`), et ce message n'en nommait qu'une. Masque
+             *    aujourd'hui par la pre-validation ci-dessus, il nommerait la
+             *    mauvaise cause au premier appel de l'API depuis ailleurs. */
+            printf("REFUSE : index hors plage (0..%d) OU couleur > 0xFFFFFF.\n",
+                   DN_UI_METRIQUES - 1);
+            printf("   usage : widget couleur <case 0..%d> <0xRRGGBB>\n",
                    DN_UI_METRIQUES - 1);
             return 1;
         }
@@ -5121,8 +5134,38 @@ static int cmd_widget(int argc, char **argv)
             printf("couleur de la case %d (%s) = 0x%06X — SCENE RECONSTRUITE\n",
                    (int)idx, dn_ui_metrique_nom((int)idx), (unsigned)v);
         }
-        printf("   ⇒ accent de tuile + chevron + serie 0 de la courbe.\n");
+        /* 🔴 REVUE DU 2026-08-29 — CETTE LIGNE ANNONCAIT TROIS OBJETS SANS
+         *    CONDITION, ET DEUX POUVAIENT NE PAS EXISTER.
+         *    · le CHEVRON n'est peint que si la case a DEUX series
+         *      (`chevron_couleur()` rend 0 sinon) ⇒ RIEN sur CPU/GPU/RAM/DISQUE,
+         *      y compris sur `RAM`, la case que la seance du 2026-08-29 a
+         *      reellement pilotee ;
+         *    · l'ACCENT DE TUILE n'existe pas sur une case rendue NUE.
+         *    ⇒ Les deux se DEMANDENT, ⛔ ne se recitent pas. */
+        int s0 = -1, s1 = -1;
+        bool a_chevron = (dn_hist_series_de_case((int)idx, &s0, &s1) == 2);
+        bool est_widget = dn_ui_case_est_widget((int)idx);
+        printf("   ⇒ %s%s serie 0 de la courbe.\n",
+               est_widget ? "accent de tuile +" : "",
+               a_chevron ? " chevron +" : "");
+        if (!est_widget) {
+            printf("⚠️ CETTE CASE EST RENDUE **NUE** : aucun accent de tuile n'est\n");
+            printf("   peint. La couleur est POSEE et servira des que la case\n");
+            printf("   redeviendra un widget (`widget nue %d off`).\n", (int)idx);
+        }
+        if (!a_chevron) {
+            printf("⚠️ PAS DE CHEVRON sur cette case : il n'est dessine que sur\n");
+            printf("   les cases a DEUX series. ⛔ ne pas le chercher a l'oeil.\n");
+        }
         printf("⚠️ la reconstruction a retire le stimulus `anim` et la demo.\n");
+        /* ⚠️ dn4-14 / revue : cette commande RECONSTRUIT LA SCENE, et une scene
+         *    reconstruite PENDANT LA VEILLE pose la jauge 27 px trop haut
+         *    (defaut hors perimetre, verse au ledger le 2026-08-29 — la garde
+         *    `dn_widget_controler_tenue()` ne le voit pas, elle teste la
+         *    LARGEUR du texte, ⛔ pas la position de la jauge). */
+        printf("⛔ SI LA CARTE EST EN VEILLE : `veille off` D'ABORD. Une scene\n");
+        printf("   reconstruite en Ambient pose la jauge 27 px TROP HAUT, et\n");
+        printf("   AUCUN compteur ne le dit (ledger, 2026-08-29).\n");
         return 0;
     }
     if (argc == 4 && strcmp(argv[1], "icone") == 0) {
@@ -5136,10 +5179,23 @@ static int cmd_widget(int argc, char **argv)
          *    basculait donc le glyphe et reconstruisait la scène. La convention
          *    du fichier est celle-ci (`:94`, `:120`, `:2920`). */
         if (!ok_idx || fin == argv[3] || *fin != '\0') {
-            printf("usage : widget icone <case 0..%d> <glyphe 0..%d>\n",
+            printf("usage : widget icone <case 0..%d> <glyphe -1..%d>\n",
                    DN_UI_METRIQUES - 1, dn_ui_icones_alt_n() - 1);
+            printf("   (-1 = RENDRE LA MAIN a l'icone du descripteur)\n");
+            /* 🔴 REVUE DU 2026-08-29 — LE MARQUEUR « EN PLACE » EST DERIVE, ⛔
+             *    PLUS ECRIT DANS LE LIBELLE. Le rang 0 s'appelait « desktop —
+             *    GPU AUJOURD'HUI » ET LE MESSAGE CI-DESSOUS LE REPETAIT, alors
+             *    que l'owner avait tranche « on garde gamepad » : `desktop`
+             *    etait devenu le candidat REJETE, et `dn_ui_icone_alt(GPU)`
+             *    rendait 1. On demande donc a la SOURCE, case par case. */
             for (int i = 0; i < dn_ui_icones_alt_n(); i++) {
-                printf("   %d = %s\n", i, dn_ui_icone_alt_nom(i));
+                printf("   %d = %s", i, dn_ui_icone_alt_nom(i));
+                for (int cse = 0; cse < DN_UI_METRIQUES; cse++) {
+                    if (dn_ui_icone_alt(cse) == i) {
+                        printf("   ← EN PLACE sur `%s`", dn_ui_metrique_nom(cse));
+                    }
+                }
+                printf("\n");
             }
             /* 🔴 dn4-14 / AC7.3 — LE TEXTE SUIT LA TABLE. Il recitait « les 4
              *    premiers glyphes sont les substituts de `fan`, gardes : les
@@ -5148,9 +5204,12 @@ static int cmd_widget(int argc, char **argv)
              *    regeneration a ete payee le 2026-08-29 par le `GPU`, et le
              *    menage est parti avec. Une explication qui survit a ce qu'elle
              *    explique est la meme classe de defaut que le « ? » ci-dessus. */
-            printf("⚠️ LE RANG 0 EST L'ICONE EN PLACE sur la case `GPU` : l'A/B\n");
-            printf("   compare les candidats A CE QU'ON REJETTE, et permet d'y\n");
-            printf("   revenir sans reflasher.\n");
+            printf("⚠️ LA TABLE GARDE `desktop`, L'ANCIENNE ICONE DE `GPU` :\n");
+            printf("   un A/B qui ne garde pas de quoi revenir en arriere n'est\n");
+            printf("   pas un A/B. ⛔ AUCUN rang n'est « celui en place » par\n");
+            printf("   nature : la marque ci-dessus est LUE de l'etat courant.\n");
+            printf("⚠️ Une case dont l'icone n'est PAS dans la table (CPU, RAM,\n");
+            printf("   RESEAU) n'affiche aucune marque : `-1` l'y ramene.\n");
             printf("⚠️ EN AMBIENT L'ICONE EST MASQUEE (titre + icone + badge).\n");
             printf("   ⇒ juger un glyphe se fait EN MODE ACTIF, sinon on regarde\n");
             printf("     une case ou il n'y a pas d'icone.\n");
@@ -5169,13 +5228,20 @@ static int cmd_widget(int argc, char **argv)
             return 1;
         }
         if (err != ESP_OK) {
-            printf("index hors plage : widget icone <case 0..%d> <glyphe 0..%d>\n",
+            printf("index hors plage : widget icone <case 0..%d> "
+                   "<glyphe -1..%d>\n",
                    DN_UI_METRIQUES - 1, dn_ui_icones_alt_n() - 1);
             return 1;
         }
-        printf("icone de la case %d (%s) = %s — SCENE RECONSTRUITE\n",
-               (int)idx, dn_ui_metrique_nom((int)idx),
-               dn_ui_icone_alt_nom((int)n));
+        if (n < 0) {
+            printf("icone de la case %d (%s) = RENDUE AU DESCRIPTEUR "
+                   "— SCENE RECONSTRUITE\n",
+                   (int)idx, dn_ui_metrique_nom((int)idx));
+        } else {
+            printf("icone de la case %d (%s) = %s — SCENE RECONSTRUITE\n",
+                   (int)idx, dn_ui_metrique_nom((int)idx),
+                   dn_ui_icone_alt_nom((int)n));
+        }
         printf("⚠️ la reconstruction a retire le stimulus `anim` et la demo.\n");
         return 0;
     }
@@ -5789,6 +5855,40 @@ static int cmd_widget(int argc, char **argv)
         printf("                dans la table et rend son nom.)\n");
     }
 
+    /* 🔴 REVUE DU 2026-08-29 — LA PAGE D'ETAT NE MONTRAIT AUCUNE TRACE D'UN
+     *    OVERRIDE DE COULEUR. `widget couleur` est conserve au produit (AC5.5)
+     *    « pour rejouer l'arbitrage sans reflasher » — mais le SEUL moyen de
+     *    savoir quelles cases etaient forcees etait de TAPER LA COMMANDE DE
+     *    TRAVERS, le listing ne vivant que dans sa branche d'argument invalide.
+     *    Un operateur qui reprend une seance lisait donc une page qui pretend
+     *    « relire l'etat reel » en omettant l'etat que dn4-14 a ajoute.
+     * ⚠️ LE FORCAGE EST DETECTE PAR SA PRESENCE, ⛔ pas en comparant la valeur
+     *    effective au descripteur : un override pose EXACTEMENT a la valeur du
+     *    descripteur est bien pose, et l'ancien test `eff != d->couleur` le
+     *    declarait non force. */
+    {
+        int forcees = 0;
+        for (int i = 0; i < DN_UI_METRIQUES; i++) {
+            uint32_t eff = dn_ui_case_couleur(i);
+            const dn_widget_desc_t *b = dn_ui_desc_brut(i);
+            if (b && eff != b->couleur) {
+                if (forcees == 0) {
+                    printf("couleurs FORCEES (⛔ aucun etat livre : au boot le "
+                           "descripteur fait foi) :\n");
+                }
+                forcees++;
+                printf("   ");
+                colonnes(dn_ui_metrique_nom(i), 10);
+                printf("0x%06X   (descripteur : 0x%06X)\n",
+                       (unsigned)eff, (unsigned)b->couleur);
+            }
+        }
+        if (forcees == 0) {
+            printf("couleurs de case : AUCUN override — les six descripteurs "
+                   "font foi.\n");
+        }
+    }
+
     printf("\n  idx nom        forme   regime   dessinee  valeur(s)\n");
     for (int i = 0; i < DN_UI_METRIQUES; i++) {
         const dn_widget_desc_t *d = dn_ui_desc(i);
@@ -5898,6 +5998,14 @@ static int cmd_widget(int argc, char **argv)
             "pousser", "oublier", "rafale",  "nue",     "barre",   "bandes",
             "piste",  "voie",  "grandeurs", "dispo",   "entete",  "val",
             "police", "grille", "largeur",  "detail",  "replacer",
+            /* 🔴 REVUE DU 2026-08-29 — `couleur` MANQUAIT, et c'etait la 13e
+             *    entree de retard de cette liste. `widget couleur` ou
+             *    `widget couleur 2` (arite fausse) repondaient donc
+             *    « sous-commande INCONNUE : "couleur" » — les mots exacts que
+             *    le commentaire ci-dessus qualifie de « factuellement faux »,
+             *    dix lignes plus haut. ⚠️ Aggravant : le listing des couleurs
+             *    par case ne vit QUE dans la branche d'argument invalide. */
+            "couleur",
         };
         bool connue_mais_arite = false;
         for (size_t k = 0; k < sizeof(k_connues) / sizeof(k_connues[0]); k++) {
@@ -5918,6 +6026,7 @@ static int cmd_widget(int argc, char **argv)
             printf("\n   RIEN n'a ete execute. `aide` liste le jeu complet.\n");
         }
         printf("   Sous-commandes : groupe · opa · voile · icone · piste ·\n");
+        printf("   couleur ·\n");
         printf("   mock · demo · pousser · oublier · rafale · nue · barre ·\n");
         printf("   bandes · voie · grandeurs · dispo · entete · val · police ·\n");
         printf("   grille · largeur · detail · replacer\n");
@@ -9748,14 +9857,50 @@ static void veille_accents_collisions(void)
                "(les cases + l'humidite d'AMBIANCE).\n",
                pct, n);
     } else {
-        printf("   ⇒ `veille accents 95` les separe (ecart chromatique 7/255,\n");
+        /* 🔴 REVUE DU 2026-08-29 — L'ECART EST CALCULE ICI, ⛔ PLUS RECITE.
+         *    Cette ligne ecrivait « 7/255 » : c'etait la mesure d'AVANT la
+         *    seance, et la palette retenue (DISQUE = 0xe2e8f0) la porte a 10.
+         *    Un nombre recopie derive a la premiere couleur qui bouge — et
+         *    celui-ci l'a fait dans la story meme qui deplacait la couleur. */
+        uint32_t d95[DN_UI_METRIQUES + 1];
+        int n95 = 0;
+        for (int i = 0; i < DN_UI_METRIQUES; i++) {
+            if (dn_ui_desc(i)) {
+                d95[n95++] = dn_widget_desaturer(dn_ui_case_couleur(i), 95);
+            }
+        }
+        d95[n95++] = dn_widget_desaturer(dn_ui_accent_hum(), 95);
+        int mini = 255;
+        for (int i = 0; i < n95; i++) {
+            for (int j = i + 1; j < n95; j++) {
+                int dr = (int)((d95[i] >> 16) & 0xFFu) - (int)((d95[j] >> 16) & 0xFFu);
+                int dg = (int)((d95[i] >> 8) & 0xFFu) - (int)((d95[j] >> 8) & 0xFFu);
+                int db = (int)(d95[i] & 0xFFu) - (int)(d95[j] & 0xFFu);
+                if (dr < 0) { dr = -dr; }
+                if (dg < 0) { dg = -dg; }
+                if (db < 0) { db = -db; }
+                int dm = dr > dg ? dr : dg;
+                if (db > dm) { dm = db; }
+                if (dm < mini) { mini = dm; }
+            }
+        }
+        printf("   ⇒ `veille accents 95` les separe (ecart chromatique %d/255,\n",
+               mini);
         printf("     invisible a l'oeil). ⛔ Rendre deux choses indiscernables est\n");
         printf("     le defaut que ce depot a deja paye le 2026-08-18.\n");
     }
     printf("⚠️ La luminance est celle d'ITU-R BT.601 (77/150/29). Le motif est\n");
-    printf("   PERCEPTUEL (le vert pese 59 %%, le bleu 11 %%), ⛔ PAS « la moyenne\n");
-    printf("   confondrait des couleurs » : MESURE, les deux mappings confondent\n");
-    printf("   UNE paire chacun, simplement pas la meme.\n");
+    printf("   PERCEPTUEL : le vert pese 59 %%, le bleu 11 %%, et une moyenne des\n");
+    printf("   trois canaux ne dit pas ce que l'oeil voit.\n");
+    /* 🔴 REVUE DU 2026-08-29 — CE QUI ETAIT IMPRIME ICI ETAIT REFUTE.
+     *    Le texte affirmait « MESURE, les deux mappings confondent UNE paire
+     *    chacun, simplement pas la meme ». Sur le jeu REELLEMENT PEINT (les 6
+     *    cases + l'humidite), la moyenne n'en confond AUCUNE : la paire qu'on
+     *    lui attribuait etait `CPU` / la metrique FICTIVE de demo. ⛔ On ne
+     *    remplace pas un chiffre faux par un autre chiffre recite — le compte
+     *    est TENU par `tools/verif_veille_dn33.py`, qui le RE-MESURE. */
+    printf("⛔ Le compte des collisions par mapping n'est PAS recite ici :\n");
+    printf("   `tools/verif_veille_dn33.py` le RE-MESURE a chaque passage.\n");
 }
 
 /*
