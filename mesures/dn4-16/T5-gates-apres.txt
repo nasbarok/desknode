@@ -1,5 +1,14 @@
 ==============================================================================
 T5 — LES 22 GATES APRES dn4-16 : L'INVARIANT DE T0 EST-IL TENU ?
+
+⛔ ANNOTATION DE LA REVUE DE CODE (2026-08-30) — CETTE CAPTURE COMPARE 22 A 21.
+   T0 a mesure 21 gates ; ce releve en compte 22 parce que dn4-16 en LIVRE une
+   (`verif_ledger_dn416.py`). Elle est marquee « ✅ INVARIANT » plus bas : c'est
+   une ERREUR DE CATEGORIE — une gate qui n'existait pas au T0 ne peut pas etre
+   invariante par rapport a lui. LE FAIT REEL, ET IL TIENT : les 21 gates
+   PREEXISTANTES sont invariantes (re-verifie a la revue : `verif_dossier_dn415.py`
+   20 OK / 0 KO). La 22e est NEUVE, et son etat au 2026-08-30 apres revue est
+   23 OK / 0 KO (⛔ 15 controles avant la revue, dont un tautologique).
 date     : 2026-08-30T13:27:51+02:00
 desknode : c191e44   cockpit : 998ec49
 ==============================================================================

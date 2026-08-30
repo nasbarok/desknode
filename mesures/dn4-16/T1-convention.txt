@@ -2,6 +2,18 @@
 date : 2026-08-30T12:47:34+02:00
 
 --- le script T0 de la story (section « Commandes ») ---
+
+⛔ ANNOTATION DE LA REVUE DE CODE (2026-08-30) — CE RUN A PLANTE, ET LA CAPTURE
+   LE PRESENTAIT SANS LE DIRE. Le traceback ci-dessous n'est PAS un resultat :
+   le script de reference a ete lance depuis un cwd ou le chemin relatif
+   `_bmad-output/...` n'existe pas. ⇒ LA REVENDICATION « le compte du script
+   EGALE celui de T0 » NE REPOSE PAS SUR CE RUN. Elle repose sur la comparaison
+   avec `T0-compte-avant.txt`, capture separement et, elle, valide (443 / 269 /
+   240 / 77 / 29 / 134 — re-verifie a la revue sur le ledger du baseline).
+   ⚠️ Motif deja paye sur ce projet : « une gate dont le TEST ERRE dit pass ».
+   Une capture de mesure qui contient une trace d'erreur non annotee se lit
+   comme une preuve alors qu'elle n'en est pas une.
+
 Traceback (most recent call last):
   File "/tmp/claude-1000/-home-nasbarok-projects-compagnon-project/fd5643b9-354f-411a-b731-46d828d80a2c/scratchpad/t0_compte.py", line 5, in <module>
     for l in T.read_text(encoding="utf-8").splitlines():
