@@ -1,0 +1,42 @@
+==============================================================================
+dn4-15 / AC5.5 — BUILD R2, APRES LA REVUE DE CODE 3 COUCHES DU 2026-08-30
+==============================================================================
+
+POURQUOI UN R2 : la revue a rattrape un TROISIEME site d'avertissement dans
+`dn_console.c` (l. 4404, branche `widget voie repli`). Il AFFIRME la peremption
+des coordonnees tactiles comme les deux autres, mais il etait le seul a ne
+renvoyer a AUCUN instrument.
+
+⛔ ET IL ETAIT INVISIBLE A LA GATE : l'ancien controle d'AC6.4 comptait
+`widget jauge` SUR TOUT LE FICHIER avec un seuil >= 2, or le baseline `b361434`
+en portait DEJA 4 (la commande `widget jauge` vit dans ce fichier). Le controle
+etait donc VIDE pour `dn_console.c` : on pouvait retirer les deux renvois
+d'AC5.1 sans qu'il rougisse. Il verifie desormais la PROXIMITE du renvoi a
+CHAQUE site (+/- 14 lignes).
+
+── LE CHANGEMENT ───────────────────────────────────────────────────────────
+  firmware/desknode/main/dn_console.c  — 8 lignes : 1 commentaire de 6 lignes
+  qui dit POURQUOI le trou n'etait pas visible, + 2 `printf` de renvoi.
+  ⛔ AUCUN NOMBRE n'est enseigne. ⛔ ZERO ligne de logique.
+
+── LA COMMANDE ─────────────────────────────────────────────────────────────
+  . ~/esp/esp-idf/export.sh && idf.py reconfigure && idf.py build
+  (⛔ `reconfigure` AVANT `build` — sans lui, `App version` nomme le commit
+   PRECEDENT. Regle du dossier, respectee bien que cette story ne flashe pas.)
+
+── LE RESULTAT, MESURE ─────────────────────────────────────────────────────
+  erreurs        : 0
+  avertissements : 0
+  desknode.bin binary size 0x12c190 bytes.
+  Smallest app partition is 0x400000 bytes. 0x2d3e70 bytes (71%) free.
+
+  taille AVANT (T4, cloture de la story) : 1 229 056 o
+  taille APRES (T4-r2, apres revue)      : 1 229 200 o
+  DELTA                                  :      +144 o  (.rodata : 2 printf)
+
+  ⚠️ CUMUL depuis le baseline `b361434` : 1 228 864 -> 1 229 200 = +336 o.
+
+── CE QUI N'A PAS ETE FAIT ─────────────────────────────────────────────────
+  ⛔ AUCUN FLASH. ⛔ AUCUNE SEANCE CARTE. ⛔ AUCUN GESTE OWNER.
+  Le build sert a prouver que le firmware COMPILE ENCORE, rien d'autre.
+==============================================================================

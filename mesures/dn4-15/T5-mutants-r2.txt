@@ -1,0 +1,89 @@
+==============================================================================
+dn4-15 / AC6.6 — MUTANTS R2 (revue de code 3 couches, 2026-08-30)
+==============================================================================
+dn4-15 / AC6.6 — CAMPAGNE DE MUTANTS **R2**, ecrite par la revue du 2026-08-30.
+
+⛔ POURQUOI UNE R2 : les QUATRE mutants d'origine INSERAIENT tous une ligne (ou
+retiraient une ligne du MANIFESTE). Ils etaient donc tues par le DECALAGE DE
+LIGNE, ⛔ pas par la detection. La capture T5 le dit elle-meme. Aucun ne testait
+la classe qui SURVIVAIT — et trois classes survivaient, mesurees :
+  A  inversion de SENS sur place, a isoperimetre   ⇒ passait 14 OK / 0 KO
+  B  un verdict bascule en `FAUX`                  ⇒ passait 14 OK / 0 KO
+  C  masquage par la cle de story au tracker       ⇒ passait 14 OK / 0 KO
+Un `4/4` obtenu sur un echantillon qui exclut les survivants ne prouve rien.
+
+TEMOIN — arbre sain : rc=0   BILAN : 20 OK, 0 KO
+
+── A — inversion de SENS sur place (meme fichier, meme ligne, meme motif)
+   fichier : desknode/hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md
+   rc=1   BILAN : 19 OK, 2 KO   ⇒ ROUGE
+     [KO ] le TEXTE a change sous un verdict inchange               desknode:uch-LCD-2.8B-capteurs-i2c.md:380
+     [KO ] la citation du manifeste colle au TEXTE de l'arbre       190 ligne(s) confrontee(s) — le verdict s
+
+── B — un verdict bascule VRAI -> FAUX au manifeste
+   fichier : desknode/docs/dn4-15-arbitrage.md
+   rc=1   BILAN : 18 OK, 5 KO   ⇒ ROUGE
+     [KO ] occurrence encore verdictee FAUX                         desknode:are/ESP32-S3-Touch-LCD-2.8B-affi
+     [KO ] ⛔ AUCUNE occurrence ne reste `FAUX` (decision owner)     FAUX = 1
+     [KO ] le recapitulatif du manifeste ne colle pas au detail     FAUX : annonce 0, detail 1
+
+── C — recette `--busid 3-1` masquee par la cle de story au tracker
+   fichier : compagnon_project/_bmad-output/implementation-artifacts/sprint-status-desknode.yaml
+   rc=1   BILAN : 18 OK, 6 KO   ⇒ ROUGE
+     [KO ] occurrence NOUVELLE ou DEPLACEE                          cockpit:ifacts/sprint-status-desknode.yam
+     [KO ] occurrence NOUVELLE ou DEPLACEE                          cockpit:ifacts/sprint-status-desknode.yam
+     [KO ] occurrence NOUVELLE ou DEPLACEE                          cockpit:ifacts/sprint-status-desknode.yam
+
+── D — recette en forme `--busid=3-1` (forme acceptee par usbipd)
+   fichier : desknode/README.md
+   rc=1   BILAN : 18 OK, 3 KO   ⇒ ROUGE
+     [KO ] occurrence NOUVELLE ou DEPLACEE                          desknode:README.md:1345 [busid-en-dur] <!
+     [KO ] toute occurrence de l'arbre est AU MANIFESTE             191 ligne(s) arbitree(s)
+     [KO ] somme des verdicts == occurrences de l'arbre             199 vs 200
+
+── E — `506..516` remis dans un printf de dn_console.c
+   fichier : desknode/firmware/desknode/main/dn_console.c
+   rc=1   BILAN : 18 OK, 3 KO   ⇒ ROUGE
+     [KO ] occurrence NOUVELLE ou DEPLACEE                          desknode:irmware/desknode/main/dn_console
+     [KO ] toute occurrence de l'arbre est AU MANIFESTE             191 ligne(s) arbitree(s)
+     [KO ] somme des verdicts == occurrences de l'arbre             199 vs 200
+
+── F — coordonnee morte reecrite `340-350` (le litteral ne la voyait pas)
+   fichier : desknode/hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md
+   rc=1   BILAN : 18 OK, 3 KO   ⇒ ROUGE
+     [KO ] occurrence NOUVELLE ou DEPLACEE                          desknode:P32-S3-Touch-LCD-2.8B-affichage.
+     [KO ] toute occurrence de l'arbre est AU MANIFESTE             191 ligne(s) arbitree(s)
+     [KO ] somme des verdicts == occurrences de l'arbre             199 vs 200
+
+── G — defaut plante dans un `.rst` (extension hors ancienne liste)
+   fichier : desknode/docs/RECETTE-FLASH.rst
+   rc=1   BILAN : 18 OK, 3 KO   ⇒ ROUGE
+     [KO ] occurrence NOUVELLE ou DEPLACEE                          desknode:docs/RECETTE-FLASH.rst:1 [busid-
+     [KO ] toute occurrence de l'arbre est AU MANIFESTE             191 ligne(s) arbitree(s)
+     [KO ] somme des verdicts == occurrences de l'arbre             199 vs 200
+
+── H — une ligne retiree du manifeste sans retirer l'occurrence
+   fichier : desknode/docs/dn4-15-arbitrage.md
+   rc=1   BILAN : 17 OK, 7 KO   ⇒ ROUGE
+     [KO ] occurrence NOUVELLE ou DEPLACEE                          desknode:P32-S3-Touch-LCD-2.8B-affichage.
+     [KO ] toute occurrence de l'arbre est AU MANIFESTE             190 ligne(s) arbitree(s)
+     [KO ] somme des verdicts == occurrences de l'arbre             198 vs 199
+
+── I — TEMOIN AC6.5 : le depot cockpit est ABSENT
+   rc=1   BILAN : 1 OK, 1 KO   ⇒ ROUGE
+     [KO ] le depot cockpit est atteignable                         ⛔ ABSENT — une gate scopee epingle VERT l
+
+==============================================================================
+BILAN DE CAMPAGNE : 9 mutants / 9 ROUGES
+   A   ROUGE
+   B   ROUGE
+   C   ROUGE
+   D   ROUGE
+   E   ROUGE
+   F   ROUGE
+   G   ROUGE
+   H   ROUGE
+   I   ROUGE
+
+RETOUR AU VERT apres restauration : rc=0   BILAN : 20 OK, 0 KO
+==============================================================================

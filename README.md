@@ -161,7 +161,22 @@ Côté Windows, dans **PowerShell ÉLEVÉE** — uniquement ces deux commandes-l
 winget install --id dorssel.usbipd-win --exact --version 5.3.0
 
 # ⛔ AUCUNE CONSTANTE ICI : le busid SUIT LE PORT PHYSIQUE, il se RÉSOUT.
-$b = ((usbipd list | Select-String '303a:1001') -split '\s+')[0]
+# 🔴 ET IL SE VALIDE — corrigé par la revue du 2026-08-30. La version d'origine
+#    était `$b = ((usbipd list | Select-String '303a:1001') -split '\s+')[0]`,
+#    SANS AUCUNE GARDE, en shell ÉLEVÉE :
+#      · 0 ligne (carte débranchée)  ⇒ `$b` vide ⇒ `bind` sur un busid vide ;
+#      · 2 lignes — `303a:1001` est le VID:PID de TOUT ESP32-S3 ⇒ `-split`
+#        aplatit le tableau et `[0]` prend le 1er jeton de la 1re ligne
+#        ⇒ **bind de la MAUVAISE carte**, le défaut même qu'on prétend supprimer ;
+#      · ligne indentée ⇒ `[0]` vaut `''`.
+#    `tools/wsl-attach.sh:114-126` posait déjà ces trois gardes. Les voici.
+$lignes = @(usbipd list | Select-String '303a:1001')
+if ($lignes.Count -ne 1) {
+    throw "attendu UNE ligne 303a:1001, trouvé $($lignes.Count) — débranche les autres cartes S3, ou relève le busid à la main."
+}
+$b = ($lignes[0].Line.Trim() -split '\s+')[0]
+if ($b -notmatch '^\d+-\d+$') { throw "BUSID inattendu : '$b'" }
+Write-Host "busid résolu : $b"
 usbipd bind --busid $b            # une fois pour toutes ; l'état passe à "Shared"
 ```
 

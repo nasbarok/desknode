@@ -4403,6 +4403,14 @@ static int cmd_widget(int argc, char **argv)
             printf("      GPU DEBORDE encore et le compteur le dira.\n");
             printf("  · D12 : toutes les coordonnees tactiles publiees PERIMENT,\n");
             printf("    +4,5%% de surface par case sur un duty deja a 10,09 %%\n");
+            /* dn4-15 / AC5.3 — TROISIEME SITE, RATTRAPE PAR LA REVUE DU
+             * 2026-08-30. Il AFFIRME la peremption comme les deux autres, mais
+             * il etait le seul a ne renvoyer a AUCUN instrument : l'ancien
+             * controle de la gate comptait `widget jauge` SUR TOUT LE FICHIER
+             * (seuil >= 2, deja atteint par la commande elle-meme), donc il ne
+             * pouvait pas voir ce trou. ⛔ Toujours AUCUN NOMBRE ici. */
+            printf("    ⇒ ⛔ AUCUN NOMBRE : `widget jauge [<case>]` RELIT le\n");
+            printf("      rectangle REEL pose par LVGL (dn4-4/AC9).\n");
             printf("  ✅ EN ECHANGE : police 28 INCHANGEE, en-tete INTACT (l'icone\n");
             printf("     garde ses 28 px et le champ `couleur` reste exerce),\n");
             printf("     interligne 5 px = le critere ecrit de D12, AUCUNE\n");

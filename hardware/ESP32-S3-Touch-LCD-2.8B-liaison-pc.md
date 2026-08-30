@@ -796,9 +796,14 @@ littérale**. ⛔ **Une preuve de code n'est pas un constat owner**, et les deux
 tap sans que rien ne le signale. La bande de la jauge RAM est haute de **10 px** (`y = 340..350`,
 formule contrôlée contre le relevé publié de dn3-2 : VENTILOS à `506..516`).
 
-> ⚠️ **RENVOI (`dn4-15`, 2026-08-30)** — la coordonnée `y = 340..350` citée ci-dessus
-> est **conservée telle qu'elle a été publiée**, ⛔ la narration n'est pas réécrite.
-> **Elle est morte, et on ne lui substitue AUCUN autre nombre** (⛔ pas `337..347`,
+> ⚠️ **RENVOI (`dn4-15`, 2026-08-30)** — les **DEUX** coordonnées citées ci-dessus,
+> `y = 340..350` (jauge RAM, `dn4-1`) **ET `VENTILOS 506..516`** (`dn3-2`), sont
+> **conservées telles qu'elles ont été publiées**, ⛔ la narration n'est pas réécrite.
+> 🔴 **Corrigé par la revue du 2026-08-30** : ce renvoi ne nommait que `340..350`
+> alors que la phrase visée cite les deux — **la moitié du défaut restait sans filet**,
+> et la gate ne surveillait pas du tout `506..516` (AC5.3 les met pourtant au
+> *« même traitement, même renvoi »*).
+> **Elles sont mortes, et on ne leur substitue AUCUN autre nombre** (⛔ pas `337..347`,
 > qui a été publié sans instrument). ⇒ **le rectangle qui fait foi se RELIT** :
 > `widget jauge [<case>]` (`dn4-4`/AC9, `dn_ui_widget_jauge_rect()`), et §22.3
 > porte l'arbitrage complet. La console et `dn_ui.c` ne l'enseignent plus.
