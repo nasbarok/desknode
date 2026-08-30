@@ -782,7 +782,7 @@ fois de suite.** Non prouvé : ce qui se passerait sans elle.
 | image stable sous trafic 1 Hz | ✅ *« nickel »* |
 | « est-ce que ça saute désagréablement ? » | ✅ **non** |
 | vue détail | ✅ *« données live et pas déconnantes »* |
-| **piste de jauge éclaircie** (`0x5A5F6A`) | ✅ *« la barre ressort bien »* |
+| **piste de jauge éclaircie** (`0x5A5F6A`) | ✅ *« la barre ressort bien »* — 🔴 **verdict rendu en ACTIF le 2026-08-18, PÉRIMÉ EN AMBIENT** : le 2026-08-30 le même owner rend *« on ne voit qu'une barre kaki »* sur cette valeur en veille. Vaut désormais `0x141820`, **arbitrée le 2026-08-31** (le vert de la dalle assumé ; témoin neutre `0x303030` **vert lui aussi** ⇒ contrainte matérielle, ⛔ pas la valeur). ⚠️ Ce ✅ est l'exemple même d'une validation à l'œil qui ne couvre **qu'un mode** |
 | **RÉSEAU ↓/↑ empilés** | ✅ *« ok »* |
 
 ⚠️ **NON CONFIRMÉ À L'ŒIL, ET DÉCLARÉ TEL** : que le détail affiche bien **« MIN -- · MAX -- »**.

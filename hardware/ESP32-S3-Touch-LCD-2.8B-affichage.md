@@ -3072,6 +3072,17 @@ Ce qui touche l'AFFICHAGE, et seulement lui :
    mêmes deux nombres deux fois dans le même rectangle**.
    ✅ **Aucune borne touchée** : c'est le mécanisme `n_grandeurs` d'AMBIANCE, tel quel.
 2. **La PISTE de la jauge** (le fond, la part non remplie) passe de `0x203040` à **`0x5A5F6A`**,
+   🔴 **ANNOTÉ LE 2026-08-30 — CETTE VALEUR N'EST PLUS EN VIGUEUR** : elle vaut désormais
+   **`0x141820`**, **arbitrée par l'owner le 2026-08-31**. Motif : l'arbitrage ci-dessous a été
+   rendu **AVANT que le mode Ambient existe** (`W_AMB_CASE_BG` naît le 2026-08-25, `3d7438e`), donc
+   contre un fond de **PCB** et non contre un aplat **noir opaque**.
+   ✅ **MESURÉ le 2026-08-31** : la nouvelle piste se lit **verte**, et c'est la **DALLE**, ⛔ pas la
+   valeur — le témoin `0x303030` (gris **exactement neutre**, `G - R = 0`) se lit **vert lui aussi**.
+   ⇒ **le prédicteur est la LUMINANCE**, et **aucune piste ne peut être à la fois sombre et neutre**
+   ici. Le vert est **assumé** par décision owner. ✅ 0 % / régime ABSENTE éprouvé : barre **visible**.
+   ⛔ **ÉCART OUVERT** : la piste face au cuivre du PCB **en Actif**. Détail : docblock de
+   `W_COL_PISTE_DEFAUT` et `deferred-work.md`.
+   ⛔ Le paragraphe d'origine est **conservé** : il décrit exactement ce qui a été arbitré ce jour-là.
    et devient **réglable à chaud** (`widget piste <0xRRGGBB>`) — patron de `opa`/`voile`/`icone` :
    *un A/B qui exigerait trois reflashs coûterait trois observations à l'owner*.
    ⚠️ **Constat owner d'origine** : *« la barre de vide apparaît en vert »*. **Le code n'a JAMAIS

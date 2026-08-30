@@ -677,8 +677,135 @@ int dn_widget_largeur(const char *txt, const lv_font_t *font)
  * ⚠️ dn3-3 refait l'identité visuelle et rejouera cet arbitrage — ce défaut-ci
  *    est corrigé sur demande owner explicite, ⛔ ce n'est PAS la passe de
  *    palette, qui reste à dn3-3.
+ *
+ * ── RÉ-ARBITRÉ SUR LA CARTE LE 2026-08-30 : `0x5a5f6a` -> `0x141820` ─────────
+ *
+ * ⚠️ LA PHRASE CI-DESSUS (« dn3-3 rejouera cet arbitrage ») EST PÉRIMÉE :
+ *    `dn3-3` est `done` depuis le 2026-08-25 et n'a pas rejoué l'arbitrage.
+ *    Le ledger l'a re-hébergé sur `dn4-29`. ⛔ Conservée, datée, ⛔ pas effacée.
+ *
+ * 🔴 CE QUI EST ARRIVÉ, ET C'EST UNE CLASSE DE DÉFAUT, ⛔ PAS UN INCIDENT.
+ *    ⛔ CE N'EST PAS « un réglage posé pour l'Actif a dégradé l'Ambient » —
+ *      cette lecture, écrite ici le 2026-08-30 puis RÉFUTÉE LE MÊME JOUR par la
+ *      revue, est un ANACHRONISME. `git log -S` tranche :
+ *        · `W_COL_PISTE_DEFAUT`  né le 2026-08-18 (`2d97850`, **dn4-1**)
+ *        · `W_AMB_CASE_BG`       né le 2026-08-25 (`3d7438e`, dn3-3)
+ *      ⇒ QUAND LA PISTE A ÉTÉ ÉCLAIRCIE, LE MODE AMBIENT N'EXISTAIT PAS.
+ *    ✅ Le vrai motif : **dn3-3 a ajouté un second mode PAR-DESSUS une piste
+ *      existante, sans la ré-arbitrer.** Un fond noir opaque est arrivé sous une
+ *      valeur choisie contre un fond de PCB, et rien n'a comparé les deux.
+ *    ⚠️ Et l'attribution `dn3-3` écrite ici le 2026-08-30 venait d'une LECTURE
+ *      À L'ENVERS du tag `[→ dn3-3]` du ledger : c'est une DESTINATION, ⛔ pas
+ *      une origine. Relevé en revue de code.
+ *
+ * ⛔ LE MÉCANISME N'EST PAS UN MÉLANGE — LA PISTE EST OPAQUE DANS LES DEUX MODES.
+ *    `lv_obj_set_style_bg_opa(out->jauge, LV_OPA_COVER, 0)` (voir `dn_widget_creer`).
+ *    Le `178/255` est celui de l'APLAT DE CASE, jamais celui de la jauge : le
+ *    Living PCB ne transparaît PAS à travers la piste. ⇒ « une piste sombre s'y
+ *    noyait » est FAUX et a été écrit ici avant d'être réfuté. Le commentaire de
+ *    2026-08-18, vingt lignes plus haut, avait le bon mot dès l'origine :
+ *    **CONTRASTE SIMULTANÉ**. ⛔ Ne pas le re-contredire.
+ *
+ * 📊 CE QUE L'ŒIL A RENDU, VERBATIMS SÉPARÉS (⛔ ne pas les fusionner : une
+ *    première rédaction de ce bloc avait FABRIQUÉ « ça ressort, mais c'est du
+ *    jaune » en collant deux phrases distinctes — relevé en revue de code) :
+ *      · constat d'origine, Ambient à `accents 95` / piste `0x5a5f6a` :
+ *        « ya pas assez de contraste entre les 2 barres (progression), du coup
+ *         on ne voit qu'une barre kaki »
+ *      · `veille accents 0`  : « oui là ça se voit bien, ça ressort »
+ *                        ET   « c'est du jaune hein, et pas du rose »
+ *      · `veille accents 65` : « non, c'est redevenu gris kaki comme au début »
+ *      · `accents 95` + piste `0x141820`, Ambient : « c'est en nuance de vert
+ *        mais c'est ok aussi, on voit bien la diff »
+ *      · le même, en Actif : « c'est bon aussi en actif, on voit bien la barre »
+ *
+ * 🎯 LA TEINTE VERTE EST UNE CONTRAINTE DE LA DALLE, ⛔ PAS UN DÉFAUT DE CETTE
+ *    VALEUR — ET C'EST MESURÉ SUR LA CARTE LE 2026-08-31, PAS SUPPOSÉ.
+ *
+ *    ⚠️ CE PARAGRAPHE A DIT L'INVERSE PENDANT UNE JOURNÉE. La revue de code du
+ *      2026-08-30 a fait écrire ici que « le vert est en partie une propriété de
+ *      LA VALEUR CHOISIE », sur la foi du biais `G - R` en RGB565 (le vert a
+ *      6 bits, R et B en ont 5). L'A/B du lendemain l'a RÉFUTÉ.
+ *
+ *    📊 LE TÉMOIN QUI TRANCHE : `widget piste 0x303030` — un gris EXACTEMENT
+ *      neutre, `G - R = 0` — a été posé seul, tout le reste égal, sur la surface
+ *      la plus favorable qui soit (régime ABSENTE ⇒ jauge à `ind_min` ⇒ TOUTE la
+ *      barre est la piste). Constat owner : « vert ».
+ *
+ *      valeur       luminance   G - R rendu   ce que l'œil rend
+ *      0x203040        45          +16        vert   (2026-08-18, dn4-1)
+ *      0x141820        23           +8        vert   (2026-08-30 et -31)
+ *      0x303030        48            0        vert   (2026-08-31, TÉMOIN)
+ *      0x5a5f6a        94           +3        aucune plainte de teinte
+ *      0xA49EA1       160           -7        tons clairs -> violet
+ *
+ *    ⇒ LE PRÉDICTEUR EST LA **LUMINANCE**, ⛔ PAS `G - R`. La dalle verdit tout
+ *      ce qui est sombre, quelle que soit la neutralité de la valeur. C'est mot
+ *      pour mot le constat owner du 2026-08-25 sur `scene gray` (« vert vers les
+ *      tons sombres, violet vers le milieu et les tons clairs »), écrit hors de
+ *      tout code d'interface — il TIENT, et la rétractation qu'a imposée la revue
+ *      était FAUSSE. ⛔ Ne pas la ré-écrire.
+ *
+ * 🔴 CONSÉQUENCE DE CONCEPTION, ET ELLE EST SANS ISSUE TECHNIQUE : **IL N'EXISTE
+ *    PAS DE PISTE À LA FOIS SOMBRE ET NEUTRE SUR CE MATÉRIEL.** Frontière nette
+ *    ⇒ piste sombre ⇒ verte. Teinte neutre ⇒ piste claire ⇒ plus de frontière,
+ *    c'est-à-dire le constat d'origine (« on ne voit qu'une barre kaki »). La
+ *    seule vraie neutralité mesurée par ce dépôt est aux EXTRÉMITÉS — le noir et
+ *    le blanc — et une piste noire rend la part vide INVISIBLE.
+ *    ✅ ARBITRAGE OWNER DU 2026-08-31, LES QUATRE BRANCHES POSÉES : **on garde
+ *      `0x141820` et LE VERT EST ASSUMÉ.** ⇒ ce n'est plus un défaut ouvert,
+ *      c'est un fait consigné. ⛔ Ne pas rouvrir sans une mesure NEUVE.
+ *
+ * ✅ CE QUE LA VALIDATION COUVRE, ET CE QU'ELLE NE COUVRE TOUJOURS PAS.
+ *    ⛔ AUCUN SHA DE BINAIRE N'EST ÉCRIT ICI, ET C'EST UNE CONTRAINTE, ⛔ PAS UN
+ *      OUBLI : éditer ce commentaire décale les numéros de ligne, donc change le
+ *      binaire, donc périme le sha qu'on viendrait d'y écrire. **Un source ne
+ *      peut pas porter le hachage du binaire qu'il produit.** ⇒ l'identité du
+ *      firmware éprouvé est le **COMMIT**, et elle vit dans `deferred-work.md`
+ *      et le tracker — des fichiers que la compilation ne lit pas.
+ *    ⚠️ Le premier verdict (2026-08-30) avait été rendu À CHAUD, sur
+ *      `widget piste 0x141820`, ⛔ pas sur ce `#define` compilé. Le second
+ *      (2026-08-31) l'a été sur le défaut COMPILÉ, arbre SALE (WIP
+ *      `dn4-16`/`dn4-24` embarqué).
+ *
+ *    ✅ **0 % EST DÉSORMAIS MESURÉ, ET LE RISQUE NE SE MATÉRIALISE PAS.**
+ *      La revue prédisait que la barre disparaîtrait : à `ind_min` — et en
+ *      régime `DN_VAL_ABSENTE`, donc **PC ÉTEINT**, un état NORMAL de ce
+ *      produit — toute la barre devient la piste, 10 px à luminance 23 sur un
+ *      aplat noir à 0, soit un écart de **23** quand `bloc_gris` exige **>= 24**
+ *      pour une propriété comparable. Éprouvé sur la carte le 2026-08-31, agent
+ *      arrêté, en Ambient : constat owner « oui, une barre vert foncé ».
+ *      ⇒ **L'ARGUMENT « 23 < 24 » ÉTAIT THÉORIQUE.** Le seuil de `bloc_gris`
+ *        gouverne les trois GRIS DE RÉGIME entre eux, ⛔ pas la paire
+ *        piste<->fond, qui n'a jamais eu de seuil. ⛔ Ne pas le transposer.
+ *
+ *    ⛔ **ÉCART DÉCLARÉ, TOUJOURS OUVERT** : en ACTIF le verdict owner a porté
+ *      sur la portion REMPLIE (l'indicateur). La PISTE est à luminance 23 quand
+ *      le cuivre du PCB sous l'aplat (`s_opa` = 178, donc 30 % qui traverse)
+ *      rend **24** ⇒ **la part vide peut disparaître là où une piste de cuivre
+ *      passe derrière la case**, et son étendue apparente dépendrait alors de
+ *      l'artwork, ⛔ pas de la valeur. **CE CAS N'A PAS ÉTÉ REGARDÉ.**
+ *      ⚠️ La jauge est `LV_OPA_COVER` : c'est du CONTRASTE SIMULTANÉ avec la
+ *        case voisine, ⛔ pas un mélange à travers la piste.
+ *
+ * ⛔ « UNE SEULE VALEUR SUFFIT, le levier `veille piste` par mode n'est pas
+ *    nécessaire » : ÉNONCÉ TROP FORT, corrigé. `veille piste` n'existe nulle
+ *    part dans les deux dépôts — il n'a jamais été qu'une idée de séance. Et la
+ *    preuve invoquée est UNE passe à l'œil sur UNE valeur : c'est exactement la
+ *    classe de preuve qui a produit la régression, `0x5a5f6a` ayant AUSSI été
+ *    validée à l'œil (« la barre ressort bien », hardware/…-liaison-pc.md).
+ *    ⇒ Énoncé juste : **une seule valeur a été jugée acceptable dans les deux
+ *      modes ce jour-là.** Tant qu'aucun instrument ne compare piste et fond,
+ *      « suffit » est espéré, ⛔ pas mesuré.
+ *
+ * ⚠️ CE QUE CE RÉGLAGE NE CORRIGE PAS : **AUCUN** des 22 outils `tools/verif_*.py`
+ *    ne lit `W_COL_PISTE_DEFAUT` ni `s_piste`. `bloc_accents` garde accent<->accent,
+ *    `bloc_gris` les trois gris de régime entre eux. La paire piste<->fond et la
+ *    paire accent<->piste ne sont gardées par RIEN : un retour à `0x5a5f6a`, ou
+ *    n'importe quelle valeur, sort VERT sur les 21 gates jouables. C'est ce trou
+ *    qui a laissé la régression traverser deux modes. Porté au ledger, `dn4-29`.
  */
-#define W_COL_PISTE_DEFAUT 0x5a5f6a
+#define W_COL_PISTE_DEFAUT 0x141820
 static uint32_t s_piste = W_COL_PISTE_DEFAUT;
 
 void dn_widget_set_piste(uint32_t rgb) { s_piste = rgb & 0xFFFFFF; }

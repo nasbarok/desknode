@@ -800,7 +800,28 @@ const char *dn_widget_prefixe(const dn_widget_desc_t *d, int g, bool detail);
  * verdâtre contre le PCB du fond et n'aide pas l'indicateur violet à ressortir.
  * Réglable à chaud (`widget piste <0xRRGGBB>`) — même patron que `opa`/`voile` :
  * l'arbitrage est un CONSTAT OWNER sur la dalle, pas une intuition.
- * ⚠️ N'affecte que les jauges CRÉÉES ensuite ⇒ l'appelant reconstruit la scène. */
+ * ⚠️ N'affecte que les jauges CRÉÉES ensuite ⇒ l'appelant reconstruit la scène.
+ *
+ * 🔴 AMENDÉ LE 2026-08-30 — CET EN-TÊTE A PUBLIÉ L'INVERSE DU `.c` PENDANT UNE
+ *    REVUE. Le défaut est passé à `0x141820` (séance /desknode-board), donc PLUS
+ *    SOMBRE que le `0x203040` dont ce paragraphe donne l'éclaircissement pour
+ *    motif. Le motif de 2026-08-18 reste VRAI pour l'Actif ; ce qu'il ignore,
+ *    c'est l'AMBIENT — arrivé SEPT JOURS PLUS TARD (`W_AMB_CASE_BG`, dn3-3,
+ *    2026-08-25) — où l'aplat est noir opaque et où une piste claire vient se
+ *    coller au gris clair de l'indicateur désaturé.
+ *    ✅ VALEUR ARBITRÉE PAR L'OWNER LE 2026-08-31, LE VERT ÉTANT ASSUMÉ. Elle
+ *      se lit verte, et c'est une CONTRAINTE DE LA DALLE, ⛔ pas un défaut de
+ *      la valeur : le témoin `widget piste 0x303030` — gris EXACTEMENT neutre,
+ *      `G - R = 0` — se lit vert lui aussi. **Le prédicteur est la LUMINANCE,
+ *      ⛔ pas `G - R`.** ⇒ IL N'EXISTE PAS DE PISTE À LA FOIS SOMBRE ET NEUTRE
+ *      SUR CE MATÉRIEL, et une frontière lisible EXIGE une piste sombre.
+ *    ✅ 0 % / régime ABSENTE (donc PC ÉTEINT) MESURÉ : la barre reste VISIBLE
+ *      (« oui, une barre vert foncé »). ⛔ ÉCART OUVERT : la piste face au
+ *      cuivre du PCB en ACTIF n'a pas été regardée.
+ *      Chiffres, témoins et branches écartées : docblock de
+ *      `W_COL_PISTE_DEFAUT` dans `dn_widget.c`.
+ *    ⛔ NE PAS laisser ces deux textes diverger : c'est le défaut que l'en-tête
+ *      d'AC8, vingt lignes plus bas, raconte avoir déjà payé une fois. */
 void dn_widget_set_piste(uint32_t rgb);
 uint32_t dn_widget_piste(void);
 
