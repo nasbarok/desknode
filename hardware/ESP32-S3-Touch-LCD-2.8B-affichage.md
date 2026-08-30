@@ -299,10 +299,21 @@ Chaque ligne y porte sa raison. Récapitulatif :
 > ⛔ **`CONFIG_SPIRAM_SPEED_120M` est INTERDIT sur ce produit.** Le Kconfig
 > d'Espressif prévient qu'en octal, 120 MHz est expérimental et que *« si la puce
 > démarre à une certaine température, puis que la température varie d'environ
-> 20 °C, les accès PSRAM plantent aléatoirement »*. DeskNode vit H24 sur la
-> façade d'une tour de jeu : l'écart de température est le **régime nominal**,
-> pas un cas limite. Ce n'est pas une piste d'optimisation, c'est une panne
-> programmée.
+> 20 °C, les accès PSRAM plantent aléatoirement »*. DeskNode vit H24 **posé à
+> côté** d'une tour de jeu — décision owner du **2026-08-17** (*« y aura pas de
+> montage définitif dans le phantom, il sera posé à côté »*), ⛔ **il n'est PAS
+> monté sur la façade** ; la phrase disait le contraire jusqu'au **2026-08-30**
+> (`dn4-15`). Ce n'est pas une piste d'optimisation, c'est une panne programmée.
+>
+> 🔴 **ET LA CONCLUSION TIENT SANS LA PRÉMISSE DE LIEU — MAIS ELLE N'EST PAS
+> CONFIRMÉE POUR AUTANT.** Le lieu corrigé **n'apporte aucune mesure** :
+> **l'amplitude thermique réelle de l'emplacement actuel n'est PAS mesurée.**
+> Une pièce varie aussi (jour/nuit, chauffage, saison), et la carte porte son
+> propre échauffement (dalle RGB, rétroéclairage, S3 à 240 MHz) — c'est
+> exactement le terme que §13.9 déclare **non couvert** par son A/B.
+> ⇒ **fait MANQUANT, ⛔ pas fait acquis** : personne n'a relevé le ΔT vu par la
+> carte sur 24 h là où elle est posée. **L'interdiction reste en vigueur**, et
+> ⛔ affaiblir sa justification serait conclure à la place de la mesure.
 
 > **Repli sur le header UART, si l'USB pose problème.** Remplacer
 > `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` par `CONFIG_ESP_CONSOLE_UART_DEFAULT=y`,
@@ -1508,6 +1519,13 @@ qu'un.
 ⚠️ **PORTÉE — ce défaut dépassait largement dn1-4.** **dn2-1** (BME680, BH1750,
 VL53L0X, INA219 sur ce même bus) aurait fait défiler l'écran en permanence, et
 aurait cherché la panne du côté des capteurs. Il est débloqué par ricochet.
+
+> ⚠️ **RENVOI (`dn4-15`, 2026-08-30) — « VL53L0X » ci-dessus est la narration d'un
+> arbitrage ANTÉRIEUR au 2026-08-19, et la narration n'est PAS réécrite.** Le 3ᵉ
+> module est un **`TOF050C-VL6180X`**, tranché **par la lecture**
+> (`i2c lire16 29 0000` → `B4`, 5/5 ; témoin négatif `i2c lire 29 C0` → `01/00/00`
+> au lieu de `EE/AA/10`). ⇒ **`firmware/desknode/main/dn_pins.h:165`** et
+> **§13.16.7** de `…-capteurs-i2c.md` portent la réfutation complète.
 
 ⚠️ **CE QUE CETTE MESURE NE COUVRE PAS** : le stimulus est de l'**I²C**, qui
 *occupe* le bus. Celui de la §5.3 est une **écriture flash**, qui *coupe le cache*.
@@ -3851,6 +3869,13 @@ fois l'estimation, qui ne comptait que `txt[][]` et `brut[]` : il faut y ajouter
   `x = 22..223`.** ⏳ 36 appuis / 36 relâches / **0 erreur I²C** relevés, mais
   **les ZONES n'ont pas été tracées** — ⛔ la garde « toute la case est la zone
   tactile » n'est donc **pas** re-prouvée sur la nouvelle géométrie.
+
+> ⚠️ **RENVOI (`dn4-15`, 2026-08-30)** — la coordonnée `y = 340..350` citée ci-dessus
+> est **conservée telle qu'elle a été publiée**, ⛔ la narration n'est pas réécrite.
+> **Elle est morte, et on ne lui substitue AUCUN autre nombre** (⛔ pas `337..347`,
+> qui a été publié sans instrument). ⇒ **le rectangle qui fait foi se RELIT** :
+> `widget jauge [<case>]` (`dn4-4`/AC9, `dn_ui_widget_jauge_rect()`), et §22.3
+> porte l'arbitrage complet. La console et `dn_ui.c` ne l'enseignent plus.
 - ⚠️ **CONTRADICTION DE COMPTAGE, RELEVÉE PAR LA REVUE DU 2026-08-19 ET NON
   TRANCHÉE** : cette section publie **36 appuis / 36 relâches**, la story publie
   **16 appuis sur la jauge / 32 appuis / 32 relâches**. Deux artefacts de la même
@@ -9989,6 +10014,13 @@ Le conflit a été **énoncé avant d'être tranché**, avec ses quatre leviers 
 accepter la coupe · redescendre à 16 (seule taille où **même ce pire cas** tient) · déplacer
 `x = 300` · bouger `BARRE_H` — qui **périmerait toute coordonnée tactile publiée**
 (`VENTILOS 506..516`, jauge `y = 340..350`) pendant que `dn4-5` et `dn4-10` sont ouverts.
+
+> ⚠️ **RENVOI (`dn4-15`, 2026-08-30)** — la coordonnée `y = 340..350` citée ci-dessus
+> est **conservée telle qu'elle a été publiée**, ⛔ la narration n'est pas réécrite.
+> **Elle est morte, et on ne lui substitue AUCUN autre nombre** (⛔ pas `337..347`,
+> qui a été publié sans instrument). ⇒ **le rectangle qui fait foi se RELIT** :
+> `widget jauge [<case>]` (`dn4-4`/AC9, `dn_ui_widget_jauge_rect()`), et §22.3
+> porte l'arbitrage complet. La console et `dn_ui.c` ne l'enseignent plus.
 
 ## §29.7 — LE COÛT, MESURÉ — ⛔ NI EXTRAPOLÉ, NI AU PLANCHER
 

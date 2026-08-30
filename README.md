@@ -150,18 +150,31 @@ esptool renomme toutes les sous-commandes et invaliderait le bloc de flash de la
 
 ```powershell
 & "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe" -m pip install --user esptool==5.3.1
-usbipd list                       # relever le BUSID de la ligne 303a:1001 — ici : 3-1
-                                  # (mesuré : 'list' n'exige AUCUNE élévation)
+usbipd list                       # ⛔ NE JAMAIS RECOPIER UN BUSID : il se RELÈVE sur la
+                                  #    ligne 303a:1001, à CHAQUE fois (mesuré : 'list'
+                                  #    n'exige AUCUNE élévation)
 ```
 
 Côté Windows, dans **PowerShell ÉLEVÉE** — uniquement ces deux commandes-là, une seule fois :
 
 ```powershell
 winget install --id dorssel.usbipd-win --exact --version 5.3.0
-usbipd bind --busid 3-1           # une fois pour toutes ; l'état passe à "Shared"
+
+# ⛔ AUCUNE CONSTANTE ICI : le busid SUIT LE PORT PHYSIQUE, il se RÉSOUT.
+$b = ((usbipd list | Select-String '303a:1001') -split '\s+')[0]
+usbipd bind --busid $b            # une fois pour toutes ; l'état passe à "Shared"
 ```
 
 > Le `bind` est **persistant** : il ne se rejoue pas après un reboot. Seul l'`attach` se rejoue.
+>
+> 🔴 **ET LE BUSID N'EST ÉCRIT EN DUR NULLE PART DANS CE FICHIER — c'est délibéré, et
+> c'est mesuré.** **TROIS valeurs ont été vraies** : `3-7` (2026-08-20), `3-1`
+> (2026-08-26), `3-5` (2026-08-27/28). ⛔ **`3-1` n'est pas seulement périmé : il est
+> OCCUPÉ** — sur cette machine il porte un **`V31GT` (`0e8d:201c`)**. ⇒ **suivre une
+> recette qui le récite ne rate pas : elle DÉTACHE LE MAUVAIS PÉRIPHÉRIQUE.**
+> `tools/wsl-attach.sh` et `tools/rendre-port.sh` le **relisent** à chaque appel ; le
+> skill `/desknode-board` aussi depuis le 2026-08-27. *(constante retirée par
+> `dn4-15`, 2026-08-30 — ce fichier se contredisait lui-même à 1 000 lignes d'écart.)*
 
 ### La boucle de travail (voie C — retenue)
 
@@ -1150,8 +1163,13 @@ usbipd + présence de `COM3` / `/dev/ttyACM*`.
 ressuscitent en ~2 s, donc l'outil **relit `usbipd list` après le délai** et **échoue
 bruyamment** si la ligne repasse à `Attached`. On paie 4 s pour ne plus payer une heure.
 🔴 **Le busid n'est écrit NULLE PART ici, et c'est délibéré** : il **suit le port
-physique** (`3-1` le 2026-08-26 ; `3-7` compté par `dn4-15`) — **les deux ont été vrais**.
-L'outil le **relit à chaque appel** et **échoue proprement** si la carte est absente.
+physique**. **TROIS valeurs ont été vraies** — `3-7` (2026-08-20), `3-1` (2026-08-26),
+`3-5` (2026-08-27/28) — et sur cette machine **`3-1` porte aujourd'hui un `V31GT`
+(`0e8d:201c`)**, ⛔ pas la carte. L'outil le **relit à chaque appel** et **échoue
+proprement** si la carte est absente.
+⚠️ *Jusqu'au 2026-08-30, cette affirmation était FAUSSE dans son propre fichier* : la
+recette d'installation, 1 000 lignes plus haut, écrivait le busid **EN DUR** (`3-1`).
+**Deux vérités contradictoires dans un même document** — levée par `dn4-15`.
 
 <details><summary>Le rituel manuel, si l'outil est indisponible — ⛔ il ÉCHOUE, c'est mesuré</summary>
 

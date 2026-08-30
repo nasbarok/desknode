@@ -38,9 +38,16 @@ CONFIG_SPIRAM_MODE_OCT=y
 # l'écran (23,0 Mo/s en continu rien que pour afficher) : l'image scintille.
 # ⛔ 120M est INTERDIT ici : le Kconfig d'Espressif prévient qu'un écart de ~20 °C
 #    après le boot fait planter les accès PSRAM aléatoirement. DeskNode vit H24
-#    sur la façade d'une tour de jeu — l'écart de température est le régime
-#    nominal, pas un cas limite. Ce n'est pas une optimisation, c'est une panne
-#    programmée. (source : components/esp_psram/esp32s3/Kconfig.spiram)
+#    POSÉ À CÔTÉ d'une tour de jeu (décision owner du 2026-08-17 — il n'est PAS
+#    monté sur la façade ; corrigé par dn4-15 le 2026-08-30). Ce n'est pas une
+#    optimisation, c'est une panne programmée.
+#    (source : components/esp_psram/esp32s3/Kconfig.spiram)
+#    🔴 ET LA CONCLUSION TIENT SANS LA PRÉMISSE DE LIEU, MAIS ELLE N'EST PAS
+#    CONFIRMÉE POUR AUTANT : L'AMPLITUDE THERMIQUE DU LIEU RÉEL N'EST PAS
+#    MESURÉE. Une pièce varie aussi (jour/nuit, chauffage, saison), et le module
+#    porte son propre échauffement (dalle, rétroéclairage, S3 à 240 MHz). ⇒ c'est
+#    un FAIT MANQUANT, ⛔ pas un fait acquis : personne n'a relevé le ΔT vu par la
+#    carte sur 24 h à son emplacement actuel. L'interdiction reste en vigueur.
 CONFIG_SPIRAM_SPEED_80M=y
 
 # ── Écran RGB ────────────────────────────────────────────────────────────────
@@ -68,7 +75,12 @@ CONFIG_SPIRAM_SPEED_80M=y
 # transactions/s), présent uniquement pendant le contact du doigt en `event`,
 # absent au repos. Avant dn1-4 aucune story ne faisait d'I2C en fonctionnement —
 # le TCA9554 ne sert qu'au boot — donc personne ne pouvait le voir.
-# ⚠️ Ce défaut BLOQUE AUSSI dn2-1 (BME680, BH1750, VL53L0X, INA219 sur ce bus).
+# ⚠️ Ce défaut BLOQUE AUSSI dn2-1 (BME680, BH1750, VL6180X, INA219 sur ce bus).
+#    🔴 dn4-15, 2026-08-30 : cette ligne écrivait « VL53L0X ». C'était le SEUL
+#    vrai défaut du lot — un INVENTAIRE de bus, donc une assertion AU PRÉSENT,
+#    qui nommait une puce jamais présente. Le 3ᵉ module est un TOF050C-VL6180X,
+#    tranché PAR LA LECTURE (`i2c lire16 29 0000` → `B4`, 5/5, témoin négatif
+#    compris). ⇒ cf. `main/dn_pins.h:165`, qui porte la réfutation complète.
 #
 # Mécanisme, CONFIRMÉ depuis : sur ESP32-S3, la flash et la PSRAM partagent le
 # contrôleur SPI0. La DMA du panneau RGB lit le framebuffer PSRAM à 23,0 Mo/s en

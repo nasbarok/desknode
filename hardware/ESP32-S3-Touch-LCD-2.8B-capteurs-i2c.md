@@ -812,8 +812,21 @@ rétroéclairage, S3 à 240 MHz), qui est un tout autre terme.
 > ⇒ **Il n'y a donc rien à re-mesurer en dn4-1** sur ce point : pas de flux d'air chaud de boîtier,
 > pas de support imprimé, pas de passage de câble interne. Le legs thermique que cette section
 > annonçait est **annulé**.
-> ⚠️ **Le README et le brief disent encore « monté sur la façade »** — c'est désormais faux et
-> corrigé au README. Le **brief** relève d'un correct-course, pas d'une réécriture silencieuse.
+> ⚠️ **Le BRIEF disait encore « monté sur la façade »** — le README, lui, est corrigé
+> depuis le **2026-08-17** (`README.md:4`, commit `b554a4e`). ⇒ **la notice ne vise
+> plus que le brief**, et c'est `dn4-15`/AC4 qui l'a traité le **2026-08-30**
+> (bloc de décision daté, verbatim owner, phrases d'origine **barrées, ⛔ pas
+> effacées**). Le brief relevait d'un **correct-course**, ⛔ pas d'une réécriture
+> silencieuse — et il l'a eu.
+>
+> 🔴 **ET IL FAUT ÉCRIRE POURQUOI ÇA A PRIS TREIZE JOURS** : le
+> `sprint-change-proposal-2026-08-20.md` **§1.1** avait **RÉFUTÉ** cette correction,
+> au motif que *« la décision qui l'aurait périmée n'existe pas »*, et conclu
+> *« ⛔ aucune modification du brief sur ce point »*. **Il avait cherché dans le
+> correct-course du 2026-08-17 ; la décision était ICI, dans le dossier matériel de
+> l'autre dépôt, committée le même jour à 13:13** (`b554a4e`, dont le titre dit
+> littéralement *« le montage en facade est PERIME »*). ⇒ **une réfutation vaut ce
+> que vaut son périmètre de recherche**, et celle-là en avait un trop étroit.
 
 ## 13.10 🔴 LE CAPTEUR FANTÔME — le mode de panne que personne n'avait imaginé
 
@@ -3099,6 +3112,11 @@ même genre que les deux autres :
 > BH1750/**VL53L0X**/INA219 se ré-arbitrent chacun sur le même critère 1. »*
 
 ⇒ **Corrigée par ajout**, comme les deux autres.
+
+> ⚠️ **RENVOI (`dn4-15`, 2026-08-30)** — la citation ci-dessus est **reproduite telle
+> qu'elle a été écrite** ; ⛔ elle n'est pas réécrite. Le 3ᵉ module est un
+> **`TOF050C-VL6180X`**, ⛔ **pas** un `VL53L0X` : cf. **§13.16.7** et
+> **`firmware/desknode/main/dn_pins.h:165`**.
 
 🔴 **CE QUE ÇA ENSEIGNE, ET C'EST LE POINT** : trois couches de revue adversariales, lancées en
 parallèle et sans contexte, ont trouvé **2 survivantes sur 3**. Le `grep` qui a trouvé la troisième

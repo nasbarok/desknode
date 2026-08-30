@@ -150,9 +150,12 @@ coexistent pas. Le geste d'alternance est celui de la cohabitation 3.
 ### Cohabitation 3 — avec la boucle de flash : le geste exact et son coût
 
 ```
-# WSL → Windows (l'agent peut démarrer) :
-powershell.exe -Command "& 'C:\Program Files\usbipd-win\usbipd.exe' detach --busid 3-1"
-#   mesuré : 0,3 s. COM3 apparaît ~2 s après.
+# WSL → Windows (l'agent peut démarrer) — ⛔ LE BUSID SE RÉSOUT, JAMAIS NE SE RÉCITE :
+./tools/rendre-port.sh --vers-agent           # 1 commande, busid RELU à chaque appel
+#   mesuré : 0,3 s pour le detach. COM3 apparaît ~2 s après.
+#   (repli, si l'outil est indisponible — le busid est RELU, pas écrit :)
+#   powershell.exe -Command "& 'C:\Program Files\usbipd-win\usbipd.exe' list" \
+#     | grep 303a:1001            # → relever la 1re colonne, c'est le busid du moment
 # Windows → WSL (reflasher/mesurer) :
 cd ~/projects/desknode && ./tools/wsl-attach.sh        # mesuré : ~3,1 s
 ```
@@ -792,6 +795,16 @@ littérale**. ⛔ **Une preuve de code n'est pas un constat owner**, et les deux
 **AC12 exige de viser LA JAUGE**, pas le centre : c'est le seul endroit où `lv_bar` peut voler le
 tap sans que rien ne le signale. La bande de la jauge RAM est haute de **10 px** (`y = 340..350`,
 formule contrôlée contre le relevé publié de dn3-2 : VENTILOS à `506..516`).
+
+> ⚠️ **RENVOI (`dn4-15`, 2026-08-30)** — la coordonnée `y = 340..350` citée ci-dessus
+> est **conservée telle qu'elle a été publiée**, ⛔ la narration n'est pas réécrite.
+> **Elle est morte, et on ne lui substitue AUCUN autre nombre** (⛔ pas `337..347`,
+> qui a été publié sans instrument). ⇒ **le rectangle qui fait foi se RELIT** :
+> `widget jauge [<case>]` (`dn4-4`/AC9, `dn_ui_widget_jauge_rect()`), et §22.3
+> porte l'arbitrage complet. La console et `dn_ui.c` ne l'enseignent plus.
+> 🔴 **ET CE RELEVÉ-CI A ÉTÉ RENVERSÉ PAR LA SUITE** : la visée du 2026-08-20, cible
+> rendue visible, a produit **9 taps hors de la bande publiée** — cf. §22.3 de
+> `…-affichage.md`. ⇒ ⛔ **ne pas relire ce tableau comme une bande valide aujourd'hui.**
 
 | tour | appuis / taps | dans la bande ? |
 |---|---:|---|

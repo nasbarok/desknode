@@ -1,0 +1,50 @@
+==============================================================================
+dn4-15 / AC5.5 — LE BUILD PASSE, ET LE DELTA EST RELEVE
+==============================================================================
+
+  chaine   : ESP-IDF v5.5.5 dans WSL (`. ~/esp/esp-idf/export.sh`)
+             ⛔ Windows sait FLASHER, il ne sait PAS construire.
+  ordre    : `idf.py reconfigure` PUIS `idf.py build`
+             (sans `reconfigure`, `App version` du bandeau nomme le commit
+              PRECEDENT — mesure de dn4-17. ⚠️ Cette story ne flashe pas,
+              mais la regle s'applique quand meme.)
+
+  ── LES DEUX BUILDS, MESURES, ⛔ PAS EXTRAPOLES ────────────────────────────
+
+    Le binaire deja present dans `build/` datait du 2026-08-30 01:52, soit
+    18 MINUTES AVANT le commit de baseline `b361434` (02:10:09). ⛔ Il ne
+    pouvait donc PAS servir de reference. Les deux builds ont ete refaits :
+
+      BASELINE  `b361434` (arbre remis par `git stash -u`)
+                desknode.bin = 1 228 864 o     0 erreur, 0 avertissement
+
+      APRES     `dn4-15` (T2 + T3 + T4)
+                desknode.bin = 1 229 056 o     0 erreur, 0 avertissement
+
+      DELTA     +192 o   (+0,016 %)
+
+  ── CE QUE LE DELTA MESURE, ET CE QU'IL NE MESURE PAS ──────────────────────
+
+  ✅ Il mesure du `.rodata` : les chaines de `printf` de `dn_console.c` se sont
+     ALLONGEES (2 lignes -> 3 pour `widget voie b`, 4 -> 6 pour la sortie des
+     bandes). La story predisait « quelques dizaines d'octets » ; le mesure est
+     +192. ⚠️ LA PREDICTION EST DANS LE BON SENS MAIS SOUS-ESTIMEE D'UN FACTEUR
+     ~4 — ecrit, ⛔ pas arrondi vers la prediction.
+  ⛔ Il ne mesure AUCUN changement de comportement : les seules editions de
+     firmware sont des chaines de diagnostic et des blocs de commentaire.
+     Aucune ligne de logique, aucune UI, aucun protocole.
+  ⛔ RIEN N'A ETE FLASHE. Le binaire ci-dessus n'est jamais alle sur la carte.
+     Le firmware de la carte reste celui de `dn4-14-2`.
+
+  ── LA LITTERALE MORTE, VERIFIEE APRES BUILD ──────────────────────────────
+
+    grep -c '340\.\.350' firmware/desknode/main/dn_console.c   ->  0
+    grep -c '340\.\.350' firmware/desknode/main/dn_ui.c        ->  0
+    grep -c 'widget jauge' firmware/desknode/main/dn_console.c ->  7
+    grep -c 'widget jauge' firmware/desknode/main/dn_ui.c      ->  3
+
+  ⛔ ET AUCUN NOMBRE NE L'A REMPLACEE. Les mentions de `337..347` qui restent
+     (dn_console.c x3, dn_ui.c x2) sont TOUTES dans le recit de la LECON
+     (« publie par dn4-2 SANS instrument ») ou dans l'INTERDICTION elle-meme ;
+     AUCUNE n'est dans un `printf`. C'est verifie par la gate, ⛔ pas a l'oeil.
+==============================================================================

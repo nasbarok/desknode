@@ -140,8 +140,15 @@ static const char *TAG = "dn_ui";
  *    « trouver 13 px ». Si la voie (c) gagne, la place ne manque plus
  *    (`48 + 2 × 40 = 128 ≤ 156`) et D12 coûte alors, sans rien acheter :
  *    +4,5 % de surface par case (35 100 -> 36 675 px) sur un `duty` déjà à
- *    10,09 %, et TOUTES les coordonnées tactiles publiées périment
- *    (VENTILOS 506..516 de dn3-2, bande de jauge y = 340..350 de dn4-1).
+ *    10,09 %, et TOUTES les coordonnées tactiles publiées périment.
+ *    🔴 dn4-15 / AC5 — ⛔ AUCUN NOMBRE N'EST CITÉ ICI, ET C'EST LE POINT. Ce
+ *    commentaire nommait EN DUR la bande `VENTILOS` de dn3-2 et la bande de
+ *    jauge `RAM` de dn4-1 : deux coordonnées MORTES. ⛔ Elles ne sont pas
+ *    recopiées ici — un nombre mort cité dans un commentaire se re-propage
+ *    aussi bien que dans un `printf`. ⛔ Et on ne leur substitue PAS
+ *    `337..347` : c'est le nombre que `dn4-2` a publié SANS instrument (cf.
+ *    `ui_case_origine()` ci-dessous). ⇒ Le rectangle qui fait foi se RELIT :
+ *    `widget jauge [<case>]` (dn4-4/AC9, `dn_ui_widget_jauge_rect()`).
  *    ⇒ C'est une QUESTION OWNER, pas un choix de dev. Voir AC11.
  */
 /* 🔴 D12 EST LE DÉFAUT DEPUIS LE CONSTAT OWNER DU 2026-08-19. Ce n'est pas un
@@ -160,9 +167,14 @@ static const char *TAG = "dn_ui";
  *    n'est plus un nombre écrit : il se calcule de la police RÉELLEMENT posée,
  *    par `dn_ui_barre_plancher()`.
  * ⚠️ CONSÉQUENCE, ÉCRITE ET NON MASQUÉE : `CASE_H` passe de 156 à **163**, donc
- *    TOUTE COORDONNÉE TACTILE PUBLIÉE EST PÉRIMÉE (`VENTILOS 506..516` de
- *    dn3-2, bande de jauge `y = 340..350` de dn4-1) et la case gagne +4,5 % de
- *    surface (35 100 -> 36 675 px) sur un `duty` déjà à 10,09 %. */
+ *    TOUTE COORDONNÉE TACTILE PUBLIÉE EST PÉRIMÉE, et la case gagne +4,5 % de
+ *    surface (35 100 -> 36 675 px) sur un `duty` déjà à 10,09 %.
+ * 🔴 dn4-15 / AC5 — MÊME TRAITEMENT, MÊME RENVOI QUE CI-DESSUS ET QUE LA
+ *    CONSOLE : ce commentaire citait EN DUR la bande `VENTILOS` de dn3-2 et
+ *    la bande de jauge `RAM` de dn4-1, ⛔ deux nombres morts.
+ *    **DEUX FICHIERS, UNE SEULE VÉRITÉ** : le rectangle réel se RELIT avec
+ *    `widget jauge [<case>]` (dn4-4/AC9). ⛔ Ne lui substituer AUCUNE
+ *    valeur écrite. */
 #define DN_UI_BARRE_H_DEFAUT 60
 #define DN_UI_MENU_H_DEFAUT 51
 #define DN_UI_MARGE 10

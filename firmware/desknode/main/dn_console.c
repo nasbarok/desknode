@@ -4362,8 +4362,22 @@ static int cmd_widget(int argc, char **argv)
             printf("     ⛔ Ne pas conclure « illisible » de cette branche : le\n");
             printf("        verdict de (b) exige de GENERER la police (T10), ce\n");
             printf("        qui coute npm + reseau et ~19 Ko EXTRAPOLES.\n");
+            /* dn4-15 / AC5 — ⛔ AUCUN NOMBRE ICI, ET C'EST LE POINT.
+             * Cette ligne imprimait DEUX COORDONNEES EN DUR — la bande
+             * `VENTILOS` de dn3-2 et la bande de jauge `RAM` de dn4-1 —
+             * toutes deux MORTES, et enseignees a un humain EN SEANCE.
+             * ⛔ Elles ne sont pas recopiees ici : un nombre mort cite dans
+             *    un commentaire se re-propage aussi bien que dans un printf.
+             *    Le git les garde ; ce fichier ne les enseigne plus.
+             * ⛔ INTERDIT d'y substituer `337..347` : `ui_case_origine()` et le
+             *    docblock de `widget jauge` (~170 l. plus bas) etablissent que
+             *    c'est le nombre publie par `dn4-2` SANS qu'aucun instrument ne
+             *    puisse le confronter. Remplacer un nombre mort par un nombre
+             *    NON CONFRONTE refait l'erreur que `dn4-4/AC9` a reparee.
+             * ⇒ Le renvoi va a l'INSTRUMENT, pas a une valeur. */
             printf("  · D12 applique : toutes les coordonnees tactiles publiees\n");
-            printf("    PERIMENT (VENTILOS 506..516, jauge y=340..350)\n");
+            printf("    PERIMENT — ⛔ AUCUN NOMBRE ICI : `widget jauge [<case>]`\n");
+            printf("    RELIT le rectangle REEL pose par LVGL (dn4-4/AC9).\n");
             printf("  · +4,5%% de surface par case (35 100 -> 36 675 px)\n");
             printf("  · en-tete COMPACTE — meme decision owner que (a)\n");
         } else if (strcmp(quoi, "c") == 0 || strcmp(quoi, "c2") == 0) {
@@ -5391,10 +5405,18 @@ static int cmd_widget(int argc, char **argv)
         dn_ui_case_dim(&cw, NULL);
         printf("barre %d · menu %d · grille %d · case %dx%d — SCENE RECONSTRUITE\n",
                b, m, gh, cw, ch);
-        printf("🔴 TOUTE COORDONNEE TACTILE PUBLIEE EST DESORMAIS PERIMEE :\n");
-        printf("   VENTILOS y=506..516 (dn3-2), bande de jauge y=340..350 (dn4-1).\n");
-        printf("   ⇒ recalculer ET controler la formule contre un releve deja\n");
-        printf("     publie AVANT de faire viser quoi que ce soit (AC11).\n");
+        /* dn4-15 / AC5 — MEME TRAITEMENT, MEME RENVOI QUE `widget voie b`.
+         * Cette sortie citait la bande `VENTILOS` de dn3-2 et la bande de
+         * jauge `RAM` de dn4-1 : l'AVERTISSEMENT etait juste, les DEUX
+         * NOMBRES etaient morts. ⛔ Ils ne sont pas recopies ici.
+         * ⛔ On ne leur substitue AUCUNE autre valeur (⛔ pas `337..347`) :
+         *    une coordonnee que rien ne confronte finit par etre recitee. */
+        printf("🔴 TOUTE COORDONNEE TACTILE PUBLIEE EST DESORMAIS PERIMEE.\n");
+        printf("   ⛔ AUCUN NOMBRE N'EST DONNE ICI, ET C'EST VOULU : la seule\n");
+        printf("     valeur qui fasse foi se RELIT — `widget jauge [<case>]`\n");
+        printf("     rend le rectangle REEL pose par LVGL (dn4-4/AC9).\n");
+        printf("   ⇒ MESURER avec lui, PUIS controler la formule, AVANT de\n");
+        printf("     faire viser quoi que ce soit (AC11).\n");
         printf("⚠️ surface d'une case : %d px (etait 35 100 a 156)\n", cw * ch);
         return 0;
     }

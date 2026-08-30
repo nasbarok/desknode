@@ -1,0 +1,47 @@
+==============================================================================
+dn4-15 / AC3.5 — CONTRE-EPREUVE : LES `VRAI` ET LES `SANS-RAPPORT`
+                 SONT RE-COMPTES ET INCHANGES
+==============================================================================
+
+methode : la ligne est relue DU BASELINE (`git show <sha>:<fichier>`) puis
+          recherchee VERBATIM dans l'arbre de travail. ⛔ pas de lecture a l'oeil.
+baseline : desknode@b361434 · cockpit@303c6bf
+
+  [OK ] VRAI           README.md                                      l.977   INCHANGEE (deplacee l.977 -> l.990)
+         ventilateur 200 mm de facade
+  [OK ] VRAI           firmware/desknode/main/dn_ui.c                 l.1114  INCHANGEE (deplacee l.1114 -> l.1126)
+         ventilateur 200 mm de facade
+  [OK ] VRAI           firmware/desknode/main/dn_ui.c                 l.1174  INCHANGEE (deplacee l.1174 -> l.1186)
+         ventilateur 200 mm de facade
+  [OK ] VRAI           firmware/desknode/main/dn_link.c               l.158   INCHANGEE
+         ventilateur 200 mm de facade
+  [OK ] VRAI           hardware/ESP32-S3-Touch-LCD-2.8B-liaison-pc.md l.999   INCHANGEE (deplacee l.999 -> l.1012)
+         ventilateur 200 mm de facade
+  [OK ] VRAI           hardware/ESP32-S3-Touch-LCD-2.8B-liaison-pc.md l.1206  INCHANGEE (deplacee l.1206 -> l.1219)
+         ventilateur 200 mm de facade
+  [OK ] VRAI           agent/dn_agent.py                              l.752   INCHANGEE
+         ventilateur 200 mm de facade
+  [OK ] VRAI           agent/dn_agent.py                              l.1343  INCHANGEE
+         ventilateur 200 mm de facade
+  [OK ] VRAI           tools/fixtures/PROVENANCE.md                   l.14    INCHANGEE
+         ventilateur 200 mm de facade
+  [OK ] VRAI           acts/briefs/brief-desknode-2026-08-14/brief.md l.46    INCHANGEE
+         ventilateur 200 mm de facade
+  [OK ] VRAI           s/briefs/brief-desknode-2026-08-14/addendum.md l.143   INCHANGEE
+         ventilateur 200 mm de facade
+  [OK ] SANS-RAPPORT   firmware/desknode/main/desknode_main.c         l.125   INCHANGEE
+         l'IDIOME « observation de facade »
+  [OK ] SANS-RAPPORT   firmware/desknode/main/dn_display.h            l.122   INCHANGEE
+         le PATRON DE CONCEPTION « Facade booleenne »
+  [OK ] VRAI           output/planning-artifacts/epics-desknode-v1.md l.1305  INCHANGEE
+         ventilateur SYS_FAN2 200 mm (⚠️ HORS des 11 de la story)
+  [OK ] VRAI           entation-artifacts/sprint-status-desknode.yaml l.371   INCHANGEE
+         ventilateur FRONT_IN 200 mm (⚠️ HORS des 11 de la story)
+
+==============================================================================
+BILAN CONTRE-EPREUVE : 15 INCHANGEE(S), 0 MODIFIEE(S)
+⚠️ ECART DECLARE : la story annonce ONZE `VRAI` ventilateur. Le balayage en
+   trouve TREIZE — `epics-desknode-v1.md:1305` et
+   `sprint-status-desknode.yaml:371` nomment le meme ventilateur et
+   n'etaient PAS dans la liste. Les deux sont couverts ci-dessus.
+==============================================================================
