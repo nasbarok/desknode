@@ -1,0 +1,51 @@
+=== T1 — LA CONVENTION EST EXECUTABLE, ET SON COMPTE EGALE CELUI DE T0 ===
+date : 2026-08-30T12:47:34+02:00
+
+--- le script T0 de la story (section « Commandes ») ---
+Traceback (most recent call last):
+  File "/tmp/claude-1000/-home-nasbarok-projects-compagnon-project/fd5643b9-354f-411a-b731-46d828d80a2c/scratchpad/t0_compte.py", line 5, in <module>
+    for l in T.read_text(encoding="utf-8").splitlines():
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1029, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1015, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '_bmad-output/implementation-artifacts/sprint-status-desknode.yaml'
+
+--- la gate, mode --compte ---
+==============================================================================
+dn4-16 / AC6 — CHAQUE ENTREE OUVERTE PORTE UN VERDICT ET UN PORTEUR
+==============================================================================
+
+depot code    : /home/nasbarok/projects/desknode
+depot cockpit : /home/nasbarok/projects/compagnon_project
+
+── 0. LES DEUX DEPOTS SONT LA (AC6.7) ────────────────────────────
+  [OK ] le depot code est atteignable                                  /home/nasbarok/projects/desknode
+  [OK ] le depot cockpit est atteignable                               /home/nasbarok/projects/compagnon_project
+  [OK ] le ledger est lisible                                          _bmad-output/implementation-artifacts/deferred-work.md
+  [OK ] le tracker est lisible                                         _bmad-output/implementation-artifacts/sprint-status-desknode
+
+── LA CONVENTION QUE CE SCRIPT IMPLEMENTE (AC1.3) ────────────────
+   (1) entree   = puce `^- ` de PREMIER niveau, en section `## Deferred from:`
+       (les puces indentees sont des CONTINUATIONS ⇒ 240, pas 258)
+   (2) DeskNode = tag `[DeskNode]` dans le texte OU `dnN-M`/`desknode` au titre de section
+   (3) ouverte  = la puce ne commence PAS par `✅`
+       ⚠️ une entree arbitree `CLOSE` reste OUVERTE au sens du compte
+   (4) marqueur = premier glyphe EN TETE de puce (⛔ pas ailleurs dans la ligne)
+
+── 1. LE COMPTE — ⛔ AUCUN CHIFFRE N'EST RECOPIE (AC1.2) ──────────
+     ledger              : _bmad-output/implementation-artifacts/deferred-work.md (5174 lignes)
+     sections            :  104   dont DeskNode : 54 (52 %)
+     entrees             :  443   dont DeskNode : 269 (61 %)
+     DeskNode OUVERTES   :  240   <= LE PERIMETRE DE CETTE GATE
+     KidSat (hors champ) :  174
+     marqueurs (regle 4) : ⚪ 66  🟠 55  🔴 42  🟢 25  (sans) 20  ⚠️ 14  🟡 13  🆕 2  🎯 2  ⚫ 1
+  [OK ] le perimetre n'est pas vide                                    240 entree(s) ouverte(s)
+
+==============================================================================
+MODE --compte : aucune disposition n'est exigee.
+BILAN : 5 OK, 0 KO
+==============================================================================

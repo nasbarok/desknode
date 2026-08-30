@@ -1,0 +1,50 @@
+==============================================================================
+T5 — LES 22 GATES APRES dn4-16 : L'INVARIANT DE T0 EST-IL TENU ?
+date     : 2026-08-30T13:27:51+02:00
+desknode : c191e44   cockpit : 998ec49
+==============================================================================
+
+GATE                                   RC    ETAT A T0                  VERDICT
+-------------------------------------- ----- -------------------------- -------
+verif_bme680_retard_dn45.py            0     ✅ VERTE                  ✅ INVARIANT
+verif_courbe_dn413.py                  1     🔴 ROUGE (annoncee)      ✅ INVARIANT
+verif_cumul_ambient_dn45.py            0     ✅ VERTE                  ✅ INVARIANT
+verif_d4_nvs_dn45.py                   0     ✅ VERTE                  ✅ INVARIANT
+verif_decoupe_horloge_dn418.py         0     ✅ VERTE                  ✅ INVARIANT
+verif_dossier_d5_dn45.py               0     ✅ VERTE                  ✅ INVARIANT
+verif_dossier_dn415.py                 0     ✅ VERTE                  ✅ INVARIANT
+verif_harnais_dn413.py                 0     ✅ VERTE                  ✅ INVARIANT
+verif_hist_dn413.py                    0     ✅ VERTE                  ✅ INVARIANT
+verif_journal_soak_dn45.py             0     ✅ VERTE                  ✅ INVARIANT
+verif_ledger_dn416.py                  0     🆕 LIVREE PAR dn4-16     ✅ INVARIANT
+verif_lissage_dn45.py                  0     ✅ VERTE                  ✅ INVARIANT
+verif_miroir_horloge_dn418.py          0     ✅ VERTE                  ✅ INVARIANT
+verif_rebouclage_dn45.py               0     ✅ VERTE                  ✅ INVARIANT
+verif_reprise_horloge_dn418.py         0     ✅ VERTE                  ✅ INVARIANT
+verif_selection_dn49.py                0     ✅ VERTE                  ✅ INVARIANT
+verif_serie_dn412.py                   0     ✅ VERTE                  ✅ INVARIANT
+verif_source_lhm_dn48.py               0     ✅ VERTE                  ✅ INVARIANT
+verif_sr03.py                          2     ⚠️ NON-JOUABLE (rc=2)  ✅ INVARIANT
+verif_veille_dn33.py                   0     ✅ VERTE                  ✅ INVARIANT
+verif_verrou_lvgl_dn413.py             1     🔴 ROUGE (⛔ non annoncee) ✅ INVARIANT
+verif_xip_dn422.py                     0     ✅ VERTE                  ✅ INVARIANT
+
+BILAN : 22 invariante(s), 0 changement(s).
+
+🎯 verif_dossier_dn415.py A ETE ROUGE EN COURS DE STORY — TROIS FOIS — ET C'EST LA
+   DEMONSTRATION DE LA THESE, ⛔ PAS UN ACCIDENT :
+   · 1er rouge (17 OK / 62 KO) : les lignes de disposition ont DECALE les 27
+     adresses que son manifeste ancre PAR NUMERO DE LIGNE dans `deferred-work.md` ;
+   · 2e rouge : le bloc de correction de l'epic a decale ses 23 adresses dans
+     `epics-desknode-v1.md` ;
+   · 3e rouge : le manifeste de dn4-16 avait ecrit une forme NUE du busid en dur.
+     La gate a raison — UNE RECETTE SE COPIE-COLLE, meme depuis un manifeste.
+   ⇒ 50 adresses RE-ANCREES (⛔ aucun verdict touche), 5 citations neuves arbitrees
+     HISTORIQUE, recapitulatif 199 → 204. ETAT FINAL : 20 OK / 0 KO, celui de T0.
+   ⚠️ LE RE-ANCRAGE EST UN CALMANT, ⛔ PAS UN REMEDE : il se re-perimera a la
+     prochaine ecriture. Le remede est d'ancrer PAR MOTIF — la colonne « citation »
+     du manifeste suffit deja (elle a retrouve 130 lignes sur 131 a l'essai).
+     ⇒ verse au ledger, porteur `dn4-24`.
+⛔ dn4-16 N'ECRIT AUCUNE LIGNE DE FIRMWARE : les deux rouges preexistantes et la
+   gate non-jouable sont des INVARIANTS — elle ne peut ni les causer ni les
+   reparer, et c'est pour ca que T0 les a releves AVANT.

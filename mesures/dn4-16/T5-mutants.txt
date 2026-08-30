@@ -1,0 +1,68 @@
+==============================================================================
+T5 — LES MUTANTS : LA GATE EST *VUE* ROUGIR   (dn4-16 / AC6.8)
+==============================================================================
+date     : 2026-08-30T13:18:06+02:00
+desknode : c191e44
+cockpit  : 998ec49
+etat     : ETAT FINAL LIVRE — 248 entrees ouvertes, gate a 15 controles
+
+🔴 MOTIF : « une gate qu'on n'a pas vue echouer n'est pas une gate ». Le depot a
+   deja paye la lecon DEUX FOIS — la gate CRLF de `deployer_tour.sh` etait MUETTE
+   pendant deux revues, et `verif_courbe_dn413.py` tire depuis son baseline un
+   mutant qui reste VERT.
+
+⛔ AUCUN MUTANT N'EST TIRE SUR LE VRAI LEDGER. Les trois fichiers que la gate lit
+   sont COPIES dans un cockpit jetable, et c'est LUI qu'on mutile.
+   Motif : un harnais qui mute la source de verite peut la laisser mutee.
+
+── TEMOIN POSITIF INITIAL — le cockpit COPIE, NON MUTE, doit etre VERT ───────
+BILAN : 15 OK, 0 KO
+   rc=0
+
+── MUTANT (a) RETIRER la ligne de disposition d'une entree ⇒ doit ROUGIR   [AC6.4]
+   MUTATION : ligne de disposition RETIREE (l.143)
+  [KO ] toute entree ouverte a une ligne de disposition                ⛔ 1 SANS DISPOSITION : l.140
+⛔ 1 ECHEC(S) sur 15 controles.
+   rc=1
+
+── MUTANT (b) ECRIRE UN PORTEUR `done` (dn4-4) ⇒ doit ROUGIR   [AC6.5]
+   MUTATION : porteur remplace par `dn4-4`, qui est `done` au tracker (l.143)
+  [KO ] aucun porteur A VENIR n'est `done`/`superseded`                ⛔ 1 MORT(S) : l.140→dn4-4(done)
+⛔ 1 ECHEC(S) sur 15 controles.
+   rc=1
+
+── MUTANT (c) AJOUTER UNE ENTREE OUVERTE NEUVE ⇒ doit ROUGIR   [durabilite]
+   MUTATION : entree ouverte NEUVE inseree sans disposition (l.130)
+  [KO ] toute entree ouverte a une ligne de disposition                ⛔ 1 SANS DISPOSITION : l.130
+  [KO ] le manifeste couvre 100 %% des entrees ouvertes (AC2.7)        248 ligne(s) de tableau pour 249 entree(s)
+⛔ 2 ECHEC(S) sur 15 controles.
+   rc=1
+
+── MUTANT (d) PREUVE = PUR `fichier:123` ⇒ doit ROUGIR   [AC6.6]
+   MUTATION : preuve remplacee par un PUR `dn_ui.c:9948` (l.143)
+  [KO ] aucune preuve n'est un PUR `fichier:ligne`                     ⛔ 1 ADRESSE(S) NUE(S) : l.140 `dn_ui.c:9948`
+⛔ 1 ECHEC(S) sur 15 controles.
+   rc=1
+
+── MUTANT (e) COCKPIT ABSENT ⇒ doit ROUGIR   [AC6.7, ⛔ jamais un skip]
+   MUTATION : --cockpit pointe un chemin qui n'existe pas
+  [KO ] le depot cockpit est atteignable                               ⛔ ABSENT — une gate scopee epingle VERT le meme defaut aille
+  [KO ] le ledger est lisible                                          ⛔ ABSENT
+  [KO ] le tracker est lisible                                         ⛔ ABSENT
+BILAN : 1 OK, 3 KO
+   rc=1
+
+── TEMOIN POSITIF FINAL — cockpit RESTAURE, doit redevenir VERT ─────────────
+BILAN : 15 OK, 0 KO
+   rc=0
+
+==============================================================================
+BILAN DES MUTANTS : 5 tires, 5 ROUGES, 2 temoins positifs VERTS.
+⚠️ Le mutant (c) fait rougir DEUX controles — la disposition manquante ET la
+   couverture du manifeste. C'est AC2.7 : « une entree non listee est
+   indiscernable d'une entree oubliee ».
+🎯 ET CE CONTROLE A SERVI EN VRAI, DEUX FOIS : quand dn4-16 a verse ses entrees
+   neuves, la gate a rougi sur un manifeste reste a 240 lignes pour 247 puis 248
+   entrees. ⇒ le mecanisme n'est pas theorique, il a deja attrape son auteur.
+⛔ CE QUE LES MUTANTS NE PROUVENT PAS : que les 248 verdicts soient JUSTES.
+   La gate EXIGE un arbitrage, elle ne le REND pas.
