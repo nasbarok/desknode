@@ -1,0 +1,416 @@
+==============================================================================
+dn4-15 / T0 — COMPTE DE DEPART, PRODUIT PAR LE SCRIPT
+==============================================================================
+
+A. DEPOT desknode — FAISANT AUTORITE, arbre ENTIER
+--------------------------------------------------
+  56 occurrence(s) sur 56 ligne(s) et 16 fichier(s)
+
+  README.md  (7 occ.)
+     l.4      [facade      ] x1  côté de la tour PC** (décision owner du 2026-08-17 — le brief dit encore « monté sur la façade du
+     l.153    [busid-en-dur] x1  usbipd list                       # relever le BUSID de la ligne 303a:1001 — ici : 3-1
+     l.161    [busid-en-dur] x1  usbipd bind --busid 3-1           # une fois pour toutes ; l'état passe à "Shared"
+     l.246    [vl53l0x     ] x1  | **`tof`** (dn4-7) | le **VL6180X** `0x29` instruit **pour de bon** — `etat` (registres, **lecture seule**), `sr03`, `b
+     l.248    [vl53l0x     ] x1  | **`i2c`** (dn2-1/**dn4-2**) | le **bus vu de ses adresses** : `i2c` scanne 0x08..0x77, `i2c lire <addr> <reg> [n]` lit
+     l.977    [facade      ] x1  ⛔ **ET UN VENTILATEUR NE SERA JAMAIS PUBLIABLE** : le **200 mm de façade** n'a **pas de fil
+     l.1212   [vl53l0x     ] x1  | 🔴 **TOF050C-VL6180X** (⛔ **PAS** un VL53L0X) | proximité / présence | **`0x29` MESURÉ** ✅ **QUALIFIÉ PAR LECTURE** (dn
+
+  agent/dn_agent.py  (2 occ.)
+     l.752    [facade      ] x1  # ⛔ `FRONT_IN` (200 mm facade, `fan/3` ou `fan/5`) N'EST PAS DANS CETTE TABLE ET
+     l.1343   [facade      ] x1  facade n'a pas de tachy (0 RPM dans le BIOS aussi) et le ventilateur du
+
+  firmware/desknode/main/desknode_main.c  (1 occ.)
+     l.125    [facade      ] x1  * observation de façade. Le seul instrument qui peut réellement CONTREDIRE
+
+  firmware/desknode/main/dn_capteurs.h  (1 occ.)
+     l.8      [vl53l0x     ] x1  * (⚠️ « dn4-1 » et « VL53L0X » étaient DEUX étiquettes fausses — cf. dn_pins.h). ⚠️ Il n'est pour
+
+  firmware/desknode/main/dn_console.c  (5 occ.)
+     l.4366   [340..350    ] x1  printf("    PERIMENT (VENTILOS 506..516, jauge y=340..350)\n");
+     l.5395   [340..350    ] x1  printf("   VENTILOS y=506..516 (dn3-2), bande de jauge y=340..350 (dn4-1).\n");
+     l.6988   [vl53l0x     ] x1  *  (b) 🔴 « VL53L0X » : REFUTE PAR L'INVENTAIRE PHYSIQUE. Le module est un
+     l.7787   [vl53l0x     ] x1  "REPRODUCTIBLE, c'est un VL53L0X et le sachet ment "
+     l.8130   [vl53l0x     ] x1  *    URL Pololu rendaient un PDF ST authentique en HTTP 200… du VL53L0X. Le
+
+  firmware/desknode/main/dn_display.h  (1 occ.)
+     l.122    [facade      ] x1  /* Façade booléenne héritée de dn1-2 : `false` -> 0 %, `true` -> 100 %.
+
+  firmware/desknode/main/dn_env.c  (2 occ.)
+     l.245    [vl53l0x     ] x1  * ⚠️ C'est exactement ce qui distingue cette puce d'un VL53L0X, et ce qui a
+     l.246    [vl53l0x     ] x1  *    permis de REFUTER l'étiquette « VL53L0X » (§13.16.7). */
+
+  firmware/desknode/main/dn_link.c  (1 occ.)
+     l.158    [facade      ] x1  *    **il n'existe AUCUN flux entrant mesurable.** Le 200 mm de façade n'a pas
+
+  firmware/desknode/main/dn_pins.h  (3 occ.)
+     l.65     [vl53l0x     ] x1  *    est rapporté sur le VL53L0X — la puce sœur.
+     l.165    [vl53l0x     ] x1  * 🔴 LE 3ᵉ N'EST PAS UN VL53L0X : C'EST UN **TOF050C-VL6180X**. Ce fichier, le
+     l.167    [vl53l0x     ] x1  *    « VL53L0X » du 2026-08-14 au 2026-08-19. L'addendum §3 du brief avait POSÉ
+
+  firmware/desknode/main/dn_ui.c  (4 occ.)
+     l.144    [340..350    ] x1  *    (VENTILOS 506..516 de dn3-2, bande de jauge y = 340..350 de dn4-1).
+     l.164    [340..350    ] x1  *    dn3-2, bande de jauge `y = 340..350` de dn4-1) et la case gagne +4,5 % de
+     l.1114   [facade      ] x1  * 🔴 `FRONT_IN` (200 mm façade) N'EST **JAMAIS** PUBLIABLE : il n'a pas de
+     l.1174   [facade      ] x1  *    ⛔ `FRONT_IN` (200 mm façade) n'apparaît NULLE PART : pas de fil
+
+  firmware/desknode/sdkconfig.defaults  (2 occ.)
+     l.41     [facade      ] x1  #    sur la façade d'une tour de jeu — l'écart de température est le régime
+     l.71     [vl53l0x     ] x1  # ⚠️ Ce défaut BLOQUE AUSSI dn2-1 (BME680, BH1750, VL53L0X, INA219 sur ce bus).
+
+  hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md  (5 occ.)
+     l.303    [facade      ] x1  > façade d'une tour de jeu : l'écart de température est le **régime nominal**,
+     l.1509   [vl53l0x     ] x1  VL53L0X, INA219 sur ce même bus) aurait fait défiler l'écran en permanence, et
+     l.3849   [340..350    ] x1  de faire viser quoi que ce soit** : elle reproduit `y = 340..350` (dn4-1) sur
+     l.6398   [340..350    ] x1  | `dn4-1` | — | `340..350` | calculé, **déjà déclaré périmé** (`CASE_H` 156 → 163) |
+     l.9991   [340..350    ] x1  (`VENTILOS 506..516`, jauge `y = 340..350`) pendant que `dn4-5` et `dn4-10` sont ouverts.
+
+  hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md  (16 occ.)
+     l.57     [vl53l0x     ] x1  c'est l'une d'elles qui **réfute l'étiquette « VL53L0X »** portée depuis le 2026-08-14 par le brief,
+     l.62     [vl53l0x     ] x1  | `2026-08-19_1718-tof050c-vl6180x-face-capteur-et-sachet.jpg` | 17:18:48 | 🔴 **LA PIÈCE QUI RÉFUTE « VL53L0X ».** Étiqu
+     l.380    [vl53l0x     ] x1  > 🔴 **LE 3ᵉ CAPTEUR N'EST PAS UN VL53L0X. C'EST UN VL6180X — et *« même famille ToF »* est faux
+     l.382    [vl53l0x     ] x1  > le 2026-08-14 — *« La roadmap historique nomme "TOF050C" là où le dump dit VL53L0X — même famille
+     l.386    [vl53l0x     ] x1  > | | **VL6180X** (ce qu'on a) | **VL53L0X** (ce que six documents annoncent) |
+     l.693    [vl53l0x     ] x1  « dn4-1 » et « VL53L0X » — deux étiquettes fausses, corrigées par la revue de code du 2026-08-20 :
+     l.808    [facade      ] x1  > Le module sera **POSÉ À CÔTÉ de la tour**, pas monté dans la façade du Phantom 630 — verbatim :
+     l.815    [facade      ] x1  > ⚠️ **Le README et le brief disent encore « monté sur la façade »** — c'est désormais faux et
+     l.947    [vl53l0x     ] x1  1. ~~**dn4-1** — les 3 autres breakouts (BH1750 `0x23`, VL53L0X `0x29`, INA219 `0x40`) : **ni
+     l.951    [vl53l0x     ] x1  `VL53L0X` mais un **`TOF050C-VL6180X`**, tranché **par la lecture** (`i2c lire16 29 0000` → `B4`,
+     l.2165   [vl53l0x     ] x1  | **VL53L0X** (témoin négatif) | `i2c lire 29 C0` · `C1` · `C2` — index **8 bits** | **`01` · `00` · `00`** | ⛔ **RÉFUTÉ
+     l.3099   [vl53l0x     ] x1  > BH1750/**VL53L0X**/INA219 se ré-arbitrent chacun sur le même critère 1. »*
+     l.3459   [vl53l0x     ] x1  | `q=vl53` | 200 | `espp/vl53l` 1.1.8 · `rjrp44/vl53l5cx` 4.0.1 · `rjrp44/vl53l8cx` 4.0.1 · `grrtzm/v53l7cx-library` 1.0
+     l.4687   [vl53l0x     ] x1  | `pololu.com/file/0J1187/VL6180X.pdf` | ⛔ un **vrai PDF ST**… du **VL53L0X** (titre : *« World's smallest Time-of-Fligh
+     l.4902   [vl53l0x     ] x1  **VL53L0X**, l'autre un schéma **Pololu**. Je les avais déjà rangés comme sources avant de lire
+     l.5547   [vl53l0x     ] x1  VL53L0X, la puce sœur.
+
+  hardware/ESP32-S3-Touch-LCD-2.8B-liaison-pc.md  (4 occ.)
+     l.154    [busid-en-dur] x1  powershell.exe -Command "& 'C:\Program Files\usbipd-win\usbipd.exe' detach --busid 3-1"
+     l.793    [340..350    ] x1  tap sans que rien ne le signale. La bande de la jauge RAM est haute de **10 px** (`y = 340..350`,
+     l.999    [facade      ] x1  entrant mesurable.** Le 200 mm de façade n'a pas de fil tachymétrique (`0 RPM` **dans le BIOS
+     l.1206   [facade      ] x1  | L7 | 🆕 **`FRONT_IN` (200 mm façade) ne sera JAMAIS publiable** | ⛔ **CLOS — matériel** | **Pas de fil tachymétrique**,
+
+  tools/fixtures/PROVENANCE.md  (1 occ.)
+     l.14     [facade      ] x1  facade n'a pas de fil tachymetrique, 0 RPM DANS LE BIOS AUSSI).
+
+  tools/verif_sr03.py  (1 occ.)
+     l.22     [vl53l0x     ] x1  HTTP 200 un PDF ST authentique... du VL53L0X. Le code de retour et le nom de
+
+  -- par motif --
+     facade          16   le module « en facade » (3 homonymes)
+     vl53l0x         29   la puce VL53L0X (le module est un VL6180X)
+     340..350         8   la coordonnee morte y = 340..350
+     busid-en-dur     3   un busid CONSTANT dans une recette (3 valeurs ont ete vraies)
+
+B. DEPOT cockpit — FAISANT AUTORITE (+ busid-en-dur des archives)
+-----------------------------------------------------------------
+  59 occurrence(s) sur 56 ligne(s) et 9 fichier(s)
+
+  _bmad-output/implementation-artifacts/deferred-work.md  (14 occ.)
+     l.835    [340..350    ] x1  contre un relevé déjà publié** (elle reproduit `y = 340..350` de `dn4-1` sur
+     l.866    [340..350    ] x1  atteint la bande `y = 340..350`, parce que `RAM` était à « -- » ⇒ **jauge vide, donc quasi
+     l.1756   [facade      ] x1  - ⚪ **[Doc][À corriger en correct-course] Le brief dit encore « monté sur la façade de la tour ».** [`_bmad-output/plann
+     l.1758   [facade      ] x1  Décision owner du 2026-08-17 : le module sera **posé à côté** de la tour, pas monté dans la façade du Phantom 630. ⇒ Tom
+     l.1775   [vl53l0x     ] x1  L'entrée de la session dn1-4 annonçait : *« à traiter quand quelqu'un touchera à l'ordre d'installation de l'ISR (dn2-1 
+     l.2594   [340..350    ] x1  - ⚪ **[DeskNode][Instrument][→ prochain passage sur `dn_ui`/`dn_console`] LES COORDONNÉES `y = 340..350` SURVIVENT DANS 
+     l.2599   [340..350    ] x1  *« TOUTE COORDONNÉE TACTILE PUBLIÉE EST DÉSORMAIS PÉRIMÉE : … bande de jauge y=340..350 (dn4-1) »*,
+     l.2608   [vl53l0x     ] x1  - ⚪ **[DeskNode][Doc][→ prochain passage sur `affichage.md`] UNE CITATION « VL53L0X » SUBSISTE DANS UNE ANALYSE RÉTROSPE
+     l.2610   [vl53l0x     ] x1  *« VL53L0X, INA219 sur ce même bus »* — narration d'un arbitrage **antérieur au 2026-08-19**,
+     l.2743   [busid-en-dur] x1  d'alternance WSL↔COM3), le `README.md` et plusieurs stories écrivent `--busid 3-1`.
+     l.3346   [vl53l0x     ] x1  bloqué bas après une période de fonctionnement sur **VL53L0X**, la puce sœur.
+     l.4691   [facade      ] x1  **0 occurrence ajoutée** de `VL53L0X`, de `3-1` en dur, de *« façade de la tour »*. Les compteurs
+     l.4691   [vl53l0x     ] x1  **0 occurrence ajoutée** de `VL53L0X`, de `3-1` en dur, de *« façade de la tour »*. Les compteurs
+     l.4692   [vl53l0x     ] x1  globaux sur `README.md` + `hardware/` sont **inchangés** (`VL53L0X` toujours à **17**).
+
+  _bmad-output/implementation-artifacts/dn2-2-cpu-live-fourche-transport.md  (1 occ.)
+     l.161    [busid-en-dur] x1  inversement. `usbipd detach --busid 3-1` obligatoire pour rendre le port à l'agent Windows, et
+
+  _bmad-output/implementation-artifacts/dn4-10-l-image-glisse-encore-et-aucun-compteur-ne-le-dit.md  (1 occ.)
+     l.371    [busid-en-dur] x1  powershell.exe -Command "& 'C:\Program Files\usbipd-win\usbipd.exe' detach --busid 3-1"
+
+  _bmad-output/implementation-artifacts/dn4-6-cpu-et-gpu-a-trois-et-quatre-grandeurs.md  (2 occ.)
+     l.86     [busid-en-dur] x1  - **Attachement WSL↔carte** : `usbipd bind/attach --busid 3-1` depuis Windows.
+     l.1823   [busid-en-dur] x1  (busid 3-1, mode NAT, hôte `192.168.224.1`).
+
+  _bmad-output/implementation-artifacts/sprint-status-desknode.yaml  (15 occ.)
+     l.246    [340..350    ] x1  #          y = 340..350 de dn4-1) ⇒ recalculer ET contrôler la formule contre un
+     l.261    [vl53l0x     ] x1  #     Quatre etiquettes corrigees (« VL53L0X » -> TOF050C-VL6180X dans le brief,
+     l.268    [facade      ] x1  #     sur la facade de la tour » du brief n'est PAS perimee — D4 et D9 la
+     l.275    [vl53l0x     ] x1  #     a ZERO materiel — et ⚠️ celle qui ajoute un VL53L0X COLLISIONNE a 0x29 avec
+     l.337    [facade      ] x1  dn2-1-bme680-bus-i2c-externe: done  # P4 — ✅ CLOSE le 2026-08-17 sur décision owner, AVEC DEUX ÉCARTS DÉCLARÉS (jamais m
+     l.337    [vl53l0x     ] x1  dn2-1-bme680-bus-i2c-externe: done  # P4 — ✅ CLOSE le 2026-08-17 sur décision owner, AVEC DEUX ÉCARTS DÉCLARÉS (jamais m
+     l.368    [340..350    ] x1  dn4-2-brancher-les-trois-capteurs: done  # ✅ CLOSE EN `done` LE 2026-08-24 PAR DECISION OWNER, AVEC TROIS ECARTS DECLARE
+     l.368    [vl53l0x     ] x3  dn4-2-brancher-les-trois-capteurs: done  # ✅ CLOSE EN `done` LE 2026-08-24 PAR DECISION OWNER, AVEC TROIS ECARTS DECLARE
+     l.369    [vl53l0x     ] x2  dn4-3-exploiter-les-capteurs: done  # ✅ DONE le 2026-08-20 AVEC UN ECART DECLARE — AC3 est PARTIEL et la story passe don
+     l.370    [vl53l0x     ] x1  dn4-7-le-tof-porte-t-il-vraiment: blocked  # 🔴 BLOQUÉE LE 2026-08-21 (correct-course, D14). CE QUI LA DÉBLOQUE : UN MODU
+     l.371    [facade      ] x1  dn4-8-la-tour-expose-ses-sondes-ring0: done  # ✅ CLOSE EN `done` LE 2026-08-24 AVEC TROIS ECARTS DECLARES — decision own
+     l.374    [busid-en-dur] x1  dn4-17-l-agent-vit-sur-la-tour-et-on-reprend-la-main: done  # 2026-08-26 CLOS apres REVUE DE CODE 3 COUCHES : 4 decision
+
+  _bmad-output/planning-artifacts/briefs/brief-desknode-2026-08-14/.memlog.md  (1 occ.)
+     l.2      [facade      ] x1  topic: DeskNode Desktop V1 — mini display ESP32-S3 sur façade PC
+
+  _bmad-output/planning-artifacts/briefs/brief-desknode-2026-08-14/addendum.md  (4 occ.)
+     l.143    [facade      ] x1  tachymètre. ⛔ **Le 200 mm de façade n'a PAS de fil tachymétrique** — `0 RPM` **DANS LE BIOS AUSSI**
+     l.287    [facade      ] x1  - OTA : hors V1 sauf objection ; redevient important une fois le module vissé dans la façade.
+     l.293    [vl53l0x     ] x1  - La roadmap historique nomme « TOF050C » là où le dump dit VL53L0X — même famille ToF, noter la réf réelle du breakout 
+     l.321    [facade      ] x1  - Support/cadre imprimé 3D pour la façade Phantom 630, passage du câble USB à l'intérieur du boîtier.
+
+  _bmad-output/planning-artifacts/briefs/brief-desknode-2026-08-14/brief.md  (11 occ.)
+     l.12     [facade      ] x1  DeskNode est un mini-display tactile de 2,8" monté verticalement sur la façade de la tour PC (NZXT Phantom 630), qui aff
+     l.24     [facade      ] x1  Un module autonome sur la façade de la tour :
+     l.46     [facade      ] x1  ⛔ **Un ventilateur ne sera JAMAIS publiable** : le 200 mm de façade n'a **pas de fil
+     l.71     [vl53l0x     ] x1  🔴 **Ce n'est PAS un VL53L0X** — corrigé le 2026-08-20 (`dn4-2`, correct-course du même jour). L'étiquette venait d'un du
+     l.75     [facade      ] x1  - Installation : portrait sur façade Phantom 630, alimentation USB-C ; POC sur bureau sans attendre le support imprimé 3
+     l.83     [facade      ] x1  - OTA : dans V1 ou reporté (le flash USB-C suffit tant que le module n'est pas vissé dans la façade).
+     l.94     [vl53l0x     ] x1  Le module est un **TOF050C-VL6180X**, pas un VL53L0X. ST garantit le VL6180X **jusqu'à 100 mm**
+     l.96     [vl53l0x     ] x1  revendeur**, ⛔ pas une spec — là où le VL53L0X qu'annonçaient six documents portait, lui, à **2 m**.
+     l.109    [vl53l0x     ] x1  1. **Ajouter un VL53L0X** (2 m) à côté, pour l'étage présence ;
+     l.114    [vl53l0x     ] x1  🔴 **PIÈGE À NOMMER AVANT DE CHOISIR LA VOIE 1 — LES DEUX ToF SE COLLISIONNENT.** Le VL53L0X a
+     l.123    [vl53l0x     ] x1  VL6180X embarque un **capteur de lumière ambiante** que le VL53L0X n'a pas, et qui **recouvre
+
+  _bmad-output/planning-artifacts/epics-desknode-v1.md  (10 occ.)
+     l.9      [vl53l0x     ] x1  pas un VL53L0X, et le BME680 est à `0x77` (`SDO` haut), pas « 0x76/0x77 ».*
+     l.24     [facade      ] x1  que le module n'est pas vissé dans la façade).
+     l.169    [340..350    ] x1  pas mais `CASE_H` oui — `VENTILOS 506..516` de `dn3-2`, bande de jauge `y = 340..350` de `dn4-1`)
+     l.617    [vl53l0x     ] x1  consiste à ajouter un VL53L0X **collisionne à `0x29`** avec le module déjà soudé, dont l'`XSHUT`
+     l.620    [vl53l0x     ] x1  2. **Le VL6180X porte un ALS** que le VL53L0X n'a pas, et qui **recouvre partiellement le BH1750**.
+     l.1131   [facade      ] x1  | Le brief dit encore *« monté sur la façade de la tour »* | **2 occurrences** (`brief.md:12`, `:24`) |
+     l.1133   [vl53l0x     ] x1  | Une citation **`VL53L0X`** subsiste (le module est un **VL6180X**) | **17 occurrences** : `capteurs-i2c.md` (13), `REA
+     l.1134   [340..350    ] x1  | Les coordonnées **`y = 340..350`** survivent dans les textes de péremption | **5 occurrences**, dont 🔴 **DEUX dans la 
+     l.1140   [vl53l0x     ] x1  ⚠️ **`VL53L0X` vs `VL6180X` porte un risque particulier** : ce sont deux capteurs ToF réels et
+     l.1305   [facade      ] x1  | `SYS_FAN2` — 200 mm façade | — | ⛔ **JAMAIS nommable, PAR AUCUN LOGICIEL** |
+
+  -- par motif --
+     facade          18   le module « en facade » (3 homonymes)
+     vl53l0x         27   la puce VL53L0X (le module est un VL6180X)
+     340..350         8   la coordonnee morte y = 340..350
+     busid-en-dur     6   un busid CONSTANT dans une recette (3 valeurs ont ete vraies)
+
+C. DEPOT cockpit — ARCHIVES : comptees, ⛔ non arbitrees
+-------------------------------------------------------
+  88 occurrence(s) sur 80 ligne(s) et 17 fichier(s)
+
+  _bmad-output/implementation-artifacts/dn1-2-living-pcb-statique-plein-ecran.md  (1 occ.)
+     l.170    [facade      ] x1  aléatoirement »*. DeskNode vit **H24 sur la façade d'une tour de jeu** : l'écart de température est
+
+  _bmad-output/implementation-artifacts/dn1-3-label-vivant-backlight-pilote.md  (1 occ.)
+     l.360    [facade      ] x1  - `dn_display_backlight()` évolue vers un pourcentage 0..100 (l'API bool peut rester en façade) ;
+
+  _bmad-output/implementation-artifacts/dn2-1-bme680-bus-i2c-externe.md  (14 occ.)
+     l.55     [facade      ] x1  n'apprenne pas, une fois les 4 capteurs vissés dans la façade, que le 5ᵉ device sur ce bus
+     l.193    [vl53l0x     ] x1  Adresses **visées** par les 4 breakouts : **BME680 0x76/0x77** · BH1750 0x23 · VL53L0X 0x29 ·
+     l.369    [facade      ] x1  la façade Phantom 630 (à côté d'une tour de jeu, donc dans un flux d'air chaud) est **dn4-1**,
+     l.476    [vl53l0x     ] x1  - ⛔ **Le câblage des 3 autres breakouts** (BH1750, VL53L0X, INA219) — **inventoriés, pas
+     l.487    [facade      ] x1  - ⛔ **Le montage définitif dans la façade** et la question thermique qui va avec — dn4-1.
+     l.742    [facade      ] x1  façade d'une tour de jeu, flux d'air. **Question de dn4-1, pas de dn2-1** — mais nommée ici.
+     l.931    [facade      ] x1  - [x] Léguer explicitement la question du **montage dans la façade** à dn4-1
+     l.968    [vl53l0x     ] x1  - [x] [Review][Decision] **AC1/AC2 — AUCUNE PHOTO N'EXISTE DANS LE DÉPÔT, et le critère n°5 du brief repose dessus** — `
+     l.985    [vl53l0x     ] x1  ne montre BH1750, VL53L0X ni INA219. **D2-1a a été corrigée** dans la section *Décisions owner*.
+     l.1082   [vl53l0x     ] x1  BH1750 / VL53L0X / INA219 **ne sont ni inventoriés, ni photographiés, ni branchés**. Motif : *une
+     l.1219   [vl53l0x     ] x1  breakouts », et l'écart « TOF050C vs VL53L0X » à trancher à l'inventaire ; addendum **§4** = P4)
+     l.1255   [vl53l0x     ] x1  `pkolt/vl53l0x` **1.0.0** · `esp-idf-lib/ina219` **1.0.7** / `zorxx/ina219` **1.0.3**.
+     l.1483   [vl53l0x     ] x1  blocage avec §6. ⚠️ **Ce choix n'engage PAS dn4-1** : BH1750/VL53L0X/INA219 se ré-arbitrent
+     l.1697   [facade      ] x1  - **Le brief dit encore « monté sur la façade »** — périmé par décision owner du 2026-08-17
+
+  _bmad-output/implementation-artifacts/dn3-1-systemmetricwidget-mock-data.md  (2 occ.)
+     l.504    [vl53l0x     ] x1  - ⛔ **Les 3 autres capteurs** (BH1750, VL53L0X, INA219) — ni inventoriés ni branchés, dn4-1.
+     l.931    [facade      ] x1  - **Owner, 2026-08-17** — le module sera **posé à côté de la tour**, pas monté dans la façade ⇒ le
+
+  _bmad-output/implementation-artifacts/dn3-2-grille-dashboard-2x3-barre-heure-date.md  (1 occ.)
+     l.1350   [facade      ] x1  - **2026-08-17** — le module est **posé à côté** du PC, pas monté sur la façade (le brief est
+
+  _bmad-output/implementation-artifacts/dn3-3-ambient-actif-deux-etats.md  (2 occ.)
+     l.304    [facade      ] x1  **En tant qu'**owner de DeskNode, dont le module vit **H24 sur la façade de la tour**,
+     l.1069   [facade      ] x1  - [x] [Review][Patch] ✅ **APPLIQUÉ 2026-08-28** — `s_secondes_vues * 1000u` déborde à ~49,7 jours et éteint le détecteur
+
+  _bmad-output/implementation-artifacts/dn4-1-donnees-pc-reelles-quatre-cases.md  (1 occ.)
+     l.1882   [340..350    ] x1  | tour | appuis / taps | dans la bande `y = 340..350` ? |
+
+  _bmad-output/implementation-artifacts/dn4-14-2-la-barre-dit-l-heure-et-la-date-a-la-bonne-taille.md  (1 occ.)
+     l.122    [340..350    ] x1  PUBLIÉE** (`VENTILOS 506..516` de `dn3-2`, bande de jauge `y = 340..350` de `dn4-1`) **et** change
+
+  _bmad-output/implementation-artifacts/dn4-14-les-icones-disent-ce-qu-elles-montrent.md  (3 occ.)
+     l.283    [340..350    ] x1  - ⛔ **Les quatre écarts de dossier** (`façade de la tour`, busid `3-1`, `VL53L0X`, `y = 340..350`)
+     l.283    [facade      ] x1  - ⛔ **Les quatre écarts de dossier** (`façade de la tour`, busid `3-1`, `VL53L0X`, `y = 340..350`)
+     l.283    [vl53l0x     ] x1  - ⛔ **Les quatre écarts de dossier** (`façade de la tour`, busid `3-1`, `VL53L0X`, `y = 340..350`)
+
+  _bmad-output/implementation-artifacts/dn4-17-l-agent-vit-sur-la-tour-et-on-reprend-la-main.md  (2 occ.)
+     l.289    [340..350    ] x1  | **Pas le travail de `dn4-15`** (les `3-1`/`3-7` du dossier, `VL53L0X`, `y=340..350`) | Story dédiée. ⇒ **§7.3 lui VERS
+     l.289    [vl53l0x     ] x1  | **Pas le travail de `dn4-15`** (les `3-1`/`3-7` du dossier, `VL53L0X`, `y=340..350`) | Story dédiée. ⇒ **§7.3 lui VERS
+
+  _bmad-output/implementation-artifacts/dn4-2-brancher-les-trois-capteurs.md  (36 occ.)
+     l.145    [vl53l0x     ] x1  > 🔴 **LE 3ᵉ CAPTEUR N'EST PAS UN VL53L0X. C'EST UN VL6180X.**
+     l.147    [vl53l0x     ] x1  > « VL53L0X ». **L'addendum §3 avait pourtant posé la question, et personne ne l'avait fermée** :
+     l.148    [vl53l0x     ] x1  > *« La roadmap historique nomme "TOF050C" là où le dump dit VL53L0X — même famille ToF, **noter la
+     l.209    [vl53l0x     ] x1  > ⚠️ **CE QUE LE CHANGEMENT VL53L0X → VL6180X COÛTE, AU-DELÀ DU REGISTRE.**
+     l.218    [vl53l0x     ] x1  > - Si le VL53L0X était néanmoins présent dans un autre sachet, ses registres de référence sont
+     l.289    [vl53l0x     ] x1  > *« Le nom est celui de la FONCTION, pas de la puce […] parce que dn4-1 ajoutera BH1750, VL53L0X et
+     l.495    [vl53l0x     ] x1  | **Y12** | Le ToF est-il **bien** un VL6180X ? | `i2c lire16 29 0000` → **`0xB4`** · témoin négatif : `i2c lire 29 C0` 
+     l.589    [vl53l0x     ] x1  tracker, `dn_pins.h`, `i2c_nom_connu()` et six stories disent **« VL53L0X »**, et que l'addendum §3
+     l.597    [vl53l0x     ] x1  | **VL53L0X** (témoin négatif) | index **8 bits** `0xC0` · `0xC1` · `0xC2` | `EE` · `AA` · `10` — ⛔ **ne doit PAS sortir
+     l.610    [vl53l0x     ] x1  Le VL6180X et le VL53L0X **ne se lisent pas par le même protocole** (index 16 bits contre 8),
+     l.823    [340..350    ] x1  désormais **`y = 337..347`, `x = 22..223`**, ⛔ **plus `y = 340..350`**.
+     l.1027   [vl53l0x     ] x2  - [x] [Review][Patch] **`dn_console.c:4243` et `dn_capteurs.h:7` gardent des `dn4-1` / `VL53L0X` prospectifs** — `:4243`
+     l.1033   [vl53l0x     ] x1  - [x] [Review][Patch] 🔴 **DEUX des SIX « étiquettes qui mentent » que la story nomme ne sont PAS corrigées** [`hardware/
+     l.1038   [vl53l0x     ] x3  - [x] [Review][Patch] **Le tracker garde « VL53L0X » sur deux lignes VIVANTES** [`sprint-status-desknode.yaml:18` et `:3
+     l.1055   [340..350    ] x3  - [x] [Review][Defer] **Les coordonnées `y = 340..350` survivent dans les textes de péremption de l'instrument** [`dn_co
+     l.1056   [vl53l0x     ] x1  - [x] [Review][Defer] **`hardware/…-affichage.md:1490` cite « VL53L0X » dans une analyse rétrospective** — reporté, prée
+     l.1103   [340..350    ] x3  - [x] [Review][Decision] ✅ **TRANCHÉ ET CORRIGÉ LE 2026-08-24 — LE MOTIF SEUL.** Décision owner : le report **reste un r
+     l.1178   [vl53l0x     ] x1  ### 🔴 Les étiquettes qui mentent — elles sont au moins SIX, et elles disent toutes « dn4-1 » ou « VL53L0X »
+     l.1184   [vl53l0x     ] x1  2. `i2c_nom_connu()` — `case 0x29` → *« **VL53L0X** — distance **(dn4-1)** »* — **doublement faux**
+     l.1186   [vl53l0x     ] x1  4. `dn_pins.h` — les adresses annoncées, dont « VL53L0X »
+     l.1306   [vl53l0x     ] x1  - **Datasheets relues au cadrage (2026-08-19)** : ROHM **BH1750FVI** (jeu d'opcodes, `0x23`/`0x5C`, 120-180 ms) · ST **V
+     l.1450   [facade      ] x1  | **Brief et epic disent « VL53L0X »** ; le brief dit encore *« monté sur la façade de la tour »* | **`[CC]` `bmad-corre
+     l.1450   [vl53l0x     ] x1  | **Brief et epic disent « VL53L0X »** ; le brief dit encore *« monté sur la façade de la tour »* | **`[CC]` `bmad-corre
+     l.1548   [vl53l0x     ] x1  | `firmware/desknode/main/dn_pins.h` | **M** — les **3 adresses passent de ATTENDUES à MESURÉES**, avec le constat qui l
+     l.1583   [340..350    ] x1  | 2026-08-24 | `f94753e` · `3021f8b` (desknode) | 🔴 **2ᵉ REVUE DE CODE 3 COUCHES — SUR LE DELTA QUE PERSONNE N'AVAIT LU.
+     l.1586   [vl53l0x     ] x1  | 2026-08-20 | `43e108f` · `9e1d777` · `f613e06` · `3afb875` · `2c2dbff` (desknode) | 🎯 **LES TROIS CAPTEURS SONT SOUDÉS
+     l.1588   [vl53l0x     ] x1  | 2026-08-19 | `ec8ac09` (cockpit) | Création de la story. Cadrage sur `desknode` `df5d23d`, arbre propre. **Trois const
+     l.1594   [vl53l0x     ] x1  1. **Le brief et l'epic disent « VL53L0X ».** L'inventaire dit `VL6180X`. La story écrit l'écart et le
+     l.1598   [facade      ] x1  sur la façade de la tour »* du brief, périmée depuis le 2026-08-17 et **toujours non corrigée**.
+
+  _bmad-output/implementation-artifacts/dn4-3-exploiter-les-capteurs.md  (8 occ.)
+     l.134    [vl53l0x     ] x1  | Témoin **négatif** | masqué → `00 00` — ⚠️ **faible seul** (c'est aussi « mesure pas prête ») | `C0`/`C1`/`C2` en 8 bi
+     l.316    [vl53l0x     ] x2  | **VL6180X** | — | — | — | 🔴 **AUCUN composant au registre.** Seuls des **VL53L0X** existent (`pkolt/vl53l0x` 1.0.0, `e
+     l.401    [facade      ] x1  esp_err_t dn_display_backlight(bool on);                  /* façade : false→0 %, true→100 % */
+     l.714    [vl53l0x     ] x1  not guaranteed »*), ⛔ pas les « 50 cm » de l'annonce revendeur ni les 2 m d'un VL53L0X. ⇒ l'étage
+     l.716    [vl53l0x     ] x1  brief, aucune tranchée, décision owner post-V1.** 🔴 Et la voie « ajouter un VL53L0X » coûte une
+     l.843    [vl53l0x     ] x1  les résultats « ToF » sont des **VL53L0X**, ⛔ **puce différente** (index 16 bits, identité en
+     l.1502   [vl53l0x     ] x1  VL53L0X) · **§13.6** (mode d'emploi `i2c`) · **§13.6 quater / ter** (les critères d'arbitrage
+
+  _bmad-output/implementation-artifacts/dn4-6-cpu-et-gpu-a-trois-et-quatre-grandeurs.md  (3 occ.)
+     l.732    [340..350    ] x1  `VENTILOS 506..516` (dn3-2), bande de jauge `y = 340..350` (dn4-1),
+     l.1422   [340..350    ] x1  `y = 340..350`) et **+4,5 %** de surface sur un `duty` déjà à 10,09 %.
+     l.1698   [340..350    ] x1  exactement le `y = 340..350` publié par `dn4-1` sur l'ancienne géométrie, et rend
+
+  _bmad-output/implementation-artifacts/dn4-7-le-tof-porte-t-il-vraiment.md  (5 occ.)
+     l.89     [vl53l0x     ] x1  - 🔴 **C'est un `TOF050C-VL6180X`, ⛔ PAS un VL53L0X.** Établi par photo (sérigraphie + sachet) **et**
+     l.97     [vl53l0x     ] x1  ### 2. 🔴 AJOUTER UN VL53L0X EST BLOQUÉ — ⛔ ne pas le proposer comme parade évidente
+     l.99     [vl53l0x     ] x1  Le VL53L0X est à **`0x29`**, **l'adresse du VL6180X déjà soudé**. Et l'`XSHUT` du VL6180X étant
+     l.185    [vl53l0x     ] x1  - ⛔ **Acheter ou souder un VL53L0X** — modification matérielle, décision owner non prise, et
+     l.396    [vl53l0x     ] x1  - **§13.16.7 / §13.16.8** — l'identification du module (⛔ pas un VL53L0X), `XSHUT` tiré haut
+
+  _bmad-output/implementation-artifacts/dn4-8-la-tour-expose-ses-sondes-ring0.md  (5 occ.)
+     l.2098   [facade      ] x1  2 haut · `SYS_FAN1` haut+bas chaînés · `SYS_FAN2` 200 mm façade · `SYS_FAN3` 140 mm arrière) pour
+     l.2167   [facade      ] x1  - ⏳ **Test au TOUCHER, 30 s** : `control/3` à 100 %, main devant la façade. Il attaque le point
+     l.2207   [facade      ] x1  **le 200 mm de façade n'a pas de fil tachymétrique.** Il tourne — l'owner l'a rebranché et il
+     l.2214   [facade      ] x1  à 100 % chacun, **aucun tachy n'a bougé** et **l'owner n'a rien senti devant la façade** dans les
+     l.2303   [facade      ] x1  | **entrant** | 200 mm façade · ventilateur du bas | ⛔ **∅** — le premier n'a pas de tachy, le second est **chaîné avec 
+
+  _bmad-output/implementation-artifacts/dn4-9-cpu-prend-la-temperature-disque-prend-les-ventilos.md  (2 occ.)
+     l.74     [facade      ] x1  | **`FRONT_IN`** (200 mm façade) | ⛔ **JAMAIS nommable, PAR AUCUN LOGICIEL** — **pas de fil tachymétrique**, `0 RPM` **D
+     l.284    [facade      ] x1  | `SYS_FAN2` — 200 mm façade | — | — | ⛔ **JAMAIS nommable, PAR AUCUN LOGICIEL** |
+
+  _bmad-output/implementation-artifacts/investigations/dn4-7-vl6180x-ne-converge-jamais-investigation.md  (1 occ.)
+     l.432    [vl53l0x     ] x1  (element14), `SDA` bloqué bas après fonctionnement sur VL53L0X.
+
+  -- par motif --
+     facade          23   le module « en facade » (3 homonymes)
+     vl53l0x         50   la puce VL53L0X (le module est un VL6180X)
+     340..350        15   la coordonnee morte y = 340..350
+     busid-en-dur     0   un busid CONSTANT dans une recette (3 valeurs ont ete vraies)
+
+==============================================================================
+A ARBITRER (A + B) : 115 occurrence(s)
+ARCHIVE   (C)      : 88 occurrence(s), listees et non arbitrees
+TOTAL BALAYE       : 203 occurrence(s)
+==============================================================================
+
+==============================================================================
+AC1.3 — LE COMPTE DE DEPART CONFRONTE AU TABLEAU DE L'EPIC
+        (epics-desknode-v1.md:1126-1133, ecrit le 2026-08-25)
+==============================================================================
+
+  Base de comparaison : desknode@b361434 · compagnon_project@303c6bf
+  (le cockpit a avance de a89d3b7 -> 303c6bf : le SEUL commit intercale est le
+   CADRAGE de dn4-15 lui-meme, et il est EXCLU du balayage comme auto-reference)
+
+  ------------------------------------------------------------------------
+  ECART 1 — « monte sur la facade de la tour »
+  ------------------------------------------------------------------------
+   epic   : 2 occurrences (brief.md:12, :24)
+   MESURE : 34 occurrences au balayage total (16 desknode + 18 cockpit),
+            dont 25 sur la SURFACE FAISANT AUTORITE hors archives.
+   ECART  : SOUS-COMPTE d'un facteur ~12, ET LA QUESTION EST MAL POSEE.
+            Le mot porte TROIS homonymes MESURES :
+              · le ventilateur 200 mm DE FACADE (VRAI, mesure : pas de fil
+                tachymetrique, 0 RPM DANS LE BIOS AUSSI) ;
+              · l'idiome francais « observation de facade » (desknode_main.c:125) ;
+              · le PATRON DE CONCEPTION « Facade booleenne » (dn_display.h:122).
+            ⇒ AUCUN remplacement automatique n'est sur. C'est mesure, pas craint.
+
+  ------------------------------------------------------------------------
+  ECART 2 — le busid
+  ------------------------------------------------------------------------
+   epic   : « Le busid est 3-7, pas 3-1 » — 3 occurrences en dur.
+   MESURE : 9 occurrences de RECETTE (3 desknode + 6 cockpit).
+   ECART  : LA QUESTION DE L'EPIC EST FAUSSE, PAS SEULEMENT SON COMPTE.
+            TROIS valeurs ont ete vraies : 3-7 (20/08), 3-1 (26/08), 3-5 (27-28/08).
+            Ecrire 3-7 poserait une TROISIEME constante fausse.
+            ⛔ ET 3-1 N'EST PAS QUE PERIME, IL EST OCCUPE : il porte un
+            V31GT (0e8d:201c) ⇒ suivre la recette DETACHE LE MAUVAIS
+            PERIPHERIQUE (affichage.md:5642-5643).
+            ⇒ la correction est de RETIRER la constante, ⛔ pas de la remplacer.
+   ⚠️ NOTE : le compte de 17 annonce par le cadrage de la story melangeait les
+      MENTIONS NARRATIVES (« le busid valait 3-1 le 26/08 ») et les RECETTES
+      (« usbipd detach --busid 3-1 »). Le balayage separe les deux : seules les
+      9 RECETTES sont un defaut. Une mention datee est un FAIT, pas une consigne.
+
+  ------------------------------------------------------------------------
+  ECART 3 — la citation VL53L0X
+  ------------------------------------------------------------------------
+   epic   : 17 occurrences sur 3 fichiers .md (capteurs-i2c 13, README 3, affichage 1).
+   MESURE : 29 occurrences dans desknode seul — dont 11 DANS LE CODE, jamais
+            comptees (dn_pins.h x3, dn_console.c x3, dn_env.c x2, dn_capteurs.h,
+            verif_sr03.py, sdkconfig.defaults) ; + 27 cote cockpit autorite.
+            (capteurs-i2c en porte 16 et non 13 : une variante en CASSE BASSE,
+             `vl53l0x` l.3459, echappe a un grep sensible a la casse.)
+   ECART  : LE COMPTE DES .md EST QUASI EXACT, ET LE VERDICT EST INVERSE.
+            Les 17 ont ete LUES UNE PAR UNE : AUCUNE n'affirme que le module EST
+            un VL53L0X. Toutes le nomment POUR LE REFUTER, comme TEMOIN NEGATIF
+            (i2c lire 29 C0 -> 01/00/00, attendu EE/AA/10), ou comme PIEGE DE
+            SOURCE (une URL « VL6180X » qui rend un vrai PDF ST... du VL53L0X).
+            Les supprimer DETRUIRAIT la connaissance que l'epic invoque pour
+            justifier la story.
+            🔴 ET LE SEUL VRAI DEFAUT VIT DANS UN FICHIER QUE L'EPIC N'A PAS
+            COMPTE : firmware/desknode/sdkconfig.defaults:71 — un INVENTAIRE de
+            bus, donc une ASSERTION AU PRESENT, qui nomme une puce jamais presente.
+            ⇒ 1 defaut sur 29, ⛔ pas 17 sur 17.
+
+  ------------------------------------------------------------------------
+  ECART 4 — les coordonnees y = 340..350
+  ------------------------------------------------------------------------
+   epic   : 5 occurrences, « dont DEUX dans la sortie CONSOLE
+            (dn_console.c:3247, :3953) ».
+   MESURE : 8 occurrences dans desknode (dn_console.c x2, dn_ui.c x2,
+            affichage.md x3, liaison-pc.md x1) + 8 cote cockpit autorite.
+   ECART  : LE COMPTE EST FAUX **ET LES ADRESSES NE POINTENT RIEN**.
+            Les vraies adresses au 2026-08-30 sont dn_console.c:4366 et :5395.
+            dn_console.c:3247 est la comptabilite des transitions de vue
+            (ESP_ERR_INVALID_STATE) ; :3953 est le docblock de `widget titre`.
+            ⇒ SUIVRE L'EPIC A LA LETTRE, C'EST EDITER DU CODE SANS RAPPORT.
+            🔴 ET LA RECETTE DU LEDGER (:2604-2607, « remplacer par 337..347 »)
+            EST REFUTEE PAR LE CODE LUI-MEME : dn_ui.c:217-220, :243-245 et
+            dn_console.c:4538 ecrivent que 337..347 est le nombre publie par
+            dn4-2 SANS QU'AUCUN INSTRUMENT NE PUISSE LE CONFRONTER.
+            ⇒ LA CORRECTION N'EST AUCUN NOMBRE : le renvoi va a `widget jauge`,
+            qui RELIT le rectangle reel (dn_console.c:4535-4600, dn4-4/AC9).
+
+  ------------------------------------------------------------------------
+  ECART 5 — CELUI QUE L'EPIC N'A PAS DU TOUT VU : LA CASSE ET LA CEDILLE
+  ------------------------------------------------------------------------
+   MESURE : 5 occurrences sur 29 echappent a un motif sensible a la casse —
+            `vl53l0x` x1 (capteurs-i2c.md:3459), `facade` x3 (agent/dn_agent.py
+            :752, :1343 · tools/fixtures/PROVENANCE.md:14), `Facade` x1
+            (dn_display.h:122). Et 4 des 5 vivent dans des dossiers que l'epic
+            n'a JAMAIS nommes (agent/, tools/fixtures/, un .h).
+   ⇒ C'est le defaut EXACT sur lequel dn4-14 a perdu une gate entiere
+     (`/* orange */` en minuscules faisait sauter une case sur six, EN SILENCE).
+     La gate de cette story normalise NFD + retire les diacritiques + minuscules.
+
+  ------------------------------------------------------------------------
+  CE QUE CE TABLEAU N'EST PAS
+  ------------------------------------------------------------------------
+  ⛔ Ce n'est PAS un reproche a l'epic : il a compte honnetement le 2026-08-25
+     et l'a ecrit. C'est le vieillissement que dn4-16 decrit (« le numero de
+     ligne derive »), et dn4-15 en est le premier cas d'ecole. Le ledger l'avait
+     vu venir et l'avait ecrit lui-meme (deferred-work.md:4363).
+==============================================================================
