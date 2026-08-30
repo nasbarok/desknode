@@ -82,7 +82,25 @@ static const char *TAG = "dn_widget";
 #define W_VAL_Y 48
 #define W_VAL_PAS 40
 #define W_JAUGE_H 10
-#define W_SEC_H 20
+/*
+ * 🔴 dn4-14-2 / REVUE DU 2026-08-30 — LA RÉSERVE DE LA LIGNE SECONDAIRE SE
+ *    CALCULE, ⛔ ELLE NE S'ÉCRIT PLUS. `W_SEC_H` valait `W_SEC_Y_OFF +
+ *    lh(dn_font_14)`
+ *    = 2 + 18, et c'était juste tant que la ligne secondaire était en 14 px
+ *    EN DUR. Depuis que `dn_widget_font_libelle()` SUIT LE TITRE
+ *    (`s_titre_suit` = `true` par verdict owner ⇒ `dn_font_18`, `lh` 23), le
+ *    libellé occupe **25 px** pour une réserve de **20** : la garde
+ *    `y_bas + W_SEC_H <= h` passait pendant que LVGL clippait, et la branche
+ *    `else` — celle qui DIT que la secondaire est abandonnée — n'était JAMAIS
+ *    atteinte. ⇒ La panne muette que W5 avait rendue audible, RÉARMÉE par un
+ *    changement de police, dans la story qui change les polices.
+ * ⇒ La réserve est désormais RELUE de la police réellement posée : `sec_h()`.
+ * ⛔ **`W_SEC_H` A ÉTÉ SUPPRIMÉ**, il n'est pas laissé « pour mémoire » : une
+ *    constante que plus rien ne lit est exactement le nombre qui dérive sans
+ *    que personne ne le voie. Seul le DÉCALAGE sous `y_bas` reste une
+ *    constante, parce qu'il ne dépend d'aucune police.
+ */
+#define W_SEC_Y_OFF 2
 /* Gouttière minimale entre deux colonnes en côte à côte. En dessous, deux
  * nombres se lisent comme un seul — et « ça tient » deviendrait « ça touche ». */
 #define W_GOUTTIERE 12
@@ -95,8 +113,29 @@ static const char *TAG = "dn_widget";
  *    le TITRE : le titre commence en `W_PAD + W_ICONE_AV_*` et le badge finit
  *    l'espace disponible. ⇒ 52..159 sur une case de 225, soit **107 px**, et ce
  *    nombre n'était calculable nulle part.
- * ⚠️ CE MUR EST INVISIBLE : LVGL clippe au parent SANS UN MOT. Un titre en 20 px
- *    qui mord sur le badge ne fait ni log, ni erreur, ni crash — il se coupe.
+ * 🔴 **REVUE DU 2026-08-30 — CE MUR N'EST PAS UN MUR DE CLIP, ET LE DIRE FAUX
+ *    A COÛTÉ UN DIAGNOSTIC.** Ce commentaire écrivait *« LVGL clippe au parent
+ *    SANS UN MOT … il se coupe »*. C'est FAUX à cet endroit précis, et voici
+ *    pourquoi, relu du code :
+ *      · le label de titre est créé par `dn_widget_texte()` **SANS largeur
+ *        posée** ⇒ il se dimensionne au contenu ;
+ *      · son parent est la ZONE de case, large de `DN_UI_CASE_W` = **225** px ;
+ *      · ⇒ LVGL ne le clippe qu'à `x = 225`, soit **173 px** de titre depuis
+ *        `x = 52`. ⛔ PAS à 107.
+ *    Et le badge « SIMULÉ » est créé **HIDDEN** et n'est démasqué que sur une
+ *    case **SIMULÉE**. ⇒ Dans la bande **107..173 px** il n'y a AUCUN clip :
+ *    il y a un **CHEVAUCHEMENT de la réserve du badge**, visible seulement si
+ *    le badge l'est. Au-delà de 173, c'est un vrai clip.
+ * ⚠️ Ce que ça change pour le relevé du 2026-08-29 : « DÉMO 2+JAUGE » = 114 px
+ *    finit à `x = 166 < 225` et la case de démo ne passe jamais en SIMULÉE ⇒
+ *    **rien n'était clippé, et rien ne se superposait**. Le défaut trouvé est
+ *    réel — c'était une **ABSENCE DE GARDE** —, ⛔ pas un artefact visible, et
+ *    les « 7 px » sont `166 − 159`, la morsure dans la réserve.
+ * ✅ **VERDICT OWNER DU 2026-08-30 — LE SEUIL RESTE 107.** On garde la réserve
+ *    du badge comme critère, parce qu'un titre qui la mord est un titre qui
+ *    casse dès que la case passe SIMULÉE, et que le régime d'une case n'est pas
+ *    une propriété de sa géométrie. ⚠️ **ÉCART ASSUMÉ** : le compteur monte
+ *    aussi quand le badge est masqué, donc sur des cases où rien ne se voit.
  */
 #define W_BADGE_DE_DROITE 66
 
@@ -255,6 +294,15 @@ const lv_font_t *dn_widget_font_libelle(void)
     return s_titre_suit ? font_titre() : &dn_font_14;
 }
 
+/* La HAUTEUR que la ligne secondaire consomme réellement, police comprise —
+ * `W_SEC_Y_OFF` de décalage sous `y_bas`, puis l'interligne de la police que
+ * `dn_widget_font_libelle()` vient de rendre. En `dn_font_14` il rend 20 —
+ * l'ancien `W_SEC_H` —, en `dn_font_18` il rend 25. */
+static int sec_h(void)
+{
+    return W_SEC_Y_OFF + (int)lv_font_get_line_height(dn_widget_font_libelle());
+}
+
 /* ⚠️ `&dn_font_14` reste le « non » de ce ternaire, ⛔ pas le défaut du titre :
  *    `widget titre suit off` doit rendre les libellés à leur ANCIENNE taille,
  *    pas à la nouvelle. Un `font_titre()` des deux côtés ferait de ce réglage
@@ -308,6 +356,26 @@ int dn_widget_largeur_utile(int w) { return w - 2 * W_PAD; }
  * ⚠️ `avec_icone` est un paramètre parce que `desc->icone` peut être NULL : une
  *    case sans icône donne son sillon au titre. ⛔ Ne pas le supposer.
  */
+/*
+ * 🔴 dn4-14-2 / REVUE DU 2026-08-30 — LE BAS DU TITRE A ENFIN UNE FABRIQUE.
+ *    `dn_widget.h` publiait le plancher d'en-tête dans un TABLEAU et concluait
+ *    « 20 px est le plafond VERTICAL du titre ; 22 est RÉFUTÉ » — et **rien ne
+ *    le faisait respecter**. `dn_ui_geom_valider()` refusait une police de
+ *    VEILLE et acceptait `dn_font_28` (`lh` 35) : titre 22..57 contre
+ *    `val_y = 48`, soit **9 px de recouvrement** avec la première ligne de
+ *    valeur — sans log, sans compteur, sans refus. Un plafond publié que
+ *    personne n'exécute n'est pas un plafond.
+ * ⚠️ Le `y` du titre dépend de l'EN-TÊTE (22 en NORMAL, 8 en COMPACT), d'où le
+ *    paramètre : valider avec le mauvais en-tête refuserait COMPACT à tort.
+ * ⛔ `NULL` se résout ici comme partout ailleurs : « personne n'a choisi ».
+ */
+int dn_widget_titre_bas(const lv_font_t *font_titre, dn_widget_entete_t entete)
+{
+    const lv_font_t *f = font_titre ? font_titre : &dn_font_18;
+    int y = (entete == DN_ENTETE_COMPACT) ? W_ICONE_Y : W_TITRE_Y + 8;
+    return y + (int)lv_font_get_line_height(f);
+}
+
 int dn_widget_titre_x(bool avec_icone)
 {
     if (!avec_icone) {
@@ -1633,8 +1701,11 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
     /*
      * 🔴 dn4-14-2 / AC5.3 — LE TITRE EST ENFIN CONTRÔLÉ, ET IL NE L'ÉTAIT PAS.
      *    MESURÉ le 2026-08-29 sur le firmware d'AVANT : « DÉMO 2+JAUGE » occupe
-     *    **114 px pour 107 utiles** et se fait clipper de 7 px — avec les TROIS
-     *    compteurs à **ZÉRO**. `dn_widget_controler_tenue()` teste « le texte de
+     *    **114 px pour 107 utiles** et **déborde de 7 px dans la réserve du
+     *    badge** — avec les TROIS compteurs à **ZÉRO**. ⛔ *« se fait clipper de
+     *    7 px »* était écrit ici et c'est FAUX : LVGL ne clippe qu'au bord de la
+     *    zone, à 173 px (voir `W_BADGE_DE_DROITE`). Le défaut trouvé est une
+     *    **absence de GARDE**, ⛔ pas un artefact visible sur ce stimulus-là. `dn_widget_controler_tenue()` teste « le texte de
      *    VALEUR sort-il de la case » et **ne regarde pas le titre**. Un
      *    compteur à zéro n'était donc pas une absence d'histoire : c'était une
      *    absence de GARDE.
@@ -1652,9 +1723,11 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
             s_trop_larges++;
             ESP_LOGW(TAG,
                      "TITRE trop large : « %s » = %d px pour %d utiles "
-                     "(x %d, badge a %d) — CLIPPE EN SILENCE par LVGL",
+                     "(x %d, badge a %d) — CHEVAUCHE LA RESERVE DU BADGE "
+                     "(visible seulement si la case est SIMULEE ; LVGL ne "
+                     "clippe qu'au bord de zone, a %d px)",
                      desc->titre ? desc->titre : "?", t_px, t_utile, tx,
-                     w - W_BADGE_DE_DROITE);
+                     w - W_BADGE_DE_DROITE, w - dn_widget_titre_x(desc->icone != NULL));
         }
     }
 
@@ -1833,13 +1906,13 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
         y_bas += W_JAUGE_H + 10;
     }
 
-    if (y_bas + W_SEC_H <= h) {
+    if (y_bas + sec_h() <= h) {
         out->sec = dn_widget_texte(out->racine,
                                    (etat && etat->secondaire[0]) ? etat->secondaire
                                                                  : "",
                                    dn_widget_font_libelle(),
                                    lv_color_hex(W_COL_SEC), W_PAD,
-                                   y_bas + 2);
+                                   y_bas + W_SEC_Y_OFF);
     } else {
         /*
          * 🔴 dn4-1 / W5 — L'ABANDON DE LA SECONDAIRE NE PEUT PLUS ÊTRE
@@ -1872,7 +1945,7 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
                      "(y_bas=%d + %d > h=%d) — %d grandeur(s) sur %d ligne(s), "
                      "disposition %s%s. La jauge est prioritaire "
                      "(contrat dn_widget.h / W5). Texte PERDU : « %s ».",
-                     desc->titre ? desc->titre : "?", y_bas, W_SEC_H, h, n,
+                     desc->titre ? desc->titre : "?", y_bas, sec_h(), h, n,
                      n_lignes, dn_widget_dispo_nom(s_geom.dispo),
                      (desc->indicateur && jauge_place) ? " + jauge" : "",
                      etat->secondaire);
@@ -1881,7 +1954,7 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
             ESP_LOGD(TAG,
                      "« %s » : aucune ligne secondaire posee (y_bas=%d + %d > "
                      "h=%d) — et le descripteur n'en demande pas.",
-                     desc->titre ? desc->titre : "?", y_bas, W_SEC_H, h);
+                     desc->titre ? desc->titre : "?", y_bas, sec_h(), h);
         }
     }
 

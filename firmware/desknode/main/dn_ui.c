@@ -150,9 +150,15 @@ static const char *TAG = "dn_ui";
  *    aurait fait repartir le module en 70/60 au premier reboot — c'est-à-dire
  *    dans un état où `CPU` et `GPU` DÉBORDENT (bas 163 > 156, journalisé).
  * ⚠️ Bornes RELUES du contenu : la barre à 60 contient l'heure (`dn_font_28` à
- *    y = 18, boîte 18..53) et la date (`dn_font_14` à y = 28, boîte 28..46) ;
- *    le MENU à 51 contient `dn_font_28` à y = 14 (boîte 14..49). ✅ Constat
- *    owner : « non c'est bon », les deux bandes ne serrent pas.
+ *    y = 18, boîte 18..53) et la date à y = 28 ; le MENU à 51 contient
+ *    `dn_font_28` à y = 14 (boîte 14..49). ✅ Constat owner : « non c'est bon »,
+ *    les deux bandes ne serrent pas.
+ * 🔴 **REVUE DU 2026-08-30 — CE COMMENTAIRE DISAIT « la date (`dn_font_14`,
+ *    boîte 28..46) », ET LA DATE N'EST PLUS EN 14.** Elle est en `dn_font_18`
+ *    (boîte 28..51) par verdict owner, et `dn_ui_set_barre_date_font()` la rend
+ *    COMMUTABLE À CHAUD jusqu'à `dn_font_28` (boîte 28..**63**). ⇒ Le plancher
+ *    n'est plus un nombre écrit : il se calcule de la police RÉELLEMENT posée,
+ *    par `dn_ui_barre_plancher()`.
  * ⚠️ CONSÉQUENCE, ÉCRITE ET NON MASQUÉE : `CASE_H` passe de 156 à **163**, donc
  *    TOUTE COORDONNÉE TACTILE PUBLIÉE EST PÉRIMÉE (`VENTILOS 506..516` de
  *    dn3-2, bande de jauge `y = 340..350` de dn4-1) et la case gagne +4,5 % de
@@ -174,6 +180,16 @@ static const char *TAG = "dn_ui";
  *    caractères contre 13 pour « MER. 06 SEPT. », et c'est l'état de BOOT.
  */
 #define DN_UI_BARRE_DATE_X 300
+/*
+ * 🔴 dn4-14-2 / REVUE DU 2026-08-30 — LES DEUX `y` DE LA BARRE, EXTRAITS EUX
+ *    AUSSI DE LEUR SITE D'APPEL. Ils étaient écrits `18` et `28` EN DUR dans
+ *    `texte(barre, …)` pendant que le plancher de `dn_ui_bandes_valider()`
+ *    (53) en dérivait toute son arithmétique dans un COMMENTAIRE. Même défaut
+ *    que le `300` : deux endroits, un seul nombre, aucun des deux ne relit
+ *    l'autre. ⇒ Le plancher se CALCULE désormais (`dn_ui_barre_plancher()`).
+ */
+#define DN_UI_BARRE_HEURE_Y 18
+#define DN_UI_BARRE_DATE_Y 28
 #define DN_UI_GAP 10
 #define DN_UI_CASE_W ((DN_LCD_H_RES - 2 * DN_UI_MARGE - DN_UI_GAP) / 2) /* 225 */
 
@@ -1858,6 +1874,24 @@ static const lv_font_t *s_barre_date_font;
 static const lv_font_t *barre_date_font(void)
 {
     return s_barre_date_font ? s_barre_date_font : &dn_font_18;
+}
+
+/*
+ * 🔴 dn4-14-2 / REVUE DU 2026-08-30 — LE PLANCHER DE LA BARRE SE CALCULE.
+ *    `dn_ui_bandes_valider()` refusait `barre_h < 53`, et le `53` était un
+ *    nombre ÉCRIT dont la justification vivait dans un commentaire qui parlait
+ *    encore de `dn_font_14`. Depuis que la date est commutable à chaud, le
+ *    couple `widget date 28` + `widget grille 53 51` était ACCEPTÉ et posait une
+ *    boîte de date 28..63 dans une bande de 53 : **10 px clippés en silence**.
+ * ⇒ Le plancher est le plus bas des deux contenus, relu de leurs polices.
+ * ⚠️ L'heure n'est PAS commutable (`&dn_font_28` au site de création) — elle est
+ *    donc nommée en dur ICI, au seul endroit qui la pose, ⛔ pas récitée.
+ */
+int dn_ui_barre_plancher(void)
+{
+    int bas_heure = DN_UI_BARRE_HEURE_Y + (int)lv_font_get_line_height(&dn_font_28);
+    int bas_date = DN_UI_BARRE_DATE_Y + (int)lv_font_get_line_height(barre_date_font());
+    return bas_heure > bas_date ? bas_heure : bas_date;
 }
 static bool s_barre_fiable;
 
@@ -3544,6 +3578,44 @@ static bool barre_composer(const dn_rtc_heure_t *h, bool fiable)
  *    jour neuf à côté de la date de la veille. C'est le motif n°1 du contrat
  *    de verrou inversé de dn3-1, transposé.
  */
+/*
+ * 🔴 dn4-14-2 / REVUE DU 2026-08-30 — LE CLIP ACCEPTÉ DE LA BARRE N'AVAIT AUCUN
+ *    INSTRUMENT. Le TITRE de case a reçu `ESP_LOGW` + `s_trop_larges++` dans le
+ *    commit même de cette story ; la DATE, sur le seul texte que la story SAIT
+ *    déborder — « HEURE NON POSÉE », 184 px pour 170 utiles, l'état de boot et
+ *    de toute perte RTC —, n'avait NI log NI compteur. ⇒ `widget largeur reset`
+ *    puis `widget` rendait « 0 trop-large(s) » pendant que du texte était clippé
+ *    à l'écran, et le seul moyen de le voir était de taper `widget date`,
+ *    c'est-à-dire de DÉJÀ soupçonner.
+ * ⚠️ L'écart est DÉCLARÉ et validé par l'owner (verbatim « Garder 18 et ACCEPTER
+ *    la coupe ») — ⛔ ce n'est pas une régression à corriger, c'est un défaut
+ *    accepté qui doit rester FALSIFIABLE. La doctrine du dépôt pour ça est
+ *    écrite : « le log et le compteur sont l'instrument ; l'œil tranche. »
+ * ⛔ Compteur SÉPARÉ de `s_trop_larges` : celui-là compte les textes de CASE, et
+ *    ce dépôt a déjà payé d'avoir mis deux diagnostics dans le même seau.
+ * ⚠️ Le log est émis SUR CHANGEMENT DE TEXTE, ⛔ pas à chaque tick : la barre se
+ *    réécrit à la minute, un log par tick noierait la console.
+ */
+static int s_barre_date_trop_large;
+
+int dn_ui_barre_date_trop_large(void) { return s_barre_date_trop_large; }
+void dn_ui_barre_date_trop_large_reset(void) { s_barre_date_trop_large = 0; }
+
+static void barre_date_controler_nolock(void)
+{
+    int utile = 0;
+    dn_ui_barre_slots(NULL, NULL, &utile);
+    int px = dn_widget_largeur(s_barre_d, barre_date_font());
+    if (px > utile) {
+        s_barre_date_trop_large++;
+        ESP_LOGW(TAG,
+                 "DATE de barre trop large : « %s » = %d px pour %d utiles "
+                 "(x %d) — CLIPPEE EN SILENCE par LVGL. Ecart DECLARE si c'est "
+                 "l'etat NON POSE ; sinon c'est une regression.",
+                 s_barre_d, px, utile, DN_UI_BARRE_DATE_X);
+    }
+}
+
 static void barre_ecrire_nolock(void)
 {
     lv_color_t c_h = s_barre_fiable ? lv_color_white() : lv_color_hex(0x9a9a9a);
@@ -3559,6 +3631,7 @@ static void barre_ecrire_nolock(void)
     if (s_barre_date && s_barre_d_change) {
         lv_label_set_text(s_barre_date, s_barre_d);
         lv_obj_set_style_text_color(s_barre_date, c_d, 0);
+        barre_date_controler_nolock();
     }
 }
 
@@ -3610,11 +3683,13 @@ static void build_dashboard(lv_obj_t *scr)
      *    remplis par le MÊME code que la réouverture ». Un « 21:46 » en dur ici
      *    s'afficherait pendant une trame après chaque reconstruction. */
     s_barre_heure =
-        texte(barre, s_barre_h, &dn_font_28, lv_color_white(), DN_UI_MARGE, 18);
+        texte(barre, s_barre_h, &dn_font_28, lv_color_white(), DN_UI_MARGE,
+              DN_UI_BARRE_HEURE_Y);
     /* Accentué depuis dn3-1 : « AOÛT » a récupéré son Û. C'est le témoin le plus
      * simple que la police générée est bien celle qui est liée. */
     s_barre_date = texte(barre, s_barre_d, barre_date_font(),
-                         lv_color_hex(0xa0d8ff), DN_UI_BARRE_DATE_X, 28);
+                         lv_color_hex(0xa0d8ff), DN_UI_BARRE_DATE_X,
+                         DN_UI_BARRE_DATE_Y);
     barre_ecrire_tout_nolock();
 
     /*
@@ -10071,15 +10146,27 @@ static void compteurs_geom_reset(void)
     dn_widget_chevauchements_reset();
     dn_widget_debordements_reset();
     dn_widget_trop_larges_reset();
+    /* 🔴 REVUE DU 2026-08-30 — le QUATRIÈME compteur (le clip accepté de la date
+     *    de barre) part avec les autres. Le laisser dehors aurait fait
+     *    additionner le résidu de l'état précédent au premier `widget largeur
+     *    reset`, exactement le défaut soldé le 2026-08-19 pour les trois autres.
+     * ⛔ Ils ne s'additionnent toujours pas : quatre causes, quatre compteurs. */
+    dn_ui_barre_date_trop_large_reset();
 }
 
 esp_err_t dn_ui_set_bandes(int barre_h, int menu_h)
 {
     /* Bornes : la barre doit contenir l'heure (`dn_font_28` à y = 18, boîte
-     * 18..53) et la date (`dn_font_14` à y = 28, boîte 28..46) ⇒ 53 est le
-     * plancher RELU du code, ⛔ pas un chiffre rond. Le MENU porte
+     * 18..53) et la date (à y = 28, boîte selon SA police). Le MENU porte
      * `dn_font_28` à y = 14 ⇒ boîte 14..49, plancher 49 — ou ZÉRO, qui est la
-     * voie (a) et signifie « pas de bandeau du tout ». */
+     * voie (a) et signifie « pas de bandeau du tout ».
+     * 🔴 **REVUE DU 2026-08-30 — CE COMMENTAIRE DISAIT « la date (`dn_font_14`,
+     *    boîte 28..46) ⇒ 53 est le plancher RELU du code ».** Il ne l'était
+     *    plus : `53` était ÉCRIT dans le validateur pendant que la date passait
+     *    en 18 (28..51) et devenait commutable jusqu'à 28 (28..**63**). ⇒ Le
+     *    plancher est maintenant vraiment relu — `dn_ui_barre_plancher()` —, et
+     *    il MONTE avec la police de date. C'est ce qui fait refuser
+     *    `widget date 28` puis `widget grille 53 51`, accepté jusqu'ici. */
     esp_err_t eb = dn_ui_bandes_valider(barre_h, menu_h);
     if (eb != ESP_OK) {
         return eb;
@@ -10224,7 +10311,12 @@ esp_err_t dn_ui_set_voie(int barre_h, int menu_h, const dn_widget_geom_t *g)
  * réglages, ce qui laisserait la scène dans un état que personne n'a demandé. */
 esp_err_t dn_ui_bandes_valider(int barre_h, int menu_h)
 {
-    if (barre_h < 53 || barre_h > 120) {
+    /* ⛔ Le plancher n'est plus `53` écrit : il est RELU des deux contenus, donc
+     * de la police de date COURANTE (revue du 2026-08-30). Il vaut 53 tant que
+     * la date tient sous l'heure, et il MONTE dès que `widget date` pose une
+     * police plus haute — c'est le seul moyen que le couple `widget date 28` +
+     * `widget grille 53 51` cesse d'être accepté en silence. */
+    if (barre_h < dn_ui_barre_plancher() || barre_h > 120) {
         return ESP_ERR_INVALID_ARG;
     }
     if (menu_h != 0 && (menu_h < 49 || menu_h > 120)) {
@@ -10258,6 +10350,25 @@ esp_err_t dn_ui_geom_valider(const dn_widget_geom_t *g)
      * ⚠️ `NULL` est LÉGAL : c'est « personne n'a choisi », résolu à l'usage.
      */
     if (g->font_titre && !dn_widget_police_interface(g->font_titre)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    /*
+     * 🔴 dn4-14-2 / REVUE DU 2026-08-30 — LE PLAFOND VERTICAL DU TITRE ÉTAIT
+     *    PUBLIÉ ET JAMAIS EXÉCUTÉ. `dn_widget.h` conclut « 20 px est le plafond
+     *    VERTICAL du titre ; 22 est RÉFUTÉ », et ce validateur acceptait
+     *    `dn_font_28` : titre 22..57 contre `val_y = 48` ⇒ **9 px de
+     *    recouvrement** avec la première ligne de valeur, sans log ni compteur.
+     * ⇒ La règle est « le titre finit AVANT la première valeur », relue de la
+     *   police ET de l'en-tête, ⛔ pas une liste de tailles autorisées : la
+     *   table du `.h` se périmerait à la première régénération.
+     * ⚠️ CONSÉQUENCE ASSUMÉE, ET ELLE DÉPASSE LA POLICE : ce contrôle refuse
+     *    aussi un `val_y` posé trop haut pour la police de titre courante — par
+     *    exemple `widget val 36 40` en en-tête NORMAL (22 + 23 = 45 > 36). Ces
+     *    combinaisons étaient acceptées et produisaient un recouvrement muet ;
+     *    en COMPACT (titre à y = 8) elles restent légales, ce que le paramètre
+     *    d'en-tête garantit.
+     */
+    if (dn_widget_titre_bas(g->font_titre, g->entete) > g->val_y) {
         return ESP_ERR_INVALID_ARG;
     }
     return ESP_OK;
@@ -10367,6 +10478,24 @@ esp_err_t dn_ui_set_barre_date_font(const lv_font_t *f)
     if (f && !dn_widget_police_interface(f)) {
         return ESP_ERR_INVALID_ARG; /* police de veille : le É de « AOÛT » sauterait */
     }
+    /*
+     * 🔴 dn4-14-2 / REVUE DU 2026-08-30 — LA GARDE VERTICALE MANQUAIT.
+     *    Ce réglage ne vérifiait QUE « interface, pas veille ». `widget date 28`
+     *    était donc accepté : boîte 28..63 dans une barre de 60 ⇒ **clippée de
+     *    3 px**, et de 10 px après `widget grille 53 51`. LVGL ne dit rien, et
+     *    la commande n'imprimait que le verdict HORIZONTAL — la hauteur n'était
+     *    mesurée nulle part.
+     * ⛔ On REFUSE, on ne clippe pas : c'est un réglage de bande, et
+     *    `dn_ui_bandes_valider()` refuse déjà pour la même raison. La doctrine
+     *    « on pose quand même, log + compteur » vaut pour un TEXTE qu'on ne
+     *    choisit pas, ⛔ pas pour une géométrie qu'on vient de taper.
+     */
+    if (f) {
+        int bas = DN_UI_BARRE_DATE_Y + (int)lv_font_get_line_height(f);
+        if (bas > s_geo_barre_h) {
+            return ESP_ERR_INVALID_ARG;
+        }
+    }
     if (!lvgl_port_lock(2000)) {
         return ESP_ERR_TIMEOUT;
     }
@@ -10393,20 +10522,60 @@ const char *dn_ui_date_inconnue(void) { return DN_UI_DATE_INCONNUE; }
  *    avance, et le kerning n'est pas linéaire. Le dépôt a déjà payé ce
  *    raccourci en dn3-1 (« nb_caractères × largeur moyenne », qui a écarté le
  *    côte à côte sur un calcul faux).
- * ⇒ Cette fonction EXPOSE le composeur, et l'instrument BALAIE les 7 × 12 × 32
- *   combinaisons en les MESURANT. Le pire cas devient un RÉSULTAT.
+ * ⇒ Cette fonction EXPOSE le composeur, et l'instrument BALAIE toutes les dates
+ *   RÉELLES en les MESURANT. Le pire cas devient un RÉSULTAT.
+ * 🔴 **REVUE DU 2026-08-30 — « 7 × 12 × 32 » ÉTAIT ÉCRIT ICI, ET NULLE PART
+ *    DANS LE CODE.** Les trois boucles de `dn_console.c` font `jr = 1..31`, et
+ *    le dossier publiait « 7 × 12 × 31 = 2 604 ». Aucun des deux n'était juste :
+ *    depuis que le jour doit exister DANS SON MOIS, le domaine réel est
+ *    **7 × 366 = 2 562** formes (février à 29). ⛔ Le compte ne s'écrit plus
+ *    dans un commentaire : l'instrument l'IMPRIME, relu de son propre balayage.
  * ⚠️ MÊME FORMAT que `barre_composer()`, par construction : si le format change
  *    ici sans changer là, les deux divergent — d'où le `snprintf` recopié dans
- *    UNE seule expression, dont la forme est vérifiée par la gate.
+ *    UNE seule expression.
+ * 🔴 **ET LA GATE QUE CE COMMENTAIRE INVOQUAIT N'EXISTAIT PAS.** Il écrivait
+ *    « dont la forme est vérifiée par la gate » ; `verif_veille_dn33.py` ne
+ *    portait AUCUN contrôle sur ce format. ⇒ `bloc_barre_date_forme` a été
+ *    ajouté par la revue du 2026-08-30 : il confronte les deux `snprintf` et
+ *    les deux jeux de ternaires, et il rougit si l'un bouge sans l'autre.
  */
 bool dn_ui_barre_date_forme(int jsem, int jour, int mois, char *out, size_t n)
 {
-    if (!out || n == 0 || jsem < 0 || jsem >= 7 || mois < 1 || mois > 12 ||
-        jour < 0 || jour > 31) {
+    /* Le nombre de jours PAR MOIS — février à 29, parce qu'une année bissextile
+     * est un cas que le produit rencontre et qu'écarter le 29 février
+     * retirerait une forme réelle du balayage. */
+    static const int k_jours[12] = {31, 29, 31, 30, 31, 30,
+                                    31, 31, 30, 31, 30, 31};
+    if (!out || n == 0 || jsem < 0 || jsem > 7 || mois < 0 || mois > 12) {
         return false;
     }
-    snprintf(out, n, "%s %02u %s", k_jsem_court[jsem], (unsigned)jour,
-             k_mois_court[mois - 1]);
+    /*
+     * 🔴 dn4-14-2 / REVUE DU 2026-08-30 — LE JOUR DOIT EXISTER DANS SON MOIS.
+     *    Cette garde ne posait que `jour < 0 || jour > 31`, et le `jsem` était
+     *    balayé INDÉPENDAMMENT du couple `(jour, mois)`. ⇒ l'instrument
+     *    mesurait « MER. 31 FÉVR. », une chaîne que le produit ne rend JAMAIS.
+     *    C'est exactement la classe corrigée le 2026-08-29 pour `jour = 00`
+     *    (« un pire cas injoignable est un budget qu'on s'invente ») — corrigée
+     *    pour le seul jour zéro, laissée ouverte pour tout le reste.
+     * ⚠️ `jour = 0` est refusé ICI aussi : l'en-tête annonce 1..31, les deux
+     *    sites d'appel le respectent, et un troisième appelant qui suivrait
+     *    l'en-tête récupérait sinon « MAR. 00 MARS ».
+     */
+    if (jour < 1 || jour > ((mois >= 1) ? k_jours[mois - 1] : 31)) {
+        return false;
+    }
+    /*
+     * ⚠️ **LES MÊMES TERNAIRES QUE `barre_composer()`**, ⛔ pas une version
+     *    simplifiée : le composeur émet `"???"` pour `jsem >= 7` et pour un mois
+     *    hors 1..12, et `dn_rtc.c` masque le registre du jour de semaine en
+     *    `0x07` — **7 est donc ATTEIGNABLE**, et `date_plausible()` ne le rejette
+     *    pas. Cette fonction rendait `false` sur ces cas : le balayage ne
+     *    mesurait JAMAIS la forme que le produit rend sur une lecture RTC
+     *    dégradée. (Revue du 2026-08-30.)
+     */
+    const char *js = (jsem < 7) ? k_jsem_court[jsem] : "???";
+    const char *mo = (mois >= 1 && mois <= 12) ? k_mois_court[mois - 1] : "???";
+    snprintf(out, n, "%s %02u %s", js, (unsigned)jour, mo);
     return true;
 }
 

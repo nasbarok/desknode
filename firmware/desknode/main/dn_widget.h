@@ -504,20 +504,39 @@ typedef struct {
      *    `dn_console.c`. Un contrat qui ne dit pas ce que le code fait a déjà
      *    coûté à ce dépôt un A/B mesuré DEUX FOIS sur la même branche.
      *
-     * (h = **163** (D12), `val_y` = 48, `val_pas` = 40, `W_JAUGE_H` = 10,
-     *  `W_SEC_H` = 20 ; la jauge consomme `W_JAUGE_H + 10` = 20 px, pas 26 ;
-     *  `y_bas` est calculé sur le nombre de LIGNES, qui n'est le nombre de
-     *  grandeurs qu'en EMPILÉ ; `lh_val` = 35 pour `dn_font_28`.)
+     * 🔴 **dn4-14-2 / REVUE DU 2026-08-30 — LA COLONNE « + secondaire » DÉPEND DE
+     *    LA POLICE, ET ELLE ÉTAIT FIGÉE À 20.** La réserve valait `W_SEC_H` = 20,
+     *    c'est-à-dire `2 + lh(dn_font_14)`. Depuis que la secondaire SUIT LE TITRE
+     *    (`s_titre_suit` = `true`), elle consomme `2 + lh(dn_font_18)` = **25**.
+     *    La table publiait donc un budget optimiste de **5 px sur chaque ligne**,
+     *    et la garde du code l'était avec elle. ⛔ Le code ne récite plus ce
+     *    nombre : il appelle `sec_h()`. Les deux colonnes sont données ci-dessous.
      *
-     *   lignes  jauge   y_bas   + jauge        + secondaire
-     *   -----------------------------------------------------------------
-     *     1     non      88        —           108 <= 163   sec OUI
-     *     1     oui      88      108           128 <= 163   sec OUI     (RAM)
-     *     2     non     128        —           148 <= 163   sec OUI
-     *     2     oui     128      148           168 >  163   sec NON  (journalisé)
-     *     3     non     168        —           188 >  163   sec NON  <- CPU, GPU
-     *     3     oui     168   188 > 163        🔴 JAUGE HORS CASE  <- dn4-6
-     *     4     oui     208   228 > 163        🔴 JAUGE HORS CASE  <- dn4-6
+     * (h = **163** (D12), `val_y` = 48, `val_pas` = 40, `W_JAUGE_H` = 10 ;
+     *  réserve secondaire = `2 + lh(police du libellé)` ⇒ **20** en `dn_font_14`,
+     *  **25** en `dn_font_18` (le défaut livré) ; la jauge consomme
+     *  `W_JAUGE_H + 10` = 20 px, pas 26 ; `y_bas` est calculé sur le nombre de
+     *  LIGNES, qui n'est le nombre de grandeurs qu'en EMPILÉ ; `lh_val` = 35
+     *  pour `dn_font_28`.)
+     *
+     *   lignes  jauge   y_bas   + jauge    + sec (14px)    + sec (18px, LIVRÉ)
+     *   ---------------------------------------------------------------------
+     *     1     non      88        —       108 <= 163      113 <= 163  sec OUI
+     *     1     oui      88      108       128 <= 163      133 <= 163  sec OUI (RAM)
+     *     2     non     128        —       148 <= 163      153 <= 163  sec OUI
+     *     2     oui     128      148       168 >  163      173 >  163  sec NON (journalisé)
+     *     3     non     168        —       188 >  163      193 >  163  sec NON <- CPU, GPU
+     *     3     oui     168   188 > 163    🔴 JAUGE HORS CASE          <- dn4-6
+     *     4     oui     208   228 > 163    🔴 JAUGE HORS CASE          <- dn4-6
+     *
+     * ⚠️ **AUCUNE CONCLUSION NE BOUGE À `h = 163`** — c'est pour ça que le défaut
+     *    était LATENT, ⛔ pas absent : les marges de la géométrie livrée
+     *    absorbaient les 5 px. Il devient visible dès qu'on bouge `val_y` ou
+     *    `val_pas` (`widget val`), la grille (`widget grille`) ou la voie
+     *    (`widget voie`) — toutes dans la plage que `dn_ui_geom_valider()`
+     *    accepte. Exemple : `widget val 63 40` sur une case à 2 grandeurs donne
+     *    `y_bas = 143` ⇒ l'ancienne garde passait (163 ≤ 163) et le libellé
+     *    descendait à 168, clippé de 5 px SANS un mot.
      *
      * 🔴 LIRE LA LIGNE « 3 non » : C'EST L'ÉTAT LIVRÉ, PAS UN CAS LIMITE.
      *    Les trois valeurs TIENNENT (bas de la 3ᵉ = 48 + 2x40 + 35 = 163 = h,
@@ -967,13 +986,24 @@ const char *dn_widget_dispo_nom(dn_widget_dispo_t d);
  *
  *      police du titre | `lh` | boîte du titre | plancher | marge sous val_y=48
  *      ----------------|------|----------------|----------|--------------------
- *      14 (le DÉFAUT)  |  18  |     22..40     |  43 icône|      8 px
+ *      14              |  18  |     22..40     |  43 icône|      8 px
  *      16              |  21  |     22..43     |  43 =    |      5 px
- *      18              |  23  |     22..45     |  45 TITRE|      3 px
+ *      18 (le DÉFAUT)  |  23  |     22..45     |  45 TITRE|      3 px
  *      20              |  25  |     22..47     |  47 TITRE|      1 px
  *      22              |  28  |     22..50     |  50 TITRE| 🔴 -2 px ⇒ DÉBORDE
  *
  *    ⇒ **20 px est le plafond VERTICAL du titre ; 22 est RÉFUTÉ.**
+ * 🔴 **REVUE DU 2026-08-30 — LA MARQUE « le DÉFAUT » ÉTAIT SUR LA LIGNE 14.**
+ *    Elle y était juste jusqu'au verdict owner du 2026-08-30, qui pose
+ *    `dn_font_18`. ⇒ L'ÉTAT LIVRÉ est la ligne **18 / plancher 45 TITRE /
+ *    marge 3 px**, ⛔ plus la ligne 14 / 43 icône / 8 px. Ça compte : c'est le
+ *    SEUL endroit du dépôt qui publie ce plancher, l'A/B d'en-tête de dn4-6
+ *    repose dessus, et le publier un cran trop haut ferait croire à 5 px de
+ *    marge qu'on n'a pas. ⚠️ Et depuis 18, c'est **le TITRE** qui est le
+ *    plancher — ⛔ plus l'icône, ce que la ligne 14 laissait croire.
+ * ⚠️ **ET RIEN NE FAIT RESPECTER CE PLAFOND** : voir `dn_ui_geom_valider()`,
+ *    qui refuse une police de VEILLE mais accepte `dn_font_28` — corrigé par
+ *    la même revue, côté `dn_ui.c`.
  * 🔴 ⛔ MAIS LE PLAFOND VERTICAL N'EST PAS LE PLAFOND. Le mur HORIZONTAL mord
  *    AVANT : le titre dispose de `dn_widget_titre_utile()` px (107 sur une case
  *    de 225 en NORMAL avec icône), et « AMBIANCE » y arrive à ~103 px dès 18.
@@ -1023,7 +1053,11 @@ typedef struct {
      *    police de veille ici, et `dn_widget_geom_appliquee()` ne peut donc pas
      *    en graver une même si on la lui repassait (AC4.2).
      */
-    const lv_font_t *font_titre; /* police du titre (défaut `dn_font_14`) */
+    const lv_font_t *font_titre; /* police du titre — `NULL` = le défaut, RÉSOLU
+                                  * à l'usage par `font_titre()` ; ce défaut est
+                                  * `dn_font_18` depuis le verdict owner du
+                                  * 2026-08-30 (⛔ il était écrit `dn_font_14`
+                                  * ici, corrigé par la revue de code). */
 } dn_widget_geom_t;
 
 void dn_widget_geom(dn_widget_geom_t *out);       /* l'état COURANT, relu */
@@ -1077,6 +1111,11 @@ int dn_widget_gouttiere(void);
  *    SANS UN MOT, donc un budget faux ne se manifeste par AUCUN symptôme.
  */
 int dn_widget_titre_x(bool avec_icone);
+/* Le `y` du BAS de la boîte du titre, pour une police et un en-tête donnés —
+ * la fabrique du plancher que le tableau ci-dessus publie. `dn_ui_geom_valider()`
+ * l'appelle pour REFUSER une police de titre qui mordrait sur `val_y`.
+ * `NULL` = le défaut, résolu ici. */
+int dn_widget_titre_bas(const lv_font_t *font_titre, dn_widget_entete_t entete);
 int dn_widget_titre_utile(int w, bool avec_icone);
 
 /*
@@ -1105,8 +1144,15 @@ bool dn_widget_police_interface(const lv_font_t *f);
  *    du 2026-08-29 dit *« les ecriture sont trop petites … (cpu, gpu etc..) »* :
  *    « cpu, gpu » sont des **TITRES**. Rien ne dit si le **libellé de grandeur**
  *    (`c.max`, `extr.moy`…) et le titre de la **case NUE** suivent.
- * ⚠️ `off` par défaut : ⛔ aucun état livré, et le périmètre le plus étroit est
- *    celui que le verbatim couvre réellement.
+ * 🔴 **`on` PAR DÉFAUT — VERDICT OWNER DU 2026-08-30**, verbatim *« Oui — tout le
+ *    chrome en 18 »*. ⛔ Cet en-tête a écrit *« `off` par défaut : aucun état
+ *    livré »* jusqu'à la revue de code du même jour, pendant que
+ *    `dn_widget.c` posait `static bool s_titre_suit = true;`. Deux affirmations
+ *    opposées dans le même geste — et c'est CELLE-CI qui masquait le défaut de
+ *    réserve de la ligne secondaire : un lecteur de l'en-tête croyait le libellé
+ *    resté en 14 px, donc croyait le budget de 20 px encore juste.
+ * ⚠️ Il y a donc bien UN état livré, et c'est `true`. Le remettre à `off` est un
+ *    geste de console (`widget titre suit off`), ⛔ pas le défaut.
  * ⚠️ Quand il est `on`, ces deux libellés prennent `font_titre()` — ⛔ pas une
  *    troisième police à régler séparément. Un réglage de plus serait un réglage
  *    que personne ne demande.

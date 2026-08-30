@@ -3941,7 +3941,9 @@ static int cmd_pc(int argc, char **argv)
  *   widget dispo empile|cote|mixte  la mise en forme des grandeurs ⚠️ RECONSTRUIT
  *   widget entete normal|compact    l'en-tête (icône 28 -> 14)    ⚠️ RECONSTRUIT
  *   widget val <y> <pas>            `val_y` / `val_pas`, interligne ⚠️ RECONSTRUIT
- *   widget police 14|28             la police des VALEURS         ⚠️ RECONSTRUIT
+ *   widget police <taille>          la police des VALEURS         ⚠️ RECONSTRUIT
+ *                                   ⛔ « 14|28 » était écrit ici : la liste se
+ *                                   RELIT de `DN_FONT_LISTE` (revue 2026-08-30)
  *   widget grille <barre> <menu>    D12 (60 51) / voie (a) (60 0) ⚠️ RECONSTRUIT
  *   ── dn4-14-2 : LES DEUX A/B DE POLICE DE TEXTE ──────────────────────────
  *   widget titre <police>|defaut    la police du TITRE de case — l'A/B du
@@ -3976,9 +3978,24 @@ static int cmd_pc(int argc, char **argv)
  *   widget largeur mur      dn4-14-2 — LE TABLEAU DU MUR HORIZONTAL : les slots
  *                           RELUS du rendu (date, heure, titre), les chaînes
  *                           nommées d'AC2.2 dans CHAQUE police d'interface, et
- *                           le pire cas de date BALAYÉ sur 7 × 12 × 32 formes
+ *                           le pire cas de date BALAYÉ sur toutes les formes
+ *                           RÉELLES (le compte est IMPRIMÉ, ⛔ plus écrit ici :
+ *                           « 7 × 12 × 32 » y était faux, et le code balayait
+ *                           des jours qui n'existent pas dans leur mois)
  *                           — ⛔ pas supposé « MER. 06 SEPT. »
- *   widget largeur reset    remet à zéro les TROIS compteurs de « ça ne tient pas »
+ *   widget largeur reset    remet à zéro les QUATRE compteurs de « ça ne tient
+ *                           pas » — le 4ᵉ est le clip ACCEPTÉ de la date de
+ *                           barre, ajouté par la revue du 2026-08-30
+ *   widget titre [<police>|defaut]   dn4-14-2 / AC4 — la police du TITRE de case.
+ *                           Nu, il RELIT et imprime l'état + le verdict de
+ *                           largeur. ⚠️ RECONSTRUIT
+ *   widget titre suit on|off  les libellés SECONDAIRES suivent le titre (`on`
+ *                           par verdict owner du 2026-08-30). Nu, il dit
+ *                           l'état. ⚠️ RECONSTRUIT
+ *   widget date [<police>|defaut]    dn4-14-2 / AC4 — la police de la DATE de
+ *                           barre. ⛔ NE reconstruit PAS (le label est repeint
+ *                           en place). Nu, il RELIT et imprime les deux
+ *                           verdicts, horizontal ET vertical.
  *
  * 🔴 LES **16** « RECONSTRUIT » BLOQUENT LE REPL, DONC LE TRANSPORT PC (relevé
  *    en revue le 2026-08-18 : ce docblock affirmait qu'AUCUNE sous-commande
@@ -4096,6 +4113,59 @@ static void widget_indices_imprimer(int idx)
         printf("%s%d", r ? ", " : "", (int)sel[r]);
     }
     printf("]");
+}
+
+/*
+ * 🔴 dn4-14-2 / REVUE DU 2026-08-30 — LE BALAYAGE DE DATE ÉTAIT ÉCRIT TROIS FOIS,
+ *    ET LES TROIS COPIES MENTAIENT SUR LEUR DOMAINE. Les docblocs annonçaient
+ *    « 7 × 12 × 32 » pendant que les boucles faisaient `jr = 1..31`, et le
+ *    dossier publiait « 7 × 12 × 31 = 2 604 » : trois textes, trois valeurs,
+ *    aucune juste — et surtout, le balayage mesurait « MER. 31 FÉVR. », une
+ *    chaîne que le produit ne rend JAMAIS.
+ * ⇒ UNE fabrique, et elle REND son compte : `dn_ui_barre_date_forme()` filtre
+ *   désormais les jours qui n'existent pas dans leur mois, et l'appelant
+ *   IMPRIME `n`. ⛔ Le nombre ne s'écrit plus nulle part.
+ * ⚠️ ET LE PIRE CAS N'EST PAS QUE DANS LE CALENDRIER : `dn_rtc.c` masque le
+ *    registre du jour de semaine en `0x07`, donc **7 est atteignable**, et le
+ *    composeur émet alors `"???"`. La forme DÉGRADÉE (`jsem = 7`, `mois = 0`)
+ *    est donc tirée elle aussi — elle ne sortait d'aucune des trois copies.
+ */
+static int date_pire_cas(const lv_font_t *f, char *out, size_t n_out, int *n_formes)
+{
+    int pire_w = -1;
+    int n = 0;
+    if (out && n_out) {
+        out[0] = '\0';
+    }
+    for (int js = 0; js <= 7; js++) {
+        for (int mo = 0; mo <= 12; mo++) {
+            /* ⚠️ On ne tire la ligne dégradée QUE dans sa combinaison réelle :
+             * `jsem = 7` et `mois = 0` sont les deux valeurs que le composeur
+             * traduit en `"???"`. Les mélanger à des mois valides fabriquerait
+             * des formes que le RTC ne produit pas. */
+            if ((js == 7) != (mo == 0)) {
+                continue;
+            }
+            for (int jr = 1; jr <= 31; jr++) {
+                char d[24];
+                if (!dn_ui_barre_date_forme(js, jr, mo, d, sizeof(d))) {
+                    continue;
+                }
+                n++;
+                int w = dn_widget_largeur(d, f);
+                if (w > pire_w) {
+                    pire_w = w;
+                    if (out && n_out) {
+                        snprintf(out, n_out, "%s", d);
+                    }
+                }
+            }
+        }
+    }
+    if (n_formes) {
+        *n_formes = n;
+    }
+    return pire_w;
 }
 
 static int cmd_widget(int argc, char **argv)
@@ -4380,10 +4450,11 @@ static int cmd_widget(int argc, char **argv)
         widget_indices_imprimer((int)idx);
         printf(" — SCENE RECONSTRUITE\n");
         printf("  « ca ne tient pas » : %u chevauchement(s) · %u trop large(s) "
-               "en colonne unique · %u en HAUTEUR\n",
+               "en colonne unique · %u en HAUTEUR · %u date de barre\n",
                (unsigned)dn_widget_chevauchements(),
                (unsigned)dn_widget_trop_larges(),
-               (unsigned)dn_widget_debordements());
+               (unsigned)dn_widget_debordements(),
+               (unsigned)dn_ui_barre_date_trop_large());
         if (n == 0) {
             printf("  (override RETIRE — la case suit de nouveau son descripteur)\n");
         }
@@ -4960,8 +5031,13 @@ static int cmd_widget(int argc, char **argv)
          *      · « ~19 Ko EXTRAPOLES » pour la police 22 — FAUX D'UN FACTEUR ~2 :
          *        MESURÉ le 2026-08-29, 39 250 o d'objet (39 173 o de données de
          *        police). ⚠️ Et le coût qui fait foi reste le DELTA DE BINAIRE :
-         *        les quatre candidats 16+18+20+22 ont coûté **+134 304 o** de
+         *        les quatre candidats 16+18+20+22 ont coûté **+134 832 o** de
          *        binaire pour 126 756 o d'objets — le reste est du CODE.
+         *        🔴 **REVUE DU 2026-08-30 — CETTE LIGNE DISAIT « +134 304 »**,
+         *        contre « +134 832 » dans `hardware/…affichage.md` §29.7. Écart
+         *        de **528 o**, et c'est 134 832 qui est juste : il est le seul
+         *        cohérent avec 1 322 848 − 1 188 016, et avec la somme
+         *        37 424 (net) + 97 408 (rendus par le ménage).
          * ⛔ La liste des tailles acceptées n'est plus écrite ici : elle vient
          *   de `DN_FONT_LISTE`, générée depuis `TAILLES`.
          */
@@ -4983,6 +5059,17 @@ static int cmd_widget(int argc, char **argv)
             printf("⚠️ Le cout d'une police se MESURE au delta de BINAIRE, ⛔ pas\n");
             printf("   au plancher `octets_police` (il sous-estime), et surtout\n");
             printf("   ⛔ pas a une extrapolation par l'aire.\n");
+            /* 🔴 REVUE DU 2026-08-30 — AC7.1 EXIGE QUE CE MESSAGE **DISE** LE
+             *    CHIFFRE ET LE FAIT. Ils vivaient dans le commentaire C
+             *    ci-dessus, jamais imprimes : l'operateur sur la dalle ne
+             *    recevait ni l'un ni l'autre, c'est-a-dire exactement la moitie
+             *    de l'AC. */
+            printf("   MESURE le 2026-08-29 : la police 22 fait 39 250 o d'objet\n");
+            printf("   (39 173 o de donnees) — le « ~19 Ko extrapoles » publie\n");
+            printf("   etait FAUX D'UN FACTEUR ~2. Les 4 candidats 16+18+20+22\n");
+            printf("   ont coute +134 832 o de BINAIRE.\n");
+            printf("⚠️ Et « npm + reseau » est REFUTE : la chaine REPOND depuis un\n");
+            printf("   shim local (lv_font_conv 1.5.3).\n");
             return 1;
         }
         esp_err_t e = dn_ui_set_widget_geom(&g);
@@ -4990,8 +5077,18 @@ static int cmd_widget(int argc, char **argv)
             printf("refuse (%s) — RIEN n'a change\n", esp_err_to_name(e));
             return 1;
         }
-        printf("police des valeurs : line_height %d — SCENE RECONSTRUITE\n",
-               (int)lv_font_get_line_height(g.font_val));
+        /* 🔴 REVUE DU 2026-08-30 — CE MESSAGE IMPRIMAIT LA COPIE **ENVOYEE**.
+         *    Il lisait `g.font_val`, la copie locale passee au setter, ⛔ pas un
+         *    `dn_widget_geom()` RELU — contrairement a `widget titre` et
+         *    `widget date`, qui relisent tous les deux. Et le NOM de la police
+         *    n'etait pas imprime du tout. AC4.4 dit « imprimant ce qui est
+         *    reellement pose ». */
+        dn_widget_geom_t apres;
+        dn_widget_geom(&apres);
+        printf("police des valeurs : dn_font_%s (line_height %d) — SCENE "
+               "RECONSTRUITE\n",
+               dn_widget_police_nom(apres.font_val),
+               (int)lv_font_get_line_height(apres.font_val));
         return 0;
     }
 
@@ -5016,6 +5113,16 @@ static int cmd_widget(int argc, char **argv)
      *    depot traque. ⇒ Les deux RELISENT et IMPRIMENT.
      * ⛔ Trouve en relisant l'ETAT REEL apres le flash de livraison, ⛔ pas en
      *   relisant la commande envoyee.
+     * 🔴 **REVUE DE CODE DU 2026-08-30 — LE CONSTAT AVAIT ETE FAIT ICI ET LA
+     *    CHAINE D'AIDE LAISSEE EN PLACE.** Ce commentaire ecrivait que l'usage
+     *    generique « annonce police 14|28 et ne nomme AUCUNE des trois
+     *    commandes » ; les formes nues ont ete corrigees, mais l'`aide`
+     *    ENREGISTREE (`DN_CMD("widget", …)`) et le docblock du haut disaient
+     *    encore `police 14|28`, et le « Jeu complet » du README ne nommait pas
+     *    `widget titre`. ⇒ Les TROIS sont corriges — dans le meme geste, comme
+     *    la regle inscrite au-dessus de `DN_CMD` l'exige depuis dn2-1.
+     * 🔴 ET LA TROISIEME FORME NUE MANQUAIT : `widget titre suit` sans `on|off`
+     *    tombait lui aussi sur l'usage generique. Traite plus bas.
      */
     if (argc == 2 && strcmp(argv[1], "titre") == 0) {
         dn_widget_geom_t g;
@@ -5056,24 +5163,11 @@ static int cmd_widget(int argc, char **argv)
                dn_widget_police_nom(f), (int)lv_font_get_line_height(f));
         printf("slot : x = %d, %d px utiles\n", date_x, date_utile);
         char pire[24] = "";
-        int pire_w = -1;
-        for (int js = 0; js < 7; js++) {
-            for (int mo = 1; mo <= 12; mo++) {
-                for (int jr = 1; jr <= 31; jr++) {
-                    char d[24];
-                    if (!dn_ui_barre_date_forme(js, jr, mo, d, sizeof(d))) {
-                        continue;
-                    }
-                    int w = dn_widget_largeur(d, f);
-                    if (w > pire_w) {
-                        pire_w = w;
-                        snprintf(pire, sizeof(pire), "%s", d);
-                    }
-                }
-            }
-        }
+        int n_formes = 0;
+        int pire_w = date_pire_cas(f, pire, sizeof(pire), &n_formes);
         int w0 = dn_widget_largeur(dn_ui_date_inconnue(), f);
-        printf("  pire DATE reelle (BALAYEE) « %s » %d px  %s\n", pire, pire_w,
+        printf("  pire DATE reelle (BALAYEE sur %d formes) « %s » %d px  %s\n",
+               n_formes, pire, pire_w,
                pire_w <= date_utile ? "TIENT" : "🔴 NE TIENT PAS");
         printf("  pire cas du SLOT  « %s » %d px  %s\n", dn_ui_date_inconnue(),
                w0, w0 <= date_utile
@@ -5137,6 +5231,39 @@ static int cmd_widget(int argc, char **argv)
         }
         printf("⚠️ %u trop-large(s) comptes depuis le dernier reset.\n",
                (unsigned)dn_widget_trop_larges());
+        /* 🔴 REVUE DU 2026-08-30 — DEUX NOUVELLES PORTES VERS UN DANGER QUE
+         *    CE MEME COMMIT NOMME AILLEURS. Le frere `widget date` a ete
+         *    concu pour NE PAS reconstruire et IMPRIME pourquoi ; ces deux
+         *    commandes-ci reconstruisent et ne disaient rien. Meme
+         *    avertissement que `widget couleur`, ⛔ pas un refus : le mode
+         *    n'est pas interrogeable d'ici, et refuser a l'aveugle
+         *    bloquerait un reglage legitime en mode ACTIF. */
+        printf("⛔ SI LA CARTE EST EN VEILLE : `veille off` D'ABORD. Une scene\n");
+        printf("   reconstruite en Ambient pose la jauge 27 px TROP HAUT, et\n");
+        printf("   AUCUN compteur ne le dit (ledger, 2026-08-29).\n");
+        return 0;
+    }
+
+    /*
+     * 🔴 REVUE DU 2026-08-30 — LA TROISIEME FORME NUE MANQUAIT.
+     *    Le commit qui a corrige `widget titre` et `widget date` nus a laisse
+     *    `widget titre suit` tomber sur l'usage GENERIQUE : la branche
+     *    `argc == 3` s'exclut explicitement de `suit`, et la branche dediee
+     *    exige `argc == 4`. ⇒ La forme nue ne disait pas l'etat, exactement la
+     *    classe de defaut que les deux autres venaient de fermer.
+     * ⛔ Elle NE RECONSTRUIT PAS : c'est une lecture pure.
+     */
+    if (argc == 3 && strcmp(argv[1], "titre") == 0 &&
+        strcmp(argv[2], "suit") == 0) {
+        printf("libelles secondaires : %s\n",
+               dn_widget_titre_suit() ? "SUIVENT le titre"
+                                      : "restent en dn_font_14");
+        printf("  police effective des libelles : dn_font_%s (line_height %d)\n",
+               dn_widget_police_nom(dn_widget_font_libelle()),
+               (int)lv_font_get_line_height(dn_widget_font_libelle()));
+        printf("  reserve verticale qui en decoule : %d px\n",
+               2 + (int)lv_font_get_line_height(dn_widget_font_libelle()));
+        printf("usage : widget titre suit on|off\n");
         return 0;
     }
 
@@ -5170,6 +5297,16 @@ static int cmd_widget(int argc, char **argv)
         printf("  police effective des libelles : dn_font_%s (line_height %d)\n",
                dn_widget_police_nom(dn_widget_font_libelle()),
                (int)lv_font_get_line_height(dn_widget_font_libelle()));
+        /* 🔴 REVUE DU 2026-08-30 — DEUX NOUVELLES PORTES VERS UN DANGER QUE
+         *    CE MEME COMMIT NOMME AILLEURS. Le frere `widget date` a ete
+         *    concu pour NE PAS reconstruire et IMPRIME pourquoi ; ces deux
+         *    commandes-ci reconstruisent et ne disaient rien. Meme
+         *    avertissement que `widget couleur`, ⛔ pas un refus : le mode
+         *    n'est pas interrogeable d'ici, et refuser a l'aveugle
+         *    bloquerait un reglage legitime en mode ACTIF. */
+        printf("⛔ SI LA CARTE EST EN VEILLE : `veille off` D'ABORD. Une scene\n");
+        printf("   reconstruite en Ambient pose la jauge 27 px TROP HAUT, et\n");
+        printf("   AUCUN compteur ne le dit (ledger, 2026-08-29).\n");
         return 0;
     }
 
@@ -5201,34 +5338,29 @@ static int cmd_widget(int argc, char **argv)
         printf("slot : x = %d, %d px utiles. Verdict sur les pires cas :\n",
                date_x, date_utile);
         {
-            const char *k[2];
-            k[0] = dn_ui_date_inconnue();
-            k[1] = NULL;
-            /* Le pire cas REEL est BALAYE, ⛔ pas suppose — meme methode que
-             * `widget largeur mur`, en plus court. */
+            /* ⛔ RELUE, jamais recitee. (Revue du 2026-08-30 : c'etait un
+             * tableau `k[2]` dont la seconde case n'etait JAMAIS lue.) */
+            const char *non_pose = dn_ui_date_inconnue();
+            /* Le pire cas REEL est BALAYE, ⛔ pas suppose — MEME fabrique que
+             * `widget largeur mur`, desormais partagee. */
             char pire[24] = "";
-            int pire_w = -1;
-            for (int js = 0; js < 7; js++) {
-                for (int mo = 1; mo <= 12; mo++) {
-                    for (int jr = 1; jr <= 31; jr++) {
-                        char d[24];
-                        if (!dn_ui_barre_date_forme(js, jr, mo, d, sizeof(d))) {
-                            continue;
-                        }
-                        int w = dn_widget_largeur(d, pose);
-                        if (w > pire_w) {
-                            pire_w = w;
-                            snprintf(pire, sizeof(pire), "%s", d);
-                        }
-                    }
-                }
-            }
-            int w0 = dn_widget_largeur(k[0], pose);
-            printf("  pire DATE reelle   « %s » %d px  %s\n", pire, pire_w,
+            int n_formes = 0;
+            int pire_w = date_pire_cas(pose, pire, sizeof(pire), &n_formes);
+            int w0 = dn_widget_largeur(non_pose, pose);
+            printf("  pire DATE reelle   « %s » %d px  (%d formes)  %s\n", pire,
+                   pire_w, n_formes,
                    pire_w <= date_utile ? "TIENT" : "🔴 NE TIENT PAS");
-            printf("  pire cas du SLOT   « %s » %d px  %s\n", k[0], w0,
+            printf("  pire cas du SLOT   « %s » %d px  %s\n", non_pose, w0,
                    w0 <= date_utile ? "TIENT"
                                     : "🔴 NE TIENT PAS — etat de BOOT et de coupure RTC");
+            /* 🔴 REVUE DU 2026-08-30 — LA HAUTEUR N'ETAIT MESUREE NULLE PART.
+             *    Cette commande n'imprimait que le verdict HORIZONTAL pendant
+             *    que `widget date 28` posait une boite 28..63 dans une barre de
+             *    60. Le plancher est desormais RELU, et il est REFUSE avant
+             *    d'arriver ici — on l'imprime pour que le refus soit lisible. */
+            printf("  hauteur : boite 28..%d, plancher de barre RELU = %d px\n",
+                   28 + (int)lv_font_get_line_height(pose),
+                   dn_ui_barre_plancher());
         }
         return 0;
     }
@@ -5321,35 +5453,31 @@ static int cmd_widget(int argc, char **argv)
          * l'addendum §1 — et c'est légitime : c'est un document, pas un état. */
         struct {
             const char *quoi;
-            const char *txt;
+            const char *txt;   /* NULL quand `balaye` : le texte varie par police */
             int budget;
+            int balaye;        /* 0 = texte fixe · 1 = cases reelles · 2 = + demo */
         } k_mur[] = {
-            {"DATE  pire cas du SLOT (boot)", dn_ui_date_inconnue(), date_utile},
-            {"DATE  maquette (addendum §1)", "VEN. 06 AO\xC3\x9B""T", date_utile},
-            {"HEURE sans secondes", "01:17", heure_utile},
-            {"HEURE avec secondes", "01:17:33", heure_utile},
-            {"HEURE non posee", dn_ui_heure_inconnue(), heure_utile},
-            {"TITRE plus long LIVRE", "AMBIANCE", titre_utile},
-            {"TITRE plus long EXISTANT (demo)", "D\xC3\x89MO 2+JAUGE", titre_utile},
-            {"TITRE le plus long, BALAYE", NULL, titre_utile},
+            {"DATE  pire cas du SLOT (boot)", dn_ui_date_inconnue(), date_utile, 0},
+            {"DATE  maquette (addendum §1)", "VEN. 06 AO\xC3\x9B""T", date_utile, 0},
+            {"HEURE sans secondes", "01:17", heure_utile, 0},
+            {"HEURE avec secondes", "01:17:33", heure_utile, 0},
+            {"HEURE non posee", dn_ui_heure_inconnue(), heure_utile, 0},
+            /*
+             * 🔴 REVUE DU 2026-08-30 — LES DEUX LIGNES DE TITRE RECITAIENT LEUR
+             *    TEXTE. Elles etaient ecrites `"AMBIANCE"` et `"DEMO 2+JAUGE"`
+             *    en litteraux, dans un bloc dont le commentaire d'a cote dit
+             *    qu'un instrument qui recite cesse de mesurer au premier
+             *    renommage. ⇒ Les deux sont RELUES de `dn_ui_case_titre()`.
+             * 🔴 ET LE « BALAYE » CHOISISSAIT SON GAGNANT DANS `&dn_font_14`
+             *    ECRIT EN DUR, puis l'imprimait sous CHAQUE colonne de police —
+             *    dans un instrument dont la premisse est justement que « le plus
+             *    long » et « le plus large » sont deux questions. ⇒ Le gagnant
+             *    est desormais cherche COLONNE PAR COLONNE, dans la police de
+             *    la colonne.
+             */
+            {"TITRE le plus large — cases REELLES", NULL, titre_utile, 1},
+            {"TITRE le plus large — DEMO incluse", NULL, titre_utile, 2},
         };
-        /* ⚠️ LE TITRE LE PLUS LONG SE CHERCHE : `dn_ui_case_titre()` relit les
-         *    six descripteurs. Un instrument qui récite « AMBIANCE » cesserait
-         *    de mesurer le pire cas au premier renommage. */
-        const char *plus_long = "";
-        int plus_long_n = -1;
-        for (int i = 0; i <= DN_UI_METRIQUES; i++) { /* <= : la DEMO incluse */
-            const char *t = dn_ui_case_titre(i);
-            if (!t) {
-                continue;
-            }
-            int w = dn_widget_largeur(t, &dn_font_14);
-            if (w > plus_long_n) {
-                plus_long_n = w;
-                plus_long = t;
-            }
-        }
-        k_mur[sizeof(k_mur) / sizeof(k_mur[0]) - 1].txt = plus_long;
 
         printf("\nCHAINES NOMMEES x POLICES D'INTERFACE — px, et le verdict :\n");
         printf("  %-33s %-18s", "quoi", "texte");
@@ -5366,7 +5494,7 @@ static int cmd_widget(int argc, char **argv)
             printf("  ");
             colonnes(k_mur[i].quoi, 33);
             printf(" ");
-            colonnes(k_mur[i].txt ? k_mur[i].txt : "-", 18);
+            colonnes(k_mur[i].txt ? k_mur[i].txt : "(varie par police)", 18);
             for (int p = 0; p < dn_widget_polices_nb(); p++) {
                 const lv_font_t *f = NULL;
                 bool itf = false;
@@ -5374,20 +5502,71 @@ static int cmd_widget(int argc, char **argv)
                 if (!itf) {
                     continue;
                 }
-                int w = dn_widget_largeur(k_mur[i].txt ? k_mur[i].txt : "", f);
+                int w;
+                if (k_mur[i].balaye) {
+                    /* ⛔ LE GAGNANT SE CHERCHE DANS LA POLICE DE LA COLONNE.
+                     * `<` s'arrete aux six cases REELLES, `<=` prend la DEMO. */
+                    int borne = (k_mur[i].balaye == 2) ? DN_UI_METRIQUES
+                                                       : DN_UI_METRIQUES - 1;
+                    w = 0;
+                    for (int c = 0; c <= borne; c++) {
+                        const char *t = dn_ui_case_titre(c);
+                        if (!t) {
+                            continue;
+                        }
+                        int wc = dn_widget_largeur(t, f);
+                        if (wc > w) {
+                            w = wc;
+                        }
+                    }
+                } else {
+                    w = dn_widget_largeur(k_mur[i].txt ? k_mur[i].txt : "", f);
+                }
                 printf("%5d%s", w, w <= k_mur[i].budget ? "  " : "🔴");
             }
             printf("   %d\n", k_mur[i].budget);
         }
+        /* Le NOM du gagnant, police par police — la colonne du tableau ne rend
+         * qu'un nombre, et « lequel » est la question qu'on se pose ensuite. */
+        printf("  titres gagnants (DEMO incluse), police par police :");
+        for (int p = 0; p < dn_widget_polices_nb(); p++) {
+            const char *nom = NULL;
+            const lv_font_t *f = NULL;
+            bool itf = false;
+            dn_widget_police_at(p, &nom, &f, &itf);
+            if (!itf) {
+                continue;
+            }
+            const char *gagnant = "-";
+            int meilleur = -1;
+            for (int c = 0; c <= DN_UI_METRIQUES; c++) {
+                const char *t = dn_ui_case_titre(c);
+                if (!t) {
+                    continue;
+                }
+                int wc = dn_widget_largeur(t, f);
+                if (wc > meilleur) {
+                    meilleur = wc;
+                    gagnant = t;
+                }
+            }
+            printf("  %s = « %s »", nom, gagnant);
+        }
+        printf("\n");
 
         /*
          * 🔴 ET LE PIRE CAS DE DATE EST UN RÉSULTAT, ⛔ PAS UNE SUPPOSITION.
          *    « MER. 06 SEPT. » est la plus LONGUE en caractères ; la plus LARGE
          *    en pixels est une autre question, et c'est celle-ci qui décide.
-         *    On balaie les 7 x 12 x 32 dates que le composeur peut produire.
+         * ⚠️ **REVUE DU 2026-08-30** : ce bloc écrivait « 7 x 12 x 32 » dans son
+         *    commentaire et « 7 jsem x 12 mois x 31 jours » dans sa ligne
+         *    imprimée, TROIS LIGNES PLUS BAS — et il balayait des jours qui
+         *    n'existent pas dans leur mois. ⇒ Le balayage est une fabrique
+         *    PARTAGÉE (`date_pire_cas()`), et le compte est IMPRIMÉ, ⛔ plus
+         *    écrit.
          */
-        printf("\nPIRE CAS DE DATE — BALAYE (7 jsem x 12 mois x 31 jours),\n");
-        printf("⛔ pas suppose. Le composeur REEL est appele pour chacune :\n");
+        printf("\nPIRE CAS DE DATE — BALAYE, ⛔ pas suppose. Le composeur REEL\n");
+        printf("est appele pour chaque forme, la ligne DEGRADEE (« ??? ») incluse :\n");
         for (int p = 0; p < dn_widget_polices_nb(); p++) {
             const char *p_nom = NULL;
             const lv_font_t *p_f = NULL;
@@ -5397,35 +5576,18 @@ static int cmd_widget(int argc, char **argv)
                 continue;
             }
             char pire[24] = "";
-            int pire_w = -1;
             int n = 0;
-            for (int js = 0; js < 7; js++) {
-                for (int mo = 1; mo <= 12; mo++) {
-                    /* ⚠️ DE 1, ⛔ PAS DE 0. Le premier relevé (2026-08-29)
-                     * balayait `jour = 00`, que le RTC ne produit JAMAIS — et
-                     * il rendait « MAR. 00 MARS », 1 px de plus que le pire cas
-                     * ATTEIGNABLE. Un pire cas injoignable est un budget qu'on
-                     * s'invente. */
-                    for (int jr = 1; jr <= 31; jr++) {
-                        char d[24];
-                        if (!dn_ui_barre_date_forme(js, jr, mo, d, sizeof(d))) {
-                            continue;
-                        }
-                        n++;
-                        int w = dn_widget_largeur(d, p_f);
-                        if (w > pire_w) {
-                            pire_w = w;
-                            snprintf(pire, sizeof(pire), "%s", d);
-                        }
-                    }
-                }
-            }
+            int pire_w = date_pire_cas(p_f, pire, sizeof(pire), &n);
             printf("  police %-4s  n = %4d  pire = « %s » %d px   budget %d  %s\n",
                    p_nom, n, pire, pire_w, date_utile,
                    pire_w <= date_utile ? "TIENT" : "🔴 NE TIENT PAS");
         }
         printf("\n⚠️ Un DEPASSEMENT ici ne se verra PAS a l'oeil comme une erreur :\n");
         printf("   LVGL clippe au parent SANS UN MOT. Le verdict est CE tableau.\n");
+        printf("⚠️ Le TITRE, lui, ne se fait PAS clipper entre %d et %d px : il\n",
+               titre_utile, cw - titre_x);
+        printf("   CHEVAUCHE la reserve du badge « SIMULE », visible seulement\n");
+        printf("   si la case est SIMULEE. Au-dela, c'est un vrai clip de zone.\n");
         return 0;
     }
 
@@ -5472,9 +5634,16 @@ static int cmd_widget(int argc, char **argv)
         dn_widget_chevauchements_reset();
         dn_widget_debordements_reset();
         dn_widget_trop_larges_reset();
+        /* 🔴 REVUE DU 2026-08-30 — LE 4e COMPTEUR. Le clip ACCEPTE de la date de
+         *    barre n'avait AUCUN instrument : `widget largeur reset` puis
+         *    `widget` rendait « 0 trop-large(s) » pendant que « HEURE NON POSEE »
+         *    (184 px pour 170) etait clippee a l'ecran. ⛔ Compteur SEPARE : les
+         *    trois autres comptent des textes de CASE. */
+        dn_ui_barre_date_trop_large_reset();
         printf("compteurs remis a 0 : chevauchement (cote a cote), debordement\n");
-        printf("(hauteur) ET trop-large (colonne unique — le trou que le cote a\n");
-        printf("cote cachait, revue 2026-08-19)\n");
+        printf("(hauteur), trop-large (colonne unique — le trou que le cote a\n");
+        printf("cote cachait, revue 2026-08-19) ET date de barre trop large\n");
+        printf("(le clip ACCEPTE de l'etat NON POSE, revue 2026-08-30)\n");
         return 0;
     }
     if ((argc == 2 || argc == 3) && strcmp(argv[1], "largeur") == 0) {
@@ -6527,6 +6696,13 @@ static int cmd_widget(int argc, char **argv)
            (unsigned)dn_widget_chevauchements(),
            (unsigned)dn_widget_trop_larges(),
            (unsigned)dn_widget_debordements());
+    /* 🔴 REVUE DU 2026-08-30 — LE 4e COMPTEUR EST LU ICI AUSSI, sinon
+     *    l'instrument qui sert de tableau de bord continuerait a rendre « 0 »
+     *    pendant que la date de barre est clippee. ⛔ Il ne s'ADDITIONNE pas aux
+     *    trois autres : quatre causes, quatre compteurs. */
+    printf("barre      : %u date(s) trop large(s) — le clip ACCEPTE de l'etat "
+           "NON POSE (« %s »)\n",
+           (unsigned)dn_ui_barre_date_trop_large(), dn_ui_date_inconnue());
     printf("             (cumul depuis le dernier `widget largeur reset` — "
            "LECTURE PURE, rien n'a ete reconstruit ni remis a zero)\n");
     /*
@@ -11141,9 +11317,11 @@ static const esp_console_cmd_t k_cmds[] = {
            "barre 1hz|minute | bandes on|off | icone <case> <n> | piste "
            "<0xRRGGBB> | voie defaut|avantd12|a|b|c|c2|repli | grandeurs <case> "
            "<n> | dispo empile|cote|mixte | entete normal|compact | val <y> <pas> "
-           "| police 14|28 | grille <barre> <menu> "
+           "| police <taille> | grille <barre> <menu> "
+           "| titre [<police>|defaut] | titre suit on|off | date [<police>|defaut] "
            "| largeur [<texte> [<police>]|mur|reset] | "
-           "detail | replacer on|off — modèle de case (dn3-1/dn3-2/dn4-1/dn4-6)",
+           "detail | replacer on|off — modèle de case "
+           "(dn3-1/dn3-2/dn4-1/dn4-6/dn4-14-2)",
            cmd_widget),
     /* ⚠️ INSCRITE ICI **ET** DANS LE « Jeu complet » DU README dans le même
      * geste — dn2-1 avait oublié `capteurs` au README, et une commande qu'on ne

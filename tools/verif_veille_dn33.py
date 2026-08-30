@@ -62,8 +62,23 @@ _tmp = []
 
 
 def lire(chemin):
-    with open(chemin, "rb") as f:
-        brut = f.read()
+    """⚠️ REVUE DU 2026-08-30 — UN FICHIER ABSENT NE TUE PLUS LA GATE.
+
+    `open()` nu levait `FileNotFoundError` pour n'importe lequel de `GEN_FONT`,
+    `DN_FONT_H`, `CMAKE_MAIN` ou `README` — après 200 lignes `[OK ]` et **avant**
+    la ligne `BILAN`. Un humain qui lit la sortie voit alors des dizaines de OK
+    et AUCUN verdict, ce qui est pire qu'un rouge. ⇒ On rend une chaîne vide et
+    un sha marqué : les contrôles qui en dépendent rougissent, un par un, et le
+    bilan s'imprime.
+    """
+    try:
+        with open(chemin, "rb") as f:
+            brut = f.read()
+    except OSError as e:
+        print("  [KO ] %-58s %s" % ("fichier illisible : %s" % os.path.basename(chemin),
+                                    "%s: %s" % (type(e).__name__, e)))
+        ko_total[0] += 1
+        return "", "ABSENT"
     return brut.decode("utf-8"), hashlib.sha256(brut).hexdigest()[:16]
 
 
@@ -1911,10 +1926,33 @@ def bloc_reconstruit():
              "README %s · recompte %d" % (mr.group(1), n))
     # ⛔ ET AUCUN SECOND NOMBRE CONTRADICTOIRE : c'est EXACTEMENT la 5e rupture,
     #   où la même ligne écrivait TREIZE et QUATORZE.
-    autres = re.findall(r"le compte passe de \w+ à \*\*(\w+)\*\*", rd)
-    ctrl(not autres,
+    # 🔴 REVUE DU 2026-08-30 — CETTE GARDE MESURAIT UNE FORME MARKDOWN, ⛔ PAS
+    #    UN COMPTE. Elle exigeait `**` COLLÉS au nombre ; le README bolde la
+    #    phrase entière (« **dn4-6 ajoute SEPT sous-commandes … le compte passe
+    #    de CINQ à DOUZE** »), donc `re.findall` rendait `[]` et la gate
+    #    imprimait « trouve : aucun » — VERTE, sur exactement la 5ᵉ rupture
+    #    qu'elle avait été écrite pour clore. ⇒ Le gras ne fait plus partie du
+    #    motif : on cherche le NOMBRE, écrit en chiffres ou en toutes lettres.
+    _MOTS = ("ZERO UN DEUX TROIS QUATRE CINQ SIX SEPT HUIT NEUF DIX ONZE DOUZE "
+             "TREIZE QUATORZE QUINZE SEIZE").split()
+    # ⛔ Les CITATIONS entre guillemets sont exclues : une annotation de revue
+    #   qui rappelle « le compte passe de CINQ à DOUZE » pour dire que c'etait
+    #   FAUX ne publie pas un compte — l'interdire empecherait d'ecrire
+    #   l'histoire, ce que ce depot fait deliberement.
+    _rd_nu = re.sub(r"«[^»]*»", "", rd)
+    autres = [a.strip("* ") for a in
+              re.findall(r"le compte passe de [\w*]+ à ([A-ZÀ-Ü0-9*]+)", _rd_nu)]
+    autres = [a for a in autres if a]
+    # Un nombre est CONTRADICTOIRE s'il ne vaut pas le compte recalculé.
+    def _valeur(mot):
+        if mot.isdigit():
+            return int(mot)
+        return _MOTS.index(mot) if mot in _MOTS else -1
+    contradictoires = [a for a in autres if _valeur(a) != n]
+    ctrl(not contradictoires,
          "…et le README ne porte plus de SECOND compte contradictoire",
-         "trouve : %s" % (", ".join(autres) if autres else "aucun"))
+         "trouve : %s (recompte %d)"
+         % (", ".join(contradictoires) if contradictoires else "aucun", n))
 
     m2 = re.search(r"Il porte \*\*(\d+) sous-commandes\*\*", console)
     ctrl(m2 is not None, "le docblock publie aussi le NOMBRE de sous-commandes")
@@ -2040,12 +2078,38 @@ def bloc_polices():
 
 
 def bloc_polices_mutants():
-    """🔴 AC5.5 — DEUX MUTANTS, ET ON EXIGE DE LES VOIR ROUGIR.
+    """🔴 AC5.5 — LES « MUTANTS », ET CE QU'ILS PROUVENT VRAIMENT.
 
     « N OK / 0 KO » ne suffit pas : `dn4-14` a epingle du code FAUX avec une
     gate verte. Un controle qu'on n'a jamais vu ECHOUER ne prouve rien.
+
+    🔴 **ÉCART DÉCLARÉ — REVUE DE CODE DU 2026-08-30, VERDICT OWNER.**
+       AC5.5 exige « au moins deux mutants TIRÉS et VUS ROUGIR ». Les trois
+       contrôles de ce bloc **ne le font pas**, et le dire est le correctif :
+
+       · (a) `decl != set(mut) | set(veille)` est **vrai par construction** dès
+         que le contrôle nominal est vert : `victime ∈ tailles` ⇒ sous-ensemble
+         strict. Rien n'est muté, rien n'est re-dérivé.
+       · (b) **réimplémente** `police_interface()` / `valider_titre()` EN PYTHON
+         depuis la même X-macro, puis teste la lambda Python — ⛔ jamais
+         `dn_ui_geom_valider()` ni `dn_widget_police_interface()`, que ce bloc se
+         borne à GREPPER. `valider_titre(interface) and valider_titre(None)` est
+         tautologique. C'est le **miroir Python↔C** que ce dépôt a déjà payé.
+       · (c) est un `in` textuel sur 400 caractères : une RELECTURE de texte.
+
+       ⇒ **Une régression côté C ne ferait rougir aucun des trois.** Ce sont des
+       contrôles de COHÉRENCE DE TABLE, ce qui a de la valeur — mais ⛔ pas la
+       preuve par mutation que l'AC réclame.
+       ⚠️ **COÛT DU REPORT, ÉCRIT** : la garde veille/interface reste vérifiée
+       PAR RELECTURE, ⛔ pas par mutation. Le différé « `s_trop_larges++ == 3`
+       épingle un total » relève de la même refonte.
+       ✅ **LE SEUL MUTANT QUI EXÉCUTE VRAIMENT** est dans
+       `bloc_generateur_execute()` : il retire une taille de `TAILLES`, RAPPELLE
+       `ecrire_entete()`, et voit la déclaration DISPARAÎTRE.
     """
-    print("\n── dn4-14-2 / AC5.5 : LES MUTANTS, VUS ROUGIR ──────────────────────")
+    print("\n── dn4-14-2 / AC5.5 : COHERENCE DE TABLE (⚠️ ECART DECLARE) ────────")
+    print("  ⚠️ Ces controles RELISENT ou RESTATENT — ⛔ ils n'executent pas la")
+    print("     garde C. Le mutant qui EXECUTE est dans le bloc AC3.1 ci-dessus.")
     gen, _ = lire(GEN_FONT)
     fh, _ = lire(DN_FONT_H)
     uc, _ = lire(DN_UI_C)
@@ -2053,23 +2117,36 @@ def bloc_polices_mutants():
 
     # ── MUTANT (a) : une taille RETIRÉE de `TAILLES` pendant qu'un `.c` la
     #    déclare encore. C'est LE défaut du « ménage annoncé et non payé ».
+    # 🔴 REVUE DU 2026-08-30 — CE BLOC MOURAIT EN TRACEBACK, APRÈS 200 LIGNES
+    #    `[OK ]` ET **AVANT** LA LIGNE `BILAN`. Reproduit : écrire
+    #    `TAILLES=(14, 18, 28)` sans espaces ⇒ `mt` vaut `None` et `mt.group(1)`
+    #    lève `AttributeError`. `bloc_polices` gardait ce cas (`if mt else []`),
+    #    celui-ci non. ⚠️ Et `ctrl()` ENREGISTRE un KO puis RETOURNE : il
+    #    n'interrompt pas, donc « vérifier avant » avec un `ctrl` ne protège
+    #    d'aucun `IndexError`. ⇒ On sort proprement, avec un KO, et le BILAN
+    #    s'imprime. Une gate qui meurt sans verdict est pire qu'une gate rouge :
+    #    l'humain voit 200 OK et croit avoir lu un résultat.
     mt = re.search(r"^TAILLES = \(([^)]*)\)", gen, re.M)
     mv = re.search(r"^TAILLES_VEILLE = \(([^)]*)\)", gen, re.M)
-    tailles = [int(x) for x in re.findall(r"\d+", mt.group(1))]
-    veille = [int(x) for x in re.findall(r"\d+", mv.group(1))]
+    tailles = [int(x) for x in re.findall(r"\d+", mt.group(1))] if mt else []
+    veille = [int(x) for x in re.findall(r"\d+", mv.group(1))] if mv else []
+    if not ctrl(bool(tailles) and bool(veille),
+                "`TAILLES` et `TAILLES_VEILLE` sont lisibles du generateur",
+                "⛔ sans elles, AUCUN mutant n'est tirable"):
+        return
     victime = tailles[1] if len(tailles) > 1 else tailles[0]
     mut = [t for t in tailles if t != victime]
     decl = set(int(x) for x in re.findall(r"LV_FONT_DECLARE\(dn_font_(\d+)\)", fh))
     ctrl(decl != set(mut) | set(veille),
-         "MUTANT (a) : taille %d retiree de `TAILLES` ⇒ le controle ROUGIT"
+         "COHERENCE (a) : retirer %d de `TAILLES` rendrait le `.h` incoherent"
          % victime,
-         "vu rougir : declarees %s != attendues %s"
+         "⚠️ vrai PAR CONSTRUCTION : declarees %s != attendues %s"
          % (sorted(decl), sorted(set(mut) | set(veille))))
     orph = sorted(int(re.search(r"dn_font_(\d+)\.c", f).group(1))
                   for f in os.listdir(os.path.join(MAIN, "fonts"))
                   if re.match(r"dn_font_\d+\.c$", f))
     ctrl(set(orph) != set(mut) | set(veille),
-         "…et le controle d'ORPHELIN rougit aussi sur le meme mutant",
+         "…et l'ensemble des `.c` presents differe aussi du mutant",
          "le `.c` de %d resterait dans l'arbre" % victime)
 
     # ── MUTANT (b) : la police du TITRE pointée vers une police de VEILLE.
@@ -2079,9 +2156,12 @@ def bloc_polices_mutants():
     liste = re.findall(r"X\((\d+),\s*dn_font_(\d+),\s*([01])\)", fh)
     itf_ok = {int(a) for a, _, f in liste if f == "1"}
     vei = {int(a) for a, _, f in liste if f == "0"}
-    ctrl(bool(vei) and bool(itf_ok),
-         "MUTANT (b) : il existe une police de VEILLE a pointer",
-         "veille %s · interface %s" % (sorted(vei), sorted(itf_ok)))
+    if not ctrl(bool(vei) and bool(itf_ok),
+                "COHERENCE (b) : il existe une police de VEILLE a pointer",
+                "veille %s · interface %s" % (sorted(vei), sorted(itf_ok))):
+        # ⛔ `ctrl()` n'interrompt pas : sans ce `return`, les `sorted(...)[0]`
+        #   ci-dessous lèvent `IndexError` et le BILAN ne s'imprime jamais.
+        return
 
     def police_interface(taille):
         """Le MÊME prédicat que `dn_widget_police_interface()`, RELU du `.h`."""
@@ -2093,15 +2173,21 @@ def bloc_polices_mutants():
 
     cible = sorted(vei)[0]
     ctrl(not valider_titre(cible),
-         "…le validateur REFUSE la police de veille %d sur le titre" % cible,
-         "vu rougir : « RESEAU » y perdrait son E en silence")
+         "…le predicat PYTHON refuse la police de veille %d sur le titre" % cible,
+         "⚠️ RESTATEMENT du C, ⛔ pas son execution — « RESEAU » y perdrait son E")
     ctrl(valider_titre(sorted(itf_ok)[0]) and valider_titre(None),
          "…et il ACCEPTE une police d'interface, et `NULL`",
          "⛔ une garde qui refuse tout ne prouve rien non plus")
     # Et le prédicat Python doit être branché sur la MÊME table que le C.
-    ctrl(uc.count("dn_widget_police_interface(") == 2,
-         "…la garde C est aux DEUX endroits qui posent une police d'interface",
-         "titre (`dn_ui_geom_valider`) + date (`set_barre_date_font`)")
+    # 🔴 REVUE DU 2026-08-30 — `== 2` FAISAIT ROUGIR LA GATE LE JOUR D'UN
+    #    DURCISSEMENT. Ajouter un 3e site de garde légitime — par exemple le
+    #    contrôle manquant sur `font_val` — aurait rendu ce contrôle ROUGE.
+    #    ⛔ Une gate qui échoue sur un correctif argumente contre la correction.
+    #    Le minimum est ce qui compte : les DEUX sites doivent exister.
+    ctrl(sites_appel(uc, "dn_widget_police_interface(") >= 2,
+         "…la garde C est aux (au moins) DEUX endroits qui posent une police",
+         "titre (`dn_ui_geom_valider`) + date (`set_barre_date_font`) ; "
+         "relus %d" % sites_appel(uc, "dn_widget_police_interface("))
     ctrl(re.search(r"esp_err_t dn_ui_set_widget_geom\(.*?dn_ui_geom_valider\(g\)",
                    uc, re.S) is not None,
          "…et le SEUL chemin de reglage passe par le validateur",
@@ -2109,8 +2195,180 @@ def bloc_polices_mutants():
 
     # ── MUTANT (c) : le compteur du titre débranché.
     ctrl("s_trop_larges++" in wc.split("TITRE trop large")[0][-400:],
-         "MUTANT (c) temoin : le site du titre INCREMENTE bien le compteur",
+         "RELECTURE (c) : le site du titre INCREMENTE bien le compteur",
          "⛔ un ESP_LOGW sans compteur serait une garde muette")
+
+
+def bloc_generateur_execute():
+    """🔴 dn4-14-2 / REVUE DU 2026-08-30 — LA GATE EXÉCUTE ENFIN LE GÉNÉRATEUR.
+
+    `bloc_polices` regexait `TAILLES` hors de `gen_font_dn.py` et comparait au
+    `dn_font.h` **COMMITÉ** — un artefact de build versionné, que la gate ne
+    régénère pas. Le seul contrôle sur le COMPORTEMENT du générateur était
+    NÉGATIF (`ENTETE_MODELE` ne contient pas de `LV_FONT_DECLARE` littéral).
+
+    ⚠️ MESURÉ : en remplaçant `decl = lambda ts: …` par une constante
+       `"LV_FONT_DECLARE(dn_font_14)"` — c'est-à-dire en RÉARMANT le défaut
+       d'AC3.1 (« une 3ᵉ taille n'est jamais déclarée ») — `bloc_polices`
+       rendait toujours **24 OK / 0 KO**. Le défaut n'aurait resurgi qu'à la
+       régénération suivante, c'est-à-dire au moment PRÉCIS que la gate existe
+       pour protéger.
+
+    ⇒ Ici, `ecrire_entete()` est APPELÉE, dans un répertoire jetable, et son
+      produit est confronté au `.h` de l'arbre. Puis une taille est RETIRÉE de
+      `TAILLES` et la fonction est RAPPELÉE : sa sortie DOIT perdre la
+      déclaration correspondante. C'est le seul contrôle de ce bloc qui exécute
+      vraiment une garde plutôt que d'en relire le texte.
+    """
+    print("\n── dn4-14-2 / AC3.1 : LE GENERATEUR EST EXECUTE, ⛔ PAS RELU ───────")
+    spec = importlib.util.spec_from_file_location("g_exec", GEN_FONT)
+    gen = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(gen)
+    except Exception as e:  # noqa: BLE001 — un import casse est un KO, pas un crash
+        ctrl(False, "`gen_font_dn.py` s'importe", "%s: %s" % (type(e).__name__, e))
+        return
+
+    fh_arbre, sha = lire(DN_FONT_H)
+    sortie_origine = gen.SORTIE
+    tailles_origine = gen.TAILLES
+    try:
+        gen.SORTIE = tmpdir()
+        gen.ecrire_entete()
+        with open(os.path.join(gen.SORTIE, "dn_font.h"), encoding="utf-8") as fp:
+            regenere = fp.read()
+        ctrl(regenere == fh_arbre,
+             "`ecrire_entete()` REGENERE le `dn_font.h` de l'arbre, a l'octet",
+             "sha %s · %d o" % (sha, len(fh_arbre.encode("utf-8"))))
+
+        # ── LE MUTANT QUI EXECUTE : une taille RETIREE de `TAILLES`.
+        if len(tailles_origine) > 1:
+            victime = tailles_origine[1]
+            gen.TAILLES = tuple(t for t in tailles_origine if t != victime)
+            gen.SORTIE = tmpdir()
+            gen.ecrire_entete()
+            with open(os.path.join(gen.SORTIE, "dn_font.h"), encoding="utf-8") as fp:
+                mute = fp.read()
+            jeton_d = "LV_FONT_DECLARE(dn_font_%d)" % victime
+            jeton_x = "X(%d, dn_font_%d, 1)" % (victime, victime)
+            ctrl(jeton_d in fh_arbre and jeton_d not in mute,
+                 "MUTANT EXECUTE : retirer %d de `TAILLES` RETIRE sa declaration"
+                 % victime,
+                 "⛔ c'est le defaut d'AC3.1, et il est vu DISPARAITRE")
+            ctrl(jeton_x in fh_arbre and jeton_x not in mute,
+                 "…et il le retire aussi de `DN_FONT_LISTE`",
+                 "⛔ une liste ecrite a la main serait restee identique")
+    except Exception as e:  # noqa: BLE001
+        ctrl(False, "l'execution du generateur aboutit",
+             "%s: %s" % (type(e).__name__, e))
+    finally:
+        gen.SORTIE = sortie_origine
+        gen.TAILLES = tailles_origine
+
+
+def bloc_polices_couverture():
+    """🔴 dn4-14-2 / AC4.2 — LA COUVERTURE DES POLICES D'INTERFACE, MESUREE.
+
+    Rien ne vérifiait que `dn_font_18.c` porte réellement le latin-1.
+    `codepoints_du_c()` n'était appelé que sur les DEUX polices de veille
+    (33/56) ; côté interface, la gate se contentait de l'existence du `.c`, de
+    sa déclaration, et du 3ᵉ champ de `DN_FONT_LISTE` — un drapeau posé **À LA
+    MAIN** par le générateur d'après le tuple d'origine, ⛔ jamais relu de la
+    plage réellement gravée. `dn_widget_police_interface()` ne fait que relire
+    ce drapeau. ⇒ La police qui porte désormais LE TITRE, LA DATE **et** LES
+    LIBELLÉS n'avait aucun contrôle de couverture.
+    """
+    print("\n── dn4-14-2 / AC4.2 : LES POLICES D'INTERFACE PORTENT LE LATIN-1 ──")
+    spec = importlib.util.spec_from_file_location("g_cov", GEN_FONT)
+    gen = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(gen)
+    except Exception as e:  # noqa: BLE001
+        ctrl(False, "`gen_font_dn.py` s'importe", "%s: %s" % (type(e).__name__, e))
+        return
+    tailles = list(getattr(gen, "TAILLES", ()))
+    if not ctrl(bool(tailles), "`TAILLES` est lisible", "⛔ rien a verifier sinon"):
+        return
+    # Les caracteres que le produit MET REELLEMENT dans ces polices — relus des
+    # sources, ⛔ pas recites : « AOUT », « FEVR. », « DEC. », « RESEAU », « °C ».
+    exiges = {0xC9: "E accent aigu (« FEVR. », « RESEAU »)",
+              0xDB: "U circonflexe (« AOUT »)",
+              0xB0: "le DEGRE (« 25,5 °C »)"}
+    fh, _ = lire(DN_FONT_H)
+    for t in tailles:
+        chemin = os.path.join(MAIN, "fonts", "dn_font_%d.c" % t)
+        if not ctrl(os.path.isfile(chemin), "dn_font_%d.c existe" % t):
+            continue
+        src, sha = lire(chemin)
+        try:
+            cps, _ = gen.codepoints_du_c(src, chemin)
+        except Exception as e:  # noqa: BLE001
+            ctrl(False, "dn_font_%d : les codepoints sont relisibles" % t,
+                 "%s: %s" % (type(e).__name__, e))
+            continue
+        for cp in sorted(exiges):
+            ctrl(cp in cps,
+                 "dn_font_%d : U+%04X present — %s" % (t, cp, exiges[cp]),
+                 "sha %s · %d codepoints" % (sha, len(cps)))
+        ctrl(all(c in cps for c in range(0x30, 0x3A)),
+             "dn_font_%d : les dix chiffres sont presents" % t)
+        # ⛔ ET LE DRAPEAU DU `.h` DOIT SUIVRE LA PLAGE GRAVEE, pas l'inverse :
+        #   une police d'interface SANS latin-1 serait declaree `1` quand meme.
+        ctrl("X(%d, dn_font_%d, 1)" % (t, t) in fh,
+             "…et `DN_FONT_LISTE` la declare INTERFACE, ce que la plage confirme",
+             "⛔ le drapeau est ECRIT par le generateur — c'est CE controle qui "
+             "le confronte au `.c`")
+
+
+def bloc_barre_date_forme():
+    """🔴 dn4-14-2 / AC2.2 — LES DEUX `snprintf` DE DATE NE PEUVENT PLUS DIVERGER.
+
+    `dn_ui.c` écrivait, au-dessus de `dn_ui_barre_date_forme()` : « MÊME FORMAT
+    que `barre_composer()` … dont la forme est vérifiée par la gate ». **Ce
+    contrôle n'existait pas** — zéro occurrence de `barre_date_forme`, de
+    `k_jsem_court` ou du format dans ce fichier. ⇒ Si `barre_composer()` passait
+    à `"%s %u %s"` ou inversait jour et mois, l'instrument aurait continué à
+    balayer les dates au FORMAT D'AVANT, et le verdict « TIENT / NE TIENT PAS »
+    d'AC2.2 — le cœur de la story — serait devenu une fiction, sans un signal.
+    """
+    print("\n── dn4-14-2 / AC2.2 : LE FORMAT DE DATE, LES DEUX SITES CONFRONTES ─")
+    uc, sha = lire(DN_UI_C)
+    # ⚠️ On ne retient que les `snprintf` qui COMPOSENT UNE DATE — reperes par le
+    #   `%02u` du jour. Le repli « HEURE NON POSEE » passe par un `snprintf` du
+    #   meme tampon avec un simple `"%s"` : le confondre avec eux ferait rougir
+    #   ce controle sur du code parfaitement correct.
+    fmts = [x for x in re.findall(r'snprintf\([^;]*?"([^"]*)"', uc)
+            if "%02u" in x and x.count("%s") >= 2]
+    ctrl(len(fmts) >= 2,
+         "les DEUX `snprintf` de date sont relisibles",
+         "trouves : %s" % (fmts if fmts else "aucun"))
+    if len(fmts) >= 2:
+        ctrl(len(set(fmts)) == 1,
+             "…et ils portent EXACTEMENT le meme format",
+             "format : « %s »" % fmts[0])
+        ctrl(fmts[0] == "%s %02u %s",
+             "…et c'est « %s %02u %s » : jsem, jour sur DEUX chiffres, mois",
+             "⛔ inverser deux champs ne casserait NI la compilation NI le rendu")
+    # Les DEUX jeux de ternaires doivent traiter le RTC degrade pareil.
+    n_js = len(re.findall(r'\?\s*k_jsem_court\[\w+(?:->\w+)?\]\s*:\s*"\?\?\?"', uc))
+    n_mo = len(re.findall(r'\?\s*k_mois_court\[[^\]]+\]\s*:\s*"\?\?\?"', uc))
+    ctrl(n_js >= 2 and n_mo >= 2,
+         "le repli « ??? » du RTC degrade est aux DEUX sites",
+         "jsem %d · mois %d — ⛔ le composeur l'emettait et l'instrument le "
+         "REFUSAIT, donc ne le mesurait jamais" % (n_js, n_mo))
+    # Et le domaine du balayage n'est plus ECRIT nulle part.
+    # ⛔ Le domaine ne doit plus etre AFFIRME comme courant. On cherche la forme
+    #   ASSERTIVE (« balaie / balaye les 7 x 12 x 32 »), ⛔ pas la chaine nue :
+    #   les annotations de revue la CITENT entre guillemets pour dire qu'elle
+    #   etait fausse, et interdire la citation empecherait d'ecrire l'histoire.
+    _ASSERT = re.compile(r"BALA\w+\s+(?:les|sur)?\s*7\s*[×x]\s*12\s*[×x]\s*32",
+                         re.I)
+    cc, _ = lire(DN_CONSOLE_C)
+    uh, _ = lire(os.path.join(MAIN, "dn_ui.h"))
+    for nom, txt in (("dn_ui.c", uc), ("dn_console.c", cc), ("dn_ui.h", uh)):
+        ctrl(_ASSERT.search(txt) is None,
+             "%s n'AFFIRME plus « balaye 7 x 12 x 32 »" % nom,
+             "le domaine est IMPRIME par l'instrument, ⛔ plus ecrit (sha %s)" % sha)
 
 
 def main():
@@ -2138,6 +2396,9 @@ def main():
     bloc_verite()
     bloc_reconstruit()
     bloc_polices()
+    bloc_generateur_execute()
+    bloc_polices_couverture()
+    bloc_barre_date_forme()
     bloc_polices_mutants()
 
     print("\n" + "=" * 78)

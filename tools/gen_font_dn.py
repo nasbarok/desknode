@@ -269,6 +269,37 @@ PLAGE_VEILLE = "0x20-0x7F,0xB0"
 #       le chiffre retenu est 168 et non 197.
 TAILLES_VEILLE = (33, 56)
 
+# ═══════════════════════════════════════════════════════════════════════════
+# 🔴 dn4-14-2 / REVUE DU 2026-08-30 — LES DEUX TUPLES NE PEUVENT PAS SE CROISER.
+#
+# Une taille présente dans `TAILLES` **et** dans `TAILLES_VEILLE` désarme
+# SILENCIEUSEMENT toute la garde veille, et le mécanisme est exact :
+#   · la boucle de génération VEILLE tourne EN DERNIER ⇒ `dn_font_NN.c` est
+#     écrit avec la plage RÉDUITE (`PLAGE_VEILLE`, sans latin-1) ;
+#   · mais `DN_FONT_LISTE` émet `X(NN, dn_font_NN, 1)` **AVANT**
+#     `X(NN, dn_font_NN, 0)` — les interfaces d'abord ;
+#   · et `dn_widget_police_interface()` comme `dn_widget_police_par_nom()`
+#     rendent la **PREMIÈRE** correspondance.
+# ⇒ `widget titre NN` serait ACCEPTÉ, et « RÉSEAU » perdrait son É sans un mot :
+#   exactement la panne que la garde existe pour empêcher.
+# ⛔ ET AUCUN CONTRÔLE NE LE VOYAIT : ceux de la gate sont ENSEMBLISTES
+#   (`itf == set(TAILLES)`, `len(liste) == len(TAILLES) + len(TAILLES_VEILLE)`),
+#   donc tous verts. Ce générateur avait pourtant déjà un contrôle de doublon
+#   pour `ICONES` — la même précaution manquait ici.
+# ⚠️ On échoue À L'IMPORT, ⛔ pas au premier appel : la gate importe ce module,
+#   et un module qui s'importe « à moitié » rendrait le diagnostic illisible.
+# ═══════════════════════════════════════════════════════════════════════════
+_croisement = sorted(set(TAILLES) & set(TAILLES_VEILLE))
+if _croisement:
+    raise SystemExit(
+        "ÉCHEC : %s est à la fois dans `TAILLES` et dans `TAILLES_VEILLE`.\n"
+        "  La boucle VEILLE écrit EN DERNIER (plage réduite, sans latin-1),\n"
+        "  mais `DN_FONT_LISTE` déclare l'INTERFACE en premier et les lecteurs\n"
+        "  rendent la PREMIÈRE correspondance ⇒ une police sans accents serait\n"
+        "  acceptée sur le titre, et « RÉSEAU » y perdrait son É EN SILENCE.\n"
+        "  ⇒ Retirer la taille de l'un des deux tuples."
+        % ", ".join(str(t) for t in _croisement))
+
 # ── LES DEUX TÉMOINS QUI SONT RECOPIÉS, ET C'EST DÉLIBÉRÉ ────────────────────
 # Tout le reste de ce script REFUSE de recopier la liste amont, et c'est juste.
 # Mais UN TÉMOIN TIRÉ DE LA CHOSE QU'IL TÉMOIGNE N'EST PAS UN TÉMOIN : `verifier`

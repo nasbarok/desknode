@@ -1139,7 +1139,9 @@ void dn_ui_barre_slots(int *heure_x, int *date_x, int *date_utile);
  * ⛔ Elle NE passe PAS par `dn_widget_geom_t` : la barre n'est pas un widget, et
  *    l'y faire voyager la mettrait sous le contrat de
  *    `dn_widget_geom_appliquee()` — celui qui grave les polices d'Ambient.
- * `NULL` rend la main au défaut (`dn_font_14`). Une police de VEILLE est
+ * `NULL` rend la main au défaut (`dn_font_18` — ⛔ cet en-tête a écrit
+ * `dn_font_14` jusqu'à la revue de code du 2026-08-30, alors que
+ * `barre_date_font()` rendait déjà `&dn_font_18`). Une police de VEILLE est
  * REFUSÉE (`ESP_ERR_INVALID_ARG`) : la date porte « AOÛT » et « FÉVR. », et les
  * polices de veille n'ont pas le latin-1 — le É sauterait sans un mot.
  * ⚠️ Le getter RÉSOUT le défaut : il ne rend jamais `NULL`.
@@ -1155,10 +1157,19 @@ const char *dn_ui_heure_inconnue(void);
 const char *dn_ui_date_inconnue(void);
 
 /* dn4-14-2 / AC2.2 — compose UNE date de barre au MÊME format que le composeur
- * réel, pour que l'instrument puisse BALAYER les 7 × 12 × 32 combinaisons et
+ * réel, pour que l'instrument puisse BALAYER toutes les formes RÉELLES et
  * MESURER laquelle est la plus large. ⛔ Le pire cas est un RÉSULTAT, pas une
  * chaîne écrite : « MER. 06 SEPT. » est la plus longue en CARACTÈRES, ce qui
- * n'est pas la plus large en PIXELS. Rend `false` hors bornes. */
+ * n'est pas la plus large en PIXELS.
+ * 🔴 **REVUE DU 2026-08-30 — CET EN-TÊTE ANNONÇAIT « 7 × 12 × 32 », ET LE CODE
+ *    BALAYAIT 31.** Ni l'un ni l'autre n'était le bon domaine : le jour doit
+ *    exister DANS SON MOIS, donc **7 × 366 = 2 562** formes (février à 29).
+ *    ⛔ Le compte ne s'écrit plus ici : l'instrument l'IMPRIME, relu de son
+ *    propre balayage.
+ * ⚠️ `jour` est **1..(jours du mois)** — `0` est refusé, alors qu'il passait et
+ *    rendait « MAR. 00 MARS ». `jsem` accepte **7** et `mois` accepte **0** :
+ *    ce sont les valeurs où le composeur émet `"???"` sur une lecture RTC
+ *    dégradée, et le balayage ne les voyait jamais. Rend `false` hors bornes. */
 bool dn_ui_barre_date_forme(int jsem, int jour, int mois, char *out, size_t n);
 
 /* dn4-14-2 / AC2.2 — LE TITRE RÉELLEMENT DESSINÉ par une case, relu du
@@ -1273,6 +1284,20 @@ bool dn_ui_detail_label(char *txt, size_t txt_n, int *w, int *w_parent, int *x,
 esp_err_t dn_ui_set_case_grandeurs(int idx, int n);
 esp_err_t dn_ui_bandes_valider(int barre_h, int menu_h);
 esp_err_t dn_ui_geom_valider(const dn_widget_geom_t *g);
+/* Le plancher de la BARRE, RELU des deux contenus qu'elle porte — l'heure
+ * (`dn_font_28`, non commutable) et la date, dont la police l'est. Il vaut 53
+ * tant que la date tient sous l'heure, et il MONTE dès qu'elle la dépasse.
+ * ⛔ Ce nombre ne s'écrit nulle part : `dn_ui_bandes_valider()` l'appelle, et
+ * `widget date` / `widget grille` l'IMPRIMENT (revue du 2026-08-30 : `53` était
+ * écrit dans le validateur, et sa justification parlait encore de `dn_font_14`). */
+int dn_ui_barre_plancher(void);
+/* Le compteur du clip ACCEPTÉ de la date de barre — « HEURE NON POSÉE » fait
+ * 184 px pour 170 utiles. ⛔ Ce n'est PAS `dn_widget_trop_larges()`, qui compte
+ * les textes de CASE : deux diagnostics dans le même seau, ce dépôt a déjà payé.
+ * Il monte à chaque CHANGEMENT de texte qui déborde, ⛔ pas à chaque tick.
+ * (Revue du 2026-08-30 : l'écart était déclaré et n'avait aucun instrument.) */
+int dn_ui_barre_date_trop_large(void);
+void dn_ui_barre_date_trop_large_reset(void);
 
 /* Le `n` de la démo — le SEUL moyen d'atteindre les deux témoins d'AC2 (abandon
  * de jauge à n ≥ 3, clamp à n > `DN_WIDGET_GRANDEURS_MAX`). Défaut 2, borne 6. */

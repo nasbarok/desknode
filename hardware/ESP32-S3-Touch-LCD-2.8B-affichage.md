@@ -9834,16 +9834,62 @@ Relevé sur `1e968c0`, **avant tout changement de police**. Les slots sont **rel
 
 ⇒ 🎯 **Le titre plafonne à 18, ⛔ pas à 20.** Le cadrage donnait le plafond **vertical** (à 22 la
 boîte du titre passe sous `val_y`) ; le mur **horizontal** mord **avant**.
-⇒ 🎯 **`DÉMO 2+JAUGE` ne tenait DÉJÀ PAS à 14 px** : 114 pour 107, **clippé de 7 px**, sur le
-firmware d'avant. Défaut **préexistant**, révélé par l'instrument.
+⇒ 🎯 **`DÉMO 2+JAUGE` ne tenait DÉJÀ PAS à 14 px** : 114 pour 107, **déborde de 7 px dans la
+réserve du badge**, sur le firmware d'avant. Défaut **préexistant**, révélé par l'instrument.
+
+### 🔴 REVUE DE CODE DU 2026-08-30 — CE PARAGRAPHE DISAIT « CLIPPÉ DE 7 px », ET C'ÉTAIT LE MAUVAIS MÉCANISME
+
+Relu du code, ⛔ pas supposé :
+
+- le label de titre est créé par `dn_widget_texte()` **sans largeur posée** ⇒ il se dimensionne au
+  contenu ;
+- son parent est la **zone de case**, large de `DN_UI_CASE_W` = **225 px** ;
+- ⇒ **LVGL ne le clippe qu'à `x = 225`**, c'est-à-dire après **173 px** de titre depuis `x = 52`.
+  ⛔ **Pas à 107.**
+- et le badge « SIMULÉ » est créé **`LV_OBJ_FLAG_HIDDEN`** (`dn_widget.c`) : il n'est démasqué que
+  sur une case **SIMULÉE**.
+
+⇒ 🎯 **Dans la bande 107..173 px il n'y a AUCUN clip** : il y a un **chevauchement de la réserve du
+badge**, visible seulement si le badge l'est. Au-delà de 173, c'est un vrai clip de zone.
+
+⇒ 🔴 **ET SUR LE DÉMONSTRATEUR LUI-MÊME, RIEN NE SE VOYAIT.** `DÉMO 2+JAUGE` = 114 px finit à
+`x = 166 < 225`, et la case de démo n'appelle jamais `dn_widget_maj()` avec un régime SIMULÉ ⇒
+**son badge reste masqué**. Les « 7 px » sont exactement `166 − 159`, la morsure dans une réserve
+**invisible**. Le défaut trouvé est réel comme **ABSENCE DE GARDE** — ⛔ pas comme artefact visible
+sur ce stimulus-là.
+
+✅ **VERDICT OWNER DU 2026-08-30 — LE SEUIL RESTE 107.** Un titre qui mord la réserve casse dès que
+la case passe SIMULÉE, et le régime d'une case n'est pas une propriété de sa géométrie. Ce qui
+change, ce sont les **mots** : le log runtime dit désormais *« CHEVAUCHE LA RESERVE DU BADGE (visible
+seulement si la case est SIMULEE ; LVGL ne clippe qu'au bord de zone, a N px) »*.
+⚠️ **ÉCART ASSUMÉ, ÉCRIT** : `s_trop_larges` monte aussi quand le badge est masqué, donc **sur des
+cases où rien ne se voit**. C'est le prix accepté pour ne pas conditionner une garde de géométrie à
+un état d'affichage.
 
 ## §29.2 — 🔴 LE PIRE CAS DE LA DATE **N'EST PAS UNE DATE**, ET LE PIRE CAS DE DATE N'EST PAS CELUI QU'ON CROYAIT
 
 `DN_UI_DATE_INCONNUE` vaut `"HEURE NON POSÉE"` — **15 caractères**, et c'est **elle** qui plafonne
 la date à **16 px**. Toutes les **vraies** dates tiennent jusqu'à **22**.
 
-Et le pire cas de date a été **BALAYÉ**, ⛔ pas supposé : les **7 × 12 × 31 = 2 604** formes que
-`barre_composer()` peut produire, **mesurées une par une** via `dn_ui_barre_date_forme()`.
+Et le pire cas de date a été **BALAYÉ**, ⛔ pas supposé : toutes les formes que `barre_composer()`
+peut produire, **mesurées une par une** via `dn_ui_barre_date_forme()`.
+
+> 🔴 **REVUE DE CODE DU 2026-08-30 — LE DOMAINE PUBLIÉ ICI ÉTAIT FAUX, ET IL L'ÉTAIT DE DEUX
+> FAÇONS.** Ce paragraphe écrivait « **7 × 12 × 31 = 2 604** » ; quatre docblocs du firmware
+> écrivaient « **7 × 12 × 32** » ; et une même ligne de `dn_console.c` portait « 32 » en commentaire
+> et « 31 » dans son `printf`, trois lignes plus bas. **Aucun des trois n'était juste** : le
+> balayage n'excluait pas les jours qui n'existent pas dans leur mois, donc il mesurait
+> « **MER. 31 FÉVR.** » — exactement la classe corrigée la veille pour `jour = 00` (*« un pire cas
+> injoignable est un budget qu'on s'invente »*), corrigée pour le seul jour zéro.
+> ⇒ Le domaine réel est **7 × 366 = 2 562** formes (février à 29). ⚠️ **Et il n'est plus écrit
+> nulle part** : l'instrument IMPRIME `n`, relu de son propre balayage — le seul remède à un compte
+> qui a menti à quatre endroits à la fois.
+> 🔴 **ET IL MANQUAIT UNE FORME QUE LE PRODUIT REND VRAIMENT** : `dn_rtc.c` masque le registre du
+> jour de semaine en `0x07`, donc **7 est atteignable**, et `barre_composer()` émet alors `"???"`.
+> `dn_ui_barre_date_forme()` rendait `false` sur ce cas ⇒ **le balayage ne mesurait jamais la forme
+> d'une lecture RTC dégradée.** Elle est désormais tirée.
+> ⚠️ **Le pire cas mesuré ci-dessous n'a PAS bougé** — `MAR. 04 MARS` est une date réelle — mais le
+> verdict repose maintenant sur un domaine qui est celui du produit.
 
 | | pire cas | px à 14 |
 |---|---|---|
@@ -9876,6 +9922,15 @@ quatrième compteur, les trois restent trois.
 **Témoin négatif tiré** (`widget titre 22`) :
 `TITRE trop large : « AMBIANCE » = 126 px pour 107 utiles (x 52, badge a 159) — CLIPPE EN SILENCE`
 ⇒ **la garde sait crier.**
+
+> 🔴 **REVUE DE CODE DU 2026-08-30 — CE MESSAGE EST CONSERVÉ TEL QU'IL A ÉTÉ RELEVÉ, ET SA FIN EST
+> FAUSSE.** *« CLIPPE EN SILENCE »* nomme le mauvais mécanisme (voir §29.1) : dans la bande
+> 107..173 px le titre **chevauche la réserve du badge**, il n'est pas clippé. Le message du
+> firmware a été corrigé ; le relevé, lui, reste **tel quel** — c'est un constat daté, ⛔ pas une
+> affirmation courante.
+> ⚠️ **Ce que ce tableau AVANT/APRÈS prouve reste vrai et entier** : le compteur passe de 0 à 1 sur
+> le **même** stimulus, donc **la garde existe désormais et elle mord**. Ce qu'il ne prouve pas,
+> c'est que quelque chose se voyait à l'œil avant — et personne ne l'a prétendu ici.
 
 ## §29.4 — 🔴 LA CHAÎNE DE POLICE AVAIT **DEUX MOITIÉS CASSÉES**
 
@@ -9965,6 +10020,41 @@ est identique À L'OCTET**. La crainte est réfutée par sa propre mesure.
 ⚠️ **« ~19 Ko extrapolés par l'aire » pour la police 22 était FAUX D'UN FACTEUR ~2** — corrigé dans
 `addendum.md:172` (texte d'origine **conservé**) et dans `widget police`.
 
+> 🔴 **REVUE DE CODE DU 2026-08-30 — LE DELTA DES QUATRE CANDIDATS ÉTAIT PUBLIÉ AVEC DEUX VALEURS.**
+> Ce tableau écrit **+134 832** ; `dn_console.c` (`widget police`) et `addendum.md` écrivaient
+> **+134 304** — **528 o d'écart**, et les deux textes fautifs sont précisément ceux qu'AC7.1/AC7.2
+> venaient de corriger. C'est **134 832** qui est juste : seul cohérent avec `1 322 848 − 1 188 016`
+> **et** avec `37 424 + 97 408`. Les deux textes sont alignés sur la mesure. ⚠️ Le motif est celui
+> que ce dossier dénonce partout : **un nombre recopié d'un texte à l'autre au lieu d'être relu de
+> sa mesure** — et le recopier dans le geste même qui le corrige est le pire moment pour le faire.
+
+### 🔬 AC6.2 — LA PREUVE **TAILLE PAR TAILLE**, PRODUITE (revue du 2026-08-30)
+
+AC6.2 exige *« la preuve est **taille par taille** : `ls` des `.c` **et** `codepoints_du_c()` sur ce
+qui reste, ⛔ pas un total »*. Le Dev Agent Record l'**affirmait** ; §29.7 ne publiait que des
+**totaux**. La voici, relue de l'arbre :
+
+| `.c` présent | rôle | codepoints | `É` U+00C9 | `Û` U+00DB | `°` U+00B0 | glyphes ≥ U+F000 |
+|---|---|---|---|---|---|---|
+| `dn_font_14.c` | interface | **258** | ✅ | ✅ | ✅ | 66 |
+| `dn_font_18.c` | interface | **258** | ✅ | ✅ | ✅ | 66 |
+| `dn_font_28.c` | interface | **258** | ✅ | ✅ | ✅ | 66 |
+| `dn_font_33.c` | **veille** | **96** | ⛔ absent (voulu) | ⛔ absent (voulu) | ✅ | **0** |
+| `dn_font_56.c` | **veille** | **96** | ⛔ absent (voulu) | ⛔ absent (voulu) | ✅ | **0** |
+
+*(Relevé par `codepoints_du_c()` sur les cinq `.c` de l'arbre. Les 66 glyphes ≥ U+F000 des polices
+d'interface sont les **12 icônes du dépôt** plus les symboles injectés par l'amont ; les polices de
+veille n'en portent **aucun**, ce que §29.4 chiffre.)*
+
+⇒ **Cinq `.c`, et cinq seulement** — `dn_font_16/20/22.c` ont bien quitté l'arbre.
+🔴 **ET CETTE PREUVE N'EST PLUS UN TABLEAU : ELLE EST UNE GATE.** `bloc_polices_couverture()`
+appelle `codepoints_du_c()` sur **chaque** police d'interface et exige `É`, `Û`, `°` et les dix
+chiffres. Jusqu'à cette revue, `codepoints_du_c()` n'était appelé **que** sur 33 et 56 : la police
+qui porte désormais **le titre, la date ET les libellés** n'avait **aucun** contrôle de couverture,
+et son drapeau « interface » de `DN_FONT_LISTE` est posé **à la main** par le générateur d'après le
+tuple d'origine, ⛔ jamais relu de la plage gravée. *(Pas de défaut vivant — vérifié —, mais une
+garde qui n'était pas prouvée.)*
+
 ## §29.8 — AC2.4 : LE CALCUL HORS CARTE, **CONFRONTÉ**
 
 Le cadrage pose `adv_w ÷ taille = 0,695`, constant à 0,1 % ⇒ largeur **linéaire** en la taille, donc
@@ -9985,6 +10075,85 @@ ont été **confirmées par la mesure** (103 et 164).
   `dn4-10` / `dn4-12` cité après le 2026-08-30 doit porter son SHA.**
 - ⛔ Le soak `dn4-5` a été **coupé** (60 317 trames valides · 483 pertes seq · latence n=60317
   1/174/541 ms, sur `6af9bd8`) et **redémarré** sur `8308bbf`. **Ordre B, décision owner.**
-- ⛔ `DÉMO 2+JAUGE` **reste clippé** (147 px pour 107 en 18) : c'est une case d'**instrument**, et
-  elle sert désormais de **témoin négatif permanent et gratuit** de la garde de largeur.
+- ⛔ `DÉMO 2+JAUGE` **déborde toujours la réserve du badge** (147 px pour 107 en 18) : c'est une
+  case d'**instrument**, et elle sert désormais de **témoin négatif permanent et gratuit** de la
+  garde de largeur. ⚠️ **Elle n'est PAS clippée** (elle finit à 199 < 225) et son badge est masqué —
+  voir §29.1, revue du 2026-08-30.
 - ⛔ Le badge « SIMULÉ » reste en `dn_font_14` — **contraint par sa largeur**, hors périmètre.
+
+## §29.10 — 🔬 REVUE DE CODE 3 COUCHES DU 2026-08-30 — CE QU'ELLE A TROUVÉ, ET CE QU'ELLE A COÛTÉ
+
+Périmètre `ae18700..cea2481` (11 fichiers, +1 873 / −56, hors les 4 422 lignes générées de
+`dn_font_18.c`). ⚠️ Le baseline du frontmatter (`a503e66`) **n'a pas été retenu** : `ae18700`
+appartient à `dn4-14` et avait déjà été revu sous son nom. **29 constats retenus, 2 écartés.**
+
+**LES QUATRE CONSTATS QUI CHANGENT LE COMPORTEMENT, ⛔ pas seulement les mots :**
+
+1. 🔴 **`W_SEC_H` était resté à 20 alors que la ligne secondaire dessine 25 px.** La constante valait
+   exactement `2 + lh(dn_font_14)` ; depuis que le libellé **suit le titre** (`s_titre_suit = true`,
+   verdict owner), il prend `dn_font_18` (`lh` 23). ⇒ La garde `y_bas + W_SEC_H <= h` passait
+   pendant que LVGL clippait, et la branche `else` — **celle qui DIT que la secondaire est
+   abandonnée** — n'était jamais atteinte. C'est la panne muette que W5 avait rendue audible,
+   **réarmée par la story qui change les polices**. ⚠️ Latent à `h = 163` (les marges absorbent les
+   5 px), atteignable par `widget val`, `widget grille` et `widget voie`, tous dans la plage
+   acceptée. ⇒ `W_SEC_H` est **supprimé** ; la réserve est `sec_h()`, relue de la police posée.
+2. 🔴 **Aucune garde VERTICALE sur les deux polices que la story rend commutables.**
+   `widget titre 28` était accepté : boîte 22..57 contre `val_y = 48`, **9 px de recouvrement** avec
+   la première ligne de valeur, sans log ni compteur — pendant que `dn_widget.h` publiait
+   « 20 px est le plafond VERTICAL du titre ; 22 est RÉFUTÉ ». **Un plafond publié que personne
+   n'exécute n'est pas un plafond.** Et `widget date 28` posait 28..63 dans une barre de 60, le
+   plancher `53` de `dn_ui_bandes_valider()` étant **écrit** et justifié par un commentaire qui
+   parlait encore de `dn_font_14`. ⇒ `dn_widget_titre_bas()` et `dn_ui_barre_plancher()` sont deux
+   fabriques, et les deux validateurs les appellent.
+3. 🔴 **Le balayage du pire cas mesurait des dates impossibles et en ratait une réelle** — voir
+   §29.2.
+4. 🔴 **Le clip ACCEPTÉ de la barre n'avait aucun instrument.** Le titre a reçu `ESP_LOGW` +
+   compteur dans le commit même de la story ; la date, sur le **seul texte que la story SAIT
+   déborder**, n'avait ni log ni compteur ⇒ `widget` rendait « 0 trop-large » pendant que
+   « HEURE NON POSÉE » était clippée à l'écran. ⇒ **Quatrième compteur**, séparé des trois autres.
+
+**LES DEUX GATES QUI NE GARDAIENT RIEN :**
+
+- 🔴 **`bloc_polices` n'exécutait JAMAIS le générateur.** Il regexait `TAILLES` et comparait au
+  `dn_font.h` **commité** — un artefact de build versionné. **Mesuré** : en remplaçant
+  `decl = lambda ts: …` par une constante — c'est-à-dire en **réarmant le défaut d'AC3.1** —,
+  `bloc_polices` rendait toujours **24 OK / 0 KO**. ⇒ `bloc_generateur_execute()` **appelle**
+  `ecrire_entete()` dans un répertoire jetable, confronte son produit au `.h` de l'arbre, puis
+  retire une taille de `TAILLES` et voit la déclaration **disparaître**. ✅ **Vu rougir** sur ce
+  mutant exact.
+- 🔴 **La garde « le README ne porte plus de SECOND compte » mesurait une FORME MARKDOWN.** Elle
+  exigeait `**` collés au nombre ; le README bolde la phrase entière, donc `re.findall` rendait
+  `[]` et la gate imprimait « trouve : aucun » — **verte, sur exactement la 5ᵉ rupture qu'elle avait
+  été écrite pour clore**, qui était toujours vivante (« le compte passe de CINQ à DOUZE » contre le
+  16 publié plus bas, dans la même ligne).
+- 🔴 **Et une gate qui MEURT n'a pas de verdict.** Reproduit : écrire `TAILLES=(14, 18, 28)` **sans
+  espaces** ⇒ `AttributeError` dans `bloc_polices_mutants`, **après 200 lignes `[OK ]` et AVANT la
+  ligne `BILAN`**. Un humain voit des dizaines de OK et croit avoir lu un résultat. ⇒ `lire()` et le
+  bloc rendent désormais un KO et laissent le bilan s'imprimer.
+
+**⚠️ ÉCART DÉCLARÉ — AC5.5 « deux mutants vus rougir » est RÉFUTÉE.** Les trois contrôles dits
+« mutants » **relisent du texte ou restatent le prédicat en Python** : (a) est vrai par construction
+dès que son voisin est vert ; (b) réimplémente `police_interface()` / `valider_titre()` en Python et
+teste la lambda — ⛔ jamais `dn_ui_geom_valider()`, que la gate se borne à grepper ; (c) est un `in`
+textuel sur 400 caractères. **Une régression côté C ne ferait rougir aucun des trois.**
+✅ **Verdict owner du 2026-08-30 : fermeture avec écart déclaré**, ⛔ pas de `[CC]`. **Coût du
+report, écrit** : la garde veille/interface reste vérifiée **par relecture**, ⛔ pas par mutation.
+Le différé « `s_trop_larges++ == 3` épingle un total » relève de la même refonte.
+
+**📊 LE COÛT DE LA REVUE, MESURÉ :**
+
+| | binaire | delta |
+|---|---|---|
+| `cea2481` (avant revue) | 1 226 864 | — |
+| après les 25 correctifs | **1 228 864** | **+2 000** |
+
+⚠️ **Le `1 225 440` de §29.7 est la mesure à `34d3c2c`**, ⛔ pas à `cea2481` : `8308bbf` a ajouté
+1 424 o. Un delta se prend entre **deux points nommés**.
+
+**🔬 GATES : 237 → 267 OK / 0 KO** (+30 contrôles), dont trois blocs neufs
+(`bloc_generateur_execute`, `bloc_polices_couverture`, `bloc_barre_date_forme`) et **deux mutants
+vus rougir puis revenir au vert** (le générateur réarmé, et le format de date désaccordé d'un
+espace).
+🔴 **ET LE « 187 → 237 » PUBLIÉ PAR LA STORY EST FAUX** : rejoué sur worktree, `ae18700` rend
+**193 OK / 0 KO** — le 187 est la valeur d'**avant** `ae18700`, donc d'avant `dn4-14`. `dn4-14-2`
+ajoutait **44** contrôles, pas 50 ; la revue en ajoute 30 de plus.
