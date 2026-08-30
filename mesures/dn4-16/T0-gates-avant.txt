@@ -1,0 +1,93 @@
+==============================================================================
+T0 — ETAT DES 21 GATES **AVANT** dn4-16   (AC1.5)
+==============================================================================
+date     : 2026-08-30
+desknode : c191e44   (arbre propre, hors `mesures/dn4-16/` cree par cette story)
+cockpit  : 998ec49   (arbre propre, hors `?? ops/audit_impostor_episodes.py`, KidSat)
+
+MOTIF DE CETTE CAPTURE (AC1.5) : `dn4-14` a mesure qu'une gate ROUGE AU
+BASELINE n'est causee ni par la story ni par sa revue. On note l'etat de
+depart AVANT de toucher a quoi que ce soit, pour ne rien s'attribuer apres.
+
+------------------------------------------------------------------------------
+🔴 DEUX ECARTS AVEC LE CADRAGE DE LA STORY, ET ILS SONT ECRITS
+------------------------------------------------------------------------------
+  (1) La story annonce **20** gates. L'arbre en porte **21**
+      (`ls tools/verif_*.py | wc -l` = 21). ⇒ le chiffre 20 est perime.
+
+  (2) La story annonce **UNE** gate rouge au baseline
+      (`verif_courbe_dn413.py`, ledger :5089). La mesure en trouve **DEUX**,
+      plus **UNE non-jouable**. ⛔ `verif_verrou_lvgl_dn413.py` n'etait
+      annoncee nulle part.
+
+------------------------------------------------------------------------------
+LE TABLEAU
+------------------------------------------------------------------------------
+GATE                                   RC     VERDICT      BILAN
+-------------------------------------- ------ ------------ -----------------
+verif_bme680_retard_dn45.py            0      ✅ VERT       15 OK, 0 KO
+verif_courbe_dn413.py                  1      🔴 ROUGE      1 echec / 58
+verif_cumul_ambient_dn45.py            0      ✅ VERT       23 OK, 0 KO
+verif_d4_nvs_dn45.py                   0      ✅ VERT       6 OK, 0 KO
+verif_decoupe_horloge_dn418.py         0      ✅ VERT
+verif_dossier_d5_dn45.py               0      ✅ VERT       10 OK, 0 KO
+verif_dossier_dn415.py                 0      ✅ VERT       20 OK, 0 KO
+verif_harnais_dn413.py                 0      ✅ VERT
+verif_hist_dn413.py                    0      ✅ VERT
+verif_journal_soak_dn45.py             0      ✅ VERT       27 OK, 0 KO
+verif_lissage_dn45.py                  0      ✅ VERT       21 OK, 0 KO
+verif_miroir_horloge_dn418.py          0      ✅ VERT
+verif_rebouclage_dn45.py               0      ✅ VERT       30 OK, 0 KO
+verif_reprise_horloge_dn418.py         0      ✅ VERT
+verif_selection_dn49.py                0      ✅ VERT
+verif_serie_dn412.py                   0      ✅ VERT       50 OK / 0 KO
+verif_source_lhm_dn48.py               0      ✅ VERT
+verif_sr03.py                          2      ⚠️ NON-JOUABLE  (voir ci-dessous)
+verif_veille_dn33.py                   0      ✅ VERT       267 OK · 0 KO
+verif_verrou_lvgl_dn413.py             1      🔴 ROUGE      4 echecs / 61
+verif_xip_dn422.py                     0      ✅ VERT       10 OK / 0 KO
+
+  ⇒ 18 VERTES · 2 ROUGES · 1 NON-JOUABLE  = 21
+
+------------------------------------------------------------------------------
+LE DETAIL DES TROIS NON-VERTES — ⛔ AUCUNE N'EST CAUSEE PAR dn4-16
+------------------------------------------------------------------------------
+
+🔴 verif_courbe_dn413.py  (rc=1) — 1 echec sur 58 controles
+   [KO ] mute (ui) ⇒ ROUGE : AC9 `fond_poser()` a TROIS etats, `off` ne pose
+         RIEN  «lv_label_set_text(t, "ASSET ABSENT")» → «lv_label_set_text(...»
+   ⇒ un TEMOIN DE MUTATION qui ne rougit pas : la gate mute la source et
+     attend un rouge qui ne vient pas. C'est le rouge annonce par le ledger
+     (:5089), CONFIRME.
+
+🔴 verif_verrou_lvgl_dn413.py  (rc=1) — 4 echecs sur 61 controles
+   [KO ] sans verrou : dn_ui_bandes_valider
+         dn_ui.c:10324 → dn_ui_barre_plancher [lv_font_get_line_height]
+   [KO ] sans verrou : dn_ui_barre_plancher
+         dn_ui.c:1902  — [lv_font_get_line_height], aucune exemption
+   [KO ] sans verrou : dn_ui_set_barre_date_font
+         dn_ui.c:10488 — objet LVGL touche AVANT `lvgl_port_lock`
+   [KO ] ZERO publique touche LVGL sans verrou — 3 faute(s)
+   🔴 CE ROUGE N'ETAIT ANNONCE NULLE PART. Les trois fautes sont dans du
+      code de `dn4-14-2` (`dn_ui_set_barre_date_font`, `dn_ui_barre_plancher`)
+      et de `dn4-22`. ⛔ dn4-16 ne touche aucune ligne de firmware ⇒ elle ne
+      peut ni le causer ni le reparer. ⇒ ENTREE A ARBITRER AU LEDGER (T2).
+
+⚠️ verif_sr03.py  (rc=2) — ⛔ CE N'EST PAS UN ROUGE, C'EST UN MESSAGE D'USAGE
+   La gate exige DEUX arguments :
+       python3 tools/verif_sr03.py <AN4545.pdf> firmware/.../dn_console.c
+   et le PDF est **volontairement absent du depot** (document
+   STMicroelectronics, non redistribue ; seule son empreinte est au depot).
+   Sans arguments elle imprime son mode d'emploi et sort en 2.
+   ⇒ NON-JOUABLE EN L'ETAT, ⛔ pas en echec. Compter ce rc=2 comme un rouge
+     serait exactement le defaut que dn4-16 repare : un verdict pose sans
+     lire ce qu'on mesure.
+
+------------------------------------------------------------------------------
+CONSEQUENCE POUR dn4-16
+------------------------------------------------------------------------------
+  · dn4-16 n'ecrit AUCUNE ligne de firmware ⇒ ces trois etats sont INVARIANTS
+    de la story. Ils doivent etre IDENTIQUES a T5.
+  · Le rouge NON ANNONCE de `verif_verrou_lvgl_dn413.py` est un fait neuf :
+    il devient une entree du ledger, avec son porteur (T2/T7).
+==============================================================================

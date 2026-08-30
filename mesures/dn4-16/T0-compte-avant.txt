@@ -1,0 +1,10 @@
+=== T0 — COMPTE DE DEPART, dn4-16 ===
+date       : 2026-08-30T12:39:47+02:00
+cockpit    : 998ec49  (porcelain:  M _bmad-output/implementation-artifacts/sprint-status-desknode.yaml;?? ops/audit_impostor_episodes.py;)
+desknode   : c191e44  (porcelain: ?? mesures/dn4-16/;)
+ledger     : 5173 lignes
+
+--- sortie VERBATIM du script de la section « Commandes » de la story ---
+sections=104 dont DeskNode=54
+entrees=443  DeskNode=269  DeskNode OUVERTES=240   <= LE PERIMETRE
+a qui ? aucune=77  origine-seule=33  story-vivante=29  que-des-closes=134
