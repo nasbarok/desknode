@@ -1,0 +1,103 @@
+==============================================================================
+dn4-15 / AC6.6 — LES MUTANTS. UNE GATE QU'ON N'A PAS VUE ECHOUER N'EST PAS UNE GATE.
+==============================================================================
+
+── T0. LA GATE AU REPOS (arbre sain) ─────────────────────────────────────
+   rc=0   BILAN : 14 OK, 0 KO
+
+------------------------------------------------------------------------------
+MUTANT (a) — REINTRODUIRE `vl53l0x` EN CASSE BASSE dans sdkconfig.defaults
+       🔴 C'est le temoin d'AC6.4bis : un motif SENSIBLE a la casse ne le verrait PAS.
+       dn4-14 a perdu une gate entiere sur ce defaut exact (`/* orange */`).
+   cible : firmware/desknode/sdkconfig.defaults   sha256[:12] avant = c5771f1c2ac6
+   sha256[:12] mute  = 6a0ccd79b12d   (⇒ le mutant est bien POSE)
+   rc=1   BILAN : 11 OK, 8 KO
+     [KO ] occurrence NOUVELLE ou DEPLACEE                          desknode:rmware/desknode/sdkconfig.defaults:32 [vl53l0x] # TODO: brancher le vl53l0x sur ce bus
+     [KO ] occurrence NOUVELLE ou DEPLACEE                          desknode:rmware/desknode/sdkconfig.defaults:43 [facade] #    monté sur la façade ; corrigé par dn4-15 le 202
+     [KO ] occurrence NOUVELLE ou DEPLACEE                          desknode:rmware/desknode/sdkconfig.defaults:80 [vl53l0x] #    🔴 dn4-15, 2026-08-30 : cette ligne écrivait « V
+     [KO ] toute occurrence de l'arbre est AU MANIFESTE             140 ligne(s) arbitree(s)
+     … et 4 autre(s) [KO ]
+   ✅ ROUGE — LA GATE A CRIE, ET ON L'A VUE CRIER
+   sha256[:12] restaure = c5771f1c2ac6   ✅ arbre rendu a l'identique
+
+------------------------------------------------------------------------------
+MUTANT (b) — REINTRODUIRE `--busid 3-1` dans README.md
+       🔴 La recette en dur ne rate pas : elle DETACHE LE MAUVAIS PERIPHERIQUE
+       (`3-1` porte un V31GT 0e8d:201c sur cette machine).
+   cible : README.md   sha256[:12] avant = 0e77e75b946a
+   sha256[:12] mute  = dc66d5161bda   (⇒ le mutant est bien POSE)
+   rc=1   BILAN : 11 OK, 12 KO
+     [KO ] occurrence NOUVELLE ou DEPLACEE                          desknode:README.md:169 [busid-en-dur] usbipd attach --wsl --busid 3-1
+     [KO ] occurrence NOUVELLE ou DEPLACEE                          desknode:README.md:263 [vl53l0x] | **`tof`** (dn4-7) | le **VL6180X** `0x29` instruit
+     [KO ] occurrence NOUVELLE ou DEPLACEE                          desknode:README.md:265 [vl53l0x] | **`i2c`** (dn2-1/**dn4-2**) | le **bus vu de ses a
+     [KO ] occurrence NOUVELLE ou DEPLACEE                          desknode:README.md:994 [facade] ⛔ **ET UN VENTILATEUR NE SERA JAMAIS PUBLIABLE** : l
+     … et 8 autre(s) [KO ]
+   ✅ ROUGE — LA GATE A CRIE, ET ON L'A VUE CRIER
+   sha256[:12] restaure = 0e77e75b946a   ✅ arbre rendu a l'identique
+
+------------------------------------------------------------------------------
+MUTANT (c) — REMETTRE `340..350` DANS UN `printf` de dn_console.c
+       🔴 C'est le defaut que AC5 repare : la console enseignait un chiffre mort.
+   cible : firmware/desknode/main/dn_console.c   sha256[:12] avant = 5d43cfdb1088
+   sha256[:12] mute  = 136044034025   (⇒ le mutant est bien POSE)
+   rc=1   BILAN : 10 OK, 11 KO
+     [KO ] occurrence NOUVELLE ou DEPLACEE                          desknode:irmware/desknode/main/dn_console.c:5418 [340..350] printf("   bande de jauge y=340..350 (dn4-1).\n");
+     [KO ] occurrence NOUVELLE ou DEPLACEE                          desknode:irmware/desknode/main/dn_console.c:7011 [vl53l0x] *  (b) 🔴 « VL53L0X » : REFUTE PAR L'INVENTAIRE PHYSI
+     [KO ] occurrence NOUVELLE ou DEPLACEE                          desknode:irmware/desknode/main/dn_console.c:7810 [vl53l0x] "REPRODUCTIBLE, c'est un VL53L0X et le sachet ment "
+     [KO ] occurrence NOUVELLE ou DEPLACEE                          desknode:irmware/desknode/main/dn_console.c:8153 [vl53l0x] *    URL Pololu rendaient un PDF ST authentique en H
+     … et 7 autre(s) [KO ]
+   ✅ ROUGE — LA GATE A CRIE, ET ON L'A VUE CRIER
+   sha256[:12] restaure = 5d43cfdb1088   ✅ arbre rendu a l'identique
+
+------------------------------------------------------------------------------
+MUTANT (d) — RETIRER UNE LIGNE DU MANIFESTE SANS RETIRER L'OCCURRENCE
+       🔴 C'est le mode de panne le plus silencieux : le dossier ment par OMISSION.
+   cible : docs/dn4-15-arbitrage.md   sha256[:12] avant = 89888ee5afb0
+   sha256[:12] mute  = 15111f6286a7   (⇒ le mutant est bien POSE)
+   rc=1   BILAN : 12 OK, 3 KO
+     [KO ] occurrence NOUVELLE ou DEPLACEE                          desknode:firmware/desknode/main/dn_pins.h:165 [vl53l0x] * 🔴 LE 3ᵉ N'EST PAS UN VL53L0X : C'EST UN **TOF050C-
+     [KO ] toute occurrence de l'arbre est AU MANIFESTE             139 ligne(s) arbitree(s)
+     [KO ] somme des verdicts == occurrences de l'arbre             143 vs 144
+   ✅ ROUGE — LA GATE A CRIE, ET ON L'A VUE CRIER
+   sha256[:12] restaure = 89888ee5afb0   ✅ arbre rendu a l'identique
+
+------------------------------------------------------------------------------
+TEMOIN (e) — AC6.5 : LE COCKPIT ABSENT DOIT SORTIR EN ROUGE, ⛔ JAMAIS EN `skip`
+       🔴 Motif : « une gate scopee epingle VERT le meme defaut ailleurs ».
+   rc=1   BILAN : 1 OK, 1 KO
+     [KO ] le depot cockpit est atteignable                         ⛔ ABSENT — une gate scopee epingle VERT le meme defaut ailleurs
+   ✅ ROUGE — et elle DIT pourquoi
+
+── CONTRE-EPREUVE FINALE : la gate est-elle REDEVENUE VERTE ? ─────────────
+   rc=0   BILAN : 14 OK, 0 KO
+
+==============================================================================
+BILAN DES MUTANTS : 4/4 ROUGES  ·  temoin AC6.5 : ROUGE ✅  ·  retour au vert : OUI ✅
+==============================================================================
+
+── CE QUE CETTE CAPTURE MONTRE EN PLUS, ET QUI DOIT ETRE ECRIT ─────────────
+
+⚠️ LES MUTANTS (a), (b) ET (c) FONT ROUGIR **PLUS** QUE LEUR PROPRE DEFAUT.
+   Chacun INSERE une ligne, donc DECALE toutes les occurrences suivantes du
+   meme fichier — et la gate cle sur (depot, fichier, ligne, motif). Une
+   occurrence DEPLACEE sort en ROUGE meme si son texte n'a pas bouge.
+
+   🔴 CE N'EST PAS UN BUG, C'EST LE PRIX DECLARE. Il est ecrit dans l'en-tete
+      de la gate : « le manifeste doit etre RE-LU, pas recite ». Une gate qui
+      ne rougirait QUE sur le texte nouveau laisserait passer un manifeste dont
+      les adresses ont derive — et c'est EXACTEMENT le defaut que dn4-16 decrit
+      et que ce dossier a paye trois fois (ledger : `dn_console.c:2897` ;
+      epic : `:3247` ; reel : `:4366`).
+
+   ⚠️ MAIS IL FAUT LE DIRE : le cout est un MANIFESTE A REGENERER a chaque
+      edition d'un fichier compte. Le mutant (d) montre la contrepartie — il
+      n'insere rien, et la gate epingle EXACTEMENT l'occurrence omise
+      (`dn_pins.h:165`) plus l'ecart de somme (143 vs 144), rien d'autre.
+
+✅ LE MUTANT (a) EST LE TEMOIN D'AC6.4bis, ET IL EST DECISIF : `vl53l0x` en
+   CASSE BASSE est epingle. Un motif sensible a la casse ne l'aurait pas vu —
+   c'est le defaut exact sur lequel dn4-14 a perdu une gate entiere.
+
+✅ L'ARBRE EST RENDU A L'IDENTIQUE : les sha256 avant/apres sont EGAUX pour
+   les quatre cibles, et la gate est REDEVENUE VERTE (14 OK / 0 KO) au dernier
+   tir. ⛔ Ce n'est pas « je crois avoir restaure » : c'est mesure.
