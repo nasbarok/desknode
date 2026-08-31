@@ -1,5 +1,15 @@
 # DeskNode
 
+> **Licence** — DeskNode se licencie **par nature de fichier** : `firmware/` en
+> **GPL-3.0-or-later**, `agent/` en **MIT**, `docs/` en **CC-BY-SA-4.0**.
+> Détail et ce que ça implique pour toi : [`LICENSING.md`](LICENSING.md).
+> Composants tiers : [`THIRD-PARTY.md`](THIRD-PARTY.md) · Contribuer :
+> [`CONTRIBUTING.md`](CONTRIBUTING.md) · Journal : [`CHANGELOG.md`](CHANGELOG.md).
+>
+> ⚠️ Ce README est le **journal de bord** du projet (168 Ko). Il sera **scindé** avant
+> la `v0.1.0-beta` : le journal partira dans `docs/`, une vitrine courte restera ici.
+
+
 Mini-display tactile 2,8" (Waveshare **ESP32-S3-Touch-LCD-2.8B**, 480×640 IPS portrait) **posé à
 côté de la tour PC** (décision owner du 2026-08-17 — le brief dit encore « monté sur la façade du
 NZXT Phantom 630 », c'est périmé : pas de support imprimé, pas de passage de câble interne, et le
