@@ -1,0 +1,41 @@
+==============================================================================
+AC4.6 — LES ECRIVAINS DE LEDC, RE-COMPTES AVANT DE CLORE dn4-41
+2026-08-31T21:15:30
+==============================================================================
+
+🔴 LE GREP QUE `dn_env.h` PRESCRIT (« avant de refermer une story qui touche au
+   retroeclairage ») REND 21 LIGNES — ET CE CHIFFRE EST FAUX COMME MESURE
+   D'ECRIVAINS. Il compte : la DECLARATION (dn_display.h), l'IMPLEMENTATION et
+   ses appels internes (dn_display.c), **12 COMMENTAIRES**, et — piege trouve
+   ici — **UNE CHAINE DE LOG** (`dn_ui.c:3675`, un message d'erreur ecrit par
+   dn4-41 lui-meme, qui CITE la fonction).
+⇒ Un compteur naif aurait epingle un MESSAGE comme un ECRIVAIN. C'est la meme
+  classe de defaut que « le jeton d'exemption cite en commentaire l'ACCORDE ».
+⇒ La gate `verif_paliers_dn441.py` retire commentaires ET chaines AVANT de
+  compter, et elle exclut `dn_display.c` (qui IMPLEMENTE, il n'arbitre pas).
+
+── LES SITES D'APPEL REELS ─────────────────────────────────────────────
+  desknode_main.c:470  ESP_ERROR_CHECK(dn_display_backlight_pct(bl_boot));
+  dn_console.c:1767  esp_err_t err = dn_display_backlight_pct((int)pct);
+  dn_env.c:1001  if (dn_display_backlight_pct(cible) == ESP_OK) {
+  dn_ui.c:3670  esp_err_t e_led = dn_display_backlight_pct(pct);
+  dn_ui.c:7488  esp_err_t err = dn_display_backlight_pct(cible);
+  dn_ui.c:7609  (void)dn_display_backlight_pct(cible);
+  dn_ui.c:8225  if (dn_display_backlight_pct(recours) == ESP_OK) {
+  dn_ui.c:8265  if (dn_display_backlight_pct(cible) == ESP_OK) {
+
+  TOTAL = 8 sites d'appel
+
+── LA CONFRONTATION ────────────────────────────────────────────────────────
+  dn_env.h declare  DN_ENV_LEDC_ECRIVAINS = 7   (des ROLES dans l'arbitrage)
+  dn_env.h declare  DN_ENV_LEDC_SITES     = 8   (des LIGNES)
+  mesure                                  = 8 sites  ✅
+
+⚠️ L'ECART 7 / 8 EST NOMME, ⛔ PAS SUBI : la VEILLE (ecrivain n° 4) porte DEUX
+   sites — `veille_bl_descendre` et `veille_bl_remonter` — parce qu'une bascule
+   a deux sens. Un ECRIVAIN est un ROLE ; un SITE est une ligne. ⛔ Les
+   confondre ferait rougir la gate sur du code juste (defaut paye par dn4-14).
+
+🔴 LE 7e ECRIVAIN EST LE MENU (`dn_ui.c`, `on_menu_bl_niveau_clic`), pose par
+   dn4-41. Il est GESTE D'OPERATEUR : il gagne, et il DESARME en le disant.
+

@@ -1,0 +1,58 @@
+================================================================================
+AC7.3 — UN MUTANT PAR CONTROLE, VU ROUGIR · dn4-41 · 2026-08-31T21:24:19+02:00
+⛔ « Une gate qu'aucun test n'a vue echouer est decorative » (dn4-13/AC7.5).
+⚠️ Chaque mutant casse UNE propriete EN MEMOIRE. ⛔ Aucun fichier n'est modifie.
+
+🔴 CE FICHIER GARDE LA TRACE D'UNE PREMIERE PASSE OU **TROIS MUTANTS N'ONT
+   PAS FAIT ROUGIR** (1, 10, 15). ⛔ Les trois trous n'ont pas ete effaces :
+   ils sont ecrits dans le source de la gate, au-dessus des controles qu'ils
+   ont durcis. Deux etaient des CONTROLES trop faibles (une position 0 qui ne
+   suivait pas les VARIABLES ; un « la chaine existe quelque part » au lieu du
+   corps de fonction), un etait un MUTANT trop faible (il laissait 3 des 4
+   marqueurs de refutation debout).
+================================================================================
+
+── T0 : LA GATE, SANS MUTANT ──────────────────────────────────────────────
+  rc=0 (attendu 0)
+BILAN : 42 OK, 0 KO
+
+── MUTANT 1   rc=1  BILAN : 41 OK, 1 KO
+          [KO ] `disk` : la grandeur en position 0 ne vient PAS de LHM     ⛔ noctua
+── MUTANT 2   rc=1  BILAN : 40 OK, 2 KO
+          [KO ] dn_env : seuil ABSENT >= 2 re-ouvertures                   DN_ENV_ABSENT_SEUIL = 1
+          [KO ] dn_env : seuil x backoff DEPASSE la fenetre froide         1 x 12 x 5000 ms = 60 s > 60 s
+── MUTANT 3   rc=1  BILAN : 40 OK, 2 KO
+          [KO ] dn_capt : seuil ABSENT >= 2 re-ouvertures                  DN_CAPT_ABSENT_SEUIL = 1
+          [KO ] dn_capt : seuil x backoff DEPASSE la fenetre froide        1 x 12 x 5000 ms = 60 s > 60 s
+── MUTANT 4   rc=1  BILAN : 41 OK, 1 KO
+          [KO ] dn_env : ⛔ AUCUN `i2c_master_probe` dans le module du verdict ⛔ 1 occurrence(s)
+── MUTANT 5   rc=1  BILAN : 41 OK, 1 KO
+          [KO ] dn_env : ⛔ la tentative du BOOT n'alimente PAS le verdict  ⇒ sinon le verdict tomberait a 60 s, DANS la fenetre froide
+── MUTANT 6   rc=1  BILAN : 41 OK, 1 KO
+          [KO ] dn_capt : ⛔ la tentative du BOOT n'alimente PAS le verdict ⇒ meme motif, meme chiffre
+── MUTANT 7   rc=1  BILAN : 41 OK, 1 KO
+          [KO ] dn_env : le verdict est REVERSIBLE (remise a zero)         ⇒ ⛔ un « absent » a vie est le defaut qu'a paye dn2-1
+── MUTANT 8   rc=1  BILAN : 40 OK, 2 KO
+          [KO ] les trois planchers sont DISTINCTS                         ⛔ collision : [3, 20, 20]
+          [KO ] la liste canonique dit la VRAIE valeur de `celui-ci`       prose = 16 · #define = 20  ⛔ UNE LISTE DE REFERENCE QUI MENT
+── MUTANT 9   rc=1  BILAN : 41 OK, 1 KO
+          [KO ] la liste canonique dit la VRAIE valeur de `DN_ENV_BL_PCT_MIN` prose = 8 · #define = 20  ⛔ UNE LISTE DE REFERENCE QUI MENT
+── MUTANT 10  rc=1  BILAN : 41 OK, 1 KO
+          [KO ] dn_ui : le repli est PLANCHERISE dans son corps            ⇒ `(pct < plancher) ? plancher : pct` — ⛔ jamais un litteral
+── MUTANT 11  rc=1  BILAN : 41 OK, 1 KO
+          [KO ] le compte de SITES declare colle aux appels REELS          declare=7 · mesure=8  (desknode_main.c:1 · dn_console.c:1 · dn_env.c:1 · dn_ui.c:5)
+── MUTANT 12  rc=1  BILAN : 41 OK, 1 KO
+          [KO ] tout fichier qui ECRIT en NVS est DECLARE dans verif_d4_nvs_dn45.py ⛔ NON DECLARE : dn_reglage.c
+── MUTANT 13  rc=1  BILAN : 41 OK, 1 KO
+          [KO ] ⛔ `dn_env.c` n'ecrit RIEN en NVS (D16)                     ⇒ c'est ce qui garde D4 : aucune ecriture EN REGIME
+── MUTANT 14  rc=1  BILAN : 41 OK, 1 KO
+          [KO ] le README nomme le palier « DeskNode + Ambiance »          ⇒ ce sont les noms de D19, ⛔ pas des synonymes
+── MUTANT 15  rc=1  BILAN : 41 OK, 1 KO
+          [KO ] ⛔ le README ne PROMET PAS NVIDIA (l'agent n'a aucun NVML)  ⛔ ligne SANS refutation : | **GPU NVIDIA** | ✅ pris en charge (NVML). |
+── MUTANT 16  rc=1  BILAN : 40 OK, 2 KO
+          [KO ] dn_ui : le repli plancherise est appele aux TROIS sites    2 appelant(s) — ⛔ un site qui l'evite pose un duty NU
+          [KO ] dn_ui : ⛔ AUCUN site ne CONTOURNE le plancher              ⛔ 1 contournement(s)
+
+================================================================================
+BILAN DES MUTANTS : 16 / 16 ont fait ROUGIR
+================================================================================

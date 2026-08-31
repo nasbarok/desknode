@@ -1,0 +1,28 @@
+================================================================
+AC6.3 — TEMOIN NEGATIF DE `--lhm ""`  ·  2026-08-31T21:16:58+02:00
+Jouable SANS carte et SANS tour. Stub psutil (DN_STUB_PSUTIL=1) :
+⛔ il ne valide AUCUNE source Windows — ici on n'exerce QUE L'ANALYSE
+   DES ARGUMENTS, qui se joue AVANT toute collecte.
+================================================================
+
+── 1. APRES LE CORRECTIF — `--lhm ""` doit sortir EN ERREUR D'ANALYSE
+                   [--journal-soak FICHIER] [--journal-max-mo Mo]
+                   [--tracer-console FICHIER]
+dn_agent.py: error: argument --lhm: valeur VIDE refusee : une option posee doit porter un HOTE:PORT. Pour ne pas l'utiliser, ne pas la poser du tout.
+   rc=2
+
+── 2. CONTROLE — le message NOMME l'option (⛔ pas un defaut plus loin)
+   occurrences de « --lhm » dans la sortie : 2
+
+── 3. TEMOIN NEGATIF DU TEMOIN — une valeur VALIDE passe l'analyse
+[agent] ⚠️ LHM pointe sur 127.0.0.1:8085 par --lhm — ⛔ ce n'est PAS la configuration de regime.
+[agent] ⚠️ source GPU INDISPONIBLE (OSError: atiadlxx.dll: cannot open shared object file: No such file or directory) — la case GPU restera « -- ». Les quatre autres metriques continuent : une source morte meurt SEULE.
+[agent] ⚠️ LHM INJOIGNABLE au demarrage (ConnectionRefusedError: [Errno 111] Connection refused) — la °C CPU et les tr/min diront « -- », les autres grandeurs continuent. ⚠️ La source RESTE ARMEE : elle retente a chaque cycle et reprendra seule si LHM demarre.
+   rc=0
+
+── 4. CONTROLE — l'option ABSENTE reste le chemin nominal
+   « LHM pointe sur » (attendu 0, le defaut ne s annonce pas) : 0
+
+── 5. CONTROLE DE NON-REGRESSION — les 3 autres options gardent « chemin »
+                   [--tracer-console FICHIER]
+dn_agent.py: error: argument --stop-si: valeur VIDE refusee : une option posee doit porter un chemin. Pour ne pas l'utiliser, ne pas la poser du tout.
