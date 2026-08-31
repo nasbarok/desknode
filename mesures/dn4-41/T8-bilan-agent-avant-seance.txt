@@ -1,0 +1,58 @@
+================================================================================
+T8 / AC5 — BILAN DE SORTIE DE L'AGENT REEL, CAPTURE AVANT LA SEANCE CARTE
+2026-08-31T22:12:59+02:00
+================================================================================
+
+⚠️ ⛔ CE N'EST **PAS** LA MESURE D'AC5, ET IL FAUT LE DIRE AVANT DE LIRE LES
+   CHIFFRES : AC5 exige **LHM REELLEMENT COUPE**. Ici LHM TOURNAIT.
+   ⇒ Ce bilan mesure le REGIME NOMINAL au plafond de 0,60 s, ⛔ pas le cout
+     de l'absence. Il est capture parce qu'il etait GRATUIT et qu'il tombe
+     sur le plafond meme qu'AC5.2 demande de rejouer.
+
+🎯 CE QU'IL APPREND, ET QUI N'ETAIT PAS SU :
+   · le plafond en vigueur est bien 600 ms (dn4-8) ;
+   · sur 17 017 lectures REUSSIES, la duree moyenne est 26,5 ms — soit ~4 %
+     du plafond. ⇒ le regime nominal est TRES loin de la coupe ;
+   · MAIS le plafond A COUPE 12 fois ;
+   · 🔴 ET UNE LECTURE A DEPASSE LE PLAFOND **SANS ECHOUER** : 736 ms pour
+     un timeout de 600 ms (123 %). L'agent le qualifie lui-meme d'INCIDENT :
+     « le budget ne borne que le RESEAU ; ce depassement vient d'ailleurs
+     (parse, ordonnancement) — il mange la cadence et arme le recalage ».
+   · ✅ « aucune absence LHM » : les cinq sondes ont rendu une valeur a
+     chaque lecture reussie ⇒ le mapping de CETTE tour est bon (AC8.4).
+
+⇒ CONSEQUENCE POUR AC5, ECRITE PLUTOT QUE DEDUITE : le rejeu a 0,60 s devra
+  distinguer ce qui vient de L'ABSENCE de LHM de ce qui vient de ce
+  depassement-la, qui existe DEJA avec LHM VIVANT.
+
+── LE BILAN BRUT, TEL QUE L'AGENT L'A ECRIT ────────────────────────────────
+[agent] témoin coût cumulé : 314.281 s CPU / 16899.2 s mur = 1.860 % d'un cœur (0.1162 % machine) — seq=84450
+[agent] témoin coût cumulé : 314.438 s CPU / 16909.1 s mur = 1.860 % d'un cœur (0.1162 % machine) — seq=84500
+[agent] témoin coût cumulé : 314.656 s CPU / 16919.1 s mur = 1.860 % d'un cœur (0.1162 % machine) — seq=84550
+[agent] témoin coût cumulé : 314.812 s CPU / 16929.1 s mur = 1.860 % d'un cœur (0.1162 % machine) — seq=84600
+[agent] témoin coût cumulé : 315.000 s CPU / 16939.1 s mur = 1.860 % d'un cœur (0.1162 % machine) — seq=84650
+[agent] témoin coût cumulé : 315.219 s CPU / 16949.1 s mur = 1.860 % d'un cœur (0.1162 % machine) — seq=84700
+[agent] témoin coût cumulé : 315.422 s CPU / 16959.1 s mur = 1.860 % d'un cœur (0.1162 % machine) — seq=84750
+[agent] témoin coût cumulé : 315.641 s CPU / 16969.1 s mur = 1.860 % d'un cœur (0.1163 % machine) — seq=84800
+[agent] témoin coût cumulé : 315.828 s CPU / 16979.1 s mur = 1.860 % d'un cœur (0.1163 % machine) — seq=84850
+[agent] témoin coût cumulé : 316.016 s CPU / 16989.1 s mur = 1.860 % d'un cœur (0.1163 % machine) — seq=84900
+[agent] témoin coût cumulé : 316.219 s CPU / 16999.1 s mur = 1.860 % d'un cœur (0.1163 % machine) — seq=84950
+[agent] témoin coût cumulé : 316.344 s CPU / 17009.1 s mur = 1.860 % d'un cœur (0.1162 % machine) — seq=85000
+[agent] témoin coût cumulé : 316.500 s CPU / 17019.1 s mur = 1.860 % d'un cœur (0.1162 % machine) — seq=85050
+[agent] témoin coût cumulé : 316.766 s CPU / 17029.2 s mur = 1.860 % d'un cœur (0.1163 % machine) — seq=85100
+[agent] arrêt demandé (H:\dev\projets\desknode\dn-agent.stop)
+[agent] arrêt après 17037.1 s — 85140 trames émises (5.00 trames/s), 0 erreurs d'envoi, 3 recalages de cadence
+[agent] écho console draîné : 7708651 o, 173344 lignes en 17037.1 s = 452.5 o/s, 10.17 lignes/s (PLAFOND du bruit console : inclut le battement 10 s et tout ESP_LOGx)
+[agent] aucun refus de commande console signalé par le firmware sur le fil (ni trame `pc`, ni pose d'horloge)
+[agent] horloge LUE : dernier etat « OS0 » (bit OS = 0), il y a 218 s — 58 lecture(s) d'etat sur 29 interrogation(s) `rtc`
+[agent] horloge VUE : la carte disait « 2026-08-31 22:08:36 » (ecart carte-tour -6 s ; ecart MAX vu 6 s ; seuil ete/hiver 120 s)
+[agent] horloge : AUCUNE pose tentee — c'est le regime NORMAL quand la carte n'a pas perdu l'heure. ⚠️ Le lire avec la ligne « horloge LUE » ci-dessus : c'est elle qui distingue « rien a faire » de « mecanisme mort ».
+[agent] horloge : aucun refus de pose signale par la carte
+[agent] horloge : aucun echec du CANAL de commande console
+[agent] horloge : 29 commande(s) console emise(s), 0 en echec — ⛔ HORS `trames_emises` (le debit publie ci-dessus decrit les trames, et rien d'autre)
+[agent] aucun ecretage : toute valeur emise est la valeur mesuree
+[agent] 🔴 PANNES DE SOURCE (grandeur perdue ⇒ champ VIDE, « -- » sur SA ligne ; metrique non emise SEULEMENT si la position 0 manquait) : lhm:TimeoutError=12
+[agent] LHM : 17017 lecture(s) reussie(s), 12 en echec — duree moyenne 26.5 ms, MAX 736.0 ms (timeout pose : 600 ms)
+[agent] 🔴 le plafond a COUPE au moins une lecture (12 echec(s), timeout 600 ms). ⚠️ Le dimensionnement est a revoir. ⛔ `duree_max` (736 ms) est un MAX sur les reussites ET les echecs : il ne dit PAS a quel instant la coupe a eu lieu.
+[agent] 🔴 UNE LECTURE LHM A DEPASSE LE PLAFOND SANS ECHOUER : 736 ms pour un timeout de 600 ms (123 %), 12 echec(s). ⚠️ Le budget ne borne que le RESEAU : ce depassement vient d'ailleurs (parse, ordonnancement). ⛔ C'EST un incident — il mange la cadence et arme le recalage.
+[agent] aucune absence LHM : les cinq sondes ont rendu une valeur a chaque lecture reussie

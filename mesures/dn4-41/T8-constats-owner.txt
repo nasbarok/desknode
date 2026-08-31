@@ -1,0 +1,309 @@
+================================================================================
+T8 — SEANCE CARTE dn4-41 · CONSTATS OWNER A L'OEIL
+Binaire : App version `4f9b401` — LU AU BANDEAU, ⛔ pas deduit du depot.
+Note UNE SEULE FOIS pour toute la campagne.
+Debut : 2026-08-31 ~22:15
+================================================================================
+
+BUDGET D'INSERTIONS ANNONCE AVANT TOUT GESTE (AC2.9.d) : **4** — 2 retraits
+(groupe 2x12 : BH1750+ToF ENSEMBLE · BME680 par son embase JST) + 2 remises.
+⛔ Pas de rejeu « pour voir ».
+
+--------------------------------------------------------------------------------
+FENETRE 1 — AC4.2 / AC4.7 : LA VOIE GEOMETRIQUE SE TRANCHE A L'OEIL
+--------------------------------------------------------------------------------
+Etat de depart etabli AVANT la fenetre (⛔ regle « une observation = UNE
+commande », et « etablir l'etat AVANT de changer quoi que ce soit ») :
+  `absent` ⇒ BME680 VIVANT (0 echecs) · BH1750 VIVANT (0 echecs)
+            INA219 JAMAIS (⛔ NON CADENCE, retire du bus le 2026-08-21)
+            VL6180X JAMAIS
+  ⇒ Sur la carte SOUDEE, ⛔ AUCUN capteur n'est declare ABSENT. C'est le sens
+    « faux positif » d'AC2.7, releve ici a chaud ; le sens qui QUALIFIE reste
+    le demarrage a FROID (fenetre suivante).
+
+Ce qui etait demande a l'oeil, et pourquoi :
+  1. le panneau `LUMINOSITE` est-il ENTIEREMENT visible (rien qui deborde) ;
+  2. le texte d'etat sous les cibles tient-il ENTIER (4 lignes) ;
+  3. les deux cibles (210 x 66 px) s'atteignent-elles au doigt.
+
+🎯 **VERBATIM OWNER (2026-08-31)** :
+   « tout est bon, le panneau LUMINOSITE est là et l'état tient entier »
+
+⇒ **LA VOIE (b) D'AC4.2 EST VALIDEE PAR L'OEIL.** Elle avait ete retenue sur un
+  CALCUL qui REFUTAIT la voie (a) de la story (« ETAT ne porte qu'UNE ligne » :
+  il en porte QUATRE, CINQ au pire cas ; line_height 18 ⇒ pire cas 100 px ⇒ (a)
+  liberait 10 px, ⛔ pas 50, et aurait TRONQUE le panneau de diagnostic).
+  ✅ Le calcul et l'oeil DISENT LA MEME CHOSE. ⛔ Ce n'est pas une confirmation
+    gratuite : c'etait le point ou le papier pouvait mentir, et il n'a pas menti.
+
+⚠️ CE QUE CETTE FENETRE NE PROUVE PAS ENCORE, ET ÇA S'ECRIT :
+  ⛔ le point 3 (« ça s'atteint au doigt ») n'a PAS de constat SEPARE — l'owner a
+  repondu « tout est bon », ⛔ il n'a pas dit avoir TAPE. La preuve de
+  l'atteignabilite est le TAP lui-meme, et c'est la fenetre suivante.
+  ⛔ Ne pas compter cette fenetre comme la preuve d'AC4.1.
+
+--------------------------------------------------------------------------------
+FENETRE 2 — AC4.1 / AC4.3 / AC4.7 : LE REGLAGE SE FAIT AU DOIGT
+--------------------------------------------------------------------------------
+Etat AVANT, releu a la console : retroeclairage 80 %, asservissement ARME,
+`applique : 80 % (sur 80 lx)`, regime ACTIF.
+
+🎯 **VERBATIM OWNER (2026-08-31)** :
+   « oui tres bien l'alternement luminosité % ! et auto ! les valeurs sont ok »
+
+⇒ AC4.1 TENU — le reglage est ATTEIGNABLE AU DOIGT. `bl <n>` a la console ne
+  satisfaisait PAS cet AC : la story existe pour quelqu'un qui n'a pas de console.
+⇒ AC4.3 TENU — les DEUX items du perimetre fonctionnent : l'alternance des crans
+  de niveau ET la bascule `AUTO`. ⛔ Les 3 autres items du pre-menu de D16
+  (seuils de lux, 1-5 niveaux, barre de lumiere captee) restent ENTIERS en V0.2.
+⇒ L'echelle 20 / 47 / 73 / 100 %, DERIVEE de DN_ENV_BL_PCT_MIN et
+  DN_ENV_BL_PCT_ABS_MAX (⛔ jamais ecrite en litteral), est jugee « ok » a l'oeil.
+
+✅ RELECTURE DE L'ETAT REEL APRES LA FENETRE (⛔ pas de la commande envoyee) :
+   `bl` rend « asservissement BH1750 : ARME », duty 80 %, `applique : 80 %
+   (sur 20 lx)` ⇒ l'owner a fini sur AUTO, et la loi a repris la main. COHERENT.
+
+================================================================================
+🎯 FENETRE 3 — LE VRAI POSITIF EST TOMBE **SANS QU'ON LE CHERCHE**, ET IL VAUT
+   MIEUX QUE `0x40`
+================================================================================
+
+CONSTAT : `absent` rend **VL6180X : ABSENT (45 re-ouvertures echouees, seuil 2)**,
+`0 lectures`, `1 absences`, **`err_i2c 46`**.
+
+⛔ ON NE CONCLUT PAS SUR UN SEUL INSTRUMENT. Deux instruments INDEPENDANTS ont
+ete confrontes :
+  · le SCAN (`i2c`, 5 passes par adresse) : **`0x29` N'APPARAIT PAS.**
+    Presents 5/5 : 0x20 TCA9554 · 0x23 BH1750 · 0x51 RTC · 0x5D GT911 ·
+    0x6B QMI8658 · 0x77 BME680. Instable 1/5 : 0x73 (inconnu, ⛔ non identifie).
+    ✅ Le temoin positif du scan est OK (expander ET tactile stables) ⇒ le scan
+      est credible ICI.
+  · la TRANSACTION DE DONNEE (`configurer()`, chemin REEL du module) : echoue,
+    46 fois comptees.
+  ⇒ LES DEUX DISENT LA MEME CHOSE.
+
+🎯 **ET LE FAIT PHYSIQUE A ETE DEMANDE A L'OWNER, ⛔ PAS DEDUIT.**
+   Question posee : « le VL6180X est-il physiquement branche en ce moment ? »
+   **REPONSE OWNER : « Non, il est débranché ».**
+
+⇒ **LE VERDICT « ABSENT » EST UN VRAI POSITIF, SUR DU VRAI SILENCE, A ZERO
+  INSERTION.** Et il vaut MIEUX que le temoin `0x40` prevu par AC2.8 :
+  · `0x40` est une adresse vide ou il n'y a JAMAIS eu de connecteur ;
+  · `0x29` est **UN CAPTEUR DU GROUPE**, avec son connecteur, ses pull-ups et
+    son cablage reels — et **LA CARTE A DEMARRE AVEC LUI ABSENT** (le flash de
+    22:13 s'est fait dans cet etat) ⇒ ⛔ ce n'est PAS le boot d'une carte NUE,
+    mais c'est deja UN BOOT AVEC UN CAPTEUR MANQUANT.
+
+🔴 ET UNE PREMISSE D'AC2.9 EST REFUTEE PAR CE FAIT : la story ecrit
+   « le groupe part EN BLOC (guirlande soudee) : BH1750 et ToF ENSEMBLE,
+   ⛔ pas module par module ». **L'etat physique constate le dement** : le ToF
+   est absent PENDANT QUE le BH1750 repond 5/5. ⇒ ils sont separables.
+   ⛔ Ne pas ecrire un protocole qui les lie.
+
+--------------------------------------------------------------------------------
+🎯 AC9.3.a — LE PIRE CAS DE BLOCAGE I2C EST CHIFFRE, ET C'EST LA PREMIERE FOIS
+--------------------------------------------------------------------------------
+Ce que le dossier CRAIGNAIT (dn_env.h) : « ~12 x DN_ENV_I2C_TIMEOUT_MS par
+cycle », soit **~1,2 s sur une periode de 5 s = 24 %**, JAMAIS exerce (« la
+famine DMA d'AC12 a ete rejouee sur un bus SAIN »).
+
+MESURE 1 — temoin `0x40` (adresse vide, 5 transactions) :
+   **moyenne 174 us · MAX 235 us**
+   ⚠️ Code rendu : `ESP_ERR_INVALID_STATE`.
+   ⛔ **JE NE SIGNE PAS LE MOT « NACK »** : cette mesure ne distingue PAS un
+     NACK d'un refus PRECOCE du driver (avant le fil). Ce qu'elle etablit, c'est
+     **LA DUREE**, et c'est ce que la question demandait.
+
+MESURE 2 — le VRAI chemin du module, ToF reellement absent, 15 echantillons de
+la duree de cycle `dn_env` sur ~75 s (le ToF ne retente que toutes les 60 s) :
+   188 · 190 · 195 · 195 · 214 · 215 · 215 · 217 · 218 · 219 · 226 · 231 · 280
+   · **453** · 453 us     ⇒ **MAX 453 us**
+   (le pic de 453 us est le cycle 588, ou la re-ouverture du ToF a eu lieu)
+
+⇒ **VERDICT : LE PIRE CAS EST THEORIQUE, ⛔ PAS VECU.**
+   453 us sur 5 000 ms = **0,009 %** de la periode, la ou le dossier craignait
+   **24 %**. Facteur **~2 650** entre le craint et le mesure.
+   ⇒ ⛔ **AUCUN correctif n'est requis avant le gel du firmware** (AC9.3.c), et
+     ⛔ aucune ligne ne part aux Known-issues pour ce motif.
+
+⚠️ CE QUE CES DEUX MESURES NE DISENT PAS, ET ÇA S'ECRIT (AC9.3.b) :
+   ⛔ Elles sont prises sur un bus CHAUD ou SIX devices repondent. La fenetre
+   froide degrade le bus **ENTIER** — **ce n'est PAS une addition**. Le cas
+   « demarrage a froid sur bus nu » reste a mesurer, et c'est AC2.9.e.
+
+================================================================================
+FENETRE 4 — AC2.7 : LES DEMARRAGES A FROID REELS (debranchement USB ~3 s)
+================================================================================
+Protocole : l'owner DEBRANCHE le cable USB (⛔ ni `reboot`, qui laisse le rail
+debout, ni le retrait de VCC, a cause de l'alimentation fantome §13.10), attend
+~3 s, rebranche. L'agent re-attache et LIT A ~130 s d'uptime — c'est-a-dire
+AU-DELA du premier instant ou un faux positif serait possible (seuil x backoff
+= 120 s). ⛔ Lire a 10 s ne prouverait RIEN.
+
+🔴 CORRECTION DE PROTOCOLE, ECRITE PLUTOT QUE CORRIGEE EN SILENCE
+   Au cycle 1 j'ai ECRIT « a ~130 s d'uptime » SANS L'AVOIR MESURE : j'ai
+   suppose que l'uptime valait mon `sleep`. FAUX — il y a un delai libre entre
+   le rebranchement de l'owner et ma commande. Au cycle 2, l'uptime REEL etait
+   **630 s**, ⛔ pas 130.
+   ⇒ C'est exactement « relire l'ETAT REEL, jamais la commande envoyee ».
+   ⇒ A PARTIR DU CYCLE 2, L'UPTIME EST MESURE (`up N s`) ET PUBLIE.
+   ⇒ Et pour le cycle 1, l'uptime n'est pas perdu : il se DEDUIT du compte
+     d'echecs, borne [120 s ; 180 s[ — voir le modele ci-dessous.
+
+🎯 LE MODELE EST FALSIFIABLE, ET IL A ETE CONFRONTE :
+     echecs attendus = floor(uptime / (seuil_backoff x periode)) = floor(up/60)
+   · cycle 2 : up = 630 s ⇒ **10 attendus**, **10 MESURES**. ✅
+   · cycle 2 : cycles dn_env = 127 ⇒ 127 x 5 s = 635 s ≈ up 630 s. ✅
+   ⇒ Le backoff, le seuil et le compteur se comportent SUR LA CARTE comme le
+     code l'annonce. ⛔ Ce n'est pas une verification de plus : c'est la SEULE
+     qui porte sur du silicium.
+
+--- CYCLE 1/6 ---------------------------------------------------------------
+  BME680  (BRANCHE)   : VIVANT   0 echecs   ✅
+  BH1750  (BRANCHE)   : VIVANT   0 echecs   ✅
+  VL6180X (DEBRANCHE) : ABSENT   2 echecs   ✅ pile au seuil
+  ⚠️ uptime NON MESURE a ce cycle (voir la correction ci-dessus) — il se DEDUIT
+     du compte : 2 echecs ⇒ uptime dans [120 s ; 180 s[.
+  ⇒ Les deux capteurs presents n'accumulent **AUCUN** echec : ils se
+    retablissent AVANT la premiere re-ouverture (60 s), donc le compteur est
+    remis a zero et le verdict est STRUCTURELLEMENT inatteignable pour eux.
+  ⇒ Le capteur reellement absent tombe **PILE AU SEUIL**.
+  🎯 LE FAUX POSITIF ET LE VRAI POSITIF, DANS LE MEME BOOT.
+
+  ⚠️ INCIDENT D'INSTRUMENT, ⛔ pas de carte : la 1re invocation de `absent` a
+     rendu une CAPTURE VIDE. Le pilote l'a DIT (« ça ne prouve PAS que la carte
+     est muette — RE-JOUER »), la commande rejouee a rendu la sortie complete.
+     ⇒ C'est le piege n°11 du skill, et l'instrument l'a attrape.
+
+🎯 AC4.5 — LA PERSISTANCE EST PROUVEE PAR CE MEME DEMARRAGE A FROID :
+   AVANT le debranchement, l'owner a tape UNE fois le niveau au MENU (auto
+   passe OFF, cran grave en NVS).
+   APRES le retour du rail : `bl` rend **« retroeclairage : 47 % »** et
+   **« asservissement BH1750 : DESARME »**.
+   ⇒ 47 % = `dn_reglage_bl_cran(1)`, DERIVE de DN_ENV_BL_PCT_MIN (20) et
+     DN_ENV_BL_PCT_ABS_MAX (100) — ⛔ jamais ecrit en litteral.
+   ⇒ Le boot pose **le niveau voulu**, ⛔ pas 100 % en aveugle, et la
+     preference d'armement survit AUSSI. La chaine est complete :
+     tap MENU -> NVS -> relecture au boot -> LEDC.
+
+--- CYCLE 2/6 ---------------------------------------------------------------
+  uptime MESURE : **630 s** (`up 630 s`) · cycles dn_env : 127
+  BME680  (BRANCHE)   : VIVANT   **0 echecs apres 630 s**   ✅
+  BH1750  (BRANCHE)   : VIVANT   **0 echecs apres 630 s**   ✅
+  VL6180X (DEBRANCHE) : ABSENT   10 echecs (10 attendus)    ✅
+  ⇒ RESULTAT PLUS FORT QUE PREVU : les deux capteurs presents tiennent
+    **ZERO echec sur DIX MINUTES**. ⛔ Ce n'est pas « le verdict n'est pas
+    encore tombe » — c'est que le compteur ne monte JAMAIS pour eux.
+  ✅ AC4.5, 2e boot SANS AUCUN TAP : `asservissement BH1750 : DESARME` est
+    RESTAURE a l'identique ⇒ la persistance n'etait pas un coup de chance du
+    premier boot.
+--- CYCLES 3 a 6 -------------------------------------------------------------
+  cycle 3 : uptime MESURE 140 s · BME680 VIVANT 0 · BH1750 VIVANT 0 · ToF ABSENT 2
+  cycle 4 : uptime MESURE 130 s · BME680 VIVANT 0 · BH1750 VIVANT 0 · ToF ABSENT 2
+  cycle 5 : uptime MESURE 130 s · BME680 VIVANT 0 · BH1750 VIVANT 0 · ToF ABSENT 2
+  cycle 6 : uptime MESURE 130 s · BME680 VIVANT 0 · BH1750 VIVANT 0 · ToF ABSENT 2
+            + `capteurs` : BME680 VIVANT — **21,9 C · 56,3 %** · age 1908 ms
+              ⇒ ⛔ pas seulement « non declare absent » : il LIT.
+
+================================================================================
+🏁 BILAN AC2.7 — SIX DEMARRAGES A FROID REELS
+================================================================================
+✅ **ZERO FAUX POSITIF SUR 6 CYCLES.** Les deux capteurs BRANCHES sont restes a
+   **0 echec** sur les six, dont un cycle observe **630 s** (10 min).
+   ⇒ ⛔ Ce n'est pas « le verdict n'avait pas eu le temps de tomber » : le
+     compteur ne monte JAMAIS pour eux, parce qu'ils se retablissent avant la
+     premiere re-ouverture (60 s) et qu'une lecture valide le remet a zero.
+
+✅ **LE MODELE A ETE CONFRONTE A LA CARTE, CINQ FOIS, ET IL TIENT** :
+     echecs attendus = floor(uptime / 60)
+   up 140 ⇒ 2/2 · up 130 ⇒ 2/2 (x3) · up 630 ⇒ 10/10.
+   ⛔ Aucun ecart.
+
+⚠️ **CE QUI N'A PAS ETE OBSERVE, ET IL FAUT L'ECRIRE : LE CYCLE DEGRADE.**
+   §13.17.1 le donne a **~1 fois sur 6**. Sur ces six cycles, **aucun n'a
+   presente de symptome degrade** — ⛔ ni a l'oeil de l'owner, ni au compteur.
+   ⇒ J'ecris **« NON OBSERVE SUR 6 CYCLES »**, ⛔ **JAMAIS « PROUVE »**.
+   ⇒ Et la garantie ne repose PAS sur cette absence d'observation : elle repose
+     sur l'ARITHMETIQUE (seuil x backoff = 120 s > fenetre froide) et sur les
+     DEUX EXCLUSIONS ecrites au code (boot + chemin degrade), que la gate garde.
+     ⛔ Un cycle degrade qui serait sorti n'aurait rien pu casser : meme avec le
+     bus mort pendant 60 s, il faut DEUX re-ouvertures ratees, donc 120 s.
+
+================================================================================
+🔴 AC2.9 — ECART DECLARE : LE TEMOIN QUALIFIANT N'A PAS ETE JOUE
+================================================================================
+**DECISION OWNER, 2026-08-31** : « Je préfère ne rien débrancher ».
+⛔ Elle est respectee telle quelle, et elle est ECRITE PLUTOT QU'ADOUCIE.
+
+⇒ **BUDGET D'INSERTIONS : 4 ANNONCEES, 0 CONSOMMEE.** ⛔ Le budget n'a pas ete
+  depasse — il n'a pas ete entame. C'est l'idiome du depot (« budget annonce a 6
+  et tenu »), applique au cas ou le geste n'a pas lieu.
+
+CE QUI N'A DONC PAS ETE EXERCE, ET IL FAUT LE LIRE EXACTEMENT :
+  ⛔ le DEMARRAGE A FROID d'une carte SANS AUCUN capteur ;
+  ⛔ les conditions ELECTRIQUES d'un bus nu (pull-ups, appel de courant a froid
+    de trois modules — cause candidate n°1 de §13.16.10) ;
+  ⛔ la composition « fenetre froide x bus nu » (AC9.3.b), qui ⛔ NE S'EXTRAPOLE
+    PAS depuis les mesures a chaud.
+
+🎯 CE QUI A ETE EXERCE MALGRE TOUT, ET QUI EST PLUS FORT QUE CE QUE LA STORY
+   ESPERAIT DE `0x40` :
+  · **UN CAPTEUR DU GROUPE REELLEMENT DEBRANCHE** (VL6180X @ 0x29), avec son
+    connecteur, son cablage et ses pull-ups reels — confirme par DEUX
+    instruments independants (scan 0/5 ET transaction de donnee) et par le
+    FAIT PHYSIQUE demande a l'owner ;
+  · **SIX DEMARRAGES A FROID REELS** avec ce capteur absent ⇒ le BOOT a bien
+    ete exerce **avec un capteur manquant**, six fois. ⛔ Ce n'est pas le boot
+    d'une carte NUE, et ⛔ ce n'est pas presente comme tel ;
+  · l'adresse **`0x40`** reellement vide.
+
+⇒ **AC2.9 EST FERMEE AVEC UN ECART DECLARE**, ⛔ elle n'est pas cochee.
+  Et le README dit LE VRAI, ⛔ ni « non teste » ni « valide » (AC8.7).
+
+================================================================================
+🔴 FENETRE 6 — LA CARTE REFUTE UNE AFFIRMATION QUE dn4-41 AVAIT ECRITE
+================================================================================
+OBJET : jouer AC3 (le desarmement) SANS aucune insertion, via le temoin
+d'inhibition — puisque l'owner a decide de ne rien debrancher.
+
+ETAT AVANT : `bl auto on` ⇒ asservissement ARME, duty **47 %** puis porte a
+**80 %** par la loi (lumiere ambiante). Temoin arme : `absent inhiber lum on`.
+La console a bien imprime SA LIMITE au moment de l'armer.
+
+ECHANTILLONNAGE, 9 releves sur 162 s :
+  t+18s .. t+162s : BH1750 **MUET**, **0 echecs**, duty **80 %**, auto **ARME**
+  ⇒ LE VERDICT « ABSENT » N'EST JAMAIS TOMBE.
+
+🔴 CAUSE, TROUVEE DANS LE CODE ET ⛔ PAS DEVINEE :
+   `cycle_un()` n'alimente le verdict que dans ses DEUX branches de
+   re-ouverture — `!dev` et `!config_posee`. Or le BH1750 a ete **ouvert ET
+   configure AU BOOT**, quand il repondait : `dev != NULL` et
+   `config_posee == true` **pour toujours**. La boucle va donc droit a `lire()`,
+   qui echoue et compte `err_i2c` — mais ⛔ `reouv_echouee()` n'est JAMAIS
+   appelee.
+   ⚠️ Et rien ne remet `config_posee` a false pour ce capteur : sa garde de
+      conformite rend `CONF_OK` EN DUR (il n'a **aucun registre relisible**),
+      fait deja DECLARE dans `dn_env.c` depuis la revue du 2026-08-20.
+
+⚠️ INCOHERENCE DE MA PART, ET ELLE EST ECRITE : cote `dn_capteurs` j'avais VU
+   ce piege et je FERME le driver a l'armement du temoin (« sans cette
+   fermeture le temoin ne prouve rien »). Cote `dn_env`, je ne l'ai pas fait.
+   ⇒ Le meme raisonnement, applique d'un cote et oublie de l'autre.
+
+🎯 CE QUE CETTE FENETRE ETABLIT MALGRE TOUT, ET C'EST UN VRAI RESULTAT :
+   ✅ **AC3.2 EST DEMONTREE SUR LA CARTE** : capteur MUET ⇒ l'auto RESTE ARME
+     et **le duty NE BOUGE PAS** — 80 % constant sur 162 s, ⛔ aucun repli, ⛔
+     aucune extinction, ⛔ aucune mise a fond. C'est AC3.3 de `dn4-19`,
+     INTACTE, et c'est exactement ce que `dn4-41` ne devait PAS casser.
+
+🔴 CE QUE ÇA CORRIGE DANS MES PROPRES ECRITS (⛔ barre, pas efface) :
+   §13.28.4 et le docblock du temoin affirment qu'il exerce « le desarmement
+   d'AC3 ». **C'EST FAUX POUR UN CAPTEUR OUVERT AU BOOT.** Il exerce le verdict
+   pour un capteur absent **DES LE BOOT** — le scenario CIBLE de la story, et
+   celui que le ToF a prouve six fois — ⛔ pas pour un capteur retire a chaud.
+
+⚠️ ET LA CONSEQUENCE PRODUIT EST NOMMEE, ⛔ PAS CORRIGEE EN DOUCE :
+   un BH1750 qui se debranche EN MARCHE reste **MUET a vie**, duty gele, auto
+   affiche ARME. ⛔ **C'est le comportement PRESCRIT** par AC3.2 (« ⛔ pas sur
+   MUET ») et par AC3.3 de `dn4-19`. ⇒ ⛔ **LE PRODUIT N'EST PAS CHANGE.**
+   C'est le TEMOIN qui doit reproduire « aucun device », ⛔ pas la semantique.

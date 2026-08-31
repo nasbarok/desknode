@@ -232,6 +232,15 @@ static const uint8_t k_addr[DN_ENV_NB] = {
  * `absences`, la réversibilité, les quatre phrases de la console, et le
  * désarmement de l'asservissement (AC3). Sur les DEUX capteurs, à coût NUL.
  *
+ * 🔴 ~~Cette phrase était VRAIE PAR CONSTRUCTION.~~ ⛔ ELLE ÉTAIT FAUSSE, ET
+ *    C'EST LA CARTE QUI L'A DIT (séance du 2026-08-31). Tant que
+ *    `dn_env_inhiber()` ne remettait pas `config_posee` à false, le témoin
+ *    produisait `MUET` **et rien d'autre** : le verdict n'était jamais
+ *    alimenté, donc ⛔ ni la transition, ni le seau, ni le désarmement d'AC3
+ *    n'étaient exercés. **Barré, ⛔ pas effacé** : c'est la trace de ce qui
+ *    était cru en écrivant le témoin, et le motif pour lequel un témoin se
+ *    JOUE avant d'être décrit.
+ *
  * ⛔ CE QU'IL N'EXERCE PAS, ET ÇA S'ÉCRIT ICI PLUTÔT QU'AILLEURS :
  *   · ⛔ **aucun NACK** — rien ne part sur le fil ;
  *   · ⛔ **aucun timeout** — la primitive rend AVANT `i2c_master_transmit()` ;
@@ -255,6 +264,37 @@ void dn_env_inhiber(dn_env_id_t id, bool on)
         return;
     }
     s_inhibe[id] = on;
+    if (on) {
+        /*
+         * 🔴 SANS CETTE LIGNE, LE TÉMOIN NE PROUVE RIEN — ET LA CARTE L'A
+         *    RÉFUTÉ LE 2026-08-31, EN SÉANCE.
+         *
+         * Mesuré : BH1750 inhibé ⇒ `MUET`, **`0 échecs`**, verdict `ABSENT`
+         * JAMAIS atteint, sur 162 s d'observation.
+         * Cause : `cycle_un()` n'alimente le verdict que dans ses deux branches
+         * de RÉ-OUVERTURE (`!dev`, `!config_posee`). Un capteur ouvert ET
+         * configuré AU BOOT n'y repasse **jamais** — et rien ne remet
+         * `config_posee` à false pour le BH1750, dont la garde de conformité
+         * rend `CONF_OK` **en dur** (aucun registre relisible, fait déclaré
+         * depuis la revue du 2026-08-20).
+         *
+         * ⇒ On rend le module à l'état qu'un device ABSENT AU BOOT produit :
+         *   configuration NON POSÉE, donc ré-ouverture périodique, donc
+         *   transaction de donnée, donc verdict. ⛔ On ne touche PAS à `dev` :
+         *   le descripteur existe vraiment, et `dn_env_device_ouvert()` doit
+         *   continuer à dire la vérité.
+         * ⚠️ C'est le MÊME ménage que `dn_capt_inhiber()` fait en fermant le
+         *    driver. Le raisonnement avait été tenu d'un côté et OUBLIÉ de
+         *    l'autre ; la carte a trouvé l'oubli, ⛔ aucune gate.
+         *
+         * ⛔ ET ÇA NE CHANGE PAS LA SÉMANTIQUE DU PRODUIT : un capteur qui se
+         *   débranche EN MARCHE reste `MUET`, duty GELÉ, auto ARMÉ — c'est
+         *   AC3.2 (« ⛔ pas sur MUET ») et AC3.3 de `dn4-19`, et c'est
+         *   PRESCRIT. Seul le TÉMOIN emprunte le chemin du boot.
+         */
+        s_c[id].config_posee = false;
+        s_c[id].cycles_avant_reinit = 1; /* la 1re tentative au cycle suivant */
+    }
     ESP_LOGW(TAG, "%s @ 0x%02X : TEMOIN D'INHIBITION %s — ⛔ ceci n'exerce NI "
                   "NACK NI timeout NI le bus, seulement le CHEMIN DE CODE.",
              k_nom[id], k_addr[id], on ? "ARME" : "DESARME");
