@@ -1,0 +1,31 @@
+═══ T9-D — AC5.3 : le jeton PARTIELLEMENT avale par le REPL ═══
+firmware 31535c0 · le cas MESURE de l'entree de ledger l.5509
+2026-08-31T13:52:57+02:00
+
+--- (1) le cas fautif :  (É = 2 octets >= 0x80) ---
+
+$ widget largeur RÉSEAU 18
+« RSEAU » = 63 px   dans dn_font_18 (line_height 23)
+🔴 LE TEXTE MESURE N'EST PAS CELUI QUI A ETE TAPE — DRAPEAU LEVE.
+   « RSEAU » est EXACTEMENT « RÉSEAU » prive de ses octets >= 0x80, et
+   « RÉSEAU » est une chaine que CE PRODUIT AFFICHE. Le REPL les
+   retire SANS UN MOT : 1 caractere(s) manquent a la mesure
+   ci-dessus, et `argc` n'a PAS bronche (la mutilation est
+   PARTIELLE, le jeton ne s'est pas vide).
+   ⛔ NE PAS CONCLURE SUR CE CHIFFRE. ⇒ `widget largeur mur`,
+     dont les chaines sont COMPILEES, ⛔ pas tapees.
+--- fin : 9 lignes emises ---
+rc=0
+
+--- (2) le TEMOIN NEGATIF : la meme commande SANS accent ---
+
+$ widget largeur RESEAU 18
+« RESEAU » = 75 px   dans dn_font_18 (line_height 23)
+⚠️ 6 octet(s) / 6 colonne(s) — et le REPL RETIRE tout octet
+   >= 0x80 avant d'arriver ici (mesure du 2026-08-29 : « AEB » rend
+   21 px comme « AB »). Si un accent a ete tape, la chaine MESUREE
+   n'est pas celle qui a ete TAPEE — et `argc` ne bronche pas quand
+   la mutilation est PARTIELLE. ⇒ pour de l'accentue :
+   `widget largeur mur`, dont les chaines sont COMPILEES.
+--- fin : 7 lignes emises ---
+rc=0

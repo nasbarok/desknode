@@ -1,0 +1,48 @@
+{
+  "firmware": "31535c0",
+  "jeu": "rampe",
+  "espacement": 0.04,
+  "secondes_par_fenetre": 20.0,
+  "fenetres": [
+    {
+      "fenetre": 1,
+      "n": 100,
+      "min": 20,
+      "moy": 110,
+      "max": 226,
+      "trames_emises": 100
+    },
+    {
+      "fenetre": 2,
+      "n": 99,
+      "min": 1,
+      "moy": 110,
+      "max": 225,
+      "trames_emises": 100
+    },
+    {
+      "fenetre": 3,
+      "n": 98,
+      "min": 3,
+      "moy": 124,
+      "max": 230,
+      "trames_emises": 100
+    },
+    {
+      "fenetre": 4,
+      "n": 100,
+      "min": 1,
+      "moy": 153,
+      "max": 246,
+      "trames_emises": 100
+    },
+    {
+      "fenetre": 5,
+      "n": 98,
+      "min": 79,
+      "moy": 170,
+      "max": 234,
+      "trames_emises": 100
+    }
+  ]
+}

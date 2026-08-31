@@ -1,0 +1,43 @@
+═══ T9-G — AC6.2 : LE VERDICT DE CONTRASTE, SUR LA CARTE ═══
+firmware 31535c0
+2026-08-31T13:59:42+02:00
+
+--- (0) etat AVANT : la valeur d'aplat en vigueur ---
+
+$ veille case
+🔴 REFUS [REPL: code de retour non nul] : Command returned non-zero error code: 0x1 (ERROR)
+usage : veille case <rrggbb>   (actuel : 000000)
+🔬 INSTRUMENT DE BISSECTION avant d'etre un reglage :
+   constat owner du 2026-08-25 « les 6 cases sont pleines en
+   VERT sur fond noir », alors que l'instrument lit
+   `opa 255 · couleur 1E1E1E` sur la racine de chaque case.
+   ⛔ Un GRIS ne peut pas devenir vert (R=G=B est invariant
+   par permutation de canaux) ⇒ ce qui est MESURE n'est pas
+   ce qui est DESSINE. Poser une couleur FRANCHE tranche.
+--- fin : 8 lignes emises ---
+
+--- (1)  (valeur INCHANGEE) — le levier imprime son verdict ---
+── VERDICT DE CONTRASTE (dn4-23/AC6.2) — luminance BT.601, 0..255 ──
+  piste de jauge       141820  lum  23
+  aplat de case AMBIENT 000000  lum   0   ecart  23  ⚠️ FAIBLE — a verifier A L'OEIL
+  aplat de case ACTIF   noir a 178/255 sur l'artwork ⇒ 30 % du Living
+     PCB traverse. ecart <=  23 (PLAFOND, fond noir pur) — ⛔ la
+     valeur REELLE depend de l'ARTWORK sous la case et n'est PAS
+     calculable ici (le cuivre rend 24 la ou la piste rend 23).
+  indicateur ↔ piste, mode AMBIENT (accents desatures) :
+    CPU       827E86  lum 128   ecart 105  au-dessus du repere
+    GPU       9AA3A4  lum 160   ecart 137  au-dessus du repere
+    RAM       A49EA1  lum 160   ecart 137  au-dessus du repere
+    RÉSEAU    76797F  lum 120   ecart  97  au-dessus du repere
+    DISQUE    E7E7E7  lum 231   ecart 208  au-dessus du repere
+    AMBIANCE  AFAAA6  lum 171   ecart 148  au-dessus du repere
+⚠️ ON AVERTIT, ⛔ ON NE REFUSE PAS : c'est un instrument d'A/B, et
+   l'owner doit voir la couleur qu'il tape.
+⛔ Le repere 24 vient de `bloc_gris`, qui gouverne LES TROIS GRIS DE
+   REGIME entre eux. La paire piste↔fond n'a JAMAIS eu de seuil ⇒
+   au-dessus du repere n'est PAS une preuve. Seul l'ecart NUL est une
+   certitude, et c'est de l'arithmetique : meme couleur, plus de
+   frontiere.
+⛔ CECI N'EST PAS LA PASSE DE PALETTE — c'est `dn4-29`, et elle
+   s'arbitre A L'OEIL, PAR L'OWNER.
+--- fin : 28 lignes emises ---

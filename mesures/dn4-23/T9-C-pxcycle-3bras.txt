@@ -1,0 +1,27 @@
+═══ T9-C bis — AC3.5 : TROIS BRAS, DEUX PASSES CHACUN ═══
+firmware 31535c0 · agent ARRETE · 60 s par tir · espacement 0,040 s · mock coupe sauf bras « mock »
+2026-08-31T13:46:13+02:00
+
+──── passe 1 · bras « reel » ────
+cycles de redessin : 158
+aire cumulée       : 11373450 px
+
+──── passe 1 · bras « rampe » ────
+cycles de redessin : 260
+aire cumulée       : 11263475 px
+
+──── passe 1 · bras « mock » ────
+cycles de redessin : 75
+aire cumulée       : 9356375 px
+
+──── passe 2 · bras « reel » ────
+cycles de redessin : 153
+aire cumulée       : 11410125 px
+
+──── passe 2 · bras « rampe » ────
+cycles de redessin : 180
+aire cumulée       : 11373400 px
+
+──── passe 2 · bras « mock » ────
+cycles de redessin : 75
+aire cumulée       : 9356125 px

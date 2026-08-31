@@ -4559,10 +4559,22 @@ static void largeur_drapeau_repl(const char *recu)
  *
  * 🔴 LE CAS N'EST PLUS HYPOTHETIQUE. `W_COL_PISTE_DEFAUT` vaut `0x141820`
  *    depuis `dn4-29` ⇒ `veille case 141820` pose l'aplat EXACTEMENT sur la
- *    piste : ecart NUL, **la jauge disparait integralement**, et la console
- *    imprimait « applique MAINTENANT » sans un mot. Trois leviers peuvent la
- *    noyer — `veille case`, `widget opa`, `widget couleur` — et aucun n'avait
- *    de verdict.
+ *    piste : ecart NUL, et la console imprimait « applique MAINTENANT » sans un
+ *    mot. Trois leviers peuvent la noyer — `veille case`, `widget opa`,
+ *    `widget couleur` — et aucun n'avait de verdict.
+ *
+ * 🎯 CE QUE L'OEIL A RENDU, ET IL AMENDE LA PREDICTION (seance du 2026-08-31,
+ *    A/B a DEUX fenetres de 60 s, injecteur `--jeu rampe`, UNE seule variable) :
+ *      · aplat 000000 (ecart 23) : « 2 zones distinctes vert claire et vert
+ *        fonce on vois bien la barre bouger »
+ *      · aplat 141820 (ecart 0)  : « les 6 cases sont vertes et la barre de
+ *        chargement etait vert claire dessus »
+ *    ⇒ ⛔ « LA JAUGE DISPARAIT INTEGRALEMENT » est TROP FORT. C'est **LA PISTE**
+ *      qui se fond dans la case ; l'INDICATEUR reste visible. Ce qui est perdu,
+ *      c'est la LONGUEUR TOTALE — la jauge ne se lit plus comme une PROPORTION.
+ *    ⚠️ Et le VERT est une contrainte de la dalle (elle verdit tout ce qui est
+ *      sombre), ⛔ pas un effet de ce reglage : arbitrage owner du 2026-08-31,
+ *      `dn_widget.c`. Les deux fenetres l'ont rendu.
  *
  * ⛔ LE GARDE-FOU EXISTANT NE SUFFIT PAS : `veille_dire_si_pas_neutre()` ne
  *    teste que `R == G == B`. C'est une garde de NEUTRALITE RGB565, ⛔ pas de
@@ -4603,7 +4615,20 @@ static int lum601(uint32_t rgb)
 static const char *contraste_bande(int ecart)
 {
     if (ecart == 0) {
-        return "🔴 ECART NUL — LA JAUGE DISPARAIT";
+        /* 🔴 FORMULATION CORRIGEE PAR L'OEIL DE L'OWNER, SEANCE DU 2026-08-31.
+         *    Elle disait « LA JAUGE DISPARAIT ». L'A/B a deux fenetres (une
+         *    seule variable : l'aplat) a rendu, verbatim :
+         *      · aplat 000000 : « 2 zones distinctes vert claire et vert fonce
+         *        on vois bien la barre bouger »
+         *      · aplat 141820 : « les 6 cases sont vertes et la barre de
+         *        chargement etait vert claire dessus »
+         *    ⇒ CE QUI DISPARAIT, C'EST LA **PISTE**, ⛔ PAS LA JAUGE :
+         *      l'INDICATEUR reste parfaitement visible. Ce qui est perdu, c'est
+         *      la LONGUEUR TOTALE — donc la jauge ne se lit plus comme une
+         *      PROPORTION, seulement comme une longueur nue.
+         *    ⛔ Un instrument qui SUR-annonce est du meme genre que celui qui
+         *      se tait : c'est le defaut que cette story repare. */
+        return "🔴 ECART NUL — LA PISTE SE FOND DANS LA CASE";
     }
     if (ecart < DN_CONTRASTE_REPERE) {
         return "⚠️ FAIBLE — a verifier A L'OEIL";

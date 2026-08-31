@@ -1,0 +1,45 @@
+═══ T9-A — AC1 : LE REFUS EST LU, SUR LA CARTE (firmware 31535c0, SHA AU BANDEAU) ═══
+2026-08-31T13:40:28+02:00
+
+--- (1) commande INCONNUE : le motif vient du REPL ESP-IDF ---
+
+$ zzz
+🔴 REFUS [REPL: commande inconnue] : Unrecognized command
+Unrecognized command
+⚠️ AUCUN compteur de lignes dans cette sortie (1 ligne(s) reçues).
+   ⛔ Ce n'est PAS « 0 perte », c'est « ON NE SAIT PAS » : firmware
+   antérieur à dn4-23, ou commande enregistrée hors `k_cmds[]`.
+rc=1
+
+--- (2) anim on 10 — le cas MESURE de l'entree de ledger l.233 ---
+
+$ anim on 10
+🔴 REFUS [refus firmware] : refusé : ESP_ERR_INVALID_ARG — période attendue entre 200 et 10000 ms.
+🔴 REFUS [REPL: code de retour non nul] : Command returned non-zero error code: 0x1 (ERROR)
+refusé : ESP_ERR_INVALID_ARG — période attendue entre 200 et 10000 ms.
+--- fin : 1 lignes emises ---
+Command returned non-zero error code: 0x1 (ERROR)
+rc=1
+
+--- (3) flash on — l'entree l.237 ---
+
+$ flash on
+⚠️ COMBINAISON JAMAIS MESURÉE : bounce_px=9600 + stimulus flash.
+   L'ISR qui réalimente le bounce buffer est MASQUÉE pendant
+   l'effacement de secteur (ISR_IRAM_SAFE=n). Si l'image se
+   corrompt, c'est CE couplage — pas la dalle, et pas la
+   famine DMA de §11.4, qui est un autre régime.
+   §5.3 : question OUVERTE, D4 en vigueur. Consigner le
+   constat, quel qu'il soit. `set bounce 0` + `reboot` pour
+   retrouver le régime de dn1-3.
+stimulus flash lancé sur « stimulus » (1048576 o à 0x510000).
+I (28455) dn_stim: stimulus FLASH démarré : effacement+écriture de secteurs de 4096 o, en boucle, sur la partition « stimulus » (1048576 o à 0x510000), sans pause entre deux secteurs.
+Décrire ce qu'on VOIT, précisément :
+  rien ? une ligne ? un flash de toute la dalle ?
+  une image décalée EN PERMANENCE (la DMA a décroché) ?
+--- fin : 12 lignes emises ---
+⚠️ 1 ligne(s) ÉTRANGÈRE(S) : la carte en annonce 12, 13 sont
+   arrivées. ⛔ Ce n'est PAS une perte — `ESP_LOGx` d'une autre
+   tâche ne passe pas par le compteur. C'est un log ASYNCHRONE
+   tombé pendant la commande, et il est dans la capture.
+rc=0

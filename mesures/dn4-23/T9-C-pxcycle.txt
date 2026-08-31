@@ -1,0 +1,35 @@
+═══ T9-C — AC3.5 + AC4 : px/cycle ET charge, jeu FIXE vs jeu RAMPE ═══
+firmware 31535c0 (SHA AU BANDEAU) · agent PC ARRETE · espacement 0,040 s · 60 s par tir
+2026-08-31T13:43:41+02:00
+
+──────── jeu « reel » ────────
+compteurs de flush remis à zéro.
+compteurs de GLISSEMENT (dn4-10) armés : la remise à zéro est
+point de depart POSE : 13 taches, uptime 221 s
+[injecteur] jeu « reel » — 60 s a 1 Hz, espacement 40 ms (peremption 3 s : sans ca les cases retombent a « -- »)
+[injecteur] 🔴 JEU **FIXE** — ses valeurs NE CHANGENT PAS.
+[injecteur] 300 trames emises. ⚠️ les cases retombent a « -- » dans 3 s — c'est la peremption, PAS une regression.
+cycles de redessin : 245
+aire cumulée       : 11410225 px
+  => 36571 px par flush en moyenne (écran plein = 307200 px, soit 11.90 %)
+charge CPU sur la SESSION (fenêtre mesurée : 60791 ms, 13 tâches)
+=> RÉSERVE (tâches IDLE) : 94.6 %  —  CHARGE : 5.4 %
+trames     : 299 valides · 0 doublons · 1 pertes seq · 0 resynchros · 0 reprises
+rejets     : tronquee 0 · trop longue 0 · checksum 0 · version 0 · format 0 · bornes 0
+latence acceptation->label : n=299 · min 9 ms · moy 110 ms · max 243 ms
+
+──────── jeu « rampe » ────────
+compteurs de flush remis à zéro.
+compteurs de GLISSEMENT (dn4-10) armés : la remise à zéro est
+point de depart POSE : 13 taches, uptime 282 s
+[injecteur] jeu « rampe » — 60 s a 1 Hz, espacement 40 ms (peremption 3 s : sans ca les cases retombent a « -- »)
+[injecteur] ✅ JEU VARIABLE (rampes triangulaires, périodes premières entre elles).
+[injecteur] 300 trames emises. ⚠️ les cases retombent a « -- » dans 3 s — c'est la peremption, PAS une regression.
+cycles de redessin : 209
+aire cumulée       : 11373550 px
+  => 36570 px par flush en moyenne (écran plein = 307200 px, soit 11.90 %)
+charge CPU sur la SESSION (fenêtre mesurée : 60771 ms, 13 tâches)
+=> RÉSERVE (tâches IDLE) : 94.2 %  —  CHARGE : 5.8 %
+trames     : 596 valides · 0 doublons · 4 pertes seq · 1 resynchros · 0 reprises
+rejets     : tronquee 0 · trop longue 0 · checksum 0 · version 0 · format 0 · bornes 0
+latence acceptation->label : n=596 · min 1 ms · moy 103 ms · max 243 ms

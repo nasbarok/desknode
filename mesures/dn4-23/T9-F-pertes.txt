@@ -1,0 +1,35 @@
+═══ T9-F — AC2.7 : LE COMPTEUR ATTRAPE-T-IL UNE VRAIE PERTE ? ═══
+firmware 31535c0 · 20 passes SOLO de  · agent ARRETE
+2026-08-31T13:57:02+02:00
+  passe 1 : ✅ complet
+  passe 2 : ✅ complet
+  passe 3 : ✅ complet
+  passe 4 : ✅ complet
+  passe 5 : ✅ complet
+  passe 6 : ✅ complet
+  passe 7 : ✅ complet
+  passe 8 : ✅ complet
+  passe 9 : ✅ complet
+  passe 10 : ✅ complet
+  passe 11 : ✅ complet
+  passe 12 : ✅ complet
+  passe 13 : ✅ complet
+  passe 14 : ✅ complet
+  passe 15 : ✅ complet
+  passe 16 : ✅ complet
+  passe 17 : ✅ complet
+  passe 18 : ✅ complet
+  passe 19 : ✅ complet
+  passe 20 : ✅ complet
+
+BILAN 20 PASSES : 0 PERTE · 0 etrangeres · 0 sans compteur · 20 complet
+
+--- La SEQUENCE qui a perdu : depart · ecoute 20 s (port referme) · delta ---
+⛔ On PUBLIE le taux, on n'INSTRUIT PAS la cause (hors perimetre, ecrit dans la story).
+  sequence 1 : ✅ complet
+  sequence 2 : ✅ complet
+  sequence 3 : ✅ complet
+  sequence 4 : ✅ complet
+  sequence 5 : ✅ complet
+  sequence 6 : ✅ complet
+  ⇒ 0 perte(s) sur 6 sequences
