@@ -91,6 +91,24 @@ ECRIVAINS = {
         "un GESTE (tap MENU ou commande `veille`). ⛔ Un soak sans-les-mains "
         "n'en produit aucune. ✅ Et c'est le seul ecrivain INSTRUMENTE : "
         "`veille` publie son compteur d'ecritures depuis le boot"),
+    # 🔴 AJOUTE PAR `dn4-41` LE 2026-08-31 — ET LA GATE A ETE VUE ROUGIR AVANT
+    #    (capture : `mesures/dn4-41/T4-gate-nvs-ROUGE-avant-declaration.txt`,
+    #    « 🔴 dn_reglage.c ? 2 appel(s) — ⛔ NON CLASSE », BILAN 4 OK / 2 KO).
+    #    ⛔ Une declaration posee sans avoir vu le rouge ne prouve pas que la
+    #    gate garde quoi que ce soit (`dn4-13`/AC7.5).
+    "dn_reglage.c": (
+        "HORS REGIME",
+        "persistance des DEUX reglages d'AFFICHAGE poses AU DOIGT (niveau de "
+        "luminosite manuel, armement voulu de l'asservissement), declenchee par "
+        "un GESTE : un tap sur le panneau LUMINOSITE du MENU. ⛔ Un soak "
+        "sans-les-mains n'en produit AUCUNE — aucune boucle periodique n'appelle "
+        "ce fichier. 🔴 ET C'EST UN FICHIER A LUI PAR NECESSITE : D16 exige que "
+        "`dn_env.c` reste HORS de cette table, et le mettre dans `dn_ui.c` "
+        "aurait classe HORS REGIME un fichier qui porte AUSSI la boucle de "
+        "rendu — la classification vaut au FICHIER, donc elle aurait couvert "
+        "d'avance une ecriture EN REGIME ajoutee plus tard (defaut « gate scopee "
+        "qui epingle vert le meme defaut ailleurs », dn4-16). ✅ INSTRUMENTE "
+        "comme `dn_veille` : `dn_reglage_ecritures()` / `dn_reglage_derniere_us()`"),
 }
 
 ok_total = [0]
