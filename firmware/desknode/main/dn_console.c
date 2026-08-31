@@ -12,6 +12,7 @@
 #include "dn_bootcfg.h"
 #include "dn_capteurs.h"
 #include "dn_env.h"
+#include "dn_reglage.h"
 #include "dn_display.h"
 #include "dn_link.h"
 #include "dn_measure.h"
@@ -12488,7 +12489,45 @@ static int cmd_absent(int argc, char **argv)
 {
     if (argc == 1) {
         absent_etat();
-        printf("\ntemoins : `absent vide` (0x%02X, zero insertion) ·\n",
+        /*
+     * 🔴 TROU TROUVE EN SEANCE LE 2026-08-31, ET FERME ICI.
+     * `dn_reglage` COMPTE ses ecritures NVS (`dn_reglage_ecritures()`), et sa
+     * declaration dans `tools/verif_d4_nvs_dn45.py` l'annonce « INSTRUMENTE
+     * comme dn_veille ». **C'ETAIT A MOITIE FAUX** : le compteur existait,
+     * ⛔ RIEN NE LE PUBLIAIT. Un instrument qu'on ne peut pas LIRE ne peut
+     * disculper personne apres un soak — c'est la definition meme du compteur
+     * decoratif que ce depot refuse.
+     * ⚠️ Et ça s'est PAYE la meme nuit : au reveil, la dalle valait 100 % et je
+     *    n'ai PAS pu trancher entre « le reveil a restaure » et « un tap a fait
+     *    tourner le cran », faute de pouvoir lire le niveau MEMORISE.
+     */
+    printf("\nreglages d'affichage persistes (dn_reglage, geste UNIQUEMENT) :\n");
+    int man = dn_reglage_bl_manuel();
+    if (man < 0) {
+        printf("  niveau manuel : AUCUN CHOISI (⛔ pas « 0 %% » : 0 est un duty\n");
+        printf("                  LEGITIME — noir. « non choisi » et « noir »\n");
+        printf("                  sont deux etats.)\n");
+    } else {
+        printf("  niveau manuel : %d %%\n", man);
+    }
+    printf("  auto VOULU    : %s  (⚠️ la PREFERENCE, ⛔ pas l'etat courant —\n",
+           dn_reglage_bl_auto_voulu() ? "ARME" : "DESARME");
+    printf("                  `bl` dit l'etat COURANT, et les deux DIVERGENT\n");
+    printf("                  quand AC3 desarme sur une source ABSENTE)\n");
+    printf("  ecritures NVS : %lu depuis le boot · derniere %lu us\n",
+           (unsigned long)dn_reglage_ecritures(),
+           (unsigned long)dn_reglage_derniere_us());
+    printf("                  ⇒ c'est l'instrument de D4 : un soak SANS LES\n");
+    printf("                  MAINS doit finir a 0. ⛔ Sinon une ecriture EN\n");
+    printf("                  REGIME s'est glissee, et la gate ne le voit pas.\n");
+    printf("  crans         :");
+    for (int i = 0; i < DN_REGLAGE_BL_CRANS; i++) {
+        printf(" %d%%", dn_reglage_bl_cran(i));
+    }
+    printf("  (DERIVES de DN_ENV_BL_PCT_MIN et\n");
+    printf("                  DN_ENV_BL_PCT_ABS_MAX, ⛔ jamais ecrits en dur)\n");
+
+    printf("\ntemoins : `absent vide` (0x%02X, zero insertion) ·\n",
                DN_INA219_ADDR);
         printf("          `absent inhiber <bme|lum|tof|tous> on|off`\n");
         printf("⛔ AUCUN des deux n'exerce le BOOT ni les conditions electriques\n");
