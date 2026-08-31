@@ -37,6 +37,99 @@
 static const char *TAG = "dn_cli";
 
 /*
+ * ══ dn4-23 / AC2.1 — LA CONSOLE COMPTE CE QU'ELLE EMET ══════════════════════
+ *
+ * 🔴 LE DEFAUT, MESURE, ⛔ PAS SUPPOSE. `tools/dn_console.py` PERD DES LIGNES :
+ *    **6 captures sur 20 en lot** violaient l'invariant `N == X + Y` du scan
+ *    I2C — dont une ou le temoin positif `0x5D` etait ABSENT de la liste sous
+ *    un verdict « ✅ temoin positif OK » que le firmware ne peut imprimer QUE
+ *    s'il l'a vu. Et **1 sur 7 en invocation SOLO** : la parade « solo +
+ *    invariant » de `dn4-2` est donc INSUFFISANTE.
+ *    ⇒ Une ligne perdue produit « l'adresse 0x23 n'est pas la » sur un capteur
+ *      QUI REPOND, juste avant qu'on decide de dessouder.
+ *
+ * ⛔ CE COMPTEUR NE SUPPRIME PAS LA PERTE — IL LA REND VISIBLE. La cause reste
+ *    NON INSTRUITE : **2 A/B et 30 passes de controle** (15 avec `--capture`,
+ *    15 sans) n'ont RIEN reproduit, et les deux mecanismes candidats
+ *    (`ser.reset_input_buffer()` avant l'ecriture · `nettoyer()` qui coupe
+ *    « jusqu'a la premiere ligne qui se termine par la commande ») sont
+ *    toujours en place, DELIBEREMENT : le premier garantit que la sortie rendue
+ *    appartient a LA commande envoyee. ⛔ Ne pas inventer un mecanisme pour
+ *    clore l'entree.
+ *
+ * ⚠️ POURQUOI UN COMPTEUR ET PAS UNE SOMME DE CONTROLE : le scan I2C avait deja
+ *    son invariant arithmetique PAR CAPTURE (`N == stables + instables`), et
+ *    c'est LUI qui a attrape les six. On generalise la meme forme a TOUTE
+ *    commande — un invariant qu'un tampon ampute ne peut pas satisfaire.
+ *
+ * ⚠️ CE QUE LE COMPTEUR NE COMPTE PAS, ET C'EST VOULU : les logs ASYNCHRONES des
+ *    autres taches (`ESP_LOGx`, qui ne passe pas par `printf`). L'hote en
+ *    recevra donc parfois PLUS que le compte annonce — c'est le signe de lignes
+ *    ETRANGERES, ⛔ pas d'une perte. Les deux sens se distinguent chez l'hote,
+ *    et seul « recu < annonce » est une PERTE.
+ *
+ * 🎯 LE COMPTAGE EST POSE PAR UNE MACRO `printf`, ⛔ pas commande par commande :
+ *    une instrumentation a poser sur 32 branches serait oubliee sur la 33e —
+ *    c'est la these de `dn4-16`, et ce depot l'a payee. Ici, TOUT `printf` de ce
+ *    fichier compte, y compris ceux des fonctions auxiliaires.
+ */
+#include <stdarg.h>
+#include <stdio.h>
+
+static uint32_t s_lignes_cmd;        /* lignes emises depuis le debut de la commande */
+static bool s_fin_de_ligne = true;   /* la derniere sortie finissait-elle par '\n' ? */
+static bool s_compte_fiable = true;  /* ⛔ une sortie tronquee rend le compte FAUX */
+
+/* ⚠️ Le format est verifie par le compilateur (`format(printf, 1, 2)`) : sans
+ *    ca, la macro ci-dessous DESARMERAIT `-Wformat` sur les ~1 000 sites de ce
+ *    fichier — un correctif d'instrument qui aveugle un autre instrument. */
+static int dn_console_printf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+
+static int dn_console_printf(const char *fmt, ...)
+{
+    char pile[256];
+    va_list ap;
+    va_start(ap, fmt);
+    int n = vsnprintf(pile, sizeof(pile), fmt, ap);
+    va_end(ap);
+    if (n < 0) {
+        /* ⛔ On ne tait pas un echec de formatage : le compte devient faux. */
+        s_compte_fiable = false;
+        return n;
+    }
+    const char *txt = pile;
+    char *tas = NULL;
+    if ((size_t)n >= sizeof(pile)) {
+        tas = malloc((size_t)n + 1);
+        if (tas) {
+            va_start(ap, fmt);
+            vsnprintf(tas, (size_t)n + 1, fmt, ap);
+            va_end(ap);
+            txt = tas;
+        } else {
+            /* ⛔ Mieux vaut une ligne TRONQUEE qu'un silence — mais le compte
+             *    ne vaut plus rien et il le DIT. */
+            s_compte_fiable = false;
+            n = (int)strlen(pile);
+        }
+    }
+    for (const char *q = txt; *q; q++) {
+        if (*q == '\n') {
+            s_lignes_cmd++;
+        }
+    }
+    if (n > 0) {
+        s_fin_de_ligne = (txt[n - 1] == '\n');
+    }
+    fputs(txt, stdout);
+    free(tas);
+    return n;
+}
+
+/* ⛔ APRES la definition : sinon `dn_console_printf` s'appellerait lui-meme. */
+#define printf dn_console_printf
+
+/*
  * La scène courante n'est PLUS suivie ici, et c'est un correctif de CR.
  *
  * `app_main` dessine l'asset au boot en appelant `dn_pattern_draw()` DIRECTEMENT,
@@ -2714,6 +2807,24 @@ static int cmd_touch(int argc, char **argv)
          * « `touch reset` puis `nav ab 20` ». */
         dn_ui_reset_compteurs();
         printf("compteurs tactiles, latences et compteurs UI remis a zero.\n");
+        /* 🔴 dn4-23 / AC6.3 — `dn_touch_reset_stats()` pose
+         *    `s_base_consommes = s_consommes`, c'est-a-dire qu'il REMET A ZERO
+         *    un compteur que CETTE commande ne publie PAS : `dn_touch_consommes()`
+         *    n'a qu'UN SEUL lecteur dans tout l'arbre — la commande `veille`.
+         *    Sans ce mot, une campagne de veille imprime « reveils : 3 » a cote
+         *    de « taps CONSOMMES par un reveil : 0 », EXACTEMENT la
+         *    contradiction que le mecanisme existe pour supprimer.
+         * ⚠️ Le sens INVERSE est deja traite dans `dn_touch.h` (« ⛔ NE PAS
+         *    appeler `dn_touch_reset_stats()` depuis `veille` ») ; celui-ci ne
+         *    l'etait pas.
+         * ⇒ UNE LIGNE D'AVERTISSEMENT, ⛔ pas un refus : l'occurrence est faible
+         *   et le geste reste legitime. */
+        printf("⚠️ ET AUSSI `s_base_consommes` : le compteur « taps CONSOMMES par\n");
+        printf("   un reveil », que SEULE la commande `veille` publie. Une\n");
+        printf("   campagne de veille lancee apres ce reset imprimera\n");
+        printf("   « reveils : N » a cote de « taps CONSOMMES : 0 ».\n");
+        printf("   ⇒ Pour une campagne de veille, relever AVANT, ou utiliser\n");
+        printf("     `veille reset` (qui, lui, epargne les compteurs de `touch`).\n");
         return 0;
     }
 
@@ -3538,16 +3649,215 @@ static int cpu_table_cumulee(void)
     return 0;
 }
 
+/*
+ * ══ dn4-23 / AC4 — `cpu` MESURE SANS BLOQUER LE TRANSPORT QU'IL MESURE ══════
+ *
+ * 🔴 LE DEFAUT, ET IL EST STRUCTUREL : `cpu N` fait `vTaskDelay(N * 1000 ms)`
+ *    ENTRE ses deux `uxTaskGetSystemState()`. La tache qui dort EST la tache du
+ *    REPL — c'est-a-dire LE TRANSPORT de la campagne. Pendant toute la fenetre,
+ *    la console ne lit rien, ne repond rien, et l'agent PC qui pousse ses
+ *    trames par `pc $DN,...` n'est plus servi.
+ *    ⇒ MESURE : `cpu 20` publiait **0,8 % sous trafic** contre **0,9 % au
+ *      repos** — la commande decrivait le dashboard AU REPOS, quel que soit le
+ *      trafic, parce qu'elle avait ELLE-MEME arrete le trafic.
+ *
+ * ✅ LA PARADE : le delta ENCADRE. `cpu depart` pose un point ; l'operateur
+ *    mene sa session (injection, navigation, ce qu'il veut) ; `cpu delta` lit
+ *    le second point. ⛔ AUCUN `vTaskDelay` dans la tache du REPL : entre les
+ *    deux, la console est VIVANTE et le transport aussi.
+ *
+ * ⚠️ LE REBOUCLAGE EST **GARDE**, ⛔ PAS COMMENTE. `configRUN_TIME_COUNTER_TYPE`
+ *    est un `uint32_t` de microsecondes (RUN_TIME_STATS_USING_ESP_TIMER) : il
+ *    reboucle a 2^32 us = **4 294,967 s, soit ~71,58 min**. La soustraction en
+ *    non signe reste JUSTE tant que la fenetre est plus courte que ca ; a un
+ *    tour complet elle devient ambigue et rendrait un chiffre FAUX ET
+ *    PLAUSIBLE. ⇒ au-dela, la commande **REFUSE DE PUBLIER**.
+ *    ⛔ C'est la meme doctrine que `cpu brut`, qui refuse deja sa table quand
+ *      un compteur a reboucle : on refuse plutot que de publier.
+ */
+#define DN_CPU_DELTA_HORIZON_US 4294967296LL /* 2^32 us — le tour complet */
+
+static TaskStatus_t *s_cpu_dep;          /* instantane de `cpu depart` */
+static UBaseType_t s_cpu_dep_cap;
+static UBaseType_t s_cpu_dep_n;
+static int64_t s_cpu_dep_us = -1;        /* -1 = aucun point de depart pose */
+
+static int cpu_depart(void)
+{
+    free(s_cpu_dep);
+    s_cpu_dep = NULL;
+    s_cpu_dep_us = -1;
+    UBaseType_t capacite = uxTaskGetNumberOfTasks() + 8;
+    s_cpu_dep = calloc(capacite, sizeof(TaskStatus_t));
+    if (!s_cpu_dep) {
+        printf("pas assez de RAM pour un releve de %u taches — AUCUN point pose\n",
+               (unsigned)capacite);
+        return 1;
+    }
+    configRUN_TIME_COUNTER_TYPE tot = 0;
+    UBaseType_t n = uxTaskGetSystemState(s_cpu_dep, capacite, &tot);
+    if (n == 0) {
+        printf("🔴 uxTaskGetSystemState a rendu 0 tache pour une capacite de %u —\n",
+               (unsigned)capacite);
+        printf("   des taches sont nees entre le comptage et l'appel. AUCUN point\n");
+        printf("   n'est pose, REJOUER.\n");
+        free(s_cpu_dep);
+        s_cpu_dep = NULL;
+        return 1;
+    }
+    s_cpu_dep_cap = capacite;
+    s_cpu_dep_n = n;
+    s_cpu_dep_us = esp_timer_get_time();
+    printf("point de depart POSE : %u taches, uptime %lld s\n", (unsigned)n,
+           (long long)(s_cpu_dep_us / 1000000));
+    printf("⇒ menez la session, PUIS `cpu delta`. ⛔ AUCUN sommeil ici : le REPL\n");
+    printf("  reste vivant, donc le TRANSPORT aussi. C'est tout l'objet de cette\n");
+    printf("  paire — `cpu N` dort dans la tache du REPL et mesure le repos\n");
+    printf("  qu'elle vient de creer (0,8 %% sous trafic contre 0,9 %% au repos).\n");
+    printf("⚠️ FENETRE MAXIMALE %lld s (~%lld min) : au-dela le compteur de\n",
+           (long long)(DN_CPU_DELTA_HORIZON_US / 1000000),
+           (long long)(DN_CPU_DELTA_HORIZON_US / 60000000));
+    printf("  run-time a fait UN TOUR et le delta devient ambigu — `cpu delta`\n");
+    printf("  REFUSERA de publier plutot que de rendre un chiffre plausible.\n");
+    return 0;
+}
+
+static int cpu_delta(void)
+{
+    if (!s_cpu_dep || s_cpu_dep_us < 0) {
+        printf("refuse : aucun point de depart. Poser `cpu depart` D'ABORD.\n");
+        printf("⛔ Un delta sans origine n'est pas une mesure.\n");
+        return 1;
+    }
+    int64_t maintenant = esp_timer_get_time();
+    int64_t mural_us = maintenant - s_cpu_dep_us;
+    if (mural_us <= 0) {
+        printf("refuse : horloge non monotone entre les deux points (%lld us).\n",
+               (long long)mural_us);
+        return 1;
+    }
+    if (mural_us >= DN_CPU_DELTA_HORIZON_US) {
+        printf("🔴 REFUS DE PUBLIER : la fenetre fait %lld s, l'horizon est %lld s\n",
+               (long long)(mural_us / 1000000),
+               (long long)(DN_CPU_DELTA_HORIZON_US / 1000000));
+        printf("   (2^32 us, ~%lld min). Le compteur de run-time a fait AU MOINS\n",
+               (long long)(DN_CPU_DELTA_HORIZON_US / 60000000));
+        printf("   un tour : la soustraction en non signe ne distingue plus\n");
+        printf("   « 10 s de CPU » de « 10 s + 71 min ». ⛔ Aucun pourcentage\n");
+        printf("   n'est calculable. Reposer `cpu depart` et refaire une fenetre\n");
+        printf("   plus courte.\n");
+        return 1;
+    }
+
+    UBaseType_t capacite = uxTaskGetNumberOfTasks() + 8;
+    TaskStatus_t *apres = calloc(capacite, sizeof(TaskStatus_t));
+    if (!apres) {
+        printf("pas assez de RAM pour un releve de %u taches\n", (unsigned)capacite);
+        return 1;
+    }
+    configRUN_TIME_COUNTER_TYPE tot = 0;
+    UBaseType_t n_apres = uxTaskGetSystemState(apres, capacite, &tot);
+    if (n_apres == 0) {
+        printf("🔴 uxTaskGetSystemState a rendu 0 tache — RIEN n'est publiable,\n");
+        printf("   REJOUER (le point de depart, lui, reste pose).\n");
+        free(apres);
+        return 1;
+    }
+
+    unsigned long long somme = 0;
+    for (UBaseType_t i = 0; i < n_apres; i++) {
+        configRUN_TIME_COUNTER_TYPE base = 0;
+        for (UBaseType_t j = 0; j < s_cpu_dep_n; j++) {
+            if (s_cpu_dep[j].xHandle == apres[i].xHandle) {
+                base = s_cpu_dep[j].ulRunTimeCounter;
+                break;
+            }
+        }
+        somme += (unsigned long long)(configRUN_TIME_COUNTER_TYPE)(
+            apres[i].ulRunTimeCounter - base);
+    }
+
+    /* ⚠️ LES TACHES MORTES PENDANT LA SESSION SONT COMPTEES ET DITES : leur temps
+     *    CPU sort du denominateur, donc les parts publiees sont legerement
+     *    HAUTES. Un instrument qui tait ce biais rend un chiffre invendable. */
+    int disparues = 0;
+    for (UBaseType_t j = 0; j < s_cpu_dep_n; j++) {
+        bool vue = false;
+        for (UBaseType_t i = 0; i < n_apres; i++) {
+            if (apres[i].xHandle == s_cpu_dep[j].xHandle) {
+                vue = true;
+                break;
+            }
+        }
+        if (!vue) {
+            disparues++;
+        }
+    }
+
+    printf("charge CPU sur la SESSION (fenêtre mesurée : %lld ms, %u tâches)\n",
+           (long long)(mural_us / 1000), (unsigned)n_apres);
+    if (somme == 0) {
+        printf("⚠️ somme des temps CPU nulle — les compteurs de run-time ne\n");
+        printf("   tournent pas. Instrument invalide, ne rien conclure.\n");
+        free(apres);
+        return 1;
+    }
+    double reserve = 0.0;
+    printf("  tâche               part\n");
+    for (UBaseType_t i = 0; i < n_apres; i++) {
+        configRUN_TIME_COUNTER_TYPE base = 0;
+        for (UBaseType_t j = 0; j < s_cpu_dep_n; j++) {
+            if (s_cpu_dep[j].xHandle == apres[i].xHandle) {
+                base = s_cpu_dep[j].ulRunTimeCounter;
+                break;
+            }
+        }
+        unsigned long long d = (unsigned long long)(
+            configRUN_TIME_COUNTER_TYPE)(apres[i].ulRunTimeCounter - base);
+        double part = (double)d * 100.0 / (double)somme;
+        bool oisive = (strncmp(apres[i].pcTaskName, "IDLE", 4) == 0);
+        if (oisive) {
+            reserve += part;
+        }
+        if (part >= 0.05 || oisive) {
+            printf("  %-16s %7.1f %%%s\n", apres[i].pcTaskName, part,
+                   oisive ? "   <= réserve" : "");
+        }
+    }
+    printf("=> RÉSERVE (tâches IDLE) : %.1f %%  —  CHARGE : %.1f %%\n", reserve,
+           100.0 - reserve);
+    printf("   Rapporté au temps CPU total des %d cœurs sur la fenêtre.\n",
+           configNUMBER_OF_CORES);
+    if (disparues > 0) {
+        printf("⚠️ %d tâche(s) du point de départ ont DISPARU : leur temps CPU\n",
+               disparues);
+        printf("   sort du dénominateur ⇒ les parts ci-dessus sont légèrement\n");
+        printf("   HAUTES. ⛔ Le dire plutôt que de publier un total qui ment.\n");
+    }
+    printf("✅ AUCUN sommeil n'a eu lieu dans le REPL entre les deux points : le\n");
+    printf("   transport est resté vivant, donc CETTE mesure-ci décrit bien le\n");
+    printf("   régime que la session a produit.\n");
+    free(apres);
+    return 0;
+}
+
 static int cmd_cpu(int argc, char **argv)
 {
     if (argc >= 2 && strcmp(argv[1], "brut") == 0) {
         return cpu_table_cumulee();
     }
+    if (argc == 2 && strcmp(argv[1], "depart") == 0) {
+        return cpu_depart();
+    }
+    if (argc == 2 && strcmp(argv[1], "delta") == 0) {
+        return cpu_delta();
+    }
 
     long fenetre = 5;
     if (argc >= 2) {
         if (!parse_entier(argv[1], &fenetre)) {
-            printf("usage : cpu [secondes] | cpu brut\n");
+            printf("usage : cpu [secondes] | cpu brut | cpu depart | cpu delta\n");
+            printf("  `depart`/`delta` = la mesure SANS BLOQUER le REPL (dn4-23).\n");
             return 1;
         }
         if (fenetre < DN_CPU_WINDOW_MIN_S) {
@@ -3567,6 +3877,18 @@ static int cmd_cpu(int argc, char **argv)
                (unsigned)capacite);
         return 1;
     }
+
+    /* 🔴 dn4-23 / AC4.3 — CETTE COMMANDE DIT CE QU'ELLE NE PEUT PAS MESURER,
+     *    ET ELLE LE DIT **AVANT** DE DORMIR : imprimee apres la fenetre, la
+     *    phrase arriverait quand l'operateur a deja son chiffre. */
+    printf("⛔ CETTE COMMANDE BLOQUE LE REPL PENDANT %ld s — et si le REPL est\n",
+           fenetre);
+    printf("   votre transport (console de mesure, agent qui pousse `pc $DN,...`),\n");
+    printf("   elle DECRIT LE DASHBOARD AU REPOS, quel que soit le trafic.\n");
+    printf("   MESURE : 0,8 %% sous trafic contre 0,9 %% au repos — le trafic\n");
+    printf("   avait ete arrete PAR LA MESURE ELLE-MEME.\n");
+    printf("   ⇒ Pour chiffrer un regime SOUS trafic : `cpu depart` … session …\n");
+    printf("     `cpu delta` (dn4-23/AC4, aucun sommeil dans le REPL).\n");
 
     configRUN_TIME_COUNTER_TYPE c0 = 0, c1 = 0;
     UBaseType_t n_avant = uxTaskGetSystemState(avant, capacite, &c0);
@@ -4080,11 +4402,33 @@ static int cmd_pc(int argc, char **argv)
  */
 static void colonnes(const char *s, int largeur)
 {
+    /*
+     * 🔴 dn4-23 / AC5.1 — ELLE TRONQUE DESORMAIS, ET C'EST LE DEFAUT QU'ELLE
+     *    EXISTE POUR FERMER. La boucle de rembourrage ci-dessous NE TOURNE PAS
+     *    quand `cols > largeur` : aucune coupe n'avait lieu, et un libelle trop
+     *    long DECALAIT toute la fin de la ligne — exactement le symptome de
+     *    `%-Ns` que cette fonction remplace. Une colonne qui ne borne que par le
+     *    BAS n'est pas une colonne.
+     * ⛔ LA COUPE EST EN COLONNES D'AFFICHAGE, ⛔ jamais en octets : couper au
+     *    milieu d'une sequence UTF-8 produirait un octet orphelin que le
+     *    terminal rend en « ï¿½ » — un defaut PIRE que le decalage.
+     * ⚠️ ET LA COUPE SE VOIT : le dernier caractere devient « > ». Tronquer en
+     *    silence remplacerait un mensonge d'alignement par un mensonge de
+     *    contenu, et ce depot refuse les deux.
+     */
     int cols = 0;
+    const unsigned char *coupe = NULL;
     for (const unsigned char *p = (const unsigned char *)s; *p; p++) {
-        if ((*p & 0xC0) != 0x80) {
+        if ((*p & 0xC0) != 0x80) {          /* octet de TETE d'un caractere */
+            if (largeur >= 1 && cols == largeur - 1 && coupe == NULL) {
+                coupe = p;                   /* debut du caractere n° largeur-1 */
+            }
             cols++;
         }
+    }
+    if (coupe != NULL && cols > largeur) {
+        printf("%.*s>", (int)(coupe - (const unsigned char *)s), s);
+        return;                              /* DEJA `largeur` colonnes */
     }
     printf("%s", s);
     for (int i = cols; i < largeur; i++) {
@@ -4104,6 +4448,234 @@ static void colonnes(const char *s, int largeur)
  *    déjà eu sa PROPRE copie d'une règle d'affichage, et elle imprimait
  *    « Mb/s » sur une valeur convertie en Gb/s (revue 2026-08-19).
  */
+/*
+ * ══ dn4-23 / AC5.3 — `widget largeur` DIT QUAND LE TEXTE RECU N'EST PAS CELUI
+ *    QUI A ETE TAPE ═══════════════════════════════════════════════════════════
+ *
+ * 🔴 MESURE : `widget largeur RÉSEAU 18` mesure **`RSEAU`**. Le REPL retire
+ *    tout octet >= 0x80 ; ici DEUX octets sautent (le `É` en UTF-8), le jeton
+ *    ne se VIDE pas, `argc` reste a 4, et la commande rendait un verdict de
+ *    largeur **sans un mot**. La garde de `dn4-14-2` ne couvre que le cas
+ *    TOTALEMENT accentue — celui ou le jeton disparait et `argc` tombe a 3.
+ *
+ * ⛔ ON NE CHANGE PAS LE REPL. L'entree de ledger le dit elle-meme : « limite
+ *    PREEXISTANTE du REPL, ⛔ pas de cet instrument ». On leve UN DRAPEAU.
+ *
+ * 🎯 COMMENT ON PEUT LE SAVOIR SANS LES OCTETS PERDUS : on ne devine pas, on
+ *    COMPARE. Le produit connait son propre vocabulaire accentue — les noms de
+ *    metriques et les formes de date de la barre. Si le jeton recu est
+ *    EXACTEMENT l'une de ces chaines privee de ses octets >= 0x80, la
+ *    mutilation est nommee ET son original aussi.
+ * ⚠️ Et hors de ce vocabulaire, la LIMITE est imprimee quand meme : un operateur
+ *    ne doit pas avoir a se souvenir de la regle pour ne pas etre trompe.
+ */
+static void ascii_seul(const char *src, char *out, size_t n_out)
+{
+    size_t k = 0;
+    for (const unsigned char *p = (const unsigned char *)src; *p; p++) {
+        if (*p < 0x80 && k + 1 < n_out) {
+            out[k++] = (char)*p;
+        }
+    }
+    if (n_out > 0) {
+        out[k] = '\0';
+    }
+}
+
+static int cols_de(const char *s)
+{
+    int n = 0;
+    for (const unsigned char *p = (const unsigned char *)s; *p; p++) {
+        if ((*p & 0xC0) != 0x80) {
+            n++;
+        }
+    }
+    return n;
+}
+
+static bool largeur_original_probable(const char *recu, char *out, size_t n_out)
+{
+    char red[64];
+    for (int i = 0; i < DN_UI_METRIQUES; i++) {
+        const char *nom = dn_ui_metrique_nom(i);
+        ascii_seul(nom, red, sizeof(red));
+        if (strcmp(red, nom) != 0 && strcmp(red, recu) == 0) {
+            snprintf(out, n_out, "%s", nom);
+            return true;
+        }
+    }
+    /* Les formes de date de la barre — `AOÛT`, `FÉVR.`, `MER.` … Elles sont
+     * ENGENDREES par la meme fabrique que l'ecran (`dn_ui_barre_date_forme`),
+     * ⛔ pas recopiees ici : une table locale se perimerait au premier mois
+     * renomme. */
+    for (int js = 0; js <= 7; js++) {
+        for (int mo = 0; mo <= 12; mo++) {
+            if ((js == 7) != (mo == 0)) {
+                continue;
+            }
+            for (int jr = 1; jr <= 31; jr++) {
+                char d[24];
+                if (!dn_ui_barre_date_forme(js, jr, mo, d, sizeof(d))) {
+                    continue;
+                }
+                ascii_seul(d, red, sizeof(red));
+                if (strcmp(red, d) != 0 && strcmp(red, recu) == 0) {
+                    snprintf(out, n_out, "%s", d);
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+static void largeur_drapeau_repl(const char *recu)
+{
+    char orig[32];
+    if (largeur_original_probable(recu, orig, sizeof(orig))) {
+        printf("🔴 LE TEXTE MESURE N'EST PAS CELUI QUI A ETE TAPE — DRAPEAU LEVE.\n");
+        printf("   « %s » est EXACTEMENT « %s » prive de ses octets >= 0x80, et\n",
+               recu, orig);
+        printf("   « %s » est une chaine que CE PRODUIT AFFICHE. Le REPL les\n", orig);
+        printf("   retire SANS UN MOT : %d caractere(s) manquent a la mesure\n",
+               cols_de(orig) - cols_de(recu));
+        printf("   ci-dessus, et `argc` n'a PAS bronche (la mutilation est\n");
+        printf("   PARTIELLE, le jeton ne s'est pas vide).\n");
+        printf("   ⛔ NE PAS CONCLURE SUR CE CHIFFRE. ⇒ `widget largeur mur`,\n");
+        printf("     dont les chaines sont COMPILEES, ⛔ pas tapees.\n");
+        return;
+    }
+    printf("⚠️ %d octet(s) / %d colonne(s) — et le REPL RETIRE tout octet\n",
+           (int)strlen(recu), cols_de(recu));
+    printf("   >= 0x80 avant d'arriver ici (mesure du 2026-08-29 : « AEB » rend\n");
+    printf("   21 px comme « AB »). Si un accent a ete tape, la chaine MESUREE\n");
+    printf("   n'est pas celle qui a ete TAPEE — et `argc` ne bronche pas quand\n");
+    printf("   la mutilation est PARTIELLE. ⇒ pour de l'accentue :\n");
+    printf("   `widget largeur mur`, dont les chaines sont COMPILEES.\n");
+}
+
+/*
+ * ══ dn4-23 / AC6.2 — LE VERDICT DE CONTRASTE DES LEVIERS A CHAUD ════════════
+ *
+ * 🔴 LE CAS N'EST PLUS HYPOTHETIQUE. `W_COL_PISTE_DEFAUT` vaut `0x141820`
+ *    depuis `dn4-29` ⇒ `veille case 141820` pose l'aplat EXACTEMENT sur la
+ *    piste : ecart NUL, **la jauge disparait integralement**, et la console
+ *    imprimait « applique MAINTENANT » sans un mot. Trois leviers peuvent la
+ *    noyer — `veille case`, `widget opa`, `widget couleur` — et aucun n'avait
+ *    de verdict.
+ *
+ * ⛔ LE GARDE-FOU EXISTANT NE SUFFIT PAS : `veille_dire_si_pas_neutre()` ne
+ *    teste que `R == G == B`. C'est une garde de NEUTRALITE RGB565, ⛔ pas de
+ *    contraste — un `0x141820` n'est pas un gris, elle se tait.
+ *
+ * ⚠️ ON AVERTIT, ⛔ ON NE REFUSE PAS. Doctrine explicite de ces commandes :
+ *    « c'est un instrument d'A/B, l'owner doit voir la couleur qu'il tape ».
+ *
+ * 🔴 LE SEUIL EST UN **REPERE EMPRUNTE**, ET C'EST ECRIT PLUTOT QUE TU.
+ *    `bloc_gris` (`tools/verif_veille_dn33.py`) exige `>= 24` — mais il
+ *    gouverne LES TROIS GRIS DE REGIME ENTRE EUX, et `dn_widget.c` interdit
+ *    nommement de le transposer : « la paire piste<->fond n'a jamais eu de
+ *    seuil ». ⇒ ici, 24 n'est PAS un verdict, c'est LE SEUL REPERE CHIFFRE DONT
+ *    CE DEPOT DISPOSE. Trois bandes, et une seule est une certitude :
+ *      · ecart NUL      ⇒ 🔴 CERTITUDE ARITHMETIQUE : les deux surfaces sont la
+ *                          MEME couleur, il n'y a plus de frontiere. ⛔ Aucun
+ *                          oeil n'est requis pour trancher ca.
+ *      · 0 < ecart < 24 ⇒ ⚠️ A VERIFIER A L'OEIL — ⛔ pas un verdict.
+ *      · ecart >= 24    ⇒ au-dessus du repere. ⛔ Toujours pas une preuve : la
+ *                          preuve est le constat owner sur la dalle.
+ *
+ * ⚠️ LES SIX DESCRIPTEURS LIVRES SONT HORS DE DANGER (Δ >= 97) : le risque est
+ *    LE LEVIER A CHAUD, ⛔ pas la palette livree. ⛔ Ceci n'est PAS la passe de
+ *    palette — c'est `dn4-29`, et elle s'arbitre A L'OEIL, PAR L'OWNER.
+ */
+#define DN_CONTRASTE_REPERE 24 /* ⚠️ REPERE emprunte a `bloc_gris`, ⛔ pas un seuil */
+
+/* Luminance ITU-R BT.601 (77/150/29 sur 256) — la MEME que `dn_widget_desaturer`.
+ * ⚠️ Le motif est PERCEPTUEL : le vert pese 59 %, le bleu 11 %. Une moyenne des
+ *    trois canaux ne dit pas ce que l'oeil voit. */
+static int lum601(uint32_t rgb)
+{
+    unsigned r = (rgb >> 16) & 0xFFu, g = (rgb >> 8) & 0xFFu, b = rgb & 0xFFu;
+    unsigned y = (r * 77u + g * 150u + b * 29u) >> 8;
+    return (int)(y > 255u ? 255u : y);
+}
+
+static const char *contraste_bande(int ecart)
+{
+    if (ecart == 0) {
+        return "🔴 ECART NUL — LA JAUGE DISPARAIT";
+    }
+    if (ecart < DN_CONTRASTE_REPERE) {
+        return "⚠️ FAIBLE — a verifier A L'OEIL";
+    }
+    return "au-dessus du repere";
+}
+
+static void verdict_contraste(void)
+{
+    /* ⛔ TOUT EST RELU. Une copie locale de la piste ou de l'aplat rendrait un
+     *    verdict sur une valeur que l'ecran n'a pas. */
+    uint32_t piste = dn_widget_piste();
+    uint32_t fond_amb = dn_widget_amb_case_bg();
+    uint8_t opa = dn_widget_opa();
+    bool ambient = (dn_veille_mode() == DN_VEILLE_AMBIENT);
+    int lp = lum601(piste);
+    int lf = lum601(fond_amb);
+
+    printf("── VERDICT DE CONTRASTE (dn4-23/AC6.2) — luminance BT.601, 0..255 ──\n");
+    printf("  piste de jauge       %06lX  lum %3d\n", (unsigned long)piste, lp);
+    printf("  aplat de case AMBIENT %06lX  lum %3d   ecart %3d  %s\n",
+           (unsigned long)fond_amb, lf, lp > lf ? lp - lf : lf - lp,
+           contraste_bande(lp > lf ? lp - lf : lf - lp));
+    /* ⚠️ EN ACTIF L'ECART N'EST PAS CALCULABLE, ET ON NE FAIT PAS SEMBLANT :
+     *    l'aplat est du NOIR a `s_opa`, donc l'artwork du Living PCB traverse a
+     *    (255 - opa)/255. Le fond effectif ne peut qu'ETRE PLUS CLAIR que le
+     *    noir ⇒ l'ecart calcule ci-dessous est un PLAFOND, pas la mesure.
+     *    ⚠️ Et c'est un cas REEL, ecrit dans `dn_widget.c` : le cuivre sous
+     *      l'aplat rend 24 la ou la piste rend 23. */
+    printf("  aplat de case ACTIF   noir a %u/255 sur l'artwork ⇒ %u %% du Living\n",
+           (unsigned)opa, (unsigned)((255u - opa) * 100u / 255u));
+    printf("     PCB traverse. ecart <= %3d (PLAFOND, fond noir pur) — ⛔ la\n", lp);
+    printf("     valeur REELLE depend de l'ARTWORK sous la case et n'est PAS\n");
+    printf("     calculable ici (le cuivre rend 24 la ou la piste rend %d).\n", lp);
+
+    printf("  indicateur ↔ piste, mode %s%s :\n", ambient ? "AMBIENT" : "ACTIF",
+           ambient ? " (accents desatures)" : "");
+    int pire = 255;
+    for (int i = 0; i < DN_UI_METRIQUES; i++) {
+        if (!dn_ui_desc(i)) {
+            continue; /* case rendue NUE : aucun accent peint */
+        }
+        /* ⛔ RELU par la MEME fonction que l'ecran (`dn_widget_desaturer`), avec
+         *    le MEME taux : un rapport calcule sur une copie de la formule
+         *    mesurerait l'accord de la copie avec elle-meme. */
+        uint32_t acc = dn_widget_desaturer(dn_ui_case_couleur(i),
+                                           ambient ? dn_widget_accent_amb() : 0);
+        int la = lum601(acc);
+        int e = la > lp ? la - lp : lp - la;
+        if (e < pire) {
+            pire = e;
+        }
+        printf("    ");
+        colonnes(dn_ui_metrique_nom(i), 10);
+        printf("%06lX  lum %3d   ecart %3d  %s\n", (unsigned long)acc, la, e,
+               contraste_bande(e));
+    }
+    if (pire == 255) {
+        printf("    (aucune case n'est un widget : rien a comparer)\n");
+    }
+    printf("⚠️ ON AVERTIT, ⛔ ON NE REFUSE PAS : c'est un instrument d'A/B, et\n");
+    printf("   l'owner doit voir la couleur qu'il tape.\n");
+    printf("⛔ Le repere %d vient de `bloc_gris`, qui gouverne LES TROIS GRIS DE\n",
+           DN_CONTRASTE_REPERE);
+    printf("   REGIME entre eux. La paire piste↔fond n'a JAMAIS eu de seuil ⇒\n");
+    printf("   au-dessus du repere n'est PAS une preuve. Seul l'ecart NUL est une\n");
+    printf("   certitude, et c'est de l'arithmetique : meme couleur, plus de\n");
+    printf("   frontiere.\n");
+    printf("⛔ CECI N'EST PAS LA PASSE DE PALETTE — c'est `dn4-29`, et elle\n");
+    printf("   s'arbitre A L'OEIL, PAR L'OWNER.\n");
+}
+
 static void widget_indices_imprimer(int idx)
 {
     uint8_t sel[DN_WIDGET_GRANDEURS_MAX];
@@ -5679,6 +6251,7 @@ static int cmd_widget(int argc, char **argv)
             printf("   absent est LARGE DE ZERO et n'est PAS dessine — la mesure\n");
             printf("   ci-dessus est donc VRAIE et le rendu serait MUTILE.\n");
         }
+        largeur_drapeau_repl(argv[2]); /* dn4-23/AC5.3 — le jeton PARTIEL */
         return 0;
     }
 
@@ -5737,6 +6310,7 @@ static int cmd_widget(int argc, char **argv)
                 printf("   >= 0x80). ⇒ pour les chaines accentuees, utiliser\n");
                 printf("   `widget largeur mur`, dont les chaines sont COMPILEES.\n");
             }
+            largeur_drapeau_repl(argv[2]); /* dn4-23/AC5.3 — le jeton PARTIEL */
             return 0;
         }
 
@@ -5844,8 +6418,24 @@ static int cmd_widget(int argc, char **argv)
         printf("⚠️ seule RAM porte une jauge aujourd'hui : c'est la seule case ou\n");
         printf("   le changement se voit.\n");
         printf("⚠️ la reconstruction a retire le stimulus `anim` et la demo.\n");
-        printf("⛔ dn3-3 refait l'identite visuelle et rejouera cet arbitrage :\n");
-        printf("   ceci n'est PAS la passe de palette.\n");
+        /* 🔴 dn4-23 / AC6.1 — CETTE COMMANDE ETAIT LA SEULE DES QUATRE A
+         *    RECONSTRUIRE **ET** A TOUCHER LA JAUGE **SANS** AVERTIR. Ses trois
+         *    voisines (`widget titre`, `widget titre suit`, `widget couleur`)
+         *    impriment ce bloc depuis dn4-14. C'est PRECISEMENT le geste de
+         *    l'A/B du 2026-08-30 : tapee en veille, elle reconstruit et decale
+         *    la jauge de 27 px sans un mot. */
+        printf("⛔ SI LA CARTE EST EN VEILLE : `veille off` D'ABORD. Une scene\n");
+        printf("   reconstruite en Ambient pose la jauge 27 px TROP HAUT, et\n");
+        printf("   AUCUN compteur ne le dit (ledger, 2026-08-29).\n");
+        /* 🔴 dn4-23 / AC6.1 — LE RENVOI ETAIT MORT. Il designait `dn3-3`,
+         *    `done` depuis le 2026-08-25, qui n'a JAMAIS rejoue cet arbitrage.
+         *    Le porteur VIVANT de la passe de palette est `dn4-29` (backlog au
+         *    tracker, statut VERIFIE avant d'ecrire cette cle — c'est le defaut
+         *    meme que cette story repare, le commettre ici serait une faute de
+         *    famille). */
+        printf("⛔ CECI N'EST PAS LA PASSE DE PALETTE : son porteur vivant est\n");
+        printf("   `dn4-29`, et elle s'arbitre A L'OEIL, PAR L'OWNER.\n");
+        verdict_contraste(); /* dn4-23/AC6.2 — la piste vient de bouger */
         return 0;
     }
     if (argc == 4 && strcmp(argv[1], "couleur") == 0) {
@@ -5945,6 +6535,7 @@ static int cmd_widget(int argc, char **argv)
         printf("⛔ SI LA CARTE EST EN VEILLE : `veille off` D'ABORD. Une scene\n");
         printf("   reconstruite en Ambient pose la jauge 27 px TROP HAUT, et\n");
         printf("   AUCUN compteur ne le dit (ledger, 2026-08-29).\n");
+        verdict_contraste(); /* dn4-23/AC6.2 — l'accent vient de bouger */
         return 0;
     }
     if (argc == 4 && strcmp(argv[1], "icone") == 0) {
@@ -6127,10 +6718,22 @@ static int cmd_widget(int argc, char **argv)
          * de la seance sont la signature d'un temoin CONSTANT.
          * ⇒ LA FUSION SE PROUVE PAR `flush`, ET PAR LUI SEUL. On le DIT ici plutot
          *   que d'imprimer un verdict que l'instrument ne peut pas rendre. */
+        /* 🔴 dn4-23 / AC5.2 — L'AIRE EST **RELUE**, ⛔ PLUS RECITEE. Ce message
+         *    envoyait chercher « 6 x 35 100 px » sur une aire livree de
+         *    36 675 : un operateur qui suivait la consigne concluait que sa
+         *    mesure etait FAUSSE alors qu'elle etait JUSTE.
+         * ⛔ ET 36 675 N'EST PAS DAVANTAGE ECRIVABLE : `ui_case_h()` depend de
+         *   `s_geo_barre_h`/`s_geo_menu_h`, REGLABLES A CHAUD (`widget bandes`).
+         *   L'aire n'est pas une constante — elle se DEMANDE. Le patron existe
+         *   deja dans ce fichier : `surface d'une case : %d px (etait 35 100 a
+         *   156)`. */
+        int cw_r = 0, ch_r = 0;
+        dn_ui_case_dim(&cw_r, &ch_r);
         printf("⛔ CETTE COMMANDE NE CONCLUT PAS SEULE. Pour prouver la fusion :\n");
         printf("   `flush` AVANT et APRES ce tir — la fusion est demontree si le\n");
-        printf("   delta vaut %u flushes pour UN SEUL cycle (et %u x 35 100 px).\n",
-               (unsigned)n, (unsigned)n);
+        printf("   delta vaut %u flushes pour UN SEUL cycle (et %u x %d px,\n",
+               (unsigned)n, (unsigned)n, cw_r * ch_r);
+        printf("   l'aire d'une case RELUE — etait 35 100 a 156).\n");
         printf("   C'est la mesure qui porte AC7 regime (c) ; ce tir ne fait que\n");
         printf("   PROVOQUER le cas.\n");
         printf("⚠️ INSTRUMENT, pas un regime : les six sources reelles ne sont PAS\n");
@@ -6235,9 +6838,24 @@ static int cmd_widget(int argc, char **argv)
         printf("cadence de la barre : %s\n",
                dn_ui_barre_secondes() ? "HH:MM:SS — invalidee CHAQUE SECONDE"
                                       : "HH:MM — invalidee au CHANGEMENT DE MINUTE");
+        /* 🔴 dn4-23 / AC5.2 — LE DENOMINATEUR ETAIT PERIME, ET LE POURCENTAGE
+         *    AVEC. « 18 %% d'une case (35 100 px) » : sur l'aire LIVREE le
+         *    rapport vaut 17,3 %%. L'entree de ledger `l.2847` n'accusait que
+         *    `widget rafale` — une gate scopee a UNE fonction epingle vert le
+         *    meme defaut ailleurs, et c'est EXACTEMENT ce qui s'est passe ici.
+         * ⇒ aire RELUE, pourcentage CALCULE. ⛔ Aucune constante de geometrie
+         *   dans une consigne D'ACTION. */
+        int cw_b = 0, ch_b = 0;
+        dn_ui_case_dim(&cw_b, &ch_b);
+        int aire_b = cw_b * ch_b;
+        int pmille = aire_b > 0
+                         ? (int)((6334LL * 1000 + aire_b / 2) / aire_b)
+                         : 0;
         printf("🔴 MESURE (§16.5) : la barre coute 6 334 px par mise a jour,\n");
-        printf("   soit 18 %% d'une case (35 100 px) — PAS les 33 600 px que son\n");
-        printf("   rectangle 480 x 70 laisse croire. LVGL n'invalide que la zone\n");
+        printf("   soit %d,%d %% d'une case (%d px, aire RELUE — etait 35 100 a\n",
+               pmille / 10, pmille % 10, aire_b);
+        printf("   156) — ⛔ PAS les 33 600 px que son rectangle 480 x 70\n");
+        printf("   laisse croire. LVGL n'invalide que la zone\n");
         printf("   des LABELS. La premisse « 7e case vivante » etait fausse d'un\n");
         printf("   facteur 5,3, et ce message la recitait pendant l'A/B meme.\n");
         printf("⚠️ La maquette normative (addendum §1) ecrit « 21:46 » : elle\n");
@@ -6409,6 +7027,7 @@ static int cmd_widget(int argc, char **argv)
          * etiquette fausse d'un cran — donc une etiquette fausse. */
         printf("⚠️ Reperes : 255 = LV_OPA_COVER (opaque, supprime le re-blit du\n");
         printf("   fond) · 178 = LV_OPA_70 (l'etat des lieux) · 127 = LV_OPA_50.\n");
+        verdict_contraste(); /* dn4-23/AC6.2 — l'aplat vient de bouger */
         return 0;
     }
     if (argc != 1) {
@@ -11184,6 +11803,10 @@ static int cmd_veille(int argc, char **argv)
         printf("aplat de case en Ambient : %06lX%s\n", (unsigned long)rgb,
                dn_veille_mode() == DN_VEILLE_AMBIENT ? " (applique MAINTENANT)"
                                                      : " (a la prochaine veille)");
+        /* 🔴 dn4-23 / AC6.2 — `veille case 141820` pose l'aplat EXACTEMENT sur
+         *    la piste par defaut : ecart NUL, jauge disparue, et cette ligne
+         *    imprimait « applique MAINTENANT » sans un mot. */
+        verdict_contraste();
         return 0;
     }
 
@@ -11255,7 +11878,11 @@ static const esp_console_cmd_t k_cmds[] = {
     DN_CMD("fps", "mesure le fps sur N secondes (>= 10) et le confronte à la théorie",
            cmd_fps),
     DN_CMD("mem", "PSRAM et RAM interne, avant/après framebuffers", cmd_mem),
-    DN_CMD("cpu", "cpu [secondes] | cpu brut — charge processeur (AC6)", cmd_cpu),
+    DN_CMD("cpu",
+           "cpu [secondes] | cpu brut | cpu depart | cpu delta — charge "
+           "processeur (AC6). ⚠️ `cpu N` BLOQUE le REPL (donc le transport) ; "
+           "`depart`/`delta` encadrent une session SANS dormir (dn4-23)",
+           cmd_cpu),
     DN_CMD("bw", "bande passante mesurée des 3 chemins de copie", cmd_bw),
     DN_CMD("cfg",
            "cfg | cfg reset | cfg repli [clear] — config de boot (NVS), "
@@ -11486,6 +12113,58 @@ void dn_console_banner(void)
     printf("\n");
 }
 
+/*
+ * ══ dn4-23 / AC2.1 — LE COMPTEUR EST POSE PAR UN SHIM, ⛔ PAS BRANCHE PAR BRANCHE
+ *
+ * `esp_console_cmd_t` ne porte AUCUN contexte utilisateur : un shim unique ne
+ * saurait pas QUELLE commande il enveloppe. On genere donc un shim par INDICE,
+ * et `dn_console_start()` remplace `.func` a l'enregistrement. Ainsi :
+ *   · aucune des 32 branches n'est editee — donc aucune ne peut etre OUBLIEE ;
+ *   · une commande AJOUTEE demain est instrumentee sans un geste ;
+ *   · `_Static_assert` fait echouer A LA COMPILATION si la table depasse
+ *     `DN_CMD_MAX` — ⛔ pas au boot, sur un silence.
+ *
+ * ⚠️ `help` peut etre enregistree par le REPL LUI-MEME (hors `k_cmds[]`) selon
+ *    la version d'ESP-IDF : elle n'aura donc PAS de compteur. L'hote traite
+ *    l'absence de compteur comme « SANS COMPTEUR », ⛔ jamais comme « 0 perte ».
+ */
+#define DN_CMD_MAX 40
+static int (*s_cmd_reelle[DN_CMD_MAX])(int, char **);
+
+static int dn_cmd_tracer(int i, int argc, char **argv)
+{
+    s_lignes_cmd = 0;
+    s_fin_de_ligne = true;
+    s_compte_fiable = true;
+    int rc = s_cmd_reelle[i](argc, argv);
+    if (!s_fin_de_ligne) {
+        /* Une commande qui finit sans passage a la ligne collerait sa derniere
+         * ligne au compteur. On la CLOT — et cette ligne-la compte. */
+        printf("\n");
+    }
+    uint32_t n = s_lignes_cmd; /* ⛔ LU AVANT : le compteur s'imprime lui-meme. */
+    printf("--- fin : %u lignes emises%s ---\n", (unsigned)n,
+           s_compte_fiable ? "" : " (COMPTE NON FIABLE : sortie tronquee)");
+    return rc;
+}
+
+#define DN_SHIM(n) \
+    static int dn_shim_##n(int argc, char **argv) { return dn_cmd_tracer(n, argc, argv); }
+DN_SHIM(0) DN_SHIM(1) DN_SHIM(2) DN_SHIM(3) DN_SHIM(4) DN_SHIM(5) DN_SHIM(6) DN_SHIM(7)
+DN_SHIM(8) DN_SHIM(9) DN_SHIM(10) DN_SHIM(11) DN_SHIM(12) DN_SHIM(13) DN_SHIM(14) DN_SHIM(15)
+DN_SHIM(16) DN_SHIM(17) DN_SHIM(18) DN_SHIM(19) DN_SHIM(20) DN_SHIM(21) DN_SHIM(22) DN_SHIM(23)
+DN_SHIM(24) DN_SHIM(25) DN_SHIM(26) DN_SHIM(27) DN_SHIM(28) DN_SHIM(29) DN_SHIM(30) DN_SHIM(31)
+DN_SHIM(32) DN_SHIM(33) DN_SHIM(34) DN_SHIM(35) DN_SHIM(36) DN_SHIM(37) DN_SHIM(38) DN_SHIM(39)
+#undef DN_SHIM
+
+static int (*const s_shims[DN_CMD_MAX])(int, char **) = {
+dn_shim_0, dn_shim_1, dn_shim_2, dn_shim_3, dn_shim_4, dn_shim_5, dn_shim_6, dn_shim_7,
+dn_shim_8, dn_shim_9, dn_shim_10, dn_shim_11, dn_shim_12, dn_shim_13, dn_shim_14, dn_shim_15,
+dn_shim_16, dn_shim_17, dn_shim_18, dn_shim_19, dn_shim_20, dn_shim_21, dn_shim_22, dn_shim_23,
+dn_shim_24, dn_shim_25, dn_shim_26, dn_shim_27, dn_shim_28, dn_shim_29, dn_shim_30, dn_shim_31,
+dn_shim_32, dn_shim_33, dn_shim_34, dn_shim_35, dn_shim_36, dn_shim_37, dn_shim_38, dn_shim_39
+};
+
 esp_err_t dn_console_start(void)
 {
     esp_console_repl_t *repl = NULL;
@@ -11533,8 +12212,17 @@ sdkconfig.defaults, puis `rm sdkconfig && idf.py build`."
         return err;
     }
     ESP_LOGI(TAG, "console sur %s", voie);
+    _Static_assert(sizeof(k_cmds) / sizeof(k_cmds[0]) <= DN_CMD_MAX,
+                   "k_cmds[] depasse DN_CMD_MAX : ajouter des DN_SHIM(n) et "
+                   "des entrees a s_shims[]. ⛔ Une commande sans shim n'aurait "
+                   "PAS de compteur de lignes (dn4-23/AC2.1).");
     for (size_t i = 0; i < sizeof(k_cmds) / sizeof(k_cmds[0]); i++) {
-        ESP_ERROR_CHECK(esp_console_cmd_register(&k_cmds[i]));
+        /* dn4-23/AC2.1 : la commande REELLE est mise de cote, le REPL appelle
+         * le shim qui compte les lignes et publie l'invariant. */
+        esp_console_cmd_t c = k_cmds[i];
+        s_cmd_reelle[i] = c.func;
+        c.func = s_shims[i];
+        ESP_ERROR_CHECK(esp_console_cmd_register(&c));
     }
     ESP_ERROR_CHECK(esp_console_start_repl(repl));
     return ESP_OK;

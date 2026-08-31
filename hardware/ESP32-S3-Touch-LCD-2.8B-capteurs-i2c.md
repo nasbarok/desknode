@@ -1821,6 +1821,25 @@ déclencheur reste OUVERT.**
 2. **l'invariant `lignes == stables + instables` est vérifié sur chaque capture avant publication.**
 Il aurait attrapé les six, qu'elles viennent de l'USB ou du nettoyage.
 
+> 🔴 **ANNOTATION `dn4-23` (2026-08-31) — LE POINT 1 DE CETTE PARADE EST *INSUFFISANT*, ET
+> C'EST MESURÉ.** La perte de lignes existe **AUSSI en invocation SOLO : 1 sur 7** (contre
+> 6 sur 20 en lot). *« Publier en solo »* réduit donc l'occurrence, ⛔ **il ne ferme rien**.
+> ⛔ **Ne pas présenter le point 1 comme une garantie.** Un relevé solo peut être amputé.
+>
+> ✅ **Le point 2, lui, tient — et c'est LUI qui a été généralisé.** L'invariant
+> arithmétique par capture existait pour le **seul** scan I²C ; `dn4-23` en pose un pour
+> **toute** commande : la console imprime `--- fin : N lignes emises ---` et
+> `tools/dn_console.py` **confronte** ce `N` à ce qui est arrivé (`PERTE` / `LIGNES
+> ÉTRANGÈRES` / `SANS COMPTEUR`, rc non nul sur la perte).
+>
+> ⚠️ **La cause reste NON INSTRUITE, et `dn4-23` n'en invente pas une** : les 2 A/B et 30
+> passes ci-dessus n'ont rien reproduit, et les deux mécanismes candidats sont toujours en
+> place **délibérément**. **L'instrument rend la perte VISIBLE ; il ne la supprime pas.**
+>
+> ⛔ **Et une capture VIDE ne prouve pas une carte muette** : aux cycles 1 et 6 de l'A/B,
+> **re-sonder a rendu la sortie complète**. La règle est désormais écrite **dans le code du
+> pilote**, au point même où le vide est rendu.
+
 ---
 
 ### 13.16.3 ✅ AC4 SOLDÉ — l'instrument couvre les TROIS capteurs, et il est **PROUVÉ SUR DU CONNU**

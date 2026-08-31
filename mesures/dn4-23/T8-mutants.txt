@@ -1,0 +1,40 @@
+==============================================================================
+dn4-23 / AC8.6 — LES MUTANTS, VUS ROUGIR
+==============================================================================
+⛔ Le dépôt n'est JAMAIS modifié : chaque mutant vit dans un arbre
+   COPIÉ, et la gate y est rejouée telle quelle.
+
+TÉMOIN POSITIF — l'arbre LIVRÉ : rc=0   BILAN : 107 OK, 0 KO
+
+[ROUGE] AC1  le motif REPL universel est retiré de la table       rc=1  BILAN : 105 OK, 2 KO
+          ↳ [KO ] …et elle porte « Unrecognized command »                    REPL ESP-IDF
+          ↳ [KO ] 🔴 `dn_console.py --temoin-negatif` PASSE                   BILAN : 30 OK, 1 KO
+[ROUGE] AC1  un refus n'arme plus le code de retour               rc=1  BILAN : 106 OK, 1 KO
+          ↳ [KO ] …et un refus ARME le code de retour dans `main()`          au même titre qu'une invite non
+[ROUGE] AC2  le compteur de lignes est retiré du firmware         rc=1  BILAN : 102 OK, 3 KO
+          ↳ [KO ] …qui imprime le compteur en FIN de commande                l'invariant par capture
+          ↳ [KO ] …et il LIT `s_lignes_cmd` AVANT de l'imprimer              ⛔ sinon il se compterait lui-mê
+          ↳ [KO ] le format du compteur est EXTRAIT du firmware              ⛔ pas recopié dans la gate
+[ROUGE] AC2  l'hôte ne distingue plus la PERTE                    rc=1  BILAN : 105 OK, 2 KO
+          ↳ [KO ] …et il distingue l'état PERTE                              ⛔ « pas de compteur » ≠ « 0 per
+          ↳ [KO ] 🔴 `dn_console.py --temoin-negatif` PASSE                   BILAN : 30 OK, 1 KO
+[ROUGE] AC3  le jeu « variable » redevient FIXE (rampe plate)     rc=1  BILAN : 106 OK, 1 KO
+          ↳ [KO ] 🔴 LE TÉMOIN DE L'INJECTEUR PASSE (joué, ⛔ pas supposé)     BILAN : 13 OK, 2 KO
+[ROUGE] AC4  `vTaskDelay` est réintroduit dans `cpu_delta`        rc=1  BILAN : 106 OK, 1 KO
+          ↳ [KO ] 🔴 …et il ne contient AUCUN `vTaskDelay`                    ⛔ le REPL EST le transport
+[ROUGE] AC5  une constante de géométrie est replantée dans une consigne rc=1  BILAN : 106 OK, 1 KO
+          ↳ [KO ] 🔴 aucune AIRE RÉCITÉE dans un printf hors REPÈRE DATÉ      fautifs :    delta vaut %u flus
+[ROUGE] AC6  l'avertissement `veille off` est retiré de `widget piste` rc=1  BILAN : 106 OK, 1 KO
+          ↳ [KO ] 🔴 …et elle AVERTIT `veille off` comme ses trois voisines   la jauge se pose 27 px trop hau
+[ROUGE] AC6  le verdict de contraste disparaît de `veille case`   rc=1  BILAN : 106 OK, 1 KO
+          ↳ [KO ] …et la branche `case` l'APPELLE                            ⛔ un verdict non appelé ne gard
+[ROUGE] AC6  la piste par défaut retombe sur l'aplat (écart NUL)  rc=1  BILAN : 106 OK, 1 KO
+          ↳ [KO ] 🔴 la paire LIVRÉE piste ↔ aplat n'est PAS de l'écart NUL   lum 0 vs 0 ⇒ écart 0
+[ROUGE] AC7  un delta sur UNE SEULE fenêtre redevient publiable   rc=1  BILAN : 105 OK, 2 KO
+          ↳ [KO ] 🔴 UNE fenêtre, étendues DISJOINTES ⇒ REFUSÉ                ⛔ le chevauchement ne rattrape 
+          ↳ [KO ] 🔴 `dn_console.py --temoin-negatif` PASSE                   BILAN : 30 OK, 1 KO
+
+BILAN MUTANTS : 11 vus ROUGIR, 0 non concluant(s) sur 11
+⛔ CE QUE CE PV NE PROUVE PAS : que la gate attrape TOUS les défauts.
+   Il prouve que chacun de ces onze-là ne passe plus. Une gate se juge
+   à ce qu'elle a été vue REFUSER, ⛔ pas à son compte de contrôles.

@@ -68,6 +68,110 @@ est ROUGE** — **0** si toutes sont vertes ou déclarées non-jouables.
 Rien — et c'est **écrit** : voir `tests/README.md`. La vérification rejouable de ce dépôt,
 ce sont **les gates**, et elles vivent dans `tools/`.
 
+## 🔴 LES INSTRUMENTS DISENT QUAND ILS MENTENT (`dn4-23`)
+
+> **Une règle, quatre conséquences.** Elles ne sont pas des conseils : elles sont **posées
+> dans le code**, et chacune a son **témoin négatif jouable sans carte**.
+
+### 1. **Un harnais qui pose une commande LIT LE REFUS**
+
+⛔ **C'est la règle.** Un pilote qui envoie une commande et ne regarde pas si la carte l'a
+**refusée** ne mesure pas la carte : il mesure son propre silence.
+
+📊 **Ce que ça a coûté, mesuré** : **deux fenêtres de 90 s ont rendu `0`** sur un stimulus
+qui **n'a jamais tourné** — `anim on 10` ⇒ `refusé : ESP_ERR_INVALID_ARG`, `flash on` ⇒
+`refusé : ESP_ERR_INVALID_STATE`. Les deux refus étaient **à l'écran, en clair**.
+
+`tools/dn_console.py` inspecte donc la sortie de **chaque** commande et cherche **cinq**
+motifs. Les trois derniers viennent du **REPL d'ESP-IDF lui-même**
+(`components/console/esp_console_common.c`) et valent pour **toute** commande qui rend non
+zéro — **y compris celles qui n'impriment rien** :
+
+| motif | origine |
+|---|---|
+| `refusé :` / `refuse :` / `REFUSE :` | **notre** convention — 66 sites dans `dn_console.c` |
+| `ESP_ERR_…` | `esp_err_to_name()`, partout |
+| `Unrecognized command` | REPL ESP-IDF |
+| `Command returned non-zero error code: 0x…` | REPL ESP-IDF — ✅ déjà lu par `sonde_horloge_dn418.py` |
+| `Internal error: …` | REPL ESP-IDF |
+
+- Le refus est **imprimé en tête**, ⛔ pas noyé, et le **code de retour est non nul**.
+- `--refus-tolere <commande>` le désarme **commande par commande**, pour les campagnes où
+  le refus **est l'objet de la mesure** (un scan I²C sur une adresse absente). ⛔ **Jamais
+  par défaut**, et le refus reste **imprimé**.
+- ⛔ **Ne pas se contenter du français** : une commande peut refuser **sans imprimer un mot**.
+
+### 2. **La console COMPTE ce qu'elle émet, et le pilote LIT ce compteur**
+
+Chaque commande se termine par `--- fin : N lignes emises ---`, et `dn_console.py`
+**confronte** ce `N` à ce qui est arrivé. ⛔ **Un compteur que personne ne lit ne compte pas.**
+
+| verdict | ce qu'il veut dire |
+|---|---|
+| **PERTE** (reçu < annoncé) | 🔴 des lignes **manquent** — rc non nul, ⛔ ne rien conclure, **rejouer** |
+| **LIGNES ÉTRANGÈRES** (reçu > annoncé) | ⚠️ un `ESP_LOGx` **asynchrone** est tombé pendant la commande. ⛔ Ce n'est **pas** une perte |
+| **SANS COMPTEUR** | ⛔ **pas** « 0 perte » — « **on ne sait pas** » (firmware antérieur à `dn4-23`) |
+
+⛔ **LA PARADE DE `dn4-2` EST INSUFFISANTE, ET C'EST ÉCRIT** : elle demandait *« toute
+passe publiée vient d'une invocation SOLO »*. **La perte existe aussi en solo — 1 sur 7**
+(et 6 sur 20 en lot). Le second point de la parade — l'invariant arithmétique par capture —
+reste bon : c'est lui qu'on **généralise ici à toute commande**.
+
+⚠️ **La cause reste NON INSTRUITE, et on n'en invente pas une** : **2 A/B et 30 passes de
+contrôle** n'ont rien reproduit. **Cet outillage rend la perte VISIBLE ; il ne la supprime
+pas.**
+
+⛔ **UNE CAPTURE VIDE NE PROUVE PAS UNE CARTE MUETTE** : aux cycles 1 et 6 de l'A/B du
+2026-08-24, **re-sonder a rendu la sortie complète**.
+
+### 3. **Tout chiffre où le DESSIN est la variable se mesure sous agent RÉEL, ou avec `--jeu rampe`**
+
+Les quatre jeux de `tools/dn_injecteur.py` (`pire` · `reel` · `nominal` · `trou`) sont des
+**dictionnaires de constantes**. Une valeur qui ne change pas ne change pas le **texte** ;
+un texte qui ne change pas **n'invalide rien** ; LVGL ne redessine que ce qui est invalidé.
+
+📊 **Mesuré** : **94 645 px/cycle** avec un jeu figé contre **128 613** sous
+`widget mock on` (**−36 %**), et **0,005 corruption/s** contre **0,54 /s** sous agent réel
+— **facteur 108**.
+
+⇒ `--jeu rampe` fait **varier** les 16 grandeurs (rampes triangulaires, **16 périodes
+premières deux à deux**, dans les bornes de `k_metriques[]`). L'injecteur **annonce au
+démarrage** si son jeu est fixe, et ce que ça interdit de conclure.
+⛔ Les quatre jeux figés **restent** : ils sont justes pour la **mise en page**.
+
+### 4. **Une latence ne se publie JAMAIS en moyenne seule**
+
+📊 **Mesuré sur `fd959f2`** : `acceptation→label` = **86 · 138 · 220 · 86 · 260 ms** —
+**facteur 3 sur le MÊME firmware**.
+
+- `dn_injecteur.py --latence N` joue **N fenêtres consécutives** et publie **la dispersion**.
+- `--latence-delta A.json B.json` **REFUSE** le delta quand un relevé n'a **qu'une fenêtre**,
+  ou quand les deux **étendues se chevauchent**. ⛔ **Refusé par l'outil**, ⛔ pas déconseillé
+  dans un commentaire.
+- ⚠️ **Conséquence rétroactive** : tout écart de latence publié sur une **fenêtre unique**
+  est **non recevable**, **y compris ceux de `dn4-2`**.
+- ⛔ **La règle réfutée reste réfutée** : *« un relevé n'est recevable que si l'injecteur a
+  placé 225/225 avec 0 perte seq »* a été **publiée puis démolie** par la 5ᵉ fenêtre
+  (225/225, 0 perte seq, **260 ms** — la plus haute). ⛔ Ne pas la ressusciter.
+- ✅ **Deux hypothèses restent RÉFUTÉES** — fragmentation du tas LVGL, compteurs de liaison.
+  ⛔ Ne pas les rejouer. **La variance n'est pas isolée, et cette story ne l'isole pas.**
+
+### 5. **`cpu` ne bloque plus le transport qu'il mesure**
+
+`cpu N` **dort dans la tâche du REPL** — c'est-à-dire dans le transport. Elle décrivait donc
+le dashboard **au repos**, quel que soit le trafic (**0,8 % sous trafic contre 0,9 % au
+repos**). Elle le **dit maintenant, avant de dormir**.
+⇒ `cpu depart` … *session* … `cpu delta` : **aucun `vTaskDelay`** entre les deux points, et
+la fenêtre **refuse de publier** au-delà de l'horizon de rebouclage (**2^32 µs ≈ 71,6 min**).
+
+### Les témoins, jouables **sans carte**
+
+```bash
+python3 tools/dn_console.py   --temoin-negatif   # refus · complétude · dispersion
+python3 tools/dn_injecteur.py --temoin-negatif   # rampes dans les bornes RELUES
+python3 tools/verif_instruments_dn423.py         # la gate (jouée par run_gates.sh)
+```
+
 ## Arborescence
 
 ```
