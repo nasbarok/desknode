@@ -6589,3 +6589,134 @@ conditions électriques d'un bus nu (pull-ups, appel de courant à froid de troi
 candidate n° 1 de §13.16.10) **ni** le démarrage d'une carte sans capteurs.
 ⇒ **C'est le témoin À ZÉRO INSERTION**, celui qu'on rejoue tous les jours. **Il ne qualifie pas le
 palier à lui seul.**
+
+---
+
+## §13.29 — 🔴 LA SÉANCE CARTE DE `dn4-41` (2026-08-31 → 09-01) : **LA CARTE A RÉFUTÉ LE TÉMOIN, ET ELLE A DONNÉ UN VRAI POSITIF QU'ON NE CHERCHAIT PAS**
+
+> **Binaires** : `4f9b401` (fenêtres 1→6) puis `c081a6c` (fenêtre 7), **lus au bandeau
+> `App version`**, ⛔ jamais déduits du dépôt. ⚠️ La story demandait **UN** SHA pour toute la
+> campagne : il y en a **DEUX**, parce que la carte a réfuté un témoin en cours de séance.
+> L'écart est écrit plutôt que masqué par un SHA unique qui aurait été faux pour moitié.
+> **Détail complet et horodaté** : `mesures/dn4-41/T8-constats-owner.txt`.
+
+### 13.29.1 🎯 LE VRAI POSITIF EST TOMBÉ SANS QU'ON LE CHERCHE — ET IL VAUT MIEUX QUE `0x40`
+
+Le **VL6180X (`0x29`) était physiquement débranché** pendant toute la séance. ⛔ Ce n'est pas une
+déduction : **deux instruments indépendants** l'ont dit — le **scan** ne le voit plus (`0/5`, alors
+que le témoin positif du scan, expander + tactile, répond `5/5`) **et** toute **transaction de
+donnée** échoue (`err_i2c 46`, `0 lectures`) — puis **le fait physique a été DEMANDÉ à l'owner**
+(*« Non, il est débranché »*), ⛔ pas supposé.
+
+⇒ Le verdict `ABSENT` a donc été exercé sur **un capteur du groupe**, avec **son connecteur, son
+câblage et ses pull-ups réels**, ⛔ pas seulement sur une adresse où il n'y a jamais eu de module.
+
+🔴 **ET UNE PRÉMISSE D'AC2.9 EST RÉFUTÉE PAR CE FAIT** : la story écrit *« le groupe part EN BLOC
+(guirlande soudée) : BH1750 et ToF ENSEMBLE, ⛔ pas module par module »*. **L'état physique le
+dément** — le ToF est absent **pendant que le BH1750 répond 5/5**. ⇒ ils sont **séparables**, et
+⛔ il ne faut pas écrire un protocole qui les lie.
+
+### 13.29.2 ✅ SIX DÉMARRAGES À FROID RÉELS — ZÉRO FAUX POSITIF
+
+Débranchement du **câble USB** (⛔ ni `reboot`, qui laisse le rail debout, ni retrait de `VCC`, à
+cause de l'alimentation fantôme §13.10), ~3 s, rebranchement. Lecture **au-delà** de 120 s.
+
+| cycle | uptime | BME680 (branché) | BH1750 (branché) | VL6180X (débranché) |
+|---|---|---|---|---|
+| 1 | déduit `[120 ; 180[` | VIVANT · **0** | VIVANT · **0** | ABSENT · 2 |
+| 2 | **630 s** mesuré | VIVANT · **0** | VIVANT · **0** | ABSENT · 10 |
+| 3 | **140 s** mesuré | VIVANT · **0** | VIVANT · **0** | ABSENT · 2 |
+| 4·5·6 | **130 s** mesuré | VIVANT · **0** | VIVANT · **0** | ABSENT · 2 |
+
+🎯 **LE MODÈLE EST FALSIFIABLE, ET IL A ÉTÉ CONFRONTÉ CINQ FOIS** :
+`échecs attendus = ⌊uptime / 60⌋` ⇒ 2/2, 2/2, 2/2, 2/2, **10/10**. ⛔ **Aucun écart.**
+
+⇒ Les capteurs présents **ne montent JAMAIS d'un cran** : ils se rétablissent **avant** la première
+ré-ouverture (60 s), et une lecture valide remet le compteur à zéro. ⛔ Ce n'est pas « le verdict
+n'a pas eu le temps » — c'est **structurellement inatteignable** pour eux.
+
+⚠️ **LE CYCLE DÉGRADÉ (§13.17.1, ~1 sur 6) N'A PAS ÉTÉ OBSERVÉ** — ni à l'œil, ni au compteur.
+⇒ On écrit **« NON OBSERVÉ SUR 6 CYCLES »**, ⛔ **JAMAIS « prouvé »**. Et la garantie ne repose pas
+sur cette absence : elle repose sur l'arithmétique (`2 × 12 × 5 s = 120 s > fenêtre froide`) et sur
+les **deux exclusions écrites au code**, que la gate garde.
+
+### 13.29.3 🎯 AC9.3 — LE PIRE CAS DE BLOCAGE I²C EST CHIFFRÉ, ET IL EST **THÉORIQUE**
+
+Ce que `dn_env.h` **craignait** : *« ~12 × `DN_ENV_I2C_TIMEOUT_MS` par cycle »*, soit **~1,2 s sur
+5 s = 24 %**, et **jamais exercé** (*« la famine DMA d'AC12 a été rejouée sur un bus SAIN »*).
+
+| mesure | résultat |
+|---|---|
+| transaction contre `0x40` (adresse vide), 5 tirs | **moyenne 174 µs · MAX 235 µs** |
+| cycle `dn_env` complet, ToF réellement absent, 15 échantillons sur ~75 s | 188…280 µs, **MAX 453 µs** (cycle 588, celui de la ré-ouverture) |
+
+⇒ **453 µs sur 5 000 ms = 0,009 %**, là où le dossier craignait **24 %**. **Facteur ~2 650.**
+⇒ ⛔ **Aucun correctif n'est requis avant le gel du firmware** (AC9.3.c), et ⛔ **aucune ligne ne
+part aux Known-issues** pour ce motif.
+
+⛔ **CE QUE JE NE SIGNE PAS** : le mot *« NACK »*. Le code rendu est `ESP_ERR_INVALID_STATE`, et
+cette mesure **ne distingue pas un NACK d'un refus précoce du driver**. Ce qu'elle établit, c'est
+**LA DURÉE** — et c'est exactement ce que la question demandait.
+⚠️ **Et elle ne s'extrapole PAS au boot à froid sur bus nu** (AC9.3.b) : la fenêtre froide dégrade
+le bus **ENTIER**, ⛔ ce n'est pas une addition.
+
+### 13.29.4 🔴 LA CARTE A RÉFUTÉ UNE AFFIRMATION QUE `dn4-41` AVAIT ÉCRITE SUR SON PROPRE TÉMOIN
+
+**Mesuré, binaire `4f9b401`** : `absent inhiber lum on` faisait passer le BH1750 à `MUET` et l'y
+laissait — **`0 échecs`, verdict `ABSENT` JAMAIS atteint, sur 162 s.**
+
+**Cause, lue dans le code** : `cycle_un()` n'alimente le verdict que dans ses **deux branches de
+ré-ouverture** (`!dev`, `!config_posee`). Un capteur **ouvert ET configuré au boot** n'y repasse
+**jamais** — et rien ne remet `config_posee` à `false` pour le BH1750, dont la garde de conformité
+rend `CONF_OK` **en dur** (aucun registre relisible, fait déclaré depuis la revue du 2026-08-20).
+
+⚠️ **INCOHÉRENCE DE L'AUTEUR, ET ELLE EST ÉCRITE** : côté `dn_capteurs`, ce piège **avait été vu** —
+`dn_capt_inhiber()` **ferme le driver**, avec le motif *« sans cette fermeture le témoin ne prouve
+rien »*. Le même raisonnement **n'avait pas été appliqué à `dn_env`**. ⇒ **La carte a trouvé
+l'oubli ; ⛔ AUCUNE GATE ne l'a vu.**
+
+⛔ **LA SÉMANTIQUE DU PRODUIT N'A PAS ÉTÉ CHANGÉE.** Un capteur qui se débranche **en marche** reste
+`MUET`, duty **gelé**, auto **armé** : c'est AC3.2 et AC3.3 de `dn4-19`, **prescrit**, ⛔ pas subi.
+**Seul le TÉMOIN** emprunte désormais le chemin du boot.
+
+### 13.29.5 ✅ AC3 ET AC3.5, MESURÉES SUR LA CARTE (binaire `c081a6c`)
+
+| t | BH1750 | auto | duty |
+|---|---|---|---|
+| +20 → +80 s | **MUET** (1 échec) | **ARMÉ** | **80 %** |
+| **+100 s** | **ABSENT** (2 échecs) | 🎯 **DÉSARMÉ** | **80 %** |
+| +180 s | ABSENT (3) | DÉSARMÉ | **80 %** |
+
+✅ **AC3.2** — ⛔ on ne désarme **pas** sur `MUET`, et le duty **ne bouge pas** de toute la phase.
+✅ **AC3.1** — le désarmement tombe **sur `ABSENT`, et pas avant**.
+✅ **AC3.4** — ⛔ **aucun repli** : 80 % de bout en bout, **à travers la transition**.
+✅ **AC3.3** — `bl` dit **pourquoi**, avec son chiffre : *« DÉSARMÉ — **BH1750 ABSENT**
+(3 ré-ouvertures échouées) »*.
+
+**AC3.5**, cycle complet, source déclarée absente : `ACTIF` **80 %** → `AMBIENT` **16 %** (8 relevés
+consécutifs, stable) → **réveil au doigt**.
+⇒ **LE PLANCHER MORD À EXACTEMENT 16 %, ⛔ JAMAIS EN DESSOUS.**
+🎯 **Verbatim owner** : *« L'écran est lisible, et le réveil est OK »* — et c'est **le** point qui
+comptait : *« un écran non lisible sur une carte seule serait le pire résultat possible »*.
+
+### 13.29.6 ⚠️ UN INSTRUMENT MANQUANT A LAISSÉ UNE QUESTION OUVERTE UNE HEURE
+
+Après le réveil, la dalle valait **100 %** et non les 80 % d'avant la veille. Deux explications
+tenaient ; la lecture du code éliminait la première (`veille_bl_remonter()` **repose bien**
+`s_bl_avant_veille`), mais **rien ne permettait de prouver la seconde** — `dn_reglage` **comptait**
+ses écritures NVS et **personne ne pouvait les lire**, alors que sa déclaration dans la gate NVS
+l'annonçait *« INSTRUMENTÉ comme `dn_veille` »*. **C'était à moitié faux.**
+
+⇒ L'instrument a été **publié** dans `absent`, et il a **tranché rétroactivement** :
+`niveau manuel : 100 %` ⇒ **un tap avait fait tourner le cran** (100 % **est** le cran 3).
+⛔ **Aucun défaut du réveil n'est établi, et aucun n'est insinué.**
+🎯 **La leçon** : *un compteur qu'on ne peut pas LIRE ne disculpe personne.*
+
+### 13.29.7 ⚠️ ÉCART DE VOCABULAIRE, CONSTATÉ ET NON CORRIGÉ
+
+`absent` imprime « BME680 : **jamais lu** » et « BH1750 : **JAMAIS** ». Les **énumérations** portent
+le même mot (`DN_CAPT_JAMAIS` / `DN_ENV_JAMAIS`) ; ce sont les **chaînes** de `dn_capt_etat_nom()`
+et `dn_env_etat_nom()` qui divergent. **Préexistant à `dn4-41`**, mais la commande `absent` les met
+désormais **côte à côte**, donc l'écart **se voit**.
+⛔ Non corrigé ici : toucher une chaîne de console peut déplacer d'autres gates. ⇒ **écrit, daté, à
+porter.**

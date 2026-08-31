@@ -99,11 +99,27 @@ pas à ton matériel.
 - 🟡 **Le démarrage à froid sur un bus réellement sans capteurs** est le témoin **qualifiant**.
   ⚠️ **Son état est tenu à jour ci-dessous, et il dit le vrai, ⛔ ni « non testé » ni « validé ».**
 
-  > **État au 2026-08-31** : le palier a été **exercé par deux témoins à coût nul** — l'inhibition
-  > logicielle des deux capteurs (`absent inhiber`) et l'adresse **réellement vide `0x40`**
-  > (`absent vide`, l'INA219 ayant été retiré physiquement du bus le 2026-08-21).
-  > ⛔ **Le démarrage à froid capteurs débranchés n'est pas encore consigné ici** : c'est un geste
-  > owner, sous budget d'insertions annoncé. La ligne portera **son chiffre** quand il aura eu lieu.
+  > **État au 2026-09-01, mesuré sur la carte (binaires `4f9b401` puis `c081a6c`)** :
+  >
+  > ✅ **Un capteur du bus était RÉELLEMENT DÉBRANCHÉ** pendant toute la séance (le VL6180X,
+  > `0x29`), confirmé par **deux instruments indépendants** — le scan ne le voit plus (`0/5`) et
+  > toute transaction de donnée échoue — **et par le fait physique**, demandé à l'owner plutôt que
+  > déduit.
+  > ✅ **Six démarrages à froid réels** (débranchement du câble USB, ~3 s, rebranchement). À chaque
+  > fois : le capteur absent est déclaré **`ABSENT`**, et **les deux capteurs présents restent à
+  > ZÉRO échec** — dont un boot observé **630 s**. ⇒ **aucun faux positif sur 6 cycles.**
+  > ✅ Le modèle a été **confronté cinq fois** à la carte (`échecs = ⌊uptime/60⌋`) : **aucun écart**.
+  > ✅ **Le pire cas de blocage I²C est chiffré, et il est THÉORIQUE** : une transaction contre une
+  > adresse morte rend en **174–235 µs**, et le cycle complet coûte **453 µs au maximum** sur une
+  > période de 5 000 ms — soit **0,009 %**, là où le dossier craignait **24 %**.
+  >
+  > 🔴 **CE QUI N'A PAS ÉTÉ FAIT, ET QUI RESTE LE TÉMOIN QUALIFIANT** : le démarrage à froid d'une
+  > carte **sans AUCUN capteur**. L'owner a décidé de ne rien débrancher, et **le budget de
+  > 4 insertions annoncé n'a donc pas été entamé**. ⇒ ⛔ ne sont **pas** exercées : les conditions
+  > électriques d'un bus nu (pull-ups, appel de courant à froid), ni la composition
+  > « fenêtre froide × bus nu » — qui **ne s'extrapole pas** depuis des mesures à chaud.
+  > ⇒ Cette ligne portera **son chiffre** quand ce démarrage aura eu lieu. ⛔ Ni « non testé », ni
+  > « validé » : **ceci**.
 
 - 🔴 **ET CE QUI RESTE VRAI DANS TOUS LES CAS** : ce palier a été éprouvé **sur UNE carte** —
   celle du développement — ⛔ **jamais sur un exemplaire monté par quelqu'un d'autre.**

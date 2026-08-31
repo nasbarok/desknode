@@ -307,3 +307,73 @@ ECHANTILLONNAGE, 9 releves sur 162 s :
    affiche ARME. ⛔ **C'est le comportement PRESCRIT** par AC3.2 (« ⛔ pas sur
    MUET ») et par AC3.3 de `dn4-19`. ⇒ ⛔ **LE PRODUIT N'EST PAS CHANGE.**
    C'est le TEMOIN qui doit reproduire « aucun device », ⛔ pas la semantique.
+
+================================================================================
+FENETRE 7 — AC3 REJOUEE SUR LE TEMOIN CORRIGE  ·  BINAIRE **`c081a6c`**
+================================================================================
+⚠️ **LA CAMPAGNE PORTE DEUX BINAIRES, ET CHAQUE MESURE PORTE LE SIEN** :
+   · `4f9b401` — fenetres 1 a 6 (geometrie, tap, vrai positif ToF, AC9.3a,
+     les 6 demarrages a froid, et la REFUTATION du temoin) ;
+   · `c081a6c` — fenetre 7 (AC3 et AC3.5), apres correction du temoin.
+   ⛔ Ce n'est PAS « le SHA note une seule fois » que la story demandait : la
+     campagne a du reflasher parce que la carte a refute le temoin. L'ecart est
+     ECRIT plutot que masque par un SHA unique qui aurait ete faux pour moitie.
+
+SEQUENCE MESUREE (9 releves sur 180 s), source de lumiere INHIBEE :
+  t+20 .. t+80 s : BH1750 **MUET (1 echec)** · auto **ARME** · duty **80 %**
+  t+100 s        : BH1750 **ABSENT (2 echecs)** · auto **DESARME** · duty **80 %**
+  t+180 s        : BH1750 ABSENT (3) · DESARME · duty **80 %**
+
+✅ **AC3.2 — ⛔ ON NE DESARME PAS SUR MUET.** Pendant TOUTE la phase MUET l'auto
+   reste ARME et le duty ne bouge PAS. AC3.3 de `dn4-19` est INTACTE.
+✅ **AC3.1 — LE DESARMEMENT TOMBE SUR `ABSENT`, ET PAS AVANT.**
+✅ **AC3.4 — ⛔ AUCUN REPLI** : 80 % de bout en bout, a travers la transition.
+✅ **AC3.3 — `bl` DIT POURQUOI**, verbatim de la carte :
+   « asservissement BH1750 : DESARME — **BH1750 ABSENT** (3 re-ouvertures
+     echouees) » puis les trois lignes de motif, dont
+   « ⚠️ Le duty n'a PAS ete touche au desarmement : ⛔ aucun repli » et
+   « ✅ `bl auto on` rearme ; si le capteur est toujours absent, le cycle
+     suivant re-desarme ET LE REDIT ».
+
+--------------------------------------------------------------------------------
+✅ AC3.5 — LE CYCLE COMPLET, SOURCE DECLAREE ABSENTE
+--------------------------------------------------------------------------------
+12 releves sur 216 s, veille armee, delai ramene a 1 min :
+  t+18 .. t+54 s  : ACTIF   · duty **80 %**
+  t+72 .. t+216 s : AMBIENT · duty **16 %** (8 releves consecutifs, STABLE)
+⇒ **LE PLANCHER MORD A EXACTEMENT 16 %, ⛔ JAMAIS EN DESSOUS.**
+  C'est `veille_bl_dernier_recours()` = max(dn_veille_pct(), plancher AMBIENT),
+  et le plancher gagne parce que la loi NE PEUT PAS PARLER (source absente).
+
+🎯 **VERBATIM OWNER, apres observation ET reveil au doigt (2026-09-01)** :
+   « L'écran est lisible, et le réveil est OK »
+   ⇒ ⛔ « Un ecran non lisible sur une carte seule serait le pire resultat
+     possible de cette story » — il est LISIBLE, constate a l'oeil, source de
+     lumiere declaree ABSENTE.
+
+--------------------------------------------------------------------------------
+⚠️ UNE QUESTION EST RESTEE OUVERTE UNE HEURE, ET C'EST L'INSTRUMENT QUI L'A
+   TRANCHEE — ⛔ PAS L'INTUITION
+--------------------------------------------------------------------------------
+Apres le reveil, la dalle valait **100 %**, ⛔ pas les 80 % d'avant la veille.
+Deux explications tenaient : (a) le reveil ne restaure pas, (b) un tap a fait
+tourner le cran de niveau (100 % EST le cran 3).
+⛔ La lecture du code disait (a) FAUX — `veille_bl_remonter()` repose bien
+  `s_bl_avant_veille`. Mais ⛔ RIEN NE PERMETTAIT DE PROUVER (b) : `dn_reglage`
+  n'etait LU NULLE PART.
+⇒ L'instrument a ete AJOUTE (`absent` publie desormais l'etat de `dn_reglage`),
+  et il rend : **`niveau manuel : 100 %`**, `auto VOULU : DESARME`,
+  `ecritures NVS : 0 depuis le boot`, `crans : 20% 47% 73% 100%`.
+⇒ **(b) EST CONFIRMEE.** Le reveil n'a rien ecrase ; le cran avait ete tourne.
+  ⛔ AUCUN defaut du reveil n'est etabli, et aucun n'est insinue.
+
+--------------------------------------------------------------------------------
+⚠️ ECART DE VOCABULAIRE CONSTATE, ⛔ NON CORRIGE CETTE NUIT
+--------------------------------------------------------------------------------
+`absent` imprime « BME680 : **jamais lu** » et « BH1750 : **JAMAIS** ». Les
+ENUMS portent le meme mot (`DN_CAPT_JAMAIS` / `DN_ENV_JAMAIS`) — ce sont les
+CHAINES de `dn_capt_etat_nom()` et `dn_env_etat_nom()` qui divergent.
+⚠️ PREEXISTANT a `dn4-41` (« jamais lu » vient de `dn_capteurs`), mais la
+   commande `absent` les met desormais COTE A COTE, donc l'ecart SE VOIT.
+⛔ Non corrige ici : toucher une chaine de console peut deplacer d'autres
+  gates, et il est tard. ⇒ ecrit, date, a porter.
