@@ -1,0 +1,32 @@
+═══ T9-H — les deux derniers constats (firmware 8dafd15) ═══
+2026-08-31T14:16:36+02:00
+
+--- AC5.2 :  RELIT l'aire (l'entree l.2862) ---
+
+--- AC5.2 :  CALCULE son pourcentage (le FAIT NEUF du cadrage) ---
+cadence de la barre : HH:MM — invalidee au CHANGEMENT DE MINUTE
+🔴 MESURE (§16.5) : la barre coute 6 334 px par mise a jour,
+   soit 17,3 % d'une case (36675 px, aire RELUE — etait 35 100 a
+--- fin : 9 lignes emises ---
+
+--- AC6.3 :  AVERTIT (l'entree l.5461) ---
+compteurs tactiles, latences et compteurs UI remis a zero.
+⚠️ ET AUSSI `s_base_consommes` : le compteur « taps CONSOMMES par
+   « reveils : N » a cote de « taps CONSOMMES : 0 ».
+     `veille reset` (qui, lui, epargne les compteurs de `touch`).
+--- fin : 7 lignes emises ---
+
+$ widget rafale
+RAFALE : 6 cases poussees sous UN SEUL verrou
+⚠️ ARRETER L'AGENT PC D'ABORD : sinon les 5 cases PC sont reecrites
+   en <= 250 ms et le compte de cycles de la campagne est pollue.
+⛔ CETTE COMMANDE NE CONCLUT PAS SEULE. Pour prouver la fusion :
+   `flush` AVANT et APRES ce tir — la fusion est demontree si le
+   delta vaut 6 flushes pour UN SEUL cycle (et 6 x 36675 px,
+   l'aire d'une case RELUE — etait 35 100 a 156).
+   C'est la mesure qui porte AC7 regime (c) ; ce tir ne fait que
+   PROVOQUER le cas.
+⚠️ INSTRUMENT, pas un regime : les six sources reelles ne sont PAS
+   synchronisees (liaison ~1 s, capteur 5 s, mocks 14/20/26/34 s,
+   barre a la minute). Le dire en publiant le chiffre.
+--- fin : 12 lignes emises ---

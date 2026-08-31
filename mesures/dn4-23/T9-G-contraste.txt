@@ -41,3 +41,11 @@ usage : veille case <rrggbb>   (actuel : 000000)
 ⛔ CECI N'EST PAS LA PASSE DE PALETTE — c'est `dn4-29`, et elle
    s'arbitre A L'OEIL, PAR L'OWNER.
 --- fin : 28 lignes emises ---
+
+--- (2) LE VERDICT CORRIGE PAR L'OEIL, RELU SUR LA CARTE ---
+aplat de case en Ambient : 141820 (a la prochaine veille)
+── VERDICT DE CONTRASTE (dn4-23/AC6.2) — luminance BT.601, 0..255 ──
+  piste de jauge       141820  lum  23
+  aplat de case AMBIENT 141820  lum  23   ecart   0  🔴 ECART NUL — LA PISTE SE FOND DANS LA CASE
+aplat de case en Ambient : 000000 (a la prochaine veille)
+  aplat de case AMBIENT 000000  lum   0   ecart  23  ⚠️ FAIBLE — a verifier A L'OEIL

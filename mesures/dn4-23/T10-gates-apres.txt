@@ -1,0 +1,29 @@
+═══ run_gates.sh — 23 gates decouvertes par glob ═══
+
+[VERTE      ] tools/verif_bme680_retard_dn45.py      rc=0      0s
+[VERTE      ] tools/verif_courbe_dn413.py            rc=0     10s
+[VERTE      ] tools/verif_cumul_ambient_dn45.py      rc=0      2s
+[VERTE      ] tools/verif_d4_nvs_dn45.py             rc=0      0s
+[VERTE      ] tools/verif_decoupe_horloge_dn418.py   rc=0      7s
+[VERTE      ] tools/verif_dossier_d5_dn45.py         rc=0      1s
+[VERTE      ] tools/verif_dossier_dn415.py           rc=0      6s
+[VERTE      ] tools/verif_harnais_dn413.py           rc=0      1s
+[VERTE      ] tools/verif_hist_dn413.py              rc=0      4s
+[VERTE      ] tools/verif_instruments_dn423.py       rc=0      0s
+[VERTE      ] tools/verif_journal_soak_dn45.py       rc=0      0s
+[VERTE      ] tools/verif_ledger_dn416.py            rc=0      0s
+[VERTE      ] tools/verif_lissage_dn45.py            rc=0      1s
+[VERTE      ] tools/verif_miroir_horloge_dn418.py    rc=0      0s
+[VERTE      ] tools/verif_rebouclage_dn45.py         rc=0      3s
+[VERTE      ] tools/verif_reprise_horloge_dn418.py   rc=0      0s
+[VERTE      ] tools/verif_selection_dn49.py          rc=0      0s
+[VERTE      ] tools/verif_serie_dn412.py             rc=0      1s
+[VERTE      ] tools/verif_source_lhm_dn48.py         rc=0      4s
+[NON-JOUABLE] tools/verif_sr03.py                    rc=2   (attendu) temoin absent : tools/fixtures/AN4545.pdf
+              motif : le PDF [AN] AN4545 (VL6180X, DocID026571 Rev 1) n'est PAS au depot : document StMicroelectronics, ⛔ non redistribuable. La gate l'attend en argument et sort en 2 sur son message d'usage — rc=2 n'est PAS un rouge.
+[VERTE      ] tools/verif_veille_dn33.py             rc=0      8s
+[VERTE      ] tools/verif_verrou_lvgl_dn413.py       rc=0     15s
+[VERTE      ] tools/verif_xip_dn422.py               rc=0      0s
+
+BILAN : 22 VERTE, 0 ROUGE, 1 NON-JOUABLE sur 23 gates (64s)
+RC=0
