@@ -1345,7 +1345,7 @@ bool dn_ui_active(void);
 /* État du tas de LVGL. C'est le SEUL instrument honnête de son coût mémoire :
  * les 64 Ko de `LV_MEM_SIZE_KILOBYTES` sont statiques (.bss), donc invisibles à
  * un avant/après `heap_caps_get_free_size()`. */
-void dn_ui_log_mem(void);
+int dn_ui_log_mem(void);   /* rend le NOMBRE DE LIGNES imprimees (dn4-23) */
 
 /* Ce que LVGL a réellement coûté en tas système, mesuré autour de dn_ui_init(). */
 void dn_ui_get_cout(size_t *interne_avant, size_t *interne_apres,

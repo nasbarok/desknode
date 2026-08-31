@@ -1,0 +1,65 @@
+==============================================================================
+dn4-23 / AC8.6 — LES MUTANTS, VUS ROUGIR
+==============================================================================
+⛔ Le dépôt n'est JAMAIS modifié : chaque mutant vit dans un arbre
+   COPIÉ, et la gate y est rejouée telle quelle.
+
+TÉMOIN POSITIF — l'arbre LIVRÉ : rc=0   BILAN : 160 OK, 0 KO
+
+[ROUGE] AC1  le motif REPL universel est retiré de la table       rc=1  BILAN : 0 OK, 1 KO
+          ↳ [KO ] fichier ILLISIBLE : /tmp/dn423-mutant-tj2q8k49/firmware/desknode/main/dn_wifi.h
+[ROUGE] AC1  un refus n'arme plus le code de retour               rc=1  BILAN : 0 OK, 1 KO
+          ↳ [KO ] fichier ILLISIBLE : /tmp/dn423-mutant-d6v8qs1j/firmware/desknode/main/dn_wifi.h
+[ROUGE] AC2  le compteur de lignes est retiré du firmware         rc=1  BILAN : 0 OK, 1 KO
+          ↳ [KO ] fichier ILLISIBLE : /tmp/dn423-mutant-62uwxfag/firmware/desknode/main/dn_wifi.h
+[ROUGE] AC2  l'hôte ne distingue plus la PERTE                    rc=1  BILAN : 0 OK, 1 KO
+          ↳ [KO ] fichier ILLISIBLE : /tmp/dn423-mutant-pflp0hc3/firmware/desknode/main/dn_wifi.h
+[ROUGE] AC3  le jeu « variable » redevient FIXE (rampe plate)     rc=1  BILAN : 0 OK, 1 KO
+          ↳ [KO ] fichier ILLISIBLE : /tmp/dn423-mutant-644jwg5d/firmware/desknode/main/dn_wifi.h
+[ROUGE] AC4  `vTaskDelay` est réintroduit dans `cpu_delta`        rc=1  BILAN : 0 OK, 1 KO
+          ↳ [KO ] fichier ILLISIBLE : /tmp/dn423-mutant-w07375k9/firmware/desknode/main/dn_wifi.h
+[ROUGE] AC5  une constante de géométrie est replantée dans une consigne rc=1  BILAN : 0 OK, 1 KO
+          ↳ [KO ] fichier ILLISIBLE : /tmp/dn423-mutant-7w3q2n53/firmware/desknode/main/dn_wifi.h
+[ROUGE] AC6  l'avertissement `veille off` est retiré de `widget piste` rc=1  BILAN : 0 OK, 1 KO
+          ↳ [KO ] fichier ILLISIBLE : /tmp/dn423-mutant-45qoxag8/firmware/desknode/main/dn_wifi.h
+[ROUGE] AC6  le verdict de contraste disparaît de `veille case`   rc=1  BILAN : 0 OK, 1 KO
+          ↳ [KO ] fichier ILLISIBLE : /tmp/dn423-mutant-co2gk1ri/firmware/desknode/main/dn_wifi.h
+[ROUGE] AC6  la piste par défaut retombe sur l'aplat (écart NUL)  rc=1  BILAN : 0 OK, 1 KO
+          ↳ [KO ] fichier ILLISIBLE : /tmp/dn423-mutant-53ii_d6b/firmware/desknode/main/dn_wifi.h
+[ROUGE] AC7  un delta sur UNE SEULE fenêtre redevient publiable   rc=1  BILAN : 0 OK, 1 KO
+          ↳ [KO ] fichier ILLISIBLE : /tmp/dn423-mutant-rkceocl6/firmware/desknode/main/dn_wifi.h
+[ROUGE] RC1  le compteur redevient une SOMME SIGNÉE (surplus structurel) rc=1  BILAN : 0 OK, 1 KO
+          ↳ [KO ] fichier ILLISIBLE : /tmp/dn423-mutant-h7eau0v4/firmware/desknode/main/dn_wifi.h
+[ROUGE] RC2  `--no-wait` rescanne l'ÉCHO de la commande           rc=1  BILAN : 0 OK, 1 KO
+          ↳ [KO ] fichier ILLISIBLE : /tmp/dn423-mutant-684ksjty/firmware/desknode/main/dn_wifi.h
+[ROUGE] RC3  `--no-wait` replafonne sa lecture à 2 s              rc=1  BILAN : 0 OK, 1 KO
+          ↳ [KO ] fichier ILLISIBLE : /tmp/dn423-mutant-syesns_6/firmware/desknode/main/dn_wifi.h
+[ROUGE] RC4  la carte se désavoue et le pilote ne le voit plus    rc=1  BILAN : 0 OK, 1 KO
+          ↳ [KO ] fichier ILLISIBLE : /tmp/dn423-mutant-7wt4m9yr/firmware/desknode/main/dn_wifi.h
+[ROUGE] RC5  `chercher_refus` re-déduplique par TEXTE (dégonfle)  rc=1  BILAN : 0 OK, 1 KO
+          ↳ [KO ] fichier ILLISIBLE : /tmp/dn423-mutant-_bxpt4ci/firmware/desknode/main/dn_wifi.h
+[ROUGE] RC6  `cpu delta` réapparie par HANDLE seul (TCB recyclé)  rc=1  BILAN : 0 OK, 1 KO
+          ↳ [KO ] fichier ILLISIBLE : /tmp/dn423-mutant-sjkhmy9z/firmware/desknode/main/dn_wifi.h
+[ROUGE] RC7  le « PLAFOND » de l'ACTIF redevient une affirmation  rc=1  BILAN : 0 OK, 1 KO
+          ↳ [KO ] fichier ILLISIBLE : /tmp/dn423-mutant-a6eo6xs6/firmware/desknode/main/dn_wifi.h
+[ROUGE] RC8  `contraste_bande_paire` reconclut « même couleur » d'une luminance rc=1  BILAN : 0 OK, 1 KO
+          ↳ [KO ] fichier ILLISIBLE : /tmp/dn423-mutant-waznc6e2/firmware/desknode/main/dn_wifi.h
+[ROUGE] RC9  `colonnes()` recompte des OCTETS DE TÊTE             rc=1  BILAN : 0 OK, 1 KO
+          ↳ [KO ] fichier ILLISIBLE : /tmp/dn423-mutant-xzp74x8k/firmware/desknode/main/dn_wifi.h
+[ROUGE] RC10 l'injecteur rejette la réponse de la carte           rc=1  BILAN : 0 OK, 1 KO
+          ↳ [KO ] fichier ILLISIBLE : /tmp/dn423-mutant-xqs_b_fc/firmware/desknode/main/dn_wifi.h
+[ROUGE] RC11 `--latence-delta` recompare deux STIMULI différents  rc=1  BILAN : 0 OK, 1 KO
+          ↳ [KO ] fichier ILLISIBLE : /tmp/dn423-mutant-7nm5zsxw/firmware/desknode/main/dn_wifi.h
+[ROUGE] RC12 la bannière récite à nouveau la prémisse RÉFUTÉE     rc=1  BILAN : 0 OK, 1 KO
+          ↳ [KO ] fichier ILLISIBLE : /tmp/dn423-mutant-ta4nij26/firmware/desknode/main/dn_wifi.h
+[ROUGE] RC13 une AIRE RÉCITÉE est replantée dans un littéral de CONTINUATION rc=1  BILAN : 0 OK, 1 KO
+          ↳ [KO ] fichier ILLISIBLE : /tmp/dn423-mutant-w04hzmo7/firmware/desknode/main/dn_wifi.h
+[ROUGE] RC14 la gate ne lit à nouveau QUE le premier littéral     rc=1  BILAN : 0 OK, 1 KO
+          ↳ [KO ] fichier ILLISIBLE : /tmp/dn423-mutant-qtlv0sxj/firmware/desknode/main/dn_wifi.h
+[ROUGE] RC15 l'AUTRE aire (`36 675`) est replantée dans une consigne rc=1  BILAN : 0 OK, 1 KO
+          ↳ [KO ] fichier ILLISIBLE : /tmp/dn423-mutant-qt_2c1rl/firmware/desknode/main/dn_wifi.h
+
+BILAN MUTANTS : 26 vus ROUGIR, 0 non concluant(s) sur 26
+⛔ CE QUE CE PV NE PROUVE PAS : que la gate attrape TOUS les défauts.
+   Il prouve que chacun de ces 26-là ne passe plus. Une gate se juge
+   à ce qu'elle a été vue REFUSER, ⛔ pas à son compte de contrôles.

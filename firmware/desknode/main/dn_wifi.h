@@ -53,10 +53,33 @@ typedef enum {
  */
 #if !CONFIG_HTTPD_WS_SUPPORT
 
+/*
+ * ⚠️ dn4-23 / REVUE DU 2026-08-31 — **MEME HORS MAQUETTE, CES STUBS IMPRIMENT
+ *    HORS DU COMPTEUR.** Ces fonctions sont `inline` DANS L'EN-TETE, donc leur
+ *    `printf` est resolu AVANT le `#define printf dn_console_printf` de
+ *    `dn_console.c` : c'est celui de la libc. `wifi on` emettait donc 4 lignes
+ *    que la carte n'annonçait pas — et c'est le chemin REELLEMENT COMPILE
+ *    aujourd'hui (la fourche T5 a ecarte la maquette). ⛔ Corriger seulement
+ *    `dn_wifi.c` aurait laisse le vrai cas ouvert.
+ */
+static inline unsigned *dn_wifi_lignes_ptr(void)
+{
+    static unsigned n;
+    return &n;
+}
+static inline unsigned dn_wifi_lignes_emises(void)
+{
+    unsigned *p = dn_wifi_lignes_ptr();
+    unsigned n = *p;
+    *p = 0;
+    return n;
+}
+
 static inline esp_err_t dn_wifi_on(const char *ssid, const char *mdp)
 {
     (void)ssid;
     (void)mdp;
+    *dn_wifi_lignes_ptr() += 4;   /* les 4 lignes ci-dessous — ⛔ recompter */
     printf("maquette B (WiFi) NON COMPILEE — ecartee par la fourche T5 (verrou 1 :\n"
            "6 407 o restants en defaut, ESP_ERR_NO_MEM en variante SPIRAM).\n"
            "Re-mesure : REQUIRES esp_wifi/esp_netif/esp_event/esp_http_server +\n"
@@ -86,6 +109,10 @@ static inline uint32_t dn_wifi_ws_connexions(void) { return 0; }
 esp_err_t dn_wifi_on(const char *ssid, const char *mdp);
 /* Arrête tout (serveur WS compris), démonte la pile, imprime ce qui revient. */
 esp_err_t dn_wifi_off(void);
+/* dn4-23 — rend (et remet a zero) le nombre de lignes que CE module a imprimees
+ * hors du compteur de `dn_console.c`. ⛔ Un compte recopie la-bas se perimerait
+ * au premier `printf` ajoute ici. */
+unsigned dn_wifi_lignes_emises(void);
 
 /* Serveur WebSocket sur /dn, port 80. Chaque message TEXTE est une ligne de
  * trame passée à dn_link_ingest_ligne(). Refuse si le WiFi n'est pas monté. */

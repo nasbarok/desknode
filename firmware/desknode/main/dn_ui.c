@@ -11199,12 +11199,22 @@ size_t dn_ui_lvgl_used(void)
     return (size_t)(mon.total_size - mon.free_size);
 }
 
-void dn_ui_log_mem(void)
+/*
+ * 🔴 dn4-23 / REVUE DU 2026-08-31 — ELLE REND DESORMAIS SON NOMBRE DE LIGNES.
+ *    Ce `printf` est celui de la libc : il n'est PAS compte par le compteur de
+ *    `dn_console.c` (qui n'est qu'un `#define` local a ce fichier-la). Les trois
+ *    commandes qui appellent cette fonction annoncaient donc structurellement
+ *    6 lignes de moins qu'elles n'en emettaient — un surplus PERMANENT, capable
+ *    d'absorber une vraie perte dans la meme capture.
+ * ⛔ Le compte est rendu, ⛔ pas suppose par l'appelant : une constante recopiee
+ *   la-bas se serait perimee au premier `printf` ajoute ici.
+ */
+int dn_ui_log_mem(void)
 {
     lv_mem_monitor_t mon;
     if (!lvgl_port_lock(1000)) {
         printf("verrou LVGL non pris\n");
-        return;
+        return 1;
     }
     lv_mem_monitor(&mon);
     lvgl_port_unlock();
@@ -11218,6 +11228,7 @@ void dn_ui_log_mem(void)
            (uint32_t)mon.free_biggest_size, (unsigned)mon.frag_pct);
     printf("⚠️ ces octets-là sont réservés au LINK : ils n'apparaissent PAS dans\n");
     printf("   l'avant/après de `mem`. C'est le seul endroit où ils se voient.\n");
+    return 6;   /* 1 + 2 + 1 + 2 lignes ci-dessus — ⛔ recompter en cas d'ajout */
 }
 
 void dn_ui_get_cout(size_t *interne_avant, size_t *interne_apres,

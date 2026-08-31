@@ -2595,6 +2595,28 @@ donne **14 cycles à 35 100 px** qui se soustraient.
 | **HH:MM:SS (1 Hz)** | 84 | 84 | **1,00** | **70 cycles / 70 s** | **6 334 px** |
 
 ⇒ **6 334 px = 18 % d'une case (35 100 px)**, et **1,0 flush par mise à jour**.
+
+> 🔴 **ANNOTATION DATÉE — 2026-08-31 (revue de code de `dn4-23`).** Le rapport
+> ci-dessus, **18 %**, divise par une aire de case **PÉRIMÉE**. L'aire livrée
+> vaut **36 675 px** (`225 × 163`) depuis le rééquilibrage des bandes, donc le
+> rapport réel est **17,3 %**. ⛔ **La ligne d'origine n'est pas réécrite** : elle
+> date de la mesure et reste le repère de son époque — c'est la convention du
+> dépôt (« ⛔ jamais corriger en silence : annoter »).
+> ⚠️ **Et l'aire n'est PAS une constante du tout** : `ui_case_h()` dépend de
+> `s_geo_barre_h` / `s_geo_menu_h`, tous deux **réglables à chaud** — donc ⛔ ni
+> 35 100 ni 36 675 ne s'écrivent dans une consigne d'action. La console, elle,
+> **relit** l'aire (`dn_ui_case_dim()`) et **calcule** le pourcentage : c'est
+> `widget barre` qui fait foi, ⛔ pas ce paragraphe.
+> ⚠️ Le numérateur **6 334 px** est lui aussi **daté** : il a été mesuré à la
+> hauteur de barre par DÉFAUT. `widget bandes` / `widget voie` la changent à
+> chaud ⇒ depuis la revue, `widget barre` **REFUSE de publier le rapport** quand
+> la hauteur courante diffère de celle de la mesure, au lieu d'imprimer un
+> pourcentage faux.
+>
+> **Pourquoi cette annotation existe** : la console renvoyait l'opérateur à
+> « §16.5 » tout en affichant 17,3 %, et cette section-ci concluait 18 %. Un
+> instrument qui envoie vers une source qui le contredit est de la même famille
+> que celui qui se tait.
 ⇒ En duty, le régime 1 Hz coûte **70 × (678 + 8 252) µs = 625 ms sur 70 s, soit 0,89 %**.
 
 ### 16.5 bis 🔴 LE CORRECTIF QUE CETTE MESURE A TROUVÉ — la barre invalidait DEUX zones pour UNE

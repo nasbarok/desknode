@@ -99,7 +99,7 @@ zéro — **y compris celles qui n'impriment rien** :
 
 | motif | origine |
 |---|---|
-| `refusé :` / `refuse :` / `REFUSE :` | **notre** convention — 66 sites dans `dn_console.c` |
+| `refusé(s) :` / `refuse :` / `REFUSE :` | **notre** convention (⛔ le compte n'est plus récité ici : il se périmait au commit suivant) |
 | `ESP_ERR_…` | `esp_err_to_name()`, partout |
 | `Unrecognized command` | REPL ESP-IDF |
 | `Command returned non-zero error code: 0x…` | REPL ESP-IDF — ✅ déjà lu par `sonde_horloge_dn418.py` |
@@ -120,7 +120,17 @@ Chaque commande se termine par `--- fin : N lignes emises ---`, et `dn_console.p
 |---|---|
 | **PERTE** (reçu < annoncé) | 🔴 des lignes **manquent** — rc non nul, ⛔ ne rien conclure, **rejouer** |
 | **LIGNES ÉTRANGÈRES** (reçu > annoncé) | ⚠️ un `ESP_LOGx` **asynchrone** est tombé pendant la commande. ⛔ Ce n'est **pas** une perte |
-| **SANS COMPTEUR** | ⛔ **pas** « 0 perte » — « **on ne sait pas** » (firmware antérieur à `dn4-23`) |
+| **SANS COMPTEUR** | ⛔ **pas** « 0 perte » — « **on ne sait pas** ». **DEUX** causes : firmware antérieur à `dn4-23`, **ou la ligne de compteur elle-même a été perdue**. `--exiger-compteur` en fait un échec |
+| **COMPTE NON FIABLE** | la carte déclare son propre compte invalide (sortie tronquée faute de RAM) — rc non nul |
+| **verdict NON CRÉDIBLE** | 🔴 la carte a écrit `DRAPEAU LEVE` / `NE PAS CONCLURE` / `TEMOIN POSITIF EN ECHEC` : elle publie un chiffre qu'elle désavoue ⇒ rc non nul (revue 2026-08-31) |
+
+🔴 **L'ANGLE MORT DE CET INVARIANT, ÉCRIT PLUTÔT QUE TU** (revue du 2026-08-31) : c'est une
+**somme signée par capture**. Une ligne **perdue** et une ligne **étrangère** dans la même
+capture **s'annulent** et rendent `OK`. La source **structurelle** de surplus a été tarie
+(`dn_ui_log_mem()` et `dn_wifi` imprimaient **hors** du compteur : 6 et 13 lignes non
+annoncées, donc `LIGNES ÉTRANGÈRES` permanent sur ces commandes) ; ce qui reste, c'est le
+log asynchrone, et **deux nombres ne peuvent pas le distinguer d'une perte simultanée**.
+L'instrument **imprime** cette limite au lieu de la taire.
 
 ⛔ **LA PARADE DE `dn4-2` EST INSUFFISANTE, ET C'EST ÉCRIT** : elle demandait *« toute
 passe publiée vient d'une invocation SOLO »*. **La perte existe aussi en solo — 1 sur 7**
@@ -140,9 +150,16 @@ Les quatre jeux de `tools/dn_injecteur.py` (`pire` · `reel` · `nominal` · `tr
 **dictionnaires de constantes**. Une valeur qui ne change pas ne change pas le **texte** ;
 un texte qui ne change pas **n'invalide rien** ; LVGL ne redessine que ce qui est invalidé.
 
-📊 **Mesuré** : **94 645 px/cycle** avec un jeu figé contre **128 613** sous
-`widget mock on` (**−36 %**), et **0,005 corruption/s** contre **0,54 /s** sous agent réel
-— **facteur 108**.
+📊 **Mesuré, et ⛔ CE N'EST PAS CE QUE CETTE SECTION DISAIT** — corrigé par la revue du
+2026-08-31 : la séance carte a mesuré que **l'aire cumulée est LA MÊME**, jeu fixe ou jeu
+variable (**11,37 M px** à 1 % près, **3 passes chacun**). ⇒ **le jeu variable ne fait PAS
+dessiner plus**, et l'écart « 94 645 contre 128 613 » mesurait **LA CADENCE**
+(1 Hz contre 14/20/26/34 s), ⛔ **pas la fixité**. Le repère **94 645 ne se reproduit pas**
+non plus (46 572 · 71 984 · 74 576) ; le repère `mock`, lui, **tient** (124 750).
+
+📊 **CE QUI RESTE MESURÉ, ET C'EST UNE AUTRE MESURE** : **0,005 corruption/s** contre
+**0,54 /s** sous agent réel — **facteur 108**. C'est **ça**, et ça seul, qui rend un jeu
+figé impropre à décrire un régime réel.
 
 ⇒ `--jeu rampe` fait **varier** les 16 grandeurs (rampes triangulaires, **16 périodes
 premières deux à deux**, dans les bornes de `k_metriques[]`). L'injecteur **annonce au

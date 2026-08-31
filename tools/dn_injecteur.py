@@ -33,9 +33,17 @@ dn_injecteur — tenir les six cases VIVANTES pendant un constat owner.
 🔴 dn4-23 — LES QUATRE JEUX HISTORIQUES SONT DES **CONSTANTES**, ET C'EST UN
    DÉFAUT DE MESURE, ⛔ PAS UN DÉTAIL. Une valeur qui ne change pas ne change
    pas le TEXTE ; un texte qui ne change pas n'invalide rien ; LVGL ne redessine
-   que ce qui est invalidé. ⇒ **un jeu figé produit du TRAFIC sans produire du
-   DESSIN.** Mesuré : 94 645 px/cycle contre 128 613 sous `widget mock on`
-   (−36 %), et 0,005 corruption/s contre 0,54 /s sous agent réel (**×108**).
+   que ce qui est invalidé.
+🔴 **CORRIGÉ PAR LA REVUE DU 2026-08-31 — CE PARAGRAPHE CONCLUAIT « un jeu figé
+   produit du TRAFIC sans produire du DESSIN », sur « 94 645 px/cycle contre
+   128 613 (−36 %) ». LA SÉANCE DU MÊME JOUR A MESURÉ L'INVERSE** : l'aire
+   cumulée est **LA MÊME**, jeu fixe ou jeu variable (**11,37 M px** à 1 % près,
+   **3 passes chacun**). L'écart mesurait **LA CADENCE** (1 Hz contre
+   14/20/26/34 s), ⛔ pas la fixité. Et le repère `94 645` **ne se reproduit
+   pas** (46 572 · 71 984 · 74 576) ; celui de `widget mock on`, si (124 750).
+✅ CE QUI RESTE MESURÉ, ET C'EST UNE **AUTRE** MESURE : **0,005 corruption/s**
+   contre **0,54 /s** sous agent réel — **×108**. C'est ça, et ça seul, qui rend
+   un jeu figé impropre à décrire un régime réel.
    ⇒ ⛔ **TOUT CHIFFRE OÙ LE DESSIN EST LA VARIABLE SE MESURE SOUS AGENT RÉEL,
      OU AVEC `--jeu rampe`.** Les quatre jeux figés restent JUSTES pour ce à quoi
      ils servent : la mise en page et le pire cas de longueur de chaîne.
@@ -53,6 +61,7 @@ Usage :
 
 import argparse
 import json
+import os
 import sys
 import time
 
@@ -242,7 +251,11 @@ JEUX = {
 #      ram  {1000, 40000}              net  {1000000, 1000000}
 #      disk {1000000, 100000, 100000, 100000}
 #
-# ⚠️ LES PÉRIODES SONT PREMIÈRES ENTRE ELLES (7 · 11 · 13 · 17 · 19 · 23 s), ET
+# ⚠️ LES PÉRIODES SONT PREMIÈRES ENTRE ELLES — **16** d'entre elles, de 7 à
+#    67 s (la table ci-dessus fait foi ; ⛔ ce commentaire ne les récite plus :
+#    il en listait SIX, périmées par la table qui les suit de trois lignes.
+#    Corrigé par la revue du 2026-08-31 — même famille que les autres chiffres
+#    récités de cette story). ET
 #    CE N'EST PAS UNE COQUETTERIE : des rampes en phase feraient changer les six
 #    cases dans le MÊME cycle LVGL, donc un flush groupé — c'est-à-dire
 #    exactement l'artefact que `dn_link_etalement` sert à mesurer. Un stimulus
@@ -318,7 +331,7 @@ def hors_bornes(bornes):
     return fautes
 
 
-def bornes_relues():
+def bornes_relues(texte=None):
     """Les plafonds de `k_metriques[]`, **RELUS de `dn_link.c`**.
 
     ⛔ ⛔ PAS RECOPIÉS ICI. Un témoin qui compare une copie des bornes à une
@@ -328,23 +341,48 @@ def bornes_relues():
        de les recomposer.
     ⚠️ Rend `None` si le fichier est introuvable : le témoin le DIT et rougit,
        ⛔ il ne se tait pas.
+    ⚠️ `texte` n'existe QUE pour le témoin : sans lui, la garde anti-commentaire
+       ci-dessous serait invérifiable (aucun `k_metriques[]` livré ne porte de
+       commentaire aujourd'hui, donc la muter ne changerait RIEN et le témoin
+       resterait vert sur une garde morte — c'est le défaut que la revue du
+       2026-08-31 a trouvé sur trois gates de ce dépôt).
     """
-    import os
     import re as _re
     racine = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     src = os.path.join(racine, "firmware", "desknode", "main", "dn_link.c")
-    if not os.path.exists(src):
-        return None
-    with open(src, encoding="utf-8") as f:
-        txt = f.read()
+    if texte is None:
+        if not os.path.exists(src):
+            return None
+        with open(src, encoding="utf-8") as f:
+            texte = f.read()
+    txt = texte
+    # 🔴 REVUE DU 2026-08-31 — `\{([^}]*)\}` PUIS « TOUS LES CHIFFRES » RECOLTAIT
+    #    AUSSI CE QUI EST DANS LES COMMENTAIRES. Un `{1000u, /* 100,0 % */ 1000u}`
+    #    (ou un hexa `0x3E8`, qui rend `0`, `3`, `8`) DECALE la liste ⇒
+    #    `hors_bornes()` compare alors les rampes a des nombres qui NE SONT PAS
+    #    les plafonds : exactement la defaillance « copie contre copie » que le
+    #    docstring de cette fonction existe pour empecher.
+    txt = _re.sub(r"/\*.*?\*/", " ", txt, flags=_re.S)
+    txt = _re.sub(r"//[^\n]*", " ", txt)
     out = {}
     for m in _re.finditer(
             r'\[DN_LINK_M_[A-Z]+\]\s*=\s*\{\s*"(\w+)"\s*,\s*(\d+)\s*,\s*\{([^}]*)\}',
             txt):
         nom, n, maxs = m.group(1), int(m.group(2)), m.group(3)
+        # ⛔ Et on refuse l'hexa plutot que de le hacher en morceaux.
+        if _re.search(r"0[xX][0-9a-fA-F]+", maxs):
+            return None
         vals = [int(x) for x in _re.findall(r'(\d+)u?', maxs)]
         out[nom] = vals[:n]
     return out or None
+
+
+def _ecrire_brut(d, nom, contenu):
+    """Écrit un fichier tel quel — pour les témoins de relevé ILLISIBLE."""
+    c = os.path.join(d, nom)
+    with open(c, "w", encoding="utf-8") as f:
+        f.write(contenu)
+    return c
 
 
 def temoin_negatif_rampes():
@@ -431,6 +469,106 @@ def temoin_negatif_rampes():
     ctrl(len(JEUX) == 4 and set(JEUX) == {"pire", "reel", "nominal", "trou"},
          "…et les quatre sont toujours là", " · ".join(sorted(JEUX)))
 
+    print("\n── REVUE 2026-08-31 : les trous que la revue a trouvés ────────")
+    # (1) LA BANNIÈRE NE RÉCITE PLUS LA PRÉMISSE RÉFUTÉE.
+    import contextlib as _c
+    import io as _io
+    for j in ("pire", "rampe"):
+        t = _io.StringIO()
+        with _c.redirect_stdout(t):
+            banniere_jeu(j)
+        v = t.getvalue()
+        # ⛔ LE TEST N'EST PAS « le nombre a disparu » : nommer un repère RÉFUTÉ
+        #   pour dire de ne PAS s'y comparer est exactement ce qu'on veut. Le
+        #   test est : s'il apparaît, il apparaît AVEC sa réfutation.
+        ctrl("36 %" not in v and "presque pas.**" not in v
+             and ("94 645" not in v or "NE SE REPRODUIT PAS" in v),
+             "bannière « %s » ne VEND plus le repère réfuté" % j,
+             "⛔ « 36 % de stimulus en moins » a disparu")
+    t = _io.StringIO()
+    with _c.redirect_stdout(t):
+        banniere_jeu("rampe")
+    ctrl("MÊME" in t.getvalue() and "11,37 M px" in t.getvalue(),
+         "…et elle publie CE QUI A ÉTÉ MESURÉ à la place",
+         "aire cumulée IDENTIQUE, 3 passes chacun")
+    t = _io.StringIO()
+    with _c.redirect_stdout(t):
+        banniere_jeu("pire")
+    ctrl("108" in t.getvalue(),
+         "…mais le facteur 108 (corruption) SURVIT",
+         "c'est une AUTRE mesure, ⛔ pas réfutée")
+
+    # (2) `--latence-delta` REFUSE DEUX STIMULI DIFFÉRENTS.
+    import json as _j
+    import tempfile as _tf
+    def _releve(d, jeu, esp, sec, moys):
+        c = os.path.join(d, "%s.json" % jeu)
+        with open(c, "w", encoding="utf-8") as f:
+            _j.dump({"firmware": "aaaaaaa", "jeu": jeu, "espacement": esp,
+                     "secondes_par_fenetre": sec,
+                     "fenetres": [{"fenetre": i + 1, "n": 9, "min": m - 5,
+                                   "moy": m, "max": m + 5}
+                                  for i, m in enumerate(moys)]}, f)
+        return c
+    with _tf.TemporaryDirectory() as d:
+        a1 = _releve(d, "pire", 0.2, 10, [10, 12, 11, 13, 10])
+        b1 = _releve(d, "rampe", 0.01, 120, [300, 310, 305, 299, 302])
+        t = _io.StringIO()
+        with _c.redirect_stdout(t):
+            rc = verbe_latence_delta(a1, b1)
+        ctrl(rc == 1 and "PAS ÉTÉ PRIS SOUS LE MÊME" in t.getvalue(),
+             "🔴 deux STIMULI différents ⇒ delta REFUSÉ",
+             "⛔ publiait « +294,0 ms » et rc 0")
+        b2 = _releve(d, "pire2", 0.2, 10, [300, 310, 305, 299, 302])
+        os.replace(b2, os.path.join(d, "b2.json"))
+        with open(os.path.join(d, "b2.json"), encoding="utf-8") as f:
+            o = _j.load(f)
+        o["jeu"] = "pire"
+        o["firmware"] = "bbbbbbb"
+        with open(os.path.join(d, "b2.json"), "w", encoding="utf-8") as f:
+            _j.dump(o, f)
+        t = _io.StringIO()
+        with _c.redirect_stdout(t):
+            rc = verbe_latence_delta(a1, os.path.join(d, "b2.json"))
+        ctrl(rc == 0, "…et le MÊME stimulus reste comparable", "AC7.2 intact")
+        # ⛔ ON EXIGE LES VALEURS, ⛔ pas le libellé : « étendue OBSERVÉE non
+        #   transmise » contient aussi les mots « étendue OBSERVÉE ».
+        ctrl("[5 ; 18]" in t.getvalue() and "non transmise" not in t.getvalue(),
+             "…et l'étendue OBSERVÉE est publiée AVEC ses valeurs",
+             "observé [5 ; 18] ⛔ pas moyennes [10 ; 13]")
+        # (3) UN RELEVÉ ILLISIBLE EST UN REFUS, ⛔ PAS UNE TRACE.
+        # ⛔ CES TROIS-LÀ PORTENT LE **MÊME** STIMULUS QUE `a1` : sinon le
+        #   refus tombe sur l'écart de stimulus et le témoin passe POUR LA
+        #   MAUVAISE RAISON — vérifié, c'était le cas.
+        _stim = '"jeu":"pire","espacement":0.2,"secondes_par_fenetre":10'
+        for mauvais, quoi in ((os.path.join(d, "absent.json"), "chemin ABSENT"),
+                              (_ecrire_brut(d, "tronque.json",
+                                            '{%s,"fenetres":' % _stim),
+                               "JSON TRONQUÉ"),
+                              (_ecrire_brut(d, "vide.json",
+                                            '{%s,"fenetres":[]}' % _stim),
+                               "relevé SANS fenêtre"),
+                              (_ecrire_brut(d, "vieux.json",
+                                            '{%s,"fenetres":[{"n":9}]}' % _stim),
+                               "relevé SANS `moy`")):
+            t = _io.StringIO()
+            with _c.redirect_stdout(t):
+                rc = verbe_latence_delta(mauvais, a1)
+            ctrl(rc == 1 and "REFUS" in t.getvalue(),
+                 "🔴 %s ⇒ REFUS" % quoi, "⛔ pas une trace Python")
+
+    # (4) LES BORNES NE SE RÉCOLTENT PLUS DANS LES COMMENTAIRES.
+    poison = ('[DN_LINK_M_CPU] = { "cpu", 4, {1000u, /* 100,0 % */ 1000u,'
+              ' 1000u, 1000u} },')
+    b_poison = bornes_relues(poison)
+    ctrl(b_poison == {"cpu": [1000, 1000, 1000, 1000]},
+         "un COMMENTAIRE dans `k_metriques[]` ne décale plus les bornes",
+         "lu : %s" % (b_poison or {}).get("cpu"))
+    hexa = '[DN_LINK_M_CPU] = { "cpu", 2, {0x3E8, 1000u} },'
+    ctrl(bornes_relues(hexa) is None,
+         "…et un plafond en HEXA fait RENDRE `None`, ⛔ pas 3 morceaux",
+         "0x3E8 donnait 0 · 3 · 8")
+
     if ko == 0:
         print("BILAN : %d OK, 0 KO" % ok)
         return 0
@@ -439,7 +577,17 @@ def temoin_negatif_rampes():
 
 
 def injecter(ser, a):
-    """Le tir lui-même : `a.secondes` a 1 Hz. Rend le nombre de trames emises.
+    """Le tir lui-même : `a.secondes` a 1 Hz. Rend `(emises, refus)`.
+
+    🔴 CORRIGÉ PAR LA REVUE DU 2026-08-31 — **CET OUTIL ÉCRIVAIT ET JETAIT LA
+       RÉPONSE.** « N trames emises » était un COMPTE D'ÉCRITURES CÔTÉ HÔTE, ⛔
+       pas un compte d'acceptations : le tampon rendu par la carte était lu
+       (`ser.read`) uniquement pour ne pas saturer, puis **jeté sans être
+       regardé**, et `main()` rendait 0 quoi qu'il arrive. C'est exactement le
+       défaut d'AC1/AC2 — celui des deux fenêtres de 90 s qui ont rendu « 0 »
+       sur un stimulus jamais démarré — **recréé dans l'outil qui PRODUIT le
+       stimulus**. Un compteur que personne ne lit ne compte pas ; une réponse
+       que personne ne lit non plus.
 
     ⚠️ EXTRAIT DE `main()` PAR dn4-23 SANS UNE LIGNE DE CHANGEMENT DE
        COMPORTEMENT : la campagne de latence a besoin de tirer N fois, et
@@ -451,6 +599,7 @@ def injecter(ser, a):
     seq = 0
     t0 = time.monotonic()
     n = 0
+    echo = bytearray()
     while time.monotonic() - t0 < a.secondes:
         cycle = time.monotonic()
         t_ms = int((cycle - t0) * 1000) & 0xFFFFFFFF
@@ -487,14 +636,32 @@ def injecter(ser, a):
             #    les trames suivantes arrivent TRONQUEES — donc comptees en
             #    `rejets_tronquee` alors que l'emetteur allait bien.
             time.sleep(a.espacement)
-            ser.read(ser.in_waiting or 0)
+            # ⛔ CE QUI EST LU EST DÉSORMAIS **REGARDÉ**, ⛔ plus jeté.
+            echo.extend(ser.read(ser.in_waiting or 0))
         reste = 1.0 - (time.monotonic() - cycle)
         if reste > 0:
             time.sleep(reste)
-    print(f"[injecteur] {n} trames emises. ⚠️ les cases retombent a « -- » "
+    refus = dn_console.chercher_refus(echo.decode("utf-8", "replace"))
+    print(f"[injecteur] {n} trames ECRITES. ⚠️ les cases retombent a « -- » "
           f"dans 3 s — c'est la peremption, PAS une regression.")
+    if refus:
+        print("[injecteur] 🔴 %d REFUS LU(S) DANS LA RÉPONSE DE LA CARTE — ⛔ ces"
+              % len(refus))
+        print("[injecteur]    trames-là n'ont PAS été acceptées. « %d écrites »"
+              % n)
+        print("[injecteur]    ⛔ ne veut donc PAS dire « %d reçues »." % n)
+        for nom, ligne in refus[:6]:
+            print("[injecteur]      · [%s] %s" % (nom, ligne[:60]))
+        if len(refus) > 6:
+            print("[injecteur]      · … et %d autre(s)." % (len(refus) - 6))
+    else:
+        print("[injecteur] ✅ aucun refus lu dans la réponse de la carte.")
+        print("[injecteur]    ⚠️ « aucun refus LU » ⛔ n'est pas « tout accepté » :"
+              " seul")
+        print("[injecteur]       `pc` (compteurs de liaison) dit ce qui est"
+              " ENTRÉ.")
     sys.stdout.flush()
-    return n
+    return n, refus
 
 
 def banniere_jeu(nom):
@@ -505,31 +672,60 @@ def banniere_jeu(nom):
        px/cycle sous un jeu figé et le compare à un relevé sous agent réel. Les
        deux chiffres existent, ils sont justes, et leur COMPARAISON est fausse
        d'un facteur qui a été mesuré jusqu'à **108**.
+
+    🔴 **CORRIGÉ PAR LA REVUE DU 2026-08-31 — CETTE BANNIÈRE RÉCITAIT COMME
+       « MESURÉ » CE QUE LA SÉANCE DU MÊME JOUR AVAIT RÉFUTÉ.** Elle affirmait
+       *« le dessin ne se déclenche presque pas »* et *« 94 645 px/cycle (figé)
+       contre 128 613, soit 36 % de stimulus en moins »*. La séance a mesuré
+       l'inverse : **l'aire cumulée est LA MÊME, jeu fixe ou jeu variable**
+       (11,37 M px à 1 % près, 3 passes chacun) ⇒ **le jeu variable ne fait PAS
+       dessiner plus**, et l'écart 94 645 ⇄ 128 613 mesurait **LA CADENCE**
+       (1 Hz contre 14/20/26/34 s), ⛔ pas la fixité.
+    ⛔ ET LE REPÈRE `94 645` NE SE REPRODUIT PAS : le même `--jeu reel` a rendu
+       **46 572 · 71 984 · 74 576** px/cycle, soit −21 % à −51 %. Il n'est donc
+       plus cité comme repère. Le repère `mock`, lui, TIENT (124 750 contre
+       128 613, deux fois à 250 px près).
+    ✅ CE QUI SURVIT, ET C'EST UNE **AUTRE** MESURE : **0,005 corruption/s
+       contre 0,54 /s sous agent réel — facteur 108**. C'est ça, et ça seul, qui
+       rend un jeu figé impropre à décrire un régime réel.
+    ⚠️ Cette bannière était **capturée dans la preuve d'AC7 de la story**,
+       imprimée APRÈS la réfutation. Un instrument qui SUR-annonce est du même
+       genre que celui qui se tait.
     """
     if nom == "rampe":
         print("[injecteur] ✅ JEU VARIABLE (rampes triangulaires, périodes "
               "premières entre elles).")
         print("[injecteur]    Les valeurs changent à chaque cycle ⇒ le TEXTE "
               "change ⇒ LVGL invalide.")
+        print("[injecteur]    ⚠️ MESURÉ le 2026-08-31 : ça ne fait PAS dessiner "
+              "PLUS — l'aire cumulée")
+        print("[injecteur]    est la MÊME qu'en jeu figé (11,37 M px à 1 % "
+              "près, 3 passes chacun).")
+        print("[injecteur]    Ce que ça change, c'est la CADENCE d'invalidation,"
+              " ⛔ pas le total.")
         print("[injecteur]    ⚠️ Le rapport au régime RÉEL reste à mesurer sur "
-              "la carte (repères connus :")
-        print("[injecteur]    94 645 px/cycle jeu figé · 128 613 avec "
-              "`widget mock on`). ⛔ Publier")
-        print("[injecteur]    l'ESPACEMENT avec le chiffre : un relevé de "
-              "régime sans son espacement")
-        print("[injecteur]    n'est comparable à rien.")
+              "la carte. Repère qui")
+        print("[injecteur]    TIENT : 124 750 px/cycle avec `widget mock on` "
+              "(contre 128 613 attendus).")
+        print("[injecteur]    ⛔ Le repère « 94 645 en jeu figé » NE SE "
+              "REPRODUIT PAS (46 572 · 71 984 ·")
+        print("[injecteur]    74 576) — ⛔ ne pas s'y comparer. ⇒ Publier "
+              "l'ESPACEMENT avec le chiffre :")
+        print("[injecteur]    un relevé de régime sans son espacement n'est "
+              "comparable à rien.")
         return
     print("[injecteur] 🔴 JEU **FIXE** — ses valeurs NE CHANGENT PAS.")
-    print("[injecteur]    ⇒ le texte des cases ne change pas ⇒ LVGL n'invalide "
-          "presque rien")
-    print("[injecteur]    ⇒ **LE DESSIN NE SE DÉCLENCHE PRESQUE PAS.**")
-    print("[injecteur]    ⛔ NE RIEN CONCLURE SUR UN RÉGIME DE DESSIN avec ce "
-          "jeu. MESURÉ :")
-    print("[injecteur]    94 645 px/cycle (figé) contre 128 613 (`widget mock "
-          "on`), soit 36 %")
-    print("[injecteur]    de stimulus en moins ; et 0,005 corruption/s contre "
-          "0,54 /s sous agent")
-    print("[injecteur]    réel — **facteur 108**.")
+    print("[injecteur]    ⇒ le texte des cases ne change pas ⇒ LVGL invalide à "
+          "une CADENCE")
+    print("[injecteur]      bien plus basse (⛔ et NON : « il ne dessine "
+          "presque pas » est RÉFUTÉ —")
+    print("[injecteur]      l'aire CUMULÉE est la même qu'en jeu variable, "
+          "11,37 M px, mesuré")
+    print("[injecteur]      3 fois chacun le 2026-08-31).")
+    print("[injecteur]    ⛔ NE RIEN CONCLURE SUR UN RÉGIME RÉEL avec ce jeu. "
+          "CE QUI LE MESURE :")
+    print("[injecteur]    0,005 corruption/s contre 0,54 /s sous agent réel — "
+          "**facteur 108**.")
     print("[injecteur]    ⇒ RÈGLE : tout chiffre où le DESSIN est la variable "
           "se mesure sous")
     print("[injecteur]      AGENT RÉEL, ou avec `--jeu rampe`.")
@@ -559,12 +755,43 @@ def campagne_latence(ser, a):
             print("[latence] ⛔ La fenêtre %d n'a PAS d'origine — campagne ARRÊTÉE."
                   % (k + 1))
             return None
-        n = injecter(ser, a)
+        n, refus_tir = injecter(ser, a)
+        if refus_tir:
+            print("[latence] 🔴 %d REFUS pendant le TIR de la fenêtre %d — le\n"
+                  "          stimulus n'a pas été posé en entier. ⛔ Une latence\n"
+                  "          mesurée sur un stimulus incomplet ne décrit rien.\n"
+                  "          Campagne ARRÊTÉE." % (len(refus_tir), k + 1))
+            return None
         r = dn_console.envoyer(ser, "pc", 15.0)
         if r["refus"]:
             print("[latence] 🔴 REFUS sur `pc` : %s" % r["refus"])
             return None
-        lat = dn_console.lire_latence(r["sortie"])
+        # 🔴 REVUE DU 2026-08-31 — CETTE CAMPAGNE LISAIT `refus` ET IGNORAIT
+        #    `completude` ET L'INVITE. Les quatre nombres de latence étaient donc
+        #    acceptés d'une capture que le pilote VENAIT DE DÉCLARER INCOMPLÈTE,
+        #    puis publiés, puis versés au relevé, puis comparés par
+        #    `--latence-delta`. « Un compteur que personne ne lit ne compte pas »
+        #    s'appliquait mot pour mot à cet appelant-ci.
+        if r["invite_rendue"] is False:
+            print("[latence] 🔴 fenêtre %d : l'invite n'a PAS été rendue par `pc`.\n"
+                  "          ⛔ La capture est tronquée par construction.\n"
+                  "          Campagne ARRÊTÉE." % (k + 1))
+            return None
+        cpl = r.get("completude") or {}
+        if cpl.get("etat") in ("PERTE", "COMPTE_NON_FIABLE"):
+            print("[latence] 🔴 fenêtre %d : la capture de `pc` est INCOMPLÈTE\n"
+                  "          (%s — %s annoncées, %s reçues). ⛔ On ne lit pas une\n"
+                  "          latence dans une capture dont l'instrument dit\n"
+                  "          lui-même qu'il lui manque des lignes.\n"
+                  "          Campagne ARRÊTÉE."
+                  % (k + 1, cpl.get("etat"), cpl.get("annonce"),
+                     cpl.get("recu")))
+            return None
+        try:
+            lat = dn_console.lire_latence(r["sortie"])
+        except dn_console.LatenceAmbigue as e:
+            print("[latence] fenêtre %d :\n%s" % (k + 1, e))
+            return None
         if lat is None:
             print("[latence] 🔴 fenêtre %d : la ligne « latence acceptation->label »\n"
                   "          est INTROUVABLE dans la sortie. ⛔ Ne rien inventer :\n"
@@ -620,17 +847,62 @@ def imprimer_dispersion(d, firmware, jeu, espacement):
 def verbe_latence_delta(chemin_a, chemin_b):
     """AC7.2 — LE DELTA ENTRE DEUX FIRMWARES, **REFUSÉ PAR L'OUTIL** quand il
     n'est pas lisible. ⛔ Pas déconseillé dans un commentaire."""
+    # 🔴 REVUE DU 2026-08-31 — CE VERBE N'AVAIT **AUCUNE GARDE SUR SES DEUX
+    #    FICHIERS**, alors que tout son contrat est « REFUSE le delta quand il
+    #    n'est pas lisible ». Un chemin absent, un JSON tronqué, ou un relevé
+    #    écrit par un outil antérieur (sans `fenetres` / `moy`) sortait en
+    #    FileNotFoundError / JSONDecodeError / KeyError — c'est-à-dire en trace,
+    #    ⛔ pas en refus.
     releves = []
     for c in (chemin_a, chemin_b):
-        with open(c, encoding="utf-8") as f:
-            releves.append(json.load(f))
+        try:
+            with open(c, encoding="utf-8") as f:
+                releves.append(json.load(f))
+        except OSError as e:
+            print("🔴 REFUS : relevé ILLISIBLE — %s" % e)
+            return 1
+        except ValueError as e:
+            print("🔴 REFUS : `%s` n'est pas un JSON exploitable — %s" % (c, e))
+            return 1
+        r = releves[-1]
+        fen = r.get("fenetres")
+        if not isinstance(fen, list) or not fen:
+            print("🔴 REFUS : `%s` ne porte aucune fenêtre. ⛔ Un relevé sans\n"
+                  "   fenêtres ne se compare à rien." % c)
+            return 1
+        if any(not isinstance(f, dict) or "moy" not in f for f in fen):
+            print("🔴 REFUS : `%s` porte des fenêtres SANS champ `moy` — relevé\n"
+                  "   écrit par un outil antérieur. ⛔ Ne rien deviner." % c)
+            return 1
     print("A = %s (firmware %s)" % (chemin_a, releves[0].get("firmware", "?")))
     print("B = %s (firmware %s)" % (chemin_b, releves[1].get("firmware", "?")))
     if releves[0].get("firmware") == releves[1].get("firmware"):
         print("⚠️ LES DEUX RELEVÉS PORTENT LE MÊME FIRMWARE : ce n'est pas un")
         print("   delta entre firmwares, c'est une mesure de la VARIANCE. Utile,")
         print("   mais ⛔ ne pas l'étiqueter autrement.")
-    ds = [dn_console.dispersion([f["moy"] for f in r["fenetres"]])
+    # 🔴 REVUE DU 2026-08-31 — **IL REFUSAIT UN DELTA SUR UNE FENÊTRE UNIQUE ET
+    #    COMPARAIT VOLONTIERS DEUX STIMULI DIFFÉRENTS.** Seul `firmware` était
+    #    confronté ; `jeu`, `espacement` et `secondes_par_fenetre` sont écrits
+    #    DANS LE RELEVÉ précisément pour ça, et rien ne les lisait. Reproduit :
+    #    A = `pire`/0,2/10 contre B = `rampe`/0,01/120 rendait « ✅ étendues
+    #    DISJOINTES … +294,0 ms », rc 0 — c'est-à-dire l'écart de stimulus
+    #    ×108 qu'AC3 a mesuré, PUBLIÉ COMME UN DELTA DE FIRMWARE.
+    ecarts_stim = [(cle, releves[0].get(cle), releves[1].get(cle))
+                   for cle in ("jeu", "espacement", "secondes_par_fenetre")
+                   if releves[0].get(cle) != releves[1].get(cle)]
+    if ecarts_stim:
+        print("🔴 REFUS : LES DEUX RELEVÉS N'ONT PAS ÉTÉ PRIS SOUS LE MÊME")
+        print("   STIMULUS. Un delta entre eux mesure le stimulus, ⛔ pas le")
+        print("   firmware — c'est l'écart ×108 qu'AC3 a mesuré.")
+        for cle, va, vb in ecarts_stim:
+            print("     · %-20s A = %-12s   B = %s" % (cle, va, vb))
+        print("   ⇒ RE-JOUER les deux relevés avec le MÊME `--jeu`, le MÊME")
+        print("     `--espacement` et les MÊMES `--secondes`.")
+        return 1
+    ds = [dn_console.dispersion(
+              [f["moy"] for f in r["fenetres"]],
+              bornes=[(f["min"], f["max"]) for f in r["fenetres"]
+                      if "min" in f and "max" in f])
           for r in releves]
     for nom, d in zip("AB", ds):
         if d:
@@ -725,10 +997,35 @@ def main():
         p.error(f"--espacement {a.espacement} hors de [0 ; 0,2] s : cinq trames "
                 f"doivent tenir dans le cycle de 1 Hz, et time.sleep() leverait "
                 f"sur un negatif EN PLEIN TIR.")
+    # 🔴 REVUE DU 2026-08-31 — `--espacement` ETAIT BORNE AVANT L'OUVERTURE DU
+    #    PORT, PAS SES DEUX VOISINS. `--secondes 0` (ou negatif) faisait une
+    #    boucle qui ne tourne pas : « 0 trames ECRITES », **rc 0**, INDISCERNABLE
+    #    d'un tir complet. Et `--latence -1` est *truthy* : `range(-1)` est vide,
+    #    la campagne rendait `([], [])` — ⛔ pas `None`, donc la garde le
+    #    manquait — `dispersion([])` rendait `None`, et l'impression plantait sur
+    #    `d["n_fenetres"]`, APRES avoir consomme la fenetre.
+    if a.secondes <= 0:
+        p.error(f"--secondes {a.secondes} : une fenetre nulle ou negative ne "
+                f"tire RIEN et rendrait « 0 trames » avec rc 0, ce qui ne se "
+                f"distingue pas d'un tir complet.")
+    if a.latence < 0:
+        p.error(f"--latence {a.latence} : un nombre de fenetres negatif est "
+                f"*truthy*, donc il ouvrait le port, consommait la fenetre, et "
+                f"plantait a l'impression de la dispersion.")
 
     variable = (a.jeu == "rampe")
     jeu = JEUX_RAMPES if variable else JEUX[a.jeu]
-    ser = dn_console.ouvrir(a.port, a.baud)
+    rc_final = 0
+    # 🔴 REVUE DU 2026-08-31 — `ConsoleErreur` N'ÉTAIT PAS ATTRAPÉE ICI. Les
+    #    recettes opérateur soigneusement rédigées dans `ouvrir()` / `reveiller()`
+    #    (port tenu par `idf.py monitor`, usbipd détaché après un `reboot`, carte
+    #    muette) sortaient en TRACE PYTHON, alors que `dn_console.py`, lui, les
+    #    imprime. Le même diagnostic, illisible d'un outil à l'autre.
+    try:
+        ser = dn_console.ouvrir(a.port, a.baud)
+    except dn_console.ConsoleErreur as e:
+        sys.stderr.write("\n✗ %s\n" % e)
+        return 1
     if a.checksum_faux:
         print("[injecteur] ⚠️ CHECKSUM FAUX : meme trafic, AUCUNE mise a jour "
               "d'affichage.")
@@ -741,13 +1038,18 @@ def main():
     sys.stdout.flush()
 
     try:
-        dn_console.reveiller(ser)
+        try:
+            dn_console.reveiller(ser)
+        except dn_console.ConsoleErreur as e:
+            sys.stderr.write("\n✗ %s\n" % e)
+            return 1
         if a.latence:
             r = campagne_latence(ser, a)
             if r is None:
                 return 1
             moyennes, brut = r
-            d = dn_console.dispersion(moyennes)
+            d = dn_console.dispersion(
+                moyennes, bornes=[(f["min"], f["max"]) for f in brut])
             imprimer_dispersion(d, a.firmware, a.jeu, a.espacement)
             if a.releve:
                 with open(a.releve, "w", encoding="utf-8") as f:
@@ -760,7 +1062,9 @@ def main():
                 print("          relevés, et REFUSE le delta quand il n'est pas")
                 print("          lisible.")
             return 0
-        injecter(ser, a)
+        _n, refus_tir = injecter(ser, a)
+        if refus_tir:
+            rc_final = 1
     except KeyboardInterrupt:
         pass
     finally:
@@ -773,7 +1077,7 @@ def main():
         except Exception:
             pass
         ser.close()
-    return 0
+    return rc_final
 
 
 if __name__ == "__main__":

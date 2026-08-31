@@ -9,6 +9,8 @@
  * dn_wifi.h. Hors maquette, les stubs inline de l'en-tête répondent. */
 #if CONFIG_HTTPD_WS_SUPPORT
 
+#include <stdarg.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "esp_event.h"
@@ -21,6 +23,66 @@
 #include "dn_link.h"
 
 static const char *TAG = "dn_wifi";
+
+/*
+ * ══ dn4-23 / REVUE DU 2026-08-31 — CE MODULE IMPRIME **HORS DU COMPTEUR** ═════
+ *
+ * 🔴 Le compteur de lignes de la console est un `#define printf` LOCAL a
+ *    `dn_console.c`. Les 13 `printf` de ce fichier-ci partent donc a la libc
+ *    SANS ETRE COMPTES : `wifi on` / `wifi off` annonçaient structurellement
+ *    moins de lignes qu'elles n'en emettaient, ce qui rendait
+ *    `LIGNES_ETRANGERES` PERMANENT sur elles chez l'hote — et fournissait un
+ *    surplus toujours disponible pour ANNULER une vraie perte, l'invariant de
+ *    l'hote etant une somme signee par capture.
+ * ⛔ On ne recopie pas un compte dans la console : il se perimerait au premier
+ *   `printf` ajoute ici. Le module COMPTE ce qu'il emet, et la console le LIT.
+ */
+static unsigned s_lignes_emises;
+
+static int dn_wifi_printf(const char *fmt, ...)
+    __attribute__((format(printf, 1, 2)));
+
+static int dn_wifi_printf(const char *fmt, ...)
+{
+    char pile[256];
+    va_list ap;
+    va_start(ap, fmt);
+    int n = vsnprintf(pile, sizeof(pile), fmt, ap);
+    va_end(ap);
+    if (n < 0) {
+        return n;
+    }
+    /* ⚠️ Une ligne plus longue que la pile est TRONQUEE ici — mais elle compte
+     *    pour ce qu'elle porte de `\n`, et le recul UTF-8 evite l'octet
+     *    orphelin (meme correctif que `dn_console_printf`). */
+    if ((size_t)n >= sizeof(pile)) {
+        n = (int)strlen(pile);
+        while (n > 0 && ((unsigned char)pile[n - 1] & 0xC0) == 0x80) {
+            n--;
+        }
+        if (n > 0 && ((unsigned char)pile[n - 1] & 0x80) != 0) {
+            n--;
+        }
+        pile[n] = '\0';
+    }
+    for (const char *q = pile; *q; q++) {
+        if (*q == '\n') {
+            s_lignes_emises++;
+        }
+    }
+    fputs(pile, stdout);
+    return n;
+}
+
+unsigned dn_wifi_lignes_emises(void)
+{
+    unsigned n = s_lignes_emises;
+    s_lignes_emises = 0;
+    return n;
+}
+
+/* ⛔ APRES la definition, sinon elle s'appellerait elle-meme. */
+#define printf dn_wifi_printf
 
 static dn_wifi_etat_t s_etat = DN_WIFI_OFF;
 static esp_netif_t *s_netif;

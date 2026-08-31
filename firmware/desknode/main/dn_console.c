@@ -108,9 +108,25 @@ static int dn_console_printf(const char *fmt, ...)
             txt = tas;
         } else {
             /* ⛔ Mieux vaut une ligne TRONQUEE qu'un silence — mais le compte
-             *    ne vaut plus rien et il le DIT. */
+             *    ne vaut plus rien et il le DIT.
+             * 🔴 CORRIGE PAR LA REVUE DU 2026-08-31 — LA COUPE ETAIT EN OCTETS.
+             *    `vsnprintf` s'arrete a l'octet 255, ce qui peut SCINDER un
+             *    « e accent », un « interdit » ou un « attention » et poser un
+             *    octet ORPHELIN sur le fil. L'hote le decode en U+FFFD — et ca
+             *    peut casser le motif `refus...:` SUR CETTE LIGNE MEME, donc
+             *    faire rendre 0 a une commande refusee. C'est le defaut que
+             *    cette story ferme, dans le regime (tas bas) que ces
+             *    instruments servent justement a mesurer.
+             * ⇒ On recule jusqu'a la derniere TETE de sequence complete. */
             s_compte_fiable = false;
             n = (int)strlen(pile);
+            while (n > 0 && ((unsigned char)pile[n - 1] & 0xC0) == 0x80) {
+                n--;                    /* octet de continuation : on recule */
+            }
+            if (n > 0 && ((unsigned char)pile[n - 1] & 0x80) != 0) {
+                n--;                    /* la tete elle-meme, sequence coupee */
+            }
+            pile[n] = '\0';
         }
     }
     for (const char *q = txt; *q; q++) {
@@ -124,6 +140,35 @@ static int dn_console_printf(const char *fmt, ...)
     fputs(txt, stdout);
     free(tas);
     return n;
+}
+
+/*
+ * ══ dn4-23 / REVUE DU 2026-08-31 — **LE COMPTEUR NE COUVRAIT QUE CE FICHIER** ══
+ *
+ * 🔴 `#define printf dn_console_printf` est LOCAL a `dn_console.c`. Les modules
+ *    freres appeles PAR une commande impriment, eux, avec le `printf` de la
+ *    libc — donc HORS du compteur :
+ *      · `dn_ui_log_mem()`  : 6 lignes, appelee depuis 4 sites d'ici ;
+ *      · `dn_wifi.c`        : 13 `printf` sur le chemin de `wifi on/off`.
+ *    Ces commandes annoncaient donc STRUCTURELLEMENT moins de lignes qu'elles
+ *    n'en emettaient ⇒ `LIGNES_ETRANGERES` PERMANENT sur elles (ce qui apprend
+ *    a ignorer le signal), et surtout : **un surplus toujours disponible pour
+ *    absorber une perte**, puisque l'invariant de l'hote est une somme signee.
+ * ⇒ `dn_console_compter_externes()` laisse un module frere declarer ce qu'il
+ *   vient d'emettre. ⛔ Ce n'est pas un ornement : sans lui, l'invariant d'AC2
+ *   ne peut pas etre vrai sur ces commandes-la.
+ * ⚠️ Un appelant qui se trompe de compte est PIRE que pas de compte : la
+ *   fonction refuse un negatif et marque le compte NON FIABLE, plutot que de
+ *   fabriquer un accord.
+ */
+void dn_console_compter_externes(int lignes)
+{
+    if (lignes < 0) {
+        s_compte_fiable = false;
+        return;
+    }
+    s_lignes_cmd += (unsigned)lignes;
+    s_fin_de_ligne = true;
 }
 
 /* ⛔ APRES la definition : sinon `dn_console_printf` s'appellerait lui-meme. */
@@ -2586,7 +2631,7 @@ static int cmd_ui(int argc, char **argv)
                (int)((long)ia - (long)ip));
         printf("  PSRAM       %u -> %u o  (%d o)\n", (unsigned)pa, (unsigned)pp,
                (int)((long)pa - (long)pp));
-        dn_ui_log_mem();
+        dn_console_compter_externes(dn_ui_log_mem());
         printf("usage : ui on|off | ui label on|off | ui bg flash|psram\n");
         return 0;
     }
@@ -3191,7 +3236,7 @@ static int cmd_nav(int argc, char **argv)
             printf("%d=%s ", i, dn_ui_metrique_nom(i));
         }
         printf("\n");
-        dn_ui_log_mem();
+        dn_console_compter_externes(dn_ui_log_mem());
         nav_usage();
         return 0;
     }
@@ -3385,7 +3430,7 @@ static int cmd_nav(int argc, char **argv)
             printf("🔴 relevé du tas LVGL INDISPONIBLE (verrou non pris) : ce\n");
             printf("   n'est pas « zero utilise », c'est « pas mesure ».\n");
         }
-        dn_ui_log_mem();
+        dn_console_compter_externes(dn_ui_log_mem());
         dn_touch_latence_t lat;
         dn_touch_get_latence(&lat);
         printf("  transitions REELLES : %" PRIu32 " (demandees : %ld)\n",
@@ -3678,15 +3723,21 @@ static int cpu_table_cumulee(void)
 #define DN_CPU_DELTA_HORIZON_US 4294967296LL /* 2^32 us — le tour complet */
 
 static TaskStatus_t *s_cpu_dep;          /* instantane de `cpu depart` */
-static UBaseType_t s_cpu_dep_cap;
 static UBaseType_t s_cpu_dep_n;
 static int64_t s_cpu_dep_us = -1;        /* -1 = aucun point de depart pose */
+/* 🔴 dn4-23 / REVUE DU 2026-08-31 — `s_cpu_dep_cap` ETAIT AFFECTE ET JAMAIS LU :
+ *    du bruit qui se lit comme une garde. Retire. `s_cpu_dep_lu` le remplace par
+ *    quelque chose qui SERT : compter les lectures faites depuis LA MEME
+ *    origine, parce qu'un second `cpu delta` mesurait depuis l'origine initiale
+ *    sans le dire. */
+static unsigned s_cpu_dep_lu;
 
 static int cpu_depart(void)
 {
     free(s_cpu_dep);
     s_cpu_dep = NULL;
     s_cpu_dep_us = -1;
+    s_cpu_dep_lu = 0;
     UBaseType_t capacite = uxTaskGetNumberOfTasks() + 8;
     s_cpu_dep = calloc(capacite, sizeof(TaskStatus_t));
     if (!s_cpu_dep) {
@@ -3705,7 +3756,6 @@ static int cpu_depart(void)
         s_cpu_dep = NULL;
         return 1;
     }
-    s_cpu_dep_cap = capacite;
     s_cpu_dep_n = n;
     s_cpu_dep_us = esp_timer_get_time();
     printf("point de depart POSE : %u taches, uptime %lld s\n", (unsigned)n,
@@ -3720,6 +3770,28 @@ static int cpu_depart(void)
     printf("  run-time a fait UN TOUR et le delta devient ambigu — `cpu delta`\n");
     printf("  REFUSERA de publier plutot que de rendre un chiffre plausible.\n");
     return 0;
+}
+
+/*
+ * ══ dn4-23 / REVUE DU 2026-08-31 — **L'APPARIEMENT PAR `xHandle` SEUL MENT** ══
+ *
+ * 🔴 FreeRTOS RECYCLE LES TCB. `dn_stimulus.c` cree et auto-detruit `dn_tear` et
+ *    `dn_flash` — c'est-a-dire EXACTEMENT les taches qu'un operateur bascule
+ *    PENDANT une fenetre `cpu depart` … `cpu delta`. Si une tache neuve tombe
+ *    sur le TCB libere, `apres.ulRunTimeCounter (petit) - base (grand)` ENROULE
+ *    a ~2^32 us : `somme` explose, toutes les parts s'effondrent vers 0, et la
+ *    commande publie « RESERVE : 0.0 % — CHARGE : 100.0 % » sous le rassurant
+ *    « AUCUN sommeil n'a eu lieu ».
+ * ⛔ `DN_CPU_DELTA_HORIZON_US` NE COUVRE PAS CE CAS : il garde le temps MURAL,
+ *   pas le compteur d'une tache. Un instrument plausible et faux est ce que
+ *   cette story existe pour supprimer.
+ * ⇒ On apparie sur `xHandle` **ET** `pcTaskName`. Un TCB recycle par une tache
+ *   de MEME nom reste indiscernable — c'est ecrit, ⛔ pas tu.
+ */
+static bool cpu_meme_tache(const TaskStatus_t *a, const TaskStatus_t *b)
+{
+    return a->xHandle == b->xHandle
+           && strncmp(a->pcTaskName, b->pcTaskName, configMAX_TASK_NAME_LEN) == 0;
 }
 
 static int cpu_delta(void)
@@ -3765,12 +3837,31 @@ static int cpu_delta(void)
     }
 
     unsigned long long somme = 0;
+    int recyclees = 0;
+    int nouvelles = 0;
     for (UBaseType_t i = 0; i < n_apres; i++) {
         configRUN_TIME_COUNTER_TYPE base = 0;
+        bool appariee = false;
+        bool handle_vu = false;
         for (UBaseType_t j = 0; j < s_cpu_dep_n; j++) {
-            if (s_cpu_dep[j].xHandle == apres[i].xHandle) {
+            if (cpu_meme_tache(&s_cpu_dep[j], &apres[i])) {
                 base = s_cpu_dep[j].ulRunTimeCounter;
+                appariee = true;
                 break;
+            }
+            if (s_cpu_dep[j].xHandle == apres[i].xHandle) {
+                handle_vu = true;   /* meme TCB, AUTRE nom ⇒ recycle */
+            }
+        }
+        if (!appariee) {
+            /* ⛔ Une tache NEE dans la fenetre part de zero : sa base EST 0, et
+             *    c'est juste. Un TCB RECYCLE, lui, est signale — sa base a
+             *    ete DELIBEREMENT laissee a 0 plutot que de soustraire le
+             *    compteur d'une tache MORTE, ce qui enroulait. */
+            if (handle_vu) {
+                recyclees++;
+            } else {
+                nouvelles++;
             }
         }
         somme += (unsigned long long)(configRUN_TIME_COUNTER_TYPE)(
@@ -3784,7 +3875,7 @@ static int cpu_delta(void)
     for (UBaseType_t j = 0; j < s_cpu_dep_n; j++) {
         bool vue = false;
         for (UBaseType_t i = 0; i < n_apres; i++) {
-            if (apres[i].xHandle == s_cpu_dep[j].xHandle) {
+            if (cpu_meme_tache(&s_cpu_dep[j], &apres[i])) {
                 vue = true;
                 break;
             }
@@ -3807,7 +3898,7 @@ static int cpu_delta(void)
     for (UBaseType_t i = 0; i < n_apres; i++) {
         configRUN_TIME_COUNTER_TYPE base = 0;
         for (UBaseType_t j = 0; j < s_cpu_dep_n; j++) {
-            if (s_cpu_dep[j].xHandle == apres[i].xHandle) {
+            if (cpu_meme_tache(&s_cpu_dep[j], &apres[i])) {
                 base = s_cpu_dep[j].ulRunTimeCounter;
                 break;
             }
@@ -3834,9 +3925,38 @@ static int cpu_delta(void)
         printf("   sort du dénominateur ⇒ les parts ci-dessus sont légèrement\n");
         printf("   HAUTES. ⛔ Le dire plutôt que de publier un total qui ment.\n");
     }
+    /* 🔴 dn4-23 / REVUE DU 2026-08-31 — LES DEUX AUTRES BIAIS ETAIENT MUETS. */
+    if (recyclees > 0) {
+        printf("🔴 %d TCB RECYCLE(S) : un handle du depart porte desormais un\n",
+               recyclees);
+        printf("   AUTRE nom de tache. Leur base a ete mise a ZERO plutot que de\n");
+        printf("   soustraire le compteur d'une tache MORTE — ce qui aurait\n");
+        printf("   enroule a ~2^32 us et publie « CHARGE 100 %% ». ⛔ Ces parts-la\n");
+        printf("   sont donc SUR-estimees. ⇒ Reposer `cpu depart`.\n");
+    }
+    if (nouvelles > 0) {
+        printf("⚠️ %d tache(s) NEE(S) dans la fenetre : base 0, ce qui est juste.\n",
+               nouvelles);
+    }
+    printf("⚠️ BIAIS QUI RESTE, ET QUI N'EST PAS MESURABLE ICI : une tache NEE **ET**\n");
+    printf("   MORTE dans la fenetre n'est ni dans la somme ni dans les\n");
+    printf("   « disparues » — son temps CPU manque au denominateur, donc TOUTES\n");
+    printf("   les parts ci-dessus sont legerement hautes. ⛔ Deux releves ne\n");
+    printf("   peuvent pas voir ce qui vit entre eux.\n");
     printf("✅ AUCUN sommeil n'a eu lieu dans le REPL entre les deux points : le\n");
     printf("   transport est resté vivant, donc CETTE mesure-ci décrit bien le\n");
     printf("   régime que la session a produit.\n");
+    /* 🔴 REVUE DU 2026-08-31 — L'ORIGINE N'ETAIT PAS INVALIDEE : un SECOND
+     *    `cpu delta` mesurait silencieusement depuis l'origine INITIALE, pas
+     *    depuis la lecture precedente, et ne le disait pas. On la garde
+     *    (rejouer un delta est legitime) mais la commande DIT desormais depuis
+     *    quand elle mesure — voir l'en-tete « fenetre mesuree » ci-dessus. */
+    s_cpu_dep_lu++;
+    if (s_cpu_dep_lu > 1) {
+        printf("⚠️ %u-eme lecture depuis LE MEME `cpu depart` : cette fenetre part\n",
+               (unsigned)s_cpu_dep_lu);
+        printf("   de l'origine INITIALE, ⛔ pas de la lecture precedente.\n");
+    }
     free(apres);
     return 0;
 }
@@ -4400,6 +4520,33 @@ static int cmd_pc(int argc, char **argv)
  *    pas à du CJK (2 colonnes par glyphe) — hors sujet ici, mais autant que la
  *    limite soit écrite plutôt que découverte.
  */
+/*
+ * dn4-23 / REVUE — la largeur D'AFFICHAGE d'un point de code, pour les glyphes
+ * que CE fichier imprime. ⛔ Pas une table Unicode complete, et ce n'est pas
+ * pretendu : hors de ces plages, on rend 1 — ce qui etait le comportement
+ * d'avant pour TOUT.
+ */
+static int dn_cp_colonnes(unsigned cp)
+{
+    if (cp == 0xFE0F || cp == 0xFE0E) {
+        return 0;                       /* selecteur de variation */
+    }
+    if (cp >= 0x0300 && cp <= 0x036F) {
+        return 0;                       /* diacritiques combinants */
+    }
+    if ((cp >= 0x1100 && cp <= 0x115F) ||   /* jamo */
+        (cp >= 0x2E80 && cp <= 0xA4CF) ||   /* CJK */
+        (cp >= 0xAC00 && cp <= 0xD7A3) ||   /* hangul */
+        (cp >= 0xF900 && cp <= 0xFAFF) ||
+        (cp >= 0xFE30 && cp <= 0xFE6F) ||
+        (cp >= 0xFF00 && cp <= 0xFF60) ||
+        (cp >= 0x1F300 && cp <= 0x1FAFF) || /* emoji : ⛔ 🔴 ⚠️ … */
+        (cp >= 0x2600 && cp <= 0x27BF)) {   /* symboles divers + dingbats */
+        return 2;
+    }
+    return 1;
+}
+
 static void colonnes(const char *s, int largeur)
 {
     /*
@@ -4416,15 +4563,52 @@ static void colonnes(const char *s, int largeur)
      *    silence remplacerait un mensonge d'alignement par un mensonge de
      *    contenu, et ce depot refuse les deux.
      */
+    /*
+     * 🔴 CORRIGE PAR LA REVUE DU 2026-08-31 — **ELLE COMPTAIT LES TETES UTF-8,
+     *    PAS LES COLONNES.** Le commentaire ci-dessus dit « LA COUPE EST EN
+     *    COLONNES D'AFFICHAGE » ; le code comptait `1` par octet de tete. Or ce
+     *    fichier est plein de glyphes DOUBLE LARGEUR (« interdit », « rouge »,
+     *    « attention », les fleches) : un champ « tronque a 10 colonnes » en
+     *    rendait 12 a 20 et DECALAIT la fin de la ligne — le symptome meme que
+     *    la troncature a ete ajoutee pour arreter.
+     *    ⚠️ Pire : « attention » est base + SELECTEUR DE VARIATION (U+FE0F). Il
+     *      comptait DEUX tetes, donc deux colonnes, et pouvait etre coupe ENTRE
+     *      LES DEUX — laissant un selecteur orphelin sur le fil.
+     * ⇒ On decode le point de code et on lui donne sa largeur : 0 pour les
+     *   combinants et le selecteur de variation, 2 pour les plages larges, 1
+     *   sinon. ⛔ Ce n'est pas une table Unicode complete, et ce n'est pas
+     *   pretendu : c'est la couverture des glyphes QUE CE FICHIER IMPRIME.
+     */
     int cols = 0;
     const unsigned char *coupe = NULL;
-    for (const unsigned char *p = (const unsigned char *)s; *p; p++) {
-        if ((*p & 0xC0) != 0x80) {          /* octet de TETE d'un caractere */
-            if (largeur >= 1 && cols == largeur - 1 && coupe == NULL) {
-                coupe = p;                   /* debut du caractere n° largeur-1 */
-            }
-            cols++;
+    for (const unsigned char *p = (const unsigned char *)s; *p;) {
+        unsigned cp = 0;
+        int n_oct = 1;
+        if (*p < 0x80) {
+            cp = *p;
+        } else if ((*p & 0xE0) == 0xC0) {
+            cp = (unsigned)(*p & 0x1F); n_oct = 2;
+        } else if ((*p & 0xF0) == 0xE0) {
+            cp = (unsigned)(*p & 0x0F); n_oct = 3;
+        } else if ((*p & 0xF8) == 0xF0) {
+            cp = (unsigned)(*p & 0x07); n_oct = 4;
         }
+        for (int k = 1; k < n_oct; k++) {
+            if ((p[k] & 0xC0) != 0x80) {    /* sequence tronquee : on s'arrete */
+                n_oct = k;
+                break;
+            }
+            cp = (cp << 6) | (unsigned)(p[k] & 0x3F);
+        }
+        int w = dn_cp_colonnes(cp);
+        /* ⛔ La coupe se pose AVANT le caractere qui ferait deborder, jamais au
+         *    milieu d'un groupe base+selecteur (le selecteur vaut 0 colonne,
+         *    donc il reste colle a sa base). */
+        if (largeur >= 1 && coupe == NULL && cols + w > largeur - 1) {
+            coupe = p;
+        }
+        cols += w;
+        p += n_oct > 0 ? n_oct : 1;
     }
     if (coupe != NULL && cols > largeur) {
         printf("%.*s>", (int)(coupe - (const unsigned char *)s), s);
@@ -4508,11 +4692,26 @@ static bool largeur_original_probable(const char *recu, char *out, size_t n_out)
      * ENGENDREES par la meme fabrique que l'ecran (`dn_ui_barre_date_forme`),
      * ⛔ pas recopiees ici : une table locale se perimerait au premier mois
      * renomme. */
+    /*
+     * 🔴 CORRIGE PAR LA REVUE DU 2026-08-31 — **CE FILTRE ECARTAIT DES FORMES
+     *    QUE LE PRODUIT REND.** Il n'admettait que `(js 0..6, mo 1..12)` et
+     *    `(js 7, mo 0)`, au motif que « les melanger fabriquerait des formes que
+     *    le RTC ne produit pas ». Or l'en-tete de `dn_ui_barre_date_forme()`
+     *    dit le contraire, et le composeur le fait : il rend `"???"` pour
+     *    `jsem >= 7` INDEPENDAMMENT du mois, et `"???"` pour un mois hors
+     *    1..12 INDEPENDAMMENT du jour de semaine — `dn_rtc.c` masquant le
+     *    registre du jour de semaine en `0x07`, **7 est atteignable seul**.
+     *    ⇒ Les formes MIXTES (`??? 15 AOUT`, `MER. 15 ???`) etaient donc
+     *      INJOIGNABLES par le balayage : le drapeau de `widget largeur`
+     *      retombait sur son avertissement generique au lieu de NOMMER
+     *      l'original, precisement sur les mois accentues pour lesquels il a
+     *      ete ecrit.
+     * ⛔ On ne filtre plus : le composeur est seul juge de ce qu'il sait rendre
+     *   (il refuse deja les couples impossibles), et le compte balaye est
+     *   IMPRIME, ⛔ jamais recite.
+     */
     for (int js = 0; js <= 7; js++) {
         for (int mo = 0; mo <= 12; mo++) {
-            if ((js == 7) != (mo == 0)) {
-                continue;
-            }
             for (int jr = 1; jr <= 31; jr++) {
                 char d[24];
                 if (!dn_ui_barre_date_forme(js, jr, mo, d, sizeof(d))) {
@@ -4612,29 +4811,55 @@ static int lum601(uint32_t rgb)
     return (int)(y > 255u ? 255u : y);
 }
 
-static const char *contraste_bande(int ecart)
+/*
+ * 🔴 dn4-23 / REVUE DU 2026-08-31 — **DEUX SUR-ANNONCES, TROIS LIGNES SOUS LE
+ *    COMMENTAIRE QUI LES INTERDIT.**
+ *
+ *  (a) « ECART NUL » ETAIT CONCLU D'UNE **LUMINANCE**, PAS D'UNE COULEUR.
+ *      `lum601()` ecrase trois canaux en un. `widget piste 0x960000` (rouge
+ *      sombre) et `veille case 0x004D00` (vert sombre) rendent TOUS DEUX
+ *      `lum 45` ⇒ ecart 0 ⇒ la console affirmait qu'il n'y a « plus de
+ *      frontiere » entre deux couleurs qu'un oeil separe sans hesiter. Les deux
+ *      entrees sont LEGALES depuis la console.
+ *  (b) LA MEME BANDE ETAIT REUTILISEE POUR LA PAIRE **accent ↔ piste** et y
+ *      imprimait « LA PISTE SE FOND DANS LA CASE » — qui nomme L'AUTRE PAIRE.
+ *
+ * ⇒ La bande prend desormais la PAIRE qu'elle decrit, et l'egalite de COULEUR
+ *   est verifiee sur les trois canaux avant d'etre affirmee.
+ */
+static const char *contraste_bande_paire(int ecart, bool meme_couleur,
+                                         const char *quoi, const char *sur)
 {
+    static char phrase[128];
+    if (ecart == 0 && meme_couleur) {
+        snprintf(phrase, sizeof(phrase),
+                 "🔴 MEME COULEUR EXACTE — %s disparait dans %s", quoi, sur);
+        return phrase;
+    }
     if (ecart == 0) {
-        /* 🔴 FORMULATION CORRIGEE PAR L'OEIL DE L'OWNER, SEANCE DU 2026-08-31.
-         *    Elle disait « LA JAUGE DISPARAIT ». L'A/B a deux fenetres (une
-         *    seule variable : l'aplat) a rendu, verbatim :
-         *      · aplat 000000 : « 2 zones distinctes vert claire et vert fonce
-         *        on vois bien la barre bouger »
-         *      · aplat 141820 : « les 6 cases sont vertes et la barre de
-         *        chargement etait vert claire dessus »
-         *    ⇒ CE QUI DISPARAIT, C'EST LA **PISTE**, ⛔ PAS LA JAUGE :
-         *      l'INDICATEUR reste parfaitement visible. Ce qui est perdu, c'est
-         *      la LONGUEUR TOTALE — donc la jauge ne se lit plus comme une
-         *      PROPORTION, seulement comme une longueur nue.
-         *    ⛔ Un instrument qui SUR-annonce est du meme genre que celui qui
-         *      se tait : c'est le defaut que cette story repare. */
-        return "🔴 ECART NUL — LA PISTE SE FOND DANS LA CASE";
+        /* ⛔ ON NE DIT PLUS « meme couleur ». Deux teintes differentes de MEME
+         *    luminance restent separables A L'OEIL — et seul l'oeil tranche. */
+        snprintf(phrase, sizeof(phrase),
+                 "⚠️ LUMINANCE IDENTIQUE (teintes DIFFERENTES) — %s vs %s : "
+                 "A VERIFIER A L'OEIL", quoi, sur);
+        return phrase;
     }
     if (ecart < DN_CONTRASTE_REPERE) {
-        return "⚠️ FAIBLE — a verifier A L'OEIL";
+        snprintf(phrase, sizeof(phrase),
+                 "⚠️ FAIBLE — %s sur %s, a verifier A L'OEIL", quoi, sur);
+        return phrase;
     }
     return "au-dessus du repere";
 }
+
+/*
+ * 🔴 dn4-23 / REVUE DU 2026-08-31 — `contraste_bande()` EST RETIREE. Elle
+ *    n'avait plus d'appelant une fois la version PAR PAIRE en place, et une
+ *    fonction morte qui porte l'ancienne formulation (« LA PISTE SE FOND DANS
+ *    LA CASE » conclu d'une luminance) est exactement ce qu'un lecteur pressé
+ *    recopie. ⛔ La retirer, ⛔ pas la commenter : ce depot a deja paye qu'un
+ *    commentaire compte comme une occurrence.
+ */
 
 static void verdict_contraste(void)
 {
@@ -4651,22 +4876,42 @@ static void verdict_contraste(void)
     printf("  piste de jauge       %06lX  lum %3d\n", (unsigned long)piste, lp);
     printf("  aplat de case AMBIENT %06lX  lum %3d   ecart %3d  %s\n",
            (unsigned long)fond_amb, lf, lp > lf ? lp - lf : lf - lp,
-           contraste_bande(lp > lf ? lp - lf : lf - lp));
-    /* ⚠️ EN ACTIF L'ECART N'EST PAS CALCULABLE, ET ON NE FAIT PAS SEMBLANT :
-     *    l'aplat est du NOIR a `s_opa`, donc l'artwork du Living PCB traverse a
-     *    (255 - opa)/255. Le fond effectif ne peut qu'ETRE PLUS CLAIR que le
-     *    noir ⇒ l'ecart calcule ci-dessous est un PLAFOND, pas la mesure.
-     *    ⚠️ Et c'est un cas REEL, ecrit dans `dn_widget.c` : le cuivre sous
-     *      l'aplat rend 24 la ou la piste rend 23. */
+           contraste_bande_paire(lp > lf ? lp - lf : lf - lp,
+                                 piste == fond_amb, "la piste", "la case"));
+    /* 🔴 dn4-23 / REVUE DU 2026-08-31 — **CE « PLAFOND » N'EN ETAIT PAS UN.**
+     *    Le raisonnement ecrit ici (« le fond effectif ne peut qu'etre PLUS
+     *    CLAIR que le noir ⇒ l'ecart est un PLAFOND ») ne tient que tant que
+     *    `lf_eff <= lp`. Or `widget opa 0` est une entree LEGALE (0..255) : la
+     *    case devient transparente, le fond effectif est l'artwork du Living
+     *    PCB, dont la luminance monte jusqu'a 255 ⇒ l'ecart REEL atteint
+     *    255 - lp (~232 pour lp = 23) pendant que la console imprimait
+     *    « ecart <= 23 (PLAFOND) ». Meme au `s_opa` livre, une region claire de
+     *    l'artwork donne deja ~53.
+     * ⇒ On publie ce qui est VRAI : la valeur A NOIR PUR, et le fait que
+     *   l'ecart puisse DESCENDRE A ZERO (artwork de meme luminance que la
+     *   piste — le cas dangereux) comme MONTER a 255 - lp. ⛔ Ni plafond, ni
+     *   plancher : un intervalle, et il est dit comme tel. */
     printf("  aplat de case ACTIF   noir a %u/255 sur l'artwork ⇒ %u %% du Living\n",
            (unsigned)opa, (unsigned)((255u - opa) * 100u / 255u));
-    printf("     PCB traverse. ecart <= %3d (PLAFOND, fond noir pur) — ⛔ la\n", lp);
-    printf("     valeur REELLE depend de l'ARTWORK sous la case et n'est PAS\n");
-    printf("     calculable ici (le cuivre rend 24 la ou la piste rend %d).\n", lp);
+    printf("     PCB traverse. A NOIR PUR l'ecart vaut %3d ; des que l'artwork\n",
+           lp);
+    printf("     traverse, il parcourt [0 ; %3d] selon la luminance SOUS la case\n",
+           lp > 255 - lp ? lp : 255 - lp);
+    printf("     — ⛔ ce n'est NI un plafond NI un plancher, et le pire cas est\n");
+    printf("     l'ecart NUL (artwork de luminance %d). La valeur REELLE n'est\n", lp);
+    printf("     PAS calculable ici (le cuivre rend 24 la ou la piste rend %d).\n",
+           lp);
 
     printf("  indicateur ↔ piste, mode %s%s :\n", ambient ? "AMBIENT" : "ACTIF",
            ambient ? " (accents desatures)" : "");
+    /* 🔴 REVUE DU 2026-08-31 — `int pire = 255;` ENTRAIT EN COLLISION AVEC UNE
+     *    MESURE LEGALE DE 255 (`widget piste 0x000000` + un accent blanc pur) :
+     *    les six cases etaient imprimees avec leurs ecarts, puis la commande
+     *    declarait « aucune case n'est un widget : rien a comparer ». Une
+     *    sentinelle prise dans le domaine de la mesure n'est pas une
+     *    sentinelle. */
     int pire = 255;
+    bool comparee = false;
     for (int i = 0; i < DN_UI_METRIQUES; i++) {
         if (!dn_ui_desc(i)) {
             continue; /* case rendue NUE : aucun accent peint */
@@ -4678,15 +4923,17 @@ static void verdict_contraste(void)
                                            ambient ? dn_widget_accent_amb() : 0);
         int la = lum601(acc);
         int e = la > lp ? la - lp : lp - la;
-        if (e < pire) {
+        if (!comparee || e < pire) {
             pire = e;
         }
+        comparee = true;
         printf("    ");
         colonnes(dn_ui_metrique_nom(i), 10);
         printf("%06lX  lum %3d   ecart %3d  %s\n", (unsigned long)acc, la, e,
-               contraste_bande(e));
+               contraste_bande_paire(e, acc == piste, "l'indicateur",
+                                     "la piste"));
     }
-    if (pire == 255) {
+    if (!comparee) {
         printf("    (aucune case n'est un widget : rien a comparer)\n");
     }
     printf("⚠️ ON AVERTIT, ⛔ ON NE REFUSE PAS : c'est un instrument d'A/B, et\n");
@@ -4694,9 +4941,20 @@ static void verdict_contraste(void)
     printf("⛔ Le repere %d vient de `bloc_gris`, qui gouverne LES TROIS GRIS DE\n",
            DN_CONTRASTE_REPERE);
     printf("   REGIME entre eux. La paire piste↔fond n'a JAMAIS eu de seuil ⇒\n");
-    printf("   au-dessus du repere n'est PAS une preuve. Seul l'ecart NUL est une\n");
-    printf("   certitude, et c'est de l'arithmetique : meme couleur, plus de\n");
-    printf("   frontiere.\n");
+    printf("   au-dessus du repere n'est PAS une preuve.\n");
+    /* 🔴 REVUE DU 2026-08-31 — CE PARAGRAPHE AFFIRMAIT « Seul l'ecart NUL est
+     *    une certitude, et c'est de l'arithmetique : meme couleur, plus de
+     *    frontiere ». **C'EST FAUX** : l'ecart est calcule sur une LUMINANCE,
+     *    qui ecrase trois canaux en un. Ecart nul ⇒ MEME LUMINANCE, ⛔ pas
+     *    meme couleur. La seule certitude arithmetique est l'egalite des trois
+     *    canaux — et c'est elle, desormais, que la bande verifie avant de
+     *    parler de disparition. */
+    printf("   ⛔ ET L'ECART NUL N'EST PAS NON PLUS UNE CERTITUDE : il se calcule\n");
+    printf("   sur une LUMINANCE, qui ecrase trois canaux en un. Deux teintes\n");
+    printf("   differentes de meme luminance rendent 0 et restent SEPARABLES A\n");
+    printf("   L'OEIL. Seule l'egalite des trois canaux est une certitude, et\n");
+    printf("   c'est celle-la que la ligne ci-dessus verifie avant de parler de\n");
+    printf("   disparition.\n");
     printf("⛔ CECI N'EST PAS LA PASSE DE PALETTE — c'est `dn4-29`, et elle\n");
     printf("   s'arbitre A L'OEIL, PAR L'OWNER.\n");
 }
@@ -4734,15 +4992,26 @@ static int date_pire_cas(const lv_font_t *f, char *out, size_t n_out, int *n_for
     if (out && n_out) {
         out[0] = '\0';
     }
+    /*
+     * 🔴 CORRIGE PAR LA REVUE DU 2026-08-31 — **CE FILTRE ECARTAIT DES FORMES
+     *    QUE LE PRODUIT REND.** Il n'admettait que `(js 0..6, mo 1..12)` et
+     *    `(js 7, mo 0)`, au motif que « les melanger fabriquerait des formes que
+     *    le RTC ne produit pas ». Or l'en-tete de `dn_ui_barre_date_forme()`
+     *    dit le contraire, et le composeur le fait : il rend `"???"` pour
+     *    `jsem >= 7` INDEPENDAMMENT du mois, et `"???"` pour un mois hors
+     *    1..12 INDEPENDAMMENT du jour de semaine — `dn_rtc.c` masquant le
+     *    registre du jour de semaine en `0x07`, **7 est atteignable seul**.
+     *    ⇒ Les formes MIXTES (`??? 15 AOUT`, `MER. 15 ???`) etaient donc
+     *      INJOIGNABLES par le balayage : le drapeau de `widget largeur`
+     *      retombait sur son avertissement generique au lieu de NOMMER
+     *      l'original, precisement sur les mois accentues pour lesquels il a
+     *      ete ecrit.
+     * ⛔ On ne filtre plus : le composeur est seul juge de ce qu'il sait rendre
+     *   (il refuse deja les couples impossibles), et le compte balaye est
+     *   IMPRIME, ⛔ jamais recite.
+     */
     for (int js = 0; js <= 7; js++) {
         for (int mo = 0; mo <= 12; mo++) {
-            /* ⚠️ On ne tire la ligne dégradée QUE dans sa combinaison réelle :
-             * `jsem = 7` et `mois = 0` sont les deux valeurs que le composeur
-             * traduit en `"???"`. Les mélanger à des mois valides fabriquerait
-             * des formes que le RTC ne produit pas. */
-            if ((js == 7) != (mo == 0)) {
-                continue;
-            }
             for (int jr = 1; jr <= 31; jr++) {
                 char d[24];
                 if (!dn_ui_barre_date_forme(js, jr, mo, d, sizeof(d))) {
@@ -6870,19 +7139,49 @@ static int cmd_widget(int argc, char **argv)
          *    meme defaut ailleurs, et c'est EXACTEMENT ce qui s'est passe ici.
          * ⇒ aire RELUE, pourcentage CALCULE. ⛔ Aucune constante de geometrie
          *   dans une consigne D'ACTION. */
+        /* 🔴 REVUE DU 2026-08-31 — LE **NUMERATEUR** RESTAIT CODE EN DUR
+         *    pendant que le denominateur etait relu. `6 334 px` est une MESURE
+         *    DATEE, prise a la hauteur de barre par DEFAUT ; or `widget bandes`
+         *    et `widget voie` sont des leviers A CHAUD qui la changent (70 → 60
+         *    par exemple), et le pourcentage imprime devenait alors faux POUR LA
+         *    RAISON MEME QUE L'AC NOMME. ⛔ On ne peut pas re-mesurer le cout
+         *    ici — mais on peut RELIRE la hauteur et REFUSER de publier le
+         *    rapport quand elle a bouge. Un chiffre qu'on ne peut plus garantir
+         *    ne se publie pas : c'est toute cette story. */
         int cw_b = 0, ch_b = 0;
         dn_ui_case_dim(&cw_b, &ch_b);
         int aire_b = cw_b * ch_b;
-        int pmille = aire_b > 0
-                         ? (int)((6334LL * 1000 + aire_b / 2) / aire_b)
-                         : 0;
-        printf("🔴 MESURE (§16.5) : la barre coute 6 334 px par mise a jour,\n");
-        printf("   soit %d,%d %% d'une case (%d px, aire RELUE — etait 35 100 a\n",
-               pmille / 10, pmille % 10, aire_b);
-        printf("   156) — ⛔ PAS les 33 600 px que son rectangle 480 x 70\n");
-        printf("   laisse croire. LVGL n'invalide que la zone\n");
-        printf("   des LABELS. La premisse « 7e case vivante » etait fausse d'un\n");
+        int bh = 0, mh = 0, gh = 0, chh = 0;
+        int bh_def = 0, mh_def = 0;
+        dn_ui_geom_bandes(&bh, &mh, &gh, &chh);
+        dn_ui_geom_bandes_defaut(&bh_def, &mh_def);
+        printf("🔴 MESURE (§16.5, datee — prise a barre_h = %d) : la barre coute\n",
+               bh_def);
+        printf("   6 334 px par mise a jour — ⛔ PAS les %d px que son rectangle\n",
+               DN_LCD_H_RES * bh_def);
+        printf("   %d x %d laisse croire : LVGL n'invalide que la zone des\n",
+               DN_LCD_H_RES, bh_def);
+        printf("   LABELS. La premisse « 7e case vivante » etait fausse d'un\n");
         printf("   facteur 5,3, et ce message la recitait pendant l'A/B meme.\n");
+        if (bh != bh_def) {
+            printf("⛔ RAPPORT NON PUBLIE : la barre fait %d px de haut, la mesure\n",
+                   bh);
+            printf("   a ete prise a %d. Le cout de 6 334 px ne s'y transpose PAS,\n",
+                   bh_def);
+            printf("   et un pourcentage calcule dessus serait faux. ⇒ re-mesurer,\n");
+            printf("   ou remettre la hauteur par defaut (`widget bandes %d %d`).\n",
+                   bh_def, mh_def);
+        } else {
+            int pmille = aire_b > 0
+                             ? (int)((6334LL * 1000 + aire_b / 2) / aire_b)
+                             : 0;
+            /* ⛔ LE REPERE DATE RESTE DANS LE **MEME** LITTERAL QUE LE
+             *    NOMBRE : les separer laisse un « 35 100 » nu dans une consigne
+             *    d'action, ce qu'AC5.2 interdit — et la gate l'a attrape. */
+            printf("   ⇒ soit %d,%d %% d'une case (%d px, aire RELUE"
+                   " — etait 35 100 a 156).\n",
+                   pmille / 10, pmille % 10, aire_b);
+        }
         printf("⚠️ La maquette normative (addendum §1) ecrit « 21:46 » : elle\n");
         printf("   n'affiche PAS les secondes. Defaut = minute.\n");
         return 0;
@@ -7518,10 +7817,21 @@ static int cmd_wifi(int argc, char **argv)
                    "coupe dessus)\n");
             return 1;
         }
-        return dn_wifi_on(argv[2], argv[3]) == ESP_OK ? 0 : 1;
+        {
+            esp_err_t e = dn_wifi_on(argv[2], argv[3]);
+            /* ⛔ CE QUE LE MODULE FRERE A IMPRIME EST **DECLARE**, sinon la
+             *    capture porte un surplus permanent (voir le pave de
+             *    `dn_console_compter_externes`). */
+            dn_console_compter_externes((int)dn_wifi_lignes_emises());
+            return e == ESP_OK ? 0 : 1;
+        }
     }
     if (argc == 2 && strcmp(argv[1], "off") == 0) {
-        return dn_wifi_off() == ESP_OK ? 0 : 1;
+        {
+            esp_err_t e = dn_wifi_off();
+            dn_console_compter_externes((int)dn_wifi_lignes_emises());
+            return e == ESP_OK ? 0 : 1;
+        }
     }
     if (argc == 3 && strcmp(argv[1], "ws") == 0) {
         bool on;

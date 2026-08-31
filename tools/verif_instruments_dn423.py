@@ -69,10 +69,19 @@ def ctrl(bon, libelle, detail=""):
 
 
 def lire(chemin):
+    # 🔴 REVUE DU 2026-08-31 — `except OSError` NE COUVRAIT PAS L'ENCODAGE.
+    #    `open(..., encoding="utf-8")` lève `UnicodeDecodeError`, qui est une
+    #    `ValueError` : sur une source en latin-1 ou portant un octet mojibake,
+    #    l'exception ÉCHAPPAIT ⇒ le chemin ci-dessous — écrit précisément pour
+    #    que « un contrôle qui ne peut pas LIRE ne dise PAS rien à signaler » —
+    #    n'était JAMAIS atteint, et il n'y avait NI `[KO]` NI `BILAN`. Sous
+    #    `--mutants`, ce même plantage était rapporté `[VERT!] CE CONTRÔLE NE
+    #    GARDE RIEN` : un faux diagnostic SUR UN CRASH. Ce dépôt imprime de
+    #    l'accentué partout — le cas n'a rien de théorique.
     try:
         with open(chemin, encoding="utf-8") as f:
             return f.read()
-    except OSError as e:
+    except (OSError, ValueError) as e:
         # ⛔ Un contrôle qui ne peut pas LIRE ne dit PAS « rien à signaler ».
         print("  [KO ] fichier ILLISIBLE : %s" % chemin)
         print("        %s" % e)
@@ -134,8 +143,67 @@ def printfs(src):
        est vrai : un contrôle qui cherche dans le fichier entier ROUGIT sur le
        commentaire qui EXPLIQUE le correctif. Vu ici sur `dn3-3` : le message
        est retiré, et le commentaire qui dit pourquoi le nommait encore.
+
+    🔴 **CORRIGÉE DEUX FOIS PAR LA REVUE DU 2026-08-31, ET LES DEUX DÉFAUTS
+       RENDAIENT LA GATE VERTE SUR LE DÉFAUT QU'ELLE NOMME.**
+      (a) **LE DOCSTRING MENTAIT.** L'ancienne regex cherchait `printf("…` dans
+          le fichier ENTIER, commentaires COMPRIS — l'exclusion annoncée était
+          ACCIDENTELLE. Et `sans_commentaires_c()`, la fonction qui l'aurait
+          faite, était du **CODE MORT** : une seule occurrence dans le fichier,
+          sa propre définition. ⇒ elle est APPELÉE.
+      (b) **ELLE NE CAPTURAIT QUE LE PREMIER LITTÉRAL DE CHAQUE `printf`.** Or
+          le multi-littéral (`printf("a\\n" "b\\n")`) est le style DOMINANT de
+          `dn_console.c`. Reproduit : réinsérer une aire récitée dans un
+          littéral de continuation de `widget rafale` laissait
+          `[OK] aucune AIRE RÉCITÉE … fautifs : aucun` et `107 OK / 0 KO`.
+          ⇒ on concatène TOUS les littéraux adjacents d'un même appel.
     """
-    return re.findall(r'printf\(\s*"((?:[^"\\]|\\.)*)"', src)
+    src = sans_commentaires_c(src)
+    out = []
+    for m in re.finditer(r'printf\(\s*((?:"(?:[^"\\]|\\.)*"\s*)+)', src):
+        morceaux = re.findall(r'"((?:[^"\\]|\\.)*)"', m.group(1))
+        out.append("".join(morceaux))
+    return out
+
+
+def branches_argv1(src, fonction_sig, mot):
+    """TOUTES les branches `strcmp(argv[1], "<mot>")` d'une fonction, avec leur
+    garde. Rend une liste de `(tete, corps)`.
+
+    🔴 AJOUTÉE PAR LA REVUE DU 2026-08-31. `branche_argv1()` rend LA PREMIÈRE
+       qui matche, et `dn_console.c` porte **quatre** branches `largeur`
+       (`mur`, `reset`, et deux qui mesurent une chaîne libre). Un contrôle qui
+       prend la première épingle donc une branche AU HASARD — c'est la famille
+       « gate scopée à UNE fonction épingle vert le même défaut ailleurs »,
+       appliquée un cran plus bas.
+    """
+    corps = corps_fonction(src, fonction_sig)
+    if corps is None:
+        return []
+    out = []
+    motif = r'strcmp\(argv\[1\],\s*"%s"\)\s*==\s*0' % re.escape(mot)
+    for m in re.finditer(motif, corps):
+        deb = corps.rfind("if (", 0, m.start())
+        j = corps.find("{", m.end())
+        if j < 0:
+            continue
+        # ⛔ LA GARDE VA JUSQU'A L'ACCOLADE : `strcmp(argv[2], "mur")` vit APRES
+        #   le `strcmp(argv[1], ...)`, donc une tete coupee a `m.end()` ne voyait
+        #   pas le mot-cle et rendait les 4 branches « libres ». Attrape par le
+        #   controle qui suit — un localisateur trop court est un localisateur
+        #   faux.
+        tete = corps[deb:j]
+        prof, k = 0, j
+        while k < len(corps):
+            if corps[k] == "{":
+                prof += 1
+            elif corps[k] == "}":
+                prof -= 1
+                if prof == 0:
+                    out.append((tete, corps[j:k + 1]))
+                    break
+            k += 1
+    return out
 
 
 def branche_argv1(src, fonction_sig, mot, argc=None):
@@ -170,6 +238,30 @@ def branche_argv1(src, fonction_sig, mot, argc=None):
     return None
 
 
+def sans_commentaires_py(src):
+    """Le code Python SANS ses commentaires ni ses docstrings.
+
+    🔴 **QUATRIEME OCCURRENCE DE LA MEME FAMILLE DANS CE DEPOT, ET ELLE S'EST
+       PRODUITE PENDANT LA REVUE QUI LA NOMME.** Le controle « `--no-wait` ne
+       plafonne plus sa lecture a 2 s » cherchait le motif fautif dans le corps
+       de `envoyer()` — et il a rougi sur le **commentaire qui EXPLIQUE le
+       correctif**, lequel cite forcement ce motif. Les trois precedentes : le
+       jeton d'exemption du verrou LVGL cite dans un commentaire l'ACCORDAIT
+       (`dn4-24`) · une gate codant en dur la cle de sa story ne gardait pas le
+       format qu'elle installe (`dn4-16`) · parler d'un motif comptait comme une
+       occurrence (`dn4-24`).
+    ⇒ La parade n'est pas d'interdire d'expliquer : c'est de donner a la gate
+      un **echappement**, comme un langage donne le sien. Ici : on lit LE CODE.
+    ⚠️ Decoupage LEXICAL simple — il suffit pour le Python de ce depot, et ⛔ ce
+       n'est pas presente comme un analyseur complet.
+    """
+    src = re.sub(r'"""' + "(?:.|\n)*?" + '"""', " ", src)
+    src = re.sub(r"'''" + "(?:.|\n)*?" + "'''", " ", src)
+    src = re.sub(r"(?m)^\s*#[^\n]*$", " ", src)
+    src = re.sub(r"(?m)(\s)#[^\n]*$", r"\1", src)
+    return src
+
+
 def sans_commentaires_c(src):
     src = re.sub(r"/\*.*?\*/", " ", src, flags=re.S)
     src = re.sub(r"//[^\n]*", " ", src)
@@ -190,19 +282,76 @@ def joue(argv, cwd):
 def bloc_refus(py):
     """AC1 — LE REFUS EST LU, ET IL ARME LE CODE DE RETOUR."""
     print("\n── AC1 : un harnais qui pose une commande LIT LE REFUS ─────────")
-    exiges = ["Unrecognized command", "non-zero error code", "ESP_ERR_",
-              "Internal error"]
     tbl = re.search(r"MOTIFS_REFUS\s*=\s*\((.*?)\n\)", py, re.S)
     ctrl(tbl is not None, "`MOTIFS_REFUS` est une table LOCALISABLE",
          "⛔ pas des `in` dispersés")
     corps = tbl.group(1) if tbl else ""
-    for mot in exiges:
-        ctrl(mot in corps, "…et elle porte « %s »" % mot,
-             "REPL ESP-IDF" if mot != "ESP_ERR_" else "esp_err_to_name")
-    ctrl(re.search(r'refus\(\?:\S*\)\\s\*:', corps) is not None
-         or r"\s*:" in corps,
-         "…et le motif français EXIGE le « : »",
-         "⛔ sinon « (refuse hors bornes) » est un refus")
+    # 🔴 REVUE DU 2026-08-31 — CES CONTRÔLES ÉTAIENT DES TESTS DE SOUS-CHAÎNE, ET
+    #    ILS NE DISTINGUAIENT PAS UNE REGEX D'UNE PROSE. `"ESP_ERR_"` était
+    #    satisfait par le LIBELLÉ du tuple, pas par le motif. Reproduit : typo la
+    #    regex en `Commmand returned non-zero error code` ⇒ `[OK] …et elle porte
+    #    « non-zero error code »`, et le témoin du pilote restait `31 OK / 0 KO`
+    #    (les deux témoins REPL portaient `ESP_ERR_`, qui tirait EN PREMIER).
+    # ⇒ ON COMPILE LES MOTIFS ET ON LES FAIT MORDRE SUR UNE LIGNE FABRIQUÉE.
+    # ⚠️ ET L'EXTRACTEUR CONCATÈNE LES LITTÉRAUX ADJACENTS — même leçon que
+    #    `printfs()` : un motif écrit sur deux lignes (`r"a" r"|b"`) était
+    #    INVISIBLE à un extracteur qui n'en lit qu'un, donc NON ÉPROUVÉ. La
+    #    gate l'a attrapé sur elle-même en posant l'épreuve ci-dessous.
+    motifs = ["".join(re.findall(r'r"((?:[^"\\]|\\.)*)"', m.group(1)))
+              for m in re.finditer(
+                  r're\.compile\(((?:\s*r"(?:[^"\\]|\\.)*"\s*)+)\)', corps)]
+    ctrl(len(motifs) >= 5, "…et elle porte au moins 5 motifs COMPILABLES",
+         "%d trouvé(s)" % len(motifs))
+    epreuves = [
+        ("Unrecognized command", "REPL — commande inconnue"),
+        ("Command returned non-zero error code: 0x1 (ERROR)",
+         "REPL — `return 1` NU, ⛔ sans ESP_ERR_"),
+        ("Internal error: la console n'a pas pu executer",
+         "REPL — erreur interne, ⛔ sans ESP_ERR_"),
+        ("refusé : ESP_ERR_INVALID_ARG", "notre convention"),
+        ("⛔ NE PAS CONCLURE SUR CE CHIFFRE.", "la carte se désavoue"),
+    ]
+    compiles = []
+    for src in motifs:
+        try:
+            compiles.append(re.compile(src))
+        except re.error:
+            pass
+    ctrl(len(compiles) == len(motifs), "…et TOUS compilent", "⛔ aucune régression")
+    for ligne, quoi in epreuves:
+        ctrl(any(rx.search(ligne) for rx in compiles),
+             "🔴 un motif MORD sur « %s »" % ligne[:34], quoi)
+    # ⛔ ET LA CONTRE-ÉPREUVE : la phrase pédagogique NE doit PAS mordre.
+    vert = "usage : widget opa <0..255>  (refuse hors bornes, jamais ecrete)"
+    ctrl(not any(rx.search(vert) for rx in compiles),
+         "…et AUCUN ne mord sur la phrase pédagogique de `widget opa`",
+         "⛔ « refuse » SANS « : » n'est pas un refus")
+
+    # ══ REVUE DU 2026-08-31 — CE QUE RIEN NE GARDAIT ═══════════════════════
+    # ⛔ LU DANS LE CODE, ⛔ PAS DANS LA PROSE : le commentaire qui explique ce
+    #   correctif CITE le motif fautif, et ce contrôle a rougi dessus — 4e
+    #   occurrence de cette famille dans le dépôt (voir `sans_commentaires_py`).
+    env = sans_commentaires_py(corps_python(py, "def envoyer(") or "")
+    ctrl("nettoyer(brut, commande), None)" in env,
+         "🔴 `--no-wait` retire l'ÉCHO avant de chercher un refus",
+         "⛔ sinon la commande se dénonce elle-même")
+    ctrl("min(timeout, 2.0)" not in env,
+         "🔴 …et il lit sur TOUTE la fenêtre, ⛔ pas 2 s en dur",
+         "un refus à t=2,5 s rendait 0")
+    ctrl("while time.monotonic() < fin:" in env,
+         "…en DRAINANT au fil de l'eau", "⛔ pas un `sleep` aveugle")
+    cd_ = corps_python(py, "def completude(") or ""
+    ctrl("SOMME SIGNÉE PAR CAPTURE" in cd_,
+         "…et l'ANGLE MORT de l'invariant est ÉCRIT là où il se produit",
+         "perte + étrangère = OK")
+    ic = corps_python(py, "def imprimer_completude(") or ""
+    ctrl("s'annulent" in ic,
+         "…et IMPRIMÉ sur un compteur `OK`",
+         "⛔ un commentaire ne retient personne")
+    rt = corps_python(py, "def refus_tolere(") or ""
+    ctrl("_MOTIFS_JAMAIS_TOLERES" in rt,
+         "…et DEUX motifs ne se tolèrent JAMAIS",
+         "commande inconnue · erreur interne")
 
     res = corps_python(py, "def _resultat(")
     ctrl(res is not None, "`_resultat()` est localisable", "")
@@ -313,18 +462,46 @@ def bloc_miroir(py, c):
         except re.error as e:
             mm = None
             print("        regex illisible : %s" % e)
-        ctrl(mm is not None and mm.group(1) == "12",
+        # 🔴 REVUE DU 2026-08-31 — `mm.group(1)` ÉTAIT APPELÉ SANS GARDE : une
+        #    `RE_COMPTEUR` réécrite sans groupe de capture faisait sortir la
+        #    gate en `IndexError` — ⛔ ni `[KO]`, ni `BILAN`. Un contrôle dont le
+        #    TEST ERRE ne dit pas « rien à signaler » : il ne dit RIEN.
+        ctrl(mm is not None and mm.lastindex is not None and mm.group(1) == "12",
              "🎯 la ligne du FIRMWARE est lue par la regex de l'HÔTE",
              repr(exemple)[:34])
-        # …et le cas « COMPTE NON FIABLE », l'autre branche du même printf.
-        ex2 = exemple.replace(" ---", "") + \
-            " (COMPTE NON FIABLE : sortie tronquee) ---"
+        # 🔴 REVUE DU 2026-08-31 — LE MARQUEUR « COMPTE NON FIABLE » ÉTAIT
+        #    **FABRIQUÉ ICI**, ⛔ pas extrait du firmware, et sa SÉMANTIQUE
+        #    (`fiable = "NON FIABLE" not in …`) n'était jamais testée. Reproduit :
+        #    renommer la chaîne côté carte en « (compte douteux : …) » laissait la
+        #    gate à `107 OK / 0 KO` PENDANT que le pilote rendait
+        #    `{'etat': 'PERTE'}` et criait `🔴 PERTE ⇒ RE-JOUER` **à tort** sur une
+        #    capture que la carte déclarait elle-même non fiable. C'est la règle
+        #    (2) que cette gate s'écrit à elle-même : ⛔ NE PAS CODER EN DUR CE
+        #    QUI SE GARDE GÉNÉRIQUEMENT.
+        mfia = re.search(r'printf\("(\s*\(COMPTE[^"]*?)"', c) or \
+            re.search(r'"(\s*\([A-Z][^"]*NON FIABLE[^"]*)"', c)
+        ctrl(mfia is not None,
+             "le marqueur d'INFIABILITÉ est EXTRAIT du firmware",
+             "⛔ plus fabriqué dans la gate")
+        suffixe = mfia.group(1).replace("\\n", "").rstrip() if mfia else ""
+        ex2 = exemple.replace(" ---", "") + suffixe + " ---"
         try:
             m2 = re.compile(rx.group(1)).match(ex2)
         except re.error:
             m2 = None
         ctrl(m2 is not None, "…y compris quand la carte déclare son compte faux",
              "l'autre branche du même printf")
+        # 🎯 ET LA SÉMANTIQUE, ⛔ pas seulement la forme : ce que l'hôte CONCLUT
+        #    de ce marqueur doit être « non fiable », pas « perte ».
+        cpl = corps_python(py, "def completude(") or ""
+        mfi = re.search(r'fiable\s*=\s*"([^"]+)"\s+not\s+in', cpl)
+        ctrl(mfi is not None and mfi.group(1) in ex2,
+             "🎯 …et le mot que l'HÔTE cherche est DANS ce que la CARTE écrit",
+             "%r" % (mfi.group(1) if mfi else "?"))
+        ctrl(m2 is not None and m2.lastindex is not None
+             and (mfi is not None and mfi.group(1) in (m2.group(2) or "")),
+             "…et il tombe dans le GROUPE que l'hôte inspecte",
+             "⛔ pas ailleurs dans la ligne")
 
 
 def bloc_injecteur(racine, inj):
@@ -354,6 +531,33 @@ def bloc_injecteur(racine, inj):
     ctrl(inject is not None and "valeurs_rampes(" in (inject or ""),
          "…et le tir CALCULE les valeurs à chaque cycle",
          "⛔ pas un dict figé de plus")
+    # 🔴 REVUE DU 2026-08-31 — L'INJECTEUR ÉCRIVAIT ET JETAIT LA RÉPONSE.
+    #    « N trames emises » était un compte d'ÉCRITURES côté hôte, et `main()`
+    #    rendait 0 quoi qu'il arrive : le défaut d'AC1 recréé dans l'outil qui
+    #    PRODUIT le stimulus.
+    ctrl("echo.extend(" in (inject or ""),
+         "🔴 …et il GARDE ce que la carte répond",
+         "⛔ plus `ser.read(...)` jeté")
+    ctrl("chercher_refus(" in (inject or ""),
+         "🔴 …et il y CHERCHE un refus", "⛔ un compte d'écritures n'est pas un accord")
+    ctrl("trames ECRITES" in inj,
+         "…et il dit « ECRITES », ⛔ plus « emises »",
+         "le mot portait la confusion")
+    cl = corps_python(inj, "def campagne_latence(") or ""
+    ctrl('cpl.get("etat") in ("PERTE", "COMPTE_NON_FIABLE")' in cl,
+         "🔴 …et la campagne LIT `completude` de la capture `pc`",
+         "⛔ elle ne lisait que `refus`")
+    ctrl('r["invite_rendue"] is False' in cl,
+         "…et refuse une fenêtre dont l'invite n'est pas rendue", "")
+    vd_ = corps_python(inj, "def verbe_latence_delta(") or ""
+    ctrl("ecarts_stim" in vd_ and "secondes_par_fenetre" in vd_,
+         "🔴 …et `--latence-delta` REFUSE deux STIMULI différents",
+         "il publiait « +294 ms » et rc 0")
+    ctrl("except ValueError" in vd_ and "REFUS" in vd_,
+         "…et un relevé ILLISIBLE est un REFUS, ⛔ pas une trace", "")
+    ctrl("a.secondes <= 0" in (mn or "") and "a.latence < 0" in (mn or ""),
+         "…et `--secondes` / `--latence` sont BORNÉS avant le port",
+         "0 trames + rc 0 était indiscernable d'un tir")
     rc, out = joue(["tools/dn_injecteur.py", "--temoin-negatif"], racine)
     ctrl(rc == 0 and re.search(r"BILAN : \d+ OK, 0 KO", out) is not None,
          "🔴 LE TÉMOIN DE L'INJECTEUR PASSE (joué, ⛔ pas supposé)",
@@ -393,15 +597,129 @@ def bloc_cpu(c):
          "0,8 % sous trafic vs 0,9 % au repos")
 
 
+def bloc_auto_epreuve():
+    """🎯 LA GATE S'ÉPROUVE SUR DES SOURCES FABRIQUÉES.
+
+    🔴 POURQUOI CE BLOC EXISTE — REVUE DU 2026-08-31. Trois de ses propres
+       défauts étaient INVISIBLES aux mutants : les muter ne changeait RIEN,
+       parce qu'aucun fichier livré n'exerçait le chemin fautif (aucun `printf`
+       commenté ne cite `35 100`, aucune consigne vivante ne récite `36 675`).
+       Un contrôle dont le mutant reste vert n'est pas gardé — il est SUPPOSÉ.
+    ⇒ On lui donne des sources qui EXERCENT le chemin, et on exige le verdict.
+    """
+    print("\n── LA GATE S'ÉPROUVE ELLE-MÊME (sources FABRIQUÉES) ────────────")
+    faux = ('/* printf("aire de 35 100 px, commentaire historique\\n"); */\n'
+            'static void f(void) {\n'
+            '    printf("vrai message\\n");\n'
+            '}\n')
+    ctrl(printfs(faux) == ["vrai message\\n"],
+         "🔴 `printfs()` IGNORE un `printf` en COMMENTAIRE",
+         "⛔ sinon la doc du correctif fait rougir")
+    multi = 'static void g(void) {\n    printf("a\\n" "b 35 100 c\\n");\n}\n'
+    ctrl(any("35 100" in t for t in printfs(multi)),
+         "🔴 …et elle VOIT le littéral de CONTINUATION",
+         "⛔ le défaut d'AC5.2 y était invisible")
+    ctrl(sans_commentaires_py("x = 1  # min(timeout, 2.0)\n").strip() == "x = 1",
+         "🔴 `sans_commentaires_py()` retire la prose",
+         "4e occurrence : citer un motif l'accordait")
+    src = ('static int cmd_x(int argc, char **argv) {\n'
+           '    if (argc == 3 && strcmp(argv[1], "m") == 0 &&\n'
+           '        strcmp(argv[2], "mur") == 0) { A(); }\n'
+           '    if (argc == 3 && strcmp(argv[1], "m") == 0) { B(); }\n'
+           '}\n')
+    brs = branches_argv1(src, "static int cmd_x(", "m")
+    ctrl(len(brs) == 2 and 'strcmp(argv[2], "mur")' in brs[0][0]
+         and 'strcmp(argv[2], "mur")' not in brs[1][0],
+         "🔴 `branches_argv1()` distingue une branche À MOT-CLÉ",
+         "une tête trop courte les confondait")
+
+
+def bloc_revue_firmware(c, ui, wifi_h):
+    """Les défauts firmware trouvés par la REVUE DE CODE du 2026-08-31."""
+    print("\n── REVUE : les défauts firmware que RIEN ne gardait ────────────")
+    cd_ = corps_fonction(c, "static int cpu_delta(void)") or ""
+    mt = corps_fonction(
+        c, "static bool cpu_meme_tache(const TaskStatus_t *a, const TaskStatus_t *b)") or ""
+    ctrl("pcTaskName" in mt and "xHandle" in mt,
+         "🔴 `cpu delta` apparie sur le HANDLE **ET** LE NOM",
+         "FreeRTOS recycle les TCB")
+    # ⛔ LE CONTRÔLE PORTE SUR CE QUI FIXE `base`, ⛔ pas sur la présence du mot
+    #   `xHandle` : la comparaison de handle NUE reste légitime — c'est elle qui
+    #   DÉTECTE le recyclage. Ce qui est interdit, c'est d'en tirer une origine.
+    nu = sans_commentaires_c(cd_)
+    fautifs = [m.group(0) for m in re.finditer(
+        r"if \([^\n]*\.xHandle == [^\n]*\) \{\s*\n\s*base = ", nu)]
+    ctrl(not fautifs,
+         "…et AUCUNE origine `base` ne vient d'un handle SEUL",
+         "⛔ l'enroulement publiait « CHARGE 100 % »")
+    ctrl(nu.count("cpu_meme_tache(") >= 3,
+         "…les TROIS boucles d'appariement passent par le prédicat",
+         "somme · impression · disparues")
+    ctrl("recyclees" in cd_ and "TCB RECYCLE" in cd_,
+         "…et un TCB recyclé est DÉCLARÉ", "⛔ plus silencieux")
+    ctrl("NEE **ET**" in cd_ or "MORTE dans la fenetre" in cd_,
+         "…et le biais « née ET morte dans la fenêtre » est écrit",
+         "deux relevés ne voient pas ce qui vit entre eux")
+    ctrl("s_cpu_dep_cap" not in sans_commentaires_c(c),
+         "…et la variable morte `s_cpu_dep_cap` est RETIRÉE",
+         "affectée, jamais lue")
+
+    pf = corps_fonction(c, "static int dn_console_printf(const char *fmt, ...)") or ""
+    ctrl("0xC0) == 0x80" in pf and "pile[n] = " in pf,
+         "🔴 la troncature de FAMINE recule sur une tête UTF-8",
+         "un octet orphelin cassait le motif de refus")
+
+    ce = corps_fonction(c, "void dn_console_compter_externes(int lignes)") or ""
+    ctrl(ce != "", "🔴 `dn_console_compter_externes()` existe",
+         "les modules frères imprimaient HORS du compteur")
+    ctrl("s_lignes_cmd +=" in ce,
+         "…et elle alimente le MÊME compteur", "")
+    ctrl("dn_console_compter_externes(dn_ui_log_mem())" in sans_commentaires_c(c),
+         "…et les appels à `dn_ui_log_mem()` la traversent",
+         "6 lignes non annoncées ×4 sites")
+    ctrl("dn_console_compter_externes((int)dn_wifi_lignes_emises())"
+         in sans_commentaires_c(c),
+         "…et `wifi on` / `wifi off` aussi", "13 printf hors compteur")
+    ctrl("int dn_ui_log_mem(void)" in ui,
+         "…et `dn_ui_log_mem()` REND son nombre de lignes",
+         "⛔ pas un compte recopié en face")
+    ctrl("dn_wifi_lignes_emises" in wifi_h,
+         "…et les STUBS de `dn_wifi.h` comptent aussi",
+         "🔴 c'est le chemin RÉELLEMENT compilé")
+
+    dt = corps_fonction(c, "static bool largeur_original_probable(const char *recu, char *out, size_t n_out)") or ""
+    ctrl("(js == 7) != (mo == 0)" not in sans_commentaires_c(dt),
+         "🔴 le balayage de dates couvre les formes MIXTES",
+         "`??? 15 AOUT` était injoignable")
+
+    bb = branche_argv1(c, "static int cmd_widget(", "barre", 3) or ""
+    ctrl("dn_ui_geom_bandes(" in bb and "RAPPORT NON PUBLIE" in bb,
+         "🔴 `widget barre` REFUSE son rapport hors de sa hauteur de mesure",
+         "le numérateur 6 334 est DATÉ")
+
+
 def bloc_sorties(c):
     """AC5 — TROIS SORTIES CESSENT DE MESURER AUTRE CHOSE."""
     print("\n── AC5 : relire au lieu de réciter, et mesurer ce qu'on annonce ─")
     col = corps_fonction(c, "static void colonnes(const char *s, int largeur)")
     ctrl(col is not None, "`colonnes()` est localisable", "")
     col = col or ""
-    ctrl("0xC0" in col and "0x80" in col,
-         "…et elle raisonne en octets de TÊTE UTF-8",
-         "⛔ jamais couper au milieu d'une séquence")
+    # 🔴 REVUE DU 2026-08-31 — CE CONTRÔLE EXIGEAIT « octets de TÊTE », ET
+    #    C'ÉTAIT LE DÉFAUT : compter les têtes n'est PAS compter des colonnes.
+    #    Ce fichier imprime des glyphes DOUBLE LARGEUR partout ⇒ un champ
+    #    « tronqué à 10 colonnes » en rendait 12 à 20 et décalait la ligne — le
+    #    symptôme même que la troncature existe pour arrêter. Et « attention »
+    #    (base + sélecteur de variation) comptait DEUX colonnes et pouvait être
+    #    coupé ENTRE LES DEUX.
+    ctrl("dn_cp_colonnes(" in col,
+         "🔴 …et elle mesure une LARGEUR D'AFFICHAGE, ⛔ pas des octets",
+         "les glyphes doubles comptent 2")
+    lw = corps_fonction(c, "static int dn_cp_colonnes(unsigned cp)") or ""
+    ctrl("0xFE0F" in lw and "return 0" in lw,
+         "…et le sélecteur de variation vaut ZÉRO colonne",
+         "⛔ jamais coupé de sa base")
+    ctrl("0x1F300" in lw and "return 2" in lw,
+         "…et les émojis en valent DEUX", "⛔ pas une par octet de tête")
     ctrl(re.search(r"cols > largeur", col) is not None and "return;" in col,
          "🔴 …et elle TRONQUE quand `cols > largeur`",
          "le défaut qu'elle existe pour fermer")
@@ -426,9 +744,25 @@ def bloc_sorties(c):
     ctrl(not recitees,
          "🔴 aucune AIRE RÉCITÉE dans un printf hors REPÈRE DATÉ",
          "fautifs : %s" % ((recitees[0][:26] if recitees else "aucun")))
-    ctrl(len([t for t in printfs(c) if re.search(r"35\s?100", t)]) >= 2,
-         "…et les REPÈRES DATÉS, eux, sont TOUJOURS LÀ",
-         "⛔ on ne réécrit pas les comptes rendus")
+    # 🔴 REVUE DU 2026-08-31 — CE CONTRÔLE COMPARAIT UN **TOTAL SUR TOUT LE
+    #    FICHIER**, c'est-à-dire exactement ce que la règle (3) de cette gate
+    #    interdit. UN SEUL `printf` fabriqué le satisfaisait. ⇒ on LOCALISE les
+    #    deux repères datés dans LEURS branches.
+    for mot, argc in (("rafale", 2), ("barre", 3)):
+        b = branche_argv1(c, "static int cmd_widget(", mot, argc) or ""
+        ctrl(any(re.search(r"etait\s+35\s?100", t) for t in printfs(b)),
+             "…et `widget %s` garde SON repère daté" % mot,
+             "⛔ on ne réécrit pas les comptes rendus")
+    # 🔴 ET AC5.2 DIT « ⛔ NI 35 100 NI 36 675 » — `36 675` N'ÉTAIT JAMAIS
+    #    CHERCHÉ. Replanter cette aire-là dans une consigne vivante laissait la
+    #    gate à `107 OK / 0 KO`. La règle est la MÊME : une aire dans une
+    #    consigne d'action est un dénominateur qui se périmera.
+    recitees2 = [t for t in printfs(c)
+                 if re.search(r"36\s?675", t)
+                 and not re.search(r"etait\s+36\s?675|->\s*36\s?675", t)]
+    ctrl(not recitees2,
+         "🔴 …et AUCUNE occurrence de `36 675` non plus (AC5.2, mot pour mot)",
+         "fautifs : %s" % (recitees2[0][:26] if recitees2 else "aucun"))
     for mot, argc in (("rafale", 2), ("barre", 3)):
         br = branche_argv1(c, "static int cmd_widget(", mot, argc)
         ctrl(br is not None, "la branche `widget %s` est localisable" % mot, "")
@@ -451,10 +785,30 @@ def bloc_sorties(c):
          and "dn_ui_barre_date_forme(" in (op or ""),
          "…sur un vocabulaire ENGENDRÉ, ⛔ pas une table locale",
          "métriques + formes de date")
-    cw = corps_fonction(c, "static int cmd_widget(")
-    ctrl(cw is not None and (cw or "").count("largeur_drapeau_repl(argv[2])") == 2,
-         "…et les DEUX branches de `widget largeur` l'appellent",
-         "argc==3 ET argc==4")
+    # 🔴 REVUE DU 2026-08-31 — CE CONTRÔLE COMPTAIT `== 2` SUR `cmd_widget`,
+    #    UNE FONCTION DE ~2 000 LIGNES. Déplacer l'un des deux appels hors de la
+    #    branche `widget largeur` laissait le compte à 2, la gate VERTE, et la
+    #    commande SANS son drapeau. La règle (3) que cette gate s'écrit —
+    #    « localise (fonction + ancre), ⛔ ne compare pas un TOTAL » — était
+    #    violée par le bloc qui applique AC5.3.
+    brs = branches_argv1(c, "static int cmd_widget(", "largeur")
+    ctrl(len(brs) >= 2, "les branches `widget largeur` sont TOUTES localisées",
+         "%d trouvée(s)" % len(brs))
+    # Celles qui mesurent une CHAÎNE LIBRE sont celles qui ne comparent pas
+    # `argv[2]` à un mot-clé (`mur`, `reset`). ⛔ Ce sont exactement celles-là
+    # qui doivent lever le drapeau — les autres ne reçoivent pas de texte.
+    libres = [(t, b) for t, b in brs
+              if not re.search(r'strcmp\(argv\[2\],\s*"', t)]
+    mots_cles = [(t, b) for t, b in brs
+                 if re.search(r'strcmp\(argv\[2\],\s*"', t)]
+    ctrl(len(libres) == 2,
+         "…dont DEUX mesurent une chaîne libre", "%d" % len(libres))
+    ctrl(all("largeur_drapeau_repl(argv[2])" in b for _, b in libres),
+         "🔴 …et CHACUNE de ces deux lève le drapeau REPL",
+         "⛔ localisé, ⛔ pas un total sur 2 000 lignes")
+    ctrl(not any("largeur_drapeau_repl(argv[2])" in b for _, b in mots_cles),
+         "…et AUCUNE branche à mot-clé ne le lève",
+         "`mur` / `reset` ne reçoivent pas de texte")
 
 
 def bloc_leviers(c, w):
@@ -463,13 +817,20 @@ def bloc_leviers(c, w):
     br = branche_argv1(c, "static int cmd_widget(", "piste", 3)
     ctrl(br is not None, "la branche `widget piste` est localisable", "")
     br = br or ""
-    ctrl("SI LA CARTE EST EN VEILLE" in br,
+    # 🔴 REVUE DU 2026-08-31 — CE CONTRÔLE LISAIT LE TEXTE **BRUT** DE LA
+    #    BRANCHE, COMMENTAIRES COMPRIS, alors que le contrôle `dn3-3` deux lignes
+    #    plus bas utilise correctement `printfs(br)`. L'incohérence était DANS LE
+    #    FICHIER. Reproduit : supprimer les trois `printf` de l'avertissement et
+    #    laisser `/* TODO: reposer l'avertissement … */` rendait `[OK]` et
+    #    `107 OK / 0 KO` — le défaut d'AC6.1, vert.
+    dits_br = " ".join(printfs(br))
+    ctrl("SI LA CARTE EST EN VEILLE" in dits_br,
          "🔴 …et elle AVERTIT `veille off` comme ses trois voisines",
-         "la jauge se pose 27 px trop haut")
+         "la jauge se pose 27 px trop haut · ⛔ lu dans ce qui est IMPRIMÉ")
     # ⛔ ON CHERCHE DANS CE QUI EST **IMPRIMÉ**, pas dans le fichier : le
     #    commentaire qui EXPLIQUE le correctif nomme forcément `dn3-3`, et un
     #    contrôle naïf rougirait sur sa propre documentation. Vu, ici même.
-    dits = " ".join(printfs(br))
+    dits = dits_br
     ctrl("dn3-3" not in dits,
          "🔴 …et le renvoi vers `dn3-3` (`done`) n'est plus IMPRIMÉ",
          "⛔ un renvoi mort est un instrument qui ment")
@@ -485,13 +846,37 @@ def bloc_leviers(c, w):
     ctrl("dn_widget_desaturer(" in vc and "dn_ui_case_couleur(" in vc,
          "…et l'accent par la MÊME fonction que l'écran",
          "⛔ pas une copie de la formule")
-    cb = corps_fonction(c, "static const char *contraste_bande(int ecart)") or ""
-    ctrl("ecart == 0" in cb and "ECART NUL" in cb,
-         "…et l'écart NUL est une bande À PART",
-         "certitude ARITHMÉTIQUE, aucun œil requis")
+    # 🔴 REVUE DU 2026-08-31 — CE CONTRÔLE EXIGEAIT « ECART NUL » COMME UNE
+    #    « certitude ARITHMÉTIQUE, aucun œil requis ». C'ÉTAIT LE DÉFAUT : l'écart
+    #    se calcule sur une LUMINANCE (`lum601`), qui écrase trois canaux en un.
+    #    `widget piste 0x960000` et `veille case 0x004D00` rendent tous deux
+    #    `lum 45` ⇒ écart 0 sur un rouge sombre contre un vert sombre. La gate
+    #    ÉPINGLAIT donc une sur-annonce — elle exige désormais l'inverse.
+    cb = corps_fonction(
+        c, "static const char *contraste_bande_paire(int ecart, bool meme_couleur,") or ""
+    ctrl(cb != "", "`contraste_bande_paire()` est localisable",
+         "⛔ la version SANS paire est retirée")
+    ctrl("ecart == 0 && meme_couleur" in cb,
+         "🔴 …et « même couleur » exige les TROIS CANAUX",
+         "⛔ pas une égalité de LUMINANCE")
+    ctrl("LUMINANCE IDENTIQUE" in cb and "A VERIFIER A L'OEIL" in cb,
+         "…et une luminance égale à teintes DIFFÉRENTES renvoie À L'ŒIL",
+         "⛔ elle n'affirme plus la disparition")
     ctrl("DN_CONTRASTE_REPERE" in cb,
          "…et le repère 24 est NOMMÉ, ⛔ pas écrit en dur",
          "emprunté à `bloc_gris`")
+    ctrl(len(re.findall(r"contraste_bande\(", sans_commentaires_c(c))) == 0,
+         "…et l'ANCIENNE bande (sans paire) n'existe plus",
+         "⛔ une morte se recopie")
+    ctrl("piste == fond_amb" in vc and "acc == piste" in vc,
+         "…et les DEUX paires passent leur égalité de couleur",
+         "piste↔case ET indicateur↔piste")
+    ctrl("comparee" in vc and "pire == 255" not in vc,
+         "…et la sentinelle n'est plus prise DANS le domaine mesuré",
+         "255 est un écart LÉGAL")
+    ctrl("NI un plafond NI un plancher" in vc,
+         "🔴 …et le « PLAFOND » de l'ACTIF est déclaré pour ce qu'il est",
+         "`widget opa 0` le fait monter à 255 − lp")
     ctrl("ON NE REFUSE PAS" in vc,
          "…et le verdict AVERTIT, ⛔ ne refuse pas",
          "doctrine explicite de ces commandes")
@@ -500,10 +885,15 @@ def bloc_leviers(c, w):
                            ("opa", None, None),
                            ("case", "static int cmd_veille(", None)):
         if mot == "opa":
-            corps = corps_fonction(c, "static int cmd_widget(") or ""
-            m = re.search(r'strcmp\(argv\[1\], "opa"\) == 0.*?return 0;\n    \}',
-                          corps, re.S)
-            trouve = m is not None and "verdict_contraste()" in m.group(0)
+            # 🔴 REVUE DU 2026-08-31 — CE MOTIF CODAIT EN DUR L'INDENTATION
+            #    (`\n    }`) ET S'ARRÊTAIT AU PREMIER `return 0;`. Un `return 0;`
+            #    anticipé (un chemin d'usage) rétrécissait la portée à AVANT
+            #    l'appel, et une ré-indentation faisait que l'ancre ne matchait
+            #    plus : `[KO]` sur du code CORRECT, avec un détail qui NOMME LA
+            #    MAUVAISE CAUSE (« un verdict non appelé ne garde rien »).
+            #    ⇒ on utilise le même localisateur de branche que les voisins.
+            b = branche_argv1(c, "static int cmd_widget(", "opa")
+            trouve = b is not None and "verdict_contraste()" in b
         else:
             b = branche_argv1(c, sig, mot, argc)
             trouve = b is not None and "verdict_contraste()" in b
@@ -540,12 +930,26 @@ def bloc_leviers(c, w):
         ctrl(e != 0,
              "🔴 la paire LIVRÉE piste ↔ aplat n'est PAS de l'écart NUL",
              "lum %d vs %d ⇒ écart %d" % (lp, lf, e))
-        print("        ⚠️ écart %d — SOUS le repère 24 emprunté à `bloc_gris`, qui"
-              % e)
+        # 🔴 REVUE DU 2026-08-31 — CETTE PHRASE ÉTAIT IMPRIMÉE **EN DUR**,
+        #    « SOUS le repère 24 », quel que soit l'écart qui venait d'être
+        #    calculé. Une palette future donnant `e = 97` aurait fait dire à la
+        #    gate « écart 97 — SOUS le repère 24 ». Une gate d'HONNÊTETÉ qui
+        #    énonce une fausseté dans sa propre sortie : c'est le défaut de
+        #    famille de cette story, commis par l'outil qui la garde.
+        rep24 = re.search(r"#define DN_CONTRASTE_REPERE\s+(\d+)", c)
+        seuil = int(rep24.group(1)) if rep24 else 24
+        ctrl(rep24 is not None,
+             "…et le repère est RELU du firmware, ⛔ pas écrit ici",
+             "DN_CONTRASTE_REPERE = %d" % seuil)
+        print("        ⚠️ écart %d — %s le repère %d emprunté à `bloc_gris`, qui"
+              % (e, "SOUS" if e < seuil else "AU-DESSUS DE", seuil))
         print("           gouverne LES TROIS GRIS DE RÉGIME entre eux et ⛔ ne se")
         print("           transpose pas. Éprouvé À L'ŒIL sur la carte le 2026-08-31")
         print("           (« oui, une barre vert foncé ») ⇒ FAIT CONSIGNÉ, ⛔ pas")
         print("           un défaut ouvert. Seul l'écart NUL est un rouge ici.")
+        print("        ⛔ ET « écart NUL » NE VEUT PAS DIRE « même couleur » : il se")
+        print("           calcule sur une LUMINANCE. La certitude, c'est l'égalité")
+        print("           des TROIS CANAUX — vérifiée par `contraste_bande_paire`.")
 
 
 def bloc_latence(py, inj):
@@ -651,9 +1055,17 @@ def bloc_temoin_pilote(racine):
 FICHIERS_MUTABLES = (
     "tools/dn_console.py",
     "tools/dn_injecteur.py",
+    # 🔴 AJOUTÉE PAR LA REVUE DU 2026-08-31 — **LA GATE SE MUTE ELLE-MÊME.**
+    #    Trois de ses défauts (commentaires lus comme du code imprimé, un seul
+    #    littéral par `printf`, `36 675` jamais cherché) la laissaient VERTE sur
+    #    le défaut qu'elle nomme. Aucun mutant ne pouvait le montrer tant qu'elle
+    #    n'était pas dans cette liste — et tant que le mutant jouait la gate
+    #    D'ORIGINE au lieu de la COPIE (voir `jouer_mutants`).
+    "tools/verif_instruments_dn423.py",
     "firmware/desknode/main/dn_console.c",
     "firmware/desknode/main/dn_widget.c",
     "firmware/desknode/main/dn_link.c",
+    "firmware/desknode/main/dn_ui.c",
 )
 
 MUTANTS = (
@@ -663,8 +1075,8 @@ MUTANTS = (
      ""),
     ("AC1", "un refus n'arme plus le code de retour",
      "tools/dn_console.py",
-     'if r["refus"] and not refus_tolere(cmd, args.refus_tolere):\n                    code = 1',
-     'if False:\n                    code = 1'),
+     'if r["refus"] and not refus_tolere(\n',
+     'if False and not refus_tolere(\n'),
     ("AC2", "le compteur de lignes est retiré du firmware",
      "firmware/desknode/main/dn_console.c",
      'printf("--- fin : %u lignes emises%s ---\\n", (unsigned)n,',
@@ -709,6 +1121,81 @@ MUTANTS = (
      "tools/dn_console.py",
      "LATENCE_FENETRES_MIN = 2",
      "LATENCE_FENETRES_MIN = 1"),
+    # ══ LES DÉFAUTS TROUVÉS PAR LA REVUE DE CODE DU 2026-08-31 ═══════════════
+    #    ⛔ Chacun de ceux-là était PRÉSENT dans l'arbre livré pendant que la
+    #    gate imprimait `107 OK / 0 KO`. Les remettre est la seule preuve que
+    #    la correction tient.
+    ("RC1", "le compteur redevient une SOMME SIGNÉE (surplus structurel)",
+     "firmware/desknode/main/dn_console.c",
+     "    s_lignes_cmd += (unsigned)lignes;\n    s_fin_de_ligne = true;",
+     "    (void)lignes;"),
+    ("RC2", "`--no-wait` rescanne l'ÉCHO de la commande",
+     "tools/dn_console.py",
+     "        return _resultat(commande, brut, nettoyer(brut, commande), None)",
+     "        return _resultat(commande, brut, brut.strip(), None)"),
+    ("RC3", "`--no-wait` replafonne sa lecture à 2 s",
+     "tools/dn_console.py",
+     "        fin = time.monotonic() + timeout",
+     "        fin = time.monotonic() + min(timeout, 2.0)"),
+    ("RC4", "la carte se désavoue et le pilote ne le voit plus",
+     "tools/dn_console.py",
+     '    ("carte : verdict NON CRÉDIBLE",',
+     '    ("carte : verdict JAMAIS VU",'),
+    ("RC5", "`chercher_refus` re-déduplique par TEXTE (dégonfle)",
+     "tools/dn_console.py",
+     "                vus.append((nom, ligne.strip(), i))",
+     "                vus.append((nom, ligne.strip(), i)) if not [\n"
+     "                    x for x in vus if x[1] == ligne.strip()] else None"),
+    ("RC6", "`cpu delta` réapparie par HANDLE seul (TCB recyclé)",
+     "firmware/desknode/main/dn_console.c",
+     "           && strncmp(a->pcTaskName, b->pcTaskName, configMAX_TASK_NAME_LEN) == 0;",
+     "           && true;"),
+    ("RC7", "le « PLAFOND » de l'ACTIF redevient une affirmation",
+     "firmware/desknode/main/dn_console.c",
+     '    printf("     — ⛔ ce n\'est NI un plafond NI un plancher, et le pire cas est\\n");',
+     '    printf("     — (PLAFOND, fond noir pur)\\n");'),
+    ("RC8", "`contraste_bande_paire` reconclut « même couleur » d'une luminance",
+     "firmware/desknode/main/dn_console.c",
+     "    if (ecart == 0 && meme_couleur) {",
+     "    if (ecart == 0) {"),
+    ("RC9", "`colonnes()` recompte des OCTETS DE TÊTE",
+     "firmware/desknode/main/dn_console.c",
+     "        int w = dn_cp_colonnes(cp);",
+     "        int w = 1;"),
+    ("RC10", "l'injecteur rejette la réponse de la carte",
+     "tools/dn_injecteur.py",
+     "            echo.extend(ser.read(ser.in_waiting or 0))",
+     "            ser.read(ser.in_waiting or 0)"),
+    ("RC11", "`--latence-delta` recompare deux STIMULI différents",
+     "tools/dn_injecteur.py",
+     "    if ecarts_stim:",
+     "    if False:"),
+    ("RC12", "la bannière récite à nouveau la prémisse RÉFUTÉE",
+     "tools/dn_injecteur.py",
+     '    print("[injecteur]    0,005 corruption/s contre 0,54 /s sous agent réel — "',
+     '    print("[injecteur]    94 645 contre 128 613, soit 36 % de moins — "'),
+    # ⛔ CES DEUX-LÀ **PLANTENT LE DÉFAUT** dans le firmware au lieu de
+    #    désactiver le contrôle : un mutant qui débranche la garde ne prouve que
+    #    l'existence de la garde ; un mutant qui remet la faute prouve qu'elle
+    #    l'ATTRAPE. (Les deux versions ont été jouées : la première restait
+    #    VERTE, parce qu'aucun fichier livré n'exerçait le chemin.)
+    ("RC13", "une AIRE RÉCITÉE est replantée dans un littéral de CONTINUATION",
+     "firmware/desknode/main/dn_console.c",
+     '        printf("cadence de la barre : %s\\n",',
+     '        printf("verifier le delta de\\n"\n'
+     '               "   6 x 35 100 px sur la scene livree\\n");\n'
+     '        printf("cadence de la barre : %s\\n",'),
+    ("RC14", "la gate ne lit à nouveau QUE le premier littéral",
+     "tools/verif_instruments_dn423.py",
+     '        morceaux = re.findall(r\'"((?:[^"\\\\]|\\\\.)*)"\', m.group(1))\n'
+     "        out.append(\"\".join(morceaux))",
+     '        morceaux = re.findall(r\'"((?:[^"\\\\]|\\\\.)*)"\', m.group(1))\n'
+     "        out.append(morceaux[0] if morceaux else \"\")"),
+    ("RC15", "l'AUTRE aire (`36 675`) est replantée dans une consigne",
+     "firmware/desknode/main/dn_console.c",
+     '        printf("cadence de la barre : %s\\n",',
+     '        printf("   verifier les 36 675 px de la case\\n");\n'
+     '        printf("cadence de la barre : %s\\n",'),
 )
 
 
@@ -733,6 +1220,13 @@ def jouer_mutants(racine, sortie_pv):
          % (rc_ref, (out_ref.strip().splitlines() or ["?"])[-1]))
     if rc_ref != 0:
         dire("⛔ L'arbre livré n'est pas vert : ⛔ aucun mutant n'est concluant.")
+        # 🔴 REVUE DU 2026-08-31 — `os.makedirs` N'EXISTAIT QUE SUR LE CHEMIN
+        #    NOMINAL, plus bas. Sur un clone frais (pas de `mesures/dn4-23/`)
+        #    dont l'arbre est DÉJÀ ROUGE, cette branche sortait en
+        #    `FileNotFoundError` au lieu de produire le rapport qu'elle est
+        #    écrite pour produire — l'outil plantait exactement quand il avait
+        #    quelque chose à dire.
+        os.makedirs(os.path.dirname(sortie_pv) or ".", exist_ok=True)
         with open(sortie_pv, "w", encoding="utf-8") as f:
             f.write("\n".join(lignes_pv) + "\n")
         return 1
@@ -755,10 +1249,18 @@ def jouer_mutants(racine, sortie_pv):
                 continue
             with open(cible, "w", encoding="utf-8") as f:
                 f.write(txt.replace(avant, apres, 1))
-            rc, out = joue([moi, "--racine", tmp], tmp)
+            # 🔴 REVUE DU 2026-08-31 — LE MUTANT JOUAIT LA GATE **D'ORIGINE**
+            #    contre l'arbre muté. Un défaut planté DANS LA GATE était donc
+            #    structurellement invisible : c'est pour ça que ses trois trous
+            #    ont survécu à `11 mutants vus rougir`. Quand la cible EST la
+            #    gate, on joue LA COPIE.
+            gate = os.path.join(tmp, "tools/verif_instruments_dn423.py") \
+                if fichier.endswith("verif_instruments_dn423.py") else moi
+            rc, out = joue([gate, "--racine", tmp], tmp)
             kos = [l.strip() for l in out.splitlines() if "[KO ]" in l]
             bilan = ([l for l in out.splitlines() if l.startswith("BILAN")]
                      or ["(pas de bilan)"])[-1]
+            a_bilan = any(l.startswith("BILAN") for l in out.splitlines())
             if rc == 1 and kos:
                 dire("[ROUGE] %-4s %-52s rc=1  %s" % (ac, quoi, bilan))
                 for k in kos[:3]:
@@ -766,6 +1268,21 @@ def jouer_mutants(racine, sortie_pv):
                 if len(kos) > 3:
                     dire("          ↳ … et %d autre(s)" % (len(kos) - 3))
                 n_ok += 1
+            elif not a_bilan:
+                # 🔴 REVUE DU 2026-08-31 — UNE GATE QUI **PLANTE** ÉTAIT
+                #    RAPPORTÉE `[VERT!] CE CONTRÔLE NE GARDE RIEN`. C'est un
+                #    FAUX DIAGNOSTIC SUR UN CRASH : le contrôle n'a pas laissé
+                #    passer le défaut, il n'a pas pu s'exécuter. Confondre les
+                #    deux envoie chercher au mauvais endroit — et c'était
+                #    atteignable (une source illisible faisait échapper
+                #    `UnicodeDecodeError` hors de `lire()`).
+                dire("[PLANTE] %-4s %-52s rc=%d — ⛔ NI KO NI BILAN"
+                     % (ac, quoi, rc))
+                dire("          ⛔ La gate n'a pas CONCLU : elle a ERRÉ. ⛔ Ce")
+                dire("             n'est PAS « le contrôle ne garde rien ».")
+                for l in (out.strip().splitlines() or [""])[-2:]:
+                    dire("          ↳ %s" % l[:96])
+                n_rate += 1
             else:
                 dire("[VERT!] %-4s %-52s rc=%d  %s" % (ac, quoi, rc, bilan))
                 dire("          ⛔ CE CONTRÔLE NE GARDE RIEN — le défaut passe.")
@@ -776,7 +1293,11 @@ def jouer_mutants(racine, sortie_pv):
     dire("BILAN MUTANTS : %d vus ROUGIR, %d non concluant(s) sur %d"
          % (n_ok, n_rate, len(MUTANTS)))
     dire("⛔ CE QUE CE PV NE PROUVE PAS : que la gate attrape TOUS les défauts.")
-    dire("   Il prouve que chacun de ces onze-là ne passe plus. Une gate se juge")
+    # 🔴 REVUE DU 2026-08-31 — « ces ONZE-LÀ » ÉTAIT ÉCRIT EN DUR ICI, et mon
+    #    propre ajout de mutants l'a périmé sur-le-champ. Un compte récité dans
+    #    l'outil qui installe « relire, ⛔ pas réciter » : le compte est RELU.
+    dire("   Il prouve que chacun de ces %d-là ne passe plus. Une gate se juge"
+         % len(MUTANTS))
     dire("   à ce qu'elle a été vue REFUSER, ⛔ pas à son compte de contrôles.")
     os.makedirs(os.path.dirname(sortie_pv), exist_ok=True)
     with open(sortie_pv, "w", encoding="utf-8") as f:
@@ -813,7 +1334,9 @@ def main():
     inj = lire(os.path.join(racine, "tools", "dn_injecteur.py"))
     c = lire(os.path.join(racine, "firmware", "desknode", "main", "dn_console.c"))
     w = lire(os.path.join(racine, "firmware", "desknode", "main", "dn_widget.c"))
-    if None in (py, inj, c, w):
+    ui = lire(os.path.join(racine, "firmware", "desknode", "main", "dn_ui.c"))
+    wifi_h = lire(os.path.join(racine, "firmware", "desknode", "main", "dn_wifi.h"))
+    if None in (py, inj, c, w, ui, wifi_h):
         print("\nBILAN : %d OK, %d KO" % (OK[0], KO[0]))
         return 1
 
@@ -824,6 +1347,8 @@ def main():
     bloc_cpu(c)
     bloc_sorties(c)
     bloc_leviers(c, w)
+    bloc_revue_firmware(c, ui, wifi_h)
+    bloc_auto_epreuve()
     bloc_latence(py, inj)
     bloc_latence_execute(racine)
     bloc_temoin_pilote(racine)

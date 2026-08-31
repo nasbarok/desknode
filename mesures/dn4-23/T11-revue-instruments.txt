@@ -1,0 +1,24 @@
+# dn4-23 — REVUE DE CODE 3 COUCHES DU 2026-08-31 : LES INSTRUMENTS APRES CORRECTIFS
+# ⛔ CE FICHIER EST UN AJOUT. Les PV de la seance (T0..T10) ne sont PAS reecrits.
+
+$ python3 tools/dn_console.py --temoin-negatif
+⛔ CE QUE CE TÉMOIN NE PROUVE PAS : que la carte a raison. Il prouve que
+   L'INSTRUMENT ne peut plus conclure sur du vide. Les constats de la
+   carte (perte réelle attrapée, dispersion réelle) se tirent EN SÉANCE.
+BILAN : 46 OK, 0 KO
+
+$ python3 tools/dn_injecteur.py --temoin-negatif
+  [OK ] un COMMENTAIRE dans `k_metriques[]` ne décale plus les bornes lu : [1000, 1000, 1000, 1000]
+  [OK ] …et un plafond en HEXA fait RENDRE `None`, ⛔ pas 3 morceaux 0x3E8 donnait 0 · 3 · 8
+BILAN : 28 OK, 0 KO
+
+$ python3 tools/verif_instruments_dn423.py
+   jeu variable atteint le régime réel, ⛔ pas que le contraste est
+   lisible à l'œil. Ces cinq constats-là se tirent EN SÉANCE.
+BILAN : 160 OK, 0 KO
+
+$ bash tools/run_gates.sh
+
+BILAN : 21 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 23 gates (93s)
+⛔ ROUGES :
+   · tools/verif_dossier_dn415.py (rc=1)

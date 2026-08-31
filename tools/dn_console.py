@@ -65,7 +65,9 @@ USAGE
 """
 
 import argparse
+import contextlib
 import glob
+import io
 import json
 import os
 import re
@@ -97,7 +99,7 @@ DEFAULT_BAUD = 115200
 #      refusée et personne ne l'a lu ».**
 #
 # ⛔ NE PAS SE CONTENTER DU FRANÇAIS. La convention `refusé : <ESP_ERR_…>` est
-#    la NÔTRE (66 sites dans `dn_console.c`), mais une commande peut rendre non
+#    la NÔTRE, mais une commande peut rendre non
 #    zéro **sans rien imprimer du tout**. Les deux derniers motifs viennent du
 #    REPL d'ESP-IDF lui-même (`components/console/esp_console_common.c`) et
 #    valent pour TOUTE commande :
@@ -118,14 +120,53 @@ MOTIFS_REFUS = (
     # ⛔ Le « : » est OBLIGATOIRE dans le motif français. Sans lui, la phrase
     #    pédagogique « (refuse hors bornes, jamais ecrete) » — imprimée par
     #    l'USAGE de `widget opa`, donc sur un succès — deviendrait un refus.
-    #    Vérifié : les 66 refus réels portent tous le « : ».
-    ("refus firmware", re.compile(r"(?i)\brefus(?:é|e|ée|ee)\s*:")),
+    # 🔴 CORRIGÉ PAR LA REVUE DU 2026-08-31 — CETTE LIGNE DISAIT « Vérifié : les
+    #    66 refus réels portent tous le « : » ». **C'EST FAUX**, et le compte
+    #    était déjà périmé par le commit qui l'entourait. Mesuré sur les
+    #    LITTÉRAUX IMPRIMÉS, commentaires retirés : **85** portent `refus*`,
+    #    **56** portent le « : », **29 ne le portent pas** — dont des chemins de
+    #    refus RÉELS en parenthèses (`refuse (%s) — RIEN n'a change`,
+    #    `voie refusee (%s)`). Ceux-là ne sont vus que par `ESP_ERR_` ou par la
+    #    ligne du REPL. ⛔ Le « : » reste obligatoire DANS CE MOTIF-CI (sans lui
+    #    la phrase pédagogique deviendrait un refus) ; ce qui change, c'est
+    #    qu'on ne prétend plus qu'il couvre tout.
+    # ⛔ ET ON NE RÉCITE PLUS DE COMPTE ICI. Un nombre recopié dans le fichier
+    #    qui installe « relire, ⛔ pas réciter » se périme au commit suivant —
+    #    celui-ci l'a fait dans la story même qui l'écrivait.
+    ("refus firmware",
+     re.compile(r"(?i)\brefus(?:ées|ees|és|es|ée|ee|é|e)\s*:")),
     ("ESP_ERR_", re.compile(r"\bESP_ERR_[A-Z0-9_]+")),
+    # 🔴 dn4-23 / REVUE DU 2026-08-31 — **LA CARTE DÉCLARE SES PROPRES RÉSULTATS
+    #    NON CRÉDIBLES, ET PERSONNE NE LES LISAIT.** Mesuré : `widget largeur`
+    #    imprime `🔴 … DRAPEAU LEVE` puis `⛔ NE PAS CONCLURE SUR CE CHIFFRE`,
+    #    puis LE CHIFFRE, et rendait **rc 0** — une campagne qui lit `rc`
+    #    consommait 63 px comme une mesure valide de `RÉSEAU`. Même forme sur le
+    #    scan I²C (`🔴 TEMOIN POSITIF EN ECHEC`, `🔴 SCAN INTERROMPU a 0x..`),
+    #    qui rend 0 lui aussi. ⇒ Un instrument qui écrit « ne pas conclure » et
+    #    rend 0 dit DEUX choses opposées ; c'est exactement le vide sur lequel
+    #    cette story interdit de conclure.
+    ("carte : verdict NON CRÉDIBLE",
+     re.compile(r"NE PAS CONCLURE|DRAPEAU LEVE|TEMOIN POSITIF EN ECHEC"
+                r"|SCAN INTERROMPU")),
     ("REPL: commande inconnue", re.compile(r"Unrecognized command")),
     ("REPL: code de retour non nul",
      re.compile(r"Command returned non-zero error code")),
     ("REPL: erreur interne", re.compile(r"Internal error:")),
 )
+
+
+def _lignes(texte):
+    """Découpe en lignes **comme la carte compte** : sur `\\n`, ⛔ rien d'autre.
+
+    🔴 dn4-23 / REVUE DU 2026-08-31 — `str.splitlines()` COUPE AUSSI sur `\\r`,
+       `\\x0b`, `\\x0c`, `\\x1c`–`\\x1e` et `\\u2028`. Le firmware, lui, ne compte
+       que `if (*q == '\\n') { s_lignes_cmd++; }`. Un simple retour-chariot de
+       rafraîchissement d'invite (linenoise en émet) fabriquait donc chez l'hôte
+       une frontière que la carte n'avait pas comptée ⇒ `LIGNES_ETRANGERES`, et
+       **une seule de ces fausses frontières suffisait à annuler une VRAIE perte**
+       (voir l'angle mort écrit dans `completude()`).
+    """
+    return [l.rstrip("\r") for l in texte.split("\n")]
 
 
 def chercher_refus(texte):
@@ -138,17 +179,21 @@ def chercher_refus(texte):
     ⚠️ Une même ligne peut porter deux motifs (« refusé : ESP_ERR_… ») : elle
        n'est comptée qu'UNE fois, sous le premier motif qui la reconnaît. Un
        compte gonflé ferait croire à deux refus là où il y en a un.
+    🔴 CORRIGÉ PAR LA REVUE DU 2026-08-31 — LA DÉDUPLICATION SE FAISAIT SUR LE
+       **TEXTE** DE LA LIGNE, DONC ELLE **DÉGONFLAIT** AUSSI. Reproduit : six
+       lignes `ECHEC (ESP_ERR_NOT_FOUND)` d'un scan I²C rendaient **UN** refus,
+       et `🔴 REFUS [...]` s'imprimait une fois pour six adresses refusées. Le
+       docstring ne justifiait que la direction inverse. ⇒ on déduplique
+       désormais par **POSITION** : deux motifs sur LA MÊME ligne comptent pour
+       un ; la même phrase à deux endroits compte pour deux.
     """
     vus = []
-    deja = set()
-    for ligne in texte.splitlines():
+    for i, ligne in enumerate(_lignes(texte)):
         for nom, rx in MOTIFS_REFUS:
             if rx.search(ligne):
-                if ligne not in deja:
-                    deja.add(ligne)
-                    vus.append((nom, ligne.strip()))
+                vus.append((nom, ligne.strip(), i))
                 break
-    return vus
+    return [(nom, ligne) for nom, ligne, _ in vus]
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -196,7 +241,7 @@ def corps_de_capture(brut, commande):
        que `nettoyer()` jette avant l'écho. En régime sain il vaut 0 —
        `reset_input_buffer()` a vidé le tampon juste avant l'écriture.
     """
-    lignes = brut.splitlines()
+    lignes = _lignes(brut)
     i_echo = None
     for i, l in enumerate(lignes):
         if l.strip().endswith(commande):
@@ -233,6 +278,30 @@ def completude(brut, commande):
                          ⛔ **Ce n'est pas « 0 perte » — c'est « on ne sait pas ».**
       `COMPTE_NON_FIABLE` la carte elle-même déclare son compte invalide
                          (sortie tronquée faute de RAM).
+
+    🔴 **L'ANGLE MORT DE CET INVARIANT, ÉCRIT ICI PARCE QUE C'EST ICI QU'IL SE
+       PRODUIT** — trouvé par les TROIS couches de la revue du 2026-08-31, et
+       reproduit. L'invariant est une **SOMME SIGNÉE PAR CAPTURE** : un seul
+       nombre reçu contre un seul nombre annoncé. ⇒ **une ligne PERDUE et une
+       ligne ÉTRANGÈRE dans la même capture s'ANNULENT et rendent `OK`**, sans
+       le moindre avertissement, rc 0. Reproduit : un `i2c scan` amputé de
+       `0x23 vue` ET enrichi d'un `I (123) dn_link: trame` rend
+       `{'annonce': 6, 'recu': 6, 'etat': 'OK'}` — c'est-à-dire le défaut
+       d'origine (« l'adresse 0x23 n'est pas là sur un capteur QUI RÉPOND »)
+       reconstruit dans le mécanisme qui existe pour l'attraper.
+    ✅ **CE QUI A ÉTÉ FAIT** (décision owner du 2026-08-31) : la source
+       STRUCTURELLE de surplus est tarie côté carte — `dn_ui_log_mem()` et les
+       sorties de `dn_wifi.c` passaient par le `printf` de la libc, donc HORS du
+       compteur (6 et 13 lignes) ; elles passent désormais par le compteur. Sans
+       ça, `LIGNES_ETRANGERES` était **permanent** sur ces commandes — ce qui
+       apprend à ignorer le signal — et le surplus était TOUJOURS disponible
+       pour absorber une perte.
+    ⛔ **CE QUI RESTE, ET QU'ON NE CACHE PAS** : un log asynchrone (`ESP_LOGx`)
+       qui tombe pendant une capture reste du surplus légitime, et il peut
+       encore masquer une perte simultanée. Deux nombres ne peuvent pas
+       distinguer « 1 perdue + 1 invitée » de « rien ». Le remède complet est
+       de NUMÉROTER les lignes côté carte ; il n'est pas pris ici, et cette
+       limite est **imprimée** par `imprimer_completude()` au lieu d'être tue.
     """
     corps, coupees, echo_vu = corps_de_capture(brut, commande)
     i_cpt, annonce, fiable = None, None, True
@@ -311,6 +380,11 @@ LATENCE_FENETRES_MIN = 2
 LATENCE_FENETRES_REPERE = 5
 
 
+class LatenceAmbigue(Exception):
+    """Plusieurs fenêtres de latence dans une seule capture — ⛔ on ne choisit
+    pas à la place de l'opérateur."""
+
+
 def lire_latence(sortie):
     """Extrait `(n, min_ms, moy_ms, max_ms)` d'une sortie de `pc`, ou None.
 
@@ -320,23 +394,50 @@ def lire_latence(sortie):
        entière et sur ses quatre champs, et il est éprouvé sur une ligne
        FABRIQUÉE par `--temoin-negatif` avant d'être cru sur une ligne réelle.
     """
-    m = RE_LATENCE.search(sortie)
-    if not m:
+    # 🔴 REVUE DU 2026-08-31 — `search()` PRENAIT LA **PREMIÈRE** DE PLUSIEURS.
+    #    Une capture qui porte deux lignes de latence (ré-impression asynchrone,
+    #    ou reliquat d'un `--no-wait` qui déborde sur la commande suivante)
+    #    faisait lire les quatre nombres de la PLUS ANCIENNE comme ceux de la
+    #    courante — une mesure périmée publiée comme fraîche, sans un mot.
+    #    ⛔ On ne « prend pas la dernière » : on ne sait pas laquelle appartient
+    #      à la commande envoyée. On REFUSE, et on le dit.
+    ms = RE_LATENCE.findall(sortie)
+    if not ms:
         return None
-    return (int(m.group(1)), int(m.group(2)), int(m.group(3)), int(m.group(4)))
+    if len(ms) > 1:
+        raise LatenceAmbigue(
+            "🔴 REFUS : %d lignes de latence dans UNE capture. ⛔ Impossible de\n"
+            "   savoir laquelle appartient à la commande envoyée — une ligne\n"
+            "   asynchrone ou un reliquat de `--no-wait` en fabrique une\n"
+            "   deuxième. ⇒ RE-JOUER la capture, seule." % len(ms))
+    g = ms[0]
+    return (int(g[0]), int(g[1]), int(g[2]), int(g[3]))
 
 
-def dispersion(moyennes):
+def dispersion(moyennes, bornes=None):
     """La dispersion d'une série de moyennes de fenêtres. ⛔ Jamais une moyenne
     seule : c'est exactement ce qui a fait publier un critère de validité qu'il
-    a fallu rétracter devant l'owner."""
+    a fallu rétracter devant l'owner.
+
+    🔴 REVUE DU 2026-08-31 — `min`/`max` SONT CEUX DES **MOYENNES DE FENÊTRE**,
+       ⛔ PAS L'ÉTENDUE OBSERVÉE, et le verdict les imprimait sous le mot
+       « étendues ». Mesuré sur un cas fabriqué : `A [10 ; 12] ms` affiché pour
+       des fenêtres dont le relevé portait **5** et **20**. Un lecteur prend ces
+       crochets pour la plage mesurée ; ils sont **6× plus étroits**, donc le
+       test de chevauchement tire bien plus rarement que le texte ne le promet.
+       ⇒ `bornes` (les `(min, max)` par fenêtre, quand on les a) alimente
+       `observe_min`/`observe_max`, et le verdict imprime **les deux**.
+    """
     if not moyennes:
         return None
     lo, hi = min(moyennes), max(moyennes)
+    obs = [x for mm in (bornes or []) for x in mm]
     return {
         "n_fenetres": len(moyennes),
         "min": lo,
         "max": hi,
+        "observe_min": min(obs) if obs else None,
+        "observe_max": max(obs) if obs else None,
         "etendue": hi - lo,
         "facteur": (hi / lo) if lo > 0 else None,
         "mediane": statistics.median(moyennes),
@@ -378,23 +479,31 @@ def verdict_delta(a, b):
             "   demande %d fenêtres consécutives. Le verdict ci-dessous est donc\n"
             "   FAIBLE, ⛔ pas faux." % (LATENCE_FENETRES_REPERE,
                                         LATENCE_FENETRES_REPERE))
+    def _obs(d):
+        if d.get("observe_min") is None:
+            return ("\n   ⚠️ étendue OBSERVÉE non transmise par ce relevé — ⛔ ne pas\n"
+                    "      lire les crochets ci-dessus comme la plage mesurée.")
+        return ("\n   étendue OBSERVÉE, toutes fenêtres confondues : [%d ; %d] ms."
+                % (d["observe_min"], d["observe_max"]))
+
     chevauche = not (a["max"] < b["min"] or b["max"] < a["min"])
     if chevauche:
         lignes.append(
-            "🔴 REFUS : les deux étendues SE CHEVAUCHENT — A [%d ; %d] ms,\n"
-            "   B [%d ; %d] ms. L'écart des médianes (%.1f ms) est DANS le bruit\n"
-            "   du même firmware. ⛔ Aucun delta n'est publiable."
+            "🔴 REFUS : les DISPERSIONS DES MOYENNES DE FENÊTRE se chevauchent —\n"
+            "   A [%d ; %d] ms, B [%d ; %d] ms. L'écart des médianes (%.1f ms) est\n"
+            "   DANS le bruit du même firmware. ⛔ Aucun delta n'est publiable.%s%s"
             % (a["min"], a["max"], b["min"], b["max"],
-               b["mediane"] - a["mediane"]))
+               b["mediane"] - a["mediane"], _obs(a), _obs(b)))
         return False, lignes
     lignes.append(
-        "✅ Les étendues sont DISJOINTES — A [%d ; %d] ms, B [%d ; %d] ms.\n"
-        "   Écart des médianes : %+.1f ms.\n"
+        "✅ Les DISPERSIONS DES MOYENNES DE FENÊTRE sont DISJOINTES —\n"
+        "   A [%d ; %d] ms, B [%d ; %d] ms. Écart des médianes : %+.1f ms.\n"
         "   ⚠️ Recevable NE VEUT PAS DIRE expliqué : la variance de cet\n"
         "      instrument n'est TOUJOURS PAS isolée. Deux hypothèses sont\n"
         "      RÉFUTÉES (fragmentation du tas LVGL · compteurs de liaison) et le\n"
-        "      champ reste OUVERT."
-        % (a["min"], a["max"], b["min"], b["max"], b["mediane"] - a["mediane"]))
+        "      champ reste OUVERT.%s%s"
+        % (a["min"], a["max"], b["min"], b["max"], b["mediane"] - a["mediane"],
+           _obs(a), _obs(b)))
     return True, lignes
 
 
@@ -553,14 +662,59 @@ def envoyer(ser, commande, timeout, attendre_invite=True):
     ser.write((commande + "\n").encode("utf-8"))
     ser.flush()
     if not attendre_invite:
-        time.sleep(min(timeout, 2.0))
-        brut = ser.read(ser.in_waiting or 1).decode("utf-8", "replace")
-        return _resultat(commande, brut, brut.strip(), None)
+        # 🔴 dn4-23 / REVUE DU 2026-08-31 — CETTE BRANCHE ÉTAIT CASSÉE DEUX FOIS,
+        #    ET C'EST LE DRAPEAU DES COMMANDES QUI NE RENDENT PAS LA MAIN.
+        #    (a) `time.sleep(min(timeout, 2.0))` PLAFONNAIT LA LECTURE À 2 s en
+        #        ignorant `--timeout` : avec `--no-wait --timeout 60 "tear on"`,
+        #        un `refusé : ESP_ERR_INVALID_STATE` arrivé à t=2,5 s n'entrait
+        #        JAMAIS dans `brut`, `invite_rendue` valait `None` (donc le test
+        #        `is False` ne tirait pas) et la sortie était **0**. C'est
+        #        verbatim la défaillance qu'AC1 existe pour fermer, restée
+        #        ouverte sur ce drapeau-ci.
+        #    (b) `sortie` valait `brut.strip()`, ÉCHO COMPRIS, alors que le pavé
+        #        de `_resultat` interdit nommément de chercher un motif dans un
+        #        brut qui porte encore son écho : une commande dont le TEXTE
+        #        contient un motif se dénonçait elle-même (reproduit sur une
+        #        trame `pc $DN,…,ESP_ERR_X*00`, qui armait rc 1).
+        #    ⛔ On ne peut pas attendre l'invite ici — c'est tout l'objet du
+        #      drapeau. On LIT donc au fil de l'eau pendant TOUTE la fenêtre
+        #      demandée (comme `drainer()`, mais en GARDANT les octets), ce qui
+        #      est aussi la parade écrite plus haut contre le sommeil aveugle.
+        fin = time.monotonic() + timeout
+        buf = bytearray()
+        while time.monotonic() < fin:
+            w = ser.in_waiting
+            if w:
+                buf.extend(ser.read(w))
+            else:
+                time.sleep(0.02)
+        brut = buf.decode("utf-8", "replace")
+        return _resultat(commande, brut, nettoyer(brut, commande), None)
     brut, invite = lire_jusqu_invite(ser, timeout)
     return _resultat(commande, brut, nettoyer(brut, commande), invite)
 
 
-def _resultat(commande, brut, sortie, invite):
+def _fusionner_refus(a, b):
+    """Fusionne deux relevés de refus **sans en perdre les occurrences**."""
+    def compte(v):
+        d = {}
+        for nom, ligne in v:
+            d.setdefault(ligne, [nom, 0])[1] += 1
+        return d
+    ca, cb = compte(a), compte(b)
+    ordre = [l for _, l in a] + [l for _, l in b]
+    vus, faits = [], set()
+    for ligne in ordre:
+        if ligne in faits:
+            continue
+        faits.add(ligne)
+        nom = (ca.get(ligne) or cb.get(ligne))[0]
+        n = max(ca.get(ligne, [None, 0])[1], cb.get(ligne, [None, 0])[1])
+        vus.extend([(nom, ligne)] * n)
+    return vus
+
+
+def _resultat(commande, brut, sortie, invite, compter=True):
     """dn4-23 / AC1 + AC2 — LE DICT QUE TOUT APPELANT REÇOIT, ET CE QU'IL PORTE
     DÉSORMAIS EN PLUS.
 
@@ -572,19 +726,27 @@ def _resultat(commande, brut, sortie, invite):
        porte encore. ⛔ Chercher dans le brut SANS retirer l'écho ferait qu'une
        commande dont le TEXTE contient un motif se dénoncerait elle-même.
     """
+    # 🔴 REVUE DU 2026-08-31 — `--listen` ET `--reset` ÉCHAPPAIENT ENTIÈREMENT
+    #    AU DISPOSITIF : leurs dicts ne portaient NI `refus`, NI `refus_motifs`,
+    #    NI `completude`, donc aucune ligne 🔴 REFUS, rc 0, et `--json` émettait
+    #    pour eux un SCHÉMA DIFFÉRENT. Un `--reset` sur une carte repartie en
+    #    panique, ou un `--listen 30` qui attrape un `ESP_ERR_` asynchrone,
+    #    rendaient 0. Ils passent désormais ici — avec `compter=False`, parce
+    #    qu'un flux passif n'a ni écho ni compteur de commande à confronter.
     hors_echo = "\n".join(
-        l for l in brut.splitlines() if not l.strip().endswith(commande))
-    vus = chercher_refus(sortie)
-    deja = {l for _, l in vus}
-    for nom, ligne in chercher_refus(hors_echo):
-        if ligne not in deja:
-            vus.append((nom, ligne))
-            deja.add(ligne)
+        l for l in _lignes(brut)
+        if not (compter and l.strip().endswith(commande)))
+    # 🔴 REVUE DU 2026-08-31 — LA FUSION DÉDUPLIQUAIT PAR TEXTE, donc elle
+    #    reperdait ce que `chercher_refus` venait de compter. Les deux vues sont
+    #    deux lectures du MÊME tampon : on garde, pour chaque ligne distincte, le
+    #    plus grand nombre d'OCCURRENCES vu par l'une des deux.
+    vus = _fusionner_refus(chercher_refus(sortie), chercher_refus(hors_echo))
     r = {"commande": commande, "sortie": sortie, "invite_rendue": invite,
          "brut": brut,
          "refus": vus[0][1] if vus else None,
          "refus_motifs": [{"motif": n, "ligne": l} for n, l in vus]}
-    r["completude"] = completude(brut, commande) if commande else None
+    r["completude"] = completude(brut, commande) if (compter and commande) \
+        else None
     return r
 
 
@@ -637,13 +799,27 @@ def reveiller(ser):
             "    `--after hard_reset` NE SUFFIT PAS, il faut `watchdog_reset`.")
 
 
-def refus_tolere(commande, liste):
+_MOTIFS_JAMAIS_TOLERES = ("REPL: commande inconnue", "REPL: erreur interne")
+
+
+def refus_tolere(commande, liste, motifs=None):
     """AC1.3 — `--refus-tolere` agit **commande par commande**.
 
     `*` couvre tout ; sinon la tolérance vaut pour la commande EXACTE ou pour
     tout ce qui la prolonge (`i2c` couvre `i2c 0x23`). ⛔ Un préfixe libre
     (`i` couvrant `i2c`) serait une porte ouverte : la frontière est l'espace.
+
+    🔴 dn4-23 / REVUE DU 2026-08-31 — **DEUX MOTIFS NE SE TOLÈRENT JAMAIS**, quoi
+       qu'on tape. Le drapeau est documenté pour « un scan I²C sur une adresse
+       absente », c'est-à-dire pour un échec ATTENDU de la commande. Il avalait
+       aussi `Unrecognized command` (**la commande n'existe pas dans ce
+       firmware** — le contraire d'un échec attendu : la mesure n'a pas eu lieu)
+       et `Internal error:` (la carte n'a pas pu exécuter). Ces deux-là ne sont
+       pas l'objet d'une mesure, ils sont son ABSENCE.
     """
+    for nom, _ligne in (motifs or []):
+        if nom in _MOTIFS_JAMAIS_TOLERES:
+            return False
     for motif in liste or []:
         if motif == "*" or commande == motif or \
            (commande or "").startswith(motif + " "):
@@ -656,6 +832,15 @@ def imprimer_completude(r):
     c = r.get("completude")
     if not c:
         return
+    if c["etat"] == "OK" and c["annonce"]:
+        # ⛔ `OK` NE VEUT PAS DIRE « RIEN N'A ÉTÉ PERDU ». Voir l'angle mort
+        #    écrit dans `completude()` : l'invariant est une somme signée.
+        print("✅ compteur : %d annoncées, %d reçues.\n"
+              "   ⚠️ `OK` = les DEUX COMPTES S'ACCORDENT, ⛔ pas « rien n'a été\n"
+              "      perdu » : une ligne perdue et un log asynchrone arrivés dans\n"
+              "      la MÊME capture s'annulent. Cet instrument ne sait pas les\n"
+              "      distinguer, et il le dit plutôt que de le taire."
+              % (c["annonce"], c["recu"]))
     if c["coupees_avant_echo"]:
         # AC2.3 — le SECOND mécanisme candidat, celui que le compteur ne voit pas.
         print("⚠️ `nettoyer()` a coupé %d ligne(s) AVANT l'écho de la commande.\n"
@@ -671,9 +856,21 @@ def imprimer_completude(r):
     if e == "OK":
         return
     if e == "SANS_COMPTEUR":
+        # 🔴 REVUE DU 2026-08-31 — CET ÉTAT A **DEUX** CAUSES, ET L'UNE D'ELLES
+        #    EST UNE PERTE. Perdre la ligne de compteur ELLE-MÊME (perte en
+        #    queue d'UNE ligne) faisait tomber ici — un ⚠️, rc 0 — là où toute
+        #    autre perte d'une seule ligne arme `PERTE` et rc 1. La perte en
+        #    queue était donc MOINS CHÈRE que la perte en tête. On ne peut pas
+        #    les distinguer depuis l'hôte : on les NOMME toutes les deux, et
+        #    `--exiger-compteur` arme le rc pour les campagnes qui savent que le
+        #    firmware en imprime un.
         print("⚠️ AUCUN compteur de lignes dans cette sortie (%d ligne(s) reçues).\n"
-              "   ⛔ Ce n'est PAS « 0 perte », c'est « ON NE SAIT PAS » : firmware\n"
-              "   antérieur à dn4-23, ou commande enregistrée hors `k_cmds[]`."
+              "   ⛔ Ce n'est PAS « 0 perte », c'est « ON NE SAIT PAS ». DEUX causes,\n"
+              "   et l'une est une PERTE :\n"
+              "     · firmware antérieur à dn4-23, ou commande hors `k_cmds[]` ;\n"
+              "     · 🔴 la ligne de compteur elle-même a été PERDUE (perte en\n"
+              "       queue d'UNE ligne).\n"
+              "   ⇒ `--exiger-compteur` fait de cet état un ÉCHEC (rc 1)."
               % c["recu"])
     elif e == "PERTE":
         print("🔴 PERTE DE LIGNES : la carte en annonce %d, %d sont arrivées\n"
@@ -705,21 +902,50 @@ def imprimer_completude(r):
 #    aussi ses **contre-épreuves** : des sorties propres qui NE DOIVENT PAS
 #    rougir. ⛔ Sans elles, un `chercher_refus` qui rendrait toujours vrai
 #    passerait ce témoin haut la main.
+# 🔴 CORRIGÉ PAR LA REVUE DU 2026-08-31 — **DEUX DES CINQ MOTIFS N'ÉTAIENT
+#    JAMAIS EXERCÉS**, dont celui qui est le SEUL détecteur d'un refus muet.
+#    Les témoins REPL portaient `0x102 (ESP_ERR_INVALID_ARG)` et
+#    `Internal error: ESP_ERR_NO_MEM` : tous deux contiennent `ESP_ERR_`, qui
+#    est PLUS HAUT dans `MOTIFS_REFUS`, et la boucle `break` au premier motif
+#    reconnu. Le témoin n'assertant que `len(vus) == 1`, il passait quel que
+#    soit le motif qui avait tiré. **Reproduit** : typo les deux regexes REPL en
+#    `Commmand` / `Internnal` ⇒ `--temoin-negatif` rendait toujours
+#    `BILAN : 31 OK, 0 KO`.
+# ⇒ Chaque témoin NOMME désormais le motif qu'il doit déclencher, et les cas
+#   REPL sont écrits SANS `ESP_ERR_` — c'est-à-dire tels qu'ils arrivent quand
+#   une commande rend non zéro **sans rien imprimer**, le cas que le README met
+#   en avant et que rien ne gardait.
 _TEMOINS_ROUGES = [
-    ("refusé : ESP_ERR_INVALID_ARG",
+    ("refusé : ESP_ERR_INVALID_ARG", "refus firmware",
      "anim on 10 — le stimulus n'a JAMAIS tourné (mesuré, 2 fenêtres de 90 s)"),
-    ("refusé : ESP_ERR_INVALID_STATE",
+    ("refusé : ESP_ERR_INVALID_STATE", "refus firmware",
      "flash on — la fenêtre a mesuré un stimulus qu'elle croyait avoir démarré"),
-    ("Unrecognized command",
+    ("Unrecognized command", "REPL: commande inconnue",
      "REPL ESP-IDF — commande inconnue, AUCUN message de nous"),
+    ("Command returned non-zero error code: 0x1 (ERROR)",
+     "REPL: code de retour non nul",
+     "REPL — un `return 1;` NU, sans ESP_ERR_ : le seul détecteur"),
     ("Command returned non-zero error code: 0x102 (ESP_ERR_INVALID_ARG)",
-     "REPL ESP-IDF — vaut pour TOUTE commande, y compris muette"),
-    ("Internal error: ESP_ERR_NO_MEM",
-     "REPL ESP-IDF — le quatrième cas de `esp_console_common.c`"),
-    ("refuse : entre 1 et 2000 ms",
-     "la convention SANS accent, elle existe aussi (8 sites)"),
-    ("REFUSE : index hors plage (0..5) OU couleur > 0xFFFFFF.",
+     "ESP_ERR_",
+     "la même ligne AVEC ESP_ERR_ : un seul refus, sous le 1er motif"),
+    ("Internal error: la console n'a pas pu executer",
+     "REPL: erreur interne",
+     "REPL — quatrième cas de `esp_console_common.c`, sans ESP_ERR_"),
+    ("refuse : entre 1 et 2000 ms", "refus firmware",
+     "la convention SANS accent, elle existe aussi"),
+    ("REFUSE : index hors plage (0..5) OU couleur > 0xFFFFFF.", "refus firmware",
      "la convention en CAPITALES, `widget couleur`"),
+    ("valeurs refusées : hors bornes", "refus firmware",
+     "🔴 REVUE — le PLURIEL, que l'alternance ne couvrait pas"),
+    ("🔴 LE TEXTE MESURE N'EST PAS CELUI QUI A ETE TAPE — DRAPEAU LEVE.",
+     "carte : verdict NON CRÉDIBLE",
+     "🔴 REVUE — `widget largeur` publiait 63 px avec rc 0"),
+    ("   ⛔ NE PAS CONCLURE SUR CE CHIFFRE. ⇒ `widget largeur mur`,",
+     "carte : verdict NON CRÉDIBLE",
+     "🔴 REVUE — la carte écrit « ne concluez pas » et rendait 0"),
+    ("🔴 TEMOIN POSITIF EN ECHEC : expander KO · tactile OK.",
+     "carte : verdict NON CRÉDIBLE",
+     "🔴 REVUE — le scan I²C se déclare non crédible et rend 0"),
 ]
 _TEMOINS_VERTS = [
     ("usage : widget opa <0..255>  (refuse hors bornes, jamais ecrete)",
@@ -748,9 +974,14 @@ def temoin_negatif():
     print("=" * 78)
 
     print("\n── AC1 : chaque motif de refus fait ROUGIR ────────────────────")
-    for ligne, pourquoi in _TEMOINS_ROUGES:
+    for ligne, motif_attendu, pourquoi in _TEMOINS_ROUGES:
         vus = chercher_refus("bla bla\n" + ligne + "\nbla")
-        ctrl(len(vus) == 1, "ROUGE : %s" % ligne[:44], pourquoi[:28])
+        # ⛔ ON N'ASSERTE PLUS SEULEMENT LE COMPTE : un témoin qui ne vérifie que
+        #   `len(vus) == 1` passe quel que soit le motif qui a tiré, et laisse
+        #   deux regexes mourir sans bruit. On exige LE MOTIF ATTENDU.
+        ctrl(len(vus) == 1 and vus[0][0] == motif_attendu,
+             "ROUGE : %s" % ligne[:44],
+             "%s · %s" % (motif_attendu[:22], pourquoi[:24]))
     print("\n── AC1 : les CONTRE-ÉPREUVES ne rougissent PAS ────────────────")
     for ligne, pourquoi in _TEMOINS_VERTS:
         vus = chercher_refus(ligne)
@@ -834,6 +1065,63 @@ def temoin_negatif():
                            dispersion([300, 310, 305, 299, 302]))
     ctrl(rec, "✅ étendues DISJOINTES ⇒ recevable", "et la dispersion est publiée")
 
+    print("\n── REVUE 2026-08-31 : les trous que la revue a trouvés ────────")
+    # (1) LA DÉDUPLICATION DÉGONFLAIT — six refus identiques n'en rendaient qu'UN.
+    six = "\n".join(["ECHEC (ESP_ERR_NOT_FOUND)"] * 6)
+    ctrl(len(chercher_refus(six)) == 6,
+         "six refus IDENTIQUES comptent pour SIX", "⛔ pas un seul")
+    ctrl(len(chercher_refus("refusé : ESP_ERR_INVALID_ARG")) == 1,
+         "…et DEUX motifs sur UNE ligne comptent pour UN", "⛔ pas deux")
+    # (2) LE DÉCOUPEUR S'ALIGNE SUR CE QUE LA CARTE COMPTE (`\n` SEUL).
+    ctrl(len(_lignes("a\rb\nc")) == 2,
+         "un `\\r` NE FABRIQUE PLUS une ligne", "la carte ne compte que `\\n`")
+    ctrl(len("a\rb\nc".splitlines()) == 3,
+         "…et c'est bien ce que `splitlines()` faisait", "3 lignes, ⛔ 2")
+    # (3) `--no-wait` NE SE DÉNONCE PLUS LUI-MÊME.
+    brut = "desknode> pc $DN,3,1,0,cpu,ESP_ERR_X*00\r\nOK\r\n"
+    r = _resultat("pc $DN,3,1,0,cpu,ESP_ERR_X*00", brut,
+                  nettoyer(brut, "pc $DN,3,1,0,cpu,ESP_ERR_X*00"), None)
+    ctrl(r["refus"] is None,
+         "une commande dont le TEXTE porte un motif ne s'accuse pas",
+         "⛔ l'écho n'est plus scanné")
+    # (4) DEUX MOTIFS NE SE TOLÈRENT JAMAIS — la mesure n'a pas eu lieu.
+    ctrl(not refus_tolere("i2c scan", ["*"],
+                          [("REPL: commande inconnue", "Unrecognized command")]),
+         "`--refus-tolere *` n'avale PAS « commande inconnue »",
+         "⛔ c'est l'ABSENCE de mesure")
+    ctrl(refus_tolere("i2c scan", ["i2c"],
+                      [("ESP_ERR_", "ECHEC (ESP_ERR_NOT_FOUND)")]),
+         "…mais il avale bien l'échec ATTENDU d'un scan", "AC1.3 intact")
+    # (5) DEUX FENÊTRES DE LATENCE DANS UNE CAPTURE ⇒ ON REFUSE DE CHOISIR.
+    deux = ("latence acceptation->label : n=10 · min 4 ms · moy 12 ms · max 20 ms\n"
+            "latence acceptation->label : n=11 · min 5 ms · moy 99 ms · max 120 ms")
+    try:
+        lire_latence(deux)
+        ambigu = False
+    except LatenceAmbigue:
+        ambigu = True
+    ctrl(ambigu, "🔴 DEUX lignes de latence ⇒ REFUS, ⛔ pas « la première »",
+         "une mesure périmée publiée comme fraîche")
+    # (6) L'ANGLE MORT DE `OK` EST **IMPRIMÉ**, ⛔ pas seulement commenté.
+    #     ⚠️ Un commentaire ne retient personne — c'est écrit trois fois dans ce
+    #        dépôt. On CAPTURE la sortie et on vérifie qu'elle porte la phrase.
+    tampon = io.StringIO()
+    brut_ok = ("desknode> cfg\r\nligne A\r\n--- fin : 1 lignes emises ---\r\n"
+               "desknode> ")
+    with contextlib.redirect_stdout(tampon):
+        imprimer_completude(_resultat("cfg", brut_ok,
+                                      nettoyer(brut_ok, "cfg"), True))
+    vu = tampon.getvalue()
+    ctrl("s'annulent" in vu and "OK" in vu,
+         "un compteur `OK` IMPRIME son angle mort",
+         "⛔ « OK » n'est pas « rien n'a été perdu »")
+
+    # (7) L'ÉTENDUE OBSERVÉE N'EST PLUS CELLE DES MOYENNES.
+    d = dispersion([10, 12], bornes=[(5, 18), (6, 20)])
+    ctrl(d["min"] == 10 and d["observe_min"] == 5 and d["observe_max"] == 20,
+         "les moyennes [10;12] ne masquent plus l'observé [5;20]",
+         "6× plus étroit")
+
     print("\n" + "=" * 78)
     print("⛔ CE QUE CE TÉMOIN NE PROUVE PAS : que la carte a raison. Il prouve "
           "que\n   L'INSTRUMENT ne peut plus conclure sur du vide. Les constats "
@@ -879,6 +1167,11 @@ def main():
                         "où le refus EST l'objet de la mesure — un scan I²C sur "
                         "une adresse absente, par exemple. ⛔ Le refus reste "
                         "IMPRIMÉ : on désarme le rc, jamais l'instrument.")
+    p.add_argument("--exiger-compteur", action="store_true",
+                   help="dn4-23/REVUE — faire de `SANS_COMPTEUR` un ÉCHEC (rc 1). "
+                        "Cet état a DEUX causes et l'une est une perte (la ligne "
+                        "de compteur elle-même). ⛔ Pas par défaut : un firmware "
+                        "antérieur à dn4-23 n'en imprime pas.")
     p.add_argument("--temoin-negatif", action="store_true",
                    help="dn4-23/AC1.5 — joue les témoins SANS CARTE : des "
                         "sorties FABRIQUÉES qui DOIVENT faire rougir le "
@@ -895,24 +1188,51 @@ def main():
         sys.stderr.write(f"\n✗ {e}\n")
         return 1
 
+    # 🔴 REVUE DU 2026-08-31 — `--listen 0` ÉTAIT **FALSY**, donc la branche
+    #    `elif args.commandes` était prise et la commande ÉTAIT ENVOYÉE sur un
+    #    tir explicitement demandé silencieux. Et `--listen 15 "cfg" "mem"`
+    #    JETAIT les commandes sans un mot, rc 0 — une campagne mesurait
+    #    silencieusement rien.
+    ecoute = args.listen is not None
+    if ecoute and args.commandes:
+        sys.stderr.write(
+            "\n✗ `--listen` et des commandes en même temps : ce pilote ne peut\n"
+            "  pas faire les deux, et les JETER SANS RIEN DIRE est exactement ce\n"
+            "  que cette story supprime. ⇒ deux invocations.\n"
+            "  commandes ignorées : %s\n" % ", ".join(args.commandes))
+        ser.close()
+        return 2
+
     resultats = []
     code = 0
+    # 🔴 REVUE DU 2026-08-31 — UNE EXCEPTION SÉRIE JETAIT TOUTE LA CAMPAGNE DÉJÀ
+    #    CAPTURÉE : le `finally` fermait le port et l'exception passait PAR-DESSUS
+    #    l'écriture de `--capture` et la boucle d'impression. Une ré-énumération
+    #    USB (un `reboot` dans la liste, un coup dans le câble) ne laissait qu'une
+    #    trace. Idem pour le `return 1` du handler de `reveiller()`, qui jetait le
+    #    bandeau de boot QUI VENAIT D'ÊTRE CAPTURÉ — le seul diagnostic de
+    #    « carte muette ». ⇒ ce qui est capturé est ÉCRIT, quoi qu'il arrive.
+    incident = None
     try:
         if args.reset:
             brut = reset_puce(ser, args.reset_wait)
-            resultats.append({"commande": "(reset RTS + bandeau de boot)",
-                              "sortie": brut.strip(), "invite_rendue": None,
-                              "brut": brut})
-        if args.listen:
+            resultats.append(_resultat("(reset RTS + bandeau de boot)",
+                                       brut, brut.strip(), None,
+                                       compter=False))
+        if args.reset and resultats[-1]["refus"]:
+            code = 1
+        if ecoute:
             brut, _ = lire_jusqu_invite(ser, args.listen)
-            resultats.append({"commande": None, "sortie": brut.strip(),
-                              "invite_rendue": None, "brut": brut})
+            resultats.append(_resultat("(écoute passive)", brut,
+                                       brut.strip(), None, compter=False))
+            if resultats[-1]["refus"]:
+                code = 1
         elif args.commandes:
             try:
                 reveiller(ser)
             except ConsoleErreur as e:
-                sys.stderr.write(f"\n✗ {e}\n")
-                return 1
+                incident = e
+                args.commandes = []
             for cmd in args.commandes:
                 r = envoyer(ser, cmd, args.timeout, not args.no_wait)
                 resultats.append(r)
@@ -921,7 +1241,10 @@ def main():
                 # 🔴 AC1.3 — UN REFUS VAUT UNE INVITE NON RENDUE. Jusqu'ici le
                 #    SEUL signal d'échec de ce pilote était `invite_rendue is
                 #    False` : une commande refusée à l'écran rendait 0.
-                if r["refus"] and not refus_tolere(cmd, args.refus_tolere):
+                if r["refus"] and not refus_tolere(
+                        cmd, args.refus_tolere,
+                        [(m["motif"], m["ligne"])
+                         for m in r["refus_motifs"]]):
                     code = 1
                 # 🔴 AC2.2 — ET UNE PERTE DE LIGNES AUSSI. ⛔ Seule la PERTE arme
                 #    le rc : des lignes ÉTRANGÈRES (log asynchrone) sont un fait
@@ -929,6 +1252,23 @@ def main():
                 #    ignorer le cri.
                 if r["completude"] and r["completude"]["etat"] == "PERTE":
                     code = 1
+                # 🔴 REVUE DU 2026-08-31 — TROIS ÉTATS IMPRIMAIENT « NE CONCLUEZ
+                #    PAS » ET RENDAIENT 0. Un instrument qui écrit « ⇒ RE-JOUER »
+                #    et sort en 0 dit deux choses opposées ; la seconde est celle
+                #    que lit une campagne.
+                if r["completude"] and \
+                        r["completude"]["etat"] == "COMPTE_NON_FIABLE":
+                    code = 1
+                if args.exiger_compteur and r["completude"] and \
+                        r["completude"]["etat"] == "SANS_COMPTEUR":
+                    code = 1
+                if not (r["sortie"] or "").strip():
+                    code = 1
+    except OSError as e:
+        # ⚠️ `serial.SerialException` DÉRIVE de `OSError` (pyserial ≥ 3.0), et
+        #    `serial` n'est importé que dans `ouvrir()` : attraper `OSError`
+        #    couvre les deux sans dépendre d'un import de portée.
+        incident = e
     finally:
         ser.close()
 
@@ -951,7 +1291,10 @@ def main():
             #    les deux refus de la mesure d'origine étaient bel et bien
             #    À L'ÉCRAN, au milieu de 90 s de sortie.
             for m in r.get("refus_motifs") or []:
-                tol = refus_tolere(r["commande"], args.refus_tolere)
+                tol = refus_tolere(
+                    r["commande"], args.refus_tolere,
+                    [(x["motif"], x["ligne"])
+                     for x in (r.get("refus_motifs") or [])])
                 print("🔴 REFUS [%s] : %s%s"
                       % (m["motif"], m["ligne"],
                          "   (toléré : --refus-tolere)" if tol else ""))
@@ -962,6 +1305,12 @@ def main():
             if r["invite_rendue"] is False:
                 print(f"⚠️ invite NON rendue en {args.timeout:.0f} s — "
                       "commande longue (augmenter --timeout) ou console bloquée.")
+    if incident is not None:
+        sys.stderr.write(
+            "\n✗ %s\n  ⚠️ Ce qui avait été capturé AVANT l'incident est ci-dessus,\n"
+            "     et dans `--capture` s'il était demandé — ⛔ plus jeté.\n"
+            % incident)
+        return 1
     return code
 
 
