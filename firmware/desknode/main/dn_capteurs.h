@@ -118,7 +118,27 @@ typedef enum {
     DN_CAPT_JAMAIS, /* aucune lecture valide depuis le boot */
     DN_CAPT_VIVANT, /* dernière lecture plus récente que la péremption */
     DN_CAPT_MUET,   /* la péremption est passée — les cases doivent le dire */
+    /* 🔴 `dn4-41` — LE 4ᵉ ÉTAT. « JAMAIS SOUDÉ » ⛔ N'EST PAS « MUET ».
+     * `DN_CAPT_ABSENT_SEUIL` ré-ouvertures CONSÉCUTIVES ont échoué, chacune sur
+     * une **lecture de registre d'IDENTITÉ** (`relever_identite()`) — donc une
+     * transaction de DONNÉE, ⛔ jamais un scan ni `i2c_master_probe()`.
+     * ⚠️ MÊME MOT que `DN_ENV_ABSENT`, et c'est délibéré : *« deux modules qui
+     *    comptent la même chose sous deux noms sont deux instruments qu'on ne
+     *    peut pas comparer »* (docblock de `dn_env_compteurs_t`). */
+    DN_CAPT_ABSENT,
 } dn_capt_etat_t;
+
+/*
+ * 🔴 `dn4-41` / AC2.1 — LE SEUIL, ET IL EST CONTRAINT PAR LA MESURE.
+ * Au démarrage à FROID la lecture d'identité **échoue TOUJOURS**, et le bus
+ * entier se dégrade ~40 s avant de se rétablir SEUL vers T+~60 s (§13.17.1).
+ *   seuil × DN_CAPT_REINIT_CYCLES × DN_CAPT_PERIODE_MS = 2 × 12 × 5 000
+ *   = **120 s**, soit 2× la fenêtre froide.
+ * ⚠️ La tentative du BOOT (`dn_capteurs_init()`) ⛔ NE COMPTE PAS.
+ * ⛔ Le miroir de `DN_ENV_ABSENT_SEUIL` : les deux modules doivent rendre le même
+ *   verdict au même moment, et `tools/verif_paliers_dn441.py` le garde.
+ */
+#define DN_CAPT_ABSENT_SEUIL 2
 
 typedef struct {
     uint32_t lectures;      /* lectures VALIDES appliquées */
@@ -126,6 +146,10 @@ typedef struct {
     uint32_t err_donnee;    /* il répond, mais la conversion n'est jamais prête */
     uint32_t err_bornes;    /* valeur hors plage physique du capteur */
     uint32_t reprises;      /* transitions MUET -> VIVANT */
+    /* 🔴 `dn4-41` / AC2.4 — LES ENTRÉES EN ABSENCE. ⛔ Les TRANSITIONS vers
+     * `DN_CAPT_ABSENT`, pas les cycles passés dedans. Miroir exact de
+     * `dn_env_compteurs_t.absences` — même nom, même sens, même unité. */
+    uint32_t absences;
     /* 🔴 Poussées vers l'UI PERDUES faute d'avoir pu prendre le verrou LVGL.
      * Ajouté par la revue du 2026-08-17 : la valeur était jetée en silence, donc
      * un écran périmé d'un cycle entier n'avait AUCUNE trace. Ce n'est pas une
@@ -209,6 +233,26 @@ const char *dn_capt_faute_nom(dn_capt_faute_t f);
 
 dn_capt_etat_t dn_capt_etat(void);
 const char *dn_capt_etat_nom(dn_capt_etat_t e);
+/* 🔴 `dn4-41` — le compte d'échecs qui PORTE le verdict, pour que la console
+ * imprime `ABSENT (n tentatives échouées)` (AC2.6) au lieu de le déduire.
+ * ⛔ Non remis par `capteurs reset` : c'est l'état du verdict, pas un seau. */
+uint32_t dn_capt_reouv_echecs(void);
+
+/* 🔴 `dn4-41` / AC9.2 — TÉMOIN D'INHIBITION LOGICIELLE, à coût NUL.
+ * ⛔ SA LIMITE EST ÉCRITE au-dessus de `s_inhibe` dans `dn_capteurs.c` : ni
+ * NACK, ni timeout, ni condition de bus. Il exerce LE CODE, ⛔ pas le matériel.
+ * ⚠️ L'armer FERME le driver — sans quoi la lecture de donnée continuerait
+ *    d'aboutir et le verdict ne tomberait jamais. */
+void dn_capt_inhiber(bool on);
+bool dn_capt_inhibe(void);
+
+/* 🔴 `dn4-41` — LE DÉLAI MINIMUM AVANT QU'UN VERDICT « ABSENT » PUISSE TOMBER,
+ * en secondes. ⛔ Une FONCTION, pas un macro recopié : `DN_CAPT_REINIT_CYCLES`
+ * vit dans `dn_capteurs.c` et doit y RESTER — un second exemplaire dans un
+ * en-tête est un chiffre qui se périmera le jour où le backoff bougera, c'est-
+ * à-dire le jour où il compte. Le dépôt a déjà payé ce motif (les 22 gates
+ * énumérées à la main contre 21 réelles). */
+uint32_t dn_capt_absent_delai_s(void);
 
 /*
  * 🔴 SENTINELLE « PAS DE VALEUR » — et pourquoi ce n'est PLUS `-1`.

@@ -161,6 +161,12 @@ idf_component_register(
         #    ⛔ Ne pas y ajouter d'appel à `dn_ui`/`dn_display` : la gate
         #    cesserait de pouvoir l'exécuter, et redeviendrait décorative.
         "dn_veille.c"
+        # 🔴 `dn4-41` — les reglages d'affichage poses AU DOIGT et leur
+        #    persistance. ⛔ Un fichier a lui : D16 exige que `dn_env.c` reste
+        #    HORS de la table de `tools/verif_d4_nvs_dn45.py`, et AC4.5 exige
+        #    d'avoir VU la gate ROUGIR sur l'oubli de declaration — ce qui
+        #    suppose un ecrivain dans un fichier QUI N'Y EST PAS DEJA.
+        "dn_reglage.c"
         # ⚠️ LES `.c` DE POLICE SONT DANS `${DN_FONTS}`, EN HAUT DE CE FICHIER —
         #    découverts par `file(GLOB … CONFIGURE_DEPENDS)`, ⛔ plus énumérés
         #    ici. Voir le motif au glob : une liste écrite à la main faisait

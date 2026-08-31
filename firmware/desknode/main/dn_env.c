@@ -139,12 +139,22 @@ typedef struct {
      * reconfiguré : `dev` n'est jamais remis à NULL, et la garde de conformité
      * du BH1750 rend `CONF_OK` en dur. */
     bool config_posee;
+    /* 🔴 `dn4-41` / AC2.1 — LE COMPTE QUI PORTE LE VERDICT « ABSENT ».
+     * Ré-ouvertures CONSÉCUTIVES échouées, chacune constatée sur une
+     * **transaction de DONNÉE** (`configurer()`), ⛔ jamais sur un scan.
+     * ⚠️ Remis à 0 par `marquer_valide()` ET par une configuration réussie ⇒ le
+     *    verdict est RÉVERSIBLE (AC2.4). ⛔ Il n'est PAS remis par
+     *    `dn_env_compteurs_reset()` : ce n'est pas un seau de diagnostic, c'est
+     *    l'état courant du verdict. */
+    uint32_t reouv_echecs;
+    /* Le verdict PRÉCÉDENT, pour ne compter `absences` qu'aux TRANSITIONS. */
+    bool etait_absent;
 } env_capteur_t;
 
 static env_capteur_t s_c[DN_ENV_NB];
 
-static int s_lux = DN_ENV_ABSENT;
-static int s_lux_brut = DN_ENV_ABSENT;
+static int s_lux = DN_ENV_VAL_ABSENTE;
+static int s_lux_brut = DN_ENV_VAL_ABSENTE;
 
 static uint32_t s_cycles;
 static int64_t s_duree_cycle_us;
@@ -178,8 +188,12 @@ static int s_bl_pct_min = DN_ENV_BL_PCT_MIN;
  *      · `DN_ENV_BL_PCT_ABS_MAX` = le maximum PHYSIQUE de `dn_display` (100) */
 static int s_bl_pct_max = DN_ENV_BL_PCT_MAX;
 static int s_bl_dernier_pct = -1;  /* -1 = la loi n'a encore rien appliqué */
-static int s_bl_dernier_lux = DN_ENV_ABSENT;
+static int s_bl_dernier_lux = DN_ENV_VAL_ABSENTE;
 static bool s_bl_muet_dit;         /* le « capteur muet » n'est journalisé qu'une fois */
+/* 🔴 `dn4-41` / AC3.3 — POURQUOI L'AUTO EST OFF. ⛔ Un « OFF » nu serait
+ * INDISCERNABLE d'un désarmement par geste d'opérateur (`bl <n>`), et enverrait
+ * l'inconnu chercher une commande qu'il n'a jamais tapée. */
+static bool s_bl_desarme_absent;
 /* 🔴 REVUE DE CODE `dn4-19`, 2026-08-27 — CE QUE LA LOI A **PHYSIQUEMENT POSÉ**,
  *    ⛔ À NE PAS CONFONDRE AVEC `s_bl_dernier_pct`.
  * `s_bl_dernier_pct` est une **SENTINELLE D'AFFICHAGE** : `dn_env_bl_auto_set(true)`
@@ -210,10 +224,54 @@ static const uint8_t k_addr[DN_ENV_NB] = {
     DN_BH1750_ADDR, DN_INA219_ADDR, DN_VL6180X_ADDR,
 };
 
+/*
+ * ══ 🔴 `dn4-41` / AC9.2 — LE TÉMOIN D'INHIBITION LOGICIELLE ══════════════════
+ *
+ * Ce que ce témoin EXERCE, et il l'exerce VRAIMENT : l'état « aucun device » **du
+ * point de vue du code** — le backoff, le seuil, la transition, le compteur
+ * `absences`, la réversibilité, les quatre phrases de la console, et le
+ * désarmement de l'asservissement (AC3). Sur les DEUX capteurs, à coût NUL.
+ *
+ * ⛔ CE QU'IL N'EXERCE PAS, ET ÇA S'ÉCRIT ICI PLUTÔT QU'AILLEURS :
+ *   · ⛔ **aucun NACK** — rien ne part sur le fil ;
+ *   · ⛔ **aucun timeout** — la primitive rend AVANT `i2c_master_transmit()` ;
+ *   · ⛔ **aucune condition de bus** — pas de pull-up, pas d'appel de courant,
+ *     pas de contention avec le GT911.
+ * ⇒ Il teste **LE CHEMIN DE CODE**, ⛔ pas le matériel. C'est exactement la
+ *   limite que le dossier écrit déjà pour l'injecteur `capteurs simuler` : *« il
+ *   ne peut pas découvrir un mode de panne qu'on n'a pas imaginé »* (§13.11).
+ * ⇒ Les deux autres témoins de la story restent DUS : `0x40` (adresse réellement
+ *   vide, vrai silence, coût nul) et le **débranchement réel** (le qualifiant).
+ *
+ * ⚠️ Il est posé sur les PRIMITIVES, ⛔ pas sur `ouvrir()` : `ouvrir()` ne parle
+ *    pas au bus, l'inhiber ne simulerait rien. Ici, TOUT chemin de données du
+ *    capteur échoue — c'est ce qu'un device manquant produit.
+ */
+static bool s_inhibe[DN_ENV_NB];
+
+void dn_env_inhiber(dn_env_id_t id, bool on)
+{
+    if (id < 0 || id >= DN_ENV_NB) {
+        return;
+    }
+    s_inhibe[id] = on;
+    ESP_LOGW(TAG, "%s @ 0x%02X : TEMOIN D'INHIBITION %s — ⛔ ceci n'exerce NI "
+                  "NACK NI timeout NI le bus, seulement le CHEMIN DE CODE.",
+             k_nom[id], k_addr[id], on ? "ARME" : "DESARME");
+}
+
+bool dn_env_inhibe(dn_env_id_t id)
+{
+    return (id >= 0 && id < DN_ENV_NB) && s_inhibe[id];
+}
+
 /* ── Primitives I²C — retour TESTÉ partout, ⛔ jamais enveloppé ────────────── */
 
 static esp_err_t ecrire(dn_env_id_t id, const uint8_t *o, size_t n)
 {
+    if (s_inhibe[id]) {
+        return ESP_ERR_NOT_FOUND; /* témoin d'inhibition — voir ci-dessus */
+    }
     if (!s_c[id].dev) {
         return ESP_ERR_INVALID_STATE;
     }
@@ -224,6 +282,9 @@ static esp_err_t ecrire(dn_env_id_t id, const uint8_t *o, size_t n)
 /* Lecture NUE (sans index) — le protocole du BH1750, et de lui seul. */
 static esp_err_t lire_nu(dn_env_id_t id, uint8_t *buf, size_t n)
 {
+    if (s_inhibe[id]) {
+        return ESP_ERR_NOT_FOUND; /* témoin d'inhibition */
+    }
     if (!s_c[id].dev) {
         return ESP_ERR_INVALID_STATE;
     }
@@ -234,6 +295,9 @@ static esp_err_t lire_nu(dn_env_id_t id, uint8_t *buf, size_t n)
 /* Index de registre sur 8 bits — l'INA219. */
 static esp_err_t lire_reg8(dn_env_id_t id, uint8_t reg, uint8_t *buf, size_t n)
 {
+    if (s_inhibe[id]) {
+        return ESP_ERR_NOT_FOUND; /* témoin d'inhibition */
+    }
     if (!s_c[id].dev) {
         return ESP_ERR_INVALID_STATE;
     }
@@ -246,6 +310,9 @@ static esp_err_t lire_reg8(dn_env_id_t id, uint8_t reg, uint8_t *buf, size_t n)
  *    permis de REFUTER l'étiquette « VL53L0X » (§13.16.7). */
 static esp_err_t lire_reg16(dn_env_id_t id, uint16_t reg, uint8_t *buf, size_t n)
 {
+    if (s_inhibe[id]) {
+        return ESP_ERR_NOT_FOUND; /* témoin d'inhibition */
+    }
     if (!s_c[id].dev) {
         return ESP_ERR_INVALID_STATE;
     }
@@ -304,6 +371,64 @@ static void compter_bornes(dn_env_id_t id)
     s_c[id].degrade = true;
 }
 
+/*
+ * 🔴 `dn4-41` / AC2 — LES DEUX SEULS SITES QUI BOUGENT LE VERDICT « ABSENT ».
+ *
+ * ⛔ CE QUI NE LE BOUGE PAS, ET C'EST LE CŒUR DE L'AC : ni `i2c` (le scan), ni
+ * `i2c_master_probe()`, ni `ouvrir()`. Trois motifs, tous mesurés :
+ *   · le scan fabrique des **faux positifs à 1,744 % sur 8 devices** ;
+ *   · le probe **reprogramme le timing du bus à 100 kHz** à chaque appel ;
+ *   · 🔴 au cycle 1 de l'A/B à froid, le scan annonçait `8 stables / 0 instable`
+ *     **pendant que le GT911 était à 55,5 % d'erreurs** (950 / 1 713).
+ *   ⇒ *« Le scan DÉCOUVRE ; seule une transaction de DONNÉE QUALIFIE »* (§13.17.1).
+ * ⚠️ Et `ouvrir()` ne qualifie pas non plus : `i2c_master_bus_add_device()`
+ *    **ne touche pas le bus**. C'est précisément le mensonge d'AC2.5.
+ */
+static void reouv_echouee(dn_env_id_t id)
+{
+    portENTER_CRITICAL(&s_mux);
+    if (s_c[id].reouv_echecs < UINT32_MAX) {
+        s_c[id].reouv_echecs++;
+    }
+    bool absent = s_c[id].reouv_echecs >= DN_ENV_ABSENT_SEUIL;
+    bool transition = absent && !s_c[id].etait_absent;
+    if (transition) {
+        s_c[id].etait_absent = true;
+        s_c[id].cnt.absences++;
+    }
+    uint32_t n = s_c[id].reouv_echecs;
+    portEXIT_CRITICAL(&s_mux);
+    if (transition) {
+        /* Dit UNE fois par entrée en absence — ⛔ pas toutes les 60 s : sur une
+         * carte nue ce message partirait indéfiniment DANS LE TRANSPORT PC,
+         * défaut déjà payé par le pavé d'identité de `dn_capteurs` (dn4-2). */
+        ESP_LOGW(TAG,
+                 "%s @ 0x%02X : ABSENT — %lu re-ouvertures consecutives ont "
+                 "echoue (>= %d). ⛔ Ce n'est PAS « muet » : aucune transaction "
+                 "de donnee n'aboutit depuis le boot. Les cases disent « -- », "
+                 "la source RESTE ARMEE et une seule lecture valide l'annule.",
+                 k_nom[id], k_addr[id], (unsigned long)n, DN_ENV_ABSENT_SEUIL);
+    }
+}
+
+/* Le verdict est RÉVERSIBLE (AC2.4) : ⛔ un « absent » définitif serait le
+ * défaut même qu'a payé `dn2-1` — *« les cases restaient VIDES à vie si le
+ * capteur ne répondait pas au boot »*. */
+static void reouv_reussie(dn_env_id_t id)
+{
+    portENTER_CRITICAL(&s_mux);
+    bool sortait = s_c[id].etait_absent;
+    s_c[id].reouv_echecs = 0;
+    s_c[id].etait_absent = false;
+    portEXIT_CRITICAL(&s_mux);
+    if (sortait) {
+        ESP_LOGW(TAG,
+                 "%s @ 0x%02X : n'est PLUS absent — une transaction de donnee a "
+                 "abouti. Le verdict est retire.",
+                 k_nom[id], k_addr[id]);
+    }
+}
+
 /* Une lecture VALIDE vient d'aboutir : horodate, compte, et détecte la reprise. */
 static void marquer_valide(dn_env_id_t id)
 {
@@ -317,6 +442,9 @@ static void marquer_valide(dn_env_id_t id)
     }
     s_c[id].derniere_us = esp_timer_get_time();
     portEXIT_CRITICAL(&s_mux);
+    /* ⛔ APRÈS la section critique : `reouv_reussie()` prend le même portMUX, et
+     * il n'est PAS récursif. */
+    reouv_reussie(id);
 }
 
 /* ── Ouverture et configuration ───────────────────────────────────────────── */
@@ -633,12 +761,21 @@ static void cycle_un(dn_env_id_t id, void (*lire)(void))
         }
         s_c[id].cycles_avant_reinit = DN_ENV_REINIT_CYCLES;
         if (ouvrir(id) != ESP_OK) {
+            /* ⚠️ `ouvrir()` NE TOUCHE PAS LE BUS : son échec ne dit rien du
+             * capteur, il dit que le BUS lui-même manque (`dn_display_i2c_bus()`
+             * NULL) ou que l'allocation a été refusée. ⛔ Ce n'est donc PAS une
+             * ré-ouverture ratée au sens d'AC2 — compter ici ferait tomber un
+             * verdict « ABSENT » sur un capteur dont rien n'a été demandé. */
             return;
         }
         if (configurer(id) != ESP_OK) {
             compter_i2c(id);
+            /* 🔴 dn4-41 / AC2 — C'EST **ICI** QUE LE VERDICT SE PREND : première
+             * transaction de DONNÉE après une ouverture, et elle n'aboutit pas. */
+            reouv_echouee(id);
             return;
         }
+        reouv_reussie(id);
         ESP_LOGI(TAG, "%s @ 0x%02X : device (re)ouvert et configure",
                  k_nom[id], k_addr[id]);
         /* ⛔ On ne lit PAS dans le cycle qui vient de configurer : le BH1750
@@ -673,8 +810,17 @@ static void cycle_un(dn_env_id_t id, void (*lire)(void))
         s_c[id].cycles_avant_reinit = DN_ENV_REINIT_CYCLES;
         if (configurer(id) != ESP_OK) {
             compter_i2c(id);
+            /* 🔴 dn4-41 / AC2 — ET C'EST CE CHEMIN-CI QUE PREND UNE CARTE NUE.
+             * `s_c[id].dev` n'est JAMAIS remis à NULL (voir le docblock
+             * ci-dessus) ⇒ après le boot, un capteur absent ne repasse plus
+             * jamais par la branche `!dev` : il boucle ICI, une tentative par
+             * minute, sur une transaction de donnée qui n'est jamais acquittée.
+             * ⛔ Oublier ce site aurait laissé le verdict inatteignable sur le
+             *   scénario même que la story doit couvrir. */
+            reouv_echouee(id);
             return;
         }
+        reouv_reussie(id);
         ESP_LOGI(TAG, "%s @ 0x%02X : configuration REPOSEE (elle avait echoue)",
                  k_nom[id], k_addr[id]);
         /* ⛔ Toujours pas de lecture dans le cycle qui vient de configurer. */
@@ -749,7 +895,40 @@ void dn_env_cycle(void)
         lux = s_lux;
         portEXIT_CRITICAL(&s_mux);
 
-        if (e != DN_ENV_VIVANT || lux == DN_ENV_ABSENT) {
+        /*
+         * 🔴 `dn4-41` / AC3 — LA SOURCE DE LUMIÈRE EST **ABSENTE** : ON DÉSARME.
+         *
+         * ⛔ **ET SEULEMENT SUR `ABSENT`, ⛔ JAMAIS SUR `MUET`** — c'est AC3.2,
+         * et toute la raison d'être d'AC2. Un capteur momentanément MUET GARDE
+         * son auto et son duty GELÉ : c'est AC3.3 de `dn4-19`, elle ne change
+         * pas. Confondre les deux annulerait la parade de la fenêtre froide et
+         * désarmerait l'auto d'une carte SOUDÉE, à froid, une fois sur six.
+         *
+         * ⚠️ CE QUI EST FAUX, CE N'EST PAS L'ASSERVISSEMENT — c'est **l'étiquette
+         *    `auto : ON` sur une carte qui n'a AUCUNE ENTRÉE**. Le dépôt traque
+         *    ça depuis `dn1-3`, et le cadrage a vérifié que les trois messages
+         *    de `bl` ne mentent PLUS (`dn4-19` : « sur un lux JAMAIS LU »). Il
+         *    restait celui-ci.
+         *
+         * ⛔ AUCUN REPLI — AC3.4. Le duty posé RESTE posé. La règle *« un capteur
+         *   silencieux ne doit ni éteindre l'écran ni le mettre à fond »*
+         *   (`dn_env.h`) vaut **a fortiori** pour un capteur absent : sur la
+         *   carte seule, ce duty est le SEUL que l'inconnu aura.
+         */
+        if (e == DN_ENV_ABSENT) {
+            s_bl_auto = false;
+            s_bl_desarme_absent = true;
+            ESP_LOGW(TAG,
+                     "retroeclairage auto DESARME : le %s est ABSENT (%lu "
+                     "re-ouvertures echouees). ⛔ Ce n'est PAS « muet » — il n'y "
+                     "a AUCUNE entree de lumiere sur cette carte. Le duty reste "
+                     "a ce qu'il est (⛔ aucun repli), et il se regle A LA MAIN : "
+                     "au MENU sur la dalle, ou `bl <n>` a la console. ✅ Si un "
+                     "BH1750 apparait, `bl auto on` le rearme.",
+                     k_nom[DN_ENV_LUM], (unsigned long)dn_env_reouv_echecs(DN_ENV_LUM));
+            /* ⛔ On ne touche NI a LEDC NI a `s_bl_dernier_pct` : desarmer n'est
+             * pas appliquer. Le 7e ecrivain de LEDC n'est PAS celui-ci. */
+        } else if (e != DN_ENV_VIVANT || lux == DN_ENV_VAL_ABSENTE) {
             /* ⛔ Capteur muet : LE DUTY NE BOUGE PAS. Journalisé UNE fois. */
             if (!s_bl_muet_dit) {
                 s_bl_muet_dit = true;
@@ -845,6 +1024,14 @@ esp_err_t dn_env_init(void)
         s_c[i].cycles_avant_reinit = DN_ENV_REINIT_CYCLES;
         s_c[i].config_us = 0;
         s_c[i].config_posee = false;
+        /* 🔴 `dn4-41` / AC2.3 — LA TENTATIVE DU BOOT NE COMPTE PAS.
+         * `dn_env_init()` tente `configurer()` juste en dessous, et **à froid cet
+         * échec est ATTENDU** (le bus entier se dégrade ~40 s, §13.17.1). La
+         * compter ferait tomber le verdict à 60 s au lieu de 120 — c'est-à-dire
+         * DANS la fenêtre froide, sur un capteur SOUDÉ. ⇒ le compteur part de 0
+         * et n'est alimenté QUE par `cycle_un()`. */
+        s_c[i].reouv_echecs = 0;
+        s_c[i].etait_absent = false;
         memset(&s_c[i].cnt, 0, sizeof s_c[i].cnt);
     }
 
@@ -979,9 +1166,26 @@ dn_env_etat_t dn_env_etat(dn_env_id_t id)
         return DN_ENV_JAMAIS;
     }
     int64_t derniere;
+    uint32_t echecs;
+    /* ⚠️ LECTURE GROUPÉE, sous UN SEUL verrou : deux sections critiques
+     * successives peuvent rendre un couple (âge, échecs) qui n'a jamais existé.
+     * C'est le défaut « CR dn4-2 — LECTURE ATOMIQUE », déjà payé deux fois. */
     portENTER_CRITICAL(&s_mux);
     derniere = s_c[id].derniere_us;
+    echecs = s_c[id].reouv_echecs;
     portEXIT_CRITICAL(&s_mux);
+    /* 🔴 `dn4-41` / AC2 — L'ABSENCE DOMINE, ET DANS CET ORDRE-LÀ.
+     * Un device absent est AUSSI périmé et AUSSI « jamais lu » : les trois sont
+     * vrais en même temps. C'est le diagnostic le PLUS SPÉCIFIQUE qui doit
+     * sortir, sinon on renvoie l'inconnu chercher une panne apparue en route
+     * alors qu'il n'a simplement rien soudé.
+     * ⚠️ Il passe AVANT le test `derniere < 0` : sur une carte nue, `derniere_us`
+     *    vaut -1 pour toujours — laisser `JAMAIS` gagner rendrait `ABSENT`
+     *    inatteignable, exactement le mode de panne « l'état existe mais aucun
+     *    chemin n'y mène » que `dn4-14` a payé. */
+    if (echecs >= DN_ENV_ABSENT_SEUIL) {
+        return DN_ENV_ABSENT;
+    }
     if (derniere < 0) {
         return DN_ENV_JAMAIS;
     }
@@ -990,12 +1194,24 @@ dn_env_etat_t dn_env_etat(dn_env_id_t id)
                : DN_ENV_MUET;
 }
 
+uint32_t dn_env_reouv_echecs(dn_env_id_t id)
+{
+    if (id < 0 || id >= DN_ENV_NB) {
+        return 0;
+    }
+    portENTER_CRITICAL(&s_mux);
+    uint32_t n = s_c[id].reouv_echecs;
+    portEXIT_CRITICAL(&s_mux);
+    return n;
+}
+
 const char *dn_env_etat_nom(dn_env_etat_t e)
 {
     switch (e) {
     case DN_ENV_JAMAIS: return "JAMAIS";
     case DN_ENV_VIVANT: return "VIVANT";
     case DN_ENV_MUET:   return "MUET";
+    case DN_ENV_ABSENT: return "ABSENT";
     default:            return "?";
     }
 }
@@ -1010,7 +1226,10 @@ uint8_t dn_env_adresse(dn_env_id_t id)
     return (id >= 0 && id < DN_ENV_NB) ? k_addr[id] : 0;
 }
 
-bool dn_env_present(dn_env_id_t id)
+/* ⚠️ `dn4-41` — RENOMMÉE. Elle dit qu'un DESCRIPTEUR existe, ⛔ pas que le
+ * capteur répond : `i2c_master_bus_add_device()` ne touche pas le bus. Pour
+ * savoir s'il EST LÀ, c'est `dn_env_etat()`. Voir le docblock dans `dn_env.h`. */
+bool dn_env_device_ouvert(dn_env_id_t id)
 {
     return (id >= 0 && id < DN_ENV_NB) && s_c[id].dev != NULL;
 }
@@ -1090,7 +1309,7 @@ void dn_env_compteurs_reset(void)
  */
 static int bl_loi_courbe(int lux, dn_env_bl_courbe_t courbe)
 {
-    if (lux == DN_ENV_ABSENT) {
+    if (lux == DN_ENV_VAL_ABSENTE) {
         return s_bl_pct_min;
     }
     if (lux <= s_bl_lux_bas) {
@@ -1201,9 +1420,9 @@ int dn_env_bl_cible(void)
     lux = s_lux;
     portEXIT_CRITICAL(&s_mux);
     /* 🔴 MÊME TEST QUE LA BOUCLE, ⛔ pas un test approchant : `DN_ENV_VIVANT`
-     *    veut dire « pas encore périmé », et `DN_ENV_ABSENT` veut dire « jamais
+     *    veut dire « pas encore périmé », et `DN_ENV_VAL_ABSENTE` veut dire « jamais
      *    lu ». Les deux doivent faire taire la loi. */
-    if (e != DN_ENV_VIVANT || lux == DN_ENV_ABSENT) {
+    if (e != DN_ENV_VIVANT || lux == DN_ENV_VAL_ABSENTE) {
         return -1;   /* ⛔ un ÉTAT, pas un pourcentage */
     }
     return dn_env_bl_loi_regime(lux, s_bl_regime);
@@ -1301,10 +1520,20 @@ void dn_env_bl_auto_set(bool on)
          *   toute seule, par le repli de `dn_env_cycle()` : c'est le même effet,
          *   sans le mensonge. */
         s_bl_dernier_pct = -1;
-        s_bl_dernier_lux = DN_ENV_ABSENT;
+        s_bl_dernier_lux = DN_ENV_VAL_ABSENTE;
         s_bl_muet_dit = false;
+        /* 🔴 `dn4-41` — LE MOTIF SE RETIRE À L'ARMEMENT, ⛔ il ne se garde pas :
+         * `auto : OFF — ABSENT` sur un auto qu'on vient d'armer serait une
+         * étiquette qui ment, la faute même que cet AC corrige.
+         * ⚠️ Et si le capteur est TOUJOURS absent, le cycle suivant re-désarme
+         *    ET LE REDIT — c'est voulu : l'inconnu doit voir que son geste n'a
+         *    pas pris, ⛔ pas croire que ça a marché. */
+        s_bl_desarme_absent = false;
     }
 }
+
+/* 🔴 `dn4-41` / AC3.3 — `bl` doit dire POURQUOI, ⛔ pas seulement « OFF ». */
+bool dn_env_bl_desarme_par_absence(void) { return s_bl_desarme_absent; }
 
 bool dn_env_bl_auto_desarmer(const char *par_qui)
 {
@@ -1312,6 +1541,9 @@ bool dn_env_bl_auto_desarmer(const char *par_qui)
         return false;
     }
     s_bl_auto = false;
+    /* ⛔ `dn4-41` — un desarmement PAR GESTE n'est PAS un desarmement PAR
+     * ABSENCE : garder le motif ferait accuser le capteur d'un `bl 42`. */
+    s_bl_desarme_absent = false;
     ESP_LOGW(TAG, "retroeclairage auto DESARME par « %s » — deux ecrivains sur "
                   "LEDC ne s'arbitrent pas tout seuls, et une commande ecrasee "
                   "au cycle suivant serait un instrument qui ment.",

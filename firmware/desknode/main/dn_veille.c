@@ -304,9 +304,14 @@ static dn_veille_origine_t s_origine = DN_VEILLE_ORIG_AUCUNE;
  *   - 3 % est le plancher de LISIBILITÉ de dn1-3 / AC7 (« le Living PCB et le
  *     label s'y distinguent encore, TOUT JUSTE ») — donc trop bas pour un état
  *     de repos qu'on doit pouvoir consulter d'un coup d'œil ;
- *   - `DN_ENV_BL_PCT_MIN = 8` est le plancher de la LOI d'asservissement au
- *     lux, constat owner « c'est ça » — un autre chiffre pour un autre usage.
- * ⛔ Ne pas graver 8 par recopie : ce n'est pas le même arbitrage.
+ *   - `DN_ENV_BL_PCT_MIN = ~~8~~ **20**` est le plancher de la LOI d'asservissement
+ *     au lux — un autre chiffre pour un autre usage.
+ *     🔴 **`dn4-41`, 2026-08-31 : LE `8` EST BARRÉ, ⛔ PAS EFFACÉ.** Le constat
+ *     owner *« c'est ça »* portait bien sur **8**, le 2026-08-20 — il est DATÉ,
+ *     ⛔ pas invalidé. Ce qui a changé, c'est que **le même œil l'a refusé deux
+ *     fois le 2026-08-27** (*« pas assez lumineux »*), et `dn4-20` a gravé **20**.
+ * ⛔ Ne pas graver le plancher de la loi par recopie : ce n'est pas le même
+ *   arbitrage — et il a bougé une fois, il peut rebouger.
  *
  * ══ 🔴 `dn4-19`, 2026-08-27 — CE CHIFFRE A CHANGÉ DE RÔLE ════════════════════
  * ⛔ **CE N'EST PLUS LE NIVEAU D'AMBIENT.** Le niveau d'Ambient est désormais
@@ -315,7 +320,16 @@ static dn_veille_origine_t s_origine = DN_VEILLE_ORIG_AUCUNE;
  * ⛔ **ET LE CONSTAT DU 2026-08-25 N'EST PAS INVALIDÉ — IL LUI MANQUAIT SA
  *    CONDITION D'ÉCLAIRAGE.** *« La luminosité de la veille est bien »* a été
  *    dit **RIDEAU FERMÉ**, où 10 % coïncide à deux points près avec
- *    `DN_ENV_BL_PCT_MIN = 8`. Le constat du 2026-08-27 (*« en veille, avec la
+ *    `DN_ENV_BL_PCT_MIN = 8`.
+ *    ⚠️ **`dn4-41`, 2026-08-31 — CETTE PHRASE-CI RESTE INTACTE, ET C'EST
+ *       DÉLIBÉRÉ.** C'est un **CONSTAT DATÉ** : le 2026-08-25, la constante
+ *       VALAIT 8, et *« à deux points près »* était **exact ce jour-là**. La
+ *       barrer réécrirait l'histoire. ⛔ Ne pas la « corriger » en 20 : le
+ *       rapprochement de 10 % avec le plancher de la loi n'aurait plus de sens.
+ *       ⇒ Pour lire ce paragraphe aujourd'hui : `DN_ENV_BL_PCT_MIN` vaut **20**
+ *       depuis `dn4-20` (2026-08-27) — l'écart de « deux points » appartient à
+ *       l'ère du 8.
+ *    Le constat du 2026-08-27 (*« en veille, avec la
  *    lumière, l'écran n'est pas assez rétroéclairé »*) a été fait **EN PLEINE
  *    LUMIÈRE**. **Les deux sont COMPATIBLES**, et ce qui était faux, c'est
  *    qu'un chiffre a été consigné sans dire sous quelle lumière il valait.

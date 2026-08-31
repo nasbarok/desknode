@@ -39,6 +39,7 @@
 #include "dn_link.h"
 #include "dn_measure.h"
 #include "dn_pins.h"
+#include "dn_reglage.h"
 #include "dn_recal.h"
 #include "dn_rtc.h"
 #include "dn_touch.h"
@@ -3239,8 +3240,65 @@ static void on_menu_clic(lv_event_t *e)
 #define MENU_H_VEILLE 120
 #define MENU_Y_DELAI 225
 #define MENU_H_DELAI 200
-#define MENU_Y_ETAT 440
-#define MENU_H_ETAT 110
+/*
+ * ══ 🔴 `dn4-41` / AC4.2 — LA PLACE MANQUAIT, ET LA STORY SE TROMPAIT DE 15 px
+ *
+ * L'arithmétique de la story : *« contenu jusqu'à y = 550, 90 px libres ; un
+ * panneau du gabarit VEILLE en demande 120 ⇒ il manque 30 px »*.
+ * ⚠️ **MESURÉ ICI : il en manque 45**, parce qu'elle avait oublié l'écart de
+ *    15 px que ce fichier laisse entre deux panneaux (80→90, 210→225, 425→440).
+ *
+ * 🔴 **ET LA VOIE (a) DE LA STORY EST RÉFUTÉE PAR LE CALCUL, ⛔ PAS PAR LE GOÛT.**
+ *    Elle proposait `MENU_H_ETAT` **110 → 60**, au motif que *« ETAT ne porte
+ *    qu'UNE ligne `dn_font_14` à y = 10 »*.
+ *    **Il en porte QUATRE, et CINQ dans son pire cas** (la ligne d'échec NVS
+ *    ajoutée en revue le 2026-08-28). `dn_font_14.line_height` vaut **18**
+ *    (mesuré dans `fonts/dn_font_14.c`) ⇒ pire cas = 10 + 5 × 18 = **100 px**.
+ *    ⇒ `MENU_H_ETAT` ne peut descendre qu'à 100 : **la voie (a) libère 10 px,
+ *      ⛔ pas 50.** Appliquée telle qu'écrite, elle aurait **TRONQUÉ l'état** —
+ *      c'est-à-dire cassé le seul endroit où le MENU dit qu'un réglage n'a pas
+ *      été enregistré. ⛔ Un panneau de diagnostic amputé en silence est
+ *      exactement le défaut que ce dépôt traque.
+ *
+ * ✅ **VOIE (b) RETENUE — LE PANNEAU NEUF ET L'ÉTAT PARTAGENT UN CADRE.**
+ *    C'est le prix que la story avait nommé pour (b) : *« l'état devient moins
+ *    lisible »*. ⚠️ Ici il perd son cadre, ⛔ **il ne perd AUCUNE ligne** — les
+ *    cinq tiennent, y compris celle de l'échec NVS.
+ *    ⛔ La voie (c) — le pré-menu à deux entrées de D16 — reste `dn4-21`, V0.2.
+ *
+ * LE BUDGET, ADDITIONNÉ ICI POUR QUE PERSONNE N'AIT À LE REFAIRE :
+ *   entête   0..80 · VEILLE 90..210 · DELAI 225..425
+ *   LUM+ÉTAT 440..636  (196 px)  ⇒  4 px de marge basse sur 640
+ *     · titre `LUMINOSITE`   y = 10  (18 px)          → 28
+ *     · les deux cibles      y = 32  (66 px)          → 98
+ *     · l'état de la veille  y = 104 (5 × 18 = 90)    → 194  ≤ 196 ✅
+ * ⚠️ **CE BUDGET EST GARDÉ PAR LE COMPILATEUR** (`_Static_assert` plus bas) :
+ *    un `MENU_*` déplacé sans refaire l'addition ne compile plus. ⛔ Un
+ *    commentaire seul se serait périmé au premier ajustement.
+ */
+#define MENU_Y_LUM 440
+#define MENU_H_LUM 196
+/* L'état de la veille vit DANS le panneau LUMINOSITE (voie (b)) — ces deux
+ * valeurs sont donc RELATIVES à `MENU_Y_LUM`, ⛔ plus des `y` d'écran. */
+#define MENU_ETAT_DY 104
+#define MENU_ETAT_LIGNES 5
+
+/*
+ * 🔴 `dn4-41` — LE BUDGET VERTICAL EST GARDÉ PAR LE COMPILATEUR.
+ * ⛔ Un commentaire qui additionne se périme au premier `MENU_*` déplacé — et
+ * ce fichier a DÉJÀ payé le motif ailleurs (une liste écrite contre l'arbre).
+ * Ici, déplacer un panneau sans refaire l'addition **ne compile plus**.
+ */
+_Static_assert(MENU_Y_LUM + MENU_H_LUM <= DN_LCD_V_RES,
+               "dn4-41 : le panneau LUMINOSITE+ETAT depasse le bas de la dalle. "
+               "Refaire l'addition du budget vertical ci-dessus.");
+_Static_assert(MENU_Y_DELAI + MENU_H_DELAI < MENU_Y_LUM,
+               "dn4-41 : le panneau LUMINOSITE chevauche DELAI.");
+_Static_assert(MENU_ETAT_DY + MENU_ETAT_LIGNES * 18 <= MENU_H_LUM,
+               "dn4-41 : le texte d'etat est TRONQUE dans son pire cas (5 lignes "
+               "de dn_font_14, line_height 18 — la 5e est l'echec NVS, ajoutee en "
+               "revue le 2026-08-28). ⛔ C'est exactement ce que la voie (a) de la "
+               "story aurait fait.");
 /* Les sélecteurs. Deux colonnes de 210, séparées de 14, dans 460 utiles :
  * 14 + 210 + 14 + 210 = 448 <= 460. ⚠️ CALCULÉ, ⛔ pas ajusté à l'œil. */
 #define MENU_SEL_W 210
@@ -3249,6 +3307,11 @@ static void on_menu_clic(lv_event_t *e)
 #define MENU_SEL_X1 (MENU_SEL_X0 + MENU_SEL_W + 14)
 #define MENU_SEL_Y0 38
 #define MENU_SEL_Y1 (MENU_SEL_Y0 + MENU_SEL_H + 12)
+/* `dn4-41` — dans le panneau LUMINOSITE, la ligne de cibles monte de 6 px pour
+ * rendre la place à l'état. ⛔ Calculé (voir le budget ci-dessus), pas ajusté. */
+#define MENU_SEL_Y_LUM 32
+_Static_assert(MENU_SEL_Y_LUM + MENU_SEL_H <= MENU_ETAT_DY,
+               "dn4-41 : les cibles de luminosite mordent sur le texte d'etat.");
 /* Le glyphe de sélection vit à x FIXE, le libellé aussi : un `LV_SYMBOL_OK`
  * concaténé au texte aurait DÉPLACÉ le libellé selon qu'il est choisi ou non,
  * et l'œil aurait lu ce déplacement comme un défaut de calage. */
@@ -3273,6 +3336,11 @@ typedef struct {
 static menu_sel_t s_menu_on, s_menu_off;
 static menu_sel_t s_menu_cran[DN_VEILLE_CRANS];
 static lv_obj_t *s_menu_etat;
+/* 🔴 `dn4-41` / AC4 — LES DEUX CIBLES DE LUMINOSITÉ. ⛔ DEUX, pas cinq :
+ * le périmètre est `auto ON/OFF` + **UNE** luminosité fixe — **2 des 5 items**
+ * du pré-menu de D16. Les 4-5 seuils de lux, les 1-5 niveaux et la barre de
+ * lumière captée restent ENTIERS dans `dn4-21` (V0.2). */
+static menu_sel_t s_menu_bl_auto, s_menu_bl_niv;
 
 /*
  * 🔴 LES TAPS DE RÉGLAGE SONT COMPTÉS À PART, ET C'EST DÉLIBÉRÉ.
@@ -3289,7 +3357,30 @@ static void menu_oublier(void)
     memset(&s_menu_on, 0, sizeof(s_menu_on));
     memset(&s_menu_off, 0, sizeof(s_menu_off));
     memset(s_menu_cran, 0, sizeof(s_menu_cran));
+    memset(&s_menu_bl_auto, 0, sizeof(s_menu_bl_auto));
+    memset(&s_menu_bl_niv, 0, sizeof(s_menu_bl_niv));
     s_menu_etat = NULL;
+}
+
+/*
+ * 🔴 `dn4-41` — LE CRAN COURANT, DÉDUIT DU NIVEAU, ⛔ JAMAIS MÉMORISÉ À PART.
+ * Un index gardé en double du pourcentage diverge du jour où quelqu'un pose le
+ * duty par un autre chemin (`bl <n>`, la veille, le boot) — et le MENU
+ * afficherait alors un cran que la dalle ne porte pas. ⇒ on RELIT, on ne récite
+ * pas. Rend -1 si le niveau ne correspond à AUCUN cran (cas normal après un
+ * `bl 37` à la console) — et l'affichage le DIT plutôt que d'arrondir. */
+static int menu_bl_cran_courant(void)
+{
+    int pct = dn_reglage_bl_manuel();
+    if (pct < 0) {
+        return -1;
+    }
+    for (int i = 0; i < DN_REGLAGE_BL_CRANS; i++) {
+        if (dn_reglage_bl_cran(i) == pct) {
+            return i;
+        }
+    }
+    return -1;
 }
 
 /* Le repeint de la veille (plus bas — il vit près des bascules). */
@@ -3350,21 +3441,83 @@ static void menu_reparametrer(void)
         menu_sel_peindre(&s_menu_cran[i], armee && i == cran, armee);
     }
 
+    /*
+     * 🔴 `dn4-41` / AC4 — LES DEUX CIBLES DE LUMINOSITÉ, RELUES DE L'ÉTAT RÉEL.
+     *
+     * ⚠️ `AUTO` est peint sur `dn_env_bl_auto()` — l'état COURANT, ⛔ pas la
+     *    préférence `dn_reglage_bl_auto_voulu()`. Sur une carte SANS BH1750, le
+     *    firmware DÉSARME (AC3) : peindre la préférence afficherait `AUTO` coché
+     *    pendant que la dalle ne suit rien. C'est l'étiquette-qui-ment, sur
+     *    l'écran cette fois.
+     * ⚠️ Et `AUTO` est **GRISÉ** quand la source est ABSENTE : une cible qu'on
+     *    peut viser mais qui ne peut rien donner est pire qu'une cible grise.
+     *    ⛔ Elle reste CLIQUABLE quand même — le tap réarme, le cycle suivant
+     *    re-désarme ET LE DIT (voir `dn_env.c`) ; un inconnu doit pouvoir
+     *    essayer et VOIR pourquoi ça n'a pas pris.
+     */
+    if (s_menu_bl_auto.zone) {
+        bool source_absente = (dn_env_etat(DN_ENV_LUM) == DN_ENV_ABSENT);
+        bool auto_on = dn_env_bl_auto();
+        menu_sel_peindre(&s_menu_bl_auto, auto_on, !source_absente);
+        char lib[24];
+        int pct = dn_reglage_bl_manuel();
+        if (pct < 0) {
+            /* ⛔ ⛔ PAS « 0 % » : `0` est un duty LÉGITIME (noir). « Non choisi »
+             * et « noir » sont deux états, et les confondre est la faute que
+             * `DN_CAPT_DX_ABSENT` a coûté deux fois à la console. */
+            snprintf(lib, sizeof(lib), "-- %%");
+        } else {
+            snprintf(lib, sizeof(lib), "%d %%", pct);
+        }
+        lv_label_set_text(s_menu_bl_niv.lbl, lib);
+        menu_sel_peindre(&s_menu_bl_niv, !auto_on, true);
+    }
+
     if (s_menu_etat) {
-        char buf[192];
+        /* 🔴 `dn4-41` — 192 → 384. La ligne neuve d'AC4 débordait, et `-Werror=
+         * format-truncation` l'a ATTRAPÉE À LA COMPILATION plutôt qu'à l'œil sur
+         * la dalle. ⛔ On n'élargit pas « pour voir » : 5 lignes × ~56 octets
+         * UTF-8 + la ligne d'échec NVS ≈ 340. */
+        char buf[384];
         dn_veille_compteurs_t c;
         dn_veille_compteurs(&c);
         /* ⚠️ TOUT EST RELU DE L'ÉTAT, ⛔ rien n'est récité : c'est le même
          *    principe que `s_voile_opa`, que la console RELIT au lieu de citer
          *    une constante. */
+        /* 🔴 `dn4-41` — LA 3e LIGNE DIT CE QUE LE PROCHAIN TAP VA FAIRE.
+         * Une cible qui CYCLE sans annoncer son prochain cran est une devinette.
+         * ⚠️ Le libellé est CALCULÉ depuis `dn_reglage_bl_cran()`, ⛔ jamais
+         *    écrit « 20 / 47 / 73 / 100 » ici : deux endroits qui énoncent les
+         *    mêmes nombres finissent par diverger — c'est le motif déjà écrit
+         *    au-dessus des crans de `DELAI`. */
+        int suiv = (menu_bl_cran_courant() + 1) % DN_REGLAGE_BL_CRANS;
+        /*
+         * 🔴 `dn4-41` — LES DEUX LIGNES DE PÉDAGOGIE SONT CONDENSÉES EN UNE,
+         *    À SENS CONSTANT, ET C'EST UNE CONTRAINTE MESURÉE :
+         *    ~~« le tap qui reveille est CONSOMME : il rallume, » +
+         *      « il n'ouvre pas de page. »~~ ⇒ **une seule ligne**.
+         * ⛔ Motif, ⛔ pas du goût : la ligne neuve d'AC4 porte le budget à SIX
+         *    lignes dans le pire cas (les cinq + l'échec NVS), soit
+         *    6 × 18 = 108 px là où le panneau en offre 92. Le `_Static_assert`
+         *    du budget vertical le REFUSE à la compilation.
+         * ⇒ Deux issues possibles : tronquer le diagnostic (⛔ jamais — c'est le
+         *   seul endroit qui dit qu'un réglage n'a pas été enregistré) ou dire la
+         *   même chose en moins de signes. **On dit la même chose.**
+         * ⚠️ Et la LARGEUR aussi est contrainte : ~446 px utiles en `dn_font_14`,
+         *    soit ~45 signes. C'est pourquoi la 3ᵉ ligne est compacte.
+         */
         snprintf(buf, sizeof(buf),
                  "mode %s  ·  %lu veille(s)  ·  %lu reveil(s)\n"
                  "delai %d min  ·  inactivite %lu s\n"
-                 "le tap qui reveille est CONSOMME : il rallume,\n"
-                 "il n'ouvre pas de page.",
+                 "%s  ·  prochain niveau : %d %%\n"
+                 "le tap qui reveille RALLUME, il n'ouvre rien.",
                  dn_veille_mode_nom(c.mode), (unsigned long)c.bascules,
                  (unsigned long)c.reveils, dn_veille_cran_min(c.cran),
-                 (unsigned long)(c.inactivite_ms / 1000u));
+                 (unsigned long)(c.inactivite_ms / 1000u),
+                 dn_env_etat(DN_ENV_LUM) == DN_ENV_ABSENT
+                     ? "capteur lumiere ABSENT"
+                     : (dn_env_bl_auto() ? "auto ARME" : "auto DESARME"),
+                 dn_reglage_bl_cran(suiv));
         /* 🔴 revue du 2026-08-28 — l'échec d'écriture NVS se dit LÀ OÙ LE DOIGT
          *    A TAPÉ. ⛔ Un réglage qui obéit à chaud sans être enregistré est
          *    exactement le « enregistré » mensonger que `dn_veille.h` interdit. */
@@ -3468,6 +3621,67 @@ static esp_err_t veille_cran_appliquer_nolock(int idx)
 
 /* ── Les callbacks du MENU ───────────────────────────────────────────────── */
 
+/*
+ * 🔴 `dn4-41` / AC4.6 — **LE 7ᵉ ÉCRIVAIN DE LEDC**, ET IL EST INSCRIT DANS LA
+ *    RÈGLE DE PRIORITÉ DE `dn_env.h` AU MÊME COMMIT QUE SON CODE.
+ *
+ * ⛔ La leçon est écrite là-bas en toutes lettres, et elle a été payée par
+ * `dn4-19` : *« un écrivain qu'on ajoute sans l'y inscrire rend la règle fausse
+ * AU COMMIT QUI L'ÉCRIT »*. Le compte est gardé par `verif_paliers_dn441.py`.
+ *
+ * ✅ CE QUE LA RÈGLE LUI DONNE : c'est un **GESTE D'OPÉRATEUR**, donc il GAGNE,
+ *    et **il désarme l'asservissement EN LE DISANT** — même clause que `bl <n>`
+ *    au REPL (écrivain n° 2). ⛔ Sans le désarmement, la valeur posée au doigt
+ *    serait écrasée au cycle suivant, sans un mot : *« un instrument qui ment »*.
+ *
+ * ⚠️ ⛔ AUCUNE RECONSTRUCTION DEPUIS CE CALLBACK — on tourne DANS l'envoi
+ *    d'événement LVGL, sur un objet de l'arbre. C'est le use-after-free trouvé
+ *    en revue de `dn1-3`, et la raison pour laquelle les zones sont créées une
+ *    fois puis simplement re-peintes.
+ */
+static void on_menu_bl_auto_clic(lv_event_t *e)
+{
+    (void)e;
+    s_menu_reglages++;
+    /* ⚠️ On RELIT l'état courant pour basculer, ⛔ on ne récite pas une ombre. */
+    bool vers = !dn_env_bl_auto();
+    dn_env_bl_auto_set(vers);
+    menu_nvs_noter(dn_reglage_bl_auto_ecrire(vers), "auto luminosite");
+    if (!vers) {
+        /* Désarmer ne pose RIEN : le duty courant reste. ⛔ Aucun repli — même
+         * règle qu'AC3.4, et pour la même raison. */
+        ESP_LOGI(TAG, "MENU : asservissement DESARME au doigt — le duty reste "
+                      "a ce qu'il est (⛔ aucun repli).");
+    }
+    menu_reparametrer();
+}
+
+static void on_menu_bl_niveau_clic(lv_event_t *e)
+{
+    (void)e;
+    s_menu_reglages++;
+    int suiv = (menu_bl_cran_courant() + 1) % DN_REGLAGE_BL_CRANS;
+    int pct = dn_reglage_bl_cran(suiv);
+    /* 🔴 GESTE D'OPÉRATEUR ⇒ IL DÉSARME, ET IL LE DIT. ⛔ Sans ça la valeur
+     * serait écrasée au prochain cycle de l'asservissement, en silence. */
+    if (dn_env_bl_auto_desarmer("MENU / niveau au doigt")) {
+        menu_nvs_noter(dn_reglage_bl_auto_ecrire(false), "auto luminosite");
+    }
+    esp_err_t e_led = dn_display_backlight_pct(pct);
+    if (e_led != ESP_OK) {
+        /* ⛔ ON N'ENREGISTRE PAS UN NIVEAU QUE LA DALLE A REFUSÉ : la NVS
+         * porterait alors un réglage que le prochain boot appliquerait sans
+         * pouvoir plus qu'aujourd'hui. Le verdict RELIT le matériel. */
+        ESP_LOGE(TAG, "MENU : `dn_display_backlight_pct(%d)` REFUSE (%s) — le "
+                      "niveau n'est NI applique NI enregistre.",
+                 pct, esp_err_to_name(e_led));
+        menu_reparametrer();
+        return;
+    }
+    menu_nvs_noter(dn_reglage_bl_manuel_ecrire(pct), "niveau de luminosite");
+    menu_reparametrer();
+}
+
 static void on_menu_veille_clic(lv_event_t *e)
 {
     bool on = (bool)(intptr_t)lv_event_get_user_data(e);
@@ -3552,11 +3766,27 @@ static void build_menu(lv_obj_t *scr)
             (void *)(intptr_t)i);
     }
 
-    /* ── L'état, en clair ────────────────────────────────────────────────── */
-    lv_obj_t *p3 = panneau(scr, MENU_PAN_X, MENU_Y_ETAT, MENU_PAN_W,
-                           MENU_H_ETAT);
+    /* ── Réglage 3 : LA LUMINOSITÉ, AU DOIGT (`dn4-41` / AC4) ────────────────
+     *
+     * 🔴 **C'EST LA SEULE CAPACITÉ VRAIMENT NEUVE DE `dn4-41` CÔTÉ ÉCRAN**, et
+     * elle existe pour quelqu'un qui **n'a pas de console** : `bl <n>` au REPL
+     * ⛔ NE SATISFAIT PAS cet AC.
+     * ⚠️ Le panneau porte AUSSI l'état de la veille — voie (b) d'AC4.2, retenue
+     *    parce que la voie (a) est réfutée par le calcul (voir la géométrie).
+     */
+    lv_obj_t *p3 = panneau(scr, MENU_PAN_X, MENU_Y_LUM, MENU_PAN_W, MENU_H_LUM);
+    texte(p3, "LUMINOSITE", &dn_font_14, lv_color_hex(0xa0d8ff), MENU_SEL_X0, 10);
+    s_menu_bl_auto = menu_sel_creer(p3, MENU_SEL_X0, MENU_SEL_Y_LUM, "AUTO",
+                                    on_menu_bl_auto_clic, NULL);
+    /* ⚠️ Le libellé est POSÉ VIDE et rempli par `menu_reparametrer()` : il porte
+     *    une VALEUR, et une valeur écrite à la construction serait périmée dès
+     *    le premier tap. ⛔ On relit, on ne récite pas. */
+    s_menu_bl_niv = menu_sel_creer(p3, MENU_SEL_X1, MENU_SEL_Y_LUM, "",
+                                   on_menu_bl_niveau_clic, NULL);
+
+    /* ── L'état, en clair — DANS le même cadre (voie (b)) ─────────────────── */
     s_menu_etat = texte(p3, "", &dn_font_14, lv_color_hex(MENU_COL_LIBRE),
-                        MENU_SEL_X0, 10);
+                        MENU_SEL_X0, MENU_ETAT_DY);
 
     /* ⛔ PAS DE BANDEAU `MENU` SUR LA VUE MENU : on y EST. Le redessiner
      *    donnerait une porte qui mène là où on se trouve déjà — le no-op sous

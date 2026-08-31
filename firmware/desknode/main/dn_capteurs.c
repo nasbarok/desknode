@@ -200,6 +200,27 @@ static void invalider_identite(void); /* def. plus bas — voir CR du 2026-08-24
  */
 #define DN_CAPT_REINIT_CYCLES 12 /* 12 × 5 s = une tentative par minute */
 static int s_cycles_avant_reinit;
+/* 🔴 `dn4-41` / AC2 — LE COMPTE QUI PORTE LE VERDICT « ABSENT ».
+ * Ré-ouvertures CONSÉCUTIVES échouées, constatées sur `relever_identite()` —
+ * une **lecture de registre**, ⛔ jamais un scan. Remis à 0 dès qu'une identité
+ * BME680 est lue ⇒ le verdict est RÉVERSIBLE.
+ * ⚠️ La tentative du BOOT ne l'alimente PAS (AC2.3, fenêtre froide). */
+static uint32_t s_reouv_echecs;
+static bool s_etait_absent; /* pour ne compter `absences` qu'aux TRANSITIONS */
+/*
+ * ══ 🔴 `dn4-41` / AC9.2 — LE TÉMOIN D'INHIBITION LOGICIELLE ══════════════════
+ * Armé, il fait ÉCHOUER la lecture d'identité et FERME le driver — l'état
+ * « aucun device » du point de vue du code. ⇒ exerce le backoff, le seuil, la
+ * transition, `absences`, la réversibilité et les quatre phrases, à coût NUL.
+ * ⛔ SA LIMITE, ÉCRITE ICI : ni NACK, ni timeout, ni condition de bus. Il exerce
+ *   LE CHEMIN DE CODE, ⛔ pas le matériel — même limite que l'injecteur
+ *   `capteurs simuler` (§13.11), et pour la même raison.
+ * ⚠️ Il pose `s_id_tentee = true` / `s_id_lue = false`, ⛔ PAS `invalider_identite()` :
+ *    « rien n'a été tenté » et « on a demandé, rien n'a répondu » sont DEUX
+ *    diagnostics opposés, et seul le second alimente le verdict. Se tromper ici
+ *    rendrait le témoin MUET — il n'aurait rien prouvé, en vert.
+ */
+static bool s_inhibe;
 
 /*
  * 🔴 CR 2026-08-17 — DISCRIMINER LE TIMEOUT DE DONNÉE DU TIMEOUT DE TRANSPORT.
@@ -250,6 +271,8 @@ const char *dn_capt_etat_nom(dn_capt_etat_t e)
         return "VIVANT";
     case DN_CAPT_MUET:
         return "MUET";
+    case DN_CAPT_ABSENT:
+        return "ABSENT";
     default:
         return "?";
     }
@@ -268,7 +291,19 @@ dn_capt_etat_t dn_capt_etat(void)
     portENTER_CRITICAL(&s_mux);
     int64_t lu = s_lu_us;
     bool deja = s_a_deja_lu;
+    uint32_t echecs = s_reouv_echecs; /* MÊME section critique : un couple
+                                       * (âge, échecs) lu en deux fois peut
+                                       * n'avoir jamais existé (CR dn4-2). */
     portEXIT_CRITICAL(&s_mux);
+    /* 🔴 `dn4-41` — L'ABSENCE DOMINE, ET AVANT `lu < 0`.
+     * Sur une carte nue, `s_lu_us` reste à -1 pour toujours : laisser `JAMAIS`
+     * gagner rendrait `ABSENT` structurellement inatteignable — le mode de panne
+     * « l'état existe mais aucun chemin n'y mène ». C'est aussi le diagnostic le
+     * plus SPÉCIFIQUE : ⛔ ne pas envoyer chercher une panne apparue en route
+     * quelqu'un qui n'a simplement rien branché. */
+    if (echecs >= DN_CAPT_ABSENT_SEUIL) {
+        return DN_CAPT_ABSENT;
+    }
     if (lu < 0) {
         /* ⚠️ « jamais lu » et « on lisait, on ne lit plus » sont DEUX diagnostics
          * opposés — l'un envoie chercher un cablage, l'autre une panne apparue en
@@ -586,6 +621,19 @@ static void relever_identite(i2c_master_bus_handle_t bus)
         invalider_identite();
         return; /* rien n'a ete TENTE — et `s_id_tentee` faux le dit exactement */
     }
+    if (s_inhibe) {
+        /* 🔴 `dn4-41` — TEMOIN D'INHIBITION. ⚠️ `tentee = true, lue = false` :
+         * on simule « la transaction a EU LIEU et rien n'a acquitte », ⛔ pas
+         * « rien n'a ete tente ». Voir le docblock de `s_inhibe`. */
+        portENTER_CRITICAL(&s_mux);
+        s_id_tentee = true;
+        s_id_lue = false;
+        s_chip_id = 0;
+        s_variant_lu = false;
+        s_variant = 0;
+        portEXIT_CRITICAL(&s_mux);
+        return;
+    }
     i2c_device_config_t cfg = {
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,
         .device_address = DN_BME680_ADDR,
@@ -643,6 +691,120 @@ static void invalider_identite(void)
     s_variant_lu = false;
     s_variant = 0;
     portEXIT_CRITICAL(&s_mux);
+}
+
+/*
+ * 🔴 `dn4-41` / AC2 — LE VERDICT « ABSENT », ET CE QUI LE FAIT BOUGER.
+ *
+ * ⛔ CE QUI NE LE FAIT PAS BOUGER : le scan `i2c`, `i2c_master_probe()`, et
+ * `i2c_master_bus_add_device()`. Aucun des trois ne QUALIFIE :
+ *   · le scan fabrique des faux positifs (~15 adresses fantomes en ~20 scans,
+ *     dont `0x76` — l'adresse du BME680 — capteur DEBRANCHE) ;
+ *   · au cycle 1 de l'A/B a froid, il annoncait `8 stables / 0 instable`
+ *     PENDANT que le GT911 etait a 55,5 % d'erreurs ;
+ *   · `add_device()` alloue un descripteur, il ne parle a personne.
+ * ⇒ Seule la LECTURE DU REGISTRE D'IDENTITE tranche — *« le scan DECOUVRE ;
+ *   seule une transaction de DONNEE QUALIFIE »* (§13.17.1).
+ *
+ * ⚠️ TROIS ISSUES, ET ELLES NE SE VALENT PAS :
+ *   · `s_id_lue`                -> quelque chose a REPONDU  ⇒ ⛔ PAS absent ;
+ *   · `s_id_tentee && !s_id_lue`-> on a demande, rien n'a acquitte ⇒ ECHEC ;
+ *   · `!s_id_tentee`            -> RIEN N'A ETE TENTE (bus NULL, `add_device`
+ *     refuse) ⇒ ⛔ ON NE COMPTE PAS. Compter ici accuserait un capteur dont
+ *     personne n'a demande de nouvelles — la meme faute que le 4e cas de
+ *     `journaliser_identite()` a ete ecrit pour supprimer (CR dn4-2).
+ */
+static void verdict_absence_maj(void)
+{
+    portENTER_CRITICAL(&s_mux);
+    bool tentee = s_id_tentee;
+    bool lue = s_id_lue;
+    portEXIT_CRITICAL(&s_mux);
+
+    if (!tentee) {
+        return; /* rien n'a ete TENTE : ⛔ aucune conclusion */
+    }
+
+    if (lue) {
+        portENTER_CRITICAL(&s_mux);
+        bool sortait = s_etait_absent;
+        s_reouv_echecs = 0;
+        s_etait_absent = false;
+        portEXIT_CRITICAL(&s_mux);
+        if (sortait) {
+            ESP_LOGW(TAG, "BME680 : n'est PLUS absent — une lecture d'identite a "
+                          "abouti. Le verdict est retire.");
+        }
+        return;
+    }
+
+    portENTER_CRITICAL(&s_mux);
+    if (s_reouv_echecs < UINT32_MAX) {
+        s_reouv_echecs++;
+    }
+    uint32_t n = s_reouv_echecs;
+    bool transition = (n >= DN_CAPT_ABSENT_SEUIL) && !s_etait_absent;
+    if (transition) {
+        s_etait_absent = true;
+        s_cnt.absences++;
+    }
+    portEXIT_CRITICAL(&s_mux);
+    if (transition) {
+        /* Dit UNE fois par entree en absence. ⛔ Pas toutes les 60 s : c'est
+         * exactement le pave que `dn4-2` a sorti du transport PC. */
+        ESP_LOGW(TAG,
+                 "BME680 @ 0x%02X : ABSENT — %lu lectures d'identite "
+                 "consecutives ont echoue (>= %d). ⛔ Ce n'est PAS « muet » : "
+                 "rien n'acquitte sur le bus. Les cases disent « -- », la source "
+                 "RESTE ARMEE et une seule lecture valide annule le verdict.",
+                 DN_BME680_ADDR, (unsigned long)n, DN_CAPT_ABSENT_SEUIL);
+    }
+}
+
+void dn_capt_inhiber(bool on)
+{
+    s_inhibe = on;
+    if (on && s_dev) {
+        /* ⚠️ SANS CETTE FERMETURE LE TEMOIN NE PROUVE RIEN : tant que `s_dev`
+         * tient, la boucle lit la DONNEE (qui, elle, aboutit) et le verdict est
+         * remis a zero a chaque cycle — le seuil ne serait JAMAIS atteint.
+         * ⇒ On rend le module a l'etat qu'un capteur absent produit : pas de
+         *   driver, donc branche de backoff, donc lecture d'identite, donc
+         *   verdict. ⛔ C'est le meme menage que le chemin degrade fait deja. */
+        bme680_delete(s_dev);
+        s_dev = NULL;
+    }
+    if (!on) {
+        /* ⛔ On ne re-ouvre PAS ici : c'est la branche de backoff qui le fera,
+         * dans au plus 60 s, PAR LE CHEMIN NORMAL. Rouvrir depuis le REPL
+         * emprunterait un chemin que la carte ne prend jamais toute seule. */
+        ESP_LOGW(TAG, "temoin d'inhibition DESARME — la reprise passera par la "
+                      "branche de backoff (au plus %d s), ⛔ pas par le REPL.",
+                 (DN_CAPT_REINIT_CYCLES * DN_CAPT_PERIODE_MS) / 1000);
+    } else {
+        ESP_LOGW(TAG, "temoin d'inhibition ARME — ⛔ ceci n'exerce NI NACK NI "
+                      "timeout NI le bus, seulement le CHEMIN DE CODE.");
+    }
+}
+
+bool dn_capt_inhibe(void)
+{
+    return s_inhibe;
+}
+
+uint32_t dn_capt_absent_delai_s(void)
+{
+    return (uint32_t)((DN_CAPT_ABSENT_SEUIL * DN_CAPT_REINIT_CYCLES
+                       * DN_CAPT_PERIODE_MS)
+                      / 1000);
+}
+
+uint32_t dn_capt_reouv_echecs(void)
+{
+    portENTER_CRITICAL(&s_mux);
+    uint32_t n = s_reouv_echecs;
+    portEXIT_CRITICAL(&s_mux);
+    return n;
 }
 
 /* Signature du verdict d'identite, pour ne republier que ce qui CHANGE.
@@ -989,6 +1151,15 @@ static bool config_verifier_et_reparer(dn_capt_faute_t faute_du_cycle)
      *    DEGRADE, et il est borne par DN_CAPT_RECONF_ECHECS_MAX. */
     i2c_master_bus_handle_t bus_rep = dn_display_i2c_bus();
     relever_identite(bus_rep); /* invalide en entree : pas de verdict perime */
+    /* 🔴 `dn4-41` — ⛔ CE CHEMIN N'ALIMENTE **PAS** LE VERDICT « ABSENT », ET
+     * C'EST DELIBERE. Il est DEGRADE, donc cadence toutes les **5 s** : y
+     * brancher `verdict_absence_maj()` ferait tomber `ABSENT` a **10 s**
+     * d'uptime, c'est-a-dire EN PLEINE FENETRE FROIDE — le faux positif exact
+     * qu'AC2.3 existe pour interdire.
+     * ✅ Et le verdict reste ATTEIGNABLE : au-dela de
+     *   `DN_CAPT_RECONF_ECHECS_MAX`, ce chemin ferme `s_dev`, et la branche de
+     *   backoff (une tentative par MINUTE) prend le relais. ⛔ Ne pas « reparer »
+     *   ce silence : c'est la marge de la fenetre froide. */
     if (!identite_est_bme680()) {
         /* 🔴 CR dn4-2 du 2026-08-24 — CE CHEMIN N'AVAIT PAS RECU L'ANTI-INONDATION
          * QUE LE CHEMIN A 60 s A RECUE, ET IL EST 6x PLUS RAPIDE. Il appelait
@@ -1133,6 +1304,14 @@ static void tache_capteurs(void *arg)
                  * suivante, UNE MINUTE plus tard, par la meme perturbation.
                  * L'identite se releve MAINTENANT d'abord, et elle DECIDE. */
                 relever_identite(bus); /* teste `bus` NULL lui-meme */
+                /* 🔴 `dn4-41` / AC2 — LE SEUL SITE QUI ALIMENTE LE VERDICT.
+                 * ⚠️ Il est DANS la branche de backoff, donc appele UNE FOIS
+                 *    PAR MINUTE, ⛔ pas a chaque cycle de 5 s : c'est ce qui
+                 *    donne au seuil de 2 sa valeur de 120 s (AC2.3).
+                 * ⛔ Et il est APRES `relever_identite()`, jamais avant : le
+                 *    verdict se prend sur la transaction QUI VIENT D'AVOIR
+                 *    LIEU — *« on CONSTATE, on ne se souvient pas »*. */
+                verdict_absence_maj();
                 /* 🔴 CR dn4-2 — LE VERDICT NE SE REPUBLIE QUE QUAND IL CHANGE.
                  * `journaliser_identite()` est sorti de la branche de succes en
                  * dn4-2 : sur une carte sans capteur — ou apres un demarrage a
@@ -1419,7 +1598,18 @@ static void tache_capteurs(void *arg)
         if (reprise) {
             s_cnt.reprises++;
         }
+        /* 🔴 `dn4-41` / AC2.4 — LE VERDICT EST REVERSIBLE, ET C'EST LE CHEMIN
+         * LE PLUS FORT POUR LE RETIRER : une lecture de DONNEE vient d'aboutir.
+         * ⛔ Un « absent » definitif serait exactement le defaut qu'a paye
+         *   `dn2-1` (« les cases restaient VIDES a vie »). */
+        bool sortait_absence = s_etait_absent;
+        s_reouv_echecs = 0;
+        s_etait_absent = false;
         portEXIT_CRITICAL(&s_mux);
+        if (sortait_absence) {
+            ESP_LOGW(TAG, "BME680 : n'est PLUS absent — une lecture de donnee a "
+                          "abouti. Le verdict est retire.");
+        }
 
         /* 🔴 W2 (AC6) — la pression est instrumentée DANS LES DEUX FORMATAGES
          * qu'elle pourrait recevoir, parce que c'est justement la précision qui
@@ -1456,6 +1646,11 @@ esp_err_t dn_capteurs_init(void)
     }
 
     relever_identite(bus);
+    /* 🔴 `dn4-41` / AC2.3 — ⛔ LA TENTATIVE DU BOOT NE COMPTE PAS, ET C'EST LA
+     * CONDITION MEME DE LA GARANTIE DES 120 s. A froid, **la lecture d'identite
+     * echoue TOUJOURS** (A/B de six cycles, §13.17.1) et le bus se retablit
+     * SEUL vers T+~60 s. La compter ferait tomber le verdict a 60 s au lieu de
+     * 120 — sur un capteur SOUDE. ⛔ Ne pas ajouter `verdict_absence_maj()` ici. */
     journaliser_identite();
 
     /* Handle NU, ouvert AVANT le driver : il sert à relire les registres de

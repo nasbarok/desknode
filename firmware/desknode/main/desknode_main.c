@@ -40,6 +40,7 @@
 #include "dn_measure.h"
 #include "dn_patterns.h"
 #include "dn_pins.h"
+#include "dn_reglage.h"
 #include "dn_recal.h"
 #include "dn_rtc.h"
 #include "dn_touch.h"
@@ -271,6 +272,11 @@ void app_main(void)
 
     log_socle();
 
+    /* 🔴 `dn4-41` — LES RÉGLAGES D'AFFICHAGE POSÉS AU DOIGT, RELUS ICI.
+     * APRÈS `nvs_flash_init()` (c'en est la seule dépendance) et AVANT l'étape 7,
+     * qui doit pouvoir POSER le niveau choisi plutôt que 100 % en aveugle. */
+    dn_reglage_init();
+
     dn_bootcfg_t cfg;
     ESP_ERROR_CHECK(dn_bootcfg_load(&cfg));
     dn_bootcfg_log(&cfg);
@@ -437,7 +443,31 @@ void app_main(void)
      * « 5 kHz » en dur alors que le défaut compilé était passé à 24 kHz — le
      * bandeau contredisait LE résultat-titre d'AC7. Un bandeau qui enseigne un
      * fait réfuté est pire qu'un bandeau muet : il se relit à chaque boot. */
-    ESP_ERROR_CHECK(dn_display_backlight_pct(100));
+    /*
+     * 🔴 `dn4-41` / AC4.5 — LE NIVEAU CHOISI AU DOIGT SURVIT AU REBOOT.
+     *
+     * ⛔ SANS CECI, LA PERSISTANCE NE SERT À RIEN : la valeur serait bien en
+     * NVS, et **rien ne la poserait**. Le boot mettrait 100 %, l'asservissement
+     * étant désarmé n'y toucherait plus, et l'inconnu retrouverait sa dalle à
+     * fond à chaque coupure de courant — c'est-à-dire un réglage qui « marche »
+     * jusqu'au premier redémarrage.
+     * ⚠️ ⛔ CE N'EST PAS UN 8ᵉ ÉCRIVAIN DE LEDC : c'est l'écrivain n° 1 (le boot),
+     *    qui pose désormais **le niveau voulu** au lieu d'un 100 en aveugle. Le
+     *    site d'appel est le MÊME. La règle de priorité de `dn_env.h` en compte
+     *    SEPT, et le septième est le MENU.
+     * ⚠️ La condition est `auto NON voulu` **ET** `niveau choisi` : si l'auto est
+     *    voulu, on garde 100 % et l'asservissement ramène au régime — c'est la
+     *    première bascule vers ACTIF, inchangée depuis `dn3-3`.
+     */
+    int bl_boot = 100;
+    if (!dn_reglage_bl_auto_voulu() && dn_reglage_bl_manuel() >= 0) {
+        bl_boot = dn_reglage_bl_manuel();
+        ESP_LOGI(TAG,
+                 "rétroéclairage : le niveau %d %% choisi AU DOIGT est restauré "
+                 "(⛔ pas 100 %%) — l'asservissement est DESARME par ce choix.",
+                 bl_boot);
+    }
+    ESP_ERROR_CHECK(dn_display_backlight_pct(bl_boot));
     ESP_LOGI(TAG,
              "rétroéclairage à %d %% (GPIO%d en LEDC 10 bits @ %d Hz). "
              "⚠️ il ne clignote pas : le clignotement était le signe de vie de "
@@ -595,6 +625,17 @@ void app_main(void)
      *    flash, RESET physique ». Trois capteurs de confort ne doivent pas
      *    pouvoir briquer le seul outil de diagnostic. */
     esp_err_t err_env = dn_env_init();
+    /* 🔴 `dn4-41` — LA PRÉFÉRENCE DE L'UTILISATEUR L'EMPORTE SUR LE DÉFAUT.
+     * ⚠️ APRÈS `dn_env_init()`, ⛔ pas avant : l'ordre est sans effet aujourd'hui
+     *    (`s_bl_auto` est un initialiseur statique que l'init ne touche pas),
+     *    mais le poser avant serait une dépendance à un détail d'implémentation
+     *    d'un AUTRE module. ⇒ on le pose là où il est vrai par CONSTRUCTION.
+     * ⛔ On ne RÉARME pas depuis ici : `DN_ENV_BL_AUTO_DEFAUT` vaut déjà `true`,
+     *   et forcer `true` écraserait un désarmement qu'AC3 vient peut-être de
+     *   décider — c'est-à-dire ré-armer l'auto sur une carte sans capteur. */
+    if (!dn_reglage_bl_auto_voulu()) {
+        dn_env_bl_auto_set(false);
+    }
     if (err_env != ESP_OK) {
         ESP_LOGE(TAG, "⛔ dn_env DESARME (%s) — luminosite, tension et courant "
                       "resteront muets. `env` dira pourquoi.",

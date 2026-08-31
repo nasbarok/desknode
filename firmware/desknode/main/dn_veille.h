@@ -364,9 +364,14 @@ esp_err_t dn_veille_set_pct(int pct);
 /*
  * 🔴 LE PLANCHER DE LISIBILITÉ EST MESURÉ, ⛔ PAS DEVINÉ. 3 % est le plancher
  *    où « le Living PCB et le label s'y distinguent encore, TOUT JUSTE »
- *    (dn1-3 / AC7). `DN_ENV_BL_PCT_MIN = 8` est le plancher de la LOI
+ *    (dn1-3 / AC7). `DN_ENV_BL_PCT_MIN = ~~8~~ **20**` est le plancher de la LOI
  *    d'asservissement, un autre chiffre pour un autre usage — ⛔ ne pas le
  *    recopier ici par réflexe. AC9.1 balaye 3 -> 20 et l'œil tranche.
+ *    🔴 **`dn4-41`, 2026-08-31 — LE `8` EST BARRÉ, ⛔ PAS EFFACÉ** : `dn4-20` a
+ *    gravé **20** le 2026-08-27 (l'œil a refusé 8 % deux fois, sur le même
+ *    contenu). ⚠️ **L'ARGUMENT DE CE COMMENTAIRE NE CHANGE PAS** — il dit que
+ *    3 et le plancher de la loi sont **deux chiffres pour deux usages**, et
+ *    c'est toujours vrai ; l'écart s'est même CREUSÉ (3 vs 20).
  */
 #define DN_VEILLE_PCT_MIN 3
 
@@ -384,7 +389,9 @@ esp_err_t dn_veille_set_pct(int pct);
  *    plein jour, capteur muet. Un plafond à 40 y serait faux **pour la même
  *    raison que le 10 % l'était** : il ignorerait la lumière de la pièce.
  * ✅ `DN_VEILLE_PCT_MIN = 3` RESTE, ET IL RESTE DISTINCT DE `DN_ENV_BL_PCT_MIN`
- *    (8) ET DU PLANCHER D'AMBIENT (`DN_ENV_BL_AMB_PCT_MIN_DEFAUT`) : trois
+ *    (~~8~~ **20** — corrigé par `dn4-41` le 2026-08-31 : `dn4-20` a gravé 20 le
+ *    2026-08-27, ⛔ le 8 est barré et non effacé) ET DU PLANCHER D'AMBIENT
+ *    (`DN_ENV_BL_AMB_PCT_MIN_DEFAUT` = 16) : trois
  *    chiffres, trois CONTENUS mesurés séparément. ⛔ Ne pas les fusionner par
  *    réflexe — *« un plancher de lisibilité est une propriété du COUPLE
  *    duty × contenu, pas du duty seul »*.

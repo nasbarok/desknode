@@ -1249,7 +1249,31 @@ static void bl_auto_etat(void)
 {
     int lux_bas = 0, lux_haut = 0, pas = 0, hyst = 0, dpct = 0, dlux = 0;
     dn_env_bl_etat(&lux_bas, &lux_haut, &pas, &hyst, &dpct, &dlux);
-    printf("asservissement BH1750 : %s\n", dn_env_bl_auto() ? "ARMÉ" : "DÉSARMÉ");
+    /* 🔴 `dn4-41` / AC3.3 — UN « OFF » NU EST INDISCERNABLE D'UN GESTE.
+     * Sur une carte SANS BH1750, l'inconnu lisait `DÉSARMÉ` et n'avait aucun
+     * moyen de savoir s'il avait tapé quelque chose, si l'auto avait plombé, ou
+     * s'il n'y avait tout simplement pas de capteur. Le verdict porte donc SON
+     * MOTIF ET SON CHIFFRE. ⛔ Le verdict RELIT l'état, il ne récite pas. */
+    if (!dn_env_bl_auto() && dn_env_bl_desarme_par_absence()) {
+        printf("asservissement BH1750 : DÉSARMÉ — **BH1750 ABSENT** (%lu "
+               "re-ouvertures échouées)\n",
+               (unsigned long)dn_env_reouv_echecs(DN_ENV_LUM));
+        printf("  🔴 ⛔ Ce n'est PAS « muet » : aucune transaction de donnée "
+               "n'aboutit depuis\n");
+        printf("     le boot. Sur une carte SANS capteur d'ambiance, c'est le "
+               "comportement\n");
+        printf("     ATTENDU — le palier « DeskNode » (carte seule) l'assume.\n");
+        printf("  ⚠️ Le duty n'a PAS été touché au désarmement : ⛔ aucun repli. "
+               "Il se règle\n");
+        printf("     À LA MAIN — au MENU sur la dalle, ou `bl <n>` ici.\n");
+        printf("  ✅ `bl auto on` réarme ; si le capteur est toujours absent, le "
+               "cycle suivant\n");
+        printf("     re-désarme ET LE REDIT — ⛔ un geste sans effet ne doit pas "
+               "passer pour un succès.\n");
+    } else {
+        printf("asservissement BH1750 : %s\n",
+               dn_env_bl_auto() ? "ARMÉ" : "DÉSARMÉ");
+    }
     printf("  loi      : %d %% à <= %d lx · %d %% à >= %d lx · courbe %s entre "
            "les deux\n",
            /* 🔴 dn4-20/AC4.7 — LE PLAFOND COURANT, ⛔ PLUS LE MACRO. `bl` est
@@ -1288,7 +1312,7 @@ static void bl_auto_etat(void)
         printf("  applique : AUCUNE application depuis LE DERNIER ARMEMENT "
                "(`bl auto on` remet ce temoin a zero — ⛔ pas le compteur "
                "`applications` ci-dessous, qui lui compte depuis le BOOT)\n");
-    } else if (dlux == DN_ENV_ABSENT) {
+    } else if (dlux == DN_ENV_VAL_ABSENTE) {
         printf("  applique : %d %% (sur un lux JAMAIS LU — ⛔ pas « 0 lx »)\n",
                dpct);
     } else {
@@ -1593,7 +1617,7 @@ static int cmd_bl(int argc, char **argv)
         }
         if (!fourni) {
             int courant = dn_env_lux();
-            if (courant == DN_ENV_ABSENT ||
+            if (courant == DN_ENV_VAL_ABSENTE ||
                 dn_env_etat(DN_ENV_LUM) != DN_ENV_VIVANT) {
                 /* ⛔ On ne fabrique PAS un « 0 lx » : « jamais lu » et « noir
                  * complet » ne s'impriment pas à l'identique — corrigé en revue
@@ -9187,7 +9211,7 @@ typedef struct {
  * qu'un module pas encore initialise. */
 static bool tof_pret(void)
 {
-    if (dn_env_present(DN_ENV_TOF)) {
+    if (dn_env_device_ouvert(DN_ENV_TOF)) {
         return true;
     }
     printf("🔴 le device VL6180X de `dn_env` n'est PAS OUVERT.\n");
@@ -9196,6 +9220,12 @@ static bool tof_pret(void)
     printf("      diagnostic d'intermittence (§13.21.12).\n");
     printf("   ⚠️ Si `env` dit JAMAIS/MUET : `dn_env` retente UNE fois par\n");
     printf("      minute. Attendre, ou `reboot`. ⛔ RIEN n'a ete tente ici.\n");
+    /* 🔴 `dn4-41` — LE 4e ETAT DOIT ETRE DIT ICI AUSSI. Une aide qui enumere
+     * trois etats sur quatre envoie attendre une reprise qui ne viendra pas. */
+    printf("   🔴 Si `env` dit ABSENT : le capteur n'a JAMAIS acquitte une\n");
+    printf("      transaction de donnee. Attendre ne servira a rien —\n");
+    printf("      c'est le cablage (ou la carte est nue). La source reste\n");
+    printf("      ARMEE : une seule lecture valide retire le verdict.\n");
     return false;
 }
 
@@ -9925,6 +9955,15 @@ static int cmd_capteurs(int argc, char **argv)
 
     dn_capt_etat_t e = dn_capt_etat();
     printf("BME680 @ 0x%02X : %s", DN_BME680_ADDR, dn_capt_etat_nom(e));
+    /* 🔴 `dn4-41` / AC2.6 — QUATRE ETATS, QUATRE PHRASES. C'est la discipline
+     * « TROIS ETATS, TROIS PHRASES » de cette commande, etendue d'un cran : un
+     * etat qui n'a pas sa phrase se lit comme celui d'a cote. ⚠️ La phrase
+     * d'ABSENT porte SON CHIFFRE — « n tentatives » — parce qu'un verdict sans
+     * son compte ne se conteste pas. */
+    if (e == DN_CAPT_ABSENT) {
+        printf(" (%lu lectures d'identite echouees depuis le boot, seuil %d)",
+               (unsigned long)dn_capt_reouv_echecs(), DN_CAPT_ABSENT_SEUIL);
+    }
     /* ⚠️ LA GARDE PORTE SUR LA VALEUR, PAS SUR L'ÉTAT — correctif du 2026-08-17.
      * Elle testait `e != DN_CAPT_JAMAIS`. Le jour où l'état MUET a cessé d'être
      * synonyme de « valeur presente » (une valeur fausse est INVALIDÉE tout en
@@ -9952,6 +9991,41 @@ static int cmd_capteurs(int argc, char **argv)
         printf(" — aucune valeur courante");
     }
     printf("\n");
+    /* 🔴 `dn4-41` / AC2.6 — LES QUATRE PHRASES. ⛔ Aucune n'est un synonyme :
+     * elles envoient chercher QUATRE choses differentes. */
+    switch (e) {
+    case DN_CAPT_ABSENT:
+        printf("  🔴 ABSENT : aucune lecture d'identite n'a abouti depuis le "
+               "boot.\n");
+        printf("     ⛔ Ce n'est PAS « muet » — muet veut dire « il repondait, "
+               "il ne\n");
+        printf("     repond plus ». Ici RIEN n'a jamais acquitte. Cherche le "
+               "cablage,\n");
+        printf("     ⛔ pas une panne apparue en route. ⚠️ Sur une carte SANS "
+               "capteur\n");
+        printf("     c'est le verdict ATTENDU, et le palier « DeskNode » "
+               "l'assume.\n");
+        printf("     ✅ REVERSIBLE : une seule lecture valide le retire, la "
+               "source reste ARMEE.\n");
+        break;
+    case DN_CAPT_JAMAIS:
+        printf("  ⚠️ JAMAIS : pas encore lu. ⛔ Ce n'est pas « absent » — le "
+               "seuil de %d\n", DN_CAPT_ABSENT_SEUIL);
+        printf("     tentatives n'est pas atteint (%lu). A froid, c'est NORMAL "
+               "pendant\n", (unsigned long)dn_capt_reouv_echecs());
+        printf("     ~120 s : le bus entier se degrade puis se retablit SEUL.\n");
+        break;
+    case DN_CAPT_MUET:
+        printf("  ⚠️ MUET : il a DEJA lu, et la peremption est passee. ⛔ Ce "
+               "n'est pas\n");
+        printf("     « absent » : le capteur a repondu au moins une fois — "
+               "cherche une\n");
+        printf("     panne APPARUE EN ROUTE.\n");
+        break;
+    case DN_CAPT_VIVANT:
+    default:
+        break;
+    }
     /* dn4-5/AC6.1 — LE RETARD EST DIT ICI AUSSI, parce que c'est ICI qu'on
      * regarde la valeur. ⛔ La phrase n'est PAS recopiee : elle est rendue par
      * `dn_capteurs.c`, qui la definit une seule fois. */
@@ -10150,8 +10224,18 @@ static int cmd_capteurs(int argc, char **argv)
     }
     dn_capt_compteurs_t c;
     dn_capt_compteurs(&c);
-    printf("compteurs  : %u lectures · %u reprises · %u reconfigurations\n",
-           (unsigned)c.lectures, (unsigned)c.reprises, (unsigned)c.reconfigs);
+    printf("compteurs  : %u lectures · %u reprises · %u reconfigurations · "
+           "%u absences\n",
+           (unsigned)c.lectures, (unsigned)c.reprises, (unsigned)c.reconfigs,
+           (unsigned)c.absences);
+    /* 🔴 `dn4-41` / AC2.4 — LE SEAU QUI MANQUAIT AU DEPOT. `dn4-3` avait releve
+     * que « la case affiche "--" gris A VIE, et ⛔ AUCUN des trois compteurs ne
+     * le voit — ils comptent le clamp, pas l'absence ». Celui-ci le voit. */
+    if (c.absences > 0) {
+        printf("             absences = ENTREES en verdict ABSENT (⛔ pas les\n");
+        printf("             cycles passes dedans). Reversible : une lecture\n");
+        printf("             valide le retire, et une nouvelle chute recompte.\n");
+    }
     if (c.reconfigs > 0) {
         printf("             reconfigurations = le capteur a redemarre sous nos\n");
         printf("             pieds (coupure d'alim). NI une erreur de transport, NI\n");
@@ -10564,8 +10648,9 @@ static void env_ligne_compteurs(dn_env_id_t id)
 {
     dn_env_compteurs_t c;
     dn_env_compteurs(id, &c);
-    printf("  compteurs : %lu lectures · %lu reprises\n",
-           (unsigned long)c.lectures, (unsigned long)c.reprises);
+    printf("  compteurs : %lu lectures · %lu reprises · %lu absences\n",
+           (unsigned long)c.lectures, (unsigned long)c.reprises,
+           (unsigned long)c.absences);
     printf("  erreurs   : i2c %lu · donnee %lu · bornes %lu · conformite %lu\n",
            (unsigned long)c.err_i2c, (unsigned long)c.err_donnee,
            (unsigned long)c.err_bornes, (unsigned long)c.conformite);
@@ -10574,8 +10659,14 @@ static void env_ligne_compteurs(dn_env_id_t id)
 static void env_entete(dn_env_id_t id, const char *valeurs)
 {
     int64_t age = dn_env_age_us(id);
+    dn_env_etat_t e = dn_env_etat(id);
     printf("\n%-7s @ 0x%02X : %s", dn_env_nom(id), dn_env_adresse(id),
-           dn_env_etat_nom(dn_env_etat(id)));
+           dn_env_etat_nom(e));
+    /* 🔴 `dn4-41` / AC2.6 — le verdict porte SON CHIFFRE, ⛔ pas un adjectif. */
+    if (e == DN_ENV_ABSENT) {
+        printf(" (%lu re-ouvertures echouees, seuil %d)",
+               (unsigned long)dn_env_reouv_echecs(id), DN_ENV_ABSENT_SEUIL);
+    }
     if (valeurs && valeurs[0]) {
         printf(" — %s", valeurs);
     }
@@ -10584,10 +10675,37 @@ static void env_entete(dn_env_id_t id, const char *valeurs)
     } else {
         printf(" · JAMAIS LU");
     }
-    if (!dn_env_present(id)) {
+    if (!dn_env_device_ouvert(id)) {
         printf(" · ⛔ DEVICE NON OUVERT");
     }
     printf("\n");
+    /* 🔴 `dn4-41` / AC2.6 — QUATRE ETATS, QUATRE PHRASES, ici comme dans
+     * `capteurs`. ⚠️ Meme vocabulaire dans les deux modules : deux instruments
+     * qui nomment differemment la meme chose ne se comparent plus. */
+    switch (e) {
+    case DN_ENV_ABSENT:
+        printf("        🔴 ABSENT : aucune transaction de donnee n'aboutit "
+               "depuis le boot.\n");
+        printf("           ⛔ Ce n'est PAS « muet ». ⚠️ Le verdict ne vient NI "
+               "du scan NI\n");
+        printf("           d'un probe — il vient de `configurer()`, qui parle "
+               "vraiment au\n");
+        printf("           bus. ✅ REVERSIBLE : une lecture valide le retire.\n");
+        break;
+    case DN_ENV_JAMAIS:
+        printf("        ⚠️ JAMAIS : pas encore lu — ⛔ pas « absent » (%lu/%d "
+               "echecs).\n",
+               (unsigned long)dn_env_reouv_echecs(id), DN_ENV_ABSENT_SEUIL);
+        break;
+    case DN_ENV_MUET:
+        printf("        ⚠️ MUET : il a DEJA lu, la peremption est passee — "
+               "cherche une\n");
+        printf("           panne APPARUE EN ROUTE, ⛔ pas un cablage absent.\n");
+        break;
+    case DN_ENV_VIVANT:
+    default:
+        break;
+    }
 }
 
 static int cmd_env(int argc, char **argv)
@@ -10621,8 +10739,8 @@ static int cmd_env(int argc, char **argv)
          * `s_cycles`. C'est la faute meme que « TROIS ETATS, TROIS PHRASES »
          * (cmd_capteurs) a ete ecrit pour eliminer. */
         printf("\n🔴 JAMAIS CADENCE : aucun cycle depuis le boot.\n");
-        if (!dn_env_present(DN_ENV_LUM) && !dn_env_present(DN_ENV_ALIM) &&
-            !dn_env_present(DN_ENV_TOF)) {
+        if (!dn_env_device_ouvert(DN_ENV_LUM) && !dn_env_device_ouvert(DN_ENV_ALIM) &&
+            !dn_env_device_ouvert(DN_ENV_TOF)) {
             printf("   AUCUN device n'est ouvert ⇒ `dn_env_init()` a echoue (bus\n");
             printf("   I2C indisponible), OU les trois ouvertures ont ete\n");
             printf("   refusees. ⛔ Ce n'est PAS un diagnostic sur `dn_capt` :\n");
@@ -10655,9 +10773,9 @@ static int cmd_env(int argc, char **argv)
          * 2026-08-20 : deux appels separes prenaient DEUX sections critiques et
          * pouvaient imprimer « 411 lx (brut 500) », un couple qui n'a jamais
          * existe. Le cycle publie les deux sous UN seul verrou. */
-        int lux = DN_ENV_ABSENT, lux_brut = DN_ENV_ABSENT;
+        int lux = DN_ENV_VAL_ABSENTE, lux_brut = DN_ENV_VAL_ABSENTE;
         dn_env_lux_lire(&lux, &lux_brut);
-        if (lux != DN_ENV_ABSENT) {
+        if (lux != DN_ENV_VAL_ABSENTE) {
             snprintf(v, sizeof v, "%d lx (brut %d)", lux, lux_brut);
         }
         env_entete(DN_ENV_LUM, v);
@@ -12206,6 +12324,226 @@ static int cmd_veille(int argc, char **argv)
     return 1;
 }
 
+/* ══════════════════════════════════════════════════════════════════════════════
+ * 🔴 `dn4-41` — LA COMMANDE `absent` : LES TÉMOINS DE L'ABSENCE, ET LEURS LIMITES
+ *
+ * Cette story doit **prouver l'absence sur un matériel où rien n'est absent**.
+ * Elle a donc TROIS témoins, de portées DIFFÉRENTES, et ⛔ **aucun ne remplace
+ * les autres**. Cette commande en porte DEUX — ceux à coût nul. Le troisième
+ * (débranchement réel) est un GESTE, il ne peut pas vivre dans le firmware.
+ *
+ *   | témoin              | coût       | ce qu'il exerce            | ⛔ pas          |
+ *   |---------------------|------------|----------------------------|-----------------|
+ *   | `absent inhiber`    | nul        | le CHEMIN DE CODE          | ni NACK ni bus  |
+ *   | `absent vide`       | nul        | le VRAI silence de `0x40`  | pas le boot     |
+ *   | débranchement (T8)  | insertions | LA CARTE NUE + LE BOOT     | — (qualifiant)  |
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/* Une transaction de DONNÉE contre une adresse, avec EXACTEMENT le timeout et la
+ * fréquence de `dn_env`. Rend la durée EFFECTIVE en µs par `us`.
+ * 🎯 C'est ce chiffre qu'AC9.3.a demande : `NACK` immédiat **ou** timeout de
+ *    100 ms — ⛔ ce n'est PAS la même chose, et c'est lui qui décide si le pire
+ *    cas de blocage I²C (~12 × 100 ms sur une période de 5 s) est théorique ou
+ *    vécu. */
+static esp_err_t absent_transaction(uint8_t addr, int64_t *us)
+{
+    i2c_master_bus_handle_t bus = dn_display_i2c_bus();
+    if (!bus) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    const i2c_device_config_t cfg = {
+        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
+        .device_address = addr,
+        .scl_speed_hz = DN_I2C_FREQ_HZ,
+    };
+    i2c_master_dev_handle_t dev = NULL;
+    /* ⚠️ `add_device` ne touche PAS le bus — son succès ne prouve RIEN. C'est
+     *    tout l'objet d'AC2.5, et c'est pour ça qu'on ne s'arrête pas là. */
+    esp_err_t e = i2c_master_bus_add_device(bus, &cfg, &dev);
+    if (e != ESP_OK) {
+        return e;
+    }
+    uint8_t reg = 0x00, buf[2] = { 0, 0 };
+    int64_t t0 = esp_timer_get_time();
+    e = i2c_master_transmit_receive(dev, &reg, 1, buf, sizeof buf,
+                                    pdMS_TO_TICKS(DN_ENV_I2C_TIMEOUT_MS));
+    *us = esp_timer_get_time() - t0;
+    i2c_master_bus_rm_device(dev);
+    return e;
+}
+
+static int absent_cmd_vide(void)
+{
+    i2c_master_bus_handle_t bus = dn_display_i2c_bus();
+    if (!bus) {
+        printf("🔴 bus I2C indisponible — ⛔ RIEN n'a ete tente.\n");
+        return 1;
+    }
+    printf("🎯 TEMOIN « ADRESSE REELLEMENT VIDE » — 0x%02X (AC2.8)\n",
+           DN_INA219_ADDR);
+    printf("   Motif : l'INA219 a ete RETIRE PHYSIQUEMENT du bus le 2026-08-21,\n");
+    printf("   et `lire_ina219()` SUPPRIMEE. ⇒ cette adresse est du VRAI silence,\n");
+    printf("   sur cette carte, sans rien acheter.\n\n");
+
+    /* ── 2.8.a — ⛔ ON NE SUPPOSE PAS LE RETRAIT : ON LE PROUVE D'ABORD ────── */
+    printf("── 1. L'ADRESSE EST-ELLE VRAIMENT MUETTE ? (2.8.a)\n");
+    printf("   ⚠️ Le dossier l'a mesuree a 5/5 QUAND LE MODULE ETAIT LA. Si\n");
+    printf("      quelque chose repond aujourd'hui, ce temoin NE PROUVE RIEN.\n");
+    int acq = 0;
+    for (int p = 0; p < 5; p++) {
+        if (i2c_master_probe(bus, DN_INA219_ADDR, DN_I2C_SCAN_TIMEOUT_MS)
+            == ESP_OK) {
+            acq++;
+        }
+    }
+    printf("   scan        : %d/5 acquittements\n", acq);
+    printf("                 ⛔ Le scan DECOUVRE, il ne QUALIFIE pas — faux\n");
+    printf("                 positifs 1,744 %% a 8 devices, et au cycle 1 de\n");
+    printf("                 l'A/B a froid il disait « 8 stables » pendant que\n");
+    printf("                 le GT911 etait a 55,5 %% d'erreurs. ⇒ la donnee tranche.\n");
+    int64_t us = 0;
+    esp_err_t e = absent_transaction(DN_INA219_ADDR, &us);
+    printf("   transaction : %s en %lld us\n", esp_err_to_name(e), (long long)us);
+    if (e == ESP_OK || acq > 0) {
+        printf("\n🔴 QUELQUE CHOSE REPOND A 0x%02X. ⛔ CE TEMOIN NE PROUVE RIEN\n",
+               DN_INA219_ADDR);
+        printf("   et il le dit plutot que de rendre un vert qui mentirait.\n");
+        printf("   ⇒ Verifier le bus (`i2c`), ⛔ ne pas interpreter la suite.\n");
+        return 1;
+    }
+    printf("   ✅ RIEN N'ACQUITTE — scan ET donnee. L'adresse est du vrai silence.\n\n");
+
+    /* ── AC9.3.a — LE CHIFFRE QUI DECIDE ─────────────────────────────────── */
+    printf("── 2. LA DUREE EFFECTIVE PAR TRANSACTION (AC9.3.a)\n");
+    printf("   🎯 C'EST CE CHIFFRE QUI DECIDE si le pire cas de blocage I2C\n");
+    printf("      (~12 x %d ms sur une periode de %d ms) est THEORIQUE ou VECU.\n",
+           DN_ENV_I2C_TIMEOUT_MS, DN_ENV_PERIODE_MS);
+    int64_t somme = 0, maxi = 0;
+    for (int p = 0; p < 5; p++) {
+        int64_t u = 0;
+        (void)absent_transaction(DN_INA219_ADDR, &u);
+        somme += u;
+        if (u > maxi) {
+            maxi = u;
+        }
+    }
+    int64_t moy = somme / 5;
+    printf("   5 transactions : moyenne %lld us · MAX %lld us\n",
+           (long long)moy, (long long)maxi);
+    if (maxi < (int64_t)DN_ENV_I2C_TIMEOUT_MS * 1000 / 2) {
+        printf("   ⇒ VERDICT : **NACK IMMEDIAT**, ⛔ pas un timeout de %d ms.\n",
+               DN_ENV_I2C_TIMEOUT_MS);
+        printf("     Le pire cas de %d x %d ms reste THEORIQUE sur une adresse\n",
+               12, DN_ENV_I2C_TIMEOUT_MS);
+        printf("     morte de CE bus. ⚠️ Projection du cycle : 12 x %lld us =\n",
+               (long long)maxi);
+        printf("     %lld ms sur une periode de %d ms.\n",
+               (long long)(12 * maxi / 1000), DN_ENV_PERIODE_MS);
+    } else {
+        printf("   🔴 VERDICT : **TIMEOUT**, ⛔ pas un NACK. Le pire cas est VECU.\n");
+        printf("     Projection : 12 x %lld us = %lld ms sur une periode de %d ms.\n",
+               (long long)maxi, (long long)(12 * maxi / 1000), DN_ENV_PERIODE_MS);
+    }
+    printf("   ⛔ CE CHIFFRE NE S'EXTRAPOLE PAS AU BOOT A FROID : la fenetre\n");
+    printf("      froide degrade le bus ENTIER — ce n'est PAS une addition (AC9.3.b).\n\n");
+
+    /* ── 2.8.c — LES TROIS LIMITES, ECRITES ──────────────────────────────── */
+    printf("── 3. ⛔ CE QUE CE TEMOIN NE PROUVE PAS (2.8.c) — ET ÇA S'ECRIT\n");
+    printf("   · C'est UNE adresse, sur un bus ou SEPT devices repondent encore.\n");
+    printf("   · ⛔ Il n'exerce PAS les conditions electriques d'un bus nu :\n");
+    printf("     pull-ups, appel de courant a froid de trois modules — cause\n");
+    printf("     candidate n°1 de §13.16.10.\n");
+    printf("   · ⛔ Il n'exerce PAS le DEMARRAGE d'une carte sans capteurs.\n");
+    printf("   ⇒ C'est LE TEMOIN A ZERO INSERTION, celui qu'on rejoue tous les\n");
+    printf("     jours. Le temoin QUALIFIANT reste le DEBRANCHEMENT REEL (AC2.9).\n");
+    return 0;
+}
+
+static void absent_etat(void)
+{
+    printf("verdicts en cours — seuil capt %d · seuil env %d\n",
+           DN_CAPT_ABSENT_SEUIL, DN_ENV_ABSENT_SEUIL);
+    printf("  BME680  : %-7s (%lu echecs)%s\n", dn_capt_etat_nom(dn_capt_etat()),
+           (unsigned long)dn_capt_reouv_echecs(),
+           dn_capt_inhibe() ? "  ⚠️ TEMOIN D'INHIBITION ARME" : "");
+    for (int i = 0; i < DN_ENV_NB; i++) {
+        dn_env_id_t id = (dn_env_id_t)i;
+        printf("  %-7s : %-7s (%lu echecs)%s\n", dn_env_nom(id),
+               dn_env_etat_nom(dn_env_etat(id)),
+               (unsigned long)dn_env_reouv_echecs(id),
+               dn_env_inhibe(id) ? "  ⚠️ TEMOIN D'INHIBITION ARME" : "");
+    }
+    /* ⚠️ LE DELAI EST CALCULE, ⛔ PAS RECOPIE : s'il devient faux, c'est que le
+     *    seuil ou le backoff a bouge, et il doit le dire tout seul. */
+    printf("\n⏱️  Le verdict ne peut PAS tomber avant %lu s d'uptime (capt) /\n",
+           (unsigned long)dn_capt_absent_delai_s());
+    printf("   %d s (env) — et c'est MESURE, ⛔ pas choisi : a froid le bus\n",
+           (DN_ENV_ABSENT_SEUIL * DN_ENV_REINIT_CYCLES * DN_ENV_PERIODE_MS)
+               / 1000);
+    printf("   ENTIER se degrade ~40 s et se retablit SEUL vers T+~60 s.\n");
+    printf("   ⇒ Conclure plus tot declarerait ABSENT un capteur SOUDE.\n");
+}
+
+static int cmd_absent(int argc, char **argv)
+{
+    if (argc == 1) {
+        absent_etat();
+        printf("\ntemoins : `absent vide` (0x%02X, zero insertion) ·\n",
+               DN_INA219_ADDR);
+        printf("          `absent inhiber <bme|lum|tof|tous> on|off`\n");
+        printf("⛔ AUCUN des deux n'exerce le BOOT ni les conditions electriques\n");
+        printf("   d'un bus nu. Le temoin QUALIFIANT est le DEBRANCHEMENT REEL.\n");
+        return 0;
+    }
+    if (argc == 2 && strcmp(argv[1], "vide") == 0) {
+        return absent_cmd_vide();
+    }
+    if (argc == 4 && strcmp(argv[1], "inhiber") == 0) {
+        bool on;
+        if (strcmp(argv[3], "on") == 0) {
+            on = true;
+        } else if (strcmp(argv[3], "off") == 0) {
+            on = false;
+        } else {
+            printf("refuse : `%s` n'est ni `on` ni `off` — RIEN n'a ete touche.\n",
+                   argv[3]);
+            return 1;
+        }
+        const char *q = argv[2];
+        bool tous = strcmp(q, "tous") == 0;
+        bool fait = false;
+        if (tous || strcmp(q, "bme") == 0) {
+            dn_capt_inhiber(on);
+            fait = true;
+        }
+        if (tous || strcmp(q, "lum") == 0) {
+            dn_env_inhiber(DN_ENV_LUM, on);
+            fait = true;
+        }
+        if (tous || strcmp(q, "tof") == 0) {
+            dn_env_inhiber(DN_ENV_TOF, on);
+            fait = true;
+        }
+        if (!fait) {
+            printf("refuse : `%s` inconnu (bme|lum|tof|tous) — RIEN n'a ete "
+                   "touche.\n", q);
+            return 1;
+        }
+        /* ⛔ LE VERDICT RELIT, il ne RECITE pas : on republie l'etat REEL. */
+        printf("temoin d'inhibition %s pour `%s`.\n", on ? "ARME" : "DESARME", q);
+        printf("⛔ LIMITE : ceci n'exerce NI NACK NI timeout NI le bus — le\n");
+        printf("   CHEMIN DE CODE seulement. ⇒ ne conclut RIEN sur le materiel.\n");
+        printf("⏱️  Le verdict mettra jusqu'a %d s a tomber (backoff x seuil).\n\n",
+               (DN_ENV_ABSENT_SEUIL * DN_ENV_REINIT_CYCLES * DN_ENV_PERIODE_MS)
+                   / 1000);
+        absent_etat();
+        return 0;
+    }
+    printf("usage : absent | absent vide | absent inhiber <bme|lum|tof|tous> "
+           "on|off\n");
+    return 1;
+}
+
 static const esp_console_cmd_t k_cmds[] = {
     DN_CMD("scene",
            "affiche une mire : bits|nbits|rgb|red|green|blue|white|black|frame|gray|asset",
@@ -12348,6 +12686,10 @@ static const esp_console_cmd_t k_cmds[] = {
            "rtc | set <AAAA-MM-JJ> <HH:MM[:SS]> | reset — horloge PCF85063A "
            "(dn3-2)",
            cmd_rtc),
+    DN_CMD("absent",
+           "absent | vide | inhiber <bme|lum|tof|tous> on|off — les TEMOINS de "
+           "l'absence (dn4-41) et, ⛔ toujours, LEURS LIMITES",
+           cmd_absent),
     DN_CMD("aide", "cette aide", cmd_help),
 };
 

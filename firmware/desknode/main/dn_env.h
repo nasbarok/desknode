@@ -82,6 +82,28 @@
  * `i2c_master_probe()` a un taux de FAUX POSITIFS mesuré à 1,744 % à 8 devices. */
 #define DN_ENV_REINIT_CYCLES 12
 
+/*
+ * 🔴 `dn4-41` / AC2.1 — COMBIEN DE RÉ-OUVERTURES RATÉES AVANT DE DIRE « ABSENT ».
+ *
+ * ⛔ CE CHIFFRE N'EST PAS CHOISI, IL EST CONTRAINT PAR UNE MESURE.
+ * Au démarrage à FROID, **la lecture d'identité échoue TOUJOURS** et le bus
+ * ENTIER se dégrade ~40 s (A/B de six cycles, dossier capteurs §13.17.1 : 950
+ * erreurs sur 1 713 lectures du GT911, soit 55,5 %, **toutes dans les ~40
+ * premières secondes**) — puis **il se rétablit SEUL vers T+~60 s**.
+ * ⇒ Un verdict rendu AVANT la fin de cette fenêtre déclarerait ABSENT un capteur
+ *   SOUDÉ. C'est le faux positif que la story doit rendre impossible.
+ *
+ * ✅ LA GARANTIE, ET ELLE SE CALCULE :
+ *      seuil × DN_ENV_REINIT_CYCLES × DN_ENV_PERIODE_MS
+ *    = 2 × 12 × 5 000 ms = **120 000 ms = 120 s**, soit **2× la fenêtre froide**.
+ * ⚠️ La tentative du BOOT ⛔ NE COMPTE PAS — voir `dn_env_init()`. Sans cette
+ *    exclusion le verdict tomberait à 60 s, c'est-à-dire DANS la fenêtre.
+ * ⛔ Ne pas descendre sous 2 : à 1, la marge disparaît. La gate
+ *    `tools/verif_paliers_dn441.py` refuse tout couple (seuil, backoff) dont le
+ *    produit ne dépasse pas la fenêtre froide, dans les DEUX modules.
+ */
+#define DN_ENV_ABSENT_SEUIL 2
+
 /* Timeout par transaction. 100 ms = la valeur du plus propre des candidats tiers
  * lus en §13.19.4, et ~1 000× la durée théorique d'une transaction de 3 octets à
  * 400 kHz. ⛔ PAS 1 000 ms : ce module tourne dans la tâche qui porte AUSSI le
@@ -92,7 +114,15 @@
  * ⛔ Surtout PAS -1 : c'est une puissance négative parfaitement légitime sur
  * l'INA219 (courant qui repart vers la source). La leçon est écrite en toutes
  * lettres dans dn_capteurs.h:217, elle a coûté deux défauts de console. */
-#define DN_ENV_ABSENT INT32_MIN
+/* 🔴 `dn4-41`, 2026-08-31 — ~~`DN_ENV_ABSENT`~~ ⇒ **`DN_ENV_VAL_ABSENTE`**.
+ * ⛔ CE N'EST PAS UN TOILETTAGE. Ce fichier a désormais DEUX notions d'absence,
+ * et elles ne parlent pas de la même chose :
+ *   · celle-ci   = « je n'ai PAS DE VALEUR à publier » (une grandeur) ;
+ *   · `DN_ENV_ABSENT` (enum d'état, plus bas) = « LE DEVICE N'EST PAS LÀ ».
+ * Les laisser sous le même mot aurait produit exactement l'étiquette-qui-ment
+ * que cette story existe pour supprimer. ⚠️ Le nouveau nom est aussi le MIROIR
+ * de `DN_VAL_ABSENTE` (`dn_widget.h`), qui désigne la même chose côté UI. */
+#define DN_ENV_VAL_ABSENTE INT32_MIN
 
 typedef enum {
     DN_ENV_LUM = 0,  /* BH1750  @ 0x23 */
@@ -105,6 +135,15 @@ typedef enum {
     DN_ENV_JAMAIS, /* aucune lecture valide depuis le boot */
     DN_ENV_VIVANT, /* dernière lecture plus récente que la péremption */
     DN_ENV_MUET,   /* la péremption est passée */
+    /* 🔴 `dn4-41` — LE 4ᵉ ÉTAT. « JAMAIS SOUDÉ » ⛔ N'EST PAS « MUET ».
+     * `DN_ENV_ABSENT_SEUIL` ré-ouvertures CONSÉCUTIVES ont échoué, chacune sur
+     * une **transaction de DONNÉE** (`configurer()`), ⛔ jamais sur un scan ni
+     * sur `i2c_master_probe()` — *« le scan DÉCOUVRE ; seule une transaction de
+     * DONNÉE QUALIFIE »* (§13.17.1).
+     * ⚠️ RÉVERSIBLE : une seule lecture valide le retire (`marquer_valide()`).
+     * ⚠️ Il DOMINE `MUET` : un device absent est aussi périmé, et c'est le
+     *    diagnostic le PLUS SPÉCIFIQUE qui doit sortir. */
+    DN_ENV_ABSENT,
 } dn_env_etat_t;
 
 /* Les MÊMES seaux que dn_capteurs, au même vocabulaire — c'est délibéré : deux
@@ -133,6 +172,14 @@ typedef struct {
                           * rien à borner. ⛔ Un seau qui ne peut pas bouger sans
                           * que ce soit écrit est un compteur décoratif (AC1). */
     uint32_t reprises;   /* transitions MUET -> VIVANT */
+    /* 🔴 `dn4-41` / AC2.4 — LES ENTRÉES EN ABSENCE. ⛔ Compte les TRANSITIONS
+     * vers `DN_ENV_ABSENT`, pas les cycles passés dedans : un compteur qui monte
+     * de 12 par minute sur une carte nue ne dirait plus rien.
+     * ⚠️ Son existence est ce qui distingue `dn4-41` du trou connu de `dn4-3` :
+     *    *« la case affiche "--" gris À VIE, et ⛔ AUCUN des trois compteurs ne
+     *    le voit — ils comptent le clamp, pas l'absence »*. Ici, l'absence a
+     *    enfin un nom ET un seau. */
+    uint32_t absences;
     uint32_t conformite; /* DÉTECTIONS d'une configuration perdue = la garde
                           * anti-fantôme. ⛔ Compte les détections, pas les
                           * réparations. Toujours 0 pour le BH1750 : il n'a AUCUN
@@ -203,7 +250,7 @@ typedef struct {
 /*
  * ══ 🔴 LA RÈGLE DE PRIORITÉ DES ÉCRIVAINS DE LEDC — `dn4-19`/AC2.1 ═══════════
  *
- * ⛔ IL Y A SIX ÉCRIVAINS ET AUCUN VERROU. Énumérer les six sans dire qui
+ * ⛔ IL Y A SEPT ÉCRIVAINS ET AUCUN VERROU. Énumérer les sept sans dire qui
  *    l'emporte n'est PAS un arbitrage : c'est ce que ce fichier faisait, et le
  *    résultat est que la VEILLE désarmait l'asservissement pour se protéger.
  *
@@ -226,7 +273,7 @@ typedef struct {
  *      *l'asservissement fixe le NIVEAU DE RÉGIME de chaque état ;
  *       il ne porte JAMAIS la transition entre les deux.*
  *
- * Les six écrivains, et ce que la règle leur donne :
+ * Les sept écrivains, et ce que la règle leur donne :
  *   1. le **boot** (`desknode_main.c:411`, 100 %, une fois) — c'est la première
  *      bascule vers ACTIF ; l'asservissement le ramène ensuite au régime.
  *      ⚠️ `dn3-3` cite encore `desknode_main.c:321` : **périmé**, c'est `:411`.
@@ -254,7 +301,40 @@ typedef struct {
  *      exactement ce qui s'est passé ici. ⇒ **`rtk proxy grep -rn
  *      'dn_display_backlight_pct(' main/` avant de refermer une story qui
  *      touche au rétroéclairage.**
+ *   7. 🔴 **LE MENU, PANNEAU `LUMINOSITE`** (`dn_ui.c`,
+ *      `on_menu_bl_niveau_clic`) — **AJOUTÉ PAR `dn4-41` LE 2026-08-31**, et
+ *      inscrit ici **AU MÊME COMMIT QUE SON CODE**, précisément parce que la
+ *      leçon du n° 6 est écrite juste au-dessus.
+ *      ✅ **GESTE D'OPÉRATEUR au sens plein de la règle** — même clause que le
+ *      REPL (n° 2) : **il GAGNE, et il DÉSARME l'asservissement EN LE DISANT**
+ *      (`dn_env_bl_auto_desarmer("MENU / niveau au doigt")`). Sans ce
+ *      désarmement, la valeur posée au doigt serait écrasée au cycle suivant
+ *      sans un mot — *« un instrument qui ment »*.
+ *      ⚠️ **C'est le seul geste d'opérateur qui PERSISTE** (`dn_reglage.c`, NVS,
+ *      déclaré HORS RÉGIME dans `tools/verif_d4_nvs_dn45.py`). Motif : il
+ *      s'adresse à quelqu'un **qui n'a pas de console**, et un réglage qu'il faut
+ *      refaire à chaque coupure de courant n'est pas un réglage.
+ *      ⛔ **Et c'est pourquoi le BOOT (n° 1) pose ce niveau au lieu de 100 %**
+ *      quand il existe et que l'auto n'est pas voulu : ⛔ ce n'est PAS un 8ᵉ
+ *      écrivain, c'est le MÊME SITE D'APPEL, qui pose une valeur relue.
+ *      🔴 **CE QU'IL NE FAIT PAS** : aucun repli. Le tap `AUTO` qui désarme ne
+ *      touche PAS LEDC — désarmer n'est pas appliquer (AC3.4, même règle).
+ *
+ * ══ ⚠️ LE COMPTE EST GARDÉ, ⛔ PLUS SEULEMENT RECOMMANDÉ ═════════════════════
+ * `tools/verif_paliers_dn441.py` compte les APPELS RÉELS de
+ * `dn_display_backlight_pct(` dans `main/` — hors `dn_display.c` (qui
+ * l'IMPLÉMENTE), hors déclaration, hors commentaires — et les confronte au
+ * chiffre ci-dessous. ⛔ Un écrivain ajouté sans être inscrit ici fait ROUGIR la
+ * gate : la leçon du n° 6, rendue EXÉCUTABLE plutôt que recommandée.
+ *
+ * 🔴 SEPT ÉCRIVAINS, **HUIT SITES D'APPEL**, et l'écart est NOMMÉ, ⛔ pas subi :
+ *   la VEILLE (n° 4) en porte DEUX — `veille_bl_descendre` et
+ *   `veille_bl_remonter` — parce qu'une bascule a deux sens. Un « écrivain » est
+ *   un RÔLE dans l'arbitrage ; un site d'appel est une ligne. ⛔ Les confondre
+ *   ferait rougir la gate sur du code juste (défaut payé par `dn4-14`).
  */
+#define DN_ENV_LEDC_ECRIVAINS 7
+#define DN_ENV_LEDC_SITES 8
 /*
  * 🔴 DEUX DE CES QUATRE BORNES ONT ÉTÉ DÉPLACÉES PAR L'ŒIL DE L'OWNER LE
  *    2026-08-20, ET LEURS ANCIENNES VALEURS SONT CONSERVÉES ICI (§13.19.7).
@@ -425,7 +505,16 @@ typedef struct {
  *    deux autres — ⛔ à rebours de l'intuition « gros chiffres blancs sur noir,
  *    donc ça se lit plus bas ». Les trois planchers du dépôt :
  *      · `DN_VEILLE_PCT_MIN`   = 3 %  — le Living PCB et son label (dn1-3/AC7)
- *      · `DN_ENV_BL_PCT_MIN`   = 8 %  — le dashboard à six cases, texte fin
+ *      · `DN_ENV_BL_PCT_MIN`   = ~~8~~ **20 %** — le dashboard à six cases, texte
+ *        fin. 🔴 **CORRIGÉ PAR `dn4-41` LE 2026-08-31, ⛔ LE 8 N'EST PAS EFFACÉ :**
+ *        le `8` a été gravé le 2026-08-20 puis **refusé deux fois le 2026-08-27
+ *        par le même œil** ⇒ `dn4-20` a gravé **20** (voir le docblock de
+ *        `DN_ENV_BL_PCT_MIN` ci-dessus, qui portait DÉJÀ la correction).
+ *        ⚠️ **CETTE LISTE-CI, ELLE, ÉTAIT RESTÉE À 8** — et c'est LA liste
+ *        canonique des trois planchers du dépôt, celle qu'on lit pour ne pas
+ *        les confondre. Une liste de référence qui décroche de ses constantes
+ *        est un instrument qui ment. ⇒ **gardée par `verif_paliers_dn441.py`**,
+ *        qui confronte désormais ces chiffres de PROSE aux `#define` réels.
  *      · celui-ci              = 16 % — le rendu d'AMBIENT
  * ⛔ AUCUN DES DEUX AUTRES N'EST INVALIDÉ : ils ne portent pas sur ce contenu.
  *    *« Un plancher de lisibilité est une propriété du COUPLE duty × contenu. »*
@@ -487,7 +576,7 @@ esp_err_t dn_env_init(void);
 void dn_env_cycle(void);
 
 /* ── Lecture de l'état publié ─────────────────────────────────────────────────
- * Toutes ces fonctions rendent DN_ENV_ABSENT tant qu'aucune valeur valide n'a
+ * Toutes ces fonctions rendent DN_ENV_VAL_ABSENTE tant qu'aucune valeur valide n'a
  * été publiée. ⛔ Le transport reste en ENTIERS : c'est l'AFFICHAGE qui porte la
  * précision, jamais le fil. */
 
@@ -519,7 +608,48 @@ dn_env_etat_t dn_env_etat(dn_env_id_t id);
 const char *dn_env_etat_nom(dn_env_etat_t e);
 const char *dn_env_nom(dn_env_id_t id);
 uint8_t dn_env_adresse(dn_env_id_t id);
-bool dn_env_present(dn_env_id_t id); /* le device est OUVERT (≠ il répond) */
+/*
+ * 🔴 `dn4-41` / AC2.5 — ~~`dn_env_present()`~~ ⇒ **`dn_env_device_ouvert()`**.
+ *
+ * ⛔ LE NOM MENTAIT, ET LE DÉPÔT LE SAVAIT DÉJÀ : le commentaire de cette ligne
+ * portait le démenti (*« ≠ il répond »*) depuis le premier jour. Ce qu'il teste,
+ * c'est `s_c[id].dev != NULL` ; or `ouvrir()` n'appelle que
+ * `i2c_master_bus_add_device()`, **qui NE TOUCHE PAS LE BUS** — il alloue un
+ * descripteur. ⇒ **sur une carte SANS capteur, `dn_env_present()` rendait
+ * `true`.** *« Présent »* sur une carte nue est exactement l'étiquette-qui-ment
+ * que ce dépôt traque depuis `dn1-3`.
+ *
+ * ✅ VOIE (a) D'AC2.5 : **le nom est corrigé, la SÉMANTIQUE est INCHANGÉE.**
+ *    C'est délibéré, et c'est le choix le plus sûr : le bloc `🔴 JAMAIS CADENCE`
+ *    de `cmd_env` s'appuie dessus pour distinguer *« `dn_env_init()` a échoué »*
+ *    de *« la tâche n'a pas démarré »* — il a besoin de savoir si un DESCRIPTEUR
+ *    existe, ⛔ pas si le capteur répond. Changer le sens l'aurait rendu faux
+ *    sans que rien ne crie.
+ * ⇒ **Pour savoir si le capteur EST LÀ**, c'est `dn_env_etat()` qui répond, et
+ *   son verdict `DN_ENV_ABSENT` est adossé à des transactions RÉELLES.
+ */
+bool dn_env_device_ouvert(dn_env_id_t id); /* un DESCRIPTEUR existe (⛔ ≠ il répond) */
+
+/* 🔴 `dn4-41` — LE COMPTE D'ÉCHECS QUI PORTE LE VERDICT, exposé pour que la
+ * console puisse dire `ABSENT (n tentatives échouées)` (AC2.6) et pour que le
+ * chiffre soit LISIBLE plutôt que déduit. ⛔ Il n'est pas remis par
+ * `dn_env_compteurs_reset()` : ce n'est pas un compteur de diagnostic, c'est
+ * l'ÉTAT COURANT du verdict — le remettre effacerait un ABSENT vrai. */
+uint32_t dn_env_reouv_echecs(dn_env_id_t id);
+
+/* 🔴 `dn4-41` / AC9.2 — TÉMOIN D'INHIBITION LOGICIELLE, à coût NUL.
+ * Fait échouer TOUTE transaction de ce capteur, comme si le device n'était pas
+ * là — pour exercer le backoff, le seuil, le verdict, sa réversibilité et le
+ * désarmement d'AC3 SANS toucher au matériel.
+ * ⛔ SA LIMITE EST ÉCRITE AU-DESSUS DE SON IMPLÉMENTATION, ET ELLE COMPTE :
+ *   ni NACK, ni timeout, ni condition de bus. Il exerce LE CODE, ⛔ pas le
+ *   matériel — et ⛔ il ne remplace ni le témoin `0x40` ni le débranchement. */
+void dn_env_inhiber(dn_env_id_t id, bool on);
+bool dn_env_inhibe(dn_env_id_t id);
+
+/* 🔴 `dn4-41` / AC3.3 — l'auto est-il OFF **PARCE QUE** la source est ABSENTE ?
+ * ⛔ Un « OFF » nu est indiscernable d'un désarmement par geste d'opérateur. */
+bool dn_env_bl_desarme_par_absence(void);
 
 /*
  * ── 🔴 ACCÈS AU VL6180X PAR LE HANDLE **PERSISTANT** (dn4-7, 2026-08-21) ─────
