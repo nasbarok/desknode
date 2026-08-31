@@ -6349,3 +6349,243 @@ séance**, ⛔ aucun point emprunté à une autre.
 n'avait **jamais été rapproché** des six points de la séance de clôture — ⛔ **pas comme une erreur
 du dossier, comme un point qui n'avait jamais été mis en regard.** C'est lui qui forme la
 contradiction n°1, et **c'est le cadrage de `dn4-20` qui l'a trouvé**, pas la séance.
+
+---
+
+## §13.27 — `dn4-41` « La carte seule suffit » : **LE CONSTAT AVANT LE CODE** (2026-08-31)
+
+> **Pourquoi cette section existe.** Le tracker exigeait, comme **premier geste et à coût nul** :
+> *« VÉRIFIER si le mécanisme capteur-muet/fantôme de `dn2-1` couvre déjà tout ou partie — lire
+> `dn_widget`/`dn_link` AVANT d'écrire quoi que ce soit »*. Ce qui suit **est** ce geste, rendu
+> **versionné et opposable** plutôt que laissé à l'état d'intention. Il **réduit `dn4-41` de
+> moitié** : la moitié annoncée était déjà livrée.
+>
+> ⛔ **Aucun numéro de ligne de cette section ne fait foi.** Chaque site a été **re-localisé PAR
+> MOTIF** au T0 de la story (thèse de `dn4-16`) ; la table brute et ses écarts sont dans
+> `mesures/dn4-41/T0-relocalisation-par-motif.txt`. **41 sites en place, 17 dérivés, 1 introuvable.**
+
+### 13.27.1 🔴 « MÊME BESOIN, MÊME MÉCANISME » EST **FAUX**, ET C'EST MESURÉ
+
+Le tracker justifiait la fusion « capteurs absents + LHM absent » en une seule story par un
+**mécanisme commun**. Il n'y en a pas. Ce sont **deux chemins entièrement différents qui convergent
+sur le même `--`** :
+
+| | **capteurs absents** | **LHM absent** |
+|---|---|---|
+| **mécanisme** | **PÉREMPTION** — `dn_capt`/`dn_env` passent `VIVANT → MUET` après 3 cycles (15 s) | **TRONCATURE DE QUEUE SUR LE FIL** — `trame()` retire les `None` finaux, `cpu` part à 3 champs et `disk` à 1 |
+| **site (motif)** | `dn_capteurs.c` `DN_CAPT_PEREMPTION` · `dn_env.c` `DN_ENV_PEREMPTION_US` | `agent/dn_agent.py` `def trame(` |
+| **côté carte** | `DN_CAPT_DX_ABSENT` (`INT32_MIN`) ⇒ `dn_ui` pose `DN_VAL_ABSENTE` | `vue->n > i` est **faux** ⇒ `connues[i] = false` (`dn_ui.c`, motif `connues[i] = false`) |
+| **péremption `dn_link` (3 s)** | sans objet | ⛔ **ne se déclenche JAMAIS** — et c'est **délibéré** : **aucune grandeur LHM n'est en position 0**, donc la métrique continue d'arriver |
+
+⇒ **La story reste UNE** — le livrable (les paliers) et la décision (**D19**) sont uns. ⛔ **Mais il
+n'y a pas un mécanisme unique à réparer**, et les deux moitiés ne sont pas au même stade.
+
+### 13.27.2 ✅ BLOC A — L'AFFICHAGE `--` EST **ENTIÈREMENT LIVRÉ**, une seule définition
+
+| fait | motif qui le retrouve |
+|---|---|
+| `DN_VAL_ABSENTE = 0` — une case **naît** absente, donc dit `--` dès la 1ʳᵉ trame | `dn_widget.h` : `DN_VAL_ABSENTE = 0` |
+| Absence par **GRANDEUR** (règle **W10**) — la **règle** | `dn_widget.h` : `absente » (W10)` |
+| …et **son application** : `etat->txt[g][0] == '\0'` ⇒ cette ligne-là seule passe en gris | `dn_widget.c` : `txt[g][0] == '\0'` (**3 sites**) |
+| `composer()` : `--` **sans unité**, mais **avec son préfixe** (« `extr.moy --` ») | `dn_widget.c` : `static void composer(` |
+| Couleurs, **résolveur unique** — Actif `0x9a9a9a` / Ambient `0x585858` | `dn_widget.c` : `0x9a9a9a` · `0x585858` |
+| Application du style — ⚠️ **appel MULTI-LIGNES**, un grep d'une seule ligne le rate | `dn_widget.c` : `w->valeur[i]` |
+
+⚠️ **Le commentaire de `dn4-9` au site de style mérite d'être relu avant toute retouche** : il est
+indexé **par GRANDEUR** (`txt[g]`), ⛔ pas par rang (`txt[i]`) — *« son rang 2 est la grandeur 3, et
+`txt[2]` n'est jamais vide ⇒ une °C absente se serait peinte en BLANC, c'est-à-dire présentée comme
+une mesure »*.
+
+### 13.27.3 ✅ BLOC B — LHM ABSENT : livré **ET mesuré sur le VRAI service coupé**
+
+Trois scénarios joués par `dn4-8`/AC8 (détail : `…-liaison-pc.md`) — LHM **jamais démarré**,
+**arrêté en cours**, **redémarré**. Résultat : `cpu … -- (degC ATTENDUE)`, `disk 0,6 Mo/s · -- · --
+· --`, puis **reprise après 21 échecs sans redémarrer l'agent**.
+🎯 **⛔ AUCUN COMPTEUR DE REJET N'A MONTÉ DANS LES TROIS** — *« une absence de donnée n'est pas une
+erreur de protocole »*.
+✅ La règle structurante est **déjà** implémentée **et gardée des deux côtés** : ⛔ **aucune grandeur
+LHM en position 0** (motif `position 0`, dans `dn_agent.py` **et** `dn_link.c`) — c'est ce qui fait
+que couper LHM ne tue **ni** le `%` CPU **ni** le `Mo/s`.
+✅ L'annonce au démarrage **existe et sort par défaut** (`verbeux=True`) : *« LHM INJOIGNABLE au
+demarrage (…) La source RESTE ARMEE. »*
+✅ Le bilan de fin distingue **six** diagnostics jamais fondus, dont `reponses == 0` ⇒ *« ⛔ Ce n'est
+pas "zéro", c'est "inconnu" »*.
+
+### 13.27.4 ✅ BLOC C — CAPTEURS INJOIGNABLES AU BOOT : rien ne boucle, rien ne plante
+
+- `dn_capteurs_init()` est **NON FATALE**, la tâche `dn_capt` démarre quand même.
+- En régime sans device : `pousser_ui()` **puis** ré-essai toutes les **12 périodes = 60 s**
+  (`DN_CAPT_REINIT_CYCLES = 12`). Le pavé d'identité n'est **re-journalisé que si le verdict
+  CHANGE** — motif écrit : *« sur une carte sans capteur, il injectait son pavé de 4 lignes TOUTES
+  LES 60 s, indéfiniment, DANS LE TRANSPORT PC »*.
+- `dn_env` : même patron, `DN_ENV_REINIT_CYCLES` (12), `DN_ENV_I2C_TIMEOUT_MS = 100`.
+- `desknode_main.c` journalise les deux échecs en clair.
+
+### 13.27.5 ✅ BLOC D — RÉTROÉCLAIRAGE SANS LUMIÈRE : le duty est **GELÉ**, jamais 0
+
+- **AC3.3 de `dn4-19`** : *« CAPTEUR MUET ⇒ LE DUTY NE BOUGE PAS. ⛔ Surtout pas de repli sur
+  10 % »*. `dn_env_bl_cible()` rend **`-1`** = un **ÉTAT**, ⛔ pas un pourcentage.
+- **Trois planchers distincts, ⛔ jamais interchangeables** — et **leurs noms réels** :
+
+  | rôle | **symbole RÉEL** | valeur | fichier |
+  |---|---|---|---|
+  | Living PCB + label | `DN_VEILLE_PCT_MIN` | **3** | `dn_veille.h` |
+  | la **LOI** d'asservissement | `DN_ENV_BL_PCT_MIN` | **20** | `dn_env.h` |
+  | le rendu **AMBIENT** | `DN_ENV_BL_AMB_PCT_MIN_DEFAUT` | **16** | `dn_env.h` (miroir runtime `s_bl_amb_pct_min`) |
+
+  🔴 **ÉCART DE NOM DÉCLARÉ** : la story `dn4-41` nommait le troisième `DN_ENV_BL_AMB_PCT_MIN`.
+  **Ce symbole n'existe pas.** Une gate écrite sur ce nom aurait été **rouge sur du code juste** —
+  précédent payé (`dn4-14`). La gate de `dn4-41` contrôle **le nom réel**.
+- ✅ **`bl 100` reste atteignable** : *« le plafond borne LA LOI, ⛔ pas la dalle »*.
+
+### 13.27.6 🔴 CE QUE LE CADRAGE A **RÉFUTÉ** — ⛔ ne pas « re-corriger » un défaut mort
+
+Le dossier de `dn4-3` accusait `bl auto on` de dire *« applique : 100 % (sur 0 lx) »* alors que rien
+n'avait été lu. **C'est corrigé depuis `dn4-19`, et re-vérifié PAR MOTIF le 2026-08-31.** Les trois
+messages disent aujourd'hui :
+
+- `applique : %d %% (sur un lux JAMAIS LU — ⛔ pas « 0 lx »)` — motif `JAMAIS LU`
+- `⚠️ le BH1750 est « %s » : l'asservissement est ARMÉ mais le duty ne bougera qu'à la première
+  lecture valide.` — motif `asservissement est ARM`
+- `bl loi` sans argument → `⛔ pas de lux exploitable en ce moment…` — motif `pas de lux exploitable`
+
+⇒ **Le message ne ment plus.** Ce qui reste faux, c'est **l'étiquette « auto ON » sur une carte qui
+n'a aucune entrée** — et c'est l'objet d'**AC3**, ⛔ pas de ce constat.
+
+### 13.27.7 🔴 CE QUI EST **OUVERT** — le travail réel de `dn4-41`
+
+1. **Rien ne distingue « jamais soudé » de « muet ».** Il n'existe **que trois états** dans les deux
+   modules — `DN_CAPT_JAMAIS / VIVANT / MUET` et `DN_ENV_JAMAIS / VIVANT / MUET`. **Il n'y a pas
+   d'ABSENT.**
+2. 🔴 **`dn_env_present()` MENT sur une carte nue.** Il teste `s_c[id].dev != NULL` ; or `ouvrir()`
+   n'utilise que `i2c_master_bus_add_device()`, **qui ne touche pas le bus**. ⇒ sur une carte sans
+   BH1750, **il rend `true`**.
+   ⚠️ **Et le dépôt le SAVAIT DÉJÀ** : sa propre déclaration porte le démenti —
+   `dn_env.h` : `bool dn_env_present(dn_env_id_t id); /* le device est OUVERT (≠ il répond) */`.
+   ⇒ **le commentaire est honnête, c'est le NOM qui ment.** C'est très exactement l'étiquette-qui-
+   ment que ce dépôt traque depuis `dn1-3`.
+3. **L'auto reste armé sur une carte sans BH1750**, et le dit « ON » (`DN_ENV_BL_AUTO_DEFAUT` vaut
+   `true` depuis `dn4-19`).
+4. **La luminosité n'est réglable qu'à la console** — un inconnu n'a pas de console.
+5. **Le coût de l'absence de LHM n'est pas payé, il est ATTENDU** (~611 ms par cycle, à re-mesurer
+   au plafond en vigueur).
+6. **Le README ne dit aucun palier.**
+
+### 13.27.8 ⚠️ DEUX DÉFAUTS DE **DOCUMENTATION** TROUVÉS PAR CE CONSTAT
+
+**(a) 🔴 QUATRE COMMENTAIRES ANNONCENT UN PLANCHER PÉRIMÉ.** `DN_ENV_BL_PCT_MIN` vaut **20** depuis
+`dn4-20` — et son propre docblock le dit proprement (`~~8~~ ⇒ **20**`, daté, motivé). **Mais quatre
+autres sites continuent d'écrire `DN_ENV_BL_PCT_MIN = 8`**, dont **la liste canonique des trois
+planchers du dépôt** (`dn_env.h`, motif `les trois planchers du dépôt`).
+⇒ **C'est la liste même qu'AC7 doit garder.** Une gate qui l'aurait lue aurait appris `8`.
+⇒ **`dn4-41` les annote** (⛔ barrer, jamais effacer) **et la gate confronte désormais la liste aux
+`#define` réels** — un chiffre de prose qui décroche de sa constante devient **rouge**.
+
+**(b) 🔴 UNE ADRESSE DU DOSSIER DE STORY DÉSIGNE UN SITE QUI NE PEUT PAS EXISTER.** La story
+renvoyait le défaut de ledger *« `dn_ui_veille_bl_rafraichir()` pose le duty sans mettre à jour
+`s_bl_dernier_pct` »* à `dn_ui.c`. **`s_bl_dernier_pct` n'est nulle part dans `dn_ui.c`** : c'est une
+**statique privée de `dn_env.c`**. `dn_ui_veille_bl_rafraichir()` vit dans une **autre unité de
+traduction** — elle **ne peut pas** l'écrire.
+⇒ **Le défaut est STRUCTUREL, ⛔ pas un oubli.** ⛔ `dn4-41` ne le répare pas (autre porteur au
+ledger) ; l'adresse est corrigée ici pour que le prochain ne cherche pas dans `dn_ui.c`.
+
+### 13.27.9 🎯 **§Y2 AVAIT RAISON AVANT LE FER — ET `dn4-41` A D'ABORD LU DE TRAVERS**
+
+Le premier cadrage de `dn4-41` a conclu *« palier carte seule non jouable sans dessouder »* sur la
+foi de **D9** (*« en soudé, plus aucun débranchement à chaud sans dessouder »*), **sans lire §Y2 de
+ce fichier, qui l'avait déjà réfuté le 2026-08-19**.
+⛔ **L'erreur n'est pas effacée, elle est datée** — c'est exactement le défaut que le PRFAQ s'était
+reproché **deux fois** : *« conclure sur une lecture partielle d'un dossier dont les décisions
+s'amendent en cascade »*.
+**Correction owner, verbatim (2026-08-31)** : *« à part les connecteurs pour pin dupont sur les
+capteurs, y a aucune soudure sur la carte »*.
+⇒ **D9 est ANNOTÉE dans `epics-desknode-v1.md`** (aux **deux** sites où sa conséquence fausse est
+écrite), datée, ⛔ non effacée. ⇒ **la carte nue s'obtient en DÉBRANCHANT**, sous **budget
+d'insertions annoncé et tenu**, et le palier « DeskNode » **se mesure**.
+
+---
+
+## §13.28 — `dn4-41` : **L'ÉTAT « ABSENT », SES DEUX TÉMOINS À COÛT NUL, ET CE QU'ILS NE PROUVENT PAS** (2026-08-31)
+
+### 13.28.1 Le mécanisme, en une phrase
+
+**`N` ré-ouvertures CONSÉCUTIVES échouées, chacune constatée sur une TRANSACTION DE DONNÉE.**
+⛔ Ni scan, ni `i2c_master_probe()`, ni `i2c_master_bus_add_device()`.
+
+| | `dn_capteurs` (BME680) | `dn_env` (BH1750, VL6180X) |
+|---|---|---|
+| **la transaction qui qualifie** | `relever_identite()` — lecture du registre d'identité | `configurer()` — la séquence de configuration |
+| **le compteur** | `s_reouv_echecs` | `s_c[id].reouv_echecs` |
+| **le seuil** | `DN_CAPT_ABSENT_SEUIL` = 2 | `DN_ENV_ABSENT_SEUIL` = 2 |
+| **le backoff** | `DN_CAPT_REINIT_CYCLES` = 12 × 5 s | `DN_ENV_REINIT_CYCLES` = 12 × 5 s |
+| **⇒ délai minimum** | **120 s** | **120 s** |
+| **l'état** | `DN_CAPT_ABSENT` | `DN_ENV_ABSENT` |
+| **le seau** | `absences` | `absences` |
+
+⚠️ **LE MÊME MOT DANS LES DEUX MODULES, ET C'EST DÉLIBÉRÉ** — le dépôt l'écrit déjà pour les seaux :
+*« deux modules qui comptent la même chose sous deux noms sont deux instruments qu'on ne peut pas
+comparer »*. ⇒ La sentinelle de VALEUR `DN_ENV_ABSENT` a donc été **renommée `DN_ENV_VAL_ABSENTE`**
+(15 sites) pour libérer le mot : `dn_env.h` porte maintenant **deux absences distinctes** — celle
+d'une *grandeur* et celle d'un *device* —, et les confondre était précisément l'étiquette qui ment.
+
+### 13.28.2 🔴 POURQUOI 120 s, ET ⛔ POURQUOI CE N'EST PAS UN CHOIX
+
+`2 × 12 × 5 000 ms = 120 s`, soit **2× la fenêtre froide**. La borne vient de **§13.17.1** : à froid
+la lecture d'identité **échoue TOUJOURS**, le bus **entier** se dégrade (950 err / 1 713 lectures du
+GT911 = **55,5 %**, **toutes dans les ~40 premières secondes**) et **il se rétablit SEUL vers
+T+~60 s**.
+⇒ Un verdict rendu avant **déclarerait ABSENT un capteur SOUDÉ**.
+
+**DEUX EXCLUSIONS PORTENT CETTE GARANTIE, et elles sont écrites AU CODE :**
+1. ⛔ **La tentative du BOOT ne compte pas.** `dn_capteurs_init()` et `dn_env_init()` tentent leur
+   première transaction à froid — c'est l'échec ATTENDU. La compter ferait tomber le verdict à
+   **60 s**, c'est-à-dire **dans** la fenêtre.
+2. ⛔ **Le chemin DÉGRADÉ de `dn_capteurs` ne compte pas** non plus : il est cadencé à **5 s**, donc
+   il ferait tomber `ABSENT` à **10 s** d'uptime. ✅ Et le verdict reste ATTEIGNABLE : au-delà de
+   `DN_CAPT_RECONF_ECHECS_MAX`, ce chemin ferme le driver et la branche de backoff prend le relais.
+
+⚠️ **Les deux exclusions sont GARDÉES** par `tools/verif_paliers_dn441.py` (contrôles 5 et 6), et
+**leurs mutants ont été vus rougir**.
+
+### 13.28.3 ✅ `dn_env_present()` NE MENT PLUS — voie (a), ⛔ et la sémantique n'a PAS bougé
+
+~~`dn_env_present()`~~ ⇒ **`dn_env_device_ouvert()`**. **Le nom est corrigé, le comportement est
+INCHANGÉ**, et c'est le choix le plus sûr : le bloc `🔴 JAMAIS CADENCE` de `cmd_env` s'appuie dessus
+pour distinguer *« `dn_env_init()` a échoué »* de *« la tâche n'a pas démarré »* — il a besoin de
+savoir si un **descripteur** existe, ⛔ pas si le capteur répond. Changer le sens l'aurait rendu
+faux **sans que rien ne crie**.
+
+🎯 **ET LE DÉPÔT PORTAIT DÉJÀ SON PROPRE DÉMENTI** : la déclaration disait
+`/* le device est OUVERT (≠ il répond) */`. **Le commentaire était honnête ; c'est le NOM qui
+mentait.** ⇒ pour savoir si le capteur EST LÀ, c'est désormais `dn_env_etat()`.
+
+### 13.28.4 🎯 LES TROIS TÉMOINS, LEURS PORTÉES, ET ⛔ CE QU'AUCUN NE REMPLACE
+
+| témoin | commande | coût | ce qu'il exerce **vraiment** | ⛔ ce qu'il n'exerce PAS |
+|---|---|---|---|---|
+| **inhibition logicielle** | `absent inhiber <bme\|lum\|tof\|tous> on\|off` | **nul** | l'état « aucun device » **du point de vue du code**, sur les deux capteurs : backoff, seuil, transition, seau, réversibilité, désarmement d'AC3, les quatre phrases | ⛔ **ni NACK, ni timeout, ni bus** — rien ne part sur le fil |
+| **`0x40`, adresse réellement vide** | `absent vide` | **nul** | le **VRAI** chemin de transaction contre du **VRAI silence** : même driver, même `DN_ENV_I2C_TIMEOUT_MS`, et **la durée EFFECTIVE par transaction** (AC9.3.a) | ⛔ **UNE** adresse sur un bus où **7 devices répondent** ; ⛔ pas les conditions électriques d'un bus nu ; ⛔ **pas le boot** |
+| 🎯 **débranchement réel** | *(geste owner)* | **insertions** | **LA CARTE NUE** : deux devices absents, pull-ups et appel de courant réels, **et le BOOT À FROID** | — *c'est lui le témoin **qualifiant*** |
+
+⚠️ **DEUX PIÈGES ONT ÉTÉ ÉCRITS DANS LE CODE DES TÉMOINS**, parce qu'ils les auraient rendus MUETS :
+- **L'inhibition de `dn_capteurs` FERME le driver.** Sans ça, la boucle continuait à lire la
+  **donnée** (qui, elle, aboutit) et remettait le compteur à zéro **à chaque cycle** : le seuil
+  n'aurait **jamais** été atteint, et le témoin aurait été vert sans rien prouver.
+- **Elle pose `s_id_tentee = true` / `s_id_lue = false`, ⛔ PAS `invalider_identite()`.**
+  *« Rien n'a été tenté »* et *« on a demandé, rien n'a répondu »* sont **deux diagnostics opposés**,
+  et **seul le second** alimente le verdict — c'est la distinction que le 4ᵉ cas de
+  `journaliser_identite()` a coûté (CR `dn4-2`).
+
+### 13.28.5 ⛔ CE QUE `0x40` NE PROUVERA JAMAIS, ET ÇA S'ÉCRIT ICI
+
+`0x40` est **réellement vide sur cette carte** — l'INA219 a été **retiré physiquement du bus le
+2026-08-21** et `lire_ina219()` **supprimée** (*« le cadencer ne COMPILERAIT PAS »*).
+✅ Le témoin **commence par le prouver** : 5 sondages **et** une transaction de donnée. **Si quoi que
+ce soit acquitte, il s'arrête et dit qu'il ne prouve rien** — ⛔ il ne suppose pas le retrait, le
+dossier ayant mesuré cette adresse à **5/5** quand le module était là.
+
+⛔ **Mais il exerce UNE adresse sur un bus où SEPT devices répondent encore.** Il n'exerce **ni** les
+conditions électriques d'un bus nu (pull-ups, appel de courant à froid de trois modules — cause
+candidate n° 1 de §13.16.10) **ni** le démarrage d'une carte sans capteurs.
+⇒ **C'est le témoin À ZÉRO INSERTION**, celui qu'on rejoue tous les jours. **Il ne qualifie pas le
+palier à lui seul.**

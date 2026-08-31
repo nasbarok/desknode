@@ -17,6 +17,101 @@ capteur mesure l'ambiance là où il est posé, ce qui est assumé). Affiche en 
 réseau (via un agent Windows) + température, humidité (capteurs I²C locaux) — avec deux états
 visuels (**Ambient** H24 / **Actif** au toucher) et une identité « **Living PCB** ».
 
+## 🔴 CE QUE TA CONFIGURATION TE DONNE — ET CE QU'ELLE TE RETIRE (`dn4-41`, D19)
+
+> ⚠️ **Cette section est un AJOUT, ⛔ pas une réorganisation.** Ce README fait 169 Ko et
+> c'est `dn8` qui le **scinde** (journal vers `docs/`, vitrine courte à la racine).
+
+**DeskNode ne t'oblige à rien.** Pas de compte, pas de cloud, pas de chaîne de compilation, pas de
+droits administrateur, **pas de capteur obligatoire**. Ce qui suit dit exactement ce que chaque
+configuration affiche — et ce qu'elle **ne peut pas** afficher. ⛔ Rien n'y est promis qui n'ait
+été mesuré sur cette carte.
+
+### Les deux paliers matériels
+
+| palier | ce que tu achètes | ce que tu ajoutes |
+|---|---|---|
+| **DeskNode** | **la carte Waveshare ESP32-S3-Touch-LCD-2.8B, seule** | rien |
+| **DeskNode + Ambiance** | la même carte | **BME680** (température, humidité) + **BH1750** (lumière), sur le header I²C 2×12 — **capteurs soudés** côté breakout, **Dupont** côté carte |
+
+⛔ **La carte seule n'est pas un mode dégradé.** C'est une configuration **valide et gardée** : le
+firmware sait qu'il n'a pas de capteur, il le **dit**, et il **désarme** ce qui n'a plus d'entrée.
+
+### 🔴 TROIS AXES, ⛔ PAS DEUX — et le troisième est indépendant des autres
+
+Le troisième axe est **logiciel, côté PC** : `LibreHardwareMonitor` se combine avec les deux
+paliers matériels, il ne s'y range pas.
+
+| capteurs soudés | LHM installé | PC allumé | ce qui VIT | ce qui dit `--` |
+|:---:|:---:|:---:|---|---|
+| ✅ | ✅ | ✅ | **les 6 cases**, CPU avec sa °C, DISQUE avec ses tr/min | — |
+| ✅ | ⛔ | ✅ | les 6 cases · CPU garde **% et GHz** · DISQUE garde ses **Mo/s** | la **°C CPU** et les **tr/min** |
+| ✅ | — | ⛔ | **AMBIANCE seule** (température, humidité) — 1 case sur 6 | les 5 cases venues du PC |
+| ⛔ | ✅ | ✅ | 5 cases sur 6 — CPU/GPU/RAM/RÉSEAU/DISQUE, °C et tr/min comprises | **AMBIANCE** entière |
+| ⛔ | ⛔ | ✅ | 5 cases sur 6, sans la °C CPU ni les tr/min | AMBIANCE · °C CPU · tr/min |
+| ⛔ | — | ⛔ | 🔴 **RIEN — 0 case sur 6** | **tout** |
+
+### 🔴 « VIVANT MÊME PC ÉTEINT » N'EXISTE PAS AU PALIER « DeskNode »
+
+**D6** promettait qu'une case sur six survive au PC éteint : c'est **AMBIANCE**, et elle vient du
+**BME680**. Sans lui, c'est **0 sur 6**, ⛔ pas 1.
+⛔ **Ce n'est pas un défaut, c'est ce que le palier coûte** — et c'est écrit ici plutôt que
+découvert le premier soir.
+
+### 🔴 LE PALIER LHM N'EST PAS « AVEC LHM ⇒ °C »
+
+La table des sondes de l'agent est une **propriété de la tour de l'auteur** :
+`/intelcpu/0/temperature/10` et `/lpc/nct6792d/0/fan/{0,1,2,4}`.
+⇒ **Avec un autre CPU ou une autre carte mère, LHM peut être debout et ne rien donner.**
+
+✅ **Et l'instrument qui le montre existe déjà** : le bilan de fin de l'agent distingue **six**
+diagnostics jamais fondus, dont le seau **`absences`** — *« LHM a RÉPONDU, SANS cette valeur »* —
+qui n'est **ni** `pannes` (LHM injoignable) **ni** `rejets`. ⇒ si tes tr/min restent à `--` pendant
+que LHM tourne, **c'est ce seau-là qu'il faut lire**, et il te dira que le mapping ne correspond
+pas à ton matériel.
+
+### 🔴 « PAS DE DROITS ADMINISTRATEUR » EST VRAI AU PALIER CARTE SEULE, **ET FAUX AU PALIER LHM**
+
+- ✅ **L'agent DeskNode** : *« sans élévation, sans driver, sans .NET »*. Cette formule est
+  **vraie** et elle ne change pas.
+- 🔴 **LibreHardwareMonitor**, lui, exige **une élévation**, une tâche planifiée en
+  **`RunLevel Highest`**, et un **driver noyau signé** (PawnIO 2.2.0).
+  ⚠️ Son prédécesseur **WinRing0 est frappé par CVE-2020-14979** et Defender le détecte depuis
+  fin 2024 sous `HackTool:Win32/Winring0`.
+- ⇒ **C'est LHM qui coûte l'élévation, ⛔ pas DeskNode.** Le palier carte seule + agent n'en
+  demande aucune, et le palier « avec LHM » en demande une. **Écrit, ⛔ pas tu.**
+
+### ⚠️ PORTABILITÉ — CE QUI EST COUVERT, ET CE QUI NE L'EST PAS
+
+| | état |
+|---|---|
+| **GPU AMD** | ✅ **couvert et mesuré** — via `atiadlxx.dll` (ADL) |
+| **GPU NVIDIA** | 🔴 **NON IMPLÉMENTÉ.** ⛔ Il n'y a **aucun NVML** dans l'agent (`pynvml` n'est même pas installé). Un dossier de ce dépôt a écrit *« GPU : NVIDIA (NVML) et AMD »* — **c'est faux dans le code**, et le README ne le promet pas. |
+| **Intel Arc / iGPU** | ⚠️ **non instruits** — aucun matériel ici pour le savoir |
+| **agent** | **Windows seulement** |
+
+### ⚠️ CE QUI N'A PAS ÉTÉ VÉRIFIÉ — ET LE VRAI, ⛔ PAS PLUS
+
+- ✅ Le palier « DeskNode » (carte seule) est **construit, instrumenté et gardé** : le firmware
+  rend un verdict **ABSENT** distinct de « pas encore lu », il **compte** ses absences, il
+  **désarme** l'asservissement de luminosité et **dit pourquoi**, et la luminosité **se règle au
+  doigt** au MENU. Une gate (`tools/verif_paliers_dn441.py`) garde ces invariants.
+- 🟡 **Le démarrage à froid sur un bus réellement sans capteurs** est le témoin **qualifiant**.
+  ⚠️ **Son état est tenu à jour ci-dessous, et il dit le vrai, ⛔ ni « non testé » ni « validé ».**
+
+  > **État au 2026-08-31** : le palier a été **exercé par deux témoins à coût nul** — l'inhibition
+  > logicielle des deux capteurs (`absent inhiber`) et l'adresse **réellement vide `0x40`**
+  > (`absent vide`, l'INA219 ayant été retiré physiquement du bus le 2026-08-21).
+  > ⛔ **Le démarrage à froid capteurs débranchés n'est pas encore consigné ici** : c'est un geste
+  > owner, sous budget d'insertions annoncé. La ligne portera **son chiffre** quand il aura eu lieu.
+
+- 🔴 **ET CE QUI RESTE VRAI DANS TOUS LES CAS** : ce palier a été éprouvé **sur UNE carte** —
+  celle du développement — ⛔ **jamais sur un exemplaire monté par quelqu'un d'autre.**
+  ⇒ *« Ce palier est construit, instrumenté et gardé ; **tu es le premier à l'assembler** —
+  dis-nous ce que tu vois. »*
+
+---
+
 ## Pilotage projet
 
 Le cockpit BMad (brief, epics, stories, sprint status) vit dans le repo `compagnon_project` :
