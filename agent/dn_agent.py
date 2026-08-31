@@ -3489,7 +3489,18 @@ def principal() -> int:
     sortie_grp.add_argument("--ws", metavar="URL", help="branche B : URL WebSocket (ex. ws://IP:80/dn)")
     ap.add_argument("--temoin", action="store_true",
                     help="coût CPU de l'agent lui-même sur stderr toutes les 10 s")
+    # 🔴 `dn4-41` / AC6 — `--lhm ""` RETOMBAIT **EN SILENCE** SUR 127.0.0.1:8085.
+    #    C'est la 4e occurrence vivante d'une classe de defaut que ce fichier se
+    #    reproche TROIS fois (`--serie ""`, `--stop-si ""`, `--lhm "hote:"`) —
+    #    et la 4e portait sur **l'option que ces trois commentaires citent
+    #    nommement**. Cause identique aux trois autres : `if args.lhm:` teste la
+    #    VERACITE la ou il fallait tester la PRESENCE.
+    # ⚠️ Elle tombe sur l'option meme par laquelle on DESIGNE — ou on RATE — la
+    #    source que `dn4-41` rend optionnelle : un lanceur dont la variable
+    #    d'environnement est vide croyait pointer ailleurs, et mesurait le
+    #    localhost par defaut. ⇒ le diagnostic aurait accuse LHM.
     ap.add_argument("--lhm", metavar="HOTE:PORT", default=None,
+                    type=_non_vide("un HOTE:PORT"),
                     help="ou joindre LibreHardwareMonitor (defaut 127.0.0.1:8085). "
                          "⚠️ EXERCE les chemins d'echec ; ⛔ ne remplace PAS AC8, "
                          "qui exige le VRAI service coupe")
@@ -3688,7 +3699,13 @@ def principal() -> int:
     #    meme la construction du `Collecteur`. Et `--lhm ::1` se decoupait en hote
     #    `:` port `1` — une adresse IPv6 acceptee EN SILENCE sous une autre.
     lhm_hote, lhm_port = LHM_HOTE, LHM_PORT
-    if args.lhm:
+    # 🔴 `dn4-41` / AC6.1 — ~~`if args.lhm:`~~ ⇒ **`is not None`**. LA PRESENCE,
+    #    ⛔ PAS LA VERACITE. Le `type=` ci-dessus refuse deja le vide a
+    #    l'analyse ; ce test-ci est la SECONDE moitie du meme correctif, et il
+    #    doit rester meme si quelqu'un retire le `type=` : les deux moities ont
+    #    ete separees dans les trois occurrences precedentes, et c'est ce qui a
+    #    permis a la classe de survivre.
+    if args.lhm is not None:
         brut = args.lhm.strip()
         if brut.startswith("["):                       # [::1]:8085, forme RFC 3986
             fin_crochet = brut.find("]")
@@ -3983,6 +4000,36 @@ def principal() -> int:
         bilan_ecrit.set()
         del _handler_ref   # garde la référence vivante jusqu'ici (ctypes)
     return 0
+
+
+def _non_vide(quoi: str):
+    """Fabrique un validateur argparse qui REFUSE une valeur VIDE, à l'analyse.
+
+    🔴 `dn4-41` / AC6.2 — POURQUOI UNE FABRIQUE ET ⛔ PAS UNE 4ᵉ COPIE.
+       Ce fichier se reproche CE MÊME DÉFAUT **trois fois**, et `dn4-41` en a
+       trouvé la **QUATRIÈME OCCURRENCE VIVANTE** — sur `--lhm`, c'est-à-dire
+       **sur l'option que ces trois commentaires citent nommément**. Corriger la
+       4ᵉ en recopiant la 3ᵉ aurait garanti une 5ᵉ.
+    ⇒ Le garde est désormais **UN SEUL**, et il se paramètre par le NOM DE CE
+      QU'ON ATTEND — parce que c'est la seule chose qui change d'une option à
+      l'autre : `--stop-si` veut un chemin, `--lhm` veut un `HOTE:PORT`. Un
+      message qui dit « un chemin » sur `--lhm` serait un diagnostic qui envoie
+      chercher la mauvaise chose.
+    """
+    def valider(v: str) -> str:
+        if v is None or v.strip() == "":
+            raise argparse.ArgumentTypeError(
+                # (!) MESSAGE EN ASCII PUR : il s'affiche dans une console
+                #     cmd.exe, dont la page de code rend un "interdit" comme
+                #     \u26d4. Un diagnostic illisible la ou il s'affiche n'est
+                #     pas un diagnostic.
+                # ⚠️ argparse prefixe lui-meme « argument --lhm: » — l'option est
+                #    donc NOMMEE dans la sortie (exigence d'AC6.3), sans qu'on
+                #    ait a la recopier ici (et a la laisser deriver).
+                "valeur VIDE refusee : une option posee doit porter %s. "
+                "Pour ne pas l'utiliser, ne pas la poser du tout." % quoi)
+        return v
+    return valider
 
 
 def _chemin_non_vide(v: str) -> str:
