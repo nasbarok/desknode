@@ -1,0 +1,43 @@
+# dn4-24 / T0-T8 — L'ETAT PORCELAIN DES DEUX DEPOTS
+# Ecrit le 2026-08-31 par la REVUE DE CODE, ⛔ pas au T0.
+#
+# 🔴 POURQUOI CE FICHIER EXISTE, ET CE QU'IL NE PEUT PAS RATTRAPER.
+#    La sous-tache T0 « git status --porcelain sur les DEUX depots, ecrire tout SHA
+#    qui a bouge » etait COCHEE, et T0-contexte.txt ne porte que les deux SHA de HEAD.
+#    Le porcelain du T0 n'a ete ecrit nulle part, et il ne se reconstitue PAS.
+#    ⇒ Ce qui a manque n'est pas cosmetique : les HEAD reels pendant le dev etaient
+#    398e641 (cockpit) et 7bab85b (desknode), soit des commits de dn4-29 poses APRES
+#    le T0 de cette story — et c'est exactement par la qu'un manifeste a ete committe
+#    contre un ledger qui n'existait pas encore.
+
+== HORODATAGE ==
+2026-08-31T01:57:11+02:00
+
+== DESKNODE : /home/nasbarok/projects/desknode ==
+HEAD  : 7bab85b  fix(dn4-29): LA PISTE DE LA JAUGE CESSE DE SE CONFONDRE AVEC L'INDICAT
+--- git status --porcelain ---
+ M README.md
+ M docs/dn4-15-arbitrage.md
+ M firmware/desknode/main/CMakeLists.txt
+ M firmware/desknode/main/dn_console.c
+ M firmware/desknode/main/dn_ui.c
+ M firmware/desknode/main/dn_ui.h
+ D tests/.gitkeep
+ M tools/verif_courbe_dn413.py
+ M tools/verif_dossier_dn415.py
+ M tools/verif_veille_dn33.py
+?? mesures/dn4-24/
+?? tests/README.md
+?? tools/run_gates.sh--- git diff HEAD --shortstat ---
+10 files changed, 950 insertions(+), 231 deletions(-)
+
+== COCKPIT : /home/nasbarok/projects/compagnon_project ==
+HEAD  : 398e641  docs(dn4-29): LA SEANCE EST CONSIGNEE, ET CE QU'ELLE A ECRIT DE FAUX E
+--- git status --porcelain ---
+ M _bmad-output/implementation-artifacts/deferred-work.md
+ M _bmad-output/implementation-artifacts/dn4-16-arbitrage-ledger.md
+ M _bmad-output/implementation-artifacts/sprint-board-desknode.html
+ M _bmad-output/implementation-artifacts/sprint-status-desknode.yaml
+?? _bmad-output/implementation-artifacts/dn4-24-les-vingt-et-une-gates-passent-toutes-et-les-rouges-sont-soldees.md
+?? ops/audit_impostor_episodes.py--- git diff HEAD --shortstat ---
+4 files changed, 93 insertions(+), 13 deletions(-)

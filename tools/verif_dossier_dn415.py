@@ -39,9 +39,22 @@ MANIFESTE porte un VERDICT pour chaque occurrence trouvee.
      `deployer_tour.sh` MUETTE PENDANT DEUX REVUES. Une gate de COMPTAGE est le
      pire endroit du monde pour ce piege.
 
-  🔴 ELLE CLE SUR (depot, fichier, ligne, motif). Une occurrence DEPLACEE sort
-     en ROUGE, meme si son texte n'a pas bouge. C'est VOULU : le manifeste doit
-     etre RE-LU, pas recite. C'est aussi le cout de cette gate, il est declare.
+  🔴 ELLE CLE SUR (depot, fichier, MOTIF, ANCRE DE CONTENU, RANG) —
+     ⛔ **PLUS SUR LE NUMERO DE LIGNE**, retire par `dn4-24` (AC4) parce qu'une
+     ecriture en amont du fichier perimait 62 controles sans qu'un seul sens
+     change. Une occurrence DEPLACEE reste donc VERTE ; une occurrence dont le
+     TEXTE change, ou qui est RACCOURCIE, sort en ROUGE.
+     ⚠️ **CE DOCSTRING DISAIT L'INVERSE JUSQU'AU 2026-08-31** (« une occurrence
+        DEPLACEE sort en ROUGE… C'est VOULU »). Il decrivait la gate d'avant
+        `dn4-24`. Une gate dont la raison d'etre est « le dossier ne ment plus
+        sur ce qu'il decrit » mentait sur elle-meme dans ses 60 premieres lignes.
+     ⚠️ **CE QUE LE DEPLACEMENT NE PROTEGE PLUS, ET C'EST LE COUT D'AC4** : une
+        occurrence portant un verdict `HISTORIQUE` — « vrai A SA DATE » — peut
+        etre DEPLACEE dans un bloc de prescription VIVANTE et y garder son
+        verdict, gate verte. Mesure : une ligne remontee en tete de fichier ⇒
+        `20 OK, 0 KO`. ⚖️ Arbitre par l'owner le 2026-08-31 : **le cout s'ECRIT,
+        la cle ne se resserre PAS** — resserrer sur la section reprendrait d'une
+        main ce qu'AC4.2 vient de gagner.
 
   ⚠️ UNE LIGNE SOURCE PEUT PORTER PLUSIEURS OCCURRENCES DU MEME MOTIF. Le
      manifeste porte alors UNE ligne avec une colonne `n` — c'est UN SEUL acte
@@ -420,10 +433,41 @@ def balaye(racine, rels, motifs=None, saut_ligne=None):
     return out
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# 🔴 dn4-24 / AC4 — LA 3e COLONNE N'EST PLUS UNE ADRESSE, C'EST UN RANG.
+#
+# CE QUI SE PAYAIT. La cle d'arbitrage etait `(depot, fichier, LIGNE, motif)`.
+# Un numero de ligne ne dit rien du CONTENU : il dit ou il se trouvait le jour
+# ou on l'a lu. Or ces fichiers s'ecrivent tous les jours — `deferred-work.md`
+# recoit une entree, `epics-desknode-v1.md` une correction — et TOUT ce qui est
+# en dessous se decale. Mesure du 2026-08-30 : inserer UNE ligne ordinaire en
+# tete de `deferred-work.md` faisait passer cette gate a **69 KO** sans qu'une
+# seule occurrence change de sens.
+# ⚠️ Et le mecanisme n'est pas theorique : en re-ancrant, TROIS adresses de
+#    `dn_console.c` etaient DEJA perimees (7018/7817/8160 -> 7029/7828/8171),
+#    decalees le jour meme par un correctif de `dn4-24`.
+#
+# CE QUI ANCRE MAINTENANT : le TEXTE. La cle est
+#     (depot, fichier, motif, PREFIXE_ANCRE premiers caracteres normalises de
+#      la citation, RANG parmi les occurrences IDENTIQUES)
+# Le rang ne sert qu'a departager des lignes que rien d'autre ne distingue —
+# il vaut `1` pour 194 des 195 occurrences. ⛔ Ce n'est PAS une adresse : il ne
+# bouge pas quand le fichier grossit.
+#
+# ⚠️ POURQUOI UN PREFIXE ET PAS LA CITATION ENTIERE : les deux cotes tronquent
+#    la MEME ligne a 120 caracteres, mais le manifeste echappe ses `|` — la
+#    troncature ne tombe donc pas au meme endroit. On compare un prefixe court
+#    et sur. Cout declare : deux lignes du meme fichier, meme motif, qui ne
+#    divergeraient qu'APRES 48 caracteres, se departagent par leur RANG et non
+#    par leur texte. Le controle de citation ci-dessous (`derives`) continue,
+#    lui, de confronter le prefixe COMMUN complet.
+# ═══════════════════════════════════════════════════════════════════════════
+PREFIXE_ANCRE = 48
+
 RE_LIGNE_MANIF = re.compile(
     r"^\|\s*(?P<depot>desknode|cockpit)\s*\|"
     r"\s*(?P<fichier>[^|]+?)\s*\|"
-    r"\s*(?P<ligne>\d+)\s*\|"
+    r"\s*(?P<occ>\d+)\s*\|"
     r"\s*(?P<motif>[^|]+?)\s*\|"
     r"\s*(?P<n>\d+)\s*\|"
     r"\s*(?P<cit>.*?)\s*\|"
@@ -469,8 +513,23 @@ def lit_manifeste(chemin):
                 erreurs.append("l.%d — entree NON PARSEE (%d champs) : %s"
                                % (n, len(champs), ls[:90]))
             continue
-        cle = (m.group("depot"), m.group("fichier"),
-               int(m.group("ligne")), m.group("motif"))
+        occ = int(m.group("occ"))
+        # 🔴 REVUE DE CODE DU 2026-08-31 — UN `occ` HORS DOMAINE PRODUISAIT LE
+        #    MAUVAIS DIAGNOSTIC. La colonne est un RANG parmi des occurrences
+        #    identiques : il commence a 1. Un `0` (ou un rang superieur au
+        #    nombre d'occurrences du groupe) fabriquait une cle qui n'existe
+        #    dans aucun arbre, et la gate annoncait « occurrence FANTOME » —
+        #    c'est-a-dire « ce constat n'existe plus dans le depot » — la ou la
+        #    verite est « ce NUMERO est faux ». ⛔ On cherche alors la correction
+        #    dans le mauvais fichier.
+        if occ < 1:
+            erreurs.append("l.%d — rang `occ` HORS DOMAINE (%d) : le rang "
+                           "commence a 1. ⛔ Ce n'est PAS une occurrence "
+                           "fantome, c'est un NUMERO faux." % (n, occ))
+            continue
+        cle = (m.group("depot"), m.group("fichier"), m.group("motif"),
+               cit_comparable(m.group("cit"))[:PREFIXE_ANCRE],
+               occ)
         if not m.group("pourquoi"):
             erreurs.append("l.%d — verdict SANS MOTIF" % n)
         if m.group("motif") not in CLES_MOTIFS:
@@ -682,13 +741,24 @@ def main():
     ctrl(bool(manif), "le manifeste est lisible et non vide",
          "%d entree(s)" % len(manif))
 
-    arbre = {(d, r, l, c): (n, cit) for d, r, l, c, n, cit in arbitre}
+    # 🔴 dn4-24 / AC4 — LE RANG SE CALCULE DE L'ARBRE, DANS L'ORDRE DU FICHIER.
+    #    ⛔ La ligne ne fait plus partie de la cle : elle est CONSERVEE dans la
+    #    valeur, pour qu'un humain sache ou aller quand la gate rougit — mais
+    #    aucun verdict n'en depend.
+    _rangs = {}
+    arbre = {}
+    for d, r, l, c, n, cit in sorted(arbitre, key=lambda t: (t[0], t[1], t[3], t[2])):
+        ancre = cit_comparable(cit)[:PREFIXE_ANCRE]
+        base = (d, r, c, ancre)
+        _rangs[base] = _rangs.get(base, 0) + 1
+        arbre[base + (_rangs[base],)] = (n, cit, l)
 
     manquantes = sorted(set(arbre) - set(manif))
     for cle in manquantes[:40]:
-        ctrl(False, "occurrence NOUVELLE ou DEPLACEE",
-             "%s:%s:%d [%s] %s" % (cle[0], cle[1][-34:], cle[2], cle[3],
-                                   arbre[cle][1][:52]))
+        ctrl(False, "occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne cle plus)",
+             "%s:%s [%s] #%d (l.%d) %s"
+             % (cle[0], cle[1][-34:], cle[2], cle[4], arbre[cle][2],
+                arbre[cle][1][:52]))
     if len(manquantes) > 40:
         ctrl(False, "… et d'autres", "%d au total" % len(manquantes))
     ctrl(not manquantes, "toute occurrence de l'arbre est AU MANIFESTE",
@@ -697,7 +767,8 @@ def main():
     fantomes = sorted(set(manif) - set(arbre))
     for cle in fantomes[:40]:
         ctrl(False, "ligne de manifeste SANS occurrence dans l'arbre",
-             "%s:%s:%d [%s]" % (cle[0], cle[1][-40:], cle[2], cle[3]))
+             "%s:%s [%s] #%d « %.44s »"
+             % (cle[0], cle[1][-40:], cle[2], cle[4], cle[3]))
     if len(fantomes) > 40:
         ctrl(False, "… et d'autres fantomes", "%d au total" % len(fantomes))
     ctrl(not fantomes, "le manifeste ne cite aucune occurrence FANTOME",
@@ -707,7 +778,8 @@ def main():
                 if manif[k][0] != arbre[k][0]]
     for k, a_, b_ in ecarts_n[:20]:
         ctrl(False, "le `n` du manifeste ne colle pas a l'arbre",
-             "%s:%s:%d [%s] manifeste=%d arbre=%d" % (k[0], k[1][-28:], k[2], k[3], a_, b_))
+             "%s:%s [%s] #%d (l.%d) manifeste=%d arbre=%d"
+             % (k[0], k[1][-28:], k[2], k[4], arbre[k][2], a_, b_))
     if len(ecarts_n) > 20:
         ctrl(False, "… et d'autres ecarts de `n`", "%d au total" % len(ecarts_n))
     ctrl(not ecarts_n, "le `n` de chaque ligne colle a l'arbre", "%d ligne(s)" % len(manif))
@@ -718,23 +790,52 @@ def main():
     #    « … EST BIEN UN VL53L0X » ⇒ 14 OK / 0 KO. Le verdict restait colle a un
     #    texte qui avait change de sens.
     derives = []
+    tronquees = []
     for k in sorted(set(manif) & set(arbre)):
         a_cit, b_cit = cit_comparable(manif[k][3]), cit_comparable(arbre[k][1])
         # ⚠️ Les DEUX citations sont des troncatures a 120 car. de la MEME
         #    ligne, mais le manifeste echappe ses `|` : la troncature ne tombe
         #    donc pas au meme endroit. On compare le PREFIXE COMMUN, ⛔ pas les
-        #    longueurs. Cout declare : une inversion de sens qui n'arriverait
-        #    qu'APRES ~110 caracteres echapperait au controle.
+        #    longueurs.
+        #
+        # 🔴 REVUE DE CODE DU 2026-08-31 — LE PREFIXE COMMUN SEUL RENDAIT LA
+        #    TRONCATURE INVISIBLE, ET C'ETAIT MESURE. `n = min(len(a), len(b))`
+        #    puis `a[:n] != b[:n]` : RACCOURCIR la ligne source ne peut JAMAIS
+        #    faire diverger les prefixes. Mesure : 35 caracteres retires d'un
+        #    enonce arbitre (`…capteurs-i2c.md`, la phrase qui dit quel capteur
+        #    ToF est REELLEMENT pose) ⇒ `BILAN : 20 OK, 0 KO`. Un enonce ampute
+        #    de sa moitie gardait son verdict, en vert.
+        # ⇒ ON AJOUTE UNE GARDE DE LONGUEUR, et elle est mesuree : sur les 195
+        #   lignes du manifeste, la citation de l'ARBRE n'est JAMAIS plus courte
+        #   que celle du manifeste (181 egales, 14 plus longues a cause de
+        #   l'echappement, **0 plus courte**). Donc « arbre plus court » ne peut
+        #   signifier qu'une chose : LA LIGNE SOURCE A PERDU DU TEXTE.
+        # ⚠️ COUT QUI RESTE, ET IL EST DECLARE : un AJOUT au-dela du 120e
+        #   caractere reste invisible — le manifeste ne stocke que 120
+        #   caracteres, il ne peut pas garder ce qu'il n'a jamais lu.
         n = min(len(a_cit), len(b_cit))
         if n and a_cit[:n] != b_cit[:n]:
             derives.append(k)
+        elif len(b_cit) < len(a_cit):
+            tronquees.append(k)
     for k in derives[:20]:
         ctrl(False, "le TEXTE a change sous un verdict inchange",
-             "%s:%s:%d [%s]\n         manifeste : %s\n         arbre     : %s"
-             % (k[0], k[1][-28:], k[2], k[3],
+             "%s:%s [%s] #%d (l.%d)\n         manifeste : %s\n         arbre     : %s"
+             % (k[0], k[1][-28:], k[2], k[4], arbre[k][2],
                 manif[k][3][:70], arbre[k][1][:70]))
     if len(derives) > 20:
         ctrl(False, "… et d'autres textes derives", "%d au total" % len(derives))
+    for k in tronquees[:20]:
+        ctrl(False, "la ligne source a ete TRONQUEE sous un verdict inchange",
+             "%s:%s [%s] #%d (l.%d)\n         manifeste : %s\n         arbre     : %s"
+             % (k[0], k[1][-28:], k[2], k[4], arbre[k][2],
+                manif[k][3][:70], arbre[k][1][:70]))
+    if len(tronquees) > 20:
+        ctrl(False, "… et d'autres lignes tronquees", "%d au total" % len(tronquees))
+    ctrl(not tronquees,
+         "aucune ligne arbitree n'a ete RACCOURCIE sous son verdict",
+         "%d ligne(s) confrontee(s) en longueur — ⛔ amputer n'est plus invisible"
+         % len(set(manif) & set(arbre)))
     ctrl(not derives,
          "la citation du manifeste colle au TEXTE de l'arbre",
          "%d ligne(s) confrontee(s) — le verdict suit le sens, ⛔ pas la ligne"
@@ -745,7 +846,7 @@ def main():
     compte = {v: 0 for v in VERDICTS}
     for n, v, _p, _c in manif.values():
         compte[v] += n
-    total_arbre = sum(n for n, _c in arbre.values())
+    total_arbre = sum(n for n, _c, _l in arbre.values())
     for v in VERDICTS:
         print("     %-14s %3d" % (v, compte[v]))
     ctrl(sum(compte.values()) == total_arbre,

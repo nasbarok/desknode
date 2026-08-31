@@ -1,0 +1,13 @@
+# T4.3 — le glob CMake, dn4-24
+AVANT : file(GLOB fonts/dn_font_*.c) compile TOUT, en silence.
+APRES : controle contre les LV_FONT_DECLARE de fonts/dn_font.h ⇒ FATAL_ERROR.
+⛔ La liste manuelle n'est PAS revenue : le glob reste, c'est un CONTROLE qui a ete ajoute.
+
+DEMONSTRATION : on pose fonts/dn_font_20.c (residu bidon)
+  idf.py reconfigure ⇒ rc=2
+  message : « dn4-24/AC3.3 : fonts/dn_font_20.c est ramasse par le glob mais
+             n'est DECLARE nulle part dans fonts/dn_font.h. »
+  Polices declarees imprimees : dn_font_14;dn_font_18;dn_font_28;dn_font_33;dn_font_56
+
+SECOND GARDE-FOU : si dn_font.h ne portait AUCUN LV_FONT_DECLARE, le controle
+  ne pourrait pas s'exercer — il sort en FATAL_ERROR plutot que de passer vert.

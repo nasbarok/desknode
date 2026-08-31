@@ -1,0 +1,11 @@
+# T4.2 — le controle s_trop_larges++ LOCALISE, dn4-24
+AVANT : ctrl(wc.count("s_trop_larges++") == 3) — un TOTAL.
+APRES : chaque site epingle par (fonction porteuse, ancre du message de log) + total.
+
+DEMONSTRATION PAR MUTATION (le total reste 3, donc l'ancien controle serait VERT) :
+  on retire l'increment du site « TITRE » de dn_widget_creer
+  on en pose un dans dn_widget_trop_larges()  ⇒ total = 3
+  ancien controle : count == 3          ⇒ VERT (il ne voit rien)
+  nouveau controle :                     ⇒ KO
+     « 2/3 sites a leur place · MANQUANT : [('dn_widget_creer', 'TITRE trop large')]
+       · HORS SITE : ['dn_widget_trop_larges …'] »

@@ -26,6 +26,90 @@ else()
          "${CMAKE_CURRENT_LIST_DIR}/fonts/dn_font_*.c")
 endif()
 
+# ══ dn4-24 / AC3.3 — LE GLOB NE COMPILE PLUS UN `.c` ÉGARÉ EN SILENCE ════════
+#
+# 🔴 LE DÉFAUT. `file(GLOB fonts/dn_font_*.c)` prend TOUT ce qui porte le nom.
+#    Un `dn_font_20.c` oublié par une régénération abandonnée, un
+#    `dn_font_28.c.orig` renommé, une police d'essai laissée là : CMake les
+#    compile, le binaire grossit, et **rien ne le dit**. Le glob a résolu le
+#    défaut inverse (une liste écrite qui périme) — il a apporté le sien.
+# ⛔ ON NE REVIENT PAS À UNE LISTE MANUELLE : c'est exactement ce que ce glob a
+#    remplacé, et le motif est écrit ci-dessus. La parade est un CONTRÔLE.
+#
+# ⚖️ CE QUI FAIT AUTORITÉ : `fonts/dn_font.h`. C'est le fichier que le CODE
+#    inclut ; une police qu'il ne DÉCLARE pas n'est utilisable par personne, et
+#    la compiler ne peut donc que gonfler le binaire. ⛔ Ce n'est PAS
+#    `tools/gen_font_dn.py` : lui dit ce qu'on SAIT produire, pas ce que
+#    l'arbre PORTE ni ce que le code ATTEINT.
+#
+# ⚠️ LA DIRECTION INVERSE — une police déclarée dont le `.c` manque — n'est
+#    volontairement PAS gardée ici : elle échoue déjà bruyamment, en
+#    `undefined reference` au LINK. Le silence n'était que d'un côté.
+# ── REVUE DE CODE DU 2026-08-31 — TROIS FAÇONS DONT CE CONTRÔLE PASSAIT ─────
+#
+# 🔴 (1) `NAME_WE` COUPE L'EXTENSION LA PLUS LONGUE, ET C'EST LE SCÉNARIO QUE
+#     LE COMMENTAIRE CI-DESSUS NOMME LUI-MÊME. Mesuré sous `cmake -P` :
+#         dn_font_28.orig.c  →  NAME_WE = [dn_font_28]   ⇒ DÉCLARÉE ⇒ ACCEPTÉE
+#         dn_font_28.orig.c  →  NAME_WLE = [dn_font_28.orig]  ⇒ épinglée
+#     La sauvegarde que le défaut cite en exemple traversait donc le contrôle
+#     écrit pour elle. ⇒ le nom est désormais exigé EXACTEMENT : `dn_font_<n>.c`.
+# 🔴 (2) `dn_font.h` ÉTAIT LU BRUT : un `LV_FONT_DECLARE` MORT, laissé en
+#     commentaire, légitimait un orphelin. Mesuré : `/* exemple :
+#     LV_FONT_DECLARE(dn_font_20) */` ajouté ⇒ un `dn_font_20.c` égaré passe
+#     ET entre dans `DN_FONTS`. ⇒ les commentaires sont retirés d'abord.
+# 🟠 (3) SYMÉTRIQUEMENT, `LV_FONT_DECLARE (dn_font_44)` avec une espace faisait
+#     un FATAL_ERROR sur une police LÉGITIME. ⇒ l'espace est tolérée.
+# ⚠️ (4) `dn_font.h` N'ÉTAIT PAS DANS `CMAKE_CONFIGURE_DEPENDS` : retirer un
+#     `LV_FONT_DECLARE` sans toucher aux `.c` ne re-configurait RIEN, et
+#     l'orphelin neuf restait compilé jusqu'à un build propre. Le
+#     `CONFIGURE_DEPENDS` du glob ne couvre que les `.c`, ⛔ pas l'en-tête qui
+#     fait autorité.
+if(NOT CMAKE_SCRIPT_MODE_FILE)
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+                 "${CMAKE_CURRENT_LIST_DIR}/fonts/dn_font.h")
+endif()
+file(READ "${CMAKE_CURRENT_LIST_DIR}/fonts/dn_font.h" DN_FONT_H_TXT)
+# (2) Retirer les commentaires AVANT de lire les déclarations : `/* ... */`
+#     d'abord (non gourmand), puis `// ...` jusqu'à la fin de ligne.
+string(REGEX REPLACE "/\\*([^*]|\\*+[^*/])*\\*+/" " " DN_FONT_H_TXT "${DN_FONT_H_TXT}")
+string(REGEX REPLACE "//[^\n]*" " " DN_FONT_H_TXT "${DN_FONT_H_TXT}")
+# (3) L'espace avant/dans la parenthèse est tolérée.
+string(REGEX MATCHALL "LV_FONT_DECLARE[ \t]*\\([ \t]*[A-Za-z0-9_]+[ \t]*\\)"
+       DN_FONTS_DECLAREES "${DN_FONT_H_TXT}")
+set(DN_FONTS_CONNUES "")
+foreach(d ${DN_FONTS_DECLAREES})
+    string(REGEX REPLACE "LV_FONT_DECLARE[ \t]*\\([ \t]*([A-Za-z0-9_]+)[ \t]*\\)" "\\1" n "${d}")
+    list(APPEND DN_FONTS_CONNUES "${n}")
+endforeach()
+if(DN_FONTS_CONNUES STREQUAL "")
+    message(FATAL_ERROR
+        "dn4-24/AC3.3 : AUCUN LV_FONT_DECLARE lu dans fonts/dn_font.h. "
+        "Le controle du glob ne peut pas s'exercer — il ne passe PAS en silence.")
+endif()
+foreach(f ${DN_FONTS})
+    get_filename_component(nom_complet "${f}" NAME)
+    # (1) LE NOM EST EXIGE EXACTEMENT. ⛔ Ni NAME_WE (qui coupe `.orig.c` en
+    #     `dn_font_28`), ni NAME_WLE seul : c'est la FORME du nom qui décide.
+    if(NOT nom_complet MATCHES "^dn_font_[0-9]+\\.c$")
+        message(FATAL_ERROR
+            "dn4-24/AC3.3 (revue 2026-08-31) : fonts/${nom_complet} est ramasse "
+            "par le glob mais son nom n'est pas de la forme dn_font_<n>.c.\n"
+            "  ⇒ c'est un RESIDU (sauvegarde, essai, renommage). L'EFFACER ou le "
+            "sortir de fonts/. ⛔ NAME_WE le faisait passer pour la police "
+            "qu'il sauvegarde.")
+    endif()
+    string(REGEX REPLACE "\\.c$" "" n "${nom_complet}")
+    if(NOT n IN_LIST DN_FONTS_CONNUES)
+        message(FATAL_ERROR
+            "dn4-24/AC3.3 : fonts/${n}.c est ramasse par le glob mais n'est "
+            "DECLARE nulle part dans fonts/dn_font.h.\n"
+            "  Polices declarees : ${DN_FONTS_CONNUES}\n"
+            "  ⇒ soit c'est un residu a EFFACER, soit dn_font.h doit le "
+            "declarer. ⛔ Le compiler en silence gonflait le binaire sans "
+            "qu'aucun code ne puisse l'atteindre.")
+    endif()
+endforeach()
+
 idf_component_register(
     SRCS
         ${DN_FONTS}

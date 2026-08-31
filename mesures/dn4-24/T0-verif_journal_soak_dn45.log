@@ -1,0 +1,53 @@
+[stub] ⚠️  psutil est un STUB (tools/stub_psutil) : les valeurs cpu/ram/net/disk sont FABRIQUEES. ⛔ Aucun chiffre de cette session n'est une mesure.
+[agent] 🔴 JOURNAL DU SOAK — premiere ECHEC D'ECRITURE sur '/tmp/dn45j_vyzhcmi0/casse.log' (disque plein (simule)). La boite noire retentera d'ouvrir a chaque ligne ; le compte final est publie au bilan.
+[agent] 🔴 JOURNAL DU SOAK — ROTATION REFUSEE sur '/tmp/dn45j_vyzhcmi0/rot.log' (fichier tenu (antivirus simule)). Le fichier vivant N'EST PLUS BORNE tant que le verrou tient (antivirus ? editeur ouvert ?).
+==============================================================================
+dn4-5 / AC2.5 — LA BOITE NOIRE DU SOAK
+==============================================================================
+
+── 1. CE QUI EST GARDE, ET CE QUI NE L'EST PAS ───────────────────
+  [OK ] le battement est journalise                                1 ligne BATTEMENT
+  [OK ] un redemarrage est journalise                              `rst:0x…` reconnu
+  [OK ] une panique est journalisee                                `Guru Meditation` reconnu
+  [OK ] la ligne de battement est gardee ENTIERE                   texte preserve
+
+── 2. UNE LIGNE COUPEE ENTRE DEUX `read()` N'EST PAS PERDUE ──────
+  [OK ] coupure a l'octet 10 : la ligne survit ENTIERE             1 ligne(s) ecrite(s)
+  [OK ] coupure a l'octet 40 : la ligne survit ENTIERE             1 ligne(s) ecrite(s)
+  [OK ] coupure a l'octet 146 : la ligne survit ENTIERE            1 ligne(s) ecrite(s)
+
+── 3. LE QUOTA ECRETE, ET IL LE DIT ──────────────────────────────
+  [OK ] le quota plafonne bien les lignes « fil »                  60 gardees pour 110 emises (plafond 60)
+  [OK ] ⛔ l'ecretage est DIT, jamais silencieux                    50 ligne(s) ECARTEE(S) par le quota (plafond 60) · 0 echo(s)
+
+── 3 bis. L'ECHO DE L'AGENT EST FILTRE, ⛔ PAS ECRETE ────────────
+  [OK ] ⛔ AUCUN echo `$DN,` n'entre dans la boite noire, FRAGMENTS COMPRIS 2 ligne(s) ecrite(s) pour 902 echos injectes (dont 2 fragments)
+  [OK ] et la VRAIE ligne passe quand meme                         ⛔ 900 echos ne doivent PAS saturer le quota d'une vraie ligne
+  [OK ] les echos filtres sont COMPTES et DITS                     ⛔ un echo qui s'effondre dirait que la carte ne recoit plus rien
+
+── 4. LES EVENEMENTS DE PORT PASSENT TOUJOURS ────────────────────
+  [OK ] un PORT PERDU passe malgre le quota SATURE                 c'est lui qui separe « agent sans port » de « carte haltee »
+
+── 5. LA ROTATION BORNE LE DISQUE ────────────────────────────────
+  [OK ] au plus `rotations`+1 fichiers subsistent                  3 fichier(s) : ['rot.log', 'rot.log.1', 'rot.log.2']
+  [OK ] aucun fichier ne depasse grossierement le plafond          le plus gros : 4138 o pour un plafond de 4 096 o
+
+── 6. LE VOLUME SUR 7 JOURS, ⛔ PAS ESTIME AU DOIGT ──────────────
+  [OK ] le PLANCHER de banc tient largement sur 7 jours            183 o/ligne ⇒ 18.3 o/s ⇒ 10.6 Mo (⚠️ PLANCHER : la carte a mesure 157 o/s AVANT le filtre d'echo ⇒ ~95 Mo)
+  [OK ] ⚠️ et la limite de ce calcul est DECLAREE                  il ne compte que le battement ; le fil porte aussi les logs des autres modules
+
+── 7. LES CHEMINS DE PANNE DE LA BOITE NOIRE ELLE-MEME ───────────
+  [OK ] `_ecrits` REPREND la taille du fichier existant            5000 o lus a l'ouverture — ⛔ repartir de 0 rendait le plafond « 160 Mo au pire » FAUX des la premiere relance
+  [OK ] un echec d'ecriture REARME l'ouverture (⛔ plus muet a vie) `_f` remis a None — ⛔ avant, il restait pose et AUCUNE ligne n'etait plus jamais ecrite, sans un mot
+  [OK ] et l'echec est COMPTE                                      1 — il est publie au bilan et sur stderr au premier
+  [OK ] la ligne SUIVANTE est bien reecrite                        la boite noire s'est rouverte toute seule
+  [OK ] une rotation REFUSEE laisse `_ecrits` INTACT               500 — ⛔ le remettre a 0 avant la section faillible faisait grossir le fichier de `max_octets` de plus a chaque echec, SANS BORNE et sans signal
+  [OK ] et le refus est COMPTE et DIT                              1 — « l'ecretage est dit, jamais silencieux » devient VRAI
+  [OK ] `rincer()` existe et est appelable SANS octets             ⛔ le recap n'etait ecrit qu'a la bascule de minute SUIVANTE, declenchee par l'arrivee d'octets ⇒ carte haltee = decompte de LA MINUTE DE L'INCIDENT jamais publie
+  [OK ] `fermer()` verse le FRAGMENT EN VOL, etiquete              ⛔ la ligne non terminee au moment de l'arret est peut-etre le DEBUT du `Guru Meditation` coupe par le halt
+  [OK ] un fragment trop long garde sa TETE                        ⛔ `[-512:]` gardait la FIN : le prefixe `Guru Meditation` disparaissait, la ligne sortait de RE_ALARME, retombait sous le quota et pouvait etre ECARTEE
+  [OK ] et la troncature est COMPTEE                               1 — elle est publiee par `sante()`
+
+==============================================================================
+BILAN : 27 OK, 0 KO
+==============================================================================

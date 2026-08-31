@@ -1,0 +1,113 @@
+==============================================================================
+dn4-13 / AC1.3 — LE VERROU LVGL SUR TOUTE LA SURFACE PUBLIQUE
+==============================================================================
+  dn_ui.c sha256[:16] = dbdec921e7ee9897
+  dn_ui.h sha256[:16] = 182d14b4b5e399f4
+
+  149 fonctions publiques déclarées dans dn_ui.h, 149 définies ici.
+  49 touchent un objet LVGL SOUS VERROU — c'est la population que la
+     gate couvre, et le témoin négatif les casse une par une.
+
+  ⚠️ 12 AUTRES fonctions publiques prennent `lvgl_port_lock` SANS
+     jamais atteindre un `lv_*()` : leur verrou protège AUTRE CHOSE
+     (un tuple de statiques écrit par la tâche LVGL, un cycle en vol).
+     ⛔ CETTE GATE NE LES COUVRE PAS, et ne le prétend pas — le retrait
+        de leur verrou ne produirait AUCUN rouge ici. Elles sont
+        NOMMÉES plutôt que passées sous silence :
+        · dn_ui_barre_txt                    dn_ui.c:9317
+        · dn_ui_courbe_compteurs             dn_ui.c:4557
+        · dn_ui_garde_hauteur                dn_ui.c:8938
+        · dn_ui_geler_ms                     dn_ui.c:6702
+        · dn_ui_geom_signature               dn_ui.c:8203
+        · dn_ui_pause                        dn_ui.c:10941
+        · dn_ui_set_groupage                 dn_ui.c:10077
+        · dn_ui_set_groupe_union             dn_ui.c:10092
+        · dn_ui_veille_compteurs             dn_ui.c:7752
+        · dn_ui_veille_diag                  dn_ui.c:7739
+        · dn_ui_veille_latences              dn_ui.c:7769
+        · dn_ui_veille_reset_tout            dn_ui.c:7815
+
+── ÉCARTÉES : NI VERROU, NI OBJET LVGL ────────────────────────────
+     🔴 REVUE 2026-08-25 — ELLES SONT COMPTÉES, ⛔ PLUS AVALÉES.
+        Elles tombaient dans un `continue` MUET : ni verrou, ni appel
+        `lv_*()`, ni déréférence d'objet LVGL. La gate en écartait la
+        MAJORITÉ sans les nommer, pendant qu'elle se félicitait de
+        nommer les 12 « hors périmètre ». Un audit qui ne dit pas ce
+        qu'il n'a PAS regardé ne se relit pas.
+     86 publique(s) écartée(s) : dn_ui_accent_hum, dn_ui_active, dn_ui_affinity, dn_ui_anim_running, dn_ui_async_refus, dn_ui_bandes, dn_ui_bandes_set, dn_ui_barre_date_font …
+  [OK ] AUCUNE publique ne disparaît du compte                     150 classées + 0 définies ailleurs ⇒ 149 déclarées
+
+── EXEMPTIONS MOTIVÉES ────────────────────────────────────────────
+  (aucune)
+
+── CONTRÔLE PRINCIPAL ─────────────────────────────────────────────
+  [KO ] sans verrou : dn_ui_bandes_valider                         dn_ui.c:10324 — dn_ui_bandes_valider -> dn_ui_barre_plancher [lv_font_get_line_height] — aucune exemption
+  [KO ] sans verrou : dn_ui_barre_plancher                         dn_ui.c:1902 — dn_ui_barre_plancher [lv_font_get_line_height] — aucune exemption
+  [KO ] sans verrou : dn_ui_set_barre_date_font                    dn_ui.c:10488 — dn_ui_set_barre_date_font [objet LVGL touché AVANT `lvgl_port_lock` — « LE VERROU EST PRIS AVANT DE LIRE L'OBJET » (AC1.1)] — aucune exemption
+  [KO ] ZÉRO publique touche LVGL sans verrou                      3 faute(s)
+
+── TÉMOIN NÉGATIF — on retire les protections une par une ─────────
+  (12 hors périmètre — verrou sans objet LVGL — non mutées)
+  [OK ] M1 sans verrou, `dn_ui_ambiance_maj` ROUGIT                1 verrou(x) neutralisé(s), l.9168
+  [OK ] M1 sans verrou, `dn_ui_anim` ROUGIT                        1 verrou(x) neutralisé(s), l.10829
+  [OK ] M1 sans verrou, `dn_ui_barre_dessinee` ROUGIT              1 verrou(x) neutralisé(s), l.9361
+  [OK ] M1 sans verrou, `dn_ui_barre_secondes_set` ROUGIT          1 verrou(x) neutralisé(s), l.9276
+  [OK ] M1 sans verrou, `dn_ui_bg_psram` ROUGIT                    2 verrou(x) neutralisé(s), l.10909
+  [OK ] M1 sans verrou, `dn_ui_demo_set` ROUGIT                    1 verrou(x) neutralisé(s), l.10738
+  [OK ] M1 sans verrou, `dn_ui_detail_courbe_axes` ROUGIT          1 verrou(x) neutralisé(s), l.9037
+  [OK ] M1 sans verrou, `dn_ui_detail_courbe_rect` ROUGIT          1 verrou(x) neutralisé(s), l.9120
+  [OK ] M1 sans verrou, `dn_ui_detail_label` ROUGIT                1 verrou(x) neutralisé(s), l.8783
+  [OK ] M1 sans verrou, `dn_ui_force_full_redraw` ROUGIT           1 verrou(x) neutralisé(s), l.6800
+  [OK ] M1 sans verrou, `dn_ui_heure_maj` ROUGIT                   1 verrou(x) neutralisé(s), l.9247
+  [OK ] M1 sans verrou, `dn_ui_init` ROUGIT                        1 verrou(x) neutralisé(s), l.6505
+  [OK ] M1 sans verrou, `dn_ui_label_show` ROUGIT                  1 verrou(x) neutralisé(s), l.6811
+  [OK ] M1 sans verrou, `dn_ui_log_mem` ROUGIT                     1 verrou(x) neutralisé(s), l.11101
+  [OK ] M1 sans verrou, `dn_ui_lvgl_used` ROUGIT                   1 verrou(x) neutralisé(s), l.11090
+  [OK ] M1 sans verrou, `dn_ui_mock_set` ROUGIT                    1 verrou(x) neutralisé(s), l.9777
+  [OK ] M1 sans verrou, `dn_ui_nav_back` ROUGIT                    1 verrou(x) neutralisé(s), l.5592
+  [OK ] M1 sans verrou, `dn_ui_nav_menu` ROUGIT                    1 verrou(x) neutralisé(s), l.5603
+  [OK ] M1 sans verrou, `dn_ui_nav_open` ROUGIT                    1 verrou(x) neutralisé(s), l.5581
+  [OK ] M1 sans verrou, `dn_ui_nue_set` ROUGIT                     1 verrou(x) neutralisé(s), l.9840
+  [OK ] M1 sans verrou, `dn_ui_oublier` ROUGIT                     1 verrou(x) neutralisé(s), l.9880
+  [OK ] M1 sans verrou, `dn_ui_pc_maj` ROUGIT                      1 verrou(x) neutralisé(s), l.8445
+  [OK ] M1 sans verrou, `dn_ui_pousser` ROUGIT                     1 verrou(x) neutralisé(s), l.9705
+  [OK ] M1 sans verrou, `dn_ui_rafale` ROUGIT                      1 verrou(x) neutralisé(s), l.9754
+  [OK ] M1 sans verrou, `dn_ui_resume` ROUGIT                      1 verrou(x) neutralisé(s), l.11037
+  [OK ] M1 sans verrou, `dn_ui_set_bandes` ROUGIT                  1 verrou(x) neutralisé(s), l.10186
+  [OK ] M1 sans verrou, `dn_ui_set_barre_date_font` ROUGIT         1 verrou(x) neutralisé(s), l.10511
+  [OK ] M1 sans verrou, `dn_ui_set_case_grandeurs` ROUGIT          1 verrou(x) neutralisé(s), l.10283
+  [OK ] M1 sans verrou, `dn_ui_set_case_opa` ROUGIT                1 verrou(x) neutralisé(s), l.10059
+  [OK ] M1 sans verrou, `dn_ui_set_couleur` ROUGIT                 1 verrou(x) neutralisé(s), l.10037
+  [OK ] M1 sans verrou, `dn_ui_set_detail_panh` ROUGIT             1 verrou(x) neutralisé(s), l.8993
+  [OK ] M1 sans verrou, `dn_ui_set_fond` ROUGIT                    1 verrou(x) neutralisé(s), l.2720
+  [OK ] M1 sans verrou, `dn_ui_set_icone_alt` ROUGIT               1 verrou(x) neutralisé(s), l.9991
+  [OK ] M1 sans verrou, `dn_ui_set_nav_model` ROUGIT               1 verrou(x) neutralisé(s), l.5620
+  [OK ] M1 sans verrou, `dn_ui_set_piste` ROUGIT                   1 verrou(x) neutralisé(s), l.10048
+  [OK ] M1 sans verrou, `dn_ui_set_voie` ROUGIT                    1 verrou(x) neutralisé(s), l.10306
+  [OK ] M1 sans verrou, `dn_ui_set_voile_opa` ROUGIT               1 verrou(x) neutralisé(s), l.9919
+  [OK ] M1 sans verrou, `dn_ui_set_widget_geom` ROUGIT             1 verrou(x) neutralisé(s), l.10402
+  [OK ] M1 sans verrou, `dn_ui_veille_dormir` ROUGIT               1 verrou(x) neutralisé(s), l.7696
+  [OK ] M1 sans verrou, `dn_ui_veille_ecran_actif` ROUGIT          1 verrou(x) neutralisé(s), l.8070
+  [OK ] M1 sans verrou, `dn_ui_veille_reveiller` ROUGIT            1 verrou(x) neutralisé(s), l.7724
+  [OK ] M1 sans verrou, `dn_ui_veille_set_accent` ROUGIT           1 verrou(x) neutralisé(s), l.8134
+  [OK ] M1 sans verrou, `dn_ui_veille_set_armee` ROUGIT            1 verrou(x) neutralisé(s), l.7860
+  [OK ] M1 sans verrou, `dn_ui_veille_set_case_bg` ROUGIT          1 verrou(x) neutralisé(s), l.8167
+  [OK ] M1 sans verrou, `dn_ui_veille_set_cran` ROUGIT             1 verrou(x) neutralisé(s), l.7876
+  [OK ] M1 sans verrou, `dn_ui_veille_set_gris` ROUGIT             1 verrou(x) neutralisé(s), l.8119
+  [OK ] M1 sans verrou, `dn_ui_veille_set_voile` ROUGIT            1 verrou(x) neutralisé(s), l.7978
+  [OK ] M1 sans verrou, `dn_ui_veille_voiles_etat` ROUGIT          1 verrou(x) neutralisé(s), l.8011
+  [OK ] M1 sans verrou, `dn_ui_widget_jauge_rect` ROUGIT           1 verrou(x) neutralisé(s), l.8890
+
+── TÉMOIN NÉGATIF M3 — la porte d'exemption, dans les deux sens ───
+  [OK ] M3-A verrou retiré, sans exemption ⇒ ROUGE                 dn_ui_detail_courbe_axes
+  [OK ] M3-B exemption MOTIVÉE (90 c.) ⇒ VERT                      dn_ui_detail_courbe_axes
+  [OK ] M3-C jeton SANS motif suffisant ⇒ ROUGE                    5 c. < 40
+
+── TÉMOIN NÉGATIF M4 — portée, ordre, libération, déréférence ─────
+  [OK ] M4-A objet LVGL lu AVANT le verrou ⇒ ROUGE                 dn_ui_detail_courbe_axes
+  [OK ] M4-B retour de `lvgl_port_lock` IGNORÉ ⇒ ROUGE             dn_ui_detail_courbe_axes
+  [OK ] M4-C `return` atteint VERROU TENU ⇒ ROUGE                  dn_ui_detail_courbe_axes
+  [OK ] M4-D déréférence `ptr->` sans verrou ni `lv_*()` ⇒ ROUGE   dn_ui_detail_courbe_axes
+
+==============================================================================
+⛔ 4 ÉCHEC(S) sur 61 contrôles.

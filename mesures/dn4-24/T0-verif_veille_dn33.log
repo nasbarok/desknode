@@ -1,0 +1,314 @@
+==============================================================================
+dn3-3 — VERIFICATION DE LA VEILLE, EN EXECUTANT LE PRODUIT
+==============================================================================
+source : dn_veille.c  sha256[:16] = a79aa78596be60a8  (883 lignes)
+
+── 1. LA GARDE DE BASCULE (AC3.1, AC3.3, AC3.4) ────────────────────
+  [OK ] delai - 1 ms  ⇒  on NE dort PAS                            
+  [OK ] delai EXACT   ⇒  on dort                                   c'est `>=`, et c'est ce qui donne la fenetre [60 ; 61] s
+  [OK ] delai + 1 ms  ⇒  on dort                                   
+  [OK ] veille DESARMEE ⇒ la bascule n'arrive JAMAIS (AC3.4)       
+  [OK ] deja en Ambient ⇒ pas de seconde bascule                   
+  [OK ] delai NUL ⇒ REFUS, ⛔ pas une bascule au premier tick       
+  [OK ] MUTANT `>=` -> `>` : le test le VOIT (rougit sur delai exact) un mutant survivant = le test n'atteint pas la ligne
+
+── 2. LES QUATRE CRANS ET LES DEFAUTS D'USINE (D-5, D-8) ───────────
+  [OK ] les QUATRE crans sont 1/3/5/10 min                         [1, 3, 5, 10]
+  [OK ] hors bornes ⇒ -1, ⛔ pas un cran voisin                     
+  [OK ] 7 min ⇒ REFUS (-1), ⛔ pas d'ecretage vers 5                le depot refuse et explique, il n'ecrete pas
+  [OK ] 10 min ⇒ index 3                                           
+  [OK ] DEFAUT D'USINE : veille = ON (D-8)                         sinon le critere n°1 du brief serait faux a la sortie de boite
+  [OK ] DEFAUT D'USINE : delai = 3 min = 180 000 ms (D-8)          ni le piege du 1 min, ni celui du 10 min
+  [OK ] namespace absent ⇒ le repli sur defaut est JOURNALISE (AC7.4) un defaut silencieux fausserait une mesure sans qu'on le sache
+
+── 3. PERSISTANCE ET REPLI SUR ABERRANT (AC7) ──────────────────────
+  [OK ] le cran est ECRIT en NVS                                   veille_dly = 2
+  [OK ] l'armement est ECRIT en NVS                                
+  [OK ] APRES REBOOT : 5 min / ON relus tels quels (AC7.3)         
+  [OK ] cran ABERRANT (99) ⇒ repli sur le defaut (3 min)           
+  [OK ] armement ABERRANT (42) ⇒ repli sur le defaut (ON)          ⛔ surtout pas un `!= 0` qui ferait passer 42 pour un ON delibere
+  [OK ] les DEUX replis sont JOURNALISES (AC7.4)                   2 avertissements
+  [OK ] MUTANT : sans la garde, 42 passe SANS avertissement — le test le voit 0 avertissements au lieu de >= 2
+
+── 4. LE TICK, LA BASCULE ET SON ANNULATION ────────────────────────
+  [OK ] 59 s d'inactivite ⇒ AUCUNE bascule                         
+  [OK ] on est toujours en ACTIF                                   
+  [OK ] a 60 000 ms ⇒ DORMIR                                       
+  [OK ] l'etat a bascule en AMBIENT                                
+  [OK ] le tick suivant ne re-bascule PAS                          
+  [OK ] reveil ⇒ true (l'etat a change)                            
+  [OK ] second reveil ⇒ FALSE, ⛔ pas un reveil de plus             l'appelant ne doit pas annoncer un reveil qui n'a pas eu lieu
+  [OK ] re-bascule apres reveil                                    
+  [OK ] annulation ⇒ retour a ACTIF                                ⛔ pas d'etiquette AMBIENT sur un ecran reste en couleurs
+  [OK ] le miroir ctypes de `dn_veille_compteurs_t` a AUTANT de champs que le `.h` (16) ⛔ un miroir plus court fait ECRIRE HORS DU TAMPON : 16 cote Python
+  [OK ] l'annulation est COMPTEE                                   annulations = 1
+  [OK ] la bascule annulee est RETRANCHEE du compteur              bascules = 1 (2 tentees, 1 annulee)
+  [OK ] l'inactivite MAXIMALE est retenue                          120000 ms
+  [OK ] AC3.3 : UN echantillon d'ecart apres la bascule annulee    la 2e a ete ANNULEE, donc son echantillon est RETIRE
+  [OK ] …et il vaut 60 000 ms, la valeur du tick QUI A BASCULE     ⛔ pas la valeur courante, que les ticks suivants ecrasent
+  [OK ] hors bornes ⇒ 0, et l'appelant DOIT le lire « pas mesure » 
+  [OK ] TEMOIN : `inactivite_ms` a bouge, l'ecart LATCHE n'a PAS bouge 30 000 vs 60 000 — sans le latch, AC3.3 publierait la valeur courante
+  [OK ] `reset` vide les compteurs                                 
+  [OK ] `reset` ⛔ NE TOUCHE PAS les deux reglages                  
+  [OK ] `reset` ⛔ NE TOUCHE PAS le mode                            le remettre a ACTIF ferait diverger l'etat annonce de l'ecran
+
+── 4 bis. L'ANNEAU PORTE SON CONTEXTE (defaut mesure) ─────────────
+  [OK ] A : un echantillon latche                                  
+  [OK ] A : le DELAI ARME est latche avec l'ecart                  sans lui, l'echantillon ne se juge contre rien
+  [OK ] A : un franchissement AMORCE est JUGEABLE                  
+  [OK ] A : le cran COURANT a bien change                          
+  [OK ] 🔴 A : l'echantillon garde SON delai — ⛔ PAS le courant     C'EST LE DEFAUT : 60 400 ms latches a 1 min etaient affiches HORS apres passage a 10 min
+  [OK ] B : la bascule a bien eu lieu                              
+  [OK ] B : l'ecart latche est l'inactivite VRAIE                  ⛔ pas le delai : la bascule est correcte, elle n'est pas 'a l'heure'
+  [OK ] 🔴 B : …et il est NON JUGEABLE                              178 270 ms releves en seance pour un cran de 1 min — un 🔴 sur ce cas accuserait un comportement CORRECT
+  [OK ] C : changer de cran DESAMORCE la garde                     
+  [OK ] D : un tick SOUS le nouveau seuil RE-AMORCE la garde       ⛔ le desamorcage n'est pas definitif, sinon plus rien ne serait jugeable
+  [OK ] E : une ecriture NVS est COMPTEE                           
+  [OK ] 🔴 E : AC8.3 — `veille reset` remet AUSSI ce compteur a zero il y echappait : la sortie melangeait compteurs remis a zero et compteur CUMULATIF, ce que le depot a deja paye sur `*cris` (dn4-13)
+  [OK ] E : …et `veille reset` DESAMORCE la garde                  l'inactivite, elle, n'est PAS remise a zero : c'est LVGL qui la tient
+  [OK ] F : la bascule est jugeable                                
+  [OK ] F : l'annulation RETIRE l'echantillon — et son contexte avec 
+  [OK ] F : la garde REPREND son amorcage apres une annulation     ⛔ une annulation n'est pas un re-armement : sans ca, la tentative suivante serait marquee non jugeable a tort
+  [OK ] G : la mutation 1 (jugeable toujours vrai) s'applique      ⛔ une mutation qui ne s'applique pas ne prouve RIEN
+  [OK ] G : MUTANT 1 — le controle B ROUGIT                        un mutant survivant voudrait dire que B n'atteint pas la ligne
+  [OK ] G : la mutation 2 (delai non latche) s'applique            
+  [OK ] G : MUTANT 2 — le controle A ROUGIT                        le latch du delai est bien la ligne que A eprouve
+
+── 4 ter. LA 6e PISTE W2 SUR `CPU` (AC2.1) ─────────────────────
+  [OK ] l'accumulateur W2 est EXTRAIT de dn_env.c/.h               dn_env.c sha 712a4a72b3e947d8 · dn_env.h sha 614df7f5664b73aa
+  [OK ] les DEUX cadences sont RELUES de l'en-tete                 ⛔ jamais recopiees dans la gate
+  [OK ] la cadence CPU vaut 1 000 ms, ⛔ pas 5000                   a 5 s, 60 s ne font que 12 echantillons ⇒ 11 transitions, et le PAS du denominateur (9,1 %) DEPASSE le seuil de taux (10 %)
+  [OK ] il compile tel quel sur l'hote                             
+  [OK ] la piste `DN_W2_CPU_DIX` EXISTE                            
+  [OK ] A : trois valeurs IDENTIQUES ⇒ 0 changement                n=3 chg=0 — deux valeurs egales rendent le MEME texte
+  [OK ] A : les changements de TEXTE sont comptes, et min/max suivent n=4 chg=2 min=421 max=430
+  [OK ] 🔴 B : l'echantillon qui SUIT une rupture n'est PAS un changement 400 → [rupture] → 900 : rien ne relie ces deux instants (chg=0)
+  [OK ] B : la rupture est COMPTEE                                 ruptures=1
+  [OK ] B : ⛔ aucun echantillon n'est JETE                         n=2
+  [OK ] 🔴 C : 50 desamorcages d'affilee ne comptent QU'UNE rupture ruptures=1 — sans l'idempotence, une nuit en Actif en compterait des dizaines de milliers et n-1-ruptures partirait SOUS ZERO
+  [OK ] C : rompre une chaine INEXISTANTE ne compte rien           ruptures=0
+  [OK ] D : `w2 reset` remet n, changements ET ruptures a zero     
+  [OK ] 🔴 E : le NOM de chaque piste porte SA cadence, et elles CONCORDENT @5s=5000ms · @5s=5000ms · @5s=5000ms · @5s=5000ms · @5s=5000ms · @1s=1000ms — un tableau qui aligne des taux de cadences differentes sans le dire est une etiquette qui ment
+  [OK ] F : UN SEUL site echantillonne la piste CPU                1 site(s) — deux sites doubleraient la cadence en silence
+  [OK ] F : il est GARDE par `dn_veille_mode() == DN_VEILLE_AMBIENT` AC2.1 dit « en Ambient » — et sous agent reel il n'y a plus de console pour delimiter la fenetre
+  [OK ] F : …et la chaine est BRISEE hors Ambient / sur valeur invalide 
+  [OK ] G : le denominateur compte les EPISODES, ⛔ pas les ruptures + 1 `ruptures` est TERMINALE : +1 seulement si la chaine est OUVERTE
+  [OK ] G : …et le taux vaut chg / (n - episodes)                  
+  [OK ] G : `amorce` est LU DANS LA MEME SECTION CRITIQUE que les compteurs lu apres coup, il decrirait un autre instant que le `n` qu'il corrige
+  [OK ] G : un taux > 100 % est DIT, ⛔ pas publie                  `changements` est un sous-ensemble des transitions : c'est impossible
+  [OK ] G : MUTANT « 1u + w.ruptures » — le critere le voit        vu rougir : l'ancienne formule ne satisfait plus le controle
+  [OK ] H : la mutation 1 (garde d'amorcage retiree) s'applique    
+  [OK ] H : MUTANT 1 — le controle B ROUGIT                        la rupture serait comptee comme un changement (chg=1)
+  [OK ] H : la mutation 2 (idempotence retiree) s'applique         
+  [OK ] H : MUTANT 2 — le controle C ROUGIT                        50 ruptures pour UNE sortie d'Ambient (ruptures=50)
+
+── 5. LE SOUPCON D'APPUI FANTOME (AC8.2) ───────────────────────────
+  [OK ] a 30 s d'observation (< delai) ⇒ PAS d'alerte              ⛔ crier au loup au boot serait pire que pas de garde
+  [OK ] a 70 s (> delai + 5 s) et inactivite collee a 0 ⇒ ALERTE   c'est la panne que le scan I2C NE VOIT PAS
+  [OK ] regime NORMAL (une bascule a eu lieu) ⇒ pas d'alerte       
+  [OK ] MUTANT : sans la condition, l'alerte sort des le 1er tick  le test le voit ⇒ la garde est bien ATTEINTE
+  [OK ] une bascule FORCEE est acceptee (veille armee, on est ACTIF) 
+  [OK ] …puis on reveille                                          
+  [OK ] APRES un `veille now` + reveil, l'alerte SORT quand meme   ⛔ AVANT, UN SEUL `veille now` eteignait le detecteur pour de bon
+  [OK ] …mais une bascule AUTOMATIQUE l'eteint bien                ⛔ sinon le detecteur crierait sur un module sain
+  [OK ] on reveille apres la bascule auto                          
+  [OK ] REVEIL puis doigt colle ⇒ l'alerte SORT (fenetre re-armee) 🎯 c'est LE cas que l'ancienne garde ne pouvait PAS voir
+
+── 6. LA DESATURATION DES ACCENTS (AC9.4) ──────────────────────────
+  [OK ] `dn_widget_desaturer()` EXTRAITE de dn_widget.c            sha 40d65ced5f3f41d7
+  [OK ] elle compile telle quelle sur l'hote                       
+  [OK ] le bloc `k_desc[]` est LOCALISE dans dn_ui.c               ⛔ sans lui le regex ramasserait aussi `k_demo_desc`
+  [OK ] les SIX couleurs de CASE sont relues du bloc `k_desc[]`, chacune AVEC LE NOM DE SON DESIGNATEUR CPU=a855f7 GPU=22d3ee RAM=f472b6 RESEAU=3b82f6 DISQUE=e2e8f0 AMB=ff9640
+  [OK ] TEMOIN : la couleur de la metrique FICTIVE (`k_demo_desc`) est EXCLUE 0x35d6e8 — elle etait comptee comme 7e accent avant dn4-14
+  [OK ] l'accent de l'HUMIDITE est relu de `DET_COURBE_COUL_HUM`   ⛔ pas recopie ici
+  [OK ] ⇒ SEPT accents REELLEMENT PEINTS : 6 cases + l'humidite    a855f7 22d3ee f472b6 3b82f6 e2e8f0 ff9640 + hum 67e8f9
+  [OK ] AC6.5 : 0xa855f7 est annoncee « VIOLET » et l'EST (R168 G85 B247) ⛔ un commentaire qui survit a la valeur qu'il decrit est un defaut au meme titre qu'un chiffre faux
+  [OK ] AC6.5 : 0x22d3ee est annoncee « CYAN » et l'EST (R34 G211 B238) ⛔ un commentaire qui survit a la valeur qu'il decrit est un defaut au meme titre qu'un chiffre faux
+  [OK ] AC6.5 : 0xf472b6 est annoncee « ROSE » et l'EST (R244 G114 B182) ⛔ un commentaire qui survit a la valeur qu'il decrit est un defaut au meme titre qu'un chiffre faux
+  [OK ] AC6.5 : 0x3b82f6 est annoncee « BLEU » et l'EST (R59 G130 B246) ⛔ un commentaire qui survit a la valeur qu'il decrit est un defaut au meme titre qu'un chiffre faux
+  [OK ] AC6.5 : 0xe2e8f0 est annoncee « CLAIR » et l'EST (R226 G232 B240) ⛔ un commentaire qui survit a la valeur qu'il decrit est un defaut au meme titre qu'un chiffre faux
+  [OK ] AC6.5 : 0xff9640 est annoncee « ORANGE » et l'EST (R255 G150 B64) ⛔ un commentaire qui survit a la valeur qu'il decrit est un defaut au meme titre qu'un chiffre faux
+  [OK ] AC6.5 : les 6 couleurs de case annoncent TOUTES une teinte, et TOUTES sont verifiees 6/6 verifiees — 0xa855f7/VIOLET 0x22d3ee/CYAN 0xf472b6/ROSE 0x3b82f6/BLEU 0xe2e8f0/CLAIR 0xff9640/ORANGE
+  [OK ] pct = 0 ⇒ la teinte est INTACTE                            
+  [OK ] pct = 100 ⇒ R = G = B (gris PUR)                           808080 a0a0a0 a0a0a0 797979 e7e7e7 ababab c3c3c3
+  [OK ] a 100 %, EXACTEMENT UNE paire se confond (mesure, ⛔ pas un but) GPU/RAM a 160 — luminances [121, 128, 160, 160, 171, 195, 231]
+  [OK ] TEMOIN : sur le jeu REEL, la moyenne ne confond RIEN (BT.601, si) moyennes [145, 156, 161, 166, 180, 194, 232] — l'ancien « elle en confond une aussi » comptait la couleur de DEMO
+  [OK ] AC5.2 : `k_desc[].couleur` n'est lu QU'A UN SEUL site de code 1 site(s) hors commentaire — le resolveur `case_couleur()` doit etre le SEUL ; un 2e lecteur serait aveugle a l'override
+  [OK ] AC5.2 : plus AUCUN `dn_ui_desc(...)->couleur` (le 4e consommateur) 0 site(s) hors commentaire — c'est par la que `veille_accents_collisions()` jugeait l'ANCIENNE palette
+  [OK ] …et le decompte IGNORE bien les mentions en commentaire    60 occurrences brutes de `k_desc[` contre 35 hors commentaire
+  [OK ] le defaut `s_accent_amb_pct` est relu du source            
+  [OK ] AU DEFAUT (95 %), les SEPT accents restent DISTINCTS       ⇒ le piege n°6 (rendre deux choses indiscernables) est ferme
+  [OK ] …avec un ecart chromatique minimal de 10/255               invisible a l'oeil, mais l'information est GARDEE
+
+── 7. LES TROIS GRIS D'AMBIENT (AC9.3, piege n°6) ──────────────────
+  [OK ] les TROIS tons d'Ambient sont declares                     ['DN_VAL_ABSENTE', 'DN_VAL_REELLE', 'DN_VAL_SIMULEE']
+  [OK ] les TROIS tons d'Actif sont relus                          ['DN_VAL_ABSENTE', 'DN_VAL_REELLE', 'DN_VAL_SIMULEE']
+  [OK ] Ambient : les 3 regimes sont DISTINCTS                     585858 ffffff a4a4a4
+  [OK ] Ambient : ecart de luminance minimal >= 24/255             min 76 (luminances [88, 164, 255])
+  [OK ] Actif : les 3 regimes sont DISTINCTS                       ffffff ffb020 9a9a9a
+  [OK ] Actif : ecart de luminance minimal >= 24/255               min 29 (luminances [154, 183, 255])
+  [OK ] Ambient ABSENTE (585858) est RGB565-NEUTRE                 rendu R90 G89 B90, ecart vert -1
+  [OK ] Ambient REELLE (FFFFFF) est RGB565-NEUTRE                  rendu R255 G255 B255, ecart vert +0
+  [OK ] Ambient SIMULEE (A4A4A4) est RGB565-NEUTRE                 rendu R165 G166 B165, ecart vert +1
+  [OK ] `W_AMB_CASE_BG` est relu du source                         
+  [OK ] l'aplat de case (000000) est EXACTEMENT neutre             rendu R0 G0 B0 — `1E` sortait a +4, `20` a -1 et tirait ENCORE
+  [OK ] TEMOIN 1 : `1E1E1E` — 1re valeur essayee — ECHOUE          rendu R24 G28 B24, ecart vert +4 ⇒ vu VERT a l'oeil
+  [OK ] TEMOIN 2 : `202020` — 2e valeur essayee — ECHOUE AUSSI     rendu R33 G32 B33 ⇒ vu « vert plus fonce » : le critere a +/-1 ne suffisait PAS
+  [OK ] le VIVANT en Ambient ≠ `W_COL_ABSENTE` (0x9a9a9a)          sinon « vivant » redevient indiscernable de « mort » (2026-08-18)
+  [OK ] en Ambient, le VIVANT est plus CLAIR que l'ABSENT          
+  [OK ] UNE SEULE fonction lit `s_gris_amb[DN_VAL_*]`              porteuses : dn_val_regime_couleur
+  [OK ] dn_ui.c ne redefinit AUCUNE couleur de regime              la convention vit dans dn_val_regime_couleur() et nulle part ailleurs
+
+── 10. L'IDENTITE VISUELLE D'AMBIENT (owner, 2026-08-25) ───────────
+  [OK ] le TITRE est retenu dans `dn_widget_t`                     sans pointeur, le masquer exigerait 307-322 ms de reconstruction
+  [OK ] `dn_widget_veille_appliquer()` existe                      
+  [OK ] elle masque titre + icone + badge                          les trois que l'owner a nommes
+  [OK ] …par un DRAPEAU, ⛔ pas par une reconstruction              
+  [OK ] le retour en ACTIF repasse par `aplat()`, ⛔ ne le recopie pas une copie divergerait au premier `widget opa`
+  [OK ] `composer()` est trouvable                                 
+  [OK ] la branche AMBIENT sort AVANT le prefixe                   🔴 c'est le prefixe qui plafonnait l'agrandissement a +2 %
+  [OK ] …et l'ABSENCE reste « -- », ⛔ jamais une case vide         
+  [OK ] le voile d'Ambient vaut 255 — le NOIR PLEIN demande par l'owner 
+  [OK ] …et AUCUN octet n'a ete ajoute a `assets/` (AC1.1)         le fond noir est obtenu par un levier EXISTANT, la voie (b) tient
+  [OK ] dn_font_33 : AUCUN symbole FontAwesome                     sha 29637e6435f50f9b · 96 codepoints portes
+  [OK ] dn_font_33 : le DEGRE (U+00B0) est present                 « 61,0 °C » le porte — son absence serait SILENCIEUSE
+  [OK ] dn_font_33 : les dix chiffres sont presents                
+  [OK ] dn_font_33 : ⛔ PAS d'accent latin-1 (plage reduite tenue)  164 codepoints jamais dessines tripleraient la facture
+  [OK ] dn_font_56 : AUCUN symbole FontAwesome                     sha 9609dd9f3792a95c · 96 codepoints portes
+  [OK ] dn_font_56 : le DEGRE (U+00B0) est present                 « 61,0 °C » le porte — son absence serait SILENCIEUSE
+  [OK ] dn_font_56 : les dix chiffres sont presents                
+  [OK ] dn_font_56 : ⛔ PAS d'accent latin-1 (plage reduite tenue)  164 codepoints jamais dessines tripleraient la facture
+  [OK ] les deux tailles du generateur sont 33 et 56               33 = plafond AVEC unite (168 px) · 56 = SANS (90 px), mesures carte
+  [OK ] `font_val()` commute entre les deux selon l'unite          
+  [OK ] le badge « SIMULE » est masque en Ambient                  ⇒ le gris devient le SEUL signal du regime
+
+── 8. LE RECOMPTE DE LA PARTITION `assets` (AC1) ───────────────────
+  [OK ] la ligne `assets` est RELUE de partitions.csv              sha 4ca82b9ed85deabf
+  [OK ] partition `assets` = 1 048 576 o                           1048576 o
+  [OK ] libre = 434 160 o                                          434160 o
+  [OK ] DEUX declinaisons NE TIENNENT PAS                          1228832 o > 1048576 o — depassement 180256 o
+  [OK ] le chiffre EXACT de deux declinaisons est 1 228 832 o      ⚠️ la story ecrit 1 228 816 : elle compte UN pied pour deux assets
+  [OK ] TROIS declinaisons = 1 843 248 o (le chiffre de la story est JUSTE) 
+  [OK ] `partitions.csv` est INCHANGE (AC1.1)                      git diff --stat vide
+
+── 9. LES ETIQUETTES NE MENTENT PLUS (AC5.4, AC5.5, AC10) ──────────
+  [OK ] `dn_ui_zone_nom` ne rend plus « MENU (zone morte — W3) »   
+  [OK ] elle rend « MENU »                                         
+  [OK ] `s_menu_taps` a un site d'INCREMENT ⇒ il n'est plus structurellement nul 
+  [OK ] le bandeau MENU recoit un callback NON NUL                 
+  [OK ] l'affirmation « aucun site n'incremente ce compteur » est PARTIE 
+  [OK ] …ainsi que la phrase entiere « il ne peut plus monter, et `nav` le dit » 
+  [OK ] le docblock dit desormais que le compteur MONTE            ⛔ un contrat d'en-tete qui decrit l'inverse du produit est la forme la plus durable du defaut
+  [OK ] AC10.1 : plus de `/* VERT */` sur `0x3b82f6` (qui est un BLEU) 
+  [OK ] le commentaire dit desormais BLEU VIF                      
+  [OK ] `lv_display_trigger_activity` est appele sur les chemins SANS doigt 4 SITES D'APPEL dans dn_ui.c (commentaires exclus)
+  [OK ] …et le compte IGNORE les mentions en commentaire           mutant textuel : 3 occurrences, 1 seul SITE — vu rendre 1
+  [OK ] …temoin de cablage : dn_ui.c porte bien au moins une MENTION en commentaire brut 5 > sites 4 — sinon ce controle ne prouverait rien
+  [OK ] …et pendant un contact CONSOMME (sinon on se rendort doigt pose) 
+  [OK ] `veille_reveil_nolock()` est trouvable                     
+  [OK ] UN REVEIL REPART D'UN DELAI NEUF — quelle que soit l'origine ⛔ sinon `veille wake` se fait re-endormir au tick suivant
+  [OK ] …et le rebase vient APRES `dn_veille_reveiller()`          avant, il repousserait une bascule legitime sur une course
+  [OK ] AC3.6 : la bascule Actif->Ambient passe par `lv_async_call` ⛔ jamais directement depuis le callback de timer
+  [OK ] D-7 : le contact de reveil est CONSOMME, et LATCHE jusqu'au relachement 
+  [OK ] …y compris sur le chemin d'ERREUR I2C                      2 sites — le pire moment pour laisser fuir un tap
+  [OK ] AC5.2 : le modele SCREENS porte une 3e racine              
+  [OK ] AC5.2 : le modele REBUILD construit la vue MENU            
+  [OK ] …et la garde SCREENS exige les TROIS racines               avec deux, `nav menu` aurait `lv_obj_clean` une racine PERMANENTE
+  [OK ] AC10.4 : le message de `w2 reset` est TROUVABLE            dn_console.c sha 0930db0500edf744
+  [OK ] …il n'ecrit PLUS le compte en toutes lettres               ecrire « SIX » ne ferait que DEPLACER la date de peremption
+  [OK ] …il RELIT le compte de `DN_W2_NB`                          ⛔ un compte recite se perime a la piste suivante
+  [OK ] mutant « LES CINQ PISTES » : les DEUX criteres rougissent  vu rougir : (False, False)
+  [OK ] …et `DN_W2_NB` clot bien l'enum qui porte `DN_W2_CPU_DIX`  ⛔ sinon le compte relu ne serait pas celui des pistes
+
+── dn4-14-2 : LE COMPTE DES « RECONSTRUIT », RECALCULÉ ─────────────
+  [OK ] le recompte trouve les sous-commandes qui reconstruisent   16 sur 30
+  [OK ] …`opa` ET `voile` y sont (elles PARTAGENT une branche)     ⛔ un decoupage naif en perdrait une, en silence
+  [OK ] …et `courbe` n'y est PAS : c'est un LECTEUR                `dn_ui_detail_courbe_axes()` ne reconstruit rien
+  [OK ] …`detpan` et `fond` y sont — le TREIZE les OMETTAIT        5e rupture : le compte etait faux quand on l'ecrivait
+  [OK ] …`titre` reconstruit, `date` NON (label repeint en place)  ⛔ une reconstruction en veille pose la jauge 27 px trop haut
+  [OK ] le docblock de `cmd_widget` publie un compte               motif « LES **N** « RECONSTRUIT » »
+  [OK ] …et c'est LE compte recalcule                              publie 16 · recompte 16
+  [OK ] le README publie le MEME compte, au meme format            ⛔ « ICI *et* dans le README dans le meme geste »
+  [OK ] …et c'est LE compte recalcule                              README 16 · recompte 16
+  [OK ] …et le README ne porte plus de SECOND compte contradictoire trouve : aucun (recompte 16)
+  [OK ] le docblock publie aussi le NOMBRE de sous-commandes       
+  [OK ] …et il est recalcule lui aussi                             publie 30 · recompte 30
+  (dn_console.c sha 0930db0500edf744)
+
+── dn4-14-2 : LES POLICES — DECLAREES, COMPILEES, ET NON-VEILLE ────
+  [OK ] `TAILLES` et `TAILLES_VEILLE` sont lisibles du generateur  
+  [OK ] chaque taille de `TAILLES` est DECLAREE dans `dn_font.h`   declarees [14, 18, 28, 33, 56] · attendues [14, 18, 28, 33, 56]
+  [OK ] `DN_FONT_LISTE` porte exactement autant d'entrees          5 entrees
+  [OK ] …et chaque entree nomme la police de SA taille             
+  [OK ] …et le drapeau INTERFACE/VEILLE suit les deux tuples       interface [14, 18, 28] · veille [33, 56]
+  [OK ] `ENTETE_MODELE` est lisible                                
+  [OK ] …et il ne RECITE plus aucune `LV_FONT_DECLARE(dn_font_NN)` ⛔ c'etait le defaut d'AC3.1 : une 3e taille jamais declaree
+  [OK ] les `.c` de police sont DECOUVERTS par CMake, ⛔ plus enumeres sinon : `undefined reference` au LINK, apres la regeneration
+  [OK ] …avec `CONFIGURE_DEPENDS`, ET la garde du mode script      ESP-IDF relit ce fichier en script mode, ou CMake le REFUSE
+  [OK ] …et plus aucun `.c` de police n'est nomme a la main        
+  [OK ] …et chaque taille declaree a son `.c` DANS L'ARBRE         manquants : aucun
+  [OK ] …et AUCUN `.c` orphelin ne traine (le menage est PAYE)     dans l'arbre [14, 18, 28, 33, 56]
+  [OK ] `dn_widget_geom_t` porte la police du TITRE (AC4.1)        
+  [OK ] …RESOLUE A L'USAGE, `NULL` = le defaut                     ⛔ pas figee a l'initialisation
+  [OK ] …et le defaut du titre est une police d'INTERFACE LIEE     defaut = dn_font_18 · interface [14, 18, 28]
+  [OK ] …idem pour le defaut de la DATE de barre                   defaut = dn_font_18
+  [OK ] …et elle n'a AUCUNE variante d'Ambient (AC4.2)             le titre DISPARAIT en Ambient : une 2e fonction rouvrirait la faille
+  [OK ] `dn_ui_geom_valider()` REFUSE une police de VEILLE sur le titre ⛔ « RESEAU » y perdrait son E SANS UN MOT
+  [OK ] …et `dn_ui_set_barre_date_font()` la refuse aussi          la date porte « AOUT », « DEC. », « FEVR. »
+  [OK ] le TITRE est mesure contre SON slot a la construction (AC5.3) MESURE le 2026-08-29 : « DEMO 2+JAUGE » = 114 px pour 107 utiles
+  [OK ] …il alimente `trop_larges`, ⛔ pas un 4e compteur           3 sites : colonne unique · bascule de mode · le TITRE (dn4-14-2)
+  [OK ] …et les compteurs restent TROIS : `dn_widget_chevauchements` 
+  [OK ] …et les compteurs restent TROIS : `dn_widget_debordements` 
+  [OK ] …et les compteurs restent TROIS : `dn_widget_trop_larges`  
+
+── dn4-14-2 / AC3.1 : LE GENERATEUR EST EXECUTE, ⛔ PAS RELU ───────
+  [OK ] `ecrire_entete()` REGENERE le `dn_font.h` de l'arbre, a l'octet sha 6e6ef2dffc195e4e · 9185 o
+  [OK ] MUTANT EXECUTE : retirer 18 de `TAILLES` RETIRE sa declaration ⛔ c'est le defaut d'AC3.1, et il est vu DISPARAITRE
+  [OK ] …et il le retire aussi de `DN_FONT_LISTE`                  ⛔ une liste ecrite a la main serait restee identique
+
+── dn4-14-2 / AC4.2 : LES POLICES D'INTERFACE PORTENT LE LATIN-1 ──
+  [OK ] `TAILLES` est lisible                                      ⛔ rien a verifier sinon
+  [OK ] dn_font_14.c existe                                        
+  [OK ] dn_font_14 : U+00B0 present — le DEGRE (« 25,5 °C »)       sha 373e971634ced50e · 258 codepoints
+  [OK ] dn_font_14 : U+00C9 present — E accent aigu (« FEVR. », « RESEAU ») sha 373e971634ced50e · 258 codepoints
+  [OK ] dn_font_14 : U+00DB present — U circonflexe (« AOUT »)     sha 373e971634ced50e · 258 codepoints
+  [OK ] dn_font_14 : les dix chiffres sont presents                
+  [OK ] …et `DN_FONT_LISTE` la declare INTERFACE, ce que la plage confirme ⛔ le drapeau est ECRIT par le generateur — c'est CE controle qui le confronte au `.c`
+  [OK ] dn_font_18.c existe                                        
+  [OK ] dn_font_18 : U+00B0 present — le DEGRE (« 25,5 °C »)       sha 5c90220e89c9fa5c · 258 codepoints
+  [OK ] dn_font_18 : U+00C9 present — E accent aigu (« FEVR. », « RESEAU ») sha 5c90220e89c9fa5c · 258 codepoints
+  [OK ] dn_font_18 : U+00DB present — U circonflexe (« AOUT »)     sha 5c90220e89c9fa5c · 258 codepoints
+  [OK ] dn_font_18 : les dix chiffres sont presents                
+  [OK ] …et `DN_FONT_LISTE` la declare INTERFACE, ce que la plage confirme ⛔ le drapeau est ECRIT par le generateur — c'est CE controle qui le confronte au `.c`
+  [OK ] dn_font_28.c existe                                        
+  [OK ] dn_font_28 : U+00B0 present — le DEGRE (« 25,5 °C »)       sha 7728de262d1d02ae · 258 codepoints
+  [OK ] dn_font_28 : U+00C9 present — E accent aigu (« FEVR. », « RESEAU ») sha 7728de262d1d02ae · 258 codepoints
+  [OK ] dn_font_28 : U+00DB present — U circonflexe (« AOUT »)     sha 7728de262d1d02ae · 258 codepoints
+  [OK ] dn_font_28 : les dix chiffres sont presents                
+  [OK ] …et `DN_FONT_LISTE` la declare INTERFACE, ce que la plage confirme ⛔ le drapeau est ECRIT par le generateur — c'est CE controle qui le confronte au `.c`
+
+── dn4-14-2 / AC2.2 : LE FORMAT DE DATE, LES DEUX SITES CONFRONTES ─
+  [OK ] les DEUX `snprintf` de date sont relisibles                trouves : ['%s %02u %s', '%s %02u %s']
+  [OK ] …et ils portent EXACTEMENT le meme format                  format : « %s %02u %s »
+  [OK ] …et c'est « %s %02u %s » : jsem, jour sur DEUX chiffres, mois ⛔ inverser deux champs ne casserait NI la compilation NI le rendu
+  [OK ] le repli « ??? » du RTC degrade est aux DEUX sites         jsem 2 · mois 2 — ⛔ le composeur l'emettait et l'instrument le REFUSAIT, donc ne le mesurait jamais
+  [OK ] dn_ui.c n'AFFIRME plus « balaye 7 x 12 x 32 »              le domaine est IMPRIME par l'instrument, ⛔ plus ecrit (sha dbdec921e7ee9897)
+  [OK ] dn_console.c n'AFFIRME plus « balaye 7 x 12 x 32 »         le domaine est IMPRIME par l'instrument, ⛔ plus ecrit (sha dbdec921e7ee9897)
+  [OK ] dn_ui.h n'AFFIRME plus « balaye 7 x 12 x 32 »              le domaine est IMPRIME par l'instrument, ⛔ plus ecrit (sha dbdec921e7ee9897)
+
+── dn4-14-2 / AC5.5 : COHERENCE DE TABLE (⚠️ ECART DECLARE) ────────
+  ⚠️ Ces controles RELISENT ou RESTATENT — ⛔ ils n'executent pas la
+     garde C. Le mutant qui EXECUTE est dans le bloc AC3.1 ci-dessus.
+  [OK ] `TAILLES` et `TAILLES_VEILLE` sont lisibles du generateur  ⛔ sans elles, AUCUN mutant n'est tirable
+  [OK ] COHERENCE (a) : retirer 18 de `TAILLES` rendrait le `.h` incoherent ⚠️ vrai PAR CONSTRUCTION : declarees [14, 18, 28, 33, 56] != attendues [14, 28, 33, 56]
+  [OK ] …et l'ensemble des `.c` presents differe aussi du mutant   le `.c` de 18 resterait dans l'arbre
+  [OK ] COHERENCE (b) : il existe une police de VEILLE a pointer   veille [33, 56] · interface [14, 18, 28]
+  [OK ] …le predicat PYTHON refuse la police de veille 33 sur le titre ⚠️ RESTATEMENT du C, ⛔ pas son execution — « RESEAU » y perdrait son E
+  [OK ] …et il ACCEPTE une police d'interface, et `NULL`           ⛔ une garde qui refuse tout ne prouve rien non plus
+  [OK ] …la garde C est aux (au moins) DEUX endroits qui posent une police titre (`dn_ui_geom_valider`) + date (`set_barre_date_font`) ; relus 2
+  [OK ] …et le SEUL chemin de reglage passe par le validateur      ⛔ une garde posee dans la console seule serait contournable
+  [OK ] RELECTURE (c) : le site du titre INCREMENTE bien le compteur ⛔ un ESP_LOGW sans compteur serait une garde muette
+
+==============================================================================
+BILAN : 267 OK · 0 KO
+==============================================================================

@@ -1,0 +1,150 @@
+==============================================================================
+dn4-9 — MIROIR SELECTION D'ECRAN <-> FIL, ET INVARIANTS DE SELECTION
+sources LUES : dn_ui.c sha256:dbdec921e7ee9897 · dn_ui.h sha256:182d14b4b5e399f4
+               dn_link.c sha256:2d05b87cf271fba1 · dn_console.c sha256:0930db0500edf744
+==============================================================================
+
+-- 0. CE QUE LE PARSEUR A LU (⛔ RELU, jamais recite) --
+   case               case  indices        detail  grandeurs (unite/prefixe)
+   CPU                3     [0, 1, 3]      4       % · GHz · c.max % · °C
+   GPU                3     [0, 1, 2]      4       % · °C · W · tr/min
+   RAM                1     [0]            1       %
+   RÉSEAU             2     [0, 1]         2       Mb/s · Mb/s
+   DISQUE             2     [0, 1]         4       Mo/s · extr.moy tr/min · ventirad tr/min · boitier tr/min
+   AMBIANCE           2     [0, 1]         2       °C · %
+
+-- M3. LES INVARIANTS DE LA SELECTION (pre-vol de l'audit de boot) --
+  [OK ] CPU : invariant C (sel declaree en entier ou pas du tout)  3 rang(s) declare(s) pour n_case = 3
+  [OK ] CPU : invariant A (case ⊆ detail)                          sel = [0, 1, 3], n_detail = 4
+  [OK ] CPU : invariant B (indices distincts)                      sel = [0, 1, 3]
+  [OK ] CPU : tout indice < DN_WIDGET_GRANDEURS_MAX                sel = [0, 1, 3]
+  [OK ] CPU : n_detail <= DN_WIDGET_GRANDEURS_MAX                  n_detail = 4
+  [OK ] GPU : invariant C (sel declaree en entier ou pas du tout)  0 rang(s) declare(s) pour n_case = 3
+  [OK ] GPU : invariant A (case ⊆ detail)                          sel = [0, 1, 2], n_detail = 4
+  [OK ] GPU : invariant B (indices distincts)                      sel = [0, 1, 2]
+  [OK ] GPU : tout indice < DN_WIDGET_GRANDEURS_MAX                sel = [0, 1, 2]
+  [OK ] GPU : n_detail <= DN_WIDGET_GRANDEURS_MAX                  n_detail = 4
+  [OK ] RAM : invariant C (sel declaree en entier ou pas du tout)  0 rang(s) declare(s) pour n_case = 1
+  [OK ] RAM : invariant A (case ⊆ detail)                          sel = [0], n_detail = 1
+  [OK ] RAM : invariant B (indices distincts)                      sel = [0]
+  [OK ] RAM : tout indice < DN_WIDGET_GRANDEURS_MAX                sel = [0]
+  [OK ] RAM : n_detail <= DN_WIDGET_GRANDEURS_MAX                  n_detail = 1
+  [OK ] RÉSEAU : invariant C (sel declaree en entier ou pas du tout) 0 rang(s) declare(s) pour n_case = 2
+  [OK ] RÉSEAU : invariant A (case ⊆ detail)                       sel = [0, 1], n_detail = 2
+  [OK ] RÉSEAU : invariant B (indices distincts)                   sel = [0, 1]
+  [OK ] RÉSEAU : tout indice < DN_WIDGET_GRANDEURS_MAX             sel = [0, 1]
+  [OK ] RÉSEAU : n_detail <= DN_WIDGET_GRANDEURS_MAX               n_detail = 2
+  [OK ] DISQUE : invariant C (sel declaree en entier ou pas du tout) 0 rang(s) declare(s) pour n_case = 2
+  [OK ] DISQUE : invariant A (case ⊆ detail)                       sel = [0, 1], n_detail = 4
+  [OK ] DISQUE : invariant B (indices distincts)                   sel = [0, 1]
+  [OK ] DISQUE : tout indice < DN_WIDGET_GRANDEURS_MAX             sel = [0, 1]
+  [OK ] DISQUE : n_detail <= DN_WIDGET_GRANDEURS_MAX               n_detail = 4
+  [OK ] AMBIANCE : invariant C (sel declaree en entier ou pas du tout) 0 rang(s) declare(s) pour n_case = 2
+  [OK ] AMBIANCE : invariant A (case ⊆ detail)                     sel = [0, 1], n_detail = 2
+  [OK ] AMBIANCE : invariant B (indices distincts)                 sel = [0, 1]
+  [OK ] AMBIANCE : tout indice < DN_WIDGET_GRANDEURS_MAX           sel = [0, 1]
+  [OK ] AMBIANCE : n_detail <= DN_WIDGET_GRANDEURS_MAX             n_detail = 2
+
+-- M3. L'UNION (= la plage du DETAIL) EST PEUPLEE ET DISTINCTE --
+  [OK ] CPU : les 4 entrees de l'union sont PEUPLEES               
+  [OK ] CPU : la CASE n'a aucune paire INDISTINGUABLE              indices [0, 1, 3], etiquettes de CASE
+  [OK ] CPU : le DETAIL n'a aucune paire INDISTINGUABLE            indices [0..3], etiquettes de DETAIL
+  [OK ] GPU : les 4 entrees de l'union sont PEUPLEES               
+  [OK ] GPU : la CASE n'a aucune paire INDISTINGUABLE              indices [0, 1, 2], etiquettes de CASE
+  [OK ] GPU : le DETAIL n'a aucune paire INDISTINGUABLE            indices [0..3], etiquettes de DETAIL
+  [OK ] RAM : les 1 entrees de l'union sont PEUPLEES               
+  [OK ] RAM : la CASE n'a aucune paire INDISTINGUABLE              indices [0], etiquettes de CASE
+  [OK ] RAM : le DETAIL n'a aucune paire INDISTINGUABLE            indices [0..0], etiquettes de DETAIL
+  [OK ] RÉSEAU : les 2 entrees de l'union sont PEUPLEES            
+  [OK ] RÉSEAU : la CASE n'a aucune paire INDISTINGUABLE           indices [0, 1], etiquettes de CASE
+  [OK ] RÉSEAU : le DETAIL n'a aucune paire INDISTINGUABLE         indices [0..1], etiquettes de DETAIL
+  [OK ] DISQUE : les 4 entrees de l'union sont PEUPLEES            
+  [OK ] DISQUE : la CASE n'a aucune paire INDISTINGUABLE           indices [0, 1], etiquettes de CASE
+  [OK ] DISQUE : le DETAIL n'a aucune paire INDISTINGUABLE         indices [0..3], etiquettes de DETAIL
+  [OK ] AMBIANCE : les 2 entrees de l'union sont PEUPLEES          
+  [OK ] AMBIANCE : la CASE n'a aucune paire INDISTINGUABLE         indices [0, 1], etiquettes de CASE
+  [OK ] AMBIANCE : le DETAIL n'a aucune paire INDISTINGUABLE       indices [0..1], etiquettes de DETAIL
+
+-- M4. « ON NE DEPASSE PAS 3 000 » (decision owner du 2026-08-22) --
+   ⚠️ Elle NE SE VERIFIE PAS a l'oeil : le plafond d'une grandeur vit
+      dans `k_metriques[]` (le FIL) et la bascule dans `k_desc[]`
+      (l'ECRAN). Deux tables, deux fichiers — c'est un MIROIR.
+  [OK ] DISQUE g0 (Mo/s) : la bascule est <= 3000                  seuil_haut = 30000 dixiemes (= 3000,0 Mo/s)
+  [OK ] DISQUE g0 : l'unite HAUTE ne depasse pas 3000 non plus     plafond 1000000 / 1000 = 100,0 Go/s
+  [OK ] RÉSEAU g0 (Mb/s) : la bascule est <= 3000                  seuil_haut = 30000 dixiemes (= 3000,0 Mb/s)
+  [OK ] RÉSEAU g0 : l'unite HAUTE ne depasse pas 3000 non plus     plafond 1000000 / 1000 = 100,0 Gb/s
+  [OK ] RÉSEAU g1 (Mb/s) : la bascule est <= 3000                  seuil_haut = 30000 dixiemes (= 3000,0 Mb/s)
+  [OK ] RÉSEAU g1 : l'unite HAUTE ne depasse pas 3000 non plus     plafond 1000000 / 1000 = 100,0 Gb/s
+   ⚠️ EXEMPTIONS — grandeurs qui PEUVENT depasser 3000 et qui n'ont
+      AUCUNE unite superieure declaree. ⛔ Ce n'est PAS un echec :
+      c'est une liste, pour que l'exemption reste VISIBLE et
+      re-decidable, ⛔ pas silencieuse.
+      · DISQUE    grandeur 1 : plafond 10000 tr/min
+      · DISQUE    grandeur 2 : plafond 10000 tr/min
+      · DISQUE    grandeur 3 : plafond 10000 tr/min
+      · GPU       grandeur 3 : plafond 10000 tr/min
+      (`tr/min` n'a pas de prefixe M/G qui se lise : « 10,0 k tr/min »
+       serait PLUS LONG que « 10000 tr/min », mesure a l'appui.)
+
+-- M1. MIROIR ECRAN <-> FIL (⛔ le firmware ne peut PAS le voir) --
+  [OK ] la correspondance metrique -> case a ete LUE               5 entree(s)
+  [OK ] CPU : la CASE ne selectionne que des grandeurs du fil      sel = [0, 1, 3], le fil en porte 4
+  [OK ] CPU : le DETAIL ne montre que des grandeurs du fil         n_detail = 4, le fil en porte 4
+  [OK ] DISQUE : la CASE ne selectionne que des grandeurs du fil   sel = [0, 1], le fil en porte 4
+  [OK ] DISQUE : le DETAIL ne montre que des grandeurs du fil      n_detail = 4, le fil en porte 4
+  [OK ] GPU : la CASE ne selectionne que des grandeurs du fil      sel = [0, 1, 2], le fil en porte 4
+  [OK ] GPU : le DETAIL ne montre que des grandeurs du fil         n_detail = 4, le fil en porte 4
+  [OK ] RÉSEAU : la CASE ne selectionne que des grandeurs du fil   sel = [0, 1], le fil en porte 2
+  [OK ] RÉSEAU : le DETAIL ne montre que des grandeurs du fil      n_detail = 2, le fil en porte 2
+  [OK ] RAM : la CASE ne selectionne que des grandeurs du fil      sel = [0], le fil en porte 2
+  [OK ] RAM : le DETAIL ne montre que des grandeurs du fil         n_detail = 1, le fil en porte 2
+
+-- M2. MIROIR DES TAMPONS (producteur du detail <-> instrument) --
+  [OK ] DN_UI_DETAIL_TXT_MAX est DEFINI dans dn_ui.h               
+  [OK ] le PRODUCTEUR (detail_reparametrer) prend la constante     
+  [OK ] l'INSTRUMENT (widget detail) prend LA MEME constante       
+  [OK ] ⛔ l'ancienne taille de l'instrument (128 o) a DISPARU du CODE elle tronquait EN SILENCE un texte de 168 o
+  [OK ] la copie de l'instrument TESTE le retour de snprintf       sans ce test, un texte amputé serait rendu comme complet
+
+-- LES LIGNES A MESURER (⛔ AUCUNE LARGEUR N'EST CALCULEE ICI) --
+   Une largeur depend des GLYPHES et du crenage, ⛔ pas d'un nombre de
+   caracteres. Ces commandes se jouent SUR LA CARTE, en dn_font_28 :
+     python3 tools/dn_console.py "widget detail"   # rend w, wp et x
+   ⚠️ Les « 446 px utiles » des commentaires sont un chiffre de
+      COMMENTAIRE : `utile = wp - 2*x`. RELIRE, ⛔ ne pas croire.
+   ⛔ Le REPL de la carte MANGE les octets non-ASCII (mesure le
+      2026-08-22) : le « · » et le « ° » n'arrivent PAS. Les chiffres
+      rendus sont donc des BORNES BASSES pour les lignes qui en
+      portent. Le seul instrument EXACT est `widget detail`, qui relit
+      le texte REELLEMENT compose par le firmware.
+   widget largeur "100,0 %   ·   100,0 GHz"   # detail CPU l1 (cols=2)
+   widget largeur "c.max 100,0 %   ·   150,0 °C"   # detail CPU l2 (cols=2)
+   widget largeur "100,0 %   ·   150,0 °C"   # detail GPU l1 (cols=2)
+   widget largeur "1000 W   ·   10000 tr/min"   # detail GPU l2 (cols=2)
+   widget largeur "100,0 %"   # detail RAM l1 (cols=2)
+   widget largeur "2999,9 Mb/s"   # detail RÉSEAU l1 (cols=1)
+   widget largeur "2999,9 Mb/s"   # detail RÉSEAU l2 (cols=1)
+   widget largeur "2999,9 Mo/s"   # detail DISQUE l1 (cols=1)
+   widget largeur "extr.moy 10000 tr/min"   # detail DISQUE l2 (cols=1)
+   widget largeur "ventirad 10000 tr/min"   # detail DISQUE l3 (cols=1)
+   widget largeur "boitier 10000 tr/min"   # detail DISQUE l4 (cols=1)
+   -- et les lignes de CASE, avec les etiquettes DE LA CASE --
+   widget largeur "100,0 %"   # CASE CPU, grandeur 0
+   widget largeur "100,0 GHz"   # CASE CPU, grandeur 1
+   widget largeur "150,0 °C"   # CASE CPU, grandeur 3
+   widget largeur "100,0 %"   # CASE GPU, grandeur 0
+   widget largeur "150,0 °C"   # CASE GPU, grandeur 1
+   widget largeur "1000 W"   # CASE GPU, grandeur 2
+   widget largeur "100,0 %"   # CASE RAM, grandeur 0
+   widget largeur "2999,9 Mb/s"   # CASE RÉSEAU, grandeur 0
+   widget largeur "2999,9 Mb/s"   # CASE RÉSEAU, grandeur 1
+   widget largeur "2999,9 Mo/s"   # CASE DISQUE, grandeur 0
+   widget largeur "10000 tr/min"   # CASE DISQUE, grandeur 1
+   ⚠️ RÉSEAU grandeur 0 a une ECHELLE HAUTE (« Gb/s ») : le texte le plus large n'est PAS forcement le plafond en unite de base. A relire par `widget detail`.
+   ⚠️ RÉSEAU grandeur 1 a une ECHELLE HAUTE (« Gb/s ») : le texte le plus large n'est PAS forcement le plafond en unite de base. A relire par `widget detail`.
+   ⚠️ DISQUE grandeur 0 a une ECHELLE HAUTE (« Go/s ») : le texte le plus large n'est PAS forcement le plafond en unite de base. A relire par `widget detail`.
+
+==============================================================================
+✅ 70 controles passent, 0 echec.
+⚠️  RAPPEL : ce fichier ne solde NI AC5 NI AC8. Les largeurs se
+   MESURENT sur la carte, et les constats sensoriels sont l'OWNER.

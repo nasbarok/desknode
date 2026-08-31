@@ -1,0 +1,74 @@
+==============================================================================
+dn4-12 / AC5 — LA PLUS LONGUE SERIE, PROUVEE SANS CARTE
+==============================================================================
+
+sources LUES : dn_measure.c d65ff9ec675eca5a · dn_measure.h b8c6b328f12f3022 · dn_measure_serie.h 0613a1f86214d742
+⚠️ PORTEE : cette gate prouve la LOGIQUE de la machine a etats et son
+   BRANCHEMENT dans l'ISR. ⛔ RIEN sur le silicium, RIEN sur la
+   concurrence, RIEN sur les valeurs de phase reelles. Voir l'en-tete.
+
+── 0. LES DEUX ETAGES COMPILENT ET SE CHARGENT ───────────────────
+  [OK ] `dn_bounce_stats_t` traduite en ctypes                     45 champs
+  [OK ] les NEUF champs publies de dn4-12 sont dans l'en-tete      manquants : aucun
+  [OK ] ETAGE 1 : `dn_measure_serie.h` COMPILE ET CHARGE           cc -O0, trois `static inline` exposees
+  [OK ] l'ORDRE des 12 champs de `dn_serie_t` == celui que la gate lit en-tete : cur, cur_a, cur_c, cur_d, cur_debut, max, max_a, max_c, max_d, max_debut, n, rompues
+  [OK ] ETAGE 2 : `dn_measure.c` COMPILE, `on_vsync` ATTACHEE      cc -O0, la VRAIE ISR est appelee par la coquille
+
+── 1. LES CONSTANTES SONT CELLES DU PRODUIT ──────────────────────
+  [OK ] `t_demi_us` relu du produit == le seuil que la gate vise   775 us (bounce 9 600 px ⇒ 20 lignes)
+  [OK ] `periode_ns` relue du produit (EXACTE, ⛔ pas tronquee)     26737500 ns
+  [OK ] la periode que la gate AVANCE == celle du produit, arrondie 26738 us — ⛔ pas un nombre magique
+  [OK ] `ph_degrossi_n` relu du produit == 32                      32 trames
+
+── 2. LES NEUF CAS D'AC5.5 ───────────────────────────────────────
+  [OK ] (a) une serie de UNE trame est comptee 1                   max=1 · series=1
+  [OK ] (b) une serie LONGUE (700 trames) n'est ni ecretee ni plafonnee max=700, debut=#40 — ⛔ aucun plafond
+  [OK ] 🔴 TROIS DUREES DIFFERENTES ⇒ TROIS NOMBRES DIFFERENTS      1 · 200 · 700 — le critere d'acceptation minimum (dn4-13 : 135 vs 29)
+  [OK ] (c) une serie de CLASSE C (`ph_rejete`) COURT — D2         max=7, dont C=7 · ph_rejete=7
+  [OK ] (d) une serie de CLASSE D (`manques`) COURT                max=21, dont D=21 · manques=21
+  [OK ] (e) TROIS ruptures par indeterminee, COMPTEES              rompues=3 · max=2 (chaque serie faisait 2 trames)
+  [OK ] (e) une indeterminee HORS SERIE ne compte AUCUNE rupture   elle ne coupe rien : la compter gonflerait la reserve pour rien
+  [OK ] (e) CLASSE E dans l'ISR REELLE : rompt ET est comptee      ph_futur=1 · rompues=1 · en cours=0
+  [OK ] (e) CLASSE G dans l'ISR REELLE : rompt ET est comptee      ph_doubles_ecartes=1 · rompues=2 · en cours=0
+  [OK ] (f) AUCUNE serie ne commence pendant le degrossissage      32 trames ecartees, ph_ref FIGEE a 2000 us, max=0
+  [OK ] (f) la premiere serie de CLASSE A commence APRES la 32e trame debut = trame #38
+  [OK ] (g) deux series : le MAXIMUM suit la SECONDE               max=40 (C=40, D=0) debut=#200 · 2 series
+  [OK ] (h) une serie EN COURS est DEJA dans le maximum            en cours=25 · max=25 (la precedente faisait 9)
+  [OK ] (i) la RAZ remet les 12 champs a zero — REJOUABLE 3 fois   « un temoin se remet a zero, ou il n'est pas un temoin »
+
+── 3. LE BRANCHEMENT DES HUIT CLASSES, DANS L'ISR REELLE ─────────
+  [OK ] CLASSE B (saine) : elle ROMPT, rien ne s'ouvre             max=0 · ph_100pc=0
+  [OK ] CLASSE A (deficit franchi) : la serie COURT                max=12, dont A=12 · ph_100pc=12
+  [OK ] 🎯 LA COMPOSITION SEPARE DEUX PATHOLOGIES DANS UNE MEME SERIE 39 trames = 30 A + 9 D + 0 C — deux remedes differents
+  [OK ] la RAZ est DIFFEREE : lue dans la foulee, elle n'a RIEN remis raz_en_attente=True · max encore a 39
+  [OK ] …et l'ISR la CONSOMME au vsync suivant                     max=0 apres une trame · 6 RAZ consommee(s)
+
+── 4. LES CINQ MUTANTS — ON DOIT LES VOIR ROUGIR ─────────────────
+  [OK ] mutant M1 : la mutation s'applique                         1 occurrence(s) — l'ecretage pose AVANT le comptage
+  [OK ] mutant M1 : compile                                        
+  [OK ] mutant M1 : VU ROUGIR                                      200 et 700 trames rendent LE MEME nombre (121) — la duree est EFFACEE avant d'etre comptee (nominal : 200 vs 700)
+  [OK ] mutant M2 : la mutation s'applique                         1 occurrence(s) — la classe C ROMPT la serie au lieu de la continuer (D2)
+  [OK ] mutant M2 : compile                                        
+  [OK ] mutant M2 : VU ROUGIR                                      7 trames HORS BORNE rendent max=0 (au lieu de 7) et C=0 : ZERO pendant que l'ecran est fige
+  [OK ] mutant M3 : la mutation s'applique                         1 occurrence(s) — une INDETERMINEE continue la serie en silence
+  [OK ] mutant M3 : compile                                        
+  [OK ] mutant M3 : VU ROUGIR                                      rompues=0 (au lieu de 3) et la serie GONFLE a 6 (au lieu de 2) : la duree est FABRIQUEE
+  [OK ] mutant M4 : la mutation s'applique                         1 occurrence(s) — un champ neuf OUBLIE dans la branche RAZ
+  [OK ] mutant M4 : compile                                        
+  [OK ] mutant M4 : VU ROUGIR                                      un champ ne revient pas a zero apres la RAZ ⇒ le temoin n'est plus rejouable
+  [OK ] mutant M5 : la mutation s'applique                         1 occurrence(s) — un champ neuf NON TRADUISIBLE par le miroir ctypes
+  [OK ] mutant M5a (TABLEAU) : VU ROUGIR, et le cri NOMME le champ le miroir CRIE — « ⛔ nom de champ inattendu : « ser_max[4] » »
+  [OK ] mutant M5b (TYPE NON MAPPE) : VU ROUGIR, et le cri NOMME   le miroir CRIE — « ⛔ champ non traduisible : « size_t ser_max » »
+
+── 5. L'INVARIANT DE CONCURRENCE (D5) N'A PAS BOUGE ──────────────
+  [OK ] ⛔ AUCUN(E) section critique ajoute(e) dans `on_vsync`      « on mesure une famine, on n'allait pas la fabriquer »
+  [OK ] ⛔ AUCUN(E) prise de semaphore ajoute(e) dans `on_vsync`    « on mesure une famine, on n'allait pas la fabriquer »
+  [OK ] ⛔ AUCUN(E) log ajoute(e) dans `on_vsync`                   « on mesure une famine, on n'allait pas la fabriquer »
+  [OK ] ⛔ AUCUNE division ni modulo dans `on_vsync`                la conversion trames -> ms se fait COTE CONSOLE (D1)
+  [OK ] …et ce controle SAIT crier (temoin negatif)                une division injectee dans le corps est ATTRAPEE
+  [OK ] 🔴 UN SEUL ECRIVAIN : `s_bnc_serie` n'est ecrit QUE par `on_vsync` aucun appel hors ISR (0 trouve(s))
+  [OK ] les 8 champs de serie sont copies DANS la boucle gardee    8 affectations `out->ser_*` dans `dn_measure_bounce_get()`
+
+==============================================================================
+BILAN : 50 OK / 0 KO
+==============================================================================

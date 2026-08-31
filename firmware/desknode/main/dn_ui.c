@@ -1899,10 +1899,74 @@ static const lv_font_t *barre_date_font(void)
  * ⚠️ L'heure n'est PAS commutable (`&dn_font_28` au site de création) — elle est
  *    donc nommée en dur ICI, au seul endroit qui la pose, ⛔ pas récitée.
  */
+/*
+ * 🔴 dn4-24 / AC2.1 — CE QUI MANQUAIT ICI N'EST **PAS** CE QUE LA GATE NOMMAIT,
+ *    ET LA DIFFÉRENCE DÉCIDE DU CORRECTIF.
+ *
+ * `verif_verrou_lvgl_dn413.py` épinglait le chemin
+ *      `dn_ui_bandes_valider -> dn_ui_barre_plancher [lv_font_get_line_height]`
+ * — c'est-à-dire l'appel `lv_*()`. ⛔ **Ce n'est pas lui le danger.** Vérifié
+ * dans le source du composant (`lvgl__lvgl/src/font/lv_font.c`) :
+ *
+ *      int32_t lv_font_get_line_height(const lv_font_t *font)
+ *      { return font->line_height; }
+ *
+ * Une lecture d'un champ d'un `const lv_font_t` **généré, en flash**. Elle ne
+ * touche ni l'arbre d'objets, ni les zones d'invalidation, ni l'allocateur, ni
+ * aucun état global de LVGL — c'est-à-dire rien de ce que le verrou protège.
+ * ⇒ Poser un verrou POUR ELLE n'aurait protégé RIEN, et le jeton d'exemption
+ *   de la gate l'aurait rendue verte **en laissant le vrai défaut**.
+ * ⚠️ ⛔ ET LE JETON NE S'ÉCRIT PAS ICI, MÊME POUR EN PARLER. Il a d'abord été
+ *    cité en toutes lettres dans ce commentaire : la gate l'a lu, a classé
+ *    cette fonction « exemptée », et son témoin négatif M1 a ROUGI — la seule
+ *    chose qui l'ait rendu visible. Le jeton n'a **aucun échappement** : une
+ *    phrase qui le nomme ACCORDE l'exemption qu'elle prétend refuser.
+ *
+ * 🎯 **CE QUI SE PREND, C'EST LE STATIQUE.** `barre_date_font()` lit
+ *    `s_barre_date_font`, et `dn_ui_set_barre_date_font()` l'ÉCRIT **sous le
+ *    verrou**. Le verrou est donc pris **pour le statique**, et l'appel `lv_*()`
+ *    se retrouve dedans par construction. La gate redevient verte pour la BONNE
+ *    raison — celle du statique, ⛔ pas celle qu'elle nommait.
+ *
+ * 🔴 **REVUE DE CODE DU 2026-08-31 — CE COMMENTAIRE DISAIT « la console
+ *    l'atteint depuis une AUTRE tâche que celle de LVGL », ET C'ÉTAIT VRAI DE
+ *    LA TÂCHE MAIS FAUX DU DANGER. ⛔ IL N'Y A PAS DE COURSE ATTEIGNABLE ICI,
+ *    ET C'EST MESURÉ :**
+ *      · `s_barre_date_font` n'est ÉCRIT qu'en un seul endroit
+ *        (`dn_ui_set_barre_date_font`), atteignable du seul `dn_console.c` ;
+ *      · `s_geo_barre_h` n'est écrit que par `dn_ui_set_bandes()` /
+ *        `dn_ui_set_voie()`, atteignables du seul `dn_console.c` ;
+ *      · le lecteur INTER-TÂCHES, lui, prenait **déjà** le verrou
+ *        (`dn_ui_heure_maj`, via la tâche RTC).
+ *    ⇒ Les lectures « corrigées » étaient des lectures CONSOLE d'écritures
+ *      CONSOLE : **même tâche, pas de donnée déchirée**. Le REPL est mono-tâche.
+ * ⚖️ **ARBITRÉ PAR L'OWNER LE 2026-08-31 (écart 4 de `dn4-24`) : ce verrou est
+ *    un DURCISSEMENT CORRECT PAR CONSTRUCTION, ⛔ pas la fermeture d'une
+ *    course.** Il RESTE — il est juste, il est gratuit (mutex récursif), et il
+ *    ferme la question par construction le jour où un SECOND écrivain apparaît.
+ *    Mais ⛔ il ne faut pas lui faire dire qu'il a réparé une concurrence : le
+ *    dépôt paierait cher une prochaine « faute de verrou » cherchée là où il n'y
+ *    en a pas.
+ * ⚠️ **ET LE COROLLAIRE EST OUVERT** : `dn_ui_barre_date_font()` (plus bas dans
+ *    ce fichier, publique, appelée depuis la console) lit le MÊME statique
+ *    **sans verrou** — invisible à la gate, qui suit les appels `lv_*()` et non
+ *    les statiques. ⛔ Non corrigé : hors du périmètre « trois sites ».
+ *
+ * ⚠️ Le verrou d'`esp_lvgl_port` est un mutex **RÉCURSIF**
+ *    (`xSemaphoreTakeRecursive`, esp_lvgl_port.c) : cette prise est donc gratuite
+ *    pour un appelant qui le tient déjà, et ⛔ ne peut pas s'auto-bloquer.
+ * ⚠️ Et elle COUPE la branche que la gate suivait : `dn_ui_bandes_valider()`
+ *    passe par ici, donc elle est protégée par ce maillon — ⛔ pas par un second
+ *    verrou en amont, qui serait exactement l'interblocage que la gate refuse.
+ */
 int dn_ui_barre_plancher(void)
 {
+    if (!lvgl_port_lock(2000)) {
+        return DN_UI_BARRE_PLANCHER_INDISPONIBLE; /* ⛔ échec FERMÉ, voir dn_ui.h */
+    }
     int bas_heure = DN_UI_BARRE_HEURE_Y + (int)lv_font_get_line_height(&dn_font_28);
     int bas_date = DN_UI_BARRE_DATE_Y + (int)lv_font_get_line_height(barre_date_font());
+    lvgl_port_unlock();
     return bas_heure > bas_date ? bas_heure : bas_date;
 }
 static bool s_barre_fiable;
@@ -10319,8 +10383,24 @@ esp_err_t dn_ui_set_voie(int barre_h, int menu_h, const dn_widget_geom_t *g)
 }
 
 /* Les deux validations, EXTRAITES pour que `dn_ui_set_voie` puisse refuser
- * AVANT de prendre le verrou — ⛔ et surtout avant d'avoir bougé la moitié des
- * réglages, ce qui laisserait la scène dans un état que personne n'a demandé. */
+ * AVANT d'avoir bougé la moitié des réglages, ce qui laisserait la scène dans un
+ * état que personne n'a demandé.
+ *
+ * 🔴 REVUE DE CODE DU 2026-08-31 — CE COMMENTAIRE DISAIT « refuser AVANT DE
+ *    PRENDRE LE VERROU », ET CE N'EST PLUS VRAI DEPUIS `dn4-24` :
+ *    `dn_ui_barre_plancher()` prend et rend le verrou LVGL, donc CETTE
+ *    validation le prend aussi. Trois conséquences, écrites plutôt que tues :
+ *      · ⛔ ce validateur n'est PLUS pur : il peut rendre `ESP_ERR_TIMEOUT`,
+ *        et ses appelants doivent le propager tel quel (ils le font) ;
+ *      · un `dn_ui_set_voie()` malchanceux peut attendre **2 s en validation
+ *        PUIS 2 s en application** — deux prises, deux plafonds ;
+ *      · le verrou n'est PAS porté d'un bout à l'autre : validation et pose le
+ *        prennent séparément. ⚠️ La fenêtre entre les deux n'est pas
+ *        atteignable aujourd'hui — tous les écrivains passent par le REPL
+ *        console, mono-tâche — mais elle EXISTE, et c'est le TOCTOU déjà
+ *        déclaré au constat hors périmètre n°2 de `dn4-24`. Le jour où un
+ *        second écrivain apparaît, c'est ici qu'il faut porter le verrou.
+ */
 esp_err_t dn_ui_bandes_valider(int barre_h, int menu_h)
 {
     /* ⛔ Le plancher n'est plus `53` écrit : il est RELU des deux contenus, donc
@@ -10328,7 +10408,17 @@ esp_err_t dn_ui_bandes_valider(int barre_h, int menu_h)
      * la date tient sous l'heure, et il MONTE dès que `widget date` pose une
      * police plus haute — c'est le seul moyen que le couple `widget date 28` +
      * `widget grille 53 51` cesse d'être accepté en silence. */
-    if (barre_h < dn_ui_barre_plancher() || barre_h > 120) {
+    int plancher = dn_ui_barre_plancher();
+    /* 🔴 dn4-24 / AC2.1 — LE PLANCHER PEUT NE PAS ÊTRE CONNU. Si le verrou LVGL
+     *    n'a pas été obtenu, `dn_ui_barre_plancher()` n'a rien à annoncer. On
+     *    REFUSE, explicitement : le `barre_h < plancher` ci-dessous refuserait
+     *    déjà (la sentinelle est au-dessus du plafond), mais un refus qui tient
+     *    à l'ordre d'une comparaison est un refus qu'une relecture peut casser
+     *    sans le voir. ⇒ Il est écrit. */
+    if (plancher == DN_UI_BARRE_PLANCHER_INDISPONIBLE) {
+        return ESP_ERR_TIMEOUT;
+    }
+    if (barre_h < plancher || barre_h > 120) {
         return ESP_ERR_INVALID_ARG;
     }
     if (menu_h != 0 && (menu_h < 49 || menu_h > 120)) {
@@ -10502,14 +10592,28 @@ esp_err_t dn_ui_set_barre_date_font(const lv_font_t *f)
      *    « on pose quand même, log + compteur » vaut pour un TEXTE qu'on ne
      *    choisit pas, ⛔ pas pour une géométrie qu'on vient de taper.
      */
+    /*
+     * 🔴 dn4-24 / AC2.1 — LA GARDE VERTICALE SE FAISAIT **HORS VERROU**, ET CE
+     *    N'EST PAS `lv_font_get_line_height` LE PROBLÈME (lecture d'un `const`
+     *    en flash, voir `dn_ui_barre_plancher()`) : c'est **`s_geo_barre_h`**,
+     *    qu'écrivent `dn_ui_set_voie()` et `dn_ui_set_bandes()` **sous le
+     *    verrou**. Contrôler dehors puis poser dedans, c'est un TOCTOU : la
+     *    barre pouvait rétrécir ENTRE le contrôle et la pose, et la police
+     *    acceptée contre l'ancienne hauteur se retrouvait clippée — le défaut
+     *    même que cette garde a été écrite pour empêcher.
+     * ⇒ Le contrôle passe SOUS le verrou, avec la pose. Le refus libère avant
+     *   de sortir, et la propriété « ⛔ RIEN n'a bougé » est intacte : on n'a
+     *   touché aucun état avant de refuser.
+     */
+    if (!lvgl_port_lock(2000)) {
+        return ESP_ERR_TIMEOUT;
+    }
     if (f) {
         int bas = DN_UI_BARRE_DATE_Y + (int)lv_font_get_line_height(f);
         if (bas > s_geo_barre_h) {
+            lvgl_port_unlock();
             return ESP_ERR_INVALID_ARG;
         }
-    }
-    if (!lvgl_port_lock(2000)) {
-        return ESP_ERR_TIMEOUT;
     }
     s_barre_date_font = f;
     if (s_barre_date) {

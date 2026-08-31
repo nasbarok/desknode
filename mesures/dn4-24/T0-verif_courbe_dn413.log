@@ -1,0 +1,87 @@
+==============================================================================
+dn4-13 / AC4+AC5+AC6 — COURBE ET INSTRUMENTS (PRÉ-VOL, ⛔ pas l'écran)
+==============================================================================
+  ui         sha256[:16] = dbdec921e7ee9897
+  uih        sha256[:16] = 182d14b4b5e399f4
+  hist       sha256[:16] = 7387023fe762cdf4
+  histh      sha256[:16] = 0a2ee55aefe67714
+  cons       sha256[:16] = 0930db0500edf744
+
+── LES INVARIANTS ─────────────────────────────────────────────────
+  [OK ] AC4.3 `s_axe_pose[0..1]` remis a FAUX en tete            les deux, avant toute pose
+  [OK ] AC4.3 les drapeaux SORTENT de `..._courbe_axes`          signature + affectation
+  [OK ] AC4.2 le partage est decide par les DONNEES              les DEUX series consultees
+  [OK ] AC4.1 echelle commune : RESEAU, et lui seul              RESEAU seul, deux axes, une plage
+  [OK ] AC8.2 la branche morte `bornee` a disparu                retiree ici, CONSERVEE la ou elle sert
+  [OK ] AC4.4 le MIN/MAX nomme sa serie, `hs1` est relu          libelle derive + `hs1` consomme
+  [OK ] AC4.5 la temperature d'AMBIANCE porte sa couleur         2 page(s) a 2 courbes, 2 icones chacune
+  [OK ] ⛔ aucun LV_SYMBOL_* dans le libelle en font 14           aucun glyphe FontAwesome dans la ligne d'etat
+  [OK ] AC5.1 l'invalidation est CONDITIONNEE, et testee AVANT   court-circuit avant les 7 appels LVGL
+  [OK ] AC5.1 la signature couvre les DONNEES (les 2 bouts)      2 ecriture(s), 2 avance(s) de `s_w`
+  [OK ] AC5.3 le gain se CHIFFRE, et le compteur se remet a zero comptes de part et d'autre, et remisables
+  [OK ] AC5.2 l'ironie de dn_hist.h est LEVEE PAR ECRIT          paragraphe CONSERVE et amende
+  [OK ] AC6.1 le temoin de la garde est REJOUABLE                remise a zero + verdict sur le dernier passage
+  [OK ] AC6.2 `n_series` LIT `hidden`, il ne recite plus         lu de `lv_chart_series_t::hidden`
+  [OK ] AC6.4 `widget jauge` refuse la formule pour la demo      la demo est ecartee AVANT la formule
+  [OK ] AC8.1 « connue » : UN predicat, lu par la tuile ET l'historique un predicat, deux surfaces
+  [OK ] AC9 `fond_poser()` a TROIS etats, `off` ne pose RIEN     noir → sortie → px → 2 branches
+  [OK ] AC9.4 les 139,5 ms sont DECLAREES non comparables        marque dans `dn_ui.h` ET imprime par la console
+  [OK ] AC10 la regle du trou est SCINDEE, 0 interdiction nue    règle scindée, cadences écrites, 0 interdiction nue
+  [OK ] AC6.5 `widget detpan` borne a 167, derive de 262-95      167 derive, applique, ET annonce par la console
+
+── 🔴 TÉMOIN NÉGATIF — chaque invariant est MUTÉ et doit ROUGIR ────
+  [OK ] muté (ui) ⇒ ROUGE : AC4.3 `s_axe_pose[0..1]` remis a FAUX en tete «    s_axe_pose[0] = false;     s_axe» → «     /* La série 0»
+  [OK ] muté (ui) ⇒ ROUGE : AC4.3 les drapeaux SORTENT de `..._courbe_axes` «if (pose0) { *pose0 = s_axe_pose[0];» → «if (pose0) { *pose»
+  [OK ] muté (ui) ⇒ ROUGE : AC4.2 le partage est decide par les DONNEES «dn_hist_reels(s0) > 0 && dn_hist_ree» → «true»
+  [OK ] muté (ui) ⇒ ROUGE : AC4.2 le partage est decide par les DONNEES «dn_hist_reels(s1) > 0» → «true»
+  [OK ] muté (ui) ⇒ ROUGE : AC4.1 echelle commune : RESEAU, et lui seul «return idx == DN_UI_CASE_RESEAU;» → «return idx == DN_U»
+  [OK ] muté (ui) ⇒ ROUGE : AC4.1 echelle commune : RESEAU, et lui seul «            a0 = a1 = mn;           » → «            a0 = m»
+  [OK ] muté (ui) ⇒ ROUGE : AC8.2 la branche morte `bornee` a disparu «bool commune = (n == 2 && courbe_ech» → «bool bornee = k_co»
+  [OK ] muté (ui) ⇒ ROUGE : AC4.4 le MIN/MAX nomme sa serie, `hs1` est relu «minmax_long_union(hs0, hs1» → «minmax_long_union(»
+  [OK ] muté (ui) ⇒ ROUGE : AC4.4 le MIN/MAX nomme sa serie, `hs1` est relu «if (nser < 2) {» → «if (nser < 0) {»
+  [OK ] muté (ui) ⇒ ROUGE : AC4.5 la temperature d'AMBIANCE porte sa couleur «"C", .icone = DN_ICONE_THERMOMETER_H» → «"C",»
+  [OK ] muté (ui) ⇒ ROUGE : AC4.5 la temperature d'AMBIANCE porte sa couleur «.unite = "Mb/s", .icone = LV_SYMBOL_» → «.unite = "Mb/s",»
+  [OK ] muté (ui) ⇒ ROUGE : AC4.5 la temperature d'AMBIANCE porte sa couleur «if (ic && cc) {» → «if (false) {»
+  [OK ] muté (ui) ⇒ ROUGE : AC5.1 l'invalidation est CONDITIONNEE, et testee AVANT «if (s_courbe_sig_valide && memcmp(&s» → «if (false) {»
+  [OK ] muté (ui) ⇒ ROUGE : AC5.1 l'invalidation est CONDITIONNEE, et testee AVANT «    s_courbe_appels++; » → «    s_courbe_appel»
+  [OK ] muté (ui) ⇒ ROUGE : AC5.1 la signature couvre les DONNEES (les 2 bouts) «sig.deb0 = (s0 >= 0) ? dn_hist_debut» → «sig.deb0 = 0u;»
+  [OK ] muté (ui) ⇒ ROUGE : AC5.1 la signature couvre les DONNEES (les 2 bouts) «memset(&sig, 0, sizeof(sig));» → «»
+  [OK ] muté (hist) ⇒ ROUGE : AC5.1 la signature couvre les DONNEES (les 2 bouts) «    s_w[serie] = (s_w[serie] + 1u) %» → «    s_w[serie] = s»
+  [OK ] muté (ui) ⇒ ROUGE : AC5.3 le gain se CHIFFRE, et le compteur se remet a zero «    s_courbe_redessins++; » → «»
+  [OK ] muté (ui) ⇒ ROUGE : AC5.3 le gain se CHIFFRE, et le compteur se remet a zero «    s_courbe_appels = 0; » → «»
+  [OK ] muté (histh) ⇒ ROUGE : AC5.2 l'ironie de dn_hist.h est LEVEE PAR ECRIT «🔴 **L'IRONIE DE CE PARAGRAPHE» → «⚠️ un paragraphe q»
+  [OK ] muté (ui) ⇒ ROUGE : AC6.1 le temoin de la garde est REJOUABLE «    s_gardeh_cris = 0; » → «»
+  [OK ] muté (ui) ⇒ ROUGE : AC6.1 le temoin de la garde est REJOUABLE «    if (cri_dernier) { *cri_dernier » → «»
+  [OK ] muté (cons) ⇒ ROUGE : AC6.1 le temoin de la garde est REJOUABLE «} else if (ghl + gyl > ghp && !gcri)» → «} else if (ghl + g»
+  [OK ] muté (ui) ⇒ ROUGE : AC6.2 `n_series` LIT `hidden`, il ne recite plus «        if (s_det_serie0 && !s_det_s» → «        n = dn_his»
+  [OK ] muté (ui) ⇒ ROUGE : AC6.2 `n_series` LIT `hidden`, il ne recite plus «#include "widgets/chart/lv_chart_pri» → «»
+  [OK ] muté (cons) ⇒ ROUGE : AC6.4 `widget jauge` refuse la formule pour la demo «        if (idx >= DN_UI_METRIQUES) » → «        if (false)»
+  [OK ] muté (ui) ⇒ ROUGE : AC8.1 « connue » : UN predicat, lu par la tuile ET l'historique «connues[i] = ok && (int)vue->n > i &» → «connues[i] = ok &&»
+  [OK ] muté (ui) ⇒ ROUGE : AC8.1 « connue » : UN predicat, lu par la tuile ET l'historique «            if (connues[i]) {       » → «            if (vu»
+  [OK ] muté (ui) ⇒ ROUGE : AC9 `fond_poser()` a TROIS etats, `off` ne pose RIEN «    if (!s_fond_on) {         return» → «    if (false) {  »
+  [KO ] muté (ui) ⇒ ROUGE : AC9 `fond_poser()` a TROIS etats, `off` ne pose RIEN «lv_label_set_text(t, "ASSET ABSENT")» → «lv_label_set_text(»
+  [OK ] muté (cons) ⇒ ROUGE : AC9.4 les 139,5 ms sont DECLAREES non comparables «Il se RE-TIRE (dn4-13 / AC11.1)» → «On le garde»
+  [OK ] muté (uih) ⇒ ROUGE : AC9.4 les 139,5 ms sont DECLAREES non comparables «**139,5 ms**» → «un chiffre»
+  [OK ] muté (histh) ⇒ ROUGE : AC10 la regle du trou est SCINDEE, 0 interdiction nue «24 points isolés» → «quelques points»
+  [OK ] muté (ui) ⇒ ROUGE : AC10 la regle du trou est SCINDEE, 0 interdiction nue «DN_CAPT_PERIODE_MS` = **5 000 ms**» → «un capteur lent»
+  [OK ] muté (ui) ⇒ ROUGE : AC10 la regle du trou est SCINDEE, 0 interdiction nue «static const char *TAG = "dn_ui";» → «static const char »
+  [OK ] muté (ui) ⇒ ROUGE : AC6.5 `widget detpan` borne a 167, derive de 262-95 «#define DET_PANH_MAX (262 - 95)» → «#define DET_PANH_M»
+  [OK ] muté (cons) ⇒ ROUGE : AC6.5 `widget detpan` borne a 167, derive de 262-95 «widget detpan <0|40..167>» → «widget detpan <0|4»
+
+  ⛔ CONTRÔLES SANS MUTATION — ils ne sont PAS éprouvés, et on le
+     DIT plutôt que de les compter comme prouvés :
+       · ⛔ aucun LV_SYMBOL_* dans le libelle en font 14
+  [OK ] le témoin a joué assez de mutations                      37 mutations, 1 contrôle(s) non éprouvé(s)
+
+==============================================================================
+⚠️ CE QUE CETTE GATE NE SOLDE PAS :
+   · elle RELIT le source, elle ne l'EXÉCUTE PAS — `dn_ui.c` ne se
+     compile pas sur l'hôte. Elle est donc plus FAIBLE que
+     `verif_hist_dn413.py`. ⛔ Ne pas conclure « AC4/AC6 soldés » ici ;
+   · AC4.6 — le CONSTAT OWNER À L'ŒIL sur `RÉSEAU` et `AMBIANCE` ;
+   · le témoin d'AC4.3 sur la carte (`nav open 0` → `nav open 3`
+     avant toute trame `net` → `widget courbe`) ;
+   · le PRIX de la décision n°5 (le montant écrasé en trait plat),
+     qui est ACQUIS et ne se mesure qu'à l'écran ;
+   · les témoins d'AC6.1 et d'AC6.5, qui se REJOUENT sur la carte.
+⛔ 1 ÉCHEC(S) sur 58 contrôles.

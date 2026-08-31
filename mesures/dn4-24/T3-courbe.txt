@@ -1,0 +1,9 @@
+# T3 — verif_courbe_dn413.py, dn4-24
+AVANT : 1 echec sur 58 controles — [KO] mute (ui) => ROUGE : AC9 fond_poser(), mutant NON attrape
+CAUSE ETABLIE : le CONTROLE etait faux, ⛔ pas le mutant.
+  i_fond_trois_etats testait « ASSET ABSENT » en PRESENCE GLOBALE dans dn_ui.c.
+  Or dn_ui.c porte depuis d6123c5 (2026-08-28, revue dn3-3 — AVANT dn4-14) un
+  ESP_LOGW dont le TEXTE cite « ASSET ABSENT ». Le mutant detruisait le libelle
+  du panneau et le message de log satisfaisait quand meme l'invariant.
+CORRECTIF : le controle est LOCALISE dans le corps de fond_poser(), ⛔ pas supprime.
+APRES : 58 controles, 0 echec — et les DEUX mutants d'AC9 sont vus ROUGIR.

@@ -538,9 +538,33 @@ def i_fond_trois_etats(S):
     i_noir = b.find("lv_color_black()")
     if i_noir < 0 or i_noir > i_sortie:
         return False, "le noir n'est pas pose AVANT la sortie"
-    if "ASSET ABSENT" not in S["ui_str"]:
-        return False, "le panneau ASSET ABSENT a disparu (decision n°2 violee)"
-    return True, "noir → sortie → px → 2 branches"
+    # ═══════════════════════════════════════════════════════════════════════
+    # 🔴 dn4-24 / AC2.2 — CE CONTROLE ETAIT **FAUX**, ⛔ PAS SON MUTANT.
+    #
+    # Il s'ecrivait `if "ASSET ABSENT" not in S["ui_str"]` — une PRESENCE
+    # GLOBALE dans tout `dn_ui.c`. Le mutant du temoin detruit le libelle du
+    # panneau (`lv_label_set_text(t, "ASSET ABSENT")` -> `"rien"`), et le
+    # controle restait VERT : depuis `d6123c5` (2026-08-28, revue de `dn3-3` —
+    # donc AVANT `dn4-14`, ce que le ledger disait), `dn_ui.c` porte un
+    # ESP_LOGW dont le TEXTE cite « ASSET ABSENT » pour expliquer une veille
+    # sans voile. Un message de diagnostic satisfaisait donc l'invariant du
+    # panneau. La gate sortait ROUGE sur SON PROPRE TEMOIN, ⛔ pas sur le code.
+    #
+    # ⛔ Le controle n'est PAS supprime : il est LOCALISE. La meme famille que
+    #    le manifeste de `dn4-16` (un TOTAL satisfait par une ligne fabriquee)
+    #    et que `s_trop_larges++` : on cherchait COMBIEN/SI, il faut chercher
+    #    OU. Le libelle doit etre pose DANS `fond_poser()`, sur un label, par
+    #    un appel — et n'importe quelle autre mention du fichier est desormais
+    #    sans effet sur ce verdict.
+    # ═══════════════════════════════════════════════════════════════════════
+    b_str = corps(S["ui_str"], "static void fond_poser(lv_obj_t *scr)")
+    if b_str is None:
+        return False, "`fond_poser` introuvable dans la vue a chaines"
+    if not re.search(r'lv_label_set_text\(\s*\w+\s*,\s*"ASSET ABSENT"\s*\)',
+                     b_str):
+        return False, ("le libelle ASSET ABSENT n'est plus POSE dans "
+                       "`fond_poser` (decision n°2 violee)")
+    return True, "noir → sortie → px → 2 branches, libelle POSE dans `fond_poser`"
 
 
 def i_borne_option2_declaree(S):

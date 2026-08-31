@@ -1,0 +1,275 @@
+#!/usr/bin/env bash
+# ═════════════════════════════════════════════════════════════════════════════
+# tools/run_gates.sh — dn4-24 / AC1
+#
+#   UNE COMMANDE PASSE TOUTES LES GATES, ET AUCUNE N'EST SAUTEE EN SILENCE.
+#
+#   Usage :  bash tools/run_gates.sh [--silencieux] [--cockpit <chemin>] [-h|--help]
+#   Sortie :  0  toutes VERTES, ou NON-JOUABLES declarees ET conformes
+#             1  au moins une ROUGE, ou la table des NON-JOUABLES est perimee,
+#                malformee, ou dementie par le comportement de la gate
+#
+# ── LES QUATRE REGLES QUI FONT CE SCRIPT ────────────────────────────────────
+#
+# (1) LES GATES SONT DECOUVERTES PAR GLOB, ⛔ JAMAIS ENUMEREES.
+#     Motif paye : le depot portait 21 gates pendant qu'un dossier en comptait
+#     20, et personne ne l'a vu. Une liste ecrite se perime le jour ou on
+#     ajoute une gate — c'est-a-dire le jour ou elle compte le plus.
+#
+# (2) UNE GATE NON-JOUABLE EST **DECLAREE ICI, AVEC SON MOTIF**,
+#     ⛔ JAMAIS INFEREE D'UN CODE DE RETOUR.
+#     Si « rc != 0 et != 1 ⇒ non-jouable » etait la regle, une gate qui plante
+#     sur une vraie faute (traceback ⇒ rc=1, timeout ⇒ rc=124, segfault ⇒
+#     rc=139) deviendrait « non-jouable » en silence. Ici, tout rc non nul
+#     d'une gate NON DECLAREE est ROUGE.
+#
+# (3) LA DECLARATION EST ELLE-MEME FALSIFIABLE, **DANS LES DEUX SENS**.
+#     Chaque NON-JOUABLE porte un TEMOIN (le chemin dont la PRESENCE la rendrait
+#     jouable) ET un RC ATTENDU. Si le temoin apparait, le script JOUE la gate
+#     avec ses arguments. Sinon il la joue QUAND MEME, sans argument, et EXIGE
+#     le rc declare : c'est ainsi qu'on verifie qu'elle est encore une gate.
+#     ⚠️ Une declaration qui ne correspond plus a aucune gate du glob, qui est
+#        MALFORMEE, ou dont le rc attendu est DEMENTI, fait SORTIR EN 1.
+#
+#     🔴 REVUE DE CODE DU 2026-08-31 — CE QUI A ETE MESURE ICI :
+#        · une declaration a champs VIDES (`"g.py|||"`) sautait une gate ROUGE
+#          en silence et pour toujours : `[ ! -e "" ]` est TOUJOURS vrai, et les
+#          regles (2)/(3) ci-dessus etaient de la PROSE, pas des controles ;
+#        · `verif_sr03.py` remplacee par `print(...); sys.exit(0)` produisait
+#          une sortie IDENTIQUE : une gate declaree n'etait jamais jouee, donc
+#          jamais confrontee a ce que sa declaration AFFIRME d'elle.
+#        ⇒ les champs sont valides au demarrage, et la gate est JOUEE.
+#
+# (4) ⛔ AUCUNE SORTIE N'EST REDIRIGEE VERS LE PUITS.
+#     La sortie de chaque gate est CAPTUREE et n'est imprimee QUE SUR ECHEC.
+#     Une sortie jetee fait disparaitre le motif du rouge, et on se retrouve
+#     avec un « ca casse » sans piece. Le controle `garde_puits` ci-dessous
+#     relit CE FICHIER et refuse de tourner s'il y trouve une REDIRECTION.
+#
+#     🔴 REVUE DE CODE DU 2026-08-31 — LA GARDE AVAIT TROIS DEFAUTS, DONT UN
+#        QUI LA RENDAIT INCAPABLE D'ECHOUER :
+#        · elle relisait `${BASH_SOURCE[0]}` APRES le `cd` a la racine. Invoquee
+#          depuis `tools/`, le chemin relatif ne resolvait plus, `grep` echouait,
+#          et `|| true` + `${n:-0}` transformaient l'ECHEC DE LECTURE en
+#          « 0 redirection ». Mesure : une vraie pollution `> /dev/null` plantee
+#          dans le script passait VERTE selon le repertoire d'appel ;
+#        · elle rougissait sur une simple MENTION de la chaine, ce qui rendait
+#          impossible de documenter sa propre regle ;
+#        · ⚠️ ELLE RESTE CONTOURNABLE par une variable — `P="/dev/""null"` puis
+#          `> "$P"` — et ce n'est PAS refermable par une lecture statique. C'est
+#          ecrit ici plutot que tu : cette garde attrape l'ETOURDERIE, ⛔ pas
+#          quelqu'un qui veut la contourner.
+#        ⇒ le chemin du source est resolu en ABSOLU AVANT le `cd`, l'echec de
+#          lecture est FATAL, et seule une vraie REDIRECTION est epinglee.
+# ═════════════════════════════════════════════════════════════════════════════
+set -uo pipefail
+
+# ── (4) LE SOURCE EST RESOLU EN ABSOLU **AVANT** TOUT `cd` ──────────────────
+SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+MOI="$(basename "$SRC")"
+
+RACINE="$(cd "$(dirname "$SRC")/.." && pwd)"
+cd "$RACINE" || exit 1
+
+SILENCIEUX=0
+COCKPIT=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --silencieux) SILENCIEUX=1 ;;
+    --cockpit)
+      shift
+      [ "$#" -gt 0 ] || { echo "--cockpit attend un chemin" >&2; exit 2; }
+      COCKPIT="$1"
+      ;;
+    -h|--help) sed -n '2,60p' "$SRC" || { echo "aide indisponible : $SRC illisible" >&2; exit 2; }; exit 0 ;;
+    *) echo "argument inconnu : $1" >&2; exit 2 ;;
+  esac
+  shift
+done
+
+# ── (2)(3) TABLE DES NON-JOUABLES ───────────────────────────────────────────
+# format :  <gate> | <motif> | <chemin temoin> | <arguments si le temoin est la> | <rc attendu sans temoin>
+# Le TEMOIN est le chemin dont la presence rendrait la gate jouable. Tant qu'il
+# n'existe pas, la gate est jouee SANS ARGUMENT et doit rendre <rc attendu> —
+# son message d'usage. Des qu'il existe, elle est jouee AVEC ses arguments, et
+# son rouge eventuel compte comme un rouge.
+NON_JOUABLES=(
+  "verif_sr03.py|le PDF [AN] AN4545 (VL6180X, DocID026571 Rev 1) n'est PAS au depot : document StMicroelectronics, ⛔ non redistribuable. La gate l'attend en argument et sort en 2 sur son message d'usage — rc=2 n'est PAS un rouge.|tools/fixtures/AN4545.pdf|tools/fixtures/AN4545.pdf firmware/desknode/main/dn_console.c|2"
+)
+
+# ── (4) GARDE : ce script ne doit contenir AUCUNE REDIRECTION vers le puits ──
+# ⛔ On epingle une REDIRECTION (`> /dev/null`, `2>/dev/null`, `&>/dev/null`),
+#    ⛔ pas une mention : la regle doit pouvoir s'ecrire dans son propre fichier.
+# L'aiguille est CONCATENEE pour que le motif ne se declenche pas sur lui-meme.
+garde_puits() {
+  local cible="/dev/""null"
+  local motif="[0-9]*[>&]>?[[:space:]]*${cible}"
+  local n rc
+  # ⚠️ LES LIGNES DE COMMENTAIRE SONT EXCLUES, et ce n'est pas une complaisance :
+  #    sans ca, ce fichier ne peut pas DOCUMENTER sa propre regle — la revue du
+  #    2026-08-31 a vu la garde rougir sur les trois exemples ecrits dans son
+  #    en-tete. Une redirection en commentaire n'est pas une redirection.
+  #    ⛔ Un commentaire de FIN DE LIGNE sur une ligne de code reste scanne :
+  #    la garde echoue FERME.
+  # ⚠️ `awk` sort en 2 sur un fichier illisible — un controle qui ne peut pas
+  #    lire ne dit PAS « rien a signaler ». Le rc est capture EXPLICITEMENT.
+  n=$(awk -v m="$motif" '!/^[[:space:]]*#/ && $0 ~ m { c++ } END { print c+0 }' "$SRC"); rc=$?
+  if [ "$rc" -ge 2 ] || [ ! -r "$SRC" ]; then
+    echo "[KO ] $MOI : source ILLISIBLE ($SRC) — la garde du puits ne peut pas s'exercer." >&2
+    echo "      ⛔ Un controle qui ne peut pas lire ne dit PAS « rien a signaler »." >&2
+    return 1
+  fi
+  if [ "${n:-0}" -ne 0 ]; then
+    echo "[KO ] $MOI contient $n redirection(s) vers le puits — AC1.4 l'interdit." >&2
+    echo "      Une sortie jetee, c'est un rouge sans motif. CAPTURER, imprimer sur echec." >&2
+    return 1
+  fi
+  return 0
+}
+
+garde_puits || exit 1
+
+# ── (1) DECOUVERTE PAR GLOB ─────────────────────────────────────────────────
+shopt -s nullglob
+GATES=(tools/verif_*.py)
+shopt -u nullglob
+
+if [ "${#GATES[@]}" -eq 0 ]; then
+  echo "[KO ] aucune gate trouvee par le glob tools/verif_*.py — le depot est-il complet ?" >&2
+  exit 1
+fi
+
+# ── (3) LA TABLE DES NON-JOUABLES EST VALIDEE AVANT D'ETRE CRUE ─────────────
+declare -A EXISTE=()
+for g in "${GATES[@]}"; do EXISTE["$(basename "$g")"]=1; done
+
+PERIMEES=0
+for d in "${NON_JOUABLES[@]}"; do
+  # 5 champs EXACTEMENT, tous non vides. Un `|` dans un motif casse le
+  # decoupage : mieux vaut le dire que produire un temoin qui vaut du texte.
+  nchamps=$(awk -F'|' '{print NF}' <<<"$d")
+  if [ "$nchamps" -ne 5 ]; then
+    echo "[KO ] declaration NON-JOUABLE MALFORMEE ($nchamps champs au lieu de 5) : $d" >&2
+    echo "      ⛔ Un '|' dans le motif casse le decoupage et fabrique un faux temoin." >&2
+    PERIMEES=$((PERIMEES + 1)); continue
+  fi
+  IFS='|' read -r c_nom c_motif c_temoin c_args c_rc <<<"$d"
+  vide=""
+  [ -n "$c_nom" ]    || vide="$vide nom"
+  [ -n "$c_motif" ]  || vide="$vide motif"
+  [ -n "$c_temoin" ] || vide="$vide temoin"
+  [ -n "$c_args" ]   || vide="$vide arguments"
+  [ -n "$c_rc" ]     || vide="$vide rc_attendu"
+  if [ -n "$vide" ]; then
+    echo "[KO ] declaration NON-JOUABLE a CHAMP(S) VIDE(S) :$vide — '$c_nom'" >&2
+    echo "      ⛔ Un champ vide sauterait la gate en silence, et pour toujours." >&2
+    PERIMEES=$((PERIMEES + 1)); continue
+  fi
+  if ! [[ "$c_rc" =~ ^[0-9]+$ ]]; then
+    echo "[KO ] declaration NON-JOUABLE : rc attendu non numerique ('$c_rc') pour '$c_nom'" >&2
+    PERIMEES=$((PERIMEES + 1)); continue
+  fi
+  if [ -z "${EXISTE[$c_nom]:-}" ]; then
+    echo "[KO ] la table des NON-JOUABLES declare '$c_nom', qui n'existe plus dans tools/verif_*.py." >&2
+    echo "      Une declaration perimee cache une gate disparue. Corriger la table." >&2
+    PERIMEES=$((PERIMEES + 1))
+  fi
+done
+
+champ_de() {  # $1 = basename, $2 = index de champ (2..5) ; imprime le champ
+  local d
+  for d in "${NON_JOUABLES[@]}"; do
+    [ "${d%%|*}" = "$1" ] || continue
+    awk -F'|' -v k="$2" '{print $k}' <<<"$d"
+    return 0
+  done
+  return 1
+}
+
+# ── LA PASSE ────────────────────────────────────────────────────────────────
+N_VERTE=0; N_ROUGE=0; N_NJ=0
+ROUGES=()
+T_DEBUT=$(date +%s)
+
+echo "═══ $MOI — ${#GATES[@]} gates decouvertes par glob ═══"
+echo
+
+for g in "${GATES[@]}"; do
+  nom="$(basename "$g")"
+  declaree=0; motif=""; temoin=""; rc_att=""
+  ARGS=()
+
+  if motif="$(champ_de "$nom" 2)"; then
+    declaree=1
+    temoin="$(champ_de "$nom" 3)"
+    rc_att="$(champ_de "$nom" 5)"
+    if [ -e "$temoin" ]; then
+      # Le temoin est la : la gate REDEVIENT jouable, avec ses arguments.
+      read -r -a ARGS <<<"$(champ_de "$nom" 4)"
+      printf '[  temoin  ] %-38s %s est present ⇒ la gate est JOUEE\n' "$g" "$temoin"
+      declaree=0   # elle est traitee comme une gate ordinaire
+    fi
+  fi
+
+  # (3) Une gate declaree NON-JOUABLE est jouee QUAND MEME, sans argument :
+  #     c'est le seul moyen de verifier qu'elle est encore une gate.
+  if [ "$declaree" -eq 0 ] && [ -n "$COCKPIT" ] && grep -q -- '--cockpit' "$g"; then
+    ARGS+=(--cockpit "$COCKPIT")
+  fi
+
+  t0=$(date +%s)
+  if [ "${#ARGS[@]}" -eq 0 ]; then
+    sortie="$(timeout 1800 python3 "$g" 2>&1)"; rc=$?
+  else
+    sortie="$(timeout 1800 python3 "$g" "${ARGS[@]}" 2>&1)"; rc=$?
+  fi
+  t1=$(date +%s)
+
+  if [ "$declaree" -eq 1 ]; then
+    if [ "$rc" -eq "$rc_att" ]; then
+      printf '[NON-JOUABLE] %-38s rc=%-3s (attendu) temoin absent : %s\n' "$g" "$rc" "$temoin"
+      [ "$SILENCIEUX" -eq 1 ] || printf '              motif : %s\n' "$motif"
+      N_NJ=$((N_NJ + 1))
+    else
+      N_ROUGE=$((N_ROUGE + 1))
+      ROUGES+=("$g (rc=$rc, la declaration NON-JOUABLE annonce $rc_att)")
+      printf '[ROUGE      ] %-38s rc=%-3s ⛔ DECLARATION DEMENTIE (attendu %s)\n' "$g" "$rc" "$rc_att"
+      echo "┌── sortie de $g ─────────────────────────────────────────"
+      printf '%s\n' "$sortie" | sed 's/^/│ /'
+      echo "└──────────────────────────────────────────────────────────"
+      echo "  ⛔ La gate ne se comporte plus comme sa declaration l'affirme."
+      echo "     Soit elle a change, soit la table est a corriger — ⛔ pas a ignorer."
+    fi
+    continue
+  fi
+
+  if [ "$rc" -eq 0 ]; then
+    N_VERTE=$((N_VERTE + 1))
+    printf '[VERTE      ] %-38s rc=0   %4ss\n' "$g" "$((t1 - t0))"
+  else
+    N_ROUGE=$((N_ROUGE + 1))
+    ROUGES+=("$g (rc=$rc)")
+    printf '[ROUGE      ] %-38s rc=%-3s %4ss\n' "$g" "$rc" "$((t1 - t0))"
+    # (4) la sortie n'est imprimee QUE MAINTENANT, c'est-a-dire sur echec.
+    echo "┌── sortie de $g ─────────────────────────────────────────"
+    printf '%s\n' "$sortie" | sed 's/^/│ /'
+    echo "└──────────────────────────────────────────────────────────"
+  fi
+done
+
+T_FIN=$(date +%s)
+echo
+echo "BILAN : $N_VERTE VERTE, $N_ROUGE ROUGE, $N_NJ NON-JOUABLE sur ${#GATES[@]} gates ($((T_FIN - T_DEBUT))s)"
+
+if [ "$PERIMEES" -ne 0 ]; then
+  echo "⛔ $PERIMEES declaration(s) NON-JOUABLE invalide(s) — corriger la table du script."
+fi
+if [ "$N_ROUGE" -ne 0 ]; then
+  echo "⛔ ROUGES :"
+  for r in "${ROUGES[@]}"; do echo "   · $r"; done
+fi
+
+if [ "$N_ROUGE" -ne 0 ] || [ "$PERIMEES" -ne 0 ]; then
+  exit 1
+fi
+exit 0

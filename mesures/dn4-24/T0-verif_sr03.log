@@ -1,0 +1,29 @@
+
+Garde dn4-7 / AC1 : la table SR03 du FIRMWARE est-elle celle de [AN] AN4545 ?
+
+    python3 tools/verif_sr03.py <AN4545.pdf> firmware/desknode/main/dn_console.c
+
+⛔ Ce harnais N'A PAS le droit de contenir la sequence. Il l'EXTRAIT des deux
+   cotes et les compare :
+     · cote document : le texte de l'AN4545, via pdftotext
+     · cote firmware : la table C de main/dn_console.c
+   Un harnais qui porterait la sequence en dur ne prouverait que sa propre
+   coherence avec lui-meme.
+
+⚠️ IL SE PROUVE PAR MUTATION, et ça a ete FAIT le 2026-08-21 : valeur changee,
+   deux entrees permutees, entree supprimee, registre public non declare
+   modifie ⇒ les QUATRE mutants sortent en exit 1. Une garde qu'on n'a jamais
+   vue rouge ne prouve rien (§13.19.x).
+
+🔴 LE PDF N'EST PAS AU DEPOT — c'est un document STMicroelectronics, on ne le
+   redistribue pas. Son EMPREINTE, elle, est ici : le harnais REFUSE tout autre
+   fichier. Ce n'est pas de la coquetterie — deux URL de miroir rendaient en
+   HTTP 200 un PDF ST authentique... du VL53L0X. Le code de retour et le nom de
+   fichier mentaient tous les deux.
+
+   AN4545 « VL6180X basic ranging application note », DocID026571 Rev 1,
+   juin 2014. Verifie identique depuis DEUX hebergeurs independants :
+     https://cdn.sparkfun.com/datasheets/Sensors/Proximity/VL6180_ApplicationNote.pdf
+     https://www.pololu.com/file/0J962/AN4545.pdf
+   ⚠️ st.com est INJOIGNABLE depuis ce poste (et depuis Windows hors WSL) : le
+      TLS aboutit puis le flux HTTP/2 casse (INTERNAL_ERROR).

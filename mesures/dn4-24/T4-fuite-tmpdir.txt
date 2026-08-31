@@ -1,0 +1,7 @@
+# T4.1 — la fuite tmpdir, dn4-24
+mesure au cadrage (2026-08-30) : 4 550 (2 762 a dn4-14, 4 307 au T0 de dn4-16)
+fuite mesuree : +27 repertoires PAR EXECUTION (4550 -> 4577 sur un seul passage)
+avant menage : 4739
+apres menage : 0
+apres UNE execution de la gate corrigee : 0
+⇒ la gate ne laisse plus AUCUN /tmp/dn33_*, et les 4739 accumules sont rendus.

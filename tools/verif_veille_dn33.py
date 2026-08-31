@@ -35,11 +35,14 @@ dn3-3 — LA VEILLE NE MENT NI SUR SON DÉLAI, NI SUR SES PANNES, NI SUR SES GRI
 Sortie : exit 0 si tout passe, 1 sinon. Publie le sha256 des sources LUES.
 """
 
+import atexit
 import ctypes
 import hashlib
 import importlib.util
 import os
 import re
+import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -111,10 +114,194 @@ def sites_appel(src, jeton):
     return _RE_COMMENTAIRES_C.sub("", src).count(jeton)
 
 
+_RE_DEF_C = re.compile(r"(?m)^[A-Za-z_][A-Za-z0-9_ \t\*]*?\b(\w+)\s*\([^;{}]*?\)\s*\{")
+
+_RE_IF_MORT = re.compile(r"(?m)^[ \t]*#[ \t]*if[ \t]+(?:0|FALSE)\b")
+
+
+def code_vivant(src):
+    """La source PRIVEE de ses commentaires ET de ses blocs `#if 0`.
+
+    🔴 REVUE DE CODE DU 2026-08-31 — POURQUOI CETTE FONCTION EXISTE.
+       Le controle d'AC3.2 lisait `dn_widget.c` BRUT. Mesure : encadrer le
+       `ESP_LOGW` du site 1 d'un `#if 0 ... #endif` — texte conserve, diagnostic
+       COMPILE HORS — laissait la gate a `3/3 sites a leur place`,
+       `BILAN : 267 OK · 0 KO`. Supprimer le `ESP_LOGW` en laissant son libelle
+       dans un commentaire faisait pareil.
+       ⇒ Le compteur s'incrementait, le diagnostic n'existait plus, et
+         l'instrument ne disait RIEN. C'est la famille exacte que `dn4-24`
+         solde ailleurs — elle etait dans la gate qui la solde.
+    ⚠️ Symetriquement, un commentaire de documentation qui CITE `s_trop_larges++`
+       faisait passer le total a 4 et rougir a tort. Les deux echecs sont
+       opposes et viennent de la meme lecture brute.
+    ⛔ Ce n'est pas un preprocesseur : `#if 0` seulement, sans conditions
+       calculees. C'est ce que le depot ecrit, et le dire vaut mieux que
+       pretendre couvrir le reste.
+    """
+    src = _RE_COMMENTAIRES_C.sub(lambda m: "\n" * m.group(0).count("\n"), src)
+    lignes = src.split("\n")
+    sortie, profondeur = [], 0
+    for l in lignes:
+        nu = l.strip()
+        if profondeur:
+            if re.match(r"^#[ \t]*(if|ifdef|ifndef)\b", nu):
+                profondeur += 1
+            elif re.match(r"^#[ \t]*endif\b", nu):
+                profondeur -= 1
+            sortie.append("")
+            continue
+        if _RE_IF_MORT.match(l):
+            profondeur = 1
+            sortie.append("")
+            continue
+        sortie.append(l)
+    return "\n".join(sortie)
+
+
+def appels_log(src):
+    """Le TEXTE COMPLET de chaque appel `ESP_LOG*(...)` de `src`.
+
+    ⛔ ⚠️ NE PAS DECOUPER SUR LE `;` : mesure du 2026-08-31, le `ESP_LOGW` du
+       site « TITRE trop large » porte un point-virgule DANS SA CHAINE DE
+       FORMAT (« ...est SIMULEE ; LVGL ne clippe... »). Un
+       `ESP_LOG[WE]\(...\);` non gourmand coupait donc l'appel EN DEUX et
+       perdait l'ancre — la gate rougissait sur du code JUSTE.
+    ⇒ On equilibre les parentheses, en ignorant celles des chaines.
+    """
+    out = []
+    for m in re.finditer(r"ESP_LOG[WEIDV]\s*\(", src):
+        i, n, prof = m.end() - 1, len(src), 0
+        while i < n:
+            c = src[i]
+            if c == '"' or c == "'":
+                fin, i = c, i + 1
+                while i < n and src[i] != fin:
+                    i += 2 if src[i] == "\\" else 1
+            elif c == "(":
+                prof += 1
+            elif c == ")":
+                prof -= 1
+                if prof == 0:
+                    out.append(src[m.start():i + 1])
+                    break
+            i += 1
+    return out
+
+
+def fonction_englobante(src, pos):
+    """Le nom de la fonction C dont le corps contient l'offset `pos`.
+
+    🔴 dn4-24 / AC3.2 — CE QUI MANQUAIT AU DEPOT : UN CONTROLE QUI DIT **OU**.
+       Un `src.count(jeton) == 3` est satisfait par TROIS sites n'importe ou —
+       y compris trois sites deplaces dans une fonction qui ne devrait pas
+       compter. C'est la meme famille que le manifeste de `dn4-16`, dont le
+       controle comparait `len(lignes) == len(entrees)` et qu'une ligne
+       FABRIQUEE satisfaisait.
+
+    🔴 REVUE DE CODE DU 2026-08-31 — « LE DERNIER EN-TETE VU » N'EST PAS
+       « LA FONCTION ENGLOBANTE ». L'implementation precedente rendait le
+       dernier en-tete rencontre AVANT `pos`, sans jamais verifier qu'on etait
+       encore DANS son corps. Un site pose APRES la fin d'une fonction — dans
+       une fonction indentee, dans un bloc conditionnel, ou simplement hors de
+       toute fonction — heritait donc du nom du voisin du dessus, et le
+       controle le declarait « a sa place ».
+    ⇒ On EQUILIBRE LES ACCOLADES depuis l'en-tete jusqu'a `pos` : si le compte
+      retombe a zero avant `pos`, on est SORTI du corps, et la reponse est
+      `None` — ce qui fait tomber le site dans `hors`, donc ROUGIR.
+    ⛔ Les accolades des chaines et des caracteres sont ignorees : sans ca un
+      `"{"` litteral fausserait le compte.
+    """
+    tete = src[:pos]
+    depart = None
+    for m in _RE_DEF_C.finditer(tete):
+        depart = m
+    if depart is None:
+        return None
+    prof, i, n = 0, depart.end() - 1, len(tete)
+    while i < n:
+        c = tete[i]
+        if c == '"' or c == "'":
+            fin, i = c, i + 1
+            while i < n and tete[i] != fin:
+                i += 2 if tete[i] == "\\" else 1
+            i += 1
+            continue
+        if c == "{":
+            prof += 1
+        elif c == "}":
+            prof -= 1
+            if prof == 0:
+                return None   # ⛔ le corps s'est REFERME avant `pos`
+        i += 1
+    return depart.group(1)
+
+
 def tmpdir():
     d = tempfile.mkdtemp(prefix="dn33_")
     _tmp.append(d)
     return d
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🔴 dn4-24 / AC3.1 — LA FUITE. `_tmp` ETAIT ALIMENTEE ET JAMAIS CONSOMMEE.
+#
+# `tmpdir()` appelle `mkdtemp` a chaque bloc de compilation et empile le chemin
+# dans `_tmp` — une liste que RIEN ne relisait : ni `atexit`, ni `finally`, ni
+# `shutil.rmtree`. La liste disait l'intention, le menage n'avait jamais ete
+# ecrit. Mesure du 2026-08-30 : **27 repertoires par execution**, et **4 550**
+# accumules sur le poste (2 762 a `dn4-14`, 4 307 au T0 de `dn4-16`).
+# ⇒ La fuite ne dormait pas, elle GROSSISSAIT — d'une story a l'autre.
+#
+# ⚠️ LA PORTE DE SORTIE EST EXPLICITE ET NOMMEE : `DN33_GARDER_TMP=1` conserve
+#    les repertoires pour instruire un echec de compilation, et le DIT. ⛔ Sans
+#    elle, la seule facon de garder une trace aurait ete de re-supprimer le
+#    menage — c'est-a-dire de re-ouvrir la fuite.
+# ═══════════════════════════════════════════════════════════════════════════
+def menage_tmp():
+    """Rend au systeme tous les `/tmp/dn33_*` que CETTE execution a crees."""
+    # 🔴 REVUE DE CODE DU 2026-08-31 — `DN33_GARDER_TMP=0` GARDAIT LES
+    #    REPERTOIRES : toute valeur non vide etait vraie. Un operateur qui ecrit
+    #    « =0 » pour DESARMER la porte de sortie la REARMAIT, et le message lui
+    #    confirmait « DN33_GARDER_TMP=1 ». ⇒ la fuite revenait par la porte
+    #    prevue pour l'eviter.
+    if os.environ.get("DN33_GARDER_TMP", "").strip().lower() in (
+            "1", "oui", "yes", "true", "vrai"):
+        if _tmp:
+            print("⚠️ DN33_GARDER_TMP=1 — %d repertoire(s) temporaire(s) "
+                  "CONSERVE(s), a effacer a la main :" % len(_tmp))
+            print("   %s" % _tmp[0])
+        return
+    n = 0
+    for d in _tmp:
+        if os.path.isdir(d):
+            shutil.rmtree(d, ignore_errors=True)
+            n += 1
+    del _tmp[:]
+    return n
+
+
+atexit.register(menage_tmp)
+
+
+# 🔴 REVUE DE CODE DU 2026-08-31 — `atexit` NE TOURNE PAS SOUS SIGTERM, ET
+#    C'EST EXACTEMENT COMME CA QUE `tools/run_gates.sh` TUE UNE GATE FIGEE
+#    (`timeout 1800` envoie SIGTERM). Mesure : passage normal 0 → 0 ; passage
+#    tue → **3 repertoires laisses**. ⇒ le seul composant capable de tuer cette
+#    gate est celui qu'AC1 vient d'introduire, et il rouvrait la fuite qu'AC3.1
+#    ferme. Le menage est donc arme sur SIGTERM et SIGINT aussi.
+# ⛔ Reste hors de portee, et c'est ecrit : SIGKILL, `os._exit()` et une panne
+#    d'alimentation ne laissent tourner AUCUN gestionnaire. La fuite est fermee
+#    pour les sorties ORDONNEES, ⛔ pas pour un arret brutal.
+def _menage_signal(signum, _frame):
+    menage_tmp()
+    os._exit(128 + signum)
+
+
+for _sig in (signal.SIGTERM, signal.SIGINT):
+    try:
+        signal.signal(_sig, _menage_signal)
+    except (ValueError, OSError):   # pas le thread principal : on n'insiste pas
+        pass
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -2069,9 +2256,74 @@ def bloc_polices():
     #    (`dn_widget_controler_tenue`), qui existait avant dn4-14-2. Compter à
     #    l'estime ce qu'on n'a pas relu, c'est exactement ce que cette gate
     #    reproche au reste du dépôt.
-    ctrl(wc.count("s_trop_larges++") == 3,
-         "…il alimente `trop_larges`, ⛔ pas un 4e compteur",
-         "3 sites : colonne unique · bascule de mode · le TITRE (dn4-14-2)")
+    #
+    # ═══════════════════════════════════════════════════════════════════════
+    # 🔴 dn4-24 / AC3.2 — IL COMPTAIT COMBIEN. IL DIT MAINTENANT **OÙ**.
+    #    Il s'écrivait `wc.count("s_trop_larges++") == 3`. Un TOTAL : déplacer
+    #    deux incréments dans une autre fonction — ou les trois — le laissait
+    #    VERT, alors que le compteur aurait changé de sens (il ne mesurerait
+    #    plus « à la construction » mais autre chose). Le seuil ne disait rien
+    #    du diagnostic qu'il prétendait garder.
+    # ⇒ Chaque site est désormais ÉPINGLÉ par son couple
+    #      (fonction porteuse, ancre du message qui le suit)
+    #   et le total reste contrôlé pour qu'un QUATRIÈME site ne se glisse pas
+    #   ailleurs en silence.
+    # ⚠️ L'ancre est le TEXTE DU LOG, ⛔ pas un numéro de ligne : c'est ce qui
+    #    dit de QUEL diagnostic il s'agit, et c'est ce qui survit à une édition.
+    # ═══════════════════════════════════════════════════════════════════════
+    SITES_TROP_LARGES = (
+        ("dn_widget_controler_tenue", "la bascule de mode le rend TROP LARGE"),
+        ("dn_widget_creer", "TITRE trop large"),
+        ("dn_widget_creer", "TROP LARGE en colonne"),
+    )
+    # 🔴 REVUE DE CODE DU 2026-08-31 — DEUX CORRECTIFS, ET ILS SE REPONDENT.
+    #  (a) ON LIT `code_vivant(wc)`, ⛔ PLUS LA SOURCE BRUTE. Un `#if 0` autour
+    #      d'un `ESP_LOGW` (texte conserve, diagnostic COMPILE HORS) laissait
+    #      « 3/3 sites a leur place » ; un commentaire citant `s_trop_larges++`
+    #      faisait rougir a tort. Meme lecture brute, deux echecs opposes.
+    #  (b) L'ANCRE DOIT ETRE DANS UN VRAI APPEL `ESP_LOG*`, ⛔ pas « quelque
+    #      part dans les 400 caracteres qui suivent ». Le commentaire de ce
+    #      controle dit « l'ancre est le TEXTE DU LOG » : il le VERIFIE
+    #      desormais, au lieu de l'esperer.
+    vivant = code_vivant(wc)
+    vus, hors = [], []
+    for m in re.finditer(r"s_trop_larges\+\+", vivant):
+        fn = fonction_englobante(vivant, m.start())
+        suite = vivant[m.end():m.end() + 400]
+        # ⚠️ LA FENETRE D'EXTRACTION EST PLUS LARGE QUE CELLE DU DIAGNOSTIC, et
+        #    c'est mesure : le `ESP_LOGW` du site « TITRE trop large » fait plus
+        #    de 400 caracteres. Coupe a 400, ses parentheses ne s'equilibraient
+        #    jamais, aucun appel n'etait extrait, et la gate rougissait sur du
+        #    code JUSTE. Les 400 restent pour ce qu'on IMPRIME, ⛔ pas pour ce
+        #    qu'on cherche.
+        logs = appels_log(vivant[m.end():m.end() + 2000])
+        place = None
+        for f_att, ancre_att in SITES_TROP_LARGES:
+            if fn == f_att and any(ancre_att in appel for appel in logs):
+                place = (f_att, ancre_att)
+                break
+        if place is None:
+            manque_log = any(fn == f_att
+                             and ancre_att in vivant[m.end():m.end() + 2000]
+                             and not any(ancre_att in a for a in logs)
+                             for f_att, ancre_att in SITES_TROP_LARGES)
+            hors.append("%s [%s%.40s…]"
+                        % (fn,
+                           "ancre PRESENTE mais HORS d'un ESP_LOG — "
+                           if manque_log else "",
+                           suite.strip().replace("\n", " ")))
+        elif place in vus:
+            hors.append("%s : site DOUBLE pour « %s »" % place)
+        else:
+            vus.append(place)
+    manquants = [x for x in SITES_TROP_LARGES if x not in vus]
+    ctrl(not manquants and not hors and
+         vivant.count("s_trop_larges++") == len(SITES_TROP_LARGES),
+         "…il alimente `trop_larges` AUX TROIS SITES NOMMES, ⛔ pas un 4e compteur",
+         ("%d/%d sites a leur place%s%s"
+          % (len(vus), len(SITES_TROP_LARGES),
+             "" if not manquants else " · MANQUANT : %s" % (manquants,),
+             "" if not hors else " · HORS SITE : %s" % (hors,))))
     for f in ("dn_widget_chevauchements", "dn_widget_debordements",
               "dn_widget_trop_larges"):
         ctrl(f + "(void)" in wh, "…et les compteurs restent TROIS : `%s`" % f)

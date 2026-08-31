@@ -1,0 +1,25 @@
+==============================================================================
+dn4-22 / AC5 — L'ETIQUETTE XIP NE PEUT PLUS MENTIR
+==============================================================================
+
+── 1. LA GARDE EXISTE ET ELLE EST ATTEIGNABLE ──────────────────────
+  [OK ] le bloc XIP du bandeau existe (localise par son CONTENU)
+  [OK ] le bloc vit dans une fonction nommee  ⇒ `log_socle()`
+  [OK ] …et cette fonction est REELLEMENT APPELEE dans ce fichier  ⛔ une garde jamais atteinte n'est pas une garde
+
+── 2. AUCUN `#if` SUR UN SYMBOLE FANTOME ───────────────────────────
+  [OK ] le bloc teste au moins un symbole  ⇒ ['CONFIG_SPIRAM_FETCH_INSTRUCTIONS', 'CONFIG_SPIRAM_RODATA']
+  [OK ] TOUT symbole teste est POSE par la configuration du projet  ⇒ l'etiquette PEUT dire la verite
+
+── 3. LA BRANCHE D'ESSAI ET LE DEFAUT LIVRE NE DIVERGENT PAS ───────
+  [OK ] `sdkconfig.defaults` pose des symboles XIP  ⇒ ['CONFIG_SPIRAM_FETCH_INSTRUCTIONS', 'CONFIG_SPIRAM_RODATA']
+  [OK ] …et la branche `xip-lecture-code` pose EXACTEMENT LES MEMES
+  [OK ] …et le bandeau teste TOUS ceux que la config pose
+
+── 4. LES CAS PARTIELS SONT DISTINGUES ─────────────────────────────
+  [OK ] une branche ISOLE `CONFIG_SPIRAM_FETCH_INSTRUCTIONS`  ⇒ « CONFIG_SPIRAM_FETCH_INSTRUCTIONS »
+  [OK ] une branche ISOLE `CONFIG_SPIRAM_RODATA`  ⇒ « CONFIG_SPIRAM_RODATA »
+
+==============================================================================
+BILAN : 10 OK / 0 KO
+==============================================================================

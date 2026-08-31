@@ -1,0 +1,26 @@
+[stub] ⚠️  psutil est un STUB (tools/stub_psutil) : les valeurs cpu/ram/net/disk sont FABRIQUEES. ⛔ Aucun chiffre de cette session n'est une mesure.
+=== TEMOIN DE DECOUPE — lecteur d'horloge (dn4-18) ===
+
+[1/3] AC3.5 — l'invariant de decoupe
+  flux de reference : 10115 o | 154 lignes | refus_firmware=2 | etats_lus=6 | etat final « OS0 »
+  journal de reference : 7 evenement(s)
+      ('etat', 'OS1', 'NON FIABLE (OS=1)')
+      ('verdict', 'OK')
+      ('etat', 'OS0', 'FIABLE')
+      ('etat', 'OS0', 'FIABLE')
+      ('lue', '2026-08-26 13:47:33', 1787752053)
+      ('etat', 'OS0', 'FIABLE')
+      ('etat', 'OS0', 'FIABLE')
+  ✅ COUPURE SIMPLE : 10114 positions, TOUTES identiques au flux entier
+  ✅ OCTET PAR OCTET : identique (10115 read() d'un octet)
+  ✅ COUPURES MULTIPLES : 200 tirages (graine 418), tous identiques
+
+[2/3] AC3.4 — l'agent ne peut pas se repondre a lui-meme
+  ✅ AUTO-DECLENCHEMENT : 260 o de ce que l'AGENT emet ⇒ 0 etat, 0 heure, 0 refus, etat reste INCONNU
+
+[3/3] Les deux pieges MESURES sur le flux reel
+  ligne-piege extraite du flux : "W (3309) dn_rtc: 🔴 OS = 1 — l'oscillateur s'est ARRETE : l'heure lue (2000-01-01 00:00:0"
+  ✅ PIEGE « N'EST PAS FIABLE » : etats_lus=0, etat « INCONNU » (attendu 0 / INCONNU)
+  ✅ SOUS-MOT `FIABLE` dans `NON FIABLE (OS=1)` : lu « OS1 » (attendu OS1)
+
+✅ TOUT TIENT.

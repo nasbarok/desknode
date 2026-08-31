@@ -1,0 +1,109 @@
+[stub] ⚠️  psutil est un STUB (tools/stub_psutil) : les valeurs cpu/ram/net/disk sont FABRIQUEES. ⛔ Aucun chiffre de cette session n'est une mesure.
+[verif] ⚠️ psutil ABSENT ⇒ stub arme. ⛔ Aucun nombre cpu/ram/net/disk n'est une mesure ici.
+[verif] constantes LUES dans dn_link.h : LIGNE_MAX=71 GRANDEURS_MAX=4
+[verif] ✅ les 5 metriques du produit tiennent dans GRANDEURS_MAX=4
+[agent] ⚠️ source `lhm` en ECHEC ([Errno 111] Connection refused) — la ou elle remplissait une grandeur, le fil porte un CHAMP VIDE et la ligne dit « -- » ; SI elle tenait la position 0, c'est la metrique entiere qui n'est pas emise. Les autres continuent : une source morte meurt SEULE.
+[agent] ✅ source `lhm` a REPRIS apres 2 echec(s) consecutif(s) — la connexion persistante s'est retablie SANS redemarrer l'agent.
+[agent] ⚠️ source `lhm` en ECHEC ([Errno 111] Connection refused) — la ou elle remplissait une grandeur, le fil porte un CHAMP VIDE et la ligne dit « -- » ; SI elle tenait la position 0, c'est la metrique entiere qui n'est pas emise. Les autres continuent : une source morte meurt SEULE.
+[agent] 🔴 `cpu.degc` : famille `lhm_cpu_temperature_fahrenheit` au lieu de `lhm_cpu_temperature_celsius` — L'UNITE A CHANGE. Valeur REFUSEE, ⛔ pas republiee sous l'ancienne etiquette.
+[agent] 🔴 `fan.top_out` : famille `lhm_motherboard_fan_percent` au lieu de `lhm_motherboard_fan_rpm` — L'UNITE A CHANGE. Valeur REFUSEE, ⛔ pas republiee sous l'ancienne etiquette.
+[agent] 🔴 `fan.cpu_noctua` : famille `lhm_motherboard_fan_percent` au lieu de `lhm_motherboard_fan_rpm` — L'UNITE A CHANGE. Valeur REFUSEE, ⛔ pas republiee sous l'ancienne etiquette.
+[agent] 🔴 `fan.case_group` : famille `lhm_motherboard_fan_percent` au lieu de `lhm_motherboard_fan_rpm` — L'UNITE A CHANGE. Valeur REFUSEE, ⛔ pas republiee sous l'ancienne etiquette.
+[agent] 🔴 `fan.rear_out` : famille `lhm_motherboard_fan_percent` au lieu de `lhm_motherboard_fan_rpm` — L'UNITE A CHANGE. Valeur REFUSEE, ⛔ pas republiee sous l'ancienne etiquette.
+[agent] 🔴 `/intelcpu/0/temperature/0` : DEUX familles pour la meme sonde (`lhm_cpu_temperature_celsius` et `lhm_cpu_temperature_fahrenheit`) — ⛔ valeur REFUSEE, le fil ne tranche pas un conflit d'unite au hasard.
+[agent] 🔴 `/intelcpu/0/temperature/1` : DEUX familles pour la meme sonde (`lhm_cpu_temperature_celsius` et `lhm_cpu_temperature_fahrenheit`) — ⛔ valeur REFUSEE, le fil ne tranche pas un conflit d'unite au hasard.
+[agent] 🔴 `/intelcpu/0/temperature/2` : DEUX familles pour la meme sonde (`lhm_cpu_temperature_celsius` et `lhm_cpu_temperature_fahrenheit`) — ⛔ valeur REFUSEE, le fil ne tranche pas un conflit d'unite au hasard.
+[agent] 🔴 `/intelcpu/0/temperature/3` : DEUX familles pour la meme sonde (`lhm_cpu_temperature_celsius` et `lhm_cpu_temperature_fahrenheit`) — ⛔ valeur REFUSEE, le fil ne tranche pas un conflit d'unite au hasard.
+[agent] 🔴 `/intelcpu/0/temperature/4` : DEUX familles pour la meme sonde (`lhm_cpu_temperature_celsius` et `lhm_cpu_temperature_fahrenheit`) — ⛔ valeur REFUSEE, le fil ne tranche pas un conflit d'unite au hasard.
+[agent] 🔴 `/intelcpu/0/temperature/5` : DEUX familles pour la meme sonde (`lhm_cpu_temperature_celsius` et `lhm_cpu_temperature_fahrenheit`) — ⛔ valeur REFUSEE, le fil ne tranche pas un conflit d'unite au hasard.
+[agent] 🔴 `/intelcpu/0/temperature/6` : DEUX familles pour la meme sonde (`lhm_cpu_temperature_celsius` et `lhm_cpu_temperature_fahrenheit`) — ⛔ valeur REFUSEE, le fil ne tranche pas un conflit d'unite au hasard.
+[agent] 🔴 `/intelcpu/0/temperature/7` : DEUX familles pour la meme sonde (`lhm_cpu_temperature_celsius` et `lhm_cpu_temperature_fahrenheit`) — ⛔ valeur REFUSEE, le fil ne tranche pas un conflit d'unite au hasard.
+[agent] 🔴 `/intelcpu/0/temperature/8` : DEUX familles pour la meme sonde (`lhm_cpu_temperature_celsius` et `lhm_cpu_temperature_fahrenheit`) — ⛔ valeur REFUSEE, le fil ne tranche pas un conflit d'unite au hasard.
+[agent] 🔴 `/intelcpu/0/temperature/9` : DEUX familles pour la meme sonde (`lhm_cpu_temperature_celsius` et `lhm_cpu_temperature_fahrenheit`) — ⛔ valeur REFUSEE, le fil ne tranche pas un conflit d'unite au hasard.
+[agent] 🔴 `/intelcpu/0/temperature/10` : DEUX familles pour la meme sonde (`lhm_cpu_temperature_celsius` et `lhm_cpu_temperature_fahrenheit`) — ⛔ valeur REFUSEE, le fil ne tranche pas un conflit d'unite au hasard.
+[agent] 🔴 `/intelcpu/0/temperature/11` : DEUX familles pour la meme sonde (`lhm_cpu_temperature_celsius` et `lhm_cpu_temperature_fahrenheit`) — ⛔ valeur REFUSEE, le fil ne tranche pas un conflit d'unite au hasard.
+[agent] 🔴 `/intelcpu/0/temperature/12` : DEUX familles pour la meme sonde (`lhm_cpu_temperature_celsius` et `lhm_cpu_temperature_fahrenheit`) — ⛔ valeur REFUSEE, le fil ne tranche pas un conflit d'unite au hasard.
+[agent] 🔴 `/intelcpu/0/temperature/13` : DEUX familles pour la meme sonde (`lhm_cpu_temperature_celsius` et `lhm_cpu_temperature_fahrenheit`) — ⛔ valeur REFUSEE, le fil ne tranche pas un conflit d'unite au hasard.
+[agent] 🔴 `/intelcpu/0/temperature/14` : DEUX familles pour la meme sonde (`lhm_cpu_temperature_celsius` et `lhm_cpu_temperature_fahrenheit`) — ⛔ valeur REFUSEE, le fil ne tranche pas un conflit d'unite au hasard.
+[agent] 🔴 `/intelcpu/0/temperature/15` : DEUX familles pour la meme sonde (`lhm_cpu_temperature_celsius` et `lhm_cpu_temperature_fahrenheit`) — ⛔ valeur REFUSEE, le fil ne tranche pas un conflit d'unite au hasard.
+[agent] 🔴 `/intelcpu/0/temperature/16` : DEUX familles pour la meme sonde (`lhm_cpu_temperature_celsius` et `lhm_cpu_temperature_fahrenheit`) — ⛔ valeur REFUSEE, le fil ne tranche pas un conflit d'unite au hasard.
+[agent] 🔴 `/intelcpu/0/temperature/17` : DEUX familles pour la meme sonde (`lhm_cpu_temperature_celsius` et `lhm_cpu_temperature_fahrenheit`) — ⛔ valeur REFUSEE, le fil ne tranche pas un conflit d'unite au hasard.
+[agent] 🔴 `/intelcpu/0/temperature/18` : DEUX familles pour la meme sonde (`lhm_cpu_temperature_celsius` et `lhm_cpu_temperature_fahrenheit`) — ⛔ valeur REFUSEE, le fil ne tranche pas un conflit d'unite au hasard.
+[agent] 🔴 `cpu.degc` : famille `None` au lieu de `lhm_cpu_temperature_celsius` — L'UNITE A CHANGE. Valeur REFUSEE, ⛔ pas republiee sous l'ancienne etiquette.
+============================================================================
+dn4-8 / AC6 — EXERCICE DE `SourceLhm` CONTRE UN STUB
+⛔ Aucun nombre de ce rapport n'est une mesure de la tour.
+source exercee : agent/dn_agent.py sha256:c16b22513f1412dd
+============================================================================
+
+== 1. LECTURE NOMINALE — les cinq sondes, et la FORME de la trame ==
+  [OK ] les 5 sondes de LHM_SONDES sont rendues              ['cpu.degc', 'fan.case_group', 'fan.cpu_noctua', 'fan.rear_out', 'fan.top_out']
+  [OK ] 5/5 portent une valeur (fixture reelle)              cpu.degc=41.0 fan.case_group=861.5 fan.cpu_noctua=283.9 fan.rear_out=1291.6 fan.top_out=667.4
+  [OK ] extraction_moyenne = moyenne des DEUX canaux         979.483 tr/min
+  [OK ] la trame `cpu` porte QUATRE grandeurs                [234, 32, 625, 410]
+  [OK ] la trame `disk` porte QUATRE grandeurs               [11485, 9795, 2839, 8615]
+  [OK ] les deux valeurs DIFFERENT (sinon la garde est aveugle) c.max=625 degC=410
+  [OK ] `c.max` est en INDEX 2 (valeur EXACTE, ⛔ pas un plafond) index2=625 attendu=625
+  [OK ] la °C CPU est en INDEX 3 (valeur EXACTE, ⛔ pas 2)    index3=410 attendu=410
+  [OK ] le Mo/s garde la POSITION 0 de `disk`                v1=11485
+  [OK ] aucune trame REELLE ne depasse DN_LINK_LIGNE_MAX     pire = 56 o (max 71)
+
+== 2. UNE SONDE MUETTE — champ VIDE, et la SUIVANTE non decalee ==
+  [OK ] la grandeur muette est `None` (champ vide)           [5169, 9795, None, 8615]
+  [OK ] la SUIVANTE n'est PAS decalee (boitier toujours en 3) v4=8615
+  [OK ] la trame porte bien un `,,` (⛔ pas une troncature)   $DN,3,1,1,disk,5169,9795,,8615*2F
+  [OK ] l'absence est COMPTEE, ⛔ pas silencieuse             {'fan.cpu_noctua': 3}
+  [OK ] ⛔ et ce n'est PAS comptee comme une panne            {}
+
+== 3. UNE VALEUR NEGATIVE — « je ne sais pas », ⛔ PAS un 0 ecrete ==
+  [OK ] la valeur negative devient un champ VIDE             [9529, 9795, 2839, None]
+  [OK ] ⛔ elle n'est PAS publiee comme 0 tr/min (fan-stop plausible) v4=None
+  [OK ] le refus est compte sur SON propre compteur          {'fan.case_group:negatif': 3}
+
+== 4. LECTURE LENTE — le timeout COUPE, et les 4 autres SURVIVENT ==
+  [OK ] la lecture est COUPEE au timeout, ⛔ pas au retard du serveur 2 cycles en 0.80 s (retard servi 2,00 s/tir ; 2 x budget = 0,80 s)
+  [OK ] la panne est COMPTEE et NOMMEE                       {'lhm:TimeoutError': 2}
+  [OK ] les DEUX cycles sont comptes (⛔ pas un seul)         compteur = {'lhm:TimeoutError': 2}
+  [OK ] le message n'est imprime QU'UNE fois (stderr CAPTURE) 1 ligne(s) sur stderr pour 2 echecs
+  [OK ] 🎯 `cpu` SURVIT (3 grandeurs sur 4, la °C dit « -- ») [234, 32, 625, None]
+  [OK ] 🎯 `disk` SURVIT (le Mo/s tient la position 0)        [75, None, None, None]
+  [OK ] 🎯 `ram` et `net` sont INTACTES                       ram=[412, 320] net=[199, 100]
+  [OK ] la lecture est coupee AU timeout, borne BASSE **et** HAUTE max 401 ms / timeout 400 ms (plafond du controle 460 ms)
+
+== 5. LHM ABSENT AU DEMARRAGE, PUIS QUI MONTE — reprise SANS redemarrer l'agent ==
+  [OK ] la source n'est PAS condamnee (⛔ divergence voulue d'avec ADL) lhm.reponses = 0
+  [OK ] aucune trame ne porte de valeur LHM                  [234, 32, 625, None]
+     (gpu ABSENT sur cette machine — exclu par son NOM du controle ci-dessous)
+  [OK ] les metriques non-LHM vivent (NOMMEES, ⛔ pas comptees) ['cpu', 'disk', 'net', 'ram']
+  [OK ] 🎯 la °C CPU REPREND, sans redemarrer l'agent         index3 = 410
+  [OK ] 🎯 les tr/min REPRENNENT aussi                        [12643, 9795, 2839, 8615]
+  [OK ] les echecs precedents restent COMPTES (⛔ pas effaces) 2 echec(s), 2 reponse(s)
+
+== 6. LHM ARRETE EN COURS DE ROUTE — le cas le plus dur ==
+  [OK ] avant l'arret : la °C est publiee                    index3 = 410
+  [OK ] apres l'arret : la °C devient un champ VIDE          [234, 32, 625, None]
+  [OK ] ⛔ AUCUNE valeur figee n'a survecu (pas la derniere connue) [99, None, None, None]
+  [OK ] `ram`/`net`/`disk` continuent (NOMMEES, ⛔ pas comptees) ['cpu', 'disk', 'net', 'ram']
+
+== 7. L'UNITE CHANGE COTE LHM — valeur REFUSEE, et ⛔ PAS une absence ==
+  [OK ] les 5 sondes sont REFUSEES (famille inattendue)      {'cpu.degc': None, 'fan.top_out': None, 'fan.cpu_noctua': None, 'fan.case_group': None, 'fan.rear_out': None}
+  [OK ] elles sont dans le seau `familles`, ⛔ PAS dans `absences` familles=['cpu.degc', 'fan.case_group', 'fan.cpu_noctua', 'fan.rear_out', 'fan.top_out'] absences=[]
+  [OK ] ⛔ AUCUNE ligne illisible : c'est bien le 4e etat, pas le 3e lues=506 illisibles=0
+
+== 8. DEUX FAMILLES POUR LA MEME SONDE — ⛔ pas de tirage au sort ==
+  [OK ] la sonde en conflit est REFUSEE (⛔ pas « dernier arrive gagne ») cpu.degc=None
+  [OK ] le conflit est COMPTE sur SON compteur               doublons=['/intelcpu/0/temperature/0', '/intelcpu/0/temperature/1', '/intelcpu/0/temperature/10', '/intelcpu/0/temperature/11', '/intelcpu/0/temperature/12', '/intelcpu/0/temperature/13', '/intelcpu/0/temperature/14', '/intelcpu/0/temperature/15', '/intelcpu/0/temperature/16', '/intelcpu/0/temperature/17', '/intelcpu/0/temperature/18', '/intelcpu/0/temperature/2', '/intelcpu/0/temperature/3', '/intelcpu/0/temperature/4', '/intelcpu/0/temperature/5', '/intelcpu/0/temperature/6', '/intelcpu/0/temperature/7', '/intelcpu/0/temperature/8', '/intelcpu/0/temperature/9']
+  [OK ] les 4 tr/min, elles, restent LUES                    {'cpu.degc': None, 'fan.top_out': 667.408447265625, 'fan.cpu_noctua': 283.868133544922, 'fan.case_group': 861.521118164063, 'fan.rear_out': 1291.55737304688}
+
+== 9. 200 SANS UNE SEULE LIGNE `lhm_` — c'est une PANNE, ⛔ pas 5 absences ==
+  [OK ] la lecture LEVE (⇒ panne COMPTEE ET NOMMEE par `_tenter`) leve=OSError("/metrics a repondu 200 mais ne porte AUCUNE ligne `lhm_` (3 ligne(s) recues) — ⛔ CE N'EST PAS une absence de capteur : mauvais endpoint, corps vide, ou prefixe de famille renomme.")
+  [OK ] ⛔ AUCUNE absence n'a ete fabriquee                   absences=[]
+
+== 10. REPONSE `will_close` — LE BUDGET DOIT TENIR QUAND MEME ==
+  [OK ] la lecture tient dans le budget malgre `will_close`  0.601 s pour 0.600 s de budget (100 %)
+  [OK ] ⛔ aucun bornage impossible (la socket a bien ete capturee) bornages_impossibles=0
+
+============================================================================
+✅ tous les controles passent.
+⚠️  RAPPEL : AC8 n'est PAS solde par ce fichier — il exige le VRAI
+   service coupe pendant que l'agent tourne, sur la tour.

@@ -18,6 +18,56 @@ La V1 avance par **escalier de mini-POC** (P0 toolchain → P9 endurance H24), c
 fermant une question technique par la mesure. Les choix techniques (framework, transport
 PC↔module, agent Windows) sont **ouverts** tant qu'un POC ne les a pas tranchés.
 
+## Passer les gates — **UNE commande** (`dn4-24`)
+
+```bash
+bash tools/run_gates.sh
+```
+
+Il découvre les gates **par glob** (`tools/verif_*.py`), les joue toutes, imprime
+`VERTE` / `ROUGE` / `NON-JOUABLE` par gate plus un **BILAN**, et sort en **1 dès qu'une
+est ROUGE** — **0** si toutes sont vertes ou déclarées non-jouables.
+
+- ⛔ **Aucune gate n'est énumérée à la main.** Une liste écrite se périme le jour où on
+  ajoute une gate, c'est-à-dire le jour où elle compte. Le dépôt a payé le motif : il en
+  portait **21** pendant qu'un dossier en comptait **20**.
+- ⛔ **Aucune sortie n'est jetée.** Elle est **capturée** et **imprimée uniquement sur
+  échec** : un rouge sans son motif n'est pas un diagnostic. Le runner refuse même de
+  démarrer si **son propre source** contient une redirection vers le puits.
+- ⚠️ **Une gate NON-JOUABLE est DÉCLARÉE dans le script, avec son motif** — ⛔ jamais
+  déduite d'un code de retour, sans quoi un vrai rouge (traceback, timeout, segfault)
+  deviendrait « non-jouable » en silence. Et sa déclaration porte un **témoin** : le
+  chemin dont l'apparition la rend jouable. Elle est alors **jouée**, pas sautée.
+- 🔴 **Et depuis la revue du 2026-08-31, une NON-JOUABLE est JOUÉE QUAND MÊME**, sans
+  argument, et doit rendre **exactement le `rc` que sa déclaration annonce**. Motif payé :
+  `verif_sr03.py` remplacée par un `print(); sys.exit(0)` produisait une sortie **identique**
+  — une gate déclarée n'était jamais confrontée à ce que sa déclaration affirme d'elle. La
+  déclaration est désormais falsifiable **dans les deux sens**, et une déclaration
+  malformée, à champ vide ou périmée fait **sortir en 1**.
+
+### Les options
+
+| option | ce qu'elle fait |
+|---|---|
+| `--cockpit <chemin>` | passe le chemin du cockpit aux **2 gates qui le comprennent** (`verif_dossier_dn415.py`, `verif_ledger_dn416.py`). Sans elle, elles cherchent `~/projects/compagnon_project` et **échouent fermé** si l'arbre est ailleurs. |
+| `--silencieux` | tait le **motif** des NON-JOUABLES. ⛔ Ne tait rien d'autre : la sortie d'une gate ROUGE reste imprimée, toujours. |
+| `-h`, `--help` | l'en-tête du script — les quatre règles et la table des NON-JOUABLES. |
+
+### La seule NON-JOUABLE aujourd'hui
+
+| gate | motif | ce qui la rendrait jouable |
+|---|---|---|
+| `tools/verif_sr03.py` | le PDF **[AN] AN4545** (VL6180X, DocID026571 Rev 1) **n'est pas au dépôt** — document STMicroelectronics, ⛔ non redistribuable. La gate l'attend en argument et sort sur son message d'usage. | poser le PDF en `tools/fixtures/AN4545.pdf` (son **sha256** est écrit dans la gate, qui refuse tout autre fichier) |
+
+> 🔴 **`rc=2` de `verif_sr03.py` n'est PAS un rouge** — c'est son message d'usage. Le
+> confondre avec un échec a coûté un « deux rouges » dans le dossier là où il y en avait
+> **un de code** et **un d'instrument**, qui ne se corrigent pas de la même façon.
+
+### Ce que `tests/` contient, et pourquoi
+
+Rien — et c'est **écrit** : voir `tests/README.md`. La vérification rejouable de ce dépôt,
+ce sont **les gates**, et elles vivent dans `tools/`.
+
 ## Arborescence
 
 ```

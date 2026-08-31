@@ -1,0 +1,31 @@
+# T5 — le re-ancrage par MOTIF, dn4-24 / AC4
+AVANT : cle = (depot, fichier, LIGNE, motif). 195 adresses par numero.
+APRES : cle = (depot, fichier, motif, 48 car. normalises de la citation, RANG).
+        194 occurrences sur 195 ont le rang 1 ; UNE paire est ambigue (declaree).
+
+TEMOIN AC4.2 — inserer UNE entree ordinaire EN TETE de deferred-work.md :
+   AVANT le correctif : BILAN 17 OK, 69 KO   (le cadrage annoncait 62 — le ledger a grossi depuis)
+   APRES le correctif : BILAN 20 OK,  0 KO
+
+TROIS ADRESSES ETAIENT DEJA PERIMEES AU MOMENT DU RE-ANCRAGE :
+   dn_console.c 7018 -> 7029 · 7817 -> 7828 · 8160 -> 8171
+   (decalees le jour meme par le correctif T2 de CETTE story — la these d'AC4,
+    demontree une seconde fois, apres celle du cadrage : :2034 -> :2072)
+BILAN : 18 OK, 4 KO
+--- M1a (texte change DANS les 48 premiers car.) ---
+  [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c desknode:README.md [busid-en-dur] #1 (l.1169) > ⛔ MUTANT dn4-24. **12 passages, 0 échec**, busid `
+  [KO ] toute occurrence de l'arbre est AU MANIFESTE             195 ligne(s) arbitree(s)
+  [KO ] ligne de manifeste SANS occurrence dans l'arbre          desknode:README.md [busid-en-dur] #1 « > ⛔ pas une perte. **12 passages, 0 echec**, »
+  [KO ] le manifeste ne cite aucune occurrence FANTOME           195 ligne(s) de manifeste
+BILAN : 18 OK, 4 KO
+--- M1b (texte change APRES les 48 premiers car.) ---
+  [KO ] le TEXTE a change sous un verdict inchange               desknode:README.md [busid-en-dur] #1 (l.1169)
+  [KO ] la citation du manifeste colle au TEXTE de l'arbre       195 ligne(s) confrontee(s) — le verdict suit le sens, ⛔ pas la ligne
+BILAN : 19 OK, 2 KO
+--- M2 (une occurrence NOUVELLE apparait) ---
+  [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c desknode:README.md [busid-en-dur] #1 (l.1345) Une recette avec busid `3-1` en dur, ajoutee par le 
+  [KO ] toute occurrence de l'arbre est AU MANIFESTE             196 ligne(s) arbitree(s)
+  [KO ] somme des verdicts == occurrences de l'arbre             204 vs 205
+BILAN : 18 OK, 3 KO
+--- M3 (une ligne SE DEPLACE : 40 lignes inserees en tete du README) ⇒ doit rester VERT ---
+BILAN : 20 OK, 0 KO

@@ -1,0 +1,27 @@
+[stub] ⚠️  psutil est un STUB (tools/stub_psutil) : les valeurs cpu/ram/net/disk sont FABRIQUEES. ⛔ Aucun chiffre de cette session n'est une mesure.
+=== GATE MIROIR firmware ↔ agent — horloge (dn4-18) ===
+
+[1/2] AGENT -> FIRMWARE : ce que l'agent cherche existe-t-il ?
+  ✅ etat               b'JAMAIS LUE'                        -> dn_console.c, dn_rtc.c
+  ✅ etat               b'FIABLE'                            -> dn_console.c, dn_rtc.c
+  ✅ etat               b'MUETTE'                            -> dn_console.c, dn_rtc.c
+  ✅ etat               b'NON FIABLE (OS=1)'                 -> dn_rtc.c
+  ✅ etat               b'NON ARMEE'                         -> dn_console.c
+  ✅ DN_H_ANCRE_RTC     b'horloge PCF85063A @ 0x'            -> dn_console.c
+  ✅ DN_H_ANCRE_BARRE   b'\xc2\xb7 horloge '                 -> dn_console.c
+  ✅ DN_H_ANCRE_OS      b'bit OS     : '                     -> dn_console.c
+  ✅ DN_H_ANCRE_LUE     b'lue        : '                     -> dn_console.c
+  ✅ DN_H_POSE_OK       b'heure posee : '                    -> dn_console.c, dn_rtc.c
+  ✅ DN_H_POSE_ETAT     b'\xe2\x80\x94 etat '                -> dn_console.c, dn_rtc.c
+  ✅ DN_H_NON_AFFICHABLE b'NON AFFICHABLE'                    -> dn_console.c
+  ✅ DN_H_POSE_REFUS    b'horloge NON ARMEE'                 -> dn_console.c
+  ✅ DN_H_POSE_REFUS    b'date ou heure INVALIDE'            -> dn_console.c
+  ✅ DN_H_POSE_REFUS    b'ECRITURE REFUSEE ou OS RESTE A 1'  -> dn_console.c
+  ✅ DN_H_POSE_REFUS    b'valeur HORS PLAGE'                 -> dn_console.c
+
+[2/2] FIRMWARE -> AGENT : ce que la carte peut dire est-il connu ?
+  firmware rend : 'FIABLE', 'JAMAIS LUE', 'MUETTE', 'NON FIABLE (OS=1)'
+  agent connait : 'FIABLE', 'JAMAIS LUE', 'MUETTE', 'NON ARMEE', 'NON FIABLE (OS=1)'
+  ✅ les 4 etats du firmware sont TOUS connus de l'agent
+
+✅ LE MIROIR TIENT.

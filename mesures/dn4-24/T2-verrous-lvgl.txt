@@ -1,0 +1,5 @@
+# T2 — verrous LVGL, dn4-24
+binaire AVANT (194d8b4) : 0x12c190 = 1229200 o
+binaire APRES            : 0x12c250 = 1229392 o
+ecart                    : +192 o
+gate verif_verrou_lvgl_dn413.py : 59 controles, 0 echec (etait 4 KO / 61)

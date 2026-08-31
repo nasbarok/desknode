@@ -1,0 +1,9 @@
+# T0 — dn4-24 — 2026-08-30T16:51:51+02:00
+cockpit HEAD : e87afe1
+desknode HEAD : 194d8b4
+gates au depot : 22
+tmpdirs /tmp/dn33_* : 4577
+adresses ancrees par NUMERO dans docs/dn4-15-arbitrage.md : 195
+  dont deferred-work.md : 31
+  dont epics-desknode-v1.md : 24
+tests/ : .gitkeep 

@@ -1,0 +1,36 @@
+==============================================================================
+dn4-5 / AC9 — D4 : AUCUNE ECRITURE NVS/FLASH EN REGIME
+==============================================================================
+
+perimetre : 19 fichiers .c — sha256 : e9504d89928988ee
+primitives cherchees : nvs_set_ · nvs_commit · nvs_erase · nvs_flash_erase · esp_partition_write · esp_partition_erase · esp_flash_write · esp_flash_erase
+
+── 1. LE BALAYAGE, SUR TOUT `main/` ──────────────────────────────
+  [OK ] des ecrivains sont trouves                               4 fichier(s) : desknode_main.c, dn_bootcfg.c, dn_stimulus.c, dn_veille.c
+
+── 2. CHAQUE ECRIVAIN DECLARE SON DECLENCHEUR ────────────────────
+  [OK ] aucun ecrivain NON CLASSE                                4 classes
+  [OK ] aucune entree de table perimee                           table a jour
+   ✅ desknode_main.c  HORS REGIME  1 appel(s)
+       ↳ `nvs_flash_erase()` — efface la partition NVS ENTIERE, temoin compris. Declencheur : `nvs_flash_init()` qui rend NO_FREE_PAGES ou NEW_VERSION_FOUND AU BOOT (desknode_main.c:267). ⛔ Il tombe AVANT que le regime commence, et il ne peut pas se rejouer sans un nouveau boot. 🔴 CE SITE EXISTAIT DEJA A `c31bb97` : ⛔ ce n'est PAS une regression post-dn4-5, c'est un ANGLE MORT de la gate, trouve en revue le 2026-08-28 (la primitive `nvs_flash_erase` n'etait pas cherchee)
+   ✅ dn_bootcfg.c     HORS REGIME  16 appel(s)
+       ↳ console UNIQUEMENT (`set fbs|bounce|lines|drawmem|core`, `cfg reset`, et `cfg repli clear` -> `dn_bootcfg_clear_repli()` : ce dernier a ete AJOUTE APRES dn4-5 et le dossier ne le nommait pas — trouve en revue le 2026-08-28) — ET UN CHEMIN DE BOOT, nomme plutot que tu : desknode_main.c corrige la NVS quand `bounce_px` NE S'ALLOUE PAS (repli dn4-10 du 2026-08-23). ⚠️ Ce chemin est CONDITIONNEL, il tombe AVANT que le regime commence, et il s'auto-eteint (le boot suivant est propre). ⚠️ LE COMPTE PUBLIE PAR LE DOSSIER ETAIT 4 APPELS : il y en a 16 au HEAD. Le COMPTE avait derive, ⛔ pas le VERDICT — aucun chemin de REGIME n'a ete introduit
+   ✅ dn_stimulus.c    HORS REGIME  2 appel(s)
+       ↳ `esp_partition_write` du STIMULUS flash, arme par la commande `flash on` UNIQUEMENT. ⛔ C'est l'instrument qui MESURE le cout d'une ecriture flash — il ne tourne jamais tout seul
+   ✅ dn_veille.c      HORS REGIME  2 appel(s)
+       ↳ persistance des DEUX reglages de veille (delai, armee), declenchee par un GESTE (tap MENU ou commande `veille`). ⛔ Un soak sans-les-mains n'en produit aucune. ✅ Et c'est le seul ecrivain INSTRUMENTE : `veille` publie son compteur d'ecritures depuis le boot
+  [OK ] ⛔ AUCUN ecrivain n'est classe « REGIME »                 D4 tient sur les 4 chemins
+
+── 3. L'INSTRUMENT D'AC9.1 EXISTE ET IL EST NOMME ────────────────
+  [OK ] `veille` publie son compteur d'ecritures NVS             c'est l'instrument a relire A LA FIN DU SOAK (AC9.1)
+  [OK ] `hist` declare rester EN RAM (AC9.3)                     l'historique de session ne survit pas au reboot, et c'est VOULU
+
+── 4. CE QUE CETTE GATE NE PROUVE PAS ────────────────────────────
+   ⛔ Que rien n'a ete ecrit PENDANT le soak. Elle prouve que les
+      seuls chemins d'ecriture QUI EXISTENT sont hors regime.
+   ⇒ La verification de terrain est AC9.1 : relire `veille` a la fin
+      du soak, SUR LA CARTE.
+
+==============================================================================
+BILAN : 6 OK, 0 KO
+==============================================================================

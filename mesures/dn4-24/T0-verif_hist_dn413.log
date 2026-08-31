@@ -1,0 +1,104 @@
+==============================================================================
+dn4-13 / AC2 — `dn_hist` COMPILÉ SUR L'HÔTE ET APPELÉ
+==============================================================================
+  dn_hist.c sha256[:16] = 7387023fe762cdf4
+  dn_hist.h sha256[:16] = 0a2ee55aefe67714
+  LV_CHART_POINT_NONE relu de lv_chart.h = INT32_MAX
+  [OK ] la sentinelle LVGL est bien `INT32_MAX`                  ⛔ sinon `DN_HIST_TROU` ne vaut plus le trou de LVGL
+  [OK ] `dn_hist.c` compile et se charge sur l'hôte              gcc -O0 -shared
+
+── AC2.1 — LE COÛT DÉCLARÉ EST LE COÛT RÉEL ───────────────────────
+     points 3840 o · seaux 1728 o · index 89 o ⇒ TOTAL 5657 o
+  [OK ] `dn_hist_octets()` == la somme des trois termes          5657 o
+  [OK ] points = 8 x 120 x 4                                     3840 o
+  [OK ] seaux = 8 x 24 x (4+4+1)                                 1728 o
+  [OK ] le total DÉPASSE `sizeof(s_pts)` — la sous-déclaration est close +1817 o (+32 %)
+  [OK ] les symboles de stockage sont dans le `.map`             manquants : aucun
+  [OK ] `s_seaux_ouverts` a DISPARU du `.map` (AC2.2)            supprimé, pas seulement débranché
+  [OK ] l'index de seau est ABSOLU dans le binaire (AC3.2)       `s_seau_abs` 8 o
+     `.map` (11 symboles) : s_ecrits 32 · s_pret 1 · s_pts 3840 · s_rattr_evts 4 · s_rattr_trous 4 · s_seau_abs 8 · s_smax 768 · s_smin 768 · s_svu 192 · s_tick_us 8 · s_w 32
+  [OK ] le coût déclaré == LA SOMME DE **TOUS** les symboles du `.map` declare 5657 o, map 5657 o, ecart +0 o
+     ⚠️ On somme TOUT ce que l'éditeur de liens a placé pour
+        `dn_hist.c.obj`, ⛔ pas une liste écrite à la main : une
+        statique ajoutée et oubliée dans `dn_hist_octets_detail()`
+        fait ROUGIR cette ligne, et c'est le seul moyen que le
+        chiffre ne re-périme pas en silence comme les trois
+        précédents (1 344 / 1 536 / 1 728).
+
+── AC2.3 + AC2.4 — LES SIX LECTEURS AVANT `dn_hist_init()` ────────
+  [OK ] `dn_hist_points` rend NULL                               avant init
+  [OK ] `dn_hist_minmax` rend false                              ⛔ pas `0..0`
+  [OK ] `dn_hist_minmax_long` rend false                         ⛔ pas `0..0`
+  [OK ] `dn_hist_reels` rend 0                                   ⛔ pas 120 zéros comptés comme réels
+  [OK ] `dn_hist_couverture_s` rend 0                            ⛔ pas 7 200 s d'uptime
+  [OK ] `dn_hist_debut` rend 0                                   index sans tableau
+
+     🔴 TÉMOIN NÉGATIF — gardes `s_pret` retirées, RECOMPILÉ, RAPPELÉ
+  [OK ] sans garde, `minmax` rend bien la plage `0..0` INTERDITE défaut d'origine REPRODUIT (8 gardes `s_pret` retirées : les 6 lecteurs + l'écrivain)
+  [OK ] sans garde, `reels` compte les 120 zéros du `.bss`       120 points « réels » qui n'existent pas
+  [OK ] sans garde, `points` rend un tableau de zéros            ⇒ `lv_chart` tracerait une ligne plate à zéro
+
+── AC2.2 — LA COUVERTURE EST CE QUI A ÉTÉ OBSERVÉ ─────────────────
+  [OK ] 1 h d'uptime, 0 réel ⇒ couverture 0                      🔴 c'est le témoin d'AC2.2 : « MIN/MAX sur : 1 h » à côté de « -- »
+  [OK ] …et `minmax_long` rend false au même instant             les deux instruments s'accordent
+  [OK ] 1 réel à t = 40 s ⇒ couverture 40 s                      ⛔ pas 3 600 s au motif que le seau fait 1 h
+  [OK ] réel à t=100 s puis t=3 h 4 min ⇒ couverture = 3 h 4 min 11050 s
+  [OK ] …et la série 1, jamais alimentée, reste à 0              la couverture est PAR SÉRIE
+
+     🔴 TÉMOIN NÉGATIF — la version UPTIME est remise, et vue MENTIR
+  [OK ] l'ancienne version annonce 3 700 s sur ZÉRO observation  le défaut d'AC2.2 est REPRODUIT, donc la gate le voit
+
+── AC3.1 — L'AXE DES TEMPS NE SE COMPRIME PAS APRÈS UN `ui off` ───
+  [OK ] 6 s d'échantillonnage ⇒ 6 points réels                   position d'écriture = 6
+  [OK ] pause t=5 s -> t=66 s ⇒ les 60 s non échantillonnées sont COMBLÉES comblé 60 (secondes 6..65)
+  [OK ] 7 points réels, pas 7 points COLLÉS                      7 réels sur 120
+  [OK ] l'anneau a avancé de 61 positions (60 trous + la reprise) 61 positions — ⛔ la courbe ne recolle PAS les deux bords
+  [OK ] le rattrapage est COMPTÉ et publiable par `hist`         1 coupure(s), 60 trou(s)
+  [OK ] gigue de timer à t=1040 ms ⇒ AUCUN trou creusé           ⛔ une courbe en pointillés sur une carte saine
+  [OK ] gigue de timer à t=2080 ms ⇒ AUCUN trou creusé           ⛔ une courbe en pointillés sur une carte saine
+  [OK ] gigue de timer à t=3150 ms ⇒ AUCUN trou creusé           ⛔ une courbe en pointillés sur une carte saine
+  [OK ] gigue de timer à t=4200 ms ⇒ AUCUN trou creusé           ⛔ une courbe en pointillés sur une carte saine
+
+     🔴 TÉMOIN NÉGATIF — `dn_hist_rattraper()` neutralisée
+  [OK ] sans rattrapage, 60 s de pause avancent l'anneau d'UNE case le défaut est REPRODUIT : 60 s dessinées comme 1 s
+
+── REVUE 2026-08-25 — PLAFOND, PLANCHER, ET VIEILLISSEMENT ────────
+  [OK ] `ui off` de 10 min ⇒ le compteur publie 600, ⛔ pas 120   obtenu 600
+  [OK ] `ui off` d'1 h ⇒ le compteur publie 3600, ⛔ pas 120      obtenu 3600
+  [OK ] deux coupures d'un facteur 6 sont DISCERNABLES           600 vs 3600 — avant le correctif : 120 et 120, MÊME PHRASE
+  [OK ] horloge à 1 500 ms/tick sur 12 s ⇒ 4 secondes manquantes VUES 4 creusée(s) — avant le correctif : 0, INDÉFINIMENT
+  [OK ] à chaud, le MIN/MAX long voit bien la valeur posée       min = 500
+  [OK ] après 25 h d'`ui off`, le MIN/MAX long rend FAUX         ⛔ pas le minimum du TOUR PRÉCÉDENT de 24 h (obtenu ok=False, min=0)
+  [OK ] après 25 h d'`ui off`, la couverture rend 0              obtenu 0 s — avant le correctif : 3900 s sur ZÉRO observation
+
+     🔴 TÉMOIN NÉGATIF — l'âge redevient celui d'un seau GELÉ
+  [OK ] MUTÉ ⇒ le MIN/MAX long REPUBLIE la valeur vieille de 25 h le défaut est REPRODUIT : min = 500
+  [OK ] MUTÉ ⇒ la couverture repart de zéro sur du vide          300 s annoncées sans un seul échantillon dans la fenêtre
+
+── AC3.2 — `seau_suivre()` NE SAUTE PLUS DE SEAUX ─────────────────
+  [OK ] après le saut, la fenêtre ne garde que 900 (h=2) et 700 (h=25) 700..900
+  [OK ] le 500 de l'heure 0, VIEUX DE 25 h, a été vidé par la traversée ⛔ sinon un minimum d'il y a 25 h vit dans une fenêtre de 24 h
+  [OK ] le 100 de l'heure 1 a été vidé lui aussi (seau ré-atteint) l'heure 25 retombe sur l'index d'anneau de l'heure 1
+
+     🔴 TÉMOIN NÉGATIF — l'ancien `seau_suivre()` est remis
+  [OK ] l'ancienne version garde le 500 de l'heure 0, vieux de 25 h 500..900 — le défaut d'AC3.2 est REPRODUIT
+
+── AC6.3 — « JAMAIS ÉCRIT » N'EST PAS « TROU » ────────────────────
+  [OK ] après l'init, 0 position écrite                          l'anneau est plein de TROUS, mais aucun n'a été VÉCU
+  [OK ] à t = 10 s : 10 écrites, 10 réelles, 0 trou              ⛔ l'ancienne table publiait « trous 110 » ici
+  [OK ] …et 110 positions JAMAIS ATTEINTES                       colonne `jamais`, ⛔ pas colonne `trous`
+  [OK ] 5 s de source muette ⇒ 5 VRAIS trous, `jamais` inchangé  ecrits 15 · reels 10 · trous 5 · jamais 105
+  [OK ] le rattrapage a bien été ATTEINT par ce scénario         25 trou(s) comblé(s) — ⛔ un vert sur n == 0 ne prouverait rien
+  [OK ] le RATTRAPAGE compte comme des positions écrites         ecrits = 15 + 25 = 40
+  [OK ] après un tour complet, `ecrits` SATURE à 120             ⛔ pas 200 : il compte des POSITIONS, pas des écritures
+
+     🔴 TÉMOIN NÉGATIF — l'incrément retiré, RECOMPILÉ, RAPPELÉ
+  [OK ] sans l'incrément : 10 réelles pour 0 « écrite »          ⇒ `jamais` dirait 120 sur un anneau où 10 cases vivent
+
+==============================================================================
+⚠️ CE QUE CETTE GATE NE SOLDE PAS : les témoins CARTE — AC2.2
+   (allumée > 1 h sans source PC) et AC3.3 (`ui off` >= 60 s, le
+   verdict à l'œil ET par `hist`) —, et le `.map`
+   qu'elle lit est celui du DERNIER `idf.py build` — pas du binaire
+   flashé. Le SHA au bandeau reste la seule preuve de ce qui tourne.
+✅ 56 contrôles passent, 0 échec.

@@ -63,6 +63,7 @@
  */
 #pragma once
 
+#include <limits.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -1290,6 +1291,17 @@ esp_err_t dn_ui_geom_valider(const dn_widget_geom_t *g);
  * ⛔ Ce nombre ne s'écrit nulle part : `dn_ui_bandes_valider()` l'appelle, et
  * `widget date` / `widget grille` l'IMPRIMENT (revue du 2026-08-30 : `53` était
  * écrit dans le validateur, et sa justification parlait encore de `dn_font_14`). */
+/* 🔴 dn4-24 / AC2.1 — LA RÉPONSE QUAND LE VERROU N'EST PAS OBTENU.
+ * `dn_ui_barre_plancher()` lit `s_barre_date_font`, un statique ÉCRIT SOUS LE
+ * VERROU LVGL : elle le prend donc pour lire. Si elle ne l'obtient pas, elle
+ * n'a AUCUN plancher à annoncer — et elle rend cette valeur plutôt qu'un
+ * nombre inventé.
+ * ⛔ Elle est volontairement AU-DESSUS du plafond du validateur (120) : un
+ *    appelant qui écrirait naïvement `if (h < dn_ui_barre_plancher())` REFUSE,
+ *    il n'accepte pas. Une sentinelle négative aurait fait l'inverse — accepter
+ *    en silence le jour où le verrou est occupé, c'est-à-dire le jour où le
+ *    système est déjà en peine. Ici l'échec est FERMÉ par construction. */
+#define DN_UI_BARRE_PLANCHER_INDISPONIBLE INT_MAX
 int dn_ui_barre_plancher(void);
 /* Le compteur du clip ACCEPTÉ de la date de barre — « HEURE NON POSÉE » fait
  * 184 px pour 170 utiles. ⛔ Ce n'est PAS `dn_widget_trop_larges()`, qui compte

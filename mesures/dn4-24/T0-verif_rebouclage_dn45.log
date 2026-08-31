@@ -1,0 +1,57 @@
+==============================================================================
+dn4-5 / AC1.2 + AC1.3 — LA FENETRE NE REBOUCLE PLUS, ET ON L'A VU CRIER
+==============================================================================
+
+sources LUES : dn_measure.c d65ff9ec675eca5a · dn_measure.h b8c6b328f12f3022
+⚠️ horloge PILOTEE : le franchissement des 71,58 min est prouve en
+   LOGIQUE, ⛔ pas sur le silicium. La confirmation carte est AC3.
+
+── 0. LA STRUCTURE, PARSEE DEPUIS L'EN-TETE ──────────────────────
+  [OK ] `dn_bounce_stats_t` traduite en ctypes                   45 champs
+  [OK ] aucun `#include` local de dn_measure.c n'est ORPHELIN    18 fournis (coquilles + copies)
+  [OK ] dn_measure.c COMPILE ET CHARGE                           cc -O0
+  [OK ] `dn_measure_attach()` a bien pose les DEUX callbacks     on_vsync + on_frame_buf_complete captures par la coquille
+  [OK ] sizeof(dn_bounce_stats_t) : C == ctypes                  192 o des deux cotes
+  [OK ] offsetof(fenetre_ms) : C == ctypes                       176
+  [OK ] offsetof(fenetre_ms_32) : C == ctypes                    184
+  [OK ] offsetof(fenetre_deborde) : C == ctypes                  188
+
+── 1. SOUS LE SEUIL (30 min) — LES DEUX VUES DOIVENT COINCIDER ───
+  [OK ] fenetre_ms JUSTE                                         1800000 ms attendus, 1800000 publies
+  [OK ] la vue 32 bits dit encore la VERITE                      1800000 ms
+  [OK ] aucun cri sous le seuil                                  ⛔ crier au loup a 30 min serait pire que pas de garde
+
+── 2. AU-DELA DU SEUIL (90 min) — LE MENSONGE EST CAPTURE ────────
+  [OK ] fenetre_ms JUSTE au-dela de 71,58 min                    5400000 ms attendus, 5400000 publies
+  [OK ] la vue 32 bits MENT d'exactement un enroulement          elle publie 1105032 ms au lieu de 5400000 — soit 4294968 ms de MOINS (2^32 us = 4294967 ms)
+  [OK ] le drapeau de debordement est LEVE                       c'est lui qui declenche le cri de `flush`
+     ╭─ LA CAPTURE D'AC1.2, LES DEUX COTES DU SEUIL ──────────────╮
+     │  30 min : juste   1800000 ms · a l'ancienne   1800000 ms  │
+     │  90 min : juste   5400000 ms · a l'ancienne   1105032 ms  │
+     ╰────────────────────────────────────────────────────────────╯
+
+── 3. LES CAS DE BORD ────────────────────────────────────────────
+  [OK ] RAZ armee AVANT l'enroulement, consommee APRES           600000 ms attendus, 600000 publies
+  [OK ] 5 h de silence entre la RAZ et la lecture                18000000 ms attendus, 18000000 publies
+  [OK ] SANS AUCUNE RAZ, la fenetre est l'uptime                 10800000 ms attendus, 10800000 publies
+
+── 4. LES TEMOINS NEGATIFS — ON DOIT LES VOIR ROUGIR ─────────────
+  [OK ] mutant « A. » : la mutation s'applique                   1 occurrence
+  [OK ] mutant « A. » : compile                                  
+  [OK ] mutant « A. » : VU ROUGIR                                la fenetre a 90 min doit redevenir FAUSSE — publie 1105032 ms au lieu de 5400000
+  [OK ] mutant « B. » : la mutation s'applique                   1 occurrence
+  [OK ] mutant « B. » : compile                                  
+  [OK ] mutant « B. » : VU ROUGIR                                la RAZ a cheval sur l'enroulement doit redevenir FAUSSE — publie 4894967 ms au lieu de 600000
+  [OK ] mutant « C. » : la mutation s'applique                   1 occurrence
+  [OK ] mutant « C. » : compile                                  
+  [OK ] mutant « C. » : VU ROUGIR                                5 h de silence doit redevenir FAUX — publie 820130 ms au lieu de 18000000
+
+── 5. L'INVARIANT DE CONCURRENCE N'A PAS BOUGE ───────────────────
+  [OK ] ⛔ AUCUN verrou introduit dans dn_measure.c               « on mesure une famine, on ne va pas la fabriquer »
+  [OK ] le compteur de generation ne touche PAS le chemin chaud  il n'existe que dans la branche RAZ de l'ISR
+  [OK ] l'ISR ne lit l'horloge QU'UNE FOIS                       1 appel(s) dans on_vsync
+  [OK ] et JAMAIS dans la branche du regime normal               l'unique lecture est en tete, avant le if/else
+
+==============================================================================
+BILAN : 30 OK, 0 KO
+==============================================================================

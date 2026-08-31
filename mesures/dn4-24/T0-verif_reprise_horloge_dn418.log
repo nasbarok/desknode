@@ -1,0 +1,94 @@
+[stub] ⚠️  psutil est un STUB (tools/stub_psutil) : les valeurs cpu/ram/net/disk sont FABRIQUEES. ⛔ Aucun chiffre de cette session n'est une mesure.
+[agent] ⏱️  horloge : pose demandee (OS=1) — « rtc set 2026-08-30 16:50:03 »
+[agent] ✅ horloge : heure POSEE et VERIFIEE par la carte — desknode> heure posee : 2026-08-26 13:47:32 (jsem 3) — OS retombe a 0
+[agent] ⏱️  horloge : pose demandee (OS=1) — « rtc set 2026-08-30 16:50:03 »
+[agent] 🔴 horloge : pose REFUSEE (ECRITURE REFUSEE ou OS RESTE A 1) — 1 echec(s) consecutif(s), prochaine tentative dans 60 s
+[agent] ⏱️  horloge : pose demandee (OS=1) — « rtc set 2026-08-30 16:50:03 »
+[agent] 🔴 horloge : pose REFUSEE (ECRITURE REFUSEE ou OS RESTE A 1) — 2 echec(s) consecutif(s), prochaine tentative dans 120 s
+[agent] ⏱️  horloge : pose demandee (ecart +3600 s > seuil 120 s) — « rtc set 2026-08-30 16:50:03 »
+[agent] ⏱️  horloge : pose demandee (OS=1) — « rtc set 2026-08-30 16:50:03 »
+[agent] 🔴 horloge : pose REFUSEE (aucune reponse en 10 s) — 1 echec(s) consecutif(s), prochaine tentative dans 60 s
+[agent] ⏱️  horloge : pose demandee (OS=1) — « rtc set 2026-08-30 16:50:03 »
+[agent] ✅ horloge : heure POSEE et VERIFIEE par la carte — desknode> heure posee : 2026-08-26 13:47:32 (jsem 3) — OS retombe a 0
+[agent] ⏱️  horloge : pose demandee (OS=1) — « rtc set 2026-08-30 16:50:03 »
+[agent] ⚠️  horloge : 1 pose(s) REUSSIE(S) RAPPROCHEE(S) — la carte REPERD l'heure apres chaque pose. ⛔ Ce n'est PAS un refus. Prochaine tentative dans 60 s
+[agent] ✅ horloge : heure POSEE et VERIFIEE par la carte — desknode> heure posee : 2026-08-26 13:47:32 (jsem 3) — OS retombe a 0
+[agent] ⏱️  horloge : pose demandee (OS=1) — « rtc set 2026-08-30 16:50:03 »
+[agent] ⚠️  horloge : 2 pose(s) REUSSIE(S) RAPPROCHEE(S) — la carte REPERD l'heure apres chaque pose. ⛔ Ce n'est PAS un refus. Prochaine tentative dans 120 s
+[agent] ✅ horloge : heure POSEE et VERIFIEE par la carte — desknode> heure posee : 2026-08-26 13:47:32 (jsem 3) — OS retombe a 0
+[agent] ⏱️  horloge : pose demandee (OS=1) — « rtc set 2026-08-30 16:50:03 »
+[agent] ⚠️  horloge : 3 pose(s) REUSSIE(S) RAPPROCHEE(S) — la carte REPERD l'heure apres chaque pose. ⛔ Ce n'est PAS un refus. Prochaine tentative dans 240 s
+[agent] ✅ horloge : heure POSEE et VERIFIEE par la carte — desknode> heure posee : 2026-08-26 13:47:32 (jsem 3) — OS retombe a 0
+[agent] ⏱️  horloge : pose demandee (OS=1) — « rtc set 2026-08-30 16:50:03 »
+[agent] ⚠️  horloge : 4 pose(s) REUSSIE(S) RAPPROCHEE(S) — la carte REPERD l'heure apres chaque pose. ⛔ Ce n'est PAS un refus. Prochaine tentative dans 480 s
+[agent] ✅ horloge : heure POSEE et VERIFIEE par la carte — desknode> heure posee : 2026-08-26 13:47:32 (jsem 3) — OS retombe a 0
+=== EPREUVE FONCTIONNELLE — reprise d'horloge (dn4-18) ===
+
+[scene 1 — la carte a perdu l'heure, l'agent la repose  (AC4.1/4.2/4.5)]
+  ✅ reprise de liaison ⇒ l'agent INTERROGE (« rtc »)
+  ✅ la reponse OS=1 est LUE ⇒ etat « OS1 »
+  ✅ ⇒ l'agent POSE l'heure (« rtc set 2026-08-30 16:50:03 »)
+  ✅ …au format HEURE LOCALE DECOMPOSEE (⛔ pas un epoch UTC)
+  ✅ le verdict de la CARTE est lu : 1 tentee / 1 reussie / 0 refusee / 0 sans reponse
+  ✅ et l'etat qui suit la pose est LU sur la reponse ⇒ « OS0 »
+  ✅ 2 commande(s) console, ⛔ HORS trames (2803 o d'echo draines)
+
+[scene 2 — carte FIABLE et a l'heure ⇒ AUCUNE pose      (AC4.6)]
+  ✅ carte FIABLE et a l'heure
+  ✅ ⇒ 0 pose tentee en 30 cycles (0)
+
+[scene 3 — NON ARMEE : terminal EN REGIME, pas DEFINITIF (AC3.3+AC4.2)]
+  ✅ etat lu « NON_ARMEE »
+  ✅ ⇒ (a) 0 commande console en 50 min SANS reprise de liaison (0) — la periode de 600 s ne redeclenche RIEN
+  ✅ ⇒ (b) 5 reprises de liaison ⇒ 5 interrogations (5) — une carte redevenue ARMEE est donc RETROUVEE
+  ✅ ⇒ (c) 20 reprises en 20 s ⇒ 0 interrogation (plancher 30 s)
+  ✅ ⇒ (d) 0 pose tentee (0)
+
+[scene 4 — INCONNU n'est ni OS0 ni OS1                  (AC3.2)]
+  ✅ rien de reconnu sur le fil ⇒ etat « INCONNU »
+  ✅ ⇒ 0 pose (⛔ INCONNU n'est pas OS=1)
+  ✅ ⇒ 0 etat lu (⛔ INCONNU n'est pas OS=0 non plus)
+
+[scene 5 — un refus en boucle ne noie pas le fil        (AC4.3)]
+  ✅ 1er refus compte (1), motif(s) ['ECRITURE REFUSEE ou OS RESTE A 1']
+  ✅ ⇒ AUCUNE nouvelle tentative pendant 55 s (0)
+  ✅ ⇒ ET AUCUNE nouvelle interrogation non plus (0) — le palier gouverne les DEUX, sinon le fil serait noye de `rtc`
+  ✅ ⇒ apres le palier de 60 s, l'agent RELIT d'abord l'etat
+  ✅ ⇒ puis retente UNE fois, sur une lecture FRAICHE (1)
+  ✅ ⇒ le 2e refus DOUBLE le palier (120 s)
+  ✅ ⇒ cout console PROVOQUE par le mecanisme : 74.5 o/s sur 70 s en refus PERMANENT (⛔ pas « plusieurs Ko/s » ; le bruit de regime mesure vaut 272,9 o/s)
+
+[scene 6 — le trou ETE/HIVER                            (AC6)]
+  ✅ la carte se declare « bit OS = 0 » — ⛔ elle ne SAIT PAS qu'elle a tort
+  ✅ l'ecart mesure vaut +3600 s (attendu +3600 ± 2)
+  ✅ ⇒ la pose est DECLENCHEE malgre OS=0 (« rtc set 2026-08-30 16:50:03 »)
+  ✅ ⇒ et le motif publie est l'ECART : ['ecart']
+  ✅ ⇒ mais 24 s (la derive d'UN JOUR au pire) ne declenchent RIEN
+
+[scene 7 — le plancher borne le port qui bat            (AC4.3)]
+  ✅ 20 reprises de liaison en 20 s ⇒ 1 interrogation (plancher 30 s)
+
+[scene 8 — « sans reponse » est un 3e seau              (AC5.1)]
+  ✅ 1 pose(s) SANS REPONSE apres 10 s
+  ✅ ⇒ et elle n'est comptee ⛔ NI en reussite ⛔ NI en refus
+
+[scene 9 — pas de canal console = etat DECLARE          (AC2.4)]
+  ✅ branche stdout ⇒ reprise DESARMEE
+  ✅ ⇒ 5 cycles sans AttributeError et sans rien emettre
+  ✅ et la branche websocket declare aussi son absence de canal
+
+[scene 10 — MUETTE ne passe PAS pour FIABLE             (AC3.2)]
+  ✅ etat lu « MUET » (attendu MUET — ⛔ la ligne `bit OS : 0` ne doit PAS ecraser le verdict du driver)
+  ✅ ⇒ l'heure est lue avec sa RECEVABILITE : affichable=False
+  ✅ ⇒ 0 pose en 20 min (0) — ⛔ l'ecart d'AC6 ne se mesure PAS sur une valeur GELEE que la carte declare irrecevable
+
+[scene 11 — JAMAIS LUE reste INCONNU                    (AC3.2)]
+  ✅ etat lu « INCONNU » (attendu INCONNU — `s_os = true` au boot fait dire « bit OS : 1 » a une puce jamais lue)
+  ✅ ⇒ 0 pose en 20 min (0) — ⛔ « INCONNU » n'est NI OS0 NI OS1
+
+[scene 12 — poses REUSSIES rapprochees ⇒ ESCALADE       (AC4.3)]
+  ✅ 5 pose(s) REUSSIE(S) — la carte reperd l'heure a chaque fois
+  ✅ ⇒ 4 pose(s) rapprochee(s) DETECTEE(S) — l'escalade est armee sur le chemin du SUCCES, ⛔ pas seulement sur le refus
+  ✅ ⇒ et le nombre de poses reste BORNE sur 600 s (5) : sans escalade, le plancher de 30 s en aurait autorise ~19
+
+✅ LES 12 SCENES TIENNENT.

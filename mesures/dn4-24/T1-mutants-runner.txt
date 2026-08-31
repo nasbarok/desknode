@@ -1,0 +1,41 @@
+# T1 — les mutants du runner, dn4-24, 2026-08-30T16:56:24+02:00
+
+=== M1 — une gate VERTE cassee ⇒ ROUGE + rc=1 ===
+  (controle : la gate mutee sort en 1 — le mutant est ATTEINT)
+[ROUGE      ] tools/verif_xip_dn422.py               rc=1      0s
+┌── sortie de tools/verif_xip_dn422.py ─────────────────────────────────────────
+BILAN : 18 VERTE, 3 ROUGE, 1 NON-JOUABLE sur 22 gates (55s)
+   · tools/verif_courbe_dn413.py (rc=1)
+   · tools/verif_verrou_lvgl_dn413.py (rc=1)
+   · tools/verif_xip_dn422.py (rc=1)
+  ⇒ rc du runner = 1
+
+=== M2 — une redirection vers le puits ajoutee au runner ⇒ rc=1 AVANT toute gate ===
+[KO ] run_gates.sh contient 1 redirection(s) vers le puits — AC1.4 l'interdit.
+      Une sortie jetee, c'est un rouge sans motif. CAPTURER, imprimer sur echec.
+  ⇒ rc du runner = 1
+
+=== M3 — une declaration NON-JOUABLE perimee (gate inexistante) ⇒ rc=1 ===
+      Une declaration perimee cache une gate disparue. Corriger la table.
+[NON-JOUABLE] tools/verif_sr03.py                    temoin absent : tools/fixtures/AN4545.pdf
+BILAN : 19 VERTE, 2 ROUGE, 1 NON-JOUABLE sur 22 gates (80s)
+⛔ 1 declaration(s) NON-JOUABLE perimee(s) — corriger la table du script.
+  ⇒ rc du runner = 1
+
+=== M4 — le TEMOIN apparait ⇒ la NON-JOUABLE est JOUEE, ⛔ plus sautee ===
+│   [OK ] AC6.1 le temoin de la garde est REJOUABLE                remise a zero + verdict sur le dernier passage
+│   [OK ] muté (ui) ⇒ ROUGE : AC6.1 le temoin de la garde est REJOUABLE «    s_gardeh_cris = 0; » → «»
+│   [OK ] muté (ui) ⇒ ROUGE : AC6.1 le temoin de la garde est REJOUABLE «    if (cri_dernier) { *cri_dernier » → «»
+│   [OK ] muté (cons) ⇒ ROUGE : AC6.1 le temoin de la garde est REJOUABLE «} else if (ghl + gyl > ghp && !gcri)» → «} else if (ghl + g»
+[  temoin  ] tools/verif_sr03.py                    tools/fixtures/AN4545.pdf est present ⇒ la gate est JOUEE
+[ROUGE      ] tools/verif_sr03.py                    rc=2      0s
+┌── sortie de tools/verif_sr03.py ─────────────────────────────────────────
+BILAN : 19 VERTE, 3 ROUGE, 0 NON-JOUABLE sur 22 gates (93s)
+   · tools/verif_courbe_dn413.py (rc=1)
+   · tools/verif_sr03.py (rc=2)
+   · tools/verif_verrou_lvgl_dn413.py (rc=1)
+  ⇒ rc du runner = 1
+
+⇒ QUATRE mutants, QUATRE rc=1. Le runner peut rougir sur : une gate cassee (M1),
+  sa propre redirection au puits (M2), une declaration perimee (M3), et le retour
+  d'une NON-JOUABLE au jouable (M4).

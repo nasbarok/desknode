@@ -1,0 +1,44 @@
+==============================================================================
+dn4-13 / AC7 — LES HARNAIS, ÉPROUVÉS HORS CARTE
+==============================================================================
+  temoins_ac2_dn44.py      sha256[:16] = 10629360514755a4
+  diag_p1_dn44.py          sha256[:16] = d41f7f36891b881e
+  anim_courbe_dn44.py      sha256[:16] = 2e86edc7ef837ef9
+  dn_console.py            sha256[:16] = b1e21f9219fd7fc7
+
+── AC7.5 — LES TROIS TÉMOINS NÉGATIFS SONT JOUÉS ──────────────────
+  [OK ] témoin négatif : temoins_ac2_dn44.py                   exit 0 · 19 cas joués ·    témoins eux-mêmes se tirent sur la carte, en séance.
+  [OK ] témoin négatif : diag_p1_dn44.py                       exit 0 · 14 cas joués ·    d'une soustraction de sentinelles, ni de zéro échantillon
+  [OK ] témoin négatif : anim_courbe_dn44.py                   exit 0 · 16 cas joués ·    sert à tester. Le reste est l'œil de l'owner, en séance.
+
+── TÉMOIN NÉGATIF DE LA GARDE ELLE-MÊME (AC7.5 appliqué à la gate) ─
+  [OK ] garde : harnais VIDÉ de ses cas (`cas = []`) ⇒ ROUGE   obtenu ROUGE
+  [OK ] garde : harnais MUET (drapeau avalé, aucune sortie) ⇒ ROUGE obtenu ROUGE
+  [OK ] garde : harnais qui échoue en `⛔` mais rend 0 ⇒ ROUGE  obtenu ROUGE
+  [OK ] garde : harnais SAIN (4 cas ≥ 3) ⇒ VERT                obtenu VERT
+  [OK ] garde : harnais qui ROUGIT (🔴) ⇒ ROUGE                 obtenu ROUGE
+  [OK ] garde : harnais qui sort en ERREUR ⇒ ROUGE             obtenu ROUGE
+
+── AC7.1 + AC7.2 — LA SENTINELLE EST TESTÉE **AVANT** L'USAGE ─────
+  [OK ] les 4 verdicts d'AC2 appellent `lu()` en PREMIER       4 appels
+  [OK ] la sentinelle d'AC2 est NOMMÉE une seule fois dans le code 1 littéral(aux) — la constante `NON_RELU`
+  [OK ] `diag_p1` teste `-1` AVANT toute soustraction publiée  `delta_compteur()` rend `None`, ⛔ pas `0`
+  [OK ] `--tours >= 2` est gardé DANS l'argparse **et** dans le verdict ⛔ une garde d'interface seule est contournable
+  [OK ] `anim_courbe` distingue ÉCRITES et ACCEPTÉES           ⛔ « N trames emises » n'était pas une mesure
+  [OK ] …et il REFUSE de démarrer si le mock n'est pas RELU coupé G3 armée ⇒ aucune trame réelle n'atteint l'écran
+  [OK ] …et `nav open` est RELU, ⛔ plus seulement écrit        `ESP_ERR_INVALID_STATE` si la vue était déjà l'active
+
+── AC7.4 — AUCUN RENVOI VERS UNE FONCTION QUI N'EXISTE PAS ────────
+  [OK ] les 193 renvois en accents graves des commentaires existent tous 0 fantôme(s)
+  [OK ] le chasseur VOIT un fantôme fabriqué                   `une_fonction_qui_n_existe_pas()`
+  [OK ] …et il ne confond PAS un renvoi légitime avec un fantôme `drainer()` est reconnu comme défini
+  [OK ] `drainer()` existe, et il vit dans `dn_console.py`     ⛔ il était PROMIS depuis dn4-4 sans exister
+  [OK ] `anim_courbe_dn44.py` APPELLE `drainer()`              ⛔ la boucle inline est remplacée, pas doublée
+  [OK ] …et la boucle de drainage inline a bien DISPARU        sinon deux drainages coexisteraient
+
+==============================================================================
+⚠️ CE QUE CETTE GATE NE SOLDE PAS : les quatre témoins d'AC2 eux-mêmes,
+   qui se tirent SUR LA CARTE (AC11.4), et le constat owner à l'œil sur
+   les formes d'`anim_courbe`. Elle prouve que les INSTRUMENTS ne
+   peuvent plus conclure sur du vide, ⛔ pas que la carte a raison.
+✅ 22 contrôles passent, 0 échec.

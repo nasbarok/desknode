@@ -5380,9 +5380,20 @@ static int cmd_widget(int argc, char **argv)
              *    que `widget date 28` posait une boite 28..63 dans une barre de
              *    60. Le plancher est desormais RELU, et il est REFUSE avant
              *    d'arriver ici — on l'imprime pour que le refus soit lisible. */
-            printf("  hauteur : boite 28..%d, plancher de barre RELU = %d px\n",
-                   28 + (int)lv_font_get_line_height(pose),
-                   dn_ui_barre_plancher());
+            /* 🔴 dn4-24 / AC2.1 — LE PLANCHER PEUT ETRE INDISPONIBLE depuis
+             *    qu'il se relit SOUS LE VERROU LVGL. ⛔ Ne pas imprimer la
+             *    sentinelle comme si c'etait une hauteur : « plancher =
+             *    2147483647 px » serait un nombre FAUX presente comme une
+             *    mesure, et ce depot en solde deja une famille. */
+            int plancher = dn_ui_barre_plancher();
+            if (plancher == DN_UI_BARRE_PLANCHER_INDISPONIBLE) {
+                printf("  hauteur : boite 28..%d, plancher de barre "
+                       "🔴 INDISPONIBLE (verrou LVGL non obtenu)\n",
+                       28 + (int)lv_font_get_line_height(pose));
+            } else {
+                printf("  hauteur : boite 28..%d, plancher de barre RELU = %d px\n",
+                       28 + (int)lv_font_get_line_height(pose), plancher);
+            }
         }
         return 0;
     }
@@ -5399,8 +5410,23 @@ static int cmd_widget(int argc, char **argv)
             printf("  70 60 = l'etat des lieux (case 156)\n");
             printf("  60 51 = D12                (case 163)\n");
             printf("  60  0 = voie (a), MENU supprime (case 180)\n");
-            printf("⚠️ Bornes RELUES du contenu : barre >= 53 (heure dn_font_28 a\n");
-            printf("   y=18, boite 18..53), menu >= 49 (dn_font_28 a y=14) ou 0.\n");
+            /* 🔴 REVUE DE CODE DU 2026-08-31 — CE MESSAGE RECITAIT « 53 »
+             *    EN DUR EN L'ANNONCANT « RELU ». `dn4-14-2` avait retire ce
+             *    meme 53 du validateur parce qu'il MENTAIT : le plancher MONTE
+             *    des que `widget date` pose une police plus haute (jusqu'a 63).
+             *    Le nombre ecrit avait survecu ICI, dans le seul endroit que
+             *    l'operateur LIT. ⛔ Un nombre ecrit presente comme une mesure :
+             *    la famille exacte pour laquelle l'ecart 3 a ete ouvert. */
+            int plancher_b = dn_ui_barre_plancher();
+            if (plancher_b == DN_UI_BARRE_PLANCHER_INDISPONIBLE) {
+                printf("⚠️ Bornes du contenu : barre >= 🔴 INDISPONIBLE (verrou\n");
+                printf("   LVGL non obtenu), menu >= 49 (dn_font_28 a y=14) ou 0.\n");
+            } else {
+                printf("⚠️ Bornes RELUES du contenu : barre >= %d (heure dn_font_28\n",
+                       plancher_b);
+                printf("   a y=18 ; la date MONTE ce plancher selon SA police),\n");
+                printf("   menu >= 49 (dn_font_28 a y=14) ou 0.\n");
+            }
             return 1;
         }
         esp_err_t e = dn_ui_set_bandes((int)bh, (int)mh);
