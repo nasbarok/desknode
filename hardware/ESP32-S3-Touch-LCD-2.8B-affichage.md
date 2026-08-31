@@ -10200,3 +10200,116 @@ espace).
 🔴 **ET LE « 187 → 237 » PUBLIÉ PAR LA STORY EST FAUX** : rejoué sur worktree, `ae18700` rend
 **193 OK / 0 KO** — le 187 est la valeur d'**avant** `ae18700`, donc d'avant `dn4-14`. `dn4-14-2`
 ajoutait **44** contrôles, pas 50 ; la revue en ajoute 30 de plus.
+
+---
+
+# §30 — `dn4-24` (P9.9) : **LE PLANCHER DE BARRE EST RELU SUR LA DALLE, ET LE TRANSFERT DU PORT REDÉMARRE LA CARTE**
+
+Séance carte du **2026-08-31**, firmware **`90969ec`** (`App version` lue au bandeau — ⛔ pas
+récitée), `desknode.bin` 1 229 632 o, sha256 `b39895b05d3ceac6…`. **Arbre PROPRE au flash** : le
+binaire correspond à un commit, ce qui n'était pas le cas des trois binaires du 2026-08-31 au matin.
+
+**Objet** : solder l'**écart 1** de `dn4-24` — *« rien n'a été flashé, l'innocuité visible est
+RAISONNÉE, ⛔ pas mesurée sur la dalle »* — et éprouver le correctif de sa revue de code
+(`dn_console.c` : le `53` mort récité comme « borne RELUE »).
+
+Configuration de la séance : `num_fbs=1  bounce_px=9600  draw_lines=128  draw_psram=0  lvgl_core=0`,
+**identique à l'entrée et à la sortie** (`cfg` relu aux deux bouts). `veille off` pendant toute la
+campagne (piège n°12), ré-armée à la fin.
+
+## §30.1 ✅ LES TROIS VERROUS LVGL — **INNOCUITÉ MESURÉE, ET LE CODE DE RETOUR TRANCHE**
+
+| geste | attendu | **observé** |
+|---|---|---|
+| ligne de base (aucune commande) | — | 🟢 rétroéclairage fixe, dashboard normal, **rien d'anormal** *(œil owner)* |
+| `widget date 28` à barre 60 | REFUSÉ | 🎯 **`refuse (ESP_ERR_INVALID_ARG) — RIEN n'a change`** |
+| après le refus | rien n'a bougé | 🟢 *« oui ça n'a pas changé »* *(œil owner)* |
+| LVGL vivant ? | pas d'interblocage | 🟢 *« interaction ok, data ambiance aussi ok »* *(œil owner)* |
+
+🔴 **LE CODE DE RETOUR EST LA MESURE, ⛔ PAS LE MOT « REFUSÉ ».** `ESP_ERR_INVALID_ARG` — et
+⛔ **pas** `ESP_ERR_TIMEOUT`. Or depuis `dn4-24`, `dn_ui_set_barre_date_font()` prend le verrou LVGL
+**avant** son contrôle vertical, et rend `ESP_ERR_TIMEOUT` s'il ne l'obtient pas. ⇒ Le verrou a
+**été obtenu**, le contrôle s'est joué **dessous**, et le chemin de refus l'a **rendu** avant de
+sortir. Un verrou fui sur ce chemin aurait figé LVGL — la réactivité au toucher et le capteur réel
+qui continue de rafraîchir l'attestent, à l'œil.
+
+⚠️ **Ce que ça ne prouve pas** : le chemin `ESP_ERR_TIMEOUT` lui-même n'a **pas** été atteint — il
+faudrait tenir le verrou depuis une autre tâche pour l'exercer, ce que la console ne permet pas.
+
+## §30.2 🎯 LE PLANCHER EST **RELU**, ET C'EST PROUVÉ PARCE QU'IL **BOUGE**
+
+⚠️ **LE PIÈGE, ET IL A FAILLI PASSER** : la première lecture rend `barre >= 53`… soit **exactement**
+la valeur que le code récitait en dur avant le correctif. **Cette lecture seule ne prouve donc
+RIEN.** La seule preuve possible est le **déplacement**.
+
+| état | police de la date | plancher imprimé | verdict |
+|---|---|---:|---|
+| départ | `dn_font_18` (lh 23) | **53** | ⚠️ indiscernable du nombre mort |
+| `widget grille 70 60` puis `widget date 28` | `dn_font_28` (lh 35) | 🎯 **63** | ✅ **IL BOUGE** — il est relu |
+| `widget date defaut` | `dn_font_18` | **53** | ✅ il revient |
+
+L'arithmétique se réconcilie : `bas_heure = 18 + 35 = 53` · `bas_date = 28 + lh(date)` — 51 avec
+`dn_font_18`, **63** avec `dn_font_28`. Le plancher est bien `max(bas_heure, bas_date)`.
+
+🎯 **ET LA COMBINAISON QUI PASSAIT EN SILENCE EST REFUSÉE.** Avec `dn_font_28` sur la date
+(plancher 63), `widget grille 60 51` → **`refuse (ESP_ERR_INVALID_ARG) — RIEN n'a change`**. C'est
+le couple exact que `dn3-2` acceptait sans un mot, et qui a motivé le passage du plancher écrit au
+plancher calculé. Éprouvé **de bout en bout, sur la dalle**, pour la première fois.
+
+## §30.3 ✅ LA POSE ATTEINT LA DALLE — L'ŒIL ATTESTE, ET IL CORROBORE LA PRÉDICTION
+
+`ESP_OK` et un nombre plausible ne prouvent pas qu'une image a atteint la dalle (§5 des pièges).
+Constat owner avec `dn_font_28` posée : *« oui la date est plus grosse et tronquée […] y a juste le
+T de août tronqué à 80 % »*.
+
+⇒ La console avait prédit « pire DATE réelle *« MAR. 04 MARS »* **213 px** pour **170 utiles** —
+🔴 NE TIENT PAS ». **L'œil voit exactement ça** : ça ne tient pas, et de peu. **L'instrument et la
+dalle disent la même chose** — c'est la première corroboration directe du prédicteur de largeur de
+date sur une police commutée.
+
+⚠️ **Constat esthétique owner, consigné ⛔ SANS en faire une décision** : *« mais c'est pas mal quand
+même »*. La grosse date lui plaît malgré le clip. ⛔ **Rien n'a été changé** : l'adopter demanderait
+d'élargir le slot (170 px utiles à `x = 300`) **et** de tenir une barre à ≥ 63. **C'est un arbitrage
+owner, ⛔ pas un constat de séance.**
+
+## §30.4 🔴 RÉFUTÉ : **LE TRANSFERT DU PORT REDÉMARRE LA CARTE**
+
+Le skill `desknode-board` affirmait, sous le titre *« LE FAIT QUI DÉBLOQUE, ET IL EST MESURÉ »*, que
+`usbipd detach` + reprise par l'agent **ne redémarre pas** la carte — et toute sa boucle d'A/B à
+~20 s sans reflash repose là-dessus.
+
+**Mesuré le 2026-08-31.** Séquence : `usbipd detach --busid <résolu par VID:PID>` →
+`rm dn-agent.stop` → `Start-ScheduledTask 'DeskNode agent'`.
+⚠️ **ET LA GATE DE DOSSIER A ATTRAPÉ CE PARAGRAPHE.** Il portait d'abord le busid **en
+toutes lettres**, relevé pendant la séance. `verif_dossier_dn415.py` l'a épinglé en fin de
+séance (`[busid-en-dur] occurrence NOUVELLE`) — soit **le motif exact** que ce skill a payé le
+2026-08-27, quand un busid récité en dur faisait **détacher le mauvais périphérique**. ⇒ Le
+nombre est retiré : il ne se récite pas, il se **résout**. 🎯 Le filet de séance a servi, et
+il a servi **contre celui qui l'a tiré**. **Constat owner : *« oui, écran noir quelques secondes »*.**
+
+⇒ 🔴 **LA CARTE REDÉMARRE.** ⛔ **Aucun réglage à chaud ne survit au passage console → agent** :
+`s_icone_alt[]`, `s_coul_force[]`, `s_nue_force[]`, la piste, `veille off`. Une boucle d'A/B qui
+pose un candidat **puis** rend le port fait juger **l'état de boot**, ⛔ pas le candidat.
+
+⚠️ **CE QUI N'EST PAS TRANCHÉ, ET C'EST ÉCRIT** — laquelle des trois étapes redémarre :
+1. le `detach` (ré-énumération USB côté Windows) ; 2. l'ouverture de `COM3` par l'agent ;
+3. ⚠️ **co-facteur repéré** : la tâche planifiée lance l'agent avec un **`--temoin`** que l'instance
+   en cours au début de la séance **ne portait pas**. Deux invocations différentes.
+
+🎯 **EXPÉRIENCE DÉCISIVE POUR LA PROCHAINE SÉANCE** : après un transfert, reprendre le port et lire
+`raison du démarrage` au bandeau (il distingue reset USB et reset matériel), et jouer les **trois
+étapes séparément** en demandant l'œil entre chacune. ⛔ Ne pas re-raisonner : mesurer.
+
+🔴 **LA LEÇON DE MÉTHODE, ET ELLE DÉPASSE CE FAIT** : chaque maillon du raisonnement était juste
+(`detach` ne ré-énumère pas la puce ; `dn_agent.py` force `dtr=False, rts=False` avant `open()`) et
+**la conclusion était fausse**. ⛔ **Un raisonnement juste sur chaque maillon ne prouve pas la
+chaîne.** Le paragraphe se donnait pour « mesuré » alors qu'il était déduit.
+
+## §30.5 ⛔ CE QUE CETTE SÉANCE N'A **PAS** FAIT
+
+- ⛔ Le chemin `ESP_ERR_TIMEOUT` du verrou n'est **pas** exercé (il faudrait un second écrivain).
+- ⛔ Le **4ᵉ site** — `dn_ui_barre_date_font()` lit le même statique **sans verrou** — reste non
+  corrigé et non éprouvé : il est hors du périmètre « trois sites », et l'**écart 4** de `dn4-24`
+  a acté que ce n'est **pas** une course atteignable aujourd'hui.
+- ⛔ Aucune campagne fps / déchirement / scintillement : ce n'était pas l'objet.
+- ⛔ La cause du redémarrage au transfert du port (§30.4) n'est **pas** identifiée.
