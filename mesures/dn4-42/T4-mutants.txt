@@ -1,143 +1,178 @@
 # T4 — LES MUTANTS DE tools/verif_langues_dn442.py, JOUES ET VUS ROUGIR
-# date : 2026-09-01T02:05:05+02:00   ·   desknode HEAD au tir : 14a7c52
+# date : 2026-09-01T10:36:49+02:00
 #
 # ⛔ « Une gate qu'aucun test n'a vue echouer est decorative ».
 # ⛔ Et un mutant qui DEBRANCHE la garde ne prouve que son existence : ceux-ci
 #    REPLANTENT la faute (un litteral francais, un tiret cadratin, un index
-#    inverse, une unite divergente, un controle retire de son site).
+#    inverse, une unite divergente, une declaration d'ecart effacee).
 #
-# 🔴 CE QUE CETTE CAMPAGNE A TROUVE, ET QUI N'EST PAS UN DETAIL :
-#    le MUTANT 9 est reste VERT a son premier tir, DEUX FOIS de suite —
-#    (1) le controle des chaines COMPOSEES n'existait pas (la gate ne
-#        balayait que la table, et la ligne d'echec NVS est un snprintf) ;
-#    (2) une fois ecrit, son filtre de journaux matchait `printf` DANS
-#        `snprintf` et blanchissait donc tout le texte a inspecter.
-#    ⇒ deux defauts de gate trouves par UN mutant, ⛔ aucun par relecture.
+# 🔴 TROIS DEFAUTS DE GATE TROUVES PAR LA CAMPAGNE, ⛔ AUCUN PAR RELECTURE :
+#   · MUTANT 9, reste vert DEUX FOIS — (a) le controle des chaines COMPOSEES
+#     n'existait pas (la gate ne balayait que la table, or la ligne d'echec
+#     NVS est un snprintf) ; (b) une fois ecrit, son filtre de journaux
+#     matchait `printf` DANS `snprintf` et blanchissait tout le texte.
+#   · MUTANT 24, DECLARE et jamais ECRIT : le README n'etait garde par rien.
+#   · `--liste-mutants` imprimait une liste VIDE (declarations posees APRES
+#     son retour anticipe) — une campagne qui s'en servait ne tirait RIEN
+#     tout en annoncant un bilan. Un drapeau qui n'imprime rien MENT.
 # ------------------------------------------------------------------
 
 == REFERENCE (aucun mutant) ==
 ==============================================================================
-BILAN : 30 OK, 0 KO
+BILAN : 31 OK, 0 KO
 ==============================================================================
 
 == LA LISTE DES MUTANTS ==
+   1  vide la traduction EN d'une cle (une chaine VIDE compile)
+   2  retire une COLONNE de la liste X (une cle sans traduction)
+   3  met le FRANCAIS en index 0 (le defaut cesserait d'etre l'anglais)
+   4  intervertit les colonnes EN/FR de `k_txt[]` (defaut inverse en silence)
+   5  reintroduit une table `k_nom[]` parallele dans dn_ui.c
+   6  efface la declaration « hors table » de la 4e liste (console)
+   7  remet un libelle francais en dur dans un `texte()` du MENU
+   8  remet un `—` (U+2014) dans une chaine de la table
+   9  remet un `⛔` (U+26D4) dans la ligne d'echec NVS composee
+  10  met un accent dans une UNITE (invisible en dn_font_33/56)
+  11  allonge un titre de case au-dela de sa place
+  12  rallonge la ligne d'echec NVS jusqu'au clip
+  14  efface la declaration de l'ecart AC2 dans dn_ui.c
+  15  fait diverger une unite entre dn_link.c et la table
+  16  fait lire `dn_t()` (langue courante) a la console
+  17  fait citer `dn_t()` par un ESP_LOG de dn_ui.c
+  18  appelle `build_scene()` DIRECTEMENT depuis un handler de tap
+  19  fait reconstruire `dn_ui_relire_langue()` SANS prendre le verrou
+  20  retire le controle de largeur du bloc d'etat du MENU
+  21  cesse de publier le compteur du MENU dans la console
+  22  RACCOURCIT le titre de la DEMO (desarmerait le temoin dn4-14-2)
+  23  allonge la date inconnue d'une AUTRE langue (2e ecart en silence)
+  24  efface, dans le README, la ligne qui dit ou se choisit la langue
+  25  fait passer un code de langue par la table (il se traduirait)
+  26  fait dire a la commande `langue` qu'elle satisfait AC2
 
-── MUTANT 1 : 
+── MUTANT 1 : vide la traduction EN d'une cle (une chaine VIDE compile)
    rc=1
      [KO ] toute cle a une traduction dans TOUTES les langues       ⛔ CASE_RESEAU : traduction EN VIDE
-   BILAN : 29 OK, 1 KO
+   BILAN : 30 OK, 1 KO
 
-── MUTANT 2 : 
+── MUTANT 2 : retire une COLONNE de la liste X (une cle sans traduction)
    rc=1
      [KO ] toute cle a une traduction dans TOUTES les langues       ⛔ CASE_DISQUE : 2 argument(s) pour 3 attendu(s)
-   BILAN : 29 OK, 1 KO
+   BILAN : 30 OK, 1 KO
 
-── MUTANT 3 : 
+── MUTANT 3 : met le FRANCAIS en index 0 (le defaut cesserait d'etre l'anglais)
    rc=1
      [KO ] ⛔ LE DEFAUT EST L'ANGLAIS (AC3.1) — index 0 de l'enum    1er = FR ⇒ une NVS vide rend FR
-   BILAN : 29 OK, 1 KO
+   BILAN : 30 OK, 1 KO
 
-── MUTANT 4 : 
+── MUTANT 4 : intervertit les colonnes EN/FR de `k_txt[]` (defaut inverse en silence)
    rc=1
      [KO ] chaque colonne de `k_txt[]` lit SON argument             EN←fr · FR←fr
-   BILAN : 29 OK, 1 KO
+   BILAN : 30 OK, 1 KO
 
-── MUTANT 5 : 
+── MUTANT 5 : reintroduit une table `k_nom[]` parallele dans dn_ui.c
    rc=1
      [KO ] ⛔ `k_nom[]` a DISPARU de dn_ui.c (AC1.2)                 ⇒ les six noms n'ont plus qu'UNE source : `k_desc[].titre_cle`
-   BILAN : 29 OK, 1 KO
+   BILAN : 30 OK, 1 KO
 
-── MUTANT 6 : 
+── MUTANT 6 : efface la declaration « hors table » de la 4e liste (console)
    rc=1
      [KO ] la 4e liste (console `cmd_hist`) est DECLAREE hors table (AC1.3) ⇒ 8 series, ⛔ pas 6 cases : elle ne decrit pas la meme chose
-   BILAN : 29 OK, 1 KO
+   BILAN : 30 OK, 1 KO
 
-── MUTANT 7 : 
+── MUTANT 7 : remet un libelle francais en dur dans un `texte()` du MENU
    rc=1
      [KO ] ⛔ aucun litteral PORTEUR DE LETTRES n'atteint un label   ⛔ dn_ui.c : « VEILLE »
-   BILAN : 29 OK, 1 KO
+   BILAN : 30 OK, 1 KO
 
-── MUTANT 8 : 
+── MUTANT 8 : remet un `—` (U+2014) dans une chaine de la table
    rc=1
      [KO ] ⛔ aucune chaine de la table ne porte un glyphe ABSENT (AC4.3) ⛔ DN_T_SRC_AUCUNE/EN : U+2014 « — » absent de dn_font_14 · DN_T_SRC_AUCUNE/EN : U+2014 « — » absent de dn_font_18
-   BILAN : 29 OK, 1 KO
+   BILAN : 30 OK, 1 KO
 
-── MUTANT 9 : 
+── MUTANT 9 : remet un `⛔` (U+26D4) dans la ligne d'echec NVS composee
    rc=1
      [KO ] ⛔ aucune chaine COMPOSEE ne porte un glyphe absent (AC4.3) ⛔ dn_ui.c : U+26D4 « ⛔ » dans « ⛔ %s %s (%s) »
-   BILAN : 29 OK, 1 KO
+   BILAN : 30 OK, 1 KO
 
-── MUTANT 10 : 
+── MUTANT 10 : met un accent dans une UNITE (invisible en dn_font_33/56)
    rc=1
      [KO ] ⛔ unites et prefixes RENDABLES en police de VEILLE (AC4.4) ⛔ DN_T_U_RPM/FR : U+00E9 « é » absent de dn_font_33 · DN_T_U_RPM/FR : U+00E9 « é » absent de dn_font_56
      [KO ] les unites du FIL collent a la colonne FR de la table (AC1.4) ⛔ GPU[3] : fil « tr/min » vs table FR « tr/mné » · DISQUE[1] : fil « tr/min » vs table FR « tr/mné »
-   BILAN : 28 OK, 2 KO
+   BILAN : 29 OK, 2 KO
 
-── MUTANT 11 : 
+── MUTANT 11 : allonge un titre de case au-dela de sa place
    rc=1
      [KO ] chaque libelle tient dans sa place, DANS LES DEUX LANGUES ⛔ DN_T_CASE_RESEAU/EN : 209 px pour 107 utiles (titre de case (dn_font_18, icone 28))
-   BILAN : 29 OK, 1 KO
+   BILAN : 30 OK, 1 KO
 
-── MUTANT 12 : 
+── MUTANT 12 : rallonge la ligne d'echec NVS jusqu'au clip
    rc=1
      [KO ] la ligne d'echec NVS tient DANS SON PIRE CAS (AC4.2)     ⛔ EN : « ! « bright. level » NOT SAVED (NVS_KEYS_NOT_INITIALIZED) : perdu au reboot / lost on reboot. » = 668 px pour 432 · FR : « ! « veille OFF » NON ENREGISTRE (NVS_KEYS_NOT_INITIALIZED) : perdu au reboot / lost on reboot. » = 697 px pour 432
-   BILAN : 29 OK, 1 KO
+   BILAN : 30 OK, 1 KO
 
-── MUTANT 13 : 
+── MUTANT 14 : efface la declaration de l'ecart AC2 dans dn_ui.c
    rc=1
-     [KO ] le titre « MENU » tient sous `MENU_TITRE_W_MAX` (AC2.2)  EN = 314 px · FR = 91 px / 91 annonces
-   BILAN : 29 OK, 1 KO
+     [KO ] l'ecart AC2 est DECLARE dans le code, AVEC ses deux raisons ⛔ absent(s) : N'EST PAS SUR LA DALLE
+   BILAN : 30 OK, 1 KO
 
-── MUTANT 14 : 
-   rc=1
-     [KO ] ⛔ le libelle du selecteur passe par `dn_langue_code()` (AC2.4) ⇒ « FR » / « EN », ⛔ pas un mot traduit
-   BILAN : 29 OK, 1 KO
-
-── MUTANT 15 : 
+── MUTANT 15 : fait diverger une unite entre dn_link.c et la table
    rc=1
      [KO ] les unites du FIL collent a la colonne FR de la table (AC1.4) ⛔ CPU[3] : fil « deg » vs table FR « °C »
-   BILAN : 29 OK, 1 KO
+   BILAN : 30 OK, 1 KO
 
-── MUTANT 16 : 
+── MUTANT 16 : fait lire `dn_t()` (langue courante) a la console
    rc=1
      [KO ] ⛔ `dn_console.c` n'appelle JAMAIS `dn_t()` (langue courante) ⛔ 1 appel(s) a `dn_t(`
-   BILAN : 29 OK, 1 KO
+   BILAN : 30 OK, 1 KO
 
-── MUTANT 17 : 
+── MUTANT 17 : fait citer `dn_t()` par un ESP_LOG de dn_ui.c
    rc=1
-     [KO ] ⛔ aucun `ESP_LOG` de dn_ui.c ne cite `dn_t()`            ⛔ TAG, "langue : « %s » posee AU DOIGT depuis le MENU (scene "
-   BILAN : 29 OK, 1 KO
 
-── MUTANT 18 : 
+── MUTANT 18 : appelle `build_scene()` DIRECTEMENT depuis un handler de tap
    rc=1
-     [KO ] ⛔ le tap de langue passe par `lv_async_call` (AC3.4)     ⇒ ⛔ pas de `build_scene()` dans le callback : use-after-free de dn1-3
-   BILAN : 29 OK, 1 KO
+     [KO ] ⛔ AUCUN handler de tap n'appelle `build_scene()` (AC3.4) ⛔ on_menu_cran_clic
+   BILAN : 30 OK, 1 KO
 
-── MUTANT 19 : 
+── MUTANT 19 : fait reconstruire `dn_ui_relire_langue()` SANS prendre le verrou
    rc=1
-     [KO ] le retour de `lv_async_call` est TESTE                   ⇒ sur file pleine : ⛔ RIEN n'est change, et ca se DIT
-   BILAN : 29 OK, 1 KO
+     [KO ] `dn_ui_relire_langue()` PREND le verrou avant de reconstruire ⇒ sur timeout : ⛔ la langue est posee mais l'ecran le DIT
+   BILAN : 30 OK, 1 KO
 
-── MUTANT 20 : 
+── MUTANT 20 : retire le controle de largeur du bloc d'etat du MENU
    rc=1
      [KO ] les libelles du MENU sont MESURES a chaud                2 site(s) : titres de panneau + bloc d'etat compose
-   BILAN : 29 OK, 1 KO
+   BILAN : 30 OK, 1 KO
 
-── MUTANT 21 : 
+── MUTANT 21 : cesse de publier le compteur du MENU dans la console
    rc=1
      [KO ] le compteur du MENU est PUBLIE par la console            ⇒ `dn4-41` : un instrument qu'on ne peut pas LIRE ne disculpe personne
-   BILAN : 29 OK, 1 KO
+   BILAN : 30 OK, 1 KO
 
-── MUTANT 22 : 
+── MUTANT 22 : RACCOURCIT le titre de la DEMO (desarmerait le temoin dn4-14-2)
    rc=1
      [KO ] le titre de la DEMO DEBORDE encore — TEMOIN de dn4-14-2  EN = 59 px · FR = 59 px / 107 utiles ⇒ ⛔ le raccourcir DESARMERAIT la garde
-   BILAN : 29 OK, 1 KO
+   BILAN : 30 OK, 1 KO
 
-── MUTANT 23 : 
+── MUTANT 23 : allonge la date inconnue d'une AUTRE langue (2e ecart en silence)
    rc=1
      [KO ] l'ecart de la date inconnue est UNIQUE et c'est celui de 2026-08-30 EN = 333 px ✅ · FR = 184 px ⚠️ ECART DECLARE / 170 utiles
-   BILAN : 29 OK, 1 KO
+   BILAN : 30 OK, 1 KO
+
+── MUTANT 24 : efface, dans le README, la ligne qui dit ou se choisit la langue
+   rc=1
+     [KO ] le README DIT ou se change la langue, et que ce n'est pas la dalle ⛔ absent(s) : N'EST PAS sur la dalle
+   BILAN : 30 OK, 1 KO
+
+── MUTANT 25 : fait passer un code de langue par la table (il se traduirait)
+   rc=1
+     [KO ] ⛔ les codes de langue sont des LITTERAUX (AC2.4)         ⇒ « FR » / « EN » : ⛔ ils ne passent PAS par la table
+   BILAN : 30 OK, 1 KO
+
+── MUTANT 26 : fait dire a la commande `langue` qu'elle satisfait AC2
+   rc=1
+     [KO ] ⛔ la commande `langue` DIT qu'elle ne satisfait aucun AC ⇒ un levier de diagnostic, ⛔ pas un reglage produit
+   BILAN : 30 OK, 1 KO
 
 ==================================================================
-BILAN DES MUTANTS : 23 VUS ROUGIR sur 23
+BILAN DES MUTANTS : 25 VUS ROUGIR sur 25
 ==================================================================

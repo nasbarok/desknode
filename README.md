@@ -42,16 +42,32 @@ firmware sait qu'il n'a pas de capteur, il le **dit**, et il **désarme** ce qui
 | | |
 |---|---|
 | **l'écran** | **FR / EN**, **défaut : ANGLAIS** |
-| **où on change** | **MENU → les deux cibles `FR` / `EN` dans l'entête**, au doigt |
+| **où on change** | 🟡 **au flasheur web** — ⚠️ **pas encore livré**, voir ci-dessous |
+| **en attendant** | la commande console `langue fr` / `langue en` |
 | **ce qui survit au reboot** | le choix, rangé en NVS |
-| 🔴 **la console (le REPL série)** | **elle reste en FRANÇAIS** — voir ci-dessous |
+| 🔴 **la console (le REPL série)** | **elle reste en FRANÇAIS** — voir plus bas |
 
-⛔ **Le sélecteur ne se traduit pas.** Il dit `FR` et `EN`, ⛔ pas « Langue » ni « Language » :
+⛔ **Les codes ne se traduisent pas.** C'est `FR` et `EN`, ⛔ pas « Langue » ni « Language » :
 écrire un mot français à quelqu'un qui ne lit que l'anglais est exactement ce que ce réglage
 corrige.
 
-⚠️ **Au premier démarrage après un flash, la carte parle ANGLAIS.** Il n'y a rien en NVS, et le
-défaut est l'anglais. Un tap sur `FR` la fait basculer, et elle s'en souvient.
+⚠️ **Au premier démarrage après un flash, la carte parle ANGLAIS**, et il n'y a rien à faire pour
+ça : il n'y a rien en NVS, et le défaut est l'anglais.
+
+#### 🟡 CE QUI N'EST PAS ENCORE LÀ, ET C'EST DIT PLUTÔT QUE DÉCOUVERT
+
+🔴 **Le choix de langue N'EST PAS sur la dalle.** Il a été construit — deux cibles `FR`/`EN` dans
+l'entête du MENU, flashées et validées à l'œil le 2026-09-01 — puis **retiré**, pour deux raisons :
+
+1. **Décision owner** : le choix appartient au **flasheur web**, ⛔ pas au MENU. Ce flasheur est
+   son propre chantier (`epic-dn7`) et **il n'est pas livré**.
+2. 🔴 **Ces deux cibles causaient une régression de charge MESURÉE** : `taskLVGL` passait de
+   **3,5 % à 99,3 %** après une poignée de reconstructions de scène, watchdog déclenché, écran
+   saccadé et tactile en retard. Elle est **partie avec elles** (A/B sur la carte, même protocole).
+
+⇒ **Aujourd'hui, la langue se change au REPL série** (`langue fr`). ⚠️ Le README ne prétend donc
+**pas** que le produit se règle entièrement au doigt sur ce point-là — et c'est écrit ici plutôt
+que constaté le premier soir.
 
 #### ⛔ LA CONSOLE RESTE EN FRANÇAIS, ET C'EST UNE DÉCISION — ⛔ PAS UN OUBLI
 
@@ -127,11 +143,13 @@ pas à ton matériel.
   **désarme** l'asservissement de luminosité et **dit pourquoi**, et la luminosité **se règle au
   doigt** au MENU. Une gate (`tools/verif_paliers_dn441.py`) garde ces invariants.
 - ✅ **L'écran bilingue FR/EN** est construit et gardé : une seule définition par chaîne,
-  **défaut anglais**, choix au doigt, persistance NVS, et une gate qui **relit les cmaps des
-  polices** et **recalcule les largeurs** dans les deux langues
-  (`tools/verif_langues_dn442.py`, 30 contrôles, 23 mutants vus rougir).
-  🟡 **Ce qu'aucune gate ne dit : si le mot anglais est le BON mot.** Ça se lit à l'œil, sur la
-  dalle.
+  **défaut anglais**, persistance NVS, et une gate qui **relit les cmaps des polices** et
+  **recalcule les largeurs** dans les deux langues (`tools/verif_langues_dn442.py`,
+  30 contrôles, 24 mutants vus rougir).
+  ✅ **Vu sur la dalle le 2026-09-01** : les six titres et la date en anglais au premier boot, et
+  le basculement qui survit au reboot.
+  🟡 **Ce qu'aucune gate ne dit : si le mot anglais est le BON mot.** Ça se lit à l'œil.
+  🟡 **Et le choix au doigt N'EST PAS livré** — voir « ce qui n'est pas encore là » plus haut.
 - 🟡 **Le démarrage à froid sur un bus réellement sans capteurs** est le témoin **qualifiant**.
   ⚠️ **Son état est tenu à jour ci-dessous, et il dit le vrai, ⛔ ni « non testé » ni « validé ».**
 

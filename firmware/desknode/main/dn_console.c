@@ -952,6 +952,65 @@ static int cmd_set(int argc, char **argv)
     return 0;
 }
 
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ * 🔴 `dn4-42` — `langue` : UN LEVIER DE DIAGNOSTIC, ⛔ PAS LA REPONSE A AC2.1
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * ⛔ **CETTE COMMANDE NE SATISFAIT AUCUN AC.** AC2.1 exige que le choix soit
+ *    ATTEIGNABLE AU DOIGT, et il l'est (les deux cibles de l'entete du MENU) —
+ *    *« `dn4-41` a etabli que le destinataire N'A PAS DE CONSOLE »*.
+ *
+ * ✅ CE QU'ELLE APPORTE, ET C'EST MESURE : le 2026-09-01, une regression de
+ *    charge (taskLVGL a 99 %, watchdog declenche) s'est manifestee APRES une
+ *    serie de gestes, et elle ne se reproduisait PAS sur un tap isole. Sans
+ *    levier console, chaque tentative de reproduction coute UN GESTE OWNER et
+ *    une fenetre — c'est-a-dire qu'on ne peut pas la marteler.
+ * ⇒ Elle rend le chemin REJOUABLE, et donc l'instruction possible.
+ *
+ * ⚠️ ELLE N'EMPRUNTE PAS LE MEME CHEMIN QUE LE DOIGT, ET C'EST DECLARE :
+ *    le tap passe par `lv_async_call` (contexte du gestionnaire de timers
+ *    LVGL) ; ici on est dans la tache REPL. **C'est precisement l'ecart qu'on
+ *    veut pouvoir mesurer** — ⛔ ne jamais conclure de l'un a l'autre.
+ */
+static int cmd_langue(int argc, char **argv)
+{
+    if (argc < 2) {
+        printf("langue de l'ecran : %s   (⛔ defaut = %s)\n",
+               dn_langue_code(dn_langue()), dn_langue_code(DN_LANGUE_EN));
+        printf("⛔ la CONSOLE, elle, reste en FRANCAIS — decision owner du "
+               "2026-09-01. Elle lit la MEME table, colonne francaise.\n");
+        printf("usage : langue <");
+        for (int i = 0; i < DN_LANGUE_N; i++) {
+            printf("%s%s", i ? "|" : "", dn_langue_code((dn_langue_t)i));
+        }
+        printf(">   ⚠️ ecrit en NVS et RECONSTRUIT la scene (307-322 ms)\n");
+        printf("   ⛔ CE N'EST PAS le chemin du DOIGT : celui-la passe par "
+               "`lv_async_call`. Les deux ne se substituent pas.\n");
+        return 0;
+    }
+    dn_langue_t l = dn_langue_de_code(argv[1]);
+    if (l >= DN_LANGUE_N) {
+        printf("🔴 REFUS : « %s » n'est pas une langue connue.\n", argv[1]);
+        return 1;
+    }
+    if (l == dn_langue()) {
+        printf("rien a faire : la langue est DEJA %s.\n", dn_langue_code(l));
+        printf("(aucune ecriture NVS, aucune reconstruction)\n");
+        return 0;
+    }
+    esp_err_t err = dn_reglage_langue_ecrire(l);
+    if (err != ESP_OK) {
+        /* ⛔ On le DIT : le reglage s'applique A CHAUD, il ne survivra pas. */
+        printf("⚠️ ECRITURE NVS REFUSEE (%s) — la langue est posee A CHAUD "
+               "mais ⛔ elle NE survivra PAS au reboot.\n",
+               esp_err_to_name(err));
+    }
+    dn_ui_relire_langue();
+    printf("langue : %s   (scene reconstruite)\n", dn_langue_code(l));
+    return err == ESP_OK ? 0 : 1;
+}
+
 static int cmd_reboot(int argc, char **argv)
 {
     (void)argc;
@@ -3272,9 +3331,14 @@ static int cmd_nav(int argc, char **argv)
          * ⛔ ⛔ IL NE SE CONFOND PAS avec `widget trop_larges`, qui compte les
          *    CASES. Deux surfaces, deux compteurs — les additionner ferait
          *    chercher au mauvais endroit.
-         * ⚠️ ZERO N'EST PAS UNE PREUVE tant que le MENU n'a pas ete OUVERT :
-         *    le controle s'exerce a la construction et a chaque repeint du
+         * ⚠️ ZERO N'EST PAS UNE PREUVE tant que le MENU n'a pas ete CONSTRUIT :
+         *    le controle s'exerce A LA CONSTRUCTION et a chaque repeint du
          *    panneau d'etat. La ligne le DIT plutot que de laisser croire.
+         * 🔴 ELLE A DIT FAUX JUSQU'AU 2026-09-01 : elle se conditionnait aux
+         *    TAPS, or `nav menu` construit le MENU sans qu'un doigt le touche —
+         *    elle annoncait donc « jamais ouvert » sur une mesure REELLE. Un
+         *    instrument qui ment sur sa propre couverture est le defaut que ce
+         *    depot traque ; il compte desormais les CONSTRUCTIONS.
          */
         printf("langue de l'ecran : %s (⛔ defaut = %s ; la console, elle, "
                "reste en FRANCAIS)\n",
@@ -3282,9 +3346,9 @@ static int cmd_nav(int argc, char **argv)
         printf("libelles du MENU trop larges : %" PRIu32
                " (⛔ pas les cases — voir `widget`)%s\n",
                dn_ui_menu_trop_larges(),
-               dn_ui_menu_taps() == 0
-                   ? "  ⚠️ le MENU n'a jamais ete OUVERT : ce 0 n'est pas une "
-                     "preuve, c'est une absence de mesure."
+               dn_ui_menu_builds() == 0
+                   ? "  ⚠️ le MENU n'a jamais ete CONSTRUIT : ce 0 n'est pas "
+                     "une preuve, c'est une absence de mesure."
                    : "");
         dn_console_compter_externes(dn_ui_log_mem());
         nav_usage();
@@ -12632,6 +12696,11 @@ static const esp_console_cmd_t k_cmds[] = {
     DN_CMD("set", "set fbs | bounce | lines | drawmem | core <-1|0|1>",
            cmd_set),
     DN_CMD("reboot", "redémarre pour appliquer un `set`", cmd_reboot),
+    /* 🔴 `dn4-42` — levier de DIAGNOSTIC. ⛔ Ne satisfait AUCUN AC : le choix
+     *    au doigt vit dans l'entête du MENU. Voir le motif sur `cmd_langue`. */
+    DN_CMD("langue",
+           "langue [fr|en] — la langue de l'ÉCRAN (⛔ la console reste FR)",
+           cmd_langue),
     /* dn3-3 : la VEILLE (`Ambient`) — pilotage ET mesure. */
     DN_CMD("veille",
            /* 🔴 revue du 2026-08-28 — `fond`, `unite`, `jauge` et `case`

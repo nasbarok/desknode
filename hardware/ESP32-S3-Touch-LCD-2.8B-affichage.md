@@ -10438,3 +10438,86 @@ titre existant**, et c'est LUI qui exerce le compteur `s_trop_larges` posé par 
   ⇒ **les deux instruments sont nécessaires**, et c'est écrit ici plutôt que découvert.
 - ⛔ **Rien sur la carte.** Ces chiffres sont calculés hors carte, sur les tables de police
   versionnées. Ils prédisent ce que LVGL fera ; ⛔ ils ne l'observent pas.
+
+## §31.5 — 🔴 **LE SÉLECTEUR DE LANGUE SUR LA DALLE COÛTAIT 99 % D'UN CŒUR** (séance du 2026-09-01)
+
+### Ce qui a été construit, vu, puis retiré
+
+Deux cibles `FR`/`EN` de **105 × 60** dans l'**entête du MENU** — la voie (d), mesurée à
+**229 px libres pour 220 demandés**, gardée par 4 `_Static_assert`. Elle a été **flashée
+(`401d807`, SHA lu au bandeau) et validée à l'œil** : *« ça se vise au doigt »*, et le
+basculement *« bascule en français, immédiatement »*, survivant au reboot.
+
+🔴 **Elle a ensuite été retirée**, pour deux raisons — (1) **décision owner** : le choix de langue
+appartient au **flasheur web** (`epic-dn7`), ⛔ pas au MENU ; (2) **elle causait la régression
+ci-dessous**, qui est partie avec elle.
+
+### 🔴 LA MESURE, ET ELLE EST UN A/B À TROIS PASSES
+
+Protocole : boot propre, puis **5 paires de `widget nue 0 on` / `off`** (= 10 reconstructions de
+scène rapprochées), puis `cpu brut` avant/après une fenêtre de ~10 s. Le `%` est rapporté à **UN**
+cœur (le total est une durée écoulée, la colonne somme vers ~200 % sur ce bi-cœur).
+
+| firmware | sélecteur | `taskLVGL` | `IDLE0` |
+|---|:---:|---:|---:|
+| `14a7c52` (avant la story) | — | **3,5 %** | 97 % |
+| `401d807` | **oui** | 🔴 **99,3 %** | **0,0 %** |
+| `401d807` + bisect | **retiré** | **3,5 %** | 97 % |
+| version finale (sans sélecteur) | — | **3,7 %** | 97 % |
+
+⇒ **Facteur ~28 sur `taskLVGL`, et `IDLE0` tombe à ZÉRO** : le **task watchdog se déclenche**
+(`IDLE0 (CPU 0)` ne rend plus la main), en boucle, toutes les 5 s.
+
+### Ce que l'œil a vu, et qui corrobore
+
+Constat owner **avant** toute mesure : *« l'écran saccade un peu et le tactile a du délai »*, et
+trois taps successifs perdus. ⇒ **L'œil a vu le défaut avant l'instrument**, et le chiffre est venu
+lui donner raison — ⛔ pas l'inverse.
+
+### La signature, mesurée
+
+- **Backtrace du watchdog** : `taskLVGL` est dans `lv_draw_unit_draw_letter`
+  (`lv_draw_label.c`), sous `refr_obj_and_children` → `lv_obj_redraw` ⇄ `lv_obj_refr`.
+  ⇒ il **dessine des lettres**, sans fin.
+- **`flush`** : **5 flushes / 4 cycles de redessin en 8,4 s**, pour **70 ms** cumulés de copie et
+  d'attente. ⇒ le temps n'est **PAS** dans le flush : chaque cycle coûte **~2 s de CPU**.
+- **`nav ab`** : le relevé du tas LVGL devient **INDISPONIBLE** — `lvgl_port_lock(1000)` échoue.
+  ⇒ **le verrou LVGL reste pris plus d'une seconde d'affilée.**
+  ✅ Et l'instrument **refuse de publier un zéro** dans ce cas, et le DIT. Il a bien fonctionné.
+- **Seuil, ⛔ pas rampe** : 1 reconstruction ⇒ 5,1 % · 2 paires ⇒ 3,5 % · **5 paires ⇒ 99,3 %**.
+
+### ⛔ CE QUI EST **RÉFUTÉ PAR LA MESURE** — et qu'il ne faut pas re-supposer
+
+| hypothèse | verdict |
+|---|---|
+| c'est le changement de langue | ⛔ **RÉFUTÉ** — reproduit **sans** aucun changement de langue |
+| c'est le chemin `lv_async_call` du tap | ⛔ **RÉFUTÉ** — reproduit **depuis la console**, en tâche REPL |
+| c'est `build_scene()` en soi | ⛔ **RÉFUTÉ** — une reconstruction isolée : 3,7 % ; et `14a7c52` en encaisse dix |
+| c'est la création à 210 px puis le redimensionnement à 105 | ⛔ **RÉFUTÉ** — créées à leur taille : toujours 99,3 % |
+| c'est structurel (présent dès le boot) | ⛔ **RÉFUTÉ** — boot propre sans aucun tap : **1,7 %** |
+
+### 🟡 LA CAUSE EXACTE N'EST **PAS** NOMMÉE — et c'est écrit plutôt que deviné
+
+L'hypothèse restante, **NON VÉRIFIÉE** : la **composition de couches translucides**.
+`dn_widget_zone_creer()` pose un `aplat()` translucide sur chaque zone ; ces deux-là s'empilaient
+sur un panneau d'entête **lui aussi translucide**, au-dessus de l'image de fond. LVGL alloue une
+**couche intermédiaire** pour composer ça, dans un pool **statique de 64 Ko dont 30 976 o sont déjà
+pris au boot** (relevé `nav ab`) ; un pool trop juste le fait dessiner **par tranches**, ce qui
+multiplierait le coût sans multiplier les flushes — exactement la signature observée.
+
+⛔ **Ce n'est pas mesuré.** C'est une piste, et elle est nommée pour que la prochaine séance parte
+de là plutôt que de refaire les cinq réfutations ci-dessus.
+
+🔴 **CE QUE ÇA ENGAGE** : le jour où un réglage revient sur la dalle — **`dn4-21`, le pré-menu de
+D16** —, **cette régression doit être instruite AVANT**, ⛔ pas redécouverte. Le protocole de
+reproduction est ci-dessus, il tient en trois commandes, et il ne demande **aucun geste owner**.
+
+### ✅ CE QUE LA SÉANCE A AUSSI RÉPARÉ, ET QUI N'ÉTAIT PAS PRÉVU
+
+- 🔴 **Un instrument qui mentait sur sa propre couverture** : `nav` conditionnait sa réserve
+  (« ce 0 n'est pas une preuve ») aux **taps** sur le MENU — or `nav menu` **construit** le MENU
+  sans qu'un doigt le touche. Il annonçait donc « jamais ouvert » sur une mesure **réelle**.
+  ⇒ il compte désormais les **constructions**.
+- 🔴 **Un drapeau de gate qui imprimait une liste vide** : `--liste-mutants` rendait `{}` parce que
+  les déclarations vivaient **après** son retour anticipé. Une campagne qui s'en servait pour
+  boucler ne tirait **aucun mutant** tout en annonçant un bilan.

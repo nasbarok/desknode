@@ -24,17 +24,18 @@ dn4-42 / AC5 — LA TABLE DE LANGUES, LES POLICES ET LES LARGEURS
   [OK ] ⛔ unites et prefixes RENDABLES en police de VEILLE (AC4.4) 16 cle(s) x 2 langue(s) confrontees a dn_font_33,dn_font_56
 
 ── 5. LES LARGEURS TIENNENT DANS LES DEUX LANGUES (AC4) ───────
-  [OK ] toute la geometrie est RELUE du firmware                 16 `#define` relus
+  [OK ] toute la geometrie est RELUE du firmware                 14 `#define` relus
   [OK ] chaque libelle tient dans sa place, DANS LES DEUX LANGUES 51 mesure(s), largeurs recalculees depuis les `adv_w`
   [OK ] le titre de la DEMO DEBORDE encore — TEMOIN de dn4-14-2  EN = 152 px · FR = 147 px / 107 utiles ⇒ ⛔ le raccourcir DESARMERAIT la garde
   [OK ] l'ecart de la date inconnue est UNIQUE et c'est celui de 2026-08-30 EN = 149 px ✅ · FR = 184 px ⚠️ ECART DECLARE / 170 utiles
   [OK ] la DATE COMPLETE tient (7 x 12 balayes par langue)       EN : « MON. 06 MAR. » = 131 px / 170 · FR : « MAR. 06 MARS » = 134 px / 170
   [OK ] la ligne d'echec NVS tient DANS SON PIRE CAS (AC4.2)     pire code = `NVS_KEYS_NOT_INITIALIZED` (24 signes)
-  [OK ] le titre « MENU » tient sous `MENU_TITRE_W_MAX` (AC2.2)  EN = 91 px · FR = 91 px / 91 annonces
-  [OK ] les codes du selecteur tiennent dans leur cible          EN=42px · FR=38px / 49 utiles
 
-── 6. LE SELECTEUR NE SE TRADUIT PAS (AC2.4) ──────────────────
-  [OK ] ⛔ le libelle du selecteur passe par `dn_langue_code()` (AC2.4) ⇒ « FR » / « EN », ⛔ pas un mot traduit
+── 6. L'ECART SUR AC2 EST DECLARE (decision owner) ────────────
+  [OK ] l'ecart AC2 est DECLARE dans le code, AVEC ses deux raisons decision owner + regression MESUREE (A/B chiffre sur place)
+  [OK ] ⛔ les codes de langue sont des LITTERAUX (AC2.4)         ⇒ « FR » / « EN » : ⛔ ils ne passent PAS par la table
+  [OK ] ⛔ la commande `langue` DIT qu'elle ne satisfait aucun AC ⇒ un levier de diagnostic, ⛔ pas un reglage produit
+  [OK ] le README DIT ou se change la langue, et que ce n'est pas la dalle ⇒ l'ecart est declare a QUI FLASHE, ⛔ pas qu'au relecteur du code
 
 ── 7. LES UNITES CONCORDENT DES DEUX COTES (AC1.4) ────────────
   [OK ] `dn_link_metrique_unite()` ne sert QUE la console        1 appel(s) dans dn_console.c · 0 dans dn_ui.c ⇒ ⛔ jamais dessinee
@@ -45,14 +46,14 @@ dn4-42 / AC5 — LA TABLE DE LANGUES, LES POLICES ET LES LARGEURS
   [OK ] ⛔ aucun `ESP_LOG` de dn_ui.c ne cite `dn_t()`            ⇒ les journaux restent francais : `dn_t_fr()`, `case_nom_fr()`
 
 ── 9. AUCUNE RECONSTRUCTION DEPUIS UN CALLBACK (AC3.4) ────────
-  [OK ] ⛔ le tap de langue passe par `lv_async_call` (AC3.4)     ⇒ ⛔ pas de `build_scene()` dans le callback : use-after-free de dn1-3
-  [OK ] le retour de `lv_async_call` est TESTE                   ⇒ sur file pleine : ⛔ RIEN n'est change, et ca se DIT
+  [OK ] ⛔ AUCUN handler de tap n'appelle `build_scene()` (AC3.4) 7 handler(s) balaye(s)
+  [OK ] `dn_ui_relire_langue()` PREND le verrou avant de reconstruire ⇒ sur timeout : ⛔ la langue est posee mais l'ecran le DIT
 
 ── 10. LE MENU EST GARDE EN LARGEUR A CHAUD (AC4.2) ───────────
   [OK ] les libelles du MENU sont MESURES a chaud                3 site(s) : titres de panneau + bloc d'etat compose
   [OK ] le compteur du MENU est PUBLIE par la console            ⇒ `dn4-41` : un instrument qu'on ne peut pas LIRE ne disculpe personne
 
 ==============================================================================
-BILAN : 30 OK, 0 KO
+BILAN : 31 OK, 0 KO
 ==============================================================================
 rc=0 (gate langues)

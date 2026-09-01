@@ -340,7 +340,18 @@ uint32_t dn_ui_menu_taps(void);
  * ⛔ Ne pas le confondre avec `dn_widget_trop_larges()` : deux surfaces, deux
  *    compteurs. Les additionner ferait chercher au mauvais endroit.
  */
+/*
+ * 🔴 `dn4-42` — relit la langue COURANTE et reconstruit la scene.
+ * ⚠️ Appelee par la commande `langue` (tache REPL). ⛔ Le chemin du DOIGT, lui,
+ *    passe par `lv_async_call` — voir `on_menu_langue_clic`. Les deux ne se
+ *    substituent pas, et l'ecart entre eux est MESURABLE.
+ */
+bool dn_ui_relire_langue(void);
+
 uint32_t dn_ui_menu_trop_larges(void);
+/* Combien de fois le MENU a ete CONSTRUIT. ⛔ Pas « tape » : le controle de
+ * largeur s'exerce a la construction, et `nav menu` construit sans tap. */
+uint32_t dn_ui_menu_builds(void);
 void dn_ui_menu_trop_larges_reset(void);
 /* Taps REFUSÉS par LVGL (lv_async_call sur file pleine ou tas saturé). Un tap
  * refusé n'est pas compté dans dn_ui_taps() : sans ce tri, `touch trace`

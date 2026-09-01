@@ -3368,75 +3368,68 @@ _Static_assert(MENU_SEL_Y_LUM + MENU_SEL_H <= MENU_ETAT_DY,
                "dn4-41 : les cibles de luminosite mordent sur le texte d'etat.");
 /*
  * ══════════════════════════════════════════════════════════════════════════
- * 🔴 `dn4-42` / AC2.2 — LE SÉLECTEUR DE LANGUE VIT DANS **L'ENTÊTE DU MENU**
+ * 🔴 `dn4-42` / AC2 — **LE SÉLECTEUR DE LANGUE N'EST PAS SUR LA DALLE**,
+ *    ET C'EST UNE DÉCISION OWNER DU 2026-09-01, ⛔ PAS UN RENONCEMENT
  * ══════════════════════════════════════════════════════════════════════════
  *
- * 🔴 LE PROBLÈME, MESURÉ : après `dn4-41`, le corps du MENU est PLEIN.
- *    entête 0..80 · VEILLE 90..210 · DELAI 225..425 · LUM+ÉTAT 440..636.
- *    **Il reste QUATRE pixels** sur 640.
+ * La story demandait le choix **au doigt** (AC2.1) et il a été CONSTRUIT :
+ * deux cibles `FR`/`EN` de 105 x 60 dans l'entête du MENU (voie (d), mesurée à
+ * 229 px libres pour 220 demandés). Il a été **flashé, vu et validé à l'œil**
+ * le 2026-09-01 — verbatim owner : *« ça se vise au doigt »*, et le
+ * basculement *« bascule en français, immédiatement »*, survivant au reboot.
  *
- * La story proposait trois voies. **Une quatrième a été mesurée et l'owner l'a
- * tranchée le 2026-09-01** — c'est celle-ci :
+ * 🔴 **IL A ÉTÉ RETIRÉ POUR DEUX RAISONS, ET LES DEUX SONT ÉCRITES :**
  *
- *   | voie | verdict |
- *   |---|---|
- *   | (a) une 4ᵉ vue `RÉGLAGES` | ⛔ écartée : un écran LVGL de plus, une navigation de plus à apprendre — **et sa porte atterrissait de toute façon dans l'entête**, le seul endroit libre |
- *   | (b) une 3ᵉ cible sur `LUMINOSITE` | ⛔ écartée : 3 cibles dans 460 px ⇒ ~140 px chacune contre 210 ⇒ on DÉGRADE deux cibles existantes, et la langue se rangerait sous un titre qui dit « LUMINOSITE » |
- *   | (c) le pré-menu de D16 | ⛔ hors périmètre : c'est `dn4-21`, V0.2 |
- *   | **(d) l'entête du MENU** | ✅ **RETENUE** |
+ * (1) **DEMANDE OWNER, QUI AMENDE LE PÉRIMÈTRE.** Verbatim du 2026-09-01 :
+ *     *« je voulais le choix de la langue sur l'installeur flash sur
+ *     navigateur, pas sur l'écran »*. ⇒ Le choix de langue appartient au
+ *     **flasheur web** (`epic-dn7`), ⛔ pas au MENU. AC2.1 est donc un
+ *     **ÉCART DÉCLARÉ**, ⛔ pas une case oubliée.
  *
- * LE BUDGET HORIZONTAL, ADDITIONNÉ ICI POUR QUE PERSONNE N'AIT À LE REFAIRE —
- * et **GARDÉ PAR LE COMPILATEUR** (`_Static_assert` juste dessous, même
- * doctrine que le budget VERTICAL de `dn4-41`) :
+ * (2) 🔴 **IL CAUSAIT UNE RÉGRESSION DE CHARGE MESURÉE**, et elle est partie
+ *     avec lui. A/B sur la carte, même protocole, 10 reconstructions de scène :
  *
- *   entête = 480 x 80
- *     · retour  x = 10 .. 130   (`DN_UI_RETOUR_W` = 120)
- *     · titre   x = 150 .. 241  (« MENU » = 91 px en `dn_font_28`, MESURÉ
- *                                depuis les `adv_w` de `fonts/dn_font_28.c`)
- *     · libre   x = 241 .. 470  ⇒ **229 px**
- *     · deux cibles 105 px + 10 de gouttière = 220  ≤ 229 ✅
- *     · y = 10 + 60 = 70 ≤ 80 ✅
+ *       | firmware                      | `taskLVGL` |
+ *       |-------------------------------|-----------|
+ *       | `14a7c52` (avant la story)    |   3,5 %   |
+ *       | `401d807` (avec le sélecteur) | **99,3 %**, watchdog déclenché |
+ *       | `401d807` **sans** le sélecteur |   3,5 %  |
  *
- * ✅ **LES TROIS PANNEAUX DU CORPS NE BOUGENT PAS D'UN PIXEL**, et les 4 px de
- *    marge basse de `dn4-41` ne sont pas touchés.
- * ✅ **ET LE SÉLECTEUR EST VISIBLE DÈS L'OUVERTURE DU MENU** — ce qui compte
- *    pour l'inconnu anglophone : il n'a pas à deviner qu'il faut descendre.
- * ⚠️ La cible fait 105 x 60. Le ledger porte *« une cible de 10 px ne se vise
- *    pas »* : 105 x 60 en est loin, et c'est la MÊME hauteur que le bouton de
- *    retour, qui se vise depuis `dn3-3`.
- * ⛔ Le libellé NE SE TRADUIT PAS (AC2.4) : `FR` / `EN`. Écrire « Langue » en
- *    français à quelqu'un qui ne lit que l'anglais est exactement le défaut que
- *    cette story corrige.
+ *     Symptômes : le verrou LVGL reste pris **> 1 s** (l'instrument de
+ *     `nav ab` refuse alors de publier son relevé, et il le DIT), le CPU part
+ *     **dans le dessin de lettres** — 4 cycles de redessin en 8 s pour 70 ms
+ *     de flush —, et l'œil owner le voit : *« l'écran saccade et le tactile a
+ *     du délai »*.
+ *
+ * ⛔ **CE QUI EST RÉFUTÉ PAR LA MESURE, ET QU'IL NE FAUT PAS RE-SUPPOSER** :
+ *     · ⛔ ce n'est PAS le changement de langue (reproduit **sans** lui) ;
+ *     · ⛔ ce n'est PAS le chemin `lv_async_call` du tap (reproduit **depuis
+ *       la console**, en tâche REPL) ;
+ *     · ⛔ ce n'est PAS `build_scene()` en soi (une reconstruction isolée :
+ *       3,7 % · et `14a7c52` en encaisse dix sans broncher) ;
+ *     · ⛔ ce n'est PAS la création à 210 px suivie d'un redimensionnement
+ *       (essayé : toujours 99,3 %) ;
+ *     · ⚠️ c'est un **SEUIL** : 2 paires de reconstruction ⇒ 3,5 %,
+ *       5 paires ⇒ 99,3 %.
+ *
+ * 🟡 **LA CAUSE EXACTE N'EST PAS NOMMÉE, ET C'EST ÉCRIT PLUTÔT QUE DEVINÉ.**
+ *    L'hypothèse restante — **non vérifiée** — est la composition de couches
+ *    translucides : `zone_creer()` pose un `aplat()` translucide, et ces deux
+ *    zones-là s'empilaient sur un panneau d'entête lui-même translucide,
+ *    au-dessus de l'image de fond. LVGL alloue une COUCHE intermédiaire pour
+ *    composer ça, dans un pool statique de 64 Ko dont 30 976 o sont déjà pris
+ *    au boot ; un pool trop juste le fait dessiner **par tranches**. ⛔ Ce
+ *    n'est PAS mesuré : c'est une piste pour qui reprendra.
+ * ⇒ **Le jour où le choix de langue reviendra sur la dalle** (`dn4-21`, le
+ *   pré-menu de D16), **cette régression doit être instruite AVANT**, ⛔ pas
+ *   redécouverte.
+ *
+ * ✅ **CE QUI RESTE, ET QUI EST L'ESSENTIEL DE LA STORY** : l'écran parle
+ *    anglais par défaut, il n'y a **qu'une définition par chaîne**, la langue
+ *    se pose et se persiste (`dn_reglage`), et une gate garde les polices et
+ *    les largeurs dans les deux langues. Le levier de réglage est la commande
+ *    console `langue` — ⛔ qui ne satisfait AUCUN AC, et le dit.
  */
-#define MENU_LG_W 105
-#define MENU_LG_H DN_UI_RETOUR_H
-#define MENU_LG_Y DN_UI_MARGE
-#define MENU_LG_GAP 10
-/* La 1re cible commence après le titre. ⚠️ CALCULÉ depuis les mêmes macros que
- * `build_menu()` emploie, ⛔ pas un `250` écrit à la main. */
-#define MENU_LG_X0 (DN_LCD_H_RES - DN_UI_MARGE - 2 * MENU_LG_W - MENU_LG_GAP)
-#define MENU_LG_X1 (MENU_LG_X0 + MENU_LG_W + MENU_LG_GAP)
-/* Le x où le titre « MENU » est posé — une seule définition, lue deux fois. */
-#define MENU_TITRE_X (DN_UI_MARGE + DN_UI_RETOUR_W + 20)
-/*
- * 🔴 LARGEUR DU TITRE « MENU » EN `dn_font_28`, **MESURÉE** depuis les `adv_w`
- *    de `fonts/dn_font_28.c` (91 px). ⛔ Elle n'est PAS relue à la compilation —
- *    elle ne peut pas l'être — mais elle est CONFRONTÉE par
- *    `tools/verif_langues_dn442.py`, qui recalcule la largeur réelle du libellé
- *    DANS LES DEUX LANGUES et rougit si l'un des deux dépasse ce chiffre.
- * ⚠️ « MENU » ne se traduit pas aujourd'hui — mais une 3ᵉ langue pourrait le
- *    faire, et c'est exactement le cas que ce garde-fou attrape.
- */
-#define MENU_TITRE_W_MAX 91
-_Static_assert(MENU_TITRE_X + MENU_TITRE_W_MAX <= MENU_LG_X0,
-               "dn4-42 : le selecteur de langue MORD sur le titre « MENU » de "
-               "l'entete. Refaire l'addition du budget horizontal ci-dessus.");
-_Static_assert(MENU_LG_X1 + MENU_LG_W + DN_UI_MARGE <= DN_LCD_H_RES,
-               "dn4-42 : la 2e cible de langue DEBORDE a droite de la dalle.");
-_Static_assert(MENU_LG_X0 >= DN_UI_MARGE + DN_UI_RETOUR_W,
-               "dn4-42 : le selecteur de langue CHEVAUCHE le bouton retour.");
-_Static_assert(MENU_LG_Y + MENU_LG_H <= MENU_ENTETE_H,
-               "dn4-42 : le selecteur de langue DEPASSE le bas de l'entete.");
 
 /*
  * 🔴 `dn4-42` / AC4.2 — LA LARGEUR UTILE DU TEXTE DANS UN PANNEAU DU MENU.
@@ -3485,8 +3478,6 @@ static lv_obj_t *s_menu_etat;
  * du pré-menu de D16. Les 4-5 seuils de lux, les 1-5 niveaux et la barre de
  * lumière captée restent ENTIERS dans `dn4-21` (V0.2). */
 static menu_sel_t s_menu_bl_auto, s_menu_bl_niv;
-/* 🔴 `dn4-42` — LES DEUX CIBLES DE LANGUE, DANS L'ENTÊTE (voie (d)). */
-static menu_sel_t s_menu_lg[DN_LANGUE_N];
 
 /*
  * 🔴 `dn4-42` / AC4.2 — LE COMPTEUR QUE LE MENU N'AVAIT PAS.
@@ -3501,6 +3492,16 @@ static menu_sel_t s_menu_lg[DN_LANGUE_N];
  *    endroit.
  */
 static uint32_t s_menu_trop_larges;
+/*
+ * 🔴 COMBIEN DE FOIS LE MENU A ETE CONSTRUIT — ⛔ pas « tape ».
+ * ⚠️ Corrige un instrument qui MENTAIT, trouve sur la carte le 2026-09-01 : la
+ *    console conditionnait sa reserve (« ce 0 n'est pas une preuve ») a
+ *    `dn_ui_menu_taps() == 0`, or `nav menu` CONSTRUIT le MENU sans aucun tap.
+ *    Elle annoncait donc « jamais ouvert » sur un MENU bel et bien construit et
+ *    mesure. ⇒ le controle de largeur s'exerce a la CONSTRUCTION : c'est elle
+ *    qu'il faut compter, ⛔ pas le doigt.
+ */
+static uint32_t s_menu_builds;
 
 /*
  * Mesure un libellé du MENU contre sa place, COMPTE et DIT s'il déborde.
@@ -3584,11 +3585,6 @@ static void menu_oublier(void)
     memset(s_menu_cran, 0, sizeof(s_menu_cran));
     memset(&s_menu_bl_auto, 0, sizeof(s_menu_bl_auto));
     memset(&s_menu_bl_niv, 0, sizeof(s_menu_bl_niv));
-    /* 🔴 `dn4-42` — LES CIBLES DE LANGUE MEURENT AVEC LEUR ÉCRAN, comme les
-     *    autres. Un pointeur laissé ici ferait repeindre `menu_reparametrer()`
-     *    dans de la mémoire libérée à la première bascule de veille — le
-     *    use-after-free de `dn1-3`, avec le pire délai de diagnostic possible. */
-    memset(s_menu_lg, 0, sizeof(s_menu_lg));
     s_menu_etat = NULL;
 }
 
@@ -3710,20 +3706,6 @@ static void menu_reparametrer(void)
         }
         lv_label_set_text(s_menu_bl_niv.lbl, lib);
         menu_sel_peindre(&s_menu_bl_niv, !auto_on, true);
-    }
-
-    /*
-     * 🔴 `dn4-42` — LES DEUX CIBLES DE LANGUE, RELUES DE L'ÉTAT RÉEL.
-     * ⚠️ `dn_langue()` est la langue COURANTE, ⛔ pas la valeur qu'on croit
-     *    avoir écrite : sur une NVS pleine, l'écriture échoue et la langue est
-     *    quand même posée A CHAUD — peindre la préférence supposée afficherait
-     *    un choix que la carte ne porte pas. Même règle que `AUTO`, qui est
-     *    peint sur `dn_env_bl_auto()` et non sur la préférence.
-     */
-    for (int i = 0; i < DN_LANGUE_N; i++) {
-        if (s_menu_lg[i].zone) {
-            menu_sel_peindre(&s_menu_lg[i], (dn_langue_t)i == dn_langue(), true);
-        }
     }
 
     if (s_menu_etat) {
@@ -3999,73 +3981,6 @@ static void on_menu_cran_clic(lv_event_t *e)
     menu_nvs_noter(veille_cran_appliquer_nolock(idx), DN_T_NVS_DELAI);
 }
 
-/*
- * ══════════════════════════════════════════════════════════════════════════
- * 🔴 `dn4-42` / AC2 + AC3.4 — LE CHOIX DE LANGUE, AU DOIGT
- * ══════════════════════════════════════════════════════════════════════════
- *
- * ⚠️ **CELUI-CI EST LE SEUL RÉGLAGE DU MENU QUI DOIT RECONSTRUIRE.** Les
- *    quatre autres ne font que RE-PEINDRE des objets déjà là ; changer de
- *    langue change **des textes posés à la construction** — les six titres de
- *    case, la date, les titres de panneau, les libellés des cibles.
- *
- * 🔴 **ET C'EST EXACTEMENT LE PIÈGE QUE CE FICHIER A DÉJÀ PAYÉ.** On tourne
- *    DANS l'envoi d'événement LVGL, sur un objet qui appartient à l'arbre que
- *    `build_scene()` va DÉTRUIRE : le détruire pendant qu'il reçoit son propre
- *    événement est le **use-after-free trouvé en revue de `dn1-3`**.
- * ⇒ On passe par `lv_async_call()`, **la parade prévue par LVGL** — la même que
- *   toute transition de vue depuis `dn1-4`. ⛔ Pas un contournement.
- *
- * ⚠️ **LE RETOUR DE `lv_async_call` EST TESTÉ**, comme partout ailleurs ici :
- *    sur file pleine, poser la langue sans jamais redessiner laisserait un
- *    écran français avec une NVS anglaise — un réglage qui a « pris » sans que
- *    rien ne le montre, c'est-à-dire le no-op que W3 a supprimé.
- *    ⇒ Sur refus, ⛔ **on ne change RIEN** et on le DIT.
- *
- * ⚠️ La reconstruction coûte **307-322 ms verrou tenu** (mesuré `dn3-1`). C'est
- *    assumé pour un geste d'opérateur qui arrive une fois — ⛔ ce serait
- *    inacceptable dans une boucle, et il n'y en a aucune ici.
- */
-static void langue_async(void *param)
-{
-    dn_langue_t l = (dn_langue_t)(intptr_t)param;
-    if (!lvgl_port_lock(2000)) {
-        /* ⛔ On n'a RIEN posé : la langue n'a pas changé, l'écran non plus, et
-         * la NVS non plus. L'état reste COHÉRENT — c'est le seul ordre qui le
-         * garantit, et c'est pourquoi l'écriture est ICI et pas dans le tap. */
-        ESP_LOGE(TAG, "langue : verrou LVGL INDISPONIBLE — ⛔ RIEN n'est change "
-                      "(ni l'ecran, ni la NVS). Retaper.");
-        return;
-    }
-    menu_nvs_noter(dn_reglage_langue_ecrire(l), DN_T_NVS_LANGUE);
-    /* La barre reprend son texte « pas d'heure » dans la langue neuve — sinon
-     * une carte sans RTC posé garderait la SEULE chaîne restée en français. */
-    barre_defaut();
-    build_scene();
-    lvgl_port_unlock();
-    ESP_LOGI(TAG, "langue : « %s » posee AU DOIGT depuis le MENU (scene "
-                  "reconstruite).",
-             dn_langue_code(l));
-}
-
-static void on_menu_langue_clic(lv_event_t *e)
-{
-    dn_langue_t l = (dn_langue_t)(intptr_t)lv_event_get_user_data(e);
-    s_menu_reglages++;
-    if (l == dn_langue()) {
-        /* ⛔ Déjà dans cette langue : ⛔ PAS de reconstruction. 307-322 ms de
-         * verrou pour rien, et un clignotement que l'œil lirait comme un
-         * défaut. ⚠️ Le tap est quand même COMPTÉ : il a bien eu lieu. */
-        return;
-    }
-    if (lv_async_call(langue_async, (void *)(intptr_t)l) != LV_RESULT_OK) {
-        s_async_refus++;
-        ESP_LOGE(TAG, "langue : `lv_async_call` REFUSE (file pleine) — ⛔ RIEN "
-                      "n'est change. Le tap est perdu, et il le DIT.");
-        return;
-    }
-}
-
 /* ── La construction ─────────────────────────────────────────────────────── */
 
 /*
@@ -4092,8 +4007,10 @@ static menu_sel_t menu_sel_creer(lv_obj_t *parent, int x, int y,
     return s;
 }
 
+
 static void build_menu(lv_obj_t *scr)
 {
+    s_menu_builds++;
     menu_oublier();
     fond_poser(scr);
 
@@ -4110,24 +4027,7 @@ static void build_menu(lv_obj_t *scr)
                                   on_retour_clic, NULL);
     texte(retour, LV_SYMBOL_LEFT, &dn_font_28, lv_color_white(), 16, 14);
     texte(entete, dn_t(DN_T_MENU_TITRE), &dn_font_28, lv_color_hex(0xa0d8ff),
-          MENU_TITRE_X, 24);
-    /* 🔴 `dn4-42` / AC2 — LE SÉLECTEUR DE LANGUE, VOIE (d). Le budget
-     *    horizontal est plus haut, et il est gardé par `_Static_assert`. */
-    for (int i = 0; i < DN_LANGUE_N; i++) {
-        /* ⛔ LE LIBELLÉ NE PASSE **PAS** PAR `dn_t()` (AC2.4) : `FR` et `EN` se
-         *    lisent dans les deux langues, et un « Langue » français affiché à
-         *    quelqu'un qui ne lit que l'anglais serait le défaut même que cette
-         *    story corrige. `dn_langue_code()` rend le code, ⛔ pas un mot. */
-        s_menu_lg[i] = menu_sel_creer(
-            entete, (i == 0) ? MENU_LG_X0 : MENU_LG_X1, MENU_LG_Y,
-            dn_langue_code((dn_langue_t)i), on_menu_langue_clic,
-            (void *)(intptr_t)i);
-        /* ⚠️ La fabrique pose des cibles de `MENU_SEL_W` (210) : ici elles font
-         *    `MENU_LG_W` (105). ⛔ On REDIMENSIONNE plutôt que d'ajouter un
-         *    paramètre à la fabrique — deux tailles dans une signature auraient
-         *    fait diverger les quatre autres appels le jour où l'une bouge. */
-        lv_obj_set_size(s_menu_lg[i].zone, MENU_LG_W, MENU_LG_H);
-    }
+          DN_UI_MARGE + DN_UI_RETOUR_W + 20, 24);
 
     /* ── Réglage 1 : la veille, ON / OFF ─────────────────────────────────── */
     lv_obj_t *p1 = panneau(scr, MENU_PAN_X, MENU_Y_VEILLE, MENU_PAN_W,
@@ -6323,6 +6223,7 @@ uint32_t dn_ui_menu_taps(void) { return s_menu_taps; }
 /* 🔴 `dn4-42` / AC4.2 — publie, ⛔ pas seulement compte. `dn4-41` a paye
  * « un instrument qu'on ne peut pas LIRE ne disculpe personne ». */
 uint32_t dn_ui_menu_trop_larges(void) { return s_menu_trop_larges; }
+uint32_t dn_ui_menu_builds(void) { return s_menu_builds; }
 void dn_ui_menu_trop_larges_reset(void) { s_menu_trop_larges = 0; }
 uint32_t dn_ui_async_refus(void) { return s_async_refus; }
 dn_nav_model_t dn_ui_get_nav_model(void) { return s_nav; }
@@ -7616,6 +7517,32 @@ void dn_ui_reset_stats(void)
 
 dn_flush_sync_t dn_ui_get_sync(void) { return s_sync; }
 void dn_ui_set_sync(dn_flush_sync_t mode) { s_sync = mode; }
+
+/*
+ * 🔴 `dn4-42` — RELIRE LA LANGUE ET REPEINDRE, DEPUIS UNE AUTRE TACHE.
+ *
+ * ⚠️ **CE N'EST PAS LE CHEMIN DU DOIGT.** Le tap passe par `lv_async_call`
+ *    (contexte du gestionnaire de timers LVGL) parce qu'il tourne DANS l'envoi
+ *    d'evenement, sur un objet que `build_scene()` va detruire — le
+ *    use-after-free de `dn1-3`. Ici l'appelant est la tache REPL : il PREND le
+ *    verrou et reconstruit, exactement comme `nav model` ou `widget nue`.
+ * ⛔ Ne jamais conclure de l'un a l'autre : c'est justement l'ECART que ce
+ *    levier permet de MESURER.
+ * ⚠️ Elle ne POSE pas la langue (`dn_reglage_langue_ecrire` l'a deja fait) :
+ *    elle en tire les consequences a l'ecran. Deux gestes, deux fonctions.
+ */
+bool dn_ui_relire_langue(void)
+{
+    if (!lvgl_port_lock(2000)) {
+        ESP_LOGE(TAG, "verrou LVGL non pris — la langue est posee mais l'ecran "
+                      "n'est PAS reconstruit.");
+        return false;
+    }
+    barre_defaut();
+    build_scene();
+    lvgl_port_unlock();
+    return true;
+}
 
 bool dn_ui_force_full_redraw(void)
 {

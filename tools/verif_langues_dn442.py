@@ -93,7 +93,41 @@ NVS_ERR_PIRE = "NVS_KEYS_NOT_INITIALIZED"
 OK = [0]
 KO = [0]
 _MUTANT = None
+
+#
+# 🔴 LES MUTANTS SONT DECLARES **AU NIVEAU MODULE**, ⛔ PLUS DANS `main()`.
+#    Ils y etaient, c'est-a-dire APRES le retour anticipe de `--liste-mutants` :
+#    le drapeau imprimait donc une liste VIDE, en silence, et une campagne qui
+#    s'en servait pour boucler ne tirait AUCUN mutant tout en annoncant un
+#    bilan. **Un drapeau qui n'imprime rien est un instrument qui ment**, et
+#    c'est exactement ce que ce depot traque. Trouve le 2026-09-01, en jouant
+#    la campagne — ⛔ pas en relisant.
 MUTANTS = {}
+MUTANTS[1] = "vide la traduction EN d'une cle (une chaine VIDE compile)"
+MUTANTS[2] = "retire une COLONNE de la liste X (une cle sans traduction)"
+MUTANTS[3] = "met le FRANCAIS en index 0 (le defaut cesserait d'etre l'anglais)"
+MUTANTS[4] = "intervertit les colonnes EN/FR de `k_txt[]` (defaut inverse en silence)"
+MUTANTS[5] = "reintroduit une table `k_nom[]` parallele dans dn_ui.c"
+MUTANTS[6] = "efface la declaration « hors table » de la 4e liste (console)"
+MUTANTS[7] = "remet un libelle francais en dur dans un `texte()` du MENU"
+MUTANTS[8] = "remet un `—` (U+2014) dans une chaine de la table"
+MUTANTS[9] = "remet un `⛔` (U+26D4) dans la ligne d'echec NVS composee"
+MUTANTS[10] = "met un accent dans une UNITE (invisible en dn_font_33/56)"
+MUTANTS[11] = "allonge un titre de case au-dela de sa place"
+MUTANTS[12] = "rallonge la ligne d'echec NVS jusqu'au clip"
+MUTANTS[14] = "efface la declaration de l'ecart AC2 dans dn_ui.c"
+MUTANTS[15] = "fait diverger une unite entre dn_link.c et la table"
+MUTANTS[16] = "fait lire `dn_t()` (langue courante) a la console"
+MUTANTS[17] = "fait citer `dn_t()` par un ESP_LOG de dn_ui.c"
+MUTANTS[18] = "appelle `build_scene()` DIRECTEMENT depuis un handler de tap"
+MUTANTS[19] = "fait reconstruire `dn_ui_relire_langue()` SANS prendre le verrou"
+MUTANTS[20] = "retire le controle de largeur du bloc d'etat du MENU"
+MUTANTS[21] = "cesse de publier le compteur du MENU dans la console"
+MUTANTS[22] = "RACCOURCIT le titre de la DEMO (desarmerait le temoin dn4-14-2)"
+MUTANTS[23] = "allonge la date inconnue d'une AUTRE langue (2e ecart en silence)"
+MUTANTS[24] = "efface, dans le README, la ligne qui dit ou se choisit la langue"
+MUTANTS[25] = "fait passer un code de langue par la table (il se traduirait)"
+MUTANTS[26] = "fait dire a la commande `langue` qu'elle satisfait AC2"
 
 
 def dire(ok, libelle, detail=""):
@@ -227,10 +261,6 @@ def main():
 
     # ══ 1. LA TABLE : UNE LIGNE = UNE CLE = TOUTES SES TRADUCTIONS ══════════
     print("\n── 1. LA TABLE EST COMPLETE (AC1.1, AC5.2) ────────────────────")
-
-    MUTANTS[1] = "vide la traduction EN d'une cle (une chaine VIDE compile)"
-    MUTANTS[2] = "retire une COLONNE de la liste X (une cle sans traduction)"
-
     bloc = re.search(r"#define\s+DN_TXT_LISTE\(X\)(.*?)\n\s*\n", langue_h, re.S)
     if not bloc:
         dire(False, "la liste `DN_TXT_LISTE(X)` est lisible",
@@ -306,8 +336,6 @@ def main():
     dire(not trous, "toute cle a une traduction dans TOUTES les langues",
          "%d cle(s) x %d langue(s)" % (len(appels), len(langues))
          if not trous else "⛔ " + " · ".join(trous[:2]))
-
-    MUTANTS[3] = "met le FRANCAIS en index 0 (le defaut cesserait d'etre l'anglais)"
     h3 = M(3, langue_h, "DN_LANGUE_EN = 0,\n    DN_LANGUE_FR,",
            "DN_LANGUE_FR = 0,\n    DN_LANGUE_EN,")
     ordre3 = re.findall(r"DN_LANGUE_([A-Z]+)\s*(?:=\s*\d+\s*)?,", h3)
@@ -316,7 +344,6 @@ def main():
          "1er = %s ⇒ une NVS vide rend %s" % (ordre3[0], ordre3[0]))
 
     # L'ordre des colonnes du `.c` DOIT suivre celui de l'enum.
-    MUTANTS[4] = "intervertit les colonnes EN/FR de `k_txt[]` (defaut inverse en silence)"
     c4 = M(4, langue_c, "[DN_LANGUE_EN] = {\n#define X(nom, en, fr) [DN_T_##nom] = en,",
            "[DN_LANGUE_EN] = {\n#define X(nom, en, fr) [DN_T_##nom] = fr,")
     cols = re.findall(r"\[DN_LANGUE_(\w+)\]\s*=\s*\{\s*#define X\(nom, en, fr\)"
@@ -327,8 +354,6 @@ def main():
 
     # ══ 2. LES DOUBLONS SONT RESORBES (AC1.2, AC1.3) ════════════════════════
     print("\n── 2. LES DOUBLONS SONT RESORBES (AC1.2, AC1.3) ───────────────")
-
-    MUTANTS[5] = "reintroduit une table `k_nom[]` parallele dans dn_ui.c"
     ui5 = M(5, ui, "static const char *case_nom(int idx)",
             'static const char *const k_nom[DN_UI_METRIQUES] = {"CPU"};\n'
             "static const char *case_nom(int idx)")
@@ -342,7 +367,6 @@ def main():
          "⇒ le descripteur ne porte plus qu'une CLE")
 
     # AC1.3 — la 4e liste (console) reste HORS table, et c'est DECLARE.
-    MUTANTS[6] = "efface la declaration « hors table » de la 4e liste (console)"
     h6 = M(6, langue_h, "`dn_console.c`, `cmd_hist` (la 4ᵉ liste des noms de case)",
            "une liste quelconque")
     dire("cmd_hist" in h6 and "HORS TABLE" in h6.upper(),
@@ -351,8 +375,6 @@ def main():
 
     # ══ 3. AUCUN LITTERAL DANS LES PUITS DE TEXTE DE LA DALLE (AC1.1) ═══════
     print("\n── 3. AUCUN LITTERAL N'ATTEINT LA DALLE (AC1.1, AC5.2) ────────")
-
-    MUTANTS[7] = "remet un libelle francais en dur dans un `texte()` du MENU"
     ui7 = M(7, ui, "menu_titre_panneau(p1, DN_T_MENU_VEILLE);",
             'texte(p1, "VEILLE", &dn_font_14, lv_color_hex(0xa0d8ff), MENU_SEL_X0, 10);')
     #
@@ -404,10 +426,6 @@ def main():
 
     # ══ 4. LES POLICES PORTENT VRAIMENT CE QU'ON LEUR DEMANDE (AC4.3, AC4.4) ═
     print("\n── 4. LES POLICES PORTENT LES GLYPHES (AC4.3, AC4.4) ──────────")
-
-    MUTANTS[8] = "remet un `—` (U+2014) dans une chaine de la table"
-    MUTANTS[10] = "met un accent dans une UNITE (invisible en dn_font_33/56)"
-
     corps_g = corps
     corps_g = M(8, corps_g, '"NONE - not wired yet"', '"NONE — not wired yet"')
     corps_g = M(10, corps_g, '"rpm",                      "tr/min"',
@@ -519,8 +537,6 @@ def main():
     # ⚠️ ⛔ CE QUE CE PROXY NE COUVRE PAS, ET C'EST DECLARE : une chaine composee
     #    dans une fonction et posee dans une AUTRE. Il n'y en a aucune
     #    aujourd'hui ; le jour ou il y en aura une, ce controle ne la verra pas.
-    MUTANTS[9] = "remet un `⛔` (U+26D4) dans la ligne d'echec NVS composee"
-
     def fonctions_a_label(src):
         """Le corps des fonctions qui POSENT un label, commentaires retires.
 
@@ -627,12 +643,6 @@ def main():
 
     # ══ 5. LES LARGEURS TIENNENT, DANS LES DEUX LANGUES (AC4.1, AC4.2, AC5.2)
     print("\n── 5. LES LARGEURS TIENNENT DANS LES DEUX LANGUES (AC4) ───────")
-
-    MUTANTS[11] = "allonge un titre de case au-dela de sa place"
-    MUTANTS[22] = "RACCOURCIT le titre de la DEMO (desarmerait le temoin dn4-14-2)"
-    MUTANTS[12] = "rallonge la ligne d'echec NVS jusqu'au clip"
-    MUTANTS[13] = "allonge le titre du MENU jusqu'a mordre le selecteur"
-
     # ⛔ LA GEOMETRIE EST RELUE DU FIRMWARE, ⛔ pas recitee.
     # ⚠️ L'ORDRE COMPTE : chaque `#define` peut en citer un precedent, et
     #    `defini()` ne resout que ce qu'il connait deja. C'est DELIBERE — une
@@ -646,8 +656,7 @@ def main():
                      ("DN_UI_MARGE", ui), ("DN_UI_GAP", ui),
                      ("DN_UI_RETOUR_W", ui), ("DN_UI_BARRE_DATE_X", ui),
                      ("MENU_SEL_W", ui), ("MENU_SEL_X0", ui), ("MENU_LBL_X", ui),
-                     ("MENU_PAN_W", ui), ("MENU_LG_W", ui),
-                     ("MENU_TITRE_W_MAX", ui), ("MENU_ENTETE_H", ui)):
+                     ("MENU_PAN_W", ui), ("MENU_ENTETE_H", ui)):
         g[nom] = defini(src, nom, g)
     manque = [k for k, v in g.items() if v is None]
     dire(not manque, "toute la geometrie est RELUE du firmware",
@@ -668,13 +677,10 @@ def main():
     titre_utile = (case_w - g["W_BADGE_DE_DROITE"]) - (g["W_PAD"] + g["W_ICONE_AV_28"])
     date_utile = g["DN_LCD_H_RES"] - g["DN_UI_BARRE_DATE_X"] - g["DN_UI_MARGE"]
     cible_utile = g["MENU_SEL_W"] - g["MENU_LBL_X"] - g["MENU_SEL_X0"]
-    lg_utile = g["MENU_LG_W"] - g["MENU_LBL_X"]
 
     table_m = dict((k, dict(v)) for k, v in table.items())
     if _MUTANT == 11:
         table_m["CASE_RESEAU"]["EN"] = "NETWORK INTERFACE"
-    if _MUTANT == 13:
-        table_m["MENU_TITRE"]["EN"] = "MENU AND SETTINGS"
     if _MUTANT == 22:
         table_m["CASE_DEMO"] = {lg: "DEMO" for lg in langues}
 
@@ -773,7 +779,6 @@ def main():
     #       est un defaut au meme titre qu'un chiffre faux ;
     #   (b) il est **SEUL** — toute autre langue doit TENIR. C'est ce qui fait
     #       qu'ajouter une langue ne peut pas hériter d'une coupe en silence.
-    MUTANTS[23] = "allonge la date inconnue d'une AUTRE langue (2e ecart en silence)"
     di = dict(table_m["DATE_INCONNUE"])
     if _MUTANT == 23:
         di["EN"] = "THE CLOCK HAS NOT BEEN SET YET"
@@ -826,40 +831,74 @@ def main():
          "pire code = `%s` (%d signes)" % (NVS_ERR_PIRE, len(NVS_ERR_PIRE))
          if not nvs_trop else "⛔ " + " · ".join(nvs_trop))
 
-    # 🔴 LE TITRE DU MENU CONTRE LE SELECTEUR DE LANGUE (AC2.2)
-    #    Le `_Static_assert` du firmware garde `MENU_TITRE_W_MAX` ; ici on
-    #    verifie que ce chiffre est VRAI dans les deux langues.
-    t_menu = [(lg, p28.largeur(table_m["MENU_TITRE"][lg])) for lg in langues]
-    dire(all(w <= g["MENU_TITRE_W_MAX"] for _, w in t_menu),
-         "le titre « MENU » tient sous `MENU_TITRE_W_MAX` (AC2.2)",
-         " · ".join("%s = %d px" % (l, w) for l, w in t_menu)
-         + " / %d annonces" % g["MENU_TITRE_W_MAX"])
+    # ══ 6. L'ECART SUR AC2 EST **DECLARE**, ⛔ PAS OUBLIE ════════════════════
+    print("\n── 6. L'ECART SUR AC2 EST DECLARE (decision owner) ────────────")
 
-    lg_codes = re.findall(r'\[DN_LANGUE_(\w+)\]\s*=\s*"([^"]+)"', langue_c)
-    trop_code = [(l, c, p28.largeur(c)) for l, c in lg_codes
-                 if p28.largeur(c) > lg_utile]
-    dire(not trop_code, "les codes du selecteur tiennent dans leur cible",
-         " · ".join("%s=%dpx" % (c, p28.largeur(c)) for _, c in lg_codes)
-         + " / %d utiles" % lg_utile)
+    #
+    # 🔴 CE CONTROLE A CHANGE DE NATURE LE 2026-09-01, ET LE MOTIF S'ECRIT.
+    #    AC2.1 exigeait un selecteur AU DOIGT, et il a ete CONSTRUIT, FLASHE et
+    #    VALIDE A L'OEIL (« ca se vise au doigt », « bascule immediatement »).
+    #    **L'OWNER L'A RETIRE DU PERIMETRE** — verbatim : *« je voulais le choix
+    #    de la langue sur l'installeur flash sur navigateur, pas sur l'ecran »*.
+    #    ⚠️ ET IL CAUSAIT UNE REGRESSION MESUREE (`taskLVGL` 99,3 % contre 3,5 %,
+    #       watchdog declenche) qui est PARTIE avec lui — A/B sur la carte.
+    #
+    # ⛔ UN ECART QUI N'EST PAS ECRIT REDEVIENT UN OUBLI AU PREMIER LECTEUR.
+    #    Ce controle ne garde donc PAS une fonctionnalite : il garde **le fait
+    #    qu'elle est declaree absente, avec sa raison**. Le jour ou quelqu'un
+    #    nettoiera ces commentaires, la gate rougira.
+    ui14 = M(14, ui, "LE SÉLECTEUR DE LANGUE N'EST PAS SUR LA DALLE",
+             "le selecteur de langue")
+    #
+    # ⚠️ LES MARQUEURS SONT COURTS **A DESSEIN** : le verbatim owner est
+    #    RETOURNE A LA LIGNE dans le commentaire, et un marqueur long aurait
+    #    rougi sur une prose parfaitement juste. Trouve au premier tir.
+    marques = ("N'EST PAS SUR LA DALLE", "flasheur web", "epic-dn7",
+               "99,3", "3,5")
+    manquants = [m for m in marques if m not in ui14]
+    dire(not manquants,
+         "l'ecart AC2 est DECLARE dans le code, AVEC ses deux raisons",
+         "decision owner + regression MESUREE (A/B chiffre sur place)"
+         if not manquants else "⛔ absent(s) : " + ", ".join(manquants))
 
-    # ══ 6. LE SELECTEUR NE SE TRADUIT PAS (AC2.4) ═══════════════════════════
-    print("\n── 6. LE SELECTEUR NE SE TRADUIT PAS (AC2.4) ──────────────────")
+    # ⛔ LES CODES RESTENT NON TRADUITS (AC2.4), MEME SANS SELECTEUR SUR LA
+    #    DALLE : `dn_langue_code()` sert la console ET servira le flasheur web.
+    #    Ecrire « Langue » a un anglophone reste le defaut que la story corrige.
+    lc = M(25, langue_c, '[DN_LANGUE_EN] = "EN",', '[DN_LANGUE_EN] = dn_t(DN_T_MENU_TITRE),')
+    m_code = re.search(r"k_code\[DN_LANGUE_N\]\s*=\s*\{(.*?)\};", lc, re.S)
+    dire(bool(m_code) and "dn_t" not in m_code.group(1)
+         and len(re.findall(r'"[A-Z]{2}"', m_code.group(1))) == len(langues),
+         "⛔ les codes de langue sont des LITTERAUX (AC2.4)",
+         "⇒ « FR » / « EN » : ⛔ ils ne passent PAS par la table")
 
-    MUTANTS[14] = "fait passer le libelle du selecteur par `dn_t()`"
-    ui14 = M(14, ui, "dn_langue_code((dn_langue_t)i), on_menu_langue_clic,",
-             "dn_t(DN_T_MENU_TITRE), on_menu_langue_clic,")
-    m_sel = re.search(r"s_menu_lg\[i\]\s*=\s*menu_sel_creer\((.*?)\);",
-                      sans_commentaires(ui14), re.S)
-    dire(bool(m_sel) and "dn_langue_code(" in m_sel.group(1)
-         and "dn_t(" not in m_sel.group(1),
-         "⛔ le libelle du selecteur passe par `dn_langue_code()` (AC2.4)",
-         "⇒ « FR » / « EN », ⛔ pas un mot traduit")
+    # ⛔ ET LA COMMANDE CONSOLE NE SE FAIT PAS PASSER POUR LA REPONSE A AC2.1.
+    cons26 = M(26, console,
+               "⛔ **CETTE COMMANDE NE SATISFAIT AUCUN AC.**",
+               "Cette commande satisfait AC2.1.")
+    dire("NE SATISFAIT AUCUN AC" in cons26,
+         "⛔ la commande `langue` DIT qu'elle ne satisfait aucun AC",
+         "⇒ un levier de diagnostic, ⛔ pas un reglage produit")
+
+    #
+    # 🔴 ET L'ECART SE DIT **A L'UTILISATEUR**, ⛔ pas seulement au relecteur du
+    #    code. Un inconnu qui flashe doit savoir OU se change la langue — et que
+    #    ce n'est PAS sur la dalle aujourd'hui. Un README qui promet un reglage
+    #    au doigt que le firmware n'a pas est l'etiquette-qui-ment, sur le
+    #    document qui accueille.
+    # ⚠️ CE CONTROLE MANQUAIT : le mutant 24 avait ete DECLARE et jamais ECRIT,
+    #    et il restait donc VERT. Trouve en balayant les 26, ⛔ pas en relisant —
+    #    exactement comme le mutant 9. C'est la DEUXIEME fois dans cette gate.
+    readme = M(24, lire(os.path.join(RACINE, "README.md")),
+               "Le choix de langue N'EST PAS sur la dalle", "La langue se choisit")
+    attendus = ("N'EST PAS sur la dalle", "flasheur web", "langue fr")
+    absents_rm = [a for a in attendus if a not in readme]
+    dire(not absents_rm,
+         "le README DIT ou se change la langue, et que ce n'est pas la dalle",
+         "⇒ l'ecart est declare a QUI FLASHE, ⛔ pas qu'au relecteur du code"
+         if not absents_rm else "⛔ absent(s) : " + ", ".join(absents_rm))
 
     # ══ 7. LES UNITES CONCORDENT DES DEUX COTES (AC1.4) ═════════════════════
     print("\n── 7. LES UNITES CONCORDENT DES DEUX COTES (AC1.4) ────────────")
-
-    MUTANTS[15] = "fait diverger une unite entre dn_link.c et la table"
-
     link15 = M(15, link, '{"%", "GHz", "%", "degC"}', '{"%", "GHz", "%", "deg"}')
     #
     # 🔴 **PREMISSE D'AC1.4 AMENDEE PAR LA MESURE, ET C'EST DECLARE.**
@@ -918,8 +957,6 @@ def main():
 
     # ══ 8. LA CONSOLE RESTE EN FRANCAIS (decision owner) ════════════════════
     print("\n── 8. LA CONSOLE RESTE EN FRANCAIS (decision owner) ───────────")
-
-    MUTANTS[16] = "fait lire `dn_t()` (langue courante) a la console"
     console16 = M(16, console, "dn_t_fr(dm ? dm->grandeurs[0].unite : DN_T_AUCUN)",
                   "dn_t(dm ? dm->grandeurs[0].unite : DN_T_AUCUN)")
     #
@@ -932,8 +969,6 @@ def main():
          "⛔ `dn_console.c` n'appelle JAMAIS `dn_t()` (langue courante)",
          "⇒ il lit `dn_t_fr()` : MEME definition, FRANCAIS constant"
          if not fautifs else "⛔ %d appel(s) a `dn_t(`" % len(fautifs))
-
-    MUTANTS[17] = "fait citer `dn_t()` par un ESP_LOG de dn_ui.c"
     ui17 = M(17, ui, 'ESP_LOGI(TAG, "langue : « %s » posee AU DOIGT depuis le MENU (scene "\n                  "reconstruite).",\n             dn_langue_code(l));',
              'ESP_LOGI(TAG, "langue : « %s » posee AU DOIGT depuis le MENU (scene "\n                  "reconstruite).",\n             dn_t(DN_T_MENU_TITRE));')
     logs = []
@@ -957,33 +992,51 @@ def main():
          "⇒ les journaux restent francais : `dn_t_fr()`, `case_nom_fr()`"
          if not logs else "⛔ " + logs[0])
 
-    # ══ 9. LE REPEINT NE RECONSTRUIT PAS DEPUIS UN CALLBACK (AC3.4) ═════════
+    # ══ 9. AUCUNE RECONSTRUCTION DEPUIS UN CALLBACK (AC3.4) ════════════════
     print("\n── 9. AUCUNE RECONSTRUCTION DEPUIS UN CALLBACK (AC3.4) ────────")
 
-    MUTANTS[18] = "appelle `build_scene()` DIRECTEMENT depuis le tap de langue"
-    ui18 = M(18, ui, "    if (lv_async_call(langue_async, (void *)(intptr_t)l) != LV_RESULT_OK) {",
-             "    build_scene();\n    if (lv_async_call(langue_async, (void *)(intptr_t)l) != LV_RESULT_OK) {")
-    cb = re.search(r"static void on_menu_langue_clic\(lv_event_t \*e\)\s*\{(.*?)\n\}",
-                   sans_commentaires(ui18), re.S)
-    dire(bool(cb) and "build_scene(" not in cb.group(1)
-         and "lv_async_call(" in cb.group(1),
-         "⛔ le tap de langue passe par `lv_async_call` (AC3.4)",
-         "⇒ ⛔ pas de `build_scene()` dans le callback : use-after-free de dn1-3")
+    #
+    # 🔴 LA PROPRIETE SURVIT AU RETRAIT DU SELECTEUR, ET ELLE S'ELARGIT.
+    #    Elle visait `on_menu_langue_clic` ; celui-ci n'existe plus. Mais le
+    #    danger, lui, n'a pas bouge : un callback d'evenement LVGL tourne SUR UN
+    #    OBJET DE L'ARBRE que `build_scene()` va DETRUIRE — c'est le
+    #    use-after-free trouve en revue de `dn1-3`.
+    # ⇒ On garde donc la propriete GENERALE : **aucun handler `on_*_clic` de
+    #   `dn_ui.c` n'appelle `build_scene()`**. C'est plus large que ce que la
+    #   story demandait, et ⛔ ce n'est pas du zele : *« une gate scopee a UNE
+    #   fonction epingle vert le meme defaut ailleurs »* (`dn4-16`).
+    ui18 = M(18, ui, "static void on_menu_cran_clic(lv_event_t *e)\n{\n    int idx",
+             "static void on_menu_cran_clic(lv_event_t *e)\n{\n    build_scene();\n    int idx")
+    nu18 = sans_commentaires(ui18)
+    fautifs, n_h = [], 0
+    for m in re.finditer(r"static void (on_\w+)\(lv_event_t \*e\)\s*\{", nu18):
+        nom, j, prof = m.group(1), m.end(), 1
+        while j < len(nu18) and prof:
+            if nu18[j] == "{":
+                prof += 1
+            elif nu18[j] == "}":
+                prof -= 1
+            j += 1
+        n_h += 1
+        if "build_scene(" in nu18[m.end():j]:
+            fautifs.append(nom)
+    dire(n_h > 0 and not fautifs,
+         "⛔ AUCUN handler de tap n'appelle `build_scene()` (AC3.4)",
+         "%d handler(s) balaye(s)" % n_h if not fautifs
+         else "⛔ " + ", ".join(fautifs))
 
-    # Et le retour de l'async est TESTE — sinon un tap refuse passerait pour pris.
-    MUTANTS[19] = "jette le retour de `lv_async_call` du tap de langue"
-    ui19 = M(19, ui, "if (lv_async_call(langue_async, (void *)(intptr_t)l) != LV_RESULT_OK) {",
-             "if (false) {\n        lv_async_call(langue_async, (void *)(intptr_t)l);")
-    cb19 = re.search(r"static void on_menu_langue_clic\(lv_event_t \*e\)\s*\{(.*?)\n\}",
-                     sans_commentaires(ui19), re.S)
-    dire(bool(cb19) and "!= LV_RESULT_OK" in cb19.group(1),
-         "le retour de `lv_async_call` est TESTE",
-         "⇒ sur file pleine : ⛔ RIEN n'est change, et ca se DIT")
+    # ⚠️ ET LE CHEMIN QUI RECONSTRUIT, LUI, PREND LE VERROU ET LE DIT SUR ECHEC.
+    ui19 = M(19, ui, "bool dn_ui_relire_langue(void)\n{\n    if (!lvgl_port_lock(2000)) {",
+             "bool dn_ui_relire_langue(void)\n{\n    if (false) {")
+    rl = re.search(r"bool dn_ui_relire_langue\(void\)\s*\{(.*?)\n\}",
+                   sans_commentaires(ui19), re.S)
+    dire(bool(rl) and "lvgl_port_lock(" in rl.group(1)
+         and "build_scene(" in rl.group(1),
+         "`dn_ui_relire_langue()` PREND le verrou avant de reconstruire",
+         "⇒ sur timeout : ⛔ la langue est posee mais l'ecran le DIT")
 
     # ══ 10. LE MENU EST GARDE EN LARGEUR A CHAUD (AC4.2) ════════════════════
     print("\n── 10. LE MENU EST GARDE EN LARGEUR A CHAUD (AC4.2) ───────────")
-
-    MUTANTS[20] = "retire le controle de largeur du bloc d'etat du MENU"
     ui20 = M(20, ui, 'menu_largeur_controler("etat", buf, &dn_font_14, MENU_TXT_UTILE);',
              "/* retire */")
     ui20_nu = sans_commentaires(ui20)
@@ -991,8 +1044,6 @@ def main():
     dire(n_ctrl >= 3,
          "les libelles du MENU sont MESURES a chaud",
          "%d site(s) : titres de panneau + bloc d'etat compose" % n_ctrl)
-
-    MUTANTS[21] = "cesse de publier le compteur du MENU dans la console"
     console21 = M(21, console, "dn_ui_menu_trop_larges()", "0u")
     dire("dn_ui_menu_trop_larges()" in sans_commentaires(console21),
          "le compteur du MENU est PUBLIE par la console",

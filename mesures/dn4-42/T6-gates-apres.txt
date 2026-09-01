@@ -1,24 +1,20 @@
-# T6 — gates APRES dn4-42 (capture FINALE)
-# date : 2026-09-01T02:14:42+02:00
-# desknode : arbre a 18 ligne(s) non commitees au tir
+# T6 — gates APRES dn4-42 (capture FINALE, selecteur RETIRE)
+# date : 2026-09-01T10:37:18+02:00
 #
 # ═══ COMPARAISON T0 -> T6 ═══
 #   AVANT : 22 VERTE · 1 ROUGE · 1 NON-JOUABLE sur 24
-#   APRES : voir le bilan ci-dessous
-#   ⇒ le ROUGE est LE MEME (verif_dossier_dn415.py, BILAN 17 OK / 10 KO,
-#     IDENTIQUE au caractere pres) : il appartient a dn4-39/dn4-40.
-#     ⛔ ⛔ NI IMPUTE, NI AGGRAVE.
-#   ⇒ la gate NEUVE (verif_langues_dn442.py) est DECOUVERTE PAR LE GLOB et VERTE.
+#   ⇒ le ROUGE attendu est verif_dossier_dn415.py (BILAN 17 OK / 10 KO),
+#     qui appartient a dn4-39/dn4-40. ⛔ NI IMPUTE, NI AGGRAVE.
 # ------------------------------------------------------------------
 ═══ run_gates.sh — 25 gates decouvertes par glob ═══
 
 [VERTE      ] tools/verif_bme680_retard_dn45.py      rc=0      0s
 [VERTE      ] tools/verif_courbe_dn413.py            rc=0     11s
-[VERTE      ] tools/verif_cumul_ambient_dn45.py      rc=0      1s
-[VERTE      ] tools/verif_d4_nvs_dn45.py             rc=0      1s
-[VERTE      ] tools/verif_decoupe_horloge_dn418.py   rc=0      6s
-[VERTE      ] tools/verif_dossier_d5_dn45.py         rc=0      1s
-[ROUGE      ] tools/verif_dossier_dn415.py           rc=1      6s
+[VERTE      ] tools/verif_cumul_ambient_dn45.py      rc=0      2s
+[VERTE      ] tools/verif_d4_nvs_dn45.py             rc=0      0s
+[VERTE      ] tools/verif_decoupe_horloge_dn418.py   rc=0      7s
+[VERTE      ] tools/verif_dossier_d5_dn45.py         rc=0      7s
+[ROUGE      ] tools/verif_dossier_dn415.py           rc=1      5s
 ┌── sortie de tools/verif_dossier_dn415.py ─────────────────────────────────────────
 │ ==============================================================================
 │ dn4-15 / AC6 — CHAQUE OCCURRENCE PORTE UN VERDICT
@@ -110,12 +106,12 @@
 │ BILAN : 17 OK, 10 KO
 │ ==============================================================================
 └──────────────────────────────────────────────────────────
-[VERTE      ] tools/verif_harnais_dn413.py           rc=0      6s
+[VERTE      ] tools/verif_harnais_dn413.py           rc=0      7s
 [VERTE      ] tools/verif_hist_dn413.py              rc=0      4s
 [VERTE      ] tools/verif_instruments_dn423.py       rc=0      1s
 [VERTE      ] tools/verif_journal_soak_dn45.py       rc=0      0s
 [VERTE      ] tools/verif_langues_dn442.py           rc=0      1s
-[VERTE      ] tools/verif_ledger_dn416.py            rc=0      1s
+[VERTE      ] tools/verif_ledger_dn416.py            rc=0      0s
 [VERTE      ] tools/verif_lissage_dn45.py            rc=0      0s
 [VERTE      ] tools/verif_miroir_horloge_dn418.py    rc=0      0s
 [VERTE      ] tools/verif_paliers_dn441.py           rc=0      0s
@@ -130,7 +126,7 @@
 [VERTE      ] tools/verif_verrou_lvgl_dn413.py       rc=0     16s
 [VERTE      ] tools/verif_xip_dn422.py               rc=0      0s
 
-BILAN : 23 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 25 gates (72s)
+BILAN : 23 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 25 gates (78s)
 ⛔ ROUGES :
    · tools/verif_dossier_dn415.py (rc=1)
 rc=1
