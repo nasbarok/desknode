@@ -60,7 +60,7 @@
  * ⇒ **LE SIGNAL DE FIN EST « `err_i2c` A CESSÉ DE MONTER »**, et il est
  *   DISCRIMINANT : à 55,5 % d'échec et ≈ 25 lectures/s, une fenêtre propre de
  *   `DN_DEM_FENETRE_MS` (≈ 37 lectures) a une probabilité de
- *   `0,445 ^ 37 ≈ 6·10⁻¹⁴` d'arriver par hasard. ⛔ Ce n'est pas un minuteur
+ *   `0,445 ^ 37 ≈ 9,8·10⁻¹⁴` d'arriver par hasard. ⛔ Ce n'est pas un minuteur
  *   déguisé.
  *
  * ⛔ **`dn_capt_etat()` EST DISQUALIFIÉ COMME CRITÈRE**, et c'est mesuré : il
@@ -98,7 +98,7 @@
 
 /*
  * La fenêtre d'observation propre. **1 500 ms**, et c'est calculé, ⛔ pas rond :
- * à ≈ 25 lectures/s (mesuré), elle porte ≈ 37 lectures ⇒ `0,445 ^ 37 ≈ 6·10⁻¹⁴`
+ * à ≈ 25 lectures/s (mesuré), elle porte ≈ 37 lectures ⇒ `0,445 ^ 37 ≈ 9,8·10⁻¹⁴`
  * de chance de passer par hasard sous le régime dégradé.
  * ⚠️ C'est AUSSI ce que dure l'état de démarrage sur un boot SAIN (AC1.3) — les
  *    5 cas sur 6 où la fenêtre froide n'existe pas. ⛔ La rallonger ajouterait
@@ -231,12 +231,37 @@ uint32_t dn_dem_duree_ms(void);
 uint32_t dn_dem_err_vues(void);
 /* Combien de fois la fenêtre d'observation a dû être RELANCÉE. Non nul = le bus
  * a vraiment raté pendant l'attente. ⛔ Un 0 ne prouve rien à lui seul : il faut
- * le lire AVEC `dn_dem_lectures_vues()`. */
+ * le lire AVEC `dn_dem_lectures_vues()`.
+ * 🎯 REVUE `dn4-43` — c'est le SEUL des instruments d'AC1.4 qui puisse bouger
+ *    sur la carte sans geste de gate : `dn_dem_rearmements_refuses()`, lui, est
+ *    structurellement mort côté firmware (voir son docbloc). */
 uint32_t dn_dem_fenetres_cassees(void);
-/* Lectures tactiles observées pendant l'état. ⛔ Un 0 ici DÉMENT toute
- * conclusion « propre » — c'est le témoin du piège du vide. */
+/*
+ * Lectures tactiles portées par la fenêtre d'observation **COURANTE**.
+ * 🔴 REVUE `dn4-43` (2026-09-01) — ⛔ CE N'EST PAS « pendant l'état », ET LE
+ *    DOCBLOC LE DISAIT. Deux conséquences, écrites plutôt que tues :
+ *    · sur une conclusion `DN_DEM_FIN_PROPRE` il vaut ≥ `DN_DEM_LECTURES_MIN`
+ *      **par construction** ⇒ ⛔ il ne peut RIEN démentir là-bas, ce serait un
+ *      contrôle auto-réalisateur. Le piège du vide est fermé par le test lui-
+ *      même, ⛔ pas par la relecture de ce compteur ;
+ *    · il est remis à **0** dès qu'une fenêtre se casse — sinon il publierait
+ *      le compte d'une fenêtre DÉTRUITE.
+ * ⇒ Là où il PARLE, c'est sur une fin `PLAFOND` ou `SANS_TACTILE` : un 0 y dit
+ *   que la dernière fenêtre n'avait rien observé.
+ */
 uint32_t dn_dem_lectures_vues(void);
-/* Combien d'appels à `dn_dem_armer()` ont été REFUSÉS après une fin (AC1.4). */
+/*
+ * Combien d'appels à `dn_dem_armer()` ont été REFUSÉS après une fin (AC1.4).
+ * ⚠️ REVUE `dn4-43` (2026-09-01) — ⛔ **CE COMPTEUR NE PEUT PAS BOUGER SUR LA
+ *    CARTE, ET IL NE FAUT PAS LIRE SON 0 COMME UNE PREUVE.** Aucun chemin du
+ *    firmware n'appelle `dn_dem_armer()` deux fois : `app_main` l'appelle une
+ *    fois, à l'étape 4 ter. Un 0 en séance carte dit donc *« le second appel n'a
+ *    pas eu lieu »*, ⛔ pas *« le refus fonctionne »*.
+ * ⇒ Le refus n'est exercé que par `verif_demarrage_dn443.py`, qui rejoue
+ *   plusieurs armements dans un même `.so`. La propriété AC1.4 tient **par
+ *   construction** ; ce compteur est là pour le jour où un appelant neuf
+ *   naîtrait — et ce jour-là il parlera.
+ */
 uint32_t dn_dem_rearmements_refuses(void);
 
 /*

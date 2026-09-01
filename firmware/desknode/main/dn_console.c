@@ -30,6 +30,10 @@
 #include "dn_wifi.h"
 #include "driver/i2c_master.h"
 #include "esp_console.h"
+/* 🔴 REVUE `dn4-43` (2026-09-01) — pour `lvgl_port_lock()` : `cmd_dem` prend
+ *    désormais un INSTANTANÉ cohérent de l'état de démarrage, comme la règle
+ *    de `dn_ui.c` l'exige de tout accès LVGL depuis le REPL. */
+#include "esp_lvgl_port.h"
 #include "esp_log.h"
 #include "esp_partition.h"
 #include "esp_system.h"
@@ -12699,28 +12703,62 @@ static int cmd_dem(int argc, char **argv)
     (void)argc;
     (void)argv;
     dn_touch_stats_t st;
+
+    /*
+     * 🔴 REVUE `dn4-43` (2026-09-01) — **UN INSTANTANÉ, PRIS SOUS LE VERROU.**
+     *    Ces valeurs étaient lues une par une, depuis la tâche console, HORS
+     *    `lvgl_port_lock` — alors que `dn_ui.c` pose la règle en toutes lettres
+     *    (*« APPELÉ SOUS LE VERROU, comme tout accès à l'état LVGL depuis le
+     *    REPL »*) et que `dn_ui_demarrage_a_l_ecran()` déréférence un pointeur
+     *    d'écran LVGL. Deux conséquences : un accès concurrent réel, et — pire
+     *    pour un instrument — la tâche LVGL pouvait **conclure entre deux
+     *    `printf`**, si bien que `verdict` et `duree` n'appartenaient pas au
+     *    même instant. Un instrument qui mélange deux instants ment.
+     */
+    bool ok_verrou = lvgl_port_lock(1000);
     dn_touch_get_stats(&st);
+    dn_dem_verdict_t v_verdict = dn_dem_verdict();
+    bool v_arme = dn_dem_arme();
+    bool v_ecran = dn_ui_demarrage_a_l_ecran();
+    uint32_t v_duree = dn_dem_duree_ms();
+    uint32_t v_err = dn_dem_err_vues();
+    uint32_t v_cassees = dn_dem_fenetres_cassees();
+    uint32_t v_lect = dn_dem_lectures_vues();
+    uint32_t v_refus = dn_dem_rearmements_refuses();
+    uint32_t v_builds = dn_ui_demarrage_builds();
+    uint32_t v_larges = dn_ui_demarrage_trop_larges();
+    uint32_t v_err_now = dn_touch_err_i2c();
+    if (ok_verrou) {
+        lvgl_port_unlock();
+    }
 
     printf("\n── ETAT DE DEMARRAGE (dn4-43) ──────────────────────────────\n");
-    printf("  verdict         : %s\n", dn_dem_verdict_nom(dn_dem_verdict()));
-    printf("  arme            : %s\n", dn_dem_arme() ? "OUI" : "NON");
-    printf("  a l'ecran       : %s\n",
-           dn_ui_demarrage_a_l_ecran() ? "OUI" : "non (conclu)");
-    printf("  duree           : %" PRIu32 " ms\n", dn_dem_duree_ms());
-    printf("  err I2C vues    : %" PRIu32 "\n", dn_dem_err_vues());
-    printf("  fenetres cassees: %" PRIu32 "\n", dn_dem_fenetres_cassees());
-    printf("  lectures fenetre: %" PRIu32 "\n", dn_dem_lectures_vues());
-    printf("  re-armements    : %" PRIu32 " REFUSE(S)\n",
-           dn_dem_rearmements_refuses());
-    printf("  builds ecran    : %" PRIu32 "   (AC1.4 : doit valoir 1)\n",
-           dn_ui_demarrage_builds());
-    printf("  lignes trop lg  : %" PRIu32 "\n", dn_ui_demarrage_trop_larges());
+    if (!ok_verrou) {
+        printf("  ⚠ VERROU LVGL NON OBTENU EN 1000 ms — les lignes ci-dessous\n");
+        printf("    ne sont PAS un instantané cohérent. ⛔ Ne pas les consigner\n");
+        printf("    comme une mesure ; rejouer `dem`.\n");
+    }
+    printf("  verdict         : %s\n", dn_dem_verdict_nom(v_verdict));
+    printf("  arme            : %s\n", v_arme ? "OUI" : "NON");
+    printf("  a l'ecran       : %s\n", v_ecran ? "OUI" : "non (conclu)");
+    printf("  duree           : %" PRIu32 " ms\n", v_duree);
+    printf("  err I2C vues    : %" PRIu32 "\n", v_err);
+    printf("  fenetres cassees: %" PRIu32 "\n", v_cassees);
+    printf("  lectures fenetre: %" PRIu32 "   (fenetre COURANTE, ⛔ pas l'etat)\n",
+           v_lect);
+    printf("  re-armements    : %" PRIu32 " REFUSE(S)   (⛔ un 0 ne prouve RIEN :\n",
+           v_refus);
+    printf("                    aucun chemin du firmware n'arme deux fois)\n");
+    printf("  builds ecran    : %" PRIu32 "   (AC1.4 : doit valoir 1 — ⚠ il ne\n",
+           v_builds);
+    printf("                    PEUT pas valoir 2, un seul site d'appel)\n");
+    printf("  lignes trop lg  : %" PRIu32 "\n", v_larges);
     printf("  budget          : fenetre %u ms / %u lecture(s) min, "
            "plafond %u ms\n",
            (unsigned)DN_DEM_FENETRE_MS, (unsigned)DN_DEM_LECTURES_MIN,
            (unsigned)DN_DEM_PLAFOND_MS);
     printf("  tactile MAINTENANT : %" PRIu32 " err / %" PRIu32 " lectures\n",
-           dn_touch_err_i2c(), st.lectures);
+           v_err_now, st.lectures);
 
     printf("\n  ⚠ CE QUE CES CHIFFRES NE DISENT PAS :\n");
     printf("    · un 0 d'erreurs ne prouve PAS que le bus va bien — il dit que\n");

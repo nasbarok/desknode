@@ -367,11 +367,23 @@ bool dn_ui_relire_langue(void);
 void dn_ui_demarrage_armer(bool tactile_present);
 
 /*
- * 🎯 **LA PREUVE D'AC1.4.** Combien de fois l'écran de démarrage a été
- * CONSTRUIT. Il doit rester à **1**, quel que soit le nombre de
- * reconstructions de scène (`ui bg …`, `nav …`, changement de langue).
- * ⛔ Un 2 ici veut dire que l'état de démarrage se ré-affiche — c'est-à-dire
- *   qu'il ment sur ce qu'il mesure.
+ * Combien de fois l'écran de démarrage a été CONSTRUIT. Il doit rester à **1**,
+ * quel que soit le nombre de reconstructions de scène (`ui bg …`, `nav …`,
+ * changement de langue).
+ *
+ * ⚠️ REVUE `dn4-43` (2026-09-01) — **CE DOCBLOC DISAIT « LA PREUVE D'AC1.4 ».
+ *    C'EST FAUX, ET LE DIRE COMPTE.** `demarrage_construire()` n'a qu'**UN SEUL
+ *    site d'appel**, dans `dn_ui_init()`, appelée une fois par vie de firmware :
+ *    ce compteur **ne peut structurellement pas valoir 2**. Le `builds = 1` lu
+ *    en séance carte après 10 reconstructions ne prouve donc **pas** ce qu'il
+ *    annonçait — il ne pouvait pas rendre autre chose.
+ * ✅ La propriété AC1.4 **tient** — mais elle tient **par construction** (site
+ *    d'appel unique + `demarrage_conclure_nolock()` en tête de `build_scene()`
+ *    et de `nav_appliquer()` + refus de ré-armement), ⛔ pas parce que ce
+ *    compteur l'aurait mesurée. Ce qui l'ÉPROUVE réellement, c'est
+ *    `verif_demarrage_dn443.py`, qui rejoue plusieurs armements en ctypes.
+ * ⇒ Ce compteur reste utile comme **témoin d'un appelant neuf** : le jour où
+ *   quelqu'un ajoutera un second site, il vaudra 2 et le dira.
  */
 uint32_t dn_ui_demarrage_builds(void);
 /* Lignes de l'écran de démarrage qui débordent de la dalle, OU dont la police

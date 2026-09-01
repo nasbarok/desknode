@@ -5897,6 +5897,25 @@ _Static_assert(DEM_Y_TACT_FIN + DEM_LH_18 <= DN_LCD_V_RES,
                "CLIPPE sans un mot, et ce qui serait coupe est justement la "
                "phrase qui dit que le defaut se retablit tout seul.");
 
+/*
+ * 🔴 REVUE `dn4-43` (2026-09-01) — **LE SEUL NOMBRE DU BUDGET QUI VIT DANS
+ *    L'AUTRE FICHIER N'ÉTAIT RELIÉ À RIEN.** `DN_UI_DEM_PERIODE_MS` décide
+ *    combien d'échantillons la fenêtre de `dn_demarrage.h` porte. Si elle
+ *    passait ≥ `DN_DEM_FENETRE_MS`, le PREMIER tick après l'armement trouverait
+ *    la fenêtre déjà écoulée ET peuplée ⇒ `DN_DEM_FIN_PROPRE` conclu sur **UN
+ *    SEUL relevé de `err_i2c`** — c'est-à-dire un critère qui n'observe rien,
+ *    et un minuteur déguisé exactement au sens qu'AC1.2 interdit.
+ * ⚠️ Le facteur 2 n'est pas décoratif : il faut au moins DEUX relevés pour
+ *    qu'« `err_i2c` a cessé de monter » veuille dire quelque chose.
+ */
+_Static_assert(DN_UI_DEM_PERIODE_MS * 2 <= DN_DEM_FENETRE_MS,
+               "dn4-43 : la periode d'echantillonnage ne laisse pas DEUX "
+               "relevés dans la fenetre d'observation — le critere RELU "
+               "conclurait sur un seul point, c'est-a-dire sur rien (AC1.2).");
+_Static_assert(DN_UI_DEM_PERIODE_MS > 0,
+               "dn4-43 : une periode nulle ferait tourner le timer LVGL en "
+               "boucle serree pendant tout l'etat de demarrage.");
+
 static lv_obj_t *s_scr_dem;
 /* L'écran qui était actif AVANT le chargement de l'état de démarrage. C'est là
  * qu'on retourne. ⚠️ Le garder évite de récrire la table des trois racines ici,
@@ -6026,6 +6045,23 @@ static void demarrage_conclure_nolock(dn_dem_verdict_t v)
     uint32_t t_ms = (uint32_t)(esp_timer_get_time() / 1000);
     dn_dem_conclure(t_ms, v);
 
+    /*
+     * 🔴 REVUE `dn4-43` (2026-09-01) — ⛔ **NE PAS ANNONCER UNE FIN QUI N'A PAS
+     *    EU LIEU.** Si la machine n'a jamais été armée, `dn_dem_conclure()` est
+     *    un no-op — mais on détruit l'écran et le timer quand même, et le
+     *    journal imprimait alors *« DEMARRAGE terminé : EN COURS — 0 ms »*,
+     *    après quoi `dem` publiait trois lignes qui se contredisent
+     *    (`verdict : EN COURS` / `arme : NON` / `a l'ecran : non (conclu)`).
+     *    Une étiquette de mesure fausse est pire qu'une absence.
+     */
+    if (!dn_dem_arme()) {
+        ESP_LOGW(TAG,
+                 "⛔ écran de démarrage retiré SANS verdict : l'observation "
+                 "n'a JAMAIS été armée (voir le refus de verrou plus haut). "
+                 "⛔ Ne pas lire les compteurs de `dem` comme une mesure.");
+        goto retirer;
+    }
+
     ESP_LOGI(TAG,
              "DEMARRAGE terminé : %s — %" PRIu32 " ms, %" PRIu32
              " erreur(s) I2C vue(s), %" PRIu32 " fenêtre(s) relancée(s), "
@@ -6047,6 +6083,7 @@ static void demarrage_conclure_nolock(dn_dem_verdict_t v)
                  "dit où la séquence a échoué.");
     }
 
+retirer:
     /* ⚠️ ON CHARGE L'ÉCRAN D'AVANT **PUIS** ON DÉTRUIT LE NÔTRE. L'inverse
      *    laisserait LVGL sans écran courant le temps d'une instruction — c'est
      *    l'ordre que `build_scene()` applique déjà aux trois racines, et il est
@@ -6084,6 +6121,23 @@ static void dem_tick(lv_timer_t *t)
     dn_dem_verdict_t v = dn_dem_tick(t_ms, dn_touch_err_i2c(), st.lectures);
 
     if (v == DN_DEM_EN_COURS) {
+        /*
+         * 🔴 REVUE `dn4-43` (2026-09-01), ARBITRAGE OWNER — **LA DALLE RESTE
+         *    ÉVEILLÉE TANT QUE L'ÉTAT DE DÉMARRAGE EST AFFICHÉ.**
+         *    La 4ᵉ vue ne génère AUCUN contact, donc aucune activité LVGL, et
+         *    `lv_display_get_inactive_time()` court depuis le boot. Sur une
+         *    carte dont la NVS porte le cran 0 (**60 s**, mesuré §32.6) et sur
+         *    tout boot dégradé, `veille_bl_descendre()` tombait **à 60 s pendant
+         *    l'observation** — plafond à 90 s — et le rétroéclairage passait en
+         *    ambient avec « DÉMARRAGE… » pour seule chose sur la dalle.
+         * 🎯 C'est exactement l'écran sombre « ça a l'air cassé » que cette
+         *    story existe pour éviter, sur le boot 1/6 qu'elle cible.
+         * ⛔ CE N'EST PAS UN CHANGEMENT DU DÉLAI DE VEILLE : le cran reste celui
+         *    de `dn4-19`/`dn3-3`, AC4.2 est intacte. On déclare seulement que
+         *    l'état de démarrage est une ACTIVITÉ, ce qu'il est.
+         */
+        lv_display_trigger_activity(NULL);
+
         /* 🔴 LE SECOND TEMPS, ET IL EST CONDITIONNÉ À UNE MESURE, ⛔ PAS À UN
          *    DÉLAI. `dn_dem_err_vues()` ne monte que si le bus a RÉELLEMENT
          *    raté pendant l'attente. */
@@ -6114,14 +6168,43 @@ bool dn_ui_demarrage_a_l_ecran(void) { return s_scr_dem != NULL; }
  */
 void dn_ui_demarrage_armer(bool tactile_present)
 {
+    /*
+     * 🔴 REVUE `dn4-43` (2026-09-01) — **DEUX FAUTES SUR CINQ LIGNES.**
+     *
+     * (1) ⛔ `lvgl_port_lock(0)` N'EST PAS UN TRY-LOCK. Relu du portage vendu
+     *     dans le dépôt (`managed_components/…/esp_lvgl_port.c`) :
+     *     `timeout_ticks = (timeout_ms == 0) ? portMAX_DELAY : …` ⇒ **c'était
+     *     une attente SANS BORNE**, et le seul site à `0` sur ~80 du firmware
+     *     (tous les autres bornent à 200/500/1000/2000/3000 ms). `app_main`
+     *     pouvait donc rester bloquée ici **avant l'allumage du
+     *     rétroéclairage** si la tâche LVGL était retenue — le régime à 99,3 %
+     *     d'un cœur que `§31.5` documente. La branche d'échec était **du code
+     *     mort**, et son texte affirmait *« il se terminera au plafond »*, ce
+     *     qui était faux même en la supposant atteinte : `dn_dem_tick()` sort
+     *     sur `if (!s_arme)` AVANT le test du plafond.
+     *
+     * (2) ⛔ L'INSTANTANÉ DES DEUX COMPTEURS N'ÉTAIT PAS PRIS DU MÊME CÔTÉ DU
+     *     VERROU : `lectures` hors, `err_i2c` dedans. `dn_touch.h` dit que ces
+     *     compteurs « pris isolément » sont justes mais que « l'ensemble n'est
+     *     pas cohérent ». Pendant l'attente (un `build_scene()` a été mesuré à
+     *     307-322 ms, `dn3-1`), la tâche LVGL continue d'incrémenter
+     *     `s_lectures` ⇒ `s_fen_lect0` était **sous-estimé**, et
+     *     `s_lectures_vues` comptait des lectures **antérieures à
+     *     l'observation** : à ~25 lect./s, 800 ms d'attente = 20 lectures, soit
+     *     **la totalité de `DN_DEM_LECTURES_MIN` pré-payée**. Le garde-fou du
+     *     vide pouvait être franchi par du passé.
+     */
+    if (!lvgl_port_lock(2000)) {
+        ESP_LOGE(TAG, "⛔ verrou LVGL indisponible en 2000 ms : l'état de "
+                      "démarrage N'EST PAS armé. ⛔ Il ne se terminera donc NI "
+                      "au critère NI au plafond — `dn_dem_tick()` ne conclut "
+                      "rien tant que rien n'est armé ; l'écran partira au "
+                      "premier `build_scene()`, SANS verdict. Voir `dem`.");
+        return;
+    }
     dn_touch_stats_t st;
     dn_touch_get_stats(&st);
     uint32_t t_ms = (uint32_t)(esp_timer_get_time() / 1000);
-    if (!lvgl_port_lock(0)) {
-        ESP_LOGE(TAG, "⛔ verrou LVGL indisponible : l'état de démarrage N'EST "
-                      "PAS armé — il se terminera au plafond.");
-        return;
-    }
     dn_dem_armer(t_ms, tactile_present, dn_touch_err_i2c(), st.lectures);
     lvgl_port_unlock();
     ESP_LOGI(TAG,
@@ -6313,6 +6396,27 @@ static void build_scene(void)
  */
 static bool nav_appliquer(int cible, int64_t t_clic)
 {
+    /*
+     * 🔴 REVUE `dn4-43` (2026-09-01) — **L'ÉTAT DE DÉMARRAGE SE CONCLUT ICI
+     *    AUSSI**, et ⛔ ce n'est pas une précaution de plus.
+     *    `nav_appliquer()` charge une racine PAR-DESSUS l'écran de démarrage
+     *    sans passer par `build_scene()`. Sans cette ligne, trois choses
+     *    fausses arrivaient d'un coup :
+     *      · `dn_ui_demarrage_a_l_ecran()` (qui teste `s_scr_dem != NULL`)
+     *        répondait **OUI** alors que l'écran n'était plus affiché — et
+     *        c'est la ligne que la console `dem` publie ;
+     *      · à la chute du critère, `demarrage_conclure_nolock()` faisait
+     *        `lv_screen_load(s_scr_dem_precedent)` et **ramenait l'opérateur au
+     *        dashboard sans un mot**, annulant sa navigation, pendant que
+     *        `s_vue` disait encore DETAIL/MENU ;
+     *      · `nav ab` rendait des latences mesurées sur des transitions qui
+     *        n'avaient pas eu lieu.
+     * ⚠️ Un `nav …` est un geste d'OPÉRATEUR, ⛔ pas le parcours de l'inconnu :
+     *    `DN_DEM_FIN_RECONSTRUCTION` est donc le bon verdict, et il ⛔ ne se
+     *    ré-arme pas (AC1.4).
+     */
+    demarrage_conclure_nolock(DN_DEM_FIN_RECONSTRUCTION);
+
     /* 🔴 dn3-3 : TROIS VUES, DONC TROIS BRANCHES — ⛔ plus un ternaire binaire.
      *    Laisser `cible != 0 ? DETAIL : DASHBOARD` aurait fait ouvrir le DÉTAIL
      *    DE LA MÉTRIQUE 6 (qui n'existe pas) sur un tap MENU : `idx = 7 - 1 = 6`,
@@ -6671,6 +6775,25 @@ esp_err_t dn_ui_set_nav_model(dn_nav_model_t m)
      * l'un des deux, et la première mesure d'après bascule serait à jeter.
      */
     s_vue = DN_VUE_DASHBOARD;
+
+    /*
+     * 🔴 REVUE `dn4-43` (2026-09-01) — **USE-AFTER-FREE RÉEL, FERMÉ ICI.**
+     *    `s_scr_dem_precedent` vaut `s_scr_dash` (capturé par
+     *    `demarrage_construire()`, appelée APRÈS le `build_scene()` de l'init).
+     *    La branche ci-dessous détruit les trois racines **sans passer par
+     *    `build_scene()`** et ne remettait pas ce pointeur à NULL ⇒ le
+     *    `build_scene()` de la fin de fonction faisait
+     *    `lv_screen_load(s_scr_dem_precedent)` **sur de la mémoire libérée**,
+     *    la posait comme écran actif, et la branche REBUILD y faisait ensuite
+     *    `lv_obj_clean()` + `build_dashboard()`.
+     * 🎯 C'est la **4ᵉ racine oubliée** du site de démontage dont le commentaire
+     *    plus bas dit lui-même qu'il « ne remettait RIEN à NULL ». La garde
+     *    posée en tête de `build_scene()` arrivait **un cran trop tard** pour ce
+     *    seul appelant.
+     * ⚠️ Fenêtre : ~1,5 s sur carte saine — elle était **illimitée** tant que le
+     *    plafond de `dn_dem_tick()` restait injoignable (corrigé le même jour).
+     */
+    demarrage_conclure_nolock(DN_DEM_FIN_RECONSTRUCTION);
 
     if (s_nav == DN_NAV_SCREENS) {
         /* On QUITTE screens : l'écran actif redevient celui de LVGL, et les deux
@@ -7652,6 +7775,22 @@ esp_err_t dn_ui_init(const dn_bootcfg_t *cfg, esp_err_t asset_err)
      */
     demarrage_construire();
     s_dem_timer = lv_timer_create(dem_tick, DN_UI_DEM_PERIODE_MS, NULL);
+    /*
+     * 🔴 REVUE `dn4-43` (2026-09-01) — le retour n'était pas contrôlé, alors que
+     *    ce fichier contrôle celui de `lv_async_call` ailleurs. Un pool LVGL
+     *    épuisé aurait laissé l'état de démarrage **construit et CHARGÉ mais
+     *    sans jamais tiquer** : rien d'autre n'appelle `dem_tick`, donc ⛔ ni le
+     *    critère ni le plafond ne pouvaient tomber, et la dalle serait restée
+     *    sur « DÉMARRAGE… » jusqu'au premier geste d'opérateur.
+     * ⇒ Sans timer, l'état de démarrage n'a plus de sens : on le retire tout de
+     *   suite plutôt que de le laisser mentir.
+     */
+    if (!s_dem_timer) {
+        ESP_LOGE(TAG, "⛔ timer de l'état de démarrage NON créé : l'état ne "
+                      "pourrait ni se conclure ni se mesurer. Il est retiré "
+                      "immédiatement — le dashboard prend la dalle.");
+        demarrage_conclure_nolock(DN_DEM_FIN_RECONSTRUCTION);
+    }
     /*
      * 🔴 dn3-3 : LE FRONT D'APPUI EST BRANCHÉ ICI (D-7).
      * ⚠️ AVANT `dn_touch_attach_lvgl()`, qui est appelée par `app_main` APRÈS

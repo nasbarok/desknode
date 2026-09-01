@@ -133,7 +133,36 @@ dn_dem_verdict_t dn_dem_tick(uint32_t t_ms, uint32_t err_i2c, uint32_t lectures)
         s_fen_t0_ms = t_ms;
         s_fen_err0 = err_i2c;
         s_fen_lect0 = lectures;
+        /*
+         * 🔴 REVUE `dn4-43` (2026-09-01) — ⛔ NE PAS LAISSER LA VALEUR PÉRIMÉE.
+         *    `s_lectures_vues` appartient à la fenêtre COURANTE ; la fenêtre
+         *    vient d'être détruite, donc elle n'a plus rien observé. Sans cette
+         *    remise à zéro, `dem` publiait — pendant un boot dégradé — le compte
+         *    de la fenêtre PRÉCÉDENTE, c'est-à-dire un témoin du piège du vide
+         *    qui sur-déclare ce qu'il a vu.
+         */
+        s_lectures_vues = 0;
         s_fen_cassees++;
+        /*
+         * 🔴 REVUE `dn4-43` (2026-09-01) — **LE PLAFOND EST ÉVALUÉ ICI AUSSI, ET
+         *    C'EST TOUT LE SUJET.** Ce bloc rendait la main AVANT le test du
+         *    plafond posé plus bas. Or il est pris à CHAQUE tick tant que le bus
+         *    produit une erreur nouvelle — c'est-à-dire exactement le régime
+         *    pour lequel le plafond a été écrit. Le filet ne se déclenchait donc
+         *    que sur des compteurs FIGÉS.
+         * ⚠️ MESURÉ AVANT CORRECTIF, module compilé et piloté : à 1 erreur
+         *    nouvelle par tick, `verdict = EN COURS` encore à **150 s**, puis à
+         *    **500 s** — plafond déclaré à 90 s, 2 000 fenêtres cassées. Sur une
+         *    carte dont le GT911 rate durablement, l'état de démarrage ne
+         *    partait JAMAIS et le dashboard était inatteignable.
+         * ⛔ L'ordre reste juste : sur un tick qui casse la fenêtre, le critère
+         *    RELU ne PEUT pas conclure (la fenêtre vient de repartir à zéro), il
+         *    n'y a donc aucune priorité à lui voler ici.
+         */
+        if ((uint32_t)(t_ms - s_t0_ms) >= DN_DEM_PLAFOND_MS) {
+            conclure(t_ms, DN_DEM_FIN_PLAFOND);
+            return s_verdict;
+        }
         return DN_DEM_EN_COURS;
     }
 
@@ -163,6 +192,18 @@ dn_dem_verdict_t dn_dem_tick(uint32_t t_ms, uint32_t err_i2c, uint32_t lectures)
 void dn_dem_conclure(uint32_t t_ms, dn_dem_verdict_t v)
 {
     if (!s_arme || s_verdict != DN_DEM_EN_COURS) {
+        return;
+    }
+    /*
+     * 🔴 REVUE `dn4-43` (2026-09-01) — ⛔ UNE FIN QUI N'EN EST PAS UNE EST
+     *    REFUSÉE. Poser `DN_DEM_EN_COURS` « conclurait » la machine sur le
+     *    verdict *pas encore fini*, et une valeur hors enum ferait rendre « ? »
+     *    par `dn_dem_verdict_nom()` — deux étiquettes de mesure FAUSSES, la
+     *    classe de défaut que ce firmware traque. Le refus est silencieux ici
+     *    parce que ce module n'a pas de journal : c'est `dn_ui.c` qui le voit et
+     *    le dit (motif `SANS verdict`).
+     */
+    if (v <= DN_DEM_EN_COURS || v > DN_DEM_FIN_RECONSTRUCTION) {
         return;
     }
     conclure(t_ms, v);
