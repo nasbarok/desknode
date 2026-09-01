@@ -168,6 +168,9 @@ BILAN : 24 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 26 gates (72s)
      T0 : 17 OK / 10 KO
      T6 : 17 OK / 10 KO
      les 10 lignes [KO ] sont-elles LES MEMES ? ✅ OUI, mot pour mot
+     🔴 ⚠️ CETTE LIGNE EST FAUSSE — ⛔ ELLE N'EST PAS EFFACEE, ELLE EST CORRIGEE
+        PLUS BAS, § « CORRECTION DU 2026-09-02 ». Voir la raison : le comparateur
+        qui l'a produite TRONQUAIT LES LIBELLES A 58 CARACTERES.
 
    ⇒ ⛔ AUCUN KO DE PLUS. Le rouge PRE-EXISTE, il appartient a `dn4-39`/`dn4-40`, et
      ses 10 KO portent TOUS sur des fichiers du COCKPIT (prefixe `cockpit:`), qui
@@ -179,4 +182,62 @@ BILAN : 24 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 26 gates (72s)
 ── NFR5 — ⛔ AUCUNE ECRITURE DANS LE LEDGER
    `git status --porcelain` du cockpit, lignes portant `deferred-work` : 0  ✅ AUCUNE
    et la gate qui le garde, `tools/verif_ledger_dn416.py` : VERTE rc=0
+================================================================================
+
+================================================================================
+ CORRECTION DU 2026-09-02 — LE COMPARATEUR CI-DESSUS MENTAIT, ET IL A FALLU DEUX
+ INSTRUMENTS POUR LE VOIR.        ⛔ ANNOTE, ⛔ PAS EFFACE.
+================================================================================
+
+ 🔴 DEUX DEFAUTS DANS L'INSTRUMENT, MESURES, ET ILS SE MASQUAIENT L'UN L'AUTRE.
+
+ (1) IL TRONQUAIT. Le comparateur extrayait chaque libelle par un motif borne a
+     **58 caracteres**. Or ce qui distingue deux occurrences de la meme gate est
+     le **NUMERO DE LIGNE**, qui tombe apres la troncature. ⇒ il a declare
+     « identiques mot pour mot » DEUX LISTES QUI DIFFERENT.
+
+ (2) IL SE COMPTAIT LUI-MEME. Le bloc de comparaison ajoute a ce fichier CITE la
+     chaine « [KO ] » en prose. Au passage suivant, le parseur l'a comptee comme
+     un 11e KO — d'ou un « 11 vs 10 » qui n'existait pas. ⇒ le contrôle relit
+     desormais **UNIQUEMENT la sortie brute**, en coupant avant ce bloc, et il
+     ancre sur le prefixe de colonne `│ [KO ]`, ⛔ pas sur la chaine nue.
+
+ ⇒ 🎯 UNE CAPTURE REDIGEE POUR UN HUMAIN N'EST PAS UN FORMAT DE DONNEES. La
+   gratter au motif FABRIQUE des nombres — ici dans les deux sens : un faux
+   « identique » et un faux « 11e KO ».
+
+────────────────────────────────────────────────────────────────────────────────
+ LE VRAI RESULTAT, COMPARE SUR LA LIGNE ENTIERE
+────────────────────────────────────────────────────────────────────────────────
+   nombre de KO   T0 avant = 10   ·   T6 apres = 10   ·   apres ecriture tracker = 10
+   BILAN de verif_dossier_dn415.py : 17 OK / 10 KO — IDENTIQUE aux trois passages
+   lignes DIFFERENTES entre T0 et T6 : 1 sur 10
+
+   🔴 KO #3 — LA SEULE DIFFERENCE, ET ELLE EST DE MON FAIT
+      T0 : occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:ing-artifacts/epics-desknode-v1.md [vl53l0x] #1 (l.2615) `done` depuis mi-août) : **on séquence par dépendanc
+      T6 : occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:ing-artifacts/epics-desknode-v1.md [vl53l0x] #1 (l.2636) `done` depuis mi-août) : **on séquence par dépendanc
+
+   ⇒ MEME gate, MEME fichier (`cockpit:…/epics-desknode-v1.md`), MEME terme
+     (`vl53l0x`), MEME texte cite — **SEUL LE NUMERO DE LIGNE A BOUGE : 2615 -> 2636**.
+   ⇒ ET LA CAUSE EST ECRITE : `dn5-1`/T1 a insere dans `epics-desknode-v1.md`
+     l'ANNOTATION NFR3 exigee par AC1.1.d (`dn_paliers.c` n'existe sur aucune
+     branche). Cette insertion a decale de **21 lignes** tout ce qui la suit.
+
+   ⇒ ✅ VERDICT INCHANGE, ET IL EST CELUI QUE T6 EXIGE : **⛔ AUCUN KO DE PLUS**
+     (10 avant, 10 apres), aucune cause nouvelle, aucun controle nouvellement
+     rouge. Le rouge PRE-EXISTE et appartient a `dn4-39`/`dn4-40`.
+   ⚠️ MAIS « 0 KO DE PLUS » ⛔ N'EST PAS « MOT POUR MOT ». Les deux enonces sont
+     differents, et c'est le second qui etait faux. Il est corrige ici, ⛔ pas efface.
+
+   ⚠️ ET CA APPREND QUELQUE CHOSE SUR LA GATE ELLE-MEME : `verif_dossier_dn415.py`
+     ancre ses KO sur des NUMEROS DE LIGNE du cockpit. Toute ecriture dans un
+     fichier du cockpit deplace ses libelles SANS que rien ne change au fond.
+     ⇒ constat pour `dn4-39`/`dn4-40`, ⛔ pas une action de `dn5-1`.
+
+────────────────────────────────────────────────────────────────────────────────
+ 3e PASSAGE — APRES L'ECRITURE DU TRACKER PAR T6 (le cockpit a rebouge)
+────────────────────────────────────────────────────────────────────────────────
+   T6 vs 3e passage, ligne entiere : ✅ IDENTIQUES, les 10 lignes
+   ⇒ l'ecriture du tracker (`sprint-status-desknode.yaml`) n'a rien change aux KO :
+     ses lignes s'ALLONGENT, elles ne se DEPLACENT pas.
 ================================================================================
