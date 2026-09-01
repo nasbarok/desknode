@@ -1,0 +1,43 @@
+================================================================================
+ dn5-1 / T3 — ETAT DU REMOTE **APRES** LE PUSH
+================================================================================
+ Releve le 2026-09-02T01:39:21+02:00
+
+── AC1.2 — `git ls-remote origin` rend le SHA de l'etat publiable
+   18737fe97e76010a8e44c368e62dda6bf0135a9c	HEAD
+   18737fe97e76010a8e44c368e62dda6bf0135a9c	refs/heads/dn4-5-le-module-vit-tout-seul
+   18737fe97e76010a8e44c368e62dda6bf0135a9c	refs/heads/main
+
+   SHA de l'etat publiable retenu (decision owner 2026-09-02, question n°1) : e578def
+   + 2 commits ecrits PAR cette story (facd441 ecart, 18737fe CONTRIBUTING)
+   ⇒ etat publie = 18737fe
+
+── AC1.2.a — `ahead`, SUR LES DEUX REFS, NOMMEES
+   ## dn4-5-le-module-vit-tout-seul...origin/dn4-5-le-module-vit-tout-seul
+   main                             : derriere origin=0  devant origin=0   ✅ AUCUN ahead
+   dn4-5-le-module-vit-tout-seul    : derriere origin=0  devant origin=0   ✅ AUCUN ahead
+
+   ⇒ DECISION OWNER (question n°2) : la branche `dn4-5-le-module-vit-tout-seul` a
+     ete POUSSEE, ⛔ pas supprimee. Les deux refs sont propres.
+   ⚠️ ET SON NOM NE DIT PAS CE QU'ELLE PORTE : elle s'appelle `dn4-5` mais porte
+     dn4-23, dn4-41, dn4-42, dn4-43 et dn5-1. `dn4-5` est `in-progress` et son
+     soak N'A PAS TOURNE (mesures/dn5-1/T0-etat-soak.txt). ⇒ ecrit au tracker.
+
+── AC1.2.b — L'AVANCE EST RAPIDE, ⛔ AUCUN COMMIT DE FUSION
+   sortie de `git merge --ff-only dn4-5-le-module-vit-tout-seul` :
+       Updating b524e98..18737fe
+       Fast-forward
+   ⇒ 🎯 ⛔ AUCUN message de fusion n'a ete fabrique, donc AUCUN message ne peut
+     laisser croire que `dn4-5` est faite — elle ne l'est pas.
+   nombre de commits de fusion dans b524e98..HEAD : 0
+
+── AC1.2.c — ⛔ AUCUN FORCE, ⛔ AUCUNE REECRITURE, ⛔ AUCUN RENOMMAGE, TOUJOURS PRIVE
+   gh repo view : {"defaultBranchRef":{"name":"main"},"isPrivate":true,"pushedAt":"2026-09-01T23:38:58Z","visibility":"PRIVATE"}
+   ⇒ visibility = PRIVATE ✅  (NFR2 — c'est `dn8` qui publie, ⛔ pas `dn5`)
+   ⛔ aucun `push --force` : les deux pousses sont des avances rapides
+        b524e98..18737fe  main -> main
+        b524e98..18737fe  dn4-5-le-module-vit-tout-seul -> dn4-5-le-module-vit-tout-seul
+   ⛔ aucun `filter-repo`, aucun BFG, aucun `rebase` (NFR1) — b524e98 est toujours
+      un ancetre de HEAD : ✅ OUI
+   ⛔ aucun renommage (NFR6) : 0 detecte(s)  ✅
+================================================================================

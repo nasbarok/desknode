@@ -1,0 +1,49 @@
+================================================================================
+ dn5-1 / T3 — TEMOIN NFR8  **AVANT** LE PUSH        ⛔ SANS OUVRIR LE PORT SERIE
+================================================================================
+ Releve le 2026-09-02T01:38:31+02:00
+
+ POURQUOI CE TEMOIN-LA, ET PAS LE BANDEAU DE BOOT : voir mesures/dn5-1/T0-etat-soak.txt.
+ En un mot : FLASHER EXIGE COM3, ET L'AGENT TIENT COM3 EN EXCLUSIF. Un compteur
+ d'agent qui ne retombe jamais a zero prouve que l'agent n'est jamais mort, donc
+ qu'aucun autre process n'a pu obtenir le port, donc QUE LE FLASH ETAIT IMPOSSIBLE.
+ ⛔ C'est une EXCLUSION CAUSALE, pas une correlation.
+
+── 1. L'AGENT (fichiers de /mnt/h/dev/projets/desknode)
+   dn-agent.started: 289 o · mtime 2026-09-02T00:49:45
+   dn-agent.log: 1374758 o · mtime 2026-09-02T01:38:26
+   dn4-5-journal-soak.log: 9838 o · mtime 2026-08-26T23:28:39
+
+   dn-agent.started (contenu) :
+     lance   : 2026-09-02T00:49:45+02:00
+     regime  : double-clic (detache)
+     python  : C:\Users\naoua\AppData\Local\Programs\Python\Python313\python.exe
+     agent   : H:\dev\projets\desknode\dn_agent.py
+     args    : --serie COM3 --stop-si H:\dev\projets\desknode\dn-agent.stop --temoin
+     coeurs  : 16
+
+── 2. LE COMPTEUR MONOTONE — derniere ligne `temoin cout cumule` de dn-agent.log
+   [agent] témoin coût cumulé : 54.875 s CPU / 2920.0 s mur = 1.879 % d'un cœur (0.1175 % machine) — seq=14600
+   ⇒ EXTRAIT : CPU=54.875 s · **MUR=2920.0 s** · **seq=14600**
+   ⇒ lignes de temoin dans le journal : 9922
+
+── 3. LE DIFF QUI PORTE AC1.4.c — ancre sur le SHA DE DEBUT DE STORY, ⛔ pas main
+   sha_debut_story = e578def   (frontmatter `baseline_commit_desknode`)
+   HEAD            = 18737fe
+   git diff --name-only e578def HEAD -- firmware/  ⇒  0 fichier(s)  ✅ VIDE
+   git diff --name-only e578def HEAD               ⇒  6 fichier(s) :
+      CONTRIBUTING.md
+      docs/dn5-1-ecart-promesses.md
+      mesures/dn5-1/T0-comptage-rejeu.txt
+      mesures/dn5-1/T0-etat-remote.txt
+      mesures/dn5-1/T0-etat-soak.txt
+      mesures/dn5-1/T0-gates-avant.txt
+
+   ⚠️ ⛔ NE PAS CONTROLER SUR `main..HEAD` : il porte 21 fichiers `firmware/` PAR
+     CONSTRUCTION — c'est exactement ce que le push transporte. (piege n°1)
+
+── 4. ⛔ AUCUN OUTIL DE FLASH N'A ETE INVOQUE DANS CETTE STORY
+   ⛔ aucun `idf.py flash` · ⛔ aucun `esptool` · ⛔ aucun `wsl-attach.sh` ·
+   ⛔ aucun `rendre-port.sh` · ⛔ aucun `dn_console.py`. Le port n'a jamais ete
+   demande : toutes les lectures ci-dessus sont des lectures de FICHIERS sur /mnt/h.
+================================================================================

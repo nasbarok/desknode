@@ -1,0 +1,49 @@
+================================================================================
+ dn5-1 / T3 — TEMOIN NFR8  **APRES** LE PUSH      ⛔ SANS OUVRIR LE PORT SERIE
+================================================================================
+ Releve le 2026-09-02T01:39:55+02:00
+
+── LA COMPARAISON AVANT / APRES — c'est elle qui porte AC1.4
+
+   grandeur                        AVANT (01:38:31)   APRES              verdict
+   ------------------------------  -----------------  -----------------  -------
+   dn-agent.started  (mtime)       2026-09-02T00:49:45   2026-09-02T00:49:45   ✅ INCHANGE
+   compteur `s mur`                   2920.0 s         3000.0 s      ✅ MONOTONE (+80.0 s)
+   compteur `seq`                      14600            15000        ✅ MONOTONE (+400)
+   lignes de temoin au journal          9922             9932        ✅ EN HAUSSE
+
+   derniere ligne lue :
+     [agent] témoin coût cumulé : 56.344 s CPU / 3000.0 s mur = 1.878 % d'un cœur (0.1174 % machine) — seq=15000
+
+── CE QUE CETTE MONOTONIE PROUVE — ⛔ ET CE QU'ELLE NE PROUVE PAS
+
+   ✅ ELLE PROUVE : l'agent lance le 2026-09-02 a 00:49:45 N'EST JAMAIS MORT de
+      part et d'autre de la fenetre de push. `s mur` est le temps ecoule DEPUIS SON
+      PROPRE DEMARRAGE : s'il avait ete relance, il serait reparti de zero.
+   ✅ ET DONC, PAR EXCLUSION CAUSALE : l'agent tient COM3 EN EXCLUSIF ; un flash
+      EXIGE COM3 ; aucun autre process n'a pu l'obtenir sans tuer l'agent ; l'agent
+      n'est pas mort ⇒ ⛔ AUCUN FLASH N'A PU AVOIR LIEU. Ce n'est pas « on n'en a
+      pas vu » — c'est « c'etait impossible ».
+
+   ⛔ ELLE NE PROUVE PAS que la CARTE n'a pas redemarre d'elle-meme (chien de garde,
+      coupure d'alimentation). ⚠️ ET C'EST ECRIT PLUTOT QUE TU : un redemarrage
+      spontane de la carte ne serait PAS un flash, et NFR8 porte sur le flash. Le
+      SHA du binaire, lui, ne peut pas changer sans ecriture de la flash NOR.
+
+── AC1.4.c — ⛔ AUCUN COMMIT CREE PAR CETTE STORY NE TOUCHE `firmware/`
+   sha_debut_story = e578def   ·   HEAD = 18737fe
+   git diff --name-only e578def HEAD -- firmware/  ⇒  0 fichier(s)   ✅ VIDE
+   commits crees par cette story :
+      18737fe docs(dn5-1): LE DEPOT CESSE DE DEMANDER CE QU'IL NE DEFINIT NULLE PART
+      facd441 docs(dn5-1): L'ECART S'ECRIT AVANT LE PUSH — ET LE DEFAUT A SIX INSTANCES, PAS DEUX
+
+── AC1.4.d — LE CHOIX, ET SON MOTIF
+   T0 a mesure que LE SOAK NE TOURNE PAS (mesures/dn5-1/T0-etat-soak.txt).
+   AC1.4.d autorise alors de relire le bandeau — ⛔ CE N'A PAS ETE FAIT, et le
+   motif est ecrit en entier dans T0-etat-soak.txt § « CHOIX PRIS ». Resume :
+     (a) le temoin retenu est PLUS FORT (exclusion causale > comparaison de SHA) ;
+     (b) relire le bandeau exige un REDEMARRAGE, qui DETRUIRAIT ce temoin ;
+     (c) ca eteindrait le module vivant de l'owner, et la story ecrit en tete
+         « ⛔ AUCUNE CARTE N'EST REQUISE … aucun geste physique de l'owner ».
+   Le SHA « avant » reste versionne : mesures/dn4-43/T8-bandeau-boot.txt ⇒ 6a91fa3.
+================================================================================

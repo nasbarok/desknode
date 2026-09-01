@@ -1,0 +1,151 @@
+================================================================================
+ dn5-1 / T4 — LE COMPTAGE SUR UN CLONE NEUF          AC1.3
+================================================================================
+ clone : /tmp/claude-1000/-home-nasbarok-projects-compagnon-project/d0db7630-35ad-4e8c-987c-0562a403da2c/scratchpad/dn-clone-neuf
+ fait le 2026-09-02T01:41:17+02:00
+ `git clone --branch main https://github.com/nasbarok/desknode.git` — DOSSIER NEUF,
+ HORS de l'arbre de travail. ⛔ Rien n'est lu depuis ~/projects/desknode ici.
+ HEAD du clone : 18737fe97e76010a8e44c368e62dda6bf0135a9c
+
+ ⛔ CE N'EST PAS UNE LECTURE A L'ŒIL. Chaque verdict porte UN CHIFFRE et SON MOTIF.
+ ⚠️ Et le motif est a BORNES DE MOT : un `grep -ci tier` MENT (voir le temoin, plus bas).
+
+────────────────────────────────────────────────────────────────────────────────
+ 0. LE TEMOIN DE L'INSTRUMENT — ⛔ ON LE PASSE AVANT DE CROIRE UN SEUL CHIFFRE
+────────────────────────────────────────────────────────────────────────────────
+   README.md du clone — 189540 o
+     motif  \btiers?\b   (mot entier, insensible)   = 1   formes : {'tiers': 1}
+        · … [`LICENSING.md`](LICENSING.md). ⏎ > Composants tiers : [`THIRD-PARTY.md`](THIRD-PARTY.md) · Contri…
+     ⇒ CLASSEMENT A LA LECTURE DU CONTEXTE : « Composants tiers : THIRD-PARTY.md »
+       = le mot FRANCAIS `tiers` (= third-party). ⇒ `tier` AU SENS ANGLAIS = **0**
+     motif  \bpaliers?\b (mot entier, insensible)   = 13
+     ⚠️ PIEGE — sous-chaine 'tier' (ce que rendrait `grep -oi tier`) = 10
+        mots reellement porteurs : {'tiers': 1, 'chantier': 1, 'entiers': 1, 'entier': 4, 'ENTIER': 1, 'boîtier': 2}
+
+   VERDICT DU TEMOIN (exige par AC1.3.b) :
+     · `tier` AU SENS ANGLAIS dans README.md          = 0    ✅ ATTENDU
+     · `\bpaliers?\b` dans README.md                  = 13   ✅ NON NUL
+     · le compte SOUS-CHAINE rend 10, dont 0 sont le mot anglais
+       ⇒ 🎯 SI ON AVAIT PUBLIE CE 10 COMME « le README parle de tier », **L'INSTRUMENT
+         AURAIT ETE FAUX, ⛔ PAS LE DEPOT SAIN**. C'est exactement le piege d'AC1.3.a.
+
+────────────────────────────────────────────────────────────────────────────────
+ 1. INVENTAIRE EXHAUSTIF — TOUTE notion que CONTRIBUTING.md demande au lecteur
+────────────────────────────────────────────────────────────────────────────────
+   CONTRIBUTING.md du clone — 5139 o, 103 lignes
+   Section « Reporting a bug », relevee ligne a ligne — ⛔ rien n'est omis :
+     | Please include:
+     | - Which **tier** you built: board only — called **“DeskNode”** — or board + ambient
+     |   sensors — called **“DeskNode + Ambiance”**. Both are defined in
+     |   [`README.md`](README.md), section *« Les deux paliers matériels »* (`palier` is the
+     |   French word this repository uses for *tier*; the README is in French, the split is
+     |   tracked as `dn8`).
+     | - Whether **LibreHardwareMonitor** is installed (it changes what the CPU and disk
+     |   cells can show).
+     | - Your **DeskNode version**. ⚠️ There is **no version shown on the display** yet. The
+     |   device identifies its firmware by a git SHA printed on the **serial console at boot**:
+     |   ```
+     |   I (783) app_init: Project name:     desknode
+     |   I (783) app_init: App version:      6a91fa3
+     |   ```
+     |   To read it, attach a serial terminal at **115200 baud** and restart the board — the
+     |   banner is printed **only at boot**. Any of these work:
+     |   `python3 tools/dn_console.py`, `idf.py monitor`, or
+     |   `python -m serial.tools.miniterm <port> 115200`.
+     |   A version displayed on the device itself, and a release tag, are still to come.
+     | - Your **Windows version**, and your GPU (NVIDIA / AMD / Intel).
+     | - Serial console output if you have it, and the steps to reproduce.
+     | Two things are already known, so no need to report them:
+     | - For roughly **40 seconds after a cold start**, touch input can be unreliable.
+     |   The cause is not yet understood.
+     | - Opening a detail page takes about **335 ms**, where the target was 300 ms.
+
+   ┌── NOTION : tier (les deux paliers materiels)
+   │  ce que CONTRIBUTING.md demande : « Which **tier** you built: board only … or board + ambient sensors »
+   │    CONTRIBUTING.md              \btiers?\b                 = 4
+   │    CONTRIBUTING.md              DeskNode \+ Ambiance       = 1
+   │    README.md                    \bpaliers?\b               = 13
+   │    README.md                    Les deux paliers matériels = 1
+   │    README.md                    DeskNode \+ Ambiance       = 1
+   │  VERDICT : ✅ DEFINIE — CONTRIBUTING nomme les deux paliers (« DeskNode » / « DeskNode + Ambiance »),
+   │            renvoie a README § « Les deux paliers materiels », et dit que `palier` est
+   │            le mot francais pour `tier`. ⇒ la question est ATTEIGNABLE depuis sa definition.
+   │  PORTEUR : — (soldee par dn5-1)
+   └──
+
+   ┌── NOTION : LibreHardwareMonitor
+   │  ce que CONTRIBUTING.md demande : « Whether **LibreHardwareMonitor** is installed »
+   │    CONTRIBUTING.md              LibreHardwareMonitor       = 1
+   │    README.md                    LibreHardwareMonitor       = 5
+   │    CHANGELOG.md                 LibreHardwareMonitor       = 1
+   │  VERDICT : ✅ DEFINIE — nommee et expliquee dans README.md et CHANGELOG.md du meme clone.
+   │  PORTEUR : —
+   └──
+
+   ┌── NOTION : DeskNode version
+   │  ce que CONTRIBUTING.md demande : « Your **DeskNode version** » (etait : « it is displayed on the device »)
+   │    CONTRIBUTING.md              App version                = 1
+   │    CONTRIBUTING.md              115200                     = 2
+   │    CONTRIBUTING.md              dn_console\.py             = 1
+   │    CONTRIBUTING.md              no version shown on the display = 1
+   │  VERDICT : ✅ DEFINIE — CONTRIBUTING demande DESORMAIS CE QUI EXISTE : le SHA du bandeau serie,
+   │            avec la ligne exacte, le baud et trois facons de la lire.
+   │            ⚠️ Une version AFFICHEE SUR LA DALLE n'existe toujours pas — c'est ECRIT.
+   │  PORTEUR : dn8 (version affichee + tag v0.1.0-beta)
+   └──
+
+   ┌── NOTION : GPU (NVIDIA / AMD / Intel)
+   │  ce que CONTRIBUTING.md demande : « your GPU (NVIDIA / AMD / Intel) » + CHANGELOG : « NVIDIA and AMD GPUs are covered »
+   │    CHANGELOG.md                 NVIDIA                     = 1
+   │    agent/dn_agent.py            import\s+pynvml            = 0
+   │    agent/dn_agent.py            pynvml                     = 1
+   │    agent/dn_agent.py            atiadlxx                   = 4
+   │  VERDICT : 🔴 NON DEFINIE, ET PIRE : LE CLONE SE CONTREDIT LUI-MEME. `CHANGELOG.md` annonce
+   │            NVIDIA couvert ; `agent/dn_agent.py` a 0 `import pynvml`, 4 `atiadlxx`,
+   │            et ecrit lignes 104-106 « LE CADRAGE ANNONCAIT NVML : INAPPLICABLE …
+   │            pynvml n'est meme pas installe ». ⛔ DECLAREE, ⛔ pas corrigee ici.
+   │  PORTEUR : dn5-2 / AC2.5
+   └──
+
+   ┌── NOTION : le bot CLA
+   │  ce que CONTRIBUTING.md promet : « A CLA is required … A bot handles it in one click. »
+   │    fichiers sous .github/ dans le clone = 0
+   │  VERDICT : 🔴 NON DEFINIE — le bot n'existe pas. ⛔ DECLAREE, ⛔ pas installee ici.
+   │  PORTEUR : dn5-2 / AC2.4
+   └──
+
+   ┌── NOTION : sortie console serie
+   │  ce que CONTRIBUTING.md demande : « Serial console output if you have it »
+   │    README.md                    115200                     = 2
+   │    README.md                    dn_console\.py             = 9
+   │    README.md                    idf\.py monitor            = 1
+   │    CONTRIBUTING.md              115200                     = 2
+   │  VERDICT : ✅ DEFINIE — le baud (115200) et trois outils de lecture sont dans le clone,
+   │            desormais cites aussi depuis CONTRIBUTING.md.
+   │  PORTEUR : —
+   └──
+
+────────────────────────────────────────────────────────────────────────────────
+ 2. AC1.3.d — CE QUI RESTE **NON DEFINI**, AVEC SON PORTEUR   ⛔ rien de silencieux
+────────────────────────────────────────────────────────────────────────────────
+   | notion / promesse                     | etat apres dn5-1 | porteur           |
+   |---------------------------------------|------------------|-------------------|
+   | tier / les deux paliers               | ✅ DEFINIE       | — (soldee)        |
+   | LibreHardwareMonitor                  | ✅ DEFINIE       | —                 |
+   | DeskNode version (identifiant)        | ✅ DEFINIE       | —                 |
+   |   … version AFFICHEE sur la dalle     | 🔴 N'EXISTE PAS  | dn8               |
+   | sortie console serie                  | ✅ DEFINIE       | —                 |
+   | GPU — « NVIDIA … covered »            | 🔴 REFUTEE PAR   | dn5-2 / AC2.5     |
+   |                                        |    LE CODE      |                   |
+   | le bot CLA                            | 🔴 N'EXISTE PAS  | dn5-2 / AC2.4     |
+   | les gates tournent sur un clone       | 🔴 NON — 3 outils| dn5-3             |
+   |                                        |    exigent un   |                   |
+   |                                        |    chemin perso |                   |
+   | le depot compile a froid              | ⛔ NON MESURE    | dn5-4             |
+   | le poids d'un clone                   | ⛔ NON MESURE ICI| dn5-5             |
+
+   ⚠️ LE POIDS N'EST **PAS** AFFIRME ICI. `du -sh` sur ce clone rend une valeur, mais
+     elle melange l'arbre de travail et `.git`, et ⛔ ce n'est pas la question de
+     `dn5-5` (« le poids d'un clone » et « ce qui reste a faire pour publier »).
+     ⇒ AUCUN CHIFFRE DE POIDS N'EST PUBLIE PAR CETTE MARCHE.
+================================================================================
