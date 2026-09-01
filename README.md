@@ -37,6 +37,36 @@ configuration affiche — et ce qu'elle **ne peut pas** afficher. ⛔ Rien n'y e
 ⛔ **La carte seule n'est pas un mode dégradé.** C'est une configuration **valide et gardée** : le
 firmware sait qu'il n'a pas de capteur, il le **dit**, et il **désarme** ce qui n'a plus d'entrée.
 
+### 🔴 L'ÉCRAN PARLE **ANGLAIS PAR DÉFAUT**, ET LE FRANÇAIS SE PREND AU DOIGT
+
+| | |
+|---|---|
+| **l'écran** | **FR / EN**, **défaut : ANGLAIS** |
+| **où on change** | **MENU → les deux cibles `FR` / `EN` dans l'entête**, au doigt |
+| **ce qui survit au reboot** | le choix, rangé en NVS |
+| 🔴 **la console (le REPL série)** | **elle reste en FRANÇAIS** — voir ci-dessous |
+
+⛔ **Le sélecteur ne se traduit pas.** Il dit `FR` et `EN`, ⛔ pas « Langue » ni « Language » :
+écrire un mot français à quelqu'un qui ne lit que l'anglais est exactement ce que ce réglage
+corrige.
+
+⚠️ **Au premier démarrage après un flash, la carte parle ANGLAIS.** Il n'y a rien en NVS, et le
+défaut est l'anglais. Un tap sur `FR` la fait basculer, et elle s'en souvient.
+
+#### ⛔ LA CONSOLE RESTE EN FRANÇAIS, ET C'EST UNE DÉCISION — ⛔ PAS UN OUBLI
+
+Le REPL série (`dn_console.c`) fait **~12 000 lignes de diagnostic écrites pour l'auteur**. Il
+n'est pas le produit : le produit se règle **au doigt** sur la dalle, et l'agent PC est
+**Windows seul**.
+
+⇒ **Si tu ouvres le REPL, attends-toi à du français.** C'est dit ici plutôt que découvert.
+
+✅ **Et les deux ne peuvent pas diverger** : il n'existe **qu'une seule définition par chaîne**
+(`main/dn_langue.h`). L'écran la lit dans la langue courante, la console la lit **toujours dans
+la colonne française**. Une gate (`tools/verif_langues_dn442.py`) refuse qu'un texte de la dalle
+échappe à cette table, qu'un glyphe absent des polices y entre, ou qu'un libellé déborde de sa
+place **dans l'une ou l'autre langue**.
+
 ### 🔴 TROIS AXES, ⛔ PAS DEUX — et le troisième est indépendant des autres
 
 Le troisième axe est **logiciel, côté PC** : `LibreHardwareMonitor` se combine avec les deux
@@ -96,6 +126,12 @@ pas à ton matériel.
   rend un verdict **ABSENT** distinct de « pas encore lu », il **compte** ses absences, il
   **désarme** l'asservissement de luminosité et **dit pourquoi**, et la luminosité **se règle au
   doigt** au MENU. Une gate (`tools/verif_paliers_dn441.py`) garde ces invariants.
+- ✅ **L'écran bilingue FR/EN** est construit et gardé : une seule définition par chaîne,
+  **défaut anglais**, choix au doigt, persistance NVS, et une gate qui **relit les cmaps des
+  polices** et **recalcule les largeurs** dans les deux langues
+  (`tools/verif_langues_dn442.py`, 30 contrôles, 23 mutants vus rougir).
+  🟡 **Ce qu'aucune gate ne dit : si le mot anglais est le BON mot.** Ça se lit à l'œil, sur la
+  dalle.
 - 🟡 **Le démarrage à froid sur un bus réellement sans capteurs** est le témoin **qualifiant**.
   ⚠️ **Son état est tenu à jour ci-dessous, et il dit le vrai, ⛔ ni « non testé » ni « validé ».**
 

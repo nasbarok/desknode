@@ -10335,3 +10335,106 @@ chaîne.** Le paragraphe se donnait pour « mesuré » alors qu'il était dédui
   a acté que ce n'est **pas** une course atteignable aujourd'hui.
 - ⛔ Aucune campagne fps / déchirement / scintillement : ce n'était pas l'objet.
 - ⛔ La cause du redémarrage au transfert du port (§30.4) n'est **pas** identifiée.
+
+# §31 — `dn4-42` (P9.16) : **L'ÉCRAN PARLE DEUX LANGUES, ET LES POLICES DISENT CE QU'ELLES PORTENT**
+
+> 🔴 **TOUS LES CHIFFRES DE CETTE SECTION SONT PRODUITS PAR `tools/dn_police.py`**, qui LIT les
+> cmaps et les `adv_w` des `.c` de police et refait **l'arithmétique de LVGL** — arrondi **par
+> glyphe** (`(adv_w + kv + 8) >> 4`), kerning par classes, `letter_space` retiré sur le dernier.
+> ⛔ **Aucun n'est recopié à la main**, et aucun ne se récite : ils se REPRODUISENT.
+
+> ✅ **RECOUPEMENT INDÉPENDANT** : sur « DÉMO 2+JAUGE » en `dn_font_14`, l'outil rend **114 px**
+> — **exactement** le chiffre que `dn4-14-2` avait mesuré sur la carte le 2026-08-29. Deux
+> chemins sans rapport donnent le même nombre.
+
+## §31.1 — LA COUVERTURE **REELLE** DES CINQ POLICES, RELUE DES CMAPS
+
+| police | codepoints | cmaps | `line_height` | plages |
+|---|---:|---:|---:|---|
+| `dn_font_14` | 258 | 3 | 18 | 32..126 · 160..255 · 8226 · … (50 plages) |
+| `dn_font_18` | 258 | 3 | 23 | 32..126 · 160..255 · 8226 · … (50 plages) |
+| `dn_font_28` | 258 | 3 | 35 | 32..126 · 160..255 · 8226 · … (50 plages) |
+| `dn_font_33` | 96 | 2 | 36 | 32..126 · 176 |
+| `dn_font_56` | 96 | 2 | 58 | 32..126 · 176 |
+
+### Les glyphes ABSENTS de TOUTES les polices — mesures, ⛔ pas supposes
+
+| codepoint | glyphe | ou il etait employe |
+|---|---|---|
+| `U+2014` | — | `k_source[].nom` (page de detail) · ligne secondaire du mock |
+| `U+26D4` | ⛔ | ligne d'echec NVS du MENU |
+| `U+26A0` | ⚠ | nulle part sur la dalle (commentaires seuls) |
+| `U+1F534` | 🔴 | nulle part sur la dalle (commentaires seuls) |
+| `U+2705` | ✅ | nulle part sur la dalle (commentaires seuls) |
+| `U+2192` | → | nulle part sur la dalle (commentaires seuls) |
+
+## §31.2 — LES LARGEURS **MESUREES**, FR ET EN
+
+### Les six titres de case — `dn_font_18`, **107 px utiles** (icone 28)
+
+| cle | FR | px | EN | px | verdict |
+|---|---|---:|---|---:|---|
+| `CASE_CPU` | CPU | 40 | CPU | 40 | ✅ |
+| `CASE_GPU` | GPU | 41 | GPU | 41 | ✅ |
+| `CASE_RAM` | RAM | 43 | RAM | 43 | ✅ |
+| `CASE_RESEAU` | RÉSEAU | 75 | NETWORK | 98 | ✅ |
+| `CASE_DISQUE` | DISQUE | 73 | DISK | 45 | ✅ |
+| `CASE_AMB` | AMBIANCE | 103 | AMBIENT | 88 | ✅ |
+| `CASE_DEMO` | DÉMO 2+JAUGE | 147 | DEMO 2+GAUGE | 152 | 🔴 DEBORDE |
+
+### Le pire cas de DATE — `dn_font_18`, **170 px utiles** (x = 300)
+
+| langue | pire forme (balayage 7 x 12) | px | verdict |
+|---|---|---:|---|
+| FR | `MAR. 06 MARS` | 134 | ✅ |
+| EN | `MON. 06 MAR.` | 131 | ✅ |
+| FR | `HEURE NON POSÉE` (**pas d'heure**) | 184 | ⚠️ **ECART DECLARE** (verdict owner 2026-08-30) |
+| EN | `CLOCK NOT SET` (**pas d'heure**) | 149 | ✅ |
+
+### Les lignes du panneau d'etat du MENU — `dn_font_14`, **432 px utiles**
+
+| ce qui est compose | FR | EN | verdict |
+|---|---:|---:|---|
+| echec NVS, **pire cas** (`NVS_KEYS_NOT_INITIALIZED`) | 426 | 397 | ✅ |
+| la ligne de pedagogie | 309 | 359 | ✅ |
+
+## §31.3 — 🔴 **DEUX DÉFAUTS PRÉEXISTANTS QUE CETTE MESURE A DÉTERRÉS**
+
+### (a) Le tiret cadratin `—` était dessiné **en boîte**, sur TOUTES les pages de détail
+
+`U+2014` n'est dans **aucune** des cinq polices — c'est mesuré en §31.1, ⛔ pas supposé. Or il
+vivait dans `k_source[].nom` (« liaison PC (dn_link) **—** cpu ») et dans la ligne secondaire du
+mock. Avec `CONFIG_LV_USE_FONT_PLACEHOLDER=y` (relu au `sdkconfig`), LVGL ne le saute pas : il pose
+un **rectangle de substitution** de `line_height / 2 + 2` px, **sans un mot au journal**.
+
+⇒ **La page de détail montrait donc une boîte à chaque ouverture, depuis toujours.** ⛔ Personne
+ne l'avait relevé parce qu'un glyphe absent ne produit **aucune erreur**.
+✅ Corrigé : le séparateur est un `-` ASCII, et la gate refuse tout glyphe absent dans la table.
+
+⚠️ **CONSÉQUENCE POUR TOUTE MESURE DE LARGEUR** : un glyphe absent **n'est pas de largeur nulle**.
+Le modéliser à zéro ferait passer pour ÉTROITE une chaîne pleine de boîtes. `dn_police.py` le
+modélise donc à `line_height / 2 + 2`, comme LVGL — et ⚠️ **ce `adv_w`-là est déjà en pixels**, il
+ne passe pas par le `>> 4`.
+
+### (b) Le débordement du titre de la DÉMO a **grandi de 7 à 40 px**, sans que personne ne re-mesure
+
+`dn4-14-2` a chiffré « DÉMO 2+JAUGE » à **114 px pour 107 utiles**, soit **7 px** de débordement.
+**Ce chiffre était exact — en `dn_font_14`**, la police de titre de l'époque.
+🔴 Le **verdict owner du 2026-08-30** a fait passer `font_titre` à **`dn_font_18`**
+(`dn_widget.c`, `out->font_titre`). Le même titre y mesure **147 px pour 107** : **40 px**.
+
+⇒ Le chiffre du dossier a **vieilli en silence** — la classe de défaut exacte que ce dépôt traque.
+⛔ **Et il ne se « répare » pas en raccourcissant le titre** : « DÉMO 2+JAUGE » est le **plus long
+titre existant**, et c'est LUI qui exerce le compteur `s_trop_larges` posé par `dn4-14-2`.
+⇒ `tools/verif_langues_dn442.py` porte donc un **témoin négatif** : il exige que ce titre
+**déborde encore**, dans les deux langues. Le raccourcir désarmerait la garde, et la gate le dit.
+
+## §31.4 — ⛔ CE QUE CETTE SECTION NE PROUVE **PAS**
+
+- ⛔ **Que le mot anglais soit le BON mot.** Aucune arithmétique ne le dit ; ça se lit à l'œil.
+- ⛔ **Que les chaînes COMPOSÉES tiennent en régime.** Les tables ci-dessus couvrent des chaînes
+  statiques et le **pire cas borné** de la ligne d'échec NVS. Un compteur de veilles à dix
+  chiffres, lui, n'est gardé qu'À CHAUD, par `dn_ui_menu_trop_larges()` (publié par `nav`).
+  ⇒ **les deux instruments sont nécessaires**, et c'est écrit ici plutôt que découvert.
+- ⛔ **Rien sur la carte.** Ces chiffres sont calculés hors carte, sur les tables de police
+  versionnées. Ils prédisent ce que LVGL fera ; ⛔ ils ne l'observent pas.
