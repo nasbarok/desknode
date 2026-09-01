@@ -24,12 +24,18 @@ pour decider.
 🔴 CE QU'ELLE CONTROLE (AC5.2)
 ═══════════════════════════════════════════════════════════════════════════════
 
-  1. LA DECISION S'EXECUTE — 12 controles, sur le module COMPILE
-  2. LE CRITERE N'EST PAS UN MINUTEUR — 3 controles, sur la source
-  3. L'ETAT EST ATTEINT AU BOOT, ET NE SE RE-AFFICHE PAS — 7 controles
-  4. LES LIBELLES : table, polices, largeurs, DEUX langues — 5 controles
-  5. LE BUDGET EST GARDE PAR LE COMPILATEUR — 3 controles
-  6. LA CONSOLE ET LE DOSSIER LE DISENT — 3 controles
+  1. LA DECISION S'EXECUTE — sur le module COMPILE et APPELE
+  2. LE CRITERE N'EST PAS UN MINUTEUR — sur la source
+  3. L'ETAT EST ATTEINT AU BOOT, ET NE SE RE-AFFICHE PAS
+  4. LES LIBELLES : table, polices, largeurs, DEUX langues
+  5. LE BUDGET EST GARDE PAR LE COMPILATEUR
+  6. LA CONSOLE ET LE DOSSIER LE DISENT
+
+⚠️ REVUE DU 2026-09-01 — ⛔ **PLUS AUCUN COMPTE DE CONTROLES ICI.** Ce bloc
+   annoncait `12+3+7+5+3+3 = 33` quand le tir reel en rendait **38** : trois
+   compteurs s'etaient perimes en silence. Un instrument qui ment sur sa propre
+   couverture est precisement ce que `dn4-42` a paye. ⇒ le compte qui fait foi
+   est celui du BILAN, ⛔ pas une addition ecrite.
 
 Sortie : `BILAN : n OK, m KO`, rc 0 si tout passe, 1 sinon.
 Usage  : python3 tools/verif_demarrage_dn443.py [--mutant <n>] [--liste-mutants]
@@ -63,6 +69,9 @@ F_MAIN_C = os.path.join(MAIN, "desknode_main.c")
 F_LANGUE_H = os.path.join(MAIN, "dn_langue.h")
 F_CONSOLE = os.path.join(MAIN, "dn_console.c")
 F_CMAKE = os.path.join(MAIN, "CMakeLists.txt")
+# 🔴 REVUE DU 2026-09-01 — la geometrie de la dalle se RELIT ici, ⛔ elle ne
+#    s'ecrit plus en dur dans la gate.
+F_PINS_H = os.path.join(MAIN, "dn_pins.h")
 F_README = os.path.join(RACINE, "README.md")
 
 # Les cinq cles que cette story ajoute a la table. ⚠️ RELUES du bloc de
@@ -112,6 +121,40 @@ MUTANTS[24] = "efface la ligne Known-issues des 55,5 % auto-retablis"
 MUTANTS[25] = "efface, au README, ce que l'etat de demarrage SIGNIFIE"
 MUTANTS[26] = "fait ignorer le parametre `lectures` a la decision"
 MUTANTS[27] = "retire les `_Static_assert` du budget temporel"
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 🔴 MUTANTS 28..48 — AJOUTES PAR LA REVUE DE CODE DU 2026-09-01.
+#
+# ⛔ LE MOTIF EST MESURE, ⛔ PAS SUPPOSE. Le balayage a ete refait controle par
+#    controle : la campagne d'origine annoncait « 27 declares, 27 appliques,
+#    27 VUS ROUGIR » — **et c'etait vrai**. Mais AC5.3 demande l'INVERSE :
+#    *« AU MOINS UN MUTANT PAR CONTROLE »*. L'union des `[KO ]` ne couvrait que
+#    30 controles sur 38 : **8 etaient gardes par rien**, dont celui qui garde
+#    les cinq `_Static_assert` de geometrie d'AC2.2.
+# 🎯 La campagne prouvait `mutant ⇒ rouge` ; elle ne prouvait pas
+#    `controle ⇒ couvert`. Les deux se lisent pareil dans un bilan.
+# ══════════════════════════════════════════════════════════════════════════════
+MUTANTS[28] = "renomme DN_LCD_V_RES : la gate ne sait plus lire la dalle"
+MUTANTS[29] = "retire un `_Static_assert` de la geometrie de l'ecran"
+MUTANTS[30] = "renomme le PLANCHER de cadence (la gate plantait au lieu de dire KO)"
+MUTANTS[31] = "NEUTRALISE l'assertion du budget en lectures (elle ne mord plus)"
+MUTANTS[32] = "rend le seuil de lectures INATTEIGNABLE (le boot sain n'aboutit plus)"
+MUTANTS[33] = "cesse de COMPTER les erreurs vues (le 2e temps ne s'armerait plus)"
+MUTANTS[34] = "passe la borne du vide de `>=` a `>` (l'off-by-one non garde)"
+MUTANTS[35] = "laisse `dn_dem_conclure` poser une fin sur une machine NON ARMEE"
+MUTANTS[36] = "laisse `dn_dem_conclure` accepter EN_COURS et les valeurs hors enum"
+MUTANTS[37] = "rend `dn_dem_conclure` inoperante (la voie de `build_scene`)"
+MUTANTS[38] = "retire l'idempotence : une fin posee peut etre defaite au tick suivant"
+MUTANTS[39] = "fait ignorer le PARAMETRE `lectures` a la decision"
+MUTANTS[40] = "🎯 RETIRE LE PLAFOND DE LA BRANCHE QUI RELANCE LA FENETRE — le defaut de la revue"
+MUTANTS[41] = "arme l'observation APRES l'allumage du retroeclairage"
+MUTANTS[42] = "ne SUPPRIME plus le timer a la conclusion (pointeur pendant)"
+MUTANTS[43] = "retire la garde `if (!s_scr_dem)` en tete de `dem_tick`"
+MUTANTS[44] = "cesse de controler le retour de `lv_timer_create`"
+MUTANTS[45] = "retire une declaration de lecteur de `dn_ui.h`"
+MUTANTS[46] = "vide la table `lignes[]` de l'ecran de demarrage"
+MUTANTS[47] = "RE-OUVRE l'exemption des litteraux minuscules (le trou de la revue)"
+MUTANTS[48] = "pose un libelle EN DUR dans `dem_tick` (hors du champ garde)"
 
 
 def dire(ok, libelle, detail=""):
@@ -200,7 +243,7 @@ def deplier_c(litt):
 # 1. LA DECISION S'EXECUTE — LE MODULE EST COMPILE ET APPELE
 # ══════════════════════════════════════════════════════════════════════════════
 
-def construire_module(src_c, src_h, etiquette):
+def construire_module(src_c, src_h, etiquette, silencieux=False):
     """Compile `dn_demarrage.c` (ou une MUTATION) en `.so`, rend le handle."""
     d = tempfile.mkdtemp(prefix="dn443_")
     _TMPDIRS.append(d)
@@ -214,8 +257,12 @@ def construire_module(src_c, src_h, etiquette):
          os.path.join(d, "dn_demarrage.c")],
         capture_output=True, text=True)
     if r.returncode != 0:
-        print("    ⛔ ECHEC DE COMPILATION (%s) :\n%s"
-              % (etiquette, r.stderr[:2500]))
+        # ⚠️ `silencieux` sert aux TEMOINS NEGATIFS : une compilation qu'on
+        #    ATTEND en echec ⛔ ne doit pas cracher un mur d'erreurs dans un
+        #    dossier de mesure — on veut juste savoir qu'elle a echoue.
+        if not silencieux:
+            print("    ⛔ ECHEC DE COMPILATION (%s) :\n%s"
+                  % (etiquette, r.stderr[:2500]))
         return None
     return ctypes.CDLL(so)
 
@@ -249,19 +296,31 @@ def api(lib):
     return lib
 
 
-# Les verdicts, dans l'ordre de l'enum. ⚠️ RELUS de l'en-tete, ⛔ pas recites.
+# Les verdicts et LEURS VALEURS. ⚠️ RELUS de l'en-tete, ⛔ pas recites.
 def verdicts_de_l_entete(src_h):
     bloc = re.search(r"typedef enum \{(.*?)\} dn_dem_verdict_t;", src_h, re.S)
     if not bloc:
-        return []
+        return {}
     # 🔴 L'INITIALISEUR EST OBLIGATOIRE DANS LE MOTIF, ⛔ PAS OPTIONNEL A
     #    L'OEIL : la premiere entree s'ecrit `DN_DEM_EN_COURS = 0,` et un motif
     #    `(DN_DEM_[A-Z_]+),` la MANQUAIT — la liste rendue commencait alors a
     #    `FIN_PROPRE`, tous les indices etaient DECALES DE UN, et CINQ controles
     #    d'execution rougissaient sur du code JUSTE. Trouve en jouant la gate au
     #    premier tir, ⛔ pas en la relisant.
-    return re.findall(r"^\s*(DN_DEM_[A-Z_]+)\s*(?:=\s*\d+\s*)?,",
-                      sans_commentaires(bloc.group(1)), re.M)
+    # 🔴 REVUE DU 2026-09-01 — **L'INITIALISEUR EST DESORMAIS HONORE, ⛔ PLUS
+    #    CAPTURE PUIS JETE.** Le motif acceptait `= \d+` mais l'appelant
+    #    numerotait par POSITION : un futur `DN_DEM_FIN_X = 7,` ou une
+    #    renumerotation aurait fait diverger SILENCIEUSEMENT les constantes de
+    #    la gate des valeurs C, et les controles d'execution auraient compare au
+    #    mauvais verdict. C'est le decalage-de-un qui a deja coute CINQ
+    #    controles rouges (voir ci-dessus), ré-ouvert par l'autre bout.
+    out, suivant = {}, 0
+    for nom, val in re.findall(r"^\s*(DN_DEM_[A-Z_]+)\s*(?:=\s*(\d+)\s*)?,",
+                               sans_commentaires(bloc.group(1)), re.M):
+        suivant = int(val) if val else suivant
+        out[nom] = suivant
+        suivant += 1
+    return out
 
 
 def jouer(lib, etapes, tactile=True, t0=1000, pas=250):
@@ -295,6 +354,33 @@ def muter_module(src_c):
     relisant.
     """
     src_c = M(1, src_c, "&& s_lectures_vues >= DN_DEM_LECTURES_MIN", "")
+    src_c = M(32, src_c, "s_lectures_vues >= DN_DEM_LECTURES_MIN",
+              "s_lectures_vues >= 100000u")
+    src_c = M(33, src_c, "s_err_vues += err_i2c - s_fen_err0;", "(void)0;")
+    src_c = M(34, src_c, "s_lectures_vues >= DN_DEM_LECTURES_MIN",
+              "s_lectures_vues > DN_DEM_LECTURES_MIN")
+    src_c = M(35, src_c, "    if (!s_arme || s_verdict != DN_DEM_EN_COURS) {\n        return;\n    }",
+              "    if (s_verdict != DN_DEM_EN_COURS) {\n        return;\n    }")
+    src_c = M(36, src_c,
+              "    if (v <= DN_DEM_EN_COURS || v > DN_DEM_FIN_RECONSTRUCTION) {\n        return;\n    }\n",
+              "")
+    src_c = M(37, src_c, "    conclure(t_ms, v);\n}", "    (void)t_ms;\n    (void)v;\n}")
+    src_c = M(38, src_c,
+              "    if (s_verdict != DN_DEM_EN_COURS) {\n        return s_verdict; /* idempotente : une fin est définitive */\n    }\n",
+              "")
+    # 🔴 Mutant 39 : trois sites, un seul numero — la decision cesse d'utiliser
+    #    le PARAMETRE `lectures` sans cesser de compiler.
+    src_c = M(39, src_c, "lectures < s_fen_lect0", "0u < s_fen_lect0")
+    src_c = M(39, src_c, "        s_fen_lect0 = lectures;", "        s_fen_lect0 = 0u;")
+    src_c = M(39, src_c, "s_lectures_vues = lectures - s_fen_lect0;",
+              "s_lectures_vues = DN_DEM_LECTURES_MIN;")
+    # 🎯 Mutant 40 : LE DEFAUT QUE LA REVUE A TROUVE, REPLANTE TEL QUEL.
+    src_c = M(40, src_c,
+              "        if ((uint32_t)(t_ms - s_t0_ms) >= DN_DEM_PLAFOND_MS) {\n"
+              "            conclure(t_ms, DN_DEM_FIN_PLAFOND);\n"
+              "            return s_verdict;\n"
+              "        }\n        return DN_DEM_EN_COURS;",
+              "        return DN_DEM_EN_COURS;")
     src_c = M(2, src_c,
               """    if ((uint32_t)(t_ms - s_fen_t0_ms) >= DN_DEM_FENETRE_MS
         && s_lectures_vues >= DN_DEM_LECTURES_MIN) {
@@ -354,7 +440,7 @@ def section_execution(src_c, src_h, cst):
     if lib is None:
         return
 
-    V = {n: i for i, n in enumerate(verdicts_de_l_entete(src_h))}
+    V = verdicts_de_l_entete(src_h)
     en_cours = V.get("DN_DEM_EN_COURS", 0)
     propre = V.get("DN_DEM_FIN_PROPRE", 1)
     sans_tact = V.get("DN_DEM_FIN_SANS_TACTILE", 2)
@@ -390,6 +476,42 @@ def section_execution(src_c, src_h, cst):
          "reprise : conclut PROPRE — le critere est RELU, ⛔ pas minute",
          "%d ms, plafond %d ms" % (duree, plaf))
 
+    # ══════════════════════════════════════════════════════════════════════════
+    # 🔴 LE BUS QUI NE SE RETABLIT **JAMAIS** — LE CONTROLE QUI MANQUAIT, ET
+    #    C'EST LUI QUI A LAISSE PASSER LE DEFAUT LE PLUS LOURD DE LA STORY.
+    #
+    # ⛔ AVANT LA REVUE DU 2026-09-01, LE PLAFOND N'ETAIT EPROUVE QUE SUR DES
+    #    COMPTEURS **FIGES** (le piege du vide, plus bas, `d_err = 0`). Le seul
+    #    scenario a erreurs continues s'arretait a 40 s — SOUS les 90 s du
+    #    plafond — et AFFIRMAIT `EN COURS` comme attendu. Autrement dit : la
+    #    gate ENTERINAIT le comportement qui devenait le blocage.
+    #
+    # 🔴 CE QUE LA MESURE A RENDU (module compile et pilote, avant correctif) :
+    #    a une erreur nouvelle par tick, `verdict = EN COURS` encore a 150 s,
+    #    puis a 500 s, puis a 1 000 000 ms — plafond declare a 90 s. Le retour
+    #    anticipe de la casse de fenetre sautait le test du plafond, qui etait
+    #    donc INJOIGNABLE **exactement dans le cas ou il sert**. Sur une carte
+    #    dont le GT911 rate durablement, l'ecran de demarrage ne partait JAMAIS.
+    #
+    # ⚠️ 500 ticks x 250 ms = 125 s, soit bien au-dela du plafond : si le filet
+    #    existe, il DOIT tomber ici.
+    # ══════════════════════════════════════════════════════════════════════════
+    n_apres_plafond = int(plaf // 250) + 40
+    v, duree, _ = jouer(lib, [(n_apres_plafond, 3, 6)])
+    dire(v == plafond,
+         "bus qui ne se retablit JAMAIS : le plafond TOMBE quand meme",
+         "%d s d'erreurs continues, verdict=%s — ⛔ un EN COURS ici veut dire "
+         "que l'ecran de demarrage ne part JAMAIS (AC1.2 : « en plus », ⛔ pas "
+         "« a la place »)"
+         % (n_apres_plafond * 250 // 1000, lib.dn_dem_verdict_nom(v).decode()))
+    dire(v == plafond and duree >= plaf and duree <= plaf + 500,
+         "…et il tombe A L'HEURE, ⛔ pas quand le bus veut bien se taire",
+         "%d ms pour un plafond de %d ms" % (duree, plaf))
+    dire(lib.dn_dem_lectures_vues() == 0,
+         "…et la fenetre finale n'avait RIEN observe (temoin du vide)",
+         "%d lecture(s) — ⛔ une valeur PERIMEE ici sur-declarerait ce que la "
+         "fenetre courante a vu" % lib.dn_dem_lectures_vues())
+
     # ── 🔴 CRITERE ET PLAFOND AU **MEME TICK** — c'est le SEUL cas ou leur
     #    ordre se voit, et c'est pour ca qu'il est joue. Les erreurs s'arretent
     #    exactement `DN_DEM_FENETRE_MS` avant l'expiration du plafond. ──
@@ -410,10 +532,34 @@ def section_execution(src_c, src_h, cst):
          "…c'est le PLAFOND qui tranche, et il se NOMME",
          "%d ms >= %d ms" % (duree, plaf))
 
-    # ── Une fenetre PEUPLEE mais trop MAIGRE ne conclut pas non plus. ──
+    # ══════════════════════════════════════════════════════════════════════════
+    # 🔴 LA BORNE EXACTE DU GARDE-FOU DU VIDE — `lmin - 1` CONTRE `lmin`.
+    #
+    # ⛔ AVANT LA REVUE DU 2026-09-01, CE CONTROLE NE JOUAIT QUE `d_lect = 0` :
+    #    un etat rigoureusement identique au « piege du vide » teste juste
+    #    au-dessus. La borne n'etait donc **jamais exercee**, et c'est MESURE :
+    #    remplacer `>= DN_DEM_LECTURES_MIN` par `> DN_DEM_LECTURES_MIN` laissait
+    #    la gate a `38 OK, 0 KO`, rc 0. Le seuil que ce controle pretendait
+    #    garder n'etait garde par rien.
+    # ⚠️ Un seul tick de `fen` ms suffit : la fenetre est alors ECOULEE, et
+    #    c'est le COMPTE de lectures — lui seul — qui decide.
+    # ══════════════════════════════════════════════════════════════════════════
+    v, _, _ = jouer(lib, [(1, 0, lmin - 1)], pas=int(fen))
+    dire(v != propre,
+         "borne du vide : %d lecture(s) dans la fenetre ⇒ ⛔ ne conclut PAS"
+         % (lmin - 1),
+         "verdict=%s" % lib.dn_dem_verdict_nom(v).decode())
+
+    v, _, _ = jouer(lib, [(1, 0, lmin)], pas=int(fen))
+    dire(v == propre,
+         "…et a %d, elle conclut — la borne est en `>=`, ⛔ pas en `>`" % lmin,
+         "verdict=%s ⇒ un off-by-one ici couterait UNE lecture de marge sur "
+         "TOUTES les cartes" % lib.dn_dem_verdict_nom(v).decode())
+
+    # ── Une fenetre a ZERO lecture ne conclut pas non plus (le vide pur). ──
     v, _, _ = jouer(lib, [(400, 0, 0)], pas=int(fen))
     dire(v != propre,
-         "fenetre a MOINS de %d lecture(s) ⇒ ⛔ ne conclut pas" % lmin,
+         "fenetre a ZERO lecture ⇒ ⛔ ne conclut pas",
          "verdict=%s" % lib.dn_dem_verdict_nom(v).decode())
 
     # ── Tactile ABSENT : l'observation est IMPOSSIBLE, ⛔ pas concluante. ──
@@ -453,6 +599,52 @@ def section_execution(src_c, src_h, cst):
          "AC1.4 : un 2e armement apres une fin est REFUSE, et COMPTE",
          "refus %d -> %d" % (refus_avant, lib.dn_dem_rearmements_refuses()))
 
+    # ══════════════════════════════════════════════════════════════════════════
+    # 🔴 `dn_dem_conclure()` — LA VOIE EXTERNE, ET ELLE N'ETAIT EPROUVEE PAR
+    #    AUCUN SCENARIO.
+    #
+    # ⛔ Sa signature ctypes etait declaree ; la fonction n'etait JAMAIS appelee.
+    #    Or c'est **la seule voie qu'utilisent reellement `build_scene()` et
+    #    `nav_appliquer()`**. Le mutant 13 verifiait seulement que la LIGNE
+    #    existait dans `dn_ui.c`, ⛔ jamais ce qu'elle FAIT.
+    # ══════════════════════════════════════════════════════════════════════════
+    recons = V.get("DN_DEM_FIN_RECONSTRUCTION", 4)
+    lib.dn_dem_reset_pour_gate()
+    lib.dn_dem_armer(1000, True, 0, 30)
+    lib.dn_dem_tick(1250, 0, 36)
+    lib.dn_dem_conclure(1500, recons)
+    dire(lib.dn_dem_verdict() == recons and not lib.dn_dem_en_cours(),
+         "`dn_dem_conclure(RECONSTRUCTION)` POSE bien la fin",
+         "verdict=%s, duree=%d ms"
+         % (lib.dn_dem_verdict_nom(lib.dn_dem_verdict()).decode(),
+            lib.dn_dem_duree_ms()))
+
+    lib.dn_dem_tick(9999, 0, 999)
+    dire(lib.dn_dem_verdict() == recons,
+         "…et une fin est DEFINITIVE : le tick d'apres ne la defait pas",
+         "verdict=%s"
+         % lib.dn_dem_verdict_nom(lib.dn_dem_verdict()).decode())
+
+    lib.dn_dem_reset_pour_gate()
+    lib.dn_dem_conclure(1000, propre)
+    dire(lib.dn_dem_verdict() == en_cours,
+         "`dn_dem_conclure()` sur une machine NON ARMEE ne pose RIEN",
+         "⛔ sinon un `build_scene()` avant l'armement inventerait un verdict")
+
+    # 🔴 REVUE DU 2026-09-01 — **UNE FIN QUI N'EN EST PAS UNE EST REFUSEE.**
+    #    `dn_dem_conclure()` acceptait `DN_DEM_EN_COURS` et les valeurs hors
+    #    enum sans un mot : la machine se serait « conclue » sur le verdict
+    #    *pas encore fini*, ou sur un code que `dn_dem_verdict_nom()` rend « ? ». Deux
+    #    etiquettes de mesure FAUSSES.
+    lib.dn_dem_reset_pour_gate()
+    lib.dn_dem_armer(1000, True, 0, 30)
+    lib.dn_dem_conclure(1500, en_cours)
+    ok_en_cours = lib.dn_dem_en_cours()
+    lib.dn_dem_conclure(1500, 99)
+    dire(ok_en_cours and lib.dn_dem_en_cours(),
+         "…et elle REFUSE `EN_COURS` et les valeurs hors enum",
+         "⛔ « conclure » sur EN_COURS ou sur 99 rendrait une etiquette FAUSSE")
+
     # ── Le nom d'un verdict hors enum. ⛔ Jamais le mot d'un autre. ──
     hors = lib.dn_dem_verdict_nom(99).decode()
     connus = {lib.dn_dem_verdict_nom(i).decode() for i in V.values()}
@@ -472,16 +664,50 @@ def section_critere(src_c, src_h):
     sig = re.search(r"dn_dem_tick\(uint32_t t_ms, uint32_t err_i2c,\s*"
                     r"uint32_t lectures\)\s*\{(.*?)\n\}", nu, re.S)
     corps = sig.group(1) if sig else ""
-    dire(bool(corps) and "err_i2c" in corps and "lectures" in corps,
+    # ⚠️ REVUE DU 2026-09-01 — **CE CONTROLE ETAIT QUASI-VACUEL.** Il cherchait
+    #    la sous-chaine « lectures », que `s_lectures_vues` contient TOUJOURS :
+    #    il ne pouvait donc pas rougir, meme si la decision cessait d'utiliser
+    #    le PARAMETRE. Les bornes de mot le rendent testable — et le mutant 31
+    #    le prouve.
+    n_err = len(re.findall(r"\berr_i2c\b", corps))
+    n_lect = len(re.findall(r"\blectures\b", corps))
+    dire(bool(corps) and n_err > 0 and n_lect > 0,
          "`dn_dem_tick` LIT les DEUX compteurs, ⛔ pas seulement l'horloge",
-         "err_i2c %d fois, lectures %d fois"
-         % (corps.count("err_i2c"), corps.count("lectures")))
+         "parametre err_i2c %d fois, parametre lectures %d fois" % (n_err, n_lect))
 
+    # ══════════════════════════════════════════════════════════════════════════
+    # 🔴 REVUE DU 2026-09-01 — **CE CONTROLE A EPINGLE UN CORRECTIF JUSTE**, et
+    #    c'est ecrit ici plutot que tu.
+    #
+    # ⛔ Il comparait la PREMIERE occurrence de chaque verdict dans le corps.
+    #    Le correctif du plafond injoignable a ajoute une evaluation du plafond
+    #    **dans la branche qui casse la fenetre**, donc plus HAUT que le
+    #    critere — et la gate a rougi sur du code devenu JUSTE.
+    #    (`dn4-24` a deja paye exactement ca : *« une gate N OK / 0 KO peut
+    #    epingler du code FAUX »* — ici c'est la symetrie.)
+    #
+    # ✅ CE QUI EST VRAIMENT LA PROPRIETE : sur le chemin NOMINAL — celui qu'on
+    #    atteint quand la fenetre n'a PAS ete cassee — le critere RELU est teste
+    #    avant le plafond. On compare donc le critere a la **DERNIERE**
+    #    occurrence du plafond, qui est celle du chemin nominal.
+    # ══════════════════════════════════════════════════════════════════════════
     i_propre = corps.find("DN_DEM_FIN_PROPRE")
-    i_plafond = corps.find("DN_DEM_FIN_PLAFOND")
-    dire(0 <= i_propre < i_plafond,
-         "le critere RELU est teste **AVANT** le plafond",
-         "PROPRE en %d, PLAFOND en %d" % (i_propre, i_plafond))
+    i_plafond_nominal = corps.rfind("DN_DEM_FIN_PLAFOND")
+    dire(0 <= i_propre < i_plafond_nominal,
+         "chemin NOMINAL : le critere RELU est teste **AVANT** le plafond",
+         "PROPRE en %d, PLAFOND nominal en %d" % (i_propre, i_plafond_nominal))
+
+    # 🔴 ET LE FILET DOIT ETRE ARME SUR **LES DEUX** CHEMINS. C'est le defaut
+    #    trouve en revue : la branche qui relance la fenetre rendait la main
+    #    AVANT le test du plafond, qui devenait donc injoignable des que le bus
+    #    produisait une erreur nouvelle a chaque tick — c'est-a-dire exactement
+    #    le regime pour lequel le plafond a ete ecrit.
+    casse = re.search(r"s_fen_cassees\+\+;(.*?)return DN_DEM_EN_COURS;",
+                      corps, re.S)
+    dire(bool(casse) and "DN_DEM_PLAFOND_MS" in casse.group(1),
+         "…et la branche qui RELANCE la fenetre evalue le plafond AUSSI",
+         "⛔ sinon un bus qui rate a chaque tick ne conclut JAMAIS (mesure : "
+         "EN COURS encore a 1 000 000 ms)")
 
     includes = re.findall(r'^#include\s+[<"]([^">]+)[">]', src_c, re.M)
     interdits = [h for h in includes
@@ -512,6 +738,18 @@ def section_boot(ui_c, main_c, ui_h):
     if (touch_err == ESP_OK) {""")
     ui_c = M(9, ui_c, "static void dem_tick(lv_timer_t *t)\n{\n    (void)t;",
              "static void dem_tick(lv_timer_t *t)\n{\n    (void)t;\n    dn_dem_reset_pour_gate();")
+    main_c = M(41, main_c, "    dn_ui_demarrage_armer(tactile_present);", "")
+    if _MUTANT == 41:
+        main_c = main_c.replace(
+            "    ESP_ERROR_CHECK(dn_display_backlight_pct(bl_boot));",
+            "    ESP_ERROR_CHECK(dn_display_backlight_pct(bl_boot));\n"
+            "    dn_ui_demarrage_armer(tactile_present);", 1)
+    ui_c = M(42, ui_c, "        lv_timer_delete(s_dem_timer);", "")
+    ui_c = M(43, ui_c,
+             "static void dem_tick(lv_timer_t *t)\n{\n    (void)t;\n    if (!s_scr_dem) {\n        return;\n    }",
+             "static void dem_tick(lv_timer_t *t)\n{\n    (void)t;")
+    ui_c = M(44, ui_c, "    if (!s_dem_timer) {", "    if (false) {")
+    ui_h = M(45, ui_h, "bool dn_ui_demarrage_a_l_ecran(void);", "")
 
     nu_ui = sans_commentaires(ui_c)
     nu_main = sans_commentaires(main_c)
@@ -550,6 +788,44 @@ def section_boot(ui_c, main_c, ui_h):
          "`build_scene()` CONCLUT l'etat de demarrage en tete (AC1.4)",
          "⛔ sinon `s_scr_dem` devient un pointeur PENDANT")
 
+    # ══════════════════════════════════════════════════════════════════════════
+    # 🔴 REVUE DU 2026-09-01 — **LA DUREE DE VIE DU TIMER N'ETAIT CONTROLEE PAR
+    #    RIEN**, alors que c'est la moitie du danger que cette gate documente.
+    #    Le commentaire de `build_scene()` annonce *« le timer `dem_tick`
+    #    ecrirait dedans 250 ms plus tard, sur un pointeur PENDANT »* — et un
+    #    mutant supprimant `lv_timer_delete(s_dem_timer)` laissait la gate
+    #    VERTE.
+    # ══════════════════════════════════════════════════════════════════════════
+    concl = re.search(r"static void demarrage_conclure_nolock\(.*?\n\}",
+                      nu_ui, re.S)
+    corps_concl = concl.group(0) if concl else ""
+    dire("lv_timer_delete(s_dem_timer)" in corps_concl
+         and "s_dem_timer = NULL" in corps_concl,
+         "la conclusion SUPPRIME le timer, et oublie son pointeur",
+         "⛔ sinon `dem_tick` s'executerait sur un ecran DETRUIT")
+
+    tick_nu = re.search(r"static void dem_tick\(lv_timer_t \*t\)\s*\{(.{0,200})",
+                        nu_ui, re.S)
+    dire(bool(tick_nu) and "if (!s_scr_dem)" in tick_nu.group(1),
+         "…et `dem_tick` SORT si l'ecran n'existe plus (garde en tete)",
+         "⛔ la seule barriere si un tick reste en vol")
+
+    creation = re.search(
+        r"s_dem_timer = lv_timer_create\([^;]*;(.{0,400})", nu_ui, re.S)
+    dire(bool(creation) and "if (!s_dem_timer)" in creation.group(1),
+         "…et le RETOUR de `lv_timer_create` est CONTROLE",
+         "⛔ sans timer, l'etat de demarrage ne peut ni conclure ni se mesurer "
+         "— il resterait sur la dalle sans un mot")
+
+    # ⚠️ `ui_h` est enfin UTILISE : il etait passe a cette section et jamais lu.
+    getters = ["dn_ui_demarrage_armer", "dn_ui_demarrage_builds",
+               "dn_ui_demarrage_trop_larges", "dn_ui_demarrage_a_l_ecran"]
+    non_declares = [g for g in getters if g not in ui_h]
+    dire(not non_declares,
+         "les lecteurs de l'etat de demarrage sont DECLARES dans `dn_ui.h`",
+         "⛔ un instrument qu'aucun en-tete ne publie n'est lisible par "
+         "personne · manquant(s) : %s" % (non_declares or "aucun"))
+
     appels_reset = len(re.findall(r"dn_dem_reset_pour_gate\s*\(", nu_ui + nu_main))
     dire(appels_reset == 0,
          "⛔ `dn_dem_reset_pour_gate()` n'a AUCUN appelant dans le firmware",
@@ -586,6 +862,18 @@ def section_libelles(ui_c, langue_h, polices):
             "        lv_obj_t *l = texte(s_scr_dem, \"controle du bus I2C\", lignes[i].font,", 1)
     ui_c = M(19, ui_c, "if (dn_dem_err_vues() > 0 && s_dem_lbl_tact",
              "if (dn_dem_duree_ms() > 3000 && s_dem_lbl_tact")
+    if _MUTANT == 46:
+        for _mort in ("DN_T_DEM_TITRE, &dn_font_28, 0xa0d8ff, DEM_Y_TITRE, "
+                      "DEM_LH_28,\n         \"titre\", NULL},",
+                      "DN_T_DEM_EN_COURS, &dn_font_28, 0xffffff, DEM_Y_ETAT, "
+                      "DEM_LH_28,\n         \"etat\", NULL},",
+                      "DN_T_DEM_CONTROLE, &dn_font_18, 0xc0d8e8, DEM_Y_CTRL, "
+                      "DEM_LH_18,\n         \"controle\", NULL},"):
+            if "{" + _mort not in ui_c:
+                sys.exit("MUTANT 46 INAPPLICABLE : %r introuvable." % _mort[:40])
+            ui_c = ui_c.replace("{" + _mort, "", 1)
+    ui_c = M(48, ui_c, "    dn_touch_stats_t st;\n    dn_touch_get_stats(&st);\n    uint32_t t_ms = (uint32_t)(esp_timer_get_time() / 1000);\n    dn_dem_verdict_t v = dn_dem_tick",
+             "    lv_label_set_text(s_dem_lbl_tact, \"veuillez patienter\");\n    dn_touch_stats_t st;\n    dn_touch_get_stats(&st);\n    uint32_t t_ms = (uint32_t)(esp_timer_get_time() / 1000);\n    dn_dem_verdict_t v = dn_dem_tick")
 
     cles = cles_de_l_ecran(ui_c)
     dire(len(cles) >= 3,
@@ -643,16 +931,70 @@ def section_libelles(ui_c, langue_h, polices):
     constr = re.search(r"static void demarrage_construire\(void\)\s*\{(.*?)\n\}",
                        sans_commentaires(ui_c), re.S)
     corps = constr.group(1) if constr else ""
-    litteraux = [s for s in re.findall(r'"((?:\\.|[^"\\])*)"', corps)
-                 if re.search(r"[A-Za-z]{4}", s)
-                 and not re.fullmatch(r"[a-z ]+", s)]
+    # ══════════════════════════════════════════════════════════════════════════
+    # 🔴 REVUE DU 2026-09-01 — **LE TROU ETAIT TAILLE SUR LE MUTANT QUI LE
+    #    TESTAIT.**
+    #
+    # ⛔ Le filtre disait `not re.fullmatch(r"[a-z ]+", s)` : il EXEMPTAIT donc
+    #    **tout litteral ASCII entierement en minuscules**. MESURE : injecter
+    #    `"veuillez patienter"` — la formule qu'AC3.4 interdit NOMMEMENT — dans
+    #    `demarrage_construire()` rendait `[OK ] … vus : aucun`, `38 OK, 0 KO`,
+    #    rc 0. Passaient aussi les traductions EN reelles (`starting up`,
+    #    `touch is not responding yet`). Le mutant 18 ne rougissait que parce
+    #    qu'il contenait `I2C` **en majuscules** : il prouvait qu'on attrapait
+    #    *ce* mutant, ⛔ pas la classe annoncee.
+    #
+    # ✅ L'EXEMPTION EST DESORMAIS **NOMMEE ET FERMEE** : seuls les libelles du
+    #    champ `quoi` du tableau `lignes[]` — qui ne sont PAS affiches, ils
+    #    nomment la ligne pour le journal de geometrie — sont tolerés, et ils
+    #    sont RELUS du tableau lui-meme.
+    # ══════════════════════════════════════════════════════════════════════════
+    bloc_lignes = re.search(r"\} lignes\[\] = \{(.*?)\n    \};", corps, re.S)
+    quoi_attendus = set(re.findall(r'"([a-z ]+)",\s*(?:&?s_dem_\w+|NULL)\}',
+                                   bloc_lignes.group(1))) if bloc_lignes else set()
+
+    # 🔴 Mutant 47 : re-plante l'exemption qui laissait passer « veuillez
+    #    patienter » — la faute est le motif TROP LARGE, ⛔ pas son absence.
+    _trou_47 = (_MUTANT == 47)
+
+    def _en_dur(src, quoi_ok):
+        # ⚠️ LE JOURNAL N'EST PAS LA DALLE. `ESP_LOGx()` porte legitimement de
+        #    la prose francaise : la regle d'AC3.1 vise ce qui est AFFICHE, ⛔
+        #    pas ce qui est trace. On retire donc les appels de journal AVANT de
+        #    chercher — ⛔ et on ne retire rien d'autre, pour que la garde reste
+        #    fermee sur tout le reste.
+        src = re.sub(r"ESP_LOG[A-Z]\s*\([^;]*?\);", " ", src, flags=re.S)
+        return [x for x in re.findall(r'"((?:\\.|[^"\\])*)"', src)
+                if re.search(r"[A-Za-z]{4}", x) and x not in quoi_ok
+                and not (_trou_47 and re.fullmatch(r"[a-z ]+", x))]
+
+    litteraux = _en_dur(corps, quoi_attendus)
     dire(not litteraux,
          "⛔ aucun libelle EN DUR dans l'ecran — tout passe par `dn_t()`",
-         "vus : %s" % (litteraux if litteraux else "aucun"))
+         "exemptes (champ `quoi`, ⛔ non affiche) : %s · vus : %s"
+         % (sorted(quoi_attendus) or "aucun", litteraux or "aucun"))
+
+    # 🔴 LE TEMOIN NEGATIF DE CETTE EXEMPTION. ⛔ Sans lui, on ne saurait pas si
+    #    le filtre attrape encore quoi que ce soit — un motif trop large se lit
+    #    VERT exactement comme un fichier propre.
+    appat = 'lv_label_set_text(l, "veuillez patienter");'
+    dire(bool(_en_dur(corps + "\n" + appat, quoi_attendus)),
+         "…et le filtre ATTRAPE encore un litteral minuscule (temoin negatif)",
+         "appat « veuillez patienter » — ⛔ la formule qu'AC3.4 interdit "
+         "nommement passait VERTE avant la revue du 2026-09-01")
 
     tick = re.search(r"static void dem_tick\(lv_timer_t \*t\)\s*\{(.*?)\n\}",
                      sans_commentaires(ui_c), re.S)
     corps_t = tick.group(1) if tick else ""
+
+    # 🔴 ET LA GARDE COUVRE AUSSI `dem_tick()` — c'est LA que le 2e temps est
+    #    revele. Le controle etait scope a `demarrage_construire()` SEULE : un
+    #    libelle pose ici y echappait entierement (motif « gate scopee a UNE
+    #    fonction qui epingle vert le meme defaut ailleurs »).
+    litteraux_t = _en_dur(corps_t, set())
+    dire(not litteraux_t,
+         "⛔ …ni dans `dem_tick()`, ou le 2e temps est REVELE",
+         "vus : %s" % (litteraux_t or "aucun"))
     dire("dn_dem_err_vues() > 0" in corps_t,
          "le 2e temps est conditionne a une MESURE, ⛔ pas a un delai",
          "arbitrage owner du 2026-09-01")
@@ -662,17 +1004,41 @@ def section_libelles(ui_c, langue_h, polices):
 # 5. LE BUDGET EST GARDE PAR LE COMPILATEUR
 # ══════════════════════════════════════════════════════════════════════════════
 
-def section_budget(ui_c, dem_h):
+def section_budget(ui_c, dem_h, dem_c):
     print("\n── 5. LE BUDGET EST GARDE PAR LE COMPILATEUR (AC2.2) ──────────")
 
     ui_c = M(20, ui_c, "#define DEM_Y_ETAT 250", "#define DEM_Y_ETAT 210")
+    ui_c = M(29, ui_c,
+             '_Static_assert(DEM_Y_CTRL + DEM_LH_18 <= DEM_Y_TACT,\n'
+             '               "dn4-43 : la ligne de controle mord sur le second temps.");',
+             "")
+    dem_h = M(30, dem_h, "#define DN_DEM_LECTURES_PAR_S_PLANCHER 20u",
+              "#define DN_DEM_LECT_PAR_S 20u")
+    # ⚠️ Mutant 31 : ici la FAUTE **EST** la neutralisation — la classe de defaut
+    #    visee par le temoin negatif est justement « une assertion qui ne mord
+    #    plus ». ⛔ Ce n'est pas un mutant qui debranche une garde au hasard.
+    dem_h = M(31, dem_h, "_Static_assert(DN_DEM_LECTURES_MIN * 1000u",
+              "_Static_assert(1 || DN_DEM_LECTURES_MIN * 1000u")
     ui_c = M(22, ui_c, "    int lh = (int)lv_font_get_line_height(font);", "    int lh = 0;")
     dem_h = M(21, dem_h, "#define DN_DEM_LECTURES_MIN 20u",
               "#define DN_DEM_LECTURES_MIN 200u")
     dem_h = M(27, dem_h, "_Static_assert(DN_DEM_FENETRE_MS < DN_DEM_PLAFOND_MS,",
               "_Static_assert(1, \"\"); _Static_assert(1,")
 
-    env = {"DN_LCD_V_RES": 640}
+    # 🔴 REVUE DU 2026-09-01 — **LA GEOMETRIE DE DALLE EST RELUE, ⛔ PLUS
+    #    ECRITE EN DUR.** `640` etait un litteral ici alors que le
+    #    `_Static_assert` qu'on pretend « refaire » utilise `DN_LCD_V_RES` : un
+    #    changement de dalle ou de rotation aurait laisse ce controle VERT sur
+    #    une addition devenue fausse.
+    display_h = M(28, lire(F_PINS_H), "#define DN_LCD_V_RES 640",
+                  "#define DN_LCD_VERT_RES 640")
+    v_res = defini(display_h, "DN_LCD_V_RES")
+    h_res = defini(display_h, "DN_LCD_H_RES")
+    dire(v_res is not None and h_res is not None,
+         "la geometrie de la dalle est RELUE de son en-tete",
+         "DN_LCD_H_RES=%s, DN_LCD_V_RES=%s ⛔ pas des litteraux"
+         % (h_res, v_res))
+    env = {"DN_LCD_V_RES": v_res}
     for n in ("DEM_LH_28", "DEM_LH_18", "DEM_Y_TITRE", "DEM_Y_ETAT",
               "DEM_Y_CTRL", "DEM_Y_TACT", "DEM_Y_TACT_FIN"):
         env[n] = defini(ui_c, n, env)
@@ -686,10 +1052,11 @@ def section_budget(ui_c, dem_h):
                  and env[a] + env[h] > env[b]]
     bas = (env["DEM_Y_TACT_FIN"] + env["DEM_LH_18"]
            if None not in (env["DEM_Y_TACT_FIN"], env["DEM_LH_18"]) else None)
-    dire(not lu and not chevauche and bas is not None and bas <= 640,
+    dire(not lu and not chevauche and bas is not None and v_res is not None
+         and bas <= v_res,
          "le budget VERTICAL est juste — l'addition est REFAITE ici",
-         "illisible : %s · chevauchement(s) : %s · bas = %s <= 640"
-         % (lu or "aucun", chevauche or "aucun", bas))
+         "illisible : %s · chevauchement(s) : %s · bas = %s <= %s"
+         % (lu or "aucun", chevauche or "aucun", bas, v_res))
 
     asserts_ui = re.findall(r"_Static_assert\(\s*(DEM_Y_\w+[^,]*),", ui_c)
     dire(len(asserts_ui) >= len(empilement) + 1,
@@ -700,19 +1067,74 @@ def section_budget(ui_c, dem_h):
     for n in ("DN_DEM_FENETRE_MS", "DN_DEM_LECTURES_MIN", "DN_DEM_PLAFOND_MS",
               "DN_DEM_LECTURES_PAR_S_PLANCHER"):
         cst[n] = defini(dem_h, n)
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # 🔴 REVUE DU 2026-09-01 — **UNE CONSTANTE ILLISIBLE DIT « KO », ⛔ ELLE NE
+    #    FAIT PLUS PLANTER LA GATE.**
+    #    MESURE : renommer `DN_DEM_LECTURES_PAR_S_PLANCHER` donnait
+    #    `TypeError: unsupported operand type(s) for *: 'int' and 'NoneType'`,
+    #    un traceback, et **aucune ligne BILAN**. C'est litteralement le mode
+    #    d'echec que le docstring de cette gate s'interdit — et le 4e defaut de
+    #    gate deja consigne au Debug Log de la story, revenu par un autre bout.
+    # ══════════════════════════════════════════════════════════════════════════
+    illisibles = [n for n in cst if cst[n] is None]
+    dire(not illisibles,
+         "le budget TEMPOREL est LISIBLE — ⛔ une gate qui plante ne dit rien",
+         "illisible(s) : %s" % (illisibles or "aucune"))
+
     asserts_h = re.findall(r"_Static_assert\(\s*(DN_DEM_\w+[^,]*),", dem_h)
-    peuplable = (cst["DN_DEM_LECTURES_MIN"] is not None
-                 and cst["DN_DEM_FENETRE_MS"] is not None
-                 and cst["DN_DEM_LECTURES_MIN"] * 1000
-                 <= cst["DN_DEM_FENETRE_MS"] * cst["DN_DEM_LECTURES_PAR_S_PLANCHER"])
-    dire(peuplable and cst["DN_DEM_FENETRE_MS"] < cst["DN_DEM_PLAFOND_MS"]
-         and len(asserts_h) >= 3,
-         "le budget TEMPOREL est juste, et garde par `_Static_assert`",
-         "fenetre %s ms porte %s lecture(s) au plancher mesure ; %d assertion(s)"
-         % (cst["DN_DEM_FENETRE_MS"],
-            (cst["DN_DEM_FENETRE_MS"] * cst["DN_DEM_LECTURES_PAR_S_PLANCHER"]
-             // 1000) if cst["DN_DEM_FENETRE_MS"] else "?",
-            len(asserts_h)))
+    if illisibles:
+        dire(False,
+             "le budget TEMPOREL est juste, et garde par `_Static_assert`",
+             "⛔ NON EVALUE : %s illisible(s)" % illisibles)
+    else:
+        peuplable = (cst["DN_DEM_LECTURES_MIN"] * 1000
+                     <= cst["DN_DEM_FENETRE_MS"]
+                     * cst["DN_DEM_LECTURES_PAR_S_PLANCHER"])
+        dire(peuplable and cst["DN_DEM_FENETRE_MS"] < cst["DN_DEM_PLAFOND_MS"]
+             and len(asserts_h) >= 3,
+             "le budget TEMPOREL est juste, et garde par `_Static_assert`",
+             "fenetre %s ms porte %s lecture(s) au plancher mesure ; "
+             "%d assertion(s)"
+             % (cst["DN_DEM_FENETRE_MS"],
+                cst["DN_DEM_FENETRE_MS"]
+                * cst["DN_DEM_LECTURES_PAR_S_PLANCHER"] // 1000,
+                len(asserts_h)))
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # 🔴 REVUE DU 2026-09-01 — **« GARDE PAR LE COMPILATEUR » EST DESORMAIS
+    #    PROUVE PAR LE COMPILATEUR.**
+    #
+    # ⛔ Cette section REFAISAIT l'arithmetique en Python et COMPTAIT les
+    #    `_Static_assert`. Elle ne montrait jamais qu'ils MORDENT. Pire, le
+    #    mutant 21 (`DN_DEM_LECTURES_MIN` a 200u) mutait une variable LOCALE :
+    #    `main()` passait ensuite le `dem_h` D'ORIGINE au compilateur mais le
+    #    `cst` MUTE — si bien que la section d'execution ANNONCAIT
+    #    « fenetre a MOINS de 200 lecture(s) » sur un `.so` compile avec 20.
+    #    C'est l'image miroir exacte du defaut de gate n° 2 du Debug Log.
+    #
+    # ✅ Deux tirs, et ils se repondent :
+    #    · l'en-tete du depot (ou du mutant) DOIT compiler ⇒ le mutant 21 fait
+    #      desormais rougir ICI, en atteignant vraiment `cc` ;
+    #    · un en-tete deliberement hors budget DOIT ECHOUER ⇒ **temoin
+    #      negatif** : sans lui, une assertion neutralisee se lirait verte
+    #      exactement comme une assertion qui mord.
+    # ══════════════════════════════════════════════════════════════════════════
+    dire(construire_module(dem_c, dem_h, "en-tete tel qu'il est") is not None,
+         "l'en-tete du depot COMPILE — les `_Static_assert` passent",
+         "⛔ un budget hors clous casserait la compilation, ⛔ pas un test")
+
+    lmin_lu = re.search(r"^#define\s+DN_DEM_LECTURES_MIN\s+.*$", dem_h, re.M)
+    if lmin_lu:
+        dem_h_faux = dem_h.replace(lmin_lu.group(0),
+                                   "#define DN_DEM_LECTURES_MIN 100000u", 1)
+        dire(construire_module(dem_c, dem_h_faux, "temoin negatif",
+                               silencieux=True) is None,
+             "…et un budget HORS CLOUS fait ECHOUER `cc` (temoin negatif)",
+             "⛔ sans ce tir, une assertion neutralisee se lirait VERTE")
+    else:
+        dire(False, "…et un budget HORS CLOUS fait ECHOUER `cc` (temoin negatif)",
+             "⛔ NON EVALUE : `DN_DEM_LECTURES_MIN` illisible")
 
     ctrl = re.search(r"static void dem_geometrie_controler\(.*?\n\}",
                      sans_commentaires(ui_c), re.S)
@@ -730,14 +1152,23 @@ def section_budget(ui_c, dem_h):
 def section_dossier(console, readme):
     print("\n── 6. LA CONSOLE ET LE DOSSIER LE DISENT (AC7) ────────────────")
 
-    console = M(23, console, 'printf("  err I2C vues    : %" PRIu32 "\\n", dn_dem_err_vues());', "")
+    # ⚠️ REVUE DU 2026-09-01 — **CETTE ANCRE ETAIT MORTE.** `cmd_dem` est passe
+    #    a un INSTANTANE pris sous verrou : le `printf` ne lit plus le getter,
+    #    il lit une variable. Le mutant sortait donc en « INAPPLICABLE » — et
+    #    c'est la garde de `M()` qui l'a dit, ⛔ pas une relecture.
+    console = M(23, console, "uint32_t v_err = dn_dem_err_vues();",
+                "uint32_t v_err = 0;")
     readme = M(24, readme, "55,5", "cinquante-cinq virgule cinq")
     readme = M(25, readme, "L'ÉTAT DE DÉMARRAGE, ET LE DÉFAUT CONNU",
                "AUTRE CHOSE, SANS RAPPORT")
 
     lecteurs = ["dn_dem_verdict", "dn_dem_duree_ms", "dn_dem_err_vues",
                 "dn_dem_fenetres_cassees", "dn_dem_lectures_vues",
-                "dn_dem_rearmements_refuses", "dn_ui_demarrage_builds"]
+                "dn_dem_rearmements_refuses", "dn_ui_demarrage_builds",
+                # ⚠️ REVUE DU 2026-09-01 — il etait PUBLIE par `cmd_dem` et
+                #    absent de cette liste : le controle « la console publie
+                #    tout » ne le gardait donc pas.
+                "dn_ui_demarrage_trop_larges"]
     absents = [l for l in lecteurs if l not in console]
     dire(not absents,
          "la console PUBLIE tout ce que l'etat de demarrage sait",
@@ -794,7 +1225,7 @@ def main():
     readme = lire(F_README)
     polices = dn_police.toutes()
 
-    cst = section_budget(ui_c, dem_h)
+    cst = section_budget(ui_c, dem_h, dem_c)
     dem_c_mute = muter_module(dem_c)
     section_execution(dem_c_mute, dem_h, cst)
     section_critere(dem_c_mute, dem_h)

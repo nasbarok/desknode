@@ -1,0 +1,72 @@
+==============================================================================
+dn4-43 / AC5.3 — CAMPAGNE DE MUTANTS APRES LA REVUE DE CODE DU 2026-09-01
+==============================================================================
+
+BUT : prouver `controle => couvert par au moins un mutant`, et ⛔ PAS seulement
+      `mutant => rouge`. La campagne d'origine annoncait « 27 declares, 27
+      appliques, 27 VUS ROUGIR » — et c'etait VRAI. Mais l'union des [KO ] ne
+      couvrait que 30 controles sur 38 : HUIT etaient gardes par rien, dont
+      celui qui garde les cinq _Static_assert de geometrie d'AC2.2.
+
+TIR SAIN : 58 controles, rc=0
+MUTANTS DECLARES : 48  (1..27 d'origine, 28..48 ajoutes par la revue)
+
+   1  rc=1   4 KO  | PIEGE DU VIDE : compteurs figes ⇒ ⛔ JAMAIS « PROPRE »
+   2  rc=1   2 KO  | critere ET plafond au MEME tick : c'est l'ETAT qui tranche
+   3  rc=1   6 KO  | erreurs CONTINUES : reste EN COURS bien apres la fenetre
+   4  rc=1   1 KO  | AC1.4 : un 2e armement apres une fin est REFUSE, et COMPTE
+   5  rc=1   1 KO  | UNDERFLOW : compteurs remis a zero ⇒ ⛔ pas de « PROPRE » p
+   6  rc=1   1 KO  | tactile ABSENT : « SANS TACTILE », ⛔ jamais « PROPRE »
+   7  rc=1   1 KO  | verdict HORS ENUM : rend « ? », ⛔ pas le mot d'un autre ve
+   8  rc=1   2 KO  | le module COMPILE — ⛔ et sans un seul shim
+   9  rc=1   1 KO  | ⛔ `dn_dem_reset_pour_gate()` n'a AUCUN appelant dans le fi
+  10  rc=1   2 KO  | `dn_ui_init` construit l'ecran de demarrage APRES `build_s
+  11  rc=1   1 KO  | …et elle le CHARGE — ⛔ un ecran cree n'est pas un ecran AT
+  12  rc=1   1 KO  | `app_main` arme APRES `dn_touch_attach_lvgl` — ⛔ la course
+  13  rc=1   1 KO  | `build_scene()` CONCLUT l'etat de demarrage en tete (AC1.4
+  14  rc=1   1 KO  | `demarrage_construire()` n'a qu'UN SEUL appelant (AC1.4)
+  15  rc=1   1 KO  | chaque ligne a ses DEUX traductions, et aucune n'est VIDE
+  16  rc=1   1 KO  | ⛔ AUCUN glyphe absent des polices (il serait dessine EN BO
+  17  rc=1   1 KO  | les largeurs tiennent sur la dalle dans les DEUX langues
+  18  rc=1   2 KO  | chaque ligne a ses DEUX traductions, et aucune n'est VIDE
+  19  rc=1   1 KO  | le 2e temps est conditionne a une MESURE, ⛔ pas a un delai
+  20  rc=1   1 KO  | le budget VERTICAL est juste — l'addition est REFAITE ici
+  21  rc=1   3 KO  | le budget TEMPOREL est juste, et garde par `_Static_assert
+  22  rc=1   1 KO  | la hauteur de ligne budgetee est RELUE a la construction
+  23  rc=1   1 KO  | la console PUBLIE tout ce que l'etat de demarrage sait
+  24  rc=1   1 KO  | le Known-issues porte les 55,5 %, les ~40 s et l'auto-reta
+  25  rc=1   1 KO  | le README dit ce que l'etat de demarrage SIGNIFIE
+  26  rc=1   4 KO  | PIEGE DU VIDE : compteurs figes ⇒ ⛔ JAMAIS « PROPRE »
+  27  rc=1   1 KO  | le budget TEMPOREL est juste, et garde par `_Static_assert
+  28  rc=1   2 KO  | la geometrie de la dalle est RELUE de son en-tete
+  29  rc=1   1 KO  | …et il est GARDE par `_Static_assert`, ⛔ pas par un commen
+  30  rc=1   3 KO  | le budget TEMPOREL est LISIBLE — ⛔ une gate qui plante ne
+  31  rc=1   2 KO  | le budget TEMPOREL est juste, et garde par `_Static_assert
+  32  rc=1   5 KO  | boot SAIN : conclut PROPRE, ⛔ pas au plafond
+  33  rc=1   1 KO  | …et les erreurs vues sont COMPTEES (elles arment le 2e tem
+  34  rc=1   1 KO  | …et a 20, elle conclut — la borne est en `>=`, ⛔ pas en `>
+  35  rc=1   1 KO  | `dn_dem_conclure()` sur une machine NON ARMEE ne pose RIEN
+  36  rc=1   1 KO  | …et elle REFUSE `EN_COURS` et les valeurs hors enum
+  37  rc=1   2 KO  | `dn_dem_conclure(RECONSTRUCTION)` POSE bien la fin
+  38  rc=1   1 KO  | …et une fin est DEFINITIVE : le tick d'apres ne la defait
+  39  rc=1   5 KO  | PIEGE DU VIDE : compteurs figes ⇒ ⛔ JAMAIS « PROPRE »
+  40  rc=1   3 KO  | bus qui ne se retablit JAMAIS : le plafond TOMBE quand mem
+  41  rc=1   1 KO  | …et AVANT l'allumage du retroeclairage (etape 7)
+  42  rc=1   1 KO  | la conclusion SUPPRIME le timer, et oublie son pointeur
+  43  rc=1   1 KO  | …et `dem_tick` SORT si l'ecran n'existe plus (garde en tet
+  44  rc=1   1 KO  | …et le RETOUR de `lv_timer_create` est CONTROLE
+  45  rc=1   1 KO  | les lecteurs de l'etat de demarrage sont DECLARES dans `dn
+  46  rc=1   1 KO  | l'ecran de demarrage tire ses lignes de la TABLE
+  47  rc=1   1 KO  | …et le filtre ATTRAPE encore un litteral minuscule (temoin
+  48  rc=1   1 KO  | ⛔ …ni dans `dem_tick()`, ou le 2e temps est REVELE
+
+==============================================================================
+BILAN DE COUVERTURE
+==============================================================================
+  controles au tir sain          : 58
+  mutants declares et appliques  : 48
+  mutants INAPPLICABLES          : aucun
+  mutants qui ne rougissent rien : aucun
+  controles NON couverts         : 0
+
+  => AC5.3 : ✅ TENUE
