@@ -175,6 +175,32 @@ def code_du_firmware():
             txt = re.sub(r"/\*.*?\*/", " ", txt, flags=re.S)
             txt = re.sub(r"//[^\n]*", " ", txt)
             morceaux.append(txt)
+    #
+    # 🔴 ÉTENDU LE 2026-09-01 (`dn4-42`) — LES COMPOSANTS MANAGÉS SONT DU
+    #    FIRMWARE AUSSI, ET LA GATE DISAIT LE CONTRAIRE.
+    #
+    # `managed_components/` est VERSIONNÉ, COMPILÉ et LIÉ dans le binaire : une
+    # fonction LVGL y est aussi embarquée que `dn_ui_pc_maj`. La gate ne lisait
+    # pourtant que `main/`, et déclarait donc FANTÔME toute citation d'API LVGL
+    # que `HORS_PERIMETRE` n'avait pas listée à la main.
+    # ⇒ MESURÉ : `tools/dn_police.py` cite `lv_text_get_width()` et
+    #   `lv_font_get_glyph_dsc_fmt_txt()` — deux fonctions **qui existent**, à
+    #   `managed_components/lvgl__lvgl/src/`. Elles ont fait rougir la gate.
+    # ⛔ LA PARADE N'EST PAS DE LES AJOUTER À `HORS_PERIMETRE` : cette liste
+    #    nomme ce qui **n'est pas dans l'arbre**. Y ranger du code présent
+    #    ferait mentir la liste, et le prochain auteur paierait le même prix
+    #    sur une autre fonction LVGL.
+    # ⚠️ Le balayage est RÉCURSIF mais BORNÉ aux `.c`/`.h`, et les commentaires
+    #    y sont retirés comme ci-dessus, pour le même motif exactement.
+    mc = os.path.join(RACINE, "firmware", "desknode", "managed_components")
+    if os.path.isdir(mc):
+        for racine_, _sd, fichiers in os.walk(mc):
+            for f in sorted(fichiers):
+                if f.endswith(".c") or f.endswith(".h"):
+                    txt, _ = lire(os.path.join(racine_, f))
+                    txt = re.sub(r"/\*.*?\*/", " ", txt, flags=re.S)
+                    txt = re.sub(r"//[^\n]*", " ", txt)
+                    morceaux.append(txt)
     return "\n".join(morceaux)
 
 

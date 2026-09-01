@@ -2602,8 +2602,21 @@ def bloc_barre_date_forme():
              "…et c'est « %s %02u %s » : jsem, jour sur DEUX chiffres, mois",
              "⛔ inverser deux champs ne casserait NI la compilation NI le rendu")
     # Les DEUX jeux de ternaires doivent traiter le RTC degrade pareil.
-    n_js = len(re.findall(r'\?\s*k_jsem_court\[\w+(?:->\w+)?\]\s*:\s*"\?\?\?"', uc))
-    n_mo = len(re.findall(r'\?\s*k_mois_court\[[^\]]+\]\s*:\s*"\?\?\?"', uc))
+    # 🔴 LE MOTIF TOLÈRE UN ENVELOPPEUR (`dn4-42`, 2026-09-01), ET C'EST UNE
+    #    CORRECTION D'ANCRE, ⛔ PAS UN ASSOUPLISSEMENT DE LA PROPRIÉTÉ.
+    #    Depuis que les 19 jetons de date sont des CLÉS de langue, les deux
+    #    sites écrivent `dn_t(k_jsem_court[…])`. **La propriété gardée — les
+    #    deux sites traitent le RTC dégradé de la MÊME façon — est inchangée**,
+    #    et c'est bien elle qu'on continue de compter.
+    # ⚠️ L'enveloppeur est écrit `\w+\(` et ⛔ PAS `dn_t\(` : coder le nom du
+    #    jour ferait payer la même ancre au prochain auteur qui l'enveloppe
+    #    autrement. C'est le défaut de `dn4-16`, et il ne se refait pas ici.
+    _ENV = r'(?:\w+\s*\()?'
+    _FIN = r'\)?'
+    n_js = len(re.findall(r'\?\s*' + _ENV + r'k_jsem_court\[\w+(?:->\w+)?\]' + _FIN
+                          + r'\s*:\s*"\?\?\?"', uc))
+    n_mo = len(re.findall(r'\?\s*' + _ENV + r'k_mois_court\[[^\]]+\]' + _FIN
+                          + r'\s*:\s*"\?\?\?"', uc))
     ctrl(n_js >= 2 and n_mo >= 2,
          "le repli « ??? » du RTC degrade est aux DEUX sites",
          "jsem %d · mois %d — ⛔ le composeur l'emettait et l'instrument le "

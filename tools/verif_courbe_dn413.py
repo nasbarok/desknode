@@ -560,7 +560,18 @@ def i_fond_trois_etats(S):
     b_str = corps(S["ui_str"], "static void fond_poser(lv_obj_t *scr)")
     if b_str is None:
         return False, "`fond_poser` introuvable dans la vue a chaines"
-    if not re.search(r'lv_label_set_text\(\s*\w+\s*,\s*"ASSET ABSENT"\s*\)',
+    #
+    # 🔴 L'ANCRE A CHANGE LE 2026-09-01 (`dn4-42`), ⛔ PAS LA PROPRIETE.
+    #    Le libelle du panneau de panne est passe d'un LITTERAL a une CLE de
+    #    langue (`dn_t(DN_T_ASSET_ABSENT)`) : « ASSET ABSENT » n'est plus dans
+    #    `dn_ui.c`, il est dans `dn_langue.h`. **La decision n°2 — le panneau
+    #    est POSE dans `fond_poser` — est intacte**, et c'est elle qu'on garde.
+    # ⛔ ON NE CHERCHE PLUS LE TEXTE, ON CHERCHE **LE GESTE** : un
+    #    `lv_label_set_text` dans `fond_poser`, sur la cle du panneau de panne.
+    #    C'est plus robuste, ⛔ pas plus laxiste : le mutant du temoin remplace
+    #    la cle, et le controle rougit.
+    if not re.search(r'lv_label_set_text\(\s*\w+\s*,\s*'
+                     r'(?:"ASSET ABSENT"|dn_t\w*\(\s*DN_T_ASSET_ABSENT\s*\))\s*\)',
                      b_str):
         return False, ("le libelle ASSET ABSENT n'est plus POSE dans "
                        "`fond_poser` (decision n°2 violee)")
@@ -665,9 +676,13 @@ INVARIANTS = [  # (libelle, invariant, [(fichier, avant, apres), ...])
      #    (`.icone` du widget) et au niveau de la GRANDEUR 0. La premiere version
      #    de ce temoin retirait la premiere occurrence — celle de la case — et la
      #    gate restait verte A RAISON. Le motif porte donc son ancre.
-     [("ui", '"C", .icone = DN_ICONE_THERMOMETER_HALF,', '"C",'),
-      ("ui", ".unite = \"Mb/s\", .icone = LV_SYMBOL_UP,",
-       ".unite = \"Mb/s\","),
+     # ⚠️ ANCRES REPRISES LE 2026-09-01 (`dn4-42`) : les unites sont passees
+     #    de LITTERAUX a des CLES (`DN_T_U_DEGC`, `DN_T_U_MBPS`). ⛔ Le temoin
+     #    vise toujours la MEME chose — l'icone de la GRANDEUR, ⛔ pas celle de
+     #    la case — et c'est pour ca que l'ancre porte l'unite qui la precede.
+     [("ui", 'DN_T_U_DEGC, .icone = DN_ICONE_THERMOMETER_HALF,', 'DN_T_U_DEGC,'),
+      ("ui", ".unite = DN_T_U_MBPS, .icone = LV_SYMBOL_UP,",
+       ".unite = DN_T_U_MBPS,"),
       ("ui", "if (ic && cc) {", "if (false) {")]),
     ("⛔ aucun LV_SYMBOL_* dans le libelle en font 14",
      i_pas_de_symbole_en_font14, []),
@@ -711,7 +726,8 @@ INVARIANTS = [  # (libelle, invariant, [(fichier, avant, apres), ...])
     ("AC9 `fond_poser()` a TROIS etats, `off` ne pose RIEN",
      i_fond_trois_etats,
      [("ui", "    if (!s_fond_on) {\n        return; /* état 1", "    if (false) {\n        return; /* état 1"),
-      ("ui", 'lv_label_set_text(t, "ASSET ABSENT");',
+      # ⚠️ ANCRE REPRISE LE 2026-09-01 (`dn4-42`) : le libelle est une CLE.
+      ("ui", 'lv_label_set_text(t, dn_t(DN_T_ASSET_ABSENT));',
        'lv_label_set_text(t, "rien");')]),
     ("AC9.4 les 139,5 ms sont DECLAREES non comparables",
      i_borne_option2_declaree,
