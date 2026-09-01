@@ -1,0 +1,111 @@
+================================================================================
+ dn5-1 / T0 — L'ETAT DU SOAK, MESURE           ⛔ SANS OUVRIR LE PORT SERIE
+================================================================================
+ Releve le 2026-09-02 vers 01:23 (heure WSL de la tour, +02:00)
+ depot : ~/projects/desknode @ e578def (arbre PROPRE, 0 ligne a `git status --porcelain`)
+
+ POURQUOI CE RELEVE EXISTE. Le dossier se contredit (story §7) : l'en-tete du
+ tracker et l'epic `dn5` disent « le soak de dn4-5 TOURNE ⇒ ⛔ aucun flash », la
+ ligne `dn4-5` dit « il n'a PAS commence » puis « COUPE », et `dn4-41`/`dn4-42`/
+ `dn4-43` ont flashe la carte les 31/08 et 01/09. ⛔ AC1.4.a interdit de supposer.
+ ⇒ On MESURE. Et on mesure PAR LES FICHIERS ET LA TABLE DES PROCESS, jamais en
+ ouvrant COM3 : l'attachement du port assert DTR/RTS et REDEMARRE la carte.
+
+--------------------------------------------------------------------------------
+ REPONSE  :  🔴 LE SOAK dn4-5 NE TOURNE PAS. IL EST MORT DEPUIS 7 JOURS.
+             ET IL N'A JAMAIS DURE QUE 60 SECONDES.
+--------------------------------------------------------------------------------
+
+ (1) LA BOITE NOIRE DU SOAK EST FIGEE — et son contenu dit sa propre fin
+ ---------------------------------------------------------------------------
+   fichier : H:\dev\projets\desknode\dn4-5-journal-soak.log
+   taille  : 9 838 o
+   mtime   : 2026-08-26 23:28:39 +0200     ⇒ ⛔ AUCUNE ECRITURE DEPUIS 7 JOURS
+
+   premiere ligne : 2026-08-26 23:27:39.771  DEPART    agent demarre — journal du soak arme
+   PORT OUVERT    : 2026-08-26 23:27:40.865  PORT      OUVERT (COM3)
+   dernier battement:2026-08-26 23:28:33.876 BATTEMENT up 50 s — vsync=1919 — flush=277 ...
+   derniere ligne : 2026-08-26 23:28:39.913  PORT      FERME (arret de l'agent)
+
+   ⇒ 🔴 LE SOAK N'A PAS ETE « COUPE EN COURS DE ROUTE APRES DES JOURS ».
+     Il a vecu 60 s : 23:27:39 -> 23:28:39. L'`up` de la carte plafonne a 50 s.
+   ⇒ ⚠️ ET LE MOTIF DU DERNIER RESET EST ECRIT DANS SES PROPRES BATTEMENTS :
+     « reset: USB (reset par le peripherique USB — replug/JTAG) ».
+
+ (2) L'AGENT QUI TOURNE AUJOURD'HUI N'ARME PAS LE JOURNAL DU SOAK
+ ---------------------------------------------------------------------------
+   fichier : H:\dev\projets\desknode\dn-agent.started
+     lance   : 2026-09-02T00:49:45+02:00
+     regime  : double-clic (detache)
+     args    : --serie COM3 --stop-si H:\dev\projets\desknode\dn-agent.stop --temoin
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   ⇒ 🔴 ⛔ AUCUN `--journal-soak` DANS LA LIGNE DE COMMANDE.
+
+   ET CE N'EST PAS UN OUBLI DE L'OWNER, C'EST LE LANCEUR :
+     tools/dn_agent_tour.ps1:344   $argl = @('--serie', $Serie, '--stop-si', $DRAPEAU)
+     tools/dn_agent_tour.ps1:345   if ($Temoin)      { $argl += '--temoin' }
+     tools/dn_agent_tour.ps1:346   if ($Duree -gt 0) { $argl += @('--duree', "$Duree") }
+   ⇒ ⛔ LE LANCEUR DEPLOYE N'A AUCUN CHEMIN QUI PASSE `--journal-soak`.
+     Le drapeau EXISTE dans l'agent (agent/dn_agent.py:3568, classe `JournalSoak`
+     ligne 2387) mais il n'est atteignable QU'A LA MAIN, en ligne de commande.
+
+   ⇒ 🎯 ECART DE DOSSIER A DECLARER, ET IL DEPLACE `dn4-5` :
+     la story `dn5-1` §6/AC1.4.b renvoie au journal « cf. tools/dn_agent_tour.ps1 /
+     tools/dn-agent.bat ». MESURE : ces deux fichiers ne le passent PAS. Le soak
+     de `dn4-5` n'est donc pas « arme et en cours » — il n'est PAS ARMABLE par le
+     geste owner livre (double-clic). ⇒ porte a `dn4-5` (voir T1, instance n°5).
+
+ (3) UN AGENT TOURNE — ET C'EST LUI QUI DONNE LE TEMOIN NFR8
+ ---------------------------------------------------------------------------
+   fichier : H:\dev\projets\desknode\dn-agent.log
+   taille  : 1 364 618 o · 11 628 lignes
+   mtime   : 2026-09-02 01:23:26 +0200   (soit 8 s avant ce releve — IL ECRIT)
+
+   derniere ligne :
+     [agent] temoin cout cumule : 37.969 s CPU / 2050.0 s mur = 1.852 % d'un coeur
+             (0.1158 % machine) — seq=10250
+
+   ⇒ 2050,0 s mur depuis 00:49:45  ⇒ coherent a la seconde avec `dn-agent.started`.
+   ⇒ CE COMPTEUR EST STRICTEMENT MONOTONE et s'ecrit toutes les 10 s.
+
+--------------------------------------------------------------------------------
+ CE QUE CETTE MESURE CHANGE POUR AC1.4  — le temoin, et pourquoi
+--------------------------------------------------------------------------------
+ AC1.4.d : « Si le soak NE TOURNE PAS, AC1.4 se tient a la lettre : le bandeau
+ est relu et le SHA compare. Le choix pris est ecrit avec son motif, DANS UN SENS
+ OU DANS L'AUTRE. »
+
+ CHOIX PRIS : ⛔ LE BANDEAU N'EST PAS RELU. TROIS MOTIFS, DANS L'ORDRE DE POIDS.
+
+  (a) 🎯 IL EXISTE UN TEMOIN STRICTEMENT PLUS FORT, ET IL EST CAUSAL — ⛔ PAS
+      CORRELATIF. Flasher la carte EXIGE COM3. COM3 est tenu EN EXCLUSIF par
+      l'agent depuis 00:49:45. Donc : si le compteur `s mur` de l'agent est
+      MONOTONE et ne retombe jamais a zero de part et d'autre de la fenetre de
+      push, alors l'agent n'est jamais mort, donc ⛔ AUCUN AUTRE PROCESS N'A PU
+      OBTENIR COM3, donc ⛔ AUCUN FLASH N'A PU AVOIR LIEU.
+      Un SHA relu au bandeau prouve « le binaire n'a pas change » ; le port tenu
+      prouve « le flash etait IMPOSSIBLE ». Le second contient le premier.
+
+  (b) ⚠️ RELIRE LE BANDEAU DETRUIRAIT LE TEMOIN QU'IL EST CENSE CONFIRMER.
+      Le SHA n'existe QU'AU BANDEAU DE BOOT (⛔ aucun appel a
+      `esp_app_get_description` dans tout `firmware/desknode/main/`) ⇒ le relire
+      exige un REDEMARRAGE ; et prendre COM3 a l'agent redemarre la carte ET tue
+      l'agent ⇒ `s mur` retombe a zero. On casserait la mesure pour la prendre.
+
+  (c) ⚠️ CA TOUCHERAIT LE MODULE VIVANT DE L'OWNER, ET LA STORY L'EXCLUT.
+      Le module tourne sur le bureau. Reprendre le port l'eteint et le rallume,
+      et le relancer est un geste Windows de l'owner (double-clic `dn-agent.bat`).
+      La story ecrit en tete : « ⛔ AUCUNE CARTE N'EST REQUISE POUR LA CLORE …
+      aucun geste physique de l'owner ».
+
+ LE « AVANT » DU SHA RESTE DISPONIBLE ET VERSIONNE, LUI :
+   mesures/dn4-43/T8-bandeau-boot.txt  ⇒  `App version: 6a91fa3`
+   ⚠️ ET IL RESTE VRAI PAR CONSTRUCTION : `git push` n'ecrit pas dans une flash
+   NOR par USB. La question n'est pas « le SHA a-t-il change » mais « quelque
+   chose a-t-il pu ECRIRE la carte » — et (a) y repond par l'exclusion.
+
+ ⇒ TEMOIN RETENU POUR AC1.4.b (avant / apres) :
+     · `dn-agent.log`  : derniere ligne `temoin cout cumule` — `s mur` et `seq`
+     · `dn-agent.started` : horodatage de lancement — DOIT ETRE INCHANGE
+     · + `git diff --name-only <sha_debut_story> HEAD -- firmware/`  ⇒ VIDE (AC1.4.c)
+================================================================================

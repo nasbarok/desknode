@@ -1,0 +1,77 @@
+================================================================================
+ dn5-1 / T0 — ETAT DU REMOTE AVANT TOUT PUSH
+================================================================================
+ Releve le 2026-09-02, depot ~/projects/desknode @ e578def (arbre PROPRE)
+
+ ⚠️⚠️ AVERTISSEMENT D'INSTRUMENT — MESURE LE 2026-09-02, ET IL A FABRIQUE DES CHIFFRES
+ Le shell de cette session passe par un proxy (`rtk`) qui REECRIT la sortie des
+ commandes git : un `git diff --name-only main HEAD | wc -l` y a rendu **76** et
+ `-- firmware/` **24**, en INJECTANT des lignes de decoration (« --- Changes --- »)
+ comptees comme des fichiers. Les vrais chiffres sont **73** et **21**.
+ ⇒ TOUS LES COMPTES DE CE FICHIER SONT PRIS PAR `subprocess` EN PYTHON, jamais
+   par un pipe shell. ⛔ Ne pas re-mesurer au pipe : le pipe ment ici.
+
+────────────────────────────────────────────────────────────────────────────────
+ 1. LE REMOTE
+────────────────────────────────────────────────────────────────────────────────
+origin	https://github.com/nasbarok/desknode.git (fetch)
+origin	https://github.com/nasbarok/desknode.git (push)
+
+ git ls-remote origin :
+   b524e9850eb6036f8fa6f25fdc13bbbec1af485b	HEAD
+   b524e9850eb6036f8fa6f25fdc13bbbec1af485b	refs/heads/dn4-5-le-module-vit-tout-seul
+   b524e9850eb6036f8fa6f25fdc13bbbec1af485b	refs/heads/main
+
+ gh repo view --json visibility,defaultBranchRef,pushedAt,isPrivate :
+   {"defaultBranchRef":{"name":"main"},"isPrivate":true,"pushedAt":"2026-08-31T16:15:15Z","visibility":"PRIVATE"}
+
+ ⇒ 3 refs, TOUTES a b524e98 : HEAD · refs/heads/main · refs/heads/dn4-5-le-module-vit-tout-seul
+ ⇒ visibility = PRIVATE  ⇒ NFR2 : elle le RESTE apres le push.
+
+────────────────────────────────────────────────────────────────────────────────
+ 2. LA BRANCHE LOCALE
+────────────────────────────────────────────────────────────────────────────────
+## dn4-5-le-module-vit-tout-seul...origin/dn4-5-le-module-vit-tout-seul [ahead 20]
+?? mesures/dn5-1/
+
+ git rev-list --left-right --count main...HEAD  ⇒  0	20
+ ⇒ 0 a gauche ⇒ main est un ANCETRE de HEAD ⇒ 🎯 AVANCE RAPIDE (`--ff-only`) possible,
+   ⛔ AUCUN commit de fusion a fabriquer, donc AUCUN message qui puisse mentir sur
+   ce que la branche porte. (§8)
+
+ ⚠️ `ahead` A DEUX REPONSES, ET LA STORY EXIGE QU'ON NOMME LA REF :
+   · contre origin/dn4-5-le-module-vit-tout-seul (b524e98) : ahead 20
+   · contre origin/main                          (b524e98) : ahead 20
+   ⇒ pousser `main` SEUL ne fait PAS tomber le `[ahead 20]` affiche par
+     `git status -sb`, qui se compte contre la branche AMONT de la branche
+     COURANTE. (question owner n°2)
+
+────────────────────────────────────────────────────────────────────────────────
+ 3. CE QUE LE PUSH TRANSPORTE
+────────────────────────────────────────────────────────────────────────────────
+   commits main..HEAD                : 20
+   fichiers differents main..HEAD    : 73
+     dont sous firmware/             : 21   ⚠️ NORMAL — c'est ce qu'on POUSSE (piege n°1)
+     neufs (A)                       : 47
+     modifies (M)                    : 26
+     supprimes (D)                   : 0
+
+   ⇒ AC1.4.c NE SE CONTROLE PAS SUR CE DIFF. Il s'ancre sur le SHA DE DEBUT DE
+     STORY (e578def), ⛔ pas sur `main`.
+
+────────────────────────────────────────────────────────────────────────────────
+ 4. LES 5 FICHIERS RACINE QUI *PROMETTENT* — LE COROLLAIRE QUI DEPLACE LA STORY
+────────────────────────────────────────────────────────────────────────────────
+   DIFFERE                     : README.md           +264 / -5
+   IDENTIQUE au caractere pres : CONTRIBUTING.md   
+   IDENTIQUE au caractere pres : LICENSING.md      
+   IDENTIQUE au caractere pres : THIRD-PARTY.md    
+   IDENTIQUE au caractere pres : CHANGELOG.md      
+
+   ⇒ 🔴 SEUL `README.md` DIFFERE. Les QUATRE fichiers qui posent des questions au
+     lecteur (`CONTRIBUTING.md`) et qui lui font des promesses (`CHANGELOG.md`,
+     `LICENSING.md`, `THIRD-PARTY.md`) sont **DEJA PUBLIES TELS QUELS**.
+   ⇒ LE PUSH NE REPARE RIEN DE CE QU'ILS PROMETTENT. Il ne repare que ce que le
+     README ne portait pas. C'est pour ca que 2 des 4 instances de l'ecart (T1)
+     NE PARTENT PAS AVEC LE PUSH.
+================================================================================

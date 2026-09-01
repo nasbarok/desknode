@@ -1,0 +1,182 @@
+================================================================================
+ dn5-1 / T0 — REJEU DU COMPTAGE DU CADRAGE (§2 §4 §5)   — PREMIER GESTE, COUT NUL
+================================================================================
+ Le 2026-09-02, sur ~/projects/desknode @ e578def.
+ ⛔ RIEN N'A ETE ECRIT AVANT CE REJEU (consigne T0).
+
+ POURQUOI. AC1.3.a : « la verification est un COMPTAGE, ⛔ pas une impression :
+ a BORNES DE MOT, le motif est PUBLIE avec le chiffre ». Un compte sans son motif
+ n'est pas une mesure. Et le cadrage a mesure que `grep -ci tier` MENT.
+
+==============================================================================
+COMPTAGE A BORNES DE MOT — dn5-1 / T0 (rejeu du cadrage §2 §4 §5)
+==============================================================================
+instrument : python3 re.finditer, re.IGNORECASE, sur le BLOB GIT (git show)
+
+── main:README.md
+   taille : 173361 o · 1507 lignes
+   motif '\\bpaliers?\\b'   =   0   [palier / paliers  (mot entier, insensible a la casse)]
+   motif '\\btiers?\\b'     =   1   [tier / tiers      (mot entier, insensible a la casse) — ⚠️ capture AUSSI le francais « tiers »]
+        formes vues : {'tiers': 1}
+        · …ICENSING.md`](LICENSING.md). ⏎ > Composants tiers : [`THIRD-PARTY.md`](THIRD-PARTY.md) · Co…
+   ⚠️ PIEGE — sous-chaine 'tier' (grep -oi) =   9   ⛔ CE CHIFFRE EST FAUX
+        mots reellement porteurs : {'tiers': 1, 'entiers': 1, 'entier': 4, 'ENTIER': 1, 'boîtier': 2}
+
+── main:CONTRIBUTING.md
+   taille : 2824 o · 66 lignes
+   motif '\\bpaliers?\\b'   =   0   [palier / paliers  (mot entier, insensible a la casse)]
+   motif '\\btiers?\\b'     =   1   [tier / tiers      (mot entier, insensible a la casse) — ⚠️ capture AUSSI le francais « tiers »]
+        formes vues : {'tier': 1}
+        · …porting a bug ⏎  ⏎ Please include: ⏎  ⏎ - Which **tier** you built: board only, or board + ambie…
+   ⚠️ PIEGE — sous-chaine 'tier' (grep -oi) =   1   ⛔ CE CHIFFRE EST FAUX
+        mots reellement porteurs : {'tier': 1}
+
+── HEAD:README.md
+   taille : 189540 o · 1766 lignes
+   motif '\\bpaliers?\\b'   =  13   [palier / paliers  (mot entier, insensible a la casse)]
+        formes vues : {'paliers': 2, 'palier': 7, 'PALIER': 4}
+        · …été mesuré sur cette carte. ⏎  ⏎ ### Les deux paliers matériels ⏎  ⏎ | palier | ce que tu achètes |…
+        · …carte. ⏎  ⏎ ### Les deux paliers matériels ⏎  ⏎ | palier | ce que tu achètes | ce que tu ajoutes |…
+        · …HardwareMonitor` se combine avec les deux ⏎ paliers matériels, il ne s'y range pas. ⏎  ⏎ | capteu…
+        · …« VIVANT MÊME PC ÉTEINT » N'EXISTE PAS AU PALIER « DeskNode » ⏎  ⏎ **D6** promettait qu'une ca…
+        · …**Ce n'est pas un défaut, c'est ce que le palier coûte** — et c'est écrit ici plutôt que ⏎ d…
+        · … que ⏎ découvert le premier soir. ⏎  ⏎ ### 🔴 LE PALIER LHM N'EST PAS « AVEC LHM ⇒ °C » ⏎  ⏎ La table…
+        · …AS DE DROITS ADMINISTRATEUR » EST VRAI AU PALIER CARTE SEULE, **ET FAUX AU PALIER LHM** ⏎  ⏎ -…
+        · … VRAI AU PALIER CARTE SEULE, **ET FAUX AU PALIER LHM** ⏎  ⏎ - ✅ **L'agent DeskNode** : *« sans…
+        · …i coûte l'élévation, ⛔ pas DeskNode.** Le palier carte seule + agent n'en ⏎   demande aucune…
+        · …eule + agent n'en ⏎   demande aucune, et le palier « avec LHM » en demande une. **Écrit, ⛔ p…
+        · … VÉRIFIÉ — ET LE VRAI, ⛔ PAS PLUS ⏎  ⏎ - ✅ Le palier « DeskNode » (carte seule) est **construi…
+        · …E QUI RESTE VRAI DANS TOUS LES CAS** : ce palier a été éprouvé **sur UNE carte** — ⏎   celle…
+        … (1 autre(s) non imprimee(s))
+   motif '\\btiers?\\b'     =   1   [tier / tiers      (mot entier, insensible a la casse) — ⚠️ capture AUSSI le francais « tiers »]
+        formes vues : {'tiers': 1}
+        · …ICENSING.md`](LICENSING.md). ⏎ > Composants tiers : [`THIRD-PARTY.md`](THIRD-PARTY.md) · Co…
+   ⚠️ PIEGE — sous-chaine 'tier' (grep -oi) =  10   ⛔ CE CHIFFRE EST FAUX
+        mots reellement porteurs : {'tiers': 1, 'chantier': 1, 'entiers': 1, 'entier': 4, 'ENTIER': 1, 'boîtier': 2}
+
+── HEAD:CONTRIBUTING.md
+   taille : 2824 o · 66 lignes
+   motif '\\bpaliers?\\b'   =   0   [palier / paliers  (mot entier, insensible a la casse)]
+   motif '\\btiers?\\b'     =   1   [tier / tiers      (mot entier, insensible a la casse) — ⚠️ capture AUSSI le francais « tiers »]
+        formes vues : {'tier': 1}
+        · …porting a bug ⏎  ⏎ Please include: ⏎  ⏎ - Which **tier** you built: board only, or board + ambie…
+   ⚠️ PIEGE — sous-chaine 'tier' (grep -oi) =   1   ⛔ CE CHIFFRE EST FAUX
+        mots reellement porteurs : {'tier': 1}
+
+================================================================================
+ CONFRONTATION AU CADRAGE — 3 CHIFFRES CONFIRMES, 1 ECART DECLARE
+================================================================================
+   | ce que le cadrage ecrit                  | ce que je mesure | verdict
+   |------------------------------------------|------------------|--------
+   | \bpaliers?\b sur main            = 0     | 0                | ✅ CONFIRME
+   | \bpaliers?\b sur HEAD            = 13    | 13               | ✅ CONFIRME
+   | \btiers?\b main=1 / HEAD=1, et c'est   | 1 / 1, « tiers »  | ✅ CONFIRME
+   |   le FRANCAIS « tiers » ⇒ tier EN = 0   | ⇒ tier EN = 0     |
+   | sous-chaine 'tier' sur main      = 8     | 🔴 9              | ⚠️ ECART +1
+
+ ⚠️ L'ECART, DECLARE ET NON RATTRAPE : le cadrage annonce 8 occurrences
+ sous-chaine de 'tier' sur main:README.md ; je mesure 9. Les FORMES sont les
+ memes des deux cotes (ENTIER · entier · entiers · boitier · tiers) — ce n'est
+ donc pas une forme oubliee, c'est UNE OCCURRENCE DE PLUS parmi elles :
+     tiers 1 · entiers 1 · entier 4 · ENTIER 1 · boitier 2   =  9
+ ⛔ CE CHIFFRE NE CHANGE AUCUNE CONCLUSION : il mesure justement le compte FAUX,
+ celui qu'AC1.3.a interdit de publier. Il est ecrit ici pour que personne ne
+ croie que le 8 du cadrage a ete reproduit. (NFR3 : annoter, ⛔ pas effacer.)
+
+================================================================================
+ CE QUE LE REJEU AJOUTE AU CADRAGE — MESURE SUR CONTRIBUTING.md
+================================================================================
+ CONTRIBUTING.md est IDENTIQUE sur main et HEAD (2 824 o, 66 lignes) et il porte
+ `tier` **au sens anglais**, dans la question posee au contributeur :
+     « Which **tier** you built: board only, or board + ambient sensors. »
+
+ ⇒ 🔴 LE CROISEMENT EST LA, ET IL EST MESURE :
+     · CONTRIBUTING.md (ANGLAIS) demande       `tier`   →  1 occurrence, sens ANGLAIS
+     · README.md de main                        `tier`   →  0 occurrence, sens anglais
+     · README.md de HEAD                        `tier`   →  0 occurrence, sens anglais
+     · README.md de HEAD                        `palier` → 13 occurrences, en FRANCAIS
+
+ ⇒ LE PUSH FAIT PASSER LA DEFINITION DE 0 A 13 — MAIS EN FRANCAIS, ET LA QUESTION
+   RESTE POSEE EN ANGLAIS. Un lecteur anglophone qui cherche `tier` dans le clone
+   trouvera `tiers` (francais, « composants tiers »), qui veut dire AUTRE CHOSE.
+   ⇒ 🎯 C'EST EXACTEMENT §5 : LE PUSH SEUL NE FERME PAS AC1.3. T2 doit solder.
+================================================================================
+
+================================================================================
+ L'INSTRUMENT, EN ENTIER — POUR QUE LE CHIFFRE SOIT REJOUABLE
+================================================================================
+ ⛔ IL N'EST PAS DEPOSE DANS `tools/` — ET C'EST UNE DECISION ECRITE.
+ Les Dev Notes de dn5-1 recommandent : « ⛔ pas d'outil durable ici ». La forme
+ DURABLE de ce controle est le controle (c) de `tools/verif_licences_dn52.py`
+ (« chaque promesse de CONTRIBUTING.md a un artefact ou un ecart declare »), et
+ il appartient a `dn5-2`. En construire un ici le ferait EN DOUBLE, et `dn5-2`
+ heriterait de la charge de le fusionner. ⇒ l'instrument est RECOPIE ICI, dans
+ sa mesure, pour rester rejouable sans creer de dette (et sans declencher NFR7).
+
+--------------------------------- 8< ------------------------------------------
+# -*- coding: utf-8 -*-
+"""Comptage a BORNES DE MOT — instrument de dn5-1 (mesure capturee, ⛔ pas un outil durable).
+
+⛔ NE PAS grep -c : « tier » est une SOUS-CHAINE de « entier », « boitier »,
+   « chantier », « tiers ». Le compte sous-chaine est FAUX et on le MESURE ici.
+Chaque chiffre est publie AVEC son motif et AVEC ses occurrences en contexte.
+"""
+import re, subprocess, sys, collections
+
+MOTIFS = {
+    r"\bpaliers?\b":  "palier / paliers  (mot entier, insensible a la casse)",
+    r"\btiers?\b":    "tier / tiers      (mot entier, insensible a la casse) — ⚠️ capture AUSSI le francais « tiers »",
+}
+SOUS_CHAINE = "tier"
+
+def lire(ref, chemin):
+    r = subprocess.run(["git", "show", f"{ref}:{chemin}"],
+                       capture_output=True)
+    if r.returncode != 0:
+        return None
+    return r.stdout.decode("utf-8", errors="replace")
+
+def contexte(txt, m, large=42):
+    a = max(0, m.start() - large); b = min(len(txt), m.end() + large)
+    return txt[a:b].replace("\n", " ⏎ ")
+
+def rapport(ref, chemin):
+    txt = lire(ref, chemin)
+    print(f"\n── {ref}:{chemin}")
+    if txt is None:
+        print("   ⛔ ABSENT de cette ref")
+        return
+    print(f"   taille : {len(txt.encode('utf-8'))} o · {len(txt.splitlines())} lignes")
+    for motif, libelle in MOTIFS.items():
+        occ = list(re.finditer(motif, txt, re.IGNORECASE))
+        print(f"   motif {motif!r:18} = {len(occ):3d}   [{libelle}]")
+        formes = collections.Counter(m.group(0) for m in occ)
+        if formes:
+            print(f"        formes vues : {dict(formes)}")
+        for m in occ[:12]:
+            print(f"        · …{contexte(txt, m)}…")
+        if len(occ) > 12:
+            print(f"        … ({len(occ)-12} autre(s) non imprimee(s))")
+    # LE PIEGE, MESURE : le meme mot compte en SOUS-CHAINE
+    occ = list(re.finditer(SOUS_CHAINE, txt, re.IGNORECASE))
+    formes = collections.Counter()
+    for m in occ:
+        a = m.start(); b = m.end()
+        while a > 0 and (txt[a-1].isalpha() or txt[a-1] in "àâäçéèêëîïôöùûüÿœæ"): a -= 1
+        while b < len(txt) and (txt[b].isalpha() or txt[b] in "àâäçéèêëîïôöùûüÿœæ"): b += 1
+        formes[txt[a:b]] += 1
+    print(f"   ⚠️ PIEGE — sous-chaine {SOUS_CHAINE!r} (grep -oi) = {len(occ):3d}   ⛔ CE CHIFFRE EST FAUX")
+    print(f"        mots reellement porteurs : {dict(formes)}")
+
+if __name__ == "__main__":
+    print("=" * 78)
+    print("COMPTAGE A BORNES DE MOT — dn5-1 / T0 (rejeu du cadrage §2 §4 §5)")
+    print("=" * 78)
+    print("instrument : python3 re.finditer, re.IGNORECASE, sur le BLOB GIT (git show)")
+    for ref in sys.argv[1].split(","):
+        for chemin in sys.argv[2].split(","):
+            rapport(ref, chemin)
+--------------------------------- >8 ------------------------------------------
+
+ EMPLOI :  python3 compte.py "main,HEAD" "README.md,CONTRIBUTING.md"
+           depuis la racine du depot desknode.

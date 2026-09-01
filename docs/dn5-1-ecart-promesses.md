@@ -1,0 +1,116 @@
+# `dn5-1` — L'écart entre ce que le dépôt **demande** et ce qu'il **sait faire**
+
+> Écrit le **2026-09-02**, **AVANT tout push**, sur `desknode@e578def` (arbre propre) contre
+> `origin/main@b524e98`. Story : `dn5-1-ce-qui-est-pousse-est-ce-qui-tourne` / **AC1.1**.
+> *This page is in French, like its neighbour `dn4-15-arbitrage.md`. Splitting the repository
+> between French (engineering log) and English (reader-facing files) is **D21** and belongs to
+> `dn8` — see instance n°1 below, which is exactly what that split costs today.*
+
+## 0. La règle que cet écart applique
+
+> 🎯 **Rien de ce qui est poussé ne ment.**
+
+⛔ Ce n'est **pas** *« on pousse quand toutes les stories sont closes »*. À ce critère, rien ne
+serait jamais poussé : `dn4-41` est `in-progress`, `dn4-42` est en `review` **avec un écart
+déclaré**, `dn4-5` est un soak. Le critère est plus faible sur l'avancement et **beaucoup plus
+dur sur l'honnêteté** : un dépôt peut publier du travail inachevé, **il ne peut pas publier une
+affirmation que son propre contenu réfute**.
+
+Le contre-exemple qui a fait écrire cette règle est daté et mesuré : voir
+[`CONTRIBUTING.md`](../CONTRIBUTING.md) § *Conventions in this repository*.
+
+## 1. Les six instances, chacune avec sa disposition
+
+⚠️ **Aucune instance sans porteur.** Une instance dont la disposition est vide est une promesse
+creuse de plus — c'est le défaut même que cette marche solde.
+
+| # | ce que `main` **demande** ou **promet** | ce que `main` **porte** (mesuré le 2026-09-02) | disposition |
+|---|---|---|---|
+| **1** | `CONTRIBUTING.md` : *« Which **tier** you built: board only, or board + ambient sensors »* | 🔴 `README.md` de `main` : **0** occurrence de `\bpaliers?\b` sur **173 361 o**. Celui de `HEAD` : **13** — mais **en français**, et la question est posée **en anglais**. Le seul `\btiers?\b` des deux côtés est le **français `tiers`** (composants tiers) ⇒ *tier* au sens anglais = **0 des deux côtés** | ✅ **SOLDÉE ICI** — le push amène la définition (0 ⇒ 13) **et** `CONTRIBUTING.md` nomme désormais les deux paliers **tels que le README les nomme** (voie (a)) |
+| **2** | `CONTRIBUTING.md` : *« A CLA is required… **A bot handles it in one click**. »* | 🔴 **0 fichier sous `.github/`**, ni sur `main` ni sur `HEAD`. Il n'y a **aucun bot**. | ⛔ **`dn5-2` / AC2.4** — nommée, ⛔ pas installée ici |
+| **3** | `CONTRIBUTING.md` : *« Your **DeskNode version** — it is **displayed on the device**. »* | 🔴 **AUCUNE version n'est affichée sur la dalle.** **0** appel à `esp_app_get_description` sur les **54** fichiers de `firmware/desknode/main/` (`main` : 0 sur 48). `dn_ui.c` l'écrit pour le MENU : *« pas de reboot, **pas de version** »*. Le seul identifiant est `App version: <sha>`, **au bandeau SÉRIE de boot** | ✅ **SOLDÉE ICI** — décision owner du 2026-09-02 : `CONTRIBUTING.md` **demande ce qui existe** (le SHA du bandeau série) **et dit comment l'obtenir**. ⚠️ Une **vraie** version affichée + le tag `v0.1.0-beta` restent à **`dn8`** |
+| **4** | `CHANGELOG.md` : *« **NVIDIA and AMD GPUs are covered**; Intel Arc and integrated GPUs are untested »* | 🔴 **0** `import pynvml` · **4** `atiadlxx` dans `agent/dn_agent.py` ⇒ la **seule** source GPU est AMD ADL. Et le code **le réfute par écrit** : `dn_agent.py:104-106` — *« 🔴 LE CADRAGE ANNONÇAIT NVML : INAPPLICABLE, la tour est une AMD Radeon… `pynvml` n'est même pas installé. »* | ⛔ **`dn5-2` / AC2.5** — décision owner du 2026-09-02 : **nommée ici, corrigée là-bas** |
+| **5** | Le dépôt publie `tools/run_gates.sh` et **26 gates**, sous une convention qui promet qu'elles passent | 🔴 **1 gate ROUGE au moment du push** : `tools/verif_dossier_dn415.py`, **17 OK / 10 KO**. ⚠️ **Elle PRÉ-EXISTE**, ⛔ elle n'est pas de cette story : ses 10 KO portent **tous** sur des fichiers du **cockpit** (`_bmad-output/…`, préfixe `cockpit:` dans sa sortie), qui **ne sont pas dans le clone** | ⛔ **`dn4-39` / `dn4-40`** — ⛔ **ni imputée, ni aggravée, ni réparée ici** ; **déclarée** parce que taire une gate rouge qu'on publie serait le défaut de classe |
+| **6** | Le dépôt se veut clonable — `CONTRIBUTING.md` invite à contribuer, `run_gates.sh` à vérifier | 🔴 **3 outils de `tools/` ont une dépendance FONCTIONNELLE à un chemin personnel** : `verif_dossier_d5_dn45.py:47-48` (`/home/nasbarok/projects/{desknode,compagnon_project}` en **absolu**), `verif_dossier_dn415.py:168` et `verif_ledger_dn416.py:148` (`~/projects/compagnon_project`). ⇒ sur un clone neuf **elles ne peuvent pas s'exécuter**. S'y ajoutent **5** fichiers `firmware/…/fonts/dn_font_*.c` qui portent `/home/nasbarok/…` dans un commentaire de générateur | ⛔ **`dn5-3`** — ⚠️ **ANNOTATION** : le périmètre de `dn5-1` et l'epic écrivent *« les **2** dépendances fonctionnelles de `tools/` »*. **Mesuré le 2026-09-02 : elles sont TROIS.** ⛔ La ligne ne se réécrit pas, elle se **date** (NFR3) |
+
+### Ce que le tri de ce tableau apprend, et qui déplace la story
+
+🔴 **Deux instances sur six ne partent PAS avec le push** — parce que les fichiers qui les portent
+sont **identiques au caractère près** entre `main` et `HEAD` :
+
+| fichier | `main` vs `HEAD` |
+|---|---|
+| `README.md` | **DIFFÈRE** — +264 / −5 |
+| `CONTRIBUTING.md` · `LICENSING.md` · `THIRD-PARTY.md` · `CHANGELOG.md` | ✅ **IDENTIQUES** |
+
+⇒ **Le push ne répare rien de ce que ces quatre fichiers promettent.** Il ne répare que ce que le
+README ne portait pas. C'est pour ça que les instances **2** et **4** sont léguées, et pourquoi les
+instances **1** et **3** demandent une **écriture** dans `CONTRIBUTING.md`, ⛔ pas seulement un push.
+
+## 2. ⚠️ **ANNOTATION NFR3** — `dn_paliers.c` n'existe sur **aucune** branche
+
+La ligne `dn5-1` du tracker et le *step 3* de `epics-desknode-v1.md` écrivent :
+
+> *« `dn_paliers.c` est **ABSENT de `main`** »*
+
+**Mesuré le 2026-09-02** : `git ls-tree -r --name-only` ne rend **aucun** `dn_paliers.*`, **ni sur
+`main`, ni sur `HEAD`**. Le fichier **n'a jamais existé**. « Absent de `main` » laisse croire qu'il
+existe ailleurs — il n'existe nulle part.
+
+⛔ **Ces deux lignes ne se réécrivent pas.** Elles se **datent** : *annoter, ⛔ pas effacer*.
+
+**La preuve réelle de l'instance n°1** — ce qui manque vraiment à `main` — est :
+
+1. la section README **« Les deux paliers matériels »** (`README.md`, HEAD, l. 30-38) ;
+2. la gate **`tools/verif_paliers_dn441.py`** ;
+3. les **21** fichiers `firmware/` livrés par `dn4-41`, `dn4-42` et `dn4-43`.
+
+⚠️ Et **`palier` a deux sens dans ce dépôt** : le **palier matériel** (D19) et le **plateau** d'une
+courbe (`dn_ui.c`, ~7378-7406 et ~10770). ⛔ Ne pas les additionner : les **13** occurrences comptées
+sur `HEAD:README.md` sont bien la notion matérielle.
+
+## 3. Ce qui reste **non défini** après cette marche — avec son porteur
+
+| notion demandée au lecteur | définie dans le clone après `dn5-1` ? | porteur |
+|---|---|---|
+| **tier** (les deux paliers) | ✅ **OUI** — nommée dans `CONTRIBUTING.md`, définie dans `README.md` § *Les deux paliers matériels* | — |
+| **LibreHardwareMonitor** | ✅ **OUI** — `README.md` et `CHANGELOG.md` des deux côtés | — |
+| **DeskNode version** | ✅ **OUI** — `CONTRIBUTING.md` demande le SHA du bandeau série **et dit comment le lire**. ⚠️ Une version *affichée sur la dalle* n'existe toujours pas | `dn8` (version affichée + tag `v0.1.0-beta`) |
+| **GPU (NVIDIA / AMD / Intel)** | 🔴 **NON** — `CHANGELOG.md` annonce NVIDIA couvert, le code le réfute | **`dn5-2` / AC2.5** |
+| **le bot CLA** | 🔴 **NON** — il n'existe pas | **`dn5-2` / AC2.4** |
+| **sortie console série** | ✅ **OUI** — `README.md` donne le baud (**115200**), `tools/dn_console.py`, `idf.py monitor` et `miniterm` | — |
+| **les gates tournent sur un clone** | 🔴 **NON** — 3 outils exigent un chemin personnel absent du clone | **`dn5-3`** |
+| **le dépôt compile à froid** | 🔴 **NON MESURÉ** — ⛔ pas mesuré ici, et ⛔ pas affirmé | **`dn5-4`** |
+| **le poids d'un clone** | 🔴 **NON MESURÉ** ici (bundle `main` ≈ 31 Mo au cadrage) | **`dn5-5`** |
+
+## 4. ⚠️ Constat de dossier voisin — il ne fait pas partie de l'écart, mais il le borde
+
+L'en-tête du tracker et l'epic `dn5` posent en garde-fou : *« le soak de `dn4-5` **tourne** ⇒ ⛔
+aucun flash »*. **Mesuré le 2026-09-02, sans ouvrir le port** :
+
+- la boîte noire `dn4-5-journal-soak.log` s'arrête le **2026-08-26 à 23:28:39** sur `PORT FERME` ;
+  elle avait démarré à **23:27:39**. 🔴 **Le soak a vécu 60 secondes**, et l'`up` de la carte y
+  plafonne à **50 s** ;
+- l'agent qui tourne aujourd'hui **n'arme pas** ce journal : `dn-agent.started` porte
+  `--serie COM3 --stop-si … --temoin`, ⛔ **aucun `--journal-soak`** ;
+- et ce n'est pas un oubli : **`tools/dn_agent_tour.ps1:344-346` n'a aucun chemin qui le passe**.
+  Le drapeau existe (`agent/dn_agent.py:3568`, classe `JournalSoak` l. 2387) mais il n'est
+  atteignable **qu'à la main**, ⛔ pas par le double-clic livré.
+
+⇒ **NFR8 tient dans tous les cas** — cette story ne flashe rien. Mais **le témoin d'AC1.4 change** :
+il est pris sur le compteur `s mur` / `seq` de `dn-agent.log`, ⛔ pas sur le bandeau de boot.
+Détail et motif : [`mesures/dn5-1/T0-etat-soak.txt`](../mesures/dn5-1/T0-etat-soak.txt).
+
+⇒ ⚠️ **Porté à `dn4-5`** : son soak n'est pas seulement arrêté, il **n'est pas armable par le geste
+owner livré**. ⛔ Rien n'est corrigé ici.
+
+---
+
+### Mesures qui portent cette page
+
+| capture | ce qu'elle prouve |
+|---|---|
+| [`mesures/dn5-1/T0-gates-avant.txt`](../mesures/dn5-1/T0-gates-avant.txt) | 24 VERTE, 1 ROUGE, 1 NON-JOUABLE / 26 — le rouge **avant** toute écriture |
+| [`mesures/dn5-1/T0-etat-remote.txt`](../mesures/dn5-1/T0-etat-remote.txt) | 3 réfs à `b524e98` · `main` ancêtre de `HEAD` · 73 fichiers / 21 `firmware/` · les 4 fichiers qui promettent sont **identiques** |
+| [`mesures/dn5-1/T0-comptage-rejeu.txt`](../mesures/dn5-1/T0-comptage-rejeu.txt) | les comptages **à bornes de mot**, chaque chiffre **avec son motif** — et le piège de sous-chaîne mesuré |
+| [`mesures/dn5-1/T0-etat-soak.txt`](../mesures/dn5-1/T0-etat-soak.txt) | le soak ne tourne pas, et le témoin NFR8 retenu **avec son motif** |
