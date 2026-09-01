@@ -1,0 +1,38 @@
+
+$ dem
+── ETAT DE DEMARRAGE (dn4-43) ──────────────────────────────
+  verdict         : PROPRE
+  arme            : OUI
+  a l'ecran       : non (conclu)
+  duree           : 1500 ms
+  err I2C vues    : 0
+  fenetres cassees: 0
+  lectures fenetre: 36   (fenetre COURANTE, ⛔ pas l'etat)
+  re-armements    : 0 REFUSE(S)   (⛔ un 0 ne prouve RIEN :
+                    aucun chemin du firmware n'arme deux fois)
+  builds ecran    : 1   (AC1.4 : doit valoir 1 — ⚠ il ne
+                    PEUT pas valoir 2, un seul site d'appel)
+  lignes trop lg  : 0
+  budget          : fenetre 1500 ms / 20 lecture(s) min, plafond 90000 ms
+  tactile MAINTENANT : 0 err / 1018 lectures
+
+  ⚠ CE QUE CES CHIFFRES NE DISENT PAS :
+    · un 0 d'erreurs ne prouve PAS que le bus va bien — il dit que
+      la fenetre observee n'en a pas vu. Le scan i2c, lui, a deja
+      annonce « 8 stables, 0 instable » pendant qu'une transaction
+      de donnee sur deux echouait (§13.17.1).
+    · un verdict PLAFOND ne veut PAS dire « prete » : il dit qu'on
+      a cesse d'attendre.
+    · la fenetre froide n'apparait qu'~1 cycle sur 6, et SEUL un
+      debranchement PHYSIQUE du cable la reproduit — ⛔ pas `reboot`,
+      qui laisse le rail 3V3 debout.
+--- fin : 27 lignes emises ---
+✅ compteur : 27 annoncées, 27 reçues.
+   ⚠️ `OK` = les DEUX COMPTES S'ACCORDENT, ⛔ pas « rien n'a été
+      perdu » : une ligne perdue et un log asynchrone arrivés dans
+      la MÊME capture s'annulent. Cet instrument ne sait pas les
+      distinguer, et il le dit plutôt que de le taire.
+
+$ (écoute passive)
+W (40245) dn_ui: historique : 1 seconde(s) NON ÉCHANTILLONNÉE(S) (pause `ui off` ou préemption longue) — 1 position(s) creusée(s) en TROUS ; la courbe ne reliera PAS les deux bords de la coupure
+I (43862) desknode: up 40 s — vsync=1535 — flush=18 cycles=10 — PSRAM libre 6580456 o — mural 43 s (écart +0 s, Δ +0 s) — reset: POWERON (mise sous tension / débranchement)

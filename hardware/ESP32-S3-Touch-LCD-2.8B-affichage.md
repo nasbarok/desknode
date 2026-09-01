@@ -10655,3 +10655,140 @@ le rallume**) ; et le cran est un **réglage produit** posé par `dn4-19`/`dn3-3
 Le corpus passe de **n = 31 (2 190..2 467 ms)** à **n = 32 (2 079..2 467 ms)**.
 ⚠️ Au passage : `dn4-43` citait *« 2 190..2 330 ms, n = 8 »* — c'étaient les **8 plus basses** d'un
 corpus qui en comptait déjà 31. ✅ Sa conclusion (« ~2,2 s, et ce n'est pas le problème ») tient.
+
+---
+
+# §33 — 🎯 SÉANCE CARTE DU 2026-09-01 (2ᵉ), APRÈS LA REVUE DE CODE : **LE CHEMIN DÉGRADÉ A ENFIN ÉTÉ EXERCÉ**
+
+> **Firmware** : `6a91fa3`, **SHA lu au bandeau** (`I (783) app_init: App version: 6a91fa3`),
+> arbre `desknode` **PROPRE** au flash.
+> **Motif** : la revue de code du 2026-09-01 a changé du code **et des instruments** ⇒ les chiffres
+> de §32 étaient morts (règle du skill : *« un correctif qui touche un compteur invalide
+> rétroactivement tout ce que ce compteur a publié »*). Ils sont **re-relevés ici**.
+> **Captures** : `mesures/dn4-43/T8-*.txt`.
+
+## §33.1 — 🔴 LE DÉFAUT QUE §32.5 N'AVAIT PAS PU VOIR, ET QU'ON A CESSÉ D'ATTENDRE
+
+§32.5 disait, honnêtement : *« 6 cycles à froid, 6 propres ⇒ le chemin dégradé n'a PAS été
+exercé »*. La revue y a trouvé un défaut que **la chance seule n'aurait jamais montré** : le
+plafond de 90 s était **injoignable tant que le bus ratait**, parce que le bloc « fenêtre cassée »
+de `dn_dem_tick()` rendait la main **avant** son test.
+
+🎯 **CE QUI CHANGE ICI : ON NE L'A PLUS ATTENDU, ON L'A PROVOQUÉ.** `touch addr` met le GT911 en
+reset et fait monter `err_i2c` — c'est **documenté comme attendu** dans `dn_touch.h`, et c'est le
+compteur même que lit le critère. 150 injections d'affilée tiennent l'état de démarrage ouvert.
+
+```
+I (2765) dn_ui: DEMARRAGE armé : tactile PRESENT, fenêtre 1500 ms / 20 lecture(s) min,
+                plafond 90000 ms
+W (4016) dn_ui: DEMARRAGE : 7 erreur(s) I2C MESURÉE(S) — l'écran NOMME le tactile (2e temps).
+I (93006) dn_ui: DEMARRAGE terminé : PLAFOND — 90240 ms, 1777 erreur(s) I2C vue(s),
+                 352 fenêtre(s) relancée(s), 0 lecture(s) dans la fenêtre finale
+W (93008) dn_ui: ⛔ le plafond de 90000 ms a expiré : ce n'est PAS « la carte est prête »,
+                 c'est « on a cessé d'attendre ». Le bus ratait encore.
+```
+
+| relevé | ce qu'il établit |
+|---|---|
+| **352 fenêtres relancées** | le régime **exact** où le plafond était injoignable |
+| **90 240 ms** pour 90 000 déclarés | il tombe **à l'heure**, à un tick de 250 ms près |
+| **1 777 erreurs vues** | le bus ratait **encore** à la conclusion |
+| `0 lecture` dans la fenêtre finale | le témoin du vide dit vrai |
+| verdict **`PLAFOND`** | ⛔ pas `PROPRE` — les deux fins ne se confondent pas |
+
+✅ **CONSTAT OWNER, À L'ŒIL** : les **deux lignes ambre** du 2ᵉ temps sont apparues — *elles
+n'avaient jamais été affichées par cette carte* — l'écran de démarrage **est parti tout seul**
+vers 90 s **alors que les erreurs continuaient d'arriver**, et le dashboard a pris la dalle.
+
+⛔ **CE QUE ÇA NE DIT PAS** : le bus n'est pas réparé. `dn4-26` reste entière, V0.2. Et ces erreurs
+sont **fabriquées** par la console — ⛔ ce n'est pas la fenêtre froide de §13.17.1, c'est le même
+**chemin de code**, exercé délibérément.
+
+## §33.2 — ✅ LA DÉCISION « VEILLE » EST ATTRIBUÉE, ⛔ PAS SUPPOSÉE
+
+La 4ᵉ vue ne génère aucun contact ⇒ avant la revue, `veille_bl_descendre()` tombait **à 60 s
+pendant une observation plafonnée à 90 s** : l'écran sombre « ça a l'air cassé » que la story
+existe pour éviter. Correctif : `lv_display_trigger_activity()` tant que l'état est affiché.
+⛔ **Le délai de veille n'est PAS touché** — AC4.2 reste intacte.
+
+🔴 **DEUX CAUSES CANDIDATES, ET IL A FALLU LES SÉPARER.** `dn_touch.h` documente que le chemin
+d'**erreur** de lecture appelle aussi `lv_display_trigger_activity()` — or on injectait justement
+des erreurs. Trois mesures tranchent :
+
+| instrument | relevé, à `duree : 79 434 ms` d'écran affiché | ce qu'il élimine |
+|---|---|---|
+| `veille` | `mode : ACTIF · bascules -> Ambient : 0` | l'outcome est réel |
+| **témoin positif** | sur la même carte, au repos : `AMBIENT` après `Actif : 63 s`, `bascules : 1` | ⛔ l'absence n'est pas une cécité de l'instrument |
+| `touch` | **`contacts consommés EXPIRÉS : 0`** | **personne ne touchait** ⇒ le chemin d'erreur tactile ne trigge **rien** |
+| `veille` | `max inactivité vue : 195 ms` | ≈ la période de `dem_tick` (**250 ms**), ⛔ pas la cadence tactile (~40 ms) |
+
+⇒ 🎯 **Il ne reste qu'une cause : le `lv_display_trigger_activity()` de `dem_tick`.**
+
+## §33.3 — LA CHARGE, RE-RELEVÉE (le §32.3 était mort)
+
+Protocole **identique** à §31.5 / §32.3 : boot propre, 5 paires `widget nue 0 on`/`off`
+= 10 reconstructions, puis `cpu depart` / `cpu delta`. Fenêtre **25 041 ms**, 13 tâches.
+
+| firmware | `taskLVGL` (1 cœur) | `IDLE0` (1 cœur) |
+|---|---:|---:|
+| `ac4af9d` — référence de la story | 3,7 % | 97 % |
+| `ef1310c` — séance §32 | 1,8 % | 97,4 % |
+| 🎯 **`6a91fa3` — après revue** | ✅ **1,6 %** | ✅ **97,4 %** |
+
+⚠️ **La réserve de §32.3 tient et n'est pas levée** : le régime de liaison PC n'est pas partagé
+avec `ac4af9d` (l'agent était **arrêté** ici, le REPL tenait le port). ⇒ **absence de régression**,
+⛔ pas un gain. ⛔ Aucun des deux signes de D21.
+
+## §33.4 — TROIS CYCLES À FROID : **BUDGET ANNONCÉ À 3, TENU À 3**
+
+⚠️ **Leur rôle a changé.** Le chemin dégradé ayant été exercé **délibérément** (§33.1), ces cycles
+ne sont plus une chasse à la fenêtre froide mais une **non-régression du boot à froid**.
+
+✅ **Le geste est PROUVÉ physique** : `reset: POWERON (mise sous tension / débranchement)` sur les
+trois — là où les resets RTS de la même séance disaient `reset: USB`. L'instrument distingue les
+deux, ⛔ on ne l'a pas supposé.
+
+| cycle | verdict | durée | err I²C vues | fenêtres cassées | lectures | builds |
+|---|---|---:|---:|---:|---:|---:|
+| 1 | `PROPRE` | 1 500 ms | 0 | 0 | 43 | 1 |
+| 2 | `PROPRE` | 1 500 ms | 0 | 0 | 36 | 1 |
+| 3 | `PROPRE` | 1 500 ms | 0 | 0 | 36 | 1 |
+
+✅ Constat owner sur les trois : écran de démarrage **vu**, il **s'en va seul**, dashboard
+**répond au doigt**, ⛔ aucun écran blanc ni scène à moitié dessinée.
+⛔ **3/3 PROPRES NE VEUT PAS DIRE « CORRIGÉ »** : à 1 sur 6, `(5/6)^3 ≈ 58 %` de ne rien voir.
+C'est un **non-événement**, exactement comme les 6 de §32.5.
+
+## §33.5 — AC1.4 ET AC4.3, RE-MESURÉES
+
+- **AC1.4** : `builds ecran : 1` après **10 reconstructions** — et le docbloc du compteur a été
+  corrigé par la revue : ⛔ il **ne peut pas** valoir 2 (un seul site d'appel), donc **ce 1 ne
+  prouve pas la propriété**, il la constate. Ce qui l'ÉPROUVE, c'est la gate en ctypes.
+- **AC4.3** : `mode : ACTIF · reveils : 1 · dernier reveil par : doigt` — geste owner, mesuré.
+- **P7 vérifié sur la carte** : `lectures fenetre : 0` pendant une casse de fenêtre ⇒ ⛔ la valeur
+  périmée d'une fenêtre détruite n'est plus publiée.
+
+## §33.6 — ⛔ CE QUE CETTE SÉANCE N'A **PAS** MESURÉ
+
+- ⛔ **La fenêtre froide RÉELLE n'est toujours pas tombée** (3/3 propres). Ce qui a été exercé est
+  le **chemin de code**, avec des erreurs **fabriquées**. ⛔ Ne pas lire §33.1 comme une
+  reproduction de §13.17.1.
+- ⚠️ **Le bandeau de boot n'est pas capturable sur un cycle à froid** : la carte a fini de démarrer
+  avant que l'USB ne soit ré-attaché. Les verdicts des trois cycles sont lus **après coup** via
+  `dem`, dont les compteurs survivent au boot. Le SHA, lui, est établi au bandeau du flash.
+- ⚠️ **Le régime AGENT n'a pas été exercé** avec `6a91fa3` (l'agent PC était arrêté).
+- ⚠️ **La géométrie n'a pas été jugée au pixel.** `lignes trop lg` est resté à **0** — mais c'est
+  l'instrument qui le dit, ⛔ pas l'œil. En revanche, **les cinq lignes ont maintenant été vues**
+  (les deux du 2ᵉ temps comprises), là où §32 n'en avait vu que trois.
+- 🔴 **DEUX TIRS SONT SORTIS EN `rc=1` — UNE LIGNE SÉRIE TRONQUÉE.** Sur 150 puis 108 envois de
+  `touch addr`, une ligne est arrivée fendue et le REPL a répondu *« Unrecognized command »* sur le
+  fragment `addr`. Le pilote l'a **vu et dit** (*« ÉCHO INTROUVABLE dans le tampon brut […] ⛔ ne
+  pas lire cette capture comme une capture propre »*). Sans effet sur les chiffres — ils ne
+  dépendent pas de ce fragment — mais **écrit plutôt que lissé**.
+  ⚠️ Et `--refus-tolere "touch addr"` **ne couvre pas ce cas** : il tolère un refus **nommé**, pas
+  un refus né d'une **troncature**, où la commande refusée n'est plus celle qu'on a nommée.
+
+## §33.7 — Le corpus `prêt en …`
+
+Quatre relevés neufs : **2 080 ×3, 2 081 ×1**. ⇒ **n = 36 (2 079..2 467 ms)**, bornes inchangées.
+⚠️ **Ces quatre sont des resets RTS, ⛔ pas des démarrages à froid** — dit plutôt que mélangé.

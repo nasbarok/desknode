@@ -1,0 +1,81 @@
+
+$ dem
+── ETAT DE DEMARRAGE (dn4-43) ──────────────────────────────
+  verdict         : PROPRE
+  arme            : OUI
+  a l'ecran       : non (conclu)
+  duree           : 1500 ms
+  err I2C vues    : 0
+  fenetres cassees: 0
+  lectures fenetre: 36   (fenetre COURANTE, ⛔ pas l'etat)
+  re-armements    : 0 REFUSE(S)   (⛔ un 0 ne prouve RIEN :
+                    aucun chemin du firmware n'arme deux fois)
+  builds ecran    : 1   (AC1.4 : doit valoir 1 — ⚠ il ne
+                    PEUT pas valoir 2, un seul site d'appel)
+  lignes trop lg  : 0
+  budget          : fenetre 1500 ms / 20 lecture(s) min, plafond 90000 ms
+  tactile MAINTENANT : 0 err / 2026 lectures
+
+  ⚠ CE QUE CES CHIFFRES NE DISENT PAS :
+    · un 0 d'erreurs ne prouve PAS que le bus va bien — il dit que
+      la fenetre observee n'en a pas vu. Le scan i2c, lui, a deja
+      annonce « 8 stables, 0 instable » pendant qu'une transaction
+      de donnee sur deux echouait (§13.17.1).
+    · un verdict PLAFOND ne veut PAS dire « prete » : il dit qu'on
+      a cesse d'attendre.
+    · la fenetre froide n'apparait qu'~1 cycle sur 6, et SEUL un
+      debranchement PHYSIQUE du cable la reproduit — ⛔ pas `reboot`,
+      qui laisse le rail 3V3 debout.
+--- fin : 27 lignes emises ---
+✅ compteur : 27 annoncées, 27 reçues.
+   ⚠️ `OK` = les DEUX COMPTES S'ACCORDENT, ⛔ pas « rien n'a été
+      perdu » : une ligne perdue et un log asynchrone arrivés dans
+      la MÊME capture s'annulent. Cet instrument ne sait pas les
+      distinguer, et il le dit plutôt que de le taire.
+⚠️ `nettoyer()` a coupé 2 ligne(s) AVANT l'écho de la commande.
+   ⛔ Ce n'est pas couvert par le compteur : ces lignes-là sont
+   jetées AVANT d'être comptées. En régime sain il y en a ZÉRO —
+   `reset_input_buffer()` vient de vider le tampon.
+
+$ touch
+GT911 : PRET
+  adresse REELLE 0x5D (visee 0x5D)
+  probe AVANT reset : REPOND DEJA a 0x14
+     => TP_RST n'est PAS maintenu bas quand l'expander le laisse
+        en entree : le GT911 sort de reset seul a la mise sous
+        tension. La story attendait l'inverse — MESURE le
+        2026-08-16. La sequence reste utile : elle rend l'adresse
+        DETERMINISTE. Le temoin de causalite est `touch addr`.
+  probe APRES reset : ESP_OK
+  sequence : INT bas, TP_RST 150 ms bas / 50 ms de repos (expander bit1)
+  identite : « 911 » fw 0x1060 · config v93 · 5 point(s) max
+  resolution CONFIGUREE dans le GT911 : 480 x 640  (dalle 480 x 640)
+  INT declenche sur : front DESCENDANT (registre 0x804D bits 1-0 = 1)
+  mode de lecture : poll · axes swap=0 mirror_x=0 mirror_y=0
+  TP_INT = GPIO16, niveau instantane 1
+compteurs :
+  IRQ 31 · lectures 2027 · appuis 0 · relaches 0 · erreurs I2C 0
+  dernier point : (0, 0)  brut (0, 0)  etat relache
+latence tap -> ecran flushe (AC5) :
+  aucune transition mesuree — toucher une case, ou `nav open 0`
+usage : touch                      etat, config lue, compteurs
+        touch reset                remet les compteurs a zero
+        touch mode event|poll      mode de lecture de l'indev
+        touch axes <swap> <mx> <my>  0|1 chacun (orientation)
+        touch trace [ms]           imprime chaque appui + sa zone
+        touch int [ms]             temoin PHYSIQUE de TP_INT
+        touch addr                 PREUVE CAUSALE : INT haut/bas
+                                   -> adresse latchee 0x14/0x5D
+        touch delais <bas> <haut>  delais de la sequence de reset
+                                   (1..2000 ms) ; `touch addr` pour
+                                   les APPLIQUER en rejouant
+--- fin : 31 lignes emises ---
+✅ compteur : 31 annoncées, 31 reçues.
+   ⚠️ `OK` = les DEUX COMPTES S'ACCORDENT, ⛔ pas « rien n'a été
+      perdu » : une ligne perdue et un log asynchrone arrivés dans
+      la MÊME capture s'annulent. Cet instrument ne sait pas les
+      distinguer, et il le dit plutôt que de le taire.
+
+$ (écoute passive)
+I (83868) desknode: up 80 s — vsync=3032 — flush=31 cycles=19 — PSRAM libre 6580456 o — mural 83 s (écart +0 s, Δ +0 s) — reset: POWERON (mise sous tension / débranchement)
+W (86246) dn_ui: historique : 1 seconde(s) NON ÉCHANTILLONNÉE(S) (pause `ui off` ou préemption longue) — 1 position(s) creusée(s) en TROUS ; la courbe ne reliera PAS les deux bords de la coupure

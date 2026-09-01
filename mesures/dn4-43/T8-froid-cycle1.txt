@@ -1,0 +1,111 @@
+
+$ dem
+── ETAT DE DEMARRAGE (dn4-43) ──────────────────────────────
+  verdict         : PROPRE
+  arme            : OUI
+  a l'ecran       : non (conclu)
+  duree           : 1500 ms
+  err I2C vues    : 0
+  fenetres cassees: 0
+  lectures fenetre: 43   (fenetre COURANTE, ⛔ pas l'etat)
+  re-armements    : 0 REFUSE(S)   (⛔ un 0 ne prouve RIEN :
+                    aucun chemin du firmware n'arme deux fois)
+  builds ecran    : 1   (AC1.4 : doit valoir 1 — ⚠ il ne
+                    PEUT pas valoir 2, un seul site d'appel)
+  lignes trop lg  : 0
+  budget          : fenetre 1500 ms / 20 lecture(s) min, plafond 90000 ms
+  tactile MAINTENANT : 0 err / 6535 lectures
+
+  ⚠ CE QUE CES CHIFFRES NE DISENT PAS :
+    · un 0 d'erreurs ne prouve PAS que le bus va bien — il dit que
+      la fenetre observee n'en a pas vu. Le scan i2c, lui, a deja
+      annonce « 8 stables, 0 instable » pendant qu'une transaction
+      de donnee sur deux echouait (§13.17.1).
+    · un verdict PLAFOND ne veut PAS dire « prete » : il dit qu'on
+      a cesse d'attendre.
+    · la fenetre froide n'apparait qu'~1 cycle sur 6, et SEUL un
+      debranchement PHYSIQUE du cable la reproduit — ⛔ pas `reboot`,
+      qui laisse le rail 3V3 debout.
+--- fin : 27 lignes emises ---
+✅ compteur : 27 annoncées, 27 reçues.
+   ⚠️ `OK` = les DEUX COMPTES S'ACCORDENT, ⛔ pas « rien n'a été
+      perdu » : une ligne perdue et un log asynchrone arrivés dans
+      la MÊME capture s'annulent. Cet instrument ne sait pas les
+      distinguer, et il le dit plutôt que de le taire.
+
+$ veille
+mode : AMBIENT · veille ARMEE · delai 1 min (60000 ms)
+inactivite : 223690 ms (max vue depuis le reset : 223690 ms)
+bascules -> Ambient : 1 · reveils : 0 · dernier reveil par : aucun
+secondes OBSERVEES : 230 (⚠️ ⛔ PAS l'uptime : le tick 1 Hz ne bat
+   pas pendant `ui off`, donc la veille y est AVEUGLE)
+─── temps MURAL par mode depuis le boot (dn4-5/AC3.2) ───
+  Actif   :       68 s
+  Ambient :      163 s
+  total   :      232 s  ⇒ Ambient = 70 %  ✅ MAJORITE (seuil > 50 %)
+  ⚠️ CE QUE CE CUMUL NE VOIT PAS : il dit dans quel MODE le
+     module se croit, ⛔ pas que la dalle est effectivement
+     sombre. Le constat owner reste requis. Et pendant un
+     `ui off`, le temps est impute au mode COURANT — sans
+     consequence en regime, ou le port est tenu par l'agent.
+  ⛔ EN RAM (D4) : un reboot le remet a zero, et il rompt la
+     fenetre du soak de toute facon (AC3.6).
+rebases d'horloge a `ui on` : 0 · bascules ANNULEES (async refusee) : 0
+aucune ecriture NVS depuis le boot ou le dernier `veille reset`
+   (les deux reglages sont ceux qui etaient deja en vigueur).
+ecarts contact->bascule (le plus recent d'abord) :
+   #1     60685 ms  (delai arme 60000 ms, +685 ms)  ✅ dans [delai ; delai+1 s]
+   ⚠️ la fenetre fait UNE seconde parce que la detection est
+   cadencee a 1 Hz (`label_tick`). ⛔ Ce n'est pas « environ
+   le delai » : c'est [delai ; delai+1 s], et c'est verifie.
+taps CONSOMMES par un reveil : 0 · taps de reglage dans le MENU : 0
+contacts consommes EXPIRES (bus illisible) : 0 · bascules dont l'async a ete ABANDONNEE : 0
+transitions provoquees PAR LA VEILLE : 0 (dans `nav`, mais SANS
+   chronometre : elles ne naissent d'aucun geste)
+
+⚠️ PROTOCOLE DE LA GATE `menu_taps` (AC5.6) — A LIRE AVANT DE LA TIRER
+   Le bandeau MENU n'existe QUE sur le dashboard : une fois la vue
+   MENU ouverte, les appuis suivants au meme endroit ne tombent sur
+   AUCUNE zone. La serie est donc 8 ALLERS-RETOURS : appui dans
+   la bande y = 589..639, puis `←` (ou `nav back`), huit fois.
+   ⛔ Huit appuis d'affilee rendraient 1, ⛔ pas 8 — et ce ne
+     serait PAS une zone morte.
+   TEMOIN NEGATIF : >= 5 appuis dans la BARRE DU HAUT (y = 0..59)
+   doivent rendre 0 tap — elle, elle reste morte.
+
+usage : veille                       etat, compteurs, diagnostics
+        veille on | off              ARME / DESARME (persiste en NVS)
+        veille delai <1|3|5|10>      le delai, en MINUTES (persiste)
+        veille now                   bascule en Ambient MAINTENANT
+        veille wake                  reveille MAINTENANT (origine console)
+        veille lat                   les DEUX latences de reveil (AC4)
+        veille geom                  la preuve que le layout NE BOUGE PAS
+        veille assets                le recompte de la partition (AC1.4)
+        veille fond                  voiles et aplats RELUS DES OBJETS LVGL
+        veille reset                 compteurs ET latences a zero
+  --- leviers A/B, a chaud, ⛔ NON persistes (ce sont des instruments) ---
+        veille pct <3..100>           niveau d'Ambient de DERNIER RECOURS
+        veille voile <0..255>        opacite du voile en Ambient
+        veille gris <reel|simule|absent> <rrggbb>
+        veille accents <0..100>      desaturation des accents (0=teinte, 100=gris)
+        veille unite on|off          l'unite reste-t-elle ? ⚠️ CHOISIT LA POLICE
+                                     (on ⇒ 33 px · off ⇒ 56 px, tailles MESUREES)
+        veille jauge on|off          la barre de remplissage en veille
+        veille case <rrggbb>         l'aplat de case en Ambient
+⚠️ La ligne de resume de `help` a OMIS `fond`, `unite`, `jauge` et
+   `case` jusqu'au 2026-08-28 — corrige. `veille fond` est l'outil de
+   bissection qui a tranche le constat owner « au lieu d'un noir/gris
+   sombre c'est un vert » : il etait invisible pour qui part de `help`.
+--- fin : 62 lignes emises ---
+✅ compteur : 62 annoncées, 62 reçues.
+   ⚠️ `OK` = les DEUX COMPTES S'ACCORDENT, ⛔ pas « rien n'a été
+      perdu » : une ligne perdue et un log asynchrone arrivés dans
+      la MÊME capture s'annulent. Cet instrument ne sait pas les
+      distinguer, et il le dit plutôt que de le taire.
+
+$ (écoute passive)
+I (233900) desknode: up 230 s — vsync=8643 — flush=76 cycles=53 — PSRAM libre 6580456 o — mural 233 s (écart +0 s, Δ +0 s) — reset: POWERON (mise sous tension / débranchement)
+W (239251) dn_ui: historique : 1 seconde(s) NON ÉCHANTILLONNÉE(S) (pause `ui off` ou préemption longue) — 1 position(s) creusée(s) en TROUS ; la courbe ne reliera PAS les deux bords de la coupure
+W (241251) dn_ui: historique : 1 seconde(s) NON ÉCHANTILLONNÉE(S) (pause `ui off` ou préemption longue) — 1 position(s) creusée(s) en TROUS ; la courbe ne reliera PAS les deux bords de la coupure
+I (243903) desknode: up 240 s — vsync=9017 — flush=78 cycles=55 — PSRAM libre 6580456 o — mural 243 s (écart +0 s, Δ +0 s) — reset: POWERON (mise sous tension / débranchement)
+W (245250) dn_ui: historique : 1 seconde(s) NON ÉCHANTILLONNÉE(S) (pause `ui off` ou préemption longue) — 1 position(s) creusée(s) en TROUS ; la courbe ne reliera PAS les deux bords de la coupure
