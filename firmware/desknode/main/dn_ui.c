@@ -11,6 +11,7 @@
 #include "dn_asset.h"
 #include "dn_capteurs.h"
 #include "dn_display.h"
+#include "dn_demarrage.h"
 /*
  * ~~dn3-3 : UNIQUEMENT pour `dn_env_bl_auto_desarmer()` — la veille est le 4ᵉ~~
  * ~~écrivain de LEDC et doit s'arbitrer avec le 3ᵉ. ⛔ Rien d'autre de `dn_env`~~
@@ -5810,6 +5811,327 @@ static void detail_reparametrer(int idx)
     courbe_reparametrer(idx);
 }
 
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ * 🔴 `dn4-43` — L'ÉTAT DE DÉMARRAGE : LA 4ᵉ VUE, ET ELLE MEURT EN SORTANT
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * 🎯 **VOIE (b) D'AC2.1, TRANCHÉE PAR L'OWNER LE 2026-09-01.** Les trois voies
+ *    étaient sur la table :
+ *      (a) un bandeau SUPERPOSÉ au dashboard — le moins cher en objets, ⛔ mais
+ *          il empile du translucide, et **D21 a mesuré `taskLVGL` à 99,3 %
+ *          contre 3,5 % avec watchdog** sur exactement ce geste-là (`dn4-42`,
+ *          protocole en `hardware/…-affichage.md` §31.5). La cause n'est
+ *          **pas nommée** : c'est un SEUIL.
+ *      (b) une 4ᵉ vue OPAQUE, plein écran ⇒ **⛔ AUCUNE superposition**, donc
+ *          le risque D21 est écarté **par construction**, ⛔ pas par une mesure
+ *          qu'il aurait fallu croire.
+ *      (c) la barre heure/date ⇒ zéro objet neuf, ⛔ mais l'inconnu continuerait
+ *          de voir un dashboard fini et plausible — le défaut resterait.
+ *
+ * ✅ **ET (b) CACHE LE DASHBOARD TROMPEUR**, ce qui est le fond du sujet :
+ *    l'écran s'allume à l'étape 7 sur une scène COMPLÈTE dont aucune source n'a
+ *    été lue. La 4ᵉ vue est chargée AVANT la 1ʳᵉ trame ⇒ **ce que l'inconnu voit
+ *    en premier est l'état de démarrage**, ⛔ pas six cases à `--`.
+ *
+ * ⚠️ **ELLE N'EST PAS DANS `build_scene()`, ET C'EST AC1.4.** Les trois racines
+ *    y sont reconstruites à chaque `ui bg …`, `nav …` ou changement de langue.
+ *    Un état de démarrage rebâti là annoncerait « premier démarrage » sur une
+ *    carte qui tourne depuis une heure — un instrument qui MENT sur ce qu'il
+ *    mesure. ⇒ elle est construite **UNE FOIS**, et `dn_ui_demarrage_builds()`
+ *    le PROUVE (il doit rester à 1, quel que soit le nombre de reconstructions).
+ *
+ * 🔴 **ET UNE RECONSTRUCTION SOUS ELLE LA CONCLUT**, ⛔ elle ne la laisse pas
+ *    pendre : `build_scene()` détruit l'écran SORTANT quand il n'est aucune des
+ *    trois racines (la fuite symétrique trouvée en revue dn1-4). Sans le
+ *    `demarrage_conclure_nolock()` posé en tête de `build_scene()`, `s_scr_dem`
+ *    deviendrait un **pointeur pendant** et le timer écrirait dedans au tick
+ *    suivant — le use-after-free au pire délai de diagnostic, exactement comme
+ *    les voiles de dn3-3.
+ */
+
+/* La cadence de relecture. ⚠️ 250 ms : assez fin pour que la fin se voie, assez
+ * lâche pour ne rien coûter. ⛔ Ce timer ne dessine RIEN tant que rien ne
+ * change — il LIT deux compteurs et compare. */
+#define DN_UI_DEM_PERIODE_MS 250
+
+/*
+ * LE BUDGET VERTICAL, ADDITIONNÉ ICI POUR QUE PERSONNE N'AIT À LE REFAIRE.
+ * Dalle 480 x 640. Tout est centré horizontalement sur toute la largeur, donc
+ * ⛔ aucune arithmétique de x — c'est ce qui rend les deux langues sûres sans
+ * les mesurer l'une contre l'autre.
+ *
+ *   titre    y = 200  (dn_font_28, lh 35)  -> 235
+ *   état     y = 250  (dn_font_28, lh 35)  -> 285
+ *   contrôle y = 300  (dn_font_18, lh 23)  -> 323
+ *   ── SECOND TEMPS, révélé seulement si des erreurs sont MESURÉES ──
+ *   tactile  y = 380  (dn_font_18, lh 23)  -> 403
+ *   fin      y = 408  (dn_font_18, lh 23)  -> 431   <= 640 ✅
+ *
+ * ⚠️ **CE BUDGET EST GARDÉ PAR LE COMPILATEUR** (AC2.2), comme `dn4-41` :
+ *    un `DEM_Y_*` déplacé sans refaire l'addition ne compile plus.
+ * ⚠️ Les hauteurs de ligne sont ÉCRITES ici parce qu'un `_Static_assert` ne peut
+ *    pas appeler `lv_font_get_line_height()`. ⇒ elles sont RELUES à la
+ *    construction et un écart est COMPTÉ (`dem_geometrie_controler`), ⛔ pas
+ *    laissé à un commentaire qui se périmerait au premier changement de police.
+ */
+#define DEM_LH_28 35
+#define DEM_LH_18 23
+#define DEM_Y_TITRE 200
+#define DEM_Y_ETAT 250
+#define DEM_Y_CTRL 300
+#define DEM_Y_TACT 380
+#define DEM_Y_TACT_FIN 408
+
+_Static_assert(DEM_Y_TITRE + DEM_LH_28 <= DEM_Y_ETAT,
+               "dn4-43 : le titre de l'ecran de demarrage mord sur la ligne "
+               "d'etat. Refaire l'addition du budget vertical ci-dessus.");
+_Static_assert(DEM_Y_ETAT + DEM_LH_28 <= DEM_Y_CTRL,
+               "dn4-43 : la ligne d'etat mord sur la ligne de controle.");
+_Static_assert(DEM_Y_CTRL + DEM_LH_18 <= DEM_Y_TACT,
+               "dn4-43 : la ligne de controle mord sur le second temps.");
+_Static_assert(DEM_Y_TACT + DEM_LH_18 <= DEM_Y_TACT_FIN,
+               "dn4-43 : les deux lignes du second temps se chevauchent.");
+_Static_assert(DEM_Y_TACT_FIN + DEM_LH_18 <= DN_LCD_V_RES,
+               "dn4-43 : le second temps depasse le bas de la dalle — LVGL le "
+               "CLIPPE sans un mot, et ce qui serait coupe est justement la "
+               "phrase qui dit que le defaut se retablit tout seul.");
+
+static lv_obj_t *s_scr_dem;
+/* L'écran qui était actif AVANT le chargement de l'état de démarrage. C'est là
+ * qu'on retourne. ⚠️ Le garder évite de récrire la table des trois racines ici,
+ * et ça marche dans les DEUX modèles de nav — `DN_NAV_REBUILD` n'en a qu'une. */
+static lv_obj_t *s_scr_dem_precedent;
+static lv_obj_t *s_dem_lbl_tact;
+static lv_obj_t *s_dem_lbl_tact_fin;
+static lv_timer_t *s_dem_timer;
+/* 🎯 LA PREUVE D'AC1.4 : il doit rester à **1**, quel que soit le nombre de
+ *    `build_scene()`. ⛔ Ce n'est pas un compteur décoratif — c'est la seule
+ *    chose qui puisse démentir « il ne se ré-affiche pas ». */
+static uint32_t s_dem_builds;
+/* Combien de lignes de l'écran de démarrage débordent de la dalle, ou dépassent
+ * la hauteur de ligne budgétée. ⛔ On ne tronque pas et on ne masque pas : même
+ * doctrine que `s_menu_trop_larges`. On mesure, et on DIT. */
+static uint32_t s_dem_trop_larges;
+
+/*
+ * Mesure une ligne de l'écran de démarrage contre la dalle, COMPTE et DIT.
+ * ⚠️ Elle contrôle AUSSI la hauteur de ligne réelle contre celle qui a servi au
+ *    `_Static_assert` : les deux nombres vivent à des endroits différents, et
+ *    c'est exactement le genre d'écart qui se périme en silence.
+ */
+static void dem_geometrie_controler(const char *quoi, const char *txt,
+                                    const lv_font_t *font, int lh_budgete)
+{
+    if (!txt || !font) {
+        return;
+    }
+    int w = dn_widget_largeur(txt, font);
+    if (w > DN_LCD_H_RES) {
+        s_dem_trop_larges++;
+        ESP_LOGW(TAG,
+                 "DEMARRAGE « %s » : « %s » mesure %d px pour %d de dalle — il "
+                 "manque %d px. LVGL RENVOIE A LA LIGNE, et la ligne suivante "
+                 "mord sur le budget vertical.",
+                 quoi, txt, w, DN_LCD_H_RES, w - DN_LCD_H_RES);
+    }
+    int lh = (int)lv_font_get_line_height(font);
+    if (lh > lh_budgete) {
+        s_dem_trop_larges++;
+        ESP_LOGW(TAG,
+                 "DEMARRAGE « %s » : la police rend une hauteur de ligne de %d "
+                 "px, le budget vertical en a additionne %d. ⛔ Le "
+                 "`_Static_assert` a ete calcule sur un chiffre PERIME.",
+                 quoi, lh, lh_budgete);
+    }
+}
+
+/*
+ * Construit la 4ᵉ vue et la CHARGE. Appelée UNE FOIS, par `dn_ui_init()`, juste
+ * après `build_scene()` — donc avant que `app_main` n'attende la 1ʳᵉ trame
+ * (étape 6) et n'allume le rétroéclairage (étape 7).
+ *
+ * ⛔ PAS DE `fond_poser()` ICI, ET C'EST DÉLIBÉRÉ : il pose la source de fond
+ *    (image PSRAM ou flash) et un VOILE de veille. Sur un écran qui vit une
+ *    seconde et demie, ce serait payer un blit et un objet de plus pour rien —
+ *    et remettre du translucide dans une story qui a choisi (b) pour s'en
+ *    passer. Noir plein, trois labels, ⛔ rien d'autre.
+ */
+static void demarrage_construire(void)
+{
+    s_dem_builds++;
+    s_scr_dem = lv_obj_create(NULL);
+    lv_obj_set_style_bg_color(s_scr_dem, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(s_scr_dem, LV_OPA_COVER, 0);
+    lv_obj_set_scrollbar_mode(s_scr_dem, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_clear_flag(s_scr_dem, LV_OBJ_FLAG_SCROLLABLE);
+
+    /* ⚠️ CHAQUE LIGNE PREND TOUTE LA LARGEUR ET SE CENTRE. ⛔ Aucun `x` calculé
+     *    : un x posé à la main serait juste dans UNE langue et faux dans
+     *    l'autre — le défaut que `dn4-42` a passé une séance à trouver. */
+    const struct {
+        dn_txt_t cle;
+        const lv_font_t *font;
+        uint32_t couleur;
+        int y;
+        int lh;
+        const char *quoi;
+        lv_obj_t **sortie;
+    } lignes[] = {
+        {DN_T_DEM_TITRE, &dn_font_28, 0xa0d8ff, DEM_Y_TITRE, DEM_LH_28,
+         "titre", NULL},
+        {DN_T_DEM_EN_COURS, &dn_font_28, 0xffffff, DEM_Y_ETAT, DEM_LH_28,
+         "etat", NULL},
+        {DN_T_DEM_CONTROLE, &dn_font_18, 0xc0d8e8, DEM_Y_CTRL, DEM_LH_18,
+         "controle", NULL},
+        {DN_T_DEM_TACTILE, &dn_font_18, 0xffc060, DEM_Y_TACT, DEM_LH_18,
+         "tactile", &s_dem_lbl_tact},
+        {DN_T_DEM_TACTILE_FIN, &dn_font_18, 0xc0d8e8, DEM_Y_TACT_FIN,
+         DEM_LH_18, "tactile fin", &s_dem_lbl_tact_fin},
+    };
+
+    for (unsigned i = 0; i < sizeof(lignes) / sizeof(lignes[0]); i++) {
+        const char *txt = dn_t(lignes[i].cle);
+        dem_geometrie_controler(lignes[i].quoi, txt, lignes[i].font,
+                                lignes[i].lh);
+        lv_obj_t *l = texte(s_scr_dem, txt, lignes[i].font,
+                            lv_color_hex(lignes[i].couleur), 0, lignes[i].y);
+        lv_obj_set_width(l, DN_LCD_H_RES);
+        lv_obj_set_style_text_align(l, LV_TEXT_ALIGN_CENTER, 0);
+        if (lignes[i].sortie) {
+            *lignes[i].sortie = l;
+            /* 🔴 LE SECOND TEMPS NAÎT CACHÉ. Il ne se montre que si des erreurs
+             *    I²C sont RÉELLEMENT MESURÉES — arbitrage owner du 2026-09-01.
+             *    ⛔ L'afficher d'emblée inquiéterait 5 inconnus sur 6 pour un
+             *    défaut que leur carte n'a pas. */
+            lv_obj_add_flag(l, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+
+    s_scr_dem_precedent = lv_screen_active();
+    lv_screen_load(s_scr_dem);
+}
+
+/*
+ * Termine l'état de démarrage : rend l'écran d'avant, détruit le nôtre, arrête
+ * le timer. Sans effet s'il n'est pas à l'écran.
+ * ⚠️ NE PREND PAS LE VERROU — elle est appelée depuis la tâche LVGL (timer) ou
+ *    depuis `build_scene()`, qui tourne déjà verrou tenu.
+ */
+static void demarrage_conclure_nolock(dn_dem_verdict_t v)
+{
+    if (!s_scr_dem) {
+        return;
+    }
+    uint32_t t_ms = (uint32_t)(esp_timer_get_time() / 1000);
+    dn_dem_conclure(t_ms, v);
+
+    ESP_LOGI(TAG,
+             "DEMARRAGE terminé : %s — %" PRIu32 " ms, %" PRIu32
+             " erreur(s) I2C vue(s), %" PRIu32 " fenêtre(s) relancée(s), "
+             "%" PRIu32 " lecture(s) dans la fenêtre finale",
+             dn_dem_verdict_nom(dn_dem_verdict()), dn_dem_duree_ms(),
+             dn_dem_err_vues(), dn_dem_fenetres_cassees(),
+             dn_dem_lectures_vues());
+    if (dn_dem_verdict() == DN_DEM_FIN_PLAFOND) {
+        ESP_LOGW(TAG,
+                 "⛔ le plafond de %u ms a expiré : ce n'est PAS « la carte est "
+                 "prête », c'est « on a cessé d'attendre ». Le bus ratait "
+                 "encore. Voir `touch` et §13.17.1.",
+                 (unsigned)DN_DEM_PLAFOND_MS);
+    }
+    if (dn_dem_verdict() == DN_DEM_FIN_SANS_TACTILE) {
+        ESP_LOGW(TAG,
+                 "⛔ aucun indev tactile : l'observation était IMPOSSIBLE, ⛔ pas "
+                 "concluante. Le dashboard ne répondra pas au doigt — `touch` "
+                 "dit où la séquence a échoué.");
+    }
+
+    /* ⚠️ ON CHARGE L'ÉCRAN D'AVANT **PUIS** ON DÉTRUIT LE NÔTRE. L'inverse
+     *    laisserait LVGL sans écran courant le temps d'une instruction — c'est
+     *    l'ordre que `build_scene()` applique déjà aux trois racines, et il est
+     *    écrit là-bas avec son motif. */
+    if (s_scr_dem_precedent) {
+        lv_screen_load(s_scr_dem_precedent);
+    }
+    lv_obj_t *mort = s_scr_dem;
+    s_scr_dem = NULL;
+    s_scr_dem_precedent = NULL;
+    s_dem_lbl_tact = NULL;
+    s_dem_lbl_tact_fin = NULL;
+    lv_obj_delete(mort);
+
+    if (s_dem_timer) {
+        lv_timer_delete(s_dem_timer);
+        s_dem_timer = NULL;
+    }
+}
+
+/*
+ * Le tick. ⛔ IL NE DESSINE RIEN tant que rien ne change : il relit deux
+ * compteurs et les passe à la décision, qui vit dans `dn_demarrage.c` — sans
+ * LVGL, donc EXÉCUTABLE PAR LA GATE.
+ */
+static void dem_tick(lv_timer_t *t)
+{
+    (void)t;
+    if (!s_scr_dem) {
+        return;
+    }
+    dn_touch_stats_t st;
+    dn_touch_get_stats(&st);
+    uint32_t t_ms = (uint32_t)(esp_timer_get_time() / 1000);
+    dn_dem_verdict_t v = dn_dem_tick(t_ms, dn_touch_err_i2c(), st.lectures);
+
+    if (v == DN_DEM_EN_COURS) {
+        /* 🔴 LE SECOND TEMPS, ET IL EST CONDITIONNÉ À UNE MESURE, ⛔ PAS À UN
+         *    DÉLAI. `dn_dem_err_vues()` ne monte que si le bus a RÉELLEMENT
+         *    raté pendant l'attente. */
+        if (dn_dem_err_vues() > 0 && s_dem_lbl_tact
+            && lv_obj_has_flag(s_dem_lbl_tact, LV_OBJ_FLAG_HIDDEN)) {
+            lv_obj_clear_flag(s_dem_lbl_tact, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(s_dem_lbl_tact_fin, LV_OBJ_FLAG_HIDDEN);
+            ESP_LOGW(TAG,
+                     "DEMARRAGE : %" PRIu32 " erreur(s) I2C MESURÉE(S) — l'écran "
+                     "NOMME le tactile (2e temps).",
+                     dn_dem_err_vues());
+        }
+        return;
+    }
+    demarrage_conclure_nolock(v);
+}
+
+/* ── Ce que la console et la gate LISENT de l'état de démarrage ───────────── */
+
+uint32_t dn_ui_demarrage_builds(void) { return s_dem_builds; }
+uint32_t dn_ui_demarrage_trop_larges(void) { return s_dem_trop_larges; }
+bool dn_ui_demarrage_a_l_ecran(void) { return s_scr_dem != NULL; }
+
+/*
+ * Arme l'observation. Appelée par `app_main` APRÈS `dn_touch_attach_lvgl()` —
+ * voir le motif de la course à `dn_ui_init()`.
+ * ⚠️ ELLE PREND LE VERROU : `app_main` tourne hors de la tâche LVGL.
+ */
+void dn_ui_demarrage_armer(bool tactile_present)
+{
+    dn_touch_stats_t st;
+    dn_touch_get_stats(&st);
+    uint32_t t_ms = (uint32_t)(esp_timer_get_time() / 1000);
+    if (!lvgl_port_lock(0)) {
+        ESP_LOGE(TAG, "⛔ verrou LVGL indisponible : l'état de démarrage N'EST "
+                      "PAS armé — il se terminera au plafond.");
+        return;
+    }
+    dn_dem_armer(t_ms, tactile_present, dn_touch_err_i2c(), st.lectures);
+    lvgl_port_unlock();
+    ESP_LOGI(TAG,
+             "DEMARRAGE armé : tactile %s, fenêtre %u ms / %u lecture(s) min, "
+             "plafond %u ms",
+             tactile_present ? "PRESENT" : "ABSENT",
+             (unsigned)DN_DEM_FENETRE_MS, (unsigned)DN_DEM_LECTURES_MIN,
+             (unsigned)DN_DEM_PLAFOND_MS);
+}
+
 /* ── build_scene : reconstruit la VUE COURANTE ────────────────────────────── */
 
 /* Détruit et reconstruit toute la scène. Idempotent, et appelé aussi bien à
@@ -5819,6 +6141,25 @@ static void detail_reparametrer(int idx)
  * mérite pas cette subtilité-là. */
 static void build_scene(void)
 {
+    /*
+     * 🔴 `dn4-43` / AC1.4 — **L'ÉTAT DE DÉMARRAGE SE CONCLUT ICI, AVANT TOUT.**
+     *
+     * ⛔ CE N'EST PAS UNE PRÉCAUTION, C'EST UN USE-AFTER-FREE ÉVITÉ. Plus bas,
+     *    la branche `DN_NAV_SCREENS` détruit l'écran SORTANT dès qu'il n'est
+     *    aucune des trois racines — c'est la fuite symétrique trouvée en revue
+     *    dn1-4. `s_scr_dem` en est justement un quatrième : il serait détruit
+     *    là, et le timer `dem_tick` écrirait dedans 250 ms plus tard, sur un
+     *    pointeur pendant. La branche `DN_NAV_REBUILD`, elle, ferait pire :
+     *    `lv_obj_clean()` sur l'écran ACTIF viderait l'état de démarrage et
+     *    dessinerait le dashboard DEDANS.
+     *
+     * ⚠️ Et il ⛔ NE SE RÉ-AFFICHE PAS ENSUITE : `dn_dem_armer()` REFUSE tout
+     *    ré-armement après une fin, et compte son refus. Une reconstruction est
+     *    un geste d'OPÉRATEUR (`ui bg …`, `nav …`, changement de langue) — ⛔
+     *    pas le parcours de l'inconnu que cette story sert.
+     */
+    demarrage_conclure_nolock(DN_DEM_FIN_RECONSTRUCTION);
+
     /* ⚠️ L'ombre suit la réalité (revue dn1-3). La reconstruction détruit la
      * barre du stimulus ET son animation : laisser `s_anim_on` à vrai ferait
      * annoncer « stimulus EN COURS » par `ui`, `anim` et l'étiquette de `fps` —
@@ -7289,6 +7630,28 @@ esp_err_t dn_ui_init(const dn_bootcfg_t *cfg, esp_err_t asset_err)
     }
     barre_defaut();
     build_scene();
+    /*
+     * 🔴 `dn4-43` — **L'ÉTAT DE DÉMARRAGE EST CONSTRUIT ET CHARGÉ ICI**, c'est-
+     *    à-dire à l'étape 4, AVANT que `app_main` n'attende la 1ʳᵉ trame
+     *    (étape 6) et n'allume le rétroéclairage (étape 7).
+     *
+     * ⇒ **CE QUE L'INCONNU VOIT EN PREMIER EST L'ÉTAT DE DÉMARRAGE**, ⛔ pas
+     *   six cases à `--` avec `CLOCK NOT SET` à la barre. C'est tout le sujet
+     *   de la story : le défaut n'était pas « l'écran ne montre rien », c'était
+     *   qu'il montrait une application FINIE ET PLAUSIBLE.
+     *
+     * ⚠️ **APRÈS `build_scene()`, ⛔ PAS AVANT** : elle conclut l'état de
+     *    démarrage en tête (AC1.4). L'appeler avant le détruirait aussitôt.
+     *
+     * ⚠️ **LE TIMER EST CRÉÉ ICI, MAIS L'OBSERVATION N'EST PAS ARMÉE** :
+     *    `dn_ui_demarrage_armer()` est appelée par `app_main` APRÈS
+     *    `dn_touch_attach_lvgl()`. Armer ici serait une COURSE RÉELLE — l'indev
+     *    n'est pas encore branché, `dn_touch_ready()` serait faux, et l'état de
+     *    démarrage se conclurait sur `SANS TACTILE` **sur une carte saine**.
+     *    Tant que rien n'est armé, `dn_dem_tick()` ne conclut RIEN.
+     */
+    demarrage_construire();
+    s_dem_timer = lv_timer_create(dem_tick, DN_UI_DEM_PERIODE_MS, NULL);
     /*
      * 🔴 dn3-3 : LE FRONT D'APPUI EST BRANCHÉ ICI (D-7).
      * ⚠️ AVANT `dn_touch_attach_lvgl()`, qui est appelée par `app_main` APRÈS

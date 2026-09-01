@@ -272,7 +272,30 @@ typedef enum {
     X(BADGE_SIMULE,    "SIM.",                     "SIMULÉ")                   \
     X(SEC_SIMULE,      "SIMULATED value - no sensor",                          \
                        "valeur SIMULÉE - aucun capteur")                       \
-    X(ASSET_ABSENT,    "ASSET MISSING",            "ASSET ABSENT")
+    X(ASSET_ABSENT,    "ASSET MISSING",            "ASSET ABSENT")             \
+                                                                               \
+    /* ── L'ÉTAT DE DÉMARRAGE (`dn4-43`) ────────────────────────────────── */ \
+    /* 🔴 IL EXISTE PARCE QUE LE DASHBOARD EST **DÉJÀ COMPLET** QUAND LA      */ \
+    /*    DALLE S'ALLUME, ET QU'AUCUNE SOURCE N'A ÉTÉ LUE : l'inconnu voit    */ \
+    /*    une application FINIE ET PLAUSIBLE qui ne répond pas au doigt.      */ \
+    /* ⚠️ TOUT EST EN `dn_font_28` / `dn_font_18` — ⛔ jamais `dn_font_33`/    */ \
+    /*    `56`, qui n'ont AUCUN latin-1 (piège (1) en tête de ce fichier).    */ \
+    X(DEM_TITRE,       "DESKNODE",                 "DESKNODE")                 \
+    /* ⛔ PAS « … » (U+2026) : il n'est dans AUCUNE police du dépôt et serait  */ \
+    /*    dessiné EN BOÎTE, sans un mot. Trois points ASCII, qui existent.    */ \
+    X(DEM_EN_COURS,    "STARTING UP...",           "DÉMARRAGE...")             \
+    /* ⚠️ ⛔ PAS « veuillez patienter » (AC3.4) : la ligne dit CE QUI SE PASSE. */ \
+    X(DEM_CONTROLE,    "checking the I2C bus",     "contrôle du bus I2C")      \
+    /* 🔴 LES DEUX LIGNES DU **SECOND TEMPS** (arbitrage owner du 2026-09-01).*/ \
+    /*    Elles n'apparaissent QUE si `dn_dem_err_vues() > 0`, c'est-à-dire   */ \
+    /*    si des erreurs I²C ont été RÉELLEMENT MESURÉES pendant l'attente.   */ \
+    /*    ⇒ sur les **5 boots sains sur 6** (§13.17.1) l'inconnu ne lit       */ \
+    /*      AUCUN avertissement qui ne le concerne pas ; sur le 6e il lit     */ \
+    /*      exactement la cause, au lieu de conclure « tactile cassé ».       */ \
+    X(DEM_TACTILE,     "touch is not responding yet",                          \
+                       "le tactile ne répond pas encore")                      \
+    X(DEM_TACTILE_FIN, "this is known, and it recovers on its own",            \
+                       "c'est connu, et ça revient tout seul")
 
 /* clang-format on */
 

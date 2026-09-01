@@ -348,6 +348,39 @@ uint32_t dn_ui_menu_taps(void);
  */
 bool dn_ui_relire_langue(void);
 
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ * 🔴 `dn4-43` — L'ÉTAT DE DÉMARRAGE (LA 4ᵉ VUE), ET CE QU'IL PUBLIE
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * La DÉCISION vit dans `dn_demarrage.h` (sans LVGL, donc exécutable par la
+ * gate). Ce qui suit est ce que l'ÉCRAN, lui, sait de son propre sort.
+ */
+
+/*
+ * Arme l'observation. 🔴 **À APPELER APRÈS `dn_touch_attach_lvgl()`**, ⛔ jamais
+ * avant : `dn_ui_init()` a déjà construit et chargé la 4ᵉ vue, mais l'indev
+ * n'existe pas encore à ce moment-là — armer trop tôt conclurait
+ * `SANS TACTILE` sur une carte parfaitement saine.
+ * `tactile_present` : le bring-up ET le branchement de l'indev ont réussi.
+ */
+void dn_ui_demarrage_armer(bool tactile_present);
+
+/*
+ * 🎯 **LA PREUVE D'AC1.4.** Combien de fois l'écran de démarrage a été
+ * CONSTRUIT. Il doit rester à **1**, quel que soit le nombre de
+ * reconstructions de scène (`ui bg …`, `nav …`, changement de langue).
+ * ⛔ Un 2 ici veut dire que l'état de démarrage se ré-affiche — c'est-à-dire
+ *   qu'il ment sur ce qu'il mesure.
+ */
+uint32_t dn_ui_demarrage_builds(void);
+/* Lignes de l'écran de démarrage qui débordent de la dalle, OU dont la police
+ * rend une hauteur de ligne supérieure à celle qu'a additionnée le budget.
+ * ⛔ On ne tronque pas, on ne masque pas : on mesure, et on DIT. */
+uint32_t dn_ui_demarrage_trop_larges(void);
+/* Vrai tant que la 4ᵉ vue est à l'écran. */
+bool dn_ui_demarrage_a_l_ecran(void);
+
 uint32_t dn_ui_menu_trop_larges(void);
 /* Combien de fois le MENU a ete CONSTRUIT. ⛔ Pas « tape » : le controle de
  * largeur s'exerce a la construction, et `nav menu` construit sans tap. */

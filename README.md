@@ -364,6 +364,72 @@ python3 tools/dn_injecteur.py --temoin-negatif   # rampes dans les bornes RELUES
 python3 tools/verif_instruments_dn423.py         # la gate (jouée par run_gates.sh)
 ```
 
+## 🔴 L'ÉTAT DE DÉMARRAGE, ET LE DÉFAUT CONNU QU'IL ANNONCE (`dn4-43`)
+
+### Ce que tu vois au premier branchement, et **ce que ça veut dire**
+
+Au démarrage, la dalle porte pendant environ une seconde et demie :
+
+```
+                    DESKNODE
+                  DÉMARRAGE...
+              contrôle du bus I2C
+```
+
+⚠️ **CE N'EST PAS UNE PANNE, ET CE N'EST PAS UN ÉCRAN DE CHARGEMENT DÉCORATIF.**
+Pendant ce temps, le firmware **observe réellement** le bus I²C : il attend que les
+transactions du contrôleur tactile cessent de rater. Il s'en va **sur un critère relu de
+l'état réel**, ⛔ pas sur un minuteur — c'est pour ça qu'il est bref sur une carte qui va
+bien, et plus long sur une carte qui démarre à froid.
+
+**Quand il disparaît, la carte répond au doigt.** C'est le signal.
+
+🔴 **ET SI, ET SEULEMENT SI, DES ERREURS SONT RÉELLEMENT MESURÉES**, deux lignes de plus
+apparaissent — ⛔ elles ne s'affichent pas « au cas où » :
+
+```
+           le tactile ne répond pas encore
+        c'est connu, et ça revient tout seul
+```
+
+### 🔴 DÉFAUT CONNU — ~40 s de tactile dégradé après un démarrage **À FROID**
+
+> **Sur environ 1 démarrage à froid sur 6**, pendant les **~40 premières secondes**, les
+> transactions I²C du contrôleur tactile GT911 échouent à **55,5 %** (950 erreurs sur
+> 1 713 lectures, **mesuré**, `hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md` §13.17.1).
+> **Le doigt semble alors ne rien faire.**
+>
+> ✅ **LE DÉFAUT EST TRANSITOIRE ET AUTO-RÉTABLI** : passé ce délai, plus **aucune** erreur
+> nouvelle n'apparaît (compteur figé à 950 pendant +862 lectures) et la carte redevient
+> pleinement utilisable, **sans aucune intervention**. Le capteur d'ambiance, lui, revient
+> vers T+60 s.
+>
+> ⛔ **NOUS NE LE TAISONS PAS, ET NOUS NE LE RÉPARONS PAS ENCORE.** La cause est nommée —
+> *dégradation transitoire des transactions multi-octets sur tout le bus après un démarrage
+> à froid* — et son traitement est une tâche à part entière, ⛔ pas un correctif discret.
+> Ce que cette version livre, c'est que **le défaut soit ANNONCÉ** au lieu d'être découvert
+> par quelqu'un qui croira son module cassé.
+
+⚠️ **DEUX PIÈGES SI TU VEUX LE REPRODUIRE :**
+
+- 🔴 **`reboot` NE LE REPRODUIT PAS.** Il laisse le rail 3V3 debout. **Seul un débranchement
+  physique du câble USB** (~3 s) coupe réellement l'alimentation — ⛔ ni `reboot`, ni le
+  retrait de `VCC` (alimentation fantôme, §13.10).
+- 🔴 **LE SCAN `i2c` MENT PENDANT CETTE FENÊTRE.** Il annonce *« 8 stables, 0 instable »*,
+  témoin positif **vert**, pendant qu'une transaction de donnée sur deux échoue.
+  *Le scan DÉCOUVRE, seule une transaction de DONNÉE QUALIFIE.*
+
+### Le lire après coup
+
+```bash
+dem      # verdict, durée, erreurs I2C VUES, fenêtres relancées — et ⛔ TOUJOURS ses limites
+touch    # les compteurs bruts du GT911
+```
+
+⚠️ Un verdict `PLAFOND` ne veut **pas** dire « la carte est prête » : il dit **« on a cessé
+d'attendre »**. Et `builds` doit valoir **1** — un 2 dirait que l'état de démarrage se
+ré-affiche, c'est-à-dire qu'il ment sur ce qu'il mesure.
+
 ## Arborescence
 
 ```

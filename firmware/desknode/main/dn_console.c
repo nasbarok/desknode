@@ -22,6 +22,7 @@
 #include "dn_recal.h"
 #include "dn_rtc.h"
 #include "dn_stimulus.h"
+#include "dn_demarrage.h"
 #include "dn_touch.h"
 #include "fonts/dn_font.h"
 #include "dn_hist.h"
@@ -12676,6 +12677,64 @@ static int cmd_absent(int argc, char **argv)
     return 1;
 }
 
+/*
+ * 🔴 `dn4-43` — CE QUE L'ETAT DE DEMARRAGE A REELLEMENT MESURE.
+ *
+ * ⛔ Cette commande ne SATISFAIT aucun AC a elle seule : l'AC est sur la DALLE.
+ *    Elle existe parce qu'une seance carte doit pouvoir LIRE le verdict apres
+ *    coup — `dn4-41` a paye *« un instrument qu'on ne peut pas LIRE ne
+ *    disculpe personne »*, et `dn4-42` a paye DEUX instruments qui mentaient
+ *    sur leur propre couverture.
+ *
+ * ⚠️ ELLE DIT SES LIMITES, comme `absent` :
+ *    · un `0` d'erreurs ne prouve PAS que le bus va bien — il dit que la
+ *      fenetre observee n'en a pas vu ;
+ *    · un verdict `PLAFOND` ne veut PAS dire « prete » : il dit « on a cesse
+ *      d'attendre » ;
+ *    · `builds` doit valoir 1. Un 2 dit que l'etat de demarrage SE RE-AFFICHE,
+ *      c'est-a-dire qu'il ment sur ce qu'il mesure (AC1.4).
+ */
+static int cmd_dem(int argc, char **argv)
+{
+    (void)argc;
+    (void)argv;
+    dn_touch_stats_t st;
+    dn_touch_get_stats(&st);
+
+    printf("\n── ETAT DE DEMARRAGE (dn4-43) ──────────────────────────────\n");
+    printf("  verdict         : %s\n", dn_dem_verdict_nom(dn_dem_verdict()));
+    printf("  arme            : %s\n", dn_dem_arme() ? "OUI" : "NON");
+    printf("  a l'ecran       : %s\n",
+           dn_ui_demarrage_a_l_ecran() ? "OUI" : "non (conclu)");
+    printf("  duree           : %" PRIu32 " ms\n", dn_dem_duree_ms());
+    printf("  err I2C vues    : %" PRIu32 "\n", dn_dem_err_vues());
+    printf("  fenetres cassees: %" PRIu32 "\n", dn_dem_fenetres_cassees());
+    printf("  lectures fenetre: %" PRIu32 "\n", dn_dem_lectures_vues());
+    printf("  re-armements    : %" PRIu32 " REFUSE(S)\n",
+           dn_dem_rearmements_refuses());
+    printf("  builds ecran    : %" PRIu32 "   (AC1.4 : doit valoir 1)\n",
+           dn_ui_demarrage_builds());
+    printf("  lignes trop lg  : %" PRIu32 "\n", dn_ui_demarrage_trop_larges());
+    printf("  budget          : fenetre %u ms / %u lecture(s) min, "
+           "plafond %u ms\n",
+           (unsigned)DN_DEM_FENETRE_MS, (unsigned)DN_DEM_LECTURES_MIN,
+           (unsigned)DN_DEM_PLAFOND_MS);
+    printf("  tactile MAINTENANT : %" PRIu32 " err / %" PRIu32 " lectures\n",
+           dn_touch_err_i2c(), st.lectures);
+
+    printf("\n  ⚠ CE QUE CES CHIFFRES NE DISENT PAS :\n");
+    printf("    · un 0 d'erreurs ne prouve PAS que le bus va bien — il dit que\n");
+    printf("      la fenetre observee n'en a pas vu. Le scan i2c, lui, a deja\n");
+    printf("      annonce « 8 stables, 0 instable » pendant qu'une transaction\n");
+    printf("      de donnee sur deux echouait (§13.17.1).\n");
+    printf("    · un verdict PLAFOND ne veut PAS dire « prete » : il dit qu'on\n");
+    printf("      a cesse d'attendre.\n");
+    printf("    · la fenetre froide n'apparait qu'~1 cycle sur 6, et SEUL un\n");
+    printf("      debranchement PHYSIQUE du cable la reproduit — ⛔ pas `reboot`,\n");
+    printf("      qui laisse le rail 3V3 debout.\n");
+    return 0;
+}
+
 static const esp_console_cmd_t k_cmds[] = {
     DN_CMD("scene",
            "affiche une mire : bits|nbits|rgb|red|green|blue|white|black|frame|gray|asset",
@@ -12827,6 +12886,13 @@ static const esp_console_cmd_t k_cmds[] = {
            "absent | vide | inhiber <bme|lum|tof|tous> on|off — les TEMOINS de "
            "l'absence (dn4-41) et, ⛔ toujours, LEURS LIMITES",
            cmd_absent),
+    /* 🔴 `dn4-43` — le verdict de l'etat de demarrage, APRES coup. ⛔ Il ne
+     *    satisfait aucun AC : l'AC est sur la dalle. Il rend la seance carte
+     *    LISIBLE. */
+    DN_CMD("dem",
+           "verdict de l'ETAT DE DEMARRAGE (dn4-43) — duree, erreurs I2C vues, "
+           "fenetres relancees, et ⛔ TOUJOURS ses limites",
+           cmd_dem),
     DN_CMD("aide", "cette aide", cmd_help),
 };
 

@@ -1,0 +1,36 @@
+dn4-43 / AC5.3 — CAMPAGNE DE MUTANTS, BALAYAGE COMPLET
+MUTANTS DECLARES : 27  -> [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]
+
+REFERENCE (sans mutant) : 38 OK, 0 KO   rc=0
+
+  [ROUGE] mutant  1  3 KO   -> PIEGE DU VIDE : compteurs figes ⇒ ⛔ JAMAIS « PROPRE »      verdict=PROPRE
+  [ROUGE] mutant  2  2 KO   -> critere ET plafond au MEME tick : c'est l'ETAT qui tranche 90000 ms — un PLAFOND ici lirait « 
+  [ROUGE] mutant  3  3 KO   -> erreurs CONTINUES : reste EN COURS bien apres la fenetre   40 s d'erreurs, verdict=PROPRE
+  [ROUGE] mutant  4  1 KO   -> AC1.4 : un 2e armement apres une fin est REFUSE, et COMPTE refus 0 -> 0
+  [ROUGE] mutant  5  1 KO   -> UNDERFLOW : compteurs remis a zero ⇒ ⛔ pas de « PROPRE » par debordement verdict=PROPRE
+  [ROUGE] mutant  6  1 KO   -> tactile ABSENT : « SANS TACTILE », ⛔ jamais « PROPRE »     verdict=PROPRE des le 1e tick
+  [ROUGE] mutant  7  1 KO   -> verdict HORS ENUM : rend « ? », ⛔ pas le mot d'un autre verdict rendu « PROPRE »
+  [ROUGE] mutant  8  2 KO   -> le module COMPILE — ⛔ et sans un seul shim                 ⛔ la gate n'a RIEN pu eprouver
+  [ROUGE] mutant  9  1 KO   -> ⛔ `dn_dem_reset_pour_gate()` n'a AUCUN appelant dans le firmware 1 appel(s) — il ne sert QUE l
+  [ROUGE] mutant 10  2 KO   -> `dn_ui_init` construit l'ecran de demarrage APRES `build_scene()` ⛔ avant, elle le detruirait 
+  [ROUGE] mutant 11  1 KO   -> …et elle le CHARGE — ⛔ un ecran cree n'est pas un ecran ATTEINT l'allumage de l'etape 7 doit l
+  [ROUGE] mutant 12  1 KO   -> `app_main` arme APRES `dn_touch_attach_lvgl` — ⛔ la course arme avant, « SANS TACTILE » tomber
+  [ROUGE] mutant 13  1 KO   -> `build_scene()` CONCLUT l'etat de demarrage en tete (AC1.4) ⛔ sinon `s_scr_dem` devient un poi
+  [ROUGE] mutant 14  1 KO   -> `demarrage_construire()` n'a qu'UN SEUL appelant (AC1.4)   2 appel(s) dans dn_ui.c
+  [ROUGE] mutant 15  1 KO   -> chaque ligne a ses DEUX traductions, et aucune n'est VIDE  manquante(s) : aucune · vide(s) : [
+  [ROUGE] mutant 16  1 KO   -> ⛔ AUCUN glyphe absent des polices (il serait dessine EN BOITE) DEM_CONTROLE/FR U+2014 « — »
+  [ROUGE] mutant 17  1 KO   -> les largeurs tiennent sur la dalle dans les DEUX langues   DEM_TACTILE_FIN/EN 550 px
+  [ROUGE] mutant 18  2 KO   -> chaque ligne a ses DEUX traductions, et aucune n'est VIDE  manquante(s) : ['AUCUN'] · vide(s) 
+  [ROUGE] mutant 19  1 KO   -> le 2e temps est conditionne a une MESURE, ⛔ pas a un delai arbitrage owner du 2026-09-01
+  [ROUGE] mutant 20  1 KO   -> le budget VERTICAL est juste — l'addition est REFAITE ici  illisible : aucun · chevauchement(s
+  [ROUGE] mutant 21  1 KO   -> le budget TEMPOREL est juste, et garde par `_Static_assert` fenetre 1500 ms porte 30 lecture(s
+  [ROUGE] mutant 22  1 KO   -> la hauteur de ligne budgetee est RELUE a la construction   ⛔ un chiffre ecrit se perime au pre
+  [ROUGE] mutant 23  1 KO   -> la console PUBLIE tout ce que l'etat de demarrage sait     ⛔ un instrument qu'on ne peut pas L
+  [ROUGE] mutant 24  1 KO   -> le Known-issues porte les 55,5 %, les ~40 s et l'auto-retablissement le taux mesure : ⛔ ABSENT
+  [ROUGE] mutant 25  1 KO   -> le README dit ce que l'etat de demarrage SIGNIFIE          ⛔ sinon l'inconnu le prendra pour u
+  [ROUGE] mutant 26  3 KO   -> PIEGE DU VIDE : compteurs figes ⇒ ⛔ JAMAIS « PROPRE »      verdict=PROPRE
+  [ROUGE] mutant 27  1 KO   -> le budget TEMPOREL est juste, et garde par `_Static_assert` fenetre 1500 ms porte 30 lecture(s
+
+==============================================================================
+✅ LES 27 MUTANTS DECLARES ONT TOUS ETE APPLIQUES ET VUS ROUGIR.
+==============================================================================

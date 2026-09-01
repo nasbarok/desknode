@@ -393,6 +393,7 @@ void app_main(void)
 
     /* 4 bis. L'indev tactile sur l'afficheur LVGL. Après dn_ui_init (il faut un
      *    `lv_display_t`), et seulement si le contrôleur a répondu. */
+    bool tactile_present = false;
     if (touch_err == ESP_OK) {
         esp_err_t indev_err = dn_touch_attach_lvgl(dn_ui_display());
         if (indev_err != ESP_OK) {
@@ -400,8 +401,27 @@ void app_main(void)
                      "indev tactile non branché (%s) — le GT911 vit, mais LVGL "
                      "ne le lit pas : le doigt ne fera rien.",
                      esp_err_to_name(indev_err));
+        } else {
+            tactile_present = true;
         }
     }
+
+    /*
+     * 4 ter. 🔴 `dn4-43` — L'ÉTAT DE DÉMARRAGE EST **ARMÉ ICI**, ⛔ PAS DANS
+     *        `dn_ui_init()`.
+     *
+     * L'écran, lui, est déjà construit et chargé (étape 4) : c'est ce que la
+     * 1ʳᵉ trame de l'étape 6 va porter, et ce que l'étape 7 va allumer.
+     * ⚠️ Mais l'OBSERVATION ne peut commencer qu'ici : l'indev vient d'être
+     *    branché. Armer dans `dn_ui_init()` serait une COURSE RÉELLE —
+     *    `dn_touch_ready()` y serait encore faux, et l'état de démarrage se
+     *    conclurait sur `SANS TACTILE` **sur une carte parfaitement saine**.
+     * ⚠️ `tactile_present` est le ET des deux étapes : le bring-up GT911 ET le
+     *    branchement de l'indev. ⛔ Le bring-up seul ne suffit pas — un GT911
+     *    vivant que LVGL ne lit pas donne des compteurs FIGÉS, et une fenêtre
+     *    d'observation sur des compteurs figés mesure du vide.
+     */
+    dn_ui_demarrage_armer(tactile_present);
 
     /* 5. Instrumentation — APRÈS LVGL (voir l'avertissement en tête de fichier). */
     ESP_ERROR_CHECK(dn_measure_attach(dn_display_panel()));

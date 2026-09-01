@@ -174,6 +174,16 @@ idf_component_register(
         #    c'est ce qui permet a `dn_reglage_init()` de poser la langue AVANT
         #    que la moindre scene n'existe.
         "dn_langue.c"
+        # 🔴 `dn4-43` — LA DECISION DE L'ETAT DE DEMARRAGE. ⛔ AUCUN `#include`
+        #    du framework : ni LVGL, ni ESP-IDF, ni meme `esp_log.h`. C'est
+        #    EXACTEMENT le motif ecrit plus haut pour `dn_veille.c` — c'est ce
+        #    qui permet a `tools/verif_demarrage_dn443.py` de le COMPILER en
+        #    `.so` et d'APPELER ses fonctions en ctypes, avec de vrais chiffres,
+        #    au lieu de les lire au `grep`. ⚠️ Et ici il n'y a meme pas de shim a
+        #    ecrire, donc aucun shim a laisser deriver.
+        #    ⛔ Ne rien y ajouter qui vienne du framework : la gate cesserait de
+        #    pouvoir l'executer, et redeviendrait decorative.
+        "dn_demarrage.c"
         # ⚠️ LES `.c` DE POLICE SONT DANS `${DN_FONTS}`, EN HAUT DE CE FICHIER —
         #    découverts par `file(GLOB … CONFIGURE_DEPENDS)`, ⛔ plus énumérés
         #    ici. Voir le motif au glob : une liste écrite à la main faisait
