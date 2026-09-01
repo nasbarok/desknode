@@ -1,0 +1,143 @@
+# T4 — LES MUTANTS DE tools/verif_langues_dn442.py, JOUES ET VUS ROUGIR
+# date : 2026-09-01T02:05:05+02:00   ·   desknode HEAD au tir : 14a7c52
+#
+# ⛔ « Une gate qu'aucun test n'a vue echouer est decorative ».
+# ⛔ Et un mutant qui DEBRANCHE la garde ne prouve que son existence : ceux-ci
+#    REPLANTENT la faute (un litteral francais, un tiret cadratin, un index
+#    inverse, une unite divergente, un controle retire de son site).
+#
+# 🔴 CE QUE CETTE CAMPAGNE A TROUVE, ET QUI N'EST PAS UN DETAIL :
+#    le MUTANT 9 est reste VERT a son premier tir, DEUX FOIS de suite —
+#    (1) le controle des chaines COMPOSEES n'existait pas (la gate ne
+#        balayait que la table, et la ligne d'echec NVS est un snprintf) ;
+#    (2) une fois ecrit, son filtre de journaux matchait `printf` DANS
+#        `snprintf` et blanchissait donc tout le texte a inspecter.
+#    ⇒ deux defauts de gate trouves par UN mutant, ⛔ aucun par relecture.
+# ------------------------------------------------------------------
+
+== REFERENCE (aucun mutant) ==
+==============================================================================
+BILAN : 30 OK, 0 KO
+==============================================================================
+
+== LA LISTE DES MUTANTS ==
+
+── MUTANT 1 : 
+   rc=1
+     [KO ] toute cle a une traduction dans TOUTES les langues       ⛔ CASE_RESEAU : traduction EN VIDE
+   BILAN : 29 OK, 1 KO
+
+── MUTANT 2 : 
+   rc=1
+     [KO ] toute cle a une traduction dans TOUTES les langues       ⛔ CASE_DISQUE : 2 argument(s) pour 3 attendu(s)
+   BILAN : 29 OK, 1 KO
+
+── MUTANT 3 : 
+   rc=1
+     [KO ] ⛔ LE DEFAUT EST L'ANGLAIS (AC3.1) — index 0 de l'enum    1er = FR ⇒ une NVS vide rend FR
+   BILAN : 29 OK, 1 KO
+
+── MUTANT 4 : 
+   rc=1
+     [KO ] chaque colonne de `k_txt[]` lit SON argument             EN←fr · FR←fr
+   BILAN : 29 OK, 1 KO
+
+── MUTANT 5 : 
+   rc=1
+     [KO ] ⛔ `k_nom[]` a DISPARU de dn_ui.c (AC1.2)                 ⇒ les six noms n'ont plus qu'UNE source : `k_desc[].titre_cle`
+   BILAN : 29 OK, 1 KO
+
+── MUTANT 6 : 
+   rc=1
+     [KO ] la 4e liste (console `cmd_hist`) est DECLAREE hors table (AC1.3) ⇒ 8 series, ⛔ pas 6 cases : elle ne decrit pas la meme chose
+   BILAN : 29 OK, 1 KO
+
+── MUTANT 7 : 
+   rc=1
+     [KO ] ⛔ aucun litteral PORTEUR DE LETTRES n'atteint un label   ⛔ dn_ui.c : « VEILLE »
+   BILAN : 29 OK, 1 KO
+
+── MUTANT 8 : 
+   rc=1
+     [KO ] ⛔ aucune chaine de la table ne porte un glyphe ABSENT (AC4.3) ⛔ DN_T_SRC_AUCUNE/EN : U+2014 « — » absent de dn_font_14 · DN_T_SRC_AUCUNE/EN : U+2014 « — » absent de dn_font_18
+   BILAN : 29 OK, 1 KO
+
+── MUTANT 9 : 
+   rc=1
+     [KO ] ⛔ aucune chaine COMPOSEE ne porte un glyphe absent (AC4.3) ⛔ dn_ui.c : U+26D4 « ⛔ » dans « ⛔ %s %s (%s) »
+   BILAN : 29 OK, 1 KO
+
+── MUTANT 10 : 
+   rc=1
+     [KO ] ⛔ unites et prefixes RENDABLES en police de VEILLE (AC4.4) ⛔ DN_T_U_RPM/FR : U+00E9 « é » absent de dn_font_33 · DN_T_U_RPM/FR : U+00E9 « é » absent de dn_font_56
+     [KO ] les unites du FIL collent a la colonne FR de la table (AC1.4) ⛔ GPU[3] : fil « tr/min » vs table FR « tr/mné » · DISQUE[1] : fil « tr/min » vs table FR « tr/mné »
+   BILAN : 28 OK, 2 KO
+
+── MUTANT 11 : 
+   rc=1
+     [KO ] chaque libelle tient dans sa place, DANS LES DEUX LANGUES ⛔ DN_T_CASE_RESEAU/EN : 209 px pour 107 utiles (titre de case (dn_font_18, icone 28))
+   BILAN : 29 OK, 1 KO
+
+── MUTANT 12 : 
+   rc=1
+     [KO ] la ligne d'echec NVS tient DANS SON PIRE CAS (AC4.2)     ⛔ EN : « ! « bright. level » NOT SAVED (NVS_KEYS_NOT_INITIALIZED) : perdu au reboot / lost on reboot. » = 668 px pour 432 · FR : « ! « veille OFF » NON ENREGISTRE (NVS_KEYS_NOT_INITIALIZED) : perdu au reboot / lost on reboot. » = 697 px pour 432
+   BILAN : 29 OK, 1 KO
+
+── MUTANT 13 : 
+   rc=1
+     [KO ] le titre « MENU » tient sous `MENU_TITRE_W_MAX` (AC2.2)  EN = 314 px · FR = 91 px / 91 annonces
+   BILAN : 29 OK, 1 KO
+
+── MUTANT 14 : 
+   rc=1
+     [KO ] ⛔ le libelle du selecteur passe par `dn_langue_code()` (AC2.4) ⇒ « FR » / « EN », ⛔ pas un mot traduit
+   BILAN : 29 OK, 1 KO
+
+── MUTANT 15 : 
+   rc=1
+     [KO ] les unites du FIL collent a la colonne FR de la table (AC1.4) ⛔ CPU[3] : fil « deg » vs table FR « °C »
+   BILAN : 29 OK, 1 KO
+
+── MUTANT 16 : 
+   rc=1
+     [KO ] ⛔ `dn_console.c` n'appelle JAMAIS `dn_t()` (langue courante) ⛔ 1 appel(s) a `dn_t(`
+   BILAN : 29 OK, 1 KO
+
+── MUTANT 17 : 
+   rc=1
+     [KO ] ⛔ aucun `ESP_LOG` de dn_ui.c ne cite `dn_t()`            ⛔ TAG, "langue : « %s » posee AU DOIGT depuis le MENU (scene "
+   BILAN : 29 OK, 1 KO
+
+── MUTANT 18 : 
+   rc=1
+     [KO ] ⛔ le tap de langue passe par `lv_async_call` (AC3.4)     ⇒ ⛔ pas de `build_scene()` dans le callback : use-after-free de dn1-3
+   BILAN : 29 OK, 1 KO
+
+── MUTANT 19 : 
+   rc=1
+     [KO ] le retour de `lv_async_call` est TESTE                   ⇒ sur file pleine : ⛔ RIEN n'est change, et ca se DIT
+   BILAN : 29 OK, 1 KO
+
+── MUTANT 20 : 
+   rc=1
+     [KO ] les libelles du MENU sont MESURES a chaud                2 site(s) : titres de panneau + bloc d'etat compose
+   BILAN : 29 OK, 1 KO
+
+── MUTANT 21 : 
+   rc=1
+     [KO ] le compteur du MENU est PUBLIE par la console            ⇒ `dn4-41` : un instrument qu'on ne peut pas LIRE ne disculpe personne
+   BILAN : 29 OK, 1 KO
+
+── MUTANT 22 : 
+   rc=1
+     [KO ] le titre de la DEMO DEBORDE encore — TEMOIN de dn4-14-2  EN = 59 px · FR = 59 px / 107 utiles ⇒ ⛔ le raccourcir DESARMERAIT la garde
+   BILAN : 29 OK, 1 KO
+
+── MUTANT 23 : 
+   rc=1
+     [KO ] l'ecart de la date inconnue est UNIQUE et c'est celui de 2026-08-30 EN = 333 px ✅ · FR = 184 px ⚠️ ECART DECLARE / 170 utiles
+   BILAN : 29 OK, 1 KO
+
+==================================================================
+BILAN DES MUTANTS : 23 VUS ROUGIR sur 23
+==================================================================

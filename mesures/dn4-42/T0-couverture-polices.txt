@@ -1,0 +1,5 @@
+dn_font_14     258 codepoints · 3 cmaps · lh 18 · min 32 max 63650
+dn_font_18     258 codepoints · 3 cmaps · lh 23 · min 32 max 63650
+dn_font_28     258 codepoints · 3 cmaps · lh 35 · min 32 max 63650
+dn_font_33      96 codepoints · 2 cmaps · lh 36 · min 32 max 176
+dn_font_56      96 codepoints · 2 cmaps · lh 58 · min 32 max 176
