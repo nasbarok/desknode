@@ -141,3 +141,29 @@ apres : mode : ACTIF   · bascules -> Ambient : 1 · reveils : 1 · dernier reve
 
 `I (2869) desknode: prêt en 2079 ms depuis app_main` — **2 079 ms**, soit **sous le minimum du
 corpus** (2 190 ms sur n = 31). ⇒ le corpus devient **n = 32, 2 079..2 467 ms**.
+
+---
+
+## 7. ⚠️ AJOUT DU 2026-09-01 — **LA RÈGLE DES ~3 MIN POST-FLASH (AC6.5) EST TENUE**
+
+> 🔴 **Cette section est ajoutée APRÈS la séance, par la revue de code du 2026-09-01.**
+> ⛔ Rien n'est effacé ni réécrit au-dessus : la revue a constaté que **§3 décrivait le
+> protocole de charge sans jamais mentionner le délai post-flash**, et qu'aucune capture de la
+> séance ne l'attestait. Or **AC2.3 en dépend directement** : une mesure prise dans les ~3 min
+> d'un flash est à jeter.
+
+**Constat owner, confirmé à la revue** : la règle d'AC6.5 a bien été **tenue** — la fenêtre
+`cpu depart` / `cpu delta` de §3 n'a **pas** été ouverte dans les ~3 minutes suivant le flash de
+`ef1310c`.
+
+⇒ ✅ **Le chiffre de §3 (`taskLVGL` 1,8 % d'un cœur, `IDLE0` 97,4 %) tient tel quel**, et ⛔ n'est
+pas à rejouer.
+
+⚠️ **Ce que cet ajout ne change pas** : la réserve déjà écrite en §3 reste entière — le **régime
+de liaison PC n'est pas partagé** avec la référence `3,7 %` de `ac4af9d`, donc on conclut à
+l'**absence de régression**, ⛔ pas à un gain.
+
+🎯 **Leçon de méthode, et elle vaut au-delà de cette story** : une règle de protocole qui n'est
+**écrite nulle part dans la capture** est indistinguable d'une règle oubliée. La prochaine séance
+carte consigne le délai post-flash **dans la capture elle-même**, ⛔ pas dans la mémoire de qui
+l'a jouée.

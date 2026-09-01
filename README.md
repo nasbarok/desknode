@@ -382,7 +382,18 @@ transactions du contrôleur tactile cessent de rater. Il s'en va **sur un critè
 l'état réel**, ⛔ pas sur un minuteur — c'est pour ça qu'il est bref sur une carte qui va
 bien, et plus long sur une carte qui démarre à froid.
 
-**Quand il disparaît, la carte répond au doigt.** C'est le signal.
+**Quand il disparaît, la carte répond au doigt.** C'est le signal — **sauf dans un cas, et
+il est nommé ici plutôt que tu.**
+
+⚠️ **SI LE CONTRÔLEUR TACTILE N'A PAS RÉPONDU DU TOUT AU DÉMARRAGE** (nappe débranchée,
+GT911 mort), il n'y a **rien à observer** : l'écran de démarrage se retire presque
+aussitôt — en une fraction de seconde, à peine visible — et le dashboard prend la dalle
+**sans jamais répondre au doigt**. Les deux lignes ci-dessous ne s'affichent pas non plus,
+puisqu'aucune erreur ne peut être mesurée sur un bus que personne n'interroge.
+⇒ **Dans ce cas-là, la disparition rapide de l'écran n'est PAS le signal que la carte est
+prête.** Le journal série le dit sans ambiguïté (*« aucun indev tactile : l'observation
+était IMPOSSIBLE, ⛔ pas concluante »*), et la commande `touch` dit **où** la séquence a
+échoué.
 
 🔴 **ET SI, ET SEULEMENT SI, DES ERREURS SONT RÉELLEMENT MESURÉES**, deux lignes de plus
 apparaissent — ⛔ elles ne s'affichent pas « au cas où » :
