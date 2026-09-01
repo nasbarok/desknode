@@ -241,3 +241,53 @@ BILAN : 24 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 26 gates (72s)
    ⇒ l'ecriture du tracker (`sprint-status-desknode.yaml`) n'a rien change aux KO :
      ses lignes s'ALLONGENT, elles ne se DEPLACENT pas.
 ================================================================================
+
+================================================================================
+ 3e INSTANCE DU MEME DEFAUT — 2026-09-02, ET C'EST L'ANNOTATION QUI L'A CAUSEE
+================================================================================
+
+ 🔴 CE QUI S'EST PASSE. Apres l'ecriture du tracker par T6, un passage de controle
+ a rendu **17 OK / 11 KO** au lieu de 10 : **UN KO DE PLUS**, pointant la ligne
+ `dn5-1` du tracker elle-meme.
+
+ LA CAUSE, MESUREE. `verif_dossier_dn415.py` balaie le COCKPIT a la recherche de
+ termes REFUTES et epingle toute occurrence qui n'est pas au manifeste. Or
+ l'annotation que je venais d'ecrire au tracker **RECOPIAIT, entre crochets, le
+ terme refute** — pour citer le libelle du KO qu'elle expliquait.
+
+ ⇒ 🎯 **UN JETON DE GATE N'A AUCUN ECHAPPEMENT : LE CITER, C'EST LE CREER.**
+   L'annotation qui EXPLIQUE un KO en a FABRIQUE un autre.
+
+ ⚠️ ET C'EST LA **TROISIEME FOIS** DANS CETTE SEULE STORY QUE DECRIRE UNE MESURE
+ LA CORROMPT — trois mecanismes differents, une seule famille :
+
+   1. le proxy shell REECRIT la sortie de `git diff`      ⇒ 76/24 au lieu de 73/21
+   2. mon comparateur CITE le libelle `KO` dans sa prose  ⇒ un 11e KO inexistant
+      … et TRONQUE les libelles a 58 car.                 ⇒ un faux « identiques »
+   3. mon annotation RECOPIE le terme refute              ⇒ un 11e KO, bien REEL
+
+ ⇒ LA REGLE QUI EN SORT, ET ELLE VAUT AU-DELA DE `dn5-1` :
+   **UNE SORTIE REDIGEE POUR UN HUMAIN N'EST PAS UN FORMAT DE DONNEES**, et
+   **UN TEXTE QUI PARLE D'UNE GATE VIT DANS LE CHAMP DE CETTE GATE.**
+   ⇒ ici, le terme est desormais **NOMME SANS ETRE ECRIT**.
+
+ CORRECTION APPLIQUEE : la citation a ete retiree du tracker, le motif y est ecrit.
+ CONTRE-MESURE VERIFIEE : `python3 tools/verif_dossier_dn415.py` ⇒ **17 OK / 10 KO**.
+
+ ⚠️ CONSTAT POUR `dn4-39` / `dn4-40`, ⛔ PAS UNE ACTION DE `dn5-1` :
+   la gate ne distingue pas une occurrence **D'USAGE** d'une occurrence **DE
+   CITATION**. Or une annotation qui explique un KO doit pouvoir le nommer.
+
+--------------------------------------------------------------------------------
+ BILAN FINAL, PRODUIT PAR L'OUTIL APRES TOUTES LES ECRITURES
+--------------------------------------------------------------------------------
+   T0    : 24 VERTE / 1 ROUGE / 1 NON-JOUABLE sur 26   |  dn415 = 17 OK / 10 KO
+   FINAL : 24 VERTE / 1 ROUGE / 1 NON-JOUABLE sur 26   |  dn415 = 17 OK / 10 KO
+
+   verdicts changes sur 26 gates ............ 0    ✅ AUCUN
+   nombre de KO ............................. 10 -> 10   ✅ AUCUN DE PLUS
+   lignes de KO differentes (ligne ENTIERE) .. 1
+     ⇒ la SEULE : le KO n°1 de `epics-desknode-v1.md` passe de l.2615 a l.2636,
+       parce que l'annotation NFR3 exigee par AC1.1.d a decale ce fichier de 21
+       lignes. MEME gate, MEME fichier, MEME terme, MEME texte cite.
+================================================================================
