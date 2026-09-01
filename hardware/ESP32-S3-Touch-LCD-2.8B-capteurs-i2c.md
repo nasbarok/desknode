@@ -2950,6 +2950,18 @@ identite : ⛔ NON LUE — la transaction I2C a ECHOUE. Ce n'est PAS
 Sous l'ancien code, cette situation **exacte** imprimait **« chip id 0x00 »** — une affirmation sur un
 capteur qui n'avait rien dit, qui envoie chercher un mauvais composant.
 
+> 🎯 **RENVOI — `dn4-43` (2026-09-01) : LA FENÊTRE MESURÉE ICI EST DÉSORMAIS *ANNONCÉE* SUR LA
+> DALLE**, et le dossier de cet écran vit en `…-affichage.md` **§32**.
+>
+> ⛔ **La cause reste ENTIÈRE** (c'est `dn4-26`, V0.2) : `dn4-43` ne répare rien du bus. Elle fait
+> qu'un état de démarrage explicite occupe la dalle **avant** le dashboard, et qu'il se termine
+> sur un critère **relu de `dn_touch_err_i2c()`** — précisément le compteur dont §13.17.1 a mesuré
+> le **figement** (950 à T0, 950 à T+35 s, pendant **+862 lectures**).
+>
+> ⚠️ **ET LA SÉANCE DE `dn4-43` N'A PAS REPRODUIT LA FENÊTRE** : **6 cycles à froid, 6 propres**.
+> À 1 sur 6, c'est un non-événement (`(5/6)^6 ≈ 33,5 %`) — ⛔ **ça ne dit rien de nouveau sur la
+> cause, et surtout pas qu'elle aurait disparu.** Le chiffre de référence reste celui d'ici.
+
 ### 13.17.2 ✅ LES CORRECTIFS DE LA REVUE, VÉRIFIÉS UN PAR UN SUR LA CARTE
 
 | Correctif | Vérification | Résultat |

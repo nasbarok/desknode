@@ -10521,3 +10521,137 @@ reproduction est ci-dessus, il tient en trois commandes, et il ne demande **aucu
 - 🔴 **Un drapeau de gate qui imprimait une liste vide** : `--liste-mutants` rendait `{}` parce que
   les déclarations vivaient **après** son retour anticipé. Une campagne qui s'en servait pour
   boucler ne tirait **aucun mutant** tout en annonçant un bilan.
+
+---
+
+# §32 🔴 L'ÉTAT DE DÉMARRAGE (`dn4-43`) — SÉANCE DU 2026-09-01, FIRMWARE `ef1310c`
+
+> **SHA lu au bandeau** : `I (783) app_init: App version: ef1310c`. Arbre `desknode` **PROPRE**
+> au flash. Gestes physiques par l'owner. Capture complète : `mesures/dn4-43/T5-seance-carte.md`.
+
+## §32.1 — 🎯 LE DÉFAUT QUE CETTE STORY LÈVE N'ÉTAIT PAS CELUI QUE SON TITRE ANNONÇAIT
+
+L'ordre du boot, **relu de `desknode_main.c`** : le rétroéclairage s'allume à l'**étape 7**,
+c'est-à-dire **APRÈS** que la 1ʳᵉ trame LVGL a atteint la dalle (étape 6) et **AVANT** que
+`dn_link`, `dn_capteurs`, `dn_env` et le RTC n'existent (étapes 8, 8 bis, 8 ter).
+
+⇒ 🔴 **QUAND L'ÉCRAN S'ALLUME, LE DASHBOARD EST DÉJÀ COMPLET — ET AUCUNE SOURCE N'A ÉTÉ LUE.**
+Six cases, six titres, la barre, et `--` partout. **L'inconnu ne voit pas un écran vide : il voit
+une application FINIE ET PLAUSIBLE qui ne répond pas au doigt.** C'est un signal *pire* qu'un écran
+noir — rien ne dit que quelque chose est en cours.
+
+✅ **ET IL N'Y A NI ÉCRAN BLANC NI SCÈNE À MOITIÉ DESSINÉE** : l'allumage est délibérément placé
+après la 1ʳᵉ trame. Confirmé **à l'œil owner sur 6 cycles**. ⛔ Ce n'est pas à « corriger ».
+
+## §32.2 — LA VOIE RETENUE, ET POURQUOI ELLE ÉCARTE §31.5 **PAR CONSTRUCTION**
+
+**Voie (b), arbitrage owner du 2026-09-01** : une **4ᵉ vue LVGL opaque**, plein écran, chargée
+**avant** la 1ʳᵉ trame, **détruite** quand le critère tombe (le timer est supprimé avec elle).
+
+| voie | pourquoi elle a été écartée / retenue |
+|---|---|
+| (a) bandeau **superposé** | ⛔ elle empile du translucide — **exactement le geste dont §31.5 a mesuré 99,3 % d'un cœur**, cause **non nommée** (c'est un SEUIL) |
+| **(b) 4ᵉ vue opaque** | ✅ **RETENUE** — ⛔ aucune superposition, et elle **cache** le dashboard trompeur, qui est le fond du sujet |
+| (c) la barre heure/date | ⛔ zéro objet neuf, mais l'inconnu continuerait de voir un dashboard fini et plausible : le défaut resterait entier |
+
+⚠️ **AC2.3 A ÉTÉ MESURÉ QUAND MÊME.** Une voie qui ne superpose rien reste une hypothèse tant
+qu'un chiffre ne l'a pas dit — §31.5 a précisément montré qu'un ajout d'UI *« apparemment
+anodin »* pouvait coûter un cœur entier.
+
+## §32.3 — ✅ LA CHARGE, PROTOCOLE **IDENTIQUE** À §31.5
+
+Boot propre, **5 paires de `widget nue 0 on`/`off`** (= 10 reconstructions rapprochées), puis
+`cpu depart` / `cpu delta` sur ~10 s. Le `%` est rapporté à **UN** cœur.
+
+| firmware | `taskLVGL` | `IDLE0` |
+|---|---:|---:|
+| `14a7c52` — avant `dn4-42` | 3,5 % | 97 % |
+| `401d807` — **avec** le sélecteur de langue | 🔴 **99,3 %** | 🔴 **0,0 %** |
+| `ac4af9d` — référence de `dn4-43` | **3,7 %** | 97 % |
+| 🎯 **`ef1310c` — avec l'état de démarrage** | ✅ **1,8 %** | ✅ **97,4 %** |
+
+Relevé brut (fenêtre **14 482 ms**, 13 tâches, rapporté aux **DEUX** cœurs) :
+`IDLE1 50,0 · IDLE0 48,7 · dn_rtc 0,1 · taskLVGL 0,9 · esp_timer 0,3` ⇒ réserve **98,7 %**.
+
+⇒ ⛔ **AUCUN des deux signes de §31.5** : ni le facteur ~28, ni `IDLE0` à zéro, ni watchdog.
+
+⚠️ **CE QUE CE CHIFFRE NE DIT PAS.** Il est **plus bas** que la référence. ⛔ Ne pas le lire comme
+un gain : les deux relevés ne partagent pas leur régime de liaison PC (**l'agent était ARRÊTÉ**
+ici, le REPL tenait le port), et §31.5 ne dit pas dans quel régime sa colonne a été prise.
+**Ce qui est établi, c'est l'ABSENCE DE RÉGRESSION.**
+
+## §32.4 — ✅ IL NE SE RÉ-AFFICHE PAS, ET C'EST LE COMPTEUR DE LA CARTE QUI LE DIT
+
+Après les **10 reconstructions de scène** ci-dessus :
+
+```
+dem  ->  builds ecran : 1     (il doit valoir 1)
+         re-armements : 0 REFUSE(S)
+```
+
+⚠️ **`build_scene()` CONCLUT l'état de démarrage en tête**, et ce n'est pas une précaution : la
+branche `DN_NAV_SCREENS` **détruit l'écran sortant** dès qu'il n'est aucune des trois racines
+(la fuite symétrique trouvée en revue dn1-4). Sans cette conclusion, la 4ᵉ racine deviendrait un
+**pointeur pendant** et son timer écrirait dedans 250 ms plus tard. En `DN_NAV_REBUILD`, pire :
+`lv_obj_clean()` sur l'écran actif dessinerait le dashboard **dans** l'état de démarrage.
+
+## §32.5 — 🔴 SIX CYCLES À FROID : **6/6 PROPRES**, ET ⛔ ÇA NE VEUT PAS DIRE « CORRIGÉ »
+
+Débranchement **PHYSIQUE** du câble, ~3 s, rebranchement. **Budget annoncé à 6, tenu à 6.**
+
+| cycle | verdict | durée | err I²C vues | lectures fenêtre |
+|---|---|---:|---:|---:|
+| 1 · 2 | `PROPRE` | 1 501 ms | 0 | 36 |
+| 3 · 4 | `PROPRE` | 1 750 ms | 0 | 51 |
+| 5 · 6 | `PROPRE` | 1 502 ms | 0 | 43 |
+
+**Constat owner, à l'œil, sur les 6 :** l'état de démarrage est **vu**, il **s'en va tout seul**,
+et **le dashboard répond au doigt ensuite** (`touch` : 2 appuis / 2 relâchements au cycle 2).
+
+🔴 **LA FENÊTRE FROIDE N'EST PAS TOMBÉE.** §13.17.1 la mesure à **1 cycle sur 6** ⇒ six cycles
+propres d'affilée ont **`(5/6)^6 ≈ 33,5 %`** de chance d'arriver : c'est **un non-événement**.
+⇒ ⛔ **LE CHEMIN DÉGRADÉ N'A PAS ÉTÉ EXERCÉ SUR LA CARTE**, et le **second temps** (les deux lignes
+qui nomment le tactile) n'a **jamais été vu sur la dalle**. Il est éprouvé **à la gate**, sur le
+module compilé et appelé.
+
+⚠️ **La variance 1 501 / 1 750 ms est UN TICK** (`DN_UI_DEM_PERIODE_MS` = 250 ms), ⛔ pas du bruit.
+
+## §32.6 — 🔴 LE COUPLAGE VEILLE : IL SE LIT EN DEUX COLONNES, ET UNE PRÉMISSE TOMBE
+
+Lu au bandeau : `I (2021) dn_veille: veille ON · delai 1 min (60000 ms)` — ⚠️ **et sans
+l'avertissement `ABSENTE`** que `dn_veille_init()` journalise sur une NVS vide.
+⇒ **la NVS de cette carte PORTE le cran 0** : ce « 1 min » est un **réglage**, ⛔ pas le défaut.
+
+| | délai | écart avec la fenêtre froide (~40 s) |
+|---|---:|---:|
+| **cette carte** (NVS écrite) — **mesuré** | **60 s** | **~20 s** |
+| **défaut d'usine** — `DN_VEILLE_CRAN_DEFAUT` = **index 1** ⇒ `k_crans_min[1]` | **180 s** | **~140 s** |
+
+🔴 **LE CADRAGE DE `dn4-43` ANNONÇAIT « le délai par défaut est 1 min = 60 s » ⇒ FAUX COMME
+RÈGLE** : il confondait un **INDEX** avec une **DURÉE**, alors que `dn_veille.h` l'écrit sur la
+ligne même (`/* index 1 des crans -> 3 min */`). ⇒ **la persona de la story — l'inconnu qui vient
+de flasher un module neuf, NVS vierge — dispose de ~140 s, ⛔ pas de ~20 s.**
+
+**Le tap de réveil, MESURÉ** (⛔ pas déduit) :
+`AMBIENT · reveils : 0` → *un tap owner* → `ACTIF · reveils : 1 · dernier reveil par : doigt`.
+
+🎯 **ARBITRAGE OWNER DU 2026-09-01 : ⛔ ON N'Y TOUCHE PAS.** Le couplage n'existe pas pour la
+persona ; sur une carte réglée à 1 min sa conséquence est bénigne (l'écran s'assombrit, **un tap
+le rallume**) ; et le cran est un **réglage produit** posé par `dn4-19`/`dn3-3`.
+⇒ ⛔ **pas de `[CC]`**, ⛔ aucun changement du délai. **Déclaré, et documenté.**
+
+## §32.7 — ⛔ CE QUE CETTE SÉANCE N'A **PAS** MESURÉ
+
+- 🔴 **Le chemin dégradé** — voir §32.5. Ni second temps, ni `fenetres cassees > 0`, ni `PLAFOND`.
+- ⚠️ **`dn_touch_conso_expirees()`** est resté à **0**. ⛔ Ça ne dit rien sur la santé du bus :
+  son docblock l'écrit — *« un `0` ne prouve rien »*.
+- ⚠️ **La géométrie de la 4ᵉ vue** n'a été jugée que « lisible et brève », ⛔ pas au pixel.
+  `lignes trop lg` est resté à **0**, mais c'est **l'instrument** qui le dit, ⛔ pas l'œil.
+- ⚠️ **Le régime AGENT** n'a pas été exercé avec `ef1310c` : l'agent PC était arrêté.
+
+## §32.8 — Un relevé de plus pour le corpus `prêt en …`
+
+`I (2869) desknode: prêt en 2079 ms depuis app_main` ⇒ **2 079 ms**, **sous le minimum connu**.
+Le corpus passe de **n = 31 (2 190..2 467 ms)** à **n = 32 (2 079..2 467 ms)**.
+⚠️ Au passage : `dn4-43` citait *« 2 190..2 330 ms, n = 8 »* — c'étaient les **8 plus basses** d'un
+corpus qui en comptait déjà 31. ✅ Sa conclusion (« ~2,2 s, et ce n'est pas le problème ») tient.

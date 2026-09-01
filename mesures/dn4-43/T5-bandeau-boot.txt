@@ -1,0 +1,115 @@
+
+$ (reset RTS + bandeau de boot)
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x15 (USB_UART_CHIP_RESET),boot:0xb (SPI_FAST_FLASH_BOOT)
+Saved PC:0x420823fe
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x1530
+load:0x403c8700,len:0xcec
+load:0x403cb700,len:0x2ef8
+entry 0x403c8920
+I (24) boot: ESP-IDF v5.5.5 2nd stage bootloader
+I (24) boot: compile time Aug 15 2026 04:11:10
+I (25) boot: Multicore bootloader
+I (25) boot: chip revision: v0.2
+I (25) boot: efuse block revision: v1.4
+I (25) boot.esp32s3: Boot SPI Speed : 80MHz
+I (25) boot.esp32s3: SPI Mode       : DIO
+I (26) boot.esp32s3: SPI Flash Size : 16MB
+I (26) boot: Enabling RNG early entropy source...
+I (26) boot: Partition Table:
+I (26) boot: ## Label            Usage          Type ST Offset   Length
+I (27) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (27) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (27) boot:  2 factory          factory app      00 00 00010000 00400000
+I (28) boot:  3 assets           Unknown data     01 40 00410000 00100000
+I (28) boot:  4 stimulus         Unknown data     01 41 00510000 00100000
+I (29) boot: End of partition table
+I (29) esp_image: segment 0: paddr=00010020 vaddr=3c0a0020 size=817a8h (530344) map
+I (126) esp_image: segment 1: paddr=000917d0 vaddr=3fc98200 size=03cf4h ( 15604) load
+I (130) esp_image: segment 2: paddr=000954cc vaddr=40374000 size=0ab4ch ( 43852) load
+I (140) esp_image: segment 3: paddr=000a0020 vaddr=42000020 size=9b920h (637216) map
+I (257) esp_image: segment 4: paddr=0013b948 vaddr=4037eb4c size=0960ch ( 38412) load
+I (266) esp_image: segment 5: paddr=00144f5c vaddr=50000000 size=00020h (    32) load
+I (274) boot: Loaded app from partition at offset 0x10000
+I (274) boot: Disabling RNG early entropy source...
+I (275) octal_psram: vendor id    : 0x0d (AP)
+I (276) octal_psram: dev id       : 0x02 (generation 3)
+I (276) octal_psram: density      : 0x03 (64 Mbit)
+I (276) octal_psram: good-die     : 0x01 (Pass)
+I (276) octal_psram: Latency      : 0x01 (Fixed)
+I (276) octal_psram: VCC          : 0x01 (3V)
+I (277) octal_psram: SRF          : 0x01 (Fast Refresh)
+I (277) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
+I (277) octal_psram: BurstLen     : 0x01 (32 Byte)
+I (277) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (278) octal_psram: DriveStrength: 0x00 (1/1)
+I (278) MSPI Timing: Enter psram timing tuning
+I (279) esp_psram: Found 8MB PSRAM device
+I (279) esp_psram: Speed: 80MHz
+I (337) mmu_psram: Read only data copied and mapped to SPIRAM
+I (405) mmu_psram: Instructions copied and mapped to SPIRAM
+I (406) cpu_start: Multicore app
+I (774) esp_psram: SPI SRAM memory test OK
+I (782) cpu_start: Pro cpu start user code
+I (783) cpu_start: cpu freq: 160000000 Hz
+I (783) app_init: Application information:
+I (783) app_init: Project name:     desknode
+I (783) app_init: App version:      ef1310c
+I (783) app_init: Compile time:     Sep  1 2026 12:52:25
+I (783) app_init: ELF file SHA256:  4bf898b1d...
+I (784) app_init: ESP-IDF:          v5.5.5
+I (784) efuse_init: Min chip rev:     v0.0
+I (784) efuse_init: Max chip rev:     v0.99 
+I (784) efuse_init: Chip rev:         v0.2
+I (784) heap_init: Initializing. RAM available for dynamic allocation:
+I (785) heap_init: At 3FCB0738 len 00038FD8 (227 KiB): RAM
+I (785) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (785) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (785) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+I (785) esp_psram: Adding pool of 6976K of PSRAM memory to heap allocator
+I (786) esp_psram: Adding pool of 58K of PSRAM memory gap generated due to end address alignment of drom to the heap allocator
+I (786) spi_flash: detected chip: generic
+I (786) spi_flash: flash io: dio
+I (787) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (787) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (788) main_task: Started on CPU0
+I (788) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (789) main_task: Calling app_main()
+I (794) desknode: ──── socle ────────────────────────────────────────────
+I (795) desknode: mesuré : raison du démarrage = USB (reset par le périphérique USB — replug/JTAG)
+I (795) desknode: mesuré : flash physique 16777216 o (16 MB)
+I (795) desknode: mesuré : PSRAM 8388608 o détectés au démarrage
+I (796) desknode: config : PSRAM en mode OCTAL
+I (796) desknode: config : horloge PSRAM 80 MHz
+I (796) desknode:   ⚠️ « config : » = relu du sdkconfig, PAS observé. Ces deux lignes ne peuvent pas démentir le build. Pour éprouver réellement le mode et l'horloge, mesurer le débit : `bw`.
+I (796) desknode: config : XIP depuis la PSRAM ACTIVÉ — code ET constantes sortis de la flash (dn4-22 : c'est le remède de §26, il rend la marge de famine DMA)
+I (797) desknode:   ⚠️ ceci est du « config : » — RELU DU SDKCONFIG, ⛔ PAS OBSERVÉ. La preuve d'exécution est « mmu_psram: Instructions copied and mapped to SPIRAM » plus haut dans CE log.
+I (797) desknode: config : LCD_RGB_RESTART_IN_VSYNC désactivé (défaut IDF) — la commande `dma` agit réellement dans ce build.
+W (798) desknode: config : LCD_RGB_ISR_IRAM_SAFE désactivé — l'ISR vsync peut être suspendue pendant une écriture flash. À noter si le fps mesuré pendant le stimulus d'AC6 devient bizarre.
+I (799) desknode: ──────────────────────────────────────────────────────
+I (799) dn_reglage: reglages relus — niveau manuel 100 % (⛔ -1 = non choisi) · auto VOULU ARME · langue « EN » (⛔ defaut = « EN »)
+I (800) dn_cfg: config de boot : num_fbs=1  bounce_px=9600
+I (800) dn_cfg:                 draw_lines=128 (122880 o) en RAM interne DMA
+I (800) dn_cfg:                 tâche LVGL sur le cœur 0 (avec le pipeline d'affichage)
+I (801) dn_disp: rétroéclairage en LEDC : GPIO6, 10 bits (1024 crans) @ 24000 Hz (24 kHz et non les 5 kHz du BSP : mesuré, à 5 kHz la carte SIFFLE à duty bas), duty 0 — il ne montera qu'après le remplissage du framebuffer
+I (802) dn_disp: bus I2C monté : SDA=GPIO15 SCL=GPIO7, tirages internes ON — l'horloge est posée PAR DEVICE (400000 Hz visés), pas par le bus
+I (802) dn_disp: sonde I2C 0x20 (TCA9554) : répond
+I (803) dn_disp: TCA9554 prêt : LCD_RST=bit0 et LCD_CS=bit2 en SORTIE ; TP_RST=bit1 laissé en ENTRÉE (état de reset de l'expander) — dn_touch le prendra en main
+I (974) dn_disp: reset matériel de la dalle joué via l'expander (20 ms bas, 150 ms de repos)
+I (974) lcd_panel.io.3wire_spi: Panel IO create success, version: 1.0.1
+I (974) dn_disp: 3-wire SPI : SDA=GPIO1 SCL=GPIO2, CS via expander bit2, horloge visée 500000 Hz (plafond logiciel du composant)
+I (975) st7701: version: 2.0.2
+I (1549) dn_disp: DISPON (0x29) envoyé explicitement — la séquence vendeur ne le contient pas, et esp_lcd_panel_init() non plus
+I (1550) dn_disp: panneau RGB prêt : 480x640 @ 16000000 Hz pclk, num_fbs=1, bounce=9600 px
+I (1550) dn_disp:   fb[0] @ 0x3c130900
+I (1550) dn_disp: PSRAM libre : 7198436 o avant les framebuffers, 6583676 o après (delta 614760 o)
+I (1619) dn_asset: asset mappé : offset 0x410000, 614400 o utiles sur 1048576 o de partition, @ 0x3c800000
+I (1619) dn_asset: intégrité VÉRIFIÉE : magie « DNASSET1 », 614400 o, CRC32 0x0F027C7D (calculé en 67843 us)
+I (1619) dn_asset: asset mappé, aucune copie encore mesurée
+W (1620) dn_touch: probe AVANT reset : il répond DÉJÀ à 0x5D — TP_RST n'est donc pas maintenu bas par l'expander en entrée (la story attendait l'inverse). La séquence reste utile : elle rend l'adresse DÉTERMINISTE.
+I (1971) dn_disp: reset tactile joué via l'expander bit1/EXIO2 (150 ms bas, 50 ms de repos) — TP_RST reste désormais en SORTIE HAUTE
+I (1971) dn_touch: probe APRÈS reset : ESP_OK — adresse RÉELLE 0x5D (visée 0x5D)
+I (1973) dn_touch: GT911 « 911 » fw 0x1060 · config v93 · résoluti
