@@ -23,10 +23,26 @@ back up.
 
 Please include:
 
-- Which **tier** you built: board only, or board + ambient sensors.
+- Which **tier** you built: board only — called **“DeskNode”** — or board + ambient
+  sensors — called **“DeskNode + Ambiance”**. Both are defined in
+  [`README.md`](README.md), section *« Les deux paliers matériels »* (`palier` is the
+  French word this repository uses for *tier*; the README is in French, the split is
+  tracked as `dn8`).
 - Whether **LibreHardwareMonitor** is installed (it changes what the CPU and disk
   cells can show).
-- Your **DeskNode version** — it is displayed on the device.
+- Your **DeskNode version**. ⚠️ There is **no version shown on the display** yet. The
+  device identifies its firmware by a git SHA printed on the **serial console at boot**:
+
+  ```
+  I (783) app_init: Project name:     desknode
+  I (783) app_init: App version:      6a91fa3
+  ```
+
+  To read it, attach a serial terminal at **115200 baud** and restart the board — the
+  banner is printed **only at boot**. Any of these work:
+  `python3 tools/dn_console.py`, `idf.py monitor`, or
+  `python -m serial.tools.miniterm <port> 115200`.
+  A version displayed on the device itself, and a release tag, are still to come.
 - Your **Windows version**, and your GPU (NVIDIA / AMD / Intel).
 - Serial console output if you have it, and the steps to reproduce.
 
@@ -58,6 +74,27 @@ Contributions are welcome. Two practical points:
   believed is part of the documentation.
 - `mesures/` holds the raw measurement record. It is deliberately kept — it is the
   evidence behind the numbers.
+- **Nothing that is pushed lies.** The bar for publishing is *not* "every story is
+  finished" — at that bar nothing would ever ship. The bar is that no file in the
+  published tree makes a claim the tree itself refutes. Unfinished work may be
+  pushed; an unbacked claim may not. Anything that cannot be fixed before a push is
+  written down **with the marker that will fix it**, never left silent.
+
+  ⚠️ **This rule exists because the repository broke it, and the date is on record.**
+  On **2026-08-31**, commit `b524e98` published a `CONTRIBUTING.md` asking every bug
+  reporter which **tier** they had built — while the `README.md` of that same commit
+  contained **0** occurrences of *tier* or its French equivalent *palier*, across
+  **173 361 bytes**. The repository asked a question its own contents defined nowhere.
+  Three more instances of the same defect were found the day it was fixed; the full
+  list, each with the marker that carries it, is in
+  [`docs/dn5-1-ecart-promesses.md`](docs/dn5-1-ecart-promesses.md).
+
+  ⛔ **This is deliberately not a git hook and not a CI job.** A hook lives in
+  `.git/hooks/` and **is not cloned**, so it would guard this checkout and no one
+  else's — the appearance of a guard with none of the reach. Making the repository's
+  gates run without anyone thinking about it is tracked separately (`dn4-39`); until
+  then this is a convention a human applies, and it says so rather than pretending
+  otherwise.
 
 ## Commercial use
 
