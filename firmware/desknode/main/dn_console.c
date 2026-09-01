@@ -12,6 +12,7 @@
 #include "dn_bootcfg.h"
 #include "dn_capteurs.h"
 #include "dn_env.h"
+#include "dn_langue.h"
 #include "dn_reglage.h"
 #include "dn_display.h"
 #include "dn_link.h"
@@ -3261,6 +3262,30 @@ static int cmd_nav(int argc, char **argv)
             printf("%d=%s ", i, dn_ui_metrique_nom(i));
         }
         printf("\n");
+        /*
+         * 🔴 `dn4-42` / AC4.2 — LE MENU EST ENFIN GARDE EN LARGEUR, ET SON
+         *    COMPTEUR SE LIT.
+         * ⚠️ Il est PUBLIE ici parce que `dn4-41` a paye la lecon inverse :
+         *    `dn_reglage` comptait ses ecritures et RIEN ne les publiait, ce qui
+         *    a laisse une question ouverte une heure. Un instrument qu'on ne
+         *    peut pas lire ne disculpe personne.
+         * ⛔ ⛔ IL NE SE CONFOND PAS avec `widget trop_larges`, qui compte les
+         *    CASES. Deux surfaces, deux compteurs — les additionner ferait
+         *    chercher au mauvais endroit.
+         * ⚠️ ZERO N'EST PAS UNE PREUVE tant que le MENU n'a pas ete OUVERT :
+         *    le controle s'exerce a la construction et a chaque repeint du
+         *    panneau d'etat. La ligne le DIT plutot que de laisser croire.
+         */
+        printf("langue de l'ecran : %s (⛔ defaut = %s ; la console, elle, "
+               "reste en FRANCAIS)\n",
+               dn_langue_code(dn_langue()), dn_langue_code(DN_LANGUE_EN));
+        printf("libelles du MENU trop larges : %" PRIu32
+               " (⛔ pas les cases — voir `widget`)%s\n",
+               dn_ui_menu_trop_larges(),
+               dn_ui_menu_taps() == 0
+                   ? "  ⚠️ le MENU n'a jamais ete OUVERT : ce 0 n'est pas une "
+                     "preuve, c'est une absence de mesure."
+                   : "");
         dn_console_compter_externes(dn_ui_log_mem());
         nav_usage();
         return 0;
@@ -7509,7 +7534,11 @@ static int cmd_widget(int argc, char **argv)
         colonnes(dn_ui_metrique_nom(i), 9);
         const dn_widget_desc_t *dm = dn_ui_desc(i);
         printf(" rampe TRIANGULAIRE %d -> %d %s · periode %d s · pas 1 s\n", mn,
-               mx, (dm && dm->grandeurs[0].unite) ? dm->grandeurs[0].unite : "",
+               /* 🔴 `dn4-42` — l'unite est une CLE. ⚠️ `dn_t_fr()` : la console
+                * reste FRANCAISE (decision owner du 2026-09-01), et elle lit la
+                * MEME definition que la dalle. */
+               mx, dn_t_fr(dm ? dm->grandeurs[0].unite : DN_T_AUCUN)
+                       ? dn_t_fr(dm->grandeurs[0].unite) : "",
                per);
     }
     printf("   (une valeur qui VARIE : un mock fige serait indiscernable d'un\n");

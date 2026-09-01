@@ -325,6 +325,23 @@ const char *dn_ui_zone_nom(int zone);
  *    `menu_taps` sur des réveils, et la gate d'AC5.6 mesurerait la veille en
  *    croyant mesurer la porte. */
 uint32_t dn_ui_menu_taps(void);
+
+/*
+ * 🔴 `dn4-42` / AC4.2 — COMBIEN DE LIBELLÉS DU **MENU** ONT DÉBORDÉ.
+ *
+ * ⛔ Le MENU n'était gardé par RIEN : `dn_widget_trop_larges()` ne compte que
+ *    les CASES, à trois sites dans `dn_widget.c`. Mesuré le 2026-09-01 : la
+ *    ligne d'échec NVS du panneau d'état faisait **605 px pour 432 utiles**, et
+ *    ce qui était clippé était **le code d'erreur** — c'est-à-dire le
+ *    diagnostic lui-même.
+ * ⚠️ Il compte les libellés STATIQUES (titres de panneau) **et** le bloc d'état
+ *    COMPOSÉ, ligne à ligne. C'est ce dernier que la gate ne peut pas garder :
+ *    elle ne connaît ni le compteur de veilles ni le code d'erreur du jour.
+ * ⛔ Ne pas le confondre avec `dn_widget_trop_larges()` : deux surfaces, deux
+ *    compteurs. Les additionner ferait chercher au mauvais endroit.
+ */
+uint32_t dn_ui_menu_trop_larges(void);
+void dn_ui_menu_trop_larges_reset(void);
 /* Taps REFUSÉS par LVGL (lv_async_call sur file pleine ou tas saturé). Un tap
  * refusé n'est pas compté dans dn_ui_taps() : sans ce tri, `touch trace`
  * affichait « TAP sur CPU » pour un tap qui n'avait ouvert aucun écran, et la

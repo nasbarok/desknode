@@ -32,6 +32,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "dn_langue.h"
 #include "esp_err.h"
 
 /* Relit la NVS. ⚠️ À appeler APRÈS `nvs_flash_init()`. Absente ⇒ les défauts. */
@@ -82,3 +83,35 @@ uint32_t dn_reglage_derniere_us(void);
  */
 #define DN_REGLAGE_BL_CRANS 4
 int dn_reglage_bl_cran(int i);
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ * 🔴 `dn4-42` — LA LANGUE DE L'ÉCRAN, ET POURQUOI ELLE ATTERRIT **ICI**
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * ✅ **LE PATRON EXISTAIT DÉJÀ, ET IL EST NEUF.** Ce fichier est **déjà** dans
+ *    la table de `tools/verif_d4_nvs_dn45.py`, **déjà** classé HORS RÉGIME,
+ *    **déjà** instrumenté (`dn_reglage_ecritures()`) et **déjà** publié par la
+ *    commande `absent`. ⇒ y ajouter une clé ne demande **aucune déclaration
+ *    neuve**.
+ * ⚠️ **ET DONC LA GATE NVS NE PEUT PAS ÊTRE VUE ROUGIR SUR CET AJOUT** — le
+ *    fichier y est déjà. ⛔ Ne pas prétendre le contraire : le témoin de
+ *    rougissement d'AC4.5 de `dn4-41` a DÉJÀ été joué, il ne se rejoue pas ici.
+ *
+ * ⛔ **ÉCRITURE PAR GESTE UNIQUEMENT (D4).** `dn_reglage_langue_ecrire()` n'est
+ *    appelée que depuis le callback de tap du sélecteur `FR`/`EN` du MENU, ou
+ *    depuis la console. **Aucune boucle périodique n'entre ici**, et le
+ *    compteur d'écritures partagé le prouve après un soak.
+ *
+ * 🔴 **LE DÉFAUT EST L'ANGLAIS** (AC3.1, exigence owner). Sans clé en NVS,
+ *    `dn_reglage_init()` laisse `dn_langue()` à `DN_LANGUE_EN`.
+ * ⚠️ **CONSÉQUENCE ASSUMÉE, ⛔ PAS DÉCOUVERTE** : au premier boot après un
+ *    flash, la carte de l'owner **passe en anglais**. C'est voulu — le
+ *    destinataire du plan de diffusion est anglophone — et c'est CONFIRMÉ PAR
+ *    L'OWNER le 2026-09-01. Un tap sur `FR` la ramène, et le choix survit.
+ *
+ * ⚠️ `dn_reglage_init()` POSE la langue relue via `dn_langue_set()`. ⛔ Elle ne
+ *    redessine rien : à cet instant aucune scène n'existe encore, et c'est
+ *    précisément pourquoi `dn_langue.c` ne dépend NI de LVGL NI de `dn_ui`.
+ */
+esp_err_t dn_reglage_langue_ecrire(dn_langue_t l);

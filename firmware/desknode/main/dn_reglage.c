@@ -17,6 +17,10 @@ static const char *TAG = "dn_reglage";
 #define DN_NVS_NAMESPACE "desknode"
 #define DN_KEY_BL_MANUEL "bl_manuel"
 #define DN_KEY_BL_AUTO "bl_auto"
+/* 🔴 `dn4-42` — la langue de l'ECRAN. ⚠️ Rangee en i32 comme les deux
+ * autres : le namespace est le MEME (`cfg reset` efface tout d'un coup), et
+ * un type de plus aurait demande un second chemin de lecture pour rien. */
+#define DN_KEY_LANGUE "langue"
 
 /* -1 = AUCUN niveau choisi. ⛔ Pas 0 : `bl 0` est un duty LÉGITIME (noir). */
 static int s_bl_manuel = -1;
@@ -111,10 +115,21 @@ void dn_reglage_init(void)
     if (nvs_get_i32(h, DN_KEY_BL_AUTO, &v) == ESP_OK) {
         s_bl_auto_voulu = (v != 0);
     }
+    /* 🔴 `dn4-42` — LA LANGUE. ⛔ ABSENTE ⇒ **ANGLAIS** (AC3.1) : on ne touche
+     * simplement pas a `dn_langue`, dont le defaut EST l'anglais. C'est ce qui
+     * fait qu'aucune ligne ici n'a a nommer le defaut une seconde fois.
+     * ⛔ ET ON REFUSE UNE VALEUR HORS BORNES PLUTOT QUE DE L'ECRETER — meme
+     *    regle que le niveau manuel : une NVS ecrite par un binaire plus RECENT
+     *    (une 3e langue) ne doit pas se faire passer pour un choix valide sur
+     *    un binaire qui ne la porte pas. `dn_langue_set()` REFUSE et le DIT. */
+    if (nvs_get_i32(h, DN_KEY_LANGUE, &v) == ESP_OK) {
+        dn_langue_set((dn_langue_t)v);
+    }
     nvs_close(h);
     ESP_LOGI(TAG, "reglages relus — niveau manuel %d %% (⛔ -1 = non choisi) · "
-                  "auto VOULU %s",
-             s_bl_manuel, s_bl_auto_voulu ? "ARME" : "DESARME");
+                  "auto VOULU %s · langue « %s » (⛔ defaut = « %s »)",
+             s_bl_manuel, s_bl_auto_voulu ? "ARME" : "DESARME",
+             dn_langue_code(dn_langue()), dn_langue_code(DN_LANGUE_EN));
 }
 
 int dn_reglage_bl_manuel(void) { return s_bl_manuel; }
@@ -135,4 +150,19 @@ esp_err_t dn_reglage_bl_auto_ecrire(bool on)
 {
     s_bl_auto_voulu = on;
     return ecrire_i32(DN_KEY_BL_AUTO, on ? 1 : 0);
+}
+
+esp_err_t dn_reglage_langue_ecrire(dn_langue_t l)
+{
+    /* ⛔ LE DEPOT REFUSE, IL N'ECRETE PAS — meme regle que le niveau manuel. */
+    if (l < 0 || l >= DN_LANGUE_N) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    /* ⚠️ ON POSE **AVANT** D'ECRIRE, et c'est deliberatement le meme ordre que
+     *    les deux autres reglages : le geste obeit A CHAUD meme si la flash
+     *    refuse, et c'est le MENU qui DIT que ca ne survivra pas au reboot.
+     *    ⛔ L'inverse (n'appliquer qu'apres succes) ferait un tap sans effet
+     *       visible sur une flash pleine — le no-op que W3 a supprime. */
+    dn_langue_set(l);
+    return ecrire_i32(DN_KEY_LANGUE, (int32_t)l);
 }

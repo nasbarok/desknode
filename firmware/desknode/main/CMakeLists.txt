@@ -167,6 +167,13 @@ idf_component_register(
         #    d'avoir VU la gate ROUGIR sur l'oubli de declaration — ce qui
         #    suppose un ecrivain dans un fichier QUI N'Y EST PAS DEJA.
         "dn_reglage.c"
+        # 🔴 `dn4-42` — LA TABLE DES LANGUES. Une seule definition par chaine
+        #    AFFICHEE SUR LA DALLE, depliee par X-macro en une colonne par
+        #    langue. ⛔ Rien a ajouter aux REQUIRES : il n'utilise que `log`,
+        #    deja tire par le composant. ⚠️ Il ne touche NI LVGL NI la dalle —
+        #    c'est ce qui permet a `dn_reglage_init()` de poser la langue AVANT
+        #    que la moindre scene n'existe.
+        "dn_langue.c"
         # ⚠️ LES `.c` DE POLICE SONT DANS `${DN_FONTS}`, EN HAUT DE CE FICHIER —
         #    découverts par `file(GLOB … CONFIGURE_DEPENDS)`, ⛔ plus énumérés
         #    ici. Voir le motif au glob : une liste écrite à la main faisait

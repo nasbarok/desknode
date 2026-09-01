@@ -82,6 +82,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "dn_langue.h"
 #include "lvgl.h"
 
 #ifdef __cplusplus
@@ -164,7 +165,15 @@ typedef enum {
 
 /* Nom lisible. ⚠️ RELU de l'énumération, jamais récité d'ailleurs : la console
  * imprime ceci, et une étiquette qui ment est un défaut à part entière. */
+/*
+ * 🔴 `dn4-42` — LE NOM DU RÉGIME EXISTE EN **DEUX LECTURES**, ⛔ pas en deux
+ *    définitions. `dn_val_regime_nom()` rend le FRANÇAIS (console, journaux —
+ *    décision owner du 2026-09-01) ; `…_nom_ui()` suit la langue de l'écran.
+ *    Les deux lisent la MÊME ligne de `dn_langue.h`.
+ */
 const char *dn_val_regime_nom(dn_val_regime_t r);
+const char *dn_val_regime_nom_ui(dn_val_regime_t r);
+
 
 /* LA couleur d'un régime — UNE seule définition pour tout le firmware.
  * 🔴 Exposée le 2026-08-18 (revue de code) : les cases NUES peignaient
@@ -284,9 +293,32 @@ typedef enum {
     DN_PREC_DIXIEME,            /* « 46,0 % », « 61,0 °C », « 4,7 GHz » */
 } dn_prec_t;
 
-/* Une grandeur du widget. `unite` peut être NULL (aucune unité affichée). */
+/*
+ * Une grandeur du widget.
+ *
+ * ══════════════════════════════════════════════════════════════════════════
+ * 🔴 `dn4-42` — `unite`, `unite_haute` ET `prefixe` SONT DES **CLÉS**, ⛔ PLUS
+ *    DES LITTÉRAUX.
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Motif : `tr/min` → `rpm`, `Mo/s` → `MB/s`, `Go` → `GB`. Une unité écrite en
+ * littéral ici serait une SECONDE définition à côté de la table — c'est-à-dire
+ * exactement le doublon que la story supprime ailleurs.
+ *
+ * ⚠️ **LA SENTINELLE RESTE TESTABLE PAR `if (u)`.** `DN_T_AUCUN` vaut 0 et
+ *    `dn_t()` rend **NULL** dessus : un champ non renseigné se comporte donc
+ *    EXACTEMENT comme le `NULL` d'avant, et ⛔ pas comme un `""` qui se serait
+ *    affiché en espace. C'est ce qui rend la conversion sûre pour les
+ *    `u ? " " : ""` déjà en place.
+ *
+ * ⚠️ **CES CHAÎNES SONT DESSINÉES EN `dn_font_33`/`dn_font_56` EN VEILLE**
+ *    (`composer()` → `font_val()`), et ces deux polices n'ont **AUCUN LATIN-1**
+ *    (`32..126` + le seul `°`). ⇒ ⛔ aucune unité ni aucun préfixe accentué,
+ *    dans AUCUNE langue. `tools/verif_langues_dn442.py` le contrôle en LISANT
+ *    les cmaps des `.c` de police.
+ */
 typedef struct {
-    const char *unite;  /* « % », « °C », « tr/min » — affichée après la valeur */
+    dn_txt_t unite;     /* « % », « °C », « tr/min » — affichée après la valeur */
     const char *icone;  /* glyphe UTF-8 en ligne, NULL = aucun (voir dn_font.h) */
     /*
      * ── dn4-6 / AC1 : LE MARQUAGE, ET C'EST UN CHAMP À LUI, PAS UN DÉTOURNEMENT ─
@@ -305,7 +337,7 @@ typedef struct {
      *    le préfixe reste parce qu'il DÉSIGNE la grandeur qui manque. Cacher le
      *    préfixe cacherait l'existence même de la grandeur — ce que W10 interdit.
      */
-    const char *prefixe;
+    dn_txt_t prefixe;
     /*
      * ── dn4-9 : LE PRÉFIXE PEUT NE VIVRE QU'AU **DÉTAIL** ────────────────────
      *
@@ -356,7 +388,7 @@ typedef struct {
      */
     int32_t seuil_haut;      /* en dixièmes de `unite`. 0 = pas de bascule */
     int32_t diviseur_haut;   /* dixièmes de `unite` par dixième de `unite_haute` */
-    const char *unite_haute; /* « Gb/s » — ⛔ NULL si `seuil_haut` est nul */
+    dn_txt_t unite_haute;    /* « Gb/s » — ⛔ DN_T_AUCUN si `seuil_haut` est nul */
 } dn_widget_grandeur_t;
 
 /*
@@ -365,7 +397,17 @@ typedef struct {
  */
 typedef struct {
     const char *icone;   /* icône de la case, en UTF-8 (dn_font.h). AC7 l'exige. */
-    const char *titre;   /* « CPU », « AMBIANCE » — accentué, la police suit */
+    /*
+     * 🔴 `dn4-42` / AC1.2 — LE TITRE EST UNE **CLÉ**, ET `k_nom[]` A DISPARU.
+     *    `dn_ui.c` énonçait les MÊMES six noms DEUX FOIS (`k_nom[]` **et**
+     *    `k_desc[].titre`). Les traduire séparément en aurait fait **douze**.
+     *    ⇒ **une seule source** : la table de `dn_langue.h`.
+     * ⚠️ ⛔ NE PAS remettre un `const char *titre` « pour les journaux » : ce
+     *    serait re-créer le doublon par l'autre bout. Les journaux et la
+     *    console appellent `dn_t_fr(titre_cle)` — la MÊME définition, lue dans
+     *    la colonne française, ce qui les garde en français SANS les découpler.
+     */
+    dn_txt_t titre_cle;
     uint32_t couleur;    /* 0xRRGGBB, accent. dn3-1 le PORTE ; dn3-3 l'exploite. */
     uint8_t n_grandeurs; /* le compte de la CASE — 1..DN_WIDGET_GRANDEURS_MAX */
     /*
@@ -1261,6 +1303,16 @@ bool dn_widget_replacer(void);
  * ⚠️ Rend `NULL` si la grandeur n'a pas d'unité — ⛔ pas `""` : l'appelant doit
  *    pouvoir distinguer « pas d'unité » de « une unité vide ».
  */
+/*
+ * Le titre d'un descripteur — dans la langue de l'ÉCRAN (`…_titre`) ou en
+ * FRANÇAIS (`…_titre_fr`, pour les journaux et la console).
+ * ⛔ Ni l'un ni l'autre ne rend jamais NULL : ils rendent « ? ». C'est ce qui
+ *    remplace les onze `desc->titre ? desc->titre : "?"` d'avant, qui
+ *    répétaient la même précaution à onze endroits.
+ */
+const char *dn_widget_titre(const dn_widget_desc_t *d);
+const char *dn_widget_titre_fr(const dn_widget_desc_t *d);
+
 const char *dn_widget_unite(const dn_widget_desc_t *d,
                             const dn_widget_etat_t *e, int i);
 

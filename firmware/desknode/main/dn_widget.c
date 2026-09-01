@@ -1087,18 +1087,57 @@ static bool s_replacer = true;
 void dn_widget_set_replacer(bool on) { s_replacer = on; }
 bool dn_widget_replacer(void) { return s_replacer; }
 
-const char *dn_val_regime_nom(dn_val_regime_t r)
+/*
+ * 🔴 `dn4-42` — DEUX LECTEURS, **UNE SEULE DÉFINITION**.
+ *
+ * Ce nom est lu PAR LA DALLE (page de détail, ligne « régime ») **et** par la
+ * console (`widget`, `nav`, plusieurs `ESP_LOG`). L'owner a tranché le
+ * 2026-09-01 : **la console reste en français**.
+ * ⇒ `dn_val_regime_nom()` rend le FRANÇAIS et ne bouge jamais — mais il le lit
+ *   dans **la même table** que l'écran, donc rien ne peut diverger.
+ *   `dn_val_regime_nom_ui()`, lui, suit la langue courante.
+ * ⛔ Ne pas fusionner les deux : ce serait faire changer la console de langue
+ *    au premier tap sur `EN`, c'est-à-dire casser tous les motifs que le REPL
+ *    et les gates cherchent.
+ */
+static dn_txt_t regime_cle(dn_val_regime_t r)
 {
     switch (r) {
     case DN_VAL_ABSENTE:
-        return "ABSENTE";
+        return DN_T_REG_ABSENTE;
     case DN_VAL_REELLE:
-        return "RÉELLE";
+        return DN_T_REG_REELLE;
     case DN_VAL_SIMULEE:
-        return "SIMULÉE";
+        return DN_T_REG_SIMULEE;
     default:
-        return "?";
+        return DN_T_INCONNU;
     }
+}
+
+const char *dn_val_regime_nom(dn_val_regime_t r)
+{
+    return dn_t_fr(regime_cle(r));
+}
+
+const char *dn_val_regime_nom_ui(dn_val_regime_t r)
+{
+    return dn_t(regime_cle(r));
+}
+
+const char *dn_widget_titre(const dn_widget_desc_t *d)
+{
+    /* ⛔ Jamais NULL : `dn_t()` rend NULL sur `DN_T_AUCUN`, et un `%s` de
+     * journal ou un label LVGL poseraient alors « (null) ». On rend le « ? »
+     * de la table — c'est-a-dire la MEME reponse que les anciens
+     * `desc->titre ? desc->titre : "?"`, mais en UN seul endroit. */
+    const char *t = d ? dn_t(d->titre_cle) : NULL;
+    return t ? t : dn_t(DN_T_INCONNU);
+}
+
+const char *dn_widget_titre_fr(const dn_widget_desc_t *d)
+{
+    const char *t = d ? dn_t_fr(d->titre_cle) : NULL;
+    return t ? t : dn_t_fr(DN_T_INCONNU);
 }
 
 void dn_widget_set_groupage(bool on) { s_groupage = on; }
@@ -1518,7 +1557,7 @@ void dn_widget_controler_tenue(const dn_widget_desc_t *desc, dn_widget_t *w)
                  "h=%d (%d ligne(s) x pas %d, police lh %d, val_y %d). LVGL "
                  "CLIPPE sans un mot : la case montrera moins qu'elle ne "
                  "declare. ⇒ `veille unite on` remet la police a 33 px.",
-                 desc && desc->titre ? desc->titre : "?", bas, h, lignes,
+                 dn_widget_titre_fr(desc), bas, h, lignes,
                  val_pas_courant(), lh, val_y_courant());
     }
     for (int i = 0; i < DN_WIDGET_GRANDEURS_MAX; i++) {
@@ -1533,7 +1572,7 @@ void dn_widget_controler_tenue(const dn_widget_desc_t *desc, dn_widget_t *w)
                      "« %s » rang %d : la bascule de mode le rend TROP LARGE — "
                      "« %s » mesure %d px pour %d utiles, il manque %d px. LVGL "
                      "le CLIPPE sans un mot.",
-                     desc && desc->titre ? desc->titre : "?", i,
+                     dn_widget_titre_fr(desc), i,
                      lv_label_get_text(w->valeur[i]), lw, utile, lw - utile);
         }
     }
@@ -1592,10 +1631,12 @@ const char *dn_widget_unite(const dn_widget_desc_t *d,
     if (!d || i < 0 || i >= DN_WIDGET_GRANDEURS_MAX) {
         return NULL;
     }
-    if (e && e->echelle_haute[i] && d->grandeurs[i].unite_haute) {
-        return d->grandeurs[i].unite_haute;
+    if (e && e->echelle_haute[i] && d->grandeurs[i].unite_haute != DN_T_AUCUN) {
+        return dn_t(d->grandeurs[i].unite_haute);
     }
-    return d->grandeurs[i].unite;
+    /* ⚠️ `dn_t()` rend NULL sur `DN_T_AUCUN` : le contrat « NULL = aucune unité
+     *    affichée » est donc INCHANGÉ pour tous les appelants. */
+    return dn_t(d->grandeurs[i].unite);
 }
 
 /*
@@ -1695,7 +1736,7 @@ const char *dn_widget_prefixe(const dn_widget_desc_t *d, int g, bool detail)
     if (!detail && d->grandeurs[g].prefixe_detail_seul) {
         return NULL;
     }
-    return d->grandeurs[g].prefixe;
+    return dn_t(d->grandeurs[g].prefixe);
 }
 
 /*
@@ -1783,7 +1824,7 @@ static void valeur_placer(lv_obj_t *lbl, int i, int g, int n, int w,
                  "la colonne GAUCHE finit a %d px, et « %s » (%d px, calee a "
                  "DROITE) commencerait a %d px : il manque %d px (gouttiere %d, "
                  "utile %d px). LVGL clipperait SANS un mot.",
-                 desc && desc->titre ? desc->titre : "?", i, g, fin_gauche,
+                 dn_widget_titre_fr(desc), i, g, fin_gauche,
                  lv_label_get_text(lbl), lw, x, fin_gauche + W_GOUTTIERE - x,
                  W_GOUTTIERE, dn_widget_largeur_utile(w));
         /* ⛔ On pose QUAND MÊME, à la place demandée : masquer la valeur ou la
@@ -1823,7 +1864,7 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
     }
     /* 🔴 dn3-3 : RETENU, pour pouvoir DISPARAÎTRE en Ambient sans reconstruire
      *    la scène (307-322 ms verrou tenu). Même motif que `out->icone`. */
-    out->titre = dn_widget_texte(out->racine, desc->titre, font_titre(),
+    out->titre = dn_widget_texte(out->racine, dn_widget_titre(desc), font_titre(),
                                  lv_color_hex(W_COL_TITRE), tx, entete_y_titre());
     /*
      * 🔴 dn4-14-2 / AC5.3 — LE TITRE EST ENFIN CONTRÔLÉ, ET IL NE L'ÉTAIT PAS.
@@ -1845,7 +1886,7 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
      */
     {
         int t_utile = dn_widget_titre_utile(w, desc->icone != NULL);
-        int t_px = dn_widget_largeur(desc->titre, font_titre());
+        int t_px = dn_widget_largeur(dn_widget_titre(desc), font_titre());
         if (t_px > t_utile) {
             s_trop_larges++;
             ESP_LOGW(TAG,
@@ -1853,7 +1894,7 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
                      "(x %d, badge a %d) — CHEVAUCHE LA RESERVE DU BADGE "
                      "(visible seulement si la case est SIMULEE ; LVGL ne "
                      "clippe qu'au bord de zone, a %d px)",
-                     desc->titre ? desc->titre : "?", t_px, t_utile, tx,
+                     dn_widget_titre(desc), t_px, t_utile, tx,
                      w - W_BADGE_DE_DROITE, w - dn_widget_titre_x(desc->icone != NULL));
         }
     }
@@ -1862,7 +1903,7 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
      * Le créer à la demande obligerait `dn_widget_maj` à construire des objets
      * LVGL, donc à allouer, sous le verrou et depuis une tâche de source. Un
      * `lv_obj_add_flag(HIDDEN)` ne peut pas échouer ; un `lv_label_create` si. */
-    out->badge = dn_widget_texte(out->racine, "SIMULÉ", &dn_font_14,
+    out->badge = dn_widget_texte(out->racine, dn_t(DN_T_BADGE_SIMULE), &dn_font_14,
                                  lv_color_hex(W_COL_SIMULEE),
                                  w - W_BADGE_DE_DROITE, entete_y_badge());
     lv_obj_add_flag(out->badge, LV_OBJ_FLAG_HIDDEN);
@@ -1879,12 +1920,12 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
     int n = desc->n_grandeurs;
     if (n < 1) {
         ESP_LOGW(TAG, "« %s » : %d grandeur(s) demandee(s) — plancher a 1",
-                 desc->titre ? desc->titre : "?", desc->n_grandeurs);
+                 dn_widget_titre_fr(desc), desc->n_grandeurs);
         n = 1;
     }
     if (n > DN_WIDGET_GRANDEURS_MAX) {
         ESP_LOGW(TAG, "« %s » : %d grandeurs demandees, %d posees — %d PERDUE(S)",
-                 desc->titre ? desc->titre : "?", desc->n_grandeurs,
+                 dn_widget_titre_fr(desc), desc->n_grandeurs,
                  DN_WIDGET_GRANDEURS_MAX, desc->n_grandeurs - DN_WIDGET_GRANDEURS_MAX);
         n = DN_WIDGET_GRANDEURS_MAX;
     }
@@ -1938,7 +1979,7 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
                          "unique — « %s » mesure %d px pour %d utiles (case %d, "
                          "marges 2x%d) : il manque %d px. LVGL la CLIPPE sans un "
                          "mot.",
-                         desc->titre ? desc->titre : "?", i, g, buf, lw_val, utile,
+                         dn_widget_titre_fr(desc), i, g, buf, lw_val, utile,
                          w, W_PAD, lw_val - utile);
             }
         }
@@ -1950,7 +1991,7 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
                  "(%d ligne(s) x pas %d, police lh %d, val_y %d, disposition %s). "
                  "LVGL les CLIPPE sans un mot : la case en montre moins qu'elle "
                  "n'en declare.",
-                 desc->titre ? desc->titre : "?", hors, n, dernier_bas, h,
+                 dn_widget_titre_fr(desc), hors, n, dernier_bas, h,
                  dn_widget_lignes(s_geom.dispo, n), val_pas_courant(), lh_val,
                  val_y_courant(), dn_widget_dispo_nom(s_geom.dispo));
     }
@@ -1998,7 +2039,7 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
                  "— %d grandeur(s) sur %d ligne(s), disposition %s. La jauge est "
                  "ABANDONNEE (contrat dn_widget.h / W5 : valeurs > jauge > "
                  "secondaire).",
-                 desc->titre ? desc->titre : "?", y_bas, W_JAUGE_H, h, n,
+                 dn_widget_titre_fr(desc), y_bas, W_JAUGE_H, h, n,
                  n_lignes, dn_widget_dispo_nom(s_geom.dispo));
     }
     if (desc->indicateur && jauge_place) {
@@ -2072,7 +2113,7 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
                      "(y_bas=%d + %d > h=%d) — %d grandeur(s) sur %d ligne(s), "
                      "disposition %s%s. La jauge est prioritaire "
                      "(contrat dn_widget.h / W5). Texte PERDU : « %s ».",
-                     desc->titre ? desc->titre : "?", y_bas, sec_h(), h, n,
+                     dn_widget_titre_fr(desc), y_bas, sec_h(), h, n,
                      n_lignes, dn_widget_dispo_nom(s_geom.dispo),
                      (desc->indicateur && jauge_place) ? " + jauge" : "",
                      etat->secondaire);
@@ -2081,7 +2122,7 @@ void dn_widget_creer(lv_obj_t *parent, int x, int y, int w, int h,
             ESP_LOGD(TAG,
                      "« %s » : aucune ligne secondaire posee (y_bas=%d + %d > "
                      "h=%d) — et le descripteur n'en demande pas.",
-                     desc->titre ? desc->titre : "?", y_bas, sec_h(), h);
+                     dn_widget_titre_fr(desc), y_bas, sec_h(), h);
         }
     }
 
@@ -2289,7 +2330,7 @@ void dn_widget_maj(const dn_widget_desc_t *desc, const dn_widget_etat_t *etat,
                  "« %s » : texte secondaire PERDU — la geometrie n'a pas garde "
                  "la ligne (voir le log de construction). Texte : « %s ». "
                  "⚠️ Ce message ne sortira qu'UNE fois pour cette case.",
-                 desc && desc->titre ? desc->titre : "?", etat->secondaire);
+                 dn_widget_titre_fr(desc), etat->secondaire);
     }
     if (w->badge) {
         if (r == DN_VAL_SIMULEE) {

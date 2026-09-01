@@ -36,6 +36,7 @@
  *   propos de `dn4-19`.
  */
 #include "dn_env.h"
+#include "dn_langue.h"
 #include "dn_link.h"
 #include "dn_measure.h"
 #include "dn_pins.h"
@@ -439,9 +440,6 @@ static const dn_courbe_borne_t k_courbe_borne[DN_UI_METRIQUES] = {
     [DN_UI_CASE_RAM] = {.actif = true, .min = 0, .max = 1000},
 };
 
-static const char *const k_nom[DN_UI_METRIQUES] = {
-    "CPU", "GPU", "RAM", "RÉSEAU", "DISQUE", "AMBIANCE",
-};
 
 /*
  * Quelles cases reçoivent le MODÈLE de widget.
@@ -624,7 +622,7 @@ static uint8_t s_gr_force[DN_UI_METRIQUES];
 static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
     [DN_UI_CASE_CPU] = {
         .icone = DN_ICONE_MICROCHIP,
-        .titre = "CPU",
+        .titre_cle = DN_T_CASE_CPU,
         .couleur = 0xa855f7, /* VIOLET FRANC — dn4-4, 2026-08-24 (2e passe) :
                               * l'owner voyait `CPU` et `GPU` « casiement la meme
                               * couleur ». `0x9b6cff` tirait sur le bleu, donc vers
@@ -723,10 +721,10 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
         .sel_p1 = DN_SEL3(0, 1, 3),
         .n_detail = 4,
         .indicateur = false,
-        .grandeurs = {{.unite = "%", .prec = DN_PREC_DIXIEME},
-                      {.unite = "GHz", .prec = DN_PREC_DIXIEME},
-                      {.unite = "%", .prefixe = "c.max", .prec = DN_PREC_DIXIEME},
-                      {.unite = "\xC2\xB0" "C", .prec = DN_PREC_DIXIEME}},
+        .grandeurs = {{.unite = DN_T_U_PCT, .prec = DN_PREC_DIXIEME},
+                      {.unite = DN_T_U_GHZ, .prec = DN_PREC_DIXIEME},
+                      {.unite = DN_T_U_PCT, .prefixe = DN_T_P_CMAX, .prec = DN_PREC_DIXIEME},
+                      {.unite = DN_T_U_DEGC, .prec = DN_PREC_DIXIEME}},
     },
     /*
      * ── LES TROIS NEUVES DE dn3-2 (W6, W10) ─────────────────────────────────
@@ -768,7 +766,7 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
          *      doublon rendrait les deux cases confusibles au coup d'œil, qui
          *      est le seul usage réel d'une icône de 28 px. */
         .icone = DN_ICONE_GAMEPAD,
-        .titre = "GPU",
+        .titre_cle = DN_T_CASE_GPU,
         .couleur = 0x22d3ee, /* CYAN — `GPU` garde le cyan, mais la FAMILLE est
                               * morte : il n'est plus partagé (dn4-4, 2026-08-24). */
         /*
@@ -854,14 +852,14 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
         .n_grandeurs = 3,
         .n_detail = 4,
         .indicateur = false,
-        .grandeurs = {{.unite = "%", .prec = DN_PREC_DIXIEME},
-                      {.unite = "\xC2\xB0" "C", .prec = DN_PREC_DIXIEME},
-                      {.unite = "W", .prec = DN_PREC_ENTIER},
-                      {.unite = "tr/min", .prec = DN_PREC_ENTIER}},
+        .grandeurs = {{.unite = DN_T_U_PCT, .prec = DN_PREC_DIXIEME},
+                      {.unite = DN_T_U_DEGC, .prec = DN_PREC_DIXIEME},
+                      {.unite = DN_T_U_W, .prec = DN_PREC_ENTIER},
+                      {.unite = DN_T_U_RPM, .prec = DN_PREC_ENTIER}},
     },
     [DN_UI_CASE_RAM] = {
         .icone = DN_ICONE_MEMORY,
-        .titre = "RAM",
+        .titre_cle = DN_T_CASE_RAM,
         /* 🔴 dn4-14 / AC5.4 — LE ROSE RESTE, ET C'EST UNE DÉCISION OWNER DE
          *    SÉANCE (2026-08-29), ⛔ pas un oubli. Ce commentaire est AMENDÉ,
          *    ⛔ pas effacé : le motif du rose ci-dessous est toujours vrai.
@@ -904,11 +902,11 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
         .indicateur = true,
         .ind_min = 0,
         .ind_max = 100, /* % — la plage ANNONCÉE, et celle du mock */
-        .grandeurs = {{.unite = "%", .prec = DN_PREC_DIXIEME}},
+        .grandeurs = {{.unite = DN_T_U_PCT, .prec = DN_PREC_DIXIEME}},
     },
     [DN_UI_CASE_RESEAU] = {
         .icone = DN_ICONE_NETWORK_WIRED,
-        .titre = "RÉSEAU",
+        .titre_cle = DN_T_CASE_RESEAU,
         /* 🔴 BLEU VIF depuis le 2026-08-25 — constat owner à l'œil (dn4-13) :
          * ~~`0x4ade80` vert~~ « ça ne se voit pas bien » sur le Living PCB.
          * ⚠️ Cette couleur est lue à TROIS endroits qui doivent rester d'accord :
@@ -988,12 +986,12 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
          *    nommé RÉSEAU, et étendre en silence serait décider à sa place.
          *    Legs explicite, pas un oubli.
          */
-        .grandeurs = {{.unite = "Mb/s", .icone = LV_SYMBOL_DOWN,
+        .grandeurs = {{.unite = DN_T_U_MBPS, .icone = LV_SYMBOL_DOWN,
                        .prec = DN_PREC_DIXIEME, .seuil_haut = 30000,
-                       .diviseur_haut = 1000, .unite_haute = "Gb/s"},
-                      {.unite = "Mb/s", .icone = LV_SYMBOL_UP,
+                       .diviseur_haut = 1000, .unite_haute = DN_T_U_GBPS},
+                      {.unite = DN_T_U_MBPS, .icone = LV_SYMBOL_UP,
                        .prec = DN_PREC_DIXIEME, .seuil_haut = 30000,
-                       .diviseur_haut = 1000, .unite_haute = "Gb/s"}},
+                       .diviseur_haut = 1000, .unite_haute = DN_T_U_GBPS}},
     },
     [DN_UI_CASE_DISQUE] = {
         /*
@@ -1050,7 +1048,7 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
          *    présenter comme une décision.
          */
         .icone = DN_ICONE_SAVE,
-        .titre = "DISQUE",
+        .titre_cle = DN_T_CASE_DISQUE,
         /* 🔴 dn4-14 / AC5 — CLAIR NEUTRE, TRANCHÉ À L'ŒIL OWNER LE 2026-08-29.
          *    Verbatim de validation : « disque est bien distinct maintenant ».
          *
@@ -1210,7 +1208,7 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
          *    sur largeurs MESURÉES. Voir `detail_cols` dans `dn_widget.h`. */
         .detail_cols = 1,
         .indicateur = false,
-        .grandeurs = {{.unite = "Mo/s", .prec = DN_PREC_DIXIEME,
+        .grandeurs = {{.unite = DN_T_U_MOS, .prec = DN_PREC_DIXIEME,
                        /* 🔴 ÉCHELLE HAUTE ARMÉE — DÉCISION OWNER DU 2026-08-22 :
                         *    *« pour les unités on ne dépasse pas 3 000, après on
                         *    change l'affichage de l'unité M puis G »*.
@@ -1223,16 +1221,16 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
                         *    ✅ Avec la bascule : `« 2999,9 Mo/s »` = **167 px**.
                         * ⚠️ `seuil_haut` est en DIXIÈMES ⇒ 30000 = 3000,0 Mo/s. */
                        .seuil_haut = 30000, .diviseur_haut = 1000,
-                       .unite_haute = "Go/s"},
+                       .unite_haute = DN_T_U_GOS},
                       /* ⚠️ `prefixe_detail_seul` sur les TROIS : ils ne tiennent
                        * PAS dans la case (MESURÉ : 315 px pour 201) et ils n'y
                        * sont pas nécessaires (elle n'en montre qu'UN). Le motif
                        * complet est sur le champ, dans `dn_widget.h`. */
-                      {.unite = "tr/min", .prefixe = "extr.moy",
+                      {.unite = DN_T_U_RPM, .prefixe = DN_T_P_EXTR_MOY,
                        .prefixe_detail_seul = true, .prec = DN_PREC_ENTIER},
-                      {.unite = "tr/min", .prefixe = "ventirad",
+                      {.unite = DN_T_U_RPM, .prefixe = DN_T_P_VENTIRAD,
                        .prefixe_detail_seul = true, .prec = DN_PREC_ENTIER},
-                      {.unite = "tr/min", .prefixe = "boitier",
+                      {.unite = DN_T_U_RPM, .prefixe = DN_T_P_BOITIER,
                        .prefixe_detail_seul = true, .prec = DN_PREC_ENTIER}},
     },
     [DN_UI_CASE_AMB] = {
@@ -1252,7 +1250,7 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
          *      ⛔ pas déduit d'une table FontAwesome. Le motif complet et la
          *      méthode sont dans `tools/gen_font_dn.py`, entrée « home ». */
         .icone = DN_ICONE_HOME,
-        .titre = "AMBIANCE",
+        .titre_cle = DN_T_CASE_AMB,
         .couleur = 0xff9640, /* orange */
         .n_grandeurs = 2,    /* D6 — DANS LE MODÈLE, pas rustiné après */
         .indicateur = false,
@@ -1272,9 +1270,9 @@ static const dn_widget_desc_t k_desc[DN_UI_METRIQUES] = {
          *    ⚠️ ÉCART DE PÉRIMÈTRE, LEVÉ EXPLICITEMENT par l'owner : la story
          *       écrit « ⛔ N'ajoute aucune fonctionnalité ». Un descripteur
          *       modifié sur constat œil est un CORRECTIF, et il est consigné. */
-        .grandeurs = {{.unite = "\xC2\xB0" "C", .icone = DN_ICONE_THERMOMETER_HALF,
+        .grandeurs = {{.unite = DN_T_U_DEGC, .icone = DN_ICONE_THERMOMETER_HALF,
                        .prec = DN_PREC_DIXIEME},
-                      {.unite = "%", .icone = DN_ICONE_TINT,
+                      {.unite = DN_T_U_PCT, .icone = DN_ICONE_TINT,
                        .prec = DN_PREC_DIXIEME}},
     },
 };
@@ -1488,9 +1486,46 @@ const char *dn_ui_case_prefixe(int idx, int grandeur)
 
 
 
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ * 🔴 `dn4-42` / AC1.2 — `k_nom[]` A DISPARU, ET C'ETAIT UN **DOUBLON**.
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * Il enoncait les MEMES SIX NOMS que `k_desc[].titre`. Les deux coincidaient,
+ * et **rien ne les y obligeait** — `dn_ui_case_titre()` le disait deja, en
+ * toutes lettres, depuis `dn4-14-2` : *« les deux coincident aujourd'hui, et
+ * rien ne les y oblige »*. Les TRADUIRE separement en aurait fait **DOUZE**
+ * definitions pour six noms.
+ *
+ * ⇒ Il ne reste qu'UNE source : `k_desc[idx].titre_cle`, qui pointe dans la
+ *   table de `dn_langue.h`.
+ *
+ * 🔴 ET IL Y A **DEUX LECTURES**, ⛔ PAS DEUX DEFINITIONS :
+ *   · `case_nom(idx)`    — la langue de l'ECRAN. Pour ce qui est DESSINE.
+ *   · `case_nom_fr(idx)` — le FRANCAIS. Pour les journaux et la console, que
+ *     l'owner a decide de garder en francais le 2026-09-01.
+ * ⛔ Ne jamais employer `case_nom()` dans un `ESP_LOG` ni dans une sortie du
+ *    REPL : le message changerait de langue au premier tap sur `EN`, et tous
+ *    les motifs que les gates cherchent avec lui deviendraient introuvables.
+ */
+static const char *case_nom(int idx)
+{
+    return (idx >= 0 && idx < DN_UI_METRIQUES) ? dn_t(k_desc[idx].titre_cle)
+                                               : dn_t(DN_T_INCONNU);
+}
+
+static const char *case_nom_fr(int idx)
+{
+    return (idx >= 0 && idx < DN_UI_METRIQUES) ? dn_t_fr(k_desc[idx].titre_cle)
+                                               : dn_t_fr(DN_T_INCONNU);
+}
+
 const char *dn_ui_metrique_nom(int idx)
 {
-    return (idx >= 0 && idx < DN_UI_METRIQUES) ? k_nom[idx] : "?";
+    /* ⚠️ FRANCAIS : cet accesseur sert la CONSOLE (`pc`, `widget`, `nav`) et
+     *    des journaux. Le faire suivre la langue de l'ecran ferait changer de
+     *    langue des sorties que les gates cherchent par motif. */
+    return case_nom_fr(idx);
 }
 
 /*
@@ -1836,8 +1871,12 @@ static lv_obj_t *s_barre_heure, *s_barre_date;
  * pas une valeur de remplissage : elles servent d'initialiseur ET de sortie du
  * composeur, par le même #define, pour qu'elles ne puissent pas diverger.
  */
+/* ⚠️ L'HEURE inconnue n'a AUCUNE lettre : elle ne se traduit pas, et elle reste
+ * un `#define` — c'est ce qui garde son slot mesurable a la compilation.
+ * 🔴 La DATE inconnue, elle, est une CLE (`dn4-42`) : « HEURE NON POSEE » ne
+ *    veut rien dire pour l'inconnu anglophone que cette story vise. */
 #define DN_UI_HEURE_INCONNUE "--:--"
-#define DN_UI_DATE_INCONNUE "HEURE NON POSÉE"
+#define DN_UI_DATE_INCONNUE dn_t(DN_T_DATE_INCONNUE)
 
 /* Le texte COURANT de la barre. Il vit en RAM et SURVIT au démontage, comme
  * `s_wetat[]` survit à `s_wobj[]` : une reconstruction de scène le repose au
@@ -1845,7 +1884,17 @@ static lv_obj_t *s_barre_heure, *s_barre_date;
  * dn3-1 — « les labels naissent vides et sont remplis par le MÊME code que la
  * réouverture » — appliquée à la barre. */
 static char s_barre_h[16] = DN_UI_HEURE_INCONNUE;
-static char s_barre_d[24] = DN_UI_DATE_INCONNUE;
+/*
+ * 🔴 `dn4-42` — ⛔ PLUS D'INITIALISEUR STATIQUE POUR LA DATE, et c'est FORCÉ :
+ *    `DN_UI_DATE_INCONNUE` est devenu un APPEL (`dn_t()`), et un appel ne peut
+ *    pas initialiser un objet de durée statique. **Le compilateur le refuse**,
+ *    ⇒ ⛔ impossible de laisser traîner une chaîne française en dur ici.
+ * ⇒ Elle est POSÉE par `barre_defaut()`, appelée (a) au boot AVANT la première
+ *   scène et (b) à chaque changement de langue.
+ * ⚠️ Un `s_barre_d` VIDE au premier dessin afficherait un trou : c'est
+ *    exactement pourquoi l'appel du boot est AVANT `build_scene()`.
+ */
+static char s_barre_d[24];
 
 /*
  * ══ dn4-14-2 / AC4.3 — LA POLICE DE LA DATE DE BARRE ════════════════════════
@@ -2738,7 +2787,7 @@ static void label_tick(lv_timer_t *t)
      */
     uint32_t s = (uint32_t)(esp_timer_get_time() / 1000000);
     char buf[24];
-    snprintf(buf, sizeof(buf), "%" PRIu32 " s", s);
+    snprintf(buf, sizeof(buf), "%" PRIu32 " %s", s, dn_t(DN_T_DUREE_S));
     lv_label_set_text(s_label, buf);
 }
 
@@ -2926,7 +2975,7 @@ static void fond_poser(lv_obj_t *scr)
         lv_obj_t *t = lv_label_create(scr);
         lv_obj_set_style_text_font(t, &dn_font_28, 0);
         lv_obj_set_style_text_color(t, lv_color_white(), 0);
-        lv_label_set_text(t, "ASSET ABSENT");
+        lv_label_set_text(t, dn_t(DN_T_ASSET_ABSENT));
         lv_obj_align(t, LV_ALIGN_CENTER, 0, -30);
 
         lv_obj_t *r = lv_label_create(scr);
@@ -2967,7 +3016,12 @@ static void label_poser(lv_obj_t *scr, lv_obj_t **slot)
     lv_label_set_long_mode(s_label, LV_LABEL_LONG_MODE_CLIP);
     lv_obj_set_size(s_label, DN_UI_LABEL_W, DN_UI_LABEL_H);
     lv_obj_align(s_label, LV_ALIGN_CENTER, 0, 0);
-    lv_label_set_text(s_label, "0 s");
+    /* 🔴 `dn4-42` — MEME LE LABEL D'INSTRUMENT PASSE PAR LA TABLE. Il est
+     *    DESSINE SUR LA DALLE (`ui label on`), donc AC1.1 le couvre — et la
+     *    gate l'a EPINGLE au premier tir, ce qui est exactement son travail.
+     *    ⚠️ « s » est le meme mot dans les deux langues : la clé ne CHANGE rien
+     *       aujourd'hui. Elle empeche la 3e langue de l'oublier. */
+    lv_label_set_text_fmt(s_label, "0 %s", dn_t(DN_T_DUREE_S));
     /* Le label ne capte AUCUN toucher : sinon il volerait le tap destiné aux
      * cases qu'il recouvre quand on le rallume, et « toute la case est la zone
      * tactile » deviendrait faux par accident. */
@@ -3312,6 +3366,96 @@ _Static_assert(MENU_ETAT_DY + MENU_ETAT_LIGNES * 18 <= MENU_H_LUM,
 #define MENU_SEL_Y_LUM 32
 _Static_assert(MENU_SEL_Y_LUM + MENU_SEL_H <= MENU_ETAT_DY,
                "dn4-41 : les cibles de luminosite mordent sur le texte d'etat.");
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ * 🔴 `dn4-42` / AC2.2 — LE SÉLECTEUR DE LANGUE VIT DANS **L'ENTÊTE DU MENU**
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * 🔴 LE PROBLÈME, MESURÉ : après `dn4-41`, le corps du MENU est PLEIN.
+ *    entête 0..80 · VEILLE 90..210 · DELAI 225..425 · LUM+ÉTAT 440..636.
+ *    **Il reste QUATRE pixels** sur 640.
+ *
+ * La story proposait trois voies. **Une quatrième a été mesurée et l'owner l'a
+ * tranchée le 2026-09-01** — c'est celle-ci :
+ *
+ *   | voie | verdict |
+ *   |---|---|
+ *   | (a) une 4ᵉ vue `RÉGLAGES` | ⛔ écartée : un écran LVGL de plus, une navigation de plus à apprendre — **et sa porte atterrissait de toute façon dans l'entête**, le seul endroit libre |
+ *   | (b) une 3ᵉ cible sur `LUMINOSITE` | ⛔ écartée : 3 cibles dans 460 px ⇒ ~140 px chacune contre 210 ⇒ on DÉGRADE deux cibles existantes, et la langue se rangerait sous un titre qui dit « LUMINOSITE » |
+ *   | (c) le pré-menu de D16 | ⛔ hors périmètre : c'est `dn4-21`, V0.2 |
+ *   | **(d) l'entête du MENU** | ✅ **RETENUE** |
+ *
+ * LE BUDGET HORIZONTAL, ADDITIONNÉ ICI POUR QUE PERSONNE N'AIT À LE REFAIRE —
+ * et **GARDÉ PAR LE COMPILATEUR** (`_Static_assert` juste dessous, même
+ * doctrine que le budget VERTICAL de `dn4-41`) :
+ *
+ *   entête = 480 x 80
+ *     · retour  x = 10 .. 130   (`DN_UI_RETOUR_W` = 120)
+ *     · titre   x = 150 .. 241  (« MENU » = 91 px en `dn_font_28`, MESURÉ
+ *                                depuis les `adv_w` de `fonts/dn_font_28.c`)
+ *     · libre   x = 241 .. 470  ⇒ **229 px**
+ *     · deux cibles 105 px + 10 de gouttière = 220  ≤ 229 ✅
+ *     · y = 10 + 60 = 70 ≤ 80 ✅
+ *
+ * ✅ **LES TROIS PANNEAUX DU CORPS NE BOUGENT PAS D'UN PIXEL**, et les 4 px de
+ *    marge basse de `dn4-41` ne sont pas touchés.
+ * ✅ **ET LE SÉLECTEUR EST VISIBLE DÈS L'OUVERTURE DU MENU** — ce qui compte
+ *    pour l'inconnu anglophone : il n'a pas à deviner qu'il faut descendre.
+ * ⚠️ La cible fait 105 x 60. Le ledger porte *« une cible de 10 px ne se vise
+ *    pas »* : 105 x 60 en est loin, et c'est la MÊME hauteur que le bouton de
+ *    retour, qui se vise depuis `dn3-3`.
+ * ⛔ Le libellé NE SE TRADUIT PAS (AC2.4) : `FR` / `EN`. Écrire « Langue » en
+ *    français à quelqu'un qui ne lit que l'anglais est exactement le défaut que
+ *    cette story corrige.
+ */
+#define MENU_LG_W 105
+#define MENU_LG_H DN_UI_RETOUR_H
+#define MENU_LG_Y DN_UI_MARGE
+#define MENU_LG_GAP 10
+/* La 1re cible commence après le titre. ⚠️ CALCULÉ depuis les mêmes macros que
+ * `build_menu()` emploie, ⛔ pas un `250` écrit à la main. */
+#define MENU_LG_X0 (DN_LCD_H_RES - DN_UI_MARGE - 2 * MENU_LG_W - MENU_LG_GAP)
+#define MENU_LG_X1 (MENU_LG_X0 + MENU_LG_W + MENU_LG_GAP)
+/* Le x où le titre « MENU » est posé — une seule définition, lue deux fois. */
+#define MENU_TITRE_X (DN_UI_MARGE + DN_UI_RETOUR_W + 20)
+/*
+ * 🔴 LARGEUR DU TITRE « MENU » EN `dn_font_28`, **MESURÉE** depuis les `adv_w`
+ *    de `fonts/dn_font_28.c` (91 px). ⛔ Elle n'est PAS relue à la compilation —
+ *    elle ne peut pas l'être — mais elle est CONFRONTÉE par
+ *    `tools/verif_langues_dn442.py`, qui recalcule la largeur réelle du libellé
+ *    DANS LES DEUX LANGUES et rougit si l'un des deux dépasse ce chiffre.
+ * ⚠️ « MENU » ne se traduit pas aujourd'hui — mais une 3ᵉ langue pourrait le
+ *    faire, et c'est exactement le cas que ce garde-fou attrape.
+ */
+#define MENU_TITRE_W_MAX 91
+_Static_assert(MENU_TITRE_X + MENU_TITRE_W_MAX <= MENU_LG_X0,
+               "dn4-42 : le selecteur de langue MORD sur le titre « MENU » de "
+               "l'entete. Refaire l'addition du budget horizontal ci-dessus.");
+_Static_assert(MENU_LG_X1 + MENU_LG_W + DN_UI_MARGE <= DN_LCD_H_RES,
+               "dn4-42 : la 2e cible de langue DEBORDE a droite de la dalle.");
+_Static_assert(MENU_LG_X0 >= DN_UI_MARGE + DN_UI_RETOUR_W,
+               "dn4-42 : le selecteur de langue CHEVAUCHE le bouton retour.");
+_Static_assert(MENU_LG_Y + MENU_LG_H <= MENU_ENTETE_H,
+               "dn4-42 : le selecteur de langue DEPASSE le bas de l'entete.");
+
+/*
+ * 🔴 `dn4-42` / AC4.2 — LA LARGEUR UTILE DU TEXTE DANS UN PANNEAU DU MENU.
+ *
+ * ⛔ **LE MENU N'ÉTAIT GARDÉ PAR RIEN.** `s_trop_larges` (dans `dn_widget.c`)
+ *    ne contrôle que **les cases**, à trois sites. Mesuré le 2026-09-01 : la
+ *    ligne d'échec NVS du panneau d'état faisait **605 px pour ~432 utiles** —
+ *    elle était CLIPPÉE, et **le code d'erreur était dans la partie coupée**.
+ *    C'est-à-dire que la seule ligne qui existe pour dire POURQUOI un réglage
+ *    n'a pas été enregistré **ne disait pas pourquoi**.
+ * ⚠️ **PRÉEXISTANT** (revue du 2026-08-28), ⛔ pas introduit par `dn4-41`.
+ * ⚠️ Le label est en `SIZE_CONTENT` **sans largeur** ⇒ il ne retourne PAS à la
+ *    ligne : il déborde horizontalement et se fait clipper. ⛔ Et lui donner une
+ *    largeur ne réparerait RIEN : le retour à la ligne ferait une 6ᵉ ligne, que
+ *    le `_Static_assert` du budget vertical de `dn4-41` REFUSE.
+ * ⇒ La parade est la MÊME que pour les cases : **on mesure, et on DIT**.
+ */
+#define MENU_TXT_UTILE (MENU_PAN_W - 2 * MENU_SEL_X0)
+
 /* Le glyphe de sélection vit à x FIXE, le libellé aussi : un `LV_SYMBOL_OK`
  * concaténé au texte aurait DÉPLACÉ le libellé selon qu'il est choisi ou non,
  * et l'œil aurait lu ce déplacement comme un défaut de calage. */
@@ -3341,6 +3485,87 @@ static lv_obj_t *s_menu_etat;
  * du pré-menu de D16. Les 4-5 seuils de lux, les 1-5 niveaux et la barre de
  * lumière captée restent ENTIERS dans `dn4-21` (V0.2). */
 static menu_sel_t s_menu_bl_auto, s_menu_bl_niv;
+/* 🔴 `dn4-42` — LES DEUX CIBLES DE LANGUE, DANS L'ENTÊTE (voie (d)). */
+static menu_sel_t s_menu_lg[DN_LANGUE_N];
+
+/*
+ * 🔴 `dn4-42` / AC4.2 — LE COMPTEUR QUE LE MENU N'AVAIT PAS.
+ *
+ * ⚠️ **IL EST PUBLIÉ** (`dn_ui_menu_trop_larges()`, imprimé par `nav`), et ce
+ *    n'est pas du zèle : `dn4-41` a payé *« un instrument qu'on ne peut pas
+ *    LIRE ne disculpe personne »* — `dn_reglage` comptait ses écritures et rien
+ *    ne les publiait, ce qui a laissé une question ouverte une heure.
+ * ⛔ Il ne se confond PAS avec `dn_widget_trop_larges()` : celui-là compte les
+ *    CASES, à la construction. Les mélanger ferait qu'un débordement du MENU
+ *    se lirait comme un débordement de case, et l'auteur chercherait au mauvais
+ *    endroit.
+ */
+static uint32_t s_menu_trop_larges;
+
+/*
+ * Mesure un libellé du MENU contre sa place, COMPTE et DIT s'il déborde.
+ * ⛔ On ne tronque pas et on ne masque pas — même doctrine que le titre de
+ *    case : *« masquer ou tronquer remplacerait un défaut VISIBLE par un défaut
+ *    MUET »*. Le log et le compteur sont l'instrument ; l'œil tranche.
+ * ⚠️ MULTILIGNE : le panneau d'état porte 4 à 5 lignes dans UN label. Mesurer
+ *    la chaîne entière donnerait ~1 700 px et crierait toujours. On mesure
+ *    **ligne à ligne**, ce que LVGL dessine.
+ */
+/*
+ * 🔴 `dn4-42` — LE NOM DU MODE DE VEILLE, DANS LA LANGUE DE L'ÉCRAN.
+ *
+ * ⛔ **LA TRADUCTION VIT ICI, ⛔ PAS DANS `dn_veille.c`**, et c'est une
+ *    contrainte écrite : ce module « ne touche NI LVGL, NI la dalle », et c'est
+ *    ce qui le rend COMPILABLE ET APPELABLE SUR L'HÔTE par
+ *    `tools/verif_veille_dn33.py`. Y faire entrer une dépendance de plus ferait
+ *    cesser cette gate de pouvoir l'exécuter — *« et elle redeviendrait
+ *    décorative »*, dit le CMakeLists en toutes lettres.
+ * ⇒ `dn_veille_mode_nom()` reste FRANÇAIS et sert la console ; ceci sert
+ *   l'écran. **Deux lectures, ⛔ pas deux définitions** : le mot français est
+ *   dans la table, comme le mot anglais.
+ * ⚠️ ⛔ NE PAS enlever le `default` : un mode neuf ajouté à `dn_veille.h` sans
+ *    clé ici doit rendre « ? », ⛔ pas un mot d'un autre mode.
+ */
+static const char *veille_mode_nom_ui(dn_veille_mode_t m)
+{
+    switch (m) {
+    case DN_VEILLE_ACTIF:
+        return dn_t(DN_T_MODE_ACTIF);
+    case DN_VEILLE_AMBIENT:
+        return dn_t(DN_T_MODE_AMBIENT);
+    default:
+        return dn_t(DN_T_INCONNU);
+    }
+}
+
+static void menu_largeur_controler(const char *quoi, const char *txt,
+                                   const lv_font_t *font, int utile)
+{
+    if (!txt || !font) {
+        return;
+    }
+    int nl = 0;
+    for (const char *deb = txt; deb; nl++) {
+        const char *fin = strchr(deb, '\n');
+        char ligne[192];
+        size_t len = fin ? (size_t)(fin - deb) : strlen(deb);
+        if (len >= sizeof(ligne)) {
+            len = sizeof(ligne) - 1;
+        }
+        memcpy(ligne, deb, len);
+        ligne[len] = '\0';
+        int w = dn_widget_largeur(ligne, font);
+        if (w > utile) {
+            s_menu_trop_larges++;
+            ESP_LOGW(TAG,
+                     "MENU « %s » ligne %d : « %s » mesure %d px pour %d utiles "
+                     "— il manque %d px. LVGL la CLIPPE sans un mot, et ce qui "
+                     "est coupe est la FIN de la ligne.",
+                     quoi, nl, ligne, w, utile, w - utile);
+        }
+        deb = fin ? fin + 1 : NULL;
+    }
+}
 
 /*
  * 🔴 LES TAPS DE RÉGLAGE SONT COMPTÉS À PART, ET C'EST DÉLIBÉRÉ.
@@ -3359,6 +3584,11 @@ static void menu_oublier(void)
     memset(s_menu_cran, 0, sizeof(s_menu_cran));
     memset(&s_menu_bl_auto, 0, sizeof(s_menu_bl_auto));
     memset(&s_menu_bl_niv, 0, sizeof(s_menu_bl_niv));
+    /* 🔴 `dn4-42` — LES CIBLES DE LANGUE MEURENT AVEC LEUR ÉCRAN, comme les
+     *    autres. Un pointeur laissé ici ferait repeindre `menu_reparametrer()`
+     *    dans de la mémoire libérée à la première bascule de veille — le
+     *    use-after-free de `dn1-3`, avec le pire délai de diagnostic possible. */
+    memset(s_menu_lg, 0, sizeof(s_menu_lg));
     s_menu_etat = NULL;
 }
 
@@ -3386,6 +3616,10 @@ static int menu_bl_cran_courant(void)
 /* Le repeint de la veille (plus bas — il vit près des bascules). */
 static void veille_peindre_nolock(void);
 static void menu_reparametrer(void);
+/* 🔴 `dn4-42` — la barre reprend son texte « pas d'heure » dans la langue
+ * neuve. Declaree ici : elle vit pres de la BARRE, et le selecteur de
+ * langue, qui l'appelle, vit pres du MENU. */
+static void barre_defaut(void);
 
 static void menu_sel_peindre(menu_sel_t *s, bool choisi, bool actif)
 {
@@ -3423,7 +3657,12 @@ static void menu_sel_peindre(menu_sel_t *s, bool choisi, bool actif)
 }
 
 static esp_err_t s_menu_nvs_err;
-static char s_menu_nvs_quoi[16];
+/* 🔴 `dn4-42` — LA CLÉ, ⛔ plus une copie de chaîne. Retenir le TEXTE aurait
+ * figé la langue du moment de l'échec : basculer en anglais aurait laissé
+ * « niv. lum. » en français dans une ligne anglaise, et c'est exactement le
+ * genre de résidu que personne ne pense à chercher. On retient CE QUI A ÉCHOUÉ,
+ * et le libellé se relit à chaque repeint. */
+static dn_txt_t s_menu_nvs_quoi = DN_T_AUCUN;
 
 static void menu_reparametrer(void)
 {
@@ -3465,12 +3704,26 @@ static void menu_reparametrer(void)
             /* ⛔ ⛔ PAS « 0 % » : `0` est un duty LÉGITIME (noir). « Non choisi »
              * et « noir » sont deux états, et les confondre est la faute que
              * `DN_CAPT_DX_ABSENT` a coûté deux fois à la console. */
-            snprintf(lib, sizeof(lib), "-- %%");
+            snprintf(lib, sizeof(lib), "%s", dn_t(DN_T_MENU_NON_CHOISI));
         } else {
             snprintf(lib, sizeof(lib), "%d %%", pct);
         }
         lv_label_set_text(s_menu_bl_niv.lbl, lib);
         menu_sel_peindre(&s_menu_bl_niv, !auto_on, true);
+    }
+
+    /*
+     * 🔴 `dn4-42` — LES DEUX CIBLES DE LANGUE, RELUES DE L'ÉTAT RÉEL.
+     * ⚠️ `dn_langue()` est la langue COURANTE, ⛔ pas la valeur qu'on croit
+     *    avoir écrite : sur une NVS pleine, l'écriture échoue et la langue est
+     *    quand même posée A CHAUD — peindre la préférence supposée afficherait
+     *    un choix que la carte ne porte pas. Même règle que `AUTO`, qui est
+     *    peint sur `dn_env_bl_auto()` et non sur la préférence.
+     */
+    for (int i = 0; i < DN_LANGUE_N; i++) {
+        if (s_menu_lg[i].zone) {
+            menu_sel_peindre(&s_menu_lg[i], (dn_langue_t)i == dn_langue(), true);
+        }
     }
 
     if (s_menu_etat) {
@@ -3507,27 +3760,67 @@ static void menu_reparametrer(void)
          *    soit ~45 signes. C'est pourquoi la 3ᵉ ligne est compacte.
          */
         snprintf(buf, sizeof(buf),
-                 "mode %s  ·  %lu veille(s)  ·  %lu reveil(s)\n"
-                 "delai %d min  ·  inactivite %lu s\n"
-                 "%s  ·  prochain niveau : %d %%\n"
-                 "le tap qui reveille RALLUME, il n'ouvre rien.",
-                 dn_veille_mode_nom(c.mode), (unsigned long)c.bascules,
-                 (unsigned long)c.reveils, dn_veille_cran_min(c.cran),
+                 "%s %s  ·  %lu %s  ·  %lu %s\n"
+                 "%s %d min  ·  %s %lu s\n"
+                 "%s  ·  %s : %d %%\n"
+                 "%s",
+                 dn_t(DN_T_ET_MODE), veille_mode_nom_ui(c.mode),
+                 (unsigned long)c.bascules, dn_t(DN_T_ET_VEILLES),
+                 (unsigned long)c.reveils, dn_t(DN_T_ET_REVEILS),
+                 dn_t(DN_T_ET_DELAI), dn_veille_cran_min(c.cran),
+                 dn_t(DN_T_ET_INACTIVITE),
                  (unsigned long)(c.inactivite_ms / 1000u),
                  dn_env_etat(DN_ENV_LUM) == DN_ENV_ABSENT
-                     ? "capteur lumiere ABSENT"
-                     : (dn_env_bl_auto() ? "auto ARME" : "auto DESARME"),
-                 dn_reglage_bl_cran(suiv));
+                     ? dn_t(DN_T_ET_LUM_ABSENT)
+                     : dn_t(dn_env_bl_auto() ? DN_T_ET_AUTO_ARME
+                                             : DN_T_ET_AUTO_DESARME),
+                 dn_t(DN_T_ET_PROCHAIN), dn_reglage_bl_cran(suiv),
+                 dn_t(DN_T_ET_PEDAGO));
         /* 🔴 revue du 2026-08-28 — l'échec d'écriture NVS se dit LÀ OÙ LE DOIGT
          *    A TAPÉ. ⛔ Un réglage qui obéit à chaud sans être enregistré est
-         *    exactement le « enregistré » mensonger que `dn_veille.h` interdit. */
+         *    exactement le « enregistré » mensonger que `dn_veille.h` interdit.
+         *
+         * ══════════════════════════════════════════════════════════════════
+         * 🔴 `dn4-42` — CETTE LIGNE A ÉTÉ **RÉÉCRITE POUR TENIR**, ET C'EST
+         *    UN CORRECTIF DE DÉFAUT PRÉEXISTANT (AC4.2 + AC4.3).
+         * ══════════════════════════════════════════════════════════════════
+         *
+         * Ce qu'elle était : `⛔ « %s » NON ENREGISTRE (%s) : perdu au reboot.`
+         * Ce qu'elle mesurait : **605 px pour 432 utiles** ⇒ clippée de 173 px,
+         * et **le code d'erreur `(%s)` tombait DANS la partie coupée**. La
+         * seule ligne qui dit POURQUOI un réglage n'a pas été enregistré ne
+         * disait donc pas pourquoi.
+         *
+         * TROIS CHANGEMENTS, chacun avec son motif :
+         *  1. 🔴 **LE `⛔` PART.** `U+26D4` n'est dans AUCUNE police du dépôt
+         *     (cmaps relues : `32..126`, `160..255`, et une plage sparse qui ne
+         *     porte que `•` + FontAwesome). `LV_USE_FONT_PLACEHOLDER=y` le
+         *     dessinait en **boîte**, sans un mot au journal. ⇒ `!`, qui existe.
+         *  2. **LES CHEVRONS PARTENT** (~16 px) et les noms de réglage sont
+         *     COURTS (`niv. lum.`, ⛔ plus `niveau de luminosite`).
+         *  3. 🔴 **`ESP_ERR_` EST RETIRÉ DU CODE** : huit signes de préfixe
+         *     constant, présents sur TOUS les codes, qui ne distinguent rien.
+         *     ⛔ Le code lui-même n'est PAS tronqué — c'est LUI le diagnostic.
+         *
+         * ⚠️ PIRE CAS VÉRIFIÉ : `NVS_KEYS_NOT_INITIALIZED` (24 signes, le plus
+         *    long des `ESP_ERR_NVS_*` de l'IDF). La gate le recompose dans les
+         *    DEUX langues et rougit si l'un des deux dépasse `MENU_TXT_UTILE`.
+         * ⚠️ ET LE CONTRÔLE À CHAUD EST EN PLUS (`menu_largeur_controler`) : la
+         *    gate garde les chaînes STATIQUES, lui garde ce qui est COMPOSÉ —
+         *    y compris un compteur de veilles à dix chiffres.
+         */
         if (s_menu_nvs_err != ESP_OK) {
+            const char *code = esp_err_to_name(s_menu_nvs_err);
+            const char *nu = strncmp(code, "ESP_ERR_", 8) == 0 ? code + 8 : code;
             size_t n = strlen(buf);
-            snprintf(buf + n, sizeof(buf) - n,
-                     "\n⛔ « %s » NON ENREGISTRE (%s) : perdu au reboot.",
-                     s_menu_nvs_quoi, esp_err_to_name(s_menu_nvs_err));
+            snprintf(buf + n, sizeof(buf) - n, "\n! %s %s (%s)",
+                     dn_t(s_menu_nvs_quoi), dn_t(DN_T_ET_NON_ENR), nu);
         }
         lv_label_set_text(s_menu_etat, buf);
+        /* 🔴 `dn4-42` / AC4.2 — ET ON MESURE CE QU'ON VIENT DE POSER. Le MENU
+         *    n'était gardé par RIEN ; il l'est maintenant, au même endroit et
+         *    avec la même doctrine que les cases : on ne tronque pas, on DIT. */
+        menu_largeur_controler("etat", buf, &dn_font_14, MENU_TXT_UTILE);
     }
 }
 
@@ -3543,17 +3836,17 @@ static void menu_reparametrer(void)
  *   MENU — c'est-à-dire là où le doigt vient de taper, ⛔ pas seulement dans un
  *   journal que l'owner ne lit pas au doigt.
  */
-static void menu_nvs_noter(esp_err_t err, const char *quoi)
+static void menu_nvs_noter(esp_err_t err, dn_txt_t quoi)
 {
     if (err == ESP_OK) {
         return;
     }
     s_menu_nvs_err = err;
-    snprintf(s_menu_nvs_quoi, sizeof(s_menu_nvs_quoi), "%s", quoi);
+    s_menu_nvs_quoi = quoi;
     ESP_LOGW(TAG,
              "MENU : « %s » applique A CHAUD mais NON ENREGISTRE (%s) — "
              "⛔ il NE survivra PAS au reboot. Le panneau d'etat du MENU le dit.",
-             quoi, esp_err_to_name(err));
+             dn_t_fr(quoi), esp_err_to_name(err));
     menu_reparametrer();
 }
 
@@ -3646,7 +3939,7 @@ static void on_menu_bl_auto_clic(lv_event_t *e)
     /* ⚠️ On RELIT l'état courant pour basculer, ⛔ on ne récite pas une ombre. */
     bool vers = !dn_env_bl_auto();
     dn_env_bl_auto_set(vers);
-    menu_nvs_noter(dn_reglage_bl_auto_ecrire(vers), "auto luminosite");
+    menu_nvs_noter(dn_reglage_bl_auto_ecrire(vers), DN_T_NVS_BL_AUTO);
     if (!vers) {
         /* Désarmer ne pose RIEN : le duty courant reste. ⛔ Aucun repli — même
          * règle qu'AC3.4, et pour la même raison. */
@@ -3665,7 +3958,7 @@ static void on_menu_bl_niveau_clic(lv_event_t *e)
     /* 🔴 GESTE D'OPÉRATEUR ⇒ IL DÉSARME, ET IL LE DIT. ⛔ Sans ça la valeur
      * serait écrasée au prochain cycle de l'asservissement, en silence. */
     if (dn_env_bl_auto_desarmer("MENU / niveau au doigt")) {
-        menu_nvs_noter(dn_reglage_bl_auto_ecrire(false), "auto luminosite");
+        menu_nvs_noter(dn_reglage_bl_auto_ecrire(false), DN_T_NVS_BL_AUTO);
     }
     esp_err_t e_led = dn_display_backlight_pct(pct);
     if (e_led != ESP_OK) {
@@ -3678,7 +3971,7 @@ static void on_menu_bl_niveau_clic(lv_event_t *e)
         menu_reparametrer();
         return;
     }
-    menu_nvs_noter(dn_reglage_bl_manuel_ecrire(pct), "niveau de luminosite");
+    menu_nvs_noter(dn_reglage_bl_manuel_ecrire(pct), DN_T_NVS_BL_NIVEAU);
     menu_reparametrer();
 }
 
@@ -3696,17 +3989,97 @@ static void on_menu_veille_clic(lv_event_t *e)
      *    besoin, parce qu'on ne détruit RIEN.
      */
     menu_nvs_noter(veille_armee_appliquer_nolock(on, DN_VEILLE_ORIG_MENU),
-                   on ? "veille ON" : "veille OFF");
+                   on ? DN_T_NVS_VEILLE_ON : DN_T_NVS_VEILLE_OFF);
 }
 
 static void on_menu_cran_clic(lv_event_t *e)
 {
     int idx = (int)(intptr_t)lv_event_get_user_data(e);
     s_menu_reglages++;
-    menu_nvs_noter(veille_cran_appliquer_nolock(idx), "delai");
+    menu_nvs_noter(veille_cran_appliquer_nolock(idx), DN_T_NVS_DELAI);
+}
+
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ * 🔴 `dn4-42` / AC2 + AC3.4 — LE CHOIX DE LANGUE, AU DOIGT
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * ⚠️ **CELUI-CI EST LE SEUL RÉGLAGE DU MENU QUI DOIT RECONSTRUIRE.** Les
+ *    quatre autres ne font que RE-PEINDRE des objets déjà là ; changer de
+ *    langue change **des textes posés à la construction** — les six titres de
+ *    case, la date, les titres de panneau, les libellés des cibles.
+ *
+ * 🔴 **ET C'EST EXACTEMENT LE PIÈGE QUE CE FICHIER A DÉJÀ PAYÉ.** On tourne
+ *    DANS l'envoi d'événement LVGL, sur un objet qui appartient à l'arbre que
+ *    `build_scene()` va DÉTRUIRE : le détruire pendant qu'il reçoit son propre
+ *    événement est le **use-after-free trouvé en revue de `dn1-3`**.
+ * ⇒ On passe par `lv_async_call()`, **la parade prévue par LVGL** — la même que
+ *   toute transition de vue depuis `dn1-4`. ⛔ Pas un contournement.
+ *
+ * ⚠️ **LE RETOUR DE `lv_async_call` EST TESTÉ**, comme partout ailleurs ici :
+ *    sur file pleine, poser la langue sans jamais redessiner laisserait un
+ *    écran français avec une NVS anglaise — un réglage qui a « pris » sans que
+ *    rien ne le montre, c'est-à-dire le no-op que W3 a supprimé.
+ *    ⇒ Sur refus, ⛔ **on ne change RIEN** et on le DIT.
+ *
+ * ⚠️ La reconstruction coûte **307-322 ms verrou tenu** (mesuré `dn3-1`). C'est
+ *    assumé pour un geste d'opérateur qui arrive une fois — ⛔ ce serait
+ *    inacceptable dans une boucle, et il n'y en a aucune ici.
+ */
+static void langue_async(void *param)
+{
+    dn_langue_t l = (dn_langue_t)(intptr_t)param;
+    if (!lvgl_port_lock(2000)) {
+        /* ⛔ On n'a RIEN posé : la langue n'a pas changé, l'écran non plus, et
+         * la NVS non plus. L'état reste COHÉRENT — c'est le seul ordre qui le
+         * garantit, et c'est pourquoi l'écriture est ICI et pas dans le tap. */
+        ESP_LOGE(TAG, "langue : verrou LVGL INDISPONIBLE — ⛔ RIEN n'est change "
+                      "(ni l'ecran, ni la NVS). Retaper.");
+        return;
+    }
+    menu_nvs_noter(dn_reglage_langue_ecrire(l), DN_T_NVS_LANGUE);
+    /* La barre reprend son texte « pas d'heure » dans la langue neuve — sinon
+     * une carte sans RTC posé garderait la SEULE chaîne restée en français. */
+    barre_defaut();
+    build_scene();
+    lvgl_port_unlock();
+    ESP_LOGI(TAG, "langue : « %s » posee AU DOIGT depuis le MENU (scene "
+                  "reconstruite).",
+             dn_langue_code(l));
+}
+
+static void on_menu_langue_clic(lv_event_t *e)
+{
+    dn_langue_t l = (dn_langue_t)(intptr_t)lv_event_get_user_data(e);
+    s_menu_reglages++;
+    if (l == dn_langue()) {
+        /* ⛔ Déjà dans cette langue : ⛔ PAS de reconstruction. 307-322 ms de
+         * verrou pour rien, et un clignotement que l'œil lirait comme un
+         * défaut. ⚠️ Le tap est quand même COMPTÉ : il a bien eu lieu. */
+        return;
+    }
+    if (lv_async_call(langue_async, (void *)(intptr_t)l) != LV_RESULT_OK) {
+        s_async_refus++;
+        ESP_LOGE(TAG, "langue : `lv_async_call` REFUSE (file pleine) — ⛔ RIEN "
+                      "n'est change. Le tap est perdu, et il le DIT.");
+        return;
+    }
 }
 
 /* ── La construction ─────────────────────────────────────────────────────── */
+
+/*
+ * 🔴 `dn4-42` — LE TITRE D'UN PANNEAU DU MENU, POSÉ **ET MESURÉ**.
+ * ⛔ Les trois titres étaient posés par trois `texte()` copiés : la mesure
+ *    d'AC4.2 aurait donc dû être copiée trois fois aussi, et le quatrième
+ *    panneau l'aurait oubliée. Une fabrique, et le contrôle est STRUCTUREL.
+ */
+static void menu_titre_panneau(lv_obj_t *panneau_, dn_txt_t cle)
+{
+    const char *t = dn_t(cle);
+    texte(panneau_, t, &dn_font_14, lv_color_hex(0xa0d8ff), MENU_SEL_X0, 10);
+    menu_largeur_controler("titre de panneau", t, &dn_font_14, MENU_TXT_UTILE);
+}
 
 static menu_sel_t menu_sel_creer(lv_obj_t *parent, int x, int y,
                                  const char *libelle, lv_event_cb_t cb,
@@ -3736,30 +4109,47 @@ static void build_menu(lv_obj_t *scr)
                                   DN_UI_RETOUR_W, DN_UI_RETOUR_H,
                                   on_retour_clic, NULL);
     texte(retour, LV_SYMBOL_LEFT, &dn_font_28, lv_color_white(), 16, 14);
-    texte(entete, "MENU", &dn_font_28, lv_color_hex(0xa0d8ff),
-          DN_UI_MARGE + DN_UI_RETOUR_W + 20, 24);
+    texte(entete, dn_t(DN_T_MENU_TITRE), &dn_font_28, lv_color_hex(0xa0d8ff),
+          MENU_TITRE_X, 24);
+    /* 🔴 `dn4-42` / AC2 — LE SÉLECTEUR DE LANGUE, VOIE (d). Le budget
+     *    horizontal est plus haut, et il est gardé par `_Static_assert`. */
+    for (int i = 0; i < DN_LANGUE_N; i++) {
+        /* ⛔ LE LIBELLÉ NE PASSE **PAS** PAR `dn_t()` (AC2.4) : `FR` et `EN` se
+         *    lisent dans les deux langues, et un « Langue » français affiché à
+         *    quelqu'un qui ne lit que l'anglais serait le défaut même que cette
+         *    story corrige. `dn_langue_code()` rend le code, ⛔ pas un mot. */
+        s_menu_lg[i] = menu_sel_creer(
+            entete, (i == 0) ? MENU_LG_X0 : MENU_LG_X1, MENU_LG_Y,
+            dn_langue_code((dn_langue_t)i), on_menu_langue_clic,
+            (void *)(intptr_t)i);
+        /* ⚠️ La fabrique pose des cibles de `MENU_SEL_W` (210) : ici elles font
+         *    `MENU_LG_W` (105). ⛔ On REDIMENSIONNE plutôt que d'ajouter un
+         *    paramètre à la fabrique — deux tailles dans une signature auraient
+         *    fait diverger les quatre autres appels le jour où l'une bouge. */
+        lv_obj_set_size(s_menu_lg[i].zone, MENU_LG_W, MENU_LG_H);
+    }
 
     /* ── Réglage 1 : la veille, ON / OFF ─────────────────────────────────── */
     lv_obj_t *p1 = panneau(scr, MENU_PAN_X, MENU_Y_VEILLE, MENU_PAN_W,
                            MENU_H_VEILLE);
-    texte(p1, "VEILLE", &dn_font_14, lv_color_hex(0xa0d8ff), MENU_SEL_X0, 10);
-    s_menu_on = menu_sel_creer(p1, MENU_SEL_X0, MENU_SEL_Y0, "ON",
+    menu_titre_panneau(p1, DN_T_MENU_VEILLE);
+    s_menu_on = menu_sel_creer(p1, MENU_SEL_X0, MENU_SEL_Y0, dn_t(DN_T_MENU_ON),
                                on_menu_veille_clic, (void *)(intptr_t)1);
-    s_menu_off = menu_sel_creer(p1, MENU_SEL_X1, MENU_SEL_Y0, "OFF",
+    s_menu_off = menu_sel_creer(p1, MENU_SEL_X1, MENU_SEL_Y0, dn_t(DN_T_MENU_OFF),
                                 on_menu_veille_clic, (void *)(intptr_t)0);
 
     /* ── Réglage 2 : le délai, quatre crans ──────────────────────────────── */
     lv_obj_t *p2 = panneau(scr, MENU_PAN_X, MENU_Y_DELAI, MENU_PAN_W,
                            MENU_H_DELAI);
-    texte(p2, "DELAI AVANT VEILLE", &dn_font_14, lv_color_hex(0xa0d8ff),
-          MENU_SEL_X0, 10);
+    menu_titre_panneau(p2, DN_T_MENU_DELAI);
     for (int i = 0; i < DN_VEILLE_CRANS; i++) {
         char lib[16];
         /* ⚠️ LE LIBELLÉ EST RELU DE LA TABLE DES CRANS (`dn_veille_cran_min`),
          *    ⛔ jamais écrit « 1 min / 3 min / 5 min / 10 min » ici. Deux
          *    endroits qui énoncent les mêmes quatre nombres finissent par
          *    diverger, et c'est l'écran qui aurait menti. */
-        snprintf(lib, sizeof(lib), "%d min", dn_veille_cran_min(i));
+        snprintf(lib, sizeof(lib), "%d %s", dn_veille_cran_min(i),
+                 dn_t(DN_T_MENU_MIN));
         s_menu_cran[i] = menu_sel_creer(
             p2, (i % 2) ? MENU_SEL_X1 : MENU_SEL_X0,
             (i / 2) ? MENU_SEL_Y1 : MENU_SEL_Y0, lib, on_menu_cran_clic,
@@ -3775,8 +4165,9 @@ static void build_menu(lv_obj_t *scr)
      *    parce que la voie (a) est réfutée par le calcul (voir la géométrie).
      */
     lv_obj_t *p3 = panneau(scr, MENU_PAN_X, MENU_Y_LUM, MENU_PAN_W, MENU_H_LUM);
-    texte(p3, "LUMINOSITE", &dn_font_14, lv_color_hex(0xa0d8ff), MENU_SEL_X0, 10);
-    s_menu_bl_auto = menu_sel_creer(p3, MENU_SEL_X0, MENU_SEL_Y_LUM, "AUTO",
+    menu_titre_panneau(p3, DN_T_MENU_LUM);
+    s_menu_bl_auto = menu_sel_creer(p3, MENU_SEL_X0, MENU_SEL_Y_LUM,
+                                    dn_t(DN_T_MENU_AUTO),
                                     on_menu_bl_auto_clic, NULL);
     /* ⚠️ Le libellé est POSÉ VIDE et rempli par `menu_reparametrer()` : il porte
      *    une VALEUR, et une valeur écrite à la construction serait périmée dès
@@ -3808,11 +4199,20 @@ static void build_menu(lv_obj_t *scr)
  * ✅ Et l'abréviation REPRODUIT EXACTEMENT la maquette normative de
  *    l'addendum §1, qui écrit « VEN. 06 AOÛT » : août ne s'abrège pas.
  */
-static const char *const k_jsem_court[7] = {"DIM.", "LUN.", "MAR.", "MER.",
-                                            "JEU.", "VEN.", "SAM."};
-static const char *const k_mois_court[12] = {
-    "JANV.", "FÉVR.", "MARS", "AVR.", "MAI",  "JUIN",
-    "JUIL.", "AOÛT",  "SEPT.", "OCT.", "NOV.", "DÉC."};
+/*
+ * 🔴 `dn4-42` — LES 19 JETONS DE DATE SONT DES **CLÉS**, ⛔ plus des littéraux.
+ * ⚠️ Le suffixe `_court` n'a PAS de variante longue, et n'en a jamais eu : ces
+ *    deux tables sont les SEULES, dans les deux langues. L'abréviation est de
+ *    l'arithmétique (170 px utiles en x = 300), ⛔ pas du goût — et elle
+ *    s'applique donc aussi à l'anglais.
+ */
+static const dn_txt_t k_jsem_court[7] = {
+    DN_T_JOUR_DIM, DN_T_JOUR_LUN, DN_T_JOUR_MAR, DN_T_JOUR_MER,
+    DN_T_JOUR_JEU, DN_T_JOUR_VEN, DN_T_JOUR_SAM};
+static const dn_txt_t k_mois_court[12] = {
+    DN_T_MOIS_01, DN_T_MOIS_02, DN_T_MOIS_03, DN_T_MOIS_04,
+    DN_T_MOIS_05, DN_T_MOIS_06, DN_T_MOIS_07, DN_T_MOIS_08,
+    DN_T_MOIS_09, DN_T_MOIS_10, DN_T_MOIS_11, DN_T_MOIS_12};
 
 /*
  * Compose le texte de la barre dans `s_barre_h` / `s_barre_d`. Rend `true` si
@@ -3843,9 +4243,10 @@ static bool barre_composer(const dn_rtc_heure_t *h, bool fiable)
         /* Bornes RELUES avant indexation : `dn_rtc` les garantit déjà, mais un
          * index hors tableau ici serait une lecture de .rodata arbitraire — et
          * la garde coûte deux comparaisons. */
-        const char *js = (h->jsem < 7) ? k_jsem_court[h->jsem] : "???";
-        const char *mo = (h->mois >= 1 && h->mois <= 12) ? k_mois_court[h->mois - 1]
-                                                         : "???";
+        const char *js = (h->jsem < 7) ? dn_t(k_jsem_court[h->jsem]) : "???";
+        const char *mo = (h->mois >= 1 && h->mois <= 12)
+                             ? dn_t(k_mois_court[h->mois - 1])
+                             : "???";
         snprintf(nd, sizeof(nd), "%s %02u %s", js, h->jour, mo);
     }
 
@@ -3874,6 +4275,22 @@ static bool barre_composer(const dn_rtc_heure_t *h, bool fiable)
         return true;
     }
     return false;
+}
+
+/*
+ * 🔴 `dn4-42` — LE TEXTE « PAS D'HEURE » DANS LA LANGUE COURANTE.
+ *
+ * ⛔ Il ne suffit PAS de le poser au boot : au changement de langue, une carte
+ *    dont le RTC n'est pas posé garderait « HEURE NON POSÉE » sur un écran
+ *    anglais — et ce serait la seule chaîne restée en français, donc la seule
+ *    que personne ne penserait à chercher.
+ * ⚠️ Il ÉCRASE `s_barre_h` aussi, mais avec la même valeur : `--:--` n'a aucune
+ *    lettre. Le faire quand même garde UN seul chemin de remise à zéro.
+ */
+static void barre_defaut(void)
+{
+    snprintf(s_barre_h, sizeof(s_barre_h), "%s", DN_UI_HEURE_INCONNUE);
+    snprintf(s_barre_d, sizeof(s_barre_d), "%s", DN_UI_DATE_INCONNUE);
 }
 
 /*
@@ -4048,7 +4465,7 @@ static void build_dashboard(lv_obj_t *scr)
          * le libellé de grandeur, pour que la question owner « ces deux-là
          * suivent-ils le titre ? » soit posable SUR LA DALLE. ⛔ Pas un
          * troisième réglage : `dn_widget_font_libelle()` est LA définition. */
-        texte(case_, k_nom[i], dn_widget_font_libelle(), lv_color_hex(0xa0d8ff),
+        texte(case_, case_nom(i), dn_widget_font_libelle(), lv_color_hex(0xa0d8ff),
               12, 10);
         s_wobj[i].racine = case_;
         /* Même convention qu'à la mise à jour, et par le MÊME appel : c'est la
@@ -4156,7 +4573,7 @@ static void build_detail(lv_obj_t *scr, int idx)
 
     /* Titre de la métrique — c'est LUI qui rend la zone touchée identifiable
      * sans ambiguïté (AC3) : six instances du même template, un seul titre. */
-    s_det_titre = texte(entete, k_nom[idx], &dn_font_28,
+    s_det_titre = texte(entete, case_nom(idx), &dn_font_28,
                         lv_color_hex(0xa0d8ff), DN_UI_MARGE + DN_UI_RETOUR_W + 20,
                         24);
 
@@ -4371,20 +4788,73 @@ typedef enum {
 static const struct {
     dn_src_t type;
     dn_link_metrique_t metrique; /* n'a de sens que si type == DN_SRC_LIEN_PC */
-    const char *nom;
+    /*
+     * 🔴 `dn4-42` — LE NOM DE SOURCE EST UNE **CLÉ** + UN SUFFIXE DE FIL.
+     *
+     * ⛔ **ET LE `—` A DISPARU, C'EST UN CORRECTIF DE DÉFAUT PRÉEXISTANT.**
+     *    `U+2014` (tiret cadratin) n'est dans **AUCUNE** police du dépôt — les
+     *    cmaps portent `32..126`, `160..255` et une plage sparse qui ne contient
+     *    que `•` et FontAwesome. Avec `LV_USE_FONT_PLACEHOLDER=y`, LVGL le
+     *    dessinait donc en **BOÎTE**, sans un mot au journal, **sur TOUTES les
+     *    pages de détail** — c'est-à-dire depuis toujours.
+     * ⇒ Le séparateur est un `-` ASCII, qui existe.
+     *
+     * ⚠️ Le suffixe (`cpu`, `gpu`, …) est le nom **SUR LE FIL** : il ne se
+     *    traduit pas, et il ne DOIT pas — c'est le mot que `dn_link` cherche
+     *    dans la trame et que la console imprime.
+     */
+    dn_txt_t nom_cle;
+    const char *fil; /* le nom SUR LE FIL, ⛔ jamais traduit. NULL = aucun */
 } k_source[DN_UI_METRIQUES] = {
-    [DN_UI_CASE_CPU] = {DN_SRC_LIEN_PC, DN_LINK_M_CPU, "liaison PC (dn_link) — cpu"},
-    [DN_UI_CASE_GPU] = {DN_SRC_LIEN_PC, DN_LINK_M_GPU, "liaison PC (dn_link) — gpu"},
-    [DN_UI_CASE_RAM] = {DN_SRC_LIEN_PC, DN_LINK_M_RAM, "liaison PC (dn_link) — ram"},
-    [DN_UI_CASE_RESEAU] = {DN_SRC_LIEN_PC, DN_LINK_M_NET, "liaison PC (dn_link) — net"},
-    [DN_UI_CASE_DISQUE] = {DN_SRC_LIEN_PC, DN_LINK_M_DISK, "liaison PC (dn_link) — disk"},
-    [DN_UI_CASE_AMB] = {DN_SRC_CAPTEUR, 0, "BME680 (dn_capteurs)"},
+    [DN_UI_CASE_CPU] = {DN_SRC_LIEN_PC, DN_LINK_M_CPU, DN_T_SRC_LIEN_PC, "cpu"},
+    [DN_UI_CASE_GPU] = {DN_SRC_LIEN_PC, DN_LINK_M_GPU, DN_T_SRC_LIEN_PC, "gpu"},
+    [DN_UI_CASE_RAM] = {DN_SRC_LIEN_PC, DN_LINK_M_RAM, DN_T_SRC_LIEN_PC, "ram"},
+    [DN_UI_CASE_RESEAU] = {DN_SRC_LIEN_PC, DN_LINK_M_NET, DN_T_SRC_LIEN_PC, "net"},
+    [DN_UI_CASE_DISQUE] = {DN_SRC_LIEN_PC, DN_LINK_M_DISK, DN_T_SRC_LIEN_PC, "disk"},
+    [DN_UI_CASE_AMB] = {DN_SRC_CAPTEUR, 0, DN_T_SRC_BME680, NULL},
 };
+
+/*
+ * 🔴 `dn4-42` — LES ÉTATS DE SOURCE, TRADUITS **CÔTÉ UI**.
+ * ⛔ `dn_link_etat_nom()` / `dn_capt_etat_nom()` restent FRANÇAIS : la console
+ *    et les journaux les lisent, et l'owner a tranché le 2026-09-01.
+ * ⚠️ ⛔ NE PAS enlever les `default` : un état neuf ajouté sans clé ici doit
+ *    rendre « ? », ⛔ pas le mot d'un état voisin.
+ */
+static dn_txt_t lien_etat_cle(dn_link_etat_t e)
+{
+    switch (e) {
+    case DN_LINK_JAMAIS:
+        return DN_T_LIEN_JAMAIS;
+    case DN_LINK_VIVANTE:
+        return DN_T_LIEN_VIVANTE;
+    case DN_LINK_MORTE:
+        return DN_T_LIEN_MORTE;
+    default:
+        return DN_T_INCONNU;
+    }
+}
+
+static dn_txt_t capt_etat_cle(dn_capt_etat_t e)
+{
+    switch (e) {
+    case DN_CAPT_JAMAIS:
+        return DN_T_CAPT_JAMAIS;
+    case DN_CAPT_VIVANT:
+        return DN_T_CAPT_VIVANT;
+    case DN_CAPT_MUET:
+        return DN_T_CAPT_MUET;
+    case DN_CAPT_ABSENT:
+        return DN_T_CAPT_ABSENT;
+    default:
+        return DN_T_INCONNU;
+    }
+}
 
 static const char *etat_source(int idx)
 {
     if (idx < 0 || idx >= DN_UI_METRIQUES) {
-        return "?";
+        return dn_t(DN_T_INCONNU);
     }
     /* 🔴 LE MOCK PASSE AVANT LA SOURCE, ET C'EST LE SEUL ORDRE HONNÊTE. Quand
      *    le générateur est armé, c'est LUI qui alimente la case : annoncer
@@ -4393,30 +4863,51 @@ static const char *etat_source(int idx)
      * ⚠️ Le mock n'a pas d'« état de source » : il EN EST une, et son régime le
      *    dit déjà. Le nommer « VIVANT » l'habillerait en mesure. */
     if (s_mock_on && k_mock[idx].actif) {
-        return "générateur interne";
+        return dn_t(DN_T_ETS_GENERATEUR);
     }
+    /*
+     * 🔴 `dn4-42` — LA DALLE TRADUIT, LA CONSOLE NON, ET C'EST **UNE SEULE
+     *    DÉFINITION**. `dn_link_etat_nom()` et `dn_capt_etat_nom()` sont lues
+     *    par la console ET par les journaux ; l'owner a décidé le 2026-09-01
+     *    qu'elles restent françaises. ⇒ l'écran passe par une table d'états
+     *    LOCALE À L'UI, qui lit la MÊME table de langues.
+     * ⛔ Ne pas « ranger » ça dans `dn_link.c`/`dn_capteurs.c` : ces deux
+     *    modules ne connaissent pas la dalle, et les faire dépendre de la
+     *    langue les rendrait intraduisiblement bilingues pour la console.
+     */
     switch (k_source[idx].type) {
     case DN_SRC_LIEN_PC:
-        return dn_link_etat_nom(dn_link_etat_metrique(k_source[idx].metrique));
+        return dn_t(lien_etat_cle(dn_link_etat_metrique(k_source[idx].metrique)));
     case DN_SRC_CAPTEUR:
-        return dn_capt_etat_nom(dn_capt_etat());
+        return dn_t(capt_etat_cle(dn_capt_etat()));
     default:
-        return "aucune";
+        return dn_t(DN_T_ETS_AUCUNE);
     }
 }
 
+/*
+ * ⚠️ REND UN TAMPON STATIQUE, et c'est sûr **ici** : ce chemin est appelé une
+ *    fois par repeint de la page de détail (1 Hz), depuis la tâche LVGL, sous
+ *    son verrou. ⛔ Ne pas l'appeler depuis une autre tâche — la valeur
+ *    précédente serait écrasée sous le lecteur.
+ */
 static const char *nom_source(int idx)
 {
+    static char buf[64];
     if (idx < 0 || idx >= DN_UI_METRIQUES) {
-        return "?";
+        return dn_t(DN_T_INCONNU);
     }
     if (s_mock_on && k_mock[idx].actif) {
-        return "MOCK dn3-1 (aucun capteur) — instrument ARMÉ";
+        return dn_t(DN_T_SRC_MOCK);
     }
     if (k_source[idx].type == DN_SRC_AUCUNE) {
-        return "AUCUNE — pas encore branchée";
+        return dn_t(DN_T_SRC_AUCUNE);
     }
-    return k_source[idx].nom;
+    /* Le nom TRADUIT, puis le nom SUR LE FIL, qui lui ne se traduit pas. */
+    snprintf(buf, sizeof(buf), "%s%s%s", dn_t(k_source[idx].nom_cle),
+             k_source[idx].fil ? " - " : "",
+             k_source[idx].fil ? k_source[idx].fil : "");
+    return buf;
 }
 
 /*
@@ -4881,15 +5372,17 @@ static void minmax_porte(char *out, size_t n, int idx, int nser, bool commune)
         return;
     }
     if (commune) {
-        snprintf(out, n, " (les DEUX courbes)");
+        snprintf(out, n, "%s", dn_t(DN_T_DET_2COURBES));
         return;
     }
     const dn_widget_desc_t *d = case_est_widget(idx) ? &k_desc[idx] : NULL;
-    const char *u = d ? d->grandeurs[0].unite : NULL;
+    /* ⚠️ `dn_t()` rend NULL sur `DN_T_AUCUN` — le `u && *u` d'avant reste donc
+     *    exact, et il couvre les deux cas. */
+    const char *u = d ? dn_t(d->grandeurs[0].unite) : NULL;
     if (u && *u) {
-        snprintf(out, n, " (la courbe en %s)", u);
+        snprintf(out, n, dn_t(DN_T_DET_COURBE_EN), u);
     } else {
-        snprintf(out, n, " (la 1re courbe)");
+        snprintf(out, n, "%s", dn_t(DN_T_DET_COURBE_1RE));
     }
 }
 
@@ -4926,7 +5419,7 @@ static void detail_reparametrer(int idx)
         return;
     }
     if (s_det_titre) {
-        lv_label_set_text(s_det_titre, k_nom[idx]);
+        lv_label_set_text(s_det_titre, case_nom(idx));
     }
 
     const dn_widget_etat_t *e = &s_wetat[idx];
@@ -5121,7 +5614,7 @@ static void detail_reparametrer(int idx)
                     ESP_LOGE(TAG,
                              "detail « %s » : TAMPON TROP COURT a la grandeur %d "
                              "(%u octets) — texte TRONQUE.",
-                             k_nom[idx], i, (unsigned)sizeof(buf));
+                             case_nom_fr(idx), i, (unsigned)sizeof(buf));
                     break;
                 }
                 p += (size_t)ecrit;
@@ -5249,7 +5742,7 @@ static void detail_reparametrer(int idx)
                              "HAUTEUR — label %d px pose a y = %d dans un "
                              "panneau de %d px : il manque %d px. LVGL clippe la "
                              "derniere ligne SANS un mot.",
-                             k_nom[idx], hl, yl, hp, yl + hl - hp);
+                             case_nom_fr(idx), hl, yl, hp, yl + hl - hp);
                 }
             }
             char ligne[sizeof(buf)];
@@ -5302,7 +5795,7 @@ static void detail_reparametrer(int idx)
                              "detail « %s » ligne %d : « %s » mesure %d px pour "
                              "%d utiles (panneau %d, x %d) — elle DEBORDE de %d px "
                              "et LVGL la CLIPPE sans un mot.",
-                             k_nom[idx], nl, nu, lw, utile, wp, x, lw - utile);
+                             case_nom_fr(idx), nl, nu, lw, utile, wp, x, lw - utile);
                 }
                 nl++;
                 deb = fin ? fin + 1 : NULL;
@@ -5345,22 +5838,28 @@ static void detail_reparametrer(int idx)
             /* ⛔ ⛔ « 0 s » se lirait comme une mesure. Aucun seau n'a vu de réel :
              *    la fenêtre n'existe pas, elle ne vaut pas zéro. Et cette ligne
              *    doit s'accorder avec le « MIN -- · MAX -- » posé juste dessous. */
-            snprintf(fen, sizeof(fen), "-- (aucun réel)");
+            snprintf(fen, sizeof(fen), "%s", dn_t(DN_T_DET_AUCUN_REEL));
         } else if (cs >= 3600) {
-            snprintf(fen, sizeof(fen), "%lu h", (unsigned long)(cs / 3600));
+            snprintf(fen, sizeof(fen), "%lu %s", (unsigned long)(cs / 3600),
+                     dn_t(DN_T_DUREE_H));
         } else if (cs >= 60) {
-            snprintf(fen, sizeof(fen), "%lu min", (unsigned long)(cs / 60));
+            snprintf(fen, sizeof(fen), "%lu %s", (unsigned long)(cs / 60),
+                     dn_t(DN_T_DUREE_MIN));
         } else {
-            snprintf(fen, sizeof(fen), "%lu s", (unsigned long)cs);
+            snprintf(fen, sizeof(fen), "%lu %s", (unsigned long)cs,
+                     dn_t(DN_T_DUREE_S));
         }
         int nser = dn_hist_series_de_case(idx, NULL, NULL);
         char porte[40];
         minmax_porte(porte, sizeof(porte), idx, nser,
                      courbe_echelle_commune(idx));
-        snprintf(buf, sizeof(buf),
-                 "source : %s\nétat   : %s\nrégime : %s\nMIN/MAX%s sur : %s",
-                 nom_source(idx), etat, dn_val_regime_nom(e->regime), porte,
-                 fen);
+        /* ⚠️ `dn_val_regime_nom_ui()` — la DALLE. `dn_val_regime_nom()` sans
+         *    suffixe reste le français de la console. Une seule définition,
+         *    deux lectures. */
+        snprintf(buf, sizeof(buf), "%s : %s\n%s : %s\n%s : %s\nMIN/MAX%s %s : %s",
+                 dn_t(DN_T_DET_SOURCE), nom_source(idx), dn_t(DN_T_DET_ETAT),
+                 etat, dn_t(DN_T_DET_REGIME), dn_val_regime_nom_ui(e->regime),
+                 porte, dn_t(DN_T_DET_SUR), fen);
         lv_label_set_text(s_det_sec, buf);
     }
 
@@ -5400,7 +5899,11 @@ static void detail_reparametrer(int idx)
             snprintf(buf, sizeof(buf), "MIN %s   ·   MAX %s", a, b);
             lv_label_set_text(s_det_minmax, buf);
         } else {
-            lv_label_set_text(s_det_minmax, "MIN --   ·   MAX --");
+            /* ⚠️ « MIN » et « MAX » ne se traduisent pas — mais la ligne ENTIÈRE
+             *    a sa clé, pour qu'AUCUN littéral affiché ne reste hors table.
+             *    C'est ce qui rend le contrôle de la gate EXHAUSTIF plutôt que
+             *    scopé à ce que l'auteur a pensé à y mettre. */
+            lv_label_set_text(s_det_minmax, dn_t(DN_T_DET_MINMAX_VIDE));
         }
     }
 
@@ -5810,12 +6313,17 @@ const char *dn_ui_zone_nom(int zone)
         return "RETOUR";
     }
     if (zone >= 0 && zone < DN_UI_METRIQUES) {
-        return k_nom[zone];
+        /* ⚠️ FRANCAIS — `touch trace` est un instrument de console. */
+        return case_nom_fr(zone);
     }
     return "aucune";
 }
 
 uint32_t dn_ui_menu_taps(void) { return s_menu_taps; }
+/* 🔴 `dn4-42` / AC4.2 — publie, ⛔ pas seulement compte. `dn4-41` a paye
+ * « un instrument qu'on ne peut pas LIRE ne disculpe personne ». */
+uint32_t dn_ui_menu_trop_larges(void) { return s_menu_trop_larges; }
+void dn_ui_menu_trop_larges_reset(void) { s_menu_trop_larges = 0; }
 uint32_t dn_ui_async_refus(void) { return s_async_refus; }
 dn_nav_model_t dn_ui_get_nav_model(void) { return s_nav; }
 
@@ -6175,12 +6683,18 @@ static int desc_ligne_indistincte(int idx, const uint8_t *sel, int n, bool detai
                 b >= DN_WIDGET_GRANDEURS_MAX) {
                 continue;
             }
-            const char *ua = k_desc[idx].grandeurs[a].unite;
-            const char *ub = k_desc[idx].grandeurs[b].unite;
+            /* 🔴 `dn4-42` — ON COMPARE LES **CLÉS**, ⛔ plus les chaînes.
+             *    C'est plus JUSTE, pas seulement plus court : deux clés
+             *    distinctes qui se traduisent pareil dans UNE langue (`min` et
+             *    `min`, par exemple) sont bien deux unités différentes, et un
+             *    `strcmp` les aurait déclarées identiques dans cette langue-là
+             *    seulement — un audit dont le verdict dépend de la langue. */
+            dn_txt_t ua = k_desc[idx].grandeurs[a].unite;
+            dn_txt_t ub = k_desc[idx].grandeurs[b].unite;
             /* ⚠️ Deux unités absentes ne se ressemblent pas : une grandeur sans
              * unité est déjà refusée ailleurs (`prec` non renseignée). On ne
              * compare que des unités RÉELLES. */
-            if (!ua || !ub || strcmp(ua, ub) != 0) {
+            if (ua == DN_T_AUCUN || ub == DN_T_AUCUN || ua != ub) {
                 continue;
             }
             /* ✅ DEUX SÉPARATEURS, ⛔ PAS UN SEUL — et le second a été trouvé en
@@ -6287,7 +6801,7 @@ static int selections_auditer(void)
                      "A MOITIE remplie melange selection et identite, et le "
                      "melange ne se lit PAS sur le descripteur. Declarer les %d "
                      "rangs (DN_SEL%d(...)) ou aucun.",
-                     k_nom[i], declares, nc, nc, nc);
+                     case_nom_fr(i), declares, nc, nc, nc);
             fautes++;
         }
         for (int r = 0; r < nc; r++) {
@@ -6296,7 +6810,7 @@ static int selections_auditer(void)
                 ESP_LOGE(TAG,
                          "k_desc[%s] : sel_p1[%d] = %u HORS BORNES (max %d) — "
                          "l'affichage retombe sur l'identite EN SILENCE.",
-                         k_nom[i], r, (unsigned)d->sel_p1[r],
+                         case_nom_fr(i), r, (unsigned)d->sel_p1[r],
                          DN_WIDGET_GRANDEURS_MAX);
                 fautes++;
                 continue;
@@ -6307,7 +6821,7 @@ static int selections_auditer(void)
                          "que le DETAIL n'explique pas (n_detail = %d). La page "
                          "qui explique la case en montrerait MOINS qu'elle : "
                          "invariant A viole.",
-                         k_nom[i], g, r, nd);
+                         case_nom_fr(i), g, r, nd);
                 fautes++;
             }
             for (int r2 = r + 1; r2 < nc; r2++) { /* invariant B */
@@ -6316,7 +6830,7 @@ static int selections_auditer(void)
                              "k_desc[%s] : les rangs %d et %d dessinent LA MEME "
                              "grandeur %d — deux lignes identiques qu'aucun "
                              "compteur ne verrait.",
-                             k_nom[i], r, r2, g);
+                             case_nom_fr(i), r, r2, g);
                     fautes++;
                 }
             }
@@ -6398,7 +6912,7 @@ static void descripteurs_auditer(void)
                          "dn4-6). Une decimale que la source ne porte pas est un "
                          "mensonge d'interface : renseigner DN_PREC_ENTIER ou "
                          "DN_PREC_DIXIEME.",
-                         k_nom[i], g);
+                         case_nom_fr(i), g);
                 trous++;
             }
         }
@@ -6466,13 +6980,13 @@ static void descripteurs_auditer(void)
             ESP_LOGI(TAG,
                      "k_desc[%s] : case %d %s · detail %d %s · peuplees %d — "
                      "`widget grandeurs %d <1..%d>` est jouable",
-                     k_nom[i], nc, sc, nd, sd, desc_peuplees(i), i, n_max);
+                     case_nom_fr(i), nc, sc, nd, sd, desc_peuplees(i), i, n_max);
         } else {
             int vide = desc_indice_vide(i, nd);
             ESP_LOGI(TAG,
                      "k_desc[%s] : case %d %s · detail %d %s · peuplees %d — "
                      "⛔ AUCUN `widget grandeurs %d <n>` jouable : %s",
-                     k_nom[i], nc, sc, nd, sd, desc_peuplees(i), i,
+                     case_nom_fr(i), nc, sc, nd, sd, desc_peuplees(i), i,
                      flou >= 0 ? "deux lignes seraient INDISTINGUABLES a l'oeil"
                      : vide >= 0 ? "une entree du descripteur n'est pas peuplee"
                                  : "le detail n'expose aucune grandeur");
@@ -6632,7 +7146,7 @@ esp_err_t dn_ui_init(const dn_bootcfg_t *cfg, esp_err_t asset_err)
                      "🔴 mock case %d (%s) : période %u s INVALIDE (doit être "
                      "PAIRE et >= 2). La rampe n'atteindra JAMAIS son max "
                      "annoncé de %d — le chiffre affiché mentirait sur sa forme.",
-                     i, k_nom[i], (unsigned)k_mock[i].periode_s,
+                     i, case_nom_fr(i), (unsigned)k_mock[i].periode_s,
                      (int)k_mock[i].max);
         }
         if (k_mock[i].max <= k_mock[i].min) {
@@ -6640,7 +7154,7 @@ esp_err_t dn_ui_init(const dn_bootcfg_t *cfg, esp_err_t asset_err)
                      "🔴 mock case %d (%s) : max %d <= min %d — la valeur ne "
                      "VARIERAIT PAS, et un mock figé est indiscernable d'un "
                      "affichage bloqué (exigence d'AC3).",
-                     i, k_nom[i], (int)k_mock[i].max, (int)k_mock[i].min);
+                     i, case_nom_fr(i), (int)k_mock[i].max, (int)k_mock[i].min);
         }
     }
 
@@ -6854,6 +7368,25 @@ esp_err_t dn_ui_init(const dn_bootcfg_t *cfg, esp_err_t asset_err)
      *    réglages, au premier affichage. C'est le même ordre que celui que
      *    `dn_hist_init()` a coûté à dn4-13 pour être découvert. */
     dn_veille_init();
+    /*
+     * 🔴 `dn4-42` — LA TABLE DE LANGUES EST AUDITÉE, ET LA BARRE PREND SON
+     *    DÉFAUT, **AVANT** `build_scene()`. Même motif que les deux lignes
+     *    ci-dessus, payé deux fois par ce fichier (`dn_hist_init`, `dn_veille_init`) :
+     *    une scène construite avant que l'état ne soit posé affiche autre chose
+     *    que ce que la carte SAIT.
+     * ⚠️ `dn_reglage_init()` (appelée par `app_main`, plus tôt) a déjà POSÉ la
+     *    langue relue en NVS. Ici on ne relit rien : on pose le texte QUI EN
+     *    DÉCOULE.
+     * ⚠️ L'audit ne peut trouver qu'une traduction VIDE — un TROU est impossible
+     *    à compiler (X-macro). Il est joué quand même : c'est le seul défaut de
+     *    table qui serait INVISIBLE sur la dalle (un label vide a l'air d'un
+     *    espace, ⛔ pas d'une panne).
+     */
+    if (dn_langue_audit() > 0) {
+        ESP_LOGE(TAG, "⛔ la table de langues porte des defauts (ci-dessus) — "
+                      "des libelles seront VIDES sur la dalle.");
+    }
+    barre_defaut();
     build_scene();
     /*
      * 🔴 dn3-3 : LE FRONT D'APPUI EST BRANCHÉ ICI (D-7).
@@ -9855,7 +10388,11 @@ static void mock_tick_nolock(void)
             break;
         case DN_SEC_SIMULE:
         default:
-            snprintf(sec, sizeof(sec), "valeur SIMULÉE — aucun capteur");
+            /* 🔴 `dn4-42` — ET LE `—` A DISPARU ICI AUSSI : `U+2014` n'est
+             *    dans AUCUNE police du dépôt, et LVGL le dessinait en BOÎTE
+             *    (`LV_USE_FONT_PLACEHOLDER=y`) sans un mot. La table porte un
+             *    `-` ASCII, qui existe. */
+            snprintf(sec, sizeof(sec), "%s", dn_t(DN_T_SEC_SIMULE));
             break;
         }
         {
@@ -10138,7 +10675,7 @@ esp_err_t dn_ui_nue_set(int idx, bool nue)
     build_scene();
     lvgl_port_unlock();
     ESP_LOGW(TAG, "case %d (%s) : forme %s — TÉMOIN d'AC8, pas un réglage produit",
-             idx, k_nom[idx], nue ? "NUE" : "WIDGET");
+             idx, case_nom_fr(idx), nue ? "NUE" : "WIDGET");
     return ESP_OK;
 }
 
@@ -10532,7 +11069,7 @@ esp_err_t dn_ui_set_case_grandeurs(int idx, int n)
                  "widget grandeurs %s %d REFUSE : le DETAIL n'expose que %d "
                  "grandeur(s) — la case en dessinerait une que la page qui "
                  "l'explique ne montre pas.",
-                 k_nom[idx], n, desc_n_detail(idx));
+                 case_nom_fr(idx), n, desc_n_detail(idx));
         return ESP_ERR_INVALID_ARG;
     }
     /* 🔴 SECONDE GARDE, dn4-9 : ⛔ PLUS `n > desc_peuplees(idx)`, MAIS **CHAQUE
@@ -10550,7 +11087,7 @@ esp_err_t dn_ui_set_case_grandeurs(int idx, int n)
                  "n'est PAS peuplee (prec NON RENSEIGNEE) — sa ligne n'aurait ni "
                  "unite ni precision et retomberait au DIXIEME en silence, la ou "
                  "l'audit AC9 ne la voit pas. (peuplees : %d)",
-                 k_nom[idx], n, vide, desc_peuplees(idx));
+                 case_nom_fr(idx), n, vide, desc_peuplees(idx));
         return ESP_ERR_INVALID_ARG;
     }
     /* 🔴 TROISIÈME GARDE — dn4-8 (revue du 2026-08-21), RE-QUALIFIÉE PAR dn4-9
@@ -10569,9 +11106,11 @@ esp_err_t dn_ui_set_case_grandeurs(int idx, int n)
                  "dont une ment par omission. ⚠️ Un prefixe marque "
                  "`prefixe_detail_seul` ne compte PAS dans la CASE : il n'y est "
                  "pas dessine. Corriger le DESCRIPTEUR, ⛔ pas la commande.",
-                 k_nom[idx], n, flou_case ? "CASE" : "DETAIL", flou,
-                 k_desc[idx].grandeurs[flou].unite
-                     ? k_desc[idx].grandeurs[flou].unite : "?");
+                 case_nom_fr(idx), n, flou_case ? "CASE" : "DETAIL", flou,
+                 /* ⚠️ FRANCAIS : c'est une sortie de console. `dn_t_fr()` rend
+                  * NULL sur `DN_T_AUCUN`, d'ou le repli explicite. */
+                 dn_t_fr(k_desc[idx].grandeurs[flou].unite)
+                     ? dn_t_fr(k_desc[idx].grandeurs[flou].unite) : "?");
         return ESP_ERR_INVALID_ARG;
     }
     if (!lvgl_port_lock(2000)) {
@@ -10919,8 +11458,13 @@ bool dn_ui_barre_date_forme(int jsem, int jour, int mois, char *out, size_t n)
      *    mesurait JAMAIS la forme que le produit rend sur une lecture RTC
      *    dégradée. (Revue du 2026-08-30.)
      */
-    const char *js = (jsem < 7) ? k_jsem_court[jsem] : "???";
-    const char *mo = (mois >= 1 && mois <= 12) ? k_mois_court[mois - 1] : "???";
+    /* ⚠️ LA LANGUE **COURANTE** : cet instrument BALAYE les 84 dates possibles
+     *    pour trouver la plus large REELLEMENT DESSINEE. Mesurer le francais
+     *    pendant que la dalle dessine l'anglais serait le « chiffre faux mais
+     *    plausible » que ce depot traque. */
+    const char *js = (jsem < 7) ? dn_t(k_jsem_court[jsem]) : "???";
+    const char *mo = (mois >= 1 && mois <= 12) ? dn_t(k_mois_court[mois - 1])
+                                               : "???";
     snprintf(out, n, "%s %02u %s", js, (unsigned)jour, mo);
     return true;
 }
@@ -10964,7 +11508,7 @@ bool dn_ui_barre_date_forme(int jsem, int jour, int mois, char *out, size_t n)
  */
 static const dn_widget_desc_t k_demo_desc = {
     .icone = DN_ICONE_NETWORK_WIRED,
-    .titre = "DÉMO 2+JAUGE",
+    .titre_cle = DN_T_CASE_DEMO,
     .couleur = 0x35d6e8,
     .n_grandeurs = 2,
     .indicateur = true,
@@ -10976,20 +11520,24 @@ static const dn_widget_desc_t k_demo_desc = {
      * n'est pas du remplissage : `widget demo on <n>` fait varier `n` à chaud
      * (voir `s_demo_n`), et une grandeur sans unité ni précision rendrait le
      * témoin d'AC2 illisible au moment précis où on le regarde. */
-    .grandeurs = {{.unite = "%", .prec = DN_PREC_DIXIEME},
-                  {.unite = "Mo/s", .icone = DN_ICONE_DESKTOP,
+    .grandeurs = {{.unite = DN_T_U_PCT, .prec = DN_PREC_DIXIEME},
+                  {.unite = DN_T_U_MOS, .icone = DN_ICONE_DESKTOP,
                    .prec = DN_PREC_DIXIEME},
-                  {.unite = "W", .prefixe = "d3", .prec = DN_PREC_ENTIER},
-                  {.unite = "tr/min", .prefixe = "d4", .prec = DN_PREC_ENTIER}},
+                  {.unite = DN_T_U_W, .prefixe = DN_T_P_D3, .prec = DN_PREC_ENTIER},
+                  {.unite = DN_T_U_RPM, .prefixe = DN_T_P_D4, .prec = DN_PREC_ENTIER}},
 };
 
 /*
  * ── dn4-14-2 / AC2.2 : LE TITRE RÉELLEMENT DESSINÉ, RELU DU DESCRIPTEUR ──────
  *
- * 🔴 ⛔ PAS `k_nom[]`, QUI EST UNE SECONDE TABLE. La case NUE dessine `k_nom[i]`
- *    et la case WIDGET dessine `k_desc[i].titre` : les deux coïncident
- *    aujourd'hui, et rien ne les y oblige. L'instrument du mur doit mesurer ce
- *    que le RENDU pose, ⛔ pas un nom parallèle.
+ * 🔴 ⛔ PAS UNE SECONDE TABLE. L'instrument du mur doit mesurer ce que le RENDU
+ *    pose, ⛔ pas un nom parallèle.
+ * ✅ **`dn4-42` A SOLDÉ LE RISQUE À LA SOURCE.** Ce bloc disait *« la case NUE
+ *    dessine `k_nom[i]` et la case WIDGET dessine `k_desc[i].titre` : les deux
+ *    coïncident aujourd'hui, et RIEN NE LES Y OBLIGE »*. `k_nom[]` a disparu :
+ *    les deux lisent maintenant `k_desc[i].titre_cle`, et **plus rien ne peut
+ *    diverger**. Le constat est conservé parce qu'il explique pourquoi cet
+ *    accesseur existe, ⛔ pas parce qu'il décrit encore un danger.
  * ⚠️ `idx == DN_UI_METRIQUES` DÉSIGNE LA DÉMO — même convention que
  *    `dn_ui_case_rect()`. C'est ce qui fait que « DÉMO 2+JAUGE », le plus long
  *    titre EXISTANT, entre dans le balayage sans être récité nulle part.
@@ -10997,10 +11545,14 @@ static const dn_widget_desc_t k_demo_desc = {
 const char *dn_ui_case_titre(int idx)
 {
     if (idx >= 0 && idx < DN_UI_METRIQUES) {
-        return k_desc[idx].titre;
+        /* 🔴 `dn4-42` — LA LANGUE **COURANTE**, ⛔ pas le francais. Cet
+         *    instrument sert `widget largeur`, qui MESURE le mur du titre :
+         *    mesurer un texte que la dalle ne dessine pas serait exactement le
+         *    « chiffre faux mais plausible » que ce depot traque. */
+        return dn_t(k_desc[idx].titre_cle);
     }
     if (idx == DN_UI_METRIQUES) {
-        return k_demo_desc.titre;
+        return dn_t(k_demo_desc.titre_cle);
     }
     return NULL;
 }
@@ -11107,6 +11659,11 @@ esp_err_t dn_ui_demo_set(bool on)
             etat.brut[0] = 62;
             /* Elle sera ABANDONNÉE (168 > 156) — c'est le second témoin : le
              * log doit apparaître, et `widget` doit afficher « secondaire non ». */
+            /* ⚠️ INSTRUMENT (`widget demo`), ⛔ pas un texte de produit : il
+             *    n'apparaît QUE sous une commande console, il nomme un cas de
+             *    test, et le REPL qui le déclenche est français. ⇒ HORS TABLE,
+             *    déclaré. ⛔ Ne pas le « ranger » : il ne s'adresse pas au même
+             *    lecteur que la dalle. */
             snprintf(etat.secondaire, sizeof(etat.secondaire), "7e métrique FICTIVE");
             /* Copie locale pour appliquer le `n` réglable — MÊME PATRON que
              * l'override d'icône de `build_dashboard` : le descripteur `const`
