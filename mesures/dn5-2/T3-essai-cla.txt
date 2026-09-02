@@ -1,0 +1,171 @@
+==============================================================================
+dn5-2 / AC2.4 — L'ESSAI DU BOT CLA
+==============================================================================
+
+date : 2026-09-02T14:45:56
+voie retenue : (a) — poser l'Action EPINGLEE et L'ESSAYER (arbitrage owner)
+⛔ TRANCHE PAR L'ESSAI, ⛔ PAS PAR LECTURE DE DOC.
+
+==============================================================================
+1. CE QUI EST POSE
+==============================================================================
+
+  .github/workflows/cla.yml   `pull_request_target` (opened/closed/synchronize)
+                              + `issue_comment` (created) ; permissions
+                              actions/contents/pull-requests/statuses:write ;
+                              action EPINGLEE `contributor-assistant/
+                              github-action@v2.6.1` ; magasin LOCAL
+                              `.github/cla-signatures.json` ⇒ ⛔ AUCUN secret
+                              a creer ; ⛔ AUCUN checkout du code de la PR.
+  CLA.md                      le document a signer. ⚠️ IL N'EXISTAIT PAS :
+                              `path-to-document` n'avait rien a pointer.
+
+==============================================================================
+2. 🔴 LE PREMIER OBSTACLE N'ETAIT PAS LE BOT — C'ETAIT LE DROIT DE LE PUBLIER
+==============================================================================
+
+    $ git push origin main
+    ! [remote rejected] main -> main (refusing to allow an OAuth App to
+      create or update workflow `.github/workflows/cla.yml` without
+      `workflow` scope)
+
+    $ gh auth status
+      Token scopes: 'gist', 'read:org', 'repo'          ⇒ ⛔ pas de `workflow`
+
+  ⇒ 🎯 **LE SCOPE `repo` NE SUFFIT PAS a publier un fichier de
+     `.github/workflows/`.** Le refus est cote SERVEUR : le commit local etait
+     propre, c'est la PUBLICATION qui tombait. ⛔ AUCUN cadrage ne l'avait
+     prevu — et c'est exactement ce qu'une lecture de doc n'aurait pas dit.
+
+  LEVEE — geste de l'owner (flux navigateur, code a usage unique) :
+    gh auth refresh -h github.com -s workflow -s user
+    ⇒ scopes apres : 'gist', 'read:org', 'repo', 'user', 'workflow'
+    ⇒ push : 84650d7..2078d30  main -> main            (avance rapide)
+             84650d7..2078d30  main -> dn4-5-le-module-vit-tout-seul
+
+==============================================================================
+3. L'ESSAI LUI-MEME — PR INTERNE #1, OUVERTE PUIS FERMEE
+==============================================================================
+
+  branche d'essai : `essai-cla-dn52` (creee, poussee, PR ouverte, PR FERMEE,
+                    branche SUPPRIMEE ensuite)
+  PR              : #1 · state=CLOSED · mergedAt=null · mergeCommit=null
+                    ⇒ ✅ FERMEE, ⛔ PAS FUSIONNEE
+
+  ── CE QUI A ETE RELEVE, POINT PAR POINT ────────────────────────────────
+
+  ✅ LE WORKFLOW SE DECLENCHE
+     run 33631468943 · event=pull_request_target · status=completed
+     conclusion=**failure** · run_duration_ms=15000
+
+  🎯 ⛔ `failure` N'EST PAS UNE PANNE — C'EST LE BOT QUI FAIT SON TRAVAIL.
+     Message exact du log :
+       ##[error]Committers of pull request 1 have to sign the CLA
+     Une gate de CLA DOIT etre rouge tant que la signature n'est pas la.
+     ⛔ Ne pas lire ce `failure` comme « le bot ne marche pas ».
+
+  ✅ L'ACTION TOURNE, ET AVEC LA CONFIGURATION ECRITE
+       Run contributor-assistant/github-action@v2.6.1
+         path-to-signatures: .github/cla-signatures.json
+         path-to-document: https://github.com/nasbarok/desknode/blob/main/CLA.md
+         branch: main · allowlist: dependabot[bot]
+       CLA Assistant GitHub Action bot has started the process
+
+  ✅ LE BOT POSTE SON COMMENTAIRE — 2026-09-02T12:43:01Z, par
+     `github-actions[bot]`, avec le LIEN VERS `CLA.md` (qui resout) et la
+     phrase exacte a poster pour signer.
+
+  ✅ LE MAGASIN DE SIGNATURES EST CREE
+     `.github/cla-signatures.json` · 31 octets · `{ "signedContributors": [] }`
+     ⚠️ **ET LE WORKFLOW A ECRIT DANS LE DEPOT** : commit `bfd63ae`,
+     « Creating file for storing CLA Signatures », auteur
+     `github-actions[bot]`, POUSSE SUR `main`. ⇒ 🔴 UNE BRANCHE PROTEGEE
+     L'AURAIT BLOQUE. `main` ne l'est pas — verifie par le fait, ⛔ pas par
+     lecture des reglages.
+
+  ⛔ CE QUI N'A PAS ETE FAIT, ET C'EST DELIBERE : la signature elle-meme.
+     Poster la phrase aurait enregistre une signature de CLA AU NOM DE
+     L'OWNER — un acte juridique, ⛔ pas une mesure, et le dev ne le pose pas.
+     Elle n'apprendrait rien de plus : l'auteur du depot signant son propre
+     CLA est vide de sens. Ce qui reste a prouver est la PR **externe**.
+
+==============================================================================
+4. 🔴 CE QUE L'ESSAI A TROUVE ET QUE PERSONNE N'AVAIT PREVU : TROIS RUNS
+==============================================================================
+
+  Une seule PR a produit TROIS runs :
+
+    33631468943  pull_request_target  failure  15000 ms   (PR ouverte)
+    33631570625  issue_comment        success   7000 ms   (mon commentaire
+                                                           de FERMETURE)
+    33631571416  pull_request_target  success   9000 ms   (PR fermee)
+
+  ⇒ 🎯 LE DECLENCHEUR `issue_comment` PART SUR **N'IMPORTE QUEL** COMMENTAIRE
+     du depot. Avec la condition posee sur l'**ETAPE** (forme repandue dans
+     les exemples), le RUNNER DEMARRE QUAND MEME et les minutes sont
+     DECOMPTEES — le depot est PRIVE — avant que l'etape ne soit sautee.
+
+  ✅ CORRIGE DANS LE MEME COMMIT : la condition passe au niveau du **JOB**.
+     GitHub n'alloue alors aucun runner, le job est `skipped`, cout NUL.
+     ⛔ Ce n'est pas du style : c'est la mesure ci-dessus qui l'impose.
+
+==============================================================================
+5. AC2.4.c — LE COUT, MESURE ET ECRIT
+==============================================================================
+
+  ⚠️ LE POINT DE FACTURATION A CHANGE D'ADRESSE, et il faut le dire :
+       $ gh api /users/nasbarok/settings/billing/actions
+         {"message":"This endpoint has been moved.", "status":"410"}
+     ⇒ le chemin cite par le cadrage de la story est PERIME. Le point vivant
+       est `/users/<login>/settings/billing/usage`.
+
+  ── AVANT le run ────────────────────────────────────────────────────────
+     un seul poste, sur un AUTRE depot :
+       2026-02  actions / Actions Linux  1.0 Minutes  net 0.0  (policy_rules)
+     ⇒ ⛔ AUCUN poste `desknode`.
+
+  ── APRES les 3 runs ────────────────────────────────────────────────────
+       2026-09  actions / Actions Linux  **2.0 Minutes**  repo **desknode**
+                pricePerUnit 0.006 · gross 0.012 · discount 0.018
+                · **netAmount 0.0**
+
+  ⇒ **COUT REEL DE L'ESSAI : 2,0 minutes Actions Linux, facturees 0,00 $**
+    (couvertes par la franchise du plan `free`). Duree machine cumulee des
+    trois runs : 31 s — GitHub facture a la MINUTE ENTIERE et par JOB, d'ou
+    l'ecart entre 31 s et 2 minutes.
+
+  ⛔ CE QUI N'EST PAS ECRIT ICI : le plafond mensuel. Le point de facturation
+    rend la CONSOMMATION, ⛔ pas la franchise, et publier « 2 000 minutes » de
+    memoire serait exactement ce que la story interdit.
+
+==============================================================================
+6. AC2.4.d — CE QUI EST ENTRE SOUS `.github/`, ET RIEN D'AUTRE
+==============================================================================
+
+    .github/workflows/cla.yml        pose par cette story
+    .github/cla-signatures.json      cree PAR LE BOT pendant l'essai
+
+  ⇒ ⛔ AUCUN fichier de CI (`dn4-39`), ⛔ AUCUN gabarit d'issue ou de PR
+    (`dn8`). La frontiere est au NOM DE FICHIER, et elle tient.
+
+==============================================================================
+7. VERDICT D'AC2.4
+==============================================================================
+
+  ✅ le workflow SE DECLENCHE            — 3 runs, evenements et rc releves
+  ✅ l'Action TOURNE                     — log capture, configuration confirmee
+  ✅ elle POSTE son commentaire          — horodate, avec le lien qui resout
+  ✅ le magasin de signatures EST CREE   — commit `bfd63ae` sur `main`
+  ✅ l'etat de l'outil EST PUBLIE        — archive depuis le 2026-03-23,
+                                           ecrit dans CONTRIBUTING.md
+  ✅ la version est EPINGLEE             — `@v2.6.1`, gardee par la gate
+  ✅ le cout EST MESURE                  — 2,0 min, 0,00 $
+  ✅ la PR d'essai est FERMEE            — ⛔ pas fusionnee (mergedAt=null)
+
+  ⛔ CE QUI RESTE, ET QUI NE PEUT PAS SE FAIRE ICI : la preuve d'execution sur
+     une PR d'un contributeur **EXTERNE**. Un depot `private` a **0 fork** et
+     **1 collaborateur** n'en recoit aucune — seuls les collaborateurs peuvent
+     ouvrir une PR. ⇒ **PORTEUR : `dn8`**, ecrit dans `CONTRIBUTING.md`,
+     `CHANGELOG.md`, `docs/roadmap.md` et la page d'ecart, et GARDE par le
+     controle (c6) de `tools/verif_licences_dn52.py` — un porteur `TBD` ou
+     inconnu de la roadmap fait ROUGIR.

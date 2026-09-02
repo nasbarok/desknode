@@ -2,8 +2,8 @@
 dn5-2 / AC2.6 — CAMPAGNE DE MUTANTS DE tools/verif_licences_dn52.py
 ==============================================================================
 
-date        : 2026-09-02T14:23:10
-desknode    : 84650d7a81bece84b79a1f77178afe649230eedf (arbre de travail)
+date        : 2026-09-02T14:46:53
+desknode    : bfd63aedb357b38821bb3150f9843f48369dc566 (arbre de travail)
 
 BUT : prouver `controle => couvert`, ⛔ PAS seulement `mutant => rouge`.
       Paye par dn4-43 : « 27 declares, 27 vus rougir » etait VRAI, et
@@ -160,7 +160,7 @@ LES LIGNES ENTIERES DU TIR SAIN — ⛔ AUCUNE TRONCATURE
   [OK] la section citee PAR SON TITRE existe                      1 citation(s)
   [OK] l'outil cite AVEC SON DRAPEAU l'accepte (invoque)          5 couple(s) outil/drapeau
   [OK] docs/roadmap.md definit des marqueurs                      10 marqueur(s)
-  [OK] tout marqueur cite COMME marqueur est defini               11 citation(s) ancree(s) sur la page
+  [OK] tout marqueur cite COMME marqueur est defini               12 citation(s) ancree(s) sur la page
   [OK] le COMPTE annonce egale le nombre d'entrees                2 compte(s) confronte(s)
   [OK] la promesse de bot et son workflow disent la meme chose    promesse=oui · workflow(s) CLA=1
   [OK] chaque action du workflow CLA est EPINGLEE                 contributor-assistant/github-action@v2.6.1

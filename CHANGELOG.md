@@ -66,10 +66,12 @@ Work towards the first public release, `v0.1.0-beta`.
   flasher, not on the panel. What ships is an interface that speaks **English by
   default**, with the language persisted per device once set. Offering the choice at
   install time is still to come (`dn7` — see [`docs/roadmap.md`](docs/roadmap.md)).
-- **The CLA bot has never been exercised by an outside contributor.** This repository
-  has no fork and a single collaborator, so no such pull request can exist yet. What is
-  in place is the workflow and the document it points at; proving it against a real
-  external contributor is carried by `dn8` — see [`docs/roadmap.md`](docs/roadmap.md).
+- **The CLA bot has never been exercised by an outside contributor.** It was watched
+  running on an **internal** pull request on 2026-09-02 — it commented, linked to
+  `CLA.md` and created the signature store — but this repository has no fork and a
+  single collaborator, so no *external* pull request can exist yet. Proving it against
+  a real outside contributor is carried by `dn8` — see
+  [`docs/roadmap.md`](docs/roadmap.md).
 - **One of the repository's own gates is red in the published tree**:
   `tools/verif_dossier_dn415.py`, 17 checks passing and 10 failing. All ten concern
   files of the private planning repository, which are not part of this clone. It is

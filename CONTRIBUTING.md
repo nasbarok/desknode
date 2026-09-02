@@ -102,10 +102,16 @@ Contributions are welcome. Two practical points:
    **archived** — last push 2026-03-23, last release `v2.6.1` of 2024-09-26, measured
    against the GitHub API on 2026-09-02. It still runs; it is simply no longer
    maintained, and the version is pinned rather than floating so that what runs is what
-   is written here. And it has never been exercised by an **outside** contributor,
-   because this repository has no fork and a single collaborator, so no such pull
-   request can exist yet: proving it against a real external contributor is carried by
-   `dn8` — see [`docs/roadmap.md`](docs/roadmap.md).
+   is written here. It was watched running on an internal pull request on
+   2026-09-02: it commented, it linked to `CLA.md`, and it created the signature
+   store. And it has never been exercised by an **outside** contributor, because this
+   repository has no fork and a single collaborator, so no such pull request can exist
+   yet: proving it against a real external contributor is carried by `dn8` — see
+   [`docs/roadmap.md`](docs/roadmap.md).
+
+   ⚠️ **The check will be red on your pull request until you sign, and that is the
+   point** — a CLA gate that stayed green would gate nothing. Post the sentence the
+   bot gives you and it turns green; comment `recheck` if it does not pick it up.
 2. **Match the license of the area you are touching.** Firmware is GPL-3.0-or-later,
    the agent is MIT, documentation is CC-BY-SA-4.0. See
    [`LICENSING.md`](LICENSING.md).

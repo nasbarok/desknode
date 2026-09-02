@@ -875,9 +875,13 @@ def main():
             "(`dn9-9` — see")
         prose["CONTRIBUTING.md"] = M(
             13, prose["CONTRIBUTING.md"], "**six** entries", "**five** entries")
+        # ⚠️ L'ANCRE NE DEPEND PAS DE LA CESURE. Sa 1re version portait le saut
+        #    de ligne du paragraphe ; une reformulation l'a decalee et le mutant
+        #    est devenu INAPPLICABLE — il l'a DIT, ⛔ il n'est pas passe vert en
+        #    silence, et c'est tout l'interet de sortir en erreur.
         prose["CONTRIBUTING.md"] = M(
-            14, prose["CONTRIBUTING.md"], "carried by\n   `dn8`",
-            "carried by\n   `TBD`")
+            14, prose["CONTRIBUTING.md"], "contributor is carried by `dn8`",
+            "contributor is carried by `TBD`")
         prose["CONTRIBUTING.md"] = M(
             27, prose["CONTRIBUTING.md"], "and **a bot handles it**",
             "and the maintainer handles it")
