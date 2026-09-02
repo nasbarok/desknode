@@ -197,6 +197,48 @@ def site_de(arbre, gate, libelle):
     return None
 
 
+def compte_sites(chemin):
+    """Les SITES `ctrl()`/`dire()` d'un source — tokenises, ⛔ pas grattes.
+
+    ⚠️ Un premier comptage au motif de ligne rendait 15 sites la ou la gate
+    du verrou en porte bien plus : le motif exigeait un debut de ligne et
+    ratait tout appel imbrique. Un compte grate n'est pas un compte.
+    """
+    import tokenize
+    with open(chemin, "rb") as fh:
+        toks = [t for t in tokenize.tokenize(fh.readline)
+                if t.type not in (tokenize.COMMENT, tokenize.NL,
+                                  tokenize.NEWLINE, tokenize.INDENT,
+                                  tokenize.DEDENT)]
+    n = 0
+    for i, t in enumerate(toks[:-1]):
+        if (t.type == tokenize.NAME and t.string in ("ctrl", "dire")
+                and toks[i + 1].string == "("):
+            n += 1
+    return n
+
+
+def invocations_reelles(gate, cockpit):
+    """Les invocations d'une gate SUR L'ARBRE REEL — lecture seule.
+
+    ⛔ Surtout PAS depuis l'arbre temporaire : il n'a ni les fichiers
+    gitignores ni le meme voisinage, et la gate y compte AUTRE CHOSE.
+    """
+    tmp = tempfile.mkdtemp(prefix="dn440inv-")
+    try:
+        tr = os.path.join(tmp, "trace.txt")
+        args = [sys.executable, os.path.join(RACINE, gate)]
+        if gate.endswith(("dn416.py", "dn415.py")):
+            args += ["--cockpit", cockpit]
+        subprocess.run(args, capture_output=True, text=True, cwd=RACINE,
+                       env=dict(os.environ, DN_TRACE_CTRL=tr))
+        if not os.path.isfile(tr):
+            return []
+        return [l for l in io.open(tr, encoding="utf-8") if l.strip()]
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def libelles_ctrl_true(arbre, gate):
     """Tous les libelles de `ctrl(True, …)` / `dire(True, …)` d'une gate.
 
@@ -243,7 +285,7 @@ def monte_cockpit(tmp, ck_src):
     return c
 
 
-def joue(gate, mutation, ck_src):
+def joue(gate, mutation, ck_src, ck_reel=False):
     tmp = tempfile.mkdtemp(prefix="dn440ctrl-")
     try:
         a = monte_arbre(tmp)
@@ -254,7 +296,12 @@ def joue(gate, mutation, ck_src):
         if "--cockpit" in extra:
             args += extra
         elif gate.endswith(("dn416.py", "dn415.py")):
-            args += ["--cockpit", c]
+            # ⚠️ `ck_reel` : pour COMPTER les invocations, il faut le cockpit
+            #    REEL. Le cockpit temporaire ne porte que 3 fichiers ⇒ la gate
+            #    du dossier y rend 21 invocations la ou elle en rend 26 au
+            #    poste. Un compte pris sur le montage mesure LE MONTAGE.
+            #    ⛔ Lecture seule : aucune mutation n'est appliquee dans ce mode.
+            args += ["--cockpit", ck_src if ck_reel else c]
         p = subprocess.run(args, capture_output=True, text=True, cwd=a,
                            env=dict(os.environ, DN_TRACE_CTRL=tr))
         vus = {}
@@ -352,6 +399,45 @@ def main():
             print("        %s" % x)
     else:
         print("   ✅ aucun site non classe — %d site(s) au tableau" % len(CAS))
+
+    # ── AC40.2.c — LE COMPTE DES CONTROLES REELLEMENT EXERCES ──────────────
+    #
+    # 🔴 DIRE D'ABORD CE QU'ON COMPTE, SINON LES COMPTES NE SE COMPARENT PAS.
+    #    LA CONVENTION, ECRITE UNE FOIS :
+    #      SITE       = un appel `ctrl()` / `dire()` dans le SOURCE (statique).
+    #                   Certains vivent HORS du chemin par defaut (modes
+    #                   `--manifeste`, `--mutant`, branches d'echec).
+    #      INVOCATION = un `ctrl()` REELLEMENT EXECUTE dans une passe
+    #                   (dynamique) — c'est-a-dire UNE ligne `[OK ]`/`[KO ]`.
+    #    ⇒ Le compte publie par une gate sur sa ligne de BILAN est un compte
+    #      d'INVOCATIONS. L'ECART avec les sites est publie ici, ⛔ pas tu :
+    #      c'est lui qui dit combien de code n'est pas exerce par defaut.
+    print("\n── AC40.2.c — CONTROLES EXERCES, PAR GATE TOUCHEE ─────────────")
+    print("   convention : SITE = appel au SOURCE · INVOCATION = ligne imprimee")
+    print("   ⚠️ MESURE PRISE SUR L'ARBRE REEL ET LE COCKPIT REEL, en lecture")
+    print("      seule. Deux montages ont ete essayes avant, et tous deux")
+    print("      mesuraient LE MONTAGE : le cockpit temporaire (3 fichiers)")
+    print("      fait rendre 21 invocations a la gate du dossier, et l'arbre")
+    print("      temporaire 19, la ou le poste en rend 26. ⛔ Un compte pris")
+    print("      sur un decor mesure le decor.")
+    print("   %-30s %6s %6s %6s %6s"
+          % ("gate", "sites", "invoc", "distin", "ecart"))
+    touchees = sorted({g for g, _l, _v, _m, _q in CAS})
+    for gate in touchees:
+        sites = compte_sites(os.path.join(arbre0, gate))
+        lignes = invocations_reelles(gate, a.cockpit)
+        n = len(lignes)
+        distincts = len({l.split("\t")[0] for l in lignes})
+        print("   %-30s %6d %6d %6d %6d"
+              % (os.path.basename(gate), sites, n, distincts, sites - distincts))
+    print("   ⚠️ TROIS COLONNES, ⛔ PAS DEUX — et c'est la mesure qui l'impose.")
+    print("      `invoc` peut DEPASSER `sites` : un site dans une boucle")
+    print("      s'execute autant de fois que sa population a d'elements.")
+    print("      C'est `distincts` (sites REELLEMENT atteints) qui se compare")
+    print("      a `sites`, et leur ecart compte le code HORS du chemin par")
+    print("      defaut (modes `--manifeste`/`--mutant`, branches d'echec).")
+    print("      ⇒ Cet ecart devient un DEFAUT le jour ou rien ne l'exerce —")
+    print("        c'est ce que mesure « gardes par rien » (campagne_dn440).")
 
     shutil.rmtree(tmp0, ignore_errors=True)
     n_leg = sum(1 for c in CAS if c[2] == "LEGITIME")

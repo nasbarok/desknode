@@ -23,14 +23,43 @@ critere : LEGITIME = le chemin d'echec SORT EN AMONT ;
            mutant : la capture retiree ⇒ ctrl(False) puis `return 1`
   [OK] LEGITIME verif_paliers_dn441.py:335           PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant (rc=1)
            mutant : la liste canonique retiree ⇒ la branche `dire(False)` est prise
-  [OK] INERTE   verif_verrou_lvgl_dn413.py:567       CONFIRME INERTE — ⛔ jamais atteint sur l'arbre propre
-           mutant : population VIDE au 2026-09-02 (`(aucune)` a la console) ⇒ le site n'est JAMAIS execute
-  [OK] TROU     verif_dossier_dn415.py:739           CONFIRME TROU — toujours atteint OK sous mutant
-           mutant : aucune donnee ne peut le rendre faux — il PUBLIE, il ne controle pas
-  [OK] TROU     verif_journal_soak_dn45.py:236       CONFIRME TROU — toujours atteint OK sous mutant
-           mutant : declaration de limite : aucune donnee ne peut la rendre fausse
-  [OK] TROU     verif_dossier_d5_dn45.py:214         CONFIRME TROU — toujours atteint OK sous mutant
-           mutant : aucune donnee ne peut le rendre faux ; ⚠️ ses chemins sont ABSOLUS (dn5-3) ⇒ il lit l'arbre REEL meme depuis une copie
+  [OK] INERTE   exemption motivée :                  REMEDE APPLIQUE — le site ne COMPTE plus (il imprime)
+           constat : population VIDE au 2026-09-02 (`(aucune)` a la console) ⇒ le site n'est JAMAIS execute
+  [OK] TROU     les exclusions sont DECLAREES, ⛔ p   REMEDE APPLIQUE — le site ne COMPTE plus (il imprime)
+           constat : aucune donnee ne peut le rendre faux — il PUBLIE, il ne controle pas
+  [OK] TROU     ⚠️ et la limite de ce calcul est D   REMEDE APPLIQUE — le site ne COMPTE plus (il imprime)
+           constat : declaration de limite : aucune donnee ne peut la rendre fausse
+  [OK] TROU     les archives sont LISTEES, ⛔ pas e   REMEDE APPLIQUE — le site ne COMPTE plus (il imprime)
+           constat : aucune donnee ne peut le rendre faux ; ⚠️ ses chemins sont ABSOLUS (dn5-3) ⇒ il lit l'arbre REEL meme depuis une copie
+
+── INVENTAIRE : tout `ctrl(True, …)` du depot est-il CLASSE ? ─
+   ✅ aucun site non classe — 13 site(s) au tableau
+
+── AC40.2.c — CONTROLES EXERCES, PAR GATE TOUCHEE ─────────────
+   convention : SITE = appel au SOURCE · INVOCATION = ligne imprimee
+   ⚠️ MESURE PRISE SUR L'ARBRE REEL ET LE COCKPIT REEL, en lecture
+      seule. Deux montages ont ete essayes avant, et tous deux
+      mesuraient LE MONTAGE : le cockpit temporaire (3 fichiers)
+      fait rendre 21 invocations a la gate du dossier, et l'arbre
+      temporaire 19, la ou le poste en rend 26. ⛔ Un compte pris
+      sur un decor mesure le decor.
+   gate                            sites  invoc distin  ecart
+   verif_dossier_d5_dn45.py            5      9      3      2
+   verif_dossier_dn415.py             38     26     19     19
+   verif_hist_dn413.py                70     56     53     17
+   verif_journal_soak_dn45.py         25     26     24      1
+   verif_ledger_dn416.py              41     31     31     10
+   verif_lissage_dn45.py              23     21     21      2
+   verif_paliers_dn441.py             33     42     30      3
+   verif_verrou_lvgl_dn413.py         16     60     10      6
+   ⚠️ TROIS COLONNES, ⛔ PAS DEUX — et c'est la mesure qui l'impose.
+      `invoc` peut DEPASSER `sites` : un site dans une boucle
+      s'execute autant de fois que sa population a d'elements.
+      C'est `distincts` (sites REELLEMENT atteints) qui se compare
+      a `sites`, et leur ecart compte le code HORS du chemin par
+      defaut (modes `--manifeste`/`--mutant`, branches d'echec).
+      ⇒ Cet ecart devient un DEFAUT le jour ou rien ne l'exerce —
+        c'est ce que mesure « gardes par rien » (campagne_dn440).
 
 ==============================================================================
 BILAN TRI : 13 site(s) — 9 LEGITIME(S), 3 TROU(S), 1 INERTE(S), 0 echec(s)
