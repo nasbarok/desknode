@@ -1,0 +1,227 @@
+gates	Set up job	﻿2026-09-02T14:37:48.3808203Z Current runner version: '2.337.0'
+gates	Set up job	2026-09-02T14:37:48.3881363Z ##[group]Runner Image Provisioner
+gates	Set up job	2026-09-02T14:37:48.3882930Z Hosted Compute Agent
+gates	Set up job	2026-09-02T14:37:48.3883980Z Version: 20260819.586
+gates	Set up job	2026-09-02T14:37:48.3885044Z Commit: 3cc4a88dfa507ef76119ad1bb3eccc6378bb2b76
+gates	Set up job	2026-09-02T14:37:48.3886479Z Build Date: 2026-08-18T23:20:18Z
+gates	Set up job	2026-09-02T14:37:48.3887802Z Worker ID: {562f465e-4a51-4e3d-a835-3c1624dc9532}
+gates	Set up job	2026-09-02T14:37:48.3889456Z Azure Region: eastus
+gates	Set up job	2026-09-02T14:37:48.3890522Z ##[endgroup]
+gates	Set up job	2026-09-02T14:37:48.3892839Z ##[group]Operating System
+gates	Set up job	2026-09-02T14:37:48.3893954Z Ubuntu
+gates	Set up job	2026-09-02T14:37:48.3894871Z 24.04.4
+gates	Set up job	2026-09-02T14:37:48.3895774Z LTS
+gates	Set up job	2026-09-02T14:37:48.3896613Z ##[endgroup]
+gates	Set up job	2026-09-02T14:37:48.3897466Z ##[group]Runner Image
+gates	Set up job	2026-09-02T14:37:48.3898554Z Image: ubuntu-24.04
+gates	Set up job	2026-09-02T14:37:48.3899916Z Version: 20260823.283.1
+gates	Set up job	2026-09-02T14:37:48.3901824Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260823.283/images/ubuntu/Ubuntu2404-Readme.md
+gates	Set up job	2026-09-02T14:37:48.3904732Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260823.283
+gates	Set up job	2026-09-02T14:37:48.3906608Z ##[endgroup]
+gates	Set up job	2026-09-02T14:37:48.3908435Z ##[group]GITHUB_TOKEN Permissions
+gates	Set up job	2026-09-02T14:37:48.3911747Z Contents: read
+gates	Set up job	2026-09-02T14:37:48.3912670Z Metadata: read
+gates	Set up job	2026-09-02T14:37:48.3913797Z ##[endgroup]
+gates	Set up job	2026-09-02T14:37:48.3917269Z Secret source: Actions
+gates	Set up job	2026-09-02T14:37:48.3919630Z Prepare workflow directory
+gates	Set up job	2026-09-02T14:37:48.4513277Z Prepare all required actions
+gates	Set up job	2026-09-02T14:37:48.4623284Z Getting action download info
+gates	Set up job	2026-09-02T14:37:48.7307953Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+gates	Set up job	2026-09-02T14:37:48.9802226Z Complete job name: gates
+gates	Récupérer le dépôt	﻿2026-09-02T14:37:49.0693295Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+gates	Récupérer le dépôt	2026-09-02T14:37:49.0694400Z with:
+gates	Récupérer le dépôt	2026-09-02T14:37:49.0694863Z   fetch-depth: 1
+gates	Récupérer le dépôt	2026-09-02T14:37:49.0695353Z   persist-credentials: false
+gates	Récupérer le dépôt	2026-09-02T14:37:49.0695922Z   repository: nasbarok/desknode
+gates	Récupérer le dépôt	2026-09-02T14:37:49.0699814Z   token: ***
+gates	Récupérer le dépôt	2026-09-02T14:37:49.0700277Z   ssh-strict: true
+gates	Récupérer le dépôt	2026-09-02T14:37:49.0700745Z   ssh-user: git
+gates	Récupérer le dépôt	2026-09-02T14:37:49.0701189Z   clean: true
+gates	Récupérer le dépôt	2026-09-02T14:37:49.0701648Z   sparse-checkout-cone-mode: true
+gates	Récupérer le dépôt	2026-09-02T14:37:49.0702191Z   fetch-tags: false
+gates	Récupérer le dépôt	2026-09-02T14:37:49.0702689Z   show-progress: true
+gates	Récupérer le dépôt	2026-09-02T14:37:49.0703148Z   lfs: false
+gates	Récupérer le dépôt	2026-09-02T14:37:49.0703574Z   submodules: false
+gates	Récupérer le dépôt	2026-09-02T14:37:49.0704040Z   set-safe-directory: true
+gates	Récupérer le dépôt	2026-09-02T14:37:49.0704559Z   allow-unsafe-pr-checkout: false
+gates	Récupérer le dépôt	2026-09-02T14:37:49.0705357Z ##[endgroup]
+gates	Récupérer le dépôt	2026-09-02T14:37:49.1879281Z Syncing repository: nasbarok/desknode
+gates	Récupérer le dépôt	2026-09-02T14:37:49.1901035Z ##[group]Getting Git version info
+gates	Récupérer le dépôt	2026-09-02T14:37:49.1911458Z Working directory is '/home/runner/work/desknode/desknode'
+gates	Récupérer le dépôt	2026-09-02T14:37:49.1914445Z [command]/usr/bin/git version
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2124092Z git version 2.55.0
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2150799Z ##[endgroup]
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2160481Z Temporarily overriding HOME='/home/runner/work/_temp/072643d7-7f72-4607-8b23-083a44a49f72' before making global git config changes
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2170086Z Adding repository directory to the temporary git global config as a safe directory
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2172012Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/desknode/desknode
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2244458Z Deleting the contents of '/home/runner/work/desknode/desknode'
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2247714Z ##[group]Determining repository object format
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2251745Z ##[endgroup]
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2253839Z ##[group]Initializing the repository
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2255899Z [command]/usr/bin/git init /home/runner/work/desknode/desknode
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2315893Z hint: Using 'master' as the name for the initial branch. This default branch name
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2333970Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2336004Z hint: to use in all of your new repositories, which will suppress this warning,
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2337965Z hint: call:
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2338863Z hint:
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2340202Z hint: 	git config --global init.defaultBranch <name>
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2341408Z hint:
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2342564Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2360451Z hint: 'development'. The just-created branch can be renamed via this command:
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2364745Z hint:
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2365727Z hint: 	git branch -m <name>
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2366702Z hint:
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2367997Z hint: Disable this message with "git config set advice.defaultBranchName false"
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2371409Z Initialized empty Git repository in /home/runner/work/desknode/desknode/.git/
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2375466Z [command]/usr/bin/git remote add origin https://github.com/nasbarok/desknode
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2397472Z ##[endgroup]
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2398976Z ##[group]Disabling automatic garbage collection
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2413915Z [command]/usr/bin/git config --local gc.auto 0
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2477933Z ##[endgroup]
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2479630Z ##[group]Setting up auth
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2480719Z Removing SSH command configuration
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2482129Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+gates	Récupérer le dépôt	2026-09-02T14:37:49.2540133Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+gates	Récupérer le dépôt	2026-09-02T14:37:49.3051428Z Removing HTTP extra header
+gates	Récupérer le dépôt	2026-09-02T14:37:49.3053138Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+gates	Récupérer le dépôt	2026-09-02T14:37:49.3141628Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+gates	Récupérer le dépôt	2026-09-02T14:37:49.3478586Z Removing includeIf entries pointing to credentials config files
+gates	Récupérer le dépôt	2026-09-02T14:37:49.3480913Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+gates	Récupérer le dépôt	2026-09-02T14:37:49.3484819Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+gates	Récupérer le dépôt	2026-09-02T14:37:49.4426685Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-c5fdad97-9cc2-4506-9527-b9380ef2b9e9.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+gates	Récupérer le dépôt	2026-09-02T14:37:49.4450708Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/desknode/desknode/.git.path /home/runner/work/_temp/git-credentials-c5fdad97-9cc2-4506-9527-b9380ef2b9e9.config
+gates	Récupérer le dépôt	2026-09-02T14:37:49.4463063Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/desknode/desknode/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-c5fdad97-9cc2-4506-9527-b9380ef2b9e9.config
+gates	Récupérer le dépôt	2026-09-02T14:37:49.4468542Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-c5fdad97-9cc2-4506-9527-b9380ef2b9e9.config
+gates	Récupérer le dépôt	2026-09-02T14:37:49.4476458Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-c5fdad97-9cc2-4506-9527-b9380ef2b9e9.config
+gates	Récupérer le dépôt	2026-09-02T14:37:49.4481389Z ##[endgroup]
+gates	Récupérer le dépôt	2026-09-02T14:37:49.4482863Z ##[group]Fetching the repository
+gates	Récupérer le dépôt	2026-09-02T14:37:49.4485343Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +a07900e875316a113f4bf45be989aa43f9476214:refs/remotes/origin/main
+gates	Récupérer le dépôt	2026-09-02T14:37:50.4089749Z From https://github.com/nasbarok/desknode
+gates	Récupérer le dépôt	2026-09-02T14:37:50.4104850Z  * [new ref]         a07900e875316a113f4bf45be989aa43f9476214 -> origin/main
+gates	Récupérer le dépôt	2026-09-02T14:37:50.4108545Z [command]/usr/bin/git branch --list --remote origin/main
+gates	Récupérer le dépôt	2026-09-02T14:37:50.4147773Z   origin/main
+gates	Récupérer le dépôt	2026-09-02T14:37:50.4176028Z [command]/usr/bin/git rev-parse refs/remotes/origin/main
+gates	Récupérer le dépôt	2026-09-02T14:37:50.4207395Z a07900e875316a113f4bf45be989aa43f9476214
+gates	Récupérer le dépôt	2026-09-02T14:37:50.4251046Z ##[endgroup]
+gates	Récupérer le dépôt	2026-09-02T14:37:50.4252607Z ##[group]Determining the checkout info
+gates	Récupérer le dépôt	2026-09-02T14:37:50.4254299Z ##[endgroup]
+gates	Récupérer le dépôt	2026-09-02T14:37:50.4255387Z [command]/usr/bin/git sparse-checkout disable
+gates	Récupérer le dépôt	2026-09-02T14:37:50.4321680Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+gates	Récupérer le dépôt	2026-09-02T14:37:50.4393894Z ##[group]Checking out the ref
+gates	Récupérer le dépôt	2026-09-02T14:37:50.4395732Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+gates	Récupérer le dépôt	2026-09-02T14:37:50.5964108Z Switched to a new branch 'main'
+gates	Récupérer le dépôt	2026-09-02T14:37:50.5977918Z branch 'main' set up to track 'origin/main'.
+gates	Récupérer le dépôt	2026-09-02T14:37:50.5991114Z ##[endgroup]
+gates	Récupérer le dépôt	2026-09-02T14:37:50.6053815Z [command]/usr/bin/git log -1 --format=%H
+gates	Récupérer le dépôt	2026-09-02T14:37:50.6074183Z a07900e875316a113f4bf45be989aa43f9476214
+gates	Récupérer le dépôt	2026-09-02T14:37:50.6097798Z ##[group]Removing auth
+gates	Récupérer le dépôt	2026-09-02T14:37:50.6099725Z Removing SSH command configuration
+gates	Récupérer le dépôt	2026-09-02T14:37:50.6105822Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+gates	Récupérer le dépôt	2026-09-02T14:37:50.6152750Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+gates	Récupérer le dépôt	2026-09-02T14:37:50.6384560Z Removing HTTP extra header
+gates	Récupérer le dépôt	2026-09-02T14:37:50.6387999Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+gates	Récupérer le dépôt	2026-09-02T14:37:50.6464502Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+gates	Récupérer le dépôt	2026-09-02T14:37:50.6691575Z Removing includeIf entries pointing to credentials config files
+gates	Récupérer le dépôt	2026-09-02T14:37:50.6695397Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+gates	Récupérer le dépôt	2026-09-02T14:37:50.6734130Z includeif.gitdir:/home/runner/work/desknode/desknode/.git.path
+gates	Récupérer le dépôt	2026-09-02T14:37:50.6737486Z includeif.gitdir:/home/runner/work/desknode/desknode/.git/worktrees/*.path
+gates	Récupérer le dépôt	2026-09-02T14:37:50.6740907Z includeif.gitdir:/github/workspace/.git.path
+gates	Récupérer le dépôt	2026-09-02T14:37:50.6743795Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+gates	Récupérer le dépôt	2026-09-02T14:37:50.6748591Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/desknode/desknode/.git.path
+gates	Récupérer le dépôt	2026-09-02T14:37:50.6779613Z /home/runner/work/_temp/git-credentials-c5fdad97-9cc2-4506-9527-b9380ef2b9e9.config
+gates	Récupérer le dépôt	2026-09-02T14:37:50.6794567Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/desknode/desknode/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-c5fdad97\-9cc2\-4506\-9527\-b9380ef2b9e9\.config
+gates	Récupérer le dépôt	2026-09-02T14:37:50.6852121Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/desknode/desknode/.git/worktrees/*.path
+gates	Récupérer le dépôt	2026-09-02T14:37:50.6871849Z /home/runner/work/_temp/git-credentials-c5fdad97-9cc2-4506-9527-b9380ef2b9e9.config
+gates	Récupérer le dépôt	2026-09-02T14:37:50.6895406Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/desknode/desknode/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-c5fdad97\-9cc2\-4506\-9527\-b9380ef2b9e9\.config
+gates	Récupérer le dépôt	2026-09-02T14:37:50.6942361Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+gates	Récupérer le dépôt	2026-09-02T14:37:50.6981569Z /github/runner_temp/git-credentials-c5fdad97-9cc2-4506-9527-b9380ef2b9e9.config
+gates	Récupérer le dépôt	2026-09-02T14:37:50.6998581Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-c5fdad97\-9cc2\-4506\-9527\-b9380ef2b9e9\.config
+gates	Récupérer le dépôt	2026-09-02T14:37:50.7036705Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+gates	Récupérer le dépôt	2026-09-02T14:37:50.7070293Z /github/runner_temp/git-credentials-c5fdad97-9cc2-4506-9527-b9380ef2b9e9.config
+gates	Récupérer le dépôt	2026-09-02T14:37:50.7085089Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-c5fdad97\-9cc2\-4506\-9527\-b9380ef2b9e9\.config
+gates	Récupérer le dépôt	2026-09-02T14:37:50.7120832Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+gates	Récupérer le dépôt	2026-09-02T14:37:50.7363992Z Removing credentials config '/home/runner/work/_temp/git-credentials-c5fdad97-9cc2-4506-9527-b9380ef2b9e9.config'
+gates	Récupérer le dépôt	2026-09-02T14:37:50.7377011Z ##[endgroup]
+gates	Ce que la CI voit — l'état est RELU, ⛔ pas supposé	﻿2026-09-02T14:37:50.7620203Z ##[group]Run echo "commit   : ${GITHUB_SHA}"
+gates	Ce que la CI voit — l'état est RELU, ⛔ pas supposé	2026-09-02T14:37:50.7621611Z [36;1mecho "commit   : ${GITHUB_SHA}"[0m
+gates	Ce que la CI voit — l'état est RELU, ⛔ pas supposé	2026-09-02T14:37:50.7623185Z [36;1mecho "python3  : $(python3 --version 2>&1)"[0m
+gates	Ce que la CI voit — l'état est RELU, ⛔ pas supposé	2026-09-02T14:37:50.7624693Z [36;1mecho "bash     : ${BASH_VERSION}"[0m
+gates	Ce que la CI voit — l'état est RELU, ⛔ pas supposé	2026-09-02T14:37:50.7626196Z [36;1mecho "cc       : $(cc --version 2>&1 | head -1)"[0m
+gates	Ce que la CI voit — l'état est RELU, ⛔ pas supposé	2026-09-02T14:37:50.7627981Z [36;1mecho "gates    : $(ls tools/verif_*.py | wc -l) découvertes par le glob"[0m
+gates	Ce que la CI voit — l'état est RELU, ⛔ pas supposé	2026-09-02T14:37:50.7630290Z [36;1mecho "cockpit  : ${HOME}/projects/compagnon_project"[0m
+gates	Ce que la CI voit — l'état est RELU, ⛔ pas supposé	2026-09-02T14:37:50.7631917Z [36;1mtest -d "${HOME}/projects/compagnon_project" \[0m
+gates	Ce que la CI voit — l'état est RELU, ⛔ pas supposé	2026-09-02T14:37:50.7633511Z [36;1m  && echo "           PRÉSENT (inattendu sur un runner)" \[0m
+gates	Ce que la CI voit — l'état est RELU, ⛔ pas supposé	2026-09-02T14:37:50.7635346Z [36;1m  || echo "           ABSENT — attendu : c'est un dépôt privé, ⛔ jamais cloné"[0m
+gates	Ce que la CI voit — l'état est RELU, ⛔ pas supposé	2026-09-02T14:37:50.7637341Z [36;1mecho "lvgl     : firmware/desknode/managed_components/lvgl__lvgl"[0m
+gates	Ce que la CI voit — l'état est RELU, ⛔ pas supposé	2026-09-02T14:37:50.7639383Z [36;1mtest -d firmware/desknode/managed_components/lvgl__lvgl \[0m
+gates	Ce que la CI voit — l'état est RELU, ⛔ pas supposé	2026-09-02T14:37:50.7641003Z [36;1m  && echo "           PRÉSENT" \[0m
+gates	Ce que la CI voit — l'état est RELU, ⛔ pas supposé	2026-09-02T14:37:50.7642672Z [36;1m  || echo "           ABSENT — attendu : gitignoré, repeuplé par idf.py reconfigure"[0m
+gates	Ce que la CI voit — l'état est RELU, ⛔ pas supposé	2026-09-02T14:37:50.7685416Z shell: /usr/bin/bash -e {0}
+gates	Ce que la CI voit — l'état est RELU, ⛔ pas supposé	2026-09-02T14:37:50.7686467Z ##[endgroup]
+gates	Ce que la CI voit — l'état est RELU, ⛔ pas supposé	2026-09-02T14:37:50.7777901Z commit   : a07900e875316a113f4bf45be989aa43f9476214
+gates	Ce que la CI voit — l'état est RELU, ⛔ pas supposé	2026-09-02T14:37:50.7794909Z python3  : Python 3.12.3
+gates	Ce que la CI voit — l'état est RELU, ⛔ pas supposé	2026-09-02T14:37:50.7803637Z bash     : 5.2.21(1)-release
+gates	Ce que la CI voit — l'état est RELU, ⛔ pas supposé	2026-09-02T14:37:50.7878975Z cc       : cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+gates	Ce que la CI voit — l'état est RELU, ⛔ pas supposé	2026-09-02T14:37:50.7906380Z gates    : 27 découvertes par le glob
+gates	Ce que la CI voit — l'état est RELU, ⛔ pas supposé	2026-09-02T14:37:50.7908810Z cockpit  : /home/runner/projects/compagnon_project
+gates	Ce que la CI voit — l'état est RELU, ⛔ pas supposé	2026-09-02T14:37:50.7911650Z            ABSENT — attendu : c'est un dépôt privé, ⛔ jamais cloné
+gates	Ce que la CI voit — l'état est RELU, ⛔ pas supposé	2026-09-02T14:37:50.7914096Z lvgl     : firmware/desknode/managed_components/lvgl__lvgl
+gates	Ce que la CI voit — l'état est RELU, ⛔ pas supposé	2026-09-02T14:37:50.7916091Z            ABSENT — attendu : gitignoré, repeuplé par idf.py reconfigure
+gates	Passer les 27 gates	﻿2026-09-02T14:37:50.7987853Z ##[group]Run bash tools/run_gates.sh
+gates	Passer les 27 gates	2026-09-02T14:37:50.7989300Z [36;1mbash tools/run_gates.sh[0m
+gates	Passer les 27 gates	2026-09-02T14:37:50.8025844Z shell: /usr/bin/bash -e {0}
+gates	Passer les 27 gates	2026-09-02T14:37:50.8026801Z ##[endgroup]
+gates	Passer les 27 gates	2026-09-02T14:37:50.8738399Z ═══ run_gates.sh — 27 gates decouvertes par glob ═══
+gates	Passer les 27 gates	2026-09-02T14:37:50.8747124Z 
+gates	Passer les 27 gates	2026-09-02T14:37:50.9093544Z [VERTE      ] tools/verif_bme680_retard_dn45.py      rc=0      0s
+gates	Passer les 27 gates	2026-09-02T14:37:57.1995662Z [VERTE      ] tools/verif_courbe_dn413.py            rc=0      7s
+gates	Passer les 27 gates	2026-09-02T14:37:57.6275017Z [VERTE      ] tools/verif_cumul_ambient_dn45.py      rc=0      0s
+gates	Passer les 27 gates	2026-09-02T14:37:57.8624278Z [VERTE      ] tools/verif_d4_nvs_dn45.py             rc=0      0s
+gates	Passer les 27 gates	2026-09-02T14:38:02.1492523Z [VERTE      ] tools/verif_decoupe_horloge_dn418.py   rc=0      5s
+gates	Passer les 27 gates	2026-09-02T14:38:02.3476003Z [VERTE      ] tools/verif_demarrage_dn443.py         rc=0      0s
+gates	Passer les 27 gates	2026-09-02T14:38:02.3839767Z [NON-JOUABLE] tools/verif_dossier_d5_dn45.py         rc=4   (attendu) temoin absent : /home/runner/projects/compagnon_project
+gates	Passer les 27 gates	2026-09-02T14:38:02.3843784Z               motif : CAUSE C — elle lit DEUX chemins ABSOLUS de la machine de l'auteur (l. 47-48) ⇒ ⛔ la variable HOME n'y peut rien : VERTE dans un clone neuf, et 1 OK / 7 KO sur un runner. Le seul des six rouges qu'aucune mesure prise depuis ce poste ne pouvait montrer — il se LIT dans le code. La reparation des chemins est portee par dn5-3, ⛔ pas ici.
+gates	Passer les 27 gates	2026-09-02T14:38:02.4327953Z [NON-JOUABLE] tools/verif_dossier_dn415.py           rc=4   (attendu) temoin absent : /home/runner/projects/compagnon_project
+gates	Passer les 27 gates	2026-09-02T14:38:02.4343244Z               motif : CAUSE A — le cockpit de planification est un depot PRIVE, ⛔ jamais clone a cote du code. Sans lui la gate n'a AUCUNE occurrence a arbitrer. ⚠️ La ou le cockpit EST la elle rend 17 OK / 10 KO sur le CONTENU : ⛔ une CI ne verra JAMAIS ces 10 KO, et elle ne pretend pas les garder.
+gates	Passer les 27 gates	2026-09-02T14:38:04.2351126Z [NON-JOUABLE] tools/verif_harnais_dn413.py           rc=4   (attendu) temoin absent : firmware/desknode/managed_components/lvgl__lvgl
+gates	Passer les 27 gates	2026-09-02T14:38:04.2355572Z               motif : CAUSE B — sans l'arbre LVGL le corpus C est INCOMPLET, et la chasse aux renvois FANTOMES accusait tools/dn_police.py de citer des fonctions QUI EXISTENT (lv_text_get_width est defini dans lvgl__lvgl/src/misc/lv_text.c). ⛔ Un diagnostic FAUX publie automatiquement. Elle DECLARE desormais, elle n'accuse plus — et ⛔ elle ne devient PAS aveugle la ou l'arbre est la.
+gates	Passer les 27 gates	2026-09-02T14:38:04.2900883Z [NON-JOUABLE] tools/verif_hist_dn413.py              rc=4   (attendu) temoin absent : firmware/desknode/managed_components/lvgl__lvgl
+gates	Passer les 27 gates	2026-09-02T14:38:04.2912367Z               motif : CAUSE B — elle RELIT LV_CHART_POINT_NONE dans lv_chart.h (c'est ce qui garantit que DN_HIST_TROU vaut le trou de LVGL) et PLANTAIT en FileNotFoundError NU : un rouge sans motif ni remede. Elle echoue FERME desormais, sur le modele de verif_veille_dn33.py.
+gates	Passer les 27 gates	2026-09-02T14:38:04.7523797Z [VERTE      ] tools/verif_instruments_dn423.py       rc=0      0s
+gates	Passer les 27 gates	2026-09-02T14:38:04.8202187Z [VERTE      ] tools/verif_journal_soak_dn45.py       rc=0      0s
+gates	Passer les 27 gates	2026-09-02T14:38:05.4314003Z [VERTE      ] tools/verif_langues_dn442.py           rc=0      1s
+gates	Passer les 27 gates	2026-09-02T14:38:05.4780215Z [NON-JOUABLE] tools/verif_ledger_dn416.py            rc=4   (attendu) temoin absent : /home/runner/projects/compagnon_project
+gates	Passer les 27 gates	2026-09-02T14:38:05.4791853Z               motif : CAUSE A — le cockpit de planification est un depot PRIVE, ⛔ jamais clone. Sans lui il n'y a ni ledger ni tracker a confronter. ⚠️ le controle dn_ok (« le depot code EST desknode ») reste un CONTROLE : son echec reste un ROUGE, ⛔ pas un prerequis.
+gates	Passer les 27 gates	2026-09-02T14:38:05.7804432Z [VERTE      ] tools/verif_licences_dn52.py           rc=0      0s
+gates	Passer les 27 gates	2026-09-02T14:38:05.9087102Z [VERTE      ] tools/verif_lissage_dn45.py            rc=0      0s
+gates	Passer les 27 gates	2026-09-02T14:38:05.9713148Z [VERTE      ] tools/verif_miroir_horloge_dn418.py    rc=0      0s
+gates	Passer les 27 gates	2026-09-02T14:38:06.1190559Z [VERTE      ] tools/verif_paliers_dn441.py           rc=0      1s
+gates	Passer les 27 gates	2026-09-02T14:38:06.9052308Z [VERTE      ] tools/verif_rebouclage_dn45.py         rc=0      0s
+gates	Passer les 27 gates	2026-09-02T14:38:06.9816010Z [VERTE      ] tools/verif_reprise_horloge_dn418.py   rc=0      0s
+gates	Passer les 27 gates	2026-09-02T14:38:07.0426374Z [VERTE      ] tools/verif_selection_dn49.py          rc=0      1s
+gates	Passer les 27 gates	2026-09-02T14:38:07.3740582Z [VERTE      ] tools/verif_serie_dn412.py             rc=0      0s
+gates	Passer les 27 gates	2026-09-02T14:38:10.7754452Z [VERTE      ] tools/verif_source_lhm_dn48.py         rc=0      3s
+gates	Passer les 27 gates	2026-09-02T14:38:10.8302848Z [NON-JOUABLE] tools/verif_sr03.py                    rc=2   (attendu) temoin absent : tools/fixtures/AN4545.pdf
+gates	Passer les 27 gates	2026-09-02T14:38:10.8325497Z               motif : le PDF [AN] AN4545 (VL6180X, DocID026571 Rev 1) n'est PAS au depot : document StMicroelectronics, ⛔ non redistribuable. La gate l'attend en argument et sort en 2 sur son message d'usage — rc=2 n'est PAS un rouge.
+gates	Passer les 27 gates	2026-09-02T14:38:12.6061311Z [NON-JOUABLE] tools/verif_veille_dn33.py             rc=4   (attendu) temoin absent : firmware/desknode/managed_components/lvgl__lvgl
+gates	Passer les 27 gates	2026-09-02T14:38:12.6077171Z               motif : CAUSE B — managed_components/ est GITIGNORE (186 Mo, repeuple par: idf.py reconfigure) et porte le generateur AMONT de LVGL. ⛔ 2 blocs sur 18 ne sont pas exerces ; TOUT LE RESTE EST JOUE. Elle disait deja le bon motif et le remede — il lui manquait le rc.
+gates	Passer les 27 gates	2026-09-02T14:38:23.8220369Z [VERTE      ] tools/verif_verrou_lvgl_dn413.py       rc=0     11s
+gates	Passer les 27 gates	2026-09-02T14:38:23.8530145Z [VERTE      ] tools/verif_xip_dn422.py               rc=0      0s
+gates	Passer les 27 gates	2026-09-02T14:38:23.8543232Z 
+gates	Passer les 27 gates	2026-09-02T14:38:23.8546668Z BILAN : 20 VERTE, 0 ROUGE, 7 NON-JOUABLE sur 27 gates (33s)
+gates	Post Récupérer le dépôt	﻿2026-09-02T14:38:23.8678365Z Post job cleanup.
+gates	Post Récupérer le dépôt	2026-09-02T14:38:23.9609917Z [command]/usr/bin/git version
+gates	Post Récupérer le dépôt	2026-09-02T14:38:23.9690722Z git version 2.55.0
+gates	Post Récupérer le dépôt	2026-09-02T14:38:23.9743344Z Temporarily overriding HOME='/home/runner/work/_temp/852d53c3-f13a-42b5-b732-27c098f55720' before making global git config changes
+gates	Post Récupérer le dépôt	2026-09-02T14:38:23.9744762Z Adding repository directory to the temporary git global config as a safe directory
+gates	Post Récupérer le dépôt	2026-09-02T14:38:23.9761835Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/desknode/desknode
+gates	Post Récupérer le dépôt	2026-09-02T14:38:23.9863449Z Removing SSH command configuration
+gates	Post Récupérer le dépôt	2026-09-02T14:38:23.9871872Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+gates	Post Récupérer le dépôt	2026-09-02T14:38:23.9930595Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+gates	Post Récupérer le dépôt	2026-09-02T14:38:24.0234697Z Removing HTTP extra header
+gates	Post Récupérer le dépôt	2026-09-02T14:38:24.0235716Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+gates	Post Récupérer le dépôt	2026-09-02T14:38:24.0301037Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+gates	Post Récupérer le dépôt	2026-09-02T14:38:24.0622170Z Removing includeIf entries pointing to credentials config files
+gates	Post Récupérer le dépôt	2026-09-02T14:38:24.0632459Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+gates	Post Récupérer le dépôt	2026-09-02T14:38:24.0704520Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+gates	Complete job	﻿2026-09-02T14:38:24.1237661Z Cleaning up orphan processes

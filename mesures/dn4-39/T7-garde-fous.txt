@@ -1,0 +1,137 @@
+# dn4-39 / T7 — GARDE-FOUS ET COUT, VERIFIES UN PAR UN, AVEC LA COMMANDE
+# 2026-09-02. Baseline desknode = 3db180c.
+
+==============================================================================
+⛔ AUCUNE reecriture d'historique — la baseline est un ANCETRE de HEAD
+==============================================================================
+$ git merge-base --is-ancestor 3db180c HEAD && echo 'AVANCE RAPIDE : 3db180c est un ancetre de HEAD'
+AVANCE RAPIDE : 3db180c est un ancetre de HEAD
+rc=0   ⇒ attendu : rc 0
+
+==============================================================================
+⛔ AUCUN push force — les 3 refs d'origin portent le meme SHA que main
+==============================================================================
+$ git rev-parse HEAD origin/main
+a07900e875316a113f4bf45be989aa43f9476214
+a07900e875316a113f4bf45be989aa43f9476214
+rc=0   ⇒ attendu : les deux SHA identiques
+
+==============================================================================
+⛔ RIEN dans firmware/
+==============================================================================
+$ git diff --name-only 3db180c HEAD -- firmware/
+(sortie VIDE)
+rc=0   ⇒ attendu : VIDE
+
+==============================================================================
+⛔ cla.yml N'EST PAS MODIFIE
+==============================================================================
+$ git diff --name-only 3db180c HEAD -- .github/workflows/cla.yml
+(sortie VIDE)
+rc=0   ⇒ attendu : VIDE
+
+==============================================================================
+⛔ AUCUN .git/hooks/ ecrit
+==============================================================================
+$ ls -a .git/hooks/ | grep -v sample | grep -v '^\.\.$' | grep -v '^\.$' || echo 'VIDE — que les .sample'
+VIDE — que les .sample
+rc=0   ⇒ attendu : VIDE
+
+==============================================================================
+⛔ AUCUN renommage
+==============================================================================
+$ git diff --name-status --find-renames 3db180c HEAD | grep '^R' || echo 'AUCUN renommage'
+AUCUN renommage
+rc=0   ⇒ attendu : AUCUN
+
+==============================================================================
+⛔ AUCUNE remorque dans les commits
+==============================================================================
+$ git log --format='%b' 3db180c..HEAD | grep -E 'Co-Authored-By|Claude-Session' || echo 'AUCUNE remorque'
+AUCUNE remorque
+rc=0   ⇒ attendu : AUCUNE
+
+==============================================================================
+⛔ le depot reste PRIVATE, 0 fork, 0 tag, main NON protegee
+==============================================================================
+$ gh repo view --json visibility,forkCount,defaultBranchRef --jq '.' ; echo -n 'tags: ' ; git ls-remote --tags origin | wc -l ; gh api /repos/nasbarok/desknode/branches/main --jq '.protected'
+{"defaultBranchRef":{"name":"main"},"forkCount":0,"visibility":"PRIVATE"}
+tags: 0
+false
+rc=0   ⇒ attendu : PRIVATE / 0 / 0 tag / protected=false
+
+==============================================================================
+⛔ AUCUNE branche temoin ne survit
+==============================================================================
+$ git ls-remote --heads origin
+3db180cbd6789cde32bb093dd565d1ab3c4f298f	refs/heads/dn4-5-le-module-vit-tout-seul
+a07900e875316a113f4bf45be989aa43f9476214	refs/heads/main
+rc=0   ⇒ attendu : main + dn4-5 seulement
+
+==============================================================================
+les fichiers touches par la story
+==============================================================================
+$ git diff --name-only 3db180c HEAD
+.github/workflows/gates.yml
+CHANGELOG.md
+CONTRIBUTING.md
+README.md
+docs/dn5-1-ecart-promesses.md
+docs/roadmap.md
+mesures/dn4-39/T0-etat-github.txt
+mesures/dn4-39/T0-gates-clone.txt
+mesures/dn4-39/T0-gates-local.txt
+mesures/dn4-39/T1-cause-C.txt
+mesures/dn4-39/T1-causes.md
+mesures/dn4-39/T3-run-ci.txt
+mesures/dn4-39/T4-run-rouge.txt
+mesures/dn4-39/T4-temoins-declaration.txt
+mesures/dn4-39/T5-temoin-manifeste.txt
+mesures/dn4-39/T7-gates-local.txt
+tools/run_gates.sh
+tools/verif_dossier_d5_dn45.py
+tools/verif_dossier_dn415.py
+tools/verif_harnais_dn413.py
+tools/verif_hist_dn413.py
+tools/verif_ledger_dn416.py
+tools/verif_veille_dn33.py
+rc=0   ⇒ attendu : la liste
+
+==============================================================================
+COUT APRES — /users/<login>/settings/billing/usage (⛔ pas /settings/billing/actions)
+==============================================================================
+$ gh api /users/nasbarok/settings/billing/usage | python3 -c "import sys,json;d=json.load(sys.stdin);[print(json.dumps(i,ensure_ascii=False)) for i in d.get('usageItems',[]) if i.get('repositoryName')=='desknode']"
+{"date": "2026-09-01T00:00:00Z", "product": "actions", "sku": "Actions Linux", "quantity": 7.0, "unitType": "Minutes", "pricePerUnit": 0.006, "grossAmount": 0.042, "discountAmount": 0.048, "netAmount": 0.0, "repositoryName": "desknode"}
+rc=0   ⇒ attendu : quantity > 3.0, netAmount 0.0
+
+==============================================================================
+LES RUNS DE LA STORY
+==============================================================================
+$ gh run list --limit 8 --json databaseId,name,event,status,conclusion,headBranch,createdAt --jq '.[] | "\(.databaseId) \(.name) \(.event) \(.headBranch) \(.conclusion)"'
+33643281632 Gates push main success
+33641207983 Gates push dn4-39-temoin success
+33641074034 Gates push dn4-39-temoin failure
+33640913702 Gates push main success
+33640427810 Gates push main success
+33631571416 CLA pull_request_target essai-cla-dn52 success
+33631570625 CLA issue_comment main success
+33631468943 CLA pull_request_target essai-cla-dn52 failure
+rc=0   ⇒ attendu : 5 runs Gates
+
+
+==============================================================================
+CONFRONTATION FINALE T0 ⇒ T7 (poste), sur le LIBELLE ENTIER
+==============================================================================
+gates : 27 ⇒ 27
+verdicts changes : AUCUN
+KO : 10 ⇒ 10
+ecart textuel sur les KO :
+--- T0
++++ T7
+@@ -1 +1 @@
+-│   [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:ntation-artifacts/deferred-work.md [vl53l0x] #1 (l.5834) dont `sprint-change-proposal-2026-08-31.md` qui intr
++│   [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:ntation-artifacts/deferred-work.md [vl53l0x] #1 (l.5836) dont `sprint-change-proposal-2026-08-31.md` qui intr
+
+⇒ VERDICT JUSTE : « 0 KO de plus ». ⛔ PAS « mot pour mot » : UNE ligne differe,
+  et l'ecart est un NUMERO DE LIGNE decale par les 2 dispositions ecrites au
+  ledger. C'est exactement la rectification que la revue de dn5-1 a posee.
