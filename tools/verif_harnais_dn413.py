@@ -39,6 +39,33 @@ import sys
 RACINE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TOOLS = os.path.join(RACINE, "tools")
 
+# ── dn4-39 / AC39.3.c — ELLE NE PUBLIE PLUS UN **FAUX ROUGE** ────────────────
+#
+# 🔴 MESURE DU 2026-09-02, clone neuf + `HOME` etranger : cette gate rendait
+#    `⛔ 6 ECHEC(S) sur 27 controles`, dont **5 « renvoi FANTOME »** sur des
+#    symboles QUI EXISTENT — `lv_text_get_width` est defini dans
+#    `managed_components/lvgl__lvgl/src/misc/lv_text.c`, et la meme gate rend
+#    `22 controles, 0 echec` sur la machine qui porte cet arbre.
+#    ⇒ ⛔ C'est un DIAGNOSTIC FAUX, publie automatiquement, a quelqu'un qui n'a
+#      pas les moyens de le refuter : la gate accusait `tools/dn_police.py` de
+#      citer des fonctions inexistantes alors que c'est ELLE qui ne les voit pas.
+#
+# 🔬 LA CAUSE, LUE DANS LE CODE : `code_du_firmware()` faisait
+#    `if os.path.isdir(mc):` — un **SAUT SILENCIEUX**. Arbre absent ⇒ le corpus
+#    C se reduisait a `main/` ⇒ toute citation d'API LVGL devenait un fantome.
+#    Le defaut n'etait pas dans le chasseur, il etait dans son CORPUS.
+#
+# ⛔ CE QU'ELLE NE DEVIENT PAS : aveugle. La ou l'arbre EST la, les renvois sont
+#    controles EXACTEMENT comme avant — c'est le temoin de `dn4-39`/AC39.4 qui
+#    le prouve, en replantant un vrai fantome.
+MANAGED = os.path.join(RACINE, "firmware", "desknode", "managed_components")
+
+# ⛔ POURQUOI 4 : `2` = message d'usage (`verif_sr03.py`), `3` = mutant PERIME
+#    (`verif_paliers_dn441.py`). Detail complet dans `verif_dossier_dn415.py`.
+# 🔴 ORDRE : un VRAI defaut l'emporte — rc **1** des qu'un KO existe.
+RC_PREREQUIS = 4
+prerequis_absents = []
+
 HARNAIS = ["temoins_ac2_dn44.py", "diag_p1_dn44.py", "anim_courbe_dn44.py"]
 
 ok_total = [0]
@@ -192,7 +219,10 @@ def code_du_firmware():
     #    sur une autre fonction LVGL.
     # ⚠️ Le balayage est RÉCURSIF mais BORNÉ aux `.c`/`.h`, et les commentaires
     #    y sont retirés comme ci-dessus, pour le même motif exactement.
-    mc = os.path.join(RACINE, "firmware", "desknode", "managed_components")
+    # 🔴 dn4-39 — CE `if` ETAIT UN SAUT SILENCIEUX, ET IL FABRIQUAIT UN FAUX
+    #    ROUGE (voir l'en-tete de MANAGED). L'absence est desormais RENDUE a
+    #    l'appelant, qui DECLARE qu'il ne peut pas exercer AC7.4.
+    mc = MANAGED
     if os.path.isdir(mc):
         for racine_, _sd, fichiers in os.walk(mc):
             for f in sorted(fichiers):
@@ -263,6 +293,27 @@ def bloc_fantomes():
     connues = fonctions_du_depot()
     code_py = code_des_outils()
     code_c = code_du_firmware()
+    # 🔴 dn4-39 / AC39.3.c — SANS L'ARBRE LVGL, LE CORPUS EST INCOMPLET : LA
+    #    GATE **DECLARE** QU'ELLE NE PEUT PAS EXERCER CE CONTROLE, ⛔ ELLE
+    #    N'ACCUSE PAS. Un contributeur qui recoit « renvoi FANTOME » sur une
+    #    fonction LVGL existante croirait avoir casse quelque chose.
+    arbre_lvgl = os.path.isdir(MANAGED)
+    if not arbre_lvgl:
+        prerequis_absents.append("l'arbre LVGL (%s)" % MANAGED)
+        print("  [PREREQUIS ABSENT] la chasse aux renvois FANTOMES n'est pas")
+        print("      exercable : %s" % MANAGED)
+        print("      MOTIF : `managed_components/` est GITIGNORE (186 Mo) et")
+        print("              repeuple par `idf.py reconfigure`. Il porte le")
+        print("              source C de LVGL — donc les fonctions LVGL citees")
+        print("              a raison par `tools/`. Sans lui, le corpus est")
+        print("              INCOMPLET et toute citation d'API LVGL passerait")
+        print("              pour un fantome. ⛔ Ce serait un diagnostic FAUX.")
+        print("      REMEDE : lancer `idf.py reconfigure` dans firmware/desknode.")
+        print("      ⛔ La gate ne devient PAS aveugle : la ou l'arbre est la,")
+        print("         les renvois sont controles a l'identique.")
+        print("      ⛔ CE N'EST PAS UN VERDICT SUR `tools/`, et ⛔ pas un skip :")
+        print("         rc=%d, declare dans la table NON_JOUABLES de"
+              " tools/run_gates.sh." % RC_PREREQUIS)
     fantomes = []
     cites = 0
     for f in sorted(os.listdir(TOOLS)):
@@ -290,12 +341,18 @@ def bloc_fantomes():
             if re.search(r"\b" + re.escape(nom) + r"\s*\(", code_c):
                 continue  # (c) fonction du firmware, citée à raison
             fantomes.append((f, nom))
-    for f, nom in fantomes:
-        ctrl(False, "renvoi FANTÔME : `%s()`" % nom,
-             "cité par tools/%s, défini NULLE PART" % f)
-    ctrl(not fantomes,
-         "les %d renvois en accents graves des commentaires existent tous"
-         % cites, "%d fantôme(s)" % len(fantomes))
+    if arbre_lvgl:
+        for f, nom in fantomes:
+            ctrl(False, "renvoi FANTÔME : `%s()`" % nom,
+                 "cité par tools/%s, défini NULLE PART" % f)
+        ctrl(not fantomes,
+             "les %d renvois en accents graves des commentaires existent tous"
+             % cites, "%d fantôme(s)" % len(fantomes))
+    else:
+        print("  [ -- ] %-56s %s"
+              % ("les %d renvois en accents graves — NON EXERCE" % cites,
+                 "%d candidat(s) mis de cote, ⛔ AUCUNE accusation"
+                 % len(fantomes)))
 
     # 🔴 LE CHASSEUR EST-IL CAPABLE DE VOIR ? ⛔ Un contrôle qui rend vert sur un
     #    dépôt sain sans avoir jamais vu un rouge est décoratif (AC7.5). On lui
@@ -429,12 +486,20 @@ def main():
     print("   qui se tirent SUR LA CARTE (AC11.4), et le constat owner à l'œil sur")
     print("   les formes d'`anim_courbe`. Elle prouve que les INSTRUMENTS ne")
     print("   peuvent plus conclure sur du vide, ⛔ pas que la carte a raison.")
-    if ko_total[0] == 0:
-        print("✅ %d contrôles passent, 0 échec." % ok_total[0])
-        return 0
-    print("⛔ %d ÉCHEC(S) sur %d contrôles."
-          % (ko_total[0], ok_total[0] + ko_total[0]))
-    return 1
+    # 🔴 dn4-39 — UN VRAI DEFAUT L'EMPORTE SUR UN PREREQUIS ABSENT.
+    if ko_total[0]:
+        print("⛔ %d ÉCHEC(S) sur %d contrôles."
+              % (ko_total[0], ok_total[0] + ko_total[0]))
+        return 1
+    if prerequis_absents:
+        print("⚠️ %d contrôles passent, 0 échec — mais %d prérequis manque(nt) :"
+              % (ok_total[0], len(prerequis_absents)))
+        for x in prerequis_absents:
+            print("   · %s" % x)
+        print("   ⇒ rc=%d (« prérequis absent »), ⛔ pas un vert." % RC_PREREQUIS)
+        return RC_PREREQUIS
+    print("✅ %d contrôles passent, 0 échec." % ok_total[0])
+    return 0
 
 
 if __name__ == "__main__":

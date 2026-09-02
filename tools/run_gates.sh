@@ -61,6 +61,42 @@
 #          quelqu'un qui veut la contourner.
 #        ⇒ le chemin du source est resolu en ABSOLU AVANT le `cd`, l'echec de
 #          lecture est FATAL, et seule une vraie REDIRECTION est epinglee.
+#
+# (5) 🔴 UN `rc` DEDIE DIT « PREREQUIS ABSENT », ⛔ IL NE SE DEDUIT PAS.
+#     Ajoute par `dn4-39` le 2026-09-02, et voici ce qui l'a rendu necessaire.
+#
+#     MESURE — `bash tools/run_gates.sh` dans un CLONE NEUF avec un `HOME`
+#     ETRANGER (la seule configuration qui reproduit un runner) rend
+#     **21 VERTE / 5 ROUGE / 1 NON-JOUABLE**, contre **25/1/1** sur le poste de
+#     l'auteur. Les rouges se rangent en trois causes, et AUCUNE ne parle du
+#     code : (A) le cockpit de planification n'est pas clone · (B)
+#     `managed_components/` est gitignore · (C) une gate lit deux chemins
+#     ABSOLUS de la machine de l'auteur — celle-la est VERTE dans le clone et
+#     ROUGE sur un runner, elle se LIT dans le code.
+#
+#     🔴 LE PROBLEME : ces gates rendaient toutes **rc=1** sans leur prerequis,
+#     c'est-a-dire LA MEME VALEUR QUE LEUR ROUGE. Declarer `rc attendu = 1`
+#     aurait produit une declaration satisfaite AUSSI BIEN par « le terrain
+#     manque » que par « j'ai trouve un defaut » ⇒ la regle (3) tombait A VIDE.
+#     Le mecanisme de la seule NON-JOUABLE d'alors ne marchait que par chance :
+#     `verif_sr03.py` sort en **2** sur son message d'usage, distinguable de 1.
+#
+#     ⇒ LES GATES CONCERNEES RENDENT DESORMAIS **rc=4**, AVEC LEUR MOTIF.
+#       0 = vert · 1 = un VRAI defaut trouve · 2 = message d'usage
+#       (`verif_sr03.py`, publie dans le README) · 3 = MUTANT PERIME
+#       (`verif_paliers_dn441.py`, l. 127 — deja pris, LU dans le code, ⛔ pas
+#       suppose) · **4 = PREREQUIS ABSENT**. ⛔ pas 124 (le `timeout` ci-dessous),
+#       ⛔ pas >= 126 ni 128+N (conventions du shell et signaux).
+#
+#     🔴 ET L'ORDRE EST UNE REGLE : **un VRAI defaut l'emporte sur un prerequis
+#     absent**. Une gate qui trouve un KO rend 1 MEME si un prerequis manque.
+#     Sans ca, un prerequis absent masquerait un rouge — et « rc attendu = 4 »
+#     redeviendrait satisfiable par un defaut.
+#
+#     ⚠️ LE CHAMP « arguments » ACCEPTE LE JETON LITTERAL `AUCUN`, et c'est
+#     necessaire : 4 des 6 gates declarees ne prennent AUCUN argument, et un
+#     champ VIDE est interdit depuis la revue du 2026-08-31 (il sautait une gate
+#     rouge en silence). `AUCUN` est un CHOIX ECRIT, ⛔ pas un trou.
 # ═════════════════════════════════════════════════════════════════════════════
 set -uo pipefail
 
@@ -81,7 +117,13 @@ while [ "$#" -gt 0 ]; do
       [ "$#" -gt 0 ] || { echo "--cockpit attend un chemin" >&2; exit 2; }
       COCKPIT="$1"
       ;;
-    -h|--help) sed -n '2,60p' "$SRC" || { echo "aide indisponible : $SRC illisible" >&2; exit 2; }; exit 0 ;;
+    # ⚠️ dn4-39 — L'AIDE S'ANCRE PAR **CONTENU**, ⛔ PLUS PAR NUMERO DE LIGNE.
+    #    `sed -n '2,60p'` tronquait deja la fin de la regle (4), et toute ligne
+    #    ajoutee a l'en-tete aggravait la coupe EN SILENCE. On imprime de la
+    #    premiere barre a la barre de fermeture — c'est le meme defaut de classe
+    #    que le §9 du cockpit, ancre par numero, que cette story solde par
+    #    ailleurs.
+    -h|--help) sed -n '2,/^# ═══/p' "$SRC" || { echo "aide indisponible : $SRC illisible" >&2; exit 2; }; exit 0 ;;
     *) echo "argument inconnu : $1" >&2; exit 2 ;;
   esac
   shift
@@ -93,8 +135,40 @@ done
 # n'existe pas, la gate est jouee SANS ARGUMENT et doit rendre <rc attendu> —
 # son message d'usage. Des qu'il existe, elle est jouee AVEC ses arguments, et
 # son rouge eventuel compte comme un rouge.
+#
+# ── LES TEMOINS, ET POURQUOI ILS SONT ECRITS AINSI (dn4-39) ────────────────
+#
+# ⛔ AUCUN CHEMIN ABSOLU ICI. Ecrire `/home/<quelqu-un>/…` dans ce runner
+#    fabriquerait exactement le defaut que `dn5-3` doit solder — un outil qui ne
+#    marche que sur une machine. Les temoins de cockpit passent donc par `HOME`.
+#
+# ⚠️ `TEMOIN_COCKPIT` SUIT `--cockpit` quand il est donne : sans ca, deplacer le
+#    cockpit et le passer en argument aurait fait declarer NON-JOUABLES deux
+#    gates parfaitement jouables — un skip silencieux par la porte de derriere.
+TEMOIN_COCKPIT="${COCKPIT:-${HOME:-/nonexistent}/projects/compagnon_project}"
+#
+# ⚠️ `TEMOIN_COCKPIT_ABS` NE SUIT PAS `--cockpit`, ET C'EST DELIBERE :
+#    `verif_dossier_d5_dn45.py` n'a PAS d'option `--cockpit`, elle lit deux
+#    chemins ABSOLUS ecrits en dur (l. 47-48). Lui donner le temoin de
+#    `--cockpit` la ferait declarer jouable alors qu'elle ne lirait pas ce
+#    dossier-la. ⛔ LIMITE ECRITE : sur une machine TIERCE ou `~/projects/
+#    compagnon_project` existerait, le temoin serait present et la gate serait
+#    JOUEE — elle rougirait alors sur ses chemins absolus. C'est le sens
+#    CONSERVATEUR (echouer fort), ⛔ pas un skip. `dn5-3` ferme ce coin.
+TEMOIN_COCKPIT_ABS="${HOME:-/nonexistent}/projects/compagnon_project"
+#
+# `managed_components/` est GITIGNORE (186 Mo) et repeuple par
+# `idf.py reconfigure`. Le temoin est RELATIF : il vit dans le clone.
+TEMOIN_LVGL="firmware/desknode/managed_components/lvgl__lvgl"
+
 NON_JOUABLES=(
   "verif_sr03.py|le PDF [AN] AN4545 (VL6180X, DocID026571 Rev 1) n'est PAS au depot : document StMicroelectronics, ⛔ non redistribuable. La gate l'attend en argument et sort en 2 sur son message d'usage — rc=2 n'est PAS un rouge.|tools/fixtures/AN4545.pdf|tools/fixtures/AN4545.pdf firmware/desknode/main/dn_console.c|2"
+  "verif_dossier_dn415.py|CAUSE A — le cockpit de planification est un depot PRIVE, ⛔ jamais clone a cote du code. Sans lui la gate n'a AUCUNE occurrence a arbitrer. ⚠️ La ou le cockpit EST la elle rend 17 OK / 10 KO sur le CONTENU : ⛔ une CI ne verra JAMAIS ces 10 KO, et elle ne pretend pas les garder.|${TEMOIN_COCKPIT}|AUCUN|4"
+  "verif_ledger_dn416.py|CAUSE A — le cockpit de planification est un depot PRIVE, ⛔ jamais clone. Sans lui il n'y a ni ledger ni tracker a confronter. ⚠️ `dn_ok` (« le depot code EST desknode ») reste un CONTROLE : son echec reste un ROUGE, ⛔ pas un prerequis.|${TEMOIN_COCKPIT}|AUCUN|4"
+  "verif_dossier_d5_dn45.py|CAUSE C — elle lit DEUX chemins ABSOLUS de la machine de l'auteur (l. 47-48) ⇒ ⛔ `HOME` n'y peut rien : VERTE dans un clone neuf, et 1 OK / 7 KO sur un runner. Le seul des six rouges qu'aucune mesure prise depuis ce poste ne pouvait montrer — il se LIT dans le code. La reparation des chemins est portee par `dn5-3`, ⛔ pas ici.|${TEMOIN_COCKPIT_ABS}|AUCUN|4"
+  "verif_veille_dn33.py|CAUSE B — `managed_components/` est GITIGNORE (186 Mo, repeuple par `idf.py reconfigure`) et porte le generateur AMONT de LVGL. ⛔ 2 blocs sur 18 ne sont pas exerces ; TOUT LE RESTE EST JOUE. Elle disait deja le bon motif et le remede — il lui manquait le `rc`.|${TEMOIN_LVGL}|AUCUN|4"
+  "verif_harnais_dn413.py|CAUSE B — sans l'arbre LVGL le corpus C est INCOMPLET, et la chasse aux renvois FANTOMES accusait `tools/dn_police.py` de citer des fonctions QUI EXISTENT (`lv_text_get_width` est defini dans lvgl__lvgl/src/misc/lv_text.c). ⛔ Un diagnostic FAUX publie automatiquement. Elle DECLARE desormais, elle n'accuse plus — et ⛔ elle ne devient PAS aveugle la ou l'arbre est la.|${TEMOIN_LVGL}|AUCUN|4"
+  "verif_hist_dn413.py|CAUSE B — elle RELIT `LV_CHART_POINT_NONE` dans `lv_chart.h` (c'est ce qui garantit que `DN_HIST_TROU` vaut le trou de LVGL) et PLANTAIT en `FileNotFoundError` NU : un rouge sans motif ni remede. Elle echoue FERME desormais, sur le modele de `verif_veille_dn33.py`.|${TEMOIN_LVGL}|AUCUN|4"
 )
 
 # ── (4) GARDE : ce script ne doit contenir AUCUNE REDIRECTION vers le puits ──
@@ -205,7 +279,12 @@ for g in "${GATES[@]}"; do
     rc_att="$(champ_de "$nom" 5)"
     if [ -e "$temoin" ]; then
       # Le temoin est la : la gate REDEVIENT jouable, avec ses arguments.
-      read -r -a ARGS <<<"$(champ_de "$nom" 4)"
+      # ⚠️ dn4-39 — LE JETON LITTERAL `AUCUN` VEUT DIRE « aucun argument ».
+      #    4 des 6 gates declarees n'en prennent pas, et un champ VIDE est
+      #    interdit (il sautait une gate rouge en silence, revue du 2026-08-31).
+      #    ⇒ le choix est ECRIT dans la table, ⛔ ce n'est pas un trou.
+      a4="$(champ_de "$nom" 4)"
+      [ "$a4" = "AUCUN" ] || read -r -a ARGS <<<"$a4"
       printf '[  temoin  ] %-38s %s est present ⇒ la gate est JOUEE\n' "$g" "$temoin"
       declaree=0   # elle est traitee comme une gate ordinaire
     fi

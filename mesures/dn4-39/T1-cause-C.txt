@@ -1,0 +1,25 @@
+==============================================================================
+dn4-5 / AC7.2 — LE DOSSIER RATTRAPE LE CONSTAT OWNER DU 2026-08-25
+==============================================================================
+
+motifs cherches : « Battery Power Control » · « DEVRA MESURER LA CONSOMMATION »
+perimetre : les DEUX depots, arbre ENTIER (⛔ pas le diff)
+
+── 1. LES FICHIERS FAISANT AUTORITE — CHACUN DOIT ETRE ANNOTE ────
+  [KO ] hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md              ⛔ FICHIER INTROUVABLE
+  [KO ] hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md           ⛔ FICHIER INTROUVABLE
+  [KO ] hardware/ESP32-S3-Touch-LCD-2.8B-liaison-pc.md             ⛔ FICHIER INTROUVABLE
+  [KO ] README.md                                                  ⛔ FICHIER INTROUVABLE
+  [KO ] mad-output/implementation-artifacts/deferred-work.md       ⛔ FICHIER INTROUVABLE
+  [KO ] implementation-artifacts/sprint-status-desknode.yaml       ⛔ FICHIER INTROUVABLE
+  [KO ] le balayage a bien trouve des occurrences                  0 occurrence(s) faisant autorite, 0 annotee(s)
+
+── 2. CE QUI EST ECARTE, ET C'EST DECLARE ────────────────────────
+  ARCHIVES (⛔ NON exigees annotees — elles disent ce qui etait vrai ALORS) :
+  [OK ] les archives sont LISTEES, ⛔ pas ecartees en silence       0 fichier(s) d'archive
+
+── 3. LE FAIT QUI FERME, ET IL EST ECRIT PARTOUT PAREIL ──────────
+
+==============================================================================
+BILAN : 1 OK, 7 KO
+==============================================================================

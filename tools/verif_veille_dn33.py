@@ -50,6 +50,29 @@ import tempfile
 RACINE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MAIN = os.path.join(RACINE, "firmware", "desknode", "main")
 DN_VEILLE_C = os.path.join(MAIN, "dn_veille.c")
+
+# ── dn4-39 / AC39.3.a — LE `rc` « PREREQUIS ABSENT », DISTINCT DU ROUGE ─────
+#
+# Cette gate DISAIT deja le bon motif quand `managed_components/` manquait
+# (« generateur amont introuvable » + le remede `idf.py reconfigure`) : c'est
+# elle qui a servi de MODELE a `verif_hist_dn413.py`. Ce qui lui manquait, c'est
+# le `rc` : elle sortait en **1**, comme son rouge.
+# 🔴 Elle sortait AUSSI TROP TOT : le `sys.exit` venait de `gen_font_dn.py`,
+#    au milieu de la passe ⇒ les blocs suivants n'etaient JAMAIS joues. Le
+#    prerequis est desormais teste AVANT, les deux blocs qui en dependent sont
+#    declares, et TOUT LE RESTE EST JOUE QUAND MEME.
+# 🔴 ORDRE : un VRAI defaut l'emporte — rc **1** des qu'un KO existe, meme si le
+#    prerequis manque. Sinon un prerequis absent masquerait un rouge.
+# ⛔ POURQUOI 4 : `2` = message d'usage (`verif_sr03.py`), `3` = mutant PERIME
+#    (`verif_paliers_dn441.py`). Detail complet dans `verif_dossier_dn415.py`.
+RC_PREREQUIS = 4
+
+# Le generateur AMONT de LVGL, appele par `tools/gen_font_dn.py`. Il vit dans
+# `managed_components/`, qui est GITIGNORE (186 Mo) et repeuple par
+# `idf.py reconfigure`. ⛔ Ce n'est donc PAS un manque du depot.
+GEN_AMONT = os.path.join(RACINE, "firmware", "desknode", "managed_components",
+                         "lvgl__lvgl", "scripts", "built_in_font",
+                         "built_in_font_gen.py")
 DN_VEILLE_H = os.path.join(MAIN, "dn_veille.h")
 DN_WIDGET_C = os.path.join(MAIN, "dn_widget.c")
 DN_UI_C = os.path.join(MAIN, "dn_ui.c")
@@ -2661,8 +2684,25 @@ def main():
     bloc_verite()
     bloc_reconstruit()
     bloc_polices()
-    bloc_generateur_execute()
-    bloc_polices_couverture()
+    # 🔴 dn4-39 — CES DEUX BLOCS EXECUTENT `gen_font_dn.py`, QUI LIT LE
+    #    GENERATEUR AMONT DE LVGL. Sans l'arbre, ils ne peuvent pas s'exercer.
+    #    ⛔ Ils ne sont PAS sautes en silence : le motif et le remede sont
+    #    imprimes, et le `rc` de sortie le declare.
+    prerequis_absent = not os.path.isfile(GEN_AMONT)
+    if prerequis_absent:
+        print("\n── dn4-14-2 / AC3.1 : LE GENERATEUR EST EXECUTE, ⛔ PAS RELU ───────")
+        print("ECHEC : generateur amont introuvable : %s" % GEN_AMONT)
+        print("        `managed_components/` est gitignore mais regenere :")
+        print("        lancer `idf.py reconfigure` dans firmware/desknode.")
+        print("        ⛔ NON EXERCES : `bloc_generateur_execute` et")
+        print("           `bloc_polices_couverture`. ⛔ Tout le reste EST joue.")
+        print("        ⛔ CE N'EST PAS UN VERDICT SUR LE PRODUIT, et ⛔ pas un")
+        print("           skip : rc=%d, declare dans la table NON_JOUABLES de"
+              % RC_PREREQUIS)
+        print("           tools/run_gates.sh.")
+    else:
+        bloc_generateur_execute()
+        bloc_polices_couverture()
     bloc_barre_date_forme()
     bloc_polices_mutants()
 
@@ -2674,7 +2714,11 @@ def main():
         print("   · rien de ce qui se voit A L'OEIL (le gris, le voile, le %);")
         print("   · aucune latence (t1/t2 se mesurent SUR LA CARTE, AC4);")
         print("   · l'appui fantome REEL (la garde est armee, pas PROVOQUEE).")
-    sys.exit(1 if ko_total[0] else 0)
+    # 🔴 dn4-39 — L'ORDRE EST UNE REGLE : un VRAI defaut l'emporte sur un
+    #    prerequis absent. Sans ca, un arbre LVGL manquant masquerait un rouge.
+    if ko_total[0]:
+        sys.exit(1)
+    sys.exit(RC_PREREQUIS if prerequis_absent else 0)
 
 
 if __name__ == "__main__":

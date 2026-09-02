@@ -47,6 +47,26 @@ import sys
 DESKNODE = "/home/nasbarok/projects/desknode"
 COCKPIT = "/home/nasbarok/projects/compagnon_project"
 
+# ── dn4-39 / AC39.2.a-bis + AC39.3.a — LA CAUSE **C**, TRAITEE SANS ETRE VUE ──
+#
+# 🔴 LES DEUX CONSTANTES CI-DESSUS SONT **ABSOLUES**, et ⛔ `HOME` n'y peut rien.
+#    ⇒ cette gate est **VERTE dans un clone neuf** (elle en sort et atteint les
+#      vrais depots de cette machine) et sera **ROUGE sur un runner**, ou ces
+#      chemins n'existent pas. C'est le seul des six rouges qu'AUCUNE mesure
+#      prise depuis ce poste ne pouvait montrer : il se **LIT dans le code**.
+#    🔬 Reproduit au cadrage de `dn4-39` en pointant les deux constantes sur un
+#      chemin inexistant : `BILAN : 1 OK, 7 KO`, rc **1** — c'est-a-dire, la
+#      encore, le meme `rc` que son vrai rouge.
+#
+# ⛔ CE CORRECTIF NE TOUCHE PAS AUX CHEMINS EUX-MEMES — c'est `dn5-3` qui porte
+#    « les outils sortent du clone ». Il rend seulement DISTINGUABLE « je ne
+#    suis pas sur la machine de l'auteur » de « j'ai trouve un defaut ».
+#
+# ⛔ POURQUOI 4 : `2` est le message d'usage de `verif_sr03.py` (publie dans le
+#    README), `3` est deja rendu par `verif_paliers_dn441.py` sur un MUTANT
+#    PERIME. Le detail complet est ecrit dans `tools/verif_dossier_dn415.py`.
+RC_PREREQUIS = 4
+
 # Ce qu'on cherche : les formulations qui PUBLIENT ENCORE la question.
 MOTIFS = [
     "Battery Power Control",
@@ -133,6 +153,23 @@ def main():
     print("=" * 78)
     print("\nmotifs cherches : %s" % " · ".join("« %s »" % m for m in MOTIFS))
     print("perimetre : les DEUX depots, arbre ENTIER (⛔ pas le diff)")
+
+    # 🔴 dn4-39 — LES DEUX DEPOTS SONT DES **PREREQUIS**, ⛔ PAS DES CONTROLES.
+    absents = [c for c in (DESKNODE, COCKPIT) if not os.path.isdir(c)]
+    if absents:
+        print("\n  [PREREQUIS ABSENT] cette gate lit DEUX depots par chemin ABSOLU")
+        for c in absents:
+            print("      introuvable : %s" % c)
+        print("      MOTIF : ces deux chemins sont ecrits EN DUR (l. 47-48) et")
+        print("              n'existent que sur la machine de l'auteur. Hors")
+        print("              d'elle, la gate n'a RIEN a balayer — elle ne peut")
+        print("              ni rougir ni verdir.")
+        print("      REMEDE : `dn5-3` porte la reparation (« les outils sortent")
+        print("              du clone »). ⛔ dn4-39 ne la fait PAS ici.")
+        print("      ⛔ CE N'EST PAS UN VERDICT SUR LE DOSSIER, et ⛔ pas un skip :")
+        print("         rc=%d, declare dans la table NON_JOUABLES de"
+              " tools/run_gates.sh." % RC_PREREQUIS)
+        return RC_PREREQUIS
 
     print("\n── 1. LES FICHIERS FAISANT AUTORITE — CHACUN DOIT ETRE ANNOTE ────")
     total, annotes = 0, 0

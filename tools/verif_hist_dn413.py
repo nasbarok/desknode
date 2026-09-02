@@ -48,6 +48,20 @@ LV_CHART_H = os.path.join(RACINE, "firmware", "desknode", "managed_components",
                           "lvgl__lvgl", "src", "widgets", "chart", "lv_chart.h")
 MAP = os.path.join(RACINE, "firmware", "desknode", "build", "desknode.map")
 
+# ── dn4-39 / AC39.3.b — ELLE ECHOUE **FERME**, ⛔ PLUS EN TRACEBACK NU ────────
+#
+# 🔴 MESURE DU 2026-09-02, clone neuf + `HOME` etranger : cette gate PLANTAIT.
+#    `sentinelle_lvgl()` ouvrait `lv_chart.h` sans jamais declarer qu'elle en
+#    dependait, et rendait un `FileNotFoundError` NU — rc **1**, sans motif,
+#    sans remede, et impossible a distinguer d'un vrai defaut.
+#    ⚠️ `tools/verif_veille_dn33.py` a EXACTEMENT le meme prerequis et le traite
+#      bien depuis toujours : `ECHEC : ... introuvable : <chemin>` **et le
+#      remede**. La bonne forme etait deja dans le depot — rien a inventer.
+#
+# ⛔ POURQUOI 4 : `2` = message d'usage (`verif_sr03.py`), `3` = mutant PERIME
+#    (`verif_paliers_dn441.py`). Detail complet dans `verif_dossier_dn415.py`.
+RC_PREREQUIS = 4
+
 SEAU_S = 3600
 SEAUX = 24
 N_POINTS = 120
@@ -643,6 +657,22 @@ def main():
     print("=" * 78)
     print("  dn_hist.c sha256[:16] = %s" % sha_c)
     print("  dn_hist.h sha256[:16] = %s" % sha_h)
+    # 🔴 dn4-39 / AC39.3.b — L'ARBRE LVGL EST UN **PREREQUIS**, ET IL SE DIT.
+    #    Toute la suite en depend : la sentinelle relue alimente le shim qui
+    #    compile `dn_hist.c`. Sans elle la gate n'a rien a exercer — elle le
+    #    DECLARE et sort en RC_PREREQUIS, ⛔ elle ne plante plus.
+    if not os.path.isfile(LV_CHART_H):
+        print("\nECHEC : en-tete LVGL amont introuvable : %s" % LV_CHART_H)
+        print("        `managed_components/` est gitignore mais regenere :")
+        print("        lancer `idf.py reconfigure` dans firmware/desknode.")
+        print("        MOTIF : `LV_CHART_POINT_NONE` se RELIT dans l'arbre LVGL,")
+        print("                ⛔ elle n'est jamais recopiee ici — c'est ce qui")
+        print("                garantit que `DN_HIST_TROU` vaut le trou de LVGL.")
+        print("        ⛔ CE N'EST PAS UN VERDICT SUR `dn_hist.c`, et ⛔ pas un")
+        print("           skip : rc=%d, declare dans la table NON_JOUABLES de"
+              % RC_PREREQUIS)
+        print("           tools/run_gates.sh.")
+        return RC_PREREQUIS
     sent = sentinelle_lvgl()
     print("  LV_CHART_POINT_NONE relu de lv_chart.h = %s" % sent)
     if not ctrl(sent == "INT32_MAX",

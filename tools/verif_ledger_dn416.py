@@ -147,6 +147,16 @@ import unicodedata
 DESKNODE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 COCKPIT_DEFAUT = os.path.expanduser("~/projects/compagnon_project")
 
+# ── dn4-39 / AC39.3.a — LE `rc` « PREREQUIS ABSENT », DISTINCT DU ROUGE ─────
+# Meme motif et meme choix que `tools/verif_dossier_dn415.py`, ou il est ecrit
+# en entier : `2` est le message d'usage de `verif_sr03.py`, `3` est deja rendu
+# par `verif_paliers_dn441.py` sur un MUTANT PERIME. Mesure du 2026-09-02 en
+# clone neuf + `HOME` etranger : cette gate rendait `1 OK, 3 KO`, rc **1** —
+# le meme `rc` que son rouge. La declaration NON-JOUABLE etait invérifiable.
+# 🔴 ORDRE : un VRAI defaut l'emporte — rc **1** des qu'un KO existe, meme si un
+#    prerequis manque. Sinon un prerequis absent masquerait un rouge.
+RC_PREREQUIS = 4
+
 REL_LEDGER = "_bmad-output/implementation-artifacts/deferred-work.md"
 REL_TRACKER = "_bmad-output/implementation-artifacts/sprint-status-desknode.yaml"
 REL_MANIFESTE = "_bmad-output/implementation-artifacts/dn4-16-arbitrage-ledger.md"
@@ -540,19 +550,47 @@ def main():
                  "firmware/ + tools/ presents",
                  "⛔ %s ne porte pas firmware/ + tools/ — script deplace ?"
                  % DESKNODE[-46:])
-    ck_ok = ctrl(os.path.isdir(a.cockpit), "le depot cockpit est atteignable",
-                 a.cockpit[-58:] if os.path.isdir(a.cockpit)
-                 else "⛔ ABSENT — une gate scopee epingle VERT le meme defaut ailleurs")
+    # 🔴 dn4-39 — LE COCKPIT, LE LEDGER ET LE TRACKER SONT DES **PREREQUIS**,
+    #    ⛔ PAS DES CONTROLES. Leur absence ne dit rien du code : elle dit que la
+    #    gate n'a pas son terrain. ⚠️ `dn_ok`, LUI, RESTE UN CONTROLE : « le
+    #    depot code est le depot DESKNODE » est une propriete du code, et son
+    #    echec reste un ROUGE.
     p_led = os.path.join(a.cockpit, REL_LEDGER)
     p_trk = os.path.join(a.cockpit, REL_TRACKER)
-    led_ok = ctrl(ck_ok and os.path.isfile(p_led), "le ledger est present",
-                  REL_LEDGER, "⛔ ABSENT : %s" % REL_LEDGER)
-    trk_ok = ctrl(ck_ok and os.path.isfile(p_trk), "le tracker est present",
-                  REL_TRACKER, "⛔ ABSENT : %s" % REL_TRACKER)
-    if not (dn_ok and ck_ok and led_ok and trk_ok):
+    manquants = []
+    if not os.path.isdir(a.cockpit):
+        manquants.append("le depot cockpit : %s" % a.cockpit)
+    else:
+        if not os.path.isfile(p_led):
+            manquants.append("le ledger : %s" % REL_LEDGER)
+        if not os.path.isfile(p_trk):
+            manquants.append("le tracker : %s" % REL_TRACKER)
+    if manquants:
+        # ⛔ Un VRAI defaut l'emporte : si `dn_ok` est deja tombe, c'est ROUGE.
+        if not dn_ok:
+            print("\n" + "=" * 78)
+            print("BILAN : %d OK, %d KO" % (ok_total[0], ko_total[0]))
+            print("⛔ ARRET : le depot code n'est pas le depot DESKNODE.")
+            print("=" * 78)
+            return 1
+        print("  [PREREQUIS ABSENT] le cockpit de planification n'est pas la")
+        for m in manquants:
+            print("      manque : %s" % m)
+        print("      MOTIF : le cockpit est un depot PRIVE de planification,")
+        print("              ⛔ jamais clone a cote du code. Sans lui il n'y a")
+        print("              ni ledger ni tracker a confronter.")
+        print("      REMEDE : `--cockpit <chemin>` si le depot est ailleurs.")
+        print("      ⛔ CE N'EST PAS UN VERDICT SUR LE CODE, et ⛔ pas un skip :")
+        print("         rc=%d, declare dans la table NON_JOUABLES de"
+              " tools/run_gates.sh." % RC_PREREQUIS)
+        return RC_PREREQUIS
+    ctrl(True, "le depot cockpit est atteignable", a.cockpit[-58:])
+    ctrl(True, "le ledger est present", REL_LEDGER)
+    ctrl(True, "le tracker est present", REL_TRACKER)
+    if not dn_ok:
         print("\n" + "=" * 78)
         print("BILAN : %d OK, %d KO" % (ok_total[0], ko_total[0]))
-        print("⛔ ARRET : un depot ou un fichier manque. ⛔ JAMAIS un skip.")
+        print("⛔ ARRET : le depot code n'est pas le depot DESKNODE.")
         print("=" * 78)
         return 1
 

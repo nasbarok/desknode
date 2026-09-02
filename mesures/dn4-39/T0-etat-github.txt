@@ -1,0 +1,23 @@
+# T0 — etat GitHub releve le 2026-09-02 (dn4-39). Sorties BRUTES, capturees hors proxy shell.
+
+=== gh auth status ===
+github.com
+  ✓ Logged in to github.com account nasbarok (/home/nasbarok/.config/gh/hosts.yml)
+  - Active account: true
+  - Git operations protocol: https
+  - Token: gho_************************************
+  - Token scopes: 'gist', 'read:org', 'repo', 'user', 'workflow'
+
+=== gh repo view --json visibility,forkCount,defaultBranchRef,diskUsage ===
+{"defaultBranchRef":{"name":"main"},"diskUsage":32285,"forkCount":0,"visibility":"PRIVATE"}
+
+=== gh api /users/nasbarok/settings/billing/usage  (filtre repositoryName=desknode) ===
+{"date": "2026-09-01T00:00:00Z", "product": "actions", "sku": "Actions Linux", "quantity": 3.0, "unitType": "Minutes", "pricePerUnit": 0.006, "grossAmount": 0.018, "discountAmount": 0.018, "netAmount": 0.0, "repositoryName": "desknode"}
+
+=== gh run list --limit 20 --json ... ===
+[{"conclusion":"success","createdAt":"2026-09-02T12:43:54Z","databaseId":33631571416,"displayTitle":"Essai du bot CLA (dn5-2 / AC2.4) — a fermer, pas a fusionner","event":"pull_request_target","name":"CLA","status":"completed","updatedAt":"2026-09-02T12:44:03Z"},{"conclusion":"success","createdAt":"2026-09-02T12:43:53Z","databaseId":33631570625,"displayTitle":"Essai du bot CLA (dn5-2 / AC2.4) — a fermer, pas a fusionner","event":"issue_comment","name":"CLA","status":"completed","updatedAt":"2026-09-02T12:44:00Z"},{"conclusion":"failure","createdAt":"2026-09-02T12:42:49Z","databaseId":33631468943,"displayTitle":"Essai du bot CLA (dn5-2 / AC2.4) — a fermer, pas a fusionner","event":"pull_request_target","name":"CLA","status":"completed","updatedAt":"2026-09-02T12:43:04Z"}]
+
+=== ls -a .git/hooks/ | grep -v sample   (doit etre VIDE hors . et ..) ===
+.
+..
+

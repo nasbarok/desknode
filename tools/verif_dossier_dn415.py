@@ -167,6 +167,33 @@ import unicodedata
 DESKNODE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 COCKPIT_DEFAUT = os.path.expanduser("~/projects/compagnon_project")
 
+# ── dn4-39 / AC39.3.a — LE `rc` « PREREQUIS ABSENT », DISTINCT DU ROUGE ─────
+#
+# 🔴 MESURE DU 2026-09-02, dans un clone neuf avec un `HOME` etranger (la seule
+#    configuration qui reproduit un runner) : cette gate rendait
+#    `BILAN : 1 OK, 1 KO`, rc **1** — c'est-a-dire LE MEME `rc` que son vrai
+#    rouge, qui vaut `17 OK, 10 KO` sur la machine qui porte le cockpit.
+#    ⇒ « le cockpit n'est pas la » et « j'ai trouve 10 defauts » etaient
+#      INDISCERNABLES AU CODE DE RETOUR.
+# ⇒ La table `NON_JOUABLES` de `tools/run_gates.sh` ne pouvait donc pas declarer
+#   un `rc attendu` FALSIFIABLE : la declaration aurait ete satisfaite par un
+#   VRAI defaut. Sa regle (3) serait tombee a vide.
+#
+# ⛔ POURQUOI **4**, ET ⛔ PAS 2 NI 3 — les deux sont DEJA PRIS, et c'est LU :
+#      · `2` est le message d'usage de `verif_sr03.py`, et `README.md` publie
+#        « rc=2 n'est PAS un rouge » — deux sens dans un meme chiffre rendraient
+#        cette phrase ambigue ;
+#      · `3` est deja rendu par `tools/verif_paliers_dn441.py` (l. 127) quand un
+#        MUTANT est PERIME. Le cadrage ne l'avait pas : il se LIT dans le code.
+#      · ⛔ pas 124 (le `timeout` de `run_gates.sh`), ⛔ pas >= 126 (conventions
+#        du shell), ⛔ pas 128+N (les signaux).
+#
+# 🔴 ET L'ORDRE EST UNE REGLE, ⛔ PAS UN DETAIL : **un VRAI defaut l'emporte sur
+#    un prerequis absent**. S'il y a au moins un KO, le rc est **1**, meme si un
+#    prerequis manque. Sans ca, un prerequis absent MASQUERAIT un rouge — et la
+#    declaration « rc attendu = 4 » redeviendrait satisfiable par un defaut.
+RC_PREREQUIS = 4
+
 MANIFESTE = "docs/dn4-15-arbitrage.md"
 
 VERDICTS = ("FAUX", "VRAI", "HISTORIQUE", "SANS-RAPPORT")
@@ -619,16 +646,30 @@ def main():
 
     # ── AC6.5 : le cockpit est un ARGUMENT, et son absence est ROUGE ────────
     print("\n── 0. LES DEUX DEPOTS SONT LA (⛔ jamais un skip silencieux) ──────")
-    cockpit_ok = ctrl(os.path.isdir(a.cockpit),
-                      "le depot cockpit est atteignable",
-                      a.cockpit if os.path.isdir(a.cockpit)
-                      else "⛔ ABSENT — une gate scopee epingle VERT le meme defaut ailleurs")
+    # 🔴 dn4-39 — LE COCKPIT EST UN **PREREQUIS**, ⛔ PAS UN CONTROLE.
+    #    Son absence ne dit RIEN du code : elle dit que la gate n'a pas son
+    #    terrain. Elle sort en RC_PREREQUIS, avec son motif — ⛔ ce n'est PAS un
+    #    skip (`run_gates.sh` EXIGE ce rc exact ; tout autre rc la fait rougir),
+    #    et ⛔ ce n'est PAS une reparation du chemin : `COCKPIT_DEFAUT` reste ce
+    #    qu'il est, c'est `dn5-3` qui le porte.
+    if not os.path.isdir(a.cockpit):
+        print("  [PREREQUIS ABSENT] le depot cockpit n'est pas atteignable")
+        print("      chemin attendu : %s" % a.cockpit)
+        print("      MOTIF : le cockpit est un depot PRIVE de planification,")
+        print("              ⛔ jamais clone a cote du code. Hors de la machine")
+        print("              qui le porte, cette gate n'a AUCUNE occurrence a")
+        print("              arbitrer — elle ne peut ni rougir ni verdir.")
+        print("      REMEDE : `--cockpit <chemin>` si le depot est ailleurs.")
+        print("      ⛔ CE N'EST PAS UN VERDICT SUR LE CODE, et ⛔ pas un skip :")
+        print("         rc=%d, declare dans la table NON_JOUABLES de"
+              " tools/run_gates.sh." % RC_PREREQUIS)
+        print("      ⚠️ CE QUE LA CI NE VERRA JAMAIS : sur la machine qui porte")
+        print("         le cockpit, cette gate arbitre le CONTENU et rend")
+        print("         aujourd'hui 17 OK / 10 KO. Ces 10 KO sont HORS de")
+        print("         portee d'un runner — ⛔ elle ne pretend pas les garder.")
+        return RC_PREREQUIS
+    ctrl(True, "le depot cockpit est atteignable", a.cockpit)
     ctrl(os.path.isdir(DESKNODE), "le depot code est atteignable", DESKNODE)
-    if not cockpit_ok:
-        print("\n" + "=" * 78)
-        print("BILAN : %d OK, %d KO" % (ok_total[0], ko_total[0]))
-        print("=" * 78)
-        return 1
 
     arbitre, archive = collecte(a.cockpit)
 
