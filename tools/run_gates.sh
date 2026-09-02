@@ -164,11 +164,11 @@ TEMOIN_LVGL="firmware/desknode/managed_components/lvgl__lvgl"
 NON_JOUABLES=(
   "verif_sr03.py|le PDF [AN] AN4545 (VL6180X, DocID026571 Rev 1) n'est PAS au depot : document StMicroelectronics, ⛔ non redistribuable. La gate l'attend en argument et sort en 2 sur son message d'usage — rc=2 n'est PAS un rouge.|tools/fixtures/AN4545.pdf|tools/fixtures/AN4545.pdf firmware/desknode/main/dn_console.c|2"
   "verif_dossier_dn415.py|CAUSE A — le cockpit de planification est un depot PRIVE, ⛔ jamais clone a cote du code. Sans lui la gate n'a AUCUNE occurrence a arbitrer. ⚠️ La ou le cockpit EST la elle rend 17 OK / 10 KO sur le CONTENU : ⛔ une CI ne verra JAMAIS ces 10 KO, et elle ne pretend pas les garder.|${TEMOIN_COCKPIT}|AUCUN|4"
-  "verif_ledger_dn416.py|CAUSE A — le cockpit de planification est un depot PRIVE, ⛔ jamais clone. Sans lui il n'y a ni ledger ni tracker a confronter. ⚠️ `dn_ok` (« le depot code EST desknode ») reste un CONTROLE : son echec reste un ROUGE, ⛔ pas un prerequis.|${TEMOIN_COCKPIT}|AUCUN|4"
-  "verif_dossier_d5_dn45.py|CAUSE C — elle lit DEUX chemins ABSOLUS de la machine de l'auteur (l. 47-48) ⇒ ⛔ `HOME` n'y peut rien : VERTE dans un clone neuf, et 1 OK / 7 KO sur un runner. Le seul des six rouges qu'aucune mesure prise depuis ce poste ne pouvait montrer — il se LIT dans le code. La reparation des chemins est portee par `dn5-3`, ⛔ pas ici.|${TEMOIN_COCKPIT_ABS}|AUCUN|4"
-  "verif_veille_dn33.py|CAUSE B — `managed_components/` est GITIGNORE (186 Mo, repeuple par `idf.py reconfigure`) et porte le generateur AMONT de LVGL. ⛔ 2 blocs sur 18 ne sont pas exerces ; TOUT LE RESTE EST JOUE. Elle disait deja le bon motif et le remede — il lui manquait le `rc`.|${TEMOIN_LVGL}|AUCUN|4"
-  "verif_harnais_dn413.py|CAUSE B — sans l'arbre LVGL le corpus C est INCOMPLET, et la chasse aux renvois FANTOMES accusait `tools/dn_police.py` de citer des fonctions QUI EXISTENT (`lv_text_get_width` est defini dans lvgl__lvgl/src/misc/lv_text.c). ⛔ Un diagnostic FAUX publie automatiquement. Elle DECLARE desormais, elle n'accuse plus — et ⛔ elle ne devient PAS aveugle la ou l'arbre est la.|${TEMOIN_LVGL}|AUCUN|4"
-  "verif_hist_dn413.py|CAUSE B — elle RELIT `LV_CHART_POINT_NONE` dans `lv_chart.h` (c'est ce qui garantit que `DN_HIST_TROU` vaut le trou de LVGL) et PLANTAIT en `FileNotFoundError` NU : un rouge sans motif ni remede. Elle echoue FERME desormais, sur le modele de `verif_veille_dn33.py`.|${TEMOIN_LVGL}|AUCUN|4"
+  "verif_ledger_dn416.py|CAUSE A — le cockpit de planification est un depot PRIVE, ⛔ jamais clone. Sans lui il n'y a ni ledger ni tracker a confronter. ⚠️ le controle dn_ok (« le depot code EST desknode ») reste un CONTROLE : son echec reste un ROUGE, ⛔ pas un prerequis.|${TEMOIN_COCKPIT}|AUCUN|4"
+  "verif_dossier_d5_dn45.py|CAUSE C — elle lit DEUX chemins ABSOLUS de la machine de l'auteur (l. 47-48) ⇒ ⛔ la variable HOME n'y peut rien : VERTE dans un clone neuf, et 1 OK / 7 KO sur un runner. Le seul des six rouges qu'aucune mesure prise depuis ce poste ne pouvait montrer — il se LIT dans le code. La reparation des chemins est portee par dn5-3, ⛔ pas ici.|${TEMOIN_COCKPIT_ABS}|AUCUN|4"
+  "verif_veille_dn33.py|CAUSE B — managed_components/ est GITIGNORE (186 Mo, repeuple par: idf.py reconfigure) et porte le generateur AMONT de LVGL. ⛔ 2 blocs sur 18 ne sont pas exerces ; TOUT LE RESTE EST JOUE. Elle disait deja le bon motif et le remede — il lui manquait le rc.|${TEMOIN_LVGL}|AUCUN|4"
+  "verif_harnais_dn413.py|CAUSE B — sans l'arbre LVGL le corpus C est INCOMPLET, et la chasse aux renvois FANTOMES accusait tools/dn_police.py de citer des fonctions QUI EXISTENT (lv_text_get_width est defini dans lvgl__lvgl/src/misc/lv_text.c). ⛔ Un diagnostic FAUX publie automatiquement. Elle DECLARE desormais, elle n'accuse plus — et ⛔ elle ne devient PAS aveugle la ou l'arbre est la.|${TEMOIN_LVGL}|AUCUN|4"
+  "verif_hist_dn413.py|CAUSE B — elle RELIT LV_CHART_POINT_NONE dans lv_chart.h (c'est ce qui garantit que DN_HIST_TROU vaut le trou de LVGL) et PLANTAIT en FileNotFoundError NU : un rouge sans motif ni remede. Elle echoue FERME desormais, sur le modele de verif_veille_dn33.py.|${TEMOIN_LVGL}|AUCUN|4"
 )
 
 # ── (4) GARDE : ce script ne doit contenir AUCUNE REDIRECTION vers le puits ──
@@ -202,6 +202,56 @@ garde_puits() {
 }
 
 garde_puits || exit 1
+
+# ── (4bis) GARDE : LA TABLE DES NON-JOUABLES NE SUBSTITUE RIEN ──────────────
+#
+# 🔴 DEFAUT MESURE LE 2026-09-02, SUR LE PREMIER RUN REEL DE LA CI (`dn4-39`).
+#    Les elements du tableau sont entre GUILLEMETS DOUBLES — donc un accent
+#    grave y est une SUBSTITUTION DE COMMANDE, ⛔ pas de la typographie. Les six
+#    motifs ecrits ce jour-la en contenaient : le runner a REELLEMENT lance
+#    `idf.py reconfigure`, `HOME`, `dn_ok`, `dn5-3` et `rc` — visible dans le
+#    journal du run 33640427810 :
+#        tools/run_gates.sh: line 172: idf.py: command not found
+#    ⇒ ET LE TEXTE ETAIT VIDE A LEUR PLACE. Cinq motifs sur six ont ete publies
+#      MUTILES, en silence : « elle RELIT  dans  (c'est ce qui garantit que
+#      vaut le trou de LVGL) ». Un motif qui perd ses noms ne dit plus rien —
+#      c'est exactement le « rouge sans son motif » que la regle (4) interdit.
+#
+# ⛔ CE N'EST PAS UN DETAIL DE TYPOGRAPHIE : c'est de l'EXECUTION. Quiconque
+#    ecrira une entree future avec des accents graves — le reflexe naturel, tout
+#    ce depot cite en accents graves — fera tourner du code sans le savoir.
+# ⇒ La garde epingle l'accent grave ET `$(` DANS LE BLOC DE LA TABLE, et refuse
+#   de demarrer. ⚠️ `${...}` reste permis : c'est ainsi que les temoins passent
+#   par HOME plutot que par un chemin absolu.
+# ⚠️ Comme `garde_puits`, elle echoue FERME sur un source illisible, et elle
+#    exclut les lignes de COMMENTAIRE — sans quoi ce paragraphe la ferait rougir.
+garde_table() {
+  local n rc
+  n=$(awk '
+        /^NON_JOUABLES=\(/ { dedans = 1; next }
+        dedans && /^\)/     { dedans = 0 }
+        dedans && $0 !~ /^[[:space:]]*#/ {
+          ligne = $0
+          gsub(/\$\{[^}]*\}/, "", ligne)      # ${VAR} est LEGITIME
+          if (ligne ~ /`/ || ligne ~ /\$\(/) c++
+        }
+        END { print c+0 }
+      ' "$SRC"); rc=$?
+  if [ "$rc" -ge 2 ] || [ ! -r "$SRC" ]; then
+    echo "[KO ] $MOI : source ILLISIBLE ($SRC) — la garde de la table ne peut pas s'exercer." >&2
+    return 1
+  fi
+  if [ "${n:-0}" -ne 0 ]; then
+    echo "[KO ] $MOI : $n ligne(s) de la table NON_JOUABLES portent une SUBSTITUTION." >&2
+    echo "      Un accent grave ou un \$( dans un champ EXECUTE une commande et VIDE" >&2
+    echo "      le texte a sa place — mesure le 2026-09-02, run 33640427810." >&2
+    echo "      ⇒ ecrire les noms EN CLAIR. Seul \${VAR} est permis." >&2
+    return 1
+  fi
+  return 0
+}
+
+garde_table || exit 1
 
 # ── (1) DECOUVERTE PAR GLOB ─────────────────────────────────────────────────
 shopt -s nullglob
