@@ -70,24 +70,42 @@ Please include:
 
   A version displayed on the device itself, and a release tag, are still to come
   (`dn8` — see [`docs/roadmap.md`](docs/roadmap.md)).
-- Your **Windows version**, and your GPU (NVIDIA / AMD / Intel).
+- Your **Windows version**, and the make of your GPU. ⚠️ GPU metrics come from
+  **AMD only** today: NVIDIA is **not implemented** — there is no NVML in the agent
+  — and Intel Arc and integrated GPUs are untested. If yours shows `--`, that is
+  expected rather than a bug, but the make is still worth telling us.
 - Serial console output if you have it, and the steps to reproduce.
 
 Two things are already known, so no need to report them:
 
 - For roughly **40 seconds after a cold start**, touch input can be unreliable.
   The cause is not yet understood.
-- Opening a detail page takes about **335 ms**, where the target was 300 ms.
+- Opening a detail page takes **335.8 ms** on average — n = 80, spread 281.2 to
+  400.9 — where the target was 300 ms.
 
 ## Pull requests
 
 Contributions are welcome. Two practical points:
 
-1. **A CLA is required** on your first pull request. A bot handles it in one click.
-   It exists so the project keeps the ability to relicense later — without it, the
-   license is frozen the moment the first contribution is merged, and a commercial
-   arrangement with a manufacturer would become impossible. You keep the copyright on
-   your work.
+1. **A CLA is required** on your first pull request, and **a bot handles it**: it
+   comments on the pull request with a link, you reply once with the sentence it gives
+   you, and the signature is recorded in `.github/cla-signatures.json`. The document
+   you are agreeing to is [`CLA.md`](CLA.md), and one signature covers every pull
+   request you open afterwards. It exists so the project keeps the ability to relicense
+   later — without it, the license is frozen the moment the first contribution is
+   merged, and a commercial arrangement with a manufacturer would become impossible.
+   You keep the copyright on your work.
+
+   ⚠️ **Two things about that bot are written down rather than glossed over.** The
+   workflow is [`.github/workflows/cla.yml`](.github/workflows/cla.yml) and it pins
+   `contributor-assistant/github-action@v2.6.1`. That action's repository is
+   **archived** — last push 2026-03-23, last release `v2.6.1` of 2024-09-26, measured
+   against the GitHub API on 2026-09-02. It still runs; it is simply no longer
+   maintained, and the version is pinned rather than floating so that what runs is what
+   is written here. And it has never been exercised by an **outside** contributor,
+   because this repository has no fork and a single collaborator, so no such pull
+   request can exist yet: proving it against a real external contributor is carried by
+   `dn8` — see [`docs/roadmap.md`](docs/roadmap.md).
 2. **Match the license of the area you are touching.** Firmware is GPL-3.0-or-later,
    the agent is MIT, documentation is CC-BY-SA-4.0. See
    [`LICENSING.md`](LICENSING.md).

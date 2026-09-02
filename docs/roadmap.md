@@ -33,11 +33,11 @@ they are the engineering log, and this page does not duplicate it.
 | `dn4-40` | Stopping gates from passing on nothing, and anchoring their manifests **by pattern instead of by line number**. | not started |
 | `dn4-41` | The board on its own is enough — the two hardware tiers behave correctly without the ambient sensors. | in progress |
 | `dn4-42` | The display speaks two languages. | in review |
-| `dn5-2` | Making the repository keep the promises it **already published**: licensing, `THIRD-PARTY.md`, the CLA bot that `CONTRIBUTING.md` mentions but that does not exist, and the `CHANGELOG.md` claim about NVIDIA GPUs that the agent code refutes. | not started |
+| `dn7` | The install side: the browser flasher, a packaged agent you do not have to run from source, and **the language chosen at install time** rather than on the panel. | not started |
 | `dn5-3` | Removing every remaining dependency on the author's own machine, and declaring the ones that only *name* it. Four tools under `tools/` reach **outside the clone**, to absolute paths that exist only on the author's machine — so they cannot work from a clone anywhere else. One of them, `tools/bench_lisseur_dn45.py`, already fails outright: `ModuleNotFoundError: No module named 'dn_agent'`. | not started |
 | `dn5-4` | The firmware builds in a **fresh directory**, from a clean clone. | not started |
 | `dn5-5` | The clone states its own size, and everything still missing before a public release has a named owner. | not started |
-| `dn8` | The public face: splitting the long French `README.md` into a short front page plus an engineering log, a version **shown on the device**, a release tag, and the templates needed to receive issues and pull requests. | epic opened, **no stories written yet** |
+| `dn8` | The public face: splitting the long French `README.md` into a short front page plus an engineering log, a version **shown on the device**, a release tag, the templates needed to receive issues and pull requests, and **proving the CLA bot against a real outside contributor** — which cannot happen while the repository is private and has no fork. | epic opened, **no stories written yet** |
 
 ⚠️ **`dn8` is the least defined entry here, and that is stated rather than dressed
 up.** It is an open epic with no stories behind it: when `CONTRIBUTING.md` says a

@@ -1,0 +1,172 @@
+==============================================================================
+dn5-2 / AC2.6 — CAMPAGNE DE MUTANTS DE tools/verif_licences_dn52.py
+==============================================================================
+
+date        : 2026-09-02T14:23:10
+desknode    : 84650d7a81bece84b79a1f77178afe649230eedf (arbre de travail)
+
+BUT : prouver `controle => couvert`, ⛔ PAS seulement `mutant => rouge`.
+      Paye par dn4-43 : « 27 declares, 27 vus rougir » etait VRAI, et
+      HUIT controles sur 38 n'etaient gardes par RIEN. La campagne
+      calcule donc l'UNION des [KO ] et la confronte a la liste des
+      controles du TIR SAIN.
+
+CLE : la ligne entiere `ligne[8:].rstrip()`, ⛔ PAS une tranche de 58.
+      `%-58s` REMPLIT et ne TRONQUE pas — dn5-1 a publie un verdict FAUX
+      pour avoir decoupe a 58 (le numero de ligne qui distinguait deux
+      occurrences tombait). L'identite d'un controle est son LIBELLE,
+      coupe sur la 1re suite de >= 2 espaces, et l'hypothese qui rend ce
+      decoupage valide (aucun libelle >= 58 caracteres) est VERIFIEE.
+
+⛔ Aucun fichier du depot n'est modifie : les mutants sont EN MEMOIRE.
+
+==============================================================================
+TIR SAIN
+==============================================================================
+  rc = 0 · 28 controles (28 OK, 0 KO)
+  libelles en DOUBLE : aucun
+  libelles >= 58 caracteres (qui casseraient la cle) : aucun
+
+   1  la TABLE de LICENSING.md se lit
+   2  la phrase de REPLI de LICENSING.md se lit
+   3  tout chemin ANNONCE existe dans l'arbre
+   4  tout repertoire TRACE est nomme par l'une des 2 listes
+   5  le fichier de licence annonce EXISTE
+   6  le fichier de licence DIT BIEN la licence annoncee
+   7  chaque licence annoncee a une signature connue
+   8  le manifeste `idf_component.yml` se lit
+   9  la table § Firmware de THIRD-PARTY.md se lit
+  10  toute entree du manifeste figure au tableau
+  11  toute ligne du tableau est EPINGLEE, ALIAS ou TRANSITIVE
+  12  les versions EPINGLEES concordent (`==` retire)
+  13  l'ALIAS declare apparie les deux cotes
+  14  *(transitive)* ⟺ ABSENT du manifeste (les 2 sens)
+  15  `managed_components/` hors du clone (fonde la limite)
+  16  tout lien local des fichiers de prose resout
+  17  la section citee PAR SON TITRE existe
+  18  l'outil cite AVEC SON DRAPEAU l'accepte (invoque)
+  19  docs/roadmap.md definit des marqueurs
+  20  tout marqueur cite COMME marqueur est defini
+  21  le COMPTE annonce egale le nombre d'entrees
+  22  la promesse de bot et son workflow disent la meme chose
+  23  chaque action du workflow CLA est EPINGLEE
+  24  le document que le bot fait signer EXISTE
+  25  ⛔ le workflow ne checkoute JAMAIS le code de la PR
+  26  l'ecart residuel du CLA a un PORTEUR reel
+  27  toute ligne qui nomme NVIDIA/NVML porte sa REFUTATION
+  28  THIRD-PARTY.md dit que cette gate le garde
+
+==============================================================================
+MUTANTS
+==============================================================================
+  `--liste-mutants` rc=0 · 28 mutant(s) declare(s)
+  ⚠️ une liste VIDE serait un defaut a elle seule (mesure sur dn4-42) :
+     les mutants sont declares AU NIVEAU MODULE, ⛔ pas dans une
+     fonction qui ne s'execute pas sous `--liste-mutants`.
+
+   1  rc=1  1 KO | retire `docs/` de la TABLE de LICENSING.md (un repertoire trace cesse d'etre couvert)
+            ⇒ tout repertoire TRACE est nomme par l'une des 2 listes
+   2  rc=1  2 KO | annonce dans LICENSING.md un chemin `plans/` QUI N'EXISTE PAS dans l'arbre
+            ⇒ tout chemin ANNONCE existe dans l'arbre
+            ⇒ tout repertoire TRACE est nomme par l'une des 2 listes
+   3  rc=1  1 KO | fait annoncer MIT au chemin `docs/` alors que docs/LICENSE porte la CC-BY-SA
+            ⇒ le fichier de licence DIT BIEN la licence annoncee
+   4  rc=1  1 KO | fait pointer `agent/` vers un fichier de licence ABSENT
+            ⇒ le fichier de licence annonce EXISTE
+   5  rc=1  1 KO | fait diverger la version de `lvgl/lvgl` entre le manifeste et THIRD-PARTY.md
+            ⇒ les versions EPINGLEES concordent (`==` retire)
+   6  rc=1  1 KO | marque *(transitive)* une ligne qui EST epinglee au manifeste (le mensonge dans l'autre sens)
+            ⇒ *(transitive)* ⟺ ABSENT du manifeste (les 2 sens)
+   7  rc=1  1 KO | retire du tableau une ligne PRESENTE au manifeste
+            ⇒ toute entree du manifeste figure au tableau
+   8  rc=1  1 KO | sort `managed_components/` du .gitignore (le FAIT qui fonde la limite declaree tombe)
+            ⇒ `managed_components/` hors du clone (fonde la limite)
+   9  rc=1  1 KO | casse un lien sortant de CONTRIBUTING.md
+            ⇒ tout lien local des fichiers de prose resout
+  10  rc=1  1 KO | cite une section de README.md par un titre INEXISTANT
+            ⇒ la section citee PAR SON TITRE existe
+  11  rc=1  1 KO | cite l'outil du depot avec un drapeau QU'IL N'ACCEPTE PAS
+            ⇒ l'outil cite AVEC SON DRAPEAU l'accepte (invoque)
+  12  rc=1  1 KO | cite un marqueur `dn9-9` absent de docs/roadmap.md
+            ⇒ tout marqueur cite COMME marqueur est defini
+  13  rc=1  1 KO | desaccorde le COMPTE annonce d'entrees de la page d'ecart
+            ⇒ le COMPTE annonce egale le nombre d'entrees
+  14  rc=1  1 KO | met le porteur de l'ecart CLA a `TBD` (⛔ pas au vide : le vide seul ne prouve rien)
+            ⇒ l'ecart residuel du CLA a un PORTEUR reel
+  15  rc=1  1 KO | efface le document a signer que le workflow CLA fait signer
+            ⇒ le document que le bot fait signer EXISTE
+  16  rc=1  1 KO | fait flotter la version de l'action CLA (`@main`)
+            ⇒ chaque action du workflow CLA est EPINGLEE
+  17  rc=1  1 KO | remet une affirmation NVIDIA SANS sa refutation dans un fichier racine
+            ⇒ toute ligne qui nomme NVIDIA/NVML porte sa REFUTATION
+  18  rc=1  1 KO | laisse THIRD-PARTY.md ecrire que RIEN ne le garde alors que cette gate le garde
+            ⇒ THIRD-PARTY.md dit que cette gate le garde
+  19  rc=1  1 KO | rend la TABLE de LICENSING.md ILLISIBLE (toutes ses lignes, ⛔ pas la premiere)
+            ⇒ la TABLE de LICENSING.md se lit
+  20  rc=1  1 KO | efface la phrase de REPLI de LICENSING.md (la 2e liste ne se devine pas)
+            ⇒ la phrase de REPLI de LICENSING.md se lit
+  21  rc=1  1 KO | annonce une licence dont aucune signature n'est connue
+            ⇒ chaque licence annoncee a une signature connue
+  22  rc=1  1 KO | rend le manifeste `idf_component.yml` ILLISIBLE
+            ⇒ le manifeste `idf_component.yml` se lit
+  23  rc=1  1 KO | rend la table § Firmware de THIRD-PARTY.md ILLISIBLE
+            ⇒ la table § Firmware de THIRD-PARTY.md se lit
+  24  rc=1  1 KO | ajoute au tableau une ligne qui n'est NI epinglee, NI alias, NI transitive
+            ⇒ toute ligne du tableau est EPINGLEE, ALIAS ou TRANSITIVE
+  25  rc=1  2 KO | fait diverger la version de l'ALIAS `idf` ⇄ `ESP-IDF`
+            ⇒ les versions EPINGLEES concordent (`==` retire)
+            ⇒ l'ALIAS declare apparie les deux cotes
+  26  rc=1  3 KO | rend la table de docs/roadmap.md ILLISIBLE (plus aucun marqueur defini)
+            ⇒ docs/roadmap.md definit des marqueurs
+            ⇒ tout marqueur cite COMME marqueur est defini
+            ⇒ l'ecart residuel du CLA a un PORTEUR reel
+  27  rc=1  1 KO | retire la promesse de bot de CONTRIBUTING.md alors que le workflow, lui, est bien la
+            ⇒ la promesse de bot et son workflow disent la meme chose
+  28  rc=1  1 KO | fait CHECKOUTER le code de la PR par le workflow `pull_request_target`
+            ⇒ ⛔ le workflow ne checkoute JAMAIS le code de la PR
+
+==============================================================================
+BILAN DE COUVERTURE — ⛔ LE COMPTE DES CONTROLES GARDES PAR RIEN EST
+                         PUBLIE, ⛔ PAS TU
+==============================================================================
+  controles au tir sain              : 28
+  mutants declares                   : 28
+  mutants INAPPLICABLES              : aucun
+  mutants qui ne rougissent RIEN     : aucun
+  controles couverts par >= 1 mutant : 28
+  🔴 CONTROLES GARDES PAR RIEN       : 0
+
+  cle valide (aucun libelle >= 58)   : oui
+
+==============================================================================
+LES LIGNES ENTIERES DU TIR SAIN — ⛔ AUCUNE TRONCATURE
+==============================================================================
+  [OK] la TABLE de LICENSING.md se lit                            5 ligne(s)
+  [OK] la phrase de REPLI de LICENSING.md se lit                  4 chemin(s) + la racine
+  [OK] tout chemin ANNONCE existe dans l'arbre                    9 repertoire(s) annonce(s)
+  [OK] tout repertoire TRACE est nomme par l'une des 2 listes     9 repertoire(s) de 1er niveau
+  [OK] le fichier de licence annonce EXISTE                       5 ligne(s) de table
+  [OK] le fichier de licence DIT BIEN la licence annoncee         ⛔ pas seulement « il est la »
+  [OK] chaque licence annoncee a une signature connue             3 licence(s) distinctes
+  [OK] le manifeste `idf_component.yml` se lit                    10 entree(s)
+  [OK] la table § Firmware de THIRD-PARTY.md se lit               12 ligne(s)
+  [OK] toute entree du manifeste figure au tableau                10 entree(s) confrontee(s)
+  [OK] toute ligne du tableau est EPINGLEE, ALIAS ou TRANSITIVE   9 epinglee(s) + 1 alias + 2 transitive(s) = 12 ligne(s)
+  [OK] les versions EPINGLEES concordent (`==` retire)            10 comparaison(s), alias compris
+  [OK] l'ALIAS declare apparie les deux cotes                     idf⇄ESP-IDF
+  [OK] *(transitive)* ⟺ ABSENT du manifeste (les 2 sens)          2 ligne(s) transitive(s)
+  [OK] `managed_components/` hors du clone (fonde la limite)      gitignore=oui · trace=non
+  [OK] tout lien local des fichiers de prose resout               46 lien(s) local(aux), 10 fichier(s)
+  [OK] la section citee PAR SON TITRE existe                      1 citation(s)
+  [OK] l'outil cite AVEC SON DRAPEAU l'accepte (invoque)          5 couple(s) outil/drapeau
+  [OK] docs/roadmap.md definit des marqueurs                      10 marqueur(s)
+  [OK] tout marqueur cite COMME marqueur est defini               11 citation(s) ancree(s) sur la page
+  [OK] le COMPTE annonce egale le nombre d'entrees                2 compte(s) confronte(s)
+  [OK] la promesse de bot et son workflow disent la meme chose    promesse=oui · workflow(s) CLA=1
+  [OK] chaque action du workflow CLA est EPINGLEE                 contributor-assistant/github-action@v2.6.1
+  [OK] le document que le bot fait signer EXISTE                  CLA.md
+  [OK] ⛔ le workflow ne checkoute JAMAIS le code de la PR         `pull_request_target` tourne avec le jeton du depot de BASE
+  [OK] l'ecart residuel du CLA a un PORTEUR reel                  porteur = `dn8`
+  [OK] toute ligne qui nomme NVIDIA/NVML porte sa REFUTATION      ⛔ la propriete n'est PAS « le mot est absent »
+  [OK] THIRD-PARTY.md dit que cette gate le garde                 il cite tools/verif_licences_dn52.py
+

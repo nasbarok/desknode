@@ -1,0 +1,120 @@
+==============================================================================
+dn5-2 / AC2.5.c — BALAYAGE DES ECARTS DECLARES DU DOSSIER
+==============================================================================
+
+date : 2026-09-02T14:24:58
+
+L'AC dit « AU MINIMUM ». Ce fichier ecrit CE QUI EST RETENU au CHANGELOG **et**
+CE QUI EST ECARTE, AVEC SON MOTIF. ⛔ Un ecart qu'on n'a pas porte et dont on
+ne dit pas pourquoi est un ecart de plus.
+
+SOURCES BALAYEES (⛔ pas seulement la liste de l'AC) :
+  · README.md § ⚠️ PORTABILITE — CE QUI EST COUVERT, ET CE QUI NE L'EST PAS
+  · README.md § ⚠️ CE QUI N'A PAS ETE VERIFIE — ET LE VRAI, ⛔ PAS PLUS
+  · docs/dn5-1-ecart-promesses.md (les 6 instances + la table §3 a porteurs)
+  · docs/roadmap.md (les 10 marqueurs)
+  · sprint-status-desknode.yaml — les lignes `review` et `in-progress`
+
+==============================================================================
+A. RETENU — PORTE AU CHANGELOG
+==============================================================================
+
+1. la promesse NVIDIA tombe, dans les TROIS fichiers qui la portaient
+     ⇒ AC2.5.a. Mesure : 0 `import pynvml`, 4 `atiadlxx`. Le CHANGELOG et
+     THIRD-PARTY.md l'affirmaient, CONTRIBUTING.md la demandait sans dire
+     ce qu'il en fait. La forme retenue est « toute ligne qui le nomme porte
+     sa refutation », ⛔ pas « le mot est absent ».
+
+2. 335,8 ms au lieu de « about 335 ms », avec n=80 et l'etendue
+     ⇒ AC2.5.d. Le dossier porte 335,8 (n=80, 281,2 / 400,9). Le choix EST le
+     chiffre exact : la convention du depot est qu'une affirmation porte un
+     nombre. Porte AUSSI dans CONTRIBUTING.md, qui repetait l'arrondi.
+
+3. l'ecart AC2.1 de `dn4-42` — le selecteur de langue (D21)
+     ⇒ AC2.5.b. Construit, flashe, vu, valide, PUIS RETIRE : le choix va au
+     flasheur navigateur, ⛔ pas a la dalle. Ce qui est livre : anglais par
+     defaut + persistance par geste. Porteur du choix a l'installation :
+     `dn7`, qui a DU ETRE AJOUTE a docs/roadmap.md — il n'y etait pas, et
+     un marqueur que le lecteur ne peut pas resoudre est une demi-promesse.
+
+4. la ~40 s de bus degrade a froid
+     ⇒ Deja present et JUSTE — verifie mot pour mot, il dit bien « the whole I2C
+     bus degrades », ⛔ pas seulement le tactile. Aucune ecriture.
+
+5. LHM optionnel, non redistribue
+     ⇒ Deja present au CHANGELOG et dans THIRD-PARTY.md (MPL-2.0). Aucune
+     ecriture.
+
+6. 🆕 la gate ROUGE publiee — `verif_dossier_dn415.py`, 17 OK / 10 KO
+     ⇒ Instance n°5 de la page d'ecart, porteur `dn4-39`/`dn4-40`. ⇒ RETENUE.
+     Motif : un `CHANGELOG` de release s'adresse a quelqu'un qui telecharge
+     et lance `run_gates.sh` ; il verra le rouge. Le taire serait le defaut
+     de classe. Ecrit AVEC son chiffre et son porteur.
+
+7. 🆕 les 4 outils de `tools/` a chemin personnel
+     ⇒ Instance n°6, porteur `dn5-3`. ⇒ RETENUE, meme motif : celui qui clone ne
+     peut pas executer 4 des 26 gates, et il l'apprendra en essayant.
+
+8. 🆕 le bot CLA n'a jamais ete exerce par un contributeur EXTERNE
+     ⇒ Ecart CREE par cette story : poser le bot cree la question de sa preuve.
+     Ecrit avec sa raison (0 fork / 1 collaborateur) et son porteur `dn8`.
+
+==============================================================================
+B. ECARTE — ET VOICI POURQUOI
+==============================================================================
+
+1. le demarrage a froid sur un bus SANS AUCUN capteur (README § non verifie)
+     ⇒ ⛔ ECARTE. Ce n'est pas une promesse publiee que l'arbre refute : le README
+     dit deja le vrai, avec son chiffre, et dit explicitement « ni non teste,
+     ni valide ». Le CHANGELOG des `Known issues` liste ce qui GENE UN
+     UTILISATEUR ; un temoin qualifiant de developpement n'en est pas un.
+     ⇒ il reste ou il est le plus utile : au README, dans son contexte.
+
+2. « eprouve sur UNE carte, jamais sur un exemplaire monte par un autre »
+     ⇒ ⛔ ECARTE du CHANGELOG. C'est une limite de PORTEE du projet entier, deja
+     ecrite au README en tete de section. La repeter en `Known issues` la
+     diluerait parmi des defauts ponctuels.
+
+3. le mot anglais est-il le BON mot (README, 🟡)
+     ⇒ ⛔ ECARTE. Jugement a l'oeil, ⛔ pas un defaut mesure. Rien a porter.
+
+4. `dn5-4` (build a froid) et `dn5-5` (poids du clone)
+     ⇒ ⛔ ECARTES. Ils sont **NON MESURES**, et la page d'ecart le dit ainsi.
+     ⛔ Ecrire au CHANGELOG « le depot ne compile pas a froid » serait une
+     affirmation que RIEN ne soutient — exactement le defaut que la story
+     solde, dans l'autre sens. Ils restent a `docs/roadmap.md`, ou ils sont
+     annonces comme du travail A VENIR, ⛔ pas comme un constat.
+
+5. la « version affichee sur la dalle » (instance n°3)
+     ⇒ ⛔ ECARTE : ✅ deja SOLDEE par `dn5-1` — `CONTRIBUTING.md` demande le SHA du
+     bandeau serie et dit comment le lire. Ce qui reste (une vraie version a
+     l'ecran + le tag) est deja porte par `dn8` a docs/roadmap.md.
+
+6. le soak de `dn4-5` mort depuis le 2026-08-26
+     ⇒ ⛔ ECARTE du CHANGELOG. C'est un constat d'OUTILLAGE INTERNE (le lanceur ne
+     peut pas armer `--journal-soak`), invisible pour qui utilise DeskNode.
+     Il est deja ecrit au tracker et dans la page d'ecart §4.
+
+==============================================================================
+C. CE QUE LE BALAYAGE A TROUVE ET QUE PERSONNE N'AVAIT NOMME
+==============================================================================
+
+🔴 `THIRD-PARTY.md:36` portait le MEME mensonge NVIDIA que le `CHANGELOG`.
+   Le dossier nommait DEUX porteurs du defaut (le CHANGELOG et le dossier) ;
+   il y en avait TROIS. Arbitrage owner du 2026-09-02 : traite avec AC2.5,
+   meme defaut, meme correctif, meme commit.
+
+🔴 `CONTRIBUTING.md:73` demandait « your GPU (NVIDIA / AMD / Intel) » sans
+   dire ce que l'agent en fait. ⛔ Ce n'etait pas une PROMESSE — c'est une
+   QUESTION posee au rapporteur de bug — mais un lecteur dont la carte affiche
+   `--` ne pouvait pas savoir si c'etait un bug. La ligne dit desormais que
+   NVIDIA n'est pas implemente. ⇒ ET CA A UNE CONSEQUENCE D'INSTRUMENT :
+   la propriete « toute ligne qui nomme NVIDIA porte sa refutation » tient
+   maintenant SANS AUCUNE EXEMPTION. Sans cette ecriture, il aurait fallu
+   ouvrir une porte de sortie dans la gate — et une porte de sortie est un
+   endroit ou le controle ne controle plus.
+
+🔴 `dn7` n'existait pas dans `docs/roadmap.md` alors que le CHANGELOG allait
+   le citer. Trouve par la RELECTURE, ⛔ pas par la gate : le controle (c4)
+   ne voit que les marqueurs qui RENVOIENT a la page. La limite est desormais
+   ecrite dans l'en-tete de la gate.

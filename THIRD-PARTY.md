@@ -33,8 +33,10 @@ direction only: Apache-2.0 code may be combined into a GPLv3 work, not the rever
 
 ## Windows agent
 
-The agent (MIT) reads system metrics through `psutil`, NVIDIA NVML and AMD
-`atiadlxx.dll`.
+The agent (MIT) reads system metrics through `psutil` and AMD `atiadlxx.dll`.
+**NVIDIA NVML is not implemented** — the agent never links against it and `pynvml`
+is not a dependency. This line said the opposite until 2026-09-02; it was wrong, and
+`agent/dn_agent.py` refuted it in writing at the time it was published.
 
 **LibreHardwareMonitor is optional and is not redistributed here.** When present, the
 agent reads values it exposes; without it, CPU temperature and fan RPM simply show
@@ -49,5 +51,17 @@ The install page uses [ESP Web Tools](https://github.com/esphome/esp-web-tools)
 
 ## Keeping this file honest
 
-`managed_components/` is ignored, so nothing enforces this table automatically.
-**Re-check it whenever `idf_component.yml` changes.**
+This table is checked by `tools/verif_licences_dn52.py`, run by
+`tools/run_gates.sh`. The check goes **both ways**: every entry pinned in
+`firmware/desknode/main/idf_component.yml` must appear here with the same version
+(the manifest's `==` is stripped before comparing), and every row here must be either
+pinned in the manifest, the declared alias for it (`idf` ⇄ `ESP-IDF`), or marked
+*(transitive)* **and absent from the manifest**. A row marked transitive that turns up
+in the manifest fails too — it would be pinned, so it would no longer be transitive.
+
+⛔ **What the check cannot do, said here rather than left silent: it does not verify
+the License column.** The only source for those is `managed_components/`, which is
+git-ignored and therefore **absent from any clone**. The gate deliberately does not
+read it even when it happens to be present, because a check that passes on the
+author's machine and nowhere else is worse than no check at all. **Re-check the
+License column by hand whenever `idf_component.yml` changes.**

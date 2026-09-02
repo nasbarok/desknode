@@ -9,11 +9,41 @@ repository.
 | `firmware/` — the ESP32-S3 firmware (C/C++) | **GPL-3.0-or-later** | [`LICENSE`](LICENSE) |
 | `agent/` — the Windows telemetry agent (Python) | **MIT** | [`agent/LICENSE`](agent/LICENSE) |
 | `docs/` — documentation, wiring photos, schematics, enclosure plans | **CC-BY-SA-4.0** | [`docs/LICENSE`](docs/LICENSE) |
+| `hardware/` — the measurement log of the board: display, I²C sensors, PC link | **CC-BY-SA-4.0** | [`docs/LICENSE`](docs/LICENSE) |
+| `assets/` — mockups and other visuals | **CC-BY-SA-4.0** | [`docs/LICENSE`](docs/LICENSE) |
 
-Anything not covered above (`tools/`, `tests/`, `mesures/`, `hardware/`, and the
+Anything not covered above (`tools/`, `tests/`, `mesures/`, `.github/`, and the
 repository root) follows the **GPL-3.0-or-later** of the root `LICENSE`.
 
+**Every tracked top-level directory is named by one of those two lists**, and that is
+checked mechanically by `tools/verif_licences_dn52.py` — in both directions. A path
+announced here that does not exist fails; a directory that exists in the tree without
+being named here fails too. The second direction is the one that was broken: `assets/`
+was in neither list until 2026-09-02.
+
 Copyright © 2026 Nasbarok.
+
+## Why `hardware/` and `assets/` are CC-BY-SA-4.0 — changed 2026-09-02
+
+Until 2026-09-02 this file put `hardware/` under the GPL fallback and did not mention
+`assets/` at all. Both were wrong, in the same direction and for the same reason.
+
+- `hardware/` holds three markdown files, 1.4 MB together: the measurement log of the
+  display, of the I²C sensors and of the PC link. That is documentation — the same
+  nature as `docs/`, which this table already puts under CC-BY-SA-4.0. Filing it under
+  a software copyleft claimed something its content does not support.
+- `assets/` holds one file, a mockup image. It was covered by **neither** list, and
+  silence is not coverage. Filing an image under the GPL would have repeated, on a new
+  path, the very mistake being corrected on `hardware/`.
+
+**This is a correction, not a relicensing — and the difference is a matter of fact and
+of date.** Measured on 2026-09-02: this repository is `private`, it has **0 forks**,
+`network_count` **0**, **one** collaborator (its author) and **no tag**. Nobody has
+ever received this file under its previous terms, so no third party's rights are
+touched by the change. Once the repository is public and tagged (`dn8` — see
+[`docs/roadmap.md`](docs/roadmap.md)), the same edit would be a relicensing, and it
+would need the agreement of everyone who had contributed in between. **That is exactly
+what the CLA in [`CONTRIBUTING.md`](CONTRIBUTING.md) exists to keep possible.**
 
 ## What this means for you
 
@@ -23,8 +53,9 @@ Copyright © 2026 Nasbarok.
   too. That is the whole point: the next person gets what you got.
 - **You want to reuse the Python agent elsewhere.** It is MIT. Take it, no strings.
   That part is deliberately permissive so it can be plugged into anything.
-- **You want to reuse the photos, wiring diagrams or enclosure plans.** CC-BY-SA-4.0:
-  credit the source and share your version under the same terms.
+- **You want to reuse the documentation, the measurement log, the photos, the wiring
+  diagrams, the enclosure plans or the mockups** — `docs/`, `hardware/`, `assets/`.
+  CC-BY-SA-4.0: credit the source and share your version under the same terms.
 - **You are a company and none of this works for you.** Get in touch — a different
   arrangement is possible. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 

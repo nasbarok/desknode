@@ -1,0 +1,251 @@
+# T0 — ETAT DES PROMESSES, REJOUE PAR LE DEV (dn5-2)
+# date : 2026-09-02T14:03:21
+# desknode HEAD : 84650d7a81bece84b79a1f77178afe649230eedf
+# ⛔ TOUT COMPTAGE PASSE PAR subprocess — pas de `| wc -l` (piege de mesure n°10 de la story)
+
+## §2 — REPERTOIRES TRACES DE PREMIER NIVEAU
+fichiers traces au total : 492
+repertoires de 1er niveau : 8  -> agent assets docs firmware hardware mesures tests tools
+  agent           3 fichier(s)
+  assets          1 fichier(s)
+  docs           25 fichier(s)
+  firmware       64 fichier(s)
+  hardware        3 fichier(s)
+  mesures       330 fichier(s)
+  tests           1 fichier(s)
+  tools          58 fichier(s)
+fichiers a la RACINE : 7 -> .gitignore CHANGELOG.md CONTRIBUTING.md LICENSE LICENSING.md README.md THIRD-PARTY.md
+
+### les DEUX listes de LICENSING.md
+liste 1 — la TABLE : 3 ligne(s)
+    firmware/      -> GPL-3.0-or-later
+    agent/         -> MIT
+    docs/          -> CC-BY-SA-4.0
+liste 2 — le REPLI : 4 chemin(s) nomme(s) -> tools/ tests/ mesures/ hardware/  (+ 'the repository root')
+
+### CONFRONTATION arbre <-> LICENSING.md
+  [OK ] agent        TABLE
+  [KO ] assets       *** DANS AUCUNE DES DEUX LISTES ***
+  [OK ] docs         TABLE
+  [OK ] firmware     TABLE
+  [OK ] hardware     REPLI
+  [OK ] mesures      REPLI
+  [OK ] tests        REPLI
+  [OK ] tools        REPLI
+=> repertoires ORPHELINS : 1 -> assets
+      contenu : assets/mockups/living-pcb-v0.png
+=> chemins ANNONCES mais ABSENTS de l'arbre : 0 -> (aucun)
+
+### les FICHIERS de licence annonces par la table
+  [OK ] firmware/      -> LICENSE          PRESENT (675 l.) 1re ligne: GNU GENERAL PUBLIC LICENSE
+  [OK ] agent/         -> agent/LICENSE    PRESENT (22 l.) 1re ligne: MIT License
+  [OK ] docs/          -> docs/LICENSE     PRESENT (428 l.) 1re ligne: Attribution-ShareAlike 4.0 International
+
+## §5 — idf_component.yml  <->  THIRD-PARTY.md
+manifeste : 10 entree(s)
+   idf                                        ~5.5.0
+   espressif/esp_lcd_st7701                   ==2.0.2
+   espressif/esp_lcd_panel_io_additions       ==1.0.1
+   espressif/esp_io_expander_tca9554          ==2.0.3
+   lvgl/lvgl                                  ==9.5.0
+   espressif/esp_lvgl_port                    ==2.9.0
+   espressif/esp_lcd_touch_gt911              ==1.2.1
+   espressif/esp_lcd_touch                    ==1.2.1
+   k0i05/esp_bme680                           ==1.2.7
+   k0i05/esp_type_utils                       ==1.2.7
+
+THIRD-PARTY.md § Firmware : 12 ligne(s) de table
+   ESP-IDF                                    `~5.5.0`         Apache-2.0
+   `espressif/esp_lcd_st7701`                 `2.0.2`          Apache-2.0
+   `espressif/esp_lcd_panel_io_additions`     `1.0.1`          Apache-2.0
+   `espressif/esp_io_expander_tca9554`        `2.0.3`          Apache-2.0
+   `espressif/esp_io_expander`                *(transitive)*   Apache-2.0
+   `espressif/esp_lvgl_port`                  `2.9.0`          Apache-2.0
+   `espressif/esp_lcd_touch`                  `1.2.1`          Apache-2.0
+   `espressif/esp_lcd_touch_gt911`            `1.2.1`          Apache-2.0
+   `espressif/cmake_utilities`                *(transitive)*   Apache-2.0
+   `lvgl/lvgl`                                `9.5.0`          MIT
+   `k0i05/esp_bme680`                         `1.2.7`          MIT
+   `k0i05/esp_type_utils`                     `1.2.7`          MIT
+
+### LES TROIS CLASSES
+epingle  : 9
+   [OK ] espressif/esp_lcd_st7701                   table=2.0.2      manifeste===2.0.2    (== retire -> 2.0.2)
+   [OK ] espressif/esp_lcd_panel_io_additions       table=1.0.1      manifeste===1.0.1    (== retire -> 1.0.1)
+   [OK ] espressif/esp_io_expander_tca9554          table=2.0.3      manifeste===2.0.3    (== retire -> 2.0.3)
+   [OK ] espressif/esp_lvgl_port                    table=2.9.0      manifeste===2.9.0    (== retire -> 2.9.0)
+   [OK ] espressif/esp_lcd_touch                    table=1.2.1      manifeste===1.2.1    (== retire -> 1.2.1)
+   [OK ] espressif/esp_lcd_touch_gt911              table=1.2.1      manifeste===1.2.1    (== retire -> 1.2.1)
+   [OK ] lvgl/lvgl                                  table=9.5.0      manifeste===9.5.0    (== retire -> 9.5.0)
+   [OK ] k0i05/esp_bme680                           table=1.2.7      manifeste===1.2.7    (== retire -> 1.2.7)
+   [OK ] k0i05/esp_type_utils                       table=1.2.7      manifeste===1.2.7    (== retire -> 1.2.7)
+alias    : 1
+   [--] ESP-IDF                                    table=~5.5.0     <-> manifeste cle `idf` = ~5.5.0
+transitif: 2
+   [OK ] espressif/esp_io_expander                  table=(transitive)   au manifeste ? NON (coherent)
+   [OK ] espressif/cmake_utilities                  table=(transitive)   au manifeste ? NON (coherent)
+non classe: 0 -> []
+
+### SENS INVERSE : manifeste -> table
+entrees du manifeste ABSENTES de la table : 0 -> (aucune)
+
+=> 9 + 1 alias = 10 apparies ; 12 - 10 = 2 transitifs. L'ECART DE 2 EST LEGITIME.
+
+## §10 — LE CHANGELOG, CONFRONTE LIGNE A LIGNE
+  [PRESENT] 335,8 ms (critere n°3)                   1 occurrence(s)
+        l.32   - Opening a detail page takes about **335 ms** against a 300 ms target. Not perceptible
+  [PRESENT] ~40 s de bus degrade a froid             1 occurrence(s)
+        l.30   - Touch input can be unreliable for roughly **40 s after a cold start** — the whole
+  [PRESENT] agent Windows seul / Intel Arc           1 occurrence(s)
+        l.34   - The agent runs on **Windows only**. NVIDIA and AMD GPUs are covered; **Intel Arc and
+  [PRESENT] LHM optionnel                            1 occurrence(s)
+        l.36   - CPU temperature and fan RPM require **LibreHardwareMonitor**, installed separately
+  [ABSENT ] ecart AC2.1 de dn4-42 (D21, langue)      0 occurrence(s)
+  [PRESENT] promesse NVIDIA                          1 occurrence(s)
+        l.34   - The agent runs on **Windows only**. NVIDIA and AMD GPUs are covered; **Intel Arc and
+
+### le chiffre 335 : ce que le dossier porte
+  occurrences de '335,8' dans hardware/ : 5
+    hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md:4594:| `nav ab 40` | *(pas de T0)* | **n=80, moy 335,8 ms** (281,2 / 400,9) | ✅ **pas de régression** |
+    hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md:4597:`dn3-1` **321,8** · `dn3-2` **349,1** · `dn4-1` **335,0** · `dn4-6` **333,8**. À **335,8**, c'est
+    hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md:7022:| **fond POSÉ** | 🔴 **335,8 ms** (289,1 / 400,8) | **253,0 ms** (213,6 / 310,1) |
+    hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md:7054:| **t1** — produit | 202 | 42 | **4,8095** | 335,8 ms |
+    hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md:7231:  deux passes capturées — 335,8 et 336,7 — contre les **335,6 ms** de T0) **CROISE DEUX BINAIRES** — T0 est d
+
+### LE MENSONGE NVIDIA — combien de fichiers RACINE le portent
+  CHANGELOG.md       1 ligne(s)
+      l.34   - The agent runs on **Windows only**. NVIDIA and AMD GPUs are covered; **Intel Arc and
+  CONTRIBUTING.md    2 ligne(s)
+      l.73   - Your **Windows version**, and your GPU (NVIDIA / AMD / Intel).
+      l.121  a `CHANGELOG.md` claiming NVIDIA support the code refutes. The full list is in
+  LICENSING.md       0 ligne(s)
+  README.md          2 ligne(s)
+      l.135  | **GPU NVIDIA** | 🔴 **NON IMPLÉMENTÉ.** ⛔ Il n'y a **aucun NVML** dans l'agent (`pynvml` n'est même pas installé). Un dossier de ce dépôt a écrit *« 
+      l.1435 🔴 **NVML est INAPPLICABLE sur cette tour** : `Win32_VideoController` rend **un seul**
+  THIRD-PARTY.md     1 ligne(s)
+      l.36   The agent (MIT) reads system metrics through `psutil`, NVIDIA NVML and AMD
+
+### CE QUE L'AGENT FAIT REELLEMENT
+  'import pynvml'   : 0
+  'pynvml'          : 1
+  'atiadlxx'        : 4
+      l.104  🔴 LE CADRAGE ANNONÇAIT NVML : INAPPLICABLE, la tour est une AMD Radeon
+      l.106  `pynvml` n'est même pas installé.
+
+### LA PAGE D'ECART ET LE COMPTE ANNONCE
+  docs/dn5-1-ecart-promesses.md : 6 ligne(s) numerotee(s) -> ['1', '2', '3', '4', '5', '6']
+  CONTRIBUTING.md annonce : six
+
+### CE QUE tests/ CONTIENT
+  tests/README.md (2802 o)
+## T0 — EXPOSITION DU DEPOT (ce qui FONDE AC2.1.b, ⛔ pas un decor)
+gh repo view -> rc=1
+Unknown JSON field: "forksCount"
+Available fields:
+  assignableUsers
+  codeOfConduct
+  contactLinks
+  createdAt
+  defaultBranchRef
+  deleteBranchOnMerge
+  description
+  diskUsage
+  forkCount
+  fundingLinks
+  hasDiscussionsEnabled
+  hasIssuesEnabled
+  hasProjectsEnabled
+  hasWikiEnabled
+  homepageUrl
+  id
+  isArchived
+  isBlankIssuesEnabled
+  isEmpty
+  isFork
+  isInOrganization
+  isMirror
+  isPrivate
+  isSecurityPolicyEnabled
+  isTemplate
+  isUserConfigurationRepository
+  issueTemplates
+  issues
+  labels
+  languages
+  latestRelease
+  licenseInfo
+  mentionableUsers
+  mergeCommitAllowed
+  milestones
+  mirrorUrl
+  name
+  nameWithOwner
+  openGraphImageUrl
+  owner
+  parent
+  primaryLanguage
+  projects
+  pullRequestTemplates
+  pullRequests
+  pushedAt
+  rebaseMergeAllowed
+  repositoryTopics
+  securityPolicyUrl
+  squashMergeAllowed
+  sshUrl
+  stargazerCount
+  templateRepository
+  updatedAt
+  url
+  usesCustomOpenGraphImage
+  viewerCanAdminister
+  viewerDefaultCommitEmail
+  viewerDefaultMergeMethod
+  viewerHasStarred
+  viewerPermission
+  viewerPossibleCommitEmails
+  viewerSubscription
+  visibility
+  watchers
+gh api repos -> rc=0
+{"archived":false,"created_at":"2026-08-31T16:12:38Z","forks_count":0,"network_count":0,"pushed_at":"2026-09-02T09:52:00Z","subscribers_count":0,"visibility":"private"}
+collaborateurs -> rc=0
+[{"login":"nasbarok","permissions":true}]
+git ls-remote --tags origin -> 0 ligne(s) : ''
+git ls-remote origin :
+   84650d7a81bece84b79a1f77178afe649230eedf	HEAD
+   84650d7a81bece84b79a1f77178afe649230eedf	refs/heads/dn4-5-le-module-vit-tout-seul
+   84650d7a81bece84b79a1f77178afe649230eedf	refs/heads/main
+git ls-files .github -> 0 fichier(s)
+
+## T0 — ECARTS AVEC LE CADRAGE DE LA STORY
+
+⚠️ `gh repo view --json forksCount` N'EXISTE PAS (le champ s'appelle `forkCount`).
+   La mesure a ete reprise par `gh api repos/nasbarok/desknode` — meme resultat.
+
+Tout le reste du cadrage est REJOUE ET CONFIRME, sans un seul ecart :
+  - 8 repertoires traces de 1er niveau, `assets` orphelin des DEUX listes  ..... CONFIRME
+  - 3 fichiers de licence presents, et chacun dit bien la licence annoncee  ..... CONFIRME
+  - 0 chemin annonce mais absent (le sens qu'AC2.2 ECRIT est DEJA VERT)     ..... CONFIRME
+  - manifeste 10 entrees (9 + `idf`) / table 12 lignes, 3 classes           ..... CONFIRME
+  - les 9 epingles concordent apres retrait de `==` ; alias `idf`/`ESP-IDF` ..... CONFIRME
+  - les 2 transitifs sont ABSENTS du manifeste (equivalence tenue)          ..... CONFIRME
+  - CHANGELOG : 1 FAUX (NVIDIA) · 1 ABSENT (D21/dn4-42) · 1 ARRONDI (335)   ..... CONFIRME
+  - page d'ecart = 6 entrees numerotees ; CONTRIBUTING annonce « six »      ..... CONFIRME
+  - PRIVATE · 0 fork · network 0 · 1 collaborateur · 0 tag · 0 `.github/`   ..... CONFIRME
+  - gates AVANT : 26 gates, 24 VERTE / 1 ROUGE / 1 NON-JOUABLE              ..... CONFIRME
+    le rouge est `verif_dossier_dn415.py` a 17 OK / 10 KO — IL PRE-EXISTE
+
+🔴 UN CONSTAT QUE LE CADRAGE N'AVAIT PAS NOMME, ET IL COMPTE POUR AC2.5 :
+   le mensonge NVIDIA est dans DEUX fichiers racine, et le 3e le REFUTE :
+     CHANGELOG.md l.34    « NVIDIA and AMD GPUs are covered »        -> FAUX
+     THIRD-PARTY.md l.36  « psutil, NVIDIA NVML and AMD atiadlxx »   -> FAUX
+     README.md l.135      « GPU NVIDIA — 🔴 NON IMPLEMENTE »          -> VRAI, refutation portee
+     CONTRIBUTING.md l.73 « your GPU (NVIDIA / AMD / Intel) »        -> ⛔ PAS une promesse :
+        c'est une QUESTION posee au rapporteur de bug, pas une capacite affirmee.
+        ⇒ le controle (c) doit distinguer PROMESSE et MENTION, sinon il rougit sur du JUSTE.
+     CONTRIBUTING.md l.121 « a CHANGELOG.md claiming NVIDIA support the code refutes »
+        -> ⛔ PAS une promesse non plus : c'est la REFUTATION elle-meme.
+
+⇒ CONFIRMATION MESUREE de la forme d'AC2.5.a : la propriete N'EST PAS « le mot NVIDIA
+  est absent » — 2 des 4 fichiers qui le nomment le nomment A BON DROIT.

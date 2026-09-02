@@ -1,0 +1,66 @@
+# ═════════════════════════════════════════════════════════════════════════════
+# DeskNode — signature du CLA sur la première pull request.
+#
+#   `CONTRIBUTING.md` promet depuis le 2026-08-31 qu'« un bot s'en occupe en un
+#   clic ». Ce fichier est l'artefact de cette promesse : jusqu'au 2026-09-02,
+#   il n'y avait AUCUN fichier sous `.github/`, et la promesse était creuse.
+#
+# ── CE QUI EST MESURÉ, ET QUI VAUT D'ÊTRE ÉCRIT ──────────────────────────────
+#
+# ⚠️ `contributor-assistant/github-action` est ARCHIVÉ (dernier push 2026-03-23,
+#    dernière release `v2.6.1` du 2024-09-26 — relevé à l'API GitHub le
+#    2026-09-02). Une Action d'un dépôt archivé s'exécute encore ; elle n'est
+#    simplement plus corrigée. ⇒ la version est ÉPINGLÉE, ⛔ jamais `@v2`
+#    flottant : sur un dépôt archivé un tag mobile ne bougera plus, mais
+#    l'épingle DIT ce qu'on exécute.
+#
+# ⚠️ Le magasin de signatures est DANS CE DÉPÔT (`path-to-signatures`), ce qui
+#    permet au `GITHUB_TOKEN` de suffire : ⛔ aucun `PERSONAL_ACCESS_TOKEN` à
+#    créer. Un magasin dans un AUTRE dépôt en exigerait un.
+#
+# 🔴 `pull_request_target` s'exécute avec le jeton du dépôt de BASE — c'est ce
+#    qui lui permet d'écrire le magasin depuis une PR de fork. C'est aussi une
+#    surface connue : ⛔ CE WORKFLOW NE CHECKOUTE JAMAIS LE CODE DE LA PR.
+#    Il n'y a délibérément aucun `actions/checkout` ici.
+#
+# ⛔ CE FICHIER N'EST PAS DE LA CI. Faire tourner `tools/run_gates.sh` sans que
+#    personne y pense est `dn4-39` ; les gabarits d'issues et de PR sont `dn8`.
+#    Voir `docs/roadmap.md`.
+# ═════════════════════════════════════════════════════════════════════════════
+name: CLA
+
+on:
+  # Le commentaire de signature du contributeur.
+  issue_comment:
+    types: [created]
+  # ⚠️ `pull_request_target`, ⛔ pas `pull_request` : sur une PR de fork,
+  #    `pull_request` n'aurait pas le droit d'écrire le magasin.
+  pull_request_target:
+    types: [opened, closed, synchronize]
+
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+  statuses: write
+
+jobs:
+  cla:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Signature du CLA"
+        # ⛔ VERSION ÉPINGLÉE — voir l'en-tête : le dépôt de l'action est archivé.
+        uses: contributor-assistant/github-action@v2.6.1
+        if: >-
+          (github.event.comment.body == 'I have read the CLA Document and I hereby sign the CLA')
+          || github.event_name == 'pull_request_target'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Le magasin vit dans ce dépôt ⇒ le GITHUB_TOKEN suffit.
+          path-to-signatures: '.github/cla-signatures.json'
+          # 🔴 Le document DOIT exister : un bot qui fait signer un document
+          #    absent est exactement la promesse creuse que `dn5-2` solde.
+          path-to-document: 'https://github.com/nasbarok/desknode/blob/main/CLA.md'
+          branch: 'main'
+          allowlist: 'dependabot[bot]'
