@@ -371,10 +371,10 @@ C. DEPOT cockpit — ARCHIVES : comptees, ⛔ non arbitrees
 
   _bmad-output/implementation-artifacts/dn4-16-arbitrage-ledger.md  (5 occ.)
      l.79     [vl53l0x     ] x1  les 28 `VL53L0X` légitimes. ⚠️ **Écart de cadrage assumé et déclaré**, ⛔ pas un glissement.
-     l.243    [vl53l0x     ] x1  | **occurrences réellement neuves** | **5** citations `VL53L0X` écrites par `dn4-16`, **arbitrées `HISTORIQUE`** ; et **
-     l.307    [340..350    ] x1  | *« cas d'école de `dn4-16` : re-localiser par MOTIF »* | **citation de méthode**, dans l'entrée des coordonnées `y = 3
-     l.617    [vl53l0x     ] x1  | 5138 | `code review of dn4-17-l-agent-vit-sur-la-tour-` | 🟢 | [Note à dn4-15][MESURÉ, ⛔ pas affirmé — 2026-08-26] dn4-
-     l.636    [vl53l0x     ] x1  | 5524 | `dn4-15 (2026-08-30) — le dossier ne ment plus ` | 🟢 | [Méthode][MESURÉ, ⛔ pas craint — VAUT POUR TOUT LE DÉPÔT
+     l.255    [vl53l0x     ] x1  | **occurrences réellement neuves** | **5** citations `VL53L0X` écrites par `dn4-16`, **arbitrées `HISTORIQUE`** ; et **
+     l.319    [340..350    ] x1  | *« cas d'école de `dn4-16` : re-localiser par MOTIF »* | **citation de méthode**, dans l'entrée des coordonnées `y = 3
+     l.634    [vl53l0x     ] x1  | 421de9e4 | `code review of dn4-17-l-agent-vit-sur-la-tour-` | 🟢 | [Note à dn4-15][MESURÉ, ⛔ pas affirmé — 2026-08-26] 
+     l.653    [vl53l0x     ] x1  | 54148742 | `dn4-15 (2026-08-30) — le dossier ne ment plus ` | 🟢 | [Méthode][MESURÉ, ⛔ pas craint — VAUT POUR TOUT LE D
 
   _bmad-output/implementation-artifacts/dn4-16-le-ledger-dit-ce-qui-reste-et-a-qui.md  (4 occ.)
      l.225    [vl53l0x     ] x1  | 🔴 **Un compte de `grep` mesure LE MOT, ⛔ pas LE DÉFAUT** — 28 `VL53L0X` sur 29 étaient légitimes | `dn4-15` / ledger `

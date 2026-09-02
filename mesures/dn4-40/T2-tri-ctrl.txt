@@ -5,15 +5,15 @@ critere : LEGITIME = le chemin d'echec SORT EN AMONT ;
           TROU     = un arbre defaillant ATTEINT le site.
 ⛔ aucune ecriture dans l'arbre reel — `git archive HEAD` + copie.
 
-  [OK] LEGITIME verif_ledger_dn416.py:796            PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant (rc=4)
+  [OK] LEGITIME verif_ledger_dn416.py:841            PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant (rc=4)
            mutant : le ledger retire du cockpit ⇒ prerequis absent, rc=4, sortie EN AMONT
-  [OK] LEGITIME verif_ledger_dn416.py:797            PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant (rc=4)
+  [OK] LEGITIME verif_ledger_dn416.py:842            PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant (rc=4)
            mutant : idem — meme garde amont
-  [OK] LEGITIME verif_ledger_dn416.py:798            PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant (rc=4)
+  [OK] LEGITIME verif_ledger_dn416.py:843            PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant (rc=4)
            mutant : idem
-  [OK] LEGITIME verif_ledger_dn416.py:817            PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant (rc=1)
+  [OK] LEGITIME verif_ledger_dn416.py:862            PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant (rc=1)
            mutant : le ledger rendu NON-UTF-8 ⇒ ctrl(False) puis ARRET
-  [OK] LEGITIME verif_ledger_dn416.py:824            PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant (rc=1)
+  [OK] LEGITIME verif_ledger_dn416.py:869            PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant (rc=1)
            mutant : le tracker rendu NON-UTF-8 ⇒ ctrl(False) puis ARRET
   [OK] LEGITIME verif_dossier_dn415.py:977           PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant (rc=4)
            mutant : `--cockpit` vers un chemin inexistant ⇒ la branche `absent` est prise
@@ -48,7 +48,7 @@ critere : LEGITIME = le chemin d'echec SORT EN AMONT ;
    verif_dossier_dn415.py             50     30     23     27
    verif_hist_dn413.py                70     56     53     17
    verif_journal_soak_dn45.py         25     26     24      1
-   verif_ledger_dn416.py              41     31     31     10
+   verif_ledger_dn416.py              42     32     32     10
    verif_lissage_dn45.py              23     21     21      2
    verif_paliers_dn441.py             33     42     30      3
    verif_verrou_lvgl_dn413.py         16     60     10      6

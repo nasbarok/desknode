@@ -1,0 +1,21 @@
+==============================================================================
+dn4-40 — UNE ENTREE ORDINAIRE, ET CE QU'ELLE FAIT AU §9
+==============================================================================
+⛔ aucune ecriture dans le cockpit vivant : copie jetable a chaque cas.
+
+── f5e9d69 (AVANT — §9 ancre par NUMERO DE LIGNE)
+   manifeste d'accord AVANT insertion : rc=0  BILAN : 24 OK, 0 KO
+   APRES insertion d'UNE entree ordinaire :
+      rc=1  ⛔ 2 ECHEC(S) sur 24 controles.
+      lignes de manifeste DIVERGENTES : 267
+      [KO ] le manifeste couvre 100 % des entrees ouvertes (AC2.7)         ⛔ 267 ligne(s) de tableau pour 268 entree(s) ouverte(s)
+      [KO ] chaque ligne du manifeste REPRODUIT ce que le script produit   ⛔ 267 ligne(s) DIVERGENTE(S) — la 1re : | 144 | `dev-story dn4-12-le-compteur-ne-
+
+── HEAD (APRES — §9 ancre par IDENTIFIANT DERIVE DU CONTENU)
+   manifeste d'accord AVANT insertion : rc=0  BILAN : 32 OK, 0 KO
+   APRES insertion d'UNE entree ordinaire :
+      rc=1  ⛔ 2 ECHEC(S) sur 32 controles.
+      lignes de manifeste DIVERGENTES : 0
+      [KO ] le manifeste couvre 100 % des entrees ouvertes (AC2.7)         ⛔ 1 entree(s) SANS ligne (2dbc06e4) · 0 ligne(s) SANS entree (—)
+      [KO ] chaque ligne du manifeste REPRODUIT ce que le script produit   ⛔ 0 ligne(s) DIVERGENTE(S) — la 1re : (appariement incomplet : 1 absente(s), 0 su
+

@@ -32,6 +32,7 @@ depot cockpit : /home/nasbarok/projects/compagnon_project
      DeskNode OUVERTES   :  267   <= LE PERIMETRE DE CETTE GATE
      KidSat (hors champ) :  174
      marqueurs (regle 4) : ⚪ 68  🟠 61  🔴 50  🟢 25  (sans) 21  🟡 15  ⚠️ 15  🎯 6  ⏳ 2  🆕 2  ⚫ 1  ⏸️ 1
+  [OK ] chaque ancre du §9 designe UNE seule entree                    267 ancre(s) distincte(s) pour 267 entree(s) — derivees du C
   [OK ] le perimetre n'est pas vide                                    267 entree(s) ouverte(s)
   [OK ] aucun marqueur de tete n'est HORS LISTE                        16 marqueur(s) connu(s)
      ⚠️ dont sous rubrique `###` : 8 (prose narrative possible)
@@ -76,8 +77,8 @@ depot cockpit : /home/nasbarok/projects/compagnon_project
 ── 5. LE MANIFESTE EXISTE ET NE RECOPIE AUCUN CHIFFRE ────────────
   [OK ] le manifeste d'arbitrage est livre                             _bmad-output/implementation-artifacts/dn4-16-arbitrage-ledge
   [OK ] le manifeste cite le script qui produit son compte             ⇒ un seul compte, ⛔ pas deux qui divergent
-  [OK ] le §9 porte ses deux bornes (le controle se borne a elles)     bornes vues aux offsets 28226 et 115557
-  [OK ] le manifeste couvre 100 % des entrees ouvertes (AC2.7)         267 ligne(s) pour 267 entree(s)
+  [OK ] le §9 porte ses deux bornes (le controle se borne a elles)     bornes vues aux offsets 29531 et 117962
+  [OK ] le manifeste couvre 100 % des entrees ouvertes (AC2.7)         267 ligne(s) pour 267 entree(s), appariees PAR ANCRE
   [OK ] chaque ligne du manifeste REPRODUIT ce que le script produit   267 ligne(s) identiques au caractere pres
 
 ==============================================================================
@@ -96,5 +97,5 @@ depot cockpit : /home/nasbarok/projects/compagnon_project
      (`~~..~~ — SOLDE`, `[SOLDE]`) et restent AU COMPTE, par
      coherence avec la regle (3) — ⛔ ce n'est pas un oubli.
 ==============================================================================
-BILAN : 31 OK, 0 KO
+BILAN : 32 OK, 0 KO
 ==============================================================================
