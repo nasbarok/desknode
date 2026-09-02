@@ -161,6 +161,29 @@ REL_LEDGER = "_bmad-output/implementation-artifacts/deferred-work.md"
 REL_TRACKER = "_bmad-output/implementation-artifacts/sprint-status-desknode.yaml"
 REL_MANIFESTE = "_bmad-output/implementation-artifacts/dn4-16-arbitrage-ledger.md"
 
+# ── dn4-39 / AC39.5.a — LE §9 S'ANCRE PAR **BORNE**, ⛔ PLUS PAR NUMERO DE LIGNE
+#
+# 🔴 CE QUE LE LEDGER REPROCHAIT, ET QUI EST MESURE : le tableau du §9 porte une
+#    colonne `ligne` qui est le NUMERO DE LIGNE dans `deferred-work.md`. Toute
+#    ecriture EN AMONT du ledger decale ces numeros ⇒ le controle #5 rougit.
+#    Mesure du 2026-09-02, sur une COPIE du cockpit : **une** entree ordinaire
+#    inseree EN TETE fait passer la gate de `23 OK / 0 KO` (rc 0) a `rc 1`,
+#    **266 lignes divergentes**. ⚠️ 266, ⛔ pas les 250 de `dn4-24` : le chiffre
+#    se RE-MESURE. Un ajout en QUEUE, lui, ne decale rien.
+# 🎯 CE QUE CA COUTAIT : **NFR5 de `epic-dn5`** s'interdisait d'ecrire dans
+#    `deferred-work.md` A CAUSE DE CE CONTROLE. Une epic entiere contournait une
+#    gate. Rendre la regeneration a UNE commande RETIRE ce motif.
+#
+# ⛔ ET LE REPORT NE SE FAIT PLUS A LA MAIN. Le mode `--manifeste --sortie` ne
+#    produisait qu'un tableau brut qu'un humain devait coller — c'est le « geste
+#    manuel de plus » que l'entree nomme. `--en-place` ecrit ENTRE CES BORNES.
+#    ⚠️ Des BORNES, ⛔ pas un numero de ligne : ancrer la reecriture sur « la
+#    ligne 390 » reproduirait EXACTEMENT le defaut qu'on solde.
+BORNE_DEBUT = "<!-- dn4-39 MANIFESTE DEBUT — GENERE, ⛔ ne rien ecrire entre ces deux bornes -->"
+BORNE_FIN = "<!-- dn4-39 MANIFESTE FIN -->"
+CMD_REGEN = ("python3 ~/projects/desknode/tools/verif_ledger_dn416.py"
+             " --cockpit <cockpit> --manifeste --en-place")
+
 VERDICTS = ("PORTEE", "RE-HEBERGEE", "CLOSE", "BLOQUEE", "CONNAISSANCE")
 
 # Les verdicts qui designent du TRAVAIL A VENIR ⇒ leur porteur doit etre VIVANT.
@@ -518,6 +541,10 @@ def main():
     ap.add_argument("--compte", action="store_true")
     ap.add_argument("--manifeste", action="store_true")
     ap.add_argument("--sortie", default=None)
+    # dn4-39 / AC39.5 — ecrit le tableau EN PLACE, entre les bornes du §9.
+    ap.add_argument("--en-place", dest="en_place", action="store_true",
+                    help="reecrit le §9 du manifeste ENTRE SES BORNES "
+                         "(exige --manifeste ; s'exclut de --sortie)")
     a = ap.parse_args()
 
     # 🔴 CORRECTIF DE REVUE (2026-08-30) — LES DRAPEAUX SE CONTREDISAIENT EN
@@ -529,6 +556,14 @@ def main():
         ap.error("--compte et --manifeste s'excluent (l'un compte, l'autre emet)")
     if a.sortie and not a.manifeste:
         ap.error("--sortie exige --manifeste (rien d'autre n'ecrit de fichier)")
+    # dn4-39 — les memes gardes que ci-dessus, pour le meme motif : deux
+    # drapeaux qui se contredisent en silence produisent un fichier vide en
+    # croyant avoir reussi.
+    if a.en_place and not a.manifeste:
+        ap.error("--en-place exige --manifeste")
+    if a.en_place and a.sortie:
+        ap.error("--en-place et --sortie s'excluent (l'un ecrit le manifeste "
+                 "a sa place, l'autre un fichier a part)")
 
     print("=" * 78)
     print("dn4-16 / AC6 — CHAQUE ENTREE OUVERTE PORTE UN VERDICT ET UN PORTEUR")
@@ -683,6 +718,46 @@ def main():
         return 1 if ko_total[0] else 0
 
     # ── mode MANIFESTE ──────────────────────────────────────────────────────
+    if a.manifeste and a.en_place:
+        # dn4-39 / AC39.5.a — REECRITURE EN PLACE, ENTRE LES BORNES.
+        p_man = os.path.join(a.cockpit, REL_MANIFESTE)
+        try:
+            src = io.open(p_man, encoding="utf-8").read()
+        except (OSError, UnicodeDecodeError) as x:
+            ctrl(False, "le manifeste se LIT", "", "⛔ %s" % x)
+            return 1
+        i = src.find(BORNE_DEBUT)
+        j = src.find(BORNE_FIN)
+        # ⛔ ECHEC FERME, avec le remede : sans bornes on ne devine pas ou
+        #    ecrire, et ecrire au jugé serait pire que ne rien faire.
+        if i < 0 or j < 0 or j < i:
+            ctrl(False, "le §9 porte ses DEUX bornes, dans l'ordre",
+                 "", "⛔ bornes absentes ou inversees dans %s" % REL_MANIFESTE)
+            print("\n     ⛔ ARRET : poser les deux bornes autour du tableau du §9 :")
+            print("        %s" % BORNE_DEBUT)
+            print("        %s" % BORNE_FIN)
+            print("     ⛔ ⛔ ⛔ ET SURTOUT PAS un ancrage par NUMERO DE LIGNE :")
+            print("        c'est precisement le defaut que cette commande solde.")
+            return 1
+        table = ("| ligne | section d'origine | marq. | titre court |"
+                 " verdict | porteur | preuve |\n"
+                 "|---:|---|:-:|---|---|---|---|\n")
+        table += "".join(ligne_manifeste(e) + "\n" for e in ouvertes)
+        neuf = src[:i + len(BORNE_DEBUT)] + "\n\n" + table + "\n" + src[j:]
+        if neuf == src:
+            print("\n     §9 DEJA d'accord : %d ligne(s), rien a ecrire."
+                  % len(ouvertes))
+            return 1 if ko_total[0] else 0
+        try:
+            io.open(p_man, "w", encoding="utf-8").write(neuf)
+        except OSError as x:
+            ctrl(False, "le manifeste est inscriptible", "", "⛔ %s" % x)
+            return 1
+        print("\n     §9 REECRIT EN PLACE : %s" % REL_MANIFESTE)
+        print("     %d ligne(s) de tableau, entre les bornes."
+              " ⛔ Aucun copier-coller." % len(ouvertes))
+        return 1 if ko_total[0] else 0
+
     if a.manifeste:
         # 🔴 CORRECTIF DE REVUE : sans `--sortie`, la table partait sur stdout
         # APRES le rapport, donc `--manifeste > f.md` produisait un manifeste
@@ -896,6 +971,13 @@ def main():
              "%d ligne(s) identiques au caractere pres" % len(attendues),
              "⛔ %d ligne(s) DIVERGENTE(S) — la 1re : %s"
              % (len(ecarts), (ecarts[0][1][:120] + " …") if ecarts else "(compte different)"))
+        # 🔴 dn4-39 / AC39.5.b — LA GATE DIT LA COMMANDE, ⛔ ELLE NE LA JOUE PAS.
+        #    Une gate qui repare ce qu'elle mesure ne mesure plus rien.
+        if ecarts or len(vues) != len(attendues):
+            print("     ⇒ UNE commande remet le §9 d'accord :")
+            print("       %s" % CMD_REGEN)
+            print("       ⛔ La gate ne la joue PAS : elle MESURE. Une gate qui")
+            print("          repare ce qu'elle mesure ne mesure plus rien.")
 
     # ── 6. BILAN ────────────────────────────────────────────────────────────
     print("\n" + "=" * 78)

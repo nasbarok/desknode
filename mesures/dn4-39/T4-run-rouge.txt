@@ -1,0 +1,105 @@
+gates	Passer les 27 gates	﻿2026-09-02T14:17:32.9553627Z ##[group]Run bash tools/run_gates.sh
+gates	Passer les 27 gates	2026-09-02T14:17:32.9554193Z [36;1mbash tools/run_gates.sh[0m
+gates	Passer les 27 gates	2026-09-02T14:17:32.9608134Z shell: /usr/bin/bash -e {0}
+gates	Passer les 27 gates	2026-09-02T14:17:32.9608562Z ##[endgroup]
+gates	Passer les 27 gates	2026-09-02T14:17:33.0729851Z ═══ run_gates.sh — 27 gates decouvertes par glob ═══
+gates	Passer les 27 gates	2026-09-02T14:17:33.0748428Z 
+gates	Passer les 27 gates	2026-09-02T14:17:33.1287480Z [VERTE      ] tools/verif_bme680_retard_dn45.py      rc=0      0s
+gates	Passer les 27 gates	2026-09-02T14:17:39.4903485Z [VERTE      ] tools/verif_courbe_dn413.py            rc=0      6s
+gates	Passer les 27 gates	2026-09-02T14:17:39.9034045Z [VERTE      ] tools/verif_cumul_ambient_dn45.py      rc=0      0s
+gates	Passer les 27 gates	2026-09-02T14:17:40.1442360Z [VERTE      ] tools/verif_d4_nvs_dn45.py             rc=0      1s
+gates	Passer les 27 gates	2026-09-02T14:17:44.4853600Z [VERTE      ] tools/verif_decoupe_horloge_dn418.py   rc=0      4s
+gates	Passer les 27 gates	2026-09-02T14:17:44.6773152Z [VERTE      ] tools/verif_demarrage_dn443.py         rc=0      0s
+gates	Passer les 27 gates	2026-09-02T14:17:44.7167149Z [NON-JOUABLE] tools/verif_dossier_d5_dn45.py         rc=4   (attendu) temoin absent : /home/runner/projects/compagnon_project
+gates	Passer les 27 gates	2026-09-02T14:17:44.7171589Z               motif : CAUSE C — elle lit DEUX chemins ABSOLUS de la machine de l'auteur (l. 47-48) ⇒ ⛔ la variable HOME n'y peut rien : VERTE dans un clone neuf, et 1 OK / 7 KO sur un runner. Le seul des six rouges qu'aucune mesure prise depuis ce poste ne pouvait montrer — il se LIT dans le code. La reparation des chemins est portee par dn5-3, ⛔ pas ici.
+gates	Passer les 27 gates	2026-09-02T14:17:44.7678013Z [NON-JOUABLE] tools/verif_dossier_dn415.py           rc=4   (attendu) temoin absent : /home/runner/projects/compagnon_project
+gates	Passer les 27 gates	2026-09-02T14:17:44.7681442Z               motif : CAUSE A — le cockpit de planification est un depot PRIVE, ⛔ jamais clone a cote du code. Sans lui la gate n'a AUCUNE occurrence a arbitrer. ⚠️ La ou le cockpit EST la elle rend 17 OK / 10 KO sur le CONTENU : ⛔ une CI ne verra JAMAIS ces 10 KO, et elle ne pretend pas les garder.
+gates	Passer les 27 gates	2026-09-02T14:17:46.5935428Z [NON-JOUABLE] tools/verif_harnais_dn413.py           rc=4   (attendu) temoin absent : firmware/desknode/managed_components/lvgl__lvgl
+gates	Passer les 27 gates	2026-09-02T14:17:46.5939959Z               motif : CAUSE B — sans l'arbre LVGL le corpus C est INCOMPLET, et la chasse aux renvois FANTOMES accusait tools/dn_police.py de citer des fonctions QUI EXISTENT (lv_text_get_width est defini dans lvgl__lvgl/src/misc/lv_text.c). ⛔ Un diagnostic FAUX publie automatiquement. Elle DECLARE desormais, elle n'accuse plus — et ⛔ elle ne devient PAS aveugle la ou l'arbre est la.
+gates	Passer les 27 gates	2026-09-02T14:17:46.6496958Z [NON-JOUABLE] tools/verif_hist_dn413.py              rc=4   (attendu) temoin absent : firmware/desknode/managed_components/lvgl__lvgl
+gates	Passer les 27 gates	2026-09-02T14:17:46.6500822Z               motif : CAUSE B — elle RELIT LV_CHART_POINT_NONE dans lv_chart.h (c'est ce qui garantit que DN_HIST_TROU vaut le trou de LVGL) et PLANTAIT en FileNotFoundError NU : un rouge sans motif ni remede. Elle echoue FERME desormais, sur le modele de verif_veille_dn33.py.
+gates	Passer les 27 gates	2026-09-02T14:17:47.1186420Z [VERTE      ] tools/verif_instruments_dn423.py       rc=0      1s
+gates	Passer les 27 gates	2026-09-02T14:17:47.1986283Z [VERTE      ] tools/verif_journal_soak_dn45.py       rc=0      0s
+gates	Passer les 27 gates	2026-09-02T14:17:47.7852219Z [VERTE      ] tools/verif_langues_dn442.py           rc=0      0s
+gates	Passer les 27 gates	2026-09-02T14:17:47.8365895Z [NON-JOUABLE] tools/verif_ledger_dn416.py            rc=4   (attendu) temoin absent : /home/runner/projects/compagnon_project
+gates	Passer les 27 gates	2026-09-02T14:17:47.8380786Z               motif : CAUSE A — le cockpit de planification est un depot PRIVE, ⛔ jamais clone. Sans lui il n'y a ni ledger ni tracker a confronter. ⚠️ le controle dn_ok (« le depot code EST desknode ») reste un CONTROLE : son echec reste un ROUGE, ⛔ pas un prerequis.
+gates	Passer les 27 gates	2026-09-02T14:17:48.1668963Z [ROUGE      ] tools/verif_licences_dn52.py           rc=1      1s
+gates	Passer les 27 gates	2026-09-02T14:17:48.1672189Z ┌── sortie de tools/verif_licences_dn52.py ─────────────────────────────────────────
+gates	Passer les 27 gates	2026-09-02T14:17:48.1682862Z │ ==============================================================================
+gates	Passer les 27 gates	2026-09-02T14:17:48.1683996Z │ dn5-2 — LE DEPOT TIENT LES PROMESSES QU'IL A DEJA PUBLIEES
+gates	Passer les 27 gates	2026-09-02T14:17:48.1685816Z │ ==============================================================================
+gates	Passer les 27 gates	2026-09-02T14:17:48.1686964Z │ 
+gates	Passer les 27 gates	2026-09-02T14:17:48.1688003Z │ ── (a) LES LICENCES, DANS LES DEUX SENS ──────────────────────────
+gates	Passer les 27 gates	2026-09-02T14:17:48.1689275Z │   [OK ] la TABLE de LICENSING.md se lit                            5 ligne(s)
+gates	Passer les 27 gates	2026-09-02T14:17:48.1690564Z │   [OK ] la phrase de REPLI de LICENSING.md se lit                  4 chemin(s) + la racine
+gates	Passer les 27 gates	2026-09-02T14:17:48.1691943Z │   [OK ] tout chemin ANNONCE existe dans l'arbre                    9 repertoire(s) annonce(s)
+gates	Passer les 27 gates	2026-09-02T14:17:48.1693453Z │   [OK ] tout repertoire TRACE est nomme par l'une des 2 listes     9 repertoire(s) de 1er niveau
+gates	Passer les 27 gates	2026-09-02T14:17:48.1695029Z │   [OK ] le fichier de licence annonce EXISTE                       5 ligne(s) de table
+gates	Passer les 27 gates	2026-09-02T14:17:48.1696493Z │   [OK ] le fichier de licence DIT BIEN la licence annoncee         ⛔ pas seulement « il est la »
+gates	Passer les 27 gates	2026-09-02T14:17:48.1698469Z │   [OK ] chaque licence annoncee a une signature connue             3 licence(s) distinctes
+gates	Passer les 27 gates	2026-09-02T14:17:48.1699597Z │ 
+gates	Passer les 27 gates	2026-09-02T14:17:48.1700436Z │ ── (b) LE MANIFESTE ⇄ L'INVENTAIRE, DANS LES DEUX SENS ───────────
+gates	Passer les 27 gates	2026-09-02T14:17:48.1701742Z │   [OK ] le manifeste `idf_component.yml` se lit                    10 entree(s)
+gates	Passer les 27 gates	2026-09-02T14:17:48.1703531Z │   [OK ] la table § Firmware de THIRD-PARTY.md se lit               12 ligne(s)
+gates	Passer les 27 gates	2026-09-02T14:17:48.1705161Z │   [OK ] toute entree du manifeste figure au tableau                10 entree(s) confrontee(s)
+gates	Passer les 27 gates	2026-09-02T14:17:48.1706838Z │   [OK ] toute ligne du tableau est EPINGLEE, ALIAS ou TRANSITIVE   9 epinglee(s) + 1 alias + 2 transitive(s) = 12 ligne(s)
+gates	Passer les 27 gates	2026-09-02T14:17:48.1709091Z │   [OK ] les versions EPINGLEES concordent (`==` retire)            10 comparaison(s), alias compris
+gates	Passer les 27 gates	2026-09-02T14:17:48.1710740Z │   [OK ] l'ALIAS declare apparie les deux cotes                     idf⇄ESP-IDF
+gates	Passer les 27 gates	2026-09-02T14:17:48.1804341Z │   [OK ] *(transitive)* ⟺ ABSENT du manifeste (les 2 sens)          2 ligne(s) transitive(s)
+gates	Passer les 27 gates	2026-09-02T14:17:48.1805991Z │   [OK ] `managed_components/` hors du clone (fonde la limite)      gitignore=oui · trace=non
+gates	Passer les 27 gates	2026-09-02T14:17:48.1807319Z │   [⚠️ ] ⛔ NON CONTROLE — la colonne « License » du tableau : sa seule source est
+gates	Passer les 27 gates	2026-09-02T14:17:48.1808952Z │        `managed_components/`, absent d'un clone. Cette gate NE LE LIT PAS, meme
+gates	Passer les 27 gates	2026-09-02T14:17:48.1810259Z │        s'il est la : une gate qui passe chez l'auteur et pas ailleurs est le
+gates	Passer les 27 gates	2026-09-02T14:17:48.1811506Z │        defaut entier de `dn5-3`. La verifier est une MESURE, ⛔ pas un controle.
+gates	Passer les 27 gates	2026-09-02T14:17:48.1812539Z │ 
+gates	Passer les 27 gates	2026-09-02T14:17:48.1813361Z │ ── (c1) LES LIENS SORTANTS RESOLVENT ─────────────────────────────
+gates	Passer les 27 gates	2026-09-02T14:17:48.1814717Z │   [OK ] tout lien local des fichiers de prose resout               47 lien(s) local(aux), 10 fichier(s)
+gates	Passer les 27 gates	2026-09-02T14:17:48.1815797Z │ 
+gates	Passer les 27 gates	2026-09-02T14:17:48.1816591Z │ ── (c2/c3) LES SECTIONS ET LES OUTILS CITES EXISTENT ─────────────
+gates	Passer les 27 gates	2026-09-02T14:17:48.1818035Z │   [OK ] la section citee PAR SON TITRE existe                      1 citation(s)
+gates	Passer les 27 gates	2026-09-02T14:17:48.1819419Z │   [OK ] l'outil cite AVEC SON DRAPEAU l'accepte (invoque)          5 couple(s) outil/drapeau
+gates	Passer les 27 gates	2026-09-02T14:17:48.1820465Z │ 
+gates	Passer les 27 gates	2026-09-02T14:17:48.1821308Z │ ── (c4) LES MARQUEURS CITES SONT DEFINIS ─────────────────────────
+gates	Passer les 27 gates	2026-09-02T14:17:48.1822642Z │   [OK ] docs/roadmap.md definit des marqueurs                      10 marqueur(s)
+gates	Passer les 27 gates	2026-09-02T14:17:48.1824145Z │   [KO ] tout marqueur cite COMME marqueur est defini               ⛔ docs/roadmap.md cite `dn9-9`
+gates	Passer les 27 gates	2026-09-02T14:17:48.1825193Z │ 
+gates	Passer les 27 gates	2026-09-02T14:17:48.1826002Z │ ── (c5) LES COMPTES ANNONCES EGALENT CE QU'ILS COMPTENT ──────────
+gates	Passer les 27 gates	2026-09-02T14:17:48.1827247Z │   [OK ] le COMPTE annonce egale le nombre d'entrees                2 compte(s) confronte(s)
+gates	Passer les 27 gates	2026-09-02T14:17:48.1828725Z │ 
+gates	Passer les 27 gates	2026-09-02T14:17:48.1829560Z │ ── (c6) LA PROMESSE D'AUTOMATISATION DU CLA A SON ARTEFACT ───────
+gates	Passer les 27 gates	2026-09-02T14:17:48.1830935Z │   [OK ] la promesse de bot et son workflow disent la meme chose    promesse=oui · workflow(s) CLA=2
+gates	Passer les 27 gates	2026-09-02T14:17:48.1833068Z │   [OK ] chaque action du workflow CLA est EPINGLEE                 contributor-assistant/github-action@v2.6.1
+gates	Passer les 27 gates	2026-09-02T14:17:48.1834520Z │   [OK ] le document que le bot fait signer EXISTE                  CLA.md
+gates	Passer les 27 gates	2026-09-02T14:17:48.1836129Z │   [OK ] ⛔ le workflow ne checkoute JAMAIS le code de la PR         `pull_request_target` tourne avec le jeton du depot de BASE
+gates	Passer les 27 gates	2026-09-02T14:17:48.1837945Z │   [OK ] l'ecart residuel du CLA a un PORTEUR reel                  porteur = `dn8`
+gates	Passer les 27 gates	2026-09-02T14:17:48.1839004Z │ 
+gates	Passer les 27 gates	2026-09-02T14:17:48.1839862Z │ ── (c7) ⛔ AUCUN FICHIER N'AFFIRME CE QUE L'ARBRE REFUTE ─────────
+gates	Passer les 27 gates	2026-09-02T14:17:48.1841516Z │   [⚠️ ] l'arbre est LU, ⛔ pas suppose — `import pynvml` dans l'agent : NON ⇒ toute affirmation de couverture est FAUSSE
+gates	Passer les 27 gates	2026-09-02T14:17:48.1843408Z │   [OK ] toute ligne qui nomme NVIDIA/NVML porte sa REFUTATION      ⛔ la propriete n'est PAS « le mot est absent »
+gates	Passer les 27 gates	2026-09-02T14:17:48.1844609Z │ 
+gates	Passer les 27 gates	2026-09-02T14:17:48.1845480Z │ ── (c8) LE DEPOT NE SE CONTREDIT PAS SUR SES PROPRES GARDES ──────
+gates	Passer les 27 gates	2026-09-02T14:17:48.1846899Z │   [OK ] THIRD-PARTY.md dit que cette gate le garde                 il cite tools/verif_licences_dn52.py
+gates	Passer les 27 gates	2026-09-02T14:17:48.1848427Z │ 
+gates	Passer les 27 gates	2026-09-02T14:17:48.1849590Z │ ==============================================================================
+gates	Passer les 27 gates	2026-09-02T14:17:48.1850424Z │ BILAN : 27 OK, 1 KO
+gates	Passer les 27 gates	2026-09-02T14:17:48.1851191Z │ ==============================================================================
+gates	Passer les 27 gates	2026-09-02T14:17:48.1852255Z └──────────────────────────────────────────────────────────
+gates	Passer les 27 gates	2026-09-02T14:17:48.3089339Z [VERTE      ] tools/verif_lissage_dn45.py            rc=0      0s
+gates	Passer les 27 gates	2026-09-02T14:17:48.3741617Z [VERTE      ] tools/verif_miroir_horloge_dn418.py    rc=0      0s
+gates	Passer les 27 gates	2026-09-02T14:17:48.5286025Z [VERTE      ] tools/verif_paliers_dn441.py           rc=0      0s
+gates	Passer les 27 gates	2026-09-02T14:17:49.3913291Z [VERTE      ] tools/verif_rebouclage_dn45.py         rc=0      1s
+gates	Passer les 27 gates	2026-09-02T14:17:49.4746104Z [VERTE      ] tools/verif_reprise_horloge_dn418.py   rc=0      0s
+gates	Passer les 27 gates	2026-09-02T14:17:49.5291376Z [VERTE      ] tools/verif_selection_dn49.py          rc=0      0s
+gates	Passer les 27 gates	2026-09-02T14:17:49.8835550Z [VERTE      ] tools/verif_serie_dn412.py             rc=0      0s
+gates	Passer les 27 gates	2026-09-02T14:17:53.3000660Z [VERTE      ] tools/verif_source_lhm_dn48.py         rc=0      4s
+gates	Passer les 27 gates	2026-09-02T14:17:53.3470583Z [NON-JOUABLE] tools/verif_sr03.py                    rc=2   (attendu) temoin absent : tools/fixtures/AN4545.pdf
+gates	Passer les 27 gates	2026-09-02T14:17:53.3473828Z               motif : le PDF [AN] AN4545 (VL6180X, DocID026571 Rev 1) n'est PAS au depot : document StMicroelectronics, ⛔ non redistribuable. La gate l'attend en argument et sort en 2 sur son message d'usage — rc=2 n'est PAS un rouge.
+gates	Passer les 27 gates	2026-09-02T14:17:55.1902835Z [NON-JOUABLE] tools/verif_veille_dn33.py             rc=4   (attendu) temoin absent : firmware/desknode/managed_components/lvgl__lvgl
+gates	Passer les 27 gates	2026-09-02T14:17:55.1911619Z               motif : CAUSE B — managed_components/ est GITIGNORE (186 Mo, repeuple par: idf.py reconfigure) et porte le generateur AMONT de LVGL. ⛔ 2 blocs sur 18 ne sont pas exerces ; TOUT LE RESTE EST JOUE. Elle disait deja le bon motif et le remede — il lui manquait le rc.
+gates	Passer les 27 gates	2026-09-02T14:18:06.2308601Z [VERTE      ] tools/verif_verrou_lvgl_dn413.py       rc=0     11s
+gates	Passer les 27 gates	2026-09-02T14:18:06.2638539Z [VERTE      ] tools/verif_xip_dn422.py               rc=0      0s
+gates	Passer les 27 gates	2026-09-02T14:18:06.2655567Z 
+gates	Passer les 27 gates	2026-09-02T14:18:06.2658765Z BILAN : 19 VERTE, 1 ROUGE, 7 NON-JOUABLE sur 27 gates (33s)
+gates	Passer les 27 gates	2026-09-02T14:18:06.2659616Z ⛔ ROUGES :
+gates	Passer les 27 gates	2026-09-02T14:18:06.2660096Z    · tools/verif_licences_dn52.py (rc=1)
+gates	Passer les 27 gates	2026-09-02T14:18:06.2674215Z ##[error]Process completed with exit code 1.

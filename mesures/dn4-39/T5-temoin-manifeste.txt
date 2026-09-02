@@ -1,0 +1,59 @@
+# dn4-39 / T5 — AC39.5 : LE §9 SE REGENERE PAR **UNE** COMMANDE
+# Temoin joue le 2026-09-02 sur une COPIE du cockpit.
+# ⛔ RIEN n'est ecrit dans le vrai ledger a ce stade.
+
+==============================================================================
+(0) LES BORNES SONT POSEES — ancrage par BORNE, ⛔ pas par numero de ligne
+==============================================================================
+   <!-- dn4-39 MANIFESTE DEBUT — GENERE, ⛔ ne rien ecrire entre ces deux bornes -->
+   <!-- dn4-39 MANIFESTE FIN -->
+
+PASSE COMPLETE AVANT : BILAN : 25 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 27 gates (64s)
+  rc du runner = 1
+
+==============================================================================
+(1) BASELINE — le §9 est d'accord
+==============================================================================
+BILAN : 23 OK, 0 KO
+  rc = 0
+
+==============================================================================
+(2) **UNE** entree ordinaire inseree EN TETE du ledger
+==============================================================================
+  [KO ] le manifeste couvre 100 % des entrees ouvertes (AC2.7)         ⛔ 266 ligne(s) de tableau pour 267 entree(s) ouverte(s)
+  [KO ] chaque ligne du manifeste REPRODUIT ce que le script produit   ⛔ 266 ligne(s) DIVERGENTE(S) — la 1re : | 32 | `temoin dn4-39 (2026-09-02) — entree ORDINAIRE ` | (sans) | Temoin d'AC39.5.c : une ecriture ORDINAIRE, en amont  …
+     ⇒ UNE commande remet le §9 d'accord :
+       python3 ~/projects/desknode/tools/verif_ledger_dn416.py --cockpit <cockpit> --manifeste --en-place
+       ⛔ La gate ne la joue PAS : elle MESURE. Une gate qui
+          repare ce qu'elle mesure ne mesure plus rien.
+  rc = 1
+
+⚠️ 266, ⛔ PAS les 250 de dn4-24 : le chiffre se RE-MESURE.
+⚠️ Un ajout en QUEUE, lui, ne decale rien — c'est l'insertion EN AMONT qui coute.
+
+==============================================================================
+(3) **UNE** commande remet le §9 d'accord
+==============================================================================
+  $ python3 tools/verif_ledger_dn416.py --cockpit <cockpit> --manifeste --en-place
+     §9 REECRIT EN PLACE : _bmad-output/implementation-artifacts/dn4-16-arbitrage-ledger.md
+     267 ligne(s) de tableau, entre les bornes. ⛔ Aucun copier-coller.
+  rc = 0
+
+==============================================================================
+(4) LA GATE, APRES
+==============================================================================
+BILAN : 23 OK, 0 KO
+  rc = 0
+
+==============================================================================
+(5) ⛔ AUCUN AUTRE VERDICT CHANGE — confrontation GATE A GATE
+==============================================================================
+PASSE COMPLETE APRES : BILAN : 25 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 27 gates (64s)
+  rc du runner = 1
+
+gates comparees : 27 avant, 27 apres
+⚠️ la cle est le CHEMIN ENTIER de la gate, ⛔ pas une tranche tronquee :
+   un format                                                  remplit sans tronquer, et un libelle de 58 caracteres pile
+   a deja casse une cle de campagne (dn5-2).
+
+✅ 0 verdict change sur 27 gates.

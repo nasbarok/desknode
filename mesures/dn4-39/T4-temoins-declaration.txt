@@ -1,0 +1,69 @@
+# dn4-39 / T4 — AC39.4.b : LE TEMOIN NEGATIF DE LA DECLARATION, DANS LES DEUX SENS
+# Mesure du 2026-09-02, sur le poste. ⛔ Ces temoins ne DEBRANCHENT rien :
+# ils confrontent la declaration a la realite.
+
+==============================================================================
+(i) LE TEMOIN EST FABRIQUE — la gate declaree NON-JOUABLE doit etre JOUEE
+==============================================================================
+AVANT (temoin absent) :
+[NON-JOUABLE] tools/verif_sr03.py                    rc=2   (attendu) temoin absent : tools/fixtures/AN4545.pdf
+
+=> on POSE tools/fixtures/AN4545.pdf (un faux, 2 lignes)
+
+APRES (temoin present) :
+[  temoin  ] tools/verif_sr03.py                    tools/fixtures/AN4545.pdf est present ⇒ la gate est JOUEE
+[ROUGE      ] tools/verif_sr03.py                    rc=2      0s
+┌── sortie de tools/verif_sr03.py ─────────────────────────────────────────
+   · tools/verif_sr03.py (rc=2)
+
+=> temoin RETIRE. VERDICT : la gate passe de NON-JOUABLE a JOUEE des que le
+  chemin apparait — et elle ROUGIT, parce qu'elle refuse tout fichier dont le
+  sha256 ne correspond pas. La declaration ne peut donc PAS cacher une gate.
+
+==============================================================================
+(ii) LE rc DECLARE EST DEMENTI — le runner doit SORTIR EN 1
+==============================================================================
+⚠️ LA COPIE VIT DANS tools/ DU DEPOT, ⛔ PAS DANS /tmp : run_gates.sh resout sa
+   RACINE depuis son propre chemin. Un premier essai depuis /tmp a rendu rc=1
+   pour une TOUTE AUTRE raison (« aucune gate trouvee par le glob ») — un rc
+   juste pour un motif faux ne mesure rien.
+
+Sur une COPIE (tools/_rg_dementie_dn439.sh), la declaration de verif_sr03.py
+annonce 4 au lieu de son 2 reel. Le fichier du depot n'est PAS touche.
+
+[ROUGE      ] tools/verif_sr03.py                    rc=2   ⛔ DECLARATION DEMENTIE (attendu 4)
+┌── sortie de tools/verif_sr03.py ─────────────────────────────────────────
+│     python3 tools/verif_sr03.py <AN4545.pdf> firmware/desknode/main/dn_console.c
+BILAN : 25 VERTE, 2 ROUGE, 0 NON-JOUABLE sur 27 gates (63s)
+⛔ ROUGES :
+   · tools/verif_dossier_dn415.py (rc=1)
+   · tools/verif_sr03.py (rc=2, la declaration NON-JOUABLE annonce 4)
+rc du runner = 1
+
+VERDICT : rc declare = 4, rc obtenu = 2 ⇒ DECLARATION DEMENTIE, et le runner
+  sort en 1. La declaration est falsifiable DANS LES DEUX SENS.
+
+MEME CHOSE, ⛔ NON FABRIQUEE, VUE DANS UN CLONE NEUF SUR CE POSTE :
+  verif_dossier_d5_dn45.py y rend 0 (elle SORT du clone et atteint les vrais
+  depots de cette machine) alors que sa declaration annonce 4 :
+    [ROUGE] tools/verif_dossier_d5_dn45.py  rc=0  ⛔ DECLARATION DEMENTIE (attendu 4)
+  C'est la CAUSE C DENONCEE par le mecanisme, exactement la ou elle se manifeste.
+  Sur le RUNNER (run 33640913702), la meme gate rend 4 ⇒ NON-JOUABLE conforme.
+
+==============================================================================
+(iii) ⛔ LA GATE DES HARNAIS N'EST PAS DEVENUE AVEUGLE
+==============================================================================
+⚠️ Le rc est celui de la GATE, ⛔ pas d'un pipeline : un premier essai lisait le
+   rc de `grep` et annoncait 0 sur une gate qui rougissait.
+
+Un renvoi FANTOME est REPLANTE dans tools/, la ou l'arbre LVGL EST present.
+  [KO ] renvoi FANTÔME : `une_fonction_replantee_par_le_temoin()` cité par tools/_temoin_dn439.py, défini NULLE PART
+⛔ 2 ÉCHEC(S) sur 23 contrôles.
+rc de la GATE = 1
+
+⇒ temoin RETIRE :
+✅ 22 contrôles passent, 0 échec.
+rc de la GATE = 0
+
+VERDICT : la ou l'arbre LVGL est la, la chasse aux fantomes MORD encore.
+  T2 ne l'a pas rendue aveugle : il l'a empechee d'ACCUSER la ou elle ne voit rien.
