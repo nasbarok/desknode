@@ -208,8 +208,22 @@ VERDICTS = ("PORTEE", "RE-HEBERGEE", "CLOSE", "BLOQUEE", "CONNAISSANCE")
 # Les verdicts qui designent du TRAVAIL A VENIR ⇒ leur porteur doit etre VIVANT.
 VERDICTS_A_VENIR = ("PORTEE", "RE-HEBERGEE", "BLOQUEE")
 
-STATUTS_VIVANTS = ("backlog", "in-progress", "ready-for-dev", "review", "blocked")
+STATUTS_VIVANTS = ("backlog", "in-progress", "ready-for-dev", "review",
+                   "blocked", "optional")
 STATUTS_MORTS = ("done", "superseded")
+# 🔴 dn4-40 — `optional` AJOUTE, ET ⛔ PAS PAR CONFORT : IL FALLAIT LES DEUX
+# TABLES DANS LE MEME GESTE. Tant que `lit_tracker()` repliait sur
+# `^dn\d+-\d+`, les 16 cles `epic-*` etaient INVISIBLES et leur statut ne
+# pouvait rien casser. Les faire entrer sans classer `optional` aurait fait
+# rougir le controle « statut CONNU » sur des cles PARFAITEMENT VALIDES.
+# MESURE (2026-09-02) : les 8 `optional` du tracker sont TOUS des
+# `epic-<n>-retrospective` — ⛔ zero story ordinaire. Une retrospective
+# `optional` n'est ni faite ni annulee : elle ne CLOT rien, donc elle ne peut
+# pas rejoindre `done`/`superseded`. La prescription n'interdit comme porteur
+# que `done`/`superseded` (§ « Interdit comme porteur ») ⇒ `optional` est
+# VIVANT. ⚠️ Ce classement ne change AUCUN verdict au 2026-09-02 : zero
+# disposition ne nomme aujourd'hui une cle `epic-*`. Il ouvre une capacite,
+# et c'est le mutant `epic-*` de la campagne qui la prouve.
 
 MARQUEURS = ("🔴", "🟠", "⚪", "🟢", "🟡", "⚠️", "🆕", "🎯", "⚫", "🔵",
              "🧹", "📋", "🗺️", "✅", "⏳", "⏸️")
@@ -217,6 +231,14 @@ MARQUEURS = ("🔴", "🟠", "⚪", "🟢", "🟡", "⚠️", "🆕", "🎯", "�
 # de tete n'est HORS LISTE », neuf lui aussi, les a fait apparaitre : trois
 # entrees (l.3098, l.3617, l.4075) etaient rangees dans « (sans) » et
 # faussaient l'histogramme PUBLIE. La liste fermee ne se voyait pas elle-meme.
+
+# 🔴 dn4-40 / AC40.7.c — L'INSTRUMENT DE CAMPAGNE, ⛔ PAS UN CHANGEMENT DE
+# FORMAT. Import DEFENSIF : une gate doit rester jouable si son instrument
+# manque. Sans `DN_TRACE_CTRL`, la console sort a l'octet pres comme avant.
+try:
+    import dn_trace
+except ImportError:                                  # pragma: no cover
+    dn_trace = None
 
 ok_total = [0]
 ko_total = [0]
@@ -231,6 +253,8 @@ def ctrl(ok, libelle, detail_ok="", detail_ko=None):
     lisait comme une explication de reussite. Et le detail d'un KO n'est
     PLUS tronque : c'est lui qui porte les numeros de ligne fautifs.
     """
+    if dn_trace is not None:
+        dn_trace.trace(ok, libelle)
     if ok:
         ok_total[0] += 1
         print("  [OK ] %-62s %s" % (libelle[:62], detail_ok[:60]))
@@ -432,6 +456,99 @@ def preuve_est_nue(p):
 
 RE_STORY = re.compile(r"\b(dn\d+-\d+(?:-\d+)?)\b", re.I)
 
+# ═══════════════════════════════════════════════════════════════════════════
+#  LES CINQ FORMES DU PORTEUR  (dn4-40 / AC40.1)
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# 🔴 CE QUE CE BLOC REMPLACE, ET POURQUOI IL EXISTE.
+# `porteurs_a_venir()` appliquait `RE_STORY.findall()` au champ porteur
+# ENTIER. Rien ne disait a la gate QUEL segment designe le porteur ⇒ DEUX
+# echecs OPPOSES sortaient de la MEME extraction, prouves par mutant au
+# cadrage du 2026-09-02 :
+#
+#   · un porteur EN PROSE (`bloquee par : <fait externe>`) ne rendait AUCUNE
+#     cle ⇒ les 3 controles de vivacite tournaient sur une population VIDE et
+#     annoncaient « OK » sans avoir rien regarde. MESURE : 12 dispositions
+#     sur les 164 « a venir » (7,3 %), toutes de FORME 3, donc toutes
+#     PARFAITEMENT LEGITIMES. Le remede n'etait pas d'interdire la prose.
+#   · une story CLOSE citee en INCISE dans un champ dont la cle vivante est
+#     ailleurs faisait rougir « PORTEUR MORT » sans qu'aucun porteur ne soit
+#     mort. Un tel faux rouge etait deja ARME dans le ledger (une prose qui
+#     cite une story `in-progress` comme FAIT BLOQUANT) : il attendait que
+#     cette story passe `done`.
+#
+# ⇒ Le porteur se lit DESORMAIS par la FORME qu'il declare — les cinq de
+#   `docs/bmad/deferred-work-ligne-porteur.md` § « Les cinq formes ».
+#
+# ⚠️ TRAP MESURE : la reconnaissance travaille sur un champ NORMALISE
+# (accents retires, gras et backticks retires). C'est indispensable —
+# `bloquée par` s'ecrit avec un accent dans les 13 champs reels — mais ca
+# veut dire qu'⛔ AUCUNE marque accentuee ou casse-sensible ne peut servir de
+# separateur ici.
+#
+# ⚠️ CE QUE LA SEGMENTATION NE DOIT PAS DEVENIR : plus PERMISSIVE. Restreindre
+# ce qui est extrait sans rien mettre a la place rendrait les controles muets
+# SOUS UNE AUTRE FORME. C'est pourquoi chaque forme recoit son propre
+# controle ci-dessous, et pourquoi la forme 0 (AUCUNE des cinq) est un KO.
+
+# Une cle de story, ou une cle d'EPIC. ⚠️ Les deux ecritures coexistent
+# REELLEMENT : 143 porteurs sur 151 s'ecrivent en COURT (`dn4-27`), 8 en
+# PLEIN (`dn4-40-les-gates-...`). `lit_tracker()` indexe donc les deux.
+RE_CLE_PORTEUR = re.compile(r"^(?:dn\d+-\d+(?:-[\w.]+)*"
+                            r"|epic-dn\d+(?:-[\w.]+)*)$", re.I)
+
+RE_F2 = re.compile(r"^backlog\s+nomme?\s*:\s*(.*)$", re.I)
+RE_F3 = re.compile(r"^bloquee?\s+par\s*:\s*(.*)$", re.I)
+RE_F4 = re.compile(r"^clos\s+par\s*:\s*(.*)$", re.I)
+
+FORME_LIBELLE = {
+    0: "⛔ AUCUNE des cinq",
+    1: "1 cle nue",
+    2: "2 backlog nomme",
+    3: "3 bloquee par",
+    4: "4 clos par",
+    5: "5 tiret (CONNAISSANCE)",
+}
+
+
+def forme_du_porteur(p):
+    """Rend `(numero, argument)` — la forme DECLAREE, ⛔ jamais devinee.
+
+    `0` = le champ ne releve d'AUCUNE des cinq formes. ⛔ Ce n'est pas un
+    repli silencieux vers « cle nue » : c'est un KO. Sans lui, un champ
+    inconnu serait reclasse en forme 1, ne resoudrait aucune cle, et la gate
+    RETOMBERAIT MUETTE sous un autre nom — exactement le defaut qu'on repare.
+    """
+    s = sans_accents(p.strip())
+    s = re.sub(r"[`*_]", "", s).strip()
+    m = RE_F2.match(s)
+    if m:
+        return 2, m.group(1).strip()
+    m = RE_F3.match(s)
+    if m:
+        return 3, m.group(1).strip()
+    m = RE_F4.match(s)
+    if m:
+        return 4, m.group(1).strip()
+    if s.strip("—–-. ") == "":
+        return 5, ""
+    if RE_CLE_PORTEUR.match(s):
+        return 1, s.lower()
+    return 0, s
+
+
+# ⚠️ AC40.1.h — TRANCHE, ET ECRIT, PARCE QUE LE DEV FERAIT ROUGIR SA PROPRE
+# STORY EN L'IGNORANT. La forme 2 dit « ecris-la au tracker EN `backlog` dans
+# le meme geste ». Quatre dispositions du ledger nomment `dn4-40` en forme 2 ;
+# elles ont ete ecrites quand elle etait `backlog`, et elle ne l'est plus.
+# ⇒ ARBITRAGE RETENU : **la forme 2 contraint l'EXTRACTION, ⛔ pas le statut.**
+# Son exigence reelle est celle que la prescription donne elle-meme comme
+# motif — « une intention qui ne vit nulle part n'est pas un porteur » : la
+# cle doit EXISTER au tracker et y etre VIVANTE. Un porteur qui DEMARRE
+# reste un porteur. ⛔ Durcir la forme 2 jusqu'au statut `backlog` ferait
+# rougir toute story des qu'elle commence — c'est-a-dire pile quand son
+# porteur devient le plus reel.
+
 
 def _dispo_de(m):
     return {"cle": m.group(1),
@@ -492,14 +609,22 @@ def porteur_est_bouchon(p):
 def porteurs_a_venir(d):
     """Les cles de story que la disposition designe comme TRAVAIL A VENIR.
 
-    ⛔ Un `clos par :` designe le PASSE ⇒ exclu de la vivacite (voir l'en-tete).
+    🔴 dn4-40 — LIT LA FORME, ⛔ PLUS LE CHAMP ENTIER. Seules les formes 1 et
+    2 DESIGNENT quelqu'un. Les formes 3 (`bloquee par :`), 4 (`clos par :`)
+    et 5 (`—`) ne nomment aucun porteur — ⛔ et ce n'est PAS un trou : chacune
+    a desormais son propre controle (voir la section 2bis). Une story citee
+    dans la PROSE d'un fait bloquant n'est donc plus prise pour un porteur.
     """
     if d["verdict"] not in VERDICTS_A_VENIR:
         return []
-    p = d["porteur"]
-    if re.match(r"^\s*clos par\s*:", p, re.I):
-        return []
-    return [x.lower() for x in RE_STORY.findall(p)]
+    n, arg = forme_du_porteur(d["porteur"])
+    if n == 1:
+        return [arg]
+    if n == 2 and RE_CLE_PORTEUR.match(arg):
+        return [arg.lower()]
+    # ⛔ Une forme 2 dont l'argument n'est PAS une cle ne rend rien ICI —
+    #    elle est attrapee par son controle dedie, ⛔ pas laissee muette.
+    return []
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -507,7 +632,8 @@ def porteurs_a_venir(d):
 # ═══════════════════════════════════════════════════════════════════════════
 
 def lit_tracker(chemin):
-    """Rend (statuts, collisions) — ⛔ jamais None en cas d'illisibilite : la
+    """Rend (statuts, collisions, cles_pleines) — ⛔ jamais None en cas
+    d'illisibilite : la
     lecture est faite par l'appelant, qui en fait un CONTROLE.
 
     🔴 CORRECTIF DE REVUE (2026-08-30) — `setdefault` REPLIAIT DES CLES
@@ -517,20 +643,49 @@ def lit_tracker(chemin):
     devant un `dn4-N-b` vivant rend un faux ROUGE, et l'inverse un faux VERT
     sur un porteur `done` — la seule chose qu'AC6.5 existe pour attraper.
     Les collisions sont desormais REMONTEES et controlees.
+
+    🔴 dn4-40 — 16 CLES ETAIENT SILENCIEUSEMENT IGNOREES. Le repli sur
+    `^dn\\d+-\\d+` jetait les 16 cles `epic-*` : la gate annoncait
+    « 57 story(s) connue(s) » sur **74 cles reelles**. Une disposition dont le
+    porteur etait `epic-dn4` sortait donc « INCONNU », et un mutant plante au
+    cadrage passait `24 OK, 0 KO` — a vide. DECISION OWNER (2026-09-02) :
+    **une cle `epic-*` est un porteur legitime, vivante tant que l'epic est
+    ouvert**, et son statut se lit au tracker comme celui de n'importe qui.
+
+    ⚠️ LES DEUX ECRITURES SONT INDEXEES, et c'est une MESURE, ⛔ pas un
+    confort : 143 porteurs sur 151 s'ecrivent en COURT (`dn4-27`), 8 en PLEIN
+    (`dn4-40-les-gates-...`). N'indexer que l'une des deux ferait rougir
+    l'autre. ⛔ AUCUN repli n'est fabrique pour `epic-*` : `epic-dn4` EXISTE
+    deja comme cle pleine, et replier `epic-dn4-retrospective` dessus
+    ecraserait un statut par un autre.
+
+    Rend `(statuts, collisions, cles_pleines)`. ⚠️ `len(statuts)` n'est PLUS
+    un compte de stories (il porte les deux ecritures) — le compte publie se
+    lit sur `cles_pleines`.
     """
     txt = io.open(chemin, encoding="utf-8").read()
     st = {}
     collisions = {}
+    pleines = []
+
+    def pose(cle, statut):
+        if cle in st and st[cle] != statut:
+            collisions.setdefault(cle, [st[cle]]).append(statut)
+        st.setdefault(cle, statut)
+
     for l in txt.split("\n"):
-        m = re.match(r"^  ([a-z0-9\-]+):\s*([a-z\-]+)", l)
-        if m:
-            c = re.match(r"^(dn\d+-\d+(?:-\d+)?)", m.group(1))
-            if c:
-                cle = c.group(1).lower()
-                if cle in st and st[cle] != m.group(2):
-                    collisions.setdefault(cle, [st[cle]]).append(m.group(2))
-                st.setdefault(cle, m.group(2))
-    return st, collisions
+        m = re.match(r"^  ([a-z0-9][a-z0-9\-]*):\s*([a-z\-]+)", l)
+        if not m:
+            continue
+        cle, statut = m.group(1).lower(), m.group(2)
+        pleines.append(cle)
+        pose(cle, statut)
+        c = re.match(r"^(dn\d+-\d+(?:-\d+)?)$|^(dn\d+-\d+)(?:-)", cle)
+        if c:
+            court = c.group(1) or c.group(2)
+            if court != cle:
+                pose(court, statut)
+    return st, collisions, pleines
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -661,13 +816,13 @@ def main():
         return 1
     ctrl(True, "le ledger se LIT en UTF-8", "%d caractere(s)" % len(texte))
     try:
-        tracker, collisions_trk = lit_tracker(p_trk)
+        tracker, collisions_trk, cles_trk = lit_tracker(p_trk)
     except (OSError, UnicodeDecodeError) as x:
         ctrl(False, "le tracker se LIT en UTF-8", "", "⛔ %s" % x)
         print("\n⛔ ARRET : le tracker est illisible. ⛔ JAMAIS un skip.")
         return 1
     ctrl(True, "le tracker se LIT en UTF-8",
-         "%d story(s) connue(s)" % len(tracker))
+         "%d cle(s) au tracker" % len(cles_trk))
 
     # ── 1. LE COMPTE, PRODUIT ICI (AC1.2 / AC6.3) ───────────────────────────
     imprime_convention()
@@ -904,13 +1059,21 @@ def main():
     print("     verdicts (AC2.2)    : %s"
           % "  ".join("%s %d" % (k, v)
                       for k, v in sorted(hv.items(), key=lambda x: -x[1])))
+    # 🔴 dn4-40 — LE MISLABEL ETAIT DANS L'HISTOGRAMME DE LA GATE ELLE-MEME.
+    #    `sum(porteurs.values())` est une somme d'OCCURRENCES ; elle etait
+    #    publiee sous l'etiquette « entree(s) ». Une entree qui citait deux
+    #    cles y comptait DEUX FOIS. Les deux comptes sont desormais
+    #    DISTINCTS et nommes pour ce qu'ils sont.
     porteurs = {}
+    entrees_portees = set()
     for e in ouvertes:
         d = dispo(e)
         for cle in porteurs_a_venir(d) if d else []:
             porteurs[cle] = porteurs.get(cle, 0) + 1
-    print("     porteurs A VENIR    : %d story(s) distincte(s) pour %d entree(s)"
-          % (len(porteurs), sum(porteurs.values())))
+            entrees_portees.add(e["ligne"])
+    print("     porteurs A VENIR    : %d story(s) distincte(s) · %d designation(s)"
+          " · %d entree(s)"
+          % (len(porteurs), sum(porteurs.values()), len(entrees_portees)))
     print("       %s" % "  ".join("%s:%d" % (k, v)
                                   for k, v in sorted(porteurs.items(),
                                                      key=lambda x: -x[1])))
@@ -932,16 +1095,152 @@ def main():
          % (len(multi),
             ", ".join("l.%d (%d)" % (e["ligne"], n) for e, n in multi)))
 
+    # ── 2bis. LE PORTEUR RELEVE D'UNE DES CINQ FORMES (dn4-40 / AC40.1) ─────
+    #
+    # 🔴 CETTE SECTION EXISTE PARCE QUE 12 DISPOSITIONS TRAVERSAIENT LA GATE
+    #    SANS QU'AUCUN CONTROLE NE LES REGARDE. Elles sont toutes de FORME 3
+    #    (`bloquee par : <fait externe>`), toutes LEGITIMES, et l'ancienne
+    #    extraction leur rendait zero cle ⇒ les 3 controles de vivacite
+    #    tournaient a vide et annoncaient « OK ».
+    #    ⇒ L'INVARIANT QUE CETTE SECTION POSE, et qui ⛔ n'est PAS un chiffre :
+    #      « aucune disposition a verdict A VENIR ne traverse cette gate sans
+    #        etre soumise a au moins un controle. »
+    #      Il est VERIFIE ci-dessous, ⛔ pas seulement affirme.
+    print("\n── 2bis. LE PORTEUR RELEVE D'UNE DES CINQ FORMES (AC40.1) ────────")
+    print("     prescription : docs/bmad/deferred-work-ligne-porteur.md")
+    formes = {}
+    hors_forme = []
+    f2_sans_cle = []
+    f3 = []
+    f3_muets = []
+    f3_cle_nue = []
+    f5_hors_connaissance = []
+    f4_hors_close = []
+    soumis = {}
+    for e in ouvertes:
+        d = dispo(e)
+        if d is None:
+            continue
+        n, arg = forme_du_porteur(d["porteur"])
+        formes[n] = formes.get(n, 0) + 1
+        avenir = d["verdict"] in VERDICTS_A_VENIR
+        if avenir:
+            soumis.setdefault(e["ligne"], set())
+        if n == 0:
+            hors_forme.append((e, d["porteur"]))
+            if avenir:
+                soumis[e["ligne"]].add("forme")
+        elif n == 2:
+            if avenir:
+                soumis[e["ligne"]].add("forme2")
+            if not RE_CLE_PORTEUR.match(arg):
+                f2_sans_cle.append((e, arg))
+        elif n == 3:
+            f3.append((e, arg))
+            if avenir:
+                soumis[e["ligne"]].add("forme3")
+            # 🔴 L'ORDRE DE CES DEUX TESTS EST UN CORRECTIF, ⛔ PAS UN DETAIL.
+            #    Ecrits dans l'autre sens, le plancher de longueur avalait le
+            #    cas PLUS PRECIS : le mutant `bloquee par : dn4-16` (7
+            #    caracteres) sortait « FAIT MUET » au lieu de « PORTEUR
+            #    DEGUISE ». La campagne l'a vu rougir — sur le MAUVAIS
+            #    controle. ⇒ le cas nomme passe EN PREMIER.
+            #
+            # 🔴 UN FAIT BLOQUANT QUI SE REDUIT A UNE CLE DE STORY EST UN
+            #    PORTEUR DEGUISE : il esquiverait toute la vivacite. ⚠️ Une
+            #    story CITEE DANS la prose reste legitime — c'est la
+            #    REDUCTION qui est refusee, ⛔ pas la mention. (C'est
+            #    exactement le faux rouge qui etait ARME dans le ledger.)
+            if RE_CLE_PORTEUR.match(sans_accents(arg).strip(" `*_.")):
+                f3_cle_nue.append((e, arg))
+            # ⛔ NI VIDE NI BOUCHON : « nomme le fait » est la lettre de la
+            #    prescription, et c'est falsifiable. ⚠️ Le `< 8` est un
+            #    PLANCHER assume, ⛔ pas une mesure : un fait externe nomme en
+            #    moins de 8 caracteres n'est pas nomme. Il ne mord aujourd'hui
+            #    sur aucun des 13 champs reels.
+            elif porteur_est_bouchon(arg) or len(arg.strip()) < 8:
+                f3_muets.append((e, arg))
+        elif n == 4:
+            if d["verdict"] != "CLOSE":
+                f4_hors_close.append((e, d["verdict"]))
+        elif n == 5:
+            if d["verdict"] != "CONNAISSANCE":
+                f5_hors_connaissance.append((e, d["verdict"]))
+        elif n == 1 and avenir:
+            soumis[e["ligne"]].add("forme1")
+    print("     formes (AC40.1.a)   : %s"
+          % "  ".join("%s %d" % (FORME_LIBELLE[k], v)
+                      for k, v in sorted(formes.items())))
+    ctrl(not hors_forme,
+         "tout porteur releve de l'UNE des CINQ formes",
+         "%d disposition(s) triee(s), 0 hors forme" % len(ouvertes),
+         "⛔ %d HORS FORME : %s"
+         % (len(hors_forme),
+            ", ".join("l.%d `%s`" % (e["ligne"], p[:34]) for e, p in hors_forme)))
+    ctrl(not f2_sans_cle,
+         "toute forme 2 `backlog nomme :` nomme UNE cle",
+         "%d forme(s) 2, toutes avec cle" % formes.get(2, 0),
+         "⛔ %d SANS CLE : %s"
+         % (len(f2_sans_cle),
+            ", ".join("l.%d `%s`" % (e["ligne"], a[:34]) for e, a in f2_sans_cle)))
+    # 🎯 LES DEUX CONTROLES QUI FERMENT LE TROU DES 12 — leur population EST
+    #    celle qui ne rendait aucune cle. ⛔ Ils ne « voient » pas : ils
+    #    verifient, et un mutant les fait rougir.
+    ctrl(not f3_muets,
+         "tout `bloquee par :` NOMME un fait (⛔ ni vide ni bouchon)",
+         "%d fait(s) bloquant(s) nomme(s)" % len(f3),
+         "⛔ %d FAIT(S) MUET(S) : %s"
+         % (len(f3_muets),
+            ", ".join("l.%d `%s`" % (e["ligne"], a[:34]) for e, a in f3_muets)))
+    ctrl(not f3_cle_nue,
+         "aucun fait bloquant ne se REDUIT a une cle de story",
+         "%d fait(s) examine(s) — une cle nue serait un porteur deguise"
+         % len(f3),
+         "⛔ %d PORTEUR(S) DEGUISE(S) : %s"
+         % (len(f3_cle_nue),
+            ", ".join("l.%d `%s`" % (e["ligne"], a[:34]) for e, a in f3_cle_nue)))
+    ctrl(not f4_hors_close,
+         "la forme 4 `clos par :` ne porte que le verdict CLOSE",
+         "%d forme(s) 4" % formes.get(4, 0),
+         "⛔ %d HORS CLOSE : %s"
+         % (len(f4_hors_close),
+            ", ".join("l.%d %s" % (e["ligne"], v) for e, v in f4_hors_close)))
+    ctrl(not f5_hors_connaissance,
+         "la forme 5 `—` est reservee a CONNAISSANCE",
+         "%d forme(s) 5" % formes.get(5, 0),
+         "⛔ %d HORS CONNAISSANCE : %s"
+         % (len(f5_hors_connaissance),
+            ", ".join("l.%d %s" % (e["ligne"], v) for e, v in f5_hors_connaissance)))
+    # 🔴 L'INVARIANT LUI-MEME, CONTROLE — ⛔ pas un chiffre-cible.
+    muettes = [n for n, v in soumis.items() if not v]
+    ctrl(not muettes,
+         "aucune disposition A VENIR ne traverse la gate sans controle",
+         "%d disposition(s) A VENIR, toutes soumises" % len(soumis),
+         "⛔ %d MUETTE(S) : l.%s"
+         % (len(muettes), ", l.".join(str(x) for x in sorted(muettes))))
+    # ⚠️ CONSTAT PUBLIE, ⛔ PAS UN VERDICT — voir les notes de dn4-40 : la
+    #    prescription demande aussi « nomme CE QUI LE DEBLOQUERAIT ». Ce
+    #    compte est rendu VISIBLE ; il n'est ⛔ pas arme en KO, parce qu'il
+    #    condamnerait des entrees que cette story ne porte pas.
+    RE_DEBLOC = re.compile(r"debloqu|deblocage|levee?\b|des que|lorsque|quand |"
+                           r"une fois|il faut que|attend que|suffit", re.I)
+    sans_debl = [e for e, a in f3 if not RE_DEBLOC.search(sans_accents(a))]
+    print("     ⚠️ %d des %d faits bloquants ne nomment AUCUN deblocage"
+          % (len(sans_debl), len(f3)))
+    print("        (constat PUBLIE, ⛔ pas un KO — reporte au tracker)")
+
     # ── 3. LE PORTEUR EST VIVANT (AC6.5) ────────────────────────────────────
     print("\n── 3. LE PORTEUR EST VIVANT (AC6.5) ──────────────────────────────")
     print("     ⚠️ un `clos par :` designe le PASSE ⇒ non soumis (voir en-tete)")
     morts = []
     inconnus = []
+    soumis_vivacite = 0
     for e in ouvertes:
         d = dispo(e)
         if d is None:
             continue
         for cle in porteurs_a_venir(d):
+            soumis_vivacite += 1
             st = tracker.get(cle)
             if st is None:
                 inconnus.append((e, cle))
@@ -949,7 +1248,8 @@ def main():
                 morts.append((e, cle, st))
     ctrl(not morts,
          "aucun porteur A VENIR n'est `done`/`superseded`",
-         "tracker : %d story(s) connue(s)" % len(tracker),
+         "tracker : %d cle(s), %d porteur(s) soumis"
+         % (len(cles_trk), soumis_vivacite),
          "⛔ %d MORT(S) : %s"
          % (len(morts),
             ", ".join("l.%d→%s(%s)" % (e["ligne"], c, s) for e, c, s in morts)))
@@ -986,7 +1286,7 @@ def main():
                 if len({s in STATUTS_MORTS for s in v}) > 1}
     ctrl(not ambigues,
          "aucune collision de cle ne peut CHANGER un verdict",
-         "%d cle(s) distincte(s)%s" % (len(tracker),
+         "%d cle(s) distincte(s)%s" % (len(cles_trk),
                                        ", %d collision(s) benigne(s)"
                                        % len(collisions_trk) if collisions_trk else ""),
          "⛔ %d COLLISION(S) VIVANT/MORT : %s"

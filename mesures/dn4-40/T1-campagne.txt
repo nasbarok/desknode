@@ -1,0 +1,77 @@
+==============================================================================
+dn4-40 / AC40.7 — CAMPAGNE DE MUTANTS SUR verif_ledger_dn416.py
+==============================================================================
+⛔ AUCUNE ecriture dans le cockpit vivant : chaque mutant joue
+   dans une COPIE jetable. Indexation : site d'appel, ⛔ pas console.
+
+── T0 : L'ARBRE PROPRE ───────────────────────────────────────
+   rc=0 · 31 controle(s) traces · 0 KO
+
+── LES MUTANTS ───────────────────────────────────────────────
+   [OK] A-porteur-en-prose       VU ROUGE sur verif_ledger_dn416.py:1174
+        un porteur EN PROSE qui ne releve d'AUCUNE des cinq formes
+   [OK] C-porteur-epic           VERT (attendu)
+        un porteur `epic-*` — INVISIBLE avant dn4-40, donc a vide
+   [OK] C2-porteur-epic-mort     VU ROUGE sur verif_ledger_dn416.py:1249
+        un porteur `epic-*` dont l'EPIC est clos ⇒ doit rougir
+   [OK] B-incise-story-close     VERT (attendu)
+        une cle VIVANTE + une story CLOSE citee en incise
+   [OK] E1-bouchon-tbd           VU ROUGE sur verif_ledger_dn416.py:1081
+        un porteur bouchon `TBD`
+   [OK] E2-porteur-vide          VU ROUGE sur verif_ledger_dn416.py:1081
+        un champ porteur VIDE
+   [OK] E3-story-done            VU ROUGE sur verif_ledger_dn416.py:1249
+        un porteur qui est une story `done`
+   [OK] E4-story-inconnue        VU ROUGE sur verif_ledger_dn416.py:1256
+        un porteur absent du tracker
+   [OK] F2-sans-cle              VU ROUGE sur verif_ledger_dn416.py:1180
+        une forme 2 dont l'argument n'est PAS une cle
+   [OK] F3-fait-muet             VU ROUGE sur verif_ledger_dn416.py:1189
+        un `bloquee par :` dont le fait est un bouchon
+   [OK] F3-porteur-deguise       VU ROUGE sur verif_ledger_dn416.py:1195
+        un `bloquee par :` qui se REDUIT a une cle de story
+   [OK] F4-hors-close            VU ROUGE sur verif_ledger_dn416.py:1202
+        une forme 4 `clos par :` sur un verdict qui n'est pas CLOSE
+   [OK] F5-hors-connaissance     VU ROUGE sur verif_ledger_dn416.py:1208
+        une forme 5 `—` sur un verdict qui n'est pas CONNAISSANCE
+   [OK] V-verdict-hors-liste     VU ROUGE sur verif_ledger_dn416.py:1046
+        un verdict qui n'est pas l'un des CINQ
+   [OK] G1-preuve-vide           VU ROUGE sur verif_ledger_dn416.py:1310
+        un champ preuve VIDE
+   [OK] G2-preuve-adresse-nue    VU ROUGE sur verif_ledger_dn416.py:1314
+        une preuve qui se REDUIT a un `fichier:ligne`
+   [OK] G3-date-invalide         VU ROUGE sur verif_ledger_dn416.py:1087
+        une date de disposition qui n'existe pas
+   [OK] G4-marqueur-hors-liste   VU ROUGE sur verif_ledger_dn416.py:869
+        un marqueur de tete hors de la liste fermee
+   [OK] G5-sans-disposition      VU ROUGE sur verif_ledger_dn416.py:1041
+        une entree ouverte SANS ligne de disposition
+   [OK] G6-multi-disposition     VU ROUGE sur verif_ledger_dn416.py:1092
+        une entree qui porte DEUX lignes de disposition
+   [OK] D-faux-rouge-arme        VERT (attendu)
+        `dn4-41` passee `done` DANS LA COPIE ⇒ la gate doit rester verte
+
+── `controle ⇒ couvert` : LES CONTROLES GARDES PAR RIEN ───────
+   ⛔ « N mutants, N vus rougir » prouve `mutant ⇒ rouge`.
+      Ce compte-ci est l'AUTRE sens, et c'est celui qui manque.
+   controles traces          : 31
+   controles vus rougir      : 17
+   ⚠️ GARDES PAR RIEN        : 14
+        verif_ledger_dn416.py:1274         tout statut de porteur est un statut CONNU
+        verif_ledger_dn416.py:1287         aucune collision de cle ne peut CHANGER un verdict
+        verif_ledger_dn416.py:1324         le manifeste d'arbitrage est livre
+        verif_ledger_dn416.py:1328         le manifeste cite le script qui produit son compte
+        verif_ledger_dn416.py:1350         le §9 porte ses deux bornes (le controle se borne a 
+        verif_ledger_dn416.py:1356         le manifeste couvre 100 % des entrees ouvertes (AC2.
+        verif_ledger_dn416.py:1362         chaque ligne du manifeste REPRODUIT ce que le script
+        verif_ledger_dn416.py:757          le depot code est le depot DESKNODE
+        verif_ledger_dn416.py:796          le depot cockpit est atteignable
+        verif_ledger_dn416.py:797          le ledger est present
+        verif_ledger_dn416.py:798          le tracker est present
+        verif_ledger_dn416.py:817          le ledger se LIT en UTF-8
+        verif_ledger_dn416.py:824          le tracker se LIT en UTF-8
+        verif_ledger_dn416.py:853          le perimetre n'est pas vide
+
+==============================================================================
+BILAN CAMPAGNE : 21 mutant(s), 0 echec(s), 14 controle(s) gardes par rien
+==============================================================================

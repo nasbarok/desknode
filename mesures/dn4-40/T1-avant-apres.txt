@@ -1,0 +1,29 @@
+==============================================================================
+dn4-40 / AC40.1 — LE MEME MUTANT, AVANT ET APRES LE CORRECTIF
+==============================================================================
+gate AVANT : `git show HEAD:` ⇒ tools/_avant_dn440.py
+   ⚠️ DEPOSEE **DANS** L'ARBRE, et c'est un correctif de mesure : hors
+      de l'arbre, `DESKNODE = dirname(dirname(__file__))` ne resout pas,
+      la gate sort en ARRET des le controle 4 et l'A/B ne mesure RIEN
+      (mesure : `3 OK, 1 KO` identique sur les 4 cas).
+gate APRES : tools/verif_ledger_dn416.py
+⚠️ le manifeste est regenere DANS LA COPIE, PAR LA GATE TESTEE, avant
+   chaque lecture — sinon son ancrage par NUMERO DE LIGNE masque le
+   controle vise (mesure : 14 mutants sur 14 ne faisaient rougir QUE lui).
+
+── A — porteur EN PROSE (forme 3 legitime)
+   AVANT  rc=0  BILAN : 24 OK, 0 KO
+   APRES  rc=1  ⛔ 1 ECHEC(S) sur 31 controles.
+
+── C — porteur `epic-dn4` (cle ignoree du parseur)
+   AVANT  rc=0  BILAN : 24 OK, 0 KO
+   APRES  rc=0  BILAN : 31 OK, 0 KO
+
+── C2 — porteur `epic-dn1` (epic CLOS ⇒ doit rougir)
+   AVANT  rc=0  BILAN : 24 OK, 0 KO
+   APRES  rc=1  ⛔ 1 ECHEC(S) sur 31 controles.
+
+── B — cle VIVANTE + story CLOSE citee en incise
+   AVANT  rc=1  ⛔ 1 ECHEC(S) sur 24 controles.
+   APRES  rc=0  BILAN : 31 OK, 0 KO
+
