@@ -1,0 +1,16 @@
+==============================================================================
+dn4-40 / AC40.4.e — UN AJOUT AU-DELA DU 120e CARACTERE, EN COPIE
+==============================================================================
+motif injecte : LU dans `MOTIFS` de la gate (⛔ pas ecrit dans ce fichier)
+
+── f5e9d69 (AVANT dn4-40)
+   ligne mutee : README.md:742  (2893 car. ⇒ 2901 car., ajout au car. 2895)
+   rc=1  BILAN : 16 OK, 12 KO
+      [KO ] le `n` du manifeste ne colle pas a l'arbre               desknode:README.md [vl53l0x] #1 (l.742) manifeste=1 arbre=2
+
+── HEAD (APRES)
+   ligne mutee : README.md:742  (2893 car. ⇒ 2901 car., ajout au car. 2895)
+   rc=1  BILAN : 16 OK, 12 KO
+      [KO ] le `n` du manifeste ne colle pas a l'arbre               desknode:README.md [vl53l0x] #1 (l.742) manifeste=1 arbre=2  ⇒ 1 occurrence(s) EN TROP a la/aux colonne(s) 2891 : ' pas rendu son verdict | vl53l0x'
+      [KO ] somme des verdicts == occurrences de l'arbre             ⛔ 204 (manifeste) vs 208 (arbre), ecart -4 — CE QUI LE COMPOSE : 4 NOUVELLE(S) dans l'arbre : cockpit:tifacts/deferred-work.md [vl53l0x] #1 'dont `sprint-change-proposal-2026-08-31.' · cockpit:int-status-desknode.yaml [vl53l0x] #1 'dn4-7-le-tof-porte-t-il-vraiment: blocke' · cockpit:cts/epics-desknode-v1.md [vl53l0x] #1 '`done` depuis mi-août) : **on séquence p' · cockpit:e-proposal-2026-08-31.md [vl53l0x] #1 '| « VL53L0X » | `TOF050C-VL6180X` — réfu' || 1 FANTOME(S) au manifeste : cockpit:int-status-desknode.yaml [vl53l0x] #1 'dn4-7-le-tof-porte-t-il-vraiment: blocke' || 1 `n` DIVERGENT(S) : desknode:README.md [vl53l0x] #1 1→2
+
