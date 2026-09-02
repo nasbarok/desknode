@@ -135,3 +135,47 @@
    ⇒ EN CONSEQUENCE, la Completion Note « la ligne du tracker la portait deja » est
      REFORMULEE dans la story : ce qui est vrai, c'est qu'elle la portait dans
      l'arbre de travail — ⛔ pas dans l'historique publie.
+
+================================================================================
+ 🔴 CE QUE CETTE CAPTURE NE PEUT PAS DIRE — ET POURQUOI LE CORRECTIF NAIF ECHOUE
+================================================================================
+ Ecrit le 2026-09-02, JUSTE APRES la pousse qui a publie ce fichier.
+
+ LE DEFAUT QUE LA REVUE A TROUVE : `T3-etat-remote-apres.txt` affirmait
+ `etat publie = 18737fe` alors qu'`origin` portait `6728a80`.
+ LE CORRECTIF NAIF : ecrire le bon SHA. ⛔ IL NE PEUT PAS MARCHER, ET C'EST
+ STRUCTUREL — pas un oubli.
+
+   Ce fichier a ete ecrit AVANT le commit qui le publie. Au moment de sa
+   redaction, le SHA de ce commit-la N'EXISTE PAS ENCORE : il depend du contenu
+   du fichier, donc du SHA qu'on voudrait y ecrire. ⇒ TOUTE CAPTURE QUI NOMME
+   L'ETAT PUBLIE EST PERIMEE PAR SA PROPRE PUBLICATION.
+
+   MESURE : les sections 1 a 7 ci-dessus nomment `6728a80`. Au moment ou ces
+   lignes sont ecrites, `git ls-remote origin` rend deja `9993d3d` sur les trois
+   refs — le commit qui portait la correction de `T3`. ⛔ Les sections ne sont PAS
+   reecrites (NFR3) : elles etaient vraies de l'etat qu'elles decrivaient, et
+   c'est ce que ce bloc precise.
+
+ ⇒ LA REGLE, QUI ELLE NE PERIME PAS :
+
+     L'ETAT PUBLIE EST CE QUE REND `git ls-remote origin main`.
+     ⛔ AUCUN FICHIER DU DEPOT NE PEUT LE NOMMER SANS SE CONTREDIRE.
+
+   Ce qu'une capture PEUT affirmer sans mentir, et qui reste vrai :
+     · `main`, `HEAD` et `dn4-5-le-module-vit-tout-seul` sont sur LE MEME commit ;
+     · l'avance est TOUJOURS rapide ⇒ `b524e98` reste un ANCETRE, 0 commit de
+       fusion, 0 `--force` ;
+     · le depot reste PRIVATE et sans tag ;
+     · ⛔ aucun commit de `dn5-1` ne touche `firmware/` — ancre sur `e578def`,
+       ⛔ pas sur `main`.
+   Ces cinq-la sont des INVARIANTS : ils se re-verifient a tout moment et ne
+   dependent d'aucun SHA. Un SHA, lui, est un INSTANTANE — il se date, ⛔ il ne
+   s'affirme pas au present.
+
+ 🎯 LA LECON, ET ELLE VAUT AU-DELA DE CETTE STORY : quand une preuve doit parler
+    de l'objet qui la contient, elle ne peut pas le NOMMER — elle doit nommer LE
+    MOYEN DE LE LIRE. C'est la meme famille que les trois defauts d'instrument
+    deja consignes : une sortie redigee pour un humain n'est pas un format de
+    donnees, un texte qui parle d'une gate vit dans le champ de cette gate, et
+    une capture qui parle de sa propre publication ne peut pas la preceder.
