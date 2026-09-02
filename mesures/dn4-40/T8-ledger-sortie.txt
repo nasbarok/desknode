@@ -1,0 +1,100 @@
+==============================================================================
+dn4-16 / AC6 — CHAQUE ENTREE OUVERTE PORTE UN VERDICT ET UN PORTEUR
+==============================================================================
+
+depot code    : /home/nasbarok/projects/desknode
+depot cockpit : /home/nasbarok/projects/compagnon_project
+
+── 0. LES DEUX DEPOTS SONT LA (AC6.7) ────────────────────────────
+  [OK ] le depot code est le depot DESKNODE                            firmware/ + tools/ presents
+  [OK ] le depot cockpit est atteignable                               /home/nasbarok/projects/compagnon_project
+  [OK ] le ledger est present                                          _bmad-output/implementation-artifacts/deferred-work.md
+  [OK ] le tracker est present                                         _bmad-output/implementation-artifacts/sprint-status-desknode
+  [OK ] le ledger se LIT en UTF-8                                      755365 caractere(s)
+  [OK ] le tracker se LIT en UTF-8                                     74 cle(s) au tracker
+
+── LA CONVENTION QUE CE SCRIPT IMPLEMENTE (AC1.3) ────────────────
+   (1) entree   = puce `^- ` de PREMIER niveau, en section `## Deferred from:`
+       (les puces indentees sont des CONTINUATIONS — c'est cette regle-la qui a separe 240 de 258 au cadrage)
+   (2) DeskNode = tag `[DeskNode]` EN TETE DE PUCE OU `dnN-M`/`desknode` au titre de section
+       (⛔ plus en sous-chaine du texte absorbe : une entree KidSat qui CITE le tag basculait la frontiere)
+   (3) ouverte  = la puce ne commence PAS par `✅`
+       ⚠️ une entree arbitree `CLOSE` reste OUVERTE au sens du compte
+   (4) marqueur = premier glyphe EN TETE de puce (⛔ pas ailleurs dans la ligne)
+   ⚠️ (1) ne distingue PAS une puce de constat d'une puce de PROSE
+       sous une rubrique `###` — sous-compte ci-dessous, ⛔ non
+       redefini : rebouger le perimetre invaliderait le manifeste.
+
+── 1. LE COMPTE — ⛔ AUCUN CHIFFRE N'EST RECOPIE (AC1.2) ──────────
+     ledger              : _bmad-output/implementation-artifacts/deferred-work.md (5908 lignes)
+     sections            :  110   dont DeskNode : 60 (55 %)
+     entrees             :  470   dont DeskNode : 296 (63 %)
+     DeskNode OUVERTES   :  267   <= LE PERIMETRE DE CETTE GATE
+     KidSat (hors champ) :  174
+     marqueurs (regle 4) : ⚪ 68  🟠 61  🔴 50  🟢 25  (sans) 21  🟡 15  ⚠️ 15  🎯 6  ⏳ 2  🆕 2  ⚫ 1  ⏸️ 1
+  [OK ] le perimetre n'est pas vide                                    267 entree(s) ouverte(s)
+  [OK ] aucun marqueur de tete n'est HORS LISTE                        16 marqueur(s) connu(s)
+     ⚠️ dont sous rubrique `###` : 8 (prose narrative possible)
+     ⚠️ dont marquees SOLDE/~~ .. ~~ : 8 (closes par le depot, gardees au compte)
+
+── 2. CHAQUE ENTREE OUVERTE PORTE UNE DISPOSITION (AC6.4) ────────
+  [OK ] toute entree ouverte a une ligne de disposition                267 entree(s) arbitree(s)
+  [OK ] tout verdict est l'un des CINQ                                 PORTEE · RE-HEBERGEE · CLOSE · BLOQUEE · CONNAISSANCE
+     verdicts (AC2.2)    : RE-HÉBERGÉE 123  CLOSE 69  CONNAISSANCE 39  PORTÉE 23  BLOQUÉE 13
+     porteurs A VENIR    : 21 story(s) distincte(s) · 146 designation(s) · 146 entree(s)
+       dn4-32:22  dn4-27:14  dn4-28:13  dn4-29:11  dn4-26:9  dn4-30:8  dn4-37:8  dn4-12:7  dn4-21:7  dn4-25:7  dn4-38:7  dn4-34:6  dn4-35:6  dn4-31:5  dn4-7:5  dn4-33:3  dn4-36:2  dn4-5:2  dn4-27-l-agent-de-la-tour-se-mesure-a-charge-controlee:2  dn4-20:1  dn5-3-plus-rien-ne-depend-de-ma-machine-et-ce-qui-la-nomme-le-dit:1
+  [OK ] tout porteur DESIGNE quelqu'un (⛔ ni vide ni bouchon)          aucun bouchon ; `—` admis sur CONNAISSANCE seulement
+  [OK ] toute date de disposition est une date reelle                  aucune date invalide
+  [OK ] une entree porte UNE seule ligne de disposition                aucune entree n'en porte deux
+
+── 2bis. LE PORTEUR RELEVE D'UNE DES CINQ FORMES (AC40.1) ────────
+     prescription : docs/bmad/deferred-work-ligne-porteur.md
+     formes (AC40.1.a)   : 1 cle nue 30  2 backlog nomme 116  3 bloquee par 13  4 clos par 69  5 tiret (CONNAISSANCE) 39
+  [OK ] tout porteur releve de l'UNE des CINQ formes                   267 disposition(s) triee(s), 0 hors forme
+  [OK ] toute forme 2 `backlog nomme :` nomme UNE cle                  116 forme(s) 2, toutes avec cle
+  [OK ] tout `bloquee par :` NOMME un fait (⛔ ni vide ni bouchon)      13 fait(s) bloquant(s) nomme(s)
+  [OK ] aucun fait bloquant ne se REDUIT a une cle de story            13 fait(s) examine(s) — une cle nue serait un porteur deguis
+  [OK ] la forme 4 `clos par :` ne porte que le verdict CLOSE          69 forme(s) 4
+  [OK ] la forme 5 `—` est reservee a CONNAISSANCE                     39 forme(s) 5
+  [OK ] aucune disposition A VENIR ne traverse la gate sans controle   159 disposition(s) A VENIR, toutes soumises
+     ⚠️ 10 des 13 faits bloquants ne nomment AUCUN deblocage
+        (constat PUBLIE, ⛔ pas un KO — reporte au tracker)
+
+── 3. LE PORTEUR EST VIVANT (AC6.5) ──────────────────────────────
+     ⚠️ un `clos par :` designe le PASSE ⇒ non soumis (voir en-tete)
+  [OK ] aucun porteur A VENIR n'est `done`/`superseded`                tracker : 74 cle(s), 146 porteur(s) soumis
+  [OK ] tout porteur A VENIR existe au tracker                         sprint-status-desknode.yaml
+  [OK ] tout statut de porteur est un statut CONNU                     statuts admis : backlog · in-progress · ready-for-dev · revi
+  [OK ] aucune collision de cle ne peut CHANGER un verdict             74 cle(s) distincte(s), 1 collision(s) benigne(s)
+
+── 4. LA PREUVE EST UN MOTIF, ⛔ PAS UN NUMERO DE LIGNE (AC6.6) ───
+     motif mesure : 0 adresse sur 192 tombe hors fichier ⇒ un
+     controle de bornes rendrait `192 OK / 0 KO` sur du derive
+  [OK ] tout champ preuve est non vide                                 aucun champ preuve vide
+  [OK ] aucune preuve ne se REDUIT a un `fichier:ligne`                aucune adresse nue (gras, backticks et « voir » compris)
+
+── 5. LE MANIFESTE EXISTE ET NE RECOPIE AUCUN CHIFFRE ────────────
+  [OK ] le manifeste d'arbitrage est livre                             _bmad-output/implementation-artifacts/dn4-16-arbitrage-ledge
+  [OK ] le manifeste cite le script qui produit son compte             ⇒ un seul compte, ⛔ pas deux qui divergent
+  [OK ] le §9 porte ses deux bornes (le controle se borne a elles)     bornes vues aux offsets 28226 et 115557
+  [OK ] le manifeste couvre 100 % des entrees ouvertes (AC2.7)         267 ligne(s) pour 267 entree(s)
+  [OK ] chaque ligne du manifeste REPRODUIT ce que le script produit   267 ligne(s) identiques au caractere pres
+
+==============================================================================
+⚠️ CE QUE CETTE GATE NE SOLDE PAS :
+   · elle EXIGE un verdict, elle ne peut pas juger s'il est JUSTE ;
+   · elle ne valide AUCUNE adresse `fichier:ligne` — par decision ;
+   · elle ignore les 174 entrees KidSat, hors perimetre ;
+   · elle ne couvre ni `bmad-dev-auto` ni `bmad-quick-dev`, qui
+     ecrivent aussi au ledger par d'autres chemins ;
+   · 🔴 elle ne lit QUE `deferred-work.md` — les 14 fichiers
+     `deferred/*.md` lui sont INVISIBLES : le jour du drain, elle
+     epinglerait VERT un ledger vide de sa substance ;
+   · ⚠️ 8 entree(s) ouverte(s) sont sous une rubrique `###` et
+     peuvent etre de la prose narrative, ⛔ pas des constats ;
+   · ⚠️ 8 entree(s) portent une marque de solde du depot
+     (`~~..~~ — SOLDE`, `[SOLDE]`) et restent AU COMPTE, par
+     coherence avec la regle (3) — ⛔ ce n'est pas un oubli.
+==============================================================================
+BILAN : 31 OK, 0 KO
+==============================================================================

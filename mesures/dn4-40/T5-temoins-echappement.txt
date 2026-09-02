@@ -60,8 +60,6 @@ jetons et motifs LUS dans la gate — ⛔ pas ecrits dans ce fichier.
    ligne : usbipd bind [[cit]]--busid 3-1[[/cit]] dans une recette.
    TOTAL : 324 ⇒ 325   (delta +1)
    attendu : l'occurrence reste COMPTEE (delta +1) ET un KO « refuse »
-   [KO ] echappement INUTILE — il n'echappe AUCUNE occurrence     docs/dn4-40-temoin-echappement.md:3 — span pose au mauvais endroit : usbipd bind [[cit]
-   [KO ] aucun echappement n'echappe du vide (⇒ ⛔ pas de baisse m ⛔ 1 ECHAPPEMENT(S) INUTILE(S)
    [KO ] echappement REFUSE — ce motif s'EXECUTE (une recette se  docs/dn4-40-temoin-echappement.md:3 [busid-en-dur] : usbipd bind [[cit]]--busid 3-1[[/c
    [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c desknode:docs/dn4-40-temoin-echappement.md [busid-en-dur] #1 (l.3) usbipd bind [[cit]]-
 

@@ -15,7 +15,7 @@ critere : LEGITIME = le chemin d'echec SORT EN AMONT ;
            mutant : le ledger rendu NON-UTF-8 ⇒ ctrl(False) puis ARRET
   [OK] LEGITIME verif_ledger_dn416.py:824            PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant (rc=1)
            mutant : le tracker rendu NON-UTF-8 ⇒ ctrl(False) puis ARRET
-  [OK] LEGITIME verif_dossier_dn415.py:713           PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant (rc=4)
+  [OK] LEGITIME verif_dossier_dn415.py:977           PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant (rc=4)
            mutant : `--cockpit` vers un chemin inexistant ⇒ la branche `absent` est prise
   [OK] LEGITIME verif_hist_dn413.py:712              PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant (rc=1)
            mutant : `dn_hist.c` rendu incompilable ⇒ ctrl(False) puis `return 1`
@@ -45,7 +45,7 @@ critere : LEGITIME = le chemin d'echec SORT EN AMONT ;
       sur un decor mesure le decor.
    gate                            sites  invoc distin  ecart
    verif_dossier_d5_dn45.py            5      9      3      2
-   verif_dossier_dn415.py             38     26     19     19
+   verif_dossier_dn415.py             50     30     23     27
    verif_hist_dn413.py                70     56     53     17
    verif_journal_soak_dn45.py         25     26     24      1
    verif_ledger_dn416.py              41     31     31     10

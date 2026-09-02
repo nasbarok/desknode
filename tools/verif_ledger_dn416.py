@@ -396,6 +396,51 @@ def titre_court(e, n=58):
     return t[:n]
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+#  dn4-40 — LE §9 CESSE D'ETRE ANCRE PAR NUMERO DE LIGNE  (DECISION OWNER (b))
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# 🔴 LA CONTRADICTION QUE CECI SOLDE. Cette gate REFUSE une preuve qui se
+#    reduit a une adresse `fichier:ligne` (« il derive, et il se lit vert pour
+#    tout controle de bornes »). Et elle IMPOSAIT un NUMERO DE LIGNE comme 1re
+#    colonne de son manifeste, comparee AU CARACTERE PRES. Le manifeste
+#    l'ecrivait lui-meme : « la colonne `ligne` est un repere de navigation,
+#    ⛔ pas une preuve » — alors que le controle en faisait exactement une
+#    preuve.
+#    MESURE : une entree temoin ORDINAIRE inseree en amont du ledger faisait
+#    sortir **267 lignes DIVERGENTES sur 267**, sans qu'un seul sens ait change.
+#
+# ⇒ L'ANCRE EST DESORMAIS DERIVEE DU CONTENU, comme `dn4-24` l'a fait pour la
+#   gate du dossier : (section · marqueur · titre court · RANG parmi les
+#   homonymes). Le numero de ligne DISPARAIT du tableau — il n'y avait
+#   d'utilite que de navigation, et `--en-place` le regenere de toute facon.
+#
+# ⚠️ LE RANG EST INDISPENSABLE : deux entrees peuvent partager section,
+#    marqueur et titre court. Sans lui, deux lignes du manifeste porteraient la
+#    MEME ancre et la comparaison deviendrait ambigue — le defaut que la cle
+#    d'ancrage de `dn4-24` a deja paye. Un controle dedie le verifie.
+#
+# ⚠️ 8 CARACTERES HEXA : sur 267 entrees, la probabilite de collision est
+#    negligeable, ET elle est CONTROLEE plutot que supposee.
+
+
+def ancres(ouvertes):
+    """{id(entree): ancre} — derivee du CONTENU, ⛔ jamais de la position."""
+    import hashlib
+    rangs = {}
+    out = {}
+    for e in ouvertes:
+        base = "%s|%s|%s" % (e["sec"][:46], marqueur(e), titre_court(e))
+        r = rangs.get(base, 0)
+        rangs[base] = r + 1
+        h = hashlib.sha256(("%s|%d" % (base, r)).encode("utf-8")).hexdigest()
+        out[id(e)] = h[:8]
+    return out
+
+
+_ANCRES = {}
+
+
 def ligne_manifeste(e):
     r"""La ligne de tableau d'UNE entree — la SEULE fabrique.
 
@@ -407,8 +452,8 @@ def ligne_manifeste(e):
     controle compare le CONTENU.
     """
     d = dispo(e)
-    return "| %d | `%s` | %s | %s | %s | %s | %s |" % (
-        e["ligne"], e["sec"][:46], marqueur(e),
+    return "| %s | `%s` | %s | %s | %s | %s | %s |" % (
+        _ANCRES.get(id(e), "????????"), e["sec"][:46], marqueur(e),
         titre_court(e).replace("|", "\\|"),
         ("**%s**" % d["verdict_brut"]) if d else "⛔ ABSENT",
         (d["porteur"].replace("|", "\\|")) if d else "⛔ ABSENT",
@@ -833,6 +878,10 @@ def main():
     sec_dn = [s for s in sections
               if re.search(r"\bdn\d|desknode", s["titre"], re.I)]
 
+    # dn4-40 — les ancres du §9, DERIVEES DU CONTENU (decision owner (b)).
+    _ANCRES.clear()
+    _ANCRES.update(ancres(ouvertes))
+
     print("\n── 1. LE COMPTE — ⛔ AUCUN CHIFFRE N'EST RECOPIE (AC1.2) ──────────")
     print("     ledger              : %s (%d lignes)"
           % (REL_LEDGER, texte.count("\n") + 1))
@@ -850,6 +899,19 @@ def main():
     print("     marqueurs (regle 4) : %s"
           % "  ".join("%s %d" % (k, v)
                       for k, v in sorted(hist.items(), key=lambda x: -x[1])))
+    # 🔴 dn4-40 — L'ANCRE DOIT DESIGNER UNE SEULE ENTREE, SINON ELLE NE
+    #    REMPLACE PAS LE NUMERO DE LIGNE : elle le remplace MAL.
+    _vues = {}
+    for e in ouvertes:
+        _vues.setdefault(_ANCRES[id(e)], []).append(e["ligne"])
+    _coll = {k: v for k, v in _vues.items() if len(v) > 1}
+    ctrl(not _coll,
+         "chaque ancre du §9 designe UNE seule entree",
+         "%d ancre(s) distincte(s) pour %d entree(s) — derivees du CONTENU"
+         % (len(_vues), len(ouvertes)),
+         "⛔ %d COLLISION(S) : %s"
+         % (len(_coll), ", ".join("%s→l.%s" % (k, v) for k, v in
+                                  list(_coll.items())[:4])))
     ctrl(len(ouvertes) > 0, "le perimetre n'est pas vide",
          "%d entree(s) ouverte(s)" % len(ouvertes),
          "⛔ AUCUNE entree ouverte — ledger vide ?")
@@ -934,9 +996,9 @@ def main():
             print("     ⛔ ⛔ ⛔ ET SURTOUT PAS un ancrage par NUMERO DE LIGNE :")
             print("        c'est precisement le defaut que cette commande solde.")
             return 1
-        table = ("| ligne | section d'origine | marq. | titre court |"
+        table = ("| ancre | section d'origine | marq. | titre court |"
                  " verdict | porteur | preuve |\n"
-                 "|---:|---|:-:|---|---|---|---|\n")
+                 "|:-:|---|:-:|---|---|---|---|\n")
         table += "".join(ligne_manifeste(e) + "\n" for e in ouvertes)
         # ⛔ FILET DE NON-REGRESSION (revue 2026-09-02). Le mode rendait la main
         #    AVANT les sections 2 a 5 : il reecrivait donc le §9 a partir
@@ -1351,7 +1413,7 @@ def main():
              "le §9 porte ses deux bornes (le controle se borne a elles)",
              "bornes vues aux offsets %d et %d" % (i_b, j_b),
              "⛔ bornes absentes ou inversees — le controle retombe sur TOUT le fichier")
-        vues = re.findall(r"^\| *\d+ *\|.*$", perimetre, re.M)
+        vues = re.findall(r"^\| *[0-9a-f]{8} *\|.*$", perimetre, re.M)
         attendues = [ligne_manifeste(e) for e in ouvertes]
         ctrl(len(vues) == len(attendues),
              "le manifeste couvre 100 % des entrees ouvertes (AC2.7)",
