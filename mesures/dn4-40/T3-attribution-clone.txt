@@ -1,0 +1,18 @@
+==============================================================================
+dn4-40 — ATTRIBUTION DES ROUGES EN CLONE NU (HOME etranger)
+==============================================================================
+methode : `git archive <ref>` + HOME etranger, 2 passes.
+⛔ Le clone lit HEAD ⇒ ce qui n'est pas commite n'est pas mesure.
+
+── f5e9d69 (AVANT dn4-40 (baseline de la story))
+   rc=1  BILAN : 19 VERTE, 3 ROUGE, 5 NON-JOUABLE sur 27 gates (57s)
+      · tools/verif_dossier_d5_dn45.py (rc=0, la declaration NON-JOUABLE annonce 4)
+      · tools/verif_licences_dn52.py (rc=1)
+      · tools/verif_veille_dn33.py (rc=1, la declaration NON-JOUABLE annonce 4)
+
+── HEAD (APRES — l'etat courant)
+   rc=1  BILAN : 20 VERTE, 3 ROUGE, 5 NON-JOUABLE sur 28 gates (57s)
+      · tools/verif_dossier_d5_dn45.py (rc=0, la declaration NON-JOUABLE annonce 4)
+      · tools/verif_licences_dn52.py (rc=1)
+      · tools/verif_veille_dn33.py (rc=1, la declaration NON-JOUABLE annonce 4)
+

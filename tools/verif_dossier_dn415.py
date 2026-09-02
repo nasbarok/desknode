@@ -348,15 +348,29 @@ except ImportError:                                  # pragma: no cover
     dn_trace = None
 
 
-def ctrl(ok, libelle, detail=""):
+def ctrl(ok, libelle, detail_ok="", detail_ko=None):
+    """Un controle, imprime, compte.
+
+    🔴 dn4-40 / AC40.4.h — `detail_ok` ET `detail_ko`, DISTINCTS. L'ancienne
+    signature n'en avait qu'UN : une ligne `[KO ]` imprimait donc la
+    JUSTIFICATION DU SUCCES. Mesure du 2026-09-02, en production : le controle
+    du `n` rendait un KO suivi de « 198 ligne(s) arbitree(s) » — le motif du
+    VERT, sous un rouge. ⛔ Rien n'est invente ici : le correctif existait deja
+    dans `verif_ledger_dn416.py`, pose le 2026-08-30 POUR CE MOTIF EXACT.
+
+    ⚠️ COMPATIBLE AVEC L'EXISTANT : un `ctrl(False, lib, detail)` continue de
+    marcher — `detail_ko` vaut None, et le detail unique fait foi. Ce sont les
+    `ctrl(<predicat>, …)` qui recoivent leur second champ.
+    """
     if dn_trace is not None:
         dn_trace.trace(ok, libelle)
     if ok:
         ok_total[0] += 1
-        print("  [OK ] %-56s %s" % (libelle[:56], detail))
+        print("  [OK ] %-56s %s" % (libelle[:56], detail_ok))
     else:
         ko_total[0] += 1
-        print("  [KO ] %-56s %s" % (libelle[:56], detail))
+        print("  [KO ] %-56s %s"
+              % (libelle[:56], detail_ok if detail_ko is None else detail_ko))
     return ok
 
 
@@ -656,6 +670,115 @@ def collecte(cockpit, cockpit_absent=False):
     return dn + ck_aut + ck_arch_busid, ck_arch_reste
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+#  dn4-40 / AC40.4 — UN ECART NOMME CE QUI LE COMPOSE
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# 🔴 CES TROIS FONCTIONS N'AJOUTENT AUCUNE MESURE : elles IMPRIMENT ce que le
+#    processus savait deja. Le defaut n'etait pas un manque d'information,
+#    c'etait un manque de PUBLICATION — deux entiers nus la ou trois listes
+#    etaient sous la main.
+
+
+def compose_ecart(manif, arbre, manquantes, fantomes, ecarts_n):
+    """Ce qui compose l'ecart de somme : depot, fichier, motif, rang, citation.
+
+    ⛔ Un `%d vs %d` ne dit pas OU chercher. Trois populations expliquent tout
+    ecart possible : les occurrences de l'arbre absentes du manifeste, les
+    lignes de manifeste sans occurrence, et les `n` qui divergent.
+    """
+    bouts = []
+    if manquantes:
+        bouts.append("%d NOUVELLE(S) dans l'arbre : %s"
+                     % (len(manquantes),
+                        " · ".join("%s:%s [%s] #%d %r"
+                                   % (k[0], k[1][-24:], k[2], k[4],
+                                      arbre[k][1][:40])
+                                   for k in sorted(manquantes)[:4])))
+    if fantomes:
+        bouts.append("%d FANTOME(S) au manifeste : %s"
+                     % (len(fantomes),
+                        " · ".join("%s:%s [%s] #%d %r"
+                                   % (k[0], k[1][-24:], k[2], k[4],
+                                      manif[k][3][:40])
+                                   for k in sorted(fantomes)[:4])))
+    if ecarts_n:
+        bouts.append("%d `n` DIVERGENT(S) : %s"
+                     % (len(ecarts_n),
+                        " · ".join("%s:%s [%s] #%d %d→%d"
+                                   % (k[0], k[1][-24:], k[2], k[4], x, y)
+                                   for k, x, y in ecarts_n[:4])))
+    return " || ".join(bouts) or ("⛔ AUCUNE des trois populations ne l'explique "
+                                  "— le compte lui-meme est suspect")
+
+
+def positions_en_trop(cle, n_manif, n_arbre, ligne, cockpit):
+    """OU se trouve l'occurrence en trop, DANS la ligne — ⛔ pas « 1 contre 2 ».
+
+    ⚠️ On RELIT la ligne source : la citation stockee est tronquee a 120
+    caracteres, et une occurrence en trop peut tomber APRES. Si la relecture
+    echoue, on le DIT — ⛔ on ne rend pas un silence qui se lirait comme une
+    absence d'ecart.
+    """
+    depot, rel, motif = cle[0], cle[1], cle[2]
+    racine = DESKNODE if depot == "desknode" else cockpit
+    try:
+        lignes = io.open(os.path.join(racine, rel), encoding="utf-8",
+                         errors="replace").read().split("\n")
+        src = lignes[ligne - 1]
+    except (OSError, IndexError, TypeError):
+        return "  (⚠️ ligne source non relue — position indisponible)"
+    cols = [m.start() + 1 for m in re.finditer(re.escape(motif), normalise(src))]
+    if not cols:
+        return "  (⚠️ le motif ne se retrouve plus dans la ligne relue)"
+    if n_arbre > n_manif:
+        trop = cols[n_manif:]
+        return ("  ⇒ %d occurrence(s) EN TROP a la/aux colonne(s) %s : %r"
+                % (n_arbre - n_manif, ", ".join(str(c) for c in trop),
+                   src.strip()[max(0, trop[0] - 24):trop[0] + 40]))
+    return ("  ⇒ %d occurrence(s) MANQUANTE(S) — %d colonne(s) vue(s) : %s"
+            % (n_manif - n_arbre, len(cols), ", ".join(str(c) for c in cols)))
+
+
+def fenetre_de_divergence(a_txt, b_txt, marge=26):
+    """Le diff LA OU IL EST, ⛔ pas deux prefixes egaux.
+
+    🔴 MOTIF MESURE EN PRODUCTION LE 2026-09-02 : ce KO imprimait
+    `manifeste[:70]` et `arbre[:70]` — deux lignes IDENTIQUES A L'ŒIL quand
+    l'ecart tombait au-dela du 70e caractere. Le lecteur voyait un rouge sans
+    voir ce qui differait.
+    """
+    a_c, b_c = cit_comparable(a_txt), cit_comparable(b_txt)
+    i = 0
+    while i < min(len(a_c), len(b_c)) and a_c[i] == b_c[i]:
+        i += 1
+    d, f = max(0, i - marge), i + marge
+    return ("\n         divergence au caractere %d (sur %d / %d)"
+            "\n         manifeste …%s…"
+            "\n         arbre     …%s…"
+            "\n                    %s^" % (i + 1, len(a_c), len(b_c),
+                                            a_c[d:f], b_c[d:f], " " * (i - d)))
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  dn4-40 / AC40.4.g (ii) — LES FENETRES ONT UN NOM, ⛔ PLUS UN CHIFFRE NU
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# Trois fenetres d'offsets vivaient EN DUR au milieu du code (`i-2:i+3`,
+# `i-14:i+15`, `ln-4:ln+4`). Un chiffre nu au milieu d'une tranche ne dit ⛔ ni
+# ce qu'il borne ⛔ ni pourquoi il vaut ca — et il se copie de proche en proche.
+# Chacune porte desormais son nom ET la raison de sa valeur.
+
+# Une peremption AFFIRMEE peut tomber sur la ligne SUIVANTE : les `printf` de
+# ce depot coupent leur chaine. 2 lignes de part et d'autre couvrent une
+# coupure de chaine, ⛔ pas un paragraphe entier.
+FENETRE_PEREMPTION = 2
+# Le renvoi `widget jauge` vit dans le MEME bloc de commentaire que
+# l'avertissement, ⛔ pas forcement sur la meme ligne : un bloc de docblock de
+# ce depot fait couramment 25 a 30 lignes.
+FENETRE_RENVOI = 14
+
+
 def main():
     ap = argparse.ArgumentParser(add_help=True)
     ap.add_argument("--cockpit", default=COCKPIT_DEFAUT)
@@ -698,17 +821,38 @@ def main():
         print("      chemin attendu : %s" % a.cockpit)
         print("      MOTIF : le cockpit est un depot PRIVE de planification,")
         print("              ⛔ jamais clone a cote du code. Sa moitie a lui")
-        print("              (134 occurrences au 2026-09-02) est HORS de portee.")
+        # 🔴 dn4-40 / AC40.4.g (iii) — INSTANTANE FIGE, DATE, ET SON LIBELLE
+        #    CORRIGE. Il annoncait « 134 occurrences » : c'est un compte de
+        #    **LIGNES**, ⛔ pas d'occurrences (le mode `--compte` publie, lui,
+        #    « 143 occurrence(s) sur 134 ligne(s) »). ⛔ LA VALEUR ETAIT JUSTE,
+        #    C'EST L'ETIQUETTE QUI ETAIT FAUSSE — ⛔ ne pas « corriger » le
+        #    nombre. Et ce chiffre ne peut PAS etre derive ici : par
+        #    construction, le cockpit est absent quand cette ligne s'imprime.
+        #    ⇒ il est DATE, et il dit ce qui le reproduit.
+        print("              (releve DATE du 2026-09-02 : 134 LIGNES portant")
+        print("               143 occurrences — ⛔ pas 134 occurrences ; le")
+        print("               mode `--compte` le reproduit) est HORS de portee.")
         print("      ⇒ LA MOITIE `desknode` EST JOUEE QUAND MEME : son manifeste")
         print("        d'arbitrage (%s) est DANS ce depot." % MANIFESTE)
         print("      REMEDE : `--cockpit <chemin>` si le depot est ailleurs.")
         print("      ⛔ rc=%d (prerequis) UNIQUEMENT si la moitie jouee est"
               " MUETTE ;" % RC_PREREQUIS)
         print("         un KO trouve ici rend 1, comme n'importe quel rouge.")
+        # 🔴 dn4-40 / AC40.4.g (iii) — SECOND INSTANTANE FIGE. Il annoncait
+        #    « aujourd'hui 17 OK / 10 KO » : le mot « aujourd'hui » sur un
+        #    chiffre qui ne peut pas se relire d'ici. ⛔ Une capture ne peut
+        #    pas nommer l'etat qui la publie. Le nombre d'OK a d'ailleurs
+        #    bouge le jour meme (dn4-40 a demonte un `ctrl(True, …)`), ce qui
+        #    aurait rendu la phrase FAUSSE sans que rien ne le signale.
+        #    ⇒ On garde le FAIT (il y a des KO hors de portee d'un runner),
+        #      on DATE le releve, et on dit LA COMMANDE qui le reproduit.
         print("      ⚠️ CE QUE LA CI NE VERRA JAMAIS : sur la machine qui porte")
-        print("         le cockpit, cette gate arbitre AUSSI son contenu et rend")
-        print("         aujourd'hui 17 OK / 10 KO. Ces KO sont hors de portee")
-        print("         d'un runner — ⛔ elle ne pretend pas les garder.")
+        print("         le cockpit, cette gate arbitre AUSSI son contenu et y")
+        print("         trouve des KO hors de portee d'un runner — ⛔ elle ne")
+        print("         pretend pas les garder. Leur compte se lit sur la ligne")
+        print("         de BILAN de cette gate jouee avec `--cockpit <chemin>` ;")
+        print("         releve DATE du 2026-09-02 : 10 KO. ⛔ Ce chiffre se")
+        print("         RELIT, il ne se recopie pas.")
     else:
         ctrl(True, "le depot cockpit est atteignable", a.cockpit)
     ctrl(os.path.isdir(DESKNODE), "le depot code est atteignable", DESKNODE)
@@ -754,9 +898,17 @@ def main():
     if len(illisibles) > 10:
         ctrl(False, "… et d'autres fichiers illisibles",
              "%d au total" % len(illisibles))
+    # ⚠️ dn4-40 / AC40.4.d — CE PLAFOND ETAIT MUET. Mesure : la PLUPART des
+    #    plafonds de cette gate publient deja leur total (« … et d'autres »).
+    #    DEUX ne le faisaient pas — celui-ci et celui des verdicts interdits.
+    #    ⛔ Un plafond qui tronque sans dire combien fait croire au lecteur
+    #      qu'il a tout vu. ⇒ ⛔ Ne toucher que ces deux-la.
     for entree in surface_absente[:10]:
         ctrl(False, "surface d'audit DECLAREE mais ABSENTE — trou d'audit",
              entree[-56:])
+    if len(surface_absente) > 10:
+        ctrl(False, "… et d'autres surfaces d'audit absentes", "",
+             "%d au total" % len(surface_absente))
     ctrl(not illisibles and not surface_absente,
          "aucun saut subi (illisible / surface absente)",
          "%d illisible(s), %d surface(s) absente(s)"
@@ -881,11 +1033,18 @@ def main():
                 if manif[k][0] != arbre[k][0]]
     for k, a_, b_ in ecarts_n[:20]:
         ctrl(False, "le `n` du manifeste ne colle pas a l'arbre",
-             "%s:%s [%s] #%d (l.%d) manifeste=%d arbre=%d"
-             % (k[0], k[1][-28:], k[2], k[4], arbre[k][2], a_, b_))
+             "", "%s:%s [%s] #%d (l.%d) manifeste=%d arbre=%d%s"
+             % (k[0], k[1][-28:], k[2], k[4], arbre[k][2], a_, b_,
+                positions_en_trop(k, a_, b_, arbre[k][2], a.cockpit)))
     if len(ecarts_n) > 20:
-        ctrl(False, "… et d'autres ecarts de `n`", "%d au total" % len(ecarts_n))
-    ctrl(not ecarts_n, "le `n` de chaque ligne colle a l'arbre", "%d ligne(s)" % len(manif))
+        ctrl(False, "… et d'autres ecarts de `n`", "",
+             "%d au total" % len(ecarts_n))
+    ctrl(not ecarts_n, "le `n` de chaque ligne colle a l'arbre",
+         "%d ligne(s)" % len(manif),
+         "⛔ %d ligne(s) dont le `n` diverge : %s"
+         % (len(ecarts_n),
+            " · ".join("%s:%d %d→%d" % (k[1][-22:], arbre[k][2], x, y)
+                       for k, x, y in ecarts_n[:6])))
 
     # 🔴 LA CITATION EST CONFRONTEE A LA SOURCE — LE TROU CENTRAL DE LA REVUE.
     #    La cle ne porte pas le texte : une INVERSION DE SENS SUR PLACE passait
@@ -922,27 +1081,39 @@ def main():
         elif len(b_cit) < len(a_cit):
             tronquees.append(k)
     for k in derives[:20]:
+        # 🔴 dn4-40 / AC40.4.c — LA TRONCATURE CACHAIT LA DIVERGENCE. Mesure du
+        #    2026-09-02, EN PRODUCTION : ce KO imprimait deux lignes IDENTIQUES
+        #    A L'ŒIL, l'ecart tombant au-dela du 70e caractere. On montre
+        #    desormais le diff LA OU IL EST, ⛔ pas deux prefixes egaux.
         ctrl(False, "le TEXTE a change sous un verdict inchange",
-             "%s:%s [%s] #%d (l.%d)\n         manifeste : %s\n         arbre     : %s"
+             "", "%s:%s [%s] #%d (l.%d)%s"
              % (k[0], k[1][-28:], k[2], k[4], arbre[k][2],
-                manif[k][3][:70], arbre[k][1][:70]))
+                fenetre_de_divergence(manif[k][3], arbre[k][1])))
     if len(derives) > 20:
         ctrl(False, "… et d'autres textes derives", "%d au total" % len(derives))
     for k in tronquees[:20]:
         ctrl(False, "la ligne source a ete TRONQUEE sous un verdict inchange",
-             "%s:%s [%s] #%d (l.%d)\n         manifeste : %s\n         arbre     : %s"
+             "", "%s:%s [%s] #%d (l.%d)  manifeste %d car., arbre %d car."
+                 "\n         perdu a la fin : %r"
              % (k[0], k[1][-28:], k[2], k[4], arbre[k][2],
-                manif[k][3][:70], arbre[k][1][:70]))
+                len(manif[k][3]), len(arbre[k][1]),
+                cit_comparable(manif[k][3])[len(cit_comparable(arbre[k][1])):][:56]))
     if len(tronquees) > 20:
         ctrl(False, "… et d'autres lignes tronquees", "%d au total" % len(tronquees))
     ctrl(not tronquees,
          "aucune ligne arbitree n'a ete RACCOURCIE sous son verdict",
          "%d ligne(s) confrontee(s) en longueur — ⛔ amputer n'est plus invisible"
-         % len(set(manif) & set(arbre)))
+         % len(set(manif) & set(arbre)),
+         "⛔ %d ligne(s) RACCOURCIE(S) : %s"
+         % (len(tronquees),
+            " · ".join("%s:%d" % (k[1][-22:], arbre[k][2]) for k in tronquees[:6])))
     ctrl(not derives,
          "la citation du manifeste colle au TEXTE de l'arbre",
          "%d ligne(s) confrontee(s) — le verdict suit le sens, ⛔ pas la ligne"
-         % len(set(manif) & set(arbre)))
+         % len(set(manif) & set(arbre)),
+         "⛔ %d ligne(s) DERIVEE(S) : %s"
+         % (len(derives),
+            " · ".join("%s:%d" % (k[1][-22:], arbre[k][2]) for k in derives[:6])))
 
     # ── AC2.4 : la somme des verdicts = le compte ───────────────────────────
     print("\n── 3. LA SOMME DES VERDICTS = LE COMPTE (AC2.4) ──────────────────")
@@ -952,9 +1123,17 @@ def main():
     total_arbre = sum(n for n, _c, _l in arbre.values())
     for v in VERDICTS:
         print("     %-14s %3d" % (v, compte[v]))
-    ctrl(sum(compte.values()) == total_arbre,
+    # 🔴 dn4-40 / AC40.4.a — L'ECART EST **NOMME**, ⛔ PLUS DEUX ENTIERS NUS.
+    #    L'information EXISTE deja dans le processus (les trois populations
+    #    ci-dessus) — elle n'etait simplement PAS IMPRIMEE. Un lecteur qui
+    #    voyait « 207 vs 208 » n'avait aucun moyen de savoir OU chercher.
+    somme = sum(compte.values())
+    ctrl(somme == total_arbre,
          "somme des verdicts == occurrences de l'arbre",
-         "%d vs %d" % (sum(compte.values()), total_arbre))
+         "%d occurrence(s) — les deux comptes coincident" % somme,
+         "⛔ %d (manifeste) vs %d (arbre), ecart %+d — CE QUI LE COMPOSE : %s"
+         % (somme, total_arbre, somme - total_arbre,
+            compose_ecart(manif, arbre, manquantes, fantomes, ecarts_n)))
 
     # 🔴 DECISION OWNER DU 2026-08-30 : `FAUX > 0` DOIT ROUGIR.
     #    Le manifeste ecrit « FAUX VAUT ZERO, ET C'EST LE RESULTAT » — c'etait
@@ -964,9 +1143,13 @@ def main():
     #    dossier — ce que cette story existe pour interdire. Consigner un defaut
     #    AVANT de le corriger, c'est le role du LEDGER, ⛔ pas du manifeste.
     faux = sorted(k for k, v in manif.items() if v[1] == "FAUX")
+    # ⚠️ dn4-40 / AC40.4.d — LE SECOND PLAFOND MUET.
     for k in faux[:20]:
         ctrl(False, "occurrence encore verdictee FAUX",
              "%s:%s:%d [%s]" % (k[0], k[1][-40:], k[2], k[3]))
+    if len(faux) > 20:
+        ctrl(False, "… et d'autres occurrences au verdict interdit", "",
+             "%d au total" % len(faux))
     ctrl(not faux, "⛔ AUCUNE occurrence ne reste `FAUX` (decision owner)",
          "FAUX = %d" % compte["FAUX"])
 
@@ -1078,13 +1261,14 @@ def main():
             if not RX_SITE.search(normalise(l)):
                 continue
             # La peremption peut etre sur la ligne SUIVANTE (printf coupe).
-            voisin = normalise("\n".join(lignes[max(0, i - 2):i + 3]))
+            voisin = normalise("\n".join(
+                lignes[max(0, i - FENETRE_PEREMPTION):i + FENETRE_PEREMPTION + 1]))
             if RX_COND.search(voisin) or not RX_AFFIRME.search(voisin):
                 continue
             sites.append(i)
         sans = [i + 1 for i in sites
-                if not RX_JAUGE.search(normalise(
-                    "\n".join(lignes[max(0, i - 14):i + 15])))]
+                if not RX_JAUGE.search(normalise("\n".join(
+                    lignes[max(0, i - FENETRE_RENVOI):i + FENETRE_RENVOI + 1])))]
         ctrl(len(sites) >= 2 and not sans,
              "%s : chaque site d'avertissement renvoie a `widget jauge`" % nom,
              "%d site(s), %d sans renvoi%s (2 sites attendus au minimum)"
@@ -1119,16 +1303,55 @@ def main():
                     continue
                 for m in re.finditer(r"dn_pins\.h:(\d+)", l):
                     cites.setdefault(int(m.group(1)), []).append("%s:%d" % (rel, i))
-        mauvais = []
-        for ln in sorted(cites):
-            fenetre = normalise("\n".join(lp[max(0, ln - 4):ln + 4]))
-            if "vl6180x" not in fenetre:
-                mauvais.append("dn_pins.h:%d (cite par %s)"
-                               % (ln, cites[ln][0][-40:]))
-        ctrl(not mauvais,
-             "les renvois `dn_pins.h:<ligne>` portent ENCORE la refutation",
-             "%d adresse(s) : %s" % (len(cites), sorted(cites))
-             if not mauvais else "⛔ PERIME(S) : %s" % " · ".join(mauvais))
+        # 🔴 dn4-40 / AC40.4.g (i) — L'ANCRAGE-ADRESSE DEVIENT UN ANCRAGE PAR
+        #    MARQUEUR, ET C'EST LE DERNIER VRAI DE CETTE GATE.
+        #    L'ancien controle ouvrait une fenetre de ±4 lignes AUTOUR DE
+        #    L'ADRESSE CITEE et y cherchait le nom du capteur. Deux defauts :
+        #      · la fenetre ±4 etait un chiffre NU — ⛔ rien ne disait pourquoi
+        #        4, et le bloc de refutation fait bien plus de 8 lignes ;
+        #      · surtout, le controle ne pouvait dire QUE « perime ». Il ne
+        #        savait pas OU la refutation avait bouge, donc il ne pouvait
+        #        pas dire QUOI ECRIRE a la place.
+        #    ⇒ Le fichier de brochage porte DEUX MARQUEURS UNIQUES — un
+        #      EN-TETE DE BLOC et un JETON DE REGISTRE (mesure du 2026-09-02 :
+        #      1 occurrence chacun). Ils RESOLVENT le bloc ; l'adresse citee
+        #      est alors confrontee a un INTERVALLE DERIVE, ⛔ plus a un
+        #      voisinage devine. Et quand elle a derive, la gate dit l'adresse
+        #      JUSTE.
+        #    ⚠️ ECART PRE-EXISTANT, DECLARE ⛔ NON CORRIGE : le docblock de
+        #      cette section annonce 5 renvois ; la gate en resout 1 (mesure du
+        #      2026-09-02 : 10 renvois `dn_pins.h:<n>` dans l'arbre, dont 2
+        #      promettent la refutation, sur 1 adresse distincte). L'ecart
+        #      pre-existe a dn4-40 et n'est ⛔ pas de son fait.
+        MARQ_BLOC = "Les 3 capteurs de dn4-2"
+        MARQ_REGISTRE = "IDENTIFICATION__MODEL_ID"
+        i_bloc = [i for i, l in enumerate(lp, 1) if MARQ_BLOC in l]
+        i_reg = [i for i, l in enumerate(lp, 1) if MARQ_REGISTRE in l]
+        ctrl(len(i_bloc) == 1 and len(i_reg) == 1,
+             "les 2 marqueurs de la refutation sont UNIQUES dans dn_pins.h",
+             "en-tete de bloc l.%s · jeton de registre l.%s"
+             % (i_bloc, i_reg),
+             "⛔ %d en-tete(s) et %d jeton(s) — un marqueur ambigu ne peut pas "
+             "ancrer : %s / %s" % (len(i_bloc), len(i_reg), i_bloc, i_reg))
+        if len(i_bloc) == 1 and len(i_reg) == 1:
+            # Le bloc va de son en-tete a la fin du commentaire qui le porte.
+            debut = i_bloc[0]
+            fin = debut
+            while fin < len(lp) and "*/" not in lp[fin - 1]:
+                fin += 1
+            mauvais = []
+            for ln in sorted(cites):
+                if not (debut <= ln <= fin):
+                    mauvais.append("dn_pins.h:%d (cite par %s) ⇒ le bloc est "
+                                   "en fait l.%d-%d"
+                                   % (ln, cites[ln][0][-40:], debut, fin))
+            ctrl(not mauvais,
+                 "les renvois `dn_pins.h:<ligne>` tombent DANS le bloc resolu",
+                 "%d adresse(s) citee(s) : %s — bloc resolu PAR MARQUEUR "
+                 "l.%d-%d (⛔ pas par numero ecrit)"
+                 % (len(cites), sorted(cites), debut, fin),
+                 "⛔ %d RENVOI(S) HORS BLOC : %s" % (len(mauvais),
+                                                    " · ".join(mauvais)))
 
     print("\n" + "=" * 78)
     print("BILAN : %d OK, %d KO" % (ok_total[0], ko_total[0]))

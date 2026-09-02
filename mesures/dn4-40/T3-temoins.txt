@@ -1,0 +1,50 @@
+==============================================================================
+dn4-40 / AC40.3 — TEMOINS DU CONTROLE D'ORPHELINS
+==============================================================================
+⛔ aucune ecriture dans l'arbre reel — `git archive HEAD` a chaque cas.
+
+### LE DIFFERENTIEL, SUR LE HARNAIS COMPLET (AC40.3.b)
+
+── arbre PROPRE
+   rc=1  BILAN : 23 VERTE, 4 ROUGE, 1 NON-JOUABLE sur 28 gates (66s)
+      · tools/verif_dossier_dn415.py (rc=1)
+      · tools/verif_hist_dn413.py (rc=4)
+      · tools/verif_licences_dn52.py (rc=1)
+      · tools/verif_veille_dn33.py (rc=1)
+   le nom du residu est-il CITE dans la sortie ? ⛔ NON — pas un mot
+
+── + un residu MAL NOMME (fonts/dn_font_28.orig.c)
+   rc=1  BILAN : 22 VERTE, 5 ROUGE, 1 NON-JOUABLE sur 28 gates (67s)
+      · tools/verif_dossier_dn415.py (rc=1)
+      · tools/verif_hist_dn413.py (rc=4)
+      · tools/verif_licences_dn52.py (rc=1)
+      · tools/verif_polices_dn440.py (rc=1)
+      · tools/verif_veille_dn33.py (rc=1)
+   le nom du residu est-il CITE dans la sortie ? OUI
+
+── + une police NON DECLAREE (fonts/dn_font_99.c)
+   rc=1  BILAN : 22 VERTE, 5 ROUGE, 1 NON-JOUABLE sur 28 gates (67s)
+      · tools/verif_dossier_dn415.py (rc=1)
+      · tools/verif_hist_dn413.py (rc=4)
+      · tools/verif_licences_dn52.py (rc=1)
+      · tools/verif_polices_dn440.py (rc=1)
+      · tools/verif_veille_dn33.py (rc=1)
+   le nom du residu est-il CITE dans la sortie ? ⛔ NON — pas un mot
+
+### LA GATE SEULE, EN CLONE NU — ⛔ SANS ARBRE LVGL (AC40.3.h)
+
+── clone NU, arbre propre, HOME etranger
+   rc=0  BILAN : 9 OK, 0 KO
+
+── clone NU + residu mal nomme
+   rc=1  BILAN : 8 OK, 1 KO
+      [KO ] tout `.c` ramasse porte la FORME `dn_font_<n>.c`           ⛔ 1 RESIDU(S) : fonts/dn_font_28.orig.c — sauvegarde, essai ou renommage. L'EFFACER o
+
+── clone NU + residu HORS GLOB (fonts/dn_font_28.c.orig)
+   rc=1  BILAN : 8 OK, 1 KO
+      [KO ] aucun residu de police n'ECHAPPE au glob                   ⛔ 1 RESIDU(S) HORS GLOB : fonts/dn_font_28.c.orig — invisibles du build ET de son con
+
+── clone NU + en-tete SANS declaration (1er FATAL_ERROR)
+   rc=1  BILAN : 5 OK, 1 KO
+      [KO ] au moins un LV_FONT_DECLARE est lu dans dn_font.h          ⛔ AUCUN LV_FONT_DECLARE — le controle ne peut pas s'exercer, et ⛔ il ne passe PAS en 
+
