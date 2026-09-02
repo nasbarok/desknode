@@ -1415,17 +1415,41 @@ def main():
              "⛔ bornes absentes ou inversees — le controle retombe sur TOUT le fichier")
         vues = re.findall(r"^\| *[0-9a-f]{8} *\|.*$", perimetre, re.M)
         attendues = [ligne_manifeste(e) for e in ouvertes]
-        ctrl(len(vues) == len(attendues),
+        # 🔴 dn4-40 — LA COMPARAISON S'ANCRE SUR L'ANCRE, ⛔ PLUS SUR LA
+        #    POSITION. Poser une ancre stable ne suffisait PAS : le `zip()`
+        #    comparait la ligne n du manifeste a l'entree n du ledger. Inserer
+        #    UNE entree en amont decalait donc tout, et la mesure restait
+        #    « 267 lignes DIVERGENTES sur 267 » — le defaut survivait sous une
+        #    autre forme, exactement le risque n°1 de cette story.
+        #    ⇒ On indexe les deux cotes PAR ANCRE. Une insertion rend alors
+        #      « 1 ABSENTE », ⛔ pas 267 divergentes.
+        def _cle(l):
+            m = re.match(r"^\| *([0-9a-f]{8}) *\|", l)
+            return m.group(1) if m else None
+        i_vues = {}
+        for l in vues:
+            k = _cle(l)
+            if k:
+                i_vues.setdefault(k, l.strip())
+        i_att = {_cle(l): l.strip() for l in attendues}
+        absentes = [k for k in i_att if k not in i_vues]
+        surnum = [k for k in i_vues if k not in i_att]
+        ctrl(not absentes and not surnum,
              "le manifeste couvre 100 % des entrees ouvertes (AC2.7)",
-             "%d ligne(s) pour %d entree(s)" % (len(vues), len(attendues)),
-             "⛔ %d ligne(s) de tableau pour %d entree(s) ouverte(s)"
-             % (len(vues), len(attendues)))
-        ecarts = [(v, at) for v, at in zip(vues, attendues) if v.strip() != at.strip()]
-        ctrl(not ecarts and len(vues) == len(attendues),
+             "%d ligne(s) pour %d entree(s), appariees PAR ANCRE"
+             % (len(vues), len(attendues)),
+             "⛔ %d entree(s) SANS ligne (%s) · %d ligne(s) SANS entree (%s)"
+             % (len(absentes), ", ".join(absentes[:5]) or "—",
+                len(surnum), ", ".join(surnum[:5]) or "—"))
+        ecarts = [(i_vues[k], i_att[k]) for k in i_att
+                  if k in i_vues and i_vues[k] != i_att[k]]
+        ctrl(not ecarts and not absentes and not surnum,
              "chaque ligne du manifeste REPRODUIT ce que le script produit",
              "%d ligne(s) identiques au caractere pres" % len(attendues),
              "⛔ %d ligne(s) DIVERGENTE(S) — la 1re : %s"
-             % (len(ecarts), (ecarts[0][1][:120] + " …") if ecarts else "(compte different)"))
+             % (len(ecarts), (ecarts[0][1][:120] + " …") if ecarts
+                else "(appariement incomplet : %d absente(s), %d surnumeraire(s))"
+                     % (len(absentes), len(surnum))))
         # 🔴 dn4-39 / AC39.5.b — LA GATE DIT LA COMMANDE, ⛔ ELLE NE LA JOUE PAS.
         #    Une gate qui repare ce qu'elle mesure ne mesure plus rien.
         if ecarts or len(vues) != len(attendues):
