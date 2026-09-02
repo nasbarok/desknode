@@ -1,0 +1,26 @@
+==============================================================================
+dn4-40 / AC40.6.c — UNE ACCOLADE REPLANTEE DANS UN LITTERAL
+==============================================================================
+⛔ arbre TEMPORAIRE a chaque cas ; le corps est extrait par le
+   `corps_fonction()` DE L'ARBRE TESTE, ⛔ pas par une reimplementation.
+
+── f5e9d69 — AVANT dn4-40 — arbre propre
+   corps extrait : 7327 car. ⇒ 7327 car.   CORRECT (+0, attendu +0)
+   gate : rc=0  BILAN : 160 OK, 0 KO
+
+── f5e9d69 — AVANT dn4-40 — accolade REPLANTEE dans un litteral
+   corps extrait : 7327 car. ⇒ 62 car.   ⛔ FRONTIERE DEPLACEE (-7265, attendu +2)
+   gate : rc=1  BILAN : 155 OK, 5 KO
+      [KO ] …et le rebouclage ~71 min est GARDÉ, pas commenté          il REFUSE plutôt que de publier faux
+      [KO ] …et la garde tombe AVANT toute publication
+      [KO ] …les TROIS boucles d'appariement passent par le prédicat   somme · impression · disparues
+      [KO ] …et un TCB recyclé est DÉCLARÉ                             ⛔ plus silencieux
+
+── HEAD — APRES — arbre propre
+   corps extrait : 7327 car. ⇒ 7327 car.   CORRECT (+0, attendu +0)
+   gate : rc=0  BILAN : 162 OK, 0 KO
+
+── HEAD — APRES — accolade REPLANTEE dans un litteral
+   corps extrait : 7327 car. ⇒ 7329 car.   CORRECT (+2, attendu +2)
+   gate : rc=0  BILAN : 162 OK, 0 KO
+

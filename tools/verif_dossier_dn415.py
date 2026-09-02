@@ -582,6 +582,7 @@ def balaye(racine, rels, motifs=None, saut_ligne=None):
                 echap_malformes.append((rel, i + 1, refus, ligne.strip()[:90]))
                 spans = []            # ⛔ un echappement douteux n'echappe RIEN
             utile = False
+            refuse_ici = False
             for cle, rx, _lib, garde in MOTIFS:
                 if cle not in motifs:
                     continue
@@ -594,6 +595,7 @@ def balaye(racine, rels, motifs=None, saut_ligne=None):
                         # ⛔ REFUSE : une recette se copie-colle.
                         echap_refuses.append((rel, i + 1, cle,
                                               ligne.strip()[:90]))
+                        refuse_ici = True
                         gardees.append(m)
                     elif dans:
                         utile = True
@@ -603,7 +605,11 @@ def balaye(racine, rels, motifs=None, saut_ligne=None):
                 n = len(gardees)
                 if n:
                     out.append((rel, i + 1, cle, n, ligne.strip()[:120]))
-            if spans and not utile:
+            # ⚠️ UN SPAN QUI NE CONTENAIT QUE DU REFUSE N'EST PAS « INUTILE » :
+            #    il a bien vise un motif, c'est le REFUS qui l'a garde. Sans
+            #    cette distinction, une seule faute sortait DEUX diagnostics
+            #    dont l'un designait la mauvaise cause.
+            if spans and not utile and not refuse_ici:
                 echap_inutiles.append((rel, i + 1, ligne.strip()[:90]))
     return out
 

@@ -1,0 +1,67 @@
+==============================================================================
+dn4-40 / AC40.5 — TEMOINS DE L'ECHAPPEMENT
+==============================================================================
+jetons et motifs LUS dans la gate — ⛔ pas ecrits dans ce fichier.
+⛔ aucune ecriture dans l'arbre reel : `git archive HEAD` a chaque cas.
+
+### AC40.5.c — LE TEMOIN D'USAGE, EN DEUX PASSES
+
+── SANS marque — le motif est COMPTE
+   ligne : Le motif facade est nomme ici.
+   TOTAL : 324 ⇒ 325   (delta +1)
+   attendu : delta +1
+   [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c desknode:docs/dn4-40-temoin-echappement.md [facade] #1 (l.3) Le motif facade est nomme 
+
+── AVEC marque — le motif est CITE, ⛔ pas compte
+   ligne : Le motif [[cit]]facade[[/cit]] est nomme ici.
+   TOTAL : 324 ⇒ 324   (delta +0)
+   attendu : delta 0
+   (aucun KO d'echappement)
+
+### AC40.5.b — PARLER DE L'ECHAPPEMENT ⛔ NE L'ACCORDE PAS
+
+── un OUVRANT seul (on parle du jeton sans le fermer)
+   ligne : Pour echapper on ecrit [[cit]] devant le motif facade.
+   TOTAL : 324 ⇒ 325   (delta +1)
+   attendu : delta +1 ET un KO « mal forme »
+   [KO ] echappement MAL FORME — il n'echappe rien, et il SONNE   docs/dn4-40-temoin-echappement.md:3 — ouvrant SANS fermant : Pour echapper on ecrit [[c
+   [KO ] tout echappement est BIEN FORME (⛔ ni orphelin ni imbriq ⛔ 1 ligne(s) MAL FORMEE(S)
+   [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c desknode:docs/dn4-40-temoin-echappement.md [facade] #1 (l.3) Pour echapper on ecrit [[c
+
+── des ouvrants IMBRIQUES
+   ligne : [[cit]] le motif [[cit]]facade[[/cit]] dedans [[/cit]]
+   TOTAL : 324 ⇒ 325   (delta +1)
+   attendu : delta +1 ET un KO « mal forme »
+   [KO ] echappement MAL FORME — il n'echappe rien, et il SONNE   docs/dn4-40-temoin-echappement.md:3 — ouvrants IMBRIQUES : [[cit]] le motif [[cit]]faca
+   [KO ] tout echappement est BIEN FORME (⛔ ni orphelin ni imbriq ⛔ 1 ligne(s) MAL FORMEE(S)
+   [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c desknode:docs/dn4-40-temoin-echappement.md [facade] #1 (l.3) [[cit]] le motif [[cit]]fa
+
+── un FERMANT seul
+   ligne : Le motif facade puis [[/cit]] en fin de ligne.
+   TOTAL : 324 ⇒ 325   (delta +1)
+   attendu : delta +1 ET un KO « mal forme »
+   [KO ] echappement MAL FORME — il n'echappe rien, et il SONNE   docs/dn4-40-temoin-echappement.md:3 — fermant SANS ouvrant : Le motif facade puis [[/ci
+   [KO ] tout echappement est BIEN FORME (⛔ ni orphelin ni imbriq ⛔ 1 ligne(s) MAL FORMEE(S)
+   [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c desknode:docs/dn4-40-temoin-echappement.md [facade] #1 (l.3) Le motif facade puis [[/ci
+
+### AC40.5.f (iii) — UN ECHAPPEMENT QUI MANGE DU VIDE SONNE
+
+── une marque posee la ou il n'y a AUCUN motif
+   ligne : Un span [[cit]]du texte ordinaire[[/cit]] et le motif facade dehors.
+   TOTAL : 324 ⇒ 325   (delta +1)
+   attendu : delta +1 ET un KO « inutile »
+   [KO ] echappement INUTILE — il n'echappe AUCUNE occurrence     docs/dn4-40-temoin-echappement.md:3 — span pose au mauvais endroit : Un span [[cit]]du 
+   [KO ] aucun echappement n'echappe du vide (⇒ ⛔ pas de baisse m ⛔ 1 ECHAPPEMENT(S) INUTILE(S)
+   [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c desknode:docs/dn4-40-temoin-echappement.md [facade] #1 (l.3) Un span [[cit]]du texte or
+
+### AC40.5.e — LE MOTIF QUI S'EXECUTE ⛔ N'EST PAS ECHAPPABLE
+
+── tentative d'echapper la recette
+   ligne : usbipd bind [[cit]]--busid 3-1[[/cit]] dans une recette.
+   TOTAL : 324 ⇒ 325   (delta +1)
+   attendu : l'occurrence reste COMPTEE (delta +1) ET un KO « refuse »
+   [KO ] echappement INUTILE — il n'echappe AUCUNE occurrence     docs/dn4-40-temoin-echappement.md:3 — span pose au mauvais endroit : usbipd bind [[cit]
+   [KO ] aucun echappement n'echappe du vide (⇒ ⛔ pas de baisse m ⛔ 1 ECHAPPEMENT(S) INUTILE(S)
+   [KO ] echappement REFUSE — ce motif s'EXECUTE (une recette se  docs/dn4-40-temoin-echappement.md:3 [busid-en-dur] : usbipd bind [[cit]]--busid 3-1[[/c
+   [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c desknode:docs/dn4-40-temoin-echappement.md [busid-en-dur] #1 (l.3) usbipd bind [[cit]]-
+
