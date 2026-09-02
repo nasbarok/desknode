@@ -62,7 +62,18 @@ ATTENDU = {("cpu", 1), ("net", 0), ("net", 1), ("disk", 0)}
 INTERDITE = ("cpu", 0)
 
 
+# 🔴 dn4-40 / AC40.7.c — L'INSTRUMENT DE CAMPAGNE, ⛔ PAS UN CHANGEMENT DE
+# FORMAT. Import DEFENSIF : une gate reste jouable si son instrument manque.
+# Sans `DN_TRACE_CTRL`, la console sort a l'octet pres comme avant.
+try:
+    import dn_trace
+except ImportError:                                  # pragma: no cover
+    dn_trace = None
+
+
 def ctrl(ok, libelle, detail=""):
+    if dn_trace is not None:
+        dn_trace.trace(ok, libelle)
     if ok:
         ok_total[0] += 1
         print("  [OK ] %-56s %s" % (libelle, detail))

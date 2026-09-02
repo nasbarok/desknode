@@ -71,7 +71,18 @@ KO = [0]
 _MUTANT = None
 
 
+# 🔴 dn4-40 / AC40.7.c — L'INSTRUMENT DE CAMPAGNE, ⛔ PAS UN CHANGEMENT DE
+# FORMAT. Import DEFENSIF : une gate reste jouable si son instrument manque.
+# Sans `DN_TRACE_CTRL`, la console sort a l'octet pres comme avant.
+try:
+    import dn_trace
+except ImportError:                                  # pragma: no cover
+    dn_trace = None
+
+
 def dire(ok, libelle, detail=""):
+    if dn_trace is not None:
+        dn_trace.trace(ok, libelle)
     (OK if ok else KO)[0] += 1
     print(f"  [{'OK ' if ok else 'KO '}] {libelle:<58} {detail}")
 
