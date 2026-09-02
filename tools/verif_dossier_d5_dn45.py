@@ -211,8 +211,14 @@ def main():
     print("  ARCHIVES (⛔ NON exigees annotees — elles disent ce qui etait vrai ALORS) :")
     for rel, n in sorted(arch_dn + arch_ck):
         print("     %-72s %d" % (rel[-72:], n))
-    ctrl(True, "les archives sont LISTEES, ⛔ pas ecartees en silence",
-         "%d fichier(s) d'archive" % (len(arch_dn) + len(arch_ck)))
+
+# ⚠️ dn4-40 / AC40.2 — CE N'ETAIT PAS UN CONTROLE. Un `ctrl(True, …)`
+#    litteral qu'aucun arbre defaillant ne peut faire rougir ne GARDE rien :
+#    il gonfle le bilan. Le tri (`tools/campagne_ctrl_dn440.py`) l'a classe
+#    par MUTANT, ⛔ pas par raisonnement. Le fait qu'il publiait reste dit —
+#    il est imprime, ⛔ il n'est plus compte.
+    print("     ⇒ les archives sont LISTEES, ⛔ pas ecartees en silence"
+          " — %d fichier(s) d'archive" % (len(arch_dn) + len(arch_ck)))
 
     print("\n── 3. LE FAIT QUI FERME, ET IL EST ECRIT PARTOUT PAREIL ──────────")
     for racine, rel in AUTORITE:

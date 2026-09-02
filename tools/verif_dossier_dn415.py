@@ -736,10 +736,16 @@ def main():
     print("     extensions balayees : %s" % ", ".join(EXT_TEXTE))
     print("     noms de texte sans extension : %s"
           % ", ".join(sorted(NOMS_TEXTE) + [p + "*" for p in PREFIXES_TEXTE]))
-    ctrl(True, "les exclusions sont DECLAREES, ⛔ pas silencieuses",
-         "%d fichier(s), %d dossier(s), %d occ. d'archive"
-         % (len(EXCLUS_DESKNODE) + len(EXCLUS_COCKPIT), len(DIRS_EXCLUS),
-            sum(t[4] for t in archive)))
+
+# ⚠️ dn4-40 / AC40.2 — CE N'ETAIT PAS UN CONTROLE. Un `ctrl(True, …)`
+#    litteral qu'aucun arbre defaillant ne peut faire rougir ne GARDE rien :
+#    il gonfle le bilan. Le tri (`tools/campagne_ctrl_dn440.py`) l'a classe
+#    par MUTANT, ⛔ pas par raisonnement. Le fait qu'il publiait reste dit —
+#    il est imprime, ⛔ il n'est plus compte.
+    print("     ⇒ les exclusions sont DECLAREES, ⛔ pas silencieuses"
+          " — %d fichier(s), %d dossier(s), %d occ. d'archive"
+          % (len(EXCLUS_DESKNODE) + len(EXCLUS_COCKPIT), len(DIRS_EXCLUS),
+             sum(t[4] for t in archive)))
 
     # ⛔ LES SAUTS SUBIS — ils etaient SILENCIEUX, ils sont maintenant ROUGES.
     for rel, err in illisibles[:10]:

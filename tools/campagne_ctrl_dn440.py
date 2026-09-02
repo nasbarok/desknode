@@ -100,36 +100,125 @@ def m_exemptions_vides(arbre, ck):
     return []
 
 
-# (gate, site, libelle attendu, verdict attendu, mutation, ce qu'elle replante)
+# 🔴 LES CAS S'ANCRENT PAR **MOTIF**, ⛔ PLUS PAR NUMERO DE LIGNE — ET CE
+#    CORRECTIF EST LUI-MEME UNE MESURE. Premiere version : ce tableau citait
+#    les 13 sites par `fichier:ligne`. Poser l'instrument de trace dans les 7
+#    gates a decale leurs lignes ⇒ **7 cas sur 13** sont sortis « NON PROUVE »
+#    en n'ayant simplement plus la bonne adresse. C'est le defaut que
+#    AC40.4.g vise, paye ici, dans l'outil qui le denonce.
+#    ⇒ Le site est RESOLU A L'EXECUTION en balayant le source de la gate
+#      (commentaires masques), et la cle est le LIBELLE.
+#
+# (gate, libelle du site, verdict attendu, mutation, ce qu'elle replante)
 CAS = [
-    ("tools/verif_ledger_dn416.py", 796, "LEGITIME", m_ledger_absent,
+    ("tools/verif_ledger_dn416.py", "le depot cockpit est atteignable",
+     "LEGITIME", m_ledger_absent,
      "le ledger retire du cockpit ⇒ prerequis absent, rc=4, sortie EN AMONT"),
-    ("tools/verif_ledger_dn416.py", 797, "LEGITIME", m_ledger_absent,
-     "idem — les 3 sites partagent la meme garde amont"),
-    ("tools/verif_ledger_dn416.py", 798, "LEGITIME", m_ledger_absent,
-     "idem"),
-    ("tools/verif_ledger_dn416.py", 817, "LEGITIME", m_ledger_binaire,
+    ("tools/verif_ledger_dn416.py", "le ledger est present",
+     "LEGITIME", m_ledger_absent, "idem — meme garde amont"),
+    ("tools/verif_ledger_dn416.py", "le tracker est present",
+     "LEGITIME", m_ledger_absent, "idem"),
+    ("tools/verif_ledger_dn416.py", "le ledger se LIT en UTF-8",
+     "LEGITIME", m_ledger_binaire,
      "le ledger rendu NON-UTF-8 ⇒ ctrl(False) puis ARRET"),
-    ("tools/verif_ledger_dn416.py", 824, "LEGITIME", m_tracker_binaire,
+    ("tools/verif_ledger_dn416.py", "le tracker se LIT en UTF-8",
+     "LEGITIME", m_tracker_binaire,
      "le tracker rendu NON-UTF-8 ⇒ ctrl(False) puis ARRET"),
-    ("tools/verif_dossier_dn415.py", 702, "LEGITIME", m_cockpit_absent,
+    ("tools/verif_dossier_dn415.py", "le depot cockpit est atteignable",
+     "LEGITIME", m_cockpit_absent,
      "`--cockpit` vers un chemin inexistant ⇒ la branche `absent` est prise"),
-    ("tools/verif_hist_dn413.py", 701, "LEGITIME", m_hist_casse,
+    ("tools/verif_hist_dn413.py", "`dn_hist.c` compile et se charge sur l'hôte",
+     "LEGITIME", m_hist_casse,
      "`dn_hist.c` rendu incompilable ⇒ ctrl(False) puis `return 1`"),
-    ("tools/verif_lissage_dn45.py", 187, "LEGITIME", m_capture_absente,
+    ("tools/verif_lissage_dn45.py", "capture rejouee dans le PRODUIT",
+     "LEGITIME", m_capture_absente,
      "la capture retiree ⇒ ctrl(False) puis `return 1`"),
-    ("tools/verif_paliers_dn441.py", 324, "LEGITIME", m_liste_planchers_absente,
+    ("tools/verif_paliers_dn441.py",
+     "la liste CANONIQUE des trois planchers est lisible",
+     "LEGITIME", m_liste_planchers_absente,
      "la liste canonique retiree ⇒ la branche `dire(False)` est prise"),
-    ("tools/verif_verrou_lvgl_dn413.py", 556, "TROU", m_exemptions_vides,
-     "population VIDEE : le site disparait avec elle ⇒ il ne GARDE rien"),
-    ("tools/verif_dossier_dn415.py", 728, "TROU", m_rien,
+    # ⚠️ TROISIEME CLASSE, TROUVEE PAR LA MESURE ⛔ PAS PREVUE AU CADRAGE :
+    #    le site vit dans une boucle sur une population VIDE aujourd'hui. Il
+    #    n'est donc ni LEGITIME (aucune garde amont ne le protege) ni TROU
+    #    (aucun arbre ne l'atteint) : il est INERTE. ⇒ Le temoin est
+    #    l'ABSENCE de la trace sur l'arbre PROPRE, et c'est falsifiable : le
+    #    jour ou une exemption est declaree, il redevient un TROU qui publie
+    #    un OK par exemption — le bilan enflerait avec la donnee.
+    ("tools/verif_verrou_lvgl_dn413.py", "exemption motivée : ",
+     "INERTE", m_rien,
+     "population VIDE au 2026-09-02 (`(aucune)` a la console) ⇒ le site "
+     "n'est JAMAIS execute"),
+    ("tools/verif_dossier_dn415.py",
+     "les exclusions sont DECLAREES, ⛔ pas silencieuses",
+     "TROU", m_rien,
      "aucune donnee ne peut le rendre faux — il PUBLIE, il ne controle pas"),
-    ("tools/verif_journal_soak_dn45.py", 225, "TROU", m_rien,
+    ("tools/verif_journal_soak_dn45.py",
+     "⚠️ et la limite de ce calcul est DECLAREE",
+     "TROU", m_rien,
      "declaration de limite : aucune donnee ne peut la rendre fausse"),
-    ("tools/verif_dossier_d5_dn45.py", 203, "TROU", m_rien,
+    ("tools/verif_dossier_d5_dn45.py",
+     "les archives sont LISTEES, ⛔ pas ecartees en silence",
+     "TROU", m_rien,
      "aucune donnee ne peut le rendre faux ; ⚠️ ses chemins sont ABSOLUS "
      "(dn5-3) ⇒ il lit l'arbre REEL meme depuis une copie"),
 ]
+
+
+def site_de(arbre, gate, libelle):
+    """L'adresse du site `ctrl(True, …)`, RESOLUE au source, ⛔ pas citee.
+
+    🔴 TOKENISE, ⛔ PAS UNE FENETRE DE CARACTERES. Premiere version : on
+    cherchait le libelle dans les 400 caracteres suivant le `ctrl(True,`. Les
+    trois sites voisins de la gate du ledger tombaient tous sur le PREMIER, et
+    deux cas sur treize sortaient « NON PROUVE » en visant le mauvais site.
+    ⇒ On lit le **2e argument litteral** de l'appel, ⛔ rien d'autre.
+
+    ⚠️ Les commentaires ne peuvent pas mentir ici : `tokenize` distingue un
+    `ctrl(True, …)` d'un `ctrl(True, …)` CITE dans un commentaire. Ce depot a
+    deja paye ce motif, et le premier balayage de cette story l'a repaye.
+    """
+    import tokenize
+    p = os.path.join(arbre, gate)
+    with open(p, "rb") as fh:
+        toks = [t for t in tokenize.tokenize(fh.readline)
+                if t.type not in (tokenize.COMMENT, tokenize.NL,
+                                  tokenize.NEWLINE, tokenize.INDENT,
+                                  tokenize.DEDENT)]
+    for i, t in enumerate(toks[:-5]):
+        if t.type != tokenize.NAME or t.string not in ("ctrl", "dire"):
+            continue
+        if (toks[i + 1].string == "(" and toks[i + 2].string == "True"
+                and toks[i + 3].string == ","
+                and toks[i + 4].type == tokenize.STRING):
+            lit = toks[i + 4].string
+            lit = lit[1:-1] if lit[:1] in "\"'" else lit
+            if lit.startswith(libelle) or libelle.startswith(lit):
+                return "%s:%d" % (os.path.basename(gate), t.start[0])
+    return None
+
+
+def libelles_ctrl_true(arbre, gate):
+    """Tous les libelles de `ctrl(True, …)` / `dire(True, …)` d'une gate.
+
+    ⚠️ Meme tokenisation que `site_de` : un site CITE dans un commentaire
+    ⛔ n'en est pas un.
+    """
+    import tokenize
+    out = []
+    p = os.path.join(arbre, gate)
+    with open(p, "rb") as fh:
+        toks = [t for t in tokenize.tokenize(fh.readline)
+                if t.type not in (tokenize.COMMENT, tokenize.NL,
+                                  tokenize.NEWLINE, tokenize.INDENT,
+                                  tokenize.DEDENT)]
+    for i, t in enumerate(toks[:-5]):
+        if (t.type == tokenize.NAME and t.string in ("ctrl", "dire")
+                and toks[i + 1].string == "(" and toks[i + 2].string == "True"
+                and toks[i + 3].string == ","
+                and toks[i + 4].type == tokenize.STRING):
+            lit = toks[i + 4].string
+            out.append(lit[1:-1] if lit[:1] in "\"'" else lit)
+    return out
 
 
 def monte_arbre(tmp):
@@ -195,15 +284,34 @@ def main():
 
     base = {}
     echecs = []
-    for gate, site, verdict, mut, quoi in CAS:
-        cle = "%s:%d" % (os.path.basename(gate), site)
+    tmp0 = tempfile.mkdtemp(prefix="dn440src-")
+    arbre0 = monte_arbre(tmp0)
+    for gate, libelle, verdict, mut, quoi in CAS:
+        cle = site_de(arbre0, gate, libelle)
+        if cle is None:
+            # 🎯 POUR UN TROU OU UN INERTE, L'ABSENCE **EST** LE VERDICT : le
+            #    remede a ete applique (le site publie desormais par `print`,
+            #    ⛔ il ne compte plus). Pour un LEGITIME, c'est un echec.
+            if verdict in ("TROU", "INERTE"):
+                print("  [OK] %-8s %-36s REMEDE APPLIQUE — le site ne COMPTE"
+                      " plus (il imprime)" % (verdict, libelle[:34]))
+                print("           constat : %s" % quoi)
+            else:
+                echecs.append(gate + "/" + libelle)
+                print("  [!!] %-8s %-36s ⛔ SITE INTROUVABLE au source"
+                      % (verdict, libelle[:34]))
+            continue
         if gate not in base:
             rc, vus = joue(gate, m_rien, a.cockpit)
             base[gate] = vus
         atteint_propre = cle in base[gate]
         rc, vus = joue(gate, mut, a.cockpit)
         atteint_mute = cle in vus
-        if verdict == "LEGITIME":
+        if verdict == "INERTE":
+            bon = not atteint_propre
+            dit = ("CONFIRME INERTE — ⛔ jamais atteint sur l'arbre propre"
+                   if bon else "⛔ RECLASSER — il EST atteint")
+        elif verdict == "LEGITIME":
             bon = atteint_propre and not atteint_mute
             dit = ("PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous"
                    " mutant (rc=%d)" % rc) if bon else \
@@ -221,11 +329,37 @@ def main():
         print("  [%s] %-8s %-36s %s" % ("OK" if bon else "!!", verdict, cle, dit))
         print("           mutant : %s" % quoi)
 
+    # ── L'INVENTAIRE : ⛔ AUCUN SITE NON CLASSE ─────────────────────────────
+    #    Sans lui, la campagne prouverait le passe et laisserait entrer le
+    #    futur : un `ctrl(True, …)` ajoute demain passerait inapercu.
+    print("\n── INVENTAIRE : tout `ctrl(True, …)` du depot est-il CLASSE ? ─")
+    import glob as _g
+    connus = set()
+    for gate, libelle, _v, _m, _q in CAS:
+        connus.add((os.path.basename(gate), libelle))
+    inconnus = []
+    for f in sorted(_g.glob(os.path.join(arbre0, "tools", "verif_*.py"))):
+        rel = os.path.join("tools", os.path.basename(f))
+        for lib in libelles_ctrl_true(arbre0, rel):
+            if not any(b == os.path.basename(rel)
+                       and (lib.startswith(l) or l.startswith(lib))
+                       for b, l in connus):
+                inconnus.append("%s :: %s" % (os.path.basename(rel), lib[:44]))
+    if inconnus:
+        echecs.append("inventaire")
+        print("   ⛔ %d SITE(S) NON CLASSE(S) :" % len(inconnus))
+        for x in inconnus:
+            print("        %s" % x)
+    else:
+        print("   ✅ aucun site non classe — %d site(s) au tableau" % len(CAS))
+
+    shutil.rmtree(tmp0, ignore_errors=True)
     n_leg = sum(1 for c in CAS if c[2] == "LEGITIME")
     n_trou = sum(1 for c in CAS if c[2] == "TROU")
+    n_in = sum(1 for c in CAS if c[2] == "INERTE")
     print("\n" + "=" * 78)
-    print("BILAN TRI : %d site(s) — %d LEGITIME(S), %d TROU(S), %d echec(s)"
-          % (len(CAS), n_leg, n_trou, len(echecs)))
+    print("BILAN TRI : %d site(s) — %d LEGITIME(S), %d TROU(S), %d INERTE(S),"
+          " %d echec(s)" % (len(CAS), n_leg, n_trou, n_in, len(echecs)))
     print("=" * 78)
     return 1 if echecs else 0
 

@@ -563,9 +563,15 @@ def main():
     print("\n── EXEMPTIONS MOTIVÉES ────────────────────────────────────────────")
     if not exemptees:
         print("  (aucune)")
+
+# ⚠️ dn4-40 / AC40.2 — CE N'ETAIT PAS UN CONTROLE. Un `ctrl(True, …)`
+#    litteral qu'aucun arbre defaillant ne peut faire rougir ne GARDE rien :
+#    il gonfle le bilan. Le tri (`tools/campagne_ctrl_dn440.py`) l'a classe
+#    par MUTANT, ⛔ pas par raisonnement. Le fait qu'il publiait reste dit —
+#    il est imprime, ⛔ il n'est plus compte.
     for nom, ligne, motif in exemptees:
-        ctrl(True, "exemption motivée : %s" % nom,
-             "dn_ui.c:%d — %s" % (ligne, motif[:60]))
+        print("  exemption motivée : %-38s dn_ui.c:%d — %s"
+              % (nom, ligne, motif[:60]))
 
     print("\n── CONTRÔLE PRINCIPAL ─────────────────────────────────────────────")
     for nom, ligne, chemin, motif in fautes:

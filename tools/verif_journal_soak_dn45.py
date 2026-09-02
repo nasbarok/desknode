@@ -233,9 +233,15 @@ def main():
              "%d o/ligne ⇒ %.1f o/s ⇒ %.1f Mo (⚠️ PLANCHER : la carte a mesure "
              "157 o/s AVANT le filtre d'echo ⇒ ~95 Mo)"
              % (taille, par_s, sept_j / (1024 * 1024)))
-        ctrl(True, "⚠️ et la limite de ce calcul est DECLAREE",
-             "il ne compte que le battement ; le fil porte aussi les logs des "
-             "autres modules")
+
+# ⚠️ dn4-40 / AC40.2 — CE N'ETAIT PAS UN CONTROLE. Un `ctrl(True, …)`
+#    litteral qu'aucun arbre defaillant ne peut faire rougir ne GARDE rien :
+#    il gonfle le bilan. Le tri (`tools/campagne_ctrl_dn440.py`) l'a classe
+#    par MUTANT, ⛔ pas par raisonnement. Le fait qu'il publiait reste dit —
+#    il est imprime, ⛔ il n'est plus compte.
+        print("     ⚠️ et la limite de ce calcul est DECLAREE : il ne compte"
+              " que le battement ;\n         le fil porte aussi les logs des"
+              " autres modules")
 
         # ══════════════════════════════════════════════════════════════════
         # 🔴 §7 — CE QUE LA REVUE DU 2026-08-28 A TROUVE, ET QUI N'ETAIT

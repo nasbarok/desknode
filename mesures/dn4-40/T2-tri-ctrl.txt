@@ -1,0 +1,37 @@
+==============================================================================
+dn4-40 / AC40.2 — TRI DES `ctrl(True, …)` LITTERAUX, PROUVE PAR MUTANT
+==============================================================================
+critere : LEGITIME = le chemin d'echec SORT EN AMONT ;
+          TROU     = un arbre defaillant ATTEINT le site.
+⛔ aucune ecriture dans l'arbre reel — `git archive HEAD` + copie.
+
+  [OK] LEGITIME verif_ledger_dn416.py:796            PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant (rc=4)
+           mutant : le ledger retire du cockpit ⇒ prerequis absent, rc=4, sortie EN AMONT
+  [OK] LEGITIME verif_ledger_dn416.py:797            PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant (rc=4)
+           mutant : idem — meme garde amont
+  [OK] LEGITIME verif_ledger_dn416.py:798            PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant (rc=4)
+           mutant : idem
+  [OK] LEGITIME verif_ledger_dn416.py:817            PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant (rc=1)
+           mutant : le ledger rendu NON-UTF-8 ⇒ ctrl(False) puis ARRET
+  [OK] LEGITIME verif_ledger_dn416.py:824            PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant (rc=1)
+           mutant : le tracker rendu NON-UTF-8 ⇒ ctrl(False) puis ARRET
+  [OK] LEGITIME verif_dossier_dn415.py:713           PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant (rc=4)
+           mutant : `--cockpit` vers un chemin inexistant ⇒ la branche `absent` est prise
+  [OK] LEGITIME verif_hist_dn413.py:712              PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant (rc=1)
+           mutant : `dn_hist.c` rendu incompilable ⇒ ctrl(False) puis `return 1`
+  [OK] LEGITIME verif_lissage_dn45.py:198            PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant (rc=1)
+           mutant : la capture retiree ⇒ ctrl(False) puis `return 1`
+  [OK] LEGITIME verif_paliers_dn441.py:335           PROUVE — atteint sur l'arbre propre, ⛔ PAS atteint sous mutant (rc=1)
+           mutant : la liste canonique retiree ⇒ la branche `dire(False)` est prise
+  [OK] INERTE   verif_verrou_lvgl_dn413.py:567       CONFIRME INERTE — ⛔ jamais atteint sur l'arbre propre
+           mutant : population VIDE au 2026-09-02 (`(aucune)` a la console) ⇒ le site n'est JAMAIS execute
+  [OK] TROU     verif_dossier_dn415.py:739           CONFIRME TROU — toujours atteint OK sous mutant
+           mutant : aucune donnee ne peut le rendre faux — il PUBLIE, il ne controle pas
+  [OK] TROU     verif_journal_soak_dn45.py:236       CONFIRME TROU — toujours atteint OK sous mutant
+           mutant : declaration de limite : aucune donnee ne peut la rendre fausse
+  [OK] TROU     verif_dossier_d5_dn45.py:214         CONFIRME TROU — toujours atteint OK sous mutant
+           mutant : aucune donnee ne peut le rendre faux ; ⚠️ ses chemins sont ABSOLUS (dn5-3) ⇒ il lit l'arbre REEL meme depuis une copie
+
+==============================================================================
+BILAN TRI : 13 site(s) — 9 LEGITIME(S), 3 TROU(S), 1 INERTE(S), 0 echec(s)
+==============================================================================
