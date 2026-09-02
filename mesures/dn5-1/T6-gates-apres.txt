@@ -291,3 +291,80 @@ BILAN : 24 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 26 gates (72s)
        parce que l'annotation NFR3 exigee par AC1.1.d a decale ce fichier de 21
        lignes. MEME gate, MEME fichier, MEME terme, MEME texte cite.
 ================================================================================
+
+================================================================================
+ ⚠️ BILAN REJOUE LE 2026-09-02 A LA REVUE DE CODE — PRODUIT PAR L'OUTIL
+================================================================================
+ 🔴 POURQUOI CE BLOC EXISTE
+    Le bloc « BILAN FINAL, PRODUIT PAR L'OUTIL APRES TOUTES LES ECRITURES » plus
+    haut RE-ENONCE 24/1/1 sans porter de sortie de `run_gates.sh` : seule
+    `verif_dossier_dn415.py` avait ete rejouee. Or T6 exige « ⛔ ne pas le recopier
+    de memoire, PRODUIRE le bilan par l'outil ». ⇒ le voici, integralement.
+
+ ⚠️ ET IL EST PRIS **APRES LES ECRITURES DE LA REVUE** — qui ont touche les DEUX
+    depots (CONTRIBUTING.md, docs/roadmap.md, docs/dn5-1-ecart-promesses.md,
+    4 captures de mesures/, l'epic et le tracker du cockpit).
+
+ 🔴 LE PIEGE, UNE 4e FOIS — ET IL EST EVITE ICI, PAS SUBI.
+    Les lignes [KO ] ci-dessous portent le NOM DU MOTIF que la gate traque. Le
+    recopier tel quel dans un fichier SCANNE en CREERAIT une occurrence neuve et
+    ferait passer la gate a 11 KO — c'est EXACTEMENT ce qui est arrive a
+    l'annotation du tracker en `6728a80`. ⇒ LE MOTIF EST MASQUE : `vl5<...>x`.
+    ⛔ Un jeton de gate n'a aucun echappement ; le seul echappement est de ne pas
+    l'ecrire.
+
+── LA SORTIE DU RUNNER, IN EXTENSO
+
+   [VERTE      ] tools/verif_bme680_retard_dn45.py      rc=0      1s
+   [VERTE      ] tools/verif_courbe_dn413.py            rc=0     10s
+   [VERTE      ] tools/verif_cumul_ambient_dn45.py      rc=0      1s
+   [VERTE      ] tools/verif_d4_nvs_dn45.py             rc=0      0s
+   [VERTE      ] tools/verif_decoupe_horloge_dn418.py   rc=0      7s
+   [VERTE      ] tools/verif_demarrage_dn443.py         rc=0      1s
+   [VERTE      ] tools/verif_dossier_d5_dn45.py         rc=0      1s
+   [ROUGE      ] tools/verif_dossier_dn415.py           rc=1      6s
+   [VERTE      ] tools/verif_harnais_dn413.py           rc=0      6s
+   [VERTE      ] tools/verif_hist_dn413.py              rc=0      4s
+   [VERTE      ] tools/verif_instruments_dn423.py       rc=0      1s
+   [VERTE      ] tools/verif_journal_soak_dn45.py       rc=0      0s
+   [VERTE      ] tools/verif_langues_dn442.py           rc=0      0s
+   [VERTE      ] tools/verif_ledger_dn416.py            rc=0      0s
+   [VERTE      ] tools/verif_lissage_dn45.py            rc=0      1s
+   [VERTE      ] tools/verif_miroir_horloge_dn418.py    rc=0      0s
+   [VERTE      ] tools/verif_paliers_dn441.py           rc=0      0s
+   [VERTE      ] tools/verif_rebouclage_dn45.py         rc=0      3s
+   [VERTE      ] tools/verif_reprise_horloge_dn418.py   rc=0      0s
+   [VERTE      ] tools/verif_selection_dn49.py          rc=0      1s
+   [VERTE      ] tools/verif_serie_dn412.py             rc=0      2s
+   [VERTE      ] tools/verif_source_lhm_dn48.py         rc=0      4s
+   [NON-JOUABLE] tools/verif_sr03.py                    rc=2   (attendu) temoin absent : tools/fixtures/AN4545.pdf
+                 motif : le PDF [AN] AN4545 (VL6180X, DocID026571 Rev 1) n'est PAS au depot : document StMicroelectronics, ⛔ non redistribuable. La gate l'attend en argument et sort en 2 sur son message d'usage — rc=2 n'est PAS un rouge.
+   [VERTE      ] tools/verif_veille_dn33.py             rc=0      8s
+   [VERTE      ] tools/verif_verrou_lvgl_dn413.py       rc=0     16s
+   [VERTE      ] tools/verif_xip_dn422.py               rc=0      0s
+   BILAN : 24 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 26 gates (73s)
+   ⛔ ROUGES :
+      · tools/verif_dossier_dn415.py (rc=1)
+
+── LA COMPARAISON T0 vs REVUE — LIGNE [KO ] ENTIERE, ⛔ PAS TRONQUEE
+   (la troncature a 58 caracteres est le defaut d'instrument corrige en `08a8f78`)
+
+   nombre de [KO ] a T0        : 10
+   nombre de [KO ] a la revue  : 10
+   ⇒ 0 KO DE PLUS                                              ✅ AC/T6 TENUE
+
+   lignes [KO ] differentes : 1 sur 10
+     KO n°3 :
+       T0    : │   [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:ing-artifacts/epics-desknode-v1.md [vl5<...>x] #1 (l.2615) `done` depuis mi-août) : **on séquence par dépendanc
+       revue : │   [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:ing-artifacts/epics-desknode-v1.md [vl5<...>x] #1 (l.2650) `done` depuis mi-août) : **on séquence par dépendanc
+
+   ⇒ LA SEULE DIFFERENCE EST UN NUMERO DE LIGNE, ET ELLE EST DE MON FAIT : les
+     annotations NFR3 posees par la revue dans `epics-desknode-v1.md` ont decale
+     l'occurrence. ⛔ AUCUN SENS N'A CHANGE. C'est le MEME mecanisme que celui
+     mesure par la story (l.2615 ⇒ l.2636), une iteration plus loin.
+   ⚠️ ET C'EST LA 3e FOIS QUE CE DEFAUT SE MANIFESTE : `verif_dossier_dn415.py`
+     ancre ses KO sur des NUMEROS DE LIGNE DU COCKPIT ⇒ toute ecriture cockpit
+     deplace ses libelles sans rien changer au fond. Constat pour `dn4-40`.
+
+   ⇒ VERDICT : « 0 KO de plus » TIENT. « mot pour mot » ⛔ NE TIENT PAS, et
+     n'aurait jamais du etre ecrit — ni ici, ni au tracker.

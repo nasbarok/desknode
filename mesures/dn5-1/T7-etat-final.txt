@@ -1,0 +1,137 @@
+================================================================================
+ dn5-1 / T7 — L'ETAT FINAL, APRES LA DERNIERE POUSSE        AC1.2 · AC1.3 · AC1.4
+================================================================================
+ Releve le 2026-09-02, a la REVUE DE CODE.
+
+ 🔴 POURQUOI CETTE CAPTURE EXISTE — ET CE QU'ELLE CORRIGE
+    Les trois captures « apres » de la story (T3-etat-remote-apres, T3-temoin-nfr8-
+    apres, T4-comptage-clone-neuf) ont TOUTES ete prises a `18737fe`. La story a
+    ensuite cree et pousse TROIS commits de plus (97cf68b, 08a8f78, 6728a80).
+    ⇒ AUCUNE preuve ne couvrait l'etat reellement publie, et T3-etat-remote-apres
+      AFFIRME `etat publie = 18737fe`, ce que `origin` refute.
+    ⛔ Les captures d'origine ne sont PAS reecrites (NFR3) : elles sont ANNOTEES
+      en place, et celle-ci porte l'etat final.
+
+ ⚠️ INSTRUMENT : toutes les sorties `git` ci-dessous sont prises via `rtk proxy`.
+    Le shell de session passe par un proxy qui REECRIT la sortie de `git diff` —
+    mesure de T0 : il rendait 76/24 la ou l'arbre porte 73/21.
+
+── 1. AC1.2 — CE QUE `origin` PORTE VRAIMENT
+
+   `git ls-remote origin`  ⇒  3 refs, TOUTES au meme SHA :
+     6728a80941bcc4bbd7b2cede7b34dc256e375a86   HEAD
+     6728a80941bcc4bbd7b2cede7b34dc256e375a86   refs/heads/dn4-5-le-module-vit-tout-seul
+     6728a80941bcc4bbd7b2cede7b34dc256e375a86   refs/heads/main
+
+   ⇒ etat publie = 6728a80          ✅ (⛔ PAS 18737fe : voir T3-etat-remote-apres)
+
+── 2. AC1.2.a — `ahead`, SUR LES DEUX REFS NOMMEES
+
+   `git status -sb`                          ⇒ ## dn4-5-le-module-vit-tout-seul...
+                                                origin/dn4-5-le-module-vit-tout-seul
+                                                ⛔ AUCUN `[ahead N]`            ✅
+   `git rev-list --left-right --count origin/main...main`  ⇒  0   0             ✅
+
+── 3. AC1.2.c / NFR1 / NFR2 — LES INTERDITS, RE-VERIFIES A L'ETAT FINAL
+
+   `gh repo view --json visibility,isPrivate`  ⇒ {"isPrivate":true,
+                                                  "visibility":"PRIVATE"}       ✅
+   `git ls-remote --tags origin`               ⇒ AUCUN tag                      ✅
+   commits de fusion dans b524e98..6728a80     ⇒ 0                              ✅
+   `b524e98` toujours ANCETRE de `6728a80`     ⇒ oui                            ✅
+
+── 4. AC1.4.c — ⛔ AUCUN COMMIT CREE PAR CETTE STORY NE TOUCHE `firmware/`
+
+   sha_debut_story = e578def   ·   HEAD = 6728a80   (⛔ PAS `main..HEAD`)
+   `git diff --name-only e578def HEAD -- firmware/`   ⇒  0 fichier(s)   ✅ VIDE
+
+   LES CINQ commits crees par cette story — ⛔ pas deux :
+      6728a80 docs(dn5-1): TROISIEME FOIS QUE DECRIRE UNE MESURE LA CORROMPT...
+      08a8f78 fix(dn5-1): LE COMPARATEUR DE GATES MENTAIT...
+      97cf68b docs(dn5-1): LE PUSH EST FAIT, ET LE CLONE NEUF LE PROUVE PAR LE COMPTE
+      18737fe docs(dn5-1): LE DEPOT CESSE DE DEMANDER CE QU'IL NE DEFINIT NULLE PART
+      facd441 docs(dn5-1): L'ECART S'ECRIT AVANT LE PUSH...
+   ⚠️ T3-temoin-nfr8-apres n'en listait que DEUX (18737fe, facd441) — les trois
+      autres n'existaient pas encore quand il a ete pris.
+
+── 5. AC1.4 — LE TEMOIN NFR8, ETENDU JUSQU'A L'ETAT FINAL
+
+   ⛔ SANS OUVRIR LE PORT SERIE. Meme instrument qu'a T3 : les compteurs de
+   `/mnt/h/dev/projets/desknode/dn-agent.log`, lus en Python (⛔ pas au grep).
+
+   grandeur                    T3 AVANT      T3 APRES      T7 (final)     verdict
+   --------------------------  ------------  ------------  -------------  -------
+   dn-agent.started (mtime)    00:49:45      00:49:45      00:49:45       ✅ INCHANGE
+   compteur `s mur`               2920.0 s      3000.0 s      38440.2 s   ✅ MONOTONE
+   compteur `seq`                   14600         15000         192200    ✅ MONOTONE
+   lignes de temoin au journal       9922          9932          13474    ✅ EN HAUSSE
+
+   derniere ligne lue :
+     [agent] témoin coût cumulé : 753.484 s CPU / 38440.2 s mur = 1.960 %
+     d'un cœur (0.1225 % machine) — seq=192200
+
+   ⇒ L'EXCLUSION CAUSALE TIENT SUR TOUTE LA STORY, ⛔ pas seulement sur la 1re
+     pousse : `s mur` est le temps ecoule DEPUIS LE DEMARRAGE DE L'AGENT. Il vaut
+     38440.2 s (~10 h 40) et n'est JAMAIS retombe a zero ⇒ l'agent lance a 00:49:45
+     n'est jamais mort ⇒ il n'a jamais lache COM3 ⇒ ⛔ AUCUN FLASH N'A PU AVOIR LIEU
+     entre `e578def` et `6728a80`. Ce n'est pas « on n'en a pas vu » : c'etait
+     impossible.
+   ⛔ CE QU'ELLE NE PROUVE TOUJOURS PAS (inchange depuis T3) : qu'aucun redemarrage
+     SPONTANE de la carte n'a eu lieu. Un redemarrage spontane n'est pas un flash,
+     et le SHA du binaire ne change pas sans ecriture de la flash NOR.
+
+── 6. AC1.3 — CE QUE LE CLONE DE T4 NE COUVRAIT PAS
+
+   T4 a clone `main` a `18737fe`. L'etat publie est `6728a80`.
+   `git diff --name-only 18737fe 6728a80`  ⇒  CINQ fichiers, TOUS sous mesures/ :
+      mesures/dn5-1/T3-etat-remote-apres.txt
+      mesures/dn5-1/T3-temoin-nfr8-apres.txt
+      mesures/dn5-1/T3-temoin-nfr8-avant.txt
+      mesures/dn5-1/T4-comptage-clone-neuf.txt
+      mesures/dn5-1/T6-gates-apres.txt
+   ⇒ AUCUN fichier LU PAR LE LECTEUR (README, CONTRIBUTING, LICENSING,
+     THIRD-PARTY, CHANGELOG, docs/) ne differe entre l'arbre compte par T4 et
+     l'arbre publie. ✅ LES COMPTAGES DE T4 RESTENT VRAIS DE `6728a80`.
+   ⚠️ Mais c'est etabli ICI, par difference — ⛔ ce n'etait pas ecrit a T4.
+   ⚠️ ET LA PREMIERE REDACTION DE CETTE SECTION DISAIT « UN SEUL fichier ».
+     C'ETAIT FAUX : elle a ete ecrite avant d'etre mesuree. Les captures T3 et T4
+     ont ete COMMITTEES par `97cf68b`, donc APRES `18737fe` — elles apparaissent
+     forcement dans ce diff. ⛔ Corrige plutot qu'efface : c'est la 4e fois dans
+     cette story qu'une mesure est corrompue par sa DESCRIPTION, et la 1re fois
+     que ca arrive a la REVUE.
+
+── 7. LE RELEVE DU COCKPIT QUE T0 DEVAIT PRENDRE — ET QUI N'A PAS ETE PRIS
+
+   La tache T0 exige `git status --porcelain` **SUR LES DEUX DEPOTS**, et de noter
+   tout SHA qui a bouge depuis `d4b3b60` (cockpit) / `e578def` (desknode). Elle est
+   cochee. ⛔ AUCUNE capture de `mesures/dn5-1/` ne releve l'etat du COCKPIT :
+   `T0-etat-soak.txt` est le seul a citer un `--porcelain`, et c'est sur `desknode`.
+
+   🔴 CE RELEVE NE PEUT PAS ETRE RECONSTRUIT. `git status` d'un arbre de travail
+      n'est pas versionne : ce que le cockpit portait EN NON-COMMITTE le 2026-09-02
+      au matin est perdu. ⛔ Ce n'est pas rattrape ici, c'est DECLARE.
+
+   CE QUI SE MESURE ENCORE, ET QUI A ETE MESURE A LA REVUE :
+
+     cockpit HEAD                        9a6aa99
+     `git status --porcelain` (revue)    3 fichiers modifies par la revue
+                                         + 1 non suivi (`ops/audit_impostor_episodes.py`,
+                                           SANS RAPPORT avec dn5-1)
+
+     ce que `d4b3b60` portait DEJA :
+       sprint-status-desknode.yaml   motif `dn5-1`      ⇒ 0 occurrence
+       sprint-status-desknode.yaml   motif `dn_paliers` ⇒ 0 occurrence
+       epics-desknode-v1.md          motif `Epic dn5`   ⇒ 0 occurrence
+       epics-desknode-v1.md          motif `dn_paliers` ⇒ 0 occurrence
+
+   ⇒ CE QUE CA ETABLIT : au dernier commit AVANT la story, NI le tracker NI l'epic
+     ne portaient quoi que ce soit de `dn5`. Tout — l'epic `dn5` (+723 / -0), les
+     cinq lignes de stories, la citation `dn_paliers.c` ET son annotation — entre
+     dans le MEME commit `9a6aa99`.
+   ⇒ CE QUE CA N'ETABLIT PAS : que la citation n'existait pas dans l'ARBRE DE
+     TRAVAIL avant. Elle y etait probablement — le cockpit n'est committe qu'au
+     geste de l'owner, et la story l'ecrit. ⛔ Mais l'historique ne peut pas le
+     dire, et c'est precisement ce que le releve manquant aurait tranche.
+   ⇒ EN CONSEQUENCE, la Completion Note « la ligne du tracker la portait deja » est
+     REFORMULEE dans la story : ce qui est vrai, c'est qu'elle la portait dans
+     l'arbre de travail — ⛔ pas dans l'historique publie.

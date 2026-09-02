@@ -11,6 +11,9 @@
    SHA de l'etat publiable retenu (decision owner 2026-09-02, question n°1) : e578def
    + 2 commits ecrits PAR cette story (facd441 ecart, 18737fe CONTRIBUTING)
    ⇒ etat publie = 18737fe
+     🔴 ⚠️ CETTE LIGNE EST PERIMEE — ⛔ ELLE N'EST PAS EFFACEE, ELLE EST
+        CORRIGEE PLUS BAS, § « ANNOTATION DU 2026-09-02 (REVUE) ». L'etat
+        REELLEMENT publie est `6728a80`.
 
 ── AC1.2.a — `ahead`, SUR LES DEUX REFS, NOMMEES
    ## dn4-5-le-module-vit-tout-seul...origin/dn4-5-le-module-vit-tout-seul
@@ -41,3 +44,24 @@
       un ancetre de HEAD : ✅ OUI
    ⛔ aucun renommage (NFR6) : 0 detecte(s)  ✅
 ================================================================================
+
+================================================================================
+ ⚠️ ANNOTATION DU 2026-09-02 — ECRITE A LA REVUE DE CODE          NFR3
+================================================================================
+ Cette capture est titree « APRES LE PUSH ». Elle etait VRAIE quand elle a ete
+ prise : a cet instant, `origin` portait bien `18737fe`.
+
+ 🔴 ELLE NE L'EST PLUS, ET LA STORY EST LA CAUSE. Apres cette capture, la story
+    a cree et POUSSE trois commits de plus :
+      97cf68b  (les captures T3/T4/T6 elles-memes)
+      08a8f78  (la correction du comparateur de gates)
+      6728a80  (la 3e instance : l'annotation qui creait une occurrence)
+    ⇒ `git ls-remote origin` rend aujourd'hui `6728a80` sur les TROIS refs.
+
+ ⇒ UN FICHIER PUBLIE AFFIRMAIT DONC UN ETAT QUE LE DEPOT LUI-MEME REFUTAIT —
+   c'est-a-dire EXACTEMENT le defaut de classe que `dn5-1` existe pour solder.
+   Constate par la revue de code du 2026-09-02.
+
+ ✅ L'ETAT FINAL EST CAPTURE, PAR L'OUTIL : mesures/dn5-1/T7-etat-final.txt
+    (refs, `ahead`, PRIVATE, tags, `firmware/` vide, temoin NFR8 etendu).
+ ⛔ RIEN N'EST EFFACE ICI (NFR3) : la ligne fautive reste lisible, marquee.

@@ -34,6 +34,8 @@
    sha_debut_story = e578def   ·   HEAD = 18737fe
    git diff --name-only e578def HEAD -- firmware/  ⇒  0 fichier(s)   ✅ VIDE
    commits crees par cette story :
+     🔴 ⚠️ CETTE LISTE EST INCOMPLETE — 2 sur 5. ⛔ NON EFFACEE, CORRIGEE
+        PLUS BAS, § « ANNOTATION DU 2026-09-02 (REVUE) ».
       18737fe docs(dn5-1): LE DEPOT CESSE DE DEMANDER CE QU'IL NE DEFINIT NULLE PART
       facd441 docs(dn5-1): L'ECART S'ECRIT AVANT LE PUSH — ET LE DEFAUT A SIX INSTANCES, PAS DEUX
 
@@ -47,3 +49,21 @@
          « ⛔ AUCUNE CARTE N'EST REQUISE … aucun geste physique de l'owner ».
    Le SHA « avant » reste versionne : mesures/dn4-43/T8-bandeau-boot.txt ⇒ 6a91fa3.
 ================================================================================
+
+================================================================================
+ ⚠️ ANNOTATION DU 2026-09-02 — ECRITE A LA REVUE DE CODE          NFR3
+================================================================================
+ 🔴 CE TEMOIN N'ENCADRE QUE LA PREMIERE DES POUSSES.
+    Il a ete pris a 01:39:55, autour du push de `18737fe`. La story a ensuite
+    pousse `97cf68b`, `08a8f78` et `6728a80` — SANS temoin « apres ».
+    Et la liste « commits crees par cette story » n'en portait que DEUX
+    (18737fe, facd441) : les trois autres n'existaient pas encore.
+
+ ✅ LE FOND TIENT, ET IL A ETE RE-MESURE A LA REVUE. Le compteur `s mur` de
+    l'agent vaut 38440.2 s (~10 h 40) et `dn-agent.started` porte TOUJOURS
+    `lance : 2026-09-02T00:49:45`. Il n'est jamais retombe a zero ⇒ l'agent n'est
+    jamais mort ⇒ il n'a jamais lache COM3 ⇒ AUCUN flash n'a pu avoir lieu sur
+    TOUTE la story, ⛔ pas seulement autour de la 1re pousse.
+    ⇒ Detail et tableau des trois releves : mesures/dn5-1/T7-etat-final.txt § 5.
+
+ ⇒ CE QUI MANQUAIT N'ETAIT PAS LE FAIT, C'ETAIT LA PREUVE QUI VA JUSQU'AU BOUT.

@@ -6,6 +6,9 @@
  `git clone --branch main https://github.com/nasbarok/desknode.git` — DOSSIER NEUF,
  HORS de l'arbre de travail. ⛔ Rien n'est lu depuis ~/projects/desknode ici.
  HEAD du clone : 18737fe97e76010a8e44c368e62dda6bf0135a9c
+   🔴 ⚠️ CE N'EST PAS L'ETAT FINALEMENT PUBLIE (`6728a80`). ⛔ NON EFFACE :
+      voir § « ANNOTATION DU 2026-09-02 (REVUE) » en fin de fichier — les
+      comptages RESTENT VRAIS, et c'est etabli par difference.
 
  ⛔ CE N'EST PAS UNE LECTURE A L'ŒIL. Chaque verdict porte UN CHIFFRE et SON MOTIF.
  ⚠️ Et le motif est a BORNES DE MOT : un `grep -ci tier` MENT (voir le temoin, plus bas).
@@ -149,3 +152,75 @@
      `dn5-5` (« le poids d'un clone » et « ce qui reste a faire pour publier »).
      ⇒ AUCUN CHIFFRE DE POIDS N'EST PUBLIE PAR CETTE MARCHE.
 ================================================================================
+
+================================================================================
+ ⚠️ ANNOTATION DU 2026-09-02 — ECRITE A LA REVUE DE CODE          NFR3
+================================================================================
+ 🔴 LE CLONE A ETE PRIS A `18737fe`. L'ETAT PUBLIE EST `6728a80`.
+    ⇒ La preuve d'AC1.3 (« un clone neuf definit tout ce qu'il demande ») a ete
+      prise sur un arbre qui n'est plus celui d'`origin`.
+
+ ✅ LES COMPTAGES RESTENT VRAIS — ET C'EST MESURE, ⛔ PAS SUPPOSE :
+    `git diff --name-only 18737fe 6728a80` rend CINQ fichiers, TOUS sous
+    `mesures/dn5-1/` (les captures T3, T4 et T6 elles-memes). ⛔ AUCUN fichier lu
+    par le lecteur — README, CONTRIBUTING, LICENSING, THIRD-PARTY, CHANGELOG,
+    docs/ — ne differe entre l'arbre compte ici et l'arbre publie.
+    ⇒ Detail : mesures/dn5-1/T7-etat-final.txt § 6.
+
+ ⚠️ SECOND CONSTAT DE LA REVUE — DEUX VERDICTS DE CE FICHIER MESURENT LEUR PROPRE
+    PROSE, ⛔ PAS LEUR REFERENT. Voir la section ajoutee ci-dessous.
+
+================================================================================
+ ⚠️ CORRECTION D'INSTRUMENT DU 2026-09-02 — ECRITE A LA REVUE DE CODE
+================================================================================
+ 🔴 DEUX VERDICTS DE CE FICHIER COMPTENT LEUR PROPRE PROSE, ⛔ PAS LEUR REFERENT.
+
+ (a) NOTION « sortie console serie » — conclue ✅ DEFINIE sur :
+        README.md  dn_console\.py = 9 · idf\.py monitor = 1 · 115200 = 2
+     ⇒ le verdict ecrit « trois outils de lecture SONT DANS LE CLONE ».
+     🔴 C'est un comptage de NOMS D'OUTILS DANS DE LA PROSE. Compter le nom d'un
+        outil dans un README ne prouve pas que l'outil est la : DEUX DES TROIS
+        SONT EXTERNES AU DEPOT (`idf.py` vient d'ESP-IDF, `miniterm` de pyserial).
+
+ (b) NOTION « DeskNode version » — conclue ✅ DEFINIE sur des comptages faits
+     DANS `CONTRIBUTING.md` (`App version` = 1, `dn_console\.py` = 1,
+     `no version shown on the display` = 1).
+     🔴 Ce sont LES CHAINES QUE LA MEME STORY VENAIT D'Y ECRIRE. Le controle
+        rendrait le meme VERT que la notion soit atteignable ou non : il mesure
+        LA REFERENCE, ⛔ PAS LE REFERENT. C'est la faute de sens que la story
+        denonce ailleurs (« un compte sans son motif n'est pas une mesure »),
+        d'un cran plus haut : ici le motif est publie, mais il porte sur le
+        mauvais objet.
+
+── LA MESURE REFAITE, SUR LE REFERENT — CLONE NEUF DE L'ETAT PUBLIE
+
+   `git clone --branch main https://github.com/nasbarok/desknode.git`
+   HEAD du clone : 6728a80941bcc4bbd7b2cede7b34dc256e375a86   (⛔ plus 18737fe)
+
+   ce qu'on teste                                    resultat
+   ------------------------------------------------  --------------------------
+   test -x tools/dn_console.py                        ✅ OUI (present, executable)
+   command -v idf.py                                  🔴 INTROUVABLE
+   python3 -c 'import serial.tools.miniterm'          ✅ OK (pyserial present ici)
+   command -v python   (non suffixe)                  🔴 INTROUVABLE
+   sdkconfig / build/ / managed_components/           🔴 ABSENTS du clone (gitignores)
+
+── CE QUE CA CHANGE AU VERDICT
+
+   🔴 LA COMMANDE `python -m serial.tools.miniterm <port> 115200`, PUBLIEE PAR
+      CETTE STORY DANS `CONTRIBUTING.md`, ECHOUE SUR LA MACHINE MEME DE L'AUTEUR :
+      `python` n'y est pas lie. Ce n'est pas une hypothese sur le poste d'un tiers,
+      c'est une mesure ici.
+   🔴 `idf.py monitor` n'est pas invocable depuis un clone neuf : ni l'outil, ni
+      `sdkconfig`, ni `build/` n'y sont. Il faut ESP-IDF installe, `export.sh`
+      source, `idf.py set-target esp32s3` puis `idf.py build`. Rien ne le dit.
+   ✅ `tools/dn_console.py` EST bien dans le clone et executable — c'est le SEUL
+      des trois qui tienne la promesse telle qu'elle est ecrite.
+
+   ⇒ VERDICT CORRIGE de la notion « sortie console serie » : 🟡 DEFINIE EN PARTIE.
+     Le baud (115200) et UN outil sur trois sont dans le clone ; les deux autres
+     sont des dependances externes NON DECLAREES.
+   ⇒ VERDICT CORRIGE de la notion « DeskNode version » : la notion est bien
+     ATTEIGNABLE (le bandeau existe, `dn_console.py` le lit), mais ⛔ CE FICHIER
+     NE L'AVAIT PAS PROUVE — il avait compte sa propre prose.
+   ⛔ RIEN N'EST EFFACE (NFR3) : les verdicts d'origine restent lisibles ci-dessus.

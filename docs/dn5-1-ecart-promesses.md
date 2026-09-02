@@ -21,6 +21,16 @@ Le contre-exemple qui a fait écrire cette règle est daté et mesuré : voir
 
 ## 1. Les six instances, chacune avec sa disposition
 
+> ⚠️ **ANNOTATION DU 2026-09-02 (revue de code) — DEUX CLASSES, ⛔ PAS UNE.**
+> `CONTRIBUTING.md` annonce au lecteur *« three more instances »* (⇒ **quatre**), et
+> l'annotation portée à l'epic écrit *« QUATRE instances »*. **Les deux disent vrai, et
+> ce tableau aussi** : les instances **1 à 4** sont la classe *« le dépôt DEMANDE ou
+> PROMET ce que son arbre réfute »* (celle de l'epic, et celle que la règle nomme) ;
+> les instances **5 et 6** relèvent d'une **autre** classe — *« le dépôt publie un
+> défaut qu'il connaît »* (une gate rouge · des chemins personnels). ⛔ Ni l'un ni
+> l'autre chiffre n'est faux ; **c'est le fait qu'aucun des trois écrits ne disait de
+> quoi il comptait** qui l'était. Corrigé aux trois endroits, ⛔ rien d'effacé.
+
 ⚠️ **Aucune instance sans porteur.** Une instance dont la disposition est vide est une promesse
 creuse de plus — c'est le défaut même que cette marche solde.
 
@@ -31,7 +41,7 @@ creuse de plus — c'est le défaut même que cette marche solde.
 | **3** | `CONTRIBUTING.md` : *« Your **DeskNode version** — it is **displayed on the device**. »* | 🔴 **AUCUNE version n'est affichée sur la dalle.** **0** appel à `esp_app_get_description` sur les **54** fichiers de `firmware/desknode/main/` (`main` : 0 sur 48). `dn_ui.c` l'écrit pour le MENU : *« pas de reboot, **pas de version** »*. Le seul identifiant est `App version: <sha>`, **au bandeau SÉRIE de boot** | ✅ **SOLDÉE ICI** — décision owner du 2026-09-02 : `CONTRIBUTING.md` **demande ce qui existe** (le SHA du bandeau série) **et dit comment l'obtenir**. ⚠️ Une **vraie** version affichée + le tag `v0.1.0-beta` restent à **`dn8`** |
 | **4** | `CHANGELOG.md` : *« **NVIDIA and AMD GPUs are covered**; Intel Arc and integrated GPUs are untested »* | 🔴 **0** `import pynvml` · **4** `atiadlxx` dans `agent/dn_agent.py` ⇒ la **seule** source GPU est AMD ADL. Et le code **le réfute par écrit** : `dn_agent.py:104-106` — *« 🔴 LE CADRAGE ANNONÇAIT NVML : INAPPLICABLE, la tour est une AMD Radeon… `pynvml` n'est même pas installé. »* | ⛔ **`dn5-2` / AC2.5** — décision owner du 2026-09-02 : **nommée ici, corrigée là-bas** |
 | **5** | Le dépôt publie `tools/run_gates.sh` et **26 gates**, sous une convention qui promet qu'elles passent | 🔴 **1 gate ROUGE au moment du push** : `tools/verif_dossier_dn415.py`, **17 OK / 10 KO**. ⚠️ **Elle PRÉ-EXISTE**, ⛔ elle n'est pas de cette story : ses 10 KO portent **tous** sur des fichiers du **cockpit** (`_bmad-output/…`, préfixe `cockpit:` dans sa sortie), qui **ne sont pas dans le clone** | ⛔ **`dn4-39` / `dn4-40`** — ⛔ **ni imputée, ni aggravée, ni réparée ici** ; **déclarée** parce que taire une gate rouge qu'on publie serait le défaut de classe |
-| **6** | Le dépôt se veut clonable — `CONTRIBUTING.md` invite à contribuer, `run_gates.sh` à vérifier | 🔴 **3 outils de `tools/` ont une dépendance FONCTIONNELLE à un chemin personnel** : `verif_dossier_d5_dn45.py:47-48` (`/home/nasbarok/projects/{desknode,compagnon_project}` en **absolu**), `verif_dossier_dn415.py:168` et `verif_ledger_dn416.py:148` (`~/projects/compagnon_project`). ⇒ sur un clone neuf **elles ne peuvent pas s'exécuter**. S'y ajoutent **5** fichiers `firmware/…/fonts/dn_font_*.c` qui portent `/home/nasbarok/…` dans un commentaire de générateur | ⛔ **`dn5-3`** — ⚠️ **ANNOTATION** : le périmètre de `dn5-1` et l'epic écrivent *« les **2** dépendances fonctionnelles de `tools/` »*. **Mesuré le 2026-09-02 : elles sont TROIS.** ⛔ La ligne ne se réécrit pas, elle se **date** (NFR3) |
+| **6** | Le dépôt se veut clonable — `CONTRIBUTING.md` invite à contribuer, `run_gates.sh` à vérifier | 🔴 **4 outils de `tools/` ont une dépendance FONCTIONNELLE à un chemin personnel** (⚠️ **le chiffre `3` ci-dessous est CORRIGÉ le 2026-09-02, voir §5**) : `verif_dossier_d5_dn45.py:47-48` (`/home/nasbarok/projects/{desknode,compagnon_project}` en **absolu**), `verif_dossier_dn415.py:168` et `verif_ledger_dn416.py:148` (`~/projects/compagnon_project`). ⇒ sur un clone neuf **elles ne peuvent pas s'exécuter**. S'y ajoutent **5** fichiers `firmware/…/fonts/dn_font_*.c` qui portent `/home/nasbarok/…` dans un commentaire de générateur | ⛔ **`dn5-3`** — ⚠️ **ANNOTATION** : le périmètre de `dn5-1` et l'epic écrivent *« les **2** dépendances fonctionnelles de `tools/` »*. **Mesuré le 2026-09-02 : elles sont TROIS.** ⛔ La ligne ne se réécrit pas, elle se **date** (NFR3) |
 
 ### Ce que le tri de ce tableau apprend, et qui déplace la story
 
@@ -44,7 +54,15 @@ sont **identiques au caractère près** entre `main` et `HEAD` :
 | `CONTRIBUTING.md` · `LICENSING.md` · `THIRD-PARTY.md` · `CHANGELOG.md` | ✅ **IDENTIQUES** |
 
 ⇒ **Le push ne répare rien de ce que ces quatre fichiers promettent.** Il ne répare que ce que le
-README ne portait pas. C'est pour ça que les instances **2** et **4** sont léguées, et pourquoi les
+README ne portait pas.
+
+> ⚠️ **ANNOTATION DU 2026-09-02 (revue de code) — CE TABLEAU EST DATÉ, ⛔ PAS FAUX.**
+> Il a été mesuré sur `e578def` **avant tout push**, comme l'en-tête le dit. Depuis, la
+> story a **écrit dans `CONTRIBUTING.md`** (instances 1 et 3) : sur l'arbre publié,
+> `git diff --numstat b524e98 6728a80 -- CONTRIBUTING.md` rend **`39  2`**, ⛔ il n'est
+> **plus** identique. Les trois autres — `LICENSING.md`, `THIRD-PARTY.md`,
+> `CHANGELOG.md` — le sont toujours, et c'est ce qui fait léguer les instances 2 et 4.
+> ⛔ La ligne ne se réécrit pas : elle se **date** (NFR3). C'est pour ça que les instances **2** et **4** sont léguées, et pourquoi les
 instances **1** et **3** demandent une **écriture** dans `CONTRIBUTING.md`, ⛔ pas seulement un push.
 
 ## 2. ⚠️ **ANNOTATION NFR3** — `dn_paliers.c` n'existe sur **aucune** branche
@@ -106,7 +124,73 @@ owner livré**. ⛔ Rien n'est corrigé ici.
 
 ---
 
+## 5. ⚠️ **ANNOTATION DU 2026-09-02 (revue de code)** — l'inventaire de l'instance n°6 SOUS-COMPTAIT
+
+L'instance n°6 existe pour **corriger un sous-comptage** : l'epic et le périmètre de `dn5-1`
+écrivaient *« les **2** dépendances fonctionnelles de `tools/` »*, et cette page a mesuré
+*« elles sont **TROIS** »*. **La revue en a mesuré QUATRE**, et le seau documentaire était pire.
+
+### (a) La 4ᵉ dépendance fonctionnelle — `tools/bench_lisseur_dn45.py`
+
+Elle porte, **au niveau module** (⛔ pas dans un commentaire), motif `sys.path.insert` :
+
+```python
+sys.path.insert(0, r"\\wsl.localhost\Ubuntu\home\nasbarok\projects\desknode\agent")
+import dn_agent
+```
+
+⇒ sur un clone neuf, **l'`import` échoue** : le script ne démarre pas. C'est exactement le
+critère de la *classe 1* — une dépendance **fonctionnelle**, ⛔ pas un exemple.
+
+⚠️ **ET LA FORMULE « elles ne peuvent pas s'exécuter » EST TROP FORTE — mesuré le 2026-09-02.**
+Lancées depuis un **clone neuf**, trois des quatre **tournent quand même** :
+`verif_dossier_d5_dn45.py` (rc 0), `verif_ledger_dn416.py` (rc 0) et `verif_dossier_dn415.py`
+(rc 1 — son rouge **pré-existant**, ⛔ pas un échec de démarrage). 🔴 **Et c'est PIRE que si
+elles échouaient** : elles tournent **parce qu'elles sortent du clone** et atteignent
+`/home/nasbarok/projects/…`, qui existe sur cette machine. **Sur la machine de n'importe qui
+d'autre, il n'y a rien à atteindre.** Seule `bench_lisseur_dn45.py` échoue ici et maintenant
+(`ModuleNotFoundError: No module named 'dn_agent'`). ⇒ **la mesure prise sur la machine de
+l'auteur ne peut pas, par construction, révéler ce défaut** — il faut le lire dans le code,
+⛔ pas l'attendre d'un code de sortie. ⚠️ Constat pour `dn5-3`.
+
+**Les quatre, re-mesurées :**
+
+| outil | motif |
+|---|---|
+| `tools/verif_dossier_d5_dn45.py` | deux chemins absolus `/home/nasbarok/projects/…` |
+| `tools/verif_dossier_dn415.py` | `~/projects/compagnon_project` |
+| `tools/verif_ledger_dn416.py` | `~/projects/compagnon_project` |
+| **`tools/bench_lisseur_dn45.py`** | 🆕 `sys.path.insert` vers `\\wsl.localhost\…` puis `import dn_agent` |
+
+### (b) Le seau **documentaire** : 13 fichiers tracés, ⛔ pas 5
+
+Cette page écrivait *« s'y ajoutent **5** fichiers `firmware/…/fonts/dn_font_*.c` »*.
+**Mesuré** — `git grep -l nasbarok` sur l'arbre publié rend **13** fichiers tracés :
+
+- les **5** polices `firmware/desknode/main/fonts/dn_font_{14,18,28,33,56}.c` ;
+- **`agent/dn_agent.py`** — 🔴 le livrable que le contributeur **exécute**, et il n'était
+  nommé nulle part ;
+- `tools/dn_lhm_tour.ps1` · `tools/identifier_ventilos_dn48.py` ·
+  `tools/mesure_grandeurs_dn46.py` · `tools/mesure_lhm_dn48.py` ·
+  `tools/mesure_lissage_dn45.py` · `tools/verif_dossier_d5_dn45.py` ·
+  `tools/bench_lisseur_dn45.py`.
+
+⚠️ `verif_dossier_dn415.py` et `verif_ledger_dn416.py` **n'apparaissent pas** dans ce compte :
+ils écrivent `~/projects/…` **sans** le nom d'utilisateur. ⇒ **deux instruments, deux comptes** —
+`git grep -l nasbarok` rend **13**, l'union avec les chemins en `~` en rend **15**. ⛔ Publier
+l'un des deux sans dire lequel serait le défaut que cette page solde.
+
+⇒ **Disposition inchangée : `dn5-3`.** Ce qui change, c'est **son périmètre** : il était écrit à
+moins de la moitié du réel. ⛔ Les chiffres `2`, `3` et `5` ne se réécrivent pas — ils se
+**datent** (NFR3), ici et à leurs sites.
+
+---
+
 ### Mesures qui portent cette page
+
+⚠️ **Complété le 2026-09-02 (revue de code)** : l'index ne listait que les quatre captures **T0**.
+Les captures qui **ferment** la story ont été committées après l'écriture de cette page et n'y
+avaient jamais été ajoutées.
 
 | capture | ce qu'elle prouve |
 |---|---|
@@ -114,3 +198,9 @@ owner livré**. ⛔ Rien n'est corrigé ici.
 | [`mesures/dn5-1/T0-etat-remote.txt`](../mesures/dn5-1/T0-etat-remote.txt) | 3 réfs à `b524e98` · `main` ancêtre de `HEAD` · 73 fichiers / 21 `firmware/` · les 4 fichiers qui promettent sont **identiques** |
 | [`mesures/dn5-1/T0-comptage-rejeu.txt`](../mesures/dn5-1/T0-comptage-rejeu.txt) | les comptages **à bornes de mot**, chaque chiffre **avec son motif** — et le piège de sous-chaîne mesuré |
 | [`mesures/dn5-1/T0-etat-soak.txt`](../mesures/dn5-1/T0-etat-soak.txt) | le soak ne tourne pas, et le témoin NFR8 retenu **avec son motif** |
+| [`mesures/dn5-1/T3-temoin-nfr8-avant.txt`](../mesures/dn5-1/T3-temoin-nfr8-avant.txt) | le témoin NFR8 **avant** la 1ʳᵉ pousse, ⛔ sans ouvrir le port |
+| [`mesures/dn5-1/T3-etat-remote-apres.txt`](../mesures/dn5-1/T3-etat-remote-apres.txt) | l'état du remote après la 1ʳᵉ pousse — ⚠️ **annotée** : elle porte `18737fe`, périmé |
+| [`mesures/dn5-1/T3-temoin-nfr8-apres.txt`](../mesures/dn5-1/T3-temoin-nfr8-apres.txt) | le témoin **après** la 1ʳᵉ pousse — ⚠️ **annotée** : elle n'encadre que celle-là |
+| [`mesures/dn5-1/T4-comptage-clone-neuf.txt`](../mesures/dn5-1/T4-comptage-clone-neuf.txt) | le comptage sur clone neuf — ⚠️ **annotée** : clone pris à `18737fe`, et 2 verdicts corrigés |
+| [`mesures/dn5-1/T6-gates-apres.txt`](../mesures/dn5-1/T6-gates-apres.txt) | les 26 gates comparées une à une, et les **trois** corrections d'instrument |
+| [`mesures/dn5-1/T7-etat-final.txt`](../mesures/dn5-1/T7-etat-final.txt) | 🆕 **l'état RÉELLEMENT publié** (`6728a80`) : réfs, `ahead`, PRIVATE, tags, `firmware/` vide, témoin NFR8 étendu à toute la story |
