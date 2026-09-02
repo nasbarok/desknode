@@ -1,0 +1,136 @@
+# ═════════════════════════════════════════════════════════════════════════════
+# DeskNode — LES GATES S'INVOQUENT SANS QU'ON Y PENSE.  (`dn4-39`)
+#
+#   `tests/README.md` publie que « LA vérification rejouable, ce sont les
+#   gates ». Jusqu'au 2026-09-02 **RIEN NE LES INVOQUAIT** : ni CI, ni hook, ni
+#   procédure. Ce fichier est ce qui les invoque.
+#
+# ── ⛔ CE QUE CE FICHIER N'EST PAS ───────────────────────────────────────────
+#
+# ⛔ CE N'EST PAS `cla.yml`, et la frontière est AU NOM DE FICHIER. Ajouter un
+#    job de gates à `cla.yml` les ferait tourner sur CHAQUE COMMENTAIRE D'ISSUE
+#    — mesuré le 2026-09-02 : un `issue_comment` sans rapport a démarré un
+#    runner. Et ça facturerait.
+#
+# ⛔ CE N'EST PAS UN HOOK, et ce n'est pas un repli. `CONTRIBUTING.md` publie
+#    pourquoi : `.git/hooks/` **n'est pas cloné**, il garderait ce checkout et
+#    aucun autre — « l'apparence d'une garde, sans sa portée ».
+#
+# ⛔ CE N'EST PAS UN BUILD DE FIRMWARE. ESP-IDF et les 186 Mo de
+#    `managed_components/` sont `dn5-4`. Les gates qui en dépendent sont
+#    DÉCLARÉES NON-JOUABLES avec leur motif — ⛔ pas sautées.
+#
+# ── CE QUI EST MESURÉ, ET QUI VAUT D'ÊTRE ÉCRIT ──────────────────────────────
+#
+# 🔴 LE VERDICT DE LA CI N'EST PAS CELUI DU POSTE, ET L'ÉCART EST MESURÉ.
+#    Sur la machine de l'auteur : **25 VERTE / 1 ROUGE / 1 NON-JOUABLE**.
+#    Dans un clone neuf avec un `HOME` étranger (2026-09-02, avant `dn4-39`) :
+#    **21 VERTE / 5 ROUGE / 1 NON-JOUABLE** — cinq rouges dont AUCUN ne parle du
+#    code. Un SIXIÈME ne se voyait que dans le code (chemins ABSOLUS).
+#    ⇒ Une CI naïve aurait été rouge dès son premier run, et pour toujours.
+#    Et « une CI rouge en permanence n'est pas une garde, c'est un bruit qu'on
+#    apprend à ignorer » — c'est déjà écrit dans `tests/README.md`.
+#
+# ⇒ LA RÉPONSE N'EST NI `continue-on-error`, NI `|| true`, NI UNE LISTE
+#   D'EXCLUSION. C'est la table `NON_JOUABLES` de `tools/run_gates.sh` : chaque
+#   gate y est DÉCLARÉE avec son MOTIF, un TÉMOIN qui est un CHEMIN, et un `rc`
+#   ATTENDU. La déclaration est FALSIFIABLE dans les deux sens — témoin présent
+#   ⇒ la gate est JOUÉE ; `rc` démenti ⇒ le runner sort en 1.
+#
+# 🔴 UN SEUL JOB, ⛔ AUCUNE MATRICE. GitHub facture à la MINUTE ENTIÈRE **et par
+#    JOB** — mesuré le 2026-09-02 : 31 s réelles ⇒ 2 min facturées. Deux jobs
+#    coûteraient deux fois, même s'ils durent 5 s.
+#
+# ⚠️ `pull_request`, ⛔ PAS `pull_request_target` — contrairement à `cla.yml`, et
+#    ce n'est pas une incohérence. `cla.yml` doit ÉCRIRE le magasin de
+#    signatures depuis une PR de fork. Cette CI, elle, ne doit RIEN écrire : ses
+#    permissions sont en LECTURE SEULE. `pull_request_target` exécuterait du code
+#    de contributeur avec le jeton du dépôt de base. Le dépôt a **0 fork**
+#    aujourd'hui, donc ça ne se verrait pas — c'est précisément pour ça que
+#    c'est posé MAINTENANT.
+#
+# ⚠️ ⛔ AUCUN `paths-ignore`, ET C'EST DÉLIBÉRÉ. Il était tentant d'exclure les
+#    poussées « purement documentaires ». Mais LES GATES LISENT LA DOCUMENTATION :
+#    le contrôle (c4) de `verif_licences_dn52.py` exige que tout marqueur cité
+#    comme marqueur soit défini dans `docs/roadmap.md`, et `verif_dossier_dn415.py`
+#    balaie toute la surface `.md`. Une poussée documentaire est EXACTEMENT le
+#    moment où ces gates comptent. ⇒ un filtre les rendrait aveugles là où elles
+#    servent.
+#    🔴 ET LE PIÈGE POUR PLUS TARD EST ÉCRIT ICI POUR LE JOUR OÙ IL MORDRA : un
+#    filtre de chemins sur une vérification REQUISE laisse la PR **en attente
+#    pour toujours**. Aujourd'hui `main` n'est pas protégée et aucune
+#    vérification n'est requise, donc il ne mord pas. `dn8` protégera la branche.
+#
+# ⚠️ COÛT — relevé à `/users/<login>/settings/billing/usage` (⛔ PAS
+#    `/settings/billing/actions`, qui rend `410 endpoint moved`). Un run de
+#    gates dure ~1 min sur le poste ⇒ 1 à 2 min facturées. La franchise du plan
+#    couvrait encore tout au 2026-09-02 (`netAmount` = 0.00 $).
+#    ⚠️ C'est une ligne d'usage MENSUELLE : elle bouge, ⛔ elle ne se recopie pas.
+#
+# ⚠️ ⛔ AUCUN `pip install` — mesuré : les gates tournent sur la **stdlib**, et
+#    `psutil` est couvert par `tools/stub_psutil/psutil.py`. Si un `pip` devient
+#    nécessaire un jour, ça s'ÉCRIT ; ⛔ ça ne s'ajoute pas en silence.
+# ═════════════════════════════════════════════════════════════════════════════
+name: Gates
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+# ⛔ LECTURE SEULE. Cette CI mesure, elle n'écrit rien — ⛔ ni commit, ni
+#    commentaire, ni release. `cla.yml`, lui, a besoin d'écrire ; ⛔ pas elle.
+permissions:
+  contents: read
+
+# ⚠️ Une poussée qui en remplace une autre sur la MÊME référence annule la
+#    précédente : des minutes en moins, et le verdict qui compte est celui du
+#    dernier état. ⛔ Ça ne dédoublonne PAS push+pull_request (les références
+#    diffèrent) — une branche qui porte AUSSI une PR coûte donc deux runs, et
+#    c'est écrit plutôt que tu.
+concurrency:
+  group: gates-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    # ⚠️ Une borne DURE. `run_gates.sh` accorde déjà `timeout 1800` PAR GATE ;
+    #    sans borne de job, une passe pathologique facturerait jusqu'au plafond
+    #    de GitHub (6 h). Mesure du poste : 63 s pour les 27 gates.
+    timeout-minutes: 20
+    steps:
+      - name: "Récupérer le dépôt"
+        # ⛔ ÉPINGLÉ AU SHA, ⛔ jamais un tag flottant — c'est la règle que
+        #    `cla.yml` a déjà posée. Un tag reste déplaçable par son éditeur ;
+        #    un SHA, non. Le tag est en commentaire pour rester lisible.
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          # ⛔ PAS de `fetch-depth: 0` : aucune gate ne lit l'historique, et le
+          #    dépôt pèse ~31,5 Mio. ⛔ PAS de `submodules` : il n'y en a aucun.
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: "Ce que la CI voit — l'état est RELU, ⛔ pas supposé"
+        run: |
+          echo "commit   : ${GITHUB_SHA}"
+          echo "python3  : $(python3 --version 2>&1)"
+          echo "bash     : ${BASH_VERSION}"
+          echo "cc       : $(cc --version 2>&1 | head -1)"
+          echo "gates    : $(ls tools/verif_*.py | wc -l) découvertes par le glob"
+          echo "cockpit  : ${HOME}/projects/compagnon_project"
+          test -d "${HOME}/projects/compagnon_project" \
+            && echo "           PRÉSENT (inattendu sur un runner)" \
+            || echo "           ABSENT — attendu : c'est un dépôt privé, ⛔ jamais cloné"
+          echo "lvgl     : firmware/desknode/managed_components/lvgl__lvgl"
+          test -d firmware/desknode/managed_components/lvgl__lvgl \
+            && echo "           PRÉSENT" \
+            || echo "           ABSENT — attendu : gitignoré, repeuplé par idf.py reconfigure"
+
+      - name: "Passer les 27 gates"
+        # ⛔ `bash tools/run_gates.sh`, ⛔ PAS une liste de gates : la découverte
+        #    par glob est la règle (1) du runner. Une liste écrite se périme le
+        #    jour où on ajoute une gate — c'est-à-dire le jour où elle compte.
+        # ⛔ AUCUN `continue-on-error`, ⛔ aucun `|| true` : le `rc` du runner
+        #    EST le verdict du job.
+        run: bash tools/run_gates.sh

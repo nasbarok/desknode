@@ -77,6 +77,13 @@ Work towards the first public release, `v0.1.0-beta`.
   files of the private planning repository, which are not part of this clone. It is
   published as-is rather than hidden, and making the gates run automatically is
   `dn4-39` — see [`docs/roadmap.md`](docs/roadmap.md).
+  > ⚠️ **Annotated on 2026-09-02.** The gates now run automatically
+  > (`.github/workflows/gates.yml`). ⛔ That does **not** make those ten failures go
+  > away, and CI will never see them: they concern the private planning repository,
+  > which is not in the clone. Where that repository is absent the gate now reports a
+  > **missing prerequisite** with its reason and a dedicated exit code, ⛔ not a
+  > verdict on the code — and it says so in its own output. Anchoring those manifests
+  > by pattern instead of by line number is still `dn4-40`.
 - **Four tools under `tools/` reach outside the clone**, to absolute paths that exist
   only on the author's machine, so they cannot run from a clone anywhere else.
   Removing that dependency is `dn5-3` — see [`docs/roadmap.md`](docs/roadmap.md).

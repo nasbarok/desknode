@@ -199,6 +199,18 @@ PC↔module, agent Windows) sont **ouverts** tant qu'un POC ne les a pas tranch�
 bash tools/run_gates.sh
 ```
 
+> ✅ **Et depuis le 2026-09-02, PERSONNE N'A PLUS À Y PENSER** (`dn4-39`).
+> `.github/workflows/gates.yml` joue cette même commande à **chaque poussée** et sur
+> **chaque pull request**. ⛔ **La commande ci-dessus n'est pas remplacée** — elle
+> reste la façon de voir le verdict avant de pousser ; elle cesse seulement d'être
+> le **seul** moyen.
+>
+> 🔴 **LE VERDICT DE LA CI N'EST PAS CELUI DU POSTE, ET L'ÉCART EST MESURÉ.** Six
+> gates ne peuvent pas s'exercer là où la CI tourne : deux lisent le dépôt privé de
+> planification, trois ont besoin de `managed_components/` (gitignoré), et une lit
+> des chemins **absolus** de la machine de l'auteur. ⛔ Elles ne sont ni tues ni
+> exclues : elles sont **déclarées** dans la table des NON-JOUABLES ci-dessous.
+
 Il découvre les gates **par glob** (`tools/verif_*.py`), les joue toutes, imprime
 `VERTE` / `ROUGE` / `NON-JOUABLE` par gate plus un **BILAN**, et sort en **1 dès qu'une
 est ROUGE** — **0** si toutes sont vertes ou déclarées non-jouables.
@@ -219,6 +231,23 @@ est ROUGE** — **0** si toutes sont vertes ou déclarées non-jouables.
   — une gate déclarée n'était jamais confrontée à ce que sa déclaration affirme d'elle. La
   déclaration est désormais falsifiable **dans les deux sens**, et une déclaration
   malformée, à champ vide ou périmée fait **sortir en 1**.
+- 🔴 **Et depuis `dn4-39` (2026-09-02), un `rc` DÉDIÉ dit « prérequis absent ».**
+  Motif payé : les six gates concernées rendaient toutes **`1`** sans leur prérequis
+  — **la même valeur que leur rouge**. Déclarer `rc attendu = 1` aurait produit une
+  déclaration satisfaite **aussi bien par un vrai défaut** que par un terrain
+  manquant : la falsifiabilité ci-dessus serait tombée **à vide**.
+
+  | `rc` | ce qu'il veut dire | qui le rend |
+  |---|---|---|
+  | `0` | toutes vertes, ou déclarées non-jouables **et conformes** | `run_gates.sh` |
+  | `1` | **un VRAI défaut trouvé** — ou une déclaration démentie / malformée / périmée | toutes |
+  | `2` | **message d'usage** (il manque un ARGUMENT) — ⛔ pas un rouge | `verif_sr03.py` |
+  | `3` | **mutant PÉRIMÉ** : le motif a disparu du source, la campagne est cassée | `verif_paliers_dn441.py` |
+  | `4` | **PRÉREQUIS ABSENT** (il manque un DÉPÔT ou un ARBRE), avec son motif imprimé | les 6 gates déclarées |
+
+  ⚠️ **L'ordre est une règle, ⛔ pas un détail : un VRAI défaut l'emporte sur un
+  prérequis absent.** Une gate qui trouve un KO rend **1** même si un prérequis
+  manque — sinon un prérequis absent **masquerait** un rouge.
 
 ### Les options
 
@@ -228,15 +257,31 @@ est ROUGE** — **0** si toutes sont vertes ou déclarées non-jouables.
 | `--silencieux` | tait le **motif** des NON-JOUABLES. ⛔ Ne tait rien d'autre : la sortie d'une gate ROUGE reste imprimée, toujours. |
 | `-h`, `--help` | l'en-tête du script — les quatre règles et la table des NON-JOUABLES. |
 
-### La seule NON-JOUABLE aujourd'hui
+### Les NON-JOUABLES aujourd'hui — **sept**
 
-| gate | motif | ce qui la rendrait jouable |
-|---|---|---|
-| `tools/verif_sr03.py` | le PDF **[AN] AN4545** (VL6180X, DocID026571 Rev 1) **n'est pas au dépôt** — document STMicroelectronics, ⛔ non redistribuable. La gate l'attend en argument et sort sur son message d'usage. | poser le PDF en `tools/fixtures/AN4545.pdf` (son **sha256** est écrit dans la gate, qui refuse tout autre fichier) |
+⚠️ **Elles ne sont non-jouables que là où leur témoin manque.** Sur le poste de
+l'auteur, six des sept ci-dessous sont **JOUÉES** — le témoin est là, et le runner
+l'imprime (`[  temoin  ] … est present ⇒ la gate est JOUEE`).
+
+| gate | motif | ce qui la rend jouable | `rc` sans son témoin |
+|---|---|---|---|
+| `tools/verif_sr03.py` | le PDF **[AN] AN4545** (VL6180X, DocID026571 Rev 1) **n'est pas au dépôt** — document STMicroelectronics, ⛔ non redistribuable. La gate l'attend en argument et sort sur son message d'usage. | poser le PDF en `tools/fixtures/AN4545.pdf` (son **sha256** est écrit dans la gate, qui refuse tout autre fichier) | `2` |
+| `tools/verif_dossier_dn415.py` | **le cockpit de planification n'est pas dans le clone** — c'est un dépôt **privé**, ⛔ jamais publié. Sans lui elle n'a aucune occurrence à arbitrer. | le dossier du cockpit (`~/projects/compagnon_project`, ou `--cockpit <chemin>`) | `4` |
+| `tools/verif_ledger_dn416.py` | **idem** — sans le cockpit il n'y a ni ledger ni tracker à confronter. ⚠️ « le dépôt code EST desknode » reste un **contrôle** : son échec reste un **rouge**. | le dossier du cockpit (`~/projects/compagnon_project`, ou `--cockpit <chemin>`) | `4` |
+| `tools/verif_dossier_d5_dn45.py` | elle lit **deux chemins ABSOLUS** de la machine de l'auteur ⇒ ⛔ `HOME` n'y peut rien. **Verte dans un clone posé sur cette machine, rouge sur un runner** : le seul des six qu'aucune mesure prise depuis ce poste ne pouvait montrer. La réparation est `dn5-3`. | ces deux chemins (leur réparation est portée ailleurs) | `4` |
+| `tools/verif_veille_dn33.py` | **`managed_components/` est gitignoré** (186 Mo) et porte le générateur **amont** de LVGL. ⛔ 2 blocs sur 18 ne sont pas exercés ; **tout le reste est joué**. | `idf.py reconfigure` dans `firmware/desknode` | `4` |
+| `tools/verif_harnais_dn413.py` | **idem** — sans l'arbre LVGL le corpus C est **incomplet**, et la chasse aux renvois fantômes accusait des fonctions **qui existent**. Elle **déclare** désormais, ⛔ elle n'accuse plus. | `idf.py reconfigure` dans `firmware/desknode` | `4` |
+| `tools/verif_hist_dn413.py` | **idem** — elle **relit** `LV_CHART_POINT_NONE` dans l'en-tête LVGL, ce qui garantit que la sentinelle d'historique vaut bien celle de LVGL. Elle échoue **fermé**, ⛔ elle ne plante plus. | `idf.py reconfigure` dans `firmware/desknode` | `4` |
 
 > 🔴 **`rc=2` de `verif_sr03.py` n'est PAS un rouge** — c'est son message d'usage. Le
 > confondre avec un échec a coûté un « deux rouges » dans le dossier là où il y en avait
 > **un de code** et **un d'instrument**, qui ne se corrigent pas de la même façon.
+>
+> 🔴 **`rc=4` n'est pas un rouge non plus** — c'est « il me manque un dépôt ou un
+> arbre », et la gate l'**imprime avec son motif et son remède**. ⛔ Ce n'est pas un
+> skip : `run_gates.sh` **joue la gate quand même** et exige **exactement** ce `rc`.
+> Un `rc` différent — un vert compris — fait sortir le runner en **1** avec
+> `⛔ DECLARATION DEMENTIE`.
 
 ### Ce que `tests/` contient, et pourquoi
 

@@ -155,6 +155,27 @@ Contributions are welcome. Two practical points:
   [`docs/roadmap.md`](docs/roadmap.md)); until then this is a convention a human
   applies, and it says so rather than pretending otherwise.
 
+  > ⚠️ **Annotated on 2026-09-02 — half of the sentence above is now out of date, and
+  > the other half is not.**
+  >
+  > **Still true, and it stays published: this is not a git hook.** The reason has not
+  > moved — `.git/hooks/` is not cloned, so a hook would guard this checkout and no
+  > one else's. Nothing in this repository writes one, and `.git/hooks/` holds nothing
+  > but the samples git ships.
+  >
+  > **No longer true: "not a CI job".** `.github/workflows/gates.yml` now runs
+  > `bash tools/run_gates.sh` on every push and every pull request. What made the
+  > older sentence possible was that this repository had no remote at all; it has had
+  > one since `dn5-1`, and Actions have really run on it since `dn5-2`.
+  >
+  > ⚠️ **What CI can and cannot see, measured rather than assumed.** Six of the
+  > twenty-seven gates cannot be exercised where CI runs — two read the private
+  > planning repository, three need `managed_components/`, which is gitignored, and
+  > one reads absolute paths that exist only on the author's machine. They are
+  > **declared** in the runner's `NON_JOUABLES` table, each with its reason, a witness
+  > path and an exact expected exit code — ⛔ not silenced, ⛔ not excluded, ⛔ no
+  > `continue-on-error`. The day the witness appears, the gate is played again.
+
 ## Commercial use
 
 The firmware is GPL-3.0-or-later: distributing a modified version means publishing its

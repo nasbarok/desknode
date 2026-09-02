@@ -29,7 +29,7 @@ they are the engineering log, and this page does not duplicate it.
 | marker | what it covers | state |
 |---|---|---|
 | `dn4-5` | Long-running soak of the agent module on its own. | in progress |
-| `dn4-39` | Making the repository's gates run **without anyone having to think about it**. `tools/run_gates.sh` exists and works; nothing invokes it automatically. | not started |
+| `dn4-39` | Making the repository's gates run **without anyone having to think about it**. ✅ Done on 2026-09-02: `.github/workflows/gates.yml` runs `bash tools/run_gates.sh` on every push and every pull request, and the six gates that cannot be exercised on a runner are **declared** with their reason, a witness path and an exact expected exit code — ⛔ not silenced. ⚠️ Still open, and it is not a CI matter: the generated table in the private planning repository is regenerated **at the workstation**, because that repository is never cloned. ⛔ Note the earlier wording *"nothing invokes it automatically"* is what changed. | done for the CI half |
 | `dn4-40` | Stopping gates from passing on nothing, and anchoring their manifests **by pattern instead of by line number**. | not started |
 | `dn4-41` | The board on its own is enough — the two hardware tiers behave correctly without the ambient sensors. | in progress |
 | `dn4-42` | The display speaks two languages. | in review |
