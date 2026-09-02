@@ -1,0 +1,75 @@
+==============================================================================
+dn5-2 / AC2.4 — L'ESSAI DU BOT CLA
+==============================================================================
+
+date : 2026-09-02T14:29:01
+voie retenue : (a) — poser l'Action EPINGLEE et L'ESSAYER (arbitrage owner)
+
+==============================================================================
+1. CE QUI EST POSE (commit local 2078d30, ⛔ PAS ENCORE PUBLIE)
+==============================================================================
+
+  .github/workflows/cla.yml   — declencheurs `pull_request_target`
+                                (opened/closed/synchronize) + `issue_comment`
+                                (created) ; permissions actions/contents/
+                                pull-requests/statuses en write ;
+                                action EPINGLEE `contributor-assistant/
+                                github-action@v2.6.1` ;
+                                magasin LOCAL `.github/cla-signatures.json`
+                                ⇒ ⛔ AUCUN secret a creer, le GITHUB_TOKEN
+                                suffit ; ⛔ AUCUN checkout du code de la PR.
+  CLA.md                      — le document a signer. ⚠️ IL N'EXISTAIT PAS :
+                                `path-to-document` n'avait rien a pointer, et
+                                un bot qui fait signer un document ABSENT est
+                                exactement la promesse creuse que la story
+                                solde.
+
+==============================================================================
+2. 🔴 L'ESSAI EST BLOQUE PAR UN OBSTACLE MESURE, ⛔ PAS SUPPOSE
+==============================================================================
+
+  Le premier geste de l'essai — publier le workflow pour que
+  `pull_request_target` puisse se declencher — a ete REFUSE PAR GITHUB :
+
+    $ git push origin main
+    ! [remote rejected] main -> main (refusing to allow an OAuth App to
+      create or update workflow `.github/workflows/cla.yml` without
+      `workflow` scope)
+    error: failed to push some refs to 'https://github.com/nasbarok/desknode.git'
+
+  MESURE de l'identification en place :
+    $ gh auth status
+      Token scopes: 'gist', 'read:org', 'repo'      ⇒ ⛔ pas de `workflow`
+
+  ⇒ 🎯 CONSTAT QUI N'ETAIT DANS AUCUN CADRAGE, ET QUI VAUT D'ETRE ECRIT :
+     **le scope `repo` NE SUFFIT PAS a publier un fichier de `.github/
+     workflows/`.** GitHub refuse la reference cote SERVEUR, ⛔ pas cote
+     client — le commit local est propre, c'est la PUBLICATION qui tombe.
+     Un cadrage qui aurait conclu « il suffit de poser le fichier » se
+     serait trompe. C'est precisement pourquoi AC2.4 exige L'ESSAI.
+
+  ⚠️ CE QUE CET OBSTACLE NE DIT PAS : il ne dit RIEN sur le bot lui-meme.
+     Il est ANTERIEUR — il porte sur le droit de publier un workflow, ⛔ pas
+     sur son execution. ⛔ Ne pas conclure « le bot ne marche pas ».
+
+  LEVEE : un geste de l'owner, ⛔ pas du dev — l'octroi de scope passe par
+          un flux navigateur :
+            gh auth refresh -h github.com -s workflow -s user
+
+==============================================================================
+3. AC2.4.c — LE COUT, MESURE AUTANT QU'IL PEUT L'ETRE AUJOURD'HUI
+==============================================================================
+
+    $ gh api /users/nasbarok/settings/billing/actions
+      {"message":"Not Found", "status":"404"}
+      gh: This API operation needs the "user" scope.
+
+  ⇒ le quota N'EST PAS LISIBLE avec l'identification actuelle. ⛔ Il n'est
+    donc PAS ecrit ici : publier un ordre de grandeur de memoire serait
+    exactement ce que la story interdit. Le chiffre arrive avec le scope.
+
+  ✅ CE QUI EST DEJA ETABLI, ET QUI NE DEPEND D'AUCUN SCOPE :
+     · le depot est PRIVE ⇒ les minutes Actions sont DECOMPTEES du quota du
+       compte (elles seraient gratuites sur un depot public) ;
+     · le workflow ne comporte qu'UN job, UNE etape, sur `ubuntu-latest`,
+       ⛔ sans checkout et ⛔ sans matrice.
