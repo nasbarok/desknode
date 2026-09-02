@@ -1,0 +1,130 @@
+==============================================================================
+dn4-39 / T8 — TEMOINS JOUES A LA REVUE DE CODE DU 2026-09-02
+==============================================================================
+Ce fichier existe parce que la revue a trouve TROIS affirmations sans preuve
+au dossier : le temoin de garde_table (affirme 3 fois, trace nulle part),
+AC39.4.c (« aucun jeton d'exemption, et c'est declare » — non declare), et
+AC39.3.f (« perimee / malformee / champ vide font sortir en 1 » — VERIFIE,
+disait l'AC ; aucun des trois cas n'etait exerce).
+⛔ Les claims etaient VRAIES. Elles n'etaient pas PROUVEES.
+
+==============================================================================
+(1) AC39.3.f — UNE DECLARATION INVALIDE FAIT SORTIR EN 1 (6 cas, ⛔ pas 3)
+==============================================================================
+⚠️ PREMIER JET FAUX, ET IL EST ECRIT PLUTOT QUE TU : joues dans un arbre SANS
+   aucune `tools/verif_*.py`, les six cas sortaient bien en 1 — mais sur
+   « aucune gate trouvee par le glob », c'est-a-dire AVANT le controle vise.
+   Un temoin qui n'atteint pas la garde qu'il pretend couvrir ne prouve rien.
+   ⇒ REJOUES avec `tools/verif_sr03.py` present, donc glob NON vide.
+
+── PERIMEE — la gate declaree n'existe plus
+   ligne inseree :   "verif_nexiste_pas.py|motif|t|AUCUN|4"
+   [KO ] la table des NON-JOUABLES declare 'verif_nexiste_pas.py', qui n'existe plus dans tools/verif_*.py.
+   [KO ] la table des NON-JOUABLES declare 'verif_dossier_dn415.py', qui n'existe plus dans tools/verif_*.py.
+   [KO ] la table des NON-JOUABLES declare 'verif_ledger_dn416.py', qui n'existe plus dans tools/verif_*.py.
+
+── MALFORMEE — 4 champs au lieu de 5
+   ligne inseree :   "verif_sr03.py|motif|t|2"
+   [KO ] declaration NON-JOUABLE MALFORMEE (4 champs au lieu de 5) : verif_sr03.py|motif|t|2
+   [KO ] la table des NON-JOUABLES declare 'verif_dossier_dn415.py', qui n'existe plus dans tools/verif_*.py.
+   [KO ] la table des NON-JOUABLES declare 'verif_ledger_dn416.py', qui n'existe plus dans tools/verif_*.py.
+
+── CHAMP VIDE — motif vide
+   ligne inseree :   "verif_sr03.py||t|AUCUN|2"
+   [KO ] declaration NON-JOUABLE a CHAMP(S) VIDE(S) : motif — 'verif_sr03.py'
+   [KO ] la table des NON-JOUABLES declare 'verif_dossier_dn415.py', qui n'existe plus dans tools/verif_*.py.
+   [KO ] la table des NON-JOUABLES declare 'verif_ledger_dn416.py', qui n'existe plus dans tools/verif_*.py.
+
+── rc ATTENDU NON NUMERIQUE
+   ligne inseree :   "verif_sr03.py|motif|t|AUCUN|quatre"
+   [KO ] declaration NON-JOUABLE : rc attendu non numerique ('quatre') pour 'verif_sr03.py'
+   [KO ] la table des NON-JOUABLES declare 'verif_dossier_dn415.py', qui n'existe plus dans tools/verif_*.py.
+   [KO ] la table des NON-JOUABLES declare 'verif_ledger_dn416.py', qui n'existe plus dans tools/verif_*.py.
+
+── DOUBLON — controle NEUF (revue)
+   ligne inseree :   "verif_sr03.py|motif doublon|t|AUCUN|2"
+   [KO ] la table declare 'verif_sr03.py' DEUX FOIS — seule la 1re ligne compte.
+   [KO ] la table des NON-JOUABLES declare 'verif_dossier_dn415.py', qui n'existe plus dans tools/verif_*.py.
+   [KO ] la table des NON-JOUABLES declare 'verif_ledger_dn416.py', qui n'existe plus dans tools/verif_*.py.
+
+── JETON AUCUN AMBIGU — controle NEUF (AC39.4.c)
+   ligne inseree :   "verif_sr03.py|motif|t|AUCUNx|2"
+   [KO ] declaration NON-JOUABLE : champ arguments AMBIGU ('AUCUNx') pour 'verif_sr03.py'
+   [KO ] la table des NON-JOUABLES declare 'verif_dossier_dn415.py', qui n'existe plus dans tools/verif_*.py.
+   [KO ] la table des NON-JOUABLES declare 'verif_ledger_dn416.py', qui n'existe plus dans tools/verif_*.py.
+
+==============================================================================
+(2) garde_table — LE TEMOIN QUE LE DOSSIER AFFIRMAIT SANS LE MONTRER
+==============================================================================
+🔴 ET LA REVUE A TROUVE DEUX TROUS EN LE JOUANT :
+   (a) la garde tournait APRES l'affectation ⇒ la substitution avait DEJA eu
+       lieu. Elle constatait, elle n'empechait pas.
+   (b) son gsub effacait ${...} ET SON CONTENU ⇒ ${VAR:-$(cmd)} lui echappait.
+   Les deux sont corriges. Les 4 temoins ci-dessous le prouvent, dans les
+   DEUX SENS — ⛔ un temoin qui ne rougit jamais ne prouve rien.
+
+── ① accent grave nu — REPLANTE
+   ligne inseree :   "verif_sr03.py|motif `touch /tmp/PREUVE_SUBST`|t|AUCUN|2"
+   [KO ] run_gates.sh : 1 ligne(s) de la table NON_JOUABLES portent une SUBSTITUTION.
+   rc du runner = 1
+   commande du champ EXECUTEE ? non ✅
+
+── ② $( ) imbrique dans ${:-} — trou (b)
+   ligne inseree :   "verif_sr03.py|motif ${DN_X:-$(touch /tmp/PREUVE_SUBST)}|t|AUCUN|2"
+   [KO ] run_gates.sh : 1 ligne(s) de la table NON_JOUABLES portent une SUBSTITUTION.
+   rc du runner = 1
+   commande du champ EXECUTEE ? non ✅
+
+── ③ quotes simples — ecriture SURE
+   ligne inseree :   'verif_sr03.py|motif citant `lv_text_get_width`|t|AUCUN|2'
+   rc du runner = 1
+   commande du champ EXECUTEE ? non ✅
+
+── ④ ${HOME} legitime — NE DOIT PAS rougir
+   ligne inseree :   "verif_sr03.py|motif ${HOME} legitime|t|AUCUN|2"
+   rc du runner = 1
+   commande du champ EXECUTEE ? non ✅
+
+==============================================================================
+(3) garde_accent_grave — GARDE NEUVE, NEE D'UN DERAPAGE DE LA REVUE
+==============================================================================
+🔴 En ecrivant le correctif du jeton AUCUN, un accent grave a ete pose dans un
+   echo en guillemets doubles — DEHORS du bloc NON_JOUABLES, donc invisible a
+   garde_table, qui ne scanne QUE ce bloc. C'est l'angle mort que la revue avait
+   nomme, materialise dans le meme geste. La garde neuve couvre TOUT le fichier.
+
+── TEMOIN NEGATIF — fichier propre
+   accent grave signale : 0
+   rc du runner = rc = 1
+
+── TEMOIN POSITIF — un accent grave REPLANTE dans un echo, HORS de la table
+         l.460 : echo "bilan de `basename $PWD`"
+   [KO ] run_gates.sh : 1 ligne(s) de CODE portent un accent grave.
+         Un accent grave en guillemets doubles EXECUTE une commande.
+
+==============================================================================
+(4) AC39.4.c — LE JETON EST DECLARE, ET SA COLLISION EST REFUSEE
+==============================================================================
+AUCUN EST un jeton d'exemption : il n'a AUCUN echappement, et 4 des 7
+declarations s'en servent. ⛔ On ne peut pas l'echapper sans les casser.
+⇒ IL EST DECLARE ICI ET DANS run_gates.sh, et la seule collision possible —
+  un champ qui COMMENCE par AUCUN sans l'etre — est refusee (cas 6 du §1).
+  Un argument reel nomme AUCUN s'ecrit ./AUCUN.
+
+==============================================================================
+(5) 🔴 LE DEFAUT A FRAPPE UNE TROISIEME FOIS — DANS CE FICHIER, EN L'ECRIVANT
+==============================================================================
+Le run 33640427810 l'avait trouve dans la table. La revue l'a trouve une
+deuxieme fois dans T5-temoin-manifeste.txt (le symbole que la preuve d'AC39.5.c
+nomme avait disparu, 50 espaces a sa place). Et EN REDIGEANT CE JOURNAL, un
+accent grave pose dans un echo en guillemets doubles a ete EXECUTE une
+troisieme fois : le shell a rendu « AUCUN: command not found » et la ligne est
+sortie AMPUTEE de son premier mot.
+
+⇒ CE N'EST PAS UNE MALADRESSE ISOLEE, c'est un piege de CLASSE : dans ce depot
+  ou tout se cite en accents graves, ecrire une mesure la corrompt. Les trois
+  instances ont le meme mecanisme et la meme signature — un texte qui perd
+  exactement le mot qu'il voulait nommer, EN SILENCE.
+⛔ Ce paragraphe est ecrit plutot que tu : la garde neuve couvre le SCRIPT,
+  ⛔ pas les journaux rediges a la main. Ceux-la n'ont pour garde que la
+  relecture — et la relecture a echoue deux fois sur trois.

@@ -168,10 +168,14 @@ Contributions are welcome. Two practical points:
   > older sentence possible was that this repository had no remote at all; it has had
   > one since `dn5-1`, and Actions have really run on it since `dn5-2`.
   >
-  > ⚠️ **What CI can and cannot see, measured rather than assumed.** Six of the
+  > ⚠️ **What CI can and cannot see, measured rather than assumed.** **Seven** of the
   > twenty-seven gates cannot be exercised where CI runs — two read the private
-  > planning repository, three need `managed_components/`, which is gitignored, and
-  > one reads absolute paths that exist only on the author's machine. They are
+  > planning repository, three need `managed_components/`, which is gitignored, one
+  > reads absolute paths that exist only on the author's machine, and one needs a
+  > vendor PDF that is not redistributable. *(Corrected at the code review of
+  > 2026-09-02: this said "six", omitting the PDF one — while `README.md` said
+  > "seven", the declaration table holds seven entries, and the first real run
+  > reported `7 NON-JOUABLE`.)* They are
   > **declared** in the runner's `NON_JOUABLES` table, each with its reason, a witness
   > path and an exact expected exit code — ⛔ not silenced, ⛔ not excluded, ⛔ no
   > `continue-on-error`. The day the witness appears, the gate is played again.

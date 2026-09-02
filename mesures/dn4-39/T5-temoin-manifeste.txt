@@ -53,7 +53,14 @@ PASSE COMPLETE APRES : BILAN : 25 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 27 gates (64
 
 gates comparees : 27 avant, 27 apres
 ⚠️ la cle est le CHEMIN ENTIER de la gate, ⛔ pas une tranche tronquee :
-   un format                                                  remplit sans tronquer, et un libelle de 58 caracteres pile
+   un format %-58s remplit sans tronquer, et un libelle de 58 caracteres pile
    a deja casse une cle de campagne (dn5-2).
+
+   🔴 CORRIGE A LA REVUE DE CODE DU 2026-09-02. La ligne ci-dessus etait
+      publiee AMPUTEE : « un format » suivi de 50 espaces, puis « remplit ».
+      Le symbole que cette phrase EXISTE POUR NOMMER avait ete consomme a
+      l'ecriture — la preuve d'AC39.5.c ne portait donc plus la preuve.
+      ⛔ Meme classe que le run 33640427810 : dans ce depot, ecrire une
+      mesure la corrompt. Voir T8, §5 : le defaut a frappe une 3e fois.
 
 ✅ 0 verdict change sur 27 gates.

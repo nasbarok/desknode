@@ -115,6 +115,18 @@ while [ "$#" -gt 0 ]; do
     --cockpit)
       shift
       [ "$#" -gt 0 ] || { echo "--cockpit attend un chemin" >&2; exit 2; }
+      # 🔴 REVUE 2026-09-02 — UN CHEMIN FAUX ETAIT ACCEPTE PUIS JETE EN SILENCE.
+      #    Temoin absent ⇒ `declaree` restait a 1 ⇒ `--cockpit` n'etait JAMAIS
+      #    transmis ⇒ la gate retombait sur son COCKPIT_DEFAUT et mesurait un
+      #    depot que personne n'avait demande. Une coquille d'une lettre rendait
+      #    deux « DECLARATION DEMENTIE » et rc 1, sans un mot sur le chemin.
+      #    ⛔ Une chaine VIDE aussi : `${COCKPIT:-…}` la traite comme « absent ».
+      if [ -z "$1" ] || [ ! -d "$1" ]; then
+        echo "--cockpit : chemin inexistant ou vide — '$1'" >&2
+        echo "  ⛔ Un chemin faux serait JETE en silence et la gate mesurerait" >&2
+        echo "     un AUTRE depot. On echoue FERME plutot que de mesurer a cote." >&2
+        exit 2
+      fi
       COCKPIT="$1"
       ;;
     # ⚠️ dn4-39 — L'AIDE S'ANCRE PAR **CONTENU**, ⛔ PLUS PAR NUMERO DE LIGNE.
@@ -123,53 +135,25 @@ while [ "$#" -gt 0 ]; do
     #    premiere barre a la barre de fermeture — c'est le meme defaut de classe
     #    que le §9 du cockpit, ancre par numero, que cette story solde par
     #    ailleurs.
-    -h|--help) sed -n '2,/^# ═══/p' "$SRC" || { echo "aide indisponible : $SRC illisible" >&2; exit 2; }; exit 0 ;;
+    # 🔴 REVUE 2026-09-02 — L'ANCRE PRENAIT LA **PREMIERE** BARRE VENUE.
+    #    Ajouter une section a l'en-tete retronquait l'aide EN SILENCE ; en
+    #    retirer la barre de fermeture imprimait TOUT LE SCRIPT comme aide.
+    #    ⇒ on borne a la DERNIERE barre de l'en-tete, et on VERIFIE qu'on l'a.
+    -h|--help)
+      fin=$(awk 'NR>1 && /^# ═══/ { l = NR } /^[^#]/ && NR > 1 { exit } END { print l+0 }' "$SRC")
+      if [ "${fin:-0}" -lt 2 ]; then
+        echo "aide indisponible : barre de fermeture introuvable dans $SRC" >&2; exit 2
+      fi
+      sed -n "2,${fin}p" "$SRC" || { echo "aide indisponible : $SRC illisible" >&2; exit 2; }
+      echo
+      echo "⚠️ La TABLE des NON-JOUABLES ne vit PAS dans cet en-tete : elle est"
+      echo "   dans le corps du script, sous 'NON_JOUABLES=('. Pour la lire :"
+      echo "   sed -n '/^NON_JOUABLES=(/,/^)/p' $SRC"
+      exit 0 ;;
     *) echo "argument inconnu : $1" >&2; exit 2 ;;
   esac
   shift
 done
-
-# ── (2)(3) TABLE DES NON-JOUABLES ───────────────────────────────────────────
-# format :  <gate> | <motif> | <chemin temoin> | <arguments si le temoin est la> | <rc attendu sans temoin>
-# Le TEMOIN est le chemin dont la presence rendrait la gate jouable. Tant qu'il
-# n'existe pas, la gate est jouee SANS ARGUMENT et doit rendre <rc attendu> —
-# son message d'usage. Des qu'il existe, elle est jouee AVEC ses arguments, et
-# son rouge eventuel compte comme un rouge.
-#
-# ── LES TEMOINS, ET POURQUOI ILS SONT ECRITS AINSI (dn4-39) ────────────────
-#
-# ⛔ AUCUN CHEMIN ABSOLU ICI. Ecrire `/home/<quelqu-un>/…` dans ce runner
-#    fabriquerait exactement le defaut que `dn5-3` doit solder — un outil qui ne
-#    marche que sur une machine. Les temoins de cockpit passent donc par `HOME`.
-#
-# ⚠️ `TEMOIN_COCKPIT` SUIT `--cockpit` quand il est donne : sans ca, deplacer le
-#    cockpit et le passer en argument aurait fait declarer NON-JOUABLES deux
-#    gates parfaitement jouables — un skip silencieux par la porte de derriere.
-TEMOIN_COCKPIT="${COCKPIT:-${HOME:-/nonexistent}/projects/compagnon_project}"
-#
-# ⚠️ `TEMOIN_COCKPIT_ABS` NE SUIT PAS `--cockpit`, ET C'EST DELIBERE :
-#    `verif_dossier_d5_dn45.py` n'a PAS d'option `--cockpit`, elle lit deux
-#    chemins ABSOLUS ecrits en dur (l. 47-48). Lui donner le temoin de
-#    `--cockpit` la ferait declarer jouable alors qu'elle ne lirait pas ce
-#    dossier-la. ⛔ LIMITE ECRITE : sur une machine TIERCE ou `~/projects/
-#    compagnon_project` existerait, le temoin serait present et la gate serait
-#    JOUEE — elle rougirait alors sur ses chemins absolus. C'est le sens
-#    CONSERVATEUR (echouer fort), ⛔ pas un skip. `dn5-3` ferme ce coin.
-TEMOIN_COCKPIT_ABS="${HOME:-/nonexistent}/projects/compagnon_project"
-#
-# `managed_components/` est GITIGNORE (186 Mo) et repeuple par
-# `idf.py reconfigure`. Le temoin est RELATIF : il vit dans le clone.
-TEMOIN_LVGL="firmware/desknode/managed_components/lvgl__lvgl"
-
-NON_JOUABLES=(
-  "verif_sr03.py|le PDF [AN] AN4545 (VL6180X, DocID026571 Rev 1) n'est PAS au depot : document StMicroelectronics, ⛔ non redistribuable. La gate l'attend en argument et sort en 2 sur son message d'usage — rc=2 n'est PAS un rouge.|tools/fixtures/AN4545.pdf|tools/fixtures/AN4545.pdf firmware/desknode/main/dn_console.c|2"
-  "verif_dossier_dn415.py|CAUSE A — le cockpit de planification est un depot PRIVE, ⛔ jamais clone a cote du code. Sans lui la gate n'a AUCUNE occurrence a arbitrer. ⚠️ La ou le cockpit EST la elle rend 17 OK / 10 KO sur le CONTENU : ⛔ une CI ne verra JAMAIS ces 10 KO, et elle ne pretend pas les garder.|${TEMOIN_COCKPIT}|AUCUN|4"
-  "verif_ledger_dn416.py|CAUSE A — le cockpit de planification est un depot PRIVE, ⛔ jamais clone. Sans lui il n'y a ni ledger ni tracker a confronter. ⚠️ le controle dn_ok (« le depot code EST desknode ») reste un CONTROLE : son echec reste un ROUGE, ⛔ pas un prerequis.|${TEMOIN_COCKPIT}|AUCUN|4"
-  "verif_dossier_d5_dn45.py|CAUSE C — elle lit DEUX chemins ABSOLUS de la machine de l'auteur (l. 47-48) ⇒ ⛔ la variable HOME n'y peut rien : VERTE dans un clone neuf, et 1 OK / 7 KO sur un runner. Le seul des six rouges qu'aucune mesure prise depuis ce poste ne pouvait montrer — il se LIT dans le code. La reparation des chemins est portee par dn5-3, ⛔ pas ici.|${TEMOIN_COCKPIT_ABS}|AUCUN|4"
-  "verif_veille_dn33.py|CAUSE B — managed_components/ est GITIGNORE (186 Mo, repeuple par: idf.py reconfigure) et porte le generateur AMONT de LVGL. ⛔ 2 blocs sur 18 ne sont pas exerces ; TOUT LE RESTE EST JOUE. Elle disait deja le bon motif et le remede — il lui manquait le rc.|${TEMOIN_LVGL}|AUCUN|4"
-  "verif_harnais_dn413.py|CAUSE B — sans l'arbre LVGL le corpus C est INCOMPLET, et la chasse aux renvois FANTOMES accusait tools/dn_police.py de citer des fonctions QUI EXISTENT (lv_text_get_width est defini dans lvgl__lvgl/src/misc/lv_text.c). ⛔ Un diagnostic FAUX publie automatiquement. Elle DECLARE desormais, elle n'accuse plus — et ⛔ elle ne devient PAS aveugle la ou l'arbre est la.|${TEMOIN_LVGL}|AUCUN|4"
-  "verif_hist_dn413.py|CAUSE B — elle RELIT LV_CHART_POINT_NONE dans lv_chart.h (c'est ce qui garantit que DN_HIST_TROU vaut le trou de LVGL) et PLANTAIT en FileNotFoundError NU : un rouge sans motif ni remede. Elle echoue FERME desormais, sur le modele de verif_veille_dn33.py.|${TEMOIN_LVGL}|AUCUN|4"
-)
 
 # ── (4) GARDE : ce script ne doit contenir AUCUNE REDIRECTION vers le puits ──
 # ⛔ On epingle une REDIRECTION (`> /dev/null`, `2>/dev/null`, `&>/dev/null`),
@@ -227,12 +211,44 @@ garde_puits || exit 1
 #    exclut les lignes de COMMENTAIRE — sans quoi ce paragraphe la ferait rougir.
 garde_table() {
   local n rc
+  # 🔴 REVUE DE CODE DU 2026-09-02 — CETTE GARDE AVAIT DEUX TROUS, ET LE PREMIER
+  #    LUI OTAIT SA RAISON D'ETRE :
+  #
+  #    (a) ELLE TOURNAIT **APRES** L'AFFECTATION DE LA TABLE. Bash developpe les
+  #        guillemets doubles AU MOMENT DE L'AFFECTATION ; la garde, elle, relit
+  #        le FICHIER. Mesure : une entree portant `touch /tmp/PREUVE` faisait
+  #        imprimer « refuse de demarrer », rc 1 — ET /tmp/PREUVE EXISTAIT DEJA.
+  #        L'en-tete promettait un refus AVANT. Elle ne bloquait que la 2e fois.
+  #        ⇒ LES DEUX GARDES SONT DESORMAIS APPELEES AVANT TOUTE AFFECTATION DE
+  #          LA TABLE. Leur position dans ce fichier EST le correctif : ⛔ ne pas
+  #          les redescendre sous `NON_JOUABLES=(`.
+  #
+  #    (b) `gsub(/\$\{[^}]*\}/, "", ligne)` effacait les accolades ET LEUR
+  #        CONTENU ⇒ `${VAR:-$(cmd)}` disparaissait EN ENTIER, substitution
+  #        comprise. Mesure : sur 2 lignes portant une substitution, elle en
+  #        epinglait 1 — et la commande imbriquee TOURNAIT
+  #        (`${DN_ABSENT:-$(touch …)}` ⇒ champ = « motif SUBSTITUE suite »).
+  #        ⇒ seul un `${…}` DONT LE CONTENU EST SUR est retire : un nom de
+  #          variable, eventuellement suivi d'un defaut qui ne porte lui-meme ni
+  #          accent grave ni `$(`.
+  #
+  #    ⚠️ ET UN FAUX POSITIF, CORRIGE LUI AUSSI : une entree en QUOTES SIMPLES ne
+  #       peut RIEN substituer, et la garde la refusait quand meme — elle poussait
+  #       donc a RETIRER les noms des motifs, la degradation qu'elle previent.
+  #       Une ligne dont le premier caractere non blanc est `'` est SURE.
   n=$(awk '
         /^NON_JOUABLES=\(/ { dedans = 1; next }
         dedans && /^\)/     { dedans = 0 }
         dedans && $0 !~ /^[[:space:]]*#/ {
           ligne = $0
-          gsub(/\$\{[^}]*\}/, "", ligne)      # ${VAR} est LEGITIME
+          if (ligne ~ /^[[:space:]]*'"'"'/) next        # quotes simples : rien ne substitue
+          # on ne retire QUE les ${...} surs : ${NOM} ou ${NOM:-defaut} sans
+          # accent grave ni $( dans le defaut. Tout le reste RESTE visible.
+          while (match(ligne, /\$\{[A-Za-z_][A-Za-z0-9_]*(:[-=?+][^}`]*)?\}/)) {
+            morceau = substr(ligne, RSTART, RLENGTH)
+            if (index(morceau, "$(") > 0) break        # defaut piege : on ne retire pas
+            ligne = substr(ligne, 1, RSTART - 1) substr(ligne, RSTART + RLENGTH)
+          }
           if (ligne ~ /`/ || ligne ~ /\$\(/) c++
         }
         END { print c+0 }
@@ -253,6 +269,109 @@ garde_table() {
 
 garde_table || exit 1
 
+# ── (4ter) GARDE : AUCUN ACCENT GRAVE DANS DU CODE, OU QUE CE SOIT ──────────
+#
+# 🔴 TROUVE PENDANT LA REVUE DU 2026-09-02, EN ECRIVANT LE CORRECTIF LUI-MEME.
+#    `garde_table` ne scanne QUE le bloc `NON_JOUABLES=(...)`. En redigeant le
+#    message de KO du jeton AUCUN, un accent grave a ete ecrit dans un `echo` en
+#    guillemets doubles — DEHORS du bloc, donc invisible a la garde. C'est
+#    l'angle mort que la revue avait nomme (« un futur TEMOIN_X=$(cmd) pose hors
+#    du bloc scanne »), et il s'est materialise dans le meme geste.
+#
+# ⇒ REGLE : ce depot n'utilise JAMAIS l'accent grave comme substitution. Toute
+#   substitution s'ecrit `$( )`. Un accent grave sur une ligne de CODE est donc
+#   toujours une erreur — soit de la typographie qui va s'EXECUTER, soit une
+#   substitution ecrite a l'ancienne.
+# ⚠️ Les programmes `awk` sont en QUOTES SIMPLES : rien n'y substitue, et ils
+#    ont besoin de l'accent grave comme motif. Ils sont donc sautes, et la borne
+#    est le delimiteur du here-string, ⛔ pas une liste de numeros de ligne.
+# ⚠️ Les COMMENTAIRES sont sautes, comme pour les deux autres gardes : sans ca,
+#    ce paragraphe ferait rougir sa propre garde.
+garde_accent_grave() {
+  local n rc
+  n=$(awk '
+        /^[[:space:]]*#/            { next }          # commentaire
+        /awk[[:space:]]*.$/          { dans_awk = 1; next }
+        dans_awk && /^[[:space:]]*.[[:space:]]*"\$SRC"\)/ { dans_awk = 0; next }
+        dans_awk                    { next }          # programme awk, quotes simples
+        /`/                         { c++; print "      l." NR " : " $0 > "/dev/stderr" }
+        END { print c+0 }
+      ' "$SRC"); rc=$?
+  if [ "$rc" -ge 2 ] || [ ! -r "$SRC" ]; then
+    echo "[KO ] $MOI : source ILLISIBLE ($SRC) — la garde de l'accent grave ne peut pas s'exercer." >&2
+    return 1
+  fi
+  if [ "${n:-0}" -ne 0 ]; then
+    echo "[KO ] $MOI : $n ligne(s) de CODE portent un accent grave." >&2
+    echo "      Un accent grave en guillemets doubles EXECUTE une commande." >&2
+    echo "      ⇒ ecrire le nom EN CLAIR, ou passer par \$( ) si c'est voulu." >&2
+    return 1
+  fi
+  return 0
+}
+
+garde_accent_grave || exit 1
+
+# ── (2)(3) TABLE DES NON-JOUABLES ───────────────────────────────────────────
+# format :  <gate> | <motif> | <chemin temoin> | <arguments si le temoin est la> | <rc attendu sans temoin>
+# Le TEMOIN est le chemin dont la presence rendrait la gate jouable. Tant qu'il
+# n'existe pas, la gate est jouee SANS ARGUMENT et doit rendre <rc attendu> —
+# son message d'usage. Des qu'il existe, elle est jouee AVEC ses arguments, et
+# son rouge eventuel compte comme un rouge.
+#
+# ── LES TEMOINS, ET POURQUOI ILS SONT ECRITS AINSI (dn4-39) ────────────────
+#
+# ⛔ AUCUN CHEMIN ABSOLU ICI. Ecrire `/home/<quelqu-un>/…` dans ce runner
+#    fabriquerait exactement le defaut que `dn5-3` doit solder — un outil qui ne
+#    marche que sur une machine. Les temoins de cockpit passent donc par `HOME`.
+#
+# ⚠️ `TEMOIN_COCKPIT` SUIT `--cockpit` quand il est donne : sans ca, deplacer le
+#    cockpit et le passer en argument aurait fait declarer NON-JOUABLES deux
+#    gates parfaitement jouables — un skip silencieux par la porte de derriere.
+TEMOIN_COCKPIT="${COCKPIT:-${HOME:-/nonexistent}/projects/compagnon_project}"
+#
+# ⚠️ `TEMOIN_COCKPIT_ABS` NE SUIT PAS `--cockpit`, ET C'EST DELIBERE :
+#    `verif_dossier_d5_dn45.py` n'a PAS d'option `--cockpit`, elle lit deux
+#    chemins ABSOLUS ecrits en dur (l. 47-48). Lui donner le temoin de
+#    `--cockpit` la ferait declarer jouable alors qu'elle ne lirait pas ce
+#    dossier-la. ⛔ LIMITE ECRITE : sur une machine TIERCE ou `~/projects/
+#    compagnon_project` existerait, le temoin serait present et la gate serait
+#    JOUEE — elle rougirait alors sur ses chemins absolus. C'est le sens
+#    CONSERVATEUR (echouer fort), ⛔ pas un skip. `dn5-3` ferme ce coin.
+TEMOIN_COCKPIT_ABS="${HOME:-/nonexistent}/projects/compagnon_project"
+#
+# `managed_components/` est GITIGNORE (186 Mo) et repeuple par
+# `idf.py reconfigure`. Le temoin est RELATIF : il vit dans le clone.
+# 🔴 REVUE 2026-09-02 — LA BORNE PAR GATE DOIT TENIR **SOUS** CELLE DU JOB.
+#    `gates.yml` accorde `timeout-minutes: 20` au job ; l'ancien `timeout 1800`
+#    (30 min) etait donc INATTEIGNABLE en CI : GitHub tuait le job avant, et on
+#    perdait le BILAN, la liste des ROUGES et la sortie capturee que la regle (4)
+#    exige d'imprimer — le run devenant `cancelled`, ⛔ pas `failure`.
+#    Mesure du poste : 63 s pour les 27 gates. 600 s laisse un facteur ~9.
+TIMEOUT_GATE="${DN_TIMEOUT_GATE:-600}"
+
+# 🔴 REVUE 2026-09-02 — UN TEMOIN PLUS GROSSIER QUE LE PREREQUIS FABRIQUE UN
+#    ROUGE. `[ -e "$temoin" ]` sur le REPERTOIRE est vrai des qu'il existe —
+#    vide, partiel, ou meme si c'est un fichier. La gate etait alors « jouee »,
+#    rendait 4 (prerequis absent) et le runner l'imprimait `[ROUGE] rc=4` : la
+#    valeur qui, partout ailleurs, veut dire « pas un rouge ».
+#    ⇒ CHAQUE TEMOIN EST LE FICHIER QUE SA GATE LIT VRAIMENT. Un arbre LVGL
+#      partiel (reconfigure interrompu, arborescence LVGL changee entre v8 et
+#      v9) declare donc la gate NON-JOUABLE au lieu de la faire rougir.
+TEMOIN_LVGL_VEILLE="firmware/desknode/managed_components/lvgl__lvgl/scripts/built_in_font/built_in_font_gen.py"
+TEMOIN_LVGL_HIST="firmware/desknode/managed_components/lvgl__lvgl/src/widgets/chart/lv_chart.h"
+TEMOIN_LVGL="firmware/desknode/managed_components/lvgl__lvgl"
+
+NON_JOUABLES=(
+  "verif_sr03.py|le PDF [AN] AN4545 (VL6180X, DocID026571 Rev 1) n'est PAS au depot : document StMicroelectronics, ⛔ non redistribuable. La gate l'attend en argument et sort en 2 sur son message d'usage — rc=2 n'est PAS un rouge.|tools/fixtures/AN4545.pdf|tools/fixtures/AN4545.pdf firmware/desknode/main/dn_console.c|2"
+  "verif_dossier_dn415.py|CAUSE A — le cockpit de planification est un depot PRIVE, ⛔ jamais clone a cote du code. Sans lui la gate n'a AUCUNE occurrence a arbitrer. ⚠️ La ou le cockpit EST la elle rend 17 OK / 10 KO sur le CONTENU : ⛔ une CI ne verra JAMAIS ces 10 KO, et elle ne pretend pas les garder.|${TEMOIN_COCKPIT}|AUCUN|4"
+  "verif_ledger_dn416.py|CAUSE A — le cockpit de planification est un depot PRIVE, ⛔ jamais clone. Sans lui il n'y a ni ledger ni tracker a confronter. ⚠️ le controle dn_ok (« le depot code EST desknode ») reste un CONTROLE : son echec reste un ROUGE, ⛔ pas un prerequis.|${TEMOIN_COCKPIT}|AUCUN|4"
+  "verif_dossier_d5_dn45.py|CAUSE C — elle lit DEUX chemins ABSOLUS de la machine de l'auteur (l. 47-48) ⇒ ⛔ la variable HOME n'y peut rien : VERTE dans un clone neuf, et 1 OK / 7 KO sur un runner. Le seul des six rouges qu'aucune mesure prise depuis ce poste ne pouvait montrer — il se LIT dans le code. La reparation des chemins est portee par dn5-3, ⛔ pas ici.|${TEMOIN_COCKPIT_ABS}|AUCUN|4"
+  "verif_veille_dn33.py|CAUSE B — managed_components/ est GITIGNORE (186 Mo, repeuple par: idf.py reconfigure) et porte le generateur AMONT de LVGL. ⛔ 2 blocs sur 18 ne sont pas exerces ; TOUT LE RESTE EST JOUE. Elle disait deja le bon motif et le remede — il lui manquait le rc.|${TEMOIN_LVGL_VEILLE}|AUCUN|4"
+  "verif_harnais_dn413.py|CAUSE B — sans l'arbre LVGL le corpus C est INCOMPLET, et la chasse aux renvois FANTOMES accusait tools/dn_police.py de citer des fonctions QUI EXISTENT (lv_text_get_width est defini dans lvgl__lvgl/src/misc/lv_text.c). ⛔ Un diagnostic FAUX publie automatiquement. Elle DECLARE desormais, elle n'accuse plus — et ⛔ elle ne devient PAS aveugle la ou l'arbre est la.|${TEMOIN_LVGL}|AUCUN|4"
+  "verif_hist_dn413.py|CAUSE B — elle RELIT LV_CHART_POINT_NONE dans lv_chart.h (c'est ce qui garantit que DN_HIST_TROU vaut le trou de LVGL) et PLANTAIT en FileNotFoundError NU : un rouge sans motif ni remede. Elle echoue FERME desormais, sur le modele de verif_veille_dn33.py.|${TEMOIN_LVGL_HIST}|AUCUN|4"
+)
+
 # ── (1) DECOUVERTE PAR GLOB ─────────────────────────────────────────────────
 shopt -s nullglob
 GATES=(tools/verif_*.py)
@@ -265,6 +384,7 @@ fi
 
 # ── (3) LA TABLE DES NON-JOUABLES EST VALIDEE AVANT D'ETRE CRUE ─────────────
 declare -A EXISTE=()
+declare -A DECLAREE=()
 for g in "${GATES[@]}"; do EXISTE["$(basename "$g")"]=1; done
 
 PERIMEES=0
@@ -289,10 +409,36 @@ for d in "${NON_JOUABLES[@]}"; do
     echo "      ⛔ Un champ vide sauterait la gate en silence, et pour toujours." >&2
     PERIMEES=$((PERIMEES + 1)); continue
   fi
+  # 🔴 REVUE 2026-09-02 — AC39.4.c EXIGEAIT DE DECLARER TOUT JETON INTRODUIT,
+  #    ET `AUCUN` EN EST UN : il n'a AUCUN ECHAPPEMENT. Une gate dont le champ
+  #    « arguments » vaudrait litteralement `AUCUN` serait jouee SANS argument,
+  #    en silence — le motif que ce depot a deja paye (« le jeton d'exemption
+  #    d'une gate n'a aucun echappement : le citer l'accorde »).
+  #    ⛔ On ne peut pas l'echapper sans casser les 4 declarations qui s'en
+  #      servent. ⇒ ON LE DECLARE, et on REFUSE la seule collision possible :
+  #      un champ qui commence par `AUCUN` sans etre EXACTEMENT `AUCUN`.
+  #      Un vrai argument nomme AUCUN s'ecrit `./AUCUN`.
+  if [ "$c_args" != "${c_args#AUCUN}" ] && [ "$c_args" != "AUCUN" ]; then
+    echo "[KO ] declaration NON-JOUABLE : champ arguments AMBIGU ('$c_args') pour '$c_nom'" >&2
+    echo "      AUCUN est le jeton « aucun argument » et n'a pas d'echappement." >&2
+    echo "      ⇒ un argument reel qui commence par AUCUN s'ecrit './AUCUN...'." >&2
+    PERIMEES=$((PERIMEES + 1)); continue
+  fi
   if ! [[ "$c_rc" =~ ^[0-9]+$ ]]; then
     echo "[KO ] declaration NON-JOUABLE : rc attendu non numerique ('$c_rc') pour '$c_nom'" >&2
     PERIMEES=$((PERIMEES + 1)); continue
   fi
+  # 🔴 REVUE 2026-09-02 — UN DOUBLON PASSAIT LES CINQ CONTROLES ET LA SECONDE
+  #    LIGNE N'AVAIT AUCUN EFFET : `champ_de` rend le PREMIER element qui
+  #    correspond. Mettre la table a jour en AJOUTANT une ligne laissait donc
+  #    l'ANCIENNE en vigueur, sans un mot — meme classe que le « champ vide »
+  #    solde le 2026-08-31.
+  if [ -n "${DECLAREE[$c_nom]:-}" ]; then
+    echo "[KO ] la table declare '$c_nom' DEUX FOIS — seule la 1re ligne compte." >&2
+    echo "      ⛔ Un doublon laisse l'ANCIENNE declaration en vigueur en silence." >&2
+    PERIMEES=$((PERIMEES + 1)); continue
+  fi
+  DECLAREE["$c_nom"]=1
   if [ -z "${EXISTE[$c_nom]:-}" ]; then
     echo "[KO ] la table des NON-JOUABLES declare '$c_nom', qui n'existe plus dans tools/verif_*.py." >&2
     echo "      Une declaration perimee cache une gate disparue. Corriger la table." >&2
@@ -342,15 +488,22 @@ for g in "${GATES[@]}"; do
 
   # (3) Une gate declaree NON-JOUABLE est jouee QUAND MEME, sans argument :
   #     c'est le seul moyen de verifier qu'elle est encore une gate.
-  if [ "$declaree" -eq 0 ] && [ -n "$COCKPIT" ] && grep -q -- '--cockpit' "$g"; then
+  # 🔴 REVUE 2026-09-02 — LA CAPACITE ETAIT DETECTEE PAR UN grep SUR LE TEXTE,
+  #    COMMENTAIRES COMPRIS. Rien ne distinguait un `add_argument("--cockpit")`
+  #    d'une citation en prose — et ce depot cite TOUT. Une future gate qui
+  #    MENTIONNE l'option aurait recu un argument inconnu ⇒ argparse sort en 2
+  #    ⇒ ROUGE, avec pour seul motif un message d'usage.
+  #    ⇒ on epingle la DECLARATION argparse, ⛔ plus la chaine nue.
+  if [ "$declaree" -eq 0 ] && [ -n "$COCKPIT" ] \
+     && grep -q -- 'add_argument("--cockpit"' "$g"; then
     ARGS+=(--cockpit "$COCKPIT")
   fi
 
   t0=$(date +%s)
   if [ "${#ARGS[@]}" -eq 0 ]; then
-    sortie="$(timeout 1800 python3 "$g" 2>&1)"; rc=$?
+    sortie="$(timeout "$TIMEOUT_GATE" python3 "$g" 2>&1)"; rc=$?
   else
-    sortie="$(timeout 1800 python3 "$g" "${ARGS[@]}" 2>&1)"; rc=$?
+    sortie="$(timeout "$TIMEOUT_GATE" python3 "$g" "${ARGS[@]}" 2>&1)"; rc=$?
   fi
   t1=$(date +%s)
 

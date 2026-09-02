@@ -14,8 +14,13 @@ attend quelque chose ou s'il n'attend rien.
 
 ## La décision
 
-**La vérification rejouable de ce dépôt, ce sont les gates de `tools/`.** Il y en a
-**22**, elles se passent toutes en une commande :
+**La vérification rejouable de ce dépôt, ce sont les gates de `tools/`.** Elles sont
+**découvertes par glob** (`tools/verif_*.py`) et se passent toutes en une commande —
+⛔ leur nombre n'est **pas** écrit ici, le runner l'imprime. *(Revue du 2026-09-02 :
+cette ligne annonçait « 22 » depuis `dn4-24` alors que le glob en trouvait **27** —
+un compte écrit se périme le jour où on ajoute une gate, c'est-à-dire le jour où il
+compte. Depuis le 2026-09-02, `.github/workflows/gates.yml` les invoque à chaque
+poussée : la phrase « rien ne les invoque » qui vivait ailleurs est morte.)*
 
 ```bash
 bash tools/run_gates.sh

@@ -73,9 +73,16 @@
 # ═════════════════════════════════════════════════════════════════════════════
 name: Gates
 
+# 🔴 REVUE DE CODE DU 2026-09-02 — LES TAGS N'ETAIENT PAS COUVERTS.
+#    Dès qu'un filtre `branches` est présent, GitHub **exclut** les références de
+#    tags : le commit qui portera la version publiée aurait été le seul **sans
+#    verdict**, et en silence — une absence de run ne se remarque pas. Le dépôt
+#    porte **0 tag** aujourd'hui, donc ça ne mordait pas : c'est précisément
+#    pour ça que c'est posé MAINTENANT, comme `pull_request_target` plus bas.
 on:
   push:
     branches: ['**']
+    tags: ['**']
   pull_request:
 
 # ⛔ LECTURE SEULE. Cette CI mesure, elle n'écrit rien — ⛔ ni commit, ni
@@ -95,9 +102,16 @@ concurrency:
 jobs:
   gates:
     runs-on: ubuntu-latest
-    # ⚠️ Une borne DURE. `run_gates.sh` accorde déjà `timeout 1800` PAR GATE ;
-    #    sans borne de job, une passe pathologique facturerait jusqu'au plafond
-    #    de GitHub (6 h). Mesure du poste : 63 s pour les 27 gates.
+    # ⚠️ Une borne DURE, et elle DOMINE la borne par gate.
+    # 🔴 REVUE DU 2026-09-02 — ELLE NE LA DOMINAIT PAS : le job était borné à
+    #    20 min quand `run_gates.sh` accordait `timeout 1800` (30 min) PAR GATE.
+    #    La borne interne était donc INATTEIGNABLE en CI — GitHub tuait le job
+    #    avant, et on perdait le `BILAN`, la liste `⛔ ROUGES` et la sortie
+    #    capturée que la règle (4) exige d'imprimer sur échec ; le run devenait
+    #    `cancelled`, ⛔ pas `failure`, donc pas un rouge exploitable le jour où
+    #    `dn8` protégera `main`.
+    #    ⇒ `run_gates.sh` borne désormais chaque gate à **600 s**, et ce plafond
+    #      de job reste au-dessus. Mesure du poste : 63 s pour les 27 gates.
     timeout-minutes: 20
     steps:
       - name: "Récupérer le dépôt"
@@ -127,7 +141,10 @@ jobs:
             && echo "           PRÉSENT" \
             || echo "           ABSENT — attendu : gitignoré, repeuplé par idf.py reconfigure"
 
-      - name: "Passer les 27 gates"
+      # 🔴 REVUE DU 2026-09-02 — CE NOM FIGEAIT « 27 », deux lignes au-dessus
+      #    du commentaire qui l'interdit. Le compte réel est déjà imprimé par
+      #    l'étape précédente (`ls tools/verif_*.py | wc -l`).
+      - name: "Passer les gates découvertes par le glob"
         # ⛔ `bash tools/run_gates.sh`, ⛔ PAS une liste de gates : la découverte
         #    par glob est la règle (1) du runner. Une liste écrite se périme le
         #    jour où on ajoute une gate — c'est-à-dire le jour où elle compte.

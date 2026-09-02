@@ -297,7 +297,14 @@ def bloc_fantomes():
     #    GATE **DECLARE** QU'ELLE NE PEUT PAS EXERCER CE CONTROLE, ⛔ ELLE
     #    N'ACCUSE PAS. Un contributeur qui recoit « renvoi FANTOME » sur une
     #    fonction LVGL existante croirait avoir casse quelque chose.
-    arbre_lvgl = os.path.isdir(MANAGED)
+    # 🔴 REVUE 2026-09-02 — LE PREDICAT ETAIT LE **PARENT**, LE TEMOIN L'ENFANT.
+    #    `managed_components/` porte 11 paquets ; un seul est LVGL. Un arbre
+    #    peuple des `espressif__*` SANS `lvgl__lvgl/` rendait ce predicat VRAI,
+    #    la chasse aux renvois FANTOMES repartait sur un corpus C ampute, et la
+    #    gate RE-ACCUSAIT tools/dn_police.py de citer des fonctions QUI EXISTENT
+    #    — le « diagnostic FAUX publie automatiquement » que dn4-39 dit fermer.
+    #    ⇒ le predicat est desormais le MEME chemin que le temoin de run_gates.sh.
+    arbre_lvgl = os.path.isdir(os.path.join(MANAGED, "lvgl__lvgl"))
     if not arbre_lvgl:
         prerequis_absents.append("l'arbre LVGL (%s)" % MANAGED)
         print("  [PREREQUIS ABSENT] la chasse aux renvois FANTOMES n'est pas")

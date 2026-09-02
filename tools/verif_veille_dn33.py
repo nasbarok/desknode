@@ -2663,8 +2663,18 @@ def main():
     print("=" * 78)
     print("dn3-3 — VERIFICATION DE LA VEILLE, EN EXECUTANT LE PRODUIT")
     print("=" * 78)
-    if subprocess.run(["cc", "--version"], capture_output=True).returncode != 0:
-        sys.exit("ÉCHEC : `cc` est introuvable — cette gate COMPILE le produit.")
+    # 🔴 REVUE 2026-09-02 — CETTE GARDE NE S'EXECUTAIT JAMAIS QUAND ELLE
+    #    COMPTAIT : `subprocess.run(["cc", ...])` leve **FileNotFoundError** si
+    #    `cc` n'existe pas ⇒ traceback NU, le defaut meme que `verif_hist_dn413`
+    #    vient de solder pour `lv_chart.h`. Et `sys.exit(<str>)` sort en **1**,
+    #    c'est-a-dire la valeur d'un VRAI rouge, pour un prerequis absent.
+    if shutil.which("cc") is None:
+        print("  [PREREQUIS ABSENT] `cc` est introuvable")
+        print("      MOTIF : cette gate COMPILE le produit pour l'executer.")
+        print("      REMEDE : installer un compilateur C (build-essential).")
+        print("      ⛔ rc=%d — prerequis absent, ⛔ pas un verdict sur le code."
+              % RC_PREREQUIS)
+        return RC_PREREQUIS
 
     src, sha = lire(DN_VEILLE_C)
     print("source : dn_veille.c  sha256[:16] = %s  (%d lignes)"

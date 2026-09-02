@@ -214,9 +214,20 @@ def bloc_cout(lib):
 
     sym = octets_du_map()
     if sym is None:
-        ctrl(False, "le `.map` du build est présent",
-             "⛔ absent — lancer `idf.py build` avant cette gate")
-        return
+        # 🔴 REVUE 2026-09-02 — `firmware/desknode/build/` est GITIGNORE
+        #    EXACTEMENT COMME `managed_components/`, mais son absence rendait
+        #    **1** (un vrai rouge) au lieu de **4** (prerequis absent). Un poste
+        #    ou `idf.py reconfigure` a tourne SANS `idf.py build` a donc son
+        #    temoin LVGL present ⇒ la gate est jouee ⇒ rouge « lancer idf.py
+        #    build », indiscernable d'un defaut du code. C'est la cause B restee
+        #    entiere sur le SECOND artefact gitignore.
+        print("  [PREREQUIS ABSENT] le `.map` du build n'est pas la")
+        print("      MOTIF : firmware/desknode/build/ est GITIGNORE, comme")
+        print("              managed_components/. ⛔ Ce n'est pas un verdict")
+        print("              sur le code.")
+        print("      REMEDE : idf.py build, puis rejouer cette gate.")
+        print("      ⛔ rc=%d — prerequis absent, ⛔ pas un rouge." % RC_PREREQUIS)
+        return RC_PREREQUIS
     noyau = ["s_pts", "s_smin", "s_smax", "s_svu", "s_w", "s_pret"]
     manquants = [s for s in noyau if s not in sym]
     ctrl(not manquants, "les symboles de stockage sont dans le `.map`",
@@ -689,7 +700,7 @@ def main():
         return 1
     ctrl(True, "`dn_hist.c` compile et se charge sur l'hôte", "gcc -O0 -shared")
 
-    bloc_cout(lib)
+    rc_cout = bloc_cout(lib)
     bloc_avant_init(src, lib)
     bloc_couverture(src)
     bloc_axe_temps(src)
@@ -704,6 +715,13 @@ def main():
     print("   qu'elle lit est celui du DERNIER `idf.py build` — pas du binaire")
     print("   flashé. Le SHA au bandeau reste la seule preuve de ce qui tourne.")
     if ko_total[0] == 0:
+        # 🔴 REVUE 2026-09-02 — L'ORDRE EST UNE REGLE : un VRAI defaut l'emporte
+        #    sur un prerequis absent. Le rc de `bloc_cout` n'etait PAS LU : son
+        #    `return` etait mort-ne. Il remonte desormais, APRES les KO.
+        if rc_cout == RC_PREREQUIS:
+            print("⚠️ %d contrôles passent, 0 échec — mais le `.map` manquait :"
+                  " rc=%d (prérequis absent)." % (ok_total[0], RC_PREREQUIS))
+            return RC_PREREQUIS
         print("✅ %d contrôles passent, 0 échec." % ok_total[0])
         return 0
     print("⛔ %d ÉCHEC(S) sur %d contrôles."

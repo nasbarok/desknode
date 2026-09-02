@@ -165,7 +165,16 @@ import sys
 import unicodedata
 
 DESKNODE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-COCKPIT_DEFAUT = os.path.expanduser("~/projects/compagnon_project")
+# 🔴 REVUE 2026-09-02 — `expanduser("~")` ET `${HOME}` NE DISENT PAS LA MEME
+#    CHOSE QUAND `HOME` EST ABSENT. Le shell de `run_gates.sh` retombe sur
+#    `${HOME:-/nonexistent}` ; Python, lui, interroge `/etc/passwd` et rend le
+#    vrai foyer de l'utilisateur. Mesure : `env -u HOME bash tools/run_gates.sh`
+#    rendait `23 VERTE, 3 ROUGE, 1 NON-JOUABLE`, rc 1 — deux gates qui rendent
+#    **0** comptees ROUGES en « DECLARATION DEMENTIE ». Contextes reels : cron,
+#    conteneur, `sudo` sans `-E`, `env -i`.
+#    ⇒ ON LIT `HOME` COMME LE SHELL LE LIT, avec la MEME valeur de repli.
+COCKPIT_DEFAUT = os.path.join(os.environ.get("HOME") or "/nonexistent",
+                              "projects", "compagnon_project")
 
 # ── dn4-39 / AC39.3.a — LE `rc` « PREREQUIS ABSENT », DISTINCT DU ROUGE ─────
 #
@@ -611,10 +620,18 @@ def saut_autoreference(rel, ligne):
             and RE_LIGNE_STATUT_STORY.match(ligne) is not None)
 
 
-def collecte(cockpit):
-    """Rend (occ_arbitrees, occ_archive) — cles ('desknode'|'cockpit', ...)."""
+def collecte(cockpit, cockpit_absent=False):
+    """Rend (occ_arbitrees, occ_archive) — cles ('desknode'|'cockpit', ...).
+
+    🔴 REVUE 2026-09-02 — `cockpit_absent` existe parce que le mode « prerequis
+    absent » ABANDONNAIT AUSSI la moitie DESKNODE. Or le MANIFESTE d'arbitrage
+    (`docs/dn4-15-arbitrage.md`) vit dans le depot CODE, donc dans le clone :
+    les 64 occurrences de cet arbre sont PARFAITEMENT arbitrables sans cockpit.
+    """
     dn = [("desknode",) + t for t in
           balaye(DESKNODE, list(fichiers_desknode(DESKNODE)))]
+    if cockpit_absent:
+        return dn, []
     ck_aut = [("cockpit",) + t for t in
               balaye(cockpit,
                      list(fichiers_cockpit(cockpit, AUTORITE_COCKPIT,
@@ -652,26 +669,40 @@ def main():
     #    skip (`run_gates.sh` EXIGE ce rc exact ; tout autre rc la fait rougir),
     #    et ⛔ ce n'est PAS une reparation du chemin : `COCKPIT_DEFAUT` reste ce
     #    qu'il est, c'est `dn5-3` qui le porte.
-    if not os.path.isdir(a.cockpit):
-        print("  [PREREQUIS ABSENT] le depot cockpit n'est pas atteignable")
+    # 🔴 REVUE DE CODE DU 2026-09-02 — LE PREREQUIS ABANDONNAIT LA MOITIE QUE LA
+    #    CI PEUT VOIR. Mesure : `collecte()` rend **64 occurrences dans le depot
+    #    CODE** (contre 134 cote cockpit), et le MANIFESTE qui les arbitre —
+    #    `docs/dn4-15-arbitrage.md` — vit LUI AUSSI dans le depot code, donc dans
+    #    le clone. Le `return RC_PREREQUIS` etait pose AVANT `collecte()` : la CI
+    #    ne balayait donc JAMAIS rien, alors que `.github/workflows/gates.yml`
+    #    justifie l'absence de `paths-ignore` PAR CETTE GATE precisement.
+    #    ⛔ Et le motif publie — « cette gate n'a AUCUNE occurrence a arbitrer » —
+    #      etait faux de 64 lignes.
+    #    ⇒ ON JOUE LA MOITIE ATTEIGNABLE, et on ne rend 4 QUE SI ELLE EST MUETTE.
+    #      C'est la regle que `dn4-39` ecrit elle-meme dans `run_gates.sh` :
+    #      « un VRAI defaut l'emporte sur un prerequis absent ».
+    cockpit_absent = not os.path.isdir(a.cockpit)
+    if cockpit_absent:
+        print("  [PREREQUIS PARTIEL] le depot cockpit n'est pas atteignable")
         print("      chemin attendu : %s" % a.cockpit)
         print("      MOTIF : le cockpit est un depot PRIVE de planification,")
-        print("              ⛔ jamais clone a cote du code. Hors de la machine")
-        print("              qui le porte, cette gate n'a AUCUNE occurrence a")
-        print("              arbitrer — elle ne peut ni rougir ni verdir.")
+        print("              ⛔ jamais clone a cote du code. Sa moitie a lui")
+        print("              (134 occurrences au 2026-09-02) est HORS de portee.")
+        print("      ⇒ LA MOITIE `desknode` EST JOUEE QUAND MEME : son manifeste")
+        print("        d'arbitrage (%s) est DANS ce depot." % MANIFESTE)
         print("      REMEDE : `--cockpit <chemin>` si le depot est ailleurs.")
-        print("      ⛔ CE N'EST PAS UN VERDICT SUR LE CODE, et ⛔ pas un skip :")
-        print("         rc=%d, declare dans la table NON_JOUABLES de"
-              " tools/run_gates.sh." % RC_PREREQUIS)
+        print("      ⛔ rc=%d (prerequis) UNIQUEMENT si la moitie jouee est"
+              " MUETTE ;" % RC_PREREQUIS)
+        print("         un KO trouve ici rend 1, comme n'importe quel rouge.")
         print("      ⚠️ CE QUE LA CI NE VERRA JAMAIS : sur la machine qui porte")
-        print("         le cockpit, cette gate arbitre le CONTENU et rend")
-        print("         aujourd'hui 17 OK / 10 KO. Ces 10 KO sont HORS de")
-        print("         portee d'un runner — ⛔ elle ne pretend pas les garder.")
-        return RC_PREREQUIS
-    ctrl(True, "le depot cockpit est atteignable", a.cockpit)
+        print("         le cockpit, cette gate arbitre AUSSI son contenu et rend")
+        print("         aujourd'hui 17 OK / 10 KO. Ces KO sont hors de portee")
+        print("         d'un runner — ⛔ elle ne pretend pas les garder.")
+    else:
+        ctrl(True, "le depot cockpit est atteignable", a.cockpit)
     ctrl(os.path.isdir(DESKNODE), "le depot code est atteignable", DESKNODE)
 
-    arbitre, archive = collecte(a.cockpit)
+    arbitre, archive = collecte(a.cockpit, cockpit_absent)
 
     print("\n── 1. CE QUI EST ECARTE, ET C'EST IMPRIME ────────────────────────")
     for rel in sorted(EXCLUS_DESKNODE):
@@ -781,6 +812,20 @@ def main():
         ctrl(False, "manifeste mal forme", e)
     ctrl(bool(manif), "le manifeste est lisible et non vide",
          "%d entree(s)" % len(manif))
+
+    # 🔴 REVUE 2026-09-02 — LE MANIFESTE COUVRE LES **DEUX** DEPOTS. Le borner a
+    #    la moitie jouee etait la piece manquante : sans ca, jouer la moitie
+    #    `desknode` sans cockpit fabriquait **43 KO** — 131 lignes `cockpit:` du
+    #    manifeste passant pour des occurrences FANTOMES, plus un « 204 vs 64 »
+    #    sur la somme des verdicts. Un rouge de 43 KO qui ne parle pas du code,
+    #    c'est le « bruit qu'on apprend a ignorer » que tests/README.md interdit.
+    #    ⇒ quand le cockpit manque, ⛔ on ne juge QUE les lignes `desknode:`.
+    if cockpit_absent:
+        avant = len(manif)
+        manif = {k: v for k, v in manif.items() if k[0] == "desknode"}
+        print("     ⚠️ manifeste BORNE a la moitie jouee : %d entree(s) sur %d"
+              " (les %d lignes `cockpit:` sont HORS de portee, ⛔ pas fantomes)"
+              % (len(manif), avant, avant - len(manif)))
 
     # 🔴 dn4-24 / AC4 — LE RANG SE CALCULE DE L'ARBRE, DANS L'ORDRE DU FICHIER.
     #    ⛔ La ligne ne fait plus partie de la cle : elle est CONSERVEE dans la
@@ -929,11 +974,22 @@ def main():
     if "TOTAL" in annonces and annonces["TOTAL"] != sum(compte.values()):
         ecarts_recap.append("TOTAL : annonce %d, detail %d"
                             % (annonces["TOTAL"], sum(compte.values())))
-    for e in ecarts_recap:
-        ctrl(False, "le recapitulatif du manifeste ne colle pas au detail", e)
-    ctrl(not ecarts_recap,
-         "les recapitulatifs du manifeste collent a son detail",
-         "%d chiffre(s) annonce(s) confronte(s)" % len(annonces))
+    # 🔴 REVUE 2026-09-02 — LES RECAPITULATIFS TOTALISENT LES **DEUX** DEPOTS.
+    #    Les confronter a un detail BORNE a la moitie `desknode` fabriquait 4 KO
+    #    (« TOTAL : annonce 204, detail 64 ») qui ne disent RIEN du code. On les
+    #    DECLARE hors de portee — ⛔ on ne les tait pas, et ⛔ on ne les triche pas.
+    if cockpit_absent:
+        print("     ⚠️ recapitulatifs du manifeste NON CONFRONTES : ils totalisent")
+        print("        les DEUX depots (%d chiffre(s) annonce(s)), et le detail lu"
+              % len(annonces))
+        print("        ici est borne a la moitie `desknode`. ⛔ Hors de portee")
+        print("        d'un runner — la machine qui porte le cockpit les garde.")
+    else:
+        for e in ecarts_recap:
+            ctrl(False, "le recapitulatif du manifeste ne colle pas au detail", e)
+        ctrl(not ecarts_recap,
+             "les recapitulatifs du manifeste collent a son detail",
+             "%d chiffre(s) annonce(s) confronte(s)" % len(annonces))
 
     # ── AC6.4 : la console n'enseigne plus le chiffre mort ──────────────────
     print("\n── 4. LA CONSOLE N'ENSEIGNE PLUS UN CHIFFRE MORT (AC5) ───────────")
@@ -1060,7 +1116,13 @@ def main():
     print("\n" + "=" * 78)
     print("BILAN : %d OK, %d KO" % (ok_total[0], ko_total[0]))
     print("=" * 78)
-    return 1 if ko_total[0] else 0
+    # 🔴 REVUE 2026-09-02 — L'ORDRE EST UNE REGLE : un VRAI defaut l'emporte sur
+    #    un prerequis absent. Sans ca, `rc=4` MASQUERAIT un rouge trouve dans la
+    #    moitie atteignable, et « rc attendu = 4 » redeviendrait satisfiable par
+    #    un defaut — exactement ce que `dn4-39` a voulu rendre impossible.
+    if ko_total[0]:
+        return 1
+    return RC_PREREQUIS if cockpit_absent else 0
 
 
 if __name__ == "__main__":

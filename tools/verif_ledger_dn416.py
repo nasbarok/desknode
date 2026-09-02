@@ -145,7 +145,16 @@ import sys
 import unicodedata
 
 DESKNODE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-COCKPIT_DEFAUT = os.path.expanduser("~/projects/compagnon_project")
+# 🔴 REVUE 2026-09-02 — `expanduser("~")` ET `${HOME}` NE DISENT PAS LA MEME
+#    CHOSE QUAND `HOME` EST ABSENT. Le shell de `run_gates.sh` retombe sur
+#    `${HOME:-/nonexistent}` ; Python, lui, interroge `/etc/passwd` et rend le
+#    vrai foyer de l'utilisateur. Mesure : `env -u HOME bash tools/run_gates.sh`
+#    rendait `23 VERTE, 3 ROUGE, 1 NON-JOUABLE`, rc 1 — deux gates qui rendent
+#    **0** comptees ROUGES en « DECLARATION DEMENTIE ». Contextes reels : cron,
+#    conteneur, `sudo` sans `-E`, `env -i`.
+#    ⇒ ON LIT `HOME` COMME LE SHELL LE LIT, avec la MEME valeur de repli.
+COCKPIT_DEFAUT = os.path.join(os.environ.get("HOME") or "/nonexistent",
+                              "projects", "compagnon_project")
 
 # ── dn4-39 / AC39.3.a — LE `rc` « PREREQUIS ABSENT », DISTINCT DU ROUGE ─────
 # Meme motif et meme choix que `tools/verif_dossier_dn415.py`, ou il est ecrit
@@ -181,8 +190,18 @@ REL_MANIFESTE = "_bmad-output/implementation-artifacts/dn4-16-arbitrage-ledger.m
 #    ligne 390 » reproduirait EXACTEMENT le defaut qu'on solde.
 BORNE_DEBUT = "<!-- dn4-39 MANIFESTE DEBUT — GENERE, ⛔ ne rien ecrire entre ces deux bornes -->"
 BORNE_FIN = "<!-- dn4-39 MANIFESTE FIN -->"
-CMD_REGEN = ("python3 ~/projects/desknode/tools/verif_ledger_dn416.py"
-             " --cockpit <cockpit> --manifeste --en-place")
+# 🔴 REVUE 2026-09-02 — LA COMMANDE PUBLIEE N'ETAIT PAS COLLABLE, ET ELLE
+#    CODAIT EN DUR UN CHEMIN PERSONNEL :
+#      · `~/projects/desknode/` etait ecrit en dur alors que ce script CONNAIT
+#        sa racine (DESKNODE, plus bas) — le defaut de `dn5-3` reintroduit a neuf
+#        dans la story qui ecrit « ⛔ AUCUN CHEMIN ABSOLU ICI » ;
+#      · le gabarit `<cockpit>` est parse par bash comme une PAIRE DE
+#        REDIRECTIONS : coller la commande cree un fichier nomme `--manifeste`.
+#    ⇒ la racine est DERIVEE, et le trou se nomme en majuscules sans chevrons.
+#    ⚠️ AC39.5 vend « ⛔ aucun copier-coller » : la commande a copier se colle.
+def cmd_regen():
+    return ("python3 %s --cockpit CHEMIN_DU_COCKPIT --manifeste --en-place"
+            % os.path.join(DESKNODE, "tools", "verif_ledger_dn416.py"))
 
 VERDICTS = ("PORTEE", "RE-HEBERGEE", "CLOSE", "BLOQUEE", "CONNAISSANCE")
 
@@ -722,9 +741,30 @@ def main():
         # dn4-39 / AC39.5.a — REECRITURE EN PLACE, ENTRE LES BORNES.
         p_man = os.path.join(a.cockpit, REL_MANIFESTE)
         try:
-            src = io.open(p_man, encoding="utf-8").read()
+            src = io.open(p_man, encoding="utf-8", newline="").read()
         except (OSError, UnicodeDecodeError) as x:
             ctrl(False, "le manifeste se LIT", "", "⛔ %s" % x)
+            return 1
+        # 🔴 REVUE 2026-09-02 — `find()` PRENAIT LA PREMIERE OCCURRENCE ET RIEN
+        #    NE COMPTAIT LES DOUBLONS. Mesure : UNE ligne de documentation citant
+        #    la borne verbatim, inseree 300 lignes plus haut — le geste le plus
+        #    naturel de ce depot — faisait passer le manifeste de 661 a 352
+        #    lignes. Les sections 4, 5, 6, 7, 7 bis, 8 et 8 bis EFFACEES, la
+        #    sortie annoncant « §9 REECRIT EN PLACE ⛔ Aucun copier-coller », et
+        #    LA GATE REJOUEE DERRIERE RENDANT 23 OK / 0 KO : la destruction etait
+        #    invisible a l'instrument cense garder ce fichier.
+        #    ⚠️ AGGRAVANT : le message de KO ci-dessous IMPRIME les deux bornes
+        #       verbatim — coller cette sortie dans le document ARME le piege.
+        #    ⇒ on exige UNE seule occurrence de chaque borne, et on echoue FERME.
+        n_deb, n_fin = src.count(BORNE_DEBUT), src.count(BORNE_FIN)
+        if n_deb != 1 or n_fin != 1:
+            ctrl(False, "chaque borne du §9 apparait EXACTEMENT une fois", "",
+                 "⛔ borne DEBUT vue %d fois, borne FIN vue %d fois" % (n_deb, n_fin))
+            print("\n     ⛔ ARRET : ⛔ RIEN N'A ETE ECRIT.")
+            print("        Une borne en double ferait ecrire entre la MAUVAISE paire")
+            print("        et EFFACERAIT tout ce qui se trouve entre les deux — mesure")
+            print("        le 2026-09-02 : 661 lignes ⇒ 352, en annoncant un succes.")
+            print("        ⇒ ne citer les bornes NULLE PART ailleurs dans ce fichier.")
             return 1
         i = src.find(BORNE_DEBUT)
         j = src.find(BORNE_FIN)
@@ -743,14 +783,50 @@ def main():
                  " verdict | porteur | preuve |\n"
                  "|---:|---|:-:|---|---|---|---|\n")
         table += "".join(ligne_manifeste(e) + "\n" for e in ouvertes)
+        # ⛔ FILET DE NON-REGRESSION (revue 2026-09-02). Le mode rendait la main
+        #    AVANT les sections 2 a 5 : il reecrivait donc le §9 a partir
+        #    d'entrees dont ni la disposition, ni le verdict, ni le porteur
+        #    n'avaient ete controles. Et `ctrl(len(ouvertes) > 0, ...)` n'ARRETE
+        #    pas : un ledger restructure ou tronque aurait remplace les 266
+        #    lignes par un tableau VIDE, sans confirmation.
+        if not ouvertes:
+            ctrl(False, "le ledger rend au moins une entree ouverte", "",
+                 "⛔ 0 entree lue — ⛔ RIEN N'A ETE ECRIT")
+            print("\n     ⛔ ARRET : ecrire un tableau VIDE effacerait le §9 en entier.")
+            print("        Le ledger est-il au bon chemin, et sa structure intacte ?")
+            return 1
+        # ⛔ Une ligne generee qui contiendrait une borne casserait le prochain
+        #    tir (la borne tomberait DANS le tableau) : on refuse de l'ecrire.
+        if BORNE_DEBUT in table or BORNE_FIN in table:
+            ctrl(False, "aucune ligne generee ne contient une borne", "",
+                 "⛔ une entree du ledger cite une borne — ⛔ RIEN N'A ETE ECRIT")
+            return 1
         neuf = src[:i + len(BORNE_DEBUT)] + "\n\n" + table + "\n" + src[j:]
         if neuf == src:
             print("\n     §9 DEJA d'accord : %d ligne(s), rien a ecrire."
                   % len(ouvertes))
             return 1 if ko_total[0] else 0
+        # ⛔ ECRITURE ATOMIQUE (revue 2026-09-02). L'ancienne forme tronquait
+        #    puis ecrivait, sans temporaire ni `rename`, sans `close()` explicite
+        #    et sans sauvegarde : une interruption ou un disque plein laissait le
+        #    manifeste TRONQUE — et la troncature emporte la borne de FIN, qui
+        #    est en queue de fichier, donc la seule commande de reparation se
+        #    detruisait elle-meme.
+        #    ⚠️ `newline=""` DES DEUX COTES : sans lui, un manifeste en CRLF etait
+        #       reecrit INTEGRALEMENT en LF — un diff de 3 000 lignes pour une
+        #       regeneration de 267, invisible dans son propre message de succes.
+        tmp = p_man + ".dn439.tmp"
         try:
-            io.open(p_man, "w", encoding="utf-8").write(neuf)
+            with io.open(tmp, "w", encoding="utf-8", newline="") as f:
+                f.write(neuf)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp, p_man)
         except OSError as x:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
             ctrl(False, "le manifeste est inscriptible", "", "⛔ %s" % x)
             return 1
         print("\n     §9 REECRIT EN PLACE : %s" % REL_MANIFESTE)
@@ -958,7 +1034,24 @@ def main():
         # le satisfaisait, et le manifeste livre divergeait DEJA d'une ligne
         # (la 5575, champ `preuve`) sans que rien ne rougisse. On compare
         # desormais chaque ligne a celle que la fabrique produit.
-        vues = re.findall(r"^\| *\d+ *\|.*$", man, re.M)
+        # 🔴 REVUE 2026-09-02 — LE CONTROLE LISAIT TOUT LE FICHIER, LA COMMANDE
+        #    N'EN ECRIT QU'UNE TRANCHE. Une ligne numerotee posee HORS des bornes
+        #    (un autre tableau du manifeste dont la 1re cellule est un nombre)
+        #    faisait rougir la gate POUR TOUJOURS : la commande repondait « §9
+        #    DEJA d'accord » et le rouge ne bougeait pas — une boucle sans issue,
+        #    et le « geste manuel de plus » que ce controle est cense solder.
+        #    ⇒ LE CONTROLE SE BORNE A CE QUE `--en-place` ECRIT. Hors bornes,
+        #      c'est de la prose : ⛔ pas au controle.
+        i_b, j_b = man.find(BORNE_DEBUT), man.find(BORNE_FIN)
+        if i_b >= 0 and j_b > i_b:
+            perimetre = man[i_b + len(BORNE_DEBUT):j_b]
+        else:
+            perimetre = man   # bornes absentes : on retombe sur l'ancien comportement
+        ctrl(i_b >= 0 and j_b > i_b,
+             "le §9 porte ses deux bornes (le controle se borne a elles)",
+             "bornes vues aux offsets %d et %d" % (i_b, j_b),
+             "⛔ bornes absentes ou inversees — le controle retombe sur TOUT le fichier")
+        vues = re.findall(r"^\| *\d+ *\|.*$", perimetre, re.M)
         attendues = [ligne_manifeste(e) for e in ouvertes]
         ctrl(len(vues) == len(attendues),
              "le manifeste couvre 100 % des entrees ouvertes (AC2.7)",
@@ -975,7 +1068,7 @@ def main():
         #    Une gate qui repare ce qu'elle mesure ne mesure plus rien.
         if ecarts or len(vues) != len(attendues):
             print("     ⇒ UNE commande remet le §9 d'accord :")
-            print("       %s" % CMD_REGEN)
+            print("       %s" % cmd_regen())
             print("       ⛔ La gate ne la joue PAS : elle MESURE. Une gate qui")
             print("          repare ce qu'elle mesure ne mesure plus rien.")
 

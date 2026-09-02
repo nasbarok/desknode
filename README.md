@@ -255,7 +255,7 @@ est ROUGE** — **0** si toutes sont vertes ou déclarées non-jouables.
 |---|---|
 | `--cockpit <chemin>` | passe le chemin du cockpit aux **2 gates qui le comprennent** (`verif_dossier_dn415.py`, `verif_ledger_dn416.py`). Sans elle, elles cherchent `~/projects/compagnon_project` et **échouent fermé** si l'arbre est ailleurs. |
 | `--silencieux` | tait le **motif** des NON-JOUABLES. ⛔ Ne tait rien d'autre : la sortie d'une gate ROUGE reste imprimée, toujours. |
-| `-h`, `--help` | l'en-tête du script — les quatre règles et la table des NON-JOUABLES. |
+| `-h`, `--help` | l'en-tête du script — ses **cinq** règles. ⚠️ **La table des NON-JOUABLES n'y est PAS** : elle vit dans le corps du script, et l'aide dit comment la lire (`sed -n '/^NON_JOUABLES=(/,/^)/p'`). *(Corrigé à la revue du 2026-09-02 : cette ligne annonçait quatre règles et une table que la sortie ne contenait pas.)* |
 
 ### Les NON-JOUABLES aujourd'hui — **sept**
 
