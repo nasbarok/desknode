@@ -338,6 +338,99 @@ ko_total = [0]
 illisibles = []
 surface_absente = []
 
+# ═══════════════════════════════════════════════════════════════════════════
+#  dn4-40 / AC40.5 — CITER UN MOTIF POUR EN PARLER NE FABRIQUE PLUS UNE
+#                    OCCURRENCE
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# 🔴 LE DEFAUT, ET IL SE DEMONTRE EN L'ECRIVANT. Cette gate compte des
+#    occurrences dans les fichiers qu'elle balaie — donc elle compte AUSSI le
+#    texte qui PARLE d'elle. Ecrire sur le dossier change la mesure du
+#    dossier. Reproduit trois fois, et DETERMINISTE : 12 caracteres ajoutes
+#    au-dela du 120e sur une ligne deja arbitree font sortir la signature du
+#    rapport AU CARACTERE PRES. ⛔ Ce n'est pas du non-determinisme (5 passes
+#    a graine de hachage variee et 3 a ordre de parcours melange rendent des
+#    sorties IDENTIQUES OCTET POUR OCTET).
+#
+# ⛔ LA PARADE N'EST PAS D'INTERDIRE D'EN PARLER — le ledger tranche
+#    explicitement contre cette voie. C'est de donner a la gate un
+#    ECHAPPEMENT, comme un langage donne le sien.
+#
+# ── LES TROIS CONTRAINTES DE CONCEPTION, MESUREES DANS LE CODE ─────────────
+#
+# (i) LA NORMALISATION PRECEDE LA REGEX. `normalise()` decompose en NFD,
+#     RETIRE LES DIACRITIQUES et passe en minuscules AVANT tout examen. ⇒ une
+#     marque accentuee ou casse-sensible est DETRUITE avant d'etre vue. Les
+#     jetons sont donc ASCII, minuscules, sans accent.
+#
+# (ii) ECHAPPER UNE OCCURRENCE **DEJA ARBITREE** LA TRANSFORME EN FANTOME —
+#     un controle rougit des qu'une ligne du manifeste n'a plus d'occurrence
+#     dans l'arbre. ⇒ l'echappement ne vaut que pour du texte NEUF ;
+#     l'appliquer a une ligne arbitree exige de retirer sa ligne de manifeste
+#     DANS LE MEME GESTE, recapitulatifs compris. Le controle des fantomes le
+#     DIT desormais dans son detail d'echec.
+#
+# (iii) UN ECHAPPEMENT TROP GOURMAND FAIT **BAISSER** LE COMPTE, et un
+#     garde-fou qui n'interdit que la HAUSSE le laisse passer. ⇒ un
+#     echappement qui n'echappe AUCUNE occurrence est un KO : il signale un
+#     span pose au mauvais endroit, ⛔ il ne le laisse pas manger du texte.
+#
+# ── LE JETON, ET SON PROPRE ECHAPPEMENT (AC40.5.b) ────────────────────────
+#
+# ⚠️ LES JETONS SONT CONSTRUITS PAR CONCATENATION, et ⛔ ce n'est pas une
+#    coquetterie : ce fichier est LUI-MEME balaye. Ecrire le jeton
+#    litteralement ici en poserait un vrai, dans un commentaire.
+#    ⇒ MOTIF PAYE DEUX FOIS PAR CE DEPOT : le jeton d'exemption du verrou
+#      LVGL cite dans un commentaire l'ACCORDAIT ; et le jeton `AUCUN` de
+#      `run_gates.sh` a du recevoir une garde de collision.
+#
+# LA FORME DE MENTION — pour PARLER du jeton sans le poser : on l'ecrit avec
+# des espaces, `[[ cit ]]` … `[[ /cit ]]`. ⛔ Ce n'est pas un jeton valide, et
+# c'est la forme utilisee dans toute cette page.
+#
+# LA GARDE DE COLLISION : une ligne qui porte un ouvrant ou un fermant SANS
+# former une paire bien formee et non imbriquee est un **KO**. ⇒ parler du
+# jeton en le posant a moitie ⛔ n'accorde rien : ca SONNE.
+ECHAP_O = "[[" + "cit]]"
+ECHAP_F = "[[" + "/cit]]"
+
+# ⛔ CE MOTIF N'EST PAS ECHAPPABLE — DECISION OWNER DU 2026-09-02.
+#    Il est arbitre ARCHIVES COMPRISES parce qu'une recette SE COPIE-COLLE :
+#    une recette echappee reste dangereuse. L'echappement lui est refuse, et
+#    la tentative SONNE plutot que de passer.
+MOTIF_NON_ECHAPPABLE = "busid-en-dur"
+
+echap_malformes = []
+echap_inutiles = []
+echap_refuses = []
+echap_utiles = []          # (rel, ligne, cle) — les echappements qui SERVENT
+
+
+def spans_echappees(norm):
+    """Les intervalles echappes d'une ligne NORMALISEE, et le motif d'un refus.
+
+    Rend `(spans, raison_de_refus | None)`. Le balayage est LIGNE PAR LIGNE :
+    ⛔ un span ne traverse jamais une fin de ligne, sinon un ouvrant oublie
+    mangerait tout le fichier — et un echappement qui mange fait BAISSER le
+    compte, ce qu'un garde-fou naif ne voit pas.
+    """
+    spans = []
+    i = 0
+    while True:
+        o = norm.find(ECHAP_O, i)
+        if o < 0:
+            break
+        f = norm.find(ECHAP_F, o + len(ECHAP_O))
+        if f < 0:
+            return spans, "ouvrant SANS fermant"
+        if norm.find(ECHAP_O, o + len(ECHAP_O), f) >= 0:
+            return spans, "ouvrants IMBRIQUES"
+        spans.append((o + len(ECHAP_O), f))
+        i = f + len(ECHAP_F)
+    if norm.find(ECHAP_F, i) >= 0:
+        return spans, "fermant SANS ouvrant"
+    return spans, None
+
 
 # 🔴 dn4-40 / AC40.7.c — L'INSTRUMENT DE CAMPAGNE, ⛔ PAS UN CHANGEMENT DE
 # FORMAT. Import DEFENSIF : une gate reste jouable si son instrument manque.
@@ -483,14 +576,35 @@ def balaye(racine, rels, motifs=None, saut_ligne=None):
             if saut_ligne and saut_ligne(rel, ligne):
                 continue
             norm = normalise(ligne)
+            # dn4-40 / AC40.5 — l'echappement, et ses trois gardes.
+            spans, refus = spans_echappees(norm)
+            if refus:
+                echap_malformes.append((rel, i + 1, refus, ligne.strip()[:90]))
+                spans = []            # ⛔ un echappement douteux n'echappe RIEN
+            utile = False
             for cle, rx, _lib, garde in MOTIFS:
                 if cle not in motifs:
                     continue
                 if garde and not garde(norm):
                     continue
-                n = len(rx.findall(norm))
+                gardees = []
+                for m in rx.finditer(norm):
+                    dans = any(d <= m.start() < f for d, f in spans)
+                    if dans and cle == MOTIF_NON_ECHAPPABLE:
+                        # ⛔ REFUSE : une recette se copie-colle.
+                        echap_refuses.append((rel, i + 1, cle,
+                                              ligne.strip()[:90]))
+                        gardees.append(m)
+                    elif dans:
+                        utile = True
+                        echap_utiles.append((rel, i + 1, cle))
+                    else:
+                        gardees.append(m)
+                n = len(gardees)
                 if n:
                     out.append((rel, i + 1, cle, n, ligne.strip()[:120]))
+            if spans and not utile:
+                echap_inutiles.append((rel, i + 1, ligne.strip()[:90]))
     return out
 
 
@@ -909,6 +1023,53 @@ def main():
     if len(surface_absente) > 10:
         ctrl(False, "… et d'autres surfaces d'audit absentes", "",
              "%d au total" % len(surface_absente))
+    # ── dn4-40 / AC40.5 — LES TROIS GARDES DE L'ECHAPPEMENT ───────────────
+    print("\n     ECHAPPEMENT (AC40.5) — citer un motif ⛔ ne fabrique plus")
+    print("     une occurrence. Forme de MENTION (pour en parler sans le")
+    print("     poser) : `[[ cit ]]` … `[[ /cit ]]`, avec les espaces.")
+    for rel, ln, raison, cit in echap_malformes[:10]:
+        ctrl(False, "echappement MAL FORME — il n'echappe rien, et il SONNE",
+             "", "%s:%d — %s : %s" % (rel[-40:], ln, raison, cit))
+    if len(echap_malformes) > 10:
+        ctrl(False, "… et d'autres echappements mal formes", "",
+             "%d au total" % len(echap_malformes))
+    # 🔴 LA GARDE DE COLLISION (AC40.5.b) — ECRITE AVANT LE TEMOIN D'USAGE.
+    #    Une ligne qui PARLE de l'echappement en posant un jeton a moitie
+    #    ⛔ ne l'obtient pas : elle rougit. Le depot a paye ce motif 2 fois.
+    ctrl(not echap_malformes,
+         "tout echappement est BIEN FORME (⛔ ni orphelin ni imbrique)",
+         "%d echappement(s) EXERCE(S) sur %d ligne(s)"
+         % (len(echap_utiles), len({(r, l) for r, l, _c in echap_utiles})),
+         "⛔ %d ligne(s) MAL FORMEE(S)" % len(echap_malformes))
+    # 🔴 (iii) UN ECHAPPEMENT TROP GOURMAND FAIT BAISSER LE COMPTE, et un
+    #    garde-fou qui n'interdit que la HAUSSE le laisse passer.
+    for rel, ln, cit in echap_inutiles[:10]:
+        ctrl(False, "echappement INUTILE — il n'echappe AUCUNE occurrence",
+             "", "%s:%d — span pose au mauvais endroit : %s"
+                 % (rel[-40:], ln, cit))
+    if len(echap_inutiles) > 10:
+        ctrl(False, "… et d'autres echappements inutiles", "",
+             "%d au total" % len(echap_inutiles))
+    ctrl(not echap_inutiles,
+         "aucun echappement n'echappe du vide (⇒ ⛔ pas de baisse muette)",
+         "un span qui n'echappe rien mange du texte sans le dire",
+         "⛔ %d ECHAPPEMENT(S) INUTILE(S)" % len(echap_inutiles))
+    # ⛔ AC40.5.e — DECISION OWNER : le motif qui S'EXECUTE n'est PAS
+    #    echappable. Une recette echappee reste copiable-collable.
+    for rel, ln, cle, cit in echap_refuses[:10]:
+        ctrl(False, "echappement REFUSE — ce motif s'EXECUTE (une recette se "
+                    "copie-colle)",
+             "", "%s:%d [%s] : %s" % (rel[-40:], ln, cle, cit))
+    if len(echap_refuses) > 10:
+        ctrl(False, "… et d'autres echappements refuses", "",
+             "%d au total" % len(echap_refuses))
+    ctrl(not echap_refuses,
+         "⛔ AUCUNE tentative d'echapper le motif qui S'EXECUTE",
+         "`%s` n'est pas echappable — decision owner du 2026-09-02"
+         % MOTIF_NON_ECHAPPABLE,
+         "⛔ %d TENTATIVE(S) sur `%s` — l'occurrence reste COMPTEE"
+         % (len(echap_refuses), MOTIF_NON_ECHAPPABLE))
+
     ctrl(not illisibles and not surface_absente,
          "aucun saut subi (illisible / surface absente)",
          "%d illisible(s), %d surface(s) absente(s)"
@@ -1026,6 +1187,9 @@ def main():
              % (cle[0], cle[1][-40:], cle[2], cle[4], cle[3]))
     if len(fantomes) > 40:
         ctrl(False, "… et d'autres fantomes", "%d au total" % len(fantomes))
+    # ⚠️ dn4-40 / AC40.5.f (ii) — CE CONTROLE EST LE PRIX DE L'ECHAPPEMENT.
+    #    Echapper une occurrence DEJA ARBITREE la transforme en FANTOME. Le
+    #    remede est ECRIT dans le detail d'echec, ⛔ pas laisse a deviner.
     ctrl(not fantomes, "le manifeste ne cite aucune occurrence FANTOME",
          "%d ligne(s) de manifeste" % len(manif))
 
