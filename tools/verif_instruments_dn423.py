@@ -57,6 +57,10 @@ import sys
 OK = [0]
 KO = [0]
 
+# dn4-40 / AC40.6.b — CE QUE CHAQUE EXTRACTION A REELLEMENT VU.
+# (signature, occurrences_dans_la_source, corps_trouve)
+extractions = []
+
 
 def ctrl(bon, libelle, detail=""):
     if bon:
@@ -90,27 +94,107 @@ def lire(chemin):
 
 
 # ── LOCALISATION : ⛔ on ne cherche JAMAIS dans le fichier entier ────────────
+def _hors_litteral(src, depart):
+    """Parcourt du C en SAUTANT chaines, caracteres et commentaires.
+
+    🔴 dn4-40 / AC40.6 — CE QUE CE PARCOURS REPARE. `corps_fonction()`
+    comptait les accolades NAIVEMENT et le declarait : « il suffit ici parce
+    qu'aucune de ces fonctions ne porte d'accolade dans une chaine ». C'etait
+    vrai le jour ou c'etait ecrit — ⛔ ce n'est pas un invariant. Une accolade
+    ajoutee dans un `printf` d'une des fonctions visees DEPLACE le corps
+    extrait, et TOUS les controles qui lisent ce corps changent de sujet SANS
+    QUE RIEN NE LE DISE.
+
+    ⚠️ CE N'EST PAS UN PARSEUR C. Il ne connait ⛔ ni le preprocesseur ⛔ ni
+    les trigraphes ⛔ ni les chaines brutes (il n'y en a pas en C). Ce qu'il
+    fait est ce dont l'extraction a besoin, et rien de plus : ne jamais
+    prendre pour du CODE une accolade qui vit dans un LITTERAL.
+
+    Rend un iterateur de `(index, caractere)` sur le code SEUL.
+    """
+    k = len(src)
+    i = depart
+    while i < k:
+        c = src[i]
+        if c == "/" and i + 1 < k and src[i + 1] == "/":
+            j = src.find("\n", i)
+            i = k if j < 0 else j
+            continue
+        if c == "/" and i + 1 < k and src[i + 1] == "*":
+            j = src.find("*/", i + 2)
+            i = k if j < 0 else j + 2
+            continue
+        if c in "\"'":
+            q = c
+            i += 1
+            while i < k:
+                if src[i] == "\\":
+                    i += 2
+                    continue
+                if src[i] == q:
+                    i += 1
+                    break
+                if src[i] == "\n" and q == "'":
+                    break          # ⛔ un `'` isole (apostrophe) ⛔ n'ouvre rien
+                i += 1
+            continue
+        yield i, c
+        i += 1
+
+
 def corps_fonction(src, signature):
-    """Le corps `{ … }` de la fonction dont la SIGNATURE est donnée (le texte
-    exact qui précède l'accolade ouvrante). ⛔ Comptage d'accolades naïf : il
-    suffit ici parce qu'aucune de ces fonctions ne porte d'accolade dans une
-    chaîne — et la gate le VÉRIFIE en exigeant que le corps se referme."""
+    """Le corps `{ … }` de la fonction dont la SIGNATURE est donnee (le texte
+    exact qui precede l'accolade ouvrante).
+
+    🔴 dn4-40 / AC40.6.a — LES ACCOLADES DES LITTERAUX SONT IGNOREES. Le
+    comptage etait NAIF et s'en justifiait par un fait DATE (« aucune de ces
+    fonctions ne porte d'accolade dans une chaine »), ⛔ pas par un invariant.
+
+    ⚠️ AC40.6.b — CE QUE CETTE FONCTION PROUVE, ET CE QU'ELLE NE PROUVE PAS.
+    Rendre un corps prouve QU'UNE fermeture a profondeur 0 a ete trouvee.
+    ⛔ Ca ne prouve PAS que c'etait LA BONNE : si la signature est le PREFIXE
+    d'une autre signature, `find()` peut tomber sur la mauvaise fonction et
+    rendre un corps parfaitement equilibre — celui de quelqu'un d'autre.
+    ⇒ Le controle d'unicite ci-dessous existe pour ca ; le libelle ne dit plus
+      « le corps se referme » comme si ca suffisait.
+    """
+    n = src.count(signature)
+    extractions.append((signature, n))
     i = src.find(signature)
     if i < 0:
         return None
-    j = src.find("{", i)
+    j = -1
+    for idx, c in _hors_litteral(src, i):
+        if c == "{":
+            j = idx
+            break
     if j < 0:
         return None
-    prof, k = 0, j
-    while k < len(src):
-        if src[k] == "{":
+    prof = 0
+    for idx, c in _hors_litteral(src, j):
+        if c == "{":
             prof += 1
-        elif src[k] == "}":
+        elif c == "}":
             prof -= 1
             if prof == 0:
-                return src[j:k + 1]
-        k += 1
+                return src[j:idx + 1]
     return None
+
+
+def signature_ambigue(src, signature):
+    """La signature designe-t-elle UNE fonction, ou plusieurs ?
+
+    🔴 dn4-40 / AC40.6.b — LE CONTROLE QUI MANQUAIT. Une signature qui
+    apparait deux fois, ou qui est le PREFIXE d'une autre signature du meme
+    fichier, fait extraire un corps ARBITRAIREMENT (`str.find` prend le
+    premier). Le corps se refermait quand meme ⇒ la gate se declarait
+    satisfaite en lisant la MAUVAISE fonction.
+    ⚠️ MESURE DU 2026-09-02 : 21 appels, 15 signatures LITTERALES, 14
+    DISTINCTES, et 1 signature qui est le prefixe d'une autre. ⛔ Compter les
+    signatures, ⛔ pas recopier un chiffre : le ledger en annoncait 15.
+    """
+    n = src.count(signature)
+    return n if n != 1 else 0
 
 
 def corps_python(src, signature):
@@ -664,7 +748,17 @@ def bloc_revue_firmware(c, ui, wifi_h):
          "…et la variable morte `s_cpu_dep_cap` est RETIRÉE",
          "affectée, jamais lue")
 
-    pf = corps_fonction(c, "static int dn_console_printf(const char *fmt, ...)") or ""
+    # 🔴 dn4-40 / AC40.6.b — LA SIGNATURE ETAIT AMBIGUE, ET ELLE TOMBAIT JUSTE
+    #    PAR CHANCE. Sans le `\n{`, elle matche AUSSI la declaration avancee
+    #    (`… __attribute__((format(printf, 1, 2)));`), qui vient DEUX LIGNES
+    #    AVANT la definition. `str.find` prenait donc la declaration — et le
+    #    premier `{` rencontre ensuite se trouvait etre celui de la definition.
+    #    ⇒ Le corps extrait etait le BON, mais ⛔ pour aucune raison : intercaler
+    #      quoi que ce soit portant une accolade entre les deux aurait fait
+    #      extraire autre chose EN SILENCE, et « le corps se referme » aurait
+    #      continue de dire oui. Le controle d'ambiguite l'a epingle.
+    pf = corps_fonction(
+        c, "static int dn_console_printf(const char *fmt, ...)\n{") or ""
     ctrl("0xC0) == 0x80" in pf and "pile[n] = " in pf,
          "🔴 la troncature de FAMINE recule sur une tête UTF-8",
          "un octet orphelin cassait le motif de refus")
@@ -1352,6 +1446,33 @@ def main():
     bloc_latence(py, inj)
     bloc_latence_execute(racine)
     bloc_temoin_pilote(racine)
+
+    # ── dn4-40 / AC40.6.b — L'EXTRACTION NE SUR-AFFIRME PLUS ───────────────
+    print("\n── dn4-40 / AC40.6 — L'EXTRACTION DIT CE QU'ELLE PROUVE ──────────")
+    print("     ⚠️ Trouver un corps prouve QU'UNE fermeture a profondeur 0 a été")
+    print("        vue. ⛔ Ça ne prouve PAS que c'était LA BONNE : une signature")
+    print("        ambiguë rend un corps parfaitement équilibré — celui d'un")
+    print("        AUTRE. C'est ce que ce contrôle-ci ferme.")
+    absentes = [sig for sig, n in extractions if n == 0]
+    ambigues = [(sig, n) for sig, n in extractions if n > 1]
+    print("     %d extraction(s) · %d signature(s) distincte(s)"
+          % (len(extractions), len({s_ for s_, _ in extractions})))
+    # ⚠️ Le `ctrl()` de cette gate n'a QU'UN champ de detail (le correctif a
+    #    deux champs vit dans les gates du ledger et du dossier). On compose
+    #    donc le detail ici — ⛔ un KO n'imprime pas la justification du VERT.
+    ctrl(not absentes,
+         "toute signature d'extraction est TROUVÉE dans sa source",
+         ("%d extraction(s), 0 signature absente" % len(extractions))
+         if not absentes else
+         ("⛔ %d ABSENTE(S) : %s"
+          % (len(absentes), " · ".join(repr(x[:44]) for x in absentes[:4]))))
+    ctrl(not ambigues,
+         "toute signature d'extraction désigne UNE seule fonction",
+         ("%d extraction(s) — ⛔ aucune signature n'apparaît deux fois"
+          % len(extractions)) if not ambigues else
+         ("⛔ %d AMBIGUË(S) : %s"
+          % (len(ambigues), " · ".join("%r ×%d" % (x[:40], n)
+                                       for x, n in ambigues[:4]))))
 
     print("\n" + "=" * 78)
     print("⛔ CE QUE CETTE GATE NE SOLDE PAS, ET C'EST ÉCRIT : elle ne parle pas à")
