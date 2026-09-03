@@ -41,6 +41,16 @@ Work towards the first public release, `v0.1.0-beta`.
   Both files now say so.
 - **Numbers that were rounded now carry their measurement.** The detail-page timing is
   335.8 ms over n = 80, not "about 335 ms".
+- **Tools no longer reach outside the clone.** Three tools under `tools/` depended on
+  a path that only exists on one machine: two absolute paths in
+  `tools/verif_dossier_d5_dn45.py`, a UNC path in `tools/bench_lisseur_dn45.py`, and
+  the default of `--csv` in `tools/thermique_ventilos_dn48.py`, which pointed at a
+  Windows user profile and was **opened for writing** — so that one started, printed
+  its header, and only then failed. Each now derives its root from its own file
+  location, or from `tempfile.gettempdir()`. The gate that also reads the private
+  planning repository now takes it as an argument and, when it is absent, checks the
+  four authoritative files that *are* in the clone and **prints the two it could not
+  reach** — instead of silently certifying a tree that was not the one under test.
 
 ### Verified
 
@@ -84,9 +94,16 @@ Work towards the first public release, `v0.1.0-beta`.
   > **missing prerequisite** with its reason and a dedicated exit code, ⛔ not a
   > verdict on the code — and it says so in its own output. Anchoring those manifests
   > by pattern instead of by line number is still `dn4-40`.
-- **Four tools under `tools/` reach outside the clone**, to absolute paths that exist
-  only on the author's machine, so they cannot run from a clone anywhere else.
-  Removing that dependency is `dn5-3` — see [`docs/roadmap.md`](docs/roadmap.md).
+- ~~**Four tools under `tools/` reach outside the clone**, to absolute paths that
+  exist only on the author's machine, so they cannot run from a clone anywhere else.~~
+
+  ✅ **Resolved on 2026-09-04.** ⛔ The sentence above is struck through rather than
+  deleted: it was true when it was published. Two of those four were repaired in
+  passing by unrelated work before this was picked up, and a **fifth** — which no
+  earlier list had ever named — was found the day it was fixed, in the default value
+  of a `--csv` option pointing at the author's **Windows** profile. All of the
+  remaining ones now derive their root from their own location, or from the system
+  temporary directory. See **Fixed**, above.
 - CPU temperature and fan RPM require **LibreHardwareMonitor**, installed separately
   with administrator rights. Without it those two values show `--` and everything else
   keeps working.

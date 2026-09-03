@@ -253,7 +253,7 @@ est ROUGE** — **0** si toutes sont vertes ou déclarées non-jouables.
 
 | option | ce qu'elle fait |
 |---|---|
-| `--cockpit <chemin>` | passe le chemin du cockpit aux **2 gates qui le comprennent** (`verif_dossier_dn415.py`, `verif_ledger_dn416.py`). Sans elle, elles cherchent `~/projects/compagnon_project` et **échouent fermé** si l'arbre est ailleurs. |
+| `--cockpit <chemin>` | passe le chemin du cockpit aux ~~**2 gates qui le comprennent** (`verif_dossier_dn415.py`, `verif_ledger_dn416.py`)~~ **4 gates qui le comprennent** — `verif_campagne_dn440.py`, `verif_dossier_d5_dn45.py`, `verif_dossier_dn415.py`, `verif_ledger_dn416.py`. Sans elle, elles cherchent `~/projects/compagnon_project` et **échouent fermé** si l'arbre est ailleurs.<br><br>⚠️ **DATÉ LE 2026-09-04 (`dn5-3`), ⛔ pas réécrit — et le « 2 » était DÉJÀ faux avant cette story.** Mesuré au motif exact que cherche le runner (la déclaration `argparse` de l'option, **guillemets doubles compris**) : elles étaient **3** dès `f4848e4`, `verif_campagne_dn440.py` ayant reçu l'option sans que personne ne mette cette ligne à jour. La voie (a) de `dn5-3` en fait **4**. ⇒ le compte se **mesure**, il ne se recopie pas : `grep -l -- 'add_argument("--cockpit"' tools/verif_*.py`. |
 | `--silencieux` | tait le **motif** des NON-JOUABLES. ⛔ Ne tait rien d'autre : la sortie d'une gate ROUGE reste imprimée, toujours. |
 | `-h`, `--help` | l'en-tête du script — ses **cinq** règles. ⚠️ **La table des NON-JOUABLES n'y est PAS** : elle vit dans le corps du script, et l'aide dit comment la lire (`sed -n '/^NON_JOUABLES=(/,/^)/p'`). *(Corrigé à la revue du 2026-09-02 : cette ligne annonçait quatre règles et une table que la sortie ne contenait pas.)* |
 
@@ -268,7 +268,7 @@ l'imprime (`[  temoin  ] … est present ⇒ la gate est JOUEE`).
 | `tools/verif_sr03.py` | le PDF **[AN] AN4545** (VL6180X, DocID026571 Rev 1) **n'est pas au dépôt** — document STMicroelectronics, ⛔ non redistribuable. La gate l'attend en argument et sort sur son message d'usage. | poser le PDF en `tools/fixtures/AN4545.pdf` (son **sha256** est écrit dans la gate, qui refuse tout autre fichier) | `2` |
 | `tools/verif_dossier_dn415.py` | **le cockpit de planification n'est pas dans le clone** — c'est un dépôt **privé**, ⛔ jamais publié. Sans lui elle n'a aucune occurrence à arbitrer. | le dossier du cockpit (`~/projects/compagnon_project`, ou `--cockpit <chemin>`) | `4` |
 | `tools/verif_ledger_dn416.py` | **idem** — sans le cockpit il n'y a ni ledger ni tracker à confronter. ⚠️ « le dépôt code EST desknode » reste un **contrôle** : son échec reste un **rouge**. | le dossier du cockpit (`~/projects/compagnon_project`, ou `--cockpit <chemin>`) | `4` |
-| `tools/verif_dossier_d5_dn45.py` | elle lit **deux chemins ABSOLUS** de la machine de l'auteur ⇒ ⛔ `HOME` n'y peut rien. **Verte dans un clone posé sur cette machine, rouge sur un runner** : le seul des six qu'aucune mesure prise depuis ce poste ne pouvait montrer. La réparation est `dn5-3`. | ces deux chemins (leur réparation est portée ailleurs) | `4` |
+| `tools/verif_dossier_d5_dn45.py` | ~~elle lit **deux chemins ABSOLUS** de la machine de l'auteur ⇒ ⛔ `HOME` n'y peut rien. **Verte dans un clone posé sur cette machine, rouge sur un runner** : le seul des six qu'aucune mesure prise depuis ce poste ne pouvait montrer. La réparation est `dn5-3`.~~<br><br>✅ **RÉPARÉE LE 2026-09-04 — ⛔ la ligne d'origine est barrée, pas effacée : elle disait vrai.** Elle ne lit plus **aucun** chemin absolu : sa racine dérive de `__file__` et le cockpit est un **argument**. ⇒ son motif est désormais **le même que celui des deux gates au-dessus** : le cockpit est un dépôt **privé**, ⛔ jamais dans le clone. 🎯 **Et sans lui elle ne se tait plus** : elle contrôle les **4** fichiers faisant autorité qui vivent dans le clone, **imprime les 2** qu'elle n'a pas pu atteindre, et rend `4` — ou **`1`** si elle trouve un vrai KO, dans cet ordre. | le dossier du cockpit (`~/projects/compagnon_project`, ou `--cockpit <chemin>`) | `4` |
 | `tools/verif_veille_dn33.py` | **`managed_components/` est gitignoré** (186 Mo) et porte le générateur **amont** de LVGL. ⛔ 2 blocs sur 18 ne sont pas exercés ; **tout le reste est joué**. | `idf.py reconfigure` dans `firmware/desknode` | `4` |
 | `tools/verif_harnais_dn413.py` | **idem** — sans l'arbre LVGL le corpus C est **incomplet**, et la chasse aux renvois fantômes accusait des fonctions **qui existent**. Elle **déclare** désormais, ⛔ elle n'accuse plus. | `idf.py reconfigure` dans `firmware/desknode` | `4` |
 | `tools/verif_hist_dn413.py` | **idem** — elle **relit** `LV_CHART_POINT_NONE` dans l'en-tête LVGL, ce qui garantit que la sentinelle d'historique vaut bien celle de LVGL. Elle échoue **fermé**, ⛔ elle ne plante plus. | `idf.py reconfigure` dans `firmware/desknode` | `4` |
@@ -919,6 +919,10 @@ Pour **`firmware/desknode`** (P1 et suite) — **QUATRE fichiers, pas trois** :
 
 $py = "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe"
 $B  = '\\wsl.localhost\Ubuntu\home\nasbarok\projects\desknode\firmware\desknode\build'
+#  ⚠️ dn5-3 (2026-09-04) — EXEMPLE : ce chemin UNC est celui de la machine de
+#     l'auteur. Le vôtre s'obtient dans WSL par `wslpath -w ~/projects/desknode`.
+#     ⛔ Il n'est PAS généralisé : c'est ce qu'il faut taper, et une recette
+#     Windows qu'on généralise à l'aveugle ne marche plus.
 & $py -m esptool --chip esp32s3 -p COM3 -b 460800 --before default-reset --after hard-reset `
       write-flash --flash-mode dio --flash-size detect --flash-freq 80m `
       0x0      "$B\bootloader\bootloader.bin" `
@@ -1095,6 +1099,8 @@ d'asset, table de partitions par défaut :
 ```powershell
 $py = "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe"
 $B  = '\\wsl.localhost\Ubuntu\home\nasbarok\projects\desknode\firmware\hello-desknode\build'
+#  ⚠️ dn5-3 (2026-09-04) — EXEMPLE : chemin de la machine de l'auteur.
+#     Le vôtre : `wslpath -w ~/projects/desknode`.
 & $py -m esptool --chip esp32s3 -p COM3 -b 460800 --before default-reset --after hard-reset `
       write-flash --flash-mode dio --flash-size detect --flash-freq 80m `
       0x0     "$B\bootloader\bootloader.bin" `
@@ -1513,6 +1519,8 @@ contradictoires dans le même rectangle**.
 ```powershell
 $py = "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe"
 & $py \\wsl.localhost\Ubuntu\home\nasbarok\projects\desknode\agent\dn_agent.py --serie COM3
+#  ⚠️ dn5-3 (2026-09-04) — EXEMPLE : chemin de la machine de l'auteur.
+#     Le vôtre : `wslpath -w ~/projects/desknode`.
 #  --temoin     imprime son propre coût CPU toutes les 10 s
 #  --duree 60   s'arrête proprement après 60 s (le témoin « arrêt propre » d'AC7)
 #  --stdout     trames à l'écran, sans carte (débogage)

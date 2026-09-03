@@ -17,6 +17,10 @@ du périmètre V1).
    Les onze autres grandeurs, elles, restent libres de droits.
 Tourne sur le Python Windows 3.13.4 de la tour :
     python \\wsl.localhost\Ubuntu\home\nasbarok\projects\desknode\agent\dn_agent.py --stdout
+⚠️ dn5-3 (2026-09-04) — LA LIGNE CI-DESSUS EST UN **EXEMPLE**, et le chemin UNC
+   qu'elle porte est celui de la machine de l'auteur. Le vôtre s'obtient dans
+   WSL par `wslpath -w ~/projects/desknode`. ⛔ Il n'est pas généralisé : c'est
+   ce qu'il faut taper côté Windows.
 
 ── CE QUE dn4-1 A CHANGÉ, ET CE QU'IL N'A PAS CHANGÉ ───────────────────────────
 dn2-2 publiait UNE métrique (`cpu`) en protocole v1. dn4-1 en publie CINQ en v2 —

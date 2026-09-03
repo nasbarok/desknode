@@ -125,6 +125,65 @@ Contributions are welcome. Two practical points:
   believed is part of the documentation.
 - `mesures/` holds the raw measurement record. It is deliberately kept — it is the
   evidence behind the numbers.
+
+  ⚠️ **Extended on 2026-09-04 (`dn5-3`): the author's machine is still named in this
+  tree, in places that are kept on purpose. Here is the whole picture, measured.**
+
+  Nothing in this repository still *depends* on one particular machine. What remains
+  are names, and each kind is kept for a different reason.
+
+  **The instrument, stated — a count without its pattern means nothing.** Every number
+  below comes from, on the tree as it stood on **2026-09-04**:
+
+  ```
+  git grep -n -I -E 'nasbarok|naoua|~/projects|wsl\.localhost' HEAD --
+  ```
+
+  It returns **139 files** and **1 323 sites**. ⚠️ A different pattern returns
+  different numbers: `nasbarok` alone — the pattern earlier notes used — returns
+  **110 files**. Neither is wrong; they measure different things, and this is why the
+  pattern is always written next to the count.
+
+  | class | files | sites | what it is | why it is what it is |
+  |---|---:|---:|---|---|
+  | 1. functional dependency | 3 | 4 | tools that could not run from a clone | 🔴 **fixed** by `dn5-3` — this is the only class that was a defect |
+  | 2. usage example | 18 | 39 | Windows recipes, docstrings, comments | ✅ each one that *names* the machine now **declares itself as an example** at the point where it is read, with the command that gives you your own path |
+  | 3. generation trace | 5 | 5 | the `* Opts:` line in `firmware/…/fonts/dn_font_*.c` | 🔴 **kept, untouched** — see below |
+  | 4. evidence record | 111 | 1 264 | `mesures/` — captured console output | 🔴 **kept, untouched** — rewriting it would falsify the record |
+  | 5. the name *is* the subject | 2 | 11 | see the declared exclusions below | ⚠️ **excluded, and the exclusion is written** |
+
+  **What `mesures/` actually costs, since it is kept on purpose.** As of **2026-09-04** it
+  holds **395 files** and **9 900 692 bytes** — that is **9.90 MB** in decimal units, or
+  **9.44 MiB** in binary ones. ⚠️ Those are the **same number of bytes** written in two
+  different units, ⛔ not two different measurements; earlier notes in the planning
+  repository quoted *320 files / 9.6 MB*, which is simply older. Reproduce it with
+  `git ls-tree -r -l HEAD mesures/`.
+
+  **Why the five font files are never rewritten.** `firmware/desknode/main/fonts/`
+  holds five generated C files, and each carries a line beginning `* Opts:` that
+  records **the exact `lv_font_conv` command that actually produced the file** —
+  including the absolute output path it was written to. That line is *provenance*: it
+  is how anyone can regenerate the same font and get the same bytes. Rewriting it to
+  hide a directory name would leave a command that was never run. Same reasoning as
+  `mesures/`, different artefact: `mesures/` is **the evidence behind a number**, a
+  font header is **the command behind a file**. Neither is decoration, and neither is
+  edited.
+
+  **The two declared exclusions**, because an exclusion that is not written is a lie
+  of omission:
+
+  - `.github/workflows/cla.yml` names `nasbarok` **once**, inside the URL of the CLA
+    document the bot asks contributors to sign. That is a **GitHub login in a URL**,
+    ⛔ not a filesystem path. Removing it breaks the bot.
+  - `docs/dn5-1-ecart-promesses.md` carries **ten** occurrences because it is *the
+    page that documents this very gap*. Censoring it would make the record
+    unreadable.
+
+  **On `~/projects/desknode`.** It appears throughout the documentation and it
+  **names no one** — there is no user name in it. It is this repository's
+  conventional clone location, nothing more: **any path works**, and the tools no
+  longer care, since each one now derives its root from its own location. Where a
+  Windows recipe needs the UNC form of *your* clone, run `wslpath -w ~/projects/desknode`.
 - **Nothing that is pushed lies.** The bar for publishing is *not* "every story is
   finished" — at that bar nothing would ever ship. The bar is that no file in the
   published tree makes a claim the tree itself refutes. Unfinished work may be
@@ -172,7 +231,24 @@ Contributions are welcome. Two practical points:
   > twenty-seven gates cannot be exercised where CI runs — two read the private
   > planning repository, three need `managed_components/`, which is gitignored, one
   > reads absolute paths that exist only on the author's machine, and one needs a
-  > vendor PDF that is not redistributable. *(Corrected at the code review of
+  > vendor PDF that is not redistributable.
+  >
+  > ⚠️ **Annotated on 2026-09-04 — one clause above is no longer true, and it is
+  > dated rather than rewritten.** *"one reads absolute paths that exist only on the
+  > author's machine"* described `tools/verif_dossier_d5_dn45.py`. It no longer reads
+  > any absolute path: it derives its root from its own location and takes
+  > `--cockpit`. It is still declared, and still returns the same exit code where CI
+  > runs — but now for the **same reason as the two others**: the planning repository
+  > is private and is never cloned. Without it, the gate now checks the four
+  > authoritative files that *are* in the clone and **prints the two it could not
+  > reach**, instead of having nothing to scan.
+  >
+  > ⚠️ **The two counts in this paragraph — "seven" and "twenty-seven" — are known to
+  > be out of date and are ⛔ deliberately not corrected here.** They belong to
+  > `dn4-39`, whose table and CI they describe; they are recorded against it rather
+  > than fixed in passing by an unrelated change.
+  >
+  > *(Corrected at the code review of
   > 2026-09-02: this said "six", omitting the PDF one — while `README.md` said
   > "seven", the declaration table holds seven entries, and the first real run
   > reported `7 NON-JOUABLE`.)* They are
