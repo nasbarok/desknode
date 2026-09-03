@@ -326,8 +326,12 @@ def main():
     # ── dn5-3 / AC3.2.c — LE DEFAUT DE `--csv` NE NOMME PLUS PERSONNE ──────
     #
     # 🔴 AVANT le 2026-09-04 ce defaut valait
-    #    `C:\Users\naoua\AppData\Local\Temp\dn48_thermique.csv` — le profil
-    #    WINDOWS de l'auteur. `enregistrer()` OUVRE ce chemin EN ECRITURE
+    #    `C:\Users\<le-compte-Windows-de-l-auteur>\AppData\Local\Temp\` — son
+    #    profil WINDOWS. ⚠️ ⛔ LE NOM DE COMPTE N'EST PAS RECOPIE ICI : le citer
+    #    le REINTRODUIRAIT dans l'arbre publie, et l'inventaire suivant le
+    #    compterait. ⛔ Il n'est EFFACE de nulle part pour autant (NFR3) — la
+    #    valeur exacte se relit dans l'historique git et dans les captures de
+    #    `mesures/dn5-3/`, qui sont gardees precisement pour ca. `enregistrer()` OUVRE ce chemin EN ECRITURE
     #    (`open(chemin, "w", ...)`) ⇒ sur la machine de quelqu'un d'autre,
     #    `FileNotFoundError`.
     # ⚠️ ET SON ECHEC EST PIRE QUE CELUI DES DEUX AUTRES DEPENDANCES, PARCE

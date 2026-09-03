@@ -4,7 +4,11 @@ sys.stdout.reconfigure(encoding="utf-8")
 # ── dn5-3 / AC3.2.a — LE CHEMIN DE L'AGENT SE DERIVE DE `__file__` ──────────
 #
 # 🔴 AVANT le 2026-09-04, cette ligne etait un chemin UNC ECRIT EN DUR :
-#    `\\wsl.localhost\Ubuntu\home\nasbarok\projects\desknode\agent`.
+#    `\\wsl.localhost\Ubuntu\home\<l-auteur>\projects\desknode\agent`.
+#    ⚠️ ⛔ LE NOM D'UTILISATEUR N'EST PAS RECOPIE ICI — le citer le
+#    REINTRODUIRAIT dans l'arbre publie. ⛔ Il n'est efface de nulle part
+#    (NFR3) : la valeur exacte se relit dans l'historique git et dans
+#    `mesures/dn5-3/T1-temoin-negatif.txt`.
 #    Depuis un clone quelconque, `import dn_agent` mourait en
 #    `ModuleNotFoundError` — MESURE le 2026-09-04, etage (i) du temoin
 #    (`mesures/dn5-3/T1-temoin-negatif.txt`), rc **1**.

@@ -35,10 +35,13 @@ VID_PID="303a:1001"
 USBIPD='C:\Program Files\usbipd-win\usbipd.exe'
 SERIE="${DN_SERIE:-COM3}"
 # ⚠️ dn5-3 (2026-09-04) — LE DEFAUT CI-DESSOUS EST UN **EXEMPLE**, et il decrit
-#    la tour de l'auteur. ⛔ Il ne porte NI `nasbarok`, NI `naoua`, NI
-#    `~/projects`, NI `wsl.localhost` : l'inventaire par motif de `dn5-3` NE
-#    POUVAIT PAS LE COMPTER — c'est un 6e motif, la LETTRE DE LECTEUR, qui l'a
-#    trouve (`mesures/dn5-3/T1-lecture-code.txt`).
+#    la tour de l'auteur. ⛔ Il ne porte AUCUN des quatre motifs de l'inventaire
+#    de `dn5-3` : cet inventaire NE POUVAIT PAS LE COMPTER. C'est un 6e motif,
+#    la LETTRE DE LECTEUR, qui l'a trouve (`mesures/dn5-3/T1-lecture-code.txt`).
+#    ⚠️ ⛔ LES QUATRE MOTIFS NE SONT PAS RECOPIES ICI, ET C'EST DELIBERE : les
+#    citer pour dire que ce site ne les porte pas les lui DONNERAIT, et le
+#    prochain inventaire le compterait. Ce depot a deja paye ce defaut. Ils sont
+#    ecrits une seule fois, dans `CONTRIBUTING.md`.
 #    ⇒ Ce n'est PAS une dependance fonctionnelle : `DN_TOUR_WIN` la remplace,
 #      et la revue du 2026-08-26 juste en dessous NOMME deja le risque. Ce qui
 #      manquait, c'est que le defaut se DECLARE la ou on le lit.
