@@ -1,0 +1,130 @@
+==============================================================================
+dn4-40 / AC40.7 — CAMPAGNE DE MUTANTS SUR verif_ledger_dn416.py
+==============================================================================
+⛔ AUCUNE ecriture dans le cockpit vivant : chaque mutant joue
+   dans une COPIE jetable. Indexation : (site, libelle), ⛔ pas console.
+
+── T0 : L'ARBRE PROPRE ───────────────────────────────────────
+   rc=0 · 34 controle(s) traces · 0 KO · regeneration rc=0
+
+── LES BANCS : CE QUI GARDE LA CAMPAGNE ELLE-MEME ────────────
+   ⛔ chacun REPLANTE la faute d'origine. Un banc qui
+      debrancherait la garde ne prouverait que son existence.
+   [OK] B1-mutation-nulle            la mutation ne change RIEN ⇒ `change` doit etre VIDE (vu : vide)
+   [OK] B1b-mutation-hors-cible      declare `tracker`, mord `ledger` ⇒ l'ecart doit se VOIR
+   [OK] B1c-prefixe-sans-borne       le motif borne doit muter `dn4-41-la-vraie-cible`, ⛔ pas `dn4-410-…` (vu : dn4-41-la-vraie-cible)
+   [OK] B2a-T0-rc-non-nul            rc=1 ⛔ non nul ⇒ `campagne ININTERPRETABLE`, rc=1 (rc vu : 1)
+   [OK] B2b-T0-trace-vide            ⛔ AUCUN controle trace — la gate n'a pas tourne ⇒ `campagne ININTERPRETABLE`, rc=1 (rc vu : 1)
+   [OK] B2c-T0-deja-rouge            l'arbre propre n'est pas vert ⇒ `campagne ININTERPRETABLE`, rc=1 (rc vu : 1)
+   [OK] B3-ko-l-emporte              KO puis OK sur la MEME cle ⇒ la lecture doit rendre KO (vu : KO)
+   [OK] B3b-discriminant             deux libelles au MEME site ⇒ DEUX cles, ⛔ pas une (vu : 2)
+   [OK] B4-quatre-formes             3 formes LUES + la f-string DITE illisible (manquent : aucune · illisibles : 1)
+   [OK] B5-rc-regeneration           une regeneration en echec doit RENDRE son rc (vu : 1)
+   [OK] B6-le-compte-garde           sans le mutant `G5-sans-disposition` ⇒ 1 controle nu et rc=1 (rc vu : 1)
+   [OK] B7-exemption-falsifiable     un libelle hors du tri ⇒ temoin FAUX ; un libelle classe LEGITIME ⇒ temoin VRAI (vus : False / True)
+
+── LES MUTANTS ───────────────────────────────────────────────
+   [OK] A-porteur-en-prose           VU ROUGE sur verif_ledger_dn416.py:1310
+        un porteur EN PROSE qui ne releve d'AUCUNE des cinq formes
+   [OK] C-porteur-epic               VERT (attendu)
+        un porteur `epic-*` — INVISIBLE avant dn4-40, donc a vide
+   [OK] C2-porteur-epic-mort         VU ROUGE sur verif_ledger_dn416.py:1400
+        un porteur `epic-*` dont l'EPIC est clos ⇒ doit rougir
+   [OK] B-incise-story-close         VERT (attendu)
+        une cle VIVANTE + une story CLOSE citee en incise
+   [OK] E1-bouchon-tbd               VU ROUGE sur verif_ledger_dn416.py:1195 (+ 1 couple(s) declare(s))
+        un porteur bouchon `TBD`
+   [OK] E2-porteur-vide              VU ROUGE sur verif_ledger_dn416.py:1195 (+ 2 couple(s) declare(s))
+        un champ porteur VIDE
+   [OK] E3-story-done                VU ROUGE sur verif_ledger_dn416.py:1400
+        un porteur qui est une story `done`
+   [OK] E4-story-inconnue            VU ROUGE sur verif_ledger_dn416.py:1407 (+ 1 couple(s) declare(s))
+        un porteur absent du tracker
+   [OK] F2-sans-cle                  VU ROUGE sur verif_ledger_dn416.py:1316
+        une forme 2 dont l'argument n'est PAS une cle
+   [OK] F3-fait-muet                 VU ROUGE sur verif_ledger_dn416.py:1325
+        un `bloquee par :` dont le fait est un bouchon
+   [OK] F3-porteur-deguise           VU ROUGE sur verif_ledger_dn416.py:1331
+        un `bloquee par :` qui se REDUIT a une cle de story
+   [OK] F4-hors-close                VU ROUGE sur verif_ledger_dn416.py:1338 (+ 1 couple(s) declare(s))
+        une forme 4 `clos par :` sur un verdict qui n'est pas CLOSE
+   [OK] F4-fossoyeur-muet            VU ROUGE sur verif_ledger_dn416.py:1344
+        une forme 4 `clos par :` dont l'argument est un BOUCHON
+   [OK] F2-cle-fantome-sous-close    VU ROUGE sur verif_ledger_dn416.py:1350
+        une forme 2 nommant une story qui n'existe NULLE PART, sous CLOSE
+   [OK] F5-hors-connaissance         VU ROUGE sur verif_ledger_dn416.py:1358 (+ 2 couple(s) declare(s))
+        une forme 5 `—` sur un verdict qui n'est pas CONNAISSANCE
+   [OK] V-verdict-hors-liste         VU ROUGE sur verif_ledger_dn416.py:1160
+        un verdict qui n'est pas l'un des CINQ
+   [OK] G1-preuve-vide               VU ROUGE sur verif_ledger_dn416.py:1461
+        un champ preuve VIDE
+   [OK] G2-preuve-adresse-nue        VU ROUGE sur verif_ledger_dn416.py:1465
+        une preuve qui se REDUIT a un `fichier:ligne`
+   [OK] G3-date-invalide             VU ROUGE sur verif_ledger_dn416.py:1201
+        une date de disposition qui n'existe pas
+   [OK] G4-marqueur-hors-liste       VU ROUGE sur verif_ledger_dn416.py:981
+        un marqueur de tete hors de la liste fermee
+   [OK] G5-sans-disposition          VU ROUGE sur verif_ledger_dn416.py:1155
+        une entree ouverte SANS ligne de disposition
+   [OK] G6-multi-disposition         VU ROUGE sur verif_ledger_dn416.py:1206
+        une entree qui porte DEUX lignes de disposition
+   [OK] H-ancre-collision            VU ROUGE sur verif_ledger_dn416.py:958 (+ 2 couple(s) declare(s))
+        DEUX entrees dont l'ancre 8-hexa du §9 COLLIDE — collision FORGEE
+   [OK] H2-manifeste-ligne-absente   VU ROUGE sur verif_ledger_dn416.py:1538 (+ 1 couple(s) declare(s))
+        UNE ligne du §9 retiree APRES regeneration ⇒ une entree SANS ligne
+   [OK] H3-manifeste-ligne-falsifiee VU ROUGE sur verif_ledger_dn416.py:1551
+        UNE cellule du §9 reecrite, l'ancre INCHANGEE ⇒ elle ne REPRODUIT plus
+   [OK] H4-manifeste-absent          VU ROUGE sur verif_ledger_dn416.py:1475
+        le manifeste d'arbitrage n'est PAS livre
+   [OK] H5-manifeste-sans-citation   VU ROUGE sur verif_ledger_dn416.py:1479
+        le manifeste ne cite plus le script qui produit son compte
+   [OK] H6-borne-retiree             VU ROUGE sur verif_ledger_dn416.py:1501
+        la borne de DEBUT du §9 disparait ⇒ le controle retombe sur TOUT le fichier
+   [OK] I-perimetre-vide             VU ROUGE sur verif_ledger_dn416.py:965 (+ 2 couple(s) declare(s))
+        le ledger perd toutes ses entrees ouvertes
+   [OK] J-statut-inconnu             VU ROUGE sur verif_ledger_dn416.py:1425
+        le statut d'un porteur n'est NI vivant NI mort (faute de frappe)
+   [OK] K-collision-vivant-mort      VU ROUGE sur verif_ledger_dn416.py:1438
+        deux cles longues repliees sur la MEME cle courte, l'une VIVANTE et l'autre MORTE
+   [OK] L-hors-depot                 VU ROUGE sur verif_ledger_dn416.py:852
+        la gate jouee depuis un arbre qui n'est PAS le depot DeskNode
+   [OK] D-faux-rouge-arme            VERT (attendu) — cle mutee : `dn4-41-la-carte-seule-suffit`
+        `dn4-41` passee `done` DANS LA COPIE ⇒ la gate doit rester verte
+
+── `controle ⇒ couvert` : LES CONTROLES GARDES PAR RIEN ───────
+   ⛔ « N mutants, N vus rougir » prouve `mutant ⇒ rouge`.
+      Ce compte-ci est l'AUTRE sens, et c'est celui qui manque.
+   controles traces          : 34
+   controles vus rougir      : 29
+   exemptes (declares)       : 5
+        [temoin OK] verif_ledger_dn416.py:891 « le depot cockpit est atteignable »
+              motif  : PREREQUIS, ⛔ pas un controle : son chemin d'echec sort EN AMONT (rc=4, `PREREQUIS ABSENT`). Prouve par mutant au tri d'AC40.2.
+              temoin : classe LEGITIME au tableau `CAS` du tri
+        [temoin OK] verif_ledger_dn416.py:892 « le ledger est present »
+              motif  : idem — meme garde amont, meme mutant (`m_ledger_absent`).
+              temoin : classe LEGITIME au tableau `CAS` du tri
+        [temoin OK] verif_ledger_dn416.py:893 « le tracker est present »
+              motif  : idem.
+              temoin : classe LEGITIME au tableau `CAS` du tri
+        [temoin OK] verif_ledger_dn416.py:912 « le ledger se LIT en UTF-8 »
+              motif  : le chemin d'echec est le `except` juste au-dessus : il fait `ctrl(False, …)` PUIS `return 1`. Prouve par `m_ledger_binaire`.
+              temoin : classe LEGITIME au tableau `CAS` du tri
+        [temoin OK] verif_ledger_dn416.py:919 « le tracker se LIT en UTF-8 »
+              motif  : idem — prouve par `m_tracker_binaire`.
+              temoin : classe LEGITIME au tableau `CAS` du tri
+   ⚠️ GARDES PAR RIEN        : 0
+
+── LA REGLE QUE CETTE CAMPAGNE APPLIQUE (AC4.4) ───────────────
+   « AUCUN CONTROLE **NEUF** NE SORT SANS SON MUTANT. »
+   NEUF = un site `ctrl()` **pose ou reecrit** par la marche
+          courante, etabli au `git blame` sur la gate — ⛔ pas
+          « ajoute au fichier » : reecrire la CONDITION d'un
+          controle existant le rend neuf, deplacer sa ligne non.
+   ⇒ Ce que cette campagne applique est PLUS FORT : tout controle
+     TRACE doit etre couvert ou EXEMPTE, neuf ou pas.
+
+==============================================================================
+BILAN CAMPAGNE : 33 mutant(s) JOUE(S), 0 echec(s), 0 controle(s) gardes par rien
+BILAN : 33 OK, 0 KO
+==============================================================================
+rc=0

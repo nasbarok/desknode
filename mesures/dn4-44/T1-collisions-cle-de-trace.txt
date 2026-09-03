@@ -1,0 +1,21 @@
+dn4-44 / AC5.1 — CE QUE LE DISCRIMINANT CHANGE, MESURE GATE PAR GATE
+==============================================================================
+  cle AVANT = `<fichier>:<ligne>`   ·   cle APRES = `(site, libelle)`
+  `replies` = controles que l'ancienne cle confondait en UN seul.
+
+  gate                               lignes  avant  apres  replies
+  verif_dossier_d5_dn45.py                9      3      9        6
+  verif_dossier_dn415.py                 32     25     29        4
+  verif_hist_dn413.py                    56     53     56        3
+  verif_journal_soak_dn45.py             26     24     26        2
+  verif_ledger_dn416.py                  34     34     34        0
+  verif_lissage_dn45.py                  21     21     21        0
+  verif_paliers_dn441.py                 42     30     42       12
+  verif_polices_dn440.py                 11      9     11        2
+  verif_verrou_lvgl_dn413.py             60     10     60       50
+  TOTAL                                 291    209    288       79
+
+⚠️ SUR LA GATE QUE LA CAMPAGNE JOUE (`verif_ledger_dn416.py`) LE COMPTE NE
+   BOUGE PAS — 34 lignes / 34 sites / 34 cles, ⛔ 0 collision. C'est
+   pourquoi « 34 traces » et « 15 gardes par rien » se comparent encore
+   au T0 de `dn4-40`. ⛔ Ailleurs, ils ne se comparent plus.

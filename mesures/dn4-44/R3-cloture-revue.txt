@@ -1,0 +1,38 @@
+# dn4-44 — TIR DE CLOTURE DE LA REVUE DE CODE, 2026-09-03T21:04:48Z
+# ⛔ chaque chiffre publie ailleurs se LIT ici. Aucun n'est recopie.
+
+== 1. HARNAIS COMPLET ==
+[  temoin  ] tools/verif_veille_dn33.py             firmware/desknode/managed_components/lvgl__lvgl/scripts/built_in_font/built_in_font_gen.py est present ⇒ la gate est JOUEE
+[VERTE      ] tools/verif_veille_dn33.py             rc=0      6s
+[VERTE      ] tools/verif_verrou_lvgl_dn413.py       rc=0     15s
+[VERTE      ] tools/verif_xip_dn422.py               rc=0      0s
+
+BILAN : 27 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 29 gates (96s)
+⛔ ROUGES :
+   · tools/verif_dossier_dn415.py (rc=1)
+
+== 2. CAMPAGNE DE MUTANTS ==
+── `controle ⇒ couvert` : LES CONTROLES GARDES PAR RIEN ───────
+   controles traces          : 34
+   controles vus rougir      : 29
+   exemptes (declares)       : 5
+   ⚠️ GARDES PAR RIEN        : 0
+BILAN CAMPAGNE : 33 mutant(s) JOUE(S), 0 echec(s), 0 controle(s) gardes par rien
+BILAN : 56 OK, 0 KO
+
+== 3. CAMPAGNE DU TRI ==
+   ✅ aucun site non classe — 15 site(s) au tableau
+BILAN TRI : 15 cas au tableau — dont 11 SITE(S) VIVANT(S) et 4 FICHE(S) de remede — 6 LEGITIME(S), 3 TROU(S), 1 INERTE(S), 5 BRANCHE(S), 0 echec(s)
+
+== 4. GATE DU LEDGER ==
+BILAN : 34 OK, 0 KO
+
+== 5. OCCURRENCES DES 5 MOTIFS ARBITRES (garde-fou) ==
+     ARCHIVES : 117 occurrence(s) sur 109 ligne(s) — COMPTEES et LISTEES,
+  [KO ] somme des verdicts == occurrences de l'arbre             ⛔ 204 (manifeste) vs 207 (arbre), ecart -3 — CE QUI LE COMPOSE : 4 NOUVELLE(S) dans l'arbre : cockpit:tifacts/deferred-work.md [vl53l0x] #1 'dont `sprint-change-proposal-2026-08-31.' · cockpit:int-status-desknode.yaml [vl53l0x] #1 'dn4-7-le-tof-porte-t-il-vraiment: blocke' · cockpit:cts/epics-desknode-v1.md [vl53l0x] #1 '`done` depuis mi-août) : **on séquence p' · cockpit:e-proposal-2026-08-31.md [vl53l0x] #1 '| « VL53L0X » | `TOF050C-VL6180X` — réfu' || 1 FANTOME(S) au manifeste : cockpit:int-status-desknode.yaml [vl53l0x] #1 'dn4-7-le-tof-porte-t-il-vraiment: blocke'
+BILAN : 22 OK, 10 KO
+
+== 6. GARDE-FOU firmware/ ==
+git diff --stat -- firmware/ :
+
+(vide = 0 octet)

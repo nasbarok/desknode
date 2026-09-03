@@ -1,0 +1,45 @@
+dn4-44 — CLOTURE : T0 ⇒ T7, CHAQUE CHIFFRE NOMME SON FICHIER
+==============================================================================
+⛔ AUCUN chiffre de ce tableau n'est recopie d'ailleurs : chacun se relit sur
+   la ligne de bilan du fichier nomme, dans mesures/dn4-44/.
+
+  mesure                          T0 (f4848e4)          T7 (sortie)
+  ------------------------------  --------------------  ---------------------
+  harnais de gates                26 V / 1 R / 1 NJ /28 27 V / 1 R / 1 NJ /29
+    fichier                       T0-gates-avant.txt    T7-gates-apres.txt
+    rc                            1                     1
+    duree                         67 s                  96 s
+  campagne de mutants             23 mut / 0 ech / 15   33 mut JOUES / 0 / 0
+    traces / vus rougir           34 / 19               34 / 29 (+5 exemptes)
+    fichier                       T0-campagne.txt       T7-campagne.txt
+    rc                            0                     0
+  campagne du tri                 13 sites / 1 echec    15 sites / 0 echec
+    classes                       9 LEG / 3 TROU / 1 IN 9 / 3 / 1 / 2 BRANCHE
+    fichier                       T0-tri-ctrl.txt       T7-tri-ctrl.txt
+    rc                            1  <= ROUGE A HEAD    0
+  gate du ledger                  (non capturee seule)  34 OK, 0 KO
+    fichier                                             T7-ledger.txt
+  temoins negatifs des bancs      (n'existaient pas)    10 temoins / 0 echec
+    fichier                                             T7-temoins-bancs.txt
+
+── LES INVARIANTS, ET C'EST « IDENTIQUE » QUI EST EXIGE, ⛔ PAS « PAS PLUS » ──
+  occurrences des 5 motifs arbitres   T0 : 117 archives + 207 arbre = 324
+                                      T7 : 117 archives + 207 arbre = 324
+    fichiers                          T0-occurrences.txt / T7-occurrences.txt
+  rouge PRE-EXISTANT du dossier       T0 : 22 OK, 10 KO   T7 : 22 OK, 10 KO
+    ⛔ il appartient a d'autres marches : ni impute, ni aggrave.
+  git diff -- firmware/               0 octet, depuis le SHA de debut de story
+    ⛔ compare depuis le debut de story, ⛔ jamais `main..HEAD`.
+
+── LE TEMOIN DE LA DECLARATION NON_JOUABLE ───────────────────────────────────
+  verif_campagne_dn440.py sans cockpit  ⇒ rc=4, `BILAN : 0 OK, 0 KO`
+    fichier                             T7-temoin-non-jouable.txt
+  ⇒ c'est ce tir qui rend la ligne de run_gates.sh VERIFIABLE : la gate est
+    jouee quand meme et doit rendre EXACTEMENT ce code.
+
+── CE QUI NE SE COMPARE PLUS, ET IL FAUT LE DIRE ─────────────────────────────
+  Le discriminant de cle demasque 79 controles que l'ancienne cle confondait,
+  sur les 9 gates instrumentees (T1-collisions-cle-de-trace.txt). ⛔ Les comptes
+  « traces » d'AVANT et d'APRES ne se comparent donc plus SUR CES GATES-LA.
+  ⚠️ Sur `verif_ledger_dn416.py` — la seule que la campagne joue — ils se
+  comparent encore : 34 lignes / 34 sites / 34 cles, 0 collision.

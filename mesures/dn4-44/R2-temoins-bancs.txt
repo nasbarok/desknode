@@ -1,0 +1,65 @@
+# TEMOINS NEGATIFS — revue de code dn4-44, 2026-09-03T20:59:53Z
+==============================================================================
+dn4-44 / AC5.7 — TEMOINS NEGATIFS DES BANCS DE verif_campagne_dn440.py
+==============================================================================
+⛔ chaque temoin REJOUE L'ETAT D'AVANT LE CORRECTIF, ⛔ il ne
+   debranche aucune garde. ⛔ Un seul site a la fois.
+⛔ aucune ecriture dans tools/ : copie jetable.
+
+── T0 : LES BANCS A HEAD ─────────────────────────────────────
+   16 banc(s) lu(s) · rc=0 · rouge(s) : aucun
+
+── LES TEMOINS ───────────────────────────────────────────────
+   [OK] aucune garde de mutation — etat d'AVANT la revue du 
+        vise   : B1-mutation-nulle, B1b-mutation-hors-cible
+        rougit : B1-mutation-nulle, B1b-mutation-hors-cible, B6-le-compte-garde (rc=1)
+        ⚠️ rouges COLLATERAUX (declares, ⛔ pas tus) : B6-le-compte-garde
+   [OK] la garde dit « QUELQUE CHOSE a change », ⛔ pas QUOI 
+        vise   : B1b-mutation-hors-cible
+        rougit : B1b-mutation-hors-cible, B6-le-compte-garde (rc=1)
+        ⚠️ rouges COLLATERAUX (declares, ⛔ pas tus) : B6-le-compte-garde
+   [OK] le motif de cle de tracker n'est PAS borne          
+        vise   : B1c-prefixe-sans-borne
+        rougit : B1c-prefixe-sans-borne (rc=1)
+   [OK] le `rc` du T0 est imprime et JAMAIS teste           
+        vise   : B2a-T0-rc-non-nul, B2b-T0-trace-vide, B2c-T0-deja-rouge
+        rougit : B2a-T0-rc-non-nul, B2b-T0-trace-vide, B2c-T0-deja-rouge (rc=1)
+   [OK] la lecture de trace est « DERNIERE GAGNE »          
+        vise   : B3-ko-l-emporte
+        rougit : B3-ko-l-emporte (rc=1)
+   [OK] la cle de trace n'a PAS de discriminant             
+        vise   : B3b-discriminant
+        rougit : B3b-discriminant (rc=1)
+   [OK] la resolution des cibles se fait AU REGEX           
+        vise   : B4-quatre-formes
+        rougit : B4-quatre-formes (rc=1)
+   [OK] le `rc` de la regeneration du manifeste est JETE    
+        vise   : B5-rc-regeneration
+        rougit : B5-rc-regeneration (rc=1)
+   [OK] le compte « gardes par rien » PUBLIE sans garder    
+        vise   : B6-le-compte-garde
+        rougit : B6-le-compte-garde (rc=1)
+   [OK] le motif du MUTEUR de tracker n'est pas borne (⛔ pas
+        vise   : B1c-prefixe-sans-borne
+        rougit : B1c-prefixe-sans-borne (rc=1)
+   [OK] l'appariement des libelles est un PREFIXE SYMETRIQUE
+        vise   : B7b-exemption-sans-joker
+        rougit : B7b-exemption-sans-joker (rc=1)
+   [OK] le remede se cherche dans le TEXTE BRUT (commentaire
+        vise   : B8-remede-prouve
+        rougit : B8-remede-prouve (rc=1)
+   [OK] le bilan annonce le compte DECLARE, ⛔ pas le compte 
+        vise   : B9-compte-joue
+        rougit : B9-compte-joue (rc=1)
+   [OK] le T0 du tri n'existe pas — le `rc` est imprime et j
+        vise   : B10-T0-du-tri
+        rougit : B10-T0-du-tri (rc=1)
+   [OK] l'exemption est MUETTE — elle ne se dement jamais   
+        vise   : B7-exemption-falsifiable
+        rougit : B7-exemption-falsifiable, B7b-exemption-sans-joker (rc=1)
+        ⚠️ rouges COLLATERAUX (declares, ⛔ pas tus) : B7b-exemption-sans-joker
+
+==============================================================================
+BILAN TEMOINS : 15 temoin(s), 0 echec(s)
+==============================================================================
+rc=0

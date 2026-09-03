@@ -1,0 +1,29 @@
+# dn4-44 — REVUE DE CODE DU 2026-09-03, tir de cloture
+# produit par : python3 tools/mesure_collisions_dn444.py
+# date UTC : 2026-09-03T20:48:30Z
+
+==============================================================================
+dn4-44 — CE QUE LE DISCRIMINANT DE CLE CHANGE, GATE PAR GATE
+==============================================================================
+   AVANT = la cle etait `<basename>:<ligne>` SEULE ⇒ deux controles
+           logiquement DIFFERENTS au meme site se REPLIAIENT sur une
+           seule cle, et l'un des deux disparaissait du compte.
+   APRES = la cle porte `(site, libelle)` — `dn_trace.cle()`.
+   ⛔ Ce script MESURE, il ne garde rien. Il n'est pas une gate.
+
+   gate                              lignes   avant   apres  demasq.
+   verif_campagne_dn440.py                0       0       0        0
+   verif_dossier_d5_dn45.py               9       3       9        6
+   verif_dossier_dn415.py                32      25      29        4
+   verif_hist_dn413.py                   56      53      56        3
+   verif_journal_soak_dn45.py            26      24      26        2
+   verif_ledger_dn416.py                 34      34      34        0
+   verif_lissage_dn45.py                 21      21      21        0
+   verif_paliers_dn441.py                42      30      42       12
+   verif_polices_dn440.py                11       9      11        2
+   verif_verrou_lvgl_dn413.py            60      10      60       50
+   TOTAL                                291     209     288       79
+
+   ⚠️ « demasq. » = les controles que l'ANCIENNE cle confondait.
+      Un ecart NUL sur une gate ne dit pas qu'elle allait bien : il
+      dit que ses sites ne portent QU'UN libelle chacun.

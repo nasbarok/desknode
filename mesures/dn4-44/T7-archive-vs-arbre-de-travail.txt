@@ -1,0 +1,20 @@
+dn4-44 — LA CAMPAGNE DU TRI MESURE `git archive HEAD`, ⛔ PAS L'ARBRE DE
+         TRAVAIL. CE QUE CA CHANGE, MESURE PLUTOT QUE SUPPOSE.
+==============================================================================
+⚠️ Dev Notes de la story, point 4 : « un correctif non commite N'EST PAS
+   MESURE, et la sortie ne le dit pas ». A la cloture, l'arbre de travail
+   porte des modifications non commitees ⇒ on MESURE l'ecart au lieu de
+   l'affirmer. La seule difference dans la POPULATION globee est le
+   fichier renomme `campagne_dn440.py` -> `verif_campagne_dn440.py` :
+   absent de l'archive (28 gates), present dans l'arbre (29).
+
+INVENTAIRE REJOUE SUR L'ARBRE DE TRAVAIL
+  gates globees                      : 29
+  sites `ctrl(True, ...)` au total   : 11
+  sites NON CLASSES                  : 0
+  dont dans le fichier RENOMME       : 0
+
+⇒ VERDICT : le fichier renomme n'apporte AUCUN site `ctrl(True, ...)`.
+  L'inventaire rend le MEME verdict sur les 28 gates de l'archive et sur
+  les 29 de l'arbre de travail. ⛔ Ce n'est pas une dispense de commiter :
+  c'est la mesure de ce que le decalage change ICI, AUJOURD'HUI.

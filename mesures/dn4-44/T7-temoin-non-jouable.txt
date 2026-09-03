@@ -1,0 +1,14 @@
+==============================================================================
+dn4-40 / AC40.7 — CAMPAGNE DE MUTANTS SUR verif_ledger_dn416.py
+==============================================================================
+  [PREREQUIS ABSENT] le cockpit de planification n'est pas la
+      manque : le depot cockpit : /nonexistent/projects/compagnon_project
+      MOTIF : cette campagne MUTE le ledger et le tracker dans
+              une COPIE. Sans eux elle n'a rien a muter — ⛔ et
+              elle ne peut pas non plus compter les controles
+              gardes par rien, puisque aucune gate ne tourne.
+      REMEDE : `--cockpit <chemin>` si le depot est ailleurs.
+      ⛔ CE N'EST PAS UN VERDICT SUR LE CODE, et ⛔ pas un skip :
+         rc=4, declare dans la table NON_JOUABLES de tools/run_gates.sh.
+BILAN : 0 OK, 0 KO
+rc=4

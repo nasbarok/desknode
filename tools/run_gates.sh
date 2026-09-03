@@ -330,6 +330,24 @@ garde_accent_grave || exit 1
 #    gates parfaitement jouables — un skip silencieux par la porte de derriere.
 TEMOIN_COCKPIT="${COCKPIT:-${HOME:-/nonexistent}/projects/compagnon_project}"
 #
+# ⚠️ REVUE DE CODE dn4-44 (2026-09-03) — CE TEMOIN EST UN **REPERTOIRE**, ET LA
+#    REGLE ECRITE 20 LIGNES PLUS HAUT DIT « CHAQUE TEMOIN EST LE FICHIER QUE SA
+#    GATE LIT VRAIMENT ». MESURE : `--cockpit <repertoire vide>` ⇒ le temoin
+#    existe ⇒ les gates de cockpit sont JOUEES ⇒ elles rendent 4 (prerequis
+#    absent) ⇒ le runner imprime `[ROUGE] rc=4`, la valeur qui partout ailleurs
+#    veut dire « pas un rouge ».
+# 🔴 LE CORRECTIF A ETE ESSAYE ET **RETIRE**, ET C'EST ECRIT PLUTOT QUE TU : un
+#    temoin FICHIER fait declarer la gate NON-JOUABLE, or une gate declaree est
+#    rejouee **SANS ARGUMENT** (choix delibere de `dn4-39`, ligne « (3) ») ⇒
+#    elle retombe sur son cockpit PAR DEFAUT, qui existe sur le poste ⇒ rc=0 ⇒
+#    `DECLARATION DEMENTIE`. Le correctif fabriquait un FAUX NEGATIF la ou il
+#    corrigeait un faux positif.
+# ⇒ LA VRAIE CAUSE EST AILLEURS : c'est la branche ORDINAIRE qui classe tout
+#   `rc != 0` en ROUGE, alors que le contrat reserve `4` a « prerequis absent,
+#   ⛔ pas un verdict sur le code ». La corriger touche les 29 gates et le
+#   dessin de `dn4-39` ⇒ ⛔ HORS PERIMETRE de dn4-44, verse au ledger avec son
+#   porteur plutot que corrige en passant.
+#
 # ⚠️ `TEMOIN_COCKPIT_ABS` NE SUIT PAS `--cockpit`, ET C'EST DELIBERE :
 #    `verif_dossier_d5_dn45.py` n'a PAS d'option `--cockpit`, elle lit deux
 #    chemins ABSOLUS ecrits en dur (l. 47-48). Lui donner le temoin de
@@ -348,6 +366,14 @@ TEMOIN_COCKPIT_ABS="${HOME:-/nonexistent}/projects/compagnon_project"
 #    perdait le BILAN, la liste des ROUGES et la sortie capturee que la regle (4)
 #    exige d'imprimer — le run devenant `cancelled`, ⛔ pas `failure`.
 #    Mesure du poste : 63 s pour les 27 gates. 600 s laisse un facteur ~9.
+#    ⚠️ RE-MESURE dn4-44 (2026-09-03), ⛔ LIGNE D'ORIGINE NON EFFACEE : depuis
+#    l'entree de `verif_campagne_dn440.py` au glob, le balayage porte 29 gates
+#    et la campagne est A ELLE SEULE la plus chere du depot. Le plafond reste
+#    tres large. ⛔ AUCUN CHIFFRE N'EST RECOPIE ICI, ET C'EST DELIBERE : le
+#    total s'imprime sur la ligne `BILAN` a chaque tir, il varie d'un tir a
+#    l'autre, et un nombre ecrit dans un commentaire se perime le jour ou l'on
+#    ajoute une gate — c'est-a-dire le jour ou il compte. ⇒ la ligne de BILAN
+#    est la seule source ; l'ARGUMENT du plafond, lui, se relit a chaque ajout.
 TIMEOUT_GATE="${DN_TIMEOUT_GATE:-600}"
 
 # 🔴 REVUE 2026-09-02 — UN TEMOIN PLUS GROSSIER QUE LE PREREQUIS FABRIQUE UN
@@ -369,6 +395,7 @@ NON_JOUABLES=(
   "verif_dossier_d5_dn45.py|CAUSE C — elle lit DEUX chemins ABSOLUS de la machine de l'auteur (l. 47-48) ⇒ ⛔ la variable HOME n'y peut rien : VERTE dans un clone neuf, et 1 OK / 7 KO sur un runner. Le seul des six rouges qu'aucune mesure prise depuis ce poste ne pouvait montrer — il se LIT dans le code. La reparation des chemins est portee par dn5-3, ⛔ pas ici.|${TEMOIN_COCKPIT_ABS}|AUCUN|4"
   "verif_veille_dn33.py|CAUSE B — managed_components/ est GITIGNORE (186 Mo, repeuple par: idf.py reconfigure) et porte le generateur AMONT de LVGL. ⛔ 2 blocs sur 18 ne sont pas exerces ; TOUT LE RESTE EST JOUE. Elle disait deja le bon motif et le remede — il lui manquait le rc.|${TEMOIN_LVGL_VEILLE}|AUCUN|4"
   "verif_harnais_dn413.py|CAUSE B — sans l'arbre LVGL le corpus C est INCOMPLET, et la chasse aux renvois FANTOMES accusait tools/dn_police.py de citer des fonctions QUI EXISTENT (lv_text_get_width est defini dans lvgl__lvgl/src/misc/lv_text.c). ⛔ Un diagnostic FAUX publie automatiquement. Elle DECLARE desormais, elle n'accuse plus — et ⛔ elle ne devient PAS aveugle la ou l'arbre est la.|${TEMOIN_LVGL}|AUCUN|4"
+  "verif_campagne_dn440.py|CAUSE A — elle MUTE le ledger et le tracker du cockpit dans une COPIE jetable : sans ce depot PRIVE elle n'a rien a muter, et son compte « controles gardes par rien » ne veut plus rien dire puisque aucune gate ne tourne. ⚠️ dn4-44 : elle est entree au glob (decision owner du 2026-09-03) precisement parce que RIEN ne l'invoquait — une regle que rien n'applique est une regle qui pourrira.|${TEMOIN_COCKPIT}|AUCUN|4"
   "verif_hist_dn413.py|CAUSE B — elle RELIT LV_CHART_POINT_NONE dans lv_chart.h (c'est ce qui garantit que DN_HIST_TROU vaut le trou de LVGL) et PLANTAIT en FileNotFoundError NU : un rouge sans motif ni remede. Elle echoue FERME desormais, sur le modele de verif_veille_dn33.py.|${TEMOIN_LVGL_HIST}|AUCUN|4"
 )
 

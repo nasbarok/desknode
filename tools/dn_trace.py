@@ -28,6 +28,29 @@ controle meme quand deux controles se ressemblent.
   de la population deviendrait invisible. Les deux campagnes du depot
   appliquent cette agregation.
 
+🔴 dn4-44 / AC5.1 — LA CLE RECOIT SON DISCRIMINANT, ET LE REPLIEMENT CESSE.
+   L'agregation ci-dessus etait une MITIGATION, ⛔ pas le correctif : elle rend
+   conservateur le verdict de sites REPLIES, elle ne les separe pas. Mesure du
+   2026-09-03 sur les 9 gates instrumentees : **7 collident**, jusqu'a 8
+   collisions sur `verif_paliers_dn441.py`, et sur 3 des 4 sites de la gate du
+   dossier les entrees repliees sont des controles LOGIQUEMENT DIFFERENTS —
+   un par fichier balaye, que **seul le libelle** distingue.
+   ⇒ LA CLE EST DESORMAIS `(site, libelle)`. Le discriminant etait DEJA dans la
+     trace : le 3e champ. ⛔ Aucun octet de plus n'est ecrit — c'est le LECTEUR
+     qui repliait, ⛔ pas l'ecrivain.
+   ⚠️ L'agregation « un KO l'emporte » RESTE, et elle garde toujours quelque
+     chose : deux elements d'une population qui portent le MEME libelle (une
+     boucle dont le libelle ne cite pas l'element) collident encore, et c'est
+     alors le bon repliement.
+   ⚠️ CONSEQUENCE MESUREE : les comptes « traces » et « gardes par rien » d'une
+     campagne BOUGENT le jour ou elle lit par cette cle. Sur
+     `verif_ledger_dn416.py` ils ne bougent pas (34 lignes / 34 sites / 0
+     collision) ; sur la gate du dossier, ils bougent.
+
+🔴 dn4-44 / AC5.5 — LA LECTURE VIT **ICI**, ⛔ PLUS EN DOUBLE DANS LES DEUX
+   CAMPAGNES. Les deux portaient la meme agregation, recopiee mot pour mot,
+   sans fonction partagee : l'une pouvait regresser sans que l'autre le dise.
+
 ⚠️ CE MODULE NE CHANGE PAS LA CONSOLE D'UN OCTET. Il n'ecrit que si
 `DN_TRACE_CTRL` nomme un fichier. Sans la variable, `trace()` sort au premier
 test — le format que le depot publie reste intact.
@@ -64,8 +87,71 @@ def trace(ok, libelle):
     #    controle DISPARAISSAIT de la trace ET du compte « gardes par rien »,
     #    sans qu'aucune sortie ne le dise. On aplatit — la trace est un format
     #    de DONNEES, elle se protege comme tel.
-    plat = str(libelle).replace("\t", " ").replace("\r", " ").replace("\n", " ")
+    # 🔴 REVUE DE CODE dn4-44 (2026-09-03) — L'APLATISSEMENT ETAIT ECRIT DEUX
+    #    FOIS DANS LE FICHIER QUI VIENT DE DE-DUPLIQUER LA LECTURE. L'ECRIVAIN
+    #    et le fabricant de cle doivent aplatir **IDENTIQUEMENT** : deux copies
+    #    peuvent diverger, et la cle cesserait alors de s'apparier a sa propre
+    #    ligne de trace, en silence. ⇒ un seul proprietaire : `aplati()`.
+    plat = aplati(libelle)
     ligne = "%s:%d\t%s\t%s\n" % (os.path.basename(f.f_code.co_filename),
                                    f.f_lineno, "OK" if ok else "KO", plat)
     with io.open(_FIC, "a", encoding="utf-8") as fh:
         fh.write(ligne)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  LA LECTURE — dn4-44 / AC5.1 + AC5.5
+#  ⛔ UNE SEULE implementation, pour les deux campagnes.
+# ═══════════════════════════════════════════════════════════════════════════
+
+SEP = "\t"
+
+
+def aplati(libelle):
+    """La forme du libelle TELLE QU'ELLE EST ECRITE dans la trace.
+
+    ⚠️ Exposee parce qu'un appelant qui resout une cible AU SOURCE doit
+    comparer a la MEME forme : un libelle source portant un saut de ligne
+    ⛔ ne s'apparierait jamais a sa ligne de trace.
+    """
+    return (str(libelle).replace("\t", " ").replace("\r", " ")
+            .replace("\n", " "))
+
+
+def cle(site, libelle):
+    """La cle d'un CONTROLE : `(site, libelle)`, ⛔ plus le site seul.
+
+    ⚠️ Le libelle est APLATI ici aussi — un appelant qui passe le libelle lu
+    au source obtient donc la meme cle que le lecteur de la trace.
+    """
+    return "%s%s%s" % (site, SEP, aplati(libelle))
+
+
+def parts(k):
+    """`(site, libelle)` — l'inverse de `cle()`, pour imprimer."""
+    i = k.find(SEP)
+    return (k, "") if i < 0 else (k[:i], k[i + 1:])
+
+
+def lit(fic):
+    """`{cle: (verdict, site, libelle)}` — l'agregation, ECRITE UNE FOIS.
+
+    ⛔ « LA DERNIERE GAGNE » REND LES REGRESSIONS INVISIBLES : si le 1er
+    element d'une population rougit et le dernier passe, une lecture naive
+    retient « OK ». ⇒ UNE CLE EST KO DES QU'UNE DE SES LIGNES EST KO.
+
+    ⚠️ Une ligne qui n'a pas EXACTEMENT 3 champs est ignoree — c'est le
+    contrat du format, et `trace()` aplatit pour qu'il tienne.
+    """
+    d = {}
+    if not os.path.isfile(fic):
+        return d
+    for l in io.open(fic, encoding="utf-8"):
+        p = l.rstrip("\n").split(SEP)
+        if len(p) != 3:
+            continue
+        k = cle(p[0], p[2])
+        if k in d and d[k][0] == "KO":
+            continue
+        d[k] = (p[1], p[0], p[2])
+    return d

@@ -1,0 +1,11 @@
+=== T0 ETAT DE DEPART — dn4-44 — 2026-09-03T13:03:31+02:00 ===
+
+--- depot CODE ~/projects/desknode
+f4848e450fa4bc23d0403f5166057b7c58870196
+?? mesures/dn4-44/(fin porcelain code)
+
+--- depot COCKPIT ~/projects/compagnon_project
+9d9bbfaa14bc9611279c6e6e0f433d65cd8d842d
+ M _bmad-output/implementation-artifacts/sprint-status-desknode.yaml
+?? _bmad-output/implementation-artifacts/dn4-44-aucun-controle-neuf-ne-sort-sans-son-mutant.md
+?? ops/audit_impostor_episodes.py(fin porcelain cockpit)
