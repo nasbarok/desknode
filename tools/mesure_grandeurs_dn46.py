@@ -8,6 +8,11 @@ mesure_grandeurs_dn46 — l'échantillonnage de T6/AC6 et le chrono de T8/AC8.
      powershell.exe -NoProfile -Command "& python \\
        \\\\wsl.localhost\\Ubuntu\\home\\nasbarok\\projects\\desknode\\tools\\mesure_grandeurs_dn46.py \\
        --minutes 16 --csv <chemin>"
+ (!) dn5-3 (2026-09-04) -- LA RECETTE CI-DESSUS EST UN EXEMPLE : le chemin UNC
+     qu'elle porte est celui de la machine de l'auteur. Le votre s'obtient dans
+     WSL par `wslpath -w ~/projects/desknode`. Il n'est PAS generalise : c'est
+     ce qu'il faut taper cote Windows, et une recette generalisee a l'aveugle
+     ne marche plus.
 
 ═══════════════════════════════════════════════════════════════════════════════
 CE QU'IL MESURE, ET POURQUOI CHACUN

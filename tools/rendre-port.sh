@@ -34,6 +34,14 @@ set -uo pipefail
 VID_PID="303a:1001"
 USBIPD='C:\Program Files\usbipd-win\usbipd.exe'
 SERIE="${DN_SERIE:-COM3}"
+# ⚠️ dn5-3 (2026-09-04) — LE DEFAUT CI-DESSOUS EST UN **EXEMPLE**, et il decrit
+#    la tour de l'auteur. ⛔ Il ne porte NI `nasbarok`, NI `naoua`, NI
+#    `~/projects`, NI `wsl.localhost` : l'inventaire par motif de `dn5-3` NE
+#    POUVAIT PAS LE COMPTER — c'est un 6e motif, la LETTRE DE LECTEUR, qui l'a
+#    trouve (`mesures/dn5-3/T1-lecture-code.txt`).
+#    ⇒ Ce n'est PAS une dependance fonctionnelle : `DN_TOUR_WIN` la remplace,
+#      et la revue du 2026-08-26 juste en dessous NOMME deja le risque. Ce qui
+#      manquait, c'est que le defaut se DECLARE la ou on le lit.
 TOUR_WIN="${DN_TOUR_WIN:-H:\\dev\\projets\\desknode}"
 # ⚠️ REVUE DU 2026-08-26 — `TOUR_WIN` ET LA CIBLE DE `deployer_tour.sh` NE SONT
 #    PAS RELIEES : ici `H:\dev\projets\desknode`, la-bas

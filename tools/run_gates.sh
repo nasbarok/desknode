@@ -348,15 +348,31 @@ TEMOIN_COCKPIT="${COCKPIT:-${HOME:-/nonexistent}/projects/compagnon_project}"
 #   dessin de `dn4-39` ⇒ ⛔ HORS PERIMETRE de dn4-44, verse au ledger avec son
 #   porteur plutot que corrige en passant.
 #
-# ⚠️ `TEMOIN_COCKPIT_ABS` NE SUIT PAS `--cockpit`, ET C'EST DELIBERE :
-#    `verif_dossier_d5_dn45.py` n'a PAS d'option `--cockpit`, elle lit deux
-#    chemins ABSOLUS ecrits en dur (l. 47-48). Lui donner le temoin de
-#    `--cockpit` la ferait declarer jouable alors qu'elle ne lirait pas ce
-#    dossier-la. ⛔ LIMITE ECRITE : sur une machine TIERCE ou `~/projects/
-#    compagnon_project` existerait, le temoin serait present et la gate serait
-#    JOUEE — elle rougirait alors sur ses chemins absolus. C'est le sens
-#    CONSERVATEUR (echouer fort), ⛔ pas un skip. `dn5-3` ferme ce coin.
-TEMOIN_COCKPIT_ABS="${HOME:-/nonexistent}/projects/compagnon_project"
+# ═══ dn5-3 / AC3.3.g — 2026-09-04 : `TEMOIN_COCKPIT_ABS` EST RETIRE ═════════
+#
+# ⚠️ ⛔ CECI N'EST PAS UNE SUPPRESSION MUETTE (NFR3) : voici ce que ce temoin
+#    gardait, et pourquoi il n'a plus lieu d'etre.
+#
+# CE QU'IL DISAIT — texte d'origine, ⛔ pas reecrit :
+#    « `TEMOIN_COCKPIT_ABS` NE SUIT PAS `--cockpit`, ET C'EST DELIBERE :
+#      `verif_dossier_d5_dn45.py` n'a PAS d'option `--cockpit`, elle lit deux
+#      chemins ABSOLUS ecrits en dur (l. 47-48). Lui donner le temoin de
+#      `--cockpit` la ferait declarer jouable alors qu'elle ne lirait pas ce
+#      dossier-la. ⛔ LIMITE ECRITE : sur une machine TIERCE ou
+#      `~/projects/compagnon_project` existerait, le temoin serait present et la
+#      gate serait JOUEE — elle rougirait alors sur ses chemins absolus. C'est
+#      le sens CONSERVATEUR (echouer fort), ⛔ pas un skip. `dn5-3` ferme ce
+#      coin. »
+#
+# CE QUI L'A PERIME — `dn5-3`, le 2026-09-04 : la gate fait desormais deriver sa
+#    racine de `__file__` et prend le cockpit en ARGUMENT. Les deux chemins
+#    absolus n'existent plus. ⇒ la premisse du temoin (« elle n'a PAS d'option
+#    `--cockpit` ») est FAUSSE depuis ce jour, et la LIMITE ECRITE qu'il portait
+#    — « sur une machine tierce elle serait jouee et rougirait sur ses chemins
+#    absolus » — n'a plus d'objet : il n'y a plus de chemin absolu.
+# ⇒ Sa declaration suit maintenant `${TEMOIN_COCKPIT}`, comme les trois autres
+#    gates du cockpit. Un temoin REFERENCE PAR RIEN est de la meme famille que
+#    le « champ vide » soldé le 2026-08-31 : il se RETIRE.
 #
 # `managed_components/` est GITIGNORE (186 Mo) et repeuple par
 # `idf.py reconfigure`. Le temoin est RELATIF : il vit dans le clone.
@@ -392,7 +408,7 @@ NON_JOUABLES=(
   "verif_sr03.py|le PDF [AN] AN4545 (VL6180X, DocID026571 Rev 1) n'est PAS au depot : document StMicroelectronics, ⛔ non redistribuable. La gate l'attend en argument et sort en 2 sur son message d'usage — rc=2 n'est PAS un rouge.|tools/fixtures/AN4545.pdf|tools/fixtures/AN4545.pdf firmware/desknode/main/dn_console.c|2"
   "verif_dossier_dn415.py|CAUSE A — le cockpit de planification est un depot PRIVE, ⛔ jamais clone a cote du code. Sans lui la gate n'a AUCUNE occurrence a arbitrer. ⚠️ La ou le cockpit EST la elle rend 17 OK / 10 KO sur le CONTENU : ⛔ une CI ne verra JAMAIS ces 10 KO, et elle ne pretend pas les garder.|${TEMOIN_COCKPIT}|AUCUN|4"
   "verif_ledger_dn416.py|CAUSE A — le cockpit de planification est un depot PRIVE, ⛔ jamais clone. Sans lui il n'y a ni ledger ni tracker a confronter. ⚠️ le controle dn_ok (« le depot code EST desknode ») reste un CONTROLE : son echec reste un ROUGE, ⛔ pas un prerequis.|${TEMOIN_COCKPIT}|AUCUN|4"
-  "verif_dossier_d5_dn45.py|CAUSE C — elle lit DEUX chemins ABSOLUS de la machine de l'auteur (l. 47-48) ⇒ ⛔ la variable HOME n'y peut rien : VERTE dans un clone neuf, et 1 OK / 7 KO sur un runner. Le seul des six rouges qu'aucune mesure prise depuis ce poste ne pouvait montrer — il se LIT dans le code. La reparation des chemins est portee par dn5-3, ⛔ pas ici.|${TEMOIN_COCKPIT_ABS}|AUCUN|4"
+  "verif_dossier_d5_dn45.py|CAUSE A — le cockpit de planification est un depot PRIVE, ⛔ jamais clone a cote du code. dn5-3 (2026-09-04) a fait deriver sa racine de __file__ et rendu le cockpit PARAMETRABLE : sans lui, elle joue les 4 fichiers faisant autorite DU CLONE et ANNONCE les 2 qu'elle n'a pas pu controler, puis rend 4. Un vrai KO trouve dans la moitie jouee rend 1, dans cet ordre. ⚠️ AVANT dn5-3 c'etait une CAUSE C : deux chemins ABSOLUS, VERTE dans un clone neuf pose sur cette machine, 1 OK / 7 KO sur un runner. ⛔ Ce n'est plus vrai, et la ligne le DIT plutot que de l'effacer.|${TEMOIN_COCKPIT}|AUCUN|4"
   "verif_veille_dn33.py|CAUSE B — managed_components/ est GITIGNORE (186 Mo, repeuple par: idf.py reconfigure) et porte le generateur AMONT de LVGL. ⛔ 2 blocs sur 18 ne sont pas exerces ; TOUT LE RESTE EST JOUE. Elle disait deja le bon motif et le remede — il lui manquait le rc.|${TEMOIN_LVGL_VEILLE}|AUCUN|4"
   "verif_harnais_dn413.py|CAUSE B — sans l'arbre LVGL le corpus C est INCOMPLET, et la chasse aux renvois FANTOMES accusait tools/dn_police.py de citer des fonctions QUI EXISTENT (lv_text_get_width est defini dans lvgl__lvgl/src/misc/lv_text.c). ⛔ Un diagnostic FAUX publie automatiquement. Elle DECLARE desormais, elle n'accuse plus — et ⛔ elle ne devient PAS aveugle la ou l'arbre est la.|${TEMOIN_LVGL}|AUCUN|4"
   "verif_campagne_dn440.py|CAUSE A — elle MUTE le ledger et le tracker du cockpit dans une COPIE jetable : sans ce depot PRIVE elle n'a rien a muter, et son compte « controles gardes par rien » ne veut plus rien dire puisque aucune gate ne tourne. ⚠️ dn4-44 : elle est entree au glob (decision owner du 2026-09-03) precisement parce que RIEN ne l'invoquait — une regle que rien n'applique est une regle qui pourrira.|${TEMOIN_COCKPIT}|AUCUN|4"

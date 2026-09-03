@@ -39,28 +39,63 @@ seul geste. Le dossier, lui, continuait de publier la question.
 Sortie : exit 0 si tout passe, 1 sinon.
 """
 
+import argparse
 import io
 import os
 import re
 import sys
 
-DESKNODE = "/home/nasbarok/projects/desknode"
-COCKPIT = "/home/nasbarok/projects/compagnon_project"
-
 # ── dn4-39 / AC39.2.a-bis + AC39.3.a — LA CAUSE **C**, TRAITEE SANS ETRE VUE ──
 #
-# 🔴 LES DEUX CONSTANTES CI-DESSUS SONT **ABSOLUES**, et ⛔ `HOME` n'y peut rien.
-#    ⇒ cette gate est **VERTE dans un clone neuf** (elle en sort et atteint les
-#      vrais depots de cette machine) et sera **ROUGE sur un runner**, ou ces
-#      chemins n'existent pas. C'est le seul des six rouges qu'AUCUNE mesure
-#      prise depuis ce poste ne pouvait montrer : il se **LIT dans le code**.
+# ⚠️ 🔴 CE BLOC EST **DATE, ⛔ PAS EFFACE** (NFR3) — dn5-3, 2026-09-04. Il decrit
+#    l'etat d'AVANT : deux constantes ABSOLUES,
+#      DESKNODE = "/home/<auteur>/projects/desknode"
+#      COCKPIT  = "/home/<auteur>/projects/compagnon_project"
+#    ⇒ ce qu'il annoncait etait JUSTE, et le voici SOLDE juste en dessous.
+#
+# 🔴 LES DEUX CONSTANTES ETAIENT **ABSOLUES**, et ⛔ `HOME` n'y pouvait rien.
+#    ⇒ cette gate etait **VERTE dans un clone neuf** (elle en sortait et
+#      atteignait les vrais depots de cette machine) et **ROUGE sur un runner**,
+#      ou ces chemins n'existent pas. C'etait le seul des six rouges qu'AUCUNE
+#      mesure prise depuis ce poste ne pouvait montrer : il se **LIT dans le
+#      code**.
 #    🔬 Reproduit au cadrage de `dn4-39` en pointant les deux constantes sur un
 #      chemin inexistant : `BILAN : 1 OK, 7 KO`, rc **1** — c'est-a-dire, la
 #      encore, le meme `rc` que son vrai rouge.
 #
-# ⛔ CE CORRECTIF NE TOUCHE PAS AUX CHEMINS EUX-MEMES — c'est `dn5-3` qui porte
-#    « les outils sortent du clone ». Il rend seulement DISTINGUABLE « je ne
-#    suis pas sur la machine de l'auteur » de « j'ai trouve un defaut ».
+# ⛔ LE CORRECTIF DE `dn4-39` NE TOUCHAIT PAS AUX CHEMINS EUX-MEMES — c'est
+#    `dn5-3` qui porte « les outils sortent du clone ». Il rendait seulement
+#    DISTINGUABLE « je ne suis pas sur la machine de l'auteur » de « j'ai trouve
+#    un defaut ».
+#
+# ═══ dn5-3 / AC3.3 — 2026-09-04 : LES DEUX CHEMINS SONT SOLDES ══════════════
+#
+# ✅ `DESKNODE` SE DERIVE DE `__file__`. Elle ne peut plus designer QUE l'arbre
+#    ou ce script vit. ⇒ ca ferme AUSSI, **par construction**, l'entree de
+#    ledger issue de la revue de `dn4-39` : « cette gate PEUT CERTIFIER VERT UN
+#    AUTRE ARBRE QUE CELUI QU'ON VERIFIE ». MESURE le 2026-09-04, AVANT
+#    correction, depuis un clone pose dans `/tmp` : elle rendait
+#    `BILAN : 9 OK, 0 KO`, rc 0 — sur l'arbre de l'AUTEUR et sur le cockpit
+#    PRIVE, ⛔ pas sur le clone qu'on verifiait
+#    (`mesures/dn5-3/T1-temoin-negatif.txt`, etage (i)).
+#    ⚠️ ⛔ PAS `expanduser("~")`, ⛔ PAS `$HOME` : cette constante ne cherche pas
+#    un FOYER, elle cherche LE DEPOT OU LE SCRIPT VIT.
+#
+# ✅ `COCKPIT` DEVIENT UN **ARGUMENT**, avec un defaut derive de `HOME`.
+#    ⚠️ `expanduser("~")` ET `${HOME}` NE DISENT PAS LA MEME CHOSE quand `HOME`
+#    est absent : le shell de `run_gates.sh` retombe sur `${HOME:-/nonexistent}`
+#    tandis que Python interroge `/etc/passwd` et rend le vrai foyer. ⇒ **ON LIT
+#    `os.environ.get("HOME")`, avec la MEME valeur de repli que le shell** —
+#    piege deja paye et deja ecrit dans `tools/verif_dossier_dn415.py` (l. 168).
+#
+# 🔴 ET LE CONTRAT DE `rc` NE BOUGE PAS, LA CI EN DEPEND. Sans cockpit la gate
+#    rend **4**, et **1** si elle trouve un vrai KO — dans CET ORDRE. Rendre 0
+#    sans cockpit ferait sortir `run_gates.sh` en 1 sur `DECLARATION DEMENTIE`
+#    et rougirait la CI, qui est verte PRECISEMENT parce que les gates non
+#    exercables sur un runner y rendent leur `rc` declare.
+DESKNODE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+COCKPIT_DEFAUT = os.path.join(os.environ.get("HOME") or "/nonexistent",
+                              "projects", "compagnon_project")
 #
 # ⛔ POURQUOI 4 : `2` est le message d'usage de `verif_sr03.py` (publie dans le
 #    README), `3` est deja rendu par `verif_paliers_dn441.py` sur un MUTANT
@@ -74,13 +109,17 @@ MOTIFS = [
 ]
 
 # Faisant autorite : ces fichiers disent ce qui est vrai AUJOURD'HUI.
+# ⚠️ dn5-3 — LE DEPOT EST DESORMAIS UN **MARQUEUR**, ⛔ plus un chemin. Le
+#    cockpit n'est connu qu'a l'execution (il vient de `--cockpit`), donc il ne
+#    peut PLUS etre fige ici. 4 de ces 6 fichiers vivent dans le depot CODE :
+#    sans cockpit, LES DEUX TIERS DU BALAYAGE RESTENT CONTROLABLES.
 AUTORITE = [
-    (DESKNODE, "hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md"),
-    (DESKNODE, "hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md"),
-    (DESKNODE, "hardware/ESP32-S3-Touch-LCD-2.8B-liaison-pc.md"),
-    (DESKNODE, "README.md"),
-    (COCKPIT, "_bmad-output/implementation-artifacts/deferred-work.md"),
-    (COCKPIT, "_bmad-output/implementation-artifacts/sprint-status-desknode.yaml"),
+    ("DESKNODE", "hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md"),
+    ("DESKNODE", "hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md"),
+    ("DESKNODE", "hardware/ESP32-S3-Touch-LCD-2.8B-liaison-pc.md"),
+    ("DESKNODE", "README.md"),
+    ("COCKPIT", "_bmad-output/implementation-artifacts/deferred-work.md"),
+    ("COCKPIT", "_bmad-output/implementation-artifacts/sprint-status-desknode.yaml"),
 ]
 
 # ── LA MARQUE D'ANNOTATION, ET LA FENETRE — HEURISTIQUE DECLAREE ───────────
@@ -159,33 +198,62 @@ def balayage_arbre(racine, exclus):
 
 
 def main():
+    ap = argparse.ArgumentParser(add_help=True)
+    ap.add_argument("--cockpit", default=COCKPIT_DEFAUT)
+    a = ap.parse_args()
+    racines = {"DESKNODE": DESKNODE, "COCKPIT": a.cockpit}
+
     print("=" * 78)
     print("dn4-5 / AC7.2 — LE DOSSIER RATTRAPE LE CONSTAT OWNER DU 2026-08-25")
     print("=" * 78)
     print("\nmotifs cherches : %s" % " · ".join("« %s »" % m for m in MOTIFS))
     print("perimetre : les DEUX depots, arbre ENTIER (⛔ pas le diff)")
+    print("depot code    : %s" % DESKNODE)
+    print("depot cockpit : %s" % a.cockpit)
 
-    # 🔴 dn4-39 — LES DEUX DEPOTS SONT DES **PREREQUIS**, ⛔ PAS DES CONTROLES.
-    absents = [c for c in (DESKNODE, COCKPIT) if not os.path.isdir(c)]
-    if absents:
-        print("\n  [PREREQUIS ABSENT] cette gate lit DEUX depots par chemin ABSOLU")
-        for c in absents:
-            print("      introuvable : %s" % c)
-        print("      MOTIF : ces deux chemins sont ecrits EN DUR (l. 47-48) et")
-        print("              n'existent que sur la machine de l'auteur. Hors")
-        print("              d'elle, la gate n'a RIEN a balayer — elle ne peut")
-        print("              ni rougir ni verdir.")
-        print("      REMEDE : `dn5-3` porte la reparation (« les outils sortent")
-        print("              du clone »). ⛔ dn4-39 ne la fait PAS ici.")
+    # 🔴 dn4-39 — LE COCKPIT EST UN **PREREQUIS**, ⛔ PAS UN CONTROLE.
+    # ⚠️ dn5-3, 2026-09-04 — LA LISTE DES ABSENTS N'EN CONTIENT PLUS QU'UN.
+    #    `DESKNODE` derive de `__file__` : il EXISTE toujours, par construction,
+    #    puisque c'est l'arbre ou ce fichier vit. ⇒ le seul prerequis qui peut
+    #    manquer est le cockpit.
+    # 🔴 ET ON NE REND PLUS LA MAIN TOUT DE SUITE. Le `return` immediat
+    #    ABANDONNAIT la moitie que n'importe quel clone peut voir : sur les 6
+    #    fichiers faisant autorite, **4 vivent dans le depot CODE**. C'est la
+    #    correction que `verif_dossier_dn415.py` a deja payee (revue du
+    #    2026-09-02) : « ON JOUE LA MOITIE ATTEIGNABLE, et on ne rend 4 QUE SI
+    #    ELLE EST MUETTE ».
+    cockpit_absent = not os.path.isdir(a.cockpit)
+    hors = [r for d, r in AUTORITE if d == "COCKPIT"]
+    dedans = [r for d, r in AUTORITE if d == "DESKNODE"]
+    if cockpit_absent:
+        print("\n  [PREREQUIS PARTIEL] le depot cockpit n'est pas atteignable")
+        print("      chemin attendu : %s" % a.cockpit)
+        print("      MOTIF : le cockpit est un depot PRIVE de planification,")
+        print("              ⛔ jamais clone a cote du code. C'est le cas")
+        print("              NORMAL sur un runner et chez un contributeur.")
+        print("      ⇒ LA MOITIE `desknode` EST JOUEE QUAND MEME : %d des %d"
+              " fichiers" % (len(dedans), len(AUTORITE)))
+        print("        faisant autorite vivent dans CE depot.")
+        print("      ⇒ CE QUE CETTE PASSE N'A PAS PU CONTROLER — les %d fichier(s)"
+              % len(hors))
+        print("        du cockpit sont HORS de portee, ⛔ pas fantomes :")
+        for r in hors:
+            print("           · %s" % r)
+        print("      REMEDE : `--cockpit <chemin>` si le depot est ailleurs.")
+        print("      ⛔ rc=%d (prerequis) UNIQUEMENT si la moitie jouee est"
+              " MUETTE ;" % RC_PREREQUIS)
+        print("         un KO trouve ici rend 1, comme n'importe quel rouge.")
         print("      ⛔ CE N'EST PAS UN VERDICT SUR LE DOSSIER, et ⛔ pas un skip :")
-        print("         rc=%d, declare dans la table NON_JOUABLES de"
+        print("         rc=%d est declare dans la table NON_JOUABLES de"
               " tools/run_gates.sh." % RC_PREREQUIS)
-        return RC_PREREQUIS
 
     print("\n── 1. LES FICHIERS FAISANT AUTORITE — CHACUN DOIT ETRE ANNOTE ────")
     total, annotes = 0, 0
-    for racine, rel in AUTORITE:
-        p = os.path.join(racine, rel)
+    for depot, rel in AUTORITE:
+        if depot == "COCKPIT" and cockpit_absent:
+            print("  [ ×× ] %-58s HORS de portee (cockpit absent)" % rel[-58:])
+            continue
+        p = os.path.join(racines[depot], rel)
         occ = occurrences(p)
         if occ is None:
             ctrl(False, "%s" % rel[-52:], "⛔ FICHIER INTROUVABLE")
@@ -204,10 +272,13 @@ def main():
          "%d occurrence(s) faisant autorite, %d annotee(s)" % (total, annotes))
 
     print("\n── 2. CE QUI EST ECARTE, ET C'EST DECLARE ────────────────────────")
-    exclus_dn = {r for _, r in AUTORITE if _ == DESKNODE}
-    exclus_ck = {r for _, r in AUTORITE if _ == COCKPIT}
+    exclus_dn = {r for d, r in AUTORITE if d == "DESKNODE"}
+    exclus_ck = {r for d, r in AUTORITE if d == "COCKPIT"}
     arch_dn = balayage_arbre(DESKNODE, exclus_dn)
-    arch_ck = balayage_arbre(COCKPIT, exclus_ck)
+    # ⚠️ dn5-3 — SANS COCKPIT, CE BALAYAGE-LA N'A PAS D'ARBRE. Il rend une liste
+    #    VIDE, et la ligne ci-dessous le DIT — ⛔ pas un zero silencieux qu'on
+    #    lirait comme « rien a signaler ».
+    arch_ck = [] if cockpit_absent else balayage_arbre(racines["COCKPIT"], exclus_ck)
     print("  ARCHIVES (⛔ NON exigees annotees — elles disent ce qui etait vrai ALORS) :")
     for rel, n in sorted(arch_dn + arch_ck):
         print("     %-72s %d" % (rel[-72:], n))
@@ -219,10 +290,16 @@ def main():
 #    il est imprime, ⛔ il n'est plus compte.
     print("     ⇒ les archives sont LISTEES, ⛔ pas ecartees en silence"
           " — %d fichier(s) d'archive" % (len(arch_dn) + len(arch_ck)))
+    if cockpit_absent:
+        print("     ⚠️ ⛔ CE COMPTE NE PORTE QUE SUR LE DEPOT CODE : l'arbre du")
+        print("        cockpit n'a PAS ete balaye (il est HORS de portee).")
 
     print("\n── 3. LE FAIT QUI FERME, ET IL EST ECRIT PARTOUT PAREIL ──────────")
-    for racine, rel in AUTORITE:
-        p = os.path.join(racine, rel)
+    for depot, rel in AUTORITE:
+        if depot == "COCKPIT" and cockpit_absent:
+            print("  [ ×× ] %-58s HORS de portee (cockpit absent)" % rel[-58:])
+            continue
+        p = os.path.join(racines[depot], rel)
         if not os.path.exists(p):
             continue
         txt = io.open(p, encoding="utf-8", errors="replace").read()
@@ -236,7 +313,16 @@ def main():
     print("\n" + "=" * 78)
     print("BILAN : %d OK, %d KO" % (ok_total[0], ko_total[0]))
     print("=" * 78)
-    return 1 if ko_total[0] else 0
+    # 🔴 dn5-3 / AC3.3.b — L'ORDRE EST UNE REGLE, ⛔ pas une preference de forme :
+    #    UN VRAI DEFAUT L'EMPORTE SUR UN PREREQUIS ABSENT. Sans ca, `rc=4`
+    #    MASQUERAIT un rouge trouve dans la moitie atteignable, et « rc attendu
+    #    = 4 » redeviendrait satisfiable par un defaut — exactement ce que
+    #    `dn4-39` a voulu rendre impossible. Forme copiee de
+    #    `tools/verif_dossier_dn415.py` (motif `return RC_PREREQUIS if
+    #    cockpit_absent`).
+    if ko_total[0]:
+        return 1
+    return RC_PREREQUIS if cockpit_absent else 0
 
 
 if __name__ == "__main__":

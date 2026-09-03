@@ -6,6 +6,8 @@ r"""
  (!) IL TOURNE SUR LE PYTHON WINDOWS DE LA TOUR, comme dn_agent.py et
      mesure_grandeurs_dn46.py. Depuis WSL :
        powershell.exe -NoProfile -Command "& $env:LOCALAPPDATA\Programs\Python\Python313\python.exe \\wsl.localhost\Ubuntu\home\nasbarok\projects\desknode\tools\mesure_lhm_dn48.py --sonder"
+ (!) dn5-3 (2026-09-04) -- EXEMPLE : le chemin UNC ci-dessus est celui de la
+     machine de l'auteur. Le votre : `wslpath -w ~/projects/desknode`.
 
  (!) C'EST UN INSTRUMENT, PAS LE PRODUIT. Meme regle que mesure_grandeurs_dn46 :
      ⛔ NE PAS le factoriser avec dn_agent.py. Les lectures sont VOLONTAIREMENT

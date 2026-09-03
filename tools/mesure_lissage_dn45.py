@@ -9,6 +9,11 @@ dn4-5 / AC4.1 — LES 8 GRANDEURS QUI N'ONT AUCUN CHIFFRE DE SAUT EN ONT UN.
      powershell.exe -NoProfile -Command "& python \
        \\\\wsl.localhost\\Ubuntu\\home\\nasbarok\\projects\\desknode\\tools\\mesure_lissage_dn45.py \
        --echantillons 960 --csv <chemin>"
+ (!) dn5-3 (2026-09-04) -- LA RECETTE CI-DESSUS EST UN EXEMPLE : le chemin UNC
+     qu'elle porte est celui de la machine de l'auteur. Le votre s'obtient dans
+     WSL par `wslpath -w ~/projects/desknode`. Il n'est PAS generalise : c'est
+     ce qu'il faut taper cote Windows, et une recette generalisee a l'aveugle
+     ne marche plus.
 
 ═══════════════════════════════════════════════════════════════════════════════
 POURQUOI CE TIR EXISTE

@@ -1,7 +1,21 @@
 # -*- coding: utf-8 -*-
-import sys, time, statistics
+import os, sys, time, statistics
 sys.stdout.reconfigure(encoding="utf-8")
-sys.path.insert(0, r"\\wsl.localhost\Ubuntu\home\nasbarok\projects\desknode\agent")
+# ── dn5-3 / AC3.2.a — LE CHEMIN DE L'AGENT SE DERIVE DE `__file__` ──────────
+#
+# 🔴 AVANT le 2026-09-04, cette ligne etait un chemin UNC ECRIT EN DUR :
+#    `\\wsl.localhost\Ubuntu\home\nasbarok\projects\desknode\agent`.
+#    Depuis un clone quelconque, `import dn_agent` mourait en
+#    `ModuleNotFoundError` — MESURE le 2026-09-04, etage (i) du temoin
+#    (`mesures/dn5-3/T1-temoin-negatif.txt`), rc **1**.
+#    ⚠️ Le defaut etait DOUBLE : le chemin ET le fait que `import dn_agent` soit
+#    au NIVEAU MODULE, donc joue a l'`import`. ⛔ L'import RESTE au niveau
+#    module : ce qui change, c'est D'OU il vient.
+# ⚠️ ⛔ PAS `expanduser("~")`, ⛔ PAS `$HOME` : ce fichier ne cherche pas un
+#    foyer, il cherche LE DEPOT OU IL VIT. `__file__` est la seule source qui
+#    ne peut designer QUE cet arbre-la.
+sys.path.insert(0, os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "agent"))
 import dn_agent
 lis = dn_agent.Lisseur()
 photo = [("cpu",[152,32,667,425]), ("gpu",[130,450,520,6040]),

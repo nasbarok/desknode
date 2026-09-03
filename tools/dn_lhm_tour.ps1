@@ -14,6 +14,10 @@
 
  (!) IL TOURNE SUR LE POWERSHELL DE LA TOUR (5.1), pas en WSL. Depuis WSL :
      powershell.exe -NoProfile -ExecutionPolicy Bypass -File \\wsl.localhost\Ubuntu\home\nasbarok\projects\desknode\tools\dn_lhm_tour.ps1
+ (!) dn5-3 (2026-09-04) -- LA LIGNE CI-DESSUS EST UN EXEMPLE : ce chemin UNC est
+     celui de la machine de l'auteur. Le votre s'obtient dans WSL par
+     `wslpath -w ~/projects/desknode`. Il n'est PAS generalise : c'est ce qu'il
+     faut taper cote Windows.
 
  EMPLOI
    .\dn_lhm_tour.ps1                          # VERIFIE, ne change RIEN (defaut)

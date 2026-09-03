@@ -43,11 +43,27 @@ r"""
  EMPLOI
    python thermique_ventilos_dn48.py --heures 6 --periode 5
    python thermique_ventilos_dn48.py --analyser <csv>
+
+ -----------------------------------------------------------------------------
+ OU VA LE CSV, ET POURQUOI -- dn5-3 / AC3.2.c, 2026-09-04
+ -----------------------------------------------------------------------------
+ Le defaut de `--csv` est `tempfile.gettempdir()` + `dn48_thermique.csv`.
+ (!) SOUS WINDOWS, `gettempdir()` REND LE `Temp` DE L'UTILISATEUR COURANT --
+     c'est-a-dire `C:\Users\<qui-que-ce-soit>\AppData\Local\Temp`. C'EST LE
+     MEME DOSSIER QU'AVANT chez l'owner, et un dossier qui existe pour tout le
+     monde. Ailleurs, c'est `/tmp`.
+ (!) AVANT le 2026-09-04 ce defaut etait ECRIT EN DUR sur le profil Windows de
+     l'auteur. Comme `enregistrer()` OUVRE ce chemin EN ECRITURE, l'echec etait
+     TARDIF : le script demarrait, imprimait son en-tete et le chemin, puis
+     mourait en `FileNotFoundError` a la premiere ligne ecrite.
+ (!) L'OPTION `--csv` N'A PAS BOUGE : elle reste le moyen de choisir. Seul son
+     DEFAUT a change.
 =============================================================================
 """
 
 import argparse
 import csv
+import tempfile
 import http.client
 import math
 import os
@@ -307,7 +323,26 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--heures", type=float, default=6.0)
     ap.add_argument("--periode", type=float, default=5.0)
-    ap.add_argument("--csv", default=r"C:\Users\naoua\AppData\Local\Temp\dn48_thermique.csv")
+    # ── dn5-3 / AC3.2.c — LE DEFAUT DE `--csv` NE NOMME PLUS PERSONNE ──────
+    #
+    # 🔴 AVANT le 2026-09-04 ce defaut valait
+    #    `C:\Users\naoua\AppData\Local\Temp\dn48_thermique.csv` — le profil
+    #    WINDOWS de l'auteur. `enregistrer()` OUVRE ce chemin EN ECRITURE
+    #    (`open(chemin, "w", ...)`) ⇒ sur la machine de quelqu'un d'autre,
+    #    `FileNotFoundError`.
+    # ⚠️ ET SON ECHEC EST PIRE QUE CELUI DES DEUX AUTRES DEPENDANCES, PARCE
+    #    QU'IL EST **TARDIF** : `bench_lisseur_dn45.py` meurt a l'`import`, tout
+    #    de suite ; celui-ci DEMARRE, imprime son en-tete, imprime `csv : …`,
+    #    et ne meurt qu'a la premiere ecriture. ⇒ TROIS comportements, ⛔ pas
+    #    deux.
+    # ✅ `tempfile.gettempdir()` rend EXACTEMENT le meme dossier qu'avant chez
+    #    l'owner : sous Windows il resout `%TEMP%`, c'est-a-dire
+    #    `C:\Users\<l-utilisateur-courant>\AppData\Local\Temp` — et `/tmp`
+    #    ailleurs. ⇒ ⛔ AUCUN changement de comportement sur la tour.
+    # ⛔ L'OPTION `--csv` N'EST PAS RETIREE : elle reste le moyen de choisir.
+    #    Seul son DEFAUT change.
+    ap.add_argument("--csv",
+                    default=os.path.join(tempfile.gettempdir(), "dn48_thermique.csv"))
     ap.add_argument("--analyser")
     a = ap.parse_args()
     if a.analyser:

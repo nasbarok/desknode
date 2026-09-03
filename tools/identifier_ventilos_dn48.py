@@ -31,6 +31,8 @@ r"""
  EMPLOI
  -----------------------------------------------------------------------------
    powershell.exe -NoProfile -Command "& $env:LOCALAPPDATA\Programs\Python\Python313\python.exe \\wsl.localhost\Ubuntu\home\nasbarok\projects\desknode\tools\identifier_ventilos_dn48.py"
+     (!) dn5-3 (2026-09-04) -- EXEMPLE : le chemin UNC ci-dessus est celui de la
+         machine de l'auteur. Le votre : `wslpath -w ~/projects/desknode`.
      --monte 8      secondes a 100 % par canal
      --repos 6      secondes de retour au calme entre deux canaux
      --seuil 15     % de hausse au-dela duquel une lecture est dite « a bouge »
