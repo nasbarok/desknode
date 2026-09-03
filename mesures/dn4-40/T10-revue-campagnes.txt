@@ -1,0 +1,27 @@
+=== T10 — LES DEUX CAMPAGNES APRES LES 35 CORRECTIFS (2026-09-03) ===
+--- campagne de mutants ---
+── `controle ⇒ couvert` : LES CONTROLES GARDES PAR RIEN ───────
+   ⛔ « N mutants, N vus rougir » prouve `mutant ⇒ rouge`.
+   controles traces          : 34
+   controles vus rougir      : 19
+   ⚠️ GARDES PAR RIEN        : 15
+        verif_ledger_dn416.py:1425         tout statut de porteur est un statut CONNU
+        verif_ledger_dn416.py:1438         aucune collision de cle ne peut CHANGER un verdict
+        verif_ledger_dn416.py:1475         le manifeste d'arbitrage est livre
+        verif_ledger_dn416.py:1479         le manifeste cite le script qui produit son compte
+        verif_ledger_dn416.py:1501         le §9 porte ses deux bornes (le controle se borne a 
+        verif_ledger_dn416.py:1538         le manifeste couvre 100 % des entrees ouvertes (AC2.
+        verif_ledger_dn416.py:1551         chaque ligne du manifeste REPRODUIT ce que le script
+        verif_ledger_dn416.py:852          le depot code est le depot DESKNODE
+        verif_ledger_dn416.py:891          le depot cockpit est atteignable
+        verif_ledger_dn416.py:892          le ledger est present
+        verif_ledger_dn416.py:893          le tracker est present
+        verif_ledger_dn416.py:912          le ledger se LIT en UTF-8
+        verif_ledger_dn416.py:919          le tracker se LIT en UTF-8
+        verif_ledger_dn416.py:958          chaque ancre du §9 designe UNE seule entree
+        verif_ledger_dn416.py:965          le perimetre n'est pas vide
+BILAN CAMPAGNE : 23 mutant(s), 0 echec(s), 15 controle(s) gardes par rien
+
+--- tri des ctrl(True, …) ---
+   ✅ aucun site non classe — 13 site(s) au tableau
+BILAN TRI : 13 site(s) — 9 LEGITIME(S), 3 TROU(S), 1 INERTE(S), 0 echec(s)

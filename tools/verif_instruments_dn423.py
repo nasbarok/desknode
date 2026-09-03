@@ -158,8 +158,21 @@ def corps_fonction(src, signature):
     ⇒ Le controle d'unicite ci-dessous existe pour ca ; le libelle ne dit plus
       « le corps se referme » comme si ca suffisait.
     """
-    n = src.count(signature)
-    extractions.append((signature, n))
+    # 🔴 REVUE 2026-09-03 — LE TUPLE NE PORTAIT PAS CE QUE SON COMMENTAIRE
+    #    DECLARAIT. Le commentaire de `extractions` annonce
+    #    `(signature, occurrences, corps_trouve)` ; le tuple ecrit ici etait de
+    #    LARGEUR 2, et `corps_trouve` n'etait JAMAIS enregistre. Consequence :
+    #    une signature trouvee UNE fois dont les accolades ne s'equilibrent pas
+    #    (⇒ `None`) passait les deux controles AC40.6.b au VERT pendant que tous
+    #    les controles avals echouaient SANS motif lisible.
+    n = signature_ambigue(src, signature) or src.count(signature)
+    corps = _corps_c_brut(src, signature)
+    extractions.append((signature, n, corps is not None))
+    return corps
+
+
+def _corps_c_brut(src, signature):
+    """L'extraction proprement dite — ⛔ ne tient AUCUNE comptabilite."""
     i = src.find(signature)
     if i < 0:
         return None
@@ -207,8 +220,13 @@ def corps_python(src, signature):
        rougissaient sur du code JUSTE**. ⛔ C'est « une gate `N OK / 0 KO` peut
        épingler du code FAUX », dans l'autre sens : un ROUGE au diagnostic FAUX.
     """
+    # 🔴 REVUE 2026-09-03 — LE CHEMIN PYTHON N'ALIMENTAIT PAS `extractions` :
+    #    ses extractions restaient HORS des deux controles d'AC40.6.b, qui
+    #    annoncaient donc « 0 signature absente » sur une population amputee.
+    n = len(re.findall(r"^" + re.escape(signature), src, re.M))
     m = re.search(r"^" + re.escape(signature), src, re.M)
     if not m:
+        extractions.append((signature, n, False))
         return None
     lignes = src[m.start():].split("\n")
     out = [lignes[0]]
@@ -216,6 +234,7 @@ def corps_python(src, signature):
         if l.strip() and not l.startswith((" ", "\t")):
             break
         out.append(l)
+    extractions.append((signature, n, True))
     return "\n".join(out)
 
 
@@ -1453,10 +1472,11 @@ def main():
     print("        vue. ⛔ Ça ne prouve PAS que c'était LA BONNE : une signature")
     print("        ambiguë rend un corps parfaitement équilibré — celui d'un")
     print("        AUTRE. C'est ce que ce contrôle-ci ferme.")
-    absentes = [sig for sig, n in extractions if n == 0]
-    ambigues = [(sig, n) for sig, n in extractions if n > 1]
+    absentes = [sig for sig, n, _c in extractions if n == 0]
+    ambigues = [(sig, n) for sig, n, _c in extractions if n > 1]
+    muettes = [sig for sig, n, c in extractions if n == 1 and not c]
     print("     %d extraction(s) · %d signature(s) distincte(s)"
-          % (len(extractions), len({s_ for s_, _ in extractions})))
+          % (len(extractions), len({s_ for s_, _, _ in extractions})))
     # ⚠️ Le `ctrl()` de cette gate n'a QU'UN champ de detail (le correctif a
     #    deux champs vit dans les gates du ledger et du dossier). On compose
     #    donc le detail ici — ⛔ un KO n'imprime pas la justification du VERT.
@@ -1466,6 +1486,13 @@ def main():
          if not absentes else
          ("⛔ %d ABSENTE(S) : %s"
           % (len(absentes), " · ".join(repr(x[:44]) for x in absentes[:4]))))
+    ctrl(not muettes,
+         "toute signature TROUVÉE rend effectivement un corps",
+         ("%d extraction(s) — ⛔ aucune signature trouvée sans corps"
+          % len(extractions)) if not muettes else
+         ("⛔ %d TROUVÉE(S) SANS CORPS : %s — les accolades ne s'équilibrent "
+          "pas, et les contrôles avals échoueraient SANS motif lisible"
+          % (len(muettes), " · ".join(repr(x[:44]) for x in muettes[:4]))))
     ctrl(not ambigues,
          "toute signature d'extraction désigne UNE seule fonction",
          ("%d extraction(s) — ⛔ aucune signature n'apparaît deux fois"

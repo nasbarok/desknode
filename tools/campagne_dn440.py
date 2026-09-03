@@ -50,7 +50,13 @@ GATE = os.path.join(ICI, "verif_ledger_dn416.py")
 
 # Une disposition TEMOIN, insérée en tete de la section DeskNode. ⛔ Elle
 # n'existe que dans la copie.
-TETE = ("- %s **Entree TEMOIN de campagne dn4-40** — inseree par "
+# 🔴 dn4-40 / REVUE 2026-09-03 — LE TAG `[DeskNode]` EST POSE, ⛔ PLUS DEDUIT.
+#    `est_desknode()` lit le tag DANS LA TETE de puce, sinon elle retombe sur
+#    la SECTION. Tant que le temoin ne portait pas le tag, sa DeskNode-ite
+#    dependait de l'endroit ou l'ancre etait tombee — un chemin non exerce
+#    rendait les mutants VERTS pour rien. Le tag rend la chose VRAIE PAR
+#    DECLARATION, ⛔ plus par inference.
+TETE = ("- %s **[DeskNode] Entree TEMOIN de campagne dn4-40** — inseree par "
         "`campagne_dn440.py` dans une COPIE.\n")
 DISPO = ("  ⇒ [dn4-40 %s] %s · porteur : %s · preuve : %s\n")
 PREUVE_PAR_DEFAUT = "le motif `TEMOIN de campagne dn4-40`"
@@ -68,11 +74,17 @@ def ancre_desknode(txt):
 
     ⇒ On ancre desormais sur une entree qui porte DEJA une disposition
       DeskNode : la section est alors la bonne PAR CONSTRUCTION.
+
+    ⚠️ REVUE 2026-09-03 — `rindex` LEVAIT UN `ValueError` NON ATTRAPE quand la
+    1re ligne `⇒` du fichier n'a aucune puce au-dessus d'elle (l'EXEMPLE DE
+    FORMAT de l'en-tete est exactement ce cas). La campagne mourait au lieu de
+    dire qu'elle n'a pas d'ancre. On rend None, et l'appelant sort en 1.
     """
-    m = re.search(r"^\s*⇒\s*\[dn\d", txt, re.M)
-    if m is None:
-        return None
-    return txt.rindex("\n- ", 0, m.start()) + 1
+    for m in re.finditer(r"^\s*⇒\s*\[dn\d", txt, re.M):
+        j = txt.rfind("\n- ", 0, m.start())
+        if j >= 0:
+            return j + 1
+    return None
 
 
 def _mute_ledger(txt, ch, j):
@@ -143,6 +155,17 @@ MUTANTS = [
      "une forme 4 `clos par :` sur un verdict qui n'est pas CLOSE",
      dict(verdict="PORTEE", porteur="clos par : dn4-16, motif eteint"),
      "la forme 4 `clos par :` ne porte que le verdict CLOSE"),
+    # ── Les deux controles POSES PAR LA REVUE DU 2026-09-03, avec leur mutant.
+    #    ⛔ On ne livre pas un controle « garde par rien » : c'est le defaut
+    #    meme que cette campagne existe pour compter.
+    ("F4-fossoyeur-muet",
+     "une forme 4 `clos par :` dont l'argument est un BOUCHON",
+     dict(verdict="CLOSE", porteur="clos par : TBD"),
+     "toute forme 4 `clos par :` NOMME ce qui a clos"),
+    ("F2-cle-fantome-sous-close",
+     "une forme 2 nommant une story qui n'existe NULLE PART, sous CLOSE",
+     dict(verdict="CLOSE", porteur="backlog nomme : dn9-99"),
+     "toute cle de porteur EXISTE au tracker (⛔ tous verdicts)"),
     ("F5-hors-connaissance",
      "une forme 5 `—` sur un verdict qui n'est pas CONNAISSANCE",
      dict(verdict="BLOQUEE", porteur="—"),
@@ -204,12 +227,19 @@ def sites_par_libelle(chemin):
 
 def lit_trace(fic):
     """{site: verdict} — le site est la CLE STABLE."""
+    # 🔴 REVUE 2026-09-03 — « DERNIERE GAGNE » RENDAIT DES REGRESSIONS
+    #    INVISIBLES. Un site dans une boucle est trace une fois par element :
+    #    mesure sur la gate du dossier, 30 lignes pour 23 sites, 4 collisions.
+    #    Si le 1er element rougit et le dernier passe, l'ancienne lecture
+    #    retenait « OK ». ⇒ UN SITE EST KO DES QU'UNE DE SES LIGNES EST KO.
     d = {}
     if not os.path.isfile(fic):
         return d
     for l in io.open(fic, encoding="utf-8"):
         p = l.rstrip("\n").split("\t")
         if len(p) == 3:
+            if p[0] in d and d[p[0]][0] == "KO":
+                continue
             d[p[0]] = (p[1], p[2])
     return d
 
@@ -224,8 +254,16 @@ def joue(cockpit_src, mutation, tmp):
     man_src = os.path.join(cockpit_src, REL_MANIFESTE)
     if os.path.isfile(man_src):
         shutil.copy(man_src, os.path.join(faux, REL_MANIFESTE))
+    mute = None
     if mutation:
+        led_a, trk_a = led, trk
         led, trk = mutation(led, trk)
+        # 🔴 REVUE 2026-09-03 — UNE MUTATION QUI NE CHANGE RIEN REND UN VERT
+        #    QUI NE PROUVE RIEN. Mesure : le mutant de tracker visait une cle
+        #    COURTE la ou le tracker porte la cle LONGUE ⇒ le `re.sub` ne
+        #    mordait pas, le fichier ressortait identique A L'OCTET, et la
+        #    campagne imprimait « VERT (attendu) » quoi que fasse la gate.
+        mute = (led != led_a) or (trk != trk_a)
     io.open(os.path.join(faux, REL_LEDGER), "w", encoding="utf-8").write(led)
     io.open(os.path.join(faux, REL_TRACKER), "w", encoding="utf-8").write(trk)
     # 🔴 SANS CETTE REGENERATION, LA CAMPAGNE NE MESURE RIEN — MESURE.
@@ -246,7 +284,7 @@ def joue(cockpit_src, mutation, tmp):
     env = dict(os.environ, DN_TRACE_CTRL=tr)
     p = subprocess.run([sys.executable, GATE, "--cockpit", faux],
                        capture_output=True, text=True, env=env)
-    return p.returncode, lit_trace(tr)
+    return p.returncode, lit_trace(tr), mute
 
 
 def main():
@@ -287,12 +325,20 @@ def main():
             return 1
 
         print("\n── T0 : L'ARBRE PROPRE ───────────────────────────────────────")
-        rc0, tr0 = joue(a.cockpit, None, tmp)
+        rc0, tr0, _ = joue(a.cockpit, None, tmp)
         ko0 = {k for k, v in tr0.items() if v[0] == "KO"}
         print("   rc=%d · %d controle(s) traces · %d KO"
               % (rc0, len(tr0), len(ko0)))
-        if ko0:
-            print("   ⛔ l'arbre propre n'est pas vert — campagne ININTERPRETABLE")
+        # 🔴 REVUE 2026-09-03 — LE `rc` ETAIT IMPRIME ET JAMAIS TESTE, ET UNE
+        #    TRACE VIDE PASSAIT. Une gate qui meurt avant son premier controle
+        #    laissait la campagne se derouler ENTIEREMENT et rendre
+        #    « 0 echec(s), 0 controle(s) gardes par rien » — la sortie la plus
+        #    rassurante possible AU-DESSUS D'UNE MESURE MORTE.
+        if rc0 != 0 or not tr0 or ko0:
+            motif = ("rc=%d ⛔ non nul" % rc0) if rc0 != 0 else (
+                "⛔ AUCUN controle trace — la gate n'a pas tourne" if not tr0
+                else "l'arbre propre n'est pas vert (%d KO)" % len(ko0))
+            print("   ⛔ %s — campagne ININTERPRETABLE" % motif)
             return 1
 
         print("\n── LES MUTANTS ───────────────────────────────────────────────")
@@ -301,7 +347,13 @@ def main():
         for nom, quoi, ch, cible in MUTANTS:
             def mut(led, trk, ch=ch):
                 return _mute_ledger(led, ch, ancre_desknode(led)), trk
-            rc, tr = joue(a.cockpit, mut, tmp)
+            rc, tr, mute = joue(a.cockpit, mut, tmp)
+            if mute is False:
+                echecs.append(nom)
+                print("   [!!] %-24s ⛔ MUTATION NULLE — le fichier ressort"
+                      " IDENTIQUE, le mutant n'a rien prouve" % nom)
+                print("        %s" % quoi)
+                continue
             kos = {k for k, v in tr.items() if v[0] == "KO"}
             neufs = kos - ko0
             for k in neufs:
@@ -325,17 +377,30 @@ def main():
         # ── LE MUTANT DE TRACKER : le faux rouge ARME (AC40.1.d) ────────────
         cible_arme = _story_bloquante(led0)
         if cible_arme:
+            # 🔴 REVUE 2026-09-03 — CE MUTANT NE MUTAIT RIEN, ET C'ETAIT LA
+            #    PREUVE MAITRESSE D'AC40.1.d. `_story_bloquante()` rend une cle
+            #    COURTE (`dnN-M`) ; le tracker porte la cle LONGUE
+            #    (`dnN-M-un-titre-en-slug`). Le motif `^(  <court>:)` ne pouvait
+            #    donc JAMAIS mordre : le tracker ressortait identique a l'octet
+            #    et la campagne imprimait « VERT (attendu) » quoi que fasse la
+            #    gate. ⇒ on matche la cle COMPLETE par son prefixe, et la garde
+            #    de mutation nulle de `joue()` attrape toute rechute.
             def mut_trk(led, trk, c=cible_arme):
-                return led, re.sub(r"^(  %s:)\s*[a-z\-]+" % re.escape(c),
-                                   r"\1 done", trk, count=1, flags=re.M)
-            rc, tr = joue(a.cockpit, mut_trk, tmp)
+                return led, re.sub(
+                    r"^(  %s[a-z0-9\-]*:)\s*[a-z\-]+" % re.escape(c),
+                    r"\1 done", trk, count=1, flags=re.M)
+            rc, tr, mute = joue(a.cockpit, mut_trk, tmp)
             neufs = {k for k, v in tr.items() if v[0] == "KO"} - ko0
-            bon = not neufs
+            bon = (mute is not False) and not neufs
             if not bon:
                 echecs.append(MUTANT_TRACKER)
             print("   [%s] %-24s %s" % ("OK" if bon else "!!", MUTANT_TRACKER,
                                         "VERT (attendu)" if bon
-                                        else "⛔ ROUGE : %s" % ", ".join(sorted(neufs))))
+                                        else ("⛔ MUTATION NULLE — le tracker"
+                                              " ressort IDENTIQUE"
+                                              if mute is False
+                                              else "⛔ ROUGE : %s"
+                                              % ", ".join(sorted(neufs)))))
             print("        `%s` passee `done` DANS LA COPIE ⇒ la gate doit"
                   " rester verte" % cible_arme)
         else:
@@ -368,6 +433,11 @@ def _story_bloquante(led):
 
     ⛔ Ce n'est PAS un porteur : c'est un FAIT. Avant dn4-40, `findall` la
     ramassait quand meme ⇒ l'entree rougissait le jour ou elle passait `done`.
+
+    ⚠️ REVUE 2026-09-03 — ELLE REND UNE CLE **COURTE** (`dnN-M`), et le tracker
+    porte la cle **LONGUE**. Tout appelant qui la compare a une cle de tracker
+    doit donc matcher PAR PREFIXE. C'est ecrit ici parce que l'ignorer a rendu
+    le mutant d'AC40.1.d entierement INOPERANT sans qu'aucune sortie ne le dise.
     """
     for m in re.finditer(r"porteur\s*:\s*(bloqu\w*\s+par\s*:[^·]*)·", led):
         c = re.search(r"\b(dn\d+-\d+)\b", m.group(1), re.I)

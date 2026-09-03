@@ -136,6 +136,25 @@ def main():
          "la FORME du nom exigee est lue dans le CMakeLists",
          "regle effective : %s" % (forme or "—"),
          "⛔ INTROUVABLE — la gate garderait une regle PERIMEE")
+    # 🔴 REVUE 2026-09-03 — LA REGEX CMAKE N'EST PAS FORCEMENT COMPILABLE PAR
+    #    PYTHON. Sans ce controle, `re.match(forme, …)` levait une `re.error`
+    #    NON ATTRAPEE plus bas : la gate mourait AVANT sa ligne de BILAN, et un
+    #    runner ne pouvait pas distinguer ce cas d'un plantage quelconque.
+    if forme is not None:
+        try:
+            re.compile(forme)
+            forme_ok = True
+        except re.error as x:
+            forme_ok = False
+            ctrl(False, "la FORME lue est une regex EXPLOITABLE ici", "",
+                 "⛔ CMake accepte `%s`, Python la refuse : %s — la gate ⛔ ne "
+                 "peut PAS rejouer cette regle" % (forme, x))
+        else:
+            ctrl(True, "la FORME lue est une regex EXPLOITABLE ici",
+                 "compilee sans erreur")
+        if not forme_ok:
+            print("BILAN : %d OK, %d KO" % (ok_total[0], ko_total[0]))
+            return 1
     if m_glob is None or m_forme is None:
         print("\n⛔ ARRET : ⛔ une gate ne DEVINE pas la regle qu'elle rejoue.")
         print("BILAN : %d OK, %d KO" % (ok_total[0], ko_total[0]))
@@ -160,10 +179,27 @@ def main():
     # ── 3. LE GLOB, REJOUE — les 2e et 3e FATAL_ERROR ───────────────────────
     print("\n── 3. CE QUE LE GLOB RAMASSE (motif `%s`) ──────" % motif_glob)
     import fnmatch
+    # 🔴 REVUE 2026-09-03 — LE GLOB N'AVAIT AUCUNE GARDE DE POPULATION VIDE.
+    #    Mesure : sur un arbre sans aucun `.c` de police, cette gate NEUVE
+    #    rendait `9 OK, 0 KO`, rc=0 — alors que le build ne compilerait AUCUNE
+    #    police. Elle refuse pourtant ce cas pour son AUTORITE (section 2) :
+    #    l'oublier pour la POPULATION, c'est le defaut d'AC40.2 dans
+    #    l'instrument cree pour le fermer. ⚠️ On ne compte QUE des fichiers :
+    #    un REPERTOIRE nomme comme une police n'est pas une police.
     ramasses = sorted(n for n in os.listdir(FONTS)
-                      if fnmatch.fnmatch(n, motif_glob))
+                      if fnmatch.fnmatch(n, motif_glob)
+                      and os.path.isfile(os.path.join(FONTS, n)))
     print("     %d fichier(s) ramasse(s) : %s"
           % (len(ramasses), ", ".join(ramasses) or "(aucun)"))
+    ctrl(bool(ramasses),
+         "le glob ramasse AU MOINS une police",
+         "%d fichier(s) ramasse(s)" % len(ramasses),
+         "⛔ 0 fichier ramasse par `%s` dans fonts/ — le build ne compilerait "
+         "AUCUNE police, et les deux controles suivants passeraient sur une "
+         "population VIDE" % motif_glob)
+    if not ramasses:
+        print("BILAN : %d OK, %d KO" % (ok_total[0], ko_total[0]))
+        return 1
     mal_nommes = [n for n in ramasses if not re.match(forme, n)]
     ctrl(not mal_nommes,
          "tout `.c` ramasse porte la FORME `dn_font_<n>.c`",
@@ -188,13 +224,24 @@ def main():
           % motif_glob)
     print("     (`dn_font_28.c.orig`) n'est vu ⛔ NI par CMake ⛔ NI par un")
     print("     controle qui copie son autorite. Il serait donc INVISIBLE.")
-    residus = sorted(n for n in os.listdir(FONTS)
-                     if not fnmatch.fnmatch(n, motif_glob)
-                     and n != os.path.basename(ENTETE)
-                     and re.match(r"^dn_font", n))
+    # 🔴 REVUE 2026-09-03 — TROIS DEFAUTS DANS CE SEUL FILTRE.
+    #    (i) Il n'excluait que L'EN-TETE NOMME : tout autre `dn_font*.h`
+    #        LEGITIME etait denonce comme RESIDU, avec la consigne de
+    #        L'EFFACER. Un en-tete n'est pas un residu de generation.
+    #    (ii) Un REPERTOIRE portant un nom de police comptait comme fichier.
+    #    (iii) Le prefixe `^dn_font` rate ce qui ne le porte pas — c'est une
+    #        BORNE, et elle est desormais ECRITE plutot que subie.
+    hors_glob = [n for n in sorted(os.listdir(FONTS))
+                 if not fnmatch.fnmatch(n, motif_glob)
+                 and os.path.isfile(os.path.join(FONTS, n))]
+    residus = [n for n in hors_glob
+               if n != os.path.basename(ENTETE)
+               and not n.endswith(".h")
+               and re.match(r"^dn_font", n)]
     ctrl(not residus,
          "aucun residu de police n'ECHAPPE au glob",
-         "%d fichier(s) hors glob dans fonts/, 0 residu" % 0,
+         "%d fichier(s) hors glob dans fonts/ (%s), 0 residu"
+         % (len(hors_glob), ", ".join(hors_glob) or "aucun"),
          "⛔ %d RESIDU(S) HORS GLOB : %s — invisibles du build ET de son "
          "controle. ⇒ les EFFACER."
          % (len(residus), ", ".join("fonts/" + n for n in residus)))

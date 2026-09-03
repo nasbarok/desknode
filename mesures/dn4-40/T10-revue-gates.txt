@@ -1,0 +1,18 @@
+=== T10 — MESURES DE SORTIE DE LA REVUE DE CODE DE dn4-40 (2026-09-03) ===
+35 correctifs appliques · 1 [CC] (dn4-44) · 2 reports au ledger.
+⛔ TOUS LES CHIFFRES CI-DESSOUS SONT PRODUITS PAR LES RUNNERS, ⛔ aucun recopie.
+
+--- harnais complet (bash tools/run_gates.sh) ---
+BILAN : 26 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 28 gates (65s)
+⛔ ROUGES :
+   · tools/verif_dossier_dn415.py (rc=1)
+
+--- les gates touchees, une par une ---
+ledger      : BILAN : 34 OK, 0 KO
+dossier     : BILAN : 22 OK, 10 KO
+polices     : BILAN : 11 OK, 0 KO
+instruments : BILAN : 163 OK, 0 KO
+
+--- garde-fou des motifs : le compte d'occurrences ---
+TOTAL BALAYE       : 324 occurrence(s)
+   (T0 du 2026-09-02 : 324 · T8 : 324 · ⇒ INCHANGE)

@@ -425,7 +425,21 @@ def titre_court(e, n=58):
 
 
 def ancres(ouvertes):
-    """{id(entree): ancre} — derivee du CONTENU, ⛔ jamais de la position."""
+    """{id(entree): ancre} — derivee du CONTENU, a UNE reserve ECRITE.
+
+    ⚠️ REVUE 2026-09-03 — LA PHRASE D'ORIGINE (« ⛔ jamais de la position »)
+    SUR-AFFIRMAIT. Le `base` (section · marqueur · titre court) est bien du
+    CONTENU, mais le RANG parmi les homonymes est attribue DANS L'ORDRE DU
+    DOCUMENT : inserer un homonyme EN AMONT renumerote celui qui existait et
+    CHANGE SON ANCRE. Latent aujourd'hui (aucun groupe d'homonymes sur les
+    entrees ouvertes), mais `titre_court` tronque — et c'est precisement la
+    troncature qui FABRIQUE des homonymes.
+    ⛔ Le controle « chaque ancre designe UNE seule entree » ne peut PAS voir
+    cela : le rang rend l'entree du hachage unique PAR CONSTRUCTION, si bien
+    que ce controle ne garde que la collision de hachage 32 bits. Le vrai
+    risque est donc garde par le controle de DOUBLON D'ANCRE cote manifeste,
+    ⛔ pas ici — c'est ecrit plutot que tu.
+    """
     import hashlib
     rangs = {}
     out = {}
@@ -439,6 +453,13 @@ def ancres(ouvertes):
 
 
 _ANCRES = {}
+
+# ⚠️ L'EN-TETE DU §9 — UNE SEULE SOURCE POUR LES DEUX MODES D'ECRITURE
+#    (`--en-place` et `--sortie`). Les avoir ecrits deux fois les avait fait
+#    diverger : l'un annoncait `ancre`, l'autre `ligne`.
+EN_TETE_MANIFESTE = ("| ancre | section d'origine | marq. | titre court |"
+                     " verdict | porteur | preuve |\n"
+                     "|:-:|---|:-:|---|---|---|---|\n")
 
 
 def ligne_manifeste(e):
@@ -651,6 +672,26 @@ def porteur_est_bouchon(p):
     return s == "" or s in BOUCHONS
 
 
+def statut_effectif(cle, tracker):
+    """Le statut qui TRANCHE la vivacite d'un porteur.
+
+    🔴 REVUE 2026-09-03 — LA DECISION OWNER N'ETAIT PAS CE QUE LE CODE FAISAIT.
+    Decision (3) du 2026-09-02 : « une cle `epic-*` est un porteur legitime,
+    VIVANTE TANT QUE L'EPIC EST OUVERT ». Or la gate lisait le statut DE LA CLE,
+    ⛔ pas celui de l'epic. Mesure : `epic-dn1` est `done` tandis que
+    `epic-dn1-retrospective` est `optional` ⇒ un porteur nommant la
+    retrospective d'une epic CLOSE ressortait VIVANT, et aucun mutant ne
+    couvrait ce cas (la campagne ne jouait que `epic-dn1` lui-meme).
+    ⚠️ Le repli sur le statut de la cle est CONSERVE : une cle `epic-*` dont
+    l'epic n'est pas au tracker reste jugee sur elle-meme, ⛔ pas declaree morte
+    par absence.
+    """
+    m = re.match(r"^(epic-dn\d+)(?:-|$)", cle)
+    if m and m.group(1) in tracker:
+        return tracker[m.group(1)]
+    return tracker.get(cle)
+
+
 def porteurs_a_venir(d):
     """Les cles de story que la disposition designe comme TRAVAIL A VENIR.
 
@@ -725,11 +766,20 @@ def lit_tracker(chemin):
         cle, statut = m.group(1).lower(), m.group(2)
         pleines.append(cle)
         pose(cle, statut)
-        c = re.match(r"^(dn\d+-\d+(?:-\d+)?)$|^(dn\d+-\d+)(?:-)", cle)
-        if c:
-            court = c.group(1) or c.group(2)
+        # 🔴 REVUE 2026-09-03 — REGRESSION INTRODUITE PAR dn4-40, MESUREE.
+        #    L'ecriture d'AVANT (`^(dn\d+-\d+(?:-\d+)?)`, prefixe NON ancre)
+        #    indexait la cle INTERMEDIAIRE `dnN-M-P`. La nouvelle exigeait un
+        #    match COMPLET ou coupait a deux segments ⇒ un porteur ecrit
+        #    `dn4-14-2` sortait « INCONNU », et la story `dn4-14-2-…` ne posait
+        #    plus que l'alias `dn4-14`, en COLLISION avec `dn4-14-…`.
+        #    ⇒ on pose TOUS les prefixes de forme `dnN-M` et `dnN-M-P`.
+        for c in re.finditer(r"^(dn\d+-\d+(?:-\d+)?)(?:-|$)", cle):
+            court = c.group(1)
             if court != cle:
                 pose(court, statut)
+        c2 = re.match(r"^(dn\d+-\d+)-\d+(?:-|$)", cle)
+        if c2 and c2.group(1) != cle:
+            pose(c2.group(1), statut)
     return st, collisions, pleines
 
 
@@ -996,9 +1046,7 @@ def main():
             print("     ⛔ ⛔ ⛔ ET SURTOUT PAS un ancrage par NUMERO DE LIGNE :")
             print("        c'est precisement le defaut que cette commande solde.")
             return 1
-        table = ("| ancre | section d'origine | marq. | titre court |"
-                 " verdict | porteur | preuve |\n"
-                 "|:-:|---|:-:|---|---|---|---|\n")
+        table = EN_TETE_MANIFESTE
         table += "".join(ligne_manifeste(e) + "\n" for e in ouvertes)
         # ⛔ FILET DE NON-REGRESSION (revue 2026-09-02). Le mode rendait la main
         #    AVANT les sections 2 a 5 : il reecrivait donc le §9 a partir
@@ -1062,9 +1110,13 @@ def main():
             ctrl(False, "la sortie du manifeste est inscriptible",
                  "", "⛔ %s" % x)
             return 1
-        flux.write("| ligne | section d'origine | marq. | titre court |"
-                   " verdict | porteur | preuve |\n")
-        flux.write("|---:|---|:-:|---|---|---|---|\n")
+        # 🔴 REVUE 2026-09-03 — CET EN-TETE DIVERGEAIT DE CELUI D'`--en-place`.
+        #    Il annoncait une colonne `ligne` alignee a DROITE au-dessus
+        #    d'ancres hexadecimales — c'est-a-dire exactement le repere que le
+        #    re-ancrage de dn4-40 SUPPRIME. Les deux chemins produisent le meme
+        #    tableau : ils doivent donc produire le meme en-tete, et il n'y en a
+        #    plus qu'UNE source.
+        flux.write(EN_TETE_MANIFESTE)
         for e in ouvertes:
             flux.write(ligne_manifeste(e) + "\n")
         if a.sortie:
@@ -1178,6 +1230,8 @@ def main():
     f3_cle_nue = []
     f5_hors_connaissance = []
     f4_hors_close = []
+    f4_muets = []
+    cles_fantomes = []
     soumis = {}
     for e in ouvertes:
         d = dispo(e)
@@ -1225,11 +1279,31 @@ def main():
         elif n == 4:
             if d["verdict"] != "CLOSE":
                 f4_hors_close.append((e, d["verdict"]))
+            # 🔴 REVUE 2026-09-03 — LA FORME 4 N'ETAIT GARDEE QUE SUR SON
+            #    VERDICT, ⛔ JAMAIS SUR SON ARGUMENT. Mesure : `clos par : TBD`,
+            #    `clos par :` (vide) et `clos par : a traiter plus tard`
+            #    rendaient tous `32 OK, 0 KO`, rc=0 — alors qu'AC40.1.e dit
+            #    « TBD, un champ vide … RESTENT des KO » et que la prescription
+            #    les range parmi les porteurs INTERDITS, sans distinguer la
+            #    forme. La segmentation avait rendu la gate PERMISSIVE
+            #    exactement la ou l'AC l'interdit. Meme plancher que la forme 3.
+            if porteur_est_bouchon(arg) or len(arg.strip()) < 8:
+                f4_muets.append((e, arg))
         elif n == 5:
             if d["verdict"] != "CONNAISSANCE":
                 f5_hors_connaissance.append((e, d["verdict"]))
         elif n == 1 and avenir:
             soumis[e["ligne"]].add("forme1")
+        if n in (1, 2) and RE_CLE_PORTEUR.match(arg) and arg.lower() not in tracker:
+            # 🔴 REVUE 2026-09-03 — SOUS UN VERDICT `CLOSE`/`CONNAISSANCE`, LA
+            #    CLE N'ETAIT JAMAIS VERIFIEE : `porteurs_a_venir()` rend []
+            #    hors des verdicts A VENIR, et le seul controle d'existence
+            #    vivait en aval. Une forme 2 nommant une story qui n'existe
+            #    nulle part passait donc VERTE. ⚠️ On verifie l'EXISTENCE pour
+            #    tous les verdicts ; ⛔ la VIVACITE reste reservee aux verdicts
+            #    A VENIR — exiger qu'un fossoyeur soit vivant serait la
+            #    contradiction que la prescription ecarte en toutes lettres.
+            cles_fantomes.append((e, arg))
     print("     formes (AC40.1.a)   : %s"
           % "  ".join("%s %d" % (FORME_LIBELLE[k], v)
                       for k, v in sorted(formes.items())))
@@ -1267,6 +1341,20 @@ def main():
          "⛔ %d HORS CLOSE : %s"
          % (len(f4_hors_close),
             ", ".join("l.%d %s" % (e["ligne"], v) for e, v in f4_hors_close)))
+    ctrl(not f4_muets,
+         "toute forme 4 `clos par :` NOMME ce qui a clos",
+         "%d forme(s) 4, toutes nommees" % formes.get(4, 0),
+         "⛔ %d FOSSOYEUR(S) MUET(S) : %s"
+         % (len(f4_muets),
+            ", ".join("l.%d `%s`" % (e["ligne"], a[:34]) for e, a in f4_muets)))
+    ctrl(not cles_fantomes,
+         "toute cle de porteur EXISTE au tracker (⛔ tous verdicts)",
+         "%d cle(s) nommee(s) en forme 1 ou 2, toutes au tracker"
+         % (formes.get(1, 0) + formes.get(2, 0)),
+         "⛔ %d CLE(S) FANTOME(S) : %s"
+         % (len(cles_fantomes),
+            ", ".join("l.%d `%s`" % (e["ligne"], a[:34])
+                      for e, a in cles_fantomes)))
     ctrl(not f5_hors_connaissance,
          "la forme 5 `—` est reservee a CONNAISSANCE",
          "%d forme(s) 5" % formes.get(5, 0),
@@ -1303,10 +1391,11 @@ def main():
             continue
         for cle in porteurs_a_venir(d):
             soumis_vivacite += 1
-            st = tracker.get(cle)
-            if st is None:
+            if cle not in tracker:
                 inconnus.append((e, cle))
-            elif st in STATUTS_MORTS:
+                continue
+            st = statut_effectif(cle, tracker)
+            if st in STATUTS_MORTS:
                 morts.append((e, cle, st))
     ctrl(not morts,
          "aucun porteur A VENIR n'est `done`/`superseded`",
@@ -1330,7 +1419,7 @@ def main():
         if d is None:
             continue
         for cle in porteurs_a_venir(d):
-            st = tracker.get(cle)
+            st = statut_effectif(cle, tracker)
             if st is not None and st not in STATUTS_VIVANTS + STATUTS_MORTS:
                 etranges.append((e, cle, st))
     ctrl(not etranges,
@@ -1426,33 +1515,50 @@ def main():
         def _cle(l):
             m = re.match(r"^\| *([0-9a-f]{8}) *\|", l)
             return m.group(1) if m else None
+        # 🔴 REVUE 2026-09-03 — LE PASSAGE A L'APPARIEMENT PAR ANCRE AVAIT
+        #    RETIRE LA COMPARAISON DES COMPTES, et `setdefault` gardait la
+        #    PREMIERE ligne par ancre. Une ligne FABRIQUEE portant l'ancre d'une
+        #    ligne existante, inseree APRES elle, ne produisait donc ni absente
+        #    ni surnumeraire ⇒ le controle passait VERT en imprimant, dans son
+        #    propre detail, « 268 ligne(s) pour 267 entree(s) ». La detection de
+        #    falsification dependait de L'ORDRE DES LIGNES. ⇒ les doublons
+        #    d'ancre sont collectes, et le compte est de nouveau compare.
         i_vues = {}
+        doublons = []
         for l in vues:
             k = _cle(l)
             if k:
-                i_vues.setdefault(k, l.strip())
+                if k in i_vues:
+                    doublons.append(k)
+                else:
+                    i_vues[k] = l.strip()
         i_att = {_cle(l): l.strip() for l in attendues}
         absentes = [k for k in i_att if k not in i_vues]
         surnum = [k for k in i_vues if k not in i_att]
-        ctrl(not absentes and not surnum,
+        ctrl(not absentes and not surnum and not doublons
+             and len(vues) == len(attendues),
              "le manifeste couvre 100 % des entrees ouvertes (AC2.7)",
              "%d ligne(s) pour %d entree(s), appariees PAR ANCRE"
              % (len(vues), len(attendues)),
              "⛔ %d entree(s) SANS ligne (%s) · %d ligne(s) SANS entree (%s)"
+             " · %d ancre(s) EN DOUBLE (%s) · %d ligne(s) pour %d entree(s)"
              % (len(absentes), ", ".join(absentes[:5]) or "—",
-                len(surnum), ", ".join(surnum[:5]) or "—"))
+                len(surnum), ", ".join(surnum[:5]) or "—",
+                len(doublons), ", ".join(sorted(set(doublons))[:5]) or "—",
+                len(vues), len(attendues)))
         ecarts = [(i_vues[k], i_att[k]) for k in i_att
                   if k in i_vues and i_vues[k] != i_att[k]]
-        ctrl(not ecarts and not absentes and not surnum,
+        ctrl(not ecarts and not absentes and not surnum and not doublons,
              "chaque ligne du manifeste REPRODUIT ce que le script produit",
              "%d ligne(s) identiques au caractere pres" % len(attendues),
              "⛔ %d ligne(s) DIVERGENTE(S) — la 1re : %s"
              % (len(ecarts), (ecarts[0][1][:120] + " …") if ecarts
-                else "(appariement incomplet : %d absente(s), %d surnumeraire(s))"
-                     % (len(absentes), len(surnum))))
+                else "(appariement incomplet : %d absente(s), %d surnumeraire(s),"
+                     " %d ancre(s) en double)"
+                     % (len(absentes), len(surnum), len(doublons))))
         # 🔴 dn4-39 / AC39.5.b — LA GATE DIT LA COMMANDE, ⛔ ELLE NE LA JOUE PAS.
         #    Une gate qui repare ce qu'elle mesure ne mesure plus rien.
-        if ecarts or len(vues) != len(attendues):
+        if ecarts or doublons or len(vues) != len(attendues):
             print("     ⇒ UNE commande remet le §9 d'accord :")
             print("       %s" % cmd_regen())
             print("       ⛔ La gate ne la joue PAS : elle MESURE. Une gate qui")

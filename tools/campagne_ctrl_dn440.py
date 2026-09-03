@@ -25,6 +25,7 @@ amont**. Il en est un des que **un arbre defaillant peut l'atteindre**.
 Usage :  python3 tools/campagne_ctrl_dn440.py [--cockpit CHEMIN]
 """
 import argparse
+import atexit
 import io
 import os
 import re
@@ -92,7 +93,13 @@ def m_liste_planchers_absente(arbre, ck):
 
 
 def m_exemptions_vides(arbre, ck):
-    """Vide la POPULATION du site, ⛔ ne debranche pas la garde."""
+    """Vide la POPULATION du site, ⛔ ne debranche pas la garde.
+
+    ⚠️ REVUE 2026-09-03 — ELLE N'EST PLUS REFERENCEE PAR AUCUN CAS, et elle est
+    GARDEE VOLONTAIREMENT : c'est la seule mutation qui sache vider une
+    population sans debrancher sa garde. Le jour ou un site TROU est REPARE au
+    lieu d'etre demonte en `print`, c'est elle qu'il faudra rebrancher. ⛔ Ne
+    pas la supprimer sans lire le docstring de tete."""
     p = os.path.join(arbre, "firmware/desknode/main/dn_ui.c")
     s = io.open(p, encoding="utf-8").read()
     io.open(p, "w", encoding="utf-8").write(
@@ -164,6 +171,56 @@ CAS = [
 ]
 
 
+def _libelle_litteral(toks, i):
+    """Le 2e argument d'un `ctrl(True, …)` — sa VALEUR, ⛔ pas son jeton brut.
+
+    🔴 REVUE 2026-09-03 — TROIS FORMES ECHAPPAIENT A LA LECTURE PRECEDENTE, et
+    l'inventaire qui s'appuie dessus existe precisement pour qu'un
+    `ctrl(True, …)` ajoute demain ⛔ NE passe PAS inapercu :
+
+      · **f-string** — Python 3.12 la tokenise en `FSTRING_START`, ⛔ pas
+        `STRING` : le site etait INVISIBLE, ⛔ pas « non classe » ;
+      · **concatenation implicite** — `"un " "libelle"` ne rendait que son
+        PREMIER fragment, donc ne matchait plus rien ;
+      · **prefixe / triple quote** — `r"…"` et `'''…'''` ressortaient avec
+        leurs guillemets parce qu'on coupait `[1:-1]` a la main.
+
+    Rend `(valeur, forme)`. `forme` vaut "litteral" (valeur exploitable),
+    "illisible" (le site EXISTE mais son libelle ⛔ n'est pas un litteral —
+    c'est un cas a DECLARER) ou None (ce n'est pas un `ctrl(True, …)`).
+    """
+    import ast
+    import tokenize
+    if not (toks[i + 1].string == "(" and toks[i + 2].string == "True"
+            and toks[i + 3].string == ","):
+        return None, None
+    j = i + 4
+    if toks[j].type != tokenize.STRING:
+        # ⚠️ f-string et tout autre non-litteral : le site est REEL, on le DIT.
+        return None, "illisible"
+    morceaux = []
+    while j < len(toks) and toks[j].type == tokenize.STRING:
+        morceaux.append(toks[j].string)
+        j += 1
+    try:
+        val = ast.literal_eval(" ".join(morceaux))
+    except Exception:
+        return None, "illisible"
+    if not isinstance(val, str):
+        return None, "illisible"
+    return val, "litteral"
+
+
+def _appariel(a, b):
+    """Deux libelles designent-ils le meme controle ?
+
+    ⛔ REVUE 2026-09-03 — `a.startswith(b) or b.startswith(a)` rendait TOUJOURS
+    vrai des que l'un des deux etait VIDE : un `ctrl(True, "")` se declarait
+    « deja classe » et sortait de l'inventaire sans que personne ne le voie.
+    """
+    return bool(a) and bool(b) and (a.startswith(b) or b.startswith(a))
+
+
 def site_de(arbre, gate, libelle):
     """L'adresse du site `ctrl(True, …)`, RESOLUE au source, ⛔ pas citee.
 
@@ -187,13 +244,9 @@ def site_de(arbre, gate, libelle):
     for i, t in enumerate(toks[:-5]):
         if t.type != tokenize.NAME or t.string not in ("ctrl", "dire"):
             continue
-        if (toks[i + 1].string == "(" and toks[i + 2].string == "True"
-                and toks[i + 3].string == ","
-                and toks[i + 4].type == tokenize.STRING):
-            lit = toks[i + 4].string
-            lit = lit[1:-1] if lit[:1] in "\"'" else lit
-            if lit.startswith(libelle) or libelle.startswith(lit):
-                return "%s:%d" % (os.path.basename(gate), t.start[0])
+        lit, forme = _libelle_litteral(toks, i)
+        if forme == "litteral" and _appariel(lit, libelle):
+            return "%s:%d" % (os.path.basename(gate), t.start[0])
     return None
 
 
@@ -213,7 +266,13 @@ def compte_sites(chemin):
     n = 0
     for i, t in enumerate(toks[:-1]):
         if (t.type == tokenize.NAME and t.string in ("ctrl", "dire")
-                and toks[i + 1].string == "("):
+                and toks[i + 1].string == "("
+                # ⛔ REVUE 2026-09-03 — LA DEFINITION N'EST PAS UN APPEL. Chaque
+                #    gate porte son propre `def ctrl(...)` : il gonflait le
+                #    compte de +1 par gate, et avec lui les colonnes `sites` et
+                #    `ecart` PUBLIEES par ce meme script.
+                and not (i and toks[i - 1].type == tokenize.NAME
+                         and toks[i - 1].string == "def")):
             n += 1
     return n
 
@@ -254,12 +313,11 @@ def libelles_ctrl_true(arbre, gate):
                                   tokenize.NEWLINE, tokenize.INDENT,
                                   tokenize.DEDENT)]
     for i, t in enumerate(toks[:-5]):
-        if (t.type == tokenize.NAME and t.string in ("ctrl", "dire")
-                and toks[i + 1].string == "(" and toks[i + 2].string == "True"
-                and toks[i + 3].string == ","
-                and toks[i + 4].type == tokenize.STRING):
-            lit = toks[i + 4].string
-            out.append(lit[1:-1] if lit[:1] in "\"'" else lit)
+        if t.type != tokenize.NAME or t.string not in ("ctrl", "dire"):
+            continue
+        lit, forme = _libelle_litteral(toks, i)
+        if forme is not None:
+            out.append((lit, forme, t.start[0]))
     return out
 
 
@@ -268,6 +326,15 @@ def monte_arbre(tmp):
     os.makedirs(a)
     tar = subprocess.run(["git", "archive", "HEAD"], cwd=RACINE,
                          capture_output=True)
+    # ⛔ REVUE 2026-09-03 — UN `git archive` EN ECHEC (pas de HEAD, pas un
+    #    depot) rendait un flux VIDE, et `tar` mourait ensuite sur un message
+    #    qui ne nommait pas la cause. On DIT la cause, a l'endroit ou elle est.
+    if tar.returncode != 0 or not tar.stdout:
+        raise RuntimeError(
+            "⛔ `git archive HEAD` a echoue dans %s (rc=%d) : %s"
+            % (RACINE, tar.returncode,
+               (tar.stderr or b"").decode("utf-8", "replace").strip()[:200]
+               or "flux vide"))
     subprocess.run(["tar", "-x", "-C", a], input=tar.stdout, check=True)
     src = os.path.join(RACINE, LVGL)
     if os.path.isdir(src):
@@ -309,6 +376,13 @@ def joue(gate, mutation, ck_src, ck_reel=False):
             for l in io.open(tr, encoding="utf-8"):
                 q = l.rstrip("\n").split("\t")
                 if len(q) == 3:
+                    # 🔴 REVUE 2026-09-03 — MEME AGREGATION QUE campagne_dn440 :
+                    #    un site trace plusieurs fois (boucle sur une
+                    #    population) est KO des qu'UNE de ses lignes est KO.
+                    #    « Derniere gagne » rendait invisible une regression sur
+                    #    un seul element. Voir le docstring de `dn_trace`.
+                    if vus.get(q[0]) == "KO":
+                        continue
                     vus[q[0]] = q[1]
         return p.returncode, vus
     finally:
@@ -332,6 +406,10 @@ def main():
     base = {}
     echecs = []
     tmp0 = tempfile.mkdtemp(prefix="dn440src-")
+    # ⛔ REVUE 2026-09-03 — L'ARBRE TEMPORAIRE N'ETAIT RENDU QU'AU CHEMIN
+    #    NOMINAL : la moindre exception (gate absente, `git archive` en echec,
+    #    interruption) laissait une copie COMPLETE du depot sur le disque.
+    atexit.register(shutil.rmtree, tmp0, True)
     arbre0 = monte_arbre(tmp0)
     for gate, libelle, verdict, mut, quoi in CAS:
         cle = site_de(arbre0, gate, libelle)
@@ -387,11 +465,17 @@ def main():
     inconnus = []
     for f in sorted(_g.glob(os.path.join(arbre0, "tools", "verif_*.py"))):
         rel = os.path.join("tools", os.path.basename(f))
-        for lib in libelles_ctrl_true(arbre0, rel):
-            if not any(b == os.path.basename(rel)
-                       and (lib.startswith(l) or l.startswith(lib))
+        for lib, forme, ligne in libelles_ctrl_true(arbre0, rel):
+            if forme != "litteral" or not lib:
+                motif = "vide" if forme == "litteral" else forme
+                inconnus.append("%s:%d :: ⛔ libelle %s — le site EXISTE, il est"
+                                " INCLASSABLE en l'etat"
+                                % (os.path.basename(rel), ligne, motif))
+                continue
+            if not any(b == os.path.basename(rel) and _appariel(lib, l)
                        for b, l in connus):
-                inconnus.append("%s :: %s" % (os.path.basename(rel), lib[:44]))
+                inconnus.append("%s:%d :: %s"
+                                % (os.path.basename(rel), ligne, lib[:44]))
     if inconnus:
         echecs.append("inventaire")
         print("   ⛔ %d SITE(S) NON CLASSE(S) :" % len(inconnus))

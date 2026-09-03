@@ -415,6 +415,7 @@ def spans_echappees(norm):
     compte, ce qu'un garde-fou naif ne voit pas.
     """
     spans = []
+    fermants = set()
     i = 0
     while True:
         o = norm.find(ECHAP_O, i)
@@ -426,9 +427,20 @@ def spans_echappees(norm):
         if norm.find(ECHAP_O, o + len(ECHAP_O), f) >= 0:
             return spans, "ouvrants IMBRIQUES"
         spans.append((o + len(ECHAP_O), f))
+        fermants.add(f)
         i = f + len(ECHAP_F)
-    if norm.find(ECHAP_F, i) >= 0:
-        return spans, "fermant SANS ouvrant"
+    # 🔴 REVUE 2026-09-03 — LA GARDE NE REGARDAIT QU'APRES LA DERNIERE PAIRE.
+    #    Un fermant orphelin place AVANT la 1re paire, ou ENTRE deux paires bien
+    #    formees, ne declenchait AUCUN refus : `refus` sortait None alors que la
+    #    ligne est manifestement mal formee. AC40.5.b exige que la garde SONNE.
+    #    ⇒ on balaie TOUTE la ligne : tout fermant qui ne clot pas un span
+    #      enregistre est un orphelin. (Un fermant STRICTEMENT dans un span est
+    #      impossible : `find` aurait pris celui-la comme fin de span.)
+    j = norm.find(ECHAP_F)
+    while j >= 0:
+        if j not in fermants:
+            return spans, "fermant SANS ouvrant"
+        j = norm.find(ECHAP_F, j + len(ECHAP_F))
     return spans, None
 
 
@@ -848,14 +860,49 @@ def positions_en_trop(cle, n_manif, n_arbre, ligne, cockpit):
         src = lignes[ligne - 1]
     except (OSError, IndexError, TypeError):
         return "  (⚠️ ligne source non relue — position indisponible)"
-    cols = [m.start() + 1 for m in re.finditer(re.escape(motif), normalise(src))]
+    # 🔴 REVUE 2026-09-03 — ON CHERCHAIT LA **CLE** DU MOTIF EN LITTERAL, ⛔ PAS
+    #    SA REGEX. Trois des cinq motifs ne sont PAS leur propre litteral : pour
+    #    ceux-la, la relecture ne retrouvait jamais rien et la fonction rendait
+    #    toujours « le motif ne se retrouve plus dans la ligne relue » —
+    #    autrement dit la promesse maitresse d'AC40.4.b etait MORTE pour eux, et
+    #    le message accusait la source. On relit desormais EXACTEMENT comme le
+    #    compteur : meme regex, meme garde de ligne, memes spans d'echappement.
+    rx, garde = None, None
+    for c, r, _l, g in MOTIFS:
+        if c == motif:
+            rx, garde = r, g
+    if rx is None:
+        return "  (⚠️ motif inconnu de la table — position indisponible)"
+    norm = normalise(src)
+    if garde and not garde(norm):
+        return ("  (⚠️ la garde de ligne du motif `%s` ecarte cette ligne — "
+                "l'ecart ne vient donc pas d'une occurrence de CETTE ligne)"
+                % motif)
+    spans, refus = spans_echappees(norm)
+    if refus:
+        spans = []
+    # ⚠️ COLONNES ET EXTRAIT SONT PRIS SUR LA **MEME** CHAINE. Les prendre l'un
+    #    sur la ligne normalisee et l'autre sur la ligne brute decalait la
+    #    colonne des qu'une ligne etait indentee ou accentuee.
+    cols = [m.start() + 1 for m in rx.finditer(norm)
+            if not any(d <= m.start() < f for d, f in spans)]
     if not cols:
-        return "  (⚠️ le motif ne se retrouve plus dans la ligne relue)"
+        return ("  (⚠️ le motif ne se retrouve plus dans la ligne relue — "
+                "la ligne a pu bouger depuis le comptage)")
     if n_arbre > n_manif:
         trop = cols[n_manif:]
+        # ⛔ `trop` PEUT ETRE VIDE : la relecture rend parfois MOINS de colonnes
+        #    que `n_manif` (la ligne a bouge entre le comptage et la relecture).
+        #    `trop[0]` levait alors un `IndexError` NON ATTRAPE, et la gate
+        #    mourait sans imprimer son BILAN — sur le chemin meme qu'AC40.4.b
+        #    existe pour eclairer.
+        if not trop:
+            return ("  (⚠️ positions indisponibles — %d colonne(s) relue(s) pour"
+                    " %d occurrence(s) comptee(s) : la ligne a bouge)"
+                    % (len(cols), n_arbre))
         return ("  ⇒ %d occurrence(s) EN TROP a la/aux colonne(s) %s : %r"
                 % (n_arbre - n_manif, ", ".join(str(c) for c in trop),
-                   src.strip()[max(0, trop[0] - 24):trop[0] + 40]))
+                   norm[max(0, trop[0] - 24):trop[0] + 40]))
     return ("  ⇒ %d occurrence(s) MANQUANTE(S) — %d colonne(s) vue(s) : %s"
             % (n_manif - n_arbre, len(cols), ", ".join(str(c) for c in cols)))
 
@@ -1047,6 +1094,24 @@ def main():
          "%d echappement(s) EXERCE(S) sur %d ligne(s)"
          % (len(echap_utiles), len({(r, l) for r, l, _c in echap_utiles})),
          "⛔ %d ligne(s) MAL FORMEE(S)" % len(echap_malformes))
+    # 🔴 REVUE 2026-09-03 — L'ECHAPPEMENT ETAIT UN SILENCIEUX **NON AUDITE**.
+    #    Les occurrences supprimees etaient bien collectees, mais publiees
+    #    UNIQUEMENT EN COMPTE : ⛔ aucune sortie ne nommait QUELLE ligne avait
+    #    echappe QUOI. Une affirmation perimee ecrite demain entre marques
+    #    disparaissait donc de la population d'arbitrage sans verdict, sans
+    #    ligne de manifeste et sans listing — et la garde « echappement
+    #    INUTILE » ne la voyait pas (l'echappement avait bien supprime un
+    #    match : il etait « utile »). Seul l'echappement d'une occurrence DEJA
+    #    ARBITREE etait rattrape, par le chemin FANTOME.
+    #    ⇒ CE QUI EST TU EST DESORMAIS NOMME. ⛔ Ce n'est pas un verdict : un
+    #      echappement legitime reste legitime — c'est une PIECE A CONVICTION.
+    if echap_utiles:
+        print("     ── CE QUE L'ECHAPPEMENT A RETIRE DU COMPTE, NOMME ──")
+        for rel, ln, cle in sorted(echap_utiles)[:20]:
+            print("        %s:%d [%s]" % (rel[-46:], ln, cle))
+        if len(echap_utiles) > 20:
+            print("        … et %d autre(s) — %d au total"
+                  % (len(echap_utiles) - 20, len(echap_utiles)))
     # 🔴 (iii) UN ECHAPPEMENT TROP GOURMAND FAIT BAISSER LE COMPTE, et un
     #    garde-fou qui n'interdit que la HAUSSE le laisse passer.
     for rel, ln, cit in echap_inutiles[:10]:
@@ -1146,8 +1211,12 @@ def main():
         return 1
     for e in erreurs:
         ctrl(False, "manifeste mal forme", e)
+    # 🔴 REVUE 2026-09-03 / AC40.4.h — CE `ctrl()` N'AVAIT QU'UN DETAIL, donc un
+    #    KO y imprimait la justification du SUCCES. Le remede etait deja ecrit
+    #    dans le docstring de `ctrl()` ; il n'avait pas ete applique ici.
     ctrl(bool(manif), "le manifeste est lisible et non vide",
-         "%d entree(s)" % len(manif))
+         "%d entree(s)" % len(manif),
+         "⛔ manifeste VIDE ou illisible — ⛔ aucun arbitrage n'est verifiable")
 
     # 🔴 REVUE 2026-09-02 — LE MANIFESTE COUVRE LES **DEUX** DEPOTS. Le borner a
     #    la moitie jouee etait la piece manquante : sans ca, jouer la moitie
@@ -1183,8 +1252,16 @@ def main():
                 arbre[cle][1][:52]))
     if len(manquantes) > 40:
         ctrl(False, "… et d'autres", "%d au total" % len(manquantes))
+    # 🔴 REVUE 2026-09-03 / AC40.4.h — LE CAS QUI A **MOTIVE** `detail_ko`, ET
+    #    QUI NE L'AVAIT PAS RECU. Sortie mesuree le 2026-09-02, en production :
+    #    `[KO ] toute occurrence de l'arbre est AU MANIFESTE  198 ligne(s)
+    #    arbitree(s)` — le motif du VERT, imprime sous le ROUGE. C'est mot pour
+    #    mot la ligne que le docstring de `ctrl()` cite comme sa raison d'etre.
     ctrl(not manquantes, "toute occurrence de l'arbre est AU MANIFESTE",
-         "%d ligne(s) arbitree(s)" % len(arbre))
+         "%d ligne(s) arbitree(s)" % len(arbre),
+         "⛔ %d occurrence(s) de l'arbre SANS ligne de manifeste (sur %d "
+         "arbitree(s)) — chacune est listee ci-dessus"
+         % (len(manquantes), len(arbre)))
 
     fantomes = sorted(set(manif) - set(arbre))
     for cle in fantomes[:40]:
@@ -1196,8 +1273,16 @@ def main():
     # ⚠️ dn4-40 / AC40.5.f (ii) — CE CONTROLE EST LE PRIX DE L'ECHAPPEMENT.
     #    Echapper une occurrence DEJA ARBITREE la transforme en FANTOME. Le
     #    remede est ECRIT dans le detail d'echec, ⛔ pas laisse a deviner.
+    # 🔴 REVUE 2026-09-03 / AC40.4.h — LE COMMENTAIRE CI-DESSUS AFFIRMAIT que
+    #    « le remede est ECRIT dans le detail d'echec » ; l'appel ne passait
+    #    AUCUN `detail_ko`, et imprimait `195 ligne(s) de manifeste` sous le
+    #    rouge. Le commentaire disait vrai de l'intention, ⛔ pas du code.
     ctrl(not fantomes, "le manifeste ne cite aucune occurrence FANTOME",
-         "%d ligne(s) de manifeste" % len(manif))
+         "%d ligne(s) de manifeste" % len(manif),
+         "⛔ %d ligne(s) de manifeste SANS occurrence dans l'arbre (sur %d) — "
+         "soit le constat a disparu, soit une occurrence DEJA ARBITREE vient "
+         "d'etre echappee : dans ce cas RETIRER sa ligne de manifeste dans le "
+         "MEME geste (AC40.5.f ii)" % (len(fantomes), len(manif)))
 
     ecarts_n = [(k, manif[k][0], arbre[k][0]) for k in sorted(set(manif) & set(arbre))
                 if manif[k][0] != arbre[k][0]]
@@ -1315,8 +1400,15 @@ def main():
     faux = sorted(k for k, v in manif.items() if v[1] == "FAUX")
     # ⚠️ dn4-40 / AC40.4.d — LE SECOND PLAFOND MUET.
     for k in faux[:20]:
+        # 🔴 REVUE 2026-09-03 — `%d` ETAIT APPLIQUE A `k[2]`, QUI EST LE MOTIF
+        #    (une chaine), et `k[3]` est la CITATION. La cle est
+        #    (depot, fichier, motif, citation, occurrence) — cf. les deux autres
+        #    deballages du fichier. ⇒ `TypeError` NON ATTRAPE : le controle
+        #    charge de rendre un verdict `FAUX` ROUGE mourait a la place, sur la
+        #    decision owner du 2026-08-30 qu'il existe pour appliquer.
         ctrl(False, "occurrence encore verdictee FAUX",
-             "%s:%s:%d [%s]" % (k[0], k[1][-40:], k[2], k[3]))
+             "%s:%s [%s] #%d « %.44s »"
+             % (k[0], k[1][-40:], k[2], k[4], k[3]))
     if len(faux) > 20:
         ctrl(False, "… et d'autres occurrences au verdict interdit", "",
              "%d au total" % len(faux))
@@ -1328,9 +1420,17 @@ def main():
     # detaillees et ne lisait jamais la prose de tete. Au premier ajout/retrait,
     # ces chiffres derivaient EN SILENCE — dans le fichier meme dont la raison
     # d'etre est que le dossier ne mente plus sur ses chiffres.
+    # 🔴 REVUE 2026-09-03 — CE DICTIONNAIRE ETAIT INDEXE SUR LA **CITATION**
+    #    (`k[3]`), ⛔ PAS SUR LE MOTIF (`k[2]`). La cle du manifeste est
+    #    (depot, fichier, motif, citation, occurrence). Consequence : seules les
+    #    lignes de VERDICT se resolvaient, et CHAQUE chiffre annonce PAR MOTIF
+    #    rendait `None`, donc etait saute par le `if reel is not None`. Le
+    #    controle des recapitulatifs par motif ⛔ ne se declenchait JAMAIS — dans
+    #    le bloc meme dont la raison d'etre est que le dossier ne mente pas sur
+    #    ses chiffres.
     par_motif_manif = {}
     for k, v in manif.items():
-        par_motif_manif[k[3]] = par_motif_manif.get(k[3], 0) + v[0]
+        par_motif_manif[k[2]] = par_motif_manif.get(k[2], 0) + v[0]
     annonces, ecarts_recap = {}, []
     for l in brut_manif.split("\n"):
         m = re.match(r"^\|\s*[`*]*([A-Za-z0-9._-]+)[`*]*\s*\|\s*\**(\d+)\**\s*\|\s*$",
@@ -1509,19 +1609,50 @@ def main():
             fin = debut
             while fin < len(lp) and "*/" not in lp[fin - 1]:
                 fin += 1
-            mauvais = []
-            for ln in sorted(cites):
-                if not (debut <= ln <= fin):
-                    mauvais.append("dn_pins.h:%d (cite par %s) ⇒ le bloc est "
-                                   "en fait l.%d-%d"
-                                   % (ln, cites[ln][0][-40:], debut, fin))
-            ctrl(not mauvais,
-                 "les renvois `dn_pins.h:<ligne>` tombent DANS le bloc resolu",
-                 "%d adresse(s) citee(s) : %s — bloc resolu PAR MARQUEUR "
-                 "l.%d-%d (⛔ pas par numero ecrit)"
-                 % (len(cites), sorted(cites), debut, fin),
-                 "⛔ %d RENVOI(S) HORS BLOC : %s" % (len(mauvais),
-                                                    " · ".join(mauvais)))
+            # 🔴 REVUE 2026-09-03 — SANS FIN DE COMMENTAIRE, LA BORNE FILAIT
+            #    JUSQU'A LA FIN DU FICHIER, et « le bloc » admettait alors
+            #    TOUTES les adresses : le controle devenait vrai par
+            #    construction. On refuse de borner sur rien.
+            if fin >= len(lp) and "*/" not in lp[fin - 1]:
+                ctrl(False, "le bloc de refutation SE FERME dans dn_pins.h",
+                     "", "⛔ aucun `*/` apres l.%d — la borne filerait jusqu'a "
+                     "la fin du fichier et le controle admettrait TOUTE adresse"
+                     % debut)
+            else:
+                ctrl(True, "le bloc de refutation SE FERME dans dn_pins.h",
+                     "l.%d → l.%d" % (debut, fin))
+                # 🔴 REVUE 2026-09-03 — `MARQ_REGISTRE` ETAIT EXIGE UNIQUE MAIS
+                #    NE BORNAIT RIEN, alors que le commentaire affirme que les
+                #    deux marqueurs « RESOLVENT le bloc ». Il le borne
+                #    desormais VRAIMENT : le jeton de registre doit tomber DANS
+                #    le bloc que l'en-tete a resolu — sinon les deux marqueurs
+                #    ne decrivent pas le meme bloc, et l'ancrage est illusoire.
+                ctrl(debut <= i_reg[0] <= fin,
+                     "les 2 marqueurs resolvent LE MEME bloc",
+                     "jeton de registre l.%d dans le bloc l.%d-%d"
+                     % (i_reg[0], debut, fin),
+                     "⛔ jeton de registre l.%d HORS du bloc l.%d-%d — les deux "
+                     "marqueurs ne designent pas le meme bloc"
+                     % (i_reg[0], debut, fin))
+                mauvais = []
+                for ln in sorted(cites):
+                    if not (debut <= ln <= fin):
+                        mauvais.append("dn_pins.h:%d (cite par %s) ⇒ le bloc est "
+                                       "en fait l.%d-%d"
+                                       % (ln, cites[ln][0][-40:], debut, fin))
+                # ⛔ REVUE 2026-09-03 — UN ENSEMBLE DE CITATIONS VIDE RENDAIT
+                #    VERT : retirer les renvois que ce controle verifie
+                #    l'ETEIGNAIT en silence. Une population vide se DIT.
+                ctrl(bool(cites) and not mauvais,
+                     "les renvois `dn_pins.h:<ligne>` tombent DANS le bloc resolu",
+                     "%d adresse(s) citee(s) : %s — bloc resolu PAR MARQUEUR "
+                     "l.%d-%d (⛔ pas par numero ecrit)"
+                     % (len(cites), sorted(cites), debut, fin),
+                     ("⛔ AUCUN renvoi `dn_pins.h:<ligne>` dans l'arbre — le "
+                      "controle ne s'exerce sur RIEN, il ⛔ ne passe PAS en "
+                      "silence" if not cites else
+                      "⛔ %d RENVOI(S) HORS BLOC : %s"
+                      % (len(mauvais), " · ".join(mauvais))))
 
     print("\n" + "=" * 78)
     print("BILAN : %d OK, %d KO" % (ok_total[0], ko_total[0]))
