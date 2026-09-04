@@ -139,18 +139,25 @@ Contributions are welcome. Two practical points:
   git grep -n -I -E 'nasbarok|naoua|~/projects|wsl\.localhost' HEAD --
   ```
 
-  It returns **139 files** and **1 323 sites**. ⚠️ A different pattern returns
-  different numbers: `nasbarok` alone — the pattern earlier notes used — returns
-  **110 files**. Neither is wrong; they measure different things, and this is why the
-  pattern is always written next to the count.
+  🔴 **Two counts, because the work changed one of them — and running the command
+  today gives you the second, not the first.** Saying only the "before" number would
+  publish a figure this tree refutes.
 
-  | class | files | sites | what it is | why it is what it is |
+  | class | before → after (files) | before → after (sites) | what it is | why it is what it is |
   |---|---:|---:|---|---|
-  | 1. functional dependency | 3 | 4 | tools that could not run from a clone | 🔴 **fixed** by `dn5-3` — this is the only class that was a defect |
-  | 2. usage example | 18 | 39 | Windows recipes, docstrings, comments | ✅ each one that *names* the machine now **declares itself as an example** at the point where it is read, with the command that gives you your own path |
-  | 3. generation trace | 5 | 5 | the `* Opts:` line in `firmware/…/fonts/dn_font_*.c` | 🔴 **kept, untouched** — see below |
-  | 4. evidence record | 111 | 1 264 | `mesures/` — captured console output | 🔴 **kept, untouched** — rewriting it would falsify the record |
-  | 5. the name *is* the subject | 2 | 11 | see the declared exclusions below | ⚠️ **excluded, and the exclusion is written** |
+  | 1. functional dependency | **3 → 0** | **4 → 0** | tools that could not run from a clone | 🔴 **the only class that was a defect — and it is now empty** |
+  | 2. usage example | 18 → 20 | 39 → 55 | Windows recipes, docstrings, comments | ✅ each one that *names* the machine now **declares itself as an example** at the point where it is read, with the command that gives you your own path. ⚠️ **It grew, and that is the fix working, not regressing:** every declaration written next to a path is itself a line carrying the pattern |
+  | 3. generation trace | 5 → 5 | 5 → 5 | the `* Opts:` line in `firmware/…/fonts/dn_font_*.c` | 🔴 **kept, untouched** — see below |
+  | 4. evidence record | 111 → 111 | 1 264 → 1 264 | `mesures/` — captured console output | 🔴 **kept, untouched** — rewriting it would falsify the record |
+  | 5. the name *is* the subject | 2 → 2 | 11 → 11 | see the declared exclusions below | ⚠️ **excluded, and the exclusion is written** |
+  | **total** | **139 → 138** | **1 323 → 1 335** | | |
+
+  ⚠️ **Do not treat any of these as a fixed number.** They move whenever a declaration
+  is added, and a declaration is exactly what this repository asks for. What is stable
+  is the **first row**: no tool depends on one particular machine. ⚠️ A different
+  pattern also returns different numbers — `nasbarok` alone, the one earlier notes
+  used, returns **110 files**. Neither pattern is wrong; they measure different things,
+  and that is why the pattern is always written next to the count.
 
   **What `mesures/` actually costs, since it is kept on purpose.** As of **2026-09-04** it
   holds **395 files** and **9 900 692 bytes** — that is **9.90 MB** in decimal units, or

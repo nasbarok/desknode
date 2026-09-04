@@ -1,0 +1,37 @@
+# T7 — COMPARAISON DES GATES, AVANT (T0) / APRES (T7)
+# mesure du 2026-09-04, par subprocess, ⛔ pas par le shell de session
+# ⚠️ comparaison sur le LIBELLE ENTIER — `%-58s` REMPLIT, ⛔ il ne tronque pas.
+# 🔴 11 motif(s) arbitre(s) sont LUS DANS LA GATE et CAVIARDES ci-dessous.
+#    ⛔ Les recopier ici fabriquerait des occurrences que cette gate compterait.
+==============================================================================
+
+── LA LIGNE DE BILAN DU RUNNER — la SEULE source du compte de gates ────────
+  T0 (avant) : 27 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 29 gates
+  T7 (apres) : 27 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 29 gates
+  ⇒ ✅ IDENTIQUE
+
+── LE ROUGE PRE-EXISTANT (verif_dossier_dn415.py) ─────────────────────────
+  T0 : 22 bons / 10 mauvais      T7 : 22 bons / 10 mauvais
+  ⇒ ✅ 0 DE PLUS
+  ⚠️ ⛔ CE ROUGE N'EST PAS DE CETTE STORY (porteurs `dn4-39` / `dn4-40`) : ses
+     defauts viennent de la PRESENCE du cockpit, ⛔ pas de son absence — la CI
+     ne les verra JAMAIS. Il est DECLARE, ⛔ ni impute, ni aggrave, ni repare.
+
+── RESULTATS NEGATIFS — LIBELLE ENTIER ────────────────────────────────
+  T0 : 10   ·   T7 : 10   ⇒ ✅ 0 de plus
+  ecarts sur le libelle BRUT       : 1
+  ecarts APRES normalisation l.<n> : 0
+  ⇒ ✅ LES SEULS ECARTS SONT DES **NUMEROS DE LIGNE DECALES**, et c'est
+       exactement ce qu'une annotation produit. ⛔ Ce n'est PAS une regression.
+       ·  occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:ing-artifacts/epics-desknode-v1.md [<motif-arbitre-caviarde>] #1 (l.2691) `done` depuis mi-août) : **on séquence par dépendanc
+
+── RESULTATS POSITIFS — LIBELLE ENTIER ────────────────────────────────
+  T0 : 22   ·   T7 : 22   ⇒ ✅ 0 de plus
+  ecarts sur le libelle BRUT       : 0
+  ecarts APRES normalisation l.<n> : 0
+  ⇒ ✅ aucun ecart, meme sur le libelle BRUT.
+
+==============================================================================
+VERDICT — LE CRITERE EST « 0 DE PLUS », ⛔ PAS « MOT POUR MOT »
+==============================================================================
+  ✅ 0 RESULTAT NEGATIF DE PLUS QU'A T0, et aucun libelle reellement neuf.

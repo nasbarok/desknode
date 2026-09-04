@@ -1,0 +1,58 @@
+# T0 — L'ETAT DES DEUX DEPOTS, mesure le 2026-09-04 par subprocess
+# ⚠️ DEUX depots, DEUX releves. Le git status du COCKPIT bougera (cette story y ecrit) :
+#    ⛔ ca ne voudra pas dire que `desknode` a bouge.
+==============================================================================
+
+── desknode  (LE CODE) — /home/nasbarok/projects/desknode
+  HEAD            : 3325c390404813d5bc1aa32aa272171c1b2c076b
+  branche         : main
+  status -sb      : ## main
+  fichiers sales  : 1
+      ?? mesures/dn5-3/
+      ⇒ le seul 'sale' cote desknode est `mesures/dn5-3/`, cree pour RECEVOIR ces
+        captures. ⛔ AUCUN fichier suivi n'est modifie a T0.
+  🔴 `main` N'A PAS D'AMONT CONFIGURE ⇒ `git status -sb` ne dira JAMAIS `ahead`.
+     ⇒ l'instrument juste est `rev-list --left-right --count main...origin/main` :
+       main...origin/main = 16	0   (gauche = avance LOCALE, droite = retard)
+  ETAT PUBLIE — les refs distantes (git ls-remote origin) :
+      63aed7fbdc558d17bbdb42de8e2b7d6a2f7c3171	HEAD
+      3db180cbd6789cde32bb093dd565d1ab3c4f298f	refs/heads/dn4-5-le-module-vit-tout-seul
+      63aed7fbdc558d17bbdb42de8e2b7d6a2f7c3171	refs/heads/main
+      d11977f8d80eee890f37bf79843cfe782b612338	refs/pull/1/head
+  fichiers versionnes : 569
+  par repertoire de 1er niveau :
+          395 mesures
+           66 tools
+           64 firmware
+           25 docs
+            8 (racine)
+            3 hardware
+            3 agent
+            3 .github
+            1 tests
+            1 assets
+  mesures/ : 395 fichiers · 9900692 octets = 9.90 Mo decimaux (10^6) = 9.44 Mio binaires (2^20)
+      ⚠️ '9,90 Mo' et '9,44 Mio' SONT LE MEME NOMBRE D'OCTETS — deux UNITES,
+        ⛔ pas deux mesures. Le dossier publie le Mo DECIMAL. ⛔ Ne pas les confondre.
+  gates decouvertes au glob tools/verif_*.py : 29
+  declarations NON_JOUABLES : 8
+
+── compagnon_project  (LE COCKPIT) — /home/nasbarok/projects/compagnon_project
+  HEAD            : b82d8947f378eddd6addfc44fd7bc6b954fa23fa
+  branche         : desknode-p0-p1-clos
+  status -sb      : ## desknode-p0-p1-clos
+  fichiers sales  : 3
+       M _bmad-output/implementation-artifacts/sprint-status-desknode.yaml
+      ?? _bmad-output/implementation-artifacts/dn5-3-plus-rien-ne-depend-de-ma-machine-et-ce-qui-la-nomme-le-dit.md
+      ?? ops/audit_impostor_episodes.py
+
+── 🔒 L'ANCRE DU DIFF firmware/ (AC3.6.a) ──────────────────────────────────
+  ⛔ PAS `main..HEAD` : le dev travaille SUR main ⇒ HEAD == main ⇒ le diff est VIDE
+     quoi qu'il arrive — UN CONTROLE QUI NE PEUT PAS ROUGIR.
+  ⛔ PAS `origin/main..main` non plus : il mesure le REMOTE, et il BOUGE a chaque pousse.
+  ✅ La seule ancre juste dans les deux cas : LE SHA DE DEBUT DE STORY.
+     SHA de debut de story : 3325c390404813d5bc1aa32aa272171c1b2c076b
+     git diff --name-only 3325c39 HEAD -- firmware/  ⇒ 0 fichier(s)
+  temoin de comparaison (l'ancre qu'il ne FAUT PAS utiliser, montree pour qu'on voie
+  qu'elle rend le meme chiffre AUJOURD'HUI et bougera demain) :
+     git diff --name-only origin/main..main -- firmware/ ⇒ 0 fichier(s)

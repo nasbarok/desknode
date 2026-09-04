@@ -1,0 +1,217 @@
+# T1 — TEMOIN NEGATIF A TROIS ETAGES — phase : APRES CORRECTION
+# mesure du 2026-09-04, par subprocess, ⛔ pas par le shell de session
+# clone --depth 1 pose en /tmp/dn-ailleurs (HORS de /home/nasbarok) — HEAD du clone : d89743ecdf1cb41dbe48a97f099b14c938b4a974
+# ⚠️ LE CLONE EST SUPPRIME A LA FIN : un 2e clone qui traine sur cette machine est
+#   PRECISEMENT ce que l'entree de ledger dn4-39 decrit comme dangereux.
+==============================================================================
+
+──────────────────────────────────────────────────────────────────────────────
+ETAGE (i) — CLONE DEPLACE + HOME ETRANGER  (recette de mesures/dn4-39/T1-causes.md)
+            HOME=/tmp/fakehome , cwd=/tmp/dn-ailleurs
+──────────────────────────────────────────────────────────────────────────────
+
+$ python3 tools/verif_dossier_d5_dn45.py
+    ==============================================================================
+    dn4-5 / AC7.2 — LE DOSSIER RATTRAPE LE CONSTAT OWNER DU 2026-08-25
+    ==============================================================================
+    
+    motifs cherches : « Battery Power Control » · « DEVRA MESURER LA CONSOMMATION »
+    perimetre : les DEUX depots, arbre ENTIER (⛔ pas le diff)
+    depot code    : /tmp/dn-ailleurs
+    depot cockpit : /tmp/fakehome/projects/compagnon_project
+    
+      [PREREQUIS PARTIEL] le depot cockpit n'est pas atteignable
+          chemin attendu : /tmp/fakehome/projects/compagnon_project
+          MOTIF : le cockpit est un depot PRIVE de planification,
+                  ⛔ jamais clone a cote du code. C'est le cas
+                  NORMAL sur un runner et chez un contributeur.
+          ⇒ LA MOITIE `desknode` EST JOUEE QUAND MEME : 4 des 6 fichiers
+            faisant autorite vivent dans CE depot.
+          ⇒ CE QUE CETTE PASSE N'A PAS PU CONTROLER — les 2 fichier(s)
+            du cockpit sont HORS de portee, ⛔ pas fantomes :
+               · _bmad-output/implementation-artifacts/deferred-work.md
+               · _bmad-output/implementation-artifacts/sprint-status-desknode.yaml
+          REMEDE : `--cockpit <chemin>` si le depot est ailleurs.
+          ⛔ rc=4 (prerequis) UNIQUEMENT si la moitie jouee est MUETTE ;
+             un KO trouve ici rend 1, comme n'importe quel rouge.
+          ⛔ CE N'EST PAS UN VERDICT SUR LE DOSSIER, et ⛔ pas un skip :
+             rc=4 est declare dans la table NON_JOUABLES de tools/run_gates.sh.
+    
+    ── 1. LES FICHIERS FAISANT AUTORITE — CHACUN DOIT ETRE ANNOTE ────
+      [OK ] hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md              4 occurrence(s), toutes annotees (l.1921,1933,1997,2002)
+      [OK ] hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md           3 occurrence(s), toutes annotees (l.3879,3882,3890)
+      [ -- ] hardware/ESP32-S3-Touch-LCD-2.8B-liaison-pc.md             aucune occurrence
+      [ -- ] README.md                                                  aucune occurrence
+      [ ×× ] _bmad-output/implementation-artifacts/deferred-work.md     HORS de portee (cockpit absent)
+      [ ×× ] utput/implementation-artifacts/sprint-status-desknode.yaml HORS de portee (cockpit absent)
+      [OK ] le balayage a bien trouve des occurrences                  7 occurrence(s) faisant autorite, 7 annotee(s)
+    
+    ── 2. CE QUI EST ECARTE, ET C'EST DECLARE ────────────────────────
+      ARCHIVES (⛔ NON exigees annotees — elles disent ce qui etait vrai ALORS) :
+         tools/verif_dossier_d5_dn45.py                                           3
+         ⇒ les archives sont LISTEES, ⛔ pas ecartees en silence — 1 fichier(s) d'archive
+         ⚠️ ⛔ CE COMPTE NE PORTE QUE SUR LE DEPOT CODE : l'arbre du
+            cockpit n'a PAS ete balaye (il est HORS de portee).
+    
+    ── 3. LE FAIT QUI FERME, ET IL EST ECRIT PARTOUT PAREIL ──────────
+      [OK ] hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md date le constat constat owner du 2026-08-25
+      [OK ] rdware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md date le constat constat owner du 2026-08-25
+      [ ×× ] _bmad-output/implementation-artifacts/deferred-work.md     HORS de portee (cockpit absent)
+      [ ×× ] utput/implementation-artifacts/sprint-status-desknode.yaml HORS de portee (cockpit absent)
+    
+    ==============================================================================
+    BILAN : 5 OK, 0 KO
+    ==============================================================================
+  ⇒ rc=4      (gate — lit le cockpit PRIVE)
+
+$ python3 tools/bench_lisseur_dn45.py
+    psutil manquant : pip install --user psutil (dépendance assumée, cf. README)
+  ⇒ rc=1      (bench — hors du glob des gates)
+
+──────────────────────────────────────────────────────────────────────────────
+ETAGE (ii) — 🆕 LA CIBLE RENDUE INATTEIGNABLE
+             unshare -r -m + mount --bind d'un repertoire VIDE sur /home/nasbarok
+             ⚠️ HOME reste /tmp/fakehome : le bind ne masque PAS $HOME, il masque LA CIBLE
+               D'UN CHEMIN ABSOLU — ce qu'AUCUNE variable d'environnement ne peut faire.
+             ⚠️ `unshare -r` mappe l'utilisateur sur root DANS LE NAMESPACE seulement :
+               rien n'est modifie hors de lui, le bind meurt avec le processus.
+             ⛔ bwrap / podman / docker / proot sont ABSENTS de cette WSL.
+──────────────────────────────────────────────────────────────────────────────
+
+$ unshare -r -m -- sh -c 'mount --bind /tmp/vide /home/nasbarok && … python3 tools/verif_dossier_d5_dn45.py'
+    ==============================================================================
+    dn4-5 / AC7.2 — LE DOSSIER RATTRAPE LE CONSTAT OWNER DU 2026-08-25
+    ==============================================================================
+    
+    motifs cherches : « Battery Power Control » · « DEVRA MESURER LA CONSOMMATION »
+    perimetre : les DEUX depots, arbre ENTIER (⛔ pas le diff)
+    depot code    : /tmp/dn-ailleurs
+    depot cockpit : /tmp/fakehome/projects/compagnon_project
+    
+      [PREREQUIS PARTIEL] le depot cockpit n'est pas atteignable
+          chemin attendu : /tmp/fakehome/projects/compagnon_project
+          MOTIF : le cockpit est un depot PRIVE de planification,
+                  ⛔ jamais clone a cote du code. C'est le cas
+                  NORMAL sur un runner et chez un contributeur.
+          ⇒ LA MOITIE `desknode` EST JOUEE QUAND MEME : 4 des 6 fichiers
+            faisant autorite vivent dans CE depot.
+          ⇒ CE QUE CETTE PASSE N'A PAS PU CONTROLER — les 2 fichier(s)
+            du cockpit sont HORS de portee, ⛔ pas fantomes :
+               · _bmad-output/implementation-artifacts/deferred-work.md
+               · _bmad-output/implementation-artifacts/sprint-status-desknode.yaml
+          REMEDE : `--cockpit <chemin>` si le depot est ailleurs.
+          ⛔ rc=4 (prerequis) UNIQUEMENT si la moitie jouee est MUETTE ;
+             un KO trouve ici rend 1, comme n'importe quel rouge.
+          ⛔ CE N'EST PAS UN VERDICT SUR LE DOSSIER, et ⛔ pas un skip :
+             rc=4 est declare dans la table NON_JOUABLES de tools/run_gates.sh.
+    
+    ── 1. LES FICHIERS FAISANT AUTORITE — CHACUN DOIT ETRE ANNOTE ────
+      [OK ] hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md              4 occurrence(s), toutes annotees (l.1921,1933,1997,2002)
+      [OK ] hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md           3 occurrence(s), toutes annotees (l.3879,3882,3890)
+      [ -- ] hardware/ESP32-S3-Touch-LCD-2.8B-liaison-pc.md             aucune occurrence
+      [ -- ] README.md                                                  aucune occurrence
+      [ ×× ] _bmad-output/implementation-artifacts/deferred-work.md     HORS de portee (cockpit absent)
+      [ ×× ] utput/implementation-artifacts/sprint-status-desknode.yaml HORS de portee (cockpit absent)
+      [OK ] le balayage a bien trouve des occurrences                  7 occurrence(s) faisant autorite, 7 annotee(s)
+    
+    ── 2. CE QUI EST ECARTE, ET C'EST DECLARE ────────────────────────
+      ARCHIVES (⛔ NON exigees annotees — elles disent ce qui etait vrai ALORS) :
+         tools/verif_dossier_d5_dn45.py                                           3
+         ⇒ les archives sont LISTEES, ⛔ pas ecartees en silence — 1 fichier(s) d'archive
+         ⚠️ ⛔ CE COMPTE NE PORTE QUE SUR LE DEPOT CODE : l'arbre du
+            cockpit n'a PAS ete balaye (il est HORS de portee).
+    
+    ── 3. LE FAIT QUI FERME, ET IL EST ECRIT PARTOUT PAREIL ──────────
+      [OK ] hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md date le constat constat owner du 2026-08-25
+      [OK ] rdware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md date le constat constat owner du 2026-08-25
+      [ ×× ] _bmad-output/implementation-artifacts/deferred-work.md     HORS de portee (cockpit absent)
+      [ ×× ] utput/implementation-artifacts/sprint-status-desknode.yaml HORS de portee (cockpit absent)
+    
+    ==============================================================================
+    BILAN : 5 OK, 0 KO
+    ==============================================================================
+    RC=4
+    --- /home/nasbarok contient : 0 entree(s)
+  ⇒ rc INTERNE=4   (rc de unshare lui-meme : 0)   (gate — lit le cockpit PRIVE)
+
+$ unshare -r -m -- sh -c 'mount --bind /tmp/vide /home/nasbarok && … python3 tools/bench_lisseur_dn45.py'
+    RC=1
+    --- /home/nasbarok contient : 0 entree(s)
+    psutil manquant : pip install --user psutil (dépendance assumée, cf. README)
+  ⇒ rc INTERNE=1   (rc de unshare lui-meme : 0)   (bench — hors du glob des gates)
+
+──────────────────────────────────────────────────────────────────────────────
+LE 3e FICHIER DE CLASSE 1 — tools/thermique_ventilos_dn48.py
+⚠️ IL NE SE REJOUE PAS ICI, ET L'EXCLUSION SE DECLARE : il lit /metrics sur la TOUR,
+   sous Windows. Son temoin est une LECTURE + un CONTROLE CIBLE du chemin par defaut,
+   ⛔ pas une execution.
+──────────────────────────────────────────────────────────────────────────────
+  tools/thermique_ventilos_dn48.py:348
+      ap.add_argument("--csv",
+  ⇒ defaut = ?
+  ⇒ CONTROLE : ce defaut nomme-t-il un profil utilisateur ? ✅ NON
+
+  🔴 CE CONTROLE A ETE FAUX AU 1er TIR, ET IL PORTE DESORMAIS SON TEMOIN.
+    Le motif etait ecrit r"[A-Za-z]:\\\\Users\\\\" : dans une r-string, \\\\ vaut
+    DEUX antislashs, alors que le chemin n'en porte QU'UN ⇒ il rendait « ✅ NON »
+    sur C:\Users\naoua\… — un VERT SUR DU CODE FAUX. AC3.1.c : on repare
+    l'instrument et ON L'ECRIT, ⛔ on ne conclut pas que le depot est sain.
+    ⇒ TEMOIN, joue a chaque tir (⛔ il REPLANTE la faute, il ne la debranche pas) :
+      C:\Users\naoua\AppData\Local\Temp\dn48_thermique.csv attendu True  vu True  ✅
+      C:\Users\quiconque\Temp\x.csv                        attendu True  vu True  ✅
+      /home/nasbarok/x.csv                                 attendu True  vu True  ✅
+      /tmp/dn48_thermique.csv                              attendu False vu False ✅
+      dn48_thermique.csv                                   attendu False vu False ✅
+  ⇒ et il est OUVERT EN ECRITURE a la l.177 : with open(chemin, "w", newline="", encoding="utf-8") as f:
+  ⇒ ECHEC TARDIF : le programme demarre, imprime son en-tete, imprime le chemin,
+    PUIS meurt en FileNotFoundError. ⛔ Pas le meme comportement que bench_lisseur,
+    qui meurt a l'import. ⇒ TROIS comportements, ⛔ pas deux.
+  ⇒ et il est OUVERT EN ECRITURE a la l.335 : #    (`open(chemin, "w", ...)`) ⇒ sur la machine de quelqu'un d'autre,
+  ⇒ ECHEC TARDIF : le programme demarre, imprime son en-tete, imprime le chemin,
+    PUIS meurt en FileNotFoundError. ⛔ Pas le meme comportement que bench_lisseur,
+    qui meurt a l'import. ⇒ TROIS comportements, ⛔ pas deux.
+
+==============================================================================
+VERDICT — ⛔ LE CRITERE N'EST PAS « ELLE TOMBE »
+==============================================================================
+  tools/verif_dossier_d5_dn45.py         etage (i ) : rc=4   attendu 4   ✅
+  tools/verif_dossier_d5_dn45.py         etage (ii) : rc=4   attendu 4   ✅
+  tools/bench_lisseur_dn45.py            etage (i ) : rc=1   (attendu : non contraint)
+
+🎯 CE QUE LA PHASE **APRES** DOIT PROUVER, ET QUI VA PLUS LOIN QUE LE `rc` :
+
+  ETAGE (i) — la gate parle-t-elle ENCORE de l'arbre de l'AUTEUR ?
+     ✅ NON — aucun des deux chemins de l'auteur n'apparait dans sa sortie.
+        ⚠️ AVANT correction, l'etage (i) rendait « 9 OK, 0 KO » en certifiant
+          CES CHEMINS-LA depuis un clone de /tmp. C'est ce qui a disparu.
+     controles rendus par la gate : 5      declares HORS de portee : 6
+     ✅ ELLE A CONTROLE LA MOITIE ATTEIGNABLE ET ANNONCE L'AUTRE — ⛔ plus
+        « rien a balayer », ⛔ plus un vert silencieux.
+     verdicts rendus sur des fichiers du COCKPIT PRIVE : 0
+        ✅ AUCUN — l'entree de ledger « elle peut certifier VERT un autre
+           arbre que celui qu'on verifie » est SOLDEE, par construction.
+
+  ETAGE (ii) — la gate parle-t-elle ENCORE de l'arbre de l'AUTEUR ?
+     ✅ NON — aucun des deux chemins de l'auteur n'apparait dans sa sortie.
+        ⚠️ AVANT correction, l'etage (i) rendait « 9 OK, 0 KO » en certifiant
+          CES CHEMINS-LA depuis un clone de /tmp. C'est ce qui a disparu.
+     controles rendus par la gate : 5      declares HORS de portee : 6
+     ✅ ELLE A CONTROLE LA MOITIE ATTEIGNABLE ET ANNONCE L'AUTRE — ⛔ plus
+        « rien a balayer », ⛔ plus un vert silencieux.
+     verdicts rendus sur des fichiers du COCKPIT PRIVE : 0
+        ✅ AUCUN — l'entree de ledger « elle peut certifier VERT un autre
+           arbre que celui qu'on verifie » est SOLDEE, par construction.
+
+  bench_lisseur_dn45.py — LA NATURE DE L'ECHEC A-T-ELLE CHANGE ?
+     ✅ OUI — il ne meurt PLUS sur `No module named 'dn_agent'`.
+        Ce qui l'arrete desormais, mot pour mot :
+           psutil manquant : pip install --user psutil (dépendance assumée, cf. README)
+        ⇒ une DEPENDANCE DECLAREE (annoncee au README), avec son REMEDE,
+          ⛔ plus un chemin UNC vers la machine de l'auteur. Le `rc` peut
+          rester non nul, et ⛔ ce n'est pas le meme echec.
+
+AC3.1.c — LE TEMOIN EST FALSIFIABLE : si les rc ci-dessus ne sont pas ceux attendus,
+  ⛔ ON NE CONCLUT PAS QUE LE DEPOT EST SAIN — on repare l'instrument et on l'ecrit.
+  ⇒ etat : ✅ l'instrument rend ce que le cadrage avait mesure
+
+⚠️ clone, fakehome et repertoire vide SUPPRIMES (/tmp/dn-ailleurs / /tmp/fakehome / /tmp/vide).

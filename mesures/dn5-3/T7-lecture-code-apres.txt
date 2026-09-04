@@ -1,0 +1,184 @@
+# T1 / ETAGE (iii) — BALAYAGE DE LECTURE — phase : APRES CORRECTION
+# mesure du 2026-09-04, par subprocess, ⛔ pas par le shell de session
+# perimetre : le glob tools/verif_*.py — 29 gates au moment du tir
+# ⚠️ le nombre de gates VARIE : il se MESURE au glob, ⛔ il ne se recopie pas.
+==============================================================================
+
+🔴 TEMOIN DE L'INSTRUMENT — IL PASSE **AVANT** TOUT CHIFFRE
+   L'instrument doit retrouver les 3 fichiers de classe 1 deja connus. Au 1er tir il
+   en ratait DEUX (motifs C et D ecrits avec un `\\` de trop : ils exigeaient DEUX
+   antislashs la ou le code n'en porte QU'UN). ⇒ un balayage QUI NE PEUT PAS VOIR.
+   ⛔ Sans ce temoin, la sortie « 11 sites » aurait eu l'air complete.
+──────────────────────────────────────────────────────────────────────────────
+   tools/verif_dossier_d5_dn45.py         :47   motif A : ✅ le site a disparu du fichier
+   tools/verif_dossier_d5_dn45.py         :48   motif A : ✅ le site a disparu du fichier
+   tools/bench_lisseur_dn45.py            :4    motif D : ✅ le site a disparu du fichier
+   tools/thermique_ventilos_dn48.py       :310  motif C : ✅ le site a disparu du fichier
+   ⇒ ✅ l'instrument voit ce qu'il doit voir
+
+──────────────────────────────────────────────────────────────────────────────
+A. racine ABSOLUE en dur
+  motif ERE : "/home/|'/home/|"/Users/|'/Users/
+  cible     : tools/verif_*.py
+──────────────────────────────────────────────────────────────────────────────
+
+  ── FAUX POSITIFS, **DECLARES** (⛔ jamais retires en silence) ──
+  ⚪ tools/verif_dossier_d5_dn45.py         :52    #      DESKNODE = "/home/<auteur>/projects/desknode"
+       ⇒ un COMMENTAIRE — ⛔ RIEN NE S'EXECUTE ici. Soit une ANNOTATION NFR3 qui documente l'etat d'AVANT (annoter, ⛔ pas effacer), soit un exemple d'usage de CLASSE 2 — ⛔ dans les deux cas, pas une dependance FONCTIONNELLE
+  ⚪ tools/verif_dossier_d5_dn45.py         :53    #      COCKPIT  = "/home/<auteur>/projects/compagnon_project"
+       ⇒ un COMMENTAIRE — ⛔ RIEN NE S'EXECUTE ici. Soit une ANNOTATION NFR3 qui documente l'etat d'AVANT (annoter, ⛔ pas effacer), soit un exemple d'usage de CLASSE 2 — ⛔ dans les deux cas, pas une dependance FONCTIONNELLE
+
+  ⇒ 0 vrai(s) site(s) · 2 faux positif(s) DECLARE(s)
+
+──────────────────────────────────────────────────────────────────────────────
+B. HOME lu par le programme
+  motif ERE : expanduser|Path\.home\(\)|environ\[.HOME.\]|environ\.get\(.HOME.
+  cible     : tools/verif_*.py
+──────────────────────────────────────────────────────────────────────────────
+
+  ── FAUX POSITIFS, **DECLARES** (⛔ jamais retires en silence) ──
+  ⚪ tools/verif_campagne_dn440.py          :1217  os.environ.get("HOME") or "/nonexistent", "projects", "compagnon_project"))
+       ⇒ LE PATRON ATTENDU, ⛔ pas un defaut : HOME ne sert qu'a fabriquer un DEFAUT, et le fichier declare add_argument("--cockpit") qui le remplace
+  ⚪ tools/verif_dossier_d5_dn45.py         :81    #    ⚠️ ⛔ PAS `expanduser("~")`, ⛔ PAS `$HOME` : cette constante ne cherche pas
+       ⇒ LE PATRON ATTENDU, ⛔ pas un defaut : HOME ne sert qu'a fabriquer un DEFAUT, et le fichier declare add_argument("--cockpit") qui le remplace
+  ⚪ tools/verif_dossier_d5_dn45.py         :85    #    ⚠️ `expanduser("~")` ET `${HOME}` NE DISENT PAS LA MEME CHOSE quand `HOME`
+       ⇒ LE PATRON ATTENDU, ⛔ pas un defaut : HOME ne sert qu'a fabriquer un DEFAUT, et le fichier declare add_argument("--cockpit") qui le remplace
+  ⚪ tools/verif_dossier_d5_dn45.py         :88    #    `os.environ.get("HOME")`, avec la MEME valeur de repli que le shell** —
+       ⇒ LE PATRON ATTENDU, ⛔ pas un defaut : HOME ne sert qu'a fabriquer un DEFAUT, et le fichier declare add_argument("--cockpit") qui le remplace
+  ⚪ tools/verif_dossier_d5_dn45.py         :97    COCKPIT_DEFAUT = os.path.join(os.environ.get("HOME") or "/nonexistent",
+       ⇒ LE PATRON ATTENDU, ⛔ pas un defaut : HOME ne sert qu'a fabriquer un DEFAUT, et le fichier declare add_argument("--cockpit") qui le remplace
+  ⚪ tools/verif_dossier_dn415.py           :168   # 🔴 REVUE 2026-09-02 — `expanduser("~")` ET `${HOME}` NE DISENT PAS LA MEME
+       ⇒ LE PATRON ATTENDU, ⛔ pas un defaut : HOME ne sert qu'a fabriquer un DEFAUT, et le fichier declare add_argument("--cockpit") qui le remplace
+  ⚪ tools/verif_dossier_dn415.py           :176   COCKPIT_DEFAUT = os.path.join(os.environ.get("HOME") or "/nonexistent",
+       ⇒ LE PATRON ATTENDU, ⛔ pas un defaut : HOME ne sert qu'a fabriquer un DEFAUT, et le fichier declare add_argument("--cockpit") qui le remplace
+  ⚪ tools/verif_ledger_dn416.py            :148   # 🔴 REVUE 2026-09-02 — `expanduser("~")` ET `${HOME}` NE DISENT PAS LA MEME
+       ⇒ LE PATRON ATTENDU, ⛔ pas un defaut : HOME ne sert qu'a fabriquer un DEFAUT, et le fichier declare add_argument("--cockpit") qui le remplace
+  ⚪ tools/verif_ledger_dn416.py            :156   COCKPIT_DEFAUT = os.path.join(os.environ.get("HOME") or "/nonexistent",
+       ⇒ LE PATRON ATTENDU, ⛔ pas un defaut : HOME ne sert qu'a fabriquer un DEFAUT, et le fichier declare add_argument("--cockpit") qui le remplace
+
+  ⇒ 0 vrai(s) site(s) · 9 faux positif(s) DECLARE(s)
+
+──────────────────────────────────────────────────────────────────────────────
+C. lettre de lecteur Windows
+  motif ERE : [A-Za-z]:\\+
+  cible     : tools/*.py tools/*.ps1 tools/*.bat tools/*.sh
+──────────────────────────────────────────────────────────────────────────────
+  🔴 tools/rendre-port.sh                   :48    TOUR_WIN="${DN_TOUR_WIN:-H:\\dev\\projets\\desknode}"
+
+  ── FAUX POSITIFS, **DECLARES** (⛔ jamais retires en silence) ──
+  ⚪ tools/campagne_ctrl_dn440.py           :156   f.write(b"development_status:\n  \xff\xfe: done\n")
+       ⇒ une SEQUENCE D'ECHAPPEMENT ou une regex (`…:\n`, `…:\s`), ⛔ pas un chemin : la lettre n'est pas SEULE, ou il ne reste pas 2 caracteres de segment apres l'antislash
+  ⚪ tools/temoins_bancs_dn444.py           :178   '    chemin = os.path.join(arbre, gate)\n    try:\n        lignes_ctrl = {ligne for lign
+       ⇒ une SEQUENCE D'ECHAPPEMENT ou une regex (`…:\n`, `…:\s`), ⛔ pas un chemin : la lettre n'est pas SEULE, ou il ne reste pas 2 caracteres de segment apres l'antislash
+  ⚪ tools/thermique_ventilos_dn48.py       :52    c'est-a-dire `C:\Users\<qui-que-ce-soit>\AppData\Local\Temp`. C'EST LE
+       ⇒ une RECETTE WINDOWS dans un DOCSTRING (plage mesuree par ast) : c'est CE QU'IL FAUT TAPER, ⛔ rien ne s'execute. Classe 2 — traitee en T4, ⛔ pas une dependance FONCTIONNELLE
+  ⚪ tools/thermique_ventilos_dn48.py       :329   #    `C:\Users\<le-compte-Windows-de-l-auteur>\AppData\Local\Temp\` — son
+       ⇒ un COMMENTAIRE — ⛔ RIEN NE S'EXECUTE ici. Soit une ANNOTATION NFR3 qui documente l'etat d'AVANT (annoter, ⛔ pas effacer), soit un exemple d'usage de CLASSE 2 — ⛔ dans les deux cas, pas une dependance FONCTIONNELLE
+  ⚪ tools/thermique_ventilos_dn48.py       :344   #    `C:\Users\<l-utilisateur-courant>\AppData\Local\Temp` — et `/tmp`
+       ⇒ un COMMENTAIRE — ⛔ RIEN NE S'EXECUTE ici. Soit une ANNOTATION NFR3 qui documente l'etat d'AVANT (annoter, ⛔ pas effacer), soit un exemple d'usage de CLASSE 2 — ⛔ dans les deux cas, pas une dependance FONCTIONNELLE
+  ⚪ tools/verif_campagne_dn440.py          :888   "if f:\n"
+       ⇒ une SEQUENCE D'ECHAPPEMENT ou une regex (`…:\n`, `…:\s`), ⛔ pas un chemin : la lettre n'est pas SEULE, ou il ne reste pas 2 caracteres de segment apres l'antislash
+  ⚪ tools/verif_campagne_dn440.py          :898   "if f:\n"
+       ⇒ une SEQUENCE D'ECHAPPEMENT ou une regex (`…:\n`, `…:\s`), ⛔ pas un chemin : la lettre n'est pas SEULE, ou il ne reste pas 2 caracteres de segment apres l'antislash
+  ⚪ tools/verif_campagne_dn440.py          :948   trk_piege = ("development_status:\n"
+       ⇒ une SEQUENCE D'ECHAPPEMENT ou une regex (`…:\n`, `…:\s`), ⛔ pas un chemin : la lettre n'est pas SEULE, ou il ne reste pas 2 caracteres de segment apres l'antislash
+  ⚪ tools/verif_demarrage_dn443.py         :424   src_c = M(7, src_c, '    default:\n        /* ⛔ NE PAS ENLEVER',
+       ⇒ une SEQUENCE D'ECHAPPEMENT ou une regex (`…:\n`, `…:\s`), ⛔ pas un chemin : la lettre n'est pas SEULE, ou il ne reste pas 2 caracteres de segment apres l'antislash
+  ⚪ tools/verif_demarrage_dn443.py         :425   '    default:\n        return "PROPRE";\n        /* ⛔ NE PAS ENLEVER')
+       ⇒ une SEQUENCE D'ECHAPPEMENT ou une regex (`…:\n`, `…:\s`), ⛔ pas un chemin : la lettre n'est pas SEULE, ou il ne reste pas 2 caracteres de segment apres l'antislash
+  ⚪ tools/verif_licences_dn52.py           :401   if re.match(r"^dependencies:\s*$", ligne):
+       ⇒ une SEQUENCE D'ECHAPPEMENT ou une regex (`…:\n`, `…:\s`), ⛔ pas un chemin : la lettre n'est pas SEULE, ou il ne reste pas 2 caracteres de segment apres l'antislash
+  ⚪ tools/verif_licences_dn52.py           :419   m = re.match(r'^    version:\s*"([^"]+)"\s*$', s)
+       ⇒ une SEQUENCE D'ECHAPPEMENT ou une regex (`…:\n`, `…:\s`), ⛔ pas un chemin : la lettre n'est pas SEULE, ou il ne reste pas 2 caracteres de segment apres l'antislash
+  ⚪ tools/verif_licences_dn52.py           :457   manifeste = M(22, manifeste, "dependencies:\n", "deps:\n")
+       ⇒ une SEQUENCE D'ECHAPPEMENT ou une regex (`…:\n`, `…:\s`), ⛔ pas un chemin : la lettre n'est pas SEULE, ou il ne reste pas 2 caracteres de segment apres l'antislash
+  ⚪ tools/verif_licences_dn52.py           :729   "        with:\n"
+       ⇒ une SEQUENCE D'ECHAPPEMENT ou une regex (`…:\n`, `…:\s`), ⛔ pas un chemin : la lettre n'est pas SEULE, ou il ne reste pas 2 caracteres de segment apres l'antislash
+  ⚪ tools/verif_licences_dn52.py           :734   actions = re.findall(r"uses:\s*([\w.-]+/[\w.-]+)@([\w.-]+)", wf)
+       ⇒ une SEQUENCE D'ECHAPPEMENT ou une regex (`…:\n`, `…:\s`), ⛔ pas un chemin : la lettre n'est pas SEULE, ou il ne reste pas 2 caracteres de segment apres l'antislash
+  ⚪ tools/verif_licences_dn52.py           :745   md = re.search(r"path-to-document:\s*['\"]?([^'\"\s]+)", wf)
+       ⇒ une SEQUENCE D'ECHAPPEMENT ou une regex (`…:\n`, `…:\s`), ⛔ pas un chemin : la lettre n'est pas SEULE, ou il ne reste pas 2 caracteres de segment apres l'antislash
+  ⚪ tools/verif_licences_dn52.py           :758   danger = re.search(r"uses:\s*actions/checkout@[^\n]*\n(?:[^\n]*\n)"
+       ⇒ une SEQUENCE D'ECHAPPEMENT ou une regex (`…:\n`, `…:\s`), ⛔ pas un chemin : la lettre n'est pas SEULE, ou il ne reste pas 2 caracteres de segment apres l'antislash
+  ⚪ tools/verif_licences_dn52.py           :759   r"{0,6}?[^\n]*ref:\s*\$\{\{\s*github\.event\."
+       ⇒ une SEQUENCE D'ECHAPPEMENT ou une regex (`…:\n`, `…:\s`), ⛔ pas un chemin : la lettre n'est pas SEULE, ou il ne reste pas 2 caracteres de segment apres l'antislash
+  ⚪ tools/verif_reprise_horloge_dn418.py   :86    return re.sub(rb"lue        : \d{4}-\d\d-\d\d \d\d:\d\d:\d\d",
+       ⇒ une SEQUENCE D'ECHAPPEMENT ou une regex (`…:\n`, `…:\s`), ⛔ pas un chemin : la lettre n'est pas SEULE, ou il ne reste pas 2 caracteres de segment apres l'antislash
+  ⚪ tools/verif_reprise_horloge_dn418.py   :316   ok &= _dire(re.fullmatch(r"rtc set \d{4}-\d\d-\d\d \d\d:\d\d:\d\d", cmd or "")
+       ⇒ une SEQUENCE D'ECHAPPEMENT ou une regex (`…:\n`, `…:\s`), ⛔ pas un chemin : la lettre n'est pas SEULE, ou il ne reste pas 2 caracteres de segment apres l'antislash
+  ⚪ tools/dn_agent_tour.ps1                :72    $USBIPD  = 'C:\Program Files\usbipd-win\usbipd.exe'
+       ⇒ un chemin Windows UNIVERSEL (installation standard, cle de REGISTRE, variable d'environnement) — ⛔ il NE NOMME AUCUN utilisateur
+  ⚪ tools/dn_agent_tour.ps1                :746   $cle = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+       ⇒ un chemin Windows UNIVERSEL (installation standard, cle de REGISTRE, variable d'environnement) — ⛔ il NE NOMME AUCUN utilisateur
+  ⚪ tools/dn_lhm_tour.ps1                  :137   $CLE_RUN    = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+       ⇒ un chemin Windows UNIVERSEL (installation standard, cle de REGISTRE, variable d'environnement) — ⛔ il NE NOMME AUCUN utilisateur
+  ⚪ tools/dn_lhm_tour.ps1                  :202   $ndp = Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full' -Erro
+       ⇒ un chemin Windows UNIVERSEL (installation standard, cle de REGISTRE, variable d'environnement) — ⛔ il NE NOMME AUCUN utilisateur
+  ⚪ tools/rendre-port.sh                   :35    USBIPD='C:\Program Files\usbipd-win\usbipd.exe'
+       ⇒ un chemin Windows UNIVERSEL (installation standard, cle de REGISTRE, variable d'environnement) — ⛔ il NE NOMME AUCUN utilisateur
+  ⚪ tools/rendre-port.sh                   :50    #    PAS RELIEES : ici `H:\dev\projets\desknode`, la-bas
+       ⇒ un COMMENTAIRE — ⛔ RIEN NE S'EXECUTE ici. Soit une ANNOTATION NFR3 qui documente l'etat d'AVANT (annoter, ⛔ pas effacer), soit un exemple d'usage de CLASSE 2 — ⛔ dans les deux cas, pas une dependance FONCTIONNELLE
+  ⚪ tools/wsl-attach.sh                    :35    USBIPD='C:\Program Files\usbipd-win\usbipd.exe'
+       ⇒ un chemin Windows UNIVERSEL (installation standard, cle de REGISTRE, variable d'environnement) — ⛔ il NE NOMME AUCUN utilisateur
+
+  ⇒ 1 vrai(s) site(s) · 27 faux positif(s) DECLARE(s)
+
+──────────────────────────────────────────────────────────────────────────────
+D. chemin UNC vers wsl
+  motif ERE : \\+wsl
+  cible     : tools/*.py tools/*.ps1 tools/*.bat tools/*.sh
+──────────────────────────────────────────────────────────────────────────────
+
+  ── FAUX POSITIFS, **DECLARES** (⛔ jamais retires en silence) ──
+  ⚪ tools/bench_lisseur_dn45.py            :7     #    `\\wsl.localhost\Ubuntu\home\<l-auteur>\projects\desknode\agent`.
+       ⇒ un COMMENTAIRE — ⛔ RIEN NE S'EXECUTE ici. Soit une ANNOTATION NFR3 qui documente l'etat d'AVANT (annoter, ⛔ pas effacer), soit un exemple d'usage de CLASSE 2 — ⛔ dans les deux cas, pas une dependance FONCTIONNELLE
+  ⚪ tools/identifier_ventilos_dn48.py      :33    powershell.exe -NoProfile -Command "& $env:LOCALAPPDATA\Programs\Python\Python313\python
+       ⇒ une RECETTE WINDOWS dans un DOCSTRING (plage mesuree par ast) : c'est CE QU'IL FAUT TAPER, ⛔ rien ne s'execute. Classe 2 — traitee en T4, ⛔ pas une dependance FONCTIONNELLE
+  ⚪ tools/mesure_grandeurs_dn46.py         :9     \\\\wsl.localhost\\Ubuntu\\home\\nasbarok\\projects\\desknode\\tools\\mesure_grandeurs_d
+       ⇒ une RECETTE WINDOWS dans un DOCSTRING (plage mesuree par ast) : c'est CE QU'IL FAUT TAPER, ⛔ rien ne s'execute. Classe 2 — traitee en T4, ⛔ pas une dependance FONCTIONNELLE
+  ⚪ tools/mesure_lhm_dn48.py               :8     powershell.exe -NoProfile -Command "& $env:LOCALAPPDATA\Programs\Python\Python313\python
+       ⇒ une RECETTE WINDOWS dans un DOCSTRING (plage mesuree par ast) : c'est CE QU'IL FAUT TAPER, ⛔ rien ne s'execute. Classe 2 — traitee en T4, ⛔ pas une dependance FONCTIONNELLE
+  ⚪ tools/mesure_lissage_dn45.py           :10    \\\\wsl.localhost\\Ubuntu\\home\\nasbarok\\projects\\desknode\\tools\\mesure_lissage_dn4
+       ⇒ une RECETTE WINDOWS dans un DOCSTRING (plage mesuree par ast) : c'est CE QU'IL FAUT TAPER, ⛔ rien ne s'execute. Classe 2 — traitee en T4, ⛔ pas une dependance FONCTIONNELLE
+  ⚪ tools/dn_lhm_tour.ps1                  :16    powershell.exe -NoProfile -ExecutionPolicy Bypass -File \\wsl.localhost\Ubuntu\home\nasb
+       ⇒ une RECETTE WINDOWS dans un BLOC-COMMENTAIRE PowerShell `<# … #>` (plage mesuree) : c'est CE QU'IL FAUT TAPER, ⛔ rien ne s'execute. Classe 2 — T4
+  ⚪ tools/dn-agent.bat                     :8     REM  JAMAIS par \\wsl.localhost (decision owner n.2 du 2026-08-25).
+       ⇒ un COMMENTAIRE — ⛔ RIEN NE S'EXECUTE ici. Soit une ANNOTATION NFR3 qui documente l'etat d'AVANT (annoter, ⛔ pas effacer), soit un exemple d'usage de CLASSE 2 — ⛔ dans les deux cas, pas une dependance FONCTIONNELLE
+  ⚪ tools/deployer_tour.sh                 :7     #  ELEVE. Le lancer depuis `\\wsl.localhost\...` marche, mais oblige a taper un
+       ⇒ un COMMENTAIRE — ⛔ RIEN NE S'EXECUTE ici. Soit une ANNOTATION NFR3 qui documente l'etat d'AVANT (annoter, ⛔ pas effacer), soit un exemple d'usage de CLASSE 2 — ⛔ dans les deux cas, pas une dependance FONCTIONNELLE
+  ⚪ tools/deployer_tour.sh                 :29    #     2026-08-25 : ⛔ plus aucun chemin `\\wsl.localhost`.
+       ⇒ un COMMENTAIRE — ⛔ RIEN NE S'EXECUTE ici. Soit une ANNOTATION NFR3 qui documente l'etat d'AVANT (annoter, ⛔ pas effacer), soit un exemple d'usage de CLASSE 2 — ⛔ dans les deux cas, pas une dependance FONCTIONNELLE
+  ⚪ tools/deployer_tour.sh                 :416   ETEINT : il n'y a plus aucun chemin \\\\wsl.localhost dans le geste owner.
+       ⇒ une PHRASE qui dit que le chemin a ete RETIRE, ⛔ pas un chemin
+  ⚪ tools/rendre-port.sh                   :90    #    PowerShell est un chemin UNC `\\wsl.localhost\...`. Tout `cmd.exe`
+       ⇒ un COMMENTAIRE — ⛔ RIEN NE S'EXECUTE ici. Soit une ANNOTATION NFR3 qui documente l'etat d'AVANT (annoter, ⛔ pas effacer), soit un exemple d'usage de CLASSE 2 — ⛔ dans les deux cas, pas une dependance FONCTIONNELLE
+
+  ⇒ 0 vrai(s) site(s) · 11 faux positif(s) DECLARE(s)
+
+==============================================================================
+VERDICT DU BALAYAGE — phase APRES
+==============================================================================
+  vrais sites, tous motifs confondus : 1
+  temoin de l'instrument             : ✅ PASSE
+
+  🆕 CE QUE LE BALAYAGE TROUVE ET QUE **LE MOTIF RETENU NE VOIT PAS** :
+     tools/rendre-port.sh:37   TOUR_WIN="${DN_TOUR_WIN:-H:\dev\projets\desknode}"
+     ⇒ ce site ne porte NI `nasbarok`, NI `naoua`, NI `~/projects`, NI `wsl.localhost` :
+       l'inventaire par motif du T0 NE PEUT PAS LE COMPTER. C'est un 6e motif qui le
+       trouve — la lettre de lecteur — exactement comme `naoua` avait trouve le defaut
+       `--csv` que les 4 motifs precedents rataient.
+     ⇒ VERDICT : ⛔ ce n'est PAS une dependance fonctionnelle de classe 1. Le defaut est
+       DEJA PARAMETRABLE (`${DN_TOUR_WIN:-…}`), et le fichier porte deja, l. 38-44, une
+       revue datee du 2026-08-26 qui NOMME le risque. Ce qui manque, c'est que le defaut
+       se DECLARE COMME EXEMPLE au point ou il est lu ⇒ traite en T4 (classe 2 :
+       `tools/rendre-port.sh` EST deja dans l'inventaire de classe 2, par un autre site).
+
+  ⚠️ CE QUE CE BALAYAGE VOIT ET QU'AUCUNE EXECUTION NE VOIT :
+     un chemin ABSOLU dont la CIBLE EXISTE sur la machine qui mesure ne fait tomber
+     AUCUN code de sortie. `verif_dossier_d5_dn45.py` est VERTE dans un clone deplace
+     — mesure a l'etage (i). ⇒ le balayage est le seul des trois etages qui attrape
+     une CAUSE C **future**.
+
+  ⚠️ CE QU'IL NE VOIT PAS : ce qui echoue a l'ECRITURE plus tard. Le defaut `--csv`
+     de thermique_ventilos_dn48.py sort au motif C, mais c'est le CONTROLE CIBLE de
+     T1 qui dit qu'il est OUVERT EN ECRITURE — le motif seul ne le dit pas.

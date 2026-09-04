@@ -1,0 +1,80 @@
+# T0 — INVENTAIRE PAR CLASSE, mesure le 2026-09-04 sur desknode@3325c39
+# ⚠️ pris par subprocess, ⛔ pas par le shell de session
+#
+# ⛔ UN COMPTE SANS SON MOTIF NE VEUT RIEN DIRE. Instrument declare :
+#   git grep -n -I -E 'nasbarok|naoua|~/projects|wsl\.localhost' HEAD --
+==============================================================================
+
+── LES 5 CLASSES ───────────────────────────────────────────────────────────
+cl.  ce que c'est                                         fichiers    sites
+1    Dependance FONCTIONNELLE   ⇒ 🔴 DOIT TOMBER                  0        0
+2    Exemple d'usage            ⇒ ✅ generaliser ou declarer       20       55
+3    Trace de GENERATION        ⇒ 🔴 ⛔ NE PAS REECRIRE (NFR4 + NFR8)        5        5
+4    Registre de PREUVES        ⇒ 🔴 RESTE (NFR3, NFR4)         111     1264
+5    Le motif est le SUJET      ⇒ ⚠️ EXCLUSION DECLAREE, ⛔ jamais silencieuse        2       11
+     TOTAL                                                     138     1335
+
+⚠️ un fichier n'appartient qu'a UNE classe : les regles sont exclusives et ordonnees
+   (classe 5 d'abord — l'exclusion prime ; puis les sites nommes de classe 1 ;
+    puis mesures/ ; puis firmware/+'Opts:' ; le reste est classe 2).
+
+── DEUX INSTRUMENTS, DEUX COMPTES — ⛔ DIRE LEQUEL ──────────────────────────
+  retenu ici  nasbarok|naoua|~/projects|wsl.localhost   138 fichiers   1335 sites  (hors mesures/ : 27 fichiers)
+  celui de l'epic          nasbarok  (rendait 86)       109 fichiers   1218 sites  (hors mesures/ : 15 fichiers)
+  absolu seul              /home/nasbarok                91 fichiers    935 sites  (hors mesures/ : 6 fichiers)
+
+── AC3.4.c — DEUX NATURES, ⛔ PAS UNE ───────────────────────────────────────
+  `~/projects/desknode` ⇒ ⛔ NE NOMME PAS la machine (aucun nom d'utilisateur) :
+     il suppose un EMPLACEMENT DE CLONE.
+  `/home/nasbarok/…` et `C:\Users\naoua\…` ⇒ 🔴 LA NOMMENT.
+
+  NOMME la machine     /home/nasbarok|naoua|wsl.localhost     114 fichiers   1005 sites  (hors mesures/ : 19 f. / 28 s.)
+  emplacement de clone ~/projects                              44 fichiers     77 sites  (hors mesures/ : 19 f. / 40 s.)
+
+── 🔴 TEMOIN D'INSTRUMENT (T0) — il passe AVANT tout chiffre ────────────────
+  .github/workflows/cla.yml est range en CLASSE 5 — attendu : 5.  ✅ l'instrument voit juste
+  docs/dn5-1-ecart-promesses.md      est range en CLASSE 5 — attendu : 5.  ✅
+  ⇒ s'il les comptait comme des defauts, il publierait 22 fichiers 'a traiter'
+    la ou il y en a 20.
+
+── CLASSE 1 — LE DETAIL, SITE PAR SITE (⛔ c'est ce qui doit TOMBER) ────────
+
+── CLASSE 2 — LES 'EXEMPLES D'USAGE', PAR FICHIER ──────────────────────────
+  README.md                                             18 site(s)
+  tools/deployer_tour.sh                                 6 site(s)
+  CONTRIBUTING.md                                        5 site(s)
+  agent/dn_agent.py                                      2 site(s)
+  hardware/ESP32-S3-Touch-LCD-2.8B-liaison-pc.md         2 site(s)
+  tools/dn-agent.bat                                     2 site(s)
+  tools/dn_console.py                                    2 site(s)
+  tools/dn_lhm_tour.ps1                                  2 site(s)
+  tools/identifier_ventilos_dn48.py                      2 site(s)
+  tools/mesure_grandeurs_dn46.py                         2 site(s)
+  tools/mesure_lhm_dn48.py                               2 site(s)
+  tools/mesure_lissage_dn45.py                           2 site(s)
+  hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md       1 site(s)
+  tools/bench_lisseur_dn45.py                            1 site(s)
+  tools/dn_agent_tour.ps1                                1 site(s)
+  tools/rendre-port.sh                                   1 site(s)
+  tools/run_gates.sh                                     1 site(s)
+  tools/verif_campagne_dn440.py                          1 site(s)
+  tools/verif_ledger_dn416.py                            1 site(s)
+  tools/wsl-attach.sh                                    1 site(s)
+
+── CLASSE 3 — LA TRACE DE GENERATION (⛔ INTOUCHABLE : NFR4 + NFR8) ─────────
+  firmware/desknode/main/fonts/dn_font_14.c            :4    
+  firmware/desknode/main/fonts/dn_font_18.c            :4    
+  firmware/desknode/main/fonts/dn_font_28.c            :4    
+  firmware/desknode/main/fonts/dn_font_33.c            :4    
+  firmware/desknode/main/fonts/dn_font_56.c            :4    
+
+── CLASSE 5 — LES EXCLUSIONS, **DECLAREES** ────────────────────────────────
+  docs/dn5-1-ecart-promesses.md           10 site(s)  — la page qui DOCUMENTE le defaut — la censurer rendrait le registre illisible
+  .github/workflows/cla.yml                1 site(s)  — un LOGIN GitHub dans une URL, ⛔ pas un chemin de machine — le retirer casse le bot CLA
+
+── CE QUE '139' NE MESURE PAS ──────────────────────────────────────────────
+  ⛔ '138 fichiers' ne mesure PAS un travail : il mesure une question mal posee.
+  A REPARER  : 0 fichiers (classe 1)
+  A TRAITER  : 20 fichiers (classe 2)
+  A DECLARER : 116 fichiers (classes 3 et 4)
+  A EXCLURE  : 2 fichiers (classe 5) — et l'exclusion S'ECRIT
