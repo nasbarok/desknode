@@ -45,8 +45,12 @@ Work towards the first public release, `v0.1.0-beta`.
   a path that only exists on one machine: two absolute paths in
   `tools/verif_dossier_d5_dn45.py`, a UNC path in `tools/bench_lisseur_dn45.py`, and
   the default of `--csv` in `tools/thermique_ventilos_dn48.py`, which pointed at a
-  Windows user profile and was **opened for writing** — so that one started, printed
-  its header, and only then failed. Each now derives its root from its own file
+  Windows user profile and was **opened for writing**. ⚠️ *Corrected at the code review
+  of 2026-09-04: this sentence said that one "started, printed its header, and only then
+  failed". It does not. `enregistrer()` writes a `<csv>.pid` file first, before any
+  output, so on another machine it died* **silently, with nothing printed at all** *—
+  measured: exit 1, empty stdout, `FileNotFoundError` on the `.pid`. The original wording
+  is named here rather than quietly swapped.* Each now derives its root from its own file
   location, or from `tempfile.gettempdir()`. The gate that also reads the private
   planning repository now takes it as an argument and, when it is absent, checks the
   four authoritative files that *are* in the clone and **prints the two it could not

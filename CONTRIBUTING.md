@@ -146,22 +146,32 @@ Contributions are welcome. Two practical points:
   | class | before → after (files) | before → after (sites) | what it is | why it is what it is |
   |---|---:|---:|---|---|
   | 1. functional dependency | **3 → 0** | **4 → 0** | tools that could not run from a clone | 🔴 **the only class that was a defect — and it is now empty** |
-  | 2. usage example | 18 → 20 | 39 → 55 | Windows recipes, docstrings, comments | ✅ each one that *names* the machine now **declares itself as an example** at the point where it is read, with the command that gives you your own path. ⚠️ **It grew, and that is the fix working, not regressing:** every declaration written next to a path is itself a line carrying the pattern |
+  | 2. usage example | 18 → 19 | 39 → 50 | Windows recipes, docstrings, comments | ✅ each one that *names* the machine now **declares itself as an example** at the point where it is read, with the command that gives you your own path. ⚠️ **It grew, and that is the fix working, not regressing:** every declaration written next to a path is itself a line carrying the pattern |
   | 3. generation trace | 5 → 5 | 5 → 5 | the `* Opts:` line in `firmware/…/fonts/dn_font_*.c` | 🔴 **kept, untouched** — see below |
-  | 4. evidence record | 111 → 120 | 1 264 → 1 349 | `mesures/` — captured console output | 🔴 **kept, untouched** — rewriting it would falsify the record. ⚠️ **It grew too**, for the same reason as class 2: the measurements proving this very change are themselves captures, and they are kept like every other one |
-  | 5. the name *is* the subject | 2 → 2 | 11 → 11 | see the declared exclusions below | ⚠️ **excluded, and the exclusion is written** |
-  | **total** | **139 → 147** | **1 323 → 1 420** | | |
+  | 4. evidence record | 111 → 121 | 1 264 → 1 350 | `mesures/` — captured console output | 🔴 **kept, untouched** — rewriting it would falsify the record. ⚠️ **It grew too**, for the same reason as class 2: the measurements proving this very change are themselves captures, and they are kept like every other one |
+  | 5. the name *is* the subject | 2 → 4 | 11 → 17 | see the declared exclusions below | ⚠️ **excluded, and the exclusion is written**. 🔴 **Corrected at the code review of 2026-09-04 — this row read `2 → 2` / `11 → 11`, and the original figures are kept above rather than replaced.** Two files were booked as *usage examples* while being, by this table's own definition, pages whose subject **is** the pattern: this file, and the instrument that produces these counts. An exclusion that is not written is the thing this row exists to prevent |
+  | **total** | **139 → 149** | **1 323 → 1 422** | | |
 
   ⚠️ **Do not treat any of these as a fixed number.** They move whenever a declaration
   is added, and a declaration is exactly what this repository asks for. What is stable
   is the **first row**: no tool depends on one particular machine. ⚠️ A different
   pattern also returns different numbers — `nasbarok` alone, the one earlier notes
-  used, returns **110 files**. Neither pattern is wrong; they measure different things,
+  used, returns **120 files**. Neither pattern is wrong; they measure different things,
   and that is why the pattern is always written next to the count.
 
-  **What `mesures/` actually costs, since it is kept on purpose.** As of **2026-09-04** it
-  holds **395 files** and **9 900 692 bytes** — that is **9.90 MB** in decimal units, or
-  **9.44 MiB** in binary ones. ⚠️ Those are the **same number of bytes** written in two
+  🔴 **Corrected at the code review of 2026-09-04, and the mechanism is worth more than
+  the number.** This line published **110**, and the line above it published `395 files`:
+  both were true — of the tree **before this work committed its own captures** — while the
+  command printed next to them says `HEAD`. A figure taken at one commit and handed to the
+  reader with a command that resolves at another **is refuted by the tree that ships it**,
+  which is exactly the bar stated further down this file. ⛔ The old figures are not erased;
+  they are named here as what they were.
+
+  **What `mesures/` actually costs, since it is kept on purpose.** As of **2026-09-04**,
+  after the code review of that day, it holds **406 files** and **10 016 839 bytes** — that is
+  **10.02 MB** in decimal units, or **9.55 MiB** in binary ones. *(Before the review's own
+  captures were added it held 395 files / 9 900 692 bytes; that figure is kept rather than
+  replaced, and it is why the sentence now says which tree it counts.)* ⚠️ Those are the **same number of bytes** written in two
   different units, ⛔ not two different measurements; earlier notes in the planning
   repository quoted *320 files / 9.6 MB*, which is simply older. Reproduce it with
   `git ls-tree -r -l HEAD mesures/`.
@@ -176,8 +186,10 @@ Contributions are welcome. Two practical points:
   font header is **the command behind a file**. Neither is decoration, and neither is
   edited.
 
-  **The two declared exclusions**, because an exclusion that is not written is a lie
-  of omission:
+  **The declared exclusions**, because an exclusion that is not written is a lie
+  of omission. ⚠️ **This list said "the two declared exclusions" until the code review of
+  2026-09-04 — the wording is corrected rather than the count quietly grown, because two
+  more files belong here and were being counted as usage examples:**
 
   - `.github/workflows/cla.yml` names `nasbarok` **once**, inside the URL of the CLA
     document the bot asks contributors to sign. That is a **GitHub login in a URL**,
@@ -185,6 +197,16 @@ Contributions are welcome. Two practical points:
   - `docs/dn5-1-ecart-promesses.md` carries **ten** occurrences because it is *the
     page that documents this very gap*. Censoring it would make the record
     unreadable.
+  - **this file**, because the paragraph you are reading states the pattern, quotes it,
+    and names the other exclusions. Counting those as defects would be measuring this
+    page's own prose.
+  - `tools/inventaire_motif_dn53.py`, the instrument that produces every number above.
+    It writes the pattern in order to search for it. ⚠️ **It is deliberately outside the
+    `tools/verif_*.py` glob**: `tools/run_gates.sh` discovers gates by that glob and runs
+    them all, and this is not a gate — it renders no verdict on the repository, it counts.
+    Run it yourself: `python3 tools/inventaire_motif_dn53.py`. It checks its own
+    instrument first, against faults it re-plants on purpose, and if that check fails it
+    says so **before** printing a single figure.
 
   **On `~/projects/desknode`.** It appears throughout the documentation and it
   **names no one** — there is no user name in it. It is this repository's
@@ -211,8 +233,14 @@ Contributions are welcome. Two practical points:
   a `CHANGELOG.md` claiming NVIDIA support the code refutes. The full list is in
   [`docs/dn5-1-ecart-promesses.md`](docs/dn5-1-ecart-promesses.md), which numbers
   **six** entries: those four, plus two of a different kind — a gate that is red in
-  the published tree, and tooling that still depends on the author's own machine.
+  the published tree, and ~~tooling that still depends on the author's own machine~~.
   Each one names the marker that carries it.
+
+  ⚠️ **Struck through, not deleted, on 2026-09-04.** The last clause was true when it was
+  written and is not any more: no tool depends on one particular machine, as the class
+  table above states and as `tools/inventaire_motif_dn53.py` re-checks on demand. ⛔ The
+  count **six** is unchanged — the entry still exists, it is its *disposition* that moved
+  from open to settled.
 
   ⛔ **This is deliberately not a git hook and not a CI job.** A hook lives in
   `.git/hooks/` and **is not cloned**, so it would guard this checkout and no one

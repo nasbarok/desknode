@@ -374,6 +374,33 @@ TEMOIN_COCKPIT="${COCKPIT:-${HOME:-/nonexistent}/projects/compagnon_project}"
 #    gates du cockpit. Un temoin REFERENCE PAR RIEN est de la meme famille que
 #    le « champ vide » soldé le 2026-08-31 : il se RETIRE.
 #
+# 🔴 CORRIGE A LA REVUE DE CODE DU 2026-09-04 — ⛔ CE QUI PRECEDE N'EST PAS
+#    EFFACE, MAIS DEUX DE SES PHRASES SONT TROP FORTES, ET C'EST MESURE.
+#
+#  (1) « la LIMITE ECRITE n'a plus d'objet : il n'y a plus de chemin absolu ».
+#      ⛔ LA LIMITE SURVIT — seule sa CAUSE a change. Sur une machine tierce ou
+#      un repertoire de ce nom existe SANS etre le cockpit, le temoin est
+#      present, la gate est JOUEE, et elle est ROUGE : ⛔ plus « sur ses chemins
+#      absolus », mais sur `⛔ FICHIER INTROUVABLE`. MESURE le 2026-09-04 avec
+#      un repertoire VIDE en `--cockpit` : rc **1**, `BILAN : 5 OK, 2 KO`.
+#      ⇒ le sens CONSERVATEUR (echouer fort) est INCHANGE, et c'etait le point.
+#
+#  (2) « comme les trois autres gates du cockpit ». ⛔ PAS SUR CE CAS-LA. Meme
+#      repertoire vide : `verif_ledger_dn416.py` rend **4**,
+#      `verif_campagne_dn440.py` rend **4**, `verif_dossier_dn415.py` rend
+#      **1**, et `verif_dossier_d5_dn45.py` rend **1**. ⇒ elle s'aligne sur UNE
+#      de ses soeurs, ⛔ pas sur trois. MOTIF : son prerequis se juge sur
+#      `os.path.isdir(cockpit)` seul, la ou `dn416`/`dn440` exigent un FICHIER
+#      attendu. Un repertoire qui existe sans etre le cockpit passe donc le
+#      prerequis et ressort en verdict sur le DOSSIER.
+#
+#  ⚠️ LA CI N'EST PAS TOUCHEE, et c'est pour ca que le code ⛔ n'est PAS change
+#     ici (arbitrage owner du 2026-09-04, voie (b)) : sur un runner le repertoire
+#     n'existe pas du tout ⇒ temoin absent ⇒ la gate rend son `rc=4` declare.
+#     Le durcissement du prerequis AU FICHIER reecrirait une CONDITION de
+#     controle ⇒ NFR7 exigerait un mutant qui REPLANTE. ⇒ ecrit ici, ⛔ pas fait
+#     en passant.
+#
 # `managed_components/` est GITIGNORE (186 Mo) et repeuple par
 # `idf.py reconfigure`. Le temoin est RELATIF : il vit dans le clone.
 # 🔴 REVUE 2026-09-02 — LA BORNE PAR GATE DOIT TENIR **SOUS** CELLE DU JOB.

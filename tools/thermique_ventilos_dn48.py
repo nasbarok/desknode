@@ -51,11 +51,21 @@ r"""
  (!) SOUS WINDOWS, `gettempdir()` REND LE `Temp` DE L'UTILISATEUR COURANT --
      c'est-a-dire `C:\Users\<qui-que-ce-soit>\AppData\Local\Temp`. C'EST LE
      MEME DOSSIER QU'AVANT chez l'owner, et un dossier qui existe pour tout le
-     monde. Ailleurs, c'est `/tmp`.
+     monde. Ailleurs, c'est `TMPDIR` s'il est pose sur un repertoire existant,
+     et `/tmp` sinon.
+     [CORRIGE A LA REVUE DU 2026-09-04 : cette ligne disait « Ailleurs, c'est
+      /tmp » sans condition. MESURE : `tempfile.gettempdir()` honore `TMPDIR`.]
  (!) AVANT le 2026-09-04 ce defaut etait ECRIT EN DUR sur le profil Windows de
-     l'auteur. Comme `enregistrer()` OUVRE ce chemin EN ECRITURE, l'echec etait
-     TARDIF : le script demarrait, imprimait son en-tete et le chemin, puis
-     mourait en `FileNotFoundError` a la premiere ligne ecrite.
+     l'auteur. Comme `enregistrer()` OUVRE un chemin EN ECRITURE, il mourait sur
+     la machine de quelqu'un d'autre.
+     [CORRIGE A LA REVUE DU 2026-09-04 -- ⛔ LA LIGNE D'ORIGINE EST FAUSSE ET
+      ELLE EST NOMMEE PLUTOT QU'EFFACEE. Elle disait : « l'echec etait TARDIF :
+      le script demarrait, imprimait son en-tete et le chemin, puis mourait a la
+      premiere ligne ecrite ». IL NE DEMARRE PAS : `enregistrer()` ecrit d'abord
+      `<csv>.pid` (l.164-165), AVANT le premier `print` (l.167). MESURE :
+      rc=1, stdout VIDE, `FileNotFoundError` sur le `.pid`. ⇒ l'echec est
+      IMMEDIAT ET MUET, et la distinction « TROIS comportements, pas deux »
+      face a bench_lisseur (muet lui aussi) NE TIENT PAS.]
  (!) L'OPTION `--csv` N'A PAS BOUGE : elle reste le moyen de choisir. Seul son
      DEFAUT a change.
 =============================================================================
@@ -334,15 +344,33 @@ def main():
     #    `mesures/dn5-3/`, qui sont gardees precisement pour ca. `enregistrer()` OUVRE ce chemin EN ECRITURE
     #    (`open(chemin, "w", ...)`) ⇒ sur la machine de quelqu'un d'autre,
     #    `FileNotFoundError`.
-    # ⚠️ ET SON ECHEC EST PIRE QUE CELUI DES DEUX AUTRES DEPENDANCES, PARCE
-    #    QU'IL EST **TARDIF** : `bench_lisseur_dn45.py` meurt a l'`import`, tout
-    #    de suite ; celui-ci DEMARRE, imprime son en-tete, imprime `csv : …`,
-    #    et ne meurt qu'a la premiere ecriture. ⇒ TROIS comportements, ⛔ pas
-    #    deux.
-    # ✅ `tempfile.gettempdir()` rend EXACTEMENT le meme dossier qu'avant chez
-    #    l'owner : sous Windows il resout `%TEMP%`, c'est-a-dire
-    #    `C:\Users\<l-utilisateur-courant>\AppData\Local\Temp` — et `/tmp`
-    #    ailleurs. ⇒ ⛔ AUCUN changement de comportement sur la tour.
+    # 🔴 CORRIGE A LA REVUE DE CODE DU 2026-09-04 — ⛔ LA LIGNE D'ORIGINE N'EST
+    #    PAS EFFACEE, ELLE EST NOMMEE COMME FAUSSE. Elle disait : « son echec
+    #    est PIRE que celui des deux autres parce qu'il est TARDIF : celui-ci
+    #    DEMARRE, imprime son en-tete, imprime `csv : …`, et ne meurt qu'a la
+    #    premiere ecriture ⇒ TROIS comportements, ⛔ pas deux ».
+    # ⚠️ MESURE : IL NE DEMARRE PAS. `enregistrer()` ecrit `<csv>.pid` en l.165,
+    #    AVANT le premier `print` de l.167. Rejoue avec un `--csv` vers un
+    #    repertoire inexistant : rc=1, **stdout VIDE**, `FileNotFoundError` sur
+    #    le `.pid`. ⇒ l'echec est IMMEDIAT ET MUET — le MEME comportement
+    #    observable que `bench_lisseur_dn45.py`, qui meurt a l'`import`.
+    #    ⇒ DEUX comportements, ⛔ pas trois.
+    # 🔬 POURQUOI PERSONNE NE L'A VU : l'instrument de `dn5-3` cherchait
+    #    `open(chemin, "w"` et n'a JAMAIS regarde `open(pid_f, "w")`. Il est
+    #    desormais verse au depot (`tools/inventaire_motif_dn53.py`) et il liste
+    #    les DEUX ouvertures.
+    # ✅ `tempfile.gettempdir()` rend le meme dossier qu'avant chez l'owner :
+    #    sous Windows il resout `TMPDIR`, puis `TEMP`, puis `TMP` — en pratique
+    #    `C:\Users\<l-utilisateur-courant>\AppData\Local\Temp`. Ailleurs il
+    #    rend `TMPDIR` s'il designe un repertoire existant, et `/tmp` sinon.
+    # ⚠️ CORRIGE A LA REVUE DU 2026-09-04 — la ligne d'origine concluait
+    #    « ⇒ ⛔ AUCUN changement de comportement sur la tour », au present de
+    #    l'indicatif. ⛔ CE N'EST PAS MESURE : `mesures/dn5-3/T7-temoin-apres.txt`
+    #    l.145-147 declare elle-meme que cet outil NE SE REJOUE PAS (il lit
+    #    /metrics sur la tour, sous Windows). Il n'a donc ete execute NI avant NI
+    #    apres, sur aucune machine. ⇒ le comportement identique est PLAUSIBLE et
+    #    documente par le comportement de `gettempdir()`, ⛔ il n'est pas mesure,
+    #    et ce depot ecrit la difference.
     # ⛔ L'OPTION `--csv` N'EST PAS RETIREE : elle reste le moyen de choisir.
     #    Seul son DEFAUT change.
     ap.add_argument("--csv",

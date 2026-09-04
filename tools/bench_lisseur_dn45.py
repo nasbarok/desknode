@@ -16,8 +16,13 @@ sys.stdout.reconfigure(encoding="utf-8")
 #    au NIVEAU MODULE, donc joue a l'`import`. ⛔ L'import RESTE au niveau
 #    module : ce qui change, c'est D'OU il vient.
 # ⚠️ ⛔ PAS `expanduser("~")`, ⛔ PAS `$HOME` : ce fichier ne cherche pas un
-#    foyer, il cherche LE DEPOT OU IL VIT. `__file__` est la seule source qui
-#    ne peut designer QUE cet arbre-la.
+#    foyer, il cherche LE DEPOT D'OU IL EST ATTEINT. `__file__` est la seule
+#    source qui suit le clone.
+# ⚠️ NUANCE AJOUTEE A LA REVUE DU 2026-09-04 : la ligne d'origine disait
+#    « la seule source qui ne peut designer QUE cet arbre-la ». `abspath` ne
+#    resout pas les liens symboliques ⇒ atteint par un lien, il designe le
+#    parent du LIEN. ⛔ Le code n'est pas change : c'est l'idiome de ~40 outils
+#    de ce depot, et aucun n'utilise `realpath`.
 sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "agent"))
 import dn_agent

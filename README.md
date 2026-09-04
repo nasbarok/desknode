@@ -207,9 +207,18 @@ bash tools/run_gates.sh
 >
 > 🔴 **LE VERDICT DE LA CI N'EST PAS CELUI DU POSTE, ET L'ÉCART EST MESURÉ.** Six
 > gates ne peuvent pas s'exercer là où la CI tourne : deux lisent le dépôt privé de
-> planification, trois ont besoin de `managed_components/` (gitignoré), et une lit
-> des chemins **absolus** de la machine de l'auteur. ⛔ Elles ne sont ni tues ni
+> planification, trois ont besoin de `managed_components/` (gitignoré), et ~~une lit
+> des chemins **absolus** de la machine de l'auteur~~. ⛔ Elles ne sont ni tues ni
 > exclues : elles sont **déclarées** dans la table des NON-JOUABLES ci-dessous.
+>
+> ⚠️ **BARRÉ LE 2026-09-04 (revue de code de `dn5-3`), ⛔ pas effacé — la clause disait
+> vrai quand elle a été écrite.** Elle décrivait `tools/verif_dossier_d5_dn45.py`, qui ne
+> lit **plus aucun** chemin absolu : sa racine dérive de `__file__` et le cockpit est un
+> **argument**. ⇒ son motif est désormais **le même que celui des deux premières** — le
+> cockpit est un dépôt privé, jamais dans le clone. 🔴 **Sa jumelle anglaise de
+> `CONTRIBUTING.md` avait été annotée le jour même ; celle-ci ⛔ non.** ⚠️ Les **comptes**
+> de ce paragraphe (« Six », et « sept » plus bas) restent périmés **et ⛔ ne sont pas
+> corrigés ici** : ils appartiennent à `dn4-39`, qui les porte.
 
 Il découvre les gates **par glob** (`tools/verif_*.py`), les joue toutes, imprime
 `VERTE` / `ROUGE` / `NON-JOUABLE` par gate plus un **BILAN**, et sort en **1 dès qu'une
@@ -253,7 +262,7 @@ est ROUGE** — **0** si toutes sont vertes ou déclarées non-jouables.
 
 | option | ce qu'elle fait |
 |---|---|
-| `--cockpit <chemin>` | passe le chemin du cockpit aux ~~**2 gates qui le comprennent** (`verif_dossier_dn415.py`, `verif_ledger_dn416.py`)~~ **4 gates qui le comprennent** — `verif_campagne_dn440.py`, `verif_dossier_d5_dn45.py`, `verif_dossier_dn415.py`, `verif_ledger_dn416.py`. Sans elle, elles cherchent `~/projects/compagnon_project` et **échouent fermé** si l'arbre est ailleurs.<br><br>⚠️ **DATÉ LE 2026-09-04 (`dn5-3`), ⛔ pas réécrit — et le « 2 » était DÉJÀ faux avant cette story.** Mesuré au motif exact que cherche le runner (la déclaration `argparse` de l'option, **guillemets doubles compris**) : elles étaient **3** dès `f4848e4`, `verif_campagne_dn440.py` ayant reçu l'option sans que personne ne mette cette ligne à jour. La voie (a) de `dn5-3` en fait **4**. ⇒ le compte se **mesure**, il ne se recopie pas : `grep -l -- 'add_argument("--cockpit"' tools/verif_*.py`. |
+| `--cockpit <chemin>` | passe le chemin du cockpit aux ~~**2 gates qui le comprennent** (`verif_dossier_dn415.py`, `verif_ledger_dn416.py`)~~ **4 gates qui le comprennent** — `verif_campagne_dn440.py`, `verif_dossier_d5_dn45.py`, `verif_dossier_dn415.py`, `verif_ledger_dn416.py`. Sans elle, elles cherchent `~/projects/compagnon_project` et **échouent fermé** si l'arbre est ailleurs.<br><br>⚠️ **DATÉ LE 2026-09-04 (`dn5-3`), ⛔ pas réécrit — et le « 2 » était DÉJÀ faux avant cette story.** Mesuré au motif exact que cherche le runner (la déclaration `argparse` de l'option, **guillemets doubles compris**) : elles étaient **3** dès `f4848e4`, `verif_campagne_dn440.py` ayant reçu l'option sans que personne ne mette cette ligne à jour. La voie (a) de `dn5-3` en fait **4**.<br><br>🔴 **CORRIGÉ À LA REVUE DE CODE DU 2026-09-04 — ⛔ la phrase ci-dessus n'est pas effacée, elle est FAUSSE et c'est écrit.** Rejoué au motif exact du runner : à `f4848e4` elles sont **2** (`verif_dossier_dn415.py`, `verif_ledger_dn416.py`) — et `tools/verif_campagne_dn440.py` **n'existe pas** à ce commit. Elles passent à **3** en `3325c39`, la baseline de `dn5-3` elle-même. ⚠️ **Le « 4 » d'aujourd'hui, lui, est juste.** 🎯 Une annotation dont le sujet est *« le compte se mesure, il ne se recopie pas »* avait recopié un commit. ⇒ le compte se **mesure**, il ne se recopie pas : `grep -l -- 'add_argument("--cockpit"' tools/verif_*.py`. |
 | `--silencieux` | tait le **motif** des NON-JOUABLES. ⛔ Ne tait rien d'autre : la sortie d'une gate ROUGE reste imprimée, toujours. |
 | `-h`, `--help` | l'en-tête du script — ses **cinq** règles. ⚠️ **La table des NON-JOUABLES n'y est PAS** : elle vit dans le corps du script, et l'aide dit comment la lire (`sed -n '/^NON_JOUABLES=(/,/^)/p'`). *(Corrigé à la revue du 2026-09-02 : cette ligne annonçait quatre règles et une table que la sortie ne contenait pas.)* |
 

@@ -70,8 +70,19 @@ import sys
 #
 # ═══ dn5-3 / AC3.3 — 2026-09-04 : LES DEUX CHEMINS SONT SOLDES ══════════════
 #
-# ✅ `DESKNODE` SE DERIVE DE `__file__`. Elle ne peut plus designer QUE l'arbre
-#    ou ce script vit. ⇒ ca ferme AUSSI, **par construction**, l'entree de
+# ✅ `DESKNODE` SE DERIVE DE `__file__`. Elle designe l'arbre ou ce script est
+#    ATTEINT — un second clone ou un `git worktree` designe donc bien le sien.
+#    ⚠️ NUANCE AJOUTEE A LA REVUE DU 2026-09-04 : la ligne d'origine disait
+#    « elle ne peut plus designer QUE l'arbre ou ce script vit ». C'est trop
+#    fort — `os.path.abspath` NE RESOUT PAS LES LIENS SYMBOLIQUES. MESURE : le
+#    script atteint par un lien pose ailleurs rend `depot code` = le parent du
+#    LIEN, et 4 KO `⛔ FICHIER INTROUVABLE` (echec FERME, ⛔ pas un faux vert).
+#    ⛔ LE CODE N'EST PAS CHANGE ICI, ET C'EST DELIBERE :
+#    `dirname(dirname(abspath(__file__)))` est l'idiome de ~40 outils de ce
+#    depot, `verif_dossier_dn415.py` et `verif_ledger_dn416.py` compris, et
+#    AUCUN n'utilise `realpath`. Le corriger dans ce seul fichier romprait la
+#    convention qu'AC3.3.a demandait justement de copier. ⇒ c'est l'AFFIRMATION
+#    qui se nuance ; le passage a `realpath` est une story a lui seul. ⇒ ca ferme AUSSI, **par construction**, l'entree de
 #    ledger issue de la revue de `dn4-39` : « cette gate PEUT CERTIFIER VERT UN
 #    AUTRE ARBRE QUE CELUI QU'ON VERIFIE ». MESURE le 2026-09-04, AVANT
 #    correction, depuis un clone pose dans `/tmp` : elle rendait
@@ -214,7 +225,10 @@ def main():
     # 🔴 dn4-39 — LE COCKPIT EST UN **PREREQUIS**, ⛔ PAS UN CONTROLE.
     # ⚠️ dn5-3, 2026-09-04 — LA LISTE DES ABSENTS N'EN CONTIENT PLUS QU'UN.
     #    `DESKNODE` derive de `__file__` : il EXISTE toujours, par construction,
-    #    puisque c'est l'arbre ou ce fichier vit. ⇒ le seul prerequis qui peut
+    #    puisque c'est le repertoire d'ou ce fichier est atteint. ⚠️ REVUE DU
+    #    2026-09-04 : « existe » reste vrai — ⛔ « c'est l'arbre ou ce fichier
+    #    vit » ne l'est pas sous un lien symbolique (voir l. 73). L'echec y est
+    #    FERME (4 KO), donc le prerequis ci-dessous reste juste. ⇒ le seul prerequis qui peut
     #    manquer est le cockpit.
     # 🔴 ET ON NE REND PLUS LA MAIN TOUT DE SUITE. Le `return` immediat
     #    ABANDONNAIT la moitie que n'importe quel clone peut voir : sur les 6
