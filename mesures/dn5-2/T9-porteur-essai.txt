@@ -1,0 +1,12 @@
+Ce fichier ne sert qu'a porter la PR d'essai du bot CLA (dn5-2 / AC2.4,
+rejouee le 2026-09-04 a la revue de code, sur la version PUBLIEE du workflow).
+
+⛔ CETTE PR N'EST PAS DESTINEE A ETRE FUSIONNEE. Elle est fermee des que les
+runs et la facturation sont releves. Le releve part dans
+`mesures/dn5-2/T10-essai-cla-revue.txt`, sur `main`.
+
+POURQUOI UN SECOND ESSAI. Les trois runs du 2026-09-02 ont ete produits par une
+version du workflow ou la condition vivait AU NIVEAU DE L'ETAPE. La version
+publiee la porte AU NIVEAU DU JOB, avec deux clauses de plus. L'AC2.4 exigeait
+« tranche par l'essai, ⛔ pas par lecture de doc » : elle vaut donc pour le
+fichier qui tourne, ⛔ pas pour celui qui a tourne.
