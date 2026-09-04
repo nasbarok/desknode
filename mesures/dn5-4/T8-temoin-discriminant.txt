@@ -1,0 +1,75 @@
+T8 — LE DISCRIMINANT DE **POSSESSION DU PORT**, ET LA QUEUE FERMEE
+==============================================================================
+date : 2026-09-04T16:30:59  ·  pris par subprocess
+⛔ AUCUN PORT SERIE N'A ETE OUVERT. Ce fichier est produit par DEUX LECTURES DE
+   FICHIER et DEUX `git diff`, ⛔ zero port. (Profil utilisateur caviarde.)
+
+🔴 POURQUOI CE TIR EXISTE — LA REVUE DE CODE DU 2026-09-04 A REFUTE LA FORME DU
+   TEMOIN T7, ⛔ PAS SON RESULTAT. Le raisonnement publie disait : « `s mur` n'est
+   jamais retombe ⇒ l'agent n'est jamais mort ⇒ AUCUN autre process n'a PU obtenir
+   COM3 ». La 3e implication est FAUSSE : `dn_agent.py` FERME le port sur toute
+   exception d'envoi et repart en backoff SANS MOURIR ⇒ `s mur` continue de croitre
+   pendant que le port est LIBRE. `usbipd bind/attach` — la voie RETENUE du depot —
+   produit exactement cet etat. ⇒ un `s mur` monotone mesure LA SURVIE DU PROCESSUS,
+   ⛔ PAS LA POSSESSION DU PORT. Le present tir mesure la possession.
+==============================================================================
+
+── 1. LE DISCRIMINANT : LES LIGNES DE PERTE DE PORT ─────────────────────────
+  L'agent ECRIT quand il lache le port :
+     `port COM3 en attente de reouverture (N echec(s) consecutif(s))`
+  avec un compteur CUMULATIF `compte total`. C'est la trace directe de la
+  possession — ⛔ pas une deduction depuis la survie du processus.
+
+  occurrences dans TOUT le journal        : 7
+  occurrences dans le RUN COURANT         : 0
+  occurrences dans les runs ANTERIEURS    : 7
+
+  ⇒ ✅ **ZERO PERTE DE PORT SUR TOUT LE RUN COURANT** — ⛔ pas seulement sur la
+     fenetre de la marche : sur les 22926 echantillons du run, de son premier a son
+     dernier. Les 7 occurrences du journal sont TOUTES anterieures au lancement
+     du 2026-09-02 (elles vivent a `s mur` ~300 et ~197, c'est-a-dire dans des
+     runs qui ont depuis disparu).
+
+── 2. LA FRONTIERE DU RUN COURANT, MESUREE ⛔ PAS SUPPOSEE ──────────────────
+  Le journal est APPEND-ONLY entre runs, et `s mur` REPART A ZERO a chaque
+  lancement ⇒ une CHUTE de `s mur` marque une frontiere de run.
+  chutes de `s mur` dans tout le journal : 23
+  derniere chute                         : 7810.1 s -> 10.0 s
+  ⇒ le run courant couvre `s mur` 10.0 -> 229263.7 s
+  🔬 CES 23 CHUTES SONT LE TEMOIN NEGATIF : elles prouvent que le controle SAIT
+     rougir. Une garde qui n'a jamais rougi ne prouve rien.
+
+── 3. LA QUEUE EST FERMEE (le trou que la revue a nomme) ────────────────────
+  T7 s'arretait a `s mur` 220933.5, et le commit de la marche a ete pose 702 s
+  plus tard ⇒ 11 min 28 s SANS AUCUN TEMOIN. Ce tir les couvre, et au-dela.
+
+  ancre T0        : s mur = 219140.1
+  T7 (ancien)     : s mur = 220933.5
+  commit publie   : s mur = 221635.0   (2026-09-04T14:23:40)
+  ce tir          : s mur = 229263.7   (2026-09-04T16:30:48)  seq = 1146299
+
+  echantillons relus de T0 a ce tir       : 1013
+  dont APRES le commit publie             : 763
+  CHUTES sur toute cette fenetre elargie  : 0
+  ⇒ ✅ AUCUNE — et la fenetre depasse le commit de 7629 s.
+
+── 4. `dn-agent.started` — TOUJOURS INCHANGE ───────────────────────────────
+  taille : 289 o   (T0 et T7 : 289 o)
+  mtime  : 2026-09-02T00:49:45   (T0 et T7 : 2026-09-02T00:49:45)
+
+── 5. `firmware/` — RELEVE CONTRE HEAD **ET** CONTRE L'ARBRE ────────────────
+  ⛔ ANCRE = le SHA de debut de story (AC4.6.d), ⛔ jamais `main..HEAD`.
+  contre HEAD   : rc=0 -> VIDE ✅
+  contre l'ARBRE: rc=0 -> VIDE ✅
+
+==============================================================================
+VERDICT NFR8, DANS LA FORME QUE LA MESURE SOUTIENT :
+  ✅ **L'AGENT N'A JAMAIS LACHE COM3 DE TOUT SON RUN**, du 2026-09-02T00:49:45
+     jusqu'a ce tir — ⛔ ce n'est plus une deduction depuis la survie du
+     processus, c'est la LECTURE DIRECTE de la trace que l'agent ecrit quand il
+     lache le port : 0 occurrence sur le run.
+  ✅ La fenetre couvre desormais le commit publie et le depasse.
+  ✅ `firmware/` est INTACT contre l'ancre, a HEAD comme a l'arbre.
+  ⇒ **AUCUN FLASH N'A EU LIEU**, et le chemin par lequel un flash aurait pu
+    passer sans tuer l'agent (perte de port + `usbipd attach`) est MESURE ABSENT.
+==============================================================================

@@ -89,9 +89,17 @@ Two things are already known, so no need to report them:
 repository said it.** The ESP-IDF version was published, and so were the Ubuntu
 prerequisites; the *platform* was not, in any file. This section is that statement.
 
-**Supported: Linux, including Ubuntu under WSL2.** That is the only platform the
-firmware has ever been built on, and it is measured rather than assumed — see the
-figures below.
+**Supported: Linux, including Ubuntu under WSL2.** It is the only platform this project
+has ever built the firmware on, and the build itself is measured rather than assumed —
+see the figures below.
+
+⚠️ **Corrected at the code review of 2026-09-04, and the original wording is kept rather
+than replaced.** It read *"That is the only platform the firmware has ever been built on,
+and it is **measured** rather than assumed"*. The **build** is measured; the claim about
+the **history** of every build ever made is not the kind of thing a measurement returns.
+What the tree actually holds for the other platforms are *observations of absence* — the
+tooling is not installed — ⛔ not attempts that failed. The distinction is the whole point
+of the paragraph below, so the sentence above should not have blurred it.
 
 **Not instructed, and each for its own reason:**
 
@@ -110,16 +118,37 @@ been used; the difference is which one a given session had set up, ⛔ not a
 contradiction about what is possible. What has never varied is the half this section is
 about: **the build is done on Linux/WSL, on every path.**
 
+**The commands live in `README.md`, and this section deliberately does not repeat them.**
+Install ESP-IDF once with *Installation — une seule fois*, then use *Toolchain / build &
+flash* for the per-shell sequence. ⚠️ `README.md` is in French; these three lines are what
+you need from it, and they are the part that is easy to get wrong:
+
+```bash
+. $HOME/esp/esp-idf/export.sh   # once per shell — IDF_PATH does not persist
+cd firmware/desknode            # ⛔ NOT the repository root: the ESP-IDF project lives here
+idf.py set-target esp32s3 && idf.py build
+```
+
+⚠️ **The tree holds two ESP-IDF projects**, and the second one matters when something
+fails: `firmware/desknode` is the firmware, and `firmware/hello-desknode` is a minimal
+project with **no** `idf_component.yml` — it is the control that tells a missing toolchain
+apart from a missing network (see the offline section below). ⛔ Building from the
+repository root builds neither.
+
+*(This pointer was added at the code review of 2026-09-04: the section stated the platform
+and its costs but gave no command and never named the working directory, so following it
+literally did not produce a build.)*
+
 **What a cold build actually costs, measured on 2026-09-04** — a fresh `git clone` into
 a new directory outside any existing checkout, with no inherited `sdkconfig`:
 
 | | |
 |---|---|
-| `idf.py set-target esp32s3` | **118.7 s** — most of it fetching components |
+| `idf.py set-target esp32s3` | **118.7 s** ⚠️ *(the duration is measured; the split between network and CMake was **not** captured — see the note under the table)* |
 | `idf.py build` | **173.7 s** |
 | total | **292.4 s**, exit code **0** |
 | `build/desknode.bin` | **1 266 752 bytes** |
-| pulled from the network | **172.5 MiB** into `managed_components/` (5 079 files) |
+| pulled from the network | **172.5 MiB** into the project's `managed_components/` (**5 079** files) |
 | written under `build/` | **201.4 MiB** (2 316 files) |
 | `sdkconfig` rebuilt from `sdkconfig.defaults` | **2 010 keys** |
 
@@ -127,11 +156,28 @@ The clone ships **none** of that: `sdkconfig`, `managed_components/`,
 `dependencies.lock` and `build/` are all gitignored, and were verified absent from the
 fresh clone before the build.
 
+⚠️ **Two clarifications added at the code review of 2026-09-04.** *(a)* The first row
+originally read *"118.7 s — **most of it fetching components**"*. Only the **total** was
+captured; no network/CMake split was taken, so the cause was inferred and the wording is
+corrected rather than kept. *(b)* Two different directories hold **172.5 MiB** of
+components and they are easy to confuse, so both are named wherever the figure appears:
+the project's own `managed_components/` (**5 079** files, written by this build) and the
+machine-wide component cache under `~/.cache/Espressif/ComponentManager` (**5 068**
+files, shared across projects). Same byte total, two directories, ⛔ not two measurements
+of one thing.
+
 **What you need that the clone does not contain:**
 
 1. **ESP-IDF v5.5.5** and its toolchains — roughly **3.84 GiB** for the IDF checkout
-   with its 23 submodules, plus **3.73 GiB** of toolchains under `~/.espressif` after
-   `install.sh esp32s3`.
+   with its 23 submodules, plus **4.30 GiB** under `~/.espressif` after
+   `install.sh esp32s3`. 🔴 **Corrected at the code review of 2026-09-04; the earlier
+   figure is kept rather than replaced.** This line read *"**3.73 GiB** of toolchains
+   under `~/.espressif`"*, which attached the right number to the wrong directory:
+   `~/.espressif/tools` is **3.73 GiB** (8 933 files), while `~/.espressif` **as a whole**
+   — the toolchains plus the Python environment the installer creates beside them — is
+   **4.30 GiB** (14 188 files). ⚠️ **4.30 GiB is the figure to provision a disk with**,
+   because it is what actually gets written. Budget roughly **8.2 GiB** for the IDF and
+   its toolchains together, before this project's own `build/` and components.
 2. **`IDF_PATH`, set by `export.sh` in every new shell.** Measured: it is unset in a
    fresh shell, and `firmware/desknode/CMakeLists.txt` reads it. Sourcing `export.sh`
    is not optional and is not once-per-machine — it is once per shell.
@@ -139,15 +185,21 @@ fresh clone before the build.
    verified present on the build machine on 2026-09-04.
 4. **`python3`, and the `tools/` directory intact.** This one is easy to miss:
    `firmware/desknode/CMakeLists.txt` puts `tools/gen_living_pcb.py` in an
-   `add_custom_target(... ALL)`, so **every** build runs it and it produces
-   `living_pcb_v0.bin` (**614 416 bytes**). A clone with `tools/` removed does not
-   build. The script itself is standard-library only — no network, no `subprocess`.
+   `add_custom_target(... ALL)`, so it is part of the default target and **a cold build
+   always runs it**, producing `living_pcb_v0.bin` (**614 416 bytes**). A clone with
+   `tools/` removed does not build. The script itself is standard-library only — no
+   network, no `subprocess`. ⚠️ *Corrected at the code review of 2026-09-04: this read
+   "**every** build runs it". Being in `ALL` puts the target in every build, but the
+   command attached to it only re-runs when its output is missing or the script changed —
+   so an incremental build usually skips it. The practical consequence is unchanged: from
+   a fresh clone, `tools/` must be there.*
 5. **Network access to the Espressif component registry.** See below; this is the one
    that surprises people.
 
 🔴 **An offline build fails, and a local component cache does not save it.** Measured on
 2026-09-04 inside a network namespace with no connectivity: even with the machine's
-component cache fully populated (**172.5 MiB**, 5 068 files), `idf.py set-target` exits
+component cache fully populated (**172.5 MiB**, **5 068** files under
+`~/.cache/Espressif/ComponentManager`), `idf.py set-target` exits
 **2** with:
 
 ```
@@ -161,8 +213,17 @@ The reason is structural rather than accidental: **`dependencies.lock` is gitign
 so a fresh clone has no solved dependency set and the component manager must *solve*
 before it can install. Solving queries the registry for metadata, and a cache of
 downloaded archives does not answer that. ⛔ So "I have the components on disk" is not
-enough — the first build of a fresh clone needs to reach the network, whatever is
-cached.
+enough — the first build of a fresh clone needs to reach the network.
+
+⚠️ **Scope of that claim, narrowed at the code review of 2026-09-04; the original wording
+is kept rather than replaced.** It ended *"needs to reach the network, **whatever is
+cached**"*, which is broader than what was measured. What was measured is that a cache of
+downloaded **archives** does not help, however complete. ESP-IDF also supports pointing
+the component manager at a **different registry** — `IDF_COMPONENT_STORAGE_URL`,
+`IDF_COMPONENT_LOCAL_STORAGE_URL`, `--local-storage-url`, and a bundled component-mirror
+module — and **that path has never been tried here**. So: an offline build against a
+local *registry mirror* is neither confirmed nor refuted by this measurement, and anyone
+who needs one should expect to be the first to walk it.
 
 ⚠️ **The toolchain is not what fails there, and that is separated rather than assumed.**
 `firmware/hello-desknode` has no `idf_component.yml` and therefore no remote
@@ -174,11 +235,16 @@ directories on 2026-09-04, produced `desknode.bin` files of **identical size** w
 contents differ in **70 bytes out of 1 266 752** — 0.0055 %. Those 70 bytes fall in
 exactly three places, and all three come from one root cause:
 
-| offset | bytes | what it is |
-|---:|---:|---|
-| 113 | 7 | `esp_app_desc_t.time` — **the wall-clock time of the build** (`13:47:30` vs `14:04:28`; the `date` field matched) |
-| 176 | 32 | `esp_app_desc_t.app_elf_sha256` — the ELF's hash, which moves because the ELF carries that same timestamp |
-| 1 266 719 | 33 | the image SHA-256 that `esptool` appends, which moves because the image did |
+| offset | span | bytes that differ | what it is |
+|---:|---:|---:|---|
+| 113 | 7 | **5** | `esp_app_desc_t.time` — **the wall-clock time of the build** (`13:47:30` vs `14:04:28`; the two `:` coincide, which is why 5 of the 7 positions differ. The `date` field matched — see the warning below) |
+| 176 | 32 | **32** | `esp_app_desc_t.app_elf_sha256` — the ELF's hash, which moves because the ELF carries that same timestamp |
+| 1 266 719 | 33 | **33** | the 32-byte image SHA-256 that `esptool` appends, plus the image checksum byte immediately before it, which moves with the image |
+
+⚠️ *Two columns, added at the code review of 2026-09-04: the table previously carried a
+single `bytes` column holding the **spans** (7 / 32 / 33), which sum to 72 next to a
+stated total of 70. The spans are correct; what differs inside the first one is 5 bytes,
+and **5 + 32 + 33 = 70**.*
 
 **Everything else — all the code and all the data, 99.98 % of the image — is identical
 byte for byte.** That result also refutes a common suspicion worth naming: the two
@@ -187,9 +253,30 @@ are **not** baked into the flashed payload. (They are in the debug ELF, which is
 and is not flashed.)
 
 So if you are checking that a binary really came from this source — the thing
-GPL-3.0-or-later actually asks of us — rebuild the commit and compare: everything must
-match except those three fields. ⛔ This is one measurement, on one machine, with one
-IDF version; it is not a reproducible-builds guarantee.
+GPL-3.0-or-later actually asks of us — rebuild the commit and compare. ⛔ This is one
+measurement, on one machine, with one IDF version; it is not a reproducible-builds
+guarantee.
+
+🔴 **What to expect to differ, corrected and widened at the code review of 2026-09-04 —
+and the original sentence is kept rather than replaced.** It read *"everything must match
+except those three fields"*, which is only true of a rebuild done **the same day, from a
+git clone of the same commit, on the same IDF version**. That is exactly the shape of the
+measurement above: the two clones were built **17 minutes apart**, so the `date` field
+could not move and the rule was generalised from a case that could not exercise it.
+`esp_app_desc_t` carries three more fields that move under conditions this very page
+declares supported:
+
+| offset | field | moves when |
+|---:|---|---|
+| 48 | `version` | you build from a **ZIP** instead of a clone (it becomes `1`) or from a **modified tree** (`<sha>-dirty`) — see the note on `project_version` earlier in this file |
+| 128 | `date` | you rebuild on **any other day** |
+| 144 | `idf_ver` | you build on any **other 5.5.x**, which the manifest allows |
+
+⇒ the check that actually holds is: **rebuild from a git clone of the exact commit, on
+v5.5.5, and everything must match except `esp_app_desc_t`'s build-identity fields
+(`version`, `time`, `date`, `idf_ver`), the ELF hash that follows them, and the trailing
+image checksum + SHA-256.** All the code and all the data must be identical. ⛔ A
+difference **outside** those fields is the one that means something.
 
 **Which ESP-IDF version is authoritative — the manifest, not the measurement.**
 `firmware/desknode/main/idf_component.yml` declares `idf: "~5.5.0"`, which accepts
@@ -294,15 +381,29 @@ Contributions are welcome. Two practical points:
   they are named here as what they were.
 
   **What `mesures/` actually costs, since it is kept on purpose.** As of **2026-09-04**,
-  after `dn5-4` committed its cold-build captures, it holds **416 files** and
-  **10 116 415 bytes** — that is **10.12 MB** in decimal units, or **9.65 MiB** in binary
-  ones. *(Two earlier figures are kept rather than replaced, because each was true of the
-  tree that carried it: **395 files / 9 900 692 bytes** before the code review of
-  2026-09-04 added its own captures, then **406 files / 10 016 839 bytes** after it and
-  before `dn5-4`. The growth is ten capture files.)* ⚠️ **This number moves every time a
+  after `dn5-4` and its own code review, it holds **417 files** and **10 120 981 bytes** —
+  that is **10.12 MB** in decimal units, or **9.65 MiB** in binary ones. *(Three earlier
+  figures are kept rather than replaced, because each was true of the tree that carried it:
+  **395 files / 9 900 692 bytes** before the code review of 2026-09-04 added its own
+  captures, then **406 files / 10 016 839 bytes** after it and before `dn5-4`, then
+  **416 files / 10 116 415 bytes** after `dn5-4`'s ten cold-build captures and before its
+  review added the port-possession one.)* ⚠️ **This number moves every time a
   measurement is committed, which is most of them** — that is the point of the directory,
   and it is why the command that reproduces it is printed right below rather than being
-  left to trust. ⚠️ Those are the **same number of bytes** written in two
+  left to trust.
+
+  ⚠️ **One of those files is bloated by a capture-harness bug, and it is named here rather
+  than quietly fixed.** `mesures/dn5-4/T0-gates-avant.txt` repeats its own header **78
+  times** — about **27.7 KB** of duplicate — before the real tool output starts. The
+  measurement it records is intact, and no other capture is affected (the harness was
+  already correct when the "after" run was taken). 🔴 **It is not being edited**, for the
+  reason this directory exists at all: *a tool's output is never doctored*. It also cannot
+  be re-taken — it records the state **before any writing**, and the tree has been written
+  to since. ⚠️ Two consequences worth knowing when reading these numbers: the duplicate is
+  counted in the byte total above, and it accounts for most of that file's hits in the
+  pattern table further down — those hits are a formatting artefact, ⛔ not evidence.
+
+  ⚠️ Those are the **same number of bytes** written in two
   different units, ⛔ not two different measurements; earlier notes in the planning
   repository quoted *320 files / 9.6 MB*, which is simply older. Reproduce it with
   `git ls-tree -r -l HEAD mesures/`.

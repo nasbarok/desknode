@@ -20,9 +20,14 @@
 #    `managed_components/` sont `dn5-4`. Les gates qui en dépendent sont
 #    DÉCLARÉES NON-JOUABLES avec leur motif — ⛔ pas sautées.
 #
-#    ⚠️ DATÉ LE 2026-09-04 (`dn5-4`) — ⛔ PAS RÉÉCRIT. La phrase reste vraie sur
-#    ce qu'elle décrit (ce fichier ne construit toujours rien : 3 étapes, 0 appel
-#    à `idf.py`), mais elle DÉSIGNE UN PORTEUR QUI NE L'EST PLUS. `dn5-4` a mesuré
+#    ⚠️ DATÉ LE 2026-09-04 (`dn5-4`) — ⛔ PAS RÉÉCRIT. Sa CONCLUSION reste vraie
+#    (ce fichier ne construit toujours rien : 3 étapes, 0 appel à `idf.py`), mais
+#    elle DÉSIGNE UN PORTEUR QUI NE L'EST PLUS.
+#    🔴 ET SON CHIFFRE EST FAUX — corrigé à la revue de code du 2026-09-04, qui a
+#    relevé que l'annotation ci-dessus validait (« la phrase reste vraie ») une
+#    ligne que le bloc ajouté quatorze lignes plus bas réfutait dans le même
+#    commit : `managed_components/` pèse **172,5 MiB** (180 833 448 o), ⛔ pas
+#    186 Mo. La ligne d'origine est conservée au-dessus, ⛔ pas effacée. `dn5-4` a mesuré
 #    le build à froid et a passé le sujet « la CI construit le firmware » à
 #    **`dn4-45`**, ouverte au tracker le 2026-09-04. ⇒ le porteur à suivre est
 #    `dn4-45`, ⛔ plus `dn5-4`.
@@ -44,6 +49,12 @@
 #
 # 🔴 LE VERDICT DE LA CI N'EST PAS CELUI DU POSTE, ET L'ÉCART EST MESURÉ.
 #    Sur la machine de l'auteur : **25 VERTE / 1 ROUGE / 1 NON-JOUABLE**.
+#    ⚠️ DATÉ LE 2026-09-04 À LA REVUE DE CODE — ⛔ CE CHIFFRE N'EST PLUS CELUI
+#    QU'ON MESURE, et il est conservé plutôt qu'effacé. Les captures de `dn5-4`
+#    (`mesures/dn5-4/T0-gates-avant.txt` et `T7-gates-apres.txt`), avant ET après
+#    la marche, rendent toutes deux **27 VERTE / 1 ROUGE / 1 NON-JOUABLE sur
+#    29 gates**. ⛔ Ne pas recopier un compte ici : le nombre de gates monte à
+#    chaque story, et la seule source est la ligne `BILAN` que l'outil imprime.
 #    Dans un clone neuf avec un `HOME` étranger (2026-09-02, avant `dn4-39`) :
 #    **21 VERTE / 5 ROUGE / 1 NON-JOUABLE** — cinq rouges dont AUCUN ne parle du
 #    code. Un SIXIÈME ne se voyait que dans le code (chemins ABSOLUS).
