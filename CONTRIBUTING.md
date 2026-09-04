@@ -148,9 +148,9 @@ Contributions are welcome. Two practical points:
   | 1. functional dependency | **3 → 0** | **4 → 0** | tools that could not run from a clone | 🔴 **the only class that was a defect — and it is now empty** |
   | 2. usage example | 18 → 20 | 39 → 55 | Windows recipes, docstrings, comments | ✅ each one that *names* the machine now **declares itself as an example** at the point where it is read, with the command that gives you your own path. ⚠️ **It grew, and that is the fix working, not regressing:** every declaration written next to a path is itself a line carrying the pattern |
   | 3. generation trace | 5 → 5 | 5 → 5 | the `* Opts:` line in `firmware/…/fonts/dn_font_*.c` | 🔴 **kept, untouched** — see below |
-  | 4. evidence record | 111 → 111 | 1 264 → 1 264 | `mesures/` — captured console output | 🔴 **kept, untouched** — rewriting it would falsify the record |
+  | 4. evidence record | 111 → 120 | 1 264 → 1 349 | `mesures/` — captured console output | 🔴 **kept, untouched** — rewriting it would falsify the record. ⚠️ **It grew too**, for the same reason as class 2: the measurements proving this very change are themselves captures, and they are kept like every other one |
   | 5. the name *is* the subject | 2 → 2 | 11 → 11 | see the declared exclusions below | ⚠️ **excluded, and the exclusion is written** |
-  | **total** | **139 → 138** | **1 323 → 1 335** | | |
+  | **total** | **139 → 147** | **1 323 → 1 420** | | |
 
   ⚠️ **Do not treat any of these as a fixed number.** They move whenever a declaration
   is added, and a declaration is exactly what this repository asks for. What is stable
