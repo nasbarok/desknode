@@ -105,9 +105,10 @@ RE_UNC = re.compile(r"\\\\wsl\.localhost\\", re.I)
 # ══ LECTURE DE L'ARBRE ══════════════════════════════════════════════════════
 
 def _git(args):
-    r = subprocess.run(["git", "-C", RACINE] + args,
-                       capture_output=True, text=True)
-    return r.stdout
+    # ⛔ PAS `text=True` : il decode en UTF-8 STRICT et leve sur le premier
+    #    octet qui n'en est pas. Ce depot versionne des PNG.
+    r = subprocess.run(["git", "-C", RACINE] + args, capture_output=True)
+    return r.stdout.decode("utf-8", "replace")
 
 
 def fichiers(rev):
@@ -130,16 +131,34 @@ def fichiers(rev):
 
 
 def contenu(rev, rel):
+    """Le texte d'un fichier, ou None s'il est BINAIRE ou illisible.
+
+    🔴 CORRIGE JUSTE APRES LE VERSEMENT (2026-09-04) — DEUX DEFAUTS, ET LE
+       PREMIER FAISAIT PLANTER `--rev` :
+    (a) `subprocess.run(..., text=True)` decode en UTF-8 STRICT et leve un
+        `UnicodeDecodeError` sur le premier PNG venu. ⇒ on decode nous-memes,
+        avec `errors="replace"`.
+    (b) ⛔ ON SAUTE LES BINAIRES, comme `git grep -I` — qui est EXACTEMENT la
+        commande publiee a cote des comptes. Sans ca l'instrument et la commande
+        de reference peuvent diverger sur un binaire qui porterait les octets du
+        motif : deux comptes pour un seul chiffre publie. Le test du NUL est
+        celui de git.
+    """
     if rev:
         r = subprocess.run(["git", "-C", RACINE, "show", "%s:%s" % (rev, rel)],
-                           capture_output=True, text=True)
-        return r.stdout if r.returncode == 0 else None
-    p = os.path.join(RACINE, rel)
-    try:
-        with open(p, "r", encoding="utf-8", errors="replace") as f:
-            return f.read()
-    except (OSError, UnicodeError):
+                           capture_output=True)
+        if r.returncode != 0:
+            return None
+        brut = r.stdout
+    else:
+        try:
+            with open(os.path.join(RACINE, rel), "rb") as f:
+                brut = f.read()
+        except OSError:
+            return None
+    if b"\x00" in brut[:8000]:
         return None
+    return brut.decode("utf-8", "replace")
 
 
 def sites(txt):
