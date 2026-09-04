@@ -47,6 +47,22 @@ permissions:
 jobs:
   cla:
     runs-on: ubuntu-latest
+    # ⛔ UN JOB QUI ÉCRIT DANS `main` NE DOIT PAS SE DOUBLER. L'essai du
+    #    2026-09-02 a relevé que le bot **écrit dans le dépôt** (commit
+    #    `bfd63ae`, poussé sur `main` par `github-actions[bot]`). `synchronize`
+    #    puis `issue_comment` se recouvrent trivialement — on pousse, puis on
+    #    commente — et deux runs qui muent `.github/cla-signatures.json` sur une
+    #    branche NON PROTÉGÉE peuvent **perdre une signature**.
+    #    ⛔ `cancel-in-progress: false` : ⛔ on n'annule pas un run qui écrit.
+    concurrency:
+      group: >-
+        cla-${{ github.event.pull_request.number || github.event.issue.number }}
+      cancel-in-progress: false
+    # ⚠️ Le défaut de `ubuntu-latest` est **360 minutes**. Sur un dépôt PRIVÉ
+    #    facturé à la minute, un job bloqué consommerait jusqu'à six heures
+    #    contre un coût mesuré de **2,0 minutes** — le run le plus long de
+    #    l'essai a duré 31 s cumulées sur trois runs.
+    timeout-minutes: 5
     # 🔴 LA CONDITION EST AU NIVEAU DU **JOB**, ⛔ PAS DE L'ÉTAPE — ET C'EST UNE
     #    MESURE, ⛔ pas un style. L'essai du 2026-09-02 a produit TROIS runs pour
     #    une seule PR : `opened`, `closed`… et un `issue_comment` déclenché par un
@@ -60,7 +76,14 @@ jobs:
           && github.event.issue.pull_request != null
           && (contains(github.event.comment.body,
                        'I have read the CLA Document and I hereby sign the CLA')
-              || github.event.comment.body == 'recheck'))
+              # ⛔ `== 'recheck'` EXIGEAIT LA CHAÎNE NUE. `CONTRIBUTING.md` dit
+              #    au contributeur de commenter `recheck` : une espace finale,
+              #    un retour à la ligne ou des accents graves faisaient tomber
+              #    la condition — et comme elle est au niveau du JOB, il ne se
+              #    passait **rien du tout**, sans message. `contains` accepte la
+              #    phrase telle qu'un humain la poste. Prix assumé : un
+              #    commentaire qui contient le mot alloue un runner.
+              || contains(github.event.comment.body, 'recheck')))
     steps:
       - name: "Signature du CLA"
         # ⛔ VERSION ÉPINGLÉE — voir l'en-tête : le dépôt de l'action est archivé.

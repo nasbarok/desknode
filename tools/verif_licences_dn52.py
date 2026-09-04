@@ -111,10 +111,27 @@ Aucune des trois n'etait gardee. `THIRD-PARTY.md` l'ecrivait meme lui-meme.
    Le motif est que la page ne liste QUE le travail A VENIR — les marqueurs de
    travail PASSE (`dn1-*`..`dn4-*`, partout dans `README.md`) sont decrits la
    ou ils sont cites, et `dn5-1` n'y est deliberement pas. Exiger que TOUT
+   ⚠️ ANNOTE LE 2026-09-04 A LA REVUE DE CODE — LA DEUXIEME MOITIE DE LA
+   PHRASE CI-DESSUS N'EST PLUS VRAIE, ET ELLE EST ⛔ NON EFFACEE (NFR3) :
+   `docs/roadmap.md` a ete AMENDEE le 2026-09-04 (« un marqueur CITE DANS CET
+   ARBRE reste liste apres sa cloture, avec l'etat `done` ») et `dn5-1`,
+   `dn5-2`, `dn5-3` et `dn5` y ont donc RETROUVE une ligne. La premiere moitie,
+   elle, TIENT : les `dn1-*`..`dn4-*` restent decrits la ou ils sont cites — ils
+   sont 26, mesures le 2026-09-04. ⇒ le motif de la limite est INCHANGE, seule
+   son illustration a bouge.
    `dnE-N` y soit ROUGIRAIT SUR DU CONTENU JUSTE. Le seul signal disponible
    est donc le renvoi lui-meme. ⇒ la convention du depot — un ecart s'ecrit
    AVEC le marqueur qui le porte, et le marqueur renvoie a la page — est ce
    qui rend le controle possible ; sans elle il ne l'est pas.
+
+⛔ **LE CONTROLE (c7) RAISONNE A LA **LIGNE PHYSIQUE**.** La refutation doit tenir
+   sur la MEME ligne que `NVIDIA`/`NVML`. Mesure du 2026-09-04 : re-flouer un
+   paragraphe du `CHANGELOG` SANS CHANGER UN MOT de son sens, de sorte que
+   `NVIDIA` finisse une ligne et `not implemented` commence la suivante, rend
+   `⛔ ligne SANS refutation`. ⇒ un reformatage de prose ENTIEREMENT VRAIE fait
+   rougir. La propriete par PARAGRAPHE serait plus juste et plus large — donc
+   plus facile a satisfaire par accident. Le choix de la ligne est assume, et il
+   est ECRIT ici plutot que decouvert par celui qui reformate.
 
 ⛔ Elle ne dit rien du materiel, rien du firmware, et n'ouvre aucun port.
 
@@ -190,6 +207,16 @@ OK = [0]
 KO = [0]
 _MUTANT = None
 
+# ── CE QUE LE TIR A REELLEMENT EMIS, ET CE QU'IL A DECLARE NE PAS EMETTRE ───
+# 🔴 MESURE DU 2026-09-04 : en retirant `.github/workflows/`, le bilan tombait a
+#    `23 OK, 2 KO` — soit **25 controles emis, ⛔ pas 28** — et AUCUNE ligne ne le
+#    disait. Or la liste des controles du TIR SAIN est la reference contre
+#    laquelle AC2.6.a confronte l'union des `[KO ]` : elle changeait avec la
+#    FORME DE L'ARBRE, en silence. Un bilan qui retrecit sans le dire ment sur sa
+#    propre couverture.
+EMIS = []
+DECLARES = set()
+
 MUTANTS = {}                      # ⛔ AU NIVEAU MODULE — sinon `--liste-mutants`
 MUTANTS[1] = ("retire `docs/` de la TABLE de LICENSING.md "
               "(un repertoire trace cesse d'etre couvert)")
@@ -235,17 +262,96 @@ MUTANTS[27] = ("retire la promesse de bot de CONTRIBUTING.md "
                "alors que le workflow, lui, est bien la")
 MUTANTS[28] = ("fait CHECKOUTER le code de la PR par le workflow "
                "`pull_request_target`")
+# ── AJOUTES LE 2026-09-04 PAR LA REVUE DE CODE, QUI A TROUVE CINQ CONTROLES
+#    QUE RIEN NE GARDAIT (dont deux qui n'existaient pas encore)
+MUTANTS[29] = ("pose un SECOND workflow qui porte le signal du CLA et qui trie "
+               "AVANT `cla.yml`, avec une action NON EPINGLEE")
+MUTANTS[30] = ("checkoute le code de la PR par `github.head_ref` "
+               "(l'orthographe que l'ancienne forme ne voyait pas)")
+MUTANTS[31] = ("redescend la condition du workflow CLA hors du niveau JOB "
+               "(le runner redevient ALLOUE et FACTURE)")
+MUTANTS[32] = ("fait pointer `path-to-document` vers un AUTRE depot "
+               "(le chemin resout EN LOCAL et mentait)")
+MUTANTS[33] = ("ecrit une version du manifeste en guillemets SIMPLES "
+               "(le parseur ne la lit pas, et se taisait)")
 
 
 def dire(ok, libelle, detail=""):
     (OK if ok else KO)[0] += 1
+    EMIS.append(libelle)
     print("  [%s] %-58s %s" % ("OK " if ok else "KO ", libelle, detail))
+
+
+def declarer(motif, *libelles):
+    """Un controle PREVU qui n'est PAS emis, et qui le DIT. ⛔ Ce n'est pas une
+    exemption : le controle final (« tout controle prevu est EMIS ou DECLARE »)
+    rougit sur tout libelle de l'INVENTAIRE qui manque SANS passer par ici."""
+    DECLARES.update(libelles)
+    note("⛔ %d CONTROLE(S) NON EMIS — %s" % (len(libelles), motif))
+    for l in libelles:
+        print("       · %s" % l)
 
 
 def note(texte):
     """Une LIMITE declaree. ⛔ Ce n'est pas un controle : elle ne compte pas au
     bilan. Elle est imprimee pour qu'un lecteur voie ce qui N'EST PAS garde."""
     print("  [⚠️ ] %s" % texte)
+
+
+# ── L'INVENTAIRE DES CONTROLES D'UN TIR NOMINAL ────────────────────────────
+# ⚠️ OUI, C'EST UNE LISTE ECRITE, ET C'EST LE SEUL CAS OU LA REGLE (1) DE
+#    `run_gates.sh` NE S'APPLIQUE PAS : ce n'est pas une liste de chemins
+#    ATTENDUS dans un arbre qui bouge, c'est la SPECIFICATION de ce que cette
+#    gate emet. Elle est gardee DANS LES DEUX SENS — un libelle de l'inventaire
+#    qui n'est pas emis et n'est pas declare rougit ; un libelle emis qui n'est
+#    pas a l'inventaire rougit aussi ⇒ ajouter un controle sans l'inscrire ici
+#    fait rougir le tir suivant, ⛔ elle ne peut pas se perimer en silence.
+INVENTAIRE = (
+    "la TABLE de LICENSING.md se lit",
+    "la phrase de REPLI de LICENSING.md se lit",
+    "tout chemin ANNONCE existe dans l'arbre",
+    "tout repertoire TRACE est nomme par l'une des 2 listes",
+    "le fichier de licence annonce EXISTE",
+    "le fichier de licence DIT BIEN la licence annoncee",
+    "chaque licence annoncee a une signature connue",
+    "le manifeste `idf_component.yml` se lit",
+    "la table § Firmware de THIRD-PARTY.md se lit",
+    "toute ligne du bloc `dependencies` est LUE",
+    "toute entree du manifeste figure au tableau",
+    "toute ligne du tableau est EPINGLEE, ALIAS ou TRANSITIVE",
+    "les versions EPINGLEES concordent (`==` retire)",
+    "l'ALIAS declare apparie les deux cotes",
+    "*(transitive)* ⟺ ABSENT du manifeste (les 2 sens)",
+    "`managed_components/` hors du clone (fonde la limite)",
+    "tout lien local des fichiers de prose resout",
+    "la section citee PAR SON TITRE existe",
+    "l'outil cite AVEC SON DRAPEAU l'accepte (invoque)",
+    "docs/roadmap.md definit des marqueurs",
+    "tout marqueur cite COMME marqueur est defini",
+    "le COMPTE annonce egale le nombre d'entrees",
+    "la promesse de bot et son workflow disent la meme chose",
+    "chaque action du workflow CLA est EPINGLEE",
+    "le document que le bot fait signer EXISTE",
+    "`path-to-document` designe CE depot",
+    "la condition du workflow CLA est au niveau du JOB",
+    "⛔ le workflow ne checkoute JAMAIS le code de la PR",
+    "l'ecart residuel du CLA a un PORTEUR reel",
+    "toute ligne qui nomme NVIDIA/NVML porte sa REFUTATION",
+    "THIRD-PARTY.md dit que cette gate le garde",
+    "tout controle prevu est EMIS ou DECLARE",
+)
+
+# Emis UNIQUEMENT quand le prerequis tombe : ⛔ pas un controle du tir nominal.
+DIAGNOSTICS = ("l'arbre trace se lit (`git ls-files`)",)
+
+# Les controles qui n'existent QUE si un workflow porte le CLA.
+CONDITIONNELS_CLA = (
+    "chaque action du workflow CLA est EPINGLEE",
+    "le document que le bot fait signer EXISTE",
+    "`path-to-document` designe CE depot",
+    "la condition du workflow CLA est au niveau du JOB",
+    "⛔ le workflow ne checkoute JAMAIS le code de la PR",
+)
 
 
 def M(n, src, avant, apres, tous=False):
@@ -395,13 +501,27 @@ def section_licences(lic, traces):
 
 def lire_manifeste(src):
     """Les dependances du manifeste. ⛔ Pas un parseur YAML : le commentaire
-    est retire, et seules les deux formes reellement utilisees sont lues."""
-    deps, dans, courant = {}, False, None
+    est retire, et seules les deux formes reellement utilisees sont lues.
+
+    🔴 REND AUSSI LES LIGNES QU'IL N'A PAS SU LIRE. Sans ca, une version en
+    guillemets SIMPLES, nue, ou indentee a quatre espaces sortait du dictionnaire
+    SANS UN MOT — et si le composant etait AUSSI absent de `THIRD-PARTY.md`, le
+    controle bidirectionnel passait VERT sur une dependance invisible, ce qui est
+    tres exactement ce que cette gate existe pour attraper.
+
+    ⚠️ Et le bloc se QUITTE sur la premiere cle de premier niveau qui suit :
+    `dependencies:` est la derniere aujourd'hui, mais un bloc frere dont les cles
+    sont a deux espaces aurait ete lu comme des dependances — un faux rouge sur
+    un manifeste JUSTE."""
+    deps, non_lues, dans, courant = {}, [], False, None
     for ligne in src.splitlines():
         if re.match(r"^dependencies:\s*$", ligne):
             dans = True
             continue
         if not dans:
+            continue
+        if re.match(r"^[A-Za-z_.]", ligne):        # cle de 1er niveau ⇒ on SORT
+            dans = False
             continue
         s = ligne.split("#")[0].rstrip()
         if not s.strip():
@@ -420,7 +540,9 @@ def lire_manifeste(src):
         if m and courant:
             deps[courant] = m.group(1)
             courant = None
-    return deps
+            continue
+        non_lues.append(s.strip())
+    return deps, non_lues
 
 
 def lire_tableau_tiers(src):
@@ -460,8 +582,9 @@ def section_tiers(manifeste, tiers, gitignore, traces):
               "| `lvgl/lvgl` | `9.5.0` | MIT |\n"
               "| `acme/widget` | `1.0.0` | MIT |\n")
     tiers = M(25, tiers, "| ESP-IDF | `~5.5.0` |", "| ESP-IDF | `~5.4.0` |")
+    manifeste = M(33, manifeste, 'lvgl/lvgl: "==9.5.0"', "lvgl/lvgl: '==9.5.0'")
 
-    deps = lire_manifeste(manifeste)
+    deps, non_lues = lire_manifeste(manifeste)
     lignes = lire_tableau_tiers(tiers)
 
     dire(bool(deps), "le manifeste `idf_component.yml` se lit",
@@ -470,6 +593,12 @@ def section_tiers(manifeste, tiers, gitignore, traces):
          "%d ligne(s)" % len(lignes) if lignes else "⛔ ILLISIBLE")
     if not deps or not lignes:
         return
+
+    # ── TOUTE LIGNE DU BLOC EST LUE — ⛔ une ligne muette n'est pas une ligne
+    #    absente. C'est le seul controle qui garde le PARSEUR lui-meme.
+    dire(not non_lues, "toute ligne du bloc `dependencies` est LUE",
+         "%d entree(s) lue(s)" % len(deps) if not non_lues
+         else "⛔ ligne(s) NON LUE(S) : " + " · ".join(non_lues[:3]))
 
     inv_alias = {v: k for k, v in ALIAS.items()}
     table = {_nu(c[0]): _nu(c[1]) for c in lignes}
@@ -553,10 +682,14 @@ def section_tiers(manifeste, tiers, gitignore, traces):
     trace = traces is not None and any(
         f.startswith("managed_components/") or f == "dependencies.lock"
         for f in traces)
-    dire(ignore and not trace,
+    # ⛔ `traces is None` rendait `trace` FAUX, donc ce controle annoncait `OK`
+    #    sur un arbre qu'il n'avait JAMAIS PU LIRE. Un vert sur une lecture
+    #    ratee est pire qu'un rouge : il affirme.
+    dire(traces is not None and ignore and not trace,
          "`managed_components/` hors du clone (fonde la limite)",
          "gitignore=%s · trace=%s" % ("oui" if ignore else "⛔ NON",
-                                      "⛔ OUI" if trace else "non"))
+                                      "⛔ OUI" if trace else "non")
+         if traces is not None else "⛔ arbre trace ILLISIBLE")
     note("⛔ NON CONTROLE — la colonne « License » du tableau : sa seule source "
          "est\n       `managed_components/`, absent d'un clone. Cette gate NE "
          "LE LIT PAS, meme\n       s'il est la : une gate qui passe chez "
@@ -583,9 +716,14 @@ def section_liens(textes):
             if not os.path.exists(plein):
                 casses.append("%s:%d -> %s"
                               % (nom, src[:m.start()].count("\n") + 1, cible))
-    dire(not casses, "tout lien local des fichiers de prose resout",
+    # ⛔ `not casses` etait VRAI sur zero fichier. c3 et c5 portaient deja leur
+    #    garde de non-vacuite (`bool(essayes)`, `vus > 0`) ; c1 et c2 non.
+    dire(not casses and bool(textes),
+         "tout lien local des fichiers de prose resout",
          "%d lien(s) local(aux), %d fichier(s)" % (total, len(textes))
-         if not casses else "⛔ " + " · ".join(casses[:3]))
+         if not casses and textes
+         else ("⛔ " + " · ".join(casses[:3]) if casses
+               else "⛔ AUCUN fichier de prose — ⛔ pas vert sur du vide"))
 
 
 def section_citations(textes):
@@ -605,9 +743,14 @@ def section_citations(textes):
             if not os.path.exists(cible) or titre not in lire(cible):
                 absentes.append("%s : « %s » dans %s"
                                 % (nom, titre, m.group(1)))
-    dire(not absentes, "la section citee PAR SON TITRE existe",
-         "%d citation(s)" % vues if not absentes
-         else "⛔ " + " · ".join(absentes))
+    # 🔴 MESURE DU 2026-09-04 : en reformulant l'UNIQUE citation hors de la forme
+    #    reconnue et en pointant un titre INEXISTANT, ce controle rendait
+    #    `[OK ] … 0 citation(s)` et le bilan restait `28 OK, 0 KO`. Le mutant 10
+    #    change le titre A L'INTERIEUR de la forme : il ne pouvait pas le voir.
+    dire(not absentes and vues > 0, "la section citee PAR SON TITRE existe",
+         "%d citation(s)" % vues if not absentes and vues
+         else ("⛔ " + " · ".join(absentes) if absentes
+               else "⛔ AUCUNE citation trouvee — ⛔ pas vert sur du vide"))
 
     # ── UN OUTIL CITE AVEC SON DRAPEAU : LA GATE L'INVOQUE ────────────────
     # ⛔ Elle ne lit PAS le code de l'outil : un `--reset` present dans une
@@ -697,6 +840,86 @@ def section_comptes(textes):
                     "sur du vide"))
 
 
+# ── LE LEURRE DU MUTANT 29 : un workflow qui porte VRAIMENT le signal du CLA
+#    et qui trie AVANT `cla.yml`. ⛔ Aucun fichier n'est ecrit.
+LEURRE_CLA = """name: Leurre
+on: [push]
+jobs:
+  leurre:
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'push'
+    steps:
+      - uses: contributor-assistant/github-action@main
+        with:
+          path-to-signatures: '.github/cla-signatures.json'
+          path-to-document: 'https://github.com/nasbarok/desknode/blob/main/CLA.md'
+"""
+
+
+def porte_le_cla(wf):
+    """🔴 ⛔ PAS `re.search("cla", corps, re.I)`. MESURE DU 2026-09-04 :
+    `.github/workflows/gates.yml` porte NEUF fois la sous-chaine `cla`
+    (`DECLAREES`, `cla.yml` cite en commentaire) ⇒ la gate annoncait
+    `workflow(s) CLA=2`, et le TRI ALPHABETIQUE (`c` < `g`) etait la SEULE chose
+    qui designait encore le bon fichier. Un `ci.yml` portant `clang-format`
+    aurait fait auditer un AUTRE fichier pendant que le libelle s'affichait
+    quand meme — et le controle de surete (« ne checkoute jamais le code de la
+    PR ») aurait cesse de regarder `cla.yml`. Le signal est ce qui fait qu'un
+    workflow EST celui du CLA : l'action, ou le magasin de signatures."""
+    return (re.search(r"contributor-assistant/", wf) is not None
+            or re.search(r"^\s*path-to-signatures:", wf, re.M) is not None)
+
+
+def muter_cla(wf):
+    """Les mutants qui visent `cla.yml` — ⛔ ils ne s'appliquent qu'a LUI."""
+    wf = M(15, wf, "path-to-document:", "path-to-document-absent:")
+    wf = M(16, wf, "github-action@v2.6.1", "github-action@main")
+    wf = M(28, wf, '      - name: "Signature du CLA"',
+           "      - uses: actions/checkout@v4\n"
+           "        with:\n"
+           "          ref: ${{ github.event.pull_request.head.sha }}\n"
+           '      - name: "Signature du CLA"')
+    wf = M(30, wf, '      - name: "Signature du CLA"',
+           "      - uses: actions/checkout@v4\n"
+           "        with:\n"
+           "          ref: ${{ github.head_ref }}\n"
+           '      - name: "Signature du CLA"')
+    wf = M(31, wf, "    if: >-\n", "    # if: >-\n")
+    wf = M(32, wf, "https://github.com/nasbarok/desknode/blob/main/CLA.md",
+           "https://github.com/acme/autre-depot/blob/main/CLA.md")
+    return wf
+
+
+def if_au_niveau_job(wf):
+    """La condition doit vivre sous `jobs.<id>:`, AVANT `steps:`. MESURE T3 §4 :
+    a l'ETAPE, GitHub ALLOUE le runner et DECOMPTE les minutes avant de sauter
+    l'etape — sur un depot PRIVE, un commentaire d'issue SANS RAPPORT etait
+    facture. Le fichier appelle cette propriete « une MESURE, ⛔ pas un style »
+    et, jusqu'au 2026-09-04, AUCUN controle et AUCUN mutant ne la lisaient :
+    supprimer le bloc sortait en `28 OK, 0 KO`."""
+    m = re.search(r"^jobs:\s*$", wf, re.M)
+    if not m:
+        return False
+    bloc = wf[m.end():]
+    fin = re.search(r"^\s{4}steps:\s*$", bloc, re.M)
+    tete = bloc[:fin.start()] if fin else bloc
+    return re.search(r"^\s{4}if:", tete, re.M) is not None
+
+
+def depot_canonique():
+    """`owner/repo` du remote `origin`. ⛔ Pas une constante ecrite : un fork
+    legitime porte un autre nom, et une constante ferait rougir du travail
+    JUSTE. Rend `None` sans remote — le controle est alors DECLARE, ⛔ pas
+    saute en silence."""
+    r = subprocess.run(["git", "remote", "get-url", "origin"], cwd=RACINE,
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        return None
+    m = re.search(r"[:/]([\w.-]+/[\w.-]+?)(?:\.git)?\s*$", r.stdout.strip())
+    return m.group(1) if m else None
+
+
 def section_cla(contrib, roadmap):
     print("\n── (c6) LA PROMESSE D'AUTOMATISATION DU CLA A SON ARTEFACT ───────")
 
@@ -713,7 +936,14 @@ def section_cla(contrib, roadmap):
         for f in sorted(os.listdir(wf_dir)):
             if f.endswith((".yml", ".yaml")):
                 workflows.append((f, lire(os.path.join(wf_dir, f))))
-    cla_wf = [(f, s) for f, s in workflows if re.search(r"cla", s, re.I)]
+
+    # ── MUTANT 29 : un SECOND workflow qui porte VRAIMENT le signal, et qui
+    #    trie AVANT `cla.yml`. ⛔ Rien n'est ecrit sur le disque.
+    if _MUTANT == 29:
+        workflows.insert(0, ("ci.yml", LEURRE_CLA))
+
+    cla_wf = [(f, w) for f, w in workflows if porte_le_cla(w)]
+    cla_wf = [(f, muter_cla(w)) if f == "cla.yml" else (f, w) for f, w in cla_wf]
 
     dire(promet == bool(cla_wf),
          "la promesse de bot et son workflow disent la meme chose",
@@ -721,46 +951,82 @@ def section_cla(contrib, roadmap):
          % ("oui" if promet else "non", len(cla_wf)))
 
     if cla_wf:
-        _, wf = cla_wf[0]
-        wf = M(15, wf, "path-to-document:", "path-to-document-absent:")
-        wf = M(16, wf, "github-action@v2.6.1", "github-action@main")
-        wf = M(28, wf, '      - name: "Signature du CLA"',
-               "      - uses: actions/checkout@v4\n"
-               "        with:\n"
-               "          ref: ${{ github.event.pull_request.head.sha }}\n"
-               '      - name: "Signature du CLA"')
+        # 🔴 TOUS LES WORKFLOWS QUI PORTENT LE SIGNAL SONT AUDITES, ⛔ PAS LE
+        #    PREMIER PAR ORDRE ALPHABETIQUE. `cla_wf[0]` faisait dependre trois
+        #    garanties du NOM d'un fichier que personne ne controlait.
+        canon = depot_canonique()
+        flottantes, sans_doc, hors_depot, sans_if, checkouts = [], [], [], [], []
+        actions_vues = []
+        for nom_wf, wf in cla_wf:
+            # ── LA VERSION EST EPINGLEE, ⛔ JAMAIS UN TAG FLOTTANT ─────────
+            actions = re.findall(r"uses:\s*([\w.-]+/[\w.-]+)@([\w.-]+)", wf)
+            actions_vues += ["%s@%s" % a for a in actions]
+            FLOTTANTS = ("main", "master", "latest", "HEAD")
+            flottantes += ["%s → %s@%s" % (nom_wf, a, v)
+                           for a, v in actions if v in FLOTTANTS]
+            if not actions:
+                flottantes.append("%s → ⛔ AUCUNE action" % nom_wf)
 
-        # ── LA VERSION EST EPINGLEE, ⛔ JAMAIS UN TAG FLOTTANT ─────────────
-        actions = re.findall(r"uses:\s*([\w.-]+/[\w.-]+)@([\w.-]+)", wf)
-        FLOTTANTS = ("main", "master", "latest", "HEAD")
-        flottantes = ["%s@%s" % (a, v) for a, v in actions if v in FLOTTANTS]
-        dire(bool(actions) and not flottantes,
-             "chaque action du workflow CLA est EPINGLEE",
-             " · ".join("%s@%s" % a for a in actions) if not flottantes
+            # ── LE DOCUMENT A SIGNER EXISTE VRAIMENT, ET IL EST D'ICI ──────
+            # 🔴 Un bot qui fait signer un document ABSENT est la promesse creuse
+            #    que cette story solde. Et un `blob/<ref>/…` d'un AUTRE depot
+            #    resolvait EN LOCAL : le chemin seul ne dit pas d'ou il vient.
+            md = re.search(r"path-to-document:\s*['\"]?([^'\"\s]+)", wf)
+            if not md:
+                sans_doc.append("%s → `path-to-document` absent" % nom_wf)
+            else:
+                brut = md.group(1)
+                mb = re.search(r"blob/[^/]+/(.+)$", brut)
+                chemin = mb.group(1) if mb else brut.lstrip("./")
+                if not os.path.exists(os.path.join(RACINE, chemin)):
+                    sans_doc.append("%s → %s" % (nom_wf, chemin))
+                if canon and brut.startswith("http") and canon not in brut:
+                    hors_depot.append("%s → %s" % (nom_wf, brut))
+
+            # ── LA CONDITION EST AU NIVEAU DU JOB ─────────────────────────
+            if not if_au_niveau_job(wf):
+                sans_if.append(nom_wf)
+
+            # ── ⛔ LE CODE DE LA PR N'EST JAMAIS CHECKOUTE ─────────────────
+            # `pull_request_target` s'execute avec le jeton du depot de BASE.
+            # ⛔ L'ancienne forme ne reconnaissait QU'UNE orthographe
+            #    (`github.event.pull_request.head`, a moins de six lignes) :
+            #    `github.head_ref` et `refs/pull/N/merge` passaient. L'en-tete du
+            #    workflow declare qu'il n'y a DELIBEREMENT aucun `checkout` ⇒ la
+            #    propriete controlee est celle-la, et elle n'a pas d'orthographe.
+            if re.search(r"uses:\s*actions/checkout@", wf):
+                checkouts.append(nom_wf)
+
+        dire(not flottantes, "chaque action du workflow CLA est EPINGLEE",
+             " · ".join(actions_vues) if not flottantes
              else "⛔ version FLOTTANTE : " + " ".join(flottantes))
 
-        # ── LE DOCUMENT A SIGNER EXISTE VRAIMENT ──────────────────────────
-        # 🔴 Un bot qui fait signer un document ABSENT est exactement la
-        #    promesse creuse que cette story solde.
-        md = re.search(r"path-to-document:\s*['\"]?([^'\"\s]+)", wf)
-        chemin = None
-        if md:
-            brut = md.group(1)
-            mb = re.search(r"blob/[^/]+/(.+)$", brut)
-            chemin = mb.group(1) if mb else brut.lstrip("./")
-        dire(chemin is not None and os.path.exists(
-                 os.path.join(RACINE, chemin)),
-             "le document que le bot fait signer EXISTE",
-             chemin or "⛔ `path-to-document` absent du workflow")
+        dire(not sans_doc, "le document que le bot fait signer EXISTE",
+             "%d workflow(s) audite(s)" % len(cla_wf) if not sans_doc
+             else "⛔ " + " · ".join(sans_doc))
 
-        # ── ⛔ LE CODE DE LA PR N'EST JAMAIS CHECKOUTE ─────────────────────
-        # `pull_request_target` s'execute avec le jeton du depot de BASE.
-        danger = re.search(r"uses:\s*actions/checkout@[^\n]*\n(?:[^\n]*\n)"
-                           r"{0,6}?[^\n]*ref:\s*\$\{\{\s*github\.event\."
-                           r"pull_request\.head", wf)
-        dire(danger is None,
+        if canon:
+            dire(not hors_depot, "`path-to-document` designe CE depot",
+                 "origin = %s" % canon if not hors_depot
+                 else "⛔ document HORS depot : " + " · ".join(hors_depot))
+        else:
+            declarer("⛔ pas de remote `origin` — l'identite du depot ne peut "
+                     "pas etre confrontee au lien du document",
+                     "`path-to-document` designe CE depot")
+
+        dire(not sans_if, "la condition du workflow CLA est au niveau du JOB",
+             "⛔ a l'ETAPE, le runner est ALLOUE et FACTURE" if not sans_if
+             else "⛔ condition absente du niveau job : " + " ".join(sans_if))
+
+        dire(not checkouts,
              "⛔ le workflow ne checkoute JAMAIS le code de la PR",
-             "`pull_request_target` tourne avec le jeton du depot de BASE")
+             "`pull_request_target` tourne avec le jeton du depot de BASE"
+             if not checkouts
+             else "⛔ `actions/checkout` present : " + " ".join(checkouts))
+    else:
+        declarer("aucun workflow ne porte le signal du CLA "
+                 "(`contributor-assistant/` ou `path-to-signatures:`)",
+                 *CONDITIONNELS_CLA)
 
     # ── L'ECART RESIDUEL EST DECLARE AVEC UN PORTEUR, ET IL EST VRAI ──────
     # ⚠️ Un porteur `TBD` doit ROUGIR — ⛔ pas seulement le vide LITTERAL.
@@ -779,7 +1045,11 @@ def section_refutations(textes, agent):
     # L'arbre dit ce que l'agent SAIT faire. Si NVML entrait un jour dans
     # l'agent, l'affirmation deviendrait VRAIE et ce controle changerait de
     # sens — donc il LIT l'agent, ⛔ il ne suppose pas.
-    a_nvml = re.search(r"^\s*import\s+pynvml", agent, re.M) is not None
+    # ⛔ `import pynvml` n'est PAS la seule forme : `from pynvml import …` la
+    #    manquait, et le jour ou l'agent gagne NVML sous cette forme la gate
+    #    continuerait d'exiger une refutation sur une doc devenue JUSTE.
+    a_nvml = re.search(r"^\s*(?:import\s+pynvml|from\s+pynvml\s+import)",
+                       agent, re.M) is not None
     # ⛔ CE N'EST PAS UN CONTROLE, DONC CE N'EST PAS UN `dire()`. Un `dire(True,
     #    ...)` inconditionnel ne peut PAS rougir : il gonfle le bilan sans rien
     #    garder. La campagne de mutants l'a epingle — c'est elle qui l'a vu.
@@ -833,6 +1103,14 @@ def main():
     ap.add_argument("--liste-mutants", action="store_true",
                     help="dit ce que chaque mutant replante, et sort")
     args = ap.parse_args()
+    # 🔴 MESURE DU 2026-09-04 : `--mutant 99` sortait en `28 OK, 0 KO`, `rc=0`,
+    #    avec la banniere `[MUTANT 99]`. AC2.6.c exige qu'un mutant qui ne
+    #    s'applique pas SORTE EN ERREUR — une campagne pilotee sur une liste
+    #    perimee aurait compte un mutant INEXISTANT comme « vu rougir ».
+    if args.mutant is not None and args.mutant not in MUTANTS:
+        sys.exit("MUTANT %d INCONNU : il n'est pas declare. ⛔ Un mutant qui "
+                 "n'existe pas ne prouve RIEN — ⛔ ne pas conclure que le "
+                 "controle est vert." % args.mutant)
     _MUTANT = args.mutant
 
     if args.liste_mutants:
@@ -906,6 +1184,20 @@ def main():
     section_cla(prose.get("CONTRIBUTING.md", ""), roadmap)
     section_refutations(prose, agent)
     section_auto_coherence(tiers)
+
+    print("\n── (z) LE BILAN NE RETRECIT PAS EN SILENCE ───────────────────────")
+    manquants = [l for l in INVENTAIRE
+                 if l not in EMIS and l not in DECLARES
+                 and l != "tout controle prevu est EMIS ou DECLARE"]
+    intrus = [l for l in EMIS if l not in INVENTAIRE and l not in DIAGNOSTICS]
+    dire(not manquants and not intrus,
+         "tout controle prevu est EMIS ou DECLARE",
+         "%d emis + %d declare(s) = %d prevus"
+         % (len(EMIS) + 1, len(DECLARES), len(INVENTAIRE))
+         if not manquants and not intrus
+         else ("⛔ MANQUANT sans declaration : " + " · ".join(manquants[:3])
+               if manquants
+               else "⛔ EMIS hors inventaire : " + " · ".join(intrus[:3])))
 
     print("\n" + "=" * 78)
     print("BILAN : %d OK, %d KO" % (OK[0], KO[0]))

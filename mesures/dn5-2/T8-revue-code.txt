@@ -1,0 +1,69 @@
+==============================================================================
+dn5-2 / T8 — REVUE DE CODE DU 2026-09-04 : CE QUE LES COMMANDES RENDENT
+==============================================================================
+
+⛔ AUCUN CHIFFRE N'EST ECRIT DE MEMOIRE ICI : ce fichier est PRODUIT par les
+   commandes qu'il rapporte. ⛔ Il ne nomme aucun SHA — une capture ne peut pas
+   nommer le commit qui la publie ; ce qui se lit ici, ce sont des INVARIANTS.
+
+date : 2026-09-04T21:52:06
+
+==============================================================================
+1. TIR SAIN
+==============================================================================
+  rc = 0 · 32 controles (32 OK, 0 KO)
+  libelles >= 58 caracteres (qui casseraient la cle) : aucun
+  libelles en DOUBLE : aucun
+
+==============================================================================
+2. CAMPAGNE — `controle => couvert`, ⛔ PAS `mutant => rouge`
+==============================================================================
+  `--liste-mutants` rc=0 · 33 mutant(s) declare(s)
+  mutants INAPPLICABLES              : aucun
+  mutants qui ne rougissent RIEN     : aucun
+  controles couverts par >= 1 mutant : 32
+  🔴 CONTROLES GARDES PAR RIEN       : 0
+
+==============================================================================
+3. UN MUTANT INCONNU NE PASSE PLUS VERT (AC2.6.c)
+==============================================================================
+  `--mutant 99` -> rc=1
+  MUTANT 99 INCONNU : il n'est pas declare. ⛔ Un mutant qui n'existe pas ne prouve RIEN — ⛔ ne pas conclure que le controle est vert.
+
+==============================================================================
+4. LES LIGNES ENTIERES DU TIR SAIN — ⛔ AUCUNE TRONCATURE
+==============================================================================
+  [OK ] la TABLE de LICENSING.md se lit                            6 ligne(s)
+  [OK ] la phrase de REPLI de LICENSING.md se lit                  3 chemin(s) + la racine
+  [OK ] tout chemin ANNONCE existe dans l'arbre                    9 repertoire(s) annonce(s)
+  [OK ] tout repertoire TRACE est nomme par l'une des 2 listes     9 repertoire(s) de 1er niveau
+  [OK ] le fichier de licence annonce EXISTE                       6 ligne(s) de table
+  [OK ] le fichier de licence DIT BIEN la licence annoncee         ⛔ pas seulement « il est la »
+  [OK ] chaque licence annoncee a une signature connue             3 licence(s) distinctes
+  [OK ] le manifeste `idf_component.yml` se lit                    10 entree(s)
+  [OK ] la table § Firmware de THIRD-PARTY.md se lit               12 ligne(s)
+  [OK ] toute ligne du bloc `dependencies` est LUE                 10 entree(s) lue(s)
+  [OK ] toute entree du manifeste figure au tableau                10 entree(s) confrontee(s)
+  [OK ] toute ligne du tableau est EPINGLEE, ALIAS ou TRANSITIVE   9 epinglee(s) + 1 alias + 2 transitive(s) = 12 ligne(s)
+  [OK ] les versions EPINGLEES concordent (`==` retire)            10 comparaison(s), alias compris
+  [OK ] l'ALIAS declare apparie les deux cotes                     idf⇄ESP-IDF
+  [OK ] *(transitive)* ⟺ ABSENT du manifeste (les 2 sens)          2 ligne(s) transitive(s)
+  [OK ] `managed_components/` hors du clone (fonde la limite)      gitignore=oui · trace=non
+  [⚠️ ] ⛔ NON CONTROLE — la colonne « License » du tableau : sa seule source est
+  [OK ] tout lien local des fichiers de prose resout               52 lien(s) local(aux), 10 fichier(s)
+  [OK ] la section citee PAR SON TITRE existe                      1 citation(s)
+  [OK ] l'outil cite AVEC SON DRAPEAU l'accepte (invoque)          5 couple(s) outil/drapeau
+  [OK ] docs/roadmap.md definit des marqueurs                      15 marqueur(s)
+  [OK ] tout marqueur cite COMME marqueur est defini               11 citation(s) ancree(s) sur la page
+  [OK ] le COMPTE annonce egale le nombre d'entrees                2 compte(s) confronte(s)
+  [OK ] la promesse de bot et son workflow disent la meme chose    promesse=oui · workflow(s) CLA=1
+  [OK ] chaque action du workflow CLA est EPINGLEE                 contributor-assistant/github-action@v2.6.1
+  [OK ] le document que le bot fait signer EXISTE                  1 workflow(s) audite(s)
+  [OK ] `path-to-document` designe CE depot                        origin = nasbarok/desknode
+  [OK ] la condition du workflow CLA est au niveau du JOB          ⛔ a l'ETAPE, le runner est ALLOUE et FACTURE
+  [OK ] ⛔ le workflow ne checkoute JAMAIS le code de la PR         `pull_request_target` tourne avec le jeton du depot de BASE
+  [OK ] l'ecart residuel du CLA a un PORTEUR reel                  porteur = `dn8`
+  [⚠️ ] l'arbre est LU, ⛔ pas suppose — `import pynvml` dans l'agent : NON ⇒ toute affirmation de couverture est FAUSSE
+  [OK ] toute ligne qui nomme NVIDIA/NVML porte sa REFUTATION      ⛔ la propriete n'est PAS « le mot est absent »
+  [OK ] THIRD-PARTY.md dit que cette gate le garde                 il cite tools/verif_licences_dn52.py
+  [OK ] tout controle prevu est EMIS ou DECLARE                    32 emis + 0 declare(s) = 32 prevus

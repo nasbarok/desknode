@@ -24,6 +24,16 @@ that name work **still to come**. Markers that name *past* work — most of `dn1
 [`dn4-15-arbitrage.md`](dn4-15-arbitrage.md) — are described where they are cited;
 they are the engineering log, and this page does not duplicate it.
 
+⚠️ **Four rows restored on 2026-09-04, at the code review of `dn5-2` — and the reason is
+the rule just below, not a change of mind.** `dn5-2` deleted **its own row** the day it
+closed, under the older rule that this page lists only work still to come; `dn5`, `dn5-1`
+and `dn5-3` had never been given one. All four are **cited in this tree** — in
+[`CONTRIBUTING.md`](../CONTRIBUTING.md), [`LICENSING.md`](../LICENSING.md),
+[`README.md`](../README.md) and [`dn5-1-ecart-promesses.md`](dn5-1-ecart-promesses.md) —
+so under the admission rule below they belong here. ⛔ Measured, not assumed: **30**
+markers are cited in the prose without a row, and the other **26** are `dn1-*`..`dn4-*`,
+which the paragraph above deliberately excludes as the engineering log.
+
 ⚠️ **Amended on 2026-09-04, and the sentence above is kept rather than replaced.** A
 marker that is *cited in this tree* stays listed here **after it closes**, with the state
 `done`, instead of vanishing: a marker you are pointed at must remain one you can look
@@ -48,6 +58,10 @@ the row is the one to doubt.
 | `dn4-41` | The board on its own is enough — the two hardware tiers behave correctly without the ambient sensors. | in progress |
 | `dn4-42` | The display speaks two languages. | in review |
 | `dn7` | The install side: the browser flasher, a packaged agent you do not have to run from source, and **the language chosen at install time** rather than on the panel. | not started |
+| `dn5` | The epic these `dn5-*` markers belong to: **the repository clones, builds, and stops talking about one machine**. | in progress |
+| `dn5-1` | Publishing the repository, and writing down the gap between what it **asks** of a reader and what it **can do** — [`dn5-1-ecart-promesses.md`](dn5-1-ecart-promesses.md). | done |
+| `dn5-2` | Making the repository keep the promises it **already published**: licensing coverage, `THIRD-PARTY.md`, the CLA bot that `CONTRIBUTING.md` mentioned but that did not exist, and the `CHANGELOG.md` claim about NVIDIA GPUs that the agent code refutes. | in progress |
+| `dn5-3` | Removing every remaining dependency on the author's own machine, and declaring the ones that only *name* it. | done |
 | `dn5-4` | The firmware builds in a **fresh directory**, from a clean clone. ⚠️ **State corrected on 2026-09-04, by that work itself: this row read `not started` while the marker was under way** — the commit carrying this correction is the same one that adds the cold-build measurements and the *Building the firmware* section of [`CONTRIBUTING.md`](../CONTRIBUTING.md). ⚠️ **Corrected again on 2026-09-04 at the code review, and the reason is worth more than the value:** the correction above wrote `in progress` while the plan already read `review`, and this page **distinguishes the two** (see `dn4-42`). A state written for the moment of writing is stale by the time it is pushed; what is written now is the state the marker has **in the commit that publishes this line** — and the review that produced this correction closed the marker in the same gesture, so it lands here as `done`. | done |
 | `dn4-44` | **No new check ships without a mutant that replants the fault it guards against** — a rule about the repository's own gates, not about the firmware. It armed the acceptance criterion that `dn4-40` handed on. | done |
 | `dn4-45` | **Building the firmware in CI.** Deliberately out of scope for `dn5-4`, which measured what it would cost: a runner would install ESP-IDF v5.5.5 (**3.84 GiB**, 23 submodules) and its toolchains (**4.30 GiB**), then pull **172.5 MiB** of components — against a workflow that today runs on `ubuntu-latest` with a 20-minute timeout and no `pip install` at all. 🔴 And one measured fact decides more than the sizes: **a cold build needs the network, and no local archive cache replaces it** (`dependencies.lock` is gitignored, so a fresh clone must *solve*, and solving queries the registry). | not started |

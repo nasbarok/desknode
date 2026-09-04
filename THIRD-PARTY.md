@@ -63,5 +63,16 @@ in the manifest fails too — it would be pinned, so it would no longer be trans
 the License column.** The only source for those is `managed_components/`, which is
 git-ignored and therefore **absent from any clone**. The gate deliberately does not
 read it even when it happens to be present, because a check that passes on the
-author's machine and nowhere else is worse than no check at all. **Re-check the
-License column by hand whenever `idf_component.yml` changes.**
+author's machine and nowhere else is worse than no check at all.
+
+**So re-check that column by hand whenever `idf_component.yml` changes**, and here is
+how, because "by hand" with no procedure is a promise too. Run `idf.py reconfigure`
+in `firmware/desknode/`, then read `managed_components/<owner>__<name>/LICENSE` for
+each row — that directory is what the build actually links against. The registry page
+for a component is a second source, not a substitute: it states the license of the
+*latest* version, and this manifest pins older ones.
+
+⛔ **No marker will automate this, and that is a conclusion rather than an omission.**
+The only source is git-ignored, so a gate that read it would pass on the machine that
+has it and nowhere else. The person changing `idf_component.yml` carries the re-check;
+the gate above tells them the row exists, not that its license is right.

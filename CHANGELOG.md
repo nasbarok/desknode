@@ -21,12 +21,22 @@ Work towards the first public release, `v0.1.0-beta`.
   bot handles it in one click" while there was no file under `.github/` at all.
 - **A gate over the promises this repository publishes**
   (`tools/verif_licences_dn52.py`, run by `tools/run_gates.sh`): licensing coverage in
-  both directions, `idf_component.yml` against `THIRD-PARTY.md` in both directions, and
-  every promise in the reader-facing files matched to an artifact or to a declared gap
-  with a named owner.
+  both directions, `idf_component.yml` against `THIRD-PARTY.md` in both directions, and,
+  in the reader-facing files, outbound links, quoted section titles, cited tool flags,
+  roadmap markers, announced counts, the CLA artifact — the workflow, its pinned
+  version, the document it makes you sign, and the named owner of the gap it leaves —
+  and the rule that a NVIDIA claim is **not implemented** unless the agent says so.
+  It does **not** check every promise in prose; the list above is what it checks, and
+  the tool's own header says what it deliberately does not.
 
 ### Changed
 
+- **`mesures/` and the Markdown files at the repository root are now CC-BY-SA-4.0**
+  too — added on 2026-09-04, at the code review of the entry below, which had applied
+  its own reason to only half the tree. `mesures/` is 330 measurement captures and the
+  root prose is the README, the contribution guide, the changelog, this file's siblings
+  and the CLA: filing either under a software copyleft says the same unsupported thing.
+  `LICENSE` itself and `.gitignore` deliberately stay under the fallback.
 - **`hardware/` and `assets/` are now CC-BY-SA-4.0**, not GPL-3.0. `hardware/` is the
   measurement log of the board — documentation, the same nature as `docs/` — and
   `assets/` was covered by neither list in `LICENSING.md`, which is not the same thing
@@ -78,7 +88,8 @@ Work towards the first public release, `v0.1.0-beta`.
 - **The display has no language selector, and that is deliberate.** One was built,
   flashed, seen working and validated, then removed: the choice belongs on the browser
   flasher, not on the panel. What ships is an interface that speaks **English by
-  default**, with the language persisted per device once set. Offering the choice at
+  default**; the language can be changed from the serial console (`langue fr`) and is
+  then persisted on the device. Offering the choice at
   install time is still to come (`dn7` — see [`docs/roadmap.md`](docs/roadmap.md)).
 - **The CLA bot has never been exercised by an outside contributor.** It was watched
   running on an **internal** pull request on 2026-09-02 — it commented, linked to
