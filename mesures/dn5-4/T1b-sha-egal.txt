@@ -1,0 +1,90 @@
+T1b — LA COMPARAISON A SHA EGAL (AC4.1.c) : DEUX BUILDS DU MEME COMMIT
+==============================================================================
+date : 2026-09-04T14:07:58  ·  pris par subprocess
+
+🔴 POURQUOI CETTE MESURE EXISTE, ET POURQUOI ELLE NE COMPARE **PAS** A `build/`.
+  L'artefact de l'arbre de travail porte `project_version = 6a91fa3`, **40 commits**
+  derriere `e3e8509`. Le comparer mesurerait **DU CODE**, ⛔ pas de la
+  reproductibilite : l'ecart serait GARANTI et ne dirait rien de FR8.
+  ⇒ la comparaison qui vaut oppose **deux clones INDEPENDANTS du MEME commit**,
+    crees separement, a des CHEMINS DIFFERENTS.
+==============================================================================
+
+── clone A ──────────────────────────────────────────────────────────────────
+  HEAD            : e3e8509c2ba520a5a1c347b9cc64b513bee320f5
+  project_version : 'e3e8509'
+  rc set-target   : 0   ·   rc build : 0
+  desknode.bin    : 1266752 o
+  sha256          : b3f63621e2d24983eecf3c57380262662c47f8e6ba1f429b32d9fd659b34a185
+
+── clone B ──────────────────────────────────────────────────────────────────
+  HEAD            : e3e8509c2ba520a5a1c347b9cc64b513bee320f5
+  project_version : 'e3e8509'
+  rc set-target   : 0   ·   rc build : 0
+  desknode.bin    : 1266752 o
+  sha256          : cd1bfb205f4bb77ce043e0184d6bc6343794142002a1b0cb320dbf5e278291f8
+
+==============================================================================
+VERDICT — ⚠️ LA REPRODUCTIBILITE BIT-A-BIT N'EST PAS ATTEINTE, ET LA CAUSE EST
+          **MESUREE**, ⛔ pas seulement « nommee comme plausible »
+==============================================================================
+  taille  : 1266752 o vs 1266752 o  ⇒ ✅ IDENTIQUE
+  sha256  : DIFFERENTS
+  octets differents : **70 sur 1266752** = 0.0055 %
+  ⇒ regroupes en **3 plages SEULEMENT**, toutes identifiees :
+
+  ── plage a l'offset 113 (0x71) — 7 octets
+     esp_app_desc_t.time — L'HEURE DE BUILD (champ a l'offset 112, 16 o)
+     A = '3:47:30'
+     B = '4:04:28'
+  ── plage a l'offset 176 (0xb0) — 32 octets
+     esp_app_desc_t.app_elf_sha256 — le SHA-256 de l'ELF (offset 176, 32 o)
+     A = 'aeff0a325e517bf304349be632b4cac962c4d8d6cd994251e6e611ccd2f5167f'
+     B = '70c91336c3ba389c621b5a96e129b70606c1f89260674879b53a0b43c73ba4cb'
+  ── plage a l'offset 1266719 (0x13541f) — 33 octets
+     le SHA-256 D'IMAGE appose par esptool en fin de binaire
+     A = 'd428fe60adad8ed0606a3872f4455e5bc4d6f9136eebcaa4d80a2027992e10c332'
+     B = 'c52d932391fe7607b897d9d1c4a89bf5361bcec7b1e8840c33e76fe98d6e76c55a'
+
+── LA CHAINE CAUSALE, LUE DANS LE BINAIRE ──────────────────────────────────
+  L'en-tete `esp_app_desc_t` commence a l'offset **32** — verifie :
+     magic_word = 0xabcd5432  (attendu 0xabcd5432)  ⇒ ✅
+     version      = e3e8509
+     project_name = desknode
+     date         = A 'Sep  4 2026'  ·  B 'Sep  4 2026'   ⇒ IDENTIQUE
+     time         = A '13:47:30'  ·  B '14:04:28'   ⇒ 🔴 DIFFERENT
+
+  ⇒ **UNE SEULE CAUSE RACINE, ET ELLE SE PROPAGE EN CASCADE** :
+      l'HEURE DE BUILD entre dans `esp_app_desc_t.time`
+        ⇒ l'ELF change ⇒ `app_elf_sha256` change (plage 2)
+          ⇒ le contenu de l'image change ⇒ le SHA-256 d'image change (plage 3).
+     Les deux builds ont eu lieu le MEME JOUR (`date` identique) a **17 minutes**
+     d'intervalle : c'est tout ce qui les separe.
+
+── 🎯 CE QUE CETTE MESURE REFUTE, ET QUI COMPTE POUR D20 ────────────────────
+  Entre l'offset 208 et 1266718 — c'est-a-dire **TOUT LE CODE ET
+  TOUTES LES DONNEES**, soit 1266510 octets (99.98 % du binaire) —
+  les deux images sont ✅ **IDENTIQUES A L OCTET**.
+
+  ⇒ 🔴 **LA CAUSE « CHEMINS ABSOLUS EMBARQUES » EST REFUTEE POUR CE BINAIRE.**
+     AC4.1.c la citait comme plausible. Les deux clones vivent a des chemins
+     DIFFERENTS ; si des chemins absolus etaient compiles dans la charge utile,
+     ils apparaitraient dans le diff. Ils n'y sont pas.
+     ⚠️ Portee exacte : ca vaut pour le **`.bin` flashe**. L'**ELF** de debug, lui,
+        porte des chemins — c'est normal, et il n'est pas flashe.
+
+  ⇒ 🎯 **CE QUI SERT L'OBLIGATION D20** : a un horodatage pres, **le meme commit
+     rend le meme firmware, depuis deux clones independants**. Un tiers qui veut
+     verifier qu'un binaire vient bien de cette source peut le faire — il doit
+     seulement savoir que **70 octets sur 1 266 752 ne peuvent pas coincider**,
+     et LESQUELS. C'est ecrit ici pour qu'il n'ait pas a le redecouvrir.
+
+  ⛔ CE QUE CA NE DIT PAS : ce n'est **pas** une promesse de reproductibilite.
+     C'est UNE mesure, sur UN commit, UNE machine, UNE version d'ESP-IDF.
+     ⛔ Rien ici ne teste un autre compilateur ni une autre version de l'IDF.
+
+  duree A : 292.4 s   ·   duree B : 181.1 s
+  ⚠️ ⛔ NE PAS LIRE CET ECART DE DUREE COMME UNE MESURE : le clone B a construit
+     PENDANT que d'autres travaux tournaient sur la meme machine. La duree qui
+     fait foi est celle du clone A (T1), prise seule.
+==============================================================================

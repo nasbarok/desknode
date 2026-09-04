@@ -20,6 +20,26 @@
 #    `managed_components/` sont `dn5-4`. Les gates qui en dépendent sont
 #    DÉCLARÉES NON-JOUABLES avec leur motif — ⛔ pas sautées.
 #
+#    ⚠️ DATÉ LE 2026-09-04 (`dn5-4`) — ⛔ PAS RÉÉCRIT. La phrase reste vraie sur
+#    ce qu'elle décrit (ce fichier ne construit toujours rien : 3 étapes, 0 appel
+#    à `idf.py`), mais elle DÉSIGNE UN PORTEUR QUI NE L'EST PLUS. `dn5-4` a mesuré
+#    le build à froid et a passé le sujet « la CI construit le firmware » à
+#    **`dn4-45`**, ouverte au tracker le 2026-09-04. ⇒ le porteur à suivre est
+#    `dn4-45`, ⛔ plus `dn5-4`.
+#
+#    🔬 CE QUE `dn5-4` A MESURÉ, ET QUI CHIFFRE LA FAISABILITÉ — ⛔ pas une
+#    intention. Un runner devrait installer ESP-IDF v5.5.5 (**3,84 Gio**,
+#    23 sous-modules) + ses toolchains (**3,73 Gio** sous `tools/`, **4,30 Gio**
+#    avec l'environnement Python), puis tirer **172,5 MiB** de composants. Le build
+#    à froid lui-même prend **292,4 s** (118,7 s de résolution + 173,7 s de
+#    compilation) sur un poste de 16 cœurs, hors installation.
+#    🔴 ET UN FAIT QUI DÉCIDE PLUS QUE LES TAILLES : **le build à froid EXIGE LE
+#    RÉSEAU, et un cache local NE LE SAUVE PAS.** `dependencies.lock` est
+#    gitignoré ⇒ un clone neuf doit RÉSOUDRE, et résoudre interroge le registre.
+#    Mesuré hors ligne avec un cache de 172,5 MiB complet : `rc=2`, même échec
+#    qu'avec un cache vide. ⇒ un runner sans accès à `components.espressif.com`
+#    ne construira pas, quelle que soit sa mise en cache.
+#
 # ── CE QUI EST MESURÉ, ET QUI VAUT D'ÊTRE ÉCRIT ──────────────────────────────
 #
 # 🔴 LE VERDICT DE LA CI N'EST PAS CELUI DU POSTE, ET L'ÉCART EST MESURÉ.

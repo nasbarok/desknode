@@ -1,0 +1,66 @@
+T7 — TEMOIN NFR8 « APRES » : AUCUN FLASH N'A **PU** AVOIR LIEU
+==============================================================================
+date : 2026-09-04T14:12:12  ·  pris par subprocess
+⛔ AUCUN PORT SERIE N'A ETE OUVERT PENDANT TOUTE LA MARCHE. Ce fichier est produit
+   par TROIS LECTURES DE FICHIER, ⛔ zero port. (Profil utilisateur caviarde : il
+   ne porte aucune valeur de preuve, et le motif de `dn5-3` ne s'ecrit pas ici.)
+==============================================================================
+
+── LE RAISONNEMENT, ET IL EST CAUSAL ⛔ PAS CORRELATIF (AC4.6.a) ────────────
+  Flasher exige COM3. COM3 est tenu EN EXCLUSIF par l'agent depuis son lancement.
+  `s mur` est ecrit toutes les 10 s et REPART A ZERO si l'agent redemarre.
+  ⇒ si `s mur` n'est JAMAIS retombe de part et d'autre de la fenetre, l'agent
+    n'est jamais mort ⇒ AUCUN autre process n'a pu obtenir COM3
+    ⇒ **AUCUN FLASH N'A PU AVOIR LIEU.**
+
+── 1. `dn-agent.log` — `s mur` ET `seq` ────────────────────────────────────
+  taille : 4005348 o   ·   mtime : 2026-09-04T14:12:02
+  DERNIERE LIGNE : [agent] témoin coût cumulé : 4065.344 s CPU / 220933.5 s mur = 1.840 % d'un cœur (0.1150 % machine) — seq=1104649
+
+  s mur : T0 = 219140.1   ->   T7 = 220933.5     delta = +1793.4 s
+  seq   : T0 = 1095699   ->   T7 = 1104649     delta = +8950
+  ⇒ s mur STRICTEMENT CROISSANT ? ✅ OUI   ·   JAMAIS RETOMBE A ZERO ? ✅ OUI
+
+  🔬 CONTROLE PLUS FORT QUE LES DEUX BOUTS — ⛔ un `s mur` final superieur ne
+     suffirait PAS : l'agent aurait pu mourir et redemarrer DANS la fenetre,
+     et repasser au-dessus. On relit donc TOUTES les valeurs de la fenetre :
+     lignes `s mur` lues dans la fenetre T0->T7 : 180
+     CHUTES (valeur inferieure a la precedente)  : 0   ⇒ ✅ AUCUNE — l agent n a jamais redemarre
+
+── 2. `dn-agent.started` — IL DOIT ETRE INCHANGE ───────────────────────────
+  taille : 289 o  (T0 : 289 o)
+  mtime  : 2026-09-02T00:49:45   (T0 : 2026-09-02T00:49:45)
+  ⇒ ✅ INCHANGE — l agent n a pas ete relance
+      lance   : 2026-09-02T00:49:45+02:00
+      regime  : double-clic (detache)
+      python  : C:\Users\<caviarde>\AppData\Local\Programs\Python\Python313\python.exe
+      agent   : H:\dev\projets\desknode\dn_agent.py
+      args    : --serie COM3 --stop-si H:\dev\projets\desknode\dn-agent.stop --temoin
+      coeurs  : 16
+
+── 3. `git diff --name-only e3e8509 HEAD -- firmware/` ─────────────────────
+  contre HEAD          : rc=0  -> VIDE ✅
+  contre l'ARBRE (dont l'index, non commite) : rc=0  -> VIDE ✅
+  ⚠️ LES DEUX sont relevees : `HEAD` seul ne verrait pas le travail en cours.
+  ⛔ ANCRE = LE SHA DE DEBUT DE STORY (AC4.6.d). ⛔ PAS `main..HEAD` : le dev
+     travaille SUR `main` ⇒ il rendrait VIDE quoi qu'il arrive — un controle qui
+     ne peut pas rougir. ⛔ Pas `origin/main..main` non plus : il mesure le remote.
+
+── 4. ⛔ LE BANDEAU N'EST PAS RELU, ET LE MOTIF S'ECRIT (AC4.6.c) ───────────
+  Trois motifs, dont deux MESURES :
+   (1) Un SHA relu au bandeau prouve « le binaire n'a pas change » ; le port tenu
+       prouve « le flash etait IMPOSSIBLE ». **Le second contient le premier.**
+   (2) RELIRE LE BANDEAU DETRUIRAIT LE TEMOIN QU'IL EST CENSE CONFIRMER : le
+       bandeau n'est imprime QU'AU BOOT, donc le relire exige un redemarrage,
+       donc de PRENDRE LE PORT — ce que le temoin ci-dessus prouve n'avoir pas eu
+       lieu. 🔬 Re-mesure a l'appui, ce jour :
+       occurrences de `esp_app_get_description` / `esp_ota_get_app_description`
+       dans TOUT `firmware/desknode/main/` : 0
+       ⇒ AUCUNE commande console ne rend le SHA. Il n'existe qu'au bandeau de boot.
+   (3) Ca eteint et rallume le module EN SERVICE de l'owner.
+  ⇒ Le « avant » reste lisible SANS CARTE : `mesures/dn4-43/T8-bandeau-boot.txt`
+    porte `App version: 6a91fa3`.
+==============================================================================
+VERDICT NFR8 : ✅ **AUCUN FLASH N'A PU AVOIR LIEU** — l'agent a tenu COM3 sans discontinuer
+               sur toute la fenetre, et `firmware/` est INTACT.
+==============================================================================

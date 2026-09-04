@@ -42,6 +42,31 @@ Elle a besoin de **la carte**, et la carte n'est pas automatisable depuis ce pos
 - **un `log` utile suppose une carte alimentée, réveillée et non occupée** par un soak
   en cours — `dn4-5` en tient un sur plusieurs jours.
 
+> ⚠️ **ANNOTÉ LE 2026-09-04 (`dn5-4`) — DEUX DES TROIS PUCES CI-DESSUS SONT À CORRIGER,
+> ET ELLES SONT DATÉES PLUTÔT QUE RÉÉCRITES.** La troisième (le port rendu à l'agent
+> redémarre la carte) n'a pas bougé.
+>
+> **1. « le flash passe par Windows » — la moitié qui compte pour cette page tient, la
+> moitié sur le flash, non.** ⛔ *Faux tel quel* : la boucle de travail **retenue** du
+> `README.md` § *Toolchain / build & flash* flashe **depuis WSL**
+> (`idf.py -p /dev/ttyACM0 flash monitor`) ; la voie qui flashe depuis Windows y est
+> nommée **« secours, et cap à terme »**. ✅ *Vrai, et c'est ce qui fonde ce paragraphe* :
+> **le BUILD, lui, est bien Linux/WSL sur les deux voies**, et `IDF_PATH` n'existe
+> toujours pas côté Windows — ⚠️ **par ABSENCE d'installation, ⛔ pas par un essai qui
+> aurait échoué**. La plateforme de build supportée est désormais **déclarée** dans
+> [`CONTRIBUTING.md`](../CONTRIBUTING.md) § *Building the firmware* ; c'est là qu'elle
+> fait foi, et cette page ⛔ ne la redouble pas.
+>
+> **2. « `dn4-5` en tient un sur plusieurs jours » — ⛔ IL N'Y A PLUS DE SOAK.** Mesuré
+> par `dn5-1` le 2026-09-02, **sans ouvrir le port** : le dernier soak est **mort depuis
+> le 2026-08-26 à 23:28:39**, et il n'avait vécu que **60 s**. Aggravant, mesuré aussi :
+> il **n'est pas armable** par le lanceur livré — **0 occurrence** de `journal-soak` dans
+> `tools/dn_agent_tour.ps1`. ⇒ l'argument « la carte est occupée par un soak » **n'a plus
+> d'objet**. ⚠️ **Ce qui rend la carte indisponible reste vrai, mais pour un AUTRE
+> motif** : un agent tient le port **en exclusif** depuis le 2026-09-02, et la carte est
+> le module en service de l'auteur. La conclusion du paragraphe ne change pas ; **sa
+> prémisse, si.**
+
 ⇒ Poser ici un « test » qui *suppose* la carte produirait un **rouge permanent** que
 tout le monde apprendrait à ignorer. C'est pire que rien : une garde qu'on contourne
 par habitude est une garde morte qui a l'air vivante.

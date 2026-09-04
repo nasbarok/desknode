@@ -1,0 +1,139 @@
+T0 — COMPTES « AVANT » DE L'INVENTAIRE dn5-3 (garde-fou des chiffres publies)
+==============================================================================
+date : 2026-09-04T13:42:32  ·  pris par subprocess
+PRODUIT PAR L'OUTIL — ⛔ rien n'est recopie.
+==============================================================================
+
+##############################################################################
+# (a) --rev HEAD  ⇒ l'arbre PUBLIE, sans le travail en cours
+# commande : python3 tools/inventaire_motif_dn53.py --rev HEAD
+# rc = 0   (0 = le TEMOIN de l'instrument passe ⇒ on peut conclure)
+##############################################################################
+==============================================================================
+dn5-3 — INVENTAIRE PAR CLASSE DU MOTIF « machine nommee »
+==============================================================================
+arbre mesure : HEAD
+motif        : nasbarok|naoua|~/projects|wsl\.localhost
+⛔ un compte sans son motif ne veut rien dire — et un AUTRE motif rend
+   un AUTRE compte. Dire lequel fait partie du chiffre.
+
+── 0. TEMOIN DE L'INSTRUMENT — ⛔ AVANT TOUT CHIFFRE ──────────────
+   🔴 AC3.1.c : s'il echoue, ⛔ ON NE CONCLUT RIEN DU DEPOT.
+  [OK ] extracteur : defaut sur UNE ligne                        'C:\\Users\\quiconque\\T\\x.csv'
+  [OK ] extracteur : defaut REPLIE sur deux lignes               'C:\\Users\\quiconque\\T\\x.csv'
+  [OK ] extracteur : defaut CALCULE, replie                      '⟨calcule⟩ os.path.join(tempfile.gettempdir()'
+  [OK ] extracteur : option ABSENTE ⇒ None, ⛔ pas un jeton bouchon None
+  [OK ] ecriture : une vraie ouverture est VUE                   1 site
+  [OK ] ecriture : la MEME citee en COMMENTAIRE ⛔ n'est PAS vue  0 site
+  [OK ] ecriture : les deux ensemble ⇒ UN seul site              1 site
+  [OK ] classe 1 : l'arbre du jour est SOLDE                     0 fait
+  [OK ] classe 1 : faute REPLANTEE ⇒ elle REMONTE                ≥1 fait
+
+── 1. LES CINQ CLASSES ───────────────────────────────────────────
+  1. dependance FONCTIONNELLE  (le seul defaut)      0 fichiers      0 sites
+  2. exemple d'usage          (declare au site)     19 fichiers     50 sites
+  3. trace de generation      (polices — INTACTES)    5 fichiers      5 sites
+  4. registre de preuves      (mesures/ — INTACT)  121 fichiers   1350 sites
+  5. le motif est le SUJET    (EXCLUSION DECLAREE)    4 fichiers     17 sites
+       TOTAL                                       149 fichiers   1422 sites
+
+── 2. LA CLASSE 1, CONTROLEE ⛔ PAS DECLAREE D'AUTORITE ───────────
+  [OK ] tools/verif_dossier_d5_dn45.py                 solde
+  [OK ] tools/bench_lisseur_dn45.py                    solde
+  [OK ] tools/thermique_ventilos_dn48.py               solde
+
+── 3. LES EXCLUSIONS, ECRITES ⛔ PAS SILENCIEUSES ─────────────────
+  .github/workflows/cla.yml                  1 site(s)
+      un LOGIN GitHub dans l'URL du CLA — le retirer CASSE le bot
+  CONTRIBUTING.md                            5 site(s)
+      la page qui ENONCE le motif et publie ses comptes (le `git grep`, la phrase sur le motif seul, la declaration des exclusions)
+  docs/dn5-1-ecart-promesses.md              10 site(s)
+      la page qui DOCUMENTE l'ecart — la censurer rendrait le releve illisible
+  tools/inventaire_motif_dn53.py             1 site(s)
+      CET INSTRUMENT — il ecrit le motif pour pouvoir le chercher
+
+── 4. LE CONTROLE `--csv`, AVEC CE QU'IL A VRAIMENT LU ────────────
+  defaut lu : '⟨calcule⟩ os.path.join(tempfile.gettempdir()'
+  ⇒ nomme-t-il un profil utilisateur ? ✅ NON
+  ouvertures en ECRITURE (⛔ commentaires exclus) : 2
+      l.175   with open(pid_f, "w") as f:
+      l.187   with open(chemin, "w", newline="", encoding="utf-8") as f:
+
+── 5. CE QUE CE COMPTE NE DIT PAS ────────────────────────────────
+  ⛔ Il BOUGE des qu'une declaration ou une capture s'ajoute — et une
+     declaration est precisement ce que ce depot demande. Ce qui est
+     STABLE, c'est la classe 1 : plus aucun outil ne depend d'une
+     machine en particulier.
+  ⛔ Il ne voit PAS une LETTRE DE LECTEUR (`H:\...`) : le motif ne la
+     porte pas. Site connu : `tools/rendre-port.sh`, declare au site.
+==============================================================================
+
+##############################################################################
+# (b) arbre de travail (ls-files --cached --others) ⇒ ce que HEAD portera
+# commande : python3 tools/inventaire_motif_dn53.py 
+# rc = 0   (0 = le TEMOIN de l'instrument passe ⇒ on peut conclure)
+##############################################################################
+==============================================================================
+dn5-3 — INVENTAIRE PAR CLASSE DU MOTIF « machine nommee »
+==============================================================================
+arbre mesure : ARBRE DE TRAVAIL (git ls-files --cached --others)
+motif        : nasbarok|naoua|~/projects|wsl\.localhost
+⛔ un compte sans son motif ne veut rien dire — et un AUTRE motif rend
+   un AUTRE compte. Dire lequel fait partie du chiffre.
+
+── 0. TEMOIN DE L'INSTRUMENT — ⛔ AVANT TOUT CHIFFRE ──────────────
+   🔴 AC3.1.c : s'il echoue, ⛔ ON NE CONCLUT RIEN DU DEPOT.
+  [OK ] extracteur : defaut sur UNE ligne                        'C:\\Users\\quiconque\\T\\x.csv'
+  [OK ] extracteur : defaut REPLIE sur deux lignes               'C:\\Users\\quiconque\\T\\x.csv'
+  [OK ] extracteur : defaut CALCULE, replie                      '⟨calcule⟩ os.path.join(tempfile.gettempdir()'
+  [OK ] extracteur : option ABSENTE ⇒ None, ⛔ pas un jeton bouchon None
+  [OK ] ecriture : une vraie ouverture est VUE                   1 site
+  [OK ] ecriture : la MEME citee en COMMENTAIRE ⛔ n'est PAS vue  0 site
+  [OK ] ecriture : les deux ensemble ⇒ UN seul site              1 site
+  [OK ] classe 1 : l'arbre du jour est SOLDE                     0 fait
+  [OK ] classe 1 : faute REPLANTEE ⇒ elle REMONTE                ≥1 fait
+
+── 1. LES CINQ CLASSES ───────────────────────────────────────────
+  1. dependance FONCTIONNELLE  (le seul defaut)      0 fichiers      0 sites
+  2. exemple d'usage          (declare au site)     19 fichiers     50 sites
+  3. trace de generation      (polices — INTACTES)    5 fichiers      5 sites
+  4. registre de preuves      (mesures/ — INTACT)  122 fichiers   1436 sites
+  5. le motif est le SUJET    (EXCLUSION DECLAREE)    4 fichiers     17 sites
+       TOTAL                                       150 fichiers   1508 sites
+
+── 2. LA CLASSE 1, CONTROLEE ⛔ PAS DECLAREE D'AUTORITE ───────────
+  [OK ] tools/verif_dossier_d5_dn45.py                 solde
+  [OK ] tools/bench_lisseur_dn45.py                    solde
+  [OK ] tools/thermique_ventilos_dn48.py               solde
+
+── 3. LES EXCLUSIONS, ECRITES ⛔ PAS SILENCIEUSES ─────────────────
+  .github/workflows/cla.yml                  1 site(s)
+      un LOGIN GitHub dans l'URL du CLA — le retirer CASSE le bot
+  CONTRIBUTING.md                            5 site(s)
+      la page qui ENONCE le motif et publie ses comptes (le `git grep`, la phrase sur le motif seul, la declaration des exclusions)
+  docs/dn5-1-ecart-promesses.md              10 site(s)
+      la page qui DOCUMENTE l'ecart — la censurer rendrait le releve illisible
+  tools/inventaire_motif_dn53.py             1 site(s)
+      CET INSTRUMENT — il ecrit le motif pour pouvoir le chercher
+
+── 4. LE CONTROLE `--csv`, AVEC CE QU'IL A VRAIMENT LU ────────────
+  defaut lu : '⟨calcule⟩ os.path.join(tempfile.gettempdir()'
+  ⇒ nomme-t-il un profil utilisateur ? ✅ NON
+  ouvertures en ECRITURE (⛔ commentaires exclus) : 2
+      l.175   with open(pid_f, "w") as f:
+      l.187   with open(chemin, "w", newline="", encoding="utf-8") as f:
+
+── 5. CE QUE CE COMPTE NE DIT PAS ────────────────────────────────
+  ⛔ Il BOUGE des qu'une declaration ou une capture s'ajoute — et une
+     declaration est precisement ce que ce depot demande. Ce qui est
+     STABLE, c'est la classe 1 : plus aucun outil ne depend d'une
+     machine en particulier.
+  ⛔ Il ne voit PAS une LETTRE DE LECTEUR (`H:\...`) : le motif ne la
+     porte pas. Site connu : `tools/rendre-port.sh`, declare au site.
+==============================================================================
+
+==============================================================================
+LES QUATRE CHIFFRES DE `CONTRIBUTING.md` A RE-MESURER EN T7
+==============================================================================
+  git ls-tree -r -l HEAD mesures/  ⇒ 406 fichiers, 10016839 octets
+  ⚠️ AVANT commit des captures dn5-4. T7 doit re-mesurer APRES, au point fixe.

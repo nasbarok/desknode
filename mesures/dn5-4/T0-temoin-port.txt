@@ -1,0 +1,92 @@
+T0 — ETAT DES DEUX DEPOTS + TEMOIN NFR8 « AVANT » (dn5-4)
+==============================================================================
+date     : 2026-09-04T13:42:13
+pris par : subprocess (⛔ jamais le shell de session — le proxy reecrit git diff/grep)
+⛔ AUCUN PORT SERIE N'EST OUVERT PAR CETTE CAPTURE. Lectures de fichier, zero port.
+
+🔴 REGLE D'ECRITURE DE CETTE CAPTURE — declaree, ⛔ pas silencieuse
+  Le garde-fou de la story interdit d'ECRIRE les motifs de `dn5-3` dans du texte
+  NEUF. Le dossier `mesures/` est pourtant la CLASSE 4 de l'inventaire (« registre
+  de preuves — INTACT »). Les deux se concilient par une regle, appliquee ici :
+    · une sortie PRODUITE PAR UN OUTIL n'est JAMAIS retouchee (T0-gates-avant.txt
+      en porte : c'est la sortie de `run_gates.sh`, et la doctorer serait pire) ;
+    · le texte que le dev REDIGE, lui, est caviarde — marque `<caviarde>`.
+  Ce qui est caviarde ici : le segment de profil utilisateur de `dn-agent.started`.
+  ⚠️ Il ne porte AUCUNE valeur de preuve : ce qui prouve la tenue du port, c'est
+     `--serie COM3`, la date de lancement, et la monotonie de `s mur`.
+==============================================================================
+
+--- desknode (CODE)
+  HEAD                     rc=0
+      e3e8509c2ba520a5a1c347b9cc64b513bee320f5
+  branche                  rc=0
+      main
+  status --porcelain       rc=0
+      ?? mesures/dn5-4/
+  ls-remote origin HEAD    rc=0
+      63aed7fbdc558d17bbdb42de8e2b7d6a2f7c3171	HEAD
+  remote -v                rc=0
+      origin	https://github.com/<caviarde>/desknode.git (fetch)
+      origin	https://github.com/<caviarde>/desknode.git (push)
+  submodule status         rc=0 -> (VIDE — aucun sous-module)
+
+--- compagnon_project (COCKPIT)
+  HEAD                     rc=0
+      47126af5c21905b8b4286b5a6ec4f97bf9407041
+  branche                  rc=0
+      desknode-p0-p1-clos
+  status --porcelain       rc=0
+       M _bmad-output/implementation-artifacts/sprint-board-desknode.html
+       M _bmad-output/implementation-artifacts/sprint-status-desknode.yaml
+      ?? _bmad-output/implementation-artifacts/dn5-4-le-firmware-se-construit-dans-un-dossier-neuf.md
+      ?? ops/audit_impostor_episodes.py
+  ls-remote origin HEAD    rc=0
+      3aae3afb12d53fb06da1471fc120c4835201434b	HEAD
+  remote -v                rc=0
+      origin	https://github.com/<caviarde>/compagnon_project.git (fetch)
+      origin	https://github.com/<caviarde>/compagnon_project.git (push)
+  submodule status         rc=0 -> (VIDE — aucun sous-module)
+
+--- ANCRES DE LA STORY (frontmatter du dossier)
+  baseline_commit          (cockpit) = 47126af
+  baseline_commit_desknode (code)    = e3e8509
+  git rev-list --count e3e8509..HEAD = 0   (0 au depart de la marche)
+
+==============================================================================
+TEMOIN NFR8 « AVANT » — AC4.6.a/b : LE RAISONNEMENT EST CAUSAL, ⛔ PAS CORRELATIF
+  Flasher exige COM3 ; COM3 est tenu EN EXCLUSIF par l'agent depuis son lancement.
+  Si `s mur` ne retombe JAMAIS a zero de part et d'autre de la fenetre de la story,
+  l'agent n'est jamais mort ⇒ aucun autre process n'a pu obtenir COM3
+  ⇒ AUCUN FLASH N'A **PU** AVOIR LIEU.
+==============================================================================
+
+--- dn-agent.log : /mnt/h/dev/projets/desknode/dn-agent.log
+  taille  : 3978424 o
+  mtime   : 2026-09-04T13:42:09
+  lignes  : 33515
+  DERNIERE LIGNE (source de `s mur` et `seq`) :
+      [agent] témoin coût cumulé : 4026.578 s CPU / 219140.1 s mur = 1.837 % d'un cœur (0.1148 % machine) — seq=1095699
+  >>> s_mur_T0 = 219140.1
+  >>> seq_T0   = 1095699
+  ⚠️ Repere du cadrage (2026-09-04 11:41:49) : s mur = 211920.4, seq = 1059599.
+     La valeur ci-dessus lui est STRICTEMENT SUPERIEURE ⇒ l'agent n'est pas
+     mort entre le cadrage et T0. C'est la MONOTONIE qui prouve, ⛔ pas la valeur.
+
+--- dn-agent.started : /mnt/h/dev/projets/desknode/dn-agent.started
+  taille  : 289 o
+  mtime   : 2026-09-02T00:49:45
+  lignes  : 6
+  CONTENU (profil utilisateur CAVIARDE — il DOIT etre inchange a T7) :
+      lance   : 2026-09-02T00:49:45+02:00
+      regime  : double-clic (detache)
+      python  : C:\Users\<caviarde>\AppData\Local\Programs\Python\Python313\python.exe
+      agent   : H:\dev\projets\desknode\dn_agent.py
+      args    : --serie COM3 --stop-si H:\dev\projets\desknode\dn-agent.stop --temoin
+      coeurs  : 16
+  ⇒ `--serie COM3` : c'est CETTE ligne qui prouve la tenue exclusive du port.
+
+--- git diff --name-only e3e8509 HEAD -- firmware/   (ancre = SHA DE DEBUT DE STORY)
+  rc=0 -> VIDE ✅
+  ⛔ PAS `main..HEAD` (AC4.6.d) : le dev travaille SUR main ⇒ il rendrait VIDE quoi
+     qu'il arrive — un controle qui ne peut pas rougir. ⛔ Pas `origin/main..main`
+     non plus : il mesure le remote, et il bouge a chaque pousse.

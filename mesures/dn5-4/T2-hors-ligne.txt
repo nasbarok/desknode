@@ -1,0 +1,77 @@
+T2 — LE BUILD HORS LIGNE, ET LES DEUX CAUSES D'ECHEC SEPAREES
+==============================================================================
+date   : 2026-09-04T14:00:03  ·  pris par subprocess
+methode: `unshare -r -n` (namespace reseau sans interface). Chaque essai porte SON
+         PROPRE CONTROLE reseau A L'INTERIEUR du namespace — ⛔ on ne suppose pas
+         que la coupure a pris, on la MESURE avant de conclure quoi que ce soit.
+temoin +: sans `unshare`, la MEME connexion REUSSIT (relevee en T1) ⇒ l'A/B est reel.
+==============================================================================
+
+── ESSAI (a) desknode HORS LIGNE, cache du poste PRESENT (172,5 MiB) ───────
+  controle reseau DANS le namespace : ✅ reseau COUPE : gaierror [Errno -3] Temporary failure in name resolution
+  rc set-target : 2   ·   rc build : 2   ·   duree : 151.8 s
+  MESSAGE EXACT DE L'ECHEC (⛔ pas paraphrase) :
+      NOTICE: Dependencies lock doesn't exist, solving dependencies.
+      CMake Error at /home/<caviarde>/esp/esp-idf/tools/cmake/build.cmake:633 (message):
+        ERROR: Cannot establish a connection to the component registry.  Are you
+        connected to the internet?
+        URL:
+        https://components-file.espressif.com/components/espressif/esp_io_expander_tca9554.json
+  ⇒ COMPOSANT RECLAME EN PREMIER : esp_io_expander_tca9554
+
+── ESSAI (b) desknode HORS LIGNE, cache VIDE (contributeur neuf) ───────────
+  controle reseau DANS le namespace : ✅ reseau COUPE : gaierror [Errno -3] Temporary failure in name resolution
+  rc set-target : 2   ·   rc build : 2   ·   duree : 27.3 s
+  MESSAGE EXACT DE L'ECHEC (⛔ pas paraphrase) :
+      NOTICE: Dependencies lock doesn't exist, solving dependencies.
+      CMake Error at /home/<caviarde>/esp/esp-idf/tools/cmake/build.cmake:633 (message):
+        ERROR: Cannot establish a connection to the component registry.  Are you
+        connected to the internet?
+        URL:
+        https://components-file.espressif.com/components/espressif/esp_io_expander_tca9554.json
+  ⇒ COMPOSANT RECLAME EN PREMIER : esp_io_expander_tca9554
+
+── ESSAI (c) DISCRIMINANT — hello-desknode HORS LIGNE, cache VIDE ──────────
+  controle reseau DANS le namespace : ✅ reseau COUPE : gaierror [Errno -3] Temporary failure in name resolution
+  rc set-target : 0   ·   rc build : 0   ·   duree : 101.5 s
+  ⇒ ✅ LE BUILD PASSE HORS LIGNE — DEUX passes ninja completes
+     (bootloader : 123 cibles · application : 1074 cibles), rc 0 aux deux.
+     ⚠️ Les deux passes se comptent SEPAREMENT : additionner leurs numeros
+        d'etape rendrait un total superieur a chacune — un chiffre faux.
+
+==============================================================================
+🎯 VERDICT — ET C'EST LE DISCRIMINANT QUI LE REND LISIBLE
+==============================================================================
+  (a) et (b) : rc set-target 2 vs 2 · rc build 2 vs 2  ⇒ IDENTIQUES
+  Seule la DUREE differe : 151.8 s (cache present, retentatives)
+                    contre 27.3 s (cache vide).
+  ⇒ 🔴 **LE CACHE LOCAL NE SAUVE PAS LE BUILD HORS LIGNE.** Il change le temps
+     d'attente avant l'echec, ⛔ pas l'issue.
+
+  (c) hello-desknode hors ligne, cache vide : rc build = 0 en 101.5 s
+      Il n'a AUCUN `idf_component.yml` ⇒ aucune dependance distante.
+      ⇒ 🎯 **LA CHAINE D'OUTILS EST COMPLETE HORS LIGNE.** Ce qui manque a
+        `desknode`, c'est **LE RESEAU**, ⛔ pas le compilateur.
+      ⛔ Sans cet essai les deux causes seraient INDISCERNABLES : un `rc=2` seul
+        ne dit pas LAQUELLE des deux a mordu. C'est tout l'objet du discriminant.
+
+── LA CAUSE, ET ELLE EST STRUCTURELLE ⛔ PAS ACCIDENTELLE ───────────────────
+  Le message le dit AVANT l'erreur : `Dependencies lock doesn't exist, solving
+  dependencies.` ⇒ **`dependencies.lock` EST GITIGNORE**, donc un clone neuf n'a
+  AUCUN jeu de dependances resolu, et le gestionnaire doit **RESOUDRE** avant
+  d'installer. Resoudre interroge le REGISTRE pour des METADONNEES ; un cache
+  d'ARCHIVES telechargees ne repond pas a cette question-la.
+  ⇒ 🔴 « j'ai les composants sur disque » NE SUFFIT PAS. C'est le fait que ni
+     l'epic ni le cadrage n'avaient nomme.
+
+── CE QU'UN CONTRIBUTEUR HORS LIGNE DOIT AVOIR, AVEC SON CHIFFRE ───────────
+  ⛔ IL N'Y A PAS DE RECETTE HORS LIGNE AUJOURD'HUI, et c'est ca qui se publie.
+  Le cache seul est INSUFFISANT — c'est la mesure (a), ⛔ pas une supposition.
+  Les deux voies qui la rendraient possible, NOMMEES et ⛔ AUCUNE PRISE ICI :
+   · un `dependencies.lock` VERSIONNE (4 632 o) — il supprime l'etape de
+     resolution. ⚠️ `main/idf_component.yml:5-6` declare explicitement le
+     contraire (« le lock n'apporterait rien de plus ») ⇒ c'est une DECISION a
+     rouvrir, ⛔ pas un reglage, et elle n'appartient pas a cette marche ;
+   · `managed_components/` VERSIONNE — **172,5 MiB / 5 079 fichiers** : decision
+     de poids qui appartient a `dn5-5` (FR9).
+==============================================================================

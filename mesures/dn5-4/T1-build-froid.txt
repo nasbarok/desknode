@@ -1,0 +1,91 @@
+T1 — LE BUILD A FROID, DANS UN DOSSIER NEUF HORS DE L'ARBORESCENCE
+==============================================================================
+date   : 2026-09-04T14:03:42  ·  pris par subprocess
+AC4.1  : rc, duree et taille du binaire sont releves — SUCCES **COMME** ECHEC.
+==============================================================================
+
+── 0. LE CLONE : NEUF, ET HORS DE L'ARBORESCENCE DE TRAVAIL (AC4.1.a) ──────
+  transport : `git clone --branch main file://<source locale>`
+              ⇒ un VRAI clone git (⛔ pas une copie, ⛔ pas un ZIP) — AC4.1.d en depend.
+  emplacement : sous le scratchpad de session, HORS des deux depots.
+  ⚠️ MOTIF, DEJA PAYE : une entree de ledger dit qu'« une gate peut certifier VERT
+     un AUTRE arbre que celui qu'on verifie ». Un second clone qui traine dans
+     l'arborescence est exactement ce danger. ⇒ IL EST SUPPRIME EN T7.
+  HEAD du clone : e3e8509c2ba520a5a1c347b9cc64b513bee320f5
+  == e3e8509 (SHA de debut de story) ? ✅ OUI
+
+  CE QUE LE CLONE N'AVAIT PAS — ⛔ CONSTATE AVANT LE BUILD, pas suppose :
+    ✅ absent  firmware/desknode/sdkconfig
+    ✅ absent  firmware/desknode/managed_components
+    ✅ absent  firmware/desknode/dependencies.lock
+    ✅ absent  firmware/desknode/build
+    (verifie sur le clone fraichement cree, avant tout `idf.py`)
+
+── 1. L'ENVIRONNEMENT, RELU ⛔ PAS SUPPOSE ─────────────────────────────────
+  IDF_PATH AVANT `export.sh` : <None>   ⇒ il FAUT sourcer, a CHAQUE shell
+  rc de `source export.sh`   : 0
+  version ESP-IDF            : ESP-IDF v5.5.5
+  ccache                     : CCACHE_ENABLE=0 dans la ligne cmake emise
+                               ⇒ LE BUILD EST VRAIMENT FROID, et ce n'est pas moi
+                                 qui l'ai force : c'est le defaut d'`idf.py`.
+
+── 2. LE RESULTAT — rc, DUREE, TAILLE (AC4.1) ──────────────────────────────
+  idf.py set-target esp32s3 : rc=0   duree=118.7 s
+  idf.py build              : rc=0   duree=173.7 s
+  TOTAL                     : 292.4 s
+  fenetre                   : 2026-09-04T13:44:30+02:00 -> 2026-09-04T13:50:16+02:00
+  build/desknode.bin        : 1266752 o   sha256=b3f63621e2d24983…
+
+  🎯 **LE BUILD A FROID D'UN CLONE NEUF REUSSIT.** C'est le fait central de FR8.
+  ⚠️ Et il ne prouve PAS ce qu'on croirait : le piege n°1 de l'epic (« un sdkconfig
+     residuel fait reussir ici ce qui echouerait ailleurs ») est DESARME sur cet
+     arbre — voir §4. ⇒ **la reussite seule ne prouve rien ; ce qui prouve, c'est
+     CE QUE LE CLONE A DU ALLER CHERCHER.** (AC4.1.b)
+
+── 3. CE QUE LE CLONE A DU ALLER CHERCHER (AC4.1.b) ────────────────────────
+  managed_components/ repeuple     180834152 o  (  172.5 MiB, 5079 fichier(s))
+  build/ produit                   211198142 o  (  201.4 MiB, 2316 fichier(s))
+  dependencies.lock REGENERE            4632 o  (    0.0 MiB, 1 fichier(s))
+  sdkconfig RECONSTRUIT                87623 o  (    0.1 MiB, 1 fichier(s))
+  build/living_pcb_v0.bin             614416 o  (    0.6 MiB, 1 fichier(s))
+  dependencies.lock : 12 entrees resolues
+      espressif/cmake_utilities, espressif/esp_io_expander, espressif/esp_io_expander_tca9554, espressif/esp_lcd_panel_io_additions, espressif/esp_lcd_st7701, espressif/esp_lcd_touch, espressif/esp_lcd_touch_gt911, espressif/esp_lvgl_port, idf, k0i05/esp_bme680, k0i05/esp_type_utils, lvgl/lvgl
+
+── 4. LE `sdkconfig` RECONSTRUIT — LE §3 DU CADRAGE EST-IL REFUTE ? ────────
+  cles du sdkconfig RECONSTRUIT (clone neuf) : 2010
+  cles du sdkconfig de l'arbre de travail    : 2010   (attendu ~2010)
+  cles presentes dans le clone, ABSENTES de l'arbre : 0
+  cles presentes dans l'arbre, ABSENTES du clone    : 0
+  cles COMMUNES dont la VALEUR differe              : 0
+
+  ⇒ ✅ **LE §3 EST CONFIRME, ⛔ PAS REFUTE.** Le `sdkconfig` d'un clone neuf est
+    IDENTIQUE, cle pour cle et valeur pour valeur, a celui de l'arbre de travail.
+    ⇒ aucun reglage residuel n'aide le build de l'auteur. Le piege n°1 de l'epic
+      est reel comme MECANISME, mais **il n'est pas arme sur cet arbre**.
+
+── 5. `project_version` VIENT DE GIT (AC4.1.d) ─────────────────────────────
+  project_version du clone : 'e3e8509'
+  HEAD du clone            : e3e8509
+  ⇒ ✅ IL PORTE LE SHA — ⛔ ni `1`, ni `<sha>-dirty`.
+  🎯 **CE FAIT TOUCHE DIRECTEMENT L'OBLIGATION D20** (« la release pointe la source
+     de cette version exacte ») : `CONTRIBUTING.md` publie qu'un build depuis un ZIP
+     affiche `App version: 1` et qu'un arbre modifie affiche `<sha>-dirty`.
+     ⇒ **seul un VRAI clone git rend le SHA**, et c'est mesure ici, ⛔ pas recopie.
+
+── 6. LA COMPARAISON A SHA EGAL (AC4.1.c) ──────────────────────────────────
+  ⛔ L'ARTEFACT DE L'ARBRE N'EST **PAS** UN ETALON.
+     firmware/desknode/build/desknode.bin : 1266752 o, project_version = '6a91fa3'
+     il est **40 commits** derriere e3e8509
+     ⇒ un ecart trouve la ne dirait RIEN de FR8 : il mesurerait du CODE.
+  ⚠️ Fait releve SANS EN CONCLURE : les deux binaires font la MEME taille
+     (1266752 o). C'est une COINCIDENCE de taille entre deux
+     commits differents, ⛔ pas une preuve de reproductibilite.
+  ⇒ LA COMPARAISON QUI VAUT est celle de DEUX BUILDS DU MEME COMMIT :
+    `T1b-sha-egal.txt` (clone B, meme `e3e8509`, clone INDEPENDANT, chemin DIFFERENT).
+    RESULTAT, resume ici pour qui ne lit que ce fichier : meme taille, **70 octets
+    differents sur 1 266 752** (0,0055 %), en **3 plages** toutes identifiees, et
+    UNE seule cause racine — **l'heure de build** dans `esp_app_desc_t.time`, qui se
+    propage a `app_elf_sha256` puis au SHA-256 d'image. **99,98 % du binaire — tout
+    le code et toutes les donnees — sont IDENTIQUES A L'OCTET**, ce qui **refute** la
+    cause « chemins absolus embarques » que l'AC citait comme plausible.
+==============================================================================

@@ -1,0 +1,59 @@
+T4 — LA VOIE (a) : L'ESSAI ESP-IDF NATIF WINDOWS EST **DECLARE NON FAIT**
+==============================================================================
+date     : 2026-09-04T13:48:48  ·  pris par subprocess
+AC4.3    : « un essai non fait se DECLARE comme non fait, ⛔ il ne se conclut pas »
+==============================================================================
+
+── 1. LA DECISION, ET QUI L'A PRISE ────────────────────────────────────────
+  DECISION OWNER DU 2026-09-04 : **l'essai est REPORTE**.
+  Question posee : « on le joue une fois, ou on le declare non fait ? »
+  Reponse : report.
+  ⛔ CE N'EST PAS UN VERDICT SUR LA VOIE (a). Le depot ne dit ni qu'elle marche,
+     ni qu'elle ne marche pas. Il dit QU'ELLE N'A PAS ETE ESSAYEE.
+
+── 2. LE MOTIF, ET POURQUOI IL NE BLOQUE PAS LA MARCHE ─────────────────────
+  · L'essai exige un GESTE PHYSIQUE DE L'OWNER : l'installeur officiel ESP-IDF
+    pour Windows, plusieurs Gio, droits administrateur. ⛔ Un agent ne peut pas
+    le jouer a sa place.
+  · La voie (c) — construire en WSL — est ACQUISE ET MESUREE dans cette meme
+    story (T1). La marche est donc COMPLETE sans l'essai : une reponse a
+    « ou construit-on ? » existe dans tous les cas, et c'est ce que T5 declare.
+
+── 3. CE QUI EXISTE AUJOURD'HUI : DES CONSTATS D'ABSENCE, ⛔ PAS DES ESSAIS ─
+  La nuance est le coeur de cette AC. Un constat d'absence dit « l'outil n'est
+  pas la » ; un essai dirait « on l'a installe, et voici ce qui s'est passe ».
+  ⇒ AUCUN ESSAI N'EST CONSIGNE. Les DEUX constats mesures ce jour — un dans le
+     depot, un dans le cockpit :
+    [desknode] hardware/ESP32-S3-Touch-LCD-2.8B-liaison-pc.md:2613:| **construire** le firmware | ✅ | 🔴 **NON** — `IDF_PATH` absent, **aucun** répertoire ESP-IDF côté Windows |
+    [desknode] hardware/…-liaison-pc.md:2613 — tableau « ce que Windows sait faire »
+               ⇒ « construire le firmware : 🔴 NON ». C'est l'ABSENCE de l'outil,
+                  ⛔ pas le resultat d'une tentative.
+    [cockpit]  dn1-1-toolchain-build-flash-log-serie-wsl.md:904-906 — cap owner :
+               « ok pour commencer avec le wsl, mais l'idee ce serait de
+               fonctionner sans, sur Windows only a l'avenir » ⇒ « L'aboutissement
+               (ESP-IDF natif sous Windows) est HORS PERIMETRE dn1-1 ».
+               C'est un RENVOI, ⛔ pas un essai. Depuis le 2026-08-14, personne ne
+               l'a repris — et c'est ce que cette capture enregistre.
+
+── 4. LE PORTEUR DU MANQUE EST VIVANT — ET LA RESERVE D'AC4.3.c S'ECRIT ────
+  entree de ledger : _bmad-output/implementation-artifacts/deferred-work.md:4869:  ⇒ [dn4-16 2026-08-30] RE-HÉBERGÉE · porteur : backlog nommé : dn4-28 · preuve : motif `IDF_PATH` absent côté Windows : la branche Windows-only SAIT FLASHER, ⛔ pas CONSTRUIRE — la bascule n'est pas jouable · **constat non re-vérifiable san
+  statut du porteur : dn4-28-la-reprise-du-port-cesse-de-supposer-com3 -> backlog
+  ⇒ ✅ `backlog` = VIVANT. La convention (docs/bmad/deferred-work-ligne-porteur.md)
+     interdit un porteur `done`/`superseded` ; celui-ci ne l'est pas.
+
+  🔴 RESERVE ECRITE, COMME AC4.3.c L'EXIGE :
+     Le NOM de ce porteur est « la reprise du port cesse de supposer COM3 ».
+     Son sujet est **LE PORT**, ⛔ PAS LE BUILD. Le legs « ESP-IDF natif Windows »
+     y est heberge par voisinage de plateforme (les deux sont « cote Windows »),
+     ⛔ pas par identite de sujet.
+     ⇒ LE LEGS Y RESTE POUR L'INSTANT, ET C'EST DIT ICI. Le jour ou dn4-28
+       sera jouee, celui qui la prendra doit savoir qu'elle porte une entree
+       QUI N'EST PAS DE SON SUJET. C'est cette phrase-la qui l'en avertit.
+
+── 5. CE QUE CETTE CAPTURE NE DIT PAS ──────────────────────────────────────
+  ⛔ Elle ne dit PAS que la voie (a) est impossible.
+  ⛔ Elle ne dit PAS qu'elle est inutile : README.md:895 la nomme « secours,
+     et cap a terme » — c'est la direction visee pour fonctionner sans WSL.
+  ⛔ Elle ne mesure PAS le cout d'un `write_flash` reel cote Windows : le depot
+     le declare lui-meme non mesure (hardware/…-liaison-pc.md:2621-2622).
+==============================================================================

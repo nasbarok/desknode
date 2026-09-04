@@ -83,6 +83,123 @@ Two things are already known, so no need to report them:
 - Opening a detail page takes **335.8 ms** on average — n = 80, spread 281.2 to
   400.9 — where the target was 300 ms.
 
+## Building the firmware
+
+**Where the firmware is built, stated — because until 2026-09-04 nothing in this
+repository said it.** The ESP-IDF version was published, and so were the Ubuntu
+prerequisites; the *platform* was not, in any file. This section is that statement.
+
+**Supported: Linux, including Ubuntu under WSL2.** That is the only platform the
+firmware has ever been built on, and it is measured rather than assumed — see the
+figures below.
+
+**Not instructed, and each for its own reason:**
+
+- **ESP-IDF natively on Windows: never tried.** Not "does not work" — *never tried*.
+  What the tree records are observations that the tooling is **absent** on the Windows
+  side (`hardware/ESP32-S3-Touch-LCD-2.8B-liaison-pc.md`), never the result of an
+  attempt. The attempt needs someone to run the official Windows installer, and it is
+  deferred rather than concluded. ⛔ Do not read the silence as a verdict either way.
+- **macOS: never tried.** ESP-IDF supports it upstream; this project has no measurement.
+
+⚠️ **Two lines elsewhere in this tree describe the Windows side and are worth reading
+together rather than one at a time.** `README.md` documents *"Voie A — build WSL, flash
+depuis Windows"* as a fallback, and `tests/README.md` says the flash goes through
+Windows. The **retained** working loop in `README.md` flashes from WSL. Both paths have
+been used; the difference is which one a given session had set up, ⛔ not a
+contradiction about what is possible. What has never varied is the half this section is
+about: **the build is done on Linux/WSL, on every path.**
+
+**What a cold build actually costs, measured on 2026-09-04** — a fresh `git clone` into
+a new directory outside any existing checkout, with no inherited `sdkconfig`:
+
+| | |
+|---|---|
+| `idf.py set-target esp32s3` | **118.7 s** — most of it fetching components |
+| `idf.py build` | **173.7 s** |
+| total | **292.4 s**, exit code **0** |
+| `build/desknode.bin` | **1 266 752 bytes** |
+| pulled from the network | **172.5 MiB** into `managed_components/` (5 079 files) |
+| written under `build/` | **201.4 MiB** (2 316 files) |
+| `sdkconfig` rebuilt from `sdkconfig.defaults` | **2 010 keys** |
+
+The clone ships **none** of that: `sdkconfig`, `managed_components/`,
+`dependencies.lock` and `build/` are all gitignored, and were verified absent from the
+fresh clone before the build.
+
+**What you need that the clone does not contain:**
+
+1. **ESP-IDF v5.5.5** and its toolchains — roughly **3.84 GiB** for the IDF checkout
+   with its 23 submodules, plus **3.73 GiB** of toolchains under `~/.espressif` after
+   `install.sh esp32s3`.
+2. **`IDF_PATH`, set by `export.sh` in every new shell.** Measured: it is unset in a
+   fresh shell, and `firmware/desknode/CMakeLists.txt` reads it. Sourcing `export.sh`
+   is not optional and is not once-per-machine — it is once per shell.
+3. The Ubuntu packages listed under *Installation* in `README.md`. All sixteen were
+   verified present on the build machine on 2026-09-04.
+4. **`python3`, and the `tools/` directory intact.** This one is easy to miss:
+   `firmware/desknode/CMakeLists.txt` puts `tools/gen_living_pcb.py` in an
+   `add_custom_target(... ALL)`, so **every** build runs it and it produces
+   `living_pcb_v0.bin` (**614 416 bytes**). A clone with `tools/` removed does not
+   build. The script itself is standard-library only — no network, no `subprocess`.
+5. **Network access to the Espressif component registry.** See below; this is the one
+   that surprises people.
+
+🔴 **An offline build fails, and a local component cache does not save it.** Measured on
+2026-09-04 inside a network namespace with no connectivity: even with the machine's
+component cache fully populated (**172.5 MiB**, 5 068 files), `idf.py set-target` exits
+**2** with:
+
+```
+NOTICE: Dependencies lock doesn't exist, solving dependencies.
+ERROR: Cannot establish a connection to the component registry. Are you connected
+to the internet?
+URL: https://components-file.espressif.com/components/espressif/esp_io_expander_tca9554.json
+```
+
+The reason is structural rather than accidental: **`dependencies.lock` is gitignored**,
+so a fresh clone has no solved dependency set and the component manager must *solve*
+before it can install. Solving queries the registry for metadata, and a cache of
+downloaded archives does not answer that. ⛔ So "I have the components on disk" is not
+enough — the first build of a fresh clone needs to reach the network, whatever is
+cached.
+
+⚠️ **The toolchain is not what fails there, and that is separated rather than assumed.**
+`firmware/hello-desknode` has no `idf_component.yml` and therefore no remote
+dependencies; building **it** offline is the control that tells the two failures apart.
+
+**Does the same commit give the same binary? Almost — and the exception is measured
+rather than guessed.** Two independent clones of the same commit, built in different
+directories on 2026-09-04, produced `desknode.bin` files of **identical size** whose
+contents differ in **70 bytes out of 1 266 752** — 0.0055 %. Those 70 bytes fall in
+exactly three places, and all three come from one root cause:
+
+| offset | bytes | what it is |
+|---:|---:|---|
+| 113 | 7 | `esp_app_desc_t.time` — **the wall-clock time of the build** (`13:47:30` vs `14:04:28`; the `date` field matched) |
+| 176 | 32 | `esp_app_desc_t.app_elf_sha256` — the ELF's hash, which moves because the ELF carries that same timestamp |
+| 1 266 719 | 33 | the image SHA-256 that `esptool` appends, which moves because the image did |
+
+**Everything else — all the code and all the data, 99.98 % of the image — is identical
+byte for byte.** That result also refutes a common suspicion worth naming: the two
+clones live at *different absolute paths*, and no path appears in the diff. Build paths
+are **not** baked into the flashed payload. (They are in the debug ELF, which is normal
+and is not flashed.)
+
+So if you are checking that a binary really came from this source — the thing
+GPL-3.0-or-later actually asks of us — rebuild the commit and compare: everything must
+match except those three fields. ⛔ This is one measurement, on one machine, with one
+IDF version; it is not a reproducible-builds guarantee.
+
+**Which ESP-IDF version is authoritative — the manifest, not the measurement.**
+`firmware/desknode/main/idf_component.yml` declares `idf: "~5.5.0"`, which accepts
+**5.5.0 through 5.5.x**. That constraint is the contract, and it is what the tooling
+enforces. Everything published in this repository was nonetheless measured on
+**v5.5.5**, and **5.5.0 to 5.5.4 have never been built here**. Both facts are true and
+they answer different questions: the manifest says what is *allowed*, v5.5.5 says what
+is *known to work*. If you build on anything other than v5.5.5 you are on ground this
+repository has not walked — which is fine, and worth saying if you report a bug.
+
 ## Pull requests
 
 Contributions are welcome. Two practical points:
@@ -139,24 +256,33 @@ Contributions are welcome. Two practical points:
   git grep -n -I -E 'nasbarok|naoua|~/projects|wsl\.localhost' HEAD --
   ```
 
-  🔴 **Two counts, because the work changed one of them — and running the command
-  today gives you the second, not the first.** Saying only the "before" number would
-  publish a figure this tree refutes.
+  🔴 **Three counts now, because two separate pieces of work each moved them — and
+  running the command today gives you the third.** Saying only the "before" number
+  would publish a figure this tree refutes.
 
-  | class | before → after (files) | before → after (sites) | what it is | why it is what it is |
+  ⚠️ **The third column was added on 2026-09-04 by `dn5-4`, and ⛔ the earlier two are
+  kept rather than replaced.** That work measured the cold build and wrote **ten**
+  capture files into `mesures/dn5-4/`. Exactly **three** of them carry the pattern, and
+  all three are **raw tool output kept verbatim** — two gate run summaries and one run
+  of the inventory itself. ⛔ None of the prose written by hand carries it, which is
+  deliberate: a capture is never doctored, and hand-written text never re-introduces
+  the pattern. That is why only row 4 moves.
+
+  | class | files: before → after → 09-04b | sites: before → after → 09-04b | what it is | why it is what it is |
   |---|---:|---:|---|---|
-  | 1. functional dependency | **3 → 0** | **4 → 0** | tools that could not run from a clone | 🔴 **the only class that was a defect — and it is now empty** |
-  | 2. usage example | 18 → 19 | 39 → 50 | Windows recipes, docstrings, comments | ✅ each one that *names* the machine now **declares itself as an example** at the point where it is read, with the command that gives you your own path. ⚠️ **It grew, and that is the fix working, not regressing:** every declaration written next to a path is itself a line carrying the pattern |
-  | 3. generation trace | 5 → 5 | 5 → 5 | the `* Opts:` line in `firmware/…/fonts/dn_font_*.c` | 🔴 **kept, untouched** — see below |
-  | 4. evidence record | 111 → 121 | 1 264 → 1 350 | `mesures/` — captured console output | 🔴 **kept, untouched** — rewriting it would falsify the record. ⚠️ **It grew too**, for the same reason as class 2: the measurements proving this very change are themselves captures, and they are kept like every other one |
-  | 5. the name *is* the subject | 2 → 4 | 11 → 17 | see the declared exclusions below | ⚠️ **excluded, and the exclusion is written**. 🔴 **Corrected at the code review of 2026-09-04 — this row read `2 → 2` / `11 → 11`, and the original figures are kept above rather than replaced.** Two files were booked as *usage examples* while being, by this table's own definition, pages whose subject **is** the pattern: this file, and the instrument that produces these counts. An exclusion that is not written is the thing this row exists to prevent |
-  | **total** | **139 → 149** | **1 323 → 1 422** | | |
+  | 1. functional dependency | **3 → 0 → 0** | **4 → 0 → 0** | tools that could not run from a clone | 🔴 **the only class that was a defect — and it is now empty** |
+  | 2. usage example | 18 → 19 → 19 | 39 → 50 → 50 | Windows recipes, docstrings, comments | ✅ each one that *names* the machine now **declares itself as an example** at the point where it is read, with the command that gives you your own path. ⚠️ **It grew, and that is the fix working, not regressing:** every declaration written next to a path is itself a line carrying the pattern |
+  | 3. generation trace | 5 → 5 → 5 | 5 → 5 → 5 | the `* Opts:` line in `firmware/…/fonts/dn_font_*.c` | 🔴 **kept, untouched** — see below |
+  | 4. evidence record | 111 → 121 → **124** | 1 264 → 1 350 → **1 446** | `mesures/` — captured console output | 🔴 **kept, untouched** — rewriting it would falsify the record. ⚠️ **It grew too**, for the same reason as class 2: the measurements proving this very change are themselves captures, and they are kept like every other one |
+  | 5. the name *is* the subject | 2 → 4 → 4 | 11 → 17 → 17 | see the declared exclusions below | ⚠️ **excluded, and the exclusion is written**. 🔴 **Corrected at the code review of 2026-09-04 — this row read `2 → 2` / `11 → 11`, and the original figures are kept above rather than replaced.** Two files were booked as *usage examples* while being, by this table's own definition, pages whose subject **is** the pattern: this file, and the instrument that produces these counts. An exclusion that is not written is the thing this row exists to prevent |
+  | **total** | **139 → 149 → 152** | **1 323 → 1 422 → 1 518** | | |
 
   ⚠️ **Do not treat any of these as a fixed number.** They move whenever a declaration
   is added, and a declaration is exactly what this repository asks for. What is stable
   is the **first row**: no tool depends on one particular machine. ⚠️ A different
   pattern also returns different numbers — `nasbarok` alone, the one earlier notes
-  used, returns **120 files**. Neither pattern is wrong; they measure different things,
+  used, returns **123 files** *(it returned **120** before `dn5-4` added its
+  captures on 2026-09-04; the earlier figure is kept rather than replaced).* Neither pattern is wrong; they measure different things,
   and that is why the pattern is always written next to the count.
 
   🔴 **Corrected at the code review of 2026-09-04, and the mechanism is worth more than
@@ -168,10 +294,15 @@ Contributions are welcome. Two practical points:
   they are named here as what they were.
 
   **What `mesures/` actually costs, since it is kept on purpose.** As of **2026-09-04**,
-  after the code review of that day, it holds **406 files** and **10 016 839 bytes** — that is
-  **10.02 MB** in decimal units, or **9.55 MiB** in binary ones. *(Before the review's own
-  captures were added it held 395 files / 9 900 692 bytes; that figure is kept rather than
-  replaced, and it is why the sentence now says which tree it counts.)* ⚠️ Those are the **same number of bytes** written in two
+  after `dn5-4` committed its cold-build captures, it holds **416 files** and
+  **10 116 415 bytes** — that is **10.12 MB** in decimal units, or **9.65 MiB** in binary
+  ones. *(Two earlier figures are kept rather than replaced, because each was true of the
+  tree that carried it: **395 files / 9 900 692 bytes** before the code review of
+  2026-09-04 added its own captures, then **406 files / 10 016 839 bytes** after it and
+  before `dn5-4`. The growth is ten capture files.)* ⚠️ **This number moves every time a
+  measurement is committed, which is most of them** — that is the point of the directory,
+  and it is why the command that reproduces it is printed right below rather than being
+  left to trust. ⚠️ Those are the **same number of bytes** written in two
   different units, ⛔ not two different measurements; earlier notes in the planning
   repository quoted *320 files / 9.6 MB*, which is simply older. Reproduce it with
   `git ls-tree -r -l HEAD mesures/`.

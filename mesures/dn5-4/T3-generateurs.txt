@@ -1,0 +1,58 @@
+T3 — LES GENERATEURS, CONSTATES SUR LE GRAPHE **REELLEMENT EMIS** DU CLONE NEUF
+==============================================================================
+date   : 2026-09-04T13:51:40  ·  pris par subprocess
+clone  : neuf, HORS de l'arborescence de travail, HEAD = e3e8509
+AC4.5.a : le cadrage a deja mesure NON sur l'arbre de travail (3 preuves).
+          ⇒ ici on CONFIRME sur le graphe du CLONE, ⛔ on ne re-decouvre pas.
+==============================================================================
+
+── 1. LE `build.ninja` DU CLONE NEUF — LE GRAPHE QUE NINJA A VRAIMENT RECU ──
+  fichier : firmware/desknode/build/build.ninja  (12525365 o)
+  lignes  : 32365
+
+  ⚠️ ⛔ ON NE LIT PAS QUE `build.ninja` : ninja `subninja`/`include` d'autres
+     fichiers. On balaie donc TOUS les `.ninja` emis sous build/.
+  fichiers .ninja emis : 4
+  volume total balaye  : 13221383 octets
+
+── 2. LE GENERATEUR DE POLICES — ATTENDU 0 (AC4.5.a) ───────────────────────
+  gen_font_dn    :   0 occurrence(s)   ✅
+  lv_font_conv   :   0 occurrence(s)   ✅
+  npm            :   0 occurrence(s)   ✅
+  npx            :   0 occurrence(s)   ✅
+
+  ⚠️ NUANCE D'AC4.5.c — LA FORMULE DE L'EPIC EST FAUSSE TELLE QU'ECRITE.
+     « les .c hors du chemin de build » : ⛔ FAUX. Ils EN SONT LE COEUR.
+     Mesure sur ce meme graphe — les .c de police en ENTREE de compilation :
+       dn_font_14.c  ⇒ compile en .obj
+       dn_font_18.c  ⇒ compile en .obj
+       dn_font_28.c  ⇒ compile en .obj
+       dn_font_33.c  ⇒ compile en .obj
+       dn_font_56.c  ⇒ compile en .obj
+     ⇒ CE QUI EST HORS DU CHEMIN DE BUILD, C'EST LE **GENERATEUR**,
+       ⛔ PAS SES PRODUITS. Aucune regle ninja ne PRODUIT un dn_font_*.c.
+     controle : regles ninja qui PRODUISENT un dn_font_*.c ⇒ 0 ✅
+
+── 3. LE GENERATEUR QUE L'EPIC NE NOMME NULLE PART — `gen_living_pcb.py` ───
+     (AC4.5.b — il est dans `add_custom_target(dn_asset ALL)` ⇒ CHAQUE build)
+  gen_living_pcb dans le graphe emis : 2 occurrence(s)  ✅ il EST branche
+  living_pcb_v0.bin PRODUIT : ✅  614416 o   sha256=fae162a0a422c3c1…
+  meme fichier dans l'arbre de travail : 614416 o ⇒ taille IDENTIQUE ✅, octets identiques
+  ⚠️ ⛔ CE N'EST PAS UNE COMPARAISON A SHA EGAL : l'arbre porte un build de
+     `6a91fa3`, 40 commits derriere. Ce rapprochement est une CURIOSITE,
+     ⛔ pas une preuve. La comparaison qui vaut est en §T1/clone B.
+
+  ⇒ FAIT DE DEPENDANCE QUE LE DEPOT NE DISAIT A PERSONNE :
+    **le build a froid du firmware appelle un script de `tools/` et exige python3.**
+    Un clone qui aurait `tools/` ampute NE CONSTRUIRAIT PAS. C'est ce que T5 publie.
+    imports de gen_living_pcb.py : argparse, errno, os, random, struct, sys, tempfile, zlib
+    subprocess ? ✅ NON   ·   urllib/requests ? ✅ NON
+    ⇒ stdlib pure, aucun reseau. Le risque est une DEPENDANCE, ⛔ pas un tirage.
+
+── 4. LES DEUX TIRAGES RESEAU TIERS — ATTENDU 0 ────────────────────────────
+  lvgl_image_converter   :   0 occurrence(s)   ✅ non pris
+  dotnet-gitversion      :   0 occurrence(s)   ✅ non pris
+  gitversion             :   0 occurrence(s)   ✅ non pris
+==============================================================================
+VERDICT T3 : ✅ le §4 du cadrage est CONFIRME sur le clone neuf.
+==============================================================================
