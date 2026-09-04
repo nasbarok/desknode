@@ -19,6 +19,70 @@ disappointed later.
 sponsorship, a fabrication sponsorship, a specific funded request — the pace picks
 back up.
 
+## What cloning this costs
+
+Two figures, because they do not answer the same person's question. Both are what
+`git clone` prints **about itself**, ⛔ not what a directory listing says afterwards.
+Measured on **2026-09-05**, against `main` at `7246f52`.
+
+| you run | objects received | **received over the wire** | on disk afterwards (`.git` + working tree) | who this figure is for |
+|---|---:|---:|---:|---|
+| `git clone <url>` | 3 875 | **31.94 MiB** ≈ 33.5 MB | 79 848 261 B ≈ **79.8 MB** | **anyone who intends to contribute.** You get all **451** commits and both published branches, so `git log`, `git blame` and a pull request all work. |
+| `git clone --depth 1 --branch main <url>` | 637 | **30.22 MiB** ≈ 31.7 MB | 77 938 430 B ≈ **77.9 MB** | **anyone who just wants to build it once.** One commit, no history — enough to compile the firmware, ⛔ not enough to open a pull request. |
+
+Reproduce either one. The number is the line `git clone` prints for itself, so ask it:
+
+```
+git clone --progress https://github.com/nasbarok/desknode.git dn-full \
+  2>&1 | grep 'Receiving objects'
+git clone --progress --depth 1 --branch main https://github.com/nasbarok/desknode.git dn-shallow \
+  2>&1 | grep 'Receiving objects'
+```
+
+🔴 **`--depth 1` saves 1.72 MiB — about 5 % — and that is much less than it sounds.** The
+weight of this repository is **not** in its history. All 451 commits of history cost
+**1.72 MiB**, while the files of the *current* version alone weigh **46 142 922 bytes**
+(**46.1 MB**): `docs/` is 28.0 MB of it, almost entirely wiring photographs, and `mesures/`
+is 10.1 MB. A shallow clone throws away the cheap half. It is still the right choice if you
+only want to build once — just not for the reason people usually expect. Making the
+photographs lighter is tracked separately (`dn6` — see [`docs/roadmap.md`](docs/roadmap.md)).
+
+⚠️ **`du -sh .git` is not this number, and it is the figure that used to circulate here.**
+On the machine this repository is developed on, `du -sb .git` returns **134 337 533 bytes**
+— **four times** what a clone actually transfers, because most of it is never sent. The
+whole gap is accounted for, to the byte:
+
+| what the local `.git` holds that a clone never receives | bytes | share of the gap |
+|---|---:|---:|
+| **loose objects** — 2 060 of them. A server never sends loose objects: it builds a pack and sends that. | 46 961 431 | 46.7 % |
+| **a pack built over more refs** — 7 882 objects locally against 3 875 in the clone. The local pack covers four *local* branches; a clone receives only the two the remote publishes. | 53 177 911 | 52.8 % |
+| the rest of `.git` — index, `logs/`, `refs/`, sample hooks, `FETCH_HEAD`, config | 492 852 | 0.5 % |
+| **total** = 134 337 533 − 33 705 339 | **100 632 194** | **100 %** |
+
+⚠️ **Half of that gap used to be misattributed, and the correction is written rather than
+quietly applied.** Earlier notes in this project put the *whole* difference down to loose
+objects. Measured, they carry **46.7 %** of it. The larger half is simply that a local pack
+covers local branches nobody else ever asks for.
+
+⚠️ **`git count-objects -v` and `du -sb` do not measure the same thing**, and mixing them
+invents about **5.3 MiB** out of nothing — the first draft of the table above did exactly
+that and came out with a *negative* remainder. `du -sb` reports **apparent size**;
+`count-objects` reports **disk space consumed**, in **KiB**, with each of those 2 060 loose
+objects rounded up to a 4 KiB block. The table is measured end to end with `du -sb`. Both
+raw outputs are in
+[`mesures/dn5-5/T3-ecart-du-vs-clone.txt`](mesures/dn5-5/T3-ecart-du-vs-clone.txt), and the
+two clone runs in
+[`mesures/dn5-5/T1-clone-complet.txt`](mesures/dn5-5/T1-clone-complet.txt) and
+[`mesures/dn5-5/T2-clone-depth1.txt`](mesures/dn5-5/T2-clone-depth1.txt).
+
+⚠️ `size-pack` (**82.74 MiB**, from `git count-objects -vH`) is a third answer to a third
+question — *what does the local pack weigh, across every local branch* — and it is not the
+price of a clone either. Three instruments, three numbers, one of which is the one you pay.
+
+⚠️ **None of these is a fixed number**, for the same reason as every other figure in this
+file: they move with the next commit. What is stable is which instrument answers which
+question, and each command is printed above so you can take your own reading.
+
 ## Reporting a bug
 
 Please include:
@@ -333,6 +397,41 @@ Contributions are welcome. Two practical points:
 - **Annotate, do not erase.** When something turns out to be wrong, the correction is
   written next to the original rather than replacing it. The history of what was
   believed is part of the documentation.
+- **The published history is never rewritten.** No `git filter-repo`, no BFG, no rebase
+  onto anything already pushed. Two reasons, and the second one is measured.
+
+  **It would break every clone and every fork.** Rewriting history rewrites **every SHA**
+  from the point it touches onwards. Anyone who had already cloned would find their `main`
+  unrelated to this one; every SHA quoted in an issue, a commit message or a page under
+  `docs/` would point at nothing; and the serial banner — which prints the build's git SHA
+  and is, until `dn8`, the **only** version this device has — would name a commit that no
+  longer exists. That is a cost paid by other people, for a benefit measured below at zero.
+
+  **And the usual motive does not apply here.** People reach for a rewrite when a single
+  file is too large for the host. GitHub refuses any **single file** over **100 MB**.
+  Measured on **2026-09-05** on `main` at `7246f52`, the largest file in this repository is
+  **5 071 848 bytes** — **5.07 MB** decimal, **4.84 MiB** binary — and it is
+  `docs/cablage/2026-08-17_0012-breakout-ecarte-barrette-inseree.jpg`. That leaves **19.7×**
+  of margin against the 100 MB limit (**20.7×** if you read the limit as 100 MiB). Nothing
+  in this tree is anywhere near the ceiling, so a purge would buy nothing at all. Take your
+  own reading with:
+
+  ```
+  git ls-tree -r -l HEAD | sort -k4 -n -r | head -5
+  ```
+
+  ⚠️ **The margin quoted in this project's planning notes was `54×`, and it is corrected
+  here rather than carried over.** It does not follow from either of the two numbers it was
+  written next to: 100 / 4.9 = 20.4, 100 / 4.84 = 20.7, 104.86 / 4.84 = 21.7, 104.86 / 4.9
+  = 21.4. None of them is 54. The **conclusion** survives with room to spare — a twentyfold
+  margin makes a purge pointless either way — but the figure that ships is the measured one.
+  ⛔ The original line is dated where it was written, not erased. Raw output:
+  [`mesures/dn5-5/T4-volumetries.txt`](mesures/dn5-5/T4-volumetries.txt).
+
+  ⚠️ **This is not a claim that the repository is small**, and it is a different question
+  from what a clone costs — for that, see *What cloning this costs* near the top of this
+  file. Making the wiring photographs lighter is real work with a real owner (`dn6` — see
+  [`docs/roadmap.md`](docs/roadmap.md)); ⛔ it is not done by rewriting history.
 - `mesures/` holds the raw measurement record. It is deliberately kept — it is the
   evidence behind the numbers.
 
@@ -386,14 +485,28 @@ Contributions are welcome. Two practical points:
   which is exactly the bar stated further down this file. ⛔ The old figures are not erased;
   they are named here as what they were.
 
-  **What `mesures/` actually costs, since it is kept on purpose.** As of **2026-09-04**,
-  after `dn5-4` and its own code review, it holds **417 files** and **10 120 981 bytes** —
-  that is **10.12 MB** in decimal units, or **9.65 MiB** in binary ones. *(Three earlier
-  figures are kept rather than replaced, because each was true of the tree that carried it:
-  **395 files / 9 900 692 bytes** before the code review of 2026-09-04 added its own
-  captures, then **406 files / 10 016 839 bytes** after it and before `dn5-4`, then
-  **416 files / 10 116 415 bytes** after `dn5-4`'s ten cold-build captures and before its
-  review added the port-possession one.)* ⚠️ **This number moves every time a
+  **What `mesures/` actually costs, since it is kept on purpose.** As of **2026-09-05**,
+  and counting the nine captures this very commit adds under `mesures/dn5-5/`, it holds
+  **428 files** and **10 234 634 bytes** — that is **10.23 MB** in decimal units, or
+  **9.76 MiB** in binary ones. *(Five earlier figures are kept rather than replaced, because
+  each was true of the tree that carried it: **395 files / 9 900 692 bytes** before the code
+  review of 2026-09-04 added its own captures, then **406 files / 10 016 839 bytes** after it
+  and before `dn5-4`, then **416 files / 10 116 415 bytes** after `dn5-4`'s ten cold-build
+  captures and before its review added the port-possession one, then **417 files /
+  10 120 981 bytes** after that review — and then **419 files / 10 133 104 bytes**, which is
+  what the tree already held before the present work wrote a single line.)*
+
+  🔴 **That last pair is the one worth reading, because it is the same defect a third time.**
+  The figure published on this page was **417** while `git ls-tree -r -l HEAD mesures/` — the
+  command printed a few lines below — returned **419** on the very tree that shipped the
+  sentence. Two more captures had landed in between. A number is only true of one commit; the
+  command beside it resolves at whichever commit you run it on, and the two drift apart the
+  moment anything else is committed. ⇒ **the rule this file now applies: the figure published
+  here is the one the tree carrying it returns**, which is why the count above includes this
+  commit's own captures instead of the tree as it stood just before them. ⛔ Do not read a
+  figure here as current; run the command.
+
+  ⚠️ **This number moves every time a
   measurement is committed, which is most of them** — that is the point of the directory,
   and it is why the command that reproduces it is printed right below rather than being
   left to trust.

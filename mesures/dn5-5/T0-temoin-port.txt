@@ -1,0 +1,88 @@
+T0 — TEMOIN NFR8 « AVANT » (dn5-5)
+==============================================================================
+date     : 2026-09-05T01:06:57
+pris par : subprocess (⛔ jamais le shell de session — le proxy reecrit git diff/grep)
+⛔ AUCUN PORT SERIE N'EST OUVERT PAR CETTE CAPTURE. Lectures de fichier, zero port.
+
+🔴 POURQUOI LE TEMOIN N'EST **PAS** LE BANDEAU DE BOOT
+  Le SHA du firmware n'est imprime QU'AU BOOT ⇒ le relire exigerait de PRENDRE le
+  port, c'est-a-dire exactement le geste qu'on pretend n'avoir pas fait. Le temoin
+  est donc la POSSESSION DU PORT, lue sans ouvrir aucun port : l'agent tient COM3
+  en exclusif depuis son lancement ; si son compteur `s mur` / `seq` ne retombe
+  JAMAIS a zero de part et d'autre de la fenetre de la story, l'agent n'est jamais
+  mort ⇒ aucun autre process n'a PU obtenir COM3 ⇒ AUCUN FLASH N'A **PU** AVOIR LIEU.
+  ⚠️ C'est la MONOTONIE qui prouve, ⛔ pas la valeur.
+==============================================================================
+
+--- desknode (CODE)
+  HEAD                       rc=0
+      7246f5248d1625a2a351bbb374c03f0585a008c3
+  branche                    rc=0
+      main
+  status --porcelain         rc=0
+      ?? mesures/dn5-5/
+  ls-remote origin HEAD      rc=0
+      7246f5248d1625a2a351bbb374c03f0585a008c3	HEAD
+  remote -v                  rc=0
+      origin	https://github.com/<caviarde>/desknode.git (fetch)
+      origin	https://github.com/<caviarde>/desknode.git (push)
+  tag                        rc=0
+      (VIDE)
+
+--- compagnon_project (COCKPIT)
+  HEAD                       rc=0
+      4967805fabeff66226303c301af6a6f337cc6695
+  branche                    rc=0
+      desknode-p0-p1-clos
+  status (implementation-artifacts uniquement) rc=0
+      ?? _bmad-output/implementation-artifacts/dn5-5-le-clone-annonce-son-prix-et-le-reste-a-faire-a-un-porteur.md
+      ?? _bmad-output/implementation-artifacts/epic-dn5-context.md
+
+--- ANCRES DE LA STORY (frontmatter du dossier)
+  baseline_commit_desknode (code) = 7246f52
+  git rev-list --count 7246f52..HEAD = 0
+
+==============================================================================
+TEMOIN DE POSSESSION DU PORT — dn-agent.log / dn-agent.started
+==============================================================================
+
+--- dn-agent.log : /mnt/h/dev/projets/desknode/dn-agent.log
+  taille  : 4486832 o
+  mtime   : 2026-09-05T01:06:54
+  lignes  : 37707
+  DERNIERE LIGNE PORTEUSE (source de `s mur` et `seq`) :
+      [agent] témoin coût cumulé : 4703.203 s CPU / 260224.0 s mur = 1.807 % d'un cœur (0.1130 % machine) — seq=1301099
+  >>> s_mur_T0 = 260224.0
+  >>> seq_T0   = 1301099
+
+
+--- dn-agent.started : /mnt/h/dev/projets/desknode/dn-agent.started
+  taille  : 289 o
+  mtime   : 2026-09-02T00:49:45
+  CONTENU (profil utilisateur CAVIARDE — il DOIT etre inchange a T7) :
+      lance   : 2026-09-02T00:49:45+02:00
+      regime  : double-clic (detache)
+      python  : C:\Users\naoua\AppData\Local\Programs\Python\Python313\python.exe
+      agent   : H:\dev\projets\desknode\dn_agent.py
+      args    : --serie COM3 --stop-si H:\dev\projets\desknode\dn-agent.stop --temoin
+      coeurs  : 16
+  ⇒ `--serie COM3` : c'est CETTE ligne qui prouve la tenue EXCLUSIVE du port.
+
+==============================================================================
+NFR8 — `firmware/` EST-IL TOUCHE ?
+==============================================================================
+  diff --name-only 7246f52..HEAD -- firmware/ rc=0
+      (VIDE)
+  ⛔ PAS `main..HEAD` : le dev travaille SUR main ⇒ ce controle rendrait VIDE quoi
+     qu'il arrive — un controle qui ne peut pas rougir. L'ancre est le SHA DE DEBUT
+     DE STORY (7246f52), ⛔ pas une ref mouvante.
+  diff --stat -- firmware/ (arbre de travail) rc=0
+      (VIDE)
+  status --porcelain -- firmware/ rc=0
+      (VIDE)
+
+==============================================================================
+NFR5 — `deferred-work.md` EST-IL TOUCHE ?
+==============================================================================
+  diff --stat -- deferred-work.md rc=0
+      (VIDE)

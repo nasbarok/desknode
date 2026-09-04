@@ -1,0 +1,80 @@
+T5 — INVENTAIRE MESURE DU « RESTE-A-FAIRE AVANT PUBLIC » (dn5-5, AC5.5)
+==============================================================================
+date     : 2026-09-05T01:18:45
+pris par : subprocess (⛔ jamais le shell de session)
+⛔ AUCUN PORT SERIE N'EST OUVERT PAR CETTE CAPTURE. ⛔ AUCUNE BASCULE EN PUBLIC,
+   ⛔ AUCUN TAG POSE : `dn5` ECRIT la liste, `dn8` la joue.
+==============================================================================
+
+🔴 PRECONDITION D'AC5.5 : ELLE EST FAUSSE, ET C'EST ECRIT AVANT LA LISTE
+  AC5.5 s'ouvre sur « Etant donne `dn5-1` a `dn5-4` closes ». Au moment de cette
+  capture, `dn5-2` est `in-progress` (retenue par sa revue du 2026-09-04 : 4 decisions
+  + 15 correctifs + 4 reports, dont un AC2.4.c en `[CC]`). Decision owner du
+  2026-09-05 : la story part quand meme, AVEC ECART DECLARE.
+  ⇒ La liste ci-dessous est produite sur TROIS marches closes sur QUATRE. Elle peut
+     donc MANQUER une ligne que la cloture de `dn5-2` ferait apparaitre.
+
+==============================================================================
+1. L'ETAT DU DEPOT, MESURE — chaque ligne de la liste s'appuie sur un fait d'ici
+==============================================================================
+  git tag                    (0 tag ⇒ pas de release) rc=0
+      (VIDE)
+  git ls-remote --tags origin              rc=0
+      (VIDE)
+  git ls-remote --heads origin             rc=0
+      3db180cbd6789cde32bb093dd565d1ab3c4f298f	refs/heads/dn4-5-le-module-vit-tout-seul
+      7246f5248d1625a2a351bbb374c03f0585a008c3	refs/heads/main
+
+--- taille du README (c'est la charge que `dn8` va scinder)
+      100644 blob 9d61137ca1bc7857d0c309dafad3d0d30d251cd9  197400	README.md
+
+--- ce que `.github/` porte deja, et ce qu'il ne porte pas
+  git ls-tree -r --name-only HEAD .github/ rc=0
+      .github/cla-signatures.json
+      .github/workflows/cla.yml
+      .github/workflows/gates.yml
+  ⇒ ⛔ AUCUN `ISSUE_TEMPLATE/`, ⛔ aucun `PULL_REQUEST_TEMPLATE` : porteur `dn8`.
+
+--- visibilite du depot (⛔ aucune bascule ici, on CONSTATE)
+  gh repo view --json …                    rc=0
+      {"forkCount":0,"hasIssuesEnabled":true,"isTemplate":false,"stargazerCount":0,"visibility":"PRIVATE"}
+
+--- la CI : ce qui tourne deja, et ce qui ne tourne pas encore
+  git ls-tree -r --name-only HEAD .github/workflows/ rc=0
+      .github/workflows/cla.yml
+      .github/workflows/gates.yml
+  ⇒ `gates.yml` joue les gates (pose par `dn5-2`). ⛔ RIEN ne CONSTRUIT le firmware
+     en CI ⇒ porteur `dn4-45` (`backlog`). ⚠️ ⛔ PAS `dn4-39` : elle est `done`.
+
+--- le soak : sa gate est-elle dure ?
+  git ls-tree -l HEAD tools/verif_journal_soak_dn45.py rc=0
+      100644 blob 9c43fd77b0947b50905d296498f3b82fa4f9f26f   18397	tools/verif_journal_soak_dn45.py
+  ⇒ constat de `dn5-1` (2026-09-02) : le soak a vecu 60 s le 2026-08-26 et n'est ⛔ PAS
+     ARMABLE par le lanceur livre. Porteur `dn4-5` (`in-progress`).
+
+==============================================================================
+2. LES PORTEURS, VERIFIES VIVANTS AU TRACKER — ⛔ pas supposes
+==============================================================================
+  (lu par subprocess-libre : lecture de fichier directe, ⛔ pas de shell)
+      l.389  dn4-5-le-module-vit-tout-seul                                    in-progress
+      l.440  dn4-39-les-gates-s-invoquent-sans-qu-on-y-pense                  done
+      l.469  dn4-45-la-ci-construit-le-firmware                               backlog
+      l.478  epic-dn5                                                         backlog
+      l.506  dn5-2-le-depot-tient-les-promesses-deja-publiees                 in-progress
+      l.511  dn5-5-le-clone-annonce-son-prix-et-le-reste-a-faire-a-un-porteur backlog
+      l.512  dn5-6-les-sept-constats-reportes-sont-re-verifies-avant-d-etre-crus backlog
+      l.516  epic-dn6                                                         backlog
+      l.519  epic-dn7                                                         backlog
+      l.522  epic-dn8                                                         backlog
+
+  🔴 `dn4-39` est `done` ⇒ ⛔ ELLE NE PEUT PLUS PORTER RIEN. La voie « la CI »
+     se legue a `dn4-45`, qui est `backlog`. C'est le piege nomme par `dn5-4`.
+
+==============================================================================
+3. CE QUE LA LISTE NE PEUT PAS SAVOIR — declare, ⛔ pas tu
+==============================================================================
+  `dn5-2` est `in-progress`. Sa revue laisse ouvert au moins un `[CC]` (AC2.4.c :
+  la preuve du bot CLA sur une PR EXTERNE, impossible a 0 fork / 1 collaborateur).
+  ⇒ Si sa cloture revele une exigence de publication supplementaire, ELLE MANQUERA
+     A CETTE LISTE. C'est le cout de la decision owner du 2026-09-05, et il s'ecrit
+     EN TETE DE LA LISTE, la ou elle est deposee.

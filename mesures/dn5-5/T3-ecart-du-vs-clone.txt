@@ -1,0 +1,131 @@
+T3 — L'ECART ENTRE `du -sh .git` LOCAL ET LE CLONE REEL, POSE ET EXPLIQUE (dn5-5)
+==============================================================================
+date     : 2026-09-05T01:11:39
+pris par : subprocess (⛔ jamais le shell de session)
+⛔ AUCUN PORT SERIE N'EST OUVERT PAR CETTE CAPTURE.
+==============================================================================
+
+🎯 CE QUE CETTE CAPTURE DOIT TRANCHER
+  `du -sh .git` LOCAL annonce ~135 Mo. Le clone reel (T1) a **recu 31,94 Mio** et pose
+  33 705 339 o de `.git`. L'ecart est de l'ordre de 100 Mo. Publier le premier chiffre
+  en le presentant comme « le prix du clone » serait un mensonge. La question posee ici
+  est donc : **l'ecart se REFERME-T-IL, et par quoi ?**
+  ⚠️ S'il ne se referme pas, ⛔ ON N'INVENTE PAS DE CAUSE : on le DECLARE non explique.
+
+🔴 PIEGE D'INSTRUMENT MESURE ICI, ET IL FABRIQUE ~5 Mio SI ON NE LE VOIT PAS
+  `du -sb`  rend la TAILLE APPARENTE (somme des tailles de fichiers).
+  `git count-objects -v` rend, lui, l'ESPACE DISQUE CONSOMME (blocs de 4 Kio),
+  en **Kio** — ⛔ pas en octets. 2 060 objets libres, la plupart minuscules, sont
+  chacun arrondis au bloc superieur ⇒ `count-objects` les SURCOMPTE.
+  ⇒ Une premiere version de cette capture a melange les deux et a rendu un reste
+     NEGATIF de -5 056 894 o : les deux causes « expliquaient » PLUS QUE l'ecart.
+     C'etait l'instrument qui parlait, ⛔ pas le depot. L'arithmetique ci-dessous est
+     donc menee **entierement en taille apparente `du -sb`**, et les deux instruments
+     sont montres cote a cote pour que l'ecart entre EUX soit visible aussi.
+
+==============================================================================
+LES SORTIES BRUTES
+==============================================================================
+
+--- LOCAL : /home/<caviarde>/projects/desknode
+  du -sb .git            (apparent)    rc=0
+      134337533	.git
+  du -s --block-size=1 .git (disque)   rc=0
+      141492224	.git
+  git count-objects -v                 rc=0
+      count: 2060
+      size: 51296
+      in-pack: 7882
+      packs: 1
+      size-pack: 84728
+      prune-packable: 0
+      garbage: 0
+      size-garbage: 0
+  git count-objects -vH                rc=0
+      count: 2060
+      size: 50.09 MiB
+      in-pack: 7882
+      packs: 1
+      size-pack: 82.74 MiB
+      prune-packable: 0
+      garbage: 0
+      size-garbage: 0 bytes
+
+--- LOCAL : de quoi `.git` est-il fait ? (⛔ pas une supposition, un `du -sb` par entree)
+
+--- LOCAL : `.git/objects` en detail
+  du -sb .git/objects                  rc=0
+      133755097	.git/objects
+  du -sb .git/objects/pack             rc=0
+      86793666	.git/objects/pack
+
+--- LOCAL : combien de branches le pack porte-t-il ?
+  git branch --format=%(refname:short) rc=0
+      cr-dn1-2
+      dn4-18-revue-code
+      dn4-5-le-module-vit-tout-seul
+      main
+  git ls-remote --heads --tags origin  rc=0
+      3db180cbd6789cde32bb093dd565d1ab3c4f298f	refs/heads/dn4-5-le-module-vit-tout-seul
+      7246f5248d1625a2a351bbb374c03f0585a008c3	refs/heads/main
+  ⇒ le pack LOCAL porte les branches LOCALES ; un clone ne recoit que ce que le
+     REMOTE publie. C'est la 2e moitie de l'ecart, et ⛔ ce ne sont PAS des objets libres.
+
+--- CLONE COMPLET (T1) : /tmp/claude-1000/-home-nasbarok-projects-compagnon-project/4624b306-189b-43a1-bb99-77dafcceee2a/scratchpad/dn55/clones/clone-complet
+  du -sb .git            (apparent)    rc=0
+      33705339	.git
+  du -sb .git/objects/pack             rc=0
+      33615755	.git/objects/pack
+  git count-objects -v                 rc=0
+      count: 0
+      size: 0
+      in-pack: 3875
+      packs: 1
+      size-pack: 32812
+      prune-packable: 0
+      garbage: 0
+      size-garbage: 0
+
+==============================================================================
+L'ARITHMETIQUE DE L'ECART — EN TAILLE APPARENTE, UN SEUL INSTRUMENT
+==============================================================================
+
+                                    LOCAL            CLONE COMPLET
+  du -sb .git                     134337533 o         33705339 o
+    dont .git/objects/pack         86793666 o         33615755 o
+    dont objets libres             46961431 o                0 o
+    dont le RESTE de .git            582436 o            89584 o
+       (index, logs/, refs/, hooks d'exemple, FETCH_HEAD, config…)
+
+  objets en pack (count-objects)       7882                 3875
+  objets libres  (count-objects)       2060                    0
+
+  ECART BRUT = 134337533 - 33705339 = 100632194 o  (100.63 Mo / 95.97 Mio)
+
+  CE QUI LE COMPOSE — ⚠️ DEUX CAUSES PRINCIPALES, ⛔ PAS UNE :
+   (1) objets libres jamais transferes            46961431 o  (44.79 Mio)   46.7 %
+       2060 objets libres en local, 0 dans le clone.
+       Le serveur n'envoie JAMAIS d'objet libre : il fabrique un pack et l'envoie.
+   (2) le pack local porte PLUS DE REFS            53177911 o  (50.71 Mio)   52.8 %
+       7882 objets en pack en local contre 3875 dans le clone.
+       🔴 CETTE CAUSE-LA, LE CADRAGE NE L'AVAIT PAS NOMMEE : il attribuait TOUT
+          l'ecart aux objets libres. Ils n'en font que 47 %.
+   (3) le reste de `.git` (index, logs, refs)        492852 o  (0.47 Mio)    0.5 %
+
+   SOMME (1)+(2)+(3) = 100632194 o
+   RESTE NON EXPLIQUE = 0 o
+   ⇒ ✅ L'ECART SE REFERME EXACTEMENT, A L'OCTET. ⛔ Aucune cause inventee.
+
+--- LE MEME ECART, VU PAR L'AUTRE INSTRUMENT (pour que le piege reste visible)
+  count-objects -v LOCAL : size=51296 Kio (libres) + size-pack=84728 Kio = 139288576 o
+  du -sb LOCAL           : objets = 133755097 o
+  ⇒ ecart entre les DEUX INSTRUMENTS sur le MEME objet : 5533479 o (5.28 Mio).
+     C'est l'arrondi au bloc de 4 Kio, ⛔ pas une difference de contenu.
+
+==============================================================================
+LA CONCLUSION QUI PART AU DEPOT
+==============================================================================
+  ⛔ `du -sh .git` (134.34 Mo) NE MESURE PAS ce que paie un inconnu.
+  ⛔ `size-pack` local (84728 Kio = 82.74 Mio) non plus : pack local TOUTES REFS LOCALES.
+  ✅ Ce qui transite est ce que `git clone` annonce lui-meme — T1 et T2.
+  ⚠️ Et l'ecart n'a ⛔ PAS une seule cause : les objets libres n'en portent que 47 %.

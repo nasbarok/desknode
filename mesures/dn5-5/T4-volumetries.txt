@@ -1,0 +1,100 @@
+T4 — VOLUMETRIES : LE COUT DE `mesures/` ET LE PLUS GROS FICHIER DE `HEAD` (dn5-5)
+==============================================================================
+date     : 2026-09-05T01:13:17
+pris par : subprocess (⛔ jamais le shell de session — le proxy reecrit `git ls-tree`)
+⛔ AUCUN PORT SERIE N'EST OUVERT PAR CETTE CAPTURE.
+==============================================================================
+
+==============================================================================
+1. LE COUT DE `mesures/` — AC5.3
+==============================================================================
+  commande : git ls-tree -r -l HEAD mesures/
+  rc=0
+  >>> fichiers : 419
+  >>> octets   : 10133104
+  >>> 10.13 Mo decimaux (10^6)   /   9.66 Mio binaires (2^20)
+
+  ⚠️ C'EST LE CHIFFRE DE `HEAD` (7246f52) — ⛔ PAS celui du commit qui le publiera.
+     Ce commit-ci verse ses PROPRES captures dans `mesures/dn5-5/`. Le nombre publie
+     dans `CONTRIBUTING.md` doit donc etre celui de l'ARBRE QUI LE PORTE, sans quoi la
+     commande imprimee juste a cote (qui resout sur `HEAD`) le refute — c'est exactement
+     le defaut releve a la revue de code du 2026-09-04.
+
+--- LES CAPTURES DE CETTE MARCHE, TELLES QU'ELLES SERONT COMMITEES
+           14009 o  mesures/dn5-5/T0-gates-avant.txt
+            4100 o  mesures/dn5-5/T0-temoin-port.txt
+           23852 o  mesures/dn5-5/T1-clone-complet.txt
+           22729 o  mesures/dn5-5/T2-clone-depth1.txt
+            6265 o  mesures/dn5-5/T3-ecart-du-vs-clone.txt
+           70955 o  SOUS-TOTAL (5 fichier(s))
+
+  ⚠️ CE SOUS-TOTAL N'EST PAS FIGE AU MOMENT OU CETTE CAPTURE S'ECRIT : T7 n'est pas
+     encore pris. Le chiffre qui part au depot est recalcule APRES la derniere ecriture
+     dans `mesures/`, et c'est lui — ⛔ pas celui-ci — qui est publie.
+
+==============================================================================
+2. LE PLUS GROS FICHIER DE `HEAD` — AC5.4
+==============================================================================
+  commande : git ls-tree -r -l HEAD  (puis tri decroissant sur la taille)
+  rc=0   blobs de HEAD : 594
+
+  LES 12 PLUS GROS :
+         5071848 o  (  5.07 Mo /   4.84 Mio)  docs/cablage/2026-08-17_0012-breakout-ecarte-barrette-inseree.jpg
+         2493891 o  (  2.49 Mo /   2.38 Mio)  docs/cablage/2026-08-17_0012-cablage-4-fils-sous-tension.jpg
+         1812234 o  (  1.81 Mo /   1.73 Mio)  docs/cablage/2026-08-19_1718-tof050c-vl6180x-face-capteur-et-sachet.jpg
+         1804073 o  (  1.80 Mo /   1.72 Mio)  docs/cablage/2026-08-19_1718-tof050c-vl6180x-face-capteur-et-sachet-2.jpg
+         1754508 o  (  1.75 Mo /   1.67 Mio)  docs/cablage/2026-08-19_1719-tof050c-vl6180x-face-broches-et-sachet.jpg
+         1693321 o  (  1.69 Mo /   1.61 Mio)  docs/cablage/2026-08-19_1720-ina219-cjmcu-verso-caracteristiques.jpg
+         1673229 o  (  1.67 Mo /   1.60 Mio)  docs/cablage/2026-08-19_1719-ina219-cjmcu-recto-cavaliers-a0-a1-shunt-r100.jpg
+         1613886 o  (  1.61 Mo /   1.54 Mio)  docs/cablage/2026-08-19_1720-bh1750-gy302-face-composants-serigraphie-v322.jpg
+         1589895 o  (  1.59 Mo /   1.52 Mio)  docs/cablage/2026-08-19_1719-tof050c-vl6180x-face-broches-deux-barrettes.jpg
+         1584600 o  (  1.58 Mo /   1.51 Mio)  docs/cablage/2026-08-19_1720-bh1750-gy302-face-broches-vcc-gnd-scl-sda-addr.jpg
+         1581285 o  (  1.58 Mo /   1.51 Mio)  docs/cablage/2026-08-19_1720-bh1750-gy302-face-composants-et-sachet.jpg
+         1144160 o  (  1.14 Mo /   1.09 Mio)  mesures/dn4-5/desknode-BASE-c31bb97.bin
+
+  >>> PLUS GROS BLOB : 5071848 o
+      = 5.07 Mo decimaux (10^6)  =  4.84 Mio binaires (2^20)
+      chemin : docs/cablage/2026-08-17_0012-breakout-ecarte-barrette-inseree.jpg
+
+--- LE PLAFOND DE GITHUB, ET LA MARGE
+  GitHub refuse tout FICHIER de plus de 100 Mo (avertit au-dela de 50 Mo).
+  marge vs 100 Mo decimaux (100 000 000 o) : 19.7 x
+  marge vs 100 Mio binaires (104 857 600 o) : 20.7 x
+
+🔴 LE `54x` DE L'EPIC NE SE DEDUIT D'AUCUNE COMBINAISON DE SES PROPRES NOMBRES
+  L'epic ecrit : « **4,9 Mo** pour le plus gros fichier contre un plafond GitHub de
+  **100 Mo** par fichier (**54x de marge**) ».
+     100 / 4,9   = 20.4
+     100 / 4,84  = 20.7   (4,84 Mio = le meme fichier en unites binaires)
+     104,86/4,84 = 21.7
+     104,86/4,9  = 21.4
+  ⇒ AUCUNE ne rend 54. Le MOTIF d'AC5.4 tient largement (~20x de marge suffit a rendre
+     la purge inutile), mais le CHIFFRE publie doit etre le MESURE, ⛔ pas le recopie.
+  ⚠️ ⛔ La ligne de l'epic ne se reecrit pas : elle se DATE. C'est le chiffre mesure
+     ci-dessus qui part au depot.
+
+==============================================================================
+3. CE QUE PESE L'ARBRE DE `HEAD` (contexte du clone)
+==============================================================================
+  somme des blobs de HEAD : 46142922 o  (46.14 Mo / 44.01 Mio)
+  par repertoire de premier niveau :
+          27990273 o  ( 27.99 Mo)  docs
+          10133104 o  ( 10.13 Mo)  mesures
+           3903638 o  (  3.90 Mo)  firmware
+           2058972 o  (  2.06 Mo)  tools
+           1411768 o  (  1.41 Mo)  hardware
+            271650 o  (  0.27 Mo)  agent
+            197400 o  (  0.20 Mo)  README.md
+             60337 o  (  0.06 Mo)  assets
+             35150 o  (  0.04 Mo)  LICENSE
+             35087 o  (  0.04 Mo)  CONTRIBUTING.md
+             17740 o  (  0.02 Mo)  .github
+              8043 o  (  0.01 Mo)  CHANGELOG.md
+              5941 o  (  0.01 Mo)  tests
+              5694 o  (  0.01 Mo)  LICENSING.md
+              4166 o  (  0.00 Mo)  THIRD-PARTY.md
+              3166 o  (  0.00 Mo)  CLA.md
+               793 o  (  0.00 Mo)  .gitignore
+
+  ⇒ C'EST CE QUI EXPLIQUE QUE `--depth 1` NE FASSE PRESQUE RIEN GAGNER : le poids
+     n'est ⛔ PAS dans l'historique, il est dans les fichiers de la version COURANTE.
