@@ -93,8 +93,10 @@ Work towards the first public release, `v0.1.0-beta`.
   install time is still to come (`dn7` — see [`docs/roadmap.md`](docs/roadmap.md)).
 - **The CLA bot has never been exercised by an outside contributor.** It was watched
   running on an **internal** pull request on 2026-09-02 — it commented, linked to
-  `CLA.md` and created the signature store — but this repository has no fork and a
-  single collaborator, so no *external* pull request can exist yet. Proving it against
+  `CLA.md` and created the signature store — and again on 2026-09-04, on the workflow
+  as it now ships: it commented, an unrelated comment allocated **no runner at all**,
+  and a `recheck` comment did. But this repository has no fork and a single
+  collaborator, so no *external* pull request can exist yet. Proving it against
   a real outside contributor is carried by `dn8` — see
   [`docs/roadmap.md`](docs/roadmap.md).
 - **One of the repository's own gates is red in the published tree**:

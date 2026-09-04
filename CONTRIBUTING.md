@@ -308,7 +308,13 @@ Contributions are welcome. Two practical points:
    maintained, and the version is pinned rather than floating so that what runs is what
    is written here. It was watched running on an internal pull request on
    2026-09-02: it commented, it linked to `CLA.md`, and it created the signature
-   store. And it has never been exercised by an **outside** contributor, because this
+   store. It was watched again on 2026-09-04, on the workflow **as it now ships**,
+   because the 2026-09-02 runs had been produced by an earlier version of the
+   trigger: it commented again, and the two things the current version claims were
+   measured rather than read — an unrelated comment allocates **no runner**, and a
+   `recheck` comment does. What still has **not** been exercised is the signature
+   itself: signing your own CLA proves nothing, so that step waits for a real
+   outside contributor. And it has never been exercised by an **outside** contributor, because this
    repository has no fork and a single collaborator, so no such pull request can exist
    yet: proving it against a real external contributor is carried by `dn8` — see
    [`docs/roadmap.md`](docs/roadmap.md).

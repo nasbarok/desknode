@@ -1,0 +1,111 @@
+==============================================================================
+dn5-2 / T10 — L'ESSAI DU BOT CLA, REJOUE SUR LA VERSION *PUBLIEE*
+==============================================================================
+
+date : 2026-09-05T00:00:35
+
+POURQUOI CE SECOND ESSAI. Les trois runs du 2026-09-02 (T3) ont ete produits
+par une version du workflow ou la condition vivait AU NIVEAU DE L'ETAPE. La
+version publiee la porte AU NIVEAU DU JOB, avec deux clauses de plus. AC2.4
+exigeait « tranche PAR L'ESSAI, ⛔ pas par lecture de doc » : l'essai vaut donc
+pour le fichier QUI TOURNE, ⛔ pas pour celui qui a tourne. Constat rendu par la
+revue de code du 2026-09-04.
+
+⛔ CE FICHIER NE NOMME AUCUN SHA — une capture ne peut pas nommer le commit qui
+   la publie. Ce qui se lit ici, ce sont des RUNS et des CHIFFRES DE FACTURATION,
+   rendus par `gh api`, ⛔ pas recopies de memoire.
+
+==============================================================================
+1. 🔴 LE PREMIER PUSH A REFUSE LE FICHIER — ET C'EST UN CONSTAT, ⛔ PAS UN INCIDENT
+==============================================================================
+
+  Le commit de la revue posait sept lignes de commentaire A L'INTERIEUR du bloc
+  `if: >-`. Dans un scalaire YAML REPLIE, `#` n'introduit ⛔ PAS un commentaire :
+  c'est du TEXTE, il entre dans l'expression, et GitHub refuse le fichier.
+
+    run 33923235944 · evenement `push` · branche `main` · conclusion FAILURE
+    « This run likely failed because of a workflow file issue. » · duree 0s
+
+  ⚠️ CE QUI VAUT D'ETRE ECRIT : `yaml.safe_load` PASSAIT VERT. Il ne voit qu'une
+     chaine, et une chaine contenant des `#` est une chaine valide. Le controle
+     local etait donc PLUS FAIBLE que ce qu'il pretendait verifier. Ce qui l'a
+     dit, c'est LE PREMIER PUSH. ⇒ la validation confronte desormais
+     l'EXPRESSION elle-meme (`#` interdit dans `jobs.cla.if` et dans
+     `concurrency.group`, APRES chargement), et le motif est ecrit dans le
+     fichier au-dessus du bloc.
+
+==============================================================================
+2. LES RUNS DE L'ESSAI — CE QUE `gh` REND
+==============================================================================
+
+  run          nom    evenement            branche                  verdict   duree
+  33923235944  .githu push                 main                     failure   0s
+  33923236693  Gates  push                 main                     success   50s
+  33923339689  Gates  push                 main                     success   44s
+  33923368066  Gates  push                 essai-cla-dn52-revue     success   47s
+  33923385018  Gates  pull_request         essai-cla-dn52-revue     success   49s
+  33923384922  CLA    pull_request_target  essai-cla-dn52-revue     failure   9s
+  33923428839  CLA    issue_comment        main                     skipped   1s
+  33923537079  CLA    issue_comment        main                     failure   11s
+
+  🎯 LA PROPRIETE SOUS TEST, ET ELLE TIENT : un commentaire SANS RAPPORT rend un
+     run `skipped` (33923428839, 1s) la ou le MEME GESTE rendait `success` et
+     7 secondes de runner le 2026-09-02 (33631570625, releve en T3 §4). La
+     condition au niveau du JOB fait donc ce que le commentaire du fichier
+     annonce : GitHub n'alloue aucun runner.
+
+  🎯 SECOND TEMOIN, ET IL DISCRIMINE : le commentaire poste etait `recheck` ENTRE
+     ACCENTS GRAVES. L'ancienne forme `== 'recheck'` ne l'aurait ⛔ PAS reconnu
+     (l'egalite est insensible a la casse, ⛔ pas aux caracteres autour) et le job
+     aurait ete saute EN SILENCE — le contributeur n'aurait rien vu. Avec
+     `contains`, le job est ALLOUE : run 33923537079, 11s. ⇒ le correctif est
+     prouve par un cas que l'ancienne forme rejetait, ⛔ pas par une relecture.
+
+  ⚠️ `failure` N'EST PAS UNE PANNE : « Committers of Pull Request number 2 have to
+     sign the CLA 📝 ». Une gate de CLA DOIT etre rouge tant que la signature
+     n'est pas la. Le bot a poste son commentaire (`github-actions`, avec le lien
+     vers `CLA.md`).
+
+  ⛔ CE QUI N'A PAS ETE FAIT, ET C'EST DELIBERE, COMME EN T3 : la signature
+     elle-meme. L'auteur du depot signant son propre CLA est un acte juridique
+==============================================================================
+3. LA FACTURATION — ET LE PIEGE QUE CE RELEVE A RENDU
+==============================================================================
+
+  ── AVANT l'essai   (releve a 21:56)
+     2026-02 Actions Linux    1.0 Minutes · gross 0.006 · discount 0.006 · net 0.000 · repo policy_rules
+     2026-09 Actions Linux   33.0 Minutes · gross 0.198 · discount 0.198 · net 0.000 · repo desknode
+  ── APRES, PREMIER RELEVE   (releve a 21:59, quelques minutes apres)
+     2026-09 Actions Linux   37.0 Minutes · gross 0.222 · discount 0.228 · net 0.000 · repo desknode
+  ── APRES, SECOND RELEVE   (releve a 00:01)
+     2026-02 Actions Linux    1.0 Minutes · gross 0.006 · discount 0.006 · net 0.000 · repo policy_rules
+     2026-09 Actions Linux   40.0 Minutes · gross 0.240 · discount 0.240 · net 0.000 · repo desknode
+
+  🔴 LE POINT DE FACTURATION A RENDU DEUX VALEURS DIFFERENTES POUR LE MEME ESSAI,
+     A QUELQUES MINUTES D'ECART : 37,0 puis 40,0 minutes. ⇒ **UN RELEVE PRIS
+     JUSTE APRES UN RUN SOUS-COMPTE.** C'est un piege de mesure, ⛔ pas un detail :
+     T3 §5 avait publie « 2,0 minutes » sur un releve unique pris dans la foulee,
+     et rien ne dit que ce chiffre-la etait stabilise. ⛔ Ne pas re-utiliser un
+     releve de facturation sans dire QUAND il a ete pris.
+
+  ⇒ COUT DE L'ESSAI, AU DERNIER RELEVE : le poste `desknode` de 2026-09 passe de
+    33,0 a 40,0 minutes Actions Linux, soit **+7,0 minutes**, facturees
+    **0,00 $** (couvertes par la franchise du plan).
+
+  ⚠️ ET CE COUT N'EST PAS CELUI DE L'ESSAI SEUL. Sur les 8 runs du jour, **4 sont
+     des `Gates`** (50+44+47+49 s) declenchees par les pushes, ⛔ pas par l'essai.
+     L'essai proprement dit, c'est : 1 run `pull_request_target` (9 s), 1 run
+     `issue_comment` **skipped** (0 runner), 1 run `issue_comment` sur `recheck`
+     (11 s), et 1 run **refuse** pour fichier invalide (0 s). GitHub facturant a
+     la MINUTE ENTIERE ET PAR JOB, l'essai coute **2 minutes** et les gates **4**.
+     Le 7e restant n'est pas attribue ici : ⛔ on ne fabrique pas la difference.
+
+  ⚠️ `discount` a depasse `gross` au releve de 21:59 (0,228 contre 0,222), comme
+     en T3 §5, et les deux se sont rejoints au releve suivant. C'est ce que l'API
+     rend ; `netAmount` fait foi. ⛔ Ce n'etait pas une erreur de releve.
+
+  ⛔ CE QUI N'EST TOUJOURS PAS ECRIT ICI : le plafond mensuel. Le point de
+    facturation rend la CONSOMMATION, ⛔ pas la franchise. ⇒ **AC2.4.c reste
+    `[CC]`** — la moitie « quota » est REPRISE, ⛔ pas soldee. Porteur propose :
+    `epic-dn8`, ou publier le depot rend les minutes Actions gratuites.
+
