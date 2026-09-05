@@ -1,0 +1,112 @@
+==============================================================================
+dn5-8 / T2 — LE TEST QUI TRANCHE, DANS UN WORKTREE JETABLE HORS DU DEPOT
+==============================================================================
+date          : 2026-09-05T20:54:54
+HEAD desknode : d07e9638790834ef4d28b82229cb0aa0cf7ffc37
+HEAD cockpit  : f54e6b36f98638d97a530feca0a772f5a8be20e6
+mesures       : ⛔ TOUTES par `subprocess`, ⛔ jamais le shell de session
+
+⛔ LA COPIE N'EST JAMAIS POSEE DANS `~/projects/desknode/tools/` : un fichier
+   pose une seconde sous `tools/` est DECOUVERT par le glob `tools/verif_*.py`
+   du runner (piege mesure par `dn5-7`). Le worktree vit sous le repertoire
+   temporaire du systeme, et il est RETIRE a la fin.
+⚠️ LE DISCRIMINANT EST LE `[KO ]` DU LIBELLE VISE — ⛔ pas le `rc`, ⛔ pas
+   l'egalite des sorties. Deux sorties peuvent differer pour dix raisons.
+
+── §1 · LE WORKTREE JETABLE ────────────────────────────────
+  git worktree add --detach /tmp/dn58-tranche-worktree HEAD  ⇒ rc=0
+  HEAD is now at d07e963 fix(dn5-7): LES 8 REPORTS DE dn5-5 ONT UN PORTEUR -- ET MON MUTANT NE ROUGISSAIT PAS EN CI
+  Preparing worktree (detached HEAD d07e963)
+  HEAD du worktree : d07e9638790834ef4d28b82229cb0aa0cf7ffc37
+  ⇒ il est HORS de `/home/nasbarok/projects/desknode` : OUI
+
+── §2 · A · INSTRUMENT CORRIGE (garde active) ───────────────
+  rc=0 · 0.5 s
+  |   [OK ] motif_resout voit un motif PRESENT                       True
+  |   [OK ] motif_resout ne voit PAS un motif absent                 0
+  |   [OK ] 🔴 garde debranchee : il se compte LUI-MEME, et SEUL      ['tools/filtre_constats_dn56.py']
+  |   [OK ] la garde retire EXACTEMENT l'instrument, et ses tirs     ({'tools/filtre_constats_dn56.py'}, 0)
+  |   [OK ] porte_bilan voit une ligne BILAN                         True
+  |   [OK ] porte_bilan ne voit PAS de BILAN dans un traceback       False
+  |   [OK ] porte_bilan n'est pas dupe d'une citation en prose       False
+  |   [OK ] est_traceback voit un traceback                          True
+  |   [OK ] est_traceback ne voit pas de traceback dans un bilan     False
+  |   [OK ] ast voit la forme LITTERALE                              True
+  |   [OK ] ast voit la forme COUPEE sur deux lignes                 True
+  |   [OK ] ast voit la forme en guillemets SIMPLES                  True
+  |   [OK ] ast n'est PAS dupe d'une citation en prose               False
+  |   [OK ] le grep du runner voit la forme LITTERALE                True
+  |   [OK ] 🔴 le grep du runner est AVEUGLE a la forme coupee        False
+  |   [OK ] 🔴 le grep du runner est AVEUGLE aux guillemets simples   False
+  |   [OK ] 🔴 le grep du runner est DUPE par une citation en prose   True
+  |   [OK ] compte_lignes_section1 separe hors/muet/verdict          (1, 1, 2)
+  |   [OK ] section1 garde ce qui est AVANT la borne 2               True
+  |   [OK ] 🔴 section1 ne compte PAS la section 3 (defaut du 1er jet) False
+  |   [OK ] bilan_de lit un bilan                                    (22, 10)
+  |   [OK ] bilan_de ne fabrique pas de bilan                        None
+  |   ⇒ TEMOIN : 22 OK, 0 KO
+
+── §2 · B · MEME FICHIER, GARDE RETIREE ───────────────
+  rc=1 · 0.4 s
+  |   [OK ] motif_resout voit un motif PRESENT                       True
+  |   [KO ] motif_resout ne voit PAS un motif absent                 attendu 0, obtenu 1
+  |   [OK ] 🔴 garde debranchee : il se compte LUI-MEME, et SEUL      ['tools/filtre_constats_dn56.py']
+  |   [KO ] la garde retire EXACTEMENT l'instrument, et ses tirs     attendu ({'tools/filtre_constats_dn56.py'}, 0), obtenu (set(), 3)
+  |   [OK ] porte_bilan voit une ligne BILAN                         True
+  |   [OK ] porte_bilan ne voit PAS de BILAN dans un traceback       False
+  |   [OK ] porte_bilan n'est pas dupe d'une citation en prose       False
+  |   [OK ] est_traceback voit un traceback                          True
+  |   [OK ] est_traceback ne voit pas de traceback dans un bilan     False
+  |   [OK ] ast voit la forme LITTERALE                              True
+  |   [OK ] ast voit la forme COUPEE sur deux lignes                 True
+  |   [OK ] ast voit la forme en guillemets SIMPLES                  True
+  |   [OK ] ast n'est PAS dupe d'une citation en prose               False
+  |   [OK ] le grep du runner voit la forme LITTERALE                True
+  |   [OK ] 🔴 le grep du runner est AVEUGLE a la forme coupee        False
+  |   [OK ] 🔴 le grep du runner est AVEUGLE aux guillemets simples   False
+  |   [OK ] 🔴 le grep du runner est DUPE par une citation en prose   True
+  |   [OK ] compte_lignes_section1 separe hors/muet/verdict          (1, 1, 2)
+  |   [OK ] section1 garde ce qui est AVANT la borne 2               True
+  |   [OK ] 🔴 section1 ne compte PAS la section 3 (defaut du 1er jet) False
+  |   [OK ] bilan_de lit un bilan                                    (22, 10)
+  |   [OK ] bilan_de ne fabrique pas de bilan                        None
+  |   ⇒ TEMOIN : 20 OK, 2 KO
+
+── §3 · LE VERDICT SE LIT SUR LE LIBELLE ───────────────────
+  `[KO ]` en A (garde active)  : AUCUN
+  `[KO ]` en B (garde retiree) : ["la garde retire EXACTEMENT l'instrument, et ses tirs", 'motif_resout ne voit PAS un motif absent']
+
+  🔴 LIBELLE VISE : 'motif_resout ne voit PAS un motif absent'
+     present en B : True
+     present en A : False
+  ⇒ IL APPARAIT EN B ET DISPARAIT EN A ⇒ LE CONTROLE ATTRAPE BIEN LA
+    FAUTE QU'IL PRETEND GARDER, ⛔ il ne se contente pas d'exister.
+  ⚠️ Les autres `[KO ]` de B sont EXCLUS du verdict : seul le libelle
+    vise tranche (« un banc qui juge sur le rc global reste vert des
+    qu'un AUTRE echec donne le meme rc »).
+
+── §4 · LES BORDS DE LA GARDE, MESURES (⛔ pas supposes) ────
+  (a) depot de l'instrument      : 3 exclu(s), reserve=None
+  (b) AUTRE depot (cockpit)      : 0 exclu(s)
+      reserve=⛔ GARDE NON APPLIQUEE : le depot interroge (/home/nasbarok/projects/compagnon_project) n'est pas celui ou l'instrument vit — il n'y est pas une occurrence.
+      motif_resout(SENTINELLE, depot=cockpit) = 0 ⇒ ⛔ aucune exclusion appliquee
+  (c) SOUS-REPERTOIRE du meme depot : 3 exclu(s), reserve=None
+      motif_resout(SENTINELLE, depot=<wt>/tools) = 0 ⇒ LA GARDE TIENT
+      ⚠️ avec une EGALITE DE CHEMIN pour predicat, ce cas rendait 1.
+  (d) EXCLUSION INERTE (chemin absent de HEAD, REPLANTE) :
+      reserve=⚠️ EXCLUSION INERTE — ces chemins sont ABSENTS de `HEAD`, ils n'excluent RIEN et `git grep` ne le dit pas : tools/chemin-qui-n-existe-pas-dans-HEAD.py
+      ⇒ `git grep` sort `rc=0` SANS UN MOT ; l'instrument, lui, LE DIT.
+  (e) ECHEC DUR (`/` n'est pas un depot git) :
+      motif_resout(SENTINELLE, depot='/') = None ⇒ `None`, contrat INCHANGE
+      ⚠️ `None` ⛔ N'EST PAS `0` : `constat()` le dit et ⛔ NE JUGE PAS
+        l'alarme, au lieu de la sauter en silence.
+  (f) UN MOTIF PORTE PAR LES SEULES TRANSCRIPTIONS :
+      motif_resout(BANNIERE) = 0 ⇒ 0 ⇒ `🔴 LE MOTIF EST MORT` s'imprime
+      motif_resout(BANNIERE, inclure_soi=True) = 3 ⇒ garde debranchee
+
+── §5 · LE WORKTREE EST RETIRE ─────────────────────────────
+  git worktree remove --force ⇒ rc=0 · prune ⇒ rc=0 · existe encore : False
+  git worktree list :
+  /home/nasbarok/projects/desknode                                                                                    d07e963 [main]
+  /tmp/claude-1000/-home-nasbarok-projects-compagnon-project/0103c285-23d0-44d4-8c6e-e6f162e1249f/scratchpad/ab-base  1bc4672 (detached HEAD)
+  /tmp/claude-1000/dn-rollback                                                                                        0ced322 (detached HEAD)

@@ -1,0 +1,77 @@
+==============================================================================
+dn5-8 / T1 — LA CAUSE, DATEE AUX DEUX BORNES
+==============================================================================
+date          : 2026-09-05T20:52:14
+HEAD desknode : d07e9638790834ef4d28b82229cb0aa0cf7ffc37
+HEAD cockpit  : f54e6b36f98638d97a530feca0a772f5a8be20e6
+mesures       : ⛔ TOUTES par `subprocess`, ⛔ jamais le shell de session
+
+🔴 CETTE CAPTURE N'ECRIT AUCUN MOTIF LITTERALEMENT, ET C'EST LE SUJET MEME.
+   Un fichier qui ecrit le motif qu'il mesure en DEVIENT un porteur des qu'il
+   est commite — c'est exactement la panne que cette marche repare. Chaque
+   motif est donc ecrit COUPE, sous la forme `'deb' + 'ut'`, et ⛔ jamais
+   d'une seule piece. ⚠️ Les autres captures de la marche (T0, T2, T7) portent,
+   elles, la BANNIERE de l'instrument : elles sont RETIREES de la population
+   par la garde, donc leur contenu litteral est sans effet sur les comptes.
+
+── §1 · LE TEMOIN A BASCULE AU COMMIT QUI PUBLIE L'INSTRUMENT ───
+  sentinelle (ecrite coupee) : 'dn56-motif-qui-n-exi' + 'ste-nulle-part-8f3a1c'
+  360a5c2^   rc=1 ⇒ 0 fichier(s) : —
+  360a5c2    rc=0 ⇒ 1 fichier(s) : tools/filtre_constats_dn56.py
+  HEAD       rc=0 ⇒ 1 fichier(s) : tools/filtre_constats_dn56.py
+  ⇒ a `360a5c2^` la sentinelle est ABSENTE de l'arbre (temoin VERT) ;
+    a `360a5c2` — le commit de cloture de `dn5-6`, celui qui AJOUTE
+    l'instrument — elle rend 1 fichier (temoin ROUGE).
+    ⇒ LE TEMOIN NE POUVAIT PAS SURVIVRE A SA PROPRE PUBLICATION.
+
+── §2 · LES 10 MOTIFS DE CONSTAT, AVEC ET SANS L'INSTRUMENT ───
+  n°   AVEC     SANS     motif (ecrit coupe)
+  ( 1) 5        4        'def occ' + 'urrences'
+  ( 2) 13       12       'le balayage a bien t' + 'rouve des occurrences'
+  ( 3) 5        4        '--cockpit att' + 'end un chemin'
+  ( 4) 15       14       'add_argument' + '("--cockpit"'
+  ( 5) 7        6        'def an' + 'alyser'
+  ( 6) 11       10       'dn48_ther' + 'mique.csv'
+  ( 7) 7        6        'UNIQUEMENT si la' + ' moitie jouee est'
+  ( 8) 7        6        'CONSTATE AV' + 'ANT LE BUILD'
+  ( 9) 11       10       'tout marqueur cite COM' + 'ME marqueur est defini'
+  (10) 7        6        'cle valide (aucu' + 'n libelle >= 58)'
+  ⇒ 10 motifs sur 10 sont portes PAR L'INSTRUMENT LUI-MEME (1 fichier
+    chacun, toujours) ⇒ le plancher de N est ≥ 1 PAR CONSTRUCTION.
+
+── §3 · CE QUE CE PLANCHER DESARME ──────────────────────
+  `constat()` leve `🔴 LE MOTIF EST MORT` quand N == 0.
+  ⇒ AVANT correction : N ≥ 1 sur 10/10 ⇒ L'ALARME NE PEUT JAMAIS SONNER.
+  ⇒ APRES retrait du seul instrument : le motif le moins porte compte
+    encore 4 ⇒ ⛔ l'alarme ne sonne toujours sur AUCUN des 10.
+    ⚠️ C'EST UN ECART DECLARE, ⛔ PAS UN `[x]` ARRACHE : la garde REARME
+    l'alarme (elle redevient ATTEIGNABLE), elle ne la fait pas sonner.
+    Le temoin (a4) exerce, lui, un motif qui TOMBE bien a 0 : la
+    banniere, portee par les SEULES transcriptions de l'instrument.
+
+── §4 · LA GARDE NE DOIT PAS DEBORDER SUR UN AUTRE DEPOT ──────
+  sentinelle dans le COCKPIT a HEAD : rc=1 ⇒ 0 fichier(s) : —
+  toplevel git de <desknode>        : /home/nasbarok/projects/desknode
+  toplevel git de <desknode>/tools  : /home/nasbarok/projects/desknode
+  toplevel git du cockpit           : /home/nasbarok/projects/compagnon_project
+  ⇒ UNE EGALITE DE CHEMIN ETEINDRAIT LA GARDE SUR `<desknode>/tools`
+    alors que c'est LE MEME DEPOT. ⇒ le predicat juste est le TOPLEVEL.
+
+── §5 · L'ECHEC DUR EST PROPAGE, ⛔ PAS MASQUE ─────────────
+  `git grep` dans `/` (⛔ pas un depot git) : rc=128
+  stderr : fatal: not a git repository (or any of the parent directories): .git
+  ⇒ rc ∉ {0,1} ⇒ le contrat d'erreur rend `None` — INCHANGE par la marche.
+
+── §6 · UNE EXCLUSION QUI NE PEUT PAS S'APPLIQUER EST MUETTE ────
+  sans exclusion                          : rc=0 ⇒ 5 fichier(s)
+  avec `:(top,literal,exclude)<absent>`   : rc=0 ⇒ 5 fichier(s)
+  ⇒ `rc=0` SANS UN MOT, et RIEN n'est exclu ⇒ une garde inerte doit se
+    DECLARER : c'est ce que fait `chemins_exclus()` (AC8.10).
+
+── §7 · LA BANNIERE : CE QUI EST DECIDABLE ───────────────
+  banniere (ecrite coupee) : 'dn5-6 / T1 — LE FILTRE : LES ' + '10 CONSTATS REJOUES UN PAR UN'
+  ⇒ 3 fichier(s) a HEAD : mesures/dn5-6/T1-filtre-10-constats.txt, mesures/dn5-6/T4-filtre-rejoue-apres.txt, tools/filtre_constats_dn56.py
+  ⛔ ET AUCUNE DES DEUX ANCRES LEGITIMES : le constat (8) est ancre dans
+    `mesures/dn5-4/T1-build-froid.txt` et le (10) dans
+    `mesures/dn5-2/T5-campagne-mutants.txt` ⇒ ⛔ ZERO SUR-CORRECTION.
+  ⚠️ Retirer `mesures/` EN BLOC ferait sonner DEUX FAUSSES ALARMES.

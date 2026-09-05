@@ -58,6 +58,24 @@ DESKNODE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 COCKPIT_DEFAUT = os.path.join(os.environ.get("HOME") or "/nonexistent",
                               "projects", "compagnon_project")
 
+# ═══════════════════════════════════════════════════════════════════════════
+# 🔴 dn5-8, 2026-09-05 — CET INSTRUMENT ETAIT UNE OCCURRENCE DE CE QU'IL CHERCHE
+# ═══════════════════════════════════════════════════════════════════════════
+# MESURE AUX DEUX BORNES : a `360a5c2^` la sentinelle est ABSENTE de l'arbre
+# (0 fichier, rc=1) ; a `360a5c2` — le commit de cloture de `dn5-6`, celui qui
+# AJOUTE ce fichier — elle rend 1 fichier (rc=0). ⇒ LE TEMOIN NEGATIF NE
+# POUVAIT PAS SURVIVRE A SA PROPRE PUBLICATION : il etait vert pendant toute
+# l'execution de `dn5-6` parce que le fichier n'etait pas encore commite.
+#
+# ⛔ CES TROIS CONSTANTES SONT DERIVEES OU UNIQUES, ET ⛔ JAMAIS RECRITES
+#   AILLEURS DANS L'ARBRE : un second porteur empoisonnerait la mesure qu'elles
+#   servent. C'est le temoin (a3) qui le garde — ⛔ plus une discipline.
+MOI = os.path.relpath(os.path.abspath(__file__), DESKNODE)
+SENTINELLE = "dn56-motif-qui-n-existe-nulle-part-8f3a1c"
+# La BANNIERE que `main()` imprime : c'est elle qui rend une TRANSCRIPTION DE
+# TIR reconnaissable. ⛔ Elle n'est ecrite qu'ICI, et `main()` l'imprime.
+BANNIERE = "dn5-6 / T1 — LE FILTRE : LES 10 CONSTATS REJOUES UN PAR UN"
+
 ok_temoins = [0]
 ko_temoins = [0]
 
@@ -95,14 +113,115 @@ def run(cmd, cwd=None, timeout=600):
 # LES PRIMITIVES DE MESURE — chacune a son temoin plus bas
 # ═══════════════════════════════════════════════════════════════════════════
 
-def motif_resout(motif, depot=None):
-    """Combien de fichiers portent ce motif A `HEAD`. ⛔ pas dans l'arbre de
-    travail : un motif se verifie sur ce qui est COMMITE."""
-    rc, out, _, _ = run(["git", "grep", "-l", "-F", "--", motif, "HEAD", "--"],
-                        cwd=depot or DESKNODE)
+def toplevel_git(depot):
+    """La RACINE git du depot interroge, ⛔ pas le repertoire ou l'on tape.
+
+    ⇒ AJOUT DU 2026-09-05 (`dn5-8`). Mesure de la revue : avec une EGALITE DE
+    CHEMIN pour predicat, `depot=<DESKNODE>/tools` eteignait la garde en
+    silence (elle rendait 1 au lieu de 0) pendant que la ligne imprimee
+    affirmait quand meme que l'instrument etait exclu. Un sous-repertoire du
+    depot de l'instrument, ou un autre worktree du meme depot, RESTE garde."""
+    rc, out, _, _ = run(["git", "rev-parse", "--show-toplevel"], cwd=depot)
+    if rc != 0 or not out.strip():
+        return None
+    return os.path.realpath(out.strip())
+
+
+_EXCLUS = {}
+
+
+def chemins_exclus(depot=None):
+    """CE QUE L'INSTRUMENT RETIRE DE SA PROPRE POPULATION, ET POURQUOI.
+
+    ⇒ AJOUT DU 2026-09-05 (`dn5-8`). Rend `(chemins, reserve)` :
+      · `chemins` — l'instrument LUI-MEME, et SES PROPRES TRANSCRIPTIONS DE
+        TIR, reconnues par la BANNIERE que `main()` imprime (⛔ derivee, pas
+        codee en dur). Mesure : sans cela, la capture d'un tir complet, une
+        fois COMMITEE, redevient porteuse des 10 motifs et ANNULE exactement
+        l'effet du correctif (+1 sur 10/10 — le mecanisme paye par `dn5-1`).
+      · `reserve` — `None` quand la garde s'applique entierement, sinon LA
+        PHRASE A IMPRIMER. ⛔ Jamais un silence : mesure du 2026-09-05,
+        `git grep … ':(exclude)<chemin absent de HEAD>'` sort `rc=0` SANS UN
+        MOT et n'exclut RIEN.
+
+    ⛔ RETIRER `mesures/` EN BLOC SERAIT UNE SUR-CORRECTION, ET C'EST MESURE :
+      l'ancre legitime du constat (8) est `mesures/dn5-4/T1-build-froid.txt` et
+      celle du (10) est `mesures/dn5-2/T5-campagne-mutants.txt` ⇒ les exclure
+      ferait sonner DEUX FAUSSES ALARMES. Ce qui est decidable, c'est la
+      TRANSCRIPTION, ⛔ pas la capture.
+
+    ⛔ ET CE QUI RESTE INDECIDABLE EST ECRIT : aucun `git grep` ne separe
+      « fichier qui ENREGISTRE le motif » de « fichier qui en est le SUJET ».
+      L'alarme est donc rearmee POUR LA CLASSE QU'ELLE SAIT DECIDER."""
+    ou = depot or DESKNODE
+    racine = toplevel_git(ou)
+    if racine is None or racine != toplevel_git(DESKNODE):
+        return ([], "⛔ GARDE NON APPLIQUEE : le depot interroge (%s) n'est pas "
+                    "celui ou l'instrument vit — il n'y est pas une occurrence."
+                    % (racine or ou))
+    if racine in _EXCLUS:
+        return _EXCLUS[racine]
+    rc, out, _, _ = run(["git", "grep", "-l", "-F", "--", BANNIERE, "HEAD", "--"],
+                        cwd=ou)
+    if rc not in (0, 1):
+        res = ([MOI], "⚠️ TRANSCRIPTIONS NON CHERCHEES : le `git grep` de la "
+                      "banniere a rendu rc=%d ⇒ SEUL l'instrument est retire."
+                      % rc)
+        _EXCLUS[racine] = res
+        return res
+    trans = sorted(set(l.split(":", 1)[1] for l in out.split("\n")
+                       if l.strip() and ":" in l))
+    chemins = sorted(set([MOI] + trans))
+    # 🔴 UNE EXCLUSION INERTE EST MUETTE — ON LA MESURE, ⛔ ON NE LA SUPPOSE PAS.
+    rc2, out2, _, _ = run(["git", "ls-tree", "-r", "--name-only", "HEAD", "--"]
+                          + [":(top,literal)" + p for p in chemins], cwd=ou)
+    presents = (set(l.strip() for l in out2.split("\n") if l.strip())
+                if rc2 == 0 else set())
+    absents = [p for p in chemins if p not in presents]
+    reserve = None
+    if absents:
+        reserve = ("⚠️ EXCLUSION INERTE — ces chemins sont ABSENTS de `HEAD`, "
+                   "ils n'excluent RIEN et `git grep` ne le dit pas : %s"
+                   % ", ".join(absents))
+    res = (chemins, reserve)
+    _EXCLUS[racine] = res
+    return res
+
+
+def motif_fichiers(motif, depot=None, inclure_soi=False):
+    """LES FICHIERS qui portent ce motif A `HEAD`. ⛔ pas dans l'arbre de
+    travail : un motif se verifie sur ce qui est COMMITE.
+
+    ⇒ PORTEE ELARGIE LE 2026-09-05 (`dn5-8`) — NFR3, la phrase d'origine
+    ci-dessus RESTE : la population EXCLUT desormais l'instrument et ses
+    propres transcriptions de tir, parce qu'UN INSTRUMENT N'EST PAS UNE
+    OCCURRENCE DE CE QU'IL CHERCHE. La garde ne s'applique QUE dans le depot
+    ou l'instrument vit (predicat : le TOPLEVEL git).
+    ⚠️ `inclure_soi=True` DEBRANCHE la garde : c'est ce que le temoin (a3)
+    exerce pour REPLANTER la faute, ⛔ pas pour se contenter d'exister.
+    ⚠️ Le pathspec est `top,literal` : un nom portant `*`, `?`, `[` ou `\\`
+    deviendrait sinon un glob, et un `cwd` non-racine le re-interpreterait."""
+    ou = depot or DESKNODE
+    chemins = [] if inclure_soi else chemins_exclus(ou)[0]
+    ps = [":(top,literal,exclude)" + p for p in chemins]
+    rc, out, _, _ = run(["git", "grep", "-l", "-F", "--", motif, "HEAD", "--"]
+                        + ps, cwd=ou)
     if rc not in (0, 1):
         return None
-    return len([l for l in out.split("\n") if l.strip()])
+    # ⚠️ `git grep -l` rend `HEAD:<chemin>` : le chemin est APRES le 1er `:`.
+    return sorted(l.split(":", 1)[1] for l in out.split("\n")
+                  if l.strip() and ":" in l)
+
+
+def motif_resout(motif, depot=None, inclure_soi=False):
+    """Combien de fichiers portent ce motif A `HEAD`. ⛔ pas dans l'arbre de
+    travail : un motif se verifie sur ce qui est COMMITE.
+
+    ⇒ 2026-09-05 (`dn5-8`) : ce n'est plus qu'un COMPTE de `motif_fichiers()`
+    — il en herite LA GARDE et LE CONTRAT D'ERREUR, inchange : `None` quand
+    `git grep` echoue dur (rc ∉ {0,1}), ⛔ jamais masque en `0`."""
+    f = motif_fichiers(motif, depot=depot, inclure_soi=inclure_soi)
+    return None if f is None else len(f)
 
 
 def porte_bilan(txt):
@@ -187,11 +306,23 @@ la lecon de `dn5-3` : son instrument repondait « ✅ NON » sur une chaine qui
 portait le defaut, et le temoin qui le gardait ne regardait que le MOTIF.
 """)
 
-    # (a) `motif_resout` — un motif present, un motif absent.
+    # (a) `motif_resout` — un motif present, un motif absent, ET LA GARDE
+    #     DE dn5-8 EXERCEE DANS LES DEUX SENS (2026-09-05).
+    #     ⚠️ (a3) et (a4) REPLANTENT la faute — ils ne se contentent pas de
+    #       debrancher la garde et d'exister (NFR7). (a3) prouve en plus
+    #       l'UNICITE de la sentinelle : un second porteur recreerait, mot pour
+    #       mot, la panne que cette marche repare.
     temoin(True, (motif_resout("def occurrences") or 0) > 0,
            "motif_resout voit un motif PRESENT")
-    temoin(0, motif_resout("dn56-motif-qui-n-existe-nulle-part-8f3a1c"),
+    temoin(0, motif_resout(SENTINELLE),
            "motif_resout ne voit PAS un motif absent")
+    temoin([MOI], motif_fichiers(SENTINELLE, inclure_soi=True),
+           "🔴 garde debranchee : il se compte LUI-MEME, et SEUL")
+    _sans = motif_fichiers(SENTINELLE, inclure_soi=True)
+    _avec = motif_fichiers(SENTINELLE)
+    temoin(({MOI}, 0),
+           (set(_sans or []) - set(_avec or []), motif_resout(BANNIERE)),
+           "la garde retire EXACTEMENT l'instrument, et ses tirs")
 
     # (b) `porte_bilan` — une sortie qui en porte une, une qui n'en porte pas.
     temoin(True, porte_bilan("bla\nBILAN : 5 OK, 0 KO\nbla"),
@@ -277,10 +408,30 @@ def constat(n, titre_c, motif, corps):
     print("\n" + "─" * 78)
     print("CONSTAT (%d) — %s" % (n, titre_c))
     print("─" * 78)
+    # ⇒ PORTEE DITE, 2026-09-05 (`dn5-8`, NFR3) : une gate — ou un instrument
+    #   — qui elargit sa portee SANS LE DIRE ment sur elle-meme ; c'est le
+    #   constat (9) de `dn5-6`. La phrase est DERIVEE du fait mesure,
+    #   ⛔ ce n'est pas une chaine affirmee (AC8.10).
+    _exclus, _reserve = chemins_exclus()
     r = motif_resout(motif)
     print("  preuve par motif : %r" % motif)
-    print("  ⇒ resout sur %s fichier(s) a HEAD%s"
-          % (r, "   🔴 LE MOTIF EST MORT" if r == 0 else ""))
+    if _exclus:
+        print("  ⇒ portee du compte : `HEAD`, ⛔ HORS %d fichier(s) — "
+              "l'instrument et ses transcriptions de tir :" % len(_exclus))
+        for _c in _exclus:
+            print("        ⛔ %s" % _c)
+    else:
+        print("  ⇒ portee du compte : `HEAD`, ⛔ AUCUNE exclusion appliquee")
+    if _reserve:
+        print("     %s" % _reserve)
+    if r is None:
+        # ⚠️ `r is None` ⛔ N'EST PAS `0` : sauter l'alarme en silence serait la
+        #   degradation muette que le constat (5) de cet instrument condamne.
+        print("  ⇒ ⛔ COMPTE INDISPONIBLE (`git grep` en echec dur) — "
+              "l'alarme de motif mort ⛔ N'EST PAS jugee.")
+    else:
+        print("  ⇒ resout sur %d fichier(s) a HEAD%s"
+              % (r, "   🔴 LE MOTIF EST MORT" if r == 0 else ""))
     verdict, pourquoi = corps()
     print("\n  ┏━ VERDICT : %s" % verdict)
     print("  ┗━ motif   : %s" % pourquoi)
@@ -875,15 +1026,25 @@ def c10():
         print("     ⛔ NON-ROUGES : %s" % ", ".join("%d(rc=%d)" % v for v in verts))
 
     # L'hypothese qui rend la cle de campagne valide.
-    hyp = motif_resout("cle valide (aucun libelle >= 58)")
-    rc_h, out_h, _, _ = run(["git", "grep", "-l", "-F", "--",
-                             "cle valide (aucun libelle >= 58)", "HEAD", "--"])
+    # 🔴 REVUE DU 2026-09-05 — CE SITE D'APPEL AVAIT ETE OUBLIE. Le COMPTE
+    #    passait par la primitive, mais le LISTING venait d'un `git grep` brut,
+    #    NON garde ET SANS `cwd` : la sortie publiait « 6 fichier(s) » puis en
+    #    listait SEPT, dont l'instrument lui-meme — un compte et une liste qui
+    #    se contredisent dans le meme paragraphe publie. Les deux viennent
+    #    desormais de LA MEME primitive gardee, avec la meme portee (AC8.9).
+    hyp_f = motif_fichiers("cle valide (aucun libelle >= 58)")
+    hyp = None if hyp_f is None else len(hyp_f)
     print("\n  l'hypothese `cle valide (aucun libelle >= 58)` resout dans "
           "%s fichier(s) :" % hyp)
-    for l in out_h.strip().split("\n"):
-        if l.strip():
-            print("     · %s" % l.strip())
-    print("     ⇒ elle ne vit que dans une CAPTURE, ⛔ dans aucun controle.")
+    for l in (hyp_f or []):
+        print("     · %s" % l)
+    _hors = [l for l in (hyp_f or []) if not l.startswith("mesures/")]
+    if hyp_f and not _hors:
+        print("     ⇒ elle ne vit que dans des CAPTURES, ⛔ dans aucun controle.")
+    elif _hors:
+        print("     ⇒ ⚠️ elle vit AUSSI hors `mesures/` : %s" % ", ".join(_hors))
+    else:
+        print("     ⇒ ⛔ PLUS AUCUN PORTEUR — l'hypothese a disparu de l'arbre.")
 
     # 🔴 REVUE DU 2026-09-05 — CE PREDICAT NE POUVAIT PAS VOIR SA REPARATION.
     #    Il cherchait `--mutant` dans `run_gates.sh` / `gates.yml`, que le
@@ -928,7 +1089,10 @@ def main():
     a = ap.parse_args()
 
     print("=" * 78)
-    print("dn5-6 / T1 — LE FILTRE : LES 10 CONSTATS REJOUES UN PAR UN")
+    # ⚠️ La banniere vient de la CONSTANTE : c'est elle qui rend une
+    #   transcription de tir reconnaissable, et une seconde ecriture litterale
+    #   casserait la garde en silence.
+    print(BANNIERE)
     print("=" * 78)
     rc, out, _, _ = run(["git", "rev-parse", "HEAD"])
     print("date       : %s" % time.strftime("%Y-%m-%dT%H:%M:%S"))
