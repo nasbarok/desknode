@@ -1,0 +1,79 @@
+==============================================================================
+T8 — LA RE-MESURE D'APRES-COMMIT (dn5-8)
+==============================================================================
+date : 2026-09-05T22:58:46
+⚠️ TOUTE MESURE PAR `subprocess`, ⛔ JAMAIS PAR LE SHELL DE SESSION.
+⛔ CE SCRIPT VIT HORS DE `tools/` — un fichier pose meme UNE SECONDE dans
+   `tools/` est DECOUVERT par le glob (mesure de `dn5-7`).
+
+🔴 POURQUOI CETTE CAPTURE EXISTE. La revue du 2026-09-05 a mesure que le
+   PREMIER JET s'annulait lui-meme : `constat()` imprime le motif LITTERAL,
+   donc la transcription d'un tir, UNE FOIS COMMITEE, redevenait porteuse
+   des 10 motifs — +1 sur 10/10, la colonne AVANT restauree. C'est le
+   mecanisme paye par `dn5-1` : une capture ecrite AVANT le commit qui la
+   publie. ⇒ ICI LA MESURE EST PRISE **APRES** CE COMMIT.
+
+desknode HEAD : 786f94049a6812a0653d28e4427864b81a2e0c0f
+cockpit  HEAD : f54e6b36f98638d97a530feca0a772f5a8be20e6
+
+── 1. LES 10 COMPTES, MESURES APRES LE COMMIT DE LEURS PROPRES CAPTURES ──
+  rc=0
+   ( 1)  ⇒ resout sur 2 fichier(s) a HEAD
+   ( 2)  ⇒ resout sur 10 fichier(s) a HEAD
+   ( 3)  ⇒ resout sur 2 fichier(s) a HEAD
+   ( 4)  ⇒ resout sur 12 fichier(s) a HEAD
+   ( 5)  ⇒ resout sur 4 fichier(s) a HEAD
+   ( 6)  ⇒ resout sur 8 fichier(s) a HEAD
+   ( 7)  ⇒ resout sur 4 fichier(s) a HEAD
+   ( 8)  ⇒ resout sur 4 fichier(s) a HEAD
+   ( 9)  ⇒ resout sur 8 fichier(s) a HEAD
+   (10)  ⇒ resout sur 4 fichier(s) a HEAD
+  ⇒ TEMOIN DE L'INSTRUMENT : 22 OK, 0 KO
+
+  ⇒ ATTENDU : identiques a la mesure d'AVANT-commit (le correctif doit
+    SURVIVRE a la publication de ses captures).
+
+── 2. CE QUI EST RETIRE DE LA POPULATION, ET CE QUI NE L'EST PAS ─────────
+  EXCLUS (5) :
+     ⛔ mesures/dn5-6/T1-filtre-10-constats.txt
+     ⛔ mesures/dn5-6/T4-filtre-rejoue-apres.txt
+     ⛔ mesures/dn5-8/T0-avant.txt
+     ⛔ mesures/dn5-8/T7-instrument-complet.txt
+     ⛔ tools/filtre_constats_dn56.py
+  reserve : AUCUNE — la garde s applique entierement
+  --- les 2 ancres LEGITIMES sous mesures/, qui NE DOIVENT PAS etre exclues ---
+     ✅ CONSERVEE : mesures/dn5-4/T1-build-froid.txt
+     ✅ CONSERVEE : mesures/dn5-2/T5-campagne-mutants.txt
+
+  ⇒ RETIRER `mesures/` EN BLOC AURAIT FAIT SONNER **DEUX FAUSSES ALARMES**.
+    Ce qui est decidable est la TRANSCRIPTION (reconnue par la banniere),
+    ⛔ pas la capture.
+
+── 3. LES 30 GATES, SUR L'ETAT FINAL COMMITE ────────────────────────────
+  rc=1
+  BILAN : 28 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 30 gates (183s)
+  ROUGE : · tools/verif_dossier_dn415.py (rc=1)
+  le rouge unique, sur l'etat final : rc=1   BILAN : 23 OK, 10 KO
+  ⇒ LES 10 `[KO ]`, CONFRONTES **PAR LIBELLE** (⛔ pas au compte) :
+      [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:ntation-artifacts/deferred-work.md [vl53l0x] #1 (l.5843) dont `sprint-change-proposal-2026-08-31.md` qui intr
+      [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:ifacts/sprint-status-desknode.yaml [vl53l0x] #1 (l.384) dn4-7-le-tof-porte-t-il-vraiment: blocked  # 🔒 HORS
+      [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:ing-artifacts/epics-desknode-v1.md [vl53l0x] #1 (l.2846) `done` depuis mi-août) : **on séquence par dépendanc
+      [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:rint-change-proposal-2026-08-31.md [vl53l0x] #1 (l.23) | « VL53L0X » | `TOF050C-VL6180X` — réfuté à l'inven
+      [KO ] toute occurrence de l'arbre est AU MANIFESTE             ⛔ 4 occurrence(s) de l'arbre SANS ligne de manifeste (sur 198 arbitree(s)) — chacune est listee ci-dessus
+      [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:on-artifacts/sprint-status-desknode.yaml [vl53l0x] #1 « dn4-7-le-tof-porte-t-il-vraiment: blocked #  »
+      [KO ] le manifeste ne cite aucune occurrence FANTOME           ⛔ 1 ligne(s) de manifeste SANS occurrence dans l'arbre (sur 195) — soit le constat a disparu, soit une occurrence DEJA ARBITREE vient d'etre echappee : dans ce cas RETIRER sa ligne de manifeste dans le MEME geste (AC40.5.f ii)
+      [KO ] le TEXTE a change sous un verdict inchange               cockpit:/sprint-status-desknode.yaml [busid-en-dur] #1 (l.390)
+      [KO ] la citation du manifeste colle au TEXTE de l'arbre       ⛔ 1 ligne(s) DERIVEE(S) : t-status-desknode.yaml:390
+      [KO ] somme des verdicts == occurrences de l'arbre             ⛔ 204 (manifeste) vs 207 (arbre), ecart -3 — CE QUI LE COMPOSE : 4 NOUVELLE(S) dans l'arbre : cockpit:tifacts/deferred-work.md [vl53l0x] #1 'dont `sprint-change-proposal-2026-08-31.' · cockpit:int-status-desknode.yaml [vl53l0x] #1 'dn4-7-le-tof-porte-t-il-vraiment: blocke' · cockpit:cts/epics-desknode-v1.md [vl53l0x] #1 '`done` depuis mi-août) : **on séquence p' · cockpit:e-proposal-2026-08-31.md [vl53l0x] #1 '| « VL53L0X » | `TOF050C-VL6180X` — réfu' || 1 FANTOME(S) au manifeste : cockpit:int-status-desknode.yaml [vl53l0x] #1 'dn4-7-le-tof-porte-t-il-vraiment: blocke'
+
+── 4. LES GARDE-FOUS, RELUS SUR L'ARBRE COMMITE ─────────────────────────
+  NFR8  `git diff` firmware/ (depuis la base)  rc=0  (VIDE)
+  NFR5  `deferred-work.md` DEPUIS LE COCKPIT   rc=0  (VIDE)
+  NFR6  renommages desknode                    rc=0  (VIDE)
+  NFR1  origin/main                            rc=0  7246f5248d1625a2a351bbb374c03f0585a008c3
+  NFR1  tags                                   rc=0  (VIDE)
+  porteurs de la SENTINELLE dans desknode      tools/filtre_constats_dn56.py
+
+==============================================================================
+FIN T8
+==============================================================================
