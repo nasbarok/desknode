@@ -98,11 +98,48 @@ def temoin(attendu, obtenu, libelle):
     return bon
 
 
+# 🔴 dn4-47, 2026-09-06 — UN `cwd` INUTILISABLE TUAIT L'INSTRUMENT EN TRACE
+#    NUE, ET IL LE FAISAIT **SUR TOUT RUNNER**.
+#    MESURE (`mesures/dn4-47/T1-instrument-hors-harnais.txt`) : avec un `HOME`
+#    etranger — la seule configuration qui reproduit un runner —
+#    `COCKPIT_DEFAUT` designe un repertoire ABSENT, `subprocess.run` levait
+#    `FileNotFoundError`, et `main()` mourait AVANT d'appeler `temoins()`.
+#    ⇒ `rc=1` et ⛔ AUCUNE ligne `⇒ TEMOIN :` : l'instrument n'avait rien juge,
+#      et le `rc` ne permettait pas de le distinguer d'un temoin tombe.
+#    ⚠️ `gates.yml` ECRIT LUI-MEME que le cockpit est « ABSENT — attendu : c'est
+#      un depot prive, ⛔ jamais clone » : le chemin de la trace nue est donc
+#      ATTEINT en CI, ⛔ pas hypothetique.
+#    ⇒ `run()` rend desormais un resultat **NOMME** : un `rc` non nul et un
+#      motif sur `stderr`. ⛔ Il ne leve plus. Une trace nue est « un rouge sans
+#      motif » — ce que la regle (4) de `run_gates.sh` interdit deja.
+#    ⚠️ LE CONTRAT DES APPELANTS EST INCHANGE : ils lisaient deja `rc != 0`
+#      (`toplevel_git`), ou `rc not in (0, 1)` (`motif_fichiers`, qui rend alors
+#      `None`, ⛔ jamais un `0` masque). Un echec NOMME est donc traite comme un
+#      echec, ⛔ pas comme un succes vide.
+MOTIF_RUN = "⛔ RUN IMPOSSIBLE :"
+RC_RUN_IMPOSSIBLE = 127
+
+
 def run(cmd, cwd=None, timeout=600):
-    """⛔ JAMAIS le shell de session. Toujours ici."""
+    """⛔ JAMAIS le shell de session. Toujours ici.
+
+    ⛔ ET RIEN NE SORT D'ICI EN EXCEPTION (`dn4-47`) : voir le bloc ci-dessus.
+    Le temoin (a5) REPLANTE la faute — il tape sur un `cwd` qui n'existe pas."""
     t0 = time.time()
-    p = subprocess.run(cmd, cwd=cwd, timeout=timeout,
-                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        p = subprocess.run(cmd, cwd=cwd, timeout=timeout,
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except subprocess.TimeoutExpired:
+        return (RC_RUN_IMPOSSIBLE, "",
+                "%s TIMEOUT apres %s s — cmd=%r cwd=%r"
+                % (MOTIF_RUN, timeout, cmd, cwd),
+                time.time() - t0)
+    except (OSError, subprocess.SubprocessError) as e:
+        # `cwd` absent ou illisible, binaire introuvable, fork impossible —
+        # chacun rend ICI un motif, ⛔ jamais une trace nue chez l'appelant.
+        return (RC_RUN_IMPOSSIBLE, "",
+                "%s %s — cmd=%r cwd=%r" % (MOTIF_RUN, e, cmd, cwd),
+                time.time() - t0)
     return (p.returncode,
             p.stdout.decode("utf-8", "replace"),
             p.stderr.decode("utf-8", "replace"),
@@ -323,6 +360,21 @@ portait le defaut, et le temoin qui le gardait ne regardait que le MOTIF.
     temoin(({MOI}, 0),
            (set(_sans or []) - set(_avec or []), motif_resout(BANNIERE)),
            "la garde retire EXACTEMENT l'instrument, et ses tirs")
+
+    # (a5) 🔴 dn4-47, 2026-09-06 — `run()` NE MEURT PLUS SUR UN `cwd`
+    #      INUTILISABLE. LA FAUTE EST **REPLANTEE**, ⛔ pas debranchee : on tape
+    #      sur un repertoire QUI N'EXISTE PAS, c'est-a-dire exactement ce que
+    #      vaut `COCKPIT_DEFAUT` sur un runner. Avant le correctif, cette
+    #      ligne-ci levait `FileNotFoundError` et l'instrument mourait sans
+    #      jamais publier son `⇒ TEMOIN :`.
+    _d5 = tempfile.mkdtemp(prefix="dn56-temoin-")
+    try:
+        _rc5, _out5, _err5, _ = run(["git", "rev-parse", "HEAD"],
+                                    cwd=os.path.join(_d5, "n-existe-pas"))
+        temoin((True, True, ""), (_rc5 != 0, MOTIF_RUN in _err5, _out5),
+               "run() sur un cwd ABSENT : rc non nul + motif, ⛔ pas de trace nue")
+    finally:
+        shutil.rmtree(_d5, ignore_errors=True)
 
     # (b) `porte_bilan` — une sortie qui en porte une, une qui n'en porte pas.
     temoin(True, porte_bilan("bla\nBILAN : 5 OK, 0 KO\nbla"),
@@ -1097,8 +1149,13 @@ def main():
     rc, out, _, _ = run(["git", "rev-parse", "HEAD"])
     print("date       : %s" % time.strftime("%Y-%m-%dT%H:%M:%S"))
     print("desknode   : %s" % out.strip())
-    rc, out, _, _ = run(["git", "rev-parse", "HEAD"], cwd=COCKPIT_DEFAUT)
-    print("cockpit    : %s" % out.strip())
+    # ⚠️ `dn4-47` — LE LIBELLE NE BOUGE PAS, mais l'absence se NOMME : sans ce
+    #    motif la ligne sortait VIDE sur un runner, ce qui ne se distingue pas
+    #    d'un `git` muet. Le correctif de `run()` la rend lisible, ⛔ il ne la
+    #    supprime pas.
+    rc, out, err, _ = run(["git", "rev-parse", "HEAD"], cwd=COCKPIT_DEFAUT)
+    print("cockpit    : %s" % (out.strip() or err.strip().split("\n")[0]
+                               or "⛔ indisponible (rc=%s)" % rc))
     print("mesures    : ⛔ TOUTES par `subprocess`, ⛔ jamais le shell de session")
 
     if not temoins():
