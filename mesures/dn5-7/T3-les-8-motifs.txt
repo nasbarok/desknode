@@ -1,0 +1,94 @@
+==============================================================================
+T3 — LE TEMOIN **POSITIF** : LES 8 MOTIFS, ET UN CHIFFRE RE-DERIVE (dn5-7)
+==============================================================================
+date : 2026-09-05T12:05:12
+⚠️ TOUTE MESURE PAR `subprocess`, ⛔ JAMAIS PAR LE SHELL DE SESSION.
+
+🔴 CE TEMOIN **RELIT CE QUI EST LIVRE**. Il ne prouve ⛔ PAS une absence.
+   C'est le correctif du report (7) de `dn5-5` : ses 4 temoins de
+   verification prouvaient tous qu'une chose N'A PAS eu lieu — **0 sur 4**
+   re-derivait un chiffre de l'arbre.
+
+⚠️ **`-l` PUIS UN COMPTE DE LIGNES (DES FICHIERS), ⛔ PAS `git grep -c`**
+   (qui compte des OCCURRENCES) — correctif paye par `dn5-6`.
+
+──────────────────────────────────────────────────────────────────────────────
+§1 — LES **8** MOTIFS, RE-RESOLUS
+──────────────────────────────────────────────────────────────────────────────
+⚠️ TROIS COLONNES, ET ELLES NE DISENT PAS LA MEME CHOSE :
+   · CADRAGE    = le compte publie au cadrage de `dn5-7` (ancre de la story)
+   · HEAD       = `git grep -l -F <motif> HEAD --` — l'arbre COMMITTE
+   · TRAVAIL    = `git grep -l -F <motif> --` + les fichiers NON SUIVIS —
+                  c'est ce que cette marche LIVRE, ⛔ pas encore committe
+                  au moment de ce tir.
+
+  # motif                                              depot     CADRAGE HEAD TRAVAIL
+  1 git ls-tree -r -l HEAD mesures/                    desknode      3     3     5
+  2 la section citee PAR SON TITRE existe              desknode      4     4     7
+  3 aucun porteur A VENIR n'est                        desknode      8     8    10
+  4 dn4-15 / AC6 — CHAQUE OCCURRENCE PORTE UN VERDICT  desknode     37    37    40
+  5 T7 — TEMOIN NFR8                                   desknode      3     3     5
+  6 FR10 NE BASCULE RIEN                               cockpit       2     2     3
+  7 temoin est une LECTURE                             desknode      2     2     4
+  8 ## [Unreleased]                                    desknode      1     1     3
+
+  ⇒ **8 motifs sur 8 RESOLVENT** — ⛔ aucun n'a disparu, aucun n'est invente.
+  ✅ **HEAD == CADRAGE pour les 8** : l'ancre de la story tient encore.
+  ⚠️ La colonne TRAVAIL est SUPERIEURE la ou cette marche a ecrit — c'est
+     ce qu'on attend d'une marche qui livre, ⛔ pas un ecart.
+  ⚠️ Le motif (6) rend **0** dans `desknode` et **3** dans le cockpit : sa
+     `location` est `compagnon:sprint-status-desknode.yaml`. ⛔ Ce n'est pas
+     un motif disparu.
+
+──────────────────────────────────────────────────────────────────────────────
+§2 — UN CHIFFRE PUBLIE, **RE-DERIVE AU COMMIT QU'IL NOMME**
+──────────────────────────────────────────────────────────────────────────────
+⛔ ⛔ JAMAIS A `HEAD` : `CONTRIBUTING.md` refute lui-meme l'ancre mouvante —
+   « le chiffre publie ici est celui que l'arbre qui le porte rend » est un
+   POINT FIXE (la taille de l'arbre inclut le fichier dont la taille depend
+   du chiffre). Ce qui est FALSIFIABLE, c'est le commit NOMME.
+
+  LA PHRASE PUBLIEE, LUE DANS LE FICHIER LIVRE (⛔ pas recopiee ici) :
+     « …Measured on **`76b031a`** … holds **428 files** and **10 234 634 bytes** »
+
+  LA COMMANDE, JOUEE PAR `subprocess` :
+     git ls-tree -r -l 76b031a -- mesures/
+     rc = 0
+
+  LA CONFRONTATION :
+     publie  : 428 fichiers / 10234634 octets
+     derive  : 428 fichiers / 10234634 octets
+     ⇒ **CONCORDE A L'OCTET**
+
+  ⚠️ ⛔ CE N'EST PAS UNE VERIFICATION MANUELLE : la meme confrontation est
+     desormais JOUEE A CHAQUE TIR DE GATE, sur **5** chiffres publies.
+       [OK ] ⛔ aucun chiffre publie n'ancre sur une ref MOUVANTE        6 chiffre(s) ancre(s), tous sur un COMMIT
+       [⚠️ ] 1 chiffre(s) ancre(s) ne nomment AUCUNE portee suivie ⇒ ⛔ pas derivables par `git ls-tree` (ex. `du -sb .git`) : CONTRIBUTING.md « **134 406 999 bytes** »
+       [OK ] tout chiffre ANCRE sur un commit se re-derive              5 chiffre(s) re-derive(s) a leur commit (`76b031a`)
+
+──────────────────────────────────────────────────────────────────────────────
+§3 — CE QUE CETTE MARCHE A LIVRE, **RELU DANS LES FICHIERS LIVRES**
+──────────────────────────────────────────────────────────────────────────────
+  ⛔ Ces lignes ne sont pas recopiees : elles sont LUES a l'instant.
+
+  · desknode:tools/verif_licences_dn52.py — les libelles neufs, a l'AST :
+      verif_licences_dn52.py                         « tout chiffre ANCRE sur un commit se re-derive »          sites : [1166]
+      verif_licences_dn52.py                         « ⛔ aucun chiffre publie n'ancre sur une ref MOUVANTE »    sites : [1111]
+      verif_ledger_dn416.py                          « tout porteur de la liste AC5.6 du tracker est VIVANT »   sites : [1593, 1624]
+
+  · desknode:tools/verif_campagne_dn440.py — les mutants neufs, LUS :
+      M1-ac56-porteur-mort         un porteur de la liste AC5.6 du tracker qui est une story `done`
+      M2-ac56-porteur-inconnu      un porteur de la liste AC5.6 qui n'existe PAS au tracker
+
+  · compagnon:sprint-status-desknode.yaml — les lignes AJOUTEES, LUES :
+      cle CREEE  : dn4-46-le-dossier-reprend-les-occurrences-que-son-manifeste-a-perdues: backlog  # 🆕 **NEE LE 202
+      solde      : #      ✅ **SOLDEE LE 2026-09-05 PAR `dn5-7`.** Son porteur `dn5-6-…` est passe
+      ligne AC5.6: #  17. 🆕 **LA SEULE GATE ROUGE DU DEPOT N'A PLUS DE PORTEUR VIVANT** — ligne
+      ligne AC5.6: #  18. 🆕 **PORTEE DE FR10 : LA LISTE DOIT-ELLE ETRE LISIBLE DEPUIS LE CLONE ?**
+      statut     : dn5-7-ce-que-dn5-5-a-reporte-est-re-verifie-et-porte: in-progress  # 🟢 V0.1 · **
+
+  · le controle neuf du (3), RELU SUR LE TRACKER LIVRE :
+           [close] item 15         ⇒ dn5-6-les-sept-constats-reportes-sont-re-verifies-av CLOSE LE 2026-09-05
+           19 item(s), 18 designation(s) : 17 soumise(s) a la vivacite, 1 close(s) et datee(s)
+        [OK ] tout porteur de la liste AC5.6 du tracker est VIVANT           17 porteur(s) VIVANT(S) au tracker
+==============================================================================

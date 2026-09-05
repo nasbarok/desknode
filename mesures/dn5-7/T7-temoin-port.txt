@@ -1,0 +1,154 @@
+==============================================================================
+T7 — TEMOIN NFR8 « APRES » (dn5-7)
+==============================================================================
+date     : 2026-09-05T13:45:55
+pris par : subprocess (⛔ jamais le shell de session — le proxy reecrit git status/grep)
+⛔ AUCUN PORT SERIE N'EST OUVERT PAR CETTE CAPTURE. Lectures de fichier, zero port.
+
+🔴 POURQUOI LE TEMOIN N'EST **PAS** LE BANDEAU DE BOOT
+  Le SHA du firmware n'est imprime QU'AU BOOT ⇒ le relire exigerait de PRENDRE le
+  port, c'est-a-dire exactement le geste qu'on pretend n'avoir pas fait. Le temoin
+  est donc la POSSESSION DU PORT, lue sans ouvrir aucun port : l'agent tient COM3
+  en exclusif depuis son lancement ; si son compteur `s mur` / `seq` ne retombe
+  JAMAIS a zero de part et d'autre de la fenetre de la story, l'agent n'est jamais
+  mort ⇒ aucun autre process n'a PU obtenir COM3 ⇒ AUCUN FLASH N'A **PU** AVOIR LIEU.
+  ⚠️ C'est la MONOTONIE qui prouve, ⛔ pas la valeur.
+==============================================================================
+
+🔴 REPORT (5) DE `dn5-5` — CE QUI EST CORRIGE ICI, ET CE QUI NE PEUT PAS L'ETRE
+  Le report demandait « un `git status --porcelain` COMPLET du cockpit capture aux
+  DEUX bornes ». Mesure du cadrage dn5-7 : T0 **et** T7 de `dn5-5` portent le MEME
+  libelle `status (implementation-artifacts uniquement)` ⇒ ils etaient comparables
+  **dans une portee declaree**, mais INCOMPLETS. Et `mesures/dn5-6/T7-temoin-port.txt`
+  ne porte AUCUN `git status` du cockpit alors que son T0 en porte un ⇒ recidive.
+  ⛔ Les fenetres de `dn5-5` et `dn5-6` sont CLOSES et ⛔ une capture ne se retouche
+  jamais ⇒ pour elles c'est un ECART DECLARE, definitif. Ce qui est reparable est la
+  forme des captures d'ICI : ci-dessous le `git status --porcelain` **COMPLET**,
+  ⛔ non filtre, des DEUX depots, a la MEME portee a T0 et a T7.
+==============================================================================
+
+--- desknode (CODE)
+  HEAD                                       rc=0
+      360a5c20a4ef62d9189612160e415ab2467f94eb
+  branche                                    rc=0
+      main
+  status --porcelain (COMPLET)               rc=0
+       M tools/verif_campagne_dn440.py
+       M tools/verif_ledger_dn416.py
+       M tools/verif_licences_dn52.py
+      ?? mesures/dn5-7/
+
+--- compagnon_project (COCKPIT)
+  HEAD                                       rc=0
+      332a153ca5fa7f710adfb18dcb1812e291df1b3e
+  branche                                    rc=0
+      desknode-p0-p1-clos
+  status --porcelain (COMPLET, ⛔ NON FILTRE) rc=0
+       M _bmad-output/implementation-artifacts/sprint-status-desknode.yaml
+      ?? _bmad-output/implementation-artifacts/dn5-7-ce-que-dn5-5-a-reporte-est-re-verifie-et-porte.md
+      ?? ops/audit_impostor_episodes.py
+  ⚠️ `ops/audit_impostor_episodes.py` est un fichier non suivi HORS PERIMETRE
+     (KidSat) : deja present au cadrage de `dn5-6`. ⛔ jamais `git add -A`.
+
+--- ANCRE DE LA STORY (frontmatter du dossier)
+  baseline_revision_desknode = 360a5c2
+  baseline_revision (cockpit) = 332a153
+  git rev-list --count <ancre>..HEAD         rc=0
+      0
+
+==============================================================================
+TEMOIN DE POSSESSION DU PORT — dn-agent.log / dn-agent.started
+==============================================================================
+
+--- dn-agent.log : /mnt/h/dev/projets/desknode/dn-agent.log
+  taille  : 5042591 o
+  mtime   : 2026-09-05T13:45:54
+  lignes  : 42296
+  DERNIERE LIGNE PORTEUSE (source de `s mur` et `seq`) :
+      [agent] témoin coût cumulé : 5608.094 s CPU / 305763.5 s mur = 1.834 % d'un cœur (0.1146 % machine) — seq=1528799
+  >>> s_mur_T7 = 305763.5
+  >>> seq_T7   = 1528799
+
+
+--- dn-agent.started : /mnt/h/dev/projets/desknode/dn-agent.started
+  taille  : 289 o
+  mtime   : 2026-09-02T00:49:45
+  CONTENU (profil utilisateur CAVIARDE — il DOIT etre inchange a T7) :
+      lance   : 2026-09-02T00:49:45+02:00
+      regime  : double-clic (detache)
+      python  : C:\Users\<caviarde>\AppData\Local\Programs\Python\Python313\python.exe
+      agent   : H:\dev\projets\desknode\dn_agent.py
+      args    : --serie COM3 --stop-si H:\dev\projets\desknode\dn-agent.stop --temoin
+      coeurs  : 16
+  ⇒ `--serie COM3` : c'est CETTE ligne qui prouve la tenue EXCLUSIVE du port.
+
+==============================================================================
+NFR8 — `firmware/` EST-IL TOUCHE ?
+==============================================================================
+  diff --name-only <ancre>..HEAD -- firmware/ rc=0
+      (VIDE)
+  ⛔ PAS `main..HEAD` : le dev travaille SUR main ⇒ ce controle rendrait VIDE quoi
+     qu'il arrive — un controle qui ne peut pas rougir. L'ancre est le SHA DE DEBUT
+     DE STORY (360a5c2), ⛔ pas une ref mouvante.
+  diff --stat -- firmware/ (arbre de travail) rc=0
+      (VIDE)
+  status --porcelain -- firmware/            rc=0
+      (VIDE)
+
+==============================================================================
+NFR5 — `deferred-work.md` EST-IL TOUCHE ? — JOUE **DEPUIS LE COCKPIT**
+==============================================================================
+🔴 DEFAUT MESURE SUR `T7-temoin-port.txt` DE `dn5-5`, ⛔ PAS REPRODUIT ICI :
+   le pathspec `deferred-work.md` joue **depuis `desknode`** ne matche AUCUN
+   fichier ⇒ il rend VIDE quoi qu'il arrive : un controle AVEUGLE.
+   Le fichier vit dans le COCKPIT ⇒ le `cwd` est /home/nasbarok/projects/compagnon_project.
+  diff --stat -- _bmad-output/implementation-artifacts/deferred-work.md rc=0
+      (VIDE)
+  status --porcelain -- _bmad-output/implementation-artifacts/deferred-work.md rc=0
+      (VIDE)
+  ⚠️ TEMOIN NEGATIF DU CONTROLE LUI-MEME — le meme pathspec joue depuis `desknode`,
+     pour montrer qu'il y est MUET et donc inutilisable comme garde :
+       depuis desknode : rc=0, sortie='' ⇒ ⛔ AVEUGLE
+
+==============================================================================
+NFR6 / NFR1 — RENOMMAGE ? HISTORIQUE REECRIT ?
+==============================================================================
+  desknode   lignes commencant par `R` : 0
+  cockpit    lignes commencant par `R` : 0
+  desknode : git log --oneline -5 (SHA publies) rc=0
+      360a5c2 fix(dn5-6): LES 10 CONSTATS SONT REJOUES AVANT D'ETRE CRUS -- ET SEPT DE MES PROPRES CORRECTIFS NE GARDAIENT RIEN
+      0bdc9e8 fix(dn5-5): LES DEUX CAUSES QUE J'AI PUBLIEES ETAIENT FAUSSES -- ET « L'ECART SE REFERME A L'OCTET » N'ETAIT PAS UNE PREUVE
+      76b031a feat(dn5-5): LE CLONE ANNONCE SON PRIX -- ET `--depth 1` NE FAIT GAGNER QUE 5 %
+      7246f52 test(dn5-2): L'ESSAI DU CLA EST REJOUE SUR LA VERSION PUBLIEE -- ET LA FACTURATION A RENDU DEUX CHIFFRES POUR LE MEME ESSAI
+      eba01bf fix(dn5-2): DANS UN SCALAIRE REPLIE YAML, `#` N'EST PAS UN COMMENTAIRE -- ET MA VALIDATION PASSAIT VERTE
+  desknode : git rev-parse origin/main       rc=0
+      7246f5248d1625a2a351bbb374c03f0585a008c3
+  ⇒ NFR1 : `origin/main` DOIT valoir 7246f524… aux deux bornes (⛔ ni force ⛔ ni
+     fusion ⛔ ni tag). La locale le devance de 3 commits : ce n'est PAS l'etat publie.
+  desknode : git tag --list                  rc=0
+      (VIDE)
+
+
+==============================================================================
+NFR8 — LA CONCLUSION : LA **MONOTONIE**, ⛔ PAS LA VALEUR
+==============================================================================
+date : 2026-09-05T13:45:55
+  s mur : T0 = 297023.5  ⇒  T7 = 305763.5     (delta +8740.0 s)
+  seq   : T0 = 1485099  ⇒  T7 = 1528799     (delta +43700)
+  ⇒ **LES DEUX COMPTEURS ONT STRICTEMENT AUGMENTE, SANS RETOMBER A ZERO**
+
+  ⇒ L'AGENT N'EST JAMAIS MORT entre les deux bornes ⇒ il a tenu **COM3 en
+    EXCLUSIF** sans interruption ⇒ **aucun autre process n'a PU obtenir le
+    port** ⇒ **AUCUN FLASH N'A PU AVOIR LIEU.**
+  ⛔ CE TEMOIN N'A OUVERT AUCUN PORT : ce sont deux LECTURES DE FICHIER.
+  ⚠️ C'est la MONOTONIE qui prouve, ⛔ pas la valeur — une valeur elevee
+     lue une seule fois ne dirait rien.
+
+  ── ET `firmware/` AUX DEUX BORNES ─────────────────────────────────────
+    git diff --name-only <ancre>..HEAD -- firmware/      rc=0  (VIDE)
+    git diff --stat -- firmware/ (arbre de travail)      rc=0  (VIDE)
+    git status --porcelain -- firmware/                  rc=0  (VIDE)
+  ⇒ ⛔ ZERO ecriture dans `firmware/`, aux DEUX bornes, sur l'ancre du SHA
+    de DEBUT DE STORY (`360a5c2`) — ⛔ pas `main..HEAD`, qui ne pourrait pas
+    rougir puisque le dev travaille SUR `main`.
+==============================================================================

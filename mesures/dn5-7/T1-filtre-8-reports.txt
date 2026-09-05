@@ -1,0 +1,491 @@
+==============================================================================
+T1 — LE FILTRE DES **8** REPORTS DE `dn5-5` (dn5-7)
+==============================================================================
+date : 2026-09-05T11:36:49
+⚠️ TOUTE MESURE PAR `subprocess`, ⛔ JAMAIS PAR LE SHELL DE SESSION.
+   Motif : mesure `dn5-1` du 2026-09-02 — le proxy de session reecrit les
+   sorties. ⚠️ RE-VERIFIE ICI LE 2026-09-05 : `git status --porcelain` joue
+   dans le shell de session rend la chaine `ok`, la ou `subprocess` rend
+   les lignes reelles. La regle n'est ⛔ pas theorique.
+
+🔴 LA POPULATION EST **HUIT**, ⛔ PAS QUATRE.
+   `dn5-6` a publie « les 4 reports de `dn5-5` » a trois endroits ; le
+   frontmatter `deferred:` de `dn5-5` en porte **HUIT**. Les trois
+   occurrences sont DATEES dans le dossier de `dn5-6`, ⛔ pas effacees.
+   ⇒ la cle de cette story-ci ne porte AUCUN COMPTE : un compte ecrit dans
+     une cle ne peut plus se corriger (`dn5-6` garde « les sept » pour 13).
+
+🔴 CE QUE T1 EST, ET CE QU'IL N'EST PAS
+   T1 est un **FILTRE**, ⛔ pas une formalite. Chacun des 8 est REJOUE
+   individuellement ; seuls les **VRAIS** ouvrent un correctif. Un constat
+   qui ne se reproduit plus se **CLOT avec sa date et son motif**.
+   Trois verdicts, ⛔ aucun autre : **VRAI** · **DEJA FAUX** ·
+   **NON REPRODUCTIBLE**. ⛔ Aucun « probablement ».
+==============================================================================
+
+==============================================================================
+REPORT (1) — AUCUN CONTROLE NE CONFRONTE LE CHIFFRE PUBLIE DE `mesures/`
+==============================================================================
+  VERBATIM `dn5-5` : « Aucun controle ne confronte le chiffre publie de
+  `mesures/` a `git ls-tree` : la 5e occurrence du defaut sera verte comme
+  les quatre precedentes. »   location : desknode:tools/verif_licences_dn52.py
+
+  MOTIF (l'ancre de la preuve, ⛔ jamais `fichier:ligne`) :
+     'git ls-tree -r -l HEAD mesures/'
+     desknode : 3 fichier(s)   (rc=0)
+         HEAD:CONTRIBUTING.md
+         HEAD:mesures/dn5-4/T0-inventaire-avant.txt
+         HEAD:mesures/dn5-5/T4-volumetries.txt
+     cockpit  : 5 fichier(s)   (rc=0)
+         HEAD:_bmad-output/implementation-artifacts/dn5-3-plus-rien-ne-depend-de-ma-machine-et-ce-qui-la-nomme-le-dit.md
+         HEAD:_bmad-output/implementation-artifacts/dn5-4-le-firmware-se-construit-dans-un-dossier-neuf.md
+         HEAD:_bmad-output/implementation-artifacts/dn5-5-le-clone-annonce-son-prix-et-le-reste-a-faire-a-un-porteur.md
+         HEAD:_bmad-output/implementation-artifacts/sprint-status-desknode.yaml
+         HEAD:_bmad-output/planning-artifacts/epics-desknode-v1.md
+
+  (a) AUCUNE GATE NE LIT `git ls-tree` — LA COMMANDE DU REPORT, REJOUEE :
+     COMMANDE : grep -rn ls-tree tools/verif_bme680_retard_dn45.py tools/verif_campagne_dn440.py tools/verif_campagne_dn56.py tools/verif_courbe_dn413.py tools/verif_cumul_ambient_dn45.py tools/verif_d4_nvs_dn45.py tools/verif_decoupe_horloge_dn418.py tools/verif_demarrage_dn443.py tools/verif_dossier_d5_dn45.py tools/verif_dossier_dn415.py tools/verif_harnais_dn413.py tools/verif_hist_dn413.py tools/verif_instruments_dn423.py tools/verif_journal_soak_dn45.py tools/verif_langues_dn442.py tools/verif_ledger_dn416.py tools/verif_licences_dn52.py tools/verif_lissage_dn45.py tools/verif_miroir_horloge_dn418.py tools/verif_paliers_dn441.py tools/verif_polices_dn440.py tools/verif_rebouclage_dn45.py tools/verif_reprise_horloge_dn418.py tools/verif_selection_dn49.py tools/verif_serie_dn412.py tools/verif_source_lhm_dn48.py tools/verif_sr03.py tools/verif_veille_dn33.py tools/verif_verrou_lvgl_dn413.py tools/verif_xip_dn422.py tools/run_gates.sh
+        (cwd = /home/nasbarok/projects/desknode)
+     rc = 1 — SORTIE (0 ligne(s)) :
+        (VIDE)
+     ⇒ **rc=1, sortie VIDE** sur les 30 gates + le runner : la mesure du
+       report se reproduit A L'IDENTIQUE.
+
+     ⚠️ ET LE MEME MOTIF, ELARGI A TOUT `tools/` — pour que le lecteur voie
+        que le fichier qui le porte n'est ⛔ PAS une gate :
+     COMMANDE : grep -rn ls-tree tools/
+        (cwd = /home/nasbarok/projects/desknode)
+     rc = 0 — SORTIE (2 ligne(s)) :
+        tools/inventaire_motif_dn53.py:125:        return [l for l in _git(["ls-tree", "-r", "--name-only", rev]).split("\n") if l]
+        grep: tools/__pycache__/inventaire_motif_dn53.cpython-312.pyc: binary file matches
+     ⇒ une seule ligne de SOURCE, dans `inventaire_motif_dn53.py` (la
+       seconde correspondance est son `.pyc` compile, ⛔ pas du source), et
+       ce fichier est DELIBEREMENT hors du glob `tools/verif_*.py` de
+       `run_gates.sh` — le verser en ferait une gate, piege D1 de `dn5-3`.
+       ⇒ **AUCUNE GATE** ne confronte le chiffre publie.
+
+  (b) LES CHIFFRES PUBLIES SONT-ILS JUSTES ? (⇒ ⛔ pas un rouge naturel)
+     git ls-tree -r -l 76b031a mesures/     ⇒  428 fichier(s),    10234634 o
+     git ls-tree -r -l 76b031a (arbre entier) ⇒  603 fichier(s),    46254844 o
+     git ls-tree -r -l 76b031a docs/        ⇒   25 fichier(s),    27992816 o
+     git ls-tree -r -l 7246f52 mesures/     ⇒  419 fichier(s),    10133104 o
+     PUBLIE dans `CONTRIBUTING.md` : `mesures/` a `76b031a` = **428 fichiers
+       / 10 234 634 o** · arbre entier = **603 / 46 254 844** · `docs/` =
+       **27 992 816** · historique date `419 / 10 133 104` (= `7246f52`).
+     ⇒ **LES CHIFFRES CONCORDENT A L'OCTET.** ⛔ Donc AUCUN rouge naturel
+       n'est possible : un controle elargi passera VERT, et vert ⛔ ne
+       distingue pas « il garde » de « il ne regarde rien ». Seul un MUTANT
+       QUI REPLANTE (un chiffre falsifie) separe les deux.
+
+  (c) LE POINT FIXE, ET SA SORTIE — `CONTRIBUTING.md` l'ecrit lui-meme :
+     « le chiffre publie ici est celui que l'arbre qui le porte rend » est
+     INSATISFIABLE (la taille de l'arbre inclut le fichier dont la taille
+     depend du chiffre). Ce qui est FALSIFIABLE est le chiffre **AU COMMIT
+     QU'IL NOMME** : `git ls-tree -r -l <commit>` est deterministe et
+     independant de l'arbre de travail. ⇒ le controle demande « ce chiffre
+     decrit-il LE COMMIT QU'IL NOMME ? », ⛔ pas « decrit-il aujourd'hui ? ».
+
+  🎯 VERDICT (1) : **VRAI**
+     MOTIF : la mesure du report se reproduit a l'identique (0 gate lit
+     `ls-tree`), et l'arbre a bouge depuis (`dn5-6` a modifie la gate visee)
+     sans rien y changer. ⇒ CORRECTIF DU (1).
+
+==============================================================================
+REPORT (2) — LES RENVOIS `§ *Titre*` PEUVENT POURRIR EN VERT
+==============================================================================
+  VERBATIM `dn5-5` : « Les deux renvois « § *Titre* » ajoutes par cette
+  marche sont hors de la forme que le controle « la section citee PAR SON
+  TITRE existe » reconnait : ils peuvent pourrir en vert. »
+
+  MOTIF (l'ancre de la preuve, ⛔ jamais `fichier:ligne`) :
+     'la section citee PAR SON TITRE existe'
+     desknode : 4 fichier(s)   (rc=0)
+         HEAD:mesures/dn4-39/T4-run-rouge.txt
+         HEAD:mesures/dn5-2/T5-campagne-mutants.txt
+         HEAD:mesures/dn5-2/T8-revue-code.txt
+         HEAD:tools/verif_licences_dn52.py
+     cockpit  : 3 fichier(s)   (rc=0)
+         HEAD:_bmad-output/implementation-artifacts/dn5-2-le-depot-tient-les-promesses-deja-publiees.md
+         HEAD:_bmad-output/implementation-artifacts/dn5-5-le-clone-annonce-son-prix-et-le-reste-a-faire-a-un-porteur.md
+         HEAD:_bmad-output/implementation-artifacts/sprint-status-desknode.yaml
+
+  (a) CE QUE LA GATE VOIT AUJOURD'HUI :
+     COMMANDE : python3 tools/verif_licences_dn52.py
+        (cwd = /home/nasbarok/projects/desknode)
+     rc = 0 — SORTIE (4 ligne(s)) :
+        ── (c2/c3) LES SECTIONS ET LES OUTILS CITES EXISTENT ─────────────
+          [OK ] la section citee PAR SON TITRE existe                      1 citation(s)
+          [OK ] tout marqueur cite COMME marqueur est defini               17 citation(s) ancree(s) sur la page
+        BILAN : 32 OK, 0 KO
+
+  (b) CE QUE L'ARBRE PORTE — LES RENVOIS `§ *Titre*` **CROISES** :
+     [CROISE  ] docs/dn5-1-ecart-promesses.md  § *Conventions in this repository* → CONTRIBUTING.md   resout=OUI
+     [INTERNE ] docs/dn5-1-ecart-promesses.md  § *Les mesures*   (⛔ aucun fichier cible cite)
+     [CROISE  ] docs/dn5-1-ecart-promesses.md  § *Les deux paliers matériels* → README.md   resout=OUI
+     [CROISE  ] docs/dn5-1-ecart-promesses.md  § *What cloning this costs* → CONTRIBUTING.md   resout=OUI
+     [CROISE  ] docs/roadmap.md                § *Conventions in this repository* → CONTRIBUTING.md   resout=OUI
+     [CROISE  ] docs/roadmap.md                § *Conventions in this repository* → CONTRIBUTING.md   resout=OUI
+     ⇒ **5 renvois CROISES**, 1 interne(s). La gate en voit **1**
+       (la forme `[`x.md`](path), section *« Titre »*`).
+     ⚠️ LE TRACKER AVAIT CONCLU AUTREMENT, ET C'ETAIT FAUX : il a mesure
+       `CONTRIBUTING.md` SEUL, y a trouve 0 renvoi `§ *…*`, et conclu « le
+       cas a disparu ». La gate balaie **10** fichiers de prose, ⛔ pas un.
+     ⚠️ **LES 5 RESOLVENT TOUS** ⇒ ⛔ aucun rouge naturel ; le mutant qui
+       REPLANTE est la SEULE preuve possible.
+
+  🎯 VERDICT (2) : **VRAI** — et PIRE que ce que le report disait
+     MOTIF : le report parlait de **2** renvois ; il y en a **5** croises
+     aujourd'hui, dans **2** fichiers, et la gate en confronte **1**.
+     ⇒ CORRECTIF DU (2).
+
+==============================================================================
+REPORT (3) — AUCUN CONTROLE NE LIT LES PORTEURS DE LA LISTE AC5.6
+==============================================================================
+  VERBATIM `dn5-5` : « La liste AC5.6 est deposee au tracker, ou aucun
+  controle ne lit ses porteurs, alors que la regle de vivacite est deja
+  mecanisee pour le ledger. »   location : desknode:tools/verif_ledger_dn416.py
+
+  MOTIF (l'ancre de la preuve, ⛔ jamais `fichier:ligne`) :
+     "aucun porteur A VENIR n'est"
+     desknode : 8 fichier(s)   (rc=0)
+         HEAD:mesures/dn4-16/T5-gate.txt
+         HEAD:mesures/dn4-16/T5-mutants.txt
+         HEAD:mesures/dn4-24/T0-verif_ledger_dn416.log
+         HEAD:mesures/dn4-40/T0-ledger.txt
+         HEAD:mesures/dn4-40/T8-ledger-sortie.txt
+         HEAD:mesures/dn4-44/T7-ledger.txt
+         HEAD:tools/verif_campagne_dn440.py
+         HEAD:tools/verif_ledger_dn416.py
+     cockpit  : 4 fichier(s)   (rc=0)
+         HEAD:_bmad-output/implementation-artifacts/dn4-39-les-gates-s-invoquent-sans-qu-on-y-pense.md
+         HEAD:_bmad-output/implementation-artifacts/dn4-44-aucun-controle-neuf-ne-sort-sans-son-mutant.md
+         HEAD:_bmad-output/implementation-artifacts/dn5-5-le-clone-annonce-son-prix-et-le-reste-a-faire-a-un-porteur.md
+         HEAD:_bmad-output/implementation-artifacts/sprint-status-desknode.yaml
+
+  (a) SUR QUOI LE CONTROLE DE VIVACITE ITERE AUJOURD'HUI :
+     COMMANDE : python3 tools/verif_ledger_dn416.py --cockpit /home/nasbarok/projects/compagnon_project
+        (cwd = /home/nasbarok/projects/desknode)
+     rc = 0 — SORTIE (4 ligne(s)) :
+        ── 3. LE PORTEUR EST VIVANT (AC6.5) ──────────────────────────────
+          [OK ] aucun porteur A VENIR n'est `done`/`superseded`                tracker : 78 cle(s), 160 porteur(s) soumis
+          [OK ] tout porteur A VENIR existe au tracker                         sprint-status-desknode.yaml
+        BILAN : 34 OK, 0 KO
+     ⇒ `for e in ouvertes:` — et `ouvertes` vient de `deferred-work.md`.
+       `REL_TRACKER` n'est lu que pour RESOUDRE des statuts
+       (`statut_effectif`, `STATUTS_MORTS`). ⇒ **la liste AC5.6 du tracker
+       n'est la population d'AUCUN controle.**
+
+  (b) LA LISTE AC5.6, RE-RESOLUE AU TRACKER LE 2026-09-05 :
+     bloc AC5.6 : ancre `📌 AC5.6`, borne par ses DEUX fences `═══`
+     (92 lignes de corps). ⛔ ANCRAGE PAR CLE, ⛔ PAS PAR NUMERO DE LIGNE :
+     le bloc ecrit lui-meme que quatre ancres de ligne y ont deja ete fausses.
+       item 1   ⇒ epic-dn8                                                         VIVANT (backlog)
+       item 2   ⇒ epic-dn8                                                         VIVANT (backlog)
+       item 3   ⇒ epic-dn8                                                         VIVANT (backlog)
+       item 4   ⇒ epic-dn8                                                         VIVANT (backlog)
+       item 5   ⇒ epic-dn8                                                         VIVANT (backlog)
+       item 6   ⇒ epic-dn8                                                         VIVANT (backlog)
+       item 7   ⇒ epic-dn8                                                         VIVANT (backlog)
+       item 8   ⇒ epic-dn8                                                         VIVANT (backlog)
+       item 9   ⇒ epic-dn8                                                         VIVANT (backlog)
+       item 10  ⇒ epic-dn8                                                         VIVANT (backlog)
+       item 11  ⇒ dn4-45-la-ci-construit-le-firmware                               VIVANT (backlog)
+       item 12  ⇒ epic-dn6                                                         VIVANT (backlog)
+       item 13  ⇒ epic-dn7                                                         VIVANT (backlog)
+       item 14  ⇒ dn4-5-le-module-vit-tout-seul                                    VIVANT (in-progress)
+       item 15  ⇒ dn5-6-les-sept-constats-reportes-sont-re-verifies-avant-d-etre-crus 🔴 MORT (done)
+       item 16  ⇒ dn5-2-le-depot-tient-les-promesses-deja-publiees                 VIVANT (in-progress)
+     ⇒ **16 designations : 15 VIVANTES, 1 MORTE(S), 0 INCONNUE(S)**
+     ⚠️ `dn4-39` est cite dans le bloc mais **EN NEGATION** (« ⛔ PAS
+       `dn4-39-…` »). Un controle naif le compterait comme porteur ⇒ la
+       population se prend sur la **DESIGNATION** `⇒ **`cle`**`, ⛔ pas sur
+       la mention. Il n'apparait pas ci-dessus : la regle tient deja.
+
+  🎯 VERDICT (3) : **VRAI** — et l'instance est **VIVANTE**, ⛔ pas theorique
+     MOTIF : la population n'est lue par aucun controle, ET la liste porte
+     DEJA un porteur MORT (item 15 ⇒ `dn5-6-…`, `done` depuis le
+     2026-09-05). Le report disait « les 13 porteurs sont vivants
+     aujourd'hui » : ce n'est **plus vrai**. ⇒ CORRECTIF DU (3).
+
+==============================================================================
+REPORT (4) — LA SEULE GATE ROUGE DU DEPOT N'A PLUS DE PORTEUR VIVANT
+==============================================================================
+  VERBATIM `dn5-5` : « La seule gate ROUGE du depot n'a plus de porteur
+  vivant. »   evidence : « rend 22 OK / 10 KO … ses deux porteurs au
+  tracker, `dn4-39` et `dn4-40`, sont tous deux `done`. »
+
+  MOTIF (l'ancre de la preuve, ⛔ jamais `fichier:ligne`) :
+     'dn4-15 / AC6 — CHAQUE OCCURRENCE PORTE UN VERDICT'
+     desknode : 37 fichier(s)   (rc=0)
+         HEAD:mesures/dn4-24/T0-verif_dossier_dn415.log
+         HEAD:mesures/dn4-39/T0-gates-clone.txt
+         HEAD:mesures/dn4-39/T0-gates-local.txt
+         HEAD:mesures/dn4-39/T7-gates-local.txt
+         HEAD:mesures/dn4-40/T0-compte-console.txt
+         HEAD:mesures/dn4-40/T0-dossier.txt
+         HEAD:mesures/dn4-40/T0-gates-avant.txt
+         HEAD:mesures/dn4-40/T1-gates.txt
+         HEAD:mesures/dn4-40/T2-gates.txt
+         HEAD:mesures/dn4-40/T4-gates.txt
+         HEAD:mesures/dn4-40/T8-dossier-sortie.txt
+         HEAD:mesures/dn4-40/T8-gates-sortie.txt
+         HEAD:mesures/dn4-41/T0-gates-avant.txt
+         HEAD:mesures/dn4-41/T9-gates-apres.txt
+         HEAD:mesures/dn4-42/T0-gates-avant.txt
+         HEAD:mesures/dn4-42/T6-gates-apres.txt
+         HEAD:mesures/dn4-43/T0-gates-avant.txt
+         HEAD:mesures/dn4-43/T6-gates-apres.txt
+         HEAD:mesures/dn4-43/T7-gates-apres-revue.txt
+         HEAD:mesures/dn4-43/T8-gates-fin-seance.txt
+         HEAD:mesures/dn4-44/T0-gates-avant.txt
+         HEAD:mesures/dn4-44/T0-occurrences.txt
+         HEAD:mesures/dn4-44/T7-gates-apres.txt
+         HEAD:mesures/dn4-44/T7-occurrences.txt
+         HEAD:mesures/dn5-1/T0-gates-avant.txt
+         HEAD:mesures/dn5-1/T6-gates-apres.txt
+         HEAD:mesures/dn5-2/T0-gates-avant.txt
+         HEAD:mesures/dn5-2/T7-gates-apres.txt
+         HEAD:mesures/dn5-3/T0-gates-avant.txt
+         HEAD:mesures/dn5-3/T7-gates-apres.txt
+         HEAD:mesures/dn5-4/T0-gates-avant.txt
+         HEAD:mesures/dn5-4/T7-gates-apres.txt
+         HEAD:mesures/dn5-5/T0-gates-avant.txt
+         HEAD:mesures/dn5-5/T7-gates-apres.txt
+         HEAD:mesures/dn5-6/T0-gates-avant.txt
+         HEAD:mesures/dn5-6/T7-gates-apres.txt
+         HEAD:tools/verif_dossier_dn415.py
+     cockpit  : 1 fichier(s)   (rc=0)
+         HEAD:_bmad-output/implementation-artifacts/sprint-status-desknode.yaml
+
+  (a) LA GATE, REJOUEE :
+     COMMANDE : python3 tools/verif_dossier_dn415.py --cockpit /home/nasbarok/projects/compagnon_project
+        (cwd = /home/nasbarok/projects/desknode)
+     rc = 1 — SORTIE (11 ligne(s)) :
+          [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:ntation-artifacts/deferred-work.md [vl53l0x] #1 (l.5843) dont `sprint-change-proposal-2026-08-31.md` qui intr
+          [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:ifacts/sprint-status-desknode.yaml [vl53l0x] #1 (l.384) dn4-7-le-tof-porte-t-il-vraiment: blocked  # 🔒 HORS 
+          [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:ing-artifacts/epics-desknode-v1.md [vl53l0x] #1 (l.2846) `done` depuis mi-août) : **on séquence par dépendanc
+          [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:rint-change-proposal-2026-08-31.md [vl53l0x] #1 (l.23) | « VL53L0X » | `TOF050C-VL6180X` — réfuté à l'inven
+          [KO ] toute occurrence de l'arbre est AU MANIFESTE             ⛔ 4 occurrence(s) de l'arbre SANS ligne de manifeste (sur 198 arbitree(s)) — chacune est listee ci-dessus
+          [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:on-artifacts/sprint-status-desknode.yaml [vl53l0x] #1 « dn4-7-le-tof-porte-t-il-vraiment: blocked #  »
+          [KO ] le manifeste ne cite aucune occurrence FANTOME           ⛔ 1 ligne(s) de manifeste SANS occurrence dans l'arbre (sur 195) — soit le constat a disparu, soit une occurrence DEJA ARBITREE vient d'etre echappee : dans ce cas RETIRER sa ligne de manifeste dans le MEME geste (AC40.5.f ii)
+          [KO ] le TEXTE a change sous un verdict inchange               cockpit:/sprint-status-desknode.yaml [busid-en-dur] #1 (l.390)
+          [KO ] la citation du manifeste colle au TEXTE de l'arbre       ⛔ 1 ligne(s) DERIVEE(S) : t-status-desknode.yaml:390
+          [KO ] somme des verdicts == occurrences de l'arbre             ⛔ 204 (manifeste) vs 207 (arbre), ecart -3 — CE QUI LE COMPOSE : 4 NOUVELLE(S) dans l'arbre : cockpit:tifacts/deferred-work.md [vl53l0x] #1 'dont `sprint-change-proposal-2026-08-31.' · cockpit:int-status-desknode.yaml [vl53l0x] #1 'dn4-7-le-tof-porte-t-il-vraiment: blocke' · cockpit:cts/epics-desknode-v1.md [vl53l0x] #1 '`done` depuis mi-août) : **on séquence p' · cockpit:e-proposal-2026-08-31.md [vl53l0x] #1 '| « VL53L0X » | `TOF050C-VL6180X` — réfu' || 1 FANTOME(S) au manifeste : cockpit:int-status-desknode.yaml [vl53l0x] #1 'dn4-7-le-tof-porte-t-il-vraiment: blocke'
+        BILAN : 23 OK, 10 KO
+
+  (b) LES DEUX PORTEURS, RE-RESOLUS AU TRACKER :
+     dn4-39-les-gates-s-invoquent-sans-qu-on-y-pense                done
+     dn4-40-les-gates-cessent-de-passer-a-vide-et-le-manifeste-s-ancre-par-motif done
+     dn4-45-la-ci-construit-le-firmware                             backlog
+     epic-dn8                                                       backlog
+     epic-dn8-retrospective                                         optional
+
+  (c) OU TOMBENT LES 10 KO — LA MESURE QUI TRANCHE LE PORTEUR :
+     10 KO au total, dont **7 portent un chemin `cockpit:`**.
+     ⇒ une CI ne les verra **JAMAIS** : `tools/run_gates.sh` declare cette
+       gate `NON_JOUABLE` (rc=4) sans cockpit. ⇒ ce rouge ⛔ **n'est PAS une
+       condition de publication** — donc ⛔ pas `epic-dn8`, et ⛔ pas
+       `dn4-45` (story de la CI).
+
+  🎯 VERDICT (4) : **VRAI** — avec un chiffre CORRIGE, ⛔ pas efface
+     MOTIF : le rouge est toujours la et ses deux porteurs sont toujours
+     `done`. ⚠️ Le report ecrivait `22 OK / 10 KO` ; la mesure du
+     2026-09-05 rend **`23 OK, 10 KO`** — `dn5-6` a ajoute UN controle OK.
+     L'ENSEMBLE DES 10 KO est INCHANGE. ⇒ le correctif est une LIGNE AU
+     TRACKER avec un porteur VIVANT, ⛔ aucune ligne dans la gate.
+
+==============================================================================
+REPORT (5) — LA COMPARABILITE T0/T7 DU `git status` COCKPIT
+==============================================================================
+  VERBATIM `dn5-5` : « La comparabilite T0/T7 du `git status` cockpit n'est
+  pas etablie : **T7 aurait filtre `planning-artifacts`**. »
+  severity : medium (UNVERIFIED)   location : desknode:mesures/dn5-5/T7-temoin-port.txt
+
+  MOTIF (l'ancre de la preuve, ⛔ jamais `fichier:ligne`) :
+     'T7 — TEMOIN NFR8'
+     desknode : 3 fichier(s)   (rc=0)
+         HEAD:mesures/dn5-4/T7-temoin-port.txt
+         HEAD:mesures/dn5-5/T7-temoin-port.txt
+         HEAD:mesures/dn5-6/T7-temoin-port.txt
+     cockpit  : 1 fichier(s)   (rc=0)
+         HEAD:_bmad-output/implementation-artifacts/sprint-status-desknode.yaml
+
+  (a) CE QUE LES DEUX BORNES DE `dn5-5` PORTENT REELLEMENT :
+     mesures/dn5-5/T0-temoin-port.txt       status --porcelain         rc=0 | status (implementation-artifacts uniquement) rc=0 | status --porcelain -- firmware/ rc=0
+     mesures/dn5-5/T7-temoin-port.txt       status --porcelain         rc=0 | status (implementation-artifacts uniquement) rc=0 | status --porcelain -- firmware/ rc=0
+     mesures/dn5-6/T0-temoin-port.txt       status --porcelain                         rc=0 | status (implementation-artifacts uniquement) rc=0 | status --porcelain -- firmware/            rc=0 | status --porcelain -- _bmad-output/implementation-artifacts/deferred-work.md rc=0 | status --porcelain | lignes commencant par R rc=0
+     mesures/dn5-6/T7-temoin-port.txt       status --porcelain -- firmware/                rc=0
+
+     ⇒ **T0 ET T7 DE `dn5-5` PORTENT LE MEME LIBELLE** :
+       `status (implementation-artifacts uniquement)`. Ils sont donc
+       **COMPARABLES DANS UNE PORTEE DECLAREE** — la cause ECRITE dans le
+       report (« T7 aurait filtre `planning-artifacts` », c'est-a-dire une
+       ASYMETRIE entre les deux bornes) est **REFUTEE PAR LA MESURE**.
+       Ce qui manque n'est pas la comparabilite : c'est la **COMPLETUDE**.
+     🔴 ET `dn5-6` FAIT PIRE, DANS L'AUTRE SENS : son T0 porte la ligne
+       filtree, son **T7 n'en porte AUCUNE**. ⇒ recidive AGGRAVEE.
+
+  (b) CE QUI EST REPARABLE, ET CE QUI NE L'EST PAS :
+     ⛔ Une capture ne se retouche JAMAIS, et les fenetres de `dn5-5` et de
+     `dn5-6` sont **CLOSES** ⇒ pour elles c'est un **ECART DECLARE**,
+     definitif. Ce qui est reparable est la FORME DES CAPTURES D'ICI :
+     `mesures/dn5-7/T0-temoin-port.txt` et `T7-temoin-port.txt` portent le
+     `git status --porcelain` **COMPLET** des DEUX depots, a la MEME portee.
+     ⚠️ Garder cette forme **pour l'avenir** est un controle sur `mesures/` :
+     c'est le **report n°3 de `dn5-6`**, qui a son propre porteur — ⛔ pas ici.
+
+  🎯 VERDICT (5) : **DEJA FAUX** (sur la cause qu'il ECRIT)
+     MOTIF : le report impute la non-comparabilite a une ASYMETRIE T0/T7
+     (« T7 aurait filtre »). MESURE : les deux bornes portent le MEME
+     libelle de portee ⇒ l'asymetrie **n'existe pas**. Le defaut reel est
+     la portee INCOMPLETE, commune aux deux bornes — et il est **hors de
+     portee d'un correctif** : les captures sont closes.
+     ⇒ ⛔ ZERO ligne de correctif sur `mesures/dn5-5/T7-temoin-port.txt`.
+     ⇒ CLOS AU TRACKER, avec sa date, son motif, et son ECART DECLARE.
+
+==============================================================================
+REPORT (6) — LA PORTEE DE FR10 : LA LISTE DOIT-ELLE ETRE LISIBLE DU CLONE ?
+==============================================================================
+  VERBATIM `dn5-5` : « Portee de FR10 : la liste « ce qui manque »
+  devrait-elle etre lisible DEPUIS LE CLONE, et pas seulement au tracker
+  prive ? »   evidence : « Ce qui trancherait : **une decision owner**. »
+  ⛔ AUCUNE `location` — ce report ne vise aucun fichier.
+
+  MOTIF (l'ancre de la preuve, ⛔ jamais `fichier:ligne`) :
+     'FR10 NE BASCULE RIEN'
+     desknode : 0 fichier(s)   (rc=1)
+     cockpit  : 2 fichier(s)   (rc=0)
+         HEAD:_bmad-output/implementation-artifacts/sprint-board-desknode.html
+         HEAD:_bmad-output/implementation-artifacts/sprint-status-desknode.yaml
+     ⇒ **0 fichier dans `desknode`, 2 dans le cockpit** — et c'est
+       COHERENT : la `location` du motif est `compagnon:…`. ⛔ Ce n'est pas
+       un motif qui a disparu.
+
+  (a) LES DEUX COTES SONT-ILS TOUJOURS DEBOUT ? (mesure, ⛔ pas avis)
+     COTE A — AC5.6 POSE LE TRACKER :
+       le bloc AC5.6 ecrit lui-meme « DEPOSEE AU TRACKER LE 2026-09-05,
+       ⛔ JAMAIS DANS `deferred-work.md` (NFR5) ». Present : OUI (mesure (b)
+       du report (3) ci-dessus : le bloc est lu et resolu).
+     COTE B — L'EPIC INVOQUE LE PRINCIPE INVERSE POUR `dn4-45` :
+       rc=0, 3 ligne(s)
+         HEAD:_bmad-output/implementation-artifacts/dn5-5-le-clone-annonce-son-prix-et-le-reste-a-faire-a-un-porteur.md:64:      `desknode:docs/roadmap.md`, ⛔ pas seulement dans ce depot-ci, qui n'est jamais c
+         HEAD:_bmad-output/implementation-artifacts/sprint-status-desknode.yaml:614:  dn5-7-ce-que-dn5-5-a-reporte-est-re-verifie-et-porte: backlog  # 🟢 V0.1 · **STORY DE CONSOLIDATION — ⛔ ELLE NE CORRIGE RIEN
+         HEAD:_bmad-output/planning-artifacts/epics-desknode-v1.md:2109:  > `desknode:docs/roadmap.md`, ⛔ pas seulement dans ce dépôt-ci, qui n'est jamais cloné.
+
+  🎯 VERDICT (6) : **VRAI** — la question est OUVERTE, et ⛔ elle ne se MESURE pas
+     MOTIF : les DEUX cotes sont toujours ecrits dans l'arbre au
+     2026-09-05. Ce report ne decrit ⛔ aucun comportement d'entree/sortie
+     a corriger : c'est une **DECISION**. ⛔ AUCUNE mesure ne la tranche, et
+     cette marche ⛔ NE LA TRANCHE PAS. ⇒ elle recoit un **PORTEUR** et les
+     **DEUX cotes ecrits**, sur le precedent exact du constat 12 de `dn5-6`
+     (redaction juridique du CLA : arbitrage owner ⇒ `epic-dn8`).
+
+==============================================================================
+REPORT (7) — TOUS LES TEMOINS DE `dn5-5` SONT NEGATIFS
+==============================================================================
+  VERBATIM `dn5-5` : « Tous les temoins de verification de la marche sont
+  NEGATIFS : aucun ne relit la section livree ni ne re-derive un chiffre du
+  clone. »   ⛔ AUCUNE `location`.
+
+  MOTIF (l'ancre de la preuve, ⛔ jamais `fichier:ligne`) :
+     'temoin est une LECTURE'
+     desknode : 2 fichier(s)   (rc=0)
+         HEAD:mesures/dn5-3/T1-temoin-negatif.txt
+         HEAD:mesures/dn5-3/T7-temoin-apres.txt
+     cockpit  : 1 fichier(s)   (rc=0)
+         HEAD:_bmad-output/implementation-artifacts/sprint-status-desknode.yaml
+
+  (a) LA POPULATION EST CELLE QUE LE REPORT ENUMERE, ⛔ PAS `mesures/dn5-5/`
+     ENTIER. Verbatim : « Gates, `git diff` sur `firmware/` et le ledger,
+     `git rev-parse`, temoin de port ». Ce sont les **TEMOINS DE
+     VERIFICATION** (T0/T7), ⛔ pas les captures de MESURE de la marche.
+     Les deux ensembles sont donc rendus SEPAREMENT, ⛔ pas confondus.
+
+     — LES 4 TEMOINS DE VERIFICATION DE `dn5-5` :
+       mesures/dn5-5/T0-gates-avant.txt           re-derive un chiffre de l'arbre : ⛔ NON
+       mesures/dn5-5/T0-temoin-port.txt           re-derive un chiffre de l'arbre : ⛔ NON
+       mesures/dn5-5/T7-gates-apres.txt           re-derive un chiffre de l'arbre : ⛔ NON
+       mesures/dn5-5/T7-temoin-port.txt           re-derive un chiffre de l'arbre : ⛔ NON
+       ⇒ **0 sur 4**. Ils prouvent tous qu'une chose **N'A PAS** eu lieu.
+         C'est necessaire, ⛔ pas suffisant : une sortie prouvee uniquement
+         par des « ca n'a pas eu lieu » ne dit RIEN de ce qui est livre.
+
+     — LES CAPTURES DE MESURE, RENDUES POUR QUE LE PARTAGE SOIT VISIBLE :
+       mesures/dn5-5/T1-clone-complet.txt         `ls-tree` : ⛔ NON
+       mesures/dn5-5/T10-volumetries-arbre-porteur.txt `ls-tree` : OUI
+       mesures/dn5-5/T2-clone-depth1.txt          `ls-tree` : ⛔ NON
+       mesures/dn5-5/T3-ecart-du-vs-clone.txt     `ls-tree` : ⛔ NON
+       mesures/dn5-5/T4-volumetries.txt           `ls-tree` : OUI
+       mesures/dn5-5/T5-inventaire-reste-a-faire.txt `ls-tree` : OUI
+       mesures/dn5-5/T8-decomposition-ecart-REFUTE-T3.txt `ls-tree` : ⛔ NON
+       mesures/dn5-5/T9-profondeur-vs-perimetre.txt `ls-tree` : ⛔ NON
+       ⚠️ TROIS d'entre elles LISENT l'arbre — mais ce sont les captures qui
+       PRODUISENT le livrable, ⛔ pas celles qui le VERIFIENT. Le report vise
+       les secondes, et il les nomme.
+
+  🎯 VERDICT (7) : **VRAI**
+     MOTIF : la mesure se reproduit. ⇒ CORRECTIF DU (7) : cette marche
+     livre `mesures/dn5-7/T3-les-8-motifs.txt`, un temoin **POSITIF** qui
+     RELIT ce qui est livre et **re-derive** un chiffre publie de
+     `CONTRIBUTING.md` au commit qu'il nomme. ⚠️ Le meme geste ferme le (1) :
+     le controle neuf du (1) EST une relecture de ce qui est publie.
+
+==============================================================================
+REPORT (8) — `CHANGELOG.md` N'EST PAS TOUCHE ET AUCUN MOTIF NE L'ECRIT
+==============================================================================
+  VERBATIM `dn5-5` : « `CHANGELOG.md` n'est pas touche et aucun motif ne
+  l'ecrit, alors que `dn5-2` et `dn5-3` l'ont mis a jour dans le meme commit
+  que leur livrable. »   evidence : « **Plausible mais aucune regle du
+  dossier ne l'impose par story**. »   severity : low
+
+  MOTIF (l'ancre de la preuve, ⛔ jamais `fichier:ligne`) :
+     '## [Unreleased]'
+     desknode : 1 fichier(s)   (rc=0)
+         HEAD:CHANGELOG.md
+     cockpit  : 1 fichier(s)   (rc=0)
+         HEAD:_bmad-output/implementation-artifacts/sprint-status-desknode.yaml
+
+  (a) QUEL COMMIT A TOUCHE `CHANGELOG.md` EN DERNIER ?
+     COMMANDE : git log --format=%h %ad %s --date=short -5 -- CHANGELOG.md
+        (cwd = /home/nasbarok/projects/desknode)
+     rc = 0 — SORTIE (5 ligne(s)) :
+        7246f52 2026-09-05 test(dn5-2): L'ESSAI DU CLA EST REJOUE SUR LA VERSION PUBLIEE -- ET LA FACTURATION A RENDU DEUX CHIFFRES POUR LE MEME ESSAI
+        7c9795b 2026-09-04 fix(dn5-2): LA REVUE SOLDE 15 CORRECTIFS -- ET TROIS GARDES DU CLA NE REGARDAIENT PLUS LE BON FICHIER
+        aaeac86 2026-09-04 fix(dn5-3): LA REVUE CORRIGE 4 CHIFFRES QUE LEUR PROPRE COMMANDE REFUTAIT, ET VERSE L'INSTRUMENT QUI MANQUAIT
+        0386bb6 2026-09-04 docs(dn5-3): LE DEPOT DIT POURQUOI CE QUI LE NOMME RESTE, ET LES COMPTES PERIMES SONT DATES
+        7119abe 2026-09-02 feat(dn4-39): la CI existe — et les 4 phrases publiees qui la niaient sont ANNOTEES dans CE commit
+     ⇒ dernier commit porteur : **`7246f52`** (`dn5-2`). ⛔ Ni `dn5-5`
+       (`76b031a`, `0bdc9e8`) ⛔ ni `dn5-6` (`360a5c2`) ne l'ont touche.
+
+  (b) EXISTE-T-IL UNE REGLE QUI L'IMPOSE ?
+     rc=0 — 3 ligne(s) citant `CHANGELOG` dans la prose de regle :
+       HEAD:CONTRIBUTING.md:692:  a `CHANGELOG.md` claiming NVIDIA support the code refutes. The full list is in
+       HEAD:docs/roadmap.md:21:⚠️ **This page is not the changelog and not the history.** It lists only the markers
+       HEAD:docs/roadmap.md:98:| `dn5-2` | Making the repository keep the promises it **already published**: licensing coverage, `THIRD-PARTY.md`, the CLA bot that `CONTRIBUTING.md` mentioned but t
+
+  🎯 VERDICT (8) : **VRAI** sur le FAIT, et la question reste UNE QUESTION
+     MOTIF : le fait est confirme a l'octet (`CHANGELOG.md` inchange depuis
+     `7246f52`). Mais le report demande *FAUT-IL UNE REGLE*, ⛔ pas *faut-il
+     rattraper* — et il l'ecrit lui-meme (« aucune regle du dossier ne
+     l'impose par story »). ⇒ ⛔ **AUCUN rattrapage retroactif du
+     `CHANGELOG`** : reecrire une entree pour une marche close fabriquerait
+     un journal qui n'a jamais eu lieu. ⇒ PORTEUR `epic-dn8`, qui est celle
+     qui transforme `## [Unreleased]` en `v0.1.0-beta`.
+
+==============================================================================
+SYNTHESE DU FILTRE — LES **8**, ⛔ AUCUN SANS VERDICT
+==============================================================================
+  (1) chiffre `mesures/` non confronte a `ls-tree`  ⇒ **VRAI**
+  (2) renvois `§ *Titre*` hors forme reconnue        ⇒ **VRAI** (5, ⛔ pas 2)
+  (3) porteurs de la liste AC5.6 non lus             ⇒ **VRAI** (1 DEJA MORT)
+  (4) gate rouge sans porteur vivant                 ⇒ **VRAI** (23 OK/10 KO)
+  (5) comparabilite T0/T7 du `git status` cockpit    ⇒ **DEJA FAUX**
+  (6) portee de FR10 (lisible du clone ?)            ⇒ **VRAI** (⛔ non tranchable)
+  (7) tous les temoins sont NEGATIFS                 ⇒ **VRAI**
+  (8) `CHANGELOG.md` non touche                      ⇒ **VRAI** (question de REGLE)
+
+  ⇒ **5 correctifs ouverts** — (1), (2), (3), (4) et (7).
+  ⇒ **1 clos DEJA FAUX** — (5), avec son ecart declare.
+  ⇒ **2 portes sans correctif** — (6) arbitrage owner, (8) question de regle.
+  ⛔ AUCUN des 8 ne ressort SANS PORTEUR : c'est le defaut qui a cree cette story.
+==============================================================================

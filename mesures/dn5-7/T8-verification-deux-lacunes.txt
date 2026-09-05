@@ -1,0 +1,335 @@
+==============================================================================
+T8 — CE QUE LA VERIFICATION DE `dn5-7` A TROUVE APRES COUP (dn5-7)
+==============================================================================
+date : 2026-09-05
+⚠️ TOUTE MESURE PAR `subprocess`, ⛔ JAMAIS PAR LE SHELL DE SESSION.
+
+🔴 POURQUOI CE FICHIER EXISTE, ⛔ ET POURQUOI T2 N'EST PAS RETOUCHE.
+   Deux choses ont ete trouvees APRES que `T2-correctifs.txt` a ete ecrit.
+   Une sortie d'outil ne se reecrit JAMAIS ⇒ le constat s'ECRIT AILLEURS.
+   C'est la regle que le report (5) de `dn5-5` a payee, appliquee ici a la
+   marche qui le solde.
+
+==============================================================================
+(A) LA LIGNE `2-bis` DE LA MATRICE N'AVAIT AUCUN MUTANT — MUTANT 38 AJOUTE
+==============================================================================
+  LE TROU, MESURE :
+    Le controle « la section citee PAR SON TITRE existe » reconnait DEUX
+    formes de renvoi `§ *Titre*` : AVEC lien markdown
+    (`[`x.md`](path) § *Titre*`) et SANS lien (`` `x.md` `` § *Titre*).
+    Le mutant 36 ne replante la faute que dans la forme AVEC lien
+    (`docs/roadmap.md`). ⇒ la branche SANS lien etait COMPTEE dans les
+    6 citations, mais RIEN ne prouvait qu'elle ROUGIT.
+    ⚠️ C'est exactement le defaut de classe de ce dossier : un compte n'est
+       pas une garde. Un controle peut voir une forme sans la confronter.
+
+  LE CORRECTIF : `MUTANTS[38]` dans `tools/verif_licences_dn52.py` — il
+    replante un titre inexistant dans le renvoi SANS lien de
+    `docs/dn5-1-ecart-promesses.md` (`README.md` § *Les deux paliers
+    materiels*). Meme patron que le 36, avec la meme sortie FATALE si le
+    fichier n'est pas dans la portee lue (motif paye par le mutant 34).
+
+  MESURE :
+    python3 tools/verif_licences_dn52.py                rc=0
+      BILAN : 34 OK, 0 KO
+    python3 tools/verif_licences_dn52.py --mutant 38    rc=1
+      BILAN : 33 OK, 1 KO
+      [KO ] la section citee PAR SON TITRE existe
+            ⛔ docs/dn5-1-ecart-promesses.md : « Une section qui n'existe
+               pas dans ce fichier » dans README.md
+
+  🔬 LE TEST QUI TRANCHE (NFR7 / `dn4-44`), JOUE :
+     garde presente  ⇒ [KO ] sur « la section citee PAR SON TITRE existe »
+     garde retiree   ⇒ ⛔ CE [KO ] DISPARAIT (il en reste un AUTRE, sur
+                        « THIRD-PARTY.md dit que cette gate le garde »,
+                        parce que la COPIE porte un autre nom de fichier)
+     ⇒ LE DISCRIMINANT EST LE **LIBELLE VISE**, ⛔ PAS LE `rc` NI L'ECART
+       DE SORTIE : les deux sorties different DEJA pour une raison qui n'a
+       rien a voir avec la garde. Juger sur le `rc` aurait conclu « le
+       mutant ne traverse pas sa garde » — un diagnostic FAUX.
+     ⇒ VERDICT : LE MUTANT 38 TRAVERSE BIEN SA GARDE.
+
+==============================================================================
+(B) 🔴 UNE COPIE DE GATE POSEE DANS `tools/` DEVIENT UNE CIBLE DECOUVERTE
+==============================================================================
+  CE QUI S'EST PASSE, ET C'EST UNE MESURE, ⛔ PAS UNE HYPOTHESE :
+    Le « test qui tranche » ecrit sa copie SANS GARDE quelque part, la joue,
+    puis la retire. Elle a ete ecrite dans `tools/` sous le nom
+    `verif_licences_dn52_SANSGARDE.py`. Pendant ces quelques secondes, un
+    `bash tools/run_gates.sh` tournait en parallele.
+
+    ⇒ `tools/verif_*.py` EST UN GLOB. `verif_campagne_dn56.py` decouvre ses
+      cibles par ARBRE SYNTAXIQUE sur ce meme glob. La copie est entree dans
+      sa liste de cibles ; a l'invocation, elle avait deja ete retiree :
+
+      [KO ] toute cible repond, et aucun mutant ne meurt
+            ⛔ tools/verif_licences_dn52_SANSGARDE.py
+               (⛔ `--liste-mutants` a echoue : can't open file …)
+      BILAN HARNAIS : 27 VERTE, 2 ROUGE, 1 NON-JOUABLE sur 30 gates
+
+    ⇒ **UN SECOND ROUGE, ET IL N'ETAIT PAS DANS LE CODE LIVRE.** Il etait
+      dans le GESTE DE VERIFICATION. La gate avait entierement RAISON.
+
+  ⚠️ C'EST LE PIEGE D1 DE `dn5-3`, PAYE UNE FOIS DE PLUS : « un instrument
+     verse sous ce glob devient une gate et la CI le joue ». Il vaut aussi
+     pour un fichier POSE UNE SECONDE, ⛔ pas seulement pour un fichier
+     versé — et il vaut pour la DECOUVERTE, ⛔ pas seulement pour l'execution.
+
+  ⇒ LA REGLE, ECRITE POUR LA PROCHAINE FOIS : **la copie sans garde
+    s'ecrit HORS de `tools/`.** Le `tools/` du depot n'est pas un
+    repertoire de travail : c'est une POPULATION.
+
+  ETAT APRES : la copie est retiree, `tools/` ne porte AUCUN fichier
+    surnumeraire, et le harnais a ete REJOUE sur un arbre propre — le
+    resultat de ce second tir est la reference. ⛔ Le premier tir n'est pas
+    efface : il est ici.
+==============================================================================
+
+==============================================================================
+(C) LE TIR DE REFERENCE, SUR UN ARBRE PROPRE — APRES (A) ET (B)
+==============================================================================
+  COMMANDE : bash tools/run_gates.sh --cockpit <cockpit>   (par subprocess)
+
+  BILAN : 28 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 30 gates (204s)   rc=1
+  ⛔ ROUGES : tools/verif_dossier_dn415.py (rc=1)
+  NON-JOUABLE : tools/verif_sr03.py (rc=2 ATTENDU, temoin AN4545.pdf absent)
+
+  ⇒ **IDENTIQUE A T0, GATE PAR GATE.** ⛔ 0 KO de plus. Le seul rouge est
+    `verif_dossier_dn415.py`, PRE-EXISTANT — et c'est le report (4), qui a
+    desormais son porteur vivant `dn4-46`.
+  ✅ `verif_campagne_dn56.py` est VERTE : elle a rejoue TOUS les mutants de
+    TOUTES les cibles, **le 38 compris** — il est decouvert par l'arbre
+    syntaxique, ⛔ sans aucune inscription.
+
+  🔬 LES 10 KO DE `verif_dossier_dn415.py`, CONFRONTES A L'OCTET :
+     `23 OK, 10 KO` · les MEMES 10 libelles · les MEMES adresses citees
+     (`deferred-work.md` l.5843 · `sprint-status-desknode.yaml` l.384 et
+     l.390 · `epics-desknode-v1.md` l.2846 · `sprint-change-proposal-…` l.23)
+     · le meme ecart `204 (manifeste) vs 207 (arbre), ecart -3`.
+     ⚠️ C'EST LA VERIFICATION QUI COMPTE ICI, ⛔ PAS LA PROMESSE : le tracker
+        a grossi de ~100 lignes dans cette marche, et DEUX de ces KO citent
+        des lignes du tracker PAR NUMERO (l.384, l.390). Les insertions ont
+        toutes atterri APRES ces lignes — **mesure, ⛔ pas supposition**.
+
+  ⚠️ NON-GATE ROUGE, PRE-EXISTANTE ET ⛔ NON CAUSEE ICI :
+     `tools/filtre_constats_dn56.py` rend rc=1 / `TEMOIN : 19 OK, 1 KO`.
+     REJOUE DANS UN WORKTREE A L'ANCRE `360a5c2` (le commit de `dn5-6`) :
+     **verdict IDENTIQUE aux deux bornes**. ⇒ elle est ANTERIEURE a cette
+     marche. C'est l'instrument que `dn5-6` a verse, et un de ses temoins
+     est tombe — ⛔ constat PUBLIE, il n'a pas de porteur ici.
+==============================================================================
+
+==============================================================================
+(D) LE TEMOIN `--depth 1` **CORRIGE** — ET LE DEFAUT DE CI QU'IL REVELE
+==============================================================================
+date : 2026-09-05T13:38:10
+
+🔴 CE QUE `T2-correctifs.txt` A PUBLIE, ET POURQUOI CE N'ETAIT PAS ASSEZ.
+   Son temoin (1-bis) imprimait `rc=1` puis `BILAN : 31 OK, 1 KO` et
+   concluait IMMEDIATEMENT « la gate reste VERTE ». **Le `[KO ]` n'y est
+   nomme NULLE PART** — un rouge publie sans son motif, dans la marche qui
+   solde le report (7) (« aucun temoin ne relit ce qui est livre »).
+   ⛔ `T2` NE SE RETOUCHE PAS : une sortie d'outil ne se reecrit jamais.
+   ⇒ LE TEMOIN CORRIGE EST ECRIT ICI, avec son KO NOMME et le motif de
+     l'ecart.
+
+🔬 LE PROTOCOLE, ET SON CONFONDANT — NOMME PLUTOT QUE SUBI.
+   Un clone `file://<chemin local>` pose `origin` sur un CHEMIN LOCAL. Or
+   la gate controle « `path-to-document` designe CE depot » en comparant
+   l'URL d'`origin` au depot que le CLA fait signer. ⇒ le `[KO ]` de `T2`
+   etait un **ARTEFACT DU PROTOCOLE DE CLONAGE**, ⛔ pas un defaut de la
+   gate. Il se retire en remettant `origin` sur l'URL REELLE.
+   ⚠️ Le clone porte l'arbre COMMITTE (`360a5c2`) ; les fichiers LIVRES par
+      cette marche ne sont pas encore committes ⇒ ils y sont POSES avant
+      le tir. C'est le protocole, et il est ECRIT.
+
+   git clone --depth 1 --branch main file://<desknode>   rc=0
+   git remote set-url origin https://github.com/nasbarok/desknode.git   rc=0
+   git remote get-url origin                            https://github.com/nasbarok/desknode.git
+   git rev-list --count HEAD                            1 (⇒ clone SUPERFICIEL)
+   fichiers LIVRES poses dans le clone : tools/verif_campagne_dn440.py, tools/verif_ledger_dn416.py, tools/verif_licences_dn52.py
+   `76b031a` est-il dans ce clone ? rc=128 ⇒ **NON**
+
+------------------------------------------------------------------------------
+(D.1) LE TIR NOMINAL — LE KO EST **NOMME**, ⛔ PLUS TU
+------------------------------------------------------------------------------
+   COMMANDE : python3 tools/verif_licences_dn52.py   (cwd = le clone)
+   rc = 0      BILAN : 33 OK, 0 KO
+   lignes [KO ] : 0
+       (AUCUNE — et c'est LE constat : le KO de `T2` etait l'artefact)
+   [⚠️ ] ⛔ 1 CONTROLE(S) NON EMIS — le(s) commit(s) nomme(s) `76b031a` ne sont pas dans CE clone (`.github/workflows/gates.yml` checkoute en `fetch-depth: 1`) ⇒ la grandeur 
+   · tout chiffre ANCRE sur un commit se re-derive
+   ⇒ **LA GATE EST VERTE (rc=0)** et le controle du (1) est **DECLARE NON
+     EMIS** avec son motif. ⛔ Pas de Traceback, ⛔ pas de vert sur du vide,
+     ⛔ le `rc` du contrat ne bouge pas.
+   ⚠️ ECART AVEC `T2` : `T2` publiait `31 OK, 1 KO`, ce tir-ci rend BILAN : 33 OK, 0 KO.
+     La difference N'EST PAS un correctif de la gate : c'est `origin`
+     remis sur l'URL reelle, plus les controles ajoutes depuis.
+
+------------------------------------------------------------------------------
+(D.2) 🔴 LE DEFAUT DE **CI** QUE CE TEMOIN A REVELE, ET SON CORRECTIF
+------------------------------------------------------------------------------
+   AVANT CORRECTIF, MESURE DANS CE MEME CLONE : `--mutant 35` sortait en
+   **rc=0 / `33 OK, 0 KO`**. Cause : `76b031a` est absent ⇒ la sortie
+   anticipee « ancre absente » appelait `declarer()` et RETOURNAIT **AVANT**
+   toute confrontation. Un mutant qui ne rougit plus.
+   ⇒ ET `verif_campagne_dn56.py` N'EST ⛔ **PAS** DANS `NON_JOUABLES` :
+     elle tourne en CI, sur un checkout `fetch-depth: 1`. Elle rendait
+     `[KO ] tout mutant rend rc=1 ⛔ NE ROUGISSENT PLUS :
+     tools/verif_licences_dn52.py#35` ⇒ **LA CI AURAIT ETE ROUGE DES LE
+     PREMIER PUSH**, avec un motif qui accuse a tort le mutant.
+   ⛔ ET UNE EXCEPTION DANS `EXCEPTIONS` N'ETAIT PAS LA SORTIE : elle serait
+     PERIMEE sur un clone COMPLET (ou le mutant rougit bien) et ferait
+     rougir le controle (c3) « aucune exception n'a survecu au defaut
+     qu'elle excuse ».
+   ⇒ **CORRECTIF** : quand un mutant est ARME, la sortie anticipee devient
+     un `dire(False, …)`, ⛔ jamais un `declarer()`. **Une faute REPLANTEE
+     reste une faute, meme non confrontable ici.**
+
+   LE REJEU, APRES CORRECTIF, DANS CE CLONE :
+     --mutant 35  rc=1   BILAN : 33 OK, 1 KO
+        [KO ] tout chiffre ANCRE sur un commit se re-derive              ⛔ MUTANT 35 ARME et ancre(s) `76b031a` absente(s) de ce clone : une faute REPLANTEE ne se DECLA
+     --mutant 39  rc=1   BILAN : 33 OK, 1 KO
+        [KO ] tout chiffre ANCRE sur un commit se re-derive              ⛔ MUTANT 39 ARME et ancre(s) `76b031a` absente(s) de ce clone : une faute REPLANTEE ne se DECLA
+     --mutant 40  rc=1   BILAN : 33 OK, 1 KO
+        [KO ] tout chiffre ANCRE sur un commit se re-derive              ⛔ MUTANT 40 ARME et ancre(s) `76b031a` absente(s) de ce clone : une faute REPLANTEE ne se DECLA
+     --mutant 37  rc=1   BILAN : 32 OK, 2 KO
+        [KO ] ⛔ aucun chiffre publie n'ancre sur une ref MOUVANTE        ⛔ CONTRIBUTING.md : « **46 254 844 bytes** » ancre sur `HEAD` · CONTRIBUTING.md : « **603** fil
+        [KO ] tout chiffre ANCRE sur un commit se re-derive              ⛔ MUTANT 37 ARME et ancre(s) `76b031a` absente(s) de ce clone : une faute REPLANTEE ne se DECLA
+   ⇒ **LES QUATRE ROUGISSENT, avec un `BILAN` ET un `[KO ]` NOMME** — la
+     triple exigence de `verif_campagne_dn56.py`.
+
+------------------------------------------------------------------------------
+(D.3) LA CAMPAGNE QUI LES REJOUE, **DANS LE CLONE SUPERFICIEL**
+------------------------------------------------------------------------------
+   ⚠️ C'EST CE TIR-LA QUI MANQUAIT : `T2` ne jouait que le tir NOMINAL.
+      Une gate verte ne dit RIEN de la campagne qui rejoue ses mutants —
+      et c'est la campagne, ⛔ pas la gate, qui aurait rougi en CI.
+   COMMANDE : python3 tools/verif_campagne_dn56.py   (cwd = le clone)
+   rc = 0      BILAN : 8 OK, 0 KO
+         [OK ] des gates declarent une campagne de mutants                4 cible(s) : tools/verif_demarrage_dn443.py, tools/verif_dossier_d5_dn45.py, tools/verif_langues_dn442.
+         [OK ] toute cible repond, et aucun mutant ne meurt               116 mutant(s) confronte(s) sur 4 cible(s)
+         [OK ] tout mutant rend rc=1                                      aucun mutant devenu MUET
+         [OK ] tout mutant rouge a bien imprime un BILAN                  aucune sortie en amont
+         [OK ] tout mutant rouge porte au moins un [KO ] nomme            chaque mutant vise un controle
+         [OK ] aucune exception n'a survecu au defaut qu'elle excuse      1 exception(s) declaree(s), 1 encore justifiee(s)
+         [OK ] toute cible s'analyse a l'AST                              2 fichier(s) lu(s) dans la portee de la cle
+         [OK ] cle valide (aucun libelle >= 58)                           44 libelle(s) lu(s) a l'AST, le plus long fait 56
+   ⇒ **VERTE DANS UN CLONE `--depth 1`**
+
+⚠️ CE QUE CE TEMOIN NE PROUVE **PAS** : il joue sur un clone superficiel
+   d'un depot LOCAL, ⛔ pas sur un runner GitHub. Ce qu'il etablit est la
+   propriete qui manquait — « le commit nomme est absent » — et le
+   comportement de la gate ET de sa campagne dans cet etat.
+==============================================================================
+
+==============================================================================
+(E) LES CAPTURES `T1`..`T4` SONT **ANTERIEURES** AUX CORRECTIFS DE REVUE
+==============================================================================
+date : 2026-09-05T13:46:44
+
+⛔ `T1-filtre-8-reports.txt`, `T2-correctifs.txt`, `T3-les-8-motifs.txt` et
+   `T4-non-gates.txt` **NE SONT PAS RETOUCHES** : ils enregistrent ce qui a
+   ete mesure AU MOMENT OU ils ont ete tires, et c'est la regle du dossier.
+   Ce qui a change APRES eux s'ecrit **ICI**. `T7-gates-apres.txt` et
+   `T7-temoin-port.txt`, eux, sont la borne « APRES » ⇒ ils ont ete
+   **RE-TIRES** (un nouveau tir, ⛔ pas une retouche).
+
+──────────────────────────────────────────────────────────────────────────────
+(E.1) CE QUE LA REVUE A CHANGE, ET OU LE CHIFFRE DE `T2` EST PERIME
+──────────────────────────────────────────────────────────────────────────────
+   `T2-correctifs.txt` publie « LES **5** MUTANTS NEUFS » et les eprouve
+   5/5. **CE COMPTE EST PERIME** : l'arbre livre en porte **DIX**, et les
+   cinq de plus sont nes de deux verifications posterieures :
+     · **38** (T8 §(A)) — la forme `§ *Titre*` **SANS** lien ;
+     · **39** et **40** (revue) — les forks **OCTETS** et **ARBRE ENTIER**
+       de la re-derivation, ⛔ COMPTES par le controle et gardes par rien ;
+     · **`M3-ac56-solde-cite-ailleurs`** et **`M4-ac56-solde-sans-date`**
+       (revue) — les deux variantes de la MENTION de cloture.
+   ⇒ le compte JUSTE, et la liste NOMMEE, vivent au tracker, DATES.
+
+──────────────────────────────────────────────────────────────────────────────
+(E.2) LES DIX MUTANTS NEUFS, **RE-JOUES APRES LES CORRECTIFS DE REVUE**
+──────────────────────────────────────────────────────────────────────────────
+   --mutant 35  rc=1   BILAN : 33 OK, 1 KO
+        [KO ] tout chiffre ANCRE sur un commit se re-derive              ⛔ CONTRIBUTING.md publie 429 files pour `mesures/` a `76b031a` — l'arbre rend 428
+   --mutant 36  rc=1   BILAN : 33 OK, 1 KO
+        [KO ] la section citee PAR SON TITRE existe                      ⛔ docs/roadmap.md : « Conventions that do not exist in that file » dans CONTRIBUTING.
+   --mutant 37  rc=1   BILAN : 33 OK, 1 KO
+        [KO ] ⛔ aucun chiffre publie n'ancre sur une ref MOUVANTE        ⛔ CONTRIBUTING.md : « **46 254 844 bytes** » ancre sur `HEAD` · CONTRIBUTING.md : « *
+   --mutant 38  rc=1   BILAN : 33 OK, 1 KO
+        [KO ] la section citee PAR SON TITRE existe                      ⛔ docs/dn5-1-ecart-promesses.md : « Une section qui n'existe pas dans ce fichier » da
+   --mutant 39  rc=1   BILAN : 33 OK, 1 KO
+        [KO ] tout chiffre ANCRE sur un commit se re-derive              ⛔ CONTRIBUTING.md publie 10234635 bytes pour `mesures/` a `76b031a` — l'arbre rend 10
+   --mutant 40  rc=1   BILAN : 33 OK, 1 KO
+        [KO ] tout chiffre ANCRE sur un commit se re-derive              ⛔ CONTRIBUTING.md publie 46254845 bytes pour `(arbre entier)` a `76b031a` — l'arbre r
+
+   verif_campagne_dn440.py --cockpit …   rc=0
+        temoin de la cle morte de `M1`/`M3`/`M4` : `dn5-1-ce-qui-est-pousse-est-ce-qui-tourne` = `done` ⇒ MORTE
+        [OK] M1-ac56-porteur-mort         VU ROUGE sur verif_ledger_dn416.py:1744
+        [OK] M2-ac56-porteur-inconnu      VU ROUGE sur verif_ledger_dn416.py:1744
+        [OK] M3-ac56-solde-cite-ailleurs  VU ROUGE sur verif_ledger_dn416.py:1744
+        [OK] M4-ac56-solde-sans-date      VU ROUGE sur verif_ledger_dn416.py:1744
+        ── `controle ⇒ couvert` : LES CONTROLES GARDES PAR RIEN ───────
+        ⚠️ GARDES PAR RIEN        : 0
+        BILAN CAMPAGNE : 37 mutant(s) JOUE(S), 0 echec(s), 0 controle(s) gardes par rien
+        BILAN : 60 OK, 0 KO
+   ⇒ **LES QUATRE MUTANTS DE LA LISTE AC5.6 SONT VUS ROUGIR**, et le compte
+     « gardes par rien » reste a **0**.
+
+──────────────────────────────────────────────────────────────────────────────
+(E.3) LES DEUX DEFAUTS QUE LA REVUE A MESURES, ET QUI SONT CLOS
+──────────────────────────────────────────────────────────────────────────────
+   *(i)* **LA CLOTURE SE PRENAIT SUR TOUT LE BLOC DE L'ITEM.** En injectant
+   dans l'item 7 la tournure que le preambule emploie deja (« ⚠️ la ligne 15
+   est **SOLDEE LE 2026-09-05**, voir plus bas. »), l'item 7 passait
+   `close=None` → `close=2026-09-05`, son porteur `epic-dn8` SORTAIT de la
+   population, les soumises tombaient de 17 a 16 — **et le controle restait
+   `[OK ]`**. C'est « citer le jeton l'ACCORDE » : `designations_de()` le
+   gardait, la cloture non.
+   ⇒ **UNE CLOTURE CLOT LA DESIGNATION SUR LAQUELLE ELLE EST ECRITE**, et
+     elle est soumise a la MEME parite d'accents graves. Le tracker a donc
+     porte sa marque de solde SUR la ligne de la designation de l'item 15.
+   REJEU (l'arbre livre) :
+             ⚠️ designation(s) SAUTEE(S) par cette garde : 1
+             [close] item 15         ⇒ dn5-6-les-sept-constats-reportes-sont-re-verifies-av CLOSE LE 2026-09-05
+             19 item(s), 18 designation(s) : 17 soumise(s) a la vivacite, 1 close(s) et datee(s)
+          [OK ] tout porteur de la liste AC5.6 du tracker est VIVANT           17 porteur(s) VIVANT(S) au tracker, 1 close(s) et datee(s)
+
+   *(ii)* **`RE_SHA` ACCEPTAIT UN DECIMAL.** `RE_SHA.match('46254844')`
+   rendait `True` ⇒ une phrase publiant ``at **`46254844`**`` faisait
+   prendre au controle la branche « commit absent du clone », donc
+   `declarer()` + `return`, et **toute la re-derivation se desarmait sur une
+   ancre bidon**. ⇒ un SHA porte au moins une LETTRE hexadecimale, et **tout
+   ce qui n'a pas cette forme est MOUVANT et ROUGIT** — la liste
+   `REFS_MOUVANTES` en dur est SUPPRIMEE, la regle est INVERSEE.
+   REJEU (l'arbre livre) :
+          [OK ] la section citee PAR SON TITRE existe                      6 citation(s)
+          [OK ] ⛔ aucun chiffre publie n'ancre sur une ref MOUVANTE        6 chiffre(s) ancre(s), tous sur un COMMIT
+          [⚠️ ] 1 chiffre(s) ancre(s) ne nomment AUCUNE portee suivie ⇒ ⛔ pas derivables par `git ls-tree` (ex. `du -sb .git`) : CONTRIBUTING.md « **134 406 9
+          [OK ] tout chiffre ANCRE sur un commit se re-derive              5 chiffre(s) re-derive(s) a leur commit (`76b031a`)
+        BILAN : 34 OK, 0 KO
+==============================================================================
+
+==============================================================================
+(F) LE ROUGE DE LA **NON-GATE** A DESORMAIS UN PORTEUR VIVANT
+==============================================================================
+date : 2026-09-05T13:50:21
+
+⚠️ LE §(C) CI-DESSUS ECRIT « constat PUBLIE, ⛔ il n'a pas de porteur ici ».
+   **CETTE PHRASE EST DATEE, ⛔ PAS EFFACEE** : dans une marche dont AC7.5
+   exige que RIEN ne sorte sans porteur, c'etait le report (4) reproduit
+   d'un cran — un rouge que le garde-fou « 0 KO de plus, gate par gate » ne
+   voit MEME PAS, puisque `run_gates.sh` decouvre par le glob `verif_*.py`.
+
+   LA MESURE, REJOUEE :
+     COMMANDE : python3 tools/filtre_constats_dn56.py
+     rc = 1
+       [KO ] motif_resout ne voit PAS un motif absent                 attendu 0, obtenu 1
+
+   LE PORTEUR, CREE AU TRACKER LE 2026-09-05 ET **VERIFIE VIVANT** :
+       dn5-8-le-filtre-de-constats-repare-son-propre-temoin: backlog  # 🆕 **N
+   ⇒ ⛔ IL N'EST PAS IMPUTE A CETTE MARCHE : `T4-non-gates.txt` mesure le
+     MEME `rc` sur un clone a l'ancre `360a5c2`, l'arbre d'AVANT `dn5-7`.
+     ⛔ Pas non plus `dn5-6`, qui est `done` et ne peut plus rien porter.
+==============================================================================

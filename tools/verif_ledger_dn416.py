@@ -60,7 +60,18 @@ Et elle exige, pour CHAQUE entree DeskNode ouverte, une LIGNE DE DISPOSITION :
      designe du passe et n'est pas soumis a la vivacite. C'est ECRIT ici
      plutot que resolu en silence.
 
-  🔴 ELLE NE LIT QU'UN SEUL FICHIER : `deferred-work.md`. Elle ne regarde
+  🔴 ~~ELLE NE LIT QU'UN SEUL FICHIER : `deferred-work.md`.~~
+     ⚠️ **CETTE PHRASE EST FAUSSE DEPUIS LE 2026-09-05 (`dn5-7`), ET ELLE EST
+     DATEE PLUTOT QU'EFFACEE.** Elle lit desormais **DEUX** fichiers du
+     cockpit : `deferred-work.md` **et** le tracker
+     `sprint-status-desknode.yaml`. Le tracker etait deja OUVERT avant
+     `dn5-7` — mais seulement pour RESOUDRE des statuts (`statut_effectif`) ;
+     il est desormais une **POPULATION** a part entiere : la liste AC5.6 y est
+     deposee, et le controle « tout porteur de la liste AC5.6 du tracker est
+     VIVANT » l'itere (section 3). ⇒ une gate qui affirmerait encore ne lire
+     qu'un fichier MENTIRAIT SUR ELLE-MEME, ce qui est le defaut exact du
+     constat (9) de `dn5-6` — repete d'un cran.
+     ⛔ Elle ne regarde toujours
      JAMAIS `_bmad-output/implementation-artifacts/deferred/*.md` (14
      fichiers thematiques). ⚠️ MESURE DE REVUE (2026-08-30) : 30 entrees
      DeskNode ouvertes deplacees vers un `deferred/desknode.md` ⇒ la gate
@@ -785,6 +796,187 @@ def lit_tracker(chemin):
 
 # ═══════════════════════════════════════════════════════════════════════════
 
+# ═══════════════════════════════════════════════════════════════════════════
+#  LA LISTE AC5.6 DU TRACKER — dn5-7, report (3) de `dn5-5`
+#
+#  🔴 CE QUE LE REPORT DISAIT, ET CE QUE LA MESURE A TROUVE EN PLUS. Le report
+#     notait que « la regle de vivacite est deja mecanisee pour le ledger »
+#     mais que la liste AC5.6, deposee au TRACKER, n'etait la population
+#     d'AUCUN controle — en ajoutant « les 13 porteurs sont vivants
+#     aujourd'hui ». MESURE DU 2026-09-05 : la liste porte **16**
+#     designations, dont **UNE EST DEJA MORTE** (l'item 15 designe
+#     `dn5-6-…`, passe `done` le 2026-09-05). ⇒ le trou n'est ⛔ pas theorique.
+#
+#  ⚠️ LA POPULATION SE PREND SUR LA **DESIGNATION**, ⛔ PAS SUR LA MENTION.
+#     Le bloc cite `dn4-39` **EN NEGATION** (« ⛔ **PAS `dn4-39-…`** : elle est
+#     `done` ⇒ elle ne peut plus rien porter »). Un controle qui compterait
+#     toute cle citee rougirait sur du texte JUSTE. La designation est la forme
+#     ``⇒ **`cle`**`` — le `⇒` en fait partie.
+#
+#  ⚠️ L'ANCRAGE EST PAR **CLE**, ⛔ JAMAIS PAR NUMERO DE LIGNE — et c'est le
+#     bloc lui-meme qui l'ecrit, apres avoir paye QUATRE ancres de ligne
+#     fausses. Le bloc est donc borne par ses DEUX fences `═══`, ⛔ pas par
+#     des index.
+# ═══════════════════════════════════════════════════════════════════════════
+
+# 🔴 LE LIBELLE EST ECRIT **EN TOUTES LETTRES** DANS CHAQUE `ctrl()`, ⛔ PAS
+#    PAR CETTE CONSTANTE — ET C'EST UNE MESURE, ⛔ pas un gout. `dn_sites.py`
+#    lit le SOURCE au tokenizer : un second argument qui n'est pas un LITTERAL
+#    de chaine sort « illisible » et n'entre dans aucun index. MESURE DU
+#    2026-09-05 : passe par la constante, la campagne de `verif_campagne_dn440`
+#    rendait `⛔ CIBLE INTROUVABLE AU SOURCE` pour les DEUX mutants neufs, puis
+#    `1 controle garde par rien` — un controle livre que RIEN ne gardait, dans
+#    la marche qui existe pour compter ca.
+# ⇒ La constante ci-dessous ne sert qu'a la PROSE et aux messages.
+LIB_AC56 = "tout porteur de la liste AC5.6 du tracker est VIVANT"
+
+RE_AC56_TETE = re.compile(r"AC5\.6")
+RE_AC56_FENCE = re.compile(r"^\s*#\s*[═=]{20,}\s*$")
+RE_AC56_ITEM = re.compile(r"^\s*#\s+(\d+)\.\s")
+RE_AC56_DESIGNATION = re.compile(r"⇒\s*\*\*`([^`]+)`\*\*")
+
+
+def solde_de(ligne):
+    """La date de cloture PORTEE par cette ligne — ⛔ pas celle qu'elle CITE.
+
+    🔴 REVUE DU 2026-09-05 — LA CLOTURE SE LISAIT SUR **TOUT LE BLOC DE
+    L'ITEM**, ET UNE SIMPLE MENTION SUFFISAIT A SORTIR UN ITEM DE LA
+    POPULATION. Mesure : en injectant dans l'item 7 la tournure que le
+    preambule emploie deja (« ⚠️ la ligne 15 est **SOLDEE LE 2026-09-05**,
+    voir plus bas. »), l'item 7 passait `close=None` → `close=2026-09-05`,
+    son porteur sortait, les designations soumises tombaient de 17 a 16 —
+    **et le controle restait `[OK ]`**. C'est « citer le jeton l'ACCORDE »,
+    que `designations_de()` gardait deja et que la cloture ne gardait pas.
+    ⇒ **UNE CLOTURE CLOT LA DESIGNATION SUR LAQUELLE ELLE EST ECRITE**, et
+      elle est soumise a la MEME parite d'accents graves. Une phrase qui
+      PARLE de la cloture d'une autre ligne ne clot ⛔ RIEN.
+    """
+    # ⚠️ LA PARITE SE COMPTE SUR **LA CHAINE OU LE MOTIF A MATCHE**, ⛔ pas sur
+    #    l'originale : `sans_accents().upper()` peut decaler un index, et un
+    #    index decale ferait juger la parite au mauvais endroit.
+    plat = sans_accents(ligne).upper()
+    m = RE_AC56_SOLDE.search(plat)
+    if not m:
+        return None
+    # ⚠️ MEME GARDE QUE LA DESIGNATION : dans un code span, c'est une CITATION.
+    if plat[:m.start()].count("`") % 2:
+        return None
+    return m.group(1)
+
+
+def designations_de(ligne):
+    """Les `(debut, fin, cle)` DESIGNEES par une ligne — ⛔ pas celles qu'elle
+    CITE.
+
+    🔴 MESURE DU 2026-09-05, ET C'EST LE MOTIF LE PLUS PAYE DE CE DEPOT :
+    « citer le jeton l'ACCORDE ». Le preambule du bloc AC5.6 explique le
+    mecanisme et doit donc ECRIRE la forme — il porte
+    ``lit les `⇒ **`cle`**` de ce bloc``. Sans cette garde, la gate lisait un
+    porteur nomme `cle`, le declarait INCONNU DU TRACKER, et rougissait sur
+    une phrase PARFAITEMENT JUSTE.
+    ⇒ LA REGLE : une occurrence a l'INTERIEUR d'un code span n'est pas une
+      designation. Elle se decide a la PARITE des accents graves qui la
+      precedent sur la ligne — impair ⇒ on est DANS un span.
+    ⛔ Ce n'est ⛔ pas une liste d'exclusion : la garde est structurelle et vaut
+      pour tout auteur futur, ⛔ pas pour la phrase d'ici.
+    """
+    out = []
+    for m in RE_AC56_DESIGNATION.finditer(ligne):
+        if ligne[:m.start()].count("`") % 2:
+            continue
+        out.append((m.start(1), m.end(1), m.group(1)))
+    return out
+# ⚠️ UNE LIGNE CLOSE EST UNE LIGNE **DATEE**. `SOLDEE` sans date ne clot rien :
+#    ce serait exactement le « porteur mort invisible » sous un autre nom.
+RE_AC56_SOLDE = re.compile(r"SOLDEE?\s+LE\s+(\d{4}-\d{2}-\d{2})")
+
+
+def bloc_ac56(txt):
+    """Le CORPS de la liste AC5.6 du tracker, borne par ses deux fences.
+
+    Rend `(lignes, offset, None)` ou `(None, None, motif)` — ⛔ jamais une
+    liste vide qui se lirait comme « tout va bien » : une structure illisible
+    est un MOTIF, et l'appelant en fait un KO.
+
+    `offset` est l'index, DANS LE FICHIER, de la 1re ligne du corps. Il est
+    rendu pour que `verif_campagne_dn440.py` n'ait ⛔ PAS a recopier ce
+    bornage : une constante a UN proprietaire, et un bornage recopie ne suit
+    pas son original.
+
+    🔴 REVUE DU 2026-09-05 — LES DEUX HYPOTHESES ETAIENT PRISES SANS ETRE
+    VERIFIEES : *(i)* plusieurs en-tetes `AC5.6`+`LISTE` ⇒ seul `tetes[0]`
+    servait, en silence ; *(ii)* une fence ajoutee DANS la liste ⇒ le corps lu
+    s'arretait avant, et les items du dessous quittaient la population **sans
+    motif et sans KO**. Le cas (ii) se voit desormais au controle de
+    CONTIGUITE des numeros, chez l'appelant.
+    """
+    lig = txt.split("\n")
+    # 🔴 L'EN-TETE SE RECONNAIT A SA **STRUCTURE**, ⛔ PAS A SES MOTS. Mesure du
+    #    2026-09-05 : « une ligne de commentaire qui porte `AC5.6` et `LISTE` »
+    #    matchait **SIX** lignes — la vraie, et cinq lignes de PROSE qui parlent
+    #    de la liste (dont celles que `dn5-7` vient d'ecrire). Le bloc s'ouvre
+    #    par `fence / en-tete / … / fence` : l'en-tete est donc une ligne de
+    #    commentaire portant `AC5.6` et **PRECEDEE D'UNE FENCE**. Une phrase qui
+    #    PARLE de la liste n'est jamais precedee d'une fence.
+    tetes = [i for i, l in enumerate(lig)
+             if l.lstrip().startswith("#") and RE_AC56_TETE.search(l)
+             and i > 0 and RE_AC56_FENCE.match(lig[i - 1])]
+    if not tetes:
+        return None, None, ("aucun en-tete `AC5.6` PRECEDE D'UNE FENCE dans"
+                            " %s" % REL_TRACKER)
+    if len(tetes) > 1:
+        return None, None, ("%d en-tetes `AC5.6` (lignes %s) — le"
+                            " bornage n'est plus DECIDABLE, et en choisir un"
+                            " en silence ferait sortir l'autre liste de la"
+                            " population"
+                            % (len(tetes),
+                               ", ".join(str(t + 1) for t in tetes)))
+    i0 = tetes[0]
+    fences = [j for j in range(i0, len(lig)) if RE_AC56_FENCE.match(lig[j])]
+    if len(fences) < 2:
+        return None, None, ("l'en-tete AC5.6 est la mais le bloc n'est pas"
+                            " BORNE par deux fences `═══` (vu : %d)"
+                            % len(fences))
+    return lig[fences[0] + 1:fences[1]], fences[0] + 1, None
+
+
+def items_ac56(corps):
+    """Les ITEMS de la liste AC5.6 : `[{numero, debut, fin, cles, close_le}]`.
+
+    🔴 LA CLOTURE SE LIT SUR L'**ITEM**, ⛔ PAS SUR LA LIGNE — et c'est une
+    faute que ce controle a faite avant d'etre livre. Une ligne de liste tient
+    sur PLUSIEURS lignes de commentaire, et la mention de solde n'est pas sur
+    la meme ligne que la designation `⇒ **`cle`**`. Lu ligne a ligne, un item
+    CLOS ET DATE ressortait encore soumis a la vivacite ⇒ un FAUX ROUGE que
+    rien n'aurait pu eteindre.
+    ⚠️ `debut`/`fin` sont des index DANS `corps`, ⛔ pas dans le fichier : ils
+    servent au mutant de `verif_campagne_dn440.py`, qui ajoute son propre
+    decalage. Un index de fichier deriverait a la premiere ecriture en amont —
+    le piege que ce bloc du tracker ecrit lui-meme avoir paye quatre fois.
+    """
+    bornes = [i for i, l in enumerate(corps) if RE_AC56_ITEM.match(l)]
+    blocs = []
+    if not bornes:
+        blocs.append(("preambule", 0, len(corps)))
+    else:
+        if bornes[0] > 0:
+            blocs.append(("preambule", 0, bornes[0]))
+        for k, i in enumerate(bornes):
+            fin = bornes[k + 1] if k + 1 < len(bornes) else len(corps)
+            blocs.append((RE_AC56_ITEM.match(corps[i]).group(1), i, fin))
+    out = []
+    for num, deb, fin in blocs:
+        cles = [(j, d0, d1, cle, solde_de(corps[j]))
+                for j in range(deb, fin)
+                for d0, d1, cle in designations_de(corps[j])]
+        sautees = sum(len(RE_AC56_DESIGNATION.findall(corps[j]))
+                      - len(designations_de(corps[j]))
+                      for j in range(deb, fin))
+        out.append({"numero": num, "debut": deb, "fin": fin, "cles": cles,
+                    "sautees": sautees})
+    return out
+
+
 def imprime_convention():
     print("\n── LA CONVENTION QUE CE SCRIPT IMPLEMENTE (AC1.3) ────────────────")
     print("   (1) entree   = puce `^- ` de PREMIER niveau, en section"
@@ -912,6 +1104,11 @@ def main():
     ctrl(True, "le ledger se LIT en UTF-8", "%d caractere(s)" % len(texte))
     try:
         tracker, collisions_trk, cles_trk = lit_tracker(p_trk)
+        # dn5-7 / REVUE — LE TEXTE DU TRACKER EST LU **SOUS LA MEME GARDE**.
+        # ⛔ Une seconde lecture nue ici ferait un Traceback SANS ligne
+        #    `BILAN` si le fichier changeait entre les deux — le defaut exact
+        #    que ce dossier traque.
+        txt_trk = io.open(p_trk, encoding="utf-8").read()
     except (OSError, UnicodeDecodeError) as x:
         ctrl(False, "le tracker se LIT en UTF-8", "", "⛔ %s" % x)
         print("\n⛔ ARRET : le tracker est illisible. ⛔ JAMAIS un skip.")
@@ -1444,6 +1641,112 @@ def main():
          % (len(ambigues),
             ", ".join("%s=%s" % (k, "/".join(v)) for k, v in ambigues.items())))
 
+    # ── 3-bis. LA LISTE AC5.6 DU **TRACKER** (dn5-7) ────────────────────────
+    print("\n── 3-bis. LES PORTEURS DE LA LISTE AC5.6 DU TRACKER (dn5-7) ──────")
+    print("     ⚠️ SECONDE POPULATION DE CETTE GATE, ET LA DECLARATION DE")
+    print("        PORTEE EN TETE DE FICHIER EST DATEE EN CONSEQUENCE.")
+    print("     ⇒ population = la DESIGNATION `⇒ **`cle`**`, ⛔ pas la mention")
+    print("        (le bloc cite `dn4-39` EN NEGATION : il ⛔ ne compte pas).")
+    # 🔴 dn5-7 / REVUE — LA PORTEE DE CETTE GARDE EST DECLAREE ICI, LA OU ELLE
+    #    EST POSEE, ⛔ pas seulement dans le dossier. CETTE GATE EST DECLAREE
+    #    `NON_JOUABLE` (rc=4) SANS COCKPIT dans `tools/run_gates.sh`, et ses
+    #    DEUX mutants vivent dans `verif_campagne_dn440.py`, `NON_JOUABLE`
+    #    aussi ⇒ **NI cette garde NI ses mutants ne s'executent en CI**
+    #    (`.github/workflows/gates.yml` n'a pas le cockpit). C'est la MEME
+    #    ligne qui fait refuser `epic-dn8` au report (4) ; elle vaut donc
+    #    aussi pour la garde construite au report (3), et elle est ECRITE.
+    print("     ⚠️ PORTEE DECLAREE : cette gate est `NON_JOUABLE` (rc=4) sans")
+    print("        cockpit, et ses mutants aussi ⇒ ⛔ NI cette garde NI ses")
+    print("        mutants ne tournent en CI. Elle garde le poste, ⛔ pas la CI.")
+    corps56, offset56, motif56 = bloc_ac56(txt_trk)
+    if corps56 is None:
+        ctrl(False, "tout porteur de la liste AC5.6 du tracker est VIVANT",
+             "", "⛔ %s" % motif56)
+    else:
+        items = items_ac56(corps56)
+        morts56, inconnus56, closes56, etranges56, soumis56 = [], [], [], [], 0
+        for it in items:
+            for _j, _d0, _d1, cle, close_le in it["cles"]:
+                if close_le:
+                    closes56.append((it["numero"], cle, close_le))
+                    continue
+                soumis56 += 1
+                st = statut_effectif(cle, tracker)
+                if st is None:
+                    inconnus56.append((it["numero"], cle))
+                elif st in STATUTS_MORTS:
+                    morts56.append((it["numero"], cle, st))
+                elif st not in STATUTS_VIVANTS:
+                    # ⇒ MEME TRAITEMENT QU'EN SECTION 3 : un statut hors liste
+                    #   (`cancelled`, une faute de frappe) comptait pour VIVANT.
+                    etranges56.append((it["numero"], cle, st))
+        desig = [c for it in items for c in it["cles"]]
+        numeros = [it["numero"] for it in items if it["numero"] != "preambule"]
+        # ⇒ LE BLOC EST-IL ENTIER ? Une fence ajoutee DANS la liste tronque le
+        #   corps et fait sortir les items du dessous SANS MOTIF.
+        attendus = [str(k) for k in range(1, len(numeros) + 1)]
+        tronque = [] if numeros == attendus else [
+            "⛔ bloc TRONQUE ou renumerote : items lus %s, attendus %s"
+            % (",".join(numeros) or "aucun", ",".join(attendus) or "aucun")]
+        # ⇒ Un item numerote SANS designation passe vert : la gate sœur
+        #   enforce deja « toute entree ouverte a une ligne de disposition ».
+        muets = ["item %s" % it["numero"] for it in items
+                 if it["numero"] != "preambule" and not it["cles"]]
+        sautees = sum(it["sautees"] for it in items)
+        print("     ⚠️ une occurrence DANS un code span est une CITATION, ⛔ pas")
+        print("        une designation — la garde est la PARITE des accents graves.")
+        print("     ⚠️ designation(s) SAUTEE(S) par cette garde : %d" % sautees)
+        print("        (⛔ un skip SILENCIEUX ferait disparaitre une vraie")
+        print("         designation de la population sans laisser de trace)")
+        for item, cle, close_le in closes56:
+            print("     [close] item %-10s ⇒ %-52s CLOSE LE %s"
+                  % (item, cle[:52], close_le))
+        print("     %d item(s), %d designation(s) : %d soumise(s) a la"
+              " vivacite, %d close(s) et datee(s)"
+              % (len(items), len(desig), soumis56, len(closes56)))
+        # 🔴 LE KO **NOMME LA LIGNE ET LA CLE**, ⛔ IL NE PROPOSE PAS DE REMEDE.
+        #    Un porteur peut mourir de DEUX facons, et ce controle ⛔ ne peut
+        #    pas les distinguer : `done` PARCE QUE LE TRAVAIL EST FAIT (la
+        #    ligne se SOLDE) ou `done` AVEC DU TRAVAIL DEBOUT (il faut la
+        #    RE-ROUTER vers quelqu'un de vivant). ⇒ il signale, l'humain
+        #    tranche.
+        # 🔴 REVUE DU 2026-09-05 — LES MOTIFS SE **CONCATENENT**, ⛔ NE
+        #    S'ALTERNENT PLUS. Chaines en `if/else`, les INCONNUS
+        #    disparaissaient des que des MORTS existaient, alors que la ligne
+        #    (3-ter) de la matrice promet qu'ils ⛔ ne sont pas confondus.
+        motifs56 = []
+        if morts56:
+            motifs56.append("⛔ %d MORT(S) : %s"
+                            % (len(morts56),
+                               ", ".join("item %s→%s(%s)" % (i, c, s)
+                                         for i, c, s in morts56)))
+        if inconnus56:
+            motifs56.append("⛔ %d INCONNU(S) DU TRACKER : %s"
+                            % (len(inconnus56),
+                               ", ".join("item %s→%s" % (i, c)
+                                         for i, c in inconnus56)))
+        if etranges56:
+            motifs56.append("⛔ %d STATUT(S) HORS LISTE : %s"
+                            % (len(etranges56),
+                               ", ".join("item %s→%s(%s)" % (i, c, s)
+                                         for i, c, s in etranges56)))
+        motifs56 += tronque
+        if muets:
+            motifs56.append("⛔ %d item(s) numerote(s) SANS designation : %s"
+                            % (len(muets), ", ".join(muets)))
+        # ⇒ LE TEMOIN DE NON-VACUITE COMPTE LES **SOUMISES**, ⛔ pas les
+        #   designations : une liste dont TOUT serait solde rendrait
+        #   `[OK ] … 0 porteur(s) VIVANT(S)` — vert sur du vide.
+        if soumis56 <= 0:
+            motifs56.append("⛔ AUCUNE designation SOUMISE a la vivacite"
+                            " (%d close(s)) — ⛔ pas vert sur du vide"
+                            % len(closes56))
+        ctrl(not motifs56,
+             "tout porteur de la liste AC5.6 du tracker est VIVANT",
+             "%d porteur(s) VIVANT(S) au tracker, %d close(s) et datee(s)"
+             % (soumis56, len(closes56)),
+             " || ".join(motifs56))
+
     # ── 4. LA PREUVE EST UN MOTIF, ⛔ PAS UN NUMERO (AC6.6) ──────────────────
     print("\n── 4. LA PREUVE EST UN MOTIF, ⛔ PAS UN NUMERO DE LIGNE (AC6.6) ───")
     print("     motif mesure : 0 adresse sur 192 tombe hors fichier ⇒ un")
@@ -1573,9 +1876,13 @@ def main():
           % (len(toutes) - len(dn)))
     print("   · elle ne couvre ni `bmad-dev-auto` ni `bmad-quick-dev`, qui")
     print("     ecrivent aussi au ledger par d'autres chemins ;")
-    print("   · 🔴 elle ne lit QUE `deferred-work.md` — les 14 fichiers")
-    print("     `deferred/*.md` lui sont INVISIBLES : le jour du drain, elle")
-    print("     epinglerait VERT un ledger vide de sa substance ;")
+    print("   · 🔴 ~~elle ne lit QUE `deferred-work.md`~~ — ⚠️ FAUX DEPUIS LE")
+    print("     2026-09-05 (`dn5-7`) : elle lit AUSSI la liste AC5.6 du")
+    print("     tracker, comme POPULATION et ⛔ plus seulement pour resoudre")
+    print("     un statut. La phrase est DATEE, ⛔ pas effacee ;")
+    print("   · 🔴 les 14 fichiers `deferred/*.md` lui sont INVISIBLES : le")
+    print("     jour du drain, elle epinglerait VERT un ledger vide de sa")
+    print("     substance ;")
     print("   · ⚠️ %d entree(s) ouverte(s) sont sous une rubrique `###` et"
           % len(sous_rubrique))
     print("     peuvent etre de la prose narrative, ⛔ pas des constats ;")

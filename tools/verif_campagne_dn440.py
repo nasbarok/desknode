@@ -490,6 +490,113 @@ def m_ancre_collision(led, trk, faux):
     return led[:j] + _bloc(ch, ta) + _bloc(ch, tb) + led[j:], trk
 
 
+def premiere_designation_ouverte(trk):
+    """`(ligne, d0, d1, lignes, debut_item)` de la 1re designation OUVERTE.
+
+    🎯 LE BORNAGE VIENT DE `bloc_ac56()` **DE LA GATE**, ⛔ il n'est plus
+    RECOPIE ici — revue du 2026-09-05. Le docstring de `mute_ac56()` promettait
+    deja « il relit les regex de la gate, ⛔ il ne les recopie pas », pendant que
+    dix lignes de bornage vivaient ici : un changement de bornage ⛔ ne se serait
+    pas propage au mutant. Une constante a UN proprietaire — meme raison que
+    `_borne_debut()`.
+    """
+    g = charge_gate()
+    lignes = trk.split("\n")
+    corps, offset, motif = g.bloc_ac56(trk)
+    if corps is None:
+        raise RuntimeError("bloc AC5.6 illisible : %s" % motif)
+    for it in g.items_ac56(corps):
+        ouvertes = [c for c in it["cles"] if c[4] is None]
+        if not ouvertes:
+            continue
+        j, d0, d1, _cle, _cl = ouvertes[0]
+        return j + offset, d0, d1, lignes, it["debut"] + offset
+    raise RuntimeError("aucune designation OUVERTE dans le bloc AC5.6")
+
+
+def mute_ac56(cle_neuve, avec_solde=None):
+    """dn5-7 / report (3) — REPLANTE un porteur FAUTIF dans la liste AC5.6 du
+    tracker, DANS LA COPIE jetable.
+
+    ⛔ IL NE DEBRANCHE RIEN. Il ne retire ⛔ ni le controle ⛔ ni le bloc : il
+    remplace la CLE d'une designation `⇒ **`cle`**` par une cle fautive —
+    exactement la faute que le controle existe pour voir, et exactement celle
+    que la mesure du 2026-09-05 a trouvee VIVANTE (l'item 15 designait une
+    story `done`).
+
+    🎯 IL RELIT LES REGEX **DE LA GATE**, ⛔ il ne les recopie pas. Un muteur
+    qui redefinirait la borne du bloc pourrait mordre HORS de ce que la gate
+    lit : la campagne le verrait (« NON VU »), mais le motif serait faux. Une
+    constante a UN proprietaire — meme raison que `_borne_debut()`.
+
+    ⚠️ Il saute les lignes DEJA CLOSES : une ligne close est hors de la
+    population de vivacite, donc y planter la faute ne prouverait RIEN.
+
+    `avec_solde` REPLANTE en plus une marque de cloture :
+      · `"sur-la-ligne"` — `SOLDEE` **SANS DATE** sur la designation ⇒ elle ne
+        clot RIEN, l'item RESTE dans la population et le porteur mort ressort ;
+      · `"ailleurs"`     — la MENTION de la cloture d'une AUTRE ligne, sur une
+        autre ligne du MEME item ⇒ elle ne clot RIEN non plus.
+    ⛔ Aucun des deux ne DEBRANCHE : ils replantent la faute que la revue du
+      2026-09-05 a mesuree (un item OUVERT sortait de la population sur une
+      simple mention, et le controle restait `[OK ]`).
+    """
+    def _f(led, trk, faux, k=cle_neuve, avec=avec_solde):
+        j, d0, d1, lignes, deb = premiere_designation_ouverte(trk)
+        lignes[j] = lignes[j][:d0] + k + lignes[j][d1:]
+        if avec == "sur-la-ligne":
+            # ⇒ REPLANTE `SOLDEE` **SANS DATE** sur la ligne de la designation.
+            #   Une cloture sans date ne clot RIEN : l'item RESTE dans la
+            #   population, et le porteur mort doit ressortir.
+            lignes[j] += " — SOLDEE PAR `dn5-7`"
+        elif avec == "ailleurs":
+            # ⇒ REPLANTE la MENTION de la cloture d'une AUTRE ligne, dans le
+            #   MEME item mais sur une AUTRE ligne — la tournure exacte que le
+            #   preambule du bloc emploie deja. Elle ⛔ ne doit rien clore.
+            lignes.insert(deb + 1,
+                          "  #      ⚠️ la ligne 15 est **SOLDEE LE 2026-09-05**,"
+                          " voir plus bas.")
+        return led, "\n".join(lignes)
+    return _f
+
+
+# Les deux cles fautives que les mutants replantent.
+CLE_AC56_MORTE = "dn5-1-ce-qui-est-pousse-est-ce-qui-tourne"
+CLE_AC56_INCONNUE = "dn9-9-une-cle-qui-n-existe-pas-au-tracker"
+
+
+def cle_morte_est_morte(cockpit):
+    """⇒ `(ok, dit)` — `CLE_AC56_MORTE` est-elle ENCORE morte AU TRACKER ?
+
+    🔴 REVUE DU 2026-09-05 — LE COMMENTAIRE PROMETTAIT « resolue AU TRACKER,
+    ⛔ pas ecrite en dur au hasard », ET RIEN NE LE VERIFIAIT. Si cette cle est
+    renommee, ou repasse VIVANTE, le mutant `M1` teste alors **silencieusement**
+    la branche INCONNU (ou ne rougit plus du tout) et « porteur mort » n'est
+    plus garde par rien — le defaut que cette campagne existe pour compter.
+    ⇒ ECHEC FERME, ⛔ pas un avertissement.
+    """
+    # ⚠️ LA GATE **CANONIQUE**, ⛔ pas celle de `--gate` : ce temoin porte sur le
+    #    TRACKER et sur la semantique de statut du depot, ⛔ pas sur la gate mise
+    #    a l'essai. Mesure du 2026-09-05 : lu depuis `--gate <stub>`, il sortait
+    #    en ECHEC FERME **avant** le T0 et les trois bancs `B2*` — qui exigent
+    #    justement de VOIR le T0 refuser — tombaient tous les trois.
+    g = charge_gate(os.path.join(ICI, NOM_GATE))
+    try:
+        tracker, _c, _p = g.lit_tracker(os.path.join(cockpit, REL_TRACKER))
+    except (OSError, UnicodeDecodeError) as x:
+        return False, "⛔ tracker illisible : %s" % x
+    st = g.statut_effectif(CLE_AC56_MORTE, tracker)
+    if st is None:
+        return False, ("⛔ `%s` est INCONNUE du tracker — le mutant `M1` ne"
+                       " teste plus « porteur mort » mais « porteur inconnu »"
+                       % CLE_AC56_MORTE)
+    if st not in g.STATUTS_MORTS:
+        return False, ("⛔ `%s` est `%s`, ⛔ pas morte — le mutant `M1` ne"
+                       " rougirait plus, et « porteur mort » ne serait garde"
+                       " par RIEN" % (CLE_AC56_MORTE, st))
+    return True, "`%s` = `%s` ⇒ MORTE" % (CLE_AC56_MORTE, st)
+
+
 def m_hors_depot(led, trk, faux):
     """⛔ AUCUNE mutation de donnees : c'est l'ARBORESCENCE qui est mutee.
 
@@ -685,6 +792,40 @@ MUTANTS = [
       m_hors_depot,
       cible="le depot code est le depot DESKNODE",
       change=(), regen=None, gate=gate_hors_depot),
+    # ── dn5-7 / report (3) de `dn5-5` — LA SECONDE POPULATION DE LA GATE ────
+    #    ⚠️ LE ROUGE NATUREL NE REMPLACE PAS CES MUTANTS, ET C'EST LA
+    #       DISTINCTION QUI COMPTE : le rouge naturel du 2026-09-05 (item 15
+    #       ⇒ `dn5-6-…`, `done`) prouve que le controle voit **CE CAS-CI** ;
+    #       ces mutants prouvent qu'il voit **LE CAS EN GENERAL**. Le premier
+    #       disparait des que la ligne est soldee — les seconds, jamais.
+    M("M1-ac56-porteur-mort",
+      "un porteur de la liste AC5.6 du tracker qui est une story `done`",
+      mute_ac56(CLE_AC56_MORTE),
+      cible="tout porteur de la liste AC5.6 du tracker est VIVANT",
+      change=("tracker",), motif=CLE_AC56_MORTE),
+    M("M2-ac56-porteur-inconnu",
+      "un porteur de la liste AC5.6 qui n'existe PAS au tracker",
+      mute_ac56(CLE_AC56_INCONNUE),
+      cible="tout porteur de la liste AC5.6 du tracker est VIVANT",
+      change=("tracker",), motif=CLE_AC56_INCONNUE),
+    # ── dn5-7 / REVUE DU 2026-09-05 — LA CLOTURE NE DOIT PAS ETRE UNE PORTE ──
+    #    Mesuree AVANT correctif : la cloture se lisait sur TOUT le bloc de
+    #    l'item ⇒ une simple MENTION (« la ligne 15 est SOLDEE LE … ») sortait
+    #    un item OUVERT de la population, son porteur avec, **et le controle
+    #    restait `[OK ]`**. Ces deux mutants replantent les DEUX variantes que
+    #    rien n'exercait.
+    M("M3-ac56-solde-cite-ailleurs",
+      "un porteur MORT, + la MENTION de la cloture d'une AUTRE ligne dans le"
+      " meme item ⇒ elle ne clot RIEN, le mort doit ressortir",
+      mute_ac56(CLE_AC56_MORTE, avec_solde="ailleurs"),
+      cible="tout porteur de la liste AC5.6 du tracker est VIVANT",
+      change=("tracker",), motif=CLE_AC56_MORTE),
+    M("M4-ac56-solde-sans-date",
+      "un porteur MORT, + `SOLDEE` **SANS DATE** sur la ligne de la"
+      " designation ⇒ une cloture sans date ne clot RIEN",
+      mute_ac56(CLE_AC56_MORTE, avec_solde="sur-la-ligne"),
+      cible="tout porteur de la liste AC5.6 du tracker est VIVANT",
+      change=("tracker",), motif=CLE_AC56_MORTE),
 ]
 
 # ── LE MUTANT DE TRACKER — le FAUX ROUGE ARME (AC40.1.d) ─────────────────────
@@ -1300,6 +1441,17 @@ def main():
         return RC_PREREQUIS
     print("⛔ AUCUNE ecriture dans le cockpit vivant : chaque mutant joue")
     print("   dans une COPIE jetable. Indexation : (site, libelle), ⛔ pas console.")
+    # 🔴 dn5-7 / REVUE — LA CLE QUE `M1` REPLANTE DOIT ETRE **ENCORE MORTE**.
+    ok_morte, dit_morte = cle_morte_est_morte(a.cockpit)
+    print("   temoin de la cle morte de `M1`/`M3`/`M4` : %s" % dit_morte)
+    if not ok_morte:
+        print("   ⛔ ECHEC FERME : le mutant testerait une AUTRE branche que"
+              " celle qu'il annonce, en silence.")
+        print("BILAN CAMPAGNE : 0 mutant(s) JOUE(S), 1 echec(s), 0 controle(s)"
+              " gardes par rien")
+        print("⛔ ECHECS : cle-morte-plus-morte")
+        print("BILAN : 0 OK, 1 KO")
+        return 1
 
     par_lib = dn_sites.par_libelle(GATE)
     tmp = tempfile.mkdtemp(prefix="dn440-")

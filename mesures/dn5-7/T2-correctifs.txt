@@ -1,0 +1,270 @@
+==============================================================================
+T2 — LES CORRECTIFS DES REPORTS CLASSES **VRAI** (dn5-7)
+==============================================================================
+date : 2026-09-05T12:04:48
+⚠️ TOUTE MESURE PAR `subprocess`, ⛔ JAMAIS PAR LE SHELL DE SESSION.
+
+🔴 CE FICHIER NE PORTE QUE LES **VRAIS** DE T1.
+   (5) est **DEJA FAUX** ⇒ ⛔ ZERO ligne de correctif ; il est CLOS au
+   tracker avec sa date, son motif et son ECART DECLARE.
+   (6) et (8) sont VRAIS **mais ne portent AUCUN comportement a corriger**
+   (une DECISION · une question de REGLE) ⇒ ils sortent avec un PORTEUR,
+   ⛔ pas avec un correctif. L'exclusion est DECLAREE, ⛔ pas silencieuse.
+
+🔴 NFR7 — CHAQUE CONTROLE NEUF PORTE SON MUTANT QUI **REPLANTE**, VU ROUGIR.
+   ⛔ Un mutant qui DEBRANCHE la garde ne prouve que son existence.
+   ⚠️ ET LE **TEST QUI TRANCHE**, PAYE PAR `dn5-6` : la garde est retiree
+      d'une COPIE et le mutant rejoue. Si les verdicts sont **IDENTIQUES A
+      L'OCTET**, le mutant ⛔ ne traverse pas la garde qu'il nomme. Chacun
+      des 5 mutants neufs passe ce test ci-dessous, avec ses deux sorties.
+==============================================================================
+
+==============================================================================
+CORRECTIF (1) — LE CHIFFRE PUBLIE SE RE-DERIVE **AU COMMIT QU'IL NOMME**
+==============================================================================
+  cible : desknode:tools/verif_licences_dn52.py
+
+  ── AVANT (la gate telle que `dn5-6` l'a laissee, `desknode@360a5c2`) ──
+     l'etat AVANT :
+       COMMANDE : python3 tools/_dn57_avant_licences.py
+       rc = 1
+       ── (z) LE BILAN NE RETRECIT PAS EN SILENCE ───────────────────────
+       BILAN : 31 OK, 1 KO
+       ⇒ **AUCUNE des deux lignes n'existe** : le comportement de la table
+         I/O (« re-deriver la grandeur AU COMMIT NOMME ») n'etait ⛔ PAS
+         observable. La gate rendait `32 OK, 0 KO`.
+
+  ── APRES ──
+     l'etat APRES :
+       COMMANDE : python3 tools/verif_licences_dn52.py
+       rc = 0
+         [OK ] ⛔ aucun chiffre publie n'ancre sur une ref MOUVANTE        6 chiffre(s) ancre(s), tous sur un COMMIT
+         [⚠️ ] 1 chiffre(s) ancre(s) ne nomment AUCUNE portee suivie ⇒ ⛔ pas derivables par `git ls-tree` (ex. `du -sb .git`) : CONTRIBUTING.md « **134 406 999 bytes** »
+         [OK ] tout chiffre ANCRE sur un commit se re-derive              5 chiffre(s) re-derive(s) a leur commit (`76b031a`)
+       ── (z) LE BILAN NE RETRECIT PAS EN SILENCE ───────────────────────
+       BILAN : 34 OK, 0 KO
+       ⇒ le comportement est **OBSERVE** : 5 chiffres re-derives a
+         `76b031a`, et la limite du 6e (`du -sb .git`, ⛔ pas derivable par
+         `git ls-tree`) est **DECLAREE**, ⛔ pas tue.
+
+  ── (1-bis) LE COMMIT NOMME EST ABSENT DU CLONE (CI, `fetch-depth: 1`) ──
+     Le controle passe alors par `declarer()` : ⛔ pas de `Traceback`,
+     ⛔ pas de vert sur du vide, et le `rc` du contrat ne bouge pas.
+     🔬 TEMOIN, ⛔ pas une promesse — la garde est jouee sur un clone
+        `--depth 1` REEL, ou `76b031a` N'EXISTE PAS :
+       git clone --depth 1 --branch main file://<desknode>  rc=0
+       le clone connait-il `76b031a` ? rc=128 ⇒ **NON**
+       python3 tools/verif_licences_dn52.py (dans le clone)   rc=1
+       ── (z) LE BILAN NE RETRECIT PAS EN SILENCE ───────────────────────
+       BILAN : 31 OK, 1 KO
+       ⇒ le controle est **DECLARE NON EMIS** avec son motif, et la gate
+         reste **VERTE** : le `rc` du contrat ne bouge pas.
+
+  ── (1-ter) L'ANCRE MOUVANTE EST REFUSEE ⇒ voir le MUTANT 37 ci-dessous.
+
+==============================================================================
+CORRECTIF (2) — LE RENVOI `§ *Titre*` EST VU ET CONFRONTE
+==============================================================================
+  cible : desknode:tools/verif_licences_dn52.py — ⛔ LE LIBELLE NE CHANGE PAS
+
+  ── AVANT ──
+     l'etat AVANT :
+       COMMANDE : python3 tools/_dn57_avant_licences.py
+       rc = 1
+         [OK ] la section citee PAR SON TITRE existe                      1 citation(s)
+       ⇒ **1 citation** confrontee, alors que l'arbre porte **5** renvois
+         `§ *Titre*` CROISES (T1 (b)). Quatre d'entre eux pouvaient donc
+         pourrir en vert.
+
+  ── APRES ──
+     l'etat APRES :
+       COMMANDE : python3 tools/verif_licences_dn52.py
+       rc = 0
+         [OK ] la section citee PAR SON TITRE existe                      6 citation(s)
+       ⇒ **6 citations** : la forme d'origine + les 5 renvois `§ *Titre*`,
+         **avec ou sans lien markdown** (2-bis).
+
+==============================================================================
+CORRECTIF (3) — LA REGLE DE VIVACITE S'APPLIQUE A LA LISTE AC5.6 DU TRACKER
+==============================================================================
+  cible : desknode:tools/verif_ledger_dn416.py (+ son mutant chez
+          `verif_campagne_dn440.py`, qui est ce qui MUTE le cockpit)
+
+  ── AVANT ──
+     l'etat AVANT :
+       COMMANDE : python3 tools/_dn57_avant_ledger.py --cockpit /home/nasbarok/projects/compagnon_project
+       rc = 0
+       BILAN : 34 OK, 0 KO
+       ⇒ **AUCUNE ligne** : la liste AC5.6 n'etait la population d'aucun
+         controle, et un porteur mort y etait INVISIBLE.
+
+  ── LE ROUGE **NATUREL**, AU MOMENT OU LE CONTROLE EST POSE ──
+     🔴 C'EST L'ORDRE IMPOSE, ET IL EST PIEGEUX. Le controle est ROUGE des
+        qu'il est pose, parce que l'item 15 designait `dn5-6-…`, `done`
+        depuis le 2026-09-05. Capture du tir, AVANT le solde de la ligne :
+       ── 3-bis. LES PORTEURS DE LA LISTE AC5.6 DU TRACKER (dn5-7) ──────
+         [KO ] tout porteur de la liste AC5.6 du tracker est VIVANT           ⛔ 1 MORT(S) : item 15→dn5-6-les-sept-constats-reportes-sont-re-verifies-avant-d-etre-crus(done)
+       ⛔ 1 ECHEC(S) sur 35 controles.
+     ⇒ et la campagne de mutants a REFUSE de tourner sur ce rouge, ce qui
+       est son contrat (`T0 : L'ARBRE PROPRE` doit etre vert) :
+       ── T0 : L'ARBRE PROPRE ───────────────────────────────────────
+          rc=1 · 35 controle(s) traces · 1 KO · regeneration rc=0
+          ⛔ rc=1 ⛔ non nul — campagne ININTERPRETABLE
+     ⚠️ **LE ROUGE NATUREL NE REMPLACE PAS LE MUTANT** : il prouve que le
+        controle voit **CE CAS-CI** ; le mutant qu'il voit **LE CAS EN
+        GENERAL**. Le premier disparait avec le solde, le second jamais.
+
+  ── APRES (la ligne 15 SOLDEE avec sa date, ⛔ pas effacee) ──
+     l'etat APRES :
+       COMMANDE : python3 tools/verif_ledger_dn416.py --cockpit /home/nasbarok/projects/compagnon_project
+       rc = 0
+       ── 3-bis. LES PORTEURS DE LA LISTE AC5.6 DU TRACKER (dn5-7) ──────
+            [close] item 15         ⇒ dn5-6-les-sept-constats-reportes-sont-re-verifies-av CLOSE LE 2026-09-05
+            19 item(s), 18 designation(s) : 17 soumise(s) a la vivacite, 1 close(s) et datee(s)
+         [OK ] tout porteur de la liste AC5.6 du tracker est VIVANT           17 porteur(s) VIVANT(S) au tracker
+            2026-09-05 (`dn5-7`) : elle lit AUSSI la liste AC5.6 du
+       BILAN : 35 OK, 0 KO
+
+==============================================================================
+CORRECTIF (4) — LE ROUGE A ENFIN UNE LIGNE ET UN PORTEUR **VIVANT**
+==============================================================================
+  ⛔ ZERO ligne de code dans `verif_dossier_dn415.py` : son ensemble de 10
+  KO est l'ANCRE du garde-fou « 0 KO de plus » d'autres marches.
+  Le correctif est une LIGNE AU TRACKER, et une CLE VIVANTE.
+
+  ── AVANT ── (tracker `compagnon@332a153`)
+     · la liste AC5.6 portait **16** lignes ; **AUCUNE** ne nommait ce rouge.
+     · ses deux porteurs, `dn4-39` et `dn4-40`, etaient — et restent — `done`.
+     · la cle `dn4-46-…` **n'existait pas**.
+
+  ── APRES ──
+     git diff --stat -- sprint-status-desknode.yaml (cwd = cockpit)  rc=0
+        .../sprint-status-desknode.yaml                    | 104 ++++++++++++++++++++-
+        1 file changed, 101 insertions(+), 3 deletions(-)
+       cle CREEE : dn4-46-le-dossier-reprend-les-occurrences-que-son-manifeste-a-perdues = backlog
+       ligne AC5.6 AJOUTEE : #  17. 🆕 **LA SEULE GATE ROUGE DU DEPOT N'A PLUS DE PORTEUR VIVANT** — ligne
+       ligne AC5.6 AJOUTEE : #  18. 🆕 **PORTEE DE FR10 : LA LISTE DOIT-ELLE ETRE LISIBLE DEPUIS LE CLONE ?**
+     ⇒ le rouge a une ligne (**17**) et un porteur **VIVANT** (`backlog`).
+     ⛔ PAS `dn4-45` (story de la CI) ⛔ PAS `epic-dn8` (les 10 KO sont TOUS
+       sur des chemins `cockpit:` ⇒ une CI ne les verra jamais).
+
+==============================================================================
+CORRECTIF (7) — LA MARCHE LIVRE UN TEMOIN **POSITIF**
+==============================================================================
+  ── AVANT ── les 4 temoins de verification de `dn5-5` prouvent tous qu'une
+     chose N'A PAS eu lieu (T1 (7)(a)) : **0 sur 4** re-derive un chiffre.
+  ── APRES ── `desknode:mesures/dn5-7/T3-les-8-motifs.txt` RELIT ce qui est
+     livre : il re-resout les 8 motifs ET re-derive un chiffre publie de
+     `CONTRIBUTING.md` au commit qu'il nomme. ⚠️ Le meme geste ferme le (1) :
+     le controle neuf EST une relecture de ce qui est publie.
+
+==============================================================================
+NFR7 — LES **5** MUTANTS NEUFS, VUS ROUGIR, ET LE TEST QUI TRANCHE
+==============================================================================
+
+  ── MUTANT 35 ─────────────────────────────────────────────────────
+     REPLANTE : 35  falsifie un chiffre PUBLIE qui nomme son commit (`428 files` de `mesures/` a `76b031a` ⇒ 429)
+     (a) SUR LA GATE INTACTE          rc=1
+           [KO ] tout chiffre ANCRE sur un commit se re-derive              ⛔ CONTRIBUTING.md publie 429 files pour `mesures/` a `76b031a` — l'arbre rend 428
+         ── (z) LE BILAN NE RETRECIT PAS EN SILENCE ───────────────────────
+         BILAN : 33 OK, 1 KO
+     (b) LA GARDE RETIREE D'UNE COPIE — le verdict du controle « tout chiffre ANCRE … se re-derive »
+         rc=1
+           [KO ] THIRD-PARTY.md dit que cette gate le garde                 ⛔ il ne cite pas la gate qui le garde
+         ── (z) LE BILAN NE RETRECIT PAS EN SILENCE ───────────────────────
+         BILAN : 33 OK, 1 KO
+     ⇒ LE DISCRIMINANT — le `[KO ]` du libelle VISE (« tout chiffre ANCRE sur un commit se re-deriv ») :
+         gate intacte    : PRESENT
+         garde retiree   : ABSENT
+     ⇒ **LE MUTANT TRAVERSE BIEN LA GARDE QU'IL NOMME**
+     ⚠️ ARTEFACT NOMME, ⛔ pas confondu avec le discriminant : la COPIE
+        s'appelle `_dn57_sans_garde_35.py`, et `THIRD-PARTY.md` nomme
+        `tools/verif_licences_dn52.py` comme la gate qui le garde ⇒ le
+        controle d'auto-coherence rougit sur la copie, quoi qu'on ait
+        retire. C'est pourquoi le verdict ⛔ ne se lit ⛔ NI sur le `rc`
+        (1 ⇒ 1) ⛔ NI sur l'egalite des sorties (5071 ⇒ 5072 octets).
+
+  ── MUTANT 36 ─────────────────────────────────────────────────────
+     REPLANTE : 36  plante un renvoi `§ *Titre*` vers une section INEXISTANTE (la forme SANS lien markdown, qui pourrissait en vert)
+     (a) SUR LA GATE INTACTE          rc=1
+           [KO ] la section citee PAR SON TITRE existe                      ⛔ docs/roadmap.md : « Conventions that do not exist in that file » dans CONTRIBUTING.md
+         ── (z) LE BILAN NE RETRECIT PAS EN SILENCE ───────────────────────
+         BILAN : 33 OK, 1 KO
+     (b) LA GARDE RETIREE D'UNE COPIE — le balayage de la forme `§ *Titre*` (la portee ELARGIE par dn5-7)
+         rc=1
+           [KO ] THIRD-PARTY.md dit que cette gate le garde                 ⛔ il ne cite pas la gate qui le garde
+         ── (z) LE BILAN NE RETRECIT PAS EN SILENCE ───────────────────────
+         BILAN : 33 OK, 1 KO
+     ⇒ LE DISCRIMINANT — le `[KO ]` du libelle VISE (« la section citee PAR SON TITRE existe ») :
+         gate intacte    : PRESENT
+         garde retiree   : ABSENT
+     ⇒ **LE MUTANT TRAVERSE BIEN LA GARDE QU'IL NOMME**
+     ⚠️ ARTEFACT NOMME, ⛔ pas confondu avec le discriminant : la COPIE
+        s'appelle `_dn57_sans_garde_36.py`, et `THIRD-PARTY.md` nomme
+        `tools/verif_licences_dn52.py` comme la gate qui le garde ⇒ le
+        controle d'auto-coherence rougit sur la copie, quoi qu'on ait
+        retire. C'est pourquoi le verdict ⛔ ne se lit ⛔ NI sur le `rc`
+        (1 ⇒ 1) ⛔ NI sur l'egalite des sorties (5115 ⇒ 5042 octets).
+
+  ── MUTANT 37 ─────────────────────────────────────────────────────
+     REPLANTE : 37  remplace l'ancre COMMIT d'un chiffre publie par `HEAD` (l'ancre MOUVANTE : un arbre different chaque jour)
+     (a) SUR LA GATE INTACTE          rc=1
+           [KO ] ⛔ aucun chiffre publie n'ancre sur une ref MOUVANTE        ⛔ CONTRIBUTING.md : « **46 254 844 bytes** » ancre sur `HEAD` · CONTRIBUTING.md : « **603** files » ancre sur `HEAD`
+         ── (z) LE BILAN NE RETRECIT PAS EN SILENCE ───────────────────────
+         BILAN : 33 OK, 1 KO
+     (b) LA GARDE RETIREE D'UNE COPIE — le verdict du controle « ⛔ aucun chiffre … ref MOUVANTE »
+         rc=1
+           [KO ] THIRD-PARTY.md dit que cette gate le garde                 ⛔ il ne cite pas la gate qui le garde
+         ── (z) LE BILAN NE RETRECIT PAS EN SILENCE ───────────────────────
+         BILAN : 33 OK, 1 KO
+     ⇒ LE DISCRIMINANT — le `[KO ]` du libelle VISE (« aucun chiffre publie n'ancre sur une ref MOU ») :
+         gate intacte    : PRESENT
+         garde retiree   : ABSENT
+     ⇒ **LE MUTANT TRAVERSE BIEN LA GARDE QU'IL NOMME**
+     ⚠️ ARTEFACT NOMME, ⛔ pas confondu avec le discriminant : la COPIE
+        s'appelle `_dn57_sans_garde_37.py`, et `THIRD-PARTY.md` nomme
+        `tools/verif_licences_dn52.py` comme la gate qui le garde ⇒ le
+        controle d'auto-coherence rougit sur la copie, quoi qu'on ait
+        retire. C'est pourquoi le verdict ⛔ ne se lit ⛔ NI sur le `rc`
+        (1 ⇒ 1) ⛔ NI sur l'egalite des sorties (5116 ⇒ 5117 octets).
+
+  ── MUTANTS `M1-ac56-porteur-mort` ET `M2-ac56-porteur-inconnu` ──────
+     Ils vivent chez `verif_campagne_dn440.py` — c'est ELLE qui mute le
+     cockpit, dans une COPIE jetable ; `verif_ledger_dn416.py` ne tient
+     ⛔ ni inventaire ⛔ ni campagne.
+     (a) SUR LA GATE INTACTE :
+            [OK] M1-ac56-porteur-mort         VU ROUGE sur verif_ledger_dn416.py:1624
+            [OK] M2-ac56-porteur-inconnu      VU ROUGE sur verif_ledger_dn416.py:1624
+         ── `controle ⇒ couvert` : LES CONTROLES GARDES PAR RIEN ───────
+            ⚠️ GARDES PAR RIEN        : 0
+         BILAN CAMPAGNE : 35 mutant(s) JOUE(S), 0 echec(s), 0 controle(s) gardes par rien
+         BILAN : 58 OK, 0 KO
+     (b) LA GARDE RETIREE D'UNE COPIE — le verdict du controle de
+         vivacite de la liste AC5.6 (`--gate` de la campagne) :
+         rc=1
+            [!!] M1-ac56-porteur-mort         ⛔ NON VU (KO neufs : aucun)
+            [!!] M2-ac56-porteur-inconnu      ⛔ NON VU (KO neufs : aucun)
+         ── `controle ⇒ couvert` : LES CONTROLES GARDES PAR RIEN ───────
+            ⚠️ GARDES PAR RIEN        : 1
+         BILAN CAMPAGNE : 35 mutant(s) JOUE(S), 8 echec(s), 1 controle(s) gardes par rien
+         ⛔ ECHECS : M1-ac56-porteur-mort, M2-ac56-porteur-inconnu, exemption:le depot cockpit est atteignab, exemption:le ledger est present, exemption:le ledger se LIT en UTF-8, exemption:le tracker est present, exemption:le tracker se LIT en UTF-8, gardes-par-rien
+         BILAN : 34 OK, 8 KO
+     ⇒ LE DISCRIMINANT — le verdict DES DEUX MUTANTS, nomme :
+         gate intacte    : VU ROUGE  ⇒ OUI
+         garde retiree   : ⛔ NON VU ⇒ 2 mutant(s) sur 2
+     ⇒ **LES DEUX MUTANTS TRAVERSENT BIEN LA GARDE QU'ILS NOMMENT**
+     ⚠️ ARTEFACTS NOMMES, ⛔ pas confondus avec le discriminant : sous
+        `--gate <copie>`, les **5 EXEMPTIONS** tombent aussi — leur
+        temoin `_legitime_au_tri` compare le BASENAME de la gate a celui
+        du tableau `CAS` de `campagne_ctrl_dn440.py`, qui nomme
+        `verif_ledger_dn416.py`. C'est un effet du `--gate`, ⛔ pas de la
+        garde retiree — et c'est exactement pourquoi ce test vise SON
+        echec NOMME, ⛔ pas le `rc` global.
+
+⚠️ LES COPIES SANS GARDE ET LES GATES `AVANT` ONT ETE **SUPPRIMEES** de
+   `tools/` a la fin de ce tir : 6 fichier(s) temporaire(s), 0 restant.
+   git status --porcelain -- tools/ (subprocess)  rc=0
+      M tools/verif_campagne_dn440.py
+      M tools/verif_ledger_dn416.py
+      M tools/verif_licences_dn52.py
+==============================================================================

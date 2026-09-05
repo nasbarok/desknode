@@ -1,0 +1,47 @@
+==============================================================================
+T4 — LES **NON-GATES**, APRES TOUT CHANGEMENT DE `tools/` (dn5-7)
+==============================================================================
+date : 2026-09-05T12:05:15
+
+🔴 POURQUOI CE FICHIER EXISTE. Le garde-fou « 0 KO de plus, gate par gate »
+   est **AVEUGLE** a ce qui n'est pas une gate : `run_gates.sh` decouvre ses
+   cibles par le glob `tools/verif_*.py`. `dn5-6` a **casse**
+   `inventaire_motif_dn53.py` sans que rien ne rougisse.
+
+⚠️ IL N'Y AVAIT ⛔ AUCUN T0 POUR LES NON-GATES — ET C'EST ECRIT PLUTOT QUE
+   RESOLU EN SILENCE. Le T0 de cette marche n'a capture que les gates.
+   ⇒ LE T0 EST DONC **RECONSTRUIT PAR LA MESURE**, ⛔ pas suppose : un CLONE
+     LOCAL de `desknode` a l'ancre de la story (`360a5c2`) rend
+     exactement l'arbre d'avant cette marche — arbre PROPRE, ⛔ aucune
+     ecriture de `dn5-7` — et les deux outils y sont joues.
+
+  git clone --branch main file://<desknode> <tmp>      rc=0
+  HEAD du clone : 360a5c20a4ef62d9189612160e415ab2467f94eb
+  ⇒ IDENTIQUE a l'ancre de la story
+  arbre du clone : PROPRE
+
+──────────────────────────────────────────────────────────────────────────────
+OUTIL : tools/inventaire_motif_dn53.py
+──────────────────────────────────────────────────────────────────────────────
+  T0 (clone a l'ancre)   rc=0   Traceback : NON  60 ligne(s) de sortie
+      (⛔ AUCUNE ligne `BILAN` — voir le motif ci-dessous)
+  T7 (arbre livre)       rc=0   Traceback : NON  60 ligne(s) de sortie
+      (⛔ AUCUNE ligne `BILAN` — voir le motif ci-dessous)
+  ⇒ **VERDICT IDENTIQUE A T0 ET A T7** (rc, Traceback et lignes `BILAN`)
+
+──────────────────────────────────────────────────────────────────────────────
+OUTIL : tools/filtre_constats_dn56.py
+──────────────────────────────────────────────────────────────────────────────
+  T0 (clone a l'ancre)   rc=1   Traceback : NON  42 ligne(s) de sortie
+      [OK ] porte_bilan voit une ligne BILAN                         True
+      [OK ] porte_bilan ne voit PAS de BILAN dans un traceback       False
+  T7 (arbre livre)       rc=1   Traceback : NON  42 ligne(s) de sortie
+      [OK ] porte_bilan voit une ligne BILAN                         True
+      [OK ] porte_bilan ne voit PAS de BILAN dans un traceback       False
+  ⇒ **VERDICT IDENTIQUE A T0 ET A T7** (rc, Traceback et lignes `BILAN`)
+
+==============================================================================
+⚠️ LE DISCRIMINANT D'UN OUTIL MORT EST LE **`Traceback`**, ⛔ PAS L'ABSENCE
+   DE `BILAN` : une sortie en amont n'imprime AUCUN `BILAN` sans etre morte.
+   Les deux sont donc rendus, cote a cote, aux deux bornes.
+==============================================================================

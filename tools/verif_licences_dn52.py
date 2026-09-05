@@ -271,6 +271,39 @@ MUTANTS[28] = ("fait CHECKOUTER le code de la PR par le workflow "
 MUTANTS[34] = ("cite dans `.github/workflows/gates.yml` un marqueur `dn9-9` "
                "ABSENT de docs/roadmap.md, en le renvoyant a la page "
                "(constat 9 : les `.yml` n'etaient JAMAIS balayes)")
+# ── dn5-7 / NFR7 — LES TROIS MUTANTS QUI **REPLANTENT** (⛔ aucun ne debranche)
+#    🔴 POURQUOI ILS SONT LA SEULE PREUVE POSSIBLE, ET C'EST MESURE :
+#       les 5 renvois `§ *Titre*` de l'arbre RESOLVENT tous, et les chiffres
+#       publies de `CONTRIBUTING.md` sont JUSTES a l'octet (mesure du
+#       2026-09-05, `mesures/dn5-7/T1-filtre-8-reports.txt`). Un controle
+#       elargi passe donc VERT — et vert ⛔ ne distingue pas « il garde » de
+#       « il ne regarde rien ». ⛔ Un mutant qui DEBRANCHE la garde ne
+#       prouverait que son existence : `dn5-6` a paye exactement ca, trois
+#       fois.
+MUTANTS[35] = ("falsifie un chiffre PUBLIE qui nomme son commit "
+               "(`428 files` de `mesures/` a `76b031a` ⇒ 429)")
+# ⚠️ LIBELLE CORRIGE LE 2026-09-05 (revue) : il annoncait « la forme SANS
+#    lien markdown » alors qu'il mute `docs/roadmap.md`, dont le renvoi est
+#    ECRIT AVEC son lien (`[`CONTRIBUTING.md`](../CONTRIBUTING.md) § *Titre*`).
+#    ⇒ `--liste-mutants` publiait la MAUVAISE branche comme prouvee. C'est le
+#    MUTANT 38 qui couvre la forme sans lien — son libelle ⛔ ne bouge pas.
+MUTANTS[36] = ("plante un renvoi `§ *Titre*` vers une section INEXISTANTE "
+               "(la forme **AVEC** lien markdown)")
+MUTANTS[37] = ("remplace l'ancre COMMIT d'un chiffre publie par `HEAD` "
+               "(l'ancre MOUVANTE : un arbre different chaque jour)")
+# 🔴 LES DEUX FORKS DE LA RE-DERIVATION ETAIENT **COMPTES** ET GARDES PAR
+#    RIEN — lacune trouvee a la revue du 2026-09-05. Le mutant 35 ne falsifie
+#    qu'un chiffre en `files` de portee `mesures/` ; les 5 chiffres re-derives
+#    incluent des OCTETS et l'ARBRE ENTIER, et rien ne prouvait que ces
+#    branches-la rougissent. « Un compte n'est pas une garde. »
+MUTANTS[39] = ("falsifie un chiffre publie en **OCTETS** "
+               "(`10 234 634 bytes` de `mesures/` a `76b031a` ⇒ …635)")
+MUTANTS[40] = ("falsifie un chiffre publie de l'**ARBRE ENTIER** "
+               "(`46 254 844 bytes` a `76b031a` ⇒ …845)")
+MUTANTS[38] = ("plante un renvoi `§ *Titre*` INEXISTANT dans la forme "
+               "**SANS lien markdown** — le mutant 36 ne mute que la forme "
+               "AVEC lien, et la branche sans lien restait sans preuve")
+
 MUTANTS[29] = ("pose un SECOND workflow qui porte le signal du CLA et qui trie "
                "AVANT `cla.yml`, avec une action NON EPINGLEE")
 MUTANTS[30] = ("checkoute le code de la PR par `github.head_ref` "
@@ -336,6 +369,9 @@ INVENTAIRE = (
     "docs/roadmap.md definit des marqueurs",
     "tout marqueur cite COMME marqueur est defini",
     "le COMPTE annonce egale le nombre d'entrees",
+    # ── dn5-7 / report (1) de `dn5-5` ───────────────────────────────────
+    "tout chiffre ANCRE sur un commit se re-derive",
+    "⛔ aucun chiffre publie n'ancre sur une ref MOUVANTE",
     "la promesse de bot et son workflow disent la meme chose",
     "chaque action du workflow CLA est EPINGLEE",
     "le document que le bot fait signer EXISTE",
@@ -782,6 +818,23 @@ def section_citations(textes):
     print("\n── (c2/c3) LES SECTIONS ET LES OUTILS CITES EXISTENT ─────────────")
 
     # ── UNE SECTION CITEE PAR SON TITRE ───────────────────────────────────
+    # 🔴 dn5-7 / REPORT (2) DE `dn5-5`, RE-MESURE LE 2026-09-05 — LA PORTEE
+    #    ETAIT PLUS ETROITE QUE LE DEPOT NE L'ECRIVAIT, ET LE TRACKER S'ETAIT
+    #    TROMPE SUR L'AMPLEUR. Le report parlait de **2** renvois `§ *Titre*` ;
+    #    le tracker a mesure `CONTRIBUTING.md` SEUL, y a trouve 0 renvoi, et a
+    #    conclu « le cas a disparu ». MESURE sur les **10** fichiers de prose
+    #    que cette gate balaie : il y a **5** renvois `§ *Titre*` **CROISES**
+    #    (vers un AUTRE fichier) — 3 dans `docs/dn5-1-ecart-promesses.md`, 2
+    #    dans `docs/roadmap.md` — et la gate n'en confrontait **1**.
+    # ⚠️ LE LIBELLE NE CHANGE PAS : `verif_campagne_dn440.py` et
+    #    `verif_campagne_dn56.py` ciblent PAR LIBELLE.
+    # ⚠️ LES 5 RESOLVENT TOUS ⇒ ⛔ aucun rouge naturel n'est possible ici : le
+    #    MUTANT 36, qui REPLANTE un titre inexistant, est la SEULE preuve.
+    # ⛔ CE QUE CE CONTROLE NE VOIT PAS, ET C'EST ECRIT : un renvoi `§ *Titre*`
+    #    qui ne cite AUCUN fichier cible (le renvoi INTERNE — il y en a 1 dans
+    #    l'arbre) n'est pas confronte. Sa cible est la page elle-meme ; le
+    #    controle est ecrit pour le renvoi CROISE, celui qui pourrit quand un
+    #    AUTRE fichier bouge.
     absentes, vues = [], 0
     for nom, src in textes.items():
         plat = re.sub(r"\s+", " ", src)
@@ -795,6 +848,16 @@ def section_citations(textes):
             if not os.path.exists(cible) or titre not in lire(cible):
                 absentes.append("%s : « %s » dans %s"
                                 % (nom, titre, m.group(1)))
+        # ── LA FORME `§ *Titre*`, AVEC **OU SANS** LIEN MARKDOWN ───────────
+        for fichier, titre in renvois_section(plat):
+            vues += 1
+            cible = resout_prose(nom, fichier)
+            if cible is None:
+                absentes.append("%s : `%s` INTROUVABLE (§ *%s*)"
+                                % (nom, fichier, titre))
+            elif titre not in lire(cible):
+                absentes.append("%s : « %s » dans %s"
+                                % (nom, titre, fichier))
     # 🔴 MESURE DU 2026-09-04 : en reformulant l'UNIQUE citation hors de la forme
     #    reconnue et en pointant un titre INEXISTANT, ce controle rendait
     #    `[OK ] … 0 citation(s)` et le bilan restait `28 OK, 0 KO`. Le mutant 10
@@ -890,6 +953,340 @@ def section_comptes(textes):
          else ("⛔ " + " · ".join(faux) if faux
                else "⛔ AUCUN compte trouve — le controle ne peut pas etre vert "
                     "sur du vide"))
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# (c5-bis) UN CHIFFRE PUBLIE SE RE-DERIVE **AU COMMIT QU'IL NOMME** — dn5-7
+#
+# 🔴 LE REPORT (1) DE `dn5-5`, REJOUE LE 2026-09-05 : `grep -rn ls-tree` sur
+#    les 30 gates + `run_gates.sh` rend **rc=1, sortie VIDE**. AUCUNE gate ne
+#    confronte le chiffre publie de `mesures/` a l'arbre — et il a deja pourri
+#    QUATRE fois (les cinq figures historiques datees de `CONTRIBUTING.md`).
+#
+# 🎯 POURQUOI CE CONTROLE EST POSSIBLE ALORS QUE `CONTRIBUTING.md` DECLARE LE
+#    PROBLEME INSATISFIABLE. La page a raison sur ce qu'elle REFUTE : « le
+#    chiffre publie ici est celui que l'arbre qui le porte rend » est un POINT
+#    FIXE — la taille de l'arbre inclut ce fichier, dont la taille depend du
+#    chiffre ecrit dedans. Mais elle publie aussi la regle qui s'en sort :
+#    **nommer le commit**. `git ls-tree -r -l <commit>` est DETERMINISTE et
+#    INDEPENDANT de l'arbre de travail. ⇒ ce controle ne demande pas « ce
+#    chiffre decrit-il aujourd'hui ? » (indecidable) mais « ce chiffre
+#    decrit-il LE COMMIT QU'IL NOMME ? » (falsifiable).
+# ⛔ IL NE RE-DERIVE JAMAIS A `HEAD` : `HEAD` designe un arbre different chaque
+#    jour ⇒ il n'y aurait plus de point fixe du tout.
+#
+# ⚠️ LA POPULATION EST LA CONVENTION D'ANCRAGE DU DEPOT, ⛔ PAS « TOUT NOMBRE » :
+#    un chiffre entre en population quand sa PHRASE porte une ancre ecrite
+#    ``**`<ref>`**`` (gras + accents graves — la forme que `CONTRIBUTING.md`
+#    emploie deja) ET que le chiffre porte son UNITE (`bytes`/`files`) ET
+#    qu'une PORTEE le precede dans la meme phrase (un chemin suivi en accents
+#    graves, ou « tracked files » / « this repository »).
+# ⛔ CE QUI RESTE DONC HORS GARDE, ET C'EST ECRIT PLUTOT QUE TU : un chiffre
+#    qui nomme son commit HORS de cette convention (par exemple « on `main` at
+#    `7246f52` … the largest file … is **5 071 848 bytes** » — ancre en accents
+#    graves SANS gras, et grandeur « le plus gros blob », qui n'est ⛔ pas la
+#    somme d'un chemin) n'est pas confronte. L'elargir A L'AVEUGLE fabriquerait
+#    un FAUX KO : la mesure du 2026-09-05 l'a montre sur `docs/roadmap.md`, ou
+#    « `docs/` pese **27 992 816 bytes** des **46 254 844** » attribuerait le
+#    second chiffre a `docs/` par simple proximite. ⇒ portee ETROITE et
+#    DECLAREE, ⛔ pas large et fausse.
+# ═══════════════════════════════════════════════════════════════════════════
+
+# 🔴 UNE ANCRE SE RECONNAIT A SA **POSITION**, ⛔ pas au fait d'etre en gras :
+#    `on **`X`**` / `at **`X`**` — la forme que `CONTRIBUTING.md` emploie deja.
+#    Sans la position, `**`1`**` d'une phrase de `README.md` entrait en
+#    population (mesure du 2026-09-05) et rougissait sur de la prose JUSTE.
+RE_ANCRE_COMMIT = re.compile(
+    r"\b(?:on|at|au|commit)\s+\*\*`([^`]{1,60})`\*\*", re.I)
+RE_SHA = re.compile(r"^[0-9a-f]{7,40}$")
+
+
+def sha_de_forme(a):
+    """L'ancre a-t-elle la FORME d'un SHA abrege ?
+
+    🔴 REVUE DU 2026-09-05 — `RE_SHA` SEUL ACCEPTE UN **DECIMAL** : mesure,
+    `RE_SHA.match("46254844")` rend `True`. Une phrase publiant
+    ``at **`46254844`**`` faisait donc prendre au controle la branche « commit
+    absent du clone » ⇒ `declarer()` + `return`, et **toute la re-derivation se
+    desarmait sur une ancre bidon**. ⇒ un SHA porte au moins une LETTRE
+    hexadecimale ; un nombre qui n'en porte aucune n'est ⛔ pas un commit, il
+    est MOUVANT et il rougit.
+    """
+    return bool(RE_SHA.match(a)) and bool(re.search(r"[a-f]", a))
+_ESP = "\u0020\u00a0\u202f\u2009"
+RE_GRANDEUR = re.compile(
+    r"\*\*\s*([0-9][0-9" + _ESP + r"]*?)\s*"
+    r"(bytes|files|octets|fichiers)?\s*\*\*"
+    r"(?:\s*(bytes|files|octets|fichiers)\b)?")
+RE_CHEMIN_SUIVI = re.compile(r"`([A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*/)`")
+RE_ARBRE_ENTIER = re.compile(r"tracked files|this repository|whole tree"
+                             r"|arbre entier")
+UNITES_FICHIERS = ("files", "fichiers")
+
+# ── dn5-7 / report (2) : le renvoi `§ *Titre*`, AVEC **ou sans** lien ───────
+RE_REF_MD = re.compile(r"\[`([^`]+\.md)`\]\([^)]*\)|`([^`]+\.md)`")
+RE_SECTION_TITRE = re.compile(r"§\s*\*([^*]{1,90})\*")
+GAP_RENVOI = 40
+
+
+def renvois_section(plat):
+    """`[(fichier, titre)]` — les renvois `§ *Titre*` et LEUR fichier.
+
+    🔴 REVUE DU 2026-09-05 — L'APPARIEMENT SE FAISAIT PAR SIMPLE PROXIMITE,
+    SANS EXIGER QUE LES DEUX SOIENT LE MEME RENVOI, et il avait DEUX trous :
+      *(i)* un paragraphe qui NOMME un fichier puis fait un renvoi **INTERNE**
+            moins de 40 caracteres plus loin produisait un FAUX KO (le titre
+            interne confronte au mauvais fichier) — et
+            `docs/dn5-1-ecart-promesses.md` porte deja les DEUX formes ;
+      *(ii)* un **SECOND** `§ *Titre*` apres la meme reference n'etait JAMAIS
+            confronte.
+    ⇒ LA REGLE : une reference gouverne les `§ *Titre*` qui la suivent
+      **jusqu'a la reference suivante**, EN CHAINE — chacun a moins de
+      `GAP_RENVOI` caracteres du precedent. ⛔ Aucun appariement par-dessus une
+      reference intercalee.
+    """
+    refs = [(m.start(), m.end(), m.group(1) or m.group(2))
+            for m in RE_REF_MD.finditer(plat)]
+    out = []
+    for k, (_s0, e0, fichier) in enumerate(refs):
+        fin = refs[k + 1][0] if k + 1 < len(refs) else len(plat)
+        pos = e0
+        for m in RE_SECTION_TITRE.finditer(plat, e0, fin):
+            if m.start() - pos > GAP_RENVOI:
+                break
+            out.append((fichier, m.group(1).strip()))
+            pos = m.end()
+    return out
+
+
+def resout_prose(depuis, fichier):
+    """Le chemin REEL d'un `x.md` cite depuis `depuis` — ⛔ jamais devine.
+
+    Un lecteur resout `README.md` cite depuis `docs/…` d'abord a cote du
+    fichier citant, puis A LA RACINE (c'est la seule autre lecture possible :
+    ces pages sont a la racine). Rend `None` si aucune des deux n'existe —
+    ⛔ pas un chemin fabrique.
+    """
+    proche = os.path.normpath(os.path.join(RACINE, os.path.dirname(depuis),
+                                           fichier))
+    if os.path.exists(proche):
+        return proche
+    racine = os.path.normpath(os.path.join(RACINE, fichier))
+    return racine if os.path.exists(racine) else None
+
+
+def _entier(s):
+    return int(re.sub(r"[^0-9]", "", s))
+
+
+def ls_tree(rev, chemin=None):
+    """`(n_fichiers, octets)` de l'arbre `rev` — ⛔ jamais de l'arbre de travail.
+
+    Rend `None` si `git` refuse (commit absent du clone, `git` indisponible) :
+    l'appelant en fait une DECLARATION, ⛔ pas un Traceback ⛔ ni un vert.
+    """
+    args = ["git", "ls-tree", "-r", "-l", rev]
+    if chemin:
+        args += ["--", chemin]
+    # ⚠️ `subprocess.run` **LEVE** `FileNotFoundError` quand l'executable
+    #    manque — il ⛔ ne rend PAS un `rc` non nul. Sans ce `except`, la
+    #    promesse « ⛔ pas un Traceback » de la ligne (1-bis) etait fausse.
+    try:
+        r = subprocess.run(args, cwd=RACINE, capture_output=True, text=True)
+    except OSError:
+        return None
+    if r.returncode != 0:
+        return None
+    n = tot = 0
+    for l in r.stdout.splitlines():
+        m = re.match(r"^\d+ blob [0-9a-f]+\s+(\d+)\t", l)
+        if m:
+            n += 1
+            tot += int(m.group(1))
+    return n, tot
+
+
+def commit_present(rev):
+    """L'ancre designe-t-elle un **OBJET REEL** de CE clone ?
+
+    ⚠️ `.github/workflows/gates.yml` checkoute en `fetch-depth: 1` ⇒ la reponse
+    y est NON pour un commit ancien, et c'est NORMAL.
+    ⛔ Elle n'est appelee QU'APRES `sha_de_forme()` : `git rev-parse --verify
+    HEAD^{commit}` REUSSIT, et traiter `HEAD` comme un commit verifie
+    desarmerait exactement le controle (1-ter).
+    ⚠️ `except OSError` : `git` absent LEVE, il ne rend pas un `rc`.
+    """
+    try:
+        r = subprocess.run(["git", "rev-parse", "--verify", "--quiet",
+                            rev + "^{commit}"],
+                           cwd=RACINE, capture_output=True, text=True)
+    except OSError:
+        return False
+    return r.returncode == 0
+
+
+def figures_ancrees(textes):
+    """Les chiffres PUBLIES qui NOMMENT leur commit, avec leur portee.
+
+    ⚠️ L'ANCRE SE PREND DANS LA **PHRASE**, LA PORTEE AUSSI. Mesure du
+    2026-09-05 : pris au PARAGRAPHE, l'ancre `76b031a` capturait les CINQ
+    figures historiques que `CONTRIBUTING.md` garde DELIBEREMENT sans ancre
+    (« 395 files / 9 900 692 bytes », etc.) et les declarait fausses. ⛔ Une
+    figure sans ancre n'entre pas en population : elle n'affirme rien sur un
+    commit.
+    """
+    out = []
+    for nom, src in sorted(textes.items()):
+        for para in re.split(r"\n\s*\n", src):
+            plat = re.sub(r"\s+", " ", para)
+            # ⚠️ Le point d'un nombre decimal (`10.23 MB`) ⛔ ne coupe pas une
+            #    phrase : la coupe exige un caractere NON CHIFFRE avant le `.`.
+            for phrase in re.split(r"(?<=[^\d])\.\s+", plat):
+                # 🔴 LA GARDE DE CITATION, IDENTIQUE A CELLE DE
+                #    `designations_de()` DANS LA GATE DU LEDGER : dans un code
+                #    span, c'est une CITATION, ⛔ pas une ancre. Sans elle, une
+                #    phrase de documentation du type
+                #    ``⛔ ne jamais ancrer **603 files** sur **`HEAD`**``
+                #    faisait rougir « aucun chiffre publie n'ancre sur une ref
+                #    MOUVANTE » sur de la prose PARFAITEMENT JUSTE — et
+                #    `docs/roadmap.md` porte une regle d'admission qui pousse
+                #    a ecrire ce genre de phrase. ⛔ Ce n'est pas une liste
+                #    d'exclusion : la garde est structurelle.
+                ancres = [m.group(1)
+                          for m in RE_ANCRE_COMMIT.finditer(phrase)
+                          if not phrase[:m.start()].count("`") % 2]
+                if not ancres:
+                    continue
+                for m in RE_GRANDEUR.finditer(phrase):
+                    unite = m.group(2) or m.group(3)
+                    if not unite:
+                        continue
+                    if phrase[:m.start()].count("`") % 2:
+                        continue
+                    avant = phrase[:m.start()]
+                    pc = list(RE_CHEMIN_SUIVI.finditer(avant))
+                    pa = list(RE_ARBRE_ENTIER.finditer(avant))
+                    ic = pc[-1].start() if pc else -1
+                    ia = pa[-1].start() if pa else -1
+                    if ic < 0 and ia < 0:
+                        portee = None          # ⛔ hors population : rien a derive
+                    elif ic > ia:
+                        portee = pc[-1].group(1)
+                    else:
+                        portee = ""            # l'arbre ENTIER
+                    out.append({
+                        "fichier": nom,
+                        "ancres": sorted(set(ancres)),
+                        "ancre": ancres[0],
+                        "unite": unite,
+                        "valeur": _entier(m.group(1)),
+                        "portee": portee,
+                        "brut": m.group(0).strip(),
+                    })
+    return out
+
+
+def section_ancrages(textes):
+    print("\n── (c5-bis) UN CHIFFRE PUBLIE SE RE-DERIVE A SON COMMIT ──────────")
+    figures = figures_ancrees(textes)
+
+    # ── (1-ter) L'ANCRE MOUVANTE EST **REFUSEE** ──────────────────────────
+    # 🔴 REGLE **INVERSEE** A LA REVUE DU 2026-09-05. `REFS_MOUVANTES` etait
+    #    une liste d'exclusion EN DUR : une ancre `HEAD~2`, `origin/dev`, un nom
+    #    de branche ou un tag DEPLACABLE (`v0.1.0-beta`, que la ligne 2 de la
+    #    liste AC5.6 prevoit de poser) n'etait ⛔ ni refusee ⛔ ni confrontee —
+    #    elle quittait la population EN SILENCE, et le libelle promettait plus
+    #    large que ce que le code decidait.
+    # ⇒ TOUT CE QUI N'A PAS LA FORME D'UN SHA EST **MOUVANT**, ET ROUGIT.
+    mouvants = ["%s : « %s » ancre sur `%s`" % (f["fichier"], f["brut"],
+                                                f["ancre"])
+                for f in figures if not sha_de_forme(f["ancre"])]
+    ambigus = ["%s : « %s » entre %d ancres (%s)"
+               % (f["fichier"], f["brut"], len(f["ancres"]),
+                  ", ".join(f["ancres"]))
+               for f in figures if len(f["ancres"]) > 1]
+    dire(not mouvants and not ambigus and bool(figures),
+         "⛔ aucun chiffre publie n'ancre sur une ref MOUVANTE",
+         "%d chiffre(s) ancre(s), tous sur un COMMIT" % len(figures)
+         if figures and not mouvants and not ambigus
+         else ("⛔ " + " · ".join((mouvants + ambigus)[:3])
+               if (mouvants or ambigus)
+               else "⛔ AUCUN chiffre ancre trouve — ⛔ pas vert sur du vide"))
+
+    # ── (1) LE CHIFFRE SE RE-DERIVE **AU COMMIT NOMME** ───────────────────
+    # ⚠️ LE LIBELLE EST ECRIT **EN TOUTES LETTRES** DANS `dire()` ET DANS
+    #    `declarer()`, ⛔ pas par cette variable — mesure du 2026-09-05 :
+    #    `dn_sites.py` lit le SOURCE au tokenizer, et un 2e argument qui n'est
+    #    pas un LITTERAL de chaine sort « illisible » ⇒ le libelle n'entre dans
+    #    AUCUN index, et toute campagne qui ciblerait par libelle le raterait.
+    #    La meme faute a rendu `⛔ CIBLE INTROUVABLE AU SOURCE` sur la gate du
+    #    ledger, le meme jour. La variable ne sert plus qu'aux messages.
+    LIB = "tout chiffre ANCRE sur un commit se re-derive"
+    par_ancre = {}
+    for f in figures:
+        if sha_de_forme(f["ancre"]) and f["portee"] is not None:
+            par_ancre.setdefault(f["ancre"], []).append(f)
+    sans_portee = [f for f in figures if f["portee"] is None]
+    if sans_portee:
+        note("%d chiffre(s) ancre(s) ne nomment AUCUNE portee suivie ⇒ ⛔ pas "
+             "derivables par `git ls-tree` (ex. `du -sb .git`) : %s"
+             % (len(sans_portee),
+                " · ".join("%s « %s »" % (f["fichier"], f["brut"])
+                           for f in sans_portee[:2])))
+    absents = sorted(a for a in par_ancre if not commit_present(a))
+    confrontables = [f for a in par_ancre if a not in absents
+                     for f in par_ancre[a]]
+    if absents and not confrontables and _MUTANT is not None:
+        # 🔴 REVUE DU 2026-09-05 — UN MUTANT ARME NE SE **DECLARE** JAMAIS NON
+        #    EMIS, ET LA CI LE PROUVAIT. MESURE dans un vrai
+        #    `git clone --depth 1` : `--mutant 35` sortait **rc=0 / 33 OK,
+        #    0 KO** (l'ancre `76b031a` y est absente ⇒ sortie anticipee AVANT
+        #    toute confrontation), et `verif_campagne_dn56.py` — qui n'est
+        #    ⛔ PAS dans `NON_JOUABLES` et tourne donc en CI sur un checkout
+        #    `fetch-depth: 1` — rendait `[KO ] tout mutant rend rc=1 ⛔ NE
+        #    ROUGISSENT PLUS : tools/verif_licences_dn52.py#35`. La CI aurait
+        #    ete ROUGE au premier push, avec un motif qui accuse a tort le
+        #    mutant.
+        # ⇒ UNE FAUTE REPLANTEE RESTE UNE FAUTE, MEME NON CONFRONTABLE ICI.
+        #    ⛔ Pas d'exception dans `EXCEPTIONS` de `verif_campagne_dn56.py` :
+        #    elle serait PERIMEE sur un clone complet et ferait rougir (c3).
+        dire(False, "tout chiffre ANCRE sur un commit se re-derive",
+             "⛔ MUTANT %d ARME et ancre(s) %s absente(s) de ce clone : une "
+             "faute REPLANTEE ne se DECLARE pas non emise"
+             % (_MUTANT, ", ".join("`%s`" % a for a in absents)))
+        return
+    if absents and not confrontables:
+        # ⇒ (1-bis) LE CAS DE LA CI : `actions/checkout` avec `fetch-depth: 1`.
+        #    ⛔ Pas un Traceback, ⛔ pas un vert sur du vide, ⛔ pas un saut muet.
+        declarer("le(s) commit(s) nomme(s) %s ne sont pas dans CE clone "
+                 "(`.github/workflows/gates.yml` checkoute en `fetch-depth: 1`)"
+                 " ⇒ la grandeur ne peut pas etre re-derivee ICI. ⛔ Le `rc` du"
+                 " contrat ne bouge pas." % ", ".join("`%s`" % a for a in absents),
+                 "tout chiffre ANCRE sur un commit se re-derive")
+        return
+    if absents:
+        note("%d ancre(s) absente(s) de ce clone, ⛔ non confrontee(s) : %s"
+             % (len(absents), ", ".join("`%s`" % a for a in absents)))
+    faux = []
+    for f in confrontables:
+        d = ls_tree(f["ancre"], f["portee"] or None)
+        if d is None:
+            faux.append("%s : `git ls-tree` refuse `%s`"
+                        % (f["fichier"], f["ancre"]))
+            continue
+        reel = d[0] if f["unite"] in UNITES_FICHIERS else d[1]
+        if reel != f["valeur"]:
+            faux.append("%s publie %d %s pour `%s` a `%s` — l'arbre rend %d"
+                        % (f["fichier"], f["valeur"], f["unite"],
+                           f["portee"] or "(arbre entier)", f["ancre"], reel))
+    dire(not faux and bool(confrontables),
+         "tout chiffre ANCRE sur un commit se re-derive",
+         "%d chiffre(s) re-derive(s) a leur commit (%s)"
+         % (len(confrontables),
+            ", ".join("`%s`" % a for a in sorted(par_ancre) if a not in absents))
+         if confrontables and not faux
+         else ("⛔ " + " · ".join(faux[:2]) if faux
+               else "⛔ AUCUN chiffre confrontable — ⛔ pas vert sur du vide"))
 
 
 # ── LE LEURRE DU MUTANT 29 : un workflow qui porte VRAIMENT le signal du CLA
@@ -1189,6 +1586,16 @@ def main():
     prose = {} if traces is None else {
         f: lire(os.path.join(RACINE, f)) for f in prose_du_depot(traces)}
     prose = dict(prose)
+    # 🔴 REVUE DU 2026-09-05 — LES MUTANTS DE `CONTRIBUTING.md` N'AVAIENT ⛔ PAS
+    #    LA GARDE FATALE QUE 36 ET 38 ONT : si le fichier n'est pas dans la
+    #    prose lue, le `if` les SAUTAIT et le mutant tournait **NON MUTE**, en
+    #    sortant vert — exactement le silence contre lequel 34/36/38 existent.
+    _cm = "CONTRIBUTING.md"
+    if _MUTANT in (35, 37, 39, 40) and _cm not in prose:
+        sys.exit("MUTANT %d INAPPLICABLE : %s n'est pas dans la prose lue par "
+                 "`section_ancrages`. ⛔ Un mutant qui ne s'applique pas ne "
+                 "prouve RIEN — c'est la portee qu'il faut regarder."
+                 % (_MUTANT, _cm))
     if "CONTRIBUTING.md" in prose:
         prose["CONTRIBUTING.md"] = M(
             9, prose["CONTRIBUTING.md"], "[`LICENSING.md`](LICENSING.md)",
@@ -1215,6 +1622,51 @@ def main():
         prose["CONTRIBUTING.md"] = M(
             27, prose["CONTRIBUTING.md"], "and **a bot handles it**",
             "and the maintainer handles it")
+        # ⚠️ ANCRES COURTES ET SUR **UNE SEULE LIGNE** — le motif paye par le
+        #    mutant 14 : une ancre qui porte la cesure d'un paragraphe devient
+        #    INAPPLICABLE des qu'une reformulation la decale.
+        prose["CONTRIBUTING.md"] = M(
+            35, prose["CONTRIBUTING.md"], "**428 files**", "**429 files**")
+        prose["CONTRIBUTING.md"] = M(
+            37, prose["CONTRIBUTING.md"],
+            "measured on **`76b031a`**", "measured on **`HEAD`**")
+        # ⇒ LES DEUX FORKS QUE LE 35 NE TOUCHE PAS : l'unite OCTETS, et la
+        #   portee ARBRE ENTIER.
+        prose["CONTRIBUTING.md"] = M(
+            39, prose["CONTRIBUTING.md"],
+            "**10 234 634 bytes**", "**10 234 635 bytes**")
+        prose["CONTRIBUTING.md"] = M(
+            40, prose["CONTRIBUTING.md"],
+            "**46 254 844 bytes**", "**46 254 845 bytes**")
+    # 🔴 LE MUTANT 36 MUTE **LA OU LA SECTION LIT** — motif paye par le mutant
+    #    34 de `dn5-6` : sa 1re version mutait un dict ou le fichier n'etait
+    #    pas, et un `if` la SAUTAIT EN SILENCE ⇒ le mutant sortait VERT en
+    #    pretendant prouver quelque chose. Son absence est donc FATALE.
+    _rm = "docs/roadmap.md"
+    if _MUTANT == 36 and _rm not in prose:
+        sys.exit("MUTANT 36 INAPPLICABLE : %s n'est pas dans la prose lue par "
+                 "`section_citations`. ⛔ Un mutant qui ne s'applique pas ne "
+                 "prouve RIEN — c'est la portee qu'il faut regarder." % _rm)
+    if _rm in prose:
+        prose[_rm] = M(
+            36, prose[_rm],
+            "§ *Conventions in this repository*",
+            "§ *Conventions that do not exist in that file*")
+    # 🔴 LE MUTANT 38 VISE **L'AUTRE MOITIE DE LA FORME**, ET C'EST UNE
+    #    LACUNE TROUVEE A LA VERIFICATION DE `dn5-7` : le mutant 36 mute un
+    #    renvoi ecrit AVEC son lien markdown. La branche SANS lien (`x.md` nu
+    #    suivi de `§ *Titre*`) etait COMPTEE dans les 6 citations mais rien ne
+    #    prouvait qu'elle ROUGIT. ⇒ elle a son mutant, sur le meme patron.
+    _ep = "docs/dn5-1-ecart-promesses.md"
+    if _MUTANT == 38 and _ep not in prose:
+        sys.exit("MUTANT 38 INAPPLICABLE : %s n'est pas dans la prose lue par "
+                 "`section_citations`. ⛔ Un mutant qui ne s'applique pas ne "
+                 "prouve RIEN — c'est la portee qu'il faut regarder." % _ep)
+    if _ep in prose:
+        prose[_ep] = M(
+            38, prose[_ep],
+            "§ *Les deux paliers matériels*",
+            "§ *Une section qui n'existe pas dans ce fichier*")
     if "CHANGELOG.md" in prose:
         # ⚠️ CE MUTANT A DEJA ETE VU MUET, ET LE MOTIF VAUT D'ETRE ECRIT :
         #    sa 1re version laissait « no NVML » sur la ligne mutee, donc la
@@ -1254,6 +1706,7 @@ def main():
             "name: Gates\n")
     section_marqueurs(prose_m, roadmap)
     section_comptes(prose)
+    section_ancrages(prose)
     section_cla(prose.get("CONTRIBUTING.md", ""), roadmap)
     section_refutations(prose, agent)
     section_auto_coherence(tiers)
