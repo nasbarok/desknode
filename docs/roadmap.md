@@ -53,6 +53,28 @@ paragraph is why. ⇒ **The day any page here points a reader at `dn5-6`, it get
 and `tools/verif_licences_dn52.py` will say so, since it anchors on exactly that: a marker
 sent to this page.
 
+⚠️ **Widened on 2026-09-05 (`dn5-6`, finding 9), and the sentence above is kept rather
+than replaced.** *"The pages at the root and under `docs/`"* was the scope of the check,
+not the scope of the rule — and the two had drifted apart. A workflow file under
+`.github/workflows/` is prose a reader is pointed by just as much as a page is: it
+carries markers, owners and hand-offs. Measured the same day: the check read `.md` only,
+so a marker named in `gates.yml` was **never** examined, while `gates.yml` itself claimed
+the check covered every marker cited anywhere. ⇒ the check now reads those workflow files
+too, and the rule and the check say the same thing again. ⚠️ What did **not** change is
+the anchoring: only a marker *sent to this page* is examined, wherever it is written —
+`mesures/` is still a raw record, not a pointer offered to a reader.
+
+🔴 **And the case that had motivated all this was already gone.** The finding was raised
+on *"`gates.yml` points at `dn4-45`, which the roadmap does not define"*. By 2026-09-05
+every marker cited under `.github/` was defined here, because `dn5-5` had added the
+`dn4-45` row. Widening the check therefore leaves it **green**: ⛔ no red can show this gap.
+🔴 **The count is deliberately not written down here.** The first draft of this paragraph
+said *"all **four** markers"* — and the very commit that wrote it added two more
+(`dn5-5`, `dn5-6`, now cited in `gates.yml`). A count written into prose is stale the
+moment the prose changes, which is the fifth time this epic has paid for that. Take the
+reading yourself: `git grep -h -o -E 'dn[0-9]+-[0-9]+' -- .github | sort -u`. What shows it is the mutant that
+replants the fault (`verif_licences_dn52.py --mutant 34`), and that is why it exists.
+
 🔴 **How to read the `state` column — this is a rule, ⛔ not a promise of freshness.** The
 authority on any state is the unpublished plan, ⛔ never this page: this column is a
 **snapshot, refreshed when the work that changes a marker also passes through here**. It
@@ -79,6 +101,7 @@ the row is the one to doubt.
 | `dn4-44` | **No new check ships without a mutant that replants the fault it guards against** — a rule about the repository's own gates, not about the firmware. It armed the acceptance criterion that `dn4-40` handed on. | done |
 | `dn4-45` | **Building the firmware in CI.** Deliberately out of scope for `dn5-4`, which measured what it would cost: a runner would install ESP-IDF v5.5.5 (**3.84 GiB**, 23 submodules) and its toolchains (**4.30 GiB**), then pull **172.5 MiB** of components — against a workflow that today runs on `ubuntu-latest` with a 20-minute timeout and no `pip install` at all. 🔴 And one measured fact decides more than the sizes: **a cold build needs the network, and no local archive cache replaces it** (`dependencies.lock` is gitignored, so a fresh clone must *solve*, and solving queries the registry). | not started |
 | `dn5-5` | The clone states its own size, and everything still missing before a public release has a named owner. ⚠️ **State corrected on 2026-09-05, by that work itself: this row read `not started` while the marker was being finished** — the commit carrying this correction is the same one that adds the *What cloning this costs* section of [`CONTRIBUTING.md`](../CONTRIBUTING.md) and the clone measurements under `mesures/dn5-5/`. ⛔ The earlier value is named here rather than erased. Following the rule stated for `dn5-4`, what is written is the state the marker has **in the commit that publishes this line**: its code review has not run yet, so it lands here as `in review`, ⛔ not `done`. | in review |
+| `dn5-6` | Re-checking the findings that earlier reviews deferred **before acting on any of them** — ten of them, replayed one at a time and each classed *still true* / *already false* / *not reproducible*. ⛔ Not a fix-up story: a finding that no longer reproduces is closed with its date and its reason, not corrected just in case. | in review |
 | `dn8` | The public face: splitting the long French `README.md` into a short front page plus an engineering log, a version **shown on the device**, a release tag, the templates needed to receive issues and pull requests, and **proving the CLA bot against a real outside contributor** — which cannot happen while the repository is private and has no fork. | epic opened, **no stories written yet** |
 
 ⚠️ **`dn8` is the least defined entry here, and that is stated rather than dressed

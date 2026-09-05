@@ -1,0 +1,73 @@
+==============================================================================
+T7 — TEMOIN NFR8 « APRES » (dn5-6)
+==============================================================================
+date     : 2026-09-05T04:50:19
+pris par : subprocess (⛔ jamais le shell de session)
+⛔ AUCUN PORT SERIE N'EST OUVERT PAR CETTE CAPTURE. Lectures de fichier.
+
+🔴 CE FICHIER EXISTE PARCE QUE LA TACHE L'ANNONÇAIT, ET QU'IL MANQUAIT.
+   La liste d'execution de la story nomme `T7-gates-apres.txt` **ET**
+   `T7-temoin-port.txt`. Le premier jet avait replie le temoin de port dans le
+   §4 du premier fichier, alors que T0, lui, gardait bien son fichier separe :
+   quiconque diffait `T0-temoin-port.txt` contre son jumeau T7 ne trouvait
+   RIEN. ⇒ le livrable est produit, et l'asymetrie disparait.
+   ⚠️ Le contenu vit AUSSI au §4 de `T7-gates-apres.txt` : c'est une
+   REDONDANCE VOULUE, ⛔ pas une divergence — les deux sont pris au meme tir.
+
+🔴 POURQUOI LE TEMOIN N'EST **PAS** LE BANDEAU DE BOOT
+  Le SHA du firmware n'est imprime QU'AU BOOT ⇒ le relire exigerait de PRENDRE
+  le port, c'est-a-dire exactement le geste qu'on pretend n'avoir pas fait.
+  ⚠️ C'est la MONOTONIE qui prouve, ⛔ pas la valeur.
+
+==============================================================================
+--- desknode (CODE)
+  HEAD                                       rc=0
+      0bdc9e89bfa83d7fcb88aeac68ec509dabed4fd7
+  branche                                    rc=0
+      main
+
+--- compagnon_project (COCKPIT)
+  HEAD                                       rc=0
+      bd65ee7475851a0729b3db36bb6c900c791c7d85
+  branche                                    rc=0
+      desknode-p0-p1-clos
+
+==============================================================================
+TEMOIN DE POSSESSION DU PORT — dn-agent.log / dn-agent.started
+==============================================================================
+
+--- dn-agent.log : /mnt/h/dev/projets/desknode/dn-agent.log
+  taille  : 4650862 o
+  mtime   : 2026-09-05T04:50:12
+  lignes  : 39062
+  DERNIERE LIGNE PORTEUSE (source de `s mur` et `seq`) :
+      [agent] témoin coût cumulé : 4961.688 s CPU / 273623.5 s mur = 1.813 % d'un cœur (0.1133 % machine) — seq=1368099
+  >>> s_mur_T7 = 273623.5
+  >>> seq_T7   = 1368099
+
+  ⚠️ A CONFRONTER A `T0-temoin-port.txt` :
+     s_mur_T0 = 267203.5   ·   seq_T0 = 1335999
+     ⇒ si les deux ont STRICTEMENT AUGMENTE sans jamais retomber a
+       zero, l'agent n'est jamais mort ⇒ aucun autre process n'a PU
+       obtenir COM3 ⇒ **AUCUN FLASH N'A PU AVOIR LIEU**.
+
+--- dn-agent.started : /mnt/h/dev/projets/desknode/dn-agent.started
+  taille  : 289 o
+  mtime   : 2026-09-02T00:49:45 (⛔ INCHANGE depuis T0 : l'agent n'a pas redemarre)
+      args    : --serie COM3 --stop-si H:\dev\projets\desknode\dn-agent.stop --temoin
+  ⇒ `--serie COM3` : c'est CETTE ligne qui prouve la tenue EXCLUSIVE.
+
+==============================================================================
+NFR8 — `firmware/` EST-IL TOUCHE ?
+==============================================================================
+  diff --name-only <ancre>..HEAD -- firmware/    rc=0
+      (VIDE)
+  diff --stat -- firmware/ (arbre de travail)    rc=0
+      (VIDE)
+  status --porcelain -- firmware/                rc=0
+      (VIDE)
+  ⛔ PAS `main..HEAD` : le dev travaille SUR `main` ⇒ ce controle rendrait
+     VIDE quoi qu'il arrive. L'ancre est le SHA DE DEBUT DE STORY.
+  ⚠️ ET LE TIR T3 A CONSTRUIT **HORS** DE `firmware/`, dans un dossier
+     temporaire ⇒ NFR8 tient **PAR CONSTRUCTION**, ⛔ pas par chance.
+==============================================================================

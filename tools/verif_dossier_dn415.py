@@ -203,6 +203,75 @@ COCKPIT_DEFAUT = os.path.join(os.environ.get("HOME") or "/nonexistent",
 #    declaration « rc attendu = 4 » redeviendrait satisfiable par un defaut.
 RC_PREREQUIS = 4
 
+
+# 🔴 dn5-6 / CONSTAT (7) — 2026-09-05 : LA MEME PHRASE FAUSSE VIVAIT ICI, ET
+#    C'EST **ICI QU'ELLE EST NEE**. `AC3.3.a` de `dn5-3` EXIGEAIT que
+#    `verif_dossier_d5_dn45.py` la COPIE (« Le copier, ⛔ pas en ecrire un
+#    autre ») ⇒ la corriger d'un seul cote ferait cesser le patron d'etre un
+#    patron. Les DEUX sont corriges, au MEME commit.
+#
+# ⚠️ ⛔ LA LIGNE D'ORIGINE N'EST PAS EFFACEE, ELLE EST NOMMEE COMME FAUSSE
+#    (NFR3). Elle disait : « ⛔ rc=4 (prerequis) UNIQUEMENT si la moitie jouee
+#    est MUETTE ; ». MESURE du 2026-09-05 sur la SŒUR
+#    (`mesures/dn5-6/T1-filtre-10-constats.txt`, constat 7) : `rc=4` sort sur
+#    `BILAN : 5 OK, 0 KO` — la moitie jouee avait rendu CINQ verdicts et
+#    n'avait rien de « muette ». La VRAIE regle est : « 4 des que le cockpit
+#    manque ET qu'aucun KO n'a ete trouve ».
+#
+# 🔴 POURQUOI UNE FONCTION ET ⛔ PAS UNE PHRASE CORRIGEE : une phrase corrigee
+#    peut re-diverger. Ici la phrase est DERIVEE du code qui decide.
+#
+# ⚠️ ASYMETRIE **DECLAREE** AVEC LA SŒUR, ⛔ PAS UN OUBLI : `d5_dn45` recoit en
+#    plus un CONTROLE (`la regle de rc imprimee est DERIVEE, pas redigee`) et
+#    son mutant. ⛔ Il n'est PAS ajoute ici : cette gate est ROUGE
+#    PRE-EXISTANTE (22 OK / 10 KO a T0 de `dn5-5` comme a T0 de `dn5-6`), et
+#    lui ajouter un controle DEPLACERAIT le bilan publie pendant qu'une autre
+#    marche s'y appuie comme ancre. Le patron partage est la REGLE ; le
+#    controle qui la garde vit chez la sœur.
+#
+# ⛔ LE CONTRAT DE `rc` NE BOUGE PAS : un vrai KO rend 1 et l'emporte.
+def regle_rc(ko, cockpit_absent):
+    """Rend `(rc, phrase)`. La phrase DECRIT le rc, elle ne le commente pas."""
+    if ko:
+        return 1, ("⛔ rc=1 : un KO a ete trouve dans la moitie jouee — un vrai"
+                   " defaut l'emporte TOUJOURS sur un prerequis absent.")
+    if cockpit_absent:
+        return RC_PREREQUIS, (
+            "⛔ rc=%d (prerequis) des que le cockpit manque ET qu'aucun KO n'a"
+            " ete trouve." % RC_PREREQUIS)
+    return 0, "rc=0 : cockpit atteignable, aucun KO."
+
+
+# 🔴 dn5-6 / REVUE DU 2026-09-05 — L'ASYMETRIE ANNONCEE PLUS HAUT EST
+#    **DATEE ET LEVEE**, ⛔ pas effacee. Elle disait : « le CONTROLE qui garde
+#    la regle n'est PAS ajoute ici, il DEPLACERAIT un bilan publie ».
+#    MESURE de la revue : en reinjectant la phrase fausse historique au site
+#    d'impression de CE fichier, **rien ne rougissait** — la sœur etait pinnee,
+#    le fichier OU LA FAUTE EST NEE ne l'etait pas. ⇒ garder un bilan stable au
+#    prix d'une regression non gardee est un mauvais echange, et c'est
+#    exactement le patron qu'`AC3.3.a` demandait de tenir DES DEUX COTES.
+# ⚠️ CONSEQUENCE **DECLAREE** : le bilan de cette gate passe de `22 OK / 10 KO`
+#    a `23 OK / 10 KO`. ⛔ L'ENSEMBLE DES 10 LIBELLES KO EST INCHANGE — c'est
+#    lui que le garde-fou « 0 KO de plus » compare, ⛔ pas le compte des OK.
+_EMISES = []
+
+
+def dire_regle(ko, cockpit_absent, prefixe="      "):
+    rc, phrase = regle_rc(ko, cockpit_absent)
+    if _MUTANT_REGLE:
+        # REPLANTE la faute historique : une phrase REDIGEE A LA MAIN.
+        phrase = ("⛔ rc=%d (prerequis) UNIQUEMENT si la moitie jouee est"
+                  " MUETTE ; un KO trouve ici rend 1." % RC_PREREQUIS)
+    _EMISES.append(phrase)
+    print(prefixe + phrase)
+    return rc
+
+
+# ⚠️ CE FICHIER N'A PAS DE MACHINERIE `--mutant`. Le temoin de la regle est donc
+#    une VARIABLE D'ENVIRONNEMENT, lue une seule fois : `DN_MUTANT_REGLE=1`.
+#    ⛔ Elle ne change RIEN au comportement par defaut, et la CI ne la pose pas.
+_MUTANT_REGLE = bool(os.environ.get("DN_MUTANT_REGLE"))
+
 MANIFESTE = "docs/dn4-15-arbitrage.md"
 
 VERDICTS = ("FAUX", "VRAI", "HISTORIQUE", "SANS-RAPPORT")
@@ -1002,9 +1071,10 @@ def main():
         print("      ⇒ LA MOITIE `desknode` EST JOUEE QUAND MEME : son manifeste")
         print("        d'arbitrage (%s) est DANS ce depot." % MANIFESTE)
         print("      REMEDE : `--cockpit <chemin>` si le depot est ailleurs.")
-        print("      ⛔ rc=%d (prerequis) UNIQUEMENT si la moitie jouee est"
-              " MUETTE ;" % RC_PREREQUIS)
-        print("         un KO trouve ici rend 1, comme n'importe quel rouge.")
+        # 🔴 dn5-6 / CONSTAT (7) — LES DEUX BRANCHES SONT IMPRIMEES DEPUIS
+        #    `regle_rc()`, ⛔ plus redigees a la main (voir son bloc, l.204+).
+        dire_regle(True, True)
+        dire_regle(False, True)
         # 🔴 dn4-40 / AC40.4.g (iii) — SECOND INSTANTANE FIGE. Il annoncait
         #    « aujourd'hui 17 OK / 10 KO » : le mot « aujourd'hui » sur un
         #    chiffre qui ne peut pas se relire d'ici. ⛔ Une capture ne peut
@@ -1654,6 +1724,25 @@ def main():
                       "⛔ %d RENVOI(S) HORS BLOC : %s"
                       % (len(mauvais), " · ".join(mauvais))))
 
+    # ═══ dn5-6 / CONSTAT (7) — LA REGLE EST EMISE, PUIS CONFRONTEE ═════════
+    # ⚠️ L'EMISSION EST **INCONDITIONNELLE**, et ce n'est pas cosmetique : la
+    #    1re version ne routait que les deux impressions du bloc « cockpit
+    #    absent » ⇒ avec un cockpit present, `_EMISES` restait VIDE et le
+    #    controle passait vert SANS RIEN AVOIR REGARDE. Un controle qui ne peut
+    #    pas rougir n'est pas un controle — c'est la lecon que ce depot paie
+    #    depuis `dn4-40`.
+    print("\n── LA REGLE DE `rc`, ET ELLE EST DERIVEE DU CODE QUI DECIDE ──────")
+    dire_regle(ko_total[0], cockpit_absent, prefixe="  ")
+    _attendues = {regle_rc(k, c)[1] for k in (0, 1) for c in (False, True)}
+    _intruses = [x for x in _EMISES if x not in _attendues]
+    ctrl(not _intruses,
+         "toute regle de rc imprimee sort de regle_rc",
+         "%d phrase(s) emise(s), toutes produites par la regle" % len(_EMISES)
+         if not _intruses
+         else "⛔ %d phrase(s) REDIGEE(S) hors de regle_rc : %r — c'est ainsi "
+              "qu'elle avait derive (mesure du 2026-09-05)"
+              % (len(_intruses), _intruses[0][:70]))
+
     print("\n" + "=" * 78)
     print("BILAN : %d OK, %d KO" % (ok_total[0], ko_total[0]))
     print("=" * 78)
@@ -1661,9 +1750,11 @@ def main():
     #    un prerequis absent. Sans ca, `rc=4` MASQUERAIT un rouge trouve dans la
     #    moitie atteignable, et « rc attendu = 4 » redeviendrait satisfiable par
     #    un defaut — exactement ce que `dn4-39` a voulu rendre impossible.
-    if ko_total[0]:
-        return 1
-    return RC_PREREQUIS if cockpit_absent else 0
+    # ⛔ dn5-6 — LE CONTRAT NE BOUGE PAS : il vient desormais de `regle_rc()`,
+    #    la MEME fonction qui produit la phrase imprimee ⇒ elles ⛔ NE PEUVENT
+    #    PLUS diverger. L'ordre (KO d'abord) est INCHANGE, il est dans la
+    #    fonction.
+    return regle_rc(ko_total[0], cockpit_absent)[0]
 
 
 if __name__ == "__main__":

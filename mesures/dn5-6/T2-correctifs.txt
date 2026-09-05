@@ -1,0 +1,250 @@
+==============================================================================
+T2 — LES CORRECTIFS, ET LA PREUVE QUE CHACUN GARDE
+==============================================================================
+date     : 2026-09-05T03:49:54
+desknode : 0bdc9e89bfa83d7fcb88aeac68ec509dabed4fd7
+cockpit  : bd65ee7475851a0729b3db36bb6c900c791c7d85
+
+🔴 LA REGLE QUI GOUVERNE CETTE PAGE — NFR7 / regle `dn4-44` :
+   tout controle NEUF ou REECRIT porte **son mutant qui REPLANTE la faute**,
+   ⛔ jamais un mutant qui DEBRANCHE la garde. Et le banc vise **son echec
+   NOMME**, ⛔ pas le `rc` global : un mutant inapplicable sort aussi en 1.
+
+
+──────────────────────────────────────────────────────────────────────────────
+CONSTAT (1) — un fichier faisant autorite ILLISIBLE tuait la gate sans BILAN
+──────────────────────────────────────────────────────────────────────────────
+  CORRECTIF : `occurrences()` attrape `OSError` et rend une sentinelle
+    `ILLISIBLE`. Le fichier devient un **KO NOMME**, ⛔ pas un saut :
+    remplacer une mort bruyante par un silence vert serait pire.
+  PREUVE — l'A/B qui avait etabli le constat, rejoue APRES :
+    A · cockpit LISIBLE  ⇒ rc=0 · BILAN : 12 OK, 0 KO
+    B · UN fichier a chmod 000 ⇒ rc=1 · BILAN : 10 OK, 2 KO
+        traceback ? False
+        [KO ] implementation-artifacts/sprint-status-desknode.yaml       ⛔ ILLISIBLE (il EXISTE mais ne se lit pas — droits, ACL)
+        [KO ] entation-artifacts/sprint-status-desknode.yaml date le constat ⛔ ILLISIBLE — ⛔ on ne conclut RIEN sur un fichier qu'on n'a pas lu
+    ⇒ AVANT (T1) : traceback NU, ⛔ AUCUN BILAN. APRES : un BILAN et un KO
+      NOMME — la gate rougit au lieu de mourir.
+  MUTANT (NFR7) :
+    `verif_dossier_d5_dn45.py --mutant 1`
+      rc = 1 · BILAN : 8 OK, 8 KO
+      [KO ] hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md              ⛔ ILLISIBLE (il EXISTE mais ne se lit pas — droits, ACL)
+      [KO ] hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md           ⛔ ILLISIBLE (il EXISTE mais ne se lit pas — droits, ACL)
+      [KO ] hardware/ESP32-S3-Touch-LCD-2.8B-liaison-pc.md             ⛔ ILLISIBLE (il EXISTE mais ne se lit pas — droits, ACL)
+      [KO ] README.md                                                  ⛔ ILLISIBLE (il EXISTE mais ne se lit pas — droits, ACL)
+      [KO ] hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md date le constat ⛔ ILLISIBLE — ⛔ on ne conclut RIEN sur un fichier qu'on n'a pas lu
+      [KO ] rdware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md date le constat ⛔ ILLISIBLE — ⛔ on ne conclut RIEN sur un fichier qu'on n'a pas lu
+      [KO ] hardware/ESP32-S3-Touch-LCD-2.8B-liaison-pc.md date le constat ⛔ ILLISIBLE — ⛔ on ne conclut RIEN sur un fichier qu'on n'a pas lu
+      [KO ] README.md date le constat                                  ⛔ ILLISIBLE — ⛔ on ne conclut RIEN sur un fichier qu'on n'a pas lu
+      ⇒ ✅ VU ROUGIR sur son controle NOMME
+
+──────────────────────────────────────────────────────────────────────────────
+CONSTAT (2) — le `N OK / 0 KO` se calculait sur une population fondue
+──────────────────────────────────────────────────────────────────────────────
+  CORRECTIF : la population est IMPRIMEE, et un controle NEUF exige que
+    **chaque fichier faisant autorite soit RENDU COMPTE** (verdict, muet,
+    hors de portee ou illisible). Un fichier qui disparaitrait du balayage
+    — le vrai danger — le fait rougir.
+  ⛔ LE LIBELLE EXISTANT `le balayage a bien trouve des occurrences` N'EST
+    PAS TOUCHE : `verif_campagne_dn440.py` cible ses mutants PAR LIBELLE.
+  APRES, `--cockpit <absent>` : rc=4 · BILAN : 8 OK, 0 KO
+    POPULATION REELLEMENT CONTROLEE — ⛔ elle ne se fond plus
+    2 verdict(s) · 2 muet(s) · 2 hors de portee · 0 illisible(s)
+    [OK ] chaque fichier faisant autorite est RENDU COMPTE           6/6 rendus compte
+    [OK ] au moins un fichier ATTEIGNABLE a rendu un verdict         2 fichier(s) ont controle quelque chose ; 4 n'ont rien controle
+  MUTANT (NFR7) :
+    `verif_dossier_d5_dn45.py --mutant 2`
+      rc = 1 · BILAN : 11 OK, 1 KO
+      [KO ] chaque fichier faisant autorite est RENDU COMPTE           ⛔ 1 fichier(s) faisant autorite ont DISPARU du balayage (5/6)
+      ⇒ ✅ VU ROUGIR sur son controle NOMME
+
+──────────────────────────────────────────────────────────────────────────────
+CONSTAT (3) — `--cockpit` relatif : validation APRES le `cd`, jamais normalisee
+──────────────────────────────────────────────────────────────────────────────
+  CORRECTIF : le `cwd` de l'appelant est garde AVANT le `cd`, le chemin y
+    est resolu puis NORMALISE EN ABSOLU. Un relatif veut dire ce que
+    l'appelant croit qu'il veut dire.
+  PREUVE — le MEME A/B qu'a T1, rejoue APRES :
+    A · depuis /home/nasbarok/projects, `--cockpit compagnon_project` (il EXISTE depuis ce cwd)
+        rc = 0 ⇒ ✅ ACCEPTE
+    B · depuis /home/nasbarok/projects, `--cockpit tools` (homonyme SOUS la racine, absent ici)
+        rc = 2 ⇒ ✅ REFUSE FERME
+        --cockpit : chemin inexistant ou vide — 'tools'
+          resolu contre le cwd de l'appelant ⇒ '/home/nasbarok/projects/tools'
+          ⛔ Un chemin faux serait JETE en silence et la gate mesurerait
+             un AUTRE depot. On echoue FERME plutot que de mesurer a cote.
+    ⇒ AVANT (T1) : A sortait en 2 sur un chemin QUI EXISTE, et B demarrait
+      la passe en silence. APRES : exactement l'inverse, et c'est le bon.
+
+──────────────────────────────────────────────────────────────────────────────
+CONSTAT (4) — la capacite `--cockpit` se detectait par CHAINE LITTERALE
+──────────────────────────────────────────────────────────────────────────────
+  CORRECTIF : la detection fait desormais autorite — on DEMANDE A PYTHON
+    (arbre syntaxique), et le grep d'origine est GARDE : les deux sont
+    APPARIES, et toute divergence rougit la passe.
+  ⚠️ RAPPEL DU T0 : le bord n'est PAS atteint (4 gates sur 4 portent la
+    forme litterale) ⇒ ⛔ aucun rouge ne peut le montrer. Et le PRECEDENT
+    que la revue de `dn5-3` citait — `add_argument("--csv",` — est REFUTE :
+    il replie ses ARGUMENTS, ⛔ pas le nom de l'option. Le precedent REEL
+    est ailleurs : `gen_living_pcb.py`, en GUILLEMETS SIMPLES.
+  TEMOIN QUI REPLANTE (NFR7) — `run_gates.sh --temoin-appariement` :
+      TEMOIN dn5-6 / constat (4) — L'APPARIEMENT VOIT-IL LA FAUTE REPLANTEE ?
+        [OK ] litteral.py    large=1 etroit=1 divergence=0
+        [OK ] simple.py      large=1 etroit=0 divergence=1
+        [OK ] coupe.py       large=1 etroit=0 divergence=1
+        [OK ] prose.py       large=0 etroit=1 divergence=1
+      TEMOIN : 4 OK, 0 KO
+
+──────────────────────────────────────────────────────────────────────────────
+CONSTAT (5) — `--analyser <absent>` rendait un Traceback NU
+──────────────────────────────────────────────────────────────────────────────
+  CORRECTIF : l'absence et l'illisibilite sont NOMMEES, avec leur remede,
+    et le `rc` REMONTE a l'appelant (un refus nomme qui sortirait en 0
+    serait un silence vert de plus).
+  ⛔ CE N'EST PAS UN CONTROLE (cet outil ne porte ⛔ ni `ctrl()` ni `dire()`)
+    ⇒ NFR7 ne prescrit pas de mutant ici. La preuve est l'A/B/C direct.
+    A · ABSENT     ⇒ rc=1 · traceback=False · stdout='⛔ FICHIER INTROUVABLE : /tmp/dn56-t2-absent.csv'
+    B · VIDE (temoin negatif — ce cas etait DEJA propre, il le reste)
+        ⇒ rc=0 · traceback=False · stdout='⛔ 0 echantillons : trop peu pour conclure quoi que ce soit.'
+
+──────────────────────────────────────────────────────────────────────────────
+CONSTAT (6) — le defaut de `--csv` : nom FIXE dans un repertoire PARTAGE
+──────────────────────────────────────────────────────────────────────────────
+  CORRECTIF : le defaut porte desormais le COMPTE COURANT.
+    defaut APRES : /tmp/dn48_thermique-nasbarok.csv
+    ⇒ AVANT (T1) : `/tmp/dn48_thermique.csv` — nom FIXE dans un repertoire
+      0o1777, world-writable ⇒ deux comptes visaient le MEME csv et le MEME
+      `.pid`, et le `finally: os.remove(pid_f)` du premier supprimait le
+      temoin du second.
+  ⛔ CE QUI RESTE **NON MESURE**, ET C'EST ECRIT : la collision elle-meme.
+    Elle exigerait deux comptes Unix jouant `enregistrer()` en meme temps ;
+    cet outil ⛔ ne s'execute pas sur ce poste (il lit `/metrics` sur la
+    tour, sous Windows). ⇒ le correctif est pose sur la LECTURE DU CODE et
+    la mesure du repertoire, ⛔ pas sur une collision observee.
+  ⚠️ ET DEUX INSTANCES DU **MEME** COMPTE SE MARCHENT TOUJOURS DESSUS —
+    c'est un CHOIX : le `.pid` est un TEMOIN DE SINGLETON, le brouiller
+    avec un pid le rendrait incapable de dire « il en tourne deja un ».
+
+──────────────────────────────────────────────────────────────────────────────
+CONSTAT (7) — la gate imprimait une regle de `rc` qu'elle ne suivait pas
+──────────────────────────────────────────────────────────────────────────────
+  CORRECTIF : la regle a UNE SEULE SOURCE — `regle_rc(ko, cockpit_absent)`
+    rend `(rc, phrase)`. La phrase est DERIVEE du code qui decide ⇒ elles
+    ⛔ NE PEUVENT PLUS diverger. ⛔ Le contrat de `rc` ne bouge pas.
+  🔴 CORRIGE **AUX DEUX ENDROITS** : `AC3.3.a` de `dn5-3` EXIGEAIT que
+    `verif_dossier_d5_dn45.py` copie la formulation de
+    `verif_dossier_dn415.py` ⇒ n'en corriger qu'une ferait cesser le patron
+    d'etre un patron.
+    verif_dossier_d5_dn45.py     avec cockpit rc=0 · BILAN : 12 OK, 0 KO
+                                 sans cockpit rc=4 · BILAN : 8 OK, 0 KO
+                                 phrase : ⛔ rc=4 (prerequis) des que le cockpit manque ET qu'aucun KO n'a ete trouve.
+                                 ancienne phrase encore imprimee ? ✅ non
+    verif_dossier_dn415.py       avec cockpit rc=1 · BILAN : 22 OK, 10 KO
+                                 sans cockpit rc=4 · BILAN : 24 OK, 0 KO
+                                 phrase : ⛔ rc=4 (prerequis) des que le cockpit manque ET qu'aucun KO n'a ete trouve.
+                                 ancienne phrase encore imprimee ? ✅ non
+  ⚠️ `verif_dossier_dn415.py` reste ROUGE (22 OK / 10 KO) : ⛔ PRE-EXISTANT,
+    ⛔ non cause par cette marche, et son ensemble de KO est INCHANGE.
+  ⚠️ ASYMETRIE **DECLAREE** : le CONTROLE qui garde la regle n'est ajoute
+    QUE chez `d5_dn45`. Chez `dn415`, l'ajouter DEPLACERAIT un bilan publie
+    qui sert d'ancre a une autre marche. Le patron partage est la REGLE.
+  MUTANT (NFR7) :
+    `verif_dossier_d5_dn45.py --mutant 3`
+      rc = 1 · BILAN : 11 OK, 1 KO
+      [KO ] la regle de rc imprimee est DERIVEE, pas redigee           ⛔ la phrase imprimee n'est PAS celle que la regle produit — c'est ainsi qu'elle avait
+      ⇒ ✅ VU ROUGIR sur son controle NOMME
+
+──────────────────────────────────────────────────────────────────────────────
+CONSTAT (8) — `T2-hors-ligne.txt` ne declarait ni chemin ni HEAD
+──────────────────────────────────────────────────────────────────────────────
+  CORRECTIF : ⛔ AUCUNE RETOUCHE DE LA CAPTURE — un NOUVEAU TIR,
+    `mesures/dn5-6/T3-nouveau-tir-hors-ligne.txt`, qui construit dans un
+    dossier NEUF **hors de `firmware/`** copie a un SHA NOMME.
+    MESURE DU 2026-09-05 : le motif `CONSTATE AVANT LE BUILD` est present
+    HEAD            : 0bdc9e89bfa83d7fcb88aeac68ec509dabed4fd7
+    dossier de build : /tmp/dn56-tir-3ggl7cwu/hello-desknode
+    controle reseau DANS le namespace : ✅ reseau COUPE : [Errno -3] Temporary failure in name resolution
+    rc build : 0
+    ⇒ l'arbre n'est plus un fait NON ECRIT : il est une CONSTRUCTION.
+
+──────────────────────────────────────────────────────────────────────────────
+CONSTAT (9) — la gate des marqueurs etait aveugle aux fichiers hors `.md`
+──────────────────────────────────────────────────────────────────────────────
+  CORRECTIF (a) : `prose_du_depot()` rend AUSSI `.github/workflows/*.yml`.
+  CORRECTIF (b) : `gates.yml` ⛔ n'affirme plus une portee qu'il n'a pas —
+    la phrase d'origine est NOMMEE COMME TROP LARGE, ⛔ pas effacee.
+  CORRECTIF (c) : `docs/roadmap.md` etend sa REGLE D'ADMISSION aux
+    workflows — sinon la page sous-declarerait la gate, soit l'exact
+    miroir du defaut qu'on repare.
+  🔴 RAPPEL DU T0 : LE CAS DE DEMONSTRATION EST **DEJA FAUX** — les 4
+    marqueurs cites sous `.github/` sont TOUS definis ⇒ elargir laisse la
+    gate VERTE. ⛔ AUCUN ROUGE NE PEUT ETABLIR CE TROU.
+    la gate apres elargissement : rc=0 · BILAN : 32 OK, 0 KO
+  MUTANT (NFR7) — LE SEUL INSTRUMENT QUI PEUT LE MONTRER :
+    `verif_licences_dn52.py --mutant 34`
+      rc = 1 · BILAN : 31 OK, 1 KO
+      [KO ] tout marqueur cite COMME marqueur est defini               ⛔ .github/workflows/gates.yml cite `dn9-9`
+      ⇒ ✅ VU ROUGIR sur son controle NOMME
+
+──────────────────────────────────────────────────────────────────────────────
+CONSTAT (10) — rien ne rejouait les mutants : preuve par CAPTURE UNIQUE
+──────────────────────────────────────────────────────────────────────────────
+  CORRECTIF : une gate NEUVE, `tools/verif_campagne_dn56.py`, entre au glob
+    `tools/verif_*.py` ⇒ `run_gates.sh` ET la CI la jouent a chaque passe.
+    Elle rejoue TOUS les mutants de `verif_licences_dn52.py` et exige, pour
+    chacun : `rc=1` **ET** une ligne `BILAN` **ET** au moins un `[KO ]`.
+  🔴 POURQUOI LES TROIS ET PAS LE SEUL `rc` : un mutant INAPPLICABLE sort
+    AUSSI en 1, sans avoir rien controle. Mesure du 2026-09-05 : le mutant
+    34, d'abord ecrit avec une mauvaise ancre, sortait en `rc=1` SANS
+    BILAN. Un banc qui juge sur le `rc` global l'aurait compte comme un
+    succes.
+  ⚠️ ELLE AJOUTE UNE GATE AU GLOB : 29 ⇒ 30. C'est un AJOUT DECLARE, ⛔ pas
+    un changement de verdict d'une gate existante.
+  ⚠️ ET ELLE RE-CONTROLE L'HYPOTHESE `cle valide (aucun libelle >= 58)`
+    (AC2.6.d de `dn5-2`), qui ne vivait que dans une CAPTURE.
+    la gate neuve : rc=0 · BILAN : 5 OK, 0 KO
+      [OK ] la cible declare ses mutants                               34 mutant(s) decouvert(s) : 1..34
+      [OK ] tout mutant de la cible rend rc=1                          34 mutant(s) confronte(s)
+      [OK ] tout mutant rouge a bien imprime un BILAN                  aucune sortie en amont
+      [OK ] tout mutant rouge porte au moins un [KO ] nomme            chaque mutant vise un controle
+      [OK ] cle valide (aucun libelle >= 58)                           37 libelle(s) lu(s) a l'AST, le plus long fait 56
+  MUTANTS (NFR7) — elle porte les siens :
+    `verif_campagne_dn56.py --mutant 1`
+      rc = 1 · BILAN : 4 OK, 1 KO
+      [KO ] tout mutant de la cible rend rc=1                          ⛔ NE ROUGISSENT PLUS : 1 (rc=0)
+      ⇒ ✅ VU ROUGIR sur son controle NOMME
+    `verif_campagne_dn56.py --mutant 2`
+      rc = 1 · BILAN : 4 OK, 1 KO
+      [KO ] tout mutant rouge a bien imprime un BILAN                  ⛔ rc=1 SANS BILAN (mort en amont) : 1
+      ⇒ ✅ VU ROUGIR sur son controle NOMME
+    `verif_campagne_dn56.py --mutant 3`
+      rc = 1 · BILAN : 4 OK, 1 KO
+      [KO ] cle valide (aucun libelle >= 58)                           ⛔ 1 libelle(s) debordent la colonne : 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      ⇒ ✅ VU ROUGIR sur son controle NOMME
+
+  ⛔ CE QU'ELLE NE PROUVE PAS, ET C'EST ECRIT DANS SON EN-TETE :
+    « N mutants, N vus rougir » prouve `mutant ⇒ rouge`, ⛔ **PAS**
+    `controle ⇒ couvert`. Un controle qu'AUCUN mutant ne vise reste garde
+    par rien, et elle ⛔ ne le verra pas.
+
+==============================================================================
+LE TABLEAU DES PREUVES
+==============================================================================
+  [OK ] (1) A/B illisible
+  [OK ] (1) mutant 1
+  [OK ] (2) mutant 2
+  [OK ] (3) A accepte
+  [OK ] (3) B refuse ferme
+  [OK ] (4) temoin appariement
+  [OK ] (5) absent nomme
+  [OK ] (5) vide inchange
+  [OK ] (6) defaut par-utilisateur
+  [OK ] (7) mutant 3
+  [OK ] (8) nouveau tir
+  [OK ] (9) mutant 34
+  [OK ] (10) mutant 1
+  [OK ] (10) mutant 2
+  [OK ] (10) mutant 3
+
+  BILAN DES PREUVES : 15 OK, 0 KO
+==============================================================================

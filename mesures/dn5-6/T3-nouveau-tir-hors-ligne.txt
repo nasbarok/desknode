@@ -1,0 +1,63 @@
+==============================================================================
+T3 — LE NOUVEAU TIR HORS LIGNE, ET IL DECLARE SON ARBRE
+==============================================================================
+
+🔴 POURQUOI CE TIR EXISTE — dn5-6 / CONSTAT (8), verifie le 2026-09-05.
+   `mesures/dn5-4/T2-hors-ligne.txt` ne declare ⛔ NI chemin ⛔ NI `HEAD` pour
+   aucun de ses trois essais. Or le `rc=0` de `hello-desknode` hors ligne porte
+   TOUT le discriminant « c'est le reseau, ⛔ pas la chaine d'outils » — et il
+   est conditionne a un fait NON ECRIT : l'arbre de travail portait un
+   `firmware/hello-desknode/build/` deja peuple, et rien ne disait si l'essai
+   avait tourne la ou dans un dossier neuf.
+   MESURE DU 2026-09-05 : le motif `CONSTATE AVANT LE BUILD` est present
+   **1 fois** dans `T1-build-froid.txt` et **0 fois** dans `T2-hors-ligne.txt`.
+   ⛔ UNE CAPTURE NE SE RETOUCHE PAS ⇒ le remede est CE TIR, ⛔ pas une edition.
+
+🎯 CE QUE CE TIR FAIT DE PLUS : il construit dans un dossier **NEUF, HORS de
+   `firmware/`**, copie depuis l'arbre a un SHA NOMME. ⇒ l'arbre n'est plus un
+   fait non ecrit, il est une CONSTRUCTION. Et NFR8 tient par construction :
+   ⛔ rien n'est ecrit sous `firmware/`.
+
+── CONSTATE AVANT LE BUILD, ⛔ pas suppose ────────────────────────────────
+  date            : 2026-09-05T03:44:34
+  depot source    : /home/nasbarok/projects/desknode
+  HEAD            : 0bdc9e89bfa83d7fcb88aeac68ec509dabed4fd7
+  branche         : main
+  status firmware/: ''
+  ESP-IDF         : /home/nasbarok/esp/esp-idf
+  version ESP-IDF : v5.5.5
+
+── L'ARBRE DE CE TIR, ECRIT ET ⛔ PAS SUPPOSE ─────────────────────────────
+  dossier de build : /tmp/dn56-tir-3ggl7cwu/hello-desknode
+  ⛔ HORS de `firmware/` ⇒ NFR8 tient PAR CONSTRUCTION
+  contenu copie    : CMakeLists.txt, main, sdkconfig.defaults
+  `build/` present avant le tir ? False
+  ⇒ ⛔ AUCUN cache de build, ⛔ aucun `sdkconfig` herite : c'est le cas du
+     contributeur NEUF, et c'est ce que T2 ne pouvait pas affirmer.
+
+── ESSAI (c) DISCRIMINANT — hello-desknode HORS LIGNE, ARBRE NEUF ────────
+  methode : `unshare -r -n` (namespace reseau sans interface)
+  ⚠️ le controle reseau est joue A L'INTERIEUR du namespace : ⛔ on ne
+     suppose pas que la coupure a pris, on la MESURE avant de conclure.
+  duree   : 70.1 s
+  rc du shell : 0
+      controle reseau DANS le namespace : ✅ reseau COUPE : [Errno -3] Temporary failure in name resolution
+      rc set-target : 0
+      rc build : 0
+       idf.py -p PORT flash
+      or
+       python -m esptool --chip esp32s3 -b 460800 --before default_reset --after hard_reset write_flash --flash_mode dio --flash_size 2MB --flash_freq 80m 0x0 build/bootloader/bootloader.bin 0x8000 build/partition_table/partition-table.bin 0x10000 build/hello-desknode.bin
+      or from the "/tmp/dn56-tir-3ggl7cwu/hello-desknode/build" directory
+       python -m esptool --chip esp32s3 -b 460800 --before default_reset --after hard_reset write_flash "@flash_args"
+
+── CE QUE CE TIR ETABLIT, ET CE QU'IL N'ETABLIT PAS ──────────────────────
+  ✅ ETABLI : le `rc` du build de `hello-desknode` hors ligne, pris dans un
+     arbre NEUF dont le chemin, le SHA source et l'absence de `build/` sont
+     ECRITS CI-DESSUS. C'est ce que `T2-hors-ligne.txt` ne pouvait pas dire.
+  ⛔ NON ETABLI ICI : les essais (a) et (b) de T2 (le projet `desknode`
+     complet, avec et sans cache). Ils ne sont ⛔ PAS rejoues : le
+     discriminant du constat porte sur (c), et rejouer (a)/(b) ne change
+     rien a ce qui manquait — la DECLARATION D'ARBRE. Leur conclusion
+     (« le cache local ne sauve pas le build hors ligne ») reste celle de
+     T2, ⛔ non recontrolee, et c'est ECRIT plutot que tu.
+==============================================================================

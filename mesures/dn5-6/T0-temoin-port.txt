@@ -1,0 +1,100 @@
+==============================================================================
+T0 — TEMOIN NFR8 « AVANT » (dn5-6)
+==============================================================================
+date     : 2026-09-05T03:03:13
+pris par : subprocess (⛔ jamais le shell de session — le proxy reecrit git diff/grep)
+⛔ AUCUN PORT SERIE N'EST OUVERT PAR CETTE CAPTURE. Lectures de fichier, zero port.
+
+🔴 POURQUOI LE TEMOIN N'EST **PAS** LE BANDEAU DE BOOT
+  Le SHA du firmware n'est imprime QU'AU BOOT ⇒ le relire exigerait de PRENDRE le
+  port, c'est-a-dire exactement le geste qu'on pretend n'avoir pas fait. Le temoin
+  est donc la POSSESSION DU PORT, lue sans ouvrir aucun port : l'agent tient COM3
+  en exclusif depuis son lancement ; si son compteur `s mur` / `seq` ne retombe
+  JAMAIS a zero de part et d'autre de la fenetre de la story, l'agent n'est jamais
+  mort ⇒ aucun autre process n'a PU obtenir COM3 ⇒ AUCUN FLASH N'A **PU** AVOIR LIEU.
+  ⚠️ C'est la MONOTONIE qui prouve, ⛔ pas la valeur.
+==============================================================================
+
+--- desknode (CODE)
+  HEAD                                       rc=0
+      0bdc9e89bfa83d7fcb88aeac68ec509dabed4fd7
+  branche                                    rc=0
+      main
+  status --porcelain                         rc=0
+      ?? mesures/dn5-6/
+
+--- compagnon_project (COCKPIT)
+  HEAD                                       rc=0
+      bd65ee7475851a0729b3db36bb6c900c791c7d85
+  branche                                    rc=0
+      desknode-p0-p1-clos
+  status (implementation-artifacts uniquement) rc=0
+       M _bmad-output/implementation-artifacts/epic-dn5-context.md
+      ?? _bmad-output/implementation-artifacts/dn5-6-les-sept-constats-reportes-sont-re-verifies-avant-d-etre-crus.md
+
+--- ANCRE DE LA STORY (frontmatter du dossier)
+  baseline_revision_desknode = 0bdc9e8
+  git rev-list --count <ancre>..HEAD         rc=0
+      0
+
+==============================================================================
+TEMOIN DE POSSESSION DU PORT — dn-agent.log / dn-agent.started
+==============================================================================
+
+--- dn-agent.log : /mnt/h/dev/projets/desknode/dn-agent.log
+  taille  : 4572505 o
+  mtime   : 2026-09-05T03:03:12
+  lignes  : 38414
+  DERNIERE LIGNE PORTEUSE (source de `s mur` et `seq`) :
+      [agent] témoin coût cumulé : 4835.688 s CPU / 267203.5 s mur = 1.810 % d'un cœur (0.1131 % machine) — seq=1335999
+  >>> s_mur_T0 = 267203.5
+  >>> seq_T0   = 1335999
+
+
+--- dn-agent.started : /mnt/h/dev/projets/desknode/dn-agent.started
+  taille  : 289 o
+  mtime   : 2026-09-02T00:49:45
+  CONTENU (profil utilisateur CAVIARDE — il DOIT etre inchange a T7) :
+      lance   : 2026-09-02T00:49:45+02:00
+      regime  : double-clic (detache)
+      python  : C:\Users\<caviarde>\AppData\Local\Programs\Python\Python313\python.exe
+      agent   : H:\dev\projets\desknode\dn_agent.py
+      args    : --serie COM3 --stop-si H:\dev\projets\desknode\dn-agent.stop --temoin
+      coeurs  : 16
+  ⇒ `--serie COM3` : c'est CETTE ligne qui prouve la tenue EXCLUSIVE du port.
+
+==============================================================================
+NFR8 — `firmware/` EST-IL TOUCHE ?
+==============================================================================
+  diff --name-only <ancre>..HEAD -- firmware/ rc=0
+      (VIDE)
+  ⛔ PAS `main..HEAD` : le dev travaille SUR main ⇒ ce controle rendrait VIDE quoi
+     qu'il arrive — un controle qui ne peut pas rougir. L'ancre est le SHA DE DEBUT
+     DE STORY (0bdc9e8), ⛔ pas une ref mouvante.
+  diff --stat -- firmware/ (arbre de travail) rc=0
+      (VIDE)
+  status --porcelain -- firmware/            rc=0
+      (VIDE)
+
+==============================================================================
+NFR5 — `deferred-work.md` EST-IL TOUCHE ? — JOUE **DEPUIS LE COCKPIT**
+==============================================================================
+🔴 DEFAUT MESURE SUR `T7-temoin-port.txt` DE `dn5-5`, ⛔ PAS REPRODUIT ICI :
+   le pathspec `deferred-work.md` joue **depuis `desknode`** ne matche AUCUN
+   fichier ⇒ il rend VIDE quoi qu'il arrive : un controle AVEUGLE.
+   Le fichier vit dans le COCKPIT ⇒ le `cwd` est /home/nasbarok/projects/compagnon_project.
+  diff --stat -- _bmad-output/implementation-artifacts/deferred-work.md rc=0
+      (VIDE)
+  status --porcelain -- _bmad-output/implementation-artifacts/deferred-work.md rc=0
+      (VIDE)
+  ⚠️ TEMOIN NEGATIF DU CONTROLE LUI-MEME — le meme pathspec joue depuis `desknode`,
+     pour montrer qu'il y est MUET et donc inutilisable comme garde :
+       depuis desknode : rc=0, sortie='' ⇒ ⛔ AVEUGLE
+
+==============================================================================
+NFR6 — UN RENOMMAGE A-T-IL EU LIEU ?
+==============================================================================
+  status --porcelain | lignes commencant par R rc=0
+      ?? mesures/dn5-6/
+  ⇒ chercher un `R` en tete de ligne ci-dessus : il n'y en a aucun si NFR6 tient.
+

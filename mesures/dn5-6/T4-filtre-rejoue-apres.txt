@@ -1,0 +1,279 @@
+==============================================================================
+dn5-6 / T1 — LE FILTRE : LES 10 CONSTATS REJOUES UN PAR UN
+==============================================================================
+date       : 2026-09-05T04:48:20
+desknode   : 0bdc9e89bfa83d7fcb88aeac68ec509dabed4fd7
+cockpit    : bd65ee7475851a0729b3db36bb6c900c791c7d85
+mesures    : ⛔ TOUTES par `subprocess`, ⛔ jamais le shell de session
+
+==============================================================================
+TEMOIN DE L'INSTRUMENT — ⛔ SI UN SEUL TOMBE, ON NE CONCLUT RIEN
+==============================================================================
+
+Chaque primitive est exercee sur un cas ou la faute est REPLANTEE (elle DOIT
+la voir) ET sur un cas ou elle est absente (elle NE DOIT PAS la voir). C'est
+la lecon de `dn5-3` : son instrument repondait « ✅ NON » sur une chaine qui
+portait le defaut, et le temoin qui le gardait ne regardait que le MOTIF.
+
+  [OK ] motif_resout voit un motif PRESENT                       True
+  [OK ] motif_resout ne voit PAS un motif absent                 0
+  [OK ] porte_bilan voit une ligne BILAN                         True
+  [OK ] porte_bilan ne voit PAS de BILAN dans un traceback       False
+  [OK ] porte_bilan n'est pas dupe d'une citation en prose       False
+  [OK ] est_traceback voit un traceback                          True
+  [OK ] est_traceback ne voit pas de traceback dans un bilan     False
+  [OK ] ast voit la forme LITTERALE                              True
+  [OK ] ast voit la forme COUPEE sur deux lignes                 True
+  [OK ] ast voit la forme en guillemets SIMPLES                  True
+  [OK ] ast n'est PAS dupe d'une citation en prose               False
+  [OK ] le grep du runner voit la forme LITTERALE                True
+  [OK ] 🔴 le grep du runner est AVEUGLE a la forme coupee        False
+  [OK ] 🔴 le grep du runner est AVEUGLE aux guillemets simples   False
+  [OK ] 🔴 le grep du runner est DUPE par une citation en prose   True
+  [OK ] compte_lignes_section1 separe hors/muet/verdict          (1, 1, 2)
+  [OK ] section1 garde ce qui est AVANT la borne 2               True
+  [OK ] 🔴 section1 ne compte PAS la section 3 (defaut du 1er jet) False
+  [OK ] bilan_de lit un bilan                                    (22, 10)
+  [OK ] bilan_de ne fabrique pas de bilan                        None
+
+  ⇒ TEMOIN : 20 OK, 0 KO
+
+==============================================================================
+LES 10 CONSTATS
+==============================================================================
+
+⚠️ LE PERIMETRE EST **10**, ⛔ PAS 13. Les constats 11, 12 et 13 sont des
+   CONDITIONS DE PUBLICATION : ils portent deja LEUR PROPRE LIGNE dans la
+   liste AC5.6 deposee au tracker par `dn5-5` (lignes 8, 9, 10), porteur
+   `epic-dn8`. La ligne 15 de cette meme liste l'ecrit.
+
+
+──────────────────────────────────────────────────────────────────────────────
+CONSTAT (1) — un fichier faisant autorite ILLISIBLE tue la gate sans BILAN
+──────────────────────────────────────────────────────────────────────────────
+  preuve par motif : 'def occurrences'
+  ⇒ resout sur 1 fichier(s) a HEAD
+
+  A · cockpit de synthese LISIBLE (temoin positif)
+      rc=0 · BILAN present : True · traceback : False
+      BILAN lu : (12, 0)
+
+  ⚠️ le `chmod 000` mord-il sur ce systeme ? True
+
+  B · MEME cockpit, `sprint-status-desknode.yaml` a chmod 000
+      rc=1 · BILAN present : True · traceback : False
+      derniere ligne de stderr : ''
+
+  ┏━ VERDICT : DEJA FAUX
+  ┗━ motif   : la gate rend un BILAN malgre le fichier illisible ⇒ l'exception est desormais traitee.
+
+──────────────────────────────────────────────────────────────────────────────
+CONSTAT (2) — le `N OK / 0 KO` se calcule sur une population fondue
+──────────────────────────────────────────────────────────────────────────────
+  preuve par motif : 'le balayage a bien trouve des occurrences'
+  ⇒ resout sur 8 fichier(s) a HEAD
+
+  commande : verif_dossier_d5_dn45.py --cockpit <absent>
+  rc = 4 · BILAN = (8, 0)
+  section 1 : 2 fichier(s) HORS de portee · 2 MUET(s) · 4 verdict(s) de fichier
+  la SEULE garde globale : [OK ] le balayage a bien trouve des occurrences                  7 occurrence(s) faisant autorite, 7 annotee(s)
+  ⇒ sur les 6 fichiers faisant autorite, 4 ont rendu un verdict et 4 n'ont RIEN controle
+
+  ┏━ VERDICT : VRAI
+  ┗━ motif   : 4 des 6 fichiers faisant autorite n'ont RIEN controle (2 hors de portee + 2 muets), et le bilan sort quand meme en `8 OK, 0 KO` : la seule garde globale (`total > 0`) est satisfaite par UNE occurrence.
+
+──────────────────────────────────────────────────────────────────────────────
+CONSTAT (3) — `--cockpit` relatif : validation APRES le `cd`, jamais normalisee
+──────────────────────────────────────────────────────────────────────────────
+  preuve par motif : '--cockpit attend un chemin'
+  ⇒ resout sur 1 fichier(s) a HEAD
+
+  A · depuis /home/nasbarok/projects, `--cockpit compagnon_project`
+      ce chemin existe-t-il depuis ce cwd ? True
+      rc = 1
+      la passe a-t-elle DEMARRE ? False
+      stderr : "[KO ] run_gates.sh contient 1 redirection(s) vers le puits — AC1.4 l'interdit."
+
+  B · depuis /home/nasbarok/projects, `--cockpit tools` (homonyme)
+      existe depuis ce cwd : False · existe sous la racine : True
+      rc = 2
+      la passe a-t-elle DEMARRE ? False
+      1re ligne de stdout : ''
+      1re ligne de stderr : "--cockpit : chemin inexistant ou vide — 'tools'"
+
+  ┏━ VERDICT : DEJA FAUX
+  ┗━ motif   : le chemin relatif QUI EXISTE depuis le cwd de l'appelant est desormais ACCEPTE (la passe a demarre : False ; rc=1) ⇒ il est resolu contre ce cwd puis normalise ; et l'homonyme sous la racine est REFUSE FERME.
+
+──────────────────────────────────────────────────────────────────────────────
+CONSTAT (4) — la capacite `--cockpit` se detecte par CHAINE LITTERALE
+──────────────────────────────────────────────────────────────────────────────
+  preuve par motif : 'add_argument("--cockpit"'
+  ⇒ resout sur 11 fichier(s) a HEAD
+
+  30 gates au glob `tools/verif_*.py`
+  declarent `--cockpit` a argparse (ast, LA VERITE) : 4 ⇒ verif_campagne_dn440.py, verif_dossier_d5_dn45.py, verif_dossier_dn415.py, verif_ledger_dn416.py
+  vues par le grep litteral du runner                : 4 ⇒ verif_campagne_dn440.py, verif_dossier_d5_dn45.py, verif_dossier_dn415.py, verif_ledger_dn416.py
+  ECARTS entre les deux : 0
+
+  ⚠️ LA « FORME COUPEE » CITEE PAR `dn5-3` EST-ELLE VRAIMENT
+     INVISIBLE AU GREP ? ⇒ MESURE, ⛔ pas repris.
+     122 option(s) longue(s) declaree(s) a argparse dans `tools/`
+     declarations qu'un grep `add_argument("<opt>"` NE VERRAIT PAS : 4
+        · gen_living_pcb.py                      --out-bin, --out-png, --byte-order, --seed
+     🔴 LE PRECEDENT QUE LA REVUE CITAIT — `add_argument("--csv",`
+        de `thermique_ventilos_dn48.py` — est-il vu par le grep ? True
+        ⇒ il replie ses ARGUMENTS SUIVANTS, ⛔ pas le nom de l'option.
+
+  ┏━ VERDICT : VRAI (structurel — le bord ⛔ n'est PAS atteint)
+  ┗━ motif   : les 4 gates qui declarent `--cockpit` portent TOUTES la forme litterale aujourd'hui ⇒ ⛔ AUCUN rouge ne peut le montrer, et le detecteur du runner est bien AVEUGLE aux formes coupee et guillemets simples (prouve par le temoin de cet instrument). 🔴 LE PRECEDENT QUE LA REVUE CITAIT EST REFUTE : `add_argument("--csv",` replie ses ARGUMENTS, ⛔ pas le nom de l'option ⇒ le grep LA VOIT (mesure : True). 🎯 MAIS UN PRECEDENT REEL EXISTE AILLEURS, et il est PIRE : sur 122 options declarees dans `tools/`, 4 echappent au grep — gen_living_pcb.py (--out-bin, --out-png, --byte-order, --seed), en GUILLEMETS SIMPLES. ⇒ la convention dangereuse vit bien dans l'arbre, ⛔ pas la ou la revue la designait.
+
+──────────────────────────────────────────────────────────────────────────────
+CONSTAT (5) — `--analyser <absent>` rend un Traceback NU
+──────────────────────────────────────────────────────────────────────────────
+  preuve par motif : 'def analyser'
+  ⇒ resout sur 3 fichier(s) a HEAD
+
+  A · `--analyser <ABSENT>`
+      rc=1 · stdout='⛔ FICHIER INTROUVABLE : /tmp/dn56-csv-absent-8f3a1c.csv\n   ⇒ `--analyser` attend' · traceback : False
+      derniere ligne de stderr : ''
+
+  B · `--analyser <VIDE>` (temoin negatif : ce cas est propre)
+      rc=0 · stdout='⛔ 0 echantillons : trop peu pour conclure quoi que ce soit.' · traceback : False
+
+  ┏━ VERDICT : DEJA FAUX
+  ┗━ motif   : l'absence est desormais nommee : rc=1, stdout="⛔ FICHIER INTROUVABLE : /tmp/dn56-csv-absent-8f3a1c.csv\n   ⇒ `--analyser` attend le CSV produit par une passe\n     d'enr"
+
+──────────────────────────────────────────────────────────────────────────────
+CONSTAT (6) — le defaut de `--csv` : nom FIXE dans un repertoire PARTAGE
+──────────────────────────────────────────────────────────────────────────────
+  preuve par motif : 'dn48_thermique.csv'
+  ⇒ resout sur 6 fichier(s) a HEAD
+
+  `tempfile.gettempdir()` sur CE poste : '/tmp'
+  TMPDIR dans l'environnement            : None
+  chemin par defaut de `--csv`           : '/tmp/dn48_thermique.csv'
+  mode du repertoire : 0o1777 · world-writable : True · sticky : True
+  ⇒ le nom est FIXE (⛔ pas de pid, ⛔ pas d'utilisateur) : True
+  temoin `.pid` : `enregistrer()` ecrit `<csv>.pid` puis le supprime en `finally`
+  aide de l'outil pour `--csv` :
+      --csv CSV] [--analyser ANALYSER]
+      
+      options:
+        -h, --help           show this help message and exit
+        --heures HEURES
+        --periode PERIODE
+        --csv CSV
+        --analyser ANALYSER
+
+  ⚠️ CE QUI N'EST **PAS** MESURE, ET C'EST ECRIT : la COLLISION elle-meme.
+     Elle exigerait DEUX comptes Unix jouant `enregistrer()` en meme temps ;
+     ⛔ l'outil ne s'execute pas sur ce poste (il lit `/metrics` sur la tour).
+
+  ┏━ VERDICT : VRAI (structurel — atteignable, ⛔ pas atteint)
+  ┗━ motif   : sous Linux `gettempdir()` rend '/tmp', world-writable et partage par tous les comptes, et le nom du defaut est FIXE ⇒ deux comptes visent le MEME csv et le MEME `.pid`. ⛔ La collision n'est pas jouee ici : l'outil est Windows-only en pratique.
+
+──────────────────────────────────────────────────────────────────────────────
+CONSTAT (7) — la gate imprime une regle de `rc` qu'elle ne suit pas
+──────────────────────────────────────────────────────────────────────────────
+  preuve par motif : 'UNIQUEMENT si la moitie jouee est'
+  ⇒ resout sur 3 fichier(s) a HEAD
+
+  commande : verif_dossier_d5_dn45.py --cockpit <absent>
+  regle IMPRIMEE : None
+  rc REELLEMENT rendu : 4 · BILAN : (8, 0)
+  la moitie jouee est-elle MUETTE ? False (elle a rendu 8 verdict(s))
+  la MEME formulation vit-elle dans `verif_dossier_dn415.py` ? True
+     ⚠️ `AC3.3.a` de `dn5-3` EXIGEAIT la copie ⇒ si elle se corrige, elle se corrige AUX DEUX ENDROITS.
+
+  ┏━ VERDICT : DEJA FAUX
+  ┗━ motif   : la regle imprimee decrit le `rc` rendu : rc=4, BILAN=(8, 0)
+
+──────────────────────────────────────────────────────────────────────────────
+CONSTAT (8) — `T2-hors-ligne.txt` ne declare ni chemin ni HEAD
+──────────────────────────────────────────────────────────────────────────────
+  preuve par motif : 'CONSTATE AVANT LE BUILD'
+  ⇒ resout sur 1 fichier(s) a HEAD
+
+  motif 'CONSTATE AVANT LE BUILD'
+     · T1-build-froid.txt : 1 occurrence(s)
+     · T2-hors-ligne.txt  : 0 occurrence(s)
+  T2 declare-t-il un SHA (motif hexa >=7) ? False
+  T2 declare-t-il un chemin d'arbre / un `cwd` ? True
+  ⛔ UNE CAPTURE NE SE RETOUCHE PAS ⇒ le remede est un NOUVEAU TIR, ⛔ pas une edition.
+
+  LE NOUVEAU TIR EST-IL JOUABLE DEPUIS CE POSTE ?
+     · `unshare -r -n true` ⇒ rc=0 
+     · ESP-IDF present a '/home/nasbarok/esp/esp-idf' ⇒ True
+
+  ┏━ VERDICT : VRAI
+  ┗━ motif   : l'ecart est mesure (motif present 1x dans T1, 0x dans T2) et T2 ne declare AUCUN SHA ⇒ le `rc=0` de `hello-desknode`, qui porte tout le discriminant, reste conditionne a un fait non ecrit. Le nouveau tir est jouable ici.
+
+──────────────────────────────────────────────────────────────────────────────
+CONSTAT (9) — la gate des marqueurs est aveugle aux fichiers hors `.md`
+──────────────────────────────────────────────────────────────────────────────
+  preuve par motif : 'tout marqueur cite COMME marqueur est defini'
+  ⇒ resout sur 5 fichier(s) a HEAD
+
+  la PORTEE REELLE, lue dans le code :
+      def prose_du_depot(fichiers):
+          """Les fichiers de PROSE que lit un inconnu : la racine et `docs/`.
+          ⛔ `mesures/` et `hardware/` sont exclus — ce sont des captures et des
+          dossiers de mesure, ils CITENT les sorties qu'ils enregistrent.
+
+  marqueurs cites sous `.github/` : dn4-39, dn4-45, dn5-2, dn5-4
+  definis dans `docs/roadmap.md`  : 17
+  ⇒ MANQUANTS (ce qui ferait rougir la gate SI elle regardait) : AUCUN
+
+  ce que `.github/workflows/gates.yml` AFFIRME de sa portee :
+      #    le contrôle (c4) de `verif_licences_dn52.py` exige que tout marqueur cité
+
+  la gate aujourd'hui : rc=0 · BILAN=(32, 0)
+
+  ┏━ VERDICT : DEJA FAUX
+  ┗━ motif   : la portee couvre desormais les fichiers hors `.md`, ou `gates.yml` ne sur-declare plus.
+
+──────────────────────────────────────────────────────────────────────────────
+CONSTAT (10) — rien ne rejoue les mutants : preuve par CAPTURE UNIQUE
+──────────────────────────────────────────────────────────────────────────────
+  preuve par motif : 'cle valide (aucun libelle >= 58)'
+  ⇒ resout sur 1 fichier(s) a HEAD
+
+  QUI REJOUE LES MUTANTS DE CETTE GATE ?
+     · `tools/run_gates.sh` cite-t-il `--mutant` ? False
+     · `.github/workflows/gates.yml` cite-t-il `--mutant` ? False
+     · `tools/verif_campagne_dn440.py` vise-t-il cette gate ? False
+       (ses cibles declarees : _bmad-output/implementation-artifacts/deferred-work.md, _bmad-output/implementation-artifacts/sprint-status-desknode.yaml, _bmad-output/implementation-artifacts/dn4-16-arbitrage-ledger.md)
+
+  `--liste-mutants` ⇒ 34 mutant(s) : 1..34
+  ⚠️ CE QUE LA LIGNE DU TRACKER ANNONCE, **LU** : ⛔ non trouve dans le tracker
+  rejeu de TOUS les mutants a HEAD : 34 ROUGE(S), 0 NON-ROUGE(S)
+
+  l'hypothese `cle valide (aucun libelle >= 58)` resout dans 1 fichier(s) :
+     · HEAD:mesures/dn5-2/T5-campagne-mutants.txt
+     ⇒ elle ne vit que dans une CAPTURE, ⛔ dans aucun controle.
+
+  UNE GATE DU GLOB REJOUE-T-ELLE DES CAMPAGNES ? verif_campagne_dn56.py, verif_demarrage_dn443.py
+
+  ┏━ VERDICT : DEJA FAUX
+  ┗━ motif   : un chemin automatique rejoue desormais les mutants : verif_campagne_dn56.py, verif_demarrage_dn443.py — elle est DANS le glob `tools/verif_*.py`, donc jouee par `run_gates.sh` ET par la CI, sans argument.
+
+==============================================================================
+LE TABLEAU DES VERDICTS
+==============================================================================
+  ( 1)  DEJA FAUX
+  ( 2)  VRAI
+  ( 3)  DEJA FAUX
+  ( 4)  VRAI (structurel — le bord ⛔ n'est PAS atteint)
+  ( 5)  DEJA FAUX
+  ( 6)  VRAI (structurel — atteignable, ⛔ pas atteint)
+  ( 7)  DEJA FAUX
+  ( 8)  VRAI
+  ( 9)  DEJA FAUX
+  (10)  DEJA FAUX
+
+  VRAI              : 4 ⇒ [2, 4, 6, 8]
+  DEJA FAUX         : 6 ⇒ [1, 3, 5, 7, 9, 10]
+  NON REPRODUCTIBLE : 0 ⇒ []
+
+  ⛔ SEULS LES VRAIS OUVRENT UN CORRECTIF.
+  ⇒ TEMOIN DE L'INSTRUMENT : 20 OK, 0 KO

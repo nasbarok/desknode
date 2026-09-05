@@ -61,6 +61,7 @@ CE QU'IL NE FAIT PAS
 """
 
 import argparse
+import ast
 import os
 import re
 import subprocess
@@ -168,6 +169,36 @@ def sites(txt):
 
 
 # ══ LES DEUX CONTROLES REPARES ══════════════════════════════════════════════
+
+def segment_defaut(txt, option):
+    """Le SEGMENT SOURCE de la valeur `default=` d'une option, par AST.
+
+    🔴 dn5-6, 2026-09-05 — ⛔ `defaut_argparse()` NE PEUT PAS SERVIR ICI : elle
+       rend un LIBELLE DESCRIPTIF (`⟨calcule⟩ os.path.join( …`), ⛔ pas la
+       sous-chaine du fichier. Le temoin (c) a besoin de la sous-chaine EXACTE
+       pour la substituer.
+    ⚠️ Motif : le temoin ancrait sur une ligne source VERBATIM, et `dn5-6` a
+       change ce defaut ⇒ la substitution ne mordait plus et le temoin criait
+       « les chiffres ne valent RIEN » a chaque tir, sans que rien ne le voie
+       (cet outil n'est ⛔ pas une gate). Un AST suit la valeur ou qu'elle aille.
+    ⇒ rend la sous-chaine, ou None si l'option ou son `default` n'existent pas.
+    """
+    try:
+        arbre = ast.parse(txt)
+    except SyntaxError:
+        return None
+    for n in ast.walk(arbre):
+        if not (isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+                and n.func.attr == "add_argument"):
+            continue
+        if not any(isinstance(a, ast.Constant) and a.value == option
+                   for a in n.args):
+            continue
+        for k in n.keywords:
+            if k.arg == "default":
+                return ast.get_source_segment(txt, k.value)
+    return None
+
 
 def defaut_argparse(txt, option):
     """Le `default=` d'une option argparse, **peu importe le nombre de lignes**.
@@ -291,9 +322,28 @@ def temoin():
                 len(ouvertures_en_ecriture(reel + cite)) == 1, "1 site"))
 
     # (c) LA CLASSE 1 REMONTE QUAND ON REPLANTE LA FAUTE.
+    # 🔴 CORRIGE LE 2026-09-05 (`dn5-6`) — ⛔ L'ANCRE VERBATIM EST REMPLACEE PAR
+    #    L'ANCRE SEMANTIQUE. La ligne d'origine substituait la chaine SOURCE
+    #    `default=os.path.join(tempfile.gettempdir(), "dn48_thermique.csv")`.
+    #    `dn5-6` a change ce defaut (il porte desormais le compte courant) ⇒ la
+    #    substitution ne mordait plus, `malade == sain`, et le temoin declarait
+    #    « ⛔ LE TEMOIN A ECHOUE — les chiffres ci-dessous ne valent RIEN » a
+    #    chaque tir. MESURE le 2026-09-05 : rc 0 ⇒ 1.
+    #    ⚠️ ET RIEN NE L'AURAIT VU : cet outil n'est ⛔ PAS une gate (hors du
+    #    glob `tools/verif_*.py`, absent de `gates.yml`) ⇒ le garde-fou
+    #    « 0 KO de plus, gate par gate » lui est STRUCTURELLEMENT aveugle.
+    # ⇒ ON ANCRE SUR CE QUE `defaut_argparse()` LIT — la meme fonction que le
+    #   correctif (1) a rendue robuste au repli. Un defaut qui change de forme
+    #   ne casse plus le temoin ; un defaut qui DISPARAIT le fait rougir, et
+    #   c'est ce qu'on veut.
     sain = contenu(None, "tools/thermique_ventilos_dn48.py") or ""
-    malade = sain.replace('default=os.path.join(tempfile.gettempdir(), "dn48_thermique.csv")',
-                          'default=r"C:\\Users\\quiconque\\AppData\\Local\\Temp\\x.csv"')
+    _seg = segment_defaut(sain, "--csv")
+    malade = (sain.replace(_seg,
+                           'r"C:\\Users\\quiconque\\AppData\\Local\\Temp\\x.csv"', 1)
+              if _seg else sain)
+    cas.append(("classe 1 : le defaut de `--csv` est LOCALISE par AST", True,
+                _seg is not None and malade != sain,
+                "ancre semantique, ⛔ pas verbatim"))
     cas.append(("classe 1 : l'arbre du jour est SOLDE", True,
                 dependance_fonctionnelle("tools/thermique_ventilos_dn48.py", sain) == [],
                 "0 fait"))

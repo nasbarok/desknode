@@ -264,6 +264,13 @@ MUTANTS[28] = ("fait CHECKOUTER le code de la PR par le workflow "
                "`pull_request_target`")
 # ── AJOUTES LE 2026-09-04 PAR LA REVUE DE CODE, QUI A TROUVE CINQ CONTROLES
 #    QUE RIEN NE GARDAIT (dont deux qui n'existaient pas encore)
+# ── AJOUTE LE 2026-09-05 PAR `dn5-6` / CONSTAT (9) — NFR7 : IL **REPLANTE**
+#    LA FAUTE, ⛔ IL NE DEBRANCHE RIEN. Le cas reel a disparu (les 4 marqueurs
+#    cites sous `.github/` sont definis) ⇒ c'est le SEUL instrument qui peut
+#    montrer que la portee elargie garde vraiment quelque chose.
+MUTANTS[34] = ("cite dans `.github/workflows/gates.yml` un marqueur `dn9-9` "
+               "ABSENT de docs/roadmap.md, en le renvoyant a la page "
+               "(constat 9 : les `.yml` n'etaient JAMAIS balayes)")
 MUTANTS[29] = ("pose un SECOND workflow qui porte le signal du CLA et qui trie "
                "AVANT `cla.yml`, avec une action NON EPINGLEE")
 MUTANTS[30] = ("checkoute le code de la PR par `github.head_ref` "
@@ -388,9 +395,54 @@ def suivis():
 def prose_du_depot(fichiers):
     """Les fichiers de PROSE que lit un inconnu : la racine et `docs/`.
     ⛔ `mesures/` et `hardware/` sont exclus — ce sont des captures et des
-    dossiers de mesure, ils CITENT les sorties qu'ils enregistrent."""
+    dossiers de mesure, ils CITENT les sorties qu'ils enregistrent.
+
+    ⚠️ dn5-6, 2026-09-05 — SA PORTEE N'A **PAS** CHANGE, ET C'EST VOULU : le
+       constat (9) est traite par `prose_marqueurs()` juste en dessous, qui
+       ajoute les workflows **pour le seul controle des marqueurs**.
+
+    🔴 dn5-6 / CONSTAT (9) — 2026-09-05 : LA PORTEE DU CONTROLE DES MARQUEURS
+       ETAIT PLUS ETROITE QUE CE QUE LE DEPOT DISAIT D'ELLE. Elle ne rendait que des `.md` ⇒ un marqueur
+       cite dans `.github/workflows/*.yml` n'etait **JAMAIS** controle, alors
+       que `gates.yml` affirmait de ce controle qu'il « exige que tout marqueur
+       cite comme marqueur soit defini dans `docs/roadmap.md` », sans dire
+       « les `.md` de la racine et de `docs/` seulement ».
+
+       ⚠️ **LE CAS DE DEMONSTRATION EST TOMBE ENTRE-TEMPS, ET C'EST ECRIT.**
+       `dn5-4` l'avait etabli sur « `gates.yml` renvoie vers `dn4-45`, absent
+       de `docs/roadmap.md` ». MESURE DU 2026-09-05
+       (`mesures/dn5-6/T1-filtre-10-constats.txt`, constat 9) : les **4**
+       marqueurs cites sous `.github/` — `dn4-39`, `dn4-45`, `dn5-2`, `dn5-4` —
+       sont **TOUS** definis dans la roadmap (`dn5-5` y a ajoute `dn4-45`).
+       ⇒ elargir la portee **laisse la gate VERTE aujourd'hui** : ⛔ AUCUN
+       rouge ne peut etablir ce trou. Seul le **mutant 34**, qui REPLANTE la
+       faute, le peut — et c'est pour ca qu'il existe.
+
+    ⚠️ LES WORKFLOWS SONT DE LA PROSE QUI POINTE UN LECTEUR : ils portent des
+       renvois, des marqueurs et des porteurs, exactement comme les pages. Ce
+       qui les distingue d'une capture, c'est qu'ils s'ADRESSENT a quelqu'un.
+    """
     return [f for f in fichiers
             if f.endswith(".md") and ("/" not in f or f.startswith("docs/"))]
+
+
+def prose_marqueurs(fichiers):
+    """La prose de `prose_du_depot()` **PLUS les workflows**.
+
+    🔴 dn5-6 / REVUE DU 2026-09-05 — L'ELARGISSEMENT ETAIT TROP LARGE.
+       Le premier jet elargissait `prose_du_depot()` elle-meme, or elle
+       alimente **SIX** sections : `section_liens`, `section_citations`,
+       `section_marqueurs`, `section_comptes`, `section_cla`,
+       `section_refutations`. ⇒ un commentaire de workflow portant un lien
+       markdown local, un titre de section cite, un compte annonce ou une
+       invocation `python3 tools/x.py --drapeau` serait tombe **en silence**
+       sous des controles qui n'ont jamais ete ecrits pour du YAML.
+       ⛔ Le constat (9) porte sur **les marqueurs**, ⛔ pas sur tout le reste.
+    ⇒ SEULE `section_marqueurs` recoit la portee elargie.
+    """
+    return prose_du_depot(fichiers) + [
+        f for f in fichiers
+        if f.startswith(".github/workflows/") and f.endswith((".yml", ".yaml"))]
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1179,7 +1231,28 @@ def main():
 
     section_liens(prose)
     section_citations(prose)
-    section_marqueurs(prose, roadmap)
+    # ⇒ dn5-6 / constat (9) : SEULE cette section voit les workflows. Les
+    #   textes deja charges (et deja mutes) sont conserves tels quels.
+    prose_m = {f: prose.get(f) if f in prose else lire(os.path.join(RACINE, f))
+               for f in prose_marqueurs(traces or [])}
+    # 🔴 dn5-6 / CONSTAT (9) — LE MUTANT QUI PROUVE QUE LES `.yml` SONT BALAYES.
+    # ⚠️ REVUE DU 2026-09-05 : sa 1re version mutait `prose`, ou le workflow
+    #    n'est PAS — et un `if _wf in prose:` la SAUTAIT EN SILENCE ⇒
+    #    `--mutant 34` sortait **VERT** (`32 OK, 0 KO`) en pretendant prouver
+    #    quelque chose. ⛔ Un mutant qui ne s'applique pas ne prouve RIEN.
+    # ⇒ IL MUTE LA OU LA SECTION LIT, ET SON ABSENCE EST **FATALE**.
+    _wf = ".github/workflows/gates.yml"
+    if _MUTANT == 34 and _wf not in prose_m:
+        sys.exit("MUTANT 34 INAPPLICABLE : %s n'est pas dans la portee du "
+                 "controle des marqueurs. ⛔ Un mutant qui ne s'applique pas ne "
+                 "prouve RIEN — c'est la portee qu'il faut regarder." % _wf)
+    if _wf in prose_m:
+        prose_m[_wf] = M(
+            34, prose_m[_wf],
+            "\nname: Gates\n",
+            "\n# le marqueur `dn9-9` est suivi dans docs/roadmap.md\n"
+            "name: Gates\n")
+    section_marqueurs(prose_m, roadmap)
     section_comptes(prose)
     section_cla(prose.get("CONTRIBUTING.md", ""), roadmap)
     section_refutations(prose, agent)

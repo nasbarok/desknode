@@ -87,6 +87,30 @@
 #    balaie toute la surface `.md`. Une poussée documentaire est EXACTEMENT le
 #    moment où ces gates comptent. ⇒ un filtre les rendrait aveugles là où elles
 #    servent.
+#    🔴 CORRIGÉ LE 2026-09-05 (`dn5-6`, constat 9) — ⛔ LA PHRASE CI-DESSUS N'EST
+#       PAS EFFACÉE, ELLE EST NOMMÉE COMME TROP LARGE. Elle affirmait de (c4)
+#       une portée que ce contrôle N'AVAIT PAS : il ne lisait que les `.md` de
+#       la racine et de `docs/` ⇒ un marqueur cité DANS CE FICHIER-CI n'était
+#       **jamais** examiné, et la gate restait verte en le certifiant.
+#       ⇒ depuis le 2026-09-05, (c4) lit AUSSI `.github/workflows/*.yml` — donc
+#         ce fichier — et la portée écrite ici est enfin celle du contrôle.
+#       ⚠️ L'ANCRAGE, LUI, N'A PAS BOUGÉ : seul un marqueur **renvoyé à la
+#         page** est examiné. Citer `dn5-6` sans renvoyer à `docs/roadmap.md`
+#         ne déclenche rien — c'est délibéré et c'est écrit sur la page.
+#       ⚠️ ET LE CAS QUI AVAIT LEVÉ LE CONSTAT ÉTAIT DÉJÀ TOMBÉ : tous les
+#         marqueurs cités sous `.github/` étaient définis dans la roadmap,
+#         depuis que `dn5-5` a ajouté la ligne `dn4-45`. ⇒ l'élargissement
+#         laisse la gate VERTE : ⛔ aucun rouge ne peut montrer ce trou. C'est
+#         le mutant 34, qui REPLANTE la faute, qui le montre.
+#       🔴 ⛔ NE PAS ÉCRIRE ICI LE NOMBRE DE CES MARQUEURS. Le premier jet de
+#         ce bloc annonçait « les **4** marqueurs » — et **ce commit-ci en a
+#         ajouté deux** (`dn5-5`, `dn5-6`, cités juste au-dessus) : le chiffre
+#         était **périmé à l'arrivée, dans le fichier qui le changeait**.
+#         C'est la 5ᵉ récurrence du même défaut dans cette epic. ⇒ ce qui
+#         s'écrit ici est la **RÈGLE** (« tous ceux qui sont cités ici sont
+#         définis là-bas »), et le COMPTE se prend par la commande :
+#         `git grep -h -o -E 'dn[0-9]+-[0-9]+' -- .github | sort -u`.
+#         La gate, elle, le vérifie à chaque passe — c'est son travail.
 #    🔴 ET LE PIÈGE POUR PLUS TARD EST ÉCRIT ICI POUR LE JOUR OÙ IL MORDRA : un
 #    filtre de chemins sur une vérification REQUISE laisse la PR **en attente
 #    pour toujours**. Aujourd'hui `main` n'est pas protégée et aucune

@@ -1,0 +1,86 @@
+==============================================================================
+T5 — LES 13 PREUVES PAR MOTIF, RE-RESOLUES ET **COMPTEES**
+==============================================================================
+
+🔴 POURQUOI CETTE CAPTURE EXISTE — REVUE DU 2026-09-05.
+   AC6.5 exige le compte de fichiers de **CHACUNE** des 13 preuves par motif.
+   `T1-filtre-10-constats.txt` n'en publie que **10** (les constats du
+   perimetre), et le tracker publie le motif MORT du constat 13 et son
+   remplacant. ⇒ les constats **11** et **12** n'avaient qu'un
+   « les 12 autres motifs resolvent » — une AFFIRMATION, ⛔ pas un compte.
+   C'est le defaut que cette epic paie depuis quatre marches : un chiffre
+   annonce sans la commande qui le rend.
+
+⚠️ Toute mesure par `subprocess`, ⛔ jamais par le shell de session.
+⚠️ La commande est `git grep -l ... HEAD` puis un COMPTE DE LIGNES : elle rend
+   des FICHIERS, ⛔ pas des occurrences. `git grep -c` compterait autre chose.
+
+date     : 2026-09-05T04:46:13
+desknode : 0bdc9e89bfa83d7fcb88aeac68ec509dabed4fd7
+⚠️ MESURE SUR `HEAD` — ⛔ pas sur l'arbre de travail : un motif se
+   verifie sur ce qui est COMMITE, sinon il decrit un etat que
+   personne d'autre ne peut relire.
+
+#    motif                                          porteur    fichiers a HEAD
+------------------------------------------------------------------------------
+1    def occurrences                                dn5-6      1
+       · tools/verif_dossier_d5_dn45.py
+2    le balayage a bien trouve des occurrences      dn5-6      8
+       · mesures/dn4-24/T0-verif_dossier_d5_dn45.log
+       · mesures/dn4-39/T1-cause-C.txt
+       · mesures/dn4-39/T1-causes.md
+       · mesures/dn4-39/T7-gates-clone.txt
+       · … et 4 autre(s)
+3    --cockpit attend un chemin                     dn5-6      1
+       · tools/run_gates.sh
+4    add_argument("--cockpit"                       dn5-6      11
+       · README.md
+       · docs/dn5-1-ecart-promesses.md
+       · mesures/dn5-3/T1-lecture-code.txt
+       · mesures/dn5-3/T7-lecture-code-apres.txt
+       · … et 7 autre(s)
+5    def analyser                                   dn5-6      3
+       · tools/mesure_lissage_dn45.py
+       · tools/mesure_w2_dn48.py
+       · tools/thermique_ventilos_dn48.py
+6    dn48_thermique.csv                             dn5-6      6
+       · mesures/dn5-3/T0-inventaire-classes.txt
+       · mesures/dn5-3/T1-lecture-code.txt
+       · mesures/dn5-3/T1-temoin-negatif.txt
+       · mesures/dn5-3/T7-temoin-apres.txt
+       · … et 2 autre(s)
+7    UNIQUEMENT si la moitie jouee est              dn5-6      3
+       · mesures/dn5-3/T7-temoin-apres.txt
+       · tools/verif_dossier_d5_dn45.py
+       · tools/verif_dossier_dn415.py
+8    CONSTATE AVANT LE BUILD                        dn5-6      1
+       · mesures/dn5-4/T1-build-froid.txt
+9    tout marqueur cite COMME marqueur est defini   dn5-6      5
+       · mesures/dn4-39/T4-run-rouge.txt
+       · mesures/dn5-2/T5-campagne-mutants.txt
+       · mesures/dn5-2/T8-revue-code.txt
+       · mesures/dn5-5/T7-temoin-port.txt
+       · … et 1 autre(s)
+10   cle valide (aucun libelle >= 58)               dn5-6      1
+       · mesures/dn5-2/T5-campagne-mutants.txt
+11   path-to-signatures                             epic-dn8   3
+       · .github/workflows/cla.yml
+       · mesures/dn5-2/T3-essai-cla.txt
+       · tools/verif_licences_dn52.py
+12   You grant the project owner                    epic-dn8   1
+       · CLA.md
+13   Reporting a bug, opening an issue              epic-dn8   0
+       🔴 **MOTIF MORT** — il ne resout sur AUCUN fichier.
+------------------------------------------------------------------------------
+motifs morts : [13]
+
+── LE REMPLACANT DU MOTIF MORT, **MESURE** ────────────────────────────
+  `## Reporting a bug` ⇒ 1 fichier(s) : CONTRIBUTING.md
+  ⇒ le constat **13** garde son porteur `epic-dn8` : ⛔ SEUL SON MOTIF
+    est date. Le constat lui-meme n'est PAS touche par cette marche.
+
+── CE QUE CETTE CAPTURE N'ETABLIT PAS ─────────────────────────────────
+  ⛔ Qu'un motif QUI RESOUT designe encore le bon endroit. Un motif peut
+     resoudre sur un fichier ou il ne veut plus rien dire. Ce qui est
+     mesure ici est la RESOLUTION, ⛔ pas la PERTINENCE.
+==============================================================================

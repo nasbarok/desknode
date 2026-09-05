@@ -47,7 +47,11 @@ r"""
  -----------------------------------------------------------------------------
  OU VA LE CSV, ET POURQUOI -- dn5-3 / AC3.2.c, 2026-09-04
  -----------------------------------------------------------------------------
- Le defaut de `--csv` est `tempfile.gettempdir()` + `dn48_thermique.csv`.
+ Le defaut de `--csv` est `tempfile.gettempdir()` + `dn48_thermique-<compte>.csv`.
+[⚠️ dn5-6, 2026-09-05 — la ligne d'origine disait `dn48_thermique.csv`, sans
+ le compte : ⛔ NON EFFACEE, DATEE. Sous Linux `gettempdir()` rend un
+ repertoire PARTAGE (0o1777) ⇒ deux comptes visaient le MEME csv et le
+ MEME `.pid`. Detail au site `add_argument`.]
  (!) SOUS WINDOWS, `gettempdir()` REND LE `Temp` DE L'UTILISATEUR COURANT --
      c'est-a-dire `C:\Users\<qui-que-ce-soit>\AppData\Local\Temp`. C'EST LE
      MEME DOSSIER QU'AVANT chez l'owner, et un dossier qui existe pour tout le
@@ -168,6 +172,23 @@ class Lecteur:
                     return None
 
 
+# 🔴 dn5-6 / CONSTAT (6) — LE COMPTE COURANT, SANS RIEN SUPPOSER DE L'OS.
+#    ⛔ Pas `os.getlogin()` : il lit le terminal de controle et leve
+#    `OSError` sous un service ou un cron. ⛔ Pas `pwd` : absent sous Windows,
+#    et cet outil est Windows-only en pratique. ⇒ les variables d'abord, l'uid
+#    en repli, et une valeur ECRITE si tout manque — ⛔ jamais une exception
+#    dans le calcul d'un chemin par defaut.
+def _compte_courant():
+    for cle in ("USER", "USERNAME", "LOGNAME"):
+        v = os.environ.get(cle)
+        if v:
+            return re.sub(r"[^A-Za-z0-9_.-]", "_", v)
+    try:
+        return "uid%d" % os.getuid()          # ⛔ absent sous Windows
+    except AttributeError:
+        return "inconnu"
+
+
 def enregistrer(heures, periode, chemin):
     heures = min(heures, 12.0)          # ⛔ borne DURE, non negociable
     fin = time.time() + heures * 3600.0
@@ -224,7 +245,33 @@ def _pearson(xs, ys):
 
 
 def analyser(chemin):
-    with open(chemin, encoding="utf-8") as f:
+    # 🔴 dn5-6 / CONSTAT (5) — 2026-09-05 : UN CHEMIN ABSENT RENDAIT UN
+    #    `Traceback` NU, `stdout` VIDE, rc=1.
+    #    MESURE (`mesures/dn5-6/T1-filtre-10-constats.txt`, constat 5) :
+    #      `--analyser <absent>` ⇒ rc=1, stdout='', derniere ligne de stderr
+    #      `FileNotFoundError: [Errno 2] No such file or directory`.
+    #    ⚠️ ET LE TEMOIN NEGATIF EST DANS LA MEME MESURE : le fichier **VIDE**,
+    #      lui, etait deja traite proprement ⇒ l'ecart etait dans le traitement
+    #      de l'ABSENCE, ⛔ pas du contenu.
+    # ⛔ ON NE RETOMBE PAS EN SILENCE : le refus est NOMME et garde son rc=1.
+    #    Un outil qui meurt sans dire pourquoi ne se distingue pas d'un outil
+    #    casse — c'est la lecon `dn4-23` (« les instruments disent quand ils
+    #    mentent »).
+    if not os.path.exists(chemin):
+        print("⛔ FICHIER INTROUVABLE : %s" % chemin)
+        print("   ⇒ `--analyser` attend le CSV produit par une passe")
+        print("     d'enregistrement. Aucun n'existe a ce chemin.")
+        print("   REMEDE : jouer d'abord `--csv <chemin>` (enregistrement),")
+        print("            ou pointer `--analyser` sur un CSV existant.")
+        return 1
+    try:
+        f = open(chemin, encoding="utf-8")
+    except OSError as e:
+        # ⚠️ EXISTE mais ne se lit pas (droits, ACL) — ⛔ pas le meme cas.
+        print("⛔ FICHIER ILLISIBLE : %s" % chemin)
+        print("   ⇒ il EXISTE mais ne s'ouvre pas : %s" % e)
+        return 1
+    with f:
         lignes = list(csv.DictReader(f))
     if len(lignes) < 30:
         print("⛔ %d echantillons : trop peu pour conclure quoi que ce soit." % len(lignes))
@@ -373,14 +420,36 @@ def main():
     #    et ce depot ecrit la difference.
     # ⛔ L'OPTION `--csv` N'EST PAS RETIREE : elle reste le moyen de choisir.
     #    Seul son DEFAUT change.
+    # 🔴 dn5-6 / CONSTAT (6) — 2026-09-05 : LE DEFAUT ETAIT UN NOM **FIXE**
+    #    DANS UN REPERTOIRE **PARTAGE** SOUS LINUX.
+    #    MESURE (`mesures/dn5-6/T1-filtre-10-constats.txt`, constat 6) :
+    #      `tempfile.gettempdir()` rend `/tmp`, mode **0o1777** —
+    #      world-writable, sticky — et `TMPDIR` n'est pas pose. Le nom etait
+    #      `dn48_thermique.csv`, sans utilisateur ni pid ⇒ **deux comptes
+    #      visaient le MEME csv et le MEME `.pid`**, et le
+    #      `finally: os.remove(pid_f)` du premier supprimait le temoin du second.
+    #    ⚠️ `gettempdir()` n'est par-utilisateur que sous **Windows**.
+    # ⛔ CE QUI N'EST **PAS** MESURE, ET C'EST ECRIT : la collision elle-meme.
+    #    Elle exigerait deux comptes Unix jouant `enregistrer()` en meme temps ;
+    #    cet outil ⛔ ne s'execute pas sur ce poste (il lit `/metrics` sur la
+    #    tour, sous Windows). ⇒ le defaut est **atteignable**, ⛔ pas atteint —
+    #    et le correctif est pose sur cette base-la, ⛔ pas sur une observation.
+    # ⇒ LE DEFAUT PORTE DESORMAIS L'UTILISATEUR. Sous Windows le repertoire
+    #   etait deja par-utilisateur : le nom y devient redondant, ⛔ pas faux.
+    #   ⚠️ Deux instances DU MEME utilisateur se marchent toujours dessus —
+    #   c'est un choix : le `.pid` est un TEMOIN DE SINGLETON, et le brouiller
+    #   avec un pid le rendrait incapable de dire « il en tourne deja un ».
     ap.add_argument("--csv",
-                    default=os.path.join(tempfile.gettempdir(), "dn48_thermique.csv"))
+                    default=os.path.join(
+                        tempfile.gettempdir(),
+                        "dn48_thermique-%s.csv" % _compte_courant()))
     ap.add_argument("--analyser")
     a = ap.parse_args()
     if a.analyser:
-        analyser(a.analyser)
-    else:
-        enregistrer(a.heures, a.periode, a.csv)
+        # ⇒ dn5-6 / constat (5) : le rc de l'analyse REMONTE. Un refus nomme
+        #   qui sortirait en 0 serait un silence vert de plus.
+        return analyser(a.analyser) or 0
+    enregistrer(a.heures, a.periode, a.csv)
     return 0
 
 

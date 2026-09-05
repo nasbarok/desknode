@@ -187,7 +187,16 @@ def appels_log(src):
     ⛔ ⚠️ NE PAS DECOUPER SUR LE `;` : mesure du 2026-08-31, le `ESP_LOGW` du
        site « TITRE trop large » porte un point-virgule DANS SA CHAINE DE
        FORMAT (« ...est SIMULEE ; LVGL ne clippe... »). Un
-       `ESP_LOG[WE]\(...\);` non gourmand coupait donc l'appel EN DEUX et
+       `ESP_LOG[WE]\\(...\\);` non gourmand coupait donc l'appel EN DEUX et
+       [⚠️ dn5-6, 2026-09-05 — les antislashs de cette ligne sont DOUBLES
+        dans la source : `\\(` en docstring NON BRUTE etait une SEQUENCE
+        D'ECHAPPEMENT INVALIDE. Elle imprimait `SyntaxWarning: invalid
+        escape sequence '\\('` a chaque `ast.parse` de ce fichier — donc a
+        chaque passe de gates depuis que `run_gates.sh` analyse les
+        sources. ⛔ Ce n'est pas cosmetique : le jour ou Python en fait
+        une erreur, `AST_COCKPIT` sort en 2, l'entree tombe dans
+        `ECARTS_COCKPIT` et **toute la passe sort en 1**. Le TEXTE rendu
+        est INCHANGE.]
        perdait l'ancre — la gate rougissait sur du code JUSTE.
     ⇒ On equilibre les parentheses, en ignorant celles des chaines.
     """

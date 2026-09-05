@@ -4,7 +4,7 @@
 #
 #   UNE COMMANDE PASSE TOUTES LES GATES, ET AUCUNE N'EST SAUTEE EN SILENCE.
 #
-#   Usage :  bash tools/run_gates.sh [--silencieux] [--cockpit <chemin>] [-h|--help]
+#   Usage :  bash tools/run_gates.sh [--silencieux] [--cockpit <chemin>] [--temoin-appariement] [-h|--help]
 #   Sortie :  0  toutes VERTES, ou NON-JOUABLES declarees ET conformes
 #             1  au moins une ROUGE, ou la table des NON-JOUABLES est perimee,
 #                malformee, ou dementie par le comportement de la gate
@@ -104,6 +104,44 @@ set -uo pipefail
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
 MOI="$(basename "$SRC")"
 
+# 🔴 dn5-6 / CONSTAT (3) — 2026-09-05 : LE `cwd` DE L'APPELANT EST GARDE AVANT
+#    LE `cd`, PARCE QUE C'EST LUI QUI DONNE SON SENS A UN CHEMIN RELATIF.
+#    MESURE (`mesures/dn5-6/T1-filtre-10-constats.txt`, constat 3) : depuis
+#    `~/projects`, `--cockpit compagnon_project` sortait en **2** sur
+#    « chemin inexistant » a propos d'un chemin **QUI EXISTE** — la validation
+#    tombait APRES ce `cd` et ⛔ ne normalisait jamais. Et pire, l'homonyme
+#    `--cockpit tools` (qui n'existe PAS depuis `~/projects` mais existe SOUS
+#    la racine) etait **accepte en silence** : la passe a demarre, mesuree.
+CWD_APPELANT="$PWD"
+
+# ═══ dn5-6 / CONSTAT (4) — LE DETECTEUR QUI FAIT AUTORITE ═══════════════════
+#
+# 🔴 UN `grep` NE DISTINGUE PAS UN COMMENTAIRE D'UN CODE, et ce depot CITE
+#    tout. La revue du 2026-09-02 avait epingle `add_argument("--cockpit"` pour
+#    ne plus mordre sur la chaine nue — mais une PROSE qui cite exactement cette
+#    forme la dupe encore, et une declaration en GUILLEMETS SIMPLES ou COUPEE
+#    lui echappe. Les deux fautes ont ete REPLANTEES et VUES le 2026-09-05.
+# ⇒ ON DEMANDE A PYTHON. L'arbre syntaxique voit les trois formes reelles et
+#   n'est ⛔ PAS dupe par un commentaire — mesure, ⛔ pas argument.
+# ⚠️ Le grep d'origine est GARDE, et les deux sont APPARIES : toute divergence
+#    est SIGNALEE. C'est elle qui dira, le jour venu, qu'une gate a change de
+#    forme — un controle qui ne peut pas rougir n'est pas un controle.
+AST_COCKPIT='
+import ast, sys
+try:
+    a = ast.parse(open(sys.argv[1], encoding="utf-8", errors="replace").read(),
+                  filename=sys.argv[1])
+except (SyntaxError, OSError, UnicodeDecodeError):
+    sys.exit(2)                      # ⛔ indecidable : ⛔ pas « non »
+for n in ast.walk(a):
+    if (isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+            and n.func.attr == "add_argument"):
+        for x in n.args:
+            if isinstance(x, ast.Constant) and x.value == "--cockpit":
+                sys.exit(0)
+sys.exit(1)
+'
+
 RACINE="$(cd "$(dirname "$SRC")/.." && pwd)"
 cd "$RACINE" || exit 1
 
@@ -112,6 +150,44 @@ COCKPIT=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --silencieux) SILENCIEUX=1 ;;
+    # ═══ dn5-6 / NFR7 — LE TEMOIN QUI **REPLANTE** LA FAUTE DU CONSTAT (4) ══
+    #
+    # ⛔ UN TEMOIN QUI DEBRANCHE LA GARDE NE PROUVE QUE SON EXISTENCE.
+    #    Celui-ci ECRIT trois gates de synthese dans un repertoire temporaire,
+    #    dont DEUX portent la faute historique (guillemets simples, et
+    #    declaration coupee), et il exige que l'appariement les VOIE.
+    # ⚠️ Il est HORS de la passe : `run_gates.sh` sans argument ne le joue
+    #    jamais, et la CI non plus. C'est un outil de PREUVE, ⛔ pas un mode.
+    --temoin-appariement)
+      _t="$(mktemp -d)" || exit 2
+      printf 'import argparse\nap=argparse.ArgumentParser()\nap.add_argument("--cockpit")\n' > "$_t/litteral.py"
+      printf 'import argparse\nap=argparse.ArgumentParser()\nap.add_argument(%s--cockpit%s)\n' "'" "'" > "$_t/simple.py"
+      printf 'import argparse\nap=argparse.ArgumentParser()\nap.add_argument(\n    "--cockpit")\n' > "$_t/coupe.py"
+      printf 'import argparse\n# on cite add_argument("--cockpit" en prose\nap=argparse.ArgumentParser()\n' > "$_t/prose.py"
+      _ko=0
+      _att() {   # $1=fichier $2=large attendu $3=etroit attendu $4=ecart attendu
+        local e=0 l=0
+        grep -q -- 'add_argument("--cockpit"' "$_t/$1" && e=1
+        python3 -c "$AST_COCKPIT" "$_t/$1" && l=1
+        local d=0; [ "$e" -ne "$l" ] && d=1
+        if [ "$l" -eq "$2" ] && [ "$e" -eq "$3" ] && [ "$d" -eq "$4" ]; then
+          printf '  [OK ] %-14s large=%s etroit=%s divergence=%s\n' "$1" "$l" "$e" "$d"
+        else
+          printf '  [KO ] %-14s large=%s (attendu %s) etroit=%s (attendu %s) divergence=%s (attendu %s)\n' \
+                 "$1" "$l" "$2" "$e" "$3" "$d" "$4"
+          _ko=$((_ko + 1))
+        fi
+      }
+      echo "TEMOIN dn5-6 / constat (4) — L'APPARIEMENT VOIT-IL LA FAUTE REPLANTEE ?"
+      _att litteral.py 1 1 0     # la forme d'aujourd'hui : vue des deux cotes
+      _att simple.py   1 0 1     # 🔴 FAUTE REPLANTEE : le grep etroit est AVEUGLE
+      _att coupe.py    1 0 1     # 🔴 FAUTE REPLANTEE : idem
+      _att prose.py    0 1 1     # 🔴 le grep etroit est DUPE par une citation
+      rm -rf "$_t"
+      echo "TEMOIN : $((4 - _ko)) OK, $_ko KO"
+      [ "$_ko" -eq 0 ] || exit 1
+      exit 0
+      ;;
     --cockpit)
       shift
       [ "$#" -gt 0 ] || { echo "--cockpit attend un chemin" >&2; exit 2; }
@@ -121,13 +197,40 @@ while [ "$#" -gt 0 ]; do
       #    depot que personne n'avait demande. Une coquille d'une lettre rendait
       #    deux « DECLARATION DEMENTIE » et rc 1, sans un mot sur le chemin.
       #    ⛔ Une chaine VIDE aussi : `${COCKPIT:-…}` la traite comme « absent ».
-      if [ -z "$1" ] || [ ! -d "$1" ]; then
+      # 🔴 dn5-6 / CONSTAT (3) — LE CHEMIN EST RESOLU CONTRE LE `cwd` DE
+      #    L'APPELANT, PUIS NORMALISE EN ABSOLU. Un relatif veut dire ce que
+      #    l'appelant croit qu'il veut dire, ⛔ pas ce que la racine en fait.
+      case "$1" in
+        /*) _ck="$1" ;;
+        *)  _ck="$CWD_APPELANT/$1" ;;
+      esac
+      if [ -z "$1" ] || [ ! -d "$_ck" ]; then
         echo "--cockpit : chemin inexistant ou vide — '$1'" >&2
+        echo "  resolu contre le cwd de l'appelant ⇒ '$_ck'" >&2
         echo "  ⛔ Un chemin faux serait JETE en silence et la gate mesurerait" >&2
         echo "     un AUTRE depot. On echoue FERME plutot que de mesurer a cote." >&2
+        echo "  ⚠️ Un relatif se lit depuis VOTRE cwd ($CWD_APPELANT)," >&2
+        echo "     ⛔ pas depuis la racine du depot — un homonyme sous la" >&2
+        echo "     racine passait sinon EN SILENCE (mesure dn5-6, constat 3)." >&2
         exit 2
       fi
-      COCKPIT="$1"
+      # ⇒ ABSOLU ET NORMALISE : ce qui part aux gates ne depend plus d'un cwd.
+      # 🔴 REVUE DU 2026-09-05 — SANS LA GARDE `||`, CE `cd` RETOMBAIT SUR LE
+      #    DEFAUT QU'IL REPARE : un repertoire qui EXISTE (`-d` vrai) mais dans
+      #    lequel on ne peut pas ENTRER (droits, course) laissait `COCKPIT`
+      #    **VIDE**, et la passe continuait ⇒ toutes les gates mesuraient leur
+      #    `COCKPIT_DEFAUT` **en silence**, c'est-a-dire le constat (4) exactement.
+      # ⚠️ ⛔ PAS DE REDIRECTION VERS LE PUITS ICI — la garde `garde_puits` de ce
+      #    fichier (AC1.4) l'interdit, et elle m'a attrape : un `2>/dev/null`
+      #    posé ici a fait REFUSER TOUTE LA PASSE. C'est la bonne regle : le
+      #    message d'erreur du `cd` doit RESTER VISIBLE. Ce qu'on garde, c'est
+      #    que `COCKPIT` ne reste pas VIDE — la sortie, elle, se lit.
+      COCKPIT="$(cd "$_ck" && pwd)"
+      if [ -z "$COCKPIT" ]; then
+        echo "--cockpit : repertoire INACCESSIBLE (il existe, on n'y entre pas) — '$_ck'" >&2
+        echo "  ⛔ On echoue FERME : un COCKPIT vide ferait mesurer un AUTRE depot." >&2
+        exit 2
+      fi
       ;;
     # ⚠️ dn4-39 — L'AIDE S'ANCRE PAR **CONTENU**, ⛔ PLUS PAR NUMERO DE LIGNE.
     #    `sed -n '2,60p'` tronquait deja la fin de la regle (4), et toute ligne
@@ -529,6 +632,7 @@ champ_de() {  # $1 = basename, $2 = index de champ (2..5) ; imprime le champ
 # ── LA PASSE ────────────────────────────────────────────────────────────────
 N_VERTE=0; N_ROUGE=0; N_NJ=0
 ROUGES=()
+ECARTS_COCKPIT=()          # dn5-6 / constat (4) — l'appariement des detections
 T_DEBUT=$(date +%s)
 
 echo "═══ $MOI — ${#GATES[@]} gates decouvertes par glob ═══"
@@ -564,8 +668,53 @@ for g in "${GATES[@]}"; do
   #    MENTIONNE l'option aurait recu un argument inconnu ⇒ argparse sort en 2
   #    ⇒ ROUGE, avec pour seul motif un message d'usage.
   #    ⇒ on epingle la DECLARATION argparse, ⛔ plus la chaine nue.
-  if [ "$declaree" -eq 0 ] && [ -n "$COCKPIT" ] \
-     && grep -q -- 'add_argument("--cockpit"' "$g"; then
+  # ═══ dn5-6 / CONSTAT (4) — 2026-09-05 ═══════════════════════════════════
+  # 🔴 LA DETECTION ETAIT UNE **CHAINE LITTERALE**, ET ELLE EST AVEUGLE A DEUX
+  #    FORMES QUE PYTHON ACCEPTE : les GUILLEMETS SIMPLES et la declaration
+  #    COUPEE. Une gate ecrite ainsi ne recevrait PAS `--cockpit` et
+  #    **mesurerait son COCKPIT_DEFAUT EN SILENCE**.
+  # 🔬 MESURE DU 2026-09-05 (`mesures/dn5-6/T1-filtre-10-constats.txt`) :
+  #    · les **4** gates qui declarent `--cockpit` portent TOUTES la forme
+  #      litterale ⇒ **le bord n'est PAS atteint**, ⛔ aucun rouge ne peut le
+  #      montrer aujourd'hui ;
+  #    · ⛔ **LE PRECEDENT QUE LA REVUE DE `dn5-3` CITAIT EST REFUTE** :
+  #      `add_argument("--csv",` de `thermique_ventilos_dn48.py` replie ses
+  #      ARGUMENTS SUIVANTS, ⛔ pas le nom de l'option — le grep LA VOIT ;
+  #    · 🎯 **MAIS UN PRECEDENT REEL EXISTE AILLEURS** : `gen_living_pcb.py`
+  #      declare `--out-bin`, `--out-png`, `--byte-order`, `--seed` en
+  #      GUILLEMETS SIMPLES. La convention dangereuse vit bien dans l'arbre,
+  #      ⛔ pas la ou on la designait.
+  # ⇒ ON APPARIE : une detection LARGE (les deux quotes, sur une ou plusieurs
+  #   lignes) et la detection ETROITE d'origine. **Toute divergence est
+  #   SIGNALEE et rougit la passe** — c'est le seul moyen que le jour ou une
+  #   gate sera ecrite autrement, quelqu'un le VOIE.
+  # ⛔ CE N'EST PAS UN CONTROLE QUI SE TAIT : il tourne a CHAQUE passe, meme
+  #   sans `--cockpit`, sinon il ne garderait rien la ou ca compte (la CI).
+  # 🔴 REVUE DU 2026-09-05 — TROIS TROUS ETAIENT OUVERTS ICI :
+  #    (i) tout `rc` autre que 0 ou 2 (python3 absent, tue par un signal) se
+  #        lisait comme « ne declare PAS `--cockpit` » ⇒ ⛔ aucun rouge ;
+  #    (ii) un fichier INDECIDABLE qui porte AUSSI la chaine litterale poussait
+  #        DEUX entrees et gonflait le compte de divergences publie ;
+  #    (iii) `ast.parse` sans `filename=` imprimait
+  #        `<unknown>:185: SyntaxWarning …` — un avertissement ANONYME, sur
+  #        chaque passe, qui ne nomme pas le fichier fautif.
+  etroit=0; large=0
+  grep -q -- 'add_argument("--cockpit"' "$g" && etroit=1
+  python3 -c "$AST_COCKPIT" "$g"; _rc_ast=$?
+  case "$_rc_ast" in
+    0) large=1 ;;
+    1) ;;
+    2) ECARTS_COCKPIT+=("$g (⛔ INDECIDABLE : le fichier ne s'analyse pas — on ne conclut RIEN)") ;;
+    *) ECARTS_COCKPIT+=("$g (⛔ rc AST INATTENDU=$_rc_ast — python3 absent ou tue ; ⛔ on ne conclut RIEN)") ;;
+  esac
+  # ⇒ UNE SEULE entree par gate : l'indecidable a deja parle, on n'y ajoute pas
+  #   une divergence calculee sur une detection qui n'a rien pu decider.
+  if [ "$_rc_ast" -eq 0 ] || [ "$_rc_ast" -eq 1 ]; then
+    if [ "$etroit" -ne "$large" ]; then
+      ECARTS_COCKPIT+=("$g (declaration vue par la detection LARGE=$large, ETROITE=$etroit)")
+    fi
+  fi
+  if [ "$declaree" -eq 0 ] && [ -n "$COCKPIT" ] && [ "$large" -eq 1 ]; then
     ARGS+=(--cockpit "$COCKPIT")
   fi
 
@@ -616,12 +765,20 @@ echo "BILAN : $N_VERTE VERTE, $N_ROUGE ROUGE, $N_NJ NON-JOUABLE sur ${#GATES[@]}
 if [ "$PERIMEES" -ne 0 ]; then
   echo "⛔ $PERIMEES declaration(s) NON-JOUABLE invalide(s) — corriger la table du script."
 fi
+# 🔴 dn5-6 / CONSTAT (4) — L'APPARIEMENT SE DIT, MEME QUAND IL EST BON.
+#    Un controle muet quand tout va bien ne se distingue pas d'un controle
+#    mort : on imprime le compte APPARIE, ⛔ pas seulement l'ecart.
+echo "appariement --cockpit : ${#ECARTS_COCKPIT[@]} divergence(s) entre la detection LARGE (quotes simples/doubles, declaration coupee) et la detection ETROITE d'origine"
+if [ "${#ECARTS_COCKPIT[@]}" -ne 0 ]; then
+  echo "⛔ DIVERGENCE(S) DE DECLARATION --cockpit — une gate peut mesurer un AUTRE depot EN SILENCE :"
+  for e in "${ECARTS_COCKPIT[@]}"; do echo "   · $e"; done
+fi
 if [ "$N_ROUGE" -ne 0 ]; then
   echo "⛔ ROUGES :"
   for r in "${ROUGES[@]}"; do echo "   · $r"; done
 fi
 
-if [ "$N_ROUGE" -ne 0 ] || [ "$PERIMEES" -ne 0 ]; then
+if [ "$N_ROUGE" -ne 0 ] || [ "$PERIMEES" -ne 0 ] || [ "${#ECARTS_COCKPIT[@]}" -ne 0 ]; then
   exit 1
 fi
 exit 0
