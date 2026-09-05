@@ -1,0 +1,238 @@
+T2 — LES 6 MUTANTS VUS ROUGIR, UN PAR CONTROLE, + LE TEMOIN NEGATIF
+date : 2026-09-06T00:34:30+02:00
+desknode HEAD (arbre de travail) : 71375010edd6840a961be1421f6f704970a5f32d
+
+⚠️ CE QUE CETTE CAMPAGNE NE PROUVE PAS, ET QUI S'ECRIT : « 6 mutants,
+   6 vus rougir » prouve `mutant ⇒ rouge`, ⛔ PAS `controle ⇒ couvert`.
+⛔ Chaque mutant SUBSTITUE un instrument BIDON a la cible — aucun ne
+   DEBRANCHE une garde ni ne falsifie une variable interne (NFR7/dn4-44).
+
+══════ LE TEMOIN NEGATIF : AUCUN MUTANT ⇒ VERT ══════
+$ python3 tools/verif_temoin_filtre_dn447.py
+==============================================================================
+dn4-47 — LE TEMOIN DE L'INSTRUMENT DE FILTRAGE EST JOUE PAR LE HARNAIS
+==============================================================================
+
+── (c1) LA CIBLE EST **NOMMEE**, ET ELLE EXISTE ──────────────────
+  cible      : tools/filtre_constats_dn56.py
+  [OK ] la cible nommee existe au depot                            un fichier lisible
+
+── L'INSTRUMENT EST JOUE — ⛔ RIEN N'EST RE-MESURE ICI ───────────
+  commande   : python3 tools/filtre_constats_dn56.py --temoin-seul
+  rc observe : 0   ⛔ OBSERVATION — il n'entre dans AUCUN verdict
+
+── (c2) L'INSTRUMENT A **PUBLIE** SON TEMOIN ─────────────────────
+  [OK ] l'instrument a publie sa ligne `⇒ TEMOIN :`                ligne trouvee : ⇒ TEMOIN : 23 OK, 0 KO
+
+── (c3) LE COMPTE PUBLIE ANNONCE **0** TEMOIN TOMBE ──────────────
+  [OK ] aucun temoin de l'instrument n'est tombe                   23 OK, 0 KO — ⛔ le compte n'est PAS fige ici, il est RECOPIE
+
+── (c4) LE TEMOIN A **AFFIRME** QUELQUE CHOSE ────────────────────
+  [OK ] le temoin de l'instrument n'est pas VIDE                   23 controle(s) affirme(s)
+
+── (c5) LE COMPTE PUBLIE S'ACCORDE AVEC LES LIGNES COMPTEES ──────
+  [OK ] le compte publie s'accorde avec les [KO ] imprimes         0 ligne(s) [KO ] comptee(s) pour 0 annonce(s)
+
+⛔ CE QUE CETTE GATE NE PROUVE PAS : elle garde que le temoin de
+   l'instrument est JOUE et qu'il tient. ⛔ Elle ne dit RIEN des
+   verdicts que l'instrument publie — un constat `VRAI` est son
+   RESULTAT, ⛔ pas un defaut du harnais (`D1`).
+
+==============================================================================
+BILAN : 5 OK, 0 KO
+==============================================================================
+rc=0
+
+══════ python3 tools/verif_temoin_filtre_dn447.py --liste-mutants ══════
+   1  substitue a la cible un instrument BIDON qui MEURT avant de publier (trace nue, rc=1) — REPLANTE la panne `360a5c2` → `dn5-8`
+   2  substitue a la cible un instrument BIDON qui meurt avant de publier MAIS sort en rc=0 — prouve que le `rc` ne sauve pas
+   3  substitue a la cible un instrument BIDON qui publie `1 OK, 2 KO` avec ses 2 lignes [KO ] (un temoin de l'instrument est TOMBE)
+   4  substitue a la cible un instrument BIDON qui publie `0 OK, 0 KO` (un temoin qui n'affirme rien ne garde rien)
+   5  substitue a la cible un instrument BIDON qui publie `1 OK, 0 KO` ET imprime quand meme 1 ligne [KO ] (le compte MENT)
+   6  fait pointer la cible sur un chemin ABSENT (une cible introuvable ⛔ ne sort pas verte)
+rc=0
+lignes : 6
+
+══════════════════════ MUTANT 1 ══════════════════════
+==============================================================================
+dn4-47 — LE TEMOIN DE L'INSTRUMENT DE FILTRAGE EST JOUE PAR LE HARNAIS   [MUTANT 1]
+==============================================================================
+
+── (c1) LA CIBLE EST **NOMMEE**, ET ELLE EXISTE ──────────────────
+  cible      : <instrument BIDON du mutant 1, substitue a tools/filtre_constats_dn56.py>
+  [OK ] la cible nommee existe au depot                            un fichier lisible
+
+── L'INSTRUMENT EST JOUE — ⛔ RIEN N'EST RE-MESURE ICI ───────────
+  commande   : python3 <instrument BIDON du mutant 1, substitue a tools/filtre_constats_dn56.py> --temoin-seul
+  rc observe : 1   ⛔ OBSERVATION — il n'entre dans AUCUN verdict
+
+── (c2) L'INSTRUMENT A **PUBLIE** SON TEMOIN ─────────────────────
+  [KO ] l'instrument a publie sa ligne `⇒ TEMOIN :`                ⛔ L'INSTRUMENT N'A PAS JUGE — aucune ligne publiee, il est MORT en amont ; dernieres lignes ci-dessous
+        │ ==============================================================================
+        │ INSTRUMENT BIDON — substitue par un mutant de verif_temoin_filtre_dn447
+        │ ==============================================================================
+        │ Traceback (most recent call last):
+        │   File "bidon", line 1, in <module>
+        │ FileNotFoundError: [Errno 2] No such file or directory
+
+==============================================================================
+BILAN : 1 OK, 1 KO
+==============================================================================
+rc=1
+
+══════════════════════ MUTANT 2 ══════════════════════
+==============================================================================
+dn4-47 — LE TEMOIN DE L'INSTRUMENT DE FILTRAGE EST JOUE PAR LE HARNAIS   [MUTANT 2]
+==============================================================================
+
+── (c1) LA CIBLE EST **NOMMEE**, ET ELLE EXISTE ──────────────────
+  cible      : <instrument BIDON du mutant 2, substitue a tools/filtre_constats_dn56.py>
+  [OK ] la cible nommee existe au depot                            un fichier lisible
+
+── L'INSTRUMENT EST JOUE — ⛔ RIEN N'EST RE-MESURE ICI ───────────
+  commande   : python3 <instrument BIDON du mutant 2, substitue a tools/filtre_constats_dn56.py> --temoin-seul
+  rc observe : 0   ⛔ OBSERVATION — il n'entre dans AUCUN verdict
+
+── (c2) L'INSTRUMENT A **PUBLIE** SON TEMOIN ─────────────────────
+  [KO ] l'instrument a publie sa ligne `⇒ TEMOIN :`                ⛔ L'INSTRUMENT N'A PAS JUGE — aucune ligne publiee, il est MORT en amont ; dernieres lignes ci-dessous
+        │ ==============================================================================
+        │ INSTRUMENT BIDON — substitue par un mutant de verif_temoin_filtre_dn447
+        │ ==============================================================================
+        │ Traceback (most recent call last):
+        │   File "bidon", line 1, in <module>
+        │ FileNotFoundError: [Errno 2] No such file or directory
+
+==============================================================================
+BILAN : 1 OK, 1 KO
+==============================================================================
+rc=1
+
+══════════════════════ MUTANT 3 ══════════════════════
+==============================================================================
+dn4-47 — LE TEMOIN DE L'INSTRUMENT DE FILTRAGE EST JOUE PAR LE HARNAIS   [MUTANT 3]
+==============================================================================
+
+── (c1) LA CIBLE EST **NOMMEE**, ET ELLE EXISTE ──────────────────
+  cible      : <instrument BIDON du mutant 3, substitue a tools/filtre_constats_dn56.py>
+  [OK ] la cible nommee existe au depot                            un fichier lisible
+
+── L'INSTRUMENT EST JOUE — ⛔ RIEN N'EST RE-MESURE ICI ───────────
+  commande   : python3 <instrument BIDON du mutant 3, substitue a tools/filtre_constats_dn56.py> --temoin-seul
+  rc observe : 1   ⛔ OBSERVATION — il n'entre dans AUCUN verdict
+
+── (c2) L'INSTRUMENT A **PUBLIE** SON TEMOIN ─────────────────────
+  [OK ] l'instrument a publie sa ligne `⇒ TEMOIN :`                ligne trouvee : ⇒ TEMOIN : 1 OK, 2 KO
+
+── (c3) LE COMPTE PUBLIE ANNONCE **0** TEMOIN TOMBE ──────────────
+  [KO ] aucun temoin de l'instrument n'est tombe                   ⛔ 2 TEMOIN(S) TOMBE(S) sur 3 — ⛔ ON NE CONCLUT RIEN du depot ; les [KO ] de l'instrument :
+        │   [KO ] un temoin qui tombe b
+        │   [KO ] un temoin qui tombe c
+
+── (c4) LE TEMOIN A **AFFIRME** QUELQUE CHOSE ────────────────────
+  [OK ] le temoin de l'instrument n'est pas VIDE                   1 controle(s) affirme(s)
+
+── (c5) LE COMPTE PUBLIE S'ACCORDE AVEC LES LIGNES COMPTEES ──────
+  [OK ] le compte publie s'accorde avec les [KO ] imprimes         2 ligne(s) [KO ] comptee(s) pour 2 annonce(s)
+
+⛔ CE QUE CETTE GATE NE PROUVE PAS : elle garde que le temoin de
+   l'instrument est JOUE et qu'il tient. ⛔ Elle ne dit RIEN des
+   verdicts que l'instrument publie — un constat `VRAI` est son
+   RESULTAT, ⛔ pas un defaut du harnais (`D1`).
+
+==============================================================================
+BILAN : 4 OK, 1 KO
+==============================================================================
+rc=1
+
+══════════════════════ MUTANT 4 ══════════════════════
+==============================================================================
+dn4-47 — LE TEMOIN DE L'INSTRUMENT DE FILTRAGE EST JOUE PAR LE HARNAIS   [MUTANT 4]
+==============================================================================
+
+── (c1) LA CIBLE EST **NOMMEE**, ET ELLE EXISTE ──────────────────
+  cible      : <instrument BIDON du mutant 4, substitue a tools/filtre_constats_dn56.py>
+  [OK ] la cible nommee existe au depot                            un fichier lisible
+
+── L'INSTRUMENT EST JOUE — ⛔ RIEN N'EST RE-MESURE ICI ───────────
+  commande   : python3 <instrument BIDON du mutant 4, substitue a tools/filtre_constats_dn56.py> --temoin-seul
+  rc observe : 0   ⛔ OBSERVATION — il n'entre dans AUCUN verdict
+
+── (c2) L'INSTRUMENT A **PUBLIE** SON TEMOIN ─────────────────────
+  [OK ] l'instrument a publie sa ligne `⇒ TEMOIN :`                ligne trouvee : ⇒ TEMOIN : 0 OK, 0 KO
+
+── (c3) LE COMPTE PUBLIE ANNONCE **0** TEMOIN TOMBE ──────────────
+  [OK ] aucun temoin de l'instrument n'est tombe                   0 OK, 0 KO — ⛔ le compte n'est PAS fige ici, il est RECOPIE
+
+── (c4) LE TEMOIN A **AFFIRME** QUELQUE CHOSE ────────────────────
+  [KO ] le temoin de l'instrument n'est pas VIDE                   ⛔ `0 OK` — un temoin qui n'affirme rien ne garde rien (motif `dn4-40`)
+
+── (c5) LE COMPTE PUBLIE S'ACCORDE AVEC LES LIGNES COMPTEES ──────
+  [OK ] le compte publie s'accorde avec les [KO ] imprimes         0 ligne(s) [KO ] comptee(s) pour 0 annonce(s)
+
+⛔ CE QUE CETTE GATE NE PROUVE PAS : elle garde que le temoin de
+   l'instrument est JOUE et qu'il tient. ⛔ Elle ne dit RIEN des
+   verdicts que l'instrument publie — un constat `VRAI` est son
+   RESULTAT, ⛔ pas un defaut du harnais (`D1`).
+
+==============================================================================
+BILAN : 4 OK, 1 KO
+==============================================================================
+rc=1
+
+══════════════════════ MUTANT 5 ══════════════════════
+==============================================================================
+dn4-47 — LE TEMOIN DE L'INSTRUMENT DE FILTRAGE EST JOUE PAR LE HARNAIS   [MUTANT 5]
+==============================================================================
+
+── (c1) LA CIBLE EST **NOMMEE**, ET ELLE EXISTE ──────────────────
+  cible      : <instrument BIDON du mutant 5, substitue a tools/filtre_constats_dn56.py>
+  [OK ] la cible nommee existe au depot                            un fichier lisible
+
+── L'INSTRUMENT EST JOUE — ⛔ RIEN N'EST RE-MESURE ICI ───────────
+  commande   : python3 <instrument BIDON du mutant 5, substitue a tools/filtre_constats_dn56.py> --temoin-seul
+  rc observe : 0   ⛔ OBSERVATION — il n'entre dans AUCUN verdict
+
+── (c2) L'INSTRUMENT A **PUBLIE** SON TEMOIN ─────────────────────
+  [OK ] l'instrument a publie sa ligne `⇒ TEMOIN :`                ligne trouvee : ⇒ TEMOIN : 1 OK, 0 KO
+
+── (c3) LE COMPTE PUBLIE ANNONCE **0** TEMOIN TOMBE ──────────────
+  [OK ] aucun temoin de l'instrument n'est tombe                   1 OK, 0 KO — ⛔ le compte n'est PAS fige ici, il est RECOPIE
+
+── (c4) LE TEMOIN A **AFFIRME** QUELQUE CHOSE ────────────────────
+  [OK ] le temoin de l'instrument n'est pas VIDE                   1 controle(s) affirme(s)
+
+── (c5) LE COMPTE PUBLIE S'ACCORDE AVEC LES LIGNES COMPTEES ──────
+  [KO ] le compte publie s'accorde avec les [KO ] imprimes         ⛔ DIVERGENCE — l'instrument ANNONCE 0 KO et IMPRIME 1 ligne(s) [KO ] : il en cache
+        │   [KO ] un temoin qui tombe b
+
+⛔ CE QUE CETTE GATE NE PROUVE PAS : elle garde que le temoin de
+   l'instrument est JOUE et qu'il tient. ⛔ Elle ne dit RIEN des
+   verdicts que l'instrument publie — un constat `VRAI` est son
+   RESULTAT, ⛔ pas un defaut du harnais (`D1`).
+
+==============================================================================
+BILAN : 4 OK, 1 KO
+==============================================================================
+rc=1
+
+══════════════════════ MUTANT 6 ══════════════════════
+==============================================================================
+dn4-47 — LE TEMOIN DE L'INSTRUMENT DE FILTRAGE EST JOUE PAR LE HARNAIS   [MUTANT 6]
+==============================================================================
+
+── (c1) LA CIBLE EST **NOMMEE**, ET ELLE EXISTE ──────────────────
+  cible      : <chemin ABSENT du mutant 6, substitue a tools/filtre_constats_dn56.py>
+  [KO ] la cible nommee existe au depot                            ⛔ INTROUVABLE — ⛔ une cible disparue ne sort PAS verte
+
+==============================================================================
+BILAN : 0 OK, 1 KO
+==============================================================================
+rc=1
+
+══════ RECAPITULATIF — CIBLAGE DE CHAQUE MUTANT ══════
+  mutant 1 : rc=1 · BILAN=1 · [KO ] de la gate=1 ⇒ l'instrument a publie sa ligne `⇒ TEMOIN :`
+  mutant 2 : rc=1 · BILAN=1 · [KO ] de la gate=1 ⇒ l'instrument a publie sa ligne `⇒ TEMOIN :`
+  mutant 3 : rc=1 · BILAN=1 · [KO ] de la gate=1 ⇒ aucun temoin de l'instrument n'est tombe
+  mutant 4 : rc=1 · BILAN=1 · [KO ] de la gate=1 ⇒ le temoin de l'instrument n'est pas VIDE
+  mutant 5 : rc=1 · BILAN=1 · [KO ] de la gate=1 ⇒ le compte publie s'accorde avec les [KO ] imprimes
+  mutant 6 : rc=1 · BILAN=1 · [KO ] de la gate=1 ⇒ la cible nommee existe au depot

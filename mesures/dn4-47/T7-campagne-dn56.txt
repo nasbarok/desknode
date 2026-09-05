@@ -1,0 +1,30 @@
+T7 — `verif_campagne_dn56.py` : LA CAMPAGNE DE LA GATE NEUVE EST REJOUEE
+date : 2026-09-06T00:49:19+02:00
+
+══════ AVANT — au commit de depart 71375010, dans un worktree ══════
+  HEAD = 71375010edd6840a961be1421f6f704970a5f32d   gates globees = 30
+  [OK ] des gates declarent une campagne de mutants                4 cible(s) : tools/verif_demarrage_dn443.py, tools/verif_dossier_d5_dn45.py, tools/verif_langues_dn442.py, tools/verif_licences_dn52.py
+  [OK ] toute cible repond, et aucun mutant ne meurt               116 mutant(s) confronte(s) sur 4 cible(s)
+     [hors portee] tools/verif_demarrage_dn443.py         34 libelle(s) >= 58 sur 60
+     [hors portee] tools/verif_dossier_d5_dn45.py         0 libelle(s) >= 58 sur 9
+     [hors portee] tools/verif_langues_dn442.py           10 libelle(s) >= 58 sur 32
+BILAN : 8 OK, 0 KO
+  rc = 0
+
+══════ APRES — a mon commit ══════
+  HEAD = 169ea9373cf66e9845d59a64031739b9eb7c5b30   gates globees = 31
+  [OK ] des gates declarent une campagne de mutants                5 cible(s) : tools/verif_demarrage_dn443.py, tools/verif_dossier_d5_dn45.py, tools/verif_langues_dn442.py, tools/verif_licences_dn52.py, tools/verif_temoin_filtre_dn447.py
+  [OK ] toute cible repond, et aucun mutant ne meurt               122 mutant(s) confronte(s) sur 5 cible(s)
+     [hors portee] tools/verif_demarrage_dn443.py         34 libelle(s) >= 58 sur 60
+     [hors portee] tools/verif_dossier_d5_dn45.py         0 libelle(s) >= 58 sur 9
+     [hors portee] tools/verif_langues_dn442.py           10 libelle(s) >= 58 sur 32
+     [hors portee] tools/verif_temoin_filtre_dn447.py     0 libelle(s) >= 58 sur 5
+BILAN : 8 OK, 0 KO
+  rc = 0
+
+⇒ LA GATE NEUVE EST **DECOUVERTE** COMME CIBLE (elle DECLARE `--liste-mutants`
+  a argparse, ⛔ pas au grep) : 4 cibles ⇒ 5, et 116 mutants confrontes ⇒ 122.
+⇒ `BILAN : 8 OK, 0 KO` AUX DEUX BORNES — ⛔ AUCUN KO DE PLUS QU'AU T0.
+⇒ Les 6 mutants de la gate neuve rendent CHACUN rc=1, une ligne BILAN et
+  au moins un [KO ] nomme : c'est ce que (c2) de cette campagne exige, et
+  elle le verifie a chaque passe. Detail par mutant : T2-mutants.txt.

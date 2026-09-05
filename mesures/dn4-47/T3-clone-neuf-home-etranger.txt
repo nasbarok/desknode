@@ -1,0 +1,159 @@
+T3 — LA GATE DANS UN ARBRE NEUF, AVEC UN `HOME` ETRANGER
+date : 2026-09-06T00:42:24+02:00
+desknode HEAD : 169ea9373cf66e9845d59a64031739b9eb7c5b30
+HOME etranger : $D/home — 0 entree(s), ⛔ aucun cockpit
+
+══════════════════════════════════════════════════════════════════════════════
+(A) L'ARBRE MONTE PAR `git archive HEAD` — ⛔ IL N'A PAS DE `.git`
+══════════════════════════════════════════════════════════════════════════════
+  .git present ? NON
+  gates globees : 31
+
+  $ HOME=<vide> python3 tools/verif_temoin_filtre_dn447.py
+==============================================================================
+dn4-47 — LE TEMOIN DE L'INSTRUMENT DE FILTRAGE EST JOUE PAR LE HARNAIS
+==============================================================================
+
+── (c1) LA CIBLE EST **NOMMEE**, ET ELLE EXISTE ──────────────────
+  cible      : tools/filtre_constats_dn56.py
+  [OK ] la cible nommee existe au depot                            un fichier lisible
+
+── L'INSTRUMENT EST JOUE — ⛔ RIEN N'EST RE-MESURE ICI ───────────
+  commande   : python3 tools/filtre_constats_dn56.py --temoin-seul
+  rc observe : 1   ⛔ OBSERVATION — il n'entre dans AUCUN verdict
+
+── (c2) L'INSTRUMENT A **PUBLIE** SON TEMOIN ─────────────────────
+  [OK ] l'instrument a publie sa ligne `⇒ TEMOIN :`                ligne trouvee : ⇒ TEMOIN : 19 OK, 4 KO
+
+── (c3) LE COMPTE PUBLIE ANNONCE **0** TEMOIN TOMBE ──────────────
+  [KO ] aucun temoin de l'instrument n'est tombe                   ⛔ 4 TEMOIN(S) TOMBE(S) sur 23 — ⛔ ON NE CONCLUT RIEN du depot ; les [KO ] de l'instrument :
+        │ 
+        │   [KO ] motif_resout voit un motif PRESENT                       attendu True, obtenu False
+        │   [KO ] motif_resout ne voit PAS un motif absent                 attendu 0, obtenu None
+        │   [KO ] 🔴 garde debranchee : il se compte LUI-MEME, et SEUL      attendu ['tools/filtre_constats_dn56.py'], obtenu None
+        │   [KO ] la garde retire EXACTEMENT l'instrument, et ses tirs     attendu ({'tools/filtre_constats_dn56.py'}, 0), obtenu (set(), None)
+
+── (c4) LE TEMOIN A **AFFIRME** QUELQUE CHOSE ────────────────────
+  [OK ] le temoin de l'instrument n'est pas VIDE                   19 controle(s) affirme(s)
+
+── (c5) LE COMPTE PUBLIE S'ACCORDE AVEC LES LIGNES COMPTEES ──────
+  [OK ] le compte publie s'accorde avec les [KO ] imprimes         4 ligne(s) [KO ] comptee(s) pour 4 annonce(s)
+
+⛔ CE QUE CETTE GATE NE PROUVE PAS : elle garde que le temoin de
+   l'instrument est JOUE et qu'il tient. ⛔ Elle ne dit RIEN des
+   verdicts que l'instrument publie — un constat `VRAI` est son
+   RESULTAT, ⛔ pas un defaut du harnais (`D1`).
+
+==============================================================================
+BILAN : 4 OK, 1 KO
+==============================================================================
+rc=1
+
+  ⇒ CE QUE CETTE PASSE MESURE, ET QUI N'ETAIT PAS PREVU :
+    l'instrument PUBLIE bien sa ligne `⇒ TEMOIN :` (c'est le correctif de
+    `run()` : ⛔ plus de trace nue), mais QUATRE de ses temoins TOMBENT.
+    Motif MESURE, ⛔ pas suppose : (a1)..(a4) interrogent `git grep <motif>`
+    HEAD — et un arbre `git archive` n'est PAS un depot git. `git` rend 128,
+    `motif_fichiers()` rend `None` (son contrat : ⛔ jamais un 0 masque) et
+    les quatre temoins voient `None` au lieu de ce qu'ils attendent.
+    ⇒ LA GATE ROUGIT, ET C'EST SON TRAVAIL : « si un seul temoin tombe,
+      ⛔ on ne conclut rien » est la doctrine de l'instrument lui-meme.
+    ⛔ CE N'EST PAS LA CONFIGURATION D'UN RUNNER — voir (B).
+
+══════════════════════════════════════════════════════════════════════════════
+(B) CE QU'UN RUNNER MONTE VRAIMENT — `actions/checkout`, fetch-depth: 1
+══════════════════════════════════════════════════════════════════════════════
+  `gates.yml` monte l'arbre par `actions/checkout@…` avec `fetch-depth: 1`.
+  ⇒ un runner a DONC un `.git` et un `HEAD`. La reproduction fidele est un
+    clone superficiel, ⛔ pas une archive nue.
+  .git present ? OUI
+  HEAD du clone : 169ea9373cf66e9845d59a64031739b9eb7c5b30
+  gates globees : 31
+  cockpit vu par le clone : ABSENT — comme sur un runner
+
+  $ HOME=<vide> python3 tools/verif_temoin_filtre_dn447.py
+==============================================================================
+dn4-47 — LE TEMOIN DE L'INSTRUMENT DE FILTRAGE EST JOUE PAR LE HARNAIS
+==============================================================================
+
+── (c1) LA CIBLE EST **NOMMEE**, ET ELLE EXISTE ──────────────────
+  cible      : tools/filtre_constats_dn56.py
+  [OK ] la cible nommee existe au depot                            un fichier lisible
+
+── L'INSTRUMENT EST JOUE — ⛔ RIEN N'EST RE-MESURE ICI ───────────
+  commande   : python3 tools/filtre_constats_dn56.py --temoin-seul
+  rc observe : 0   ⛔ OBSERVATION — il n'entre dans AUCUN verdict
+
+── (c2) L'INSTRUMENT A **PUBLIE** SON TEMOIN ─────────────────────
+  [OK ] l'instrument a publie sa ligne `⇒ TEMOIN :`                ligne trouvee : ⇒ TEMOIN : 23 OK, 0 KO
+
+── (c3) LE COMPTE PUBLIE ANNONCE **0** TEMOIN TOMBE ──────────────
+  [OK ] aucun temoin de l'instrument n'est tombe                   23 OK, 0 KO — ⛔ le compte n'est PAS fige ici, il est RECOPIE
+
+── (c4) LE TEMOIN A **AFFIRME** QUELQUE CHOSE ────────────────────
+  [OK ] le temoin de l'instrument n'est pas VIDE                   23 controle(s) affirme(s)
+
+── (c5) LE COMPTE PUBLIE S'ACCORDE AVEC LES LIGNES COMPTEES ──────
+  [OK ] le compte publie s'accorde avec les [KO ] imprimes         0 ligne(s) [KO ] comptee(s) pour 0 annonce(s)
+
+⛔ CE QUE CETTE GATE NE PROUVE PAS : elle garde que le temoin de
+   l'instrument est JOUE et qu'il tient. ⛔ Elle ne dit RIEN des
+   verdicts que l'instrument publie — un constat `VRAI` est son
+   RESULTAT, ⛔ pas un defaut du harnais (`D1`).
+
+==============================================================================
+BILAN : 5 OK, 0 KO
+==============================================================================
+rc=0
+
+  ── ET L'INSTRUMENT SEUL, DANS LE MEME ARBRE ──
+  $ HOME=<vide> python3 tools/filtre_constats_dn56.py --temoin-seul
+  [OK ] 🔴 le grep du runner est DUPE par une citation en prose   True
+  [OK ] compte_lignes_section1 separe hors/muet/verdict          (1, 1, 2)
+  [OK ] section1 garde ce qui est AVANT la borne 2               True
+  [OK ] 🔴 section1 ne compte PAS la section 3 (defaut du 1er jet) False
+  [OK ] bilan_de lit un bilan                                    (22, 10)
+  [OK ] bilan_de ne fabrique pas de bilan                        None
+
+  ⇒ TEMOIN : 23 OK, 0 KO
+rc=0
+
+  ── LA GATE EST-ELLE DECLAREE NON_JOUABLE ? ──
+  $ grep -c verif_temoin_filtre_dn447 tools/run_gates.sh
+0
+  ⇒ 0 : ⛔ AUCUNE ligne ajoutee a NON_JOUABLES. Elle est DECOUVERTE PAR GLOB.
+
+  ── LE HARNAIS COMPLET DANS LE CLONE, HOME ETRANGER ──
+[VERTE      ] tools/verif_temoin_filtre_dn447.py     rc=0      0s
+BILAN : 22 VERTE, 1 ROUGE, 8 NON-JOUABLE sur 31 gates (136s)
+appariement --cockpit : 0 divergence(s) entre la detection LARGE (quotes simples/doubles, declaration coupee) et la detection ETROITE d'origine
+⛔ ROUGES :
+   · tools/verif_licences_dn52.py (rc=1)
+
+══════════════════════════════════════════════════════════════════════════════
+(C) ATTRIBUTION DU SEUL ROUGE DU CLONE — ⛔ IL N'EST PAS DE MON FAIT
+══════════════════════════════════════════════════════════════════════════════
+  Le harnais joue dans un clone a HOME etranger rend UN rouge :
+  `tools/verif_licences_dn52.py`. Il est attribue PAR LA MESURE, en deux
+  passes sur DEUX clones distincts, meme HOME etranger.
+
+  ── passe A : le clone a la BORNE DE DEPART (71375010, avant ma marche) ──
+  HEAD = 71375010edd6840a961be1421f6f704970a5f32d   gates globees = 30
+
+==============================================================================
+BILAN : 32 OK, 1 KO
+==============================================================================
+rc=1
+
+  ── passe B : le clone a MON commit ──
+  HEAD = 169ea9373cf66e9845d59a64031739b9eb7c5b30   gates globees = 31
+
+==============================================================================
+BILAN : 32 OK, 1 KO
+==============================================================================
+rc=1
+
+  ⇒ VERDICT : `32 OK, 1 KO` AUX DEUX BORNES ⇒ le rouge est PRE-EXISTANT au
+    clone neuf, ⛔ pas de mon fait. Sur le POSTE (cockpit present) cette
+    meme gate est VERTE aux deux bornes — voir T0-gates-avant.txt et
+    T7-gates-apres.txt.

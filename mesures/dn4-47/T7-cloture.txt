@@ -1,0 +1,75 @@
+T7 — CLOTURE : CE QUE L'ARBRE DIT DE LA MARCHE (AC7)
+date : 2026-09-06T00:54:23+02:00
+
+══════ (1) ⛔ ZERO ECRITURE DANS firmware/ ══════
+$ git diff 71375010..HEAD -- firmware/ | wc -l
+0
+$ git diff -- firmware/ | wc -l   (arbre de travail)
+0
+
+══════ (2) ⛔ AUCUN RENOMMAGE (NFR6) ══════
+$ git diff --name-status -M 71375010..HEAD
+M	tools/filtre_constats_dn56.py
+A	tools/verif_temoin_filtre_dn447.py
+⇒ A = ajout, M = modification. ⛔ aucun R (rename), ⛔ aucun D (suppression).
+
+══════ (3) ⛔ AUCUN LIBELLE DE CONTROLE EXISTANT MODIFIE ══════
+  `verif_campagne_dn440.py` et `verif_campagne_dn56.py` ciblent PAR LIBELLE.
+  Les libelles sont relus a l'AST aux DEUX bornes et compares.
+  tools/filtre_constats_dn56.py : 22 libelle(s) a la borne de depart, 23 a HEAD
+  libelle(s) DISPARU(S) ou MODIFIE(S) : 0 ⇒ ⛔ AUCUN
+  libelle(s) AJOUTE(S)                : 1
+     + run() sur un cwd ABSENT : rc non nul + motif, ⛔ pas de trace nue
+  ⇒ la liste des 22 libelles d'origine est un SOUS-ENSEMBLE de celle de HEAD : True
+
+══════ (4) L'INSTRUMENT RESTE HORS DU GLOB, LA GATE Y EST ══════
+$ ls tools/verif_*.py | grep -c filtre_constats   ⇒ 0 attendu
+0
+$ ls tools/verif_*.py | grep -c verif_temoin_filtre_dn447   ⇒ 1 attendu
+1
+$ grep -c verif_temoin_filtre_dn447 tools/run_gates.sh   ⇒ 0 (aucune ligne NON_JOUABLES)
+0
+
+══════ (5) ⛔ NI LA SENTINELLE NI LA BANNIERE N'ONT UN SECOND PORTEUR ══════
+  Les temoins (a3)/(a4) de l'instrument exigent que la SENTINELLE et la
+  BANNIERE n'aient **qu'un seul porteur** dans l'arbre.
+
+🔴 ⛔ ET C'EST POURQUOI LEURS VALEURS NE SONT **PAS RECOPIEES ICI**.
+   Le 1er jet de cette capture ecrivait la sentinelle LITTERALEMENT dans sa
+   ligne de commande. Une fois COMMITEE, elle serait devenue un **SECOND
+   PORTEUR** ⇒ le temoin (a3) serait TOMBE ⇒ l'instrument serait MORT ⇒ la
+   gate neuve serait ROUGE. C'est EXACTEMENT la panne que `dn5-8` vient de
+   reparer, recreee d'un cran par la capture qui la controle — le meme
+   mecanisme que « une capture est ecrite AVANT le commit qui la publie ».
+   ⇒ LA MESURE SE REJOUE EN **DERIVANT** LES VALEURS DE L'INSTRUMENT, ⛔ en
+     n'en ecrivant aucune :
+
+$ python3 -c "import sys; sys.path.insert(0, 'tools'); import filtre_constats_dn56 as f; print('sentinelle :', f.motif_fichiers(f.SENTINELLE, inclure_soi=True)); print('banniere   :', f.motif_fichiers(f.BANNIERE, inclure_soi=True)); print('exclus     :', f.chemins_exclus()[0])"
+
+  sentinelle : ['tools/filtre_constats_dn56.py']
+  banniere   : ['mesures/dn5-6/T1-filtre-10-constats.txt', 'mesures/dn5-6/T4-filtre-rejoue-apres.txt', 'mesures/dn5-8/T0-avant.txt', 'mesures/dn5-8/T7-instrument-complet.txt', 'tools/filtre_constats_dn56.py']
+  exclus     : ['mesures/dn5-6/T1-filtre-10-constats.txt', 'mesures/dn5-6/T4-filtre-rejoue-apres.txt', 'mesures/dn5-8/T0-avant.txt', 'mesures/dn5-8/T7-instrument-complet.txt', 'tools/filtre_constats_dn56.py']
+  ⇒ `sentinelle` rend **un seul** fichier : l'instrument lui-meme.
+  ⇒ `banniere` ne rend que des TRANSCRIPTIONS DE TIR, et `chemins_exclus()`
+    les retire toutes — c'est la garde posee par `dn5-8`.
+  ⚠️ CETTE PASSE EST PRISE **AVANT** LE COMMIT DE MES CAPTURES. Ma capture
+    `T1-instrument-hors-harnais.txt` porte la banniere (elle transcrit un
+    tir) : une fois commitee, elle DOIT entrer dans les deux listes
+    ci-dessus. `T8-apres-commit.txt` rejoue la mesure APRES le commit —
+    la lecon de `dn5-8` : ⛔ une capture ne se croit pas avant le commit
+    qui la publie.
+
+$ grep -c 'add_argument("--cockpit"' tools/verif_temoin_filtre_dn447.py   ⇒ 0 attendu
+0
+  ⇒ ⛔ la gate neuve ne DECLARE PAS `--cockpit` : elle n'en a pas besoin, et
+    le declarer ajouterait une occurrence au motif que le constat (4) compte.
+
+══════ (6) ETAT DES DEUX DEPOTS (NFR8) ══════
+desknode HEAD : 169ea9373cf66e9845d59a64031739b9eb7c5b30
+desknode porcelain :
+?? mesures/dn4-47/
+cockpit  HEAD : e9606102b2f97ea6baf2f0cb47dbde73b06f1246
+cockpit  porcelain :
+?? _bmad-output/implementation-artifacts/dn4-47-le-temoin-du-filtre-entre-dans-le-harnais.md
+?? _bmad-output/implementation-artifacts/epic-dn4-context.md
+?? ops/audit_impostor_episodes.py

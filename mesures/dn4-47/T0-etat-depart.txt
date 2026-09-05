@@ -1,0 +1,10 @@
+T0 — ETAT DE DEPART, PRIS PAR LE RUNNER
+date : 2026-09-06T00:15:54+02:00
+desknode HEAD : 71375010edd6840a961be1421f6f704970a5f32d
+desknode porcelain :
+?? mesures/dn4-47/cockpit HEAD : e9606102b2f97ea6baf2f0cb47dbde73b06f1246
+cockpit porcelain :
+?? _bmad-output/implementation-artifacts/epic-dn4-context.md
+?? ops/audit_impostor_episodes.py
+== gates decouvertes par glob ==
+30

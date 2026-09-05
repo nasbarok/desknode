@@ -1,0 +1,117 @@
+T1 — L'INSTRUMENT EST HORS DU HARNAIS, ET IL MEURT SUR UN RUNNER
+date : 2026-09-06T00:25:03+02:00
+desknode HEAD : 71375010edd6840a961be1421f6f704970a5f32d
+
+══════════════════════════════════════════════════════════════════════════════
+(1) AVANT — RIEN NE JOUE L'INSTRUMENT  [la mesure qui CREE la story]
+══════════════════════════════════════════════════════════════════════════════
+$ git grep -l -F -- filtre_constats_dn56 HEAD -- | grep -v "^HEAD:mesures/"
+rc=1 (1 = aucune ligne ⇒ 0 fichier hors mesures/)
+
+$ git grep -l -F -- filtre_constats_dn56 HEAD -- | grep -v "^HEAD:mesures/" | wc -l
+0
+
+$ git grep -n -F -- "--temoin-seul" HEAD -- | grep -v "^HEAD:mesures/"
+HEAD:tools/filtre_constats_dn56.py:1087:    ap.add_argument("--temoin-seul", action="store_true",
+rc=0
+
+$ grep -c "filtre_constats_dn56" tools/run_gates.sh .github/workflows/gates.yml
+tools/run_gates.sh:0
+.github/workflows/gates.yml:0
+
+══════════════════════════════════════════════════════════════════════════════
+(2) AVANT — L'INSTRUMENT MEURT EN TRACE NUE SANS COCKPIT  [ce qui DEPLACE le cadrage]
+══════════════════════════════════════════════════════════════════════════════
+$ HOME=<repertoire vide> python3 tools/filtre_constats_dn56.py --temoin-seul
+  (HOME=/tmp/dn447-home-hUnnEO, vide : 0 entree(s))
+==============================================================================
+dn5-6 / T1 — LE FILTRE : LES 10 CONSTATS REJOUES UN PAR UN
+==============================================================================
+date       : 2026-09-06T00:25:03
+desknode   : 71375010edd6840a961be1421f6f704970a5f32d
+Traceback (most recent call last):
+  File "/home/nasbarok/projects/desknode/tools/filtre_constats_dn56.py", line 1154, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/nasbarok/projects/desknode/tools/filtre_constats_dn56.py", line 1100, in main
+    rc, out, _, _ = run(["git", "rev-parse", "HEAD"], cwd=COCKPIT_DEFAUT)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/nasbarok/projects/desknode/tools/filtre_constats_dn56.py", line 104, in run
+    p = subprocess.run(cmd, cwd=cwd, timeout=timeout,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 548, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: '/tmp/dn447-home-hUnnEO/projects/compagnon_project'
+rc=1
+rc (re-tire, non pipe) = 1
+
+$ ... | grep -c '⇒ TEMOIN :'
+0
+
+── POUR COMPARAISON : le meme tir AVEC le cockpit (ce poste) ──
+  [OK ] bilan_de lit un bilan                                    (22, 10)
+  [OK ] bilan_de ne fabrique pas de bilan                        None
+
+  ⇒ TEMOIN : 22 OK, 0 KO
+rc=0
+
+══════════════════════════════════════════════════════════════════════════════
+(3) APRES — LE HARNAIS JOUE L'INSTRUMENT  [mesure prise APRES le commit qui la publie]
+══════════════════════════════════════════════════════════════════════════════
+date : 2026-09-06T00:47:23+02:00
+desknode HEAD : 169ea9373cf66e9845d59a64031739b9eb7c5b30
+
+$ git grep -l -F -- filtre_constats_dn56 HEAD -- | grep -v "^HEAD:mesures/"
+HEAD:tools/verif_temoin_filtre_dn447.py
+⇒ 1 fichier(s) hors mesures/ — etait 0
+
+$ git grep -n -F -- "--temoin-seul" HEAD -- | grep -v "^HEAD:mesures/"
+HEAD:tools/filtre_constats_dn56.py:1139:    ap.add_argument("--temoin-seul", action="store_true",
+HEAD:tools/verif_temoin_filtre_dn447.py:17:   un hook ne l'invoquaient ; `--temoin-seul` n'etait cite que par sa propre
+HEAD:tools/verif_temoin_filtre_dn447.py:88:ARG_CIBLE = "--temoin-seul"
+HEAD:tools/verif_temoin_filtre_dn447.py:163:ap.add_argument("--temoin-seul", action="store_true")
+
+$ ls tools/verif_*.py | wc -l   (le glob de run_gates.sh)
+31
+$ grep -c "verif_temoin_filtre_dn447" tools/run_gates.sh   (⛔ 0 = aucune ligne NON_JOUABLES)
+0
+$ ls tools/filtre_constats_dn56.py | grep -c "tools/verif_"   (⛔ 0 = l instrument RESTE HORS DU GLOB)
+0
+
+══════════════════════════════════════════════════════════════════════════════
+(4) APRES — L'INSTRUMENT NE MEURT PLUS SANS COCKPIT  [le correctif de run()]
+══════════════════════════════════════════════════════════════════════════════
+$ HOME=<repertoire vide> python3 tools/filtre_constats_dn56.py --temoin-seul
+  (HOME=/tmp/dn447-home-hUnnEO, 0 entree(s))
+==============================================================================
+dn5-6 / T1 — LE FILTRE : LES 10 CONSTATS REJOUES UN PAR UN
+==============================================================================
+date       : 2026-09-06T00:47:23
+desknode   : 169ea9373cf66e9845d59a64031739b9eb7c5b30
+cockpit    : ⛔ RUN IMPOSSIBLE : [Errno 2] No such file or directory: '/tmp/dn447-home-hUnnEO/projects/compagnon_project' — cmd=['git', 'rev-parse', 'HEAD'] cwd='/tmp/dn447-home-hUnnEO/projects/compagnon_project'
+mesures    : ⛔ TOUTES par `subprocess`, ⛔ jamais le shell de session
+
+==============================================================================
+TEMOIN DE L'INSTRUMENT — ⛔ SI UN SEUL TOMBE, ON NE CONCLUT RIEN
+==============================================================================
+
+  […]
+  [OK ] bilan_de lit un bilan                                    (22, 10)
+  [OK ] bilan_de ne fabrique pas de bilan                        None
+
+  ⇒ TEMOIN : 23 OK, 0 KO
+rc=0
+
+$ ... | grep -c '⇒ TEMOIN :'   — etait 0, ⛔ la trace nue est FERMEE
+1
+
+── LE TEMOIN (a5) — IL REPLANTE LA FAUTE, ⛔ IL NE DEBRANCHE RIEN ──
+  [OK ] run() sur un cwd ABSENT : rc non nul + motif, ⛔ pas de trace nue (True, True, '')
+
+⇒ LE COMPTE DES TEMOINS PASSE DE 22 A 23 — ET C'EST POURQUOI LA GATE NE LE
+  FIGE PAS : un nombre ecrit se perime le jour ou il compte.
