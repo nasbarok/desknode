@@ -1,0 +1,59 @@
+T8 — LA MESURE EST REPRISE **APRES** LE COMMIT QUI PUBLIE LES CAPTURES
+  ⛔ Une capture ne se croit pas avant le commit qui la publie (lecon `dn5-8`).
+date : 2026-09-06T00:59:16+02:00
+desknode HEAD : 1d59538b244a8d68db3b298dcb03a615bb714f1d   porcelain :
+?? mesures/dn4-47/T8-apres-commit.txt
+
+══════ (1) LES PORTEURS DE LA SENTINELLE ET DE LA BANNIERE, RELUS ══════
+sentinelle : ['tools/filtre_constats_dn56.py']
+banniere   : ['mesures/dn4-47/T1-instrument-hors-harnais.txt', 'mesures/dn5-6/T1-filtre-10-constats.txt', 'mesures/dn5-6/T4-filtre-rejoue-apres.txt', 'mesures/dn5-8/T0-avant.txt', 'mesures/dn5-8/T7-instrument-complet.txt', 'tools/filtre_constats_dn56.py']
+exclus     : ['mesures/dn4-47/T1-instrument-hors-harnais.txt', 'mesures/dn5-6/T1-filtre-10-constats.txt', 'mesures/dn5-6/T4-filtre-rejoue-apres.txt', 'mesures/dn5-8/T0-avant.txt', 'mesures/dn5-8/T7-instrument-complet.txt', 'tools/filtre_constats_dn56.py']
+banniere hors exclus : 0
+
+  ⇒ `mesures/dn4-47/T1-instrument-hors-harnais.txt` EST ENTRE dans la liste
+    des transcriptions, et `chemins_exclus()` l'a RETIRE. `banniere hors
+    exclus` reste a **0** : le temoin (a4) tient, la garde de `dn5-8` a fait
+    son travail sur MA PROPRE capture.
+  ⇒ la sentinelle garde UN SEUL porteur : l'instrument.
+
+══════ (2) LE TEMOIN DE L'INSTRUMENT, APRES LE COMMIT ══════
+  [OK ] bilan_de ne fabrique pas de bilan                        None
+
+  ⇒ TEMOIN : 23 OK, 0 KO
+rc=0
+
+══════ (3) LA GATE, APRES LE COMMIT ══════
+==============================================================================
+BILAN : 5 OK, 0 KO
+==============================================================================
+rc=0
+
+══════ (4) LE TIR COMPLET — LES 10 VERDICTS, APRES LE COMMIT ══════
+
+  VRAI              : 4 ⇒ [2, 4, 6, 8]
+  DEJA FAUX         : 6 ⇒ [1, 3, 5, 7, 9, 10]
+  NON REPRODUCTIBLE : 0 ⇒ []
+
+  ⛔ SEULS LES VRAIS OUVRENT UN CORRECTIF.
+  ⇒ TEMOIN DE L'INSTRUMENT : 23 OK, 0 KO
+rc=0
+
+══════ (5) LA GATE DANS UN CLONE NEUF A HOME ETRANGER, APRES LE COMMIT ══════
+  HEAD du clone : 1d59538b244a8d68db3b298dcb03a615bb714f1d
+
+==============================================================================
+BILAN : 5 OK, 0 KO
+==============================================================================
+rc=0
+
+══════ VERDICT DE T8 ══════
+  ⇒ RIEN N'A BOUGE APRES LE COMMIT :
+    · la sentinelle garde **UN SEUL** porteur — l'instrument ;
+    · `banniere hors exclus` = **0** — ma capture `T1` est reconnue comme
+      transcription et retiree, ⛔ pas comptee ;
+    · temoin de l'instrument : **`23 OK, 0 KO`**, `rc=0` ;
+    · gate `verif_temoin_filtre_dn447.py` : **`BILAN : 5 OK, 0 KO`**, `rc=0` ;
+    · les 10 verdicts : **`VRAI : 4 ⇒ [2, 4, 6, 8]`** — identiques au tir
+      d'avant le commit ;
+    · dans un clone neuf a HOME etranger monte SUR CE COMMIT : la gate est
+      **VERTE**, `BILAN : 5 OK, 0 KO`, `rc=0`.
