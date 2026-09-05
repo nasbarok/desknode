@@ -23,61 +23,113 @@ back up.
 
 Two figures, because they do not answer the same person's question. Both are what
 `git clone` prints **about itself**, ⛔ not what a directory listing says afterwards.
-Measured on **2026-09-05**, against `main` at `7246f52`.
+Measured on **2026-09-05**, against `origin/main` at `7246f52`.
 
 | you run | objects received | **received over the wire** | on disk afterwards (`.git` + working tree) | who this figure is for |
 |---|---:|---:|---:|---|
 | `git clone <url>` | 3 875 | **31.94 MiB** ≈ 33.5 MB | 79 848 261 B ≈ **79.8 MB** | **anyone who intends to contribute.** You get all **451** commits and both published branches, so `git log`, `git blame` and a pull request all work. |
-| `git clone --depth 1 --branch main <url>` | 637 | **30.22 MiB** ≈ 31.7 MB | 77 938 430 B ≈ **77.9 MB** | **anyone who just wants to build it once.** One commit, no history — enough to compile the firmware, ⛔ not enough to open a pull request. |
+| `git clone --depth 1 --branch main <url>` | 637 | **30.22 MiB** ≈ 31.7 MB | 77 938 430 B ≈ **77.9 MB** | **anyone who just wants to build it once.** One commit, no history — enough to compile the firmware, ⛔ not enough to open a pull request. ⚠️ "Enough to compile" is not "enough to compile offline": a cold build **needs the network**, and no local cache replaces it — see *Building the firmware* below. |
 
-Reproduce either one. The number is the line `git clone` prints for itself, so ask it:
+**Every column above comes from a command.** The first two are the line `git clone` prints
+for itself; the last two are separate readings, because `clone` does not print them:
 
 ```
-git clone --progress https://github.com/nasbarok/desknode.git dn-full \
-  2>&1 | grep 'Receiving objects'
-git clone --progress --depth 1 --branch main https://github.com/nasbarok/desknode.git dn-shallow \
-  2>&1 | grep 'Receiving objects'
+# what crosses the wire, and how many objects
+git clone --progress https://github.com/nasbarok/desknode.git dn-full 2>&1 \
+  | grep 'Receiving objects' | tail -1
+git clone --progress --depth 1 --branch main https://github.com/nasbarok/desknode.git dn-shallow 2>&1 \
+  | grep 'Receiving objects' | tail -1
+# what landed on disk
+du -sb dn-full dn-shallow
+# how many commits you actually got
+git -C dn-full rev-list --count HEAD ; git -C dn-shallow rev-list --count HEAD
 ```
 
-🔴 **`--depth 1` saves 1.72 MiB — about 5 % — and that is much less than it sounds.** The
-weight of this repository is **not** in its history. All 451 commits of history cost
-**1.72 MiB**, while the files of the *current* version alone weigh **46 142 922 bytes**
-(**46.1 MB**): `docs/` is 28.0 MB of it, almost entirely wiring photographs, and `mesures/`
-is 10.1 MB. A shallow clone throws away the cheap half. It is still the right choice if you
-only want to build once — just not for the reason people usually expect. Making the
-photographs lighter is tracked separately (`dn6` — see [`docs/roadmap.md`](docs/roadmap.md)).
+⚠️ **Three things that will bite you, said rather than left to discover.**
+**(1) This repository is still private.** `gh repo view` returned `visibility: PRIVATE`,
+**0** forks, on 2026-09-05 — so those commands need an authenticated account with access
+until the switch to public happens (`dn8` — see [`docs/roadmap.md`](docs/roadmap.md)).
+**(2)** Without `| tail -1`, `grep` prints about a hundred progress lines and it is easy to
+read a mid-transfer figure as the total. **(3)** `git clone` refuses a destination that
+already exists, so `dn-full` and `dn-shallow` must not be there yet.
+
+🔴 **`--depth 1` saves 1.72 MiB — 5.4 % — and that is much less than it sounds.** Comparing
+like with like, both being what crosses the wire: the current version alone costs
+**30.22 MiB**, and **450 further commits of history add 1.72 MiB on top**. The weight of
+this repository is not in its history. A shallow clone throws away the cheap half — still
+the right choice if you only want to build once, just not for the reason people expect.
+
+⚠️ **That comparison needed a third clone, and the first attempt did not establish it.**
+The full clone and the shallow one differ on **two** variables at once — depth *and* branch
+scope — so their difference could not be attributed to either. A third clone,
+`--single-branch --branch main` at full depth, separates them: it receives **exactly the
+same 3 875 objects and 31.94 MiB** as the full clone, so the second published branch costs
+**nothing** on the wire and the whole 1.72 MiB is depth. Raw output:
+[`mesures/dn5-5/T9-profondeur-vs-perimetre.txt`](mesures/dn5-5/T9-profondeur-vs-perimetre.txt).
+
+**Where the weight actually sits** — a *different* instrument, named as such: the apparent
+size of the tracked files, measured on **`76b031a`**, is **46 254 844 bytes** across **603**
+files, of which `docs/` is **27 992 816** (almost all wiring photographs) and `mesures/`
+**10 234 634**. ⛔ Do not subtract that from the wire figures: compressed transfer and
+apparent size are not the same measurement, and mixing them is the mistake this file warns
+about two paragraphs down. Making the photographs lighter is tracked separately (`dn6` —
+see [`docs/roadmap.md`](docs/roadmap.md)).
 
 ⚠️ **`du -sh .git` is not this number, and it is the figure that used to circulate here.**
-On the machine this repository is developed on, `du -sb .git` returns **134 337 533 bytes**
-— **four times** what a clone actually transfers, because most of it is never sent. The
-whole gap is accounted for, to the byte:
+Measured on **2026-09-05**, with the local repository at **`76b031a`**, `du -sb .git`
+returns **134 406 999 bytes** — about **four times** what a clone transfers. Where the
+difference goes, measured object by object:
 
-| what the local `.git` holds that a clone never receives | bytes | share of the gap |
+| what the gap is made of | bytes | share |
 |---|---:|---:|
-| **loose objects** — 2 060 of them. A server never sends loose objects: it builds a pack and sends that. | 46 961 431 | 46.7 % |
-| **a pack built over more refs** — 7 882 objects locally against 3 875 in the clone. The local pack covers four *local* branches; a clone receives only the two the remote publishes. | 53 177 911 | 52.8 % |
-| the rest of `.git` — index, `logs/`, `refs/`, sample hooks, `FETCH_HEAD`, config | 492 852 | 0.5 % |
-| **total** = 134 337 533 − 33 705 339 | **100 632 194** | **100 %** |
+| **the same content, stored differently.** The 3 875 objects a clone receives occupy **75 146 810 B** locally — **1 994** of them sitting *loose* (zlib only, no delta) and 1 881 packed — against **33 490 599 B** in the clone's freshly built pack. | 41 656 211 | 41.4 % |
+| **content no clone ever receives.** **6 084** objects: **22** reachable only from local branches, and **6 062** reachable from **no ref at all** — dead history a `git gc` would drop. | 58 406 648 | 58.0 % |
+| pack index and headers, `objects/info`, and the rest of `.git` (index, `logs/`, `refs/`, sample hooks, config) | 638 801 | 0.6 % |
+| **total** = 134 406 999 − 33 705 339 | **100 701 660** | **100 %** |
 
-⚠️ **Half of that gap used to be misattributed, and the correction is written rather than
-quietly applied.** Earlier notes in this project put the *whole* difference down to loose
-objects. Measured, they carry **46.7 %** of it. The larger half is simply that a local pack
-covers local branches nobody else ever asks for.
+🔴 **An earlier version of this section published two *different* causes, and both were
+wrong. They are named rather than quietly swapped**, because how they were wrong is the
+useful part. It said loose objects are *"never transferred"* — but **1 994 of the 2 077**
+loose objects here are reachable from the published refs, so a clone does receive that
+content, packed; what differs is **storage form**, not transfer. And it said the local pack
+*"covers four local branches"* — but
+`git rev-list --objects --all --not origin/main origin/dn4-5-le-module-vit-tout-seul`
+returns **22** objects, not ~4 000; the pack's 6 001 extra objects are reachable from no ref
+at all. Every set membership above is decided by a printed command, in
+[`mesures/dn5-5/T8-decomposition-ecart-REFUTE-T3.txt`](mesures/dn5-5/T8-decomposition-ecart-REFUTE-T3.txt).
+
+🔴 **And why the wrong version looked convincing is worth more than the correction.** It
+closed to the byte, and read that as proof. It is not. `pack + loose + the rest = .git` is a
+**partition identity**: every byte falls in exactly one bucket, so the sum equals the total
+*whatever label you put on the buckets*. **A closure to the byte can falsify no attribution
+at all.** What is falsifiable is which object belongs to which set — which is what the table
+above is built from, one command per row.
+
+⚠️ **This split describes one machine at one commit, ⛔ not a property of the project.**
+A `git gc` here would move most of it.
 
 ⚠️ **`git count-objects -v` and `du -sb` do not measure the same thing**, and mixing them
-invents about **5.3 MiB** out of nothing — the first draft of the table above did exactly
+invents about **5.3 MiB** out of nothing — an early draft of the table above did exactly
 that and came out with a *negative* remainder. `du -sb` reports **apparent size**;
-`count-objects` reports **disk space consumed**, in **KiB**, with each of those 2 060 loose
-objects rounded up to a 4 KiB block. The table is measured end to end with `du -sb`. Both
-raw outputs are in
-[`mesures/dn5-5/T3-ecart-du-vs-clone.txt`](mesures/dn5-5/T3-ecart-du-vs-clone.txt), and the
-two clone runs in
+`count-objects` reports **disk space consumed**, in **KiB**, with each loose object rounded
+up to a 4 KiB block. The table is measured end to end with `du -sb`. The two original clone
+runs are in
 [`mesures/dn5-5/T1-clone-complet.txt`](mesures/dn5-5/T1-clone-complet.txt) and
-[`mesures/dn5-5/T2-clone-depth1.txt`](mesures/dn5-5/T2-clone-depth1.txt).
+[`mesures/dn5-5/T2-clone-depth1.txt`](mesures/dn5-5/T2-clone-depth1.txt), and the first,
+refuted decomposition is kept unedited in
+[`mesures/dn5-5/T3-ecart-du-vs-clone.txt`](mesures/dn5-5/T3-ecart-du-vs-clone.txt).
 
 ⚠️ `size-pack` (**82.74 MiB**, from `git count-objects -vH`) is a third answer to a third
-question — *what does the local pack weigh, across every local branch* — and it is not the
-price of a clone either. Three instruments, three numbers, one of which is the one you pay.
+question — *what does the local pack weigh* — and it is not the price of a clone either.
+Three instruments, three numbers, one of which is the one you pay.
+
+⚠️ **Every figure in this section names the commit it was taken on** — `7246f52` for what
+the clones received, `76b031a` for what the tree and the local `.git` hold. That is
+deliberate, and it replaces a rule this file tried first and could not keep: *"publish the
+figure the tree carrying it returns"* is a **fixed point**, not a rule, because the size of
+the tree includes this very file, whose size depends on the figure written in it. An anchor
+can be re-run exactly; a promise of freshness cannot. ⇒ the tree carrying this sentence is
+one commit further along, and slightly larger than the figures above say.
 
 ⚠️ **None of these is a fixed number**, for the same reason as every other figure in this
 file: they move with the next commit. What is stable is which instrument answers which
@@ -417,8 +469,27 @@ Contributions are welcome. Two practical points:
   own reading with:
 
   ```
+  # the largest file in the CURRENT version
   git ls-tree -r -l HEAD | sort -k4 -n -r | head -5
+  # the largest blob ANYWHERE IN HISTORY — this is the one the argument needs, since a
+  # huge file deleted long ago would still be in every clone
+  git rev-list --objects --all \
+    | git cat-file --batch-check='%(objecttype) %(objectsize) %(rest)' \
+    | awk '$1=="blob"' | sort -k2 -n -r | head -5
   ```
+
+  ⚠️ **The first command only inspects `HEAD`, and on its own it would not settle the
+  question** — the argument is about the *history*, and a blob over 100 MB removed in an old
+  commit would stay invisible to it while still being downloaded by everyone. The second one
+  sweeps every object reachable from every ref. Both are printed because they answer
+  different questions, and only the second one carries the claim.
+
+  ✅ **Run on 2026-09-05, the second command returns the same file**: across the whole
+  history, the largest blob this repository has ever held is still those **5 071 848 bytes**.
+  Nothing bigger was ever committed and later deleted, so the 19.7× margin holds for the
+  *history*, not just for the current version — which is exactly what makes a purge
+  pointless. Raw output:
+  [`mesures/dn5-5/T10-volumetries-arbre-porteur.txt`](mesures/dn5-5/T10-volumetries-arbre-porteur.txt).
 
   ⚠️ **The margin quoted in this project's planning notes was `54×`, and it is corrected
   here rather than carried over.** It does not follow from either of the two numbers it was
@@ -469,6 +540,36 @@ Contributions are welcome. Two practical points:
   | 5. the name *is* the subject | 2 → 4 → 4 | 11 → 17 → 17 | see the declared exclusions below | ⚠️ **excluded, and the exclusion is written**. 🔴 **Corrected at the code review of 2026-09-04 — this row read `2 → 2` / `11 → 11`, and the original figures are kept above rather than replaced.** Two files were booked as *usage examples* while being, by this table's own definition, pages whose subject **is** the pattern: this file, and the instrument that produces these counts. An exclusion that is not written is the thing this row exists to prevent |
   | **total** | **139 → 149 → 152** | **1 323 → 1 422 → 1 518** | | |
 
+  ⚠️ **Re-measured on 2026-09-05 by `dn5-5`, and ⛔ no earlier column is erased — a fourth
+  reading, not a replacement.** The instrument is the same
+  (`python3 tools/inventaire_motif_dn53.py`), and it returned: class 1 **0 / 0** · class 2
+  **20 files / 52 sites** · class 3 **5 / 5** · class 4 **133 / 1 477** · class 5
+  **4 / 19** · total **162 / 1 553**.
+
+  🔴 **Two of those sites are new, and they are this work's own:** the **clone URLs** printed
+  in *What cloning this costs* above. Measured directly, and this one *is* commit-anchored:
+  `git grep -c -E 'nasbarok|naoua|~/projects|wsl\.localhost' <rev> -- CONTRIBUTING.md`
+  returns **5** at `7246f52` and **7** at `76b031a`. They land in **class 5**, since this
+  file is a declared exclusion — and a clone URL a reader cannot copy is not a command.
+
+  ⚠️ **That fourth reading is ⛔ NOT anchored to a commit, and saying so matters.** Unlike
+  every other figure `dn5-5` published, this instrument reads
+  `git ls-files --cached --others` — the **working tree** — so it counted this work's own
+  captures while they were still uncommitted. ⛔ The movements in classes 2 and 4 are
+  therefore **not attributed here**: the previous column was taken on a different tree, and
+  explaining a delta between two trees measured at different moments would be a guess, which
+  is the thing this table exists to refuse.
+
+  ⚠️ **One site in `mesures/dn5-5/` is there by a defect, and it is named rather than
+  quietly cleaned.** `mesures/dn5-5/T0-temoin-port.txt` prints a real Windows user profile
+  under a caption announcing it redacted, while `T7-temoin-port.txt` prints the redacted form
+  at the same place — so the witness contradicts itself when the two are read side by side.
+  The cause is measured: the redaction pattern was wrong when T0 was taken and was fixed
+  before T7. ⛔ **The capture is not edited** — a tool's output is never doctored — and what
+  the witness actually proves is untouched, since that is `--serie COM3` and the monotonic
+  counter, not a Python path. Full account:
+  [`mesures/dn5-5/T10-volumetries-arbre-porteur.txt`](mesures/dn5-5/T10-volumetries-arbre-porteur.txt), § 4.
+
   ⚠️ **Do not treat any of these as a fixed number.** They move whenever a declaration
   is added, and a declaration is exactly what this repository asks for. What is stable
   is the **first row**: no tool depends on one particular machine. ⚠️ A different
@@ -485,10 +586,11 @@ Contributions are welcome. Two practical points:
   which is exactly the bar stated further down this file. ⛔ The old figures are not erased;
   they are named here as what they were.
 
-  **What `mesures/` actually costs, since it is kept on purpose.** As of **2026-09-05**,
-  and counting the nine captures this very commit adds under `mesures/dn5-5/`, it holds
-  **428 files** and **10 234 634 bytes** — that is **10.23 MB** in decimal units, or
-  **9.76 MiB** in binary ones. *(Five earlier figures are kept rather than replaced, because
+  **What `mesures/` actually costs, since it is kept on purpose.** Measured on
+  **`76b031a`** — the commit is named so the figure can be re-run rather than trusted — it
+  holds **428 files** and **10 234 634 bytes**: **10.23 MB** in decimal units, or
+  **9.76 MiB** in binary ones. It is the same pair the section *What cloning this costs*
+  publishes, with the same anchor; ⛔ this file does not carry two values for `mesures/`. *(Five earlier figures are kept rather than replaced, because
   each was true of the tree that carried it: **395 files / 9 900 692 bytes** before the code
   review of 2026-09-04 added its own captures, then **406 files / 10 016 839 bytes** after it
   and before `dn5-4`, then **416 files / 10 116 415 bytes** after `dn5-4`'s ten cold-build
@@ -501,10 +603,16 @@ Contributions are welcome. Two practical points:
   command printed a few lines below — returned **419** on the very tree that shipped the
   sentence. Two more captures had landed in between. A number is only true of one commit; the
   command beside it resolves at whichever commit you run it on, and the two drift apart the
-  moment anything else is committed. ⇒ **the rule this file now applies: the figure published
-  here is the one the tree carrying it returns**, which is why the count above includes this
-  commit's own captures instead of the tree as it stood just before them. ⛔ Do not read a
-  figure here as current; run the command.
+  moment anything else is committed.
+
+  ⇒ **The rule this file applies is an ANCHOR, and the first attempt at a rule was wrong.**
+  That attempt read *"the figure published here is the one the tree carrying it returns"*.
+  It cannot be kept: the size of the tree includes this very file, whose size depends on the
+  figure written in it — a **fixed point**, not a rule. What works instead is to **name the
+  commit each figure describes**, so a reader can re-run it exactly. ⚠️ The consequence is
+  stated rather than hidden: the tree carrying this sentence is one commit further along
+  than `76b031a`, and holds a few more captures. ⛔ Do not read a figure here as current;
+  run the command.
 
   ⚠️ **This number moves every time a
   measurement is committed, which is most of them** — that is the point of the directory,

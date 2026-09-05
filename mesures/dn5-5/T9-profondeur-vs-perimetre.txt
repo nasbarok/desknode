@@ -1,0 +1,77 @@
+T9 — LE « 1,72 Mio » CONFONDAIT DEUX VARIABLES : UN TROISIEME CLONE LES SEPARE
+==============================================================================
+date     : 2026-09-05T02:07:56
+pris par : subprocess (⛔ jamais le shell de session)
+source   : https://github.com/<caviarde>/desknode.git — origin/main = 7246f52
+⛔ AUCUN PORT SERIE N'EST OUVERT PAR CETTE CAPTURE.
+==============================================================================
+
+🔴 LE DEFAUT QUE CETTE CAPTURE CORRIGE
+  T1 et T2 differaient sur **DEUX** variables a la fois, ⛔ pas une :
+    T1 = `git clone <url>`                         ⇒ TOUTES les branches, profondeur PLEINE
+    T2 = `git clone --depth 1 --branch main <url>` ⇒ UNE branche, profondeur 1
+  Leur difference (1,72 Mio) melangeait donc PROFONDEUR et PERIMETRE DE BRANCHES, et la
+  conclusion « l'historique ne coute que ~5 % » ne s'en deduisait pas. Un TROISIEME clone
+  — meme perimetre que T2, profondeur PLEINE — isole la variable.
+
+==============================================================================
+LES TROIS CLONES, PRIS DANS LA MEME MINUTE, SUR LE MEME REMOTE
+==============================================================================
+
+--- A : toutes branches · profondeur pleine
+    commande      : git clone --progress https://github.com/nasbarok/desknode.git <dest>
+    rc=0   duree 5.3 s
+    Receiving objects: 100% (3875/3875), 31.94 MiB | 27.53 MiB/s, done.
+    objets recus  : 3875      commits : 451      shallow : false
+    du -sb .git   : 33705339 o    du -sb . : 79848261 o
+    refs          : * main · remotes/origin/HEAD -> origin/main · remotes/origin/dn4-5-le-module-vit-tout-seul · remotes/origin/main
+
+--- B : UNE branche (main) · profondeur pleine
+    commande      : git clone --progress --single-branch --branch main https://github.com/nasbarok/desknode.git <dest>
+    rc=0   duree 4.9 s
+    Receiving objects: 100% (3875/3875), 31.94 MiB | 27.12 MiB/s, done.
+    objets recus  : 3875      commits : 451      shallow : false
+    du -sb .git   : 33705254 o    du -sb . : 79848176 o
+    refs          : * main · remotes/origin/HEAD -> origin/main · remotes/origin/main
+
+--- C : UNE branche (main) · profondeur 1
+    commande      : git clone --progress --depth 1 --branch main https://github.com/nasbarok/desknode.git <dest>
+    rc=0   duree 4.6 s
+    Receiving objects: 100% (637/637), 30.22 MiB | 22.60 MiB/s, done.
+    objets recus  : 637      commits : 1      shallow : true
+    du -sb .git   : 31795508 o    du -sb . : 77938430 o
+    refs          : * main · remotes/origin/HEAD -> origin/main · remotes/origin/main
+
+==============================================================================
+CE QUE LA COMPARAISON A DEUX A DEUX ETABLIT
+==============================================================================
+
+  (i) PERIMETRE DE BRANCHES, a profondeur constante : A vs B
+      objets recus : 3875  vs  3875      ⇒ ECART = 0
+      sur le fil   : 31.94 MiB vs 31.94 MiB ⇒ ECART = 0.00 MiB
+      du -sb .git  : 33705339  vs  33705254      ⇒ ECART = 85 o
+      ⇒ 🎯 **LA SECONDE BRANCHE PUBLIEE NE COUTE RIEN SUR LE FIL** : elle ne porte AUCUN
+         objet que `main` n'ait deja. Les 85 o d'ecart sur le disque sont un FICHIER DE
+         REF DE PLUS dans `.git/refs/remotes/`, ⛔ pas du contenu.
+
+ (ii) PROFONDEUR, a perimetre constant : B vs C — **la variable est ISOLEE**
+      objets recus : 3875  vs  637      ⇒ ECART = 3238
+      sur le fil   : 31.94 MiB vs 30.22 MiB ⇒ **ECART = 1.72 MiB**
+      commits      : 451  vs  1
+      ⇒ 🎯 **L'HISTORIQUE (450 commits de plus) COUTE 1.72 Mio SUR LE FIL**, soit
+         **5.4 %** du clone complet (31.94 Mio). La conclusion de T1/T2 etait la BONNE —
+         mais elle ne se deduisait pas de la mesure qui la portait. Elle se deduit de
+         CELLE-CI, parce qu'une seule variable a bouge.
+
+==============================================================================
+COMPARER COMME AVEC COMME — L'AUTRE DEFAUT DE T1/T2
+==============================================================================
+  T1/T2 opposaient **1,72 Mio** (compresse, SUR LE FIL) a **46 142 922 o** (taille
+  APPARENTE de l'arbre de travail). Ce sont deux instruments differents, exactement le
+  melange que `CONTRIBUTING.md` interdit deux paragraphes plus loin.
+  ⇒ La comparaison qui tient est **sur le fil contre sur le fil** :
+       version courante seule (C) ....... 30.22 MiB
+       + tout l'historique (B) .......... 31.94 MiB
+       part de l'historique ............. 5.4 %
+  ⚠️ La taille APPARENTE de l'arbre de travail est une AUTRE grandeur, et elle se cite
+     comme telle (⛔ pas dans la meme soustraction).

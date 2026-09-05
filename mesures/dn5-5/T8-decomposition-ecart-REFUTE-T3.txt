@@ -1,0 +1,104 @@
+T8 — LA DECOMPOSITION DE L'ECART, RE-MESUREE : LES DEUX CAUSES DE T3 SONT REFUTEES
+==============================================================================
+date     : 2026-09-05T02:07:19
+pris par : subprocess (⛔ jamais le shell de session)
+local    : /home/<caviarde>/projects/desknode a HEAD = 76b031a
+remote   : origin/main = 7246f52   (⛔ inchange — rien n'a ete pousse)
+⛔ AUCUN PORT SERIE N'EST OUVERT PAR CETTE CAPTURE.
+==============================================================================
+
+🔴 POURQUOI CETTE CAPTURE EXISTE — T3 A PUBLIE DEUX CAUSES FAUSSES
+  `mesures/dn5-5/T3-ecart-du-vs-clone.txt` attribuait l'ecart a :
+    (1) « objets libres JAMAIS TRANSFERES — le serveur n'envoie jamais d'objet libre » ;
+    (2) « le pack local porte PLUS DE REFS — 4 branches locales contre 2 publiees ».
+  Les deux sont REFUTEES par la mesure ci-dessous. ⛔ T3 N'EST PAS RETOUCHEE (une sortie
+  d'outil ne se doctore jamais) : c'est CE FICHIER qui fait foi, et le renvoi est ecrit
+  dans `CONTRIBUTING.md`.
+
+  🔴 ET LA FAUTE DE RAISONNEMENT EST NOMMEE, PARCE QU'ELLE SE RE-TENDRA :
+     T3 concluait « RESTE NON EXPLIQUE = 0 ⇒ l'ecart se referme ⇒ les causes sont bonnes ».
+     **C'EST UN SOPHISME.** `pack + libres + reste = .git` est une **IDENTITE DE
+     PARTITION** : chaque octet de `.git` tombe dans exactement une case, donc la somme
+     vaut TOUJOURS le total, **quelle que soit l'etiquette collee sur les cases**. Une
+     fermeture a l'octet ne peut FALSIFIER AUCUNE attribution. Ce qui est falsifiable,
+     c'est l'APPARTENANCE D'UN OBJET A UN ENSEMBLE — et c'est ce qui est mesure ici,
+     avec la commande qui tranche a cote de chaque ligne.
+
+==============================================================================
+1. LES OBJETS LIBRES SONT-ILS « JAMAIS TRANSFERES » ? — ⛔ NON
+==============================================================================
+  commande : git rev-list --objects origin/main origin/dn4-5-le-module-vit-tout-seul
+             (⇒ l'ensemble EXACT des objets qu'un clone recoit), confronte a la liste
+             des fichiers de .git/objects/XX/…
+
+    objets libres, total ......................  2077  (47013172 o)
+    dont ACCESSIBLES depuis les refs publiees    1994  (45816627 o)
+    dont accessibles depuis une branche LOCALE     22  (71061 o)
+    dont accessibles depuis AUCUNE ref             61  (1125484 o)
+
+  ⇒ 🔴 **1994 des 2077 objets libres SONT DANS LE CLONE.** Leur CONTENU est transfere ;
+     il l'est **EMPAQUETE**, ⛔ pas sous forme libre. Ce qui differe n'est donc pas
+     « envoye / pas envoye », c'est **LA FORME DE STOCKAGE** : un objet libre est zlib
+     seul, **sans delta** ; le meme objet dans un pack est delta-compresse contre ses
+     voisins. Dire « jamais transferes » etait FAUX.
+
+==============================================================================
+2. LE PACK LOCAL PORTE-T-IL « 4 BRANCHES » QUI EXPLIQUENT ~50 Mio ? — ⛔ NON
+==============================================================================
+  commande : git rev-list --objects --all --not origin/main origin/dn4-5-le-module-vit-tout-seul
+
+    objets accessibles depuis les refs PUBLIEES ..........  3875
+    objets accessibles depuis TOUTES les refs locales ....  3897
+    ⇒ objets propres aux branches LOCALES ................    22   ⛔ pas ~4 000
+      et ces 22 objets sont TOUS LIBRES (0 dans le pack) ⇒ ils pesent 71061 o.
+
+    objets DANS LE PACK ...................................  7882
+      dont accessibles depuis les refs publiees ...........  1881  (29330183 o en pack)
+      dont accessibles depuis AUCUNE ref .................  6001  (57210103 o en pack)
+      dont propres a une branche locale ...................     0
+
+  ⇒ 🔴 Les 6001 objets du pack qu'un clone ne recoit pas ne sont **PAS** des branches :
+     ils ne sont accessibles depuis **AUCUNE** ref. C'est de l'**HISTORIQUE MORT** —
+     reflog, anciens sommets, objets d'operations passees — que `git gc` supprimerait.
+     Dire « 4 branches locales » etait FAUX : la vraie cause est le REBUT.
+
+==============================================================================
+3. LA PARTITION EXACTE DE `.git` LOCAL — ET CE QU'ELLE PROUVE (⛔ ET NE PROUVE PAS)
+==============================================================================
+  Chaque octet de `.git` est compte UNE FOIS et une seule.
+
+                                                               LOCAL (76b031a)          CLONE
+    contenu QUE LE CLONE RECOIT (3 875 objets)                       75146810       33490599
+       · stocke LIBRE (1 994 objets, sans delta)                     45816627              0
+       · stocke EN PACK (1 881 / 3 875 objets)                       29330183       33490599
+    contenu QU'AUCUN CLONE NE RECOIT (6 084 objets)                  58406648              0
+       · branches LOCALES seules (22 objets, libres)                    71061              0
+       · accessible depuis AUCUNE ref, libre (61)                     1125484              0
+       · accessible depuis AUCUNE ref, en pack (6 001)               57210103              0
+    surcout du fichier pack (index + en-tete)                          253380         125156
+    `.git/objects/info`                                                 17126              0
+    reste de `.git` (index, logs, refs, hooks, config)                 583035          89584
+    TOTAL `du -sb .git`                                             134406999       33705339
+
+  controle d'identite : 75146810 + 58406648 + 253380 + 17126 + 583035 = 134406999  (du -sb = 134406999) ⇒ EXACT
+  ⚠️ **CE CONTROLE NE PROUVE RIEN SUR LES ETIQUETTES.** Il prouve seulement qu'aucun
+     octet n'a ete oublie ni compte deux fois. Ce qui porte la preuve, ce sont les
+     APPARTENANCES des sections 1 et 2, chacune avec sa commande.
+
+  L'ECART, LIGNE A LIGNE : 134406999 - 33705339 = 100701660 o
+      forme de stockage (MEME contenu, libre+pack local vs pack neuf)     41656211 o   41.4 %
+      contenu qu'aucun clone ne recoit (rebut + branches locales)        58406648 o   58.0 %
+      surcout de pack                                                      128224 o    0.1 %
+      `objects/info`                                                        17126 o    0.0 %
+      reste de `.git`                                                      493451 o    0.5 %
+      TOTAL                                                             100701660 o  100.0 %
+
+  🎯 CE QUI PART AU DEPOT : l'ecart a DEUX causes de meme ordre — **41.4 % de FORME DE
+     STOCKAGE** (meme contenu, ecrit deux fois plus gros en local) et **58.0 % de CONTENU
+     QU'AUCUN CLONE NE RECOIT** (historique mort, ⛔ pas des branches). Les deux causes
+     ecrites par T3 etaient fausses ; celles-ci sont falsifiables par les commandes
+     imprimees aux sections 1 et 2.
+
+  ⚠️ CE QUE CETTE CAPTURE NE TRANCHE PAS, ET LE DIT : la repartition entre « forme » et
+     « rebut » **depend de l'etat du depot local du jour** (un `git gc` la deplacerait
+     entierement). Elle decrit CETTE machine a CE commit, ⛔ pas une propriete du projet.

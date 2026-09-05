@@ -41,6 +41,18 @@ up, and that promise does not expire the day the work does. What the paragraph a
 still rules out is unchanged — a marker nobody cites here does not get a row just because
 it exists. ⇒ the admission rule is **"cited in this tree"**, ⛔ not "not finished yet".
 
+⚠️ **Sharpened on 2026-09-05 (`dn5-5`), because the rule as written was ambiguous and the
+ambiguity had a live case.** *"Cited in this tree"* means **cited in prose a reader is
+pointed by** — the pages at the root and under `docs/`. It does **not** mean *"the string
+appears somewhere in the tree"*: `mesures/` is a raw record of tool output, and a marker
+named inside a capture is a fact about a measurement, ⛔ not a pointer offered to a reader.
+The case that forced the distinction: `dn5-5` gave `dn6` a row because it referred a reader
+to this page for it, and gave **`dn5-6` none**, although `dn5-6` is named in
+`mesures/dn5-5/T5-inventaire-reste-a-faire.txt`. That asymmetry is deliberate, and this
+paragraph is why. ⇒ **The day any page here points a reader at `dn5-6`, it gets a row** —
+and `tools/verif_licences_dn52.py` will say so, since it anchors on exactly that: a marker
+sent to this page.
+
 🔴 **How to read the `state` column — this is a rule, ⛔ not a promise of freshness.** The
 authority on any state is the unpublished plan, ⛔ never this page: this column is a
 **snapshot, refreshed when the work that changes a marker also passes through here**. It
@@ -57,7 +69,7 @@ the row is the one to doubt.
 | `dn4-40` | Stopping gates from passing on nothing, and anchoring their manifests **by pattern instead of by line number**. ⚠️ **State corrected on 2026-09-04 (`dn5-4`): this row read `not started`, and the marker had in fact been closed.** ⛔ The earlier wording is kept above rather than replaced. One acceptance criterion did not close with it and was handed on rather than dropped — it is carried by `dn4-44`, whose own work armed it. | done |
 | `dn4-41` | The board on its own is enough — the two hardware tiers behave correctly without the ambient sensors. | in progress |
 | `dn4-42` | The display speaks two languages. | in review |
-| `dn6` | The hardware side: a bill of materials for both tiers, the wiring diagram and the I²C addresses, verified supplier links, and the 3D-printed case — **and making the wiring photographs lighter**. 🆕 **Row added on 2026-09-05 by `dn5-5`, under the admission rule above**: that work is the first to cite this marker in this tree, and a marker you are pointed at must be one you can look up. It is also the marker that carries the largest single thing in this repository: measured that day, `docs/` weighs **27.99 MB** of the **46.14 MB** of files at `HEAD`, almost all of it photographs. ⛔ Lightening them is **not** done by rewriting history — see [`CONTRIBUTING.md`](../CONTRIBUTING.md) § *Conventions in this repository*. | not started |
+| `dn6` | The hardware side: a bill of materials for both tiers, the wiring diagram and the I²C addresses, verified supplier links, and the 3D-printed case — **and making the wiring photographs lighter**. 🆕 **Row added on 2026-09-05 by `dn5-5`, under the admission rule above**: that work is the first to cite this marker in this tree, and a marker you are pointed at must be one you can look up. It is also the marker that carries the largest single thing in this repository: measured on **`76b031a`** — the commit is named because "at `HEAD`" means a different tree every day — `docs/` weighs **27 992 816 bytes** of the **46 254 844** held by the **603** tracked files, almost all of it photographs. *(This row first said "27.99 MB of the 46.14 MB at `HEAD`"; the total was the **parent** tree's and the row carried no anchor at all. The wording is corrected rather than the figure quietly swapped.)* ⛔ Lightening them is **not** done by rewriting history — see [`CONTRIBUTING.md`](../CONTRIBUTING.md) § *Conventions in this repository*. | not started |
 | `dn7` | The install side: the browser flasher, a packaged agent you do not have to run from source, and **the language chosen at install time** rather than on the panel. | not started |
 | `dn5` | The epic these `dn5-*` markers belong to: **the repository clones, builds, and stops talking about one machine**. | in progress |
 | `dn5-1` | Publishing the repository, and writing down the gap between what it **asks** of a reader and what it **can do** — [`dn5-1-ecart-promesses.md`](dn5-1-ecart-promesses.md). | done |

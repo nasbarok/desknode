@@ -1,0 +1,185 @@
+T10 — LES VOLUMETRIES DE L'ARBRE, ANCREES AU COMMIT QU'ELLES DECRIVENT
+==============================================================================
+date     : 2026-09-05T02:12:31
+pris par : subprocess (⛔ jamais le shell de session)
+ancre    : HEAD = 76b031a   ⇒ TOUT CHIFFRE DE CE FICHIER DECRIT CE COMMIT-LA.
+⛔ AUCUN PORT SERIE N'EST OUVERT PAR CETTE CAPTURE.
+==============================================================================
+
+🔴 POURQUOI CETTE CAPTURE, ET POURQUOI UNE ANCRE PLUTOT QU'UNE PROMESSE
+  Le depot a paye QUATRE FOIS le meme defaut : publier un chiffre a cote d'une commande
+  qui resout sur `HEAD`, alors que le chiffre decrivait un AUTRE commit. La parade
+  tentee au premier jet de `dn5-5` — « le chiffre publie est celui de l'arbre qui le
+  porte » — est **IMPOSSIBLE A TENIR POUR LES CHIFFRES DE L'ARBRE ENTIER** : le total
+  des blobs inclut `CONTRIBUTING.md`, dont la taille depend du chiffre qu'on y ecrit.
+  C'est un point fixe, ⛔ pas une regle. ⇒ **LA PARADE QUI TIENT EST L'ANCRE** : chaque
+  chiffre NOMME le commit qu'il decrit, et le lecteur peut le rejouer exactement.
+  ⚠️ Consequence assumee et ecrite : l'arbre qui PORTE la phrase est un commit plus
+     loin, donc legerement plus gros. Ce n'est pas un mensonge, c'est une ancre.
+
+==============================================================================
+1. L'ARBRE ENTIER A `76b031a`
+==============================================================================
+  commande : git ls-tree -r -l 76b031a
+    fichiers versionnes : 603
+    octets              : 46254844   (46.25 Mo decimaux / 44.11 Mio binaires)
+
+  par repertoire de premier niveau :
+          27992816 o  ( 27.99 Mo)  docs
+          10234634 o  ( 10.23 Mo)  mesures
+           3903638 o  (  3.90 Mo)  firmware
+           2058972 o  (  2.06 Mo)  tools
+           1411768 o  (  1.41 Mo)  hardware
+            271650 o  (  0.27 Mo)  agent
+            197400 o  (  0.20 Mo)  README.md
+             60337 o  (  0.06 Mo)  assets
+             42936 o  (  0.04 Mo)  CONTRIBUTING.md
+             35150 o  (  0.04 Mo)  LICENSE
+             17740 o  (  0.02 Mo)  .github
+              8043 o  (  0.01 Mo)  CHANGELOG.md
+              5941 o  (  0.01 Mo)  tests
+              5694 o  (  0.01 Mo)  LICENSING.md
+              4166 o  (  0.00 Mo)  THIRD-PARTY.md
+              3166 o  (  0.00 Mo)  CLA.md
+               793 o  (  0.00 Mo)  .gitignore
+
+  🔴 CE QUE CE TABLEAU CORRIGE — les chiffres publies au premier jet decrivaient
+     l'arbre PARENT (`7246f52`) : 594 fichiers / 46 142 922 o, `docs/` 27 990 273 o,
+     `mesures/` 10 133 104 o. ⛔ Ils ne sont PAS effaces : ils etaient vrais de `7246f52`.
+     Ceux ci-dessus sont vrais de `76b031a`, et ils le disent.
+
+==============================================================================
+2. `mesures/` A `76b031a` — LE CHIFFRE PUBLIE, ET SA CAPTURE
+==============================================================================
+  commande : git ls-tree -r -l 76b031a mesures/
+    >>> 428 fichiers / 10234634 octets
+    >>> 10.23 Mo decimaux (10^6)  /  9.76 Mio binaires (2^20)
+
+  ⇒ C'EST CE COUPLE QUI EST PUBLIE DANS `CONTRIBUTING.md`, aux DEUX endroits qui en
+     parlent (§ *What cloning this costs* et § *Conventions*), avec la MEME ancre.
+     ⛔ Un fichier ne peut pas publier deux valeurs de `mesures/`.
+
+  chaine des chiffres anterieurs, ⛔ aucun efface :
+      · 395 / 9 900 692
+      · 406 / 10 016 839
+      · 416 / 10 116 415
+      · 417 / 10 120 981
+      · 419 / 10 133 104 (= 7246f52)
+
+==============================================================================
+3. L'INVENTAIRE PAR CLASSE DU MOTIF « machine nommee » — ⚠️ ARBRE DE TRAVAIL, ⛔ PAS UN COMMIT
+==============================================================================
+  commande : python3 tools/inventaire_motif_dn53.py
+  motif    : nasbarok|naoua|~/projects|wsl\.localhost
+  ⚠️ 🔴 **CET INSTRUMENT LIT `git ls-files --cached --others`, DONC L'ARBRE DE TRAVAIL :
+     il compte AUSSI les captures de cette marche qui ne sont PAS ENCORE COMMITEES.**
+     ⇒ ces chiffres ⛔ NE SONT PAS ancrables a un commit, contrairement a ceux des
+     sections 1 et 2. C'est la portee de l'outil, et elle est ecrite plutot que subie.
+     Fichiers non suivis presents au moment du tir :
+       ?? mesures/dn5-5/T10-volumetries-arbre-porteur.txt
+       ?? mesures/dn5-5/T8-decomposition-ecart-REFUTE-T3.txt
+       ?? mesures/dn5-5/T9-profondeur-vs-perimetre.txt
+  rc=0
+    ── 1. LES CINQ CLASSES ───────────────────────────────────────────
+      1. dependance FONCTIONNELLE  (le seul defaut)      0 fichiers      0 sites
+      2. exemple d'usage          (declare au site)     20 fichiers     52 sites
+      3. trace de generation      (polices — INTACTES)    5 fichiers      5 sites
+      4. registre de preuves      (mesures/ — INTACT)  133 fichiers   1477 sites
+      5. le motif est le SUJET    (EXCLUSION DECLAREE)    4 fichiers     19 sites
+           TOTAL                                       162 fichiers   1553 sites
+    
+    ── 3. LES EXCLUSIONS, ECRITES ⛔ PAS SILENCIEUSES ─────────────────
+      .github/workflows/cla.yml                  1 site(s)
+          un LOGIN GitHub dans l'URL du CLA — le retirer CASSE le bot
+      CONTRIBUTING.md                            7 site(s)
+          la page qui ENONCE le motif et publie ses comptes (le `git grep`, la phrase sur le motif seul, la declaration des exclusions)
+      docs/dn5-1-ecart-promesses.md              10 site(s)
+          la page qui DOCUMENTE l'ecart — la censurer rendrait le releve illisible
+      tools/inventaire_motif_dn53.py             1 site(s)
+          CET INSTRUMENT — il ecrit le motif pour pouvoir le chercher
+    
+
+  🎯 CE QUE CETTE MARCHE Y A AJOUTE, ET C'EST MESURABLE DIRECTEMENT :
+      git grep -c … 7246f52 -- CONTRIBUTING.md  ->  7246f52:CONTRIBUTING.md:5
+      git grep -c … HEAD     -- CONTRIBUTING.md  ->  HEAD:CONTRIBUTING.md:7
+      ⇒ les DEUX sites neufs sont les **URL DE CLONE** ecrites par cette marche dans
+        `CONTRIBUTING.md`. Ce fichier est une **exclusion declaree** (classe 5) : il
+        enonce le motif, le cite, et publie ses propres comptes.
+      ⚠️ ⛔ LES MOUVEMENTS DES CLASSES 2 ET 4 NE SONT PAS ATTRIBUES ICI : la colonne
+         precedente a ete prise sur un AUTRE arbre, et attribuer un ecart entre deux
+         arbres mesures a des moments differents serait une SUPPOSITION.
+
+==============================================================================
+4. DEUX DEFAUTS DANS LES CAPTURES DE CETTE MARCHE — ECRITS, ⛔ PAS CORRIGES
+==============================================================================
+  ⛔ UNE SORTIE D'OUTIL NE SE RETOUCHE JAMAIS. Les deux defauts ci-dessous restent donc
+     dans les fichiers qui les portent ; ce paragraphe est l'endroit ou un lecteur des
+     captures les rencontre.
+
+  (a) `T0-temoin-port.txt` PUBLIE UN PROFIL UTILISATEUR SOUS UNE LEGENDE QUI DIT LE
+      CAVIARDER. La ligne `python  : C:\Users\…` y porte le nom reel, alors que la
+      legende juste au-dessus annonce « profil utilisateur CAVIARDE — il DOIT etre
+      inchange a T7 » et que `T7-temoin-port.txt` porte, LUI, `C:\Users\<caviarde>\…`.
+      ⇒ **LE TEMOIN SE DEMENT A LA LECTURE COMPAREE** : les deux fichiers different a
+        l'endroit ou le temoin promet l'identite. CAUSE MESUREE : l'expression
+        reguliere de caviardage etait fausse au moment de T0 (les contre-obliques y
+        etaient doublees une fois de trop) ; elle a ete corrigee AVANT T7, ⛔ pas T0
+        re-ecrit. ⇒ **CE QUI PROUVE LA POSSESSION DU PORT RESTE INTACT** : c'est
+        `--serie COM3` et la MONOTONIE de `s mur`/`seq`, ⛔ pas le chemin Python.
+      ⇒ Consequence de comptage, declaree : ce site est compte dans la classe 4
+        (registre de preuves) de l'inventaire ci-dessus.
+
+  (b) `T7-temoin-port.txt` PORTE UN TEMOIN NFR5 AVEUGLE. Sa derniere section joue
+      `git diff --stat -- _bmad-output/…/deferred-work.md` **depuis `desknode`**, ou ce
+      chemin N'EXISTE PAS ⇒ la commande rend VIDE **quoi qu'il arrive**. C'est un
+      controle qui ne peut pas rougir, exactement le defaut que ce depot nomme ailleurs.
+      ⇒ **L'AC TIENT QUAND MEME**, mais par une AUTRE mesure : la bonne commande, jouee
+        dans le cockpit, rend vide — voir la section *Dev Agent Record* du dossier de
+        story, et la gate `tools/verif_ledger_dn416.py` (34 OK / 0 KO) qui garde
+        `deferred-work.md` par son controle #5.
+
+==============================================================================
+5. LA NUMEROTATION DES CAPTURES SAUTE T5 -> T7 — POURQUOI
+==============================================================================
+  Le perimetre de la story nommait des reperes `T0`, `T1`…`T4`, puis `T7` pour le tir
+  d'apres-ecriture. Les reperes intermediaires `T6` n'ont jamais existe ; `T5` a ete
+  ajoute en cours de marche (l'inventaire des porteurs). ⇒ **le saut est un heritage de
+  la numerotation du perimetre, ⛔ pas une capture perdue.** L'inventaire complet du
+  dossier `mesures/dn5-5/` est ci-dessous, tel qu'il sera commite :
+         14009 o  T0-gates-avant.txt
+          4100 o  T0-temoin-port.txt
+         23852 o  T1-clone-complet.txt
+         10093 o  T10-volumetries-arbre-porteur.txt
+         22729 o  T2-clone-depth1.txt
+          6265 o  T3-ecart-du-vs-clone.txt
+          5838 o  T4-volumetries.txt
+          4895 o  T5-inventaire-reste-a-faire.txt
+         14066 o  T7-gates-apres.txt
+          5776 o  T7-temoin-port.txt
+          7189 o  T8-decomposition-ecart-REFUTE-T3.txt
+          4710 o  T9-profondeur-vs-perimetre.txt
+  ⚠️ Ce fichier-ci ne peut pas donner sa propre taille : elle n'est connue qu'une fois
+     ferme. Le total de `mesures/` publie dans `CONTRIBUTING.md` est celui de l'ANCRE
+     `76b031a` (section 2), ⛔ pas celui de l'arbre qui portera ce fichier.
+
+==============================================================================
+6. LE PLUS GROS BLOB DE TOUT L'HISTORIQUE — ⛔ PAS SEULEMENT DE `HEAD`
+==============================================================================
+  L'argument d'AC5.4 porte sur l'HISTORIQUE : un fichier de plus de 100 Mo supprime dans
+  un vieux commit resterait telecharge par tout le monde et resterait invisible a un
+  `git ls-tree HEAD`. La commande qui tranche balaie TOUS les objets de TOUTES les refs :
+
+  commande : git rev-list --objects --all \
+             | git cat-file --batch-check='%(objecttype) %(objectsize) %(rest)' \
+             | awk '$1=="blob"' | sort -k2 -n -r | head -5
+  rc=0
+      blob 5071848 docs/cablage/2026-08-17_0012-breakout-ecarte-barrette-inseree.jpg
+      blob 2493891 docs/cablage/2026-08-17_0012-cablage-4-fils-sous-tension.jpg
+      blob 1812234 docs/cablage/2026-08-19_1718-tof050c-vl6180x-face-capteur-et-sachet.jpg
+      blob 1804073 docs/cablage/2026-08-19_1718-tof050c-vl6180x-face-capteur-et-sachet-2.jpg
+      blob 1754508 docs/cablage/2026-08-19_1719-tof050c-vl6180x-face-broches-et-sachet.jpg
+
+  ⇒ 🎯 **LE PLUS GROS BLOB DE L'HISTORIQUE EST LE MEME QUE CELUI DE `HEAD`** :
+     5 071 848 o. Aucun objet plus gros n'a jamais existe puis ete supprime ⇒ la marge de
+     **19,7x** sous le plafond de 100 Mo vaut pour TOUT l'historique, ⛔ pas seulement
+     pour la version courante. C'est ce qui rend une purge sans objet.
