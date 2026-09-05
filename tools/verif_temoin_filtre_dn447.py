@@ -87,6 +87,12 @@ RACINE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CIBLE_REL = os.path.join("tools", "filtre_constats_dn56.py")
 ARG_CIBLE = "--temoin-seul"
 DELAI = 300
+# ⚠️ LE DELAI FAIT PARTIE DE CE QUE LE MUTANT 7 **SUBSTITUE**, au meme titre
+#    que le chemin : « une cible qui n'en finit pas » est une SITUATION, et on
+#    la monte avec une cible qui dort ET l'echeance qu'elle depasse. ⛔ Ce n'est
+#    pas debrancher la garde — la garde doit toujours NOMMER le depassement
+#    plutot que de le laisser sortir en exception.
+DELAI_MUTANT_7 = 2
 
 # La ligne que l'instrument publie sur TOUS les chemins de `temoins()`.
 # ⚠️ `⇒ TEMOIN :` et ⛔ PAS `⇒ TEMOIN DE L'INSTRUMENT :` — la seconde n'est
@@ -149,10 +155,12 @@ MUTANTS = {
         "ET imprime quand meme 1 ligne [KO ] (le compte MENT)"),
     6: ("fait pointer la cible sur un chemin ABSENT "
         "(une cible introuvable ⛔ ne sort pas verte)"),
+    7: ("substitue a la cible un instrument BIDON qui DORT au-dela de son "
+        "echeance — le depassement doit etre NOMME, ⛔ pas leve en exception"),
 }
 _MUTANT = 0
 
-# ── L'INSTRUMENT BIDON DES MUTANTS 1-5 ─────────────────────────────────────
+# ── L'INSTRUMENT BIDON DES MUTANTS 1-5 ET 7 ────────────────────────────────
 # ⛔ Il n'ecrit ⛔ NI la sentinelle ⛔ NI la banniere de l'instrument reel : un
 #    second porteur ferait tomber ses temoins (a3)/(a4), c'est-a-dire
 #    recreerait d'un cran la panne que `dn5-8` vient de reparer.
@@ -182,38 +190,50 @@ CORPS_BIDON = {
     4: "\n".join([_L_TEMOIN % (0, 0), "sys.exit(0)"]),
     5: "\n".join([_L_OK % " a", _L_KO % " b",
                   _L_TEMOIN % (1, 0), "sys.exit(0)"]),
+    # ⚠️ IL DORT **LONGTEMPS** DEVANT UNE ECHEANCE COURTE, et ⛔ pas l'inverse :
+    #    un bidon qui dort « juste un peu plus » rendrait le mutant sensible a
+    #    la charge de la machine. Le tir coute `DELAI_MUTANT_7` secondes.
+    7: "import time\ntime.sleep(300)",
 }
 
 
 def cible():
     """Le chemin joue. Sous mutant, c'est une SUBSTITUTION — ⛔ jamais une
-    variable interne falsifiee. Rend (chemin, etiquette, repertoire jetable)."""
+    variable interne falsifiee. Rend (chemin, etiquette, jetable, echeance)."""
     reel = os.path.join(RACINE, CIBLE_REL)
     if _MUTANT in CORPS_BIDON:
         d = tempfile.mkdtemp(prefix="dn447-bidon-")
         faux = os.path.join(d, "instrument_bidon.py")
         io.open(faux, "w", encoding="utf-8").write(BIDON % CORPS_BIDON[_MUTANT])
-        return faux, ("<instrument BIDON du mutant %d, substitue a %s>"
-                      % (_MUTANT, CIBLE_REL)), d
+        return (faux, ("<instrument BIDON du mutant %d, substitue a %s>"
+                       % (_MUTANT, CIBLE_REL)), d,
+                DELAI_MUTANT_7 if _MUTANT == 7 else DELAI)
     if _MUTANT == 6:
         d = tempfile.mkdtemp(prefix="dn447-absent-")
         faux = os.path.join(d, "n-existe-pas", CIBLE_REL)
-        return faux, ("<chemin ABSENT du mutant 6, substitue a %s>"
-                      % CIBLE_REL), d
-    return reel, CIBLE_REL, None
+        return (faux, ("<chemin ABSENT du mutant 6, substitue a %s>"
+                       % CIBLE_REL), d, DELAI)
+    return reel, CIBLE_REL, None, DELAI
 
 
-def lance(chemin):
+def lance(chemin, delai):
     """⛔ RIEN NE SORT D'ICI EN EXCEPTION. Une gate qui meurt sur un timeout ou
     une trace nue est exactement ce que cette gate existe pour NOMMER — elle
-    ⛔ ne doit pas mourir de la meme facon."""
+    ⛔ ne doit pas mourir de la meme facon.
+
+    ⚠️ LE DEPASSEMENT EST EXERCE par le mutant 7, qui le REPLANTE. La branche
+    `OSError`, elle, est DEFENSIVE et ⛔ n'est exercee par aucun mutant : la
+    monter demanderait de casser l'interpreteur ou le `cwd`, c'est-a-dire de
+    debrancher autre chose que ce que ce controle garde. C'est ECRIT plutot
+    que tu — elle rend la MEME forme que la branche du timeout, qui, elle,
+    est vue rougir."""
     try:
         r = subprocess.run([sys.executable, chemin, ARG_CIBLE], cwd=RACINE,
-                           timeout=DELAI, stdout=subprocess.PIPE,
+                           timeout=delai, stdout=subprocess.PIPE,
                            stderr=subprocess.STDOUT)
         return r.returncode, r.stdout.decode("utf-8", "replace")
     except subprocess.TimeoutExpired:
-        return None, "⛔ TIMEOUT apres %d s — l'instrument n'en finit pas." % DELAI
+        return None, "⛔ TIMEOUT apres %d s — l'instrument n'en finit pas." % delai
     except OSError as e:
         return None, "⛔ IMPOSSIBLE A LANCER : %s" % e
 
@@ -249,7 +269,7 @@ def main():
           + ("   [MUTANT %d]" % _MUTANT if _MUTANT else ""))
     print("=" * 78)
 
-    chemin, etiq, jetable = cible()
+    chemin, etiq, jetable, delai = cible()
     try:
         print("\n── (c1) LA CIBLE EST **NOMMEE**, ET ELLE EXISTE ──────────────────")
         print("  cible      : %s" % etiq)
@@ -262,8 +282,9 @@ def main():
             return bilan(1)
 
         print("\n── L'INSTRUMENT EST JOUE — ⛔ RIEN N'EST RE-MESURE ICI ───────────")
-        print("  commande   : python3 %s %s" % (etiq, ARG_CIBLE))
-        rc, sortie = lance(chemin)
+        print("  commande   : python3 %s %s   (echeance %d s)"
+              % (etiq, ARG_CIBLE, delai))
+        rc, sortie = lance(chemin, delai)
         # 🔴 LE `rc` EST UNE **OBSERVATION**, ⛔ JAMAIS UN VERDICT. Un banc qui
         #    juge sur le `rc` global reste vert des qu'un AUTRE echec rend la
         #    meme valeur — et l'instrument MORT rend precisement `1`.
