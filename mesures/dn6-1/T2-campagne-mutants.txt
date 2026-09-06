@@ -1,0 +1,104 @@
+==============================================================================
+dn6-1 — T2 : LA CAMPAGNE DE MUTANTS, ET LA RECIPROQUE
+==============================================================================
+date       : 2026-09-06
+regle      : un mutant REPLANTE une faute EN MEMOIRE. ⛔ Aucun ne debranche
+             un controle, aucun ne touche le disque.
+contrat    : rc=1 · ligne BILAN imprimee PAR LA GATE · au moins un [KO ]
+
+=== (1) SANS MUTANT =========================================================
+  rc=0  ·  BILAN : 19 OK, 0 KO  ·  19 controles emis
+
+=== (2) CHAQUE MUTANT, ET LE(S) CONTROLE(S) QU'IL FAIT ROUGIR ===============
+  mutant  1  rc=1  ROUGE
+             ⇒ toute ligne a prix porte sa DATE de releve
+  mutant  2  rc=1  ROUGE
+             ⇒ toute ligne a prix porte son URL SOURCE
+  mutant  3  rc=1  ROUGE
+             ⇒ toute ligne SANS prix le DECLARE
+  mutant  4  rc=1  ROUGE
+             ⇒ le palier « DeskNode + Ambiance » est nomme
+  mutant  5  rc=1  ROUGE
+             ⇒ INA219 est NOMME dans le document
+             ⇒ INA219 porte un MOTIF d'exclusion
+  mutant  6  rc=1  ROUGE
+             ⇒ VL6180X porte un MOTIF d'exclusion
+  mutant  7  rc=1  ROUGE
+             ⇒ elle cite son STATUT
+  mutant  8  rc=1  ROUGE
+             ⇒ la page DECLARE si elle porte des liens affilies
+  mutant  9  rc=1  ROUGE
+             ⇒ ⛔ aucun jalon CHIFFRE n'est publie
+  mutant 10  rc=1  ROUGE
+             ⇒ toute ligne SANS prix le DECLARE
+             ⇒ INA219 est HORS des sections de palier
+  mutant 11  rc=1  ROUGE
+             ⇒ le document n'est pas vide
+  mutant 12  rc=1  ROUGE
+             ⇒ aucune table a prix hors du controle
+  mutant 13  rc=1  ROUGE
+             ⇒ le palier « DeskNode » est nomme
+  mutant 14  rc=1  ROUGE
+             ⇒ VL6180X est NOMME dans le document
+             ⇒ VL6180X porte un MOTIF d'exclusion
+  mutant 15  rc=1  ROUGE
+             ⇒ toute ligne SANS prix le DECLARE
+             ⇒ VL6180X est HORS des sections de palier
+  mutant 16  rc=1  ROUGE
+             ⇒ la BOM cite la marche `dn4-41`
+             ⇒ elle cite son STATUT
+             ⇒ elle cite une DATE de relecture
+  mutant 17  rc=1  ROUGE
+             ⇒ elle cite une DATE de relecture
+  mutant 18  rc=1  ROUGE
+             ⇒ aucune table a prix hors du controle
+  mutant 19  rc=1  ROUGE
+             ⇒ au moins une table SE DECLARE table de BOM
+
+  ⇒ 19 mutants · 19 conformes · 0 non conforme
+
+=== (3) 🔴 LA RECIPROQUE — QUEL CONTROLE EST GARDE PAR QUOI ? ===============
+  « N mutants vus rougir » prouve `mutant ⇒ rouge`, ⛔ JAMAIS
+  `controle ⇒ couvert`. Ce tableau-ci repond a l'AUTRE sens, et c'est LUI
+  qui a produit tout le travail utile de cette campagne :
+    · passe 1 — 11 mutants, 11 rouges, et CINQ controles gardes par RIEN
+      ⇒ mutants 12 a 17 ecrits pour eux ;
+    · passe 2 — le mutant 12 est sorti VERT. ⛔ Ce n'etait PAS le mutant
+      qui etait faux, c'etait LA GATE : une table qui perd son en-tete
+      `Date`/`Source` SORTAIT du controle avec toutes ses lignes, et la
+      gate restait verte — elle RETRECISSAIT SA PROPRE POPULATION en
+      silence ⇒ controle (c1c) ecrit, avec une exception FALSIFIABLE ;
+    · passe 3 — le jeton d'exemption etant LUI-MEME une echappatoire, le
+      mutant 18 le vide et exige qu'il n'exempte plus rien ;
+    · passe 4 — (c1b) restait nu : le mutant 12 ne retire l'en-tete que
+      d'UNE table sur trois, et il en faut ZERO pour l'atteindre.
+      ⇒ mutant 19, qui les retire TOUTES.
+
+  [garde ] le document n'est pas vide
+  [garde ] au moins une table SE DECLARE table de BOM
+  [garde ] aucune table a prix hors du controle
+  [garde ] le palier « DeskNode » est nomme
+  [garde ] le palier « DeskNode + Ambiance » est nomme
+  [garde ] toute ligne a prix porte sa DATE de releve
+  [garde ] toute ligne a prix porte son URL SOURCE
+  [garde ] toute ligne SANS prix le DECLARE
+  [garde ] VL6180X est NOMME dans le document
+  [garde ] VL6180X est HORS des sections de palier
+  [garde ] VL6180X porte un MOTIF d'exclusion
+  [garde ] INA219 est NOMME dans le document
+  [garde ] INA219 est HORS des sections de palier
+  [garde ] INA219 porte un MOTIF d'exclusion
+  [garde ] la BOM cite la marche `dn4-41`
+  [garde ] elle cite son STATUT
+  [garde ] elle cite une DATE de relecture
+  [garde ] la page DECLARE si elle porte des liens affilies
+  [garde ] ⛔ aucun jalon CHIFFRE n'est publie
+
+  ⇒ 19 controles · 19 gardes · 0 NU(S)
+  ✅ CHAQUE controle emis est replante par au moins un mutant.
+
+=== (4) ⛔ CE QUE CETTE CAMPAGNE NE PROUVE PAS ===============================
+  ⛔ Elle ne dit RIEN de la VERITE des prix publies : la gate ne va sur
+     aucun reseau. Un prix faux mais date et source la laisse VERTE.
+  ⛔ Elle ne prouve pas que les controles soient les BONS — seulement que
+     ceux qui existent attrapent ce qu'ils disent attraper.

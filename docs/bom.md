@@ -37,6 +37,10 @@ fabricant, et c'est écrit plutôt que tu.
 Waveshare vend **plusieurs cartes qui portent presque le même nom**. Relevé le 2026-09-06, **sur la
 même page de résultats** :
 
+<!-- ⛔ PAS UNE TABLE DE BOM : table de COMPARAISON. Elle porte deux prix pour
+     montrer que la mauvaise carte est la moins chère — ⛔ elle ne propose rien
+     à l'achat, et les deux prix sont datés dans la phrase qui la précède. -->
+
 | Ce que tu veux | Ce que tu risques de prendre |
 |---|---|
 | `ESP32-S3-Touch-LCD-2.8**B**` — **480 × 640**, Type B — **26,77 €** | `ESP32-S3-Touch-LCD-2.8` — **240 × 320** — **23,08 €** |
@@ -123,10 +127,10 @@ Ces deux modules sont visibles sur les photos et présents dans le dossier de me
 **dans aucun palier**, et voici **pourquoi** — ⛔ un composant du prototype absent de cette page
 sans motif écrit serait un défaut.
 
-| Module | Référence exacte | Prix relevé | Pourquoi il n'est **pas** au catalogue |
-|---|---|---|---|
-| Capteur de distance | **TOF050C-VL6180X** (⛔ **PAS** un VL53L0X) | 3,21 € le 2026-09-06 | 🔴 **L'exemplaire testé est doublement défaillant** : son **étage analogique est mort** — aucune réaction à une variation de lumière de **~2 280×**, alors que son étage numérique répond parfaitement — **et** sa présence **empêche la carte de démarrer** (écran noir, processeur arrêté, plus d'USB). ⇒ ⛔ hors V1. |
-| Capteur de courant | **INA219**, module **CJMCU** (shunt `R100`, 0,1 Ω) | médiane 1,87 € (3 annonces) le 2026-09-06 | Décision projet : **pas maintenant**. Il a été **physiquement retiré du bus le 2026-08-21** et la lecture correspondante supprimée du code. ⇒ la consommation **ne sera pas mesurée en V1**. |
+| Module | Référence exacte | Prix relevé | Date du relevé | Source | Pourquoi il n'est **pas** au catalogue |
+|---|---|---|---|---|---|
+| Capteur de distance | **TOF050C-VL6180X** (⛔ **PAS** un VL53L0X) | **3,21 €** (1 annonce le nommant explicitement) | 2026-09-06 | `https://www.aliexpress.com/w/wholesale-TOF050C-VL6180X.html` | 🔴 **L'exemplaire testé est doublement défaillant** : son **étage analogique est mort** — aucune réaction à une variation de lumière de **~2 280×**, alors que son étage numérique répond parfaitement — **et** sa présence **empêche la carte de démarrer** (écran noir, processeur arrêté, plus d'USB). ⇒ ⛔ hors V1. |
+| Capteur de courant | **INA219**, module **CJMCU** (shunt `R100`, 0,1 Ω) | médiane **1,87 €** (3 annonces, 1,80 – 2,41 €) | 2026-09-06 | `https://www.aliexpress.com/w/wholesale-INA219-CJMCU.html` | Décision projet : **pas maintenant**. Il a été **physiquement retiré du bus le 2026-08-21** et la lecture correspondante supprimée du code. ⇒ la consommation **ne sera pas mesurée en V1**. |
 
 🔴 **Piège si tu cherches un INA219 toi-même** : sur 12 résultats relevés, **9 étaient des puces
 nues** à souder (boîtiers SOP8, SOIC-8, SC70-6) — jusqu'à 41,68 € pour un sachet de 50. Ce que tu
