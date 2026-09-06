@@ -1,0 +1,99 @@
+==============================================================================
+dn6-1 — T1 : LE RELEVE DE PRIX, SOURCE PAR SOURCE
+==============================================================================
+date       : 2026-09-06
+desknode   : cf6230a386a52bc7b585e18d2f4564aa67abf402
+methode    : recuperation automatisee de la page publique, ⛔ jamais un prix
+             de memoire, ⛔ jamais une estimation. Chaque echec est ECRIT.
+
+=== (1) LES SOURCES QUI N'ONT PAS REPONDU ===================================
+
+⛔ https://www.waveshare.com/esp32-s3-touch-lcd-2.8b.htm      HTTP 403
+   ⚠️ CONCORDANT avec le dossier materiel, qui ecrit deja que le wiki
+      officiel `waveshare.com/wiki/...` rend 403 a toute recuperation
+      automatisee (ESP32-S3-Touch-LCD-2.8B-affichage.md, §14.1).
+   ⇒ LE PRIX OFFICIEL DU FABRICANT N'EST PAS RELEVABLE PAR CE CHEMIN.
+
+⛔ https://www.berrybase.de/en/search?q=ESP32-S3-Touch-LCD-2.8B
+   page rendue, ⛔ AUCUNE fiche produit — que des filtres et de la navigation
+⛔ https://www.mouser.fr/c/?q=BME680                          timeout 60 s
+⛔ https://www.tinytronics.nl/en/search?query=BH1750          HTTP 403
+⛔ https://www.tinytronics.nl/en/search?query=BME680          HTTP 403
+⛔ https://www.gotronic.fr/recherche.htm?recherche=BME680     HTTP 404
+⛔ https://www.welectron.com/en/search?sSearch=...            HTTP 404
+⛔ https://eckstein-shop.de/en/search?sSearch=...             HTTP 403
+⛔ https://octopart.com/search?q=BH1750                       HTTP 403
+⛔ https://www.adafruit.com/product/3660                      HTTP 403
+⛔ https://thepihut.com/search?q=BME680        page rendue, « No results found »
+
+⇒ 10 SOURCES TENTEES, 10 SANS PRIX. ⛔ Ce n'est PAS une absence de prix sur
+  le marche : c'est une absence de prix ATTEIGNABLE par ce chemin. La
+  distinction est ecrite parce qu'elle change ce que la BOM peut affirmer.
+
+=== (2) LES SOURCES QUI ONT REPONDU =========================================
+
+✅ https://www.aliexpress.com/w/wholesale-<requete>.html   prix en EUR
+✅ https://shop.pimoroni.com/products/bme680-breakout      prix en GBP
+
+⚠️ Les titres reviennent en PORTUGAIS (localisation de la reponse). Les
+   PRIX, eux, sont annonces en EUR. Le fait est note parce qu'il dit que la
+   page servie n'est pas la page francaise — ⛔ pas que le prix est faux.
+
+=== (3) CE QUI A ETE RELEVE, ET CE QUE ÇA DONNE =============================
+
+--- CARTE — Waveshare ESP32-S3-Touch-LCD-2.8B (Type B, 480x640) ------------
+  2 annonces nomment le Type B / 480x640 :
+     26,77 €   « Waveshare ESP32-S3-LCD-2.8B ... Tipo B, 480x640, IPS »
+     27,88 €   « Waveshare ESP32-S3-LCD-2.8 ... tipo B, 480 x 640, IPS »
+  min/max  : 26,77 / 27,88     mediane = moyenne : 27,32 €
+
+  🔴 LE PIEGE D'ACHAT EST VISIBLE DANS LA MEME PAGE, ET IL EST CHIFFRE :
+     23,08 €   « Waveshare ESP32-S3-LCD-2.8 ... 240 x 320, IPS »
+     ⇒ LA MAUVAISE CARTE EST LA MOINS CHERE — 3,69 € d'ecart. Quelqu'un qui
+       trie par prix croissant prend le 240x320. ⛔ Ce n'est pas la carte de
+       ce projet : la dalle de DeskNode est 480x640.
+
+--- BME680 (breakout type CJMCU-680) ---------------------------------------
+  n = 10 annonces (BME688 et BME280 ECARTES a la lecture des titres)
+  7,77 · 7,81 · 8,21 · 9,04 · 11,70 · 11,79 · 13,73 · 13,80 · 13,95 · 16,96
+  min/max  : 7,77 / 16,96      mediane : 11,74 €      moyenne : 11,48 €
+
+  Alternative europeenne RELEVEE, ⛔ produit DIFFERENT :
+     Pimoroni « BME680 Breakout » 11,05 GBP (hors TVA, barre a 15,75)
+     ⇒ breakout de marque, ⛔ pas le module violet 6 broches du prototype.
+
+--- BH1750 (module GY-302) -------------------------------------------------
+  n = 10 annonces
+  1,45 · 1,49 · 1,76 · 1,78 · 1,86 · 1,99 · 2,33 · 2,81 · 3,78 · 14,62
+  min/max  : 1,45 / 14,62      mediane : 1,93 €       moyenne : 3,39 €
+
+  🔴 LA MOYENNE MENT ICI, ET C'EST MESURE. Une annonce a 14,62 € (lot ou
+     erreur de prix) TIRE la moyenne de 2,14 a 3,39 € — +58 % — alors que la
+     mediane ne bouge que de 1,86 a 1,93 €.
+       sans l'aberrante (n=9) : min 1,45 / max 3,78 / mediane 1,86 / moy 2,14
+     ⇒ SUR UNE PLACE DE MARCHE, C'EST LA MEDIANE QUI TRANCHE, ⛔ PAS LA
+       MOYENNE. La BOM publie la mediane, et dit qu'elle le fait.
+
+--- VL6180X — TOF050C-VL6180X (⛔ HORS PALIER) ------------------------------
+  UNE SEULE annonce nomme explicitement « TOF050C-VL6180X » :  3,21 €
+  ⚠️ Les 9 autres sont des annonces MULTI-VARIANTES (TOF050C / TOF200C /
+     TOF400C, VL6180 / VL53L0X / VL53L1X dans le meme titre) : leur prix
+     affiche depend de la variante choisie ⇒ ⛔ NON COMPARABLE, non retenu.
+
+--- INA219 (module CJMCU, ⛔ HORS PALIER) -----------------------------------
+  3 annonces sont des MODULES breakout : 1,80 · 1,87 · 2,41
+  min/max  : 1,80 / 2,41       mediane : 1,87 €       moyenne : 2,03 €
+  🔴 PIEGE : 9 des 12 resultats sont des PUCES NUES (SOP8 / SOIC-8 /
+     SC70-6), pas des modules — jusqu'a 41,68 € pour un sachet de 50 pieces.
+     Trier par nom seul melange une puce a souder et une carte prete.
+
+=== (4) CE QUE CE RELEVE NE DIT PAS =========================================
+
+⛔ Il ne dit RIEN du port, des taxes a l'import, ni du delai. Les prix
+   d'une place de marche sont HORS livraison sauf mention contraire.
+⛔ Il ne dit RIEN du prix officiel Waveshare : la source rend 403.
+⛔ Il ne dit RIEN de la DUREE de validite : un prix de place de marche
+   change sans preavis — c'est POUR ÇA que la date est publiee avec lui.
+⛔ Aucune annonce n'a ete OUVERTE une par une : les prix sont ceux de la
+   page de resultats. Une fiche produit peut porter des variantes moins
+   cheres ou plus cheres.

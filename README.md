@@ -37,6 +37,10 @@ configuration affiche — et ce qu'elle **ne peut pas** afficher. ⛔ Rien n'y e
 ⛔ **La carte seule n'est pas un mode dégradé.** C'est une configuration **valide et gardée** : le
 firmware sait qu'il n'a pas de capteur, il le **dit**, et il **désarme** ce qui n'a plus d'entrée.
 
+📦 **Références exactes, quantités et prix datés : [ce qu'il faut acheter](docs/bom.md).** Cette page
+dit aussi **quelle carte NE PAS prendre** — Waveshare en vend trois aux noms presque identiques, et
+la mauvaise est la moins chère.
+
 ### 🔴 L'ÉCRAN PARLE **ANGLAIS PAR DÉFAUT**, ET LE FRANÇAIS SE PREND AU DOIGT
 
 | | |
