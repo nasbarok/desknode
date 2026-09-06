@@ -10,6 +10,16 @@ Work towards the first public release, `v0.1.0-beta`.
 
 ### Added
 
+- **A purchasing page** ([`docs/bom.md`](docs/bom.md)) — what to buy for each of the two
+  named tiers, every line carrying a reference, a supplier, a price, **the date the price
+  was read** and **the source URL**. Sources that could not be reached are listed one by
+  one with the exact address tried, the date and the failure; ⛔ no price is reconstructed.
+- **A gate over that page's shape** (`tools/verif_bom_dn61.py`, run by `tools/run_gates.sh`
+  and replayed mutant by mutant by `tools/verif_campagne_dn56.py`): the seven fields per
+  line, the two tier names, the out-of-tier components and their written reasons, the
+  citation of `dn4-41`'s state, and the affiliate-link declaration. It deliberately judges
+  **no price** — only that a price carries its date and its source.
+
 - **Licensing.** GPL-3.0-or-later for `firmware/`, MIT for `agent/`, CC-BY-SA-4.0 for
   `docs/`. See [`LICENSING.md`](LICENSING.md).
 - **Third-party inventory** (`THIRD-PARTY.md`) — necessary because

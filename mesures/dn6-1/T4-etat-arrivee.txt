@@ -1,0 +1,88 @@
+dn6-1 / T4 — ETAT D'ARRIVEE, MESURE APRES LA REVUE DU 2026-09-07
+==============================================================================
+
+⛔ POURQUOI CE FICHIER EXISTE : `T0` capturait l'AVANT et RIEN ne capturait
+   l'APRES. C'est exactement ce qui a laissé passer le défaut ci-dessous —
+   `T0` écrivait « 23 OK / 10 KO » de la seule gate rouge, et personne n'a
+   recompté après. ⇒ une borne de départ sans borne d'arrivée ne mesure rien.
+
+------------------------------------------------------------------------------
+1. LE DEFAUT QUE LA REVUE A TROUVE, ET QU'AUCUNE COULEUR NE MONTRAIT
+------------------------------------------------------------------------------
+
+`docs/bom.md` a introduit une occurrence NOUVELLE dans le corpus qu'arbitre
+`tools/verif_dossier_dn415.py` — sa mise en garde d'achat nomme le modèle
+voisin du capteur ToF pour dire que ⛔ ce n'est PAS lui.
+
+⚠️ LE TEXTE DE LA BOM EST JUSTE. C'est le MANIFESTE qui n'avait pas été tenu.
+
+🎯 ET VOICI CE QUI REND CE DEFAUT INVISIBLE : la gate était DEJA ROUGE, pour
+   une dérive du cockpit sans rapport. Le bilan publiait « 30 VERTE, 1 ROUGE »
+   AVANT et APRES. ⛔ Sur une gate déjà rouge, la COULEUR ne dit RIEN — seul
+   le COMPTE de KO tranche.
+
+   arbre au cadrage (cf6230a) ......... 23 OK / 10 KO
+   arbre a la livraison ............... 23 OK / 11 KO      <-- +1, invisible
+   ligne en cause ..... desknode:docs/bom.md [<motif ToF>] #1 (l.132)
+
+------------------------------------------------------------------------------
+2. CE QUE CA COUTAIT REELLEMENT : LA CI TOMBAIT
+------------------------------------------------------------------------------
+
+Le cockpit est un depot PRIVE, ⛔ jamais cloné à côté du code. Sur le runner
+il est donc ABSENT, et `tools/run_gates.sh` déclare pour cette gate un
+`rc attendu = 4` (« prérequis absent »), ce qui la range en [NON-JOUABLE].
+
+Mesure, les deux arbres extraits au `git archive` dans le MEME environnement,
+`HOME` étranger (la seule configuration qui reproduit un runner) :
+
+   cadrage  cf6230a  cockpit absent ....  25 OK,  0 KO   rc=4   [NON-JOUABLE]
+   livraison 3a949a3 cockpit absent ....  23 OK,  3 KO   rc=1   [ROUGE]
+                                                    ⛔ DECLARATION DEMENTIE
+
+   `.github/workflows/gates.yml:208` lance `bash tools/run_gates.sh` sur
+   `push` ET `pull_request`, avec ⛔ AUCUN `continue-on-error` et ⛔ aucun
+   `|| true` (le fichier l'écrit lui-même, l.206). ⇒ le job ECHOUAIT.
+
+⚠️ Les TROIS KO venaient de LA SEULE occurrence de `docs/bom.md`.
+
+------------------------------------------------------------------------------
+3. LE GESTE, ET SA MESURE
+------------------------------------------------------------------------------
+
+UNE ligne ajoutée au manifeste `docs/dn4-15-arbitrage.md`, verdict `VRAI`, plus
+la mise à jour de ses trois récapitulatifs (TOTAL, VRAI, motif) — que la gate
+confronte elle aussi.
+
+⛔ CE N'EST PAS « régénérer le manifeste d'autrui » : c'est déclarer SA PROPRE
+   occurrence, le geste que le message de la gate prescrit.
+
+   arbre corrige, cockpit PRESENT .....  23 OK / 10 KO   = le compte du cadrage
+   arbre corrige, cockpit ABSENT ......  25 OK /  0 KO   rc=4  [NON-JOUABLE]
+
+------------------------------------------------------------------------------
+4. LA PASSE COMPLETE, APRES
+------------------------------------------------------------------------------
+
+   bash tools/run_gates.sh
+   -> BILAN : 30 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 32 gates (226s)
+      ⛔ ROUGES : tools/verif_dossier_dn415.py (rc=1)  -- 23 OK / 10 KO
+      = MEME couleur ET MEME COMPTE qu'au cadrage.
+
+   python3 tools/verif_bom_dn61.py ............. 24 OK, 0 KO      rc=0
+   campagne ................ 31 mutants · 31 conformes · 0 non conforme
+   reciproque .............. 26 controles · 26 gardes · 0 NU
+   python3 tools/verif_campagne_dn56.py ........  8 OK, 0 KO
+   python3 tools/verif_licences_dn52.py ........ 34 OK, 0 KO
+   git diff --stat hardware/ firmware/ agent/ .. VIDE   (AC-G2)
+
+------------------------------------------------------------------------------
+5. LA LECON, ECRITE POUR LA PROCHAINE MARCHE
+------------------------------------------------------------------------------
+
+⛔ Le garde-fou « le compte de ROUGES n'augmente pas » est AVEUGLE sur une
+   gate deja rouge. `AC-G2` etait tenue A LA LETTRE (1 ROUGE avant, 1 ROUGE
+   apres) et VIOLEE EN FAIT (10 KO -> 11).
+
+⇒ sur toute gate deja rouge, relever le COMPTE DE KO, ⛔ pas la couleur. Et
+  prendre une borne d'ARRIVEE, ⛔ pas seulement une borne de depart.

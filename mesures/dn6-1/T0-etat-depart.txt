@@ -35,3 +35,17 @@ desknode   : cf6230a386a52bc7b585e18d2f4564aa67abf402  (HEAD au cadrage)
      ligne, entre l'arbre cockpit PUR de HEAD et l'arbre reel (protocole
      `--cockpit` + `git archive HEAD`). ⛔ Elle n'est pas de cette marche,
      et ⛔ elle n'est pas refermee par elle.
+
+
+==============================================================================
+🔴 ANNOTE LE 2026-09-07 PAR LA REVUE DE `dn6-1` — ⛔ RIEN N'EST EFFACE (NFR3)
+==============================================================================
+
+Le chiffre « 23 OK / 10 KO » ci-dessus etait VRAI **au cadrage**, et il l'est
+reste jusqu'a ce que `docs/bom.md` existe. Ce que cette capture ne pouvait pas
+dire, c'est qu'elle serait la SEULE : aucune borne d'ARRIVEE n'a ete prise, et
+le compte est passe a **11 KO** sans que rien ne rougisse — la gate etait deja
+rouge, donc la COULEUR n'a pas bouge.
+
+⇒ la borne d'arrivee est desormais `T4-etat-arrivee.txt`, et le compte est
+  revenu a 10 KO. ⛔ « PREEXISTANTE » ne veut pas dire « INCHANGEE ».

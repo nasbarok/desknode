@@ -1,104 +1,113 @@
+dn6-1 / T2 — CAMPAGNE DE MUTANTS, ET SA RECIPROQUE
 ==============================================================================
-dn6-1 — T2 : LA CAMPAGNE DE MUTANTS, ET LA RECIPROQUE
-==============================================================================
-date       : 2026-09-06
-regle      : un mutant REPLANTE une faute EN MEMOIRE. ⛔ Aucun ne debranche
-             un controle, aucun ne touche le disque.
-contrat    : rc=1 · ligne BILAN imprimee PAR LA GATE · au moins un [KO ]
+Rejoue le 2026-09-07, APRES la revue. ⛔ Ce n'est pas une capture unique :
+`verif_campagne_dn56.py` decouvre cette gate a l'AST et la rejoue a chaque passe.
 
-=== (1) SANS MUTANT =========================================================
-  rc=0  ·  BILAN : 19 OK, 0 KO  ·  19 controles emis
+⚠️ CE QU'UNE CAMPAGNE PROUVE, ET CE QU'ELLE NE PROUVE PAS
+   « N mutants, N vus rougir » prouve `mutant => rouge`. ⛔ Il ne prouve PAS
+   `controle => couvert` : c'est le sens INVERSE, et il se mesure a part.
+   La reciproque ci-dessous est cette seconde mesure.
 
-=== (2) CHAQUE MUTANT, ET LE(S) CONTROLE(S) QU'IL FAIT ROUGIR ===============
-  mutant  1  rc=1  ROUGE
-             ⇒ toute ligne a prix porte sa DATE de releve
-  mutant  2  rc=1  ROUGE
-             ⇒ toute ligne a prix porte son URL SOURCE
-  mutant  3  rc=1  ROUGE
-             ⇒ toute ligne SANS prix le DECLARE
-  mutant  4  rc=1  ROUGE
-             ⇒ le palier « DeskNode + Ambiance » est nomme
-  mutant  5  rc=1  ROUGE
-             ⇒ INA219 est NOMME dans le document
-             ⇒ INA219 porte un MOTIF d'exclusion
-  mutant  6  rc=1  ROUGE
-             ⇒ VL6180X porte un MOTIF d'exclusion
-  mutant  7  rc=1  ROUGE
-             ⇒ elle cite son STATUT
-  mutant  8  rc=1  ROUGE
-             ⇒ la page DECLARE si elle porte des liens affilies
-  mutant  9  rc=1  ROUGE
-             ⇒ ⛔ aucun jalon CHIFFRE n'est publie
-  mutant 10  rc=1  ROUGE
-             ⇒ toute ligne SANS prix le DECLARE
-             ⇒ INA219 est HORS des sections de palier
-  mutant 11  rc=1  ROUGE
-             ⇒ le document n'est pas vide
-  mutant 12  rc=1  ROUGE
-             ⇒ aucune table a prix hors du controle
-  mutant 13  rc=1  ROUGE
-             ⇒ le palier « DeskNode » est nomme
-  mutant 14  rc=1  ROUGE
-             ⇒ VL6180X est NOMME dans le document
-             ⇒ VL6180X porte un MOTIF d'exclusion
-  mutant 15  rc=1  ROUGE
-             ⇒ toute ligne SANS prix le DECLARE
-             ⇒ VL6180X est HORS des sections de palier
-  mutant 16  rc=1  ROUGE
-             ⇒ la BOM cite la marche `dn4-41`
-             ⇒ elle cite son STATUT
-             ⇒ elle cite une DATE de relecture
-  mutant 17  rc=1  ROUGE
-             ⇒ elle cite une DATE de relecture
-  mutant 18  rc=1  ROUGE
-             ⇒ aucune table a prix hors du controle
-  mutant 19  rc=1  ROUGE
-             ⇒ au moins une table SE DECLARE table de BOM
+-- CHEMIN NORMAL --
+   rc=0   BILAN : 24 OK, 0 KO
 
-  ⇒ 19 mutants · 19 conformes · 0 non conforme
+-- 1. CAMPAGNE : chaque mutant REPLANTE une faute et doit etre VU ROUGIR --
+   contrat de `verif_campagne_dn56.py` : rc == 1, une ligne BILAN imprimee
+   PAR LA GATE, et au moins une ligne [KO ].
 
-=== (3) 🔴 LA RECIPROQUE — QUEL CONTROLE EST GARDE PAR QUOI ? ===============
-  « N mutants vus rougir » prouve `mutant ⇒ rouge`, ⛔ JAMAIS
-  `controle ⇒ couvert`. Ce tableau-ci repond a l'AUTRE sens, et c'est LUI
-  qui a produit tout le travail utile de cette campagne :
-    · passe 1 — 11 mutants, 11 rouges, et CINQ controles gardes par RIEN
-      ⇒ mutants 12 a 17 ecrits pour eux ;
-    · passe 2 — le mutant 12 est sorti VERT. ⛔ Ce n'etait PAS le mutant
-      qui etait faux, c'etait LA GATE : une table qui perd son en-tete
-      `Date`/`Source` SORTAIT du controle avec toutes ses lignes, et la
-      gate restait verte — elle RETRECISSAIT SA PROPRE POPULATION en
-      silence ⇒ controle (c1c) ecrit, avec une exception FALSIFIABLE ;
-    · passe 3 — le jeton d'exemption etant LUI-MEME une echappatoire, le
-      mutant 18 le vide et exige qu'il n'exempte plus rien ;
-    · passe 4 — (c1b) restait nu : le mutant 12 ne retire l'en-tete que
-      d'UNE table sur trois, et il en faut ZERO pour l'atteindre.
-      ⇒ mutant 19, qui les retire TOUTES.
+   1   rc=1  1 KO  conforme
+       replante : retire la DATE de la 1re ligne de BOM qui porte un prix (un prix nu se perime sans le dire)
+   2   rc=1  1 KO  conforme
+       replante : retire l'URL SOURCE de la 1re ligne de BOM qui porte un prix
+   3   rc=1  1 KO  conforme
+       replante : vide la colonne Prix d'une ligne qui n'en a pas (le trou MUET, ⛔ plus la declaration)
+   4   rc=1  1 KO  conforme
+       replante : renomme le palier « DeskNode + Ambiance » en « DeskNode Pro »
+   5   rc=1  2 KO  conforme
+       replante : supprime la ligne INA219 (un composant du prototype absent SANS motif)
+   6   rc=1  1 KO  conforme
+       replante : vide le motif d'exclusion du VL6180X (present, mais sans le POURQUOI)
+   7   rc=1  1 KO  conforme
+       replante : remplace la citation d'etat de `dn4-41` par une affirmation acquise (statut et date retires)
+   8   rc=1  1 KO  conforme
+       replante : supprime la declaration de liens affilies
+   9   rc=1  1 KO  conforme
+       replante : reintroduit un JALON CHIFFRE, sorti du perimetre le 2026-09-06
+   10  rc=1  3 KO  conforme
+       replante : deplace l'INA219 DANS une table de palier (le mensonge dans l'autre sens)
+   11  rc=1  1 KO  conforme
+       replante : rend le document VIDE (une gate qui ne trouve rien ⛔ ne sort pas verte)
+   12  rc=1  1 KO  conforme
+       replante : retire `Date du releve` de l'en-tete d'une table (elle cesse de SE DECLARER table de BOM, et sort du controle)
+   13  rc=1  1 KO  conforme
+       replante : renomme le palier 1 « DeskNode » en « DeskNode Solo » ⛔ sans toucher au palier 2
+   14  rc=1  2 KO  conforme
+       replante : supprime la ligne VL6180X (l'autre composant hors palier)
+   15  rc=1  3 KO  conforme
+       replante : deplace le VL6180X DANS une table de palier
+   16  rc=1  3 KO  conforme
+       replante : efface toute mention de `dn4-41` (le palier 1 redevient affirme sans source)
+   17  rc=1  1 KO  conforme
+       replante : retire la date de la SEULE fenetre de citation de `dn4-41` ⛔ sans toucher aux autres dates du document
+   18  rc=1  1 KO  conforme
+       replante : vide le MOTIF du jeton d'exemption (une exception sans motif ⛔ n'exempte RIEN)
+   19  rc=1  1 KO  conforme
+       replante : retire `Date du releve` de TOUTES les tables (⛔ plus AUCUNE table de BOM — la gate ne trouve plus sa cible)
+   20  rc=1  1 KO  conforme
+       replante : retire le nom d'un palier de son TITRE en le laissant dans la PROSE (une mention n'est pas une section : la population de (c6) se vidait, et rien ne rougissait)
+   21  rc=1  2 KO  conforme
+       replante : renomme l'en-tete `Prix` d'une table de BOM (la colonne ne se resout plus, la table sortait du controle)
+   22  rc=1  1 KO  conforme
+       replante : reduit une declaration a la SEULE formule « non relevé » (le TROU MUET du tableau d'E/S, qui sortait VERT)
+   23  rc=1  2 KO  conforme
+       replante : renomme la colonne `Pourquoi` de la table hors-palier (le motif se lisait alors dans la mauvaise cellule)
+   24  rc=1  2 KO  conforme
+       replante : passe un composant hors-palier en MINUSCULES dans une section de palier (la casse sauvait (c6) par accident)
+   25  rc=1  1 KO  conforme
+       replante : fait pointer la cible sur un fichier INEXISTANT (le seul controle qu'aucun mutant n'atteignait)
+   26  rc=1  1 KO  conforme
+       replante : fait sortir la gate APRES (c2) sans rien declarer (le bilan retrecit, et il sortirait VERT)
+   27  rc=1  1 KO  conforme
+       replante : vide la QUANTITE d'une ligne a prix (une ligne incomplete ⛔ n'est pas commandable)
+   28  rc=1  2 KO  conforme
+       replante : retire la colonne `Qté` d'une table de palier (⛔ retirer la colonne echappait au controle du champ)
+   29  rc=1  1 KO  conforme
+       replante : remplace une URL tentee par un NOM D'HOTE nu (un nom de boutique ⛔ ne se re-tente pas)
+   30  rc=1  1 KO  conforme
+       replante : retire la DATE d'une tentative de source (une tentative sans date ⛔ ne se rejoue pas)
+   31  rc=1  1 KO  conforme
+       replante : renomme l'en-tete de la table des sources non atteintes (elle cesse d'etre reconnue, et le SILENCE ne vaut pas « toutes les sources ont repondu »)
 
-  [garde ] le document n'est pas vide
-  [garde ] au moins une table SE DECLARE table de BOM
-  [garde ] aucune table a prix hors du controle
-  [garde ] le palier « DeskNode » est nomme
-  [garde ] le palier « DeskNode + Ambiance » est nomme
-  [garde ] toute ligne a prix porte sa DATE de releve
-  [garde ] toute ligne a prix porte son URL SOURCE
-  [garde ] toute ligne SANS prix le DECLARE
-  [garde ] VL6180X est NOMME dans le document
-  [garde ] VL6180X est HORS des sections de palier
-  [garde ] VL6180X porte un MOTIF d'exclusion
-  [garde ] INA219 est NOMME dans le document
-  [garde ] INA219 est HORS des sections de palier
-  [garde ] INA219 porte un MOTIF d'exclusion
-  [garde ] la BOM cite la marche `dn4-41`
-  [garde ] elle cite son STATUT
-  [garde ] elle cite une DATE de relecture
-  [garde ] la page DECLARE si elle porte des liens affilies
-  [garde ] ⛔ aucun jalon CHIFFRE n'est publie
+   => 31 mutants · 31 conformes · 0 non conforme(s)
 
-  ⇒ 19 controles · 19 gardes · 0 NU(S)
-  ✅ CHAQUE controle emis est replante par au moins un mutant.
+-- 2. RECIPROQUE : quel mutant garde quel controle ? --
+   ⛔ C'est CE sens qui dit si un controle est couvert.
 
-=== (4) ⛔ CE QUE CETTE CAMPAGNE NE PROUVE PAS ===============================
-  ⛔ Elle ne dit RIEN de la VERITE des prix publies : la gate ne va sur
-     aucun reseau. Un prix faux mais date et source la laisse VERTE.
-  ⛔ Elle ne prouve pas que les controles soient les BONS — seulement que
-     ceux qui existent attrapent ce qu'ils disent attraper.
+   le document n'est pas vide                                 garde par 11
+   au moins une table SE DECLARE table de BOM                 garde par 19
+   aucune table a prix hors du controle                       garde par 12,18
+   le palier « DeskNode » titre UNE section                   garde par 13
+   le palier « DeskNode + Ambiance » titre UNE section        garde par 4,20
+   toute table de PALIER declare ses 7 colonnes               garde par 21,28
+   toute ligne a prix porte ses AUTRES champs                 garde par 27
+   toute table de BOM RESOUT ses 3 colonnes                   garde par 21
+   toute ligne a prix porte sa DATE de releve                 garde par 1
+   toute ligne a prix porte son URL SOURCE                    garde par 2
+   toute ligne SANS prix se DECLARE                           garde par 3,10,15,22,28
+   VL6180X est NOMME dans le document                         garde par 14
+   VL6180X est HORS des sections de palier                    garde par 15
+   VL6180X porte un MOTIF d'exclusion                         garde par 6,14,15,23
+   INA219 est NOMME dans le document                          garde par 5
+   INA219 est HORS des sections de palier                     garde par 10,24
+   INA219 porte un MOTIF d'exclusion                          garde par 5,10,23,24
+   la table des sources non atteintes est LA                  garde par 31
+   chaque source tentee porte URL, DATE et MOTIF              garde par 29,30
+   la BOM cite la marche `dn4-41`                             garde par 16
+   elle cite son STATUT                                       garde par 7,16
+   elle cite une DATE de relecture                            garde par 16,17
+   la page DECLARE si elle porte des liens affilies           garde par 8
+   ⛔ aucun jalon CHIFFRE n'est publie                         garde par 9
+   le document d'achat existe                                 garde par 25
+   tout controle prevu est EMIS                               garde par 26
+
+   => 26 controles atteignables · 26 gardes · 0 NU

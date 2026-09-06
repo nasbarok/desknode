@@ -74,12 +74,26 @@ BOM_REL = "docs/bom.md"
 # ecrire ici en dur est le sujet du controle, ⛔ pas un raccourci.
 PALIERS = ("DeskNode", "DeskNode + Ambiance")
 
-RE_PRIX = re.compile(r"\d+[,.]\d{2}\s*(?:€|EUR)")
+# 🔴 REVUE DU 2026-09-07 — LE REGIME ENTIER S'ARRETAIT A L'EURO A DEUX
+#    DECIMALES. Une table libellee en GBP, en USD ou en euros RONDS ne portait
+#    aucun « prix » aux yeux de la gate : (c1c) la sautait, et elle publiait
+#    donc ses prix SANS date et SANS source, en vert. Ce n'est pas theorique —
+#    `docs/bom.md` publie deja un prix en GBP (Pimoroni).
+#    ⛔ La devise ne change RIEN a l'invariant : un prix se date et se source.
+RE_PRIX = re.compile(r"\d+(?:[,.]\d{1,2})?\s*(?:€|EUR|£|GBP|\$|USD|CHF)")
 RE_DATE = re.compile(r"20\d{2}-\d{2}-\d{2}")
 RE_URL = re.compile(r"https?://\S+")
 # ⚠️ « non releve » est la SEULE formule qui vaut declaration. Une gate qui
 #    accepterait « ⛔ » ou « ? » laisserait passer un trou decore.
 RE_NON_RELEVE = re.compile(r"non\s+relev", re.I)
+# 🔴 REVUE DU 2026-09-07 — DEUX MOTS NE SONT PAS UNE DECLARATION. Le seuil
+#    est ecrit ici plutot que devine : `⛔ **non relevé**` fait 16 caracteres,
+#    et c'est exactement la forme qui passait pour une declaration.
+MIN_RAISON = 30
+# ⚠️ LE COMPTE DU CHEMIN NORMAL, hors le controle final qui le confronte.
+#    Il se PERIME si on ajoute un controle sans le mettre a jour — et
+#    c'est voulu : c'est ce qui rend le controle final FALSIFIABLE.
+CONTROLES_PREVUS = 24
 
 ok_total = [0]
 ko_total = [0]
@@ -130,6 +144,34 @@ MUTANTS[18] = ("vide le MOTIF du jeton d'exemption "
 #    entre « une » et « toutes » est exactement ce qui rendait le controle nu.
 MUTANTS[19] = ("retire `Date du releve` de TOUTES les tables "
                "(⛔ plus AUCUNE table de BOM — la gate ne trouve plus sa cible)")
+# 🔴 LES SIX SUIVANTS SONT NES DE LA REVUE DU 2026-09-07. Chacun REPLANTE la
+#    faute que son controle venait de rater — ⛔ aucun ne DEBRANCHE une garde.
+MUTANTS[20] = ("retire le nom d'un palier de son TITRE en le laissant dans la "
+               "PROSE (une mention n'est pas une section : la population de "
+               "(c6) se vidait, et rien ne rougissait)")
+MUTANTS[21] = ("renomme l'en-tete `Prix` d'une table de BOM "
+               "(la colonne ne se resout plus, la table sortait du controle)")
+MUTANTS[22] = ("reduit une declaration a la SEULE formule « non relevé » "
+               "(le TROU MUET du tableau d'E/S, qui sortait VERT)")
+MUTANTS[23] = ("renomme la colonne `Pourquoi` de la table hors-palier "
+               "(le motif se lisait alors dans la mauvaise cellule)")
+MUTANTS[24] = ("passe un composant hors-palier en MINUSCULES dans une section "
+               "de palier (la casse sauvait (c6) par accident)")
+MUTANTS[25] = ("fait pointer la cible sur un fichier INEXISTANT "
+               "(le seul controle qu'aucun mutant n'atteignait)")
+MUTANTS[26] = ("fait sortir la gate APRES (c2) sans rien declarer "
+               "(le bilan retrecit, et il sortirait VERT)")
+MUTANTS[27] = ("vide la QUANTITE d'une ligne a prix "
+               "(une ligne incomplete ⛔ n'est pas commandable)")
+MUTANTS[28] = ("retire la colonne `Qté` d'une table de palier "
+               "(⛔ retirer la colonne echappait au controle du champ)")
+MUTANTS[29] = ("remplace une URL tentee par un NOM D'HOTE nu "
+               "(un nom de boutique ⛔ ne se re-tente pas)")
+MUTANTS[30] = ("retire la DATE d'une tentative de source "
+               "(une tentative sans date ⛔ ne se rejoue pas)")
+MUTANTS[31] = ("renomme l'en-tete de la table des sources non atteintes "
+               "(elle cesse d'etre reconnue, et le SILENCE ne vaut pas "
+               "« toutes les sources ont repondu »)")
 _MUTANT = 0
 
 
@@ -143,11 +185,40 @@ def ctrl(ok, libelle, detail=""):
     return ok
 
 
-def bilan(rc):
-    """⛔ TOUS LES CHEMINS DE SORTIE PASSENT ICI. Une gate qui sort sans
+def bilan(rc, anticipee=""):
+    """TOUT CHEMIN QUI RENDRA UN VERDICT passe ici. Une gate qui sort sans
     `BILAN` est indiscernable d'une gate MORTE — et c'est precisement le
-    discriminant que `verif_campagne_dn56.py` exige de chaque mutant."""
+    discriminant que `verif_campagne_dn56.py` exige de chaque mutant.
+
+    ⚠️ DEUX SORTIES NE PASSENT PAS ICI, ET C'EST ECRIT PLUTOT QUE PROMIS
+       (revue du 2026-09-07 — la phrase « ⛔ TOUS LES CHEMINS DE SORTIE
+       PASSENT ICI » etait FAUSSE deux fois) :
+         · `--liste-mutants`, qui n'emet AUCUN controle et ne rend AUCUN
+           verdict — `verif_campagne_dn56.py` ne s'en sert que pour enumerer ;
+         · `sys.exit("MUTANT %d INCONNU")`, qui est une ERREUR D'APPEL.
+       Aucune des deux ne peut etre prise pour un verdict vert.
+
+    🔴 ET LE BILAN DECLARE DESORMAIS CE QU'IL N'A PAS JOUE. Mesure du
+       2026-09-07 : `--mutant 11` sortait `BILAN : 0 OK, 1 KO` — UN controle
+       emis sur 20 — et le contrat de la campagne (rc=1 + BILAN + un [KO ])
+       le comptait « conforme ». Les 19 controles evapores n'etaient declares
+       NULLE PART. ⛔ Un bilan qui retrecit sans le dire est le meme defaut
+       que celui que (c1c) garde un etage plus bas."""
+    # 🔴 (z) VIT ICI, ⛔ PAS EN FIN DE `main()` — 1re redaction du 2026-09-07 :
+    #    posee a la fin, elle etait SAUTEE par exactement le defaut qu'elle
+    #    garde (une sortie anticipee la court-circuite avec le reste). Tout
+    #    verdict passe par `bilan()` : c'est le seul point qui les voit tous.
+    emis = ok_total[0] + ko_total[0]
+    if not anticipee and emis != CONTROLES_PREVUS:
+        ctrl(False, "tout controle prevu est EMIS",
+             "⛔ %d emis pour %d prevus — une gate qui joue MOINS de controles "
+             "qu'annonce sort VERTE sur une population RETRECIE, et ⛔ sans le "
+             "declarer" % (emis, CONTROLES_PREVUS))
+        rc = 1
     print("\n" + "=" * 78)
+    if anticipee:
+        print("⛔ SORTIE ANTICIPEE — %d controle(s) emis sur %d prevus : %s"
+              % (ok_total[0] + ko_total[0], CONTROLES_PREVUS, anticipee))
     print("BILAN : %d OK, %d KO" % (ok_total[0], ko_total[0]))
     print("=" * 78)
     return rc
@@ -217,6 +288,50 @@ def tables_de_bom(texte):
     """Les tables de BOM seules — `(entetes, [lignes])`."""
     return [(e, c) for e, c, _a in toutes_les_tables(texte)
             if est_table_de_bom(e)]
+
+
+def nom_nu(s):
+    """Un nom DEBARRASSE de sa decoration markdown, pour comparer des NOMS.
+
+    🔴 MESURE DU 2026-09-07 — `(c2)` MESURAIT LA DECORATION, ⛔ PAS LE NOM.
+       Elle exigeait la forme A GUILLEMETS (« DeskNode »), alors que le README
+       — la source de verite que `Always` designe, « exactement les noms du
+       README » — les ecrit EN GRAS (`**DeskNode**`). Rendre la page comme le
+       README la rend sortait `17 OK, 2 KO`, avec le message « ⛔ un synonyme
+       n'est pas un nom » sur des chaines qui ⛔ ne sont PAS des synonymes.
+       ⚠️ C'est le MEME defaut que `mesures/dn6-1/T3` avait deja nomme et
+       corrige DANS L'INSTRUMENT DE COMPTAGE — et laisse ici, la ou il porte.
+    """
+    return re.sub(r"\s+", " ", re.sub(r"[*`«»\"'']", " ", s)).strip().lower()
+
+
+def declaration_valable(cel_prix, cel_date, cel_src):
+    """Ce qui vaut DECLARATION pour une ligne SANS prix.
+
+    🔴 MESURE DU 2026-09-07 — `(c5)` INVERSAIT LES DEUX LIGNES DU MILIEU DU
+       TABLEAU D'E/S DE LA STORY. Elle cherchait la formule « non relev » dans
+       la SEULE cellule de prix, si bien que :
+         · une ligne « source non atteinte » COMPLETE (URL tentee + date +
+           motif d'echec) — que le tableau d'E/S declare CONFORME — sortait
+           `[KO ] MUETTE(S)`, `18 OK, 1 KO`. Le message etait FAUX : cette
+           ligne etait la plus bavarde de la page.
+         · un TROU MUET — ni URL tentee, ni date, ni motif — portant les deux
+           mots et RIEN d'autre sortait `19 OK, 0 KO`. Le tableau d'E/S en
+           fait un `[KO ]`, rc=1.
+       ⇒ ce qui vaut declaration, c'est le CONTENU qu'`Always` enumere :
+         l'URL tentee, la date de la tentative et l'echec observe — ou, quand
+         AUCUNE source n'a ete tentee, une RAISON ECRITE. ⛔ Pas une formule.
+    """
+    raison = cel_prix.strip()
+    if len(raison) < MIN_RAISON:
+        return False
+    # (a) la source a ete tentee, et la tentative est TRACABLE ET DATEE
+    if RE_URL.search(cel_src) and RE_DATE.search(cel_date):
+        return True
+    if RE_URL.search(raison) and RE_DATE.search(raison):
+        return True
+    # (b) aucune source n'etait tentable — la raison est ECRITE, ⛔ pas decoree
+    return bool(RE_NON_RELEVE.search(raison))
 
 
 def colonne(entetes, motif):
@@ -322,8 +437,14 @@ def muter(texte):
     if _MUTANT == 8:
         return texte.replace("ne porte aucun lien affilié", "est ce qu'elle est")
     if _MUTANT == 9:
-        return texte + ("\n\n⚠️ Jalons de reevaluation : 75 €, 250 €, "
-                        "1 000 € et 5 000 €.\n")
+        # 🔴 REVUE DU 2026-09-07 — CE MUTANT REPUBLIAIT, MOT POUR MOT, LES
+        #    QUATRE CHIFFRES QUE LA DECISION OWNER DU 2026-09-06 A SORTIS DU
+        #    PERIMETRE. `AC6.1.5` amendee ecrit « ⛔ aucun chiffre de jalon
+        #    n'est ecrit dans la BOM NI AILLEURS PAR CETTE MARCHE » — or ce
+        #    fichier EST livre par cette marche, il est joue par la CI, et
+        #    (c10) ne lit que `docs/bom.md` : elle ⛔ ne pouvait pas se voir.
+        #    ⇒ le mutant garde sa FORME et abandonne les chiffres de l'owner.
+        return texte + "\n\n⚠️ Seuils de reevaluation : 12 € et 34 €.\n"
     if _MUTANT == 10:
         # La ligne INA219 est DEPLACEE : retiree de sa table, reinjectee dans
         # la 1re table de BOM d'une section de palier.
@@ -335,6 +456,68 @@ def muter(texte):
         return t.replace(corps[-1], corps[-1] + "\n" + ina, 1)
     if _MUTANT == 11:
         return ""
+    if _MUTANT == 20:
+        # ⚠️ REECRIT LE 2026-09-07 : sa 1re version reformulait les titres SANS
+        #    retirer les noms — or c'est precisement ce que le correctif rend
+        #    LEGITIME (la population ne depend plus de la FORME du titre). Un
+        #    mutant qui ne replante plus rien ⛔ n'est pas un mutant. Il vise
+        #    donc la faute REELLE : le nom vit dans la prose, ⛔ pas en titre.
+        q = PALIERS[1]
+        return texte.replace("## Palier « %s »" % q, "## L'option capteurs", 1) \
+                    .replace("---\n", "---\n\nOn parle ici du « %s ».\n" % q, 1)
+    if _MUTANT == 21:
+        return texte.replace("| Prix |", "| Coût |", 1)
+    if _MUTANT == 22:
+        l = _ligne_sans_prix(texte)
+        c = cellules(l)
+        for k, cel in enumerate(c):
+            if RE_NON_RELEVE.search(cel):
+                c[k] = "non relevé"
+                break
+        return texte.replace(l, "| " + " | ".join(c) + " |", 1)
+    if _MUTANT == 23:
+        return texte.replace("| Pourquoi il n'est **pas** au catalogue |",
+                             "| Commentaire libre |", 1)
+    if _MUTANT == 24:
+        return texte.replace("**BH1750**", "**BH1750** (voir aussi ina219)", 1)
+    if _MUTANT == 31:
+        return texte.replace("| Adresse tentée | Date de la tentative |",
+                             "| Boutique | Quand |", 1)
+    if _MUTANT == 27:
+        for _e, corps in tables_de_bom(texte):
+            for l in corps:
+                c = cellules(l)
+                k = colonne(_e, "qté")
+                if RE_PRIX.search(l) and k is not None and k < len(c) \
+                        and c[k].strip(" —-–*`"):
+                    c[k] = " "
+                    return texte.replace(l, "| " + " | ".join(c) + " |", 1)
+        return texte
+    if _MUTANT == 28:
+        return texte.replace("| Désignation | Référence exacte | Qté | "
+                             "Fournisseur | Prix | Date du relevé | Source |",
+                             "| Désignation | Référence exacte | "
+                             "Fournisseur | Prix | Date du relevé | Source |", 1)
+    if _MUTANT == 29:
+        # ⚠️ CHIRURGICAL : la MEME URL vit aussi dans la PROSE, plus haut. Une
+        #    substitution « la 1re occurrence » frappait la prose et laissait
+        #    la table intacte — le mutant sortait VERT sans rien prouver
+        #    (mesure du 2026-09-07). On vise LA LIGNE DE TABLE.
+        for l in texte.split("\n"):
+            if l.strip().startswith("|") and "waveshare.com" in l \
+                    and RE_DATE.search(l):
+                c = cellules(l)
+                c[0] = "`waveshare.com` (fiche produit)"
+                return texte.replace(l, "| " + " | ".join(c) + " |", 1)
+        return texte
+    if _MUTANT == 30:
+        return texte.replace("| `https://www.mouser.fr/c/?q=ESP32-S3-Touch-LCD-2.8B` | 2026-09-06 |",
+                             "| `https://www.mouser.fr/c/?q=ESP32-S3-Touch-LCD-2.8B` | récemment |", 1)
+    if _MUTANT in (25, 26):
+        # ⚠️ Ces deux-la ⛔ ne mutent PAS le texte : 25 deplace la CIBLE, 26
+        #    replante une sortie anticipee. Le texte revient intact, et la
+        #    garde du no-op les excepte NOMMEMENT.
+        return texte
     raise AssertionError("mutant %d declare mais SANS CORPS" % _MUTANT)
 
 
@@ -373,23 +556,58 @@ def main():
 
     # ── (c1) le document existe, n'est pas vide, et se declare ─────────────
     print("\n── (c1) LE DOCUMENT EXISTE ET PORTE UNE TABLE DE BOM ─────────────")
-    if not os.path.isfile(F_BOM):
+    # 🔴 LE MUTANT 25 EST LE SEUL QUI DEPLACE LA CIBLE, ⛔ et il ne touche
+    #    toujours PAS le disque : il ne fait que viser un chemin qui n'existe
+    #    pas. Sans lui, le controle « le document existe » etait le SEUL du
+    #    fichier qu'AUCUN mutant n'atteignait — et la reciproque « 19 gardes,
+    #    0 NU » le comptait quand meme, parce qu'elle ne compte que les
+    #    controles du chemin NORMAL.
+    cible = "docs/⛔-ce-fichier-n-existe-pas.md" if _MUTANT == 25 else BOM_REL
+    chemin = os.path.join(RACINE, cible)
+    if not os.path.isfile(chemin):
         ctrl(False, "le document d'achat existe",
-             "⛔ %s est ABSENT — ⛔ pas de trace nue, un KO nomme" % BOM_REL)
-        return bilan(1)
-    with open(F_BOM, encoding="utf-8") as fh:
-        texte = muter(fh.read())
+             "⛔ %s est ABSENT — ⛔ pas de trace nue, un KO nomme" % cible)
+        return bilan(1, "le document d'achat est ABSENT")
+    try:
+        with open(chemin, encoding="utf-8") as fh:
+            brut = fh.read()
+    except (OSError, UnicodeDecodeError) as e:
+        ctrl(False, "le document d'achat est LISIBLE",
+             "⛔ %s: %s" % (type(e).__name__, str(e)[:90]))
+        return bilan(1, "le document d'achat est illisible")
+    # 🔴 REVUE DU 2026-09-07 — UN MUTANT QUI MEURT SORTAIT EN TRACEBACK, SANS
+    #    `BILAN`. Or « pas de BILAN » est precisement le discriminant d'une
+    #    gate MORTE que `verif_campagne_dn56.py` cherche : la campagne aurait
+    #    donc accuse la GATE la ou la faute est dans le MUTANT (sa cible
+    #    litterale a bouge, ou son corps manque). ⇒ il se rend en KO nomme.
+    try:
+        texte = muter(brut)
+    except Exception as e:
+        ctrl(False, "le mutant %d a une CIBLE et un CORPS" % _MUTANT,
+             "⛔ %s: %s — ⛔ la faute est dans le MUTANT, ⛔ pas dans la gate"
+             % (type(e).__name__, str(e)[:90]))
+        return bilan(1, "le mutant %d n'a pas pu s'appliquer" % _MUTANT)
+    # 🔴 UN MUTANT QUI NE CHANGE RIEN NE PROUVE RIEN, ET IL EST INVISIBLE AU
+    #    CONTRAT DE `verif_campagne_dn56.py` (rc=1 + BILAN + un [KO ]) : le
+    #    jour ou la formulation visee bouge dans `docs/bom.md`, la substitution
+    #    devient un no-op et la gate sort VERTE — la campagne accuse alors la
+    #    GATE, la ou la faute est dans le MUTANT. ⇒ il se declare lui-meme.
+    if _MUTANT and _MUTANT not in (25, 26) and texte == brut:
+        ctrl(False, "le mutant %d a bien un EFFET" % _MUTANT,
+             "⛔ SANS EFFET — sa cible litterale a disparu de %s. ⛔ Ce n'est "
+             "PAS un controle vert." % BOM_REL)
+        return bilan(1, "le mutant %d n'a eu aucun effet" % _MUTANT)
 
     if not ctrl(bool(texte.strip()), "le document n'est pas vide",
                 "%d caractere(s)" % len(texte.strip())):
-        return bilan(1)
+        return bilan(1, "le document est VIDE")
     tables = tables_de_bom(texte)
     if not ctrl(bool(tables),
                 "au moins une table SE DECLARE table de BOM",
                 "%d table(s) portant `Date` ET `Source` en en-tete" % len(tables)
                 if tables else
                 "⛔ AUCUNE — une table non declaree n'est gardee par RIEN"):
-        return bilan(1)
+        return bilan(1, "AUCUNE table ne se declare table de BOM")
 
     # ── (c1c) 🔴 AUCUNE TABLE A PRIX NE SORT DU CONTROLE EN SILENCE ────────
     #     Ne pas ecrire ce controle laissait la gate RETRECIR sa population :
@@ -412,63 +630,208 @@ def main():
               % (len(orphelines), " · ".join(orphelines)))
 
     # ── (c2) les deux paliers, aux noms de D19 ─────────────────────────────
-    print("\n── (c2) LES DEUX PALIERS SONT NOMMES LITTERALEMENT ───────────────")
-    for p in PALIERS:
-        ctrl(("« %s »" % p) in texte,
-             "le palier « %s » est nomme" % p,
-             "trouve" if ("« %s »" % p) in texte
-             else "⛔ ABSENT — ⛔ un synonyme n'est pas un nom")
+    # ── (c2) les deux paliers TITRENT chacun une section ───────────────────
+    # 🔴 LE CONTROLE PORTE SUR LES TITRES, ⛔ PLUS SUR LE TEXTE ENTIER, et il
+    #    compare des NOMS, ⛔ pas leur decoration (voir `nom_nu`). Deux defauts
+    #    en un seul geste :
+    #      · `« DeskNode »` cite n'importe ou dans la prose suffisait ;
+    #      · et (c6) plus bas SELECTIONNAIT SA POPULATION sur la forme du
+    #        titre (`startswith("Palier «")`). Mesure du 2026-09-07 : reformuler
+    #        les deux titres en `## La carte seule (palier « DeskNode »)` faisait
+    #        tomber `corps_paliers` de 6 220 caracteres a **0**, et une ligne
+    #        INA219 ACHETABLE posee dans la table du palier 1 sortait
+    #        `19 OK, 0 KO`. La population est desormais celle de (c2) : elle ne
+    #        peut plus se vider sans que (c2) rougisse D'ABORD.
+    # ⚠️ LE PIEGE DE SOUS-CHAINE EST TRAITE : « DeskNode » est CONTENU dans
+    #    « DeskNode + Ambiance ». Chaque titre est attribue au palier le PLUS
+    #    LONG qu'il nomme, ⛔ jamais au premier trouve.
+    print("\n── (c2) LES DEUX PALIERS TITRENT CHACUN UNE SECTION ──────────────")
+    secs = sections(texte)
+    par_palier = {}
+    for t, b in secs:
+        tn = nom_nu(t)
+        # 🔴 LE PIEGE DE SOUS-CHAINE, MESURE SUR MOI-MEME LE 2026-09-07 : la
+        #    1re redaction testait `nom_nu(q) in tn`, et le mutant 13 est
+        #    sorti VERT — « DeskNode Solo » CONTIENT « DeskNode ». C'est la
+        #    meme classe que `NFR6.3` qui contient `FR6.3`. ⇒ le nom doit etre
+        #    DELIMITE : ⛔ ni suivi d'un mot, ⛔ ni d'un `+` qui le prolonge en
+        #    un palier PLUS LONG.
+        cands = [q for q in PALIERS
+                 if re.search(re.escape(nom_nu(q)) + r"(?!\s*[\w+])", tn)]
+        if cands:
+            par_palier.setdefault(max(cands, key=len), []).append((t, b))
+    for q in PALIERS:
+        vus = par_palier.get(q, [])
+        ctrl(len(vus) == 1, "le palier « %s » titre UNE section" % q,
+             "« %s »" % vus[0][0][:44] if len(vus) == 1
+             else "⛔ %d section(s) — ⛔ un synonyme n'est pas un nom, et une "
+                  "population VIDE n'est pas une absence de defaut" % len(vus))
+    corps_paliers = "\n".join(b for v in par_palier.values() for _t, b in v)
+
+    # ⚠️ LE MUTANT 26 NE TOUCHE PAS AU DOCUMENT : il replante une SORTIE
+    #    ANTICIPEE NON DECLAREE — la seule forme que prend, dans le code, le
+    #    defaut que (z) garde. ⛔ Il ne debranche aucune garde : il fait
+    #    exactement ce qu'une future refonte maladroite ferait.
+    if _MUTANT == 26:
+        return bilan(0)
 
     # ── (c3)/(c4)/(c5) chaque ligne de BOM ─────────────────────────────────
     print("\n── (c3)(c4)(c5) CHAQUE LIGNE DE BOM REND SES COMPTES ─────────────")
-    sans_date, sans_url, muettes, avec_prix, sans_prix = [], [], [], 0, 0
+    # 🔴 REVUE DU 2026-09-07 — LA STORY ANNONCE QUE LA GATE « VERIFIE QUE
+    #    CHAQUE LIGNE PORTE SES 7 CHAMPS ». Elle en connaissait TROIS (prix,
+    #    date, source) : les mots `quantité`, `fournisseur` et `référence`
+    #    n'apparaissaient nulle part dans sa logique. Mesure : une ligne
+    #    `|  |  |  |  | 99,99 € | 2026-09-06 | https://… |` — ⛔ pas
+    #    commandable par qui que ce soit — etait comptee « a prix, datee,
+    #    sourcee », `19 OK, 0 KO`.
+    # ⚠️ MOTIFS SANS LEUR PREMIERE SYLLABE ACCENTUEE : `"design" in
+    #    "désignation"` est FAUX (`dé` ≠ `de`) — mesure du 2026-09-07, le
+    #    controle accusait les 4 lignes de la page d'etre sans designation.
+    CHAMPS = (("signation", "designation"), ("férence", "reference"),
+              ("qté", "quantite"), ("fournisseur", "fournisseur"))
+    sans_date, sans_url, muettes, sans_colonne, creux = [], [], [], [], []
+    avec_prix = sans_prix = 0
     for ent, corps in tables:
         i_prix = colonne(ent, "prix")
+        i_date = colonne(ent, "date")
+        i_src = colonne(ent, "source")
+        # 🔴 UNE COLONNE QUI NE SE RESOUT PAS SORTAIT LA TABLE DU CONTROLE EN
+        #    SILENCE : `cel` retombait sur la LIGNE ENTIERE. Renommer l'en-tete
+        #    `Prix` suffisait a faire retrecir la population un cran SOUS (c1c).
+        if i_prix is None or i_date is None or i_src is None:
+            sans_colonne.append(" / ".join(ent)[:52])
+            continue
         for l in corps:
             c = cellules(l)
-            cel = c[i_prix] if (i_prix is not None and i_prix < len(c)) else l
+            cel = c[i_prix] if i_prix < len(c) else ""
+            cdate = c[i_date] if i_date < len(c) else ""
+            csrc = c[i_src] if i_src < len(c) else ""
             nom = c[0][:34] if c else "?"
             if RE_PRIX.search(cel):
                 avec_prix += 1
-                if not RE_DATE.search(l):
+                # ⛔ UNE COLONNE DECLAREE SE REMPLIT. La table hors-palier ne
+                #    declare ⛔ ni `Qté` ni `Fournisseur` — et c'est JUSTE :
+                #    elle ne vend rien. Ce sont les tables DE PALIER qui
+                #    doivent porter les 7 colonnes, et c'est le controle
+                #    separe juste en dessous qui l'exige.
+                for motif_col, lib in CHAMPS:
+                    k = colonne(ent, motif_col)
+                    if k is None:
+                        continue
+                    v = c[k].strip(" —-–*`") if k < len(c) else ""
+                    if not v:
+                        creux.append("%s (%s)" % (nom, lib))
+                # ⛔ DANS LEUR CELLULE, ⛔ plus « quelque part dans la ligne ».
+                #    Mesure du 2026-09-07 : colonnes `Date du relevé` et
+                #    `Source` VIDES, une date dans la designation et une URL
+                #    dans la reference ⇒ `19 OK, 0 KO`, la ligne comptee
+                #    « datee » et « sourcee ».
+                if not RE_DATE.search(cdate):
                     sans_date.append(nom)
-                if not RE_URL.search(l):
+                if not RE_URL.search(csrc):
                     sans_url.append(nom)
             else:
                 sans_prix += 1
-                if not RE_NON_RELEVE.search(cel):
+                if not declaration_valable(cel, cdate, csrc):
                     muettes.append(nom)
 
+    # ⛔ ET LES TABLES DE PALIER PORTENT LES 7 COLONNES : sans ce controle, en
+    #    RETIRER une suffirait a echapper au controle ci-dessus.
+    manquantes = []
+    for ent, _co in tables_de_bom(corps_paliers):
+        for motif_col, lib in CHAMPS + (("prix", "prix"), ("date", "date"),
+                                        ("source", "source")):
+            if colonne(ent, motif_col) is None:
+                manquantes.append(lib)
+    ctrl(not manquantes, "toute table de PALIER declare ses 7 colonnes",
+         "%d table(s) de palier, 7 colonnes chacune"
+         % len(tables_de_bom(corps_paliers)) if not manquantes
+         else "⛔ COLONNE(S) ABSENTE(S) : %s" % " · ".join(sorted(set(manquantes))))
+    ctrl(not creux, "toute ligne a prix porte ses AUTRES champs",
+         "%d ligne(s) a prix, designation/reference/qte/fournisseur remplis"
+         % avec_prix if not creux
+         else "⛔ CHAMP(S) VIDE(S) : %s — une ligne n'est ACHETABLE que "
+              "complete" % " · ".join(creux))
+    ctrl(not sans_colonne, "toute table de BOM RESOUT ses 3 colonnes",
+         "%d table(s), colonnes prix/date/source resolues" % len(tables)
+         if not sans_colonne
+         else "⛔ %d TABLE(S) SORTIE(S) DU CONTROLE : %s"
+              % (len(sans_colonne), " · ".join(sans_colonne)))
     ctrl(not sans_date, "toute ligne a prix porte sa DATE de releve",
          "%d ligne(s) a prix, toutes datees" % avec_prix if not sans_date
-         else "⛔ SANS DATE : %s" % " · ".join(sans_date))
+         else "⛔ SANS DATE dans sa colonne : %s" % " · ".join(sans_date))
     ctrl(not sans_url, "toute ligne a prix porte son URL SOURCE",
          "%d ligne(s) a prix, toutes sourcees" % avec_prix if not sans_url
-         else "⛔ SANS SOURCE : %s" % " · ".join(sans_url))
-    ctrl(not muettes, "toute ligne SANS prix le DECLARE",
+         else "⛔ SANS SOURCE dans sa colonne : %s" % " · ".join(sans_url))
+    ctrl(not muettes, "toute ligne SANS prix se DECLARE",
          "%d ligne(s) sans prix, toutes declarees" % sans_prix if not muettes
-         else "⛔ MUETTE(S) : %s — le silence n'est pas une declaration"
-              % " · ".join(muettes))
+         else "⛔ SANS DECLARATION : %s — il faut l'URL tentee, sa date et le "
+              "motif, ⛔ ou une raison ecrite" % " · ".join(muettes))
 
     # ── (c6)/(c7) le hors-palier, dans les DEUX sens ───────────────────────
     print("\n── (c6)(c7) LE HORS-PALIER EST NOMME, ET IL EST DEHORS ───────────")
-    secs = sections(texte)
-    corps_paliers = "\n".join(b for t, b in secs if t.startswith("Palier «"))
+    # ⛔ INSENSIBLE A LA CASSE : `docs/bom.md` portait deja un `ina219`
+    #    MINUSCULE — un nom de fichier photo — DANS la section du palier 2, et
+    #    SEULE la casse sauvait ce controle. Mesure du 2026-09-07 : passer
+    #    cette unique occurrence en majuscules rendait `18 OK, 1 KO`.
+    haut, haut_paliers = texte.upper(), corps_paliers.upper()
     for comp in ("VL6180X", "INA219"):
-        ctrl(comp in texte, "%s est NOMME dans le document" % comp,
-             "present" if comp in texte
+        ctrl(comp in haut, "%s est NOMME dans le document" % comp,
+             "present" if comp in haut
              else "⛔ ABSENT — un composant du prototype absent SANS motif "
                   "ecrit est un defaut")
-        ctrl(comp not in corps_paliers,
+        ctrl(comp not in haut_paliers,
              "%s est HORS des sections de palier" % comp,
-             "dehors" if comp not in corps_paliers
+             "dehors" if comp not in haut_paliers
              else "⛔ RANGE DANS UN PALIER — il n'entre dans aucun palier V1")
-        ligne = next((l for l in texte.split("\n")
-                      if comp in l and l.strip().startswith("|")), None)
-        motif = cellules(ligne)[-1] if ligne else ""
+        # 🔴 LE MOTIF SE LIT PAR SON EN-TETE, ⛔ PLUS PAR `[-1]`. Mesure du
+        #    2026-09-07 : la ligne INA219 realignee sur les 7 colonnes d'une
+        #    table de palier rendait « 58 caractere(s) de motif » — ces 58
+        #    caracteres etant son URL **Source**, sur une ligne SANS aucun
+        #    motif. Le controle certifiait un motif qui n'existait pas.
+        motif = ""
+        for ent, corps, _a in toutes_les_tables(texte):
+            i_m = colonne(ent, "pourquoi")
+            trouvee = next((l for l in corps if comp in l.upper()), None)
+            if trouvee is None:
+                continue
+            c = cellules(trouvee)
+            motif = c[i_m] if (i_m is not None and i_m < len(c)) else ""
+            break
         ctrl(len(motif) >= 40, "%s porte un MOTIF d'exclusion" % comp,
              "%d caractere(s) de motif" % len(motif) if len(motif) >= 40
-             else "⛔ motif VIDE OU CREUX (%d caractere(s))" % len(motif))
+             else "⛔ motif VIDE OU CREUX (%d caractere(s)) — ⛔ une colonne "
+                  "`Pourquoi` absente n'est pas un motif" % len(motif))
+
+    # ── (c11) LES SOURCES NON ATTEINTES SE DECLARENT, UNE PAR UNE ──────────
+    # 🔴 `AC6.1.1` exige que toute source non atteinte soit declaree AVEC SON
+    #    URL, SA DATE DE TENTATIVE ET SON MOTIF. La page le faisait — avec des
+    #    NOMS D'HOTE nus et une date COLLECTIVE — et ⛔ AUCUN controle ne le
+    #    gardait : cette table ne porte pas de prix, donc (c1c) la saute, et
+    #    elle ne se declare pas table de BOM, donc (c3)(c4)(c5) ne la voient
+    #    pas. ⛔ Un nom de boutique ne se re-tente pas ; une URL, si.
+    print("\n── (c11) CHAQUE SOURCE NON ATTEINTE PORTE URL + DATE + MOTIF ─────")
+    t_src = [(e, co) for e, co, _a in toutes_les_tables(texte)
+             if colonne(e, "tent") is not None]
+    ctrl(len(t_src) == 1, "la table des sources non atteintes est LA",
+         "1 table" if len(t_src) == 1
+         else "⛔ %d — ⛔ le silence n'est pas « toutes les sources ont "
+              "repondu »" % len(t_src))
+    incompletes = []
+    for ent, corps in t_src:
+        i_a, i_d, i_r = (colonne(ent, "tent"), colonne(ent, "date"),
+                         colonne(ent, "résultat"))
+        for l in corps:
+            c = cellules(l)
+            def _c(i):
+                return c[i] if (i is not None and i < len(c)) else ""
+            if not (RE_URL.search(_c(i_a)) and RE_DATE.search(_c(i_d))
+                    and len(_c(i_r).strip(" —-–*`")) >= 3):
+                incompletes.append(_c(i_a)[:40] or "?")
+    ctrl(not incompletes, "chaque source tentee porte URL, DATE et MOTIF",
+         "%d source(s) declaree(s)" % sum(len(c) for _e, c in t_src)
+         if not incompletes
+         else "⛔ INCOMPLETE(S) : %s" % " · ".join(incompletes))
 
     # ── (c8) dn4-41 est CITEE, ⛔ pas affirmee acquise ──────────────────────
     print("\n── (c8) `dn4-41` EST CITEE AVEC SON ETAT ─────────────────────────")
@@ -493,7 +856,15 @@ def main():
 
     # ── (c10) ⛔ aucun jalon chiffre ────────────────────────────────────────
     print("\n── (c10) ⛔ AUCUN JALON CHIFFRE (decision owner 2026-09-06) ───────")
-    jalons = [w.group(0) for w in re.finditer(r"[Jj]alons?[^.\n]{0,200}", texte)
+    # 🔴 REVUE DU 2026-09-07 — LE CONTROLE ETAIT ANCRE SUR UN MOT, ⛔ PAS SUR
+    #    LA DECISION QU'IL GARDE. Mesure : « Seuils de réévaluation du projet :
+    #    …€ » sortait VERT, et le mutant 9 etait taille sur la regex plutot que
+    #    sur la decision owner du 2026-09-06. ⛔ Aucun de ces mots n'apparait
+    #    dans la page (mesure du 2026-09-07), donc elargir ⛔ ne cree pas de
+    #    faux positif : il ferme une porte, il n'en ouvre aucune.
+    RE_JALON = r"(?:jalons?|seuils?|objectifs?|d[ée]clencheurs?|paliers? de dons?)"
+    jalons = [w.group(0) for w in re.finditer(RE_JALON + r"[^.\n]{0,200}",
+                                              texte, re.I)
               if re.search(r"\d[\d\s  ]*(?:€|EUR)", w.group(0))]
     ctrl(not jalons, "⛔ aucun jalon CHIFFRE n'est publie",
          "aucun" if not jalons

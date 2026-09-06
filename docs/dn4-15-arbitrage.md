@@ -109,12 +109,14 @@ une occurrence non listée est **indiscernable d'une occurrence oubliée**.
 | verdict | occurrences |
 |---|---:|
 | `FAUX` | 0 |
-| `VRAI` | 120 |
+| `VRAI` | 121 |
 | `HISTORIQUE` | 82 |
 | `SANS-RAPPORT` | 2 |
-| **TOTAL** | **204** |
+| **TOTAL** | **205** |
 
 > 🆕 **RATTRAPÉ PAR `dn4-16` LE 2026-08-30 — +5 `HISTORIQUE`, +5 `vl53l0x`, total 199 → 204.**
+
+> 🆕 **`dn6-1`, LE 2026-09-07 — +1 `VRAI`, +1 `vl53l0x`, total 204 → 205.** `docs/bom.md` est née de `dn6-1` et NOMME le modèle voisin dans sa mise en garde d'achat. ⛔ Le texte de la BOM est JUSTE : c'est le manifeste qui n'avait pas été tenu.
 > `dn4-16` a écrit **cinq citations `VL53L0X`** dans le ledger (le bandeau de collision
 > `bmad-loop-sweep`, et deux lignes de disposition). Elles sont **légitimes** — ce sont des faits
 > datés et une mesure, ⛔ pas des assertions sur le bus — et elles sont **arbitrées ci-dessous**,
@@ -136,7 +138,7 @@ une occurrence non listée est **indiscernable d'une occurrence oubliée**.
 | motif | occurrences |
 |---|---:|
 | `facade` | 66 |
-| `vl53l0x` | 85 |
+| `vl53l0x` | 86 |
 | `340..350` | 20 |
 | `506..516` | 12 |
 | `busid-en-dur` | 21 |
@@ -265,6 +267,7 @@ manifeste ne stocke que 120 caractères, il ne peut pas garder ce qu'il n'a jama
 | desknode | hardware/ESP32-S3-Touch-LCD-2.8B-liaison-pc.md | 1 | 340..350 | 1 | tap sans que rien ne le signale. La bande de la jauge RAM est haute de **10 px** (`y = 340..350`, | HISTORIQUE | relevé de la séance tactile du 2026-08-20 (§13.11.7) — vrai à sa date, RENVERSÉ depuis par §22.3. RENVOI ajouté, narration ⛔ intacte |
 | desknode | hardware/ESP32-S3-Touch-LCD-2.8B-liaison-pc.md | 1 | facade | 1 | entrant mesurable.** Le 200 mm de façade n'a pas de fil tachymétrique (`0 RPM` **dans le BIOS | VRAI | le ventilateur 200 mm de façade, `0 RPM` dans le BIOS aussi — fait MESURÉ |
 | desknode | hardware/ESP32-S3-Touch-LCD-2.8B-liaison-pc.md | 1 | facade | 1 | \| L7 \| 🆕 **`FRONT_IN` (200 mm façade) ne sera JAMAIS publiable** \| ⛔ **CLOS — matériel** \| **Pas de fil tachymétriqu | VRAI | L7 — le même ventilateur, entrée CLOSE pour cause matérielle |
+| desknode | docs/bom.md | 1 | vl53l0x | 1 | \| Capteur de distance \| **TOF050C-VL6180X** (⛔ **PAS** un VL53L0X) \| **3,21 €** (1 annonce le nommant explicitement) \| 2 | VRAI | la MISE EN GARDE D'ACHAT de la page BOM : la reference a commander est un TOF050C-VL6180X, et le nom voisin n'est ecrit QUE pour etre ecarte. Occurrence NEE avec `docs/bom.md` (dn6-1, 2026-09-06) |
 | cockpit | _bmad-output/planning-artifacts/briefs/brief-desknode-2026-08-14/.memlog.md | 1 | facade | 2 | - (decision) 🔴 **2026-08-17 — PAS DE MONTAGE EN FAÇADE.** Verbatim owner : *« y aura pas de montage définitif dans le ph | VRAI | l'entrée de journal posée par dn4-15/AC4 : elle porte la décision ET conserve le `topic:` d'origine en toutes lettres (un champ YAML ne se barre pas) |
 | cockpit | _bmad-output/planning-artifacts/briefs/brief-desknode-2026-08-14/addendum.md | 1 | facade | 1 | tachymètre. ⛔ **Le 200 mm de façade n'a PAS de fil tachymétrique** — `0 RPM` **DANS LE BIOS AUSSI** | VRAI | le ventilateur 200 mm de façade — ⛔ LAISSÉ INTACT par AC4.3, et le bloc de décision le dit |
 | cockpit | _bmad-output/planning-artifacts/briefs/brief-desknode-2026-08-14/addendum.md | 1 | facade | 1 | - OTA : hors V1 sauf objection ; ~~redevient important une fois le module vissé dans la façade~~ ⚠️ *[périmé — voir la D | VRAI | phrase BARRÉE par AC4 + son motif : le module ne sera pas vissé, donc le motif de réouverture de l'OTA tombe (⛔ pas sa conclusion) |
