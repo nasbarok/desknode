@@ -136,8 +136,13 @@ def temoin(attendu, obtenu, libelle):
 #      appelant qui oublierait la sentinelle recreerait le bug EN SILENCE.
 #      `run()` LEVE PAR DEFAUT — le contrat d'origine, mot pour mot — et seul
 #      un appelant qui SAIT quoi faire d'un echec demande `echec_nomme=True`.
-#      Un seul le demande aujourd'hui : la ligne `cockpit    :` de `main()`,
-#      qui l'IMPRIME.
+#      🔴 LA LIGNE D'ORIGINE DISAIT « Un seul le demande aujourd'hui : la ligne
+#         `cockpit    :` de `main()` » — ⛔ FAUX AU COMMIT QUI L'ECRIVAIT, et
+#         gardee plutot qu'effacee (NFR3). VERIFIE le 2026-09-06 : **TROIS**
+#         sites le passent — la ligne `cockpit` (via `entete()`) et les temoins
+#         **(a5)** et **(a6)**, qui l'EXERCENT. ⇒ un seul appelant **DE
+#         PRODUCTION**, et deux temoins. Un compte ecrit se perime le jour ou il
+#         compte ; celui-ci etait perime le jour meme.
 MOTIF_RUN = "⛔ RUN IMPOSSIBLE :"
 RC_RUN_IMPOSSIBLE = 127
 
@@ -188,12 +193,60 @@ def ligne_sha(out, err, rc):
       (1) une sortie ⇒ c'est le SHA, tel quel ;
       (2) `rc=0` et sortie VIDE ⇒ `git` a repondu et n'a RIEN dit — c'est un
           `git` MUET, ⛔ pas un lancement impossible ;
-      (3) tout le reste ⇒ indisponible, avec son `rc` et son motif."""
-    if out.strip():
+      (3) tout le reste ⇒ indisponible, avec son `rc` et son motif.
+
+    🔴 ET LES TROIS CAS SE CONFONDAIENT QUAND MEME (revue du 2026-09-06,
+       iteration 2) — la phrase ci-dessus etait ⛔ FAUSSE, et elle est gardee
+       plutot qu'effacee (NFR3). DEUX defauts, tous deux REPRODUITS :
+         · le cas (1) ne testait QUE la sortie et **ignorait `rc`**. MESURE sur
+           un vrai `git init` SANS COMMIT : `git rev-parse HEAD` rend **128**
+           **AVEC `HEAD` sur stdout** ⇒ `ligne_sha` rendait **`'HEAD'`**, publie
+           comme si c'etait le SHA du depot. Un en-tete de capture mentait ;
+         · le cas (3) collait `err` telle quelle : un `rc` non nul avec un
+           `stderr` VIDE rendait `'⛔ indisponible (rc=128) '` — **un rouge sans
+           motif**, ce que la regle (4) de `run_gates.sh` interdit par ailleurs.
+       ⇒ (1) exige MAINTENANT `rc == 0`, et (3) a un motif de repli. Le temoin
+         (a7) replante les DEUX."""
+    if rc == 0 and out.strip():
         return out.strip()
     if rc == 0:
         return "⛔ git MUET (rc=0, sortie VIDE)"
-    return "⛔ indisponible (rc=%s) %s" % (rc, err.strip().split("\n")[0])
+    motif = err.strip().split("\n")[0] if err.strip() else "(aucun motif sur stderr)"
+    return "⛔ indisponible (rc=%s) %s" % (rc, motif)
+
+
+def entete(desknode=None, cockpit=None):
+    """LES DEUX LIGNES DE PROVENANCE DE TOUTE CAPTURE — rendues, ⛔ pas imprimees.
+
+    🔴 ELLE EXISTE PARCE QUE SES DEUX CORRECTIFS ETAIENT **REVERSIBLES EN
+       SILENCE** (revue du 2026-09-06, iteration 2). Demontre dans un clone
+       jetable : retirer `cwd=DESKNODE` laissait la gate `verif_temoin_filtre`
+       a `BILAN : 5 OK, 0 KO` pendant que l'instrument, lance depuis le cockpit,
+       reimprimait **le HEAD DU COCKPIT sous l'etiquette `desknode`** ; et rendre
+       la ligne `cockpit` a `out.strip()` la laissait VIDE sous un `HOME`
+       etranger, gate toujours verte. Motif : `(a7)` teste `ligne_sha` comme
+       **fonction pure** et ⛔ ne joue JAMAIS `main()`, et la gate ne lit que
+       `⇒ TEMOIN :` et `[KO ]` — ⛔ aucune ligne d'en-tete.
+       ⇒ EXTRAITE ICI, elle devient assertable : les temoins (a8) et (a9)
+         REPLANTENT les deux moities.
+
+    ⚠️ `cwd=` EST LE SUJET, ⛔ pas un detail : chaque ligne interroge LE DEPOT
+       QU'ELLE ANNONCE, ⛔ jamais celui du repertoire courant.
+
+    ⚠️ `echec_nomme` N'EST DEMANDE QUE PAR LA LIGNE `cockpit` — ET L'ASYMETRIE
+       EST UN CHOIX, ⛔ pas un oubli (revue du 2026-09-06, iteration 2) : le
+       cockpit est un depot PRIVE, declare ABSENT sur tout runner, donc son
+       absence est un etat NORMAL a nommer. `DESKNODE` derive de `__file__` et
+       existe toujours ; ce qui pourrait faire lever la 1re ligne est le binaire
+       `git` LUI-MEME manquant — un etat ou le depot n'a de toute facon pas pu
+       etre clone. ⇒ on garde la MORT BRUYANTE la, et c'est ECRIT."""
+    lignes = []
+    rc, out, err, _ = run(["git", "rev-parse", "HEAD"], cwd=desknode or DESKNODE)
+    lignes.append("desknode   : %s" % ligne_sha(out, err, rc))
+    rc, out, err, _ = run(["git", "rev-parse", "HEAD"],
+                          cwd=cockpit or COCKPIT_DEFAUT, echec_nomme=True)
+    lignes.append("cockpit    : %s" % ligne_sha(out, err, rc))
+    return lignes
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -463,6 +516,47 @@ portait le defaut, et le temoin qui le gardait ne regardait que le MOTIF.
                       RC_RUN_IMPOSSIBLE).startswith("⛔ indisponible (rc=%d)"
                                                     % RC_RUN_IMPOSSIBLE)),
            "ligne_sha separe SHA / git MUET / lancement impossible")
+
+    # (a7-bis) 🔴 LES DEUX CAS QUE LA 1re REDACTION CONFONDAIT (revue du
+    #      2026-09-06, iteration 2). Le 1er est REPRODUIT sur un vrai depot sans
+    #      commit : `git rev-parse HEAD` rend 128 AVEC `HEAD` sur stdout.
+    temoin((True, True),
+           (ligne_sha("HEAD\n", "fatal: ambiguous argument 'HEAD'\n", 128)
+            .startswith("⛔ indisponible (rc=128)"),
+            "(aucun motif sur stderr)" in ligne_sha("", "", 128)),
+           "ligne_sha : rc non nul ⇒ ni SHA, ni rouge sans motif")
+
+    # (a8) 🔴 dn4-47 iteration 2 — LA LIGNE `desknode   :` INTERROGE LE DEPOT
+    #      QU'ELLE ANNONCE, ⛔ pas celui du repertoire courant. LA FAUTE EST
+    #      REPLANTEE : on monte un depot JETABLE avec UN commit, on demande
+    #      l'en-tete POUR CE DEPOT-LA, et on exige SON sha. Si quelqu'un retire
+    #      le `cwd=`, la ligne rend le HEAD de l'arbre courant ⇒ le temoin TOMBE.
+    _d8 = tempfile.mkdtemp(prefix="dn56-entete-")
+    try:
+        run(["git", "init", "-q", _d8])
+        run(["git", "-c", "user.name=dn56", "-c", "user.email=dn56@local",
+             "commit", "-q", "--allow-empty", "-m", "temoin a8"], cwd=_d8)
+        _rc8, _out8, _, _ = run(["git", "rev-parse", "HEAD"], cwd=_d8)
+        _sha8 = _out8.strip()
+        _lignes = entete(desknode=_d8, cockpit=_d8)
+        temoin((True, True, True),
+               (_rc8 == 0 and len(_sha8) == 40,
+                _lignes[0] == "desknode   : %s" % _sha8,
+                _lignes[1] == "cockpit    : %s" % _sha8),
+               "entete() interroge le depot NOMME, ⛔ pas le cwd")
+
+        # (a9) L'ABSENCE DU COCKPIT SE **NOMME** — c'est le resultat que la
+        #      marche `dn4-47` publie, et il etait asserte par RIEN qui tourne :
+        #      rendre cette ligne a `out.strip()` la laissait VIDE, gate verte.
+        _absent9 = os.path.join(_d8, "n-existe-pas")
+        _l9 = entete(desknode=_d8, cockpit=_absent9)[1]
+        temoin((True, True, True),
+               (_l9.startswith("cockpit    : ⛔"),
+                MOTIF_RUN in _l9,
+                _l9.strip() != "cockpit    :"),
+               "entete() NOMME l'absence du cockpit, ⛔ ne la tait pas")
+    finally:
+        shutil.rmtree(_d8, ignore_errors=True)
 
     # (b) `porte_bilan` — une sortie qui en porte une, une qui n'en porte pas.
     temoin(True, porte_bilan("bla\nBILAN : 5 OK, 0 KO\nbla"),
@@ -1235,22 +1329,8 @@ def main():
     print(BANNIERE)
     print("=" * 78)
     print("date       : %s" % time.strftime("%Y-%m-%dT%H:%M:%S"))
-    # 🔴 `cwd=DESKNODE`, ET C'EST UN CORRECTIF (revue du 2026-09-06). Sans
-    #    `cwd`, cette ligne interrogeait le depot DU REPERTOIRE COURANT :
-    #    lancee depuis le cockpit, elle imprimait le HEAD DU COCKPIT sous
-    #    l'etiquette `desknode`, et les deux lignes montraient alors LE MEME
-    #    SHA sous deux libelles differents. ⛔ Le libelle ne bouge pas ; c'est
-    #    le depot interroge qui est enfin celui qu'il annonce.
-    rc, out, err, _ = run(["git", "rev-parse", "HEAD"], cwd=DESKNODE)
-    print("desknode   : %s" % ligne_sha(out, err, rc))
-    # ⚠️ `dn4-47` — LE LIBELLE NE BOUGE PAS, mais l'absence se NOMME : sans ce
-    #    motif la ligne sortait VIDE sur un runner, ce qui ne se distingue pas
-    #    d'un `git` muet. ⇒ C'EST LE SEUL APPELANT QUI DEMANDE `echec_nomme` :
-    #    il SAIT quoi faire d'un echec — il l'imprime. Les deux lignes passent
-    #    par `ligne_sha`, dont le temoin (a7) garde les trois cas.
-    rc, out, err, _ = run(["git", "rev-parse", "HEAD"], cwd=COCKPIT_DEFAUT,
-                          echec_nomme=True)
-    print("cockpit    : %s" % ligne_sha(out, err, rc))
+    for _l in entete():
+        print(_l)
     print("mesures    : ⛔ TOUTES par `subprocess`, ⛔ jamais le shell de session")
 
     if not temoins():

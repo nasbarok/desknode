@@ -1,0 +1,203 @@
+==============================================================================
+dn4-47 — T11 : ETAT APRES LA REVUE DE CODE ITERATION 2 (4 couches, 14 patchs)
+==============================================================================
+date       : 2026-09-06T13:46:33+02:00
+desknode   : ba51d2fc5ea82e6e1a8f32128fbc987eec7ab9ac  arbre: 3 ligne(s) modifiee(s)
+cockpit    : a71cbc601747e6bb1056e2cdf02e4b34e1a8803a  arbre: 4 ligne(s)
+
+=== (1) L'INSTRUMENT, TEMOIN SEUL ===========================================
+==============================================================================
+dn5-6 / T1 — LE FILTRE : LES 10 CONSTATS REJOUES UN PAR UN
+==============================================================================
+date       : 2026-09-06T13:46:33
+desknode   : ba51d2fc5ea82e6e1a8f32128fbc987eec7ab9ac
+cockpit    : a71cbc601747e6bb1056e2cdf02e4b34e1a8803a
+mesures    : ⛔ TOUTES par `subprocess`, ⛔ jamais le shell de session
+
+==============================================================================
+TEMOIN DE L'INSTRUMENT — ⛔ SI UN SEUL TOMBE, ON NE CONCLUT RIEN
+==============================================================================
+
+Chaque primitive est exercee sur un cas ou la faute est REPLANTEE (elle DOIT
+la voir) ET sur un cas ou elle est absente (elle NE DOIT PAS la voir). C'est
+la lecon de `dn5-3` : son instrument repondait « ✅ NON » sur une chaine qui
+portait le defaut, et le temoin qui le gardait ne regardait que le MOTIF.
+
+  [OK ] motif_resout voit un motif PRESENT                       True
+  [OK ] motif_resout ne voit PAS un motif absent                 0
+  [OK ] 🔴 garde debranchee : il se compte LUI-MEME, et SEUL      ['tools/filtre_constats_dn56.py']
+  [OK ] la garde retire EXACTEMENT l'instrument, et ses tirs     ({'tools/filtre_constats_dn56.py'}, 0)
+  [OK ] run(echec_nomme=True) sur cwd ABSENT : rc + motif, ⛔ pas de trace (True, True, '')
+  [OK ] run() SANS le drapeau LEVE toujours — le defaut reste SUR True
+  [OK ] run(echec_nomme=True) sur un DEPASSEMENT : rc + motif NOMME (True, True, True, '')
+  [OK ] ligne_sha separe SHA / git MUET / lancement impossible   ('abc123', '⛔ git MUET (rc=0, sortie VIDE)', True)
+  [OK ] ligne_sha : rc non nul ⇒ ni SHA, ni rouge sans motif     (True, True)
+  [OK ] entete() interroge le depot NOMME, ⛔ pas le cwd          (True, True, True)
+  [OK ] entete() NOMME l'absence du cockpit, ⛔ ne la tait pas    (True, True, True)
+  [OK ] porte_bilan voit une ligne BILAN                         True
+  [OK ] porte_bilan ne voit PAS de BILAN dans un traceback       False
+  [OK ] porte_bilan n'est pas dupe d'une citation en prose       False
+  [OK ] est_traceback voit un traceback                          True
+  [OK ] est_traceback ne voit pas de traceback dans un bilan     False
+  [OK ] ast voit la forme LITTERALE                              True
+  [OK ] ast voit la forme COUPEE sur deux lignes                 True
+  [OK ] ast voit la forme en guillemets SIMPLES                  True
+  [OK ] ast n'est PAS dupe d'une citation en prose               False
+  [OK ] le grep du runner voit la forme LITTERALE                True
+  [OK ] 🔴 le grep du runner est AVEUGLE a la forme coupee        False
+  [OK ] 🔴 le grep du runner est AVEUGLE aux guillemets simples   False
+  [OK ] 🔴 le grep du runner est DUPE par une citation en prose   True
+  [OK ] compte_lignes_section1 separe hors/muet/verdict          (1, 1, 2)
+  [OK ] section1 garde ce qui est AVANT la borne 2               True
+  [OK ] 🔴 section1 ne compte PAS la section 3 (defaut du 1er jet) False
+  [OK ] bilan_de lit un bilan                                    (22, 10)
+  [OK ] bilan_de ne fabrique pas de bilan                        None
+
+  ⇒ TEMOIN : 29 OK, 0 KO
+rc=0
+
+=== (2) LA GATE, TIR NOMINAL (temoin negatif) ================================
+==============================================================================
+dn4-47 — LE TEMOIN DE L'INSTRUMENT DE FILTRAGE EST JOUE PAR LE HARNAIS
+==============================================================================
+  mutants declares : 9 · corps BIDON : 8 · sans bidon : 1
+
+── (c1) LA CIBLE EST **NOMMEE**, ET ELLE EXISTE ──────────────────
+  cible      : tools/filtre_constats_dn56.py
+  [OK ] la cible nommee existe au depot                            un fichier lisible
+
+── L'INSTRUMENT EST JOUE — ⛔ RIEN N'EST RE-MESURE ICI ───────────
+  commande   : python3 tools/filtre_constats_dn56.py --temoin-seul   (echeance 300 s)
+  rc observe : 0   ⛔ OBSERVATION — il n'entre dans AUCUN verdict
+
+── (c2) L'INSTRUMENT A **PUBLIE**, ET **RENDU LA MAIN** ──────────
+  [OK ] l'instrument a publie son temoin, et rendu la main         ligne trouvee : ⇒ TEMOIN : 29 OK, 0 KO
+
+── (c3) LE COMPTE PUBLIE ANNONCE **0** TEMOIN TOMBE ──────────────
+  [OK ] aucun temoin de l'instrument n'est tombe                   29 OK, 0 KO — ⛔ le compte n'est PAS fige ici, il est RECOPIE
+
+── (c4) LE TEMOIN A **AFFIRME** QUELQUE CHOSE ────────────────────
+  [OK ] le temoin de l'instrument n'est pas VIDE                   29 controle(s) affirme(s)
+
+── (c5) LE COMPTE PUBLIE S'ACCORDE AVEC LES LIGNES COMPTEES ──────
+  [OK ] le compte publie s'accorde avec les [KO ] imprimes         0 ligne(s) [KO ] comptee(s) pour 0 annonce(s)
+
+⛔ CE QUE CETTE GATE NE PROUVE PAS : elle garde que le temoin de
+   l'instrument est JOUE et qu'il tient. ⛔ Elle ne dit RIEN des
+   verdicts que l'instrument publie — un constat `VRAI` est son
+   RESULTAT, ⛔ pas un defaut du harnais (`D1`).
+
+==============================================================================
+BILAN : 5 OK, 0 KO
+==============================================================================
+rc=0
+
+=== (3) --liste-mutants (⛔ AUCUN BILAN : le parseur attend la liste NUE) =====
+   1  substitue a la cible un instrument BIDON qui MEURT avant de publier (trace nue, rc=1) — REPLANTE la panne `360a5c2` → `dn5-8`
+   2  substitue a la cible un instrument BIDON qui meurt avant de publier MAIS sort en rc=0 — prouve que le `rc` ne sauve pas
+   3  substitue a la cible un instrument BIDON qui publie `1 OK, 2 KO` avec ses 2 lignes [KO ] (un temoin de l'instrument est TOMBE)
+   4  substitue a la cible un instrument BIDON qui publie `0 OK, 0 KO` (un temoin qui n'affirme rien ne garde rien)
+   5  substitue a la cible un instrument BIDON qui publie `1 OK, 0 KO` ET imprime quand meme 1 ligne [KO ] (le compte MENT)
+   6  fait pointer la cible sur un chemin ABSENT (une cible introuvable ⛔ ne sort pas verte)
+   7  substitue a la cible un instrument BIDON qui DORT au-dela de son echeance — le depassement doit etre NOMME, ⛔ pas leve en exception
+   8  substitue a la cible un instrument BIDON qui PUBLIE son temoin PUIS dort au-dela de son echeance — une ligne publiee AVANT le couperet ⛔ ne vaut pas un verdict (revue iteration 2)
+   9  substitue a la cible un bidon qui publie un KO **et** a l'ARBRE interroge un repertoire sans `.git` — le rouge doit alors dire que le depot n'a pas pu REPONDRE (revue iteration 2)
+rc=0
+  ⇒ lignes : 9
+  ⇒ BILAN  : 0 (attendu 0)
+  ⇒ mutant inconnu : rc=2  BILAN=0 (attendu rc=2, BILAN=0)
+
+=== (4) LES 9 MUTANTS, UN PAR UN ============================================
+  mutant 1 : rc=1 · BILAN=1 · [KO ]=1 · prereq=0 · vise: l'instrument a publie son temoin, et rendu la main  
+  mutant 2 : rc=1 · BILAN=1 · [KO ]=1 · prereq=0 · vise: l'instrument a publie son temoin, et rendu la main  
+  mutant 3 : rc=1 · BILAN=1 · [KO ]=1 · prereq=0 · vise: aucun temoin de l'instrument n'est tombe            
+  mutant 4 : rc=1 · BILAN=1 · [KO ]=1 · prereq=0 · vise: le temoin de l'instrument n'est pas VIDE            
+  mutant 5 : rc=1 · BILAN=1 · [KO ]=1 · prereq=0 · vise: le compte publie s'accorde avec les [KO ] imprimes  
+  mutant 6 : rc=1 · BILAN=1 · [KO ]=1 · prereq=0 · vise: la cible nommee existe au depot                     
+  mutant 7 : rc=1 · BILAN=1 · [KO ]=1 · prereq=0 · vise: l'instrument a publie son temoin, et rendu la main  
+  mutant 8 : rc=1 · BILAN=1 · [KO ]=1 · prereq=0 · vise: l'instrument a publie son temoin, et rendu la main  
+  mutant 9 : rc=1 · BILAN=1 · [KO ]=1 · prereq=1 · vise: aucun temoin de l'instrument n'est tombe            
+
+=== (5) LA CAMPAGNE verif_campagne_dn56.py ==================================
+  [OK ] tout mutant rouge a bien imprime un BILAN                  aucune sortie en amont
+  [OK ] tout mutant rouge porte au moins un [KO ] nomme            chaque mutant vise un controle
+
+── (c3) LES EXCEPTIONS SONT DECLAREES ET ⛔ NE PEUVENT PAS ROT ───
+  · tools/verif_langues_dn442.py#17 ⇒ porteur **dn4-42-l-ecran-parle-deux-langues**
+      MESURE le 2026-09-05 : `--mutant 17` sort en rc=1 SANS ligne BILAN et SANS aucun [KO ] — `MUTANT 17 INAPPLICABLE : le motif est introuvable`. Son ancr
+  [OK ] aucune exception n'a survecu au defaut qu'elle excuse      1 exception(s) declaree(s), 1 encore justifiee(s)
+
+── (c4) LA CLE DE CAMPAGNE RESTE LISIBLE A COLONNE FIXE ──────────
+  [OK ] toute cible s'analyse a l'AST                              2 fichier(s) lu(s) dans la portee de la cle
+     [hors portee] tools/verif_demarrage_dn443.py         34 libelle(s) >= 58 sur 60
+     [hors portee] tools/verif_dossier_d5_dn45.py         0 libelle(s) >= 58 sur 9
+     [hors portee] tools/verif_langues_dn442.py           10 libelle(s) >= 58 sur 32
+     [hors portee] tools/verif_temoin_filtre_dn447.py     0 libelle(s) >= 58 sur 7
+  [OK ] cle valide (aucun libelle >= 58)                           44 libelle(s) lu(s) a l'AST, le plus long fait 56
+
+⛔ CE QUE CETTE GATE NE PROUVE PAS : « N mutants, N vus rougir »
+   prouve `mutant ⇒ rouge`, ⛔ PAS `controle ⇒ couvert`. Un controle
+   qu'AUCUN mutant ne vise reste garde par rien, et ⛔ elle ne le
+   verra pas. Elle garde que les campagnes DEJA ECRITES ne
+   pourrissent pas.
+
+==============================================================================
+BILAN : 8 OK, 0 KO
+==============================================================================
+rc=0
+
+=== (6) LE HARNAIS COMPLET run_gates.sh =====================================
+[VERTE      ] tools/verif_veille_dn33.py             rc=0      9s
+[VERTE      ] tools/verif_verrou_lvgl_dn413.py       rc=0     16s
+[VERTE      ] tools/verif_xip_dn422.py               rc=0      0s
+
+BILAN : 29 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 31 gates (235s)
+appariement --cockpit : 0 divergence(s) entre la detection LARGE (quotes simples/doubles, declaration coupee) et la detection ETROITE d'origine
+⛔ ROUGES :
+   · tools/verif_dossier_dn415.py (rc=1)
+rc=1
+
+=== (7) LES NON-GATES (aveugles au garde-fou gate-par-gate) =================
+      ⇒ Cet ecart devient un DEFAUT le jour ou rien ne l'exerce —
+        c'est ce que mesure « gardes par rien » (verif_campagne_dn440).
+
+==============================================================================
+BILAN TRI : 15 cas au tableau — dont 11 SITE(S) VIVANT(S) et 4 FICHE(S) de remede — 6 LEGITIME(S), 3 TROU(S), 1 INERTE(S), 5 BRANCHE(S), 0 echec(s)
+==============================================================================
+rc=0
+---
+     declaration est precisement ce que ce depot demande. Ce qui est
+     STABLE, c'est la classe 1 : plus aucun outil ne depend d'une
+     machine en particulier.
+  ⛔ Il ne voit PAS une LETTRE DE LECTEUR (`H:\...`) : le motif ne la
+     porte pas. Site connu : `tools/rendre-port.sh`, declare au site.
+==============================================================================
+rc=0
+
+=== (8) LA GATE ROUGE PRE-EXISTANTE (⛔ pas de mon fait) =====================
+BILAN : 23 OK, 10 KO
+
+=== (9) firmware/ INTACT (NFR) =============================================
+  git diff -- firmware/ : 0 ligne(s) (attendu 0)
+  renommages            : 0 (attendu 0)
+  fichiers touches      :
+    M	tools/filtre_constats_dn56.py
+    M	tools/verif_temoin_filtre_dn447.py
+
+=== (10) AC5 REJOUEE SUR LE CODE PATCHE — arbre SANS .git + HOME etranger ====
+  (arbre monte depuis git ls-files : c'est l'ARBRE DE TRAVAIL, ⛔ pas HEAD)
+  .git present : NON
+--- l'instrument ---
+desknode   : ⛔ indisponible (rc=128) fatal: not a git repository (or any of the parent directories): .git
+cockpit    : ⛔ indisponible (rc=127) ⛔ RUN IMPOSSIBLE : [Errno 2] No such file or directory: '/tmp/claude-1000/-home-nasbarok-projects-compagnon-project/39649ad6-4692-4596-ad4c-d70d1706da2d/scratchpad/home2.GqLz/projects/compagnon_project' — cmd=['git', 'rev-parse', 'HEAD'] cwd='/tmp/claude-1000/-home-nasbarok-projects-compagnon-project/39649ad6-4692-4596-ad4c-d70d1706da2d/scratchpad/home2.GqLz/projects/compagnon_project'
+  [KO ] motif_resout voit un motif PRESENT                       attendu True, obtenu False
+  [KO ] motif_resout ne voit PAS un motif absent                 attendu 0, obtenu None
+  [KO ] 🔴 garde debranchee : il se compte LUI-MEME, et SEUL      attendu ['tools/filtre_constats_dn56.py'], obtenu None
+  [KO ] la garde retire EXACTEMENT l'instrument, et ses tirs     attendu ({'tools/filtre_constats_dn56.py'}, 0), obtenu (set(), None)
+  ⇒ TEMOIN : 25 OK, 4 KO
+--- la gate ---
+  [KO ] aucun temoin de l'instrument n'est tombe                   ⛔ 4 TEMOIN(S) TOMBE(S) sur 29 — ⛔ ON NE CONCLUT RIEN du depot ; les [KO ] de l'instrument :
+⚠️ AVANT DE LIRE CE ROUGE — UN PREREQUIS MANQUE :
+   ⛔ CET ARBRE N'EST PAS UN DEPOT `git` (`git rev-parse --git-dir` rend 128)
+     un PREREQUIS ABSENT, ⛔ pas un defaut du depot. ⛔ Il n'est ni tu, ni declare NON_JOUABLE, ni verdi.
+BILAN : 4 OK, 1 KO

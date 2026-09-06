@@ -30,6 +30,13 @@ elle tient : **l'instrument RESTE hors du glob `tools/verif_*.py`.**
 
   (c2) la ligne `⇒ TEMOIN :` a ete PUBLIEE — son **ABSENCE** signale un
        instrument **MORT** ;
+       🔴 ET LA CIBLE A **RENDU LA MAIN** (revue du 2026-09-06, iteration 2).
+       Une ligne publiee AVANT le couperet ⛔ ne vaut pas un verdict : mesure du
+       2026-09-06 — un bidon qui publie `⇒ TEMOIN : 23 OK, 0 KO` **puis dort**
+       rendait `BILAN : 5 OK, 0 KO`, `rc=0`, contre la ligne « Cible qui n'en
+       finit pas » de la matrice d'I/O qui exige `[KO ]` sur (c2). Le mutant 8
+       REPLANTE exactement ca. ⛔ Le discriminant n'est PAS le `rc` de
+       l'instrument : c'est **la mesure de cette gate**, qui l'a tue.
   (c3) le compte publie annonce **`0`** temoin tombe.
 
 ⛔ LE `rc` DE L'INSTRUMENT N'ENTRE DANS **AUCUN** VERDICT. Il est imprime comme
@@ -102,6 +109,12 @@ DELAI = 300
 #    pas debrancher la garde — la garde doit toujours NOMMER le depassement
 #    plutot que de le laisser sortir en exception.
 DELAI_MUTANT_7 = 2
+# 🔴 TABLE, ⛔ PAS UNE COMPARAISON `== 7` (revue du 2026-09-06, iteration 2).
+#    Le constat « un second mutant dormant heriterait de `DELAI` » avait ete
+#    REJETE comme hypothetique a cette iteration ; le correctif du MEME tour a
+#    ajoute le mutant 8, qui dort. ⇒ il a CESSE d'etre hypothetique DANS LA
+#    MEME PASSE, et la table est posee plutot que la comparaison.
+DELAIS_MUTANT = {7: DELAI_MUTANT_7, 8: DELAI_MUTANT_7}
 
 # La ligne que l'instrument publie sur TOUS les chemins de `temoins()`.
 # ⚠️ `⇒ TEMOIN :` et ⛔ PAS `⇒ TEMOIN DE L'INSTRUMENT :` — la seconde n'est
@@ -111,6 +124,8 @@ RE_KO = re.compile(r"^\s*\[KO \].*$", re.M)
 
 ok_total = [0]
 ko_total = [0]
+# L'arbre dont on demande s'il peut REPONDRE. Substitue par le mutant 9.
+_ARBRE = [RACINE]
 
 # 🔴 dn4-40 / AC40.7.c — instrument de campagne, import DEFENSIF : une gate ne
 #    meurt pas parce qu'un module de trace manque.
@@ -132,8 +147,8 @@ def ctrl(ok, libelle, detail=""):
     return ok
 
 
-def git_injouable():
-    """LE DEPOT PEUT-IL SEULEMENT REPONDRE A UNE QUESTION `git` ?
+def git_injouable(arbre=None):
+    """LE DEPOT PEUT-IL SEULEMENT REPONDRE A LA QUESTION QUE POSENT LES TEMOINS ?
 
     🔴 UN PREREQUIS ABSENT PORTAIT LE MASQUE D'UN VRAI DEFAUT (revue du
     2026-09-06). Les temoins (a1)..(a4) de l'instrument interrogent
@@ -145,9 +160,24 @@ def git_injouable():
 
     ⇒ ON LE NOMME, ET C'EST TOUT. ⛔ Aucune declaration `NON_JOUABLE`, ⛔ aucun
       passage au vert : la gate rougit toujours, mais son motif dit ce qui est
-      vrai. Rend `None` quand `git` repond, sinon LA PHRASE A IMPRIMER."""
+      vrai. Rend `None` quand `git` repond, sinon LA PHRASE A IMPRIMER.
+
+    🔴 ELLE POSAIT LA MAUVAISE QUESTION (revue du 2026-09-06, iteration 2).
+       La 1re redaction ne demandait que `git rev-parse --git-dir`. MESURE : sur
+       un depot qui a un `.git` mais **aucun commit**, `--git-dir` rend **0** ⇒
+       aucun motif n'etait imprime, pendant que `git grep <motif> HEAD` — ce que
+       les temoins (a1)..(a4) utilisent REELLEMENT — rend **128** et les fait
+       tomber. La mauvaise attribution que cette garde existe pour supprimer
+       revenait donc A L'IDENTIQUE, d'un cran plus loin.
+       ⇒ ELLE DEMANDE MAINTENANT CE QUE LES TEMOINS DEMANDENT : un `.git`, **et**
+         un `HEAD` resoluble. ⛔ La ligne d'origine n'est pas effacee (NFR3).
+
+    ⚠️ `arbre` EST SUBSTITUE PAR LE MUTANT 9, au meme titre que le chemin de la
+       cible par le mutant 6 : c'est une SITUATION qu'on monte, ⛔ pas une
+       variable interne falsifiee."""
+    ou = arbre or RACINE
     try:
-        r = subprocess.run(["git", "rev-parse", "--git-dir"], cwd=RACINE,
+        r = subprocess.run(["git", "rev-parse", "--git-dir"], cwd=ou,
                            timeout=60, stdout=subprocess.PIPE,
                            stderr=subprocess.STDOUT)
     except (OSError, subprocess.SubprocessError) as e:
@@ -155,6 +185,16 @@ def git_injouable():
     if r.returncode != 0:
         return ("⛔ CET ARBRE N'EST PAS UN DEPOT `git` "
                 "(`git rev-parse --git-dir` rend %d)" % r.returncode)
+    try:
+        r2 = subprocess.run(["git", "rev-parse", "--verify", "HEAD"], cwd=ou,
+                            timeout=60, stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT)
+    except (OSError, subprocess.SubprocessError) as e:
+        return "⛔ `git` EST INJOUABLE ICI : %s" % e
+    if r2.returncode != 0:
+        return ("⛔ CET ARBRE N'A PAS DE `HEAD` RESOLUBLE "
+                "(`git rev-parse --verify HEAD` rend %d) — or c'est sur `HEAD` "
+                "que les temoins interrogent le depot" % r2.returncode)
     return None
 
 
@@ -166,7 +206,7 @@ def bilan(rc):
 
     ⇒ ET SI LA GATE ROUGIT, ELLE DIT D'ABORD SI LE DEPOT POUVAIT REPONDRE."""
     if ko_total[0]:
-        motif = git_injouable()
+        motif = git_injouable(_ARBRE[0])
         if motif:
             print("\n⚠️ AVANT DE LIRE CE ROUGE — UN PREREQUIS MANQUE :")
             print("   %s" % motif)
@@ -211,6 +251,12 @@ MUTANTS = {
         "(une cible introuvable ⛔ ne sort pas verte)"),
     7: ("substitue a la cible un instrument BIDON qui DORT au-dela de son "
         "echeance — le depassement doit etre NOMME, ⛔ pas leve en exception"),
+    8: ("substitue a la cible un instrument BIDON qui PUBLIE son temoin PUIS "
+        "dort au-dela de son echeance — une ligne publiee AVANT le couperet "
+        "⛔ ne vaut pas un verdict (revue iteration 2)"),
+    9: ("substitue a la cible un bidon qui publie un KO **et** a l'ARBRE "
+        "interroge un repertoire sans `.git` — le rouge doit alors dire que "
+        "le depot n'a pas pu REPONDRE (revue iteration 2)"),
 }
 _MUTANT = 0
 
@@ -247,7 +293,19 @@ CORPS_BIDON = {
     # ⚠️ IL DORT **LONGTEMPS** DEVANT UNE ECHEANCE COURTE, et ⛔ pas l'inverse :
     #    un bidon qui dort « juste un peu plus » rendrait le mutant sensible a
     #    la charge de la machine. Le tir coute `DELAI_MUTANT_7` secondes.
-    7: "import time\ntime.sleep(300)",
+    # 🔴 LE `flush()` N'EST PAS COSMETIQUE (revue du 2026-09-06, iteration 2) :
+    #    sans lui les `print` du bidon restent BUFFERISES PAR BLOCS sur un
+    #    `PIPE`, `TimeoutExpired.output` revient **VIDE**, et la moitie
+    #    « la sortie partielle est RENDUE » du correctif n'etait replantee par
+    #    RIEN — on pouvait la remplacer par `""` sans faire rougir la campagne.
+    7: "import time\nsys.stdout.flush()\ntime.sleep(300)",
+    # Il PUBLIE, il flushe, PUIS il se fige : la ligne est lue, et la cible n'a
+    # pourtant ⛔ pas rendu la main.
+    8: "\n".join([_L_OK % " a", _L_TEMOIN % (23, 0),
+                  "sys.stdout.flush()", "import time", "time.sleep(300)"]),
+    # Il fait rougir (c3) — c'est ce rouge que le bloc de prerequis annote.
+    9: "\n".join([_L_OK % " a", _L_KO % " b", _L_TEMOIN % (1, 1),
+                  "sys.exit(1)"]),
 }
 
 # ── LES MUTANTS QUI NE PASSENT **PAS** PAR UN INSTRUMENT BIDON ──────────────
@@ -257,6 +315,14 @@ MUTANTS_SANS_BIDON = {
     6: "substitue au CHEMIN de la cible un chemin ABSENT",
 }
 
+# ── LES MUTANTS QUI SUBSTITUENT **AUSSI** L'ARBRE INTERROGE ────────────────
+# ⚠️ Meme famille que le mutant 7, qui substitue la cible **ET** l'echeance :
+#    « le depot ne peut pas repondre » est une SITUATION, et la monter demande
+#    les deux moities. ⛔ Aucune variable interne n'est falsifiee.
+MUTANTS_ARBRE = {
+    9: "substitue a l'ARBRE interroge un repertoire SANS `.git`",
+}
+
 # 🔴 UN MUTANT DECLARE SANS CORPS NI BRANCHE JOUERAIT LE **VRAI** INSTRUMENT ET
 #    SORTIRAIT **VERT** — un mutant silencieusement inoffensif, c'est-a-dire une
 #    campagne qui compte une preuve qu'elle n'a pas. Le mutant 7 en etait a UNE
@@ -264,8 +330,8 @@ MUTANTS_SANS_BIDON = {
 #    silence, et elle se voit AU PREMIER TIR, meme sans `--mutant`.
 MUTANTS_ORPHELINS = sorted(set(MUTANTS) - set(CORPS_BIDON)
                            - set(MUTANTS_SANS_BIDON))
-MUTANTS_FANTOMES = sorted((set(CORPS_BIDON) | set(MUTANTS_SANS_BIDON))
-                          - set(MUTANTS))
+MUTANTS_FANTOMES = sorted((set(CORPS_BIDON) | set(MUTANTS_SANS_BIDON)
+                           | set(MUTANTS_ARBRE)) - set(MUTANTS))
 
 
 def cible():
@@ -284,13 +350,25 @@ def cible():
             raise
         return (faux, ("<instrument BIDON du mutant %d, substitue a %s>"
                        % (_MUTANT, CIBLE_REL)), d,
-                DELAI_MUTANT_7 if _MUTANT == 7 else DELAI)
+                DELAIS_MUTANT.get(_MUTANT, DELAI))
     if _MUTANT in MUTANTS_SANS_BIDON:
         d = tempfile.mkdtemp(prefix="dn447-absent-")
         faux = os.path.join(d, "n-existe-pas", CIBLE_REL)
         return (faux, ("<chemin ABSENT du mutant %d, substitue a %s>"
                        % (_MUTANT, CIBLE_REL)), d, DELAI)
     return reel, CIBLE_REL, None, DELAI
+
+
+def arbre_git():
+    """L'arbre dont `git_injouable()` demande s'il peut REPONDRE.
+
+    Rend `(arbre, jetable)`. Sous le mutant 9 c'est une SUBSTITUTION — un
+    repertoire reel, monte pour l'occasion, SANS `.git` — ⛔ jamais `RACINE`
+    falsifiee en douce."""
+    if _MUTANT in MUTANTS_ARBRE:
+        d = tempfile.mkdtemp(prefix="dn447-sans-git-")
+        return d, d
+    return RACINE, None
 
 
 def lance(chemin, delai):
@@ -303,22 +381,32 @@ def lance(chemin, delai):
     monter demanderait de casser l'interpreteur ou le `cwd`, c'est-a-dire de
     debrancher autre chose que ce que ce controle garde. C'est ECRIT plutot
     que tu — elle rend la MEME forme que la branche du timeout, qui, elle,
-    est vue rougir."""
+    est vue rougir.
+
+    🔴 ELLE REND **TROIS** VALEURS, ⛔ PLUS DEUX (revue du 2026-09-06, iteration
+    2) : `(rc, sortie, motif)`. La 1re redaction COLLAIT le motif de
+    depassement EN TETE de la sortie partielle, et `recopie(..., n=12)` ne garde
+    que les 12 DERNIERES lignes : des que la cible avait imprime plus de 11
+    lignes — l'instrument reel en imprime ~26 avant de publier — le motif
+    `⛔ TIMEOUT apres N s` SORTAIT DE LA FENETRE, et le lecteur voyait
+    « MORT en amont » sur un depassement. MESURE le 2026-09-06 :
+    `"TIMEOUT" in recopie(...)` ⇒ **False**, 1re ligne conservee
+    `[OK ] controle 19`. ⇒ le motif est RENDU A PART, et imprime **hors** de la
+    fenetre de recopie."""
     try:
         r = subprocess.run([sys.executable, chemin, ARG_CIBLE], cwd=RACINE,
                            timeout=delai, stdout=subprocess.PIPE,
                            stderr=subprocess.STDOUT)
-        return r.returncode, r.stdout.decode("utf-8", "replace")
+        return r.returncode, r.stdout.decode("utf-8", "replace"), None
     except subprocess.TimeoutExpired as e:
         # 🔴 LA SORTIE PARTIELLE EST **RENDUE**, ⛔ pas jetee (revue du
         #    2026-09-06). Un instrument qui PUBLIE son `⇒ TEMOIN :` puis se fige
-        #    etait sinon rapporte par (c2) comme « MORT en amont » — le mauvais
-        #    motif sur un fait vrai.
+        #    doit etre LU — mais ⛔ pas CRU : voir (c2). Le mutant 8 le replante.
         vu = e.output.decode("utf-8", "replace") if e.output else ""
-        return None, ("⛔ TIMEOUT apres %d s — l'instrument n'en finit pas.\n%s"
-                      % (delai, vu))
+        return None, vu, ("⛔ TIMEOUT apres %d s — l'instrument n'en finit pas."
+                          % delai)
     except OSError as e:
-        return None, "⛔ IMPOSSIBLE A LANCER : %s" % e
+        return None, "", "⛔ IMPOSSIBLE A LANCER : %s" % e
 
 
 def recopie(txt, n=12):
@@ -374,9 +462,16 @@ def main():
     # ⚠️ `cible()` ETAIT APPELEE HORS DU `try` : un `OSError` de `mkdtemp` ou de
     #    l'ecriture rendait une TRACE NUE, ⛔ sans `BILAN`, et laissait fuir le
     #    temporaire — exactement ce que cette gate existe pour interdire.
+    jetable = jetable_arbre = None
     try:
         chemin, etiq, jetable, delai = cible()
+        arbre, jetable_arbre = arbre_git()
+        _ARBRE[0] = arbre
     except OSError as e:
+        # ⛔ AUCUN TEMPORAIRE NE FUIT, meme si le 2e montage echoue APRES le 1er.
+        for _d in (jetable, jetable_arbre):
+            if _d:
+                shutil.rmtree(_d, ignore_errors=True)
         ctrl(False, "la substitution du mutant a pu etre montee",
              "⛔ %s — ⛔ une gate ne meurt pas en trace nue, pas meme en "
              "montant son propre mutant" % e)
@@ -396,21 +491,42 @@ def main():
         print("\n── L'INSTRUMENT EST JOUE — ⛔ RIEN N'EST RE-MESURE ICI ───────────")
         print("  commande   : python3 %s %s   (echeance %d s)"
               % (etiq, ARG_CIBLE, delai))
-        rc, sortie = lance(chemin, delai)
-        # 🔴 LE `rc` EST UNE **OBSERVATION**, ⛔ JAMAIS UN VERDICT. Un banc qui
-        #    juge sur le `rc` global reste vert des qu'un AUTRE echec rend la
-        #    meme valeur — et l'instrument MORT rend precisement `1`.
+        rc, sortie, motif_lance = lance(chemin, delai)
+        # 🔴 LE `rc` DE L'INSTRUMENT EST UNE **OBSERVATION**, ⛔ JAMAIS UN
+        #    VERDICT. Un banc qui juge sur le `rc` global reste vert des qu'un
+        #    AUTRE echec rend la meme valeur — et l'instrument MORT rend
+        #    precisement `1`.
+        # ⚠️ ⛔ NE PAS CONFONDRE AVEC `motif_lance` (revue du 2026-09-06,
+        #    iteration 2) : un depassement ou un lancement impossible est **LA
+        #    MESURE DE CETTE GATE**, ⛔ pas le code de retour de son sujet. Les
+        #    ranger tous deux sous « OBSERVATION » laissait une cible FIGEE
+        #    sortir VERTE — mesure du 2026-09-06 : un bidon qui publie
+        #    `⇒ TEMOIN : 23 OK, 0 KO` puis dort rendait `BILAN : 5 OK, 0 KO`,
+        #    `rc=0`, contre la ligne « Cible qui n'en finit pas » de la matrice.
         print("  rc observe : %s   ⛔ OBSERVATION — il n'entre dans AUCUN verdict"
               % ("mort ou timeout" if rc is None else rc))
+        if motif_lance:
+            # ⛔ IMPRIME **HORS** DE LA FENETRE DE RECOPIE : c'est ce qui a
+            #    manque a la 1re redaction.
+            print("  %s" % motif_lance)
 
-        print("\n── (c2) L'INSTRUMENT A **PUBLIE** SON TEMOIN ─────────────────────")
+        print("\n── (c2) L'INSTRUMENT A **PUBLIE**, ET **RENDU LA MAIN** ──────────")
         m = RE_TEMOIN.search(sortie)
-        if not ctrl(m is not None, "l'instrument a publie sa ligne `⇒ TEMOIN :`",
-                    "ligne trouvee : %s" % m.group(0).strip() if m
-                    else "⛔ L'INSTRUMENT N'A PAS JUGE — aucune ligne publiee, "
-                         "il est MORT en amont ; dernieres lignes ci-dessous"):
-            if m is None:
-                print(recopie(sortie))
+        rendu = motif_lance is None
+        if m and rendu:
+            _det = "ligne trouvee : %s" % m.group(0).strip()
+        elif m:
+            _det = ("⛔ LA CIBLE N'A PAS RENDU LA MAIN — la ligne publiee AVANT "
+                    "le couperet ⛔ ne vaut pas un verdict ; motif ci-dessus")
+        elif not rendu:
+            _det = ("⛔ NI JUGE, NI RENDU LA MAIN — motif ci-dessus ; "
+                    "dernieres lignes vues :")
+        else:
+            _det = ("⛔ L'INSTRUMENT N'A PAS JUGE — aucune ligne publiee, "
+                    "il est MORT en amont ; dernieres lignes ci-dessous")
+        if not ctrl(m is not None and rendu,
+                    "l'instrument a publie son temoin, et rendu la main", _det):
+            print(recopie(sortie))
             return bilan(1)
 
         publies_ok, publies_ko = int(m.group(1)), int(m.group(2))
@@ -451,8 +567,9 @@ def main():
         print("   RESULTAT, ⛔ pas un defaut du harnais (`D1`).")
         return bilan(1 if ko_total[0] else 0)
     finally:
-        if jetable:
-            shutil.rmtree(jetable, ignore_errors=True)
+        for _d in (jetable, jetable_arbre):
+            if _d:
+                shutil.rmtree(_d, ignore_errors=True)
 
 
 if __name__ == "__main__":
