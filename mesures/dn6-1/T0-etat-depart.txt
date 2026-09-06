@@ -1,0 +1,37 @@
+==============================================================================
+dn6-1 — T0 : L'ETAT DE DEPART
+==============================================================================
+date       : 2026-09-06
+desknode   : cf6230a386a52bc7b585e18d2f4564aa67abf402  (HEAD au cadrage)
+⚠️ CETTE CAPTURE EST DERIVEE DE L'ARBRE DU CADRAGE, ⛔ PAS PRISE AVANT LUI.
+   Elle est reconstruite par `git show <baseline>:<chemin>` — donc
+   RE-DERIVABLE par quiconque, ⛔ pas une affirmation de memoire.
+
+=== (1) IL N'Y AVAIT AUCUNE BOM =============================================
+  fichiers suivis a la baseline : 648
+  `docs/bom.md`                 : ⛔ ABSENT
+  `tools/verif_bom_dn61.py`     : ⛔ ABSENT
+  `mesures/dn6-1/`              : 0 fichier(s)
+
+=== (2) LE DOSSIER MATERIEL NE PARLAIT PAS D'ACHAT ==========================
+  hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md         10794 lignes ·  0 « € » ·   0 liens
+  hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md       6734 lignes ·  0 « € » ·   5 liens
+  hardware/ESP32-S3-Touch-LCD-2.8B-liaison-pc.md         3508 lignes ·  0 « € » ·   4 liens
+  TOTAL hardware/                                       21036 lignes ·  0 « € »
+  ⇒ ⛔ ZERO prix. Les 9 liens sont des URL de DATASHEET, ⛔ pas de boutique.
+
+=== (3) LE README NOMMAIT LES PALIERS, SANS RIEN POUR LES ACHETER ===========
+  README.md                     : 197400 octets
+  « Les deux paliers materiels »: present
+  occurrences de « € »          : 0
+  occurrences de « acheter »    : 1  (⚠️ en-tete de colonne uniquement)
+  lien vers une page d'achat    : ⛔ ABSENT
+
+=== (4) LE HARNAIS AVANT ====================================================
+  gates decouvertes par le glob `tools/verif_*.py` : 31
+  ⚠️ Passe complete du cadrage : 29 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 31.
+     La ROUGE (`verif_dossier_dn415.py`, 23 OK / 10 KO) est PREEXISTANTE et
+     attribuee PAR LA MESURE : ses 10 [KO ] sont IDENTIQUES, ligne pour
+     ligne, entre l'arbre cockpit PUR de HEAD et l'arbre reel (protocole
+     `--cockpit` + `git archive HEAD`). ⛔ Elle n'est pas de cette marche,
+     et ⛔ elle n'est pas refermee par elle.

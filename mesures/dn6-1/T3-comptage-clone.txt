@@ -1,0 +1,82 @@
+==============================================================================
+dn6-1 — T3 : AC6.1.4 — LE COMPTAGE SUR LE CLONE
+==============================================================================
+date       : 2026-09-06
+question   : toute notion que `docs/bom.md` DEMANDE AU LECTEUR DE NOMMER
+             est-elle DEFINIE dans le meme clone ?
+methode    : motifs a BORNES DE MOT sur les 22 fichiers `.md` SUIVIS.
+             ⛔ Pas d'appreciation a l'impression.
+⚠️ LA LISTE DES NOTIONS EST CUREE A LA MAIN — seule etape non mecanisable,
+   donc PUBLIEE en entier pour qu'on puisse la contester.
+
+🔴 DEUX ARTEFACTS DE LA 1re REDACTION DE CE COMPTAGE, CORRIGES ET ECRITS :
+   (a) elle cherchait les paliers SOUS LEUR FORME A GUILLEMETS
+       (`« DeskNode + Ambiance »`). Le README les ecrit EN GRAS, sans
+       guillemets ⇒ le palier 2 sortait « defini NULLE PART ailleurs »,
+       ce qui etait FAUX. Le motif mesurait la DECORATION, ⛔ pas le nom ;
+   (b) le TEMOIN NEGATIF etait compte dans le verdict des notions non
+       definies — or il est CENSE sortir a 0. Un temoin range parmi les
+       defauts fait passer l'instrument pour casse.
+
+=== (1) CHAQUE NOTION, ET OU ELLE VIT =======================================
+  notion                               bom  clone  autres fichiers qui la portent
+  palier « DeskNode + Ambiance »         2      4  CONTRIBUTING.md(1) · README.md(1)
+  le mot « palier »                      8     34  README.md(9) · ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md(7) · dn5-1-ecart-promesses.md(6)
+  ESP32-S3-Touch-LCD-2.8B                4     64  dn4-15-arbitrage.md(39) · README.md(12) · ESP32-S3-Touch-LCD-2.8B-affichage.md(5)
+  BME680                                 5    126  ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md(83) · ESP32-S3-Touch-LCD-2.8B-affichage.md(18) · README.md(14)
+  BH1750                                 6    129  ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md(90) · README.md(18) · dn4-15-arbitrage.md(6)
+  GY-302                                 2     18  ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md(13) · README.md(3)
+  CJMCU-680                              1      1  ⛔ AUCUN
+  TOF050C-VL6180X                        2     29  ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md(13) · dn4-15-arbitrage.md(10) · DeskNode_Project_Roadmap.md(2)
+  INA219                                 3     78  ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md(53) · README.md(9) · dn4-15-arbitrage.md(5)
+  marche `dn4-41`                        1     20  ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md(15) · dn5-1-ecart-promesses.md(2) · README.md(1)
+  Waveshare (fabricant)                  3     18  ESP32-S3-Touch-LCD-2.8B-affichage.md(7) · README.md(4) · ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md(2)
+  AliExpress (fournisseur)               3      3  ⛔ AUCUN
+  Pimoroni (fournisseur)                 1      1  ⛔ AUCUN
+  CC-BY-SA-4.0 (licence)                 1     15  LICENSING.md(8) · CHANGELOG.md(3) · CLA.md(1)
+  « breakout » (jargon)                  2     49  ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md(34) · README.md(8) · dn4-15-arbitrage.md(2)
+  « Dupont » (jargon)                    1     12  ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md(8) · README.md(3)
+  « sérigraphie » (jargon)               3     25  ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md(17) · ESP32-S3-Touch-LCD-2.8B-affichage.md(3) · README.md(2)
+  ⚠️ TEMOIN NEGATIF « DeskNode Turbo     0      0  ⛔ AUCUN
+
+=== (2) LE TEMOIN NEGATIF ===================================================
+  « DeskNode Turbo » n'existe pas, et il sort a **0 / 0** ⇒ le compteur SAIT
+  dire « nulle part ». ⛔ Sans lui, un comptage qui rendrait 0 partout serait
+  indiscernable d'un comptage MORT. ⛔ Il n'entre PAS dans le verdict.
+
+=== (3) ⛔ LE PALIER 1 NE SE COMPTE PAS, ET C'EST UN FAIT, PAS UN OUBLI =====
+  Le palier 1 s'appelle « DeskNode » — c'est-a-dire LE NOM DU PRODUIT.
+  Aucun motif ne peut distinguer « le palier DeskNode » de « le projet
+  DeskNode » : `\bDeskNode\b` rend 51 occurrences dans le clone, dont
+  l'ecrasante majorite designe le PROJET. ⇒ cette ligne est RETIREE du
+  tableau plutot que publiee fausse. Ce qui la remplace : le controle (c2)
+  de `verif_bom_dn61.py`, qui exige le nom LITTERAL dans `docs/bom.md`.
+
+=== (4) 🔴 LES DEUX SENS DE « PALIER » — ⛔ ILS NE S'ADDITIONNENT PAS ========
+  Le depot emploie « palier » dans DEUX sens : le palier MATERIEL et le
+  PLATEAU d'une courbe. Les additionner donnerait un chiffre creux.
+    occurrences dans bom.md          : 8
+    dont sens PLATEAU DE COURBE      : 0
+    ⇒ sens MATERIEL                  : 8
+  ⇒ dans `docs/bom.md` le mot n'a QU'UN SEUL sens — c'est ce qu'on voulait :
+    une page d'achat qui emploierait le meme mot pour deux choses serait
+    illisible pour un inconnu.
+
+=== (5) VERDICT =============================================================
+  ✅ Toute notion listee est presente dans le clone : ⛔ AUCUNE a 0.
+  ⚠️ 3 notion(s) ne vivent QUE dans `docs/bom.md` :
+     · CJMCU-680
+     · AliExpress (fournisseur)
+     · Pimoroni (fournisseur)
+  ⇒ ⛔ Ce n'est PAS un defaut au sens d'AC6.1.4 : `docs/bom.md` fait partie
+    du clone, donc une notion qu'elle definit elle-meme EST definie dans le
+    clone. Ce qui est ECRIT ici, c'est qu'un lecteur n'a AUCUN second
+    endroit ou recouper — et pour deux noms de boutiques et une reference
+    de breakout qui n'apparaissaient nulle part avant, c'est attendu.
+
+=== (6) ⛔ CE QUE CE COMPTAGE NE PROUVE PAS ==================================
+  ⛔ Il compte des OCCURRENCES, ⛔ pas des DEFINITIONS : un mot present dix
+     fois sans jamais etre explique sortirait a 10.
+  ⛔ La liste est CUREE : une notion oubliee ne sera pas vue. C'est LA
+     limite de l'instrument, et elle est ecrite plutot que tue.
+  ⛔ Il ne lit que les `.md` SUIVIS : ⛔ ni le code, ni les photos.
