@@ -67,14 +67,23 @@ elle tient : **l'instrument RESTE hors du glob `tools/verif_*.py`.**
    ajouterait une occurrence au motif litteral que le constat (4) de `dn5-6`
    compte.
 
-Sortie : 0 si tout passe, 1 sinon. La ligne `BILAN` est imprimee sur **TOUS**
-les chemins de sortie.
+Sortie : `0` si tout passe · `1` si un controle rougit ou si un prerequis
+manque · `2` sur un `--mutant` inconnu (message d'usage).
+
+⚠️ LA LIGNE `BILAN` EST IMPRIMEE SUR **TOUS LES CHEMINS QUI RENDENT UN
+   VERDICT** — ⛔ pas sur ceux qui n'en rendent aucun. MESURE le 2026-09-06 :
+   `--liste-mutants` (rc=0) et `--mutant <inconnu>` (rc=2) n'impriment ⛔ AUCUN
+   `BILAN`, et c'est **voulu** : `verif_campagne_dn56.py` se comporte a
+   l'identique, et son parseur de `--liste-mutants` attend la liste **NUE**. La
+   1re redaction affirmait « TOUS les chemins de sortie » — c'etait FAUX, et
+   affirme deux fois. ⇒ la PHRASE est corrigee, ⛔ pas le comportement.
 """
 
 import argparse
 import io
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -123,9 +132,49 @@ def ctrl(ok, libelle, detail=""):
     return ok
 
 
+def git_injouable():
+    """LE DEPOT PEUT-IL SEULEMENT REPONDRE A UNE QUESTION `git` ?
+
+    🔴 UN PREREQUIS ABSENT PORTAIT LE MASQUE D'UN VRAI DEFAUT (revue du
+    2026-09-06). Les temoins (a1)..(a4) de l'instrument interrogent
+    `git grep <motif> HEAD` : dans un arbre SANS `.git` — un `git archive`
+    deplie, par exemple — ils tombent, et cette gate rougissait en disant « un
+    temoin est tombe ». C'est vrai, et ca ne dit ⛔ PAS la verite : le depot
+    n'avait pas pu REPONDRE. C'est la meme classe d'absence non nommee que
+    `run()` vient d'etre durci contre, un etage plus bas.
+
+    ⇒ ON LE NOMME, ET C'EST TOUT. ⛔ Aucune declaration `NON_JOUABLE`, ⛔ aucun
+      passage au vert : la gate rougit toujours, mais son motif dit ce qui est
+      vrai. Rend `None` quand `git` repond, sinon LA PHRASE A IMPRIMER."""
+    try:
+        r = subprocess.run(["git", "rev-parse", "--git-dir"], cwd=RACINE,
+                           timeout=60, stdout=subprocess.PIPE,
+                           stderr=subprocess.STDOUT)
+    except (OSError, subprocess.SubprocessError) as e:
+        return "⛔ `git` EST INJOUABLE ICI : %s" % e
+    if r.returncode != 0:
+        return ("⛔ CET ARBRE N'EST PAS UN DEPOT `git` "
+                "(`git rev-parse --git-dir` rend %d)" % r.returncode)
+    return None
+
+
 def bilan(rc):
-    """⛔ ELLE EST IMPRIMEE SUR **TOUS** LES CHEMINS DE SORTIE. C'est le
-    contrat de `run_gates.sh`, et c'est le discriminant d'une gate morte."""
+    """⛔ ELLE EST IMPRIMEE SUR **TOUS LES CHEMINS QUI RENDENT UN VERDICT**.
+    C'est le contrat de `run_gates.sh`, et c'est le discriminant d'une gate
+    morte. ⚠️ `--liste-mutants` et l'usage `rc=2` ne rendent AUCUN verdict et
+    n'impriment donc AUCUN `BILAN` — voir l'en-tete du fichier.
+
+    ⇒ ET SI LA GATE ROUGIT, ELLE DIT D'ABORD SI LE DEPOT POUVAIT REPONDRE."""
+    if ko_total[0]:
+        motif = git_injouable()
+        if motif:
+            print("\n⚠️ AVANT DE LIRE CE ROUGE — UN PREREQUIS MANQUE :")
+            print("   %s" % motif)
+            print("   ⇒ les temoins de l'instrument interrogent `git grep "
+                  "<motif> HEAD` ; ils NE PEUVENT PAS repondre ici. Ce rouge "
+                  "peut donc etre")
+            print("     un PREREQUIS ABSENT, ⛔ pas un defaut du depot. "
+                  "⛔ Il n'est ni tu, ni declare NON_JOUABLE, ni verdi.")
     print("\n" + "=" * 78)
     print("BILAN : %d OK, %d KO" % (ok_total[0], ko_total[0]))
     print("=" * 78)
@@ -140,7 +189,12 @@ def bilan(rc):
 #    temporaire (patron `BIDON`/`CORPS_BIDON` de `verif_campagne_dn56.py`) :
 #    ⛔ aucun ne falsifie une variable interne de cette gate.
 #
-# ⚠️ CE QUE LA CAMPAGNE NE PROUVE PAS, ET QUI S'ECRIT : « 6 mutants, 6 vus
+# ⚠️ LE MUTANT 7 SUBSTITUE **DEUX** CHOSES, ET C'EST DIT : la cible (un bidon
+#    qui dort) **ET** l'echeance (`DELAI_MUTANT_7`). « Une cible qui n'en finit
+#    pas » est une SITUATION — la monter demande les deux moities. ⛔ Ce n'est
+#    pas debrancher la garde : la garde doit toujours NOMMER le depassement.
+#
+# ⚠️ CE QUE LA CAMPAGNE NE PROUVE PAS, ET QUI S'ECRIT : « N mutants, N vus
 #    rougir » prouve `mutant ⇒ rouge`, ⛔ **PAS** `controle ⇒ couvert`.
 MUTANTS = {
     1: ("substitue a la cible un instrument BIDON qui MEURT avant de publier "
@@ -196,6 +250,23 @@ CORPS_BIDON = {
     7: "import time\ntime.sleep(300)",
 }
 
+# ── LES MUTANTS QUI NE PASSENT **PAS** PAR UN INSTRUMENT BIDON ──────────────
+# Ils substituent autre chose que le CORPS de la cible ; ils sont DECLARES ici,
+# ⛔ pas devines dans une branche de `cible()`.
+MUTANTS_SANS_BIDON = {
+    6: "substitue au CHEMIN de la cible un chemin ABSENT",
+}
+
+# 🔴 UN MUTANT DECLARE SANS CORPS NI BRANCHE JOUERAIT LE **VRAI** INSTRUMENT ET
+#    SORTIRAIT **VERT** — un mutant silencieusement inoffensif, c'est-a-dire une
+#    campagne qui compte une preuve qu'elle n'a pas. Le mutant 7 en etait a UNE
+#    FRAPPE (revue du 2026-09-06). ⇒ l'incoherence est un **ROUGE**, ⛔ pas un
+#    silence, et elle se voit AU PREMIER TIR, meme sans `--mutant`.
+MUTANTS_ORPHELINS = sorted(set(MUTANTS) - set(CORPS_BIDON)
+                           - set(MUTANTS_SANS_BIDON))
+MUTANTS_FANTOMES = sorted((set(CORPS_BIDON) | set(MUTANTS_SANS_BIDON))
+                          - set(MUTANTS))
+
 
 def cible():
     """Le chemin joue. Sous mutant, c'est une SUBSTITUTION — ⛔ jamais une
@@ -203,16 +274,22 @@ def cible():
     reel = os.path.join(RACINE, CIBLE_REL)
     if _MUTANT in CORPS_BIDON:
         d = tempfile.mkdtemp(prefix="dn447-bidon-")
-        faux = os.path.join(d, "instrument_bidon.py")
-        io.open(faux, "w", encoding="utf-8").write(BIDON % CORPS_BIDON[_MUTANT])
+        try:
+            faux = os.path.join(d, "instrument_bidon.py")
+            # ⚠️ `with` : ⛔ ne pas confier la fermeture au compte de references.
+            with io.open(faux, "w", encoding="utf-8") as f:
+                f.write(BIDON % CORPS_BIDON[_MUTANT])
+        except OSError:
+            shutil.rmtree(d, ignore_errors=True)   # ⛔ aucun temporaire fuite
+            raise
         return (faux, ("<instrument BIDON du mutant %d, substitue a %s>"
                        % (_MUTANT, CIBLE_REL)), d,
                 DELAI_MUTANT_7 if _MUTANT == 7 else DELAI)
-    if _MUTANT == 6:
+    if _MUTANT in MUTANTS_SANS_BIDON:
         d = tempfile.mkdtemp(prefix="dn447-absent-")
         faux = os.path.join(d, "n-existe-pas", CIBLE_REL)
-        return (faux, ("<chemin ABSENT du mutant 6, substitue a %s>"
-                       % CIBLE_REL), d, DELAI)
+        return (faux, ("<chemin ABSENT du mutant %d, substitue a %s>"
+                       % (_MUTANT, CIBLE_REL)), d, DELAI)
     return reel, CIBLE_REL, None, DELAI
 
 
@@ -232,8 +309,14 @@ def lance(chemin, delai):
                            timeout=delai, stdout=subprocess.PIPE,
                            stderr=subprocess.STDOUT)
         return r.returncode, r.stdout.decode("utf-8", "replace")
-    except subprocess.TimeoutExpired:
-        return None, "⛔ TIMEOUT apres %d s — l'instrument n'en finit pas." % delai
+    except subprocess.TimeoutExpired as e:
+        # 🔴 LA SORTIE PARTIELLE EST **RENDUE**, ⛔ pas jetee (revue du
+        #    2026-09-06). Un instrument qui PUBLIE son `⇒ TEMOIN :` puis se fige
+        #    etait sinon rapporte par (c2) comme « MORT en amont » — le mauvais
+        #    motif sur un fait vrai.
+        vu = e.output.decode("utf-8", "replace") if e.output else ""
+        return None, ("⛔ TIMEOUT apres %d s — l'instrument n'en finit pas.\n%s"
+                      % (delai, vu))
     except OSError as e:
         return None, "⛔ IMPOSSIBLE A LANCER : %s" % e
 
@@ -245,8 +328,13 @@ def recopie(txt, n=12):
     l'instrument se lirait comme un verdict DE CETTE GATE — et
     `verif_campagne_dn56.py` compte les `^\\s*\\[KO \\]` pour decider qu'un
     mutant a vraiment trouve la faute replantee."""
-    lignes = [l for l in txt.rstrip("\n").split("\n")][-n:]
-    return "\n".join("        │ %s" % l for l in lignes) or "        │ (rien)"
+    # ⚠️ ON TESTE LE **VIDE DU TEXTE**, ⛔ pas la verite du join : mesure du
+    #    2026-09-06 — `"".rstrip("\n").split("\n")` vaut `[""]`, donc le join
+    #    vaut `"        │ "`, qui est VRAI. Le repli etait donc MORT.
+    txt = txt.rstrip("\n")
+    if not txt.strip():
+        return "        │ (rien)"
+    return "\n".join("        │ %s" % l for l in txt.split("\n")[-n:])
 
 
 def main():
@@ -268,8 +356,32 @@ def main():
     print("dn4-47 — LE TEMOIN DE L'INSTRUMENT DE FILTRAGE EST JOUE PAR LE HARNAIS"
           + ("   [MUTANT %d]" % _MUTANT if _MUTANT else ""))
     print("=" * 78)
+    print("  mutants declares : %d · corps BIDON : %d · sans bidon : %d"
+          % (len(MUTANTS), len(CORPS_BIDON), len(MUTANTS_SANS_BIDON)))
 
-    chemin, etiq, jetable, delai = cible()
+    # 🔴 UN MUTANT DECLARE SANS MONTAGE JOUERAIT LE **VRAI** INSTRUMENT ET
+    #    SORTIRAIT VERT. ⇒ le desaccord rougit, AU PREMIER TIR, meme sans
+    #    `--mutant`. ⛔ Il ne se decouvre pas le jour ou quelqu'un joue le
+    #    mutant orphelin.
+    if MUTANTS_ORPHELINS or MUTANTS_FANTOMES:
+        ctrl(False, "tout mutant declare a un montage, et reciproquement",
+             "⛔ ORPHELIN(S) (declare(s) sans montage ⇒ joueraient la VRAIE "
+             "cible et sortiraient VERTS) : %s · ⛔ FANTOME(S) (montage sans "
+             "declaration ⇒ invisibles a `--liste-mutants`) : %s"
+             % (MUTANTS_ORPHELINS or "aucun", MUTANTS_FANTOMES or "aucun"))
+        return bilan(1)
+
+    # ⚠️ `cible()` ETAIT APPELEE HORS DU `try` : un `OSError` de `mkdtemp` ou de
+    #    l'ecriture rendait une TRACE NUE, ⛔ sans `BILAN`, et laissait fuir le
+    #    temporaire — exactement ce que cette gate existe pour interdire.
+    try:
+        chemin, etiq, jetable, delai = cible()
+    except OSError as e:
+        ctrl(False, "la substitution du mutant a pu etre montee",
+             "⛔ %s — ⛔ une gate ne meurt pas en trace nue, pas meme en "
+             "montant son propre mutant" % e)
+        return bilan(1)
+
     try:
         print("\n── (c1) LA CIBLE EST **NOMMEE**, ET ELLE EXISTE ──────────────────")
         print("  cible      : %s" % etiq)
@@ -340,7 +452,6 @@ def main():
         return bilan(1 if ko_total[0] else 0)
     finally:
         if jetable:
-            import shutil
             shutil.rmtree(jetable, ignore_errors=True)
 
 

@@ -1,0 +1,60 @@
+==============================================================================
+dn4-47 / T10 — LA GATE EST VUE ATTRAPER LE **VRAI** DEFAUT, PAS UN BIDON
+==============================================================================
+date : 2026-09-06T02:24:37+02:00
+
+MOTIF — la revue a releve que detecteur et correctif partaient dans le MEME
+commit : la gate n'avait jamais ete vue rougir sur autre chose qu'un
+instrument BIDON imprimant une trace ECRITE A LA MAIN. C'est le meme defaut
+de preuve que « un mutant qui DEBRANCHE ne prouve que son existence ».
+Or l'instrument d'avant-correctif EXISTE, a la borne de depart. On l'y prend.
+
+-- 1. LE MONTAGE, ET IL EST FALSIFIABLE ----------------------------------
+   arbre        : copie du depot, HORS de l'arbre de travail
+   instrument   : celui de la borne 71375010 (AVANT le durcissement de run())
+   gate         : celle qui est LIVREE (octet pour octet)
+   HOME         : etranger, donc cockpit ABSENT — la condition d'un runner
+   instrument identique a 71375010 : OUI
+   gate identique a celle livree    : OUI
+
+-- 2. LE TIR --------------------------------------------------------------
+==============================================================================
+dn4-47 — LE TEMOIN DE L'INSTRUMENT DE FILTRAGE EST JOUE PAR LE HARNAIS
+==============================================================================
+  mutants declares : 7 · corps BIDON : 6 · sans bidon : 1
+
+── (c1) LA CIBLE EST **NOMMEE**, ET ELLE EXISTE ──────────────────
+  cible      : tools/filtre_constats_dn56.py
+  [OK ] la cible nommee existe au depot                            un fichier lisible
+
+── L'INSTRUMENT EST JOUE — ⛔ RIEN N'EST RE-MESURE ICI ───────────
+  commande   : python3 tools/filtre_constats_dn56.py --temoin-seul   (echeance 300 s)
+  rc observe : 1   ⛔ OBSERVATION — il n'entre dans AUCUN verdict
+
+── (c2) L'INSTRUMENT A **PUBLIE** SON TEMOIN ─────────────────────
+  [KO ] l'instrument a publie sa ligne `⇒ TEMOIN :`                ⛔ L'INSTRUMENT N'A PAS JUGE — aucune ligne publiee, il est MORT en amont ; dernieres lignes ci-dessous
+        │                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        │   File "/tmp/claude-1000/-home-nasbarok-projects-compagnon-project/4143d4c2-3932-4e53-aa78-9d3ba05e8c7e/scratchpad/avant/tools/filtre_constats_dn56.py", line 104, in run
+        │     p = subprocess.run(cmd, cwd=cwd, timeout=timeout,
+        │         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        │   File "/usr/lib/python3.12/subprocess.py", line 548, in run
+        │     with Popen(*popenargs, **kwargs) as process:
+        │          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        │   File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
+        │     self._execute_child(args, executable, preexec_fn, close_fds,
+        │   File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
+        │     raise child_exception_type(errno_num, err_msg, err_filename)
+        │ FileNotFoundError: [Errno 2] No such file or directory: '/tmp/claude-1000/-home-nasbarok-projects-compagnon-project/4143d4c2-3932-4e53-aa78-9d3ba05e8c7e/scratchpad/fh2/projects/compagnon_project'
+
+==============================================================================
+BILAN : 1 OK, 1 KO
+==============================================================================
+rc=1
+
+-- 3. CE QUE CA ETABLIT, ET CE QUE CA N'ETABLIT PAS -----------------------
+   ETABLI : la gate livree ROUGIT sur l'instrument REEL d'avant-correctif,
+     sur le controle (c2), et elle RECOPIE la vraie trace. L'inference
+     « elle aurait attrape la panne 360a5c2 -> dn5-8 » devient un FAIT.
+   ⛔ NON ETABLI : aucune sortie d'un VRAI runner n'existe encore. Les deux
+     configurations utilisees ici sont des ANALOGUES montes localement.
+     Ce reste-a-faire garde son report et son porteur.

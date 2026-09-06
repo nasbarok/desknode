@@ -116,27 +116,60 @@ def temoin(attendu, obtenu, libelle):
 #      (`toplevel_git`), ou `rc not in (0, 1)` (`motif_fichiers`, qui rend alors
 #      `None`, ⛔ jamais un `0` masque). Un echec NOMME est donc traite comme un
 #      echec, ⛔ pas comme un succes vide.
+#
+# 🔴 CE PARAGRAPHE CI-DESSUS ETAIT **FAUX**, ET IL EST GARDE PLUTOT QU'EFFACE
+#    (NFR3) — REVUE DU 2026-09-06. Il certifiait « le contrat des appelants est
+#    inchange » alors que rendre un echec au lieu de lever le changeait pour
+#    **TOUS** les appelants d'un coup. TROIS d'entre eux lisent la sortie SANS
+#    regarder le `rc`, et une mort bruyante y devenait une REPONSE FAUSSE,
+#    silencieuse :
+#      · `_portee_marqueurs()` jette le `rc` et rend `[]` ⇒ `yml_hors_portee`
+#        devient inconditionnellement vrai ⇒ le constat (9) republie « la gate
+#        ne balaie pas les `.yml` » sur un constat **REPARE** — exactement le
+#        defaut que la revue du 2026-09-05 venait de corriger, rentre par une
+#        autre porte ;
+#      · `c9` reutilise `rc_g` dans « la gate reste VERTE (rc=%d) » et
+#        imprimerait `rc=127` pour une gate qui n'a JAMAIS TOURNE ;
+#      · `c10` fait `(rouges if rc_m == 1 else verts)` ⇒ un rejeu IMPOSSIBLE
+#        serait publie comme « mutant NON vu rougir ».
+#    ⇒ LE DEFAUT EST **INVERSE**, ⛔ pas rattrape par trois gardes : un futur
+#      appelant qui oublierait la sentinelle recreerait le bug EN SILENCE.
+#      `run()` LEVE PAR DEFAUT — le contrat d'origine, mot pour mot — et seul
+#      un appelant qui SAIT quoi faire d'un echec demande `echec_nomme=True`.
+#      Un seul le demande aujourd'hui : la ligne `cockpit    :` de `main()`,
+#      qui l'IMPRIME.
 MOTIF_RUN = "⛔ RUN IMPOSSIBLE :"
 RC_RUN_IMPOSSIBLE = 127
 
 
-def run(cmd, cwd=None, timeout=600):
+def run(cmd, cwd=None, timeout=600, echec_nomme=False):
     """⛔ JAMAIS le shell de session. Toujours ici.
 
-    ⛔ ET RIEN NE SORT D'ICI EN EXCEPTION (`dn4-47`) : voir le bloc ci-dessus.
-    Le temoin (a5) REPLANTE la faute — il tape sur un `cwd` qui n'existe pas."""
+    ⚠️ `echec_nomme=False` PAR DEFAUT, ET C'EST LE CONTRAT D'ORIGINE : un `cwd`
+    inutilisable, un binaire introuvable ou un depassement **LEVENT**. Une mort
+    bruyante vaut mieux qu'une reponse fausse : la plupart des appelants d'ici
+    lisent la SORTIE sans regarder le `rc` (voir le bloc ci-dessus).
+
+    `echec_nomme=True` n'est demande que par un appelant qui SAIT quoi faire
+    d'un echec — il rend alors `RC_RUN_IMPOSSIBLE` et un motif sur `stderr`,
+    ⛔ jamais une trace nue. Le temoin (a5) REPLANTE **LES DEUX MOITIES** : avec
+    le drapeau ⇒ resultat nomme ; SANS le drapeau, sur le meme `cwd` absent
+    ⇒ ca LEVE."""
     t0 = time.time()
     try:
         p = subprocess.run(cmd, cwd=cwd, timeout=timeout,
                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     except subprocess.TimeoutExpired:
+        if not echec_nomme:
+            raise
         return (RC_RUN_IMPOSSIBLE, "",
                 "%s TIMEOUT apres %s s — cmd=%r cwd=%r"
                 % (MOTIF_RUN, timeout, cmd, cwd),
                 time.time() - t0)
     except (OSError, subprocess.SubprocessError) as e:
-        # `cwd` absent ou illisible, binaire introuvable, fork impossible —
-        # chacun rend ICI un motif, ⛔ jamais une trace nue chez l'appelant.
+        # `cwd` absent ou illisible, binaire introuvable, fork impossible.
+        if not echec_nomme:
+            raise
         return (RC_RUN_IMPOSSIBLE, "",
                 "%s %s — cmd=%r cwd=%r" % (MOTIF_RUN, e, cmd, cwd),
                 time.time() - t0)
@@ -144,6 +177,23 @@ def run(cmd, cwd=None, timeout=600):
             p.stdout.decode("utf-8", "replace"),
             p.stderr.decode("utf-8", "replace"),
             time.time() - t0)
+
+
+def ligne_sha(out, err, rc):
+    """La valeur a imprimer derriere `desknode   :` / `cockpit    :`.
+
+    🔴 TROIS CAS, ET ILS NE SE CONFONDENT PAS (revue du 2026-09-06) : la 1re
+    version lisait `rc=0` avec une sortie VIDE comme « ⛔ indisponible (rc=0) »,
+    c'est-a-dire qu'elle accusait d'indisponibilite un `git` qui avait REPONDU.
+      (1) une sortie ⇒ c'est le SHA, tel quel ;
+      (2) `rc=0` et sortie VIDE ⇒ `git` a repondu et n'a RIEN dit — c'est un
+          `git` MUET, ⛔ pas un lancement impossible ;
+      (3) tout le reste ⇒ indisponible, avec son `rc` et son motif."""
+    if out.strip():
+        return out.strip()
+    if rc == 0:
+        return "⛔ git MUET (rc=0, sortie VIDE)"
+    return "⛔ indisponible (rc=%s) %s" % (rc, err.strip().split("\n")[0])
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -361,20 +411,58 @@ portait le defaut, et le temoin qui le gardait ne regardait que le MOTIF.
            (set(_sans or []) - set(_avec or []), motif_resout(BANNIERE)),
            "la garde retire EXACTEMENT l'instrument, et ses tirs")
 
-    # (a5) 🔴 dn4-47, 2026-09-06 — `run()` NE MEURT PLUS SUR UN `cwd`
-    #      INUTILISABLE. LA FAUTE EST **REPLANTEE**, ⛔ pas debranchee : on tape
-    #      sur un repertoire QUI N'EXISTE PAS, c'est-a-dire exactement ce que
-    #      vaut `COCKPIT_DEFAUT` sur un runner. Avant le correctif, cette
-    #      ligne-ci levait `FileNotFoundError` et l'instrument mourait sans
-    #      jamais publier son `⇒ TEMOIN :`.
+    # (a5) 🔴 dn4-47, 2026-09-06 — `run(echec_nomme=True)` NE MEURT PLUS
+    #      SUR UN `cwd` INUTILISABLE, ET LE DEFAUT, LUI, **LEVE TOUJOURS**.
+    #      LA FAUTE EST **REPLANTEE DES DEUX COTES**, ⛔ pas debranchee : on tape
+    #      sur un repertoire QUI N'EXISTE PAS — exactement ce que vaut
+    #      `COCKPIT_DEFAUT` sur un runner — et on exige les DEUX moities.
+    #      ⚠️ LA SECONDE MOITIE EST LA PLUS IMPORTANTE : c'est elle qui garde le
+    #        DEFAUT SUR. Sans elle, quelqu'un pourrait retirer le drapeau et
+    #        rendre un « succes vide » a trois appelants qui ne lisent pas le
+    #        `rc` — le defaut mesure a la revue du 2026-09-06.
     _d5 = tempfile.mkdtemp(prefix="dn56-temoin-")
     try:
-        _rc5, _out5, _err5, _ = run(["git", "rev-parse", "HEAD"],
-                                    cwd=os.path.join(_d5, "n-existe-pas"))
+        _absent = os.path.join(_d5, "n-existe-pas")
+        _rc5, _out5, _err5, _ = run(["git", "rev-parse", "HEAD"], cwd=_absent,
+                                    echec_nomme=True)
         temoin((True, True, ""), (_rc5 != 0, MOTIF_RUN in _err5, _out5),
-               "run() sur un cwd ABSENT : rc non nul + motif, ⛔ pas de trace nue")
+               "run(echec_nomme=True) sur cwd ABSENT : rc + motif, ⛔ pas de trace")
+        try:
+            run(["git", "rev-parse", "HEAD"], cwd=_absent)
+            _leve = False
+        except OSError:
+            _leve = True
+        temoin(True, _leve,
+               "run() SANS le drapeau LEVE toujours — le defaut reste SUR")
+
+        # (a6) LE DEPASSEMENT — l'autre moitie du durcissement. Sans ce temoin,
+        #      supprimer la clause `TimeoutExpired` laisserait toutes les gates
+        #      VERTES : la branche n'etait replantee par rien.
+        #      ⚠️ ET LE MOTIF **NOMME** FAIT PARTIE DE L'ATTENTE, ⛔ pas seulement
+        #        le `rc` : `TimeoutExpired` derive de `SubprocessError`, donc la
+        #        clause suivante l'attraperait AUSSI et rendrait un motif
+        #        generique. Exiger `TIMEOUT apres` est ce qui REPLANTE vraiment
+        #        la suppression de la clause dediee — MESURE le 2026-09-06.
+        _rc6, _out6, _err6, _ = run([sys.executable, "-c",
+                                     "import time;time.sleep(30)"],
+                                    timeout=1, echec_nomme=True)
+        temoin((True, True, True, ""),
+               (_rc6 != 0, MOTIF_RUN in _err6, "TIMEOUT apres" in _err6, _out6),
+               "run(echec_nomme=True) sur un DEPASSEMENT : rc + motif NOMME")
     finally:
         shutil.rmtree(_d5, ignore_errors=True)
+
+    # (a7) `ligne_sha` — SES TROIS CAS, ET ILS NE SE CONFONDENT PAS. Le 3e
+    #      REPLANTE la faute du 1er jet : `rc=0` avec une sortie vide etait
+    #      publie « ⛔ indisponible (rc=0) », c'est-a-dire qu'on accusait
+    #      d'indisponibilite un `git` qui avait REPONDU.
+    temoin(("abc123", "⛔ git MUET (rc=0, sortie VIDE)", True),
+           (ligne_sha("abc123\n", "", 0),
+            ligne_sha("", "", 0),
+            ligne_sha("", "%s pas de depot\n" % MOTIF_RUN,
+                      RC_RUN_IMPOSSIBLE).startswith("⛔ indisponible (rc=%d)"
+                                                    % RC_RUN_IMPOSSIBLE)),
+           "ligne_sha separe SHA / git MUET / lancement impossible")
 
     # (b) `porte_bilan` — une sortie qui en porte une, une qui n'en porte pas.
     temoin(True, porte_bilan("bla\nBILAN : 5 OK, 0 KO\nbla"),
@@ -1146,16 +1234,23 @@ def main():
     #   casserait la garde en silence.
     print(BANNIERE)
     print("=" * 78)
-    rc, out, _, _ = run(["git", "rev-parse", "HEAD"])
     print("date       : %s" % time.strftime("%Y-%m-%dT%H:%M:%S"))
-    print("desknode   : %s" % out.strip())
+    # 🔴 `cwd=DESKNODE`, ET C'EST UN CORRECTIF (revue du 2026-09-06). Sans
+    #    `cwd`, cette ligne interrogeait le depot DU REPERTOIRE COURANT :
+    #    lancee depuis le cockpit, elle imprimait le HEAD DU COCKPIT sous
+    #    l'etiquette `desknode`, et les deux lignes montraient alors LE MEME
+    #    SHA sous deux libelles differents. ⛔ Le libelle ne bouge pas ; c'est
+    #    le depot interroge qui est enfin celui qu'il annonce.
+    rc, out, err, _ = run(["git", "rev-parse", "HEAD"], cwd=DESKNODE)
+    print("desknode   : %s" % ligne_sha(out, err, rc))
     # ⚠️ `dn4-47` — LE LIBELLE NE BOUGE PAS, mais l'absence se NOMME : sans ce
     #    motif la ligne sortait VIDE sur un runner, ce qui ne se distingue pas
-    #    d'un `git` muet. Le correctif de `run()` la rend lisible, ⛔ il ne la
-    #    supprime pas.
-    rc, out, err, _ = run(["git", "rev-parse", "HEAD"], cwd=COCKPIT_DEFAUT)
-    print("cockpit    : %s" % (out.strip() or err.strip().split("\n")[0]
-                               or "⛔ indisponible (rc=%s)" % rc))
+    #    d'un `git` muet. ⇒ C'EST LE SEUL APPELANT QUI DEMANDE `echec_nomme` :
+    #    il SAIT quoi faire d'un echec — il l'imprime. Les deux lignes passent
+    #    par `ligne_sha`, dont le temoin (a7) garde les trois cas.
+    rc, out, err, _ = run(["git", "rev-parse", "HEAD"], cwd=COCKPIT_DEFAUT,
+                          echec_nomme=True)
+    print("cockpit    : %s" % ligne_sha(out, err, rc))
     print("mesures    : ⛔ TOUTES par `subprocess`, ⛔ jamais le shell de session")
 
     if not temoins():
