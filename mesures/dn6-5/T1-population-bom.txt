@@ -1,0 +1,182 @@
+==============================================================================
+dn6-5 — T1 : LA POPULATION EST **DERIVEE** DE `docs/bom.md`, ⛔ PAS ENUMEREE
+==============================================================================
+date       : 2026-09-07
+desknode   : 7752ef1e328b9f994f9adfa9f8254ccf66f27a14
+source      : docs/bom.md  (234 lignes)
+
+🔴 POURQUOI DERIVER PLUTOT QU'ENUMERER. Une liste de fournisseurs ecrite a la
+   main dans une page pourrit EN SILENCE le jour ou la BOM change de source :
+   c'est le defaut exact que `dn5-6` puis `dn4-47` ont paye deux fois. Ici la
+   population sort de la page elle-meme, et la gate `verif_affiliation_dn65.py`
+   la RE-DERIVE a chaque tir avec la MEME regle ⇒ un fournisseur neuf sans
+   ligne de releve fait ROUGIR, il ne dort pas.
+
+── LA REGLE DE DERIVATION, ECRITE ────────────────────────────────────────────
+  1. Les tables markdown sont reconnues par leur SEPARATEUR (`|---|---|`) et
+     par l'EGALITE du nombre de cases entete / separateur / corps.
+     ⛔ Aucun numero de ligne code en dur.
+  2. POPULATION 1 — les domaines des URL des cellules de la colonne dont
+     l'entete commence par `Source`. Ce sont les FOURNISSEURS DE RECORD.
+  3. POPULATION 1bis — les domaines nommes en PROSE, hors de toute table.
+     C'est la ou vit le FABRICANT non relevable.
+  4. POPULATION 2 — les domaines des URL de la colonne dont l'entete contient
+     `Adresse` : ce sont des TENTATIVES QUI ONT ECHOUE, ⛔ pas des
+     fournisseurs. Elles se rangent comme telles.
+  5. `www.` est retire a la normalisation (`waveshare.com` == `www.waveshare.com`).
+
+── LA COMMANDE ───────────────────────────────────────────────────────────────
+  python3 - < <ce script> , depuis ~/projects/desknode
+  (le script est recopie EN ENTIER a la fin de ce fichier — il est l'instrument,
+   ⛔ pas une illustration)
+
+==============================================================================
+LA SORTIE, VERBATIM
+==============================================================================
+TABLES MARKDOWN RECONNUES : 8
+  l.16    2 ligne(s)  | Palier | Ce que tu construis |
+  l.25    2 ligne(s)  | Désignation | Référence exacte | Qté | Fournisseur | Prix | Date du relevé | Source |
+  l.44    1 ligne(s)  | Ce que tu veux | Ce que tu risques de prendre |
+  l.86    3 ligne(s)  | Désignation | Référence exacte | Qté | Fournisseur | Prix | Date du relevé | Source |
+  l.117   3 ligne(s)  | Ce qu'il faut | Combien | Pourquoi |
+  l.146   5 ligne(s)  |  | BME680 | BH1750 |
+  l.174   2 ligne(s)  | Module | Référence exacte | Prix relevé | Date du relevé | Source | Pourquoi il n'est **pas** au catalogue |
+  l.198  10 ligne(s)  | Adresse tentée | Date de la tentative | Résultat |
+
+POPULATION 1 — DOMAINES DES CELLULES `Source` DES TABLES DE BOM
+  aliexpress.com           l.27,88,89,176,177
+  ⇒ 1 domaine(s) distinct(s) apres normalisation : aliexpress.com
+
+POPULATION 1bis — DOMAINES NOMMES EN PROSE, HORS TABLE
+  waveshare.com            l.30
+
+POPULATION 2 — DOMAINES DE LA TABLE DES ADRESSES TENTEES
+  eckstein-shop.de         l.203
+  octopart.com             l.204
+  thepihut.com             l.209
+  adafruit.com             l.205
+  berrybase.de             l.208
+  gotronic.fr              l.206
+  mouser.fr                l.201
+  tinytronics.nl           l.202
+  waveshare.com            l.200
+  welectron.com            l.207
+  ⇒ 10 domaine(s) distinct(s) : adafruit.com · berrybase.de · eckstein-shop.de · gotronic.fr · mouser.fr · octopart.com · thepihut.com · tinytronics.nl · waveshare.com · welectron.com
+
+INTERSECTION pop1 ∩ pop2 : (vide)
+PROSE hors pop1          : waveshare.com
+UNION des trois          : 11 domaine(s)
+
+==============================================================================
+CE QUE CETTE MESURE ETABLIT — ET CE QU'ELLE ECARTE
+==============================================================================
+  🔴 IL Y A **UN** FOURNISSEUR DE RECORD, ⛔ PAS ONZE : `aliexpress.com`,
+     cite par **5** cellules `Source` (l.27, 88, 89, 176, 177). Plus **UN**
+     fabricant nomme en prose et non relevable, `waveshare.com` (l.30).
+  ⇒ LA POPULATION QUI MORD FAIT **2** DOMAINES. C'est elle que le releve de
+    `docs/affiliation.md` doit couvrir LIGNE PAR LIGNE (`AC-A1`).
+
+  ⚠️ LES **10** AUTRES DOMAINES NE SONT ⛔ PAS DES FOURNISSEURS. Ils vivent
+     dans la table « Adresse tentee » (l.198-209) : 403, 404, delai depasse,
+     page sans fiche. Le depot ne sait meme pas s'ils vendent la carte.
+     Publier onze programmes donnerait une page longue et sans prise — dix de
+     ses lignes porteraient sur des boutiques dont on ignore tout.
+  ⇒ ILS SE RANGENT COMME CE QU'ILS SONT, avec le motif de non-recherche
+    ECRIT, et la condition qui les ferait entrer en population 1.
+
+  ✅ INTERSECTION population 1 / population 2 : **VIDE**. Aucun domaine n'est
+     a la fois fournisseur de record et adresse tentee — la separation des
+     deux releves n'est ⛔ pas une commodite de redaction, c'est une mesure.
+     ⚠️ `waveshare.com` est le cas limite : il est en PROSE (l.30) **et** en
+        tete de la table des tentatives (l.200). Les deux disent la meme
+        chose — c'est le fabricant, et sa page rend 403.
+
+==============================================================================
+L'INSTRUMENT, RECOPIE EN ENTIER
+==============================================================================
+  # -*- coding: utf-8 -*-
+  """Derive les DEUX populations de docs/bom.md. Aucune enumeration codee."""
+  import re, sys
+  src = open("docs/bom.md", encoding="utf-8").read()
+  lignes = src.split("\n")
+  
+  def cells(l):
+      l = l.strip()
+      if not l.startswith("|"):
+          return None
+      return [c.strip() for c in l.strip("|").split("|")]
+  
+  RE_URL = re.compile(r"https?://([A-Za-z0-9.-]+)")
+  
+  # --- decoupe en tables : entete + separateur + corps
+  tables = []
+  i = 0
+  while i < len(lignes) - 1:
+      h = cells(lignes[i]); s = cells(lignes[i+1])
+      if h and s and all(re.fullmatch(r":?-{3,}:?", c) for c in s) and len(h) == len(s):
+          corps = []
+          j = i + 2
+          while j < len(lignes):
+              c = cells(lignes[j])
+              if not c or len(c) != len(h):
+                  break
+              corps.append((j+1, c)); j += 1
+          tables.append((i+1, h, corps)); i = j
+      else:
+          i += 1
+  
+  pop1, pop2 = {}, {}
+  for lno, h, corps in tables:
+      cols = {n.lower(): k for k, n in enumerate(h)}
+      isrc = next((k for n, k in cols.items() if n.startswith("source")), None)
+      itent = next((k for n, k in cols.items() if "adresse" in n), None)
+      for rl, c in corps:
+          if isrc is not None:
+              for d in RE_URL.findall(c[isrc]):
+                  pop1.setdefault(d, []).append(rl)
+          if itent is not None:
+              for d in RE_URL.findall(c[itent]):
+                  pop2.setdefault(d, []).append(rl)
+  
+  # --- la prose : les domaines HORS table
+  en_table = set()
+  for lno, h, corps in tables:
+      en_table.add(lno); en_table.add(lno+1)
+      for rl, _ in corps:
+          en_table.add(rl)
+  prose = {}
+  for k, l in enumerate(lignes, 1):
+      if k in en_table:
+          continue
+      for d in RE_URL.findall(l):
+          prose.setdefault(d, []).append(k)
+  
+  def norm(d):
+      return d[4:] if d.startswith("www.") else d
+  
+  print("TABLES MARKDOWN RECONNUES : %d" % len(tables))
+  for lno, h, corps in tables:
+      print("  l.%-4d %2d ligne(s)  | %s |" % (lno, len(corps), " | ".join(h)))
+  print()
+  print("POPULATION 1 — DOMAINES DES CELLULES `Source` DES TABLES DE BOM")
+  for d in sorted(pop1):
+      print("  %-24s l.%s" % (norm(d), ",".join(str(x) for x in pop1[d])))
+  print("  ⇒ %d domaine(s) distinct(s) apres normalisation : %s"
+        % (len({norm(d) for d in pop1}), " · ".join(sorted({norm(d) for d in pop1}))))
+  print()
+  print("POPULATION 1bis — DOMAINES NOMMES EN PROSE, HORS TABLE")
+  for d in sorted(prose):
+      print("  %-24s l.%s" % (norm(d), ",".join(str(x) for x in prose[d])))
+  print()
+  print("POPULATION 2 — DOMAINES DE LA TABLE DES ADRESSES TENTEES")
+  for d in sorted(pop2):
+      print("  %-24s l.%s" % (norm(d), ",".join(str(x) for x in pop2[d])))
+  print("  ⇒ %d domaine(s) distinct(s) : %s"
+        % (len({norm(d) for d in pop2}), " · ".join(sorted({norm(d) for d in pop2}))))
+  print()
+  n1 = {norm(d) for d in pop1}; n1b = {norm(d) for d in prose}; n2 = {norm(d) for d in pop2}
+  print("INTERSECTION pop1 ∩ pop2 : %s" % (" · ".join(sorted(n1 & n2)) or "(vide)"))
+  print("PROSE hors pop1          : %s" % (" · ".join(sorted(n1b - n1)) or "(vide)"))
+  print("UNION des trois          : %d domaine(s)" % len(n1 | n1b | n2))
+
+==============================================================================

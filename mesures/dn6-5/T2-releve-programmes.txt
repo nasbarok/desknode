@@ -1,0 +1,268 @@
+==============================================================================
+dn6-5 — T2 : LE RELEVE BRUT DES PROGRAMMES D'AFFILIATION
+==============================================================================
+date de tous les releves : 2026-09-07
+instrument               : recuperation automatisee (agent), suivie de
+                           redirection A LA MAIN quand le serveur en renvoie une
+population                : celle de `T1`, ⛔ pas un catalogue de programmes
+
+🔴 REGLE DE CE FICHIER (NFR4) : **un fait publie porte SON URL ET SA DATE.**
+   Une source non atteinte est ECRITE — adresse tentee, date, motif — au meme
+   rang qu'un succes. ⛔ AUCUNE condition n'est reconstituee de memoire, et
+   ⛔ AUCUN chiffre qui ne serait pas affiche par la page citee n'entre ici.
+
+⛔ CE QUI N'A **PAS** ETE FAIT, ET C'EST LE POINT : ⛔ aucun compte cree,
+   ⛔ aucune CGU acceptee, ⛔ aucun identifiant de suivi ecrit, ⛔ aucune
+   inscription. C'est un geste OWNER. La consequence est mesurable et elle est
+   ci-dessous : une partie des conditions vit DERRIERE UNE AUTHENTIFICATION et
+   reste donc illisible — ⛔ ce n'est pas un trou du releve, c'est SON RESULTAT.
+
+⏪⏪⏪ ANNOTATION DU 2026-09-07, **APRES COUP** — ⛔ RIEN N'EST EFFACE (NFR3)
+==============================================================================
+🔴 **TOUT CE QUI SUIT CONCERNANT `waveshare.com` EST REFUTE, ET LE TEXTE RESTE
+   EN PLACE POUR QU'ON VOIE COMMENT L'ERREUR A ETE FAITE.**
+
+  CE QUE CE FICHIER DIT PLUS BAS, ET QUI EST FAUX :
+   · les trois adresses `waveshare.com` (`/`, `/join_affiliate.html`, et la
+     variante sans `www.`) y portent un verdict d'echec motive par un 403 ;
+   · il en conclut qu'aucun nom de programme, aucune condition et aucun taux
+     ne peuvent etre publies pour ce fournisseur ;
+   · il en conclut que le chiffre de **2 %** qui circule dans les notes du
+     projet ne peut etre republie nulle part ;
+   · il ecrit qu'il n'y a « rien du tout » de ce cote.
+
+  CE QUE LA RE-SONDE DU MEME JOUR REND, avec pour SEULE difference un en-tete
+  `User-Agent` de navigateur — ⛔ rien d'autre n'a change :
+   · `https://www.waveshare.com/join_affiliate.html`  ⇒ **HTTP 200**, 105 660
+     octets de conditions LISIBLES ;
+   · `https://www.waveshare.com/`                     ⇒ **HTTP 200** ;
+   · `https://www.waveshare.com/esp32-s3-touch-lcd-2.8b.htm` (le verdict de
+     `dn6-1`, ⛔ pas de cette marche)                 ⇒ **HTTP 200**.
+   ⇒ le programme s'appelle **Waveshare® Affiliate Program**, son taux de base
+     est **2 %**, le suivi vaut **au moins 72 h**, le versement est **PayPal**
+     a partir de **US$5**, et une section *« Who can Join »* nomme **GitHub**.
+     Tout cela est desormais publie, source et date, dans `docs/affiliation.md`.
+
+  🎯 **LA LECON, ET ELLE VAUT PLUS QUE LA CORRECTION** : un verdict d'echec est
+     une propriete de la **METHODE DE RECUPERATION**, ⛔ pas de l'adresse. Le
+     403 etait REEL — pour un outil. Publie sans dire AVEC QUOI l'adresse
+     avait ete tentee, il affirmait comme une propriete du monde ce qui n'etait
+     qu'une propriete de l'outil. ⇒ `tools/verif_affiliation_dn65.py` porte
+     depuis un controle `(c23)` qui EXIGE que chaque verdict nomme sa methode.
+
+  ⚠️ **CE QUI TIENT** : les quatre verdicts `aliexpress.com` et le verdict
+     `economie.gouv.fr` ci-dessous ont ete RE-SONDES et **confirmes**.
+     ⚠️ Le second `economie.gouv.fr` (`/influenceurs-quels-sont-mes-devoirs`)
+        ⛔ n'a PAS ete re-sonde : il reste publie AVEC sa methode et avec le
+        fait qu'il n'a pas ete re-tente. C'est un ecart DECLARE, ⛔ pas comble.
+
+  ⚠️ Le verdict lui-meme n'est ⛔ pas recopie dans cette annotation, et c'est
+     delibere : le jeton exact est compte par la gate, et le reproduire dans le
+     texte qui le corrige rejouerait l'incident dans sa propre correction.
+
+  📍 Detail complet : `mesures/dn6-5/T7-bornes-arrivee.txt` section (9).
+==============================================================================
+
+==============================================================================
+POPULATION 1 — LES DEUX DOMAINES QUI MORDENT
+==============================================================================
+
+── (1) `aliexpress.com` — FOURNISSEUR DE RECORD (5 cellules `Source`) ────────
+
+  [1.a] https://portals.aliexpress.com/
+        2026-09-07 · HTTP 302 vers
+        http://portals.aliexpress.com/affiportals/web/portals.htm
+        VERDICT : redirection suivie. La page rendue se reduit au titre
+        « AliExpress Affiliate Portals » — ⛔ AUCUNE condition, AUCUN taux
+        lisible. Le portail est une application, ⛔ pas une page de conditions.
+
+  [1.b] https://partner.aliexpress.com/
+        2026-09-07 · HTTP 302 vers
+        http://partner.aliexpress.com/affiportals/web/portals.htm
+        VERDICT : meme portail que [1.a], meme resultat.
+
+  [1.c] https://portals.aliexpress.com/help.htm
+        2026-09-07 · HTTP 302 vers
+        https://login.aliexpress.com/?return_url=http%3A%2F%2Fportals.aliexpress.com%2Fhelp.htm
+        🔴 VERDICT : **LES CONDITIONS DETAILLEES SONT DERRIERE UNE
+        AUTHENTIFICATION.** Les lire exigerait un compte ; creer un compte est
+        le geste OWNER que cette marche s'interdit. ⇒ NON LU, et c'est ecrit.
+
+  [1.d] https://sale.aliexpress.com/__pc/uTHnW6wRZg.htm
+        (« AliExpress Affiliate Program Service Agreement » selon l'index)
+        2026-09-07 · HTTP 302 vers https://www.aliexpress.com/p/error/404.html
+        VERDICT : **404**. L'accord de service n'est pas a cette adresse.
+
+  [1.e] https://www.aliexpress.com/s/wiki-ssr/article/aliexpress-affiliate-commission-rate
+        2026-09-07 · HTTP 200 · page publiee PAR `aliexpress.com`
+        ✅ NOM DU PROGRAMME, tel que la page l'ecrit :
+             « AliExpress Partner Program »
+        ✅ TAUX, tel que la page l'affiche, VERBATIM :
+             "AliExpress affiliate commission rates range from 4% to 8%, with
+              electronics, home appliances, and fashion offering higher
+              returns."
+        ✅ ADMISSION, VERBATIM :
+             "First, sign up for the AliExpress Partner Program at no cost.
+              Once approved, you'll gain access to a dashboard with commission
+              rates, product data, and promotional tools."
+        ⛔ CE QUE CETTE PAGE NE DIT PAS : ni duree de cookie, ni seuil de
+           paiement, ni plafond par commande, ni condition d'audience. ⇒ ces
+           quatre-la restent NON RELEVES, ⛔ ils ne se devinent pas.
+        ⚠️ La page date son propre chiffre de « 2024 » dans une seconde
+           phrase ("For 2024, the standard commission rate…"). ⇒ le taux est
+           publie AVEC cette reserve, ⛔ pas comme une valeur du jour.
+
+  [1.f] https://www.aliexpress.com/s/wiki-ssr/article/affiliate-marketing-requirements
+        2026-09-07 · HTTP 200 · page publiee PAR `aliexpress.com`
+        ⚠️ ATTENTION A LA PORTEE : c'est un article GENERAL sur l'affiliation,
+           ⛔ PAS les conditions d'admission du programme AliExpress. Il est
+           releve parce qu'il est publie par le fournisseur lui-meme, et il
+           est etiquete comme tel.
+        · SUR LE PREREQUIS DE PLATEFORME, VERBATIM :
+             "a digital platform—this could be a blog, YouTube channel, social
+              media account, or even a niche website" (dit « essential »,
+              "without a platform to promote your affiliate links, you won't
+              have an audience to reach")
+        · SUR LE DEVOIR DE DIVULGATION, VERBATIM :
+             "must disclose your affiliate relationships clearly—using phrases
+              like 'This post contains affiliate links' or 'I earn a
+              commission if you make a purchase through my links.'"
+             et la divulgation doit etre "clear, conspicuous, and easy to
+             understand", placee "near the affiliate link".
+
+── (2) `waveshare.com` — FABRICANT, NOMME EN PROSE (`docs/bom.md:30`) ────────
+
+  [2.a] https://www.waveshare.com/
+        2026-09-07 · **HTTP 403** · VERDICT : NON ATTEINT.
+
+  [2.b] https://www.waveshare.com/join_affiliate.html
+        2026-09-07 · **HTTP 403** · VERDICT : NON ATTEINT.
+        ⚠️ LA PAGE EXISTE — elle est indexee sous le titre « Join Affiliate »
+           — mais SON CONTENU N'A PAS PU ETRE LU. ⇒ ⛔ ni nom de programme,
+           ni conditions, ni taux ne peuvent etre publies pour Waveshare.
+
+  [2.c] https://waveshare.com/join_affiliate.html  (sans `www.`)
+        2026-09-07 · **HTTP 403** · VERDICT : NON ATTEINT.
+
+  🔴 CONSEQUENCE ECRITE, ET C'EST LA PLUS IMPORTANTE DU RELEVE : un chiffre de
+     **2 %** pour Waveshare circule dans les notes internes du projet. Il n'est
+     ⛔ PAS lu sur la page du programme, ⛔ pas date, ⛔ pas source.
+     ⇒ IL N'EST REPUBLIE NULLE PART. Un taux non lu sur sa propre page n'est
+       pas une condition verifiable, c'est un souvenir.
+  ⚠️ COHERENCE AVEC `dn6-1` : la meme famille d'adresses rendait deja
+     **HTTP 403** le 2026-09-06 (`docs/bom.md:30` et l.200). Le comportement
+     est stable a un jour d'intervalle, sur deux chemins differents.
+
+==============================================================================
+POPULATION 2 — LES 10 ADRESSES TENTEES : ⛔ PAS RECHERCHEES, ET POURQUOI
+==============================================================================
+  mouser.fr · tinytronics.nl · eckstein-shop.de · octopart.com · adafruit.com
+  gotronic.fr · welectron.com · berrybase.de · thepihut.com · waveshare.com
+
+  ⛔ AUCUN de ces domaines n'est un fournisseur de record : ce sont les
+     **tentatives qui ont echoue** de `dn6-1` (403, 404, delai depasse, page
+     sans fiche produit). Le depot ne sait meme pas s'ils vendent la carte.
+  ⇒ MOTIF DE NON-RECHERCHE, ECRIT : chercher leurs programmes produirait dix
+    lignes sur des boutiques dont on ignore si elles ont un jour le produit.
+    C'est une page longue et sans prise, ⛔ pas une information.
+  ⇒ CE QUI LES FERAIT ENTRER : qu'une cellule `Source` de `docs/bom.md` les
+    cite. La gate `verif_affiliation_dn65.py` DERIVE cette colonne a chaque
+    tir ⇒ ce jour-la, elle ROUGIT tant que le releve ne les a pas.
+  ⚠️ `waveshare.com` est le seul des dix qui est DEJA en population 1, par la
+     prose. Il a donc bien ses trois lignes de releve ci-dessus.
+
+==============================================================================
+L'OBLIGATION DE DECLARATION EN FRANCE / UE — SOURCES OFFICIELLES
+==============================================================================
+⛔ CE N'EST PAS UN CONSEIL JURIDIQUE. Ce sont des textes cites avec leur
+   source officielle et la date a laquelle ils ont ete lus.
+
+  [L.1] Directive 2005/29/CE — pratiques commerciales deloyales
+        https://eur-lex.europa.eu/legal-content/FR/TXT/HTML/?uri=CELEX:32005L0029
+        2026-09-07 · HTTP 200 · EUR-Lex (source officielle de l'UE)
+        Titre officiel : « Directive 2005/29/CE du Parlement europeen et du
+        Conseil du 11 mai 2005 relative aux pratiques commerciales deloyales
+        des entreprises vis-a-vis des consommateurs dans le marche interieur »
+        ANNEXE I, point 11, VERBATIM :
+          « Utiliser un contenu redactionnel dans les medias pour faire la
+            promotion d'un produit, alors que le professionnel a finance
+            celle-ci lui-meme, sans l'indiquer clairement dans le contenu ou a
+            l'aide d'images ou de sons clairement identifiables par le
+            consommateur (publi-reportage). »
+
+  [L.2] Code de la consommation, article L121-4, 11°
+        https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000044563107
+        2026-09-07 · HTTP 200 · Legifrance (source officielle francaise)
+        VERBATIM :
+          « D'utiliser un contenu redactionnel dans les medias pour faire la
+            promotion d'un produit ou d'un service alors que le professionnel
+            a finance celle-ci lui-meme, sans l'indiquer clairement »
+
+  [L.3] LOI n° 2023-451 du 9 juin 2023, article 1er
+        https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000047663185
+        2026-09-07 · HTTP 200 · Legifrance
+        VERBATIM :
+          « Les personnes physiques ou morales qui, a titre onereux,
+            mobilisent leur notoriete aupres de leur audience pour communiquer
+            au public, par voie electronique, des contenus visant a faire la
+            promotion, directement ou indirectement, de biens, de services ou
+            d'une cause quelconque exercent l'activite d'influence commerciale
+            par voie electronique. »
+
+  [L.4] LOI n° 2023-451 du 9 juin 2023, article 5, I
+        https://www.legifrance.gouv.fr/jorf/article_jo/JORFARTI000047663211
+        2026-09-07 · HTTP 200 · Legifrance
+        VERBATIM :
+          « La promotion de biens, de services ou d'une cause quelconque
+            realisee par les personnes mentionnees a l'article 1er doit etre
+            explicitement indiquee par la mention « Publicite » ou la mention
+            « Collaboration commerciale ». »
+
+  [L.5] impots.gouv.fr — « Economie collaborative et plateformes numeriques »
+        https://www.impots.gouv.fr/economie-collaborative-et-plateformes-numeriques
+        2026-09-07 · HTTP 200 · administration fiscale francaise
+        VERBATIM :
+          « Les sommes percues dans le cadre d'operations d'economie
+            collaborative sont susceptibles de constituer des revenus qui
+            doivent, a ce titre, figurer dans la declaration de revenus du
+            beneficiaire. »
+          « Dans tous les cas, si vous realisez une activite imposable (par
+            exemple selon les fiches accessibles ci-dessus), vous devez
+            immatriculer cette activite aupres d'un centre de formalite des
+            entreprises (CFE). »
+
+── LES SOURCES OFFICIELLES QUI N'ONT ⛔ PAS PU ETRE ATTEINTES ────────────────
+  [L.6] https://www.economie.gouv.fr/dgccrf/influenceurs-et-influence-commerciale
+        2026-09-07 · **HTTP 403** · NON ATTEINT.
+  [L.7] https://www.economie.gouv.fr/influenceurs-quels-sont-mes-devoirs
+        2026-09-07 · **HTTP 403** · NON ATTEINT.
+  ⇒ LA DGCCRF EST DONC ABSENTE DES SOURCES CITEES, et c'est ECRIT plutot que
+    comble par une reformulation. Les quatre textes [L.1]-[L.4] sont lus a
+    leur source, ils suffisent a nommer l'obligation ; ⛔ la doctrine
+    administrative qui l'explique, elle, n'a pas ete lue.
+
+==============================================================================
+L'HYPOTHESE DE CADRAGE, CONFRONTEE — ET SON VERDICT EST « NI L'UN NI L'AUTRE »
+==============================================================================
+  HYPOTHESE (dossier de story) : « un programme d'affiliation demande
+  ordinairement un site ou une audience PUBLIQUE ; le depot restant PRIVATE
+  pendant `dn6`, l'inscription est peut-etre materiellement impossible
+  aujourd'hui, et pour une raison verifiable ».
+
+  CE QUE LA MESURE REND :
+   · ⛔ NON CONFIRMEE — les conditions d'admission du « AliExpress Partner
+     Program » N'ONT PAS PU ETRE LUES : [1.c] les met derriere une
+     authentification, [1.d] rend 404, [1.a]/[1.b] ne montrent rien.
+   · ⛔ NON REFUTEE — [1.e] dit seulement « sign up at no cost / once
+     approved » : il y a donc bien une APPROBATION, ⛔ mais son critere n'est
+     pas publie.
+   · ⚠️ INDICE, ⛔ PAS PREUVE — [1.f], publie par le meme fournisseur, tient
+     une plateforme numerique publique pour « essential ». C'est un article
+     general, ⛔ pas le reglement du programme : il ORIENTE, il ne TRANCHE pas.
+   · ⛔ RIEN du tout cote Waveshare : 403 sur les trois chemins.
+
+  ⇒ VERDICT ECRIT : **l'hypothese reste ouverte, et ce qui la ferme est un
+    geste OWNER** — ouvrir le portail avec un compte, ou attendre que le depot
+    soit public. C'est exactement l'ecart que la page publie, ⛔ pas une
+    conclusion fabriquee pour avoir l'air complet.
+==============================================================================

@@ -506,7 +506,7 @@ ré-affiche, c'est-à-dire qu'il ment sur ce qu'il mesure.
 ## Arborescence
 
 ```
-docs/       vision, roadmap, notes de câblage, photos, plans du boîtier
+docs/       vision, roadmap, notes de câblage, photos, plans du boîtier, déclaration des liens affiliés
 firmware/
   hello-desknode/   P0 — TÉMOIN MINIMAL, figé. Log + rétroéclairage clignotant.
                     Quand le bring-up de l'écran part en vrille, c'est lui qui

@@ -1,0 +1,425 @@
+==============================================================================
+dn6-5 — T3 : LA CAMPAGNE DE MUTANTS, **ET SA RECIPROQUE**
+==============================================================================
+date       : 2026-09-07
+gate       : tools/verif_affiliation_dn65.py
+contrat     : un mutant SAIN rend `rc=1`, imprime une ligne `BILAN :` et au
+              moins un `[KO ]`. ⛔ Un mutant SANS EFFET rend `rc=3` (perime),
+              ⛔ jamais un vert silencieux. Un mutant qui LEVE est rattrape et
+              rend un `BILAN`, ⛔ pas un Traceback nu.
+
+🔴 CE QUE CE FICHIER PROUVE, ET CE QU'IL NE PROUVE PAS.
+   La section (2) prouve `mutant ⇒ rouge` : chaque faute replantee est VUE.
+   ⛔ Elle ⛔ ne prouve PAS `controle ⇒ couvert` — c'est l'AUTRE sens, et il a
+   sa propre section (3). Mesure `dn5-6` : une campagne « 27 mutants, 27 vus
+   rougir » laissait **8 controles sur 38 gardes par RIEN**.
+
+⚠️ LES LIBELLES SONT LUS **A COLONNE FIXE** [9:66] — c'est la colonne de
+   `ctrl()` (`%-58s`, `LARGEUR_LIBELLE = 58`). Un parsing « par mot » casse EN
+   SILENCE des qu'un libelle contient un espace de plus.
+
+=== (1) LE TIR NU =========================================================
+    [OK ] (c1) `docs/affiliation.md` existe et porte du texte        15160 caracteres
+    [OK ] (c2) la population des fournisseurs se DERIVE              2 domaine(s) : aliexpress.com · waveshare.com
+    [OK ] (c3) chaque fournisseur de record a SA LIGNE               2 domaine(s) confronte(s), 6 ligne(s) de releve
+    [OK ] (c4) la 2e population est publiee, DANS LES DEUX SENS      10 adresse(s) tentee(s), toutes nommees
+    [OK ] (c5) ⛔ aucune adresse publiee n'est MARQUEE                39 adresse(s) relue(s), 0 marqueur, 0 redirection
+    [OK ] (c6) l'affirmation CONCORDE avec l'etat mesure             2 declarations EN VIGUEUR, « ne porte aucun lien affilié » des deux cotes
+    [OK ] (c7) la phrase d'etat d'origine est INTACTE                mot pour mot
+    [OK ] (c8) la page d'achat RENVOIE vers la page, et ca resout    1 renvoi(s), tous resolus
+    [OK ] (c9) le POINT DE BASCULE est ecrit, avec ses conditions    3 condition(s) nommee(s)
+    [OK ] (c10) chaque ligne de releve porte URL + DATE              6 ligne(s) confrontee(s)
+    [OK ] (c11) chaque source NON ATTEINTE porte son MOTIF           7 echec(s) declare(s), tous motives
+    [OK ] (c12) chaque texte cite porte sa SOURCE OFFICIELLE         5 texte(s), tous sources et dates
+    [OK ] (c13) la page dit que ⛔ ce n'est PAS un conseil            la mise en garde est ecrite
+    [OK ] (c14) chaque geste owner porte un porteur NOMME            5 geste(s), tous portes
+    [OK ] (c15) ⛔ aucun jalon CHIFFRE dans les deux pages            aucun
+    [OK ] (c16) ⛔ aucun REVENU PROJETE dans les deux pages           aucun
+    [OK ] (c17) le point de bascule NOMME son prerequis              2048 caracteres
+    [OK ] (c18) la page est ATTEIGNABLE depuis la prose              3 lien(s) entrant(s) : CHANGELOG.md · docs/bom.md · docs/roadmap.md
+    [OK ] (c19) la page dit comment ses nombres se re-tirent         4 commande(s) publiee(s)
+    [OK ] (c20) chaque controle est vise par >= 1 mutant             24 controle(s) lu(s) a l'AST, 24 cible(s) declaree(s)
+    [OK ] (c21) chaque cible de mutant est un controle REEL          24 cible(s) confrontee(s)
+    [OK ] (c22) `CIBLES` et `MUTANTS` se correspondent               29 mutant(s), 29 cible(s), cle a cle
+  BILAN : 22 OK, 0 KO
+  rc=0
+
+=== (2) LA CAMPAGNE — UN MUTANT, UNE LIGNE ================================
+  ⚠️ LES IDENTIFIANTS SONT LUS A **COLONNE FIXE** [9:66] : c'est la colonne
+     de `ctrl()` (`%-58s`). ⛔ Un parsing par mot cassait EN SILENCE.
+
+  n° rc   CIBLES declarees         controles VUS rougir     verdict
+  --- ---- ------------------------ ------------------------ -------
+  1   1    c3                       c3                       ✅ SAIN ✅
+  2   1    c3                       c3                       ✅ SAIN ✅
+  3   1    c4                       c4                       ✅ SAIN ✅
+  4   1    c5,c6                    c5,c6                    ✅ SAIN ✅
+  5   1    c6                       c6                       ✅ SAIN ✅
+  6   1    c7,c6                    c6,c7                    ✅ SAIN ✅
+  7   1    c8                       c8                       ✅ SAIN ✅
+  8   1    c8                       c8                       ✅ SAIN ✅
+  9   1    c9                       c9                       ✅ SAIN ✅
+  10  1    c10,c11                  c10,c11                  ✅ SAIN ✅
+  11  1    c10,c11                  c10,c11                  ✅ SAIN ✅
+  12  1    c11                      c11                      ✅ SAIN ✅
+  13  1    c12                      c12                      ✅ SAIN ✅
+  14  1    c13                      c13                      ✅ SAIN ✅
+  15  1    c14                      c14                      ✅ SAIN ✅
+  16  1    c15,c16                  c15,c16                  ✅ SAIN ✅
+  17  1    c15                      c15                      ✅ SAIN ✅
+  18  1    c16                      c16                      ✅ SAIN ✅
+  19  1    c17,c14                  c14,c17                  ✅ SAIN ✅
+  20  1    c18,c8                   c8,c18                   ✅ SAIN ✅
+  21  1    c19,c17                  c17,c19                  ✅ SAIN ✅
+  22  1    c1                       c1                       ✅ SAIN ✅
+  23  1    c2,c4                    c2,c4                    ✅ SAIN ✅
+  24  1    c20                      c20                      ✅ SAIN ✅
+  25  1    c21                      c21                      ✅ SAIN ✅
+  26  1    c22                      c22                      ✅ SAIN ✅
+  27  1    z                        z                        ✅ SAIN ✅
+  28  1    c0                       c0                       ✅ SAIN ✅
+  29  1    c4                       c4                       ✅ SAIN ✅
+
+=== (3) LA RECIPROQUE — QUEL CONTROLE EST GARDE PAR QUEL MUTANT ===========
+  ⚠️ « N mutants, N vus rougir » prouve `mutant ⇒ rouge`, ⛔ JAMAIS
+     `controle ⇒ couvert`. Ce tableau-ci est l'AUTRE sens, et il se lit
+     sur ce qui a REELLEMENT rougi, ⛔ pas sur ce que `CIBLES` declare.
+
+  z     garde par 1  mutant(s) : 27
+  c0    garde par 1  mutant(s) : 28
+  c1    garde par 1  mutant(s) : 22
+  c2    garde par 1  mutant(s) : 23
+  c3    garde par 2  mutant(s) : 1, 2
+  c4    garde par 3  mutant(s) : 3, 23, 29
+  c5    garde par 1  mutant(s) : 4
+  c6    garde par 3  mutant(s) : 4, 5, 6
+  c7    garde par 1  mutant(s) : 6
+  c8    garde par 3  mutant(s) : 7, 8, 20
+  c9    garde par 1  mutant(s) : 9
+  c10   garde par 2  mutant(s) : 10, 11
+  c11   garde par 3  mutant(s) : 10, 11, 12
+  c12   garde par 1  mutant(s) : 13
+  c13   garde par 1  mutant(s) : 14
+  c14   garde par 2  mutant(s) : 15, 19
+  c15   garde par 2  mutant(s) : 16, 17
+  c16   garde par 2  mutant(s) : 16, 18
+  c17   garde par 2  mutant(s) : 19, 21
+  c18   garde par 1  mutant(s) : 20
+  c19   garde par 1  mutant(s) : 21
+  c20   garde par 1  mutant(s) : 24
+  c21   garde par 1  mutant(s) : 25
+  c22   garde par 1  mutant(s) : 26
+
+  ⇒ 24 controle(s) lu(s) a l'AST, 24 garde(s) par >= 1 mutant, 0 par RIEN
+
+==============================================================================
+LES TROIS TEMOINS — CE QUE LES MUTANTS EN MEMOIRE NE PEUVENT PAS MONTRER
+==============================================================================
+⚠️ Ces trois-la se jouent sur l'ARBRE REEL, sauvegarde puis restaure : un
+   mutant vit EN MEMOIRE, il ⛔ ne peut donc pas montrer ce que fait un
+   VRAI geste d'ecriture. L'etat de l'arbre est re-verifie a la fin.
+
+=== TEMOIN A — UN MUTANT DEVENU NO-OP REND `rc=3`, ⛔ PAS UN VERT ========
+  geste : l'ancre litterale du mutant 14 est DEPLACEE dans la page, puis
+          le mutant 14 est joue. C'est le cas « son ancre a bouge ».
+    [KO ] (c0) le mutant 14 a bien un EFFET                          ⛔ SANS EFFET — son ancre litterale a disparu de la cible. ⛔ Ce n'est PAS un controle vert : rc=3, mutant PERIME.
+  ⛔ SORTIE ANTICIPEE — 1 controle(s) emis sur 22 prevus : le mutant 14 n'a eu aucun effet
+  BILAN : 0 OK, 1 KO
+  rc=3      ⇒ attendu 3 (mutant PERIME), ⛔ ni 0 ni 1
+
+=== TEMOIN B — LA BASCULE ECRITE DANS LES REGLES ===========================
+  geste : un lien affilie est REELLEMENT pose dans `docs/bom.md`, et les
+          deux phrases d'etat sont ANNOTEES (la perimee RESTE, la neuve
+          s'ecrit en dessous) — le geste que `NFR3` prescrit.
+    [KO ] (c5) ⛔ aucune adresse publiee n'est MARQUEE                ⛔ 1 ADRESSE(S) MARQUEE(S) : docs/bom.md : https://www.aliexpress.com/w/wholesale-BH1750-GY-302.html?af (marqueur) — l'affirmation « aucun lien affilie » est DEVENUE FAUSSE
+    [OK ] (c6) l'affirmation CONCORDE avec l'etat mesure             2 declarations EN VIGUEUR, « porte des liens affiliés » des deux cotes
+    [OK ] (c7) la phrase d'etat d'origine est INTACTE                mot pour mot
+  BILAN : 21 OK, 1 KO
+  rc=1
+
+=== TEMOIN C — LE MEME LIEN, MAIS LES PAGES NE SONT ⛔ PAS MISES A JOUR ====
+    [KO ] (c5) ⛔ aucune adresse publiee n'est MARQUEE                ⛔ 1 ADRESSE(S) MARQUEE(S) : docs/bom.md : https://www.aliexpress.com/w/wholesale-BH1750-GY-302.html?af (marqueur) — l'affirmation « aucun lien affilie » est DEVENUE FAUSSE
+    [KO ] (c6) l'affirmation CONCORDE avec l'etat mesure             ⛔ 2 CONTRADICTION(S) — l'etat mesure dit « porte des liens affiliés », la declaration EN VIGUEUR dit l'inverse : docs/affiliation.md · docs/bom.md
+    [OK ] (c7) la phrase d'etat d'origine est INTACTE                mot pour mot
+  BILAN : 20 OK, 2 KO
+  rc=1
+
+=== ETAT DE L'ARBRE APRES LES TROIS TEMOINS (⛔ aucune trace ne reste) =====
+  BILAN : 22 OK, 0 KO
+  AM docs/affiliation.md
+   M docs/bom.md
+   M docs/roadmap.md
+
+==============================================================================
+CE QUE LA CAMPAGNE ETABLIT
+==============================================================================
+  ✅ **29 mutants, 29 SAINS** — `rc=1`, un `BILAN` imprime, >= 1 `[KO ]`.
+  ✅ **24 controles lus a l'AST, 24 gardes par >= 1 mutant, 0 par RIEN.**
+  ✅ **Toute cible DECLAREE est vue rougir** : la colonne « CIBLES declarees »
+     est incluse dans la colonne « controles VUS rougir », ligne par ligne.
+  ✅ **Quatre mutants rougissent PLUS que leur cible d'origine** (10, 11, 19,
+     21), et `CIBLES` a ete CORRIGE pour dire ce que le mutant FAIT — ⛔ pas ce
+     qu'on aimerait qu'il isole. Deux d'entre eux (19, 21) revelent une
+     propriete du decoupage PAR TITRES : le titre d'une section est la BORNE DE
+     FIN de la precedente, donc le supprimer prive DEUX controles de matiere.
+     C'est ecrit dans la gate plutot que tu.
+  ✅ **TEMOIN A** : le no-op rend `rc=3`. ⛔ C'est le point qui distingue cette
+     campagne d'une campagne qui se ment : `rc=1` + `BILAN` + `[KO ]` est MOT
+     POUR MOT ce que `verif_campagne_dn56.py` appelle « sain », donc un mutant
+     devenu sans effet le remplirait pendant que son controle perdrait son
+     seul gardien EN SILENCE.
+  ✅ **TEMOINS B et C** : les deux sens de la matrice, joues sur l'arbre reel.
+     · B — lien pose **et** declarations ANNOTEES dans les regles ⇒ (c6) et
+       (c7) VERTS, (c5) ROUGE. La bascule est donc ECRIVABLE : ⛔ la gate
+       n'oblige pas a effacer, elle oblige a annoter.
+     · C — le meme lien **sans** mise a jour ⇒ (c5) ET (c6) ROUGES. La
+       contradiction est vue COMME contradiction, ⛔ pas seulement comme URL.
+
+⛔ CE QUE CETTE CAMPAGNE NE PROUVE PAS : que la page dise VRAI sur un taux.
+   Un taux faux mais date et source laisse la gate VERTE — c'est ecrit dans
+   la gate elle-meme, et rouvrir la source est le seul chemin.
+==============================================================================
+
+==============================================================================
+ADDENDUM DU 2026-09-07 — LES 29 MUTANTS ET LES DEUX TEMOINS, RE-JOUES **APRES**
+LA CORRECTION DES DEUX VERDICTS D'ECHEC FAUX (voir `T7` §9)
+==============================================================================
+MOTIF : la correction a reecrit le tableau du §3, le paragraphe du taux, le §6
+et le §7 de `docs/affiliation.md`, et le point de bascule de `docs/bom.md`. Des
+mutants ancres litteralement sur ces passages auraient pu devenir SANS EFFET —
+une preuve morte, ⛔ pas un rouge. La question se MESURE, ⛔ ne se raisonne pas.
+
+=== LES 29 MUTANTS, RE-JOUES UN PAR UN ====================================
+  contrat verifie pour chacun : rc == 1  ET  une ligne `BILAN` imprimee par la
+  gate elle-meme  ET  au moins une ligne `[KO ]`.
+
+  non conformes : 0        perimes (rc=3) : 0        => 29 / 29 SAINS
+
+=== TEMOIN C — UN LIEN MARQUE, ⛔ AUCUNE MISE A JOUR ======================
+  charge : `?aff_trace_key=TEMOINC` ajoute a UNE adresse de `docs/bom.md`.
+  rc=1   BILAN : 20 OK, 2 KO
+    [KO ] (c5) ... 1 ADRESSE(S) MARQUEE(S) ... l'affirmation est DEVENUE FAUSSE
+    [KO ] (c6) ... 2 CONTRADICTION(S) — l'etat mesure dit « porte des liens
+               affilies », la declaration EN VIGUEUR dit l'inverse
+  ⇒ la contradiction est vue COMME contradiction, ⛔ pas seulement comme URL.
+
+=== TEMOIN B — UN LIEN MARQUE **ET** LES DEUX DECLARATIONS MISES A JOUR ====
+  rc=1   BILAN : 20 OK, 2 KO
+    [KO ] (c5) ... 1 ADRESSE(S) MARQUEE(S)
+    [OK ] (c6) ... « porte des liens affilies » des DEUX cotes      <= VERT
+    [KO ] (c7) la phrase d'etat d'origine est INTACTE ... REECRITE OU EFFACEE
+  ⇒ `(c6)` REDEVIENT VERT : la bascule est **ecrivable**, la gate n'oblige pas
+    a effacer. `(c5)` RESTE ROUGE : changer une promesse publiee doit etre un
+    geste ECRIT, ⛔ pas une derive silencieuse.
+  🎯 ET `(c7)` A ROUGI SUR **MON** TEMOIN, ⛔ pas sur la gate : la charge avait
+    APPENDU l'annotation A LA SUITE de la phrase d'origine au lieu de l'ecrire
+    EN DESSOUS. C'est exactement la faute que `NFR3` interdit, et la gate l'a
+    attrapee sans qu'on la lui demande.
+
+=== ETAT DE L'ARBRE APRES LES DEUX TEMOINS ================================
+  BILAN : 22 OK, 0 KO   ·   `git diff -- docs/bom.md docs/affiliation.md` VIDE
+  ⇒ ⛔ aucune trace ne reste.
+==============================================================================
+
+==============================================================================
+ADDENDUM N°2 DU 2026-09-07 — RE-TIR **APRES LA REVUE DE CODE**
+==============================================================================
+🔴 **CE QUI PRECEDE EST CONSERVE, ET DEUX BLOCS Y SONT PERIMES.** ⛔ Rien n'est
+   efface (NFR3) ; ce qui suit dit lesquels, et pourquoi.
+
+  ⛔ **LE BLOC « (1) LE TIR NU » EN TETE DE CE FICHIER NE SE REPRODUIT PLUS.**
+     Il a ete tire AVANT la correction des deux verdicts d'echec faux et AVANT
+     la revue. Trois de ses chiffres sont perimes :
+       · `(c11)` y annonce **7** echecs declares ; la page livree en porte
+         **5** — deux verdicts sont passes de l'echec a la reussite ;
+       · `(c1)` y annonce **15 160** caracteres et `(c17)` **2 048** ; la page
+         livree en porte **20 265** et **2 881** ;
+       · le bilan y est `22 OK` ; la gate livree en emet **23** — un controle
+         `(c23)` est ne de la revue.
+     ⇒ le tir de reference est la section (A) CI-DESSOUS.
+
+  ⛔ **LE BLOC « CE QUE LA CAMPAGNE ETABLIT » EST PERIME SUR DEUX POINTS.**
+     Il ecrit *« TEMOIN B ⇒ 21 OK, 1 KO, (c6) et (c7) VERTS »*. L'addendum n°1,
+     dans ce meme fichier, mesurait deja `20 OK, 2 KO` avec `(c7)` **KO** — non
+     parce que la gate avait tort, mais parce que la charge du temoin avait
+     APPENDU l'annotation a la suite de la phrase d'origine au lieu de l'ecrire
+     EN DESSOUS. ⇒ deux chiffres opposes cohabitaient dans le meme fichier.
+     🔬 LE TEMOIN B EST RE-JOUE CI-DESSOUS avec la charge CORRIGEE (annotation
+     en dessous) : **22 OK, 1 KO**, `(c6)` et `(c7)` VERTS. C'est cette valeur
+     qui fait foi, et elle est datee.
+     Il annonce aussi *« 29 mutants »* et *« 24 controles »* ; la gate livree en
+     porte **35** et **25**.
+
+  ✅ CE QUI RESTE VRAI DANS LES BLOCS PRECEDENTS : la METHODE (lecture des
+     libelles A COLONNE FIXE), le contrat de mutant, et les deux sens de la
+     reciproque. Ce sont les NOMBRES qui ont bouge, ⛔ pas les proprietes.
+
+── CE QUE LA REVUE A AJOUTE, ET QUI EST MESURE CI-DESSOUS ───────────────────
+  · `(c23)` — un verdict d'echec doit dire AVEC QUOI l'adresse a ete tentee.
+    C'est la lecon de cette marche, et elle n'etait installee dans AUCUN
+    controle : elle vivait seulement en prose.
+  · six mutants neufs (30 a 35), chacun replantant une faute **demontree
+    VERTE** pendant la revue : la page au nom accentue que `git ls-files`
+    echappait, l'adresse de REDIRECTEUR que ⛔ aucun mutant ne gardait, le
+    releve orphelin, le jalon pose dans un TROISIEME fichier, le palier chiffre
+    hors des quatre valeurs nommees, et le verdict prive de sa methode.
+  · deux temoins neufs (D et E) sur le meme parametre `?ref=` : il est
+    INNOCENT sur une page de documentation et MARQUEUR sur une boutique. C'est
+    la distinction qui empeche la gate de faire PUBLIER une affirmation fausse.
+
+=== (A) LE TIR NU, RE-JOUE SUR L'ARBRE LIVRE =============================
+    [OK ] (c1) `docs/affiliation.md` existe et porte du texte        20265 caracteres
+    [OK ] (c2) la population des fournisseurs se DERIVE              2 domaine(s) : aliexpress.com · waveshare.com
+    [OK ] (c3) le releve couvre la BOM, DANS LES DEUX SENS           2 domaine(s) confronte(s), 6 ligne(s) de releve
+    [OK ] (c4) la 2e population est publiee, DANS LES DEUX SENS      10 adresse(s) tentee(s), toutes nommees
+    [OK ] (c5) ⛔ aucune adresse publiee n'est MARQUEE                118 adresse(s) relue(s) sur 436 fichier(s) suivis, 0 marqueur, 0 redirecteur
+    [OK ] (c6) l'affirmation CONCORDE avec l'etat mesure             2 declarations EN VIGUEUR, « ne porte aucun lien affilié » des deux cotes
+    [OK ] (c7) la phrase d'etat d'origine est INTACTE                mot pour mot
+    [OK ] (c8) la page d'achat RENVOIE vers la page, et ca resout    1 renvoi(s), tous resolus
+    [OK ] (c9) le POINT DE BASCULE est ecrit, avec ses conditions    3 condition(s) nommee(s)
+    [OK ] (c10) chaque ligne de releve porte URL + DATE              6 ligne(s) confrontee(s)
+    [OK ] (c11) chaque source NON ATTEINTE porte son MOTIF           5 echec(s) declare(s), tous motives
+    [OK ] (c23) chaque verdict NOMME sa methode de releve            11 verdict(s), tous methodes
+    [OK ] (c12) chaque texte cite porte sa SOURCE OFFICIELLE         5 texte(s), tous sources et dates
+    [OK ] (c13) la page dit que ⛔ ce n'est PAS un conseil            la mise en garde est ecrite
+    [OK ] (c14) chaque geste owner porte un porteur NOMME            5 geste(s), tous portes
+    [OK ] (c15) ⛔ aucun jalon CHIFFRE dans tout le depot             aucun
+    [OK ] (c16) ⛔ aucun REVENU PROJETE dans tout le depot            aucun
+    [OK ] (c17) le point de bascule NOMME son prerequis              2881 caracteres
+    [OK ] (c18) la page est ATTEIGNABLE depuis la prose              3 lien(s) entrant(s) : CHANGELOG.md · docs/bom.md · docs/roadmap.md
+    [OK ] (c19) la page dit comment ses nombres se re-tirent         4 commande(s) publiee(s)
+    [OK ] (c20) chaque controle est vise par >= 1 mutant             25 controle(s) lu(s) a l'AST, 25 cible(s) declaree(s)
+    [OK ] (c21) chaque cible de mutant est un controle REEL          25 cible(s) confrontee(s)
+    [OK ] (c22) `CIBLES` et `MUTANTS` se correspondent               35 mutant(s), 35 cible(s), cle a cle
+  BILAN : 23 OK, 0 KO
+  rc=0
+
+=== (B) LA CAMPAGNE — 35 MUTANTS, UN PAR LIGNE ===========================
+  n° rc   CIBLES declarees       controles VUS rougir   verdict
+  --- ---- ---------------------- ---------------------- -------
+  1   1    c3                     c3                     ✅ SAIN ✅
+  2   1    c3                     c3                     ✅ SAIN ✅
+  3   1    c4                     c4                     ✅ SAIN ✅
+  4   1    c5,c6                  c5,c6                  ✅ SAIN ✅
+  5   1    c6                     c6                     ✅ SAIN ✅
+  6   1    c7,c6                  c6,c7                  ✅ SAIN ✅
+  7   1    c8                     c8                     ✅ SAIN ✅
+  8   1    c8                     c8                     ✅ SAIN ✅
+  9   1    c9                     c9                     ✅ SAIN ✅
+  10  1    c10,c11                c10,c11                ✅ SAIN ✅
+  11  1    c10                    c10                    ✅ SAIN ✅
+  12  1    c11                    c11                    ✅ SAIN ✅
+  13  1    c12                    c12                    ✅ SAIN ✅
+  14  1    c13                    c13                    ✅ SAIN ✅
+  15  1    c14                    c14                    ✅ SAIN ✅
+  16  1    c15,c16                c15,c16                ✅ SAIN ✅
+  17  1    c15,c16                c15,c16                ✅ SAIN ✅
+  18  1    c16                    c16                    ✅ SAIN ✅
+  19  1    c17,c14                c14,c17                ✅ SAIN ✅
+  20  1    c18,c8                 c18,c8                 ✅ SAIN ✅
+  21  1    c19,c17                c17,c19                ✅ SAIN ✅
+  22  1    c1                     c1                     ✅ SAIN ✅
+  23  1    c2,c4,c3               c2,c3,c4               ✅ SAIN ✅
+  24  1    c20                    c20                    ✅ SAIN ✅
+  25  1    c21                    c21                    ✅ SAIN ✅
+  26  1    c22                    c22                    ✅ SAIN ✅
+  27  1    z                      z                      ✅ SAIN ✅
+  28  1    c0                     c0                     ✅ SAIN ✅
+  29  1    c4                     c4                     ✅ SAIN ✅
+  30  1    c5,c6                  c5,c6                  ✅ SAIN ✅
+  31  1    c5,c6                  c5,c6                  ✅ SAIN ✅
+  32  1    c3                     c3                     ✅ SAIN ✅
+  33  1    c15                    c15                    ✅ SAIN ✅
+  34  1    c16                    c16                    ✅ SAIN ✅
+  35  1    c23                    c23                    ✅ SAIN ✅
+
+=== (C) LA RECIPROQUE — QUEL CONTROLE EST GARDE PAR QUEL MUTANT ==========
+  z     garde par 1  mutant(s) : 27
+  c0    garde par 1  mutant(s) : 28
+  c1    garde par 1  mutant(s) : 22
+  c2    garde par 1  mutant(s) : 23
+  c3    garde par 4  mutant(s) : 1, 2, 23, 32
+  c4    garde par 3  mutant(s) : 3, 23, 29
+  c5    garde par 3  mutant(s) : 4, 30, 31
+  c6    garde par 5  mutant(s) : 4, 5, 6, 30, 31
+  c7    garde par 1  mutant(s) : 6
+  c8    garde par 3  mutant(s) : 7, 8, 20
+  c9    garde par 1  mutant(s) : 9
+  c10   garde par 2  mutant(s) : 10, 11
+  c11   garde par 2  mutant(s) : 10, 12
+  c12   garde par 1  mutant(s) : 13
+  c13   garde par 1  mutant(s) : 14
+  c14   garde par 2  mutant(s) : 15, 19
+  c15   garde par 3  mutant(s) : 16, 17, 33
+  c16   garde par 4  mutant(s) : 16, 17, 18, 34
+  c17   garde par 2  mutant(s) : 19, 21
+  c18   garde par 1  mutant(s) : 20
+  c19   garde par 1  mutant(s) : 21
+  c20   garde par 1  mutant(s) : 24
+  c21   garde par 1  mutant(s) : 25
+  c22   garde par 1  mutant(s) : 26
+  c23   garde par 1  mutant(s) : 35
+
+  ⇒ 25 controle(s) lu(s) a l'AST, 25 garde(s) par >= 1 mutant, 0 par RIEN
+
+=== (D) TEMOIN A — UN MUTANT DEVENU NO-OP REND rc=3 ======================
+    [KO ] (c0) le mutant 14 a bien un EFFET                          ⛔ SANS EFFET — son ancre litterale a disparu de la cible. ⛔ Ce n'est PAS un controle vert : rc=3, mutant PERIME.
+  ⛔ SORTIE ANTICIPEE — 1 controle(s) emis sur 23 prevus : le mutant 14 n'a eu aucun effet
+  BILAN : 0 OK, 1 KO
+  rc=3      ⇒ attendu 3 (mutant PERIME), ⛔ ni 0 ni 1
+
+=== (E) TEMOIN B — LIEN MARQUE **ET** DECLARATIONS ANNOTEES ===============
+    [KO ] (c5) ⛔ aucune adresse publiee n'est MARQUEE                ⛔ 1 ADRESSE(S) MARQUEE(S) : docs/bom.md : https://www.aliexpress.com/w/wholesale-BH1750-GY-302.htm (marqueur franc) — l'affirmation « aucun lien affilie » est DEVENUE FAUSSE
+    [OK ] (c6) l'affirmation CONCORDE avec l'etat mesure             2 declarations EN VIGUEUR, « porte des liens affiliés » des deux cotes
+    [OK ] (c7) la phrase d'etat d'origine est INTACTE                mot pour mot
+  BILAN : 22 OK, 1 KO
+  rc=1
+
+=== (F) TEMOIN C — LE MEME LIEN, ⛔ AUCUNE MISE A JOUR ====================
+    [KO ] (c5) ⛔ aucune adresse publiee n'est MARQUEE                ⛔ 1 ADRESSE(S) MARQUEE(S) : docs/bom.md : https://www.aliexpress.com/w/wholesale-BH1750-GY-302.htm (marqueur franc) — l'affirmation « aucun lien affilie » est DEVENUE FAUSSE
+    [KO ] (c6) l'affirmation CONCORDE avec l'etat mesure             ⛔ 2 CONTRADICTION(S) — l'etat mesure dit « porte des liens affiliés », la declaration EN VIGUEUR dit l'inverse : docs/affiliation.md · docs/bom.md
+    [OK ] (c7) la phrase d'etat d'origine est INTACTE                mot pour mot
+  BILAN : 21 OK, 2 KO
+  rc=1
+
+=== (G) TEMOIN D — UN `?ref=` ORDINAIRE SUR UNE PAGE DE DOCUMENTATION ====
+  charge : `?ref=lecteur` ajoute a l'adresse EUR-Lex du §5 — un lien de
+           reference ordinaire, ⛔ pas une boutique.
+    [OK ] (c5) ⛔ aucune adresse publiee n'est MARQUEE                118 adresse(s) relue(s) sur 436 fichier(s) suivis, 0 marqueur, 0 redirecteur
+    [OK ] (c6) l'affirmation CONCORDE avec l'etat mesure             2 declarations EN VIGUEUR, « ne porte aucun lien affilié » des deux cotes
+  BILAN : 23 OK, 0 KO
+  rc=0      ⇒ attendu 0 : un `?ref=` HORS boutique ⛔ n'est pas un marqueur
+
+=== (H) TEMOIN E — LE MEME `?ref=`, MAIS SUR UNE BOUTIQUE DE LA BOM ======
+    [KO ] (c5) ⛔ aucune adresse publiee n'est MARQUEE                ⛔ 1 ADRESSE(S) MARQUEE(S) : docs/bom.md : https://www.aliexpress.com/w/wholesale-BH1750-GY-302.htm (marqueur sur BOUTIQUE) — l'affirmation « aucun lien affilie » est DEVENUE FAUSSE
+  BILAN : 21 OK, 2 KO
+  rc=1      ⇒ attendu 1 : le MEME parametre, sur une BOUTIQUE, est un marqueur
+
+=== (I) ETAT DE L'ARBRE APRES LES CINQ TEMOINS ===========================
+  BILAN : 23 OK, 0 KO
+   docs/affiliation.md | 28 ++++++++++++++++++----------
+   1 file changed, 18 insertions(+), 10 deletions(-)
+  (⇒ seules les modifications LIVREES restent ; aucun temoin n'a laisse de trace)
+
+==============================================================================
+CE QUE CE RE-TIR ETABLIT
+==============================================================================
+  ✅ **35 mutants, 35 SAINS** — `rc=1`, un `BILAN` imprime, >= 1 `[KO ]`.
+  ✅ **25 controles lus a l'AST, 25 gardes par >= 1 mutant, 0 par RIEN.**
+  ✅ **Toute cible DECLAREE est vue rougir**, ligne par ligne.
+  ✅ **TEMOIN A** : le no-op rend toujours `rc=3`.
+  ✅ **TEMOINS B et C** : la bascule est ECRIVABLE (annoter ⇒ `(c6)` et `(c7)`
+     verts, `(c5)` rouge) et la contradiction est vue COMME contradiction.
+  ✅ **TEMOINS D et E** : le MEME `?ref=` est vert sur une page de
+     documentation et rouge sur une boutique de la BOM. ⛔ Sans cette
+     distinction, `(c5)` rougissait sur un lien innocent PUIS `(c6)` exigeait
+     des deux pages qu'elles affirment porter des liens affilies — une gate qui
+     fait PUBLIER FAUX, ⛔ pas un simple desagrement.
+==============================================================================
+
+⚠️ **AVIS A QUI ECRIRA LE PROCHAIN TEMOIN** : depuis la revue, `(c5)` relit
+   AUSSI les `.txt` suivis — donc CE FICHIER. Recopier ici une adresse marquee
+   EN ENTIER ferait rougir la gate sur son propre compte rendu. Les sorties
+   ci-dessus passent parce que le detail de `ctrl()` TRONQUE l'adresse a 56
+   caracteres ; c'est une propriete de la troncature, ⛔ pas une garantie.
+   ⇒ tronquer, ou nommer le parametre sans l'adresse.

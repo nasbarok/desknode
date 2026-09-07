@@ -1,0 +1,289 @@
+==============================================================================
+dn6-5 — T7 : LES BORNES D'ARRIVEE, RE-TIREES PAR LA COMMANDE
+==============================================================================
+date       : 2026-09-07
+desknode   : arbre de travail sur 7752ef1e328b9f994f9adfa9f8254ccf66f27a14
+             (HEAD au cadrage) + les livrables de la marche, ⛔ non commites
+cockpit    : arbre de travail sur 0537d1248753a33331eb940cc23b06ce13ca3beb
+
+⚠️ CHAQUE BORNE EST RE-TIREE PAR LA COMMANDE, ⛔ aucune n'est recopiee de `T0`
+   ni du dossier de story. Le `rc` est capture SANS passer par `grep` : la
+   sortie est mise en variable, PUIS filtree.
+
+⚠️ CETTE PASSE A ETE JOUEE APRES QUE L'AGENT D'IMPLEMENTATION SE SOIT ARRETE
+   EN COURS (limite de session, sur le fichier `T7` a l'etat « EN COURS DE
+   PRODUCTION », 23 octets). ⛔ Rien n'a ete repris de son rapport : les
+   nombres ci-dessous sortent tous d'un tir neuf.
+
+=== (1) L'ARBRE SUIVI =====================================================
+                                          T0        T7      delta
+  fichiers suivis                         678       685     +7
+     => docs/affiliation.md · tools/verif_affiliation_dn65.py
+        + les 5 fichiers de mesures/dn6-5/
+  .md suivis                              27        28      +1
+  gates (ls tools/verif_*.py)             35        36      +1
+  repertoires de 1er niveau               9         9       0
+     => .github agent assets docs firmware hardware mesures tests tools
+  ⛔ AUCUN REPERTOIRE DE HAUT NIVEAU NEUF — c'est le mutant 2 de
+     `verif_licences_dn52.py` qui rougirait, et il ne rougit pas.
+
+=== (2) LES GATES, TIREES UNE PAR UNE =====================================
+  verif_affiliation_dn65.py  (tir nu)      rc=0   BILAN : 22 OK, 0 KO   NEUVE
+  verif_bom_dn61.py          (tir nu)      rc=0   BILAN : 24 OK, 0 KO   = T0
+  verif_licences_dn52.py     (tir nu)      rc=0   BILAN : 34 OK, 0 KO   = T0
+  verif_photos_dn63.py       (tir nu)      rc=0   BILAN : 28 OK, 0 KO   = T0
+  verif_cablage_dn62.py      (tir nu)      rc=0   BILAN : 37 OK, 0 KO   = T0
+  verif_boitier_dn64.py      (--cockpit)   rc=0   BILAN : 29 OK, 0 KO   = T0
+  verif_ledger_dn416.py      (--cockpit)   rc=0   BILAN : 35 OK, 0 KO   = T0
+
+  🎯 `verif_bom_dn61.py` rend LE MEME COMPTE alors que `docs/bom.md` a
+     GAGNE DU TEXTE : `CONTROLES_PREVUS = 24` est insensible a la longueur
+     du document. Les deux litteraux de `(c9)` sont donc intacts, et le
+     mutant 8 qui y est ancre n'est ⛔ pas devenu une preuve morte.
+  🎯 `verif_licences_dn52.py` rend LE MEME COMPTE alors que sa population a
+     GROSSI : `prose_du_depot()` prend tout `.md` suivi sous `docs/`, donc
+     `docs/affiliation.md` EST dans son corpus — ses six controles de prose
+     l'ont traversee sans rougir (liens locaux, renvois de section, drapeaux
+     cites, marqueur de roadmap, comptes d'entrees, ancres de commit).
+
+=== (3) verif_dossier_dn415.py -- LES *TROIS* CONDITIONS ===================
+                                          T0                T7
+  cockpit PRESENT                rc=1  23 OK, 10 KO   rc=1  23 OK, 10 KO
+  cockpit = repertoire VIDE      rc=1  24 OK, 51 KO   rc=1  24 OK, 51 KO
+  cockpit = chemin INEXISTANT    rc=4  25 OK,  0 KO   rc=4  25 OK,  0 KO
+
+  🔴 LE VERDICT SE LIT SUR LE **NOMBRE**, ⛔ PAS SUR LA COULEUR. Cette gate
+     etait DEJA ROUGE aux deux bornes : elle absorberait un KO de plus sans
+     changer de teinte, et c'est exactement ce que `dn6-1` a paye avec
+     `docs/bom.md` (10 ⇒ 11 invisible sous « 30 VERTE / 1 ROUGE »).
+     ⇒ **10 KO A T0, 10 KO A T7** : la marche n'en ajoute AUCUN.
+     ⛔ Aucune attribution par `git stash` n'a donc ete necessaire.
+
+  ⚠️ RAPPEL DE L'ECART DECLARE A `T0` : le dossier de story annoncait `rc=4`
+     pour « cockpit = repertoire VIDE ». **REFUTE PAR LA MESURE** — un
+     repertoire vide est ATTEIGNABLE, la gate joue et rend 51 KO / rc=1. La
+     condition qui rend `rc=4` est un CHEMIN INEXISTANT. Le meme enonce faux
+     vit dans un commentaire de `tools/run_gates.sh` ; `NFR6.5` range
+     l'hygiene du harnais en territoire `dn4` ⇒ ⛔ le fichier n'est pas
+     touche, le constat est AU LEDGER avec porteur `epic-dn4`.
+
+=== (4) LA CAMPAGNE =======================================================
+  verif_campagne_dn56.py  rc=0   BILAN : 8 OK, 0 KO
+  LIGNE DE DETAIL (c1), VERBATIM :
+    [OK ] toute cible repond, et aucun mutant ne meurt               292 mutant(s) confronte(s) sur 10 cible(s)
+
+  T0 disait :
+    [OK ] toute cible repond, et aucun mutant ne meurt               263 mutant(s) confronte(s) sur 9 cible(s)
+
+  🎯 **9 CIBLES ⇒ 10, ET 263 MUTANTS ⇒ 292.** C'est la SEULE preuve que la
+     gate neuve et ses 29 mutants sont REELLEMENT ENROLES : `BILAN : 8 OK,
+     0 KO` est IDENTIQUE aux deux bornes et ne prouve RIEN. La lecon vient
+     de `dn6-4`, qui l'avait deja payee.
+
+=== (5) LA PASSE COMPLETE =================================================
+  T0 : BILAN : 33 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 35 gates (240s)
+  T7 : BILAN : 34 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 36 gates (263s)
+       appariement --cockpit : 0 divergence(s)
+       ⛔ ROUGES : tools/verif_dossier_dn415.py (rc=1)
+       NON-JOUABLE : tools/verif_sr03.py (temoin absent, rc=2 attendu)
+
+  ⇒ **+1 VERTE, +1 GATE, ⛔ 0 ROUGE DE PLUS.** La gate neuve est entree
+    TOUTE SEULE par le glob `tools/verif_*.py` : ⛔ `run_gates.sh` n'a PAS
+    ete touche (`NFR6.5`).
+
+=== (6) LE COCKPIT ========================================================
+                                          T0        T7      delta
+  deferred-work.md (wc -l)                6432      6564    +132
+  grep -c 'dn6-5' deferred-work.md        1         15      +14
+  manifeste dn4-16-arbitrage-ledger.md    722       728     +6
+  verif_ledger_dn416.py --cockpit         35 OK/0   35 OK/0  =
+
+  DISPOSITIONS ECRITES PAR `dn6-5`, ET LEURS PORTEURS (relus au tracker le
+  2026-09-07, ⛔ le jour meme de l'ecriture) :
+    · epic-dn6      (backlog)      — la question de rangement dn6 / dn8
+    · epic-dn4      (in-progress)  — l'enonce faux du commentaire de run_gates.sh
+    · epic-dn6      (backlog)      — la reecriture d'une gate de l'epic
+    · bloquee par : <fait>         — les conditions derriere authentification
+    · —             (CONNAISSANCE) — les deux 403 dates du releve
+    · epic-dn6      (backlog)      — « non atteint » est une propriete de la
+                                     METHODE, et `docs/bom.md` publie encore
+                                     un 403 REFUTE (voir §9)
+
+  ⛔ AUCUNE DISPOSITION NE NOMME `dn6-5` : la cle passe `done` a la cloture,
+     et c'est la faute MESUREE a `epic-dn6` (10 reports sur 14 nommant une
+     cle morte). Ecriture EN QUEUE (apres l'ancienne l.6432), puis manifeste
+     regenere EN PLACE — ⛔ aucun report en frontmatter du dossier de story.
+
+  Tracker : la ligne `dn6-5` (l.745) est ANNOTEE sur la MEME ligne YAML.
+
+=== (7) LE DIFF DES TERRITOIRES INTERDITS =================================
+  git diff --stat -- hardware/ firmware/ agent/          => VIDE (0 octet)
+  git diff --cached --stat -- hardware/ firmware/ agent/ => VIDE (0 octet)
+
+  ⇒ `NFR6.1` tenue : le soak de `dn4-5` (toujours `in-progress`) ne repart
+    pas a zero. Et `dn6` a CITE `hardware/`, ⛔ elle ne l'a pas recopie.
+
+=== (8) L'ETAT D'AFFILIATION DU DEPOT, MESURE =============================
+  Mesure de la gate neuve, controle (c5), VERBATIM :
+    [OK ] (c5) ⛔ aucune adresse publiee n'est MARQUEE                39 adresse(s) relue(s), 0 marqueur, 0 redirection
+
+  T0 relevait 26 adresses / 0 marqueur / 0 redirection, AVANT que
+  `docs/affiliation.md` existe. Les 13 adresses de plus sont celles des
+  programmes releves par la page — et AUCUNE n'est marquee.
+
+  Et le controle (c6), VERBATIM :
+    [OK ] (c6) l'affirmation CONCORDE avec l'etat mesure             2 declarations EN VIGUEUR, « ne porte aucun lien affilié » des deux cotes
+
+  ⇒ **C'EST LA PROPRIETE QUE LA MARCHE INSTALLE** : l'etat publie et l'etat
+    mesure sont confrontes l'un a l'autre. Le jour ou une adresse porte un
+    marqueur, les deux pages mentent — et la gate ROUGIT. Les temoins B et C
+    de `mesures/dn6-5/T3` l'ont joue SUR L'ARBRE REEL, dans les deux sens.
+
+
+=== (9) LA CORRECTION QUI A EU LIEU APRES COUP, ET QUI EST LA PLUS UTILE ==
+🔴 **LA PAGE PUBLIAIT DEUX VERDICTS D'ECHEC QUI SONT FAUX — TROUVES EN
+   RE-SONDANT LES ADRESSES, ⛔ pas en relisant le texte.**
+
+  adresse                                    verdict publie   RE-MESURE
+  waveshare.com/join_affiliate.html          403 non atteint  200, 105 660 o
+  waveshare.com/                             403 non atteint  200
+  waveshare.com/esp32-s3-touch-lcd-2.8b.htm  403 (dn6-1)      200
+  economie.gouv.fr/dgccrf/influenceurs-...   403 non atteint  403  CONFIRME
+  portals.aliexpress.com/help.htm            302 vers login   login  CONFIRME
+  sale.aliexpress.com/__pc/uTHnW6wRZg.htm    404              404  CONFIRME
+  portals.aliexpress.com/                    application      4 046 o  CONFIRME
+
+  ⚠️ LA SEULE DIFFERENCE D'AVEC LE TIR QUI RENDAIT 403 EST L'EN-TETE
+     `User-Agent`. ⛔ Rien d'autre.
+
+  🎯 **CE QUE CA APPREND** : « non atteint » est une propriete de la METHODE
+     DE RECUPERATION, ⛔ pas de l'adresse. Un verdict d'echec qui ne dit pas
+     AVEC QUOI il a tente publie comme une propriete du monde ce qui n'est
+     qu'une propriete de l'outil.
+
+  ⇒ **SUR LES 7 LIGNES DE CE TABLEAU-CI — et c'est CETTE population qui est
+    comptee — 4 TIENNENT, 3 TOMBENT.**
+  ⛔ LA PHRASE QUI ETAIT ICI DISAIT « 5 verdicts sur 7 tiennent, 2 tombent ».
+     Elle est NOMMEE plutot qu'effacee (NFR3), et voici ce qui n'allait pas :
+     elle comptait 7 verdicts **de `docs/affiliation.md`** tout en decrivant
+     un tableau qui n'est ⛔ PAS celui-la. Les deux populations different :
+       · la 3e ligne (`…-2.8b.htm`) est un verdict de **`docs/bom.md`**,
+         ⛔ pas de la page d'affiliation — et cette page ⛔ ne la corrige pas ;
+       · le §5 de la page d'affiliation porte **deux** echecs
+         `economie.gouv.fr` ; **un seul** figure dans ce tableau.
+     ⇒ un compte est faux des qu'il ne nomme pas la population qu'il compte.
+
+  ✅ CE QUE LA CORRECTION A RENDU LISIBLE, ET QUI MANQUAIT :
+     · taux de base Waveshare               2 %          lu sur sa page
+     · duree de suivi                       >= 72 h      idem
+     · seuil de versement PayPal            US$5         idem
+     · approbation                          apres confirmation de reception
+     ⇒ les « quatre conditions inconnues » le restent pour ALIEXPRESS SEULE.
+     ⇒ et la section *Who can Join* nomme **GitHub** parmi les plateformes
+       invitees *« primarily »* — or ce depot y est PRIVATE (`NFR6.2`).
+
+  ⛔ CE QUI N'A PAS ETE CORRIGE, ET POURQUOI : `docs/bom.md` publie encore
+     « Prix fabricant non relevable — HTTP 403 » alors que la fiche rend 200.
+     Un releve de prix se RE-TIRE, ⛔ il ne se rapiece pas ; et le bloc des
+     adresses tentees porte les ancres litterales des mutants 29/30/31 de
+     `verif_bom_dn61.py`. ⇒ AU LEDGER, porteur `epic-dn6` (`backlog`).
+
+  🔬 ETAT DES GATES APRES CORRECTION (re-tir complet) :
+     verif_affiliation_dn65   rc=0  22 OK, 0 KO   · 29 mutants, 29 sains
+     verif_bom_dn61           rc=0  24 OK, 0 KO
+     verif_licences_dn52      rc=0  34 OK, 0 KO
+     verif_ledger_dn416       rc=0  35 OK, 0 KO   (manifeste 727 => 728)
+     campagne                 rc=0   8 OK, 0 KO   · 292 mutants / 10 cibles
+     passe complete           34 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 36 (263s)
+     dn415 PRESENT / VIDE / INEXISTANT   10 KO / 51 KO / rc=4   INCHANGES
+
+  ⚠️ UNE CORRECTION A ETE ATTRAPEE PAR LA GATE ELLE-MEME : en annotant les
+     lignes refutees, la citation du verdict d'echec a AJOUTE une occurrence
+     au corpus que `(c11)` relit ⇒ `21 OK, 1 KO`. Le jeton n'est donc ⛔ PAS
+     recopie dans la page : l'annotation le DECRIT. C'est la faute deja
+     mesuree a `dn6-1` — l'incident qui se reproduit dans le texte qui le
+     decrit.
+
+==============================================================================
+CE QUE `T7` ETABLIT — ET CE QU'IL N'ETABLIT PAS
+==============================================================================
+  ✅ Les 8 engagements pris a `T0` sont tenus, chacun par un NOMBRE :
+     bom 24 = 24 · licences 34 = 34 · campagne 9 ⇒ 10 cibles · run_gates
+     35 ⇒ 36 gates sans rouge de plus · dossier_dn415 10 KO = 10 KO aux
+     trois conditions · territoires interdits vides · 0 marqueur sur 39
+     adresses · ⛔ aucun repertoire de haut niveau neuf.
+  🔴 ET LE PLUS IMPORTANT N'EST PAS DANS CES NOMBRES : deux verdicts
+     d'echec publies etaient FAUX, et ⛔ aucune gate ne pouvait le voir —
+     elle n'ouvre aucune connexion, et c'est ECRIT dans sa sortie. Seule
+     une RE-SONDE les a trouves. ⇒ voir §9.
+  ⛔ CE QUE CES NOMBRES NE DISENT PAS : que les taux publies par
+     `docs/affiliation.md` soient VRAIS ou FRAIS. Une condition fausse mais
+     datee et sourcee laisse la gate VERTE — c'est ecrit DANS la gate, et
+     rouvrir la source est le seul chemin. La date du releve est la, pour
+     que la peremption se voie.
+  ⛔ ET LA QUESTION DE RANGEMENT (`epic-dn6` ou `epic-dn8`) N'EST PAS
+     TRANCHEE PAR CETTE MARCHE : elle est au ledger avec ses deux arguments
+     mesures et un porteur vivant. L'arbitrage est OWNER.
+==============================================================================
+
+==============================================================================
+ADDENDUM DU 2026-09-07 — LES BORNES DE LA GATE NEUVE APRES LA REVUE DE CODE
+==============================================================================
+🔴 **DEUX LIGNES DE CE FICHIER SONT PERIMEES, ⛔ ELLES NE SONT PAS EFFACEES**
+   (NFR3). La revue de code a ajoute un controle et six mutants a
+   `tools/verif_affiliation_dn65.py` ; les chiffres qu'elle publiait plus haut
+   decrivent l'etat AVANT cette revue.
+
+  ligne perimee                          valeur publiee    valeur LIVREE
+  verif_affiliation_dn65 (BILAN)         22 OK, 0 KO       **23 OK, 0 KO**
+  verif_affiliation_dn65 (mutants)       29 mutants        **35 mutants**
+  verif_campagne_dn56 (c1), verbatim     292 / 10 cibles   **298 / 10 cibles**
+
+  LIGNE (c1) DE `verif_campagne_dn56.py`, VERBATIM APRES LA REVUE :
+    [OK ] toute cible repond, et aucun mutant ne meurt               298 mutant(s) confronte(s) sur 10 cible(s)
+
+  ⚠️ **C'EST TOUJOURS LA SEULE PREUVE DE L'ENROLEMENT** : `BILAN : 8 OK, 0 KO`
+     est identique avant et apres, et ne prouve RIEN. Ce qui prouve, c'est le
+     passage de **9** a **10 cibles** — et, ici, de **292** a **298** mutants
+     confrontes : les six mutants neufs sont bien REJOUES PAR LE HARNAIS, ⛔ pas
+     seulement par moi.
+
+  ⇒ CE QUE LA REVUE A AJOUTE, ET POURQUOI LE COMPTE MONTE :
+    · `(c23)` — un verdict d'echec doit dire AVEC QUOI l'adresse a ete tentee.
+      C'est la lecon que la correction des deux 403 a payee, et elle n'etait
+      installee dans AUCUN controle.
+    · six mutants (30 a 35), chacun replantant une faute **demontree VERTE**
+      pendant la revue.
+  📍 Le detail, la reciproque et les cinq temoins :
+     `mesures/dn6-5/T3-campagne-mutants.txt`, addendum n°2.
+==============================================================================
+
+=== LE COCKPIT, RE-MESURE APRES LA REVUE ==================================
+                                          T0        T7 revu   delta
+  deferred-work.md (wc -l)                6432      6584      +152
+  grep -c 'dn6-5' deferred-work.md        1         18        +17
+  manifeste dn4-16-arbitrage-ledger.md    722       728       +6
+  verif_ledger_dn416.py --cockpit         35 OK/0   35 OK/0   =
+
+🔴 **UN DEFAUT DU COCKPIT TROUVE PAR LA REVUE, ET CORRIGE : LES SIX REPORTS DE
+   `dn6-5` ETAIENT ATTRIBUES A `dn6-4` AU MANIFESTE.** Ils avaient ete ecrits
+   « EN QUEUE » comme `NFR6.4` le prescrit — mais **sans leur en-tete de
+   section** ⇒ le regenerateur les a lies au titre precedent.
+   🔬 MESURE : les 6 lignes neuves de `dn4-16-arbitrage-ledger.md` portaient
+      toutes la colonne story `dn6-4 — la place du boitier existe, le plan n'`.
+      Apres ajout de l'en-tete et regeneration EN PLACE : les 6 portent
+      `dn6-5 — l'affiliation est un sujet a elle seul`, et les 3 de `dn6-4`
+      restent a `dn6-4`.
+   🎯 **CE QUE CA APPREND** : « ecrire en queue » ⛔ ne suffit pas. L'attribution
+      se fait par le **TITRE DE SECTION QUI PRECEDE**, ⛔ pas par la cle citee
+      dans la disposition. Une queue sans en-tete est une queue **rattachee a la
+      marche d'avant** — et qui cherchait au manifeste ce que `dn6-5` avait
+      laisse derriere elle ne trouvait RIEN.
+
+=== LA PASSE COMPLETE, APRES LA REVUE =====================================
+  T0      : 33 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 35 gates (240s)
+  T7      : 34 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 36 gates (263s)
+  T7 revu : 34 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 36 gates (310s)
+  verif_dossier_dn415.py : 10 KO / 51 KO / rc=4 aux TROIS conditions — INCHANGE
+  35 mutants re-joues un par un : 0 non conforme, 0 perime.
+==============================================================================

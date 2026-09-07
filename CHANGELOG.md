@@ -37,6 +37,47 @@ Work towards the first public release, `v0.1.0-beta`.
   printing parameter that carries a figure without citing the measurement it comes from. It
   deliberately judges **no drawing** — no dimension, no printability.
 
+- **An affiliate-link page** ([`docs/affiliation.md`](docs/affiliation.md)) — whether this
+  repository carries affiliate links, which programmes actually exist for the suppliers it names,
+  on what terms, and what French and EU law requires to be disclosed. The state is **measured, not
+  promised**: across every tracked text file — the `.md` pages **and** the `.txt` measurement
+  records, 436 files on the day it shipped — **no** published address carries an affiliate marker.
+  Binary files and source code are outside that sweep, and the page says so. The survey **derives**
+  its population from the purchasing page instead of listing it, which comes out at **two**
+  suppliers of record rather than the eleven domains the page names. The other ten are the
+  addresses `dn6-1` tried and failed to reach, filed as exactly that with the reason they were not
+  researched written down — and `waveshare.com` belongs to **both** lists, because it is the board's
+  manufacturer as well as one of the addresses that had failed; the page states that overlap
+  instead of presenting a clean split. 🔴 **Nothing was signed**: no account opened, no terms accepted, no tracking identifier
+  written; every gesture that only the owner can perform is listed with its owner. ⚠️ What that
+  costs is written too — AliExpress's admission terms sit behind a login, so four conditions
+  (cookie window, payout threshold, per-order cap, approval criterion) come out **not read** rather
+  than reconstructed. 🔴 **And the survey corrected itself before publication, on the finding that
+  matters most here**: two rows first said Waveshare answered HTTP 403 "to any automated
+  retrieval". It does not — with an ordinary browser header the same two addresses answer **200**,
+  and the programme page states its terms outright (2% base, 72-hour tracking, US$5 PayPal
+  threshold, and a *Who can Join* section that names **GitHub**). ⇒ *"not reached"* is a property
+  of the **retrieval method**, ⛔ not of the address, and a failure verdict has to say what it was
+  tried with. Both refuted sentences are **described** beside their correction rather than erased — described
+  and ⛔ not quoted, deliberately: the gate counts failure verdicts in that page, so quoting the
+  old one verbatim would add a fresh occurrence of the very defect the correction removes.
+  Every legal text is quoted with its official source and the date it was read, and the page says
+  in as many words that it is **not legal advice**. ⛔ No revenue milestone appears anywhere: those
+  were taken out of scope on 2026-09-06.
+- **A gate over that declaration** (`tools/verif_affiliation_dn65.py`, run by `tools/run_gates.sh`
+  and replayed mutant by mutant by `tools/verif_campagne_dn56.py`): it keeps the statement true
+  **in both directions**, and it splits the two failures rather than merging them — one check says
+  no published address is marked, a separate one says the declaration in force agrees with the
+  measured state. Posting a marked link without updating the pages turns both red; annotating the
+  pages correctly turns the second one green again and leaves the first red, because the published
+  promise itself has changed and that must be a written act. It also keeps the original sentence of
+  the purchasing page **word for word** (annotate, ⛔ do not erase), keeps the survey covering every
+  supplier the bill of materials names — so the day a new `Source` domain appears the survey goes
+  red instead of quietly rotting — and refuses a survey line without its address and date, a failed
+  source without its reason, a legal text without its official source, an owner gesture whose owner
+  reads "to be named", a milestone figure, and a projected revenue. It deliberately judges **no
+  rate** and opens **no connection**: a wrong but dated and sourced rate leaves it green.
+
 - **Licensing.** GPL-3.0-or-later for `firmware/`, MIT for `agent/`, CC-BY-SA-4.0 for
   `docs/`. See [`LICENSING.md`](LICENSING.md).
 - **Third-party inventory** (`THIRD-PARTY.md`) — necessary because

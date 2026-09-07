@@ -226,6 +226,36 @@ fiche peut porter des variantes plus ou moins chères.
 une case à cocher — ça demande de s'inscrire quelque part, de le déclarer, et de tenir la promesse
 dans la durée. C'est donc porté comme un sujet à part entière, ⛔ pas comme une ligne de bas de page.
 
+<!-- ⛔ ANNOTATION, PAS UNE REECRITURE (NFR3) : les deux paragraphes
+     ci-dessus restent MOT POUR MOT. Ce qui suit les complete — le sujet
+     annonce « a part entiere » a desormais sa page, et le point de bascule
+     s'ecrit ici, la ou vit deja la phrase d'etat. -->
+
+### Annotation du 2026-09-07 — le sujet a sa page, et le point de bascule est écrit
+
+Le sujet annoncé « à part entière » ci-dessus **a désormais sa page** :
+[les liens affiliés](affiliation.md). Elle dit quels programmes existent réellement pour les
+fournisseurs que **cette** page cite, à quelles conditions, ce que la loi française et européenne
+oblige à déclarer — chaque fait avec son adresse et sa date, chaque fait non vérifiable **déclaré**
+comme tel — et ce que l'owner doit signer lui-même.
+
+**Le point de bascule**, c'est-à-dire ce qui doit être vrai pour que la phrase d'état ci-dessus
+change :
+
+1. **le programme doit être ouvert à ce dépôt** — aujourd'hui **inconnu, ⛔ pas acquis** : les
+   conditions d'admission d'AliExpress sont derrière une authentification, et celles de Waveshare,
+   **publiques et lues le 2026-09-07**, disent inviter *« primarily »* des personnes ayant une
+   présence sur **GitHub** — or ce dépôt y est **privé** ;
+2. **l'owner doit ouvrir le compte lui-même** et accepter les conditions générales — ⛔ ce n'est pas
+   un geste qu'un agent peut faire à sa place ;
+3. **les deux phrases d'état doivent être réécrites** — celle-ci et celle de la page ci-dessus. Elles
+   cesseront de dire « aucun » pour dire ce qui est vrai ; ⛔ elles ne s'effaceront pas.
+
+⚠️ **Et ça se dira ici, à cette place.** Ce n'est pas une intention : c'est **gardé mécaniquement,
+dans les deux sens**. Tant qu'aucune adresse publiée ne porte de marqueur d'affiliation, les deux
+pages doivent l'**affirmer** ; le jour où l'une en porte un, l'affirmation devient fausse et la
+vérification **rougit** — y compris si personne n'a pensé à revenir écrire ici.
+
 ---
 
 ## Licence
