@@ -100,6 +100,41 @@ entre **45,67 et 49,81 dB**. Photo par photo :
 
 ## 3. 🔴 La question qui reste OUVERTE, et qui appartient à l'owner
 
+### ✅ Le verdict d'observation est RENDU — 2026-09-07, à l'œil de l'owner
+
+**La sérigraphie est LISIBLE après recompression.** C'est le seul contrôle qu'⛔ aucune gate ne
+peut rendre, et il est **fait** : ⛔ plus une supposition. La recompression à Q88 est donc validée
+**sur le critère qui décide**, ⛔ pas seulement sur le PSNR qui la borne.
+
+### 🔴 ET LE MÊME REGARD A OUVERT AUTRE CHOSE — ces photos sont un CHANTIER, ⛔ pas une publication
+
+Constat owner, même séance, **verbatim** : *« c'est lisible mais si on veut les exploiter il faudra
+faire quelques recadrages car c'était seulement des images pour la construction. Pas forcément
+intéressant de publier tout ça. »*
+
+⇒ **Il y a DEUX usages, et ils n'ont ⛔ pas les mêmes exigences** :
+
+| usage | ce qu'il demande | état |
+|---|---|---|
+| **PREUVE** — établir une sérigraphie, une adresse, un état soudé | que le détail soit **lisible** | ✅ **tenu** — c'est le rôle que ces photos remplissent dans le journal de mesure et dans la page de câblage |
+| **VITRINE** — montrer le montage à quelqu'un qui découvre | des images **cadrées et choisies** | ⛔ **n'existe pas** — ces vingt-là sont des prises de chantier |
+
+⚠️ **Et cette page a AUGMENTÉ l'exposition, c'est écrit plutôt que tu.** Avant elle, **11 des 20
+photos n'étaient citées que par le journal de mesure** — un dossier de séance assumé comme tel.
+Elles sont maintenant indexées dans `docs/`, que `LICENSING.md` déclare *« documentation lecteur »*.
+Ce déplacement est un **effet de cette marche**, ⛔ pas une intention de l'owner.
+
+⛔ **Rien n'est publié pour autant, et c'est ce qui rend la question NON URGENTE** : le dépôt est
+`PRIVATE` (garde-fou `NFR6.2`), donc il n'existe aujourd'hui **aucun inconnu** pour voir ces photos.
+La question devient réelle **à la bascule publique**, ⛔ pas avant — et c'est un **DÉCLENCHEUR DE
+RÉÉVALUATION**, ⛔ pas une échéance : si la bascule n'a pas lieu, elle ne se repose pas.
+
+🎯 **Porteur proposé : l'epic vitrine** — elle doit **déjà** re-tourner le média une fois le boîtier
+posé (réserve mesurée : *« le câblage est à nu dans le cadre »*). Recadrer, choisir, et re-tourner
+sont **le même geste, au même moment** : les séparer, c'est cadrer deux fois. ⛔ Ce n'est pas
+tranché ici — c'est **écrit pour que ça ne se reperde pas**.
+
+
 **Faut-il aussi réduire la définition ?** La marche la **chiffre** et la **pose** ; ⛔ elle ne la
 tranche pas.
 
