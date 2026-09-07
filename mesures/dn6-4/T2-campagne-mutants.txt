@@ -1,0 +1,192 @@
+==============================================================================
+dn6-4 — T2 : LA CAMPAGNE DE MUTANTS, ET SA RECIPROQUE
+==============================================================================
+date  : 2026-09-07
+gate  : tools/verif_boitier_dn64.py
+⚠️ LES LIBELLES SONT PARSES **A COLONNE FIXE** [8:66] — `  [KO ] ` fait 8
+   caracteres, puis `%-58s`. ⛔ Ni un `split`, ni une recherche de motif : un
+   detail qui contient une parenthese ferait deriver les deux.
+🔴 ET LA CAMPAGNE EST JOUEE **AUX DEUX CONDITIONS** (cockpit present /
+   absent) : les mutants qui visent la moitie cockpit SUBSTITUENT un cockpit
+   COMPLET plutot que de muter un fichier qui peut manquer. Un mutant qui
+   dependrait du cockpit serait SANS EFFET sur un runner ⇒ `rc=3` (mutant
+   PERIME) ⇒ une campagne ROUGE sur une gate SAINE. Les deux colonnes doivent
+   etre IDENTIQUES.
+
+==============================================================================
+(1) LE CHEMIN NORMAL, AUX DEUX CONDITIONS
+==============================================================================
+  cockpit PRESENT  rc=0   BILAN : 29 OK, 0 KO
+  cockpit ABSENT   rc=4   BILAN : 27 OK, 0 KO
+  ⇒ `rc=4` sans cockpit n'est ⛔ PAS un rouge : c'est le `rc` « prerequis
+    absent » du contrat de `run_gates.sh`, et les DEUX controles de cockpit
+    sont imprimes `[ ××  ] … ⛔ NON JOUE` avec leur motif — ⛔ ni joues, ni
+    comptes VERTS. Le compte prevu par (z) est abaisse de 2 dans le meme
+    geste : une gate qui joue moins de controles le DECLARE.
+  ⚠️ ET LA PHRASE DE `rc` S'IMPRIME **APRES** LE `BILAN` : `bilan()` peut
+    ajouter le KO de (z) et forcer `rc=1`. Imprimee avant, elle disait
+    « rc=0 … aucun KO » pendant que la gate sortait en 1.
+
+==============================================================================
+(2) CHAQUE MUTANT EST VU ROUGIR — ET ON RELEVE **QUELS** CONTROLES
+==============================================================================
+  mut  rc+  rc-   controles vus [KO ]
+  --------------------------------------------------------------------------
+  1    1    1     c5
+  2    1    1     c4 · c5 · c6 · c8
+  3    1    1     c4 · c5 · c6 · c7
+  4    1    1     c4 · c5 · c6 · c7 · c9
+  5    1    1     c10
+  6    1    1     c11 · c14
+  7    1    1     c12
+  8    1    1     c13
+  9    1    1     c15
+  10   1    1     c16
+  11   1    1     c17
+  12   1    1     c18
+  13   1    1     c19
+  14   1    1     c20
+  15   1    1     c20
+  16   1    1     c21
+  17   1    1     c22
+  18   1    1     c2 · c6
+  19   1    1     c1
+  20   1    1     c3
+  21   1    1     c4
+  22   1    1     c23
+  23   1    1     c24
+  24   1    1     c30
+  25   1    1     c31
+  26   1    1     c32
+  27   1    1     z
+  28   1    1     c0
+  29   1    1     c25
+  30   1    1     c6
+  31   1    1     c4 · c5 · c6 · c8
+  32   1    1     c24
+  33   1    1     c26
+  34   1    1     c14
+  35   1    1     c13
+  --------------------------------------------------------------------------
+  mutants joues                           : 35
+  ⛔ qui NE ROUGISSENT PAS (rc!=1 ou 0 KO) : AUCUN
+  ⛔ divergents entre les deux conditions  : AUCUN
+  ⇒ ⛔ « N mutants, N vus rougir » prouve `mutant ⇒ rouge`, ⛔ JAMAIS
+    `controle ⇒ couvert`. C'est le tableau (3) qui mesure l'AUTRE sens.
+
+==============================================================================
+(3) LA RECIPROQUE — QUEL CONTROLE EST GARDE PAR QUEL MUTANT
+==============================================================================
+  🔴 DEUX COLONNES, ET ELLES NE DISENT PAS LA MEME CHOSE :
+     · DECLARE = ce que `CIBLES` annonce (ce que (c30) confronte) ;
+     · MESURE  = ce que le tir a REELLEMENT fait rougir, lu a colonne fixe.
+     Un ecart n'est ⛔ pas cosmetique : une cible declaree et JAMAIS VUE est
+     une couverture de PAPIER, et (c30) la compterait pourtant comme gardee.
+
+  id    libelle (lu A L'AST)                                 DECLARE          MESURE
+  ------------------------------------------------------------------------------------------------------
+  c0    (c0) le mutant %d a une CIBLE et un CORPS            28               28
+  c1    (c1) la page du boitier n'est pas vide               19               19
+  c2    (c2) `PLANS.md` DIT ce qui se depose, ⛔ pas un bouch 18               18
+  c3    (c3) les repertoires de 1er niveau sont CEUX de T0   20               20
+  c4    (c4) la page PUBLIE les deux comptes, et ils collent 2,3,4,21,31      2,3,4,21,31
+  c5    (c5) la page DIT l'etat du depot, dans les deux sens 1,2,3,4,31       1,2,3,4,31
+  c6    (c6) `PLANS.md` dit la MEME chose que la mesure      2,3,4,18,30,31   2,3,4,18,30,31
+  c7    (c7) tout plan suivi vit SOUS `docs/boitier/`        3,4              3,4
+  c8    (c8) tout plan depose est CITE par la page           2,31             2,31
+  c9    (c9) le temoin `.obj` est VU **et** ECARTE           4                4
+  c10   (c10) « matériau » porte sa disposition              5                5
+  c11   (c11) « hauteur de couche » porte sa disposition     6                6
+  c12   (c12) « remplissage » porte sa disposition           7                7
+  c13   (c13) « supports » porte sa disposition              8,35             8,35
+  c14   (c14) ⛔ aucun parametre chiffre SANS sa source       6,34             6,34
+  c15   (c15) la page ecrit ce qui n'a PAS ete essaye        9                9
+  c16   (c16) le manque declare NOMME son porteur            10               10
+  c17   (c17) la page dit qu'aucun boitier n'est OBLIGATOIRE 11               11
+  c18   (c18) la page dit comment ses nombres se re-mesurent 12               12
+  c19   (c19) la licence est NOMMEE et `LICENSING.md` la por 13               13
+  c20   (c20) la page est ATTEIGNABLE (README et cablage)    14,15            14,15
+  c21   (c21) `docs/roadmap.md` definit le marqueur cite     16               16
+  c22   (c22) `CHANGELOG.md` porte l'entree de cette marche  17               17
+  c23   (c23) le manque est PORTE au ledger, avec sa forme   22               22
+  c24   (c24) la ligne `epic-dn8` porte la dependance        23,32            23,32
+  c25   (c25) la ligne `dn6` est ANNOTEE, ⛔ pas effacee      29               29
+  c26   (c26) la place ne porte QUE des plans (et `PLANS.md` 33               33
+  c30   (c30) chaque controle est vise par >= 1 mutant       24               24
+  c31   (c31) chaque cible de mutant est un controle REEL    25               25
+  c32   (c32) `CIBLES` et `MUTANTS` se correspondent         26               26
+  z     (z) tout controle prevu est EMIS                     27               27
+  ------------------------------------------------------------------------------------------------------
+  controles lus a l'AST                 : 31
+  ⛔ gardes par ZERO mutant (DECLARE)    : AUCUN
+  ⛔ declares mais JAMAIS vus rougir     : AUCUN
+  ⛔ DECLARE != MESURE                   : AUCUN — les deux colonnes coincident
+
+  ⚠️ CE QUE CE TABLEAU NE PROUVE PAS : que le controle rougisse pour LA BONNE
+     RAISON. Il dit qu'un mutant qui replante la faute F fait rougir le
+     controle C ; il ⛔ ne dit pas que C rougirait pour TOUTE faute de la
+     famille de F. C'est la limite, et elle est ecrite plutot que tue.
+
+==============================================================================
+(4) LES DEUX SENS D'`AC-G1`, JOUES SEPAREMENT
+==============================================================================
+  SENS 1 — 0 plan depose, ET LA PAGE LE DIT
+     BILAN : 29 OK, 0 KO   rc=0   ⇒ la gate est VERTE
+  SENS 2 (mutant 2) — un plan CAO SUIVI est depose sous `docs/boitier/`
+     BILAN : 25 OK, 4 KO   rc=1   ⇒ la gate ROUGIT
+        [KO ] (c4) la page PUBLIE les deux comptes, et ils collent
+        [KO ] (c5) la page DIT l'etat du depot, dans les deux sens
+        [KO ] (c6) `PLANS.md` dit la MEME chose que la mesure
+        [KO ] (c8) tout plan depose est CITE par la page
+  SENS 2 (mutant 31) — le meme plan, mais avec un NOM ACCENTUE
+     BILAN : 25 OK, 4 KO   rc=1   ⇒ la gate ROUGIT
+        [KO ] (c4) la page PUBLIE les deux comptes, et ils collent
+        [KO ] (c5) la page DIT l'etat du depot, dans les deux sens
+        [KO ] (c6) `PLANS.md` dit la MEME chose que la mesure
+        [KO ] (c8) tout plan depose est CITE par la page
+     ⇒ LA PHRASE « aucun plan n'est depose » EST DEVENUE FAUSSE, et
+       c'est (c5) qui le dit — ⛔ pas un effet de bord. (c4) ajoute que le
+       compte PUBLIE ne colle plus, (c6) que `PLANS.md` diverge de la mesure,
+       et (c8) que le plan depose n'est CITE par personne.
+     🔴 LE MUTANT 31 EST LE SECOND SENS SUR LE **CHEMIN ACCENTUE** : sans
+       `core.quotePath=false`, `git ls-files` rend ce nom ECHAPPE et ENTRE
+       GUILLEMETS, il ne finit plus par `.stl`, et les QUATRE controles
+       ci-dessus restaient VERTS sur un depot qui ment. Un nom de plan
+       accentue est ORDINAIRE dans un depot francophone.
+  SENS 1-bis — 0 plan depose, ET LA PAGE NE LE DIT PLUS
+     BILAN : 28 OK, 1 KO   rc=1   ⇒ la gate ROUGIT AUSSI
+        [KO ] (c5) la page DIT l'etat du depot, dans les deux sens
+     ⇒ ⛔ LE VIDE N'EST PAS UNE ABSENCE DE DEFAUT : un dossier vide et
+       MUET rougit exactement comme un dossier qui ment.
+     ⚠️ ET C'EST LA QU'UNE ANCRE TROP LARGE A ETE ATTRAPEE : ancre sur la
+       phrase NUE, (c5) restait VERT sous ce mutant, parce que la page CITE
+       la phrase pour expliquer la regle. L'ancre porte donc le `⇒` et le
+       gras — la POSITION d'assertion, ⛔ pas le vocabulaire.
+
+==============================================================================
+(5) LA BRANCHE `rc=3` (MUTANT PERIME) EST EXERCEE, ⛔ PAS PROMISE
+==============================================================================
+  🔴 UN REPORT OUVERT DE `epic-dn6` NOTE QUE CETTE BRANCHE N'EST ATTEINTE
+    PAR AUCUNE PASSE. Elle a donc ete jouee A LA MAIN : une COPIE de la gate,
+    posee DANS le depot (pour que sa racine reste le depot), avec l'ancre
+    litterale du mutant 11 deplacee — puis SUPPRIMEE.
+
+      $ cp tools/verif_boitier_dn64.py tools/_tmp_dn64_ancre_cassee.py
+      $ # A_PAS_OBLIGATOIRE = "UNE ANCRE QUI A BOUGE"
+      $ python3 tools/_tmp_dn64_ancre_cassee.py --mutant 11 ; echo $?
+
+    rc=3
+      [KO ] (c0) le mutant 11 a bien un EFFET   ⛔ SANS EFFET — son ancre
+            litterale a disparu de la cible. ⛔ Ce n'est PAS un controle
+            vert : rc=3, mutant PERIME.
+      ⛔ SORTIE ANTICIPEE — 1 controle(s) emis sur 28 prevus
+      BILAN : 0 OK, 1 KO
+
+  ✅ ⇒ `rc=3` + `BILAN` + un `[KO ]` NOMME, ⛔ pas un `Traceback`, ⛔ pas un
+    vert. Le discriminant d'une gate MORTE est l'absence de `BILAN` ; il n'a
+    pas ete produit ici.
+  ⚠️ **CE QUE CA NE FERME PAS** : la branche reste exercee A LA MAIN, ⛔ par
+    aucune passe automatique — `verif_campagne_dn56.py` n'assere RIEN sur
+    elle. Le report de `epic-dn6` reste donc OUVERT.
+  ⚠️ Le « 28 prevus » de la capture est celui du jour du tir : la gate en
+    compte **29** depuis l'ajout de (c26).

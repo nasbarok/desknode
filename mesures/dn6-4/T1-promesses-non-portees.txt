@@ -1,0 +1,109 @@
+==============================================================================
+dn6-4 — T1 : CE QUE LE DEPOT PROMET DEJA, ET QUE PERSONNE NE PORTE
+==============================================================================
+date : 2026-09-07
+
+⚠️ LES CINQ LIGNES CI-DESSOUS SONT RE-LUES SUR LE FICHIER, ⛔ pas recopiees du
+   dossier de story. Deux d'entre elles CORRIGENT le cadrage — l'ecart est
+   ecrit sous la ligne concernee plutot que tu.
+
+
+==============================================================================
+(1) `LICENSING.md` LICENCIE DEJA LES PLANS DU BOITIER
+==============================================================================
+  LICENSING.md:11   | `docs/` — documentation, wiring photos, schematics, enclosure plans | **CC-BY-SA-4.0** | [`docs/LICENSE`](docs/LICENSE) |
+  LICENSING.md:79   diagrams, the enclosure plans, the mockups or the measurement register** — `docs/`,
+
+  ✅ CE QUE CA VAUT : la licence de `docs/boitier/` est ACQUISE **sans toucher
+     ce fichier** — `split("/")[0]` de `docs/boitier/PLANS.md` rend `docs`,
+     qui est nomme par la table (l.11) ET par la phrase de repli (l.79).
+  ⛔ CE QU'IL NE FAUT PAS FAIRE : reformuler `enclosure plans`. La chaine est
+     CODEE EN DUR dans les mutants 1 et 3 de `tools/verif_licences_dn52.py`.
+     verif_licences_dn52.py:508   "enclosure plans | **CC-BY-SA-4.0** | [`docs/LICENSE`]"
+     verif_licences_dn52.py:514   "enclosure plans | **CC-BY-SA-4.0** |",
+     verif_licences_dn52.py:516   "enclosure plans | **MIT** |")
+
+==============================================================================
+(2) `docs/roadmap.md` ANNONCE LE BOITIER, A L'ETAT `not started`
+==============================================================================
+  docs/roadmap.md:94
+     etat publie      : not started
+     ce qu'elle promet: « … verified supplier links, and the 3D-printed case … »
+     longueur         : 1056 caracteres
+
+  🔴 LA LIGNE EST PERIMEE DEUX FOIS, ET C'EST MESURE :
+     · `dn6-1`, `dn6-2`, `dn6-3` sont `done` au tracker (releve ci-dessous),
+       et la ligne dit encore `not started` ;
+     · `D24` (2026-09-06) range la CREATION du coffrage POST-V1, ce que la
+       ligne ne dit pas.
+  ⇒ ELLE EST **ANNOTEE**, son texte d'origine reste (NFR3).
+  ⚠️ Et la page n'a AUCUNE ligne `dn6-1`/`dn6-2`/`dn6-3`/`dn6-4` :
+     marqueurs definis : 17 — dn4-5 · dn4-39 · dn4-40 · dn4-41 · dn4-42 · dn6 · dn7 · dn5 · dn5-1 · dn5-2 · dn5-3 · dn5-4 · dn4-44 · dn4-45 · dn5-5 · dn5-6 · dn8
+     ⇒ la regle d'admission PUBLIEE de cette page est « cited in this
+       tree » : le jour ou une page sous `docs/` renvoie un lecteur a
+       `roadmap.md` pour `dn6-4`, la ligne devient OBLIGATOIRE — et
+       `verif_licences_dn52.py` (c4) le dit.
+
+==============================================================================
+(3) `docs/cablage/PHOTOS.md` NOMME UN PORTEUR **PROPOSE**, ⛔ PAS ECRIT
+==============================================================================
+  docs/cablage/PHOTOS.md:132  🎯 **Porteur proposé : l'epic vitrine** — elle doit **déjà** re-tourner le média une fois le boîtier
+  docs/cablage/PHOTOS.md:229  **Porteur de la réparation : l'owner**, qui seul détient les fichiers d'origine. L'écart est écrit
+
+  ⚠️ « PROPOSE » N'EST PAS « ECRIT AU TRACKER ». C'est exactement le trou
+     d'`AC6.4.4` : une page du depot annonce un porteur que le tracker
+     ignore.
+
+==============================================================================
+(4) LE TRACKER : LA LIGNE `epic-dn8` NE DIT **RIEN** DU BOITIER
+==============================================================================
+  sprint-status-desknode.yaml:751  (2581 caracteres)
+     `boitier` dans cette ligne  : ⛔ NON
+     `tournage` dans cette ligne : ⛔ NON
+     `dn6` dans cette ligne      : ⛔ NON
+
+  🔴 ECART DECLARE AVEC LE CADRAGE — LA MESURE CORRIGE LE DOSSIER DE STORY.
+     Le cadrage ecrit : « mesure : **0** ligne du tracker contient `tournage` ;
+     `boitier` n'apparait qu'aux l.88/120/603/740/744 ». RE-MESURE le
+     2026-09-07 sur le meme fichier :
+       `tournage`          : 4 ligne(s) — l.464, l.465, l.740, l.744
+       `bo[iî]tier` (i)    : 10 ligne(s) — l.88, l.120, l.199, l.385, l.508, l.603, l.732, l.740, l.743, l.744
+     ⇒ LES DEUX SOUS-CHIFFRES DU CADRAGE SONT FAUX. ⚠️ LA CONCLUSION,
+       ELLE, TIENT — et c'est elle qui fonde `AC6.4.4` : **aucune** de ces
+       lignes n'est `epic-dn8`. Les occurrences de `tournage` vivent sur
+       `dn4-42`, `dn4-43`, `epic-dn6` et la ligne de `dn6-4` elle-meme ;
+       celles de `boitier` sur des commentaires de telemetrie (ventilo de
+       boitier), sur `dn4-8`, `dn5-1` (collision lexicale `entier`/`boitier`)
+       et sur les lignes de `dn6`.
+     ⇒ ⛔ LA LIGNE QUI DOIT PORTER LA DEPENDANCE EST LA SEULE QUI N'EN PARLE
+       PAS. C'est le defaut, et il est INTACT au 2026-09-07.
+
+  ⚠️ ET LE PORTEUR EST DEJA « PROPOSE » DEUX FOIS, SANS JAMAIS ETRE ECRIT LA
+     OU IL COMPTE :
+     tracker l.509 : …f est juste mais l'AC dit « le quota ET la consommation » ⇒ porteur propose `epic-dn8` ; ✅ *(ii)* **L'ESSAI DU CLA A ETE REJOUE LE 2026-09-04 sur la version PUBLIEE** (les 3 runs de T3 venaient de la version a condition sur l'ETAPE) : un commentaire …
+     tracker l.743 : … : **DECLENCHEUR DE REEVALUATION**, ⛔ pas une echeance. ⇒ **porteur propose `epic-dn8`** (vivant), qui doit DEJA re-tourner le media une fois le boitier pose : recadrer, choisir et re-tourner sont LE MEME GESTE AU MEME MOMENT. ⛔ Non tranche. ⚠️ follo…
+
+==============================================================================
+(5) LES STATUTS RELUS AU TRACKER LE 2026-09-07 — QUI EST VIVANT
+==============================================================================
+  epic-dn4                                                 in-progress  VIVANT
+  epic-dn6                                                 backlog      VIVANT
+  epic-dn8                                                 backlog      VIVANT
+  dn6-1-la-bom-dit-quoi-acheter-et-ses-prix-ont-une-date   done         ⛔ MORT
+  dn6-2-le-cablage-se-refait-sans-nous                     done         ⛔ MORT
+  dn6-3-les-photos-montrent-le-montage-sans-couter-28-mo   done         ⛔ MORT
+  dn6-4-le-boitier-a-sa-place-son-format-et-sa-notice      backlog      VIVANT
+
+  ⛔ ET C'EST POURQUOI LE REPORT DE CETTE MARCHE NE PEUT PAS NOMMER `dn6-4` :
+     la cle passera `done` a la cloture — c'est LA faute mesuree a `epic-dn6`
+     (10 reports sur 14 nommant une cle devenue morte). Les porteurs
+     nommables aujourd'hui sont `epic-dn6`, `epic-dn8` et `epic-dn4`.
+
+==============================================================================
+(6) ET LE COFFRAGE N'EXISTE PAS — LE COMPTE, SUR `git ls-files`
+==============================================================================
+  fichiers suivis            : 670
+  fichiers CAO suivis        : 0  []
+  ⇒ LE DEPOT PROMET DONC, A TROIS ENDROITS, UN OBJET QUI N'EXISTE NULLE
+    PART — et rien ne le dit. C'est la deuxieme branche d'`AC6.4.1` :
+    preparer LA PLACE, publier LA NOTICE, et DECLARER LE MANQUE.

@@ -43,6 +43,8 @@ la mauvaise est la moins chère.
 
 🔌 **Où brancher, et comment vérifier que le bus répond : [câbler un DeskNode](docs/cablage.md).** Cette page donne les deux points d'accès au bus I²C **avec leur piège**, et dit **quoi conclure** de ce que le scan répond — un scan à une seule passe fabrique des faux positifs.
 
+📦🖨️ **Et le boîtier ? [sa place, son format et sa notice](docs/boitier.md).** ⚠️ Aucun boîtier n'est obligatoire, et **aucun plan n'est encore déposé** : cette page dit où ils iront, sous quelle licence, et pourquoi ses **quatre** paramètres d'impression sortent **non mesurés**.
+
 ### 🔴 L'ÉCRAN PARLE **ANGLAIS PAR DÉFAUT**, ET LE FRANÇAIS SE PREND AU DOIGT
 
 | | |
@@ -504,7 +506,7 @@ ré-affiche, c'est-à-dire qu'il ment sur ce qu'il mesure.
 ## Arborescence
 
 ```
-docs/       vision, roadmap, notes de câblage, photos
+docs/       vision, roadmap, notes de câblage, photos, plans du boîtier
 firmware/
   hello-desknode/   P0 — TÉMOIN MINIMAL, figé. Log + rétroéclairage clignotant.
                     Quand le bring-up de l'écran part en vrille, c'est lui qui

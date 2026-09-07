@@ -17,6 +17,23 @@ dn63-citations-temoins.md
   ⚠️ Un temoin negatif qui depend d'un fichier que sa propre marche ne peut
      pas ecrire n'est pas un temoin : c'est une dette.
 
+dn64-temoin-obj.obj
+-------------------
+  Origine   : ECRITE pour `dn6-4` (2026-09-07). ⛔ Ce n'est PAS une capture,
+              et ⛔ PAS un plan : c'est un PORTEUR D'EXTENSION, dont le seul
+              role est d'etre RENCONTRE par `tools/verif_boitier_dn64.py` (c9)
+              a chaque passe.
+  Contenu   : trois sommets et une face — le minimum pour etre un `.obj`
+              syntaxiquement valide. ⛔ Aucune geometrie utile.
+  Motif     : le piege est MESURE — `firmware/` porte 6 726 `.obj` de
+              compilation NON SUIVIS. Un detecteur de plans qui lirait le
+              disque et compterait `.obj` en annoncerait 6 726 pour ZERO plan.
+              ⚠️ Ces 6 726 n'existent PAS dans un clone neuf : ancre sur eux,
+              le mutant 4 serait SANS EFFET en CI (`rc=3`, mutant PERIME) et
+              la campagne accuserait la gate. Le temoin est donc VERSE.
+  ⚠️ `.obj` ⛔ N'EST PAS un format de plan dans ce depot. Les six qui le sont
+     sont ecrits dans `docs/boitier/PLANS.md`.
+
 lhm_metrics_2026-08-21.txt
 --------------------------
   Origine   : `GET http://127.0.0.1:8085/metrics` sur DESKTOP-08RT3CL

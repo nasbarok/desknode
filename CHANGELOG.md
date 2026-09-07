@@ -20,6 +20,23 @@ Work towards the first public release, `v0.1.0-beta`.
   citation of `dn4-41`'s state, and the affiliate-link declaration. It deliberately judges
   **no price** — only that a price carries its date and its source.
 
+- **A place for the 3D-printed case, and a printing notice that says what is not known**
+  ([`docs/boitier.md`](docs/boitier.md) and [`docs/boitier/PLANS.md`](docs/boitier/PLANS.md)) —
+  the folder `docs/boitier/`, the six accepted file formats and the rule that a mesh alone is not
+  enough, the licence (already granted by the `docs/` row of `LICENSING.md`, which was **not**
+  touched), and a notice whose **four** parameters — material, layer height, infill, supports —
+  are each written **not measured**, with the reason and the owner beside them. 🔴 **No plan is
+  deposited**: nothing has been printed and there is nothing to print yet. The page says so
+  instead of leaving a reader to find out.
+- **A gate over that place and that notice** (`tools/verif_boitier_dn64.py`, run by
+  `tools/run_gates.sh` and replayed mutant by mutant by `tools/verif_campagne_dn56.py`): it keeps
+  the statement true **in both directions** — while no plan is tracked the page must say so, and
+  the day a plan lands under `docs/boitier/` the sentence becomes false and the check goes red,
+  every deposited plan having to be cited by the page. It also keeps the plans folder **under
+  `docs/`** rather than at the repository root, refuses a plan filed anywhere else, and refuses a
+  printing parameter that carries a figure without citing the measurement it comes from. It
+  deliberately judges **no drawing** — no dimension, no printability.
+
 - **Licensing.** GPL-3.0-or-later for `firmware/`, MIT for `agent/`, CC-BY-SA-4.0 for
   `docs/`. See [`LICENSING.md`](LICENSING.md).
 - **Third-party inventory** (`THIRD-PARTY.md`) — necessary because

@@ -1,0 +1,108 @@
+==============================================================================
+dn6-4 — T0 : LES BORNES DE DEPART, RE-MESUREES PAR LA COMMANDE
+==============================================================================
+date       : 2026-09-07
+desknode   : 36635340f6dc6b863d9f974453456d87b4bb8c8a  (HEAD au cadrage, arbre PROPRE)
+cockpit    : 3e0e323e374cd43af130d3654a76f971ec4cd1ea
+
+⚠️ AUCUNE DE CES BORNES N'EST RECOPIEE DU DOSSIER DE STORY. Chacune est
+   RE-TIREE ici par la commande imprimee a cote d'elle. Motif ecrit, ⛔ pas
+   theorique : `dn5-5` a paye une borne REPRISE au lieu d'etre re-tiree.
+   ⚠️ Les comptes d'arbre se prennent sur `git ls-files`, ⛔ JAMAIS sur
+      l'arbre de travail — `firmware/` porte 6 726 `.obj` NON SUIVIS.
+
+=== (1) L'ARBRE SUIVI ======================================================
+  fichiers suivis                        670          `git ls-files | wc -l`
+  .md suivis                             25           `git ls-files '*.md' | wc -l`
+  gates tools/verif_*.py                 34           `ls tools/verif_*.py | wc -l`
+  dont fichiers CAO                      🔴 0          `git ls-files` + filtre .stl/.3mf/.step/.stp/.f3d/.scad
+     ⇒ la liste est VIDE : []
+  .obj NON SUIVIS dans firmware/         ⚠️ 6726      `find firmware -name '*.obj' | wc -l`
+     ⇒ dont SUIVIS : 0 — c'est le PIEGE : compter sur le disque et
+       ranger `.obj` en CAO fabriquerait 6726 « plans » la ou il y en a 0.
+  repertoires de 1er niveau              9            `git ls-files` -> 1er segment
+     ⇒ .github · agent · assets · docs · firmware · hardware · mesures · tests · tools
+     ⇒ fichiers de racine : .gitignore · CHANGELOG.md · CLA.md · CONTRIBUTING.md · LICENSE · LICENSING.md · README.md · THIRD-PARTY.md
+
+=== (2) LE MOT `boitier` EST UN PIEGE DE MOTIF, ET C'EST MESURE ===========
+  CONTRIBUTING.md                                      1
+  README.md                                            2
+  docs/bom.md                                          1
+  docs/cablage/PHOTOS.md                               1
+  docs/dn4-15-arbitrage.md                             1
+  hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md        6
+  hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md     5
+  hardware/ESP32-S3-Touch-LCD-2.8B-liaison-pc.md       7
+  TOTAL sur les 25 .md suivis                          24
+     ⇒ UNE SEULE de ces 24 occurrences designe le COFFRAGE :
+       docs/cablage/PHOTOS.md (« une fois le boitier pose »).
+       Les 23 autres sont le VENTILATEUR de boitier (telemetrie, CASE_GROUP),
+       des BOITIERS DE COMPOSANTS (SOP8/SOIC-8/SC70-6, metallique, optique),
+       une collision lexicale documentee (CONTRIBUTING.md:717) et une ligne
+       BARREE et declaree annulee (docs/dn4-15-arbitrage.md:275).
+       ⇒ ⛔ UNE GATE QUI GREPPERAIT `boitier` SERAIT FAUSSE A 23 SUR 24.
+
+=== (3) LA PLACE N'EXISTE PAS ENCORE =======================================
+  docs/boitier.md                        ⛔ ABSENT
+  docs/boitier                           ⛔ ABSENT
+  tools/verif_boitier_dn64.py            ⛔ ABSENT
+  mesures/dn6-4                          PRESENT
+  docs/ (du -sb)                         15962568	docs
+  docs/cablage/ (du -sb)                 15785375	docs/cablage
+
+=== (4) LES GATES, TIREES NUES AVANT TOUTE EDITION ========================
+  verif_licences_dn52.py         rc=0   BILAN : 34 OK, 0 KO
+  verif_ledger_dn416.py          rc=0   BILAN : 35 OK, 0 KO
+  verif_campagne_dn56.py         rc=0   BILAN : 8 OK, 0 KO
+  verif_cablage_dn62.py          rc=0   BILAN : 37 OK, 0 KO
+  verif_photos_dn63.py           rc=0   BILAN : 28 OK, 0 KO
+  verif_bom_dn61.py              rc=0   BILAN : 24 OK, 0 KO
+
+  ── `verif_dossier_dn415.py` — AUX DEUX CONDITIONS ────────────────────────
+     🔴 ELLE EST **DEJA ROUGE**, ET C'EST LA BORNE QUI COMPTE : une gate deja
+        rouge ABSORBE un KO de plus sans changer de couleur. ⇒ le garde-fou se
+        lit sur le NOMBRE de KO et sur la LISTE des libelles, ⛔ pas sur la
+        teinte.
+     cockpit PRESENT  rc=1   BILAN : 23 OK, 10 KO
+     cockpit ABSENT   rc=4   BILAN : 25 OK, 0 KO
+     les 10 libelles KO, A COLONNE FIXE [8:64] (`%-56s` de dn415) — c'est CET ENSEMBLE que
+     T7 confrontera :
+       · occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c
+       · occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c
+       · occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c
+       · occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c
+       · toute occurrence de l'arbre est AU MANIFESTE
+       · ligne de manifeste SANS occurrence dans l'arbre
+       · le manifeste ne cite aucune occurrence FANTOME
+       · le TEXTE a change sous un verdict inchange
+       · la citation du manifeste colle au TEXTE de l'arbre
+       · somme des verdicts == occurrences de l'arbre
+
+=== (5) LA PASSE COMPLETE `bash tools/run_gates.sh` ========================
+  ⚠️ Le tir complet est LONG (229 s au poste). Il est joue une seule fois
+     ici, et son verdict est recopie DE SA PROPRE SORTIE, ⛔ pas de memoire :
+     BILAN : 32 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 34 gates (229s)
+     ⛔ ROUGES : tools/verif_dossier_dn415.py (rc=1)
+     NON-JOUABLE : tools/verif_sr03.py (rc=2 attendu, temoin absent)
+
+=== (6) LE LEDGER ET LE TRACKER (cockpit) =================================
+  deferred-work.md                       6366 ligne(s)
+     ⇒ LA QUEUE EST APRES CETTE LIGNE : c'est la que le report s'ecrit.
+  lignes du tracker contenant `tournage` 4
+  lignes du tracker contenant `boitier`  [88, 120, 199, 385, 508, 603, 732, 740, 743, 744]
+     ⇒ AUCUNE de ces lignes n'est `epic-dn8` : le tracker ne dit RIEN
+       de la dependance de la vitrine au boitier pose. C'est le trou d'AC6.4.4.
+  porteurs candidats, statut RELU au tracker le 2026-09-07 :
+     epic-dn6     backlog
+     epic-dn8     backlog
+     epic-dn4     in-progress
+     dn6-4        ⛔ non trouve en tete de ligne
+
+=== (7) CE QUE LE DEPOT PROMET DEJA — LES ANCRES A NE PAS TOUCHER =========
+  LICENSING.md:11   | `docs/` — documentation, wiring photos, schematics, enclosure plans | **CC-BY-SA-4.0** | [`docs/LICENSE`](docs/LICENSE) |
+  LICENSING.md:79   diagrams, the enclosure plans, the mockups or the measurement register** — `docs/`,
+     ⇒ ⛔ CES DEUX LIGNES NE SE REFORMULENT PAS : la chaine
+       `enclosure plans` est CODEE EN DUR dans les mutants 1 et 3 de
+       `verif_licences_dn52.py` — la toucher les rend INAPPLICABLE.
+     ✅ ET ELLES SUFFISENT : `docs/boitier/` rend `docs` par split("/")[0]
+       ⇒ la licence du repertoire etait ACQUISE avant d'etre demandee.

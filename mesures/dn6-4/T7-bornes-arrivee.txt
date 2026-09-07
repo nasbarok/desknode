@@ -1,0 +1,158 @@
+==============================================================================
+dn6-4 — T7 : LES BORNES D'ARRIVEE, ET CE QUI N'A PAS BOUGE
+==============================================================================
+date       : 2026-09-07
+desknode   : 3663534 (T0) ⇒ arbre de travail + index
+
+⚠️ TOUTES LES BORNES SONT RE-TIREES PAR LA COMMANDE, comme en T0.
+🔴 LE GARDE-FOU SE LIT SUR LE **NOMBRE**, ⛔ PAS SUR LA COULEUR : une gate
+   deja rouge ABSORBE un KO de plus sans changer de teinte. `verif_dossier_
+   dn415.py` etait ROUGE a T0 et l'est encore ; ce qui est confronte, c'est
+   son COMPTE de KO et l'ENSEMBLE de ses libelles.
+
+=== (1) L'ARBRE SUIVI — AVANT / APRES =====================================
+  grandeur                                 T0       T7       verdict
+  ------------------------------------------------------------------------------------------
+  fichiers suivis                          670      678      🆕 670 ⇒ 678 — +8 ATTENDUS (2 pages, la gate, le temoin, 4 releves)
+  dont fichiers CAO (6 extensions)         0        0        ✅ INCHANGE 🔴 ET C'EST LE POINT
+  `.obj` SUIVIS                            0        1        🆕 0 ⇒ 1 — +1 ATTENDU : le TEMOIN NEGATIF de (c9)
+  `.obj` non suivis dans firmware/         6726     6726     ✅ INCHANGE
+  .md suivis                               25       27       🆕 25 ⇒ 27 — +2 ATTENDUS : les deux pages neuves
+  gates tools/verif_*.py                   34       35       🆕 34 ⇒ 35 — +1 ATTENDUE : elle entre au glob TOUTE SEULE
+  repertoires de 1er niveau                9        9        ✅ INCHANGE
+  --------------------------------------------------------------------------
+  ⇒ 1er niveau : .github · agent · assets · docs · firmware · hardware · mesures · tests · tools
+  🔴 **0 FICHIER CAO SUIVI, AVANT COMME APRES** — et c'est le POINT :
+    cette marche livre LA PLACE, ⛔ pas le plan. `D24` range la creation du
+    coffrage POST-V1 et le dessin appartient a l'owner.
+  ✅ **9 REPERTOIRES DE 1er NIVEAU, 9 APRES** : `docs/boitier/` rend `docs`
+    par split("/")[0] ⇒ rien ne bouge cote (a) de `verif_licences_dn52.py`.
+  ⚠️ Le `.obj` SUIVI passe de 0 a 1 : c'est le TEMOIN NEGATIF verse
+    (`tools/fixtures/dn64-temoin-obj.obj`), et (c9) verifie a chaque passe
+    qu'il est VU **et** ECARTE. ⛔ Il n'entre dans AUCUN compte de plans.
+
+=== (2) CE QUI EST NE ======================================================
+  docs/boitier.md                               10828 octets   SUIVI
+  docs/boitier/PLANS.md                          4280 octets   SUIVI
+  tools/verif_boitier_dn64.py                   66651 octets   SUIVI
+  tools/fixtures/dn64-temoin-obj.obj             1223 octets   SUIVI
+  docs/ (du -sb)                             15980005
+     ⇒ T0 : 15962568 octets
+
+=== (3) LES GATES, TIREES NUES ============================================
+  gate                           rc   T0                 T7                 verdict
+  --------------------------------------------------------------------------------------------
+  verif_licences_dn52.py         0    34 OK, 0 KO        34 OK, 0 KO        ✅
+  verif_ledger_dn416.py          0    35 OK, 0 KO        35 OK, 0 KO        ✅
+  verif_cablage_dn62.py          0    37 OK, 0 KO        37 OK, 0 KO        ✅
+  verif_photos_dn63.py           0    28 OK, 0 KO        28 OK, 0 KO        ✅
+  verif_bom_dn61.py              0    24 OK, 0 KO        24 OK, 0 KO        ✅
+  verif_campagne_dn56.py         0    8 OK, 0 KO         8 OK, 0 KO         ✅
+
+  🔴 `BILAN : 8 OK, 0 KO` EST **IDENTIQUE** A T0 ET A T7 — il ne prouve donc
+    RIEN sur l'enrolement de la gate neuve. La seule preuve que ses mutants
+    sont REELLEMENT rejoues est la ligne de detail de son (c2), recopiee ici
+    VERBATIM :
+     [OK ] des gates declarent une campagne de mutants                9 cible(s) : tools/verif_boitier_dn64.py, tools/verif_bom_dn61.py, tools/verif_cablage_dn62.py, tools/verif_demarrage_dn443.py, tools/v
+     [OK ] toute cible repond, et aucun mutant ne meurt               263 mutant(s) confronte(s) sur 9 cible(s)
+     ⇒ T0 : `228 mutant(s) confronte(s) sur 8 cible(s)`.
+       Le delta est la gate neuve et ses 35 mutants — ⛔ pas une coincidence
+       de comptes.
+  verif_boitier_dn64.py          0    ⛔ N'EXISTAIT PAS   29 OK, 0 KO        🆕
+
+=== (3-bis) LE MOT `boitier` — LE RATIO QUE CETTE MARCHE PERIME ==========
+  🔴 LA JUSTIFICATION D'ANCRAGE DE LA GATE EST DATEE, ET LE COMMIT QUI LA
+    PUBLIE LA PERIME. A T0, sur l'arbre d'AVANT cette marche : **24**
+    occurrences dans **25** `.md` suivis, dont **UNE SEULE** designait le
+    coffrage (`docs/cablage/PHOTOS.md`) ⇒ un grep du mot aurait ete faux
+    **23 fois sur 24**. Les deux pages neuves parlent du coffrage a longueur
+    de ligne. Le ratio se RE-PREND donc ici, fichier par fichier :
+  fichier                                                 T0    T7
+  --------------------------------------------------------------------------
+  CHANGELOG.md                                             —     7
+  CONTRIBUTING.md                                          1     1
+  README.md                                                2     6
+  docs/boitier.md                                          —    17
+  docs/boitier/PLANS.md                                    —    12
+  docs/bom.md                                              1     1
+  docs/cablage.md                                          —     3
+  docs/cablage/PHOTOS.md                                   1     1
+  docs/dn4-15-arbitrage.md                                 1     1
+  docs/roadmap.md                                          —     5
+  hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md            6     6
+  hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md         5     5
+  hardware/ESP32-S3-Touch-LCD-2.8B-liaison-pc.md           7     7
+  tools/fixtures/PROVENANCE.md                             —     2
+  --------------------------------------------------------------------------
+  TOTAL                                                   24    74  sur 27 `.md` suivis (25 a T0)
+  ✅ AUCUNE des occurrences de T0 n'a disparu : aucune perte.
+    ⇒ les **23** occurrences NON-coffrage de T0 sont TOUTES encore la, et
+      tout le reste — **51** — a ete AJOUTE par cette marche et designe bien
+      le coffrage.
+  ⇒ **le ratio s'inverse : de 1 sur 24 a 51 sur 74.**
+  ⚠️ LE RATIO A BOUGE, L'ARGUMENT N'A PAS BOUGE : le mot reste un PIEGE DE
+    MOTIF — **23** occurrences designent encore AUTRE CHOSE que le coffrage
+    (le ventilateur de boitier de la telemetrie, des boitiers de composants,
+    une collision lexicale documentee, une ligne barree et annulee). Un grep
+    du mot serait donc encore faux 23 fois sur 74. La gate s'ancre sur le
+    CHEMIN `docs/boitier/`, ⛔ jamais sur le mot — et c'est ce que le chiffre
+    de T0 etablissait, ⛔ pas le chiffre lui-meme.
+  ⛔ ET CE COMPTE N'EST RECOPIE DANS AUCUNE PAGE : il se reperimerait au
+    prochain document qui parle du boitier. Il vit ICI, date, et l'en-tete de
+    la gate renvoie a ce releve plutot que de republier un nombre.
+
+=== (4) `verif_dossier_dn415.py` — AUX DEUX CONDITIONS ====================
+  🔴 ELLE ETAIT DEJA ROUGE A T0. Ce qui est confronte est le NOMBRE de KO
+    ET l'ENSEMBLE des libelles, lus A COLONNE FIXE [8:64] (`%-56s`).
+  cockpit PRESENT  rc=1   T0: 23 OK, 10 KO   T7: 23 OK, 10 KO   ✅ INCHANGE
+  cockpit ABSENT   rc=4   T0: 25 OK, 0 KO    T7: 25 OK, 0 KO    ✅ INCHANGE
+  libelles KO : 10 a T0, 10 a T7
+  ensemble IDENTIQUE : ✅ OUI
+     · occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c
+     · occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c
+     · occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c
+     · occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c
+     · toute occurrence de l'arbre est AU MANIFESTE
+     · ligne de manifeste SANS occurrence dans l'arbre
+     · le manifeste ne cite aucune occurrence FANTOME
+     · le TEXTE a change sous un verdict inchange
+     · la citation du manifeste colle au TEXTE de l'arbre
+     · somme des verdicts == occurrences de l'arbre
+
+=== (5) LA PASSE COMPLETE, ET LE DIFF INTERDIT ============================
+  BILAN : 33 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 35 gates (243s)
+  ⛔ ROUGES :
+     · tools/verif_dossier_dn415.py (rc=1)
+  run_gates rc=1
+  ⇒ T0 : BILAN : 32 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 34 gates
+    ⛔ ROUGES : tools/verif_dossier_dn415.py (rc=1)
+  ✅ LA SEULE ROUGE EST LA MEME, AVEC LE MEME COMPTE DE KO ⇒ **0 KO de plus,
+    gate par gate**, et la gate neuve entre au glob TOUTE SEULE (34 ⇒ 35).
+
+  git diff --stat -- hardware/ firmware/          : VIDE ✅
+  git diff --cached --stat -- hardware/ firmware/ : VIDE ✅
+     ⇒ `dn6` CITE, ⛔ ne recopie pas — et le soak de `dn4-5` court.
+
+=== (6) LE LEDGER ET LE TRACKER (cockpit) =================================
+  deferred-work.md : 6366 ligne(s) a T0 ⇒ 6415 a T7
+  ligne `epic-dn8` : 3858 caracteres (2581 a T0)
+     boitier    : OUI
+     tournage   : OUI
+     dn6        : OUI
+     epic-dn6   : OUI
+  porteurs des 2 reports, statut RELU le 2026-09-07 :
+     epic-dn6   backlog ⇒ VIVANT
+  verif_ledger_dn416.py (tir nu, apres regeneration EN PLACE) : rc=0 BILAN : 35 OK, 0 KO
+
+=== (7) CE QUE CETTE MARCHE N'A **PAS** FAIT, ET C'EST MESURE =============
+  ⛔ ELLE N'A DESSINE AUCUN COFFRAGE : 0 fichier CAO suivi, avant comme
+    apres. ⛔ Ni `.scad`, ni `.stl`, ni une cote.
+  ⛔ ELLE N'A PAS TOUCHE `LICENSING.md` : la ligne `docs/` qui nomme les
+    *enclosure plans* est INCHANGEE — la reformuler rendrait INAPPLICABLE les
+    mutants 1 et 3 de `verif_licences_dn52.py`.
+  ⛔ ELLE N'A PAS EFFACE la ligne `dn6` de la roadmap : elle est ANNOTEE, son
+    texte d'origine reste, et son etat passe de `not started` a `in progress`.
+  ⛔ ELLE N'A RIEN REORGANISE DU HARNAIS : `tools/run_gates.sh` recoit UNE
+    ligne de declaration, au format existant, ⛔ sans publier de compte OK/KO.
+  ⛔ ELLE N'A PAS REPARE le mutant 31 de `verif_photos_dn63.py` : elle a
+    RETIRE son propre lien et VERSE le constat au ledger avec son porteur.

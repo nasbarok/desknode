@@ -320,6 +320,10 @@ Les **photographies** de cette page vivent dans `docs/cablage/` ; leur index —
 établit, qui la cite, ce qu'elle pèse, et ce que les alléger a **coûté au clone** — est
 [`PHOTOS.md`](cablage/PHOTOS.md).
 
+Le **boîtier** n'est pas dans cette page : sa place, son format, sa licence et sa notice
+d'impression — dont les quatre paramètres sortent **non mesurés**, faute de plan à imprimer — se
+lisent dans [`boitier.md`](boitier.md).
+
 ⚠️ **Cite toujours le FICHIER avec la section.** Les trois fichiers de `hardware/` portent des
 sections **homonymes** — un même numéro y désigne deux contenus sans rapport. C'est pour ça que
 chaque renvoi de cette page nomme les deux.

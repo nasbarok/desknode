@@ -1,0 +1,24 @@
+# TEMOIN NEGATIF de `tools/verif_boitier_dn64.py` — ⛔ CE N'EST PAS UN PLAN.
+#
+# Ce fichier porte l'extension `.obj` et il est SUIVI par git. Son seul role
+# est d'etre RENCONTRE a chaque passe par le controle (c9), qui verifie les
+# DEUX sens :
+#   · il est VU (il est bien dans `git ls-files`) ;
+#   · il est ECARTE (`.obj` ⛔ n'est PAS un format de plan dans ce depot).
+#
+# 🔴 POURQUOI IL EXISTE. Mesure du 2026-09-07 : `firmware/` porte 6 726
+#    fichiers `.obj` de compilation, NON SUIVIS. Un detecteur de plans qui
+#    lirait l'ARBRE DE TRAVAIL **et** rangerait `.obj` parmi les formats CAO
+#    annoncerait 6 726 plans la ou il y en a ZERO.
+#    ⚠️ Ces 6 726 fichiers n'existent PAS dans un clone neuf (le repertoire de
+#       build est gitignore). Un mutant qui n'aurait qu'eux pour temoin serait
+#       donc SANS EFFET en CI — c'est-a-dire `rc=3`, mutant PERIME, et la
+#       campagne accuserait la gate. ⇒ le temoin est VERSE au depot, et le
+#       mutant 4 rougit dans N'IMPORTE QUEL clone.
+#
+# ⛔ Ce n'est ⛔ pas une geometrie utile : la face ci-dessous existe pour que
+#    le fichier soit un `.obj` VALIDE, ⛔ pas pour etre imprimee.
+v 0.0 0.0 0.0
+v 1.0 0.0 0.0
+v 0.0 1.0 0.0
+f 1 2 3
