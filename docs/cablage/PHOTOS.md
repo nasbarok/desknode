@@ -98,7 +98,7 @@ entre **45,67 et 49,81 dB**. Photo par photo :
 
 ---
 
-## 3. 🔴 La question qui reste OUVERTE, et qui appartient à l'owner
+## 3. 🔴 Les deux questions qui appartenaient à l'owner — TRANCHÉES le 2026-09-07
 
 ### ✅ Le verdict d'observation est RENDU — 2026-09-07, à l'œil de l'owner
 
@@ -135,13 +135,32 @@ sont **le même geste, au même moment** : les séparer, c'est cadrer deux fois.
 tranché ici — c'est **écrit pour que ça ne se reperde pas**.
 
 
-**Faut-il aussi réduire la définition ?** La marche la **chiffre** et la **pose** ; ⛔ elle ne la
-tranche pas.
+### 🔴 Faut-il aussi réduire la définition ? — NON, et le motif vient du constat ci-dessus
+
+**La marche l'avait chiffrée et POSÉE ; elle est désormais TRANCHÉE — et par un argument que le
+cadrage ⛔ n'avait pas.** Décision owner du 2026-09-07 : **on ne redimensionne pas.**
+
+🎯 **Le motif : un recadrage MANGE de la définition.** Recadrer, c'est ne garder qu'une **portion**
+de l'image ; ce qui reste après coup, c'est la définition d'origine **moins** ce qu'on a coupé. Or
+le constat owner ci-dessus dit que ces photos devront être **recadrées** pour être exploitables.
+⇒ les **3072×4096** conservés ne sont ⛔ pas de la matière dormante : ils sont **la marge du
+recadrage à venir**. Réduire à 2 600 px maintenant économiserait 5 210 987 octets et **dépenserait
+cette marge** — pour un travail qui n'a même pas encore commencé.
+
+⚠️ **Ce n'est ⛔ pas le raisonnement qui a produit la décision de livraison.** Le cadrage avait
+retenu la recompression seule parce que c'est la voie dont **la perte est bornée par un nombre**
+(PSNR ≥ 39,90 dB, définition intacte), et il **posait** le redimensionnement à l'owner faute de
+pouvoir juger une sérigraphie. Le motif du recadrage est arrivé **après**, avec le regard de
+l'owner. ⇒ la bonne option a été livrée **avant** que sa meilleure raison ne soit connue : ⛔ ce
+n'est pas de la prévoyance, et l'écrire autrement serait se donner le beau rôle.
+
+**Les deux options restent chiffrées ci-dessous** (`NFR3` : annoter, ⛔ pas effacer) — la seconde
+n'est ⛔ pas réfutée, elle **n'est pas retenue**, et son motif est écrit.
 
 | option | poids de `docs/cablage/` | bundle | ajouté au clone | définition des 11 |
 |---|---:|---:|---:|---|
 | recompression seule — **ce qui est livré** | **15 762 150** octets | **43 713 244** octets | **+10 164 753** octets | inchangée (3072×4096 / 4096×3072) |
-| recompression **+ 2 600 px de côté long** | **10 551 163** octets | **38 506 885** octets | **+4 958 394** octets | 1950×2600 / 2600×1950 |
+| recompression **+ 2 600 px de côté long** — ⛔ **NON RETENUE** (elle dépenserait la marge du recadrage) | **10 551 163** octets | **38 506 885** octets | **+4 958 394** octets | 1950×2600 / 2600×1950 |
 
 Les deux bundles sont pris par la **même** méthode et le **même** réglage que ceux du §1 (variante
 mesurée sans toucher l'arbre de travail : les onze fichiers redimensionnés sont écrits en objets
@@ -154,8 +173,10 @@ pièce** — c'est elle qui a réfuté l'étiquette d'un capteur portée par six
 linéaire sur un gros plan de sérigraphie **se juge à l'œil**, en trois secondes, par la personne qui
 soudera.
 
-⚠️ **Et le contrôle « à l'œil » de ce qui est LIVRÉ appartient à l'owner lui aussi.** Aucune gate ne
-sait dire si une sérigraphie reste lisible. Les deux photos à regarder en premier sont
+✅ **Et le contrôle « à l'œil » de ce qui est LIVRÉ a été RENDU** — verdict du 2026-09-07, en tête de
+section : *« c'est lisible »*. ⛔ Aucune gate ne sait dire si une sérigraphie reste lisible ; c'est
+un **geste humain** qui l'a tranché, et la ligne ci-dessous est **conservée** parce qu'elle dit
+**quelles photos regarder** si la question se repose. Les deux à regarder en premier sont
 [`2026-08-17_0012-breakout-ecarte-barrette-inseree.jpg`](2026-08-17_0012-breakout-ecarte-barrette-inseree.jpg)
 (PSNR le plus bas) et
 [`2026-08-19_1720-bh1750-gy302-face-composants-serigraphie-v322.jpg`](2026-08-19_1720-bh1750-gy302-face-composants-serigraphie-v322.jpg)
