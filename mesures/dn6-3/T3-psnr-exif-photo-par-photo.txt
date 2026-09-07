@@ -1,0 +1,111 @@
+==============================================================================
+dn6-3 — T3 : PSNR ET EXIF, PHOTO PAR PHOTO
+==============================================================================
+date       : 2026-09-07
+desknode   : 4ae46605d06ff0cc5945893e3712fe835e9195bd  (baseline)
+methode    : pour CHAQUE photo encodee a Q >= 90, un fichier candidat est
+             produit dans un temporaire par
+
+               convert <photo> -quality 88 <temporaire>
+
+             puis TROIS conditions sont verifiees AVANT tout remplacement :
+               (1) definition IDENTIQUE (en pixels)
+               (2) meme nombre de tags EXIF, et meme horodatage
+               (3) PSNR >= 38 dB          (compare -metric PSNR)
+             plus deux garde-fous : le fichier produit doit etre PLUS LEGER,
+             et `convert` doit sortir en 0.
+             ⛔ UNE PHOTO QUI ECHOUE A L'UNE DES CINQ N'EST PAS REMPLACEE, et
+               son motif s'ecrit. Mesure : 0 refus sur 11.
+⛔ CE QUE CETTE MESURE NE DIT PAS : si la SERIGRAPHIE reste lisible. C'est un
+   jugement A L'OEIL, il appartient a l'owner, et `docs/cablage/PHOTOS.md` le
+   lui POSE au lieu de le supposer acquis. Le PSNR borne la perte, ⛔ il ne la
+   qualifie pas.
+
+=== (1) LA PASSE, PHOTO PAR PHOTO ==========================================
+  mode : REMPLACEMENT EN PLACE
+  ======================================================================================================================
+  photo                                                              avant     apres    PSNR   tags verdict
+  ----------------------------------------------------------------------------------------------------------------------
+  2026-08-16_2140-bme680-recto-barrette-non-soudee.jpg              423574         —       —      2  INTACTE (Q76 < 90)
+  2026-08-16_2228-carte-embases-jst-jumelles-i2c-uart.jpg           833103         —       —      2  INTACTE (Q75 < 90)
+  2026-08-17_0012-breakout-ecarte-barrette-inseree.jpg             5071848   2708418   39.90     19  OK  (3072x4096, 2x2,1x1,1x1, 2026:08:17 00:12:33)
+  2026-08-17_0012-cablage-4-fils-sous-tension.jpg                  2493891   1302753   45.67     19  OK  (3072x4096, 2x2,1x1,1x1, 2026:08:17 00:12:29)
+  2026-08-19_1718-tof050c-vl6180x-face-capteur-et-sachet-2.jpg     1804073    797453   48.93     19  OK  (3072x4096, 2x2,1x1,1x1, 2026:08:19 17:18:49)
+  2026-08-19_1718-tof050c-vl6180x-face-capteur-et-sachet.jpg       1812234    809079   49.01     19  OK  (3072x4096, 2x2,1x1,1x1, 2026:08:19 17:18:48)
+  2026-08-19_1719-ina219-cjmcu-recto-cavaliers-a0-a1-shunt-r100.jpg   1673229    722457   49.18     19  OK  (4096x3072, 2x2,1x1,1x1, 2026:08:19 17:19:56)
+  2026-08-19_1719-tof050c-vl6180x-face-broches-deux-barrettes.jpg   1589895    647535   49.81     19  OK  (3072x4096, 2x2,1x1,1x1, 2026:08:19 17:19:20)
+  2026-08-19_1719-tof050c-vl6180x-face-broches-et-sachet.jpg       1754508    775952   49.13     19  OK  (3072x4096, 2x2,1x1,1x1, 2026:08:19 17:19:00)
+  2026-08-19_1720-bh1750-gy302-face-broches-vcc-gnd-scl-sda-addr.jpg   1584600    675966   49.59     19  OK  (4096x3072, 2x2,1x1,1x1, 2026:08:19 17:20:58)
+  2026-08-19_1720-bh1750-gy302-face-composants-et-sachet.jpg       1581285    688734   49.56     19  OK  (4096x3072, 2x2,1x1,1x1, 2026:08:19 17:20:45)
+  2026-08-19_1720-bh1750-gy302-face-composants-serigraphie-v322.jpg   1613886    719054   49.43     19  OK  (4096x3072, 2x2,1x1,1x1, 2026:08:19 17:20:48)
+  2026-08-19_1720-ina219-cjmcu-verso-caracteristiques.jpg          1693321    727471   49.37     19  OK  (4096x3072, 2x2,1x1,1x1, 2026:08:19 17:20:04)
+  2026-08-20_0038-derivation-premier-pin-deux-fils-soudes.jpg       437948         —       —     12  INTACTE (Q88 < 90)
+  2026-08-20_0058-derivation-quatre-cables-en-cours.jpg             611092         —       —     12  INTACTE (Q88 < 90)
+  2026-08-20_0110-derivation-quatre-cables-finis-gaines.jpg         491132         —       —     12  INTACTE (Q88 < 90)
+  2026-08-20_0116-bh1750-et-ina219-barrettes-SOUDEES.jpg            534977         —       —     12  INTACTE (Q88 < 90)
+  2026-08-20_0116-ina219-et-tof050c-barrettes-SOUDEES.jpg           602035         —       —     12  INTACTE (Q88 < 90)
+  2026-08-20_0951-montage-final-8-devices-grille-six-cases.jpg      622912         —       —     12  INTACTE (Q88 < 90)
+  2026-08-20_0951-montage-final-en-main-les-quatre-modules.jpg      630505         —       —     12  INTACTE (Q88 < 90)
+  ----------------------------------------------------------------------------------------------------------------------
+  11 photo(s) recompressee(s), 0 refusee(s), gain = 12097898 octets
+
+  PSNR minimum  : 39,90 dB  (2026-08-17_0012-breakout-ecarte-barrette-inseree)
+  PSNR des dix autres : 45,67 dB a 49,81 dB
+  ⇒ LA PERTE EST BORNEE PAR UN NOMBRE PUBLIE, ⛔ pas par un avis.
+  ⚠️ Le cadrage annonce « 45,67 a 49,82 » : la valeur haute mesuree est
+     **49,81** (49,8146 dB). Ecart de forme, ⛔ pas de fond — il est ecrit
+     plutot que lisse.
+
+=== (2) L'EXIF EST UNE PIECE, ⛔ PAS UNE METADONNEE =========================
+  Les 11 photos reecrites conservent TOUTES leurs 19 tags EXIF IFD0 ET leur
+  horodatage, verifie FICHIER PAR FICHIER (colonne « tags » et colonne
+  d'horodatage ci-dessus), ⛔ pas sur un echantillon.
+  L'echantillonnage chroma est INCHANGE lui aussi (2x2,1x1,1x1 avant et
+  apres) : `convert -quality 88` ⛔ ne rebascule pas le sous-echantillonnage.
+
+  🔴 DEUX PHOTOS ONT DEJA PERDU LE LEUR, AVANT CETTE MARCHE :
+     2026-08-16_2140-bme680-recto-barrette-non-soudee.jpg        2 tags, ⛔ AUCUN horodatage
+     2026-08-16_2228-carte-embases-jst-jumelles-i2c-uart.jpg     2 tags, ⛔ AUCUN horodatage
+     Or `hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md` §13.0 publie
+     `21:40:12` et `22:28:41` pour ces deux-la et affirme que les photos sont
+     « nommees par leur horodatage EXIF ». Ce sont exactement les deux deja
+     recompressees avant cette marche (Q76 et Q75).
+     ⇒ UNE PASSE D'ALLEGEMENT ANTERIEURE A EFFACE LA PIECE, ET AUCUNE GATE
+       NE L'A VU. C'est la faute que cette marche pouvait commettre ONZE FOIS
+       DE PLUS. Elle ne la REPARE pas — les originaux sont chez l'owner — elle
+       la DECLARE (`docs/cablage/PHOTOS.md`) et elle la GARDE pour l'avenir
+       (`tools/verif_photos_dn63.py`).
+
+=== (3) 🔴 CE QUE LE REMPLACEMENT A FAILLI EMPORTER : LE MODE DU FICHIER ====
+  MESURE, ⛔ pas suppose : les 11 candidates sont suivies en `100755` dans
+  l'index (13 des 20 le sont). Ecrire le candidat dans un `mkstemp` puis
+  `os.replace` lui donne le mode du TEMPORAIRE (0600) ⇒ `git diff --summary`
+  annoncait **11 `mode change 100755 => 100644`** — un changement que
+  ⛔ PERSONNE n'avait demande, invisible dans un `git diff --stat` qui ne
+  montre que « Bin ».
+  ⇒ les modes d'origine ont ete RESTAURES. Etat final :
+       `git diff --summary docs/cablage/` : 0 ligne `mode change`
+       `git diff --stat    docs/cablage/` : 11 files changed, 0 insertions, 0 deletions
+  ⚠️ Le mode n'est ⛔ pas un detail de presentation : c'est le seul champ que
+     git garde a cote du contenu, et un `chmod` de masse « pour normaliser »
+     l'aurait grave dans l'historique — que `NFR1` interdit de reecrire.
+
+=== (4) L'OPTION QUE LA MARCHE ⛔ NE TRANCHE PAS : LE REDIMENSIONNEMENT =====
+  Mesure faite sur les ORIGINAUX extraits de la baseline (`git archive HEAD`),
+  ⛔ pas sur les fichiers deja recompresses — recompresser deux fois n'aurait
+  mesure que ma propre passe :
+
+    convert <original> -resize 2600x2600\> -quality 88 <sortie>
+
+  les 11, redimensionnees a 2600 px de cote long   5363885 octets
+  les 11, recompressees SANS redimensionner       10574872 octets
+  ⇒ le redimensionnement rendrait 5 210 987 octets DE PLUS sur l'arbre
+    (docs/cablage/ passerait de 15 762 150 a 10 551 163 octets), et il
+    ajouterait MOINS au clone.
+
+  ⛔ LA MARCHE NE LE TRANCHE PAS, ET C'EST ECRIT. Sur ces photos-la, la
+    SERIGRAPHIE est la piece : c'est elle qui a refute l'etiquette d'un
+    capteur portee par six stories. Un facteur 0,635 lineaire sur un gros plan
+    de serigraphie ⛔ ne se juge pas au calcul. La voie executee est celle dont
+    la perte est BORNEE PAR UN NOMBRE (definition intacte, PSNR >= 39,90 dB) ;
+    l'autre est CHIFFREE et POSEE a l'owner dans `docs/cablage/PHOTOS.md`.

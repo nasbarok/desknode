@@ -316,6 +316,10 @@ page de lecture : c'est un dossier de séance, avec ses ratés et ses rétractat
 `hardware/` et le fichier qui porte le bus I²C est
 [`ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md`](../hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md).
 
+Les **photographies** de cette page vivent dans `docs/cablage/` ; leur index — ce que chacune
+établit, qui la cite, ce qu'elle pèse, et ce que les alléger a **coûté au clone** — est
+[`PHOTOS.md`](cablage/PHOTOS.md).
+
 ⚠️ **Cite toujours le FICHIER avec la section.** Les trois fichiers de `hardware/` portent des
 sections **homonymes** — un même numéro y désigne deux contenus sans rapport. C'est pour ça que
 chaque renvoi de cette page nomme les deux.

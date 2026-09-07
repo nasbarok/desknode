@@ -1,0 +1,125 @@
+==============================================================================
+dn6-3 — T1 : LA CARTE DES CITATIONS, DANS LES DEUX SENS
+==============================================================================
+date       : 2026-09-07
+desknode   : 4ae46605d06ff0cc5945893e3712fe835e9195bd  (baseline)
+methode    : la population est celle de `git ls-files`, ⛔ pas un parcours du
+             disque. Une photo est CITEE quand son NOM DE FICHIER apparait
+             dans un `.md` suivi.
+⚠️ 🔴 LE CONTROLE CHERCHE LE **BASENAME**, ⛔ PAS LE CHEMIN — ET C'EST MESURE.
+   `hardware/…-capteurs-i2c.md` §13.0 cite ses photos comme des NOMS NUS
+   entre accents graves, dans des tables :
+        | `2026-08-19_1720-….jpg` | 17:20:58 | … |
+   ⛔ PAS comme des liens `](docs/cablage/…)`. RE-MESURE le 2026-09-07,
+   photo par photo : **8 photos sur 20** sont citees quelque part sous une
+   forme de CHEMIN ; les **12 autres ne le sont JAMAIS**. Un controle ancre
+   sur le prefixe de chemin declarerait donc **12 ORPHELINES** sur des photos
+   parfaitement citees — un « N OK / 0 KO » sur une population FAUSSE.
+   ⚠️ Le mutant 4 de la gate le REJOUE et rend exactement `⛔ 12 ORPHELINE(S)`.
+   ⚠️ 🔴 ET LES DEUX BOUTS DU CONTROLE ACCEPTENT LA **MEME** POPULATION : le
+      dossier est peuple par extension INSENSIBLE A LA CASSE, donc les motifs
+      de citation le sont aussi (`re.I`). Sans ce drapeau, une photo `.JPG`
+      entrait dans l'arbre pendant qu'AUCUNE de ses citations n'etait
+      reconnue ⇒ (c2) la declarait ORPHELINE, et le KO etait INSOLUBLE.
+
+=== (1) QUI CITE QUOI =======================================================
+  fichiers `.md` suivis balayes : 23  (⛔ `docs/cablage/PHOTOS.md` EXCLU)
+
+  photo                                                            qui la cite
+  --------------------------------------------------------------------------------------------------------------------
+  2026-08-16_2140-bme680-recto-barrette-non-soudee.jpg             docs/bom.md · docs/cablage.md · hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md
+  2026-08-16_2228-carte-embases-jst-jumelles-i2c-uart.jpg          docs/cablage.md · hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md
+  2026-08-17_0012-breakout-ecarte-barrette-inseree.jpg             CONTRIBUTING.md · hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md
+  2026-08-17_0012-cablage-4-fils-sous-tension.jpg                  hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md
+  2026-08-19_1718-tof050c-vl6180x-face-capteur-et-sachet-2.jpg     hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md
+  2026-08-19_1718-tof050c-vl6180x-face-capteur-et-sachet.jpg       docs/dn4-15-arbitrage.md · hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md
+  2026-08-19_1719-ina219-cjmcu-recto-cavaliers-a0-a1-shunt-r100.jpg hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md
+  2026-08-19_1719-tof050c-vl6180x-face-broches-deux-barrettes.jpg  hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md
+  2026-08-19_1719-tof050c-vl6180x-face-broches-et-sachet.jpg       hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md
+  2026-08-19_1720-bh1750-gy302-face-broches-vcc-gnd-scl-sda-addr.jpg docs/bom.md · docs/cablage.md · hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md
+  2026-08-19_1720-bh1750-gy302-face-composants-et-sachet.jpg       docs/bom.md · hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md
+  2026-08-19_1720-bh1750-gy302-face-composants-serigraphie-v322.jpg docs/bom.md · hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md
+  2026-08-19_1720-ina219-cjmcu-verso-caracteristiques.jpg          hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md
+  2026-08-20_0038-derivation-premier-pin-deux-fils-soudes.jpg      hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md
+  2026-08-20_0058-derivation-quatre-cables-en-cours.jpg            hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md
+  2026-08-20_0110-derivation-quatre-cables-finis-gaines.jpg        hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md
+  2026-08-20_0116-bh1750-et-ina219-barrettes-SOUDEES.jpg           docs/bom.md · hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md
+  2026-08-20_0116-ina219-et-tof050c-barrettes-SOUDEES.jpg          hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md
+  2026-08-20_0951-montage-final-8-devices-grille-six-cases.jpg     hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md
+  2026-08-20_0951-montage-final-en-main-les-quatre-modules.jpg     docs/bom.md · hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md
+  --------------------------------------------------------------------------------------------------------------------
+  photos                                : 20
+  photos ORPHELINES                     : 0
+  photos citees UNIQUEMENT par hardware/: 11
+
+=== (2) CE QUE CES TROIS NOMBRES FERMENT ===================================
+  🔬 **0 ORPHELINE SUR 20** ⇒ le critere de retrait ecrit dans `AC6.3.3` —
+     l'orphelinat — n'est rempli par PERSONNE. La liste des photos retirees
+     est donc VIDE, et c'est SON MOTIF qui s'ecrit, ⛔ pas une case cochee
+     sur du vide.
+
+  🔴 **11 SUR 20 NE SONT CITEES QUE PAR `hardware/…-capteurs-i2c.md`** —
+     un fichier que le perimetre de l'epic interdit d'ecrire (`git diff --
+     hardware/` doit etre VIDE). En supprimer une poserait un LIEN MORT dans
+     un fichier que cette marche N'AURAIT PAS LE DROIT DE REPARER. La lecture
+     « supprimer » est donc AUTO-CONTRADICTOIRE avec le perimetre.
+
+  🔴 **ET CES 11 N'ETAIENT GARDEES PAR PERSONNE.**
+     `tools/verif_licences_dn52.py` (`prose_du_depot`, :430-462) EXCLUT
+     explicitement `hardware/` et `mesures/` — « ce sont des captures et des
+     dossiers de mesure ». `tools/verif_cablage_dn62.py` (c27) ne garde qu'UN
+     SEUL SENS (« toute photo citee existe ») et seulement pour les photos
+     que `docs/cablage.md` LIE. Le sens inverse — « toute photo existante est
+     citee » — n'etait garde par RIEN.
+     ⇒ c'est le trou que `tools/verif_photos_dn63.py` vient boucher.
+
+=== (3) LES DEUX TEMOINS NEGATIFS — MESURES, ⛔ PAS SUPPOSES ===============
+  🔴 **QUATRE** CITATIONS TRONQUEES EXISTENT DANS LE CORPUS — mesure du
+     2026-09-07, et elles visent TOUTES la meme photo :
+        README.md:1814
+        hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md          (x2)
+        hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md:2098
+           « … au zoom sur `docs/cablage/2026-08-16_2228-…jpg` (cavites … »
+     Le nom y est coupe par une ELLIPSE, et il n'a meme plus son point avant
+     `jpg`. La citation COMPLETE de la ligne 209 suffit a la photo.
+     ⇒ un controle naif la prendrait pour un LIEN MORT. Elle doit rester
+       VERTE, et ce temoin est joue A CHAQUE PASSE, ⛔ pas derriere un
+       drapeau que rien ne rejoue (lecon `dn6-2`).
+     🔴 LE **COMPTE** DES ECARTEES EST PUBLIE PAR (c4), ET C'EST UNE
+        CORRECTION : une exemption qui ne dit pas COMBIEN elle exempte laisse
+        passer un VRAI lien mort ecrit avec une ellipse SANS AUCUNE TRACE. Le
+        controle imprime « n citation(s) TRONQUEE(S) ecartee(s) » — quatre
+        aujourd'hui — ⛔ pas seulement le temoin nomme.
+
+  🔴 UN NOM DE PHOTO **HORS DU DOSSIER** EXISTE AUSSI :
+        tools/fixtures/dn63-citations-temoins.md               (la FIXTURE)
+        hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md:4021 et :4681
+           « (`install_01.jpg`), j'avais lu … »
+     Ce fichier n'est ⛔ PAS au depot : c'est une photo que l'owner a
+     envoyee, jamais versee. Une gate qui mettrait « tout `*.jpg` cite »
+     en population rougirait dessus — un FAUX KO sur de la prose JUSTE.
+     ⇒ la population des citations par NOM NU est celle des noms A LA
+       CONVENTION DU DOSSIER (`AAAA-MM-JJ_HHMM-<slug>.jpg`). `install_01.jpg`
+       n'y entre pas, et ce temoin-la aussi est joue A CHAQUE PASSE.
+     🔴 IL EST DESORMAIS ANCRE DANS UNE **FIXTURE DE CETTE MARCHE**, ET LE
+        MOTIF EST MESURE : il ne vivait que dans `…-capteurs-i2c.md`
+        (2 occurrences). Or ce dossier est le territoire d'une marche
+        VIVANTE (`dn4-34`), et le perimetre de `dn6` INTERDIT de l'ecrire.
+        Le jour ou elle passe, (c5) serait sorti « JAMAIS VU » et cette
+        marche n'aurait ⛔ PAS eu le droit de la reparer.
+        ⇒ UN TEMOIN QUI DEPEND D'UN FICHIER QUE SA PROPRE MARCHE NE PEUT PAS
+          ECRIRE N'EST PAS UN TEMOIN, C'EST UNE DETTE. (c5) exige desormais
+          de le voir DEPUIS `tools/fixtures/dn63-citations-temoins.md`.
+     ⚠️ (c4) n'est ⛔ PAS concerne : son temoin est vu dans QUATRE fichiers,
+        dont `README.md`, qui n'appartient a aucune marche en vol.
+
+  ⚠️ CES DEUX TEMOINS SONT DES **CONTROLES DU CHEMIN NORMAL**, ⛔ pas des
+     options : un temoin qui vit derriere un drapeau n'est rejoue par
+     PERSONNE — ni `run_gates.sh`, qui lance sans argument, ni
+     `verif_campagne_dn56.py`, qui ne decouvre que `--liste-mutants`.
+
+=== (4) ⛔ CE QUE CETTE CARTE NE DIT PAS ===================================
+  Elle ne dit ⛔ RIEN de la PERTINENCE d'une citation : qu'un `.md` nomme une
+  photo ne prouve pas qu'il la MONTRE ni qu'elle l'ILLUSTRE. Le sens garde
+  ici est l'EXISTENCE du lien, dans les deux directions. La pertinence se lit,
+  elle ne se compte pas.

@@ -484,6 +484,15 @@ Contributions are welcome. Two practical points:
   sweeps every object reachable from every ref. Both are printed because they answer
   different questions, and only the second one carries the claim.
 
+  ⚠️ **Annotated on 2026-09-07 — the paragraph above stays TRUE OF THE COMMIT IT NAMES, and is
+  no longer true of the working tree.** The eleven heaviest photographs were recompressed in place
+  (JPEG quality 88, **no resizing**, EXIF preserved). `docs/cablage/` went from **27 860 048 bytes**
+  to **15 762 150**, and the largest file in the current tree is now that same photograph at
+  **2 708 418 bytes** — a **36.9×** margin against the 100 MB limit instead of 19.7×. ⛔ The
+  original sentence is **not** corrected: at `7246f52` it said something true, and it is the
+  measurement of that commit. Raw output:
+  [`mesures/dn6-3/T7-etat-arrivee.txt`](mesures/dn6-3/T7-etat-arrivee.txt).
+
   ✅ **Run on 2026-09-05, the second command returns the same file**: across the whole
   history, the largest blob this repository has ever held is still those **5 071 848 bytes**.
   Nothing bigger was ever committed and later deleted, so the 19.7× margin holds for the
@@ -503,6 +512,27 @@ Contributions are welcome. Two practical points:
   from what a clone costs — for that, see *What cloning this costs* near the top of this
   file. Making the wiring photographs lighter is real work with a real owner (`dn6` — see
   [`docs/roadmap.md`](docs/roadmap.md)); ⛔ it is not done by rewriting history.
+
+  ⚠️ **Annotated on 2026-09-07: that work HAS NOW HAPPENED, and it made this repository BIGGER
+  to clone.** The photographs were recompressed in place — the working tree dropped by
+  **12 097 898 bytes**, i.e. **43.4 % of `docs/cablage/`** (⛔ not of the tree, which is a much
+  larger denominator) — but the history was **not** rewritten, so the original blobs are all still
+  there and eleven new ones sit on top of them. Measured with `pack.threads=1`, which is the only
+  reproducible setting: the bundle of the isolated curation went from **33 548 491 bytes** to
+  **43 713 244**, i.e. **+10 164 753 bytes, +30.3 %**. ⚠️ That second figure is **not** a weight
+  `main` ever had: it is the bundle of a throwaway measurement commit carrying **only the eleven
+  recompressed photographs**, so the number attributes the cost to the curation and to nothing
+  else — and it is reproducible only with the commit **identity, dates, message and ref name** all
+  pinned, as the recipe in [`mesures/dn6-3/T7-etat-arrivee.txt`](mesures/dn6-3/T7-etat-arrivee.txt)
+  §2 does; a differently named ref alone moves it by 7 bytes. ⛔ Not a guarantee to the byte — a
+  falsifiable one. The **conclusion** survives every one of those variations: the magnitude is 10⁷
+  and the sensitivity is 10¹. ⇒ making the photographs lighter is a gain for *readers of the tree*, and a **cost** for
+  *everyone who clones*. That is the price of never rewriting history, written down once with its
+  number rather than left to be rediscovered. ⚠️ These four figures are **re-derived from the tree
+  by `tools/verif_photos_dn63.py` (c28)**: republishing a number here ⛔ does not re-measure it, so
+  it is confronted. Index and full accounting:
+  [`docs/cablage/PHOTOS.md`](docs/cablage/PHOTOS.md).
+
 - `mesures/` holds the raw measurement record. It is deliberately kept — it is the
   evidence behind the numbers.
 

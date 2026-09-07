@@ -1,0 +1,126 @@
+==============================================================================
+dn6-3 — T0 : L'ETAT DE DEPART, RE-MESURE
+==============================================================================
+date       : 2026-09-07
+desknode   : 4ae46605d06ff0cc5945893e3712fe835e9195bd  (HEAD au cadrage, arbre PROPRE)
+⚠️ CES BORNES SONT RE-MESUREES, ⛔ PAS REPRISES DU 2026-09-06. Les comptes
+   d'arbre sont derives de la baseline par `git ls-tree`, ⛔ pas de l'arbre
+   de travail : ils sont RE-DERIVABLES par quiconque. Les passes de gates ont
+   ete jouees AVANT toute edition.
+
+=== (1) LE DOSSIER DE PHOTOS ================================================
+  docs/cablage/ (arbre de travail, `du -sb`)   27860048 octets sur 20 fichiers
+  docs/cablage/ (`git ls-tree -r -l HEAD`)     27860048 octets sur 20 fichiers
+  ⇒ les deux mesures COINCIDENT : l'arbre de travail est celui de la baseline.
+
+  la plus grosse : 2026-08-17_0012-breakout-ecarte-barrette-inseree.jpg
+                   5071848 octets, 3072x4096, Q96
+
+  fichiers suivis a la baseline   : 662
+  gates `tools/verif_*.py`        : 33
+  `docs/cablage/PHOTOS.md`        : ⛔ ABSENT
+  `tools/verif_photos_dn63.py`    : ⛔ ABSENT
+  `mesures/dn6-3/`                : 0 fichier(s)
+
+=== (2) LES 20 PHOTOS, FICHIER PAR FICHIER ==================================
+  photo                                                              octets definition    Q  tags EXIF DateTime       
+  ------------------------------------------------------------------------------------------------------------------------
+  2026-08-16_2140-bme680-recto-barrette-non-soudee.jpg               423574  4096x3072   76     2 (AUCUN)             
+  2026-08-16_2228-carte-embases-jst-jumelles-i2c-uart.jpg            833103  3072x4096   75     2 (AUCUN)             
+  2026-08-17_0012-breakout-ecarte-barrette-inseree.jpg              5071848  3072x4096   96    19 2026:08:17 00:12:33 
+  2026-08-17_0012-cablage-4-fils-sous-tension.jpg                   2493891  3072x4096   96    19 2026:08:17 00:12:29 
+  2026-08-19_1718-tof050c-vl6180x-face-capteur-et-sachet-2.jpg      1804073  3072x4096   96    19 2026:08:19 17:18:49 
+  2026-08-19_1718-tof050c-vl6180x-face-capteur-et-sachet.jpg        1812234  3072x4096   96    19 2026:08:19 17:18:48 
+  2026-08-19_1719-ina219-cjmcu-recto-cavaliers-a0-a1-shunt-r100.jpg    1673229  4096x3072   96    19 2026:08:19 17:19:56 
+  2026-08-19_1719-tof050c-vl6180x-face-broches-deux-barrettes.jpg    1589895  3072x4096   96    19 2026:08:19 17:19:20 
+  2026-08-19_1719-tof050c-vl6180x-face-broches-et-sachet.jpg        1754508  3072x4096   96    19 2026:08:19 17:19:00 
+  2026-08-19_1720-bh1750-gy302-face-broches-vcc-gnd-scl-sda-addr.jpg    1584600  4096x3072   96    19 2026:08:19 17:20:58 
+  2026-08-19_1720-bh1750-gy302-face-composants-et-sachet.jpg        1581285  4096x3072   96    19 2026:08:19 17:20:45 
+  2026-08-19_1720-bh1750-gy302-face-composants-serigraphie-v322.jpg    1613886  4096x3072   96    19 2026:08:19 17:20:48 
+  2026-08-19_1720-ina219-cjmcu-verso-caracteristiques.jpg           1693321  4096x3072   96    19 2026:08:19 17:20:04 
+  2026-08-20_0038-derivation-premier-pin-deux-fils-soudes.jpg        437948  2600x1733   88    12 2026:08:20 00:38:30 
+  2026-08-20_0058-derivation-quatre-cables-en-cours.jpg              611092  2600x1733   88    12 2026:08:20 00:58:35 
+  2026-08-20_0110-derivation-quatre-cables-finis-gaines.jpg          491132  2600x1733   88    12 2026:08:20 01:10:55 
+  2026-08-20_0116-bh1750-et-ina219-barrettes-SOUDEES.jpg             534977  2600x1733   88    12 2026:08:20 01:16:53 
+  2026-08-20_0116-ina219-et-tof050c-barrettes-SOUDEES.jpg            602035  2600x1733   88    12 2026:08:20 01:16:56 
+  2026-08-20_0951-montage-final-8-devices-grille-six-cases.jpg       622912  2600x1733   88    12 2026:08:20 09:51:16 
+  2026-08-20_0951-montage-final-en-main-les-quatre-modules.jpg       630505  2600x1733   88    12 2026:08:20 09:51:02 
+  ------------------------------------------------------------------------------------------------------------------------
+  TOTAL                                                            27860048   (20 fichiers)
+  la plus grosse : 2026-08-17_0012-breakout-ecarte-barrette-inseree.jpg = 5071848 octets
+  candidates Q>=90 : 11, pesant 22672770 octets
+
+  🔴 DEUX PHOTOS N'ONT QUE **2 TAGS EXIF, SANS AUCUN HORODATAGE** —
+     2026-08-16_2140-… et 2026-08-16_2228-… — alors que
+     `hardware/…-capteurs-i2c.md` §13.0 publie leur horodatage (21:40:12 et
+     22:28:41) et affirme que les photos sont « nommees par leur horodatage
+     EXIF ». Ce sont precisement les deux deja recompressees (Q75, Q76).
+     ⇒ UNE PASSE D'ALLEGEMENT ANTERIEURE A EFFACE LA PIECE, et aucune gate
+       ne l'a vu. ⛔ Cette marche ne le REPARE pas (les originaux sont chez
+       l'owner) : elle le DECLARE, et elle garde les 11 autres.
+
+  🔴 ECART DECLARE AVEC LE CADRAGE — LA MESURE CORRIGE LE DOSSIER DE STORY.
+     Le cadrage annonce les 11 candidates a **26 108 006** octets. RE-MESURE
+     fichier par fichier le 2026-09-07 : elles pesent **22 672 770** octets
+     (ecart : 3 435 236). Les DEUX autres bornes du cadrage se confirment au
+     contraire a l'octet (27 860 048 au total, 5 071 848 pour la plus
+     grosse), et la CIBLE d'arrivee annoncee (10 574 872) est verifiee plus
+     bas en T7. ⇒ le gain reel des 11 est calcule sur la valeur MESUREE,
+     ⛔ pas sur celle du cadrage.
+
+=== (3) LA POPULATION A RECOMPRESSER =======================================
+  photos a Q >= 90 (les candidates)        11 fichiers, 22672770 octets
+  photos a Q88 deja traitees par l'owner    7 fichiers,  3930601 octets
+  photos a Q75/Q76 deja legeres             2 fichiers,  1256677 octets
+  ⇒ Q88 N'EST ⛔ PAS UN REGLAGE INVENTE : c'est celui des 7 photos que
+    l'owner a traitees lui-meme le 2026-08-20 (`hardware/…-capteurs-i2c.md`
+    §13.0 : « Reduites a 2 600 px de cote long … c'est un arbitrage assume »).
+    La marche l'ETEND aux 11 autres SANS redimensionner.
+
+=== (4) LE BUNDLE DE `main` — ET SON BRUIT, MESURE =========================
+  ⚠️ 🔴 `git bundle create` N'EST ⛔ PAS DETERMINISTE PAR DEFAUT, ET C'EST
+     MESURE : cinq passes consecutives sur le MEME commit, arbre inchange,
+     rendent
+        33568925 · 33558335 · 33558549 · 33760204 · 33557898   octets
+     soit une dispersion de **202 306 octets** (0,60 %). La cause est le
+     delta-compression MULTI-THREAD (16 fils sur cette machine) : le
+     decoupage du travail change les deltas retenus.
+     ⇒ LA BORNE PUBLIEE EST PRISE A `pack.threads=1`, qui est REPRODUCTIBLE
+       (trois passes identiques a l'octet) :
+
+  git -c pack.threads=1 bundle create … main       33548491 octets   (T0)
+  git bundle create … main  (par defaut, 5 passes) 33557898..33760204 octets
+
+  ⚠️ LE CADRAGE ANNONCE 33 551 768 : c'est une valeur PRISE PAR DEFAUT, donc
+     DANS LA BANDE DE BRUIT. Elle n'est ⛔ pas fausse, elle est IRREPRODUCTIBLE.
+     Le bruit (0,2 Mo) reste DEUX ORDRES en dessous du signal attendu
+     (~10 Mo), donc la conclusion d'AC6.3.2 ne depend pas de lui — mais le
+     NOMBRE publie, si. ⇒ avant ET apres se mesurent au MEME reglage.
+
+  clone reel (`dn5-5`, T1)                          31,94 MiB
+    (mesures/dn5-5/T3-ecart-du-vs-clone.txt)
+
+=== (5) LA BORNE DES GATES — LE COMPTE, ⛔ PAS LA COULEUR ===================
+  ⚠️ UNE GATE DEJA ROUGE ABSORBE UN KO DE PLUS SANS CHANGER DE COULEUR
+     (lecon payee par `dn6-1`). ⇒ ce qui fait borne, c'est le COMPTE DE KO,
+     releve AUX DEUX CONDITIONS.
+
+  tools/verif_dossier_dn415.py  (cockpit PRESENT)  rc=1   BILAN : 23 OK, 10 KO
+  tools/verif_dossier_dn415.py  (cockpit ABSENT)   rc=4   BILAN : 25 OK, 0 KO
+  tools/verif_licences_dn52.py                     rc=0   BILAN : 34 OK, 0 KO
+  tools/verif_cablage_dn62.py                      rc=0   BILAN : 37 OK, 0 KO
+  tools/verif_campagne_dn56.py                     rc=0   BILAN : 8 OK, 0 KO
+  bash tools/run_gates.sh                          rc=1   BILAN : 31 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 33 gates (207s)
+  ⛔ ROUGE au cadrage : tools/verif_dossier_dn415.py (rc=1)
+  ⛔ NON-JOUABLE       : tools/verif_sr03.py (temoin ST non redistribuable)
+
+  ⚠️ LES 10 KO SONT TOUS COTE COCKPIT, ⛔ AUCUN N'EST DU FAIT DE CETTE
+     MARCHE : le passage a `--cockpit /nonexistent` les fait TOUS disparaitre
+     (0 KO). Ce dossier de story EST dans le corpus de cette gate
+     (`ARCHIVE_COCKPIT`) ⇒ la borne se relit APRES ecriture, aux deux
+     conditions.
+
+=== (6) CE QUE LA MARCHE S'INTERDIT ========================================
+  `git diff -- hardware/ firmware/ agent/ docs/roadmap.md` doit etre VIDE.
+  Etat au cadrage : arbre PROPRE (`git status --short` sans ligne).
+  ⛔ Aucune photo renommee, ⛔ aucune supprimee, ⛔ aucun historique reecrit.

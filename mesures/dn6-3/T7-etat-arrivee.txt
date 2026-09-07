@@ -1,0 +1,257 @@
+==============================================================================
+dn6-3 — T7 : L'ETAT D'ARRIVEE, **AVEC LE BUNDLE**
+==============================================================================
+date       : 2026-09-07
+desknode   : arbre de travail pose sur 4ae46605d06ff0cc5945893e3712fe835e9195bd
+
+=== (1) L'ECART SUR L'ARBRE DE TRAVAIL — CHIFFRE, ⛔ PAS DECRIT =============
+
+  grandeur                          T0            T7            ecart
+  ---------------------------------------------------------------------------
+  fichiers dans docs/cablage/       20            20            0
+  poids de docs/cablage/            27860048      15762150      -12097898  (-43,42 %)
+  la plus grosse photo              5071848       2708418       -2363430   (-46,60 %)
+  photos RETIREES                   —             0             ⛔ aucune
+  photos RENOMMEES                  —             0             ⛔ aucune
+  definitions MODIFIEES             —             0             ⛔ aucune
+
+=== (2) 🔴 L'ECART SUR LE CLONE — ET IL EST POSITIF ========================
+
+  ⚠️ L'INSTRUMENT EST BRUYANT PAR DEFAUT (voir T0 §4) : cinq passes de
+     `git bundle create` sur le MEME commit s'etalent sur 202 306 octets.
+     ⇒ LES DEUX BORNES SONT PRISES A `pack.threads=1`, qui supprime ce bruit.
+
+  🔬 CE QUI EST MESURE ISOLE **LA CURATION**, ⛔ PAS LA MARCHE, ET LA LIGNE
+     LE DIT. `main` n'a JAMAIS pese ce nombre : c'est le bundle d'un commit
+     de mesure pose sur la baseline et ne portant QUE les 11 photos
+     recompressees — ⛔ ni `PHOTOS.md`, ⛔ ni la gate, ⛔ ni ces releves.
+     ⚠️ CE COMMIT EST UN OBJET DE MESURE, ⛔ pas un commit de l'historique :
+       aucune branche publiee n'y mene, il est SUPPRIME apres relevé, et
+       `NFR1` reste entier.
+
+  git -c pack.threads=1 bundle create … main               33548491 octets   (T0)
+  git -c pack.threads=1 bundle create … <curation seule>   43713244 octets   (T7)
+  ---------------------------------------------------------------------------
+  ECART                                                   +10164753 octets  (+30,30 %)
+
+=== (2 bis) 🔴 CE NOMBRE EST REPRODUCTIBLE **SOUS CONDITIONS**, ET ELLES ===
+============ S'ECRIVENT — ⛔ « A L'OCTET » ETAIT UNE PROMESSE FAUSSE ========
+
+  Un bundle contient l'OBJET COMMIT **et** le NOM DE LA REF. QUATRE variables
+  deplacent donc le total, et ⛔ aucune n'est un detail. Mesures du
+  2026-09-07, toutes a `pack.threads=1`, toutes choses egales par ailleurs :
+
+    variable changee                        rend        ecart
+    ---------------------------------------------------------------------
+    (reference)  ref `dn6-3-mesure`,
+                 identite `nasbarok <na.ouahit@gmail.com>`,
+                 dates et message fixes                 43713244    —
+    MESSAGE de commit, une autre phrase     43713257    +13 a +20
+    NOM DE LA REF : `dn63m` (5 car.)
+                    au lieu de `dn6-3-mesure` (12)      43713237     -7
+    IDENTITE : `nasbarokkkkk` (12 car.)
+               au lieu de `nasbarok` (8)                43713246     +2
+
+  🔴 ET C'EST LA **REF** QUI A PAYE, ⛔ PAS L'IDENTITE. Le premier relevé
+     publiait **43 713 237**, pris avec la ref `dn63m` — alors que la recette
+     publiee a cote, elle, disait `dn6-3-mesure`. Une relecture VERBATIM par
+     un tiers a donc rendu **43 713 244** : 7 octets, exactement la
+     difference de longueur des deux noms.
+     ⇒ LE NOMBRE ET LA RECETTE VENAIENT DE **DEUX PASSES DIFFERENTES**, et
+       « elle rend N a l'octet » etait une promesse que la recette ⛔ ne
+       tenait pas. Corrige : le nombre publie est desormais celui que rend la
+       recette CI-DESSOUS, jouee telle quelle.
+     ⚠️ L'HYPOTHESE POSEE A LA RELECTURE ETAIT L'IDENTITE. La mesure la
+        retient comme SENSIBILITE REELLE (+2 octets) mais ⛔ PAS comme la
+        cause de cet ecart-ci : les deux passes partageaient la meme
+        identite. L'hypothese est ECRITE plutot qu'effacee — elle a fait
+        chercher au bon endroit (l'objet commit et son enveloppe), et elle a
+        fait epingler une variable qui ne l'etait pas.
+
+  ⇒ CE QUI EST GARANTI, ET CE QUI NE L'EST PAS — exception FALSIFIABLE :
+    ✅ A IDENTITE, DATES, MESSAGE **ET NOM DE REF** FIXES : 43713244, trois
+       passes identiques a l'octet (verifie).
+    ⛔ Change l'une des quatre et le nombre bouge de quelques octets. Ce
+       n'est ⛔ pas une garantie universelle, et l'ecrire comme telle serait
+       reproduire la faute qu'on vient de payer.
+    ✅ LA CONCLUSION, ELLE, NE DEPEND D'AUCUN DE CES OCTETS : l'ordre de
+       grandeur mesure est 10^7, la sensibilite 10^1. **+10,16 Mo** et
+       **+30 %** survivent a n'importe laquelle de ces variations.
+
+  🔧 LA RECETTE, VERBATIM — les QUATRE variables y sont EPINGLEES :
+
+    # (a) la borne T0 — sur la baseline
+    git -c pack.threads=1 bundle create /tmp/T0.bundle main && stat -c%s /tmp/T0.bundle
+
+    # (b) un commit de mesure qui ne porte QUE la curation
+    export GIT_INDEX_FILE=/tmp/idx && rm -f "$GIT_INDEX_FILE"
+    git read-tree HEAD
+    git add -- 'docs/cablage/*.jpg'      # ⛔ PAS `docs/cablage` : ce chemin
+                                         #   emporterait `PHOTOS.md`, qui vit
+                                         #   dans ce dossier
+    T=$(git write-tree)
+    C=$(GIT_AUTHOR_NAME='nasbarok'    GIT_AUTHOR_EMAIL='na.ouahit@gmail.com' \
+        GIT_COMMITTER_NAME='nasbarok' GIT_COMMITTER_EMAIL='na.ouahit@gmail.com' \
+        GIT_AUTHOR_DATE='2026-09-07T12:00:00+0000' \
+        GIT_COMMITTER_DATE='2026-09-07T12:00:00+0000' \
+        git commit-tree "$T" -p HEAD -m 'mesure dn6-3')
+    unset GIT_INDEX_FILE
+    git update-ref refs/heads/dn6-3-mesure "$C"     # ⛔ CE NOM COMPTE : il
+                                                    #   est DANS le bundle
+    git -c pack.threads=1 bundle create /tmp/T7.bundle dn6-3-mesure
+    stat -c%s /tmp/T7.bundle                        # ⇒ 43713244
+    git update-ref -d refs/heads/dn6-3-mesure       # ⛔ la ref NE RESTE PAS
+
+  ⚠️ LES REFS DE MESURE ONT ETE SUPPRIMEES apres relevé : une branche locale
+     qui traine est une branche que quelqu'un pousse un jour.
+
+  🔴 LE CLONE **MONTE DE 30 %** PENDANT QUE L'ARBRE DE TRAVAIL BAISSE DE 43 %.
+     L'historique ne se reecrivant JAMAIS (`NFR1`/`NFR6.3`), git garde les
+     onze blobs d'origine : la recompression **AJOUTE** onze objets, elle n'en
+     retire aucun.
+
+  ⚠️ LES DEUX LIGNES CI-DESSOUS SONT PRISES AVEC **LA MEME RECETTE COMPLETE**
+     (§2 bis), ⛔ pas avec deux passes differentes — c'est precisement la
+     faute que ce fichier vient de payer.
+
+  ⇒ 🔴 L'HYPOTHESE `H2` SE FERME PAR LE NOMBRE, ET LE NOMBRE DIT **PLUS
+    FORT** QUE L'HYPOTHESE. L'AC de l'epic ecrit « ce que la curation N'A PAS
+    change : le poids du clone ». La mesure la REFUTE : le poids du clone
+    ⛔ ne reste PAS egal, **il augmente de 10 164 753 octets**. Non seulement
+    l'allegement ne rend rien au clone, **il lui COUTE**.
+    ⇒ ECART DECLARE, ⛔ pas reformulation de confort : c'est l'AC de l'epic
+      qui est trop faible, ⛔ pas la mesure qui est trop forte.
+
+  🔬 L'OPTION QUE L'OWNER DOIT TRANCHER EST CHIFFREE **SUR LE CLONE AUSSI** —
+     ⛔ plus « moins que ci-dessus ». Meme recette, meme reglage ; les onze
+     fichiers redimensionnes sont ecrits en objets git (`git hash-object -w`)
+     puis poses dans l'index temporaire, ⛔ sans toucher l'arbre de travail :
+
+     option                              docs/cablage/   bundle      ajoute au clone
+     ---------------------------------------------------------------------------
+     recompression seule  (LIVREE)       15762150        43713244    +10164753
+     recompression + 2600 px             10551163        38506885     +4958394
+
+     ⇒ le redimensionnement rendrait 5 210 987 octets DE PLUS sur l'arbre et
+       couterait 5 206 359 octets DE MOINS au clone. Il gagne sur les DEUX
+       tableaux chiffres ; il perd sur le seul qui decide et qui ⛔ ne se
+       calcule pas — la lisibilite de la serigraphie. C'est l'owner.
+
+  📎 POUR MEMOIRE, L'ARBRE COMPLET DE LA MARCHE, mesure le meme jour sur un
+     commit `07106df` construit de la meme facon : 43751569 octets.
+     ⚠️ CE CHIFFRE NE PEUT PAS SE RE-DERIVER SUR L'ARBRE QUI LE PORTE — c'est
+        un POINT FIXE (la taille de l'arbre inclut ce fichier, dont la taille
+        depend du chiffre ecrit dedans). `CONTRIBUTING.md` publie deja la
+        regle qui s'en sort : **nommer le commit**. Le chiffre DEFINITIF se
+        prend apres le commit d'atterrissage :
+          git -c pack.threads=1 bundle create /tmp/T7.bundle main
+        ⛔ Ce qui ferme `AC6.3.2` reste la ligne du dessus : la curation
+          SEULE, isolee, +10164753 octets.
+
+  clone reel de reference (`dn5-5`, T1)                    31,94 MiB
+
+=== (3) LES 20 PHOTOS A L'ARRIVEE ==========================================
+  photo                                                              octets definition    Q  tags EXIF DateTime       
+  ------------------------------------------------------------------------------------------------------------------------
+  2026-08-16_2140-bme680-recto-barrette-non-soudee.jpg               423574  4096x3072   76     2 (AUCUN)             
+  2026-08-16_2228-carte-embases-jst-jumelles-i2c-uart.jpg            833103  3072x4096   75     2 (AUCUN)             
+  2026-08-17_0012-breakout-ecarte-barrette-inseree.jpg              2708418  3072x4096   88    19 2026:08:17 00:12:33 
+  2026-08-17_0012-cablage-4-fils-sous-tension.jpg                   1302753  3072x4096   88    19 2026:08:17 00:12:29 
+  2026-08-19_1718-tof050c-vl6180x-face-capteur-et-sachet-2.jpg       797453  3072x4096   88    19 2026:08:19 17:18:49 
+  2026-08-19_1718-tof050c-vl6180x-face-capteur-et-sachet.jpg         809079  3072x4096   88    19 2026:08:19 17:18:48 
+  2026-08-19_1719-ina219-cjmcu-recto-cavaliers-a0-a1-shunt-r100.jpg     722457  4096x3072   88    19 2026:08:19 17:19:56 
+  2026-08-19_1719-tof050c-vl6180x-face-broches-deux-barrettes.jpg     647535  3072x4096   88    19 2026:08:19 17:19:20 
+  2026-08-19_1719-tof050c-vl6180x-face-broches-et-sachet.jpg         775952  3072x4096   88    19 2026:08:19 17:19:00 
+  2026-08-19_1720-bh1750-gy302-face-broches-vcc-gnd-scl-sda-addr.jpg     675966  4096x3072   88    19 2026:08:19 17:20:58 
+  2026-08-19_1720-bh1750-gy302-face-composants-et-sachet.jpg         688734  4096x3072   88    19 2026:08:19 17:20:45 
+  2026-08-19_1720-bh1750-gy302-face-composants-serigraphie-v322.jpg     719054  4096x3072   88    19 2026:08:19 17:20:48 
+  2026-08-19_1720-ina219-cjmcu-verso-caracteristiques.jpg            727471  4096x3072   88    19 2026:08:19 17:20:04 
+  2026-08-20_0038-derivation-premier-pin-deux-fils-soudes.jpg        437948  2600x1733   88    12 2026:08:20 00:38:30 
+  2026-08-20_0058-derivation-quatre-cables-en-cours.jpg              611092  2600x1733   88    12 2026:08:20 00:58:35 
+  2026-08-20_0110-derivation-quatre-cables-finis-gaines.jpg          491132  2600x1733   88    12 2026:08:20 01:10:55 
+  2026-08-20_0116-bh1750-et-ina219-barrettes-SOUDEES.jpg             534977  2600x1733   88    12 2026:08:20 01:16:53 
+  2026-08-20_0116-ina219-et-tof050c-barrettes-SOUDEES.jpg            602035  2600x1733   88    12 2026:08:20 01:16:56 
+  2026-08-20_0951-montage-final-8-devices-grille-six-cases.jpg       622912  2600x1733   88    12 2026:08:20 09:51:16 
+  2026-08-20_0951-montage-final-en-main-les-quatre-modules.jpg       630505  2600x1733   88    12 2026:08:20 09:51:02 
+  ------------------------------------------------------------------------------------------------------------------------
+  TOTAL                                                            15762150   (20 fichiers)
+  la plus grosse : 2026-08-17_0012-breakout-ecarte-barrette-inseree.jpg = 2708418 octets
+  candidates Q>=90 : 0, pesant 0 octets
+
+  ⇒ 11 photos passees de Q96 a Q88, **definition INCHANGEE**, **19 tags EXIF
+    et horodatage CONSERVES** — verifie fichier par fichier (T3).
+  ⇒ 9 photos INTACTES, octet pour octet.
+  ⇒ les 2 photos sans horodatage sont les MEMES qu'a T0 : cette marche
+    ⛔ n'en a efface aucun, et elle DECLARE celui qui manquait deja.
+  ⚠️ « candidates Q>=90 : 0 » est le point d'arret : il ⛔ ne reste AUCUNE
+     photo a recompresser, et une seconde passe serait un NO-OP.
+
+=== (4) LES GATES A L'ARRIVEE — LE COMPTE, ⛔ PAS LA COULEUR ================
+  ⚠️ LA BORNE EST LE **COMPTE DE KO**, ⛔ PAS LA COULEUR : une gate deja
+     rouge absorbe un KO de plus sans changer de couleur (lecon `dn6-1`).
+     ⇒ le compte est releve AUX DEUX CONDITIONS, a T0 et a T7.
+
+  gate                                              T0                T7
+  ---------------------------------------------------------------------------
+  tools/verif_photos_dn63.py   (NEUVE)              ⛔ n'existait pas  rc=0  28 OK, 0 KO
+  tools/verif_photos_dn63.py   32 mutants           ⛔ n'existait pas  rc=1 chacun, BILAN + >= 1 [KO ]
+  tools/verif_licences_dn52.py                      rc=0  34 OK, 0 KO  rc=0  34 OK, 0 KO
+  tools/verif_cablage_dn62.py                       rc=0  37 OK, 0 KO  rc=0  37 OK, 0 KO
+  tools/verif_campagne_dn56.py                      rc=0   8 OK, 0 KO  rc=0   8 OK, 0 KO
+  tools/verif_dossier_dn415.py (cockpit PRESENT)    rc=1  23 OK,10 KO  rc=1  23 OK,10 KO
+  tools/verif_dossier_dn415.py (cockpit ABSENT)     rc=4  25 OK, 0 KO  rc=4  25 OK, 0 KO
+  bash tools/run_gates.sh                           rc=1  31 V/1 R/1 NJ sur 33 (207s)  rc=1  32 V/1 R/1 NJ sur 34 (233s)
+
+  ⇒ AUCUN COMPTE DE KO N'A AUGMENTE, aux deux conditions. La seule gate
+    rouge est la meme qu'a T0, au MEME compte, et ses 10 KO sont TOUS cote
+    cockpit (le passage a `--cockpit /nonexistent` les fait tous disparaitre).
+
+  ⚠️ `verif_campagne_dn56.py` garde le MEME bilan (8 OK, 0 KO) mais sa
+     POPULATION grandit : elle decouvre la gate neuve **A L'AST** (elle
+     declare `--liste-mutants`) et rejoue ses 32 mutants. Elle passe de
+     **7 a 8 cibles** et de **196 a 228 mutants confrontes** — mesure :
+       verif_bom_dn61 31 · verif_cablage_dn62 40 · verif_demarrage_dn443 48
+       verif_dossier_d5_dn45 3 · verif_langues_dn442 25
+       verif_licences_dn52 40 · verif_photos_dn63 32
+       verif_temoin_filtre_dn447 9                       ⇒ 228
+     ⛔ Le BILAN d'une gate ne dit RIEN de la taille de sa population : ici
+       elle a cru de 12 % sans qu'un seul chiffre du bilan bouge.
+  ⚠️ `run_gates.sh` passe de 33 a 34 gates : la decouverte se fait par GLOB
+     `tools/verif_*.py`, la gate neuve entre TOUTE SEULE — ⛔ aucune
+     enumeration a mettre a jour, ⛔ aucun element du harnais reorganise.
+  ⚠️ La cle a colonne fixe reste valide : `verif_campagne_dn56.py` mesure
+     **0 libelle >= 58** dans la gate neuve.
+  ⚠️ LA GATE EST PASSEE DE 22 A 28 CONTROLES ET DE 24 A 32 MUTANTS pendant la
+     revue du 2026-09-07. Chaque ajout ferme un trou MESURE — le detail, avec
+     ce qui restait VERT avant, est dans `T2-campagne-mutants.txt` §5.
+
+=== (5) 🔴 CE QUE LE GARDE-FOU `AC-G1` A REELLEMENT ATTRAPE ================
+  ⛔ CE N'EST PAS UN EXERCICE : IL A ROUGI, ET IL AVAIT RAISON.
+  Premier jet de `docs/cablage/PHOTOS.md` : la glose d'une photo citait
+  L'ANCIENNE ETIQUETTE du capteur de distance (celle que six stories ont
+  portee avant la mesure qui l'a refutee). Cette chaine est une CLE DE MOTIF
+  suivie par `verif_dossier_dn415.py`. Effet mesure :
+
+    cockpit PRESENT :  23 OK, 10 KO  ⇒  23 OK, **11 KO**   (rc=1 ⇒ rc=1)
+    cockpit ABSENT  :  25 OK,  0 KO  ⇒  23 OK,  **3 KO**   (rc=4 ⇒ rc=1)
+
+  🔴 REGARDE LA PREMIERE LIGNE : LE `rc` N'A PAS BOUGE, LA COULEUR NON PLUS.
+     `run_gates.sh` aurait affiche « 1 ROUGE » a l'identique. Une lecture
+     « 0 rouge de plus » aurait laisse passer un KO de plus — c'est
+     exactement l'angle mort que `dn6-1` a paye, et il s'est represente ici.
+     Seule la lecture DU COMPTE l'a vu.
+  ⚠️ La condition « cockpit ABSENT », elle, changeait de rc (4 ⇒ 1) : les
+     DEUX conditions se relisent, ⛔ pas une.
+  ⇒ CORRIGE : la glose nomme le fait sans reposer l'ancienne etiquette. Les
+    deux comptes sont revenus a leur valeur de T0.
+  ⚠️ NUANCE MESUREE, ⛔ pas supposee : le cadrage annoncait ce piege pour le
+     DOSSIER DE STORY du cockpit, ou les occurrences entrent au compteur
+     « occ. d'archive » et ⛔ ne font PAS monter le compte. Ici c'est
+     `docs/` du depot de code — population ARBITREE, ⛔ pas archive. Le meme
+     mot ne coute pas le meme prix selon l'endroit ou il est ecrit.
+
+=== (6) CE QUE LA MARCHE S'ETAIT INTERDIT — RELU ============================
+  git diff --stat hardware/ firmware/ agent/ docs/roadmap.md   ⇒ VIDE
+  git diff --summary docs/cablage/ | grep 'mode change'        ⇒ 0
+  photos renommees / supprimees / redimensionnees              ⇒ 0 / 0 / 0
+  historique reecrit                                           ⇒ ⛔ JAMAIS
