@@ -41,6 +41,8 @@ firmware sait qu'il n'a pas de capteur, il le **dit**, et il **désarme** ce qui
 dit aussi **quelle carte NE PAS prendre** — Waveshare en vend trois aux noms presque identiques, et
 la mauvaise est la moins chère.
 
+🔌 **Où brancher, et comment vérifier que le bus répond : [câbler un DeskNode](docs/cablage.md).** Cette page donne les deux points d'accès au bus I²C **avec leur piège**, et dit **quoi conclure** de ce que le scan répond — un scan à une seule passe fabrique des faux positifs.
+
 ### 🔴 L'ÉCRAN PARLE **ANGLAIS PAR DÉFAUT**, ET LE FRANÇAIS SE PREND AU DOIGT
 
 | | |

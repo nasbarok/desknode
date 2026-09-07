@@ -1,0 +1,100 @@
+==============================================================================
+dn6-2 — T1 : CHAQUE CITATION RESOLUE **PAR LA PAIRE** (fichier, §)
+==============================================================================
+date       : 2026-09-07
+question   : chaque § que `docs/cablage.md` cite existe-t-il DANS LE FICHIER
+             QU'ELLE NOMME, et cette PAIRE est-elle hors de la liste `dn4-34` ?
+methode    : titres de section relus A L'AST DU MARKDOWN dans les 3 fichiers
+             de `hardware/`. ⛔ Aucune lecture a l'impression.
+
+=== (1) 🔴 LE § NU DESIGNE DEUX CHOSES — LA MESURE ==========================
+  Pour chaque numero, la ligne du titre dans CHAQUE fichier de `hardware/` :
+
+  §          …-affichage.md         …-capteurs-i2c.md      …-liaison-pc.md       
+  §13.1      —                      l.175                  l.365                 
+  §13.1 bis  —                      l.207                  —                     
+  §13.2      —                      l.244                  l.408                 
+  §13.3      —                      l.291                  l.422                 
+  §13.4      —                      l.326                  l.451                 
+  §13.4 bis  —                      l.363                  —                     
+  §13.6      —                      l.472                  l.506                 
+  §13.10     —                      l.831                  l.635                 
+  §13.16.8   —                      l.2254                 —                     
+  §13.17.1   —                      l.2885                 —                     
+  §13.17.4   —                      l.3000                 —                     
+  §13.17.9   —                      l.3219                 —                     
+  §16.6      l.2662                 —                      l.1405                
+  §17.2      l.2868                 —                      l.1508                
+  §17.4      l.2970                 —                      l.1546                
+  §17.5      l.2999                 —                      l.1556                
+
+  ⇒ 6 des 12 numeros que cette page cite ont un HOMONYME dans un AUTRE
+    fichier — §13.1 · §13.10 · §13.2 · §13.3 · §13.4 · §13.6 — et les 4 de la liste
+    `dn4-34` en ont un aussi. ⛔ Une citation au numero NU designe DEUX
+    contenus sans rapport. Les 6 autres (§13.1 bis · §13.16.8 · §13.17.1 · §13.17.4 · §13.17.9 · §13.4 bis)
+    n'existent que dans `…-capteurs-i2c.md`, et ca ⛔ ne change RIEN a la
+    regle : c'est la PAIRE qui est ecrite, ⛔ pas le cas favorable.
+
+  🔴 ET LE PIEGE DE SOUS-CHAINE EST VIVANT DANS CETTE PAGE, ⛔ pas theorique :
+    elle cite `…-capteurs-i2c.md` §13.17.4 — qui **CONTIENT** la chaine `17.4`,
+    l'un des quatre § FAUX. Un controle ecrit au `in` nu rougirait dessus. La
+    gate compare des numeros ENTIERS, et le mutant 3 prouve qu'elle sait quand
+    meme rougir sur la VRAIE paire.
+
+=== (2) LES 43 CITATIONS DE LA PAGE, RESOLUES ===============================
+  n   jeton ecrit             ⇒ fichier resolu                      §        ligne
+  5   …-capteurs-i2c.md       ⇒ ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md §13.1    l.175
+  3   …-capteurs-i2c.md       ⇒ ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md §13.1 bis l.207
+  2   …-capteurs-i2c.md       ⇒ ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md §13.10   l.831
+  2   …-capteurs-i2c.md       ⇒ ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md §13.16.8 l.2254
+  1   …-capteurs-i2c.md       ⇒ ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md §13.17   l.2868
+  1   …-capteurs-i2c.md       ⇒ ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md §13.17.1 l.2885
+  1   …-capteurs-i2c.md       ⇒ ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md §13.17.4 l.3000
+  2   …-capteurs-i2c.md       ⇒ ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md §13.17.9 l.3219
+  4   …-capteurs-i2c.md       ⇒ ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md §13.2    l.244
+  3   …-capteurs-i2c.md       ⇒ ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md §13.29.2 l.6631
+  8   …-capteurs-i2c.md       ⇒ ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md §13.3    l.291
+  5   …-capteurs-i2c.md       ⇒ ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md §13.4    l.326
+  4   …-capteurs-i2c.md       ⇒ ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md §13.4 bis l.363
+  2   …-capteurs-i2c.md       ⇒ ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md §13.6    l.472
+  TOTAL : 43 citation(s), 14 paire(s) distincte(s)
+
+=== (3) 🔴 LE CONTROLE `dn4-34`, JOUE **PAR LA PAIRE** ======================
+  La liste, telle que le tracker la porte (relu le 2026-09-07) :
+    · ESP32-S3-Touch-LCD-2.8B-affichage.md  §16.6   (l.2662)
+    · ESP32-S3-Touch-LCD-2.8B-affichage.md  §17.2   (l.2868)
+    · ESP32-S3-Touch-LCD-2.8B-affichage.md  §17.4   (l.2970)
+    · ESP32-S3-Touch-LCD-2.8B-affichage.md  §17.5   (l.2999)
+  porteur VIVANT : dn4-34-le-dossier-materiel-rattrape-ses-tables  ⇒ statut `backlog`
+
+  paires citees par `docs/cablage.md` QUI SONT SUR LA LISTE : 0
+  ⇒ ✅ AUCUNE. ⛔ Aucun ecart a declarer, ⛔ aucun chiffre faux republie.
+
+=== (4) LE TEMOIN NEGATIF — ET IL EST **REJOUE A CHAQUE PASSE** =============
+  🔴 CORRIGE LE 2026-09-07. Il vivait derriere `--temoin-negatif`, que **RIEN**
+     ne rejouait : `run_gates.sh` lance la gate SANS argument, et
+     `verif_campagne_dn56.py` ne decouvre que `--liste-mutants`. La propriete
+     CENTRALE de cette marche n'etait donc gardee que par CETTE CAPTURE — ce
+     que `dn5-6` puis `dn4-47` ont paye deux fois.
+  ⇒ c'est desormais le controle **(c32)** du chemin normal, joue a chaque
+    passe, et il porte les DEUX sens :
+      · la paire `…-liaison-pc.md` §17.2 EXISTE, et elle n'est ⛔ PAS retenue ;
+      · son homonyme `…-affichage.md` §17.2, lui, EST retenu.
+    ⛔ Un seul sens laisserait passer une regle qui ne retient JAMAIS rien.
+  · mutant 32 : reecrit la liste AU NUMERO ⇒ (c32) rougit sur « FAUX POSITIF ».
+  · mutant  3 : pose `…-affichage.md` §17.2 dans la page ⇒ (c4) rougit.
+  ⇒ la gate distingue les deux, ⛔ elle ne les confond pas — c'est la classe de
+    defaut que `NFR6.3`/`FR6.3` a payee.
+
+  ⚠️ `--temoin-negatif` SURVIT, et c'est un AUTRE objet : il rejoue le temoin
+     **de bout en bout sur la page reelle**. Mesure du 2026-09-07 :
+       · sans le drapeau : 43 paire(s), 1 fichier lu,   37 OK, 0 KO, rc=0
+       · avec le drapeau : 44 paire(s), 2 fichiers lus, 37 OK, 0 KO, rc=0
+     ⇒ le 2e fichier est REELLEMENT ouvert : le temoin TRAVERSE la garde.
+
+=== (5) ⛔ CE QUE CE RELEVE NE PROUVE PAS ====================================
+  ⛔ Il ne dit RIEN de la JUSTESSE de ce que ces sections contiennent : il
+     etablit qu'elles EXISTENT dans le fichier nomme et qu'elles ne sont pas
+     sur la liste des sections declarees FAUSSES. La verite d'un brochage se
+     verifie a la serigraphie.
+  ⛔ Il ne couvre que les § CITES : un § faux jamais cite reste faux.

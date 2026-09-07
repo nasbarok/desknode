@@ -91,6 +91,44 @@ l'annonce écrit **680**, ⛔ pas « 6xx ».
 
 **Coût du palier, au 2026-09-06 :** environ **27,32 + 11,74 + 1,93 ≈ 41 €**, hors port, hors câbles.
 
+<!-- ⛔ ANNOTATION, PAS UNE REECRITURE (NFR3) : la ligne « Fil de liaison »
+     ci-dessus reste TELLE QUELLE. Ce qui suit la precise ; le report herite
+     de dn6-1 designait le cablage comme territoire de la marche suivante. -->
+
+### ⚠️ Annotation du 2026-09-07 — la ligne « Fil de liaison », précisée
+
+La ligne **« Fil de liaison — Dupont femelle-femelle, ~10 cm | 4 min. »** ci-dessus reste telle
+quelle ; ce paragraphe la **précise**, il ne la remplace pas.
+
+**Le connecteur visé par CETTE ligne est le header 2×12 au pas de 2,54 mm**, rangée `B` : du Dupont
+femelle-femelle s'y enfiche directement. ⚠️ **C'est une contrainte de TYPE DE CONNECTEUR, ⛔ pas un
+choix d'accès** : la carte offre **deux** points d'accès au bus, tous deux valides, et l'autre — une
+embase **JST 4 broches** — demande un **cordon JST**, ⛔ que du Dupont ne remplace pas. Si tu passes
+par l'embase JST, c'est ce cordon-là qu'il te faut, ⛔ pas cette ligne. Et dans les deux cas se
+tromper de voisin (embase jumelle, ou rangée voisine) envoie l'UART au capteur **sans que rien ne le
+signale**. Le détail, avec la sérigraphie des deux accès et leurs deux pièges :
+[câbler un DeskNode](cablage.md).
+
+⚠️ **Et « 4 min. » est un plancher, ⛔ pas le compte.** Sur un bus I²C, `SDA` et `SCL` sont
+**communs aux deux modules** — un seul bus, ⛔ pas deux — mais **partager un signal ⛔ n'économise
+aucun fil** : chaque module veut sa propre liaison physique. Le compte est posé ici plutôt
+qu'affirmé en l'air :
+
+| Ce qu'il faut | Combien | Pourquoi |
+|---|---|---|
+| liaisons vers le **1er** module | **4** | `3V3`, `GND`, `SDA`, `SCL` |
+| liaisons vers le **2ᵉ** module | **4 aussi** | il lui faut les **mêmes quatre** signaux : ⛔ un module ne se branche pas avec moins parce que le bus est partagé |
+| fil `ADDR` du BH1750 vers la masse | **+1** | c'est une **entrée de sélection d'adresse**, ⛔ pas une broche libre — la laisser en l'air rend l'adresse indéfinie |
+
+⚠️ **Ce qui VARIE, c'est l'ENDROIT d'où partent les quatre fils du 2ᵉ module, ⛔ pas leur nombre** :
+soit de la carte (la rangée `B` porte `3V3` et `G`, et la rangée `A` en porte **deux autres**), soit
+en dérivation depuis le 1er module. Dans les deux cas ce sont **quatre fils de plus**.
+
+⇒ **Neuf fils au total**, et ⛔ ce n'est ni 8 ni 5 : `SDA`/`SCL` sont **communs** au sens
+**électrique** — un bus, ⛔ pas deux — mais ça ⛔ n'économise **aucun fil**. **Prends un lot**, ⛔ ne
+compte pas au fil près : c'est un consommable, et c'est pour ça que la ligne ci-dessus n'a ni prix,
+ni source, ni quantité ferme.
+
 ### ⚠️ Pourquoi une médiane et pas une moyenne
 
 Parce que la moyenne ment, et c'est **mesuré ici**. Sur les 10 annonces BH1750, **une seule à

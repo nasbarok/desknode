@@ -1,0 +1,44 @@
+==============================================================================
+dn6-2 — T0 : L'ETAT DE DEPART
+==============================================================================
+date       : 2026-09-07
+desknode   : 468521d0f3b3ac439c96ac09a415d694b2568996  (HEAD au cadrage, arbre PROPRE)
+⚠️ LES COMPTES D'ARBRE SONT DERIVES DE LA BASELINE PAR `git ls-tree`,
+   ⛔ pas de l'arbre de travail : ils sont RE-DERIVABLES par quiconque.
+   Les trois passes de gates, elles, ont ete jouees AVANT toute edition.
+
+=== (1) IL N'Y AVAIT AUCUNE PAGE DE CABLAGE ==================================
+  fichiers suivis a la baseline   : 655
+  `docs/cablage.md`               : ⛔ ABSENT
+  `tools/verif_cablage_dn62.py`   : ⛔ ABSENT
+  `mesures/dn6-2/`                : 0 fichier(s)
+  gates `tools/verif_*.py`        : 32
+
+=== (2) LA MATIERE A CITER, ET CE QU'ELLE PESE ==============================
+  hardware/ESP32-S3-Touch-LCD-2.8B-affichage.md         10795 lignes
+  hardware/ESP32-S3-Touch-LCD-2.8B-capteurs-i2c.md       6735 lignes
+  hardware/ESP32-S3-Touch-LCD-2.8B-liaison-pc.md         3509 lignes
+  TOTAL hardware/ (3 fichiers)                           1411768 octets
+  docs/cablage/ (photos)                                27860048 octets sur 20 fichier(s)
+  ⛔ CE SONT DEUX OBJETS DIFFERENTS : le dossier de mesure et les photos.
+     La borne des photos appartient a `dn6-3` ; ⛔ cette marche n'y touche pas.
+
+=== (3) 🔴 `TESTED` N'EXISTAIT NULLE PART ====================================
+  occurrences de `TESTED` dans les `.md` suivis a la baseline : 0
+  ⇒ la marche l'INVENTE. Il n'y a ⛔ aucune convention a reprendre, et
+    c'est pour ca que sa forme est GARDEE plutot que promise.
+
+=== (4) LA BORNE DES GATES — MESUREE, ET AVEC SA CONDITION ==================
+  ⚠️ LA COULEUR NE VAUT ⛔ PAS BORNE : une gate DEJA ROUGE absorbe un KO de
+     plus sans changer de couleur (lecon payee par `dn6-1`). ⇒ ce qui fait
+     borne ici, c'est le COMPTE DE KO.
+
+  tools/verif_dossier_dn415.py  (cockpit PRESENT)  rc=1   BILAN : 23 OK, 10 KO
+  tools/verif_dossier_dn415.py  (cockpit ABSENT)   rc=4   BILAN : 25 OK, 0 KO
+  bash tools/run_gates.sh                          rc=1   BILAN : 30 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 32 gates (204s)
+  ⛔ ROUGE(S) au cadrage : tools/verif_dossier_dn415.py (rc=1)
+  ⛔ NON-JOUABLE          : tools/verif_sr03.py (temoin ST non redistribuable)
+
+=== (5) CE QUE LA MARCHE S'INTERDIT ========================================
+  `git diff -- hardware/ firmware/ agent/` doit etre VIDE a la cloture.
+  Etat au cadrage : arbre PROPRE (`git status --short` sans ligne).

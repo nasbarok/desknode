@@ -1,0 +1,112 @@
+==============================================================================
+dn6-2 — T4 : L'ETAT D'ARRIVEE
+==============================================================================
+date       : 2026-09-07  (regenere apres la revue du meme jour)
+
+🔴 LE CHANGEMENT S'ETEND SUR **DEUX DEPOTS**, ET C'EST DECLARE PLUTOT QUE TU :
+   · `~/projects/desknode` — **tout le livrable** : `docs/cablage.md`,
+     `docs/bom.md`, `README.md`, `tools/verif_cablage_dn62.py`, `mesures/dn6-2/`.
+     C'est le seul depot que cette marche MODIFIE.
+   · le **cockpit** (`~/projects/compagnon_project`) — il porte le dossier de
+     story `dn6-2`, le contexte d'epic et `sprint-status-desknode.yaml`, tous
+     lus en **LECTURE SEULE** par cette marche (statuts de `dn4-5`, `dn4-26`,
+     `dn4-34`, `dn4-41`, relus le 2026-09-07). ⚠️ Il est aussi DANS le corpus
+     de `verif_dossier_dn415.py`, la gate deja rouge dont AC-G1 garde le
+     COMPTE — raison de plus pour ⛔ n'y rien ecrire ici.
+
+=== (1) CE QUI EST LIVRE ===================================================
+  docs/cablage.md                       328 lignes     22889 octets  (NEUF)
+  tools/verif_cablage_dn62.py          1254 lignes     65148 octets  (NEUF)
+  README.md                          +2 / -0 vs BASELINE
+  docs/bom.md                        +38 / -0 vs BASELINE
+  🔴 ⛔ AUCUNE ligne PREEXISTANTE n'est supprimee dans l'un ni dans l'autre —
+     mesure `difflib` contre la baseline, ⛔ pas une affirmation. C'est ca,
+     `NFR3` « annoter, ⛔ pas effacer ». ⚠️ `git diff --numstat` rend
+     `-15` sur `docs/bom.md` : ces 15 lignes sont TOUTES dans le bloc que
+     CE MEME changement avait ajoute puis reecrit apres revue. Le chiffre
+     brut est publie ici parce qu'un lecteur qui lance `git diff` le verra.
+  mesures/dn6-2/                     5 capture(s) : T0 · T1 · T2 · T3 · T4
+  ⚠️ INSTRUMENT DES LIGNES : nombre de SAUTS DE LIGNE (`str.count("\n")`,
+     identique a `wc -l`). 🔴 La 1re redaction publiait **305** et **973** —
+     un de trop chacun : elle comptait `split("\n")`, qui garde la chaine
+     VIDE apres le dernier saut. Les octets, eux, etaient justes.
+  ⚠️ Ce compte INCLUT cette capture-ci — un fichier qui compte le dossier
+     qui le contient est un POINT FIXE ; il est ecrit tel quel plutot que
+     publie a 4 comme si la 5e n'existait pas.
+
+=== (2) LE GARDE-FOU AC-G1 — LE **COMPTE DE KO**, ⛔ PAS LA COULEUR ========
+  ⚠️ Une gate DEJA ROUGE absorbe un KO de plus sans changer de couleur.
+     ⇒ ce qui est confronte ici, c'est le COMPTE.
+
+                                              CADRAGE            ARRIVEE
+  verif_dossier_dn415.py (cockpit PRESENT)    23 OK, 10 KO       23 OK, 10 KO
+  verif_dossier_dn415.py (cockpit ABSENT)     25 OK,  0 KO rc=4  25 OK, 0 KO rc=4
+  ⇒ ✅ COMPTE DE KO INCHANGE aux DEUX conditions. ⛔ Aucun KO de plus.
+
+  bash tools/run_gates.sh
+    cadrage : BILAN : 30 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 32 gates
+    arrivee : BILAN : 31 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 33 gates (207s)
+    ⇒ +1 gate (la nouvelle, VERTE, decouverte PAR LE GLOB ⛔ pas enumeree),
+      meme unique ROUGE, au MEME compte de KO, meme NON-JOUABLE.
+
+=== (3) `git diff` SUR LES TERRITOIRES INTERDITS ===========================
+  git diff -- hardware/    : VIDE ✅
+  git diff -- firmware/    : VIDE ✅
+  git diff -- agent/       : VIDE ✅
+  ⇒ ✅ `AC6.2.5` et `NFR6.1` tenus PAR LA MESURE : la page CITE le dossier
+    materiel, ⛔ elle n'en recopie ni n'en reecrit une ligne ; et le firmware
+    n'a pas bouge, donc la semaine de soak ⛔ n'est pas remise a zero.
+
+=== (4) LA GATE NEUVE, ET SES DEUX SENS ====================================
+  python3 tools/verif_cablage_dn62.py                 rc=0   BILAN : 37 OK, 0 KO
+  ... --temoin-negatif                                rc=0   BILAN : 37 OK, 0 KO
+  ... --liste-mutants                                 40 mutants
+  campagne : 40/40 conformes (rc=1 + BILAN + un signalement nomme), 0 ecart
+             entre cible DECLAREE et cible REELLE   ⇒ mesures/dn6-2/T2
+  reciproque : 0 controle garde par zero mutant, 0 cible perimee, cles
+               `CIBLES` ⇄ `MUTANTS` identiques — et elle est DANS la gate
+               (c30)(c31)(c33), ⛔ pas seulement dans la capture.
+  temoin negatif : (c32), un controle du CHEMIN NORMAL — il etait derriere un
+               drapeau que RIEN ne rejouait, donc garde par une capture unique.
+  python3 tools/verif_campagne_dn56.py                rc=0   BILAN : 8 OK, 0 KO
+    ⇒ la nouvelle gate est DECOUVERTE PAR AST et ses 31 mutants REJOUES.
+  python3 tools/verif_licences_dn52.py                rc=0   BILAN : 34 OK, 0 KO
+    ⇒ c'est ELLE qui juge la prose du `.md` neuf : liens, citations,
+      drapeaux, marqueur, comptes. `docs/cablage.md` y tombe automatiquement.
+  python3 tools/verif_bom_dn61.py                     rc=0   BILAN : 24 OK, 0 KO
+  python3 tools/verif_paliers_dn441.py                rc=0   BILAN : 42 OK, 0 KO
+    ⇒ la gate de `dn4-41` reste VERTE : le README a recu UNE LIGNE, ⛔ aucune
+      reorganisation, et ⛔ on n'a PAS touche a son instrument (`NFR6.5`).
+
+=== (5) 🔴 CE QUE LA MARCHE **NE FERME PAS**, ET QUI EST ECRIT DANS LA PAGE =
+  · le demarrage a froid **SANS AUCUN CAPTEUR** n'a JAMAIS ete exerce
+    (`dn4-41`, `in-progress` au 2026-09-07 — il n'existe qu'UNE carte) ;
+  · le fonctionnement continu n'a JAMAIS tenu plus de **60 secondes**
+    (`dn4-5`, `in-progress` au 2026-09-07 — le lanceur ne sait pas l'armer) ;
+  · le cycle degrade a froid (~1 sur 6) est **NON OBSERVE sur 6 cycles**,
+    ⛔ JAMAIS « prouve », et sa cause reste ENTIERE.
+  ⇒ les trois sont ecrits dans les blocs `TESTED` de `docs/cablage.md`.
+
+  ⚠️ **CE QUE (c24) MESURE EXACTEMENT, ⛔ ET PAS PLUS.** Ce paragraphe affirmait
+     que (c24) « rougit si l'un d'eux disparait » : c'etait FAUX. (c24) ⛔ ne
+     connait AUCUN de ces trois items. Il exige de la cellule « ce qui n'a
+     JAMAIS ete essaye » de chaque bloc **deux** choses :
+       · au moins 60 caracteres — ⛔ une cellule vide ou decorative ne passe pas ;
+       · une **negation de test** (`jamais`, `n'a pas`, `non observe`,
+         `pas exerce/essaye/mesure/tenu/reproduit`).
+     🔴 La 2e condition est NEE DE CETTE REVUE : mesure du 2026-09-07 —
+     remplacer les DEUX cellules par les 65 caracteres de « Rien de
+     particulier a signaler, tout est nominal. Aucune reserve. » sortait
+     `31 OK, 0 KO`. Le volume seul ⛔ ne fait pas un trou declare. Le mutant
+     40 replante exactement cette phrase.
+  ⛔ **CE QUI RESTE HORS GARDE, ET C'EST ECRIT** : remplacer un trou nomme par
+     un AUTRE trou nomme passerait. Aucune gate de forme ne peut juger qu'un
+     trou est LE BON — seule une relecture le peut.
+
+=== (6) ⛔ CE QUE CET ETAT D'ARRIVEE NE PROUVE PAS ==========================
+  ⛔ Que le cablage publie soit JUSTE : aucune carte n'a ete recablee pour
+     cette marche. La page CITE des mesures existantes, et sa gate garde que
+     chaque valeur porte sa citation — ⛔ pas que la citation dise vrai.
+  ⛔ Qu'un inconnu y arrive : personne d'autre que l'owner n'a suivi cette
+     page de bout en bout. C'est le seul test qui trancherait, et il
+     ⛔ n'a PAS ete fait.

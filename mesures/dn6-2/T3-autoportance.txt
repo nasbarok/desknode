@@ -1,0 +1,93 @@
+==============================================================================
+dn6-2 — T3 : L'AUTOPORTANCE — LA **DEFINITION**, ⛔ PAS L'OCCURRENCE
+==============================================================================
+date       : 2026-09-07  (regenere apres la revue du meme jour)
+question   : toute notion que `docs/cablage.md` DEMANDE AU LECTEUR DE NOMMER
+             est-elle **DEFINIE** dans le meme clone ?
+
+=== (0) 🔴 LA REGLE DE COMPTAGE, ENONCEE — c'est ce qui rend un chiffre ====
+        RE-DERIVABLE, et T3 ne l'ecrivait pas.
+
+  POPULATION      : les DEUX colonnes sont comptees sur **les 3 memes
+                    fichiers de prose** — README.md · docs/bom.md ·
+                    docs/cablage.md. 🔴 La 1re redaction divisait des
+                    occurrences comptees sur TOUT le clone par des sites
+                    cherches dans ces 3 fichiers : **deux populations
+                    differentes**, donc un rapport qui ne comparait rien.
+  OCCURRENCE      : `(?<![\w-])<notion>(?![\w-])`, **insensible a la casse**,
+                    via `re.findall` — donc les chevauchements ⛔ ne sont pas
+                    comptes. C'est la regle EXACTE que la gate emploie.
+  DEFINITION      : une LIGNE ou la notion est suivie d'une GLOSE — un
+                    ouvreur (`—`, `–`, `:`, `(` ou la cellule suivante d'un
+                    tableau, un `»` etant tolere entre les deux) puis au
+                    moins 15 caracteres. C'est `glose()` dans la gate.
+  ⚠️ Le 3e chiffre de l'ancien tableau (« 248 ») etait celui du CLONE ENTIER
+     et n'etait pas re-derivable : bornes de mot + insensible a la casse en
+     rendent **249**. Il est retire plutot que republie faux.
+
+🔴 CE COMPTAGE CORRIGE LE DEFAUT QUE `mesures/dn6-1/T3` A DECLARE SUR
+   LUI-MEME : *« il compte des OCCURRENCES, ⛔ pas des DEFINITIONS : un mot
+   present dix fois sans jamais etre explique sortirait a 10 »*.
+
+⚠️ ET LA LISTE DES NOTIONS N'EST ⛔ PLUS CUREE A LA MAIN — c'etait *« la
+   seule etape non mecanisable »* de `dn6-1`. Elle est DERIVEE de la page :
+     · tout `palier « X »` que la page ecrit ;
+     · toute cellule `Composant` de sa table d'adresses.
+   ⇒ une notion ajoutee a la page entre AUTOMATIQUEMENT dans le comptage,
+     et (c29) la refuse si rien ne la definit. C'est le mutant 28.
+
+=== (1) LES DEUX COLONNES, SUR LA **MEME** POPULATION (3 fichiers) =========
+  notion                  mentions   dont sites de   ou vivent les
+                          (3 fich.)  DEFINITION      definitions
+  BH1750                     38           7        README.md · docs/cablage.md
+  BME680                     36           9        README.md · docs/cablage.md
+  DeskNode                   65          12        README.md · docs/bom.md · docs/cablage.md
+  DeskNode + Ambiance         6           4        README.md · docs/bom.md · docs/cablage.md
+  GT911                      11           3        README.md · docs/cablage.md
+  PCF85063A                   4           1        docs/cablage.md
+  QMI8658                     3           2        README.md · docs/cablage.md
+  TCA9554                     4           3        README.md · docs/cablage.md
+
+  ⇒ CE QUE LA 2e COLONNE MESURE : le nombre de lignes ou la notion est
+    **expliquee**. ⇒ CE QUE LA 1re MESURE : le nombre de fois ou elle est
+    **prononcee**. L'ecart entre les deux est tout le sujet d'AC-G3 :
+    · « DeskNode » : prononcee 65 fois, expliquee 12 fois ⇒ 53 mention(s) qui
+      ⛔ n'expliquent rien.
+  ⚠️ Et ⛔ AUCUN de ces deux chiffres n'est un critere : une notion prononcee
+     cent fois et expliquee UNE fois est PARFAITEMENT autoportante. Le seul
+     verdict est **la 2e colonne > 0**. La 1re est publiee pour montrer de
+     combien un comptage d'occurrences se serait trompe de grandeur.
+
+=== (2) LE TEMOIN NEGATIF ==================================================
+  « DeskNode Turbo » : 0 mention(s), 0 site(s) de definition
+  ⇒ le compteur SAIT dire « nulle part ». ⛔ Sans lui, un instrument MORT
+    rendrait 0 partout et serait indiscernable d'un instrument sain.
+  ⛔ Il n'entre PAS dans le verdict — il est le CONTROLE de l'instrument.
+  ⚠️ Et il est DANS la gate, ⛔ pas seulement ici : (c29) exige les DEUX
+     conditions — toute notion definie **et** le temoin a 0.
+
+=== (3) 🔴 L'EXIGENCE DE GLOSE EST ELLE-MEME GARDEE ========================
+  Sans mutant, (c29) pouvait RETOMBER au comptage d'occurrences sans que
+  rien ne rougisse : neutraliser le seuil laissait tout vert, et le mutant
+  28 continuait de rougir par l'AUTRE branche (le temoin), ⛔ pas par celle
+  qu'il pretend viser. ⇒ **mutant 39** raccourcit une glose REELLE sous le
+  seuil. Mesure du 2026-09-07 :
+    · garde intacte, mutant 39 ⇒ rc=1, `⛔ SANS DEFINITION : PCF85063A`
+    · seuil neutralise, mutant 39 ⇒ rc=0 — et la campagne accuse alors la
+      gate, ce qui est le signal attendu.
+
+=== (4) VERDICT ============================================================
+  notions derivees de la page : 8
+  sans AUCUN site de definition : ⛔ AUCUNE
+  ⇒ ✅ (c29) est VERT sur la page livree.
+
+=== (5) ⛔ CE QUE CE COMPTAGE NE PROUVE PAS =================================
+  ⛔ Que la glose soit JUSTE : il mesure qu'une explication SUIT le terme,
+     ⛔ pas qu'elle dise vrai.
+  ⛔ Qu'une notion definie DANS `docs/cablage.md` elle-meme soit recoupable
+     ailleurs : la page fait partie du clone, donc elle se suffit — mais un
+     lecteur n'a alors PAS de second endroit ou verifier. C'est ecrit.
+  ⛔ Il ne regarde que 3 fichiers de PROSE : ⛔ ni le reste du clone, ⛔ ni le
+     code, ⛔ ni les photos. C'est la population que (c29) emploie, et la
+     restreindre est un CHOIX — un lecteur qui n'a que ces 3 pages sous les
+     yeux doit s'en sortir.

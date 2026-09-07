@@ -1,0 +1,134 @@
+==============================================================================
+dn6-2 — T2 : LA CAMPAGNE DE MUTANTS, **ET SA RECIPROQUE**
+==============================================================================
+date       : 2026-09-07  (regenere apres la revue du meme jour)
+gate       : tools/verif_cablage_dn62.py
+methode    : chaque mutant est joue, et ses lignes de signalement de defaut
+             sont relues **A COLONNE FIXE** — 8 caracteres de prefixe, puis
+             58 de libelle. ⛔ Pas de decoupage a l'espace : un libelle en
+             contient, et un `split()` attribuerait le mauvais controle.
+             ⚠️ Le jeton de ces lignes n'est PAS ecrit ici : ce depot a deja
+             paye « citer le jeton, c'est poser le fait ».
+
+⛔ CE QUE « N MUTANTS, N VUS ROUGIR » PROUVE, ET CE QU'IL NE PROUVE PAS :
+   il prouve `mutant ⇒ rouge`. ⛔ Il ne prouve PAS `controle ⇒ couvert`.
+   Les deux sens sont mesures ci-dessous, SEPAREMENT.
+
+=== (1) LA PASSE SAINE =====================================================
+  python3 tools/verif_cablage_dn62.py                rc=0   BILAN : 37 OK, 0 KO
+  ... --temoin-negatif                               rc=0   BILAN : 37 OK, 0 KO
+  ⚠️ LE TEMOIN NEGATIF EST DESORMAIS **(c32)**, un controle du chemin
+     normal : il est joue par la passe ci-dessus, donc par `run_gates.sh`.
+     Le drapeau `--temoin-negatif` reste, et il rejoue en PLUS le temoin de
+     bout en bout sur la page reelle. ⛔ Il n'est PAS dans `MUTANTS` : le
+     contrat de la campagne exige de chaque mutant qu'il ROUGISSE.
+
+=== (2) SENS 1 — `mutant ⇒ rouge` ==========================================
+  contrat de `verif_campagne_dn56.py` : rc=1 **ET** une ligne `BILAN` imprimee
+  par la gate elle-meme **ET** au moins un signalement de defaut nomme.
+
+   n  rc  BILAN  KO   controle(s) REELLEMENT rouge(s)   cible DECLAREE
+   1  1   oui    1    c2                               c2
+   2  1   oui    1    c3                               c3
+   3  1   oui    1    c4                               c4
+   4  1   oui    1    c5                               c5
+   5  1   oui    1    c6                               c6
+   6  1   oui    1    c7                               c7
+   7  1   oui    1    c8                               c8
+   8  1   oui    1    c9                               c9
+   9  1   oui    2    c10,c11                          c10,c11
+  10  1   oui    1    c11                              c11
+  11  1   oui    1    c12                              c12
+  12  1   oui    1    c13                              c13
+  13  1   oui    1    c14                              c14
+  14  1   oui    1    c15                              c15
+  15  1   oui    1    c16                              c16
+  16  1   oui    1    c17                              c17
+  17  1   oui    1    c18                              c18
+  18  1   oui    1    c19                              c19
+  19  1   oui    1    c20                              c20
+  20  1   oui    1    c21                              c21
+  21  1   oui    1    c22                              c22
+  22  1   oui    1    c23                              c23
+  23  1   oui    1    c24                              c24
+  24  1   oui    1    c25                              c25
+  25  1   oui    1    c26                              c26
+  26  1   oui    1    c27                              c27
+  27  1   oui    1    c28                              c28
+  28  1   oui    1    c29                              c29
+  29  1   oui    1    c1                               c1
+  30  1   oui    1    c30                              c30
+  31  1   oui    1    c31                              c31
+  32  1   oui    1    c32                              c32
+  33  1   oui    1    c33                              c33
+  34  1   oui    1    c34                              c34
+  35  1   oui    1    c35                              c35
+  36  1   oui    1    c36                              c36
+  37  1   oui    3    c37,c18,c19                      c37,c18,c19
+  38  1   oui    1    z                                z
+  39  1   oui    1    c29                              c29
+  40  1   oui    1    c24                              c24
+
+  ⇒ 40 mutants joues, 40 conforme(s) au contrat, 0 non conforme(s).
+  ⇒ 0 ecart(s) entre la cible DECLAREE et la cible REELLE.
+
+  ⚠️ DEUX CIBLES MULTIPLES, ET ELLES SONT DECLAREES, ⛔ pas subies :
+     · mutant  9 ⇒ (c10)+(c11) : (c11) cherche une date DANS les fenetres
+       de (c10) ; retirer l'avertissement vide sa population. Le mutant 10
+       isole (c11) seul, sur un avertissement PRESENT mais NON DATE.
+     · mutant 37 ⇒ (c37)+(c18)+(c19) : les deux dernieres tirent leur
+       matiere de la section d'ancrage. Elles le DISENT desormais au lieu
+       de parler de `0x76` — c'etait un vrai rouge pour un FAUX motif.
+
+  🔴 ET DEUX MUTANTS ONT VISE **A COTE** SANS ETRE DES NO-OP (2026-09-07) :
+     · le 20 renommait « la 1re occurrence » d'un nom de palier — la page en
+       a gagne une dans sa PROSE, et il laissait le bloc `TESTED` intact ;
+     · le 30 vidait la cible du mutant 28, mais (c29) a gagne un SECOND
+       gardien (le 39), donc (c30) restait vert.
+     Les deux avaient un EFFET — la garde du no-op se taisait, a raison. Ils
+     visent desormais le TITRE DU BLOC et une victime DERIVEE.
+     ⇒ ⛔ « le mutant a un effet » ne veut pas dire « il vise son controle ».
+       C'est la colonne de droite de la table ci-dessus qui le dit.
+
+=== (3) SENS 2 — `controle ⇒ couvert`, LE SENS QUI MANQUAIT ================
+  🔴 RISQUE HERITE DE `verif_bom_dn61.py` : elle tient son compte de controles
+     A LA MAIN et mesure la reciproque A LA MAIN dans sa capture. Qui ajoute
+     un controle sans mutant ⛔ ne recoit AUCUN signal.
+  ⇒ ici la reciproque est **DANS LA GATE** — (c30), (c31) et (c33) — donc
+    REJOUEE a chaque passe, ⛔ pas relevee une fois.
+
+  controles emis par la passe saine        : 37
+    c1,c2,c3,c4,c32,c5,c6,c7,c8,c9,c10,c11,c12,c13,c34,c35,c36,c37,c14,c15,c16,c17,c18,c19,c20,c21,c22,c23,c24,c25,c26,c27,c28,c29,c30,c33,c31
+  + `z`, `c30`, `c31`, `c33` — nommes dans `reels` parce qu'ils ⛔ ne sont
+    PAS dans `ids_emis` au moment ou (c30) compte : (z) n'est emis que dans
+    `bilan()`, et seulement EN CAS DE DEFAUT. Sans ce nommage, (z) etait
+    atteint par AUCUN chemin — le supprimer laissait TOUT vert (mesure du
+    2026-09-07). Le mutant 38 le fait desormais rougir.
+  cibles declarees par les 40 mutants       : 38
+  controles gardes par ZERO mutant         : AUCUN
+  cibles PERIMEES (mutant ⇒ controle mort) : AUCUNE
+  cles `CIBLES` ⇄ `MUTANTS`                : identiques (40)
+
+  ⚠️ ET LA RECIPROQUE EST ELLE-MEME GARDEE, DANS LES TROIS SENS :
+     · mutant 30 vide le SEUL gardien d'un controle  ⇒ (c30) rougit
+     · mutant 31 declare une cible inexistante       ⇒ (c31) rougit
+     · mutant 33 declare une cible pour un mutant
+       QUI N'EXISTE PAS                              ⇒ (c33) rougit
+     ⛔ Sans eux, la reciproque serait un controle que rien ne falsifie.
+
+=== (4) 🔴 LA GARDE DU NO-OP SORT EN `rc=3`, ⛔ PLUS EN `rc=1` ==============
+  Un mutant dont l'ancre litterale a bouge est un mutant PERIME. En `rc=1`
+  + BILAN + un signalement, il remplissait MOT POUR MOT le contrat que
+  `verif_campagne_dn56.py` appelle « sain » : il etait compte CONFORME
+  pendant que le controle qu'il gardait perdait son seul mutant EN SILENCE.
+  MESURE : re-emballer une phrase de la page sans changer un mot rend le
+  mutant 12 no-op ⇒ avant, `rc=1` « conforme » ; apres, **`rc=3`**, le code
+  du lanceur pour « mutant perime », qui ⛔ ne satisfait plus le contrat.
+  ⛔ `verif_campagne_dn56.py` n'est PAS touchee : l'hygiene du harnais est
+     hors perimetre et n'a aucun porteur vivant.
+
+=== (5) ⛔ CE QUE CETTE CAMPAGNE NE PROUVE PAS ==============================
+  ⛔ Que la page dise VRAI. Elle prouve que la FORME est gardee.
+  ⛔ Que le mutant soit le SEUL chemin vers son controle.
+  ⛔ Que (c30) attrape un controle ajoute AVEC une cible fausse : c'est
+     (c31) qui le fait, et (c33) pour un gardien qui n'existe pas.
