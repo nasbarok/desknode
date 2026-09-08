@@ -71,8 +71,10 @@ retour est nomme : l'agent en executable autonome, en V0.2.
 ⚠️ L'EN-TETE CI-DESSUS DIT « IL NE FLASHE RIEN ». C'ETAIT VRAI DE `dn7-1`, ET
    C'EST ANNOTE PLUS BAS, ⛔ PAS EFFACE (`NFR3`).
 
-1. **La charge est SERVIE, par la liste blanche.** Cinq adresses de plus sous
-   `/charge/` : le manifeste et les QUATRE images. ⛔ Toujours pas de serveur
+1. **La charge est SERVIE, par la liste blanche.** SIX adresses de plus sous
+   `/charge/` : le manifeste, les QUATRE images, et `PROVENANCE.md` — vers
+   lequel la page pointe DEUX FOIS, parce que c'est lui qui nomme la source de
+   la revision exacte (obligation GPL). ⛔ Toujours pas de serveur
    d'arborescence — chaque chemin reste une entree ECRITE de `SERVIS`.
 2. **Le port se DECOUVRE.** ⛔ Plus de `COM3` par defaut : on demande a Windows
    quel `COM<n>` porte `VID_303A&PID_1001`, interface `MI_00`. ⛔ Aucune
@@ -409,21 +411,41 @@ def decouvrir_port():
         "Where-Object { $_.InstanceId -like 'USB\\%s&%s\\*' }; "
         "foreach ($x in $d) { 'DN|' + $x.FriendlyName + '|' + $x.InstanceId }"
         % (VID_PID, INTERFACE_COM)], timeout=45)
-    if rc is None or rc != 0 or not sortie:
-        # ⛔ « on ne sait pas » ⛔ n'est PAS « il n'y a pas de carte » : sur une
-        #    machine sans PnP (donc hors Windows), la question n'a pas de
-        #    reponse, et publier une ignorance comme un constat est la faute que
-        #    `tache_presente()` se garde deja de commettre.
+    # 🔴 DEUX MOTIFS DISTINCTS, ET LES CONFONDRE EST UNE FAUTE DANS LES DEUX
+    #    SENS. « la question n'a pas de reponse ici » (pas de PnP, donc hors
+    #    Windows) ⛔ n'est PAS « il n'y a pas de carte branchee ». La 1re
+    #    redaction rangeait `rc == 0` avec une sortie VIDE — c'est-a-dire une
+    #    interrogation qui a REUSSI et n'a rien trouve — sous le motif reserve a
+    #    l'ignorance : sur un Windows sans carte, elle publiait une ignorance a
+    #    la place d'un constat, et reciproquement.
+    if rc is None:
         return None, None, "non interrogeable ici"
-    for ligne in sortie.splitlines():
+    if rc != 0:
+        return None, None, ("l'interrogation du gestionnaire de peripheriques a "
+                            "rendu %d" % rc)
+    trouves = []
+    for ligne in (sortie or "").splitlines():
         ligne = ligne.strip()
         if not ligne.startswith("DN|"):
             continue
         _t, nom, instance = (ligne.split("|", 2) + ["", ""])[:3]
         m = RE_COM.search(nom or "")
         if m and RE_PORT_VALIDE.match(m.group(1)):
-            return m.group(1), nom.strip(), instance.strip()
-    return None, None, "aucun %s&%s enumere" % (VID_PID, INTERFACE_COM)
+            trouves.append((m.group(1), nom.strip(), instance.strip()))
+    if not trouves:
+        return None, None, "aucun %s&%s enumere" % (VID_PID, INTERFACE_COM)
+    # 🔴 DEUX CARTES DE MEME `VID:PID` — HYPOTHESE LAISSEE OUVERTE PAR L'EPIC,
+    #    ET ⛔ ON NE LA FERME PAS EN CHOISISSANT. Rendre la premiere ligne
+    #    ferait jouer `stop` sur une carte ARBITRAIRE et afficherait un port qui
+    #    n'est peut-etre pas celui qu'on flashe. Le flash, lui, est sauve : le
+    #    navigateur fait choisir le port AU DOIGT. ⇒ on REFUSE de trancher, et
+    #    on le DIT — la page n'a alors aucun port a liberer, et elle l'affiche.
+    if len(trouves) > 1:
+        return None, None, ("%d cartes %s enumerees (%s) — ⛔ cette page REFUSE "
+                            "de choisir : debrancher celle qu'on ne flashe pas"
+                            % (len(trouves), VID_PID,
+                               " et ".join(x[0] for x in trouves)))
+    return trouves[0]
 
 
 def _lire_octets(chemin):
@@ -463,7 +485,13 @@ def etat_charge():
             b = (man.get("builds") or [{}])[0]
             version = man.get("version")
             offsets = [(p.get("path"), p.get("offset")) for p in b.get("parts", [])]
-        except (OSError, ValueError, KeyError, IndexError, TypeError) as exc:
+        # ⚠️ `AttributeError` EST DANS LA LISTE, ET C'EST UN CAS REEL : un
+        #    `manifest.json` qui porte un TABLEAU ou un SCALAIRE (JSON valide)
+        #    fait lever `.get` sur autre chose qu'un dictionnaire. Sans elle,
+        #    l'exception ECHAPPAIT a cette fonction : `/api/etat` rendait 500 et
+        #    le pre-vol sortait en trace nue AU LIEU de rendre `5`.
+        except (OSError, ValueError, KeyError, IndexError, TypeError,
+                AttributeError) as exc:
             ecart_manifeste = "%s : %s" % (type(exc).__name__, str(exc)[:80])
     # ── LA BANDE-ANNONCE DE L'ASSET ───────────────────────────────────────
     asset = "non verifiable"
@@ -475,7 +503,16 @@ def etat_charge():
             asset = "⛔ MAGIE ABSENTE (attendu %s)" % ASSET_MAGIE.decode("ascii")
         else:
             longueur, crc = struct.unpack("<II", octets[-8:])
-            if longueur + ASSET_QUEUE != len(octets):
+            # ⛔ UNE CHARGE UTILE DE LONGUEUR NULLE N'EST PAS « INTACTE ».
+            #    Une queue bien formee annoncant `0` passait les trois tests
+            #    suivants — le CRC32 de rien VAUT quelque chose — et l'asset
+            #    VIDE partait a la carte, qui demarrait sur une dalle BLANCHE :
+            #    exactement l'ecran blanc silencieux que la queue existe pour
+            #    refuser.
+            if longueur == 0:
+                asset = ("⛔ CHARGE UTILE VIDE : la queue annonce 0 octet — "
+                         "l'asset ne peut pas etre intact")
+            elif longueur + ASSET_QUEUE != len(octets):
                 asset = ("⛔ LONGUEUR INCOHERENTE : la queue annonce %d + %d, le "
                          "fichier en fait %d" % (longueur, ASSET_QUEUE, len(octets)))
             elif (zlib.crc32(octets[:longueur]) & 0xFFFFFFFF) != crc:
@@ -688,7 +725,7 @@ SERVIS = {
     "/LICENSING.md": (os.path.join(RACINE, "LICENSING.md"),
                       "text/plain; charset=utf-8"),
     # ── LA CHARGE, ADRESSE PAR ADRESSE ────────────────────────────────────
-    # 🔴 CINQ ENTREES ECRITES, ⛔ PAS UN PREFIXE OUVERT. La tentation etait de
+    # 🔴 SIX ENTREES ECRITES, ⛔ PAS UN PREFIXE OUVERT. La tentation etait de
     #    router `/charge/<n'importe quoi>` vers `CHARGE/<n'importe quoi>` : ce
     #    serait un serveur d'arborescence deguise, et `..` en ferait une porte
     #    sur tout le depot. Le controle qui garde cette liste blanche existe

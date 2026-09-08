@@ -189,14 +189,22 @@
       encadré <b>remplace</b> le bouton, plutôt que de vous laisser deviner.
     </div>
 
-    <!-- (c) LE PORT EST TENU PAR L'AGENT -------------------------------- -->
+    <!-- LA CHARGE LOCALE EST INUTILISABLE — ⛔ CE N'EST PAS LE CDN ------- -->
+    <div id="etat-charge" hidden class="alerte" style="margin-top:14px"></div>
+
+    <!-- (c) L'AGENT EST POSÉ SUR CETTE MACHINE ---------------------------- -->
     <div id="etat-port-tenu" hidden class="avert" style="margin-top:14px">
-      <b>L'agent DeskNode tient déjà le port de la carte.</b><br>
-      C'est le cas <b>normal du deuxième lancement</b>&nbsp;: mettre DeskNode à jour, c'est
-      le réinstaller, et l'agent tourne déjà. Si vous flashez maintenant, le navigateur
-      sortira sur <code>Failed to execute 'open' on 'SerialPort'</code> — un message qui
-      n'explique rien. <b>Le bouton ci-dessous libère le port</b> en appelant le verbe
-      <code>stop</code> que le dépôt livre déjà, <b>sur le port réellement découvert</b>.
+      <b>L'agent DeskNode est installé sur cette machine — il tient le port quand il
+      tourne.</b><br>
+      ⚠️ Ce qui est <b>mesuré</b> ici, c'est que la <b>tâche planifiée existe</b>&nbsp;:
+      cette page interroge le planificateur de tâches, elle <b>n'ouvre aucun port</b> et
+      ne peut donc pas affirmer que l'agent tourne <i>en ce moment</i>. C'est le cas
+      <b>normal du deuxième lancement</b>&nbsp;: mettre DeskNode à jour, c'est le
+      réinstaller, et l'agent tourne déjà. Si le port est tenu et que vous flashez, le
+      navigateur sortira sur <code>Failed to execute 'open' on 'SerialPort'</code> — un
+      message qui n'explique rien. <b>Le bouton ci-dessous libère le port</b> en appelant
+      le verbe <code>stop</code> que le dépôt livre déjà, <b>sur le port réellement
+      découvert</b>&nbsp;; si rien ne le tenait, il vous le dira aussi.
     </div>
     <button id="b-liberer" type="button">Libérer le port</button>
     <p class="discret" style="margin:8px 0 14px">
@@ -497,9 +505,14 @@ function rafraichirEtat() {
    fait » est exactement la faute que le verbe `retirer` de l'outil se garde
    lui-meme de commettre (il redemande la tache au systeme). */
 function jouer(verbe, bouton) {
-  var anciens = [bStop.disabled, bRetirer.disabled];
-  bStop.disabled = true;
-  bRetirer.disabled = true;
+  /* 🔴 LES **TROIS** BOUTONS, ⛔ PAS DEUX. « Libérer le port » poste le MEME
+     `stop` que « Arrêter l'agent » : le laisser cliquable pendant qu'un appel
+     est en vol permettait DEUX exécutions concurrentes du verbe sur le MEME
+     port — deux drapeaux, deux ré-ouvertures, et un verdict qui ne dit plus
+     quel tir il décrit. */
+  var boutons = [bStop, bRetirer, bLiberer];
+  var anciens = boutons.map(function (b) { return b ? b.disabled : true; });
+  boutons.forEach(function (b) { if (b) { b.disabled = true; } });
   var libelle = bouton.textContent;
   bouton.textContent = "en cours…";
   ecrire("⏳ " + verbe + " en cours — la sortie complète arrive telle quelle.");
@@ -517,14 +530,18 @@ function jouer(verbe, bouton) {
             + "\n\ncode de retour : " + d.rc + "  — " + qui + "\n" + d.verdict;
       ecrire(t);
       bouton.textContent = libelle;
-      return rafraichirEtat();
+      /* 🔴 ET LES CHAMPS DU FLASH SONT REPOSES, ⛔ pas seulement ceux de
+         l'agent. Sans ce maillon, la page continuait d'affirmer « l'agent
+         tient déjà le port » APRÈS un « Libérer le port » réussi, jusqu'au
+         rechargement — c'est-à-dire de publier un état qu'elle venait
+         elle-même de rendre faux. */
+      return rafraichirEtat().then(appliquerFlash);
     })
     .catch(function (err) {
       ecrire("⛔ l'appel a échoué avant d'atteindre l'outil : " + err
              + "\n⛔ ce n'est PAS un succès.");
       bouton.textContent = libelle;
-      bStop.disabled = anciens[0];
-      bRetirer.disabled = anciens[1];
+      boutons.forEach(function (b, i) { if (b) { b.disabled = anciens[i]; } });
     });
 }
 
@@ -556,6 +573,38 @@ function afficher(id, visible) {
    securite ne leve pas toujours `error`. */
 var moduleFlash = document.getElementById("dn-module-flash");
 var moduleAnnonce = false;
+
+/* 🔴 LE BLOC D'INSTALLATION EST MASQUE **AU DEPART**, ET REVELE SEULEMENT
+   QUAND L'ETAT DE LA MACHINE EST CONNU — ⛔ ce n'est pas de la coquetterie.
+   `AC7.2.8` promet que l'avertissement hors Windows arrive **AVANT** le flash ;
+   l'ordre dans le document ne suffit pas, parce que cet avertissement attend
+   `api/etat`, qui coûte une énumération de périphériques ET un CRC32 sur
+   614 Kio. Un clic rapide flashait AVANT que l'avertissement n'arrive. ⇒ on
+   n'offre le bouton qu'une fois la réponse là. */
+if (blocInstaller) { blocInstaller.hidden = true; }
+var chargeRefusee = false;
+
+/* Le refus qui vient de la CHARGE (locale), ⛔ pas du CDN. */
+function chargeInutilisable(motif) {
+  chargeRefusee = true;
+  if (blocInstaller) { blocInstaller.hidden = true; }
+  var e = document.getElementById("etat-charge");
+  if (!e) { return; }
+  e.innerHTML = "<b>Il n'y a rien à poser sur la carte.</b><br>"
+    + "Le firmware que cette page doit écrire est <b>absent ou abîmé sur cette "
+    + "machine</b> — ⛔ ce n'est pas un problème de réseau, et ⛔ rien ne sera "
+    + "installé. <b>Le geste</b>&nbsp;: lire la fenêtre du script, qui nomme ce "
+    + "qui manque, puis récupérer le dépôt <b>entier</b> — le dossier "
+    + "<code>installeur/charge/</code> en fait partie. Motif mesuré&nbsp;: "
+    + motif;
+  e.hidden = false;
+}
+
+function reveler() {
+  if (blocInstaller && !moduleAnnonce && !chargeRefusee) {
+    blocInstaller.hidden = false;
+  }
+}
 
 function moduleAbsent(motif) {
   if (moduleAnnonce) { return; }
@@ -590,7 +639,18 @@ window.setTimeout(function () {
    ⚠️ `<esp-web-install-button>` le demande deja pour son propre compte. On le
    demande AUSSI, et ⛔ ce n'est pas une duplication inutile : c'est ce qui
    permet a la page d'AFFICHER ce qu'elle va poser AVANT que quiconque clique,
-   et c'est une requete REELLE au serveur local — observable, ⛔ pas declaree. */
+   et c'est une requete REELLE au serveur local — observable, ⛔ pas declaree.
+   🔴 ANNOTE LE 2026-09-08 — ⛔ LES LIGNES CI-DESSUS NE SONT PAS EFFACEES
+      (`NFR3`), MAIS LEUR PREMIERE PHRASE EST **REFUTEE PAR LA MESURE**, ET
+      C'ETAIT LA JUSTIFICATION MEME DU MOT « AUSSI ». Compte releve a la
+      poignee du serveur pendant un chargement complet de la page
+      (`mesures/dn7-2/T5-la-charge-servie-octet-pour-octet.txt`) :
+      `charge/manifest.json` est demande **UNE SEULE FOIS**, par ce script-ci.
+      ESP Web Tools ne le lit **qu'au CLIC** sur le bouton d'installation.
+      ⇒ ⛔ IL N'Y A DONC AUCUNE DUPLICATION : cette requete est la SEULE, et
+        c'est elle qui rend la moitie « le manifeste est reellement demande au
+        serveur » prouvable SANS main. La conclusion tenait ; son motif etait
+        faux. */
 function afficherManifeste() {
   return fetch("charge/manifest.json", { cache: "no-store" })
     .then(function (r) {
@@ -611,11 +671,18 @@ function afficherManifeste() {
       return m;
     })
     .catch(function (err) {
+      /* 🔴 UNE PANNE **LOCALE** N'A RIEN A VOIR AVEC LE CDN, ET LES CONFONDRE
+         SERAIT LE DEFAUT QUE CETTE PAGE EXISTE POUR CORRIGER. Ce `.catch` se
+         déclenche quand `charge/manifest.json` — servi par le script lancé sur
+         CETTE machine — est illisible ou absent. Passer par le bloc du CDN
+         enverrait quelqu'un réparer un pare-feu pour un fichier local, et
+         `moduleAnnonce` avalerait ensuite une VRAIE panne de CDN arrivant plus
+         tard. ⇒ message propre, et le bloc d'installation est masqué ICI. */
       poser("v-version", "⛔ le manifeste n'a pas pu être lu : " + err);
       poser("v-revision", "⛔ inconnue — ⛔ ne flashez pas à l'aveugle");
       poser("v-morceaux", "⛔ inconnus");
-      afficher("etat-cdn", false);
-      moduleAbsent(null);
+      chargeInutilisable("le manifeste local <code>charge/manifest.json</code> "
+                         + "n'a pas pu être lu (" + err + ")");
     });
 }
 
@@ -641,22 +708,38 @@ function appliquerFlash(e) {
           + (e.port_motif || "motif inconnu") + ")");
   }
 
-  /* (c) LE PORT TENU PAR L'AGENT — le cas NORMAL du deuxieme lancement. */
+  /* (c) L'AGENT EST **POSÉ** SUR CETTE MACHINE — ⛔ ce n'est pas la même chose
+     que « il tient le port », et la page ne dit que ce qu'elle a mesuré : le
+     serveur interroge le PLANIFICATEUR DE TÂCHES, ⛔ il n'ouvre aucun port. */
   var agentPose = (e.tache_presente === true);
   afficher("etat-port-tenu", agentPose);
   if (bLiberer) {
+    /* ⚠️ LE TITRE DIT LA **VRAIE** RAISON DU REFUS, ⛔ pas la première venue :
+       sans l'outil, blâmer le port enverrait chercher une carte alors que
+       c'est `dn_agent_tour.ps1` qui manque. */
+    var motifL = !e.pilote
+      ? "⛔ `dn_agent_tour.ps1` est introuvable : il n'y a rien à appeler"
+      : (!e.port_serie
+         ? "⛔ aucun port découvert : rien ne sera joué sur un port supposé"
+         : "joue le verbe `stop` sur " + e.port_serie);
     bLiberer.disabled = !(e.pilote && e.port_serie);
-    bLiberer.title = e.port_serie
-      ? "joue le verbe `stop` sur " + e.port_serie
-      : "⛔ aucun port découvert : rien ne sera joué sur un port supposé";
+    bLiberer.title = motifL;
   }
 
-  /* La charge servie : si elle manque, le bouton d'installation n'a rien a
-     poser, et le dire vaut mieux que de laisser un 404 arriver au clic. */
+  /* 🔴 LA CHARGE ABIMEE ⛔ NE SE DIT PAS SEULEMENT, ELLE **ARRETE**. Écrire un
+     avertissement dans un champ pendant que le bouton reste cliquable laisserait
+     poser sur la carte un asset dont le CRC32 est faux — servi en 200, et
+     l'écran démarrerait blanc. ⇒ le bloc d'installation est MASQUÉ, comme pour
+     une panne de module. */
   if (e.charge && e.charge.complete === false) {
-    poser("v-morceaux", "⛔ la charge est absente ou abîmée côté serveur — "
-          + "voir la fenêtre du script");
+    chargeInutilisable("le serveur local déclare la charge incomplète ou "
+                       + "abîmée (" + (e.charge.asset || "voir la fenêtre du "
+                       + "script") + ")");
   }
+  /* 🔴 ET C'EST **ICI** QUE LE BOUTON APPARAIT, ⛔ pas au chargement : l'état
+     de la machine est connu, donc l'avertissement hors Windows est déjà à
+     l'écran s'il devait y être. */
+  reveler();
 }
 
 if (bLiberer) {
@@ -673,8 +756,15 @@ if (bLiberer) {
    l'etat : c'est ce qui permet aux blocs de flash de se poser sur des faits
    MESURES plutot que sur des valeurs par defaut. Le `.catch` de la fonction
    rend `undefined` — que `appliquerFlash()` traite comme « on ne sait pas ». */
-afficherManifeste();
-rafraichirEtat().then(appliquerFlash);
+/* 🔴 LES DEUX ECRIVAINS DE `v-morceaux` SONT **ORDONNES**, ⛔ plus lances en
+   parallele. Lances ensemble, le dernier a repondre gagnait : si `api/etat`
+   arrivait apres, la liste des morceaux ECRASAIT « la charge est abîmée » —
+   sur le champ meme qui existe pour empecher de flasher a l'aveugle. ⇒ le
+   manifeste s'affiche d'abord, l'etat de la machine tranche ensuite, et c'est
+   lui qui revele le bouton. */
+afficherManifeste().then(function () {
+  return rafraichirEtat().then(appliquerFlash);
+});
 </script>
 </body>
 </html>

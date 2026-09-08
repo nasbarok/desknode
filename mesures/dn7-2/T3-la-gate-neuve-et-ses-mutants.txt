@@ -1,10 +1,25 @@
 === T3 — LA GATE NEUVE, ET SA CAMPAGNE DE MUTANTS ======================
-    2026-09-08
+    2026-09-08 · RE-JOUE APRES LA REVUE DE CODE
 
-⛔ CE QUE CETTE GATE NE PROUVE PAS EST ECRIT DANS SA PROPRE SORTIE, ET IL
-   FAUT LE LIRE AVANT LES CHIFFRES : elle ne flashe rien, et le dialogue de
-   port de Web Serial est un dialogue NATIF du navigateur qu'aucun drapeau ne
-   pilote. Cette moitie-la se joue EN SEANCE CARTE (voir T7).
+⚠️ CE FICHIER A ETE REJOUE : la revue a montre que QUATRE proprietes que
+   cette gate publiait n'etaient jouees par RIEN. Elle passe de 26 a 30
+   controles et de 29 a 36 mutants. ⛔ Le tir precedent n'est pas efface, il
+   est REMPLACE par celui-ci, parce qu'il decrivait une population plus
+   PETITE — et publier l'ancienne a cote de la neuve laisserait croire a un
+   choix entre deux mesures, alors qu'il n'y en a qu'une de valide.
+
+🔴 LES QUATRE TROUS COMBLES, ET CHACUN A ETE **DEMONTRE VERT** :
+   1. (c6) depaquetait l'empreinte publiee et ⛔ ne s'en servait PAS. Une
+      image ECHANGEE A TAILLE EGALE restait verte, pendant que le
+      CHANGELOG publiait « la taille ET l'empreinte ».
+   2. `decouvrir_port` n'etait executee par AUCUN controle : les deux qui en
+      parlaient la REMPLACAIENT par un double. Casser son motif
+      d'extraction la faisait rendre None a chaque appel, gate VERTE.
+   3. La branche « charge abimee » n'etait jouee par rien : le cas du
+      pre-vol fabrique un dictionnaire au lieu d'abimer une charge.
+      Neutraliser le test de CRC32 laissait un asset retourne se declarer
+      INTACT, gate VERTE.
+   4. Deux ancres d'etat de la page etaient DECLAREES et gardees par rien.
 
 ── LE TIR NOMINAL ──────────────────────────────────────────────────────────
 
@@ -25,14 +40,14 @@ cibles     : installeur/charge/  +  installeur/index.html  +  THIRD-PARTY.md
   [OK ] (c5) ⛔ aucun binaire FUSIONNE nulle part                   4 jeton(s) de fusion cherches, 0 trouve
 
 ── (c6)(c7)(c8)(c9) LA CHARGE EST CELLE QUI EST ANNONCEE ─────────
-  [OK ] (c6) chaque morceau EXISTE et fait la taille publiee       4 morceau(x) confrontes a `PROVENANCE.md`
+  [OK ] (c6) chaque morceau fait sa taille ET son empreinte        4 morceau(x) confrontes a `PROVENANCE.md` (taille + sha256)
   [OK ] (c7) la version annoncee EST celle du binaire servi        40be2c8 (projet desknode), lue a l'offset 0x30
   [OK ] (c8) ⛔ la version n'est PAS celle du banc d'essai          `0.1.0-beta-essai` cherchee, absente
   [OK ] (c9) la bande-annonce de l'asset est VALIDE                magie + longueur + CRC32 verifies sur 614416 o
 
 ── (c10)(c11) CE QUE LA PAGE CHARGE, ET CE QU'ELLE SERT ──────────
-  [OK ] (c10) ESP Web Tools est EPINGLE, page et inventaire        10.4.0 des deux cotes
-  [OK ] (c11) les 5 adresses de charge sont dans SERVIS            11 adresse(s) servies, toutes sous la racine
+  [OK ] (c10) ESP Web Tools est EPINGLE, page ⇄ prose              10.4.0 partout : page, inventaire, 3 copie(s) de prose
+  [OK ] (c11) les 6 adresses de charge sont dans SERVIS            11 adresse(s) servies, toutes sous la racine
 
 ── (c12)…(c15) LA PAGE DIT CE QUI COINCE, AVANT QUE CA COINCE ────
   [OK ] (c12) la page nomme les DEUX formes du nom du port         « Périphérique série USB » et « USB JTAG/serial debug unit »
@@ -56,10 +71,16 @@ cibles     : installeur/charge/  +  installeur/index.html  +  THIRD-PARTY.md
   [OK ] (c22) les images sont declarees BINAIRES a git             `installeur/charge/*.bin binary`, et git le confirme
   [OK ] (c23) le pre-vol rend `5` sur une charge absente           2 cas joues : charge_absente→5 · charge_entiere→0
 
+── (c27)…(c30) LES ETATS, LE PORT REEL, LA CHARGE, L'EFFACEMENT ──
+  [OK ] (c27) la page porte les etats `CDN` et `agent pose`        `etat-cdn` et `etat-port-tenu`
+  [OK ] (c28) `decouvrir_port` est REELLEMENT jouee                4 cas joues sur la VRAIE fonction : aucune→None · deux→None · mesuree→'COM3' · muette→None
+  [OK ] (c29) une charge ABIMEE est refusee, sur le disque         un octet retourne ⇒ "⛔ CRC32 FAUX : l'image est ABIMEE,", pre-vol 5
+  [OK ] (c30) l'effacement au 1er flash est epingle et ECRIT       `false`, et `PROVENANCE.md` dit pourquoi
+
 ── (c24)(c25)(c26) AUCUN CONTROLE GARDE PAR ZERO MUTANT ──────────
-  [OK ] (c24) chaque controle est vise par >= 1 mutant             28 controle(s) lu(s) a l'AST, 28 cible(s) declaree(s)
-  [OK ] (c25) chaque cible de mutant est un controle REEL          28 cible(s) confrontee(s)
-  [OK ] (c26) `CIBLES` et `MUTANTS` se correspondent               29 mutant(s), 29 cible(s), cle a cle
+  [OK ] (c24) chaque controle est vise par >= 1 mutant             32 controle(s) lu(s) a l'AST, 32 cible(s) declaree(s)
+  [OK ] (c25) chaque cible de mutant est un controle REEL          32 cible(s) confrontee(s)
+  [OK ] (c26) `CIBLES` et `MUTANTS` se correspondent               36 mutant(s), 36 cible(s), cle a cle
 
 ⛔ CE QUE CETTE GATE NE PROUVE PAS : que le dialogue de port aille
    au bout. C'est un dialogue NATIF du navigateur, qu'aucun drapeau
@@ -67,8 +88,21 @@ cibles     : installeur/charge/  +  installeur/index.html  +  THIRD-PARTY.md
    se joue en seance carte. Les relevés vivent sous `mesures/dn7-2/`.
 
 ==============================================================================
-BILAN : 26 OK, 0 KO
+BILAN : 30 OK, 0 KO
 ==============================================================================
+
+── LES TEMOINS INDEPENDANTS DES QUATRE REGRESSIONS ────────────────────────
+
+  ⚠️ ⛔ CE NE SONT PAS LES MUTANTS : ce sont les fautes REELLES, replantees
+     dans le produit ou dans la charge, sur le disque, puis restaurees.
+
+  RE_COM casse (parentheses ⇒ crochets)   rc=1  [KO] (c28)
+  test de CRC32 neutralise                rc=1  [KO] (c29)
+  PROVENANCE.md retire de SERVIS          rc=1  [KO] (c11)
+  image echangee a TAILLE EGALE           rc=1  [KO] (c6)
+
+  ⇒ les quatre proprietes que la gate PUBLIE sont desormais des
+    proprietes qu'elle MESURE.
 
 ── LA LISTE DES MUTANTS ────────────────────────────────────────────────────
 
@@ -101,6 +135,13 @@ BILAN : 26 OK, 0 KO
   27  [c26]  declare une cible pour un mutant qui N'EXISTE PAS
   28  [z]  replante une SORTIE ANTICIPEE NON DECLAREE : le bilan retrecit, et il sortirait VERT
   29  [c0]  declare un mutant dont le CORPS LEVE ⇒ un mutant MORT, qui sortirait en Traceback SANS `BILAN` s'il n'etait pas repris
+  30  [c6]  change la SEULE colonne d'empreinte de `PROVENANCE.md` ⇒ une image echangee a taille EGALE restait verte
+  31  [c27]  efface de la page l'etat « le module de flash n'arrive pas » ⇒ un bouton inerte remplace une explication
+  32  [c27]  efface de la page l'etat « l'agent est pose » ⇒ le deuxieme lancement de tout le monde n'est plus explique
+  33  [c28]  CASSE le motif d'extraction du port DANS LE PRODUIT (parentheses ⇒ crochets) : la decouverte rendrait `None` a chaque appel
+  34  [c29]  NEUTRALISE le test de CRC32 DANS LE PRODUIT ⇒ un asset retourne se declare INTACT et part a la carte
+  35  [c30]  fait proposer l'EFFACEMENT au premier flash ⇒ une carte au decoupage etranger serait ecrasee, sans que ce soit ecrit
+  36  [c10]  fait DERIVER la version epinglee publiee dans la prose ⇒ trois copies annoncent un numero que la page ne charge pas
 
 ── CHAQUE MUTANT, JOUE ─────────────────────────────────────────────────────
 
@@ -108,14 +149,14 @@ BILAN : 26 OK, 0 KO
     rc == 1  ET  une ligne ^BILAN:  ET  au moins un ^  [KO ]
 
   mutant  1 : rc=1  KO=1  BILAN=1
-  mutant  2 : rc=1  KO=5  BILAN=1
+  mutant  2 : rc=1  KO=6  BILAN=1
   mutant  3 : rc=1  KO=1  BILAN=1
   mutant  4 : rc=1  KO=2  BILAN=1
   mutant  5 : rc=1  KO=1  BILAN=1
   mutant  6 : rc=1  KO=1  BILAN=1
   mutant  7 : rc=1  KO=1  BILAN=1
   mutant  8 : rc=1  KO=2  BILAN=1
-  mutant  9 : rc=1  KO=1  BILAN=1
+  mutant  9 : rc=1  KO=2  BILAN=1
   mutant 10 : rc=1  KO=1  BILAN=1
   mutant 11 : rc=1  KO=1  BILAN=1
   mutant 12 : rc=1  KO=1  BILAN=1
@@ -130,14 +171,21 @@ BILAN : 26 OK, 0 KO
   mutant 21 : rc=1  KO=1  BILAN=1
   mutant 22 : rc=1  KO=1  BILAN=1
   mutant 23 : rc=1  KO=1  BILAN=1
-  mutant 24 : rc=1  KO=1  BILAN=1
+  mutant 24 : rc=1  KO=2  BILAN=1
   mutant 25 : rc=1  KO=1  BILAN=1
   mutant 26 : rc=1  KO=1  BILAN=1
   mutant 27 : rc=1  KO=1  BILAN=1
   mutant 28 : rc=1  KO=1  BILAN=1
   mutant 29 : rc=1  KO=1  BILAN=1
+  mutant 30 : rc=1  KO=1  BILAN=1
+  mutant 31 : rc=1  KO=1  BILAN=1
+  mutant 32 : rc=1  KO=1  BILAN=1
+  mutant 33 : rc=1  KO=1  BILAN=1
+  mutant 34 : rc=1  KO=1  BILAN=1
+  mutant 35 : rc=1  KO=1  BILAN=1
+  mutant 36 : rc=1  KO=1  BILAN=1
 
-  ⇒ 29 mutants, 29 vus ROUGIR. ⛔ AUCUN mutant PERIME (rc=3), ⛔ aucun mort.
+  ⇒ 36 mutants, 36 vus ROUGIR. ⛔ AUCUN mutant PERIME (rc=3), ⛔ aucun mort.
 
   $ python3 tools/verif_flash_dn72.py --mutant 999
 MUTANT 999 INCONNU : il n'est pas declare. ⛔ Un mutant qui n'existe pas ne prouve RIEN — ⛔ ne pas conclure que le controle est vert.

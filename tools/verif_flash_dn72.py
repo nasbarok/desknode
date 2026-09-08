@@ -52,14 +52,17 @@ import argparse
 import ast
 import contextlib
 import copy
+import hashlib
 import importlib.util
 import io
 import json
 import os
 import re
+import shutil
 import struct
 import subprocess
 import sys
+import tempfile
 import zlib
 
 RACINE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -86,8 +89,10 @@ IMAGES = ("bootloader.bin", "partition-table.bin", "desknode.bin",
           "living_pcb_v0.bin")
 CINQ = tuple("%s/%s" % (CHARGE, n) for n in IMAGES) + (MANIFESTE,)
 
+JOURNAL = "CHANGELOG.md"
+ROADMAP = "docs/roadmap.md"
 FIXES = (MANIFESTE, PROVENANCE, PY, PAGE, BAT, TIERS, ATTRIBUTS, LISEZMOI,
-         PARTITIONS)
+         JOURNAL, ROADMAP, PARTITIONS)
 
 # ── L'EN-TETE `esp_app_desc_t`, RELUE DANS LE BINAIRE ─────────────────────
 # Structure ESP-IDF, a l'offset `0x20` de l'image applicative :
@@ -192,6 +197,16 @@ RE_SRC_MODULE = re.compile(
 RE_EWT_PAGE = re.compile(r"esp-web-tools@(\d+\.\d+\.\d+)")
 RE_EWT_TIERS = re.compile(r"esp-web-tools@(\d+\.\d+\.\d+)")
 RE_EWT_PLAGE = re.compile(r"esp-web-tools@(\d+)(?![.\d])")
+# La forme sous laquelle la PROSE publie le meme numero : « ESP Web Tools
+# epingle `10.4.0` », « pinned to `10.4.0` ».
+# ⚠️ LE MOTIF EST **BORNE AU VOISINAGE DU NOM**, ⛔ pas au fichier entier — et
+#    ce n'est pas de la prudence : `THIRD-PARTY.md` porte NEUF autres versions
+#    entre accents graves (LVGL, les composants geres…). Un motif qui prendrait
+#    tout numero entre accents graves ferait rougir cette gate sur une version
+#    qui n'a RIEN a voir, le jour ou quelqu'un en cite une dans le `README.md`.
+#    ⇒ on ne compare que ce qui suit le NOM du composant, a 120 caracteres.
+RE_VERSION_EWT = re.compile(
+    r"ESP Web Tools.{0,120}?`(\d+\.\d+\.\d+)`", re.S)
 # L'element lui-meme, ⛔ pas son nom cite dans un commentaire : c'est sa
 # POSITION dans le document qui decide de ce qui vient « avant le flash ».
 ANCRE_ELEMENT = "<esp-web-install-button "
@@ -305,10 +320,33 @@ CIBLES[28] = ("z",)
 MUTANTS[29] = ("declare un mutant dont le CORPS LEVE ⇒ un mutant MORT, qui "
                "sortirait en Traceback SANS `BILAN` s'il n'etait pas repris")
 CIBLES[29] = ("c0",)
+# 🔴 LES SEPT SUIVANTS SONT NES D'UNE REVUE, ET CHACUN REPLANTE UNE FAUTE QUI A
+#    ETE **DEMONTREE VERTE** — ⛔ pas une faute imaginee.
+MUTANTS[30] = ("change la SEULE colonne d'empreinte de `PROVENANCE.md` ⇒ une "
+               "image echangee a taille EGALE restait verte")
+CIBLES[30] = ("c6",)
+MUTANTS[31] = ("efface de la page l'etat « le module de flash n'arrive pas » "
+               "⇒ un bouton inerte remplace une explication")
+CIBLES[31] = ("c27",)
+MUTANTS[32] = ("efface de la page l'etat « l'agent est pose » ⇒ le deuxieme "
+               "lancement de tout le monde n'est plus explique")
+CIBLES[32] = ("c27",)
+MUTANTS[33] = ("CASSE le motif d'extraction du port DANS LE PRODUIT (parentheses "
+               "⇒ crochets) : la decouverte rendrait `None` a chaque appel")
+CIBLES[33] = ("c28",)
+MUTANTS[34] = ("NEUTRALISE le test de CRC32 DANS LE PRODUIT ⇒ un asset "
+               "retourne se declare INTACT et part a la carte")
+CIBLES[34] = ("c29",)
+MUTANTS[35] = ("fait proposer l'EFFACEMENT au premier flash ⇒ une carte au "
+               "decoupage etranger serait ecrasee, sans que ce soit ecrit")
+CIBLES[35] = ("c30",)
+MUTANTS[36] = ("fait DERIVER la version epinglee publiee dans la prose ⇒ trois "
+               "copies annoncent un numero que la page ne charge pas")
+CIBLES[36] = ("c10",)
 
 # ⚠️ LE COMPTE DU CHEMIN NORMAL. Il se PERIME si on ajoute un controle sans le
 #    mettre a jour — et c'est voulu : c'est ce qui rend (z) FALSIFIABLE.
-CONTROLES_PREVUS = 26
+CONTROLES_PREVUS = 30
 
 _MUTANT = 0
 
@@ -499,10 +537,14 @@ PS1_DE_PAPIER = ("param(\n"
 #       `-Serie` dans la source prouverait qu'elle est ECRITE, ⛔ pas qu'elle
 #       est PASSEE : une condition inversee la rendrait morte, et le controle
 #       resterait vert. ⇒ on IMPORTE le produit et on le fait JOUER.
-# 🔴 LES CINQ ADRESSES QUE LE SERVEUR DOIT SERVIR. ⚠️ Ce controle fait jouer le
-#    PRODUIT IMPORTE : une mutation TEXTUELLE ⛔ ne l'atteindrait pas, donc la
-#    liste attendue vit dans l'etat et c'est ELLE que le mutant deplace.
-ATTENDU_SERVIS = (("/charge/manifest.json",)
+# 🔴 LES **SIX** ADRESSES QUE LE SERVEUR DOIT SERVIR. ⚠️ Ce controle fait jouer
+#    le PRODUIT IMPORTE : une mutation TEXTUELLE ⛔ ne l'atteindrait pas, donc
+#    la liste attendue vit dans l'etat et c'est ELLE que le mutant deplace.
+# 🔴 `PROVENANCE.md` EN FAIT PARTIE, ET SON OUBLI ETAIT UN TROU DEMONTRE : la
+#    page y renvoie DEUX FOIS — c'est le pointeur de source qu'exige la
+#    GPL-3.0 — et le retirer de la liste blanche cassait les deux liens sans
+#    qu'aucun controle ne bouge.
+ATTENDU_SERVIS = (("/charge/manifest.json", "/charge/PROVENANCE.md")
                   + tuple("/charge/%s" % n for n in IMAGES))
 
 ATTENDU_PORT = {
@@ -525,6 +567,36 @@ ATTENDU_PREVOL = {
     "charge_absente": 5,
     "charge_entiere": 0,
 }
+
+# 🔴 CE QUE `decouvrir_port` DOIT RENDRE, ET IL EST **REELLEMENT EXECUTE**.
+#    ⚠️ TROU DEMONTRE A LA REVUE : les deux controles qui parlaient du port
+#    REMPLACAIENT cette fonction par un double. Elle n'etait donc jouee par
+#    RIEN — et changer son motif d'extraction de `(COM3)` a `[COM3]` faisait
+#    rendre `None` a chaque appel SANS qu'aucune gate ne bouge, c'est-a-dire
+#    que la regression que cette marche declare corriger pouvait revenir EN
+#    SILENCE. ⇒ ici, seul `_powershell` est double : la fonction, elle, tourne.
+#    La 1re ligne est celle MESUREE sur la tour le 2026-09-08.
+LIGNE_PNP_MESUREE = ("DN|Peripherique serie USB (COM3)|"
+                     "USB\\VID_303A&PID_1001&MI_00\\6&3B8496F8&0&0000")
+LIGNE_PNP_SECONDE = ("DN|Peripherique serie USB (COM9)|"
+                     "USB\\VID_303A&PID_1001&MI_00\\6&AAAAAAAA&0&0000")
+ATTENDU_DECOUVERTE = {
+    # cle           : (rc, sortie PowerShell, port attendu)
+    "mesuree":  (0, LIGNE_PNP_MESUREE, "COM3"),
+    "aucune":   (0, "", None),
+    "muette":   (None, "", None),
+    # ⚠️ DEUX CARTES DE MEME `VID:PID` : on REFUSE de choisir. Rendre la
+    #    premiere ferait jouer `stop` sur une carte ARBITRAIRE.
+    "deux":     (0, LIGNE_PNP_MESUREE + "\n" + LIGNE_PNP_SECONDE, None),
+}
+
+# 🔴 LES PATCHS QUI REPLANTENT UNE FAUTE **DANS LE PRODUIT IMPORTE**.
+#    ⚠️ Les controles fonctionnels ne se mutent pas par le texte — le module
+#    est deja compile. Muter la CORRESPONDANCE ATTENDUE prouve que le controle
+#    compare ; muter LE PRODUIT prouve qu'il attrape la VRAIE faute. Les deux
+#    tags ci-dessous replantent EXACTEMENT les deux regressions demontrees a la
+#    revue, ⛔ pas des fautes imaginees.
+PATCHS_PRODUIT = ("re_com_casse", "crc_neutralise")
 
 
 def jouer_port(mod, att):
@@ -584,6 +656,94 @@ def jouer_codes(mod):
         mod._PILOTE.clear()
         mod._PILOTE.update(garde[3])
     return out
+
+
+def jouer_decouverte(mod, att):
+    """Fait tourner **LA VRAIE** `decouvrir_port`, PowerShell double.
+
+    ⛔ Ici, ⛔ on ne remplace PAS la fonction : on double seulement l'appel
+       systeme sous elle. C'est la seule facon de faire jouer son motif
+       d'extraction, sa distinction des deux motifs d'echec, et son refus de
+       choisir entre deux cartes."""
+    garde = mod._powershell
+    out = {}
+    try:
+        for cle in sorted(att):
+            rc, sortie, _attendu = att[cle]
+            mod._powershell = (lambda r, s: (
+                lambda a, timeout=90: (r, s, ["powershell"], None)))(rc, sortie)
+            out[cle] = mod.decouvrir_port()[0]
+    except Exception as exc:                              # noqa: BLE001
+        out["__erreur__"] = "%s: %s" % (type(exc).__name__, str(exc)[:80])
+    finally:
+        mod._powershell = garde
+    return out
+
+
+def jouer_charge_abimee(mod):
+    """Copie la charge, RETOURNE UN OCTET, et relit ce que le produit en dit.
+
+    🔴 CE CONTROLE EXISTE PARCE QUE LA BRANCHE ABIMEE N'ETAIT JOUEE PAR RIEN.
+       Le cas « charge absente » du pre-vol REMPLACE `etat_charge` par un
+       dictionnaire fabrique : neutraliser le test de CRC32 dans le produit
+       laissait donc un asset retourne se declarer INTACT, et le `5` que le
+       `README.md` et le `.bat` publient comme instrument mecanique devenait un
+       chiffre a croire sur parole. ⇒ ici, la charge est VRAIE, abimee sur le
+       disque, et c'est le produit qui la juge."""
+    garde = (mod.CHARGE, mod.MANIFESTE)
+    out = {}
+    tmp = tempfile.mkdtemp(prefix="dn72-")
+    try:
+        cible = os.path.join(tmp, "charge")
+        shutil.copytree(os.path.join(RACINE, CHARGE), cible)
+        chemin = os.path.join(cible, ASSET_FICHIER)
+        with open(chemin, "rb") as fh:
+            brut = bytearray(fh.read())
+        if len(brut) < 200:
+            out["__erreur__"] = "l'asset copie est trop court pour etre abime"
+            return out
+        brut[100] ^= 0xFF                 # ⛔ la CHARGE UTILE, ⛔ pas la queue
+        with open(chemin, "wb") as fh:
+            fh.write(bytes(brut))
+        mod.CHARGE = cible
+        mod.MANIFESTE = os.path.join(cible, "manifest.json")
+        tampon = io.StringIO()
+        with contextlib.redirect_stdout(tampon):
+            etat = mod.etat_charge()
+            garde2 = (mod.dependance_presente, mod.arbre_parent_present,
+                      mod.localiser_pilote)
+            try:
+                mod.dependance_presente = lambda m, s: True
+                mod.arbre_parent_present = lambda: True
+                mod.localiser_pilote = lambda: (
+                    os.path.join(RACINE, "tools", "dn_agent_tour.ps1"),
+                    "double de papier")
+                out["rc_prevol"] = mod.prevol(False)
+            finally:
+                (mod.dependance_presente, mod.arbre_parent_present,
+                 mod.localiser_pilote) = garde2
+        out["complete"] = etat.get("complete")
+        out["asset"] = etat.get("asset", "")
+    except Exception as exc:                              # noqa: BLE001
+        out["__erreur__"] = "%s: %s" % (type(exc).__name__, str(exc)[:80])
+    finally:
+        mod.CHARGE, mod.MANIFESTE = garde
+        shutil.rmtree(tmp, ignore_errors=True)
+    return out
+
+
+class _ZlibComplaisant(object):
+    """Un `zlib` qui dit toujours « le CRC est bon » — ⛔ le patch du mutant.
+
+    Il REPLANTE la faute demontree a la revue : neutraliser le test de CRC32
+    fait declarer INTACT un asset retourne."""
+
+    def __init__(self, vrai, valeur):
+        self._vrai = vrai
+        self._valeur = valeur
+
+    def crc32(self, donnees, *a):
+        return self._valeur
 
 
 def jouer_prevol(mod):
@@ -790,6 +950,45 @@ def muter(etat):
     elif _MUTANT == 29:
         # 🔴 IL LEVE EXPRES : c'est la faute « un mutant declare qui MEURT ».
         raise AssertionError("mutant 29 : corps volontairement LEVANT")
+    elif _MUTANT == 30:
+        # ⚠️ IL NE TOUCHE QUE L'EMPREINTE : la taille et l'offset restent
+        #    JUSTES. C'est exactement le cas qu'une verification de taille
+        #    seule ne peut pas voir.
+        lignes = RE_PROV_LIGNE.findall(p.get(PROVENANCE, ""))
+        if not lignes:
+            return e                      # table disparue ⇒ NO-OP ⇒ rc=3
+        sha = lignes[0][3]
+        if sha not in p[PROVENANCE]:
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        faux = ("0" if sha[0] != "0" else "1") + sha[1:]
+        p[PROVENANCE] = p[PROVENANCE].replace(sha, faux, 1)
+    elif _MUTANT == 31:
+        if ANCRE_CDN not in p.get(PAGE, ""):
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        p[PAGE] = p[PAGE].replace(ANCRE_CDN, "etat-sans-objet-cdn")
+    elif _MUTANT == 32:
+        if ANCRE_PORT_TENU not in p.get(PAGE, ""):
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        p[PAGE] = p[PAGE].replace(ANCRE_PORT_TENU, "etat-sans-objet-port")
+    elif _MUTANT == 33:
+        if e["patch_produit"] is not None:
+            return e                      # deja patche ⇒ NO-OP ⇒ rc=3
+        e["patch_produit"] = "re_com_casse"
+    elif _MUTANT == 34:
+        if e["patch_produit"] is not None:
+            return e                      # deja patche ⇒ NO-OP ⇒ rc=3
+        e["patch_produit"] = "crc_neutralise"
+    elif _MUTANT == 35:
+        if '"new_install_prompt_erase": false' not in p.get(MANIFESTE, ""):
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        p[MANIFESTE] = p[MANIFESTE].replace(
+            '"new_install_prompt_erase": false',
+            '"new_install_prompt_erase": true', 1)
+    elif _MUTANT == 36:
+        m = RE_EWT_PAGE.search(p.get(PAGE, ""))
+        if not m or m.group(1) not in p.get(LISEZMOI, ""):
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        p[LISEZMOI] = p[LISEZMOI].replace(m.group(1), "9.9.9", 1)
     else:
         raise AssertionError("mutant %d declare mais SANS CORPS" % _MUTANT)
     return e
@@ -906,6 +1105,11 @@ def main():
             "attendu_port": {k: tuple(v) for k, v in ATTENDU_PORT.items()},
             "attendu_codes": dict(ATTENDU_CODES),
             "attendu_prevol": dict(ATTENDU_PREVOL),
+            "attendu_decouverte": {k: tuple(v)
+                                   for k, v in ATTENDU_DECOUVERTE.items()},
+            # ⚠️ ⛔ PAS UN OBJET : un simple JETON, pour que la comparaison
+            #    avant/apres de la garde du no-op reste triviale.
+            "patch_produit": None,
             "regles": {"sortie_anticipee": False}}
 
     # 🔴 UN MUTANT QUI MEURT SORTIRAIT EN TRACEBACK, SANS `BILAN` — or « pas de
@@ -932,6 +1136,7 @@ def main():
     att_port = neuf["attendu_port"]
     att_codes = neuf["attendu_codes"]
     att_prevol = neuf["attendu_prevol"]
+    att_dec = neuf["attendu_decouverte"]
     page = f.get(PAGE, "")
     py = f.get(PY, "")
     prov = f.get(PROVENANCE, "")
@@ -939,6 +1144,17 @@ def main():
     attributs = f.get(ATTRIBUTS, "")
 
     produit, err_produit = importer_produit()
+    # 🔴 LE PATCH REPLANTE UNE FAUTE **DANS LE PRODUIT**, ⛔ pas dans un texte.
+    #    C'est ce qui distingue « le controle compare » de « le controle attrape
+    #    la VRAIE regression » : les deux fautes ci-dessous ont ete DEMONTREES
+    #    a la revue, et elles laissaient la gate VERTE.
+    if produit is not None and neuf["patch_produit"] == "re_com_casse":
+        produit.RE_COM = re.compile(r"\[(COM[0-9]+)\]")
+    elif produit is not None and neuf["patch_produit"] == "crc_neutralise":
+        brut_ref = lire_octets("%s/%s" % (CHARGE, ASSET_FICHIER)) or b""
+        attendu_crc = (struct.unpack("<II", brut_ref[-8:])[1]
+                       if len(brut_ref) >= 8 else 0)
+        produit.zlib = _ZlibComplaisant(zlib, attendu_crc)
 
     # ── (c1) LES CINQ FICHIERS DE CHARGE SONT AU DEPOT ────────────────────
     print("\n── (c1) LA CHARGE EST **VERSIONNEE** ─────────────────────────────")
@@ -965,7 +1181,12 @@ def main():
         build = (manifeste.get("builds") or [{}])[0]
         parts = list(build.get("parts") or [])
         chip = build.get("chipFamily")
-    except (ValueError, TypeError, KeyError, IndexError) as exc:
+    # ⚠️ `AttributeError` EST DANS LA LISTE, ET C'EST UN CAS REEL : un
+    #    `manifest.json` qui porte un TABLEAU ou un SCALAIRE (JSON parfaitement
+    #    valide) fait lever `.get` sur autre chose qu'un dictionnaire. Sans
+    #    elle, la gate mourait en Traceback SANS `BILAN` — c'est-a-dire avec
+    #    la signature exacte d'une gate MORTE, qu'elle existe pour nommer.
+    except (ValueError, TypeError, KeyError, IndexError, AttributeError) as exc:
         err_manifeste = "%s: %s" % (type(exc).__name__, str(exc)[:70])
     ctrl(err_manifeste is None and len(parts) == 4,
          "(c2) le manifeste se LIT et declare 4 morceaux",
@@ -1030,16 +1251,27 @@ def main():
         if nom not in publiees:
             ecarts_taille.append("%s : aucune ligne dans `PROVENANCE.md`" % nom)
             continue
-        off_pub, taille_pub, _sha = publiees[nom]
+        off_pub, taille_pub, sha_pub = publiees[nom]
         if taille_pub != len(brut):
             ecarts_taille.append("%s : %d o servis, %d o publies"
                                  % (nom, len(brut), taille_pub))
+        # 🔴 L'EMPREINTE, ⛔ PAS SEULEMENT LA TAILLE — ET C'EST UN TROU
+        #    DEMONTRE. La 1re version depaquetait le SHA-256 publie puis ne
+        #    s'en servait PAS : une image ECHANGEE a taille identique restait
+        #    verte, pendant que `CHANGELOG.md` publiait que chaque image est
+        #    verifiee « a la taille ET a l'empreinte ». Une propriete annoncee
+        #    que rien ne joue est un chiffre a croire sur parole.
+        sha_reel = hashlib.sha256(brut).hexdigest()
+        if sha_reel != sha_pub:
+            ecarts_taille.append("%s : sha256 servi %s…, publie %s…"
+                                 % (nom, sha_reel[:12], sha_pub[:12]))
         if off_pub != pa.get("offset"):
             ecarts_taille.append("%s : offset %r au manifeste, %d publie"
                                  % (nom, pa.get("offset"), off_pub))
     ctrl(bool(parts) and not ecarts_taille,
-         "(c6) chaque morceau EXISTE et fait la taille publiee",
-         "%d morceau(x) confrontes a `PROVENANCE.md`" % len(parts)
+         "(c6) chaque morceau fait sa taille ET son empreinte",
+         "%d morceau(x) confrontes a `PROVENANCE.md` (taille + sha256)"
+         % len(parts)
          if parts and not ecarts_taille
          else "⛔ %s — une provenance qui a pourri est pire qu'une provenance "
               "absente" % (" · ".join(ecarts_taille) or "aucun morceau"))
@@ -1097,10 +1329,23 @@ def main():
     v_page = RE_EWT_PAGE.search(url)
     v_tiers = RE_EWT_TIERS.search(tiers)
     plage = RE_EWT_PLAGE.search(url)
+    # 🔴 ET LES COPIES DE **PROSE** ENTRENT DANS L'EGALITE. Le numero epingle
+    #    est publie dans CINQ endroits ; n'en garder que deux laissait les trois
+    #    autres DERIVER en silence, et un lecteur du `README.md` aurait cru
+    #    charger une version que la page ne charge pas.
+    prose, copies = [], 0
+    if v_page is not None:
+        for cible in (LISEZMOI, JOURNAL, ROADMAP):
+            for m in RE_VERSION_EWT.finditer(f.get(cible) or ""):
+                copies += 1
+                if m.group(1) != v_page.group(1):
+                    prose.append("%s annonce %s" % (cible, m.group(1)))
     accord = (v_page is not None and v_tiers is not None
-              and v_page.group(1) == v_tiers.group(1) and plage is None)
-    ctrl(accord, "(c10) ESP Web Tools est EPINGLE, page et inventaire",
-         "%s des deux cotes" % v_page.group(1) if accord
+              and v_page.group(1) == v_tiers.group(1) and plage is None
+              and not prose)
+    ctrl(accord, "(c10) ESP Web Tools est EPINGLE, page ⇄ prose",
+         "%s partout : page, inventaire, %d copie(s) de prose"
+         % (v_page.group(1), copies) if accord
          else "⛔ %s — mesure du 2026-09-08 : la forme de PLAGE rend un 302 "
               "vers une version precise, donc elle epingle RIEN"
               % ("aucun `src` de module dans %s" % PAGE if not src
@@ -1109,7 +1354,10 @@ def main():
                  "aucune version exacte dans %s" % TIERS if v_tiers is None
                  else "l'URL chargee porte une PLAGE : %s" % plage.group(0)
                  if plage is not None else
-                 "page %s, inventaire %s" % (v_page.group(1), v_tiers.group(1))))
+                 "copie(s) de prose DERIVANTE(S) : %s" % " · ".join(prose)
+                 if prose else
+                 "page %s, inventaire %s"
+                 % (v_page.group(1), v_tiers.group(1))))
 
     # ── (c11) LES CHEMINS SERVIS SONT DANS LA LISTE BLANCHE ─────────────
     servis = getattr(produit, "SERVIS", {}) if produit else {}
@@ -1121,7 +1369,7 @@ def main():
         if not os.path.abspath(chemin).startswith(base):
             hors_racine.append(chemin)
     ctrl(bool(servis) and not hors_liste and not hors_racine,
-         "(c11) les 5 adresses de charge sont dans SERVIS",
+         "(c11) les 6 adresses de charge sont dans SERVIS",
          "%d adresse(s) servies, toutes sous la racine" % len(servis)
          if servis and not hors_liste and not hors_racine
          else "⛔ %s — un chemin que la page demande et que le serveur ne "
@@ -1335,6 +1583,85 @@ def main():
          if not ecarts_pv
          else "⛔ %s — un code publie que rien ne joue est un chiffre a croire "
               "sur parole" % " · ".join(ecarts_pv))
+
+    # ── (c27) LES DEUX ETATS D'ECHEC NEUFS SONT DANS LA PAGE ────────────
+    print("\n── (c27)…(c30) LES ETATS, LE PORT REEL, LA CHARGE, L'EFFACEMENT ──")
+    # ⚠️ CES DEUX ANCRES ETAIENT DECLAREES ET GARDEES PAR RIEN — releve a la
+    #    revue. Une constante qui a l'air d'un garde-fou et n'en est pas est
+    #    pire qu'une absence : effacer l'un ou l'autre bloc de la page laissait
+    #    la gate a 26 OK / 0 KO.
+    etats = [n for n in (ANCRE_CDN, ANCRE_PORT_TENU) if n not in page]
+    ctrl(not etats, "(c27) la page porte les etats `CDN` et `agent pose`",
+         "`%s` et `%s`" % (ANCRE_CDN, ANCRE_PORT_TENU) if not etats
+         else "⛔ ABSENT(S) : %s — sans le premier, une panne de module laisse "
+              "un bouton inerte ; sans le second, le deuxieme lancement de tout "
+              "le monde n'est explique nulle part" % " · ".join(etats))
+
+    # ── (c28) `decouvrir_port` EST **REELLEMENT EXECUTEE** ──────────────
+    # 🔴 TROU DEMONTRE A LA REVUE : (c20) et (c21) REMPLACENT cette fonction.
+    #    Elle n'etait donc jouee par RIEN, et casser son motif d'extraction la
+    #    faisait rendre `None` a chaque appel sans qu'aucune gate ne bouge —
+    #    c'est-a-dire que la regression que cette marche declare corriger
+    #    pouvait revenir EN SILENCE. Ici, seul l'appel systeme est double.
+    jd = jouer_decouverte(produit, att_dec) if produit else {
+        "__erreur__": err_produit}
+    ecarts_dec = []
+    if "__erreur__" in jd:
+        ecarts_dec.append("le produit n'a pas pu etre joue : %s"
+                          % jd["__erreur__"])
+    else:
+        for cle in sorted(att_dec):
+            attendu = att_dec[cle][2]
+            if jd.get(cle) != attendu:
+                ecarts_dec.append("%s ⇒ %r (attendu %r)"
+                                  % (cle, jd.get(cle), attendu))
+    ctrl(not ecarts_dec, "(c28) `decouvrir_port` est REELLEMENT jouee",
+         "%d cas joues sur la VRAIE fonction : %s"
+         % (len(jd), " · ".join("%s→%r" % (k, jd[k]) for k in sorted(jd)))
+         if not ecarts_dec
+         else "⛔ %s — une fonction que tous les controles REMPLACENT n'est "
+              "gardee par aucun d'eux" % " · ".join(ecarts_dec))
+
+    # ── (c29) LA BRANCHE « CHARGE ABIMEE » EST **JOUEE SUR LE DISQUE** ──
+    ja = jouer_charge_abimee(produit) if produit else {
+        "__erreur__": err_produit}
+    ecarts_ab = []
+    if "__erreur__" in ja:
+        ecarts_ab.append("le produit n'a pas pu etre joue : %s"
+                         % ja["__erreur__"])
+    else:
+        if ja.get("complete") is not False:
+            ecarts_ab.append("`complete` vaut %r sur une charge ABIMEE"
+                             % ja.get("complete"))
+        if "CRC32" not in (ja.get("asset") or ""):
+            ecarts_ab.append("le verdict de l'asset ne nomme pas le CRC32 : %r"
+                             % (ja.get("asset") or "")[:40])
+        if ja.get("rc_prevol") != att_prevol.get("charge_absente"):
+            ecarts_ab.append("le pre-vol rend %r (attendu %r)"
+                             % (ja.get("rc_prevol"),
+                                att_prevol.get("charge_absente")))
+    ctrl(not ecarts_ab, "(c29) une charge ABIMEE est refusee, sur le disque",
+         "un octet retourne ⇒ %r, pre-vol %r"
+         % ((ja.get("asset") or "")[:34], ja.get("rc_prevol"))
+         if not ecarts_ab
+         else "⛔ %s — le `5` que le README et le `.bat` publient comme "
+              "instrument mecanique deviendrait un chiffre a croire sur parole"
+              % " · ".join(ecarts_ab))
+
+    # ── (c30) L'EFFACEMENT AU PREMIER FLASH EST **EPINGLE** ────────────
+    # ⚠️ Cette valeur decide si l'outil de flash PROPOSE d'effacer la carte au
+    #    premier passage. Dans une marche qui justifie par la mesure la famille
+    #    de puce, les quatre offsets, les 16 octets de queue et le numero
+    #    epingle, elle etait la seule que rien n'expliquait et rien ne gardait.
+    efface = (manifeste or {}).get("new_install_prompt_erase")
+    dit = "new_install_prompt_erase" in prov
+    ctrl(efface is False and dit,
+         "(c30) l'effacement au 1er flash est epingle et ECRIT",
+         "`false`, et `PROVENANCE.md` dit pourquoi" if efface is False and dit
+         else "⛔ %s — une carte au decoupage etranger serait ecrasee EN PLACE, "
+              "ou epargnee, sans que le motif soit ecrit nulle part"
+              % ("le manifeste porte %r" % efface if efface is not False
+                 else "`PROVENANCE.md` n'ecrit pas le motif"))
 
     if regles["sortie_anticipee"]:
         return bilan(0)

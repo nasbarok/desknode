@@ -13,7 +13,8 @@
                                  sur 37 gates       sur 38 gates       (la gate
                                                                         NEUVE)
   verif_dossier_dn415.py (la R)  23 OK, 10 KO       23 OK, 10 KO       INCHANGE
-  verif_installeur_dn71.py       28 OK,  0 KO       28 OK,  0 KO       INCHANGE
+  verif_installeur_dn71.py       28 OK,  0 KO       28 OK,  0 KO       ⚠️ voir
+                                                                       ci-dessous
   verif_licences_dn52.py         34 OK,  0 KO       34 OK,  0 KO       INCHANGE
   verif_ledger_dn416.py          35 OK,  0 KO       35 OK,  0 KO       INCHANGE
   verif_affiliation_dn65.py      23 OK,  0 KO       23 OK,  0 KO       INCHANGE
@@ -23,12 +24,33 @@
   verif_campagne_dn440.py        —                  60 OK,  0 KO       verte
   verif_campagne_dn56.py          8 OK,  0 KO        8 OK,  0 KO       INCHANGE
                                  11 cibles          12 cibles          +1
-                                 341 mutants        370 mutants        +29
-  verif_flash_dn72.py (NEUVE)    —                  26 OK,  0 KO       verte
+                                 341 mutants        377 mutants        +36
+  verif_flash_dn72.py (NEUVE)    —                  30 OK,  0 KO       verte
+                                                    36 mutants sains
   verif_sr03.py                  NON-JOUABLE        NON-JOUABLE        INCHANGE
 
   ⇒ **⛔ 0 KO DE PLUS, GATE PAR GATE, AU COMPTE.** La seule ROUGE est la meme
     qu'a la borne, avec le MEME compte, et elle est PRE-EXISTANTE.
+
+🔴 ⚠️ **ET UNE LIGNE DE CE TABLEAU EST VRAIE AU COMPTE ET TROMPEUSE AU SENS —
+   ELLE EST ANNOTEE PLUTOT QUE LAISSEE TELLE QUELLE.** `verif_installeur_dn71.py`
+   rend `28 OK, 0 KO` aux DEUX bornes, mais **l'un de ces 28 controles affirme
+   desormais LA NEGATION de ce qu'il affirmait au depart** : `(c10)` INTERDISAIT
+   les jetons de flash sous `installeur/` ; il les EXIGE maintenant dans la page.
+   ⇒ **le compte est identique, la PROPOSITION a change de signe.**
+   ⛔ « 0 KO de plus, gate par gate, au compte » est un garde-fou contre
+   l'AGGRAVATION SILENCIEUSE — ⛔ ce n'est **pas** une preuve que la gate garde
+   la meme chose. Un relevé qui presenterait ce `28 = 28` comme un verdict
+   ferait exactement ce que ce dossier reproche ailleurs : publier un chiffre a
+   la place d'une lecture.
+   ⇒ Le retournement est **voulu**, il est **motive** dans la source de la gate
+     (le motif d'origine y est garde, ⛔ pas efface) et dans le journal de la
+     marche, et son mutant est **reecrit a l'envers** : c'est desormais
+     DEBRANCHER le flash de la page qui doit rougir.
+   🔬 **VERIFIE PAR UN TEMOIN, ⛔ pas par la couleur** : supprimer PHYSIQUEMENT
+     la balise `<script src=…>` et l'element d'installation — en laissant toute
+     la prose intacte — rend la gate `27 OK, 1 KO`, `rc=1`. C'est la faute que
+     la revue avait demontree VERTE, et elle ne l'est plus.
 
 ── LES GARDE-FOUS DE L'AC TRANSVERSE ──────────────────────────────────────
 
@@ -62,17 +84,17 @@
 [VERTE      ] tools/verif_affiliation_dn65.py        rc=0      1s
 [VERTE      ] tools/verif_bme680_retard_dn45.py      rc=0      0s
 [  temoin  ] tools/verif_boitier_dn64.py            /home/nasbarok/projects/compagnon_project est present ⇒ la gate est JOUEE
-[VERTE      ] tools/verif_boitier_dn64.py            rc=0      0s
+[VERTE      ] tools/verif_boitier_dn64.py            rc=0      1s
 [VERTE      ] tools/verif_bom_dn61.py                rc=0      0s
 [VERTE      ] tools/verif_cablage_dn62.py            rc=0      0s
 [  temoin  ] tools/verif_campagne_dn440.py          /home/nasbarok/projects/compagnon_project est present ⇒ la gate est JOUEE
-[VERTE      ] tools/verif_campagne_dn440.py          rc=0     30s
-[VERTE      ] tools/verif_campagne_dn56.py           rc=0    161s
+[VERTE      ] tools/verif_campagne_dn440.py          rc=0     31s
+[VERTE      ] tools/verif_campagne_dn56.py           rc=0    164s
 [VERTE      ] tools/verif_courbe_dn413.py            rc=0      9s
 [VERTE      ] tools/verif_cumul_ambient_dn45.py      rc=0      1s
 [VERTE      ] tools/verif_d4_nvs_dn45.py             rc=0      0s
 [VERTE      ] tools/verif_decoupe_horloge_dn418.py   rc=0      5s
-[VERTE      ] tools/verif_demarrage_dn443.py         rc=0      0s
+[VERTE      ] tools/verif_demarrage_dn443.py         rc=0      1s
 [  temoin  ] tools/verif_dossier_d5_dn45.py         /home/nasbarok/projects/compagnon_project est present ⇒ la gate est JOUEE
 [VERTE      ] tools/verif_dossier_d5_dn45.py         rc=0      1s
 [  temoin  ] tools/verif_dossier_dn415.py           /home/nasbarok/projects/compagnon_project est present ⇒ la gate est JOUEE
@@ -195,42 +217,43 @@
 [  temoin  ] tools/verif_harnais_dn413.py           firmware/desknode/managed_components/lvgl__lvgl est present ⇒ la gate est JOUEE
 [VERTE      ] tools/verif_harnais_dn413.py           rc=0      6s
 [  temoin  ] tools/verif_hist_dn413.py              firmware/desknode/managed_components/lvgl__lvgl/src/widgets/chart/lv_chart.h est present ⇒ la gate est JOUEE
-[VERTE      ] tools/verif_hist_dn413.py              rc=0      3s
-[VERTE      ] tools/verif_installeur_dn71.py         rc=0      1s
+[VERTE      ] tools/verif_hist_dn413.py              rc=0      4s
+[VERTE      ] tools/verif_installeur_dn71.py         rc=0      0s
 [VERTE      ] tools/verif_instruments_dn423.py       rc=0      0s
 [VERTE      ] tools/verif_journal_soak_dn45.py       rc=0      0s
-[VERTE      ] tools/verif_langues_dn442.py           rc=0      1s
+[VERTE      ] tools/verif_langues_dn442.py           rc=0      0s
 [  temoin  ] tools/verif_ledger_dn416.py            /home/nasbarok/projects/compagnon_project est present ⇒ la gate est JOUEE
 [VERTE      ] tools/verif_ledger_dn416.py            rc=0      0s
-[VERTE      ] tools/verif_licences_dn52.py           rc=0      1s
+[VERTE      ] tools/verif_licences_dn52.py           rc=0      0s
 [VERTE      ] tools/verif_lissage_dn45.py            rc=0      0s
-[VERTE      ] tools/verif_miroir_horloge_dn418.py    rc=0      0s
+[VERTE      ] tools/verif_miroir_horloge_dn418.py    rc=0      1s
 [VERTE      ] tools/verif_paliers_dn441.py           rc=0      0s
 [VERTE      ] tools/verif_photos_dn63.py             rc=0      0s
 [VERTE      ] tools/verif_polices_dn440.py           rc=0      0s
-[VERTE      ] tools/verif_rebouclage_dn45.py         rc=0      2s
-[VERTE      ] tools/verif_reprise_horloge_dn418.py   rc=0      1s
+[VERTE      ] tools/verif_rebouclage_dn45.py         rc=0      3s
+[VERTE      ] tools/verif_reprise_horloge_dn418.py   rc=0      0s
 [VERTE      ] tools/verif_selection_dn49.py          rc=0      0s
 [VERTE      ] tools/verif_serie_dn412.py             rc=0      1s
 [VERTE      ] tools/verif_source_lhm_dn48.py         rc=0      4s
 [NON-JOUABLE] tools/verif_sr03.py                    rc=2   (attendu) temoin absent : tools/fixtures/AN4545.pdf
               motif : le PDF [AN] AN4545 (VL6180X, DocID026571 Rev 1) n'est PAS au depot : document StMicroelectronics, ⛔ non redistribuable. La gate l'attend en argument et sort en 2 sur son message d'usage — rc=2 n'est PAS un rouge.
-[VERTE      ] tools/verif_temoin_filtre_dn447.py     rc=0      2s
+[VERTE      ] tools/verif_temoin_filtre_dn447.py     rc=0      1s
 [  temoin  ] tools/verif_veille_dn33.py             firmware/desknode/managed_components/lvgl__lvgl/scripts/built_in_font/built_in_font_gen.py est present ⇒ la gate est JOUEE
-[VERTE      ] tools/verif_veille_dn33.py             rc=0      6s
-[VERTE      ] tools/verif_verrou_lvgl_dn413.py       rc=0     14s
+[VERTE      ] tools/verif_veille_dn33.py             rc=0      7s
+[VERTE      ] tools/verif_verrou_lvgl_dn413.py       rc=0     13s
 [VERTE      ] tools/verif_xip_dn422.py               rc=0      0s
 
-BILAN : 36 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 38 gates (259s)
+BILAN : 36 VERTE, 1 ROUGE, 1 NON-JOUABLE sur 38 gates (263s)
 appariement --cockpit : 0 divergence(s) entre la detection LARGE (quotes simples/doubles, declaration coupee) et la detection ETROITE d'origine
 ⛔ ROUGES :
    · tools/verif_dossier_dn415.py (rc=1)
 
-⚠️ NOTE DE PROTOCOLE, ECRITE PLUTOT QUE TUE : DEUX tirs de `run_gates.sh` ont
-   ete lances avant celui-ci et sont ECARTES, ⛔ pas caches — le 1er pendant que
+⚠️ NOTE DE PROTOCOLE, ECRITE PLUTOT QUE TUE : TROIS tirs de `run_gates.sh` ont
+   ete ECARTES avant celui-ci, ⛔ pas caches — le 1er pendant que
    l'implementation ecrivait (il a rendu `verif_installeur_dn71.py` a
    `27 OK, 1 KO`, l'etat INTERMEDIAIRE ou le jeton `manifest.json` etait entre
    dans le serveur avant que `(c10)` soit retournee), le 2e pendant la
-   regeneration du manifeste du ledger. **Celui ci-dessus est joue sur un arbre
-   STABLE**, et chacune des gates du tableau a ete rejouee INDIVIDUELLEMENT
-   apres, avec le meme compte.
+   regeneration du manifeste du ledger, le 3e AVANT les correctifs de revue.
+   **Celui ci-dessus est joue sur un arbre STABLE, apres la revue**, et chacune
+   des gates du tableau a ete rejouee INDIVIDUELLEMENT ensuite, avec le meme
+   compte.

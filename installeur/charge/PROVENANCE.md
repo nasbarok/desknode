@@ -72,6 +72,29 @@ little-endian. Le firmware la relit à l'identique (`firmware/desknode/main/dn_a
 `tools/verif_flash_dn72.py` la **revérifie ici** — magie, longueur **et** CRC — parce que
 c'est un instrument d'intégrité **gratuit** sur une charge qu'on distribue.
 
+## Ce que le manifeste décide d'autre, et pourquoi
+
+Le manifeste ne porte pas que des offsets. Il porte aussi
+**`"new_install_prompt_erase": false`**, et cette valeur mérite une phrase parce qu'elle
+**décide de ce qui arrive à la carte de quelqu'un**.
+
+Elle dit à l'outil de flash de **⛔ ne pas proposer d'effacer la puce entière** au premier
+passage. Écrire les quatre morceaux **par-dessus** ce qui est là suffit dans le cas visé — une
+carte DeskNode, neuve ou déjà flashée — parce que le **découpage de partitions est écrit à
+`32768`** au même passage : la table qui décide de tout est donc **remplacée**, ⛔ pas héritée.
+
+⚠️ **Le prix, écrit** : la partition `nvs` (à `0x9000`) est **hors** des quatre morceaux ⇒ elle
+**survit**. Un choix de langue, un réglage de veille ou une clé posés par un firmware
+**antérieur** restent en place — ce qui est **voulu** pour une mise à jour, et c'est ce qui rend
+*« mettre à jour = réinstaller »* tenable. ⛔ Sur une puce venue d'un **autre projet**, une NVS
+étrangère survit elle aussi ; le firmware la lit comme une NVS DeskNode, et son garde-fou de
+lecture est ce qui l'attrape — ⛔ pas ce manifeste. Proposer l'effacement à tout le monde pour
+ce cas-là coûterait, à chaque mise à jour ordinaire, la perte des réglages de quelqu'un.
+
+⇒ La valeur est **`false`**, et `tools/verif_flash_dn72.py` l'épingle : la basculer à `true`
+fait rougir la gate, parce qu'un changement pareil ⛔ ne doit pas passer sans que ce paragraphe
+soit réécrit.
+
 ## 🔴 Ce que RIEN ne vérifie — écrit, ⛔ pas tu
 
 **La provenance de ces quatre fichiers n'est mécanisée par AUCUNE chaîne automatique.** Ce

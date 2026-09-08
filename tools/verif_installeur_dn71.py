@@ -170,7 +170,22 @@ MOTIFS_ELEVATION = (
 #       c'est la qu'il a du sens, puisque c'est le manifeste qui pourrait
 #       fusionner les morceaux. Le laisser ici en aurait fait un jeton EXIGE,
 #       c'est-a-dire l'inverse exact de ce qu'il faut.
-JETONS_FLASH_BRANCHEMENT = ("esp-web-tools", "install-button", "manifest.json")
+# 🔴 ET LE CONTROLE ANCRE SUR **LE BRANCHEMENT REEL**, ⛔ PAS SUR LA PROSE —
+#    CORRECTIF DE REVUE, SUR UNE FAUTE DEMONTREE. La 1re version cherchait ces
+#    jetons N'IMPORTE OU dans la page, en casse basse. Or ils vivent aussi dans
+#    le commentaire d'en-tete, dans deux commentaires de script et dans l'appel
+#    `fetch` : SUPPRIMER PHYSIQUEMENT la balise `<script src=…>` ET l'element
+#    d'installation laissait donc le controle **VERT** sur une page qui ne peut
+#    plus rien flasher. Et le mutant qui semblait le garder ne rougissait que
+#    parce que sa substitution GLOBALE reecrivait aussi les commentaires — il
+#    etait plus LARGE que la faute qu'il nomme.
+#    ⇒ on lit l'URL REELLEMENT CHARGEE et l'ELEMENT REEL, comme le fait deja la
+#      gate de `dn7-2`. La liste ci-dessus n'est plus employee et reste ecrite
+#      pour memoire.
+RE_SRC_MODULE = re.compile(
+    r"<script[^>]*\bsrc\s*=\s*[\"']([^\"']*esp-web-tools[^\"']*)[\"']", re.I)
+ANCRE_ELEMENT = "<esp-web-install-button "
+ANCRE_MANIFESTE = 'manifest="charge/manifest.json"'
 
 # La palette du BANC D'ESSAI — celle de GitHub, prise sous la main pour une
 # soiree. `AC7.1.7` la REMPLACE ; si elle revient, c'est que l'identite a ete
@@ -737,14 +752,24 @@ def muter(etat):
             return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
         p[PY] = p[PY].replace(A_REQUETE, "encore, _rl = (False, '')", 1)
     elif _MUTANT == 12:
-        # ⚠️ IL RETIRE LE BRANCHEMENT, ⛔ il ne debranche pas la garde. La faute
-        #    replantee est celle d'une page livree SANS de quoi flasher —
-        #    exactement ce que le retournement de (c10) doit attraper.
-        if PAGE not in p or "esp-web-tools" not in p[PAGE].lower():
+        # ⚠️ IL RETIRE LE BRANCHEMENT, ⛔ il ne debranche pas la garde, ET ⛔ il
+        #    ne touche PLUS A LA PROSE — correctif de revue. Sa 1re version
+        #    substituait GLOBALEMENT les jetons, commentaires compris : elle
+        #    rougissait, mais pour une raison plus LARGE que la faute qu'elle
+        #    nomme, et masquait que le controle ne regardait pas le branchement.
+        #    ⇒ il supprime maintenant EXACTEMENT ce qui flashe : la balise de
+        #      module et l'element d'installation. La prose reste intacte.
+        src = RE_SRC_MODULE.search(p.get(PAGE, ""))
+        if not src or ANCRE_ELEMENT not in p.get(PAGE, ""):
             return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
-        p[PAGE] = re.sub(r"(?i)esp-web-tools", "un-composant-quelconque",
-                         p[PAGE])
-        p[PAGE] = re.sub(r"(?i)install-button", "bouton-maison", p[PAGE])
+        p[PAGE] = re.sub(
+            r"<script[^>]*\bsrc\s*=\s*[\"'][^\"']*esp-web-tools[^\"']*[\"'][^>]*>"
+            r"\s*</script>", "", p[PAGE], count=1)
+        debut = p[PAGE].index(ANCRE_ELEMENT)
+        fin = p[PAGE].index("</esp-web-install-button>", debut)
+        p[PAGE] = (p[PAGE][:debut]
+                   + '<button type="button">Installer (maison)</button>'
+                   + p[PAGE][fin + len("</esp-web-install-button>"):])
     elif _MUTANT == 13:
         if A_GESTE_PATH not in p.get(BAT, ""):
             return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
@@ -1299,14 +1324,17 @@ def main():
     #    tant que `dn7-1` excluait le flash. La frontiere a bouge avec `dn7-2` ;
     #    ⛔ le controle n'est pas SUPPRIME, il est INVERSE — sinon plus rien ne
     #    verrait quelqu'un debrancher le flash de la page.
+    src_flash = RE_SRC_MODULE.search(page)
     absents_flash = []
-    bas_page = page.lower()
-    for j in JETONS_FLASH_BRANCHEMENT:
-        if j not in bas_page:
-            absents_flash.append(j)
+    if not src_flash:
+        absents_flash.append("la balise `<script src=…esp-web-tools…>`")
+    if ANCRE_ELEMENT not in page:
+        absents_flash.append("l'element `%s…`" % ANCRE_ELEMENT)
+    elif ANCRE_MANIFESTE not in page:
+        absents_flash.append("l'attribut `%s`" % ANCRE_MANIFESTE)
     ctrl(not absents_flash, "(c10) le branchement du flash EST dans la page",
-         "%d jeton(s) de branchement exiges, %d trouves"
-         % (len(JETONS_FLASH_BRANCHEMENT), len(JETONS_FLASH_BRANCHEMENT))
+         "module chargé et element present : %s"
+         % (src_flash.group(1)[:52] if src_flash else "—")
          if not absents_flash
          else "⛔ ABSENT(S) de %s : %s — la page n'a plus de quoi poser le "
               "firmware, et un inconnu qui la traverse repartirait avec une "
