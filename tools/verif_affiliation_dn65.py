@@ -203,12 +203,31 @@ RE_URL = re.compile(r"https?://[^\s`)>\"'\]]+")
 #      boutique DERIVE de la BOM. ⛔ Contrepartie ECRITE : un chemin affilie
 #      pose sur une boutique que la BOM ne nomme pas passe — c'est le trou
 #      deja nomme plus bas, ⛔ pas un trou neuf.
+# 🔴 RESSERRE UNE 2e FOIS LE 2026-09-08, PAR `dn7-1` — `linkid` DESCEND CHEZ
+#    LES AMBIGUS, ET C'EST LA MESURE QUI LE DIT, ⛔ pas une preference.
+#    ⛔ LA PHRASE CI-DESSUS N'EST PAS EFFACEE (NFR3) : elle affirmait que les
+#    FRANCS n'ont « aucun usage innocent ». **C'EST FAUX POUR `linkid`, et le
+#    contre-exemple est du texte que PERSONNE N'A ECRIT** : PowerShell, quand
+#    sa politique d'execution refuse un script, imprime lui-meme
+#    `go.microsoft.com/fwlink/?LinkID=135170` — le redirecteur de la
+#    DOCUMENTATION Microsoft. La capture brute de `dn7-1`, qui est la PREUVE
+#    de `H2`, le contient donc mot pour mot, et (c5) a rougi dessus.
+#    ⇒ 3e faux positif de la MEME classe (apres `?affichage=` et le `/aff/` de
+#      legifrance), et le plus instructif : les deux premiers venaient d'un
+#      motif trop large, celui-ci vient d'un JETON dont l'usage innocent est
+#      EMIS PAR L'OUTIL LUI-MEME. On ne peut pas ne pas le capturer.
+#    ⚠️ CE QUE LA DESCENTE NE COUTE PAS, ET C'EST VERIFIABLE : sur un hote de
+#      BOUTIQUE, `linkid=` reste attrape par la 3e branche ; et la forme qui le
+#      produit vraiment (SiteStripe Amazon) porte TOUJOURS `tag=`, deja ambigu.
+#    ⛔ ET LA DESCENTE NE SE CROIT PAS SUR PAROLE : le mutant 38 REPLANTE un
+#      `?linkid=` sur un hote de boutique et exige (c5) ROUGE. Une exception
+#      qui ne serait pas FALSIFIABLE serait un trou, ⛔ pas un arbitrage.
 RE_MARQUEUR_FRANC = re.compile(
     r"[?&#](?:aff|affid|affiliate|aff_[a-z0-9_]+"
-    r"|ascsubtag|irclickid|partner_id|linkid)=", re.I)
+    r"|ascsubtag|irclickid|partner_id)=", re.I)
 RE_MARQUEUR_AMBIGU = re.compile(
     r"[?&#](?:tag|ref|referral|utm_source|utm_campaign|utm_medium"
-    r"|pid|sid|clickid)="
+    r"|pid|sid|clickid|linkid)="
     r"|/aff(?:iliate|iliation)?/[A-Za-z0-9_.~-]{2,}", re.I)
 RE_HOTE = re.compile(r"https?://([A-Za-z0-9.-]+)")
 # ⛔ `portals.` et `partner.aliexpress.com` N'Y SONT PAS, ET C'EST DELIBERE :
@@ -519,6 +538,14 @@ CIBLES[36] = ("c5", "c6")
 MUTANTS[37] = ("replante un marqueur AMBIGU sur un SOUS-DOMAINE de boutique "
                "⇒ la clause `h.endswith('.' + b)` de est_boutique()")
 CIBLES[37] = ("c5", "c6")
+
+# 🔴 AJOUTE PAR `dn7-1` LE 2026-09-08 — IL GARDE LA DESCENTE DE `linkid` CHEZ
+#    LES AMBIGUS. ⛔ Sans lui, le jeton sortirait du motif FRANC sans que rien
+#    ne prouve qu'il reste attrape la ou il compte : c'est l'exception rendue
+#    FALSIFIABLE, ⛔ pas une exception declaree.
+MUTANTS[38] = ("replante un `?linkid=` — le jeton DESCENDU chez les ambigus "
+               "le 2026-09-08 — sur un hote de boutique DERIVE de la BOM")
+CIBLES[38] = ("c5", "c6")
 
 # ⚠️ LE COMPTE DU CHEMIN NORMAL, hors le controle final qui le confronte.
 #    Il se PERIME si on ajoute un controle sans le mettre a jour — et c'est
@@ -986,6 +1013,11 @@ def muter(etat):
         p[BOM] += "\n\nhttps://www.aliexpress.com/item/1005.html?tag=dn65\n"
     elif _MUTANT == 37:
         p[BOM] += ("\n\nhttps://sale.aliexpress.com/__pc/x.htm?ref=dn65\n")
+    elif _MUTANT == 38:
+        # ⚠️ POSE SUR UNE BOUTIQUE, comme le 36 : hors boutique, ce jeton
+        #    est le redirecteur de documentation Microsoft, et c'est
+        #    EXACTEMENT ce que cette descente cesse d'epingler.
+        p[BOM] += "\n\nhttps://www.aliexpress.com/item/1006.html?linkid=dn71\n"
     else:
         raise AssertionError("mutant %d declare mais SANS CORPS" % _MUTANT)
     return e
