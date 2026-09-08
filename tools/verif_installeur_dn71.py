@@ -176,7 +176,17 @@ RE_ADR_PORT = re.compile(r"127\.0\.0\.1\s*:\s*\d")
 RE_HEX6 = re.compile(r"#[0-9a-fA-F]{6}\b")
 RE_HEX3 = re.compile(r"#[0-9a-fA-F]{3}\b(?![0-9a-fA-F])")
 # 🔴 UNE COULEUR N'EST ⛔ PAS FORCEMENT UN `#rrggbb`. L'egalite page ⇄
-#    declaration ne connaissait QUE cette notation : un `rgb()`, un `hsl()` ou
+#    declaration ne connaissait QUE cette notation : un `rgb`, un `hsl` ou
+#    ⚠️ ⛔ CES DEUX NOTATIONS S'ECRIVENT SANS PARENTHESES, ET CE N'EST PAS
+#       DE LA COQUETTERIE. `verif_harnais_dn413.py` (AC7.4) chasse les
+#       RENVOIS FANTOMES : un nom suivi de parentheses, cite entre accents
+#       graves dans un commentaire, doit etre une fonction DEFINIE quelque
+#       part du depot. Une notation CSS n'en est pas une ⇒ l'ecrire avec ses
+#       parentheses a fait ROUGIR cette gate-la. MESURE le 2026-09-08.
+#       🔴 ET LA PREMIERE REDACTION DE CE COMMENTAIRE A REPLANTE LA FAUTE
+#          QU'IL DECRIT : elle citait les deux notations AVEC parentheses pour
+#          les donner en exemple, et la gate a re-rougi sur l'explication
+#          elle-meme. ⛔ Documenter un piege ne protege de rien.
 #    un simple nom CSS passait sans etre declare nulle part, et l'identite
 #    « statuee et ecrite » redevenait une identite qu'on peut contourner.
 #    ⚠️ La recherche est bornee aux REGIONS DE STYLE (le bloc `<style>` et les
@@ -1368,7 +1378,7 @@ def main():
     courtes = RE_HEX3.findall(page)
     nues = sorted(employees - declarees)
     dormantes = sorted(declarees - employees)
-    # 🔴 ET LES NOTATIONS QUI NE SONT PAS DU `#rrggbb` : un `rgb()`, un `hsl()`
+    # 🔴 ET LES NOTATIONS QUI NE SONT PAS DU `#rrggbb` : un `rgb`, un `hsl`
     #    ou un nom CSS passait sans etre declare NULLE PART — l'identite
     #    « statuee et ecrite » redevenait contournable en une ligne de style.
     autres = couleurs_non_hex(page)
