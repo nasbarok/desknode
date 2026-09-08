@@ -1,0 +1,95 @@
+=== T2 — CAMPAGNE DE MUTANTS, tools/verif_installeur_dn71.py (dn7-1) ===
+2026-09-08T16:52:58+02:00
+
+CONTRAT (verif_campagne_dn56.py:37-44) — LES TROIS, ⛔ pas le seul rc :
+  rc == 1  ET  une ligne ^BILAN  ET  >= 1 ligne '  [KO ]'
+
+⛔ ET CE QUE CETTE CAMPAGNE NE PROUVE PAS : « 32 mutants, 32 vus rougir »
+   prouve 'mutant ⇒ rouge', ⛔ JAMAIS 'controle ⇒ couvert'. L'autre sens est
+   mesure separement par (c23)(c24)(c25) dans le tir SAIN ci-dessous.
+
+--- LE TIR SAIN ---
+   et elles vivent sous `mesures/dn7-1/`.
+
+==============================================================================
+BILAN : 25 OK, 0 KO
+==============================================================================
+
+--- --liste-mutants : sortie NUE, rc=0 (c'est ce que la campagne parse) ---
+   1  [c2]  efface de `LICENSING.md` la ligne qui classe `installeur/` ⇒ un dossier neuf couvert par RIEN, dans les deux sens
+   2  [c2]  fait annoncer `installeur/` en CC-BY-SA-4.0 ⇒ du code range sous une licence de documentation
+   3  [c3]  convertit le `.bat` en LF ⇒ cmd.exe peut executer une ligne TRONQUEE, piege deja paye par le depot
+   4  [c4]  replante un verbe d'ELEVATION dans le `.bat`
+   5  [c4]  replante un verbe d'ELEVATION dans `dn_installeur.py`
+   6  [c5]  fige le port du serveur a `8123`, la valeur du banc d'essai ⇒ `H6` se rouvre : un port fixe peut etre DEJA PRIS
+   7  [c6]  fait annoncer une adresse `file://` au lieu de l'adresse servie ⇒ contexte NON securise, Web Serial retire en silence
+   8  [c6]  fait ecouter et annoncer une IP ROUTABLE au lieu de la boucle locale
+   9  [c7]  fait exposer par la page un verbe ABSENT du `[ValidateSet]` de l'outil ⇒ la page REIMPLEMENTE au lieu d'exposer
+  10  [c8]  retire `retirer` des verbes exposes ⇒ l'inconnu qui n'aime pas garde une tache qui se relance a chaque session
+  11  [c9]  remplace la RE-REQUETE d'apres le retrait par une constante ⇒ le verdict croit le message de sortie de l'outil
+  12  [c10]  charge `esp-web-tools` dans la page ⇒ du flash dans une marche qui n'en porte pas
+  13  [c11]  efface du `.bat` le geste exact quand Python manque ⇒ un refus qui n'explique rien, le defaut meme qu'on corrige
+  14  [c12]  remplace au README le porteur de l'ecart par « a nommer » — la faute EXACTE que `dn6-4` a payee
+  15  [c13]  efface de la page le geste `pip install` de l'ecart declare
+  16  [c14]  prive le residuel de la Marque du Web de son porteur
+  17  [c15]  rend la page MUETTE sur ou aller quand l'acces serie manque
+  18  [c16]  supprime le test de CONTEXTE SECURISE de la page ⇒ elle se croit bonne partout
+  19  [c17,c19]  prive un jeton de couleur de sa LIGNE source ⇒ une citation qu'on ne peut plus rouvrir
+  20  [c18]  fait citer a un jeton une ligne de firmware qui ne porte PAS sa couleur ⇒ une source qui a pourri en silence
+  21  [c19]  pose dans la page une couleur qui n'est declaree NULLE PART
+  22  [c19]  declare un 8e jeton que la page n'emploie PAS ⇒ le SENS INVERSE : une identite qui a derive de sa page
+  23  [c20,c19]  replante la palette du BANC D'ESSAI (celle de GitHub) dans la page ⇒ l'identite redevient heritee
+  24  [c21]  DUPLIQUE la table des verbes dans la section d'installation du README au lieu d'y renvoyer ⇒ deux tables qui divergeront
+  25  [c22]  remet `dn7` a `not started` dans `docs/roadmap.md` ⇒ un etat publie qui contredit ce que le meme commit livre
+  26  [c23]  retire une cible de `CIBLES` ⇒ un controle garde par ZERO mutant, le risque que `dn6-1` avait paye
+  27  [c24]  declare dans `CIBLES` un controle INEXISTANT (`c99`) ⇒ une cible PERIMEE, que « N mutants, N rouges » ne verrait pas
+  28  [c25]  declare une cible pour un mutant qui N'EXISTE PAS
+  29  [z]  replante une SORTIE ANTICIPEE NON DECLAREE : le bilan retrecit, et il sortirait VERT
+  30  [c0]  declare un mutant dont le CORPS LEVE ⇒ un mutant MORT, qui sortirait en Traceback SANS `BILAN` s'il n'etait pas rattrape
+  31  [c1]  rend `installeur/index.html` VIDE (⛔ un vide n'est pas une absence de defaut)
+  32  [c1]  sort `installeur/IDENTITE.md` du corpus ⇒ l'identite cesse d'etre ECRITE, et plus rien ne garde la palette
+rc(liste)=0
+
+--- CHAQUE MUTANT, UN PAR UN ---
+  n   rc  BILAN  KO  libelle(s) [KO ] — lus A COLONNE FIXE, colonnes 8..65
+  1    1      1   1   (c2) `installeur/` est classe dans `LICENSING.md`;
+  2    1      1   1   (c2) `installeur/` est classe dans `LICENSING.md`;
+  3    1      1   1   (c3) le point d'entree est UNIQUE et en CRLF;
+  4    1      1   1   (c4) aucun jeton d'elevation dans le code livre;
+  5    1      1   1   (c4) aucun jeton d'elevation dans le code livre;
+  6    1      1   1   (c5) le port est TIRE a l'execution, ⛔ pas en dur;
+  7    1      1   1   (c6) l'adresse annoncee est la boucle locale + le port lu;
+  8    1      1   1   (c6) l'adresse annoncee est la boucle locale + le port lu;
+  9    1      1   1   (c7) tout verbe expose est dans le `[ValidateSet]` relu;
+ 10    1      1   1   (c8) les DEUX gestes existent : `stop` et `retirer`;
+ 11    1      1   1   (c9) le retrait est verifie PAR REQUETE apres le verbe;
+ 12    1      1   1   (c10) ⛔ rien du flash n'est livre ici;
+ 13    1      1   1   (c11) le `.bat` donne le geste EXACT sans Python;
+ 14    1      1   1   (c12) le README ecrit l'ecart avec SON PORTEUR;
+ 15    1      1   1   (c13) la page porte l'ecart, son geste et son porteur;
+ 16    1      1   1   (c14) le residuel de la Marque du Web a un porteur;
+ 17    1      1   1   (c15) la page dit l'acces serie ABSENT et ou aller;
+ 18    1      1   1   (c16) la page dit le contexte non securise et l'adresse;
+ 19    1      1   2   (c17) chaque jeton cite SON fichier ET SA ligne; (c19) page ⇄ IDENTITE.md : les memes couleurs, 2 sens;
+ 20    1      1   1   (c18) chaque couleur EST a la ligne de firmware citee;
+ 21    1      1   1   (c19) page ⇄ IDENTITE.md : les memes couleurs, 2 sens;
+ 22    1      1   1   (c19) page ⇄ IDENTITE.md : les memes couleurs, 2 sens;
+ 23    1      1   2   (c19) page ⇄ IDENTITE.md : les memes couleurs, 2 sens; (c20) ⛔ aucune couleur du banc d'essai dans la page;
+ 24    1      1   1   (c21) le README RENVOIE aux verbes, ⛔ il ne les redit p;
+ 25    1      1   1   (c22) `docs/roadmap.md` definit la marche et son etat;
+ 26    1      1   1   (c23) chaque controle est vise par >= 1 mutant;
+ 27    1      1   1   (c24) chaque cible de mutant est un controle REEL;
+ 28    1      1   1   (c25) `CIBLES` et `MUTANTS` se correspondent;
+ 29    1      1   1   (z) tout controle prevu est EMIS;
+ 30    1      1   1   (c0) le mutant 30 a une CIBLE et un CORPS;
+ 31    1      1   1   (c1) les quatre fichiers de `installeur/` sont SUIVIS;
+ 32    1      1   1   (c1) les quatre fichiers de `installeur/` sont SUIVIS;
+
+--- TEMOINS DE BORD ---
+mutant INCONNU (99)  : rc=2   (attendu 2 — erreur d'APPEL, ⛔ pas un defaut)
+
+mutant PERIME : on fait DISPARAITRE l'ancre du mutant 1 SANS toucher au depot
+  [KO ] (c0) le mutant 1 a bien un EFFET                           ⛔ SANS EFFET — son ancre litterale a disparu de la cible. ⛔ Ce n'est PAS un controle vert : rc=3, mutant PERIME.
+  ⛔ SORTIE ANTICIPEE — 1 controle(s) emis sur 25 prevus : le mutant 1 n'a eu aucun effet
+  BILAN : 0 OK, 1 KO
+  rc = 3   (attendu 3 — mutant PERIME, ⛔ pas un rc=1 muet)

@@ -1,0 +1,98 @@
+NOTE DE LECTURE — ⛔ écrite plutôt que corrigée en silence.
+Deux titres de ce relevé sortent tronqués : « -- (2) GESTE » et « -- (4) GESTE ».
+Motif MESURÉ : le script de mesure a d'abord été écrit en UTF-8 et PowerShell 5.1
+lit un fichier `.ps1` SANS BOM comme de l'ANSI — l'octet 0x94 des guillemets
+français y vaut `"`, ce qui FERME la chaîne en cours et casse l'analyse. Le script
+a donc été ré-écrit en ASCII pur, et le remplacement des guillemets a laissé, sur
+ces deux lignes seules, une chaîne coupée en deux. ⛔ Le relevé n'a PAS été rejoué
+pour ça : la substance — commande, `rc`, sortie relayée, verdict — est entière
+au-dessous de chaque titre, et rejouer aurait coûté un arrêt de plus de l'agent
+de la tour pour un défaut de MISE EN PAGE du banc.
+
+=== T3 - LES DEUX GESTES, JOUES SUR LA VRAIE TACHE (dn7-1 / AC7.1.2, AC7.1.4) ===
+date : 2026-09-08T16:48:34+02:00
+
+-- (0) ETAT AVANT ---------------------------------------------------------
+  tache      : PRESENTE | RunLevel=Limited | LogonType=Interactive | State=Ready
+  args       : -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File 
+"H:\dev\projets\desknode\dn_agent_tour.ps1" tache -Serie COM3 -Duree 0 -Temoin
+  agent      : 1 process portant dn_agent.py
+
+-- (0bis) LE FILET DE SECURITE EST POSE **AVANT** TOUTE MESURE ------------
+  Export-ScheduledTask -> C:\Users\naoua\dn-mesure-dn7-1\tache-DeskNode-agent.xml  (1578 octets)
+
+-- (1) L'INSTALLEUR DEMARRE, ET IL ANNONCE LE PORT QU'IL A REELLEMENT LIE --
+  | ==========================================================================
+  | DeskNode - installeur local   (pre-vol)
+  | ==========================================================================
+  |   Python              : 3.13.4  (C:\Users\naoua\AppData\Local\Programs\Python\Python313\python.exe)
+  |   la page             : C:\Users\naoua\dn-mesure-dn7-1\installeur\index.html
+  |   l'outil de l'agent  : H:\dev\projets\desknode\dn_agent_tour.ps1  [l'action de la tache planifiee]
+  |   psutil              : present
+  |   pyserial            : present
+  | 
+  | ==========================================================================
+  |   la page est servie ICI  ->  http://127.0.0.1:52015/
+  |   (port TIRE au lancement : il change a chaque fois, et c'est voulu)
+  |   Fermer cette fenetre, ou Ctrl+C, arrete le serveur.
+  | ==========================================================================
+  port TIRE  : 52015   (!! pas 8123, !! pas une constante)
+
+-- (2) GESTE 
+  commande   : powershell -NoProfile -ExecutionPolicy Bypass -File H:\dev\projets\desknode\dn_agent_tour.ps1 stop
+  rc         : 0
+  | 
+  | === STOP ===
+  |   a arreter : PID=11808
+  |   drapeau pose : arret PROPRE demande (le bilan de fin doit sortir)
+  |   arret propre en 1 s ; bilan ecrit : 1565 o
+  | 
+  | === PREUVE : ON RE-OUVRE LE PORT ===
+  |   python.exe vivants : 1  (portant dn_agent.py : 0 | CommandLine ILLISIBLE : 0)
+  |   port COM3 : libre
+  |   usbipd : 3-5 303a:1001 Périphérique série USB (COM3), USB JTAG/serial debug unit Shared
+  |   marqueur : absent
+  |   journal : 3004 o  H:\dev\projets\desknode\dn-agent.log
+  |   OK - COM3 se REOUVRE : le port est rendu.
+  | 
+
+-- (3) TEMOIN DE LA GARDE dn_agent_tour.ps1:737 -------------------------
+     On REJOUE permanence, NON ELEVE : c'est le seul chemin qui ATTEINT
+     la garde. Un Stop2 ici serait un ECHEC DE LA MARCHE.
+  | === PERMANENCE (tache au logon) ===
+  |   tache existante MISE A JOUR en place (aucune fenetre sans tache).
+  |   tache 'DeskNode agent' POSEE | RunLevel=Limited | etat=Ready
+  |     cible : powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File 
+"H:\dev\projets\desknode\dn_agent_tour.ps1" tache -Serie COM3 -Duree 0 -Temoin
+  |   aucune cle HKCU\...\Run : un seul lanceur.
+  rc(permanence)             : 0   (9 = la garde a tire)
+  message de garde -RunLevel n'est PAS Limited- present ? False
+
+-- (4) GESTE 
+  commande   : powershell -NoProfile -ExecutionPolicy Bypass -File H:\dev\projets\desknode\dn_agent_tour.ps1 retirer
+  rc         : 0
+  | 
+  | === RETRAIT DE LA TACHE ===
+  |   tache 'DeskNode agent' ABSENTE - retrait verifie.
+  |   /!\ L'AGENT N'EST PLUS LA APRES LE RETRAIT.
+  |   /!\   Le Planificateur a termine l'arbre d'action de la tache : le bilan
+  |   /!\   de fin est PERDU (TerminateProcess, aucun --stop-si lu).
+  |   /!\   => la prochaine fois, jouer 'dn-agent.bat stop' AVANT 'retirer'.
+  | 
+  verdict rendu par la page (re-interrogation FAITE PAR ELLE) :
+  | ✅ la tache « DeskNode agent » est ABSENTE — re-interrogee apres coup.
+
+-- (5) LA REQUETE INDEPENDANTE, QUI SEULE FAIT FOI ------------------------
+  Get-ScheduledTask ne rend RIEN => la tache est ABSENTE.
+
+-- (6) RESTAURATION : elle fait PARTIE de l'AC ----------------------------
+  tache      : PRESENTE | RunLevel=Limited | LogonType=Interactive | State=Ready
+  args       : -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File 
+"H:\dev\projets\desknode\dn_agent_tour.ps1" tache -Serie COM3 -Duree 0 -Temoin
+
+-- (7) ON REND LA MACHINE COMME ON L'A TROUVEE ----------------------------
+  serveur d'installeur encore vivant : 0
+  rc(lancer) : 0
+  agent      : 1 process portant dn_agent.py
+
+=== FIN T3 ===

@@ -69,6 +69,14 @@ l'entête du MENU, flashées et validées à l'œil le 2026-09-01 — puis **ret
 
 1. **Décision owner** : le choix appartient au **flasheur web**, ⛔ pas au MENU. Ce flasheur est
    son propre chantier (`epic-dn7`) et **il n'est pas livré**.
+   > ⚠️ **ANNOTÉ LE 2026-09-08 — LA MOITIÉ « il n'est pas livré » A CESSÉ D'ÊTRE VRAIE, ET LA
+   > PHRASE N'EST ⛔ PAS EFFACÉE.** Ce qui est livré depuis ce jour-là, c'est **l'installeur
+   > local** : `installeur/DeskNode-installeur.bat` ouvre une page servie sur cette machine,
+   > qui dit l'état du poste et **arrête** ou **retire** l'agent. Voir la section
+   > *« Installer DeskNode »* plus bas. 🔴 **Ce qui reste vrai, et il faut le lire** : cette
+   > page **ne flashe encore rien** et **ne propose aucun choix de langue** — donc la phrase
+   > ci-dessus reste exacte *pour le point dont elle parle*, le choix de langue. ⇒ la langue
+   > se change toujours au REPL série, comme dit juste en dessous.
 2. 🔴 **Ces deux cibles causaient une régression de charge MESURÉE** : `taskLVGL` passait de
    **3,5 % à 99,3 %** après une poignée de reconstructions de scène, watchdog déclenché, écran
    saccadé et tactile en retard. Elle est **partie avec elles** (A/B sur la carte, même protocole).
@@ -503,10 +511,118 @@ touch    # les compteurs bruts du GT911
 d'attendre »**. Et `builds` doit valoir **1** — un 2 dirait que l'état de démarrage se
 ré-affiche, c'est-à-dire qu'il ment sur ce qu'il mesure.
 
+## 🆕 Installer DeskNode — **une seule chose à lancer**, et aucun droit administrateur
+
+> Cette section s'adresse à quelqu'un qui vient de récupérer le dépôt et **n'a rien à
+> comprendre du projet pour l'essayer**. Tout ce qui suit est mesuré sur une machine
+> Windows le 2026-09-08.
+
+**Le geste :** double-cliquer **`installeur/DeskNode-installeur.bat`**.
+
+Ce fichier démarre un petit serveur **sur votre propre machine**, puis ouvre votre
+navigateur sur une adresse en `http://127.0.0.1:<port>`. **Le port est tiré au lancement**,
+il change à chaque fois — c'est voulu : un port fixe peut être déjà pris chez quelqu'un
+d'autre, et *mettre à jour DeskNode, c'est le réinstaller*, donc le deuxième lancement est
+le cas de tout le monde, ⛔ pas un cas rare.
+
+⛔ **Rien là-dedans ne demande de droits administrateur**, et ce n'est pas une promesse en
+l'air : la tâche planifiée de l'agent est posée en `-RunLevel Limited`, et l'outil qui la
+pose **traite un autre niveau comme un défaut** et s'arrête dessus. Un installeur élevé
+ferait donc échouer l'outil qui existe déjà.
+
+### Ce que la page sait déjà faire
+
+| geste sur la page | ce qui est appelé | comment c'est vérifié |
+|---|---|---|
+| **Arrêter l'agent** | le verbe `stop` de `tools/dn_agent_tour.ps1` | l'outil **rouvre le port** — un code de retour ne prouve rien |
+| **Retirer l'agent** | le verbe `retirer` du même outil | la tâche est **redemandée au système** après coup, ⛔ le message de sortie ne fait pas foi |
+
+⇒ Ces deux gestes **n'inventent rien** : ils exposent des verbes que le dépôt livre déjà, et
+la sortie de l'outil vous est rendue **telle quelle**, code de retour compris. Le détail des
+sept verbes, leurs arguments et ce qu'ils mesurent sont documentés plus bas, à
+**§ *« Lancer / arrêter l'agent DEPUIS WINDOWS »***. ⛔ Ils ne sont pas redits ici : une
+table dupliquée est une table qui divergera.
+
+### 🔴 Ce que vous devez installer vous-même — **écart déclaré**, avec son porteur
+
+DeskNode **ne se télécharge pas encore en UN seul morceau**, et c'est écrit ici plutôt que
+découvert au premier lancement :
+
+- il faut **Python 3** (le `.bat` le cherche, et s'il ne le trouve pas il vous donne le
+  geste exact : installeur officiel, case *« Add python.exe to PATH »* cochée) ;
+- l'agent a besoin de **deux modules**, `psutil` (le % CPU) et `pyserial` (le lien série) :
+
+```
+pip install --user psutil pyserial
+```
+
+⚠️ **Ce n'est ⛔ ni un oubli ni une panne : c'est le prix, écrit, d'une décision datée.** Le
+2026-09-08, l'owner a tranché qu'un **script lançable** suffisait pour la première version,
+plutôt qu'un exécutable autonome — le moins coûteux et le plus fiable. Or c'est l'exécutable
+qui **absorbait le runtime**. ⇒ **Porteur du retour à « un seul téléchargement » : l'agent
+en exécutable autonome, prévu en V0.2.** ⛔ La case n'est **pas** cochée, et la confondre
+avec un échec ferait mentir ce dossier.
+
+⚠️ **Deux des trois dépendances de l'agent n'avaient aucune garde** (mesuré le 2026-09-08) :
+`agent/dn_agent.py` explique proprement l'absence de `psutil` (l.226-230) mais **pas** celle
+de `pyserial` (l.2745) ni celle de `websockets` (l.3155) — celles-là sortent en trace nue.
+Le pré-vol de l'installeur les teste **toutes les deux** avant de servir la page, ce qui
+déplace le problème mais ⛔ ne le referme pas côté agent.
+
+### ⚠️ Si vous avez **téléchargé** ce fichier plutôt que cloné le dépôt
+
+Windows pose une **Marque du Web** sur ce qui vient d'Internet, et peut afficher
+*« Fichier ouvert — Avertissement de sécurité »* au premier lancement. **Le geste qui lève
+ça** : clic droit sur `DeskNode-installeur.bat` → *Propriétés* → cocher **Débloquer** en bas
+de l'onglet *Général* → *OK*. Aucun droit administrateur là non plus.
+
+🔴 **Et c'est aussi la raison d'être du `.bat`.** La politique d'exécution PowerShell mesurée
+sur la machine de référence est **`Restricted`**, ses cinq portées `Undefined` : un `.ps1`
+double-cliqué est **refusé**, Marque du Web ou pas. Le `.bat` contourne cela exactement comme
+`tools/dn-agent.bat` le fait depuis `dn4-17` — en lançant PowerShell avec
+`-ExecutionPolicy Bypass`, **pour ce processus-là seulement**, sans rien écrire sur la machine.
+
+⚠️ **RÉSIDUEL DÉCLARÉ, ⛔ pas fermé.** La friction ci-dessus a été reproduite **fidèlement**
+en posant le flux `Zone.Identifier` (`[ZoneTransfer] ZoneId=3`) sur une copie hors dépôt. Ce
+qui n'a **pas** pu être mesuré, c'est un **vrai téléchargement depuis une vraie release** :
+il n'en existe aucune à ce jour. ⇒ cette moitié-là reste ouverte, et **son porteur est
+`dn8`**, l'étape qui publie la vitrine et la première release (voir
+[`docs/roadmap.md`](docs/roadmap.md)). ⛔ Un *« ça marche chez moi depuis le dépôt »* ne la
+ferme pas.
+
+### Ce que cette page ne fait pas encore
+
+- ⛔ **Elle ne flashe pas la carte**, et ⛔ **elle n'installe pas l'agent** : elle sait
+  l'arrêter et le retirer, ⛔ pas le mettre en place. Le flash reste le chantier de
+  `epic-dn7` (voir [`docs/roadmap.md`](docs/roadmap.md), ligne `dn7-1` pour ce qui est déjà
+  livré).
+- ⛔ **Elle ne propose aucun choix de langue** : la dalle démarre en anglais et le choix se
+  fait au REPL série (`langue fr`), comme dit plus haut.
+- ⛔ **Elle ne montre aucun aperçu de la dalle** : c'est une **exclusion déclarée** de la
+  première version, ⛔ ni un oubli ni un manque à réparer.
+- ⚠️ **L'agent est Windows seulement**, et ça ne change pas. La page s'ouvre ailleurs — mais
+  ses deux gestes s'adressent à une tâche planifiée Windows, et ailleurs ils vous diront
+  simplement qu'ils n'ont rien trouvé.
+
+### Le pré-vol, sans ouvrir de fenêtre
+
+```bat
+installeur\DeskNode-installeur.bat verifier
+```
+
+Il dit ce qui manque, donne le geste, et rend **6** si une dépendance de l'agent manque —
+c'est l'instrument mécanique de l'écart ci-dessus, ⛔ pas un message décoratif. L'identité
+visuelle de la page, ses sept couleurs et **la ligne de firmware d'où chacune sort** sont
+écrites dans [`installeur/IDENTITE.md`](installeur/IDENTITE.md).
+
 ## Arborescence
 
 ```
 docs/       vision, roadmap, notes de câblage, photos, plans du boîtier, déclaration des liens affiliés
+installeur/ DeskNode-installeur.bat — LE point d'entrée (double-clic), en CRLF
+            dn_installeur.py — sert index.html sur 127.0.0.1, port TIRÉ au lancement
+            index.html — la page : état du poste, « arrêter » et « retirer » l'agent
+            IDENTITE.md — les 7 jetons de couleur, chacun citant sa ligne de firmware
 firmware/
   hello-desknode/   P0 — TÉMOIN MINIMAL, figé. Log + rétroéclairage clignotant.
                     Quand le bring-up de l'écran part en vrille, c'est lui qui

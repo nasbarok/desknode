@@ -12,6 +12,7 @@ repository.
 | `hardware/` — the measurement log of the board: display, I²C sensors, PC link | **CC-BY-SA-4.0** | [`docs/LICENSE`](docs/LICENSE) |
 | `assets/` — mockups and other visuals | **CC-BY-SA-4.0** | [`docs/LICENSE`](docs/LICENSE) |
 | `mesures/` — the measurement register: console captures, gate runs, benchmarks | **CC-BY-SA-4.0** | [`docs/LICENSE`](docs/LICENSE) |
+| `installeur/` — the local install page and the script that serves it | **GPL-3.0-or-later** | [`LICENSE`](LICENSE) |
 
 Anything not covered above (`tools/`, `tests/`, `.github/`, and the repository
 root) follows the **GPL-3.0-or-later** of the root `LICENSE`.
@@ -66,6 +67,36 @@ touched by the change. Once the repository is public and tagged (`dn8` — see
 [`docs/roadmap.md`](docs/roadmap.md)), the same edit would be a relicensing, and it
 would need the agreement of everyone who had contributed in between. **That is exactly
 what the CLA in [`CONTRIBUTING.md`](CONTRIBUTING.md) exists to keep possible.**
+
+## Why `installeur/` is GPL-3.0-or-later, and ⛔ not CC-BY-SA-4.0
+
+Added on 2026-09-08, with the **first** file of the installer and ⛔ not after it. The
+folder was new, and this repository checks its licence coverage **in both directions**
+(`tools/verif_licences_dn52.py`): a new tracked top-level directory that nobody files here
+turns a green check red. So the decision came before the writing, not after.
+
+⚠️ **The easy answer would have been wrong.** `installeur/` holds a web page, and pages
+look like the prose this file has twice moved under CC-BY-SA-4.0. It is not prose:
+
+- **It is code.** A `.bat` that starts a local HTTP server, the Python server itself, and
+  a page whose scripts probe the browser and drive the agent. The reason given above for
+  moving `hardware/`, `assets/`, `mesures/` and the root Markdown — *filing documentation
+  under a software copyleft claims something its content does not support* — runs the
+  **other way** here: filing a program under a documentation licence would claim exactly
+  as little.
+- **It serves a GPL binary.** The page installs the firmware of `firmware/`, which is
+  GPL-3.0-or-later, and the *Binary releases* section below already says released firmware
+  binaries — *including the ones installed by the web flasher* — carry that licence. The
+  installer is the thing that hands it over; putting the deliverer under a licence weaker
+  than the delivery would be an odd place to draw the line.
+- **It is ⛔ not `agent/`.** `agent/` is deliberately MIT so it can be plugged into
+  anything. The installer is not a component anybody would embed elsewhere — it exists to
+  install *this* firmware — so the argument that earned `agent/` its permissive licence
+  does not reach it.
+
+⇒ It follows the root `LICENSE`, like `tools/`, and it is named in the **table** rather
+than left to the fallback sentence: a folder a reader will actually open deserves a row
+they can find, ⛔ not a silence that happens to be covered.
 
 ## What this means for you
 

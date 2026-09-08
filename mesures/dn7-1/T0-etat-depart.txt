@@ -1,0 +1,298 @@
+=== T0 — LA BORNE DE DEPART DE dn7-1, ET UN TIR CONTAMINE QUI EST ECRIT ======
+
+⚠️ CE FICHIER PORTE UN DEFAUT DE PROTOCOLE, ⛔ ET IL N'EST PAS EFFACE.
+   Le tir de `run_gates.sh` ci-dessous a ete LANCE a 16:10:58, AVANT la
+   premiere ecriture — mais il dure 250 s, et la ligne `installeur/` a ete
+   ajoutee a `LICENSING.md` PENDANT qu'il tournait. Resultat : la ligne
+   `verif_licences_dn52.py` de ce tir mesure un etat INTERMEDIAIRE (chemin
+   ANNONCE, aucun fichier encore SUIVI), ⛔ pas la borne.
+   ⇒ La borne de cette gate a ete RE-MESUREE proprement, arbre remis a `HEAD`
+     pour le seul `LICENSING.md`, et elle est ci-dessous.
+   ⇒ TOUTES LES AUTRES LIGNES DU TIR SONT VALIDES : aucune autre gate ne lit
+     `LICENSING.md`, et `verif_dossier_dn415.py` rend le meme compte qu'annonce
+     au dossier de la marche.
+
+--- (a) LA BORNE VRAIE DE verif_licences_dn52.py (arbre a HEAD) ---
+  [OK ] tout controle prevu est EMIS ou DECLARE                    34 emis + 0 declare(s) = 34 prevus
+
+==============================================================================
+BILAN : 34 OK, 0 KO
+==============================================================================
+rc=0
+
+--- (b) LE TIR COMPLET DE run_gates.sh (16:10:58, 250 s) ---
+=== T0 — BORNE DE DEPART, dn7-1 ===
+2026-09-08T16:10:58+02:00
+
+d843e21 fix(dn6-5): LA GARDE DU NO-OP N'ETAIT PAS UNIVERSELLE -- CINQ MUTANTS PERIMES SE RENDAIENT EN « SAIN »
+
+--- bash tools/run_gates.sh ---
+═══ run_gates.sh — 36 gates decouvertes par glob ═══
+
+[VERTE      ] tools/verif_affiliation_dn65.py        rc=0      2s
+[VERTE      ] tools/verif_bme680_retard_dn45.py      rc=0      0s
+[  temoin  ] tools/verif_boitier_dn64.py            /home/nasbarok/projects/compagnon_project est present ⇒ la gate est JOUEE
+[VERTE      ] tools/verif_boitier_dn64.py            rc=0      0s
+[VERTE      ] tools/verif_bom_dn61.py                rc=0      0s
+[VERTE      ] tools/verif_cablage_dn62.py            rc=0      0s
+[  temoin  ] tools/verif_campagne_dn440.py          /home/nasbarok/projects/compagnon_project est present ⇒ la gate est JOUEE
+[VERTE      ] tools/verif_campagne_dn440.py          rc=0     31s
+[VERTE      ] tools/verif_campagne_dn56.py           rc=0    151s
+[VERTE      ] tools/verif_courbe_dn413.py            rc=0      9s
+[VERTE      ] tools/verif_cumul_ambient_dn45.py      rc=0      1s
+[VERTE      ] tools/verif_d4_nvs_dn45.py             rc=0      0s
+[VERTE      ] tools/verif_decoupe_horloge_dn418.py   rc=0      5s
+[VERTE      ] tools/verif_demarrage_dn443.py         rc=0      0s
+[  temoin  ] tools/verif_dossier_d5_dn45.py         /home/nasbarok/projects/compagnon_project est present ⇒ la gate est JOUEE
+[VERTE      ] tools/verif_dossier_d5_dn45.py         rc=0      1s
+[  temoin  ] tools/verif_dossier_dn415.py           /home/nasbarok/projects/compagnon_project est present ⇒ la gate est JOUEE
+[ROUGE      ] tools/verif_dossier_dn415.py           rc=1      6s
+┌── sortie de tools/verif_dossier_dn415.py ─────────────────────────────────────────
+│ ==============================================================================
+│ dn4-15 / AC6 — CHAQUE OCCURRENCE PORTE UN VERDICT
+│ ==============================================================================
+│ 
+│ depot code    : /home/nasbarok/projects/desknode
+│ depot cockpit : /home/nasbarok/projects/compagnon_project
+│ motifs        : facade · vl53l0x · 340..350 · 506..516 · busid-en-dur
+│ normalisation : NFD + diacritiques retires + minuscules   (⇒ `Facade` == `FACADE` == `facade`)
+│ 
+│ ── 0. LES DEUX DEPOTS SONT LA (⛔ jamais un skip silencieux) ──────
+│   [OK ] le depot cockpit est atteignable                         /home/nasbarok/projects/compagnon_project
+│   [OK ] le depot code est atteignable                            /home/nasbarok/projects/desknode
+│ 
+│ ── 1. CE QUI EST ECARTE, ET C'EST IMPRIME ────────────────────────
+│      desknode : docs/dn4-15-arbitrage.md                                       auto-reference
+│      desknode : tools/verif_dossier_dn415.py                                   auto-reference
+│      cockpit  : _bmad-output/implementation-artifacts/dn4-15-*.md              auto-ref. / genere
+│      cockpit  : mad-output/implementation-artifacts/sprint-board-desknode.html auto-ref. / genere
+│      cockpit  : la ligne `dn4-15-le-dossier-ne-ment-plus-sur-ce-qu` du tracker
+│      dossiers : .git, .venv, __pycache__, managed_components, mesures, node_modules, venv
+│      cockpit  : tout ce qui est HORS surface DeskNode (= KidSat)
+│      ARCHIVES : 119 occurrence(s) sur 111 ligne(s) — COMPTEES et LISTEES,
+│                 ⛔ non exigees arbitrees (⛔ sauf `busid-en-dur`) :
+│                   /implementation-artifacts/code-reviews/cr-dn4-17-cockpit.patch 1
+│                   mplementation-artifacts/code-reviews/cr-dn4-2-delta-diff.patch 11
+│                   lementation-artifacts/dn1-2-living-pcb-statique-plein-ecran.md 1
+│                   mplementation-artifacts/dn1-3-label-vivant-backlight-pilote.md 1
+│                   utput/implementation-artifacts/dn2-1-bme680-bus-i2c-externe.md 14
+│                   implementation-artifacts/dn3-1-systemmetricwidget-mock-data.md 3
+│                   ation-artifacts/dn3-2-grille-dashboard-2x3-barre-heure-date.md 3
+│                   put/implementation-artifacts/dn3-3-ambient-actif-deux-etats.md 2
+│                   lementation-artifacts/dn4-1-donnees-pc-reelles-quatre-cases.md 2
+│                   /dn4-14-2-la-barre-dit-l-heure-et-la-date-a-la-bonne-taille.md 2
+│                   ion-artifacts/dn4-14-les-icones-disent-ce-qu-elles-montrent.md 3
+│                   mad-output/implementation-artifacts/dn4-16-arbitrage-ledger.md 5
+│                   tation-artifacts/dn4-16-le-ledger-dit-ce-qui-reste-et-a-qui.md 4
+│                   ifacts/dn4-17-l-agent-vit-sur-la-tour-et-on-reprend-la-main.md 2
+│                   /implementation-artifacts/dn4-2-brancher-les-trois-capteurs.md 36
+│                   4-23-les-instruments-de-la-console-disent-quand-ils-mentent.md 1
+│                   utput/implementation-artifacts/dn4-3-exploiter-les-capteurs.md 8
+│                   tion-artifacts/dn4-6-cpu-et-gpu-a-trois-et-quatre-grandeurs.md 5
+│                   t/implementation-artifacts/dn4-7-le-tof-porte-t-il-vraiment.md 5
+│                   lementation-artifacts/dn4-8-la-tour-expose-ses-sondes-ring0.md 5
+│                   ts/dn4-9-cpu-prend-la-temperature-disque-prend-les-ventilos.md 2
+│                   ifacts/dn5-7-ce-que-dn5-5-a-reporte-est-re-verifie-et-porte.md 1
+│                   acts/dn6-1-la-bom-dit-quoi-acheter-et-ses-prix-ont-une-date.md 1
+│                   vestigations/dn4-7-vl6180x-ne-converge-jamais-investigation.md 1
+│      cockpit  : `deferred*/` sous implementation-artifacts (ledger deporte)
+│      extensions balayees : .md, .yaml, .yml, .c, .h, .cpp, .hpp, .py, .sh, .ps1, .bat, .txt, .defaults, .json, .cfg, .in, .scad, .patch, .rst, .csv, .cmake, .toml, .ini, .conf, .projbuild, .rules, .service
+│      noms de texte sans extension : CMakeLists.txt, Dockerfile, LICENSE, Makefile, sdkconfig, sdkconfig*, Kconfig*, partitions*
+│      ⇒ les exclusions sont DECLAREES, ⛔ pas silencieuses — 4 fichier(s), 7 dossier(s), 119 occ. d'archive
+│ 
+│      ECHAPPEMENT (AC40.5) — citer un motif ⛔ ne fabrique plus
+│      une occurrence. Forme de MENTION (pour en parler sans le
+│      poser) : `[[ cit ]]` … `[[ /cit ]]`, avec les espaces.
+│   [OK ] tout echappement est BIEN FORME (⛔ ni orphelin ni imbriq 0 echappement(s) EXERCE(S) sur 0 ligne(s)
+│   [OK ] aucun echappement n'echappe du vide (⇒ ⛔ pas de baisse m un span qui n'echappe rien mange du texte sans le dire
+│   [OK ] ⛔ AUCUNE tentative d'echapper le motif qui S'EXECUTE     `busid-en-dur` n'est pas echappable — decision owner du 2026-09-02
+│   [OK ] aucun saut subi (illisible / surface absente)            0 illisible(s), 0 surface(s) absente(s)
+│ 
+│ ── 2. LE MANIFESTE COUVRE L'ARBRE, LIGNE PAR LIGNE ───────────────
+│   [OK ] le manifeste est lisible et non vide                     196 entree(s)
+│   [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:ntation-artifacts/deferred-work.md [vl53l0x] #1 (l.5843) dont `sprint-change-proposal-2026-08-31.md` qui intr
+│   [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:ifacts/sprint-status-desknode.yaml [vl53l0x] #1 (l.384) dn4-7-le-tof-porte-t-il-vraiment: blocked  # 🔒 HORS 
+│   [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:ing-artifacts/epics-desknode-v1.md [vl53l0x] #1 (l.4248) `done` depuis mi-août) : **on séquence par dépendanc
+│   [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:rint-change-proposal-2026-08-31.md [vl53l0x] #1 (l.23) | « VL53L0X » | `TOF050C-VL6180X` — réfuté à l'inven
+│   [KO ] toute occurrence de l'arbre est AU MANIFESTE             ⛔ 4 occurrence(s) de l'arbre SANS ligne de manifeste (sur 199 arbitree(s)) — chacune est listee ci-dessus
+│   [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:on-artifacts/sprint-status-desknode.yaml [vl53l0x] #1 « dn4-7-le-tof-porte-t-il-vraiment: blocked #  »
+│   [KO ] le manifeste ne cite aucune occurrence FANTOME           ⛔ 1 ligne(s) de manifeste SANS occurrence dans l'arbre (sur 196) — soit le constat a disparu, soit une occurrence DEJA ARBITREE vient d'etre echappee : dans ce cas RETIRER sa ligne de manifeste dans le MEME geste (AC40.5.f ii)
+│   [OK ] le `n` de chaque ligne colle a l'arbre                   196 ligne(s)
+│   [KO ] le TEXTE a change sous un verdict inchange               cockpit:/sprint-status-desknode.yaml [busid-en-dur] #1 (l.390)
+│          divergence au caractere 73 (sur 119 / 119)
+│          manifeste …-ne-le-dit: in-progress # 📌 renvoi dn4-22 (2026-08-2…
+│          arbre     …-ne-le-dit: in-progress # 🟢 v0.1 [cc 2026-08-31] · 📌…
+│                                               ^
+│   [OK ] aucune ligne arbitree n'a ete RACCOURCIE sous son verdic 195 ligne(s) confrontee(s) en longueur — ⛔ amputer n'est plus invisible
+│   [KO ] la citation du manifeste colle au TEXTE de l'arbre       ⛔ 1 ligne(s) DERIVEE(S) : t-status-desknode.yaml:390
+│ 
+│ ── 3. LA SOMME DES VERDICTS = LE COMPTE (AC2.4) ──────────────────
+│      FAUX             0
+│      VRAI           121
+│      HISTORIQUE      82
+│      SANS-RAPPORT     2
+│   [KO ] somme des verdicts == occurrences de l'arbre             ⛔ 205 (manifeste) vs 208 (arbre), ecart -3 — CE QUI LE COMPOSE : 4 NOUVELLE(S) dans l'arbre : cockpit:tifacts/deferred-work.md [vl53l0x] #1 'dont `sprint-change-proposal-2026-08-31.' · cockpit:int-status-desknode.yaml [vl53l0x] #1 'dn4-7-le-tof-porte-t-il-vraiment: blocke' · cockpit:cts/epics-desknode-v1.md [vl53l0x] #1 '`done` depuis mi-août) : **on séquence p' · cockpit:e-proposal-2026-08-31.md [vl53l0x] #1 '| « VL53L0X » | `TOF050C-VL6180X` — réfu' || 1 FANTOME(S) au manifeste : cockpit:int-status-desknode.yaml [vl53l0x] #1 'dn4-7-le-tof-porte-t-il-vraiment: blocke'
+│   [OK ] ⛔ AUCUNE occurrence ne reste `FAUX` (decision owner)     FAUX = 0
+│   [OK ] les recapitulatifs du manifeste collent a son detail     10 chiffre(s) annonce(s) confronte(s)
+│ 
+│ ── 4. LA CONSOLE N'ENSEIGNE PLUS UN CHIFFRE MORT (AC5) ───────────
+│   [OK ] dn_console.c ne contient plus la coordonnee morte 340..3 0 occurrence(s)
+│   [OK ] dn_ui.c ne contient plus la coordonnee morte 340..350    0 occurrence(s)
+│   [OK ] dn_console.c : ⛔ 337..347 n'est SUBSTITUE dans aucune so aucune substitution
+│   [OK ] dn_ui.c : ⛔ 337..347 n'est SUBSTITUE dans aucune sortie  aucune substitution
+│   [OK ] dn_ui.h : ⛔ 337..347 n'est SUBSTITUE dans aucune sortie  aucune substitution
+│   [OK ] dn_console.c : chaque site d'avertissement renvoie a `wi 3 site(s), 0 sans renvoi (2 sites attendus au minimum)
+│   [OK ] dn_ui.c : chaque site d'avertissement renvoie a `widget  2 site(s), 0 sans renvoi (2 sites attendus au minimum)
+│   [OK ] les 2 marqueurs de la refutation sont UNIQUES dans dn_pi en-tete de bloc l.[163] · jeton de registre l.[170]
+│   [OK ] le bloc de refutation SE FERME dans dn_pins.h            l.163 → l.197
+│   [OK ] les 2 marqueurs resolvent LE MEME bloc                   jeton de registre l.170 dans le bloc l.163-197
+│   [OK ] les renvois `dn_pins.h:<ligne>` tombent DANS le bloc res 1 adresse(s) citee(s) : [165] — bloc resolu PAR MARQUEUR l.163-197 (⛔ pas par numero ecrit)
+│ 
+│ ── LA REGLE DE `rc`, ET ELLE EST DERIVEE DU CODE QUI DECIDE ──────
+│   ⛔ rc=1 : un KO a ete trouve dans la moitie jouee — un vrai defaut l'emporte TOUJOURS sur un prerequis absent.
+│   [OK ] toute regle de rc imprimee sort de regle_rc              1 phrase(s) emise(s), toutes produites par la regle
+│ 
+│ ==============================================================================
+│ BILAN : 23 OK, 10 KO
+│ ==============================================================================
+└──────────────────────────────────────────────────────────
+[  temoin  ] tools/verif_harnais_dn413.py           firmware/desknode/managed_components/lvgl__lvgl est present ⇒ la gate est JOUEE
+[VERTE      ] tools/verif_harnais_dn413.py           rc=0      6s
+[  temoin  ] tools/verif_hist_dn413.py              firmware/desknode/managed_components/lvgl__lvgl/src/widgets/chart/lv_chart.h est present ⇒ la gate est JOUEE
+[VERTE      ] tools/verif_hist_dn413.py              rc=0      3s
+[VERTE      ] tools/verif_instruments_dn423.py       rc=0      1s
+[VERTE      ] tools/verif_journal_soak_dn45.py       rc=0      0s
+[VERTE      ] tools/verif_langues_dn442.py           rc=0      1s
+[  temoin  ] tools/verif_ledger_dn416.py            /home/nasbarok/projects/compagnon_project est present ⇒ la gate est JOUEE
+[VERTE      ] tools/verif_ledger_dn416.py            rc=0      0s
+[ROUGE      ] tools/verif_licences_dn52.py           rc=1      1s
+┌── sortie de tools/verif_licences_dn52.py ─────────────────────────────────────────
+│ ==============================================================================
+│ dn5-2 — LE DEPOT TIENT LES PROMESSES QU'IL A DEJA PUBLIEES
+│ ==============================================================================
+│ 
+│ ── (a) LES LICENCES, DANS LES DEUX SENS ──────────────────────────
+│   [OK ] la TABLE de LICENSING.md se lit                            7 ligne(s)
+│   [OK ] la phrase de REPLI de LICENSING.md se lit                  3 chemin(s) + la racine
+│   [KO ] tout chemin ANNONCE existe dans l'arbre                    ⛔ annonce(s) sans arbre : installeur
+│   [OK ] tout repertoire TRACE est nomme par l'une des 2 listes     9 repertoire(s) de 1er niveau
+│   [OK ] le fichier de licence annonce EXISTE                       7 ligne(s) de table
+│   [OK ] le fichier de licence DIT BIEN la licence annoncee         ⛔ pas seulement « il est la »
+│   [OK ] chaque licence annoncee a une signature connue             3 licence(s) distinctes
+│ 
+│ ── (b) LE MANIFESTE ⇄ L'INVENTAIRE, DANS LES DEUX SENS ───────────
+│   [OK ] le manifeste `idf_component.yml` se lit                    10 entree(s)
+│   [OK ] la table § Firmware de THIRD-PARTY.md se lit               12 ligne(s)
+│   [OK ] toute ligne du bloc `dependencies` est LUE                 10 entree(s) lue(s)
+│   [OK ] toute entree du manifeste figure au tableau                10 entree(s) confrontee(s)
+│   [OK ] toute ligne du tableau est EPINGLEE, ALIAS ou TRANSITIVE   9 epinglee(s) + 1 alias + 2 transitive(s) = 12 ligne(s)
+│   [OK ] les versions EPINGLEES concordent (`==` retire)            10 comparaison(s), alias compris
+│   [OK ] l'ALIAS declare apparie les deux cotes                     idf⇄ESP-IDF
+│   [OK ] *(transitive)* ⟺ ABSENT du manifeste (les 2 sens)          2 ligne(s) transitive(s)
+│   [OK ] `managed_components/` hors du clone (fonde la limite)      gitignore=oui · trace=non
+│   [⚠️ ] ⛔ NON CONTROLE — la colonne « License » du tableau : sa seule source est
+│        `managed_components/`, absent d'un clone. Cette gate NE LE LIT PAS, meme
+│        s'il est la : une gate qui passe chez l'auteur et pas ailleurs est le
+│        defaut entier de `dn5-3`. La verifier est une MESURE, ⛔ pas un controle.
+│ 
+│ ── (c1) LES LIENS SORTANTS RESOLVENT ─────────────────────────────
+│   [OK ] tout lien local des fichiers de prose resout               182 lien(s) local(aux), 16 fichier(s)
+│ 
+│ ── (c2/c3) LES SECTIONS ET LES OUTILS CITES EXISTENT ─────────────
+│   [OK ] la section citee PAR SON TITRE existe                      6 citation(s)
+│   [OK ] l'outil cite AVEC SON DRAPEAU l'accepte (invoque)          8 couple(s) outil/drapeau
+│ 
+│ ── (c4) LES MARQUEURS CITES SONT DEFINIS ─────────────────────────
+│   [OK ] docs/roadmap.md definit des marqueurs                      19 marqueur(s)
+│   [OK ] tout marqueur cite COMME marqueur est defini               18 citation(s) ancree(s) sur la page
+│ 
+│ ── (c5) LES COMPTES ANNONCES EGALENT CE QU'ILS COMPTENT ──────────
+│   [OK ] le COMPTE annonce egale le nombre d'entrees                2 compte(s) confronte(s)
+│ 
+│ ── (c5-bis) UN CHIFFRE PUBLIE SE RE-DERIVE A SON COMMIT ──────────
+│   [OK ] ⛔ aucun chiffre publie n'ancre sur une ref MOUVANTE        6 chiffre(s) ancre(s), tous sur un COMMIT
+│   [⚠️ ] 1 chiffre(s) ancre(s) ne nomment AUCUNE portee suivie ⇒ ⛔ pas derivables par `git ls-tree` (ex. `du -sb .git`) : CONTRIBUTING.md « **134 406 999 bytes** »
+│   [OK ] tout chiffre ANCRE sur un commit se re-derive              5 chiffre(s) re-derive(s) a leur commit (`76b031a`)
+│ 
+│ ── (c6) LA PROMESSE D'AUTOMATISATION DU CLA A SON ARTEFACT ───────
+│   [OK ] la promesse de bot et son workflow disent la meme chose    promesse=oui · workflow(s) CLA=1
+│   [OK ] chaque action du workflow CLA est EPINGLEE                 contributor-assistant/github-action@v2.6.1
+│   [OK ] le document que le bot fait signer EXISTE                  1 workflow(s) audite(s)
+│   [OK ] `path-to-document` designe CE depot                        origin = nasbarok/desknode
+│   [OK ] la condition du workflow CLA est au niveau du JOB          ⛔ a l'ETAPE, le runner est ALLOUE et FACTURE
+│   [OK ] ⛔ le workflow ne checkoute JAMAIS le code de la PR         `pull_request_target` tourne avec le jeton du depot de BASE
+│   [OK ] l'ecart residuel du CLA a un PORTEUR reel                  porteur = `dn8`
+│ 
+│ ── (c7) ⛔ AUCUN FICHIER N'AFFIRME CE QUE L'ARBRE REFUTE ─────────
+│   [⚠️ ] l'arbre est LU, ⛔ pas suppose — `import pynvml` dans l'agent : NON ⇒ toute affirmation de couverture est FAUSSE
+│   [OK ] toute ligne qui nomme NVIDIA/NVML porte sa REFUTATION      ⛔ la propriete n'est PAS « le mot est absent »
+│ 
+│ ── (c8) LE DEPOT NE SE CONTREDIT PAS SUR SES PROPRES GARDES ──────
+│   [OK ] THIRD-PARTY.md dit que cette gate le garde                 il cite tools/verif_licences_dn52.py
+│ 
+│ ── (z) LE BILAN NE RETRECIT PAS EN SILENCE ───────────────────────
+│   [OK ] tout controle prevu est EMIS ou DECLARE                    34 emis + 0 declare(s) = 34 prevus
+│ 
+│ ==============================================================================
+│ BILAN : 33 OK, 1 KO
+│ ==============================================================================
+└──────────────────────────────────────────────────────────
+[VERTE      ] tools/verif_lissage_dn45.py            rc=0      0s
+[VERTE      ] tools/verif_miroir_horloge_dn418.py    rc=0      0s
+[VERTE      ] tools/verif_paliers_dn441.py           rc=0      0s
+[VERTE      ] tools/verif_photos_dn63.py             rc=0      1s
+[VERTE      ] tools/verif_polices_dn440.py           rc=0      0s
+[VERTE      ] tools/verif_rebouclage_dn45.py         rc=0      2s
+[VERTE      ] tools/verif_reprise_horloge_dn418.py   rc=0      0s
+[VERTE      ] tools/verif_selection_dn49.py          rc=0      0s
+[VERTE      ] tools/verif_serie_dn412.py             rc=0      2s
+[VERTE      ] tools/verif_source_lhm_dn48.py         rc=0      4s
+[NON-JOUABLE] tools/verif_sr03.py                    rc=2   (attendu) temoin absent : tools/fixtures/AN4545.pdf
+              motif : le PDF [AN] AN4545 (VL6180X, DocID026571 Rev 1) n'est PAS au depot : document StMicroelectronics, ⛔ non redistribuable. La gate l'attend en argument et sort en 2 sur son message d'usage — rc=2 n'est PAS un rouge.
+[VERTE      ] tools/verif_temoin_filtre_dn447.py     rc=0      2s
+[  temoin  ] tools/verif_veille_dn33.py             firmware/desknode/managed_components/lvgl__lvgl/scripts/built_in_font/built_in_font_gen.py est present ⇒ la gate est JOUEE
+[VERTE      ] tools/verif_veille_dn33.py             rc=0      6s
+[VERTE      ] tools/verif_verrou_lvgl_dn413.py       rc=0     14s
+[VERTE      ] tools/verif_xip_dn422.py               rc=0      0s
+
+BILAN : 33 VERTE, 2 ROUGE, 1 NON-JOUABLE sur 36 gates (250s)
+appariement --cockpit : 0 divergence(s) entre la detection LARGE (quotes simples/doubles, declaration coupee) et la detection ETROITE d'origine
+⛔ ROUGES :
+   · tools/verif_dossier_dn415.py (rc=1)
+   · tools/verif_licences_dn52.py (rc=1)
+rc=1
+
+--- (c) CE QUE LA BORNE VAUT, LIGNE A LIGNE ---------------------------------
+  36 gates decouvertes par le glob `tools/verif_*.py`
+  34 VERTE · 1 ROUGE · 1 NON-JOUABLE
+  la seule ROUGE : tools/verif_dossier_dn415.py  ->  BILAN : 23 OK, 10 KO
+  ⚠️ C'EST LE COMPTE QUI FAIT FOI, ⛔ PAS LA COULEUR : une gate DEJA rouge
+     absorbe un KO de plus sans changer de couleur. La comparaison de fin se
+     fait sur `23 OK, 10 KO`, ⛔ pas sur le mot ROUGE.
+  la NON-JOUABLE : tools/verif_sr03.py, rc=2 attendu, temoin absent (le PDF
+     ST AN4545 n'est pas redistribuable).
+  campagne : tools/verif_campagne_dn56.py = 10 cibles, 300 mutants (voir T7).
+
+--- (d) LA MACHINE WINDOWS, AVANT ------------------------------------------
+  cf. `T1-la-machine-et-l-installeur.txt` § (1) : PowerShell 5.1.19041.6456,
+  Python 3.13.4, `psutil`/`pyserial` au site UTILISATEUR, tache
+  « DeskNode agent » PRESENTE en RunLevel=Limited / LogonType=Interactive.
+  Politique d'execution : cf. `T5-marque-du-web-et-politique.txt` § (1) —
+  `Restricted`, les 5 portees `Undefined`.
+
+--- (e) L'ARBRE, AVANT -----------------------------------------------------
+  git rev-parse HEAD : d843e211ba49a9e1f542cc64d46b8b40b93a0571
+  repertoires de 1er niveau A `HEAD` (git ls-tree -d HEAD), ⛔ pas l'index :
+    .github
+    agent
+    assets
+    docs
+    firmware
+    hardware
+    mesures
+    tests
+    tools
+  ⇒ 9 repertoires. `installeur/` N'Y EST PAS, et c'est bien le point : c'est
+    lui qui, non classe, ferait ROUGIR `verif_licences_dn52.py` dans son 2e
+    sens (« tout repertoire TRACE est nomme par l'une des 2 listes »).
+  git diff -- firmware/ a `HEAD` : VIDE (aucun fichier de `firmware/` modifie)

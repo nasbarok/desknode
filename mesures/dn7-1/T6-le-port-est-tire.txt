@@ -1,0 +1,36 @@
+**********************
+Début de la transcription Windows PowerShell
+Heure de début : 20260908165014
+Nom d'utilisateur : DESKTOP-08RT3CL\naoua
+Utilisateur runAs :  DESKTOP-08RT3CL\naoua
+Nom de la configuration : 
+Ordinateur : DESKTOP-08RT3CL (Microsoft Windows NT 10.0.19045.0)
+Application hôte : powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Users\naoua\dn-mesure-dn7-1\t146.ps1
+ID de processus : 32376
+PSVersion: 5.1.19041.6456
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.19041.6456
+BuildVersion: 10.0.19041.6456
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+=== T6 - LE PORT EST TIRE, ET DEUX LANCEMENTS NE SE MARCHENT PAS DESSUS ===
+date : 2026-09-08T16:50:14+02:00
+
+  H6 disait : un port FIXE peut etre DEJA PRIS chez un inconnu. Et comme
+  mettre a jour, c'est reinstaller, le DEUXIEME lancement est le cas de
+  tout le monde. On joue donc DEUX lancements DE SUITE.
+  lancement 1 -> port 52090
+  lancement 2 -> port 52095
+  deux ports DIFFERENTS ?            True
+  aucun des deux n'est 8123 ?        True
+  les deux servent-ils VRAIMENT ?
+    port 52090 -> HTTP 200 (14533 octets)
+    port 52095 -> HTTP 200 (14533 octets)
+  serveurs de mesure encore vivants : 0
+**********************
+Fin de la transcription Windows PowerShell
+Heure de fin : 20260908165026
+**********************

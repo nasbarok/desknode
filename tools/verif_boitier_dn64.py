@@ -160,8 +160,18 @@ EXT_CAO = (".stl", ".3mf", ".step", ".stp", ".f3d", ".scad")
 #       repertoire de 1er niveau DOIT mettre cette table a jour dans le meme
 #       geste — et c'est exactement le but, le changement devient un GESTE
 #       ECRIT plutot qu'une derive.
+#    🆕 **`installeur/` AJOUTE LE 2026-09-08, ET C'EST L'ENGAGEMENT CI-DESSUS
+#       QUI S'EXECUTE — ⛔ pas un contournement.** La marche `dn7-1` verse le
+#       dossier `installeur/` (le `.bat` a double-cliquer, le serveur local, la
+#       page, son identite visuelle), et elle le CLASSE dans `LICENSING.md`
+#       **avant** son premier commit, en `GPL-3.0-or-later` : du code qui sert
+#       un binaire GPL, ⛔ pas de la prose. Les deux sens de
+#       `verif_licences_dn52.py` restent donc verts (34 OK / 0 KO, re-mesure le
+#       meme jour). ⛔ La ligne d'origine n'est pas effacee : elle disait « les
+#       9 repertoires mesures le 2026-09-07 », et c'est toujours ce qu'elle
+#       mesurait ce jour-la. Ils sont **10** depuis le 2026-09-08.
 REPERTOIRES_T0 = (".github", "agent", "assets", "docs", "firmware",
-                  "hardware", "mesures", "tests", "tools")
+                  "hardware", "installeur", "mesures", "tests", "tools")
 
 # La phrase que la page DOIT porter tant que rien n'est depose — et qu'elle
 # ⛔ NE PEUT PLUS porter des qu'un plan arrive.

@@ -1,0 +1,60 @@
+**********************
+Début de la transcription Windows PowerShell
+Heure de début : 20260908165003
+Nom d'utilisateur : DESKTOP-08RT3CL\naoua
+Utilisateur runAs :  DESKTOP-08RT3CL\naoua
+Nom de la configuration : 
+Ordinateur : DESKTOP-08RT3CL (Microsoft Windows NT 10.0.19045.0)
+Application hôte : powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Users\naoua\dn-mesure-dn7-1\t146.ps1
+ID de processus : 32376
+PSVersion: 5.1.19041.6456
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.19041.6456
+BuildVersion: 10.0.19041.6456
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+=== T4 - LE NAVIGATEUR, LE CONTEXTE SECURISE ET navigator.serial (AC7.1.1) ===
+date : 2026-09-08T16:50:03+02:00
+
+  L'instrument est Edge en --headless=new avec --dump-dom : la PAGE ecrit
+  ce qu'elle a MESURE dans son propre DOM, et on le relit. Ce n'est donc
+  pas un jugement a l'oeil.
+
+-- (1) LA PAGE SERVIE : http://127.0.0.1:52062/ ------------------------
+  [SERVIE EN LOCAL]  rc=0  DOM=14552 car.
+    v-url        = http://127.0.0.1:52062/
+    v-contexte   = oui
+    v-serial     = disponible
+    v-tache      = présente (DeskNode agent)
+    v-runlevel   = Limited
+    v-pilote     = H:\dev\projets\desknode\dn_agent_tour.ps1
+    v-psutil     = présent
+    v-pyserial   = présent
+    bloc unsupported MASQUE ? True
+    bloc not-allowed  MASQUE ? True
+    boutons DESACTIVES        ? False
+
+-- (2) TEMOIN NEGATIF : LA MEME PAGE, OUVERTE DEPUIS LE DISQUE ----------
+     Elle ferme l'hypothese H1 PAR LA MESURE, et elle en refute la moitie.
+  [DEPUIS LE DISQUE]  rc=0  DOM=14615 car.
+    v-url        = file:///C:/Users/naoua/dn-mesure-dn7-1/installeur/index.html
+    v-contexte   = oui
+    v-serial     = disponible
+    v-tache      = le serveur local ne répond plus
+    v-runlevel   = …
+    v-pilote     = …
+    v-psutil     = …
+    v-pyserial   = …
+    bloc unsupported MASQUE ? True
+    bloc not-allowed  MASQUE ? False
+    boutons DESACTIVES        ? True
+
+  msedge SURVIVANTS portant le user-data-dir de la mesure : 0
+  msedge de l'owner, INTACTS : 5
+**********************
+Fin de la transcription Windows PowerShell
+Heure de fin : 20260908165014
+**********************

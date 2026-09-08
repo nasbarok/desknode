@@ -1,0 +1,85 @@
+=== T1 - LA MACHINE, ET L'INSTALLEUR QUI DEMARRE DESSUS (dn7-1) ===
+date : 2026-09-08T16:51:20+02:00
+
+-- (1) LA MACHINE, RELUE ------------------------------------------------
+  PSVersion            : 5.1.19041.6456
+  py -3 --version      : Python 3.13.4
+  python --version     : Python 3.13.4
+  py.exe               : C:\Windows\py.exe
+  python.exe           : C:\Users\naoua\AppData\Local\Programs\Python\Python313\python.exe
+  psutil vit ici       : C:\Users\naoua\AppData\Roaming\Python\Python313\site-packages\psutil\__init__.py
+  pyserial vit ici     : C:\Users\naoua\AppData\Roaming\Python\Python313\site-packages\serial\__init__.py
+  tache DeskNode agent : PRESENTE | RunLevel=Limited | LogonType=Interactive
+  fins de ligne du .bat: 142 lignes CRLF
+
+-- (2) LE PRE-VOL NOMINAL : DeskNode-installeur.bat verifier ------------
+==========================================================================
+DeskNode - installeur local   (pre-vol)
+==========================================================================
+  Python              : 3.13.4  (C:\Users\naoua\AppData\Local\Programs\Python\Python313\python.exe)
+  la page             : C:\Users\naoua\dn-mesure-dn7-1\installeur\index.html
+  l'outil de l'agent  : H:\dev\projets\desknode\dn_agent_tour.ps1  [l'action de la tache planifiee]
+  psutil              : present
+  pyserial            : present
+  RC = 0   (0 attendu = tout est la)
+
+-- (3) L'INSTRUMENT DE L'ECART DECLARE (FR7.1) --------------------------
+     -s ecarte le site UTILISATEUR de Python, la ou pip --user depose.
+     Il REPRODUIT l'absence sur une machine qui a pourtant tout.
+     (La sonde du produit, elle, ne pose PAS -s : elle mentirait.)
+==========================================================================
+DeskNode - installeur local   (pre-vol)
+==========================================================================
+  Python              : 3.13.4  (C:\Users\naoua\AppData\Local\Programs\Python\Python313\python.exe)
+  la page             : C:\Users\naoua\dn-mesure-dn7-1\installeur\index.html
+  l'outil de l'agent  : H:\dev\projets\desknode\dn_agent_tour.ps1  [l'action de la tache planifiee]
+  psutil              : ABSENT
+  pyserial            : ABSENT
+
+  /!\ ECART DECLARE - ce n'est PAS une panne de l'installeur.
+     DeskNode ne se telecharge pas encore en UN seul morceau :
+     l'agent a besoin de psutil et de pyserial.
+
+       pip install --user psutil pyserial
+
+     Porteur du retour a un seul telechargement : l'agent en executable autonome, prevu en V0.2 - c'est la decision qui a cree l'ecart qui le refermera.
+     La page s'ouvre quand meme : arreter et retirer l'agent
+        ne demande aucun de ces deux modules.
+  RC = 6   (6 attendu = une dependance de l'agent manque)
+
+-- (4) LE .bat SANS PYTHON DU TOUT --------------------------------------
+     PREMIER TIR DU 2026-09-08 : INVALIDE, et il est ecrit plutot que tu.
+     On avait mis PATH = 'C:\Windows\system32;C:\Windows' en croyant
+     retirer Python. Or py.exe VIT DANS C:\Windows : le lanceur repondait
+     encore, RC=0, et le test mesurait le banc, pas le produit.
+     => PATH = 'C:\Windows\system32' SEUL, et on le VERIFIE d'abord.
+  py trouvable ?     False
+  python trouvable ? False
+
+  /!\ PYTHON 3 EST INTROUVABLE SUR CETTE MACHINE.
+
+      Ce n'est pas une panne de DeskNode : c'est un ECART DECLARE de
+      cette version. Tant que l'agent n'est pas livre en executable
+      autonome, il faut Python 3.
+
+      LE GESTE, EXACTEMENT :
+        1. Ouvrir https://www.python.org/downloads/windows/
+        2. Telecharger Python 3 (Windows installer, 64-bit)
+        3. Dans la premiere fenetre de l'installeur, COCHER
+           " Add python.exe to PATH " AVANT de cliquer Install
+        4. Fermer cette fenetre, puis relancer ce fichier
+
+      Porteur du retour a un seul telechargement : l'agent en
+      executable autonome, prevu en V0.2.
+
+  RC = 3   (3 attendu = Python introuvable, dit AVEC son geste)
+
+-- (5) UN ARGUMENT INCONNU ---------------------------------------------
+
+  /!\ argument inconnu : nimportequoi
+      emplois : DeskNode-installeur.bat            (sert la page)
+                DeskNode-installeur.bat verifier   (pre-vol seul)
+
+  RC = 2   (2 attendu = message d'usage)
+
+=== FIN T1 ===

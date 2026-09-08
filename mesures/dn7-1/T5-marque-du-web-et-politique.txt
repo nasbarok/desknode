@@ -1,0 +1,74 @@
+=== T5 - LA MARQUE DU WEB, ET POURQUOI UN .bat (AC7.1.3) ===
+date : 2026-09-08T16:52:06+02:00
+
+-- (1) LA POLITIQUE D'EXECUTION, MESUREE DEPUIS UN PROCESSUS PROPRE -----
+     PIEGE PAYE LE 2026-09-08 : le premier tir lancait l'enfant depuis un
+     PowerShell demarre en -ExecutionPolicy Bypass. La portee Process est
+     alors Bypass et l'enfant en HERITE par PSExecutionPolicyPreference :
+     le .ps1 demarrait, rc=0, et on mesurait SON PROPRE STIMULUS.
+     => on EFFACE la variable d'environnement avant de mesurer.
+Restricted
+
+        Scope ExecutionPolicy
+        ----- ---------------
+MachinePolicy       Undefined
+   UserPolicy       Undefined
+      Process       Undefined
+  CurrentUser       Undefined
+ LocalMachine       Undefined
+
+
+
+
+  rc du .ps1 double-clique (equivalent -File) : 1
+  refus de politique ? True
+  --- la sortie brute ---
+  | powershell.exe : Impossible de charger le fichier C:\Users\naoua\dn-mesure-dn7-1\temoin-refus.ps1, car l'exécution 
+de
+  | scripts est
+  | Au caractère C:\Users\naoua\dn-mesure-dn7-1\t5.ps1:19 : 11
+  | + $sortie = & powershell.exe -NoProfile -File $p1 2>&1 | Out-String
+  | +           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  |     + CategoryInfo          : NotSpecified: (Impossible de c...de scripts est :String) [], RemoteException
+  |     + FullyQualifiedErrorId : NativeCommandError
+  | désactivée sur ce système. Pour plus d'informations, consultez about_Execution_Policies à l'adresse
+  | https://go.microsoft.com/fwlink/?LinkID=135170.
+  |     + CategoryInfo          : Erreur de sécurité : (:) [], ParentContainsErrorRecordException
+  |     + FullyQualifiedErrorId : UnauthorizedAccess
+
+-- (2) LA MARQUE DU WEB EST POSEE, FIDELEMENT --------------------------
+  le flux Zone.Identifier, RELU sur le fichier :
+  | [ZoneTransfer]
+  | ZoneId=3
+  | HostUrl=https://example.invalid/DeskNode-v0.1.0.zip
+  les flux du fichier :
+  | :$DATA            5935 octets
+  | Zone.Identifier   79 octets
+
+-- (3) IL DEMARRE, OU IL REFUSE ? ---------------------------------------
+==========================================================================
+DeskNode - installeur local   (pre-vol)
+==========================================================================
+  Python              : 3.13.4  (C:\Users\naoua\AppData\Local\Programs\Python\Python313\python.exe)
+  la page             : C:\Users\naoua\dn-mesure-dn7-1-motw\installeur\index.html
+  l'outil de l'agent  : H:\dev\projets\desknode\dn_agent_tour.ps1  [l'action de la tache planifiee]
+  psutil              : present
+  pyserial            : present
+  RC par cmd /c        : 0
+  RC par le SHELL      : 0   (Start-Process passe par ShellExecute)
+
+-- (4) CE QUE CE TIR NE PROUVE PAS, ECRIT PLUTOT QUE TU -----------------
+     a) La bannier 'Fichier ouvert - Avertissement de securite' est levee
+        par l'EXPLORATEUR, et elle est INTERACTIVE : un tir non interactif
+        ne peut ni la produire ni la cliquer. Ce qui est mesure ici, c'est
+        que le .bat MARQUE DEMARRE - la branche 'ou bien il demarre'.
+     b) L'autre moitie d'AC7.1.3 - un VRAI telechargement depuis une VRAIE
+        release - est INJOUABLE : il n'existe AUCUNE release. Elle sort en
+        ECART DECLARE, porteur dn8. Un 'ca marche depuis le depot' ne la
+        ferme pas.
+
+-- (5) LE GESTE QUI LEVE LA MARQUE, JOUE ---------------------------------
+  apres Unblock-File (= clic droit > Proprietes > Debloquer),
+  le flux Zone.Identifier est-il encore la ? False
+
+=== FIN T5 ===

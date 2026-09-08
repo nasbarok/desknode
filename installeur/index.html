@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DeskNode — installeur local</title>
+<!--
+  ============================================================================
+   installeur/index.html — LA PAGE, SERVIE EN LOCAL           (dn7-1)
+  ============================================================================
+   ⛔ ELLE NE SE DOUBLE-CLIQUE PAS. Elle est servie par `dn_installeur.py` sur
+      `http://127.0.0.1:<port tire a l'execution>` et ouverte par lui. Ouverte
+      autrement, elle le DIT au lieu de faire semblant : Web Serial n'existe
+      que dans un contexte securise, et une page posee sur le disque ou vue par
+      une adresse reseau n'en est pas un.
+
+   IDENTITE VISUELLE : elle est STATUEE et ECRITE dans `IDENTITE.md`, jeton par
+   jeton, chacun citant SON fichier et SA ligne dans le firmware. ⛔ Aucune
+   couleur n'est choisie ici : celles du banc d'essai (la palette de GitHub)
+   sont REMPLACEES, et `tools/verif_installeur_dn71.py` garde l'egalite DANS
+   LES DEUX SENS.
+
+   PERIMETRE : cette page ARRETE et RETIRE l'agent. Elle ⛔ ne flashe rien, et
+   ⛔ elle ne choisit aucune langue — ce sont d'autres marches de `dn7`, et une
+   marche ne cite jamais une marche suivante.
+  ============================================================================
+-->
+<style>
+  /* Les sept jetons, et RIEN d'autre. Toute couleur ecrite ici doit etre
+     declaree dans IDENTITE.md, et toute couleur declaree la doit servir ici. */
+  :root {
+    color-scheme: dark;
+    --dn-fond: #000000;
+    --dn-accent: #a0d8ff;
+    --dn-texte: #c0d8e8;
+    --dn-eteint: #9a9a9a;
+    --dn-trait: #33404a;
+    --dn-avertissement: #ffb020;
+    --dn-alerte: #7f0000;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px 20px 64px;
+    background: var(--dn-fond); color: var(--dn-texte);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 30px; margin: 0 0 2px; letter-spacing: -.02em; color: var(--dn-accent); font-weight: 600; }
+  h2 { font-size: 17px; margin: 0 0 12px; color: var(--dn-accent); font-weight: 600; letter-spacing: .01em; }
+  p.sous-titre { color: var(--dn-eteint); margin: 0 0 28px; font-size: 15px; }
+  section {
+    border: 1px solid var(--dn-trait); border-radius: 10px;
+    padding: 20px 22px; margin: 0 0 18px; background: var(--dn-fond);
+  }
+  .ligne { display: flex; gap: 12px; align-items: baseline; padding: 5px 0; flex-wrap: wrap; }
+  .ligne .cle { color: var(--dn-eteint); min-width: 210px; font-size: 14px; }
+  .ligne .val { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 14px; }
+  button {
+    font: inherit; font-size: 15px; padding: 9px 18px; margin: 4px 8px 4px 0;
+    border: 1px solid var(--dn-accent); border-radius: 8px;
+    background: var(--dn-fond); color: var(--dn-accent); cursor: pointer;
+  }
+  button:hover:enabled { border-color: var(--dn-texte); color: var(--dn-texte); }
+  button:disabled { border-color: var(--dn-trait); color: var(--dn-eteint); cursor: not-allowed; }
+  code, kbd {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px;
+    border: 1px solid var(--dn-trait); border-radius: 4px; padding: 1px 5px; color: var(--dn-accent);
+  }
+  pre {
+    white-space: pre-wrap; word-break: break-word; margin: 14px 0 0; padding: 12px 14px;
+    border: 1px solid var(--dn-trait); border-radius: 8px;
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; line-height: 1.5;
+    color: var(--dn-texte); max-height: 340px; overflow: auto;
+  }
+  .avert { border-left: 3px solid var(--dn-avertissement); padding-left: 12px; color: var(--dn-avertissement); }
+  .alerte { background: var(--dn-alerte); border-radius: 8px; padding: 14px 16px; color: var(--dn-texte); }
+  .discret { color: var(--dn-eteint); font-size: 14px; }
+  ul { padding-left: 20px; } li { margin: 5px 0; }
+  a { color: var(--dn-accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>DeskNode — installeur</h1>
+  <p class="sous-titre">Cette page est servie <b>sur cette machine</b>, par le script que vous venez de lancer. Elle n'est pas en ligne, et elle ne le sera pas.</p>
+
+  <!-- ── (a) CE QUE LE NAVIGATEUR SAIT FAIRE, DIT PAR LUI ─────────────── -->
+  <section id="sec-navigateur">
+    <h2>Ce navigateur, et cette adresse</h2>
+    <div class="ligne"><span class="cle">adresse servie</span><span class="val" id="v-url">…</span></div>
+    <div class="ligne"><span class="cle">contexte sécurisé</span><span class="val" id="v-contexte">…</span></div>
+    <div class="ligne"><span class="cle">accès au port série</span><span class="val" id="v-serial">…</span></div>
+    <div id="etat-unsupported" hidden class="avert" style="margin-top:14px">
+      <b>Ce navigateur n'expose pas l'accès au port série.</b><br>
+      Il ne pourra donc pas parler à la carte. Rouvrez cette même adresse dans
+      <b>Microsoft Edge</b> ou <b>Google Chrome</b> — ce sont les deux navigateurs où
+      l'accès série a été mesuré. Firefox et Safari ne l'ont pas.
+    </div>
+    <div id="etat-not-allowed" hidden class="avert" style="margin-top:14px">
+      <b>Cette page n'est pas dans un contexte sécurisé.</b><br>
+      Elle a été ouverte depuis un fichier posé sur le disque, ou par une adresse réseau —
+      et dans ces deux cas le navigateur refuse l'accès au port série, sans le dire.
+      Fermez cet onglet et rouvrez l'adresse que le script a imprimée dans sa fenêtre&nbsp;:
+      elle commence par <code>http://127.0.0.1:</code> ou <code>http://localhost:</code>,
+      suivie du port <b>tiré au lancement</b> — il change à chaque fois, et c'est voulu.
+    </div>
+  </section>
+
+  <!-- ── (b) LES DEUX GESTES — ILS APPELLENT DES VERBES QUI EXISTENT ──── -->
+  <section id="sec-agent">
+    <h2>L'agent DeskNode, sur cette machine</h2>
+    <div class="ligne"><span class="cle">tâche planifiée</span><span class="val" id="v-tache">…</span></div>
+    <div class="ligne"><span class="cle">niveau d'exécution</span><span class="val" id="v-runlevel">…</span></div>
+    <div class="ligne"><span class="cle">outil piloté</span><span class="val" id="v-pilote">…</span></div>
+
+    <p class="discret" style="margin:14px 0 6px">
+      Ces deux boutons n'inventent rien&nbsp;: ils appellent les verbes <code>stop</code> et
+      <code>retirer</code> de l'outil que le dépôt livre déjà, et ils vous rendent sa sortie
+      <b>telle quelle</b>, code de retour compris. <b>Aucun des deux ne demande de droits
+      administrateur</b>, et aucun n'en a besoin.
+    </p>
+    <button id="b-stop" type="button">Arrêter l'agent</button>
+    <button id="b-retirer" type="button">Retirer l'agent</button>
+    <p class="discret" style="margin:8px 0 0">
+      <b>Arrêter</b> pose le drapeau d'arrêt propre, puis rouvre le port pour le prouver.<br>
+      <b>Retirer</b> dépose la tâche planifiée, <b>puis la redemande au système</b>&nbsp;: c'est
+      cette seconde question qui décide, ⛔ pas le message de la première.
+    </p>
+    <pre id="sortie" hidden></pre>
+  </section>
+
+  <!-- ── (c) L'ECART DECLARE DE FR7.1, AVEC SON PORTEUR ───────────────── -->
+  <section id="sec-ecart">
+    <h2>Ce que vous devez installer vous-même — écart déclaré</h2>
+    <p style="margin:0 0 10px">
+      DeskNode <b>ne se télécharge pas en un seul morceau</b> aujourd'hui&nbsp;: cette page et
+      l'agent tournent avec <b>Python&nbsp;3</b>, et l'agent a besoin de <b>deux modules</b>.
+      C'est un <b>écart déclaré</b>, ⛔ pas un oubli — et il a un porteur écrit.
+    </p>
+    <div class="ligne"><span class="cle">Python 3</span><span class="val" id="v-python">…</span></div>
+    <div class="ligne"><span class="cle"><code>psutil</code> (le % CPU)</span><span class="val" id="v-psutil">…</span></div>
+    <div class="ligne"><span class="cle"><code>pyserial</code> (le lien série)</span><span class="val" id="v-pyserial">…</span></div>
+    <p style="margin:12px 0 0">Le geste, s'il en manque un&nbsp;:</p>
+    <pre style="max-height:none">pip install --user psutil pyserial</pre>
+    <p class="discret" style="margin:12px 0 0">
+      <b>Porteur du retour à un seul téléchargement&nbsp;: l'agent en exécutable autonome,
+      prévu en V0.2.</b> C'est la décision du 2026-09-08 qui a créé cet écart, et c'est elle
+      qui le refermera — ⛔ un écart sans porteur écrit est un oubli déguisé.
+    </p>
+  </section>
+
+  <!-- ── (d) CE QU'ELLE NE FAIT PAS, ECRIT PLUTOT QUE DECOUVERT ───────── -->
+  <section>
+    <h2>Ce que cette page ne fait pas encore</h2>
+    <ul class="discret" style="margin:0">
+      <li>Elle <b>ne pose aucun firmware sur la carte</b>, et elle <b>n'installe pas l'agent</b>&nbsp;:
+        elle sait l'arrêter et le retirer, ⛔ pas le mettre en place.</li>
+      <li>Elle <b>ne propose aucun choix de langue</b>&nbsp;: la dalle démarre en anglais tant que
+        personne ne lui dit le contraire, et ce choix se fait aujourd'hui à la console série.</li>
+      <li>Elle <b>ne montre pas d'aperçu de la dalle</b>&nbsp;: c'est une <b>exclusion déclarée</b>
+        de la première version, ⛔ ni un oubli ni un manque à réparer.</li>
+    </ul>
+    <p class="discret" style="margin:14px 0 0">
+      L'agent DeskNode est <b>Windows seulement</b>. Cette page s'ouvre ailleurs, mais les deux
+      gestes ci-dessus s'adressent à une tâche planifiée Windows&nbsp;: ailleurs, ils vous
+      diront simplement qu'ils n'ont rien trouvé.
+    </p>
+  </section>
+
+  <p class="discret" style="text-align:center;margin:26px 0 0">
+    DeskNode — <a href="README.md">README</a> ·
+    <a href="LICENSING.md">licences</a> ·
+    <a href="IDENTITE.md">identité visuelle</a> ·
+    le code de cette page est sous GPL-3.0-or-later, comme le firmware qu'elle sert.
+  </p>
+</main>
+
+<script>
+"use strict";
+/* ⚠️ AUCUNE BIBLIOTHEQUE, ET AUCUN CHARGEMENT DISTANT. Le contexte securise et
+   l'acces serie se testent AVEC LES OBJETS DU NAVIGATEUR, ⛔ pas avec un
+   composant tiers : ce que cette marche doit prouver, c'est que la page servie
+   en local EST traitee en contexte securise. Un composant qui le testerait a
+   notre place ferait mesurer le composant. */
+
+function poser(id, texte, classe) {
+  var e = document.getElementById(id);
+  if (!e) { return; }
+  e.textContent = texte;
+  if (classe) { e.className = "val " + classe; }
+}
+
+/* ── (a) L'ADRESSE, LE CONTEXTE, ET L'ACCES SERIE ────────────────────── */
+var estLocal = (location.hostname === "127.0.0.1" || location.hostname === "localhost"
+                || location.hostname === "[::1]" || location.hostname === "::1");
+var securise = (window.isSecureContext === true);
+var serie = ("serial" in navigator);
+
+poser("v-url", location.protocol + "//" + location.host + location.pathname);
+poser("v-contexte", securise ? "oui" : "NON");
+poser("v-serial", serie ? "disponible" : "ABSENT de ce navigateur");
+
+/* ⚠️ LES DEUX ETATS SONT DISTINCTS, ET C'EST LA DIFFERENCE QUI EST UTILE :
+   « le navigateur ne sait pas » et « l'adresse ne convient pas » n'ont ⛔ pas
+   le meme remede. Les confondre renverrait la moitie des gens changer de
+   navigateur pour rien. */
+if (!securise || !estLocal) {
+  document.getElementById("etat-not-allowed").hidden = false;
+} else if (!serie) {
+  document.getElementById("etat-unsupported").hidden = false;
+}
+
+/* ── (b) L'ETAT DE LA MACHINE, DEMANDE AU SERVEUR ────────────────────── */
+var sortie = document.getElementById("sortie");
+var bStop = document.getElementById("b-stop");
+var bRetirer = document.getElementById("b-retirer");
+
+function ecrire(txt) {
+  sortie.hidden = false;
+  sortie.textContent = txt;
+  sortie.scrollTop = 0;
+}
+
+function ouiNon(v) { return v ? "oui" : "non"; }
+
+function rafraichirEtat() {
+  return fetch("api/etat", { cache: "no-store" })
+    .then(function (r) { return r.json(); })
+    .then(function (e) {
+      poser("v-tache", e.tache_presente === null ? "non interrogeable ici"
+            : (e.tache_presente ? "présente (" + e.tache_nom + ")" : "absente"));
+      poser("v-runlevel", e.tache_runlevel || "—");
+      poser("v-pilote", e.pilote || "introuvable");
+      poser("v-python", e.python_version || "introuvable");
+      poser("v-psutil", e.psutil ? "présent" : "ABSENT — voir le geste ci-dessous");
+      poser("v-pyserial", e.pyserial ? "présent" : "ABSENT — voir le geste ci-dessous");
+      var pilotable = !!e.pilote;
+      bStop.disabled = !pilotable;
+      bRetirer.disabled = !pilotable;
+      return e;
+    })
+    .catch(function (err) {
+      poser("v-tache", "le serveur local ne répond plus");
+      bStop.disabled = true;
+      bRetirer.disabled = true;
+      ecrire("⛔ la page n'a pas pu interroger son propre serveur : " + err);
+    });
+}
+
+/* ⚠️ LA SORTIE EST RELAYEE **TELLE QUELLE**, code de retour compris. Un refus
+   qui remonte doit RESTER un refus : traduire la sortie de l'outil en « c'est
+   fait » est exactement la faute que le verbe `retirer` de l'outil se garde
+   lui-meme de commettre (il redemande la tache au systeme). */
+function jouer(verbe, bouton) {
+  var anciens = [bStop.disabled, bRetirer.disabled];
+  bStop.disabled = true;
+  bRetirer.disabled = true;
+  var libelle = bouton.textContent;
+  bouton.textContent = "en cours…";
+  ecrire("⏳ " + verbe + " en cours — la sortie complète arrive telle quelle.");
+  fetch("api/agent/" + verbe, { method: "POST", cache: "no-store" })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      var t = "$ " + d.commande + "\n\n" + (d.sortie || "(aucune sortie)")
+            + "\n\ncode de retour : " + d.rc + "\n" + d.verdict;
+      ecrire(t);
+      bouton.textContent = libelle;
+      return rafraichirEtat();
+    })
+    .catch(function (err) {
+      ecrire("⛔ l'appel a échoué avant d'atteindre l'outil : " + err
+             + "\n⛔ ce n'est PAS un succès.");
+      bouton.textContent = libelle;
+      bStop.disabled = anciens[0];
+      bRetirer.disabled = anciens[1];
+    });
+}
+
+bStop.addEventListener("click", function () { jouer("stop", bStop); });
+bRetirer.addEventListener("click", function () { jouer("retirer", bRetirer); });
+
+rafraichirEtat();
+</script>
+</body>
+</html>

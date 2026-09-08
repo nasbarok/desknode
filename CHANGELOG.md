@@ -78,8 +78,38 @@ Work towards the first public release, `v0.1.0-beta`.
   reads "to be named", a milestone figure, and a projected revenue. It deliberately judges **no
   rate** and opens **no connection**: a wrong but dated and sourced rate leaves it green.
 
+- **A local installer, and one file to double-click** (`installeur/`) — `DeskNode-installeur.bat`
+  starts a small server **on your own machine** and opens a page on
+  `http://127.0.0.1:<port drawn at launch>`. ⛔ Nothing is hosted, ⛔ nothing is opened from disk,
+  and ⛔ the port is never a constant: a fixed port can already be taken on somebody else's
+  machine, and since *updating DeskNode means reinstalling it*, the second launch is everybody's
+  normal case rather than an edge one. The page **exposes** two verbs the repository already had —
+  `stop` and `retirer` of `tools/dn_agent_tour.ps1` — and ⛔ reimplements neither; the tool's output
+  and exit code are relayed as they are, and after `retirer` the scheduled task is **asked for
+  again**, because a message that says "removed" is not a measurement. 🔴 **Nothing here asks for
+  administrator rights.** That is not a promise but the state of the code: the task is registered at
+  `-RunLevel Limited`, and the tool stops on anything else as a defect — so an elevated installer
+  would break the tool that already exists. ⚠️ **What you still have to install yourself is written
+  down with the owner who will remove it**: without a standalone executable you need Python 3 plus
+  `psutil` and `pyserial`, and the return to a single download is carried by the standalone agent
+  planned for V0.2. It is a **declared gap**, ⛔ not a tick and ⛔ not a fault. It ⛔ does not flash
+  the board, ⛔ does not offer a language choice, and ⛔ shows no preview of the panel — the last of
+  those being a **declared exclusion** of the first version.
+- **A written visual identity for that page** (`installeur/IDENTITE.md`) — seven colour tokens,
+  each citing **the firmware file and line it is taken from**, replacing the palette the throwaway
+  prototype had borrowed from GitHub. The page and the panel are the same product seen at two
+  moments; if they do not look alike, the page is a brochure for something else.
+- **A gate over the installer** (`tools/verif_installeur_dn71.py`, run by `tools/run_gates.sh` and
+  replayed mutant by mutant by `tools/verif_campagne_dn56.py`): the folder is filed in
+  `LICENSING.md`, ⛔ no elevation verb appears in the installer's code, the port is drawn rather
+  than written, the announced address is built from the port actually bound, the two exposed verbs
+  are **re-read from the tool's own `[ValidateSet]`** instead of copied, the removal is verified by
+  a second query, the declared gap carries its owner — ⛔ never "to be named" — and the page's
+  colours equal the declared ones **in both directions**, each declared colour being checked
+  against the firmware line it cites.
 - **Licensing.** GPL-3.0-or-later for `firmware/`, MIT for `agent/`, CC-BY-SA-4.0 for
-  `docs/`. See [`LICENSING.md`](LICENSING.md).
+  `docs/`, and GPL-3.0-or-later for `installeur/` — code that serves a GPL binary, ⛔ not prose.
+  See [`LICENSING.md`](LICENSING.md).
 - **Third-party inventory** (`THIRD-PARTY.md`) — necessary because
   `managed_components/` is git-ignored, so the licenses DeskNode links against were
   recorded nowhere.
