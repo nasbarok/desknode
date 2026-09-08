@@ -49,6 +49,29 @@ honoured. It is installed by the user, separately, today.
 The install page uses [ESP Web Tools](https://github.com/esphome/esp-web-tools)
 (Apache-2.0), loaded from a CDN. It is not vendored either.
 
+**Version pinned: `10.4.0`.** `installeur/index.html` loads exactly
+`https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module`, and
+`tools/verif_flash_dn72.py` checks that the number written here and the number
+written in the page are **the same**, in both directions.
+
+🔴 **The pin is a measurement, not a habit.** On 2026-09-08 the range form
+`esp-web-tools@10` answered **HTTP 302** and redirected to `10.4.0`: writing
+`@10` would silently change the code that **writes to somebody's board** the day
+upstream publishes again. A version that moves on its own is not a declared
+dependency.
+
+⚠️ **This is the only remote load in `installeur/`, and it is the one place the
+page contradicts its own comment** — `installeur/index.html` still says "no
+library and no remote load" about its *state-probing* script, which remains
+true of that script. The sentence is annotated there rather than erased, with
+the exact scope of what stays true.
+
+⚠️ **Not vendoring it is a dated choice, not an oversight.** Working offline was
+downgraded from a promise to a convenience by the owner on 2026-09-08, and the
+vendoring that had been *deduced* from that promise fell with it. A CDN is
+therefore acceptable; what the page still owes the reader is to **say so when it
+does not load**, which `#etat-cdn` does.
+
 ## Keeping this file honest
 
 This table is checked by `tools/verif_licences_dn52.py`, run by

@@ -1,0 +1,69 @@
+=== T5 — LA CHARGE PART OCTET POUR OCTET, ET LE TRAJET HTTP EST EXERCE ======
+    2026-09-08 · serveur lance par le Python de WINDOWS, arbre WSL vu en UNC
+
+── LES SIX ADRESSES DE `/charge/`, DEMANDEES POUR DE VRAI ──────────────────
+
+  adresse servie = http://127.0.0.1:52949/
+
+  /charge/manifest.json          HTTP 200  len=509      CL=509      ct=application/json; charset=utf-8
+      sha256 = 64f6625e724b9953db5e77490173a9d58a02a864e562afdd37309482680945bc
+  /charge/bootloader.bin         HTTP 200  len=20848    CL=20848    ct=application/octet-stream
+      sha256 = d1bf1fd347b3494bcb3d38c7cee0d4698fd45617505529cf5c5dc1653ae0a478   => EGAL
+  /charge/partition-table.bin    HTTP 200  len=3072     CL=3072     ct=application/octet-stream
+      sha256 = 0934eb422b7c7f52193373a9ce81818e7344d9f0061e073b60fb8ebe209e46eb   => EGAL
+  /charge/desknode.bin           HTTP 200  len=1266752  CL=1266752  ct=application/octet-stream
+      sha256 = 00719e7310df9c5368cd84b965190883a001b39530c35ae61c6b8729f63e72b5   => EGAL
+  /charge/living_pcb_v0.bin      HTTP 200  len=614416   CL=614416   ct=application/octet-stream
+      sha256 = fae162a0a422c3c134db7ba015d8ddcf0adb20502be4f1617c17dba9fb3500ed   => EGAL
+  /charge/PROVENANCE.md          HTTP 200  len=7439     CL=7439     ct=text/plain; charset=utf-8
+
+  ⇒ LES QUATRE IMAGES PARTENT **OCTET POUR OCTET** : longueur ET empreinte
+    egales a celles publiees dans `installeur/charge/PROVENANCE.md`. ⛔ Ce
+    n'est pas « le serveur repond 200 » : c'est « ce qui sort est ce qui est
+    au depot ».
+
+── CE QUE LE NAVIGATEUR DEMANDE VRAIMENT, ET CE QU'IL NE DEMANDE PAS ───────
+
+  Edge sans tete, page chargee, poignee du serveur ENVELOPPEE par la sonde
+  (⛔ le produit n'est pas modifie) :
+
+    /                            dest=document   referer=-
+    /charge/manifest.json        dest=empty      referer=http://127.0.0.1:53234/
+    /api/etat                    dest=empty      referer=http://127.0.0.1:53234/
+    /favicon.ico                 dest=image      referer=http://127.0.0.1:53234/
+
+  ✅ `charge/manifest.json` est **REELLEMENT DEMANDE AU SERVEUR** — c'est la
+     moitie d'`AC7.2.1` qui se prouve sans main.
+  🔴 **ET UNE ATTENTE A ETE REFUTEE ICI, ELLE EST ECRITE PLUTOT QUE TUE** : la
+     1re redaction de cette sonde annoncait « le module de flash le demande
+     AUSSI ». **C'est FAUX, et le compte le dit** : le manifeste est demande
+     **UNE** fois, par le script de la page. ESP Web Tools ne le lit **qu'au
+     CLIC** sur le bouton d'installation — ce qui appartient a la moitie qui
+     exige une main, ⛔ pas a celle-ci. ⇒ la phrase fausse est remplacee par le
+     compte mesure.
+
+── LA LISTE BLANCHE TIENT, ET ELLE A ETE EPROUVEE EN CHEMINS **BRUTS** ─────
+
+🔴 UNE PREMIERE MESURE A CONCLU « SERVI : HTTP 200 » SUR `/charge/../README.md`,
+   ET ELLE MESURAIT LE **CLIENT**, ⛔ PAS LE SERVEUR : le client HTTP NORMALISE
+   le chemin avant de l'emettre, et envoie `/README.md` — qui est servi
+   DELIBEREMENT depuis `dn7-1` (les liens du pied de page). ⇒ rejoue en socket
+   nu, chemins emis TELS QUELS :
+
+    /charge/desknode.bin                   -> HTTP/1.0 200 OK          corps=1266752 o
+    /charge/../README.md                   -> HTTP/1.0 404 Not Found   corps=47 o
+    /charge/../../etc/passwd               -> HTTP/1.0 404 Not Found   corps=51 o
+    /charge/..%2fREADME.md                 -> HTTP/1.0 404 Not Found   corps=49 o
+    /installeur/dn_installeur.py           -> HTTP/1.0 404 Not Found   corps=55 o
+    /charge/                               -> HTTP/1.0 404 Not Found   corps=35 o
+
+  ⇒ la liste blanche est une LISTE, ⛔ pas un prefixe : rien ne se deduit d'un
+    chemin, tout se compare a une entree ECRITE.
+
+── LA GARDE D'ORIGINE DE `dn7-1` EST TOUJOURS ARMEE SUR LA CHARGE ─────────
+
+    GET /charge/desknode.bin   avec Host: attaquant.example
+      -> HTTP/1.0 403 Forbidden   corps=220 o
+
+  ⇒ les cinq adresses neuves passent par la MEME garde, ⛔ elles ne l'ont pas
+    contournee.

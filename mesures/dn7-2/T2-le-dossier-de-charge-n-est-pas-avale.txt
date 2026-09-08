@@ -1,0 +1,36 @@
+=== T2 — LE DOSSIER S'APPELLE `charge`, ET C'EST UNE MESURE =================
+    2026-09-08
+
+⚠️ CE TIR EXISTE PARCE QUE LE NOM DU DOSSIER N'EST ⛔ PAS UN GOUT. `.gitignore`
+   porte `build/` (l.2) et `build-*/` (l.6) **SANS `/` initial** : en syntaxe
+   gitignore, un motif sans barre oblique interne ni initiale mord **A TOUTE
+   PROFONDEUR**. Un dossier `installeur/build/` aurait donc fait disparaitre les
+   quatre images de `git status` **EN SILENCE**.
+
+  $ git check-ignore -v installeur/charge/desknode.bin
+  (aucune sortie, rc=1)                    ⇒ ⛔ PAS ignore  ✅
+
+  $ git check-ignore -v installeur/build/a.bin
+  .gitignore:2:build/    installeur/build/a.bin
+  (rc=0)                                   ⇒ 🔴 IGNORE — le piege est REEL
+
+── ET CE QUE GIT **LIVRE** ──────────────────────────────────────────────────
+
+⚠️ RIEN NE DECLARAIT `*.bin` DANS CE DEPOT (mesure du 2026-09-08) : seuls
+   `*.bat` et `*.cmd` avaient une regle. L'auto-detection de git est une
+   HEURISTIQUE sur les premiers octets, ⛔ pas une garantie — et une seule
+   substitution de fins de ligne rendrait les images INFLASHABLES.
+
+  $ git check-attr text diff -- installeur/charge/desknode.bin
+  installeur/charge/desknode.bin: text: unset
+  installeur/charge/desknode.bin: diff: unset
+
+  ⇒ la regle `installeur/charge/*.bin binary` est ACTIVE, et `binary` vaut
+    `-text -diff` : git ne touche a aucun octet.
+
+── LE COUT, ASSUME ET CHIFFRE ───────────────────────────────────────────────
+
+  1 905 088 octets versés au dépôt. Le motif est écrit dans
+  `installeur/charge/PROVENANCE.md` : un inconnu qui télécharge **n'a pas de
+  build**, et sans images dans l'arbre la page n'a rien à poser. Le coût tombe
+  le jour où une release existe (`dn8`) et où la CI construit (`dn4-45`).

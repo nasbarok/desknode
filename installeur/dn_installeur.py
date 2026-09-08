@@ -13,6 +13,13 @@ invoquent les verbes `stop` et `retirer` de `tools/dn_agent_tour.ps1`.
    trois gestes qui se font en session utilisateur — c'est deja ce que fait
    l'outil qu'on appelle ici, et sa propre garde traite le contraire comme un
    DEFAUT. ⇒ ce fichier n'a aucun verbe d'elevation, et une gate le verifie.
+⚠️ ANNOTE LE 2026-09-08 PAR `dn7-2` — ⛔ LE PARAGRAPHE CI-DESSUS N'EST PAS
+   EFFACE (`NFR3`), MAIS SA PREMIERE PROPOSITION A CESSE D'ETRE VRAIE. Ce
+   serveur SERT DESORMAIS LA CHARGE que la page ecrit sur la carte, et il
+   LIBERE LE PORT avant. Ce qu'il ne fait toujours pas : ecrire lui-meme sur la
+   carte — c'est le navigateur qui le fait, par Web Serial. Les DEUX AUTRES
+   propositions restent VRAIES telles quelles : ⛔ il n'installe toujours pas
+   l'agent, et ⛔ il ne demande toujours AUCUN droit administrateur.
 
 ── POURQUOI UN PORT TIRE, ⛔ PAS UNE CONSTANTE ──────────────────────────────
 
@@ -59,6 +66,31 @@ retour est nomme : l'agent en executable autonome, en V0.2.
    existe pour REPRODUIRE l'absence a la demande (c'est l'instrument de mesure
    d'`AC7.1.6`), ⛔ il n'est pas le regime normal.
 
+── CE QUE `dn7-2` AJOUTE, ET POURQUOI CHAQUE MORCEAU EST LA ────────────────
+
+⚠️ L'EN-TETE CI-DESSUS DIT « IL NE FLASHE RIEN ». C'ETAIT VRAI DE `dn7-1`, ET
+   C'EST ANNOTE PLUS BAS, ⛔ PAS EFFACE (`NFR3`).
+
+1. **La charge est SERVIE, par la liste blanche.** Cinq adresses de plus sous
+   `/charge/` : le manifeste et les QUATRE images. ⛔ Toujours pas de serveur
+   d'arborescence — chaque chemin reste une entree ECRITE de `SERVIS`.
+2. **Le port se DECOUVRE.** ⛔ Plus de `COM3` par defaut : on demande a Windows
+   quel `COM<n>` porte `VID_303A&PID_1001`, interface `MI_00`. ⛔ Aucune
+   dependance, ⛔ pas d'`usbipd` (dont le chemin est en dur dans l'outil, et
+   qu'un inconnu n'a pas).
+3. **`stop` recoit `-Serie <le port DECOUVERT>`.** L'appel de `dn7-1` etait une
+   liste FIXE sans `-Serie` : `stop` tombait donc sur le defaut `COM3` de
+   `tools/dn_agent_tour.ps1`, et sur une machine dont la carte est ailleurs il
+   rendait `7` ALORS QUE L'ARRET AVAIT EU LIEU.
+4. **Les codes de `stop` ne sont ⛔ PAS un booleen.** `0` port rendu · `4` le
+   drapeau n'a pas pu s'ecrire · `7` port ABSENT ou FANTOME · `8` toujours tenu
+   ou cause inconnue. ⚠️ `7` est le cas NORMAL d'une carte qui vient d'etre
+   debranchee ou reprise par WSL : le lire comme un echec ET le lire comme un
+   succes sont DEUX FAUTES DIFFERENTES. ⇒ on rend LE FAIT, ⛔ pas un verdict.
+5. **Un pre-vol de charge.** Les cinq fichiers, leurs tailles, et la
+   bande-annonce d'integrite de l'asset (magie `DNASSET1` + longueur + CRC32) —
+   un instrument GRATUIT sur une charge qu'on distribue.
+
 Emploi :
     python dn_installeur.py                       sert la page et l'ouvre
     python dn_installeur.py --verifier            pre-vol seul, puis sort
@@ -70,6 +102,7 @@ Codes de retour :
     0  tout est la
     3  Python n'a pas trouve la page ou l'outil qu'il doit servir
     4  le serveur local n'a pas pu se lier a la boucle locale
+    5  la CHARGE est absente ou abimee (⛔ rien a flasher)
     6  une dependance de l'agent manque (l'ecart declare de `FR7.1`)
 """
 
@@ -78,10 +111,12 @@ import io
 import json
 import os
 import re
+import struct
 import subprocess
 import sys
 import threading
 import webbrowser
+import zlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 # 🔴 `ICI` SE DERIVE DE `__file__`, ET `RACINE` DE `ICI` — ⛔ PAS L'INVERSE.
@@ -94,6 +129,70 @@ ICI = os.path.dirname(os.path.abspath(__file__))
 RACINE = os.path.dirname(ICI)
 PAGE = os.path.join(ICI, "index.html")
 PILOTE_DEPOT = os.path.join(RACINE, "tools", "dn_agent_tour.ps1")
+
+# 🔴 LE DOSSIER DE CHARGE S'APPELLE `charge`, ET ⛔ SURTOUT PAS `build`.
+#    `.gitignore` porte `build/` et `build-*/` SANS `/` initial : ces motifs
+#    mordent A TOUTE PROFONDEUR. Mesure du 2026-09-08 a `git check-ignore` :
+#    `installeur/charge/desknode.bin` n'est PAS ignore, `installeur/build/a.bin`
+#    l'EST. Les quatre images auraient disparu de `git status` EN SILENCE.
+CHARGE = os.path.join(ICI, "charge")
+MANIFESTE = os.path.join(CHARGE, "manifest.json")
+# ⚠️ Les noms sont ecrits ici parce qu'ils sont des ADRESSES SERVIES (une liste
+#    blanche se declare), ⛔ mais les OFFSETS ne le sont nulle part : ils vivent
+#    dans le manifeste, qui les tient de `build/flasher_args.json`. ⛔ Aucun des
+#    quatre nombres n'est recopie dans du code.
+IMAGES = ("bootloader.bin", "partition-table.bin", "desknode.bin",
+          "living_pcb_v0.bin")
+
+# ── LA BANDE-ANNONCE D'INTEGRITE DE L'ASSET ───────────────────────────────
+# 16 octets colles APRES la charge utile par `tools/gen_living_pcb.py` (l.30-38)
+# et relus a l'identique par le firmware (`main/dn_asset.c`) :
+#     +0   8 o  magie ASCII « DNASSET1 »
+#     +8   4 o  longueur de la charge utile, uint32 little-endian
+#     +12  4 o  CRC32 zlib de la charge utile, uint32 little-endian
+# ⇒ un instrument d'integrite GRATUIT sur une charge qu'on distribue : le
+#   pre-vol s'en sert pour refuser une image tronquee AVANT de la servir.
+ASSET_MAGIE = b"DNASSET1"
+ASSET_QUEUE = 16
+
+# 🔴 LA CARTE, TELLE QUE WINDOWS LA VOIT — MESURE LE 2026-09-08 SUR LA TOUR.
+#    `USB\VID_303A&PID_1001&MI_00\…` ⇒ FriendlyName « Peripherique serie USB
+#    (COM3) » (⚠️ LOCALISE), BusReportedDeviceDesc « USB JTAG/serial debug
+#    unit ». `MI_02` est l'interface WinUSB (le JTAG), ⛔ PAS un port COM.
+#    ⇒ la carte est un composite a DEUX interfaces, et SEULE `MI_00` porte un
+#      `COM<n>`. C'est donc `MI_00` qu'on cherche, ⛔ pas le composite parent.
+VID_PID = "VID_303A&PID_1001"
+INTERFACE_COM = "MI_00"
+# ⚠️ ON EXTRAIT LE `COM<n>` DE LA PARENTHESE DU `FriendlyName`, parce que c'est
+#    la seule forme presente sur TOUTES les localisations de Windows : le texte
+#    autour est traduit, ⛔ le `(COM3)` ne l'est pas.
+RE_COM = re.compile(r"\((COM[0-9]+)\)")
+# Le pilote refuse tout `-Serie` hors de cette forme (`dn_agent_tour.ps1:625`) :
+# on ne lui passe donc QUE ce qu'il accepte, ⛔ jamais une chaine devinee.
+RE_PORT_VALIDE = re.compile(r"^COM[0-9]+$")
+
+# 🔴 CE QUE `stop` REND, ET CE QUE CHAQUE CODE VEUT DIRE — RELU DANS L'OUTIL
+#    (`tools/dn_agent_tour.ps1`, verbe `stop`), ⛔ pas devine.
+#    ⚠️ `7` EST LE CAS **NORMAL** d'une carte qui vient d'etre debranchee ou
+#       reprise par WSL : l'agent EST arrete, mais la preuve demandee (rouvrir
+#       le port) ne peut pas etre produite. Le lire comme un echec et le lire
+#       comme un succes sont DEUX FAUTES DIFFERENTES — ⇒ on rend LE FAIT.
+CODES_STOP = {
+    0: ("rendu",
+        "✅ le port a ete REOUVERT apres l'arret : il est rendu. C'est "
+        "l'ouverture qui fait foi, ⛔ pas le code de retour."),
+    4: ("drapeau",
+        "⛔ le DRAPEAU D'ARRET n'a pas pu etre ECRIT : l'arret propre est "
+        "impossible, et RIEN n'a ete force. ⛔ Ce n'est pas un succes."),
+    7: ("disparu",
+        "⚠️ l'agent est ARRETE, mais le port a DISPARU (carte debranchee, ou "
+        "reprise par WSL) : il ne se rouvre pas. ⛔ « rendu » et « disparu » ne "
+        "sont PAS la meme chose, et aucun des deux n'est un echec de l'arret."),
+    8: ("tenu",
+        "⛔ le port est ENCORE TENU (ou sa cause est INCONNUE) : quelque chose "
+        "le garde. Le flash echouerait sur « Failed to execute 'open' on "
+        "'SerialPort' », qui n'explique rien."),
+}
 
 # 🔴 L'ADRESSE ET LE PORT — LA BOUCLE LOCALE, ET LE PORT **TIRE**.
 #    `PORT_DEMANDE = 0` demande au systeme un port LIBRE ; le port reellement
@@ -275,6 +374,129 @@ def dependance_presente(module, sans_site_utilisateur):
     return r.returncode == 0
 
 
+def decouvrir_port():
+    """Le `COM<n>` REEL de la carte — demande a Windows, ⛔ pas suppose.
+
+    🔴 POURQUOI CETTE FONCTION EXISTE, ET CE QU'ELLE REPARE. `dn7-1` appelait
+       le pilote par une liste FIXE d'arguments, SANS `-Serie` : le verbe `stop`
+       tombait donc sur le defaut `COM3` code en dur dans l'outil. Sur une
+       machine dont la carte est sur un autre port, `stop` pose bien le drapeau
+       (c'est un fichier, il ne connait pas le port), puis va rouvrir **COM3**
+       comme preuve — et rend `7` ALORS QUE L'ARRET A EU LIEU. Un installeur qui
+       lirait « rc != 0 ⇒ echec » compterait un echec pour un succes.
+    🔴 ⛔ ET ⛔ PAS PAR `usbipd`. La seule detection de `303a:1001` du depot
+       (`tools/dn_agent_tour.ps1`) passe par `usbipd`, dont le chemin est EN DUR
+       et qu'un inconnu N'A PAS. `Get-PnpDevice` est dans Windows depuis
+       toujours et ne coute AUCUNE dependance.
+    ⚠️ ⛔ AUCUN `COM<n>` N'EST DEVINE : sans carte enumeree, cette fonction rend
+       `None`, et la page le DIT au lieu de jouer `stop` sur un port suppose."""
+    rc, sortie, _cmd, _echec = _powershell([
+        "-Command",
+        # 🔴 L'ENCODAGE DE SORTIE EST FORCE EN UTF-8, ET C'EST UN DEFAUT MESURE
+        #    LE 2026-09-08, ⛔ PAS UNE PRECAUTION. PowerShell 5.1 ecrit dans la
+        #    page de code OEM de la console ; or le nom que Windows donne au
+        #    port est **LOCALISE** — « Peripherique serie USB (COM3) », avec
+        #    deux accents. Sans cette ligne, la lecture en UTF-8 les remplace
+        #    par le caractere de remplacement, et la page affichait un nom
+        #    ABIME a l'endroit precis ou elle promet de dire le VRAI nom du
+        #    port. ⚠️ Le `(COM<n>)` extrait, lui, est de l'ASCII : la
+        #    DECOUVERTE marchait deja — c'est l'AFFICHAGE qui mentait.
+        "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; "
+        # ⚠️ `-PresentOnly` : une carte DEBRANCHEE laisse son enregistrement PnP
+        #    derriere elle. Sans ce filtre on rendrait le port d'une carte qui
+        #    n'est plus la — le contraire de « mesurer ».
+        "$d = Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue | "
+        "Where-Object { $_.InstanceId -like 'USB\\%s&%s\\*' }; "
+        "foreach ($x in $d) { 'DN|' + $x.FriendlyName + '|' + $x.InstanceId }"
+        % (VID_PID, INTERFACE_COM)], timeout=45)
+    if rc is None or rc != 0 or not sortie:
+        # ⛔ « on ne sait pas » ⛔ n'est PAS « il n'y a pas de carte » : sur une
+        #    machine sans PnP (donc hors Windows), la question n'a pas de
+        #    reponse, et publier une ignorance comme un constat est la faute que
+        #    `tache_presente()` se garde deja de commettre.
+        return None, None, "non interrogeable ici"
+    for ligne in sortie.splitlines():
+        ligne = ligne.strip()
+        if not ligne.startswith("DN|"):
+            continue
+        _t, nom, instance = (ligne.split("|", 2) + ["", ""])[:3]
+        m = RE_COM.search(nom or "")
+        if m and RE_PORT_VALIDE.match(m.group(1)):
+            return m.group(1), nom.strip(), instance.strip()
+    return None, None, "aucun %s&%s enumere" % (VID_PID, INTERFACE_COM)
+
+
+def _lire_octets(chemin):
+    try:
+        with open(chemin, "rb") as fh:
+            return fh.read()
+    except OSError:
+        return None
+
+
+def etat_charge():
+    """La charge est-elle LA, ENTIERE, et l'asset INTACT ?
+
+    ⛔ Ce n'est pas un controle de confort : la page annonce a quelqu'un qu'elle
+       va ECRIRE sur sa carte. Servir un `.bin` tronque — flash de la voie A
+       interrompue, disque plein pendant la generation, copie a moitie faite —
+       poserait un firmware qui ne demarre pas, ou un asset BLANC.
+    🎯 L'asset porte une bande-annonce d'integrite (magie + longueur + CRC32)
+       que le firmware relit deja : la verifier ICI ne coute rien et attrape
+       exactement ce cas."""
+    manquants, vides = [], []
+    tailles = {}
+    for nom in IMAGES + ("manifest.json",):
+        chemin = os.path.join(CHARGE, nom)
+        if not os.path.exists(chemin):
+            manquants.append(nom)
+            continue
+        taille = os.path.getsize(chemin)
+        tailles[nom] = taille
+        if taille == 0:
+            vides.append(nom)
+    version, offsets, ecart_manifeste = None, None, None
+    if "manifest.json" not in manquants:
+        try:
+            with io.open(MANIFESTE, encoding="utf-8") as fh:
+                man = json.load(fh)
+            b = (man.get("builds") or [{}])[0]
+            version = man.get("version")
+            offsets = [(p.get("path"), p.get("offset")) for p in b.get("parts", [])]
+        except (OSError, ValueError, KeyError, IndexError, TypeError) as exc:
+            ecart_manifeste = "%s : %s" % (type(exc).__name__, str(exc)[:80])
+    # ── LA BANDE-ANNONCE DE L'ASSET ───────────────────────────────────────
+    asset = "non verifiable"
+    if "living_pcb_v0.bin" not in manquants:
+        octets = _lire_octets(os.path.join(CHARGE, "living_pcb_v0.bin"))
+        if octets is None or len(octets) < ASSET_QUEUE:
+            asset = "⛔ ILLISIBLE ou trop court"
+        elif octets[-ASSET_QUEUE:-8] != ASSET_MAGIE:
+            asset = "⛔ MAGIE ABSENTE (attendu %s)" % ASSET_MAGIE.decode("ascii")
+        else:
+            longueur, crc = struct.unpack("<II", octets[-8:])
+            if longueur + ASSET_QUEUE != len(octets):
+                asset = ("⛔ LONGUEUR INCOHERENTE : la queue annonce %d + %d, le "
+                         "fichier en fait %d" % (longueur, ASSET_QUEUE, len(octets)))
+            elif (zlib.crc32(octets[:longueur]) & 0xFFFFFFFF) != crc:
+                asset = "⛔ CRC32 FAUX : l'image est ABIMEE, ⛔ pas seulement vieille"
+            else:
+                asset = "intact (%d o + %d o de queue, CRC32 verifie)" % (longueur,
+                                                                         ASSET_QUEUE)
+    return {
+        "dossier": CHARGE,
+        "manquants": manquants,
+        "vides": vides,
+        "tailles": tailles,
+        "version": version,
+        "offsets": offsets,
+        "ecart_manifeste": ecart_manifeste,
+        "asset": asset,
+        "complete": (not manquants and not vides and not ecart_manifeste
+                     and asset.startswith("intact")),
+    }
+
+
 def arbre_parent_present():
     """L'`installeur/` est-il DANS son depot, ou a-t-il ete recupere SEUL ?
 
@@ -291,6 +513,8 @@ def arbre_parent_present():
 def etat_machine(sans_site_utilisateur=False):
     presente, runlevel = tache_presente()
     pilote, origine = localiser_pilote()
+    port, nom_port, motif_port = decouvrir_port()
+    charge = etat_charge()
     # 🔴 TROIS ETATS, ⛔ PAS DEUX — CORRECTIF DU 2026-09-08. `bool(ok)` ecrasait
     #    `None` (« la sonde n'a pas pu tourner ») sur `False` (« le module est
     #    ABSENT ») : un module NON TESTE etait annonce absent, et le pre-vol
@@ -307,6 +531,14 @@ def etat_machine(sans_site_utilisateur=False):
         elif ok is None:
             non_testables.append(m)
     return {
+        # 🔴 LE SYSTEME EST CELUI DE **CETTE** MACHINE, ⛔ pas une chaine
+        #    d'agent utilisateur. Le serveur tourne sur la boucle locale : il
+        #    EST la machine que le navigateur regarde. Une detection cote page
+        #    (`navigator.platform`) mesurerait ce que le navigateur veut bien
+        #    dire de lui ; celle-ci mesure le systeme qui devra faire tourner
+        #    l'agent. ⇒ c'est la bonne source pour l'avertissement hors Windows.
+        "systeme": sys.platform,
+        "windows": os.name == "nt",
         "python_version": "%d.%d.%d" % sys.version_info[:3],
         "python_executable": sys.executable,
         "psutil": deps.get("psutil"),
@@ -322,6 +554,14 @@ def etat_machine(sans_site_utilisateur=False):
         "pilote": pilote,
         "pilote_origine": origine,
         "verbes": list(VERBES),
+        # ── CE QUE `dn7-2` AJOUTE A L'ETAT ────────────────────────────────
+        # ⚠️ LE PORT EST **DECOUVERT**, ⛔ PAS SUPPOSE. `port_serie` vaut `None`
+        #    quand aucune carte n'est enumeree : la page le DIT et ⛔ ne joue
+        #    AUCUN `stop` sur un port suppose.
+        "port_serie": port,
+        "port_nom": nom_port,
+        "port_motif": motif_port,
+        "charge": charge,
     }
 
 
@@ -351,8 +591,22 @@ def jouer_verbe(verbe):
                 "verdict": "⛔ l'outil de CETTE machine n'accepte pas le verbe "
                            "`%s` (il accepte : %s). Rien n'a ete tente."
                            % (verbe, " · ".join(acceptes))}
-    rc, sortie, cmd, echec = _powershell(["-File", pilote, verbe])
+    # 🔴 LE PORT EST PASSE, ET C'EST LE CORRECTIF DE `dn7-2`. La liste etait
+    #    FIXE (`["-File", pilote, verbe]`) : sans `-Serie`, l'outil retombait
+    #    sur son defaut `COM3` code en dur. Sur une machine dont la carte est
+    #    ailleurs, `stop` posait bien le drapeau — c'est un fichier — puis
+    #    allait rouvrir COM3 comme PREUVE, et rendait `7` alors que l'arret
+    #    avait eu lieu. ⛔ On ne laisse plus un defaut decider.
+    # ⚠️ ET ON NE PASSE QUE CE QUE L'OUTIL ACCEPTE : sans carte enumeree,
+    #    `decouvrir_port()` rend `None`, et on n'invente ⛔ AUCUN `COM<n>` —
+    #    l'outil garde alors son propre defaut, et le verdict le DIT.
+    port, nom_port, motif_port = decouvrir_port()
+    arguments = ["-File", pilote, verbe]
+    if port and RE_PORT_VALIDE.match(port):
+        arguments += ["-Serie", port]
+    rc, sortie, cmd, echec = _powershell(arguments)
     d = {"commande": " ".join(cmd), "sortie": sortie or "",
+         "port_serie": port, "port_nom": nom_port, "port_motif": motif_port,
          "rc": rc if rc is not None else -1, "origine_pilote": origine,
          # 🔴 QUI A POSE CE CODE ? La page promet de rendre le code de retour
          #    « tel quel » : elle doit donc dire quand il ⛔ N'EST PAS celui de
@@ -391,6 +645,28 @@ def jouer_verbe(verbe):
                         "la main. Le geste a PEUT-ETRE eu lieu — etat INCONNU. "
                         "⛔ Ce n'est ni un succes ni un echec.")
         return d
+    # 🔴 LES CODES DE `stop` NE SONT ⛔ PAS UN BOOLEEN, ET LES LIRE COMME TEL
+    #    EST **DEUX FAUTES A LA FOIS**. `7` veut dire « l'agent est arrete, mais
+    #    le port a DISPARU » — le cas NORMAL d'une carte debranchee ou reprise
+    #    par WSL. Le compter pour un echec ferait renoncer quelqu'un dont le
+    #    geste a REUSSI ; le compter pour un succes ferait annoncer « port
+    #    rendu » sur un port qui n'existe plus. ⇒ on rend LE FAIT, nomme.
+    if verbe == "stop":
+        etat, phrase = CODES_STOP.get(rc, (None, None))
+        d["etat_port"] = etat or "inattendu"
+        if phrase:
+            d["verdict"] = phrase
+        else:
+            d["verdict"] = ("⛔ l'outil a rendu %r, qui n'est AUCUN des codes "
+                            "documentes de `stop` (0 · 4 · 7 · 8). ⛔ On ne "
+                            "conclut ni « rendu » ni « tenu » : lire la sortie "
+                            "ci-dessus." % rc)
+        if not port:
+            d["verdict"] += (" ⚠️ ET LE PORT N'A PAS ETE DECOUVERT (%s) : "
+                             "l'outil a donc joue sur SON defaut, ⛔ pas sur un "
+                             "port mesure. Ce verdict porte sur ce defaut."
+                             % (motif_port or "motif inconnu"))
+        return d
     d["verdict"] = ("✅ l'outil a rendu 0." if rc == 0 else
                     "⛔ l'outil a rendu %d — le refus remonte TEL QUEL, ⛔ il ne "
                     "devient pas un succes." % rc)
@@ -411,6 +687,24 @@ SERVIS = {
                    "text/plain; charset=utf-8"),
     "/LICENSING.md": (os.path.join(RACINE, "LICENSING.md"),
                       "text/plain; charset=utf-8"),
+    # ── LA CHARGE, ADRESSE PAR ADRESSE ────────────────────────────────────
+    # 🔴 CINQ ENTREES ECRITES, ⛔ PAS UN PREFIXE OUVERT. La tentation etait de
+    #    router `/charge/<n'importe quoi>` vers `CHARGE/<n'importe quoi>` : ce
+    #    serait un serveur d'arborescence deguise, et `..` en ferait une porte
+    #    sur tout le depot. Le controle qui garde cette liste blanche existe
+    #    depuis `dn7-1` ; le contourner « juste pour la charge » aurait rouvert
+    #    exactement ce qu'il avait ferme.
+    "/charge/manifest.json": (MANIFESTE, "application/json; charset=utf-8"),
+    "/charge/bootloader.bin": (os.path.join(CHARGE, "bootloader.bin"),
+                               "application/octet-stream"),
+    "/charge/partition-table.bin": (os.path.join(CHARGE, "partition-table.bin"),
+                                    "application/octet-stream"),
+    "/charge/desknode.bin": (os.path.join(CHARGE, "desknode.bin"),
+                             "application/octet-stream"),
+    "/charge/living_pcb_v0.bin": (os.path.join(CHARGE, "living_pcb_v0.bin"),
+                                  "application/octet-stream"),
+    "/charge/PROVENANCE.md": (os.path.join(CHARGE, "PROVENANCE.md"),
+                              "text/plain; charset=utf-8"),
 }
 
 ETAT = {"sans_site_utilisateur": False}
@@ -585,12 +879,55 @@ def prevol(sans_site_utilisateur):
               % PORTEUR_ECART)
         print("     La page s'ouvre quand meme : arreter et retirer l'agent")
         print("        ne demande aucun de ces deux modules.")
+    # ── LA CHARGE : CE QU'ON VA POSER SUR LA CARTE ────────────────────────
+    # 🔴 ⛔ PAS UNE TRACE NUE, ET ⛔ PAS UN SILENCE NON PLUS. Sans charge, la
+    #    page afficherait un bouton d'installation qui echouerait sur un 404 du
+    #    navigateur — c'est-a-dire le defaut meme que cette marche corrige :
+    #    un message d'outil qui n'explique rien.
+    ch = etat_charge()
+    print("")
+    print("  la charge a poser    : %s" % ch["dossier"])
+    if ch["version"]:
+        # ⚠️ C'est ce que le MANIFESTE annonce. Qu'il soit EGAL au champ
+        #    `esp_app_desc_t.version` du `desknode.bin` servi a cote est
+        #    verifie MECANIQUEMENT par `tools/verif_flash_dn72.py`, ⛔ pas ici :
+        #    un pre-vol qui rejouerait la gate donnerait deux sources de verite.
+        print("  version au manifeste : %s" % ch["version"])
+    for nom in IMAGES + ("manifest.json",):
+        taille = ch["tailles"].get(nom)
+        print("  %-20s : %s" % (nom, "%d o" % taille if taille is not None
+                                else "ABSENT"))
+    print("  asset (integrite)    : %s" % ch["asset"])
+    if not ch["complete"]:
+        print("")
+        print("  /!\\ LA CHARGE EST ABSENTE OU ABIMEE - LA PAGE NE POURRA RIEN")
+        print("      POSER SUR LA CARTE.")
+        if ch["manquants"]:
+            print("      manquant(s) : %s" % " ".join(ch["manquants"]))
+        if ch["vides"]:
+            print("      vide(s)     : %s" % " ".join(ch["vides"]))
+        if ch["ecart_manifeste"]:
+            print("      manifeste   : %s" % ch["ecart_manifeste"])
+        if not ch["asset"].startswith("intact"):
+            print("      asset       : %s" % ch["asset"])
+        print("      LE GESTE : recuperer le depot ENTIER (le dossier")
+        print("        installeur/charge/ en fait partie), ou le reconstruire :")
+        print("          . $HOME/esp/esp-idf/export.sh")
+        print("          cd firmware/desknode && idf.py reconfigure && idf.py build")
+        print("        puis recopier les 4 .bin - voir installeur/charge/")
+        print("        PROVENANCE.md, qui donne les commandes exactes.")
     # 🔴 `3` COUVRE LA PAGE **ET** L'OUTIL — la docstring l'annoncait deja
     #    (« Python n'a pas trouve la page **ou l'outil** ») et le code ne le
     #    faisait pas : sur une machine sans outil, le pre-vol annoncait
     #    « tout est la » pendant que les deux gestes exposes etaient morts.
     if manque_page or not pilote:
         return 3
+    # ⚠️ `5` PASSE **AVANT** `6`, ET C'EST UN ORDRE, ⛔ PAS UN HASARD : une
+    #    charge absente empeche le geste PRINCIPAL de la page (poser le
+    #    firmware), tandis qu'un module d'agent manquant est un ECART DECLARE
+    #    dont le reste du parcours se moque. Le code le plus grave gagne.
+    if not ch["complete"]:
+        return 5
     return 6 if manquantes else 0
 
 
@@ -631,6 +968,14 @@ def main():
         return rc
     if rc == 3:
         return rc
+    # ⚠️ `5` (charge absente) ⛔ N'ARRETE PAS LE SERVICE ICI, ET C'EST UN CHOIX
+    #    ECRIT, ⛔ pas un oubli. Le SEUL POINT D'ENTREE d'un inconnu est le
+    #    `.bat`, qui refuse d'aller plus loin sur ce meme etat (`:SANSCHARGE`,
+    #    `RC=5`) et lui donne le geste AVANT d'ouvrir quoi que ce soit. Celui
+    #    qui arrive jusqu'ici a lance Python A LA MAIN : c'est quelqu'un qui
+    #    developpe, et pour lui une page qui OUVRE en nommant precisement ce qui
+    #    manque vaut mieux qu'un refus. ⇒ la page porte l'etat de la charge, et
+    #    `--verifier` reste l'instrument MECANIQUE qui rend `5`.
 
     try:
         srv = ThreadingHTTPServer((ADRESSE, PORT_DEMANDE), Poignee)

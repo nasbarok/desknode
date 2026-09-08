@@ -28,3 +28,16 @@
 #       exception a tenir pour un benefice NUL.
 *.bat text eol=crlf
 *.cmd text eol=crlf
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  LA CHARGE VERSIONNEE DE L'INSTALLEUR                            (dn7-2)
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# 🔴 RIEN NE DECLARAIT `*.bin` DANS CE DEPOT — mesure du 2026-09-08. Les quatre
+#    images de `installeur/charge/` sont servies au navigateur OCTET POUR OCTET
+#    et flashees telles quelles : une seule substitution CRLF les rendrait
+#    INFLASHABLES, et l'auto-detection de git n'est ⛔ pas une garantie, c'est
+#    une heuristique sur les 8000 premiers octets.
+# ⚠️ `binary` vaut `-text -diff` : git ne touche a aucune fin de ligne et
+#    n'essaie pas d'en faire un diff textuel.
+installeur/charge/*.bin binary

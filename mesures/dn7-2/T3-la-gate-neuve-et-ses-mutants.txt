@@ -1,0 +1,144 @@
+=== T3 — LA GATE NEUVE, ET SA CAMPAGNE DE MUTANTS ======================
+    2026-09-08
+
+⛔ CE QUE CETTE GATE NE PROUVE PAS EST ECRIT DANS SA PROPRE SORTIE, ET IL
+   FAUT LE LIRE AVANT LES CHIFFRES : elle ne flashe rien, et le dialogue de
+   port de Web Serial est un dialogue NATIF du navigateur qu'aucun drapeau ne
+   pilote. Cette moitie-la se joue EN SEANCE CARTE (voir T7).
+
+── LE TIR NOMINAL ──────────────────────────────────────────────────────────
+
+==============================================================================
+dn7-2 — LA CHARGE EST VRAIE, ENTIERE, ET LA PAGE DIT CE QUI COINCE
+==============================================================================
+cibles     : installeur/charge/  +  installeur/index.html  +  THIRD-PARTY.md
+⛔ CETTE GATE NE FLASHE RIEN : aucun port serie ouvert, aucun PowerShell
+   appele, aucune carte demandee. Elle relit ce que le depot PUBLIE.
+
+── (c1) LA CHARGE EST **VERSIONNEE** ─────────────────────────────
+  [OK ] (c1) les 5 fichiers de charge sont SUIVIS                  5 fichier(s), tous traces
+
+── (c2)(c3)(c4)(c5) LE MANIFESTE, MORCEAU PAR MORCEAU ────────────
+  [OK ] (c2) le manifeste se LIT et declare 4 morceaux             4 morceaux declares
+  [OK ] (c3) `chipFamily` vaut exactement `ESP32-S3`               ESP32-S3
+  [OK ] (c4) les 4 offsets EGALENT leur source de verite           firmware/desknode/build/flasher_args.json (confrontation forte) : bootloader.bin=0 · partition-table.bin=32768 · desknode.bin=65536 · living_pcb_v0.bin=4259840
+  [OK ] (c5) ⛔ aucun binaire FUSIONNE nulle part                   4 jeton(s) de fusion cherches, 0 trouve
+
+── (c6)(c7)(c8)(c9) LA CHARGE EST CELLE QUI EST ANNONCEE ─────────
+  [OK ] (c6) chaque morceau EXISTE et fait la taille publiee       4 morceau(x) confrontes a `PROVENANCE.md`
+  [OK ] (c7) la version annoncee EST celle du binaire servi        40be2c8 (projet desknode), lue a l'offset 0x30
+  [OK ] (c8) ⛔ la version n'est PAS celle du banc d'essai          `0.1.0-beta-essai` cherchee, absente
+  [OK ] (c9) la bande-annonce de l'asset est VALIDE                magie + longueur + CRC32 verifies sur 614416 o
+
+── (c10)(c11) CE QUE LA PAGE CHARGE, ET CE QU'ELLE SERT ──────────
+  [OK ] (c10) ESP Web Tools est EPINGLE, page et inventaire        10.4.0 des deux cotes
+  [OK ] (c11) les 5 adresses de charge sont dans SERVIS            11 adresse(s) servies, toutes sous la racine
+
+── (c12)…(c15) LA PAGE DIT CE QUI COINCE, AVANT QUE CA COINCE ────
+  [OK ] (c12) la page nomme les DEUX formes du nom du port         « Périphérique série USB » et « USB JTAG/serial debug unit »
+  [OK ] (c13) la page dit les DEUX gestes, et leur echec           cliquer la ligne, puis `Se connecter`
+  [OK ] (c14) la page porte la recuperation MESUREE                `BOOT` maintenu + `RESET`, et le mode download nomme
+  [OK ] (c15) l'avertissement hors Windows precede le flash        `etat-hors-windows` est place AVANT le bouton d'installation
+
+── (c16)(c17) LA PROVENANCE, ET CE QUE PERSONNE NE MECANISE ──────
+  [OK ] (c16) la page pointe la source de CETTE revision           `PROVENANCE.md` nomme 40be2c8
+  [OK ] (c17) la non-mecanisation est ECRITE, avec ses porteurs    2 porteur(s) nomme(s)
+
+── (c18)(c19) ⛔ PAS D'ELEVATION, ⛔ PAS DE PILOTE INUTILE ────────
+  [OK ] (c18) ⛔ aucun jeton d'elevation dans le livre              6 motif(s) cherches sur 3 fichiers
+  [OK ] (c19) la page refuse les pilotes reclames a tort           les 3 pilotes sont nommes, et l'USB natif aussi
+
+── (c20)(c21) LE PORT DECOUVERT, ET LES CODES DE `stop` ──────────
+  [OK ] (c20) `-Serie` est PASSE, et sur le port decouvert         2 cas joues contre un double de papier
+  [OK ] (c21) les 4 codes de `stop` sont DISTINCTS                 0 rendu · 4 drapeau · 7 disparu · 8 tenu
+
+── (c22)(c23) CE QUE GIT LIVRE, ET CE QUE LE PRE-VOL REND ────────
+  [OK ] (c22) les images sont declarees BINAIRES a git             `installeur/charge/*.bin binary`, et git le confirme
+  [OK ] (c23) le pre-vol rend `5` sur une charge absente           2 cas joues : charge_absente→5 · charge_entiere→0
+
+── (c24)(c25)(c26) AUCUN CONTROLE GARDE PAR ZERO MUTANT ──────────
+  [OK ] (c24) chaque controle est vise par >= 1 mutant             28 controle(s) lu(s) a l'AST, 28 cible(s) declaree(s)
+  [OK ] (c25) chaque cible de mutant est un controle REEL          28 cible(s) confrontee(s)
+  [OK ] (c26) `CIBLES` et `MUTANTS` se correspondent               29 mutant(s), 29 cible(s), cle a cle
+
+⛔ CE QUE CETTE GATE NE PROUVE PAS : que le dialogue de port aille
+   au bout. C'est un dialogue NATIF du navigateur, qu'aucun drapeau
+   de ligne de commande ne pilote : il exige une main humaine, et il
+   se joue en seance carte. Les relevés vivent sous `mesures/dn7-2/`.
+
+==============================================================================
+BILAN : 26 OK, 0 KO
+==============================================================================
+
+── LA LISTE DES MUTANTS ────────────────────────────────────────────────────
+
+   1  [c1]  sort `desknode.bin` de l'arbre suivi ⇒ une charge que le cloneur n'aura pas, et rien ne le dirait
+   2  [c2]  vide le manifeste ⇒ un JSON illisible la ou la page attend quatre offsets
+   3  [c3]  fait annoncer `ESP32` au lieu de `ESP32-S3` ⇒ la mauvaise famille de puce, et un flash refuse ou fatal
+   4  [c4]  decale l'offset de l'application dans le manifeste ⇒ une app ecrite AILLEURS que dans sa partition
+   5  [c5]  replante un binaire FUSIONNE dans le manifeste ⇒ le contraire exact des quatre morceaux mesures
+   6  [c6]  fait mentir `PROVENANCE.md` sur la taille d'une image ⇒ des empreintes publiees qui ne sont plus celles servies
+   7  [c7]  fait annoncer au manifeste une version qui n'est PAS celle du binaire servi ⇒ l'inconnu croit poser autre chose
+   8  [c8]  remet la version du BANC D'ESSAI dans le manifeste — la faute EXACTE que le prototype du 2026-08-31 a publiee
+   9  [c9]  abime la bande-annonce d'integrite de l'asset ⇒ une image tronquee servie sans que rien ne rougisse
+  10  [c10]  remet une PLAGE de version pour ESP Web Tools ⇒ le code qui ecrit sur la carte peut changer en silence
+  11  [c10]  fait diverger la version epinglee dans la page de celle declaree a `THIRD-PARTY.md` ⇒ l'inventaire ment
+  12  [c11]  exige du serveur une adresse de charge qu'il ne sert PAS ⇒ un 404 au milieu du flash, et un message qui n'explique rien
+  13  [c12]  ne laisse a la page QU'UNE forme du nom du port ⇒ celui qui voit l'autre forme ne reconnait pas sa carte
+  14  [c13]  efface de la page le SECOND geste de selection du port ⇒ on sort sur un ecran qui ne dit pas qu'il manquait un clic
+  15  [c14]  efface de la page la procedure de recuperation ⇒ elle redevient enterree dans un README de 200 Ko
+  16  [c15]  efface l'avertissement hors Windows ⇒ un flash REUSSI vers une dalle qui n'aura jamais rien a afficher
+  17  [c16]  fait pointer la page vers « le depot » au lieu de la revision exacte ⇒ l'obligation GPL cesse d'etre tenue
+  18  [c17]  remplace le porteur d'un manque de `PROVENANCE.md` par « a nommer » — la faute EXACTE que `dn6-4` a payee
+  19  [c18]  replante un verbe d'ELEVATION dans le code de l'installeur
+  20  [c19]  efface de la page le refus des pilotes reclames a tort ⇒ l'inconnu part installer un pilote dont il n'a pas besoin
+  21  [c20]  INTERVERTIT la correspondance attendue de la decouverte de port : `-Serie` ne serait plus passe, et rien ne le verrait
+  22  [c21]  INTERVERTIT deux codes de `stop` : « port rendu » et « port disparu » deviendraient la meme chose
+  23  [c22]  retire de `.gitattributes` la regle qui declare les images BINAIRES ⇒ une substitution de fins de ligne les tuerait
+  24  [c23]  INTERVERTIT les codes attendus du pre-vol de charge ⇒ une charge absente sortirait comme « tout est la »
+  25  [c24]  retire une cible de `CIBLES` ⇒ un controle garde par ZERO mutant, le risque que `dn6-1` avait paye
+  26  [c25]  declare dans `CIBLES` un controle INEXISTANT (`c99`) ⇒ une cible PERIMEE, que « N mutants, N rouges » ne verrait pas
+  27  [c26]  declare une cible pour un mutant qui N'EXISTE PAS
+  28  [z]  replante une SORTIE ANTICIPEE NON DECLAREE : le bilan retrecit, et il sortirait VERT
+  29  [c0]  declare un mutant dont le CORPS LEVE ⇒ un mutant MORT, qui sortirait en Traceback SANS `BILAN` s'il n'etait pas repris
+
+── CHAQUE MUTANT, JOUE ─────────────────────────────────────────────────────
+
+  contrat exige par verif_campagne_dn56.py, LES TROIS A LA FOIS :
+    rc == 1  ET  une ligne ^BILAN:  ET  au moins un ^  [KO ]
+
+  mutant  1 : rc=1  KO=1  BILAN=1
+  mutant  2 : rc=1  KO=5  BILAN=1
+  mutant  3 : rc=1  KO=1  BILAN=1
+  mutant  4 : rc=1  KO=2  BILAN=1
+  mutant  5 : rc=1  KO=1  BILAN=1
+  mutant  6 : rc=1  KO=1  BILAN=1
+  mutant  7 : rc=1  KO=1  BILAN=1
+  mutant  8 : rc=1  KO=2  BILAN=1
+  mutant  9 : rc=1  KO=1  BILAN=1
+  mutant 10 : rc=1  KO=1  BILAN=1
+  mutant 11 : rc=1  KO=1  BILAN=1
+  mutant 12 : rc=1  KO=1  BILAN=1
+  mutant 13 : rc=1  KO=1  BILAN=1
+  mutant 14 : rc=1  KO=1  BILAN=1
+  mutant 15 : rc=1  KO=1  BILAN=1
+  mutant 16 : rc=1  KO=1  BILAN=1
+  mutant 17 : rc=1  KO=1  BILAN=1
+  mutant 18 : rc=1  KO=1  BILAN=1
+  mutant 19 : rc=1  KO=1  BILAN=1
+  mutant 20 : rc=1  KO=1  BILAN=1
+  mutant 21 : rc=1  KO=1  BILAN=1
+  mutant 22 : rc=1  KO=1  BILAN=1
+  mutant 23 : rc=1  KO=1  BILAN=1
+  mutant 24 : rc=1  KO=1  BILAN=1
+  mutant 25 : rc=1  KO=1  BILAN=1
+  mutant 26 : rc=1  KO=1  BILAN=1
+  mutant 27 : rc=1  KO=1  BILAN=1
+  mutant 28 : rc=1  KO=1  BILAN=1
+  mutant 29 : rc=1  KO=1  BILAN=1
+
+  ⇒ 29 mutants, 29 vus ROUGIR. ⛔ AUCUN mutant PERIME (rc=3), ⛔ aucun mort.
+
+  $ python3 tools/verif_flash_dn72.py --mutant 999
+MUTANT 999 INCONNU : il n'est pas declare. ⛔ Un mutant qui n'existe pas ne prouve RIEN — ⛔ ne pas conclure que le controle est vert.
+  rc=2 ⇒ 2, une ERREUR D'APPEL, ⛔ pas un vrai defaut

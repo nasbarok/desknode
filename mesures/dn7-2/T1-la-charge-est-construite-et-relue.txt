@@ -1,0 +1,80 @@
+=== T1 — LA CHARGE DE REFERENCE : CONSTRUITE, PUIS **RELUE** ================
+    2026-09-08, WSL (Ubuntu), ESP-IDF v5.5.5
+
+⚠️ POURQUOI CE TIR EXISTE : le `build/` local etait **PERIME**. Mesure d'entree,
+   avant de toucher a quoi que ce soit :
+
+  $ python3 -c "d=open('firmware/desknode/build/desknode.bin','rb').read(0x100); \
+                print(d[0x30:0x50].split(b'\x00')[0].decode())"
+  6a91fa3
+  $ git rev-parse --short HEAD
+  40be2c8
+
+  ⇒ le binaire portait l'etiquette du **1er septembre** pour un HEAD du 8.
+    Verser cette charge-la aurait annonce une version FAUSSE, sans que rien ne
+    le dise — exactement le defaut que cette marche existe pour fermer.
+
+── LE BUILD, ET L'ORDRE QUI COMPTE ──────────────────────────────────────────
+
+  $ . ~/esp/esp-idf/export.sh
+  $ cd firmware/desknode
+  $ idf.py reconfigure          # ⛔ OBLIGATOIRE, ⛔ pas une precaution
+  ...
+  -- Configuring done (26.5s)
+  -- Build files have been written to: .../firmware/desknode/build
+  $ idf.py build
+  ...
+  [28/29] Generating binary image from built executable
+  Successfully created esp32s3 image.
+  desknode.bin binary size 0x135440 bytes. Smallest app partition is 0x400000
+  bytes. 0x2cabc0 bytes (70%) free.
+  Project build complete.
+
+  🔴 `reconfigure` AVANT `build`, ET LE MOTIF EST MESURE AILLEURS : le champ
+     `esp_app_desc_t.version` vient de `git describe` EVALUE AU DERNIER
+     *configure*, ⛔ pas au dernier *build*. Sans ce geste, l'etiquette nomme le
+     commit PRECEDENT — le piege qui a fait ecrire une fausse revision pendant
+     trois jours en `dn4-10`.
+
+── LA RELECTURE, QUI EST LA VRAIE MESURE ────────────────────────────────────
+
+  $ python3 -c "d=open('firmware/desknode/build/desknode.bin','rb').read(0x100); \
+                print('version =', d[0x30:0x50].split(b'\x00')[0].decode()); \
+                print('projet  =', d[0x50:0x70].split(b'\x00')[0].decode())"
+  version = 40be2c8
+  projet  = desknode
+  horodatage lu au meme endroit : 23:14:36  Sep  8 2026
+  ESP-IDF lu au meme endroit    : v5.5.5
+
+  $ git rev-parse --short HEAD
+  40be2c8
+
+  ⇒ **EGALITE VERIFIEE**, ⛔ pas supposee : `40be2c8` == `40be2c8`.
+
+── LES QUATRE MORCEAUX, MESURES ─────────────────────────────────────────────
+
+  fichier                taille (o)   SHA-256
+  bootloader.bin              20848   d1bf1fd347b3494bcb3d38c7cee0d4698fd45617505529cf5c5dc1653ae0a478
+  partition-table.bin          3072   0934eb422b7c7f52193373a9ce81818e7344d9f0061e073b60fb8ebe209e46eb
+  desknode.bin              1266752   00719e7310df9c5368cd84b965190883a001b39530c35ae61c6b8729f63e72b5
+  living_pcb_v0.bin          614416   fae162a0a422c3c134db7ba015d8ddcf0adb20502be4f1617c17dba9fb3500ed
+  TOTAL                     1905088
+
+  ⚠️ `614416` ET ⛔ PAS `614400` : les 16 octets de plus sont la bande-annonce
+     d'integrite. Verifiee ici meme :
+       magie    = b'DNASSET1'
+       longueur = 614400
+       CRC32    = 0x0f027c7d  (recalcule : 0x0f027c7d)  ⇒ EGAL
+
+── LES OFFSETS, LUS ⛔ PAS RECOPIES ─────────────────────────────────────────
+
+  $ cat firmware/desknode/build/flasher_args.json   (cle `flash_files`)
+      "0x0"      : "bootloader/bootloader.bin"
+      "0x8000"   : "partition_table/partition-table.bin"
+      "0x10000"  : "desknode.bin"
+      "0x410000" : "living_pcb_v0.bin"
+
+  ⇒ en decimal : 0 · 32768 · 65536 · 4259840.
+  ⇒ LES QUATRE VALEURS DU CADRAGE SONT **CONFIRMEES**, et le manifeste les tient
+    de ce fichier, ⛔ pas d'une constante ecrite a cote.
+  Reglages lus au meme endroit : `dio` · `16MB` · `80m` · `chip esp32s3`.

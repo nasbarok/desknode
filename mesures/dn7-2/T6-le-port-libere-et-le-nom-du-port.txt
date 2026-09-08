@@ -1,0 +1,112 @@
+=== T6 — LE PORT SE DECOUVRE, ET LA PAGE LE LIBERE TOUTE SEULE ==============
+    2026-09-08 · le trajet HTTP REEL, ⛔ pas un appel par import
+
+── LA CARTE, TELLE QUE WINDOWS LA VOIT ─────────────────────────────────────
+
+  $ Get-PnpDevice -PresentOnly | ? InstanceId -like 'USB\VID_303A*'
+
+    Status : OK   Class : Ports
+    FriendlyName : Périphérique série USB (COM3)
+    InstanceId   : USB\VID_303A&PID_1001&MI_00\6&3B8496F8&0&0000
+
+    Status : OK   Class : USBDevice
+    FriendlyName : USB JTAG/serial debug unit
+    InstanceId   : USB\VID_303A&PID_1001&MI_02\6&3B8496F8&0&0002
+
+    Status : OK   Class : USB
+    FriendlyName : Périphérique USB composite
+    InstanceId   : USB\VID_303A&PID_1001\A0:F2:62:E3:D7:F4
+
+  🔴 LA CARTE EST UN COMPOSITE A **DEUX** INTERFACES, ET SEULE `MI_00` PORTE UN
+     PORT COM. ⇒ la decouverte vise `MI_00`, ⛔ pas le parent.
+  🔴 **LE CADRAGE DISAIT QUE LE PORT « S'APPELLE `USB JTAG/serial debug unit
+     (COMn)` ». C'EST LA CHAINE PRODUIT DE LA PUCE, ⛔ PAS CE QUE WINDOWS
+     AFFICHE ICI** — ici, Windows affiche un nom **LOCALISE**. ⇒ la page nomme
+     **LES DEUX FORMES**, et ⛔ jamais « DeskNode », qui n'est le nom de rien.
+
+── LA DECOUVERTE, PAR LE PRODUIT ───────────────────────────────────────────
+
+  decouvrir_port -> ('COM3',
+                     'Périphérique série USB (COM3)',
+                     'USB\\VID_303A&PID_1001&MI_00\\6&3B8496F8&0&0000')
+
+  systeme        = 'win32'          windows = True
+  port_serie     = 'COM3'
+  port_nom       = 'Périphérique série USB (COM3)'
+  tache_presente = True             tache_runlevel = 'Limited'
+  pilote         = 'H:\dev\projets\desknode\dn_agent_tour.ps1'
+  charge.complete = True            version = 40be2c8
+  charge.offsets  = [('bootloader.bin', 0), ('partition-table.bin', 32768),
+                     ('desknode.bin', 65536), ('living_pcb_v0.bin', 4259840)]
+
+🔴 UN DEFAUT A ETE TROUVE **PAR CETTE MESURE**, ⛔ PAS PAR LA LECTURE, ET IL EST
+   CORRIGE : le 1er tir a rendu `UnicodeEncodeError` sur un caractere de
+   remplacement. PowerShell 5.1 ecrit dans la page de code OEM de la console,
+   or le nom que Windows donne au port est **LOCALISE** ⇒ les accents
+   arrivaient abimes, et la page aurait affiche un nom FAUX a l'endroit precis
+   ou elle promet de dire le VRAI nom du port. ⚠️ La DECOUVERTE, elle,
+   fonctionnait deja : le `(COM<n>)` extrait est de l'ASCII. ⇒ correctif :
+   `[Console]::OutputEncoding` force en UTF-8 dans la commande de decouverte.
+
+── AC7.2.4 — LE PORT EST TENU, ET LA PAGE LE LIBERE ────────────────────────
+
+  AVANT   agent : PID 9476        COM3 : TENU
+          (« L'accès au port 'COM3' est refusé. »)
+
+  Le POST que la page emet, EMIS POUR DE VRAI (⛔ pas un appel par import) :
+
+    POST http://127.0.0.1:53419/api/agent/stop    ⇒ HTTP 200 en 3,5 s
+
+    commande jouee : powershell -NoProfile -ExecutionPolicy Bypass -File
+                     H:\dev\projets\desknode\dn_agent_tour.ps1 stop -Serie COM3
+    port decouvert : 'COM3'  (Périphérique série USB (COM3))
+    rc             : 0   pose par : l'outil
+    etat_port      : 'rendu'
+    verdict        : le port a ete REOUVERT apres l'arret : il est rendu.
+                     C'est l'ouverture qui fait foi, pas le code de retour.
+
+    -- sortie de l'outil, RELAYEE TELLE QUELLE --
+      === STOP ===
+        a arreter : PID=9476
+        drapeau pose : arret PROPRE demande (le bilan de fin doit sortir)
+        arret propre en 1 s ; bilan ecrit : 2207 o
+      === PREUVE : ON RE-OUVRE LE PORT ===
+        python.exe vivants : 2  (portant dn_agent.py : 0 | CommandLine ILLISIBLE : 0)
+        port COM3 : libre
+        marqueur : absent
+        journal : 299232 o  H:\dev\projets\desknode\dn-agent.log
+        OK - COM3 se REOUVRE : le port est rendu.
+
+  APRES   COM3 : LIBRE
+
+  ✅ L'ARRET EST **PROPRE**, ⛔ pas un `taskkill` : le bilan de fin fait 2 207 o.
+  ✅ `-Serie COM3` EST **PASSE**, et la valeur vient de `Get-PnpDevice`.
+  ✅ LE TRAJET HTTP EST EXERCE DE BOUT EN BOUT : `do_POST`, le routage
+     `/api/agent/`, le verbe, la sortie relayee. (⚠️ C'etait un report ouvert de
+     `dn7-1` : « le trajet HTTP reel n'est exerce par rien de rejouable ».)
+
+  🔴 **CE QUE CE TIR NE DISTINGUE PAS, ET IL FAUT L'ECRIRE** : sur CETTE
+     machine, le port DECOUVERT vaut `COM3` — c'est-a-dire **exactement le
+     defaut code en dur de l'outil**. Ce tir ⛔ **ne peut donc pas** distinguer
+     « le port a ete decouvert » de « le defaut a eu raison ». Ce qui fait cette
+     distinction est **ailleurs, et c'est mecanique** : `tools/verif_flash_dn72.py`
+     fait JOUER le produit contre un double de papier ou la decouverte rend
+     `COM7`, puis `None`, et exige `-Serie COM7` dans le premier cas et **AUCUN**
+     `-Serie` dans le second. ⇒ le fait est garde par la gate, ⛔ pas par ce tir.
+
+── LA RESTAURATION FAIT PARTIE DE LA MESURE ───────────────────────────────
+
+  $ Start-ScheduledTask -TaskName 'DeskNode agent'
+    agent : PID 25268    COM3 : TENU    RunLevel : Limited
+
+  ⇒ la machine est rendue DANS L'ETAT OU ELLE ETAIT.
+
+── AC7.2.4, CE QUI RESTE OUVERT ───────────────────────────────────────────
+
+  ⛔ **UNE SEULE PASSE NE FERME PAS CET AC.** La moitie jouee ici est *« la page
+  libere le port toute seule »*. La moitie *« et le parcours va au bout, DEUX
+  FOIS DE SUITE »* exige le **selecteur de port**, dialogue NATIF du navigateur
+  qu'aucun drapeau ne pilote ⇒ **seance carte**.
+  🔴 Et le **chemin de RETOUR** — relancer l'agent apres la re-enumeration du
+  flash — reste servi par le defaut `COM3` de `tools/dn_agent_tour.ps1:55` et de
+  `tools/dn-agent.bat`. **Porteur : `dn4-28`**, la dependance dure deja declaree.

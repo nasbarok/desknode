@@ -99,6 +99,9 @@ Work towards the first public release, `v0.1.0-beta`.
   planned for V0.2. It is a **declared gap**, ⛔ not a tick and ⛔ not a fault. It ⛔ does not flash
   the board, ⛔ does not offer a language choice, and ⛔ shows no preview of the panel — the last of
   those being a **declared exclusion** of the first version.
+  > ⚠️ **Annotated on 2026-09-08 — the first of those three ceased to be true the same day, and the
+  > sentence is kept rather than rewritten:** the page **does** flash the board now (see the entry
+  > above). The other two hold: no language choice, and no panel preview.
 - **A written visual identity for that page** (`installeur/IDENTITE.md`) — seven colour tokens,
   each citing **the firmware file and line it is taken from**, replacing the palette the throwaway
   prototype had borrowed from GitHub. The page and the panel are the same product seen at two
@@ -111,6 +114,55 @@ Work towards the first public release, `v0.1.0-beta`.
   a second query, the declared gap carries its owner — ⛔ never "to be named" — and the page's
   colours equal the declared ones **in both directions**, each declared colour being checked
   against the firmware line it cites.
+- 🆕 **The install page now flashes the board** (`installeur/charge/` and the flash section of
+  `installeur/index.html`). Four **versioned** images and their manifest ship with the repository —
+  bootloader, partition table, application and the display asset — written at `0` / `32768` /
+  `65536` / `4259840`, `chipFamily` **ESP32-S3**, ⛔ with **no merged binary**, by ESP Web Tools
+  **pinned to `10.4.0`**. The pin is a measurement, ⛔ not a habit: on 2026-09-08 the range form
+  `esp-web-tools@10` answered **HTTP 302** and redirected — a version that moves on its own would
+  change the code that **writes to somebody's board**, silently. 🔴 **The announced version is READ
+  out of the binary, ⛔ never copied beside it**: it is the `version` field of `esp_app_desc_t`, and
+  a gate refuses any difference between it and the manifest.
+- 🆕 **The page frees the serial port by itself, on the port it discovered.** Updating DeskNode
+  means reinstalling it, so the second launch is everybody's normal case, and the port is already
+  held: the browser would fail on `Failed to execute 'open' on 'SerialPort'`, which explains
+  nothing. The page plays the existing `stop` verb — ⛔ it reimplements none — and passes it the
+  `COM<n>` it found by asking Windows for `VID_303A&PID_1001`, interface `MI_00`, instead of
+  letting the tool fall back to its hard-coded `COM3`. ⚠️ **That verb's exit codes are read as
+  facts, ⛔ not as a boolean**: `0` the port was handed back · `4` the stop flag could not be
+  written · `7` the agent stopped but the port is **gone** · `8` it is still held. Reading `7` as a
+  failure would make somebody give up on a gesture that worked; reading it as a success would
+  announce "port handed back" about a port that no longer exists.
+- 🆕 **Four obstacles get the page's own words, at the moment they happen.** The flashing tool's
+  fallback dialog offers **CP2102 / CH340 / CH342** drivers that this native-USB board
+  (`303A:1001`) does not need — the page says so over it. The port's **real name** is given in both
+  forms, the one Windows shows (translated: `Périphérique série USB (COM3)` on the reference
+  machine) and the one the chip announces (`USB JTAG/serial debug unit`) — ⛔ it is not called
+  "DeskNode". The port picker needs **two gestures**, and the page says which. And the **recovery
+  procedure** is reachable from the page rather than buried in a 200 KB README. ⚠️ The recovery
+  wording is **what was measured**: this repository only ever documented **BOOT held + RESET**;
+  "BOOT held while plugging in" appears nowhere, and the page writes the true one.
+- 🆕 **Opened anywhere but Windows, the page says so BEFORE the flash.** Web Serial also runs on
+  macOS, Linux and ChromeOS while the agent is Windows only, so the flash would **succeed** and
+  leave somebody with a correctly flashed board and nothing to display on it. ⛔ This does not widen
+  the scope — it ends a silence.
+- 🆕 **Where the installed firmware comes from** (`installeur/charge/PROVENANCE.md`) — the exact
+  revision, the command that produced it, and the size and SHA-256 of each of the four images.
+  ⚠️ **And what nothing checks is written down too**: no CI builds this firmware (`dn4-45`,
+  `not started`), the images were produced **by hand**, one of them comes out of a script, and
+  there is **no tag and no release** — measured on 2026-09-08, `git tag -l` and `gh release list`
+  are both empty and this repository is private. The GPL obligation to point at the source of *this
+  exact revision* is therefore met by the revision read out of the binary; a **publicly reachable**
+  source is a declared gap carried by `dn8`. Each gap names its owner.
+- 🆕 **A gate over the payload** (`tools/verif_flash_dn72.py`, run by `tools/run_gates.sh` and
+  replayed mutant by mutant by `tools/verif_campagne_dn56.py`): the five payload files are tracked,
+  the four offsets **equal** the ones the build wrote in `flasher_args.json` — or, in a fresh clone
+  where `build/` is git-ignored, the partition table, and the check **says which source it used** —
+  `chipFamily` is `ESP32-S3`, ⛔ nothing merges the images, the manifest's version **equals** the
+  descriptor inside the `desknode.bin` served beside it and is ⛔ never `0.1.0-beta-essai`, each
+  image exists at the size and hash `PROVENANCE.md` publishes, the display asset's integrity
+  trailer (magic, length, **CRC32**) still validates, the pinned ESP Web Tools version is the same
+  in the page and in `THIRD-PARTY.md`, and the page carries every sentence above.
 - **Licensing.** GPL-3.0-or-later for `firmware/`, MIT for `agent/`, CC-BY-SA-4.0 for
   `docs/`, and GPL-3.0-or-later for `installeur/` — code that serves a GPL binary, ⛔ not prose.
   See [`LICENSING.md`](LICENSING.md).
@@ -175,6 +227,19 @@ Work towards the first public release, `v0.1.0-beta`.
   their offsets with no merged binary, a clean reset, the USB device re-enumerating
   unchanged, and the dashboard coming back live. **No driver and no toolchain
   required.**
+
+  > 🔴 **CONFRONTED ON 2026-09-08, AND THE CLAIM ABOVE IS ⛔ NOT ERASED — IT IS DATED.** What was
+  > measured on 2026-08-31 was measured on a **throwaway prototype that lives outside this
+  > repository**, whose manifest announced `0.1.0-beta-essai` — its own test-bench value — over
+  > images that are now **stale** (they predate the language work). ⇒ the sentence is true **of that
+  > run, on that day, with that payload**; it was ⛔ never true of anything this repository shipped,
+  > because until 2026-09-08 this repository shipped **no flasher at all**. What ships now is the
+  > page of `installeur/`, with a **versioned** payload whose announced version is read out of the
+  > binary — and inheriting the claim above in silence would have been exactly the defect that
+  > version check exists to prevent. ⚠️ **What is still not re-measured is the second half**: that
+  > the port dialog goes all the way through *from this page*, on a board. That is a native browser
+  > dialog no command-line flag drives; it needs a human hand, and it is recorded under
+  > `mesures/dn7-2/` rather than assumed here.
 
 ### Known issues
 

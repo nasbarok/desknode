@@ -1,0 +1,77 @@
+=== T4 — LA PAGE, MESUREE COTE WINDOWS DANS SON PROPRE DOM ==================
+    2026-09-08 · Windows 10 19045 · Edge 152.0.4191.66 · Python 3.13.4
+
+⚠️ ⛔ AUCUNE MESURE N'EST PRISE DEPUIS WSL, ET C'EST UNE CONTRAINTE DE BANC,
+   ⛔ PAS DE PRODUIT : le WSL de la tour est en NAT ⇒ `localhost` ne traverse
+   pas, la page serait vue par IP, donc HORS contexte securise, et Web Serial
+   serait retire SANS RIEN DIRE. On mesurerait le banc, ⛔ pas le produit.
+   ⇒ le serveur est lance par le Python de WINDOWS, sur l'arbre WSL vu en UNC.
+
+⛔ CE QUI N'EST PAS JOUE ICI, ET IL FAUT LE LIRE D'ABORD : le selecteur de port
+   de Web Serial est un dialogue **NATIF DU NAVIGATEUR**, qu'aucun drapeau de
+   ligne de commande ne pilote. « Le flash va au bout depuis la page » se joue
+   EN SEANCE CARTE, avec une main. Ce qui suit est ce qui se prouve SANS main —
+   et c'est substantiel.
+
+── CE QUE LA PAGE A MESURE DANS SON PROPRE DOM (Edge --headless=new) ────────
+
+  $ msedge.exe --headless=new --disable-gpu --virtual-time-budget=16000
+               --dump-dom  http://127.0.0.1:53024/
+
+  v-url        = http://127.0.0.1:53024/
+  v-contexte   = oui
+  v-serial     = disponible
+  v-version    = 40be2c8
+  v-revision   = 40be2c8 — révision du dépôt, lue dans le binaire
+  v-morceaux   = 4 · ESP32-S3 · offsets 0 / 32768 / 65536 / 4259840
+  v-port       = COM3 — Périphérique série USB (COM3)
+  v-tache      = présente (DeskNode agent)
+  v-runlevel   = Limited
+
+  ⇒ ⛔ CE N'EST PAS UN JUGEMENT A L'OEIL : c'est ce que la page a ECRIT dans
+    son DOM apres avoir interroge son serveur. Les 4 offsets affiches sont
+    ceux du manifeste, qui les tient de `flasher_args.json`.
+
+── LES BLOCS D'ECHEC, ET LEUR ETAT ─────────────────────────────────────────
+
+  etat-unsupported     : masqué      (le navigateur expose l'acces serie)
+  etat-not-allowed     : masqué      (l'adresse convient)
+  etat-hors-windows    : masqué      (systeme = win32)
+  etat-cdn             : masqué      (le module est arrive)
+  etat-port-tenu       : VISIBLE     (la tache est POSEE ⇒ le cas d'AC7.2.4)
+  etat-pilotes         : VISIBLE     (permanent : il PREVIENT, il ne reagit pas)
+
+  ⇒ chacun apparait DANS SON CAS et ⛔ pas dans les autres.
+
+── L'ELEMENT DE FLASH, ET SON TEMOIN NEGATIF ───────────────────────────────
+
+🔴 CE TIR A ETE REFAIT APRES UNE MESURE FAUSSE, ET C'EST ECRIT. La 1re sonde
+   cherchait `<esp-web-install-button` dans le DOM et tombait sur le
+   COMMENTAIRE d'en-tete de la page, qui le nomme : elle concluait « aucun
+   attribut » sur un element parfaitement forme. ⇒ la sonde ancre desormais sur
+   `manifest=`, c'est-a-dire sur l'ELEMENT REEL. ⚠️ C'est la meme faute que le
+   controle (c15) de la gate a payee le meme jour, et pour la meme raison :
+   une sonde qui mesure la PROSE ne mesure pas la PAGE.
+
+  TIR A — NOMINAL, le CDN est joignable
+    element reel : <esp-web-install-button manifest="charge/manifest.json"
+                                           install-supported="">
+    install-supported   : PRESENT     ⇒ l'element s'est UPGRADE, et il est ACTIF
+    install-unsupported : absent      ⇒ ⛔ ni `unsupported` ni `not-allowed`
+    #bloc-installer     : VISIBLE
+    #etat-cdn           : masqué
+    URL du module       : https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module
+
+  TIR B — TEMOIN NEGATIF : unpkg.com rendu INJOIGNABLE
+    (--host-resolver-rules="MAP unpkg.com 127.0.0.1:1")
+    element reel : <esp-web-install-button manifest="charge/manifest.json">
+    install-supported   : ABSENT      ⇒ l'element ne s'est PAS upgrade
+    #bloc-installer     : masqué      ⇒ ⛔ pas de bouton inerte a cliquer
+    #etat-cdn           : VISIBLE
+    motif publie par la page : « le navigateur a refusé ou n'a pas pu charger
+                                le module »
+    la version et les offsets restent lisibles : oui
+
+  ⇒ LA PAIRE EST FALSIFIABLE : le meme code rend deux etats OPPOSES selon un
+    seul fait mesurable. Un controle qui n'aurait que le tir A ne prouverait
+    rien de l'etat d'echec.

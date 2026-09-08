@@ -37,6 +37,14 @@
    PERIMETRE : cette page ARRETE et RETIRE l'agent. Elle ⛔ ne flashe rien, et
    ⛔ elle ne choisit aucune langue — ce sont d'autres marches de `dn7`, et une
    marche ne cite jamais une marche suivante.
+
+   ⚠️ ANNOTE LE 2026-09-08 PAR `dn7-2` — ⛔ LES TROIS LIGNES CI-DESSUS NE SONT
+      PAS EFFACEES (`NFR3`), MAIS LEUR PROPOSITION CENTRALE A CESSE D'ETRE
+      VRAIE : **cette page FLASHE la carte.** Elle sert quatre images
+      versionnees et leur manifeste, elle libere le port avant, et elle nomme
+      ce qui peut coincer. Ce qui reste VRAI de la phrase d'origine : ⛔ elle ne
+      choisit toujours **aucune langue**, et ⛔ une marche ne cite jamais une
+      marche suivante.
   ============================================================================
 -->
 <style>
@@ -92,6 +100,29 @@
   ul { padding-left: 20px; } li { margin: 5px 0; }
   a { color: var(--dn-accent); }
 </style>
+<!--
+  ═══════════════════════════════════════════════════════════════════════════
+   LE MODULE DE FLASH — LE **SEUL** CHARGEMENT DISTANT DE CETTE PAGE (dn7-2)
+  ═══════════════════════════════════════════════════════════════════════════
+   ESP Web Tools (Apache-2.0) fournit `<esp-web-install-button>` : le dialogue
+   de port, l'ecriture des morceaux aux offsets du manifeste, la barre de
+   progression. Il est declare dans `THIRD-PARTY.md`, section « Web flasher ».
+
+   🔴 LA VERSION EST **EPINGLEE**, ET C'EST UNE MESURE, ⛔ PAS UNE HABITUDE.
+      `https://unpkg.com/esp-web-tools@10/…` rend un **302** vers
+      `/esp-web-tools@10.4.0/…` (mesure du 2026-09-08) : ecrire `@10` ferait
+      changer le code qui ECRIT SUR LA CARTE de quelqu'un, en silence, le jour
+      d'une publication amont. ⇒ `10.4.0`, ecrit en toutes lettres, et
+      `THIRD-PARTY.md` porte LE MEME numero — l'egalite est gardee.
+
+   ⚠️ ⛔ IL N'EST PAS VENDORISE, ET C'EST UN CHOIX DATE. La promesse
+      « fonctionne sans reseau » a ete DECLASSEE par l'owner le 2026-09-08 : le
+      hors-ligne est un confort, ⛔ plus une exigence — et le vendoring qui en
+      etait DEDUIT tombe avec elle. ⇒ le CDN est acceptable ; ce qui reste du,
+      c'est de DIRE quand il n'arrive pas, et l'etat `#etat-cdn` le fait.
+-->
+<script type="module" id="dn-module-flash"
+        src="https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module"></script>
 </head>
 <body>
 <main>
@@ -118,6 +149,145 @@
       elle commence par <code>http://127.0.0.1:</code> ou <code>http://localhost:</code>,
       suivie du port <b>tiré au lancement</b> — il change à chaque fois, et c'est voulu.
     </div>
+  </section>
+
+  <!-- ── (a2) POSER LE FIRMWARE — LE GESTE PRINCIPAL ──────────────────── -->
+  <!--
+    ⚠️ CETTE SECTION EST INSEREE JUSTE APRES (a) ET C'EST VOULU : elle HERITE
+       de ses preconditions. Web Serial n'existe qu'en contexte securise, et
+       (a) vient de le MESURER avec les objets du navigateur. Une section de
+       flash placee avant aurait promis un geste que la machine ne peut pas
+       faire.
+  -->
+  <section id="sec-flash">
+    <h2>Poser le firmware sur la carte</h2>
+
+    <div class="ligne"><span class="cle">version à poser</span><span class="val" id="v-version">…</span></div>
+    <div class="ligne"><span class="cle">révision du dépôt</span><span class="val" id="v-revision">…</span></div>
+    <div class="ligne"><span class="cle">morceaux à écrire</span><span class="val" id="v-morceaux">…</span></div>
+    <div class="ligne"><span class="cle">port de la carte</span><span class="val" id="v-port">…</span></div>
+
+    <!-- (e) HORS WINDOWS — DIT **AVANT** LE FLASH, ⛔ PAS APRES ---------- -->
+    <div id="etat-hors-windows" hidden class="avert" style="margin-top:14px">
+      <b>Ce système n'est pas Windows, et l'agent DeskNode l'est.</b><br>
+      Le flash ci-dessous <b>marchera</b> — l'accès série du navigateur existe aussi sur
+      macOS, Linux et ChromeOS — mais <b>l'agent qui alimente la dalle en grandeurs
+      n'existe que sous Windows</b>. Vous poseriez donc un firmware correct sur une carte
+      qui n'aurait <b>rien à afficher</b>&nbsp;: la dalle démarrerait, et resterait sans
+      données. C'est un <b>écart déclaré</b> du projet, ⛔ pas un défaut de cette page —
+      et il vous est dit <b>maintenant</b> plutôt qu'après.
+    </div>
+
+    <!-- (f) LE MODULE DE FLASH N'ARRIVE PAS ----------------------------- -->
+    <div id="etat-cdn" hidden class="alerte" style="margin-top:14px">
+      <b>Le module de flash n'a pas pu être chargé.</b><br>
+      Le bouton d'installation est chargé depuis <code>unpkg.com</code> — c'est le seul
+      morceau de cette page qui vient d'Internet, et il est <b>épinglé à une version
+      exacte</b>. Si vous êtes hors ligne, ou si un pare-feu bloque ce domaine, il
+      n'arrive pas. <b>Le geste</b>&nbsp;: rétablir l'accès à <code>unpkg.com</code>, puis
+      <b>recharger cette page</b>. ⛔ Il n'y a pas de bouton inerte à cliquer&nbsp;: cet
+      encadré <b>remplace</b> le bouton, plutôt que de vous laisser deviner.
+    </div>
+
+    <!-- (c) LE PORT EST TENU PAR L'AGENT -------------------------------- -->
+    <div id="etat-port-tenu" hidden class="avert" style="margin-top:14px">
+      <b>L'agent DeskNode tient déjà le port de la carte.</b><br>
+      C'est le cas <b>normal du deuxième lancement</b>&nbsp;: mettre DeskNode à jour, c'est
+      le réinstaller, et l'agent tourne déjà. Si vous flashez maintenant, le navigateur
+      sortira sur <code>Failed to execute 'open' on 'SerialPort'</code> — un message qui
+      n'explique rien. <b>Le bouton ci-dessous libère le port</b> en appelant le verbe
+      <code>stop</code> que le dépôt livre déjà, <b>sur le port réellement découvert</b>.
+    </div>
+    <button id="b-liberer" type="button">Libérer le port</button>
+    <p class="discret" style="margin:8px 0 14px">
+      <b>Libérer</b> pose le drapeau d'arrêt propre, puis <b>rouvre le port pour le
+      prouver</b>. Sa sortie vous est rendue telle quelle, plus haut. ⚠️ <b>« port rendu »
+      et « port disparu » ne sont pas la même chose</b>&nbsp;: si la carte vient d'être
+      débranchée, l'agent est bien arrêté mais le port n'existe plus — la page vous dit
+      lequel des deux, ⛔ elle ne les confond pas.
+    </p>
+
+    <!-- LE BOUTON D'INSTALLATION ---------------------------------------- -->
+    <div id="bloc-installer">
+      <esp-web-install-button manifest="charge/manifest.json">
+        <button slot="activate" type="button">Installer DeskNode sur la carte</button>
+        <span slot="unsupported" class="avert">Ce navigateur n'expose pas l'accès au port
+          série&nbsp;: utilisez <b>Microsoft Edge</b> ou <b>Google Chrome</b>.</span>
+        <span slot="not-allowed" class="avert">Cette page n'est pas dans un contexte
+          sécurisé&nbsp;: rouvrez l'adresse en <code>http://127.0.0.1:</code> que le
+          script a imprimée.</span>
+      </esp-web-install-button>
+    </div>
+
+    <!-- (d) LES PILOTES RECLAMES A TORT — NOTRE MESSAGE PAR-DESSUS ------- -->
+    <div id="etat-pilotes" class="avert" style="margin-top:16px">
+      <b>⛔ Si l'outil de flash vous propose d'installer un pilote — CP2102, CH340 ou
+      CH342 — n'en installez aucun.</b><br>
+      Ce dialogue est celui de l'outil de flash, ⛔ pas de DeskNode, et il parle d'un
+      problème <b>que vous n'avez pas</b>. Cette carte est en <b>USB natif</b>
+      (<code>303A:1001</code>, série/JTAG intégré à la puce)&nbsp;: Windows la reconnaît
+      avec son pilote <code>usbser</code> d'origine, et <b>aucun pilote tiers n'est à
+      installer, ni ici ni ailleurs</b>. Le dépôt le dit déjà&nbsp;:
+      <i>« Aucun pilote à installer, ni côté Windows ni côté Linux. »</i>
+      <br>Si le port n'apparaît pas, ce n'est pas un pilote qui manque — c'est un des trois
+      cas juste en dessous.
+    </div>
+
+    <!-- CE QUE L'INCONNU VA VOIR AILLEURS, DIT ICI ---------------------- -->
+    <h2 style="margin-top:22px">Ce que vous allez voir, et ce qu'il faut faire</h2>
+
+    <p style="margin:0 0 8px"><b>1. Le nom du port — ⛔ il ne s'appelle PAS « DeskNode ».</b></p>
+    <ul>
+      <li>Windows l'affiche sous un nom <b>traduit</b>&nbsp;: en français,
+        <code>Périphérique série USB (COM3)</code> — le numéro change d'une machine à
+        l'autre. <b>Mesuré sur la machine de référence le 2026-09-08.</b></li>
+      <li>La puce, elle, se présente comme <code>USB JTAG/serial debug unit</code>&nbsp;:
+        c'est cette chaîne-là que certains navigateurs affichent, seule ou suivie du
+        <code>(COM<i>n</i>)</code>.</li>
+      <li>⚠️ <b>Les deux formes désignent la même carte.</b> Ce que le sélecteur de
+        <i>votre</i> navigateur montre exactement n'est pas mesuré ici&nbsp;: prenez la
+        ligne qui porte l'une des deux — et, en cas de doute, celle dont le
+        <code>(COM<i>n</i>)</code> est celui affiché en haut de cette section.</li>
+    </ul>
+
+    <p style="margin:14px 0 8px"><b>2. La sélection se fait en DEUX gestes.</b></p>
+    <ul>
+      <li><b>Cliquer la ligne</b> du port pour la sélectionner&nbsp;;</li>
+      <li><b>puis</b> cliquer <b>« Se connecter »</b>.</li>
+      <li>⛔ Tant que la ligne n'est pas sélectionnée, <b>« Se connecter » reste grisé</b>,
+        et fermer la fenêtre fait sortir sur <i>« No port selected »</i> — un message qui
+        n'explique pas qu'il manquait un clic.</li>
+    </ul>
+
+    <p style="margin:14px 0 8px"><b>3. Si la carte ne répond pas du tout&nbsp;: la récupération.</b></p>
+    <ul>
+      <li>Le geste écrit et <b>mesuré</b> dans ce dépôt est&nbsp;: <b>maintenir le bouton
+        <code>BOOT</code> enfoncé, appuyer brièvement sur <code>RESET</code>, puis relâcher
+        <code>BOOT</code></b>. La carte passe en mode <i>download</i>, où le flash
+        fonctionne même quand l'application ne démarre plus.</li>
+      <li>⚠️ <b>Écart déclaré, écrit plutôt que recopié</b>&nbsp;: le cadrage de cette page
+        parlait de <i>« BOOT maintenu pendant le branchement »</i>. Cette formule-là n'est
+        <b>écrite nulle part</b> dans le dépôt et n'a <b>jamais été mesurée</b>&nbsp;;
+        c'est <code>BOOT</code> + <code>RESET</code> qui l'est. La page écrit donc ce qui
+        est <b>vrai</b>, ⛔ pas ce qui était supposé.</li>
+      <li>⚠️ Une fois en mode <i>download</i>, la carte <b>n'en ressort pas</b> par la fin
+        de flash ordinaire&nbsp;: appuyez sur <code>RESET</code> pour la relancer.</li>
+    </ul>
+
+    <p class="discret" style="margin:16px 0 0">
+      <b>D'où vient ce que vous installez.</b> Le manifeste annonce une version qui est
+      <b>lue dans le binaire lui-même</b> (<code>esp_app_desc_t</code>), ⛔ jamais recopiée
+      à côté&nbsp;: c'est la révision exacte du dépôt qui l'a produite, et une vérification
+      mécanique du dépôt refuse qu'elles diffèrent. Le firmware est sous
+      <b>GPL-3.0-or-later</b>, ce qui oblige à pointer <b>la source de cette révision
+      précise</b> — pas « le dépôt » en général&nbsp;: c'est
+      <a href="charge/PROVENANCE.md">charge/PROVENANCE.md</a> qui la nomme, avec les
+      empreintes des quatre morceaux et la commande qui les a produits.
+      ⚠️ <b>Et ce qui manque y est écrit aussi</b>&nbsp;: aucune intégration continue ne
+      construit ce firmware, ces binaires ont été faits <b>à la main</b>, et il n'existe
+      <b>ni tag ni release</b> — donc pas encore de source publiquement atteignable. Les
+      deux manques ont un porteur nommé, dans ce fichier.
+    </p>
   </section>
 
   <!-- ── (b) LES DEUX GESTES — ILS APPELLENT DES VERBES QUI EXISTENT ──── -->
@@ -177,8 +347,13 @@
   <section>
     <h2>Ce que cette page ne fait pas encore</h2>
     <ul class="discret" style="margin:0">
-      <li>Elle <b>ne pose aucun firmware sur la carte</b>, et elle <b>n'installe pas l'agent</b>&nbsp;:
-        elle sait l'arrêter et le retirer, ⛔ pas le mettre en place.</li>
+      <li><s>Elle <b>ne pose aucun firmware sur la carte</b>, et elle <b>n'installe pas
+        l'agent</b>&nbsp;: elle sait l'arrêter et le retirer, ⛔ pas le mettre en place.</s><br>
+        ⚠️ <b>Annoté le 2026-09-08 — la première moitié a cessé d'être vraie, et la phrase
+        est barrée plutôt qu'effacée&nbsp;:</b> cette page <b>pose bien le firmware</b>, voir
+        la section <i>« Poser le firmware sur la carte »</i> plus haut. <b>La seconde moitié
+        reste vraie</b>&nbsp;: elle n'<b>installe toujours pas l'agent</b> — elle sait
+        l'arrêter et le retirer, ⛔ pas le mettre en place.</li>
       <li>Elle <b>ne propose aucun choix de langue</b>&nbsp;: la dalle démarre en anglais tant que
         personne ne lui dit le contraire, et ce choix se fait aujourd'hui à la console série.</li>
       <li>Elle <b>ne montre pas d'aperçu de la dalle</b>&nbsp;: c'est une <b>exclusion déclarée</b>
@@ -195,6 +370,7 @@
     DeskNode — <a href="README.md">README</a> ·
     <a href="LICENSING.md">licences</a> ·
     <a href="IDENTITE.md">identité visuelle</a> ·
+    <a href="charge/PROVENANCE.md">provenance du firmware</a> ·
     le code de cette page est sous GPL-3.0-or-later, comme le firmware de ce dépôt.
   </p>
 </main>
@@ -206,6 +382,14 @@
    composant tiers : ce que cette marche doit prouver, c'est que la page servie
    en local EST traitee en contexte securise. Un composant qui le testerait a
    notre place ferait mesurer le composant. */
+/* ⚠️ ANNOTE LE 2026-09-08 PAR `dn7-2` — ⛔ LE COMMENTAIRE CI-DESSUS N'EST PAS
+   EFFACE (`NFR3`), MAIS SA PREMIERE PHRASE EST DEVENUE FAUSSE POUR **UNE**
+   SECTION : `#sec-flash` charge ESP Web Tools depuis un CDN, epingle a une
+   version exacte. ⇒ portee EXACTE de ce qui reste vrai : les tests de contexte
+   securise et d'acces serie de la section (a), eux, se font TOUJOURS avec les
+   objets du navigateur et ⛔ AUCUN composant tiers — et c'est bien ce qu'ils
+   doivent prouver. Un composant qui les testerait a notre place ferait mesurer
+   le composant, et cette raison-la n'a pas bouge d'un mot. */
 
 function poser(id, texte, classe) {
   var e = document.getElementById(id);
@@ -347,7 +531,150 @@ function jouer(verbe, bouton) {
 bStop.addEventListener("click", function () { jouer("stop", bStop); });
 bRetirer.addEventListener("click", function () { jouer("retirer", bRetirer); });
 
-rafraichirEtat();
+/* ═══════════════════════════════════════════════════════════════════════
+   (a2) LA SECTION DE FLASH — CE QU'ELLE MESURE, ET CE QU'ELLE DIT   (dn7-2)
+   ═══════════════════════════════════════════════════════════════════════
+   ⚠️ CE QUI SUIT NE FLASHE RIEN LUI-MEME : c'est
+      `<esp-web-install-button>` qui ecrit, avec les offsets du manifeste. Ce
+      bloc-ci ne fait que MESURER l'etat et NOMMER ce qui coince — c'est
+      exactement le manque que cette marche corrige. */
+
+var bLiberer = document.getElementById("b-liberer");
+var blocInstaller = document.getElementById("bloc-installer");
+
+function afficher(id, visible) {
+  var e = document.getElementById(id);
+  if (e) { e.hidden = !visible; }
+}
+
+/* ── (f) LE MODULE DISTANT ARRIVE-T-IL ? ─────────────────────────────────
+   ⛔ UN BOUTON INERTE EST PIRE QUE PAS DE BOUTON. Si `unpkg.com` est bloque
+   (hors ligne, pare-feu), l'element personnalise n'est jamais DEFINI : la
+   balise reste dans le DOM, muette, et on cliquerait sur rien. On surveille
+   donc les DEUX chemins — l'erreur reseau de la balise, et l'absence de
+   definition apres un delai — parce qu'un module bloque par une politique de
+   securite ne leve pas toujours `error`. */
+var moduleFlash = document.getElementById("dn-module-flash");
+var moduleAnnonce = false;
+
+function moduleAbsent(motif) {
+  if (moduleAnnonce) { return; }
+  moduleAnnonce = true;
+  afficher("etat-cdn", true);
+  /* ⛔ ON RETIRE LE BOUTON PLUTOT QUE DE LE GRISER : un bouton grise laisse
+     croire qu'on peut le reactiver ; l'encadre, lui, dit le geste. */
+  if (blocInstaller) { blocInstaller.hidden = true; }
+  var e = document.getElementById("etat-cdn");
+  if (e && motif) {
+    var m = document.createElement("div");
+    m.className = "discret";
+    m.textContent = "motif mesuré : " + motif;
+    e.appendChild(m);
+  }
+}
+
+if (moduleFlash) {
+  moduleFlash.addEventListener("error", function () {
+    moduleAbsent("le navigateur a refusé ou n'a pas pu charger le module");
+  });
+}
+window.setTimeout(function () {
+  if (!window.customElements
+      || !window.customElements.get("esp-web-install-button")) {
+    moduleAbsent("l'élément `esp-web-install-button` n'est toujours pas défini "
+                 + "après 10 s");
+  }
+}, 10000);
+
+/* ── LE MANIFESTE EST DEMANDE **AU SERVEUR**, ET C'EST UNE PREUVE ────────
+   ⚠️ `<esp-web-install-button>` le demande deja pour son propre compte. On le
+   demande AUSSI, et ⛔ ce n'est pas une duplication inutile : c'est ce qui
+   permet a la page d'AFFICHER ce qu'elle va poser AVANT que quiconque clique,
+   et c'est une requete REELLE au serveur local — observable, ⛔ pas declaree. */
+function afficherManifeste() {
+  return fetch("charge/manifest.json", { cache: "no-store" })
+    .then(function (r) {
+      if (!r.ok) { throw new Error("HTTP " + r.status); }
+      return r.json();
+    })
+    .then(function (m) {
+      var b = (m.builds && m.builds[0]) || {};
+      var parts = b.parts || [];
+      poser("v-version", m.version || "⛔ absente du manifeste");
+      poser("v-revision", m.version
+            ? m.version + " — révision du dépôt, lue dans le binaire"
+            : "⛔ inconnue");
+      poser("v-morceaux", parts.length
+            ? parts.length + " · " + b.chipFamily + " · offsets "
+              + parts.map(function (p) { return p.offset; }).join(" / ")
+            : "⛔ aucun morceau déclaré");
+      return m;
+    })
+    .catch(function (err) {
+      poser("v-version", "⛔ le manifeste n'a pas pu être lu : " + err);
+      poser("v-revision", "⛔ inconnue — ⛔ ne flashez pas à l'aveugle");
+      poser("v-morceaux", "⛔ inconnus");
+      afficher("etat-cdn", false);
+      moduleAbsent(null);
+    });
+}
+
+/* ── L'ETAT DE LA MACHINE, POUR LES TROIS BLOCS QUI EN DEPENDENT ────────
+   ⚠️ TROIS ETATS ICI AUSSI, ⛔ PAS DEUX : `windows === undefined` veut dire
+   « le serveur n'a pas repondu », ⛔ pas « ce n'est pas Windows ». Lever
+   l'avertissement hors Windows sur une IGNORANCE le rendrait inutile. */
+function appliquerFlash(e) {
+  if (!e) {
+    poser("v-port", "⛔ inconnu — le serveur local ne répond pas");
+    if (bLiberer) { bLiberer.disabled = true; }
+    return;
+  }
+  afficher("etat-hors-windows", e.windows === false);
+
+  if (e.port_serie) {
+    poser("v-port", e.port_serie + (e.port_nom ? "  —  " + e.port_nom : ""));
+  } else {
+    /* ⛔ AUCUN `COM<n>` N'EST SUPPOSE, ET AUCUN `stop` N'EST JOUE DESSUS.
+       Sans carte enumeree, jouer `stop` sur un port devine agirait sur
+       quelque chose qu'on n'a pas mesure. */
+    poser("v-port", "⛔ aucune carte DeskNode énumérée ("
+          + (e.port_motif || "motif inconnu") + ")");
+  }
+
+  /* (c) LE PORT TENU PAR L'AGENT — le cas NORMAL du deuxieme lancement. */
+  var agentPose = (e.tache_presente === true);
+  afficher("etat-port-tenu", agentPose);
+  if (bLiberer) {
+    bLiberer.disabled = !(e.pilote && e.port_serie);
+    bLiberer.title = e.port_serie
+      ? "joue le verbe `stop` sur " + e.port_serie
+      : "⛔ aucun port découvert : rien ne sera joué sur un port supposé";
+  }
+
+  /* La charge servie : si elle manque, le bouton d'installation n'a rien a
+     poser, et le dire vaut mieux que de laisser un 404 arriver au clic. */
+  if (e.charge && e.charge.complete === false) {
+    poser("v-morceaux", "⛔ la charge est absente ou abîmée côté serveur — "
+          + "voir la fenêtre du script");
+  }
+}
+
+if (bLiberer) {
+  bLiberer.addEventListener("click", function () {
+    /* ⚠️ C'EST LE **MEME** CHEMIN QUE « Arrêter l'agent » : le verbe `stop`
+       expose par le serveur, sur le port DECOUVERT. ⛔ Aucun drapeau
+       reimplemente, ⛔ aucun `taskkill`. */
+    jouer("stop", bLiberer);
+  });
+}
+
+/* ── L'ENCHAINEMENT ──────────────────────────────────────────────────────
+   ⚠️ `rafraichirEtat()` rend la promesse de `fetch`, et son `.then` recoit
+   l'etat : c'est ce qui permet aux blocs de flash de se poser sur des faits
+   MESURES plutot que sur des valeurs par defaut. Le `.catch` de la fonction
+   rend `undefined` — que `appliquerFlash()` traite comme « on ne sait pas ». */
+afficherManifeste();
+rafraichirEtat().then(appliquerFlash);
 </script>
 </body>
 </html>

@@ -10,6 +10,11 @@ REM  VERBES
 REM    DeskNode-installeur.bat            sert la page et l'ouvre
 REM    DeskNode-installeur.bat verifier   pre-vol SEUL, puis sort avec son code
 REM
+REM  CODES DE RETOUR : 0 tout est la . 2 argument inconnu . 3 un fichier de
+REM    l'installeur manque, ou Python 3 est introuvable . 4 le serveur local
+REM    n'a pas pu se lier . 5 la CHARGE a flasher manque . 6 une dependance
+REM    de l'agent manque (l'ecart declare).
+REM
 REM  !!! POURQUOI UN .bat ET **PAS** UN .ps1 - CE N'EST PAS UNE PREFERENCE.
 REM      MESURE le 2026-09-08 sur la machine de reference : Get-ExecutionPolicy
 REM      rend `Restricted`, et les CINQ portees sont `Undefined`. Un .ps1
@@ -42,9 +47,25 @@ set "DN_DIR=%~dp0"
 if "%DN_DIR:~-1%"=="\" set "DN_DIR=%DN_DIR:~0,-1%"
 set "DN_PY_SCRIPT=%DN_DIR%\dn_installeur.py"
 set "DN_PAGE=%DN_DIR%\index.html"
+set "DN_CHARGE=%DN_DIR%\charge"
 
 if not exist "%DN_PY_SCRIPT%" goto :SANSSCRIPT
 if not exist "%DN_PAGE%" goto :SANSPAGE
+
+REM !!! LA CHARGE : LES QUATRE IMAGES ET LEUR MANIFESTE.        (dn7-2)
+REM     Sans elles la page n'a RIEN a poser sur la carte, et son bouton
+REM     d'installation echouerait sur un 404 du navigateur - c'est-a-dire
+REM     un message d'outil qui n'explique rien, le defaut meme que cette
+REM     marche corrige. On le dit ICI, avec le geste, AVANT d'ouvrir quoi
+REM     que ce soit. Meme patron que :SANSSCRIPT, et meme raison.
+REM     !!! Le pre-vol Python rend 5 sur le meme etat, et il verifie EN
+REM     PLUS l'integrite de l'asset (magie + longueur + CRC32) : ce test-ci
+REM     est le moins cher des deux, pas le plus complet.
+if not exist "%DN_CHARGE%\manifest.json" goto :SANSCHARGE
+if not exist "%DN_CHARGE%\bootloader.bin" goto :SANSCHARGE
+if not exist "%DN_CHARGE%\partition-table.bin" goto :SANSCHARGE
+if not exist "%DN_CHARGE%\desknode.bin" goto :SANSCHARGE
+if not exist "%DN_CHARGE%\living_pcb_v0.bin" goto :SANSCHARGE
 
 REM !!! LE DOSSIER A-T-IL ETE RECUPERE **SEUL** ? Un inconnu qui TELECHARGE
 REM     plutot qu'il ne clone peut n'avoir que ce dossier. Or l'outil de
@@ -138,6 +159,24 @@ echo       Le dossier " installeur " est incomplet : re-telecharger ou
 echo       re-cloner le depot, et relancer ce fichier depuis ce dossier.
 echo.
 set "RC=3"
+goto :FIN
+
+:SANSCHARGE
+echo.
+echo   /!\ LA CHARGE A FLASHER EST ABSENTE OU INCOMPLETE.
+echo       Attendu dans le dossier " charge " a cote de ce fichier :
+echo         manifest.json, bootloader.bin, partition-table.bin,
+echo         desknode.bin, living_pcb_v0.bin
+echo.
+echo       Sans elles la page n'a RIEN a poser sur la carte.
+echo.
+echo       LE GESTE, AU CHOIX :
+echo         1. recuperer le depot ENTIER - le dossier installeur\charge
+echo            en fait partie, il n'est pas genere au lancement ;
+echo         2. ou le reconstruire, et installeur\charge\PROVENANCE.md
+echo            donne les commandes exactes et l'ordre a suivre.
+echo.
+set "RC=5"
 goto :FIN
 
 :USAGE

@@ -151,8 +151,26 @@ MOTIFS_ELEVATION = (
 )
 
 # Ce qui signe le flash, et qui n'appartient ⛔ PAS a cette marche.
-JETONS_FLASH = ("esp-web-tools", "esp_web_tools", "install-button",
-                "manifest.json", "merge_bin", "chipfamily")
+# 🔴 RETOURNE LE 2026-09-08 PAR `dn7-2` — ⛔ LA LIGNE CI-DESSUS N'EST PAS
+#    EFFACEE, ET SON MOTIF D'ORIGINE EST GARDE PARCE QU'IL ETAIT **JUSTE** :
+#    tant que le perimetre de `dn7-1` excluait le flash, un jeton de flash sous
+#    `installeur/` etait un debordement de marche, et (c10) avait raison de le
+#    refuser. **LA FRONTIERE A BOUGE, ⛔ PAS LA REGLE** : `dn7-2` livre le
+#    branchement, donc ces memes jetons passent d'INTERDITS a EXIGES.
+# ⚠️ ⛔ ET LE CONTROLE N'EST PAS SUPPRIME, IL EST INVERSE. Le supprimer aurait
+#    perdu la garde : plus rien ne verrait quelqu'un DEBRANCHER le flash de la
+#    page. ⇒ le mutant 12, qui replantait « charge esp-web-tools dans la page »,
+#    est reecrit A L'ENVERS — c'est desormais RETIRER le branchement qui doit
+#    faire rougir.
+# 🎯 LA LISTE D'ORIGINE, GARDEE TELLE QUELLE POUR MEMOIRE :
+#    ("esp-web-tools", "esp_web_tools", "install-button", "manifest.json",
+#     "merge_bin", "chipfamily")
+#    ⚠️ `merge_bin` en sort et ⛔ n'est PAS orphelin pour autant : il est
+#       INTERDIT par `tools/verif_flash_dn72.py`, qui garde le manifeste — et
+#       c'est la qu'il a du sens, puisque c'est le manifeste qui pourrait
+#       fusionner les morceaux. Le laisser ici en aurait fait un jeton EXIGE,
+#       c'est-a-dire l'inverse exact de ce qu'il faut.
+JETONS_FLASH_BRANCHEMENT = ("esp-web-tools", "install-button", "manifest.json")
 
 # La palette du BANC D'ESSAI — celle de GitHub, prise sous la main pour une
 # soiree. `AC7.1.7` la REMPLACE ; si elle revient, c'est que l'identite a ete
@@ -278,8 +296,14 @@ CIBLES[10] = ("c8",)
 MUTANTS[11] = ("remplace la RE-REQUETE d'apres le retrait par une constante "
                "⇒ le verdict croit le message de sortie de l'outil")
 CIBLES[11] = ("c9",)
-MUTANTS[12] = ("charge `esp-web-tools` dans la page ⇒ du flash dans une "
-               "marche qui n'en porte pas")
+# 🔴 MUTANT 12 REECRIT A L'ENVERS LE 2026-09-08, EN MEME TEMPS QUE (c10).
+#    Il replantait « charge esp-web-tools dans la page » quand le flash etait
+#    HORS perimetre. Le flash etant desormais LE livrable, la faute a replanter
+#    est l'inverse : DEBRANCHER le module. ⛔ Un mutant qu'on aurait laisse tel
+#    quel serait sorti VERT sur un produit SAIN — un mutant perime deguise en
+#    gardien vivant.
+MUTANTS[12] = ("DEBRANCHE `esp-web-tools` de la page ⇒ un bouton qui n'a "
+               "plus rien a poser, et personne ne le voit")
 CIBLES[12] = ("c10",)
 MUTANTS[13] = ("efface du `.bat` le geste exact quand Python manque ⇒ un "
                "refus qui n'explique rien, le defaut meme qu'on corrige")
@@ -713,12 +737,14 @@ def muter(etat):
             return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
         p[PY] = p[PY].replace(A_REQUETE, "encore, _rl = (False, '')", 1)
     elif _MUTANT == 12:
-        if PAGE not in p:
-            return e                      # fichier hors corpus ⇒ NO-OP ⇒ rc=3
-        p[PAGE] = p[PAGE].replace(
-            "</head>",
-            '<script type="module" src="esp-web-tools/install-button.js">'
-            "</script>\n</head>", 1)
+        # ⚠️ IL RETIRE LE BRANCHEMENT, ⛔ il ne debranche pas la garde. La faute
+        #    replantee est celle d'une page livree SANS de quoi flasher —
+        #    exactement ce que le retournement de (c10) doit attraper.
+        if PAGE not in p or "esp-web-tools" not in p[PAGE].lower():
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        p[PAGE] = re.sub(r"(?i)esp-web-tools", "un-composant-quelconque",
+                         p[PAGE])
+        p[PAGE] = re.sub(r"(?i)install-button", "bouton-maison", p[PAGE])
     elif _MUTANT == 13:
         if A_GESTE_PATH not in p.get(BAT, ""):
             return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
@@ -1266,20 +1292,25 @@ def main():
               "de l'ecart », et `AC7.1.6` se ferme dessus"
               % " · ".join(ecarts_pv))
 
-    # ── (c10) ⛔ RIEN DU FLASH ICI ────────────────────────────────────────
-    print("\n── (c10) LE PERIMETRE : ⛔ AUCUN FLASH ───────────────────────────")
-    flash = []
-    for x in code:
-        bas = f.get(x, "").lower()
-        for j in JETONS_FLASH:
-            if j in bas:
-                flash.append("%s ⇒ %s" % (x, j))
-    ctrl(not flash, "(c10) ⛔ rien du flash n'est livre ici",
-         "%d jeton(s) de flash cherches, 0 trouve" % len(JETONS_FLASH)
-         if not flash
-         else "⛔ %s — cette marche fait EXISTER la page ; le flash et la "
-              "provenance des binaires appartiennent a une autre"
-              % " · ".join(flash))
+    # ── (c10) LE BRANCHEMENT DU FLASH EST LIVRE — CONTROLE **RETOURNE** ───
+    print("\n── (c10) LE PERIMETRE : LE FLASH EST BRANCHE ─────────────────────")
+    # 🔴 CE CONTROLE DISAIT L'INVERSE JUSQU'AU 2026-09-08, ET SON MOTIF EST
+    #    GARDE A COTE DE `JETONS_FLASH_BRANCHEMENT` : il interdisait ces jetons
+    #    tant que `dn7-1` excluait le flash. La frontiere a bouge avec `dn7-2` ;
+    #    ⛔ le controle n'est pas SUPPRIME, il est INVERSE — sinon plus rien ne
+    #    verrait quelqu'un debrancher le flash de la page.
+    absents_flash = []
+    bas_page = page.lower()
+    for j in JETONS_FLASH_BRANCHEMENT:
+        if j not in bas_page:
+            absents_flash.append(j)
+    ctrl(not absents_flash, "(c10) le branchement du flash EST dans la page",
+         "%d jeton(s) de branchement exiges, %d trouves"
+         % (len(JETONS_FLASH_BRANCHEMENT), len(JETONS_FLASH_BRANCHEMENT))
+         if not absents_flash
+         else "⛔ ABSENT(S) de %s : %s — la page n'a plus de quoi poser le "
+              "firmware, et un inconnu qui la traverse repartirait avec une "
+              "carte vierge" % (PAGE, " · ".join(absents_flash)))
 
     # ── (c11) LE `.bat` DIT LE GESTE, ⛔ IL NE PLANTE PAS ──────────────────
     print("\n── (c11) SANS PYTHON, LE `.bat` DIT QUOI FAIRE ───────────────────")

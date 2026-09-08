@@ -51,6 +51,7 @@ la mauvaise est la moins chère.
 |---|---|
 | **l'écran** | **FR / EN**, **défaut : ANGLAIS** |
 | **où on change** | 🟡 **au flasheur web** — ⚠️ **pas encore livré**, voir ci-dessous |
+| ⚠️ *annoté le 2026-09-08* | le **flasheur** est livré (§ *Installer DeskNode*) ; ce qui reste vrai, c'est que **le choix de langue** n'y est pas encore — ⛔ ligne du dessus non effacée |
 | **en attendant** | la commande console `langue fr` / `langue en` |
 | **ce qui survit au reboot** | le choix, rangé en NVS |
 | 🔴 **la console (le REPL série)** | **elle reste en FRANÇAIS** — voir plus bas |
@@ -77,6 +78,12 @@ l'entête du MENU, flashées et validées à l'œil le 2026-09-01 — puis **ret
    > page **ne flashe encore rien** et **ne propose aucun choix de langue** — donc la phrase
    > ci-dessus reste exacte *pour le point dont elle parle*, le choix de langue. ⇒ la langue
    > se change toujours au REPL série, comme dit juste en dessous.
+   > 🎯 **RE-ANNOTÉ LE 2026-09-08 — ⛔ AUCUNE DES DEUX ANNOTATIONS PRÉCÉDENTES N'EST
+   > EFFACÉE, ET LA SECONDE VIENT DE PERDRE UNE MOITIÉ.** *« Cette page ne flashe encore
+   > rien »* a cessé d'être vrai le jour même : la page **pose le firmware sur la carte**,
+   > avec quatre images versionnées et leur manifeste. ⇒ de la phrase d'origine, il ne
+   > reste vrai que **le choix de langue**, qui n'est toujours pas sur la page et se fait
+   > toujours au REPL série.
 2. 🔴 **Ces deux cibles causaient une régression de charge MESURÉE** : `taskLVGL` passait de
    **3,5 % à 99,3 %** après une poignée de reconstructions de scène, watchdog déclenché, écran
    saccadé et tactile en retard. Elle est **partie avec elles** (A/B sur la carte, même protocole).
@@ -520,7 +527,8 @@ ré-affiche, c'est-à-dire qu'il ment sur ce qu'il mesure.
 **Le geste :** double-cliquer **`installeur/DeskNode-installeur.bat`**.
 
 Ce fichier démarre un petit serveur **sur votre propre machine**, puis ouvre votre
-navigateur sur une adresse en `http://127.0.0.1:<port>`. **Le port est tiré au lancement**,
+navigateur sur une adresse en `http://127.0.0.1:<port>`. **Depuis cette page, vous posez
+le firmware sur la carte** — sans installer d'outil et sans le moindre pilote. **Le port est tiré au lancement**,
 il change à chaque fois — c'est voulu : un port fixe peut être déjà pris chez quelqu'un
 d'autre, et *mettre à jour DeskNode, c'est le réinstaller*, donc le deuxième lancement est
 le cas de tout le monde, ⛔ pas un cas rare.
@@ -534,6 +542,8 @@ ferait donc échouer l'outil qui existe déjà.
 
 | geste sur la page | ce qui est appelé | comment c'est vérifié |
 |---|---|---|
+| **Installer DeskNode sur la carte** | ESP Web Tools, **épinglé `10.4.0`**, avec `installeur/charge/manifest.json` | les **quatre** morceaux aux **quatre** offsets, ⛔ sans binaire fusionné ; la version annoncée est **lue dans le binaire servi**, et une gate refuse qu'elles diffèrent |
+| **Libérer le port** | le verbe `stop` de `tools/dn_agent_tour.ps1`, **sur le port découvert** | l'outil **rouvre le port** — et « rendu » (`0`) et « disparu » (`7`) sont rendus **distincts**, ⛔ pas confondus |
 | **Arrêter l'agent** | le verbe `stop` de `tools/dn_agent_tour.ps1` | l'outil **rouvre le port** — un code de retour ne prouve rien |
 | **Retirer l'agent** | le verbe `retirer` du même outil | la tâche est **redemandée au système** après coup, ⛔ le message de sortie ne fait pas foi |
 
@@ -595,19 +605,100 @@ il n'en existe aucune à ce jour. ⇒ cette moitié-là reste ouverte, et **son 
 [`docs/roadmap.md`](docs/roadmap.md)). ⛔ Un *« ça marche chez moi depuis le dépôt »* ne la
 ferme pas.
 
+### 🆕 Ce que la page va écrire sur la carte, et **d'où ça vient**
+
+La page sert **quatre images** versionnées dans le dépôt, sous
+[`installeur/charge/`](installeur/charge/), plus le manifeste qui dit où chacune se pose.
+Les offsets sont ceux **déjà publiés** plus bas dans ce fichier (§ *Voie A*) — ⛔ ils ne
+sont pas redits ici, ils sont **les mêmes**, et le manifeste les tient de
+`build/flasher_args.json`. Les quatre morceaux se posent **séparément**, ⛔ **sans binaire
+fusionné**.
+
+🔴 **La version annoncée est LUE dans le binaire, ⛔ jamais recopiée à côté.** C'est le
+champ `version` de `esp_app_desc_t`, à l'offset `0x30` de `desknode.bin` — et
+`tools/verif_flash_dn72.py` **refuse** que le manifeste et le binaire servi disent deux
+choses différentes. Le prototype de flash du 2026-08-31 annonçait `0.1.0-beta-essai`, la
+valeur de son **banc d'essai**, sur des images que plus personne ne savait dater : c'est
+exactement ce que ce contrôle rend impossible.
+
+⚠️ **Deux manques sont écrits plutôt que cochés**, et chacun a son porteur :
+
+- **La provenance de ces quatre fichiers n'est mécanisée par RIEN.** Aucune intégration
+  continue ne construit ce firmware (`dn4-45`, `not started` — voir
+  [`docs/roadmap.md`](docs/roadmap.md)) ; les binaires ont été produits **à la main**, et
+  [`installeur/charge/PROVENANCE.md`](installeur/charge/PROVENANCE.md) le dit, avec la
+  révision exacte, la commande, les tailles et les empreintes.
+- 🔴 **L'obligation GPL-3.0 de pointer la source de CETTE révision est tenue par la
+  révision elle-même, ⛔ pas par une source publiquement atteignable.** Mesuré le
+  2026-09-08 : `git tag -l` est **vide**, `gh release list` est **vide**, et ce dépôt est
+  **privé**. ⇒ ce résiduel est un **écart déclaré**, et **son porteur est `dn8`**, l'étape
+  qui publie la vitrine, le tag et la première release.
+
+### 🆕 Ce que vous allez voir au moment de choisir le port
+
+La page le dit **aussi**, parce que c'est elle que vous regardez à ce moment-là. Ici, c'est
+pour l'avoir sous la main avant de commencer.
+
+- **Le port ne s'appelle ⛔ PAS « DeskNode »**, et il porte **deux noms selon qui l'affiche** :
+  - Windows le nomme de façon **traduite** — sur la machine de référence, mesuré le
+    2026-09-08 : **`Périphérique série USB (COM3)`** ;
+  - la puce, elle, se présente comme **`USB JTAG/serial debug unit`**.
+  ⚠️ Le numéro `COM<n>` change d'une machine à l'autre ; la page affiche **celui qu'elle a
+  découvert** sur la vôtre.
+- **La sélection se fait en DEUX gestes** : **cliquer la ligne** du port, **puis**
+  **« Se connecter »**. Tant que la ligne n'est pas sélectionnée, le bouton reste **grisé**,
+  et fermer la fenêtre fait sortir sur *« No port selected »* — un message qui n'explique
+  pas qu'il manquait un clic.
+- ⛔ **Si l'outil de flash propose d'installer un pilote (CP2102, CH340, CH342), n'en
+  installez aucun.** Ce dialogue parle d'un problème que vous n'avez pas : cette carte est
+  en **USB natif** `303A:1001`, et **aucun pilote n'est à installer** — c'est déjà écrit
+  plus bas, § *Faits matériels mesurés qui contredisent les recettes courantes*.
+- **Si rien ne démarre** : maintenir **`BOOT`** enfoncé, appuyer brièvement sur **`RESET`**,
+  relâcher `BOOT`. La carte passe en mode *download*, où le flash marche même quand
+  l'application ne démarre plus. Détail et sortie de ce mode : § *La carte est muette ?*.
+  ⚠️ **Écart de formulation, écrit plutôt que recopié** : le cadrage de cette page parlait
+  de *« BOOT maintenu pendant le branchement »*. Cette formule n'est **écrite nulle part**
+  dans ce dépôt et n'a **jamais été mesurée** ; `BOOT` **+** `RESET`, si.
+
+### 🆕 Le deuxième lancement, et pourquoi c'est le cas de tout le monde
+
+**Mettre DeskNode à jour, c'est le réinstaller** — il n'y a qu'un seul parcours. Donc dès la
+deuxième fois, **l'agent tourne déjà et tient le port**, et un flash lancé tel quel sortirait
+sur `Failed to execute 'open' on 'SerialPort'`, qui n'explique rien.
+
+⇒ La page porte un bouton **« Libérer le port »** qui appelle le verbe **`stop`** que ce
+dépôt livre déjà — ⛔ il n'en réimplémente aucun — **sur le port qu'elle a découvert**
+(`VID_303A&PID_1001`, interface `MI_00`), ⛔ pas sur le `COM3` par défaut de l'outil.
+
+⚠️ **Et les codes de `stop` ne sont ⛔ pas un booléen** : `0` le port est **rendu** · `4` le
+drapeau d'arrêt n'a pas pu être écrit · `7` l'agent est arrêté mais le port a **disparu**
+(carte débranchée, ou reprise par WSL) · `8` il est **encore tenu**. Lire `7` comme un échec
+ferait renoncer quelqu'un dont le geste a réussi ; le lire comme un succès ferait annoncer
+« port rendu » sur un port qui n'existe plus. La page rend **le fait**.
+
+🔴 **Ce que cette page ne referme PAS, et c'est écrit** : le **chemin de retour** — relancer
+l'agent après que le flash a ré-énuméré le port — reste servi par la valeur par défaut
+`COM3` de `tools/dn_agent_tour.ps1` et de `tools/dn-agent.bat`. **Porteur : `dn4-28`**, la
+dépendance dure déjà déclarée de ce chantier.
+
 ### Ce que cette page ne fait pas encore
 
-- ⛔ **Elle ne flashe pas la carte**, et ⛔ **elle n'installe pas l'agent** : elle sait
-  l'arrêter et le retirer, ⛔ pas le mettre en place. Le flash reste le chantier de
-  `epic-dn7` (voir [`docs/roadmap.md`](docs/roadmap.md), ligne `dn7-1` pour ce qui est déjà
-  livré).
+- ~~⛔ **Elle ne flashe pas la carte**~~, et ⛔ **elle n'installe pas l'agent** : elle sait
+  l'arrêter et le retirer, ⛔ pas le mettre en place.
+  > ⚠️ **ANNOTÉ LE 2026-09-08 — LA PREMIÈRE MOITIÉ A CESSÉ D'ÊTRE VRAIE, ET ELLE EST
+  > BARRÉE PLUTÔT QU'EFFACÉE (`NFR3`).** La page **flashe** désormais la carte : voir les
+  > trois sections ci-dessus. **La seconde moitié reste vraie** — elle n'installe toujours
+  > **pas l'agent**, et le poser reste le geste décrit § *« Lancer / arrêter l'agent DEPUIS
+  > WINDOWS »*.
 - ⛔ **Elle ne propose aucun choix de langue** : la dalle démarre en anglais et le choix se
   fait au REPL série (`langue fr`), comme dit plus haut.
 - ⛔ **Elle ne montre aucun aperçu de la dalle** : c'est une **exclusion déclarée** de la
   première version, ⛔ ni un oubli ni un manque à réparer.
-- ⚠️ **L'agent est Windows seulement**, et ça ne change pas. La page s'ouvre ailleurs — mais
-  ses deux gestes s'adressent à une tâche planifiée Windows, et ailleurs ils vous diront
-  simplement qu'ils n'ont rien trouvé.
+- ⚠️ **L'agent est Windows seulement**, et ça ne change pas. La page s'ouvre ailleurs — et
+  **elle vous le dit AVANT de flasher**, parce que le flash, lui, **réussirait** : l'accès
+  série du navigateur existe aussi sur macOS, Linux et ChromeOS. Vous repartiriez avec une
+  carte correctement flashée et **rien à afficher dessus**. ⛔ Ce n'est pas un élargissement
+  du périmètre : c'est la fin d'un silence.
 
 ### Le pré-vol, sans ouvrir de fenêtre
 
@@ -616,7 +707,11 @@ installeur\DeskNode-installeur.bat verifier
 ```
 
 Il dit ce qui manque, donne le geste, et rend **6** si une dépendance de l'agent manque —
-c'est l'instrument mécanique de l'écart ci-dessus, ⛔ pas un message décoratif. L'identité
+c'est l'instrument mécanique de l'écart ci-dessus, ⛔ pas un message décoratif. 🆕 Il rend
+**5** si la **charge à flasher** est absente ou abîmée, et il ne se contente pas de compter
+les fichiers : il **revérifie la bande-annonce d'intégrité** de l'asset (magie `DNASSET1`,
+longueur, **CRC32**), celle-là même que le firmware relit au démarrage. Une image tronquée
+est ainsi refusée **avant** d'être servie, ⛔ pas découverte sur une dalle blanche. L'identité
 visuelle de la page, ses sept couleurs et **la ligne de firmware d'où chacune sort** sont
 écrites dans [`installeur/IDENTITE.md`](installeur/IDENTITE.md).
 
