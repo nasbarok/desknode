@@ -46,15 +46,41 @@ set "DN_PAGE=%DN_DIR%\index.html"
 if not exist "%DN_PY_SCRIPT%" goto :SANSSCRIPT
 if not exist "%DN_PAGE%" goto :SANSPAGE
 
+REM !!! LE DOSSIER A-T-IL ETE RECUPERE **SEUL** ? Un inconnu qui TELECHARGE
+REM     plutot qu'il ne clone peut n'avoir que ce dossier. Or l'outil de
+REM     l'agent et le README vivent AU-DESSUS. Sans ce mot, la page s'ouvre
+REM     avec deux boutons morts et des liens vides, et personne ne le dit.
+REM     !!! ON N'ARRETE PAS : la page reste utile pour lire l'etat du poste.
+set "DN_PARENT=%DN_DIR%\.."
+if not exist "%DN_PARENT%\tools\dn_agent_tour.ps1" goto :SANSARBRE
+if not exist "%DN_PARENT%\README.md" goto :SANSARBRE
+goto :ARBREOK
+:SANSARBRE
+echo.
+echo   /!\ CE DOSSIER A ETE RECUPERE SEUL, HORS DE SON DEPOT.
+echo       tools\dn_agent_tour.ps1 et README.md ne sont pas au-dessus de lui.
+echo       La page va s'ouvrir, mais ses DEUX BOUTONS seront inactifs et ses
+echo       liens de bas de page seront vides.
+echo       LE GESTE : recuperer le depot ENTIER, puis relancer ce fichier
+echo       depuis le dossier installeur qu'il contient.
+echo.
+:ARBREOK
+
 REM -- Trouver Python : d'abord le lanceur `py -3`, ensuite `python`. --------
+REM !!! LA SONDE EST SPECIFIQUE A PYTHON **3**, ET C'EST UN CORRECTIF.
+REM     Un "import sys" nu reussit sur un Python 2 comme sur l'ALIAS du
+REM     Microsoft Store, et dn_installeur.py mourait ensuite sur un
+REM     ImportError NU (from http.server import ...) - c'est-a-dire la trace
+REM     que ce fichier promet d'eviter. On importe donc ce dont le serveur a
+REM     REELLEMENT besoin, et on exige la version majeure 3.
 REM !!! AUCUN BLOC ENTRE PARENTHESES ICI : dans un bloc, cmd.exe developpe les
 REM     variables A L'ANALYSE, donc un `set` suivi d'un test dans le MEME bloc
 REM     lit la valeur d'AVANT. On enchaine des `goto`, comme dn-agent.bat.
 set "PY="
-py -3 -c "import sys" >nul 2>nul
+py -3 -c "import sys,http.server; sys.exit(0 if sys.version_info[0]>=3 else 1)" >nul 2>nul
 if not errorlevel 1 set "PY=py -3"
 if defined PY goto :PYTROUVE
-python -c "import sys" >nul 2>nul
+python -c "import sys,http.server; sys.exit(0 if sys.version_info[0]>=3 else 1)" >nul 2>nul
 if not errorlevel 1 set "PY=python"
 :PYTROUVE
 if not defined PY goto :SANSPYTHON
@@ -116,7 +142,10 @@ goto :FIN
 
 :USAGE
 echo.
-echo   /!\ argument inconnu : %VERBE%
+REM !!! LA VARIABLE EST CITEE : un argument portant & ou | ferait
+REM     EXECUTER par cmd.exe le texte qui suit. Un message d'erreur
+REM     ne doit pas etre une porte.
+echo   /!\ argument inconnu : "%VERBE%"
 echo       emplois : DeskNode-installeur.bat            (sert la page)
 echo                 DeskNode-installeur.bat verifier   (pre-vol seul)
 echo.

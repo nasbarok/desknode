@@ -85,8 +85,12 @@ Work towards the first public release, `v0.1.0-beta`.
   machine, and since *updating DeskNode means reinstalling it*, the second launch is everybody's
   normal case rather than an edge one. The page **exposes** two verbs the repository already had —
   `stop` and `retirer` of `tools/dn_agent_tour.ps1` — and ⛔ reimplements neither; the tool's output
-  and exit code are relayed as they are, and after `retirer` the scheduled task is **asked for
-  again**, because a message that says "removed" is not a measurement. 🔴 **Nothing here asks for
+  and exit code are relayed as they are (and the page says **who set** that code, since a few of
+  them are its own), and after `retirer` the scheduled task is **asked for again**, because a
+  message that says "removed" is not a measurement. 🔴 **The server answers its own page and
+  nothing else**: it refuses any request whose `Host` is not the loopback it actually bound, and
+  any `Origin` that is not itself — a drawn port is ⛔ not a secret, and a plain cross-origin
+  `POST` has no CORS preflight to clear. 🔴 **Nothing here asks for
   administrator rights.** That is not a promise but the state of the code: the task is registered at
   `-RunLevel Limited`, and the tool stops on anything else as a defect — so an elevated installer
   would break the tool that already exists. ⚠️ **What you still have to install yourself is written

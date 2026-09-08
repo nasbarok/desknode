@@ -566,8 +566,13 @@ avec un échec ferait mentir ce dossier.
 ⚠️ **Deux des trois dépendances de l'agent n'avaient aucune garde** (mesuré le 2026-09-08) :
 `agent/dn_agent.py` explique proprement l'absence de `psutil` (l.226-230) mais **pas** celle
 de `pyserial` (l.2745) ni celle de `websockets` (l.3155) — celles-là sortent en trace nue.
-Le pré-vol de l'installeur les teste **toutes les deux** avant de servir la page, ce qui
-déplace le problème mais ⛔ ne le referme pas côté agent.
+🔴 **Ce que le pré-vol de l'installeur teste, exactement** : **`psutil` et `pyserial`**, et
+⛔ **pas `websockets`**. La phrase publiée ici disait *« il les teste toutes les deux »* avec
+`pyserial` **et** `websockets` pour antécédent — c'était **faux**, et ça fermait sur le papier
+un trou que personne n'avait bouché. ⇒ le pré-vol déplace le problème pour deux modules sur
+trois, ⛔ il ne le referme pour aucun **côté agent** : quelqu'un qui lance `dn_agent.py` sans
+passer par l'installeur — ce que la tâche planifiée fait à **chaque** ouverture de session —
+retombe sur la trace nue. Le manque est au ledger, porteur `epic-dn4`.
 
 ### ⚠️ Si vous avez **téléchargé** ce fichier plutôt que cloné le dépôt
 

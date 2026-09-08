@@ -189,6 +189,17 @@ RE_URL = re.compile(r"https?://[^\s`)>\"'\]]+")
 #    pose sur une boutique que la BOM ne nomme PAS. Seule la famille FRANCHE
 #    ou la liste des redirecteurs l'attrape alors. La contrepartie est
 #    assumee : ⛔ mieux vaut ce trou NOMME qu'une gate qui fait publier faux.
+#  ⛔ ET DEPUIS LE 2026-09-08, LE MEME TROU COUVRE **`?linkid=`** — ecrit ici
+#    parce que ce fichier a une regle : un trou laisse ouvert s'ECRIT. La
+#    descente de `linkid` chez les AMBIGUS (voir plus bas, et le motif est
+#    mesure) le fait dependre de `est_boutique()` comme les autres : un
+#    `?linkid=` affilie pose sur un hote qui n'est **NI** une boutique DERIVEE
+#    de la BOM **NI** un redirecteur de la liste PASSE desormais. C'est la
+#    contrepartie EXACTE du faux positif qu'elle ferme, et elle vaut :
+#    l'inverse — rougir sur l'adresse que PowerShell imprime lui-meme — faisait
+#    cascader (c6) et **publier une declaration FAUSSE**. ⇒ meme trou, meme
+#    remede que ci-dessus (une source de domaines marchands derivable du depot,
+#    ou un contrat de forme sur les URL publiees), ⛔ pas un trou de plus.
 # 🔴 RESSERRE LE 2026-09-08 — LE MOTIF FRANC MORDAIT SUR DU LEGITIME, ET
 #    C'EST MESURE : `aff[a-z_]*=` attrapait `?affichage=`, `?affaire=`,
 #    `?affluence=` ; et la forme CHEMIN `/aff…/` mordait sur N'IMPORTE QUEL

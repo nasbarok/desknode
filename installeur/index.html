@@ -14,6 +14,20 @@
       que dans un contexte securise, et une page posee sur le disque ou vue par
       une adresse reseau n'en est pas un.
 
+   ⚠️ ANNOTE LE 2026-09-08 — LA PHRASE CI-DESSUS N'EST PAS EFFACEE (NFR3), MAIS
+      SA DERNIERE PROPOSITION EST REFUTEE PAR LA MESURE, ET IL FAUT LE LIRE.
+      Le cadrage ecrivait que `file:` (la page posee sur le disque) « casse deux fois ». C'est FAUX : la
+      MEME page ouverte depuis le disque, dans le meme Edge, rend
+      `isSecureContext = oui` ET `navigator.serial = disponible`
+      (mesures/dn7-1/T4-navigateur-et-contexte-securise.txt). Une page sur le
+      disque EST donc un contexte securise dans Chromium.
+      ⇒ CE QUI CASSE VRAIMENT avec le schema `file:`, c'est tout ce qui a besoin du
+        SERVEUR LOCAL : la page perd `api/etat`, elle le dit, et elle desactive
+        ses deux boutons. Servir en local reste le bon choix — pour une raison
+        VRAIE, et non pour celle qu'on croyait.
+      ⚠️ Le bloc `etat-not-allowed` reste donc utile : il vise l'ADRESSE qui ne
+        convient pas, ⛔ pas un contexte que le navigateur refuserait.
+
    IDENTITE VISUELLE : elle est STATUEE et ECRITE dans `IDENTITE.md`, jeton par
    jeton, chacun citant SON fichier et SA ligne dans le firmware. ⛔ Aucune
    couleur n'est choisie ici : celles du banc d'essai (la palette de GitHub)
@@ -112,6 +126,15 @@
     <div class="ligne"><span class="cle">tâche planifiée</span><span class="val" id="v-tache">…</span></div>
     <div class="ligne"><span class="cle">niveau d'exécution</span><span class="val" id="v-runlevel">…</span></div>
     <div class="ligne"><span class="cle">outil piloté</span><span class="val" id="v-pilote">…</span></div>
+    <div id="etat-orphelin" hidden class="avert" style="margin-top:14px">
+      <b>Ce dossier a été récupéré seul, hors de son dépôt.</b><br>
+      <code>tools/dn_agent_tour.ps1</code> et <code>README.md</code> ne sont pas au-dessus de
+      lui&nbsp;: les deux boutons ci-dessous n'ont rien à appeler, et les liens de bas de page
+      ne mènent nulle part. <b>Le geste</b>&nbsp;: récupérer le dépôt <b>entier</b>, puis
+      relancer <code>DeskNode-installeur.bat</code> depuis le dossier <code>installeur/</code>
+      qu'il contient.
+    </div>
+    <div id="etat-inactif" hidden class="avert" style="margin-top:14px"></div>
 
     <p class="discret" style="margin:14px 0 6px">
       Ces deux boutons n'inventent rien&nbsp;: ils appellent les verbes <code>stop</code> et
@@ -140,6 +163,7 @@
     <div class="ligne"><span class="cle">Python 3</span><span class="val" id="v-python">…</span></div>
     <div class="ligne"><span class="cle"><code>psutil</code> (le % CPU)</span><span class="val" id="v-psutil">…</span></div>
     <div class="ligne"><span class="cle"><code>pyserial</code> (le lien série)</span><span class="val" id="v-pyserial">…</span></div>
+    <div class="ligne"><span class="cle">⛔ <code>websockets</code></span><span class="val">⛔ <b>pas testé ici</b> — l'agent l'importe sans garde</span></div>
     <p style="margin:12px 0 0">Le geste, s'il en manque un&nbsp;:</p>
     <pre style="max-height:none">pip install --user psutil pyserial</pre>
     <p class="discret" style="margin:12px 0 0">
@@ -171,7 +195,7 @@
     DeskNode — <a href="README.md">README</a> ·
     <a href="LICENSING.md">licences</a> ·
     <a href="IDENTITE.md">identité visuelle</a> ·
-    le code de cette page est sous GPL-3.0-or-later, comme le firmware qu'elle sert.
+    le code de cette page est sous GPL-3.0-or-later, comme le firmware de ce dépôt.
   </p>
 </main>
 
@@ -221,7 +245,20 @@ function ecrire(txt) {
   sortie.scrollTop = 0;
 }
 
-function ouiNon(v) { return v ? "oui" : "non"; }
+/* ⚠️ TROIS ETATS, ⛔ PAS DEUX : `null` veut dire « la sonde n'a pas pu
+   tourner », ⛔ pas « absent ». Publier une ignorance comme un constat est la
+   faute que le serveur vient de cesser de commettre. */
+function troisEtats(v, absent) {
+  if (v === true) { return "présent"; }
+  if (v === false) { return absent; }
+  return "non testable ici — ⛔ ce n'est PAS « absent »";
+}
+
+/* ⚠️ TOUS LES CHAMPS, ⛔ PAS SEULEMENT CELUI QU'ON REGARDE. Le premier `.catch`
+   ne posait que `v-tache` : les cinq autres restaient sur leurs points de
+   suspension POUR TOUJOURS, ce qui se lit « en cours » alors que c'est fini. */
+var CHAMPS = ["v-tache", "v-runlevel", "v-pilote", "v-python",
+              "v-psutil", "v-pyserial"];
 
 function rafraichirEtat() {
   return fetch("api/etat", { cache: "no-store" })
@@ -232,15 +269,39 @@ function rafraichirEtat() {
       poser("v-runlevel", e.tache_runlevel || "—");
       poser("v-pilote", e.pilote || "introuvable");
       poser("v-python", e.python_version || "introuvable");
-      poser("v-psutil", e.psutil ? "présent" : "ABSENT — voir le geste ci-dessous");
-      poser("v-pyserial", e.pyserial ? "présent" : "ABSENT — voir le geste ci-dessous");
-      var pilotable = !!e.pilote;
-      bStop.disabled = !pilotable;
-      bRetirer.disabled = !pilotable;
+      poser("v-psutil", troisEtats(e.psutil, "ABSENT — voir le geste ci-dessous"));
+      poser("v-pyserial", troisEtats(e.pyserial, "ABSENT — voir le geste ci-dessous"));
+      document.getElementById("etat-orphelin").hidden = (e.arbre_parent !== false);
+      /* 🔴 « PILOTABLE » NE SE DEDUIT ⛔ PAS DE L'EXISTENCE DU FICHIER. Hors
+         Windows, la copie du dépôt EXISTE — les deux boutons restaient donc
+         actifs et ne répondaient qu'après un clic, alors que le README promet
+         qu'ils « diront simplement qu'ils n'ont rien trouvé ». ⇒ il faut AUSSI
+         que la machine ait SU répondre à l'interrogation de la tâche. */
+      var motif = "";
+      if (!e.pilote) {
+        motif = "⛔ <b>Boutons inactifs</b>&nbsp;: <code>dn_agent_tour.ps1</code> est "
+              + "introuvable — il n'y a rien à appeler.";
+      } else if (e.tache_presente === null) {
+        motif = "⛔ <b>Boutons inactifs</b>&nbsp;: cette machine n'a pas répondu à "
+              + "l'interrogation du planificateur de tâches. L'agent DeskNode est "
+              + "<b>Windows seulement</b>, et ces deux gestes s'adressent à une tâche "
+              + "planifiée Windows.";
+      }
+      var bloc = document.getElementById("etat-inactif");
+      bloc.innerHTML = motif;
+      bloc.hidden = !motif;
+      bStop.disabled = !!motif;
+      bRetirer.disabled = !!motif;
       return e;
     })
     .catch(function (err) {
-      poser("v-tache", "le serveur local ne répond plus");
+      CHAMPS.forEach(function (id) { poser(id, "⛔ inconnu — le serveur local ne répond pas"); });
+      document.getElementById("etat-orphelin").hidden = true;
+      var bloc = document.getElementById("etat-inactif");
+      bloc.innerHTML = "⛔ <b>Boutons inactifs</b>&nbsp;: la page n'a pas pu joindre le "
+                     + "serveur qui la sert. Si cette adresse ne commence pas par "
+                     + "<code>http://127.0.0.1:</code>, c'est l'explication.";
+      bloc.hidden = false;
       bStop.disabled = true;
       bRetirer.disabled = true;
       ecrire("⛔ la page n'a pas pu interroger son propre serveur : " + err);
@@ -261,8 +322,15 @@ function jouer(verbe, bouton) {
   fetch("api/agent/" + verbe, { method: "POST", cache: "no-store" })
     .then(function (r) { return r.json(); })
     .then(function (d) {
+      /* ⚠️ QUI A POSE CE CODE ? La page promet la sortie « telle quelle, code
+         de retour compris » — elle doit donc dire quand le code n'est PAS
+         celui de l'outil (2, 4, -1 et le 9 d'une tâche survivante sont à
+         ELLE), sinon le lecteur les attribue à `dn_agent_tour.ps1`. */
+      var qui = (d.rc_pose_par === "l'outil")
+              ? "rendu par l'outil"
+              : "posé par CETTE PAGE (⛔ pas par l'outil)";
       var t = "$ " + d.commande + "\n\n" + (d.sortie || "(aucune sortie)")
-            + "\n\ncode de retour : " + d.rc + "\n" + d.verdict;
+            + "\n\ncode de retour : " + d.rc + "  — " + qui + "\n" + d.verdict;
       ecrire(t);
       bouton.textContent = libelle;
       return rafraichirEtat();

@@ -47,7 +47,9 @@ Sortie : 0 si tout passe · 1 sur un vrai defaut · 2 sur un mutant inconnu ·
 
 import argparse
 import ast
+import contextlib
 import copy
+import importlib.util
 import io
 import os
 import re
@@ -65,12 +67,29 @@ LIC = "LICENSING.md"
 LISEZMOI = "README.md"
 ROADMAP = "docs/roadmap.md"
 OUTIL = "tools/dn_agent_tour.ps1"
+ATTRIBUTS = ".gitattributes"
 
 QUATRE = (BAT, PY, PAGE, IDENT)
-# Les fichiers dont le CODE est juge. ⛔ `IDENTITE.md` n'en est pas : c'est de
-# la prose, et elle CITE forcement ce que le code ne doit pas porter.
-CODE = (BAT, PY, PAGE)
-FIXES = (BAT, PY, PAGE, IDENT, LIC, LISEZMOI, ROADMAP, OUTIL)
+FIXES = (BAT, PY, PAGE, IDENT, LIC, LISEZMOI, ROADMAP, OUTIL, ATTRIBUTS)
+
+
+def fichiers_de_code(traces, fichiers):
+    """Les fichiers de CODE sous `installeur/`, **DERIVES de l'arbre**.
+
+    🔴 ⛔ PLUS UN TUPLE FIXE, ET C'EST UN CORRECTIF. `CODE = (BAT, PY, PAGE)`
+       etait ecrit a la main : un CINQUIEME fichier de code verse sous
+       `installeur/` echappait a (c4) — l'elevation — et a (c10) — le flash —,
+       qui restaient VERTS sur une population qu'ils ne couvraient plus. C'est
+       la classe « gate scopee qui epingle VERT le meme defaut ailleurs », deja
+       payee par ce depot.
+    ⛔ Les `.md` en sont exclus, et c'est ecrit : ce sont de la PROSE, et elle
+       cite forcement ce que le code ne doit pas porter (le vocabulaire de
+       l'elevation, celui du flash). Les y inclure ferait rougir la page qui
+       explique la regle."""
+    return tuple(sorted(f for f in traces
+                        if f.startswith(DOSSIER + "/")
+                        and not f.lower().endswith(".md")
+                        and f in fichiers))
 
 # ── LES ANCRES LITTERALES ─────────────────────────────────────────────────
 # Une ancre qui bouge rend son mutant PERIME (rc=3) ⇒ elle se remarque,
@@ -100,6 +119,13 @@ A_SERIAL = '("serial" in navigator)'
 A_SECURE = "window.isSecureContext === true"
 A_NAVIGATEURS = "Microsoft Edge"
 A_ADRESSE_PAGE = "http://127.0.0.1:"
+A_GARDE_GET = '    def do_GET(self):\n        if not self._garde():\n            return\n'
+A_GARDE_POST = '    def do_POST(self):\n        if not self._garde():\n            return\n'
+A_BLANCHE = "        if chemin in SERVIS:\n            fichier, ctype = SERVIS[chemin]\n"
+A_REGLE_EOL = "*.bat text eol=crlf"
+# Ce qui signe un serveur de FICHIERS la ou on veut une liste blanche.
+JETONS_ARBORESCENTS = ("simplehttprequesthandler", "translate_path",
+                       "os.path.join(racine, chemin", "sendfile", "directory=")
 
 # Le vocabulaire de l'elevation. ⛔ IL NE VIT QUE DANS CETTE GATE : le citer
 # dans les fichiers gardes le ferait rougir sur du contenu JUSTE, et c'est
@@ -139,11 +165,62 @@ REFUS_PORTEUR = ("a nommer", "à nommer", "tbd", "a definir", "à définir",
                  "a preciser", "à préciser", "inconnu", "?", "-", "—", "")
 
 RE_VALIDATESET = re.compile(r"\[ValidateSet\(([^)]*)\)\]")
+# ⚠️ LA CLASSE DE CARACTERES EST ELARGIE, ET CE N'EST PAS DU CONFORT : bornee a
+#    `[a-z]+`, elle laissait tomber en SILENCE un verbe a trait d'union, a
+#    majuscule ou a chiffre — l'ensemble compare devenait alors FAUX, et (c7)
+#    aurait juge un verbe expose contre une liste amputee.
+RE_VERBE_PS = re.compile(r"'([A-Za-z][A-Za-z0-9_-]*)'")
 RE_VERBES = re.compile(r"^VERBES\s*=\s*\(([^)]*)\)", re.M)
 RE_PORT0 = re.compile(r"^PORT_DEMANDE\s*=\s*0\s*$", re.M)
 RE_ADR_PORT = re.compile(r"127\.0\.0\.1\s*:\s*\d")
 RE_HEX6 = re.compile(r"#[0-9a-fA-F]{6}\b")
 RE_HEX3 = re.compile(r"#[0-9a-fA-F]{3}\b(?![0-9a-fA-F])")
+# 🔴 UNE COULEUR N'EST ⛔ PAS FORCEMENT UN `#rrggbb`. L'egalite page ⇄
+#    declaration ne connaissait QUE cette notation : un `rgb()`, un `hsl()` ou
+#    un simple nom CSS passait sans etre declare nulle part, et l'identite
+#    « statuee et ecrite » redevenait une identite qu'on peut contourner.
+#    ⚠️ La recherche est bornee aux REGIONS DE STYLE (le bloc `<style>` et les
+#       attributs `style="…"`), ⛔ pas au fichier entier : la prose de la page
+#       parle de couleurs, et l'y chercher ferait rougir du contenu JUSTE.
+RE_FONCTION_COULEUR = re.compile(
+    r"\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color-mix)\s*\(", re.I)
+NOMS_CSS = ("red", "blue", "green", "white", "black", "gray", "grey", "silver",
+            "yellow", "orange", "purple", "navy", "teal", "olive", "maroon",
+            "lime", "aqua", "fuchsia", "cyan", "magenta", "pink", "brown",
+            "gold", "beige", "ivory", "khaki", "salmon", "tomato", "violet",
+            "indigo", "crimson", "darkblue", "lightblue", "coral", "plum")
+RE_NOM_CSS = re.compile(r"(?:^|[:\s,])(" + "|".join(NOMS_CSS) + r")\s*(?:;|\)|$)",
+                        re.I | re.M)
+RE_STYLE_BLOC = re.compile(r"<style[^>]*>(.*?)</style>", re.S | re.I)
+RE_STYLE_ATTR = re.compile(r'\sstyle="([^"]*)"')
+# 🔴 CE QUE LA PAGE DOIT RENDRE POUR CHAQUE ETAT DE LA TACHE, APRES `retirer`.
+#    ⚠️ C'EST UNE CORRESPONDANCE, ⛔ PAS UNE PRESENCE : (c9) ne verifiait que
+#       l'existence de la sous-chaine `tache_presente(` dans les 1000 caracteres
+#       qui suivent l'ancre. DEMONTRE en worktree : intervertir `if encore is
+#       True:` et `if encore is False:` fait dire « la tache est ABSENTE » alors
+#       qu'elle SURVIT, `rc` inchange a 0, et la gate restait a 25 OK / 0 KO —
+#       exactement l'echec que la marche declare FATAL.
+#    ⇒ la gate IMPORTE le produit et le fait JOUER contre un double de papier.
+ATTENDU_RETIRER = {
+    "survit":   ("ECHEC", 9),          # la tache est ENCORE la  ⇒ echec, rc 9
+    "absente":  ("ABSENTE", 0),        # la tache est partie     ⇒ succes
+    "inconnue": ("PAS confirme", 0),   # on n'a pas pu redemander ⇒ NON confirme
+}
+# 🔴 LES CODES DE SORTIE DU PRE-VOL. `README.md` publie le `6` comme
+#    « l'instrument mecanique de l'ecart » et `AC7.1.6` se ferme dessus — or
+#    DEMONTRE : remplacer `return 6 if manquantes else 0` par `return 0`
+#    laissait la gate a 25 OK / 0 KO. Un code publie que rien ne joue est un
+#    chiffre a croire sur parole.
+ATTENDU_PREVOL = {
+    "module_manquant": 6,
+    "tout_est_la": 0,
+    "page_absente": 3,
+    # ⚠️ `3` COUVRE LA PAGE **ET** L'OUTIL. La docstring du produit l'annoncait
+    #    (« la page **ou l'outil** ») et le code ne rendait `3` que pour la
+    #    page : sans outil, le pre-vol annoncait « tout est la » pendant que
+    #    les deux gestes exposes etaient MORTS.
+    "pilote_absent": 3,
+}
 # `| `--dn-x` | role | `#rrggbb` | `chemin:ligne` | nom |`
 RE_JETON = re.compile(
     r"^\|\s*`(--dn-[a-z-]+)`\s*\|\s*([^|]*?)\s*\|\s*`(#[0-9a-fA-F]{6})`\s*\|"
@@ -256,10 +333,37 @@ CIBLES[31] = ("c1",)
 MUTANTS[32] = ("sort `installeur/IDENTITE.md` du corpus ⇒ l'identite cesse "
                "d'etre ECRITE, et plus rien ne garde la palette")
 CIBLES[32] = ("c1",)
+# 🔴 LES HUIT SUIVANTS SONT NES D'UNE REVUE, ET CHACUN REPLANTE UNE FAUTE QUI
+#    A ETE **DEMONTREE VERTE** — ⛔ pas une faute imaginee.
+MUTANTS[33] = ("retire de `.gitattributes` la regle `eol=crlf` ⇒ ce que git "
+               "LIVRE au cloneur cesse d'etre garanti, l'arbre restant CRLF")
+CIBLES[33] = ("c3",)
+MUTANTS[34] = ("remplace la LISTE BLANCHE du serveur par un chemin arbitraire "
+               "⇒ tout l'arbre du depot devient lisible")
+CIBLES[34] = ("c26",)
+MUTANTS[35] = ("retire le refus d'`Origin`/`Host` de `do_GET` ET `do_POST` ⇒ "
+               "un POST inter-origine SIMPLE peut declencher `retirer`")
+CIBLES[35] = ("c27",)
+MUTANTS[36] = ("INTERVERTIT la correspondance attendue de `retirer` : « la "
+               "tache SURVIT » attendrait le verdict « ABSENTE ». C'est la "
+               "faute DEMONTREE en worktree, que (c9) ne voyait pas")
+CIBLES[36] = ("c9",)
+MUTANTS[37] = ("INTERVERTIT les codes attendus du pre-vol (6 <-> 0) ⇒ le "
+               "chiffre que `README.md` publie cesse d'etre celui qui sort")
+CIBLES[37] = ("c28",)
+MUTANTS[38] = ("verse sous `installeur/` un CINQUIEME fichier de code portant "
+               "un verbe d'elevation ⇒ la population fixe le manquait")
+CIBLES[38] = ("c4",)
+MUTANTS[39] = ("pose dans la page une couleur en `rgb()` ⇒ une couleur qui "
+               "n'est declarable NULLE PART, et qui echappait aux deux sens")
+CIBLES[39] = ("c19",)
+MUTANTS[40] = ("pose un SECOND `[ValidateSet]` dans l'outil ⇒ (c7) comparait "
+               "les verbes exposes a un ensemble qui n'est pas le leur")
+CIBLES[40] = ("c7",)
 
 # ⚠️ LE COMPTE DU CHEMIN NORMAL. Il se PERIME si on ajoute un controle sans le
 #    mettre a jour — et c'est voulu : c'est ce qui rend (z) FALSIFIABLE.
-CONTROLES_PREVUS = 25
+CONTROLES_PREVUS = 28
 
 _MUTANT = 0
 
@@ -372,11 +476,138 @@ def jetons_declares(ident):
             for m in RE_JETON.finditer(ident or "")]
 
 
+def regions_de_style(page):
+    """Le bloc `<style>` et les attributs `style="…"` — ⛔ pas la prose."""
+    out = [m.group(1) for m in RE_STYLE_BLOC.finditer(page or "")]
+    out += [m.group(1) for m in RE_STYLE_ATTR.finditer(page or "")]
+    return out
+
+
+def couleurs_non_hex(page):
+    """Les couleurs ecrites AUTREMENT qu'en `#rrggbb`, dans le style seul."""
+    out = []
+    for r in regions_de_style(page):
+        for m in RE_FONCTION_COULEUR.finditer(r):
+            out.append(m.group(0).strip())
+        for m in RE_NOM_CSS.finditer(r):
+            out.append(m.group(1))
+    return sorted(set(out))
+
+
+def importer_produit():
+    """Importe `installeur/dn_installeur.py` — le PRODUIT, ⛔ pas son texte.
+
+    🔴 CE QUE CET IMPORT CHANGE, ET CE QU'IL NE CHANGE PAS — ECRIT PLUTOT QUE TU.
+       Les autres controles de cette gate relisent un TEXTE, que les mutants
+       mutent en memoire. Celui-ci fait TOURNER le produit : un mutant textuel
+       ⛔ ne l'atteint donc PAS. C'est pour ca que les mutants qui le gardent
+       INVERSENT la CORRESPONDANCE ATTENDUE (`ATTENDU_*`, portees par l'etat)
+       au lieu de muter la source — et c'est le bon sens de la garde : ce qui
+       est verifie ici est un COMPORTEMENT, ⛔ pas une chaine de caracteres.
+    ⚠️ Le module ne fait RIEN a l'import : il ne lie aucun port, n'appelle
+       aucun PowerShell, n'ouvre aucun navigateur. Le patron d'import est celui
+       de `tools/verif_decoupe_horloge_dn418.py`.
+    🔴 MAIS LA SOURCE EST **COMPILEE ICI**, ⛔ PAS CHARGEE PAR LE MECANISME
+       ORDINAIRE — ET C'EST UN PIEGE MESURE LE 2026-09-08. `exec_module()`
+       consulte `__pycache__`, dont la validation repose sur (mtime, taille) :
+       apres avoir demontre le defaut puis RESTAURE le fichier, la gate a
+       continue de juger le BYTECODE PERIME et a rendu le meme rouge sur une
+       source SAINE. Une gate qui mesure la version d'hier est pire qu'une gate
+       absente : elle publie un verdict FAUX avec l'autorite d'une mesure.
+       ⇒ on lit le texte et on le compile, sans jamais toucher au cache."""
+    chemin = os.path.join(RACINE, PY)
+    try:
+        with io.open(chemin, encoding="utf-8") as fh:
+            source = fh.read()
+        mod = importlib.util.module_from_spec(
+            importlib.util.spec_from_loader("dn_installeur_dn71", loader=None))
+        mod.__file__ = chemin
+        exec(compile(source, chemin, "exec"), mod.__dict__)   # noqa: S102
+        return mod, None
+    except Exception as exc:                              # noqa: BLE001
+        return None, "%s: %s" % (type(exc).__name__, str(exc)[:90])
+
+
+PS1_DE_PAPIER = ("param(\n"
+                 "    [ValidateSet('etat', 'stop', 'retirer')]\n"
+                 "    [string]$Action = 'etat'\n)\n")
+
+
+def jouer_retirer(mod):
+    """Fait jouer `retirer` TROIS FOIS contre un double de papier.
+
+    ⛔ Rien n'est lance : `_powershell`, `tache_presente` et `_lire` sont
+       remplaces le temps de l'appel, et remis en place ensuite."""
+    garde = (mod._powershell, mod.tache_presente, mod._lire,
+             dict(mod._PILOTE))
+    out = {}
+    try:
+        mod._PILOTE.update(chemin=os.path.join(RACINE, OUTIL),
+                           origine="double de papier")
+        mod._lire = lambda _c: PS1_DE_PAPIER
+        mod._powershell = lambda *a, **k: (0, "sortie de papier",
+                                           ["powershell", "-File", "x", "y"],
+                                           None)
+        for cle, reponse in (("survit", (True, "Limited")),
+                             ("absente", (False, "")),
+                             ("inconnue", (None, ""))):
+            mod.tache_presente = (lambda r: (lambda: r))(reponse)
+            d = mod.jouer_verbe("retirer")
+            out[cle] = (d.get("verdict", ""), d.get("rc"))
+    except Exception as exc:                              # noqa: BLE001
+        out["__erreur__"] = "%s: %s" % (type(exc).__name__, str(exc)[:80])
+    finally:
+        mod._powershell, mod.tache_presente, mod._lire = garde[:3]
+        mod._PILOTE.clear()
+        mod._PILOTE.update(garde[3])
+    return out
+
+
+def jouer_prevol(mod):
+    """Fait jouer le PRE-VOL trois fois, et relit son CODE DE SORTIE."""
+    garde = (mod.dependance_presente, mod.arbre_parent_present, mod.PAGE,
+             dict(mod._PILOTE), mod.localiser_pilote)
+    out = {}
+    try:
+        mod._PILOTE.update(chemin=os.path.join(RACINE, OUTIL),
+                           origine="double de papier")
+        mod.arbre_parent_present = lambda: True
+        tampon = io.StringIO()
+        with contextlib.redirect_stdout(tampon):
+            mod.dependance_presente = lambda m, s: (m != "psutil")
+            out["module_manquant"] = mod.prevol(False)
+            mod.dependance_presente = lambda m, s: True
+            out["tout_est_la"] = mod.prevol(False)
+            mod.PAGE = os.path.join(RACINE, "installeur", "page-inexistante.html")
+            out["page_absente"] = mod.prevol(False)
+            mod.PAGE = garde[2]
+            mod.localiser_pilote = lambda: (None, "introuvable")
+            out["pilote_absent"] = mod.prevol(False)
+    except Exception as exc:                              # noqa: BLE001
+        out["__erreur__"] = "%s: %s" % (type(exc).__name__, str(exc)[:80])
+    finally:
+        mod.dependance_presente, mod.arbre_parent_present, mod.PAGE = garde[:3]
+        mod._PILOTE.clear()
+        mod._PILOTE.update(garde[3])
+        mod.localiser_pilote = garde[4]
+    return out
+
+
 def bloc_readme(txt):
     """La section d'installation du README, bornee par ses DEUX titres."""
     if A_SECTION_README not in (txt or "") or A_SECTION_SUITE not in (txt or ""):
         return None
     return txt.split(A_SECTION_README, 1)[1].split(A_SECTION_SUITE, 1)[0]
+
+
+def validatesets(ps1):
+    """TOUS les `[ValidateSet]` du fichier — ⛔ pas seulement le premier.
+
+    🔴 `search()` prenait le PREMIER rencontre : le jour ou l'outil en porte un
+       second (un autre parametre, une fonction interne), (c7) comparait les
+       verbes exposes a un ensemble QUI N'EST PAS CELUI DU VERBE. Un ensemble
+       ambigu ⛔ n'est pas un ensemble : on ROUGIT au lieu de choisir."""
+    return RE_VALIDATESET.findall(ps1 or "")
 
 
 def verbes_de_l_outil(ps1):
@@ -385,10 +616,10 @@ def verbes_de_l_outil(ps1):
     🔴 ⛔ AUCUN NOM N'EST RECOPIE ICI. Une gate qui codait en dur `('stop',
        'retirer')` sortirait verte le jour ou l'outil renomme un verbe, et la
        page appellerait un verbe mort en silence."""
-    m = RE_VALIDATESET.search(ps1 or "")
-    if not m:
+    lots = validatesets(ps1)
+    if len(lots) != 1:
         return ()
-    return tuple(re.findall(r"'([a-z]+)'", m.group(1)))
+    return tuple(RE_VERBE_PS.findall(lots[0]))
 
 
 def verbes_exposes(py):
@@ -596,6 +827,58 @@ def muter(etat):
             return e                      # fichier hors corpus ⇒ NO-OP ⇒ rc=3
         del p[IDENT]
         e["traces"] = tuple(f for f in e["traces"] if f != IDENT)
+    elif _MUTANT == 33:
+        if A_REGLE_EOL not in p.get(ATTRIBUTS, ""):
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        p[ATTRIBUTS] = p[ATTRIBUTS].replace(A_REGLE_EOL, "*.bat text", 1)
+    elif _MUTANT == 34:
+        if A_BLANCHE not in p.get(PY, ""):
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        p[PY] = p[PY].replace(
+            A_BLANCHE,
+            "        if True:\n"
+            "            fichier = os.path.join(RACINE, chemin.lstrip('/'))\n"
+            "            ctype = 'text/plain; charset=utf-8'\n", 1)
+    elif _MUTANT == 35:
+        if A_GARDE_GET not in p.get(PY, "") or A_GARDE_POST not in p.get(PY, ""):
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        p[PY] = p[PY].replace(A_GARDE_GET, "    def do_GET(self):\n", 1)
+        p[PY] = p[PY].replace(A_GARDE_POST, "    def do_POST(self):\n", 1)
+    elif _MUTANT == 36:
+        # ⚠️ IL MUTE LA CORRESPONDANCE ATTENDUE, ⛔ pas la source : le produit
+        #    est deja IMPORTE, et un mutant textuel ne l'atteint pas. Le
+        #    controle rougit parce que le produit ⛔ ne fait PAS ce que la
+        #    correspondance INVERSEE annonce.
+        a = e["attendu_retirer"]
+        if "survit" not in a or "absente" not in a:
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        a["survit"], a["absente"] = a["absente"], a["survit"]
+    elif _MUTANT == 37:
+        a = e["attendu_prevol"]
+        if "module_manquant" not in a or "tout_est_la" not in a:
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        a["module_manquant"], a["tout_est_la"] = (a["tout_est_la"],
+                                                  a["module_manquant"])
+    elif _MUTANT == 38:
+        neuf_fichier = DOSSIER + "/dn_outil_neuf.py"
+        if neuf_fichier in p:
+            return e                      # deja la ⇒ NO-OP ⇒ rc=3
+        p[neuf_fichier] = ('# un outil verse plus tard sous installeur/\n'
+                           'def elever():\n'
+                           '    return ["powershell", "-Verb", "RunAs"]\n')
+        e["traces"] = tuple(sorted(set(e["traces"]) | {neuf_fichier}))
+    elif _MUTANT == 39:
+        ancre = "color: var(--dn-accent);"
+        if ancre not in p.get(PAGE, ""):
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        p[PAGE] = p[PAGE].replace(ancre, "color: rgb(160, 216, 255);", 1)
+    elif _MUTANT == 40:
+        ancre = "[ValidateSet("
+        if ancre not in p.get(OUTIL, ""):
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        p[OUTIL] += ("\n# un second jeu de verbes, ailleurs dans le fichier\n"
+                     "# [ValidateSet('alpha', 'beta')]\n"
+                     "[ValidateSet('alpha', 'beta')]\n")
     else:
         raise AssertionError("mutant %d declare mais SANS CORPS" % _MUTANT)
     return e
@@ -699,6 +982,11 @@ def main():
     etat = {"fichiers": fichiers,
             "traces": tuple(traces),
             "cibles": {n: tuple(v) for n, v in CIBLES.items()},
+            # ⚠️ LES CORRESPONDANCES ATTENDUES VIVENT DANS L'ETAT : c'est ce qui
+            #    rend les controles FONCTIONNELS mutables — un mutant textuel
+            #    ⛔ n'atteint pas un module deja importe.
+            "attendu_retirer": {k: tuple(v) for k, v in ATTENDU_RETIRER.items()},
+            "attendu_prevol": dict(ATTENDU_PREVOL),
             "regles": {"sortie_anticipee": False}}
 
     # 🔴 UN MUTANT QUI MEURT SORTIRAIT EN TRACEBACK, SANS `BILAN` — or « pas de
@@ -720,6 +1008,7 @@ def main():
     f = neuf["fichiers"]
     traces = list(neuf["traces"])
     cibles, regles = neuf["cibles"], neuf["regles"]
+    att_ret, att_pre = neuf["attendu_retirer"], neuf["attendu_prevol"]
     bat = f.get(BAT, "")
     py = f.get(PY, "")
     page = f.get(PAGE, "")
@@ -728,6 +1017,13 @@ def main():
     readme = f.get(LISEZMOI, "")
     roadmap = f.get(ROADMAP, "")
     ps1 = f.get(OUTIL, "")
+    attributs = f.get(ATTRIBUTS, "")
+    # 🔴 LA POPULATION DU CODE EST **DERIVEE**, ⛔ plus ecrite a la main.
+    code = fichiers_de_code(traces, f)
+
+    # ⚠️ LE PRODUIT EST IMPORTE UNE SEULE FOIS. Un echec d'import ⛔ ne fait
+    #    PAS taire (c9)/(c26)/(c28) : il les fait ROUGIR avec son motif.
+    produit, err_produit = importer_produit()
 
     # ── (c1) LE DOSSIER EXISTE, IL EST SUIVI, ET IL N'EST PAS VIDE ─────────
     print("\n── (c1) LE DOSSIER `installeur/` EST AU DEPOT ────────────────────")
@@ -770,34 +1066,55 @@ def main():
     bats = [x for x in traces if x.startswith(DOSSIER + "/")
             and x.lower().endswith(".bat")]
     crlf = "\r\n" in bat and "\n" not in bat.replace("\r\n", "")
-    ctrl(bats == [BAT] and crlf,
-         "(c3) le point d'entree est UNIQUE et en CRLF",
-         "%s — %d ligne(s) CRLF" % (BAT, bat.count("\r\n"))
-         if bats == [BAT] and crlf
+    # 🔴 ⛔ « IL EST EN CRLF DANS MON ARBRE » NE PROUVE RIEN — le cloneur, lui,
+    #    recoit ce que `.gitattributes` fait LIVRER. Mesure du 2026-09-08 :
+    #    `git ls-files --eol` rendait `i/lf` pour `tools/dn-agent.bat`, le
+    #    precedent que ce fichier cite. Une normalisation au commit resterait
+    #    donc VERTE tout en livrant du LF a l'inconnu.
+    regle = A_REGLE_EOL in attributs
+    livre = ""
+    try:
+        r = subprocess.run(["git", "ls-files", "--eol", "--", BAT], cwd=RACINE,
+                           capture_output=True, text=True, encoding="utf-8",
+                           errors="replace")
+        livre = r.stdout if r.returncode == 0 else ""
+    except OSError:
+        livre = ""
+    livraison = "eol=crlf" in livre
+    ctrl(bats == [BAT] and crlf and regle and livraison,
+         "(c3) le point d'entree est UNIQUE et LIVRE en CRLF",
+         "%s — %d ligne(s), `%s`, et git le LIVRE en CRLF"
+         % (BAT, bat.count("\r\n"), A_REGLE_EOL)
+         if bats == [BAT] and crlf and regle and livraison
          else "⛔ %s" % ("%d fichier(s) `.bat` : %s — ⛔ « UNE chose a lancer » "
                         "veut dire une" % (len(bats), " · ".join(bats) or "—")
                         if bats != [BAT] else
-                        "fins de ligne LF : cmd.exe peut executer une ligne "
-                        "TRONQUEE (piege deja paye, `tools/dn-agent.bat:29-32`)"))
+                        "fins de ligne LF dans l'arbre : cmd.exe peut executer "
+                        "une ligne TRONQUEE (`tools/dn-agent.bat:29-32`)"
+                        if not crlf else
+                        "⛔ `%s` ABSENT de `%s` — ce que git LIVRE n'est garanti "
+                        "par RIEN" % (A_REGLE_EOL, ATTRIBUTS) if not regle else
+                        "`git ls-files --eol` ne rend pas `eol=crlf` : %r"
+                        % livre.strip()[:60]))
 
     # ── (c4) ⛔ AUCUNE ELEVATION, ET C'EST MECANIQUE ───────────────────────
     print("\n── (c4) ⛔ AUCUNE ELEVATION DANS LE CODE LIVRE ───────────────────")
     eleves = []
-    for x in CODE:
+    for x in code:
         src = f.get(x, "")
         for nom, motif in MOTIFS_ELEVATION:
             if motif.search(src):
                 eleves.append("%s ⇒ %s" % (x, nom))
     ctrl(not eleves, "(c4) aucun jeton d'elevation dans le code livre",
-         "%d fichier(s) relus, %d motif(s) cherches"
-         % (len(CODE), len(MOTIFS_ELEVATION)) if not eleves
+         "%d fichier(s) DERIVES relus, %d motif(s) cherches"
+         % (len(code), len(MOTIFS_ELEVATION)) if not eleves
          else "⛔ %s — la garde de `%s:737` `Stop2` sur tout RunLevel qui n'est "
               "pas `Limited` : un installeur eleve ferait ECHOUER l'outil qui "
               "existe" % (" · ".join(eleves), OUTIL))
 
     # ── (c5)(c6) LE PORT EST TIRE, L'ADRESSE EST LA BOUCLE LOCALE ──────────
     print("\n── (c5)(c6) SERVIR EN LOCAL, SUR UN PORT TIRE ────────────────────")
-    adr_port = [x for x in CODE if RE_ADR_PORT.search(f.get(x, ""))]
+    adr_port = [x for x in code if RE_ADR_PORT.search(f.get(x, ""))]
     tire = bool(RE_PORT0.search(py)) and A_LU in py and A_BIND in py
     ctrl(tire and not adr_port,
          "(c5) le port est TIRE a l'execution, ⛔ pas en dur",
@@ -808,7 +1125,7 @@ def main():
               % ("port ecrit en dur dans %s" % " · ".join(adr_port)
                  if adr_port else "le `bind` sur 0 ou sa relecture ont disparu"))
 
-    fileurl = [x for x in CODE if "file://" in f.get(x, "")]
+    fileurl = [x for x in code if "file://" in f.get(x, "")]
     boucle = A_ADRESSE in py and A_URL in py
     ctrl(boucle and not fileurl,
          "(c6) l'adresse annoncee est la boucle locale + le port lu",
@@ -821,15 +1138,20 @@ def main():
 
     # ── (c7)(c8) EXPOSER, ⛔ PAS CONSTRUIRE ────────────────────────────────
     print("\n── (c7)(c8) LES DEUX GESTES APPELLENT CE QUI EXISTE ──────────────")
+    lots = validatesets(ps1)
     valides = verbes_de_l_outil(ps1)
     exposes = verbes_exposes(py)
     inconnus = [v for v in exposes if v not in valides]
-    ctrl(bool(valides) and bool(exposes) and not inconnus,
+    ctrl(len(lots) == 1 and bool(valides) and bool(exposes) and not inconnus,
          "(c7) tout verbe expose est dans le `[ValidateSet]` relu",
          "%d expose(s) sur %d acceptes : %s"
          % (len(exposes), len(valides), " · ".join(exposes))
-         if valides and exposes and not inconnus
-         else "⛔ %s" % ("le `[ValidateSet]` de %s ne se lit pas" % OUTIL
+         if len(lots) == 1 and valides and exposes and not inconnus
+         else "⛔ %s" % ("%d `[ValidateSet]` dans %s — un ensemble AMBIGU n'est "
+                        "pas un ensemble, et le premier venu n'est pas "
+                        "forcement celui du verbe" % (len(lots), OUTIL)
+                        if len(lots) != 1 else
+                        "le `[ValidateSet]` de %s ne se lit pas" % OUTIL
                         if not valides else
                         "aucun verbe expose ne se lit dans %s" % PY
                         if not exposes else
@@ -843,22 +1165,101 @@ def main():
          else "⛔ il en manque un — sans `retirer`, l'inconnu qui essaie et "
               "n'aime pas garde une tache qui se relance a chaque session")
 
-    # ── (c9) LE RETRAIT SE VERIFIE PAR REQUETE ────────────────────────────
+    # ── (c9) LE RETRAIT SE VERIFIE PAR REQUETE — ET IL EST **JOUE** ───────
     print("\n── (c9) LE RETRAIT SE VERIFIE, ⛔ IL NE SE CROIT PAS ─────────────")
+    # 🔴 DEUX MOITIES, ET IL EN FALLAIT DEUX. La 1re version ne cherchait que la
+    #    PRESENCE de `tache_presente(` apres l'ancre : intervertir les branches
+    #    `is True` / `is False` faisait dire « ABSENTE » a une tache qui SURVIT,
+    #    `rc` inchange a 0, et la gate restait a 25 OK / 0 KO. Une presence
+    #    ⛔ n'est pas une CORRESPONDANCE.
     fenetre = ""
     if A_RETIRER in py:
-        fenetre = py.split(A_RETIRER, 1)[1][:1000]
+        fenetre = py.split(A_RETIRER, 1)[1][:1200]
     requete = ("tache_presente(" in fenetre and "Get-ScheduledTask" in py)
-    ctrl(requete, "(c9) le retrait est verifie PAR REQUETE apres le verbe",
-         "`tache_presente()` re-interroge apres `retirer`" if requete
-         else "⛔ aucune re-interrogation apres le verbe — le message de sortie "
-              "de l'outil ⛔ ne fait pas foi (c'est exactement ce que le verbe "
-              "`retirer` de l'outil se garde lui-meme de croire)")
+    joue = jouer_retirer(produit) if produit else {"__erreur__": err_produit}
+    ecarts = []
+    if "__erreur__" in joue:
+        ecarts.append("le produit n'a pas pu etre joue : %s" % joue["__erreur__"])
+    else:
+        for cle, (motif, rc_attendu) in sorted(att_ret.items()):
+            verdict, rc = joue.get(cle, ("", None))
+            if motif not in verdict or rc != rc_attendu:
+                ecarts.append("%s ⇒ rc=%r verdict=%r (attendu %r / rc=%r)"
+                              % (cle, rc, verdict[:44], motif, rc_attendu))
+    ctrl(requete and not ecarts,
+         "(c9) le retrait est verifie PAR REQUETE, et c'est JOUE",
+         "3 etats joues contre un double de papier : %s"
+         % " · ".join("%s→rc %s" % (k, joue[k][1]) for k in sorted(joue))
+         if requete and not ecarts
+         else "⛔ %s" % ("aucune re-interrogation apres le verbe — le message de "
+                        "sortie de l'outil ⛔ ne fait pas foi" if not requete
+                        else " · ".join(ecarts)))
+
+    # ── (c26)(c27) LE SERVEUR NE SERT QUE SA PAGE, ET QU'A ELLE ──────────
+    print("\n── (c26)(c27) LE SERVEUR LOCAL N'EST PAS UNE PORTE ───────────────")
+    # 🔴 UNE LISTE BLANCHE, ⛔ PAS UN SERVEUR DE FICHIERS. Le commentaire du
+    #    produit enoncait deja la menace ; ⛔ rien ne la gardait. Un
+    #    `SimpleHTTPRequestHandler` a la place, et tout l'arbre du depot devient
+    #    lisible par n'importe quelle page ouverte dans ce navigateur.
+    arbo = [j for j in JETONS_ARBORESCENTS if j in py.lower()]
+    hors = []
+    if produit is not None:
+        base = os.path.abspath(RACINE) + os.sep
+        for _u, (fichier, _c) in getattr(produit, "SERVIS", {}).items():
+            if not os.path.abspath(fichier).startswith(base):
+                hors.append(fichier)
+        mro = [c.__name__ for c in getattr(produit, "Poignee", object).__mro__]
+    else:
+        mro = []
+    blanche = (A_BLANCHE in py and not arbo and not hors
+               and "SimpleHTTPRequestHandler" not in mro)
+    ctrl(blanche, "(c26) le serveur ne sert qu'une LISTE BLANCHE",
+         "%d adresse(s) servies, toutes sous la racine"
+         % len(getattr(produit, "SERVIS", {})) if blanche
+         else "⛔ %s" % ("jeton(s) de serveur de fichiers : %s" % " · ".join(arbo)
+                        if arbo else
+                        "chemin(s) servi(s) HORS de la racine : %s"
+                        % " · ".join(hors) if hors else
+                        "`Poignee` derive de SimpleHTTPRequestHandler"
+                        if "SimpleHTTPRequestHandler" in mro else
+                        "la recherche `if chemin in SERVIS:` a disparu de "
+                        "`do_GET` — un chemin arbitraire serait servi"))
+
+    # 🔴 LE PORT TIRE N'EST PAS UN SECRET, ET UN POST SIMPLE NE FAIT PAS DE
+    #    PRE-VOL CORS : sans ce refus, n'importe quelle page ouverte dans le
+    #    meme navigateur pourrait declencher `retirer`, et `/api/etat` serait
+    #    lisible par re-liaison DNS.
+    garde = (A_GARDE_GET in py and A_GARDE_POST in py
+             and "def _refus(self):" in py and "403" in py
+             and '"Host"' in py and '"Origin"' in py)
+    ctrl(garde, "(c27) `Origin` et `Host` sont refuses, sur les 2 verbes",
+         "`_garde()` ouvre `do_GET` ET `do_POST`, et rend 403" if garde
+         else "⛔ le refus manque a `do_GET`, a `do_POST`, ou `_refus()` ne "
+              "confronte plus `Host` ET `Origin` — un POST inter-origine "
+              "SIMPLE n'a ⛔ aucun pre-vol CORS a franchir")
+
+    # ── (c28) LES CODES DE SORTIE DU PRE-VOL SONT **JOUES** ──────────────
+    print("\n── (c28) LE PRE-VOL REND LES CODES QUE LE README PUBLIE ──────────")
+    pv = jouer_prevol(produit) if produit else {"__erreur__": err_produit}
+    ecarts_pv = []
+    if "__erreur__" in pv:
+        ecarts_pv.append("le produit n'a pas pu etre joue : %s" % pv["__erreur__"])
+    else:
+        for cle, attendu in sorted(att_pre.items()):
+            if pv.get(cle) != attendu:
+                ecarts_pv.append("%s ⇒ %r (attendu %r)" % (cle, pv.get(cle), attendu))
+    ctrl(not ecarts_pv, "(c28) les codes de sortie du pre-vol sont JOUES",
+         "%d cas joues : %s" % (len(pv), " · ".join("%s→%s" % (k, pv[k])
+                                              for k in sorted(pv)))
+         if not ecarts_pv
+         else "⛔ %s — `README.md` publie le `6` comme « l'instrument mecanique "
+              "de l'ecart », et `AC7.1.6` se ferme dessus"
+              % " · ".join(ecarts_pv))
 
     # ── (c10) ⛔ RIEN DU FLASH ICI ────────────────────────────────────────
     print("\n── (c10) LE PERIMETRE : ⛔ AUCUN FLASH ───────────────────────────")
     flash = []
-    for x in CODE:
+    for x in code:
         bas = f.get(x, "").lower()
         for j in JETONS_FLASH:
             if j in bas:
@@ -967,14 +1368,22 @@ def main():
     courtes = RE_HEX3.findall(page)
     nues = sorted(employees - declarees)
     dormantes = sorted(declarees - employees)
-    ctrl(not nues and not dormantes and not courtes and bool(declarees),
+    # 🔴 ET LES NOTATIONS QUI NE SONT PAS DU `#rrggbb` : un `rgb()`, un `hsl()`
+    #    ou un nom CSS passait sans etre declare NULLE PART — l'identite
+    #    « statuee et ecrite » redevenait contournable en une ligne de style.
+    autres = couleurs_non_hex(page)
+    ctrl(not nues and not dormantes and not courtes and not autres
+         and bool(declarees),
          "(c19) page ⇄ IDENTITE.md : les memes couleurs, 2 sens",
-         "%d couleur(s), des deux cotes" % len(declarees)
+         "%d couleur(s), des deux cotes, et aucune hors `#rrggbb`"
+         % len(declarees)
          if declarees and not nues and not dormantes and not courtes
+         and not autres
          else "⛔ employees SANS etre declarees : %s · declarees SANS servir : "
-              "%s · forme courte (elle echapperait au controle) : %s"
+              "%s · forme courte : %s · notation NON declarable (rgb/hsl/nom "
+              "CSS) : %s"
               % (" ".join(nues) or "—", " ".join(dormantes) or "—",
-                 " ".join(courtes) or "—"))
+                 " ".join(courtes) or "—", " ".join(autres) or "—"))
 
     banc = [c for c in PALETTE_BANC if c in page.lower()]
     ctrl(not banc, "(c20) ⛔ aucune couleur du banc d'essai dans la page",

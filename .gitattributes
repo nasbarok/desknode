@@ -1,0 +1,30 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  .gitattributes — CE QUE GIT **LIVRE**, ⛔ pas ce qu'il stocke   (dn7-1)
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# 🔴 POURQUOI CE FICHIER EXISTE, ET IL N'EXISTAIT PAS. `installeur/`
+#    porte un `.bat` qui se DOUBLE-CLIQUE DEPUIS LE CLONE — ⛔ pas un `.bat`
+#    deposé par un script de deploiement, comme `tools/dn-agent.bat` l'est par
+#    `tools/deployer_tour.sh`. Or `cmd.exe` peut executer une ligne de commande
+#    TRONQUEE quand un `.bat` arrive en LF : le depot a deja paye ce piege
+#    (voir `tools/dn-agent.bat`, l.29-32).
+#
+# ⚠️ ET « le fichier est en CRLF dans MON arbre » NE PROUVE RIEN. Mesure du
+#    2026-09-08 : `git ls-files --eol` rendait `i/lf` pour `tools/dn-agent.bat`
+#    — c'est-a-dire que ce qui est STOCKE et ce qui est LIVRE peuvent differer,
+#    et qu'un `core.autocrlf=input` chez le cloneur suffit a livrer du LF.
+#    ⇒ `eol=crlf` est une garantie de LIVRAISON : quel que soit le reglage du
+#      cloneur, git ecrit du CRLF dans son arbre de travail.
+#
+# 🎯 CONSEQUENCE ASSUMEE : `tools/dn-agent.bat` bascule lui aussi en CRLF a la
+#    livraison. C'est cohérent avec son propre en-tete, qui dit qu'il « est
+#    depose en CRLF par deployer_tour.sh » — il l'est desormais AUSSI dans le
+#    clone, ⛔ et plus seulement apres deploiement.
+#    ⚠️ ET `mesures/dn4-17/constat-apres-logon.cmd` EST TOUCHE, ce qui merite
+#       un mot : c'est un fichier du REGISTRE DE MESURE. Ce qui change est ce
+#       que git STOCKE (normalise en LF), ⛔ pas ce qu'il LIVRE — il rend du
+#       CRLF, comme avant, et l'arbre de travail est identique octet pour
+#       octet. ⛔ Aucune capture n'est reecrite ; l'exempter aurait ete une
+#       exception a tenir pour un benefice NUL.
+*.bat text eol=crlf
+*.cmd text eol=crlf

@@ -1,0 +1,82 @@
+=== T8 — LA REVUE DE CODE, ET CE QU'ELLE A DEMONTRE VERT (dn7-1, 2026-09-08) ==
+
+⛔ CE RELEVE EXISTE PARCE QUE DEUX DEFAUTS ONT ETE **DEMONTRES** PAR LA REVUE,
+   ⛔ pas argumentes : la gate rendait `25 OK, 0 KO` sur un produit FAUX. Une
+   gate qu'on n'a pas vue CRIER sur la faute qu'elle pretend garder n'est pas
+   une gate.
+
+--- (1) TEMOIN : LES BRANCHES `is True` / `is False` DU RETRAIT, INTERVERTIES --
+    Le produit dit alors « la tache est ABSENTE » alors qu'elle SURVIT, `rc`
+    inchange a 0. C'est l'echec que la marche declare FATAL.
+
+  AVANT le correctif : BILAN : 25 OK, 0 KO      <= la gate ne le voyait PAS
+  APRES  le correctif :
+      [KO ] (c9) le retrait est verifie PAR REQUETE, et c'est JOUE     ⛔ absente ⇒ rc=9 verdict='⛔ ECHEC : la tache « DeskNode agent » est TO' (attendu 'ABSENTE' / rc=0) · survit ⇒ rc=0 verdict='✅ la tache « DeskNode agent » est ABSENTE — ' (attendu 'ECHEC' / rc=9)
+    BILAN : 27 OK, 1 KO
+
+--- (2) TEMOIN : LE PRE-VOL REND `0` LA OU LE README PUBLIE `6` ---------------
+    `README.md` publie le `6` comme « l'instrument mecanique de l'ecart », et
+    `AC7.1.6` se ferme dessus. Personne ne le jouait.
+
+  AVANT le correctif : BILAN : 25 OK, 0 KO      <= la gate ne le voyait PAS
+  APRES  le correctif :
+      [KO ] (c28) les codes de sortie du pre-vol sont JOUES            ⛔ module_manquant ⇒ 0 (attendu 6) — `README.md` publie le `6` comme « l'instrument mecanique de l'ecart », et `AC7.1.6` se ferme dessus
+    BILAN : 27 OK, 1 KO
+
+--- (3) 🔴 UN PIEGE PAYE PENDANT CETTE REVUE, ET IL EST ECRIT -----------------
+    Apres avoir joue le temoin (1) puis RESTAURE le fichier, la gate a
+    continue de rendre le MEME rouge sur une source SAINE. Cause : le
+    chargement ordinaire consulte `__pycache__`, dont la validation repose sur
+    (mtime, taille) — la gate jugeait le BYTECODE PERIME. ⛔ Une gate qui
+    mesure la version d'hier est PIRE qu'une gate absente : elle publie un
+    verdict FAUX avec l'autorite d'une mesure.
+    ⇒ `importer_produit()` LIT LE TEXTE ET LE COMPILE, sans jamais toucher au
+      cache. Verification : aucun `installeur/__pycache__` n'est cree.
+
+  etat apres un tir de la gate :
+    ls installeur/ -> DeskNode-installeur.bat IDENTITE.md dn_installeur.py index.html 
+    __pycache__ present ? NON
+
+--- (4) LA GATE, APRES LA REVUE ----------------------------------------------
+    BILAN : 28 OK, 0 KO
+    controles : 25 -> 28   ·   mutants : 32 -> 40
+
+--- (5) LA CAMPAGNE DES 40 MUTANTS ---
+    40 mutants, 40 SAINS (rc=1 + BILAN + [KO ] nomme)
+    mutant INCONNU : rc=2 (attendu 2)
+
+--- (6) LES MESURES WINDOWS DE LA REVUE (cote Windows, ⛔ jamais depuis WSL) ---
+
+  a) LE REFUS D'ORIGINE ET DE HOST — les deux verbes, six tirs :
+     GET / sans Origin (navigation ordinaire)       -> HTTP 200
+     GET /api/etat, Origin de la page               -> HTTP 200
+     GET /api/etat, Origin ETRANGERE                -> HTTP 403
+     GET /api/etat, Host ETRANGER (rebinding DNS)   -> HTTP 403
+     POST retirer, Origin ETRANGERE (CSRF)          -> HTTP 403
+     POST retirer, Host ETRANGER                    -> HTTP 403
+     ⇒ un POST inter-origine SIMPLE (aucun pre-vol CORS a franchir) et une
+       re-liaison DNS sont tous deux refuses, AVANT toute lecture et avant
+       toute tentative de geste.
+
+  b) L'ARGUMENT INCONNU PORTANT UN `&` — la variable est CITEE dans l'echo :
+       /!\ argument inconnu : "x&echo TEXTE-EXECUTE-PAR-CMD"
+       RC = 2
+     ⇒ le texte apres le `&` est AFFICHE, ⛔ pas execute par cmd.exe.
+
+  c) LE DOSSIER RECUPERE SEUL, HORS DE SON DEPOT — dit DEUX FOIS, par le
+     `.bat` puis par le pre-vol Python :
+       /!\ CE DOSSIER A ETE RECUPERE SEUL, HORS DE SON DEPOT.
+           tools\dn_agent_tour.ps1 et README.md ne sont pas au-dessus de lui.
+           ... LE GESTE : recuperer le depot ENTIER ...
+     ⚠️ SUR CETTE MACHINE le code de retour reste `0`, ET C'EST JUSTE : la
+       tache planifiee existe et designe `H:\dev\projets\desknode\`, donc
+       l'outil EST trouve — seuls les liens de bas de page sont morts. Le `3`
+       vise l'OUTIL INTROUVABLE, ⛔ pas l'arbre parent, et il est joue par
+       (c28) contre un double de papier (`pilote_absent -> 3`).
+
+  d) LA PAGE, RELUE DANS SON PROPRE DOM (Edge --headless=new --dump-dom) :
+     · SERVIE sur 127.0.0.1 : les 9 champs renseignes, les QUATRE blocs
+       d'echec MASQUES, boutons ACTIFS.
+     · DEPUIS LE DISQUE : les SIX champs disent « inconnu - le serveur local
+       ne repond pas » (⛔ plus de points de suspension eternels),
+       `etat-not-allowed` et `etat-inactif` AFFICHES, boutons DESACTIVES.
