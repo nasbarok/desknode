@@ -51,12 +51,27 @@ fournisseurs.
   (c4) exige que la 2e soit publiee EXACTEMENT, dans les deux sens. Le jour ou
   la BOM change de fournisseur, le releve ROUGIT au lieu de pourrir en
   silence — le defaut exact que `dn5-6` puis `dn4-47` ont paye deux fois.
-⚠️ **CE QUI EST TOUT DE MEME ECRIT EN DUR ICI, ET QUI DECIDE DES VERDICTS** :
-   `REDIRECTIONS` (**11** hotes de redirection) et `OFFICIELS` (**5** domaines
-   d'autorite). ⛔ Ce ne sont ⛔ PAS des fournisseurs : la population des
-   fournisseurs, elle, est integralement DERIVEE. Ces deux-la sont des
-   VOCABULAIRES, ils se completent A LA MAIN, et une adresse posee sur un
-   redirecteur ABSENT de la liste PASSE — c'est ecrit plutot que tu.
+⚠️ **CE QUI EST TOUT DE MEME ECRIT EN DUR ICI, ET QUI DECIDE DES VERDICTS.**
+   🔴 **CET INVENTAIRE EN NOMMAIT DEUX JUSQU'AU 2026-09-08. IL Y EN A NEUF** —
+   et l'omission n'etait pas cosmetique : un mainteneur qui croyait deux
+   vocabulaires a tenir a la main en laissait sept pourrir. La liste, dans
+   l'ordre du fichier :
+     1. `RE_MARQUEUR_FRANC` — les parametres d'affiliation reconnus (c5) ;
+     2. `RE_MARQUEUR_AMBIGU` — ceux qui ⛔ ne mordent que sur une boutique ;
+     3. `REDIRECTIONS` (**11** hotes) — une adresse posee sur un redirecteur
+        ABSENT de la liste **PASSE** ;
+     4. `RE_MOTIF` — les motifs d'echec acceptes (c11) ;
+     5. `OFFICIELS` (**5** domaines d'autorite) — les sources de loi (c12) ;
+     6. `_DEVISE` / `_JALONS` — les devises et les quatre valeurs (c15) ;
+     7. `RE_PROJECTION` / `RE_EXEMPT_CONDITION` — ce qui fait une prevision,
+        et ce qui l'excuse (c16) ;
+     8. `REFUS_PORTEUR` — les bouchons refuses comme porteur (c14) ;
+     9. `RE_DOMAINE` — les **TLD** admis, et c'est le plus tranchant : un
+        domaine sur un TLD absent rend (c4) **INSOLUBLE**, ⛔ pas seulement
+        aveugle. `RE_FOURNISSEUR` et `METHODES` completent la serie.
+   ⛔ Ce ne sont ⛔ PAS des fournisseurs : la population des fournisseurs, elle,
+   est integralement DERIVEE. Ce sont des VOCABULAIRES, ils se completent A LA
+   MAIN — c'est ecrit plutot que tu.
 
 ── ⛔ CE QU'ELLE NE FAIT PAS, ET C'EST LA MOITIE DU SUJET ──────────────────
 
@@ -174,12 +189,27 @@ RE_URL = re.compile(r"https?://[^\s`)>\"'\]]+")
 #    pose sur une boutique que la BOM ne nomme PAS. Seule la famille FRANCHE
 #    ou la liste des redirecteurs l'attrape alors. La contrepartie est
 #    assumee : ⛔ mieux vaut ce trou NOMME qu'une gate qui fait publier faux.
+# 🔴 RESSERRE LE 2026-09-08 — LE MOTIF FRANC MORDAIT SUR DU LEGITIME, ET
+#    C'EST MESURE : `aff[a-z_]*=` attrapait `?affichage=`, `?affaire=`,
+#    `?affluence=` ; et la forme CHEMIN `/aff…/` mordait sur N'IMPORTE QUEL
+#    hote — `eur-lex.europa.eu/affiliate/guide` et
+#    `legifrance.gouv.fr/aff/1234/texte` sortaient « marqueur franc ». Or un
+#    faux (c5) CASCADE sur (c6), qui exigerait alors des deux pages qu'elles
+#    declarent PORTER des liens affilies : une gate qui fait publier FAUX.
+#    ⇒ le parametre est un vocabulaire FERME (`aff=`, `affid=`, `affiliate=`,
+#      `aff_<quelque chose>=`), ⛔ plus un prefixe ouvert ;
+#    ⇒ la forme CHEMIN descend chez les AMBIGUS : un segment `/aff/` est un
+#      indice, ⛔ pas une preuve, et il ne mord donc plus que sur un hote de
+#      boutique DERIVE de la BOM. ⛔ Contrepartie ECRITE : un chemin affilie
+#      pose sur une boutique que la BOM ne nomme pas passe — c'est le trou
+#      deja nomme plus bas, ⛔ pas un trou neuf.
 RE_MARQUEUR_FRANC = re.compile(
-    r"[?&#](?:aff[a-z_]*|affid|ascsubtag|irclickid|partner_id|linkid)="
-    r"|/aff(?:iliate|iliation)?/[A-Za-z0-9_.~-]{2,}", re.I)
+    r"[?&#](?:aff|affid|affiliate|aff_[a-z0-9_]+"
+    r"|ascsubtag|irclickid|partner_id|linkid)=", re.I)
 RE_MARQUEUR_AMBIGU = re.compile(
     r"[?&#](?:tag|ref|referral|utm_source|utm_campaign|utm_medium"
-    r"|pid|sid|clickid)=", re.I)
+    r"|pid|sid|clickid)="
+    r"|/aff(?:iliate|iliation)?/[A-Za-z0-9_.~-]{2,}", re.I)
 RE_HOTE = re.compile(r"https?://([A-Za-z0-9.-]+)")
 # ⛔ `portals.` et `partner.aliexpress.com` N'Y SONT PAS, ET C'EST DELIBERE :
 #    ce sont les pages PUBLIQUES du programme, que le releve CITE comme
@@ -213,9 +243,24 @@ OFFICIELS = ("legifrance.gouv.fr", "eur-lex.europa.eu", "impots.gouv.fr",
 _E = r"[\s  ]?"
 # ⚠️ `(?<![0-9])` N'EST ⛔ PAS DU CONFORT : sans lui, un prix ORDINAIRE de
 #    `175 €` CONTIENT `75 €` et (c15) rougit sur du contenu JUSTE.
-_JALONS = r"(?<![0-9])(?:75|250|1" + _E + r"000|5" + _E + r"000)"
-RE_JALON = re.compile(_JALONS + r"\s*(?:€|EUR)|(?:€|EUR)\s*" + _JALONS)
-RE_MONTANT = re.compile(r"\d+(?:[.,]\d+)?\s*(?:€|EUR)")
+# 🔴 ET IL NE SUFFISAIT ⛔ PAS — MESURE PAR LA REVUE DE SUIVI DU 2026-09-08 :
+#    un chiffre n'est pas colle a son SEPARATEUR. `1 250 €` rendait `250 €`,
+#    `3 250 €` rendait `250 €`, `4,75 €` rendait `75 €` et `12.75 EUR`
+#    rendait `75 EUR` — quatre FAUX KO sur des prix ORDINAIRES, et (c15)
+#    ⛔ n'a PAS l'exemption de prix dont (c16) dispose. Le rayon venait
+#    d'etre elargi de deux fichiers a TOUT le corpus : le faux KO avec.
+#    ⇒ la 2e borne refuse un chiffre precede d'un separateur decimal ou de
+#      milliers, lui-meme precede d'un chiffre.
+_JALONS = (r"(?<![0-9])(?<![0-9][.,\s])"
+           r"(?:75|250|1" + _E + r"000|5" + _E + r"000)")
+# ⚠️ LES DEVISES SONT UN VOCABULAIRE, ET IL ETAIT REDUIT A L'EURO — or la
+#    page publie elle-meme des montants en `US$`. Un jalon ou un revenu
+#    projete ecrit en dollars passait VERT des deux cotes.
+_DEVISE = r"(?:€|EUR|USD|GBP|US\$|\$|£)"
+RE_JALON = re.compile(_JALONS + r"\s*" + _DEVISE
+                      + r"|" + _DEVISE + r"\s*" + _JALONS)
+RE_MONTANT = re.compile(r"\d+(?:[.,]\d+)?\s*(?:€|EUR|USD|GBP)"
+                        r"|(?:US\$|\$|£)\s?\d+(?:[.,]\d+)?")
 # 🔴 `paliers?|seuils?` SONT DANS LA LISTE, ET C'EST UNE MESURE : un jalon
 #    ecrit avec un montant HORS des quatre valeurs nommees — « palier posé à
 #    300 € » — passait (c15) ET (c16). Le MOT compte, ⛔ pas que le chiffre.
@@ -226,12 +271,36 @@ RE_PROJECTION = re.compile(
 #    `docs/bom.md` ecrit « Coût du palier, au 2026-09-06 : environ … ≈ 41 € ».
 #    C'est un PRIX, ⛔ pas un jalon de revenus — et un prix est le territoire
 #    de `dn6-1`, deja garde par `verif_bom_dn61.py`. ⇒ un montant introduit
-#    par `coût`/`prix`/`tarif` dans la meme clause sort de la population.
+#    par `coût`/`prix`/`tarif`/`versement` dans la meme clause sort de la
+#    population.
 #    ⛔ CE N'EST PAS UNE LISTE D'EXCLUSION : le mutant 34 replante
 #    « palier posé à 300 € » SANS ce mot, et il DOIT rougir.
-RE_EXEMPT_PRIX = re.compile(r"co[uû]ts?|prix|tarifs?", re.I)
+# 🔴 L'EXCEPTION SE LIT **DEVANT LE MONTANT**, ⛔ PAS N'IMPORTE OU DANS LA
+#    FENETRE — MESURE LE 2026-09-08 : « Revenus attendus : 300 € par mois, au
+#    prix actuel de la carte. » sortait VERT parce que le mot `prix` vivait
+#    APRES le montant, dans une clause qui ne le qualifiait pas. Un mot qui
+#    SUIT un montant ⛔ ne dit rien de ce qu'il est. ⇒ seul un mot de prix
+#    ECRIT AVANT le montant, dans la meme clause, le sort de la population.
+#    ⚠️ Le nom `RE_EXEMPT_PRIX` a ete abandonne le meme jour : il ne disait
+#      plus ce que la regle FAIT.
+# 🔴 ELARGI LE 2026-09-08, ET C'EST UN FAUX KO MESURE QUI L'A EXIGE : des
+#    que les devises sont entrees dans `RE_MONTANT`, la ligne
+#    « seuil de versement PayPal — US$5 » de `mesures/dn6-5/T7` a fait rougir
+#    (c16). C'est une CONDITION PUBLIEE PAR LE PROGRAMME, ⛔ pas une
+#    prevision — exactement ce que la page a le droit d'ecrire. ⇒ un montant
+#    introduit par un mot de PRIX **ou de CONDITION DE VERSEMENT** sort de la
+#    population. ⛔ `commission` n'y est PAS : un montant de commission est un
+#    gain, et les quatre valeurs de jalon restent gardees par (c15), qui ⛔ n'a
+#    aucune exemption.
+RE_EXEMPT_CONDITION = re.compile(
+    r"co[uû]ts?|prix|tarifs?|versements?|paiements?|frais", re.I)
 PORTEE_PROJECTION = 200
-PORTEE_AMONT_PRIX = 40
+# ⚠️ LA CLAUSE SE COUPE SUR UN POINT DE PHRASE, ⛔ PAS SUR UNE DECIMALE :
+#    `re.split(r"[.\n]", …)` coupait « rapporterait environ 0.44 € par carte »
+#    juste apres le `0`, et le revenu projete sortait VERT — la meme phrase
+#    ecrite `0,44 €` rougissait. Le verdict ⛔ ne peut pas dependre de la
+#    notation decimale.
+RE_COUPE_CLAUSE = re.compile(r"(?<![0-9])\.(?![0-9])|\n")
 
 # Un porteur A NOMMER n'est ⛔ PAS un porteur — mesure `dn6-4`.
 REFUS_PORTEUR = ("a nommer", "à nommer", "tbd", "a definir", "à définir",
@@ -252,10 +321,42 @@ METHODES = ("outil de récupération", "récupération automatisée",
             "en-tête de navigateur", "User-Agent", "navigateur")
 RE_METHODE = re.compile("|".join(m.replace("-", "[- ]") for m in METHODES),
                         re.I)
+A_MARQUEUR_METHODE = "méthode"
+PORTEE_METHODE = 90
 
+
+def methode_dite(txt):
+    """La methode est-elle DITE — ⛔ pas seulement un de ses mots present ?
+
+    🔴 CORRIGE PAR LA REVUE DE SUIVI DU 2026-09-08. (c23) cherchait ses mots
+       dans la LIGNE ENTIERE pour les puces — exactement le defaut que son
+       propre commentaire dit avoir mesure et ferme pour les tables. Les deux
+       puces `NON ATTEINT` de la page se terminent par *« ⛔ pas re-tentée
+       avec un en-tête de navigateur »* : le mot `navigateur` y parle de ce
+       qui N'A PAS ete fait. Une puce SANS methode mais portant ce mot dans
+       une autre clause sortait donc VERTE.
+    ⇒ la methode doit etre INTRODUITE par le marqueur `méthode`, et lue dans
+      la fenetre qui le suit. ⛔ Un mot qui traine ne vaut pas une methode."""
+    i = txt.lower().find(A_MARQUEUR_METHODE)
+    if i < 0:
+        return False
+    return bool(RE_METHODE.search(txt[i:i + PORTEE_METHODE]))
+
+# ⚠️ VOCABULAIRE ECRIT A LA MAIN, ET IL DECIDE DE (c4) — nomme ici depuis
+#    le 2026-09-08. Un domaine publie sur un TLD ABSENT de cette liste ⛔ ne
+#    peut PAS entrer dans `nommes` : (c4) le compte alors « absent » et
+#    ⛔ AUCUNE redaction correcte ne peut l'eteindre — un rouge INSOLUBLE, la
+#    classe exacte que `hote()` a du fermer pour (c3). ⇒ le jour ou la BOM
+#    cite une boutique sur un TLD neuf, C'EST CETTE LIGNE qu'on complete.
+#    ⛔ Elle ⛔ ne se generalise PAS en `[a-z]{2,24}` : `bom.md`, `roadmap.md`
+#    et tout nom de fichier en accents graves deviendraient des « domaines ».
+# 🔴 ET LA CASSE : `match()` sur `AliExpress.com` rendait None. Le site
+#    d'appel abaisse desormais la casse avant de confronter.
 RE_DOMAINE = re.compile(
     r"^[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\."
-    r"(?:com|fr|de|nl|eu|org|net|io|be|es|it|uk|ch|cn|co)$")
+    r"(?:com|fr|de|nl|eu|org|net|io|be|es|it|uk|ch|cn|co"
+    r"|se|dk|at|pl|pt|cz|fi|no|ie|jp|us|ca|au"
+    r"|cc|shop|store|tech|dev)$")
 
 LARGEUR_LIBELLE = 58
 MIN_CORPS = 200
@@ -383,7 +484,11 @@ MUTANTS[30] = ("verse au corpus une page suivie au NOM ACCENTUE portant une "
                "adresse marquee — celle que `git ls-files` echappait")
 # ⚠️ CIBLE DOUBLE, MESUREE : l'adresse marquee existe (c5) et les deux pages
 #    jurent encore qu'il n'y en a aucune (c6).
-CIBLES[30] = ("c5", "c6")
+# ⚠️ CORRIGEE LE 2026-09-08 : le mutant 30 pose sa page HORS des deux pages
+#    qui portent la declaration ⇒ il ne vise plus (c6) depuis que celui-ci ne
+#    lit que `docs/bom.md` et `docs/affiliation.md`. La cible declaree suit
+#    la MESURE, ⛔ pas l'inverse.
+CIBLES[30] = ("c5",)
 MUTANTS[31] = ("pose dans `docs/bom.md` une adresse de REDIRECTEUR "
                "(`s.click.`) — la branche que ⛔ AUCUN mutant ne gardait")
 # ⚠️ CIBLE DOUBLE, MESUREE : l'adresse existe (c5) et les deux pages jurent
@@ -401,6 +506,19 @@ CIBLES[34] = ("c16",)
 MUTANTS[35] = ("efface d'une ligne de releve la METHODE de recuperation ⇒ "
                "un verdict qui ne dit pas AVEC QUOI l'adresse a ete tentee")
 CIBLES[35] = ("c23",)
+# 🔴 AJOUTES PAR LA REVUE DE SUIVI DU 2026-09-08 — LA BRANCHE « MARQUEUR
+#    AMBIGU SUR UNE BOUTIQUE » DE (c5) N'ETAIT VISEE PAR ⛔ AUCUN MUTANT, et
+#    c'est elle qui porte TOUT l'arbitrage FRANC/AMBIGU du fichier. Demontre
+#    deux fois : branche remplacee par `elif False:` ⇒ 23 OK, 0 KO et 35/35
+#    mutants « sains » ; clause sous-domaine de `est_boutique()` retiree ⇒
+#    idem. (c20) ⛔ ne pouvait pas le voir : il raisonne a la maille du
+#    CONTROLE (`c5` restait vise par 4/30/31), ⛔ pas de la BRANCHE.
+MUTANTS[36] = ("replante un marqueur AMBIGU (`?tag=`) sur un hote de "
+               "boutique DERIVE de la BOM ⇒ la 3e branche de (c5)")
+CIBLES[36] = ("c5", "c6")
+MUTANTS[37] = ("replante un marqueur AMBIGU sur un SOUS-DOMAINE de boutique "
+               "⇒ la clause `h.endswith('.' + b)` de est_boutique()")
+CIBLES[37] = ("c5", "c6")
 
 # ⚠️ LE COMPTE DU CHEMIN NORMAL, hors le controle final qui le confronte.
 #    Il se PERIME si on ajoute un controle sans le mettre a jour — et c'est
@@ -478,11 +596,16 @@ def suivis():
        pour mot.
        ⇒ `-z` separe au NUL, ce qui rend aussi un nom contenant un retour a la
          ligne — que `splitlines()` aurait coupe en deux."""
+    # ⚠️ `encoding="utf-8"` EST OBLIGATOIRE : sans lui, `text=True` decode
+    #    avec la locale, et sous `LC_ALL=C` un chemin accentue leve
+    #    `UnicodeDecodeError` — un Traceback SANS `BILAN`, c'est-a-dire la
+    #    signature d'une gate MORTE. Le depot est francophone.
     try:
         r = subprocess.run(["git", "-c", "core.quotePath=false",
                             "ls-files", "-z"], cwd=RACINE,
-                           capture_output=True, text=True)
-    except OSError:
+                           capture_output=True, text=True,
+                           encoding="utf-8", errors="replace")
+    except (OSError, UnicodeDecodeError):
         return None
     if r.returncode != 0:
         return None
@@ -681,11 +804,32 @@ def muter(etat):
 
     🔴 TOUTE mutation passe par cet unique etat, et `main()` compare l'etat
        AVANT/APRES : la garde du no-op est donc UNIVERSELLE, ⛔ pas une liste
-       d'exceptions a tenir a jour."""
+       d'exceptions a tenir a jour.
+    ⚠️ **CETTE PHRASE A ETE FAUSSE JUSQU'AU 2026-09-08, ET C'EST MESURE** : la
+       comparaison AVANT/APRES ⛔ n'est atteinte que si le corps du mutant
+       REND. Cinq corps LEVAIENT quand leur ancre avait disparu, et le `try`
+       de `main()` les rendait en `rc=1` + `[KO ]` — le contrat « sain » de la
+       campagne. ⇒ tout corps qui depaquete un `split`, lit un corps de
+       section ou indexe un fichier VERIFIE son ancre d'abord et rend `e`
+       INCHANGE. ⛔ La garde ne se decrete pas, elle s'atteint."""
     e = copy.deepcopy(etat)
     p, r = e["prose"], e["regles"]
 
+    # 🔴 CORRIGE PAR LA REVUE DE SUIVI DU 2026-09-08 — LA GARDE DU NO-OP
+    #    N'ETAIT ⛔ PAS UNIVERSELLE, ET C'EST MESURE : cinq mutants (1, 3, 9,
+    #    33, 34) ⛔ ne rendaient PAS `rc=3` quand leur ancre avait bouge — ils
+    #    LEVAIENT (`ValueError` sur un `split` depaquete, `TypeError` sur un
+    #    corps de section absent, `KeyError` sur un fichier sorti du corpus).
+    #    Le `try` de `main()` les rattrapait et les rendait en `rc=1` +
+    #    `BILAN` + `[KO ]` — c'est-a-dire, MOT POUR MOT, le contrat que
+    #    `verif_campagne_dn56.py:319` appelle « sain ». Un mutant PERIME
+    #    passait donc pour un gardien vivant. ⇒ chacun de ces cinq VERIFIE son
+    #    ancre et rend l'etat INCHANGE si elle a disparu, ce qui le fait
+    #    tomber dans la garde du no-op. ⛔ Le mutant 28 continue de lever
+    #    EXPRES : lui est le temoin du « mutant declare qui MEURT ».
     if _MUTANT == 1:
+        if A_TITRE_RELEVE not in p[PAGE] or A_TITRE_TENTEES not in p[PAGE]:
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
         avant, apres = p[PAGE].split(A_TITRE_RELEVE, 1)
         bloc, suite = apres.split(A_TITRE_TENTEES, 1)
         p[PAGE] = (avant + A_TITRE_RELEVE
@@ -696,6 +840,8 @@ def muter(etat):
             "https://www.aliexpress.com/w/wholesale-INA219-CJMCU.html",
             "https://www.reichelt.de/w/ina219-cjmcu")
     elif _MUTANT == 3:
+        if A_TITRE_TENTEES not in p[PAGE] or A_TITRE_LOI not in p[PAGE]:
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
         avant, apres = p[PAGE].split(A_TITRE_TENTEES, 1)
         bloc, suite = apres.split(A_TITRE_LOI, 1)
         p[PAGE] = (avant + A_TITRE_TENTEES
@@ -720,6 +866,8 @@ def muter(etat):
                                 "](affiliation-inexistante.md)")
     elif _MUTANT == 9:
         bloc = corps_de(p[BOM], A_SECTION_BOM)
+        if not bloc:
+            return e                      # section disparue ⇒ NO-OP ⇒ rc=3
         garde = re.sub(r"(?m)^\d+\. .*(?:\n   .*)*\n", "", bloc)
         p[BOM] = p[BOM].replace(bloc, garde)
     elif _MUTANT == 10:
@@ -791,13 +939,27 @@ def muter(etat):
     elif _MUTANT == 30:
         # 🔴 LE NOM EST ACCENTUE EXPRES : sans `core.quotePath=false` + `-z`,
         #    une page comme celle-ci ⛔ n'entrait JAMAIS dans le corpus.
+        # ⚠️ CE QU'IL PROUVE, ET CE QU'IL NE PROUVE ⛔ PAS — ECRIT LE
+        #    2026-09-08 : il ecrit DANS `prose`, c'est-a-dire EN AVAL de
+        #    `suivis()`. Il prouve que (c5) relit tout le corpus ; il ⛔ ne
+        #    prouve PAS que `git ls-files` le RENDE. Mesure : retirer `-z` et
+        #    `core.quotePath=false` de `suivis()` laisse la gate a 23 OK et
+        #    les 37 mutants « sains ». La garde est donc REELLE mais
+        #    ⛔ NON EXERCEE — et elle le restera tant que le depot ne suivra
+        #    AUCUN chemin non-ASCII (mesure du 2026-09-08 : **0** sur 685).
+        #    ⇒ ce qui l'exercerait est un FICHIER SUIVI au nom accentue,
+        #      ⛔ pas un mutant : au ledger, ⛔ pas rapiece ici.
         p["docs/relevé-fournisseurs-accentué.md"] = (
             "# Relevé accentué\n\nVoir "
             "https://www.aliexpress.com/item/1005.html?aff_trace_key=REPLANTE\n")
     elif _MUTANT == 31:
         # ⚠️ POSEE EN PROSE, HORS d'un paragraphe de fournisseur : le mutant
         #    vise la branche REDIRECTEUR de (c5), ⛔ pas la derivation.
-        p[BOM] += "\n\nhttps://s.click.aliexpress.com/e/_DdLUcxx\n"
+        # ⚠️ LE CODE EST FABRIQUE, ET C'EST ECRIT : `AC-A3` promet qu'AUCUN
+        #    identifiant de suivi n'a ete ecrit, « verifiable a la lecture du
+        #    diff ». Un code qui a l'AIR vrai rend cette promesse invérifiable
+        #    a l'oeil. Seul l'HOTE compte pour la branche REDIRECTEUR.
+        p[BOM] += "\n\nhttps://s.click.aliexpress.com/e/_TEMOIN31FABRIQUE\n"
     elif _MUTANT == 32:
         p[PAGE] = p[PAGE].replace(
             "\n| `waveshare.com` | *la boutique elle-même* |",
@@ -806,13 +968,24 @@ def muter(etat):
             "(méthode : outil de récupération automatisée). |"
             "\n| `waveshare.com` | *la boutique elle-même* |", 1)
     elif _MUTANT == 33:
+        if "CHANGELOG.md" not in p:
+            return e                      # fichier hors corpus ⇒ NO-OP ⇒ rc=3
         p["CHANGELOG.md"] += "\n- Replante : 5 000 € cumules.\n"
     elif _MUTANT == 34:
+        if "docs/roadmap.md" not in p:
+            return e                      # fichier hors corpus ⇒ NO-OP ⇒ rc=3
         p["docs/roadmap.md"] += ("\n\nJALON REPLANTE : le palier suivant est "
                                  "posé à 300 €.\n")
     elif _MUTANT == 35:
         p[PAGE] = p[PAGE].replace("(méthode : en-tête de navigateur)",
                                   "(sans plus de précision)", 1)
+    elif _MUTANT == 36:
+        # ⚠️ POSE EN PROSE, comme le 31 : le `?tag=` n'est ⛔ PAS un marqueur
+        #    FRANC — seule la 3e branche, celle qui exige un hote de boutique
+        #    DERIVE, peut l'attraper.
+        p[BOM] += "\n\nhttps://www.aliexpress.com/item/1005.html?tag=dn65\n"
+    elif _MUTANT == 37:
+        p[BOM] += ("\n\nhttps://sale.aliexpress.com/__pc/x.htm?ref=dn65\n")
     else:
         raise AssertionError("mutant %d declare mais SANS CORPS" % _MUTANT)
     return e
@@ -997,8 +1170,9 @@ def main():
     if A_TITRE_TENTEES in page and A_TITRE_LOI in page:
         bloc_tentees = page.split(A_TITRE_TENTEES, 1)[1].split(
             A_TITRE_LOI, 1)[0]
-    nommes = {t for t in re.findall(r"`([^`]+)`", bloc_tentees)
-              if RE_DOMAINE.match(t)}
+    nommes = {t.lower().rstrip(".") for t in
+              re.findall(r"`([^`]+)`", bloc_tentees)
+              if RE_DOMAINE.match(t.lower().rstrip("."))}
     absents = sorted(pop2 - nommes)
     intrus = sorted(nommes - pop2)
     ctrl(bool(pop2) and not absents and not intrus,
@@ -1018,6 +1192,16 @@ def main():
     #    Mesure du 2026-09-07 : les sorties de `mesures/dn6-5/T3` tronquent a
     #    56 caracteres et passent — mais c'est une PROPRIETE DE LA TRONCATURE,
     #    ⛔ pas une garantie.
+    # 🔴 CE QUE LA REVUE DE SUIVI DU 2026-09-08 A CHANGE, ET POURQUOI : cette
+    #    dependance a la troncature ⛔ n'etait pas seulement fragile, elle
+    #    CASCADAIT. `attendue` se derivait de TOUT `marques` ⇒ le jour ou un
+    #    relevé cite une adresse marquee en entier, (c6) exigeait des deux
+    #    pages qu'elles declarent PORTER des liens affilies. Une citation
+    #    aurait fait publier une affirmation FAUSSE. ⇒ (c5) continue de
+    #    signaler un marqueur PARTOUT dans le corpus — c'est sa promesse —
+    #    mais (c6) ne derive son attente que des DEUX PAGES QUI PORTENT LA
+    #    DECLARATION. Ce que le depot AFFIRME de lui-meme se lit sur ce qu'il
+    #    PUBLIE comme ses adresses, ⛔ pas sur ce qu'il cite.
     boutiques = tuple(sorted(pop1 | pop2))
     marques, n_url = [], 0
     for f in sorted(prose):
@@ -1033,8 +1217,8 @@ def main():
                   and est_boutique(h, boutiques)):
                 marques.append("%s : %s (marqueur sur BOUTIQUE)" % (f, u[:56]))
     ctrl(not marques, "(c5) ⛔ aucune adresse publiee n'est MARQUEE",
-         "%d adresse(s) relue(s) sur %d fichier(s) suivis, 0 marqueur, "
-         "0 redirecteur" % (n_url, len(prose))
+         "%d adresse(s) relue(s) dans %d fichier(s) de texte suivis "
+         "(`.md` + `.txt`), 0 marqueur, 0 redirecteur" % (n_url, len(prose))
          if not marques
          else "⛔ %d ADRESSE(S) MARQUEE(S) : %s — l'affirmation « aucun lien "
               "affilie » est DEVENUE FAUSSE"
@@ -1042,7 +1226,9 @@ def main():
 
     vig = {BOM: declaration_en_vigueur(bom),
            PAGE: declaration_en_vigueur(page)}
-    attendue = NEG if not marques else POS
+    publiees = [x for x in marques
+                if x.startswith(BOM + " :") or x.startswith(PAGE + " :")]
+    attendue = NEG if not publiees else POS
     absentes = sorted(f for f, d in vig.items() if d is None)
     fautives = sorted(f for f, d in vig.items()
                       if d is not None and d != attendue)
@@ -1150,13 +1336,13 @@ def main():
                    if n.strip().lower().startswith("verdict")), len(h) - 1)
         for c in corps:
             n_verdicts += 1
-            if iv >= len(c) or not RE_METHODE.search(c[iv]):
+            if iv >= len(c) or not methode_dite(c[iv]):
                 sans_methode.append(nu(c[0])[:24])
     for l in unites_page:
         if A_NON_ATTEINT not in l:
             continue
         n_verdicts += 1
-        if not RE_METHODE.search(l):
+        if not methode_dite(l):
             sans_methode.append(l.strip()[:24])
     ctrl(n_verdicts > 0 and not sans_methode,
          "(c23) chaque verdict NOMME sa methode de releve",
@@ -1246,14 +1432,24 @@ def main():
     for f in sorted(prose):
         txt = prose[f]
         for m in RE_PROJECTION.finditer(txt):
-            fen = re.split(r"[.\n]",
-                           txt[m.start():m.start() + PORTEE_PROJECTION])[0]
-            if not RE_MONTANT.search(fen):
+            # 🔴 LA FENETRE EST BILATERALE — MESURE LE 2026-09-08 :
+            #    « 300 € de commissions par mois » sortait VERT parce que le
+            #    montant precedait le mot. Une projection ⛔ ne s'ecrit pas
+            #    dans un seul ordre.
+            deb = max(0, m.start() - PORTEE_PROJECTION)
+            brut = txt[deb:m.start() + PORTEE_PROJECTION]
+            rel = m.start() - deb
+            g0 = 0
+            for c in RE_COUPE_CLAUSE.finditer(brut[:rel]):
+                g0 = c.end()
+            fin = RE_COUPE_CLAUSE.search(brut, rel)
+            fen = brut[g0:fin.start() if fin else len(brut)]
+            mm = RE_MONTANT.search(fen)
+            if not mm:
                 continue
-            amont = txt[max(0, m.start() - PORTEE_AMONT_PRIX):m.start()]
-            if RE_EXEMPT_PRIX.search(amont) or RE_EXEMPT_PRIX.search(fen):
+            if RE_EXEMPT_CONDITION.search(fen[:mm.start()]):
                 continue          # un PRIX, ⛔ pas un jalon — voir RE_EXEMPT_PRIX
-            projections.append("%s : « %s »" % (f, fen[:44]))
+            projections.append("%s : « %s »" % (f, fen.strip()[:44]))
     ctrl(not projections, "(c16) ⛔ aucun REVENU PROJETE dans tout le depot",
          "aucun" if not projections
          else "⛔ %d — un taux AFFICHE est une condition, un revenu projete "

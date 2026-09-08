@@ -38,9 +38,15 @@ elle relit toutes les adresses publiées par ce dépôt et compte celles qui por
 Relevé le 2026-09-07 sur **tous les fichiers de texte suivis par git** — les pages `.md` **et** les
 relevés `.txt`, ⛔ pas un échantillon : **0** adresse portant un marqueur d'affiliation, **0** sur un
 domaine de redirection.
-⚠️ **Ce que ce corpus ⛔ ne couvre pas, écrit plutôt que tu** : les fichiers **binaires** et les
-sources de code. Une adresse marquée cachée dans un `.c` ou dans un `.png` ⛔ n'est pas vue.
-Le corpus est celui des fichiers de **texte publiés**, et c'est ce que la phrase ci-dessus affirme.
+⚠️ **Ce que ce corpus ⛔ ne couvre pas, écrit plutôt que tu — et la première rédaction de cette
+borne était trop large, corrigée le 2026-09-08 sans être effacée.** Elle ne nommait que les
+fichiers **binaires** et les sources de code. Le corpus est celui des `.md` et des `.txt` suivis :
+**436 fichiers sur les 685** que git suit. Les **249** autres sont, pour l'essentiel, du code et des
+binaires — mais **97** d'entre eux sont du texte qui n'est ⛔ ni l'un ni l'autre (`.log`, `.yml`,
+`.json`, `.csv`, `LICENSE`, `.gitignore`…), et **cinq** portent une adresse.
+🔬 Ces cinq ont été relus à la main le 2026-09-08 avec les mêmes motifs : **0 marqueur**. Le zéro
+ci-dessus tient donc au-delà de sa propre borne — mais c'est une **mesure datée**, ⛔ pas une
+propriété de la gate, et un `.log` neuf ⛔ n'est vu par personne.
 Les adresses de [ce qu'il faut acheter](bom.md) sont des **adresses de recherche nues** — elles
 mènent à une page de résultats, et personne n'est payé si vous cliquez.
 
@@ -209,7 +215,7 @@ qu'elle attrape.
    **inconnu, ⛔ pas acquis** — mais l'inconnue est **partielle**, ⛔ plus totale : les conditions
    d'admission d'AliExpress sont derrière une authentification, tandis que **celles de Waveshare
    sont publiques et lues** (§3).
-   🔴 **Et c'est là que la mesure devient tranchante.** La section *« Who can Join »* de Waveshare
+   🔴 **Et c'est là que la mesure devient tranchante.** La rubrique **Who can Join** de Waveshare
    dit accueillir *« a college student, an individual electronics maker, a DIY electronics
    hobbyist, a tech enthusiast »* — ⛔ aucun seuil d'audience — **puis** ajoute : *« At this time,
    we are primarily inviting individuals with a presence or influence on platforms like YouTube,
@@ -249,7 +255,7 @@ Rien ici n'est à croire sur parole. Depuis la racine du dépôt :
 |---|---|
 | l'état d'affiliation, les deux populations, la concordance des deux pages | `python3 tools/verif_affiliation_dn65.py` |
 | ce que chaque contrôle garde, et la faute que son mutant replante | `python3 tools/verif_affiliation_dn65.py --liste-mutants` |
-| la population des pages relues (⛔ l'arbre suivi, pas le disque) | `git ls-files '*.md'` |
+| la population relue (⛔ l'arbre suivi, pas le disque) | `git ls-files '*.md' '*.txt'` |
 | la forme de la page d'achat, inchangée par cette page | `python3 tools/verif_bom_dn61.py` |
 
 Les bornes de départ et d'arrivée sont dans [T0](../mesures/dn6-5/T0-bornes-depart.txt) et

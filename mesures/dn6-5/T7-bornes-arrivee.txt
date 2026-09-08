@@ -287,3 +287,26 @@ ADDENDUM DU 2026-09-07 — LES BORNES DE LA GATE NEUVE APRES LA REVUE DE CODE
   verif_dossier_dn415.py : 10 KO / 51 KO / rc=4 aux TROIS conditions — INCHANGE
   35 mutants re-joues un par un : 0 non conforme, 0 perime.
 ==============================================================================
+
+
+═══════════════════════════════════════════════════════════════════════════
+ADDENDUM DU 2026-09-08 — REVUE DE SUIVI. L'ANNOTATION PRECEDENTE ANNONCAIT
+« DEUX LIGNES PERIMEES », EN LISTAIT TROIS, ET EN LAISSAIT DEUX DEBOUT.
+═══════════════════════════════════════════════════════════════════════════
+
+CE QUI RESTE PERIME DANS CE FICHIER, ET QUE L'ADDENDUM N'AVAIT PAS NOMME :
+
+  · la ligne `(c5) … 39 adresse(s) relue(s), 0 marqueur, 0 redirection` — un
+    format et un compte D'AVANT l'elargissement du corpus aux `.txt` ;
+  · et, plus grave, la reprise de ce meme 39 dans la section des ENGAGEMENTS
+    TENUS : « 0 marqueur sur 39 adresses » y est compte comme un engagement
+    honore PAR UN NOMBRE. Le nombre n'est plus celui de la gate.
+
+⚠️ CE QUI N'EST ⛔ PAS EN CAUSE : les zeros. Ni un marqueur ni un redirecteur
+   n'a jamais ete trouve, avant comme apres. C'est la POPULATION sur laquelle
+   le zero porte qui a change — et un zero sans sa population ne dit rien.
+
+🎯 LA REGLE, PLUTOT QUE LE CHIFFRE : un engagement « tenu par un NOMBRE » ne
+   l'est que si le nombre et sa POPULATION sont republies ensemble. Le compte
+   `(c5)` se re-tire ; il inclut desormais ce fichier, donc il bouge quand on
+   ecrit dedans. C'est ecrit ici plutot que fige dans une valeur.

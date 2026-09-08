@@ -42,7 +42,7 @@ Work towards the first public release, `v0.1.0-beta`.
   on what terms, and what French and EU law requires to be disclosed. The state is **measured, not
   promised**: across every tracked text file — the `.md` pages **and** the `.txt` measurement
   records, 436 files on the day it shipped — **no** published address carries an affiliate marker.
-  Binary files and source code are outside that sweep, and the page says so. The survey **derives**
+  Binary files and source code are outside that sweep; so are 97 tracked text files that are neither — logs, workflow and licence files — five of which carry an address and were re-read by hand on 2026-09-08, also at zero. The page states that boundary rather than implying it. The survey **derives**
   its population from the purchasing page instead of listing it, which comes out at **two**
   suppliers of record rather than the eleven domains the page names. The other ten are the
   addresses `dn6-1` tried and failed to reach, filed as exactly that with the reason they were not

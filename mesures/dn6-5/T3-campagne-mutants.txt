@@ -423,3 +423,34 @@ CE QUE CE RE-TIR ETABLIT
    ci-dessus passent parce que le detail de `ctrl()` TRONQUE l'adresse a 56
    caracteres ; c'est une propriete de la troncature, ⛔ pas une garantie.
    ⇒ tronquer, ou nommer le parametre sans l'adresse.
+
+
+═══════════════════════════════════════════════════════════════════════════
+ADDENDUM N°3 DU 2026-09-08 — REVUE DE SUIVI. LES COMPTES `(c5)` DE CE FICHIER
+NE SE REPRODUISENT PLUS, ET L'UN D'EUX NE LE POUVAIT DEJA PAS.
+═══════════════════════════════════════════════════════════════════════════
+
+TROIS FORMES DE COMPTE COHABITENT DANS CE FICHIER, ET AUCUNE N'EST L'ACTUELLE.
+
+  a) « 39 adresse(s) relue(s), 0 marqueur, 0 redirection »
+     ⇒ format et compte D'AVANT l'elargissement du corpus aux `.txt`. Perime.
+     ⚠️ L'addendum n°2 recensait ses chiffres perimes et A OUBLIE celui-ci.
+       Une annotation qui liste ses perimes doit les lister TOUS, sinon elle
+       CERTIFIE les survivants.
+
+  b) « 118 adresse(s) relue(s) sur 436 fichier(s) suivis »
+     ⇒ ⛔ CE NOMBRE NE POUVAIT DEJA PAS SE REPRODUIRE SUR L'ARBRE QUI LE
+       PUBLIE. Depuis l'elargissement, `(c5)` relit AUSSI les `.txt` suivis —
+       donc CE FICHIER. Ecrire un addendum ajoute des adresses au corpus que
+       l'addendum compte. Le compte est structurellement MOUVANT.
+
+  c) le libelle lui-meme a change : `(c5)` imprime desormais « adresse(s)
+     relue(s) DANS n fichier(s) de texte suivis (`.md` + `.txt`) ». La
+     rédaction d'origine disait « sur n fichier(s) SUIVIS » avec n = la taille
+     du CORPUS (436), ⛔ pas le nombre de fichiers suivis (685). Deux
+     populations differentes portaient le meme nom.
+
+🎯 CE QUE CA APPREND, ET C'EST LA REGLE QUI REMPLACE LE NOMBRE : un compte que
+   le fait de l'ECRIRE modifie ⛔ ne se publie PAS comme une constante. Il se
+   publie avec sa REGLE — ici : « le corpus inclut ce relevé ». Le seul
+   chiffre opposable est celui que rend un tir, et il se re-tire.

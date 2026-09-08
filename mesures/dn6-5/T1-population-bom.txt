@@ -180,3 +180,34 @@ L'INSTRUMENT, RECOPIE EN ENTIER
   print("UNION des trois          : %d domaine(s)" % len(n1 | n1b | n2))
 
 ==============================================================================
+
+
+═══════════════════════════════════════════════════════════════════════════
+ADDENDUM DU 2026-09-08 — AJOUTE PAR LA REVUE DE SUIVI, ⛔ RIEN N'EST EFFACE
+═══════════════════════════════════════════════════════════════════════════
+
+DEUX LIGNES DE CE FICHIER SONT FAUSSES, ET LA PREMIERE EST UN VERDICT.
+
+(1) ⛔ « INTERSECTION population 1 / population 2 : VIDE. » — CE N'EST PAS CE
+    QUE L'INSTRUMENT CI-DESSUS MESURE. Le script n'imprime que `pop1 ∩ pop2`.
+    Or la population 1 a DEUX moities : les domaines des cellules `Source`
+    (`pop1`) ET le fabricant nomme EN PROSE (`pop1bis`). La seule intersection
+    qui morde est `(pop1 ∪ pop1bis) ∩ pop2`, et elle ⛔ N'EST PAS VIDE : elle
+    contient `waveshare.com`, qui est A LA FOIS le fabricant nomme en prose et
+    l'une des adresses tentees. Le fichier le dit d'ailleurs deux lignes plus
+    bas, par un avertissement — c'est-a-dire qu'il CONTREDIT son propre
+    verdict sans le retirer.
+    🎯 CE QUE CA APPREND : un verdict qui porte le mot « MESURE » doit etre
+       rendu PAR l'instrument cite, ⛔ pas a cote de lui. C'est le meme
+       double-comptage « 2 sur 11 » que la revue precedente avait corrige dans
+       le CHANGELOG et la roadmap — mais ⛔ PAS ici, dans la mesure d'ou il
+       sort.
+
+(2) ⛔ « c'est le fabricant, et sa page rend 403 » — REFUTE LE MEME JOUR, et
+    la correction n'avait atteint ni ce fichier ni la ligne du tracker. Les
+    deux adresses Waveshare rendent HTTP 200 avec un en-tete de navigateur
+    ordinaire ; la seule difference d'avec le tir qui rendait 403 est cet
+    en-tete. ⇒ « non atteint » est une propriete de la METHODE de
+    recuperation, ⛔ pas de l'adresse.
+    ⚠️ Le raisonnement bati dessus dans ce fichier est donc a lire avec cette
+       reserve : sa PREMISSE est fausse, meme quand sa conclusion tient.
