@@ -1,0 +1,77 @@
+=== AC7.3.4 — LE CHEMIN DE LA LANGUE, TRANCHE SUR LA MESURE =================
+    seance carte du 2026-09-09 · ⛔ pas au cadrage, ⛔ pas sur une intuition
+    ⚠️ Mesure produite AVANT que `dn7-3` ne demarre : elle EXISTE pour que la
+      marche n'ait pas a re-choisir. `dn7-3` la CITE, ⛔ elle ne la refait pas.
+
+── VERDICT ─────────────────────────────────────────────────────────────────
+
+  ⇒ VOIE (a) — `langue fr` sur la CONSOLE SERIE apres le flash.
+  ⛔ VOIE (b) — partition NVS pre-cuite : ECARTEE.
+
+── LES MESURES QUI LE PORTENT ──────────────────────────────────────────────
+
+M1. LA PARTITION NVS EST UN BLOC UNIQUE, AU NAMESPACE PARTAGE.
+    partitions.csv : nvs, data, nvs, 0x9000, 0x6000  ⇒ 24 KiB, UNE partition.
+    dn_bootcfg.c:13 · dn_veille.c:18 · dn_reglage.c:17 -> tous « desknode ».
+    dn_reglage.c:14 le dit : « LE MEME NAMESPACE QUE dn_veille. ⛔ Pas un
+    second espace ». 13 CLES i32 y vivent (8 bootcfg · 3 reglage · 2 veille).
+
+M2. LE 5e BINAIRE, FABRIQUE POUR DE VRAI — ⛔ pas estime.
+    $ nvs_partition_gen.py generate nvs-fr.csv nvs-fr.bin 0x6000
+    -> 24 576 o, dont 36 o NON VIERGES.
+    ⇒ 24 KiB verses au depot pour porter UNE valeur de 4 octets.
+    ⚠️ L'outil n'existe QUE sous l'environnement ESP-IDF : le python3 nu rend
+      « No module named esp_idf_nvs_partition_gen ». ⇒ generation = geste de
+      DEVELOPPEUR, binaire VERSE AU DEPOT, avec taille, empreinte, provenance
+      et controles de gate. Et AC7.3.1 (« aucun choix ⇒ RIEN en NVS ») impose
+      en plus DEUX manifestes, ⛔ pas un.
+
+M3. ⛔ RETIREE — ELLE DISAIT LE CONTRAIRE DE LA MESURE, ET C'EST ECRIT.
+    Cette mesure affirmait : « le manifeste porte new_install_prompt_erase:
+    false ⇒ la NVS SURVIT a un reflash ⇒ la voie (b) detruirait 12 reglages a
+    chaque mise a jour ». LA MESURE DU 2026-09-09 LA REFUTE : apres le flash
+    depuis la page, `cfg` rend « aucune config en NVS — defauts appliques »
+    et le temoin de repli en ESP_ERR_NVS_NOT_FOUND. Les reglages NE SURVIVENT
+    PAS. ⇒ cet argument est MORT, et la voie (b) ne detruit rien de plus que
+    ce qui l'est deja. ⛔ Il ne porte plus le verdict — les trois autres si.
+    🔴 DECISION OWNER DU 2026-09-09, PRISE ET CONSIGNEE : « franchement que
+      tout soit ecrase pour 3 pauvres param on s'en branle ». ⇒ l'effacement
+      NVS a l'installation est ACCEPTE, ⛔ ce n'est PAS un defaut a corriger,
+      et la cause (firmware desknode_main.c:250 vs ESP Web Tools) N'A PAS ETE
+      TRANCHEE — ⛔ volontairement, l'owner ayant clos le sujet.
+
+M4. LA VOIE (b) NE PEUT PAS SATISFAIRE AC7.3.5 — C'EST L'ARGUMENT PORTEUR.
+    Une valeur hors bornes est refusee par dn_langue_set() (dn_langue.c:74-85)
+    via ESP_LOGW — un JOURNAL, ⛔ pas un code de retour. dn_reglage.c:125-126
+    l'appelle au boot et ⛔ ne relaie rien.
+    ⇒ un installeur qui a fini de flasher et s'est ferme n'a AUCUN canal pour
+      relayer le refus. AC7.3.5 EXIGE qu'il le relaie « au lieu d'annoncer un
+      succes ». Pour l'honorer, la voie (b) devrait ouvrir la console serie —
+      c'est-a-dire faire TOUT le travail de la voie (a), PLUS le 5e binaire.
+
+M5. LE CANAL SERIE DE LA VOIE (a) EXISTE DEJA, ET IL A TOURNE.
+    esp-web-tools@10.4.0, DEJA epingle par la page :
+      install-dialog-im156JnI.js (310 820 o) porte « Logs & Console » (x2),
+      avec getWriter (x4), onData (x9), writable (x12).
+    🎯 ET CE N'EST PAS RESTE UNE LECTURE DE MODULE : le 2026-09-09, sur CETTE
+      carte, APRES un flash depuis CETTE page, la console a ete ouverte et
+      `cfg` a ete TAPE, EXECUTE, et l'invite `desknode>` est revenue
+      (« --- fin : 8 lignes emises --- »).
+    ⇒ la console de la page ECRIT sur le port, ⛔ elle ne fait pas que lire.
+      La voie (a) est DEMONTREE, ⛔ plus supposee.
+
+── LE MOTIF, DANS L'ORDRE DE POIDS ─────────────────────────────────────────
+
+  1. la voie (b) ne peut pas relayer un refus, or AC7.3.5 l'EXIGE (M4) ;
+  2. la voie (a) n'a AUCUN transport a inventer — il a tourne sous l'oeil
+     owner le 2026-09-09 (M5) ;
+  3. la voie (b) coute 24 KiB pour 4 octets utiles, DEUX manifestes, et une
+     generation qui exige l'environnement IDF (M1 + M2).
+
+── ⛔ CE QUE CET ARBITRAGE NE TRANCHE PAS ──────────────────────────────────
+
+  · Que NOTRE page sache piloter la console PAR PROGRAMME. M5 prouve que le
+    canal ecrit sous une main HUMAINE ; l'automatiser est le travail de
+    `dn7-3`. ⛔ Ne pas lire M5 comme « c'est deja fait ».
+  · Le delai entre la fin du flash et le moment ou le REPL repond. NON MESURE.
+  · La cause de l'effacement NVS — sujet CLOS PAR L'OWNER (voir M3).

@@ -1,0 +1,81 @@
+=== T8 — LE FLASH VA AU BOUT DEPUIS LA PAGE, ET LE SELECTEUR EST RELEVE ====
+    seance carte du 2026-09-09 · Windows 10 19045 · Edge · Python 3.13.4
+    ⛔ CE FICHIER NE CONTIENT AUCUNE DEDUCTION : ce qui vient de l'oeil owner
+      est marque [OEIL], ce qui vient d'une commande est marque [MESURE].
+
+── L'ETAT DE DEPART, MESURE AVANT DE TOUCHER AU PORT ───────────────────────
+
+  [MESURE] verif_dossier_dn415.py --cockpit : 23 OK, 10 KO
+           = la borne EXACTE inscrite a l'AC-transverse de dn7-2 ⇒ AUCUNE
+             derive de dossier imputable a cette seance.
+  [MESURE] usbipd : 3-5  303a:1001  = « Shared » ⇒ la carte est cote WINDOWS,
+           ⛔ pas attachee a WSL. Aucun veilleur --auto-attach (le seul
+           usbipd.exe vivant, PID 5784, EST le service).
+  [MESURE] agent VIVANT PID 25268, tache « DeskNode agent » Running/Limited.
+  [MESURE] pre-vol `DeskNode-installeur.bat verifier` sur UNC : RC=0.
+
+── PASSE A — LE FLASH VA AU BOUT ───────────────────────────────────────────
+
+  serveur : http://127.0.0.1:49896/  (port TIRE)
+  [MESURE] /api/etat : tache_presente=True · runlevel=Limited · port_serie=COM3
+           · version=40be2c8 · charge.complete=True
+
+  [OEIL] le nom du port affiche par la page : accents PROPRES.
+     ⇒ le correctif d'encodage de `dn7-2` (OutputEncoding force en UTF-8)
+       TIENT, et c'est sa premiere verification A L'OEIL, a l'endroit precis
+       ou la page promet de dire le vrai nom du port.
+
+  [OEIL] « Liberer le port » -> l'agent ne tourne plus sur la carte.
+  [OEIL] « Installer » -> le selecteur natif s'ouvre.
+  [OEIL] LE FLASH EST ALLE AU BOUT.
+  [MESURE] la carte redemarre et debite son battement, LU DANS LA CONSOLE DE
+           LA PAGE ELLE-MEME :
+             up 10 s — vsync=408  — flush=12 cycles=4 — PSRAM libre 6580456 o
+             up 60 s — vsync=2279 — flush=32 cycles=16 — ecart +0 s
+             reset: USB (reset par le peripherique USB — replug/JTAG)
+     ⇒ AC7.2.1 : la moitie « le dialogue se termine proprement » est CLOSE.
+       ⛔ Ce n'est pas un « ca devrait marcher » : c'est la carte qui parle.
+
+🔴 ── LE SELECTEUR, RELEVE DANS LE NAVIGATEUR — ET IL REFUTE dn7-2 ──────────
+
+  [OEIL] capture du dialogue natif, titre :
+     « http://127.0.0.1:49896 tente de se connecter a un port de serie »
+  [OEIL] UNE SEULE LIGNE, et la voici mot pour mot :
+     ┌────────────────────────────────────┐
+     │ USB JTAG/serial debug unit (COM3)  │
+     └────────────────────────────────────┘
+  [OEIL] les deux boutons : « Connexion » et « Annuler ».
+
+  ⛔ CE QUE dn7-2 A PUBLIE, ET QUI EST FAUX :
+   (1) « la page nomme LES DEUX FORMES » — le selecteur n'en montre QU'UNE.
+   (2) « Windows affiche ici `Peripherique serie USB (COM3)` » — VRAI du
+       Gestionnaire de peripheriques (Get-PnpDevice), FAUX du selecteur.
+   (3) « le cadrage designait la bonne carte par la MAUVAISE interface » —
+       le cadrage disait `USB JTAG/serial debug unit (COMn)`. C'est
+       EXACTEMENT ce que le selecteur affiche. ⇒ LE CADRAGE AVAIT RAISON.
+   (4) le 2e geste s'appelle « Connexion », ⛔ pas « Se connecter ».
+
+  🎯 MECANISME : Edge nomme le port par la CHAINE PRODUIT USB de la puce,
+     ⛔ pas par le `FriendlyName` LOCALISE de Windows. dn7-2 a mesure
+     `Get-PnpDevice` et a GENERALISE au selecteur, que personne n'avait
+     ouvert. Or AC7.2.6 dit mot pour mot que c'est LE SELECTEUR qui tranche
+     la formulation.
+  ⇒ AC7.2.6 etait cochee ✅. Elle est REFUTEE PAR LA MESURE.
+
+── PASSE B — AC7.2.4, LA DEUXIEME PASSE DE SUITE ───────────────────────────
+
+  [MESURE] agent repose : PID 37528, tache Running/Limited.
+  [MESURE] LE PORT EST TENU, verifie EN L'OUVRANT (⛔ pas deduit d'un PID) :
+           SerialPort 'COM3' -> « L'acces au port 'COM3' est refuse. »
+  serveur : http://127.0.0.1:65478/  (port TIRE, DIFFERENT de la passe A)
+  [MESURE] /api/etat : tache_presente=True · port_serie=COM3 · complete=True
+
+  [OEIL] « Liberer le port », puis « Installer », puis « Connexion » :
+         LE FLASH EST ALLE AU BOUT — « jusqu'au bout en success ».
+  [MESURE] APRES la passe : plus AUCUN python.exe portant `dn_agent`
+           · tache retombee a « Ready »
+           · COM3 tenu par LE NAVIGATEUR
+     ⇒ le port a bien ete RENDU par l'agent, sinon le navigateur ne
+       l'aurait pas obtenu.
+  ⇒ AC7.2.4 : DEUX PASSES DE SUITE, les deux au bout. CLOSE pour son propre
+    cote. 🔴 Le chemin de RETOUR reste a `dn4-28`, et c'est deja au ledger.
