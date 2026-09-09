@@ -1,0 +1,167 @@
+================================================================================
+dn7-2-2 / T3 — LA PAGE, MESUREE COTE WINDOWS DANS SON PROPRE DOM
+================================================================================
+    2026-09-09 · Windows 10 · Edge (--headless=new) · Python 3.13.4 (Windows)
+
+⚠️ ⛔ AUCUNE MESURE N'EST PRISE DEPUIS WSL, ET C'EST UNE CONTRAINTE DE BANC,
+   ⛔ PAS DE PRODUIT : le WSL de la tour est en NAT ⇒ `localhost` ne traverse
+   pas, la page serait vue par IP, donc HORS contexte securise, et Web Serial
+   serait retire SANS RIEN DIRE. On mesurerait le banc, ⛔ pas le produit.
+   ⇒ le serveur est lance par le Python de WINDOWS, sur l'arbre WSL vu en UNC.
+
+🔴 DEUX PIEGES DE MESURE ONT ETE PAYES ICI, ET ILS SONT ECRITS PLUTOT QUE TUS :
+   *(1)* La 1re capture passait la sortie d'Edge par le PIPELINE PowerShell :
+     PowerShell 5.1 la DECODE dans la page de code OEM de la console, et le nom
+     LOCALISE du port en ressortait abime (`P├®riph├®rique`). C'est la faute
+     EXACTE que la marche precedente avait payee sur la decouverte de port.
+     ⇒ `RedirectStandardOutput` ecrit les OCTETS, et rien ne les relit.
+   *(2)* La 1re sonde cherchait `<esp-web-install-button` dans le DOM et
+     tombait sur le COMMENTAIRE d'en-tete de la page, qui le nomme : elle
+     concluait « aucun attribut » sur un element parfaitement forme, et
+     « install-supported absent » sur un element upgrade. ⇒ elle ancre
+     desormais sur `manifest=`, c'est-a-dire sur l'ELEMENT REEL.
+   ⚠️ C'est la TROISIEME fois que ce depot paie le second piege. ⛔ Documenter
+      un piege ne protege de rien ; seul le REJOUER protege.
+
+⛔ CE QUI N'EST PAS JOUE ICI, ET IL FAUT LE LIRE D'ABORD : le selecteur de port
+   de Web Serial est un dialogue **NATIF DU NAVIGATEUR**, qu'aucun drapeau ne
+   pilote. ⇒ « la console s'ouvre et affiche le battement » et « le port refuse
+   est nomme comme tel » exigent une MAIN, et se jouent en seance carte.
+
+================================================================================
+TIR A — LA PAGE **SERVIE**, DANS SON PROPRE DOM
+================================================================================
+  $ python.exe dn_installeur.py --sans-navigateur     (Python de Windows, UNC)
+    ⇒ la page est servie ICI -> http://127.0.0.1:62792/
+  $ msedge.exe --headless=new --disable-gpu --virtual-time-budget=16000
+               --dump-dom  http://127.0.0.1:62792/     (95 337 o de DOM)
+
+── LA RACINE, ET LA LANGUE SERVIE ──────────────────────────────────
+  balise racine       : <html lang="en" data-langue="en">
+  data-langue         : en
+  elements lang=en    : 78
+  elements lang=fr    : 76
+  ⇒ appariement       : ⛔ 78 / 76
+
+── CE QUE LA PAGE A ECRIT DANS SON PROPRE DOM ──────────────────────
+  v-url          = http://127.0.0.1:62792/
+  v-contexte     = yesoui
+  v-serial       = availabledisponible
+  v-version      = 40be2c8
+  v-revision     = 40be2c8 — repository revision, read out of the binary40be2c8 — révision du dépôt, lue dans
+  v-morceaux     = 4 · ESP32-S3 · offsets 0 / 32768 / 65536 / 4259840
+  v-port         = COM3 — Périphérique série USB (COM3)
+  v-tache        = present (DeskNode agent)présente (DeskNode agent)
+  v-runlevel     = Limited
+  v-pilote       = H:\dev\projets\desknode\dn_agent_tour.ps1
+  v-python       = 3.13.4
+  v-psutil       = presentprésente
+  v-pyserial     = presentprésente
+
+── LES BLOCS D'ETAT, ET LEUR VISIBILITE ────────────────────────────
+  etat-unsupported     : masqué
+  etat-not-allowed     : masqué
+  etat-hors-windows    : masqué
+  etat-cdn             : masqué
+  etat-charge          : masqué
+  etat-port-tenu       : VISIBLE
+  etat-pilotes         : VISIBLE
+  etat-orphelin        : masqué
+  etat-inactif         : masqué
+  etat-console         : masqué
+
+── LES BOUTONS, ET CE QU'ILS PORTENT ───────────────────────────────
+  b-langue-en        : actif  [English]
+  b-langue-fr        : actif  [Français]
+  b-stop             : actif  [| Stop the agent and hand the port back | | Arrêter l'agent et rendre le port ]
+  b-retirer          : actif  [| Remove the agent | | Retirer l'agent |]
+  b-console          : actif  [| Connect to the board and read its console | | Se brancher à la carte et lire]
+  b-console-fermer   : GRISE  [| Close and hand the port back | | Fermer et rendre le port |]
+  b-liberer          : ⛔ ABSENT DU DOM
+
+── L'ELEMENT DE FLASH — ⛔ L'ELEMENT REEL, PAS SON NOM CITE ────────
+  element reel        : <esp-web-install-button manifest="charge/manifest.json" install-supported="">
+  install-supported   : PRESENT
+  #bloc-installer     : VISIBLE
+  URL du module       : https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module
+
+── LE SELECTEUR DE PORT, TEL QUE LA PAGE L'ANNONCE ─────────────────
+  forme du selecteur  : PRESENT
+  forme localisee     : PRESENT
+  attribution FR      : PRESENT
+  attribution EN      : PRESENT
+  libelle du bouton   : PRESENT
+  libelle PERIME      : PRESENT
+  ecran de sortie     : PRESENT
+  « Se connecter » BARRE : 2 occurrence(s) sur 2
+
+── LE DEBIT DE LA CONSOLE ──────────────────────────────────────────
+  DEBIT_CONSOLE       : 115200
+  baudRate            : DEBIT_CONSOLE
+
+  ⚠️ LES CHAMPS SORTENT AVEC **LEURS DEUX LANGUES BOUT A BOUT** (`yesoui`,
+     `presentprésente`) : c'est le DOM, ⛔ pas l'ecran. Les deux freres SONT
+     dans le document, et c'est la feuille de style qui en cache un — voir le
+     TIR B, qui mesure le style CALCULE.
+  ⚠️ LE COMPTE BRUT `78 en / 76 fr` PORTE SUR LE FICHIER ENTIER : il inclut la
+     balise `<html lang="en">` et sa CITATION dans le commentaire de style.
+     Mesure de l'APPARIEMENT, faite dans le CORPS et parent par parent :
+     **0 parent desapparie**.
+
+  ⇒ `b-liberer` est **ABSENT DU DOM** : le second bouton qui postait `stop`
+    n'existe plus. ⛔ Ce n'est pas un masquage, c'est une SUPPRESSION.
+  ⇒ `b-console` et `<esp-web-install-button …>` sont **DEUX elements** : relire
+    sa carte ne passe plus par le bouton qui la reflashe.
+  ⇒ `Se connecter` : **2 occurrences, 2 BARREES** — annote et date (`NFR3`),
+    ⛔ aucune vivante.
+
+================================================================================
+TIR B — LA BASCULE DE LANGUE, EXERCEE SUR LES **VRAIS** BOUTONS
+================================================================================
+🔴 CE TIR NE REIMPLEMENTE RIEN. Une COPIE de la page — hors de l'arbre — recoit
+   une sonde qui *(a)* CLIQUE `#b-langue-fr` puis `#b-langue-en`, c'est-a-dire
+   les vrais gestionnaires du produit, et *(b)* lit le style CALCULE par le
+   navigateur sur chaque element de langue. ⛔ Elle ne juge aucune regle CSS a
+   la lecture : elle lit ce que le moteur en fait.
+⚠️ La copie est ouverte en `file:` ⇒ `api/etat` echoue, et c'est SANS EFFET sur
+   ce qui est mesure ici : le mecanisme de langue ⛔ ne depend d'aucun serveur.
+
+  racine-au-chargement=en 
+  EN 73 72 73 1 
+  apres-clic-FR racine=fr lang=fr 
+  FR 72 73 1 73 
+  RETOUR-EN 73 72 73 1 
+  selecteur-visible=true/true
+
+  LECTURE, colonne par colonne — `<etat> <elements en> <elements fr>
+  <visibles en> <visibles fr>` :
+
+    au chargement   EN : 73 en / 72 fr  ⇒  73 VISIBLES en, 1 visible fr
+    apres clic FR   FR : 72 en / 73 fr  ⇒  1 visible en, 73 VISIBLES fr
+    retour en EN    EN : 73 en / 72 fr  ⇒  73 VISIBLES en, 1 visible fr
+
+  ⚠️ LE FLIP `73/72` ⇄ `72/73` N'EST **PAS** UN DESAPPARIEMENT : c'est la
+     balise `<html>` elle-meme, que le selecteur `[lang="en"],[lang="fr"]`
+     attrape et dont l'attribut BASCULE. ⇒ 72 freres de chaque cote, apparies,
+     plus la racine.
+  ⚠️ ET LE « 1 VISIBLE » DE L'AUTRE LANGUE EST **VOULU** : c'est le bouton du
+     selecteur de langue, que la feuille de style force a rester visible dans
+     les deux sens — sinon on ne pourrait pas revenir.
+     Mesure : `selecteur-visible=true/true`.
+
+  ⇒ **ZERO ILOT** : hors le selecteur de langue, aucun element de la langue
+    inactive n'est visible, dans AUCUN des trois etats. La bascule est
+    REVERSIBLE et elle est jouee par le CODE LIVRE.
+  ⇒ **LE DEFAUT EST STRUCTUREL** : `racine-au-chargement=en`, ⛔ sans qu'aucun
+    script ait eu a le poser. Aucune ecriture, aucune lecture de stockage.
+
+================================================================================
+CE QUE CE RELEVE **NE** PROUVE PAS
+================================================================================
+⛔ Que la console s'ouvre et affiche le battement de la carte : cela exige le
+   SELECTEUR DE PORT, dialogue natif du navigateur ⇒ seance carte, au ledger.
+⛔ Que le refus « port refuse (l'agent le tient) » se distingue a l'ecran de
+   « aucun port choisi » : les deux naissent du meme dialogue natif.
+⛔ Que la page soit LISIBLE. « Le geste suivant est identifiable sans rien
+   derouler » se ferme A L'ŒIL DE L'OWNER, et par rien d'autre.
+⛔ Que quoi que ce soit marche sur une autre machine que celle-ci : `n = 1`.

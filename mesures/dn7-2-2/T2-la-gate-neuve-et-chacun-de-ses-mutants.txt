@@ -1,0 +1,77 @@
+================================================================================
+dn7-2-2 / T2 — LA GATE NEUVE, ET CHACUN DE SES MUTANTS TIRE INDIVIDUELLEMENT
+================================================================================
+RE-JEU DU 2026-09-09 — LA GATE **TELLE QU'ELLE EST LIVREE**
+================================================================================
+Ce bloc FAIT FOI. Le tableau du haut est conserve, date, ⛔ pas efface.
+
+--------------------------------------------------------------------------------
+1. LE CHEMIN NORMAL
+--------------------------------------------------------------------------------
+BILAN : 56 OK, 0 KO
+rc=0
+
+--------------------------------------------------------------------------------
+2. CHAQUE MUTANT, TIRE INDIVIDUELLEMENT
+--------------------------------------------------------------------------------
+  mutant  rc  KO  BILAN  premier controle rougi
+  OK 1      1   1   1      (c1) la page nomme la forme que le selecteur MONTRE   
+  OK 2      1   1   1      (c2) la forme localisee est ATTRIBUEE, ⛔ pas offerte  
+  OK 3      1   1   1      (c2) la forme localisee est ATTRIBUEE, ⛔ pas offerte  
+  OK 4      1   1   1      (c3) la page ecrit le libelle RELEVE du bouton        
+  OK 5      1   1   1      (c4) le libelle PERIME est BARRE, ⛔ pas efface        
+  OK 6      1   1   1      (c5) UN SEUL bouton poste le verbe `stop`             
+  OK 7      1   1   1      (c6) le bouton nomme TOUT son effet, 2 langues        
+  OK 8      1   2   1      (c7) l'entree de console est DISTINCTE du flash       
+  OK 9      1   1   1      (c8) la console lit a 115200 bauds, ⛔ pas suppose     
+  OK 10     1   1   1      (c9) les TROIS refus sont ANCRES dans LEUR branche    
+  OK 11     1   1   1      (c10) le port est RELACHE puis FERME, dans cet ordre  
+  OK 12     1   1   1      (c11) tout texte visible est SOUS le mecanisme        
+  OK 13     1   2   1      (c11) tout texte visible est SOUS le mecanisme        
+  OK 14     1   1   1      (c13) chaque cle de `MOTS` porte DEUX valeurs         
+  OK 15     1   1   1      (c14) toute prose du script passe par une FABRIQUE    
+  OK 16     1   1   1      (c15) la racine du document est `lang="en"`           
+  OK 17     1   1   1      (c16) la feuille de style cache l'autre langue        
+  OK 18     1   1   1      (c17) le selecteur de langue est VISIBLE, en tete     
+  OK 19     1   1   1      (z) tout controle prevu est EMIS                      
+  OK 20     1   1   1      (c0) le mutant 20 a une CIBLE et un CORPS             
+  OK 21     1   1   1      (c18) chaque controle est vise par >= 1 mutant        
+  OK 22     1   1   1      (c19) chaque cible de mutant est un controle REEL     
+  OK 23     1   1   1      (c20) `CIBLES` et `MUTANTS` se correspondent          
+  OK 24     1   1   1      (c21) ⛔ aucun geste n'est derriere un repli           
+  OK 25     1   1   1      (c7) l'entree de console est DISTINCTE du flash       
+  OK 26     1   1   1      (c5) UN SEUL bouton poste le verbe `stop`             
+  OK 27     1   1   1      (c9) les TROIS refus sont ANCRES dans LEUR branche    
+  OK 28     1   1   1      (c10) le port est RELACHE puis FERME, dans cet ordre  
+  OK 29     1   1   1      (c14) toute prose du script passe par une FABRIQUE    
+  OK 30     1   1   1      (c22) toute cle demandee EXISTE dans la table         
+  OK 31     1   1   1      (c23) les 2 entrees du selecteur restent VISIBLES     
+  OK 32     1   1   1      (c2) la forme localisee est ATTRIBUEE, ⛔ pas offerte  
+
+  ⇒ 32 mutants sur 32 : rc=1, au moins un `[KO ]`, une ligne `BILAN`.
+  ⇒ --mutant 999 (inconnu) ⇒ rc=2  (attendu : 2)
+
+--------------------------------------------------------------------------------
+3. LES HUIT MUTANTS NEUFS, ET LA FAUTE QUE CHACUN REPLANTE
+--------------------------------------------------------------------------------
+  25  pose l'id de la console SUR l'element de flash  ⇒ le RENOMMAGE refuse
+  26  replante un 2e poste de `stop` derriere une FONCTION NOMMEE
+  27  ECHANGE deux refus de console entre leurs branches
+  28  DEBRANCHE le relachement du lecteur (⛔ pas la fermeture : mutant 11)
+  29  plante un ilot ANGLAIS hors des fabriques
+  30  DESACCORDE une cle de `MOTS` de son site d'appel
+  31  retire la regle qui garde les DEUX entrees du selecteur visibles
+  32  retire l'attribution d'UNE SEULE langue (⛔ pas des deux : mutant 2)
+
+  ⚠️ CHACUN REPLANTE LA FAUTE, ⛔ AUCUN NE DEBRANCHE LA GARDE. Et chacun vise
+     une faute qui a ete DEMONTREE VERTE avant d'etre corrigee.
+
+--------------------------------------------------------------------------------
+4. `verif_flash_dn72.py` GAGNE SON 41e MUTANT DANS LE MEME GESTE
+--------------------------------------------------------------------------------
+BILAN : 30 OK, 0 KO
+  [KO ] (c12) la forme localisee est ATTRIBUEE, ⛔ pas offerte      ⛔ 1 occurrence(s) sur 2 de « Périphérique série USB » dans un element de langue qui ⛔ n'attribue RIEN (lang=fr) — l'attribution de l'AUTRE langue ⛔ n'attribue pas celle-ci, et la page re-offre la forme localisee comme une ligne du selecteur
+  ⇒ sa fenetre d'attribution portait le MEME trou : un rayon PLAT de
+    caracteres laissait l'attribution de l'AUTRE langue tomber dans la
+    fenetre de celle-ci. Retirer l'attribution d'UN SEUL cote sortait VERT.
+    La fenetre est desormais l'ELEMENT DE LANGUE lui-meme.

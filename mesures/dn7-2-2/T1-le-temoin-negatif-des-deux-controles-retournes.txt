@@ -1,0 +1,68 @@
+================================================================================
+dn7-2-2 / T1 — LE TEMOIN NEGATIF DES DEUX CONTROLES RETOURNES
+================================================================================
+Date      : 2026-09-09
+Exigence  : `AC7.2.2.1` — « ET LA GATE QUI GARDAIT L'ANCIENNE FORMULE DOIT
+            ROUGIR AVANT DE REVERDIR ». Une gate qui reverdit sans avoir rougi
+            n'a RIEN garde.
+
+CE QUI A ETE JOUE, ET DANS QUEL ORDRE :
+
+  1. `(c12)` et `(c13)` de `tools/verif_flash_dn72.py` ont ete REECRITS SUR LA
+     PROPOSITION NEUVE **AVANT** toute modification de `installeur/index.html`.
+     Les constantes `:160-166` sont retournees dans le meme geste :
+       · `GESTE_2` : « Se connecter » ⇒ « Connexion »  (l'ancienne valeur est
+         NOMMEE sous `GESTE_2_PERIME`, ⛔ pas effacee)
+       · `ATTRIBUTION_WINDOWS` et `FENETRE_ATTRIBUTION` : NEUVES — la forme
+         localisee de Windows doit desormais etre ATTRIBUEE, ⛔ plus offerte
+         comme forme concurrente du selecteur.
+  2. La page D'ORIGINE a ete extraite HORS DE L'ARBRE :
+       git show HEAD:installeur/index.html > /tmp/dn722-page-origine.html
+       (44 001 octets, revision 6c50e10)
+  3. Les deux controles NEUFS ont ete joues dessus.
+
+🔴 LE TEMOIN N'A RECOPIE AUCUNE LOGIQUE. `(c12)` et `(c13)` appellent desormais
+   deux fonctions du produit — `forme_windows_attribuee` et
+   `deux_gestes_releves` — et le temoin IMPORTE la gate pour appeler LES MEMES.
+   Une garde reecrite dans le temoin ne prouverait que le temoin.
+
+--------------------------------------------------------------------------------
+SORTIE
+--------------------------------------------------------------------------------
+==============================================================================
+TEMOIN NEGATIF dn7-2-2 — LES CONTROLES **NEUFS** SUR LA PAGE **D'ORIGINE**
+==============================================================================
+page jugee : /tmp/dn722-page-origine.html (44001 octets)
+gate       : tools/verif_flash_dn72.py, importee — ⛔ pas recopiee
+attendu    : [KO ] SUR LES DEUX. Une gate qui reverdit sans avoir rougi
+             n'a RIEN garde.
+------------------------------------------------------------------------------
+  [KO ] (c12) la forme localisee est ATTRIBUEE, ⛔ pas offerte  ⛔ 1 occurrence(s) sur 1 de « Périphérique série USB » ⛔ SANS attribution a moins de 420 caracteres — la page la re-offre comme une forme CONCURRENTE du selecteur, ce que la mesure du 2026-09-09 refute
+  [KO ] (c13) la page dit les 2 gestes, au libelle RELEVE      ⛔ le 2e geste, RELEVE le 2026-09-09 (« Connexion »)
+------------------------------------------------------------------------------
+comptages bruts sur cette page :
+    FORME_PUCE         « USB JTAG/serial debug unit »     PRESENT
+    FORME_WINDOWS      « Périphérique série USB »         PRESENT
+    attribution FR     « Gestionnaire de périphériques »  ABSENT
+    attribution EN     « Device Manager »                 ABSENT
+    GESTE_2 (neuf)     « Connexion »                      ABSENT
+    GESTE_2 (perime)   « Se connecter »                   PRESENT
+==============================================================================
+VERDICT DU TEMOIN : ✅ LES DEUX ONT ROUGI — la garde neuve MORD sur l'ancienne page
+==============================================================================
+rc=0
+
+--------------------------------------------------------------------------------
+CE QUE CE RELEVE PROUVE, ET CE QU'IL NE PROUVE PAS
+--------------------------------------------------------------------------------
+✅ PROUVE : les deux controles retournes ROUGISSENT sur la page telle qu'elle
+   etait avant cette marche. Leur reverdissement, plus tard, mesurera donc un
+   CHANGEMENT DE LA PAGE, ⛔ pas une garde debranchee.
+⛔ NE PROUVE PAS : que la page neuve soit lisible, ni que le selecteur du
+   navigateur affiche bien ce que la mesure du 2026-09-09 a releve. La premiere
+   se ferme A L'ŒIL DE L'OWNER (`AC7.2.2.2`), la seconde est deja fermee par
+   `mesures/dn7-2/T8`.
+⛔ NE PROUVE PAS non plus que « Se connecter » ait disparu de la page : ce n'est
+   PAS ce que `(c13)` demande. La formule perimee reste ECRITE et BARREE
+   (`NFR3`), et c'est `(b)` de `tools/verif_page_dn722.py` qui exige qu'aucune
+   occurrence n'en soit VIVE.

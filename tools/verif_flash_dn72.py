@@ -162,8 +162,42 @@ FORME_PUCE = "USB JTAG/serial debug unit"
 # Les DEUX gestes du selecteur de port : sans le second, on sort sur un ecran
 # qui n'explique pas qu'il manquait un clic.
 GESTE_1 = "cliquer la ligne"
-GESTE_2 = "Se connecter"
+GESTE_2 = "Connexion"
 ECHEC_SELECTION = "No port selected"
+
+# 🔴 ANNOTE LE 2026-09-09 PAR `dn7-2-2` — ⛔ LE COMMENTAIRE CI-DESSUS N'EST PAS
+#    EFFACE (`NFR3`), MAIS SA CONCLUSION EST **REFUTEE PAR LA MESURE**, ET LES
+#    DEUX CONSTANTES QUI EN DECOULAIENT SONT **RETOURNEES**.
+#    ⇒ le selecteur du navigateur a ete OUVERT le 2026-09-09
+#      (`mesures/dn7-2/T8`) : il montre **UNE SEULE LIGNE**,
+#      « USB JTAG/serial debug unit (COM3) », et son bouton s'appelle
+#      « Connexion ». ⛔ Il ne montre PAS la forme localisee de Windows, et
+#      ⛔ son second geste ne s'appelle PAS « Se connecter ».
+#    🎯 MECANISME : Edge nomme le port par la **chaine PRODUIT USB** de la puce,
+#      ⛔ pas par le `FriendlyName` LOCALISE de Windows. `dn7-2` avait mesure
+#      `Get-PnpDevice` — la vue du **Gestionnaire de peripheriques** — et l'avait
+#      GENERALISEE au selecteur, que personne n'avait ouvert.
+#    ⇒ `FORME_WINDOWS` ⛔ n'est PLUS une forme du selecteur : elle reste ECRITE
+#      dans la page (`NFR3`, et parce qu'un lecteur la verra dans le
+#      Gestionnaire), mais **ATTRIBUEE**. `(c12)` mesure desormais cette
+#      ATTRIBUTION, ⛔ plus la coexistence des deux formes.
+#    ⇒ `GESTE_2` passe de « Se connecter » a « Connexion » : la valeur d'avant
+#      est NOMMEE ici plutot qu'effacee, et le temoin negatif de ce basculement
+#      vit sous `mesures/dn7-2-2/T1`.
+GESTE_2_PERIME = "Se connecter"
+# Ce qui ATTRIBUE la forme localisee a l'ecran ou elle apparait VRAIMENT. Deux
+# libelles, ⛔ pas un : la page parle DEUX langues depuis `dn7-2-2`, et la
+# chaine de Windows citee est la meme des deux cotes.
+ATTRIBUTION_WINDOWS = ("Gestionnaire de périphériques", "Device Manager")
+# 🔴 LA FENETRE EST L'**ELEMENT DE LANGUE** QUI PORTE LA MENTION, ⛔ PLUS UN
+#    RAYON DE CARACTERES — ET CE N'EST PAS UN RAFFINEMENT. La page parle DEUX
+#    langues en freres ; un rayon plat sur le texte aplati laisse tomber
+#    l'attribution de l'AUTRE langue dans la fenetre de celle-ci. Retirer
+#    l'attribution d'UN SEUL cote laissait donc ce controle VERT, pendant que
+#    le lecteur de ce cote-la lit la forme localisee SANS savoir d'ou elle
+#    sort. Or c'est EXACTEMENT la propriete pour laquelle il existe.
+RE_ELEMENT_LANGUE = re.compile(
+    r'<(\w+)[^>]*\blang="(en|fr)"[^>]*>(.*?)</\1>', re.S)
 # 🔴 LA RECUPERATION, TELLE QU'ELLE EST **ECRITE ET MESUREE** DANS LE DEPOT :
 #    `README.md` ne connait qu'un geste, « BOOT maintenu + RESET ». La formule
 #    du cadrage — « BOOT maintenu pendant le branchement » — n'est ecrite NULLE
@@ -271,11 +305,15 @@ CIBLES[11] = ("c10",)
 MUTANTS[12] = ("exige du serveur une adresse de charge qu'il ne sert PAS ⇒ "
                "un 404 au milieu du flash, et un message qui n'explique rien")
 CIBLES[12] = ("c11",)
-MUTANTS[13] = ("ne laisse a la page QU'UNE forme du nom du port ⇒ celui qui "
-               "voit l'autre forme ne reconnait pas sa carte")
+# 🔴 LES DEUX SUIVANTS SONT **RETOURNES** LE 2026-09-09 EN MEME TEMPS QUE LEUR
+#    CONTROLE : leur faute d'origine visait « la page nomme les DEUX formes »,
+#    proposition REFUTEE par l'ouverture du selecteur. Ils replantent desormais
+#    la faute de la proposition NEUVE.
+MUTANTS[13] = ("efface de la page la forme que le selecteur montre VRAIMENT "
+               "⇒ l'inconnu ne reconnait plus la ligne qu'il voit")
 CIBLES[13] = ("c12",)
-MUTANTS[14] = ("efface de la page le SECOND geste de selection du port ⇒ on "
-               "sort sur un ecran qui ne dit pas qu'il manquait un clic")
+MUTANTS[14] = ("remet a la page le libelle PERIME du bouton du selecteur ⇒ "
+               "on cherche « Se connecter » sur un bouton « Connexion »")
 CIBLES[14] = ("c13",)
 MUTANTS[15] = ("efface de la page la procedure de recuperation ⇒ elle "
                "redevient enterree dans un README de 200 Ko")
@@ -343,6 +381,29 @@ CIBLES[35] = ("c30",)
 MUTANTS[36] = ("fait DERIVER la version epinglee publiee dans la prose ⇒ trois "
                "copies annoncent un numero que la page ne charge pas")
 CIBLES[36] = ("c10",)
+# 🔴 LES QUATRE SUIVANTS FERMENT DES TROUS **MESURES** LE 2026-09-09 : trois
+#    constantes de la page — `FORME_WINDOWS`, `GESTE_1`, `ECHEC_SELECTION` —
+#    etaient declarees, employees par un controle, et visees par AUCUN mutant.
+#    Un garde-fou que rien ne fait rougir ⛔ ne garde rien : c'est exactement la
+#    lecon de `dn6-1`, et elle vaut aussi pour la propriete NEUVE de `(c12)`.
+MUTANTS[37] = ("efface de la page la forme LOCALISEE du nom du port ⇒ celui "
+               "qui la lit dans le Gestionnaire ne la relie plus a sa carte")
+CIBLES[37] = ("c12",)
+MUTANTS[38] = ("retire l'ATTRIBUTION de la forme localisee ⇒ la page la "
+               "re-offre comme une forme CONCURRENTE du selecteur")
+CIBLES[38] = ("c12",)
+MUTANTS[39] = ("efface de la page le PREMIER geste de selection du port ⇒ le "
+               "bouton reste grise et personne ne dit pourquoi")
+CIBLES[39] = ("c13",)
+MUTANTS[40] = ("efface de la page l'ecran de sortie du selecteur ⇒ « No port "
+               "selected » n'est explique nulle part")
+CIBLES[40] = ("c13",)
+# 🔴 AJOUTE LE 2026-09-09 : la fenetre d'attribution etait un RAYON PLAT, et un
+#    rayon plat laisse tomber l'attribution de l'AUTRE langue dans la fenetre
+#    de celle-ci. Ce mutant est le temoin de ce trou.
+MUTANTS[41] = ("retire l'attribution d'UNE SEULE langue ⇒ ce lecteur-la lit "
+               "la forme localisee sans savoir d'ou elle sort")
+CIBLES[41] = ("c12",)
 
 # ⚠️ LE COMPTE DU CHEMIN NORMAL. Il se PERIME si on ajoute un controle sans le
 #    mettre a jour — et c'est voulu : c'est ce qui rend (z) FALSIFIABLE.
@@ -441,6 +502,73 @@ def plat(txt):
     """Le texte SANS ses retours a la ligne — un motif ne doit ⛔ pas dependre
     de l'endroit ou la prose a ete coupee."""
     return re.sub(r"\s+", " ", txt or "")
+
+
+def forme_windows_attribuee(page):
+    """(c12) — la forme LOCALISEE de Windows est-elle ATTRIBUEE, partout ?
+
+    🔴 CETTE FONCTION EST LE CONTROLE LUI-MEME, ⛔ pas un double de papier :
+       le temoin negatif de `dn7-2-2` l'appelle SUR LA PAGE D'ORIGINE, et il
+       doit rendre FAUX. Une garde qu'on reecrit dans le temoin ne prouverait
+       que le temoin.
+    ⚠️ TROIS PROPRIETES, ⛔ pas une : la forme du selecteur est NOMMEE, la
+       forme localisee reste ECRITE (`NFR3` — on annote, on n'efface pas), et
+       CHAQUE element de langue qui porte cette derniere porte AUSSI son
+       attribution. ⚠️ Elle prend la page BRUTE, ⛔ plus son texte aplati :
+       c'est le decoupage en elements de langue qui fait la fenetre.
+       Rend `(verdict, motif)`."""
+    page_plate = plat(page)
+    if FORME_PUCE not in page_plate:
+        return False, ("la forme du selecteur (« %s ») ⛔ n'est pas dans la "
+                       "page — c'est pourtant la SEULE ligne qu'il montre"
+                       % FORME_PUCE)
+    if FORME_WINDOWS not in page_plate:
+        return False, ("la forme localisee (« %s ») a ete EFFACEE au lieu "
+                       "d'etre attribuee — le lecteur qui la voit dans le "
+                       "Gestionnaire ne reconnait plus sa carte" % FORME_WINDOWS)
+    total, orphelines, ou = 0, 0, []
+    corps = page.split("<body>", 1)[-1].split("</body>", 1)[0]
+    for m in RE_ELEMENT_LANGUE.finditer(corps):
+        pl = plat(m.group(3))
+        n = pl.count(FORME_WINDOWS)
+        if not n:
+            continue
+        total += n
+        if not any(a in pl for a in ATTRIBUTION_WINDOWS):
+            orphelines += n
+            ou.append("lang=%s" % m.group(2))
+    if not total:
+        return False, ("« %s » n'est portee par AUCUN element de langue — hors "
+                       "du mecanisme des deux langues, elle est un ilot que la "
+                       "bascule ne touche pas" % FORME_WINDOWS)
+    if orphelines:
+        return False, ("%d occurrence(s) sur %d de « %s » dans un element de "
+                       "langue qui ⛔ n'attribue RIEN (%s) — l'attribution de "
+                       "l'AUTRE langue ⛔ n'attribue pas celle-ci, et la page "
+                       "re-offre la forme localisee comme une ligne du "
+                       "selecteur"
+                       % (orphelines, total, FORME_WINDOWS, " ".join(ou)))
+    return True, ("« %s » nomme le selecteur ; les %d mention(s) de « %s » "
+                  "sont ATTRIBUEES dans LEUR element de langue"
+                  % (FORME_PUCE, total, FORME_WINDOWS))
+
+
+def deux_gestes_releves(page_plate):
+    """(c13) — les DEUX gestes, avec le libelle RELEVE dans le selecteur.
+
+    ⚠️ `GESTE_1` se compare EN MINUSCULES (la page peut le mettre en tete de
+       phrase) ; `GESTE_2` et l'ecran de sortie sont SENSIBLES A LA CASSE,
+       parce que ce sont des libelles CITES tels qu'ils s'affichent."""
+    manque = []
+    if GESTE_1 not in page_plate.lower():
+        manque.append("le 1er geste (« %s »)" % GESTE_1)
+    if GESTE_2 not in page_plate:
+        manque.append("le 2e geste, RELEVE le 2026-09-09 (« %s »)" % GESTE_2)
+    if ECHEC_SELECTION not in page_plate:
+        manque.append("l'ecran de sortie (« %s »)" % ECHEC_SELECTION)
+    if manque:
+        return False, " · ".join(manque)
+    return True, "« %s », puis le bouton « %s »" % (GESTE_1, GESTE_2)
 
 
 def version_du_binaire(octets):
@@ -873,9 +1001,13 @@ def muter(etat):
             return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
         p[PAGE] = p[PAGE].replace(FORME_PUCE, "le port de la carte")
     elif _MUTANT == 14:
+        # ⚠️ IL **REPLANTE** LE LIBELLE PERIME, ⛔ il n'efface pas le neuf :
+        #    c'est la faute EXACTE que la mesure du 2026-09-09 a trouvee dans
+        #    la page — un bouton nomme par une formule que le selecteur
+        #    n'affiche pas.
         if GESTE_2 not in p.get(PAGE, ""):
             return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
-        p[PAGE] = p[PAGE].replace(GESTE_2, "valider")
+        p[PAGE] = p[PAGE].replace(GESTE_2, GESTE_2_PERIME)
     elif _MUTANT == 15:
         if RECUP_RESET not in p.get(PAGE, ""):
             return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
@@ -989,6 +1121,36 @@ def muter(etat):
         if not m or m.group(1) not in p.get(LISEZMOI, ""):
             return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
         p[LISEZMOI] = p[LISEZMOI].replace(m.group(1), "9.9.9", 1)
+    elif _MUTANT == 37:
+        if FORME_WINDOWS not in p.get(PAGE, ""):
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        p[PAGE] = p[PAGE].replace(FORME_WINDOWS, "un nom de peripherique")
+    elif _MUTANT == 38:
+        vus = [a for a in ATTRIBUTION_WINDOWS if a in p.get(PAGE, "")]
+        if not vus:
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        for a in vus:
+            p[PAGE] = p[PAGE].replace(a, "le selecteur du navigateur")
+    elif _MUTANT == 39:
+        # ⚠️ LA CASSE EST CELLE DU CONTROLE : `(c13)` compare `GESTE_1` en
+        #    MINUSCULES, donc la substitution doit valoir quelle que soit la
+        #    facon dont la page a mis la phrase en tete.
+        bas = p.get(PAGE, "").lower()
+        if GESTE_1 not in bas:
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        p[PAGE] = re.sub(re.escape(GESTE_1), "choisir un port",
+                         p[PAGE], flags=re.I)
+    elif _MUTANT == 40:
+        if ECHEC_SELECTION not in p.get(PAGE, ""):
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        p[PAGE] = p[PAGE].replace(ECHEC_SELECTION, "une erreur")
+    elif _MUTANT == 41:
+        # ⚠️ IL N'EN RETIRE **QU'UNE**, et c'est tout l'interet : l'autre reste
+        #    dans le fichier, donc dans le rayon d'un controle a fenetre plate.
+        if ATTRIBUTION_WINDOWS[0] not in p.get(PAGE, ""):
+            return e                      # ancre disparue ⇒ NO-OP ⇒ rc=3
+        p[PAGE] = p[PAGE].replace(ATTRIBUTION_WINDOWS[0],
+                                  "sélecteur du navigateur")
     else:
         raise AssertionError("mutant %d declare mais SANS CORPS" % _MUTANT)
     return e
@@ -1383,18 +1545,28 @@ def main():
     # ── (c12)…(c15) CE QUE LA PAGE DIT, ET QUAND ────────────────────────
     print("\n── (c12)…(c15) LA PAGE DIT CE QUI COINCE, AVANT QUE CA COINCE ────")
     pl_page = plat(page)
-    deux_formes = (FORME_WINDOWS in pl_page and FORME_PUCE in pl_page)
-    ctrl(deux_formes, "(c12) la page nomme les DEUX formes du nom du port",
-         "« %s » et « %s »" % (FORME_WINDOWS, FORME_PUCE) if deux_formes
-         else "⛔ il en manque une — Windows AFFICHE un nom traduit, la puce "
-              "en annonce un autre, et ⛔ aucun des deux n'est « DeskNode »")
+    # 🔴 `(c12)` EST **RETOURNEE** LE 2026-09-09 PAR `dn7-2-2`, ET SON MOTIF EST
+    #    UNE MESURE. Sa proposition d'origine — « la page nomme les DEUX formes
+    #    du nom du port » — a ete REFUTEE : le selecteur, enfin ouvert, n'en
+    #    montre QU'UNE. ⛔ Le controle ne disparait pas, il change de
+    #    proposition : la forme localisee reste ECRITE mais doit etre
+    #    ATTRIBUEE au Gestionnaire de peripheriques, ⛔ plus offerte comme une
+    #    forme concurrente du selecteur. Meme geste qu'a `(c10)` de
+    #    `verif_installeur_dn71.py`, pour la meme raison : la frontiere a bouge.
+    ok12, motif12 = forme_windows_attribuee(page)
+    ctrl(ok12, "(c12) la forme localisee est ATTRIBUEE, ⛔ pas offerte",
+         motif12 if ok12 else "⛔ " + motif12)
 
-    deux_gestes = (GESTE_1 in pl_page.lower() and GESTE_2 in pl_page
-                   and ECHEC_SELECTION in pl_page)
-    ctrl(deux_gestes, "(c13) la page dit les DEUX gestes, et leur echec",
-         "cliquer la ligne, puis `%s`" % GESTE_2 if deux_gestes
-         else "⛔ le premier geste, le second, ou l'ecran de sortie qui les "
-              "sanctionne manque — sans le second clic, le bouton reste grise")
+    # 🔴 `(c13)` EST **RETOURNEE** DANS LE MEME GESTE : le bouton du selecteur
+    #    s'appelle « Connexion », ⛔ pas « Se connecter ». La valeur d'avant est
+    #    gardee sous `GESTE_2_PERIME` — nommee, ⛔ pas effacee — et c'est elle
+    #    qui rend le temoin negatif MECANIQUE : la page d'origine ne contient
+    #    pas une seule fois « Connexion », donc ce controle-ci ROUGIT dessus.
+    ok13, motif13 = deux_gestes_releves(pl_page)
+    ctrl(ok13, "(c13) la page dit les 2 gestes, au libelle RELEVE",
+         motif13 if ok13
+         else "⛔ %s — sans le second clic, le bouton reste grise, et on sort "
+              "sur un ecran qui ne dit pas qu'il manquait un clic" % motif13)
 
     # ⚠️ LA RECUPERATION EST CELLE QUI EST **MESUREE** : `BOOT` maintenu PUIS
     #    `RESET`. La formule du cadrage — BOOT maintenu pendant le branchement —

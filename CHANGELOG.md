@@ -135,11 +135,25 @@ Work towards the first public release, `v0.1.0-beta`.
   announce "port handed back" about a port that no longer exists.
 - 🆕 **Four obstacles get the page's own words, at the moment they happen.** The flashing tool's
   fallback dialog offers **CP2102 / CH340 / CH342** drivers that this native-USB board
-  (`303A:1001`) does not need — the page says so over it. The port's **real name** is given in both
-  forms, the one Windows shows (translated: `Périphérique série USB (COM3)` on the reference
-  machine) and the one the chip announces (`USB JTAG/serial debug unit`) — ⛔ it is not called
-  "DeskNode". The port picker needs **two gestures**, and the page says which. And the **recovery
-  procedure** is reachable from the page rather than buried in a 200 KB README. ⚠️ The recovery
+  (`303A:1001`) does not need — the page says so over it. ~~The port's **real name** is given in
+  both forms, the one Windows shows (translated: `Périphérique série USB (COM3)` on the reference
+  machine) and the one the chip announces (`USB JTAG/serial debug unit`)~~ — ⛔ it is not called
+  "DeskNode". ~~The port picker needs **two gestures**, and the page says which.~~ And the
+  **recovery procedure** is reachable from the page rather than buried in a 200 KB README.
+
+  > 🔴 **ANNOTATED ON 2026-09-09 (`dn7-2-2`), AND THE TWO STRUCK-THROUGH HALVES ABOVE ARE ⛔ NOT
+  > ERASED — THEY ARE DATED.** The browser's port picker was finally **opened**, and it refutes
+  > both. It shows **ONE line**, `USB JTAG/serial debug unit (COM3)`, and its button reads
+  > **« Connexion »**. ⇒ *"both forms"* presented the localised Windows name as a second form
+  > **of the picker**; it is what the **Device Manager** shows, ⛔ not the browser — the page now
+  > **attributes** it instead of offering it. And the second gesture was named
+  > *"Se connecter"*, which is ⛔ not what the button says. ⚠️ What stays true: the port is ⛔ not
+  > called "DeskNode", the selection really does take **two gestures**, and closing the window
+  > without picking exits on *"No port selected"*. 🎯 **Mechanism**: Edge names the port by the
+  > chip's **USB product string**, ⛔ not by the localised Windows `FriendlyName` — `dn7-2`
+  > measured `Get-PnpDevice`, the Device Manager's view, and **generalised** it to a picker
+  > nobody had opened. ⚠️ The server-side discovery stays **correct**: it targets interface
+  > `MI_00` and returns the right `COM<n>`. It was the **display** that lied. ⚠️ The recovery
   wording is **what was measured**: this repository only ever documented **BOOT held + RESET**;
   "BOOT held while plugging in" appears nowhere, and the page writes the true one.
 - 🆕 **Opened anywhere but Windows, the page says so BEFORE the flash.** Web Serial also runs on
@@ -199,6 +213,47 @@ Work towards the first public release, `v0.1.0-beta`.
 
 ### Fixed
 
+- 🆕 **The install page said one thing and the port picker showed another.** The picker was
+  finally **opened** on 2026-09-09, and it shows **ONE line** — `USB JTAG/serial debug unit
+  (COM3)` — with a button reading **« Connexion »**, while the page announced *"the two forms"*
+  and *"Se connecter"*. The page now names **the form the picker shows**, and **attributes** the
+  localised Windows name to the **Device Manager**, where it really appears. ⚠️ The earlier
+  wording is **struck through and dated**, ⛔ not erased, in this file and in `README.md`.
+  ⚠️ The **server-side discovery was never wrong**: it targets interface `MI_00` and returns the
+  right `COM<n>`. It was the **display** that lied, and ⛔ nothing was "fixed" in the discovery.
+  🔴 **And the check that guarded the old wording was made to go RED before it went green
+  again**: the two reversed controls of `tools/verif_flash_dn72.py` were rewritten first and
+  played against the **original page** — both `[KO ]`. A check that goes green without ever
+  having gone red guarded nothing.
+- 🆕 **Two buttons posted the same verb, and the code said so.** *"Free the port"* and *"Stop the
+  agent"* both posted `stop`, on the same port, and returned the same output — so naming them by
+  what set them apart was impossible: nothing did. They are **merged** into one button named by
+  its whole effect, **"Stop the agent and hand the port back"**.
+- 🆕 **Reading the board no longer goes through the button that reflashes it.** Until 2026-09-09
+  the only path to the board's logs was the install button. The page now carries a **separate**
+  entry that opens its **own** serial port at **115200** baud — a rate given by three concordant
+  sources in this repository — plus an explicit **"Close and hand the port back"**. ⚠️ Its three
+  refusals are named **separately**: no serial access · no port chosen · **port refused** (the
+  port exists, it was chosen, and the agent holds it). ⛔ Never "no board" for a refused port.
+  ⚠️ **Written rather than left implicit**: this is ⛔ not a limitation of ESP Web Tools. Its
+  console lives in a **second chunk whose name carries a build hash**, imported only from the
+  install button's own click handler — measured: the pinned module (`install-button.js`, 2 829 B)
+  contains `getWriter` ×0, `onData` ×0, `writable` ×0. Hard-coding that hashed name would work
+  today and return **404 in silence** at the first upstream release, with ⛔ no gate in this
+  repository able to see it.
+- 🆕 **The install page speaks two languages, English by default.** Both languages live in the
+  **same document**, as sibling elements, and a stylesheet rule hides one: the page is therefore
+  English **before any script runs** — the default is **structural**, ⛔ not promised.
+  ⚠️ **⛔ No memory is promised, and that is measured**: the server draws a **different port at
+  every launch**, so a new origin every time, so **no browser storage survives**. The page comes
+  back in English at each launch and ⛔ does not claim otherwise. ⚠️ ⛔ **Not to be confused with
+  the language of the panel**, which is a different question and a different language.
+  🔴 A new gate, `tools/verif_page_dn722.py` (**56 checks, 32 mutants**), keeps all of the above:
+  it also refuses a key of the message table that has **no twin**, and any visible text that sits
+  outside the two-language mechanism.
+- 🆕 **The gesture table in `README.md` contradicted itself in one paragraph** — it listed
+  **four** rows while the sentence under it said "these **two** gestures", and two of its four
+  rows were the same gesture. Corrected, with the earlier value **named rather than erased**.
 - **The false claim that NVIDIA GPUs are covered.** NVIDIA is **not implemented**:
   there is no NVML in the agent. The claim appeared in this file and in
   `THIRD-PARTY.md`, while `agent/dn_agent.py` refuted it in writing the whole time.
@@ -258,6 +313,14 @@ Work towards the first public release, `v0.1.0-beta`.
   default**; the language can be changed from the serial console (`langue fr`) and is
   then persisted on the device. Offering the choice at
   install time is still to come (`dn7` — see [`docs/roadmap.md`](docs/roadmap.md)).
+  > ⚠️ **Annotated on 2026-09-09 (`dn7-2-2`) — the entry above is ⛔ not erased, and it stays
+  > OPEN, but half of what a reader would take from it has changed.** The install **page** now
+  > offers **FR/EN with English by default**, chosen at the top of the page. ⛔ That is
+  > **not** the sentence above: the **panel** still has no selector, and the choice made on the
+  > page is ⛔ **not** carried to the board. **Two different languages are in play** — the one
+  > the reader reads, and the one written into the device — and posting the second at install
+  > time is still to come. ⇒ this entry stays under *Known issues* for the **panel**, and the
+  > page's own language is recorded under *Fixed*.
 - **The CLA bot has never been exercised by an outside contributor.** It was watched
   running on an **internal** pull request on 2026-09-02 — it commented, linked to
   `CLA.md` and created the signature store — and again on 2026-09-04, on the workflow

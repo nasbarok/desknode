@@ -542,16 +542,43 @@ ferait donc échouer l'outil qui existe déjà.
 
 | geste sur la page | ce qui est appelé | comment c'est vérifié |
 |---|---|---|
+| **Arrêter l'agent et rendre le port** | le verbe `stop` de `tools/dn_agent_tour.ps1`, **sur le port découvert** | l'outil **rouvre le port** — et « rendu » (`0`) et « disparu » (`7`) sont rendus **distincts**, ⛔ pas confondus |
 | **Installer DeskNode sur la carte** | ESP Web Tools, **épinglé `10.4.0`**, avec `installeur/charge/manifest.json` | les **quatre** morceaux aux **quatre** offsets, ⛔ sans binaire fusionné ; la version annoncée est **lue dans le binaire servi**, et une gate refuse qu'elles diffèrent |
-| **Libérer le port** | le verbe `stop` de `tools/dn_agent_tour.ps1`, **sur le port découvert** | l'outil **rouvre le port** — et « rendu » (`0`) et « disparu » (`7`) sont rendus **distincts**, ⛔ pas confondus |
-| **Arrêter l'agent** | le verbe `stop` de `tools/dn_agent_tour.ps1` | l'outil **rouvre le port** — un code de retour ne prouve rien |
+| 🆕 **Se brancher à la carte et lire sa console** | **rien du dépôt** : la page ouvre **son** port avec l'accès série du navigateur, à **115200** bauds | une gate vérifie que l'entrée est un élément **distinct** du bouton de flash, que le débit est **déclaré une fois** et que les **trois refus** sont nommés séparément |
 | **Retirer l'agent** | le verbe `retirer` du même outil | la tâche est **redemandée au système** après coup, ⛔ le message de sortie ne fait pas foi |
 
-⇒ Ces deux gestes **n'inventent rien** : ils exposent des verbes que le dépôt livre déjà, et
-la sortie de l'outil vous est rendue **telle quelle**, code de retour compris. Le détail des
-sept verbes, leurs arguments et ce qu'ils mesurent sont documentés plus bas, à
-**§ *« Lancer / arrêter l'agent DEPUIS WINDOWS »***. ⛔ Ils ne sont pas redits ici : une
-table dupliquée est une table qui divergera.
+⇒ Ces **quatre** gestes **n'inventent rien** — et **deux d'entre eux** *(arrêter, retirer)*
+exposent des verbes que le dépôt livre déjà, dont la sortie vous est rendue **telle quelle**,
+code de retour compris. Le détail des sept verbes, leurs arguments et ce qu'ils mesurent sont
+documentés plus bas, à **§ *« Lancer / arrêter l'agent DEPUIS WINDOWS »***. ⛔ Ils ne sont pas
+redits ici : une table dupliquée est une table qui divergera.
+
+> ⚠️ **CORRIGÉ LE 2026-09-09 (`dn7-2-2`) — ⛔ LA VALEUR D'AVANT EST NOMMÉE, PAS EFFACÉE.**
+> Cette table listait **quatre** lignes pendant que la phrase juste en dessous disait « ces
+> **deux** gestes » : elle se contredisait dans le même paragraphe. Et **deux de ses quatre
+> lignes étaient le même geste** — *« Libérer le port »* et *« Arrêter l'agent »* postaient le
+> **même** verbe `stop`, sur le **même** port, et rendaient la **même** sortie. ⇒ les deux sont
+> **fusionnés** dans la page, le bouton survivant est nommé par **tout** son effet, et une
+> entrée **neuve** — la console — prend la ligne libérée.
+
+🆕 **Relire la carte ne passe plus par le bouton qui la flashe.** Jusqu'au 2026-09-09, le
+**seul** chemin vers les logs de la carte était le bouton d'installation : pour **regarder**
+sa carte, il fallait cliquer sur ce qui annonce qu'on va la **réécrire**. La page porte
+désormais une entrée **« Se brancher à la carte et lire sa console »**, et un geste explicite
+**« Fermer et rendre le port »** qui relâche le port — ⛔ pas de port retenu en silence.
+⚠️ **Et les trois refus sont nommés séparément** : *pas d'accès série dans ce navigateur* ·
+*aucun port choisi* (le sélecteur fermé sans sélection) · **port refusé** — ce dernier voulant
+dire que le port **existe**, qu'il a été **choisi**, et que **l'agent le tient**. ⛔ Jamais
+« aucune carte » pour un port refusé : c'est le message qui n'explique rien.
+
+🆕 **La page parle deux langues, l'anglais par défaut.** Le sélecteur est **en tête**, ⛔ pas
+dans un menu. Le défaut anglais est **structurel** — il tient à l'attribut de la racine du
+document et à une règle de style, ⛔ pas à un script qui aurait pu ne pas tourner.
+⚠️ **⛔ Aucune mémoire n'est promise, et c'est mesuré** : le serveur tire **un port différent à
+chaque lancement**, donc une **nouvelle origine** à chaque fois, donc **aucun stockage de
+navigateur ne survit**. La page revient en anglais à chaque lancement, et elle ⛔ ne prétend
+pas le contraire. ⚠️ ⛔ **À ne pas confondre avec la langue de la DALLE**, qui est un autre
+sujet et une autre langue.
 
 ### 🔴 Ce que vous devez installer vous-même — **écart déclaré**, avec son porteur
 
@@ -639,16 +666,40 @@ exactement ce que ce contrôle rend impossible.
 La page le dit **aussi**, parce que c'est elle que vous regardez à ce moment-là. Ici, c'est
 pour l'avoir sous la main avant de commencer.
 
-- **Le port ne s'appelle ⛔ PAS « DeskNode »**, et il porte **deux noms selon qui l'affiche** :
-  - Windows le nomme de façon **traduite** — sur la machine de référence, mesuré le
-    2026-09-08 : **`Périphérique série USB (COM3)`** ;
-  - la puce, elle, se présente comme **`USB JTAG/serial debug unit`**.
-  ⚠️ Le numéro `COM<n>` change d'une machine à l'autre ; la page affiche **celui qu'elle a
-  découvert** sur la vôtre.
-- **La sélection se fait en DEUX gestes** : **cliquer la ligne** du port, **puis**
-  **« Se connecter »**. Tant que la ligne n'est pas sélectionnée, le bouton reste **grisé**,
-  et fermer la fenêtre fait sortir sur *« No port selected »* — un message qui n'explique
-  pas qu'il manquait un clic.
+- ~~**Le port ne s'appelle ⛔ PAS « DeskNode »**, et il porte **deux noms selon qui
+  l'affiche** : Windows le nomme de façon **traduite** — `Périphérique série USB (COM3)` —
+  tandis que la puce se présente comme `USB JTAG/serial debug unit`.~~
+- ~~**La sélection se fait en DEUX gestes** : **cliquer la ligne** du port, **puis**
+  **« Se connecter »**.~~
+  > 🔴 **ANNOTÉ LE 2026-09-09 (`dn7-2-2`) — LES DEUX LIGNES CI-DESSUS SONT BARRÉES PLUTÔT
+  > QU'EFFACÉES (`NFR3`), PARCE QUE LE SÉLECTEUR A ENFIN ÉTÉ OUVERT ET QU'IL LES RÉFUTE.**
+  > Ce que la mesure du 2026-09-09 montre, à l'œil, dans le sélecteur d'Edge :
+  > **UNE SEULE LIGNE**, `USB JTAG/serial debug unit (COM3)`, et un bouton **« Connexion »**.
+  > ⇒ Ce qui reste **vrai** de la première ligne : le port ne s'appelle ⛔ **pas
+  > « DeskNode »**, et le numéro `COM<n>` change d'une machine à l'autre. Ce qui était
+  > **faux** : « deux noms **selon qui l'affiche** » présentait les deux formes comme deux
+  > possibilités **du sélecteur** ; la forme localisée est ce que montre le **Gestionnaire de
+  > périphériques**, ⛔ **pas** le navigateur.
+  > ⇒ Ce qui reste **vrai** de la seconde ligne : il faut bien **deux gestes**, et fermer la
+  > fenêtre sans choisir fait sortir sur *« No port selected »*. Ce qui était **faux** : le
+  > libellé du second. Il s'appelle **« Connexion »**.
+  > 🎯 **MÉCANISME** : Edge nomme le port par la **chaîne produit USB** de la puce, ⛔ pas par
+  > le `FriendlyName` **localisé** de Windows. `dn7-2` avait mesuré `Get-PnpDevice` — la vue du
+  > Gestionnaire — et l'avait **généralisée** à un sélecteur que personne n'avait ouvert.
+  > ⚠️ **La découverte côté serveur, elle, reste JUSTE** : elle vise l'interface `MI_00` et rend
+  > le bon `COM<n>`. ⛔ C'est l'**affichage** qui mentait.
+
+🆕 **Ce que le sélecteur montre, tel qu'il a été relevé le 2026-09-09** :
+
+- **UNE seule ligne** : **`USB JTAG/serial debug unit (COM<n>)`**. ⚠️ Le numéro change d'une
+  machine à l'autre ; la page affiche **celui qu'elle a découvert** sur la vôtre.
+- **Deux gestes** : **cliquer la ligne**, **puis** cliquer **« Connexion »**. Tant que la
+  ligne n'est pas sélectionnée, le bouton reste **grisé**, et fermer la fenêtre fait sortir
+  sur *« No port selected »* — un message qui n'explique pas qu'il manquait un clic.
+- **Ailleurs**, le **Gestionnaire de périphériques** de Windows nomme la même carte
+  `Périphérique série USB (COM3)` (nom **traduit**, mesuré sur la machine de référence le
+  2026-09-08). C'est utile pour **retrouver son port**, ⛔ ce n'est pas ce que le navigateur
+  affiche.
 - ⛔ **Si l'outil de flash propose d'installer un pilote (CP2102, CH340, CH342), n'en
   installez aucun.** Ce dialogue parle d'un problème que vous n'avez pas : cette carte est
   en **USB natif** `303A:1001`, et **aucun pilote n'est à installer** — c'est déjà écrit
@@ -666,9 +717,17 @@ pour l'avoir sous la main avant de commencer.
 deuxième fois, **l'agent tourne déjà et tient le port**, et un flash lancé tel quel sortirait
 sur `Failed to execute 'open' on 'SerialPort'`, qui n'explique rien.
 
-⇒ La page porte un bouton **« Libérer le port »** qui appelle le verbe **`stop`** que ce
-dépôt livre déjà — ⛔ il n'en réimplémente aucun — **sur le port qu'elle a découvert**
-(`VID_303A&PID_1001`, interface `MI_00`), ⛔ pas sur le `COM3` par défaut de l'outil.
+⇒ La page porte un bouton **« Arrêter l'agent et rendre le port »** qui appelle le verbe
+**`stop`** que ce dépôt livre déjà — ⛔ il n'en réimplémente aucun — **sur le port qu'elle a
+découvert** (`VID_303A&PID_1001`, interface `MI_00`), ⛔ pas sur le `COM3` par défaut de
+l'outil.
+
+> ⚠️ **ANNOTÉ LE 2026-09-09 (`dn7-2-2`) — LE BOUTON S'APPELAIT *« Libérer le port »*, ET IL
+> N'ÉTAIT PAS SEUL.** L'ancienne valeur est **nommée ici plutôt qu'effacée** (`NFR3`). Un
+> second bouton, *« Arrêter l'agent »*, postait le **même** verbe sur le **même** port : le
+> lecteur choisissait entre deux commandes qu'il croyait distinctes. Les nommer par ce qui
+> les **distingue** était impossible — rien ne les distinguait. ⇒ **fusion**, et le survivant
+> est nommé par **tout** son effet, parce que c'est **un seul** fait.
 
 ⚠️ **Et les codes de `stop` ne sont ⛔ pas un booléen** : `0` le port est **rendu** · `4` le
 drapeau d'arrêt n'a pas pu être écrit · `7` l'agent est arrêté mais le port a **disparu**
@@ -690,8 +749,14 @@ dépendance dure déjà déclarée de ce chantier.
   > trois sections ci-dessus. **La seconde moitié reste vraie** — elle n'installe toujours
   > **pas l'agent**, et le poser reste le geste décrit § *« Lancer / arrêter l'agent DEPUIS
   > WINDOWS »*.
-- ⛔ **Elle ne propose aucun choix de langue** : la dalle démarre en anglais et le choix se
-  fait au REPL série (`langue fr`), comme dit plus haut.
+- ~~⛔ **Elle ne propose aucun choix de langue** : la dalle démarre en anglais et le choix se
+  fait au REPL série (`langue fr`), comme dit plus haut.~~
+  > ⚠️ **ANNOTÉ LE 2026-09-09 (`dn7-2-2`) — LA PHRASE EST BARRÉE PLUTÔT QU'EFFACÉE (`NFR3`),
+  > PARCE QU'ELLE MÉLANGEAIT DEUX LANGUES DIFFÉRENTES.** La page choisit désormais **sa
+  > propre** langue — **FR/EN, anglais par défaut**, sélecteur en tête. ⇒ ce qui **reste
+  > vrai** : elle ne choisit toujours **aucune langue pour la DALLE**, qui démarre en anglais
+  > et se règle au REPL série (`langue fr`). ⛔ **Deux langues différentes, deux sujets
+  > différents** : celle que le lecteur lit, et celle qui est posée dans la carte.
 - ⛔ **Elle ne montre aucun aperçu de la dalle** : c'est une **exclusion déclarée** de la
   première version, ⛔ ni un oubli ni un manque à réparer.
 - ⚠️ **L'agent est Windows seulement**, et ça ne change pas. La page s'ouvre ailleurs — et

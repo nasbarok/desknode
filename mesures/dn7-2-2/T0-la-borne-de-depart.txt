@@ -1,0 +1,364 @@
+================================================================================
+dn7-2-2 / T0 — LA BORNE DE DEPART, MESUREE LE 2026-09-09
+================================================================================
+Depot     : /home/nasbarok/projects/desknode
+Revision  : 6c50e10a16a00772c892caac0d955947ab1065bb (branche `main`, arbre propre)
+Cockpit   : /home/nasbarok/projects/compagnon_project @ efa5c2d (branche
+            `desknode-p0-p1-clos`)
+Commande  : bash tools/run_gates.sh
+
+CE QUI EST RELEVE ICI EST UN **COMPTE**, PAS UNE COULEUR. Une gate deja rouge
+absorbe un KO de plus sans changer de couleur : ce qui se compare a la borne
+d'arrivee, ce sont les chiffres ci-dessous.
+
+--------------------------------------------------------------------------------
+BILAN : 34 VERTE, 3 ROUGE, 1 NON-JOUABLE sur 38 gates (235s)
+appariement --cockpit : 0 divergence(s)
+--------------------------------------------------------------------------------
+
+LES TROIS ROUGES, NOMMEES, ET A QUI ELLES SONT :
+
+  1. tools/verif_dossier_dn415.py    rc=1   BILAN : 23 OK, 10 KO
+     ⇒ PRE-EXISTANTE ET INCHANGEE. Ce n'est pas le fait de cette marche.
+
+  2. tools/verif_ledger_dn416.py     rc=1   4 echec(s) sur 35 controles
+     ⇒ 6 entree(s) SANS ligne au manifeste (777f3f0d, 81367427, 10988460,
+       bba0dc20, 8a59b1fc, +1) · 335 ligne(s) pour 341 entree(s)
+     🔴 ELLE EST **NOTRE**, ET C'EST MESURE : le commit de cadrage de cette
+        marche (`efa5c2d` au cockpit) a verse 6 entrees au ledger sans
+        regenerer le §9. ⇒ elle se solde ICI.
+
+  3. tools/verif_campagne_dn440.py   rc=1   T0 rend rc=1 ⇒ « campagne
+     ININTERPRETABLE »
+     ⇒ CONSEQUENCE DIRECTE de la n°2 : cette gate fait jouer des mutants sur
+       `verif_ledger_dn416.py` et exige que l'arbre propre rende rc=0.
+
+LA NON-JOUABLE, DECLAREE :
+
+  tools/verif_sr03.py   rc=2 (attendu)   temoin absent : tools/fixtures/AN4545.pdf
+
+LES COMPTES DES GATES QUE CETTE MARCHE TOUCHE :
+
+  tools/verif_flash_dn72.py        VERTE  rc=0   30 OK, 0 KO · 36 mutants
+  tools/verif_installeur_dn71.py   VERTE  rc=0   28 OK, 0 KO · 40 mutants
+  tools/verif_campagne_dn56.py     VERTE  rc=0   8 OK, 0 KO · 12 cibles (165s)
+  tools/verif_licences_dn52.py     VERTE  rc=0   34 OK, 0 KO
+  tools/verif_affiliation_dn65.py  VERTE  rc=0   23 OK, 0 KO
+  tools/verif_boitier_dn64.py      VERTE  rc=0   29 OK, 0 KO
+
+--------------------------------------------------------------------------------
+SORTIE INTEGRALE DE `run_gates.sh`
+--------------------------------------------------------------------------------
+═══ run_gates.sh — 38 gates decouvertes par glob ═══
+
+[VERTE      ] tools/verif_affiliation_dn65.py        rc=0      2s
+[VERTE      ] tools/verif_bme680_retard_dn45.py      rc=0      0s
+[  temoin  ] tools/verif_boitier_dn64.py            /home/nasbarok/projects/compagnon_project est present ⇒ la gate est JOUEE
+[VERTE      ] tools/verif_boitier_dn64.py            rc=0      0s
+[VERTE      ] tools/verif_bom_dn61.py                rc=0      0s
+[VERTE      ] tools/verif_cablage_dn62.py            rc=0      0s
+[  temoin  ] tools/verif_campagne_dn440.py          /home/nasbarok/projects/compagnon_project est present ⇒ la gate est JOUEE
+[ROUGE      ] tools/verif_campagne_dn440.py          rc=1      1s
+┌── sortie de tools/verif_campagne_dn440.py ─────────────────────────────────────────
+│ ==============================================================================
+│ dn4-40 / AC40.7 — CAMPAGNE DE MUTANTS SUR verif_ledger_dn416.py
+│ ==============================================================================
+│ ⛔ AUCUNE ecriture dans le cockpit vivant : chaque mutant joue
+│    dans une COPIE jetable. Indexation : (site, libelle), ⛔ pas console.
+│    temoin de la cle morte de `M1`/`M3`/`M4` : `dn5-1-ce-qui-est-pousse-est-ce-qui-tourne` = `done` ⇒ MORTE
+│ 
+│ ── T0 : L'ARBRE PROPRE ───────────────────────────────────────
+│    rc=1 · 35 controle(s) traces · 2 KO · regeneration rc=0
+│    ⛔ rc=1 ⛔ non nul — campagne ININTERPRETABLE
+└──────────────────────────────────────────────────────────
+[VERTE      ] tools/verif_campagne_dn56.py           rc=0    165s
+[VERTE      ] tools/verif_courbe_dn413.py            rc=0      9s
+[VERTE      ] tools/verif_cumul_ambient_dn45.py      rc=0      1s
+[VERTE      ] tools/verif_d4_nvs_dn45.py             rc=0      0s
+[VERTE      ] tools/verif_decoupe_horloge_dn418.py   rc=0      6s
+[VERTE      ] tools/verif_demarrage_dn443.py         rc=0      0s
+[  temoin  ] tools/verif_dossier_d5_dn45.py         /home/nasbarok/projects/compagnon_project est present ⇒ la gate est JOUEE
+[VERTE      ] tools/verif_dossier_d5_dn45.py         rc=0      1s
+[  temoin  ] tools/verif_dossier_dn415.py           /home/nasbarok/projects/compagnon_project est present ⇒ la gate est JOUEE
+[ROUGE      ] tools/verif_dossier_dn415.py           rc=1      6s
+┌── sortie de tools/verif_dossier_dn415.py ─────────────────────────────────────────
+│ ==============================================================================
+│ dn4-15 / AC6 — CHAQUE OCCURRENCE PORTE UN VERDICT
+│ ==============================================================================
+│ 
+│ depot code    : /home/nasbarok/projects/desknode
+│ depot cockpit : /home/nasbarok/projects/compagnon_project
+│ motifs        : facade · vl53l0x · 340..350 · 506..516 · busid-en-dur
+│ normalisation : NFD + diacritiques retires + minuscules   (⇒ `Facade` == `FACADE` == `facade`)
+│ 
+│ ── 0. LES DEUX DEPOTS SONT LA (⛔ jamais un skip silencieux) ──────
+│   [OK ] le depot cockpit est atteignable                         /home/nasbarok/projects/compagnon_project
+│   [OK ] le depot code est atteignable                            /home/nasbarok/projects/desknode
+│ 
+│ ── 1. CE QUI EST ECARTE, ET C'EST IMPRIME ────────────────────────
+│      desknode : docs/dn4-15-arbitrage.md                                       auto-reference
+│      desknode : tools/verif_dossier_dn415.py                                   auto-reference
+│      cockpit  : _bmad-output/implementation-artifacts/dn4-15-*.md              auto-ref. / genere
+│      cockpit  : mad-output/implementation-artifacts/sprint-board-desknode.html auto-ref. / genere
+│      cockpit  : la ligne `dn4-15-le-dossier-ne-ment-plus-sur-ce-qu` du tracker
+│      dossiers : .git, .venv, __pycache__, managed_components, mesures, node_modules, venv
+│      cockpit  : tout ce qui est HORS surface DeskNode (= KidSat)
+│      ARCHIVES : 119 occurrence(s) sur 111 ligne(s) — COMPTEES et LISTEES,
+│                 ⛔ non exigees arbitrees (⛔ sauf `busid-en-dur`) :
+│                   /implementation-artifacts/code-reviews/cr-dn4-17-cockpit.patch 1
+│                   mplementation-artifacts/code-reviews/cr-dn4-2-delta-diff.patch 11
+│                   lementation-artifacts/dn1-2-living-pcb-statique-plein-ecran.md 1
+│                   mplementation-artifacts/dn1-3-label-vivant-backlight-pilote.md 1
+│                   utput/implementation-artifacts/dn2-1-bme680-bus-i2c-externe.md 14
+│                   implementation-artifacts/dn3-1-systemmetricwidget-mock-data.md 3
+│                   ation-artifacts/dn3-2-grille-dashboard-2x3-barre-heure-date.md 3
+│                   put/implementation-artifacts/dn3-3-ambient-actif-deux-etats.md 2
+│                   lementation-artifacts/dn4-1-donnees-pc-reelles-quatre-cases.md 2
+│                   /dn4-14-2-la-barre-dit-l-heure-et-la-date-a-la-bonne-taille.md 2
+│                   ion-artifacts/dn4-14-les-icones-disent-ce-qu-elles-montrent.md 3
+│                   mad-output/implementation-artifacts/dn4-16-arbitrage-ledger.md 5
+│                   tation-artifacts/dn4-16-le-ledger-dit-ce-qui-reste-et-a-qui.md 4
+│                   ifacts/dn4-17-l-agent-vit-sur-la-tour-et-on-reprend-la-main.md 2
+│                   /implementation-artifacts/dn4-2-brancher-les-trois-capteurs.md 36
+│                   4-23-les-instruments-de-la-console-disent-quand-ils-mentent.md 1
+│                   utput/implementation-artifacts/dn4-3-exploiter-les-capteurs.md 8
+│                   tion-artifacts/dn4-6-cpu-et-gpu-a-trois-et-quatre-grandeurs.md 5
+│                   t/implementation-artifacts/dn4-7-le-tof-porte-t-il-vraiment.md 5
+│                   lementation-artifacts/dn4-8-la-tour-expose-ses-sondes-ring0.md 5
+│                   ts/dn4-9-cpu-prend-la-temperature-disque-prend-les-ventilos.md 2
+│                   ifacts/dn5-7-ce-que-dn5-5-a-reporte-est-re-verifie-et-porte.md 1
+│                   acts/dn6-1-la-bom-dit-quoi-acheter-et-ses-prix-ont-une-date.md 1
+│                   vestigations/dn4-7-vl6180x-ne-converge-jamais-investigation.md 1
+│      cockpit  : `deferred*/` sous implementation-artifacts (ledger deporte)
+│      extensions balayees : .md, .yaml, .yml, .c, .h, .cpp, .hpp, .py, .sh, .ps1, .bat, .txt, .defaults, .json, .cfg, .in, .scad, .patch, .rst, .csv, .cmake, .toml, .ini, .conf, .projbuild, .rules, .service
+│      noms de texte sans extension : CMakeLists.txt, Dockerfile, LICENSE, Makefile, sdkconfig, sdkconfig*, Kconfig*, partitions*
+│      ⇒ les exclusions sont DECLAREES, ⛔ pas silencieuses — 4 fichier(s), 7 dossier(s), 119 occ. d'archive
+│ 
+│      ECHAPPEMENT (AC40.5) — citer un motif ⛔ ne fabrique plus
+│      une occurrence. Forme de MENTION (pour en parler sans le
+│      poser) : `[[ cit ]]` … `[[ /cit ]]`, avec les espaces.
+│   [OK ] tout echappement est BIEN FORME (⛔ ni orphelin ni imbriq 4 echappement(s) EXERCE(S) sur 1 ligne(s)
+│      ── CE QUE L'ECHAPPEMENT A RETIRE DU COMPTE, NOMME ──
+│         coince-se-comprend-et-on-sait-d-ou-ca-vient.md:390 [340..350]
+│         coince-se-comprend-et-on-sait-d-ou-ca-vient.md:390 [506..516]
+│         coince-se-comprend-et-on-sait-d-ou-ca-vient.md:390 [facade]
+│         coince-se-comprend-et-on-sait-d-ou-ca-vient.md:390 [vl53l0x]
+│   [OK ] aucun echappement n'echappe du vide (⇒ ⛔ pas de baisse m un span qui n'echappe rien mange du texte sans le dire
+│   [OK ] ⛔ AUCUNE tentative d'echapper le motif qui S'EXECUTE     `busid-en-dur` n'est pas echappable — decision owner du 2026-09-02
+│   [OK ] aucun saut subi (illisible / surface absente)            0 illisible(s), 0 surface(s) absente(s)
+│ 
+│ ── 2. LE MANIFESTE COUVRE L'ARBRE, LIGNE PAR LIGNE ───────────────
+│   [OK ] le manifeste est lisible et non vide                     196 entree(s)
+│   [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:ntation-artifacts/deferred-work.md [vl53l0x] #1 (l.5843) dont `sprint-change-proposal-2026-08-31.md` qui intr
+│   [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:ifacts/sprint-status-desknode.yaml [vl53l0x] #1 (l.384) dn4-7-le-tof-porte-t-il-vraiment: blocked  # 🔒 HORS 
+│   [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:ing-artifacts/epics-desknode-v1.md [vl53l0x] #1 (l.4248) `done` depuis mi-août) : **on séquence par dépendanc
+│   [KO ] occurrence NOUVELLE (⛔ plus « deplacee » : la ligne ne c cockpit:rint-change-proposal-2026-08-31.md [vl53l0x] #1 (l.23) | « VL53L0X » | `TOF050C-VL6180X` — réfuté à l'inven
+│   [KO ] toute occurrence de l'arbre est AU MANIFESTE             ⛔ 4 occurrence(s) de l'arbre SANS ligne de manifeste (sur 199 arbitree(s)) — chacune est listee ci-dessus
+│   [KO ] ligne de manifeste SANS occurrence dans l'arbre          cockpit:on-artifacts/sprint-status-desknode.yaml [vl53l0x] #1 « dn4-7-le-tof-porte-t-il-vraiment: blocked #  »
+│   [KO ] le manifeste ne cite aucune occurrence FANTOME           ⛔ 1 ligne(s) de manifeste SANS occurrence dans l'arbre (sur 196) — soit le constat a disparu, soit une occurrence DEJA ARBITREE vient d'etre echappee : dans ce cas RETIRER sa ligne de manifeste dans le MEME geste (AC40.5.f ii)
+│   [OK ] le `n` de chaque ligne colle a l'arbre                   196 ligne(s)
+│   [KO ] le TEXTE a change sous un verdict inchange               cockpit:/sprint-status-desknode.yaml [busid-en-dur] #1 (l.390)
+│          divergence au caractere 73 (sur 119 / 119)
+│          manifeste …-ne-le-dit: in-progress # 📌 renvoi dn4-22 (2026-08-2…
+│          arbre     …-ne-le-dit: in-progress # 🟢 v0.1 [cc 2026-08-31] · 📌…
+│                                               ^
+│   [OK ] aucune ligne arbitree n'a ete RACCOURCIE sous son verdic 195 ligne(s) confrontee(s) en longueur — ⛔ amputer n'est plus invisible
+│   [KO ] la citation du manifeste colle au TEXTE de l'arbre       ⛔ 1 ligne(s) DERIVEE(S) : t-status-desknode.yaml:390
+│ 
+│ ── 3. LA SOMME DES VERDICTS = LE COMPTE (AC2.4) ──────────────────
+│      FAUX             0
+│      VRAI           121
+│      HISTORIQUE      82
+│      SANS-RAPPORT     2
+│   [KO ] somme des verdicts == occurrences de l'arbre             ⛔ 205 (manifeste) vs 208 (arbre), ecart -3 — CE QUI LE COMPOSE : 4 NOUVELLE(S) dans l'arbre : cockpit:tifacts/deferred-work.md [vl53l0x] #1 'dont `sprint-change-proposal-2026-08-31.' · cockpit:int-status-desknode.yaml [vl53l0x] #1 'dn4-7-le-tof-porte-t-il-vraiment: blocke' · cockpit:cts/epics-desknode-v1.md [vl53l0x] #1 '`done` depuis mi-août) : **on séquence p' · cockpit:e-proposal-2026-08-31.md [vl53l0x] #1 '| « VL53L0X » | `TOF050C-VL6180X` — réfu' || 1 FANTOME(S) au manifeste : cockpit:int-status-desknode.yaml [vl53l0x] #1 'dn4-7-le-tof-porte-t-il-vraiment: blocke'
+│   [OK ] ⛔ AUCUNE occurrence ne reste `FAUX` (decision owner)     FAUX = 0
+│   [OK ] les recapitulatifs du manifeste collent a son detail     10 chiffre(s) annonce(s) confronte(s)
+│ 
+│ ── 4. LA CONSOLE N'ENSEIGNE PLUS UN CHIFFRE MORT (AC5) ───────────
+│   [OK ] dn_console.c ne contient plus la coordonnee morte 340..3 0 occurrence(s)
+│   [OK ] dn_ui.c ne contient plus la coordonnee morte 340..350    0 occurrence(s)
+│   [OK ] dn_console.c : ⛔ 337..347 n'est SUBSTITUE dans aucune so aucune substitution
+│   [OK ] dn_ui.c : ⛔ 337..347 n'est SUBSTITUE dans aucune sortie  aucune substitution
+│   [OK ] dn_ui.h : ⛔ 337..347 n'est SUBSTITUE dans aucune sortie  aucune substitution
+│   [OK ] dn_console.c : chaque site d'avertissement renvoie a `wi 3 site(s), 0 sans renvoi (2 sites attendus au minimum)
+│   [OK ] dn_ui.c : chaque site d'avertissement renvoie a `widget  2 site(s), 0 sans renvoi (2 sites attendus au minimum)
+│   [OK ] les 2 marqueurs de la refutation sont UNIQUES dans dn_pi en-tete de bloc l.[163] · jeton de registre l.[170]
+│   [OK ] le bloc de refutation SE FERME dans dn_pins.h            l.163 → l.197
+│   [OK ] les 2 marqueurs resolvent LE MEME bloc                   jeton de registre l.170 dans le bloc l.163-197
+│   [OK ] les renvois `dn_pins.h:<ligne>` tombent DANS le bloc res 1 adresse(s) citee(s) : [165] — bloc resolu PAR MARQUEUR l.163-197 (⛔ pas par numero ecrit)
+│ 
+│ ── LA REGLE DE `rc`, ET ELLE EST DERIVEE DU CODE QUI DECIDE ──────
+│   ⛔ rc=1 : un KO a ete trouve dans la moitie jouee — un vrai defaut l'emporte TOUJOURS sur un prerequis absent.
+│   [OK ] toute regle de rc imprimee sort de regle_rc              1 phrase(s) emise(s), toutes produites par la regle
+│ 
+│ ==============================================================================
+│ BILAN : 23 OK, 10 KO
+│ ==============================================================================
+└──────────────────────────────────────────────────────────
+[VERTE      ] tools/verif_flash_dn72.py              rc=0      1s
+[  temoin  ] tools/verif_harnais_dn413.py           firmware/desknode/managed_components/lvgl__lvgl est present ⇒ la gate est JOUEE
+[VERTE      ] tools/verif_harnais_dn413.py           rc=0      6s
+[  temoin  ] tools/verif_hist_dn413.py              firmware/desknode/managed_components/lvgl__lvgl/src/widgets/chart/lv_chart.h est present ⇒ la gate est JOUEE
+[VERTE      ] tools/verif_hist_dn413.py              rc=0      3s
+[VERTE      ] tools/verif_installeur_dn71.py         rc=0      0s
+[VERTE      ] tools/verif_instruments_dn423.py       rc=0      1s
+[VERTE      ] tools/verif_journal_soak_dn45.py       rc=0      0s
+[VERTE      ] tools/verif_langues_dn442.py           rc=0      1s
+[  temoin  ] tools/verif_ledger_dn416.py            /home/nasbarok/projects/compagnon_project est present ⇒ la gate est JOUEE
+[ROUGE      ] tools/verif_ledger_dn416.py            rc=1      0s
+┌── sortie de tools/verif_ledger_dn416.py ─────────────────────────────────────────
+│ ==============================================================================
+│ dn4-16 / AC6 — CHAQUE ENTREE OUVERTE PORTE UN VERDICT ET UN PORTEUR
+│ ==============================================================================
+│ 
+│ depot code    : /home/nasbarok/projects/desknode
+│ depot cockpit : /home/nasbarok/projects/compagnon_project
+│ 
+│ ── 0. LES DEUX DEPOTS SONT LA (AC6.7) ────────────────────────────
+│   [OK ] le depot code est le depot DESKNODE                            firmware/ + tools/ presents
+│   [OK ] le depot cockpit est atteignable                               /home/nasbarok/projects/compagnon_project
+│   [OK ] le ledger est present                                          _bmad-output/implementation-artifacts/deferred-work.md
+│   [OK ] le tracker est present                                         _bmad-output/implementation-artifacts/sprint-status-desknode
+│   [OK ] le ledger se LIT en UTF-8                                      867271 caractere(s)
+│   [OK ] le tracker se LIT en UTF-8                                     90 cle(s) au tracker
+│ 
+│ ── LA CONVENTION QUE CE SCRIPT IMPLEMENTE (AC1.3) ────────────────
+│    (1) entree   = puce `^- ` de PREMIER niveau, en section `## Deferred from:`
+│        (les puces indentees sont des CONTINUATIONS — c'est cette regle-la qui a separe 240 de 258 au cadrage)
+│    (2) DeskNode = tag `[DeskNode]` EN TETE DE PUCE OU `dnN-M`/`desknode` au titre de section
+│        (⛔ plus en sous-chaine du texte absorbe : une entree KidSat qui CITE le tag basculait la frontiere)
+│    (3) ouverte  = la puce ne commence PAS par `✅`
+│        ⚠️ une entree arbitree `CLOSE` reste OUVERTE au sens du compte
+│    (4) marqueur = premier glyphe EN TETE de puce (⛔ pas ailleurs dans la ligne)
+│    ⚠️ (1) ne distingue PAS une puce de constat d'une puce de PROSE
+│        sous une rubrique `###` — sous-compte ci-dessous, ⛔ non
+│        redefini : rebouger le perimetre invaliderait le manifeste.
+│ 
+│ ── 1. LE COMPTE — ⛔ AUCUN CHIFFRE N'EST RECOPIE (AC1.2) ──────────
+│      ledger              : _bmad-output/implementation-artifacts/deferred-work.md (6991 lignes)
+│      sections            :  120   dont DeskNode : 70 (58 %)
+│      entrees             :  544   dont DeskNode : 370 (68 %)
+│      DeskNode OUVERTES   :  341   <= LE PERIMETRE DE CETTE GATE
+│      KidSat (hors champ) :  174
+│      marqueurs (regle 4) : 🟠 85  ⚪ 68  🔴 64  🟢 32  ⚠️ 29  🟡 28  (sans) 21  🎯 7  ⏳ 2  🆕 2  ⚫ 1  ⏸️ 1  🔵 1
+│   [OK ] chaque ancre du §9 designe UNE seule entree                    341 ancre(s) distincte(s) pour 341 entree(s) — derivees du C
+│   [OK ] le perimetre n'est pas vide                                    341 entree(s) ouverte(s)
+│   [OK ] aucun marqueur de tete n'est HORS LISTE                        16 marqueur(s) connu(s)
+│      ⚠️ dont sous rubrique `###` : 8 (prose narrative possible)
+│      ⚠️ dont marquees SOLDE/~~ .. ~~ : 14 (closes par le depot, gardees au compte)
+│ 
+│ ── 2. CHAQUE ENTREE OUVERTE PORTE UNE DISPOSITION (AC6.4) ────────
+│   [OK ] toute entree ouverte a une ligne de disposition                341 entree(s) arbitree(s)
+│   [OK ] tout verdict est l'un des CINQ                                 PORTEE · RE-HEBERGEE · CLOSE · BLOQUEE · CONNAISSANCE
+│      verdicts (AC2.2)    : RE-HÉBERGÉE 146  CLOSE 76  PORTÉE 50  CONNAISSANCE 43  BLOQUÉE 14  PORTEE 10  BLOQUEE 2
+│      porteurs A VENIR    : 27 story(s) distincte(s) · 207 designation(s) · 207 entree(s)
+│        epic-dn4:33  dn4-32:22  dn4-27:14  dn4-28:14  epic-dn6:13  dn4-29:11  dn4-26:9  dn4-30:8  dn4-37:8  dn4-12:7  dn4-21:7  dn4-25:7  dn4-38:7  dn4-34:6  dn4-35:6  epic-dn7:6  dn4-31:5  dn4-7:5  dn7-2-2:5  dn4-33:3  dn4-36:2  dn4-5:2  dn4-27-l-agent-de-la-tour-se-mesure-a-charge-controlee:2  epic-dn8:2  dn4-20:1  dn4-45:1  dn7-3:1
+│   [OK ] tout porteur DESIGNE quelqu'un (⛔ ni vide ni bouchon)          aucun bouchon ; `—` admis sur CONNAISSANCE seulement
+│   [OK ] toute date de disposition est une date reelle                  aucune date invalide
+│   [KO ] une entree porte UNE seule ligne de disposition                ⛔ 3 ENTREE(S) MULTI-DISPOSITION : l.6818 (2), l.6848 (2), l.6904 (2)
+│ 
+│ ── 2bis. LE PORTEUR RELEVE D'UNE DES CINQ FORMES (AC40.1) ────────
+│      prescription : docs/bmad/deferred-work-ligne-porteur.md
+│      formes (AC40.1.a)   : 1 cle nue 91  2 backlog nomme 116  3 bloquee par 15  4 clos par 76  5 tiret (CONNAISSANCE) 43
+│   [OK ] tout porteur releve de l'UNE des CINQ formes                   341 disposition(s) triee(s), 0 hors forme
+│   [OK ] toute forme 2 `backlog nomme :` nomme UNE cle                  116 forme(s) 2, toutes avec cle
+│   [OK ] tout `bloquee par :` NOMME un fait (⛔ ni vide ni bouchon)      15 fait(s) bloquant(s) nomme(s)
+│   [OK ] aucun fait bloquant ne se REDUIT a une cle de story            15 fait(s) examine(s) — une cle nue serait un porteur deguis
+│   [OK ] la forme 4 `clos par :` ne porte que le verdict CLOSE          76 forme(s) 4
+│   [OK ] toute forme 4 `clos par :` NOMME ce qui a clos                 76 forme(s) 4, toutes nommees
+│   [OK ] toute cle de porteur EXISTE au tracker (⛔ tous verdicts)       207 cle(s) nommee(s) en forme 1 ou 2, toutes au tracker
+│   [OK ] la forme 5 `—` est reservee a CONNAISSANCE                     43 forme(s) 5
+│   [OK ] aucune disposition A VENIR ne traverse la gate sans controle   222 disposition(s) A VENIR, toutes soumises
+│      ⚠️ 12 des 15 faits bloquants ne nomment AUCUN deblocage
+│         (constat PUBLIE, ⛔ pas un KO — reporte au tracker)
+│ 
+│ ── 3. LE PORTEUR EST VIVANT (AC6.5) ──────────────────────────────
+│      ⚠️ un `clos par :` designe le PASSE ⇒ non soumis (voir en-tete)
+│   [OK ] aucun porteur A VENIR n'est `done`/`superseded`                tracker : 90 cle(s), 207 porteur(s) soumis
+│   [OK ] tout porteur A VENIR existe au tracker                         sprint-status-desknode.yaml
+│   [OK ] tout statut de porteur est un statut CONNU                     statuts admis : backlog · in-progress · ready-for-dev · revi
+│   [KO ] aucune collision de cle ne peut CHANGER un verdict             ⛔ 1 COLLISION(S) VIVANT/MORT : dn7-2=done/backlog
+│ 
+│ ── 3-bis. LES PORTEURS DE LA LISTE AC5.6 DU TRACKER (dn5-7) ──────
+│      ⚠️ SECONDE POPULATION DE CETTE GATE, ET LA DECLARATION DE
+│         PORTEE EN TETE DE FICHIER EST DATEE EN CONSEQUENCE.
+│      ⇒ population = la DESIGNATION `⇒ **`cle`**`, ⛔ pas la mention
+│         (le bloc cite `dn4-39` EN NEGATION : il ⛔ ne compte pas).
+│      ⚠️ PORTEE DECLAREE : cette gate est `NON_JOUABLE` (rc=4) sans
+│         cockpit, et ses mutants aussi ⇒ ⛔ NI cette garde NI ses
+│         mutants ne tournent en CI. Elle garde le poste, ⛔ pas la CI.
+│      ⚠️ une occurrence DANS un code span est une CITATION, ⛔ pas
+│         une designation — la garde est la PARITE des accents graves.
+│      ⚠️ designation(s) SAUTEE(S) par cette garde : 1
+│         (⛔ un skip SILENCIEUX ferait disparaitre une vraie
+│          designation de la population sans laisser de trace)
+│      [close] item 15         ⇒ dn5-6-les-sept-constats-reportes-sont-re-verifies-av CLOSE LE 2026-09-05
+│      19 item(s), 18 designation(s) : 17 soumise(s) a la vivacite, 1 close(s) et datee(s)
+│   [OK ] tout porteur de la liste AC5.6 du tracker est VIVANT           17 porteur(s) VIVANT(S) au tracker, 1 close(s) et datee(s)
+│ 
+│ ── 4. LA PREUVE EST UN MOTIF, ⛔ PAS UN NUMERO DE LIGNE (AC6.6) ───
+│      motif mesure : 0 adresse sur 192 tombe hors fichier ⇒ un
+│      controle de bornes rendrait `192 OK / 0 KO` sur du derive
+│   [OK ] tout champ preuve est non vide                                 aucun champ preuve vide
+│   [OK ] aucune preuve ne se REDUIT a un `fichier:ligne`                aucune adresse nue (gras, backticks et « voir » compris)
+│ 
+│ ── 5. LE MANIFESTE EXISTE ET NE RECOPIE AUCUN CHIFFRE ────────────
+│   [OK ] le manifeste d'arbitrage est livre                             _bmad-output/implementation-artifacts/dn4-16-arbitrage-ledge
+│   [OK ] le manifeste cite le script qui produit son compte             ⇒ un seul compte, ⛔ pas deux qui divergent
+│   [OK ] le §9 porte ses deux bornes (le controle se borne a elles)     bornes vues aux offsets 29531 et 143563
+│   [KO ] le manifeste couvre 100 % des entrees ouvertes (AC2.7)         ⛔ 6 entree(s) SANS ligne (777f3f0d, 81367427, 10988460, bba0dc20, 8a59b1fc) · 0 ligne(s) SANS entree (—) · 0 ancre(s) EN DOUBLE (—) · 335 ligne(s) pour 341 entree(s)
+│   [KO ] chaque ligne du manifeste REPRODUIT ce que le script produit   ⛔ 0 ligne(s) DIVERGENTE(S) — la 1re : (appariement incomplet : 6 absente(s), 0 surnumeraire(s), 0 ancre(s) en double)
+│      ⇒ UNE commande remet le §9 d'accord :
+│        python3 /home/nasbarok/projects/desknode/tools/verif_ledger_dn416.py --cockpit CHEMIN_DU_COCKPIT --manifeste --en-place
+│        ⛔ La gate ne la joue PAS : elle MESURE. Une gate qui
+│           repare ce qu'elle mesure ne mesure plus rien.
+│ 
+│ ==============================================================================
+│ ⚠️ CE QUE CETTE GATE NE SOLDE PAS :
+│    · elle EXIGE un verdict, elle ne peut pas juger s'il est JUSTE ;
+│    · elle ne valide AUCUNE adresse `fichier:ligne` — par decision ;
+│    · elle ignore les 174 entrees KidSat, hors perimetre ;
+│    · elle ne couvre ni `bmad-dev-auto` ni `bmad-quick-dev`, qui
+│      ecrivent aussi au ledger par d'autres chemins ;
+│    · 🔴 ~~elle ne lit QUE `deferred-work.md`~~ — ⚠️ FAUX DEPUIS LE
+│      2026-09-05 (`dn5-7`) : elle lit AUSSI la liste AC5.6 du
+│      tracker, comme POPULATION et ⛔ plus seulement pour resoudre
+│      un statut. La phrase est DATEE, ⛔ pas effacee ;
+│    · 🔴 les 14 fichiers `deferred/*.md` lui sont INVISIBLES : le
+│      jour du drain, elle epinglerait VERT un ledger vide de sa
+│      substance ;
+│    · ⚠️ 8 entree(s) ouverte(s) sont sous une rubrique `###` et
+│      peuvent etre de la prose narrative, ⛔ pas des constats ;
+│    · ⚠️ 14 entree(s) portent une marque de solde du depot
+│      (`~~..~~ — SOLDE`, `[SOLDE]`) et restent AU COMPTE, par
+│      coherence avec la regle (3) — ⛔ ce n'est pas un oubli.
+│ ==============================================================================
+│ ⛔ 4 ECHEC(S) sur 35 controles.
+│ ==============================================================================
+└──────────────────────────────────────────────────────────
+[VERTE      ] tools/verif_licences_dn52.py           rc=0      1s
+[VERTE      ] tools/verif_lissage_dn45.py            rc=0      0s
+[VERTE      ] tools/verif_miroir_horloge_dn418.py    rc=0      0s
+[VERTE      ] tools/verif_paliers_dn441.py           rc=0      0s
+[VERTE      ] tools/verif_photos_dn63.py             rc=0      1s
+[VERTE      ] tools/verif_polices_dn440.py           rc=0      0s
+[VERTE      ] tools/verif_rebouclage_dn45.py         rc=0      2s
+[VERTE      ] tools/verif_reprise_horloge_dn418.py   rc=0      0s
+[VERTE      ] tools/verif_selection_dn49.py          rc=0      0s
+[VERTE      ] tools/verif_serie_dn412.py             rc=0      2s
+[VERTE      ] tools/verif_source_lhm_dn48.py         rc=0      4s
+[NON-JOUABLE] tools/verif_sr03.py                    rc=2   (attendu) temoin absent : tools/fixtures/AN4545.pdf
+              motif : le PDF [AN] AN4545 (VL6180X, DocID026571 Rev 1) n'est PAS au depot : document StMicroelectronics, ⛔ non redistribuable. La gate l'attend en argument et sort en 2 sur son message d'usage — rc=2 n'est PAS un rouge.
+[VERTE      ] tools/verif_temoin_filtre_dn447.py     rc=0      2s
+[  temoin  ] tools/verif_veille_dn33.py             firmware/desknode/managed_components/lvgl__lvgl/scripts/built_in_font/built_in_font_gen.py est present ⇒ la gate est JOUEE
+[VERTE      ] tools/verif_veille_dn33.py             rc=0      6s
+[VERTE      ] tools/verif_verrou_lvgl_dn413.py       rc=0     14s
+[VERTE      ] tools/verif_xip_dn422.py               rc=0      0s
+
+BILAN : 34 VERTE, 3 ROUGE, 1 NON-JOUABLE sur 38 gates (235s)
+appariement --cockpit : 0 divergence(s) entre la detection LARGE (quotes simples/doubles, declaration coupee) et la detection ETROITE d'origine
+⛔ ROUGES :
+   · tools/verif_campagne_dn440.py (rc=1)
+   · tools/verif_dossier_dn415.py (rc=1)
+   · tools/verif_ledger_dn416.py (rc=1)
+rc=1

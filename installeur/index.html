@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en" data-langue="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>DeskNode — installeur local</title>
+<title>DeskNode — local installer / installeur local</title>
 <!--
   ============================================================================
    installeur/index.html — LA PAGE, SERVIE EN LOCAL           (dn7-1)
@@ -23,7 +23,7 @@
       disque EST donc un contexte securise dans Chromium.
       ⇒ CE QUI CASSE VRAIMENT avec le schema `file:`, c'est tout ce qui a besoin du
         SERVEUR LOCAL : la page perd `api/etat`, elle le dit, et elle desactive
-        ses deux boutons. Servir en local reste le bon choix — pour une raison
+        ses boutons. Servir en local reste le bon choix — pour une raison
         VRAIE, et non pour celle qu'on croyait.
       ⚠️ Le bloc `etat-not-allowed` reste donc utile : il vise l'ADRESSE qui ne
         convient pas, ⛔ pas un contexte que le navigateur refuserait.
@@ -45,6 +45,16 @@
       ce qui peut coincer. Ce qui reste VRAI de la phrase d'origine : ⛔ elle ne
       choisit toujours **aucune langue**, et ⛔ une marche ne cite jamais une
       marche suivante.
+
+   ⚠️ ANNOTE LE 2026-09-09 PAR `dn7-2-2` — ⛔ LES DEUX ANNOTATIONS CI-DESSUS NE
+      SONT PAS EFFACEES, MAIS LA DERNIERE MOITIE DE LA SECONDE A CESSE D'ETRE
+      VRAIE A SON TOUR : **cette page choisit desormais SA PROPRE langue.**
+      ⚠️ ⛔ IL Y A DEUX LANGUES EN JEU, ET CE SONT DEUX SUJETS DIFFERENTS :
+        celle de CETTE PAGE (ici, defaut anglais, ce que le lecteur lit) et
+        celle de LA DALLE (posee dans la carte, sujet d'une autre marche). Une
+        redaction qui les melange en casse une. Ce qui reste vrai de la phrase
+        d'origine : cette page ⛔ ne choisit toujours AUCUNE langue POUR LA
+        DALLE, et ⛔ une marche ne cite jamais une marche suivante.
   ============================================================================
 -->
 <style>
@@ -99,6 +109,59 @@
   .discret { color: var(--dn-eteint); font-size: 14px; }
   ul { padding-left: 20px; } li { margin: 5px 0; }
   a { color: var(--dn-accent); }
+
+  /* ─────────────────────────────────────────────────────────────────────
+     LA SUITE DES GESTES — CE QUI SE VOIT SANS RIEN DEROULER      (dn7-2-2)
+     ─────────────────────────────────────────────────────────────────────
+     ⚠️ Le GESTE n'est JAMAIS replie. Ce qui se replie, c'est ce qui
+        l'EXPLIQUE. Le constat qui a cree cette regle est a l'oeil :
+        « elle est hyper verbeuse et on est un peu perdu on ne sais pas quoi
+        exactement faire ». */
+  ol.gestes { padding-left: 0; margin: 0; list-style: none; counter-reset: geste; }
+  ol.gestes > li {
+    counter-increment: geste; margin: 0 0 22px; padding-left: 44px; position: relative;
+  }
+  ol.gestes > li::before {
+    content: counter(geste); position: absolute; left: 0; top: 0;
+    width: 30px; height: 30px; line-height: 28px; text-align: center;
+    border: 1px solid var(--dn-accent); border-radius: 50%;
+    color: var(--dn-accent); font-size: 15px;
+  }
+  ol.gestes .quoi { font-size: 17px; color: var(--dn-texte); margin: 2px 0 8px; }
+  details {
+    border: 1px solid var(--dn-trait); border-radius: 8px;
+    padding: 10px 14px; margin: 12px 0 0; background: var(--dn-fond);
+  }
+  details > summary {
+    cursor: pointer; color: var(--dn-accent); font-size: 14px; list-style-position: outside;
+  }
+  details[open] > summary { margin-bottom: 10px; }
+  details .discret { margin-top: 0; }
+
+  /* ─────────────────────────────────────────────────────────────────────
+     LES DEUX LANGUES, ET UN DEFAUT ANGLAIS **STRUCTUREL**        (dn7-2-2)
+     ─────────────────────────────────────────────────────────────────────
+     🔴 CE BLOC EST LE MECANISME LUI-MEME, ⛔ PAS UNE COMMODITE. La page est
+        anglaise **avant que le moindre script tourne** : `<html lang="en">`
+        porte le defaut, et la regle ci-dessous cache le francais. Une table
+        de chaines en JavaScript ne rendrait RIEN tant que le script n'a pas
+        tourne — le defaut ne serait plus structurel, il serait promis.
+     ⚠️ C'est le meme genre de preuve que celle du defaut de la dalle, qui se
+        lit dans l'ABSENCE d'ecriture plutot que dans une valeur ecrite.
+     ⚠️ ⛔ AUCUNE MEMOIRE N'EST PROMISE, et c'est MESURE : le serveur tire un
+        port different a chaque lancement (49896 puis 65478, mesure du
+        2026-09-09) ⇒ NOUVELLE ORIGINE a chaque fois ⇒ aucun stockage de
+        navigateur ne survit. La page revient donc en anglais a chaque
+        lancement, et elle ⛔ ne pretend pas le contraire.
+     ⛔ AUCUNE COULEUR N'EST AJOUTEE ICI : ces regles ne portent que
+        `display`. */
+  :root:not([data-langue="fr"]) [lang="fr"] { display: none; }
+  :root[data-langue="fr"] [lang="en"] { display: none; }
+  /* Le selecteur, lui, montre TOUJOURS ses deux entrees — sinon on ne pourrait
+     pas revenir. Il est plus specifique que les deux regles ci-dessus. */
+  #sec-langue [lang="en"], #sec-langue [lang="fr"] { display: inline-block; }
+  #sec-langue { margin: 0 0 22px; }
+  #sec-langue button[aria-pressed="true"] { border-color: var(--dn-texte); color: var(--dn-texte); }
 </style>
 <!--
   ═══════════════════════════════════════════════════════════════════════════
@@ -120,266 +183,680 @@
       hors-ligne est un confort, ⛔ plus une exigence — et le vendoring qui en
       etait DEDUIT tombe avec elle. ⇒ le CDN est acceptable ; ce qui reste du,
       c'est de DIRE quand il n'arrive pas, et l'etat `#etat-cdn` le fait.
+
+   🔴 ANNOTE LE 2026-09-09 PAR `dn7-2-2` — CE MODULE N'EST **PAS** CE QUI
+      OUVRE LA CONSOLE DE LA CARTE, ET C'EST UNE MESURE.
+      Le morceau que cette page epingle — `install-button.js`, **2 829 o** —
+      contient `getWriter` **x0**, `onData` **x0**, `writable` **x0** : la
+      console N'Y EST PAS. Elle vit dans un SECOND morceau, au nom porteur
+      d'un **hachage de build**, importe seulement depuis le gestionnaire de
+      clic du bouton d'installation. Le reutiliser obligerait cette page a
+      ecrire en dur un artefact interne : epingle il marche aujourd'hui, et il
+      rendrait **404 en silence** a la premiere montee de version — ⛔ sans
+      qu'aucune gate de ce depot ne le voie, puisque rien n'execute le
+      JavaScript de cette page.
+      ⇒ LA CONSOLE DE CETTE PAGE OUVRE **SON** PORT, avec l'API que la section
+        des faits du navigateur mesure DEJA, et a un debit qui n'est pas
+        suppose : **115 200**, donne par trois sources concordantes
+        (`firmware/desknode/sdkconfig.defaults`, `agent/dn_agent.py`, et
+        l'ouverture d'ESP Web Tools elle-meme, celle qui a produit le battement
+        lu en seance le 2026-09-09).
 -->
 <script type="module" id="dn-module-flash"
         src="https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module"></script>
 </head>
 <body>
 <main>
-  <h1>DeskNode — installeur</h1>
-  <p class="sous-titre">Cette page est servie <b>sur cette machine</b>, par le script que vous venez de lancer. Elle n'est pas en ligne, et elle ne le sera pas.</p>
+  <h1><span lang="en">DeskNode — installer</span><span lang="fr">DeskNode — installeur</span></h1>
+  <p class="sous-titre">
+    <span lang="en">This page is served <b>by your own machine</b>, by the script you have just started. It is not online, and it will not be.</span>
+    <span lang="fr">Cette page est servie <b>sur cette machine</b>, par le script que vous venez de lancer. Elle n'est pas en ligne, et elle ne le sera pas.</span>
+  </p>
 
-  <!-- ── (a) CE QUE LE NAVIGATEUR SAIT FAIRE, DIT PAR LUI ─────────────── -->
-  <section id="sec-navigateur">
-    <h2>Ce navigateur, et cette adresse</h2>
-    <div class="ligne"><span class="cle">adresse servie</span><span class="val" id="v-url">…</span></div>
-    <div class="ligne"><span class="cle">contexte sécurisé</span><span class="val" id="v-contexte">…</span></div>
-    <div class="ligne"><span class="cle">accès au port série</span><span class="val" id="v-serial">…</span></div>
-    <div id="etat-unsupported" hidden class="avert" style="margin-top:14px">
-      <b>Ce navigateur n'expose pas l'accès au port série.</b><br>
-      Il ne pourra donc pas parler à la carte. Rouvrez cette même adresse dans
-      <b>Microsoft Edge</b> ou <b>Google Chrome</b> — ce sont les deux navigateurs où
-      l'accès série a été mesuré. Firefox et Safari ne l'ont pas.
-    </div>
-    <div id="etat-not-allowed" hidden class="avert" style="margin-top:14px">
-      <b>Cette page n'est pas dans un contexte sécurisé.</b><br>
-      Elle a été ouverte depuis un fichier posé sur le disque, ou par une adresse réseau —
-      et dans ces deux cas le navigateur refuse l'accès au port série, sans le dire.
-      Fermez cet onglet et rouvrez l'adresse que le script a imprimée dans sa fenêtre&nbsp;:
-      elle commence par <code>http://127.0.0.1:</code> ou <code>http://localhost:</code>,
-      suivie du port <b>tiré au lancement</b> — il change à chaque fois, et c'est voulu.
-    </div>
-  </section>
+  <!-- ── LE SELECTEUR DE LANGUE — VISIBLE EN TETE, ⛔ PAS DANS UN MENU ─── -->
+  <p id="sec-langue">
+    <button id="b-langue-en" type="button" lang="en" aria-pressed="true">English</button>
+    <button id="b-langue-fr" type="button" lang="fr" aria-pressed="false">Français</button>
+  </p>
 
-  <!-- ── (a2) POSER LE FIRMWARE — LE GESTE PRINCIPAL ──────────────────── -->
-  <!--
-    ⚠️ CETTE SECTION EST INSEREE JUSTE APRES (a) ET C'EST VOULU : elle HERITE
-       de ses preconditions. Web Serial n'existe qu'en contexte securise, et
-       (a) vient de le MESURER avec les objets du navigateur. Une section de
-       flash placee avant aurait promis un geste que la machine ne peut pas
-       faire.
-  -->
-  <section id="sec-flash">
-    <h2>Poser le firmware sur la carte</h2>
+  <!-- ═══ (1) CE QU'IL FAUT FAIRE MAINTENANT ═══════════════════════════
+       🔴 CETTE SECTION EST LA PREMIERE, ET C'EST LE CORRECTIF LUI-MEME.
+          L'ordre du document est desormais l'ordre des GESTES : arreter
+          l'agent ⇒ poser le firmware ⇒ relire la carte. Chaque etape porte
+          SON bouton ; ce qui l'explique est REPLIE juste en dessous.
+       ⚠️ `etat-hors-windows` est place ICI, AVANT le bouton d'installation, et
+          ⛔ ce n'est pas un detail de mise en page : un flash qui REUSSIT vers
+          une dalle qui n'aura jamais rien a afficher est le silence que cet
+          avertissement existe pour rompre. L'ordre est GARDE mecaniquement. -->
+  <section id="sec-suite">
+    <h2>
+      <span lang="en">What to do now</span>
+      <span lang="fr">Ce qu'il faut faire maintenant</span>
+    </h2>
 
-    <div class="ligne"><span class="cle">version à poser</span><span class="val" id="v-version">…</span></div>
-    <div class="ligne"><span class="cle">révision du dépôt</span><span class="val" id="v-revision">…</span></div>
-    <div class="ligne"><span class="cle">morceaux à écrire</span><span class="val" id="v-morceaux">…</span></div>
-    <div class="ligne"><span class="cle">port de la carte</span><span class="val" id="v-port">…</span></div>
-
-    <!-- (e) HORS WINDOWS — DIT **AVANT** LE FLASH, ⛔ PAS APRES ---------- -->
-    <div id="etat-hors-windows" hidden class="avert" style="margin-top:14px">
-      <b>Ce système n'est pas Windows, et l'agent DeskNode l'est.</b><br>
-      Le flash ci-dessous <b>marchera</b> — l'accès série du navigateur existe aussi sur
-      macOS, Linux et ChromeOS — mais <b>l'agent qui alimente la dalle en grandeurs
-      n'existe que sous Windows</b>. Vous poseriez donc un firmware correct sur une carte
-      qui n'aurait <b>rien à afficher</b>&nbsp;: la dalle démarrerait, et resterait sans
-      données. C'est un <b>écart déclaré</b> du projet, ⛔ pas un défaut de cette page —
-      et il vous est dit <b>maintenant</b> plutôt qu'après.
+    <div id="etat-hors-windows" hidden class="avert" style="margin-bottom:16px">
+      <span lang="en"><b>This system is not Windows, and the DeskNode agent is.</b><br>
+        The flash below <b>will work</b> — the browser's serial access exists on macOS, Linux
+        and ChromeOS too — but <b>the agent that feeds the panel its readings only exists on
+        Windows</b>. You would put a correct firmware on a board with <b>nothing to
+        display</b>: the panel would start, and stay empty. That is a <b>declared gap</b> of
+        this project, ⛔ not a defect of this page — and you are told <b>now</b> rather than
+        afterwards.</span>
+      <span lang="fr"><b>Ce système n'est pas Windows, et l'agent DeskNode l'est.</b><br>
+        Le flash ci-dessous <b>marchera</b> — l'accès série du navigateur existe aussi sur
+        macOS, Linux et ChromeOS — mais <b>l'agent qui alimente la dalle en grandeurs
+        n'existe que sous Windows</b>. Vous poseriez donc un firmware correct sur une carte
+        qui n'aurait <b>rien à afficher</b>&nbsp;: la dalle démarrerait, et resterait sans
+        données. C'est un <b>écart déclaré</b> du projet, ⛔ pas un défaut de cette page —
+        et il vous est dit <b>maintenant</b> plutôt qu'après.</span>
     </div>
 
-    <!-- (f) LE MODULE DE FLASH N'ARRIVE PAS ----------------------------- -->
-    <div id="etat-cdn" hidden class="alerte" style="margin-top:14px">
-      <b>Le module de flash n'a pas pu être chargé.</b><br>
-      Le bouton d'installation est chargé depuis <code>unpkg.com</code> — c'est le seul
-      morceau de cette page qui vient d'Internet, et il est <b>épinglé à une version
-      exacte</b>. Si vous êtes hors ligne, ou si un pare-feu bloque ce domaine, il
-      n'arrive pas. <b>Le geste</b>&nbsp;: rétablir l'accès à <code>unpkg.com</code>, puis
-      <b>recharger cette page</b>. ⛔ Il n'y a pas de bouton inerte à cliquer&nbsp;: cet
-      encadré <b>remplace</b> le bouton, plutôt que de vous laisser deviner.
+    <div id="etat-cdn" hidden class="alerte" style="margin-bottom:16px">
+      <span lang="en"><b>The flashing module could not be loaded.</b><br>
+        The install button is loaded from <code>unpkg.com</code> — it is the only piece of
+        this page that comes from the Internet, and it is <b>pinned to an exact version</b>.
+        If you are offline, or a firewall blocks that domain, it does not arrive.
+        <b>The gesture</b>&nbsp;: restore access to <code>unpkg.com</code>, then
+        <b>reload this page</b>. ⛔ There is no dead button to click: this box
+        <b>replaces</b> the button rather than letting you guess.</span>
+      <span lang="fr"><b>Le module de flash n'a pas pu être chargé.</b><br>
+        Le bouton d'installation est chargé depuis <code>unpkg.com</code> — c'est le seul
+        morceau de cette page qui vient d'Internet, et il est <b>épinglé à une version
+        exacte</b>. Si vous êtes hors ligne, ou si un pare-feu bloque ce domaine, il
+        n'arrive pas. <b>Le geste</b>&nbsp;: rétablir l'accès à <code>unpkg.com</code>, puis
+        <b>recharger cette page</b>. ⛔ Il n'y a pas de bouton inerte à cliquer&nbsp;: cet
+        encadré <b>remplace</b> le bouton, plutôt que de vous laisser deviner.</span>
     </div>
 
-    <!-- LA CHARGE LOCALE EST INUTILISABLE — ⛔ CE N'EST PAS LE CDN ------- -->
-    <div id="etat-charge" hidden class="alerte" style="margin-top:14px"></div>
+    <!-- LA CHARGE LOCALE EST INUTILISABLE — ⛔ CE N'EST PAS LE CDN -------- -->
+    <div id="etat-charge" hidden class="alerte" style="margin-bottom:16px"></div>
 
-    <!-- (c) L'AGENT EST POSÉ SUR CETTE MACHINE ---------------------------- -->
-    <div id="etat-port-tenu" hidden class="avert" style="margin-top:14px">
-      <b>L'agent DeskNode est installé sur cette machine — il tient le port quand il
-      tourne.</b><br>
-      ⚠️ Ce qui est <b>mesuré</b> ici, c'est que la <b>tâche planifiée existe</b>&nbsp;:
-      cette page interroge le planificateur de tâches, elle <b>n'ouvre aucun port</b> et
-      ne peut donc pas affirmer que l'agent tourne <i>en ce moment</i>. C'est le cas
-      <b>normal du deuxième lancement</b>&nbsp;: mettre DeskNode à jour, c'est le
-      réinstaller, et l'agent tourne déjà. Si le port est tenu et que vous flashez, le
-      navigateur sortira sur <code>Failed to execute 'open' on 'SerialPort'</code> — un
-      message qui n'explique rien. <b>Le bouton ci-dessous libère le port</b> en appelant
-      le verbe <code>stop</code> que le dépôt livre déjà, <b>sur le port réellement
-      découvert</b>&nbsp;; si rien ne le tenait, il vous le dira aussi.
-    </div>
-    <button id="b-liberer" type="button">Libérer le port</button>
-    <p class="discret" style="margin:8px 0 14px">
-      <b>Libérer</b> pose le drapeau d'arrêt propre, puis <b>rouvre le port pour le
-      prouver</b>. Sa sortie vous est rendue telle quelle, plus haut. ⚠️ <b>« port rendu »
-      et « port disparu » ne sont pas la même chose</b>&nbsp;: si la carte vient d'être
-      débranchée, l'agent est bien arrêté mais le port n'existe plus — la page vous dit
-      lequel des deux, ⛔ elle ne les confond pas.
-    </p>
-
-    <!-- LE BOUTON D'INSTALLATION ---------------------------------------- -->
-    <div id="bloc-installer">
-      <esp-web-install-button manifest="charge/manifest.json">
-        <button slot="activate" type="button">Installer DeskNode sur la carte</button>
-        <span slot="unsupported" class="avert">Ce navigateur n'expose pas l'accès au port
-          série&nbsp;: utilisez <b>Microsoft Edge</b> ou <b>Google Chrome</b>.</span>
-        <span slot="not-allowed" class="avert">Cette page n'est pas dans un contexte
-          sécurisé&nbsp;: rouvrez l'adresse en <code>http://127.0.0.1:</code> que le
-          script a imprimée.</span>
-      </esp-web-install-button>
+    <div id="etat-unsupported" hidden class="avert" style="margin-bottom:16px">
+      <span lang="en"><b>This browser does not expose serial port access.</b><br>
+        It will therefore not be able to talk to the board. Reopen this same address in
+        <b>Microsoft Edge</b> or <b>Google Chrome</b> — those are the two browsers where
+        serial access has been measured. Firefox and Safari do not have it.</span>
+      <span lang="fr"><b>Ce navigateur n'expose pas l'accès au port série.</b><br>
+        Il ne pourra donc pas parler à la carte. Rouvrez cette même adresse dans
+        <b>Microsoft Edge</b> ou <b>Google Chrome</b> — ce sont les deux navigateurs où
+        l'accès série a été mesuré. Firefox et Safari ne l'ont pas.</span>
     </div>
 
-    <!-- (d) LES PILOTES RECLAMES A TORT — NOTRE MESSAGE PAR-DESSUS ------- -->
-    <div id="etat-pilotes" class="avert" style="margin-top:16px">
-      <b>⛔ Si l'outil de flash vous propose d'installer un pilote — CP2102, CH340 ou
-      CH342 — n'en installez aucun.</b><br>
-      Ce dialogue est celui de l'outil de flash, ⛔ pas de DeskNode, et il parle d'un
-      problème <b>que vous n'avez pas</b>. Cette carte est en <b>USB natif</b>
-      (<code>303A:1001</code>, série/JTAG intégré à la puce)&nbsp;: Windows la reconnaît
-      avec son pilote <code>usbser</code> d'origine, et <b>aucun pilote tiers n'est à
-      installer, ni ici ni ailleurs</b>. Le dépôt le dit déjà&nbsp;:
-      <i>« Aucun pilote à installer, ni côté Windows ni côté Linux. »</i>
-      <br>Si le port n'apparaît pas, ce n'est pas un pilote qui manque — c'est un des trois
-      cas juste en dessous.
+    <div id="etat-not-allowed" hidden class="avert" style="margin-bottom:16px">
+      <span lang="en"><b>This page is not in a secure context.</b><br>
+        It was opened from a file on disk, or through a network address — and in both cases
+        the browser refuses serial access without saying so. Close this tab and reopen the
+        address the script printed in its window&nbsp;: it starts with
+        <code>http://127.0.0.1:</code> or <code>http://localhost:</code>, followed by the
+        port <b>drawn at launch</b> — it changes every time, and that is deliberate.</span>
+      <span lang="fr"><b>Cette page n'est pas dans un contexte sécurisé.</b><br>
+        Elle a été ouverte depuis un fichier posé sur le disque, ou par une adresse réseau —
+        et dans ces deux cas le navigateur refuse l'accès au port série, sans le dire.
+        Fermez cet onglet et rouvrez l'adresse que le script a imprimée dans sa fenêtre&nbsp;:
+        elle commence par <code>http://127.0.0.1:</code> ou <code>http://localhost:</code>,
+        suivie du port <b>tiré au lancement</b> — il change à chaque fois, et c'est voulu.</span>
     </div>
 
-    <!-- CE QUE L'INCONNU VA VOIR AILLEURS, DIT ICI ---------------------- -->
-    <h2 style="margin-top:22px">Ce que vous allez voir, et ce qu'il faut faire</h2>
+    <ol class="gestes">
 
-    <p style="margin:0 0 8px"><b>1. Le nom du port — ⛔ il ne s'appelle PAS « DeskNode ».</b></p>
-    <ul>
-      <li>Windows l'affiche sous un nom <b>traduit</b>&nbsp;: en français,
-        <code>Périphérique série USB (COM3)</code> — le numéro change d'une machine à
-        l'autre. <b>Mesuré sur la machine de référence le 2026-09-08.</b></li>
-      <li>La puce, elle, se présente comme <code>USB JTAG/serial debug unit</code>&nbsp;:
-        c'est cette chaîne-là que certains navigateurs affichent, seule ou suivie du
-        <code>(COM<i>n</i>)</code>.</li>
-      <li>⚠️ <b>Les deux formes désignent la même carte.</b> Ce que le sélecteur de
-        <i>votre</i> navigateur montre exactement n'est pas mesuré ici&nbsp;: prenez la
-        ligne qui porte l'une des deux — et, en cas de doute, celle dont le
-        <code>(COM<i>n</i>)</code> est celui affiché en haut de cette section.</li>
-    </ul>
+      <!-- ─── GESTE 1 : ARRETER L'AGENT ─────────────────────────────────
+           🔴 UN SEUL BOUTON POSTE `stop`, ET C'EST UNE FUSION, ⛔ PAS UN
+              MASQUAGE. Deux boutons postaient le MEME verbe sur le MEME port
+              et rendaient la MEME sortie — les nommer « par ce qui les
+              distingue » etait donc impossible, faute de difference. Le
+              survivant est nomme par TOUT son effet, parce que c'est UN seul
+              fait : arreter l'agent, c'est rendre le port. -->
+      <li>
+        <p class="quoi">
+          <span lang="en"><b>Stop the DeskNode agent.</b> It is what holds the serial port.</span>
+          <span lang="fr"><b>Arrêter l'agent DeskNode.</b> C'est lui qui tient le port série.</span>
+        </p>
+        <button id="b-stop" type="button">
+          <span lang="en">Stop the agent and hand the port back</span>
+          <span lang="fr">Arrêter l'agent et rendre le port</span>
+        </button>
+        <div id="etat-port-tenu" hidden class="avert" style="margin-top:12px">
+          <span lang="en"><b>The DeskNode agent is installed on this machine — it holds the port
+            while it runs.</b><br>
+            ⚠️ What is <b>measured</b> here is that the <b>scheduled task exists</b>: this page
+            queries the task scheduler, it <b>opens no port</b>, and it therefore cannot claim
+            the agent is running <i>right now</i>. This is the <b>normal second-launch
+            case</b>: updating DeskNode means reinstalling it, and the agent is already
+            running. If the port is held and you flash, the browser will fail on
+            <code>Failed to execute 'open' on 'SerialPort'</code> — a message that explains
+            nothing. <b>The button above frees the port</b> by calling the <code>stop</code>
+            verb this repository already ships, <b>on the port actually discovered</b>; if
+            nothing held it, it will say that too.</span>
+          <span lang="fr"><b>L'agent DeskNode est installé sur cette machine — il tient le port quand il
+            tourne.</b><br>
+            ⚠️ Ce qui est <b>mesuré</b> ici, c'est que la <b>tâche planifiée existe</b>&nbsp;:
+            cette page interroge le planificateur de tâches, elle <b>n'ouvre aucun port</b> et
+            ne peut donc pas affirmer que l'agent tourne <i>en ce moment</i>. C'est le cas
+            <b>normal du deuxième lancement</b>&nbsp;: mettre DeskNode à jour, c'est le
+            réinstaller, et l'agent tourne déjà. Si le port est tenu et que vous flashez, le
+            navigateur sortira sur <code>Failed to execute 'open' on 'SerialPort'</code> — un
+            message qui n'explique rien. <b>Le bouton ci-dessus libère le port</b> en appelant
+            le verbe <code>stop</code> que le dépôt livre déjà, <b>sur le port réellement
+            découvert</b>&nbsp;; si rien ne le tenait, il vous le dira aussi.</span>
+        </div>
+        <details>
+          <summary>
+            <span lang="en">What "stop" does, and why "handed back" is not "gone"</span>
+            <span lang="fr">Ce que « arrêter » fait, et pourquoi « rendu » n'est pas « disparu »</span>
+          </summary>
+          <p class="discret" style="margin:0">
+            <span lang="en"><b>Stopping</b> lays down the clean stop flag, then <b>reopens the port to
+              prove it</b>. The tool's output is handed to you as it is, below.
+              ⚠️ <b>"port handed back" and "port gone" are not the same thing</b>: if the board
+              has just been unplugged, the agent did stop but the port no longer exists — the
+              page tells you which of the two, ⛔ it does not conflate them.
+              🔴 <b>One button, ⛔ no longer two.</b> Until 2026-09-09 this page offered
+              <i>"Free the port"</i> here and <i>"Stop the agent"</i> lower down. Both posted the
+              <b>same</b> verb on the <b>same</b> port and returned the <b>same</b> output, so
+              naming them by what set them apart was impossible: nothing did. They are
+              <b>merged</b>, and the survivor is named by its whole effect.</span>
+            <span lang="fr"><b>Arrêter</b> pose le drapeau d'arrêt propre, puis <b>rouvre le port pour le
+              prouver</b>. La sortie de l'outil vous est rendue telle quelle, plus bas.
+              ⚠️ <b>« port rendu » et « port disparu » ne sont pas la même chose</b>&nbsp;: si la
+              carte vient d'être débranchée, l'agent est bien arrêté mais le port n'existe plus —
+              la page vous dit lequel des deux, ⛔ elle ne les confond pas.
+              🔴 <b>Un seul bouton, ⛔ plus deux.</b> Jusqu'au 2026-09-09 cette page offrait ici
+              <i>« Libérer le port »</i> et, plus bas, <i>« Arrêter l'agent »</i>. Les deux
+              postaient le <b>même</b> verbe sur le <b>même</b> port et rendaient la <b>même</b>
+              sortie&nbsp;: les nommer par ce qui les distinguait était donc impossible — rien ne
+              les distinguait. Ils sont <b>fusionnés</b>, et le survivant est nommé par tout son
+              effet.</span>
+          </p>
+        </details>
+      </li>
 
-    <p style="margin:14px 0 8px"><b>2. La sélection se fait en DEUX gestes.</b></p>
-    <ul>
-      <li><b>Cliquer la ligne</b> du port pour la sélectionner&nbsp;;</li>
-      <li><b>puis</b> cliquer <b>« Se connecter »</b>.</li>
-      <li>⛔ Tant que la ligne n'est pas sélectionnée, <b>« Se connecter » reste grisé</b>,
-        et fermer la fenêtre fait sortir sur <i>« No port selected »</i> — un message qui
-        n'explique pas qu'il manquait un clic.</li>
-    </ul>
+      <!-- ─── GESTE 2 : POSER LE FIRMWARE ─────────────────────────────── -->
+      <li>
+        <p class="quoi">
+          <span lang="en"><b>Put the firmware on the board.</b> The browser will ask you to pick the port.</span>
+          <span lang="fr"><b>Poser le firmware sur la carte.</b> Le navigateur vous demandera de choisir le port.</span>
+        </p>
+        <div id="bloc-installer">
+          <esp-web-install-button manifest="charge/manifest.json">
+            <button slot="activate" type="button">
+              <span lang="en">Install DeskNode on the board</span>
+              <span lang="fr">Installer DeskNode sur la carte</span>
+            </button>
+            <span slot="unsupported" class="avert">
+              <span lang="en">This browser does not expose serial port access&nbsp;: use
+                <b>Microsoft Edge</b> or <b>Google Chrome</b>.</span>
+              <span lang="fr">Ce navigateur n'expose pas l'accès au port
+                série&nbsp;: utilisez <b>Microsoft Edge</b> ou <b>Google Chrome</b>.</span>
+            </span>
+            <span slot="not-allowed" class="avert">
+              <span lang="en">This page is not in a secure context&nbsp;: reopen the
+                <code>http://127.0.0.1:</code> address the script printed.</span>
+              <span lang="fr">Cette page n'est pas dans un contexte
+                sécurisé&nbsp;: rouvrez l'adresse en <code>http://127.0.0.1:</code> que le
+                script a imprimée.</span>
+            </span>
+          </esp-web-install-button>
+        </div>
 
-    <p style="margin:14px 0 8px"><b>3. Si la carte ne répond pas du tout&nbsp;: la récupération.</b></p>
-    <ul>
-      <li>Le geste écrit et <b>mesuré</b> dans ce dépôt est&nbsp;: <b>maintenir le bouton
-        <code>BOOT</code> enfoncé, appuyer brièvement sur <code>RESET</code>, puis relâcher
-        <code>BOOT</code></b>. La carte passe en mode <i>download</i>, où le flash
-        fonctionne même quand l'application ne démarre plus.</li>
-      <li>⚠️ <b>Écart déclaré, écrit plutôt que recopié</b>&nbsp;: le cadrage de cette page
-        parlait de <i>« BOOT maintenu pendant le branchement »</i>. Cette formule-là n'est
-        <b>écrite nulle part</b> dans le dépôt et n'a <b>jamais été mesurée</b>&nbsp;;
-        c'est <code>BOOT</code> + <code>RESET</code> qui l'est. La page écrit donc ce qui
-        est <b>vrai</b>, ⛔ pas ce qui était supposé.</li>
-      <li>⚠️ Une fois en mode <i>download</i>, la carte <b>n'en ressort pas</b> par la fin
-        de flash ordinaire&nbsp;: appuyez sur <code>RESET</code> pour la relancer.</li>
-    </ul>
+        <!-- 🔴 CE QUE LE SELECTEUR MONTRE, DIT SANS RIEN DEROULER, ET RELEVE
+             A L'ŒIL LE 2026-09-09 DANS LE SELECTEUR LUI-MEME. -->
+        <p style="margin:12px 0 0">
+          <span lang="en">The picker shows <b>ONE line</b>&nbsp;:
+            <code>USB JTAG/serial debug unit (COM<i>n</i>)</code>. <b>Click the line</b>, then
+            click the confirm button — it is greyed out until the line is selected.
+            ⚠️ That button read <b>« Connexion »</b> on a <b>French-language Edge</b>, measured
+            on 2026-09-09 <b>once</b>&nbsp;: <b>yours will read it in its own language</b>
+            (<i>Connect</i>, <i>Verbinden</i>…). ⛔ The wording is <b>attributed</b>, not claimed
+            universal — one measurement on one browser does not name every browser.</span>
+          <span lang="fr">Le sélecteur montre <b>UNE SEULE ligne</b>&nbsp;:
+            <code>USB JTAG/serial debug unit (COM<i>n</i>)</code>. <b>Cliquer la ligne</b>, puis
+            cliquer le bouton de validation — il reste grisé tant que la ligne n'est pas
+            sélectionnée. ⚠️ Ce bouton portait <b>« Connexion »</b> sur un <b>Edge en
+            français</b>, mesuré le 2026-09-09 <b>une seule fois</b>&nbsp;: <b>le vôtre le
+            nommera dans sa propre langue</b> (<i>Connect</i>, <i>Verbinden</i>…). ⛔ Le libellé
+            est <b>attribué</b>, ⛔ pas donné pour universel — une mesure sur un navigateur ne
+            nomme pas tous les navigateurs.</span>
+        </p>
 
-    <p class="discret" style="margin:16px 0 0">
-      <b>D'où vient ce que vous installez.</b> Le manifeste annonce une version qui est
-      <b>lue dans le binaire lui-même</b> (<code>esp_app_desc_t</code>), ⛔ jamais recopiée
-      à côté&nbsp;: c'est la révision exacte du dépôt qui l'a produite, et une vérification
-      mécanique du dépôt refuse qu'elles diffèrent. Le firmware est sous
-      <b>GPL-3.0-or-later</b>, ce qui oblige à pointer <b>la source de cette révision
-      précise</b> — pas « le dépôt » en général&nbsp;: c'est
-      <a href="charge/PROVENANCE.md">charge/PROVENANCE.md</a> qui la nomme, avec les
-      empreintes des quatre morceaux et la commande qui les a produits.
-      ⚠️ <b>Et ce qui manque y est écrit aussi</b>&nbsp;: aucune intégration continue ne
-      construit ce firmware, ces binaires ont été faits <b>à la main</b>, et il n'existe
-      <b>ni tag ni release</b> — donc pas encore de source publiquement atteignable. Les
-      deux manques ont un porteur nommé, dans ce fichier.
-    </p>
-  </section>
+        <details id="sec-selecteur">
+          <summary>
+            <span lang="en">The other name you will see elsewhere, the exit screen, and the recovery</span>
+            <span lang="fr">L'autre nom que vous verrez ailleurs, l'écran de sortie, et la récupération</span>
+          </summary>
 
-  <!-- ── (b) LES DEUX GESTES — ILS APPELLENT DES VERBES QUI EXISTENT ──── -->
-  <section id="sec-agent">
-    <h2>L'agent DeskNode, sur cette machine</h2>
-    <div class="ligne"><span class="cle">tâche planifiée</span><span class="val" id="v-tache">…</span></div>
-    <div class="ligne"><span class="cle">niveau d'exécution</span><span class="val" id="v-runlevel">…</span></div>
-    <div class="ligne"><span class="cle">outil piloté</span><span class="val" id="v-pilote">…</span></div>
-    <div id="etat-orphelin" hidden class="avert" style="margin-top:14px">
-      <b>Ce dossier a été récupéré seul, hors de son dépôt.</b><br>
-      <code>tools/dn_agent_tour.ps1</code> et <code>README.md</code> ne sont pas au-dessus de
-      lui&nbsp;: les deux boutons ci-dessous n'ont rien à appeler, et les liens de bas de page
-      ne mènent nulle part. <b>Le geste</b>&nbsp;: récupérer le dépôt <b>entier</b>, puis
-      relancer <code>DeskNode-installeur.bat</code> depuis le dossier <code>installeur/</code>
-      qu'il contient.
-    </div>
-    <div id="etat-inactif" hidden class="avert" style="margin-top:14px"></div>
+          <p style="margin:0 0 8px">
+            <span lang="en"><b>1. The port is ⛔ NOT called "DeskNode", and it carries a second name
+              — <u>somewhere else</u>.</b></span>
+            <span lang="fr"><b>1. Le port ne s'appelle ⛔ PAS « DeskNode », et il porte un second nom
+              — <u>ailleurs</u>.</b></span>
+          </p>
+          <ul>
+            <li>
+              <span lang="en">In the <b>Windows Device Manager</b>, that same board appears under a
+                <b>translated</b> name&nbsp;: on a French Windows,
+                <code>Périphérique série USB (COM3)</code>. <b>Measured on the reference machine on
+                2026-09-08</b> — and it is the <b>Device Manager</b> that shows it, ⛔ not the
+                browser.</span>
+              <span lang="fr">Dans le <b>Gestionnaire de périphériques</b> de Windows, cette même
+                carte apparaît sous un nom <b>traduit</b>&nbsp;: en français,
+                <code>Périphérique série USB (COM3)</code>. <b>Mesuré sur la machine de référence
+                le 2026-09-08</b> — et c'est le <b>Gestionnaire de périphériques</b> qui l'affiche,
+                ⛔ pas le navigateur.</span>
+            </li>
+            <li>
+              <span lang="en">The browser, for its part, names the port by the chip's <b>USB product
+                string</b>&nbsp;: <code>USB JTAG/serial debug unit</code>, followed by the
+                <code>(COM<i>n</i>)</code>. That is the <b>only</b> line its picker shows.</span>
+              <span lang="fr">Le navigateur, lui, nomme le port par la <b>chaîne produit USB</b> de la
+                puce&nbsp;: <code>USB JTAG/serial debug unit</code>, suivie du
+                <code>(COM<i>n</i>)</code>. C'est la <b>seule</b> ligne que son sélecteur
+                affiche.</span>
+            </li>
+            <li>
+              <span lang="en">⚠️ The <code>COM<i>n</i></code> number changes from one machine to the
+                next&nbsp;; the page shows the one it <b>discovered</b> on yours, under
+                <i>"What is about to be installed"</i> below.</span>
+              <span lang="fr">⚠️ Le numéro <code>COM<i>n</i></code> change d'une machine à
+                l'autre&nbsp;; la page affiche <b>celui qu'elle a découvert</b> sur la vôtre, sous
+                <i>« Ce qui va être installé »</i> plus bas.</span>
+            </li>
+          </ul>
 
-    <p class="discret" style="margin:14px 0 6px">
-      Ces deux boutons n'inventent rien&nbsp;: ils appellent les verbes <code>stop</code> et
-      <code>retirer</code> de l'outil que le dépôt livre déjà, et ils vous rendent sa sortie
-      <b>telle quelle</b>, code de retour compris. <b>Aucun des deux ne demande de droits
-      administrateur</b>, et aucun n'en a besoin.
-    </p>
-    <button id="b-stop" type="button">Arrêter l'agent</button>
-    <button id="b-retirer" type="button">Retirer l'agent</button>
-    <p class="discret" style="margin:8px 0 0">
-      <b>Arrêter</b> pose le drapeau d'arrêt propre, puis rouvre le port pour le prouver.<br>
-      <b>Retirer</b> dépose la tâche planifiée, <b>puis la redemande au système</b>&nbsp;: c'est
-      cette seconde question qui décide, ⛔ pas le message de la première.
-    </p>
+          <div class="avert" style="margin:12px 0">
+            <span lang="en">🔴 <b>ANNOTATED ON 2026-09-09 — the wording below is struck through
+              rather than erased.</b> Until that day this page announced <s>"the two forms" as two
+              competing forms <b>of the picker</b></s>, and called the second gesture
+              <s>« Se connecter »</s>. <b>The picker was opened, and it refutes both.</b> It shows
+              <b>one</b> line — the chip's product string — and its button reads
+              <b>« Connexion »</b>. The mechanism&nbsp;: Edge names the port by the USB product
+              string, ⛔ not by the localised Windows <i>FriendlyName</i>; the earlier measurement
+              was taken in the Device Manager and <b>generalised</b> to a picker nobody had
+              opened.</span>
+            <span lang="fr">🔴 <b>ANNOTÉ LE 2026-09-09 — la formulation ci-dessous est barrée plutôt
+              qu'effacée.</b> Jusqu'à cette date, cette page annonçait <s>« les deux formes » comme
+              deux formes concurrentes <b>du sélecteur</b></s>, et appelait le second geste
+              <s>« Se connecter »</s>. <b>Le sélecteur a été ouvert, et il réfute les deux.</b> Il
+              montre <b>une</b> ligne — la chaîne produit de la puce — et son bouton porte
+              <b>« Connexion »</b>. Le mécanisme&nbsp;: Edge nomme le port par la chaîne produit
+              USB, ⛔ pas par le <i>FriendlyName</i> localisé de Windows&nbsp;; la mesure
+              précédente avait été prise dans le Gestionnaire de périphériques et
+              <b>généralisée</b> à un sélecteur que personne n'avait ouvert.</span>
+          </div>
+
+          <p style="margin:14px 0 8px">
+            <span lang="en"><b>2. If you close the window without picking.</b></span>
+            <span lang="fr"><b>2. Si vous fermez la fenêtre sans choisir.</b></span>
+          </p>
+          <ul>
+            <li>
+              <span lang="en">You come out on <i>"No port selected"</i> — a message that does not say
+                a click was missing. Start the gesture again.</span>
+              <span lang="fr">Vous sortez sur <i>« No port selected »</i> — un message qui ne dit pas
+                qu'il manquait un clic. Recommencez le geste.</span>
+            </li>
+          </ul>
+
+          <p style="margin:14px 0 8px">
+            <span lang="en"><b>3. If the board does not answer at all&nbsp;: the recovery.</b></span>
+            <span lang="fr"><b>3. Si la carte ne répond pas du tout&nbsp;: la récupération.</b></span>
+          </p>
+          <ul>
+            <li>
+              <span lang="en">The gesture written and <b>measured</b> in this repository is&nbsp;:
+                <b>hold <code>BOOT</code> down, press <code>RESET</code> briefly, then release
+                <code>BOOT</code></b>. The board enters <i>download</i> mode, where flashing works
+                even when the application no longer starts.</span>
+              <span lang="fr">Le geste écrit et <b>mesuré</b> dans ce dépôt est&nbsp;: <b>maintenir le
+                bouton <code>BOOT</code> enfoncé, appuyer brièvement sur <code>RESET</code>, puis
+                relâcher <code>BOOT</code></b>. La carte passe en mode <i>download</i>, où le flash
+                fonctionne même quand l'application ne démarre plus.</span>
+            </li>
+            <li>
+              <span lang="en">⚠️ <b>Declared gap, written rather than copied</b>&nbsp;: the framing of
+                this page spoke of <i>"BOOT held while plugging in"</i>. That wording is
+                <b>written nowhere</b> in the repository and has <b>never been measured</b>;
+                <code>BOOT</code> + <code>RESET</code> has. The page writes what is <b>true</b>,
+                ⛔ not what was assumed.</span>
+              <span lang="fr">⚠️ <b>Écart déclaré, écrit plutôt que recopié</b>&nbsp;: le cadrage de
+                cette page parlait de <i>« BOOT maintenu pendant le branchement »</i>. Cette
+                formule-là n'est <b>écrite nulle part</b> dans le dépôt et n'a <b>jamais été
+                mesurée</b>&nbsp;; c'est <code>BOOT</code> + <code>RESET</code> qui l'est. La page
+                écrit donc ce qui est <b>vrai</b>, ⛔ pas ce qui était supposé.</span>
+            </li>
+            <li>
+              <span lang="en">⚠️ Once in <i>download</i> mode the board <b>does not leave it</b> at the
+                end of an ordinary flash&nbsp;: press <code>RESET</code> to restart it.</span>
+              <span lang="fr">⚠️ Une fois en mode <i>download</i>, la carte <b>n'en ressort pas</b> par
+                la fin de flash ordinaire&nbsp;: appuyez sur <code>RESET</code> pour la relancer.</span>
+            </li>
+          </ul>
+        </details>
+
+        <!-- (d) LES PILOTES RECLAMES A TORT — NOTRE MESSAGE PAR-DESSUS ----
+             🔴 LE REFUS RESTE **VISIBLE SANS RIEN DEROULER**, et c'est ce qui compte : il
+                doit arriver AVANT qu'on parte installer un pilote inutile. Ce qui est
+                replie, c'est ce qui l'EXPLIQUE — ⛔ pas le refus lui-meme. -->
+        <div id="etat-pilotes" class="avert" style="margin-top:14px">
+          <p style="margin:0">
+            <span lang="en"><b>⛔ If the flashing tool offers to install a driver — CP2102, CH340
+              or CH342 — install none of them.</b> This board needs no driver at all.</span>
+            <span lang="fr"><b>⛔ Si l'outil de flash vous propose d'installer un pilote — CP2102,
+              CH340 ou CH342 — n'en installez aucun.</b> Cette carte n'a besoin d'aucun
+              pilote.</span>
+          </p>
+          <details>
+            <summary>
+              <span lang="en">Why that dialog is talking about a problem you do not have</span>
+              <span lang="fr">Pourquoi ce dialogue parle d'un problème que vous n'avez pas</span>
+            </summary>
+            <p style="margin:0">
+              <span lang="en">That dialog belongs to the flashing tool, ⛔ not to DeskNode. This
+                board is <b>native USB</b> (<code>303A:1001</code>, serial/JTAG built into the
+                chip)&nbsp;: Windows recognises it with its stock <code>usbser</code> driver, and
+                <b>no third-party driver is to be installed, here or anywhere</b>. The repository
+                already says so&nbsp;: <i>"No driver to install, neither on Windows nor on
+                Linux."</i><br>If the port does not appear, it is not a missing driver — it is one
+                of the cases named just above.</span>
+              <span lang="fr">Ce dialogue est celui de l'outil de flash, ⛔ pas de DeskNode. Cette
+                carte est en <b>USB natif</b> (<code>303A:1001</code>, série/JTAG intégré à la
+                puce)&nbsp;: Windows la reconnaît avec son pilote <code>usbser</code> d'origine, et
+                <b>aucun pilote tiers n'est à installer, ni ici ni ailleurs</b>. Le dépôt le dit
+                déjà&nbsp;: <i>« Aucun pilote à installer, ni côté Windows ni côté Linux. »</i>
+                <br>Si le port n'apparaît pas, ce n'est pas un pilote qui manque — c'est un des cas
+                nommés juste au-dessus.</span>
+            </p>
+          </details>
+        </div>
+      </li>
+
+      <!-- ─── GESTE 3 : RELIRE LA CARTE, ⛔ SANS LA REFLASHER ───────────
+           🔴 UNE ENTREE **DISTINCTE** DU FLASH, ⛔ PAS UN RENOMMAGE. Avant le
+              2026-09-09, le SEUL chemin vers les logs de la carte passait par
+              le bouton qui annonce qu'il va la REFLASHER. -->
+      <li>
+        <p class="quoi">
+          <span lang="en"><b>Read the board's console</b> — without reflashing it.</span>
+          <span lang="fr"><b>Lire la console de la carte</b> — sans la reflasher.</span>
+        </p>
+        <button id="b-console" type="button">
+          <span lang="en">Connect to the board and read its console</span>
+          <span lang="fr">Se brancher à la carte et lire sa console</span>
+        </button>
+        <button id="b-console-fermer" type="button" disabled>
+          <span lang="en">Close and hand the port back</span>
+          <span lang="fr">Fermer et rendre le port</span>
+        </button>
+        <p class="discret" style="margin:8px 0 0">
+          <span lang="en">The same picker opens, with the same single line. The console reads at
+            <b>115200</b> baud — the rate this repository's firmware, its agent and the flashing
+            tool all use.</span>
+          <span lang="fr">Le même sélecteur s'ouvre, avec la même ligne unique. La console lit à
+            <b>115200</b> bauds — le débit que le firmware de ce dépôt, son agent et l'outil de
+            flash emploient tous les trois.</span>
+        </p>
+        <div id="etat-console" hidden class="avert" style="margin-top:12px"></div>
+        <pre id="console-sortie" hidden></pre>
+      </li>
+    </ol>
+
+    <!-- LA SORTIE DES VERBES, RENDUE TELLE QUELLE -------------------------- -->
     <pre id="sortie" hidden></pre>
   </section>
 
-  <!-- ── (c) L'ECART DECLARE DE FR7.1, AVEC SON PORTEUR ───────────────── -->
+  <!-- ═══ (2) CE QUI VA ETRE INSTALLE — REPLIE, MAIS PAS CACHE ═════════ -->
+  <section id="sec-flash">
+    <h2>
+      <span lang="en">What is about to be installed</span>
+      <span lang="fr">Ce qui va être installé</span>
+    </h2>
+    <div class="ligne">
+      <span class="cle"><span lang="en">version to install</span><span lang="fr">version à poser</span></span>
+      <span class="val" id="v-version">…</span>
+    </div>
+    <div class="ligne">
+      <span class="cle"><span lang="en">repository revision</span><span lang="fr">révision du dépôt</span></span>
+      <span class="val" id="v-revision">…</span>
+    </div>
+    <div class="ligne">
+      <span class="cle"><span lang="en">chunks to write</span><span lang="fr">morceaux à écrire</span></span>
+      <span class="val" id="v-morceaux">…</span>
+    </div>
+    <div class="ligne">
+      <span class="cle"><span lang="en">board port</span><span lang="fr">port de la carte</span></span>
+      <span class="val" id="v-port">…</span>
+    </div>
+    <details>
+      <summary>
+        <span lang="en">Where what you install comes from, and what nobody checks</span>
+        <span lang="fr">D'où vient ce que vous installez, et ce que personne ne vérifie</span>
+      </summary>
+      <p class="discret" style="margin:0">
+        <span lang="en">The manifest announces a version that is <b>read out of the binary
+          itself</b> (<code>esp_app_desc_t</code>), ⛔ never copied beside it&nbsp;: it is the
+          exact repository revision that produced it, and a mechanical check of the repository
+          refuses any difference. The firmware is under <b>GPL-3.0-or-later</b>, which requires
+          pointing at <b>the source of that precise revision</b> — not "the repository" in
+          general&nbsp;: <a href="charge/PROVENANCE.md">charge/PROVENANCE.md</a> names it, with
+          the hashes of the four chunks and the command that produced them.
+          ⚠️ <b>And what is missing is written there too</b>&nbsp;: no continuous integration
+          builds this firmware, these binaries were made <b>by hand</b>, and there is
+          <b>neither tag nor release</b> — so no publicly reachable source yet. Both gaps have a
+          named owner, in that file.</span>
+        <span lang="fr">Le manifeste annonce une version qui est
+          <b>lue dans le binaire lui-même</b> (<code>esp_app_desc_t</code>), ⛔ jamais recopiée
+          à côté&nbsp;: c'est la révision exacte du dépôt qui l'a produite, et une vérification
+          mécanique du dépôt refuse qu'elles diffèrent. Le firmware est sous
+          <b>GPL-3.0-or-later</b>, ce qui oblige à pointer <b>la source de cette révision
+          précise</b> — pas « le dépôt » en général&nbsp;: c'est
+          <a href="charge/PROVENANCE.md">charge/PROVENANCE.md</a> qui la nomme, avec les
+          empreintes des quatre morceaux et la commande qui les a produits.
+          ⚠️ <b>Et ce qui manque y est écrit aussi</b>&nbsp;: aucune intégration continue ne
+          construit ce firmware, ces binaires ont été faits <b>à la main</b>, et il n'existe
+          <b>ni tag ni release</b> — donc pas encore de source publiquement atteignable. Les
+          deux manques ont un porteur nommé, dans ce fichier.</span>
+      </p>
+    </details>
+  </section>
+
+  <!-- ═══ (3) LES FAITS DU POSTE — REPLIES ════════════════════════════ -->
+  <section id="sec-navigateur">
+    <h2>
+      <span lang="en">This browser, and this address</span>
+      <span lang="fr">Ce navigateur, et cette adresse</span>
+    </h2>
+    <div class="ligne">
+      <span class="cle"><span lang="en">address served</span><span lang="fr">adresse servie</span></span>
+      <span class="val" id="v-url">…</span>
+    </div>
+    <div class="ligne">
+      <span class="cle"><span lang="en">secure context</span><span lang="fr">contexte sécurisé</span></span>
+      <span class="val" id="v-contexte">…</span>
+    </div>
+    <div class="ligne">
+      <span class="cle"><span lang="en">serial port access</span><span lang="fr">accès au port série</span></span>
+      <span class="val" id="v-serial">…</span>
+    </div>
+  </section>
+
+  <!-- ═══ (4) L'AGENT — LE SECOND VERBE, ET LUI SEUL ══════════════════ -->
+  <section id="sec-agent">
+    <h2>
+      <span lang="en">The DeskNode agent, on this machine</span>
+      <span lang="fr">L'agent DeskNode, sur cette machine</span>
+    </h2>
+    <div class="ligne">
+      <span class="cle"><span lang="en">scheduled task</span><span lang="fr">tâche planifiée</span></span>
+      <span class="val" id="v-tache">…</span>
+    </div>
+    <div class="ligne">
+      <span class="cle"><span lang="en">run level</span><span lang="fr">niveau d'exécution</span></span>
+      <span class="val" id="v-runlevel">…</span>
+    </div>
+    <div class="ligne">
+      <span class="cle"><span lang="en">tool driven</span><span lang="fr">outil piloté</span></span>
+      <span class="val" id="v-pilote">…</span>
+    </div>
+    <div id="etat-orphelin" hidden class="avert" style="margin-top:14px">
+      <span lang="en"><b>This folder was fetched on its own, outside its repository.</b><br>
+        <code>tools/dn_agent_tour.ps1</code> and <code>README.md</code> are not above
+        it&nbsp;: <b>« Stop the agent »</b> and <b>« Remove the agent »</b> have nothing to
+        call, and the footer links lead nowhere. ⚠️ <b>Reading the board's console still
+        works</b>&nbsp;: it needs neither the repository nor the local server.
+        <b>The gesture</b>&nbsp;: fetch the <b>whole</b> repository, then run
+        <code>DeskNode-installeur.bat</code> again from the <code>installeur/</code> folder it
+        contains.</span>
+      <span lang="fr"><b>Ce dossier a été récupéré seul, hors de son dépôt.</b><br>
+        <code>tools/dn_agent_tour.ps1</code> et <code>README.md</code> ne sont pas au-dessus de
+        lui&nbsp;: <b>« Arrêter l'agent »</b> et <b>« Retirer l'agent »</b> n'ont rien à
+        appeler, et les liens de bas de page ne mènent nulle part. ⚠️ <b>Lire la console de la
+        carte marche quand même</b>&nbsp;: elle n'a besoin ni du dépôt ni du serveur local. <b>Le geste</b>&nbsp;: récupérer le dépôt <b>entier</b>, puis relancer
+        <code>DeskNode-installeur.bat</code> depuis le dossier <code>installeur/</code>
+        qu'il contient.</span>
+    </div>
+    <div id="etat-inactif" hidden class="avert" style="margin-top:14px"></div>
+    <button id="b-retirer" type="button">
+      <span lang="en">Remove the agent</span>
+      <span lang="fr">Retirer l'agent</span>
+    </button>
+    <details>
+      <summary>
+        <span lang="en">What these two verbs are, and why neither needs administrator rights</span>
+        <span lang="fr">Ce que sont ces deux verbes, et pourquoi aucun ne demande de droits administrateur</span>
+      </summary>
+      <p class="discret" style="margin:0">
+        <span lang="en">This page invents nothing&nbsp;: it calls the <code>stop</code> and
+          <code>retirer</code> verbs of the tool the repository already ships, and hands you
+          their output <b>as it is</b>, exit code included. <b>Neither asks for administrator
+          rights</b>, and neither needs them.
+          <b>Removing</b> drops the scheduled task, <b>then asks the system for it again</b>: it
+          is that second question that decides, ⛔ not the message of the first.</span>
+        <span lang="fr">Cette page n'invente rien&nbsp;: elle appelle les verbes
+          <code>stop</code> et <code>retirer</code> de l'outil que le dépôt livre déjà, et elle
+          vous rend sa sortie <b>telle quelle</b>, code de retour compris. <b>Aucun des deux ne
+          demande de droits administrateur</b>, et aucun n'en a besoin.
+          <b>Retirer</b> dépose la tâche planifiée, <b>puis la redemande au système</b>&nbsp;:
+          c'est cette seconde question qui décide, ⛔ pas le message de la première.</span>
+      </p>
+    </details>
+  </section>
+
+  <!-- ═══ (5) L'ECART DECLARE DE FR7.1, AVEC SON PORTEUR ══════════════ -->
   <section id="sec-ecart">
-    <h2>Ce que vous devez installer vous-même — écart déclaré</h2>
+    <h2>
+      <span lang="en">What you must install yourself — declared gap</span>
+      <span lang="fr">Ce que vous devez installer vous-même — écart déclaré</span>
+    </h2>
     <p style="margin:0 0 10px">
-      DeskNode <b>ne se télécharge pas en un seul morceau</b> aujourd'hui&nbsp;: cette page et
-      l'agent tournent avec <b>Python&nbsp;3</b>, et l'agent a besoin de <b>deux modules</b>.
-      C'est un <b>écart déclaré</b>, ⛔ pas un oubli — et il a un porteur écrit.
+      <span lang="en">DeskNode <b>does not download as a single piece</b> today&nbsp;: this page
+        and the agent run on <b>Python&nbsp;3</b>, and the agent needs <b>two modules</b>. That
+        is a <b>declared gap</b> (<i>écart déclaré</i>), ⛔ not an oversight — and it has a
+        written owner.</span>
+      <span lang="fr">DeskNode <b>ne se télécharge pas en un seul morceau</b> aujourd'hui&nbsp;:
+        cette page et l'agent tournent avec <b>Python&nbsp;3</b>, et l'agent a besoin de
+        <b>deux modules</b>. C'est un <b>écart déclaré</b>, ⛔ pas un oubli — et il a un porteur
+        écrit.</span>
     </p>
-    <div class="ligne"><span class="cle">Python 3</span><span class="val" id="v-python">…</span></div>
-    <div class="ligne"><span class="cle"><code>psutil</code> (le % CPU)</span><span class="val" id="v-psutil">…</span></div>
-    <div class="ligne"><span class="cle"><code>pyserial</code> (le lien série)</span><span class="val" id="v-pyserial">…</span></div>
-    <div class="ligne"><span class="cle">⛔ <code>websockets</code></span><span class="val">⛔ <b>pas testé ici</b> — l'agent l'importe sans garde</span></div>
-    <p style="margin:12px 0 0">Le geste, s'il en manque un&nbsp;:</p>
-    <pre style="max-height:none">pip install --user psutil pyserial</pre>
+    <div class="ligne">
+      <span class="cle"><span lang="en">Python 3</span><span lang="fr">Python 3</span></span>
+      <span class="val" id="v-python">…</span>
+    </div>
+    <div class="ligne">
+      <span class="cle"><span lang="en"><code>psutil</code> (the CPU %)</span><span lang="fr"><code>psutil</code> (le % CPU)</span></span>
+      <span class="val" id="v-psutil">…</span>
+    </div>
+    <div class="ligne">
+      <span class="cle"><span lang="en"><code>pyserial</code> (the serial link)</span><span lang="fr"><code>pyserial</code> (le lien série)</span></span>
+      <span class="val" id="v-pyserial">…</span>
+    </div>
+    <div class="ligne">
+      <span class="cle"><span lang="en">⛔ <code>websockets</code></span><span lang="fr">⛔ <code>websockets</code></span></span>
+      <span class="val">⛔ <span lang="en"><b>not tested here</b> — the agent imports it without a guard</span><span lang="fr"><b>pas testé ici</b> — l'agent l'importe sans garde</span></span>
+    </div>
+    <p style="margin:12px 0 0">
+      <span lang="en">The gesture, if one is missing&nbsp;:</span>
+      <span lang="fr">Le geste, s'il en manque un&nbsp;:</span>
+    </p>
+    <pre style="max-height:none"><span lang="en">pip install --user psutil pyserial</span><span lang="fr">pip install --user psutil pyserial</span></pre>
     <p class="discret" style="margin:12px 0 0">
-      <b>Porteur du retour à un seul téléchargement&nbsp;: l'agent en exécutable autonome,
-      prévu en V0.2.</b> C'est la décision du 2026-09-08 qui a créé cet écart, et c'est elle
-      qui le refermera — ⛔ un écart sans porteur écrit est un oubli déguisé.
+      <span lang="en"><b>Owner of the return to a single download&nbsp;: the agent as a standalone
+        executable, planned for V0.2.</b> The decision of 2026-09-08 created this gap, and it is
+        that decision which will close it — ⛔ a gap with no written owner is a disguised
+        oversight.</span>
+      <span lang="fr"><b>Porteur du retour à un seul téléchargement&nbsp;: l'agent en exécutable
+        autonome, prévu en V0.2.</b> C'est la décision du 2026-09-08 qui a créé cet écart, et
+        c'est elle qui le refermera — ⛔ un écart sans porteur écrit est un oubli déguisé.</span>
     </p>
   </section>
 
-  <!-- ── (d) CE QU'ELLE NE FAIT PAS, ECRIT PLUTOT QUE DECOUVERT ───────── -->
+  <!-- ═══ (6) CE QU'ELLE NE FAIT PAS, ECRIT PLUTOT QUE DECOUVERT ══════ -->
   <section>
-    <h2>Ce que cette page ne fait pas encore</h2>
+    <h2>
+      <span lang="en">What this page still does not do</span>
+      <span lang="fr">Ce que cette page ne fait pas encore</span>
+    </h2>
     <ul class="discret" style="margin:0">
-      <li><s>Elle <b>ne pose aucun firmware sur la carte</b>, et elle <b>n'installe pas
-        l'agent</b>&nbsp;: elle sait l'arrêter et le retirer, ⛔ pas le mettre en place.</s><br>
-        ⚠️ <b>Annoté le 2026-09-08 — la première moitié a cessé d'être vraie, et la phrase
-        est barrée plutôt qu'effacée&nbsp;:</b> cette page <b>pose bien le firmware</b>, voir
-        la section <i>« Poser le firmware sur la carte »</i> plus haut. <b>La seconde moitié
-        reste vraie</b>&nbsp;: elle n'<b>installe toujours pas l'agent</b> — elle sait
-        l'arrêter et le retirer, ⛔ pas le mettre en place.</li>
-      <li>Elle <b>ne propose aucun choix de langue</b>&nbsp;: la dalle démarre en anglais tant que
-        personne ne lui dit le contraire, et ce choix se fait aujourd'hui à la console série.</li>
-      <li>Elle <b>ne montre pas d'aperçu de la dalle</b>&nbsp;: c'est une <b>exclusion déclarée</b>
-        de la première version, ⛔ ni un oubli ni un manque à réparer.</li>
+      <li>
+        <span lang="en"><s>It <b>puts no firmware on the board</b>, and it <b>does not install the
+          agent</b>&nbsp;: it knows how to stop and remove it, ⛔ not how to set it up.</s><br>
+          ⚠️ <b>Annotated on 2026-09-08 — the first half stopped being true, and the sentence is
+          struck through rather than erased&nbsp;:</b> this page <b>does put the firmware</b>,
+          see step 2 above. <b>The second half stays true</b>&nbsp;: it still does
+          <b>not install the agent</b> — it knows how to stop and remove it, ⛔ not how to set it
+          up.</span>
+        <span lang="fr"><s>Elle <b>ne pose aucun firmware sur la carte</b>, et elle <b>n'installe pas
+          l'agent</b>&nbsp;: elle sait l'arrêter et le retirer, ⛔ pas le mettre en place.</s><br>
+          ⚠️ <b>Annoté le 2026-09-08 — la première moitié a cessé d'être vraie, et la phrase
+          est barrée plutôt qu'effacée&nbsp;:</b> cette page <b>pose bien le firmware</b>, voir
+          l'étape 2 plus haut. <b>La seconde moitié reste vraie</b>&nbsp;: elle n'<b>installe
+          toujours pas l'agent</b> — elle sait l'arrêter et le retirer, ⛔ pas le mettre en
+          place.</span>
+      </li>
+      <li>
+        <span lang="en"><s>It <b>offers no language choice</b>&nbsp;: the panel starts in English until
+          somebody tells it otherwise, and that choice is made today on the serial console.</s><br>
+          ⚠️ <b>Annotated on 2026-09-09 — the first half stopped being true for <u>this page</u>,
+          and the sentence is struck through rather than erased&nbsp;:</b> this page now speaks
+          <b>English and French</b>, chosen at the top, English by default. <b>What stays
+          true</b>&nbsp;: it still chooses <b>no language for the panel</b>, which is a
+          different question and a different language.</span>
+        <span lang="fr"><s>Elle <b>ne propose aucun choix de langue</b>&nbsp;: la dalle démarre en
+          anglais tant que personne ne lui dit le contraire, et ce choix se fait aujourd'hui à la
+          console série.</s><br>
+          ⚠️ <b>Annoté le 2026-09-09 — la première moitié a cessé d'être vraie pour
+          <u>cette page</u>, et la phrase est barrée plutôt qu'effacée&nbsp;:</b> cette page parle
+          désormais <b>anglais et français</b>, au choix, en tête, l'anglais par défaut. <b>Ce
+          qui reste vrai</b>&nbsp;: elle ne choisit toujours <b>aucune langue pour la dalle</b>,
+          qui est une autre question et une autre langue.</span>
+      </li>
+      <li>
+        <span lang="en">It <b>shows no preview of the panel</b>&nbsp;: that is a <b>declared
+          exclusion</b> of the first version, ⛔ neither an oversight nor a missing piece.</span>
+        <span lang="fr">Elle <b>ne montre pas d'aperçu de la dalle</b>&nbsp;: c'est une
+          <b>exclusion déclarée</b> de la première version, ⛔ ni un oubli ni un manque à
+          réparer.</span>
+      </li>
     </ul>
     <p class="discret" style="margin:14px 0 0">
-      L'agent DeskNode est <b>Windows seulement</b>. Cette page s'ouvre ailleurs, mais les deux
-      gestes ci-dessus s'adressent à une tâche planifiée Windows&nbsp;: ailleurs, ils vous
-      diront simplement qu'ils n'ont rien trouvé.
+      <span lang="en">The DeskNode agent is <b>Windows only</b>. This page opens elsewhere, but the
+        two verbs above address a Windows scheduled task&nbsp;: elsewhere, they will simply tell
+        you they found nothing.</span>
+      <span lang="fr">L'agent DeskNode est <b>Windows seulement</b>. Cette page s'ouvre ailleurs, mais
+        les deux verbes ci-dessus s'adressent à une tâche planifiée Windows&nbsp;: ailleurs, ils
+        vous diront simplement qu'ils n'ont rien trouvé.</span>
     </p>
   </section>
 
   <p class="discret" style="text-align:center;margin:26px 0 0">
-    DeskNode — <a href="README.md">README</a> ·
-    <a href="LICENSING.md">licences</a> ·
-    <a href="IDENTITE.md">identité visuelle</a> ·
-    <a href="charge/PROVENANCE.md">provenance du firmware</a> ·
-    le code de cette page est sous GPL-3.0-or-later, comme le firmware de ce dépôt.
+    <span lang="en">DeskNode — <a href="README.md">README</a> ·
+      <a href="LICENSING.md">licensing</a> ·
+      <a href="IDENTITE.md">visual identity</a> ·
+      <a href="charge/PROVENANCE.md">firmware provenance</a> ·
+      the code of this page is under GPL-3.0-or-later, like this repository's firmware.</span>
+    <span lang="fr">DeskNode — <a href="README.md">README</a> ·
+      <a href="LICENSING.md">licences</a> ·
+      <a href="IDENTITE.md">identité visuelle</a> ·
+      <a href="charge/PROVENANCE.md">provenance du firmware</a> ·
+      le code de cette page est sous GPL-3.0-or-later, comme le firmware de ce dépôt.</span>
   </p>
 </main>
 
@@ -392,18 +869,255 @@
    notre place ferait mesurer le composant. */
 /* ⚠️ ANNOTE LE 2026-09-08 PAR `dn7-2` — ⛔ LE COMMENTAIRE CI-DESSUS N'EST PAS
    EFFACE (`NFR3`), MAIS SA PREMIERE PHRASE EST DEVENUE FAUSSE POUR **UNE**
-   SECTION : `#sec-flash` charge ESP Web Tools depuis un CDN, epingle a une
-   version exacte. ⇒ portee EXACTE de ce qui reste vrai : les tests de contexte
-   securise et d'acces serie de la section (a), eux, se font TOUJOURS avec les
-   objets du navigateur et ⛔ AUCUN composant tiers — et c'est bien ce qu'ils
-   doivent prouver. Un composant qui les testerait a notre place ferait mesurer
-   le composant, et cette raison-la n'a pas bouge d'un mot. */
+   SECTION : le bloc d'installation charge ESP Web Tools depuis un CDN, epingle
+   a une version exacte. ⇒ portee EXACTE de ce qui reste vrai : les tests de
+   contexte securise et d'acces serie, eux, se font TOUJOURS avec les objets du
+   navigateur et ⛔ AUCUN composant tiers — et c'est bien ce qu'ils doivent
+   prouver. Un composant qui les testerait a notre place ferait mesurer le
+   composant, et cette raison-la n'a pas bouge d'un mot. */
+/* 🔴 ANNOTE LE 2026-09-09 PAR `dn7-2-2` — LA CONSOLE SERIE DE CETTE PAGE EST
+   ECRITE ICI, ET C'EST UNE MESURE QUI L'A DECIDE, ⛔ pas un gout : le morceau
+   d'ESP Web Tools que la page epingle ne contient AUCUNE console (getWriter x0,
+   onData x0, writable x0) ; celle du dialogue vit dans un morceau au nom
+   HACHE, importe seulement au clic sur le bouton qui FLASHE. ⇒ la console
+   ci-dessous ouvre SON port avec l'API deja mesuree plus haut. */
 
-function poser(id, texte, classe) {
+/* ═══════════════════════════════════════════════════════════════════════
+   LES DEUX LANGUES — LE MECANISME, ET LA REGLE QUI LE REND FALSIFIABLE
+   ═══════════════════════════════════════════════════════════════════════
+   🔴 TOUTE PROSE ECRITE PAR CE SCRIPT VIT DANS `MOTS`, ET CHAQUE CLE Y PORTE
+      **EXACTEMENT DEUX** VALEURS : l'anglais d'abord, le francais ensuite.
+      ⛔ UNE CLE SANS JUMELLE EST UN DEFAUT — c'est la seule facon de rendre
+      « aucun ilot reste dans l'autre langue » MECANIQUE plutot que promis, et
+      `tools/verif_page_dn722.py` compte les jumelles.
+   ⚠️ Les deux valeurs sont POSEES ENSEMBLE dans le document, et c'est la
+      feuille de style qui en cache une. Choisir la langue AU MOMENT D'ECRIRE
+      obligerait a tout reecrire a chaque bascule — et un seul oubli laisserait
+      un ilot. Ici, la bascule ne touche QU'UN attribut. */
+var MOTS = {
+  "etat.presente": ["present", "présente"],
+  "etat.absente": ["absent", "absente"],
+  "etat.non-interrogeable": ["not queryable here", "non interrogeable ici"],
+  "etat.introuvable": ["not found", "introuvable"],
+  "etat.non-testable": ["not testable here — ⛔ this is NOT « absent »",
+                        "non testable ici — ⛔ ce n'est PAS « absent »"],
+  "etat.absent-geste": ["ABSENT — see the gesture below",
+                        "ABSENT — voir le geste ci-dessous"],
+  "etat.oui": ["yes", "oui"],
+  "etat.non": ["NO", "NON"],
+  "etat.disponible": ["available", "disponible"],
+  "etat.serie-absent": ["ABSENT from this browser", "ABSENT de ce navigateur"],
+  "etat.inconnu-serveur": ["⛔ unknown — the local server does not answer",
+                           "⛔ inconnu — le serveur local ne répond pas"],
+  "champ.inconnu": ["⛔ unknown — the local server does not answer",
+                    "⛔ inconnu — le serveur local ne répond pas"],
+  "port.aucun": ["⛔ no DeskNode board enumerated",
+                 "⛔ aucune carte DeskNode énumérée"],
+  /* 🔴 LE NOM QUE WINDOWS DONNE AU PORT EST **ATTRIBUE DANS LE CHAMP MEME**.
+     Le serveur rend un `FriendlyName` LOCALISE — la forme que cette marche
+     interdit d'OFFRIR comme une ligne du selecteur. L'afficher nu, dans le
+     champ vers lequel la prose de la page renvoie, la re-offrirait par la
+     porte de derriere : ⛔ un controle STATIQUE ne peut pas voir ca. */
+  "port.attribution": ["  — the name the Windows Device Manager shows, ⛔ not the "
+                       + "browser's picker",
+                       "  — le nom qu'affiche le Gestionnaire de périphériques de Windows, "
+                       + "⛔ pas le sélecteur du navigateur"],
+  "revision.lue": [" — repository revision, read out of the binary",
+                   " — révision du dépôt, lue dans le binaire"],
+  "revision.inconnue": ["⛔ unknown", "⛔ inconnue"],
+  "revision.aveugle": ["⛔ unknown — ⛔ do not flash blind",
+                       "⛔ inconnue — ⛔ ne flashez pas à l'aveugle"],
+  "manifeste.version-absente": ["⛔ absent from the manifest",
+                                "⛔ absente du manifeste"],
+  "manifeste.illisible": ["⛔ the manifest could not be read: ",
+                          "⛔ le manifeste n'a pas pu être lu : "],
+  "manifeste.morceaux-absents": ["⛔ no chunk declared", "⛔ aucun morceau déclaré"],
+  /* ⚠️ MEME LE MOT « morceaux » EST UNE PROSE : ecrit en dur, il restait
+     ANGLAIS quand le lecteur bascule — un ilot de deux mots est un ilot. */
+  "manifeste.morceaux": [" chunks · ", " morceaux · "],
+  "manifeste.morceaux-inconnus": ["⛔ unknown", "⛔ inconnus"],
+  "bouton.encours": ["working…", "en cours…"],
+  "sortie.encours": ["⏳ running — the full output arrives as it is.",
+                     "⏳ en cours — la sortie complète arrive telle quelle."],
+  "sortie.qui-outil": ["returned by the tool", "rendu par l'outil"],
+  "sortie.qui-page": ["set by THIS PAGE (⛔ not by the tool)",
+                      "posé par CETTE PAGE (⛔ pas par l'outil)"],
+  "sortie.rc": ["exit code: ", "code de retour : "],
+  "sortie.aucune": ["(no output)", "(aucune sortie)"],
+  "sortie.echec": ["⛔ the call failed before reaching the tool: ",
+                   "⛔ l'appel a échoué avant d'atteindre l'outil : "],
+  "sortie.pas-succes": ["\n⛔ this is NOT a success.",
+                        "\n⛔ ce n'est PAS un succès."],
+  "sortie.pas-de-serveur": ["⛔ the page could not query its own server: ",
+                            "⛔ la page n'a pas pu interroger son propre serveur : "],
+  "inactif.sans-outil": ["⛔ <b>« Stop the agent » and « Remove the agent » are inactive</b>&nbsp;: <code>dn_agent_tour.ps1</code> "
+                         + "is not found — there is nothing to call.",
+                         "⛔ <b>« Arrêter l'agent » et « Retirer l'agent » sont inactifs</b>&nbsp;: <code>dn_agent_tour.ps1</code> est "
+                         + "introuvable — il n'y a rien à appeler."],
+  "inactif.hors-windows": ["⛔ <b>« Stop the agent » and « Remove the agent » are "
+                           + "inactive</b>&nbsp;: this machine did not answer the "
+                           + "task scheduler query. The DeskNode agent is <b>Windows only</b>, "
+                           + "and these gestures address a Windows scheduled task.",
+                           "⛔ <b>« Arrêter l'agent » et « Retirer l'agent » sont "
+                           + "inactifs</b>&nbsp;: cette machine n'a pas répondu à "
+                           + "l'interrogation du planificateur de tâches. L'agent DeskNode est "
+                           + "<b>Windows seulement</b>, et ces gestes s'adressent à une tâche "
+                           + "planifiée Windows."],
+  "inactif.sans-serveur": ["⛔ <b>« Stop the agent » and « Remove the agent » are "
+                           + "inactive</b>&nbsp;: the page could not reach the server "
+                           + "that serves it. If this address does not start with "
+                           + "<code>http://127.0.0.1:</code>, that is the explanation.",
+                           "⛔ <b>« Arrêter l'agent » et « Retirer l'agent » sont "
+                           + "inactifs</b>&nbsp;: la page n'a pas pu joindre le "
+                           + "serveur qui la sert. Si cette adresse ne commence pas par "
+                           + "<code>http://127.0.0.1:</code>, c'est l'explication."],
+  "charge.inutilisable": ["<b>There is nothing to put on the board.</b><br>The firmware this page "
+                          + "must write is <b>missing or damaged on this machine</b> — ⛔ this is "
+                          + "not a network problem, and ⛔ nothing will be installed. "
+                          + "<b>The gesture</b>&nbsp;: read the script's window, which names what "
+                          + "is missing, then fetch the <b>whole</b> repository — the "
+                          + "<code>installeur/charge/</code> folder is part of it. Measured "
+                          + "reason&nbsp;: ",
+                          "<b>Il n'y a rien à poser sur la carte.</b><br>Le firmware que cette page "
+                          + "doit écrire est <b>absent ou abîmé sur cette machine</b> — ⛔ ce "
+                          + "n'est pas un problème de réseau, et ⛔ rien ne sera installé. "
+                          + "<b>Le geste</b>&nbsp;: lire la fenêtre du script, qui nomme ce qui "
+                          + "manque, puis récupérer le dépôt <b>entier</b> — le dossier "
+                          + "<code>installeur/charge/</code> en fait partie. Motif mesuré&nbsp;: "],
+  "charge.manifeste-local": ["the local manifest <code>charge/manifest.json</code> could not be "
+                             + "read (",
+                             "le manifeste local <code>charge/manifest.json</code> n'a pas pu "
+                             + "être lu ("],
+  "charge.incomplete": ["the local server declares the payload incomplete or damaged (",
+                        "le serveur local déclare la charge incomplète ou abîmée ("],
+  "charge.incomplete-muette": ["the local server declares the payload incomplete or damaged "
+                               + "(see the script's window)",
+                               "le serveur local déclare la charge incomplète ou abîmée "
+                               + "(voir la fenêtre du script)"],
+  "cdn.motif": ["measured reason: ", "motif mesuré : "],
+  "cdn.refus": ["the browser refused or could not load the module",
+                "le navigateur a refusé ou n'a pas pu charger le module"],
+  "cdn.delai": ["the `esp-web-install-button` element is still not defined after 10 s",
+                "l'élément `esp-web-install-button` n'est toujours pas défini après 10 s"],
+  "stop.titre-sans-outil": ["⛔ `dn_agent_tour.ps1` is not found: there is nothing to call",
+                            "⛔ `dn_agent_tour.ps1` est introuvable : il n'y a rien à appeler"],
+  "stop.titre-sans-port": ["⛔ no port discovered: nothing will be played on a guessed port",
+                           "⛔ aucun port découvert : rien ne sera joué sur un port supposé"],
+  "stop.titre-joue": ["plays the `stop` verb on ", "joue le verbe `stop` sur "],
+  /* ── LES TROIS REFUS DE LA CONSOLE, NOMMES SEPAREMENT ─────────────────
+     🔴 ILS SONT TROIS, ⛔ PAS UN. « aucune carte » pour un port REFUSE est
+        exactement le message qui n'explique rien, et cette page existe pour
+        cesser de le rendre. */
+  "console.sans-serial": ["<b>This browser does not expose serial port access.</b><br>The console "
+                          + "cannot open. Reopen this same address in <b>Microsoft Edge</b> or "
+                          + "<b>Google Chrome</b>.",
+                          "<b>Ce navigateur n'expose pas l'accès au port série.</b><br>La console "
+                          + "ne peut pas s'ouvrir. Rouvrez cette même adresse dans "
+                          + "<b>Microsoft Edge</b> ou <b>Google Chrome</b>."],
+  "console.aucun-port": ["<b>No port was chosen.</b><br>The picker was closed without selecting "
+                         + "the line. ⛔ Nothing is open, and nothing was read. Click the button "
+                         + "again, then <b>click the line</b> before confirming.",
+                         "<b>Aucun port n'a été choisi.</b><br>Le sélecteur a été fermé sans "
+                         + "sélectionner la ligne. ⛔ Rien n'est ouvert, et rien n'a été lu. "
+                         + "Recliquez le bouton, puis <b>cliquez la ligne</b> avant de valider."],
+  "console.port-refuse": ["<b>The port was refused — ⛔ it is not « no board ».</b><br>The port "
+                          + "exists and it was chosen; what refuses is its <b>opening</b>, "
+                          + "because <b>something else is holding it</b> — on this machine, that "
+                          + "is the DeskNode agent, which reads the board continuously. "
+                          + "<b>The gesture</b>&nbsp;: play step 1 above (stop the agent, it "
+                          + "hands the port back), then reopen the console. Measured reason&nbsp;: ",
+                          "<b>Le port a été refusé — ⛔ ce n'est PAS « aucune carte ».</b><br>Le "
+                          + "port existe et il a été choisi&nbsp;; ce qui refuse, c'est son "
+                          + "<b>ouverture</b>, parce que <b>quelque chose d'autre le tient</b> — "
+                          + "sur cette machine, c'est l'agent DeskNode, qui lit la carte en "
+                          + "continu. <b>Le geste</b>&nbsp;: jouer l'étape 1 ci-dessus (arrêter "
+                          + "l'agent, il rend le port), puis rouvrir la console. Motif "
+                          + "mesuré&nbsp;: "],
+  "console.ouverte": ["── console open at 115200 baud. The board writes here; nothing is sent "
+                      + "to it.\n",
+                      "── console ouverte à 115200 bauds. La carte écrit ici ; rien ne lui est "
+                      + "envoyé.\n"],
+  "console.rendue": ["\n── port closed and handed back. Nothing holds it any more.\n",
+                     "\n── port fermé et rendu. Plus rien ne le tient.\n"],
+  /* 🔴 UNE FERMETURE QUI ECHOUE N'EST **PAS** UNE RESTITUTION. Annoncer
+     « le port est rendu » ici publierait une IGNORANCE comme un constat. */
+  "console.non-rendue": ["\n── ⛔ the port could NOT be handed back, and it is still held by "
+                         + "this page. Click « Close and hand the port back » again. Reason: ",
+                         "\n── ⛔ le port n'a PAS pu être rendu, et cette page le tient "
+                         + "encore. Recliquez « Fermer et rendre le port ». Motif : "],
+  "console.lien-fini": ["\n── the board stopped writing (unplugged, or reset). The port is "
+                        + "being handed back.\n",
+                        "\n── la carte a cessé d'écrire (débranchée, ou remise à zéro). Le "
+                        + "port est en cours de restitution.\n"],
+  "console.perdue": ["\n── ⛔ the read stopped: ", "\n── ⛔ la lecture s'est arrêtée : "]
+};
+
+/* La langue courante ne sert QU'A l'attribut : rien n'est reecrit. */
+function poserLangue(code) {
+  document.documentElement.setAttribute("data-langue", code);
+  document.documentElement.setAttribute("lang", code);
+  var en = document.getElementById("b-langue-en");
+  var fr = document.getElementById("b-langue-fr");
+  if (en) { en.setAttribute("aria-pressed", code === "en" ? "true" : "false"); }
+  if (fr) { fr.setAttribute("aria-pressed", code === "fr" ? "true" : "false"); }
+}
+/* ⚠️ LA MEME GARDE QUE DANS `poserLangue` — ⛔ pas un ornement. Sans elle, un
+   bouton manquant leve sur `null` et le script ENTIER s'arrete ICI : plus rien
+   ne masque le bloc d'installation, et le bouton de flash s'offrirait SANS
+   l'avertissement hors Windows que l'ordre du document place avant lui. */
+var bLangueEn = document.getElementById("b-langue-en");
+var bLangueFr = document.getElementById("b-langue-fr");
+if (bLangueEn) {
+  bLangueEn.addEventListener("click", function () { poserLangue("en"); });
+}
+if (bLangueFr) {
+  bLangueFr.addEventListener("click", function () { poserLangue("fr"); });
+}
+
+/* Les DEUX freres, fabriques ensemble. ⛔ Aucun appelant ne choisit la langue.
+   🔴 LE PREFIXE ENTRE **DANS** LES DEUX FRERES, ⛔ IL NE SE POSE PAS A COTE —
+      ET C'EST UN DEFAUT TROUVE PAR LA MESURE DU DOM, ⛔ pas par la lecture. La
+      1re redaction inserait la valeur AVANT le premier frere : elle sortait
+      donc UNE fois, suivie des DEUX libelles bout a bout, et le champ se
+      lisait « 40be2c8 — repository revision … — révision du dépôt … ».
+      Un morceau de texte pose HORS des deux freres est un ilot, par
+      construction : la bascule ne le touche pas. */
+function paire(cle, suffixe, brut, prefixe) {
+  var t = MOTS[cle] || ["⛔ " + cle, "⛔ " + cle];
+  var f = document.createDocumentFragment();
+  for (var i = 0; i < 2; i++) {
+    var s = document.createElement("span");
+    s.lang = (i === 0 ? "en" : "fr");
+    var txt = (prefixe === undefined ? "" : prefixe) + t[i]
+            + (suffixe === undefined ? "" : suffixe);
+    if (brut) { s.innerHTML = txt; } else { s.textContent = txt; }
+    f.appendChild(s);
+  }
+  return f;
+}
+
+/* Une valeur de MACHINE (un `COM<n>`, une version) n'a pas de langue : elle
+   s'ecrit telle quelle, et c'est le libelle autour qui en a une. */
+function poserBrut(id, texte, classe) {
   var e = document.getElementById(id);
   if (!e) { return; }
   e.textContent = texte;
   if (classe) { e.className = "val " + classe; }
+}
+
+function poserMot(id, cle, suffixe, prefixe) {
+  var e = document.getElementById(id);
+  if (!e) { return; }
+  e.textContent = "";
+  e.appendChild(paire(cle, suffixe, false, prefixe));
+}
+
+function blocMot(id, cle, suffixe) {
+  var e = document.getElementById(id);
+  if (!e) { return; }
+  e.textContent = "";
+  e.appendChild(paire(cle, suffixe, true));
+  e.hidden = false;
 }
 
 /* ── (a) L'ADRESSE, LE CONTEXTE, ET L'ACCES SERIE ────────────────────── */
@@ -412,9 +1126,9 @@ var estLocal = (location.hostname === "127.0.0.1" || location.hostname === "loca
 var securise = (window.isSecureContext === true);
 var serie = ("serial" in navigator);
 
-poser("v-url", location.protocol + "//" + location.host + location.pathname);
-poser("v-contexte", securise ? "oui" : "NON");
-poser("v-serial", serie ? "disponible" : "ABSENT de ce navigateur");
+poserBrut("v-url", location.protocol + "//" + location.host + location.pathname);
+poserMot("v-contexte", securise ? "etat.oui" : "etat.non");
+poserMot("v-serial", serie ? "etat.disponible" : "etat.serie-absent");
 
 /* ⚠️ LES DEUX ETATS SONT DISTINCTS, ET C'EST LA DIFFERENCE QUI EST UTILE :
    « le navigateur ne sait pas » et « l'adresse ne convient pas » n'ont ⛔ pas
@@ -431,19 +1145,34 @@ var sortie = document.getElementById("sortie");
 var bStop = document.getElementById("b-stop");
 var bRetirer = document.getElementById("b-retirer");
 
-function ecrire(txt) {
+/* 🔴 « Retirer l'agent » VIT EN SECTION 4, ET SA SORTIE EN SECTION 1 : sans ce
+   maillon, on clique et on ne voit RIEN — le verdict et le code de retour
+   s'ecrivent hors champ, plusieurs ecrans plus haut. ⇒ toute ecriture dans
+   `#sortie` l'AMENE SOUS LES YEUX.
+   ⛔ ET IL N'Y A PLUS DE CHEMIN D'ECRITURE MONOLINGUE : la fonction `ecrire`
+      qui prenait un texte brut est SUPPRIMEE. Toute prose passe par une
+      fabrique bilingue. */
+function montrerSortie() {
   sortie.hidden = false;
-  sortie.textContent = txt;
   sortie.scrollTop = 0;
+  if (sortie.scrollIntoView) {
+    sortie.scrollIntoView({ block: "nearest" });
+  }
+}
+
+function ecrireMot(cle, suffixe) {
+  sortie.textContent = "";
+  sortie.appendChild(paire(cle, suffixe, false));
+  montrerSortie();
 }
 
 /* ⚠️ TROIS ETATS, ⛔ PAS DEUX : `null` veut dire « la sonde n'a pas pu
    tourner », ⛔ pas « absent ». Publier une ignorance comme un constat est la
    faute que le serveur vient de cesser de commettre. */
-function troisEtats(v, absent) {
-  if (v === true) { return "présent"; }
-  if (v === false) { return absent; }
-  return "non testable ici — ⛔ ce n'est PAS « absent »";
+function troisEtats(v, cleAbsent) {
+  if (v === true) { return "etat.presente"; }
+  if (v === false) { return cleAbsent; }
+  return "etat.non-testable";
 }
 
 /* ⚠️ TOUS LES CHAMPS, ⛔ PAS SEULEMENT CELUI QU'ON REGARDE. Le premier `.catch`
@@ -456,47 +1185,46 @@ function rafraichirEtat() {
   return fetch("api/etat", { cache: "no-store" })
     .then(function (r) { return r.json(); })
     .then(function (e) {
-      poser("v-tache", e.tache_presente === null ? "non interrogeable ici"
-            : (e.tache_presente ? "présente (" + e.tache_nom + ")" : "absente"));
-      poser("v-runlevel", e.tache_runlevel || "—");
-      poser("v-pilote", e.pilote || "introuvable");
-      poser("v-python", e.python_version || "introuvable");
-      poser("v-psutil", troisEtats(e.psutil, "ABSENT — voir le geste ci-dessous"));
-      poser("v-pyserial", troisEtats(e.pyserial, "ABSENT — voir le geste ci-dessous"));
+      if (e.tache_presente === null) {
+        poserMot("v-tache", "etat.non-interrogeable");
+      } else if (e.tache_presente) {
+        poserMot("v-tache", "etat.presente", " (" + (e.tache_nom || "") + ")");
+      } else {
+        poserMot("v-tache", "etat.absente");
+      }
+      poserBrut("v-runlevel", e.tache_runlevel || "—");
+      if (e.pilote) { poserBrut("v-pilote", e.pilote); }
+      else { poserMot("v-pilote", "etat.introuvable"); }
+      if (e.python_version) { poserBrut("v-python", e.python_version); }
+      else { poserMot("v-python", "etat.introuvable"); }
+      poserMot("v-psutil", troisEtats(e.psutil, "etat.absent-geste"));
+      poserMot("v-pyserial", troisEtats(e.pyserial, "etat.absent-geste"));
       document.getElementById("etat-orphelin").hidden = (e.arbre_parent !== false);
       /* 🔴 « PILOTABLE » NE SE DEDUIT ⛔ PAS DE L'EXISTENCE DU FICHIER. Hors
-         Windows, la copie du dépôt EXISTE — les deux boutons restaient donc
-         actifs et ne répondaient qu'après un clic, alors que le README promet
-         qu'ils « diront simplement qu'ils n'ont rien trouvé ». ⇒ il faut AUSSI
-         que la machine ait SU répondre à l'interrogation de la tâche. */
-      var motif = "";
+         Windows, la copie du dépôt EXISTE — les boutons restaient donc actifs
+         et ne répondaient qu'après un clic, alors que le README promet qu'ils
+         « diront simplement qu'ils n'ont rien trouvé ». ⇒ il faut AUSSI que la
+         machine ait SU répondre à l'interrogation de la tâche. */
+      var cleMotif = "";
       if (!e.pilote) {
-        motif = "⛔ <b>Boutons inactifs</b>&nbsp;: <code>dn_agent_tour.ps1</code> est "
-              + "introuvable — il n'y a rien à appeler.";
+        cleMotif = "inactif.sans-outil";
       } else if (e.tache_presente === null) {
-        motif = "⛔ <b>Boutons inactifs</b>&nbsp;: cette machine n'a pas répondu à "
-              + "l'interrogation du planificateur de tâches. L'agent DeskNode est "
-              + "<b>Windows seulement</b>, et ces deux gestes s'adressent à une tâche "
-              + "planifiée Windows.";
+        cleMotif = "inactif.hors-windows";
       }
       var bloc = document.getElementById("etat-inactif");
-      bloc.innerHTML = motif;
-      bloc.hidden = !motif;
-      bStop.disabled = !!motif;
-      bRetirer.disabled = !!motif;
+      if (cleMotif) { blocMot("etat-inactif", cleMotif); }
+      else { bloc.textContent = ""; bloc.hidden = true; }
+      bStop.disabled = !!cleMotif;
+      bRetirer.disabled = !!cleMotif;
       return e;
     })
     .catch(function (err) {
-      CHAMPS.forEach(function (id) { poser(id, "⛔ inconnu — le serveur local ne répond pas"); });
+      CHAMPS.forEach(function (id) { poserMot(id, "champ.inconnu"); });
       document.getElementById("etat-orphelin").hidden = true;
-      var bloc = document.getElementById("etat-inactif");
-      bloc.innerHTML = "⛔ <b>Boutons inactifs</b>&nbsp;: la page n'a pas pu joindre le "
-                     + "serveur qui la sert. Si cette adresse ne commence pas par "
-                     + "<code>http://127.0.0.1:</code>, c'est l'explication.";
-      bloc.hidden = false;
+      blocMot("etat-inactif", "inactif.sans-serveur");
       bStop.disabled = true;
       bRetirer.disabled = true;
-      ecrire("⛔ la page n'a pas pu interroger son propre serveur : " + err);
+      ecrireMot("sortie.pas-de-serveur", String(err));
     });
 }
 
@@ -505,17 +1233,20 @@ function rafraichirEtat() {
    fait » est exactement la faute que le verbe `retirer` de l'outil se garde
    lui-meme de commettre (il redemande la tache au systeme). */
 function jouer(verbe, bouton) {
-  /* 🔴 LES **TROIS** BOUTONS, ⛔ PAS DEUX. « Libérer le port » poste le MEME
-     `stop` que « Arrêter l'agent » : le laisser cliquable pendant qu'un appel
-     est en vol permettait DEUX exécutions concurrentes du verbe sur le MEME
-     port — deux drapeaux, deux ré-ouvertures, et un verdict qui ne dit plus
-     quel tir il décrit. */
-  var boutons = [bStop, bRetirer, bLiberer];
+  /* 🔴 DEUX BOUTONS, ⛔ PLUS TROIS — ET C'EST UNE FUSION, PAS UN OUBLI.
+     Jusqu'au 2026-09-09, « Libérer le port » postait le MEME `stop` que
+     « Arrêter l'agent » : le troisième bouton est SUPPRIMÉ, et le survivant est
+     nommé par tout son effet. Ce qui reste vrai de la raison d'origine : les
+     boutons se désarment ENSEMBLE pendant un appel, sinon deux exécutions
+     concurrentes du même verbe sur le même port rendraient un verdict qui ne
+     dit plus quel tir il décrit. */
+  var boutons = [bStop, bRetirer];
   var anciens = boutons.map(function (b) { return b ? b.disabled : true; });
   boutons.forEach(function (b) { if (b) { b.disabled = true; } });
-  var libelle = bouton.textContent;
-  bouton.textContent = "en cours…";
-  ecrire("⏳ " + verbe + " en cours — la sortie complète arrive telle quelle.");
+  var contenu = bouton.innerHTML;
+  bouton.textContent = "";
+  bouton.appendChild(paire("bouton.encours", undefined, false));
+  ecrireMot("sortie.encours", " [" + verbe + "]");
   fetch("api/agent/" + verbe, { method: "POST", cache: "no-store" })
     .then(function (r) { return r.json(); })
     .then(function (d) {
@@ -523,24 +1254,35 @@ function jouer(verbe, bouton) {
          de retour compris » — elle doit donc dire quand le code n'est PAS
          celui de l'outil (2, 4, -1 et le 9 d'une tâche survivante sont à
          ELLE), sinon le lecteur les attribue à `dn_agent_tour.ps1`. */
-      var qui = (d.rc_pose_par === "l'outil")
-              ? "rendu par l'outil"
-              : "posé par CETTE PAGE (⛔ pas par l'outil)";
-      var t = "$ " + d.commande + "\n\n" + (d.sortie || "(aucune sortie)")
-            + "\n\ncode de retour : " + d.rc + "  — " + qui + "\n" + d.verdict;
-      ecrire(t);
-      bouton.textContent = libelle;
+      var cleQui = (d.rc_pose_par === "l'outil") ? "sortie.qui-outil"
+                                                 : "sortie.qui-page";
+      sortie.textContent = "";
+      sortie.appendChild(document.createTextNode(
+        "$ " + d.commande + "\n\n"));
+      if (d.sortie) {
+        sortie.appendChild(document.createTextNode(d.sortie));
+      } else {
+        sortie.appendChild(paire("sortie.aucune", undefined, false));
+      }
+      sortie.appendChild(document.createTextNode("\n\n"));
+      sortie.appendChild(paire("sortie.rc", String(d.rc) + "  — ", false));
+      sortie.appendChild(paire(cleQui, undefined, false));
+      sortie.appendChild(document.createTextNode("\n" + d.verdict));
+      montrerSortie();
+      bouton.innerHTML = contenu;
       /* 🔴 ET LES CHAMPS DU FLASH SONT REPOSES, ⛔ pas seulement ceux de
          l'agent. Sans ce maillon, la page continuait d'affirmer « l'agent
-         tient déjà le port » APRÈS un « Libérer le port » réussi, jusqu'au
-         rechargement — c'est-à-dire de publier un état qu'elle venait
-         elle-même de rendre faux. */
+         tient déjà le port » APRÈS un arrêt réussi, jusqu'au rechargement —
+         c'est-à-dire de publier un état qu'elle venait elle-même de rendre
+         faux. */
       return rafraichirEtat().then(appliquerFlash);
     })
     .catch(function (err) {
-      ecrire("⛔ l'appel a échoué avant d'atteindre l'outil : " + err
-             + "\n⛔ ce n'est PAS un succès.");
-      bouton.textContent = libelle;
+      sortie.textContent = "";
+      sortie.appendChild(paire("sortie.echec", String(err), false));
+      sortie.appendChild(paire("sortie.pas-succes", undefined, false));
+      montrerSortie();
+      bouton.innerHTML = contenu;
       boutons.forEach(function (b, i) { if (b) { b.disabled = anciens[i]; } });
     });
 }
@@ -549,14 +1291,12 @@ bStop.addEventListener("click", function () { jouer("stop", bStop); });
 bRetirer.addEventListener("click", function () { jouer("retirer", bRetirer); });
 
 /* ═══════════════════════════════════════════════════════════════════════
-   (a2) LA SECTION DE FLASH — CE QU'ELLE MESURE, ET CE QU'ELLE DIT   (dn7-2)
+   LA SECTION DE FLASH — CE QU'ELLE MESURE, ET CE QU'ELLE DIT      (dn7-2)
    ═══════════════════════════════════════════════════════════════════════
    ⚠️ CE QUI SUIT NE FLASHE RIEN LUI-MEME : c'est
       `<esp-web-install-button>` qui ecrit, avec les offsets du manifeste. Ce
-      bloc-ci ne fait que MESURER l'etat et NOMMER ce qui coince — c'est
-      exactement le manque que cette marche corrige. */
+      bloc-ci ne fait que MESURER l'etat et NOMMER ce qui coince. */
 
-var bLiberer = document.getElementById("b-liberer");
 var blocInstaller = document.getElementById("bloc-installer");
 
 function afficher(id, visible) {
@@ -576,27 +1316,25 @@ var moduleAnnonce = false;
 
 /* 🔴 LE BLOC D'INSTALLATION EST MASQUE **AU DEPART**, ET REVELE SEULEMENT
    QUAND L'ETAT DE LA MACHINE EST CONNU — ⛔ ce n'est pas de la coquetterie.
-   `AC7.2.8` promet que l'avertissement hors Windows arrive **AVANT** le flash ;
-   l'ordre dans le document ne suffit pas, parce que cet avertissement attend
-   `api/etat`, qui coûte une énumération de périphériques ET un CRC32 sur
-   614 Kio. Un clic rapide flashait AVANT que l'avertissement n'arrive. ⇒ on
-   n'offre le bouton qu'une fois la réponse là. */
+   L'avertissement hors Windows doit arriver **AVANT** le flash ; l'ordre dans
+   le document ne suffit pas, parce que cet avertissement attend `api/etat`,
+   qui coûte une énumération de périphériques ET un CRC32 sur 614 Kio. Un clic
+   rapide flashait AVANT que l'avertissement n'arrive. ⇒ on n'offre le bouton
+   qu'une fois la réponse là. */
 if (blocInstaller) { blocInstaller.hidden = true; }
 var chargeRefusee = false;
 
 /* Le refus qui vient de la CHARGE (locale), ⛔ pas du CDN. */
-function chargeInutilisable(motif) {
+function chargeInutilisable(cleMotif, suffixe) {
   chargeRefusee = true;
   if (blocInstaller) { blocInstaller.hidden = true; }
   var e = document.getElementById("etat-charge");
   if (!e) { return; }
-  e.innerHTML = "<b>Il n'y a rien à poser sur la carte.</b><br>"
-    + "Le firmware que cette page doit écrire est <b>absent ou abîmé sur cette "
-    + "machine</b> — ⛔ ce n'est pas un problème de réseau, et ⛔ rien ne sera "
-    + "installé. <b>Le geste</b>&nbsp;: lire la fenêtre du script, qui nomme ce "
-    + "qui manque, puis récupérer le dépôt <b>entier</b> — le dossier "
-    + "<code>installeur/charge/</code> en fait partie. Motif mesuré&nbsp;: "
-    + motif;
+  e.textContent = "";
+  e.appendChild(paire("charge.inutilisable", undefined, true));
+  var d = document.createElement("div");
+  d.appendChild(paire(cleMotif, suffixe === undefined ? "" : suffixe, true));
+  e.appendChild(d);
   e.hidden = false;
 }
 
@@ -606,7 +1344,7 @@ function reveler() {
   }
 }
 
-function moduleAbsent(motif) {
+function moduleAbsent(cleMotif) {
   if (moduleAnnonce) { return; }
   moduleAnnonce = true;
   afficher("etat-cdn", true);
@@ -614,24 +1352,24 @@ function moduleAbsent(motif) {
      croire qu'on peut le reactiver ; l'encadre, lui, dit le geste. */
   if (blocInstaller) { blocInstaller.hidden = true; }
   var e = document.getElementById("etat-cdn");
-  if (e && motif) {
+  if (e && cleMotif) {
     var m = document.createElement("div");
     m.className = "discret";
-    m.textContent = "motif mesuré : " + motif;
+    m.appendChild(paire("cdn.motif", undefined, false));
+    m.appendChild(paire(cleMotif, undefined, false));
     e.appendChild(m);
   }
 }
 
 if (moduleFlash) {
   moduleFlash.addEventListener("error", function () {
-    moduleAbsent("le navigateur a refusé ou n'a pas pu charger le module");
+    moduleAbsent("cdn.refus");
   });
 }
 window.setTimeout(function () {
   if (!window.customElements
       || !window.customElements.get("esp-web-install-button")) {
-    moduleAbsent("l'élément `esp-web-install-button` n'est toujours pas défini "
-                 + "après 10 s");
+    moduleAbsent("cdn.delai");
   }
 }, 10000);
 
@@ -660,14 +1398,19 @@ function afficherManifeste() {
     .then(function (m) {
       var b = (m.builds && m.builds[0]) || {};
       var parts = b.parts || [];
-      poser("v-version", m.version || "⛔ absente du manifeste");
-      poser("v-revision", m.version
-            ? m.version + " — révision du dépôt, lue dans le binaire"
-            : "⛔ inconnue");
-      poser("v-morceaux", parts.length
-            ? parts.length + " · " + b.chipFamily + " · offsets "
-              + parts.map(function (p) { return p.offset; }).join(" / ")
-            : "⛔ aucun morceau déclaré");
+      if (m.version) { poserBrut("v-version", m.version); }
+      else { poserMot("v-version", "manifeste.version-absente"); }
+      if (m.version) {
+        poserMot("v-revision", "revision.lue", undefined, m.version);
+      } else { poserMot("v-revision", "revision.inconnue"); }
+      if (parts.length) {
+        poserMot("v-morceaux", "manifeste.morceaux",
+                 b.chipFamily + " · "
+                 + parts.map(function (p) { return p.offset; }).join(" / "),
+                 parts.length);
+      } else {
+        poserMot("v-morceaux", "manifeste.morceaux-absents");
+      }
       return m;
     })
     .catch(function (err) {
@@ -678,34 +1421,43 @@ function afficherManifeste() {
          enverrait quelqu'un réparer un pare-feu pour un fichier local, et
          `moduleAnnonce` avalerait ensuite une VRAIE panne de CDN arrivant plus
          tard. ⇒ message propre, et le bloc d'installation est masqué ICI. */
-      poser("v-version", "⛔ le manifeste n'a pas pu être lu : " + err);
-      poser("v-revision", "⛔ inconnue — ⛔ ne flashez pas à l'aveugle");
-      poser("v-morceaux", "⛔ inconnus");
-      chargeInutilisable("le manifeste local <code>charge/manifest.json</code> "
-                         + "n'a pas pu être lu (" + err + ")");
+      poserMot("v-version", "manifeste.illisible", String(err));
+      poserMot("v-revision", "revision.aveugle");
+      poserMot("v-morceaux", "manifeste.morceaux-inconnus");
+      chargeInutilisable("charge.manifeste-local", String(err) + ")");
     });
 }
 
-/* ── L'ETAT DE LA MACHINE, POUR LES TROIS BLOCS QUI EN DEPENDENT ────────
+/* ── L'ETAT DE LA MACHINE, POUR LES BLOCS QUI EN DEPENDENT ──────────────
    ⚠️ TROIS ETATS ICI AUSSI, ⛔ PAS DEUX : `windows === undefined` veut dire
    « le serveur n'a pas repondu », ⛔ pas « ce n'est pas Windows ». Lever
    l'avertissement hors Windows sur une IGNORANCE le rendrait inutile. */
 function appliquerFlash(e) {
   if (!e) {
-    poser("v-port", "⛔ inconnu — le serveur local ne répond pas");
-    if (bLiberer) { bLiberer.disabled = true; }
+    poserMot("v-port", "etat.inconnu-serveur");
     return;
   }
   afficher("etat-hors-windows", e.windows === false);
 
   if (e.port_serie) {
-    poser("v-port", e.port_serie + (e.port_nom ? "  —  " + e.port_nom : ""));
+    /* 🔴 LE NOM RENDU PAR LE SERVEUR EST LE `FriendlyName` **LOCALISE** DE
+       WINDOWS — exactement la forme que cette page interdit d'OFFRIR comme
+       une ligne du selecteur. L'ecrire nu ICI, dans le champ vers lequel la
+       prose renvoie le lecteur, la re-offrirait par la porte de derriere.
+       ⇒ il est ATTRIBUE, et par le mecanisme bilingue, ⛔ pas a cote.
+       ⚠️ Un controle STATIQUE ne peut pas voir ce chemin : il naît a
+          l'execution, de la reponse du serveur. */
+    if (e.port_nom) {
+      poserMot("v-port", "port.attribution", undefined,
+               e.port_serie + "  —  " + e.port_nom);
+    } else {
+      poserBrut("v-port", e.port_serie);
+    }
   } else {
     /* ⛔ AUCUN `COM<n>` N'EST SUPPOSE, ET AUCUN `stop` N'EST JOUE DESSUS.
        Sans carte enumeree, jouer `stop` sur un port devine agirait sur
        quelque chose qu'on n'a pas mesure. */
-    poser("v-port", "⛔ aucune carte DeskNode énumérée ("
-          + (e.port_motif || "motif inconnu") + ")");
+    poserMot("v-port", "port.aucun", " (" + (e.port_motif || "?") + ")");
   }
 
   /* (c) L'AGENT EST **POSÉ** SUR CETTE MACHINE — ⛔ ce n'est pas la même chose
@@ -713,17 +1465,43 @@ function appliquerFlash(e) {
      serveur interroge le PLANIFICATEUR DE TÂCHES, ⛔ il n'ouvre aucun port. */
   var agentPose = (e.tache_presente === true);
   afficher("etat-port-tenu", agentPose);
-  if (bLiberer) {
+  if (bStop) {
     /* ⚠️ LE TITRE DIT LA **VRAIE** RAISON DU REFUS, ⛔ pas la première venue :
        sans l'outil, blâmer le port enverrait chercher une carte alors que
        c'est `dn_agent_tour.ps1` qui manque. */
-    var motifL = !e.pilote
-      ? "⛔ `dn_agent_tour.ps1` est introuvable : il n'y a rien à appeler"
-      : (!e.port_serie
-         ? "⛔ aucun port découvert : rien ne sera joué sur un port supposé"
-         : "joue le verbe `stop` sur " + e.port_serie);
-    bLiberer.disabled = !(e.pilote && e.port_serie);
-    bLiberer.title = motifL;
+    var cleT = !e.pilote ? "stop.titre-sans-outil"
+      : (!e.port_serie ? "stop.titre-sans-port" : "stop.titre-joue");
+    /* 🔴 UN ATTRIBUT NE PORTE **QU'UNE** LANGUE, ⛔ pas les deux bout a bout :
+       une infobulle bilingue est un ilot par construction, et la feuille de
+       style ne peut rien pour un attribut. ⇒ l'index se lit sur la racine.
+       ⚠️ ET L'ACCES EST GARDE : indexer `MOTS` sans filet ferait lever un
+          `TypeError` sur une cle renommee — et ce `TypeError` ARRETERAIT
+          `appliquerFlash`, donc le bouton d'installation ne serait jamais
+          revele. */
+    var motsT = MOTS[cleT] || ["⛔ " + cleT, "⛔ " + cleT];
+    var iT = (document.documentElement.getAttribute("data-langue") === "fr")
+      ? 1 : 0;
+    bStop.title = motsT[iT]
+                + (cleT === "stop.titre-joue" ? (e.port_serie || "") : "");
+    /* 🔴 `stop` N'EXIGE QUE L'OUTIL, ⛔ PAS UN PORT DECOUVERT — ET C'EST LE
+       SERVEUR QUI LE DIT : sans carte enumeree il n'ajoute simplement pas
+       `-Serie`, l'outil garde son defaut, et le verdict le DIT. Exiger un
+       port ici etait la porte du SECOND bouton supprime par cette marche,
+       heritee par erreur ⇒ ⛔ le nom de ce bouton n'est pas ecrit ici, parce
+       qu'une gate vivante exige qu'il ait disparu de la page : agent
+       installe + carte debranchee, et la page ne savait PLUS l'arreter.
+       ⛔ ET ON N'ECRASE PAS UNE RAISON D'INACTIVITE DEJA POSEE par l'etat de
+          machine — sinon le bandeau « Boutons inactifs » surplomberait un
+          bouton cliquable. */
+    if (!e.pilote) { bStop.disabled = true; }
+    /* ⛔ ET ⛔ PAS PENDANT QUE LA CONSOLE DE CETTE PAGE TIENT LE PORT : `stop`
+       prouve son travail EN ROUVRANT le port, et il echouerait sur un port
+       que nous tenons nous-memes — rendant un code qui decrit autre chose
+       que ce qui s'est passe. */
+    if (portConsole) {
+      bStopAvantConsole = bStop.disabled;
+      bStop.disabled = true;
+    }
   }
 
   /* 🔴 LA CHARGE ABIMEE ⛔ NE SE DIT PAS SEULEMENT, ELLE **ARRETE**. Écrire un
@@ -732,9 +1510,14 @@ function appliquerFlash(e) {
      l'écran démarrerait blanc. ⇒ le bloc d'installation est MASQUÉ, comme pour
      une panne de module. */
   if (e.charge && e.charge.complete === false) {
-    chargeInutilisable("le serveur local déclare la charge incomplète ou "
-                       + "abîmée (" + (e.charge.asset || "voir la fenêtre du "
-                       + "script") + ")");
+    /* ⛔ ⛔ PAS D'INDEX EN DUR SUR LA TABLE : `MOTS[…][0]` est l'ANGLAIS, et un
+       lecteur francais aurait lu une phrase francaise finissant en anglais.
+       ⇒ le repli est une CLE, comme le reste. */
+    if (e.charge.asset) {
+      chargeInutilisable("charge.incomplete", e.charge.asset + ")");
+    } else {
+      chargeInutilisable("charge.incomplete-muette");
+    }
   }
   /* 🔴 ET C'EST **ICI** QUE LE BOUTON APPARAIT, ⛔ pas au chargement : l'état
      de la machine est connu, donc l'avertissement hors Windows est déjà à
@@ -742,14 +1525,204 @@ function appliquerFlash(e) {
   reveler();
 }
 
-if (bLiberer) {
-  bLiberer.addEventListener("click", function () {
-    /* ⚠️ C'EST LE **MEME** CHEMIN QUE « Arrêter l'agent » : le verbe `stop`
-       expose par le serveur, sur le port DECOUVERT. ⛔ Aucun drapeau
-       reimplemente, ⛔ aucun `taskkill`. */
-    jouer("stop", bLiberer);
+/* ═══════════════════════════════════════════════════════════════════════
+   LA CONSOLE DE LA CARTE — UNE ENTREE **DISTINCTE** DU FLASH    (dn7-2-2)
+   ═══════════════════════════════════════════════════════════════════════
+   🔴 POURQUOI ELLE EST ECRITE ICI PLUTOT QUE REUTILISEE, ET C'EST UNE MESURE.
+      « Logs & Console » existe bien chez ESP Web Tools — mais dans un morceau
+      que cette page ⛔ NE CHARGE PAS : `install-button.js`, le module epingle,
+      pese 2 829 o et contient `getWriter` x0, `onData` x0, `writable` x0. La
+      console vit dans un second morceau de 310 820 o dont le NOM PORTE UN
+      HACHAGE DE BUILD, importe seulement depuis le gestionnaire de clic du
+      bouton d'installation. Le referencer obligerait a ecrire en dur un
+      artefact interne : il marcherait aujourd'hui et rendrait 404 EN SILENCE a
+      la premiere montee de version — sans qu'aucune gate de ce depot ne le
+      voie, puisque rien n'execute ce JavaScript.
+   ⚠️ LE DEBIT N'EST PAS SUPPOSE : 115200 est donne par TROIS sources
+      concordantes — la configuration du firmware, l'agent, et l'ouverture
+      d'ESP Web Tools elle-meme, celle qui a produit le battement lu en seance
+      le 2026-09-09.
+   ⛔ CETTE CONSOLE N'ECRIT RIEN SUR LE PORT : elle LIT. */
+var DEBIT_CONSOLE = 115200;
+
+var bConsole = document.getElementById("b-console");
+var bConsoleFermer = document.getElementById("b-console-fermer");
+var consoleSortie = document.getElementById("console-sortie");
+var portConsole = null;
+var lecteurConsole = null;
+var consoleFermeture = false;
+/* 🔴 DEUX GARDES DE RE-ENTRANCE, ⛔ PAS UNE COQUETTERIE. Sans la premiere,
+   deux clics rapides ouvrent DEUX selecteurs et le premier port devient
+   ORPHELIN — tenu, sans plus aucune reference pour le rendre. Sans la
+   seconde, deux clics impriment DEUX fois la restitution. */
+var consoleOuvertureEnVol = false;
+var consoleFermetureEnVol = false;
+/* L'etat de `b-stop` AVANT que la console prenne le port, pour le lui rendre
+   tel quel — ⛔ pas « actif », qui inventerait une permission. */
+var bStopAvantConsole = null;
+
+function consoleAjouter(txt) {
+  consoleSortie.hidden = false;
+  consoleSortie.appendChild(document.createTextNode(txt));
+  consoleSortie.scrollTop = consoleSortie.scrollHeight;
+}
+
+function consoleAjouterMot(cle, suffixe) {
+  consoleSortie.hidden = false;
+  consoleSortie.appendChild(paire(cle, suffixe, false));
+  consoleSortie.scrollTop = consoleSortie.scrollHeight;
+}
+
+/* 🔴 TROIS REFUS, NOMMES SEPAREMENT — ⛔ JAMAIS « aucune carte » POUR UN PORT
+   REFUSE. Un port refuse EXISTE et il a ete CHOISI : ce qui echoue est son
+   OUVERTURE, parce qu'un autre programme le tient. Les confondre renverrait
+   quelqu'un chercher une carte qu'il a sous les yeux. */
+function consoleRefus(cle, suffixe) {
+  var e = document.getElementById("etat-console");
+  e.textContent = "";
+  e.appendChild(paire(cle, suffixe === undefined ? "" : suffixe, true));
+  e.hidden = false;
+}
+
+function consoleMasquerRefus() {
+  var e = document.getElementById("etat-console");
+  e.textContent = "";
+  e.hidden = true;
+}
+
+function consoleBoutons(ouverte) {
+  if (bConsole) { bConsole.disabled = ouverte; }
+  if (bConsoleFermer) { bConsoleFermer.disabled = !ouverte; }
+  /* 🔴 ET `b-stop` SUIT : le verbe `stop` prouve son travail EN ROUVRANT le
+     port. Le jouer pendant que CETTE page le tient le ferait echouer sur
+     nous-memes, et rendre un code qui decrit autre chose. */
+  if (!bStop) { return; }
+  if (ouverte) {
+    if (bStopAvantConsole === null) { bStopAvantConsole = bStop.disabled; }
+    bStop.disabled = true;
+  } else if (bStopAvantConsole !== null) {
+    bStop.disabled = bStopAvantConsole;
+    bStopAvantConsole = null;
+  }
+}
+
+function consoleLire() {
+  var deco = new TextDecoder();
+  function tour() {
+    return lecteurConsole.read().then(function (r) {
+      if (r.value) { consoleAjouter(deco.decode(r.value, { stream: true })); }
+      if (r.done) { return null; }
+      return tour();
+    });
+  }
+  /* 🔴 LES **DEUX** SORTIES DE LECTURE REMETTENT L'ETAT, ⛔ pas seulement
+     l'erreur. Un flux qui se termine de lui-meme (`done` : carte debranchee,
+     remise a zero) laissait « Ouvrir » GRISE et « Fermer » ACTIF sur un port
+     mort — le lecteur enferme devant deux boutons qui mentent tous les deux. */
+  return tour().then(function () {
+    return consoleFinDeLien(null);
+  }, function (err) {
+    return consoleFinDeLien(err);
   });
 }
+
+function consoleFinDeLien(err) {
+  /* ⚠️ UNE LECTURE INTERROMPUE PAR LA FERMETURE VOULUE N'EST ⛔ PAS UNE
+     PANNE : ce chemin-la est deja traite par le geste explicite. */
+  if (consoleFermeture) { return null; }
+  if (err) { consoleAjouterMot("console.perdue", String(err)); }
+  else { consoleAjouterMot("console.lien-fini"); }
+  /* ⛔ ON NE SE CONTENTE PAS DE REMETTRE LES BOUTONS : le port serait RETENU
+     EN SILENCE. On le rend par le MEME chemin que le geste explicite. */
+  return consoleFermer();
+}
+
+function consoleOuvrir() {
+  /* 🔴 UN CLIC TANT QU'UNE OUVERTURE EST EN VOL EST IGNORE. `bConsole` n'est
+     grise qu'APRES le succes de `open()` : deux clics rapides ouvraient donc
+     DEUX selecteurs, et le premier port se retrouvait ORPHELIN — tenu, sans
+     plus aucune reference pour le rendre. */
+  if (consoleOuvertureEnVol || portConsole) { return null; }
+  consoleMasquerRefus();
+  if (!("serial" in navigator)) {
+    consoleRefus("console.sans-serial");
+    return null;
+  }
+  consoleFermeture = false;
+  consoleOuvertureEnVol = true;
+  var relacher = function () { consoleOuvertureEnVol = false; };
+  return navigator.serial.requestPort().then(function (p) {
+    /* ⚠️ C'EST **ICI** QUE LE PORT TENU PAR L'AGENT REFUSE — ⛔ pas au choix.
+       Le second gestionnaire ci-dessous distingue donc les deux moments. */
+    return p.open({ baudRate: DEBIT_CONSOLE }).then(function () {
+      portConsole = p;
+      lecteurConsole = p.readable.getReader();
+      consoleBoutons(true);
+      consoleAjouterMot("console.ouverte");
+      relacher();
+      return consoleLire();
+    }, function (err) {
+      relacher();
+      consoleRefus("console.port-refuse", String(err));
+    });
+  }, function (err) {
+    /* ⛔ « AUCUN PORT CHOISI » N'EST PAS UN ECHEC DE LA CARTE : c'est le
+       selecteur ferme sans selection, et le navigateur sort la-dessus sur
+       « No port selected ». */
+    relacher();
+    consoleRefus("console.aucun-port", " (" + String(err) + ")");
+  });
+}
+
+/* 🔴 UN GESTE EXPLICITE **REND** LE PORT, ET LA PAGE LE DIT. ⛔ Un port retenu
+   en silence apres la fermeture de la console empecherait l'agent de repartir,
+   et rien ne l'expliquerait. */
+function consoleFermer() {
+  /* 🔴 GARDE DE RE-ENTRANCE : deux clics ne doivent pas imprimer DEUX fois la
+     restitution, ni tenter deux fermetures du meme port. */
+  if (consoleFermetureEnVol) { return null; }
+  var p = portConsole;
+  var l = lecteurConsole;
+  if (!p && !l) { return null; }
+  consoleFermetureEnVol = true;
+  consoleFermeture = true;
+  var fin = Promise.resolve();
+  if (l) {
+    /* ⚠️ L'ORDRE EST OBLIGATOIRE : annuler, RELACHER le verrou, puis fermer.
+       Un flux encore verrouille fait partir `close()` en rejet. */
+    fin = l.cancel().catch(function () { return null; })
+           .then(function () { try { l.releaseLock(); } catch (x) { return null; } });
+  }
+  return fin.then(function () {
+    return p ? p.close() : null;
+  }).then(function () {
+    /* 🔴 LES REFERENCES NE TOMBENT QU'**AU SUCCES**. Les effacer d'avance
+       faisait perdre la seule prise sur un port encore tenu. */
+    portConsole = null;
+    lecteurConsole = null;
+    consoleBoutons(false);
+    consoleAjouterMot("console.rendue");
+    consoleFermetureEnVol = false;
+  }, function (err) {
+    /* 🔴 ⛔ UNE FERMETURE QUI ECHOUE N'EST **PAS** UNE RESTITUTION. Annoncer
+       « le port est rendu » ici publierait une IGNORANCE comme un constat —
+       et la matrice de cette marche interdit mot pour mot le port retenu EN
+       SILENCE. ⇒ cle DISTINCTE, references GARDEES, bouton de fermeture
+       laisse ACTIF pour qu'on puisse ressayer. */
+    consoleFermeture = false;
+    consoleFermetureEnVol = false;
+    consoleAjouterMot("console.non-rendue", String(err));
+  });
+}
+
+if (bConsole) { bConsole.addEventListener("click", consoleOuvrir); }
+if (bConsoleFermer) { bConsoleFermer.addEventListener("click", consoleFermer); }
+/* ⚠️ ET SI L'ONGLET PART SANS QU'ON AIT CLIQUE : le port est rendu quand meme.
+   ⛔ Ce n'est pas un remplacement du geste explicite — la page continue de le
+   demander — c'est le filet de celui qui ferme la fenetre. */
+window.addEventListener("pagehide", function () {
+  if (portConsole) { consoleFermer(); }
+});
 
 /* ── L'ENCHAINEMENT ──────────────────────────────────────────────────────
    ⚠️ `rafraichirEtat()` rend la promesse de `fetch`, et son `.then` recoit
