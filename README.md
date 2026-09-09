@@ -52,6 +52,7 @@ la mauvaise est la moins chère.
 | **l'écran** | **FR / EN**, **défaut : ANGLAIS** |
 | **où on change** | 🟡 **au flasheur web** — ⚠️ **pas encore livré**, voir ci-dessous |
 | ⚠️ *annoté le 2026-09-08* | le **flasheur** est livré (§ *Installer DeskNode*) ; ce qui reste vrai, c'est que **le choix de langue** n'y est pas encore — ⛔ ligne du dessus non effacée |
+| 🎯 *ré-annoté le 2026-09-09* | **la moitié « n'y est pas encore » a cessé d'être vraie**, et ⛔ aucune des deux lignes du dessus n'est effacée : le choix **est** sur le flasheur, deux positions, **anglais par défaut**, au-dessus du bouton d'installation — et un geste explicite l'écrit dans la carte après le flash. ⇒ le « **en attendant** » de la ligne suivante devient **le second chemin**, ⛔ plus le seul |
 | **en attendant** | la commande console `langue fr` / `langue en` |
 | **ce qui survit au reboot** | le choix, rangé en NVS |
 | 🔴 **la console (le REPL série)** | **elle reste en FRANÇAIS** — voir plus bas |
@@ -84,6 +85,15 @@ l'entête du MENU, flashées et validées à l'œil le 2026-09-01 — puis **ret
    > avec quatre images versionnées et leur manifeste. ⇒ de la phrase d'origine, il ne
    > reste vrai que **le choix de langue**, qui n'est toujours pas sur la page et se fait
    > toujours au REPL série.
+   > 🎯 **RE-ANNOTÉ LE 2026-09-09 — ⛔ AUCUNE DES TROIS ANNOTATIONS PRÉCÉDENTES N'EST
+   > EFFACÉE, ET LA DERNIÈRE MOITIÉ VIENT DE TOMBER À SON TOUR.** *« Le choix de langue
+   > n'est toujours pas sur la page »* a cessé d'être vrai : la page **porte le choix**,
+   > **avant le flash**, anglais par défaut, et un geste explicite l'**écrit dans la carte**.
+   > ⇒ de la phrase d'origine — *« le choix appartient au flasheur web, ⛔ pas au MENU »* —
+   > il ne reste plus rien d'ouvert : le flasheur est livré, **et il porte le choix**.
+   > ⚠️ **Ce qui reste vrai, et c'est ce dont parle le point 2 ci-dessous** : les deux cibles
+   > `FR`/`EN` **de l'entête du MENU** restent retirées, et la régression de charge qu'elles
+   > causaient reste la raison. Le choix se fait **sur la page**, ⛔ pas au doigt sur la dalle.
 2. 🔴 **Ces deux cibles causaient une régression de charge MESURÉE** : `taskLVGL` passait de
    **3,5 % à 99,3 %** après une poignée de reconstructions de scène, watchdog déclenché, écran
    saccadé et tactile en retard. Elle est **partie avec elles** (A/B sur la carte, même protocole).
@@ -91,6 +101,14 @@ l'entête du MENU, flashées et validées à l'œil le 2026-09-01 — puis **ret
 ⇒ **Aujourd'hui, la langue se change au REPL série** (`langue fr`). ⚠️ Le README ne prétend donc
 **pas** que le produit se règle entièrement au doigt sur ce point-là — et c'est écrit ici plutôt
 que constaté le premier soir.
+
+> 🎯 **ANNOTÉ LE 2026-09-09 — LA PHRASE CI-DESSUS RESTE VRAIE, MAIS ELLE N'EST PLUS TOUTE
+> L'HISTOIRE, ET ELLE N'EST ⛔ PAS EFFACÉE.** Le canal n'a pas changé : c'est **toujours**
+> `langue fr` au REPL série qui pose la langue. Ce qui change, c'est **qui le tape** : la page
+> d'installation le fait désormais **pour vous**, sur un geste explicite, après le flash — elle
+> réveille la console, envoie l'ordre, **relit l'état** et vous rend le refus de la carte s'il y
+> en a un. ⇒ vous n'avez plus à trouver un terminal série ; ⛔ mais rien n'a été construit dans
+> le firmware pour ça, et la commande console reste ce qu'elle était.
 
 #### ⛔ LA CONSOLE RESTE EN FRANÇAIS, ET C'EST UNE DÉCISION — ⛔ PAS UN OUBLI
 
@@ -545,9 +563,10 @@ ferait donc échouer l'outil qui existe déjà.
 | **Arrêter l'agent et rendre le port** | le verbe `stop` de `tools/dn_agent_tour.ps1`, **sur le port découvert** | l'outil **rouvre le port** — et « rendu » (`0`) et « disparu » (`7`) sont rendus **distincts**, ⛔ pas confondus |
 | **Installer DeskNode sur la carte** | ESP Web Tools, **épinglé `10.4.0`**, avec `installeur/charge/manifest.json` | les **quatre** morceaux aux **quatre** offsets, ⛔ sans binaire fusionné ; la version annoncée est **lue dans le binaire servi**, et une gate refuse qu'elles diffèrent |
 | 🆕 **Se brancher à la carte et lire sa console** | **rien du dépôt** : la page ouvre **son** port avec l'accès série du navigateur, à **115200** bauds | une gate vérifie que l'entrée est un élément **distinct** du bouton de flash, que le débit est **déclaré une fois** et que les **trois refus** sont nommés séparément |
+| 🆕 **Poser la langue de la dalle sur la carte** | la commande console `langue` que le **firmware livre déjà** — ⛔ la page ne construit aucun mécanisme, elle pose **le choix** | **deux** gates : l'une lit la structure — le choix précède le flash, l'anglais **n'écrit rien**, l'invite est attendue **avant** l'envoi, le succès n'est atteignable que **depuis la relecture** — l'autre **EXÉCUTE** le script de la page contre un port de banc d'essai et rejoue les **neuf** lignes de sa matrice, plus neuf chemins nommés par deux revues |
 | **Retirer l'agent** | le verbe `retirer` du même outil | la tâche est **redemandée au système** après coup, ⛔ le message de sortie ne fait pas foi |
 
-⇒ Ces **quatre** gestes **n'inventent rien** — et **deux d'entre eux** *(arrêter, retirer)*
+⇒ Ces **cinq** gestes **n'inventent rien** — et **deux d'entre eux** *(arrêter, retirer)*
 exposent des verbes que le dépôt livre déjà, dont la sortie vous est rendue **telle quelle**,
 code de retour compris. Le détail des sept verbes, leurs arguments et ce qu'ils mesurent sont
 documentés plus bas, à **§ *« Lancer / arrêter l'agent DEPUIS WINDOWS »***. ⛔ Ils ne sont pas
@@ -560,6 +579,11 @@ redits ici : une table dupliquée est une table qui divergera.
 > **même** verbe `stop`, sur le **même** port, et rendaient la **même** sortie. ⇒ les deux sont
 > **fusionnés** dans la page, le bouton survivant est nommé par **tout** son effet, et une
 > entrée **neuve** — la console — prend la ligne libérée.
+
+> 🎯 **COMPLÉTÉ LE 2026-09-09 (`dn7-3`) — ⛔ RIEN N'EST EFFACÉ, UNE LIGNE EST AJOUTÉE.**
+> La table portait **quatre** lignes ; elle en porte **cinq**. La cinquième — *poser la
+> langue de la dalle* — est le seul geste de cette page qui **écrive** sur le port série :
+> la console, elle, ne fait que **lire**, et elle continue.
 
 🆕 **Relire la carte ne passe plus par le bouton qui la flashe.** Jusqu'au 2026-09-09, le
 **seul** chemin vers les logs de la carte était le bouton d'installation : pour **regarder**
@@ -579,6 +603,63 @@ chaque lancement**, donc une **nouvelle origine** à chaque fois, donc **aucun s
 navigateur ne survit**. La page revient en anglais à chaque lancement, et elle ⛔ ne prétend
 pas le contraire. ⚠️ ⛔ **À ne pas confondre avec la langue de la DALLE**, qui est un autre
 sujet et une autre langue.
+
+🆕 **Et la langue de la DALLE se choisit maintenant sur la page, avant le flash.** Deux
+positions — **anglais par défaut** — posées **juste au-dessus du bouton d'installation**, sans
+rien dérouler, et un **geste explicite** qui l'écrit dans la carte **après** le flash.
+
+- 🔴 **Choisir l'anglais n'écrit RIEN dans la carte, et c'est la propriété.** Le défaut de la
+  dalle est **structurel** : elle démarre en anglais quand sa NVS ne porte **aucune** langue.
+  Écrire une valeur qui voudrait dire « anglais » remplacerait un **défaut** par un **choix** —
+  ce n'est pas la même chose le jour où le défaut change. ⇒ le défaut se prouve **par l'absence
+  d'écriture**, et c'est **mesuré** : le geste joué avec l'anglais choisi écrit **zéro octet**.
+- 🔴 **Le geste est explicite, ⛔ pas enchaîné à la fin du flash**, et deux mesures le décident :
+  la page ne porte **aucun écouteur** sur le module de flash, et **le délai entre la fin du
+  flash et le moment où le REPL répond n'est pas mesuré**. Un envoi trop tôt perdrait la ligne,
+  et une ligne perdue produirait *« un succès annoncé sur une langue non posée »*. ⇒ le geste
+  **réveille** la console et **attend l'invite** avant d'envoyer quoi que ce soit.
+- 🔴 **On relit l'acceptation, puis l'ÉTAT — ⛔ jamais l'ordre envoyé.** Après l'ordre, la page
+  redemande la langue à la carte et n'annonce *« posée »* **que si la relecture porte le code
+  choisi**. **Cinq issues, cinq messages distincts**, chacune reconnue par le littéral que la
+  commande imprime **pour elle** : *posée* · *refusée* · *posée à chaud mais ⛔ NON gardée* ·
+  *sans réponse* · *pas d'invite*. ⛔ Jamais « posée » pour un silence, ⛔ jamais « refusée » pour
+  une absence d'invite — et quand la carte refuse, **ses propres mots vous sont rendus tels
+  quels**. ⚠️ **La troisième existe parce qu'elle a été MESURÉE** : quand la carte n'arrive pas à
+  ranger le réglage, elle imprime son avertissement, **puis reconstruit la scène, puis** imprime
+  la ligne de succès. Les deux moitiés tombaient dans le même motif ⇒ la page aurait annoncé
+  l'inverse de ce que la carte venait d'écrire. Sa clé dit **les deux faits** : la dalle **a**
+  changé, et ⛔ elle **ne gardera pas** ce changement.
+- ⚠️ **Et *« posée »* ⛔ ne promet PAS qu'un redémarrage y survive.** Le firmware pose la valeur
+  **à chaud AVANT** de l'écrire : la relecture rend donc le code choisi que l'écriture ait réussi
+  ou non. **La seule preuve** est le bandeau du haut de la dalle, **après une coupure
+  d'alimentation**, et ⛔ nulle part ailleurs.
+- 🔴 **⛔ LE PREMIER DÉMARRAGE APRÈS UNE INSTALLATION EST ANGLAIS, QUEL QUE SOIT VOTRE CHOIX**, et
+  c'est mesuré : le flash **efface les réglages rangés dans la carte** (après un flash depuis
+  cette page, la commande `cfg` rend *« aucune config en NVS — defauts appliques »*), et la carte
+  **redémarre toute seule AVANT** que le geste soit joué. ⇒ **le geste est à rejouer après chaque
+  installation** — mettre DeskNode à jour, c'est le reflasher. La page le dit à l'étape qui pose
+  la langue.
+- ⚠️ **Ce que la page ⛔ ne construit PAS** : le mécanisme. La commande console, la clé NVS et la
+  table à une définition par chaîne sont **livrées par le firmware** ; cette page pose **le
+  choix**, et rien d'autre. `git diff -- firmware/` est **vide** pour cette marche.
+- 🆕 **Et ce geste-là est le premier de cette page à être REJOUÉ, ⛔ pas seulement relu.**
+  Jusqu'ici **aucun outil du dépôt n'exécutait le JavaScript** de la page d'installation :
+  les gates en lisaient la structure. `tools/banc_langue_dalle_dn73.mjs` **extrait le
+  `<script>` de la page et l'exécute** contre un DOM et un port de banc d'essai, puis joue
+  les **neuf** lignes de la matrice — dont *« le port est tenu par l'agent »*, *« double
+  clic »* et *« pas d'accès série »* — plus **neuf** chemins que deux revues ont nommés : le
+  port obtenu **par le sélecteur** du navigateur suivi d'une pose complète, la réponse
+  *« posée à chaud, non gardée »*, une relecture qui **ne porte pas** le code, un sélecteur
+  **déjà ouvert**, un sélecteur **annulé**, un **vrai clic** sur le bouton français, le bloc
+  d'installation **révélé** puis **masqué**, et une écriture qui **rejette en vol**. ⛔ Il ne recopie aucune logique : un harnais qui rejoue sa propre copie ne mesure
+  que lui-même. 🔴 Et il **sort en non-zéro quand sa chaîne ne se résout pas** : un banc qui
+  rend 0 sur une liste tronquée annonce un succès qu'il n'a pas mesuré.
+  `tools/verif_banc_langue_dn73.py` le **lance** à chaque passe de `tools/run_gates.sh`. ⚠️ **Le moteur `node` est un prérequis déclaré** :
+  s'il manque, cette gate rend **4** avec son motif et elle est portée **non-jouable** —
+  ⛔ elle ne sort **jamais verte** sans avoir joué le banc.
+  ⛔ **Ce que ce banc ne prouve pas** : il joue une carte **de banc d'essai**. Que la langue
+  soit vraiment posée, et qu'elle **survive à une coupure**, se lit **au bandeau de la
+  dalle**, à l'œil.
 
 ### 🔴 Ce que vous devez installer vous-même — **écart déclaré**, avec son porteur
 
@@ -757,6 +838,13 @@ dépendance dure déjà déclarée de ce chantier.
   > vrai** : elle ne choisit toujours **aucune langue pour la DALLE**, qui démarre en anglais
   > et se règle au REPL série (`langue fr`). ⛔ **Deux langues différentes, deux sujets
   > différents** : celle que le lecteur lit, et celle qui est posée dans la carte.
+  > 🎯 **RE-ANNOTÉ LE 2026-09-09 — ⛔ RIEN N'EST EFFACÉ, ET LA MOITIÉ « ce qui reste vrai »
+  > VIENT DE TOMBER.** La page **choisit désormais** la langue de la DALLE : deux positions,
+  > **anglais par défaut**, au-dessus du bouton d'installation, et un geste explicite qui
+  > l'écrit dans la carte par sa console série — en **relisant** l'état plutôt qu'en annonçant
+  > un succès. ⇒ ce qui reste vrai est **plus petit** : la **dalle elle-même** ne porte aucun
+  > sélecteur à l'écran, et le canal reste le REPL — c'est la page qui le tape. ⛔ **Deux
+  > langues différentes** : cette distinction-là, elle, ne bouge pas.
 - ⛔ **Elle ne montre aucun aperçu de la dalle** : c'est une **exclusion déclarée** de la
   première version, ⛔ ni un oubli ni un manque à réparer.
 - ⚠️ **L'agent est Windows seulement**, et ça ne change pas. La page s'ouvre ailleurs — et

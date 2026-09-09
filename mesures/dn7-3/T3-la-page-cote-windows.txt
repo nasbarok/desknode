@@ -1,0 +1,105 @@
+==============================================================================
+dn7-3 / T3 — LA PAGE, MESUREE COTE WINDOWS DANS SON PROPRE DOM
+==============================================================================
+    2026-09-09 · Windows · Edge --headless=new · Python 3.13.4 (Windows)
+
+⚠️ ⛔ AUCUNE MESURE N'EST PRISE DEPUIS WSL, ET C'EST UNE CONTRAINTE DE
+   BANC, ⛔ PAS DE PRODUIT : le WSL de la tour est en NAT ⇒ `localhost`
+   ne traverse pas, la page serait vue par IP, donc HORS contexte
+   securise, et Web Serial serait retire SANS RIEN DIRE.
+   ⇒ le serveur est lance par le Python de WINDOWS, sur l'arbre WSL
+     vu en UNC, et le navigateur est celui de Windows.
+
+==============================================================================
+TIR A — LA PAGE **SERVIE**, SUR `http://127.0.0.1:<port tire>`
+==============================================================================
+  serveur      : \\wsl.localhost\Ubuntu\home\nasbarok\projects\desknode\installeur\dn_installeur.py
+  adresse      : http://127.0.0.1:61651/   (port TIRE au lancement)
+  DOM servi    : 153542 octets
+  v-contexte   : yes
+  v-serial     : available
+  v-version    : 40be2c8
+  v-url        : http://127.0.0.1:61651/
+  racine       : <html lang="en" data-langue="en">
+
+── L'ORDRE DU DOCUMENT, TEL QUE SERVI ──────────────────────────────
+      13761  selecteur de langue de la PAGE      (`#sec-langue`)
+      26442  choix de langue de la DALLE         (`#sec-langue-dalle`)
+      28287  element de flash REEL               (`<esp-web-install-button manifest=…>`)
+      42633  geste de pose                       (`#b-langue-poser`)
+      45629  entree de console                   (`#b-console`)
+  ⇒ croissant : OUI
+
+⚠️ PIEGE DE MESURE HERITE DE `dn7-2-2`, ET RE-PAYE ICI : chercher
+   `esp-web-install-button` dans le DOM tombe d'abord sur le
+   COMMENTAIRE d'en-tete de la page, qui le nomme. ⇒ la sonde ancre
+   sur `manifest=`, c'est-a-dire sur l'ELEMENT REEL.
+
+── LES ELEMENTS NEUFS, DANS LE DOM SERVI ───────────────────────────
+  #sec-langue-dalle   PRESENT
+  #b-dalle-en         PRESENT
+  #b-dalle-fr         PRESENT
+  #b-langue-poser     PRESENT
+  #etat-langue        PRESENT
+  #langue-relais      PRESENT
+
+==============================================================================
+TIR B — LE CHOIX, LA BASCULE, ET LE DEFAUT — SUR LES **VRAIS** BOUTONS
+==============================================================================
+🔴 CE TIR NE REIMPLEMENTE RIEN. Une COPIE de la page — hors de l'arbre —
+   recoit une sonde qui CLIQUE les VRAIS gestionnaires du produit et lit
+   le style CALCULE par le navigateur. ⛔ Elle ne juge aucune regle CSS a
+   la lecture, et elle compte les appels du SEUL chemin d'ecriture du
+   produit — ⛔ elle n'en fabrique pas un autre.
+⚠️ La copie est ouverte en `file:` ⇒ `api/etat` echoue, le bloc
+   d'installation reste MASQUE et le geste reste DESARME. C'est
+   precisement ce que `(c24)` exige, et ⛔ c'est sans effet sur le choix,
+   la bascule et la garde du defaut, qui ne dependent d'aucun serveur.
+
+  racine-au-chargement=en
+  racine-lang-au-chargement=en
+  choix-dalle-present=True
+  choix-dalle-visible=True
+  dalle-en-aria=true
+  dalle-fr-aria=false
+  poser-present=True
+  poser-desarme-au-chargement=True
+  bloc-installer-masque=True
+  profondeur-details=sec=0 en=0 fr=0 poser=0 console=0
+  ordre-selecteur-page-avant-choix-dalle=True
+  ordre-choix-avant-flash=True
+  ordre-flash-avant-poser=True
+  ordre-poser-avant-console=True
+  nombre-de-gestes=4
+  dit-la-dalle-en=True
+  dit-la-dalle-fr=True
+  dit-pas-la-page-en=True
+  dit-pas-la-page-fr=True
+  EN-au-chargement-freres=82/1
+  apres-bascule-page-racine=fr
+  apres-bascule-page-dalle-en-aria=true
+  apres-bascule-page-dalle-fr-aria=false
+  apres-bascule-page-choix-visible=True
+  FR-apres-bascule-freres=1/82
+  retour-EN-racine=en
+  retour-EN-freres=82/1
+  defaut-choix-lu=en
+  defaut-ecritures=0
+  defaut-message=Nothing to do, and nothing was sent.English is what the boar
+  defaut-etat-langue-visible=True
+  apres-clic-dalle-FR-racine-page=en
+  apres-clic-dalle-FR-en-aria=false
+  apres-clic-dalle-FR-fr-aria=true
+  apres-clic-dalle-FR-choix-lu=fr
+  retour-dalle-EN-en-aria=true
+  retour-dalle-EN-fr-aria=false
+
+==============================================================================
+⛔ CE QUE CE RELEVE NE PROUVE **PAS**
+==============================================================================
+⛔ Aucun port serie n'a ete ouvert, et AUCUNE CARTE n'a ete touchee.
+   Que la langue soit VRAIMENT posee dans une carte, et qu'elle SURVIVE
+   a une coupure, se lit AU BANDEAU DE LA DALLE, a l'œil — seance carte.
+⛔ Le refus de la carte n'a pas ete VU a l'ecran : il faudrait envoyer a
+   une VRAIE carte un code qu'elle ne porte pas.
+⛔ n = 1 : un poste, un navigateur, un moteur de rendu.

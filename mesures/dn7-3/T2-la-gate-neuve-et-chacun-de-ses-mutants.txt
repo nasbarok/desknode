@@ -1,0 +1,262 @@
+==============================================================================
+dn7-3 / T2 — LA GATE NEUVE, SON TEMOIN NEGATIF, ET CHACUN DE SES MUTANTS
+==============================================================================
+    2026-09-09 · `tools/verif_langue_dalle_dn73.py` (61 controles, 34 mutants)
+
+🔴 L'ORDRE DES TROIS PIECES EST LE VERDICT, ⛔ pas leur presence :
+   (1) LE TEMOIN NEGATIF — les controles NEUFS joues contre la page
+       D'ORIGINE ⇒ `[KO ]` sur chacun. ⛔ Une gate qui reverdit sans avoir
+       rougi n'a rien garde.
+   (2) LA GATE SUR L'ARBRE — `61 OK, 0 KO`, rc 0, et le compte EMIS egale
+       la constante DECLAREE (c'est la garde `(z)` de la gate elle-meme).
+   (3) CHAQUE MUTANT, TIRE **INDIVIDUELLEMENT**, et CONFRONTE A LA CIBLE
+       QU'IL DECLARE. ⛔ « N mutants, N vus rougir » prouve `mutant ⇒ rouge`,
+       ⛔ jamais `controle ⇒ couvert`.
+
+==============================================================================
+(1) LE TEMOIN NEGATIF — LA PAGE D'ORIGINE, HORS DE L'ARBRE
+==============================================================================
+⛔ LE TEMOIN **IMPORTE LA GATE** ET APPELLE **LES MEMES FONCTIONS** que ses
+   controles : une garde reecrite dans le temoin ne prouverait que le temoin.
+⚠️ La page jouee est `git show HEAD:installeur/index.html`, ecrite dans un
+   fichier temporaire **HORS DE L'ARBRE**, et effacee apres le tir.
+
+==============================================================================
+TEMOIN NEGATIF dn7-3 — LES CONTROLES NEUFS, JOUES CONTRE LA PAGE D'ORIGINE
+==============================================================================
+page jouee : /tmp/claude-1000/-home-nasbarok-projects-compagnon-project/c8c8f250-777d-4ba3-8fb5-790b11d6ec9a/scratchpad/page-origine.html (103703 octets) = git show HEAD:installeur/index.html
+gate       : /home/nasbarok/projects/desknode/tools/verif_langue_dalle_dn73.py (importee, ⛔ pas recopiee)
+attendu    : [KO ] sur CHACUN — ces proprietes n'existent pas encore.
+------------------------------------------------------------------------------
+  [KO  ] (c1) le choix de la DALLE a DEUX positions
+  [KO  ] (c2) le choix PRECEDE l'element de flash
+  [KO  ] (c3) le defaut ANGLAIS est ECRIT dans le document
+  [KO  ] (c4) le choix de la DALLE n'est pas celui de la PAGE
+  [KO  ] (c5) la page DIT que c'est la dalle, en 2 langues
+  [KO  ] (c6) le geste de pose a SON bouton, hors repli
+  [KO  ] (c7) l'ordre est `langue` + un code de la table
+  [KO  ] (c8) anglais => AUCUNE ecriture, et la garde PRECEDE
+  [KO  ] (c9) le verrou d'ecriture est rendu sur les 2 chemins
+  [KO  ] (c10) l'invite est ATTENDUE avant l'envoi
+  [KO  ] (c11) les QUATRE issues sont nommees SEPAREMENT
+  [KO  ] (c12) chaque issue est ANCREE dans SA branche
+  [KO  ] (c13) le succes ne vient QUE de la relecture
+  [KO  ] (c14) l'attente ne prend PAS un second lecteur
+  [KO  ] (c15) le geste porte sa garde de RE-ENTRANCE
+  [KO  ] (c16) page <=> firmware : l'appariement est BIUNIVOQUE
+  [KO  ] (c21) « posee A CHAUD, non persistee » a SA cle
+  [KO  ] (c22) aucun motif ne classe un journal ETRANGER
+  [KO  ] (c23) chaque issue DIT ce qu'il advient du port
+  [KO  ] (c24) le geste ne s'offre pas sans le bloc de flash
+  [KO  ] (c25) sans invite, les octets LUS sont relayes
+  [KO  ] (c26) le reste de la lecture est REPRIS, pas jete
+------------------------------------------------------------------------------
+TEMOIN : 22 KO, 0 VERT sur 22 controles de propriete
+⛔ (c0) pre-vol, (c17) « aucun numero de ligne » et (c18)(c19)(c20) la
+   reciproque ⛔ NE SONT PAS ICI : le pre-vol lit des fichiers, (c17) est
+   une INTERDICTION que la page d'origine respecte deja par vacuite, et la
+   reciproque porte sur la GATE, ⛔ pas sur la page. Les inclure aurait
+   fabrique un rouge qui ne prouve rien.
+
+==============================================================================
+(2) LA GATE, SUR L'ARBRE
+==============================================================================
+==============================================================================
+dn7-3 — LA LANGUE SE CHOISIT A L'INSTALLATION, ET LA CARTE L'A
+==============================================================================
+cibles     : installeur/index.html · firmware/desknode/main/dn_console.c · firmware/desknode/main/dn_langue.c · firmware/desknode/main/dn_capteurs.c · firmware/desknode/main/dn_rtc.c
+⛔ CETTE GATE N'EXECUTE PAS LE JAVASCRIPT DE LA PAGE, N'OUVRE AUCUN
+   PORT ET NE PARLE A AUCUNE CARTE. Que la langue soit VRAIMENT
+   posee, et qu'elle SURVIVE au reboot, se lit AU BANDEAU DE LA
+   DALLE — une seance carte, et rien d'autre.
+
+── (c0) LE PRE-VOL — ⛔ AUCUN CONTROLE SUR DU VIDE ────────────────
+  [OK ] (c0) tout fichier attendu est LISIBLE                      5 fichier(s) lus
+  [OK ] (c0) le mutant 1 a une CIBLE et un LIBELLE                 → c1
+  [OK ] (c0) le mutant 2 a une CIBLE et un LIBELLE                 → c2
+  [OK ] (c0) le mutant 3 a une CIBLE et un LIBELLE                 → c3
+  [OK ] (c0) le mutant 4 a une CIBLE et un LIBELLE                 → c3
+  [OK ] (c0) le mutant 5 a une CIBLE et un LIBELLE                 → c4
+  [OK ] (c0) le mutant 6 a une CIBLE et un LIBELLE                 → c5
+  [OK ] (c0) le mutant 7 a une CIBLE et un LIBELLE                 → c6
+  [OK ] (c0) le mutant 8 a une CIBLE et un LIBELLE                 → c7
+  [OK ] (c0) le mutant 9 a une CIBLE et un LIBELLE                 → c8
+  [OK ] (c0) le mutant 10 a une CIBLE et un LIBELLE                → c8
+  [OK ] (c0) le mutant 11 a une CIBLE et un LIBELLE                → c9
+  [OK ] (c0) le mutant 12 a une CIBLE et un LIBELLE                → c10
+  [OK ] (c0) le mutant 13 a une CIBLE et un LIBELLE                → c11
+  [OK ] (c0) le mutant 14 a une CIBLE et un LIBELLE                → c12
+  [OK ] (c0) le mutant 15 a une CIBLE et un LIBELLE                → c13
+  [OK ] (c0) le mutant 16 a une CIBLE et un LIBELLE                → c14
+  [OK ] (c0) le mutant 17 a une CIBLE et un LIBELLE                → c15
+  [OK ] (c0) le mutant 18 a une CIBLE et un LIBELLE                → c16
+  [OK ] (c0) le mutant 19 a une CIBLE et un LIBELLE                → c17
+  [OK ] (c0) le mutant 20 a une CIBLE et un LIBELLE                → z
+  [OK ] (c0) le mutant 21 a une CIBLE et un LIBELLE                → c0
+  [OK ] (c0) le mutant 22 a une CIBLE et un LIBELLE                → c18
+  [OK ] (c0) le mutant 23 a une CIBLE et un LIBELLE                → c19
+  [OK ] (c0) le mutant 24 a une CIBLE et un LIBELLE                → c20
+  [OK ] (c0) le mutant 25 a une CIBLE et un LIBELLE                → c12,c21
+  [OK ] (c0) le mutant 26 a une CIBLE et un LIBELLE                → c22
+  [OK ] (c0) le mutant 27 a une CIBLE et un LIBELLE                → c23
+  [OK ] (c0) le mutant 28 a une CIBLE et un LIBELLE                → c24
+  [OK ] (c0) le mutant 29 a une CIBLE et un LIBELLE                → c24
+  [OK ] (c0) le mutant 30 a une CIBLE et un LIBELLE                → c25
+  [OK ] (c0) le mutant 31 a une CIBLE et un LIBELLE                → c26
+  [OK ] (c0) le mutant 32 a une CIBLE et un LIBELLE                → c10
+  [OK ] (c0) le mutant 33 a une CIBLE et un LIBELLE                → c16
+  [OK ] (c0) le mutant 34 a une CIBLE et un LIBELLE                → c22
+
+── (c1)(c2)(c3) LE CHOIX EXISTE, IL PRECEDE, IL A SON DEFAUT ─────
+  [OK ] (c1) le choix de la DALLE a DEUX positions                 `b-dalle-en` et `b-dalle-fr`, sous `#sec-langue-dalle`
+  [OK ] (c2) le choix PRECEDE l'element de flash                   le choix est offert AVANT le bouton qui ecrit
+  [OK ] (c3) le defaut ANGLAIS est ECRIT dans le document          `aria-pressed` pose dans le fichier, ⛔ par aucun script
+
+── (c4)(c5) LA DALLE ET LA PAGE, ⛔ PAS LA MEME LANGUE ────────────
+  [OK ] (c4) le choix de la DALLE ⛔ n'est pas celui de la PAGE     4 boutons, 2 sections, 2 mecanismes disjoints
+  [OK ] (c5) la page DIT que c'est la dalle, en 2 langues          la distinction est ecrite des DEUX cotes
+
+── (c6) LE GESTE EST EXPLICITE, ET ATTEIGNABLE ───────────────────
+  [OK ] (c6) le geste de pose a SON bouton, hors repli             `b-langue-poser`, a profondeur 0 de `<details>`
+
+── (c7)(c8) L'ORDRE, ET LE DEFAUT QUI N'EN ENVOIE AUCUN ──────────
+  [OK ] (c7) l'ordre est `langue` + un code de la table            `langue` + en/fr, et le binaire porte en/fr
+  [OK ] (c8) anglais ⇒ ⛔ AUCUNE ecriture, et la garde PRECEDE      la garde precede la 1re ecriture (101 < 854)
+
+── (c9)(c10) LE VERROU EST RENDU, ET L'INVITE PRECEDE ────────────
+  [OK ] (c9) le verrou d'ecriture est rendu sur les 2 chemins      1 prise, 2 restitutions
+  [OK ] (c10) l'invite est ATTENDUE avant l'envoi                  le reveil precede l'ordre, et les deux delais sont >= 1000 ms
+
+── (c11)…(c13) QUATRE ISSUES, ET UN SUCCES QUI SE RELIT ──────────
+  [OK ] (c11) les QUATRE issues sont nommees SEPAREMENT            posee · refusee · sans reponse · pas d'invite
+  [OK ] (c12) chaque issue est ANCREE dans SA branche              7 issue(s), chacune dans la branche qui la decide
+  [OK ] (c13) le succes ne vient QUE de la relecture               1 annonce, APRES la relecture de l'etat
+
+── (c14)(c15) UN SEUL LECTEUR, ET UN SEUL GESTE EN VOL ───────────
+  [OK ] (c14) l'attente ⛔ ne prend PAS un second lecteur           1 lecteur, et l'attente est alimentee par l'entonnoir
+  [OK ] (c15) le geste porte sa garde de RE-ENTRANCE               un second clic en vol est IGNORE
+
+── (c16)(c17) LES REPONSES SONT RELUES AU FIRMWARE ───────────────
+  [OK ] (c16) page ⇄ firmware : l'appariement est BIUNIVOQUE       6 reponse(s) relues, appariees, et matchees par la page
+  [OK ] (c17) ⛔ la page ne cite AUCUN numero de ligne              0 adresse `fichier:ligne` du firmware dans la page
+
+── (c21)(c22) LA 5e ISSUE, ET UN CLASSEMENT QUI NE DERIVE PAS ────
+  [OK ] (c21) « posee A CHAUD, ⛔ non persistee » a SA cle          cle propre, litteral propre, examinee avant le succes
+  [OK ] (c22) ⛔ aucun motif ne classe un journal ETRANGER          3 temoin(s) etranger(s) relus au firmware, ⛔ aucun mordu par les 5 motifs de classement
+
+── (c23)…(c25) LE PORT SE DIT, LE GESTE SUIT, LES OCTETS SORTENT ─
+  [OK ] (c23) chaque issue DIT ce qu'il advient du port            toute annonce du geste est suivie de `languePort(`
+  [OK ] (c24) le geste ⛔ ne s'offre pas sans le bloc de flash      `disabled` ecrit dans le document, et les 3 sites l'arment
+  [OK ] (c25) sans invite, les octets LUS sont relayes             les octets lus partent au relais avant l'annonce
+
+── (c26) LE RESTE DE LA LECTURE EST REPRIS, ⛔ PAS JETE ───────────
+  [OK ] (c26) le reste de la lecture est REPRIS, ⛔ pas jete        3 attentes, et les 2 suivantes reprennent le reste
+
+── (c18)(c19)(c20) AUCUN CONTROLE GARDE PAR ZERO MUTANT ──────────
+  [OK ] (c18) chaque controle est vise par >= 1 mutant             28 controle(s) lu(s) a l'AST, 28 cible(s) declaree(s)
+  [OK ] (c19) chaque cible de mutant est un controle REEL          28 cible(s) confrontee(s)
+  [OK ] (c20) `CIBLES` et `MUTANTS` se correspondent               34 mutant(s), 34 cible(s), cle a cle
+
+⛔ CE QUE CETTE GATE NE PROUVE PAS : que la langue soit VRAIMENT
+   posee dans la carte, ni qu'elle SURVIVE a une coupure. Le
+   bandeau est SUR LA DALLE, et il se lit A L'ŒIL — une seance
+   carte, portee au ledger avec son instrument.
+
+==============================================================================
+BILAN : 61 OK, 0 KO
+==============================================================================
+
+
+==============================================================================
+(3) LES 34 MUTANTS, TIRES UN PAR UN
+==============================================================================
+⚠️ LES LIBELLES SE LISENT **A COLONNE FIXE** : `[KO ]` occupe les colonnes
+   2 a 6, et l'identifiant `(cNN)` commence en colonne 8. ⛔ Un `grep` sur la
+   prose lirait aussi les motifs, qui CITENT d'autres identifiants.
+
+── CE QUE CHAQUE MUTANT DECLARE REPLANTER ──────────────────────────
+   1  [c1]  efface la seconde position du choix ⇒ un « choix » a une seule entree, qui ne choisit rien
+   2  [c2]  deplace le choix APRES le bouton de flash ⇒ on le decouvre quand la carte est deja ecrite
+   3  [c3]  relache l'anglais dans le document ⇒ le defaut cesse d'etre ECRIT, et plus rien ne le porte
+   4  [c3]  fait POSER le defaut par un script au chargement ⇒ il n'est plus structurel, il est promis
+   5  [c4]  branche le choix de la DALLE sur la bascule de la PAGE ⇒ les deux langues se melangent
+   6  [c5]  retire d'UNE SEULE langue la mention « c'est la dalle » ⇒ ce lecteur-la croit revoir le meme choix
+   7  [c6]  replie le geste de pose derriere un depliant ⇒ il faut DEROULER pour poser la langue
+   8  [c7]  envoie un code que le binaire NE PORTE PAS ⇒ la carte refuse, et c'est la marche qui l'a fabrique
+   9  [c8]  efface la garde du defaut anglais ⇒ « anglais » est ECRIT en NVS au lieu de n'etre rien
+  10  [c8]  deplace la garde APRES le reveil ⇒ des octets partent sur le port pour un choix qui n'ecrit rien
+  11  [c9]  ne relache plus le verrou d'ecriture sur le chemin d'ECHEC ⇒ la fermeture du port part en rejet
+  12  [c10]  envoie l'ordre AVANT d'attendre l'invite ⇒ la ligne se perd, et le succes serait annonce sur du vide
+  13  [c11]  fond « pas d'invite » dans « sans reponse » ⇒ une carte muette et une carte absente disent la meme chose
+  14  [c12]  ECHANGE deux issues entre leurs branches ⇒ « sans reponse » sur une carte qui n'a jamais rendu l'invite
+  15  [c13]  relit L'ORDRE ENVOYE au lieu de l'ETAT ⇒ le succes se prouve par ce qu'on a tape
+  16  [c14]  prend un SECOND lecteur pour l'attente ⇒ `readable` n'en admet qu'un, et le journal se casse
+  17  [c15]  retire la garde de re-entrance ⇒ deux clics envoient deux ordres et se volent leurs lignes
+  18  [c16]  retire du firmware une reponse que la page ATTEND ⇒ la page guette une phrase que la carte ne dit plus
+  19  [c17]  plante dans la page un numero de ligne du firmware ⇒ une adresse qui se perime au premier commit
+  20  [z]  replante une SORTIE ANTICIPEE NON DECLAREE : le bilan retrecit, et il sortirait VERT
+  21  [c0]  declare un mutant dont le CORPS LEVE ⇒ un mutant MORT, qui sortirait en Traceback SANS `BILAN`
+  22  [c18]  retire une cible de `CIBLES` ⇒ un controle garde par ZERO mutant, le risque deja paye ailleurs
+  23  [c19]  declare dans `CIBLES` un controle INEXISTANT ⇒ une cible PERIMEE, que « N mutants, N rouges » ne voit pas
+  24  [c20]  declare une cible pour un mutant qui N'EXISTE PAS
+  25  [c12,c21]  fait reconnaitre la 5e issue par le litteral du REFUS ⇒ elle n'a plus de litteral a elle
+  26  [c22]  rend le motif de refus TRAVERSANT ⇒ un journal du bus I2C serait classe « refus de langue »
+  27  [c23]  tait ce qu'il advient du port sur une issue ⇒ un port tenu EN SILENCE, et l'agent ne repart pas
+  28  [c24]  arme le geste dans le document ⇒ il s'offre avant que le flash soit seulement possible
+  29  [c24]  masque le bloc de flash SANS desarmer le geste ⇒ poser une langue pour un flash qui n'aura pas lieu
+  30  [c25]  jette les octets lus quand l'invite ne vient pas ⇒ un diagnostic sans piece
+  31  [c26]  jette ce qui suit l'invite ⇒ la reponse suivante part tronquee, et une ligne de langue se perd
+  32  [c10]  met le delai d'invite a ZERO ⇒ l'attente n'attend rien, et l'ordre part sur une carte muette
+  33  [c16]  retire du CORPS DE `cmd_langue` la ligne NVS ⇒ le prefixe reste au fichier, imprime par d'autres
+  34  [c22]  re-ancre la 5e issue sur le PREFIXE PARTAGE ⇒ un reglage voisin serait classe « langue non gardee »
+
+── LE TIR, MUTANT PAR MUTANT ───────────────────────────────────────
+  colonnes : rc · une ligne BILAN ? · les controles VUS ROUGES · la cible DECLAREE
+mutants declares : 34
+  m1   rc=1   bilan=True  KO=c1,c3,c4               vise=c1           OK 
+  m2   rc=1   bilan=True  KO=c2                     vise=c2           OK 
+  m3   rc=1   bilan=True  KO=c3                     vise=c3           OK 
+  m4   rc=1   bilan=True  KO=c3                     vise=c3           OK 
+  m5   rc=1   bilan=True  KO=c4                     vise=c4           OK 
+  m6   rc=1   bilan=True  KO=c5                     vise=c5           OK 
+  m7   rc=1   bilan=True  KO=c6                     vise=c6           OK 
+  m8   rc=1   bilan=True  KO=c7                     vise=c7           OK 
+  m9   rc=1   bilan=True  KO=c8,c12                 vise=c8           OK 
+  m10  rc=1   bilan=True  KO=c8,c12                 vise=c8           OK 
+  m11  rc=1   bilan=True  KO=c9                     vise=c9           OK 
+  m12  rc=1   bilan=True  KO=c10                    vise=c10          OK 
+  m13  rc=1   bilan=True  KO=c11,c12,c25            vise=c11          OK 
+  m14  rc=1   bilan=True  KO=c12,c23                vise=c12          OK 
+  m15  rc=1   bilan=True  KO=c13                    vise=c13          OK 
+  m16  rc=1   bilan=True  KO=c14                    vise=c14          OK 
+  m17  rc=1   bilan=True  KO=c15                    vise=c15          OK 
+  m18  rc=1   bilan=True  KO=c16                    vise=c16          OK 
+  m19  rc=1   bilan=True  KO=c17                    vise=c17          OK 
+  m20  rc=1   bilan=True  KO=z                      vise=z            OK 
+  m21  rc=1   bilan=True  KO=c0                     vise=c0           OK 
+  m22  rc=1   bilan=True  KO=c18                    vise=c18          OK 
+  m23  rc=1   bilan=True  KO=c19                    vise=c19          OK 
+  m24  rc=1   bilan=True  KO=c20                    vise=c20          OK 
+  m25  rc=1   bilan=True  KO=c12,c21                vise=c12,c21      OK 
+  m26  rc=1   bilan=True  KO=c22                    vise=c22          OK 
+  m27  rc=1   bilan=True  KO=c23                    vise=c23          OK 
+  m28  rc=1   bilan=True  KO=c24                    vise=c24          OK 
+  m29  rc=1   bilan=True  KO=c24                    vise=c24          OK 
+  m30  rc=1   bilan=True  KO=c25                    vise=c25          OK 
+  m31  rc=1   bilan=True  KO=c26                    vise=c26          OK 
+  m32  rc=1   bilan=True  KO=c10                    vise=c10          OK 
+  m33  rc=1   bilan=True  KO=c16                    vise=c16          OK 
+  m34  rc=1   bilan=True  KO=c22                    vise=c22          OK 
+MUTANTS SAINS ET CONFRONTES : 34/34
+
+── LE MUTANT INCONNU — UNE ERREUR D'APPEL, ⛔ PAS UN DEFAUT ─────────
+  $ python3 tools/verif_langue_dalle_dn73.py --mutant 999   ⇒  rc=2
+MUTANT 999 INCONNU : il n'est pas declare. ⛔ Un mutant qui n'existe pas ne prouve RIEN — ⛔ ne pas conclure que le controle est vert.
+
+==============================================================================
+⛔ CE QUE CE RELEVE NE PROUVE **PAS**
+==============================================================================
+⛔ Il ne dit RIEN du comportement : cette gate lit une STRUCTURE. Le
+   comportement est mesure par `tools/verif_banc_langue_dn73.py`, qui LANCE un
+   banc executant le script de la page — voir `T4`.
+⛔ Il n'ouvre AUCUN port serie et ne parle a AUCUNE carte.

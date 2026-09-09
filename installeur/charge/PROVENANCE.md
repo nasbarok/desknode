@@ -91,6 +91,27 @@ carte DeskNode, neuve ou déjà flashée — parce que le **découpage de partit
 lecture est ce qui l'attrape — ⛔ pas ce manifeste. Proposer l'effacement à tout le monde pour
 ce cas-là coûterait, à chaque mise à jour ordinaire, la perte des réglages de quelqu'un.
 
+> 🔴 **ANNOTÉ LE 2026-09-09 (`dn7-3`) — LE PARAGRAPHE CI-DESSUS EST RÉFUTÉ PAR LA MESURE,
+> ET IL N'EST ⛔ PAS EFFACÉ (`NFR3`).** *« la partition `nvs` est hors des quatre morceaux
+> ⇒ elle **survit** »* est **FAUX** : le 2026-09-09, après un flash **depuis cette page**,
+> la commande `cfg` de la carte rend *« aucune config en NVS — defauts appliques »*, et le
+> témoin de repli sort en `ESP_ERR_NVS_NOT_FOUND`. **Les réglages ne survivent pas.**
+> ⇒ ce qui reste vrai du paragraphe : la table de partitions **est** réécrite à `32768`, et
+> `new_install_prompt_erase: false` **est** ce que porte le manifeste. Ce qui est réfuté,
+> c'est la **conséquence** qu'on en tirait pour la NVS.
+>
+> 🔴 **ET C'EST CLOS PAR UNE DÉCISION OWNER DU 2026-09-09, ⛔ pas par un correctif** :
+> l'effacement à l'installation est **ACCEPTÉ** — verbatim owner : *« franchement que tout
+> soit écrasé pour 3 pauvres param on s'en branle »*. ⇒ ⛔ **ce n'est pas un défaut à
+> corriger**, et la **cause** (le firmware d'un côté, l'outil de flash de l'autre) n'a
+> **volontairement pas été tranchée**. ⛔ Ne pas rouvrir le sujet en lisant cette annotation.
+>
+> ⚠️ **POURQUOI CETTE PAGE-CI EST ANNOTÉE, ET ⛔ PAS UNE AUTRE** : c'est exactement le sujet
+> de la marche qui pose la **langue de la dalle**. La langue est rangée en NVS ; si la NVS
+> survivait, la reposer après chaque mise à jour serait inutile. Elle ne survit pas ⇒ **le
+> geste de langue est à rejouer après chaque flash**, et la page le **dit à l'étape qui pose
+> la langue** plutôt que de laisser quelqu'un le découvrir sur une dalle redevenue anglaise.
+
 ⇒ La valeur est **`false`**, et `tools/verif_flash_dn72.py` l'épingle : la basculer à `true`
 fait rougir la gate, parce qu'un changement pareil ⛔ ne doit pas passer sans que ce paragraphe
 soit réécrit.

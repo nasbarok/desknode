@@ -187,6 +187,27 @@ jobs:
           echo "bash     : ${BASH_VERSION}"
           echo "cc       : $(cc --version 2>&1 | head -1)"
           echo "gates    : $(ls tools/verif_*.py | wc -l) découvertes par le glob"
+          # 🔴 AJOUTÉ LE 2026-09-09 (`dn7-3`) — LE MOTEUR JavaScript EST RELEVÉ,
+          #    ⛔ PAS SUPPOSÉ. `tools/verif_banc_langue_dn73.py` LANCE un banc
+          #    qui exécute le `<script>` de `installeur/index.html` : sans
+          #    moteur, elle rend son `rc=4` déclaré et `run_gates.sh` la porte
+          #    NON-JOUABLE. ⇒ sans cette ligne, une passe resterait VERTE sur un
+          #    banc qui n'a **jamais tourné** — ce que la gate elle-même appelle
+          #    « pire que pas de gate ». ⛔ Rien n'est installé ici : on RELÈVE.
+          # ⚠️ **UNE SEULE SONDE, ET ⛔ AUCUNE REDIRECTION.** La première version
+          #    interrogeait `command -v` DEUX fois et jetait la seconde sortie
+          #    vers le puits — or `tools/run_gates.sh` a **mesuré** que
+          #    `command -v` n'écrit rien sur la sortie d'erreur quand il ne
+          #    trouve pas : la redirection était **inutile**, et sa règle (4)
+          #    l'interdit chez lui. Deux sondes, c'est aussi deux vérités
+          #    possibles sur le même fait. ⇒ on relève **une fois**, on garde.
+          DN_NODE="$(command -v node || true)"
+          echo "node     : ${DN_NODE:-ABSENT}"
+          if [ -n "${DN_NODE}" ]; then
+            echo "           $(node --version) — le banc de dn7-3 EST joué"
+          else
+            echo "           ABSENT — verif_banc_langue_dn73.py rendra rc=4 et sera portée NON-JOUABLE"
+          fi
           echo "cockpit  : ${HOME}/projects/compagnon_project"
           test -d "${HOME}/projects/compagnon_project" \
             && echo "           PRÉSENT (inattendu sur un runner)" \

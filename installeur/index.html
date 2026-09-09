@@ -107,6 +107,10 @@
   .avert { border-left: 3px solid var(--dn-avertissement); padding-left: 12px; color: var(--dn-avertissement); }
   .alerte { background: var(--dn-alerte); border-radius: 8px; padding: 14px 16px; color: var(--dn-texte); }
   .discret { color: var(--dn-eteint); font-size: 14px; }
+  /* 🔴 UNE ISSUE SE DESSINE COMME CE QU'ELLE EST (dn7-3) : un succes cadre en
+     orange se lit comme un refus. ⛔ AUCUNE COULEUR NEUVE — ce sont les MEMES
+     jetons, et la regle a la meme forme que `.avert` juste au-dessus. */
+  .pose { border-left: 3px solid var(--dn-accent); padding-left: 12px; color: var(--dn-accent); }
   ul { padding-left: 20px; } li { margin: 5px 0; }
   a { color: var(--dn-accent); }
 
@@ -162,6 +166,17 @@
   #sec-langue [lang="en"], #sec-langue [lang="fr"] { display: inline-block; }
   #sec-langue { margin: 0 0 22px; }
   #sec-langue button[aria-pressed="true"] { border-color: var(--dn-texte); color: var(--dn-texte); }
+  /* ── LE CHOIX DE LA LANGUE **DE LA DALLE** (dn7-3) ────────────────────
+     🔴 ⛔ CE N'EST PAS `#sec-langue`, ET LES DEUX NE DOIVENT PAS ETRE
+        CONFONDUS : celui du dessus choisit la langue de CETTE PAGE, celui-ci
+        choisit celle de LA CARTE. Un selecteur d'identifiant, en CSS, est
+        EXACT — `#sec-langue` ne mord donc pas sur `#sec-langue-dalle`, et
+        c'est voulu : les deux entrees de CE choix-ci suivent la langue de la
+        page, comme tout le reste du texte.
+     ⛔ AUCUNE COULEUR N'EST AJOUTEE ICI : ces regles ne portent qu'une marge
+        et deux jetons DEJA declares plus haut. */
+  #sec-langue-dalle { margin: 14px 0 18px; }
+  #sec-langue-dalle button[aria-pressed="true"] { border-color: var(--dn-texte); color: var(--dn-texte); }
 </style>
 <!--
   ═══════════════════════════════════════════════════════════════════════════
@@ -376,6 +391,53 @@
           <span lang="en"><b>Put the firmware on the board.</b> The browser will ask you to pick the port.</span>
           <span lang="fr"><b>Poser le firmware sur la carte.</b> Le navigateur vous demandera de choisir le port.</span>
         </p>
+        <!-- ═══ LE CHOIX DE LA LANGUE **DE LA DALLE** ═══════════ (dn7-3) ═══
+             🔴 ⛔ CE N'EST **PAS** LE SELECTEUR DE LANGUE DE CETTE PAGE. Deux
+                langues DIFFERENTES sont en jeu : celle que vous LISEZ ici (en
+                tete de page) et celle que la CARTE affichera (ici). Une marche
+                qui les melange en casse une, et la page le DIT dans les deux
+                langues plutot que de laisser deviner.
+             🔴 LE DEFAUT ANGLAIS EST **STRUCTUREL**, ET IL EST ECRIT **DANS LE
+                DOCUMENT** : `aria-pressed="true"` est pose sur l'anglais dans
+                le fichier, ⛔ pas par un script qui aurait pu ne pas tourner.
+                ⇒ ET IL SE PROUVE **PAR L'ABSENCE D'ECRITURE** : choisir
+                l'anglais n'envoie RIEN a la carte. La carte demarre en anglais
+                quand sa NVS ne porte aucune langue ; ecrire « anglais »
+                remplacerait un DEFAUT par un CHOIX, et ce n'est pas la meme
+                chose le jour ou le defaut change.
+             ⚠️ LE CHOIX EST **VISIBLE AVANT LE BOUTON DE FLASH**, et ⛔ pas
+                derriere un depliant : l'ordre du document est celui des
+                gestes, et un choix qu'il faut trouver n'est pas un choix. -->
+        <div id="sec-langue-dalle">
+          <p class="quoi">
+            <span lang="en"><b>The language of the panel</b> — ⛔ this is
+              <b>not the language of this page</b>, which you choose at the very top. The board
+              starts in <b>English</b>; pick <b>French</b> here and the next step will write it
+              into the board, <b>after</b> the flash.</span>
+            <span lang="fr"><b>La langue de la dalle</b> — ⛔ ce n'est
+              <b>pas celle de cette page</b>, qui se choisit tout en haut. La carte démarre en
+              <b>anglais</b>&nbsp;; choisissez <b>français</b> ici et l'étape suivante l'écrira
+              dans la carte, <b>après</b> le flash.</span>
+          </p>
+          <button id="b-dalle-en" type="button" aria-pressed="true">
+            <span lang="en">Panel in English</span>
+            <span lang="fr">Dalle en anglais</span>
+          </button>
+          <button id="b-dalle-fr" type="button" aria-pressed="false">
+            <span lang="en">Panel in French</span>
+            <span lang="fr">Dalle en français</span>
+          </button>
+          <p class="discret" style="margin:8px 0 0">
+            <span lang="en">⛔ Choosing English writes <b>nothing</b> to the board, and that is
+              deliberate: English is what the board does when <b>nothing has been written</b>,
+              and this page ⛔ does not write a value just to say so.</span>
+            <span lang="fr">⛔ Choisir l'anglais n'écrit <b>rien</b> dans la carte, et c'est
+              voulu&nbsp;: l'anglais est ce que fait la carte quand <b>rien n'a été écrit</b>, et
+              cette page ⛔ n'écrit pas une valeur juste pour le dire.</span>
+          </p>
+        </div>
+        <!-- fin du choix de la langue de la dalle -->
+
         <div id="bloc-installer">
           <esp-web-install-button manifest="charge/manifest.json">
             <button slot="activate" type="button">
@@ -569,7 +631,62 @@
         </div>
       </li>
 
-      <!-- ─── GESTE 3 : RELIRE LA CARTE, ⛔ SANS LA REFLASHER ───────────
+      <!-- ─── GESTE 3 : POSER LA LANGUE DANS LA CARTE ──────── (dn7-3) ──
+           🔴 UN GESTE **EXPLICITE**, ⛔ PAS UN ENCHAINEMENT SUR LA FIN DU
+              FLASH — ET CE SONT DEUX MESURES QUI LE DECIDENT, ⛔ pas un gout.
+              (1) Cette page ne porte **AUCUN ecouteur** sur l'element de
+                  flash, et le contrat d'evenements du module distant n'est
+                  mesure NULLE PART dans ce depot : s'y brancher echangerait
+                  une certitude contre une supposition, et une regression
+                  d'evenement resterait SILENCIEUSE — rien ici n'execute ce
+                  JavaScript.
+              (2) Le delai entre la fin du flash et le moment ou le REPL repond
+                  est **NON MESURE**. Un envoi trop tot PERD la ligne, et une
+                  ligne perdue produirait « un succes annonce sur une langue
+                  non posee » — exactement ce que cette marche interdit.
+           ⇒ le geste explicite supprime la dependance au delai ; et le REVEIL
+             — un saut de ligne, puis l'attente de l'invite `desknode>` — la
+             supprime UNE SECONDE FOIS, mecaniquement. -->
+      <li>
+        <p class="quoi">
+          <span lang="en"><b>Write the chosen language into the board</b> — only useful if you
+            picked French above.</span>
+          <span lang="fr"><b>Poser la langue choisie dans la carte</b> — utile seulement si vous
+            avez choisi le français ci-dessus.</span>
+        </p>
+        <button id="b-langue-poser" type="button" disabled>
+          <span lang="en">Set the panel's language on the board</span>
+          <span lang="fr">Poser la langue de la dalle sur la carte</span>
+        </button>
+        <p class="discret" style="margin:8px 0 0">
+          <span lang="en">The same picker opens, the board's console is woken up, the order is
+            sent, and what the board answers is <b>read back</b>. ⛔ Nothing is announced as done
+            unless the board says so <b>when asked again</b> — and if the board refuses, its own
+            words are handed to you as they are.<br>⚠️ <b>To be played again after every
+            install</b>&nbsp;: updating DeskNode means reflashing it, and a flash <b>wipes the
+            board's stored settings</b> — measured on 2026-09-09. The panel would come back in
+            English without this gesture.<br>⛔ The button stays <b>disarmed</b> until step 2
+            actually offers the install: proposing to set a language for a flash that cannot
+            happen would be a promise this page knows to be false. ⚠️ The board's own answer,
+            relayed below, is written by the board — <b>in French</b>, whatever this page is set
+            to.</span>
+          <span lang="fr">Le même sélecteur s'ouvre, la console de la carte est réveillée, l'ordre
+            est envoyé, et ce que la carte répond est <b>relu</b>. ⛔ Rien n'est annoncé comme posé
+            tant que la carte ne le dit pas <b>quand on le lui redemande</b> — et si elle refuse,
+            ses propres mots vous sont rendus tels quels.<br>⚠️ <b>À rejouer après chaque
+            installation</b>&nbsp;: mettre DeskNode à jour, c'est le reflasher, et un flash
+            <b>efface les réglages rangés dans la carte</b> — mesuré le 2026-09-09. Sans ce
+            geste, la dalle reviendrait en anglais.<br>⛔ Le bouton reste <b>désarmé</b> tant
+            que l'étape 2 n'offre pas vraiment l'installation&nbsp;: proposer de poser une langue
+            pour un flash qui ne peut pas avoir lieu serait une promesse que cette page sait
+            fausse. ⚠️ La réponse de la carte, relayée ci-dessous, est écrite par la carte —
+            <b>en français</b>, quelle que soit la langue de cette page.</span>
+        </p>
+        <div id="etat-langue" hidden role="status" class="avert" style="margin-top:12px"></div>
+        <pre id="langue-relais" hidden></pre>
+      </li>
+
+      <!-- ─── GESTE 4 : RELIRE LA CARTE, ⛔ SANS LA REFLASHER ───────────
            🔴 UNE ENTREE **DISTINCTE** DU FLASH, ⛔ PAS UN RENOMMAGE. Avant le
               2026-09-09, le SEUL chemin vers les logs de la carte passait par
               le bouton qui annonce qu'il va la REFLASHER. -->
@@ -816,17 +933,32 @@
           somebody tells it otherwise, and that choice is made today on the serial console.</s><br>
           ⚠️ <b>Annotated on 2026-09-09 — the first half stopped being true for <u>this page</u>,
           and the sentence is struck through rather than erased&nbsp;:</b> this page now speaks
-          <b>English and French</b>, chosen at the top, English by default. <b>What stays
+          <b>English and French</b>, chosen at the top, English by default. <s><b>What stays
           true</b>&nbsp;: it still chooses <b>no language for the panel</b>, which is a
-          different question and a different language.</span>
+          different question and a different language.</s><br>
+          🎯 <b>Re-annotated on 2026-09-09 — ⛔ neither sentence above is erased, and the
+          second has just lost its own second half.</b> The page <b>does</b> choose a language
+          for the panel now: it is picked in step 2, above the flash button, <b>English by
+          default</b>, and step 3 writes it into the board over its serial console — reading the
+          board's answer back rather than announcing a success. ⇒ what stays true of the
+          original sentence is only that the <b>panel itself</b> carries no on-screen selector:
+          the choice is made <b>here</b>, ⛔ not on the device.</span>
         <span lang="fr"><s>Elle <b>ne propose aucun choix de langue</b>&nbsp;: la dalle démarre en
           anglais tant que personne ne lui dit le contraire, et ce choix se fait aujourd'hui à la
           console série.</s><br>
           ⚠️ <b>Annoté le 2026-09-09 — la première moitié a cessé d'être vraie pour
           <u>cette page</u>, et la phrase est barrée plutôt qu'effacée&nbsp;:</b> cette page parle
-          désormais <b>anglais et français</b>, au choix, en tête, l'anglais par défaut. <b>Ce
+          désormais <b>anglais et français</b>, au choix, en tête, l'anglais par défaut. <s><b>Ce
           qui reste vrai</b>&nbsp;: elle ne choisit toujours <b>aucune langue pour la dalle</b>,
-          qui est une autre question et une autre langue.</span>
+          qui est une autre question et une autre langue.</s><br>
+          🎯 <b>Ré-annoté le 2026-09-09 — ⛔ aucune des deux phrases ci-dessus n'est effacée, et
+          la seconde vient de perdre sa propre seconde moitié.</b> Cette page <b>choisit
+          désormais</b> une langue pour la dalle&nbsp;: elle se prend à l'étape 2, au-dessus du
+          bouton de flash, <b>anglais par défaut</b>, et l'étape 3 l'écrit dans la carte par sa
+          console série — en <b>relisant</b> la réponse de la carte plutôt qu'en annonçant un
+          succès. ⇒ de la phrase d'origine, il ne reste vrai que ceci&nbsp;: la <b>dalle
+          elle-même</b> ne porte aucun sélecteur à l'écran — le choix se fait <b>ici</b>, ⛔ pas
+          sur l'appareil.</span>
       </li>
       <li>
         <span lang="en">It <b>shows no preview of the panel</b>&nbsp;: that is a <b>declared
@@ -1049,7 +1181,149 @@ var MOTS = {
                         + "being handed back.\n",
                         "\n── la carte a cessé d'écrire (débranchée, ou remise à zéro). Le "
                         + "port est en cours de restitution.\n"],
-  "console.perdue": ["\n── ⛔ the read stopped: ", "\n── ⛔ la lecture s'est arrêtée : "]
+  "console.perdue": ["\n── ⛔ the read stopped: ", "\n── ⛔ la lecture s'est arrêtée : "],
+  /* ── LA LANGUE DE LA **DALLE** — ⛔ PAS CELLE DE CETTE PAGE   (dn7-3) ──
+     🔴 CINQ ISSUES, CINQ CLES **DISTINCTES** : posee · refusee · NON PERSISTEE
+        · sans reponse · pas d'invite. ⛔ Jamais « posee » pour un silence,
+        ⛔ jamais « refusee » pour une absence d'invite. Publier une IGNORANCE
+        comme un CONSTAT est la seule ligne que ce geste n'a pas le droit de
+        franchir, et une cle unique la franchirait a chaque fois.
+     🔴 LA CINQUIEME EST NEE D'UNE MESURE, ⛔ PAS D'UN GOUT : quand l'ecriture
+        en NVS echoue, la carte imprime SON avertissement, **puis reconstruit
+        la scene**, **puis** imprime la ligne de succes, et rend un code non
+        nul. Les deux moities tomberaient dans le meme motif ⇒ la page dirait
+        « rien n'a ete ecrit et la dalle garde sa langue » — les DEUX clauses
+        fausses. ⇒ elle a SA cle, qui dit LES DEUX FAITS.
+     ⚠️ « le defaut anglais » n'est PAS une issue : ce chemin n'ecrit RIEN,
+        donc il ne peut ni reussir ni echouer. « envoi » est un temoin de
+        TRAVAIL EN COURS, du meme genre que `bouton.encours`. Et les deux
+        dernieres cles ne classent rien : elles disent CE QU'IL ADVIENT DU
+        PORT, parce qu'un port tenu en silence empeche l'agent de repartir. */
+  "langue.defaut-anglais": ["<b>Nothing to do, and nothing was sent.</b><br>English is what the "
+                            + "board does when <b>no language has been written</b> to it — so "
+                            + "leaving this on English writes <b>nothing at all</b>, and ⛔ not "
+                            + "a value meaning « English ». ⚠️ This page ⛔ does NOT promise the "
+                            + "board will start in English&nbsp;: it has ⛔ not read what the "
+                            + "board carries, and a board whose stored settings already hold "
+                            + "French will start in <b>French</b>. To pick French, choose it in "
+                            + "step 2 and click here again.",
+                            "<b>Rien à faire, et rien n'a été envoyé.</b><br>L'anglais est ce que "
+                            + "fait la carte quand <b>aucune langue ne lui a été écrite</b> — "
+                            + "laisser ce choix sur l'anglais n'écrit donc <b>rien du tout</b>, "
+                            + "et ⛔ pas une valeur qui voudrait dire « anglais ». ⚠️ Cette page "
+                            + "⛔ ne promet PAS que la carte démarrera en anglais&nbsp;: elle "
+                            + "⛔ n'a pas lu ce que la carte porte, et une carte dont les "
+                            + "réglages portent déjà le français démarrera en <b>français</b>. "
+                            + "Pour le français, choisissez-le à l'étape 2 puis recliquez ici."],
+  "langue.envoi": ["⏳ waking the board's console up, then sending the order — the answer is "
+                   + "read back before anything is announced.",
+                   "⏳ réveil de la console de la carte, puis envoi de l'ordre — la réponse est "
+                   + "relue avant que quoi que ce soit soit annoncé."],
+  /* ⛔ LE PORT N'A PAS PU ETRE OBTENU, ET ⛔ PERSONNE D'AUTRE NE L'A DIT. La
+     console nomme deja ses trois refus ; ce texte-ci ne sert QUE lorsque rien
+     n'a ete annonce par ailleurs — sinon la page laisserait un clic sans
+     reponse, ce qui se lit comme une page cassee. */
+  "langue.port-indisponible": ["<b>⛔ The serial port could not be taken, and ⛔ nothing was "
+                               + "sent.</b><br>Most often a port picker is <b>already open</b> "
+                               + "and waiting for you, or this page is already opening one. "
+                               + "⛔ No language was set. <b>The gesture</b>&nbsp;: finish or "
+                               + "close the picker, then click here again.",
+                               "<b>⛔ Le port série n'a pas pu être pris, et ⛔ rien n'a été "
+                               + "envoyé.</b><br>Le plus souvent, un sélecteur de port est "
+                               + "<b>déjà ouvert</b> et vous attend, ou cette page est en train "
+                               + "d'en ouvrir un. ⛔ Aucune langue n'a été posée. <b>Le "
+                               + "geste</b>&nbsp;: terminer ou fermer le sélecteur, puis "
+                               + "recliquer ici."],
+  "langue.pas-d-invite": ["<b>The board does not give its prompt.</b><br>The port is open, but "
+                          + "nothing answered the wake-up line. ⛔ Nothing was written, and ⛔ no "
+                          + "language was set. Most often the board is still in <i>download</i> "
+                          + "mode after a flash. <b>The gesture</b>&nbsp;: press "
+                          + "<code>RESET</code> on the board, wait for its console to write "
+                          + "again — step 4 below shows it — then click here again. ⚠️ Whatever "
+                          + "bytes <b>did</b> arrive are handed to you below, as they are: this "
+                          + "is the one case where they name the real obstacle.",
+                          "<b>La carte ne rend pas son invite.</b><br>Le port est ouvert, mais "
+                          + "rien n'a répondu à la ligne de réveil. ⛔ Rien n'a été écrit, et "
+                          + "⛔ aucune langue n'a été posée. Le plus souvent, la carte est encore "
+                          + "en mode <i>download</i> après un flash. <b>Le geste</b>&nbsp;: "
+                          + "appuyer sur <code>RESET</code> sur la carte, attendre que sa console "
+                          + "réécrive — l'étape 4 ci-dessous le montre — puis recliquer ici. "
+                          + "⚠️ Les octets qui <b>sont</b> arrivés vous sont rendus ci-dessous, "
+                          + "tels quels&nbsp;: c'est le seul cas où ils nomment le vrai obstacle."],
+  "langue.refusee": ["<b>⛔ The board REFUSED, and its own words are below.</b><br>A language it "
+                     + "does not carry is <b>refused</b>, ⛔ not rounded down to something close: "
+                     + "⛔ nothing was written, and the panel keeps the language it had. The "
+                     + "board's answer is handed to you as it is, exit code included.",
+                     "<b>⛔ La carte a REFUSÉ, et ses propres mots sont ci-dessous.</b><br>Une "
+                     + "langue qu'elle ne porte pas est <b>refusée</b>, ⛔ pas rabattue sur la "
+                     + "plus proche&nbsp;: ⛔ rien n'a été écrit, et la dalle garde la langue "
+                     + "qu'elle avait. La réponse de la carte vous est rendue telle quelle, code "
+                     + "de retour compris."],
+  /* 🔴 ELLE DIT **LES DEUX FAITS**, ET C'EST TOUT SON OBJET : la dalle A
+     change, et ⛔ elle NE gardera PAS ce changement. ⛔ Jamais « refusee »
+     (faux : la dalle a change) · ⛔ jamais « posee » (faux : ca ne survivra
+     pas). */
+  "langue.non-persistee": ["<b>⛔ The panel changed language — and ⛔ it will NOT keep it.</b><br>"
+                           + "The board says it could ⛔ not write the setting into its own "
+                           + "storage. <b>Two facts, both true</b>&nbsp;: the panel <b>has "
+                           + "switched right now</b>, and the change ⛔ <b>will be lost at the "
+                           + "next reboot</b>. ⛔ This is neither a refusal nor a success, and "
+                           + "the board's own words are below. <b>The gesture</b>&nbsp;: flash "
+                           + "the board again from step 2, then play this step again.",
+                           "<b>⛔ La dalle a changé de langue — et ⛔ elle NE la gardera "
+                           + "PAS.</b><br>La carte dit qu'elle ⛔ n'a pas pu écrire le réglage "
+                           + "dans sa propre mémoire. <b>Deux faits, tous les deux vrais</b>"
+                           + "&nbsp;: la dalle <b>a basculé maintenant</b>, et le changement "
+                           + "⛔ <b>sera perdu au prochain redémarrage</b>. ⛔ Ce n'est ni un "
+                           + "refus ni un succès, et les propres mots de la carte sont "
+                           + "ci-dessous. <b>Le geste</b>&nbsp;: reflasher la carte depuis "
+                           + "l'étape 2, puis rejouer cette étape."],
+  /* ⚠️ CETTE CLE SERT AUSSI AU FILET, QUI PEUT SE DECLENCHER **AVANT** TOUTE
+     INVITE. ⇒ elle ⛔ ne raconte PAS ce que la page ne sait pas : elle dit
+     seulement qu'elle n'a pas reconnu de reponse. */
+  "langue.sans-reponse": ["<b>⛔ No usable answer — and that is an IGNORANCE, ⛔ not a "
+                          + "result.</b><br>⛔ This page will ⛔ not tell you the language is "
+                          + "set, because it does not know. Whatever was read is below, if "
+                          + "anything was. <b>The gesture</b>&nbsp;: open the board's console at "
+                          + "step 4, look at what it writes, then click here again.",
+                          "<b>⛔ Pas de réponse exploitable — et c'est une IGNORANCE, ⛔ pas un "
+                          + "résultat.</b><br>⛔ Cette page ⛔ ne vous dira pas que la langue est "
+                          + "posée, parce qu'elle ne le sait pas. Ce qui a été lu est "
+                          + "ci-dessous, s'il y a eu quelque chose. <b>Le geste</b>&nbsp;: "
+                          + "ouvrir la console de la carte à l'étape 4, regarder ce qu'elle "
+                          + "écrit, puis recliquer ici."],
+  /* 🔴 ELLE N'AFFIRME QUE CE QUE LA RELECTURE PROUVE — la langue que la carte
+     porte MAINTENANT. ⛔ Elle ⛔ ne promet PAS qu'elle survivra a un
+     redemarrage : le firmware pose la valeur A CHAUD **avant** de l'ecrire,
+     donc la relecture rend le code choisi que l'ecriture ait reussi ou non.
+     La persistance se lit AU BANDEAU DE LA DALLE apres une coupure, et
+     ⛔ nulle part ailleurs. */
+  "langue.posee": ["<b>The board carries this language now, and it was READ BACK.</b><br>⛔ This "
+                   + "is ⛔ not the order that was sent: the board was asked again, and it "
+                   + "answered with the language it carries <b>right now</b>. ⚠️ That ⛔ does NOT "
+                   + "prove it survives a reboot — the board applies the setting <b>before</b> "
+                   + "storing it, so this answer reads the same either way. <b>The only "
+                   + "proof</b>&nbsp;: cut the power, give it back, and read the panel's own top "
+                   + "bar.",
+                   "<b>La carte porte maintenant cette langue, et elle a été RELUE.</b><br>⛔ Ce "
+                   + "n'est ⛔ pas l'ordre envoyé&nbsp;: on l'a redemandé à la carte, et elle a "
+                   + "répondu avec la langue qu'elle porte <b>maintenant</b>. ⚠️ Cela ⛔ ne "
+                   + "prouve PAS qu'elle survivra à un redémarrage — la carte applique le "
+                   + "réglage <b>avant</b> de le ranger, donc cette réponse se lit pareil dans "
+                   + "les deux cas. <b>La seule preuve</b>&nbsp;: couper puis rendre "
+                   + "l'alimentation, et lire le bandeau du haut de la dalle."],
+  /* 🔴 CE QUE LE GESTE A FAIT DU PORT, DIT A CHAQUE FOIS. ⛔ Un port tenu en
+     silence est ce que `dn7-2` a nomme comme empechant l'agent de repartir. */
+  "langue.port-tenu": ["<br>⚠️ <b>This page still holds the serial port</b>, so the agent ⛔ "
+                       + "cannot take it back and « Stop the agent » stays disarmed. Hand it "
+                       + "back with « Close and hand the port back » at step 4.",
+                       "<br>⚠️ <b>Cette page tient encore le port série</b>&nbsp;: l'agent ⛔ ne "
+                       + "peut donc pas le reprendre, et « Arrêter l'agent » reste désarmé. "
+                       + "Rendez-le avec « Fermer et rendre le port », à l'étape 4."],
+  "langue.port-libre": ["<br>⚠️ <b>This page does ⛔ not hold the serial port</b> — nothing of "
+                        + "ours is in the way.",
+                        "<br>⚠️ <b>Cette page ne tient ⛔ pas le port série</b> — rien de notre "
+                        + "fait ne le retient."]
 };
 
 /* La langue courante ne sert QU'A l'attribut : rien n'est reecrit. */
@@ -1328,6 +1602,7 @@ var chargeRefusee = false;
 function chargeInutilisable(cleMotif, suffixe) {
   chargeRefusee = true;
   if (blocInstaller) { blocInstaller.hidden = true; }
+  langueOffrir();                                 /* dn7-3 — le geste suit */
   var e = document.getElementById("etat-charge");
   if (!e) { return; }
   e.textContent = "";
@@ -1342,6 +1617,11 @@ function reveler() {
   if (blocInstaller && !moduleAnnonce && !chargeRefusee) {
     blocInstaller.hidden = false;
   }
+  /* 🔴 ET LE GESTE DE LANGUE SUIT (dn7-3) : proposer de poser une langue pour
+     un flash qui ne peut pas avoir lieu est une promesse que la page SAIT
+     fausse. Les trois sites qui decident de cette visibilite appellent tous
+     cette fonction — ⛔ aucun n'est libre de l'oublier. */
+  langueOffrir();
 }
 
 function moduleAbsent(cleMotif) {
@@ -1351,6 +1631,7 @@ function moduleAbsent(cleMotif) {
   /* ⛔ ON RETIRE LE BOUTON PLUTOT QUE DE LE GRISER : un bouton grise laisse
      croire qu'on peut le reactiver ; l'encadre, lui, dit le geste. */
   if (blocInstaller) { blocInstaller.hidden = true; }
+  langueOffrir();                                 /* dn7-3 — le geste suit */
   var e = document.getElementById("etat-cdn");
   if (e && cleMotif) {
     var m = document.createElement("div");
@@ -1565,6 +1846,14 @@ function consoleAjouter(txt) {
   consoleSortie.hidden = false;
   consoleSortie.appendChild(document.createTextNode(txt));
   consoleSortie.scrollTop = consoleSortie.scrollHeight;
+  /* 🔴 L'ATTENTE DE LA POSE DE LANGUE EST ALIMENTEE **ICI**, ⛔ PAS PAR UN
+     SECOND LECTEUR (dn7-3). `port.readable` n'admet QU'UN lecteur : en prendre
+     un second pendant que `consoleLire()` boucle echouerait, et le liberer
+     casserait l'affichage du journal. `consoleAjouter` est l'entonnoir
+     UNIQUE ou atterrit chaque morceau decode ⇒ y brancher l'attente est UN
+     SEUL point, il ne double aucun etat, et la console continue de montrer a
+     l'inconnu CE QUE LA CARTE REPOND. */
+  langueNourrir(txt);
 }
 
 function consoleAjouterMot(cle, suffixe) {
@@ -1591,8 +1880,12 @@ function consoleMasquerRefus() {
 }
 
 function consoleBoutons(ouverte) {
-  if (bConsole) { bConsole.disabled = ouverte; }
-  if (bConsoleFermer) { bConsoleFermer.disabled = !ouverte; }
+  /* 🔴 ⛔ ET PAS PENDANT QUE LE GESTE DE LANGUE DIALOGUE SUR CE PORT (dn7-3) :
+     ouvrir ou fermer le port en plein echange lui volerait sa reponse. Cette
+     fonction reste le SEUL endroit qui decide de ces deux boutons — le geste de
+     langue la REJOUE, ⛔ il ne la double pas. */
+  if (bConsole) { bConsole.disabled = ouverte || langueEnVol; }
+  if (bConsoleFermer) { bConsoleFermer.disabled = !ouverte || langueEnVol; }
   /* 🔴 ET `b-stop` SUIT : le verbe `stop` prouve son travail EN ROUVRANT le
      port. Le jouer pendant que CETTE page le tient le ferait echouer sur
      nous-memes, et rendre un code qui decrit autre chose. */
@@ -1660,7 +1953,17 @@ function consoleOuvrir() {
       consoleBoutons(true);
       consoleAjouterMot("console.ouverte");
       relacher();
-      return consoleLire();
+      /* 🔴 ANNOTE LE 2026-09-09 PAR `dn7-3` — LA BOUCLE DE LECTURE EST
+         **DETACHEE**, ET LA PROMESSE REND DES QUE LE PORT EST **OUVERT**.
+         ⛔ Ce qui s'execute n'a pas change d'un pas : la boucle tourne
+         toujours, ses deux sorties remettent toujours l'etat, et la
+         fermeture reste le meme geste. Ce qui change est le MOMENT ou la
+         promesse d'ouverture se resout — avant, elle attendait la FIN de la
+         lecture, c'est-a-dire la fin du lien. ⇒ un appelant qui a besoin du
+         port (le geste de langue) attendait alors la mort de ce qu'il
+         voulait utiliser. */
+      consoleLire();
+      return true;
     }, function (err) {
       relacher();
       consoleRefus("console.port-refuse", String(err));
@@ -1723,6 +2026,438 @@ if (bConsoleFermer) { bConsoleFermer.addEventListener("click", consoleFermer); }
 window.addEventListener("pagehide", function () {
   if (portConsole) { consoleFermer(); }
 });
+
+/* ═══════════════════════════════════════════════════════════════════════
+   LA LANGUE DE LA **DALLE** — LE CHOIX EST POSE DANS LA CARTE   (dn7-3)
+   ═══════════════════════════════════════════════════════════════════════
+   🔴 ⛔ CE N'EST PAS LA LANGUE DE CETTE PAGE. Deux langues DIFFERENTES sont en
+      jeu, et elles ont deux mecanismes DISJOINTS : `poserLangue()` change la
+      langue de la PROSE, ici ; `poserLangueDalle()` ecrit une langue DANS LA
+      CARTE. ⛔ Les melanger en casserait une.
+   🎯 LE CHEMIN A ETE TRANCHE **SUR LA MESURE**, ⛔ pas au cadrage : la console
+      serie apres le flash, ⛔ pas une partition NVS pre-cuite. Le motif
+      porteur est qu'une partition pre-cuite ⛔ NE PEUT PAS RELAYER UN REFUS —
+      le firmware refuse une langue inconnue par un JOURNAL, ⛔ pas par un code
+      de retour, et un installeur qui a fini de flasher n'aurait plus aucun
+      canal pour le dire. Or relayer le refus est exactement ce qu'on exige.
+   ⛔ LE FIRMWARE N'EST PAS TOUCHE : la commande `langue`, la cle NVS et la
+      table a une definition par chaine sont LIVREES. Cette page pose LE CHOIX.
+   ⚠️ ET C'EST ICI QUE CETTE PAGE SE MET A **ECRIRE** SUR LE PORT — la console
+      juste au-dessus, elle, ne fait toujours que LIRE. */
+
+/* 🔴 LES REPONSES DE LA CARTE SONT DES **MOTIFS**, ⛔ PAS DE LA PROSE : ce sont
+   des chaines que le FIRMWARE imprime et que ce script COMPARE. Elles ne
+   passent donc pas par la table de mots, qui ne porte que ce qu'un HUMAIN lit.
+   🔴 CHACUNE EST RELUE DANS `firmware/` PAR LA GATE DE CETTE MARCHE, ET
+      L'APPARIEMENT EST **BIUNIVOQUE** : tout litteral relu la-bas est un
+      litteral que ce script MATCHE vraiment, et tout motif matche ici est
+      RELU la-bas. Un litteral relu que personne n'apparie ne garde rien, et un
+      motif d'ici que rien ne relit pourrit en silence.
+   🔴 ET LE CLASSEMENT S'ANCRE SUR **LA REPONSE DE LA COMMANDE**, ⛔ PAS SUR UN
+      MOTIF QUI TRAVERSE TOUT LE FLUX. La console de la carte est bavarde et
+      asynchrone : des journaux SANS RAPPORT y portent le mot `REFUS` (le bus
+      I2C qui n'existe pas, une bascule de chauffage, l'horloge), et ce geste
+      se joue dans la fenetre de demarrage a froid, ou ces erreurs sont
+      REELLES. ⇒ chaque issue est reconnue par le litteral que la commande
+      `langue` imprime POUR ELLE, et par aucun autre.
+   ⛔ ET AUCUN NUMERO DE LIGNE N'EST CITE ICI : une adresse `fichier:ligne` se
+      perime au premier commit. C'est la GATE qui relit, ⛔ pas la page qui
+      pointe. */
+var RE_INVITE_CARTE = /desknode>/;
+/* ⚠️ CINQ ISSUES, ET LEUR ORDRE D'EXAMEN EST UNE MESURE : quand l'ecriture NVS
+   echoue, la carte imprime SON avertissement **PUIS** la ligne de succes.
+   Tester le succes d'abord classerait « pose » ce qui ne survivra pas.
+   🔴 ⛔ ET LE MOTIF N'EST PAS `ECRITURE NVS REFUSEE` : ce prefixe est **PARTAGE**
+      — la console l'imprime AUSSI pour d'autres reglages, sur le MEME flux. Le
+      matcher serait le defaut deja paye une fois, refait en plus etroit. ⇒ on
+      ancre sur la moitie que **la commande de langue SEULE** imprime. */
+var RE_NVS_REFUSEE = /— la langue est posee A CHAUD/;
+var RE_REFUS_CARTE = /n'est pas une langue connue/;
+var RE_NOOP_CARTE = /rien a faire : la langue est DEJA/;
+var RE_SUCCES_CARTE = /\(scene reconstruite\)/;
+var RE_LECTURE_CARTE = /langue de l'ecran\s*:\s*([A-Za-z]{2})/;
+/* L'ordre est un LITTERAL plus un code DE LA TABLE — ⛔ pas une chaine
+   fabriquee : la carte REFUSE un code qu'elle ne porte pas, elle ne l'ecrete
+   pas, et fabriquer le code ici serait fabriquer le refus. */
+var CMD_LANGUE = "langue";
+var CODES_DALLE = ["en", "fr"];
+var LANGUE_DALLE_DEFAUT = CODES_DALLE[0];
+/* ⚠️ CES DEUX DELAIS SONT **CHOISIS**, ⛔ PAS MESURES — aucun releve de ce
+   depot ne dit combien de temps une carte met a rendre son invite. LE RISQUE
+   EST BORNE ET IL EST ECRIT : un delai trop court ⛔ ne produit PAS un faux
+   succes ; il produit « pas d'invite » ou « sans reponse », deux IGNORANCES
+   declarees, chacune avec son geste. C'est pourquoi les issues sont distinctes.
+   🔴 ET ILS SONT **REGLABLES**, parce que le banc les rejoue une fois par
+      mutant : un delai fige a six secondes a porte la campagne de mutants a
+      93 % de son plafond. Le banc les repose apres avoir evalue ce script. */
+var DELAI_INVITE = 6000;
+var DELAI_REPONSE = 6000;
+
+var bDalleEn = document.getElementById("b-dalle-en");
+var bDalleFr = document.getElementById("b-dalle-fr");
+var bLanguePoser = document.getElementById("b-langue-poser");
+var langueEnVol = false;
+var langueAttente = null;
+
+/* 🔴 LE CHOIX EST **LU DANS LE DOCUMENT**, ⛔ pas tenu par une variable que ce
+   script initialiserait : le defaut anglais doit tenir AVANT que le moindre
+   script tourne — exactement comme le defaut de la dalle tient par l'ABSENCE
+   d'ecriture en NVS. ⇒ l'etat vit dans l'attribut, qui est ECRIT dans le
+   fichier. */
+function langueDalleChoisie() {
+  var f = document.getElementById("b-dalle-fr");
+  return (f && f.getAttribute("aria-pressed") === "true")
+    ? CODES_DALLE[1] : CODES_DALLE[0];
+}
+
+function poserDalle(code) {
+  if (bDalleEn) {
+    bDalleEn.setAttribute("aria-pressed", code === CODES_DALLE[0] ? "true" : "false");
+  }
+  if (bDalleFr) {
+    bDalleFr.setAttribute("aria-pressed", code === CODES_DALLE[1] ? "true" : "false");
+  }
+}
+/* ⚠️ LA MEME GARDE QUE POUR LES BOUTONS DE LANGUE DE LA PAGE : un bouton
+   manquant leverait sur `null` et le script ENTIER s'arreterait ici. */
+if (bDalleEn) {
+  bDalleEn.addEventListener("click", function () { poserDalle("en"); });
+}
+if (bDalleFr) {
+  bDalleFr.addEventListener("click", function () { poserDalle("fr"); });
+}
+
+/* 🔴 LE GESTE NE S'OFFRE **PAS** QUAND LE BLOC DE FLASH EST MASQUE. Proposer
+   de poser une langue pour un flash qui ne peut pas avoir lieu (charge
+   inutilisable, module distant absent) est une promesse que la page SAIT
+   fausse. ⇒ le bouton porte `disabled` DANS LE DOCUMENT, et il ne s'arme que
+   la ou le bloc d'installation est revele — les trois endroits qui decident de
+   cette visibilite appellent donc cette fonction, ⛔ aucun n'est libre de
+   l'oublier. */
+function langueOffrir() {
+  if (!bLanguePoser) { return null; }
+  bLanguePoser.disabled = !(blocInstaller && blocInstaller.hidden === false);
+  return null;
+}
+
+function langueMasquer() {
+  var e = document.getElementById("etat-langue");
+  var r = document.getElementById("langue-relais");
+  if (e) { e.textContent = ""; e.hidden = true; }
+  if (r) { r.textContent = ""; r.hidden = true; }
+}
+
+/* La reponse de la carte est RELAYEE **TELLE QUELLE**, en noeud de texte :
+   c'est une valeur de MACHINE, ⛔ pas de la prose — et l'ecrire en HTML
+   avalerait `usage : langue <en|fr>`, que la carte imprime VRAIMENT. */
+function langueRelais(txt) {
+  var e = document.getElementById("langue-relais");
+  if (!e) { return null; }
+  e.textContent = txt;
+  /* ⛔ UN CADRE VIDE REVELE EST UN CADRE QUI MENT : il donne a croire qu'on a
+     lu quelque chose. Zero octet lu ⇒ le relais reste CACHE, et c'est le texte
+     de l'issue qui porte le fait. */
+  e.hidden = (txt === "" || txt === undefined || txt === null);
+  return null;
+}
+
+/* 🔴 UNE ISSUE SE DESSINE COMME CE QU'ELLE EST, ⛔ pas toutes en avertissement :
+   un succes cadre en orange se lit comme un refus. ⛔ La liste est FERMEE, et
+   tout ce qui n'y est pas reste un avertissement — le defaut, c'est de RASSURER
+   par defaut, ⛔ pas d'alerter. */
+var CLASSE_ISSUE = {
+  "langue.posee": "pose",
+  "langue.envoi": "discret",
+  "langue.defaut-anglais": "discret"
+};
+function langueClasse(cle) {
+  var e = document.getElementById("etat-langue");
+  if (!e) { return null; }
+  e.className = CLASSE_ISSUE[cle] || "avert";
+  return null;
+}
+
+/* ⛔ LES BOUTONS QUI TOUCHENT AU MEME PORT, OU AU CHOIX QU'ON EST EN TRAIN
+   D'ECRIRE, SONT DESARMES TANT QUE LE GESTE EST EN VOL : changer le choix
+   pendant l'echange rendrait le message final faux, et ouvrir ou fermer le port
+   volerait sa reponse au geste. */
+function langueBoutons() {
+  if (bDalleEn) { bDalleEn.disabled = langueEnVol; }
+  if (bDalleFr) { bDalleFr.disabled = langueEnVol; }
+  consoleBoutons(!!portConsole);
+  return null;
+}
+
+/* 🔴 LE GESTE DIT CE QU'IL A FAIT DU PORT, A CHAQUE ISSUE. ⛔ Un port tenu en
+   silence est ce que `dn7-2` a nomme comme empechant l'agent de repartir : le
+   verbe `stop` prouve son travail EN ROUVRANT le port, et il echouerait sur un
+   port que nous tenons nous-memes. ⇒ on le DIT, plutot que de le taire. */
+function languePort(cle) {
+  langueClasse(cle);
+  var e = document.getElementById("etat-langue");
+  if (!e) { return null; }
+  e.appendChild(portConsole ? paire("langue.port-tenu", undefined, true)
+                            : paire("langue.port-libre", undefined, true));
+  return null;
+}
+
+/* L'ATTENTE, ARMEE SUR UN MOTIF ET BORNEE PAR UN DELAI. Elle rend TOUJOURS —
+   `vu` dit si le motif est venu, `texte` porte LA FENETRE DE REPONSE (tout ce
+   qui a ete lu jusqu'au motif inclus), et `reste` porte ce qui suit.
+   🔴 LE `reste` EST **REPRIS PAR L'ATTENTE SUIVANTE**, ⛔ pas jete : la carte
+      ecrit en trames de taille arbitraire, et jeter ce qui suit l'invite
+      perdrait la premiere moitie de la reponse suivante — une ligne de langue
+      manquee, donc un verdict rendu sur un texte tronque.
+   ⛔ Une attente qui ne rendrait pas laisserait le geste EN VOL pour toujours. */
+function langueArmer(motif, delai, amorce) {
+  return new Promise(function (resoudre) {
+    /* 🔴 L'AMORCE EST **PURGEE DE TOUTE INVITE DEJA VUE**, et c'est un defaut
+       trouve a la revue : une invite trainant dans le reste fermait la fenetre
+       de reponse **AVANT** que l'ordre soit ecrit ⇒ on aurait classe la reponse
+       de la commande PRECEDENTE. ⇒ on ne garde que ce qui SUIT la DERNIERE
+       occurrence du motif, et on l'exprime avec le motif LUI-MEME, ⛔ pas avec
+       une copie du litteral.
+       ⛔ ET L'ATTENTE EST DONC **TOUJOURS ENREGISTREE** : purgee, l'amorce ne
+       peut plus resoudre d'avance, donc `langueDesarmer()` et `langueNourrir()`
+       trouvent toujours a qui parler. Une attente resolue sans jamais avoir ete
+       enregistree laissait le filet sans prise. */
+    var t = (amorce === undefined ? "" : amorce);
+    var m;
+    while ((m = motif.exec(t)) !== null && m[0].length > 0) {
+      t = t.slice(m.index + m[0].length);
+    }
+    var a = { motif: motif, tampon: t, resoudre: resoudre, minuteur: null };
+    a.minuteur = setTimeout(function () {
+      if (langueAttente === a) { langueAttente = null; }
+      resoudre({ texte: a.tampon, vu: false, reste: "" });
+    }, delai);
+    langueAttente = a;
+  });
+}
+
+/* ⛔ UNE ATTENTE ARMEE DERRIERE UNE ECRITURE QUI ECHOUE RESTERAIT ARMEE, et la
+   sortie de la carte tomberait dans un tampon mort pendant tout le delai. ⇒ le
+   filet la desarme, et elle rend son IGNORANCE plutot que rien. */
+function langueDesarmer() {
+  var a = langueAttente;
+  if (!a) { return null; }
+  langueAttente = null;
+  clearTimeout(a.minuteur);
+  a.resoudre({ texte: a.tampon, vu: false, reste: "" });
+  return null;
+}
+
+function langueNourrir(txt) {
+  var a = langueAttente;
+  if (!a) { return null; }
+  a.tampon += txt;
+  var m = a.motif.exec(a.tampon);
+  if (!m) { return null; }
+  langueAttente = null;
+  clearTimeout(a.minuteur);
+  var i = m.index + m[0].length;
+  a.resoudre({ texte: a.tampon.slice(0, i), vu: true, reste: a.tampon.slice(i) });
+  return null;
+}
+
+/* 🔴 LE **SEUL** CHEMIN D'ECRITURE DE CETTE PAGE SUR LE PORT, ET IL REND SON
+   VERROU **SUR LES DEUX CHEMINS**. Un verrou d'ecriture non relache fait
+   partir `port.close()` en REJET — le piege que la fermeture du lecteur
+   documente deja quelques lignes plus haut, et qui laisserait le port tenu EN
+   SILENCE.
+   ⚠️ `consoleLire()` prend `readable.getReader()` SANS `pipeThrough` ⇒
+      `writable` est entierement LIBRE : il n'y a AUCUN verrou a defaire, et le
+      transport ne coute ni route, ni verbe, ni dependance. */
+function consoleEcrire(ligne) {
+  /* ⛔ CE MOTIF N'EST **PAS** DE LA PROSE : il n'est jamais affiche. Toute
+     prose de cette page passe par la table de mots, et la rejection ci-dessous
+     est consommee par le filet du geste, qui dit l'IGNORANCE dans les deux
+     langues. */
+  if (!portConsole || !portConsole.writable) {
+    return Promise.reject(new Error("port-non-ouvert"));
+  }
+  var w = portConsole.writable.getWriter();
+  return w.write(new TextEncoder().encode(ligne + "\n")).then(function () {
+    w.releaseLock();
+    return null;
+  }, function (err) {
+    w.releaseLock();
+    throw err;
+  });
+}
+
+/* 🔴 LA POSE. CINQ ISSUES, CINQ CLES — et le SUCCES n'est atteignable que
+   depuis la RELECTURE. On relit l'ACCEPTATION, puis l'ETAT ; ⛔ jamais l'ordre
+   envoye, qui ne prouverait que ce qu'on a tape. */
+function poserLangueDalle() {
+  /* 🔴 GARDE DE RE-ENTRANCE : un second clic pendant que le geste est EN VOL
+     enverrait un second ordre sur un port deja en dialogue, et les deux
+     attentes se voleraient leurs lignes. */
+  if (langueEnVol) { return null; }
+  langueMasquer();
+  var code = langueDalleChoisie();
+  /* 🔴 (a) LE DEFAUT ANGLAIS EST **STRUCTUREL** : ⛔ AUCUN OCTET N'EST ECRIT.
+     Il se prouve PAR L'ABSENCE D'ECRITURE, ⛔ pas par une ecriture qui vaudrait
+     « anglais » — la carte demarre en anglais quand sa NVS ne porte aucune
+     langue, et ecrire « EN » remplacerait un DEFAUT par un CHOIX.
+     ⛔ CETTE GARDE PRECEDE TOUT APPEL D'ECRITURE, et c'est LA propriete : une
+        garde posee apres le premier octet n'est plus une garde.
+     ⛔ ET LA PAGE NE DIT QUE CE QU'ELLE SAIT : elle n'a RIEN envoye. Elle
+        ⛔ ne promet PAS que la carte demarrera en anglais — une carte dont la
+        NVS porte deja le francais demarrera en francais, et la page ne l'a
+        pas lue. */
+  if (code === LANGUE_DALLE_DEFAUT) {
+    blocMot("etat-langue", "langue.defaut-anglais");
+    languePort("langue.defaut-anglais");
+    return null;
+  }
+  langueEnVol = true;
+  langueBoutons();
+  var relacher = function () { langueEnVol = false; langueBoutons(); };
+  blocMot("etat-langue", "langue.envoi");
+  langueClasse("langue.envoi");
+  /* (b) LE PORT — par le chemin QUI EXISTE DEJA. ⛔ Aucun refus neuf n'est
+     invente : « port refuse », « aucun port choisi » et « pas d'acces serie »
+     sont deja nommes par la console, separement, et c'est elle qui les dit.
+     🔴 ET LES **DEUX** CHEMINS D'ECHEC EFFACENT NOTRE PROPRE « en cours » —
+        celui qui rend et celui qui rejette. Sans ca, la page dirait « reveil de
+        la console… » a cote du refus que la console vient de nommer : deux
+        messages pour un seul fait, dont un qui MENT. */
+  var sansPort = function () {
+    relacher();
+    langueMasquer();
+    /* 🔴 UN CLIC DIT **TOUJOURS** QUELQUE CHOSE. La version d'avant se taisait
+       quand la console avait deja nomme son refus — et trois issues laissaient
+       donc ce cadre-ci VIDE (port tenu par l'agent · pas d'acces serie ·
+       selecteur annule). Un clic sans reponse se lit comme une page cassee, et
+       les deux messages ne se contredisent pas : la console dit POURQUOI le
+       port n'est pas venu, ⛔ elle ne dit rien de la langue. */
+    blocMot("etat-langue", "langue.port-indisponible");
+    languePort("langue.port-indisponible");
+    return null;
+  };
+  return Promise.resolve(portConsole ? null : consoleOuvrir()).then(function () {
+    if (!portConsole) { return sansPort(); }
+    /* (c) LE REVEIL : un saut de ligne, puis L'ATTENTE DE L'INVITE. ⛔ Rien
+       n'est envoye avant qu'elle soit revenue — le delai fin-de-flash ⇒ REPL
+       est NON MESURE, et un envoi trop tot perdrait la ligne. */
+    var invite = langueArmer(RE_INVITE_CARTE, DELAI_INVITE, "");
+    var reveil = consoleEcrire("");
+    return reveil.then(function () { return invite; })
+      .then(function (r) {
+        if (!r.vu) {
+          relacher();
+          /* ⛔ ET LES OCTETS REELLEMENT LUS SONT RELAYES : c'est le SEUL cas ou
+             le texte brut nomme le vrai obstacle — boucle de demarrage, mode
+             `download`, invite changee. Les jeter laisserait le lecteur devant
+             un diagnostic sans piece. */
+          langueRelais(r.texte);
+          blocMot("etat-langue", "langue.pas-d-invite");
+          languePort("langue.pas-d-invite");
+          return null;
+        }
+        /* (d) L'ORDRE, PUIS LA LECTURE DE **L'ACCEPTATION**. */
+        var reponse = langueArmer(RE_INVITE_CARTE, DELAI_REPONSE, r.reste);
+        return consoleEcrire(CMD_LANGUE + " " + code)
+          .then(function () { return reponse; })
+          .then(function (r2) {
+            langueRelais(r2.texte);
+            /* (e) LE CLASSEMENT, ANCRE SUR LA REPONSE DE LA COMMANDE. ⛔ Un
+               silence n'est PAS un succes, et une absence d'invite n'est PAS un
+               refus : chaque issue a SA cle. */
+            if (!r2.vu) {
+              relacher();
+              blocMot("etat-langue", "langue.sans-reponse");
+              languePort("langue.sans-reponse");
+              return null;
+            }
+            /* 🔴 L'ECRITURE NVS A ECHOUE : la carte a change A CHAUD, et elle
+               ⛔ ne gardera PAS ce changement. ⛔ Jamais « refusee » (faux : la
+               dalle a change) · ⛔ jamais « posee » (faux : ca ne survivra
+               pas). ⚠️ CE TEST PASSE **AVANT** CELUI DU SUCCES : la carte
+               imprime son avertissement PUIS la ligne de succes. */
+            if (RE_NVS_REFUSEE.test(r2.texte)) {
+              relacher();
+              blocMot("etat-langue", "langue.non-persistee");
+              languePort("langue.non-persistee");
+              return null;
+            }
+            if (RE_REFUS_CARTE.test(r2.texte)) {
+              relacher();
+              blocMot("etat-langue", "langue.refusee");
+              languePort("langue.refusee");
+              return null;
+            }
+            /* ⛔ TOUT CE QUI N'EST RECONNU PAR AUCUN LITTERAL DE `langue` EST
+               UNE **IGNORANCE**, ⛔ pas un verdict. La console est bavarde :
+               conclure sur ce qu'on n'a pas reconnu, ce serait publier une
+               ignorance comme un constat. */
+            if (!RE_SUCCES_CARTE.test(r2.texte) && !RE_NOOP_CARTE.test(r2.texte)) {
+              relacher();
+              blocMot("etat-langue", "langue.sans-reponse");
+              languePort("langue.sans-reponse");
+              return null;
+            }
+            /* (f) LA RELECTURE — `langue` SANS argument. 🔴 LE SUCCES N'EST
+               ATTEIGNABLE QUE D'ICI : c'est l'ETAT de la carte qu'on relit,
+               ⛔ pas l'ordre qu'on lui a envoye.
+               ⚠️ Et le no-op — « rien a faire : la langue est DEJA FR » —
+                  passe par le meme chemin : la relecture porte le francais,
+                  donc c'est POSE. ⛔ Ce n'est pas une ecriture, et la page ne
+                  pretend pas le contraire. */
+            var relue = langueArmer(RE_INVITE_CARTE, DELAI_REPONSE, r2.reste);
+            return consoleEcrire(CMD_LANGUE)
+              .then(function () { return relue; })
+              .then(function (r3) {
+                relacher();
+                langueRelais(r2.texte + r3.texte);
+                var m = RE_LECTURE_CARTE.exec(r3.texte);
+                if (!r3.vu) {
+                  blocMot("etat-langue", "langue.sans-reponse");
+                  languePort("langue.sans-reponse");
+                } else if (m && m[1].toLowerCase() === code) {
+                  blocMot("etat-langue", "langue.posee");
+                  languePort("langue.posee");
+                } else if (m) {
+                  /* ⛔ LA CARTE A PARLE, ET ELLE NE PORTE PAS LE CODE ENVOYE.
+                     C'est un REFUS constate, ⛔ pas une ignorance — et son
+                     texte est relaye tel quel, juste en dessous. */
+                  blocMot("etat-langue", "langue.refusee");
+                  languePort("langue.refusee");
+                } else {
+                  /* 🔴 ET SI LA RELECTURE NE PORTE **AUCUNE** LANGUE LISIBLE,
+                     ⛔ CE N'EST PAS UN REFUS : la carte n'a jamais dit qu'elle
+                     refusait. Rendre un VERDICT sur une reponse qu'on n'a pas
+                     reconnue, c'est publier une IGNORANCE comme un constat —
+                     la seule ligne que ce geste n'a pas le droit de franchir. */
+                  blocMot("etat-langue", "langue.sans-reponse");
+                  languePort("langue.sans-reponse");
+                }
+                return null;
+              });
+          });
+      });
+  }, function () { return sansPort(); }).then(null, function () {
+    /* 🔴 LE FILET, ET IL N'EST ⛔ PAS DECORATIF : une ecriture qui echoue EN
+       VOL (carte debranchee entre deux lignes, port repris par autre chose)
+       laisserait `langueEnVol` a VRAI, et le bouton serait MORT jusqu'au
+       rechargement de la page — un geste qui ne dit rien et ne fait plus rien.
+       ⇒ on rend le geste, on DESARME l'attente restee en l'air, et on publie
+       l'IGNORANCE, ⛔ jamais un succes. */
+    relacher();
+    langueDesarmer();
+    blocMot("etat-langue", "langue.sans-reponse");
+    languePort("langue.sans-reponse");
+    return null;
+  });
+}
+if (bLanguePoser) {
+  bLanguePoser.addEventListener("click", poserLangueDalle);
+}
+/* ⚠️ L'ETAT INITIAL EST POSE PAR LA MEME FONCTION QUE LES TROIS AUTRES SITES :
+   au chargement, le bloc d'installation est MASQUE tant qu'`api/etat` n'a pas
+   repondu ⇒ le geste reste desarme, comme il l'est deja dans le document. */
+langueOffrir();
 
 /* ── L'ENCHAINEMENT ──────────────────────────────────────────────────────
    ⚠️ `rafraichirEtat()` rend la promesse de `fetch`, et son `.then` recoit

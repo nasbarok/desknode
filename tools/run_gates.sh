@@ -74,6 +74,18 @@
 #     ABSOLUS de la machine de l'auteur — celle-la est VERTE dans le clone et
 #     ROUGE sur un runner, elle se LIT dans le code.
 #
+#     ⚠️ UNE QUATRIEME CAUSE EST AJOUTEE LE 2026-09-09 PAR `dn7-3`, ET ELLE EST
+#        DEFINIE **ICI**, avec les trois autres — une lettre que personne ne
+#        peut chercher n'est pas une categorie, c'est un sigle :
+#        **(D) UN MOTEUR D'EXECUTION EST UN PREREQUIS DE BANC, ⛔ PAS UNE
+#        DEPENDANCE DU DEPOT.** Une gate qui LANCE un banc a besoin de
+#        l'interprete de ce banc. Le depot, lui, n'en a pas besoin : rien de ce
+#        qu'il livre ne s'execute avec. ⇒ le moteur absent ⛔ n'est PAS un
+#        rouge, et ⛔ surtout PAS un vert — la gate rend son 4, et la regle (3)
+#        la joue QUAND MEME pour verifier qu'elle rend bien ce 4.
+#        🔴 UNE GATE VERTE SUR UN BANC QUI N'A PAS TOURNE SERAIT PIRE QUE PAS
+#        DE GATE : elle certifierait un comportement que personne n'a mesure.
+#
 #     🔴 LE PROBLEME : ces gates rendaient toutes **rc=1** sans leur prerequis,
 #     c'est-a-dire LA MEME VALEUR QUE LEUR ROUGE. Declarer `rc attendu = 1`
 #     aurait produit une declaration satisfaite AUSSI BIEN par « le terrain
@@ -534,6 +546,24 @@ TEMOIN_LVGL_VEILLE="firmware/desknode/managed_components/lvgl__lvgl/scripts/buil
 TEMOIN_LVGL_HIST="firmware/desknode/managed_components/lvgl__lvgl/src/widgets/chart/lv_chart.h"
 TEMOIN_LVGL="firmware/desknode/managed_components/lvgl__lvgl"
 
+# 🔴 dn7-3 — LE MOTEUR JavaScript EST UN PREREQUIS, ⛔ PAS UNE DEPENDANCE DU
+#    DEPOT. `tools/verif_banc_langue_dn73.py` lance un banc qui EXECUTE le
+#    `<script>` de `installeur/index.html` : sans moteur, il n'y a rien a
+#    jouer. ⇒ la gate rend son `rc=4` declare, et elle est portee NON-JOUABLE.
+#    ⚠️ LE TEMOIN EST **DERIVE**, ⛔ pas ecrit en dur : `command -v node` rend
+#       le chemin REEL du binaire, quel qu'il soit ; le repli est un chemin qui
+#       n'existe pas, pour que `[ -e ]` soit FAUX et ⛔ pas vide — un temoin
+#       vide sauterait la gate en silence, et pour toujours.
+#    🔴 ⛔ UNE GATE VERTE SUR UN BANC QUI N'A PAS TOURNE SERAIT PIRE QUE PAS DE
+#       GATE : c'est pourquoi la gate rend 4 au lieu de 0, et pourquoi la regle
+#       (3) la joue QUAND MEME pour verifier qu'elle rend bien ce 4.
+#    ⛔ ET ⛔ SANS REDIRECTION VERS LE PUITS : la regle (4) de ce script
+#       l'interdit, et sa garde relit CE FICHIER. `command -v` n'ecrit
+#       rien sur la sortie d'erreur quand il ne trouve pas — la
+#       redirection etait INUTILE en plus d'etre interdite. MESURE : la
+#       garde a refuse de tourner tant qu'elle etait la.
+TEMOIN_NODE="$(command -v node || echo /nonexistent/node)"
+
 NON_JOUABLES=(
   "verif_sr03.py|le PDF [AN] AN4545 (VL6180X, DocID026571 Rev 1) n'est PAS au depot : document StMicroelectronics, ⛔ non redistribuable. La gate l'attend en argument et sort en 2 sur son message d'usage — rc=2 n'est PAS un rouge.|tools/fixtures/AN4545.pdf|tools/fixtures/AN4545.pdf firmware/desknode/main/dn_console.c|2"
   "verif_dossier_dn415.py|CAUSE A — le cockpit de planification est un depot PRIVE, ⛔ jamais clone a cote du code. Sans lui la gate n'a AUCUNE occurrence a arbitrer. ⚠️ La ou le cockpit EST la elle rend 17 OK / 10 KO sur le CONTENU : ⛔ une CI ne verra JAMAIS ces 10 KO, et elle ne pretend pas les garder.|${TEMOIN_COCKPIT}|AUCUN|4"
@@ -543,6 +573,7 @@ NON_JOUABLES=(
   "verif_veille_dn33.py|CAUSE B — managed_components/ est GITIGNORE (186 Mo, repeuple par: idf.py reconfigure) et porte le generateur AMONT de LVGL. ⛔ 2 blocs sur 18 ne sont pas exerces ; TOUT LE RESTE EST JOUE. Elle disait deja le bon motif et le remede — il lui manquait le rc.|${TEMOIN_LVGL_VEILLE}|AUCUN|4"
   "verif_harnais_dn413.py|CAUSE B — sans l'arbre LVGL le corpus C est INCOMPLET, et la chasse aux renvois FANTOMES accusait tools/dn_police.py de citer des fonctions QUI EXISTENT (lv_text_get_width est defini dans lvgl__lvgl/src/misc/lv_text.c). ⛔ Un diagnostic FAUX publie automatiquement. Elle DECLARE desormais, elle n'accuse plus — et ⛔ elle ne devient PAS aveugle la ou l'arbre est la.|${TEMOIN_LVGL}|AUCUN|4"
   "verif_campagne_dn440.py|CAUSE A — elle MUTE le ledger et le tracker du cockpit dans une COPIE jetable : sans ce depot PRIVE elle n'a rien a muter, et son compte « controles gardes par rien » ne veut plus rien dire puisque aucune gate ne tourne. ⚠️ dn4-44 : elle est entree au glob (decision owner du 2026-09-03) precisement parce que RIEN ne l'invoquait — une regle que rien n'applique est une regle qui pourrira.|${TEMOIN_COCKPIT}|AUCUN|4"
+  "verif_banc_langue_dn73.py|CAUSE D — le moteur JavaScript node est un PREREQUIS DE BANC, ⛔ pas une dependance du depot : cette gate lance tools/banc_langue_dalle_dn73.mjs, qui EXECUTE le script de la page installeur/index.html contre un port de banc d'essai et rejoue les NEUF lignes de la matrice d'entrees-sorties de dn7-3, plus les trois chemins que la revue a nommes. Sans moteur il n'y a rien a jouer, et une gate VERTE sur un banc qui n'a pas tourne serait PIRE que pas de gate. ⇒ elle rend 4 avec son motif, et la regle (3) la joue QUAND MEME pour verifier qu elle rend bien ce 4.|${TEMOIN_NODE}|AUCUN|4"
   "verif_hist_dn413.py|CAUSE B — elle RELIT LV_CHART_POINT_NONE dans lv_chart.h (c'est ce qui garantit que DN_HIST_TROU vaut le trou de LVGL) et PLANTAIT en FileNotFoundError NU : un rouge sans motif ni remede. Elle echoue FERME desormais, sur le modele de verif_veille_dn33.py.|${TEMOIN_LVGL_HIST}|AUCUN|4"
 )
 

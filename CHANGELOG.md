@@ -177,6 +177,81 @@ Work towards the first public release, `v0.1.0-beta`.
   image exists at the size and hash `PROVENANCE.md` publishes, the display asset's integrity
   trailer (magic, length, **CRC32**) still validates, the pinned ESP Web Tools version is the same
   in the page and in `THIRD-PARTY.md`, and the page carries every sentence above.
+- 🆕 **The panel's language is chosen on the install page, before the flash — and a separate
+  gesture writes it into the board.** Two positions above the install button, **English by
+  default**, visible without unfolding anything, plus a **separate, explicit gesture** that writes
+  the choice into the board after the flash. 🔴 **⛔ THIS ENTRY DOES NOT CLAIM THE BOARD HAS THE
+  LANGUAGE ON ITS FIRST BOOT, AND THE REASON IS MEASURED**: flashing **wipes the board's stored
+  settings** — after a flash from this page the board's `cfg` command answers *no config in NVS,
+  defaults applied* (2026-09-09) — and the board **restarts on its own before** the gesture is
+  played. ⇒ **the first boot after an install is ENGLISH whatever was chosen**; the panel switches
+  when the gesture is played, and the gesture is **to be replayed after every install**, because
+  updating DeskNode means reflashing it. The page says so at the step that sets the language.
+  🔴 **Choosing English writes nothing at all**, and that is the property rather than a shortcut:
+  the board starts in English when its NVS carries **no** language, so writing a value meaning
+  "English" would replace a **default** with a **choice**. Measured: the gesture played with
+  English selected sends **zero bytes** on the port. ⚠️ And the page ⛔ promises no more than it
+  knows: it has **not read** what the board carries, so it ⛔ does not claim an English start on a
+  board whose settings already hold French. 🔴 **The gesture is explicit, ⛔ not chained to the end
+  of the flash**, and two measurements decide that: the page holds **no listener** on the flashing
+  module, and **the delay between the end of the flash and the moment the REPL answers is not
+  measured** — sending too early loses the line, and a lost line would produce *a success announced
+  on a language that was never set*. The gesture therefore **wakes the console up and waits for its
+  prompt** before sending anything. 🔴 **The acceptance is read, then the state is read back —
+  ⛔ never the order that was sent**: *set* is only reachable from a re-read that carries the chosen
+  code. There are **five distinct outcomes**, each recognised by the literal the `langue` command
+  prints **for it** — *set* · *refused* · *applied but ⛔ NOT stored* · *no answer* · *no prompt* —
+  with the board's own words relayed verbatim. ⚠️ The fifth one exists because it was **measured**:
+  when the board fails to store the setting it prints its warning, **then rebuilds the scene, then
+  prints the success line**, and returns non-zero — so it gets **one key that says both facts**, the
+  panel **has** switched and it will ⛔ **not** keep it. ⚠️ And *set* ⛔ **does not promise that a
+  reboot survives it**: the board applies the setting **before** storing it, so the re-read answers
+  the same either way — the only proof is the panel's own top bar after a power cycle.
+  ⛔ **Nothing was added to the firmware**: the console command, the NVS key and the
+  one-definition-per-string table were already shipped; this page adds **the choice**.
+- 🆕 **A gate over that choice and that gesture** (`tools/verif_langue_dalle_dn73.py`, 61 checks,
+  34 mutants, run by `tools/run_gates.sh` and replayed mutant by mutant by
+  `tools/verif_campagne_dn56.py`): the choice exists at two positions and **precedes** the flash
+  element, the English default is written **in the document** rather than posted by a script, the
+  panel's choice stays **distinct** from the page's own language and the page **says so in both
+  languages**, the order sent is a literal plus a code the binary really carries, the guard that
+  writes nothing for English **precedes** every write, the write lock is released **on both
+  paths**, the prompt is awaited **before** the order, the outcomes are anchored **each in its own
+  branch**, success is reachable **only from the re-read**, every outcome **says what became of the
+  port**, and the gesture ⛔ **is not offered** while the install block is hidden. It also
+  **re-reads inside `firmware/`** the six answer literals it anchors and pairs them **both ways**
+  with the patterns the page matches — a literal nobody pairs guards nothing, and a pattern nothing
+  re-reads rots silently. 🔴 One check exists for a trap that was **measured**: the board's console
+  carries the word *REFUS* for the I²C bus and for the clock too, on the **same** stream, in the
+  cold-start window where this gesture is played — so no classification pattern is allowed to match
+  an **unrelated** log line, and the witnesses for that are read out of `firmware/` rather than
+  invented. The page itself cites ⛔ **no line number**.
+- 🆕 **A bench that RUNS the install page's JavaScript — the first thing in this repository
+  that does.** Until now no tool here executed `installeur/index.html`: the gates read its
+  structure, and the only DOM shot ever fired was a headless browser started by hand, outside
+  `tools/run_gates.sh`. `dn7-3` added matter of a new kind to that hole — the page had only ever
+  **read** the port, and it now **writes** — so the hole is closed for that path.
+  `tools/banc_langue_dalle_dn73.mjs` **extracts the page's `<script>` and evaluates it** against
+  a stub DOM and a stub port, then plays the **nine** rows of the story's input/output matrix,
+  including the three nothing covered before — *the port is held by the agent*, *double click*,
+  *no serial access* — plus **nine** paths two reviews named: the port obtained **through the
+  browser's picker** followed by a complete set, the *applied but not stored* answer, a re-read
+  that does **not** carry the code, a picker **already open**, a picker **cancelled**, a **real
+  click** on the French button (the button ⇄ code binding, which nothing asserted), the install
+  block **revealed** and then **hidden** (the arming polarity, in both directions), and a
+  `write()` that **rejects in flight** (the safety net, which must hand the gesture back). ⛔ It copies no logic: a harness
+  replaying its own copy measures only itself, and a check enforces that. 🔴 It also records the
+  **bytes** written rather than the number of `write()` calls — *zero bytes* is what three
+  surfaces here publish — and the **sequence** of announced outcomes rather than the final state — a success announced too early
+  and then **overwritten** leaves the final screen correct and the defect invisible, which is
+  measured, ⛔ not supposed. 🔴 And it **exits non-zero when its chain does not resolve**: a bench
+  that returns 0 on a truncated list announces a success it never measured, and a flag replays
+  exactly that case. `tools/verif_banc_langue_dn73.py` (40 checks, 28 mutants) **launches** it on
+  every pass. ⚠️ **`node` is a declared prerequisite**: without it that gate returns **4** with its
+  reason and is declared non-playable — ⛔ it never comes out green on a bench that did not run,
+  and the CI **records** whether the engine is there rather than assuming it.
+  ⛔ **What the bench does not prove**: it plays a **stub** board. That the language is really
+  on the device, and survives a power cycle, is read **on the panel's own top bar, by eye**.
 - **Licensing.** GPL-3.0-or-later for `firmware/`, MIT for `agent/`, CC-BY-SA-4.0 for
   `docs/`, and GPL-3.0-or-later for `installeur/` — code that serves a GPL binary, ⛔ not prose.
   See [`LICENSING.md`](LICENSING.md).
@@ -321,6 +396,15 @@ Work towards the first public release, `v0.1.0-beta`.
   > the reader reads, and the one written into the device — and posting the second at install
   > time is still to come. ⇒ this entry stays under *Known issues* for the **panel**, and the
   > page's own language is recorded under *Fixed*.
+  > 🎯 **Re-annotated on 2026-09-09 (`dn7-3`) — ⛔ nothing above is erased, and the last
+  > sentence has just stopped being true.** *Offering the choice at install time* is no longer
+  > "still to come": the install page carries the choice, **above the flash button**, English by
+  > default, and a separate gesture writes it into the board over the serial console. ⇒ what is
+  > **left** of the entry above, and it is smaller: the **panel itself** still has no on-screen
+  > selector — the choice is made on the page, ⛔ not on the device, and that was a decision
+  > rather than an omission (the two on-screen targets were built, measured, and removed for a
+  > measured load regression). ⛔ This entry is **not** deleted: it stays as the record of what
+  > the panel does not offer.
 - **The CLA bot has never been exercised by an outside contributor.** It was watched
   running on an **internal** pull request on 2026-09-02 — it commented, linked to
   `CLA.md` and created the signature store — and again on 2026-09-04, on the workflow

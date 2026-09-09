@@ -1,0 +1,317 @@
+==============================================================================
+dn7-3 / T5 — LE BANC ENTRE AU DEPOT, ET IL EST **REJOUE** A CHAQUE PASSE
+==============================================================================
+    2026-09-09 · `tools/banc_langue_dalle_dn73.mjs` + `tools/verif_banc_langue_dn73.py`
+    (40 controles, 28 mutants) · node v24.14.0
+
+🔴 POURQUOI CE RELEVE EXISTE, ET C'EST UNE LECON PLUTOT QU'UN CHIFFRE :
+   ⛔ UN INSTRUMENT QUI A TOURNE **UNE FOIS AILLEURS** NE GARDE **RIEN**
+   DEMAIN. Un banc joue a la main, hors de l'arbre, prouve l'etat d'un jour,
+   ⛔ pas une propriete. ⇒ le banc EST AU DEPOT, une gate le LANCE, elle est
+   dans le glob de `tools/run_gates.sh` et dans les cibles de
+   `tools/verif_campagne_dn56.py`.
+
+🔴 ET IL N'OBSERVE PLUS SEULEMENT LE **TEXTE DE L'ISSUE**. Une revue a
+   DEMONTRE, en mutant une copie de la page, que quatre proprietes VISIBLES
+   n'etaient assertees par RIEN — tout restait vert. Elles le sont desormais,
+   chacune par un cas qui l'exerce et un mutant qui la replante :
+     · la liaison **BOUTON ⇄ CODE** — un VRAI clic est dispatche sur le
+       bouton du produit, et l'ordre `langue fr` doit REELLEMENT partir ;
+     · la **POLARITE** de l'armement — `.disabled` est relu APRES le geste
+       qui revele le bloc de flash, et APRES celui qui le masque ;
+     · la **PHRASE DU PORT** — « tient » / « ne tient pas », et les deux sont
+       OPPOSEES, donc une seule peut etre vraie a la fois ;
+     · le **FILET** — une ecriture qui REJETTE EN VOL, avec l'exigence que le
+       geste soit RENDU (`enVol === false`), ⛔ pas mort jusqu'au rechargement.
+   Et deux mesures ont ete corrigees : les **OCTETS** sont sommes (⛔ plus des
+   appels a `write()` — « zero octet » est ce que trois surfaces publient), et
+   un **relais vide** ⛔ n'est plus revele.
+
+==============================================================================
+(1) CE QUE LE BANC JOUE — DIX-HUIT CHEMINS, NOMMES
+==============================================================================
+⚠️ NOMMES, ⛔ PAS COMPTES : un compte ne dit pas LAQUELLE a disparu, et c'est
+   toujours celle qu'on n'aurait pas remarquee.
+
+  defaut-structurel               choix = anglais ⇒ ⛔ AUCUN octet n'est ecrit
+  pose-nominale                   choix = francais ⇒ POSEE, et seulement apres relecture
+  deja-en-francais                la carte rend « rien a faire » ⇒ POSEE, ⛔ pas une ecriture
+  refus-de-la-carte               la carte REFUSE ⇒ REFUSEE, texte relaye TEL QUEL
+  pas-d-invite                    la carte ne rend pas son invite ⇒ PAS-D-INVITE, ⛔ pas « refusee »
+  sans-reponse                    invite obtenue puis silence ⇒ SANS REPONSE, ⛔ rien de pose
+  relecture-sans-le-code          la relecture ne porte PAS le code ⇒ REFUSEE, ⛔ pas POSEE
+  port-tenu-par-l-agent           l'ouverture est REFUSEE ⇒ « port refuse », ⛔ jamais « aucune carte »
+  double-clic                     le geste rejoue EN VOL est IGNORE ⇒ une seule suite d'ordres
+  pas-d-acces-serie               ⛔ pas de Web Serial ⇒ la page le DIT, et n'ecrit rien
+  pose-par-le-selecteur           port obtenu PAR LE SELECTEUR puis pose complete ⇒ POSEE
+  nvs-refusee                     ecriture NVS refusee ⇒ POSEE A CHAUD mais ⛔ NON PERSISTEE
+  selecteur-annule                le selecteur est ANNULE ⇒ la page le DIT, et n'ecrit rien
+  clic-reel-sur-francais          un VRAI clic sur « dalle en francais » ⇒ `langue fr` part
+  flash-revele-arme-le-geste      le bloc de flash est REVELE ⇒ le geste est ARME
+  module-absent-desarme-le-geste  le module distant manque ⇒ le geste est DESARME
+  ecriture-qui-rejette-en-vol     `write()` rejette en vol ⇒ IGNORANCE publiee, et le geste est RENDU
+  selecteur-deja-en-vol           un selecteur est deja ouvert ⇒ la page NOMME le fait, ⛔ pas de silence
+
+==============================================================================
+(2) LE BANC, SUR L'ARBRE
+==============================================================================
+==============================================================================
+BANC dn7-3 — LE SCRIPT DE LA PAGE, **EXECUTE** CONTRE UN PORT BIDON
+==============================================================================
+page jouee : /home/nasbarok/projects/desknode/installeur/index.html (84661 octets de script)
+delais     : page=40 ms · cas=4000 ms · plafond=85800 ms
+⛔ AUCUNE CARTE N'EST TOUCHEE, et ⛔ aucun port reel n'est ouvert.
+------------------------------------------------------------------------------
+CAS defaut-structurel            OK  ecritures=0/0 octets=0
+CAS pose-nominale                OK  ecritures=3/3 octets=18
+CAS deja-en-francais             OK  ecritures=3/3 octets=18
+CAS refus-de-la-carte            OK  ecritures=2/2 octets=11
+CAS pas-d-invite                 OK  ecritures=1/1 octets=1
+CAS sans-reponse                 OK  ecritures=2/2 octets=11
+CAS relecture-sans-le-code       OK  ecritures=3/3 octets=18
+CAS port-tenu-par-l-agent        OK  ecritures=0/0 octets=0
+CAS double-clic                  OK  ecritures=3/3 octets=18
+CAS pas-d-acces-serie            OK  ecritures=0/0 octets=0
+CAS pose-par-le-selecteur        OK  ecritures=3/3 octets=18
+CAS nvs-refusee                  OK  ecritures=2/2 octets=11
+CAS selecteur-annule             OK  ecritures=0/0 octets=0
+CAS clic-reel-sur-francais       OK  ecritures=3/3 octets=18
+CAS flash-revele-arme-le-geste   OK  ecritures=3/3 octets=18
+CAS module-absent-desarme-le-geste OK  ecritures=0/0 octets=0
+CAS ecriture-qui-rejette-en-vol  OK  ecritures=2/2 octets=11
+CAS selecteur-deja-en-vol        OK  ecritures=0/0 octets=0
+------------------------------------------------------------------------------
+BANC : 18 OK, 0 KO
+⛔ CE BANC NE PROUVE PAS que la langue soit VRAIMENT posee dans une
+   carte, ni qu'elle survive a une coupure : le bandeau est SUR LA
+   DALLE, et il se lit A L'ŒIL. Seance carte, portee au ledger.
+
+==============================================================================
+(3) LE TEMOIN DE LA CHAINE — ⛔ UNE LISTE TRONQUEE N'EST PAS UN SUCCES
+==============================================================================
+🔴 IL REPLANTE le cas « la chaine ne se resout jamais » et exige que le banc
+   SORTE EN NON-ZERO **sans rendre de bilan**. ⛔ Sans lui, « le banc sort en
+   non-zero » serait une promesse ecrite que rien ne joue.
+⚠️ ET LE CONTROLE EXIGE **DEUX** CHOSES, ⛔ pas « non nul » : le code que le
+   filet DECLARE (**3**) ET la ligne qu'il imprime. Un `Traceback` sort non
+   nul et sans bilan EXACTEMENT comme un filet qui a joue.
+
+  $ node tools/banc_langue_dalle_dn73.mjs --temoin-chaine   ⇒  rc=3
+==============================================================================
+BANC dn7-3 — LE SCRIPT DE LA PAGE, **EXECUTE** CONTRE UN PORT BIDON
+==============================================================================
+page jouee : /home/nasbarok/projects/desknode/installeur/index.html (84661 octets de script)
+delais     : page=40 ms · cas=4000 ms · plafond=400 ms
+⛔ AUCUNE CARTE N'EST TOUCHEE, et ⛔ aucun port reel n'est ouvert.
+------------------------------------------------------------------------------
+------------------------------------------------------------------------------
+BANC ⛔ CHAINE NON RESOLUE apres 400 ms — 0 cas sur 18 (0 OK, 0 KO)
+⛔ SORTIE FERMEE EN 3 : une liste tronquee n'est PAS un succes,
+   et ⛔ aucune ligne `BANC : n OK, m KO` n'est rendue.
+
+==============================================================================
+(4) LES DEUX BRANCHES DU PREREQUIS `node` — JOUEES TOUTES LES DEUX
+==============================================================================
+🔴 UNE GATE VERTE SUR UN BANC QUI N'A PAS TOURNE SERAIT **PIRE QUE PAS DE
+   GATE**. ⇒ absence de moteur = `rc=4` DECLARE, ⛔ pas un rouge et ⛔ surtout
+   pas un vert ; `tools/run_gates.sh` la porte NON-JOUABLE sur un temoin
+   **DERIVE** de `command -v node`, et la regle (3) la joue QUAND MEME pour
+   verifier qu'elle rend bien ce 4.
+⚠️ ET UN MOTEUR **PRESENT MAIS NON EXECUTABLE** ⛔ N'EST PAS UN DEPASSEMENT :
+   les deux motifs sont distingues dans le texte, parce qu'ils envoient
+   chercher deux choses differentes.
+
+  BRANCHE 1 — moteur PRESENT :
+  $ python3 tools/verif_banc_langue_dn73.py   ⇒  rc=0
+==============================================================================
+dn7-3 — LE BANC DE LA POSE EST JOUE, ⛔ PAS SEULEMENT ECRIT
+==============================================================================
+moteur     : /usr/bin/node
+cibles     : installeur/index.html · tools/banc_langue_dalle_dn73.mjs
+⛔ CETTE GATE N'OUVRE AUCUN PORT ET NE PARLE A AUCUNE CARTE : le banc
+   joue une carte BIDON. Que la langue soit VRAIMENT posee se lit AU
+   BANDEAU DE LA DALLE — seance carte, portee au ledger.
+
+── (c0) LE PRE-VOL — ⛔ AUCUN CONTROLE SUR DU VIDE ────────────────
+  [OK ] (c0) tout fichier attendu est LISIBLE                      2 fichier(s) lus
+  [OK ] (c0) le mutant 1 a une CIBLE et un LIBELLE                 → c4
+  [OK ] (c0) le mutant 2 a une CIBLE et un LIBELLE                 → c4
+  [OK ] (c0) le mutant 3 a une CIBLE et un LIBELLE                 → c4
+  [OK ] (c0) le mutant 4 a une CIBLE et un LIBELLE                 → c4
+  [OK ] (c0) le mutant 5 a une CIBLE et un LIBELLE                 → c4
+  [OK ] (c0) le mutant 6 a une CIBLE et un LIBELLE                 → c4
+  [OK ] (c0) le mutant 7 a une CIBLE et un LIBELLE                 → c4
+  [OK ] (c0) le mutant 8 a une CIBLE et un LIBELLE                 → c4,c5
+  [OK ] (c0) le mutant 9 a une CIBLE et un LIBELLE                 → c6
+  [OK ] (c0) le mutant 10 a une CIBLE et un LIBELLE                → c2,c3
+  [OK ] (c0) le mutant 11 a une CIBLE et un LIBELLE                → z
+  [OK ] (c0) le mutant 12 a une CIBLE et un LIBELLE                → c0
+  [OK ] (c0) le mutant 13 a une CIBLE et un LIBELLE                → c9
+  [OK ] (c0) le mutant 14 a une CIBLE et un LIBELLE                → c10
+  [OK ] (c0) le mutant 15 a une CIBLE et un LIBELLE                → c11
+  [OK ] (c0) le mutant 16 a une CIBLE et un LIBELLE                → c1
+  [OK ] (c0) le mutant 17 a une CIBLE et un LIBELLE                → c4
+  [OK ] (c0) le mutant 18 a une CIBLE et un LIBELLE                → c4
+  [OK ] (c0) le mutant 19 a une CIBLE et un LIBELLE                → c4
+  [OK ] (c0) le mutant 20 a une CIBLE et un LIBELLE                → c7
+  [OK ] (c0) le mutant 21 a une CIBLE et un LIBELLE                → c8
+  [OK ] (c0) le mutant 22 a une CIBLE et un LIBELLE                → c4
+  [OK ] (c0) le mutant 23 a une CIBLE et un LIBELLE                → c4
+  [OK ] (c0) le mutant 24 a une CIBLE et un LIBELLE                → c4
+  [OK ] (c0) le mutant 25 a une CIBLE et un LIBELLE                → c4
+  [OK ] (c0) le mutant 26 a une CIBLE et un LIBELLE                → c4
+  [OK ] (c0) le mutant 27 a une CIBLE et un LIBELLE                → c4
+  [OK ] (c0) le mutant 28 a une CIBLE et un LIBELLE                → c7
+
+── (c1)…(c4) LE BANC TOURNE, ET CHAQUE CAS REND SON VERDICT ──────
+  [OK ] (c1) le banc TOURNE, et il rend son bilan                  BANC : 18 OK, 0 KO (rc=0)
+  [OK ] (c2) les NEUF lignes de la matrice sont JOUEES             18 cas joues, dont les 9 de la matrice
+  [OK ] (c3) le banc joue TOUS les cas qu'il declare               18 cas emis pour 18 attendus
+  [OK ] (c4) tout cas du banc rend OK                              18 cas, aucun rouge
+
+── (c5)(c6) LE BANC EXECUTE LA PAGE, ET IL JUGE LA SUITE ─────────
+  [OK ] (c5) le banc EXECUTE la page, ⛔ il ne la recopie pas       il lit le `<script>` et l'evalue
+  [OK ] (c6) le banc juge la SUITE des issues, ⛔ pas la fin        « posee » au plus UNE fois, et EN DERNIER
+
+── (c7)(c8) UNE CHAINE NON RESOLUE N'EST PAS UN SUCCES ───────────
+  [OK ] (c7) chaine non resolue ⇒ le FILET joue, et il le dit      temoin joue : rc=3, sa signature imprimee, ⛔ aucun bilan
+  [OK ] (c8) le banc REPOSE les attentes de la page                les deux delais sont reposes, et l'absence ECHOUE FERME
+
+── (c9)(c10)(c11) AUCUN CONTROLE GARDE PAR ZERO MUTANT ───────────
+  [OK ] (c9) chaque controle est vise par >= 1 mutant              13 controle(s) lu(s) a l'AST, 13 cible(s) declaree(s)
+  [OK ] (c10) chaque cible de mutant est un controle REEL          13 cible(s) confrontee(s)
+  [OK ] (c11) `CIBLES` et `MUTANTS` se correspondent               28 mutant(s), 28 cible(s), cle a cle
+
+⛔ CE QUE CETTE GATE NE PROUVE PAS : que la langue soit VRAIMENT
+   posee dans une carte. Le banc joue une carte BIDON ; le bandeau
+   est SUR LA DALLE, et il se lit A L'ŒIL. Et le relachement du
+   verrou sur le chemin d'ECHEC n'est pas exerce ici : c'est la
+   gate STATIQUE qui le garde, avec son mutant.
+
+==============================================================================
+BILAN : 40 OK, 0 KO
+==============================================================================
+
+  BRANCHE 2 — moteur ABSENT (PATH ampute) :
+  $ env PATH=<vide> python3 tools/verif_banc_langue_dn73.py   ⇒  rc=4
+==============================================================================
+dn7-3 — LE BANC DE LA POSE EST JOUE, ⛔ PAS SEULEMENT ECRIT
+==============================================================================
+⛔ PREREQUIS ABSENT : `node` est introuvable dans le PATH.
+   Ce banc EXECUTE le JavaScript de `installeur/index.html` ; sans moteur, il n'y
+   a rien a jouer. ⛔ Cette gate ⛔ NE SORT PAS VERTE pour
+   autant : elle rend 4, et `tools/run_gates.sh` la declare
+   NON-JOUABLE avec ce motif. Le geste : installer Node.js.
+
+==============================================================================
+(5) LES 28 MUTANTS, TIRES UN PAR UN
+==============================================================================
+⚠️ **SEIZE D'ENTRE EUX MUTENT LA PAGE**, dans une copie jetable — ⛔ jamais
+   l'arbre — parce que ce que ce banc garde est le COMPORTEMENT DU PRODUIT.
+⚠️ Les libelles se lisent **A COLONNE FIXE**.
+
+── CE QUE CHAQUE MUTANT DECLARE REPLANTER ──────────────────────────
+   1  [c4]  PAGE : efface la garde du defaut anglais ⇒ des octets partent sur le port pour un choix qui n'ecrit rien
+   2  [c4]  PAGE : annonce le succes AVANT la relecture ⇒ un succes prouve par ce qu'on a tape
+   3  [c4]  PAGE : ECHANGE « refusee » et « sans reponse » ⇒ une ignorance publiee comme un constat
+   4  [c4]  PAGE : retire l'attente de l'invite ⇒ l'ordre part sur une carte qui n'a jamais repondu
+   5  [c4]  PAGE : retire la garde de re-entrance ⇒ deux clics envoient DEUX suites d'ordres sur le meme port
+   6  [c4]  PAGE : ne relache plus le verrou d'ecriture au succes ⇒ la fermeture du port partirait en rejet
+   7  [c4]  PAGE : rend le geste MUET quand le port n'est pas venu ⇒ un clic qui n'ecrit rien ET n'affiche rien
+   8  [c4,c5]  BANC : recopie la logique au lieu d'EVALUER la page ⇒ un harnais qui ne mesure plus que lui-meme
+   9  [c6]  BANC : ne juge plus que l'etat FINAL ⇒ un succes annonce trop tot puis ECRASE redevient invisible
+  10  [c2,c3]  BANC : retire un cas de la matrice ⇒ la population retrecit, et le banc sortirait VERT sur moins
+  11  [z]  replante une SORTIE ANTICIPEE NON DECLAREE : le bilan retrecit, et il sortirait VERT
+  12  [c0]  declare un mutant dont le CORPS LEVE ⇒ un mutant MORT, qui sortirait en Traceback SANS `BILAN`
+  13  [c9]  retire une cible de `CIBLES` ⇒ un controle garde par ZERO mutant, le risque deja paye ailleurs
+  14  [c10]  declare dans `CIBLES` un controle INEXISTANT ⇒ une cible PERIMEE, que « N mutants, N rouges » ne voit pas
+  15  [c11]  declare une cible pour un mutant qui N'EXISTE PAS
+  16  [c1]  BANC : le rend MUET — il ne rend plus son bilan, la signature exacte d'un banc mort
+  17  [c4]  PAGE : rend l'ouverture du port bloquante jusqu'a la MORT du lien ⇒ la pose attend ce qu'elle veut utiliser
+  18  [c4]  PAGE : classe l'echec d'ecriture NVS comme un REFUS ⇒ la page dit l'INVERSE de ce que la carte imprime
+  19  [c4]  PAGE : renomme le delai d'invite ⇒ le banc ⛔ ne peut plus le regler, et il doit ECHOUER FERME
+  20  [c7]  BANC : retire le filet global ⇒ une chaine non resolue sortirait en 0 sur une liste TRONQUEE
+  21  [c8]  BANC : cesse de REPOSER les attentes de la page ⇒ la campagne repaie six secondes par tir
+  22  [c4]  PAGE : ECHANGE les deux gestionnaires de clic du choix ⇒ cliquer « francais » enverrait `langue en`
+  23  [c4]  PAGE : INVERSE la polarite de l'armement ⇒ le geste s'offre justement quand le flash est impossible
+  24  [c4]  PAGE : dit TOUJOURS que le port est tenu ⇒ la phrase cesse d'etre une mesure et devient un ornement
+  25  [c4]  PAGE : le filet ne rend plus le geste ⇒ le bouton reste MORT jusqu'au rechargement de la page
+  26  [c4]  PAGE : revele le relais meme VIDE ⇒ un cadre vide donne a croire qu'on a lu quelque chose
+  27  [c4]  PAGE : ecrit une charge VIDE ⇒ trois appels pour ZERO octet, et « zero octet » cesse de vouloir dire
+  28  [c7]  BANC : le filet sort non nul SANS sa signature ⇒ un `Traceback` serait pris pour un filet qui a joue
+
+── LE TIR, MUTANT PAR MUTANT ───────────────────────────────────────
+  colonnes : rc · une ligne BILAN ? · les controles VUS ROUGES · la cible DECLAREE
+mutants declares : 28
+  m1   rc=1   bilan=True  KO=c4                     vise=c4           OK 
+  m2   rc=1   bilan=True  KO=c4                     vise=c4           OK 
+  m3   rc=1   bilan=True  KO=c4                     vise=c4           OK 
+  m4   rc=1   bilan=True  KO=c4                     vise=c4           OK 
+  m5   rc=1   bilan=True  KO=c4                     vise=c4           OK 
+  m6   rc=1   bilan=True  KO=c4                     vise=c4           OK 
+  m7   rc=1   bilan=True  KO=c4                     vise=c4           OK 
+  m8   rc=1   bilan=True  KO=c4,c5                  vise=c4,c5        OK 
+  m9   rc=1   bilan=True  KO=c6                     vise=c6           OK 
+  m10  rc=1   bilan=True  KO=c2,c3                  vise=c2,c3        OK 
+  m11  rc=1   bilan=True  KO=z                      vise=z            OK 
+  m12  rc=1   bilan=True  KO=c0                     vise=c0           OK 
+  m13  rc=1   bilan=True  KO=c9                     vise=c9           OK 
+  m14  rc=1   bilan=True  KO=c10                    vise=c10          OK 
+  m15  rc=1   bilan=True  KO=c11                    vise=c11          OK 
+  m16  rc=1   bilan=True  KO=c1                     vise=c1           OK 
+  m17  rc=1   bilan=True  KO=c4                     vise=c4           OK 
+  m18  rc=1   bilan=True  KO=c4                     vise=c4           OK 
+  m19  rc=1   bilan=True  KO=c4                     vise=c4           OK 
+  m20  rc=1   bilan=True  KO=c7                     vise=c7           OK 
+  m21  rc=1   bilan=True  KO=c4,c8                  vise=c8           OK 
+  m22  rc=1   bilan=True  KO=c4                     vise=c4           OK 
+  m23  rc=1   bilan=True  KO=c4                     vise=c4           OK 
+  m24  rc=1   bilan=True  KO=c4                     vise=c4           OK 
+  m25  rc=1   bilan=True  KO=c4                     vise=c4           OK 
+  m26  rc=1   bilan=True  KO=c4                     vise=c4           OK 
+  m27  rc=1   bilan=True  KO=c4                     vise=c4           OK 
+  m28  rc=1   bilan=True  KO=c7                     vise=c7           OK 
+MUTANTS SAINS ET CONFRONTES : 28/28
+
+── LE MUTANT INCONNU — UNE ERREUR D'APPEL, ⛔ PAS UN DEFAUT ─────────
+  $ python3 tools/verif_banc_langue_dn73.py --mutant 999   ⇒  rc=2
+MUTANT 999 INCONNU : il n'est pas declare. ⛔ Un mutant qui n'existe pas ne prouve RIEN — ⛔ ne pas conclure que le controle est vert.
+
+==============================================================================
+(6) LE COUT EST UN RESULTAT, ⛔ PAS UN EFFET DE BORD
+==============================================================================
+🔴 DEUX DEFAUTS DE COUT TROUVES PAR LA MESURE, ⛔ PAS PAR LA LECTURE.
+
+  (a) LA PAGE ARME AU CHARGEMENT UNE SONDE A **10 000 ms** (« le module
+      distant est-il arrive ? »). Chaque contexte evalue ⇒ node restait
+      vivant DIX SECONDES apres le dernier cas, et un tir de la gate coutait
+      **11,8 s** — une fois PAR MUTANT dans la campagne. ⇒ les minuteurs du
+      contexte sont **DETACHES** de la boucle (`unref`) : ils se declenchent
+      toujours, ils ne la TIENNENT plus ouverte. Ce qui la tient est le filet
+      global du banc, ⛔ et lui seul. Et les deux delais d'attente de la page
+      sont **REPOSES** par le banc, qui **ECHOUE FERME** s'il ne les trouve
+      pas — ⛔ et il **REFUSE** une valeur de delai invalide, plutot que de
+      l'ignorer en silence et de repayer la valeur de PRODUIT.
+
+  (b) LE MUTANT QUI **RETIRE LE FILET GLOBAL** FAISAIT PAYER LES **120 s** DU
+      DELAI DE LA GATE, une fois par tir : **121,5 s** pour ce seul mutant.
+      ⇒ le temoin de chaine a **SA PROPRE BORNE** (8 s), la borne d'UN cas est
+      passee explicitement par la gate (1 500 ms), et le plafond global du
+      banc est **DERIVE DU NOMBRE DE CAS** — une constante figee se perimait
+      au cas suivant, et un plafond franchi par la LISTE ferait passer un banc
+      SAIN pour un banc mort.
+
+  cout d'un tir de la gate  : 2.30 s
+  cout des 28 mutants       : 70.64 s   (166 s pour 21 avant les correctifs)
+
+==============================================================================
+⛔ CE QUE CE RELEVE NE PROUVE **PAS**
+==============================================================================
+⛔ Le banc joue une carte **BIDON**. Il prouve que la page CLASSE et RELAIE ce
+   que le firmware imprime ; ⛔ il ne prouve pas que la carte l'imprime, ni que
+   la langue survive a une coupure. Ca se lit AU BANDEAU DE LA DALLE, a l'œil.
+⛔ Le relachement du verrou d'ecriture sur le chemin d'ECHEC ⛔ n'est PAS
+   exerce ici — un port bidon n'echoue pas a l'ecriture. C'est `(c9)` de la
+   gate STATIQUE qui le garde, avec son mutant, et le partage est ECRIT dans
+   l'en-tete des deux gates plutot que suppose.
+⛔ Il ne dit RIEN de la lisibilite de la page.
