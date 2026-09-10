@@ -1,0 +1,179 @@
+================================================================================
+dn7-3 / T6 — SEANCE OWNER : CE QUE SEUL L'ŒIL POUVAIT FERMER
+================================================================================
+Date      : 2026-09-09 soir → 2026-09-10 (la seance passe minuit)
+Poste     : la tour Windows. La page SERVIE par le Python de Windows sur l'arbre
+            WSL vu en UNC ; la carte branchee, BUSID 3-5, 303a:1001, etat
+            « Shared » (COM3 cote Windows, ⛔ pas attachee a WSL).
+Adresse   : http://127.0.0.1:53785/  (port TIRE au lancement)
+Revision  : desknode fc97014, arbre PROPRE
+
+PARTAGE DU TRAVAIL : l'agent a tape les commandes et releve les chiffres ;
+l'owner a fait les GESTES PHYSIQUES (clics, coupure d'alimentation) et TOUTES
+les observations A L'ŒIL. ⛔ Aucune observation visuelle n'est deduite d'un
+chiffre.
+
+--------------------------------------------------------------------------------
+0. CADRAGE — L'ETAT AVANT DE TOUCHER A QUOI QUE CE SOIT
+--------------------------------------------------------------------------------
+  gate de dossier  : 23 OK, 10 KO  ⇒ 🔴 ROUGE **AVANT** la seance, comme toute
+                     la journee. ⛔ NON IMPUTABLE a cette seance.
+  agent            : tache planifiee « Ready », AUCUN processus portant
+                     dn_agent.py. Le seul python.exe cote Windows etait le
+                     serveur de page lui-meme (PID 32908). ⇒ COM3 LIBRE.
+  la dalle         : EN ANGLAIS  (constat owner, a l'œil)
+  le selecteur     : position active = ANGLAIS  (constat owner)
+  pre-vol          : psutil present · pyserial present · charge intacte
+                     (CRC32 verifie) · version au manifeste 40be2c8
+
+⚠️ L'INSTRUMENT DU PREMIER CONSTAT AVAIT CHANGE DEUX FOIS. Le « hyper verbeuse »
+   du 2026-09-09 portait sur une page reecrite depuis par dn7-2-2 PUIS re-derivee
+   par dn7-3. L'observation a donc ete REPRISE A NEUF, ⛔ pas confirmee.
+
+--------------------------------------------------------------------------------
+1. CE QUE L'ŒIL A FERME
+--------------------------------------------------------------------------------
+
+AC7.2.2.2 — « le geste suivant est identifiable sans derouler quoi que ce soit »
+  VERBATIM OWNER : « bha c'est numeroté et ca a l'air bien claire donc ou je
+  commence par mettre franacais (pour moi) puis arreter l'agent »
+  ⇒ ✅ FERME. Il nomme son geste suivant sans avoir rien deplie.
+  ⚠️ CONSIGNE TEL QUEL, ⛔ pas lisse : il commence par la LANGUE puis l'agent,
+    soit l'INVERSE de la numerotation. Sans consequence (le choix n'ecrit rien
+    avant l'etape 3), mais ce n'est pas « il a suivi les numeros ».
+
+moitie « dalle » d'AC7.3.1 — « la dalle demarre en ANGLAIS »
+  VERBATIM OWNER : « installation ok la dalle est tjrs en anglais »
+  ⇒ ✅ VU, APRES UNE VRAIE INSTALLATION DEPUIS LA PAGE. Le CHANGELOG, la roadmap
+    et la page PUBLIAIENT que le premier boot apres une installation est anglais
+    quel que soit le choix ; ⛔ PERSONNE NE L'AVAIT VU. C'est fait.
+  ⇒ Confirme du meme coup que le flash EFFACE la NVS, et que la phrase de la
+    page « a rejouer apres chaque installation » est VRAIE, ⛔ pas supposee.
+
+AC7.3.2 — « la langue est posee ET SURVIT A UN REBOOT, verifie AU BANDEAU »
+  VERBATIM OWNER, pose  : « je passe en dalle fr puis poser la langue ok nickel
+                            passe direct en fr »
+  VERBATIM OWNER, apres COUPURE D'ALIMENTATION : « ok redemmarre tt en fr »
+  ⇒ ✅ FERME. ⛔ Seule la coupure pouvait le fermer : la carte applique le
+    reglage AVANT de l'ecrire en NVS (dn_reglage.c:155-168), donc la relecture
+    de la page rend le meme texte que la valeur ait persiste ou non.
+
+--------------------------------------------------------------------------------
+2. DEUX CHEMINS VUS TOURNER POUR DE VRAI — ILS ETAIENT EXERCES PAR RIEN
+--------------------------------------------------------------------------------
+  · LIEN PERDU EN VOL. La coupure d'alimentation d'AC7.3.2 a tue le port que la
+    page tenait. Sortie relevee par l'owner :
+        ── ⛔ la lecture s'est arrêtée : NetworkError: The device has been lost.
+        ── port fermé et rendu. Plus rien ne le tient.
+    ⇒ la page DIT que la lecture s'arrete, FERME le port, le REND, et l'ecrit.
+      ⛔ Aucun port retenu en silence. Une couche de revue avait signale ce
+      chemin comme exerce par rien : il a tourne, et il s'est tenu.
+
+  · « UN CLIC DIT TOUJOURS QUELQUE CHOSE ». Correctif de la re-derivation,
+    confirme A L'ŒIL : le selecteur annule a produit un message IMMEDIAT et
+    SOUS LE BOUTON (« ca affiche ca direct »). ⇒ #etat-langue (l.685, DANS le
+    geste 3) est BIEN PLACE.
+
+--------------------------------------------------------------------------------
+3. CE QUE LA SEANCE N'A **PAS** PU FERMER, ET POURQUOI — MESURE
+--------------------------------------------------------------------------------
+  moitie « VUE » d'AC7.3.5 — ⛔ NON ATTEIGNABLE SANS MODIFIER LA PAGE.
+    Mesure : installeur/index.html porte `CODES_DALLE = ["en", "fr"]`, et le
+    binaire porte exactement EN et FR (dn_langue.h:90-92, DN_LANGUE_N = 2).
+    ⇒ LA PAGE NE PEUT PAS ENVOYER UN CODE QUE LA CARTE REFUSERAIT. La faire
+      refuser exigerait de l'editer — on mesurerait alors une page modifiee,
+      ⛔ pas celle qui est livree.
+    ⇒ Ce qui reste atteignable, et qui n'a PAS ete joue faute de temps : le
+      refus COTE FIRMWARE, par `langue de` au REPL, carte attachee a WSL. Il
+      prouverait que le litteral sur lequel la page s'ancre est bien celui que
+      la carte imprime.
+
+  les TROIS refus de la console — ⛔ TOUJOURS PAS VUS A L'ŒIL.
+    Le message lu par l'owner au selecteur annule est `langue.port-indisponible`
+    (bloc #etat-langue, geste 3), ⛔ PAS `console.aucun-port` (bloc #etat-console,
+    geste 4). Voir le constat de section 4.
+
+--------------------------------------------------------------------------------
+4. LES CONSTATS NEUFS — TOUS VENUS DE L'ŒIL, ⛔ D'AUCUNE GATE
+--------------------------------------------------------------------------------
+
+(a) 🔴 LHM N'EST PAS DANS L'ECART DECLARE DE LA PAGE — LE PLUS LOURD.
+    Souleve par une QUESTION de l'owner : « il faut aussi mettre en reco LHM ? »
+    MESURE : agent/dn_agent.py porte 130 occurrences de LHM/LibreHardwareMonitor,
+    et son propre en-tete dit « LibreHardwareMonitor RENTRE dans le perimetre V1,
+    en service permanent », « LHM qui le fait, ET LUI SEUL », « Elles ne marchent
+    QUE la ou LHM est installe », et la °C CPU arrive en grandeur 4 PAR LHM.
+    OR la page liste, en ecart declare : Python 3 · psutil · pyserial. ⛔ PAS LHM.
+    ⇒ un inconnu qui suit la page A LA LETTRE repart avec un agent qui tourne et
+      une dalle dont la °C CPU et les tr/min NE SE REMPLIRONT JAMAIS, sans qu'une
+      ligne lui dise pourquoi. L'epic dit elle-meme qu'« un ecart sans porteur
+      ecrit est un oubli deguise » : celui-la n'est meme pas ECRIT.
+
+(b) 🔴 LA SELECTION DU CHOIX DE LANGUE N'EST PAS LISIBLE — DEFAUT, ⛔ pas confort.
+    VERBATIM OWNER : « anglais selectionné (la selection n'est pas clair..) »
+    ⇒ toute la propriete du defaut anglais suppose qu'on VOIE quelle position est
+      active. Et ca a deja coute une lecture EN SEANCE : l'owner avait annonce
+      « dalle en fr en position active » avant l'installation, puis « anglais
+      selectionné » apres — c'est lui-meme qui donne la cause.
+
+(c) 🔴 LE VERDICT D'UN VERBE S'ECRIT APRES L'ETAPE 4, HORS DE VUE.
+    VERBATIM OWNER : « au clic ca bouge la vu sur l'etape 2 mais non je ne vois
+    pas de text changé ni qui dit que ca a été fais bien ou pas »
+    MESURE : le bouton b-stop est l.329 (geste 1) ; #sortie est l.720, APRES la
+    fermeture de <ol class="gestes"> (l.717) — donc SOUS LES QUATRE ETAPES. Et
+    montrerSortie() fait scrollIntoView({block:"nearest"}), le defilement MINIMAL:
+    il pose le bloc au BORD de la fenetre et l'œil atterrit sur l'etape 2.
+    ⇒ La page avait REPONDU, et elle disait VRAI (« aucun agent reconnu », que la
+      mesure de cadrage confirme), et elle l'avait PROUVE en rouvrant le port.
+      Le defaut est du PLACEMENT, ⛔ pas du mensonge.
+    ⚠️ C'est le defaut que dn7-2-2 avait corrige pour le bouton « retirer » —
+      dont le verdict s'ecrivait quatre sections trop HAUT. Il a survecu pour
+      « arreter l'agent », dans l'autre sens : trop BAS.
+    ⚠️ DEUX FAUSSES PISTES ECARTEES PAR LA MESURE, ⛔ pas par raisonnement :
+      le serveur NE JOURNALISE PAS ses requetes (dn_installeur.py:775) donc un
+      log vide ne prouve rien ; et le verbe stop EFFACE le drapeau dn-agent.stop
+      en sortant (dn_agent_tour.ps1:343,578) donc son absence ne prouve rien.
+
+(d) ⚠️ LA PAGE AFFICHE LA SUPPOSITION LA OU L'ŒIL EST, ET LE FAIT EXACT UNE
+    ETAPE PLUS BAS. Selecteur de port ANNULE par l'owner. Sous ses yeux, dans le
+    geste 3 : « Le plus souvent, un selecteur de port est deja ouvert et vous
+    attend » — une hypothese, hedgee par « le plus souvent ». Or la page CONNAIT
+    la cause exacte : la cle console.aucun-port (« Aucun port choisi — le
+    selecteur a ete ferme sans choisir ») EXISTE et part par consoleRefus(), mais
+    elle atterrit dans #etat-console (l.714), DANS LE GESTE 4.
+    ⇒ Elle avait le FAIT et a affiche la SUPPOSITION, a l'endroit regarde.
+    ⚠️ ⛔ NE PAS CONFONDRE AVEC (c) : #etat-langue est BIEN place. Les deux blocs
+      ne sont pas le meme probleme, et celui qui corrigera doit le savoir.
+
+(e) ⚠️ LA PAGE EST TROP TECHNIQUE — PARQUE PAR L'OWNER.
+    VERBATIM : « oui carrement et hyper technique pas assez vulgarisé mais c'est
+    pas grave on garde comme ca pour l'instant »
+    ⇒ ⛔ DECISION OWNER : on garde en l'etat. Ecrit pour que personne ne le
+      « repare » sans lui.
+
+(f) ⚠️ DEMANDE D'ELARGISSEMENT — « la page explique, mais elle n'agit pas, et
+    elle ne bloque pas ». VERBATIM OWNER, en deux temps :
+      « ca devrais affichger dynamiquement des pastilles vertes et griser
+        degriser les btn du workflow ca serais plus frendly »
+      « mettre les preconditions a avoir en haut de la page que ca soi
+        blkanquant pour la suite peut eter mettre les liens de python et des btn
+        qui executent les cmd recommandés idem un btn qui active desactive
+        l'agent »
+    ⇒ ⚠️ C'est un ELARGISSEMENT DE PERIMETRE, ⛔ pas un correctif : la page
+      passerait d'« elle EXPOSE des verbes existants » a « elle INSTALLE ».
+      Aujourd'hui elle sait ARRETER et RETIRER l'agent, ⛔ pas le POSER.
+      La trancher appartient a l'owner.
+
+--------------------------------------------------------------------------------
+CE QUE CE RELEVE PROUVE, ET CE QU'IL NE PROUVE PAS
+--------------------------------------------------------------------------------
+✅ PROUVE : la langue choisie sur la page est POSEE dans la carte et SURVIT a une
+   coupure d'alimentation — lu AU BANDEAU, par l'œil de l'owner.
+✅ PROUVE : le premier boot apres une installation est ANGLAIS quel que soit le
+   choix, et le flash efface la NVS.
+✅ PROUVE : le geste suivant est identifiable sans rien deplier.
+⛔ NE PROUVE PAS : que la page relaie un REFUS a l'ecran — non atteignable sans
+   la modifier (section 3).
+⛔ NE PROUVE PAS : les trois refus de la console, toujours jamais vus.
+⛔ NE PROUVE PAS : quoi que ce soit sur une AUTRE machine. n = 1, un poste, un
+   navigateur, une carte.
