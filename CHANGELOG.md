@@ -288,6 +288,52 @@ Work towards the first public release, `v0.1.0-beta`.
 
 ### Fixed
 
+- 🆕 **Three things the install page placed badly, ⛔ none of them a false statement.** All
+  three were seen **by eye, by the owner**, on 2026-09-10, and ⛔ by no check in this
+  repository.
+  🔴 **A verb's verdict was written four gestures below the button that ran it.** The
+  transcript had **one** place — after the fourth step — while *"Stop the agent"* lives at
+  the **first**: clicking moved the view onto step 2 and nothing changed under the reader's
+  eyes. ⚠️ This is **the defect `dn7-2-2` fixed for "Remove the agent"**, surviving **the
+  other way round**: a **fixed** place cannot serve two buttons four gestures apart. ⇒ the
+  transcript is now **moved under the button that was just clicked**, and returns to its
+  place in the document when nobody asked — a **page-level** fact (*no server*, written with
+  **no click**) is ⛔ never attributed to the last button pressed, which would publish a
+  **false cause**. The place it returns to is **read from the document**, ⛔ not written a
+  second time in script: a number written beside a computed number ends up diverging.
+  🔴 **The language gesture now relays the console's exact refusal.** The page **knew** the
+  cause — *"the picker was closed without selecting the line"* — and wrote it in the block of
+  **step 4**, while step 3 showed a **guess**: *"most often a port picker is already open"*.
+  ⇒ the named fact now surfaces **where the eye is**. ⛔ **No message was written and ⛔ no
+  key was added**: the guess **stays**, for the **one** case where it is **true** — an
+  opening genuinely **already in flight**. A refusal is forgotten at the **start** of every
+  attempt, so ⛔ no refusal from an earlier attempt is ever relayed as a fact of this one.
+  ⚠️ **The dynamic bench is what measured this change**: `tools/verif_banc_langue_dn73.py`
+  **executes** the page's own script against a dummy port, and **three of its cases went red
+  the moment the fix landed** — port refused, no serial access, picker cancelled — because
+  their expected text still spelled out the defect. Those three expectations were rewritten
+  to the fact, **with the earlier value named rather than erased**.
+  🔴 **The active position of a language picker is now a filled block**, ⛔ no longer an
+  outline. Both state rules carried **exactly** the declarations of `button:hover:enabled`,
+  so hovering an inactive position made it **look active**, and the gap at rest was **two
+  neighbouring shades**. ⛔ **No colour was added**: the fill uses tokens already declared in
+  `installeur/IDENTITE.md`, and the **active-and-disabled** case is written out explicitly,
+  because the state rule outweighs `button:disabled` and a greyed button would otherwise
+  read as clickable.
+  ⚠️ **What is measured, and what is not.** A new check,
+  `tools/verif_placement_dn74.py` (**42 checks, 25 mutants**, run by `tools/run_gates.sh` and
+  replayed mutant by mutant by `tools/verif_campagne_dn56.py`), keeps the **mechanism**: the
+  transcript's home is read rather than rewritten, it is moved **before** being revealed,
+  every write inside the verb carries its button, the page-level fact carries none, the
+  console's refusal is recorded and relayed, and the two state rules carry a fill that
+  **differs** from the hover rule. Its thirteen new checks were played against the
+  **original** page first, and **all thirteen came back red**. The bench gained **two cases**
+  of its own — where the transcript ends up after a click, and where it returns with no click —
+  and the click case is **red against the original page** too. 🔴 **It ⛔ does not run the
+  page's JavaScript and ⛔ draws nothing** — so ⛔ **it cannot say the reader sees any of
+  this**. Whether the filled position reads as selected at a glance closes **at the owner's
+  eye**, on the served page, and that observation had ⛔ **not** been recorded when this
+  entry was written.
 - 🆕 **The install page said one thing and the port picker showed another.** The picker was
   finally **opened** on 2026-09-09, and it shows **ONE line** — `USB JTAG/serial debug unit
   (COM3)` — with a button reading **« Connexion »**, while the page announced *"the two forms"*

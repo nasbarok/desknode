@@ -165,7 +165,52 @@
      pas revenir. Il est plus specifique que les deux regles ci-dessus. */
   #sec-langue [lang="en"], #sec-langue [lang="fr"] { display: inline-block; }
   #sec-langue { margin: 0 0 22px; }
-  #sec-langue button[aria-pressed="true"] { border-color: var(--dn-texte); color: var(--dn-texte); }
+  /* 🔴 LA POSITION ACTIVE SE DESSINE EN **APLAT** — ANNOTE ET DATE LE
+     2026-09-10 (`dn7-4`), ⛔ RIEN N'EST EFFACE.
+     ⚠️ LA VALEUR D'AVANT EST NOMMEE : ces deux regles portaient
+        ~~`border-color: var(--dn-texte); color: var(--dn-texte);`~~, un simple
+        CONTOUR teinte. ⇒ ELLES PORTAIENT **RIGOUREUSEMENT LES MEMES
+        DECLARATIONS** QUE `button:hover:enabled` : « selectionne » et
+        « survole » etaient INDISCERNABLES, et survoler une position inactive
+        la faisait passer pour active. L'ecart au repos, lui, tenait a DEUX
+        TEINTES VOISINES. Cout mesure EN SEANCE le 2026-09-10 : l'owner a
+        annonce « dalle en fr en position active » puis « anglais selectionne »
+        — une mauvaise lecture DANS LA SEANCE MEME, sur le choix dont toute la
+        propriete du DEFAUT ANGLAIS STRUCTUREL suppose qu'on le VOIE.
+     ⇒ L'APLAT EST UNE DIFFERENCE DE **FORME** (rempli ⇄ contour), ⛔ pas de
+        teinte : il tient au survol, et il tient sur un ecran mal regle.
+     ⛔ AUCUNE COULEUR N'EST AJOUTEE ICI : `--dn-accent`, `--dn-fond`,
+        `--dn-trait` et `--dn-eteint` sont DEJA declares, et `(c19)` de
+        `tools/verif_installeur_dn71.py` garde l'egalite page ⇄ `IDENTITE.md`
+        DANS LES DEUX SENS.
+     🔴 ET LE CAS **ACTIF + DESARME** EST ECRIT EXPLICITEMENT, ⛔ pas oublie :
+        `#sec-langue-dalle button[aria-pressed="true"]` pese `(1,1,1)` quand
+        `button:disabled` pese `(0,1,1)`. Sans la seconde regle, la position
+        active resterait PEINTE COMME ACTIONNABLE pendant `langueEnVol` — le
+        correctif de lisibilite CREERAIT un second mensonge visuel la ou il
+        vient d'en fermer un.
+        ⚠️ **CHIFFRES CORRIGES LE 2026-09-10, ⛔ NON EFFACES** : la 1re redaction
+           de ce bloc ecrivait ~~`0,2,0`~~ pour `button:disabled` et comptait
+           `:disabled` comme une CLASSE en position de type. Les poids justes
+           sont `(0,1,1)` pour `button:disabled` et `(0,2,1)` pour
+           `button:hover:enabled`. ⇒ **LA CONCLUSION EST INCHANGEE** : `(1,1,1)`
+           l'emporte sur les deux, et le cas desarme doit donc s'ecrire.
+     🔴 ET LE FOND DU CAS DESARME EST `--dn-trait`, ⛔ PAS `--dn-fond` — ANNOTE
+        LE 2026-09-10, ⛔ RIEN N'EST EFFACE. La 1re redaction posait
+        ~~`background: var(--dn-fond)`~~, c'est-a-dire **le fond de repos de
+        `button`** : pendant `langueEnVol`, la position ACTIVE redevenait
+        RIGOUREUSEMENT identique a l'inactive — meme fond, meme bordure, meme
+        texte. C'etait une **REGRESSION DE CE CORRECTIF MEME** : avant lui, la
+        regle `(1,1,1)` gardait au moins `--dn-texte` pendant que l'inactive
+        tombait a `--dn-eteint`, donc les deux SE DISTINGUAIENT. ⇒ l'etat
+        desarme garde un **APLAT**, seulement plus sourd : le choix reste
+        LISIBLE pendant que le geste est en vol.
+        ⚠️ CONTRASTES CALCULES (⛔ pas estimes), releves dans `IDENTITE.md` :
+           aplat actif 13,76:1 · aplat desarme 3,78:1 (composant INACTIF, hors
+           minimum WCAG 1.4.3) · l'aplat desarme se detache du fond de page a
+           1,97:1 — c'est la FORME qui porte, ⛔ pas la teinte. */
+  #sec-langue button[aria-pressed="true"] { border-color: var(--dn-accent); background: var(--dn-accent); color: var(--dn-fond); }
+  #sec-langue button[aria-pressed="true"]:disabled { border-color: var(--dn-trait); background: var(--dn-trait); color: var(--dn-eteint); }
   /* ── LE CHOIX DE LA LANGUE **DE LA DALLE** (dn7-3) ────────────────────
      🔴 ⛔ CE N'EST PAS `#sec-langue`, ET LES DEUX NE DOIVENT PAS ETRE
         CONFONDUS : celui du dessus choisit la langue de CETTE PAGE, celui-ci
@@ -174,9 +219,18 @@
         c'est voulu : les deux entrees de CE choix-ci suivent la langue de la
         page, comme tout le reste du texte.
      ⛔ AUCUNE COULEUR N'EST AJOUTEE ICI : ces regles ne portent qu'une marge
-        et deux jetons DEJA declares plus haut. */
+        et deux jetons DEJA declares plus haut.
+     ⚠️ **ANNOTE ET DATE LE 2026-09-10 (`dn7-4`) — ⛔ RIEN N'EST EFFACE.** La
+        phrase ci-dessus reste VRAIE sur le fond (⛔ aucune couleur ajoutee) et
+        son COMPTE a cesse de l'etre : ce bloc portait ~~deux~~ jetons, il en
+        porte desormais **quatre** — `--dn-accent`, `--dn-fond`, `--dn-trait`
+        et `--dn-eteint` —, tous DEJA declares plus haut. */
   #sec-langue-dalle { margin: 14px 0 18px; }
-  #sec-langue-dalle button[aria-pressed="true"] { border-color: var(--dn-texte); color: var(--dn-texte); }
+  /* Le MEME aplat que le selecteur de la page — la regle est ecrite en
+     entier plutot que factorisee : un selecteur d'identifiant est EXACT,
+     et `#sec-langue` ⛔ ne mord PAS sur `#sec-langue-dalle`. */
+  #sec-langue-dalle button[aria-pressed="true"] { border-color: var(--dn-accent); background: var(--dn-accent); color: var(--dn-fond); }
+  #sec-langue-dalle button[aria-pressed="true"]:disabled { border-color: var(--dn-trait); background: var(--dn-trait); color: var(--dn-eteint); }
 </style>
 <!--
   ═══════════════════════════════════════════════════════════════════════════
@@ -1222,7 +1276,14 @@ var MOTS = {
   /* ⛔ LE PORT N'A PAS PU ETRE OBTENU, ET ⛔ PERSONNE D'AUTRE NE L'A DIT. La
      console nomme deja ses trois refus ; ce texte-ci ne sert QUE lorsque rien
      n'a ete annonce par ailleurs — sinon la page laisserait un clic sans
-     reponse, ce qui se lit comme une page cassee. */
+     reponse, ce qui se lit comme une page cassee.
+     ⚠️ **ANNOTE ET DATE LE 2026-09-10 (`dn7-4`) — ⛔ RIEN N'EST EFFACE.** La
+        regle ci-dessus etait JUSTE et le code ⛔ NE L'APPLIQUAIT PAS : jusqu'au
+        2026-09-10, `sansPort()` ecrivait ce texte **inconditionnellement**.
+        C'etait une INTENTION JUSTE, NON BRANCHEE — ⛔ pas une prose fausse.
+        ⇒ le correctif BRANCHE l'intention, et c'est pour ca qu'⛔ AUCUNE CLE
+          NEUVE n'a ete necessaire. La cle RESTE, son domaine RETRECIT a son
+          seul cas vrai : l'ouverture reellement DEJA EN VOL. */
   "langue.port-indisponible": ["<b>⛔ The serial port could not be taken, and ⛔ nothing was "
                                + "sent.</b><br>Most often a port picker is <b>already open</b> "
                                + "and waiting for you, or this page is already opening one. "
@@ -1418,15 +1479,60 @@ if (!securise || !estLocal) {
 var sortie = document.getElementById("sortie");
 var bStop = document.getElementById("b-stop");
 var bRetirer = document.getElementById("b-retirer");
+/* 🔴 LA PLACE D'ORIGINE DE `#sortie` EST **LUE DANS LE DOCUMENT**, ⛔ jamais
+   recodee ici (dn7-4, 2026-09-10). Un `appendChild` vers un identifiant ecrit
+   en JavaScript serait une SECONDE DEFINITION de cette place, qui divergerait
+   de celle du HTML a la premiere reorganisation — la faute que ce depot a deja
+   nommee (« un nombre ecrit a cote d'un nombre calcule finit par diverger »).
+   ⇒ le document reste la seule source, et le retour a la maison est un FAIT,
+     ⛔ pas une promesse. */
+var sortieParent = sortie ? sortie.parentNode : null;
+var sortieFrere = sortie ? sortie.nextSibling : null;
 
 /* 🔴 « Retirer l'agent » VIT EN SECTION 4, ET SA SORTIE EN SECTION 1 : sans ce
    maillon, on clique et on ne voit RIEN — le verdict et le code de retour
    s'ecrivent hors champ, plusieurs ecrans plus haut. ⇒ toute ecriture dans
    `#sortie` l'AMENE SOUS LES YEUX.
+   ⚠️ **ANNOTE ET DATE LE 2026-09-10 (`dn7-4`) — ⛔ RIEN N'EST EFFACE.** La these
+      ci-dessus etait JUSTE, et elle ne tenait que **D'UN SEUL COTE**. La
+      phrase ~~« toute ecriture dans `#sortie` l'AMENE SOUS LES YEUX »~~ a
+      CESSE D'ETRE VRAIE : elle supposait qu'une place FIXE puisse convenir aux
+      deux boutons. Elle ne le peut pas. `b-stop` vit au GESTE 1, `#sortie`
+      apres le QUATRIEME : depuis `dn7-2-2`, « retirer » voyait son verdict et
+      « arreter » ⛔ ne le voyait plus — LE MEME DEFAUT, DANS L'AUTRE SENS.
+      Releve owner du 2026-09-10 : « au clic ca bouge la vu sur l'etape 2 mais
+      non je ne vois pas de text changé ni qui dit que ca a été fais bien ou
+      pas ».
+   ⇒ LA PLACE DEVIENT MOBILE : `#sortie` est deplace SOUS LE BOUTON qui vient
+      d'etre clique, et RENDU A SA PLACE D'ORIGINE quand personne ne l'a
+      demande. Une position mobile ⛔ ne peut pas trahir un bouton, puisqu'il
+      n'y a plus de position privilegiee a trahir.
    ⛔ ET IL N'Y A PLUS DE CHEMIN D'ECRITURE MONOLINGUE : la fonction `ecrire`
       qui prenait un texte brut est SUPPRIMEE. Toute prose passe par une
       fabrique bilingue. */
-function montrerSortie() {
+function montrerSortie(ancre) {
+  /* ⛔ ON NE SE LIT PAS DEFENSIF SANS L'ETRE. `sortieParent` est calcule sous
+     un test `sortie ? … : null` : si ce test peut echouer, la suite de cette
+     fonction ⛔ ne peut pas dereferencer `sortie` sans garde. ⇒ la garde est
+     ICI, une fois, plutot que promise par une ternaire. */
+  if (!sortie) { return; }
+  /* ⛔ LE DEPLACEMENT PRECEDE LA REVELATION : reveler d'abord ferait
+     apparaitre le transcript a son ANCIENNE place, puis sauter — le saut meme
+     que ce correctif existe pour supprimer.
+     ⚠️ UN FAIT DE PAGE N'A PAS D'ANCRE, et c'est voulu : l'attribuer au
+        dernier bouton clique publierait une CAUSE FAUSSE.
+     ⚠️ ET LE RETOUR A LA MAISON RESTE POSSIBLE QUAND LE FRERE A DISPARU :
+        `insertBefore` LEVE `NotFoundError` si le noeud de reference n'est plus
+        un enfant du parent — et le transcript resterait alors sous le dernier
+        bouton, muet. ⇒ on ne se sert du frere que s'il est ENCORE la ; sinon on
+        remet en QUEUE du parent, qui est la place que le document lui donne. */
+  if (ancre && ancre.parentNode) {
+    ancre.parentNode.insertBefore(sortie, ancre.nextSibling);
+  } else if (sortieParent) {
+    sortieParent.insertBefore(
+      sortie,
+      (sortieFrere && sortieFrere.parentNode === sortieParent) ? sortieFrere : null);
+  }
   sortie.hidden = false;
   sortie.scrollTop = 0;
   if (sortie.scrollIntoView) {
@@ -1434,10 +1540,10 @@ function montrerSortie() {
   }
 }
 
-function ecrireMot(cle, suffixe) {
+function ecrireMot(cle, suffixe, ancre) {
   sortie.textContent = "";
   sortie.appendChild(paire(cle, suffixe, false));
-  montrerSortie();
+  montrerSortie(ancre);
 }
 
 /* ⚠️ TROIS ETATS, ⛔ PAS DEUX : `null` veut dire « la sonde n'a pas pu
@@ -1455,7 +1561,17 @@ function troisEtats(v, cleAbsent) {
 var CHAMPS = ["v-tache", "v-runlevel", "v-pilote", "v-python",
               "v-psutil", "v-pyserial"];
 
-function rafraichirEtat() {
+/* 🔴 L'ANCRE EST **OPTIONNELLE**, ET LES DEUX CAS SONT DES FAITS DIFFERENTS
+   (dn7-4, 2026-09-10).
+   · AU DEMARRAGE, personne n'a clique : `sortie.pas-de-serveur` est un fait de
+     PAGE, il part SANS ancre, et `#sortie` revient a sa place d'origine.
+     ⛔ L'attribuer au dernier bouton publierait une CAUSE FAUSSE.
+   · DEPUIS `jouer`, en revanche, le rafraichissement fait PARTIE du clic : le
+     verbe a reussi, la page repose ses champs, et c'est LA que le `.catch`
+     peut ECRASER le verdict qui vient de s'afficher sous le bouton. Sans ancre,
+     il le renvoyait QUATRE GESTES PLUS BAS — le defaut que cette marche ferme,
+     recree sur le clic qui vient de le fermer. ⇒ `jouer` passe SON bouton. */
+function rafraichirEtat(ancre) {
   return fetch("api/etat", { cache: "no-store" })
     .then(function (r) { return r.json(); })
     .then(function (e) {
@@ -1498,7 +1614,7 @@ function rafraichirEtat() {
       blocMot("etat-inactif", "inactif.sans-serveur");
       bStop.disabled = true;
       bRetirer.disabled = true;
-      ecrireMot("sortie.pas-de-serveur", String(err));
+      ecrireMot("sortie.pas-de-serveur", String(err), ancre);
     });
 }
 
@@ -1520,7 +1636,7 @@ function jouer(verbe, bouton) {
   var contenu = bouton.innerHTML;
   bouton.textContent = "";
   bouton.appendChild(paire("bouton.encours", undefined, false));
-  ecrireMot("sortie.encours", " [" + verbe + "]");
+  ecrireMot("sortie.encours", " [" + verbe + "]", bouton);
   fetch("api/agent/" + verbe, { method: "POST", cache: "no-store" })
     .then(function (r) { return r.json(); })
     .then(function (d) {
@@ -1542,20 +1658,20 @@ function jouer(verbe, bouton) {
       sortie.appendChild(paire("sortie.rc", String(d.rc) + "  — ", false));
       sortie.appendChild(paire(cleQui, undefined, false));
       sortie.appendChild(document.createTextNode("\n" + d.verdict));
-      montrerSortie();
+      montrerSortie(bouton);
       bouton.innerHTML = contenu;
       /* 🔴 ET LES CHAMPS DU FLASH SONT REPOSES, ⛔ pas seulement ceux de
          l'agent. Sans ce maillon, la page continuait d'affirmer « l'agent
          tient déjà le port » APRÈS un arrêt réussi, jusqu'au rechargement —
          c'est-à-dire de publier un état qu'elle venait elle-même de rendre
          faux. */
-      return rafraichirEtat().then(appliquerFlash);
+      return rafraichirEtat(bouton).then(appliquerFlash);
     })
     .catch(function (err) {
       sortie.textContent = "";
       sortie.appendChild(paire("sortie.echec", String(err), false));
       sortie.appendChild(paire("sortie.pas-succes", undefined, false));
-      montrerSortie();
+      montrerSortie(bouton);
       bouton.innerHTML = contenu;
       boutons.forEach(function (b, i) { if (b) { b.disabled = anciens[i]; } });
     });
@@ -1838,6 +1954,22 @@ var consoleFermeture = false;
    seconde, deux clics impriment DEUX fois la restitution. */
 var consoleOuvertureEnVol = false;
 var consoleFermetureEnVol = false;
+/* 🔴 LE DERNIER REFUS **NOMME**, RETENU POUR ETRE RELAYE LA OU L'ŒIL EST
+   (dn7-4, 2026-09-10). `consoleOuvrir()` nomme deja ses TROIS refus dans
+   `#etat-console` — GESTE 4 — pendant que le geste de langue, GESTE 3,
+   affichait une SUPPOSITION. ⛔ Ce n'est PAS une cle neuve : c'est la MEME,
+   relayee a l'endroit regarde.
+   ⚠️ IL VAUT `null` TANT QUE PERSONNE N'A RIEN NOMME, et c'est ce qui laisse
+      `langue.port-indisponible` a son SEUL cas vrai : le retour MUET de
+      `consoleOuvrir()`, c'est-a-dire une ouverture reellement DEJA EN VOL.
+   🔴 ET LE **SUFFIXE** EST RETENU AVEC LA CLE, ⛔ PAS LAISSE DERRIERE. Deux des
+      trois textes de refus **FINISSENT SUR UN LABEL** — `console.port-refuse`
+      se termine par « Motif mesure : » / « Measured reason : » — et le motif
+      lui-meme arrive EN SUFFIXE. Relayer la cle seule ferait finir le cadre du
+      geste 3 sur un label VIDE, sur le cas « l'agent tient le port », qui est
+      le DEUXIEME LANCEMENT ORDINAIRE. */
+var consoleRefusNomme = null;
+var consoleRefusSuffixe = undefined;
 /* L'etat de `b-stop` AVANT que la console prenne le port, pour le lui rendre
    tel quel — ⛔ pas « actif », qui inventerait une permission. */
 var bStopAvantConsole = null;
@@ -1871,12 +2003,29 @@ function consoleRefus(cle, suffixe) {
   e.textContent = "";
   e.appendChild(paire(cle, suffixe === undefined ? "" : suffixe, true));
   e.hidden = false;
+  /* ⇒ LE FAIT EST **ENREGISTRE**, ⛔ pas seulement affiche : le geste de
+     langue le relaie dans SON cadre, sans qu'aucun texte soit reecrit et sans
+     qu'aucune cle soit inventee (dn7-4). ⛔ ET LE SUFFIXE PART AVEC LA CLE :
+     sans lui, « Motif mesure : » se relaierait SANS SON MOTIF. */
+  consoleRefusNomme = cle;
+  consoleRefusSuffixe = suffixe;
 }
 
 function consoleMasquerRefus() {
   var e = document.getElementById("etat-console");
   e.textContent = "";
   e.hidden = true;
+  consoleOublierRefus();
+}
+
+/* ⛔ UN REFUS PERIME N'EST **JAMAIS** RELAYE. Ce qui remonte doit avoir ete
+   nomme PENDANT la tentative en cours, ⛔ pas au tir d'avant — publier le
+   refus d'un autre tir serait « publier une ignorance comme un constat »,
+   exactement ce que cette page se garde de faire ailleurs. ⇒ l'oubli se fait
+   A L'OUVERTURE de la tentative, ⛔ pas a sa fin. */
+function consoleOublierRefus() {
+  consoleRefusNomme = null;
+  consoleRefusSuffixe = undefined;
 }
 
 function consoleBoutons(ouverte) {
@@ -2295,6 +2444,11 @@ function poserLangueDalle() {
      attentes se voleraient leurs lignes. */
   if (langueEnVol) { return null; }
   langueMasquer();
+  /* ⛔ LE REFUS ENREGISTRE EST EFFACE **AU DEBUT** DE LA TENTATIVE, ⛔ pas a sa
+     fin (dn7-4) : relayer apres coup un refus nomme au tir precedent
+     publierait un fait D'UN AUTRE TIR. ⇒ ce qui remonte plus bas a ete nomme
+     PENDANT celle-ci, et le lien est CAUSAL. */
+  consoleOublierRefus();
   var code = langueDalleChoisie();
   /* 🔴 (a) LE DEFAUT ANGLAIS EST **STRUCTUREL** : ⛔ AUCUN OCTET N'EST ECRIT.
      Il se prouve PAR L'ABSENCE D'ECRITURE, ⛔ pas par une ecriture qui vaudrait
@@ -2331,7 +2485,24 @@ function poserLangueDalle() {
        donc ce cadre-ci VIDE (port tenu par l'agent · pas d'acces serie ·
        selecteur annule). Un clic sans reponse se lit comme une page cassee, et
        les deux messages ne se contredisent pas : la console dit POURQUOI le
-       port n'est pas venu, ⛔ elle ne dit rien de la langue. */
+       port n'est pas venu, ⛔ elle ne dit rien de la langue.
+       ⚠️ **ANNOTE ET DATE LE 2026-09-10 (`dn7-4`) — ⛔ RIEN N'EST EFFACE.** Ce
+          bloc disait vrai et il disait ⛔ TROP PEU : il ecrivait la SUPPOSITION
+          `langue.port-indisponible` **INCONDITIONNELLEMENT**, y compris quand
+          la console venait de nommer le FAIT EXACT une etape plus bas. Mesure
+          owner du 2026-09-10, selecteur ANNULE : sous ses yeux, au geste 3,
+          « le plus souvent, un selecteur de port est deja ouvert » — alors que
+          `console.aucun-port` disait « le selecteur a ete ferme sans
+          selectionner la ligne », dans le geste 4.
+       ⇒ LE DOMAINE DE LA CLE **RETRECIT**, ⛔ elle ne disparait pas : elle
+          reste le message du SEUL cas ou sa phrase est VRAIE — le retour MUET
+          de `consoleOuvrir()` (`consoleOuvertureEnVol || portConsole`),
+          c'est-a-dire une ouverture reellement DEJA EN VOL. */
+    if (consoleRefusNomme) {
+      blocMot("etat-langue", consoleRefusNomme, consoleRefusSuffixe);
+      languePort(consoleRefusNomme);
+      return null;
+    }
     blocMot("etat-langue", "langue.port-indisponible");
     languePort("langue.port-indisponible");
     return null;

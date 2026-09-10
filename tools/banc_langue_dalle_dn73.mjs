@@ -133,10 +133,66 @@ function litLeScript(chemin) {
 // ── UN DOM BIDON, ⛔ PAS UN MOTEUR DE RENDU ────────────────────────────────
 //    Il repond a ce que le script de la page demande VRAIMENT, et a rien de
 //    plus. Tout ce qu'il ne sait pas faire est INERTE, ⛔ jamais simule.
+//
+// 🔴 AJOUTE LE 2026-09-10 (`dn7-4`) — UN ARBRE **MINIMAL**, ET C'EST UNE MESURE,
+//    ⛔ pas du confort. Sans `parentNode`, `nextSibling` ni `insertBefore`, LES
+//    DEUX BRANCHES de `montrerSortie()` etaient MORTES dans le seul instrument
+//    qui execute cette page : remplacer `ancre.parentNode` par `sortieParent`
+//    faisait lever `NotFoundError` a chaque clic de verbe — les deux boutons
+//    devenaient MUETS — et le banc rendait quand meme `18 OK, 0 KO`.
+//    ⇒ un conteneur ordonne, et rien de plus : ⛔ pas de rendu, ⛔ pas de style.
+function faireConteneur(nom) {
+  const p = {
+    nom, enfants: [],
+    retirer(n) {
+      const i = p.enfants.indexOf(n);
+      if (i >= 0) { p.enfants.splice(i, 1); n.parent = null; }
+    },
+    // ⛔ LA MEME REGLE QUE LE NAVIGATEUR : un noeud de reference qui n'est PAS
+    //    un enfant de ce parent fait LEVER. C'est ce que la page doit eviter,
+    //    et c'est donc ce que le banc doit pouvoir reproduire.
+    insertBefore(n, ref) {
+      if (ref && p.enfants.indexOf(ref) < 0) {
+        throw new Error("NotFoundError: the node before which the new node is "
+          + "to be inserted is not a child of this node.");
+      }
+      // ⚠️ LA REGLE DU DOM, ⛔ PAS UNE COMMODITE : « si le noeud de reference EST
+      //    le noeud insere, la reference devient son frere suivant » — sinon
+      //    replacer un noeud DEJA a sa place le renvoie EN QUEUE. Mesure du
+      //    2026-09-10 : sans cette ligne, le second `montrerSortie(bouton)`
+      //    d'un meme clic deplacait le transcript APRES le bloc voisin, et le
+      //    banc accusait la PAGE d'un defaut qui etait CELUI DU STUB.
+      if (ref === n) { ref = n.nextSibling; }
+      if (n.parent) { n.parent.retirer(n); }
+      const i = ref ? p.enfants.indexOf(ref) : -1;
+      if (i < 0) { p.enfants.push(n); } else { p.enfants.splice(i, 0, n); }
+      n.parent = p;
+      return n;
+    }
+  };
+  return p;
+}
+
+// Ou vit un element, dit en UNE chaine : le conteneur, et ce qui le PRECEDE.
+function placeDe(el) {
+  if (!el || !el.parent) { return "⛔ ORPHELIN"; }
+  const p = el.parent;
+  const i = p.enfants.indexOf(el);
+  return p.nom + " apres " + (i > 0 ? (p.enfants[i - 1].id || "?") : "(tete)");
+}
+
 function faireElement(id) {
   return {
     id, hidden: true, textContent: "", className: "", disabled: false,
     attrs: {}, enfants: [], clics: [], scrollTop: 0, scrollHeight: 0,
+    parent: null,
+    get parentNode() { return this.parent; },
+    get nextSibling() {
+      const p = this.parent;
+      if (!p) { return null; }
+      const i = p.enfants.indexOf(this);
+      return (i >= 0 && i + 1 < p.enfants.length) ? p.enfants[i + 1] : null;
+    },
     setAttribute(k, v) { this.attrs[k] = v; },
     getAttribute(k) { return Object.prototype.hasOwnProperty.call(this.attrs, k) ? this.attrs[k] : null; },
     appendChild(n) { this.enfants.push(n); this.textContent += (n.txt || ""); },
@@ -171,6 +227,25 @@ function faireContexte(src, choix) {
     createTextNode(t) { return { txt: t }; },
     addEventListener() {}
   };
+  // 🔴 L'ARBRE EST MONTE **AVANT** `runInContext`, ET C'EST LA PROPRIETE : la
+  //    page LIT `sortie.parentNode` / `sortie.nextSibling` AU CHARGEMENT. Monte
+  //    apres, la place d'origine serait `null` et les deux branches de
+  //    `montrerSortie()` resteraient mortes — exactement ce que ce banc existe
+  //    pour ne plus laisser passer.
+  //    ⚠️ TROIS CONTENEURS SUFFISENT, et ils MIMENT le document : `#sortie` est
+  //       le dernier bloc de sa section (avec un frere APRES lui, pour que le
+  //       retour a la maison ne se joue pas sur le seul cas `null`), `b-stop`
+  //       vit dans le GESTE 1, `b-retirer` en SECTION 4.
+  const maison = faireConteneur("sec-suite");
+  const geste1 = faireConteneur("geste-1");
+  const section4 = faireConteneur("sec-agent");
+  maison.insertBefore(doc.getElementById("sortie"), null);
+  maison.insertBefore(doc.getElementById("bas-de-section"), null);
+  geste1.insertBefore(doc.getElementById("b-stop"), null);
+  geste1.insertBefore(doc.getElementById("etat-port-tenu"), null);
+  section4.insertBefore(doc.getElementById("b-retirer"), null);
+  section4.insertBefore(doc.getElementById("apres-retirer"), null);
+
   // 🔴 LE CHOIX VIT DANS L'ATTRIBUT, EXACTEMENT COMME DANS LE DOCUMENT : le
   //    banc le POSE ici parce qu'il n'a pas de HTML, mais la page le LIT par
   //    `langueDalleChoisie()`, qui est SA fonction, ⛔ pas la notre.
@@ -232,6 +307,11 @@ function jouer(src, cas) {
   }
   ctx.DELAI_INVITE = DELAI_PAGE;
   ctx.DELAI_REPONSE = DELAI_PAGE;
+
+  // 🔴 LES CAS DE **VERBE** NE PASSENT PAS PAR LE GESTE DE LANGUE (`dn7-4`).
+  //    Ils mesurent OU LE TRANSCRIPT SE TROUVE, et rien d'autre : c'est la
+  //    seule propriete de `AC7.4.1` qu'une machine puisse tenir.
+  if (cas.verbe !== undefined) { return jouerVerbe(ctx, els, cas); }
 
   // 🔴 ON RELEVE LA **SUITE** DES ISSUES ANNONCEES, ⛔ PAS SEULEMENT LA
   //    DERNIERE. `blocMot` est l'unique fabrique par laquelle le geste annonce
@@ -336,6 +416,51 @@ function jouer(src, cas) {
     }));
 }
 
+// ── LE VERBE, ET LA PLACE DE SON VERDICT ───────────────────────────────────
+// 🔴 CE QUE CE CHEMIN MESURE, ⛔ ET CE QU'IL NE MESURE PAS. Il dit OU se trouve
+//    `#sortie` apres coup — sous le bouton clique, ou a sa place d'origine.
+//    ⛔ Il ⛔ ne dit RIEN de ce que l'œil voit : ni defilement, ni rendu, ni
+//    lisibilite. `AC7.4.3` se ferme A L'ŒIL DE L'OWNER, ⛔ pas ici.
+function jouerVerbe(ctx, els, cas) {
+  // ⚠️ LE FAIT DE **PAGE** SE PRODUIT AU CHARGEMENT, ⛔ on ne le simule pas :
+  //    `rafraichirEtat()` part sur un `fetch` qui rejette (« hors banc »), et
+  //    c'est SA branche `.catch` qui ecrit `sortie.pas-de-serveur` SANS ancre.
+  const vide = {
+    etatLangue: "", etatConsole: "", relais: "", relaisCache: true,
+    classe: "", poserDesarme: undefined, ecrits: [], octets: 0, suite: [],
+    enVol: false, verrouRendu: 0
+  };
+  // 🔴 ON RELEVE LA **SUITE** DES PLACES, ⛔ PAS SEULEMENT LA DERNIERE — meme
+  //    raison que pour la suite des issues : une place JUSTE a la fin peut
+  //    suivre un aller-retour a la maison que personne ne verrait.
+  //    `montrerSortie` est ENVELOPPEE, ⛔ pas remplacee.
+  const places = [];
+  const vraiMontrer = ctx.montrerSortie;
+  ctx.montrerSortie = function (ancre) {
+    const r = vraiMontrer(ancre);
+    places.push(placeDe(els["sortie"]));
+    return r;
+  };
+  return new Promise((r) => setTimeout(r, 80)).then(() => {
+    if (cas.verbe === null) {
+      return Object.assign({}, vide, { place: placeDe(els["sortie"]), places });
+    }
+    // ⛔ LE `fetch` DU VERBE EST STUBBE **APRES** LE CHARGEMENT : avant, il
+    //    ferait aussi repondre `api/etat`, et le fait de page ne se produirait
+    //    jamais. Ici, SEUL `api/agent/<verbe>` repond.
+    ctx.fetch = (url) => (String(url).indexOf("api/agent/") >= 0
+      ? Promise.resolve({ json: () => Promise.resolve(cas.reponse) })
+      : Promise.reject(new Error("hors banc")));
+    // 🔴 UN **VRAI** CLIC, dispatche sur le bouton : poser la sortie a la main
+    //    prouverait le lecteur, ⛔ pas le gestionnaire.
+    els[cas.bouton].clics.forEach((f) => f());
+    return new Promise((r) => setTimeout(r, 150)).then(
+      () => Object.assign({}, vide, {
+        place: placeDe(els["sortie"]), places
+      }));
+  });
+}
+
 // ── LES NEUF LIGNES DE LA MATRICE, PLUS LES TROIS CHEMINS NOMMES ───────────
 // ⚠️ CHAQUE CAS PORTE LE NOM DE SA LIGNE DANS LE DOSSIER, ⛔ pas un numero :
 //    un numero se perime au premier reordonnancement.
@@ -395,12 +520,26 @@ const CAS = [
     attendLangue: "REFUSED", ecritures: 3
   },
   // ── LES TROIS LIGNES QUE RIEN NE COUVRAIT ────────────────────────────────
+  // 🔴 ATTENTE AMENDEE ET DATEE LE 2026-09-10 (`dn7-4`) — ⛔ LA VALEUR
+  //    D'AVANT EST NOMMEE : ces TROIS cas attendaient ~~« could not be taken »~~,
+  //    c'est-a-dire `langue.port-indisponible`, la SUPPOSITION. C'etait le
+  //    DEFAUT lui-meme, ecrit dans l'instrument : la console NOMMAIT deja le
+  //    fait exact dans le geste 4 pendant que le geste 3 affichait « le plus
+  //    souvent, un selecteur est deja ouvert ». ⇒ l'attente porte desormais LE
+  //    FAIT, et c'est CE BANC qui a vu les trois cas basculer.
+  //    ⚠️ `selecteur-deja-en-vol`, lui, garde « could not be taken » : c'est le
+  //       SEUL cas ou cette phrase est VRAIE, et il est CONSERVE.
   {
     nom: "port-tenu-par-l-agent",
     attendPort: PORT_LIBRE,
     quoi: "l'ouverture est REFUSEE ⇒ « port refuse », ⛔ jamais « aucune carte »",
     choix: "fr", parSelecteur: true, ouverture: false, repond: () => null,
-    attendConsole: "port was refused", attendLangue: "could not be taken", ecritures: 0
+    attendConsole: "port was refused",
+    // 🔴 LA **QUEUE** DU TEXTE, ⛔ PAS SON EN-TETE : `console.port-refuse` FINIT
+    //    sur « Measured reason : », et le motif arrive EN SUFFIXE. Attendre
+    //    l'en-tete laissait passer un label VIDE — sur le cas du DEUXIEME
+    //    LANCEMENT ORDINAIRE, celui ou l'agent tient le port.
+    attendLangue: "Failed to execute 'open' on 'SerialPort'", ecritures: 0
   },
   {
     nom: "double-clic",
@@ -416,7 +555,11 @@ const CAS = [
     quoi: "⛔ pas de Web Serial ⇒ la page le DIT, et n'ecrit rien",
     choix: "fr", parSelecteur: true, serie: false, repond: () => null,
     attendConsole: "does not expose serial port access",
-    attendLangue: "could not be taken", ecritures: 0
+    attendLangue: "does not expose serial port access",
+    // ⛔ CE QUI DISTINGUE LES DEUX BLOCS : seul celui de la LANGUE dit ce qu'il
+    //    advient du port. Sans cette exclusion, le cas passait avec les deux
+    //    contenus ECHANGES, puisqu'il attendait la meme chaine des deux cotes.
+    attendConsoleSans: PORT_LIBRE, ecritures: 0
   },
   // ── LES TROIS CHEMINS QUE LA REVUE A NOMMES ──────────────────────────────
   {
@@ -453,7 +596,8 @@ const CAS = [
     attendPort: PORT_LIBRE,
     quoi: "le selecteur est ANNULE ⇒ la page le DIT, et n'ecrit rien",
     choix: "fr", parSelecteur: true, selecteur: false, repond: () => null,
-    attendConsole: "No port selected", attendLangue: "could not be taken", ecritures: 0
+    attendConsole: "No port selected",
+    attendLangue: "picker was closed without selecting", ecritures: 0
   },
   {
     // 🔴 LA LIAISON **BOUTON ⇄ CODE**, MESUREE PAR UN VRAI CLIC. Le choix part
@@ -504,6 +648,40 @@ const CAS = [
     quoi: "un selecteur est deja ouvert ⇒ la page NOMME le fait, ⛔ pas de silence",
     choix: "fr", parSelecteur: true, selecteurEnVol: true, repond: () => null,
     attendLangue: "could not be taken", ecritures: 0
+  },
+  // ── LES DEUX CAS DE **PLACE**, AJOUTES LE 2026-09-10 (`dn7-4`) ───────────
+  {
+    // 🔴 UN FAIT DE **PAGE** N'APPARTIENT A AUCUN BOUTON. `rafraichirEtat()`
+    //    part au chargement, son `fetch` rejette, et le transcript doit revenir
+    //    A SA PLACE D'ORIGINE — l'attribuer au dernier bouton clique publierait
+    //    une CAUSE FAUSSE.
+    nom: "fait-de-page-a-la-maison",
+    quoi: "`sortie.pas-de-serveur` sans clic ⇒ le transcript rentre CHEZ LUI",
+    choix: "en", verbe: null,
+    attendLangueVide: true, ecritures: 0,
+    attendPlace: "sec-suite apres (tete)",
+    attendPlaces: ["sec-suite apres (tete)"]
+  },
+  {
+    // 🔴 LE VERDICT D'UN VERBE S'ECRIT **SOUS LE BOUTON CLIQUE**. C'est le
+    //    constat owner du 2026-09-10, et c'est la moitie de `AC7.4.1` qu'une
+    //    machine peut tenir. ⚠️ Le rafraichissement qui SUIT le verbe echoue
+    //    lui aussi (le banc n'a pas de serveur) : sans son ancre, il renverrait
+    //    le verdict A LA MAISON — le defaut recree sur le clic qui le ferme.
+    nom: "verdict-sous-le-bouton",
+    quoi: "un clic sur `b-stop` ⇒ le transcript passe SOUS `b-stop`",
+    choix: "en", verbe: "stop", bouton: "b-stop",
+    reponse: { commande: "dn_agent_tour.ps1 stop", sortie: "agent arrete",
+               rc: 0, rc_pose_par: "l'outil", verdict: "le port est rendu" },
+    attendLangueVide: true, ecritures: 0,
+    attendPlace: "geste-1 apres b-stop",
+    // ⚠️ QUATRE ECRITURES, ET LA PREMIERE EST **A LA MAISON** : le fait de page
+    //    du chargement. Les TROIS suivantes appartiennent au clic — « en
+    //    cours », le verdict, puis le rafraichissement qui ECHOUE APRES un
+    //    verbe REUSSI. C'est cette derniere qui, sans son ancre, renvoyait le
+    //    verdict quatre gestes plus bas SUR LE CLIC QUI VENAIT DE LE FERMER.
+    attendPlaces: ["sec-suite apres (tete)", "geste-1 apres b-stop",
+                   "geste-1 apres b-stop", "geste-1 apres b-stop"]
   }
 ];
 
@@ -639,6 +817,16 @@ function principal() {
       // ⛔ ET UN RELAIS **VIDE** N'EST PAS REVELE : un cadre vide donne a croire
       //    qu'on a lu quelque chose.
       const relaisJuste = r.relais !== "" || r.relaisCache === true;
+      // 🔴 OU LE TRANSCRIPT S'EST POSE (`dn7-4`) — une CHAINE, ⛔ pas un booleen :
+      //    « pas a la bonne place » doit DIRE ou il est.
+      const placeJuste = !c.attendPlace || r.place === c.attendPlace;
+      const transcritJuste = !c.attendPlaces
+        || JSON.stringify(r.places || []) === JSON.stringify(c.attendPlaces);
+      // ⛔ ET UN BLOC NE DOIT PAS PORTER CE QUI APPARTIENT A L'AUTRE : sans
+      //    cette exclusion, deux blocs ECHANGES passaient le cas
+      //    `pas-d-acces-serie`, qui attendait la MEME chaine des deux cotes.
+      const consoleSans = !c.attendConsoleSans
+        || !r.etatConsole.includes(c.attendConsoleSans);
       // 🔴 LE VERROU D'ECRITURE EST RENDU **A CHAQUE ECRITURE**, ⛔ pas « en
       //    general » : un verrou garde fait partir `port.close()` en REJET, et
       //    le port reste tenu EN SILENCE. MESURE : sans cette ligne, retirer
@@ -652,7 +840,8 @@ function principal() {
       const succesJuste = posees === 0
         || (posees === 1 && r.suite[r.suite.length - 1] === "langue.posee");
       const bon = vuLangue && vuConsole && vuRelais && oct && zero && dit && arme
-        && parti && relaisJuste && verrou && !r.enVol && succesJuste;
+        && parti && relaisJuste && verrou && !r.enVol && succesJuste
+        && placeJuste && transcritJuste && consoleSans;
       if (bon) { ok++; } else { ko++; }
       const motifs = [];
       if (!vuLangue) { motifs.push("issue lue : " + (r.etatLangue.slice(0, 70) || "(vide)")); }
@@ -670,6 +859,18 @@ function principal() {
       }
       if (r.enVol) { motifs.push("⛔ LE GESTE RESTE EN VOL"); }
       if (!succesJuste) { motifs.push("⛔ SUCCES HORS RELECTURE : " + r.suite.join(">")); }
+      if (!placeJuste) {
+        motifs.push("⛔ PLACE : « " + r.place + " » au lieu de « "
+          + c.attendPlace + " »");
+      }
+      if (!transcritJuste) {
+        motifs.push("⛔ SUITE DES PLACES : " + JSON.stringify(r.places || [])
+          + " au lieu de " + JSON.stringify(c.attendPlaces));
+      }
+      if (!consoleSans) {
+        motifs.push("⛔ LE BLOC CONSOLE PORTE « " + c.attendConsoleSans
+          + " », qui appartient au bloc de langue");
+      }
       console.log("CAS " + c.nom.padEnd(28) + " " + (bon ? "OK " : "KO ")
         + " ecritures=" + r.ecrits.length + "/" + c.ecritures + " octets=" + r.octets
         + (motifs.length ? "  " + motifs.join(" · ") : ""));

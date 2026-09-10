@@ -38,6 +38,53 @@ police distante est une page qui ne s'ouvre pas quand le réseau est mauvais.
 | `--dn-avertissement` | ce qui demande un geste, sans être cassé | `#ffb020` | `firmware/desknode/main/dn_widget.c:654` | `W_COL_SIMULEE` |
 | `--dn-alerte` | le fond des blocs d'échec | `#7f0000` | `firmware/desknode/main/dn_ui.c:2975` | *(écran d'alerte)* |
 
+> 🎯 **ANNOTÉ ET DATÉ LE 2026-09-10 (`dn7-4`) — ⛔ AUCUNE COLONNE DE LA TABLE N'EST TOUCHÉE,
+> ET ⛔ AUCUN JETON N'EST AJOUTÉ.** **QUATRE** rôles s'élargissent — ⛔ pas deux, et le compte est
+> corrigé ici plutôt qu'ailleurs. Ce sont les quatre jetons que les règles d'état des deux
+> sélecteurs de langue (`#sec-langue`, `#sec-langue-dalle`) emploient :
+>
+> | jeton | rôle élargi | où |
+> |---|---|---|
+> | `--dn-accent` | **fond** de la position active, et sa bordure | position **active** |
+> | `--dn-fond` | **couleur de texte** posée sur cet aplat | position **active** |
+> | `--dn-trait` | **fond ET bordure** de la position active **désarmée** | pendant `langueEnVol` |
+> | `--dn-eteint` | **texte** de la position active désarmée | pendant `langueEnVol` |
+>
+> ⚠️ **CE QUE CE CHANGEMENT REMPLACE, NOMMÉ PLUTÔT QU'EFFACÉ** : ces deux règles portaient
+> `border-color: var(--dn-texte); color: var(--dn-texte);` — c'est-à-dire **rigoureusement les
+> mêmes déclarations que `button:hover:enabled`**. « Sélectionné » et « survolé » étaient donc
+> **indiscernables**, et l'écart au repos tenait à **deux teintes voisines** (`--dn-accent`
+> ⇄ `--dn-texte`). Coût mesuré **en séance le 2026-09-10** : l'owner a lu une position pour
+> l'autre. ⇒ l'aplat est une différence de **forme**, ⛔ pas de teinte.
+>
+> 🔴 **LES RAPPORTS DE CONTRASTE, CALCULÉS ⛔ PAS ESTIMÉS.** Ils se calculent depuis les valeurs
+> de la table ci-dessus (WCAG 2.x, luminance relative), **sans navigateur** — c'est la seule part
+> de « lisibilité » qu'un chiffre peut tenir, et elle est donc écrite :
+>
+> | paire | valeurs | rapport | lecture |
+> |---|---|---|---|
+> | texte actif sur son aplat | `#000000` sur `#a0d8ff` | **13,76:1** | ≥ 7:1 (AAA) |
+> | texte au repos sur le fond | `#a0d8ff` sur `#000000` | **13,76:1** | ≥ 7:1 (AAA) |
+> | aplat actif contre le fond de page | `#a0d8ff` / `#000000` | **13,76:1** | la forme se voit |
+> | texte désarmé sur son aplat | `#9a9a9a` sur `#33404a` | **3,78:1** | composant **inactif** |
+> | aplat désarmé contre le fond de page | `#33404a` / `#000000` | **1,97:1** | ⚠️ faible |
+>
+> ⚠️ **CE QUE CES CHIFFRES ⛔ NE DISENT PAS.** *(1)* Le **3,78:1** du cas désarmé est **sous** le
+> minimum 4,5:1 de WCAG 1.4.3 — et ce critère **exempt explicitement** le texte d'un composant
+> d'interface **inactif**. Le choix est donc **assumé et daté**, ⛔ pas ignoré : le rôle « éteint »
+> est celui que la dalle emploie pour *« on ne sait pas »*, et le remplacer par un jeton plus clair
+> ferait mentir le rôle. *(2)* Le **1,97:1** de l'aplat désarmé contre le fond de page est faible :
+> ce qui distingue la position active désarmée d'une position inactive désarmée est **l'aplat
+> lui-même**, et il est sourd. ⇒ ce que ces chiffres tiennent, c'est le **contraste** ; ⛔ ils ne
+> disent **pas** que l'œil reconnaît « la position choisie » d'un coup d'œil. Cette part-là se
+> ferme **à l'œil de l'owner**, sur la page servie, et elle ⛔ **n'était pas relevée** à cette date.
+>
+> ⛔ **Et ça ne coûte aucune couleur** : les quatre jetons sont **déjà déclarés dans la table
+> ci-dessus**, et `tools/verif_installeur_dn71.py` continue de garder l'égalité **dans les deux
+> sens**. ⚠️ Ce que `(c19)` ⛔ **ne** garde **pas** : le **NOM** d'une propriété personnalisée —
+> `var(--dn-accnt)` ne serait déclaré nulle part et disparaîtrait **en silence** au rendu. C'est
+> `tools/verif_placement_dn74.py (c13)` qui confronte les noms employés à ceux de `:root`.
+
 ## Pourquoi ces sept-là, et ⛔ pas d'autres
 
 - **Le fond est un noir pur, et c'est la dalle qui le dit.** `W_AMB_CASE_BG` vaut `0x000000` :

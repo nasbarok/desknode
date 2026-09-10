@@ -1,0 +1,50 @@
+═══ dn7-4 / T2-b — LA PAGE COTE WINDOWS, A L'ŒIL : ⛔ **NON RELEVE** ═══
+date : 2026-09-10
+
+🔴 CE FICHIER EST UN CONSTAT D'ABSENCE, ⛔ PAS UNE MESURE. Il est verse pour
+   qu'une observation qui n'a pas eu lieu ⛔ ne passe pas pour faite.
+
+── POURQUOI ELLE N'A PAS EU LIEU, ET C'EST MESURE ⛔ PAS SUPPOSE ──────────
+
+  (1) L'OBSERVATION EST **CELLE DE L'OWNER**, ⛔ pas d'une commande. Les trois
+      constats de `dn7-4` ont ete releves A L'ŒIL le 2026-09-10, et `AC7.4.3`
+      se ferme A L'ŒIL — meme famille qu'`AC7.2.2.2`. ⛔ Aucune gate de ce
+      depot ne peut la rendre, et une gate qui pretendrait le faire serait
+      pire qu'aucune gate.
+  (2) LE WSL DE LA TOUR EST EN **NAT** ⇒ `localhost` ne traverse pas. Toute
+      mesure de page se sert **COTE WINDOWS**, et le serveur se lance par
+      `installeur/DeskNode-installeur.bat` — un geste de la machine Windows.
+  (3) LA MOITIE **MECANIQUE** EST, ELLE, MESUREE — ⛔ et elle ne remplace pas
+      la moitie qui se voit :
+        · `mesures/dn7-4/T1-gate-mutants-temoin.txt` — les 13 controles neufs
+          rougissent TOUS contre la page d'origine, 25 mutants tires un par un ;
+        · `mesures/dn7-4/T2-a-banc-dynamique.txt` — le banc EXECUTE le script
+          de la page : 3 cas de refus BASCULENT entre la page d'origine et la
+          page corrigee, le cas residuel reste VERT sur les deux, et un cas de
+          PLACE (`verdict-sous-le-bouton`) est ROUGE contre la page d'origine —
+          le transcript n'y quitte JAMAIS sa maison.
+      ⛔ CE QUE CETTE MOITIE-LA NE TIENT PAS : le banc dit OU se pose le
+        transcript, ⛔ pas s'il se VOIT ; et ⛔ aucun instrument de ce depot
+        n'ouvre un navigateur ni ne dessine quoi que ce soit.
+
+── CE QU'IL RESTE A FAIRE, GESTE PAR GESTE ───────────────────────────────
+
+  A. Lancer `installeur\DeskNode-installeur.bat` (machine Windows), puis,
+     **depuis l'etape 1**, cliquer « Arreter l'agent et rendre le port ».
+     ATTENDU A L'ŒIL : le texte change **sous le bouton**, et la vue ⛔ ne part
+     PAS sur l'etape 2. Puis cliquer « Retirer l'agent » en section 4 :
+     ATTENDU : son verdict apparait **sous LUI**, ⛔ pas quatre gestes plus haut.
+  B. A l'etape 3, cliquer « Poser la langue de la dalle sur la carte », puis
+     **ANNULER** le selecteur de port. ATTENDU : le cadre de l'etape 3 dit « le
+     selecteur a ete ferme sans selectionner la ligne », ⛔ plus « le plus
+     souvent, un selecteur est deja ouvert ».
+  C. Regarder **les deux** selecteurs de langue (celui de la page en tete,
+     celui de la dalle avant le geste 3). ATTENDU : la position active est
+     **remplie**, lisible **sans survoler et sans comparer** ; survoler l'autre
+     position ⛔ ne la fait PAS passer pour active.
+     🔴 C'EST L'INSTRUMENT QUI FERME `AC7.4.3`, ET C'EST L'ŒIL DE L'OWNER.
+
+── STATUT ────────────────────────────────────────────────────────────────
+
+  ⛔ NON RELEVE au 2026-09-10. Porte au ledger avec son porteur VIVANT.
+  ⛔ « Non releve » est une propriete de CE TIR, ⛔ pas un verdict sur la page.

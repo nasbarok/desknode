@@ -585,6 +585,39 @@ redits ici : une table dupliquée est une table qui divergera.
 > langue de la dalle* — est le seul geste de cette page qui **écrive** sur le port série :
 > la console, elle, ne fait que **lire**, et elle continue.
 
+> 🔴 **CORRIGÉ LE 2026-09-10 (`dn7-4`) — TROIS CONSTATS RELEVÉS À L'ŒIL PAR L'OWNER**, ⛔ par
+> aucune gate, et ⛔ **aucun des trois n'est un mensonge de la page** : c'est du **placement**
+> et de la **lisibilité**. Ce qui change, et la valeur d'avant est **nommée plutôt qu'effacée** :
+> · **Le verdict d'un verbe s'affiche désormais SOUS LE BOUTON QUI L'A DÉCLENCHÉ.** Le
+>   transcript n'avait qu'**une** place — après la quatrième étape — pendant que *« Arrêter
+>   l'agent »* vit à la **première** : on cliquait, et la vue partait sur l'étape 2 sans qu'un
+>   mot change sous les yeux. ⚠️ C'est **le défaut que `dn7-2-2` avait corrigé pour
+>   « Retirer »**, survivant **dans l'autre sens** : une place **fixe** ne peut pas servir deux
+>   boutons éloignés de quatre gestes. ⇒ la place devient **mobile**, et un fait de **page** —
+>   « pas de serveur », écrit **sans clic** — **revient à sa place d'origine**, parce que
+>   l'attribuer au dernier bouton cliqué publierait une **cause fausse**.
+> · **Le geste de langue relaie le refus EXACT de la console.** La page **connaissait** la
+>   cause — *« le sélecteur a été fermé sans sélectionner la ligne »* — et l'écrivait dans le
+>   bloc de l'**étape 4**, pendant qu'elle affichait une **supposition** à l'étape 3 : *« le
+>   plus souvent, un sélecteur de port est déjà ouvert »*. ⇒ le fait nommé remonte **là où
+>   l'œil est**. ⛔ **Aucun texte neuf n'a été écrit** : la phrase de supposition **reste**,
+>   pour le **seul** cas où elle est **vraie** — une ouverture réellement **déjà en vol**.
+> · **La position active d'un sélecteur est en APLAT**, ⛔ plus en contour. Les deux règles
+>   d'état portaient **exactement** les déclarations du **survol** : survoler une position
+>   inactive la faisait **passer pour active**. ⚠️ Ce n'est ⛔ pas du confort — toute la
+>   propriété du **défaut anglais structurel** suppose qu'on **VOIE** quelle position est
+>   active, et la confusion a coûté **une mauvaise lecture dans la séance même**.
+> ⚠️ **CE QUI MARCHAIT DÉJÀ ET N'A PAS BOUGÉ** : le bloc d'état du geste de langue était
+> **bien placé** (vu sans défiler), et celui de la console **reste dans l'étape 4** — c'est sa
+> place. Les deux ⛔ **ne sont pas le même problème**.
+> 🔴 **ET CE QUI N'EST PAS MESURÉ EST ÉCRIT ICI PLUTÔT QUE TU.** Ce que ce dépôt sait tenir,
+> ce sont les **mécanismes** : deux vérifications les gardent, l'une structurelle et l'autre
+> qui **exécute** le script de la page contre un port de banc d'essai. ⛔ **Aucune n'ouvre un
+> navigateur et aucune ne dessine** — donc ⛔ **aucune ne dit que le lecteur voit quoi que ce
+> soit**. Que la position remplie se lise comme « choisie » d'un coup d'œil se ferme **à l'œil
+> de l'owner**, sur la page servie, et cette observation ⛔ **n'avait pas été relevée** quand
+> ce bloc a été écrit.
+
 🆕 **Relire la carte ne passe plus par le bouton qui la flashe.** Jusqu'au 2026-09-09, le
 **seul** chemin vers les logs de la carte était le bouton d'installation : pour **regarder**
 sa carte, il fallait cliquer sur ce qui annonce qu'on va la **réécrire**. La page porte

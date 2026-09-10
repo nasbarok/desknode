@@ -1,0 +1,63 @@
+═══ dn7-4 / T3-b — LA CAMPAGNE DE MUTANTS, EN ENTIER ════════════════════
+date : 2026-09-10 · depot desknode, branche main, arbre corrige
+
+🔴 CE RELEVE EXISTE PARCE QUE `run_gates.sh` N'IMPRIME PAS LA SORTIE D'UNE
+   GATE VERTE. Les chiffres de campagne cites dans la lecture de `T3` —
+   nombre de cibles, de mutants, bilan — ⛔ n'apparaissaient DANS AUCUN
+   releve : un nombre publie sans sa source est exactement ce que ce depot
+   refuse ailleurs. ⇒ il est verse ICI, tel quel.
+
+  # la commande, telle quelle
+  cd /home/nasbarok/projects/desknode && python3 tools/verif_campagne_dn56.py
+
+⚠️ LA DUREE DEPEND DE LA CHARGE DE LA MACHINE, ⛔ elle ne se recopie pas
+   d'une marche a l'autre : `dn7-3` avait mesure cette meme gate a 556 s.
+──────────────────────────────────────────────────────────────────────────
+
+==============================================================================
+dn5-6 — LES CAMPAGNES DE MUTANTS SONT REJOUEES
+==============================================================================
+
+── (c1) LES CIBLES SONT DECOUVERTES, ⛔ JAMAIS ENUMEREES ─────────
+  [OK ] des gates declarent une campagne de mutants                16 cible(s) : tools/verif_affiliation_dn65.py, tools/verif_banc_langue_dn73.py, tools/verif_boitier_dn64.py, tools/verif_bom_dn61.py, tools/verif_cablage_dn62.py, tools/verif_demarrage_dn443.py, tools/verif_dossier_d5_dn45.py, tools/verif_flash_dn72.py, tools/verif_installeur_dn71.py, tools/verif_langue_dalle_dn73.py, tools/verif_langues_dn442.py, tools/verif_licences_dn52.py, tools/verif_page_dn722.py, tools/verif_photos_dn63.py, tools/verif_placement_dn74.py, tools/verif_temoin_filtre_dn447.py
+
+── (c2) CHAQUE MUTANT ROUGIT, AVEC UN BILAN ET UN [KO ] NOMME ────
+  [OK ] toute cible repond, et aucun mutant ne meurt               501 mutant(s) confronte(s) sur 16 cible(s)
+  [OK ] tout mutant rend rc=1                                      aucun mutant devenu MUET
+  [OK ] tout mutant rouge a bien imprime un BILAN                  aucune sortie en amont
+  [OK ] tout mutant rouge porte au moins un [KO ] nomme            chaque mutant vise un controle
+
+── (c3) LES EXCEPTIONS SONT DECLAREES ET ⛔ NE PEUVENT PAS ROT ───
+  · tools/verif_langues_dn442.py#17 ⇒ porteur **dn4-42-l-ecran-parle-deux-langues**
+      MESURE le 2026-09-05 : `--mutant 17` sort en rc=1 SANS ligne BILAN et SANS aucun [KO ] — `MUTANT 17 INAPPLICABLE : le motif est introuvable`. Son ancr
+  [OK ] aucune exception n'a survecu au defaut qu'elle excuse      1 exception(s) declaree(s), 1 encore justifiee(s)
+
+── (c4) LA CLE DE CAMPAGNE RESTE LISIBLE A COLONNE FIXE ──────────
+  [OK ] toute cible s'analyse a l'AST                              2 fichier(s) lu(s) dans la portee de la cle
+     [hors portee] tools/verif_affiliation_dn65.py        0 libelle(s) >= 58 sur 29
+     [hors portee] tools/verif_banc_langue_dn73.py        0 libelle(s) >= 58 sur 16
+     [hors portee] tools/verif_boitier_dn64.py            0 libelle(s) >= 58 sur 33
+     [hors portee] tools/verif_bom_dn61.py                0 libelle(s) >= 58 sur 25
+     [hors portee] tools/verif_cablage_dn62.py            0 libelle(s) >= 58 sur 37
+     [hors portee] tools/verif_demarrage_dn443.py         34 libelle(s) >= 58 sur 60
+     [hors portee] tools/verif_dossier_d5_dn45.py         0 libelle(s) >= 58 sur 9
+     [hors portee] tools/verif_flash_dn72.py              0 libelle(s) >= 58 sur 35
+     [hors portee] tools/verif_installeur_dn71.py         0 libelle(s) >= 58 sur 33
+     [hors portee] tools/verif_langue_dalle_dn73.py       0 libelle(s) >= 58 sur 31
+     [hors portee] tools/verif_langues_dn442.py           10 libelle(s) >= 58 sur 32
+     [hors portee] tools/verif_page_dn722.py              0 libelle(s) >= 58 sur 31
+     [hors portee] tools/verif_photos_dn63.py             0 libelle(s) >= 58 sur 32
+     [hors portee] tools/verif_placement_dn74.py          0 libelle(s) >= 58 sur 21
+     [hors portee] tools/verif_temoin_filtre_dn447.py     0 libelle(s) >= 58 sur 7
+  [OK ] cle valide (aucun libelle >= 58)                           44 libelle(s) lu(s) a l'AST, le plus long fait 56
+
+⛔ CE QUE CETTE GATE NE PROUVE PAS : « N mutants, N vus rougir »
+   prouve `mutant ⇒ rouge`, ⛔ PAS `controle ⇒ couvert`. Un controle
+   qu'AUCUN mutant ne vise reste garde par rien, et ⛔ elle ne le
+   verra pas. Elle garde que les campagnes DEJA ECRITES ne
+   pourrissent pas.
+
+==============================================================================
+BILAN : 8 OK, 0 KO
+==============================================================================
+rc=0

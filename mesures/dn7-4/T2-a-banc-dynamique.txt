@@ -1,0 +1,220 @@
+═══ dn7-4 / T2-a — L'INSTRUMENT **DYNAMIQUE**, ET SES TEMOINS ═══════════
+date  : 2026-09-10
+⚠️ CE FICHIER MESURE LE **MECANISME**, ⛔ PAS CE QUE L'ŒIL VOIT. Ce qui se
+   voit est dans `T2-b-oeil-owner-NON-RELEVE.txt`.
+
+🔴 CE QUE CE BANC EST : `tools/banc_langue_dalle_dn73.mjs` EXTRAIT le
+   `<script>` de la page et l'EXECUTE contre un port bidon et un DOM
+   minimal. C'est le SEUL instrument de ce depot qui fasse tourner ce
+   JavaScript.
+
+───────────────────────────────────────────────────────────────────────
+(0) COMMENT CE RELEVE SE REGENERE — le temoin est un fichier JETABLE,
+    HORS DE L'ARBRE, et son chemin MEURT avec la session.
+───────────────────────────────────────────────────────────────────────
+
+  T=$(mktemp -d) && cd /home/nasbarok/projects/desknode
+  git show HEAD:installeur/index.html > "$T/index-origine.html"
+  node tools/banc_langue_dalle_dn73.mjs --page "$T/index-origine.html"   # temoin
+  node tools/banc_langue_dalle_dn73.mjs                                  # arbre corrige
+  python3 tools/verif_banc_langue_dn73.py                                # la gate
+
+───────────────────────────────────────────────────────────────────────
+(1) CE QUE LE CORRECTIF A FAIT ROUGIR, ⛔ AVANT QU'ON TOUCHE AU BANC
+───────────────────────────────────────────────────────────────────────
+Le correctif de page pose, et le banc INCHANGE, `verif_banc_langue_dn73.py`
+est passe de `rc=0` a `rc=1` :
+
+    BANC : 15 OK, 3 KO   ⇒   BILAN : 39 OK, 1 KO   (rc=1)
+    [KO ] (c4) tout cas du banc rend OK
+          ⛔ 3 cas ROUGE(S) : port-tenu-par-l-agent · pas-d-acces-serie
+                            · selecteur-annule
+
+🔴 CES TROIS ATTENTES ECRIVAIENT LE DEFAUT LUI-MEME. Elles attendaient
+   `could not be taken` — c'est-a-dire `langue.port-indisponible`, LA
+   SUPPOSITION — sur les trois chemins ou la console NOMMAIT deja le fait
+   exact une etape plus bas. ⇒ ⛔ ce n'est PAS le correctif qui a tort :
+   c'est l'instrument qui mesurait la phrase que `dn7-4` vient de retirer.
+   Les trois attentes sont AMENDEES ET DATEES dans le banc, la valeur
+   d'avant NOMMEE (`NFR3`).
+⚠️ ECART DECLARE : le dossier ecrivait « il n'est pas modifie pour
+   l'occasion ». La GATE ne porte aucune de ces attentes ; le HARNAIS si,
+   et le temoin (2) prouve que les attentes neuves DISCRIMINENT.
+⚠️ SECOND AMENDEMENT, DU MEME JOUR : `CAS_HORS_MATRICE` de la gate declare
+   DEUX cas de plus (`fait-de-page-a-la-maison`, `verdict-sous-le-bouton`).
+   Les DECLARER est le geste que `(c3)` exige : son propre message de KO
+   dit que le compte « voit un cas ajoute SANS ETRE DECLARE ».
+
+───────────────────────────────────────────────────────────────────────
+(2) LE TEMOIN NEGATIF DU BANC CORRIGE — joue contre la page **D'ORIGINE**
+    ⇒ attendu : les MEMES TROIS cas de refus ROUGES, **plus** le cas de
+    place `verdict-sous-le-bouton`, qui est le constat owner lui-meme.
+───────────────────────────────────────────────────────────────────────
+==============================================================================
+BANC dn7-3 — LE SCRIPT DE LA PAGE, **EXECUTE** CONTRE UN PORT BIDON
+==============================================================================
+page jouee : /tmp/claude-1000/-home-nasbarok-projects-compagnon-project/649a0536-3995-43bd-9558-64675acf7fd4/scratchpad/dn74/index-origine.html (84661 octets de script)
+delais     : page=40 ms · cas=4000 ms · plafond=95000 ms
+⛔ AUCUNE CARTE N'EST TOUCHEE, et ⛔ aucun port reel n'est ouvert.
+------------------------------------------------------------------------------
+CAS defaut-structurel            OK  ecritures=0/0 octets=0
+CAS pose-nominale                OK  ecritures=3/3 octets=18
+CAS deja-en-francais             OK  ecritures=3/3 octets=18
+CAS refus-de-la-carte            OK  ecritures=2/2 octets=11
+CAS pas-d-invite                 OK  ecritures=1/1 octets=1
+CAS sans-reponse                 OK  ecritures=2/2 octets=11
+CAS relecture-sans-le-code       OK  ecritures=3/3 octets=18
+CAS port-tenu-par-l-agent        KO  ecritures=0/0 octets=0  issue lue : <b>⛔ The serial port could not be taken, and ⛔ nothing was sent.</b><b
+CAS double-clic                  OK  ecritures=3/3 octets=18
+CAS pas-d-acces-serie            KO  ecritures=0/0 octets=0  issue lue : <b>⛔ The serial port could not be taken, and ⛔ nothing was sent.</b><b
+CAS pose-par-le-selecteur        OK  ecritures=3/3 octets=18
+CAS nvs-refusee                  OK  ecritures=2/2 octets=11
+CAS selecteur-annule             KO  ecritures=0/0 octets=0  issue lue : <b>⛔ The serial port could not be taken, and ⛔ nothing was sent.</b><b
+CAS clic-reel-sur-francais       OK  ecritures=3/3 octets=18
+CAS flash-revele-arme-le-geste   OK  ecritures=3/3 octets=18
+CAS module-absent-desarme-le-geste OK  ecritures=0/0 octets=0
+CAS ecriture-qui-rejette-en-vol  OK  ecritures=2/2 octets=11
+CAS selecteur-deja-en-vol        OK  ecritures=0/0 octets=0
+CAS fait-de-page-a-la-maison     OK  ecritures=0/0 octets=0
+CAS verdict-sous-le-bouton       KO  ecritures=0/0 octets=0  ⛔ PLACE : « sec-suite apres (tete) » au lieu de « geste-1 apres b-stop » · ⛔ SUITE DES PLACES : ["sec-suite apres (tete)","sec-suite apres (tete)","sec-suite apres (tete)","sec-suite apres (tete)"] au lieu de ["sec-suite apres (tete)","geste-1 apres b-stop","geste-1 apres b-stop","geste-1 apres b-stop"]
+------------------------------------------------------------------------------
+BANC : 16 OK, 4 KO
+⛔ CE BANC NE PROUVE PAS que la langue soit VRAIMENT posee dans une
+   carte, ni qu'elle survive a une coupure : le bandeau est SUR LA
+   DALLE, et il se lit A L'ŒIL. Seance carte, portee au ledger.
+rc=1
+
+───────────────────────────────────────────────────────────────────────
+(3) LE BANC CORRIGE, SUR LA PAGE CORRIGEE ⇒ attendu : 20 OK, 0 KO
+───────────────────────────────────────────────────────────────────────
+==============================================================================
+BANC dn7-3 — LE SCRIPT DE LA PAGE, **EXECUTE** CONTRE UN PORT BIDON
+==============================================================================
+page jouee : /home/nasbarok/projects/desknode/installeur/index.html (92264 octets de script)
+delais     : page=40 ms · cas=4000 ms · plafond=95000 ms
+⛔ AUCUNE CARTE N'EST TOUCHEE, et ⛔ aucun port reel n'est ouvert.
+------------------------------------------------------------------------------
+CAS defaut-structurel            OK  ecritures=0/0 octets=0
+CAS pose-nominale                OK  ecritures=3/3 octets=18
+CAS deja-en-francais             OK  ecritures=3/3 octets=18
+CAS refus-de-la-carte            OK  ecritures=2/2 octets=11
+CAS pas-d-invite                 OK  ecritures=1/1 octets=1
+CAS sans-reponse                 OK  ecritures=2/2 octets=11
+CAS relecture-sans-le-code       OK  ecritures=3/3 octets=18
+CAS port-tenu-par-l-agent        OK  ecritures=0/0 octets=0
+CAS double-clic                  OK  ecritures=3/3 octets=18
+CAS pas-d-acces-serie            OK  ecritures=0/0 octets=0
+CAS pose-par-le-selecteur        OK  ecritures=3/3 octets=18
+CAS nvs-refusee                  OK  ecritures=2/2 octets=11
+CAS selecteur-annule             OK  ecritures=0/0 octets=0
+CAS clic-reel-sur-francais       OK  ecritures=3/3 octets=18
+CAS flash-revele-arme-le-geste   OK  ecritures=3/3 octets=18
+CAS module-absent-desarme-le-geste OK  ecritures=0/0 octets=0
+CAS ecriture-qui-rejette-en-vol  OK  ecritures=2/2 octets=11
+CAS selecteur-deja-en-vol        OK  ecritures=0/0 octets=0
+CAS fait-de-page-a-la-maison     OK  ecritures=0/0 octets=0
+CAS verdict-sous-le-bouton       OK  ecritures=0/0 octets=0
+------------------------------------------------------------------------------
+BANC : 20 OK, 0 KO
+⛔ CE BANC NE PROUVE PAS que la langue soit VRAIMENT posee dans une
+   carte, ni qu'elle survive a une coupure : le bandeau est SUR LA
+   DALLE, et il se lit A L'ŒIL. Seance carte, portee au ledger.
+rc=0
+
+───────────────────────────────────────────────────────────────────────
+(4) CE QUE CES DEUX TIRS ETABLISSENT, LIGNE A LIGNE
+───────────────────────────────────────────────────────────────────────
+· port-tenu-par-l-agent  : ROUGE sur la page d'origine, VERT sur la
+  corrigee. Son attente porte sur la **QUEUE** du texte (le motif mesure,
+  qui arrive EN SUFFIXE), ⛔ pas sur son en-tete : `console.port-refuse`
+  FINIT sur « Measured reason : », et un en-tete seul passait A VIDE.
+· pas-d-acces-serie      : idem, et il porte en plus une EXCLUSION —
+  `#etat-console` ⛔ ne doit PAS porter la phrase du port, qui appartient
+  au bloc de langue. Sans elle, le cas passait avec les DEUX BLOCS
+  ECHANGES, puisqu'il attendait la meme chaine des deux cotes.
+· selecteur-annule       : ROUGE ⇒ VERT ⇒ « le selecteur a ete ferme sans
+  selectionner la ligne » — LE CONSTAT EXACT DE LA SEANCE OWNER.
+· selecteur-deja-en-vol  : VERT **SUR LES DEUX** pages, attente RESTEE
+  `could not be taken`. ⇒ `langue.port-indisponible` ⛔ N'A PAS DISPARU :
+  son domaine a RETRECI a son seul cas vrai, et le banc le PROUVE.
+· verdict-sous-le-bouton : ROUGE sur la page d'origine — le transcript ne
+  quitte JAMAIS sa maison —, VERT sur la corrigee. Il releve la SUITE des
+  places, ⛔ pas la derniere : la 4e ecriture est le rafraichissement qui
+  ECHOUE APRES un verbe REUSSI, et sans son ancre il renvoyait le verdict
+  quatre gestes plus bas SUR LE CLIC QUI VENAIT DE LE FERMER.
+· fait-de-page-a-la-maison : VERT sur les DEUX pages, et c'est HONNETE —
+  c'est une propriete de NON-REGRESSION : `sortie.pas-de-serveur`, ecrit
+  SANS clic, ⛔ n'appartient a aucun bouton, ni avant ni apres.
+
+───────────────────────────────────────────────────────────────────────
+(5) LA GATE DYNAMIQUE, EN ENTIER ⇒ attendu : rc=0
+───────────────────────────────────────────────────────────────────────
+==============================================================================
+dn7-3 — LE BANC DE LA POSE EST JOUE, ⛔ PAS SEULEMENT ECRIT
+==============================================================================
+moteur     : /usr/bin/node
+cibles     : installeur/index.html · tools/banc_langue_dalle_dn73.mjs
+⛔ CETTE GATE N'OUVRE AUCUN PORT ET NE PARLE A AUCUNE CARTE : le banc
+   joue une carte BIDON. Que la langue soit VRAIMENT posee se lit AU
+   BANDEAU DE LA DALLE — seance carte, portee au ledger.
+
+── (c0) LE PRE-VOL — ⛔ AUCUN CONTROLE SUR DU VIDE ────────────────
+  [OK ] (c0) tout fichier attendu est LISIBLE                      2 fichier(s) lus
+  [OK ] (c0) le mutant 1 a une CIBLE et un LIBELLE                 → c4
+  [OK ] (c0) le mutant 2 a une CIBLE et un LIBELLE                 → c4
+  [OK ] (c0) le mutant 3 a une CIBLE et un LIBELLE                 → c4
+  [OK ] (c0) le mutant 4 a une CIBLE et un LIBELLE                 → c4
+  [OK ] (c0) le mutant 5 a une CIBLE et un LIBELLE                 → c4
+  [OK ] (c0) le mutant 6 a une CIBLE et un LIBELLE                 → c4
+  [OK ] (c0) le mutant 7 a une CIBLE et un LIBELLE                 → c4
+  [OK ] (c0) le mutant 8 a une CIBLE et un LIBELLE                 → c4,c5
+  [OK ] (c0) le mutant 9 a une CIBLE et un LIBELLE                 → c6
+  [OK ] (c0) le mutant 10 a une CIBLE et un LIBELLE                → c2,c3
+  [OK ] (c0) le mutant 11 a une CIBLE et un LIBELLE                → z
+  [OK ] (c0) le mutant 12 a une CIBLE et un LIBELLE                → c0
+  [OK ] (c0) le mutant 13 a une CIBLE et un LIBELLE                → c9
+  [OK ] (c0) le mutant 14 a une CIBLE et un LIBELLE                → c10
+  [OK ] (c0) le mutant 15 a une CIBLE et un LIBELLE                → c11
+  [OK ] (c0) le mutant 16 a une CIBLE et un LIBELLE                → c1
+  [OK ] (c0) le mutant 17 a une CIBLE et un LIBELLE                → c4
+  [OK ] (c0) le mutant 18 a une CIBLE et un LIBELLE                → c4
+  [OK ] (c0) le mutant 19 a une CIBLE et un LIBELLE                → c4
+  [OK ] (c0) le mutant 20 a une CIBLE et un LIBELLE                → c7
+  [OK ] (c0) le mutant 21 a une CIBLE et un LIBELLE                → c8
+  [OK ] (c0) le mutant 22 a une CIBLE et un LIBELLE                → c4
+  [OK ] (c0) le mutant 23 a une CIBLE et un LIBELLE                → c4
+  [OK ] (c0) le mutant 24 a une CIBLE et un LIBELLE                → c4
+  [OK ] (c0) le mutant 25 a une CIBLE et un LIBELLE                → c4
+  [OK ] (c0) le mutant 26 a une CIBLE et un LIBELLE                → c4
+  [OK ] (c0) le mutant 27 a une CIBLE et un LIBELLE                → c4
+  [OK ] (c0) le mutant 28 a une CIBLE et un LIBELLE                → c7
+
+── (c1)…(c4) LE BANC TOURNE, ET CHAQUE CAS REND SON VERDICT ──────
+  [OK ] (c1) le banc TOURNE, et il rend son bilan                  BANC : 20 OK, 0 KO (rc=0)
+  [OK ] (c2) les NEUF lignes de la matrice sont JOUEES             20 cas joues, dont les 9 de la matrice
+  [OK ] (c3) le banc joue TOUS les cas qu'il declare               20 cas emis pour 20 attendus
+  [OK ] (c4) tout cas du banc rend OK                              20 cas, aucun rouge
+
+── (c5)(c6) LE BANC EXECUTE LA PAGE, ET IL JUGE LA SUITE ─────────
+  [OK ] (c5) le banc EXECUTE la page, ⛔ il ne la recopie pas       il lit le `<script>` et l'evalue
+  [OK ] (c6) le banc juge la SUITE des issues, ⛔ pas la fin        « posee » au plus UNE fois, et EN DERNIER
+
+── (c7)(c8) UNE CHAINE NON RESOLUE N'EST PAS UN SUCCES ───────────
+  [OK ] (c7) chaine non resolue ⇒ le FILET joue, et il le dit      temoin joue : rc=3, sa signature imprimee, ⛔ aucun bilan
+  [OK ] (c8) le banc REPOSE les attentes de la page                les deux delais sont reposes, et l'absence ECHOUE FERME
+
+── (c9)(c10)(c11) AUCUN CONTROLE GARDE PAR ZERO MUTANT ───────────
+  [OK ] (c9) chaque controle est vise par >= 1 mutant              13 controle(s) lu(s) a l'AST, 13 cible(s) declaree(s)
+  [OK ] (c10) chaque cible de mutant est un controle REEL          13 cible(s) confrontee(s)
+  [OK ] (c11) `CIBLES` et `MUTANTS` se correspondent               28 mutant(s), 28 cible(s), cle a cle
+
+⛔ CE QUE CETTE GATE NE PROUVE PAS : que la langue soit VRAIMENT
+   posee dans une carte. Le banc joue une carte BIDON ; le bandeau
+   est SUR LA DALLE, et il se lit A L'ŒIL. Et le relachement du
+   verrou sur le chemin d'ECHEC n'est pas exerce ici : c'est la
+   gate STATIQUE qui le garde, avec son mutant.
+
+==============================================================================
+BILAN : 40 OK, 0 KO
+==============================================================================
+rc=0

@@ -1,0 +1,444 @@
+═══ dn7-4 / T1 — LA GATE NEUVE, SES 25 MUTANTS, ET LE TEMOIN NEGATIF ═══
+date       : 2026-09-10
+depot      : desknode, branche main
+borne HEAD : e09a87e (arbre MODIFIE par cette marche)
+
+───────────────────────────────────────────────────────────────────────
+(0) COMMENT CE RELEVE SE REGENERE — ⛔ LES DEUX TEMOINS SONT DES FICHIERS
+    JETABLES, HORS DE L'ARBRE (`installeur/` compte QUATRE fichiers de
+    premier niveau, et `tools/` n'accueille pas un temoin jetable). Les
+    chemins cites plus bas MEURENT avec la session : ce qui suit les
+    RECREE a l'identique, et c'est pour ca qu'ils sont ECRITS ICI.
+───────────────────────────────────────────────────────────────────────
+
+  # (a) la page D'ORIGINE, versee hors de l'arbre
+  T=$(mktemp -d) && cd /home/nasbarok/projects/desknode
+  git show HEAD:installeur/index.html > "$T/index-origine.html"
+
+  # (b) le TEMOIN NEGATIF — il IMPORTE la gate et appelle SES fonctions
+  cat > "$T/temoin_negatif_dn74.py" <<'FIN_TEMOIN'
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""TEMOIN NEGATIF de `tools/verif_placement_dn74.py` — dn7-4, 2026-09-10.
+
+Il IMPORTE la gate et appelle **LES MEMES FONCTIONS** que ses controles, sur la
+page **D'ORIGINE** (`git show HEAD:installeur/index.html`, versee hors de
+l'arbre). Attendu : **`[KO ]` sur chacun des treize**.
+
+⛔ Une gate qui reverdit sans avoir jamais rougi n'a rien garde.
+⛔ Ce fichier vit HORS DE L'ARBRE : `installeur/` compte QUATRE fichiers suivis,
+   et `tools/` n'accueille pas un temoin jetable.
+"""
+
+import io
+import os
+import sys
+
+RACINE = "/home/nasbarok/projects/desknode"
+sys.path.insert(0, os.path.join(RACINE, "tools"))
+
+import verif_placement_dn74 as g            # noqa: E402
+
+page = io.open(sys.argv[1], encoding="utf-8").read()
+style = g.style_de(page)
+js = g.sans_commentaires(g.region(page, "<script>", "</script>"))
+
+nom, det_nom = g.refus_enregistre(js)
+
+CONTROLES = [
+    ("c1", "la place d'origine est LUE, et RELUE",
+     g.place_origine_memorisee(js)),
+    ("c2", "le bloc est DEPLACE avant d'etre revele",
+     g.le_deplacement_precede_la_revelation(js)),
+    ("c3", "les 3 ecritures du verbe passent leur bouton",
+     g.les_trois_ecritures_passent_leur_bouton(js)),
+    ("c4", "la fabrique TRANSMET son ancre",
+     g.la_fabrique_transmet_son_ancre(js)),
+    ("c5", "un fait de PAGE n'est ancre sur aucun bouton",
+     g.un_fait_de_page_n_a_pas_de_bouton(js)),
+    ("c6", "le refus nomme est ENREGISTRE",
+     (nom is not None, det_nom)),
+    ("c7", "le refus est efface AU DEBUT de la tentative",
+     g.l_oubli_precede_le_chemin_du_port(js, nom) if nom
+     else (False, "aucun temoin de refus a suivre")),
+    ("c8", "la supposition n'est plus qu'un REPLI",
+     g.le_repli_est_un_repli(js, nom) if nom
+     else (False, "aucun temoin de refus a suivre")),
+    ("c9", "une SEULE cle par fait, cadre et port",
+     g.une_cle_pour_un_fait(js, nom) if nom
+     else (False, "aucun temoin de refus a suivre")),
+    ("c10", "les 2 selecteurs posent un APLAT quand actifs",
+     g.l_etat_pose_un_fond(style)),
+    ("c11", "l'etat DIFFERE du jeu de declarations du survol",
+     g.l_etat_ne_ressemble_plus_au_survol(style)),
+    ("c12", "le cas ACTIF + DESARME est ecrit explicitement",
+     g.l_actif_desarme_est_ecrit(style)),
+    ("c13", "⛔ aucun `#rrggbb` dans les regles ajoutees",
+     g.aucune_couleur_neuve(style)),
+]
+
+print("=" * 78)
+print("TEMOIN NEGATIF dn7-4 — LES CONTROLES NEUFS, JOUES CONTRE LA PAGE")
+print("D'ORIGINE (`git show HEAD:installeur/index.html`)")
+print("=" * 78)
+print("page jouee : %s (%d octets)" % (sys.argv[1], len(page.encode("utf-8"))))
+print("gate importee : %s" % g.__file__)
+print("-" * 78)
+
+ko = 0
+for cle, libelle, (ok, det) in CONTROLES:
+    if not ok:
+        ko += 1
+    print("  [%s] (%s) %-48s %s"
+          % ("OK " if ok else "KO ", cle, libelle[:48], det))
+
+print("-" * 78)
+print("TEMOIN : %d KO sur %d controles" % (ko, len(CONTROLES)))
+print("⇒ ATTENDU : %d KO sur %d — un controle VERT ici garderait RIEN."
+      % (len(CONTROLES), len(CONTROLES)))
+sys.exit(0 if ko == len(CONTROLES) else 1)
+FIN_TEMOIN
+
+  # (c) LE TIR DES MUTANTS, un par un, confronte a la cible DECLAREE
+  cat > "$T/tir_mutants_dn74.py" <<'FIN_TIR'
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Tire CHAQUE mutant de `tools/verif_placement_dn74.py` INDIVIDUELLEMENT, et
+confronte le controle qu'il ROUGIT a la cible qu'il DECLARE.
+
+⛔ « N mutants, N vus rougir » prouve `mutant ⇒ rouge`, ⛔ PAS que le rouge
+   tombe la ou le mutant le promet. Les libelles sont lus **A COLONNE FIXE**.
+"""
+import re
+import subprocess
+import sys
+
+RACINE = "/home/nasbarok/projects/desknode"
+GATE = "tools/verif_placement_dn74.py"
+
+sys.path.insert(0, RACINE + "/tools")
+import verif_placement_dn74 as g            # noqa: E402
+
+print("=" * 78)
+print("dn7-4 — LES MUTANTS DE `%s`, TIRES UN PAR UN" % GATE)
+print("=" * 78)
+
+rc, out = subprocess.getstatusoutput(
+    "cd %s && python3 %s --liste-mutants" % (RACINE, GATE))
+print("--liste-mutants (rc=%d) :" % (rc >> 8 if rc > 255 else rc))
+print(out)
+print("-" * 78)
+
+mauvais = []
+for n in sorted(g.MUTANTS):
+    p = subprocess.run(["python3", GATE, "--mutant", str(n)], cwd=RACINE,
+                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    txt = p.stdout.decode("utf-8", "replace")
+    lignes = txt.split("\n")
+    # ⚠️ A COLONNE FIXE : `  [KO ] ` fait 8 colonnes, le libelle en fait 58.
+    kos = [l[8:66].strip() for l in lignes if l.startswith("  [KO ]")]
+    ids = []
+    for k in kos:
+        m = re.match(r"\((\w+)\)", k)
+        if m:
+            ids.append(m.group(1))
+    bilan = [l for l in lignes if l.startswith("BILAN")]
+    declares = list(g.CIBLES.get(n, ()))
+    sain = (p.returncode == 1 and bilan and kos)
+    couvre = all(d in ids for d in declares)
+    if not (sain and couvre):
+        mauvais.append(n)
+    print("  %2d  rc=%d  KO=%-2d  %-14s  declare=%-10s  rougit=%s%s"
+          % (n, p.returncode, len(kos), (bilan[0] if bilan else "⛔ SANS BILAN"),
+             ",".join(declares), ",".join(ids) or "—",
+             "" if (sain and couvre) else "   ⛔ ECART"))
+
+p = subprocess.run(["python3", GATE, "--mutant", "999"], cwd=RACINE,
+                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+print("-" * 78)
+print("mutant INCONNU (999) : rc=%d (attendu 2)" % p.returncode)
+print("-" * 78)
+print("TIR : %d mutant(s), %d ecart(s)" % (len(g.MUTANTS), len(mauvais)))
+sys.exit(1 if (mauvais or p.returncode != 2) else 0)
+FIN_TIR
+
+  # (d) les trois tirs de ce releve
+  python3 "$T/temoin_negatif_dn74.py" "$T/index-origine.html"
+  python3 tools/verif_placement_dn74.py
+  python3 "$T/tir_mutants_dn74.py"
+
+───────────────────────────────────────────────────────────────────────
+(1) LE TEMOIN NEGATIF — LES 13 CONTROLES NEUFS, JOUES CONTRE LA PAGE
+    D'ORIGINE. ⛔ Une gate qui reverdit sans avoir rougi n'a rien garde.
+───────────────────────────────────────────────────────────────────────
+==============================================================================
+TEMOIN NEGATIF dn7-4 — LES CONTROLES NEUFS, JOUES CONTRE LA PAGE
+D'ORIGINE (`git show HEAD:installeur/index.html`)
+==============================================================================
+page jouee : /tmp/claude-1000/-home-nasbarok-projects-compagnon-project/649a0536-3995-43bd-9558-64675acf7fd4/scratchpad/dn74/index-origine.html (149990 octets)
+gate importee : /home/nasbarok/projects/desknode/tools/verif_placement_dn74.py
+------------------------------------------------------------------------------
+  [KO ] (c1) la place d'origine est LUE, et RELUE             la place d'origine n'est LUE nulle part : parentNode=False · nextSibling=False
+  [KO ] (c2) le bloc est DEPLACE avant d'etre revele          0 relocalisation(s) : il en faut DEUX — sous l'ancre, et le retour a la maison
+  [KO ] (c3) les 3 ecritures du verbe passent leur bouton     site(s) SANS ancre : montrerSortie() · montrerSortie()
+  [KO ] (c4) la fabrique TRANSMET son ancre                   `ecrireMot` declare 2 parametre(s) : l'ancre n'y est pas
+  [KO ] (c5) un fait de PAGE n'est ancre sur aucun bouton     `rafraichirEtat` ne declare aucune ancre : ce controle passerait A VIDE
+  [KO ] (c6) le refus nomme est ENREGISTRE                    `consoleRefus` ⛔ n'ENREGISTRE pas la cle qu'il vient de nommer
+  [KO ] (c7) le refus est efface AU DEBUT de la tentative     aucun temoin de refus a suivre
+  [KO ] (c8) la supposition n'est plus qu'un REPLI            aucun temoin de refus a suivre
+  [KO ] (c9) une SEULE cle par fait, cadre et port            aucun temoin de refus a suivre
+  [KO ] (c10) les 2 selecteurs posent un APLAT quand actifs    sans aplat : #sec-langue button[aria-pressed="true"] ⇒ aucun fond · #sec-langue-dalle button[aria-pressed="true"] ⇒ aucun fond
+  [KO ] (c11) l'etat DIFFERE du jeu de declarations du survol  MEME jeu que le survol : #sec-langue button[aria-pressed="true"] · #sec-langue-dalle button[aria-pressed="true"]
+  [KO ] (c12) le cas ACTIF + DESARME est ecrit explicitement   #sec-langue button[aria-pressed="true"]:disabled ⇒ ABSENTE · #sec-langue-dalle button[aria-pressed="true"]:disabled ⇒ ABSENTE
+  [KO ] (c13) ⛔ aucun `#rrggbb` dans les regles ajoutees       regle(s) ABSENTE(S) : #sec-langue button[aria-pressed="true"]:disabled · #sec-langue-dalle button[aria-pressed="true"]:disabled — ⛔ rien a juger
+------------------------------------------------------------------------------
+TEMOIN : 13 KO sur 13 controles
+⇒ ATTENDU : 13 KO sur 13 — un controle VERT ici garderait RIEN.
+rc=0
+
+───────────────────────────────────────────────────────────────────────
+(2) LA GATE, SUR L'ARBRE CORRIGE
+───────────────────────────────────────────────────────────────────────
+==============================================================================
+dn7-4 — LA PAGE DIT LE VRAI LA OU L'ŒIL EST
+==============================================================================
+cibles     : installeur/index.html
+⛔ CETTE GATE EST STRUCTURELLE : elle N'EXECUTE PAS le JavaScript de
+   la page et ne dessine RIEN. Elle prouve que le MECANISME EST
+   BRANCHE, ⛔ pas que l'œil le voit. `AC7.4.3` se ferme A L'ŒIL DE
+   L'OWNER, avec le releve `mesures/dn7-4/T2` cote Windows.
+
+── (c0) LE PRE-VOL — ⛔ AUCUN CONTROLE SUR DU VIDE ────────────────
+  [OK ] (c0) tout fichier attendu est LISIBLE                      1 fichier(s) lus
+  [OK ] (c0) le mutant 1 a une CIBLE et un LIBELLE                 → c1
+  [OK ] (c0) le mutant 2 a une CIBLE et un LIBELLE                 → c2
+  [OK ] (c0) le mutant 3 a une CIBLE et un LIBELLE                 → c3
+  [OK ] (c0) le mutant 4 a une CIBLE et un LIBELLE                 → c4
+  [OK ] (c0) le mutant 5 a une CIBLE et un LIBELLE                 → c5
+  [OK ] (c0) le mutant 6 a une CIBLE et un LIBELLE                 → c6
+  [OK ] (c0) le mutant 7 a une CIBLE et un LIBELLE                 → c6
+  [OK ] (c0) le mutant 8 a une CIBLE et un LIBELLE                 → c7
+  [OK ] (c0) le mutant 9 a une CIBLE et un LIBELLE                 → c8
+  [OK ] (c0) le mutant 10 a une CIBLE et un LIBELLE                → c9
+  [OK ] (c0) le mutant 11 a une CIBLE et un LIBELLE                → c10
+  [OK ] (c0) le mutant 12 a une CIBLE et un LIBELLE                → c10,c11
+  [OK ] (c0) le mutant 13 a une CIBLE et un LIBELLE                → c12,c13
+  [OK ] (c0) le mutant 14 a une CIBLE et un LIBELLE                → c13
+  [OK ] (c0) le mutant 15 a une CIBLE et un LIBELLE                → c14
+  [OK ] (c0) le mutant 16 a une CIBLE et un LIBELLE                → c15
+  [OK ] (c0) le mutant 17 a une CIBLE et un LIBELLE                → c16
+  [OK ] (c0) le mutant 18 a une CIBLE et un LIBELLE                → c0
+  [OK ] (c0) le mutant 19 a une CIBLE et un LIBELLE                → z
+  [OK ] (c0) le mutant 20 a une CIBLE et un LIBELLE                → c10,c11
+  [OK ] (c0) le mutant 21 a une CIBLE et un LIBELLE                → c10
+  [OK ] (c0) le mutant 22 a une CIBLE et un LIBELLE                → c12
+  [OK ] (c0) le mutant 23 a une CIBLE et un LIBELLE                → c12
+  [OK ] (c0) le mutant 24 a une CIBLE et un LIBELLE                → c13
+  [OK ] (c0) le mutant 25 a une CIBLE et un LIBELLE                → c5
+
+── (c1)…(c5) LE VERDICT S'ECRIT SOUS LE BOUTON CLIQUE ────────────
+  [OK ] (c1) la place d'origine est LUE, et RELUE                  `sortieParent` et `sortieFrere`, lus au document et relus
+  [OK ] (c2) le bloc est DEPLACE avant d'etre revele               2 relocalisations, toutes AVANT la revelation
+  [OK ] (c3) les 3 ecritures du verbe passent leur bouton          3 sites, tous ancres sur `bouton`
+  [OK ] (c4) la fabrique TRANSMET son ancre                        `ecrireMot` ⇒ `montrerSortie(ancre)`
+  [OK ] (c5) un fait de PAGE n'est ancre sur aucun bouton          1 appel nu (demarrage) · 1 ancre(s) depuis `jouer`
+
+── (c6)…(c9) LE FAIT EXACT REMONTE LA OU L'ŒIL EST ───────────────
+  [OK ] (c6) le refus nomme est ENREGISTRE                         `consoleRefusNomme` retenu, et les 3 refus y passent
+  [OK ] (c7) le refus est efface AU DEBUT de la tentative          efface avant `consoleOuvrir(`
+  [OK ] (c8) la supposition n'est plus qu'un REPLI                 fait exact d'abord, supposition EN REPLI
+  [OK ] (c9) une SEULE cle par fait, cadre et port                 2 couples, meme cle des deux cotes
+
+── (c10)…(c13) LA POSITION ACTIVE SE DESSINE EN APLAT ────────────
+  [OK ] (c10) les 2 selecteurs posent un APLAT quand actifs        2 regles d'etat, fond ⛔ different du repos (var(--dn-fond))
+  [OK ] (c11) l'etat DIFFERE du jeu de declarations du survol      2 declaration(s) au survol, ⛔ aucune regle identique
+  [OK ] (c12) le cas ACTIF + DESARME est ecrit explicitement       2 regles desarmees : texte var(--dn-eteint), bordure var(--dn-trait)
+  [OK ] (c13) ⛔ aucun `#rrggbb` dans les regles ajoutees           4 regles, 12 valeur(s), 7 jeton(s) declare(s)
+
+── (c14)(c15)(c16) AUCUN CONTROLE GARDE PAR ZERO MUTANT ──────────
+  [OK ] (c14) chaque controle est vise par >= 1 mutant             18 controle(s) lu(s) a l'AST, 18 cible(s) declaree(s)
+  [OK ] (c15) chaque cible de mutant est un controle REEL          18 cible(s) confrontee(s)
+  [OK ] (c16) `CIBLES` et `MUTANTS` se correspondent               25 mutant(s), 25 cible(s), cle a cle
+
+⛔ CE QUE CETTE GATE NE PROUVE PAS : que l'œil VOIE quoi que ce
+   soit. Elle prouve que le mecanisme est BRANCHE. Ce qui ferme
+   `AC7.4.3` est le releve `mesures/dn7-4/T2`, cote Windows, et
+   c'est l'ŒIL DE L'OWNER — ⛔ aucune gate de ce depot.
+
+==============================================================================
+BILAN : 42 OK, 0 KO
+==============================================================================
+rc=0
+
+───────────────────────────────────────────────────────────────────────
+(3) LES 25 MUTANTS, TIRES **INDIVIDUELLEMENT**, ET LE CONTROLE QU'ILS
+    ROUGISSENT CONFRONTE A LA CIBLE QU'ILS DECLARENT.
+───────────────────────────────────────────────────────────────────────
+==============================================================================
+dn7-4 — LES MUTANTS DE `tools/verif_placement_dn74.py`, TIRES UN PAR UN
+==============================================================================
+--liste-mutants (rc=0) :
+   1  [c1]  recode la place d'origine EN DUR au lieu de la LIRE ⇒ une seconde definition, qui divergera
+   2  [c2]  revele le bloc AVANT de le deplacer ⇒ il apparait a son ancienne place, puis saute
+   3  [c3]  retire l'ancre a UN SEUL site de `jouer` (le verdict) ⇒ la forme EXACTE qui a survecu a dn7-2-2
+   4  [c4]  fait AVALER son ancre par la fabrique d'ecriture ⇒ trois appelants la passent pour rien
+   5  [c5]  ancre l'appel de DEMARRAGE sur un bouton ⇒ une cause FAUSSE publiee sans que personne ait clique
+   6  [c6]  cesse d'ENREGISTRER le refus que la console vient de nommer ⇒ le geste de langue n'a plus rien a relayer
+   7  [c6]  fait ecrire un refus HORS de la fabrique de refus ⇒ il s'affiche mais n'est plus nomme
+   8  [c7]  n'efface plus le refus au DEBUT de la tentative ⇒ un refus PERIME est relaye comme un fait du tir
+   9  [c8]  ecrit la SUPPOSITION inconditionnellement ⇒ le defaut d'origine, replante mot pour mot
+  10  [c9]  passe DEUX cles pour UN fait ⇒ le cadre se dessine sur une issue, le texte sur une autre
+  11  [c10]  retire le fond de la position active du selecteur de page ⇒ elle redevient un simple contour
+  12  [c10,c11]  remet les declarations du SURVOL dans la regle d'etat ⇒ selectionne et survole indiscernables
+  13  [c12,c13]  retire le cas ACTIF + DESARME ⇒ la specificite l'emporte et un bouton grise se lit actionnable
+  14  [c13]  plante un `#rrggbb` dans la regle d'etat ⇒ une couleur qui echappe a l'identite declaree
+  15  [c14]  vide la cible d'un mutant ⇒ un controle garde par ZERO mutant, et rien ne le dit
+  16  [c15]  declare dans `CIBLES` un controle INEXISTANT ⇒ une cible PERIMEE que « N rouges » ne voit pas
+  17  [c16]  declare une cible pour un mutant qui N'EXISTE PAS
+  18  [c0]  declare un mutant dont le CORPS LEVE ⇒ un mutant MORT, qui doit se rendre en KO et ⛔ pas en trace
+  19  [z]  replante une SORTIE ANTICIPEE NON DECLAREE ⇒ le bilan sort sur une population RETRECIE
+  20  [c10,c11]  pose l'aplat dans un COMMENTAIRE et rend la vraie regle au survol ⇒ un leurre qui reverdit la gate
+  21  [c10]  peint l'aplat avec le FOND DE REPOS d'un bouton ⇒ l'actif est peint comme une position NON choisie
+  22  [c12]  retire la BORDURE des deux regles desarmees ⇒ le bouton grise garde sa bordure d'accent
+  23  [c12]  rend au desarme le fond de repos ⇒ la langue choisie DISPARAIT pendant que le geste est en vol
+  24  [c13]  ecrit un NOM de jeton qui n'existe pas ⇒ le fond disparait EN SILENCE, et aucun `#rrggbb` ne bouge
+  25  [c5]  retire l'ancre au rafraichissement de `jouer` ⇒ un verbe REUSSI voit son verdict fuir sous l'etape 4
+------------------------------------------------------------------------------
+   1  rc=1  KO=1   BILAN : 41 OK, 1 KO  declare=c1          rougit=c1
+   2  rc=1  KO=1   BILAN : 41 OK, 1 KO  declare=c2          rougit=c2
+   3  rc=1  KO=1   BILAN : 41 OK, 1 KO  declare=c3          rougit=c3
+   4  rc=1  KO=1   BILAN : 41 OK, 1 KO  declare=c4          rougit=c4
+   5  rc=1  KO=1   BILAN : 41 OK, 1 KO  declare=c5          rougit=c5
+   6  rc=1  KO=4   BILAN : 38 OK, 4 KO  declare=c6          rougit=c6,c7,c8,c9
+   7  rc=1  KO=4   BILAN : 38 OK, 4 KO  declare=c6          rougit=c6,c7,c8,c9
+   8  rc=1  KO=1   BILAN : 41 OK, 1 KO  declare=c7          rougit=c7
+   9  rc=1  KO=1   BILAN : 41 OK, 1 KO  declare=c8          rougit=c8
+  10  rc=1  KO=1   BILAN : 41 OK, 1 KO  declare=c9          rougit=c9
+  11  rc=1  KO=1   BILAN : 41 OK, 1 KO  declare=c10         rougit=c10
+  12  rc=1  KO=2   BILAN : 40 OK, 2 KO  declare=c10,c11     rougit=c10,c11
+  13  rc=1  KO=2   BILAN : 40 OK, 2 KO  declare=c12,c13     rougit=c12,c13
+  14  rc=1  KO=1   BILAN : 41 OK, 1 KO  declare=c13         rougit=c13
+  15  rc=1  KO=1   BILAN : 41 OK, 1 KO  declare=c14         rougit=c14
+  16  rc=1  KO=1   BILAN : 41 OK, 1 KO  declare=c15         rougit=c15
+  17  rc=1  KO=1   BILAN : 41 OK, 1 KO  declare=c16         rougit=c16
+  18  rc=1  KO=1   BILAN : 26 OK, 1 KO  declare=c0          rougit=c0
+  19  rc=1  KO=1   BILAN : 39 OK, 1 KO  declare=z           rougit=z
+  20  rc=1  KO=2   BILAN : 40 OK, 2 KO  declare=c10,c11     rougit=c10,c11
+  21  rc=1  KO=1   BILAN : 41 OK, 1 KO  declare=c10         rougit=c10
+  22  rc=1  KO=1   BILAN : 41 OK, 1 KO  declare=c12         rougit=c12
+  23  rc=1  KO=1   BILAN : 41 OK, 1 KO  declare=c12         rougit=c12
+  24  rc=1  KO=1   BILAN : 41 OK, 1 KO  declare=c13         rougit=c13
+  25  rc=1  KO=1   BILAN : 41 OK, 1 KO  declare=c5          rougit=c5
+------------------------------------------------------------------------------
+mutant INCONNU (999) : rc=2 (attendu 2)
+------------------------------------------------------------------------------
+TIR : 25 mutant(s), 0 ecart(s)
+rc=0
+
+───────────────────────────────────────────────────────────────────────
+(4) LE TIR BRUT DE CHAQUE MUTANT — la ligne `[KO ]` et le `BILAN`
+───────────────────────────────────────────────────────────────────────
+── mutant 1 (rc=1) ───────────────────────────────────────────────
+  [KO ] (c1) la place d'origine est LUE, et RELUE                  ⛔ la place d'origine n'est LUE nulle part : parentNode=False · nextSibling=False — une place recodee en JavaScript est une SECONDE definition, qui divergera du document
+BILAN : 41 OK, 1 KO
+── mutant 2 (rc=1) ───────────────────────────────────────────────
+  [KO ] (c2) le bloc est DEPLACE avant d'etre revele               ⛔ le bloc est REVELE avant d'etre deplace — reveler d'abord le fait apparaitre a son ancienne place, puis sauter
+BILAN : 41 OK, 1 KO
+── mutant 3 (rc=1) ───────────────────────────────────────────────
+  [KO ] (c3) les 3 ecritures du verbe passent leur bouton          ⛔ site(s) SANS ancre : montrerSortie() — un SEUL site sans ancre suffit : c'est la forme exacte sous laquelle le defaut a survecu a `dn7-2-2`
+BILAN : 41 OK, 1 KO
+── mutant 4 (rc=1) ───────────────────────────────────────────────
+  [KO ] (c4) la fabrique TRANSMET son ancre                        ⛔ `ecrireMot` recoit `ancre` et ⛔ ne le passe pas — une ancre avalee rend les trois appelants vains
+BILAN : 41 OK, 1 KO
+── mutant 5 (rc=1) ───────────────────────────────────────────────
+  [KO ] (c5) un fait de PAGE n'est ancre sur aucun bouton          ⛔ ⛔ AUCUN appel nu : le fait de PAGE serait attribue a un bouton que personne n'a clique — personne n'a clique : l'attribuer au dernier bouton serait publier une CAUSE FAUSSE
+BILAN : 41 OK, 1 KO
+── mutant 6 (rc=1) ───────────────────────────────────────────────
+  [KO ] (c6) le refus nomme est ENREGISTRE                         ⛔ `consoleRefus` ⛔ n'ENREGISTRE pas la cle qu'il vient de nommer — la console nomme deja ses trois refus ; sans enregistrement, le geste de langue n'a rien a relayer
+  [KO ] (c7) le refus est efface AU DEBUT de la tentative          ⛔ aucun temoin de refus a suivre — un refus relaye apres coup est un fait D'UN AUTRE TIR
+  [KO ] (c8) la supposition n'est plus qu'un REPLI                 ⛔ aucun temoin de refus a suivre — `langue.port-indisponible` ⛔ ne disparait pas : elle reste le message du seul cas ou sa phrase est VRAIE
+  [KO ] (c9) une SEULE cle par fait, cadre et port                 ⛔ aucun temoin de refus a suivre — deux cles feraient dessiner le cadre sur une issue et ecrire le texte sur une autre
+BILAN : 38 OK, 4 KO
+── mutant 7 (rc=1) ───────────────────────────────────────────────
+  [KO ] (c6) le refus nomme est ENREGISTRE                         ⛔ 2 refus nomme(s) sur 3 ; absent(s) : console.aucun-port — la console nomme deja ses trois refus ; sans enregistrement, le geste de langue n'a rien a relayer
+  [KO ] (c7) le refus est efface AU DEBUT de la tentative          ⛔ aucun temoin de refus a suivre — un refus relaye apres coup est un fait D'UN AUTRE TIR
+  [KO ] (c8) la supposition n'est plus qu'un REPLI                 ⛔ aucun temoin de refus a suivre — `langue.port-indisponible` ⛔ ne disparait pas : elle reste le message du seul cas ou sa phrase est VRAIE
+  [KO ] (c9) une SEULE cle par fait, cadre et port                 ⛔ aucun temoin de refus a suivre — deux cles feraient dessiner le cadre sur une issue et ecrire le texte sur une autre
+BILAN : 38 OK, 4 KO
+── mutant 8 (rc=1) ───────────────────────────────────────────────
+  [KO ] (c7) le refus est efface AU DEBUT de la tentative          ⛔ `poserLangueDalle` ⛔ n'efface JAMAIS le refus enregistre — un refus relaye apres coup est un fait D'UN AUTRE TIR
+BILAN : 41 OK, 1 KO
+── mutant 9 (rc=1) ───────────────────────────────────────────────
+  [KO ] (c8) la supposition n'est plus qu'un REPLI                 ⛔ le refus enregistre n'est JAMAIS relaye au geste — `langue.port-indisponible` ⛔ ne disparait pas : elle reste le message du seul cas ou sa phrase est VRAIE
+BILAN : 41 OK, 1 KO
+── mutant 10 (rc=1) ───────────────────────────────────────────────
+  [KO ] (c9) une SEULE cle par fait, cadre et port                 ⛔ consoleRefusNomme ⇒ "langue.port-indisponible" — deux cles feraient dessiner le cadre sur une issue et ecrire le texte sur une autre
+BILAN : 41 OK, 1 KO
+── mutant 11 (rc=1) ───────────────────────────────────────────────
+  [KO ] (c10) les 2 selecteurs posent un APLAT quand actifs        ⛔ sans aplat : #sec-langue button[aria-pressed="true"] ⇒ aucun fond — un contour d'une teinte voisine ne se distingue ni du repos ni du survol
+BILAN : 41 OK, 1 KO
+── mutant 12 (rc=1) ───────────────────────────────────────────────
+  [KO ] (c10) les 2 selecteurs posent un APLAT quand actifs        ⛔ sans aplat : #sec-langue-dalle button[aria-pressed="true"] ⇒ aucun fond — un contour d'une teinte voisine ne se distingue ni du repos ni du survol
+  [KO ] (c11) l'etat DIFFERE du jeu de declarations du survol      ⛔ MEME jeu que le survol : #sec-langue-dalle button[aria-pressed="true"] — a declarations egales, survoler une position inactive la fait passer pour active
+BILAN : 40 OK, 2 KO
+── mutant 13 (rc=1) ───────────────────────────────────────────────
+  [KO ] (c12) le cas ACTIF + DESARME est ecrit explicitement       ⛔ #sec-langue-dalle button[aria-pressed="true"]:disabled ⇒ ABSENTE — la regle d'aplat pese `(1,1,1)`, `button:disabled` pese `(0,1,1)` : sans ce cas ENTIER, un bouton grise se lit actionnable
+  [KO ] (c13) ⛔ aucun `#rrggbb` dans les regles ajoutees           ⛔ regle(s) ABSENTE(S) : #sec-langue-dalle button[aria-pressed="true"]:disabled — ⛔ rien a juger — l'identite visuelle est STATUEE et ECRITE ; une couleur nue la contourne en une ligne
+BILAN : 40 OK, 2 KO
+── mutant 14 (rc=1) ───────────────────────────────────────────────
+  [KO ] (c13) ⛔ aucun `#rrggbb` dans les regles ajoutees           ⛔ valeur(s) HORS jeton : #sec-langue button[aria-pressed="true"] ⇒ #a0d8ff — l'identite visuelle est STATUEE et ECRITE ; une couleur nue la contourne en une ligne
+BILAN : 41 OK, 1 KO
+── mutant 15 (rc=1) ───────────────────────────────────────────────
+  [KO ] (c14) chaque controle est vise par >= 1 mutant             ⛔ 1 CONTROLE(S) GARDE(S) PAR RIEN : c8
+BILAN : 41 OK, 1 KO
+── mutant 16 (rc=1) ───────────────────────────────────────────────
+  [KO ] (c15) chaque cible de mutant est un controle REEL          ⛔ 1 CIBLE(S) PERIMEE(S) : c99 — un mutant qui vise un controle inexistant ⛔ ne garde rien
+BILAN : 41 OK, 1 KO
+── mutant 17 (rc=1) ───────────────────────────────────────────────
+  [KO ] (c16) `CIBLES` et `MUTANTS` se correspondent               ⛔ cible(s) SANS mutant : [999] · mutant(s) SANS cible : —
+BILAN : 41 OK, 1 KO
+── mutant 18 (rc=1) ───────────────────────────────────────────────
+  [KO ] (c0) le mutant 18 a une CIBLE et un CORPS                  ⛔ RuntimeError: temoin : ce mutant LEVE, et c'est son objet — la faute est dans le MUTANT, ⛔ pas dans la gate
+⛔ SORTIE ANTICIPEE — 27 controle(s) emis sur 42 prevus : le mutant 18 n'a pas pu s'appliquer
+BILAN : 26 OK, 1 KO
+── mutant 19 (rc=1) ───────────────────────────────────────────────
+  [KO ] (z) tout controle prevu est EMIS                           ⛔ 39 emis pour 42 prevus — une gate qui joue MOINS de controles qu'annonce sort VERTE sur une population RETRECIE, ⛔ sans le declarer
+BILAN : 39 OK, 1 KO
+── mutant 20 (rc=1) ───────────────────────────────────────────────
+  [KO ] (c10) les 2 selecteurs posent un APLAT quand actifs        ⛔ sans aplat : #sec-langue button[aria-pressed="true"] ⇒ aucun fond — un contour d'une teinte voisine ne se distingue ni du repos ni du survol
+  [KO ] (c11) l'etat DIFFERE du jeu de declarations du survol      ⛔ MEME jeu que le survol : #sec-langue button[aria-pressed="true"] — a declarations egales, survoler une position inactive la fait passer pour active
+BILAN : 40 OK, 2 KO
+── mutant 21 (rc=1) ───────────────────────────────────────────────
+  [KO ] (c10) les 2 selecteurs posent un APLAT quand actifs        ⛔ fond IDENTIQUE au repos de `button` (var(--dn-fond)) : #sec-langue button[aria-pressed="true"] ⇒ var(--dn-fond) · #sec-langue-dalle button[aria-pressed="true"] ⇒ var(--dn-fond) — un contour d'une teinte voisine ne se distingue ni du repos ni du survol
+BILAN : 41 OK, 1 KO
+── mutant 22 (rc=1) ───────────────────────────────────────────────
+  [KO ] (c12) le cas ACTIF + DESARME est ecrit explicitement       ⛔ #sec-langue button[aria-pressed="true"]:disabled ⇒ bordure None au lieu de var(--dn-trait) · #sec-langue-dalle button[aria-pressed="true"]:disabled ⇒ bordure None au lieu de var(--dn-trait) — la regle d'aplat pese `(1,1,1)`, `button:disabled` pese `(0,1,1)` : sans ce cas ENTIER, un bouton grise se lit actionnable
+BILAN : 41 OK, 1 KO
+── mutant 23 (rc=1) ───────────────────────────────────────────────
+  [KO ] (c12) le cas ACTIF + DESARME est ecrit explicitement       ⛔ #sec-langue button[aria-pressed="true"]:disabled ⇒ fond var(--dn-fond) : ⛔ indiscernable d'une position INACTIVE desarmee · #sec-langue-dalle button[aria-pressed="true"]:disabled ⇒ fond var(--dn-fond) : ⛔ indiscernable d'une position INACTIVE desarmee — la regle d'aplat pese `(1,1,1)`, `button:disabled` pese `(0,1,1)` : sans ce cas ENTIER, un bouton grise se lit actionnable
+BILAN : 41 OK, 1 KO
+── mutant 24 (rc=1) ───────────────────────────────────────────────
+  [KO ] (c13) ⛔ aucun `#rrggbb` dans les regles ajoutees           ⛔ jeton(s) ⛔ NON DECLARE(S) dans `:root` : #sec-langue button[aria-pressed="true"] ⇒ background: --dn-accnt — une coquille de NOM disparait EN SILENCE au rendu, et `(c19)` de `dn7-1` ne lit que des `#rrggbb` — l'identite visuelle est STATUEE et ECRITE ; une couleur nue la contourne en une ligne
+BILAN : 41 OK, 1 KO
+── mutant 25 (rc=1) ───────────────────────────────────────────────
+  [KO ] (c5) un fait de PAGE n'est ancre sur aucun bouton          ⛔ `jouer` repose l'etat SANS son bouton : rafraichirEtat() — personne n'a clique : l'attribuer au dernier bouton serait publier une CAUSE FAUSSE
+BILAN : 41 OK, 1 KO
+
+── mutant INCONNU ────────────────────────────────────────────────────
+MUTANT 999 INCONNU : il n'est pas declare. ⛔ Un mutant qui n'existe pas ne prouve RIEN — ⛔ ne pas conclure que le controle est vert.
+rc=2  (attendu 2)
+
+───────────────────────────────────────────────────────────────────────
+(5) LES CASCADES, DECLAREES PLUTOT QUE TUES
+───────────────────────────────────────────────────────────────────────
+· mutants 6 et 7 rougissent (c6) — leur cible declaree — PUIS (c7)(c8)(c9).
+  Motif : ces trois controles suivent le NOM du temoin de refus, et ce nom
+  est DERIVE de `consoleRefus` (⛔ pas code en dur). Quand l'enregistrement
+  disparait, le nom n'est plus derivable et les trois refusent de conclure.
+  ⇒ chacun garde SON mutant propre (8, 9, 10), et ceux-la ne cascadent pas.
+· mutants 12 et 13 rougissent DEUX controles CHACUN, et ils les DECLARENT
+  tous les deux : rendre la regle d'etat au survol lui retire aussi son
+  fond ; retirer la regle desarmee la retire aussi du champ de (c13).
+· le mutant 15 VIDE la cible d'un mutant au lieu d'en supprimer la cle :
+  supprimer la cle ferait AUSSI diverger `CIBLES` et `MUTANTS`, donc rougir
+  (c16) — un mutant qui vise deux controles a la fois n'en garde aucun.

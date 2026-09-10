@@ -123,11 +123,18 @@ CAS_MATRICE = (
 #    ne gardera pas ce changement ;
 #  · `selecteur-deja-en-vol` — un clic qui n'ecrit rien ET n'affiche rien se lit
 #    comme une page cassee : la page doit NOMMER ce qui s'est passe.
+#  · `fait-de-page-a-la-maison` / `verdict-sous-le-bouton` — DECLARES LE
+#    2026-09-10 par `dn7-4`. ⚠️ LES DECLARER **EST** LE GESTE QUE `(c3)` EXIGE :
+#    son propre message de KO dit que le compte « voit un cas ajoute SANS ETRE
+#    DECLARE ». Ces deux-la mesurent OU se pose `#sortie` — sous le bouton
+#    clique apres un verbe, a sa place d'origine apres un fait de PAGE — et
+#    c'est la seule moitie d'`AC7.4.1` qu'une machine puisse tenir.
 CAS_HORS_MATRICE = ("relecture-sans-le-code", "pose-par-le-selecteur",
                     "nvs-refusee", "selecteur-deja-en-vol", "selecteur-annule",
                     "clic-reel-sur-francais", "flash-revele-arme-le-geste",
                     "module-absent-desarme-le-geste",
-                    "ecriture-qui-rejette-en-vol")
+                    "ecriture-qui-rejette-en-vol",
+                    "fait-de-page-a-la-maison", "verdict-sous-le-bouton")
 CAS_ATTENDUS = len(CAS_MATRICE) + len(CAS_HORS_MATRICE)
 
 RE_CAS = re.compile(r"^CAS (\S+)\s+(OK|KO)\s*(.*)$", re.M)
